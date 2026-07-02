@@ -45,6 +45,8 @@ func init() {
 
 	// takeover / recovery
 	register("takeover", hTakeover)
+	register("untakeover", hUntakeover)
+	register("restore-factory", hRestoreFactory)
 	register("probe", hProbe)
 	register("reboot", hReboot)
 }
@@ -388,6 +390,52 @@ func hTakeover(a *Agent, args json.RawMessage) (any, error) {
 // hProbe is the read-only first-session diagnostic: it never touches the bus
 // unless asked, and never kills anything. It reports the device environment
 // (via otactl probe) so the operator can confirm it before takeover.
+// hUntakeover hands control back: stop+kill the supervised app, clear the
+// persisted taken_over flag, and disarm the watchdog — so a subsequent reboot
+// boots the factory app normally. It does NOT itself restore the factory app
+// (use restore-factory or reboot). This is what makes a takeover test fully
+// reversible.
+func hUntakeover(a *Agent, _ json.RawMessage) (any, error) {
+	_ = a.ctlRequest("stop", 8*time.Second) // pause supervisor + terminate the app
+	if err := a.st.update(func(s *State) { s.TakenOver = false; s.AutoTakeover = false }); err != nil {
+		return nil, err
+	}
+	a.clearEmergency()
+	a.wd.Disarm()
+	a.event("untakeover", map[string]any{"note": "control released; reboot or restore-factory to bring the vendor app back"})
+	return map[string]any{"taken_over": false, "watchdog_disarmed": true}, nil
+}
+
+// hRestoreFactory re-launches the vendor app in place (best-effort), so the
+// scope can be recovered without a reboot after a takeover test. It execs the
+// factory binary as a child of the agent (inheriting the still-open boot fds)
+// from its normal working directory. Reboot is the reliable fallback if the
+// vendor app does not cleanly re-drive from a mid-session restart.
+func hRestoreFactory(a *Agent, args json.RawMessage) (any, error) {
+	p, _ := decodeArgs[struct {
+		Path string `json:"path"`
+		Dir  string `json:"dir"`
+	}](args)
+	if p.Path == "" {
+		p.Path = "/usr/bin/siglent/SDS1000_arm.app"
+	}
+	if p.Dir == "" {
+		p.Dir = "/usr/bin/siglent"
+	}
+	if st := a.st.get(); st.TakenOver {
+		return nil, fmt.Errorf("still taken over — run untakeover first so the supervisor doesn't fight the factory app for the bus")
+	}
+	if _, err := os.Stat(p.Path); err != nil {
+		return nil, fmt.Errorf("restore-factory: %s not found: %w", p.Path, err)
+	}
+	pid, err := a.launchDetached(p.Path, p.Dir)
+	if err != nil {
+		return nil, err
+	}
+	a.event("restore-factory", map[string]any{"path": p.Path, "pid": pid})
+	return map[string]any{"launched": p.Path, "pid": pid, "note": "if the display does not return, reboot"}, nil
+}
+
 func hProbe(a *Agent, args json.RawMessage) (any, error) {
 	p, _ := decodeArgs[struct {
 		ReadGpmc bool `json:"read_gpmc"` // opt-in: read version+fill (safe, plain regs)

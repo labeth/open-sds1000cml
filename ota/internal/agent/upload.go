@@ -37,9 +37,6 @@ func (a *Agent) newUpload(dest string, size int64, sha string, mode uint32) (str
 	if err := os.MkdirAll(filepath.Dir(dest), 0o755); err != nil {
 		return "", err
 	}
-	if err := os.MkdirAll(a.store.StagingDir(), 0o755); err != nil {
-		return "", err
-	}
 	a.upMu.Lock()
 	defer a.upMu.Unlock()
 	// Evict stale sessions (> 10 min) and cap concurrency.
@@ -53,7 +50,10 @@ func (a *Agent) newUpload(dest string, size int64, sha string, mode uint32) (str
 		return "", fmt.Errorf("upload: too many concurrent sessions")
 	}
 	id := "up-" + strconv.FormatInt(time.Now().UnixNano(), 36)
-	tmp := filepath.Join(a.store.StagingDir(), id+".part")
+	// Temp file in the DESTINATION's directory so the final rename is same-
+	// filesystem (a fixed staging dir on the stick can't rename to a /tmp dest
+	// — that is a cross-device link error).
+	tmp := filepath.Join(filepath.Dir(dest), "."+id+".part")
 	f, err := os.OpenFile(tmp, os.O_CREATE|os.O_TRUNC|os.O_RDWR, 0o644)
 	if err != nil {
 		return "", err

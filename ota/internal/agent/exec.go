@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"syscall"
 	"time"
 )
 
@@ -36,6 +37,26 @@ func (a *Agent) runArgv(argv []string, dir string, timeout time.Duration) ([]byt
 func (a *Agent) runShell(script string, timeout time.Duration) ([]byte, error) {
 	out, _, err := a.runArgv([]string{"/bin/sh", "-c", script}, "", timeout)
 	return out, err
+}
+
+// launchDetached starts a binary as a detached child that inherits the agent's
+// open fds (the boot /dev/Gpmc + /dev/fpga_key) and reparents to init, so it
+// survives the agent. Used to restore the factory app after a takeover test.
+func (a *Agent) launchDetached(path, dir string) (int, error) {
+	cmd := exec.Command(path)
+	cmd.Dir = dir
+	cmd.Stdin = nil
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	if err := cmd.Start(); err != nil {
+		return 0, err
+	}
+	pid := cmd.Process.Pid
+	// Reap asynchronously if it stays our child; if it reparents to init that
+	// is fine too. We do not wait on it — it must outlive this handler.
+	go func() { _ = cmd.Wait() }()
+	return pid, nil
 }
 
 // tailFile returns the last n bytes of a file.

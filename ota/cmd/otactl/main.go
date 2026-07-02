@@ -23,8 +23,11 @@ import (
 	"strings"
 	"time"
 
+	"net"
+
 	"open-sds/ota/internal/buildinfo"
 	"open-sds/ota/internal/otactl"
+	"open-sds/ota/internal/vxi11"
 
 	"github.com/nats-io/nats.go"
 )
@@ -68,6 +71,9 @@ func main() {
 	case "watch":
 		runWatch(*natsURL, *device)
 		return
+	case "scpi":
+		runScpi(hostOf(*tcpAddr), rest, timeout)
+		return
 	}
 
 	// Everything else needs a device transport.
@@ -110,6 +116,10 @@ func main() {
 		printJSON(mustCall(c, "takeover", map[string]any{
 			"dry_run": has(rest, "--dry-run"), "force": has(rest, "--force"),
 		}, timeout))
+	case "untakeover":
+		printJSON(mustCall(c, "untakeover", nil, timeout))
+	case "restore-factory":
+		printJSON(mustCall(c, "restore-factory", nil, timeout))
 	case "app":
 		if len(rest) == 0 {
 			fatal(fmt.Errorf("app needs start|stop|restart"))
@@ -240,6 +250,50 @@ func runPower(shellyIP string, rest []string) {
 	default:
 		fatal(fmt.Errorf("power on|off|cycle|state"))
 	}
+}
+
+// runScpi speaks VXI-11 SCPI directly to the instrument (host:111 -> DEVICE_CORE)
+// — the vendor factory app OR a clean-room app. Validates the VXI-11 client and
+// lets you STOP/resume the factory app non-destructively. A command ending in
+// '?' is treated as a query and its reply printed.
+func runScpi(host string, args []string, timeout time.Duration) {
+	if host == "" {
+		fatal(fmt.Errorf("scpi needs a device host (pass -tcp <ip>:<port>)"))
+	}
+	if len(args) == 0 {
+		fatal(fmt.Errorf("scpi <command>   e.g. scpi \"*IDN?\"  or  scpi STOP"))
+	}
+	cmd := strings.Join(args, " ")
+	cl, err := vxi11.Dial(host, timeout)
+	if err != nil {
+		fatal(err)
+	}
+	defer cl.Close()
+	if strings.HasSuffix(strings.TrimSpace(cmd), "?") {
+		resp, err := cl.Query(cmd)
+		if err != nil {
+			fatal(err)
+		}
+		fmt.Print(resp)
+		if !strings.HasSuffix(resp, "\n") {
+			fmt.Println()
+		}
+		return
+	}
+	if err := cl.Send(cmd); err != nil {
+		fatal(err)
+	}
+	fmt.Printf("sent: %s\n", cmd)
+}
+
+func hostOf(addr string) string {
+	if addr == "" {
+		return ""
+	}
+	if h, _, err := net.SplitHostPort(addr); err == nil {
+		return h
+	}
+	return addr
 }
 
 func runDiscover(natsURL string, timeout time.Duration) {
@@ -414,6 +468,9 @@ COMMANDS
   exec <argv...>            run a command on the device
   sh <script...>            run a /bin/sh script on the device
   takeover [--dry-run|--force]   inherit-then-kill the factory app
+  untakeover                release control (clear taken_over + disarm wd)
+  restore-factory           re-launch the vendor app in place (post-test)
+  scpi <cmd>                raw VXI-11 SCPI to the instrument (e.g. scpi "*IDN?")
   app start|stop|restart    app lifecycle (after takeover)
   activate <A|B>            set active app slot + restart
   update-app <bin>          OTA the app (upload -> inactive slot -> restart)

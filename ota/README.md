@@ -12,6 +12,36 @@ the USB boot anchor:
 There is **no on-device shell/login service**. All control is through the agent and `otactl`; recovery
 of last resort is the external mains power-cycle (`otactl power`, via the Shelly plug).
 
+## The app ↔ OTA contract (build the app against THIS, never touch the OTA)
+
+The OTA agent owns everything operational — takeover, the watchdog, A/B slots,
+health rollback, remote transport. The clean-room app is a plain binary that
+implements only this surface (see `cmd/stubapp`, the reference/validation app):
+
+1. **It is `exec`'d by the agent as a direct child**, so it *inherits* the boot
+   fds. Discover them by scanning `/proc/self/fd` for `/dev/Gpmc` and
+   `/dev/fpga_key`; **never fresh-open them, never close them** (spec 01 §5).
+2. **Env the agent exports**: `OTA_HEALTH_PATH` (health token to write),
+   `SCOPE_GPMC` (`/dev/Gpmc`), `SCOPE_LCD` (`/dev/fb0`), `SCOPE_MMAP_DRAIN`.
+3. **Health = frame-advance liveness**: after ≥3 genuine coherent frames,
+   re-write `OTA_HEALTH_PATH` whenever the engine advances (throttle ~500 ms).
+   Do **not** write it before the first real capture. The agent marks the app
+   healthy on the first change and unhealthy → relaunch if it stalls > ~3 s.
+4. **Exit cleanly (0) on SIGTERM** so the agent's stop path is clean.
+
+That's the whole contract. The app needs zero knowledge of takeover, the
+watchdog, slots, or rollback. To ship a new app: `otactl update-app ./app-arm`
+(stages it into the inactive slot; a stable run confirms it, a crash-loop rolls
+back). The takeover cutover is `otactl takeover` — no app change required.
+
+**Validated end-to-end on the real unit (SDS1102CML+):** takeover drove the
+factory `SDS1000_arm.app` to STOP over VXI-11, confirmed the idle landing
+(`version=0x0052`, fill `0x46` frozen, `status 0x38≈0x8a`), killed it, claimed
+and pet `/dev/watchdog`, and launched the reference app — which reported
+`inherited /dev/Gpmc fd=5 /dev/fpga_key fd=6` and went healthy. `untakeover`
+released control; a power-cycle restored the factory app. Agent self-update over
+the network (`update-agent`) was validated in the same run.
+
 ## The load-bearing rules (from specs 01 / 09)
 
 - **Inherited fds only.** `/dev/Gpmc` and `/dev/fpga_key` are opened once by the boot chain and inherited
