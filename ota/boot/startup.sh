@@ -24,7 +24,11 @@
 # stubs (agent, commands) and assert ordering deterministically.
 
 # --- 1. environment ---------------------------------------------------------
-USB="${OTA_USB:-/usr/bin/siglent/usr/media/U-disk0}"
+# The stick root is THIS script's directory (wherever the vendor firmware
+# mounted it), not a hardcoded mount path — robust to a different mountpoint.
+# OTA_USB overrides it for the off-device harness.
+USB="${OTA_USB:-$(CDPATH= cd -- "$(dirname -- "$0")" 2>/dev/null && pwd)}"
+USB="${USB:-/usr/bin/siglent/usr/media/U-disk0}"   # last-ditch fallback
 OTA_DIR="${OTA_DIR:-$USB/ota}"
 LOG="${OTA_BOOT_LOG:-$OTA_DIR/logs/boot.log}"
 AGENTLOG="${OTA_AGENT_LOG:-$(dirname "$LOG")/agent.log}"  # agent+app stdout (same dir as boot.log)
@@ -60,7 +64,7 @@ export OTA_DIR OTA_SLOT_ROOT OTA_HEALTH_DIR
 export OTA_NATS OTA_DEVICE_ID OTA_HB_INTERVAL OTA_HEALTH_TIMEOUT OTA_LISTEN
 export OTA_NKEY OTA_CA OTA_CREDS   # agent auth (else the agent's NATS TLS has no CA)
 export OTA_GPMC OTA_FPGA_KEY OTA_WD_DEV OTA_WD_PET
-export OTA_STABLE OTA_MAXFAILS OTA_APP_GRACE OTA_AUTO_TAKEOVER OTA_FACTORY_NAMES
+export OTA_STABLE OTA_MAXFAILS OTA_APP_GRACE OTA_AUTO_TAKEOVER OTA_TAKEOVER_DELAY OTA_FACTORY_NAMES
 # Keep the anchor's slot-file paths and the agent's config in agreement.
 export OTA_AGENT_A="$AGENT_A" OTA_AGENT_B="$AGENT_B"
 export OTA_AGENT_ACTIVE="$ACTIVE_FILE" OTA_AGENT_CONFIRMED="$CONFIRMED_FILE"
@@ -117,6 +121,8 @@ agent_loop() {
         bin=$(agent_slot_path "$active")
         log "agent-start slot=$active"
         rotate_log "$AGENTLOG"
+        # Clear any stale intent marker so only THIS run's exit is classified.
+        rm -f "$OTA_DIR/agent.intent" 2>/dev/null
         start=$(date +%s 2>/dev/null || echo 0)
         if [ -x "$bin" ]; then
             "$bin" >>"$AGENTLOG" 2>&1   # capture agent + app logs
@@ -126,7 +132,20 @@ agent_loop() {
         end=$(date +%s 2>/dev/null || echo 0)
         dur=$((end - start))
 
-        if [ -x "$bin" ] && [ "$dur" -ge "$AGENT_STABLE" ]; then
+        # A deliberate agent exit (agent.restart / agent.update) drops an
+        # intent marker; treat it as a neutral respawn, never a crash — so
+        # restarting a freshly-activated-but-unproven slot cannot spuriously
+        # revert it.
+        intent=""
+        if [ -f "$OTA_DIR/agent.intent" ]; then
+            intent=$(cat "$OTA_DIR/agent.intent" 2>/dev/null)
+            rm -f "$OTA_DIR/agent.intent" 2>/dev/null
+        fi
+
+        if [ -n "$intent" ]; then
+            log "agent-intent $intent slot=$active"
+            fails=0
+        elif [ -x "$bin" ] && [ "$dur" -ge "$AGENT_STABLE" ]; then
             # ran long enough -> this agent slot is trustworthy. Persist the
             # confirmed pointer whenever the on-disk value doesn't already
             # record this slot (so the FIRST stable run of the default slot

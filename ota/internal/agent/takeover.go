@@ -191,6 +191,32 @@ func (a *Agent) Takeover(opts TakeoverOpts) *TakeoverResult {
 	return res
 }
 
+// reclaimBus re-drives the takeover kill sequence when a factory process is
+// found still holding /dev/Gpmc after the device is already marked taken_over
+// (a crash in the persist→kill window, or an init-respawned factory app). It
+// is the idempotent tail of Takeover: STOP → idle-confirm → kill. Serialized
+// with Takeover via tkMu so the two never race.
+func (a *Agent) reclaimBus() {
+	a.tkMu.Lock()
+	defer a.tkMu.Unlock()
+	res := &TakeoverResult{Candidates: a.factoryCandidates()}
+	if len(res.Candidates) == 0 {
+		return
+	}
+	if a.gpmcFD < 0 {
+		a.log.Printf("reclaimBus: no inherited gpmc fd; killing factory holders without idle-confirm")
+	} else {
+		if err := a.factoryStop(); err != nil {
+			a.log.Printf("reclaimBus: factory STOP failed: %v", err)
+		}
+		if err := a.confirmIdle(res, 8*time.Second); err != nil {
+			a.log.Printf("reclaimBus: idle-confirm: %v (killing anyway — already taken over)", err)
+		}
+	}
+	a.killFactory(res)
+	a.event("bus.reclaimed", map[string]any{"summary": res.Summary()})
+}
+
 // factoryStop speaks the factory app's own VXI-11 SCPI (spec 11): both the
 // momentary STOP verb and TRMD STOP for good measure. Always destroy_link.
 func (a *Agent) factoryStop() error {

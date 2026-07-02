@@ -128,13 +128,18 @@ func (a *Agent) Run() error {
 				a.log.Printf("watchdog: %v", err)
 			}
 		}()
-	} else if st.AutoTakeover {
+	} else if st.AutoTakeover || a.cfg.AutoTakeover {
+		// Default is COEXIST: the factory app keeps driving the instrument and
+		// the agent only provides remote access + probe. Auto-takeover happens
+		// only when explicitly armed (OTA_AUTO_TAKEOVER or a persisted flag).
 		go func() {
 			a.log.Printf("auto-takeover armed: waiting %s for factory boot to settle", a.cfg.TakeoverDelay)
 			time.Sleep(a.cfg.TakeoverDelay)
 			res := a.Takeover(TakeoverOpts{})
 			a.log.Printf("auto-takeover: ok=%v %s", res.OK, res.Summary())
 		}()
+	} else {
+		a.log.Printf("coexist mode: factory app owns the instrument; run `otactl takeover` when ready")
 	}
 
 	go a.superviseLoop()

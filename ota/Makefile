@@ -34,11 +34,13 @@ dist: agent otactl
 	mkdir -p $(DIST)/stick/ota/logs $(DIST)/stick/agent-slots/A $(DIST)/stick/agent-slots/B \
 	         $(DIST)/stick/agent-slots/emergency $(DIST)/stick/agent-slots/staging
 	cp boot/startup.sh $(DIST)/stick/startup.sh
+	cp boot/commands   $(DIST)/stick/commands
+	cp boot/agent.env.example $(DIST)/stick/ota/agent.env
 	cp $(DIST)/agent-arm $(DIST)/stick/ota/agent.A
 	cp $(DIST)/agent-arm $(DIST)/stick/ota/agent.B
 	printf 'A\n' > $(DIST)/stick/ota/agent.active
 	printf 'A\n' > $(DIST)/stick/ota/agent.confirmed
-	@echo "stick tree ready under $(DIST)/stick — add ota/agent.env, then copy to the USB device"
+	@echo "stick tree ready under $(DIST)/stick — review ota/agent.env, then copy to the USB device"
 
 clean:
 	rm -rf $(DIST)

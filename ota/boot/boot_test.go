@@ -202,6 +202,45 @@ func TestCrashLoopRevertsToConfirmed(t *testing.T) {
 	}
 }
 
+func TestIntentMarkerIsNeutralNoRevert(t *testing.T) {
+	// A freshly-activated slot B that exits fast but drops an intent marker
+	// each time (a deliberate agent.restart) must NOT be reverted to confirmed
+	// A, even past MAXFAILS.
+	dir := t.TempDir()
+	otaDir := filepath.Join(dir, "ota")
+	activeFile := filepath.Join(otaDir, "agent.active")
+	confirmedFile := filepath.Join(otaDir, "agent.confirmed")
+	agentB := filepath.Join(otaDir, "agent.B")
+	if err := os.MkdirAll(otaDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	// B drops the intent marker (deliberate restart) then exits fast.
+	writeStub(t, agentB, `printf 'restart\n' > "`+filepath.Join(otaDir, "agent.intent")+`" ; exit 0`)
+	os.WriteFile(activeFile, []byte("B\n"), 0o644)
+	os.WriteFile(confirmedFile, []byte("A\n"), 0o644)
+
+	boot, _ := run(t, map[string]string{
+		"OTA_USB":             dir,
+		"OTA_DIR":             otaDir,
+		"OTA_AGENT_B":         agentB,
+		"OTA_AGENT_ACTIVE":    activeFile,
+		"OTA_AGENT_CONFIRMED": confirmedFile,
+		"OTA_AGENT_MAXFAILS":  "3",
+		"OTA_AGENT_RUNS":      "5",
+	}, "agent-loop-stop", 6*time.Second)
+
+	if strings.Contains(boot, "agent-revert") {
+		t.Errorf("deliberate restarts must not revert the slot:\n%s", boot)
+	}
+	if !strings.Contains(boot, "agent-intent restart") {
+		t.Errorf("intent marker not recognized:\n%s", boot)
+	}
+	active, _ := os.ReadFile(activeFile)
+	if strings.TrimSpace(string(active)) != "B" {
+		t.Errorf("active = %q, want B preserved", active)
+	}
+}
+
 func TestCommandsFileRuns(t *testing.T) {
 	dir := t.TempDir()
 	otaDir := filepath.Join(dir, "ota")

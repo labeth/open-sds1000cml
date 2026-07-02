@@ -1,0 +1,51 @@
+#!/bin/sh
+# open-sds first-boot diagnostic (network-independent).
+# ---------------------------------------------------------------------------
+# Run as root by startup.sh BEFORE the agent, on every boot. It writes a
+# read-only device fingerprint to the USB stick so that even if the LAN is
+# down on first insertion, pulling the stick reveals the platform facts the
+# specs leave to on-device verification (kernel, network, factory-app
+# identity, watchdog/portmap holders, mounts).
+#
+# STRICTLY READ-ONLY. It MUST NOT open /dev/Gpmc or /dev/fpga_key (a fresh
+# open faults / can wedge the bus), MUST NOT kill anything, and MUST NOT write
+# instrument NAND. It only reads /proc + /sys and runs busybox query applets.
+
+OUT="${OTA_USB:-$(CDPATH= cd -- "$(dirname -- "$0")" 2>/dev/null && pwd)}/firstboot.log"
+
+{
+    echo "===== open-sds firstboot $(date 2>/dev/null || echo '?') ====="
+    echo "## uname"; uname -a 2>&1
+    echo "## cmdline"; cat /proc/cmdline 2>&1
+    echo "## uptime"; cat /proc/uptime 2>&1
+    echo "## meminfo(head)"; head -5 /proc/meminfo 2>&1
+    echo "## ps"; ps 2>&1 | head -60
+    echo "## ip/ifconfig"; ifconfig -a 2>&1 || ip addr 2>&1
+    echo "## route"; route -n 2>&1 || ip route 2>&1
+    echo "## listening"; netstat -ltnp 2>&1 | head -40
+    echo "## rpcinfo"; rpcinfo -p 127.0.0.1 2>&1
+    echo "## mounts"; cat /proc/mounts 2>&1
+    echo "## watchdog"; ls -l /dev/watchdog* 2>&1; \
+        cat /sys/class/watchdog/watchdog0/timeout 2>&1; \
+        cat /sys/class/watchdog/watchdog0/nowayout 2>&1
+    echo "## /dev/Gpmc holders (read-only /proc scan; does NOT open the node)"
+    for p in /proc/[0-9]*; do
+        for l in "$p"/fd/*; do
+            t=$(readlink "$l" 2>/dev/null)
+            case "$t" in
+                /dev/Gpmc|/dev/fpga_key|/dev/watchdog*)
+                    pid=$(basename "$p")
+                    echo "  pid=$pid comm=$(cat "$p/comm" 2>/dev/null) fd=$(basename "$l") -> $t"
+                    ;;
+            esac
+        done
+    done
+    echo "## inittab"; cat /etc/inittab 2>&1 | head -40
+    echo "## busybox applets"; busybox --list 2>&1 | tr '\n' ' '; echo
+    echo "===== end firstboot ====="
+    echo
+} >> "$OUT" 2>&1
+
+# Cap the fingerprint log so repeated boots don't fill the stick.
+_sz=$(wc -c < "$OUT" 2>/dev/null || echo 0)
+[ "$_sz" -gt 262144 ] 2>/dev/null && { tail -c 131072 "$OUT" > "$OUT.tmp" 2>/dev/null && mv -f "$OUT.tmp" "$OUT" 2>/dev/null; }

@@ -38,6 +38,19 @@ func (a *Agent) superviseLoop() {
 			continue
 		}
 
+		// Bus-ownership safety gate (spec 01 §3: exactly one GPMC owner).
+		// Never exec the clean-room app while a factory process still holds
+		// /dev/Gpmc — this covers a crash in the takeover persist→kill window
+		// (a taken_over restart would otherwise launch straight onto a live
+		// factory bus) and an init-respawned factory app. Re-drive the kill
+		// first; two live bus owners wedge the device (power-cycle only).
+		if cands := a.factoryCandidates(); len(cands) > 0 {
+			a.log.Printf("supervise: %d factory bus holder(s) still present; reclaiming the bus before launch", len(cands))
+			a.reclaimBus()
+			a.idleWait(time.Second)
+			continue
+		}
+
 		if pid := a.orphanAppPid(); pid > 0 {
 			a.superviseAdopted(pid)
 			continue
@@ -205,11 +218,11 @@ func (a *Agent) runAppOnce(slot string, emergency bool) {
 	pid := cmd.Process.Pid
 	_ = os.WriteFile(a.pidPath(appPidFile), fmt.Appendf(nil, "%d\n", pid), 0o644)
 	a.log.Printf("app started slot=%s pid=%d bin=%s", slot, pid, bin)
-	a.setAppState(func(s *appState) {
-		*s = appState{Running: true, PID: pid, Slot: slot, Emergency: emergency,
-			StartedAt: time.Now().Format(time.RFC3339)}
-		s.Fails = a.app.Fails
-	})
+	a.appMu.Lock()
+	prevFails := a.app.Fails // carry the consecutive-failure count across launches
+	a.app = appState{Running: true, PID: pid, Slot: slot, Emergency: emergency,
+		StartedAt: time.Now().Format(time.RFC3339), Fails: prevFails}
+	a.appMu.Unlock()
 	a.event("app.start", map[string]any{"slot": slot, "pid": pid, "emergency": emergency})
 
 	exit := make(chan error, 1)

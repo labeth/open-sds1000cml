@@ -50,6 +50,7 @@ type Config struct {
 	// Takeover.
 	FactoryNames  []string      // OTA_FACTORY_NAMES — extra exe/comm hints, comma-sep
 	TakeoverDelay time.Duration // OTA_TAKEOVER_DELAY — auto-takeover settle after boot
+	AutoTakeover  bool          // OTA_AUTO_TAKEOVER — arm auto-takeover after boot (default: coexist)
 }
 
 func env(key, def string) string {
@@ -76,6 +77,14 @@ func envInt(key string, def int) int {
 		return n
 	}
 	return def
+}
+
+func envBool(key string) bool {
+	switch strings.ToLower(strings.TrimSpace(os.Getenv(key))) {
+	case "1", "true", "yes", "on":
+		return true
+	}
+	return false
 }
 
 // exeDir returns the directory of the running binary; used to derive the
@@ -137,6 +146,7 @@ func Load() *Config {
 		WdPet:         envDurSecs("OTA_WD_PET", 15*time.Second),
 
 		TakeoverDelay: envDurSecs("OTA_TAKEOVER_DELAY", 20*time.Second),
+		AutoTakeover:  envBool("OTA_AUTO_TAKEOVER"),
 	}
 	if v := os.Getenv("OTA_FACTORY_NAMES"); v != "" {
 		for _, s := range strings.Split(v, ",") {

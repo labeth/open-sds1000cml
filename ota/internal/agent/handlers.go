@@ -353,6 +353,7 @@ func hAgentUpdate(a *Agent, args json.RawMessage) (any, error) {
 	go func() {
 		time.Sleep(750 * time.Millisecond)
 		a.log.Printf("agent.update: exiting to hand off to slot %s", target)
+		a.markIntent("update") // deliberate exit — not a crash for the respawn loop
 		a.Stop()
 		os.Exit(0)
 	}()
@@ -363,6 +364,7 @@ func hAgentRestart(a *Agent, _ json.RawMessage) (any, error) {
 	go func() {
 		time.Sleep(500 * time.Millisecond)
 		a.log.Printf("agent.restart requested")
+		a.markIntent("restart") // deliberate exit — the respawn loop must not count it as a crash
 		a.Stop()
 		os.Exit(0)
 	}()
@@ -410,4 +412,11 @@ func writeText(path, s string) error {
 		return err
 	}
 	return os.Rename(tmp, path)
+}
+
+// markIntent drops a one-shot marker the boot respawn loop consumes so a
+// deliberate agent exit (restart/update) is not mis-counted as a crash and
+// does not trigger a spurious A/B revert of a freshly-activated slot.
+func (a *Agent) markIntent(kind string) {
+	_ = os.WriteFile(filepath.Join(a.cfg.OTADir, "agent.intent"), []byte(kind+"\n"), 0o644)
 }

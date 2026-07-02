@@ -124,6 +124,14 @@ func (a *Agent) commitUpload(id string) (string, string, error) {
 		os.Remove(s.tmp)
 		return "", "", fmt.Errorf("upload: size mismatch (got %d, want %d)", s.written, s.size)
 	}
+	// `written` is a high-water mark, not a coverage map: an out-of-order
+	// transfer with a missing interior chunk can reach written==size with
+	// holes. Require a declared sha256 whenever a size is given so the hash
+	// (below) catches any gap — a sparse-zero hole cannot match.
+	if s.size > 0 && s.sha == "" {
+		os.Remove(s.tmp)
+		return "", "", fmt.Errorf("upload: sha256 required when size is declared (guards against sparse/out-of-order gaps)")
+	}
 	sum, err := fileSHA(s.tmp)
 	if err != nil {
 		return "", "", err
