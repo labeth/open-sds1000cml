@@ -85,9 +85,10 @@ type FrontEnd struct {
 	trigSrc int  // relay byte2 source nibble: 0=C1, 1=C2, 2=EXT
 	emitted bool // seed-don't-emit: leave the inherited analog range alone
 
-	stage   func(ch int, code uint16) // offset-DAC stager (engine.SetOffsetDAC)
-	offReqV [2]float64                // requested input-referred offset volts
-	offSet  [2]bool                   // whether the user has set an offset
+	stage   func(ch int, code uint16)   // offset-DAC stager (engine.SetOffsetDAC)
+	onVdiv  func(ch int, vdivV float64) // V/div change hook (engine trigger map)
+	offReqV [2]float64                  // requested input-referred offset volts
+	offSet  [2]bool                     // whether the user has set an offset
 }
 
 // New seeds both channels' shadows to the boot detent WITHOUT emitting —
@@ -107,6 +108,20 @@ func New(tr Transport, sleep func(time.Duration), tab *cal.Table) *FrontEnd {
 // OnOffset wires the offset-DAC stager (engine.SetOffsetDAC). Until set,
 // SetOffset just records the requested volts.
 func (f *FrontEnd) OnOffset(fn func(ch int, code uint16)) { f.stage = fn }
+
+// OnVdiv wires a V/div-change hook (engine.SetChannelVdiv) so the trigger
+// level maps to the right display code. Called immediately with the seeded
+// detents so the engine starts consistent.
+func (f *FrontEnd) OnVdiv(fn func(ch int, vdivV float64)) {
+	f.onVdiv = fn
+	if fn != nil {
+		f.mu.Lock()
+		i0, i1 := f.idx[0], f.idx[1]
+		f.mu.Unlock()
+		fn(0, Detents[i0].VdivV)
+		fn(1, Detents[i1].VdivV)
+	}
+}
 
 // SetOffset records a requested input-referred offset in volts, derives the
 // DAC code against the CURRENT detent's calibrated zero, and stages it.
@@ -208,6 +223,9 @@ func (f *FrontEnd) SetVdiv(ch, idx int) error {
 	f.mu.Unlock()
 	if err != nil {
 		return err
+	}
+	if f.onVdiv != nil {
+		f.onVdiv(ch, Detents[idx].VdivV) // keep the engine's trigger map current
 	}
 	if reSet && f.stage != nil {
 		f.stage(ch, f.OffsetCode(ch, reReq)) // OffsetCode uses the new detent zero

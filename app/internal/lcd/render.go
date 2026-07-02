@@ -29,8 +29,10 @@ type HUD struct {
 	TrigRising       bool
 	TrigLvlDiv       float64
 	Running, Norm    bool
+	Single           bool
 	Trigd            bool
 	SampleS          float64 // per-sample seconds (frequency readout)
+	TrigPosFrac      float64 // horizontal trigger position, 0.5 = centre
 	TwoChan          bool
 }
 
@@ -112,7 +114,7 @@ func drawLine(sf Surface, x0, y0, x1, y1 int, c uint16) {
 // drawTrace maps the record window onto the panel (spec 07 §3.5): nearest
 // sample when Interp is false, linear interpolation of REAL samples when
 // true — never sinc, never a segment across a skipped column.
-func drawTrace(sf Surface, sig []uint8, win int, xc float64, interp bool, col uint16) {
+func drawTrace(sf Surface, sig []uint8, win int, xc float64, interp bool, col uint16, posFrac float64) {
 	n := len(sig)
 	if n == 0 {
 		return
@@ -120,23 +122,22 @@ func drawTrace(sf Surface, sig []uint8, win int, xc float64, interp bool, col ui
 	if win > n {
 		win = n
 	}
-	// Clamp the window into the record so the screen fills with real data
-	// (no end gaps); the edge stays centred except near the record ends.
-	left := xc - float64(win)/2
-	if left < 0 {
-		left = 0
+	if posFrac <= 0 || posFrac > 1 {
+		posFrac = 0.5
 	}
-	if left > float64(n-win) {
-		left = float64(n - win)
-	}
+	// Anchor at posFrac; do NOT clamp `left` — extend the nearest rail off the
+	// record (repeat-nearest), identical to web window() so LCD == web. Keeps the
+	// anchor exactly at posFrac even when the record has no mid crossing.
+	left := xc - float64(win)*posFrac
 	prevX, prevY := -1, 0
 	for x := 0; x < W; x++ {
 		pos := left + float64(x)*float64(win)/float64(W)
 		var y int
 		if interp {
-			if pos < 0 || pos > float64(n-1) {
-				prevX = -1
-				continue
+			if pos < 0 {
+				pos = 0
+			} else if pos > float64(n-1) {
+				pos = float64(n - 1)
 			}
 			i := int(pos)
 			v := float64(sig[i])
@@ -147,9 +148,10 @@ func drawTrace(sf Surface, sig []uint8, win int, xc float64, interp bool, col ui
 			y = sampleToY(v)
 		} else {
 			i := int(pos)
-			if pos < 0 || i < 0 || i >= n {
-				prevX = -1
-				continue
+			if pos < 0 {
+				i = 0
+			} else if i > n-1 {
+				i = n - 1
 			}
 			y = sampleToY(float64(sig[i]))
 		}
@@ -282,18 +284,16 @@ func Render(sf Surface, f *engine.Frame, hud HUD, live bool) {
 			c1 := f.C1[:valid]
 			xc := f.EdgeX
 			if xc < 0 {
-				// Renderer-side centring fallback; NEVER fabricate an edge —
-				// a flat rail centres on the record middle.
-				if x := centerCrossR(c1); x >= 0 {
-					xc = x
-				} else {
-					xc = float64(valid) / 2
-				}
+				// Match web window(): an uncentred frame (EdgeX=-1) is always a
+				// flat/DC capture under the engine's publish policy — centre on
+				// the record middle. NEVER fabricate an edge from a marginal/noise
+				// crossing (that would jitter a flat line and diverge from web).
+				xc = float64(valid) / 2
 			}
 			if hud.TwoChan && len(f.C2) >= valid {
-				drawTrace(sf, f.C2[:valid], win, xc, f.Interp, colC2)
+				drawTrace(sf, f.C2[:valid], win, xc, f.Interp, colC2, hud.TrigPosFrac)
 			}
-			drawTrace(sf, c1, win, xc, f.Interp, colC1)
+			drawTrace(sf, c1, win, xc, f.Interp, colC1, hud.TrigPosFrac)
 		}
 	}
 
@@ -309,48 +309,6 @@ func Render(sf Surface, f *engine.Frame, hud HUD, live bool) {
 	}
 
 	drawHUD(sf, f, hud)
-}
-
-// centerCrossR is the renderer's rising mid-level fallback (spec 07 §3.3).
-func centerCrossR(sig []uint8) float64 {
-	n := len(sig)
-	if n < 2 {
-		return -1
-	}
-	mn, mx := int(sig[0]), int(sig[0])
-	for _, v := range sig {
-		if int(v) < mn {
-			mn = int(v)
-		}
-		if int(v) > mx {
-			mx = int(v)
-		}
-	}
-	lvl := uint8((mn + mx) / 2)
-	best, bestD := -1, n
-	for c := 1; c < n; c++ {
-		if sig[c-1] < lvl && sig[c] >= lvl {
-			d := c - n/2
-			if d < 0 {
-				d = -d
-			}
-			if d < bestD {
-				best, bestD = c, d
-			}
-		}
-	}
-	if best < 0 {
-		return -1
-	}
-	a, b := float64(sig[best-1]), float64(sig[best])
-	bf := 0.0
-	if b != a {
-		bf = (float64(lvl) - a) / (b - a)
-		if bf < 0 || bf >= 1 {
-			bf = 0
-		}
-	}
-	return float64(best-1) + bf
 }
 
 func drawHUD(sf Surface, f *engine.Frame, hud HUD) {
@@ -369,6 +327,10 @@ func drawHUD(sf Surface, f *engine.Frame, hud HUD) {
 		state = "NORM"
 	}
 	switch {
+	case hud.Single && hud.Running:
+		state = "SNGL" // armed, waiting for the single trigger
+	case !hud.Running && hud.Single:
+		state = "STOP" // (should not persist: single clears on capture)
 	case !hud.Running:
 		state = "STOP"
 	case hud.Trigd:

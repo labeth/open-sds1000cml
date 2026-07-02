@@ -21,9 +21,9 @@ func TestPlanTdivLadder(t *testing.T) {
 		{1e-6, 0x01, 0x0000, true, deepRecord, 2500},
 		{2e-6, 0x80, 0x0001, true, deepRecord, 2000},
 		{20e-6, 0x80, 0x0004, true, deepRecord, 5000},
-		{50e-6, 0x80, 0x0008, false, decimCols, 2048},
-		{500e-6, 0x80, 0x0050, false, decimCols, 2048},
-		{2e-3, 0x80, 0x0190, false, decimCols, 2048},
+		{50e-6, 0x80, 0x0008, false, decimDrain, 2048},
+		{500e-6, 0x80, 0x0050, false, decimDrain, 2048},
+		{2e-3, 0x80, 0x0190, false, decimDrain, 2048},
 	}
 	for _, c := range cases {
 		b, ok := PlanTdiv(c.tdiv)

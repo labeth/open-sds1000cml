@@ -242,8 +242,8 @@ func TestDecimatedAutoPublishes(t *testing.T) {
 	if !fresh || f.Seq != 3 {
 		t.Fatalf("consume: fresh=%v seq=%d, want fresh seq 3", fresh, f.Seq)
 	}
-	if f.Valid != 2048 || f.WinCols != 2048 || f.Interp {
-		t.Fatalf("frame geom: valid=%d win=%d interp=%v", f.Valid, f.WinCols, f.Interp)
+	if f.Valid != decimDrain || f.WinCols != 2048 || f.Interp {
+		t.Fatalf("frame geom: valid=%d win=%d interp=%v, want %d/2048", f.Valid, f.WinCols, f.Interp, decimDrain)
 	}
 	if f.EdgeX < 0 {
 		t.Fatalf("EdgeX = %v, want a real crossing", f.EdgeX)
@@ -311,6 +311,132 @@ func TestDecimatedAutoPublishesOnFreeRun(t *testing.T) {
 	e2.oneFrame(true)
 	if s := e2.Snapshot(); s.Published != 0 || s.Held != 1 {
 		t.Fatalf("NORM untriggered: published=%d held=%d, want 0/1", s.Published, s.Held)
+	}
+}
+
+func TestDecimatedAutoHoldsWrongSlopeFrame(t *testing.T) {
+	// Sub-period AUTO backstop: a free-run frame whose only edge is the WRONG
+	// slope (falling when we want rising → edgeX=-1) but which is NOT flat
+	// (ptp≥40) must HOLD, not flash an uncentred frame. A correct-slope frame
+	// publishes and centres. This is what stabilises 50 µs AUTO.
+	fb := newFakeBus()
+	fb.mu.Lock()
+	fb.wave = func(i int) (uint8, uint8) { // single FALLING edge on C1: no rising crossing
+		if i < 900 {
+			return 200, 60
+		}
+		return 56, 190
+	}
+	fb.mu.Unlock()
+	e, _ := newTestEngine(t, fb)
+	e.bringUp()
+	e.oneFrame(false) // AUTO
+	if s := e.Snapshot(); s.Published != 0 || s.Held != 1 {
+		t.Fatalf("wrong-slope AUTO frame: published=%d held=%d, want 0/1 (hold)", s.Published, s.Held)
+	}
+	// A rising-edge frame publishes.
+	fb.mu.Lock()
+	fb.wave = func(i int) (uint8, uint8) {
+		if i < 900 {
+			return 56, 190
+		}
+		return 200, 60
+	}
+	fb.mu.Unlock()
+	e.oneFrame(false)
+	if s := e.Snapshot(); s.Published != 1 {
+		t.Fatalf("rising-edge AUTO frame did not publish: published=%d, want 1", s.Published)
+	}
+}
+
+func TestDecimatedGenuineDCFreeRuns(t *testing.T) {
+	// A truly flat/DC decimated screen (ptp < threshold): AUTO holds a few
+	// frames, then FREE-RUNS a live flat line once decimFlatRun ≥ decimFlatClear,
+	// so a disconnected input stays live instead of freezing on the last edge.
+	fb := newFakeBus()
+	fb.mu.Lock()
+	fb.wave = func(int) (uint8, uint8) { return 128, 128 } // flat DC
+	fb.mu.Unlock()
+	e, _ := newTestEngine(t, fb)
+	e.bringUp()
+	for i := 0; i < decimFlatClear-1; i++ {
+		e.oneFrame(false) // held: not yet genuine DC
+	}
+	if s := e.Snapshot(); s.Published != 0 {
+		t.Fatalf("flat DC published before the free-run threshold: published=%d, want 0", s.Published)
+	}
+	e.oneFrame(false) // decimFlatRun == decimFlatClear → free-run
+	if s := e.Snapshot(); s.Published != 1 {
+		t.Fatalf("genuine DC did not free-run: published=%d, want 1", s.Published)
+	}
+	f, fresh := e.Consume()
+	if !fresh || f.EdgeX != -1 {
+		t.Fatalf("DC free-run frame: fresh=%v EdgeX=%v, want fresh EdgeX=-1", fresh, f.EdgeX)
+	}
+}
+
+func TestSingleShotStopsAfterCapture(t *testing.T) {
+	// SINGLE arms NORM and must STOP after the first triggered publish.
+	fb := newFakeBus() // doneOnGo=true → NORM triggers immediately
+	// A 2-period square in the 2048 window (like a real multi-wave display),
+	// so the slope validation sees a clean adjacent plateau.
+	fb.mu.Lock()
+	fb.wave = func(i int) (uint8, uint8) {
+		if (i/512)%2 == 0 {
+			return 200, 60
+		}
+		return 56, 190
+	}
+	fb.mu.Unlock()
+	e, _ := newTestEngine(t, fb)
+	e.SetSingle()
+	if s := e.Snapshot(); !s.Single || !s.Running {
+		t.Fatalf("after SetSingle: single=%v running=%v", s.Single, s.Running)
+	}
+	e.bringUp()
+	e.oneFrame(true) // NORM triggered → publishes, then single stops
+	s := e.Snapshot()
+	if s.Published != 1 {
+		t.Fatalf("single did not capture: published=%d", s.Published)
+	}
+	if s.Single || s.Running {
+		t.Fatalf("single did not stop: single=%v running=%v", s.Single, s.Running)
+	}
+	// RUN cancels a pending single-shot.
+	e.SetSingle()
+	e.SetRunning(true)
+	if s := e.Snapshot(); s.Single {
+		t.Fatal("RUN did not cancel the pending single-shot")
+	}
+}
+
+func TestLevelAnchoredCentering(t *testing.T) {
+	// With a trigger level set, the display should anchor on the crossing of
+	// THAT level, not the mid-level.
+	fb := newFakeBus()
+	// A single rising ramp 0→255 across the whole drained record: the crossing
+	// of level L is at a monotonically increasing index, so a higher level
+	// anchors strictly LATER than the mid-level. Scaled to decimDrain so the
+	// ramp stays monotonic across the full (margin-carrying) drain.
+	fb.mu.Lock()
+	fb.wave = func(i int) (uint8, uint8) { v := uint8(i * 255 / decimDrain); return v, v }
+	fb.mu.Unlock()
+	e, _ := newTestEngine(t, fb)
+	e.SetChannelVdiv(0, 1) // 1 V/div: display code = 128 + volts·32
+	e.bringUp()
+
+	// No level set (boot): anchors at the mid-level (~128) crossing near centre.
+	e.oneFrame(false) // AUTO publishes regardless of slope validation
+	f, _ := e.Consume()
+	midEdge := f.EdgeX
+
+	// Level display code ≈ 200 (volts 2.25 @ 1 V/div): crosses strictly later.
+	e.SetTrigLevelCode(uint16(31434 - 2110))
+	e.serviceCommands()
+	e.oneFrame(false)
+	f2, _ := e.Consume()
+	if f2.EdgeX <= midEdge+200 {
+		t.Fatalf("level-anchored EdgeX %v not well past mid-level %v (level ignored)", f2.EdgeX, midEdge)
 	}
 }
 
@@ -503,23 +629,32 @@ func TestNativeFastContentGate(t *testing.T) {
 		t.Fatalf("native-fast frame: fresh=%v valid=%d interp=%v", fresh, f.Valid, f.Interp)
 	}
 
-	// Flat rail → hold for 59 frames, then one honest flat publish.
+	// Flat rail in AUTO → free-runs: publishes EVERY frame uncentred (EdgeX=-1),
+	// so a DC ≤200 ns screen shows a live flat line at the FSM rate (not frozen).
 	fb.mu.Lock()
 	fb.wave = func(int) (uint8, uint8) { return 128, 128 }
 	fb.mu.Unlock()
-	for i := 0; i < nativeFlatFallbck-1; i++ {
-		e.oneFrame(false)
-	}
-	if _, fresh := e.Consume(); fresh {
-		t.Fatal("flat frame published before the fallback threshold")
-	}
 	e.oneFrame(false)
 	f, fresh = e.Consume()
+	if !fresh || f.EdgeX != -1 {
+		t.Fatalf("AUTO flat: fresh=%v EdgeX=%v, want fresh EdgeX=-1 (free-run DC)", fresh, f.EdgeX)
+	}
+
+	// NORM keeps the honest slow refresh: hold 59 frames, then one flat publish.
+	// (The AUTO free-run above reset flatHeld to 0, so the count starts clean.)
+	for i := 0; i < nativeFlatFallbck-1; i++ {
+		e.oneFrame(true)
+	}
+	if _, fresh := e.Consume(); fresh {
+		t.Fatal("NORM flat frame published before the fallback threshold")
+	}
+	e.oneFrame(true)
+	f, fresh = e.Consume()
 	if !fresh {
-		t.Fatal("flat liveness fallback frame not published")
+		t.Fatal("NORM flat liveness fallback frame not published")
 	}
 	if f.EdgeX != -1 {
-		t.Fatalf("flat fallback EdgeX = %v, want -1 (never fabricate an edge)", f.EdgeX)
+		t.Fatalf("NORM flat fallback EdgeX = %v, want -1 (never fabricate an edge)", f.EdgeX)
 	}
 }
 

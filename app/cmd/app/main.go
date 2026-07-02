@@ -45,7 +45,8 @@ func buildHUD(e *engine.Engine, fe *analog.FrontEnd) lcd.HUD {
 	hud := lcd.HUD{
 		C1VdivV: 1, C2VdivV: 1, TdivS: st.TdivS,
 		TrigSrc: st.TrigSource, TrigRising: st.TrigRising,
-		Running: st.Running, Norm: st.Norm, TwoChan: true,
+		Running: st.Running, Norm: st.Norm, Single: st.Single,
+		TrigPosFrac: st.TrigPosFrac, TwoChan: true,
 	}
 	if fe != nil {
 		idx, _ := fe.Snapshot()
@@ -222,6 +223,7 @@ func main() {
 	} else {
 		fe = analog.New(dev, nil, calTab)
 		fe.OnOffset(e.SetOffsetDAC) // offset re-anchors to each detent's cal zero
+		fe.OnVdiv(e.SetChannelVdiv) // keep the trigger level→display-code map current
 		feIface = fe
 		logf("SPI front end up (seeded to boot detent, not emitted)")
 	}

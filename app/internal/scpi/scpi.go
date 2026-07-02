@@ -22,6 +22,7 @@ type Scope interface {
 	WithFrame(fn func(*engine.Frame))
 	SetRunning(on bool)
 	SetNorm(on bool)
+	SetSingle()
 	SetTdiv(tdivS float64) (engine.Band, bool)
 	SetTrigLevelCode(code uint16) uint16
 	SetTrigSlope(rising bool)
@@ -241,9 +242,11 @@ func (h *Handler) execGlobal(head, arg string) []byte {
 		case "AUTO":
 			h.sc.SetNorm(false)
 			h.sc.SetRunning(true)
-		case "NORM", "SINGLE":
+		case "NORM":
 			h.sc.SetNorm(true)
 			h.sc.SetRunning(true)
+		case "SINGLE":
+			h.sc.SetSingle() // true single-shot
 		case "STOP":
 			h.sc.SetRunning(false)
 		default:

@@ -40,6 +40,8 @@ type Scope interface {
 	SetAcqMode(m int)
 	SetAvgCount(n int)
 	SetEresLen(l int)
+	SetSingle()
+	SetTrigPosFrac(frac float64)
 }
 
 // Analog is the vertical front-end surface (implemented by
@@ -290,8 +292,14 @@ func toCols(v []uint8, n int) []int16 {
 // stays centred except near the record ends where there is no data to slide
 // into view. Gaps (-1) only occur off the record; the client breaks the
 // polyline there.
-func window(sig []uint8, valid, winCols int, edgeX float64, interp bool, n int) []int16 {
+func window(sig []uint8, valid, winCols int, edgeX float64, interp bool, n int, posFrac float64) []int16 {
 	out := make([]int16, n)
+	if valid < 1 {
+		for x := range out {
+			out[x] = -1
+		}
+		return out
+	}
 	win := winCols
 	if win > valid {
 		win = valid
@@ -300,18 +308,21 @@ func window(sig []uint8, valid, winCols int, edgeX float64, interp bool, n int) 
 	if xc < 0 {
 		xc = float64(valid) / 2
 	}
-	left := xc - float64(win)/2
-	if left < 0 {
-		left = 0
-	}
-	if left > float64(valid-win) {
-		left = float64(valid - win)
-	}
+	// Anchor the crossing at posFrac of the window (0.5 = centre). Do NOT clamp
+	// `left` into the record: that would drag the anchor off posFrac whenever the
+	// record has no crossing near its middle (sub-period displays), which is what
+	// made 50/100 µs jitter. Instead clamp the sample INDEX per column — off-record
+	// columns extend the nearest rail (repeat-nearest). This keeps the anchor
+	// exactly at posFrac every frame and is periodicity-invariant: a crossing near
+	// a record end renders identically to a mid-record one. It is byte-identical
+	// wherever the window already fits inside the record.
+	left := xc - float64(win)*posFrac
 	for x := 0; x < n; x++ {
 		pos := left + float64(x)*float64(win)/float64(n)
-		if pos < 0 || pos > float64(valid-1) {
-			out[x] = -1
-			continue
+		if pos < 0 {
+			pos = 0
+		} else if pos > float64(valid-1) {
+			pos = float64(valid - 1)
 		}
 		if interp {
 			i := int(pos)
@@ -363,7 +374,29 @@ func (s *Server) hFrame(w http.ResponseWriter, r *http.Request) {
 	if cols > 4096 {
 		cols = 4096
 	}
+	// Debug: raw undecimated record dump (diagnostics only).
+	if r.URL.Query().Get("raw") == "1" {
+		var out map[string]any
+		s.sc.WithFrame(func(f *engine.Frame) {
+			if f == nil {
+				out = map[string]any{"seq": 0}
+				return
+			}
+			c1 := make([]uint8, f.Valid)
+			copy(c1, f.C1[:f.Valid])
+			out = map[string]any{
+				"seq": f.Seq, "valid": f.Valid, "wincols": f.WinCols,
+				"edgex": f.EdgeX, "trigpos": f.TrigPos, "c1": c1,
+			}
+		})
+		writeJSON(w, out)
+		return
+	}
 	off, vpc := s.vertScales()
+	posFrac := s.sc.Snapshot().TrigPosFrac
+	if posFrac <= 0 {
+		posFrac = 0.5
+	}
 
 	var rep frameReply
 	s.sc.WithFrame(func(f *engine.Frame) {
@@ -397,8 +430,8 @@ func (s *Server) hFrame(w http.ResponseWriter, r *http.Request) {
 			rep.E2Min = resampleEnv(f.EnvMin2, f.EnvCols, cols)
 			rep.E2Max = resampleEnv(f.EnvMax2, f.EnvCols, cols)
 		} else {
-			rep.C1 = window(f.C1, f.Valid, f.WinCols, f.EdgeX, f.Interp, cols)
-			rep.C2 = window(f.C2, f.Valid, f.WinCols, f.EdgeX, f.Interp, cols)
+			rep.C1 = window(f.C1, f.Valid, f.WinCols, f.EdgeX, f.Interp, cols, posFrac)
+			rep.C2 = window(f.C2, f.Valid, f.WinCols, f.EdgeX, f.Interp, cols, posFrac)
 		}
 		// Auto-measurements over the RAW record (accurate, band-independent).
 		rawSample := f.SampleS
@@ -463,6 +496,10 @@ func (s *Server) hSet(w http.ResponseWriter, r *http.Request) {
 		s.sc.SetTrigSlope(req.Value != 0)
 	case "ets":
 		s.sc.SetETS(req.Value != 0)
+	case "single":
+		s.sc.SetSingle()
+	case "trigpos":
+		s.sc.SetTrigPosFrac(req.Value)
 	case "trigtype":
 		s.sc.SetTrigType(int(req.Value))
 	case "pulseparams":

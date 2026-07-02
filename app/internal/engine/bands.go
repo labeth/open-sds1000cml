@@ -15,8 +15,17 @@ type Band struct {
 }
 
 const (
-	deepRecord  = 20480 // physical deep-record depth in samples
-	decimCols   = 2048  // decimated-band drain depth
+	deepRecord = 20480 // physical deep-record depth in samples
+	// Decimated bands: the DISPLAY window (10-division span) is decimWin, but
+	// the FSM drains decimDrain samples so software centring has margin on BOTH
+	// sides of the record centre. With drain == window (the old decimCols) the
+	// display window could not shift at all — the clamp pinned it to [0,win] and
+	// the trigger sat wherever the HW comparator fired (±800-sample jitter). The
+	// drain stays well inside the record actually captured by halt time
+	// (arm-to-latch clocks ~14k samples at 500 µs/div), verified per-frame by
+	// ValidDepth telemetry.
+	decimWin   = 2048 // decimated display window (10-division span cap)
+	decimDrain = 6144 // decimated drain depth = window + centring margin
 	latchAt     = 0x200 // fill-counter gate before capture-halt
 	fillMask    = 0x07ff
 	screenDivsH = 10 // horizontal graticule divisions
@@ -225,7 +234,7 @@ func (b Band) DrainCols() int {
 	case KindRoll:
 		return rollWin
 	}
-	return decimCols
+	return decimDrain
 }
 
 // WinCols is the sample count spanning the 10-division screen.
@@ -241,8 +250,15 @@ func (b Band) WinCols() int {
 	if w < 1 {
 		w = 1
 	}
-	if dc := b.DrainCols(); w > dc {
-		w = dc
+	// The display window caps at decimWin on decimated bands — NOT at DrainCols,
+	// which now carries extra centring margin. Native-fast still caps at its
+	// (full-record) drain, where the clamp never binds anyway.
+	cap := b.DrainCols()
+	if b.Kind() == KindDecimated {
+		cap = decimWin
+	}
+	if w > cap {
+		w = cap
 	}
 	return w
 }

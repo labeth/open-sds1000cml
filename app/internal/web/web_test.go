@@ -24,11 +24,15 @@ type fakeScope struct {
 	offCh    int
 	offCode  *uint16
 	ets      *bool
+	single   bool
+	trigPos  float64
 	calls    [][2]any
 }
 
 func (f *fakeScope) SetOffsetDAC(ch int, code uint16) { f.offCh, f.offCode = ch, &code }
 func (f *fakeScope) SetETS(on bool)                   { f.ets = &on }
+func (f *fakeScope) SetSingle()                       { f.single = true }
+func (f *fakeScope) SetTrigPosFrac(frac float64)      { f.trigPos = frac }
 
 func (f *fakeScope) SetTrigType(t int) { f.calls = append(f.calls, [2]any{"trigtype", t}) }
 func (f *fakeScope) SetAcqMode(m int)  { f.calls = append(f.calls, [2]any{"acqmode", m}) }
@@ -270,7 +274,7 @@ func TestWindowMapping(t *testing.T) {
 	}
 
 	// Window exactly covering the record: nearest-sample mode.
-	out := window(sig, 100, 100, -1, false, 10)
+	out := window(sig, 100, 100, -1, false, 10, 0.5)
 	for x, v := range out {
 		if want := int16(x * 10); v != want {
 			t.Fatalf("out[%d] = %d, want %d", x, v, want)
@@ -279,7 +283,7 @@ func TestWindowMapping(t *testing.T) {
 
 	// Window wider than the record: clamp to the full record and fill every
 	// column with real data (no gaps) rather than leave off-record blanks.
-	out = window(sig, 100, 200, -1, false, 10)
+	out = window(sig, 100, 200, -1, false, 10, 0.5)
 	for x, v := range out {
 		if v < 0 {
 			t.Fatalf("column %d is a gap; a too-wide window should show the full record", x)
@@ -290,7 +294,7 @@ func TestWindowMapping(t *testing.T) {
 	}
 
 	// Interpolation: half-sample positions land between neighbours.
-	out = window(sig, 100, 10, -1, true, 20)
+	out = window(sig, 100, 10, -1, true, 20, 0.5)
 	// pos = 45 + x*0.5 → out[1] interpolates sig[45..46] at 45.5 → 45.5 → 46 or 45
 	if out[1] < 45 || out[1] > 46 {
 		t.Fatalf("interp out[1] = %d, want ≈45.5", out[1])
@@ -307,7 +311,7 @@ func TestWindowNoEndGaps(t *testing.T) {
 	}
 	// edge at 935 (off-centre) — previously produced ~89 leading gaps.
 	// Allow at most a single fractional overshoot at the extreme right.
-	out := window(sig, 2048, 2048, 935, false, 800)
+	out := window(sig, 2048, 2048, 935, false, 800, 0.5)
 	gaps := 0
 	for _, v := range out {
 		if v < 0 {
@@ -316,6 +320,41 @@ func TestWindowNoEndGaps(t *testing.T) {
 	}
 	if gaps > 1 {
 		t.Fatalf("%d end-gap columns (edge off-centre must clamp into the record)", gaps)
+	}
+}
+
+func TestWindowRailExtendCentres(t *testing.T) {
+	// Repeat-rail: an edge near a record END (no crossing near the middle, the
+	// sub-period case) must still land at posFrac. With WinCols==Valid the old
+	// left-clamp shoved it off-centre; repeat-rail keeps it centred by extending
+	// the rail off-record instead of clamping the window.
+	sig := make([]uint8, 2048)
+	for i := range sig {
+		if i >= 935 { // a single rising step at 935 (the only crossing)
+			sig[i] = 255
+		}
+	}
+	out := window(sig, 2048, 2048, 935, false, 800, 0.5)
+	// Find the rising crossing in the rendered window.
+	cross := -1
+	for x := 1; x < len(out); x++ {
+		if out[x-1] < 128 && out[x] >= 128 {
+			cross = x
+			break
+		}
+	}
+	if cross < 0 {
+		t.Fatal("edge vanished from the rendered window")
+	}
+	// posFrac 0.5 → the edge must sit at ~col 400 of 800 (dead centre), NOT at
+	// the clamped ~col 365 the old code produced.
+	if cross < 396 || cross > 404 {
+		t.Fatalf("edge at col %d of 800 (frac %.3f), want ≈400/0.500", cross, float64(cross)/800)
+	}
+	for _, v := range out {
+		if v < 0 {
+			t.Fatal("repeat-rail must never gap (-1)")
+		}
 	}
 }
 

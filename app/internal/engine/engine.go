@@ -6,6 +6,7 @@
 package engine
 
 import (
+	"math"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -61,6 +62,7 @@ const (
 	nativeEdgeMinPtp  = 40    // codes; flat rail ≈ 5, real cal edge ≈ 150
 	nativeFlatFallbck = 60    // held frames before one honest flat publish
 	fillFull          = 0x7f0 // fill counter near the 11-bit max = record full
+	decimFlatClear    = 4     // consecutive flat decimated frames ⇒ genuine DC free-run
 
 	// TrigCodeMin/Max clamp the UI trigger-level DAC range (spec 05 §1.2).
 	TrigCodeMin = 27000
@@ -99,6 +101,8 @@ type Stats struct {
 	FPS         float64 `json:"fps"`
 	Running     bool    `json:"running"`
 	Norm        bool    `json:"norm"`
+	Single      bool    `json:"single"`        // a single-shot is armed/waiting
+	TrigPosFrac float64 `json:"trig_pos_frac"` // horizontal trigger position 0..1
 	TdivS       float64 `json:"tdiv_s"`
 	DisplayedS  float64 `json:"displayed_sdiv_s"`
 	TrigCode    uint16  `json:"trig_code"` // 0 = boot-inherited comparator untouched
@@ -122,6 +126,7 @@ type Stats struct {
 	WinColStd   float64 `json:"wincol_std"`     // centred cross-frame uniformity
 	WinColRaw   float64 `json:"wincol_std_raw"` // fixed-position variant
 	WinColMax   float64 `json:"wincol_max"`     // worst centred column
+	ValidDepth  int     `json:"valid_depth"`    // real-signal samples in the drain
 }
 
 type Engine struct {
@@ -135,14 +140,18 @@ type Engine struct {
 	pollEvery   time.Duration
 
 	// Lock-free control reads by the owner.
-	running    atomic.Bool
-	trigRising atomic.Bool
-	trigSrc    atomic.Int32
-	stopReq    atomic.Bool
-	acqMode    atomic.Int32
-	avgCount   atomic.Int32
-	eresLen    atomic.Int32
-	avgGen     atomic.Uint32 // bumped on acq-mode/depth changes → ring clear
+	running     atomic.Bool
+	trigRising  atomic.Bool
+	trigSrc     atomic.Int32
+	stopReq     atomic.Bool
+	acqMode     atomic.Int32
+	avgCount    atomic.Int32
+	eresLen     atomic.Int32
+	avgGen      atomic.Uint32    // bumped on acq-mode/depth changes → ring clear
+	singleArmed atomic.Bool      // SINGLE: stop after the next triggered frame
+	chVdivBits  [2]atomic.Uint64 // per-channel V/div (float64 bits) for the
+	//                              trigger-level → display-code mapping
+	trigPosFrac atomic.Uint64 // horizontal trigger position, fraction of screen
 
 	// mu guards the command shadows and the stats mirror. Setters record and
 	// return; only the owner touches the bus (spec 09 §1). Bus writes happen
@@ -169,13 +178,14 @@ type Engine struct {
 	matrixReq chan chan [5]uint16
 
 	// Owner-private state (no locking needed).
-	band     Band
-	prevKind Kind
-	lastNorm bool
-	seq      uint64
-	flatHeld int
-	deadRuns int
-	done     chan struct{}
+	band         Band
+	prevKind     Kind
+	lastNorm     bool
+	seq          uint64
+	flatHeld     int
+	decimFlatRun int
+	deadRuns     int
+	done         chan struct{}
 
 	// Envelope band state (spec 04 §1): ring of phase-scattered windows.
 	envRing1, envRing2     [][]uint8
@@ -241,6 +251,9 @@ func New(cfg Config) *Engine {
 	e.trigRising.Store(true)
 	e.avgCount.Store(16) // boot-firmware default; menu {4,16,32,64,128,256}
 	e.eresLen.Store(1)
+	e.chVdivBits[0].Store(math.Float64bits(1))
+	e.chVdivBits[1].Store(math.Float64bits(1))
+	e.trigPosFrac.Store(math.Float64bits(0.5)) // trigger at screen centre
 	e.tp = defaultTrigParams()
 	e.eresScratch = make([]uint16, deepRecord)
 	e.mu.Lock()
@@ -341,9 +354,80 @@ func (e *Engine) SetEresLen(l int) {
 
 func (e *Engine) SetRunning(on bool) {
 	e.running.Store(on)
+	if on {
+		e.singleArmed.Store(false) // RUN cancels a pending single-shot
+	}
 	e.mu.Lock()
 	e.stats.Running = on
+	e.stats.Single = e.singleArmed.Load()
 	e.mu.Unlock()
+}
+
+// SetSingle arms a true single-shot (spec 05 §3 note): NORM-armed, and the
+// engine STOPs itself after the next triggered frame publishes. RUN cancels
+// it. This is the "capture one and hold" behaviour a scope SINGLE button
+// gives — unlike plain NORM, which keeps re-publishing triggered frames.
+func (e *Engine) SetSingle() {
+	e.SetNorm(true)
+	e.running.Store(true)
+	e.singleArmed.Store(true)
+	e.mu.Lock()
+	e.stats.Running, e.stats.Single = true, true
+	e.mu.Unlock()
+}
+
+// SetChannelVdiv records a channel's V/div (from the analog front end) so the
+// trigger level maps to a display code for level-anchored centring.
+func (e *Engine) SetChannelVdiv(ch int, vdivV float64) {
+	if vdivV <= 0 {
+		vdivV = 1
+	}
+	e.chVdivBits[ch&1].Store(math.Float64bits(vdivV))
+}
+
+// SetTrigPosFrac sets where the trigger sits horizontally on screen: 0=left,
+// 0.5=centre (default), 1=right. Pure software — the display window is offset
+// so the anchor lands at this fraction (spec 05 §8: position is software).
+func (e *Engine) SetTrigPosFrac(frac float64) {
+	if frac < 0 {
+		frac = 0
+	}
+	if frac > 1 {
+		frac = 1
+	}
+	e.trigPosFrac.Store(math.Float64bits(frac))
+	e.mu.Lock()
+	e.stats.TrigPosFrac = frac
+	e.mu.Unlock()
+}
+
+func (e *Engine) chVdivV(ch int) float64 {
+	b := e.chVdivBits[ch&1].Load()
+	if b == 0 {
+		return 1
+	}
+	return math.Float64frombits(b)
+}
+
+// trigDispLevel maps the HW trigger level (DAC code) to a display code
+// (0..255) at the source channel's V/div — the same mapping the on-screen
+// level line uses. Returns -1 when no level is set (boot comparator), so
+// centring falls back to the mid-level crossing.
+func (e *Engine) trigDispLevel(srcCh int) int {
+	e.mu.Lock()
+	code := e.trigCode
+	e.mu.Unlock()
+	if code == 0 {
+		return -1
+	}
+	dc := int(math.Round(128 + TrigLevelVolts(code)*32/e.chVdivV(srcCh)))
+	if dc < 0 {
+		dc = 0
+	}
+	if dc > 255 {
+		dc = 255
+	}
+	return dc
 }
 
 func (e *Engine) SetNorm(on bool) {
@@ -665,7 +749,18 @@ func (e *Engine) armEngine() {
 // which starved AUTO). bit0 (VALID/auto-timeout) is honoured too as an early
 // AUTO completion.
 func (e *Engine) waitCapture(norm bool) (anchored, sawTrig, filled, fillMoved bool, trigPos int) {
-	deadline := e.clk.Now().Add(time.Duration(e.band.WaitBudgetNs()))
+	start := e.clk.Now()
+	deadline := start.Add(time.Duration(e.band.WaitBudgetNs()))
+	// Decimated NORM needs a DENSE record — the buffer filled to drainCols — so
+	// software centring locks a mid-record crossing instead of the jittery LAST
+	// crossing at the rail boundary of a sparse (fill≥LatchAt) triggered capture
+	// (that boundary drifts non-periodically frame-to-frame → the wave jitters).
+	// The fill counter saturates at 11 bits well before drainCols, so gate on
+	// TIME: the interval to clock drainCols samples. This is free (well under the
+	// 50 ms publish pace floor) and scoped to decimated NORM — native-fast, AUTO,
+	// envelope and roll are untouched. AUTO already fills densely via its budget.
+	denseWait := norm && e.band.Kind() == KindDecimated
+	denseNs := int64(float64(e.band.DrainCols()) * e.band.CaptureIntervalNs())
 	fill0 := e.r(selFill) & fillMask
 	for {
 		s := e.r(selStatus)
@@ -691,7 +786,11 @@ func (e *Engine) waitCapture(norm bool) (anchored, sawTrig, filled, fillMoved bo
 			filled = true
 		}
 		if anchored && filled {
-			return // triggered, post-trigger record filled
+			// Decimated NORM also waits for a dense buffer (see above); other
+			// bands/modes return as soon as the post-trigger record is filled.
+			if !denseWait || e.clk.Now().Sub(start) >= time.Duration(denseNs) {
+				return // triggered, post-trigger record filled (and dense in NORM)
+			}
 		}
 		if !norm && fill >= fillFull {
 			return // AUTO free-run: the record saturated, drain it now
@@ -808,7 +907,20 @@ func (e *Engine) oneFrame(norm bool) {
 		edgeX = qualifyVideo(disc, tp)
 		slopeOK = edgeX >= 0
 	default:
-		edgeX = centerCross(disc, midLevel(disc), rising)
+		// EDGE: anchor on the user's HW trigger level (WYSIWYG — the display
+		// crosses where the level is set) when it yields a crossing; fall
+		// back to the mid-level crossing when the level is unset or off the
+		// signal, so the display stays stable either way (spec 05 §5.1).
+		lvl := midLevel(disc)
+		if td := e.trigDispLevel(int(e.trigSrc.Load())); td >= 0 {
+			if x := centerCross(disc, td, rising); x >= 0 {
+				edgeX = x
+			} else {
+				edgeX = centerCross(disc, lvl, rising)
+			}
+		} else {
+			edgeX = centerCross(disc, lvl, rising)
+		}
 		slopeOK = edgeX >= 0 && windowSlopeMatches(disc, edgeX, e.band.WinCols(), rising)
 	}
 
@@ -832,14 +944,39 @@ func (e *Engine) oneFrame(norm bool) {
 	// mode — a qualifying event publishes, anything else holds (overriding
 	// AUTO's publish-everything default).
 	qualifier := tp.typ != TrigEdge
+
+	// Decimated genuine-DC detector: count consecutive flat (sub-threshold ptp)
+	// decimated frames. A live sub-period signal (whose free-run phase yields an
+	// occasional falling-only/rail frame) keeps ptp ≥ threshold and never reaches
+	// decimFlatClear; a truly quiet/disconnected screen does, and then free-runs
+	// a live flat line instead of freezing on the last edge.
+	if !nativeFast {
+		if p >= nativeEdgeMinPtp {
+			e.decimFlatRun = 0
+		} else {
+			e.decimFlatRun++
+		}
+	}
+
 	publish := false
 	switch {
 	case nativeFast:
 		event := slopeOK && (qualifier || p >= nativeEdgeMinPtp)
-		if event {
+		switch {
+		case event:
 			publish = true
 			e.flatHeld = 0
-		} else {
+		case !norm && !qualifier && p < nativeEdgeMinPtp:
+			// AUTO EDGE on a genuinely flat/DC ≤200 ns screen: free-run at the
+			// FSM rate (a real scope shows a live flat line in AUTO, not a frozen
+			// one). A DC slice has no edge to centre → publish uncentred.
+			edgeX = -1
+			publish = true
+			e.flatHeld = 0
+		default:
+			// NORM flat (honest slow refresh), an un-fired qualifier, or a
+			// non-flat AUTO frame momentarily lacking a slope-valid edge → hold
+			// the last good frame rather than flash an uncentred one.
 			e.flatHeld++
 			if e.flatHeld >= nativeFlatFallbck {
 				edgeX = -1 // one honest flat capture; never fabricate an edge
@@ -850,9 +987,21 @@ func (e *Engine) oneFrame(norm bool) {
 	case qualifier:
 		publish = coherent && slopeOK
 	case norm:
-		publish = coherent && slopeOK
+		// Decimated NORM EDGE: publish when a correct-slope crossing EXISTS
+		// (edgeX ≥ 0) so repeat-rail centring can place it at posFrac. Gate on
+		// the crossing's existence, NOT windowSlopeMatches — that aliases across
+		// periods and false-rejects dense multi-period windows, which would
+		// intermittently freeze 1–2 ms NORM.
+		publish = coherent && edgeX >= 0
 	default: // AUTO decimated, EDGE
-		publish = coherent
+		switch {
+		case edgeX >= 0:
+			publish = coherent // a centrable crossing exists → publish & centre
+		case e.decimFlatRun >= decimFlatClear:
+			publish = coherent // genuine DC → free-run flat (edgeX=-1 → record middle)
+		default:
+			publish = false // live signal, this free-run phase missed the slope → HOLD
+		}
 	}
 	if !publish {
 		edgeX = -1 // held frames never leave the arena; keep metadata sane
@@ -895,6 +1044,7 @@ func (e *Engine) oneFrame(norm bool) {
 	}
 	e.stats.LastPtp = p
 	e.stats.LastTrigPos = trigPos
+	e.stats.ValidDepth = validDepth(disc)
 	e.stats.ArmToLatch = float64(armToLatch) / float64(time.Millisecond)
 	e.stats.DrainMs = float64(drainMs) / float64(time.Millisecond)
 	e.mu.Unlock()
@@ -911,6 +1061,17 @@ func (e *Engine) oneFrame(norm bool) {
 			e.pubTimes = e.pubTimes[len(e.pubTimes)-64:]
 		}
 		e.mu.Unlock()
+		// True single-shot: a real triggered frame just published — stop and
+		// hold it. `coherent` here is a NORM/qualifier-gated capture (single
+		// forces NORM), so this is a genuine trigger, not a free-run frame.
+		if e.singleArmed.Load() && coherent {
+			e.singleArmed.Store(false)
+			e.running.Store(false)
+			e.mu.Lock()
+			e.stats.Running, e.stats.Single = false, false
+			e.mu.Unlock()
+			e.logf("single-shot captured seq=%d — stopped", e.seq)
+		}
 	} else {
 		e.mu.Lock()
 		e.stats.Held++

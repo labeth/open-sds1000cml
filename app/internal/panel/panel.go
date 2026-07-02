@@ -25,6 +25,7 @@ type Engine interface {
 	SetTdiv(tdivS float64) (engine.Band, bool)
 	SetNorm(on bool)
 	SetRunning(on bool)
+	SetSingle()
 	Snapshot() engine.Stats // authoritative state to resync knob shadows
 }
 
@@ -244,8 +245,7 @@ func (c *Controller) button(code int) {
 		c.eng.SetRunning(c.running)
 	case btnSingle:
 		c.norm, c.running = true, true
-		c.eng.SetNorm(true)
-		c.eng.SetRunning(true)
+		c.eng.SetSingle() // true single-shot: capture one triggered frame, stop
 	case btnAuto:
 		c.norm, c.running = false, true
 		c.eng.SetNorm(false)

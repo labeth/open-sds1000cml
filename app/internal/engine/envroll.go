@@ -34,6 +34,7 @@ func (e *Engine) interrupted() bool {
 // uniformity, envelope, roll, ETS phase and average rings all clear).
 func (e *Engine) clearCrossFrame() {
 	e.flatHeld = 0
+	e.decimFlatRun = 0
 	e.envRingCnt, e.envRingPos = 0, 0
 	e.rollSnaps1, e.rollSnaps2 = e.rollSnaps1[:0], e.rollSnaps2[:0]
 	e.rollPos = 0

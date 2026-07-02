@@ -20,6 +20,7 @@ func (f *fakeScope) Snapshot() engine.Stats           { return f.stats }
 func (f *fakeScope) WithFrame(fn func(*engine.Frame)) { fn(f.frame) }
 func (f *fakeScope) SetRunning(on bool)               { f.calls = append(f.calls, "run") }
 func (f *fakeScope) SetNorm(on bool)                  { f.calls = append(f.calls, "norm") }
+func (f *fakeScope) SetSingle()                       { f.calls = append(f.calls, "single") }
 func (f *fakeScope) SetTdiv(t float64) (engine.Band, bool) {
 	f.calls = append(f.calls, "tdiv")
 	return engine.PlanTdiv(t)

@@ -22,6 +22,36 @@ func ptp(sig []uint8) (lo, hi, p int) {
 	return lo, hi, hi - lo
 }
 
+// validDepth estimates how many leading samples of a drained record carry
+// real signal before it decays into a flat "dead tail" (the ports read a
+// repeated last sample / zeros beyond what the FPGA actually captured). It
+// scans fixed windows and returns the end of the last window whose local
+// peak-to-peak still shows activity. Used to size the decimated drain safely:
+// draining past validDepth would centre the display on dead samples.
+func validDepth(sig []uint8) int {
+	n := len(sig)
+	if n == 0 {
+		return 0
+	}
+	_, _, p := ptp(sig)
+	if p < 8 {
+		return n // essentially flat everywhere — nothing to trim
+	}
+	const w = 128
+	thr := p / 8
+	last := 0
+	for from := 0; from < n; from += w {
+		to := from + w
+		if to > n {
+			to = n
+		}
+		if _, _, lp := ptp(sig[from:to]); lp >= thr {
+			last = to
+		}
+	}
+	return last
+}
+
 // midLevel is the crossing threshold: (min+max)/2 over the drained samples
 // (128 for an empty slice). It floats with amplitude so it works at any V/div.
 func midLevel(sig []uint8) int {

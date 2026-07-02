@@ -34,6 +34,7 @@ func (f *fakeEng) SetTdiv(t float64) (engine.Band, bool) {
 }
 func (f *fakeEng) SetNorm(on bool)    { f.calls = append(f.calls, call{"norm", b2i(on), 0}) }
 func (f *fakeEng) SetRunning(on bool) { f.calls = append(f.calls, call{"run", b2i(on), 0}) }
+func (f *fakeEng) SetSingle()         { f.calls = append(f.calls, call{"single", 0, 0}) }
 
 func b2i(b bool) int {
 	if b {
@@ -105,7 +106,7 @@ func TestSingleAndAuto(t *testing.T) {
 	m := idle()
 	m[1] &^= 1 << 10 // SINGLE = 0x65 bit 10
 	c.decode(m, true)
-	if len(eng.calls) != 2 || eng.calls[0] != (call{"norm", 1, 0}) || eng.calls[1] != (call{"run", 1, 0}) {
+	if len(eng.calls) != 1 || eng.calls[0] != (call{"single", 0, 0}) {
 		t.Fatalf("single: %v", eng.calls)
 	}
 	// SINGLE LED set.
