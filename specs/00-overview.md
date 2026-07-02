@@ -102,9 +102,10 @@ hand-off and is responsible for:
    inherited `fpga_key` SIGIO wiring) and `09-control-plane.md` (staged-command struct, per-control
    coalescing, boundary apply sequence).
 7. **Host interface.** Serve VXI-11 / USB-TMC SCPI and waveform/screenshot export. See
-   `09-control-plane.md` §7 for the SCPI command/query interface and the VXI-11 (portmap → DEVICE_CORE)
-   / USB-TMC transport framing; the 346-byte WAVEDESC byte layout used by `WF? DESC` is in
-   `06-vertical-and-analog.md`.
+   `11-host-interface.md` for the VXI-11 (portmap → DEVICE_CORE) / USB-TMC transport framing, the
+   LeCroy short-form SCPI command/query set, the byte-exact `WF?` transfer and its 346-byte WAVEDESC
+   layout, and the `SCDP` hardcopy BMP. The firmware's private control-plane line protocol is separate
+   (`09-control-plane.md` §7).
 8. **Health + recovery.** Report healthy only after genuine coherent frames, detect a wedged engine,
    and drive the OTA supervisor's rollback path. See `01-system-architecture.md` for the software
    liveness-watchdog interval, the coherent-frame health criterion, and the OTA rollback signalling
@@ -196,5 +197,3 @@ These shape the entire design; they are requirements, not advice:
 - **frame arena** — the fixed set of round-robin frame buffers the engine owner drains into and the
   renderer consumes; the engine publishes a frozen `(generation, index)` atomically and the renderer
   never blocks the producer.
-</content>
-</invoke>

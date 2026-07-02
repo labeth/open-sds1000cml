@@ -35,8 +35,8 @@ different things on different planes, and a write aimed at the wrong plane silen
 
 | Plane | Role | Physical base (mmap) | Selectors used |
 |---|---|---|---|
-| **CS1** | acquisition / read plane: arm, divisor, status, fill counter, sample drain ports, key-matrix read | `0x01000000` | arm `0x21`, run-word `0x35`, reset-head `0x44`, divisor `0x19/0x1a/0x1b`, write-ptr `0x57`, status `0x39`, trig-pos `0x3a/0x3b`, fill `0x46`, version `0x12`, deep drain `0x30–0x34`, roll FIFO `0x41/0x59`, matrix `0x64–0x69` |
-| **CS3** | config / control plane: vertical offset DAC, trigger level DAC, panel-LED latch, source mux, config-status | `0x03000000` | offset DAC `0x10/0x30` (CH1) `0x11/0x31` (CH2), trigger level DAC `0x14/0x34` (lane A) `0x15/0x35` (lane B), LED latch `0x09/0x0a/0x0b`, source mux `0x22`, config-status `0x07` |
+| **CS1** | acquisition / read plane: arm, divisor, status, fill counter, sample drain ports, key-matrix read, trigger source mux | `0x01000000` | arm `0x21`, source mux `0x22`, run-word `0x35`, reset-head `0x44`, divisor `0x19/0x1a/0x1b`, write-ptr `0x57`, status `0x39`, trig-pos `0x3a/0x3b`, fill `0x46`, version `0x12`, deep drain `0x30–0x34`, roll FIFO `0x41/0x59`, matrix `0x64–0x69` |
+| **CS3** | config / control plane: vertical offset DAC, trigger level DAC, panel-LED latch, config-status | `0x03000000` | offset DAC `0x10/0x30` (CH1) `0x11/0x31` (CH2), trigger level DAC `0x14/0x34` (lane A) `0x15/0x35` (lane B), LED latch `0x09/0x0a/0x0b`, config-status `0x07` |
 
 **Register width and addressing.** Every FPGA register is **16-bit**. A register selector `sel`
 addresses the 16-bit word at **byte offset `sel<<1`** in its chip-select window (equivalently:
@@ -375,7 +375,7 @@ These are requirements. Each is why the design is shaped the way it is.
    `sel<<1`. Do NOT apply `<<1` on top of a `uint16` array index (double-shift → wrong register).
    Verify with selector `0x12` == `0x0052` before trusting the map.
 
-10. **Single-writer for ALL CS3 writes** (trigger level, offset DAC, panel LEDs, source mux). These are
+10. **Single-writer for ALL CS3 writes** (trigger level, offset DAC, panel LEDs). These are
     staged and flushed by the owner at the frame boundary using the exact sequences in specs 05/06/08.
     A bare CS3 write off that boundary collides with the engine's in-flight burst and wedges — the
     safety is serialization + inherited fd + arm-boundary timing (+ the following re-arm for the
@@ -412,8 +412,8 @@ These are requirements. Each is why the design is shaped the way it is.
   while the factory app is still alive; the exact status polled (`0x12`/`0x38`/`0x46`) and the guaranteed-
   stoppable timebase depend on the factory app's dispatcher and are established in the acquisition spec, not
   here.
-- **Coarse HW trigger source mux (CS3 `0x22`) code values** for C1/C2 are not pinned; source selection
-  is currently done in software downstream (spec 05). This does not affect the bus discipline.
+- **Coarse HW trigger source mux (CS1 `0x22`, byte `0x20200044`) code values** for C1/C2 are not pinned;
+  source selection is done in software downstream (spec 05). This does not affect the bus discipline.
 - **Health re-write cadence / staleness threshold.** The ~500 ms re-write throttle and ~3 s agent
   staleness window in §4.2 are the required *shape* of the liveness contract; the exact numbers are a
   design parameter that must satisfy `staleness_window > max legitimate quiet interval > re-write

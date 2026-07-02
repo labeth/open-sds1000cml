@@ -12,22 +12,26 @@ of the registers below. This document is the complete register reference the fir
 
 The FPGA presents **two** register windows, selected by the chip-select (CS) field of the ioctl:
 
-| Plane | Physical base | Purpose | Access |
-|---|---|---|---|
-| **CS1** | `0x01000000` | Acquisition / read plane: arm FSM, status, sample ports, timebase, panel matrix, on-bus calibration | ioctl (read + write); post-halt sample drain may use mmap |
-| **CS3** | `0x20100000` | Config / control plane: config port, CONF_DONE, trigger-level DAC, offset DAC, source mux, LED latch | ioctl (read + write); CONF_DONE also mmap-readable at `0x03000000` |
+| Plane | Register/bus base | mmap physical base | Purpose | Access |
+|---|---|---|---|---|
+| **CS1** | `0x20200000` | `0x01000000` | Acquisition / read plane: arm FSM, status, sample ports, timebase, panel matrix, trigger source mux, on-bus calibration | ioctl (read + write); post-halt sample drain may use mmap |
+| **CS3** | `0x20100000` | `0x03000000` | Config / control plane: config port, CONF_DONE, trigger-level DAC, offset DAC, LED latch | ioctl (read + write); CONF_DONE also mmap-readable |
 
-There is a third CS (CS2, LCD framebuffer) that acquisition does not touch; see spec 03.
+A third chip-select (CS2) is allocated by the kernel bring-up but is **not used** by the acquisition
+firmware (see `00-overview.md` §2); the LCD framebuffer is `/dev/fb0` (spec 07), not a GPMC plane.
 
-A **register selector** `sel` addresses FPGA **word** `sel << 1`. The physical byte address is:
+**Two addressing axes are in play; do not conflate them.**
 
-```
-byte_addr = plane_base + (sel << 1)
-```
+- The **register/bus-address base** is what a register's byte address is computed from:
+  `byte_addr = register_base + (sel << 1)`. CS1 registers are at `0x20200000 + sel·2`, CS3 registers at
+  `0x20100000 + sel·2`. e.g. CS3 sel `0x14` → `0x20100028`; CS3 sel `0x34` → `0x20100068`; CS3 sel `0x07`
+  → `0x2010000e` (the config port); CS1 sel `0x22` → `0x20200044` (the trigger source mux).
+- The **mmap physical base** is the `/dev/mem` mapping address for the syscall-free drain/read fast path
+  (§1.4): CS1 maps at `0x01000000`; CS3's CONF_DONE is mmap-readable at `0x03000000`.
 
-e.g. CS3 sel `0x14` → `0x20100000 + 0x28 = 0x20100028`; CS3 sel `0x34` → `0x20100068`; CS3 sel
-`0x07` → `0x2010000e` (the config port). The driver shifts `<<1` internally — pass the **selector**,
-never the pre-shifted byte address.
+A **register selector** `sel` addresses the 16-bit FPGA **word** `sel << 1` within its plane. On the
+ioctl path the driver shifts `<<1` internally — pass the **selector**, never the pre-shifted byte
+address.
 
 ### 1.2 Obtaining the `/dev/Gpmc` fd (inherited, do not open fresh)
 
@@ -121,6 +125,7 @@ All selectors below are on plane 1. `sel` is the register selector; access is io
 | `0x1a` | Divisor low | W | 16-bit low word | Decimation divisor low half (class-`0x80` sample interval = divisor·10 ns) |
 | `0x1b` | Divisor high | W | 16-bit high word | Decimation divisor high half; write `0` before writing `0x19`/`0x1a`, then the real high word |
 | `0x21` | **Arm / halt opcode** | W | see §4.1 | Acquisition FSM control: reset-head / go / capture-halt / latch-no-halt |
+| `0x22` | Trigger source mux | W | coarse (**Open**, §11) | Engine-safe coarse trigger-input source select (byte `0x20200044`, + `0x53` strobe); CONF_DONE-safe. C1/C2 code values not pinned; runtime source is a software channel-select (spec 05 §6) |
 | `0x35` | **Run word** | W | `0x0001` / `0x0003` | Run mode: `0x0001` = free-run (AUTO), `0x0003` = armed (NORM). Re-asserted after any front-end change |
 | `0x36` | Reset | W | `0x0000` | Cleared during bring-up |
 | `0x38` | **Status B** | R | bitfield, see §3.2 | Native-fast done gate (bit5) + idle/hold state |
@@ -289,7 +294,9 @@ All selectors below are on plane 3. Access is ioctl (`WriteRegCS(3, sel, val)` /
 | `0x34` | `0x20100068` | **Trigger LEVEL DAC lane A high** | W | `code >> 8` | Lane A high byte (self-latches lane A) |
 | `0x15` | `0x2010002a` | Trigger LEVEL DAC lane B low | W | `code & 0xff` | Mirror lane B, low byte (write the SAME code as lane A) |
 | `0x35` | `0x2010006a` | Trigger LEVEL DAC lane B high | W | `code >> 8` | Mirror lane B high byte (self-latches lane B). **NOT** the CS1 run word `0x35` — different plane |
-| `0x22` | `0x20100044` | Trigger source mux | W | coarse (**Open**, §11) | Engine-safe coarse trigger source select; CONF_DONE-safe. C1/C2 code values not pinned |
+
+The **trigger source mux is NOT on this plane** — it is CS1 `0x22` (byte `0x20200044`), listed in §2.
+Do not write it as a CS3 register.
 
 ### 6.1 DAC value computation (calibration dependency)
 
@@ -311,9 +318,11 @@ read 0. For an unambiguous HW sweep, use the raw code.
 
 **Offset DAC** — 16-bit code per channel; low byte then high byte, the high byte self-latches (no
 strobe). The code moves the captured window's DC centre (the render reflects it with no render-side
-change). Higher code → lower mean. The **linear region and centre are raw-code facts**: ~9600–11600
-is the usable linear span, ~10600 centres the channel. A volts→code transfer function across all
-V/div requires the cal record and is **Open** (§11); use raw codes for centering and sweeps.
+change). Higher code → lower mean. The centre (0 V) code is the **calibrated per-(channel, V/div) zero**
+from cal RAM record `+0x12` (spec 10 §7.4; boot default `0x27ef` = 10223); the fixed `~10600` is only the
+**uncalibrated fallback** centre, not a per-detent constant. The usable linear span is ~9600–11600. A
+general volts→code transfer function across all V/div requires the cal record and is **Open** (§11); use
+raw codes for centring and sweeps.
 
 ---
 
@@ -505,10 +514,9 @@ edge frame between real edges (so noisy flat frames do not flash the display).
 - **Pre-trigger split `0x3c`/`0x3d`.** These registers set a pre/post-trigger record-depth split.
   On the single-owner capture-halt engine the trigger edge lands mid-record regardless of the split
   value, so the firmware does not rely on them; the exact field encoding is not established.
-- **Trigger source mux CS3 `0x22`.** Engine-safe (CONF_DONE-safe coarse mux), but the concrete
-  C1/C2/EXT code values are not pinned; source selection is currently done in software on the drained
-  samples. (An older note places a source-mux selector on CS1 `0x22` with codes `0x03` = internal /
-  `0x00` = EXT plus `0x42/0x43`; the plane and codes are unresolved.)
+- **Trigger source mux CS1 `0x22`** (byte `0x20200044`, + `0x53` strobe). Engine-safe (CONF_DONE-safe
+  coarse mux), but the concrete C1/C2/EXT code values are not pinned; runtime source selection is done
+  in software on the drained samples (spec 05 §6).
 - **Panel LED controllability.** The LED-latch write path (§7.5) commits the shadow word on CS3;
   whether every RUN/STOP/CH LED on a given clone is CPU-drivable or owned by the front-panel MCU is
   clone-dependent. The write is best-effort and a harmless no-op where the latch is MCU-owned.

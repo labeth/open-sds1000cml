@@ -470,7 +470,8 @@ frames (`Coherent >= 3 && Frames >= 3`), so a wedged boot is never rubber-stampe
 
 ## 10. Scope and limitations
 
-Trigger source is selected in software (§2.2). The coarse HW source mux at CS3 `0x22` is engine-safe, but
+Trigger source is selected in software (§2.2). The coarse HW source mux at CS1 `0x22` (byte `0x20200044`)
+is engine-safe, but
 its C1/C2 code values are not pinned, so this plane does not use it for source select. External trigger
 (EXT) has no readback lane and is unsupported. SINGLE is realized as NORM-arm (§4); the plane provides no
 disarm-after-one-capture latch. The per-type trigger qualifier parameters have setters (§2.2) but no

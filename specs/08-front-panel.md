@@ -326,8 +326,10 @@ Stepping conventions and constants:
 - **POSITION / TRIG LEVEL are continuous**: apply `dir * step * magnitude`, clamp to the DAC's linear
   region.
 
-  **Offset (position) DAC** — center code `10600`, `20` codes/accel-step, clamp `[9600, 11600]`;
-  higher code → lower mean. `nc = offCode[ch] + dir*20*steps`, clamped.
+  **Offset (position) DAC** — the centre (0 V) seed is the **calibrated per-(channel, V/div) zero** from
+  cal RAM record `+0x12` (spec 10 §7.4 / 06 §5.2); `10600` is only the **uncalibrated fallback** centre.
+  `20` codes/accel-step, clamp `[9600, 11600]`; higher code → lower mean.
+  `nc = offCode[ch] + dir*20*steps`, clamped.
 
   **Trigger level DAC** — code assembled and written by the owner (05 §2). Constants (valid at
   1 V/div and 2 V/div):
