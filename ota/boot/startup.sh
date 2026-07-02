@@ -23,30 +23,50 @@
 # Everything is overridable by env so the off-device harness can drive it with
 # stubs (agent, commands) and assert ordering deterministically.
 
-# --- 1. environment ---------------------------------------------------------
-# The stick root is THIS script's directory (wherever the vendor firmware
-# mounted it), not a hardcoded mount path — robust to a different mountpoint.
-# OTA_USB overrides it for the off-device harness.
-USB="${OTA_USB:-$(CDPATH= cd -- "$(dirname -- "$0")" 2>/dev/null && pwd)}"
-USB="${USB:-/usr/bin/siglent/usr/media/U-disk0}"   # last-ditch fallback
-
 # --- 0. EARLY EXECUTION MARKER (must be the very first side effect) ----------
 # Proves — independently of the agent, network, or later failures — that the
 # firmware actually executed this script, and records HOW it was invoked
-# (arg0, parent pid, uid, cwd) so we can learn the trigger mechanism. Written
-# to the stick root AND /tmp so at least one survives a flaky FAT.
+# (arg0, parent, uid, cwd). Written to EVERY plausible location so that no
+# matter how the vendor invokes us (from the stick, from a RAM copy, from a
+# fixed mountpoint) at least one marker lands somewhere we can read later.
+_selfdir=$(CDPATH= cd -- "$(dirname -- "$0")" 2>/dev/null && pwd)
+_mark_dirs="$OTA_USB $_selfdir /usr/bin/siglent/usr/media/U-disk0 /mnt/udisk /mnt/usb /media/usb /tmp"
 _mark() {
-    _m="$1"
     {
         echo "==== startup.sh reached $(date 2>/dev/null || echo '?') ===="
-        echo "arg0=$0 pid=$$ ppid=${PPID:-?} uid=$(id -u 2>/dev/null) cwd=$(pwd 2>/dev/null)"
-        echo "USB=$USB"
+        echo "arg0=$0 pid=$$ ppid=${PPID:-?} uid=$(id -u 2>/dev/null) cwd=$(pwd 2>/dev/null) selfdir=$_selfdir"
         echo "parent: $(cat /proc/${PPID:-0}/comm 2>/dev/null) cmdline: $(tr '\0' ' ' < /proc/${PPID:-0}/cmdline 2>/dev/null)"
-    } >> "$_m" 2>/dev/null
+        echo "mounts with U-disk/usb:"; grep -iE 'disk|usb|vfat|media' /proc/mounts 2>/dev/null
+    } >> "$1" 2>/dev/null
 }
-_mark "$USB/BOOT_MARKER.txt"
-_mark "/tmp/ota-boot-marker.txt"
+for _d in $_mark_dirs; do
+    [ -n "$_d" ] && [ -d "$_d" ] && _mark "$_d/BOOT_MARKER.txt"
+done
+_mark /tmp/ota-boot-marker.txt
+
+# --- 1. environment: LOCATE THE PAYLOAD -------------------------------------
+# The stick is wherever ota/agent.env actually lives — NOT necessarily
+# dirname("$0") (the vendor may run a copy of this script from RAM). Probe the
+# candidate mountpoints and pick the first that holds the payload, so the agent
+# path always resolves to the real binaries. OTA_USB overrides everything (tests).
+find_usb() {
+    # Explicit override wins immediately (tests / harness) — no probing.
+    [ -n "$OTA_USB" ] && { echo "$OTA_USB"; return; }
+    # Otherwise pick the first FIXED candidate that actually holds the payload.
+    # (Deliberately a fixed list, not a /proc/mounts scan: stat'ing an unknown
+    #  mountpoint can hang on an autofs/stale mount and wedge boot.)
+    for _c in "$_selfdir" /usr/bin/siglent/usr/media/U-disk0 \
+              /mnt/udisk /mnt/usb0 /mnt/usb /media/usb /media/U-disk0; do
+        [ -n "$_c" ] && [ -f "$_c/ota/agent.env" ] && { echo "$_c"; return; }
+    done
+    # Last resort: selfdir (may be a RAM copy without the payload — the agent
+    # loop will then log "agent-missing", which is still diagnosable).
+    echo "${_selfdir:-/usr/bin/siglent/usr/media/U-disk0}"
+}
+USB=$(find_usb)
 OTA_DIR="${OTA_DIR:-$USB/ota}"
+mkdir -p "$OTA_DIR/logs" 2>/dev/null
+_mark "$OTA_DIR/logs/boot-marker.txt"   # also drop it beside the logs on the resolved stick
 LOG="${OTA_BOOT_LOG:-$OTA_DIR/logs/boot.log}"
 AGENTLOG="${OTA_AGENT_LOG:-$(dirname "$LOG")/agent.log}"  # agent+app stdout (same dir as boot.log)
 COMMANDS="${OTA_COMMANDS:-$USB/commands}"

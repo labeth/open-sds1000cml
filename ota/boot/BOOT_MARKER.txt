@@ -1,0 +1,127 @@
+==== startup.sh reached Thu Jul  2 03:45:29 PM CEST 2026 ====
+arg0=boot/startup.sh pid=521395 ppid=521355 uid=1000 cwd=/home/labeth/ws/open-sds1000cml/ota selfdir=/home/labeth/ws/open-sds1000cml/ota/boot
+parent: bash cmdline: /bin/bash -c source /home/labeth/.claude/shell-snapshots/snapshot-bash-1782993893151-sqkye8.sh 2>/dev/null || true && shopt -u extglob 2>/dev/null || true && eval 'cd /home/labeth/ws/open-sds1000cml/ota
+sh -n boot/startup.sh && echo "syntax-ok"
+echo "=== self-test: payload detection + marker ==="
+T=$(mktemp -d); mkdir -p "$T/ota"
+cp dist/stick/ota/agent.env "$T/ota/agent.env"
+printf '"'"'exit 0\n'"'"' > "$T/ota/agent.A"; chmod +x "$T/ota/agent.A"
+OTA_USB="$T" OTA_AGENT_A="$T/ota/agent.A" OTA_AGENT_RUNS=1 OTA_RESPAWN=0 OTA_AGENT_STABLE=1 sh boot/startup.sh
+sleep 0.4
+echo "--- markers found ---"; ls "$T"/BOOT_MARKER.txt "$T/ota/logs/boot-marker.txt" 2>&1
+echo "--- BOOT_MARKER.txt head ---"; head -3 "$T/BOOT_MARKER.txt" 2>&1
+echo "--- boot.log ---"; cat "$T/ota/logs/boot.log" 2>&1
+rm -rf "$T"
+echo "=== run boot tests ==="
+go test ./boot/... -count=1 2>&1 | tail -3' < /dev/null && pwd -P >| /tmp/claude-b048-cwd 
+mounts with U-disk/usb:
+/dev/sda1 /boot/efi vfat rw,relatime,fmask=0077,dmask=0077,codepage=437,iocharset=ascii,shortname=winnt,errors=remount-ro 0 0
+/dev/sdb1 /run/media/labeth/B71D-236F vfat rw,nosuid,nodev,relatime,uid=1000,gid=1000,fmask=0022,dmask=0022,codepage=437,iocharset=ascii,shortname=mixed,showexec,utf8,flush,errors=remount-ro 0 0
+==== startup.sh reached Thu Jul  2 03:45:30 PM CEST 2026 ====
+arg0=/home/labeth/ws/open-sds1000cml/ota/boot/startup.sh pid=521534 ppid=521529 uid=1000 cwd=/home/labeth/ws/open-sds1000cml/ota/boot selfdir=/home/labeth/ws/open-sds1000cml/ota/boot
+parent: boot.test cmdline: /tmp/go-build1195444879/b001/boot.test -test.paniconexit0 -test.timeout=10m0s -test.count=1 
+mounts with U-disk/usb:
+/dev/sda1 /boot/efi vfat rw,relatime,fmask=0077,dmask=0077,codepage=437,iocharset=ascii,shortname=winnt,errors=remount-ro 0 0
+/dev/sdb1 /run/media/labeth/B71D-236F vfat rw,nosuid,nodev,relatime,uid=1000,gid=1000,fmask=0022,dmask=0022,codepage=437,iocharset=ascii,shortname=mixed,showexec,utf8,flush,errors=remount-ro 0 0
+==== startup.sh reached Thu Jul  2 03:45:46 PM CEST 2026 ====
+arg0=/home/labeth/ws/open-sds1000cml/ota/boot/startup.sh pid=536014 ppid=521529 uid=1000 cwd=/home/labeth/ws/open-sds1000cml/ota/boot selfdir=/home/labeth/ws/open-sds1000cml/ota/boot
+parent: boot.test cmdline: /tmp/go-build1195444879/b001/boot.test -test.paniconexit0 -test.timeout=10m0s -test.count=1 
+mounts with U-disk/usb:
+/dev/sda1 /boot/efi vfat rw,relatime,fmask=0077,dmask=0077,codepage=437,iocharset=ascii,shortname=winnt,errors=remount-ro 0 0
+/dev/sdb1 /run/media/labeth/B71D-236F vfat rw,nosuid,nodev,relatime,uid=1000,gid=1000,fmask=0022,dmask=0022,codepage=437,iocharset=ascii,shortname=mixed,showexec,utf8,flush,errors=remount-ro 0 0
+==== startup.sh reached Thu Jul  2 03:46:04 PM CEST 2026 ====
+arg0=/home/labeth/ws/open-sds1000cml/ota/boot/startup.sh pid=550522 ppid=521529 uid=1000 cwd=/home/labeth/ws/open-sds1000cml/ota/boot selfdir=/home/labeth/ws/open-sds1000cml/ota/boot
+parent: boot.test cmdline: /tmp/go-build1195444879/b001/boot.test -test.paniconexit0 -test.timeout=10m0s -test.count=1 
+mounts with U-disk/usb:
+/dev/sda1 /boot/efi vfat rw,relatime,fmask=0077,dmask=0077,codepage=437,iocharset=ascii,shortname=winnt,errors=remount-ro 0 0
+/dev/sdb1 /run/media/labeth/B71D-236F vfat rw,nosuid,nodev,relatime,uid=1000,gid=1000,fmask=0022,dmask=0022,codepage=437,iocharset=ascii,shortname=mixed,showexec,utf8,flush,errors=remount-ro 0 0
+==== startup.sh reached Thu Jul  2 03:46:19 PM CEST 2026 ====
+arg0=/home/labeth/ws/open-sds1000cml/ota/boot/startup.sh pid=565089 ppid=521529 uid=1000 cwd=/home/labeth/ws/open-sds1000cml/ota/boot selfdir=/home/labeth/ws/open-sds1000cml/ota/boot
+parent: boot.test cmdline: /tmp/go-build1195444879/b001/boot.test -test.paniconexit0 -test.timeout=10m0s -test.count=1 
+mounts with U-disk/usb:
+/dev/sda1 /boot/efi vfat rw,relatime,fmask=0077,dmask=0077,codepage=437,iocharset=ascii,shortname=winnt,errors=remount-ro 0 0
+/dev/sdb1 /run/media/labeth/B71D-236F vfat rw,nosuid,nodev,relatime,uid=1000,gid=1000,fmask=0022,dmask=0022,codepage=437,iocharset=ascii,shortname=mixed,showexec,utf8,flush,errors=remount-ro 0 0
+==== startup.sh reached Thu Jul  2 03:46:35 PM CEST 2026 ====
+arg0=/home/labeth/ws/open-sds1000cml/ota/boot/startup.sh pid=579589 ppid=521529 uid=1000 cwd=/home/labeth/ws/open-sds1000cml/ota/boot selfdir=/home/labeth/ws/open-sds1000cml/ota/boot
+parent: boot.test cmdline: /tmp/go-build1195444879/b001/boot.test -test.paniconexit0 -test.timeout=10m0s -test.count=1 
+mounts with U-disk/usb:
+/dev/sda1 /boot/efi vfat rw,relatime,fmask=0077,dmask=0077,codepage=437,iocharset=ascii,shortname=winnt,errors=remount-ro 0 0
+/dev/sdb1 /run/media/labeth/B71D-236F vfat rw,nosuid,nodev,relatime,uid=1000,gid=1000,fmask=0022,dmask=0022,codepage=437,iocharset=ascii,shortname=mixed,showexec,utf8,flush,errors=remount-ro 0 0
+==== startup.sh reached Thu Jul  2 03:46:50 PM CEST 2026 ====
+arg0=/home/labeth/ws/open-sds1000cml/ota/boot/startup.sh pid=593767 ppid=521529 uid=1000 cwd=/home/labeth/ws/open-sds1000cml/ota/boot selfdir=/home/labeth/ws/open-sds1000cml/ota/boot
+parent: boot.test cmdline: /tmp/go-build1195444879/b001/boot.test -test.paniconexit0 -test.timeout=10m0s -test.count=1 
+mounts with U-disk/usb:
+/dev/sda1 /boot/efi vfat rw,relatime,fmask=0077,dmask=0077,codepage=437,iocharset=ascii,shortname=winnt,errors=remount-ro 0 0
+/dev/sdb1 /run/media/labeth/B71D-236F vfat rw,nosuid,nodev,relatime,uid=1000,gid=1000,fmask=0022,dmask=0022,codepage=437,iocharset=ascii,shortname=mixed,showexec,utf8,flush,errors=remount-ro 0 0
+==== startup.sh reached Thu Jul  2 03:48:04 PM CEST 2026 ====
+arg0=/home/labeth/ws/open-sds1000cml/ota/boot/startup.sh pid=608066 ppid=608060 uid=1000 cwd=/home/labeth/ws/open-sds1000cml/ota/boot selfdir=/home/labeth/ws/open-sds1000cml/ota/boot
+parent: boot.test cmdline: /tmp/go-build1310009932/b001/boot.test -test.paniconexit0 -test.timeout=10m0s -test.count=1 
+mounts with U-disk/usb:
+/dev/sda1 /boot/efi vfat rw,relatime,fmask=0077,dmask=0077,codepage=437,iocharset=ascii,shortname=winnt,errors=remount-ro 0 0
+/dev/sdb1 /run/media/labeth/B71D-236F vfat rw,nosuid,nodev,relatime,uid=1000,gid=1000,fmask=0022,dmask=0022,codepage=437,iocharset=ascii,shortname=mixed,showexec,utf8,flush,errors=remount-ro 0 0
+==== startup.sh reached Thu Jul  2 03:48:05 PM CEST 2026 ====
+arg0=/home/labeth/ws/open-sds1000cml/ota/boot/startup.sh pid=608181 ppid=608060 uid=1000 cwd=/home/labeth/ws/open-sds1000cml/ota/boot selfdir=/home/labeth/ws/open-sds1000cml/ota/boot
+parent: boot.test cmdline: /tmp/go-build1310009932/b001/boot.test -test.paniconexit0 -test.timeout=10m0s -test.count=1 
+mounts with U-disk/usb:
+/dev/sda1 /boot/efi vfat rw,relatime,fmask=0077,dmask=0077,codepage=437,iocharset=ascii,shortname=winnt,errors=remount-ro 0 0
+/dev/sdb1 /run/media/labeth/B71D-236F vfat rw,nosuid,nodev,relatime,uid=1000,gid=1000,fmask=0022,dmask=0022,codepage=437,iocharset=ascii,shortname=mixed,showexec,utf8,flush,errors=remount-ro 0 0
+==== startup.sh reached Thu Jul  2 03:48:07 PM CEST 2026 ====
+arg0=/home/labeth/ws/open-sds1000cml/ota/boot/startup.sh pid=608268 ppid=608060 uid=1000 cwd=/home/labeth/ws/open-sds1000cml/ota/boot selfdir=/home/labeth/ws/open-sds1000cml/ota/boot
+parent: boot.test cmdline: /tmp/go-build1310009932/b001/boot.test -test.paniconexit0 -test.timeout=10m0s -test.count=1 
+mounts with U-disk/usb:
+/dev/sda1 /boot/efi vfat rw,relatime,fmask=0077,dmask=0077,codepage=437,iocharset=ascii,shortname=winnt,errors=remount-ro 0 0
+/dev/sdb1 /run/media/labeth/B71D-236F vfat rw,nosuid,nodev,relatime,uid=1000,gid=1000,fmask=0022,dmask=0022,codepage=437,iocharset=ascii,shortname=mixed,showexec,utf8,flush,errors=remount-ro 0 0
+==== startup.sh reached Thu Jul  2 03:48:07 PM CEST 2026 ====
+arg0=/home/labeth/ws/open-sds1000cml/ota/boot/startup.sh pid=608385 ppid=608060 uid=1000 cwd=/home/labeth/ws/open-sds1000cml/ota/boot selfdir=/home/labeth/ws/open-sds1000cml/ota/boot
+parent: boot.test cmdline: /tmp/go-build1310009932/b001/boot.test -test.paniconexit0 -test.timeout=10m0s -test.count=1 
+mounts with U-disk/usb:
+/dev/sda1 /boot/efi vfat rw,relatime,fmask=0077,dmask=0077,codepage=437,iocharset=ascii,shortname=winnt,errors=remount-ro 0 0
+/dev/sdb1 /run/media/labeth/B71D-236F vfat rw,nosuid,nodev,relatime,uid=1000,gid=1000,fmask=0022,dmask=0022,codepage=437,iocharset=ascii,shortname=mixed,showexec,utf8,flush,errors=remount-ro 0 0
+==== startup.sh reached Thu Jul  2 03:48:07 PM CEST 2026 ====
+arg0=/home/labeth/ws/open-sds1000cml/ota/boot/startup.sh pid=608554 ppid=608060 uid=1000 cwd=/home/labeth/ws/open-sds1000cml/ota/boot selfdir=/home/labeth/ws/open-sds1000cml/ota/boot
+parent: boot.test cmdline: /tmp/go-build1310009932/b001/boot.test -test.paniconexit0 -test.timeout=10m0s -test.count=1 
+mounts with U-disk/usb:
+/dev/sda1 /boot/efi vfat rw,relatime,fmask=0077,dmask=0077,codepage=437,iocharset=ascii,shortname=winnt,errors=remount-ro 0 0
+/dev/sdb1 /run/media/labeth/B71D-236F vfat rw,nosuid,nodev,relatime,uid=1000,gid=1000,fmask=0022,dmask=0022,codepage=437,iocharset=ascii,shortname=mixed,showexec,utf8,flush,errors=remount-ro 0 0
+==== startup.sh reached Thu Jul  2 03:48:07 PM CEST 2026 ====
+arg0=/home/labeth/ws/open-sds1000cml/ota/boot/startup.sh pid=608718 ppid=608060 uid=1000 cwd=/home/labeth/ws/open-sds1000cml/ota/boot selfdir=/home/labeth/ws/open-sds1000cml/ota/boot
+parent: boot.test cmdline: /tmp/go-build1310009932/b001/boot.test -test.paniconexit0 -test.timeout=10m0s -test.count=1 
+mounts with U-disk/usb:
+/dev/sda1 /boot/efi vfat rw,relatime,fmask=0077,dmask=0077,codepage=437,iocharset=ascii,shortname=winnt,errors=remount-ro 0 0
+/dev/sdb1 /run/media/labeth/B71D-236F vfat rw,nosuid,nodev,relatime,uid=1000,gid=1000,fmask=0022,dmask=0022,codepage=437,iocharset=ascii,shortname=mixed,showexec,utf8,flush,errors=remount-ro 0 0
+==== startup.sh reached Thu Jul  2 03:48:31 PM CEST 2026 ====
+arg0=/home/labeth/ws/open-sds1000cml/ota/boot/startup.sh pid=608922 ppid=608916 uid=1000 cwd=/home/labeth/ws/open-sds1000cml/ota/boot selfdir=/home/labeth/ws/open-sds1000cml/ota/boot
+parent: boot.test cmdline: /tmp/go-build304958487/b001/boot.test -test.paniconexit0 -test.timeout=10m0s -test.count=1 
+mounts with U-disk/usb:
+/dev/sda1 /boot/efi vfat rw,relatime,fmask=0077,dmask=0077,codepage=437,iocharset=ascii,shortname=winnt,errors=remount-ro 0 0
+/dev/sdb1 /run/media/labeth/B71D-236F vfat rw,nosuid,nodev,relatime,uid=1000,gid=1000,fmask=0022,dmask=0022,codepage=437,iocharset=ascii,shortname=mixed,showexec,utf8,flush,errors=remount-ro 0 0
+==== startup.sh reached Thu Jul  2 03:48:31 PM CEST 2026 ====
+arg0=/home/labeth/ws/open-sds1000cml/ota/boot/startup.sh pid=609060 ppid=608916 uid=1000 cwd=/home/labeth/ws/open-sds1000cml/ota/boot selfdir=/home/labeth/ws/open-sds1000cml/ota/boot
+parent: boot.test cmdline: /tmp/go-build304958487/b001/boot.test -test.paniconexit0 -test.timeout=10m0s -test.count=1 
+mounts with U-disk/usb:
+/dev/sda1 /boot/efi vfat rw,relatime,fmask=0077,dmask=0077,codepage=437,iocharset=ascii,shortname=winnt,errors=remount-ro 0 0
+/dev/sdb1 /run/media/labeth/B71D-236F vfat rw,nosuid,nodev,relatime,uid=1000,gid=1000,fmask=0022,dmask=0022,codepage=437,iocharset=ascii,shortname=mixed,showexec,utf8,flush,errors=remount-ro 0 0
+==== startup.sh reached Thu Jul  2 03:48:33 PM CEST 2026 ====
+arg0=/home/labeth/ws/open-sds1000cml/ota/boot/startup.sh pid=609175 ppid=608916 uid=1000 cwd=/home/labeth/ws/open-sds1000cml/ota/boot selfdir=/home/labeth/ws/open-sds1000cml/ota/boot
+parent: boot.test cmdline: /tmp/go-build304958487/b001/boot.test -test.paniconexit0 -test.timeout=10m0s -test.count=1 
+mounts with U-disk/usb:
+/dev/sda1 /boot/efi vfat rw,relatime,fmask=0077,dmask=0077,codepage=437,iocharset=ascii,shortname=winnt,errors=remount-ro 0 0
+/dev/sdb1 /run/media/labeth/B71D-236F vfat rw,nosuid,nodev,relatime,uid=1000,gid=1000,fmask=0022,dmask=0022,codepage=437,iocharset=ascii,shortname=mixed,showexec,utf8,flush,errors=remount-ro 0 0
+==== startup.sh reached Thu Jul  2 03:48:33 PM CEST 2026 ====
+arg0=/home/labeth/ws/open-sds1000cml/ota/boot/startup.sh pid=609299 ppid=608916 uid=1000 cwd=/home/labeth/ws/open-sds1000cml/ota/boot selfdir=/home/labeth/ws/open-sds1000cml/ota/boot
+parent: boot.test cmdline: /tmp/go-build304958487/b001/boot.test -test.paniconexit0 -test.timeout=10m0s -test.count=1 
+mounts with U-disk/usb:
+/dev/sda1 /boot/efi vfat rw,relatime,fmask=0077,dmask=0077,codepage=437,iocharset=ascii,shortname=winnt,errors=remount-ro 0 0
+/dev/sdb1 /run/media/labeth/B71D-236F vfat rw,nosuid,nodev,relatime,uid=1000,gid=1000,fmask=0022,dmask=0022,codepage=437,iocharset=ascii,shortname=mixed,showexec,utf8,flush,errors=remount-ro 0 0
+==== startup.sh reached Thu Jul  2 03:48:34 PM CEST 2026 ====
+arg0=/home/labeth/ws/open-sds1000cml/ota/boot/startup.sh pid=609467 ppid=608916 uid=1000 cwd=/home/labeth/ws/open-sds1000cml/ota/boot selfdir=/home/labeth/ws/open-sds1000cml/ota/boot
+parent: boot.test cmdline: /tmp/go-build304958487/b001/boot.test -test.paniconexit0 -test.timeout=10m0s -test.count=1 
+mounts with U-disk/usb:
+/dev/sda1 /boot/efi vfat rw,relatime,fmask=0077,dmask=0077,codepage=437,iocharset=ascii,shortname=winnt,errors=remount-ro 0 0
+/dev/sdb1 /run/media/labeth/B71D-236F vfat rw,nosuid,nodev,relatime,uid=1000,gid=1000,fmask=0022,dmask=0022,codepage=437,iocharset=ascii,shortname=mixed,showexec,utf8,flush,errors=remount-ro 0 0
+==== startup.sh reached Thu Jul  2 03:48:34 PM CEST 2026 ====
+arg0=/home/labeth/ws/open-sds1000cml/ota/boot/startup.sh pid=609631 ppid=608916 uid=1000 cwd=/home/labeth/ws/open-sds1000cml/ota/boot selfdir=/home/labeth/ws/open-sds1000cml/ota/boot
+parent: boot.test cmdline: /tmp/go-build304958487/b001/boot.test -test.paniconexit0 -test.timeout=10m0s -test.count=1 
+mounts with U-disk/usb:
+/dev/sda1 /boot/efi vfat rw,relatime,fmask=0077,dmask=0077,codepage=437,iocharset=ascii,shortname=winnt,errors=remount-ro 0 0
+/dev/sdb1 /run/media/labeth/B71D-236F vfat rw,nosuid,nodev,relatime,uid=1000,gid=1000,fmask=0022,dmask=0022,codepage=437,iocharset=ascii,shortname=mixed,showexec,utf8,flush,errors=remount-ro 0 0
