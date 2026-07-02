@@ -59,6 +59,9 @@ func main() {
 	case "power":
 		runPower(*shellyIP, rest)
 		return
+	case "shelly": // alias
+		runPower(*shellyIP, rest)
+		return
 	case "discover":
 		runDiscover(*natsURL, timeout)
 		return
@@ -199,8 +202,17 @@ func runServe(rest []string) {
 }
 
 func runPower(shellyIP string, rest []string) {
+	// Accept -shelly either before the subcommand (global) or after it (local
+	// flagset), so `otactl power -shelly <host> cycle` works as documented.
+	fs := flag.NewFlagSet("power", flag.ExitOnError)
+	local := fs.String("shelly", "", "Shelly plug host")
+	_ = fs.Parse(rest)
+	rest = fs.Args()
+	if *local != "" {
+		shellyIP = *local
+	}
 	if shellyIP == "" {
-		fatal(fmt.Errorf("power needs -shelly <host>"))
+		fatal(fmt.Errorf("power needs -shelly <host> (or -shelly before the subcommand, or OTA_SHELLY)"))
 	}
 	if len(rest) == 0 {
 		fatal(fmt.Errorf("power on|off|cycle|state"))
