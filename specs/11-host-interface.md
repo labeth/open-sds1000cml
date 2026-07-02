@@ -24,7 +24,7 @@ snapshot) and spec 10 (code↔volts) alongside this document.
 
 Both transports carry the **identical** SCPI request/response byte stream (§4); they differ only in the
 framing that delivers it. A command is one `\n`-terminated line; a response is the header-echoed value
-(§4.1) or an IEEE-488.2 definite-length binary block (§4.3/§4.4).
+(§3.1) or an IEEE-488.2 definite-length binary block (§4 waveform / §6 hardcopy).
 
 ### 1.1 USB-TMC device identity
 
@@ -118,7 +118,7 @@ bytes, then `0`-padding to the next multiple of 4.
 
 | Proc | Name | Arguments (XDR) | Results (XDR) |
 |---|---|---|---|
-| `10` | `create_link` | `int clientId; bool lockDevice; uint lock_timeout; string device` | `int error; uint lid; ushort abortPort; uint maxRecvSize` |
+| `10` | `create_link` | `int clientId; bool lockDevice; uint lock_timeout; string device` | `int error; uint lid; uint abortPort; uint maxRecvSize` (each field one 4-byte XDR word) |
 | `11` | `device_write` | `uint lid; uint io_timeout; uint lock_timeout; int flags; opaque data` | `int error; uint size` |
 | `12` | `device_read` | `uint lid; uint requestSize; uint io_timeout; uint lock_timeout; int flags; int termChar` | `int error; int reason; opaque data` |
 | `23` | `destroy_link` | `uint lid` | `int error` |
@@ -169,7 +169,7 @@ A query reply is `HEADER VALUE[UNIT]`, `\n`-terminated:
 - Channel-scoped commands are prefixed `Cn:` (`C1`, `C2`); global commands have no prefix.
 - The last `device_read` of a reply carries `reason = END (0x4)`.
 
-### 3.2 Confirmed query set
+### 3.2 Query set
 
 These queries and their exact reply formats are part of the interface contract:
 
@@ -222,7 +222,7 @@ byte count, then exactly that many payload bytes (the reply is then `\n`-termina
 block across multiple `device_read` calls until `reason = END`.
 
 - **`Cn:WF? DAT2`** — payload is the **raw 8-bit sample codes**, one byte per sample, **no descriptor**.
-  A full deep record is 20480 codes. Code → volts requires the WAVEDESC scaling (§5.2). The codes are the
+  A full deep record is 20480 codes. Code → volts requires the WAVEDESC scaling (§5.1). The codes are the
   same 8-bit ADC codes the acquisition engine drains (spec 03); `WFSU` (`SP`/`NP`/`FP`/`SN`) selects
   sparsing/point-count/first-point/segment before the transfer.
 - **`Cn:WF? DESC`** — payload is the **346-byte WAVEDESC** block (§5). Its length prefix is

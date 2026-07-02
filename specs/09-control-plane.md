@@ -328,9 +328,10 @@ C2: WriteRegCS(3, 0x11, code&0xff) ; WriteRegCS(3, 0x31, (code>>8)&0xff)
 ```
 Then re-assert the run word (`WriteReg(0x35, runWord)`, CS1) so the front-end change leaves the engine
 coherent. The offset DAC moves the captured window's DC centre; the renderer reflects it with no
-render-side change. Codes are clamped by the producer to the DAC's linear region (~9600–11600, ~10600
-centres). The offset shadow does not compare-on-change (§1.2), so an unchanged code re-runs this
-idempotent sequence — harmless.
+render-side change. Codes are clamped by the producer to the DAC's linear region (~9600–11600); the
+centre (0 V) code is the calibrated per-(channel, V/div) zero from cal record `+0x12` (spec 10 §7.4 /
+06 §5.2), with `~10600` only the uncalibrated fallback. The offset shadow does not compare-on-change
+(§1.2), so an unchanged code re-runs this idempotent sequence — harmless.
 
 ### 6.3 HW trigger level write + safe recommit
 

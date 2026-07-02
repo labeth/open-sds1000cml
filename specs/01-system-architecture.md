@@ -408,12 +408,23 @@ These are requirements. Each is why the design is shaped the way it is.
 
 ## 6. Open
 
-- **Kill-timing observation channel.** The idle-landing detection during takeover reads engine state
-  while the factory app is still alive; the exact status polled (`0x12`/`0x38`/`0x46`) and the guaranteed-
-  stoppable timebase depend on the factory app's dispatcher and are established in the acquisition spec, not
-  here.
-- **Coarse HW trigger source mux (CS1 `0x22`, byte `0x20200044`) code values** for C1/C2 are not pinned;
-  source selection is done in software downstream (spec 05). This does not affect the bus discipline.
+- **Kill-timing observation channel.** The idle landing is **manufactured, not caught**: the engine
+  never idles on its own in steady state (the FPGA "engine-idle" status bit `0x38` bit8 does not set
+  in a running steady state). Takeover drives the factory app to `STOP` at **any timebase below the
+  roll band (`TDIV < 100 ms/div`)**, which makes its dispatcher stop re-arming so the engine halts;
+  roll timebases (`TDIV ≥ 100 ms/div`) run continuously and do **not** halt under `STOP`, so a
+  non-roll timebase must be selected first. The **reliable halted signal is the fill counter `0x46`
+  frozen** (not a status bit) — confirmed alongside version `0x12 = 0x0052` and the held state
+  `0x38 ≈ 0x8a`. The factory app is stopped only once `0x46` is confirmed frozen. Reading engine
+  state while the factory app is still alive is done to avoid the single-outstanding-transaction bus
+  stall; the full FSM semantics of these registers are in spec 03. *(Source: acquisition spec 04 §5.4;
+  architecture-decision.)*
+- **Coarse HW trigger source mux (CS1 `0x22`, byte `0x20200044`; CH2 companion `0x42`, byte
+  `0x20200084`).** The value is masked `& 3` and encodes only **`0x03` = internal channel / `0x00` =
+  EXT** — it does **not** encode C1-vs-C2. Which internal channel is the trigger source is selected
+  **off the GPMC bus** in the SPI relay-word `byte2` low nibble (`0x70 | src<<2`) together with the
+  trigger level DAC; the software trigger path (spec 05) refines source/level downstream. This does
+  not affect the bus discipline. *(Source: acquisition spec 04 §13.7.)*
 - **Health re-write cadence / staleness threshold.** The ~500 ms re-write throttle and ~3 s agent
   staleness window in §4.2 are the required *shape* of the liveness contract; the exact numbers are a
   design parameter that must satisfy `staleness_window > max legitimate quiet interval > re-write

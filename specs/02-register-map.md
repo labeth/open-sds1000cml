@@ -125,15 +125,16 @@ All selectors below are on plane 1. `sel` is the register selector; access is io
 | `0x1a` | Divisor low | W | 16-bit low word | Decimation divisor low half (class-`0x80` sample interval = divisor·10 ns) |
 | `0x1b` | Divisor high | W | 16-bit high word | Decimation divisor high half; write `0` before writing `0x19`/`0x1a`, then the real high word |
 | `0x21` | **Arm / halt opcode** | W | see §4.1 | Acquisition FSM control: reset-head / go / capture-halt / latch-no-halt |
-| `0x22` | Trigger source mux | W | coarse (**Open**, §11) | Engine-safe coarse trigger-input source select (byte `0x20200044`, + `0x53` strobe); CONF_DONE-safe. C1/C2 code values not pinned; runtime source is a software channel-select (spec 05 §6) |
+| `0x22` | Trigger source mux (CH1) | W | `code & 3` | Engine-safe internal/EXT select, CH1: `0x03` = internal channel, `0x00` = EXT (EXT also sets `0x35` bit3). Byte `0x20200044`; commit strobe `0x53` = 1→0. CONF_DONE-safe; shifts the coarse trigger anchor. Does NOT distinguish C1-vs-C2 (both internal = `0x03`) — the source **channel** is the SPI relay-word byte2 (`0x70 \| src<<2`, off-bus, spec 06) + software (spec 05 §6) |
+| `0x42` | Trigger source mux (CH2) | W | `code & 3` | Per-channel int/EXT mux for CH2, same encoding as `0x22`; companion `0x43` |
 | `0x35` | **Run word** | W | `0x0001` / `0x0003` | Run mode: `0x0001` = free-run (AUTO), `0x0003` = armed (NORM). Re-asserted after any front-end change |
 | `0x36` | Reset | W | `0x0000` | Cleared during bring-up |
 | `0x38` | **Status B** | R | bitfield, see §3.2 | Native-fast done gate (bit5) + idle/hold state |
 | `0x39` | **Status A** | R | bitfield, see §3.1 | Primary acquisition status: capture DONE (bit2), trigger edge (bit1) |
 | `0x3a` | Trigger position low | R | low byte | HW trigger-position latch low byte (trustworthy ONLY at decimated/deep bands; see §3.3) |
 | `0x3b` | Trigger position high | R | high byte | HW trigger-position latch high byte; `trigPos = (0x3b << 8) | (0x3a & 0xff)` |
-| `0x3c` | Pre-trigger split low | W | low word | Pre-trigger record-depth split, low half (**Open**, see §11) |
-| `0x3d` | Pre-trigger split high | W | high word | Pre-trigger record-depth split, high half (**Open**, see §11) |
+| `0x3c` | Trigger delay/position low | W | `count & 0xff` | Trigger delay/position sample-count, low byte. Steady-loop value `0x02` (count word `0x0802`). One of the mode-multiplexed position alternates (`0x17/0x18`, `0x24/0x25`, `0x3e/0x58` carry the same value in other modes) |
+| `0x3d` | Trigger delay/position high | W | `(count >> 8) & 0xff` | Trigger delay/position sample-count, high byte. Steady-loop value `0x08`. `count = round(t/Tsample)/div` (`div = 2` at TB-idx `0x0b`, else `4`). On the single-owner capture-halt engine the edge lands mid-record regardless of this value (§11), so the firmware does not rely on it |
 | `0x44` | Reset-head strobe | W | `0x0001` then `0x0000` | Reset-head pulse issued first in the bring-up sequence |
 | `0x46` | Fill counter | R | 11-bit (`& 0x07ff`) | Samples written into the deep record since arm; used as the latch gate (`>= LatchAt`, default `0x0200`) and to confirm the halt froze the fill |
 | `0x57` | Write-pointer reset | W | `0x0001` then `0x0000` | Write-pointer reset pulse inside each arm; also phase-aligns the drain frame-to-frame |
