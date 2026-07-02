@@ -19,17 +19,29 @@ entire render. There is no second bus consumer to overlap that window.
 
 Two register planes are reached through the driver:
 
-- **CS1 (acquisition plane).** `WriteReg(sel, val)` / `ReadReg(sel)`. The driver maps the
-  *selector* (not the byte address) to `0x20200000 + sel·2` — it applies the `<<1` shift.
-  The FSM uses this plane for everything in the frame loop.
+- **CS1 (acquisition plane).** `WriteReg(sel, val)` / `ReadReg(sel)`. The FSM uses this
+  plane for everything in the frame loop.
 - **CS3 (config plane).** `WriteRegCS(plane=3, sel, val)`. Reaches the front-end command
   registers (LED latch, offset DAC, trigger-level DAC) through the config-plane ioctl.
   This capability is **optional**: if the driver does not expose it, all LED / offset-DAC /
   level-DAC writes are silently skipped and the inherited boot state is kept.
 
-A syscall-free mmap read path over the CS1 window is used for the sample drain (§6); it is
-`~50×` faster than the ioctl read and is safe **only** on ports frozen by a preceding
-`0x21=0xC8` halt.
+**ioctl ABI (`/dev/Gpmc`).** Request codes: read = `0x80026700`, write = `0x40026701`
+(read vs write is the *request code*, not a struct field). The argument is a 6-byte little-
+endian struct: `b0` = chip-select plane (`1`=CS1, `3`=CS3), `b1` = `0`, `b2` = `sel & 0xff`,
+`b3` = `sel >> 8`, `b4` = `val & 0xff`, `b5` = `val >> 8`. The **kernel** applies the `<<1`
+selector→word-address shift, so the selector is passed unshifted — do **not** pre-shift it.
+`WriteReg(sel,val)` == `WriteRegCS(1,sel,val)`; a CS3 selector landed on CS1 (or vice-versa)
+silently accesses the wrong register (a selector means different things per plane, §2).
+
+**mmap drain path.** A syscall-free mmap read over the CS1 physical window is used for the
+sample drain (§6); it is `~50×` faster than the ioctl read and is safe **only** on ports
+frozen by a preceding `0x21=0xC8` halt. The CS1 window physical base is **`0x01000000`**
+(*not* `0x20200000` — mapping there reads garbage), a 4096-byte window mapped from `/dev/mem`
+opened `O_RDWR | O_SYNC`. A register read is a **single aligned `uint16` load** at byte offset
+`sel << 1`; it must be one bus transaction (a `//go:noinline`, non-CSE'd load), because two
+byte loads would double-advance a sample port's read pointer. Addressing self-check: selector
+`0x12` (FPGA version) must read `0x0052`.
 
 ---
 
@@ -91,15 +103,35 @@ Each band is fully described by a `(class, lo, hi)` sample-clock divisor plus a 
 is a **required input** supplied to `Config` / `SetBand` / `SetTdiv` by the timebase module
 (§3.1). Given a band, the engine computes drain depth, display window, and frame path.
 
-Bands split into frame paths. This spec covers the **real-time** path (the core FSM);
-envelope/roll (`≥5 ms/div`) and equivalent-time (ETS, opt-in) are separate frame paths
-layered on the same owner and arena.
+Bands split into frame paths. This spec covers the **real-time** path (the core FSM). Two
+slow paths and one fast path are separate frame paths layered on the same owner and arena:
+
+- **envelope** (`5–50 ms/div`): a deep capture-drain reduced in software to a per-display-
+  column **MIN/MAX peak-detect band** (the solid rail-to-rail look). A band is solid+stable
+  only if each display column's samples scatter across a full signal period, so it uses a
+  **moderate phase-scatter divisor** targeting `~0.23 ms/sample` (≈0.23 period of a kHz-class
+  signal) — *not* dense sampling, which yields a thin, jittery band. Window `winCols =
+  10·TdivS / 0.23 ms` clamped to `[200, 2048]`; the divisor holds the span at `10·TdivS`. The
+  min/max is accumulated over a ring of ~24 recent free-run frames (each a random phase) and
+  binned to 800 display columns.
+- **roll** (`≥100 ms/div`): a **progressive** engine — arm **once** (`0x21=0xC3`), then per
+  update take a non-halting `0x21=0xCB` latch and read the live free-running roll ports
+  `0x41` (C1) / `0x59` (C2) by ioctl (which pops the FIFO) into a scrolling ring, reduced to
+  the same 800-column MIN/MAX band. **No** per-update re-arm and **no** `0xC8` halt (arming
+  freezes the free-run), so the update rate is not fill-bound where a full frame would be
+  seconds long. Reads are **paced** to the sample-clock interval (a phase-scatter divisor, not
+  the exact-period standard one) so each read pops a fresh phase.
+- **equivalent-time (ETS, opt-in)**: `≤50 ns/div`, AUTO only; interleaves many triggered
+  sub-acquisitions by measured sub-sample phase.
+
+The envelope/roll/ETS paths are specified in full in the slow-path and ETS frame-path specs.
 
 | path | timebase | class / divisor | done gate | drain depth |
 |---|---|---|---|---|
 | **native-fast** | ≤50 ns – 20 µs | `0x20` (all) · `0x01` (all) · `0x80` div ≤ 4 | **content only** (§6) — no status gate | `20480` (full deep record) |
-| **decimated** | 50 µs – 2 ms | `0x80` div ≥ 8 | `0x39` bit2 DONE **and** `0x46` ≥ `LatchAt` | configured `Cols` (≤ `20480`) |
-| envelope / roll | ≥ 5 ms | `0x80` moderate/large div | phase-independent | separate path |
+| **decimated** | 50 µs – 2 ms | `0x80` div ≥ 8 | `0x39` bit2 DONE **and** `0x46` ≥ `LatchAt` | configured `Cols` (default `2048`, clamped ≤ `20480`) |
+| **envelope** | 5 – 50 ms | `0x80` moderate (phase-scatter) div | phase-independent (no trigger) | deep min/max envelope path |
+| **roll** | ≥ 100 ms | `0x80` roll (phase-scatter) div | phase-independent (arm-once free-run) | progressive roll path |
 | ETS / RIS (opt-in) | any class-`0x20` band | `0x20` | `0x39` bit2 via the wait gate (§5) | modest deep record per sub-acquisition |
 
 `nativeFast(class, lo, hi)` is true for **every** class `0x20`, **every** class `0x01`, or
@@ -351,10 +383,51 @@ silently freezing the display. Do not do that.
 In NORM a quiet screen (no trigger) is a legitimate held display, never a random untriggered
 frame. Software-centring a comparator-locked NORM frame floors the cross-frame uniformity.
 
-Optional post-processing on the drained record, before publish: **ERES** boxcar low-pass
-applied to the whole record before edge detection; **AVERAGE** replaces a published,
-edge-aligned frame with the mean of the last N edge-aligned frames (only published coherent
-captures enter the average ring).
+Optional post-processing on the drained record, before publish. Both operate on **real
+captured samples** — no synthesis.
+
+- **ERES** (enhanced resolution): a symmetric, odd-length **boxcar moving average** of `L`
+  samples applied in place to the whole record (both channels), *before* edge detection so the
+  display and the trigger anchor see the enhanced samples. Window edges shrink the kernel to the
+  available samples (no wrap, no fabricated tail). `L` is derived from the enhancement-bits
+  setting `L = round(4^bits)` — `+0.5→2, +1.0→4, +1.5→8, +2.0→16, +2.5→32, +3.0→64` — clamped to
+  `[1, 64]` and forced odd (`L ≤ 1` disables). Noise σ falls `~√L`, adding `½·log₂L` bits.
+- **AVERAGE**: replaces a published, edge-aligned frame with the per-position **mean of the last
+  `N` edge-aligned frames**. `N` = `cfg.NumAverages` (set via `SetAvgCount`), default `16`, one
+  of the menu `{4, 16, 32, 64, 128, 256}`, clamped to `[1, 256]` (`N ≤ 1` disables). The average
+  ring holds `N` frames; only published coherent captures with a real edge (`EdgeX ≥ 0`) enter
+  it. Each frame is aligned so its crossing lands at the window centre before it is accumulated,
+  so the mean is coherent; a flat/held frame is not averaged in.
+
+### 7.5 Non-EDGE trigger qualifiers (PULSE / SLOPE / VIDEO)
+
+There are exactly four trigger **types**: EDGE, PULSE (glitch), SLOPE (slew), VIDEO (TV). EDGE
+uses `centerCross` + `windowSlopeMatches` (§7.2/§7.3). The other three run a **software
+qualifier** on the drained record: it inspects real captured samples and returns the sub-sample
+qualifying position (`xc`) or "no event" — a qualifying event publishes and anchors the frame;
+no event **HOLDS** the display (like NORM). All thresholds are fractions of the *frame's own*
+`[min, max]` span, so they are band- and V/div-independent; time/width windows are in nanoseconds
+converted to samples via the band sample interval. If the span is a flat rail (`< 40` codes) the
+qualifier returns no event (nothing to trigger on).
+
+- **SLOPE (slew).** Two threshold fractions `loFrac`/`hiFrac` (default `0.2`/`0.8`) and a
+  traversal-time window `[tMin, tMax]` with a condition (`any`/`less`/`greater`/`inside`, default
+  `any`). Rising = a monotone `lo→hi` traversal (falling = `hi→lo`). For each first-threshold
+  crossing, walk forward to the second-threshold crossing (bailing if the level reverses past the
+  first by more than `span/10`); the traversal time is `(secondCrossIdx − firstCrossIdx)`. Qualify
+  it against the window; among qualifying traversals pick the one whose second crossing is nearest
+  the frame centre; trigger at that **second-threshold** crossing (sub-sample interpolated).
+- **PULSE (glitch).** A level fraction (default `0.5`), a width window `[wMin, wMax]` and a
+  condition (default `any`); polarity `high` (default, positive pulse) vs `low`. Walk the record:
+  a `high` pulse enters on a rising crossing of the level and exits on the next falling crossing;
+  its width is `(exitIdx − enterIdx)`. Qualify the width; among qualifying pulses pick the one
+  whose completing edge is nearest the frame centre; trigger at that **completing** edge.
+- **VIDEO (TV).** Standard (PAL ≤625 lines / NTSC ≤525), line select (`0` = any line), sync
+  polarity (default negative). Sync-separate at a sync level `30 %` up from the sync tip (low rail
+  for negative sync, high rail for positive); collect the sync edges (crossings *into* the sync
+  region) as line boundaries. For line `N` (1-based, clamped to the standard's max) trigger at the
+  `N`-th sync edge; for any-line trigger at the sync edge nearest the frame centre. (Field/odd-even
+  discrimination needs a full-frame record and is not further specified here.)
 
 ---
 
@@ -470,8 +543,15 @@ advanced / flat frame), `FPS` (published frames/sec), `LastPtp`, `LastTrigPos`, 
 
 **Health / recovery requirements:**
 
-- The fd is anchored in the supervising agent; each app launch inherits it. A fresh `open()`
-  in the app is a hard fault — refuse to drive and report unhealthy, never re-open the driver.
+- The driver is `/dev/Gpmc` (misc device `10,63`) and is **single-open**: the boot firmware
+  opened it and passed the fd down the launch tree, so it is already open *and* chip-select-
+  initialised. Locate it by scanning `/proc/self/fd` for the readlink that resolves to
+  `/dev/Gpmc` and reuse **that fd number** (wrap it with `os.NewFile` — the *same* open file
+  description as the boot holder, **not** a `dup`), clearing the GC finalizer so it is never
+  auto-closed. **Never `Close()` it** (that closes the single-open fd for the whole process tree).
+  A fresh `open()` in the app is a hard fault — it hits the single-open `EPERM` guard, and even
+  if it opened it would wedge on the first read (missing the boot GPMC init). Refuse to drive and
+  report unhealthy; never re-open the driver.
 - A liveness token must be re-written **only** while frames genuinely advance (capture seq /
   `0x46` progressing), not merely "process alive"; report healthy only after several genuinely
   coherent frames, so a wedged boot is not rubber-stamped.
@@ -514,5 +594,15 @@ advanced / flat frame), `FPS` (published frames/sec), `LastPtp`, `LastTrigPos`, 
 
 **Open:** the tightest cross-frame uniformity at the sub-cycle native-fast bands (~1–2 codes)
 is a genuine ceiling of software centring on a short record; it does not affect correctness or
-liveness. Two-channel capture at native-fast timescales is not established with this register
-set (the fast path resolves a single muxed source).
+liveness.
+
+**Two-channel capture.** Every deep word carries **both** channels — hi byte = C1, lo byte =
+C2 — so two channels de-interleave from the one deep drain on every band, native-fast included;
+the producer fills `C2` only when the configured channel count is > 1. On the decimated bands
+(≥ 100 µs/div) C2 is a faithful independent channel (a quiet C2 reads flat, ptp ≤ 3, tracking a
+real second input regardless of C1). On the class-`0x20`/`0x01` fast classes the deep drain still
+yields both byte-lanes, but independent per-sample C2 fidelity is not guaranteed there, and the
+native-fast content discrimination (§6) is single-channel. The roll FIFO ports `0x41` (C1) /
+`0x59` (C2) are **not** two channels: both carry the same `0x22`-muxed source byte-replicated
+(hi == lo). The engine therefore uses the deep drain, not the roll ports, for native-fast. A
+combined roll-rate *and* dual-channel fast path is not achievable with this register set.

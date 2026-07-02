@@ -20,6 +20,23 @@ opened one. A fresh `open()` of `/dev/Gpmc` or `/dev/fpga_key` after inheritance
 mapping is opener-context dependent; spec 01). The owner therefore holds and reuses the inherited CS1/CS3
 descriptors for all of §5/§6, and the panel producer reuses the inherited `/dev/fpga_key` fd (spec 08).
 
+**Acquiring the inherited fd.** `/dev/Gpmc` is opened once by the boot firmware and the descriptor is
+passed down the process tree (startup shell → agent → app, all direct children), so it is already open
+**and** chip-select-initialised. The plane finds it by scanning `/proc/self/fd` for the descriptor whose
+`readlink` target equals `/dev/Gpmc` and reusing that descriptor number directly:
+
+```
+FindInheritedFD(path)  -> number of the /proc/self/fd entry whose readlink == path
+OpenInherited(path)    -> os.NewFile(uintptr(fd), path)   // wraps the NUMBER; does NOT dup
+                          runtime.SetFinalizer(f, nil)     // never auto-close the boot fd
+```
+
+`OpenInherited` wraps the same open file description as the boot holder, so **callers must NEVER
+`Close()` it** — closing it would close the single-open `/dev/Gpmc` for the whole process tree. The
+runtime finalizer is cleared so an accidental GC of the wrapper cannot close the boot fd either. A fresh
+`Open()` exists only as the sim/fallback path (it hits the single-open guard / lacks the boot chip-select
+init on the real unit). The `/dev/fpga_key` interrupt fd is acquired the same way (spec 08).
+
 ---
 
 ## 1. Model: stage, coalesce, apply at the boundary
@@ -49,8 +66,7 @@ invariant.
 
 ### 1.1 The register-access API
 
-The owner reaches the bus through two narrow interfaces (spec 01/02 give the concrete `/dev/Gpmc`
-driver behind them):
+The owner reaches the bus through two narrow interfaces:
 
 ```
 // CS1 acquisition plane. WriteReg/ReadReg operate on the CS1 window implicitly (no plane arg).
@@ -65,6 +81,26 @@ type regCS interface {
 }
 ```
 
+**Concrete `/dev/Gpmc` driver behind them.** Each access is one `ioctl` on the inherited fd with a
+6-byte little-endian struct:
+
+```
+struct = [ plane, 0, byte(sel), byte(sel>>8), byte(val), byte(val>>8) ]
+           b[0]   b1  b2         b3            b4          b5
+
+ioctl request codes:  read  = 0x80026700
+                      write = 0x40026701
+```
+
+- `b[0]` is the **chip-select plane**: `1` = CS1 (acquisition window), `3` = CS3 (config plane). The
+  kernel computes `index = b[0]-1` to pick the ioremap base. **`b[0]=0` is fatal** — `index` underflows,
+  the access hits a garbage base and **stalls the GPMC bus for seconds (power-cycle only)**. `b[1]` is 0.
+- The **selector** goes in bytes 2..3 **un-shifted** — the kernel shifts `<<1` to form the FPGA word
+  address, so callers must NOT pre-shift.
+- The 16-bit **value** is little-endian in bytes 4..5 (read returns it there too, decoded as
+  `b[4] | b[5]<<8`).
+- **Read vs write is the ioctl request code, not `b[0]`.** `WriteReg(sel,val) == WriteRegCS(1,sel,val)`
+  and `ReadReg(sel) == ReadRegCS(1,sel)`; the CS1 helpers are just the plane-1 case of the CS3 ones.
 - `sel` is the register **selector**, not the byte address (the driver shifts `<<1`).
 - The concrete driver implements both interfaces on the same inherited fd. A unit-test fake may
   implement only `Reg`. The owner detects the CS3 capability **once at construction** via a type
@@ -145,12 +181,30 @@ register write. Store them in atomics or under the command mutex and snapshot th
 
 The `cond` argument is `0`=any, `1`=less-than-min, `2`=greater-than-max, `3`=inside-[min,max]. Levels are
 fractions of each frame's own `[min,max]` span (band/gain-independent); times are nanoseconds, converted
-to samples via the band sample interval. The per-type discrimination algorithms (edge/slope/pulse/video
-qualifiers) that gate publish live in spec 05; this plane only stages their parameters and snapshots them
-per frame.
+to samples via the band sample interval. The trigger-type codes staged in `tp.typ` are
+`edge=0`, `pulse=1` (GLIT), `slope=2` (SLEW), `video=3` (TV).
+
+The per-type discrimination algorithms that gate publish live in spec 05; this plane only stages their
+parameters and snapshots them per frame. The publish gate at the frame boundary calls
+`qualifyTrigger(tp, sig, rising, intervalNs)`, which dispatches on `tp.typ` to the slope/pulse/video
+qualifiers and uses `spanLevels(sig, loFrac, hiFrac)` to turn the fraction parameters into absolute
+sample levels against the frame's own span; `defaultTrigParams()` supplies the boot defaults. The EDGE
+type does not go through `qualifyTrigger` — it uses the software edge anchor directly:
+`centerCross(disc, lvl, edge)` finds the crossing and `windowSlopeMatchesE(disc, xc, lvl, winCols, edge)`
+validates the slope direction, where `edge` is `+1` rising / `−1` falling from `trigRising`. Spec 05
+owns the qualifier bodies; this plane owns only the staging and these call sites.
 
 Changing the acq mode, average depth, or band **clears the average ring** so a new setting does not
 average across incompatible frames.
+
+**Defaults (engine construction).** Trigger slope = rising (`trigRising=true`); trigger source = C1
+(`trigSrc=0`); trigger type = EDGE; acq mode = NORMAL; average depth = **16** (the boot-firmware default;
+the menu is `{4,16,32,64,128,256}`); ERES length = **1** (off until selected). Run state = RUN
+(`running=true`); NORM/AUTO = AUTO. The per-type qualifier params default to: EDGE rising; SLOPE
+thresholds `loFrac=0.2`/`hiFrac=0.8`, traversal window `0`/`0` ns, `cond=any` (fires on the rise, any
+time); PULSE `lvlFrac=0.5`, width window `0`/`0` ns, `cond=any` (high pulse, any width); VIDEO standard
+PAL, line `0` (any), negative sync. The HW trigger-level shadow starts uninitialized — the inherited boot
+comparator is kept until the first `SetTrigLevel` (code `0` also means "keep boot comparator").
 
 ### 2.3 Analog front-end controls (direct, off-bus)
 
@@ -165,19 +219,53 @@ still serialize its own SPI writes, but they never contend with the GPMC bus.
 A timebase change is staged as a *pending band* and applied by the loop (not `serviceCommands`), because
 it re-runs the engine bring-up (divisor program + arm) and resets per-band state.
 
-**Band resolution (spec 04).** The seconds/division → band plan resolver lives in spec 04 and is used
-verbatim here. Its contract:
+**Band resolution.** The seconds/division → band plan resolver is:
 
 ```
 PlanTdiv(tdivS float64) (class, lo, hi uint16, envelope, ets, ok bool)
 ```
 
 returns the divisor triple plus the frame-path flags. `ok=false` means the timebase is not in the divisor
-table. The loop's frame-path switch (§4 / spec 03) consumes two predicates from the same source:
-`isEnvelopeTdiv(tdivS)` (≥5 ms/div → MIN/MAX envelope) and `isRollTdiv(tdivS)` (≥100 ms/div → free-run
-roll). ETS routing is opt-in only (`isETSTdiv` returns false); the ETS flag is set explicitly via
-`SetETS`. The exact divisor table and these predicates are owned by spec 04 — this plane treats
-`PlanTdiv`/`isEnvelopeTdiv`/`isRollTdiv` as its resolver boundary.
+table. It layers the envelope/ETS routing over the raw divisor lookup:
+
+1. If `isEnvelopeTdiv(tdivS)` (≥5 ms/div → MIN/MAX envelope), return the moderate/roll envelope divisor
+   with `envelope=true`.
+2. Otherwise look up the raw divisor `(class, lo, hi, ok)` in the table below (match within a small
+   relative tolerance, `|entry.tdivS − tdivS| ≤ entry.tdivS·1e-6`, so JSON float round-trips still hit
+   the row).
+3. If found and `isETSTdiv(tdivS)` (≤50 ns/div, opt-in), return that divisor with `ets=true`.
+4. Otherwise return the raw divisor with `envelope=false, ets=false`.
+
+The loop's frame-path switch (§4 / spec 03) also consumes `isRollTdiv(tdivS)` (≥100 ms/div → free-run
+roll). ETS is opt-in — `isETSTdiv` gates only whether the flag *may* be set; the flag is actually raised
+by `SetETS`.
+
+**The divisor table (`0x19` class, `0x1a` lo, `0x1b` hi; `0x36` stays 0 throughout).** Fast bands
+(1 ns–200 ns/div, including the 25 ns detent) use class `0x20`; 500 ns–1 µs use class `0x01`; ≥2 µs use
+class `0x80` with the decimation divisor in lo/hi (`div = lo | hi<<16`):
+
+| tdiv/div | class | lo | hi | | tdiv/div | class | lo | hi |
+|---|---|---|---|---|---|---|---|---|
+| 1 ns | 0x20 | 0x0000 | 0 | | 500 µs | 0x80 | 0x0050 | 0 |
+| 2 ns | 0x20 | 0x0000 | 0 | | 1 ms | 0x80 | 0x00c8 | 0 |
+| 5 ns | 0x20 | 0x0000 | 0 | | 2 ms | 0x80 | 0x0190 | 0 |
+| 10 ns | 0x20 | 0x0000 | 0 | | 5 ms | 0x80 | 0x0320 | 0 |
+| 25 ns | 0x20 | 0x0000 | 0 | | 10 ms | 0x80 | 0x07d0 | 0 |
+| 50 ns | 0x20 | 0x0000 | 0 | | 20 ms | 0x80 | 0x0fa0 | 0 |
+| 100 ns | 0x20 | 0x0000 | 0 | | 50 ms | 0x80 | 0x1f40 | 0 |
+| 200 ns | 0x20 | 0x0000 | 0 | | 100 ms | 0x80 | 0x4e20 | 0 |
+| 500 ns | 0x01 | 0x0000 | 0 | | 200 ms | 0x80 | 0x9c40 | 0 |
+| 1 µs | 0x01 | 0x0000 | 0 | | 500 ms | 0x80 | 0x3880 | 0x001 |
+| 2 µs | 0x80 | 0x0001 | 0 | | 1 s | 0x80 | 0x0640 | 0x003 |
+| 5 µs | 0x80 | 0x0001 | 0 | | 2 s | 0x80 | 0x1a80 | 0x006 |
+| 10 µs | 0x80 | 0x0001 | 0 | | 5 s | 0x80 | 0x3500 | 0x00c |
+| 20 µs | 0x80 | 0x0004 | 0 | | 10 s | 0x80 | 0x8480 | 0x01e |
+| 50 µs | 0x80 | 0x0008 | 0 | | 20 s | 0x80 | 0x0900 | 0x03d |
+| 100 µs | 0x80 | 0x0014 | 0 | | 50 s | 0x80 | 0x1200 | 0x07a |
+| 200 µs | 0x80 | 0x0028 | 0 | | | | | |
+
+The 2/5/10 µs steps share divisor 1 (they differ only in the displayed per-division derived from the
+record window). `SupportedTdivs` is this table's `tdivS` column ascending.
 
 **Staging.** `SetTdiv(tdivS)` calls `PlanTdiv`, stores the plan into the `pend*` fields under the band
 mutex, and sets `pendBand`; it returns the plan and `ok`. `SetBand(class, lo, hi, tdivS)` stages a raw
@@ -261,6 +349,39 @@ top applies it.
 `SetRunning` and the run/stop gate use an atomic bool so RUN/STOP is observed at the loop top without a
 mutex. `SetNorm` uses the command mutex because the loop reads `norm` together with the band fields.
 
+### 4.1 Run-loop integration (exact ordering)
+
+The single-owner FSM loop wires the above together in this fixed order per iteration; this is the
+concrete integration the §3.1/§3.2/§4/§6 invariants assume:
+
+```
+for !stopped:
+    serviceCommands()                       // §6 — FIRST, always (LED/offset/level/matrix at the boundary)
+    if !running:                            // STOP — services above still ran this iteration
+        sleep 50ms; continue                //        keep armed/alive, publish nothing
+    lock:
+        if pendBand:                         // §3 apply
+            wasEnv = cfg.Envelope
+            copy pend* into cfg; pendBand = false
+            recomputeBand(); resetUniformityLocked()
+            unlock
+            if wasEnv && !cfg.Envelope:      // leaving roll/env → real-time: drop latched free-run
+                WriteReg(0x21, 0xC0); WriteReg(0x21, 0xC0)   // head reset ×2
+            enableAndDivisor()               // §3 step 5
+            lock
+        unlock
+    if (runWord==NORM) != lastNorm:          // §4 mode change → re-run bring-up
+        resetUniformityLocked(); enableAndDivisor(); lastNorm = ...
+    publish = <frame path>()                 // nfProbe / probe / ETS / roll / envelope / oneFrame (§3/spec 03)
+    if publish: arena.Publish()
+```
+
+The long roll/envelope frame paths pump `serviceCommands` and poll the abort predicate from inside their
+read/fill loops (§3.1, §3.2): every ~16 reads/waits they call `serviceCommands()`, and every iteration
+they `if bandChangePending(): return false` to bail to the loop top. `bandChangePending()` is true when
+`stopped`, `!running`, or `pendBand` is set — the same predicate the loop top uses to hold STOP and apply
+a band change.
+
 ---
 
 ## 5. Key-matrix read path
@@ -300,11 +421,13 @@ roll/envelope loops (§3.2). All accesses use the inherited CS1/CS3 fds (§pream
 
 **CS3 config-port trap (load-bearing).** Only the enumerated CS3 config-plane offsets below —
 `0x09/0x0a/0x0b` (LED latch), `0x10/0x30/0x11/0x31` (offset DAC), `0x14/0x34/0x15/0x35` (trigger level
-DAC) — are written at runtime. The CS3 **config/nCONFIG strobe port must NEVER be written by the control
-plane.** Touching it re-initializes the FPGA and tears down the inherited bitstream, collapsing the
-engine to a black screen. The bring-up (`enableAndDivisor`, §3 step 5) deliberately writes **no** CS3
-level/mask/slope either, so the inherited boot comparator's done-gate keeps asserting. See the CS-plane
-address map in spec 01/04 for the exact config-port address.
+DAC) — are written at runtime. The CS3 **config/nCONFIG strobe port, GPMC absolute address
+`0x2010000e`, must NEVER be written by the control plane.** It is the passive-serial reconfiguration
+port: pulling nCONFIG low there re-initializes the FPGA and tears down the inherited bitstream,
+collapsing the engine to a black screen. None of the enumerated runtime offsets alias it (CS3 selector
+`0x07` is the read-only config-status / CONF_DONE port, `&0x80`). The bring-up (`enableAndDivisor`, §3
+step 5) deliberately writes **no** CS3 level/mask/slope either, so the inherited boot comparator's
+done-gate keeps asserting.
 
 ### 6.1 LED latch write
 

@@ -105,11 +105,11 @@ Per-channel control byte:
 | Bit | Meaning | Notes |
 |---|---|---|
 | 0 | Bandwidth limit | **1 = BWL OFF (full BW)**, 0 = 20 MHz limit engaged |
-| 1 | GND coupling select | **Inert on this clone** (relay coil unpopulated) — see §6 |
-| 2 | Coarse V/div range | **1 = attenuated/high range** (500 mV/div…5 V/div), 0 = sensitive/low range (2 mV/div…200 mV/div). HW-effective (§4). |
+| 1 | GND coupling select | **1 = GND** (AC baseline + bit 1, with bit 3 clear). Effective when the **absolute** word is emitted (CH1 byte `0x27`, word `0x70ad27`); an RMW that leaves bit 3 set is what makes GND look inert — see §6 |
+| 2 | Coarse V/div range | **1 = attenuated/high range** (500 mV/div…10 V/div), 0 = sensitive/low range (2 mV/div…200 mV/div). HW-effective (§4). |
 | 3 | DC coupling select | Selects the DC offset-cal entry, not a coupling cap — see §6 |
 | 5 | Constant enable | Always 1 |
-| 7 | CH2 base preload | The CH2 byte (byte1) has bit 7 set (base `0xA0`); the CH1 byte base is `0x20` |
+| 7 | CH2 channel-address bit | Set on the CH2 byte (byte1, base `0xA0` = bit7+bit5); clear on the CH1 byte (base `0x20`). It addresses the byte to the CH2 relay latch — **not** a coupling-relay polarity bit. |
 
 `byte2`: `trigCoupling` high nibble = `0x7` for DC; `trigSrc` = 0 (C1) / 1 (C2) / 2 (EXT). See §6
 and `05-triggering.md` for why the trigger-source nibble is not the runtime source selector on this
@@ -119,7 +119,10 @@ Reference words (DC, BWL off, both channels attenuated range): CH1 byte = `0x2d`
 `0x70ad2d`. CH1 bytes at 2 V/div: DC=`0x2d`, AC=`0x25`, GND=`0x27`, DC+BWL-on=`0x2c`, DC+sensitive-
 range=`0x29`.
 
-**Open:** the polarity/meaning of CH2 byte bit 7 beyond the `0xA0` base preload is not established.
+CH2 byte bit 7 is the **CH2 channel-address bit**: the CH1 byte carries bit 7 = 0 (base `0x20`) and
+the CH2 byte carries bit 7 = 1 (base `0xA0` = bit7+bit5). It selects which channel's relay latch the
+byte lands in; it is **not** a coupling-relay polarity bit. (CH1 byte `0x2d` → bit7=0 vs CH2 byte
+`0xad` → bit7=1, full DC word `0x70ad2d`.)
 
 ## 4. V/div gain ladder
 
@@ -135,7 +138,7 @@ the analog floor**. They drive the *same* finest analog code as 10 mV/div and ar
 
 ### 4.1 Detent table
 
-11 detents per channel. `bit2 = (idx >= 7)`. The fine gain-DAC code per detent is calibration
+12 detents per channel. `bit2 = (idx >= 7)`. The fine gain-DAC code per detent is calibration
 record `+0x00` (see `10-calibration.md`); the values below are the per-unit CH1 codes — CH2 shares
 the same code table.
 
@@ -152,6 +155,7 @@ the same code table.
 | 8 | 1 V | 1 | 57 | |
 | 9 | 2 V | 1 | 28 | |
 | 10 | 5 V | 1 | 11 | |
+| 11 | 10 V | 1 (attenuated) | 6 | top detent; codes/volt ≈ 7 |
 
 The inherited boot detent is **1 V/div (idx 8)**. At start-up, seed both channels' relay-range and
 gain shadows to the boot detent but do **not** emit — leave the inherited analog range untouched
@@ -221,6 +225,13 @@ register — the one vertical control on the GPMC bus.
 The DAC code is 16-bit. Write **low byte first, then high byte**; the high-byte write self-latches
 (there is no separate strobe). The transfer is **inverting**: a higher code produces a lower trace.
 
+**Plane-explicit rule + write primitive.** These selectors (`0x10`/`0x30`/`0x11`/`0x31`) **alias live
+acquisition ports on CS1**, so the CS3 plane MUST be forced explicitly on every offset write — a write
+that lands on the default/CS1 plane corrupts the acquisition engine instead of the offset DAC. Use a
+plane-explicit primitive `WriteRegCS(plane=3, sel, byte)`: low byte to `0x10` (CH1) / `0x11` (CH2)
+first, then high byte to `0x30` / `0x31` (self-latches). See `00-overview.md` for the GPMC/CS
+vocabulary.
+
 ### 5.2 Volts → code
 
 The offset DAC is **input-referred**: it injects a level shift *ahead of* the gain stage, so the
@@ -271,6 +282,15 @@ offset write on the owner is followed by a **trailing run-word re-assert**:
    `0x0003` armed/NORM). (This is CS1 `0x35`, the run word — **not** CS3 `0x35`, which is the
    trigger level lane-B high byte; different plane, do not conflate.)
 
+**Staging / flush mechanism (panel → engine hand-off).** The offset write must run on the single
+engine owner, never on the panel worker. Concrete mechanism: the owner exposes `SetOffsetDAC(ch,
+code)`, which stores the code into a per-channel pending shadow (`offCode[ch]` + `offDirty[ch]`) under
+a command mutex and returns immediately. At the top of each FSM iteration — the frame boundary, when
+the engine is armed+filling and **not** in a `0xC8` halt window — the owner's `serviceCommands()`
+drains the dirty shadows and calls `writeOffset`, which flushes low+high bytes (steps 1–2 above) then
+re-asserts the run word (step 3). This is the only place a panel/offset GPMC access happens, which
+preserves the single-owner discipline.
+
 **Trap — offset-only changes must not re-emit gain.** The offset DAC and the SPI gain path are
 independent. A control flush that re-emits the gain/relay word on an offset-only change will re-send
 a stale/unseeded gain code (code 0), collapse the analog gain, and leave the offset with no signal
@@ -282,29 +302,48 @@ an offset-only change writes only the offset DAC + run-word re-assert.
 The relay word carries per-channel coupling bits, but their electrical effect on this clone is
 limited. Program them for parity, but do not assume hardware AC/GND behaviour:
 
-- **DC coupling (bit 3):** set for DC. It is not a coupling capacitor; it selects a different
-  offset-DAC calibration entry (the AC↔DC baseline differs by ~36 codes because the firmware loads a
-  different offset-cal value per coupling state).
+- **DC coupling (bit 3):** set for DC. Coupling selection rides byte 0: **bit 3 = DC** (`0x2d`),
+  **bit 1 = GND** (`0x27`), both clear = AC (`0x25`). It is not just a coupling capacitor select; it
+  also selects a different offset-DAC calibration entry (the AC↔DC baseline differs by ~36 codes
+  because the firmware loads a different offset-cal value per coupling state).
+- **Coupling companion (CS3 config-plane write).** On any **coupling** change the front-end assembler
+  emits a companion 16-bit preset over the CS3 config plane **alongside** the relay word (this is a
+  coupling companion, **not** a BWL write). Per channel it is split low/high **`0x40` apart** (not
+  adjacent): CH1 = low selector `0x12` (`0x20100024`) + high selector `0x32` (`0x20100064`); CH2 =
+  low selector `0x13` (`0x20100026`) + high selector `0x33` (`0x20100066`). The 16-bit value encodes
+  the coupling sense: **`0xb851` = DC** (captured `0x12`=`0x51`, `0x32`=`0xb8`), `0xced9` = the
+  non-DC (AC/GND) sense. A factory-firmware-parity coupling change emits relay byte 0 (bit 3 / bit 1) **and**
+  this companion pair. **Open:** which of AC vs GND maps to `0xced9` is not separately captured (only
+  the DC value `0xb851` is observed on the bus); treat `0xced9` as "the non-DC sense".
 - **AC coupling (bit 1 cleared / bit 3 cleared):** there is **no hardware high-pass** engaged on
   this clone. If AC (DC-blocking) behaviour is required, it must be a **software** DC-removal filter
   on the captured samples.
-- **GND coupling (bit 1):** the GND relay bit is **electrically inert** (the relay coil is most
-  likely unpopulated). There is also no digital channel-ground anywhere in the GPMC plane: the
-  PLANE-A mux (CS1 `0x22`, values 0–3) does **not** zero the ADC (that register is the engine-safe
-  trigger-input mux, not a channel ground). A GND display (flat zero trace) must therefore be done
-  in **software** (render a flat baseline / suppress the channel).
-- **Bandwidth limit (bit 0):** drives the BWL relay (1 = full BW, 0 = 20 MHz limit).
+- **GND coupling (bit 1):** the GND relay is **populated and effective** when the **absolute** relay
+  word is emitted — GND = the AC baseline **with bit 1 set and bit 3 clear** (CH1 byte `0x27`, full
+  word `0x70ad27`), and the live ADC then reads a third distinct code band (DC / GND / AC give three
+  separate code clusters). The earlier "inert / unpopulated" verdict was a **read-modify-write
+  artifact** that left bit 3 set alongside bit 1; always emit the absolute word, never RMW. (There is
+  separately no digital channel-ground in the GPMC plane: the PLANE-A mux CS1 `0x22`, values 0–3,
+  does **not** zero the ADC — it is the engine-safe trigger-input mux, not a channel ground. A pure
+  software GND display remains a valid fallback, but the relay bit itself works.)
+- **Bandwidth limit (bit 0):** drives the BWL relay (1 = full BW / OFF, 0 = 20 MHz limit / ON), and
+  is the **only** register it writes — the BWL handler has no direct FPGA/CS3 writer of its own.
+  Toggling `C1:BWL ON`↔`OFF` flips CH1 byte 0 `0x2c`↔`0x2d`. BWL can also re-trim the V/div gain (the
+  firmware re-runs the V/div gain apply on a BWL change via the force-BWL-on-by-V/div path), so
+  re-emit the gain ladder after a BWL toggle.
 
-**Open:** the on-clone electrical effectiveness of the BWL relay (bit 0) is not established. It may
-require a companion PLANE-B write; treat BWL as best-effort until validated.
+**Open:** the on-clone *electrical* effectiveness of the BWL relay (whether the 20 MHz roll-off is
+physically present on this clone) is not measured — only the relay-bit write (byte 0 bit 0) is
+established. Treat the analog roll-off as best-effort until validated; if a hard 20 MHz limit is
+required, apply a software low-pass as a fallback.
 
 ## 7. Load-bearing constraints
 
 - **SPI front end is direct; offset DAC is not.** The relay word and gain DAC are off the GPMC bus,
   so the panel worker drives them directly. The offset DAC is a CS3 GPMC register: stage it as a
-  command and let the single engine owner flush it at a frame boundary (never during a capture-halt
-  window, never from the panel worker). A second consumer touching GPMC during a halt black-screens
-  the instrument.
+  command (`SetOffsetDAC` → pending shadow) and let the single engine owner flush it at a frame
+  boundary via `serviceCommands()` → `writeOffset` (never during a capture-halt window, never from the
+  panel worker — see §5.3). A second consumer touching GPMC during a halt black-screens the instrument.
 - **Never write GPMC `0x2010000e`.** That config port (not SPI) is what arms an FPGA reconfigure.
   The gain path imports no GPMC dependency by construction; keep it that way.
 - **Use write-direction SPI ioctls.** Configure both SPI fds with the `_IOW` (`0x40…`) request codes

@@ -38,6 +38,11 @@ different things on different planes, and a write aimed at the wrong plane silen
 | **CS1** | acquisition / read plane: arm, divisor, status, fill counter, sample drain ports, key-matrix read, trigger source mux | `0x01000000` | arm `0x21`, source mux `0x22`, run-word `0x35`, reset-head `0x44`, divisor `0x19/0x1a/0x1b`, write-ptr `0x57`, status `0x39`, trig-pos `0x3a/0x3b`, fill `0x46`, version `0x12`, deep drain `0x30–0x34`, roll FIFO `0x41/0x59`, matrix `0x64–0x69` |
 | **CS3** | config / control plane: vertical offset DAC, trigger level DAC, panel-LED latch, config-status | `0x03000000` | offset DAC `0x10/0x30` (CH1) `0x11/0x31` (CH2), trigger level DAC `0x14/0x34` (lane A) `0x15/0x35` (lane B), LED latch `0x09/0x0a/0x0b`, config-status `0x07` |
 
+**Creating the mmap window.** Open `/dev/mem` with `O_RDWR|O_SYNC` and `mmap` a **4 KB (4096-byte),
+page-aligned** window at the plane's physical base (`PROT_READ|PROT_WRITE`, `MAP_SHARED`). The base
+must be page-aligned; the 4 KB window covers the whole selector range. Reads are single aligned
+`uint16` loads into that window (§1.2); the driver does no scaling on this path.
+
 **Register width and addressing.** Every FPGA register is **16-bit**. A register selector `sel`
 addresses the 16-bit word at **byte offset `sel<<1`** in its chip-select window (equivalently:
 `uint16`-array index `sel`).
@@ -191,8 +196,12 @@ follow §3.1 and to make the loop run at all:
 | status `0x39` | CS1 | bit1 (`0x02`) trig edge seen, bit2 (`0x04`) capture done |
 | fill `0x46` | CS1 | 11-bit sample-write counter (mask `0x07ff`) |
 
-The arm sequence is `0x21=0xC0` (×2) → `0x57` pulse → arm-settle → `0x21=0xC3`. See spec 03 for the
-AUTO/NORM publish policy, the fill latch target, ETS/roll/envelope variants, and settle timings.
+The per-frame arm sequence is `0x21=0xC0` (reset-head) → `0x57` pulse (`0x0001`→`0x0000`) →
+`0x21=0xC3` (go). The "settle" before the capture-halt `0x21=0xC8` is a **register read/poll barrier,
+not a timed sleep** — read `0x39`, write `0x00=0x0000`, read status `0x38` for the idle `0x00ba`
+signature — so there is no fixed settle delay to specify. (The boot firmware's one-time *startup* arm
+writes `0xC0` twice; the per-frame handshake writes it once.) See spec 03 for the AUTO/NORM publish
+policy, the fill latch target, and the ETS/roll/envelope variants.
 
 ### 3.1 Why this makes the capture-halt safe
 
@@ -279,12 +288,30 @@ The OTA agent supervises the app. It launches the app slot, watches a **health s
 back on failure. Two slots exist (A/B) plus a known-good emergency binary for crash-loop safety. The
 agent — not the app — owns the fds and the hardware watchdog.
 
+**The hardware watchdog contract.** The SoC (AM335x) has a **~60 s hardware watchdog** at
+`/dev/watchdog` that the boot firmware normally services. Once the factory app is killed at takeover,
+nothing pets it, and the SoC warm-resets in ~60 s — which drops the USB hotplug and loses the
+telnet/OTA path until a physical stick re-seat or power-cycle. Therefore the **agent** (the
+rarely-changed trusted base, not the supervised app) owns it for the device's whole life:
+
+1. Right after the factory kill, the agent opens `/dev/watchdog` with `O_RDWR`, **retrying briefly**
+   (~3 s) while the factory app's inherited fd drains, and pets once on acquire so the countdown is
+   fresh.
+2. It **pets** on a fixed interval (well under 60 s) independent of the app: `write("\x01")` **plus**
+   `ioctl(WDIOC_KEEPALIVE = 0x80045705)` (belt-and-suspenders across driver variants; the write is
+   the primary keepalive).
+3. On a clean agent stop it writes the **magic byte `'V'`** before `close()` so the driver disarms
+   instead of resetting.
+
+Because the agent (not the app) pets, a crashing app, a bad OTA push, or an app stuck in D-state
+cannot reset the device: telnet/OTA stay up and rollback proceeds.
+
 ### 4.2 The health signal
 
 Health is reported by the app writing/updating a **health file** at `OTA_HEALTH_PATH` (§2.3) that the
 agent watches. **The health signal must not be a proxy for process-alive.** A wedged-but-running
-process that never advances a frame is invisible to an exit-shaped rollback, and on this unit `reboot`
-is effectively a no-op — an undetected wedge means a physical power-cycle. The signal therefore encodes
+process that never advances a frame is invisible to an exit-shaped rollback, and on this hardware
+`reboot` is effectively a no-op — an undetected wedge means a physical power-cycle. The signal therefore encodes
 *frame-advance liveness*, in three requirements:
 
 1. **First report is gated on genuine capture.** Report healthy only after **N genuinely-advancing
@@ -404,27 +431,33 @@ These are requirements. Each is why the design is shaped the way it is.
 16. **The spidev analog front end is off the GPMC bus** and is driven directly by producers. Do not
     route it through the owner; do not treat it as a GPMC access.
 
+17. **Pet the ~60 s hardware watchdog for the device's whole life** (see §4.1). After the factory kill
+    nothing services `/dev/watchdog`; failing to pet warm-resets the SoC in ~60 s and loses the
+    USB-hotplug telnet/OTA path (physical re-seat/power-cycle to recover). The **agent**, not the app,
+    holds and pets it, so an app crash or bad OTA cannot reset the device. Disarm with magic `'V'`
+    only on a clean stop.
+
 ---
 
 ## 6. Open
 
 - **Kill-timing observation channel.** The idle landing is **manufactured, not caught**: the engine
   never idles on its own in steady state (the FPGA "engine-idle" status bit `0x38` bit8 does not set
-  in a running steady state). Takeover drives the factory app to `STOP` at **any timebase below the
-  roll band (`TDIV < 100 ms/div`)**, which makes its dispatcher stop re-arming so the engine halts;
-  roll timebases (`TDIV ≥ 100 ms/div`) run continuously and do **not** halt under `STOP`, so a
-  non-roll timebase must be selected first. The **reliable halted signal is the fill counter `0x46`
-  frozen** (not a status bit) — confirmed alongside version `0x12 = 0x0052` and the held state
-  `0x38 ≈ 0x8a`. The factory app is stopped only once `0x46` is confirmed frozen. Reading engine
-  state while the factory app is still alive is done to avoid the single-outstanding-transaction bus
-  stall; the full FSM semantics of these registers are in spec 03. *(Source: acquisition spec 04 §5.4;
-  architecture-decision.)*
+  in a running steady state). Takeover drives the factory app to `STOP`, which makes its dispatcher
+  stop re-arming (`0x21=0xC8` latch+halt) so the engine halts. **`STOP` halts the engine at every
+  timebase, including the roll band (`TDIV ≥ 100 ms/div`)** — no pre-selection of a non-roll timebase
+  is needed (the "continuous roll can't freeze" behaviour is the *running* engine, not `STOP`). The
+  **reliable halted signal is the fill counter `0x46` frozen** across two reads (not a status bit),
+  gated together with version `0x12 = 0x0052`; the held state also shows `0x38 ≈ 0x8a`. The factory
+  app is stopped only once `0x12 = 0x0052` **and** `0x46` is confirmed frozen. Reading engine state
+  while the factory app is still alive is done to avoid the single-outstanding-transaction bus stall;
+  the full FSM semantics of these registers are in spec 03.
 - **Coarse HW trigger source mux (CS1 `0x22`, byte `0x20200044`; CH2 companion `0x42`, byte
   `0x20200084`).** The value is masked `& 3` and encodes only **`0x03` = internal channel / `0x00` =
   EXT** — it does **not** encode C1-vs-C2. Which internal channel is the trigger source is selected
   **off the GPMC bus** in the SPI relay-word `byte2` low nibble (`0x70 | src<<2`) together with the
   trigger level DAC; the software trigger path (spec 05) refines source/level downstream. This does
-  not affect the bus discipline. *(Source: acquisition spec 04 §13.7.)*
+  not affect the bus discipline.
 - **Health re-write cadence / staleness threshold.** The ~500 ms re-write throttle and ~3 s agent
   staleness window in §4.2 are the required *shape* of the liveness contract; the exact numbers are a
   design parameter that must satisfy `staleness_window > max legitimate quiet interval > re-write

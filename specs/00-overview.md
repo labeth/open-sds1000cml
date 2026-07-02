@@ -29,7 +29,8 @@ Fixed identity/interface facts:
 
 ## 2. Compute + acquisition hardware
 
-The instrument is an ARM SoC (DaVinci-class, ARMv5/v7 userspace) paired with an **FPGA** that contains
+The instrument is a **TI AM335x SoC** (Sitara, Cortex-A8, ARMv7; the `da8xx_fb` framebuffer driver is
+a reused legacy driver name, not the SoC family) paired with an **FPGA** that contains
 the acquisition engine (sample clock/divisor, trigger comparator, capture FSM, deep sample memory, and
 a roll FIFO). The FPGA is loaded with a fixed bitstream at boot and is **not reconfigured at runtime**.
 
@@ -150,28 +151,33 @@ These shape the entire design; they are requirements, not advice:
 - **arm FSM** — the FPGA capture state machine driven by writes to CS1 `0x21`: `0xC0` = clear/disarm +
   reset head, `0xC3` = arm/fire, `0xC8` = latch + **halt** + reset read pointer, `0xCB` = latch without
   halt.
-- **done-gate** — the status condition that signals a capture is complete before draining. **All bands
-  poll CS1 `0x39`** (bit1 `0x02` = comparator/trig edge, bit2 `0x04` = capture DONE) plus the `0x46`
-  fill counter reaching the band's latch target. The done-gate is NOT band-differentiated; `0x38` is
-  not read on the acquisition path. Reading samples before the done-gate/fill condition asserts hangs
-  the bus. **Native-fast bands additionally do not rely on the status gate to select a trigger:** at
-  those bands `0x39` bit2 asserts on the untriggered free-run fill too, so a captured frame is accepted
-  or held by **post-halt content discrimination** (edge peak-to-peak + slope on the drained samples),
-  not by the status register.
+- **done-gate** — the status condition that signals a capture is complete before draining. It **is
+  band-differentiated**. **Decimated bands** gate on CS1 `0x39` bit2 (`0x04` = capture DONE) **and** the
+  `0x46` fill counter reaching the band's latch target (`LatchAt`); bit2 can assert on the comparator
+  edge (`0x39` bit1 `0x02`) before the post-trigger record has filled, so both conditions are required.
+  **Native-fast bands use NO status gate at all:** `0x39` bit2 does not reliably assert for a real
+  fast-band edge, so the frame always proceeds to halt+drain and is accepted or held by **post-halt
+  content discrimination** (edge peak-to-peak + slope on the drained samples), not by the status
+  register. **Roll** uses no done-gate (the engine free-runs). `0x38` is not read on the acquisition
+  path by the shipping FSM. Reading samples before the applicable gate/fill condition asserts hangs the
+  bus.
 - **capture-halt** — writing `0x21=0xC8` to latch the captured record and **halt** the engine so the
   frozen frame can be drained coherently, then immediately re-arming. The alternative `0xCB` latches
   without halting (engine keeps clocking) and yields a random-phase snapshot.
 - **drain** — reading the captured samples out of the FPGA. The **deep** drain (CS1 `0x30–0x34`, mmap,
-  auto-incrementing) reads the frozen `0xC8`-halt record and is used at **both** the native-fast bands
-  (100 ns–20 µs) and the decimated bands (50 µs–2 ms). The **roll FIFO** (`0x41` = C1, `0x59` = C2,
+  auto-incrementing) reads the frozen `0xC8`-halt record and is used at the native-fast bands
+  (≤50 ns–20 µs), the decimated bands (50 µs–2 ms), and the slow envelope bands (5 ms–<100 ms). The
+  **roll FIFO** (`0x41` = C1, `0x59` = C2,
   ioctl-only, advances one sample per read) is drained **only at the roll band (≥100 ms/div)**, where
   the engine free-runs and is never armed.
 - **band class** — the timebase-dependent acquisition regime, set by CS1 `0x19` (class) + `0x1a/0x1b`
   (sample-clock divisor). Class `0x20` = 500 MSa/s (≤200 ns/div), class `0x01` = 250 MSa/s
   (500 ns–1 µs/div), class `0x80` = divisor-selected (native-fast at divisor ≤4 = 2–20 µs, decimated at
-  divisor ≥8 = ≥50 µs). See `04-timebase-and-bands.md` for the full ns/div → (class, divisor, rate,
+  divisor ≥8 = ≥50 µs). Class `0x20` (≤200 ns/div) covers the whole sub-100 ns detent range down to the
+  fastest ≤50 ns detent. See `04-timebase-and-bands.md` for the full ns/div → (class, divisor, rate,
   depth, drain path) table.
-- **fast native band** — 100 ns–20 µs/div: real-time capture via the deep capture-halt (`0x21=0xC8`),
+- **fast native band** — ≤50 ns–20 µs/div (class `0x20`/`0x01`, and class `0x80` divisor ≤4, spanning
+  the sub-100 ns detents): real-time capture via the deep capture-halt (`0x21=0xC8`),
   drained from the deep record memory `0x30–0x34` (the full 20480-sample record — the triggered edge
   lands deep in the record, so a shallow read grabs only flat pre-trigger rail), followed by software
   edge-catch / content-discriminate / hold / centre-zoom. Uses the same deep-drain port as the
@@ -197,3 +203,45 @@ These shape the entire design; they are requirements, not advice:
 - **frame arena** — the fixed set of round-robin frame buffers the engine owner drains into and the
   renderer consumes; the engine publishes a frozen `(generation, index)` atomically and the renderer
   never blocks the producer.
+- **DAC** — the FPGA CS3-plane digital-to-analog converters written as part of runtime control: the
+  trigger-level DAC (`0x14/0x34`, mirror `0x15/0x35`) and the per-channel vertical-offset/position DAC
+  (`0x10/0x30`). Volts→code transfer formats are in `02-register-map.md`.
+- **run word** — CS1 `0x35`: the hardware arm/sweep-mode word, `0x0001` = free-run (AUTO), `0x0003` =
+  armed (NORM/SINGLE). Distinct from the `0x21` arm-FSM pulse; set once per mode change, not per frame.
+- **RUN / STOP** — the software run-state policy layered over the arm FSM (`SetRunning`): RUN
+  continuously re-arms / free-runs; STOP stops re-arming and holds the last published frame. Not a
+  dedicated engine register — composed by the producer loop. See `09-control-plane.md`.
+- **AUTO / NORM / SINGLE** — trigger sweep modes, each a run-word setting plus a software publish
+  policy: AUTO (run word `0x0001`, free-run) publishes every coherent frame; NORM (run word `0x0003`,
+  armed) publishes only qualified/triggered frames and otherwise HOLDs the last good frame; SINGLE is
+  armed exactly like NORM (run word `0x0003`) and holds the display. There is no hardware one-shot
+  latch; auto-STOP-after-the-first-qualified-frame is a software-only policy and is **not implemented**
+  in the current surface (`05-triggering.md` §3). See `05-triggering.md`.
+- **recommit sequence** — the safety-critical trigger-level write path: the level-DAC quad write
+  followed by the engine's normal re-arm (`0x21=0xC0` / `0x57` pulse / settle / `0x21=0xC3`), issued
+  **only at the bus-idle Arm boundary from the single bus owner**. A bare level-DAC write without the
+  recommit wedges the engine (black LCD). See `05-triggering.md`.
+- **holdoff** — the minimum re-arm spacing between accepted triggers. There is **no FPGA holdoff
+  register**; it is realised as software re-arm timing in the producer loop. See `05-triggering.md`.
+- **control plane** — the staged-command layer: every non-owner control change (timebase, vertical,
+  trigger, run/stop, acquisition mode) is coalesced into a command struct that the single engine owner
+  applies at a frame boundary, never touching GPMC from the caller's context. See `09-control-plane.md`.
+- **SIGIO** — the asynchronous-I/O signal the kernel raises on the inherited `/dev/fpga_key` fd when a
+  front-panel key or knob event occurs; the handler then reads the key matrix / encoder state from CS1
+  (`0x64–0x69`). The fd is `F_SETOWN`+`O_ASYNC` per-fd and must be the inherited one, never fresh-opened.
+  See `08-front-panel.md`.
+- **VXI-11** — the LAN instrument protocol: ONC/Sun RPC over TCP, reached via the portmapper (port 111)
+  which resolves the `DEVICE_CORE` program to its port; carries the SCPI command/query stream and
+  waveform transfers (maxRecvSize `0x800000`). There is no raw-socket SCPI port. See `11-host-interface.md`.
+- **USB-TMC** — USB Test & Measurement Class device port (VID `0xF4EC` / PID `0xEE3A`); the alternate
+  host transport for the same SCPI command/query and waveform stream. See `11-host-interface.md`.
+- **SCPI** — the ASCII instrument command/query language served over VXI-11 and USB-TMC, here in the
+  LeCroy short-form dialect (e.g. `C1:VDIV`, `TDIV`, `WF?`). See `11-host-interface.md`.
+- **WAVEDESC** — the 346-byte little-endian binary waveform descriptor returned by `WF? DESC`, carrying
+  `VERTICAL_GAIN` / `VERTICAL_OFFSET` (`V = code·VERTICAL_GAIN − VERTICAL_OFFSET`), `WAVE_ARRAY_COUNT`
+  (= 20480), and the timebase/trigger fields. See `11-host-interface.md`.
+- **RGB565** — the 16-bit framebuffer pixel format (R[15:11], G[10:5], B[4:0]) of `/dev/fb0`; the
+  display is double-buffered via `da8xx_fb` (yvirtual 960 = 2×480). See `07-display-and-rendering.md`.
+- **OTA** — the update/supervisor mechanism that loads and rolls back the firmware image (USB-stick
+  delivery, md5 verify, crash-loop rollback); the engine's coherent-frame health feeds its rollback
+  contract. See `01-system-architecture.md`.

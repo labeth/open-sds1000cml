@@ -42,8 +42,8 @@ Class `0x02` exists in the FPGA but is never used and must not be programmed.
 1 GSa/s figure is a marketing max, not the per-band record density: the captured fast-band
 record is 2 ns/sample. Do not attempt to double the fast-band capture rate; no reachable
 register produces a denser record. (The display *window* is sized at a 1 ns/sample nominal —
-see §6 — purely so the on-screen span matches the reference; the captured samples remain 2 ns
-apart.)
+see §6 — so 10 divisions occupy the full screen width at the labelled tdiv; the captured
+samples remain 2 ns apart.)
 
 **The class-`0x80` deep sample interval is `divisor × 10 ns` (100 MSa/s base).** This is the
 per-sample spacing of the captured deep record and is the ONLY clock period that sizes the deep
@@ -114,6 +114,14 @@ several bands, the *displayed* seconds/division of a `cols`-sample record is
 UI as the displayed per-div so "set tdiv" equals the on-screen time/div while the HW divisor
 stays the faithful one.
 
+**Note (envelope/roll bands, tdiv ≥ 5 ms):** the divisor columns in the rows for
+tdiv ≥ 5 ms are the *faithful nominal* divisor only — they are **not** the divisor actually
+programmed. The slow-envelope band (5–50 ms) recomputes a phase-scatter divisor targeting
+`envIntervalS` (§5.1; e.g. ~0.23 ms/sample, not the table's `divisor × 10 ns`), and the roll
+band (≥ 100 ms) programs the fixed `rollDivisor = 7400` (§5.2), not the table divisor.
+Programming the table divisor for these rows yields a thin/wandering band (the failure §5.1
+warns against). Use §5.1/§5.2 for what is written at tdiv ≥ 5 ms.
+
 ---
 
 ## 3. Band classes and routing
@@ -153,7 +161,12 @@ Because ETS is off by default, the 1–50 ns detents take the native-fast catch+
 The **capture record** is the physical FPGA sample buffer drained after a `0x21=0xC8`
 capture-halt. Its physical depth is **≥ 20480 samples**; there is no 2048 ceiling. It drains
 coherently (a real captured waveform) to ~20480 samples, then reads a flat dead tail. Drain
-from ports `0x30–0x34` (mmap, hi byte = C1, lo byte = C2).
+from ports `0x30–0x34` (mmap, see §10.1). Each drained 16-bit word is **hi byte = C1, lo byte =
+C2**; samples are **8-bit UNSIGNED codes** (`COMM_TYPE = 0`; the remote `C1:WF? DAT2` payload is
+raw 8-bit codes, 20480/frame). Code orientation: **higher code = more positive = higher on
+screen** — code 255 = graticule top, code 0 = bottom, the 256-code span across the graticule
+height. The drain applies **no** polarity inversion (`C1[i] = byte(word>>8)`,
+`C2[i] = byte(word&0xff)`); the same orientation governs the ptp/level and centring math.
 
 The **display record** (`winCols`) is the windowed slice actually rendered — 10 divisions wide
 at the band's sample interval (§6), centred on the software-detected edge (§8.5).
@@ -229,10 +242,11 @@ capture from the **free-running roll port** instead:
 
 | constant | value | meaning |
 |---|---|---|
-| roll port C1 / C2 | `0x41` / `0x59` | free-running sample FIFO (IOCTL read pops one live sample) |
+| roll port C1 / C2 | `0x41` / `0x59` | free-running sample FIFO; an IOCTL read pops one live sample (its **high byte** is C1, §10.1) |
 | `rollDivisor` | 7400 | scatter divisor (paces at ≈ 0.37 ms — a non-period fraction) |
 | `rollClockNs` | 50 | roll read-pace constant (empirical); **not** the FPGA count period |
-| `rollWin` | 4096 | scrolling raw-sample ring, reduced to the 800-col band |
+| `rollWin` | 4096 | length of the scrolling raw-sample ring; one **scroll snapshot** = a full 4096-sample copy of this ring taken at the end of each roll update |
+| `envRingN` | 24 | roll min/max reduces over the last `envRingN` scroll snapshots (each `rollWin`=4096 samples), same constant as the envelope band |
 | `rollBatch` / `rollPace` | 1600 / 64 | batch size / pace interval |
 
 The read pacing **must phase-scatter, not track the timebase**. In the read-pace domain
@@ -255,11 +269,19 @@ Per update (budget ~220 ms):
 2. scroll the sample into the raw ring; advance `rollPos`.
 3. **sleep the paced interval** = `divisor × rollClockNs` = `divisor × 50 ns`, clamped to
    `[50 µs, 40 ms]`.
-4. accumulate min/max over the last `envRingN` scroll snapshots → 800-col band.
+4. at the end of the update, push a full 4096-sample copy of the scrolling ring as one **scroll
+   snapshot** and reduce over the last `envRingN` = 24 snapshots: every one of the 4096 ring
+   samples in each snapshot bins into its 800-column display slot (`col = i × 800 / rollWin`),
+   recording per-column (min,max). The reduction therefore spans `envRingN × rollWin` real
+   samples (24 × 4096), each snapshot captured at a different scroll phase → a solid, stable
+   rail-to-rail band (§5.3).
 
 **Roll traps (load-bearing):**
 - **Never arm with `0x21=0xC8`** on a roll band — the halt freezes the free-run. Roll uses
   arm-once `0xC3` + per-update `0xCB` only.
+- **Never read `0x41`/`0x59` un-armed.** A roll read requires the port to have been armed
+  (`0xC3` at bring-up); reading it un-armed holds the GPMC WAIT line and hard-wedges the bus
+  (uninterruptible D-state, power-cycle only — see §10.1).
 - **Reads must be paced.** Rapid un-paced `0x41` reads re-read a dwell value (a thin band) and
   can wedge the port. Pace to `divisor × 50 ns` so each read pops a fresh sample.
 - **Harden against a wedging port:** bail the read loop after ~8 consecutive read errors.
@@ -286,17 +308,17 @@ clamped to `[1, drainCols]`.
 `sampleInterval` per class:
 - class `0x20`: **use 1 ns** (nominal display rate) — not the real 2 ns capture rate. The
   fast-band record is captured at 2 ns/sample but *displayed* at the 1 ns nominal so 10
-  divisions show the same span/screen fraction as the reference (~250-sample nominal window; a
-  caught ~122-sample cal edge fills ~47 % of the screen). Sizing with the real 2 ns rate would
-  zoom in 2× and fill the whole screen with the edge.
+  divisions occupy the full screen width at the labelled tdiv (a ~250-sample nominal window; a
+  caught ~122-sample cal edge fills ~47 % of the 800-px display). Sizing with the real 2 ns rate
+  would zoom in 2× and fill the whole screen with the edge.
 - class `0x01`: 4 ns.
 - class `0x80`: `divisor × 10 ns`.
 
 Resulting fast-band windows (class `0x20`, 1 ns nominal): 25 ns → 250, 50 ns → 500,
 100 ns → 1000, 200 ns → 2000. Native-fast records fewer real samples than the panel is wide
 (e.g. 125 real samples at 25 ns over 800 px), so the renderer **linear-interpolates** the real
-samples into a smooth vector (the reference's method), never sample-hold stair-steps and never a
-fabricated square.
+samples into a smooth vector — connect adjacent real samples with straight segments — never
+sample-hold stair-steps and never a fabricated square.
 
 For envelope/roll bands, `winCols` is the *sample window* (not a centred display window); the
 display is the 800-column min/max band. For ETS, `winCols` is the equivalent-time column count
@@ -355,9 +377,9 @@ average or an interpolation between two real averages — **no fabricated sample
 never lands in the ≤ 41 µs record) yields too few anchors and the reconstruction stays a flat
 rail. When phase-bin coverage `< factor/4` or the reconstructed `ptp < etsEdgeMinPtp`, display a
 **real single-capture window** (the drained record's centre `nCols` samples, real ADC noise),
-not a patchwork. If the reference shows a flat rail, so must the clone — do not invent an edge.
-A genuinely fast repetitive edge (≥ ~1 MHz) reconstructs a dense waveform through this same
-interleave.
+not a patchwork. When the captured record carries no resolvable edge, display that flat rail —
+do not invent an edge. A genuinely fast repetitive edge (≥ ~1 MHz) reconstructs a dense waveform
+through this same interleave.
 
 ---
 
@@ -399,9 +421,9 @@ not on the status bits. Per frame:
 The `0x39` bit2 done / `0x38` bit5 status gate does **not** discriminate an edge at native-fast
 — it asserts on the untriggered free-run fill too. Discriminate on **content**: publish a
 native-fast frame only if it carries a real edge (`ptp ≥ nativeEdgeMinPtp = 40` AND a valid
-slope crossing, §8.5); otherwise HOLD the last edge frame. This is the reference's own
-show-a-triggered-frame-and-hold behaviour — every displayed frame is a real captured edge; a
-flat capture is dropped, never fabricated into an edge.
+slope crossing, §8.5); otherwise HOLD the last edge frame. Publish only frames carrying a real
+edge; otherwise hold the last edge frame — every displayed frame is a real captured edge; a flat
+capture is dropped, never fabricated into an edge.
 
 In NORM, the early "no comparator done → hold" gate is **skipped for native-fast** (the done bit
 does not reliably assert for a real edge at these bands and would starve NORM to ~2 fps);
@@ -506,7 +528,7 @@ channel `sig` (the selected trigger source, default C1):
 | `0x21` | arm/halt opcode | `0xC0` reset-head, `0xC3` go, `0xC8` capture-halt, `0xCB` latch-no-halt |
 | `0x35` | run word | `0x0001` free-run (AUTO), `0x0003` armed (NORM) |
 | `0x36` | reset | held `0x0000` |
-| `0x39` | status | bit1 (`0x02`) trig, bit2 (`0x04`) capture done |
+| `0x39` | status | bit0 (`0x01`) valid — AUTO untriggered-timeout (the boot firmware takes an untriggered refresh frame on this bit when bit1 has not fired); bit1 (`0x02`) trig (HW comparator fired, `0x3a/0x3b` valid); bit2 (`0x04`) frame filled/capture done |
 | `0x3a`/`0x3b` | HW trigger position | lo/hi byte; jittery (std ≈ 89) — not a real-time anchor |
 | `0x44` | reset-head strobe | `0x0001` then `0x0000` |
 | `0x46` | fill counter | 11-bit (`fillMask = 0x7ff`) sample-write count; halt when `≥ LatchAt` |
@@ -521,18 +543,108 @@ Constants: `LatchAt = 0x200` (512, ≤ `fillMask`), decimated record length defa
 Arm sequence (`armEngine`): `0x21=0xC0` ×2 → `0x57=0x0001` → `0x57=0x0000` → arm-settle sleep
 (default 2 ms) → `0x21=0xC3`.
 
+### 10.1 Physical register access
+
+**Device node and ioctl path (status/arm/latch/roll/fill — everything except the deep drain).**
+Register access is a `/dev/Gpmc` ioctl. A selector `sel` addresses FPGA word `sel<<1`; the
+kernel performs the `<<1` shift, so pass the **raw** selector (do **not** pre-shift). Request
+codes: `fpgaRead = 0x80026700`, `fpgaWrite = 0x40026701` (read vs write is the request code, not
+a struct field). The argument is a **6-byte little-endian struct**:
+
+| byte | meaning |
+|---|---|
+| `b0` | chip-select plane: **1 = CS1** (the acquisition window — all registers in this spec). The kernel computes `index = b0 − 1` to pick the ioremap base; **`b0 = 0` selects a garbage base and stalls the access for seconds** — always set `b0 = 1`. |
+| `b1` | `0` |
+| `b2` | `sel & 0xff` |
+| `b3` | `sel >> 8` |
+| `b4` | `val & 0xff` (write value low) |
+| `b5` | `val >> 8` (write value high) |
+
+On a read the returned struct carries the value LE at `b4/b5`.
+
+**Obtaining the handle — reuse the inherited fd, never fresh-open.** `/dev/Gpmc` has a
+single-open guard and a boot-time chip-select init: a fresh `open()` hits `EPERM` while another
+holder is open, and even when it succeeds it lacks the init so reads can wedge; **closing** the
+handle kills the shared fd for the whole process tree. Instead **reuse the inherited fd**: scan
+`/proc/self/fd` for the descriptor whose `readlink` == `"/dev/Gpmc"` (opened by the boot tree,
+already chip-select-initialised), wrap it **without dup**, clear its GC finalizer, and **never
+`Close()` it**. A fresh open is the sim/fallback path only.
+
+**Deep drain — mmap (`0x30–0x34`).** The deep drain reads through a direct `/dev/mem` mapping
+for speed (one CPU load per sample, no syscall). Map `/dev/mem` (`O_RDWR | O_SYNC`) at the CS1
+physical base **`CS1Phys = 0x01000000`**, length **4096** bytes. A register read is **one
+aligned 16-bit load at byte offset `sel<<1`** — a single bus transaction, so a sample port's
+read-pointer auto-increment fires **exactly once** (two byte loads would double-advance it).
+Validate the window by `Read(0x12) == 0x0052` (FPGA version). **Fatal hazard:** an mmap load of a
+**not-yet-complete** sample port hangs the CPU **uninterruptibly** (no goroutine or timeout can
+abandon a raw load, unlike an ioctl) — therefore drain `0x30–0x34` **only AFTER** the
+`0x21=0xC8` capture-halt, and keep status / arm / latch / fill / roll on the ioctl path (which
+is timeout-guardable).
+
+**Roll ports (`0x41`/`0x59`) — arm-first, or the bus wedges.** A roll read is an ioctl
+`ReadReg(0x41)` whose **high byte is the C1 sample** (`byte(word>>8)`); `0x59` is C2. The port
+must be **ARMED first** — roll uses arm-once `0x21=0xC3` at bring-up + per-update `0x21=0xCB`
+(latch-no-halt), never `0xC8`. **Reading `0x41`/`0x59` while UN-ARMED holds the GPMC WAIT line
+and hard-wedges the bus** (uninterruptible D-state, power-cycle only) — stronger than the
+un-paced-read hazard in §5.2. Pace the reads to `divisor × rollClockNs` (= `divisor × 50 ns`)
+and **bail the read loop after 8 consecutive read errors** so a wedging port cannot hang the
+owner loop.
+
+### 10.2 Frame structure and publish contract
+
+The engine hands frozen frame COPIES to consumers through a **lock-based triple buffer** (three
+preallocated `Frame`s: `write` / `ready` / `read`) with drop-newest backpressure. The producer
+(engine owner) fills its private `write` slot with **no lock** during the ~1 ms drain, then
+`Publish()` swaps `write ↔ ready` under a microsecond critical section; a consumer `Consume()`
+swaps `ready ↔ read`. Producer and consumer never touch each other's private slot (no tearing,
+producer never blocks on the ~50 ms render); the mutex guards only the RAM pointer swap, never
+the GPMC bus. If the consumer has not taken the previous `ready`, it is simply overwritten
+(drop-newest).
+
+`Frame` fields:
+
+| field | meaning |
+|---|---|
+| `C1`, `C2` `[]byte` | 8-bit sample columns (capacity = arena cols); only `[:Valid]` is this frame's data — the tail is stale |
+| `Valid int` | number of samples actually drained this frame (band-dependent: native-fast drains the deep record, decimated the shorter configured record) |
+| `Seq uint64` | monotonic capture sequence (advances only on a real drain) |
+| `Triggered bool` | `0x39` bit1/bit2 asserted this frame |
+| `TrigPos uint16` | `0x3a/0x3b` HW trigger index latched with the frame |
+| `Coherent bool` | done gate `0x39` bit2 asserted AND `0x46` reached `LatchAt` |
+| `HaltOK bool` | `0x46` froze low after the `0x21=0xC8` halt (engine really stopped filling) |
+| `Post46 uint16` | `0x46` sampled right after the halt (should be small/frozen) |
+| `Ptp int` | `C1[:Valid]` peak-to-peak (flat rail ~2–5; real edge ~150) |
+| `WinCols int` | display window width (samples spanning the 10-division screen, §6) |
+| `EdgeX float64` | software-centred slope crossing over `C1[:Valid]`, or **-1** = flat rail (no edge) |
+| `Interp bool` | request the renderer linear-interpolate the windowed real samples across the panel columns (set for class-`0x20` native-fast, §6) |
+| `IsEnv bool` | select the MIN/MAX envelope renderer (slow/roll bands) |
+| `EnvCols int` | number of (min,max) display columns when `IsEnv` |
+| `EnvMin`, `EnvMax` `[]byte` | the (min,max) pairs (len ≥ `EnvCols` when `IsEnv`) |
+
+The §9 "clear stale envelope metadata" rule = on every real-time (non-envelope) frame set
+`IsEnv = false` and `EnvCols = 0` **before** `Publish()`, or the renderer takes its envelope
+branch and fills the screen with the previous band's stale MIN/MAX band after a slow→fast
+transition.
+
 ---
 
 ## 11. Open items
 
-- **Fast-band AUTO edge/flat ratio (500 ns – 2 µs).** The clone's done-bit gate is
-  trigger-coupled, so it captures the real edge on most frames where the reference AUTO catches
-  it rarely (mostly flat). This is real captured data (arguably better) but deviates from the
-  reference's mostly-flat AUTO ratio. Matching the exact ratio would need an AUTO
-  untriggered-timeout path that publishes untriggered flat frames.
-- **Roll solidity ≥ 1 s.** ~96–97 % solid vs the reference's 100 %; the ~3 % thin columns come
-  from the divisor-decimated roll port's imperfect phase coverage. Closing it would need reading
-  the full-rate ADC min/max rather than the divisor-decimated roll port.
+- **Fast-band AUTO edge/flat ratio (500 ns – 2 µs).** The content-discrimination gate (§8.2)
+  publishes a frame whenever the capture carries a real edge, so at these bands it shows the edge
+  on most AUTO frames. The boot firmware's AUTO instead publishes a **mostly-flat** stream: its
+  real-time FSM waits for `0x39` bit1 (trigger) and, when bit1 has not fired, takes an
+  *untriggered* refresh frame (state 4) gated on `0x39` **bit0** (valid). The concrete fix is to
+  implement that AUTO untriggered-timeout path: in AUTO, if bit1 does not assert within the wait
+  budget but bit0 (valid) is set, publish an untriggered (flat) frame instead of holding, so the
+  displayed AUTO edge/flat mix matches the boot firmware's timeout-refresh cadence rather than
+  showing the edge every frame. NORM waits bit1 indefinitely (FSM watchdog only); SINGLE
+  single-shots. (Both `centerCross`/content discrimination and the bit0 path stay as specified;
+  this only adds the AUTO bit0 timeout branch.)
+- **Roll solidity ≥ 1 s.** The divisor-decimated roll port leaves a small fraction (~3 %) of
+  display columns thin because its phase coverage is imperfect; target is a fully solid
+  rail-to-rail band (no thin columns) at every roll timebase. Closing it would need reading the
+  full-rate ADC min/max rather than the divisor-decimated roll port.
 - **Higher-band 2→2.5 relabelling.** The 25 ns fast step is anchored; the analogous `2→2.5`
   relabelling at higher decades (250 ns, 2.5 µs, …) is **not** applied — no evidence beyond the
   fast bands.

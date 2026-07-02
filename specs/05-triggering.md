@@ -14,6 +14,53 @@ worker touches the bus. See §9 for why this is load-bearing.
 
 ---
 
+## 0. Register access — GPMC wire encoding and the inherited fd
+
+Every trigger/acquisition register access goes through the `/dev/Gpmc` driver. The primitives named
+throughout this spec are:
+
+- `WriteReg(sel, val)` — write `val` to selector `sel` on **CS1** (the acquisition window). Equal to
+  `WriteRegCS(1, sel, val)`.
+- `WriteRegCS(plane, sel, val)` — write on an explicit chip-select plane: `plane = 1` = CS1
+  (acquisition window), `plane = 3` = CS3 (config selectors: trigger level DAC, offset DAC, LED
+  latch). The selector means different things per plane (e.g. `0x09` is a reject byte on CS1 but the
+  LED-latch low byte on CS3), so config actuators MUST name the plane.
+- `ReadReg(sel)` == `ReadRegCS(1, sel)` — the read counterpart.
+
+**Wire encoding (6-byte ioctl struct):**
+
+```
+b = [6]byte{ plane, 0, byte(sel), byte(sel>>8), byte(val), byte(val>>8) }
+```
+
+- `b[0]` = the chip-select plane (**1** = CS1, **3** = CS3). `b[0] = 0` is fatal: the kernel
+  computes `index = b[0] − 1 = 0xFF`, selects a garbage ioremap base, and the access STALLS the bus
+  for seconds. Always pass 1 or 3.
+- `b[1] = 0`.
+- Bytes 2..3 = the selector `sel`, **raw**, little-endian. The kernel shifts it `<<1` to form the
+  FPGA word address — do **NOT** pre-shift the selector.
+- Bytes 4..5 = the value, little-endian. A read zeroes bytes 4..5, issues the read ioctl, then
+  decodes the result LE from bytes 4..5.
+
+**ioctl request codes:** read = `0x80026700`, write = `0x40026701`. Read vs write is chosen by the
+request code, not by `b[0]`.
+
+**The inherited fd (mandatory).** All GPMC access uses the **boot-inherited** `/dev/Gpmc` fd —
+freshly opening the device faults (a single-open guard returns EPERM while any inherited fd is open,
+and a fresh open also lacks the boot-time chip-select init, so its reads can wedge the bus). Obtain
+the fd the boot process tree already holds:
+
+- `FindInheritedFD("/dev/Gpmc")` scans `/proc/self/fd` for the entry whose `readlink` target equals
+  `/dev/Gpmc` and returns that fd number.
+- `OpenInherited` wraps that number with `os.NewFile(fd, "/dev/Gpmc")` — this does NOT dup it; it is
+  the SAME open file description as the boot holder — and clears the GC finalizer
+  (`runtime.SetFinalizer(f, nil)`).
+- Callers must **NEVER** `Close()` it — that would close the single-open `/dev/Gpmc` fd for the
+  whole process tree.
+- The fresh `Open(path)` path is the sim / fallback only.
+
+---
+
 ## 1. Trigger model
 
 | Element | Where it lives | Register / mechanism |
@@ -53,9 +100,9 @@ match. It is written on the CS3 config plane.
 - ⚠ CS3 `0x35` (level lane-B high byte) is a different plane from CS1 `0x35` (the run word).
   Do not conflate them.
 
-### 2.1 Volts → code (scope: measured fit + raw code)
+### 2.1 Volts → code (scope: linear fit + raw code)
 
-`TrigLevelCode(volts)` implements ONLY the measured fit valid at 1 V/div and 2 V/div:
+`TrigLevelCode(volts)` implements ONLY the linear fit valid at 1 V/div and 2 V/div:
 
 ```
 code16 = round(31434 − 938·volts)      # 0 V = 0x7aca = 31434; higher level = LOWER code
@@ -66,10 +113,22 @@ This fit is exact only at 1 V/2 V-div — the DAC rides the per-V/div calibratio
 V/div settings need the active per-channel cal record. For an unambiguous hardware sweep at any
 V/div, drive the raw 16-bit code directly (`SetTrigLevel`) rather than volts.
 
-**Out of scope (follow-up):** the general cal-ladder form
-`code = round((V − Vcenter)/Vref · 50)` and the EXT-input fixed `Vref` constants are NOT
-implemented. Their `Vref`/`Vcenter` record layout and retrieval belong to the calibration spec
-(spec 10); do not attempt arbitrary-V/div volts→code from this spec.
+**General cal-ladder form (documented; the app implements only the §2.1 fit).** The arbitrary-V/div
+volts→code is fully pinned — formula and field addresses:
+
+```
+code = round((V − Vcenter)/Vref · 50)          # clamp to ±6·Vref about Vcenter
+```
+
+- `Vref` (the level-code unit; ±50 codes = one V/div half-span): for C1/C2 it is the per-channel
+  **VDIV** field at cal byte address `0x410bf0 + src·0x10 + 8`; the EXT input uses fixed
+  `Vref = 200`, the EXT/5 input fixed `Vref = 1000`.
+- `Vcenter` is the per-channel zero from the active RAM cal record at
+  `0x32ced8 + ch·0xf0 + vd·0x14` (the stride-`0x14` per-V/div record the offset DAC also reads).
+
+Only the §2.1 linear fit is implemented; the general form is documented here (and in the
+calibration spec, spec 10 §7.5) for completeness — it is fully pinned, not open. Drive the
+raw code (`SetTrigLevel`) for an exact hardware level at any other V/div.
 
 ### 2.2 Gated crossing window and out-of-window behaviour
 
@@ -149,9 +208,9 @@ STOP on top.
 frames + hold otherwise). Automatic STOP-after-first-frame is **not implemented** — there is no
 engine one-shot latch and no `SetSingle`/arm-single command. The display holds on a quiet armed
 screen but the engine keeps re-arming and will publish subsequent qualifying frames.
-**Open:** true single-shot (auto-STOP after the first qualified frame) requires a new control
-command plus an engine latch that flips `SetRunning(false)` on the first `publish==true` frame; it
-is a follow-up, not part of the current surface.
+True single-shot (auto-STOP after the first qualified frame) is a `SetSingle`/arm-single control
+command plus an engine latch that flips `SetRunning(false)` on the first `publish==true` frame. Until
+that command is wired, SINGLE behaves as plain NORM (armed, holds a quiet screen, keeps re-arming).
 
 Arm-opcode port CS1 `0x21`: `0xC0` = reset read/write head, `0xC3` = go (arm), `0xC8` =
 capture-halt (latch the coherent frozen frame), `0xCB` = latch-without-halt (roll snapshot; the
@@ -176,6 +235,39 @@ nativeFast(class, lo, hi):
 Native-fast = 100 ns–20 µs/div; decimated = 50 µs–2 ms/div. Slow/roll (≥5 ms/div) uses the
 envelope/roll path (§4.4). The ≤50 ns/div equivalent-time interleave is a separate opt-in engine
 (`SetETS`) that is **not auto-routed** and does not use the comparator trigger — out of scope here.
+
+The `(class, lo, hi)` fed to `nativeFast` are the sample-clock divisor registers written at band
+setup: **class → CS1 `0x19`**, **lo → CS1 `0x1a`**, **hi → CS1 `0x1b`**, with `0x36 = 0` throughout.
+`divisor = lo | (hi<<16)`. The complete per-timebase table:
+
+| tdiv/div | class `0x19` | lo `0x1a` | hi `0x1b` | path |
+|---|---|---|---|---|
+| 1 ns … 200 ns (incl. 25 ns) | `0x20` | `0x0000` | `0x0000` | native-fast |
+| 500 ns, 1 µs | `0x01` | `0x0000` | `0x0000` | native-fast |
+| 2 µs, 5 µs, 10 µs | `0x80` | `0x0001` | `0x0000` | native-fast |
+| 20 µs | `0x80` | `0x0004` | `0x0000` | native-fast |
+| 50 µs | `0x80` | `0x0008` | `0x0000` | decimated |
+| 100 µs | `0x80` | `0x0014` | `0x0000` | decimated |
+| 200 µs | `0x80` | `0x0028` | `0x0000` | decimated |
+| 500 µs | `0x80` | `0x0050` | `0x0000` | decimated |
+| 1 ms | `0x80` | `0x00c8` | `0x0000` | decimated |
+| 2 ms | `0x80` | `0x0190` | `0x0000` | decimated |
+| 5 ms | `0x80` | `0x0320` | `0x0000` | envelope |
+| 10 ms | `0x80` | `0x07d0` | `0x0000` | envelope |
+| 20 ms | `0x80` | `0x0fa0` | `0x0000` | envelope |
+| 50 ms | `0x80` | `0x1f40` | `0x0000` | envelope |
+| 100 ms | `0x80` | `0x4e20` | `0x0000` | roll |
+| 200 ms | `0x80` | `0x9c40` | `0x0000` | roll |
+| 500 ms | `0x80` | `0x3880` | `0x0001` | roll |
+| 1 s | `0x80` | `0x0640` | `0x0003` | roll |
+| 2 s | `0x80` | `0x1a80` | `0x0006` | roll |
+| 5 s | `0x80` | `0x3500` | `0x000c` | roll |
+| 10 s | `0x80` | `0x8480` | `0x001e` | roll |
+| 20 s | `0x80` | `0x0900` | `0x003d` | roll |
+| 50 s | `0x80` | `0x1200` | `0x007a` | roll |
+
+(The envelope/roll rows use a moderate phase-scatter divisor instead of the raw table value at
+runtime — see §5.5; the table above is the raw real-time divisor set.)
 
 ### 3.2 Per-frame FSM (the bus owner)
 
@@ -279,6 +371,33 @@ AUTO "publish everything" default).
 The published frame's `EdgeX` is the sub-sample trigger position; the renderer centres the display
 window on it. `EdgeX = −1` means a faithful flat/no-edge capture (rail drawn without a centre).
 
+### 4.5 Published frame contract (the arena `Frame`)
+
+The producer drains into a preallocated `Frame` (buffers reused round-robin; the consumer takes a
+deep copy). Full field set the renderer/consumer reads:
+
+| Field | Type | Meaning |
+|---|---|---|
+| `C1`, `C2` | `[]byte` | drained ADC codes (capacity = arena cols); **only `[:Valid]` is this frame's samples** — consumers MUST slice `C1[:Valid]`/`C2[:Valid]`, the tail is stale |
+| `Seq` | `uint64` | monotonic capture sequence (advances only on a real drain) |
+| `Triggered` | `bool` | `0x39` bit1/bit2 asserted this frame (comparator anchored it) |
+| `TrigPos` | `uint16` | `0x3a/0x3b` HW trigger index latched with the frame |
+| `Coherent` | `bool` | done gate `0x39` bit2 asserted AND `0x46` reached `LatchAt` (full frame) |
+| `HaltOK` | `bool` | `0x46` froze low after the `0x21=0xC8` halt (engine really stopped filling) |
+| `Post46` | `uint16` | `0x46` sampled right after the `0xC8` halt (should be small/frozen) |
+| `Ptp` | `int` | `C1[:Valid]` peak-to-peak (flat rail ~2–5, real edge ~150) |
+| `Valid` | `int` | samples actually drained this frame (band-dependent) |
+| `WinCols` | `int` | display window = samples spanning the 10-division screen (§5.6) |
+| `EdgeX` | `float64` | software-centred trigger crossing over `C1[:Valid]`; **`−1` = flat rail (no edge)** |
+| `Interp` | `bool` | renderer should LINEAR-interpolate the windowed real samples across the panel columns (set for class-`0x20` native-fast, where the window is fewer samples than the panel is wide) |
+| `IsEnv` | `bool` | selects the MIN/MAX envelope renderer (slow/roll bands, §5.5) |
+| `EnvCols` | `int` | envelope display columns (800) |
+| `EnvMin`, `EnvMax` | `[]byte` | per-column (min,max) pairs, `len ≥ EnvCols`, valid only when `IsEnv` |
+
+A real-time (native-fast/decimated) frame MUST clear stale `IsEnv`/`EnvCols` from a previously
+visited slow/roll band before publishing, or the renderer takes the wrong (envelope) draw branch
+(§9.7).
+
 ---
 
 ## 5. Trigger TYPES
@@ -297,6 +416,15 @@ converted to samples via the band sample interval:
 
 Qualifier conditions (measured value vs the window `[min,max]`): `any` (no time/width test),
 `less` (< min), `greater` (> max), `inside` (min ≤ measured ≤ max).
+
+**Numeric codes.** Type: EDGE = `0`, PULSE (GLIT) = `1`, SLOPE (SLEW) = `2`, VIDEO (TV) = `3`.
+Condition: `any` = `0`, `less` = `1`, `greater` = `2`, `inside` = `3`. Video standard: PAL = `0`
+(≤625 lines), NTSC = `1` (≤525 lines).
+
+**Defaults (used until the matching `Set…Params` setter is called):** EDGE rising; SLOPE
+`loFrac = 0.2`, `hiFrac = 0.8`, `tMinNs = tMaxNs = 0`, `cond = any`; PULSE `lvlFrac = 0.5`,
+`wMinNs = wMaxNs = 0`, `cond = any`, high-pulse polarity (`rising = true`); VIDEO PAL, `line = 0`
+(any line), negative sync (`neg = true`).
 
 ### 5.1 EDGE
 The HW comparator level (§2) places the threshold; software selects which crossing of it becomes
@@ -326,7 +454,10 @@ Standard (PAL ≤ 625 lines / NTSC ≤ 525), line select (0 = any), sync polarit
 Set a sync level 30 % up from the sync tip (negative sync at the low rail, positive at the high
 rail). Collect the sync-edge crossings into the sync region as line boundaries. Trigger on line N
 (1-based, clamped to the standard's max) or, for any-line, the sync edge nearest the centre.
-**Open:** field/odd-even discrimination needs a full video frame in the record and is not implemented.
+VIDEO supports four sync-select sub-modes — **all-lines**, **line-N**, **odd-field**,
+**even-field**; only all-lines and line-N are implemented.
+**Open:** field/odd-even (odd-field / even-field) discrimination needs a full video frame in the
+record to separate the two fields and is not implemented.
 
 ### 5.5 Slow / roll bands (≥5 ms/div) — min/max envelope
 
@@ -337,11 +468,15 @@ edge discrimination and no phase-lock/HOLD here — every frame publishes.
 
 - **5–50 ms/div (envelope frame):** ARM → wait a modest deep fill (`fillTarget = winCols`, capped
   `0x600`; budget 250 ms, poll 200 µs) → `0xC8` HALT → drain `winCols` deep samples → RE-ARM →
-  accumulate the frame's samples into a MIN/MAX ring (last **24** frames) → reduce to 800 display
-  columns (each column min/max over all ring samples mapping to it). AUTO / phase-independent;
-  publish every frame. The divisor targets a **moderate ~0.23 ms/sample** (≈0.23 period of the kHz
-  cal) so each column's samples scatter across a period → a solid band from one frame, reinforced
-  across the ring.
+  accumulate the frame's samples into a MIN/MAX ring (last `envRingN = 24` frames) → reduce to
+  `envDisplayCols = 800` display columns (each column min/max over all ring samples mapping to it).
+  AUTO / phase-independent; publish every frame. The per-sample interval targets a **moderate
+  ~0.23 ms/sample** (`envIntervalS = 2.3e-4`, ≈0.23 period of the kHz cal) so each column's samples
+  scatter across a period → a solid band from one frame, reinforced across the ring. `winCols` is
+  the per-frame sample window bounded to `[envMinWin=200, envMaxWin=2048]` — the `envMinWin=200`
+  floor keeps 5 ms at `winCols ≈ 217` (interval ≈ 0.23 ms) instead of flooring the interval below
+  the scatter target. The divisor is **derived** to hit `envIntervalS` over the `10·tdiv` span
+  (`divisor = round(span / winCols / 10 ns)`), NOT a fixed constant.
 - **≥100 ms/div (roll frame):** the deep capture-halt cannot fill at ≥20 ms/sample, so roll uses
   the free-running roll port. Bring-up ONCE per band: `enableAndDivisor` → `0xC0` reset →
   `0x57` pulse → `0xC3` go → settle → pre-fill the 4096-sample ring from one `0xCB` snapshot. Per
@@ -349,8 +484,10 @@ edge discrimination and no phase-lock/HOLD here — every frame publishes.
   roll ports `0x41` (C1) / `0x59` (C2) by **IOCTL** (each read pops one FIFO sample). **Pace reads
   to `divisor·50 ns`** (clamped [50 µs, 40 ms]) — un-paced rapid reads re-read a dwell value and
   wedge the port. Scroll into the 4096 raw ring, reduce to the 800-column min/max band, accumulate
-  over the ring for a stable solid band. Roll divisor is a phase-scatter value (`7400`, ≈370 ns
-  count-period × divisor) so successive samples land on different phases → a rail-to-rail band.
+  over the ring for a stable solid band. Roll divisor is a phase-scatter value
+  (`rollDivisor = 7400`; the class-`0x80` count period is `rollClockNs = 50 ns`, so
+  `rollIntervalNs = rollDivisor·rollClockNs ≈ 0.37 ms` — ≈0.37 period of the kHz cal) so successive
+  samples land on different phases → a rail-to-rail band. The raw scroll ring is `rollWin = 4096`.
   Frame budget ~220 ms; service commands every ~16 reads and **bail to the frame boundary on a
   staged band change / STOP** (so a TIME/DIV knob turn out of roll takes effect within one read
   interval, not after the whole ~0.22 s frame).
@@ -386,6 +523,9 @@ they CAPTURE at 2 ns/sample, so 10 divisions shows the same span/screen-fraction
 - **EXT is unusable:** there are exactly two ADC lanes (C1/C2); EXT has no software-visible
   pseudo-channel or readback, so it cannot be software-refined.
 
+The `0x22` mux value is `0x03` = internal channel, `0x00` = EXT, and is otherwise derived from the
+slope+mode state; it distinguishes internal-vs-EXT but does **not** cleanly encode C1-vs-C2 (its 2
+low bits are not a pinned C1/C2 selector), so it cannot be used for a reliable runtime C1↔C2 switch.
 **Open:** binding the coarse `0x22` mux to a definite C1/C2 code pair is a follow-up; source is
 currently a pure software channel select.
 
@@ -401,11 +541,17 @@ Effective immediately (next frame).
 
 ## 8. Coupling, holdoff, position
 
-- **Coupling** is set off the GPMC bus via the spidev1.0 relay word, byte 2 high nibble ORed with
-  the source low nibble: DC = `0x7_`, AC = `0x5_`, HFREJ = `0xf_`, LFREJ = `0x4_`. It is analog and
-  effective (AC/LFREJ shift the trigger anchor); replicate HF/LF-reject additionally as a software
-  digital filter on the drained frame. Because spidev is off the GPMC bus, coupling writes are
-  issued directly by the producer, not through the frame-boundary command queue.
+- **Coupling** is set off the GPMC bus via the spidev1.0 relay word. That word is a 24-bit
+  little-endian value emitted over `/dev/spidev1.0` (mode 3, 24 bits/word, 300 kHz, one
+  `SPI_IOC_MESSAGE(1)` transfer): byte 0 = CH1 control, byte 1 = CH2 control, byte 2 = the trigger
+  companion byte. Byte 2 packs `trigCoupling<<4 | trigSrc<<2` — the trigger coupling is the high
+  nibble and the **source is bits [3:2]** (0 = C1, 1 = C2, 2 = EXT), NOT the whole low nibble.
+  Trigger-coupling nibbles: DC = `0x7_`, AC = `0x5_`, HFREJ = `0xf_`, LFREJ = `0x4_`. It is analog
+  and effective (AC/LFREJ shift the trigger anchor). Because spidev is off the GPMC bus, coupling
+  writes are issued directly by the producer, not through the frame-boundary command queue. The
+  serializer must emit the selected nibble (`DC = 0x7`, `AC = 0x5`, `HFREJ = 0xf`, `LFREJ = 0x4`);
+  HFREJ/LFREJ additionally apply a software high/low-frequency-reject digital filter to the drained
+  frame before qualification.
 - **Holdoff** has **no FPGA register**. It is implemented as **software re-arm timing** (delay
   before re-arming after a published trigger). CS1 `0x17/0x18` are trigger DELAY/POSITION, not
   holdoff, and are not written.
@@ -452,7 +598,7 @@ Engine commands (staged, applied at the frame boundary or immediately as noted):
 | Command | Effect |
 |---|---|
 | `SetTrigLevel(code uint16)` | stage the raw 16-bit level-DAC code; owner writes the §2.3 sequence (once-on-change). `code 0` = clear/none (inherited comparator kept). |
-| `TrigLevelCode(volts) uint16` | volts→code (§2.1 measured fit); exact at 1 V/2 V-div only. |
+| `TrigLevelCode(volts) uint16` | volts→code (§2.1 linear fit); exact at 1 V/2 V-div only. |
 | `SetTrigSlope(rising bool)` | software slope (immediate). |
 | `SetTrigSource(ch int)` | software source channel 0=C1 / 1=C2 (immediate). |
 | `SetTrigType(typ)` | edge / pulse / slope / video (next frame). |

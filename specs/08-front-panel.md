@@ -40,6 +40,38 @@ tree. Locate it by scanning `/proc/self/fd` for the symlink target `/dev/fpga_ke
 `copy_to_user`, so no key bytes are ever read from `fpga_key`; it exists only to deliver the
 interrupt. All key/encoder *data* is read from the GPMC matrix registers.
 
+### 1.1 `/dev/Gpmc` register transport (ioctl ABI)
+
+Every GPMC register access — the matrix read, the LED latch, the offset/level DAC flushes — is one
+`ioctl(gpmcFd, req, &buf)` where `buf` is a **6-byte struct** and `req` selects read vs write:
+
+| Direction | Request code |
+|---|---|
+| Read | `0x80026700` |
+| Write | `0x40026701` |
+
+The 6-byte argument is:
+
+```
+buf[0] = chip-select plane   (1 = CS1 acquisition window, 3 = CS3 config selectors)
+buf[1] = 0
+buf[2] = sel & 0xff          selector, UN-shifted
+buf[3] = (sel >> 8) & 0xff   (the kernel does the <<1 to form the byte address; do NOT pre-shift)
+buf[4] = val & 0xff          value, little-endian
+buf[5] = (val >> 8) & 0xff
+```
+
+- **`buf[0]` is load-bearing.** The kernel computes `index = buf[0] − 1` and picks the ioremap base
+  from that index. `buf[0] = 0` yields `index = 0xFF` → a garbage base → the access **stalls for
+  seconds** (this is the root of every "writes don't work / post-kill stall" symptom). Always set the
+  plane: `1` for CS1, `3` for CS3.
+- **Read vs write is the request code, not `buf[0]`.** A read reuses the same struct with `val = 0`
+  and returns the register value little-endian in `buf[4..5]`.
+- `WriteReg(sel,val)` / `ReadReg(sel)` are the CS1 shorthands (`buf[0]=1`); `WriteRegCS(3,sel,val)` /
+  `ReadRegCS(3,sel)` target CS3. A selector means different things per plane (e.g. `0x09` is a reject
+  byte on CS1 but the LED-latch low byte on CS3), so config actuators must name the plane; a CS3 write
+  that lands on CS1 silently fails.
+
 ---
 
 ## 2. Single-owner bus discipline and the engine command surface
@@ -57,8 +89,8 @@ GPMC access from its own goroutine.
 |---|---|---|---|---|
 | Read matrix | request/reply | `ReadMatrix() (snapshot [5]uint16, ok bool)` | GPMC CS1 (config-plane ioctl read) | owner reads at frame boundary, returns a snapshot |
 | Set LEDs | dirty shadow | `SetLEDs(word uint16)` | GPMC CS3 latch (`0x09/0x0a/0x0b`) | owner flushes the 4-write strobe at the frame boundary (§8.1) |
-| Set offset DAC | dirty shadow | `SetOffsetDAC(ch int, code uint16)` | GPMC CS3 (`0x10/0x30` C1, `0x11/0x31` C2) | owner flushes DAC **then re-asserts the CS1 run word `0x35`** at the frame boundary (see 06 §5.3) |
-| Set trigger level | dirty shadow | `SetTrigLevel(code uint16)` | GPMC CS3 (`0x14/0x34` lane A, `0x15/0x35` lane B) | owner flushes the **4-write level quad + a full engine re-arm** at the bus-idle **Arm boundary** (see 05 §2.3) |
+| Set offset DAC | dirty shadow | `SetOffsetDAC(ch int, code uint16)` | GPMC CS3 (`0x10/0x30` C1, `0x11/0x31` C2) | owner flushes DAC **then re-asserts the CS1 run word (selector `0x35`)** at the frame boundary (§8.3) |
+| Set trigger level | dirty shadow | `SetTrigLevel(code uint16)` | GPMC CS3 (`0x14/0x34` lane A, `0x15/0x35` lane B) | owner flushes the **4-write level quad + a full engine re-arm** at the bus-idle **Arm boundary** (§8.4) |
 | Set timebase | staged flag | `SetTdiv(tdivS float64) (class, lo, hi uint16, envelope, ets, ok bool)` | engine state (band re-plan) | owner re-plans the acquisition band at the frame boundary |
 | Set NORM mode | atomic flag | `SetNorm(bool)` | engine flag (not a GPMC write) | takes effect immediately |
 | Set running | atomic flag | `SetRunning(bool)` | engine flag (not a GPMC write) | takes effect immediately |
@@ -273,34 +305,43 @@ Every knob has a push switch in addition to rotation.
 | TRIG LEVEL | `0x64` : 14·15 | `0x64` : 9 |
 | ADJUST | `0x65` : 6·7 | `0x65` : 1 |
 
-### 6.4 Menu / mode buttons — unmapped (gap)
+### 6.4 Menu / mode buttons
 
-The `(sel,bit)` matrix codes for the menu/mode buttons (CURSORS, ACQUIRE, DISPLAY, MEASURE,
-SAVE/RECALL, UTILITY, REF, MATH) are **not established**. Their LED bits are likewise not fully known
-(§8.2). The button and LED for each are on the matrix/latch, but the specific assignments must be
-captured **one control at a time** on hardware (the same scan procedure that produced §6.1/§6.2):
-
-- **Scan procedure:** with the decoder running and logging every raw `(sel,bit)` 1→0 edge, press one
-  physical button in isolation and record the reported `(sel,bit)`; repeat per control. For the LED,
-  drive one bit at a time (write a single-bit word through `SetLEDs`) and observe which lamp lights.
-- **Until captured:** the decoder still emits these as generic `(sel,bit)` button events. The
-  controller must **claim and ignore** any unmapped non-phase bit so it cannot cross-drive a mapped
-  control. Do not wire a specific action to a guessed code.
-
-Placeholder (fill from the scan):
+Active-low `(sel,bit)`; press is a 1→0 edge. LED bit is the CS3-latch bit (§8.2) that lights the
+control's lamp. The menu/mode LEDs live in the latch mid byte (`0x0100..0x1000`); those five are
+established. The CURSORS/MATH/REF lamps live in the **unresolved low byte** (§8.2), so no LED bit is
+given here — do not wire them until the low byte is re-captured one bit at a time (§6.5 scan).
 
 | Control | Selector | Bit | LED bit |
 |---|---|---|---|
-| CURSORS | TBD | TBD | TBD |
-| ACQUIRE | TBD | TBD | TBD |
-| DISPLAY | TBD | TBD | TBD |
-| MEASURE | TBD | TBD | TBD |
-| SAVE/RECALL | TBD | TBD | TBD |
-| UTILITY | TBD | TBD | TBD |
-| REF | TBD | TBD | TBD |
-| MATH | TBD | TBD | TBD |
+| CURSORS | `0x64` | 12 | unresolved — do not wire (§8.2) |
+| ACQUIRE | `0x64` | 11 | `0x0200` |
+| DISPLAY | `0x65` | 3 | `0x0400` |
+| MEASURE | `0x65` | 4 | `0x0100` |
+| SAVE/RECALL | `0x65` | 11 | `0x0800` |
+| UTILITY | `0x66` | 3 | `0x1000` |
+| REF | `0x67` | 12 | unresolved — do not wire (§8.2) |
+| MATH | `0x66` | 12 | unresolved — do not wire (§8.2) |
 
-**Open:** the `(sel,bit)` and LED bit for every §6.4 control.
+### 6.5 Remaining menu / control buttons
+
+These fixed-function buttons are on the same matrix; no dedicated status LED. Decode and dispatch as
+`(sel,bit)`; claim-and-ignore any not yet wired to an action (§7).
+
+| Control | Selector | Bit |
+|---|---|---|
+| TRIGGER MENU | `0x64` | 10 |
+| MENU (on/off) | `0x64` | 13 |
+| HORIZONTAL MENU | `0x65` | 12 |
+| SET TO 50% | `0x66` | 2 |
+| DEFAULT SETUP | `0x66` | 10 |
+| FORCE | `0x67` | 2 |
+| HELP | `0x67` | 11 |
+
+- **Scan procedure (for any future board revision):** with the decoder running and logging every raw
+  `(sel,bit)` 1→0 edge, press one physical button in isolation and record the reported `(sel,bit)`;
+  repeat per control. For an LED, drive one bit at a time (write a single-bit word through `SetLEDs`)
+  and observe which lamp lights.
 
 ---
 
@@ -311,9 +352,9 @@ Placeholder (fill from the scan):
 | TIME/DIV knob | `0x66`:14/15 | step the injected tdiv ladder one detent → `SetTdiv` (routes ETS / native-fast / deep / envelope / roll automatically) |
 | CH1 V/DIV knob | `0x65`:14/15 | step `vIdx` → analog front-end `SetVdiv` (§9), off-bus |
 | CH2 V/DIV knob | `0x66`:6/7 | step `vIdx` → analog front-end `SetVdiv` (§9), off-bus |
-| CH1 POSITION knob | `0x64`:6/7 | step CH1 offset DAC code → `SetOffsetDAC(0, code)` (CS3, owner-flushed **with run-word re-assert**, see 06 §5.3) |
-| CH2 POSITION knob | `0x67`:6/7 | step CH2 offset DAC code → `SetOffsetDAC(1, code)` (CS3, owner-flushed **with run-word re-assert**, see 06 §5.3) |
-| TRIG LEVEL knob | `0x64`:14/15 | step level DAC code → `SetTrigLevel(code)` (CS3, owner-flushed as the **4-write quad + re-arm**, see 05 §2.3) |
+| CH1 POSITION knob | `0x64`:6/7 | step CH1 offset DAC code → `SetOffsetDAC(0, code)` (CS3, owner-flushed **with run-word re-assert**, §8.3) |
+| CH2 POSITION knob | `0x67`:6/7 | step CH2 offset DAC code → `SetOffsetDAC(1, code)` (CS3, owner-flushed **with run-word re-assert**, §8.3) |
+| TRIG LEVEL knob | `0x64`:14/15 | step level DAC code → `SetTrigLevel(code)` (CS3, owner-flushed as the **4-write quad + re-arm** at the Arm boundary, §8.4) |
 | RUN/STOP button | `0x65`:2 | toggle running → `SetRunning`; update LEDs |
 | SINGLE button | `0x65`:10 | enter NORM/arm (wait for a comparator edge) + running → `SetNorm(true)`+`SetRunning(true)`; update LEDs |
 | AUTO button | `0x67`:10 | return to AUTO free-run trigger mode + running → `SetNorm(false)`+`SetRunning(true)`; update LEDs |
@@ -326,12 +367,14 @@ Stepping conventions and constants:
 - **POSITION / TRIG LEVEL are continuous**: apply `dir * step * magnitude`, clamp to the DAC's linear
   region.
 
-  **Offset (position) DAC** — the centre (0 V) seed is the **calibrated per-(channel, V/div) zero** from
-  cal RAM record `+0x12` (spec 10 §7.4 / 06 §5.2); `10600` is only the **uncalibrated fallback** centre.
-  `20` codes/accel-step, clamp `[9600, 11600]`; higher code → lower mean.
+  **Offset (position) DAC** — the centre (0 V) seed is the **calibrated per-(channel, V/div) zero**: the
+  cal RAM record field `+0x12` (i16 live offset-zero code, boot-default `0x27ef` = `10223`; with the
+  boot-default cal table `+0x12` equals `+0x08` for every record — see calibration spec 10 / 06 §5.2). `10600` is only the
+  **uncalibrated fallback** centre (the reference implementation still hardcodes `10600`; cal-RAM
+  wiring is an open item). `20` codes/accel-step, clamp `[9600, 11600]`; higher code → lower mean.
   `nc = offCode[ch] + dir*20*steps`, clamped.
 
-  **Trigger level DAC** — code assembled and written by the owner (05 §2). Constants (valid at
+  **Trigger level DAC** — code assembled and written by the owner (§8.4). Constants (valid at
   1 V/div and 2 V/div):
 
   | Constant | Value | Meaning |
@@ -367,9 +410,12 @@ panel goroutine.
 
 §8.1 is the sequence the **bus owner** performs when it services a `SetLEDs(word)` request during its
 frame-boundary flush. Emit it as **one indivisible 4-write burst** — do not split it across FSM
-iterations, and do not interleave it with the offset (`0x10/0x30`) or level (`0x14/0x34`) CS3
-flushes that share the same flush site. A concurrent or interleaved strobe corrupts the latch; a
-stray CS3 access during a halt window collapses the engine.
+iterations, and do not collide the strobe with any other CS3 write. In particular the LED strobe and
+the offset-DAC flush (`0x10/0x30`) both happen at the **frame boundary**, so serialize them: complete
+one before starting the other; never interleave their individual CS3 writes. The **trigger-level**
+flush is *not* at this site — it is applied at the bus-idle **Arm boundary** (§8.4), a separate flush
+point — so it never shares the strobe window. A concurrent or interleaved strobe corrupts the latch;
+a stray CS3 access during a halt window collapses the engine.
 
 Write, in this exact order, on CS3:
 
@@ -382,32 +428,87 @@ The `0x0b=0` leading strobe is required; omitting it means the latch never captu
 
 ### 8.2 Bit → LED map
 
-Only these bits are established on this clone:
+Established bits on this clone:
 
 | Bit | LED |
 |---|---|
 | `0x0004` | TRIG'd |
 | `0x0010` | CH2 |
 | `0x0020` | CH1 |
+| `0x0100` | MEASURE |
+| `0x0200` | ACQUIRE |
+| `0x0400` | DISPLAY |
+| `0x0800` | SAVE/RECALL |
+| `0x1000` | UTILITY |
 | `0x2000` | RUN (green element) |
 | `0x4000` | STOP (red element) |
 | `0x8000` | SINGLE |
 
-- RUN/STOP is one bicolor LED: `0x2000` = green, `0x4000` = red; both set = amber.
+- RUN/STOP is one bicolor LED: `0x2000` = green, `0x4000` = red; both set (`0x6000`) = amber.
+- The five menu LEDs (`0x0100..0x1000`) light the one matching the active menu.
 - Writing `0xFFFF` is a lamp-test (every LED on).
-- Typical state word: `CH1 | CH2` always, plus `RUN(0x2000)` while running or `STOP(0x4000)` while
-  stopped, plus `SINGLE(0x8000)` in NORM/arm mode. The idle state is STOP (`0x4000`).
+- Typical state word: `CH1 | CH2` for enabled traces, plus `RUN(0x2000)` while running or
+  `STOP(0x4000)` while stopped, plus `SINGLE(0x8000)` in NORM/arm mode, plus the active menu bit. The
+  idle state is STOP (`0x4000`).
+- Set/clear the bit(s) in the shadow and flush once per change (not per bit) to avoid intermediate
+  visible states — the strobe latches the whole word.
 - This clone's low-byte wiring does **not** follow any presumed internal LED index order — use the
   bits above, not an index guess.
 
-**Open:** the bit positions for the §6.4 menu/mode LEDs (CURSORS, ACQUIRE, DISPLAY, MEASURE,
-SAVE/RECALL, UTILITY, REF, MATH) and any low-bit lamps beyond the six above are **not established**.
-Capture them one bit at a time (§6.4 scan). Do not populate them from an assumed index table — that
-order does not hold on this board.
+**Open (latch low byte `0x0001..0x0080`).** The low-byte lamp assignment is only partly resolved:
+
+- **Resolved (wire these):** `0x0004` = TRIG'd, `0x0010` = CH2, `0x0020` = CH1. These three are
+  corroborated by the control-plane implementation and match this map.
+- **Unresolved (do NOT wire yet):** CURSORS, MATH, REF, and INTENSITY/ADJUST. Two candidate low-byte
+  assignments exist and disagree on where CH1/CH2 sit versus MATH/REF (one reads `0x0002` = CURSORS,
+  `0x0004` = INTENSITY/ADJUST, `0x0010` = CH1, `0x0020` = MATH, `0x0040` = CH2, `0x0080` = REF, with
+  no TRIG'd bit). The one hard constraint: **`0x0020` cannot be both CH1 and MATH.** The three
+  resolved bits above are the ones corroborated by the shipping control plane; CURSORS/MATH/REF/
+  INTENSITY have no independent corroboration and stay unresolved.
+
+Re-capture the low byte one bit at a time (§6.5 scan) before wiring CURSORS/MATH/REF/INTENSITY lamps;
+do not populate them from an assumed LED-index table — that order does not hold on this board. The
+mid-byte menu LEDs (`0x0100..0x1000`) and the high-byte RUN/STOP/SINGLE bits (`0x2000/0x4000/0x8000`)
+agree across both maps and are settled.
 
 **Trap:** this must be a single-owner flush like every other CS3 write. Treat a non-effect as harmless
 (on a differently-wired board the latch may be MCU-owned); either way it must never disturb the
 engine.
+
+### 8.3 Offset-DAC flush sequence
+
+When the owner services a dirty `SetOffsetDAC(ch, code)` at the frame boundary, it writes the 16-bit
+code low byte then high byte (the high byte self-latches — no separate strobe), then re-asserts the
+CS1 run word so the front-end change leaves the engine coherent:
+
+1. `WriteRegCS(3, lo, code & 0xff)` — CS3, `lo` = `0x10` (CH1) or `0x11` (CH2)
+2. `WriteRegCS(3, hi, code >> 8)` — CS3, `hi` = `0x30` (CH1) or `0x31` (CH2); latches
+3. `WriteReg(0x35, runWord)` — CS1 selector `0x35` = the **run word**, `runWord` = `0x0001`
+   (free-run/AUTO) or `0x0003` (armed/NORM)
+
+Note: the CS1 selector `0x35` (run word) is a **different register** from the CS3 level lane-B high
+byte, also numbered `0x35` (§8.4) — different plane, do not conflate. Higher code → lower mean; a bare
+offset write without the run-word re-assert can leave the engine incoherent.
+
+### 8.4 Trigger-level flush sequence (Arm-boundary)
+
+Unlike the LED/offset flushes, the trigger-level flush is applied at the **bus-idle Arm boundary** (not
+armed+filling). When the owner services a dirty `SetTrigLevel(code)`:
+
+1. **Level quad** — write the **same** 16-bit code to both comparator lanes, low byte then high byte
+   (the high byte self-latches):
+   - `WriteRegCS(3, 0x14, lo)` — lane A low
+   - `WriteRegCS(3, 0x34, hi)` — lane A high (latches lane A)
+   - `WriteRegCS(3, 0x15, lo)` — lane B low
+   - `WriteRegCS(3, 0x35, hi)` — lane B high (latches lane B)
+2. **Full engine re-arm** — re-anchor the comparator to the new reference (the frame loop does not
+   self-heal a bare level poke):
+   - `WriteReg(0x00, 0x80)` twice
+   - then arm: `WriteReg(0x21, 0xC0)` twice → `WriteReg(0x57, 0x0001)` → `WriteReg(0x57, 0x0000)` →
+     arm-settle delay → `WriteReg(0x21, 0xC3)`
+
+A bare `0x14/0x34` poke off this boundary **black-screens** the display. The safety is
+serialization + the inherited fd + Arm-boundary timing + the following re-arm — not a latch strobe.
 
 ---
 
@@ -507,7 +608,64 @@ CONF_DONE or the engine — that is why they are safe off the bus.
 
 ---
 
-## 10. Load-bearing constraints (summary)
+## 10. Panel outputs — discrete GPIO & eHRPWM (off the GPMC bus)
+
+Besides the FPGA LED latch (§8) the panel drives three non-FPGA outputs: two AM335x GPIO lines and one
+eHRPWM channel, all through `sysfs` (write-file / `system()` echo). They are **not** FPGA registers and
+never touch the acquisition register space or the `nCONFIG` config port — do not model them as such.
+
+### 10.1 `gpio7` — LCD display / backlight enable (load-bearing)
+
+Kernel global GPIO **7** is the **LCD display-enable / backlight** line: with it low the screen stays
+dark, so the firmware **must drive it high to light the panel**. It is already exported and set at boot,
+so a `echo 7 > /sys/class/gpio/export` a second time returns **EBUSY** — do **not** re-export. The
+boot sequence (reproduce only the parts not already done) is:
+
+```
+echo 7   > /sys/class/gpio/export          # already done at boot → skip (EBUSY if repeated)
+echo out > /sys/class/gpio/gpio7/direction
+echo 1   > /sys/class/gpio/gpio7/value     # 1 = display ON; 0 = dark
+```
+
+### 10.2 `gpio113` — trigger-event pulse (no panel indicator)
+
+Kernel global GPIO **113** is a pulsed notification line (rear trigger-out / internal), **not** a
+front-panel lamp. It has **no export call** in the boot firmware, so a clean-room app must export and
+set direction itself once before writing a value:
+
+```
+echo 113 > /sys/class/gpio/export
+echo out > /sys/class/gpio/gpio113/direction
+```
+
+A trigger "event" pulse is a back-to-back clear then set (a 0→1 edge):
+`echo 0 > .../gpio113/value` then `echo 1 > .../gpio113/value`.
+
+### 10.3 eHRPWM `run` pulse — acquisition repetition gate
+
+The eHRPWM module `ehrpwm.0` channel 0 is driven via `sysfs`. Its role is most likely the **live/roll
+acquisition repetition gate** (killing the boot firmware freezes the live ADC because nobody re-issues
+`echo 1 > run`), not a beeper. A clone that drives its own acquisition engine (§2) does not
+need it.
+
+```
+sysfs base: /sys/devices/platform/omap/ehrpwm.0/pwm/ehrpwm.0:0/{request,period_freq,duty_percent,run}
+init:  echo 1 > request ; echo 10000 > period_freq ; echo 50 > duty_percent   # 10 kHz, 50% duty
+pulse: echo 1 > run   (then echo 0 > run after the interval)
+```
+
+`period_freq` is a target frequency in Hz taken verbatim (`10000` = exactly 10.000 kHz, independent of
+TBCLK); `duty_percent` is 0..100.
+
+### 10.4 Demo/simulation gate
+
+The boot firmware **skips** the `gpio113` pulse and the eHRPWM `run` pulse when a demo/sim flag is set
+(`[state+4] == 1`). A faithful clean-room app / emulator must replicate this gate, or it emits pulses in
+contexts where the stock firmware suppresses them.
+
+---
+
+## 11. Load-bearing constraints (summary)
 
 1. **Reuse the inherited `/dev/fpga_key` fd**; a fresh open EFAULTs. Never close it. Never read data
    from it (it carries none) — it is a SIGIO source only.
@@ -515,8 +673,8 @@ CONF_DONE or the engine — that is why they are safe off the bus.
    bus owner at the frame boundary — never a concurrent goroutine, never during a capture-halt window.
 3. **The LED strobe is one indivisible 4-write burst** at the flush site, not interleaved with the
    offset/level CS3 flushes and not split across FSM iterations (§8.1).
-4. **The offset DAC write must be followed by a CS1 run-word `0x35` re-assert** (06 §5.3); the trigger
-   level write is a **4-write quad + full engine re-arm at the bus-idle Arm boundary** (05 §2.3). A
+4. **The offset DAC write must be followed by a CS1 run-word (selector `0x35`) re-assert** (§8.3); the
+   trigger level write is a **4-write quad + full engine re-arm at the bus-idle Arm boundary** (§8.4). A
    bare write of either black-screens the display.
 5. **On the SIGIO path, decode knobs only on the interrupt read**, never on the 40 ms re-sync tick (a
    timer read lands mid-detent and corrupts the quadrature phase). The only exception is the no-SIGIO
