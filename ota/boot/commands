@@ -11,7 +11,10 @@
 # open faults / can wedge the bus), MUST NOT kill anything, and MUST NOT write
 # instrument NAND. It only reads /proc + /sys and runs busybox query applets.
 
-OUT="${OTA_USB:-$(CDPATH= cd -- "$(dirname -- "$0")" 2>/dev/null && pwd)}/firstboot.log"
+# Write into the stick's log dir. startup.sh exports OTA_DIR (and OTA_USB) and
+# has already remounted the stick rw, so this lands on the stick. No dirname/--
+# (busybox 1.13.2 on this unit rejects the -- option).
+OUT="${OTA_DIR:-${OTA_USB:-/usr/bin/siglent/usr/media/U-disk0}/ota}/logs/firstboot.log"
 
 {
     echo "===== open-sds firstboot $(date 2>/dev/null || echo '?') ====="

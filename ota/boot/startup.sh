@@ -99,7 +99,7 @@ OTA_SLOT_ROOT="${OTA_SLOT_ROOT:-$USB/agent-slots}"
 OTA_HEALTH_DIR="${OTA_HEALTH_DIR:-/dev}"
 [ -f "$OTA_DIR/agent.env" ] && . "$OTA_DIR/agent.env"
 # Path + identity contract handed to the agent (it derives the rest from these).
-export OTA_DIR OTA_SLOT_ROOT OTA_HEALTH_DIR
+export OTA_USB OTA_DIR OTA_SLOT_ROOT OTA_HEALTH_DIR
 export OTA_NATS OTA_DEVICE_ID OTA_HB_INTERVAL OTA_HEALTH_TIMEOUT OTA_LISTEN
 export OTA_NKEY OTA_CA OTA_CREDS   # agent auth (else the agent's NATS TLS has no CA)
 export OTA_GPMC OTA_FPGA_KEY OTA_WD_DEV OTA_WD_PET
