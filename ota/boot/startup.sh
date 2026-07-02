@@ -23,50 +23,52 @@
 # Everything is overridable by env so the off-device harness can drive it with
 # stubs (agent, commands) and assert ordering deterministically.
 
-# --- 0. EARLY EXECUTION MARKER (must be the very first side effect) ----------
-# Proves — independently of the agent, network, or later failures — that the
-# firmware actually executed this script, and records HOW it was invoked
-# (arg0, parent, uid, cwd). Written to EVERY plausible location so that no
-# matter how the vendor invokes us (from the stick, from a RAM copy, from a
-# fixed mountpoint) at least one marker lands somewhere we can read later.
-_selfdir=$(CDPATH= cd -- "$(dirname -- "$0")" 2>/dev/null && pwd)
-_mark_dirs="$OTA_USB $_selfdir /usr/bin/siglent/usr/media/U-disk0 /mnt/udisk /mnt/usb /media/usb /tmp"
-_mark() {
-    {
-        echo "==== startup.sh reached $(date 2>/dev/null || echo '?') ===="
-        echo "arg0=$0 pid=$$ ppid=${PPID:-?} uid=$(id -u 2>/dev/null) cwd=$(pwd 2>/dev/null) selfdir=$_selfdir"
-        echo "parent: $(cat /proc/${PPID:-0}/comm 2>/dev/null) cmdline: $(tr '\0' ' ' < /proc/${PPID:-0}/cmdline 2>/dev/null)"
-        echo "mounts with U-disk/usb:"; grep -iE 'disk|usb|vfat|media' /proc/mounts 2>/dev/null
-    } >> "$1" 2>/dev/null
-}
-for _d in $_mark_dirs; do
-    [ -n "$_d" ] && [ -d "$_d" ] && _mark "$_d/BOOT_MARKER.txt"
-done
-_mark /tmp/ota-boot-marker.txt
-
 # --- 1. environment: LOCATE THE PAYLOAD -------------------------------------
-# The stick is wherever ota/agent.env actually lives — NOT necessarily
-# dirname("$0") (the vendor may run a copy of this script from RAM). Probe the
-# candidate mountpoints and pick the first that holds the payload, so the agent
-# path always resolves to the real binaries. OTA_USB overrides everything (tests).
+# The stick lives at the vendor's FIXED U-disk mountpoint, which is also where
+# the payload (ota/agent.env, ota/agent.A) resides. This is authoritative even
+# when the firmware runs a COPY of this script from RAM — in which case $0's
+# directory is NOT the stick, so we must NOT derive the stick from dirname("$0")
+# (that was a regression from the proven original). OTA_USB overrides for the
+# off-device harness. Kept to plain POSIX idioms for busybox ash.
+_selfdir=$(dirname "$0" 2>/dev/null)
 find_usb() {
-    # Explicit override wins immediately (tests / harness) — no probing.
     [ -n "$OTA_USB" ] && { echo "$OTA_USB"; return; }
-    # Otherwise pick the first FIXED candidate that actually holds the payload.
-    # (Deliberately a fixed list, not a /proc/mounts scan: stat'ing an unknown
-    #  mountpoint can hang on an autofs/stale mount and wedge boot.)
-    for _c in "$_selfdir" /usr/bin/siglent/usr/media/U-disk0 \
+    # First candidate that actually carries the payload; the fixed vendor mount
+    # is tried FIRST because that is the known-good location.
+    for _c in /usr/bin/siglent/usr/media/U-disk0 "$_selfdir" \
               /mnt/udisk /mnt/usb0 /mnt/usb /media/usb /media/U-disk0; do
         [ -n "$_c" ] && [ -f "$_c/ota/agent.env" ] && { echo "$_c"; return; }
     done
-    # Last resort: selfdir (may be a RAM copy without the payload — the agent
-    # loop will then log "agent-missing", which is still diagnosable).
-    echo "${_selfdir:-/usr/bin/siglent/usr/media/U-disk0}"
+    echo /usr/bin/siglent/usr/media/U-disk0
 }
 USB=$(find_usb)
+
+# The stick can come up (or flake to) read-only (vfat errors=remount-ro under
+# write load, or after a power-cut fsck). Remount it rw UP FRONT so the marker,
+# logging, and the agent's slot writes work at all — otherwise every write here
+# fails silently and it looks like the script never ran. Device node is
+# /dev/sda1 on this unit. Harmless if already rw or not the USB. (From the
+# proven original anchor.)
+case "$USB" in /usr/bin/siglent/usr/media/U-disk0)
+  mount -o remount,rw "$USB" 2>/dev/null || mount -o remount,rw /dev/sda1 "$USB" 2>/dev/null ;;
+esac
+
 OTA_DIR="${OTA_DIR:-$USB/ota}"
 mkdir -p "$OTA_DIR/logs" 2>/dev/null
-_mark "$OTA_DIR/logs/boot-marker.txt"   # also drop it beside the logs on the resolved stick
+
+# --- 0. EARLY EXECUTION MARKER ----------------------------------------------
+# Plain guarded appends proving the firmware ran us and how it invoked us, to
+# the stick root, the ota dir, and /tmp — so at least one survives however and
+# wherever the vendor runs the script. Guarded with [ -d ] so a missing dir is
+# silent, never a noisy redirect error.
+_mk="startup reached $(date 2>/dev/null || echo '?') arg0=$0 pid=$$ ppid=${PPID:-?} uid=$(id -u 2>/dev/null) selfdir=$_selfdir USB=$USB"
+_mkp="parent=$(cat /proc/${PPID:-0}/comm 2>/dev/null) cmd=$(tr '\0' ' ' < /proc/${PPID:-0}/cmdline 2>/dev/null)"
+for _mdir in "$USB" "$OTA_DIR" /tmp; do
+    [ -d "$_mdir" ] || continue
+    echo "$_mk"  >> "$_mdir/BOOT_MARKER.txt" 2>/dev/null
+    echo "$_mkp" >> "$_mdir/BOOT_MARKER.txt" 2>/dev/null
+done
+
 LOG="${OTA_BOOT_LOG:-$OTA_DIR/logs/boot.log}"
 AGENTLOG="${OTA_AGENT_LOG:-$(dirname "$LOG")/agent.log}"  # agent+app stdout (same dir as boot.log)
 COMMANDS="${OTA_COMMANDS:-$USB/commands}"
