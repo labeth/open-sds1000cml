@@ -28,8 +28,9 @@ All three transports carry the **identical** SCPI request/response byte stream (
 framing that delivers it. A command is one `\n`-terminated line; a response is the header-echoed value
 (§3.1) or an IEEE-488.2 definite-length binary block (§4 waveform / §6 hardcopy).
 
-A third LAN service — the boot-time BusyBox `telnetd` shell (TCP/23, started from a USB `startup.sh`) —
-is **not** part of instrument control and MUST NOT be conflated with SCPI.
+SCPI over VXI-11/USB-TMC/USB-GPIB is the **only** instrument-control interface. This firmware runs no
+on-device shell/login service; device management is out of band via the OTA agent and the host `otactl`
+tool (see `01-system-architecture.md`), which is a separate path and MUST NOT be conflated with SCPI.
 
 ### 1.1 USB-TMC device identity
 

@@ -1,0 +1,6 @@
+# Build artifacts
+/dist/
+*.arm
+agent-arm
+otactl-*
+/bin/

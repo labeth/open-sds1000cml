@@ -291,7 +291,7 @@ agent — not the app — owns the fds and the hardware watchdog.
 **The hardware watchdog contract.** The SoC (AM335x) has a **~60 s hardware watchdog** at
 `/dev/watchdog` that the boot firmware normally services. Once the factory app is killed at takeover,
 nothing pets it, and the SoC warm-resets in ~60 s — which drops the USB hotplug and loses the
-telnet/OTA path until a physical stick re-seat or power-cycle. Therefore the **agent** (the
+OTA/remote-access path until a physical stick re-seat or power-cycle. Therefore the **agent** (the
 rarely-changed trusted base, not the supervised app) owns it for the device's whole life:
 
 1. Right after the factory kill, the agent opens `/dev/watchdog` with `O_RDWR`, **retrying briefly**
@@ -304,7 +304,7 @@ rarely-changed trusted base, not the supervised app) owns it for the device's wh
    instead of resetting.
 
 Because the agent (not the app) pets, a crashing app, a bad OTA push, or an app stuck in D-state
-cannot reset the device: telnet/OTA stay up and rollback proceeds.
+cannot reset the device: the OTA/remote-access path stays up and rollback proceeds.
 
 ### 4.2 The health signal
 
@@ -433,7 +433,7 @@ These are requirements. Each is why the design is shaped the way it is.
 
 17. **Pet the ~60 s hardware watchdog for the device's whole life** (see §4.1). After the factory kill
     nothing services `/dev/watchdog`; failing to pet warm-resets the SoC in ~60 s and loses the
-    USB-hotplug telnet/OTA path (physical re-seat/power-cycle to recover). The **agent**, not the app,
+    USB-hotplug OTA/remote-access path (physical re-seat/power-cycle to recover). The **agent**, not the app,
     holds and pets it, so an app crash or bad OTA cannot reset the device. Disarm with magic `'V'`
     only on a clean stop.
 
