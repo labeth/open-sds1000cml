@@ -29,6 +29,23 @@
 # OTA_USB overrides it for the off-device harness.
 USB="${OTA_USB:-$(CDPATH= cd -- "$(dirname -- "$0")" 2>/dev/null && pwd)}"
 USB="${USB:-/usr/bin/siglent/usr/media/U-disk0}"   # last-ditch fallback
+
+# --- 0. EARLY EXECUTION MARKER (must be the very first side effect) ----------
+# Proves — independently of the agent, network, or later failures — that the
+# firmware actually executed this script, and records HOW it was invoked
+# (arg0, parent pid, uid, cwd) so we can learn the trigger mechanism. Written
+# to the stick root AND /tmp so at least one survives a flaky FAT.
+_mark() {
+    _m="$1"
+    {
+        echo "==== startup.sh reached $(date 2>/dev/null || echo '?') ===="
+        echo "arg0=$0 pid=$$ ppid=${PPID:-?} uid=$(id -u 2>/dev/null) cwd=$(pwd 2>/dev/null)"
+        echo "USB=$USB"
+        echo "parent: $(cat /proc/${PPID:-0}/comm 2>/dev/null) cmdline: $(tr '\0' ' ' < /proc/${PPID:-0}/cmdline 2>/dev/null)"
+    } >> "$_m" 2>/dev/null
+}
+_mark "$USB/BOOT_MARKER.txt"
+_mark "/tmp/ota-boot-marker.txt"
 OTA_DIR="${OTA_DIR:-$USB/ota}"
 LOG="${OTA_BOOT_LOG:-$OTA_DIR/logs/boot.log}"
 AGENTLOG="${OTA_AGENT_LOG:-$(dirname "$LOG")/agent.log}"  # agent+app stdout (same dir as boot.log)
