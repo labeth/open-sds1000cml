@@ -349,29 +349,30 @@ func TestDecimatedAutoHoldsWrongSlopeFrame(t *testing.T) {
 	}
 }
 
-func TestDecimatedGenuineDCFreeRuns(t *testing.T) {
-	// A truly flat/DC decimated screen (ptp < threshold): AUTO holds a few
-	// frames, then FREE-RUNS a live flat line once decimFlatRun ≥ decimFlatClear,
-	// so a disconnected input stays live instead of freezing on the last edge.
+func TestDecimatedFlatFallback(t *testing.T) {
+	// A genuinely flat/DC decimated screen (ptp < threshold) has no lock to be had. AUTO
+	// HOLDs (re-presenting the last edge) and publishes ONE honest flat capture (EdgeX=-1)
+	// every nativeFlatFallbck frames for liveness — it does NOT free-run every frame (that
+	// would flicker on a sub-period band that catches edges only intermittently).
 	fb := newFakeBus()
 	fb.mu.Lock()
 	fb.wave = func(int) (uint8, uint8) { return 128, 128 } // flat DC
 	fb.mu.Unlock()
 	e, _ := newTestEngine(t, fb)
 	e.bringUp()
-	for i := 0; i < decimFlatClear-1; i++ {
-		e.oneFrame(false) // held: not yet genuine DC
+	for i := 0; i < nativeFlatFallbck-1; i++ {
+		e.oneFrame(false) // held: not yet at the flat fallback
 	}
 	if s := e.Snapshot(); s.Published != 0 {
-		t.Fatalf("flat DC published before the free-run threshold: published=%d, want 0", s.Published)
+		t.Fatalf("flat DC published before the fallback: published=%d, want 0", s.Published)
 	}
-	e.oneFrame(false) // decimFlatRun == decimFlatClear → free-run
+	e.oneFrame(false) // the nativeFlatFallbck-th held frame → one honest flat capture
 	if s := e.Snapshot(); s.Published != 1 {
-		t.Fatalf("genuine DC did not free-run: published=%d, want 1", s.Published)
+		t.Fatalf("flat DC fallback did not publish: published=%d, want 1", s.Published)
 	}
 	f, fresh := e.Consume()
 	if !fresh || f.EdgeX != -1 {
-		t.Fatalf("DC free-run frame: fresh=%v EdgeX=%v, want fresh EdgeX=-1", fresh, f.EdgeX)
+		t.Fatalf("DC fallback frame: fresh=%v EdgeX=%v, want fresh EdgeX=-1", fresh, f.EdgeX)
 	}
 }
 
@@ -629,32 +630,25 @@ func TestNativeFastContentGate(t *testing.T) {
 		t.Fatalf("native-fast frame: fresh=%v valid=%d interp=%v", fresh, f.Valid, f.Interp)
 	}
 
-	// Flat rail in AUTO → free-runs: publishes EVERY frame uncentred (EdgeX=-1),
-	// so a DC ≤200 ns screen shows a live flat line at the FSM rate (not frozen).
+	// Flat rail → only-locked-frames: HOLD (a flat capture has no lock), publishing one
+	// honest flat frame every nativeFlatFallbck held frames for liveness. This holds
+	// (does not flash) an intermittent-edge band so it never flickers edge↔flat.
 	fb.mu.Lock()
 	fb.wave = func(int) (uint8, uint8) { return 128, 128 }
 	fb.mu.Unlock()
-	e.oneFrame(false)
-	f, fresh = e.Consume()
-	if !fresh || f.EdgeX != -1 {
-		t.Fatalf("AUTO flat: fresh=%v EdgeX=%v, want fresh EdgeX=-1 (free-run DC)", fresh, f.EdgeX)
-	}
-
-	// NORM keeps the honest slow refresh: hold 59 frames, then one flat publish.
-	// (The AUTO free-run above reset flatHeld to 0, so the count starts clean.)
 	for i := 0; i < nativeFlatFallbck-1; i++ {
-		e.oneFrame(true)
+		e.oneFrame(false)
 	}
 	if _, fresh := e.Consume(); fresh {
-		t.Fatal("NORM flat frame published before the fallback threshold")
+		t.Fatal("flat frame published before the fallback threshold")
 	}
-	e.oneFrame(true)
+	e.oneFrame(false)
 	f, fresh = e.Consume()
 	if !fresh {
-		t.Fatal("NORM flat liveness fallback frame not published")
+		t.Fatal("flat liveness fallback frame not published")
 	}
 	if f.EdgeX != -1 {
-		t.Fatalf("NORM flat fallback EdgeX = %v, want -1 (never fabricate an edge)", f.EdgeX)
+		t.Fatalf("flat fallback EdgeX = %v, want -1 (never fabricate an edge)", f.EdgeX)
 	}
 }
 

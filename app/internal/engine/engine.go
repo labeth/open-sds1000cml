@@ -62,7 +62,6 @@ const (
 	nativeEdgeMinPtp  = 40    // codes; flat rail ≈ 5, real cal edge ≈ 150
 	nativeFlatFallbck = 60    // held frames before one honest flat publish
 	fillFull          = 0x7f0 // fill counter near the 11-bit max = record full
-	decimFlatClear    = 4     // consecutive flat decimated frames ⇒ genuine DC free-run
 
 	// TrigCodeMin/Max clamp the UI trigger-level DAC range (spec 05 §1.2).
 	TrigCodeMin = 27000
@@ -178,14 +177,13 @@ type Engine struct {
 	matrixReq chan chan [5]uint16
 
 	// Owner-private state (no locking needed).
-	band         Band
-	prevKind     Kind
-	lastNorm     bool
-	seq          uint64
-	flatHeld     int
-	decimFlatRun int
-	deadRuns     int
-	done         chan struct{}
+	band     Band
+	prevKind Kind
+	lastNorm bool
+	seq      uint64
+	flatHeld int
+	deadRuns int
+	done     chan struct{}
 
 	// Envelope band state (spec 04 §1): ring of phase-scattered windows.
 	envRing1, envRing2     [][]uint8
@@ -894,23 +892,22 @@ func (e *Engine) oneFrame(norm bool) {
 	tp := e.tp
 	e.mu.Unlock()
 	interval := e.band.CaptureIntervalNs()
-	var edgeX float64
-	var slopeOK bool
+	edgeX := -1.0
 	switch tp.typ {
 	case TrigPulse:
 		edgeX = qualifyPulse(disc, interval, tp, rising)
-		slopeOK = edgeX >= 0
 	case TrigSlope:
 		edgeX = qualifySlope(disc, interval, tp, rising)
-		slopeOK = edgeX >= 0
 	case TrigVideo:
 		edgeX = qualifyVideo(disc, tp)
-		slopeOK = edgeX >= 0
 	default:
 		// EDGE: anchor on the user's HW trigger level (WYSIWYG — the display
 		// crosses where the level is set) when it yields a crossing; fall
 		// back to the mid-level crossing when the level is unset or off the
 		// signal, so the display stays stable either way (spec 05 §5.1).
+		// centerCross returns ONLY a crossing of the requested slope, so
+		// edgeX ≥ 0 already means "a right-slope crossing exists" — the lock
+		// gate below (§7.4) rests on that plus amplitude + coherence.
 		lvl := midLevel(disc)
 		if td := e.trigDispLevel(int(e.trigSrc.Load())); td >= 0 {
 			if x := centerCross(disc, td, rising); x >= 0 {
@@ -921,7 +918,6 @@ func (e *Engine) oneFrame(norm bool) {
 		} else {
 			edgeX = centerCross(disc, lvl, rising)
 		}
-		slopeOK = edgeX >= 0 && windowSlopeMatches(disc, edgeX, e.band.WinCols(), rising)
 	}
 
 	f.Valid = cols
@@ -939,69 +935,49 @@ func (e *Engine) oneFrame(norm bool) {
 	f.SampleS = e.band.CaptureIntervalNs() * 1e-9
 	f.Norm = norm
 
-	// Publish policy (spec 03 §7 + spec 05 §E). For PULSE/SLOPE/VIDEO the
-	// software qualifier IS the trigger on every real-time band and in every
-	// mode — a qualifying event publishes, anything else holds (overriding
-	// AUTO's publish-everything default).
+	// Publish policy — ONLY DISPLAY FRAMES THAT HAVE A LOCK (spec 03 §7.4, spec 05 §4,
+	// spec 04 §8.2). A "lock" is a validated triggered event on the captured CONTENT:
+	//   native-fast: real edge content (ptp ≥ nativeEdgeMinPtp) AND a right-slope crossing —
+	//                the done-gate is unreliable here so content decides (spec 03 §6, §8.2)
+	//   decimated:   a COHERENT capture AND a right-slope crossing (spec 05 §4.2)
+	//   qualifier:   a qualifying PULSE/SLOPE/VIDEO event (its own edgeX) on the same basis
+	// The gate is a right-slope crossing (edgeX ≥ 0) on a REAL signal (ptp ≥ nativeEdgeMinPtp
+	// rejects a flat rail / noise), plus a COHERENT capture on decimated bands. We deliberately
+	// do NOT fold in windowSlopeMatches here: that plateau test is reliable only while winCols/4
+	// stays within one signal period, so at a dense multi-period window (1–2 ms) landing on a
+	// non-integer phase it false-rejects a genuine edge and silently freezes the band. The
+	// right-slope crossing + amplitude + coherence already define the lock. No lock → HOLD the
+	// last locked frame; never flash a jittery un-anchored capture. A genuinely flat / no-signal
+	// screen has no lock to be had: AUTO (and native-fast in either mode, spec §8.2) keeps it
+	// live with one honest flat capture (EdgeX = -1) every nativeFlatFallbck held frames.
+	// HOLDING — not free-running — between fallbacks re-presents the last edge, so an
+	// intermittent-edge sub-period band (2–20 µs) shows a stable held edge, never an edge↔flat
+	// flicker.
 	qualifier := tp.typ != TrigEdge
 
-	// Decimated genuine-DC detector: count consecutive flat (sub-threshold ptp)
-	// decimated frames. A live sub-period signal (whose free-run phase yields an
-	// occasional falling-only/rail frame) keeps ptp ≥ threshold and never reaches
-	// decimFlatClear; a truly quiet/disconnected screen does, and then free-runs
-	// a live flat line instead of freezing on the last edge.
+	lock := edgeX >= 0 && (qualifier || p >= nativeEdgeMinPtp)
 	if !nativeFast {
-		if p >= nativeEdgeMinPtp {
-			e.decimFlatRun = 0
-		} else {
-			e.decimFlatRun++
-		}
+		lock = lock && coherent
 	}
 
 	publish := false
 	switch {
-	case nativeFast:
-		event := slopeOK && (qualifier || p >= nativeEdgeMinPtp)
-		switch {
-		case event:
+	case lock:
+		publish = true
+		e.flatHeld = 0
+	case (nativeFast || !norm) && !qualifier && p < nativeEdgeMinPtp:
+		// Genuinely flat / no signal (EDGE, and either native-fast or AUTO): refresh a live
+		// flat line every nativeFlatFallbck held frames; hold the last edge in between.
+		e.flatHeld++
+		if e.flatHeld >= nativeFlatFallbck {
+			edgeX = -1 // one honest flat capture; never fabricate an edge
 			publish = true
 			e.flatHeld = 0
-		case !norm && !qualifier && p < nativeEdgeMinPtp:
-			// AUTO EDGE on a genuinely flat/DC ≤200 ns screen: free-run at the
-			// FSM rate (a real scope shows a live flat line in AUTO, not a frozen
-			// one). A DC slice has no edge to centre → publish uncentred.
-			edgeX = -1
-			publish = true
-			e.flatHeld = 0
-		default:
-			// NORM flat (honest slow refresh), an un-fired qualifier, or a
-			// non-flat AUTO frame momentarily lacking a slope-valid edge → hold
-			// the last good frame rather than flash an uncentred one.
-			e.flatHeld++
-			if e.flatHeld >= nativeFlatFallbck {
-				edgeX = -1 // one honest flat capture; never fabricate an edge
-				publish = true
-				e.flatHeld = 0
-			}
 		}
-	case qualifier:
-		publish = coherent && slopeOK
-	case norm:
-		// Decimated NORM EDGE: publish when a correct-slope crossing EXISTS
-		// (edgeX ≥ 0) so repeat-rail centring can place it at posFrac. Gate on
-		// the crossing's existence, NOT windowSlopeMatches — that aliases across
-		// periods and false-rejects dense multi-period windows, which would
-		// intermittently freeze 1–2 ms NORM.
-		publish = coherent && edgeX >= 0
-	default: // AUTO decimated, EDGE
-		switch {
-		case edgeX >= 0:
-			publish = coherent // a centrable crossing exists → publish & centre
-		case e.decimFlatRun >= decimFlatClear:
-			publish = coherent // genuine DC → free-run flat (edgeX=-1 → record middle)
-		default:
-			publish = false // live signal, this free-run phase missed the slope → HOLD
-		}
+	default:
+		// NORM decimated quiet screen, an un-fired qualifier, or a signal present but not
+		// locked this frame (it would jitter) → HOLD the last locked frame.
+		publish = false
 	}
 	if !publish {
 		edgeX = -1 // held frames never leave the arena; keep metadata sane
