@@ -239,3 +239,12 @@ Device at 192.168.1.209 (web UI :8080). `/tmp` is read-only → deploy with
   for Phase 4, plus 2 JS-template styles). Fixed a real bug: the FFT `top-N` inputs
   used `color:var(--fg)` (undefined) — now `.num`. Budget ratcheted 66→22.
   Deferred to Phase 2b: externalise the inline `<script>`→module + strict CSP.
+- **Phase 2b (externalize CSS/JS + strict CSP) — DONE.** The inline `<style>`→
+  `base.css` and inline `<script>`→`app.js` (kept a classic script so the browser
+  e2e's global-scope access still works), both served + linked. Added a strict
+  same-origin CSP: `default-src 'self'; script-src 'self'; connect-src 'self';
+  style-src 'self' 'unsafe-inline'; img-src 'self' data:; object-src 'none';
+  base-uri 'none'` (script is strict; style keeps 'unsafe-inline' until Phase 4
+  removes the last `display:none` hooks). Guardrails flipped: inline-script
+  budget→0, CSP-present now REQUIRED. Device-verified at :8080: first-paint 200ms
+  with 5 assets, no page errors, no CSP violations, decode/FFT work under CSP.

@@ -28,6 +28,12 @@ var decodeJS []byte
 //go:embed tokens.css
 var tokensCSS []byte
 
+//go:embed base.css
+var baseCSS []byte
+
+//go:embed app.js
+var appJS []byte
+
 // Scope is the engine surface the web layer needs (the setters come from
 // *engine.Engine; WithFrame comes from the frames.Fanout — the arena's
 // single-consumer read slot belongs to the fan-out, and every other reader
@@ -101,6 +107,8 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/peaks.js", s.hPeaksJS)
 	mux.HandleFunc("/decode.js", s.hDecodeJS)
 	mux.HandleFunc("/tokens.css", s.hTokensCSS)
+	mux.HandleFunc("/base.css", s.hBaseCSS)
+	mux.HandleFunc("/app.js", s.hAppJS)
 	return mux
 }
 
@@ -159,11 +167,29 @@ func (s *Server) hTokensCSS(w http.ResponseWriter, r *http.Request) {
 	w.Write(tokensCSS)
 }
 
+func (s *Server) hBaseCSS(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/css; charset=utf-8")
+	w.Write(baseCSS)
+}
+
+func (s *Server) hAppJS(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
+	w.Write(appJS)
+}
+
 func (s *Server) hRoot(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/" {
 		http.NotFound(w, r)
 		return
 	}
+	// Strict same-origin CSP. Script and connect are 'self' only (no inline
+	// script — app.js/peaks.js/decode.js are all external same-origin modules).
+	// style keeps 'unsafe-inline' until Phase 4 removes the last inline style=
+	// hooks (display:none). img allows data: for the canvas PNG export.
+	w.Header().Set("Content-Security-Policy",
+		"default-src 'self'; script-src 'self'; connect-src 'self'; "+
+			"style-src 'self' 'unsafe-inline'; img-src 'self' data:; "+
+			"object-src 'none'; base-uri 'none'")
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Write(uiHTML)
 }

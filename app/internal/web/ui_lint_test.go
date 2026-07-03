@@ -30,7 +30,7 @@ func readUIHTML(t *testing.T) string {
 // (kept inline per the load-bearing contract until Phase 4 swaps them to the
 // [hidden] attribute), 2 JS-template styles (→ classList in Phase 4), and a few
 // singletons. Target 0 after Phase 4.
-const inlineStyleBudget = 22
+const inlineStyleBudget = 16
 
 func TestInlineStyleBudget(t *testing.T) {
 	n := strings.Count(readUIHTML(t), "style=\"")
@@ -40,10 +40,10 @@ func TestInlineStyleBudget(t *testing.T) {
 	t.Logf("inline style= attributes: %d / budget %d (target 0 by Phase 2)", n, inlineStyleBudget)
 }
 
-// inlineScriptBudget: the page currently ships one inline <script> block. Phase 2
-// externalizes it to an ES module so a strict CSP (no 'unsafe-inline') is
-// possible. Ratchets to 0 then.
-const inlineScriptBudget = 1
+// inlineScriptBudget: 0 — Phase 2b externalized the inline <script> to app.js so
+// a strict CSP (script-src 'self', no 'unsafe-inline') holds. All scripts are now
+// external same-origin (app.js/peaks.js/decode.js).
+const inlineScriptBudget = 0
 
 func TestInlineScriptBudget(t *testing.T) {
 	// Count opening <script> tags with NO src attribute (inline blocks).
@@ -64,10 +64,10 @@ func TestInlineScriptBudget(t *testing.T) {
 	t.Logf("inline <script> blocks: %d / budget %d (target 0 by Phase 2 for strict CSP)", inline, inlineScriptBudget)
 }
 
-// TestContentSecurityPolicy pins the CSP invariant. Phase 2 adds a strict
-// same-origin CSP once the inline <script>/style are externalized. Until then
-// this test documents the target and SKIPS rather than failing the build; when
-// Phase 2 lands, drop the skip so a missing/weakened CSP fails.
+// TestContentSecurityPolicy pins the strict same-origin CSP added in Phase 2b:
+// same-origin default, and SCRIPT restricted to 'self' with no 'unsafe-inline'
+// (the XSS-relevant directive). style-src may keep 'unsafe-inline' until Phase 4
+// removes the last inline display:none hooks.
 func TestContentSecurityPolicy(t *testing.T) {
 	fs := &fakeScope{stats: engine.Stats{Running: true}}
 	rec := httptest.NewRecorder()
@@ -75,13 +75,22 @@ func TestContentSecurityPolicy(t *testing.T) {
 	New(fs, nil, nil, nil).Handler().ServeHTTP(rec, req)
 	csp := rec.Header().Get("Content-Security-Policy")
 	if csp == "" {
-		t.Skip("CSP not added yet (Phase 2 externalizes the inline script/style, then adds a strict same-origin CSP)")
+		t.Fatal("no Content-Security-Policy header on the HTML document")
 	}
-	// Phase 2+ invariants: must be same-origin and forbid inline script.
 	if !strings.Contains(csp, "default-src 'self'") {
 		t.Errorf("CSP must be same-origin (default-src 'self'): %q", csp)
 	}
-	if strings.Contains(csp, "script-src") && strings.Contains(csp, "'unsafe-inline'") {
-		t.Errorf("CSP must not allow 'unsafe-inline' script: %q", csp)
+	// The script-src directive must be present and must NOT allow inline script.
+	script := ""
+	for _, d := range strings.Split(csp, ";") {
+		if d = strings.TrimSpace(d); strings.HasPrefix(d, "script-src") {
+			script = d
+		}
+	}
+	if script == "" {
+		t.Errorf("CSP must set an explicit script-src: %q", csp)
+	}
+	if strings.Contains(script, "'unsafe-inline'") || strings.Contains(script, "'unsafe-eval'") {
+		t.Errorf("script-src must not allow inline/eval: %q", script)
 	}
 }
