@@ -269,3 +269,33 @@ Device at 192.168.1.209 (web UI :8080). `/tmp` is read-only → deploy with
   body never scrolls sideways and the canvas stays large. Acceptance specs pin it
   (toggle appears, no horizontal body scroll at 700px, drawer opens, footer
   overflow-x:auto). Device-verified at 720px.
+
+## Status summary (delivered vs deferred)
+
+**Delivered + validated (10 commits on `app-clean-room-firmware`):** the design
+ADR; a real e2e acceptance suite (shared `scope_po.mjs` page-object + specs for
+every user path) with always-run pure-Go guardrails (palette parity, inline-style
+budget, CSP); a single-source palette (tokens.json → web `tokens.css` + LCD
+`palette_gen.go`) that fixed the verified web-red/LCD-green trigger divergence;
+token-driven primitive classes replacing the scattered inline styles (66→16);
+externalised CSS/JS + a strict same-origin CSP (script-src 'self'); full
+accessibility (aria-live/pressed/labels, role=img canvas, focus ring); keyboard
+shortcuts + `?` help from a declarative registry; a header trigger-state chip
+mirroring the LCD; redundant colour coding (RUN ▶/STOP ■, LIVE strip, filled LCD
+softkey); and a responsive drawer/toolbar layout. Both surfaces (web + LCD) covered.
+
+**Deliberately deferred (documented, not forgotten):**
+- **Phase 3 — central reactive store + pure `render(ctx,state)` renderers.** The
+  highest-risk, lowest-user-visibility phase (it touches the 90 ms canvas hot path
+  and the xForCol/homeWindow zoom math). The current per-function update model is
+  now *consistent* and well-covered by the acceptance suite; the store is an
+  internal-elegance gain best done as its own focused effort, one renderer at a
+  time against the deepmem/fft/decode pins. Not required for the UX goals above.
+- **Phase 4 — `[hidden]`-attribute visibility + strict `style-src`.** Removing the
+  last inline `display:none` hooks (→ budget 0) needs ~40 touch-points and, for a
+  *strict* style-src, also converting app.js's runtime row-styles to programmatic
+  CSSOM. High-churn for a low security delta (script is already locked to 'self';
+  style injection is far less dangerous). The inline-style budget ratchet prevents
+  regression in the meantime.
+- **LCD softkey bezel-alignment** needs a one-time physical measurement of the
+  F1–F5 button y-centres on the unit (open question in the plan).
