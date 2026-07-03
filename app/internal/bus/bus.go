@@ -24,6 +24,11 @@ type Bus interface {
 	// DrainRead reads one frozen CS1 sample port (0x30–0x34) post capture-halt.
 	// One bus transaction per call — the port auto-increments per transaction.
 	DrainRead(sel uint16) uint16
+	// DrainWrite writes one CS1 register via the /dev/mem fast path when
+	// available (falls back to ioctl). Used by the continuous-stream loop to
+	// pulse the roll-FIFO latch without a syscall per sample. Refuses the same
+	// forbidden registers as Write.
+	DrainWrite(sel, val uint16) error
 	// MmapDrain reports whether DrainRead uses the /dev/mem fast path.
 	MmapDrain() bool
 }
@@ -99,6 +104,12 @@ func (d *Dev) mapCS1() error {
 //go:noinline
 func load16(p *uint16) uint16 { return *p }
 
+// store16 is the write dual of load16: noinline so the compiler can't hoist,
+// split, or drop the volatile register write.
+//
+//go:noinline
+func store16(p *uint16, v uint16) { *p = v }
+
 func encode(plane uint8, sel, val uint16) [6]byte {
 	return [6]byte{plane, 0, byte(sel), byte(sel >> 8), byte(val), byte(val >> 8)}
 }
@@ -163,6 +174,17 @@ func (d *Dev) DrainRead(sel uint16) uint16 {
 	}
 	v, _ := d.Read(PlaneCS1, sel)
 	return v
+}
+
+func (d *Dev) DrainWrite(sel, val uint16) error {
+	if forbiddenWrite(PlaneCS1, sel) {
+		return fmt.Errorf("bus: write to forbidden register cs1 sel %#04x", sel)
+	}
+	if d.regs != nil && int(sel) < len(d.regs) {
+		store16(&d.regs[sel], val)
+		return nil
+	}
+	return d.Write(PlaneCS1, sel, val)
 }
 
 func (d *Dev) MmapDrain() bool { return d.regs != nil }

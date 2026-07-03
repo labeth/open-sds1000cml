@@ -49,6 +49,8 @@ type Scope interface {
 	SetSingle()
 	SetTrigPosFrac(frac float64)
 	SetMemDepth(samples int) int
+	SetFramePeriod(ms int) int
+	SetStreamMode(on bool) bool
 }
 
 // Analog is the vertical front-end surface (implemented by
@@ -262,6 +264,11 @@ type frameReply struct {
 	Depth    int     `json:"depth,omitempty"` // full-record sample count served (0 = not deep)
 	EdgeFrac float64 `json:"edge_frac"`       // trigger anchor as a fraction of the served array (-1 = free-run)
 	WinFrac  float64 `json:"win_frac"`        // one 10-div screen as a fraction of the served array (1 = whole)
+
+	// Stream/stitch mode: continuity so the client stitches windows on one axis.
+	StreamSeq uint64 `json:"stream_seq,omitempty"` // monotonic window counter (0 = not a stream frame)
+	WindowNs  int64  `json:"window_ns,omitempty"`  // this window's captured duration
+	GapNs     int64  `json:"gap_ns,omitempty"`     // blackout (drain+re-arm) before this window
 	Vpc1     float64 `json:"vpc1"`       // volts per ADC code, CH1 (Vdiv/32)
 	Vpc2     float64 `json:"vpc2"`       // volts per ADC code, CH2
 	Off1V    float64 `json:"off1_v"`     // applied offset volts (input-referred)
@@ -573,6 +580,7 @@ func (s *Server) hFrame(w http.ResponseWriter, r *http.Request) {
 				rep.EdgeFrac = -1
 			}
 		}
+		rep.StreamSeq, rep.WindowNs, rep.GapNs = f.StreamSeq, f.WindowNs, f.GapNs
 		// Auto-measurements over the RAW record (accurate, band-independent).
 		rawSample := f.SampleS
 		rep.M1 = measure(f.C1[:f.Valid], vpc[0], off[0], rawSample)
@@ -643,6 +651,14 @@ func (s *Server) hSet(w http.ResponseWriter, r *http.Request) {
 	case "memdepth":
 		applied := s.sc.SetMemDepth(int(req.Value))
 		writeJSON(w, map[string]any{"ok": true, "applied": applied})
+		return
+	case "frameperiod":
+		applied := s.sc.SetFramePeriod(int(req.Value))
+		writeJSON(w, map[string]any{"ok": true, "applied": applied})
+		return
+	case "stream":
+		on := s.sc.SetStreamMode(req.Value != 0)
+		writeJSON(w, map[string]any{"ok": true, "applied": on})
 		return
 	case "trigtype":
 		s.sc.SetTrigType(int(req.Value))

@@ -127,6 +127,8 @@ type Stats struct {
 	WinColMax   float64 `json:"wincol_max"`     // worst centred column
 	ValidDepth  int     `json:"valid_depth"`    // real-signal samples in the drain
 	MemDepth    int     `json:"mem_depth"`      // configured decimated drain depth
+	Stream      bool    `json:"stream"`         // stitched streaming decode mode on
+	GapMs       float64 `json:"gap_ms"`         // stream: blackout between windows
 }
 
 type Engine struct {
@@ -135,9 +137,9 @@ type Engine struct {
 	logf  func(string, ...any)
 	arena *arena
 
-	framePeriod time.Duration
-	armSettle   time.Duration
-	pollEvery   time.Duration
+	framePeriodNs atomic.Int64 // publish pacing floor (ns); 0 = back-to-back (stream)
+	armSettle     time.Duration
+	pollEvery     time.Duration
 
 	// Lock-free control reads by the owner.
 	running     atomic.Bool
@@ -150,6 +152,7 @@ type Engine struct {
 	avgGen      atomic.Uint32    // bumped on acq-mode/depth changes → ring clear
 	singleArmed atomic.Bool      // SINGLE: stop after the next triggered frame
 	memDepth    atomic.Int32     // decimated drain depth (samples): fps↔data tradeoff
+	streamMode  atomic.Bool      // stitched high-bandwidth streaming decode mode
 	chVdivBits  [2]atomic.Uint64 // per-channel V/div (float64 bits) for the
 	//                              trigger-level → display-code mapping
 	trigPosFrac atomic.Uint64 // horizontal trigger position, fraction of screen
@@ -179,13 +182,15 @@ type Engine struct {
 	matrixReq chan chan [5]uint16
 
 	// Owner-private state (no locking needed).
-	band     Band
-	prevKind Kind
-	lastNorm bool
-	seq      uint64
-	flatHeld int
-	deadRuns int
-	done     chan struct{}
+	band      Band
+	prevKind  Kind
+	lastNorm  bool
+	seq       uint64
+	flatHeld  int
+	deadRuns  int
+	streamSeq uint64    // stitch-mode window counter
+	lastHalt  time.Time // wall-clock of the previous window's halt (for GapNs)
+	done      chan struct{}
 
 	// Envelope band state (spec 04 §1): ring of phase-scattered windows.
 	envRing1, envRing2     [][]uint8
@@ -235,17 +240,16 @@ func New(cfg Config) *Engine {
 	}
 	start, _ := PlanTdiv(500e-6) // decimated start detent: shows the cal edge fast
 	e := &Engine{
-		b:           cfg.Bus,
-		clk:         cfg.Clock,
-		logf:        cfg.Logf,
-		arena:       newArena(deepRecord),
-		framePeriod: cfg.FramePeriod,
-		armSettle:   cfg.ArmSettle,
-		pollEvery:   cfg.PollEvery,
-		band:        start,
-		prevKind:    start.Kind(),
-		done:        make(chan struct{}),
-		matrixReq:   make(chan chan [5]uint16, 4),
+		b:         cfg.Bus,
+		clk:       cfg.Clock,
+		logf:      cfg.Logf,
+		arena:     newArena(deepRecord),
+		armSettle: cfg.ArmSettle,
+		pollEvery: cfg.PollEvery,
+		band:      start,
+		prevKind:  start.Kind(),
+		done:      make(chan struct{}),
+		matrixReq: make(chan chan [5]uint16, 4),
 	}
 	e.running.Store(true)
 	e.trigRising.Store(true)
@@ -255,6 +259,7 @@ func New(cfg Config) *Engine {
 	e.chVdivBits[1].Store(math.Float64bits(1))
 	e.trigPosFrac.Store(math.Float64bits(0.5)) // trigger at screen centre
 	e.memDepth.Store(decimDrain)               // default decimated depth (fps↔data)
+	e.framePeriodNs.Store(int64(cfg.FramePeriod))
 	e.tp = defaultTrigParams()
 	e.eresScratch = make([]uint16, deepRecord)
 	e.mu.Lock()
@@ -466,6 +471,41 @@ func (e *Engine) SetMemDepth(samples int) int {
 	}
 	e.memDepth.Store(int32(samples))
 	return samples
+}
+
+// SetFramePeriod sets the publish pacing floor in milliseconds. 0 = run
+// captures back-to-back at the hardware rate (the stream/stitch basis). Returns
+// the applied value (clamped to [0, 1000] ms).
+func (e *Engine) SetFramePeriod(ms int) int {
+	if ms < 0 {
+		ms = 0
+	}
+	if ms > 1000 {
+		ms = 1000
+	}
+	e.framePeriodNs.Store(int64(ms) * int64(time.Millisecond))
+	return ms
+}
+
+// SetStreamMode toggles the stitched high-bandwidth streaming decode mode: the
+// FSM captures back-to-back deep records with a PURE TIMED wait (no trigger /
+// saturation poll — that wait was the recoverable overhead), publishing every
+// window with continuity metadata so the client stitches them. It forces the
+// deep record, un-paces publishing, and only runs on decimated bands (native-fast
+// is burst-only via SINGLE; roll/envelope are their own paths). Returns the
+// applied state.
+func (e *Engine) SetStreamMode(on bool) bool {
+	if on {
+		e.memDepth.Store(deepRecord)
+		e.SetFramePeriod(0)
+	} else {
+		e.SetFramePeriod(50)
+	}
+	e.streamMode.Store(on)
+	e.mu.Lock()
+	e.stats.Stream = on
+	e.mu.Unlock()
+	return on
 }
 
 // effDrainCols is how many samples oneFrame actually drains: the configured
@@ -682,6 +722,8 @@ func (e *Engine) Run() {
 		}
 
 		switch {
+		case e.streamMode.Load() && e.band.Kind() == KindDecimated:
+			e.stitchFrame(norm)
 		case e.band.Kind() == KindRoll:
 			e.rollUpdate(norm)
 		case e.band.Kind() == KindEnvelope:
@@ -882,6 +924,87 @@ func (e *Engine) drain(f *Frame, cols int) {
 		f.C1[i] = uint8(w >> 8)
 		f.C2[i] = uint8(w)
 	}
+}
+
+// stitchFrame runs one STREAM window: arm → PURE TIMED wait of exactly N·dt
+// (no trigger/saturation poll — that wait is the recoverable overhead the
+// free-run/hold technique eliminates) → halt → mmap drain → re-arm → publish
+// EVERY window raw + contiguous with continuity metadata. The client stitches
+// consecutive windows on one axis, marking the GapNs blackout (the unavoidable
+// drain+re-arm time) between them, and decodes per window.
+func (e *Engine) stitchFrame(norm bool) {
+	cols := e.effDrainCols()
+	fillNs := int64(float64(cols) * e.band.CaptureIntervalNs())
+
+	armStart := e.clk.Now()
+	var gapNs int64
+	if !e.lastHalt.IsZero() {
+		gapNs = int64(armStart.Sub(e.lastHalt))
+	}
+	e.armEngine() // opGo: begin the free-run fill
+
+	// Pure timed wait: the deep record is full after N·dt. No status/trigger
+	// poll — a triggered wait was the ~11 ms/frame overhead we're removing.
+	target := armStart.Add(time.Duration(fillNs))
+	for {
+		if e.interrupted() {
+			return // armed+filling is a safe park
+		}
+		rem := target.Sub(e.clk.Now())
+		if rem <= 0 {
+			break
+		}
+		if rem > e.pollEvery {
+			rem = e.pollEvery
+		}
+		e.clk.Sleep(rem)
+	}
+	if e.stopReq.Load() {
+		return
+	}
+
+	haltOK := e.halt()
+	e.lastHalt = e.clk.Now()
+	f := e.arena.Write()
+	drainStart := e.clk.Now()
+	e.drain(f, cols)
+	drainMs := e.clk.Now().Sub(drainStart)
+	e.armEngine() // re-arm at once for the next window
+
+	// Raw, contiguous, edge-agnostic — the stream is not trigger-centred. WinCols
+	// stays the screen window so the web deep-serve path (Valid > WinCols) ships
+	// the FULL raw record and the client navigator spans the whole window.
+	f.Valid, f.WinCols = cols, decimWin
+	f.EdgeX = -1
+	f.Interp, f.IsEnv, f.EnvCols, f.RollCodes = false, false, 0, false
+	f.Norm = norm
+	f.TdivS = e.band.TdivS
+	f.DisplayedS = e.band.DisplayedSdivS()
+	f.SampleS = e.band.CaptureIntervalNs() * 1e-9
+	_, _, p := ptp(f.C1[:cols])
+	f.Ptp, f.Trigd, f.Coherent, f.HaltOK = p, false, true, haltOK
+	e.streamSeq++
+	f.StreamSeq, f.WindowNs, f.GapNs = e.streamSeq, fillNs, gapNs
+
+	e.seq++
+	f.Seq = e.seq
+	e.arena.Publish()
+
+	e.mu.Lock()
+	e.stats.Published++
+	e.stats.Seq = e.seq
+	e.stats.Coherent++
+	e.stats.LastPtp = p
+	e.stats.ValidDepth = validDepth(f.C1[:cols])
+	e.stats.MemDepth = int(e.memDepth.Load())
+	e.stats.DrainMs = float64(drainMs) / float64(time.Millisecond)
+	e.stats.GapMs = float64(gapNs) / float64(time.Millisecond)
+	e.stats.Stream = true
+	e.pubTimes = append(e.pubTimes, e.clk.Now())
+	if len(e.pubTimes) > 64 {
+		e.pubTimes = e.pubTimes[len(e.pubTimes)-64:]
+	}
+	e.mu.Unlock()
 }
 
 // oneFrame runs one arm→wait→halt→drain→re-arm→publish iteration.
@@ -1305,7 +1428,7 @@ func (e *Engine) syncBandStatsLocked() {
 // pace enforces the ~50 ms frame-period floor (spec 03 §5.3): faster starves
 // the single shared ARM core and lowers delivered fps.
 func (e *Engine) pace(start time.Time) {
-	if d := e.framePeriod - e.clk.Now().Sub(start); d > 0 {
+	if d := time.Duration(e.framePeriodNs.Load()) - e.clk.Now().Sub(start); d > 0 {
 		e.clk.Sleep(d)
 	}
 }

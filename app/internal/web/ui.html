@@ -162,7 +162,10 @@
 
     <div class="card" id="decodeResultCard" style="display:none">
       <h3>Decoded <span id="decodeCount" style="font-weight:400;color:var(--dim);font-size:11px"></span>
-        <button id="decodeCopy" style="float:right;font:inherit;font-size:11px;color:var(--dim);background:#141c26;border:1px solid #26384a;border-radius:4px;padding:1px 7px;cursor:pointer">copy</button></h3>
+        <span style="float:right;display:inline-flex;gap:5px">
+          <button id="decStream" class="sm" title="stitch back-to-back deep captures for continuous high-bandwidth decode">stream</button>
+          <button id="decHistClear" style="font:inherit;font-size:11px;color:var(--dim);background:#141c26;border:1px solid #26384a;border-radius:4px;padding:1px 7px;cursor:pointer">clr</button>
+          <button id="decodeCopy" style="font:inherit;font-size:11px;color:var(--dim);background:#141c26;border:1px solid #26384a;border-radius:4px;padding:1px 7px;cursor:pointer">copy</button></span></h3>
       <textarea id="decodeText" readonly wrap="off" style="width:100%;height:88px;resize:vertical;white-space:pre;overflow:auto;font:11px/1.5 ui-monospace,Menlo,Consolas,monospace;color:var(--text);background:#0d131a;border:1px solid #26384a;border-radius:4px;padding:5px"></textarea>
     </div>
   </div>
@@ -296,6 +299,7 @@ const dcfg = {
   proto: "off", scl: 1, sda: 2, clk: 1, data: 2, line: 1,
   threshold: null, auto: true, baud: 115200, bits: 8, parity: "none",
   cpol: 0, cpha: 0, msb: true, fmt: "hex", result: null,
+  stream: false, hist: [], lastStreamSeq: 0,   // stitched high-bandwidth decode + packet history
 };
 const DECCOL = {
   start: "#3fb950", stop: "#e8604c", addr: "#b98cff", rw: "#8fa6b8",
@@ -731,6 +735,16 @@ function computeDecode() {
   if (r && r.ok && dcfg.auto && r.meta && r.meta.threshold != null) {
     $("decThr").value = Math.round(r.meta.threshold); $("decThrV").textContent = Math.round(r.meta.threshold);
   }
+  // STREAM history: each new stitch window (stream_seq advances) appends its
+  // transcript to a scrolling packet log, so you accumulate everything the bus
+  // shows across back-to-back captures — the "complete picture" over time.
+  if (dcfg.stream && frame && frame.stream_seq && frame.stream_seq !== dcfg.lastStreamSeq) {
+    dcfg.lastStreamSeq = frame.stream_seq;
+    if (r && r.ok && r.text) {
+      dcfg.hist.push("#" + frame.stream_seq + (frame.gap_ns ? " (gap " + (frame.gap_ns / 1e6).toFixed(1) + "ms)" : "") + ": " + r.text);
+      if (dcfg.hist.length > 200) dcfg.hist.shift();
+    }
+  }
   updateDecodeResults();
 }
 function updateDecodeResults() {
@@ -739,6 +753,13 @@ function updateDecodeResults() {
   card.style.display = "";
   const r = dcfg.result;
   if (frame && frame.is_env) { $("decodeText").value = "(envelope — lower time/div to decode)"; $("decodeCount").textContent = "raise time/div"; return; }
+  if (dcfg.stream) { // show the accumulated packet history (newest last), auto-scroll
+    const ta = $("decodeText");
+    ta.value = dcfg.hist.join("\n");
+    ta.scrollTop = ta.scrollHeight;
+    $("decodeCount").textContent = dcfg.hist.length + " windows" + (frame && frame.gap_ns ? " · duty " + (frame.window_ns / (frame.window_ns + frame.gap_ns) * 100).toFixed(0) + "%" : "");
+    return;
+  }
   if (!r) { $("decodeText").value = ""; $("decodeCount").textContent = ""; return; }
   if (!r.ok) { $("decodeText").value = "(no decode)"; $("decodeCount").textContent = r.error || "no signal"; return; }
   $("decodeText").value = r.text;
@@ -1074,6 +1095,13 @@ function recompute() { computeDecode(); redraw(); }
   $("decCpha").onchange = () => { dcfg.cpha = +$("decCpha").value; recompute(); };
   $("decMsb").onchange = () => { dcfg.msb = $("decMsb").value === "1"; recompute(); };
   $("decFmt").onchange = () => { dcfg.fmt = $("decFmt").value; recompute(); }; // hex / ascii / both
+  $("decStream").onclick = () => {
+    dcfg.stream = !dcfg.stream; $("decStream").classList.toggle("on", dcfg.stream);
+    dcfg.hist = []; dcfg.lastStreamSeq = 0;
+    fetch("/api/set", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ control: "stream", value: dcfg.stream ? 1 : 0 }) }).catch(() => {});
+    updateDecodeResults();
+  };
+  $("decHistClear").onclick = () => { dcfg.hist = []; dcfg.lastStreamSeq = 0; updateDecodeResults(); };
   $("decodeCopy").onclick = () => {
     const t = $("decodeText").value;
     if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).catch(() => {});

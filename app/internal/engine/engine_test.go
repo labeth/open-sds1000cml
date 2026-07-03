@@ -162,6 +162,13 @@ func (f *fakeBus) DrainRead(sel uint16) uint16 {
 	return uint16(c1)<<8 | uint16(c2)
 }
 
+func (f *fakeBus) DrainWrite(sel, val uint16) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.writes = append(f.writes, wr{1, sel, val})
+	return nil
+}
+
 func (f *fakeBus) MmapDrain() bool { return true }
 
 func (f *fakeBus) snapWrites() []wr {
@@ -433,6 +440,39 @@ func TestSingleForcesFullDepth(t *testing.T) {
 	if f, _ := e.Consume(); f.Valid != deepRecord {
 		t.Fatalf("SINGLE drain: Valid=%d, want deepRecord %d", f.Valid, deepRecord)
 	}
+}
+
+func TestStreamMode(t *testing.T) {
+	// Stitched streaming: SetStreamMode forces the deep record + un-paces, and
+	// stitchFrame publishes EVERY window raw + edge-agnostic with continuity
+	// metadata (StreamSeq advances, WindowNs set) for the client to stitch.
+	fb := newFakeBus()
+	e, _ := newTestEngine(t, fb)
+	if !e.SetStreamMode(true) {
+		t.Fatal("SetStreamMode(true) not applied")
+	}
+	e.bringUp()
+	for i := 0; i < 3; i++ {
+		e.stitchFrame(false)
+	}
+	s := e.Snapshot()
+	if s.Published != 3 || !s.Stream {
+		t.Fatalf("stream: published=%d stream=%v, want 3/true", s.Published, s.Stream)
+	}
+	f, fresh := e.Consume()
+	if !fresh {
+		t.Fatal("stream frame never reached the arena")
+	}
+	if f.StreamSeq == 0 || f.WindowNs == 0 {
+		t.Fatalf("stream continuity metadata: seq=%d window_ns=%d", f.StreamSeq, f.WindowNs)
+	}
+	if f.Valid != deepRecord {
+		t.Fatalf("stream drains the deep record: Valid=%d, want %d", f.Valid, deepRecord)
+	}
+	if f.EdgeX >= 0 {
+		t.Fatalf("stream window must be edge-agnostic (raw contiguous), EdgeX=%v", f.EdgeX)
+	}
+	e.SetStreamMode(false)
 }
 
 func TestDecimatedFlatFallback(t *testing.T) {

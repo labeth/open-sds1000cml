@@ -34,9 +34,11 @@ type fakeScope struct {
 
 func (f *fakeScope) SetOffsetDAC(ch int, code uint16) { f.offCh, f.offCode = ch, &code }
 func (f *fakeScope) SetETS(on bool)                   { f.ets = &on }
-func (f *fakeScope) SetSingle()                  { f.single = true }
-func (f *fakeScope) SetTrigPosFrac(frac float64) { f.trigPos = frac }
-func (f *fakeScope) SetMemDepth(n int) int       { f.memDepth = n; return n }
+func (f *fakeScope) SetSingle()                       { f.single = true }
+func (f *fakeScope) SetTrigPosFrac(frac float64)      { f.trigPos = frac }
+func (f *fakeScope) SetMemDepth(n int) int            { f.memDepth = n; return n }
+func (f *fakeScope) SetFramePeriod(ms int) int        { return ms }
+func (f *fakeScope) SetStreamMode(on bool) bool       { return on }
 
 func (f *fakeScope) SetTrigType(t int) { f.calls = append(f.calls, [2]any{"trigtype", t}) }
 func (f *fakeScope) SetAcqMode(m int)  { f.calls = append(f.calls, [2]any{"acqmode", m}) }
@@ -91,10 +93,10 @@ func (f *fakeScope) WithFrame(fn func(*engine.Frame)) {
 	}
 	fn(f.frame)
 }
-func (f *fakeScope) SetRunning(on bool)               { f.running = &on }
-func (f *fakeScope) SetNorm(on bool)                  { f.norm = &on }
-func (f *fakeScope) SetTrigSlope(r bool)              { f.slope = &r }
-func (f *fakeScope) SetTrigSource(ch int)             { f.source = &ch }
+func (f *fakeScope) SetRunning(on bool)   { f.running = &on }
+func (f *fakeScope) SetNorm(on bool)      { f.norm = &on }
+func (f *fakeScope) SetTrigSlope(r bool)  { f.slope = &r }
+func (f *fakeScope) SetTrigSource(ch int) { f.source = &ch }
 func (f *fakeScope) SetTrigLevelCode(c uint16) uint16 {
 	if c < engine.TrigCodeMin {
 		c = engine.TrigCodeMin
