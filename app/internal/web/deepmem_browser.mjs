@@ -2,23 +2,11 @@
 // serving a deep decimated frame). Verifies the default window is the
 // trigger-centered screen slice (unchanged view), the navigator shows the whole
 // record, and wheel/pan zoom across it. SKIP/exit 0 when the browser is absent.
-import { existsSync, readdirSync } from "node:fs";
-import { execSync } from "node:child_process";
 import path from "node:path";
+import { findPlaywright } from "./scope_po.mjs";
 
 const URL = process.argv[2];
 if (!URL) { console.log("SKIP: no URL argument"); process.exit(0); }
-function findPlaywright() {
-  const cands = [];
-  if (process.env.PLAYWRIGHT_DIR) cands.push(path.join(process.env.PLAYWRIGHT_DIR, "playwright/index.js"));
-  const home = process.env.HOME || "";
-  for (const base of [path.join(home, "ws"), path.join(home, "src"), path.join(home, "projects")]) {
-    try { for (const d of readdirSync(base)) cands.push(path.join(base, d, "node_modules/playwright/index.js")); } catch {}
-  }
-  cands.push(path.join(home, "node_modules/playwright/index.js"));
-  try { cands.push(path.join(execSync("npm root -g", { encoding: "utf8" }).trim(), "playwright/index.js")); } catch {}
-  return cands.find(existsSync) || null;
-}
 const pwPath = findPlaywright();
 if (!pwPath) { console.log("SKIP: playwright not installed"); process.exit(0); }
 if (!process.env.PLAYWRIGHT_BROWSERS_PATH && process.env.HOME) process.env.PLAYWRIGHT_BROWSERS_PATH = path.join(process.env.HOME, ".cache/ms-playwright");

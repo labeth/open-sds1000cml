@@ -12,30 +12,13 @@
 //     mode-switch re-render bug).
 // Output protocol for the Go harness: prints "SKIP: ..." + exit 0 when the
 // browser is unavailable, "ALL PASS" + exit 0 on success, exit 1 on failure.
-import { existsSync, readdirSync } from "node:fs";
-import { execSync } from "node:child_process";
 import path from "node:path";
+import { findPlaywright } from "./scope_po.mjs";
 
 const URL = process.argv[2];
 if (!URL) { console.log("SKIP: no URL argument"); process.exit(0); }
 
 // --- locate a Playwright install (dev machines keep it in various projects) --
-function findPlaywright() {
-  const cands = [];
-  if (process.env.PLAYWRIGHT_DIR) cands.push(path.join(process.env.PLAYWRIGHT_DIR, "playwright/index.js"));
-  const home = process.env.HOME || "";
-  for (const base of [path.join(home, "ws"), path.join(home, "src"), path.join(home, "projects")]) {
-    try {
-      for (const d of readdirSync(base)) cands.push(path.join(base, d, "node_modules/playwright/index.js"));
-    } catch {}
-  }
-  cands.push(path.join(home, "node_modules/playwright/index.js"));
-  try {
-    const groot = execSync("npm root -g", { encoding: "utf8" }).trim();
-    cands.push(path.join(groot, "playwright/index.js"));
-  } catch {}
-  return cands.find(existsSync) || null;
-}
 
 const pwPath = findPlaywright();
 if (!pwPath) { console.log("SKIP: playwright not installed"); process.exit(0); }

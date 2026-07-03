@@ -199,3 +199,27 @@ GATE: `go test ./...` green on host before every phase ships; a manual :8080 dev
 - Is a Node toolchain guaranteed on CI, or only on the developer host? If CI lacks node, the acceptance suite skips there — confirm whether we need a CI job that installs Playwright so paths are gated, not just locally validated.
 - Should the header trigger-state chip poll its own state or derive it from the existing /api/status fields (running/norm/single/trigd)? Confirm /api/status already carries enough to mirror the LCD state machine without a new endpoint.
 - Deep-memory + navigator interaction with the frame-as-plain-ref rule: confirm the navigator's window (view.win) belongs in the store (chrome) while the frame stays a ref, so nav drag stays reactive without routing frames through the store.
+
+## Live-smoke checklist (on-device, after render/serving/poll changes)
+
+Device at 192.168.1.209 (web UI :8080). `/tmp` is read-only → deploy with
+`otactl … -stage /usr/bin/siglent/usr/media/U-disk0/agent-slots/staging update-app dist/app-arm`.
+
+1. Page boots at http://192.168.1.209:8080/ (first paint < ~1 s; note the go:embed asset count/size delta).
+2. One live frame renders; steady fps ≈ 19–20 unchanged; no console errors.
+3. RUN/STOP + SINGLE work; trigger-state matches the LCD.
+4. Mode switch Y-T / X-Y / FFT; per-channel FFT boxes select + overlay.
+5. Decode a live bus (autodetect) still works; watch/capture still captures.
+6. PNG + CSV export succeed (under the strict CSP once Phase 2 lands).
+7. Deep-memory navigator zoom/pan; memdepth change.
+8. LCD: trigger amber, LIVE/STALE strip, softkey menu render intact.
+
+## Progress log
+
+- **Phase 0 (safety net) — DONE.** Shared page-object harness `scope_po.mjs`
+  (findPlaywright + openScope + intent methods); the 3 legacy drivers
+  (decode/fft/deepmem) deduped onto it; new `acceptance_browser.mjs` covering the
+  previously-uncovered paths (boot/liveness, acquire, trigger, vertical/horizontal,
+  cursors, view modes + panel visibility, export) via httptest+fakeScope; pure-Go
+  always-run guardrails `ui_lint_test.go` (inline-style budget ratchet=66,
+  inline-script budget=1, CSP-present skipped until Phase 2). All green.
