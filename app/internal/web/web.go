@@ -13,6 +13,7 @@ import (
 	"open-sds/app/internal/analog"
 	"open-sds/app/internal/buildinfo"
 	"open-sds/app/internal/engine"
+	"open-sds/app/internal/measure"
 )
 
 //go:embed ui.html
@@ -329,24 +330,11 @@ type frameReply struct {
 	Off1V    float64 `json:"off1_v"`     // applied offset volts (input-referred)
 	Off2V    float64 `json:"off2_v"`
 
-	M1 *meas `json:"m1,omitempty"` // CH1 auto-measurements
-	M2 *meas `json:"m2,omitempty"` // CH2
+	M1 *measure.Result `json:"m1,omitempty"` // CH1 auto-measurements
+	M2 *measure.Result `json:"m2,omitempty"` // CH2
 
 	Clip1 bool `json:"clip1,omitempty"` // CH1 railed against the ADC full scale
 	Clip2 bool `json:"clip2,omitempty"` // CH2 railed — readings/measurements suspect
-}
-
-// meas is the standard auto-measurement set, in volts / Hz / s (Vpp and
-// Vrms are span-based, offset-independent; the rest are input-referred).
-type meas struct {
-	Vpp    float64 `json:"vpp"`
-	Vmax   float64 `json:"vmax"`
-	Vmin   float64 `json:"vmin"`
-	Vmean  float64 `json:"vmean"`
-	Vrms   float64 `json:"vrms"`
-	Freq   float64 `json:"freq"`
-	Period float64 `json:"period"`
-	Duty   float64 `json:"duty"`
 }
 
 // clipped reports whether a trace is railed against the ADC full scale: it
@@ -365,65 +353,6 @@ func clipped(sig []uint8) bool {
 		}
 	}
 	return railed*200 > n // >0.5 %
-}
-
-// measure computes auto-measurements over the raw record. voltsPerCode is
-// Vdiv/32 (256 codes over the 8-division screen); offV is the applied
-// offset (subtracted to make readings input-referred).
-func measure(sig []uint8, voltsPerCode, offV, sampleS float64) *meas {
-	n := len(sig)
-	if n == 0 {
-		return nil
-	}
-	cmin, cmax := int(sig[0]), int(sig[0])
-	var sum, sum2 float64
-	high := 0
-	for _, v := range sig {
-		iv := int(v)
-		if iv < cmin {
-			cmin = iv
-		}
-		if iv > cmax {
-			cmax = iv
-		}
-		sum += float64(iv)
-		sum2 += float64(iv) * float64(iv)
-	}
-	mean := sum / float64(n)
-	variance := sum2/float64(n) - mean*mean
-	if variance < 0 {
-		variance = 0
-	}
-	toV := func(code float64) float64 { return (code-128)*voltsPerCode - offV }
-	m := &meas{
-		Vpp:   float64(cmax-cmin) * voltsPerCode,
-		Vmax:  toV(float64(cmax)),
-		Vmin:  toV(float64(cmin)),
-		Vmean: toV(mean),
-		Vrms:  math.Sqrt(variance) * voltsPerCode,
-	}
-	lvl := uint8((cmin + cmax) / 2)
-	for _, v := range sig {
-		if v >= lvl {
-			high++
-		}
-	}
-	first, last, cnt := -1, -1, 0
-	for i := 1; i < n; i++ {
-		if sig[i-1] < lvl && sig[i] >= lvl {
-			if first < 0 {
-				first = i
-			}
-			last = i
-			cnt++
-		}
-	}
-	if cnt >= 2 && last > first && sampleS > 0 {
-		m.Period = float64(last-first) / float64(cnt-1) * sampleS
-		m.Freq = 1 / m.Period
-		m.Duty = float64(high) / float64(n) * 100
-	}
-	return m
 }
 
 // resampleEnv nearest-resamples an envelope column array to n output columns.
@@ -681,8 +610,8 @@ func (s *Server) hFrame(w http.ResponseWriter, r *http.Request) {
 		rep.StreamSeq, rep.WindowNs, rep.GapNs = f.StreamSeq, f.WindowNs, f.GapNs
 		// Auto-measurements over the RAW record (accurate, band-independent).
 		rawSample := f.SampleS
-		rep.M1 = measure(c1[:f.Valid], vpc[0], moff[0], rawSample)
-		rep.M2 = measure(c2[:f.Valid], vpc[1], moff[1], rawSample)
+		rep.M1 = measure.Compute(c1[:f.Valid], vpc[0], moff[0], rawSample)
+		rep.M2 = measure.Compute(c2[:f.Valid], vpc[1], moff[1], rawSample)
 		rep.Clip1 = clipped(f.C1[:f.Valid]) // clip flags the RAW rail state
 		rep.Clip2 = clipped(f.C2[:f.Valid])
 	})

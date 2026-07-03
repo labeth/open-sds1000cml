@@ -729,14 +729,27 @@ function fmtMeas(key, m) {
     case "Vmin": return eng(m.vmin, "V");
     case "Vmean": return eng(m.vmean, "V");
     case "Vrms": return eng(m.vrms, "V");
-    case "Freq": return m.freq > 0 ? eng(m.freq, "Hz") : "—";
-    case "Period": return m.period > 0 ? eng(m.period, "s") : "—";
-    case "Duty": return m.freq > 0 ? m.duty.toFixed(1) + " %" : "—";
+    case "Vtop": return eng(m.vtop, "V");
+    case "Vbase": return eng(m.vbase, "V");
+    case "Vampl": return eng(m.vampl, "V");
+    case "Freq": return m.has_timing ? eng(m.freq, "Hz") : "—";
+    case "Period": return m.has_timing ? eng(m.period, "s") : "—";
+    case "Duty": return m.has_timing ? m.duty.toFixed(1) + " %" : "—";
+    case "Rise": return m.rise_s > 0 ? eng(m.rise_s, "s") : "—";
+    case "Fall": return m.fall_s > 0 ? eng(m.fall_s, "s") : "—";
+    case "+Width": return m.pos_width_s > 0 ? eng(m.pos_width_s, "s") : "—";
+    case "-Width": return m.neg_width_s > 0 ? eng(m.neg_width_s, "s") : "—";
+    case "Overshoot": return m.has_timing ? m.overshoot.toFixed(1) + " %" : "—";
   }
   return "—";
 }
+// Measurement rows. A compact default set plus an expandable "more" group
+// (timing/pulse) so the panel stays scannable but the depth is one click away.
+const MEAS_CORE = ["Vpp", "Vmax", "Vmin", "Vmean", "Vrms", "Freq", "Period", "Duty"];
+const MEAS_MORE = ["Vtop", "Vbase", "Vampl", "Rise", "Fall", "+Width", "-Width", "Overshoot"];
+let measExpanded = false;
 function updateMeas() {
-  const keys = ["Vpp", "Vmax", "Vmin", "Vmean", "Vrms", "Freq", "Period", "Duty"];
+  const keys = measExpanded ? MEAS_CORE.concat(MEAS_MORE) : MEAS_CORE;
   const clipTag = c => c ? ` <span class="clip" title="signal is clipping — increase V/div or probe; measurements unreliable">⚠ CLIP</span>` : "";
   let html = `<tr><th></th><td class="cc1">C1${clipTag(frame && frame.clip1)}</td>` +
              `<td class="cc2">C2${clipTag(frame && frame.clip2)}</td></tr>`;
@@ -744,7 +757,10 @@ function updateMeas() {
     html += `<tr><th>${k}</th><td class="cc1">${fmtMeas(k, frame && frame.m1)}</td>` +
             `<td class="cc2">${fmtMeas(k, frame && frame.m2)}</td></tr>`;
   }
+  html += `<tr><td colspan="3" style="text-align:center;padding-top:3px">` +
+          `<button id="measMore" class="btn-mini">${measExpanded ? "less ▲" : "more ▼"}</button></td></tr>`;
   $("measBody").innerHTML = html;
+  $("measMore").onclick = () => { measExpanded = !measExpanded; updateMeas(); };
 }
 
 function updateCursors() {
