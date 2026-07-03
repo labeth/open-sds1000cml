@@ -116,7 +116,8 @@
     </div>
 
     <div class="card" id="fftCard" style="display:none">
-      <h3>FFT peaks <span style="font-weight:400;color:var(--dim);font-size:11px">click to select</span></h3>
+      <h3>FFT peaks <span style="font-weight:400;color:var(--dim);font-size:11px">click to toggle</span>
+        <button id="fftClear" style="float:right;font:inherit;font-size:11px;color:var(--dim);background:#141c26;border:1px solid #26384a;border-radius:4px;padding:1px 7px;cursor:pointer">clear</button></h3>
       <table class="meas"><tbody id="fftBody"></tbody></table>
     </div>
   </div>
@@ -370,30 +371,57 @@ function drawXY() {
 // FFT + peak detection live in peaks.js (shared with the node e2e test).
 // SELECTION IS TRACKED BY FREQUENCY, not by list index: peak magnitudes jitter
 // with noise, so the strongest-first ranking (and hence any index) reshuffles
-// frame-to-frame. selFreq (Hz) is the source of truth; every frame we re-locate
-// the tracked peak with nearestPeak(). selFreq < 0 means "no selection".
-let fftPeaks = [], selFreq = -1, selPeak = -1;
-const COMPCOL = "#ff9f1c"; // selected-frequency overlay colour (amber)
-// The peak list is shown in FFT and Y-T; hidden in X-Y.
+// frame-to-frame. The picked frequencies are the source of truth; every frame we
+// re-locate each one to its nearest peak with nearestPeak().
+// MULTI-SELECT peak model. selFreqs holds the picked FREQUENCIES (the durable
+// selection); selIdx is the set of current-frame peak indices they map to (for
+// highlighting). Clicking a peak TOGGLES it; "clear" empties the set.
+let fftPeaks = [], selFreqs = [], selIdx = new Set();
+// A palette so several selected components are distinguishable as overlays.
+const COMPCOLS = ["#ff9f1c", "#4fd8ff", "#ff5ec4", "#8cff5a", "#ffe14f", "#b98cff"];
 function peaksVisible() { return view.mode === "FFT" || view.mode === "YT"; }
-// The channel the peak list / component describe.
 function peakSrc() { return frame ? ((view.c1 ? frame.c1 : frame.c2) || frame.c1) : null; }
 function peakNyq() { return frame && frame.col_span_s > 0 ? frame.c1.length / (2 * frame.col_span_s) : 0; }
+// The palette slot a given peak index occupies among the (sorted) selection —
+// keeps a peak's colour stable between the FFT markers, the list, and the Y-T
+// overlay.
+function selColor(i) {
+  const order = [...selIdx].sort((a, b) => a - b);
+  const k = order.indexOf(i);
+  return k < 0 ? null : COMPCOLS[k % COMPCOLS.length];
+}
 
-// Recompute the peak table from the current frame and re-locate the selection by
-// FREQUENCY. Shared by FFT mode (which also draws the spectrum) and Y-T mode
-// (which draws the reconstructed component). Returns the spectrum, or null.
+// Recompute the peak table and re-locate each selected frequency to its nearest
+// current peak (tracks drift, dedupes; keeps a frequency whose peak momentarily
+// vanished). Shared by FFT and Y-T. Returns the spectrum, or null.
 function computePeaks() {
-  fftPeaks = []; selPeak = -1;
+  fftPeaks = []; selIdx = new Set();
   const src = peakSrc();
   if (!src) return null;
   const spec = spectrum(src.filter(v => v >= 0), peakNyq());
   if (!spec) return null;
   fftPeaks = detectPeaks(spec, { floorDb: -50, maxPeaks: 8 });
-  selPeak = nearestPeak(fftPeaks, selFreq);
-  if (selPeak >= 0) selFreq = fftPeaks[selPeak].freq; // re-anchor: track drift
+  const idxs = new Set(), kept = [];
+  for (const f of selFreqs) {
+    const i = nearestPeak(fftPeaks, f);
+    if (i < 0) { kept.push(f); continue; }        // peak absent this frame — keep freq
+    if (!idxs.has(i)) { idxs.add(i); kept.push(fftPeaks[i].freq); } // re-anchor + dedupe
+  }
+  selIdx = idxs; selFreqs = kept;
   return spec;
 }
+
+// Toggle a peak (by its frequency) in/out of the selection. Clicking a selected
+// peak again removes it (deselect).
+function togglePeak(pf) {
+  const i = nearestPeak(fftPeaks, pf);
+  if (i < 0) return;
+  const before = selFreqs.length;
+  selFreqs = selFreqs.filter(f => nearestPeak(fftPeaks, f) !== i);
+  if (selFreqs.length === before) selFreqs.push(fftPeaks[i].freq); // was not selected → add
+  redraw();
+}
+function clearPeaks() { selFreqs = []; redraw(); }
 
 function drawFFT() {
   drawGrid(ctx);
@@ -407,13 +435,13 @@ function drawFFT() {
   ctx.strokeStyle = MATHCOL; ctx.lineWidth = 1.3 * dpr; ctx.beginPath();
   for (let k = 0; k < half; k++) { const x = xAt(k), y = yAt(dbAt(k)); if (k === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y); }
   ctx.stroke();
-  // markers on each peak; the selected one is highlighted + labelled.
+  // markers on each peak; every selected one is highlighted (palette) + labelled.
   ctx.textBaseline = "bottom"; ctx.font = "bold " + (11 * dpr) + "px system-ui";
   for (let i = 0; i < fftPeaks.length; i++) {
-    const p = fftPeaks[i], px = xAt(p.frac), py = yAt(p.db), sel = i === selPeak, r = (sel ? 6 : 3.5) * dpr;
-    ctx.fillStyle = sel ? "#ffd23f" : "rgba(159,176,192,.85)";
+    const p = fftPeaks[i], px = xAt(p.frac), py = yAt(p.db), col = selColor(i), r = (col ? 6 : 3.5) * dpr;
+    ctx.fillStyle = col || "rgba(159,176,192,.85)";
     ctx.beginPath(); ctx.moveTo(px, py - r * 2); ctx.lineTo(px - r, py - r * 0.5); ctx.lineTo(px + r, py - r * 0.5); ctx.closePath(); ctx.fill();
-    if (sel) {
+    if (col) {
       const tx = Math.min(px + 8 * dpr, CW - 96 * dpr);
       ctx.fillText(eng(p.freq, "Hz", 4) + "  " + p.db.toFixed(1) + " dB", tx, Math.max(py - 10 * dpr, 30 * dpr));
     }
@@ -424,22 +452,27 @@ function drawFFT() {
   updateFFTList();
 }
 
-// Y-T overlay: recompute peaks (for the list) and, if a frequency is selected,
-// reconstruct that single tone from the trace and draw it over the waveform so
-// the picked sub-frequency is visible as its own curve.
+// Y-T overlay: recompute peaks (for the list) and reconstruct EACH selected tone
+// from the trace, drawing them over the waveform (one palette-coloured curve per
+// selected frequency) so picked sub-frequencies are visible as their own curves.
 function drawYTPeaks(g) {
   if (view.mode !== "YT" || !frame || frame.is_env) { return; }
   computePeaks();
   updateFFTList();
-  if (selPeak < 0) return;
-  const src = peakSrc();
-  const comp = component(src, selFreq * frame.col_span_s);
-  if (!comp) return;
-  const zoom = view.c1 ? (st ? st.zoom1 : 1) : (st ? st.zoom2 : 1);
+  if (!selIdx.size) return;
+  const src = peakSrc(), zoom = view.c1 ? (st ? st.zoom1 : 1) : (st ? st.zoom2 : 1);
   g.save();
-  drawTrace(g, comp, COMPCOL, zoom);
-  g.fillStyle = COMPCOL; g.font = "bold " + (12 * dpr) + "px system-ui";
-  g.fillText("f = " + eng(selFreq, "Hz", 4) + " (" + (view.c1 ? "C1" : "C2") + ")", CW - 190 * dpr, 18 * dpr);
+  g.font = "bold " + (12 * dpr) + "px system-ui";
+  let row = 0;
+  for (const i of [...selIdx].sort((a, b) => a - b)) {
+    const f = fftPeaks[i].freq, comp = component(src, f * frame.col_span_s);
+    if (!comp) continue;
+    const col = COMPCOLS[row % COMPCOLS.length];
+    drawTrace(g, comp, col, zoom);
+    g.fillStyle = col;
+    g.fillText("f = " + eng(f, "Hz", 4), CW - 150 * dpr, (18 + row * 15) * dpr);
+    row++;
+  }
   g.restore();
 }
 
@@ -459,21 +492,22 @@ function updateFFTList() {
     rows = body.querySelectorAll("tr.pk");
   }
   for (let i = 0; i < need; i++) {
-    const p = fftPeaks[i], tr = rows[i];
+    const p = fftPeaks[i], tr = rows[i], col = selColor(i);
     tr.dataset.freq = p.freq;                 // selection carries the FREQUENCY
-    tr.style.background = i === selPeak ? "rgba(255,210,63,.18)" : "";
+    tr.style.background = col ? "rgba(255,210,63,.14)" : "";
+    tr.style.boxShadow = col ? `inset 3px 0 0 ${col}` : "";
     tr.querySelector(".pf").textContent = eng(p.freq, "Hz", 4);
     tr.querySelector(".pd").textContent = p.db.toFixed(1);
   }
 }
-// One delegated handler on the (never-replaced) tbody. Selecting by the row's
-// own frequency is robust to the list re-sorting between render and click.
+// One delegated handler on the (never-replaced) tbody. Toggling by the row's own
+// frequency is robust to the list re-sorting between render and click.
 $("fftBody").addEventListener("click", ev => {
   const tr = ev.target.closest(".pk");
   if (!tr || tr.dataset.freq == null) return;
-  selFreq = +tr.dataset.freq;
-  redraw(); // works in FFT and Y-T
+  togglePeak(+tr.dataset.freq);
 });
+$("fftClear").onclick = clearPeaks;
 
 function drawCursors() {
   if (!view.cursors) return;
@@ -554,10 +588,10 @@ function ptToNorm(ev) {
   return { x: (ev.clientX - r.left) / r.width, y: (ev.clientY - r.top) / r.height };
 }
 scope.addEventListener("pointerdown", ev => {
-  if (view.mode === "FFT" && fftPeaks.length) { // snap to the nearest peak
+  if (view.mode === "FFT" && fftPeaks.length) { // toggle the nearest peak
     const clickedFreq = ptToNorm(ev).x * peakNyq(); // x maps ~linearly to 0..Nyquist
     const idx = nearestPeak(fftPeaks, clickedFreq);
-    if (idx >= 0) { selFreq = fftPeaks[idx].freq; drawFFT(); }
+    if (idx >= 0) togglePeak(fftPeaks[idx].freq);
     return;
   }
   if (!view.cursors) return;

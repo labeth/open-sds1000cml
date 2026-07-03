@@ -70,38 +70,60 @@ try {
   const nrows = await page.locator("#fftBody .pk").count();
   ok(nrows === peaks.length, `table row per peak (${nrows})`);
 
-  // LIST CLICKS must be reliable: click several rows in turn; each must select
-  // that row's own frequency (rows carry data-freq, so this is robust to the
-  // list re-sorting between render and click — the old index-based bug).
-  const rowFreqs = await page.evaluate(() =>
-    [...document.querySelectorAll("#fftBody .pk")].map(r => +r.dataset.freq));
-  let f1 = 0;
-  for (const di of [0, Math.floor(nrows / 2), nrows - 1, 1]) {
-    await page.click(`#fftBody .pk[data-i="${di}"]`);
-    const sel = await page.evaluate(() => selFreq);
-    ok(Math.abs(sel - rowFreqs[di]) < 600, `list-click row ${di} selects its frequency (${(rowFreqs[di]/1000).toFixed(1)}k -> sel ${(sel/1000).toFixed(1)}k)`);
-    f1 = sel;
-  }
-  const f0 = rowFreqs[0];
-  ok(Math.abs(f1 - f0) > 2000, `re-selecting a different row changes the selection (${(f0/1000).toFixed(1)}k vs ${(f1/1000).toFixed(1)}k)`);
+  await page.evaluate(() => clearPeaks());
+  const near = (a, b) => Math.abs(a - b) < 800;
+  const selFn = () => page.evaluate(() => [...selIdx].map(i => Math.round(fftPeaks[i].freq)).sort((a, b) => a - b));
+  // Toggle the peak nearest a frequency by finding+clicking its row in ONE
+  // in-page step (no index race with the background poll re-rendering the list).
+  const toggle = f => page.evaluate(freq => {
+    let best = null, bd = Infinity;
+    for (const r of document.querySelectorAll("#fftBody .pk")) {
+      const d = Math.abs(+r.dataset.freq - freq); if (d < bd) { bd = d; best = r; }
+    }
+    if (best) best.click();
+  }, f);
+  // The two always-present main tones (the 2 strongest peaks); the weaker
+  // sidelobes come and go, so target the stable ones by frequency.
+  const [mLo, mHi] = await page.evaluate(() => fftPeaks.map(p => ({ f: p.freq, db: p.db }))
+    .sort((a, b) => b.db - a.db).slice(0, 2).sort((a, b) => a.f - b.f).map(x => x.f));
 
-  // Stability while magnitudes reshuffle: the selection must keep pointing at a
-  // peak of frequency f1, even as the STRONGEST peak (what an index-based
-  // selection would follow) swaps between the two tones.
+  // MULTI-SELECT: selections accumulate.
+  await toggle(mLo);
+  let sel = await selFn();
+  ok(sel.length === 1 && sel.some(f => near(f, mLo)), `clicking a peak selects it (${(mLo/1000).toFixed(1)}k, ${sel.length} selected)`);
+  await toggle(mHi);
+  sel = await selFn();
+  ok(sel.length === 2 && sel.some(f => near(f, mHi)), `a second click ADDS a peak (multi-select, ${sel.length} selected)`);
+
+  // DESELECT: clicking a selected peak again removes just that one.
+  await toggle(mLo);
+  sel = await selFn();
+  ok(sel.length === 1 && !sel.some(f => near(f, mLo)) && sel.some(f => near(f, mHi)),
+    `clicking a selected peak deselects it (${(mLo/1000).toFixed(1)}k gone, ${sel.length} left)`);
+
+  // CLEAR ALL.
+  await page.click("#fftClear");
+  ok((await selFn()).length === 0, "clear removes all selections");
+
+  // Re-select both mains for the stability check.
+  await toggle(mLo); await toggle(mHi);
+  const want2 = await selFn();
+  ok(want2.length === 2, `two peaks selected for stability: ${want2.map(f => (f/1000).toFixed(1)+"k").join(",")}`);
+
+  // Stability while magnitudes reshuffle: BOTH selections survive, tracked by
+  // frequency, even as the strongest peak swaps between the two tones.
   const strongestIdx = new Set();
-  let stable = true, worstDrift = 0;
+  let stable = true;
   for (let i = 0; i < 16; i++) {
     await page.waitForTimeout(90);
-    const s = await page.evaluate(() => {
-      const strong = fftPeaks.map((p, i) => [p.db, i]).sort((a, b) => b[0] - a[0])[0][1];
-      return { selPeak, strong, selCur: fftPeaks[selPeak]?.freq };
-    });
+    const s = await page.evaluate(() => ({
+      sel: [...selIdx].map(i => Math.round(fftPeaks[i].freq)).sort((a, b) => a - b),
+      strong: fftPeaks.map((p, i) => [p.db, i]).sort((a, b) => b[0] - a[0])[0][1],
+    }));
     strongestIdx.add(s.strong);
-    const drift = s.selCur == null ? 1e9 : Math.abs(s.selCur - f1);
-    if (s.selPeak < 0 || drift > 2000) stable = false;
-    worstDrift = Math.max(worstDrift, drift);
+    if (s.sel.length !== 2 || !s.sel.every((f, k) => Math.abs(f - want2[k]) < 2000)) stable = false;
   }
-  ok(stable, `selection stayed on ${(f1/1000).toFixed(1)}k across 16 reshuffling frames (max drift ${Math.round(worstDrift)} Hz)`);
+  ok(stable, `both selections stayed put across 16 reshuffling frames`);
   ok(strongestIdx.size > 1, `magnitude ranking actually reshuffled (strongest peak took ${strongestIdx.size} positions)`);
 
   // mode-switch behaviour: list lives in FFT and Y-T, hidden in X-Y.
@@ -110,15 +132,16 @@ try {
   await page.waitForFunction(() => typeof fftPeaks !== "undefined" && fftPeaks.length >= 2, null, { timeout: 8000 });
   ok(await page.evaluate(() => getComputedStyle(fftCard).display) !== "none", "list ALSO visible in Y-T (peaks in the time view)");
 
-  // In Y-T, selecting a list frequency reconstructs that tone as an overlay.
+  // In Y-T, each selected frequency reconstructs as an overlay curve.
   const ok2 = await page.evaluate(() => {
-    const r = [...document.querySelectorAll("#fftBody .pk")]
-      .sort((a, b) => +b.dataset.freq - +a.dataset.freq)[0]; // highest-freq row
-    r.click();
-    const comp = component(peakSrc(), selFreq * frame.col_span_s);
-    return selPeak >= 0 && Array.isArray(comp) && comp.length === peakSrc().length;
+    if (!selIdx.size) return false;
+    const src = peakSrc();
+    return [...selIdx].every(i => {
+      const comp = component(src, fftPeaks[i].freq * frame.col_span_s);
+      return Array.isArray(comp) && comp.length === src.length;
+    });
   });
-  ok(ok2, "Y-T list-click selects a frequency and it reconstructs as an overlay curve");
+  ok(ok2, "each selected frequency reconstructs as an overlay curve in Y-T");
 
   await page.click("#mXY"); await page.waitForTimeout(150);
   ok(await page.evaluate(() => getComputedStyle(fftCard).display) === "none", "list hidden in X-Y");
