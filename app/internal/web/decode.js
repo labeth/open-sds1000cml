@@ -270,6 +270,128 @@ function decodeSPI(clk, data, colTimeS, cfg) {
     meta: { cpol, cpha, sampleOnRising: sampleRising, bitOrder: msb ? "msb" : "lsb", noCS: true, colsPerClock: halfGap * 2, threshold: CK.threshold } };
 }
 
+// ---- autodetect -------------------------------------------------------------
+// Score a decode Result so competing protocol/role hypotheses can be ranked.
+// The key discriminators are STRUCTURAL: I2C is framed by START/STOP (very hard
+// to forge), UART's auto-baud only locks on real integer-multiple bit gaps and
+// clean stop bits, SPI has no framing at all (fallback, lowest weight). A bad
+// hypothesis (e.g. a clock misread as UART) racks up frame-errors and scores
+// negative, so the genuine match wins.
+function scoreResult(r) {
+  if (!r || !r.ok) return -1e9;
+  const spans = r.spans || [], bytes = r.bytes ? r.bytes.length : 0;
+  if (r.proto === "i2c") {
+    // Score on real CONTENT, not bare framing: a channel-swapped mis-read floods
+    // "START STOP START STOP" (0 addresses, 0 data), which must NOT beat the true
+    // ordering. A real transaction addresses a device and clocks bytes+ACKs.
+    let addrs = 0, acks = 0, datas = 0, starts = 0;
+    for (const s of spans) {
+      if (s.kind === "addr") addrs++;
+      else if (s.kind === "ack" || s.kind === "nak") acks++;
+      else if (s.kind === "data") datas++;
+      else if (s.kind === "start") starts++;
+    }
+    if (addrs === 0) return -1e9;                  // no addressed device -> not real I2C
+    return addrs * 100 + acks * 30 + datas * 20 + starts * 5;
+  }
+  if (r.proto === "uart") {
+    if (bytes === 0) return -1e9;
+    const ferr = spans.filter(s => s.kind === "frame-error").length;
+    const perr = spans.filter(s => s.kind === "parity-error").length;
+    return bytes * 10 - ferr * 35 - perr * 18 + 15;
+  }
+  if (r.proto === "spi") {
+    if (bytes === 0) return -1e9;
+    return bytes * 2;                              // no framing -> weakest, fallback only
+  }
+  return -1e9;
+}
+
+// clockScore: how clock-like a channel is, ROBUST TO IDLE GAPS. A real SPI/I2C
+// clock bursts (uniform half-period toggling) then idles between transactions, so
+// its edge-gap variance is huge — CV is useless. Instead take the dominant
+// half-period as a low percentile of the gaps (ignores the few big idle gaps) and
+// report uniFrac = the fraction of gaps that ARE that half-period. A clock is
+// ~near-1; a data line, whose edges land on data-dependent bit boundaries, is low.
+function clockScore(codes, opts) {
+  const S = sliceChannel(codes, opts || {});
+  if (!S.ok || S.edges.length < 6) return { ok: false, uniFrac: 0, halfPeriod: 0, S };
+  const gaps = [];
+  for (let k = 1; k < S.edges.length; k++) gaps.push(S.edges[k].i - S.edges[k - 1].i);
+  const hp = gaps.slice().sort((a, b) => a - b)[Math.floor(gaps.length * 0.2)];
+  if (hp <= 0) return { ok: false, uniFrac: 0, halfPeriod: 0, S };
+  let uni = 0;
+  for (const g of gaps) if (Math.abs(g - hp) <= 0.35 * hp) uni++;
+  return { ok: true, uniFrac: uni / gaps.length, halfPeriod: hp, edges: S.edges.length, S };
+}
+
+// idleLevel: the rail a sliced channel rests on most of the time (a clock idles
+// at its CPOL rail between transactions). 1 = idle high, 0 = idle low.
+function idleLevel(S) {
+  if (!S || !S.ok) return 0;
+  let hi = 0, lo = 0;
+  for (let i = 0; i < S.level.length; i++) { if (S.level[i] === 1) hi++; else if (S.level[i] === 0) lo++; }
+  return hi > lo ? 1 : 0;
+}
+
+// autodetect: try every plausible protocol + channel-role + sub-setting
+// hypothesis against the two analog channels and return the best-scoring one,
+// ready to drop into the decode config. { proto, roles, cfg, result, score,
+// candidates[], reason }. proto === "off" means nothing matched.
+function autodetect(frame, opts) {
+  opts = opts || {};
+  const fmt = opts.fmt || "hex";
+  const n = frame.c1 ? frame.c1.length : 0;
+  const colTimeS = (frame.col_span_s || 0) / (n || 1);
+  const chans = { 1: frame.c1, 2: frame.c2 };
+  const slOpts = { minAmp: opts.minAmp != null ? opts.minAmp : 20 };
+  const active = [1, 2].filter(k => {
+    const c = chans[k]; if (!c) return false;
+    const S = sliceChannel(c, slOpts);
+    return S.ok && S.edges.length >= 2;
+  });
+  const cands = [];
+  const add = (proto, roles, cfg, r) => cands.push({ proto, roles, cfg, result: r, score: scoreResult(r) });
+
+  // A real clock's edge-gaps are ~all one half-period (uniFrac measured 0.96–1.00
+  // on the unit); data/UART lines top out ~0.71 — so 0.85 cleanly separates them.
+  const CLOCK_UNIFRAC = 0.85;
+  const clk1 = clockScore(chans[1], slOpts), clk2 = clockScore(chans[2], slOpts);
+  const clocky = k => (k === 1 ? clk1 : clk2).uniFrac > CLOCK_UNIFRAC;
+
+  // UART — single-wire, try each active channel with auto-baud. Skip a clock-like
+  // channel: a bare clock auto-bauds into a bogus repeating 0x55. Real UART edges
+  // land on data-dependent bit boundaries so uniFrac is low, never skipped.
+  for (const k of active) {
+    if (clocky(k)) continue;
+    add("uart", { line: k }, { baud: 0, bits: 8, parity: "none" },
+      decodeUART(chans[k], colTimeS, { baud: null, bits: 8, parity: "none", fmt }));
+  }
+
+  if (active.length >= 2) {
+    // I2C — try both SCL/SDA orderings.
+    for (const [scl, sda] of [[1, 2], [2, 1]])
+      add("i2c", { scl, sda }, {}, decodeI2C(chans[scl], chans[sda], colTimeS, { fmt }));
+    // SPI — only when a genuine clock is present. CLK is the more clock-like
+    // channel (higher uniFrac); CPOL from its idle rail; CPHA is undetectable
+    // without a reference (both give the same byte count) so try 0/1, default 0.
+    if (Math.max(clk1.uniFrac, clk2.uniFrac) > CLOCK_UNIFRAC) {
+      const clk = (clk1.uniFrac >= clk2.uniFrac) ? 1 : 2, data = clk === 1 ? 2 : 1;
+      const cpol = idleLevel(clk === 1 ? clk1.S : clk2.S);
+      for (const cpha of [0, 1])
+        add("spi", { clk, data }, { cpol, cpha, msb: true },
+          decodeSPI(chans[clk], chans[data], colTimeS, { cpol, cpha, bitOrder: "msb", fmt }));
+    }
+  }
+
+  cands.sort((a, b) => b.score - a.score);
+  const best = cands[0];
+  if (!best || best.score <= -1e8)
+    return { proto: "off", roles: {}, cfg: {}, result: null, score: -Infinity, candidates: cands,
+      reason: active.length ? "no protocol matched" : "no active signal" };
+  return { proto: best.proto, roles: best.roles, cfg: best.cfg, result: best.result, score: best.score, candidates: cands };
+}
+
 // decode: dispatcher used by node tests. frame = { c1, c2, col_span_s }.
 // cfg.protocol in {uart,i2c,spi}; role fields are 1|2 (=> c1|c2).
 function decode(frame, cfg) {
@@ -284,4 +406,5 @@ function decode(frame, cfg) {
 }
 
 if (typeof module !== "undefined" && module.exports)
-  module.exports = { KINDS, fmtByte, sliceChannel, logicAt, decodeUART, decodeI2C, decodeSPI, decode };
+  module.exports = { KINDS, fmtByte, sliceChannel, logicAt, decodeUART, decodeI2C, decodeSPI, decode,
+    scoreResult, clockScore, idleLevel, autodetect };

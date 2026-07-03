@@ -137,9 +137,12 @@
 
     <div class="card" id="decodeCard">
       <h3>Decode
-        <span style="float:right"><select id="decProto" class="dsel">
+        <span style="float:right;display:inline-flex;gap:5px;align-items:center">
+          <button id="decDetect" class="sm" title="auto-detect protocol, channel roles, threshold and sub-settings from the live signal">auto</button>
+          <select id="decProto" class="dsel">
           <option value="off">Off</option><option value="uart">UART</option>
           <option value="i2c">I²C</option><option value="spi">SPI</option></select></span></h3>
+      <div id="decDetectMsg" style="display:none;font-size:11px;color:var(--dim);margin:2px 0"></div>
       <div id="decRoles" style="display:none;font-size:12px;color:var(--dim)">
         <div class="dec-i2c decrow"><span>SCL</span><select id="decScl" class="rolesel"></select>
           <span>SDA</span><select id="decSda" class="rolesel"></select></div>
@@ -1149,12 +1152,61 @@ function updateDecodePanel() {
   updateCaptureList();
 }
 function recompute() { computeDecode(); redraw(); }
+// syncDecodeControls: write dcfg back into the DOM controls (used after
+// autodetect picks settings so the dropdowns/inputs reflect what it chose).
+function syncDecodeControls() {
+  $("decProto").value = dcfg.proto;
+  $("decScl").value = String(dcfg.scl); $("decSda").value = String(dcfg.sda);
+  $("decClk").value = String(dcfg.clk); $("decData").value = String(dcfg.data);
+  $("decLine").value = String(dcfg.line);
+  $("decBaud").value = dcfg.baud; $("decBits").value = dcfg.bits; $("decParity").value = dcfg.parity;
+  $("decCpol").value = String(dcfg.cpol); $("decCpha").value = String(dcfg.cpha);
+  $("decMsb").value = dcfg.msb ? "1" : "0"; $("decFmt").value = dcfg.fmt;
+  $("decAuto").classList.toggle("on", dcfg.auto);
+}
+function detectLabel(d) {
+  const b = d.result && d.result.meta || {};
+  if (d.proto === "uart") return "UART · C" + d.roles.line + " · " + (b.baud ? b.baud + " bd" : "auto");
+  if (d.proto === "i2c") return "I²C · SCL=C" + d.roles.scl + " SDA=C" + d.roles.sda;
+  if (d.proto === "spi") return "SPI · CLK=C" + d.roles.clk + " DATA=C" + d.roles.data + " · mode " + (d.cfg.cpol * 2 + d.cfg.cpha);
+  return d.proto;
+}
+function setDetectMsg(t, err) {
+  const el = $("decDetectMsg");
+  el.style.display = t ? "" : "none";
+  el.textContent = t || "";
+  el.style.color = err ? "#e8604c" : "var(--dim)";
+}
+// runAutodetect: analyse the current frame, pick the best protocol + roles +
+// sub-settings, apply them to dcfg + the DOM controls, and re-decode.
+function runAutodetect() {
+  if (!frame || !frame.c1 || frame.is_env) { setDetectMsg("no live waveform to analyse", true); return; }
+  const d = autodetect(frame, { fmt: dcfg.fmt });
+  if (d.proto === "off") { setDetectMsg("no protocol matched — " + (d.reason || "check the probes"), true); return; }
+  dcfg.proto = d.proto;
+  if (d.roles.line) dcfg.line = d.roles.line;
+  if (d.roles.scl) { dcfg.scl = d.roles.scl; dcfg.sda = d.roles.sda; }
+  if (d.roles.clk) { dcfg.clk = d.roles.clk; dcfg.data = d.roles.data; }
+  if (d.cfg.baud != null) dcfg.baud = d.cfg.baud;     // 0 = keep auto-baud
+  if (d.cfg.bits) dcfg.bits = d.cfg.bits;
+  if (d.cfg.parity) dcfg.parity = d.cfg.parity;
+  if (d.cfg.cpol != null) dcfg.cpol = d.cfg.cpol;
+  if (d.cfg.cpha != null) dcfg.cpha = d.cfg.cpha;
+  if (d.cfg.msb != null) dcfg.msb = d.cfg.msb;
+  dcfg.auto = true;                                    // let the threshold auto-track
+  syncDecodeControls();
+  updateDecodePanel();
+  recompute();
+  const nb = d.result && d.result.bytes ? d.result.bytes.length : 0;
+  setDetectMsg("detected " + detectLabel(d) + " · " + nb + " bytes");
+}
 (function initDecode() {
   for (const sel of document.querySelectorAll(".rolesel")) {
     sel.innerHTML = '<option value="1">C1</option><option value="2">C2</option>';
   }
   $("decSda").value = "2"; $("decData").value = "2"; $("decLine").value = "1";
-  $("decProto").onchange = () => { dcfg.proto = $("decProto").value; updateDecodePanel(); recompute(); };
+  $("decDetect").onclick = runAutodetect;
+  $("decProto").onchange = () => { dcfg.proto = $("decProto").value; setDetectMsg(""); updateDecodePanel(); recompute(); };
   $("decScl").onchange = () => { dcfg.scl = +$("decScl").value; recompute(); };
   $("decSda").onchange = () => { dcfg.sda = +$("decSda").value; recompute(); };
   $("decClk").onchange = () => { dcfg.clk = +$("decClk").value; recompute(); };

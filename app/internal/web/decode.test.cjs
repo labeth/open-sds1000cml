@@ -2,7 +2,7 @@
 // ui.html runs. Synthetic generators render ideal logic into 0..255 code arrays
 // at a chosen SPB (columns per bit); colTimeS is picked so baud = 1/(SPB*colTimeS).
 // Run: node decode.test.cjs   (exit 0 = pass).
-const { fmtByte, sliceChannel, logicAt, decodeUART, decodeI2C, decodeSPI } = require("./decode.js");
+const { fmtByte, sliceChannel, logicAt, decodeUART, decodeI2C, decodeSPI, autodetect } = require("./decode.js");
 
 let failed = 0;
 function ok(c, m) { if (!c) { console.error("FAIL:", m); failed++; } else { console.log("ok  -", m); } }
@@ -182,6 +182,33 @@ const SPB = 40, COLT = 1 / (SPB * 115200);
   ok(r.spans.every(s => s.i0 >= 0 && s.i0 <= s.i1 && s.i1 < r.meta.threshold + 100000), "all spans have 0<=i0<=i1");
   const gaps = new Array(500).fill(-1);
   ok(!sliceChannel(gaps, {}).ok, "all-gap channel -> slice not ok (no crash)");
+}
+
+// --- 8. autodetect -----------------------------------------------------------
+{
+  const mkFrame = (c1, c2) => ({ c1, c2, col_span_s: c1.length * COLT });
+  const flat = n => new Array(n).fill(HI); // idle-high inactive line
+
+  const i2c = i2cGen([
+    { type: "start" }, { type: "byte", val: (0x50 << 1) }, { type: "ack" },
+    { type: "byte", val: 0x00 }, { type: "ack" }, { type: "byte", val: 0xFF }, { type: "nak" }, { type: "stop" },
+  ], SPB);
+  let d = autodetect(mkFrame(i2c.scl, i2c.sda), {});
+  ok(d.proto === "i2c" && d.roles.scl === 1 && d.roles.sda === 2, `autodetect I2C -> ${d.proto} scl=${d.roles.scl} sda=${d.roles.sda}`);
+  d = autodetect(mkFrame(i2c.sda, i2c.scl), {}); // swapped channels -> roles flip
+  ok(d.proto === "i2c" && d.roles.scl === 2 && d.roles.sda === 1, `autodetect I2C swapped -> scl=${d.roles.scl} sda=${d.roles.sda}`);
+
+  const spi = spiGen([0xA5, 0x3C, 0x5A, 0xC3], SPB, { cpol: 0, cpha: 0 });
+  d = autodetect(mkFrame(spi.clk, spi.data), {});
+  ok(d.proto === "spi" && d.roles.clk === 1 && d.roles.data === 2, `autodetect SPI -> ${d.proto} clk=${d.roles.clk} data=${d.roles.data}`);
+
+  const u = uartGen([0x48, 0x69, 0x21], SPB);
+  d = autodetect(mkFrame(u, flat(u.length)), {});
+  ok(d.proto === "uart" && d.roles.line === 1, `autodetect UART -> ${d.proto} line=${d.roles.line}`);
+  ok(d.result && d.result.text === "48 69 21", `autodetect UART decoded "${d.result && d.result.text}"`);
+
+  d = autodetect(mkFrame(flat(500), flat(500)), {});
+  ok(d.proto === "off", `autodetect flat -> ${d.proto} (${d.reason})`);
 }
 
 console.log(failed ? `\n${failed} FAILED` : "\nALL PASS");
