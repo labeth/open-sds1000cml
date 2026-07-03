@@ -223,3 +223,10 @@ Device at 192.168.1.209 (web UI :8080). `/tmp` is read-only → deploy with
   cursors, view modes + panel visibility, export) via httptest+fakeScope; pure-Go
   always-run guardrails `ui_lint_test.go` (inline-style budget ratchet=66,
   inline-script budget=1, CSP-present skipped until Phase 2). All green.
+- **Phase 1 (single-source palette) — DONE.** `tokens.json` is the source of
+  truth; `gen_tokens.go` (`go generate ./internal/web`) emits `tokens.css` (web
+  `:root`, served + linked) and `../lcd/palette_gen.go` (LCD `col*`). The trigger
+  is now AMBER (#f2a63b) on BOTH surfaces (was web-red / LCD-green), split from
+  `--stop` (vermillion #d55e00); `--cursor` moved to near-white. `TestPaletteParity`
+  (pure-Go, always-run) makes web↔LCD drift + stale generation unmergeable.
+  Device-verified: LCD trigger amber, web tokens resolve from the linked stylesheet.

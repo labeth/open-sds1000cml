@@ -13,6 +13,8 @@ run(async (t) => {
   await po.waitFor(() => document.getElementById("tdiv").options.length > 0);
 
   // --- boot / liveness -------------------------------------------------------
+  t.ok((await po.eval(() => getComputedStyle(document.body).getPropertyValue("--c1").trim())).length > 0,
+    "tokens.css loaded (palette custom properties resolve)");
   t.ok((await po.statusLine() || "").length > 0, "status line shows a connection state");
   t.ok(await po.eval(() => typeof frame !== "undefined" && !!frame.c1), "a live frame is present");
   t.ok(await po.eval(() => getComputedStyle(document.getElementById("stopped")).display) === "none",

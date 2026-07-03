@@ -24,6 +24,10 @@ var peaksJS []byte
 //go:embed decode.js
 var decodeJS []byte
 
+//go:generate go run gen_tokens.go
+//go:embed tokens.css
+var tokensCSS []byte
+
 // Scope is the engine surface the web layer needs (the setters come from
 // *engine.Engine; WithFrame comes from the frames.Fanout — the arena's
 // single-consumer read slot belongs to the fan-out, and every other reader
@@ -96,6 +100,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/api/screen.png", s.hScreen)
 	mux.HandleFunc("/peaks.js", s.hPeaksJS)
 	mux.HandleFunc("/decode.js", s.hDecodeJS)
+	mux.HandleFunc("/tokens.css", s.hTokensCSS)
 	return mux
 }
 
@@ -147,6 +152,11 @@ func (s *Server) hPeaksJS(w http.ResponseWriter, r *http.Request) {
 func (s *Server) hDecodeJS(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
 	w.Write(decodeJS)
+}
+
+func (s *Server) hTokensCSS(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/css; charset=utf-8")
+	w.Write(tokensCSS)
 }
 
 func (s *Server) hRoot(w http.ResponseWriter, r *http.Request) {

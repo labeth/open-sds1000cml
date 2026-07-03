@@ -1,0 +1,19 @@
+/* Code generated from tokens.json by gen_tokens.go. DO NOT EDIT. */
+:root {
+  --axis: #50506e;
+  --bg: #0b0f14;
+  --c1: #f5d90a;
+  --c2: #35c8e8;
+  --cursor: #e6ecf2;
+  --dim: #7c8894;
+  --edge: #29333f;
+  --grid: #182430;
+  --math: #b98cff;
+  --panel: #161c24;
+  --run: #3fb950;
+  --screen: #05080c;
+  --stop: #d55e00;
+  --text: #d6dde4;
+  --trigger: #f2a63b;
+  --warn: #f5a24c;
+}

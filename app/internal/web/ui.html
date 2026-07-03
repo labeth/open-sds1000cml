@@ -4,13 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>open-sds1000cml</title>
+<link rel="stylesheet" href="tokens.css"><!-- palette generated from tokens.json, shared with the LCD -->
 <style>
-  :root {
-    --bg: #0b0f14; --panel: #161c24; --edge: #29333f;
-    --text: #d6dde4; --dim: #7c8894;
-    --c1: #f5d90a; --c2: #35c8e8; --trig: #e8604c; --cur: #ff9f2e; --math: #b98cff;
-    --run: #3fb950; --stop: #e8604c;
-  }
   * { box-sizing: border-box; }
   html, body { height: 100%; }
   body {
@@ -68,7 +63,7 @@
   .grp > label { color: var(--dim); font-size: 12px; }
   #run.running { background: #1d3a26; border-color: var(--run); color: var(--run); }
   #run.stopped { background: #3a201d; border-color: var(--stop); color: var(--stop); }
-  input[type=range] { width: 120px; accent-color: var(--trig); }
+  input[type=range] { width: 120px; accent-color: var(--trigger); }
   .panel2 { display: none; flex-wrap: wrap; gap: 8px 10px; align-items: center;
             width: 100%; font-size: 12px; color: var(--dim);
             border-top: 1px dashed var(--edge); padding-top: 8px; }
@@ -338,7 +333,7 @@ const DECCOL = {
 const css = getComputedStyle(document.body);
 const C1COL = css.getPropertyValue("--c1").trim();
 const C2COL = css.getPropertyValue("--c2").trim();
-const CURCOL = css.getPropertyValue("--cur").trim();
+const CURCOL = css.getPropertyValue("--cursor").trim();
 const MATHCOL = css.getPropertyValue("--math").trim();
 
 // ---- responsive canvas ----

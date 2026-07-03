@@ -7,18 +7,10 @@ import (
 	"open-sds/app/internal/engine"
 )
 
-// Colour palette (spec 07 §2.2).
-var (
-	colBG    = rgb(0, 0, 16)
-	colGrid  = rgb(40, 40, 60)
-	colAxis  = rgb(80, 80, 110)
-	colC1    = rgb(255, 236, 0)
-	colC2    = rgb(0, 220, 255)
-	colOK    = rgb(0, 200, 0)
-	colStale = rgb(220, 40, 40)
-	colInfo  = rgb(200, 200, 200)
-	colTrig  = rgb(64, 255, 64)
-)
+// Colour palette (spec 07 §2.2). The col* variables are GENERATED into
+// palette_gen.go from ../web/tokens.json — the single source of truth shared with
+// the web UI — so the two surfaces cannot diverge (they did: the trigger colour
+// was red on web but green here). Edit tokens.json + `go generate ./internal/web`.
 
 // HUD is the UI-state snapshot the overlay renders alongside the frozen
 // frame (spec 07 §6). It carries no capture state.
