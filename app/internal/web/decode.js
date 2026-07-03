@@ -245,6 +245,12 @@ function decodeSPI(clk, data, colTimeS, cfg) {
   const gapReset = halfGap * 3;
   const spans = [], bytes = [], toks = [];
   let ck = -1, bitCount = 0, val = 0, bitStart = 0, lastSample = -1;
+  // sampleMargin = how far the sampled data sits from the threshold, averaged over
+  // all bits (1 = dead on a rail, 0 = on the threshold). The CORRECT clock phase
+  // samples mid-bit where data is stable (high margin); the wrong phase samples on
+  // the data transition (low margin). autodetect uses this to pick CPHA.
+  const halfAmp = DA.amp / 2 || 1;
+  let mSum = 0, mN = 0;
   for (let i = 0; i < n; i++) {
     const l = CK.level[i];
     if (l < 0) { ck = -1; continue; }
@@ -254,6 +260,8 @@ function decodeSPI(clk, data, colTimeS, cfg) {
     if ((sampleRising && rising) || (!sampleRising && falling)) {
       const bit = logicAt(DA, i);
       if (bit < 0) continue;
+      const cd = DA.codes[i];
+      if (cd >= 0) { mSum += Math.min(1, Math.abs(cd - DA.threshold) / halfAmp); mN++; }
       if (lastSample >= 0 && i - lastSample > gapReset && bitCount > 0) { bitCount = 0; val = 0; } // idle gap → new frame
       lastSample = i;
       if (bitCount === 0) { bitStart = i; val = 0; }
@@ -267,7 +275,7 @@ function decodeSPI(clk, data, colTimeS, cfg) {
     }
   }
   return { ok: true, error: null, proto: "spi", spans, text: toks.join(" "), bytes,
-    meta: { cpol, cpha, sampleOnRising: sampleRising, bitOrder: msb ? "msb" : "lsb", noCS: true, colsPerClock: halfGap * 2, threshold: CK.threshold } };
+    meta: { cpol, cpha, sampleOnRising: sampleRising, bitOrder: msb ? "msb" : "lsb", noCS: true, colsPerClock: halfGap * 2, threshold: CK.threshold, sampleMargin: mN ? mSum / mN : 0 } };
 }
 
 // ---- autodetect -------------------------------------------------------------
@@ -302,7 +310,8 @@ function scoreResult(r) {
   }
   if (r.proto === "spi") {
     if (bytes === 0) return -1e9;
-    return bytes * 2;                              // no framing -> weakest, fallback only
+    const margin = (r.meta && r.meta.sampleMargin) || 0;
+    return bytes * 2 + margin * 10;               // no framing -> weakest; margin breaks the CPHA tie
   }
   return -1e9;
 }
@@ -320,8 +329,12 @@ function clockScore(codes, opts) {
   for (let k = 1; k < S.edges.length; k++) gaps.push(S.edges[k].i - S.edges[k - 1].i);
   const hp = gaps.slice().sort((a, b) => a - b)[Math.floor(gaps.length * 0.2)];
   if (hp <= 0) return { ok: false, uniFrac: 0, halfPeriod: 0, S };
+  // Absolute tolerance floor: at a fast clock (few samples/half-period) ±1-sample
+  // edge quantization already spends most of a pure 35%·hp band, so a plainly
+  // regular clock would score low. Floor the band at 2.5 samples.
+  const tol = Math.max(0.4 * hp, 2.5);
   let uni = 0;
-  for (const g of gaps) if (Math.abs(g - hp) <= 0.35 * hp) uni++;
+  for (const g of gaps) if (Math.abs(g - hp) <= tol) uni++;
   return { ok: true, uniFrac: uni / gaps.length, halfPeriod: hp, edges: S.edges.length, S };
 }
 
@@ -353,30 +366,33 @@ function autodetect(frame, opts) {
   const cands = [];
   const add = (proto, roles, cfg, r) => cands.push({ proto, roles, cfg, result: r, score: scoreResult(r) });
 
-  // A real clock's edge-gaps are ~all one half-period (uniFrac measured 0.96–1.00
-  // on the unit); data/UART lines top out ~0.71 — so 0.85 cleanly separates them.
-  const CLOCK_UNIFRAC = 0.85;
+  // Clock vs data, ROBUST at fast clocks. A single absolute uniFrac cutoff fails
+  // when few samples/edge drag a real clock down to ~0.80 — right next to a data
+  // line's ~0.70. The stronger signal is ASYMMETRY: a clocked bus (SPI) has one
+  // channel markedly more uniform than the other, while a UART line has no uniform
+  // partner. Measured @fast clock: SPI clk 0.80 vs data 0.53; UART line 0.65.
   const clk1 = clockScore(chans[1], slOpts), clk2 = clockScore(chans[2], slOpts);
-  const clocky = k => (k === 1 ? clk1 : clk2).uniFrac > CLOCK_UNIFRAC;
+  const u1 = clk1.uniFrac, u2 = clk2.uniFrac, hi = Math.max(u1, u2), lo = Math.min(u1, u2);
+  const clockedPair = active.length >= 2 && hi > 0.72 && hi > lo + 0.12;
+  const isClocky = k => { const c = k === 1 ? clk1 : clk2; return c.uniFrac > 0.78 && c.edges >= 40; };
 
-  // UART — single-wire, try each active channel with auto-baud. Skip a clock-like
-  // channel: a bare clock auto-bauds into a bogus repeating 0x55. Real UART edges
-  // land on data-dependent bit boundaries so uniFrac is low, never skipped.
-  for (const k of active) {
-    if (clocky(k)) continue;
-    add("uart", { line: k }, { baud: 0, bits: 8, parity: "none" },
-      decodeUART(chans[k], colTimeS, { baud: null, bits: 8, parity: "none", fmt }));
-  }
+  // UART — async single-wire. Suppress on a clocked pair (that IS SPI — a data line
+  // paired with a clock) and on a lone clock (else it auto-bauds into bogus 0x55).
+  if (!clockedPair)
+    for (const k of active)
+      if (!isClocky(k))
+        add("uart", { line: k }, { baud: 0, bits: 8, parity: "none" },
+          decodeUART(chans[k], colTimeS, { baud: null, bits: 8, parity: "none", fmt }));
 
   if (active.length >= 2) {
-    // I2C — try both SCL/SDA orderings.
+    // I2C — try both SCL/SDA orderings (scoring, not clock-detection, resolves it).
     for (const [scl, sda] of [[1, 2], [2, 1]])
       add("i2c", { scl, sda }, {}, decodeI2C(chans[scl], chans[sda], colTimeS, { fmt }));
-    // SPI — only when a genuine clock is present. CLK is the more clock-like
-    // channel (higher uniFrac); CPOL from its idle rail; CPHA is undetectable
-    // without a reference (both give the same byte count) so try 0/1, default 0.
-    if (Math.max(clk1.uniFrac, clk2.uniFrac) > CLOCK_UNIFRAC) {
-      const clk = (clk1.uniFrac >= clk2.uniFrac) ? 1 : 2, data = clk === 1 ? 2 : 1;
+    // SPI — only a clocked pair. CLK = the more-uniform channel; CPOL from its idle
+    // rail. Try BOTH CPHA phases and let scoreResult keep the cleaner one (higher
+    // sampleMargin — the phase whose samples land on stable data, not a transition).
+    if (clockedPair) {
+      const clk = u1 >= u2 ? 1 : 2, data = clk === 1 ? 2 : 1;
       const cpol = idleLevel(clk === 1 ? clk1.S : clk2.S);
       for (const cpha of [0, 1])
         add("spi", { clk, data }, { cpol, cpha, msb: true },

@@ -209,6 +209,23 @@ const SPB = 40, COLT = 1 / (SPB * 115200);
 
   d = autodetect(mkFrame(flat(500), flat(500)), {});
   ok(d.proto === "off", `autodetect flat -> ${d.proto} (${d.reason})`);
+
+  // CPHA disambiguation needs REAL edges: the wrong phase samples ON the data
+  // transition. Idealised instant edges sample a clean (shifted) rail either way,
+  // so add a linear ramp at each data transition; then the correct phase (samples
+  // mid-bit) has a high margin and the wrong phase (samples on the ramp) low.
+  const ramp = (arr, w) => {
+    const out = arr.slice(), h = Math.floor(w / 2);
+    for (let i = 1; i < arr.length; i++) if (arr[i] !== arr[i - 1])
+      for (let k = -h; k <= h; k++) { const j = i + k; if (j >= 0 && j < out.length) out[j] = Math.round(arr[i - 1] + (arr[i] - arr[i - 1]) * (k + h) / w); }
+    return out;
+  };
+  for (const cpha of [0, 1]) {
+    const g = spiGen([0xA5, 0x3C, 0x99, 0x66], SPB, { cpol: 0, cpha });
+    const f = { c1: g.clk, c2: ramp(g.data, Math.round(SPB * 0.6)), col_span_s: g.clk.length * COLT };
+    const dd = autodetect(f, {});
+    ok(dd.proto === "spi" && dd.cfg.cpha === cpha, `autodetect SPI picks CPHA=${cpha} by sample margin (got proto=${dd.proto} cpha=${dd.cfg.cpha})`);
+  }
 }
 
 console.log(failed ? `\n${failed} FAILED` : "\nALL PASS");
