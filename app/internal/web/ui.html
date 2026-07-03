@@ -678,6 +678,7 @@ function drawNav() {
     if (view.c2) drawNavTrace(frame.c2, C2COL);
     if (view.c1) drawNavTrace(frame.c1, C1COL);
   }
+  drawNavDecode(); // decode tokens across the WHOLE record (small-window view)
   // viewport rectangle = the visible [a,b] window.
   const x0 = view.win.a * NW, x1 = view.win.b * NW;
   navCtx.fillStyle = "rgba(255,159,46,.13)"; navCtx.fillRect(x0, 0, x1 - x0, NH);
@@ -685,6 +686,29 @@ function drawNav() {
   navCtx.strokeRect(x0 + .5, .5, Math.max(1, x1 - x0 - 1), NH - 1);
   navCtx.fillStyle = "rgba(255,159,46,.95)";
   navCtx.fillRect(x0 - 1, 0, 2, NH); navCtx.fillRect(x1 - 1, 0, 2, NH);
+}
+
+// Decode lane in the NAVIGATOR: every token across the whole record, so you see
+// what goes where in the small window; the main window shows the detail. Uses
+// full-record nav coords (not the zoom window), colour-coded by kind, with the
+// byte text drawn wherever a token is wide enough.
+function drawNavDecode() {
+  if (dcfg.proto === "off" || !frame || frame.is_env || !frame.c1) return;
+  const r = dcfg.result;
+  if (!r || !r.ok || !r.spans.length) return;
+  const n = frame.c1.length, laneH = 13 * dpr, laneY = NH - laneH;
+  navCtx.fillStyle = "rgba(5,8,12,0.66)"; navCtx.fillRect(0, laneY, NW, laneH);
+  navCtx.textBaseline = "middle"; navCtx.textAlign = "center"; navCtx.font = "bold " + (9 * dpr) + "px system-ui";
+  const nx = i => i / (n - 1) * NW;
+  for (const s of r.spans) {
+    const col = DECCOL[s.kind] || "#7c8894";
+    let x0 = nx(s.i0), x1 = Math.max(nx(s.i1), x0 + 1.5 * dpr);
+    if (s.kind === "start" || s.kind === "stop") { navCtx.fillStyle = col; navCtx.fillRect(x0 - dpr, laneY, 1.6 * dpr, laneH); continue; }
+    navCtx.fillStyle = hexA(col, 0.85); navCtx.fillRect(x0, laneY + dpr, x1 - x0, laneH - 2 * dpr);
+    const label = fitLabel(navCtx, s.text, x1 - x0 - 2 * dpr);
+    if (label) { navCtx.fillStyle = "#05080c"; navCtx.fillText(label, (x0 + x1) / 2, laneY + laneH / 2); }
+  }
+  navCtx.textAlign = "left"; navCtx.textBaseline = "alphabetic";
 }
 
 // ---- protocol decode: compute + render ----
@@ -696,7 +720,7 @@ function computeDecode() {
   const cfg = { threshold: dcfg.auto ? null : +$("decThr").value, guard: 4 };
   let r = null;
   if (dcfg.proto === "uart")
-    r = decodeUART(decCodes(dcfg.line), colTimeS, Object.assign(cfg, { baud: dcfg.baud, bits: dcfg.bits, parity: dcfg.parity }));
+    r = decodeUART(decCodes(dcfg.line), colTimeS, Object.assign(cfg, { baud: dcfg.baud > 0 ? dcfg.baud : null, bits: dcfg.bits, parity: dcfg.parity }));
   else if (dcfg.proto === "i2c")
     r = decodeI2C(decCodes(dcfg.scl), decCodes(dcfg.sda), colTimeS, cfg);
   else if (dcfg.proto === "spi")
@@ -1041,7 +1065,7 @@ function recompute() { computeDecode(); redraw(); }
   $("decLine").onchange = () => { dcfg.line = +$("decLine").value; recompute(); };
   $("decAuto").onclick = () => { dcfg.auto = !dcfg.auto; $("decAuto").classList.toggle("on", dcfg.auto); recompute(); };
   $("decThr").oninput = () => { dcfg.auto = false; $("decAuto").classList.remove("on"); $("decThrV").textContent = $("decThr").value; recompute(); };
-  $("decBaud").onchange = () => { dcfg.baud = Math.max(1, +$("decBaud").value | 0); recompute(); };
+  $("decBaud").onchange = () => { dcfg.baud = Math.max(0, +$("decBaud").value | 0); recompute(); }; // 0 = auto-baud
   $("decBits").onchange = () => { dcfg.bits = Math.max(5, Math.min(9, +$("decBits").value | 0)); recompute(); };
   $("decParity").onchange = () => { dcfg.parity = $("decParity").value; recompute(); };
   $("decCpol").onchange = () => { dcfg.cpol = +$("decCpol").value; recompute(); };
