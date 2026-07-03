@@ -42,8 +42,8 @@ func TestRollProgDivisor(t *testing.T) {
 			t.Fatalf("PlanTdiv(%g): ok=%v kind=%v", tdiv, ok, b.Kind())
 		}
 		class, lo, hi := b.Prog()
-		if class != 0x80 || lo != 0x1ce8 || hi != 0 {
-			t.Errorf("roll Prog(%g) = %#x/%#x/%#x, want 0x80/0x1ce8/0", tdiv, class, lo, hi)
+		if class != 0x80 || lo != 0x9088 || hi != 0 { // rollDivisor 37000
+			t.Errorf("roll Prog(%g) = %#x/%#x/%#x, want 0x80/0x9088/0", tdiv, class, lo, hi)
 		}
 	}
 	if got := RollPaceNs(); got != 370000 {
@@ -104,10 +104,10 @@ func TestRollBand(t *testing.T) {
 	fb.clearWrites()
 	e.transition(false, false)
 
-	// Bring-up: divisor 7400, single reset-head, wrptr pulse, arm ONCE, latch.
+	// Bring-up: divisor 37000, single reset-head, wrptr pulse, arm ONCE, latch.
 	sawDiv, sawGo, sawLatch := false, 0, 0
 	for _, w := range fb.snapWrites() {
-		if w.plane == 1 && w.sel == selDivLo && w.val == 0x1ce8 {
+		if w.plane == 1 && w.sel == selDivLo && w.val == 0x9088 {
 			sawDiv = true
 		}
 		if w.plane == 1 && w.sel == selArm && w.val == opGo {

@@ -45,7 +45,7 @@ const (
 	// tdiv — the table divisor would pace reads at exactly one signal period
 	// (thin band). rollClockNs is a read-pacing heuristic only; never use it
 	// to size records or windows (the deep interval stays divisor × 10 ns).
-	rollDivisor  = 7400 // lo=0x1CE8, hi=0
+	rollDivisor  = 37000 // FIFO steps ~0.37 signal-period/sample (deep rate ×10ns), so each
 	rollClockNs  = 50
 	rollWin      = 4096
 	rollBatch    = 1600
@@ -287,10 +287,13 @@ func (b Band) WaitBudgetNs() int64 {
 	return n
 }
 
-// RollPace is the sleep between roll FIFO pops: divisor × 50 ns clamped to
-// [50 µs, 40 ms] (spec 04 — a read-pacing domain, not the sample clock).
+// RollPaceNs is the sleep between roll FIFO pops. It matches the FIFO's own
+// production rate (rollDivisor × 10 ns, the deep sample clock) so each read
+// lands on a FRESH sample: pacing 5× slower (× 50 ns) misses 4-of-5 fresh
+// samples and fills the ring glacially; pacing faster just re-reads dwells
+// (skipped by rollUpdate) and risks wedging the port. Clamped to [50 µs, 40 ms].
 func RollPaceNs() int64 {
-	n := int64(rollDivisor * rollClockNs)
+	n := int64(rollDivisor * 10)
 	if n < 50e3 {
 		n = 50e3
 	}

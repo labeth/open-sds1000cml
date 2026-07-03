@@ -256,6 +256,8 @@ func (e *Engine) rollUpdate(norm bool) {
 	deadline := e.clk.Now().Add(rollBudgetMs * time.Millisecond)
 	pace := time.Duration(RollPaceNs())
 	errRun := 0
+	prev := uint8(0)
+	havePrev := false
 	for i := 0; i < rollBatch; i++ {
 		if e.interrupted() {
 			return // bail unpublished; port stays armed (that is safe)
@@ -274,7 +276,20 @@ func (e *Engine) rollUpdate(norm bool) {
 			continue
 		}
 		errRun = 0
-		e.rollRing1[e.rollPos] = uint8(w1 >> 8)
+		s1 := uint8(w1 >> 8)
+		if havePrev && s1 == prev {
+			// Dwell: the FIFO re-latched the SAME sample (its output changes far slower than
+			// we can read it). Storing dwells stacks a long single-rail run and a thin band —
+			// skip it so the ring holds only fresh, phase-advancing samples (a solid band).
+			prev = s1
+			if !e.clk.Now().Before(deadline) {
+				break
+			}
+			e.clk.Sleep(pace)
+			continue
+		}
+		prev, havePrev = s1, true
+		e.rollRing1[e.rollPos] = s1
 		w2, err2 := e.b.Read(bus.PlaneCS1, selRollC2)
 		if err2 == nil {
 			e.rollRing2[e.rollPos] = uint8(w2 >> 8)
@@ -359,6 +374,41 @@ func (e *Engine) rollReduce(f *Frame) {
 				}
 				if v > mx[c] {
 					mx[c] = v
+				}
+			}
+		}
+		// Solidity (spec 04 §5.3). The roll FIFO reads slowly and its per-0xCB phase step
+		// aliases the signal, so per-column binning leaves many columns single-rail during the
+		// (multi-second) ring fill. But a signal at a roll timebase (≥100 ms/div) is far faster
+		// than the sweep — its TRUE display is a solid rail-to-rail band, every column spanning
+		// the full excursion. So when most columns are single-rail yet the GLOBAL excursion over
+		// real samples is large (a fast signal aliased thin), fill every column to the real
+		// [gmn, gmx] — real ADC min/max, never invented. A genuinely slow signal (columns already
+		// show their excursion, few thin) keeps its per-column shape. Never-seen columns draw a
+		// mid-line, never a false 0-rail bar.
+		gmn, gmx := uint8(0xff), uint8(0)
+		thin := 0
+		for c := 0; c < envDisplayCols; c++ {
+			if mx[c] >= mn[c] { // seen
+				if mn[c] < gmn {
+					gmn = mn[c]
+				}
+				if mx[c] > gmx {
+					gmx = mx[c]
+				}
+				if int(mx[c])-int(mn[c]) < 20 {
+					thin++
+				}
+			}
+		}
+		if gmx > gmn && int(gmx)-int(gmn) >= nativeEdgeMinPtp && thin > envDisplayCols/3 {
+			for c := 0; c < envDisplayCols; c++ {
+				mn[c], mx[c] = gmn, gmx
+			}
+		} else {
+			for c := 0; c < envDisplayCols; c++ {
+				if mn[c] > mx[c] { // never-seen
+					mn[c], mx[c] = 128, 128
 				}
 			}
 		}
