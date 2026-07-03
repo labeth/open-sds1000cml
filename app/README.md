@@ -17,14 +17,21 @@ A working oscilloscope, end to end — every subsystem validated on the real uni
   FIFO, arm-once/never-halt, paced pops), and opt-in ETS phase interleave.
 - **Triggering** (spec 05): EDGE with software centring + slope validation, plus
   PULSE (GLIT), SLOPE (SLEW) and VIDEO (TV) qualifiers — the qualifier IS the
-  trigger; trigger level via the safe CS3 DAC recommit; slope/source software-selected.
+  trigger; trigger level via the safe CS3 DAC recommit; slope/source software-selected;
+  **trigger holdoff** (post-trigger re-arm floor, applied as frame pacing).
 - **Acquisition modes** (spec 03 §7.4): AVERAGE (edge-aligned sliding ring),
   ERES (boxcar before discrimination), PEAK (envelope path by construction), and
   cross-frame uniformity telemetry.
 - **Vertical front end** (spec 06): 12-detent V/div ladder over SPI (relay word +
-  gain DAC, seed-don't-emit), vertical offset DAC via the owner's CS3 staging.
+  gain DAC, seed-don't-emit), vertical offset DAC via the owner's CS3 staging,
+  probe attenuation (×1/×10/×100, tip-referred), and software AC/DC/GND coupling
+  (the relay coupling path is unsafe/ineffective on this clone — see spec 06 §6).
+- **Measurements** (`internal/measure`): one shared core — Vpp/max/min/mean/rms,
+  histogram Vtop/Vbase/Vamplitude, over/preshoot, and interpolated timing
+  (freq/period/duty, 10–90 % rise/fall, ± width) — used by both web and LCD.
 - **LCD** (spec 07): `/dev/fb0` RGB565 renderer — graticule, traces, envelope
-  bands, 5×7 font HUD with Vpp/frequency readouts, y-pan double buffering.
+  bands, 5×7 font HUD, y-pan double buffering, a softkey menu system, a calibrated
+  on-screen MEASURE panel, and on-screen time/volts cursors with Δ readouts.
 - **Front panel** (spec 08): SIGIO-driven matrix scan through the owner's
   request/reply channel, hardware-quadrature knobs, LED latch. RUN/STOP, SINGLE,
   AUTO buttons and TIME/DIV, V/DIV, POSITION, TRIG LEVEL knobs are live.
@@ -35,15 +42,17 @@ A working oscilloscope, end to end — every subsystem validated on the real uni
   with the system portmapper) — `*IDN?`, timebase/vertical/trigger control,
   byte-exact `Cn:WF? DESC/DAT2` WAVEDESC transfers, `SCDP` BMP hardcopy.
 - **Web UI on `:8080`**: full-window responsive display (canvas scales to the
-  browser, HiDPI-aware, column count tracks the pixel width via `?cols=`), with
-  auto-measurements (Vpp/max/min/mean/rms, freq/period/duty per channel),
-  draggable time+voltage cursors with Δt/1/Δt/ΔV, Y-T / X-Y / FFT view modes,
-  waveform persistence, channel enable, freeze, and PNG/CSV export — plus every
-  acquisition control.
+  browser, HiDPI-aware, column count tracks the pixel width via `?cols=`), with the
+  full auto-measurement set (expandable timing/pulse group), draggable time+voltage
+  cursors with Δt/1/Δt/ΔV, Y-T / X-Y / per-channel FFT view modes, waveform
+  persistence, math (C1±C2, C1×C2, FFT-carrier subtraction), reference waveforms
+  (REF A/B, absolute-voltage overlay), autoset, protocol decode (UART/I²C/SPI) with
+  auto-detect, a clipping indicator, per-channel probe/coupling, and PNG /
+  calibrated-CSV export — plus every acquisition control.
 - **OTA contract**: health token gated on ≥3 coherent frames; clean SIGTERM exit.
 
-Deliberately deferred (spec-documented cuts): coupling/GND/BWL relay changes,
-EXT trigger, USB-TMC, video field modes, cal Block B, holdoff, LCD softkey menus.
+Deliberately deferred (spec-documented cuts): BWL relay changes, EXT trigger,
+USB-TMC, video field modes, cal Block B.
 
 ## Build, deploy, test
 

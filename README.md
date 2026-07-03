@@ -1,42 +1,121 @@
 # open-sds1000cml
 
-Clean-room replacement firmware **specification** for the Siglent SDS1000CML+ series
-digital storage oscilloscope (2-channel, e.g. SDS1102CML+).
+Clean-room replacement firmware for the **Siglent SDS1000CML+** series 2-channel
+digital storage oscilloscope (developed and validated on the **SDS1102CML+**).
 
-This repository is **specifications only** — the authoritative, implementable description of
-how the replacement firmware must behave and how the hardware works. An implementation is built
-*from* these specs; the specs do not describe any particular implementation, how a fact was
-discovered, or where it was verified. **Everything written here is taken as correct.**
+It replaces the vendor scope application with an open, from-scratch implementation
+that drives the instrument's real hardware — acquisition engine, 1 ns–50 s/div
+timebase, triggering, vertical analog front end, LCD, and front panel — to
+oscilloscope-grade behaviour, and adds a live **web UI** and a **SCPI/VXI-11**
+host interface on top.
 
-## What this firmware does
+Everything here was written clean-room from behavioural specifications
+([`specs/`](specs/)) — no vendor firmware code. The specs describe *what the
+hardware does and how the firmware must behave*; the implementation in
+[`app/`](app/) is built from them and validated on a real unit.
 
-It replaces the vendor scope application with a clean-room application (**"the app"**) that drives
-the instrument's real hardware — acquisition, timebase, trigger, vertical/analog front end, LCD,
-and front panel — to oscilloscope-grade behaviour, matching the vendor where the vendor is the bar.
+> ⚠️ **Safety / use at your own risk.** This is experimental firmware that takes
+> over a mains-powered instrument and drives its real relays, gain/offset DACs and
+> memory-mapped acquisition bus. A bug can wedge the acquisition engine or leave the
+> front end in an unexpected state. Recovery is normally automatic (the on-device
+> supervisor relaunches the app) or a takeover-revert; the last resort is a mains
+> power-cycle. It is written for the **SDS1000CML+ series only** — do not run it on
+> other hardware. There is **no warranty** (see [LICENSE](LICENSE)); you are
+> responsible for your instrument.
 
-## The non-negotiable inputs (read `specs/01-system-architecture.md` first)
+![The web UI driving a real SDS1102CML+](docs/images/web-ui.png)
 
-These are the constraints that, if ignored, cost the most time. They are load-bearing:
+## Highlights
 
-- **Single owner of the GPMC file descriptor.** Exactly one goroutine/thread owns the inherited
-  `/dev/Gpmc` fd and is the *only* code that touches the GPMC bus. Every other subsystem (render,
-  panel, control plane) hands work to that owner; none touch the bus directly. This is what makes
-  the capture-halt safe. Violating it wedges the engine (black screen).
-- **Inherit the fd; never fresh-open.** The GPMC (and front-panel key) fd must be *inherited* from
-  the process that opened it at boot. A fresh `open()` of these devices faults. The app is launched
-  so that it inherits the fd, and it reuses that fd for the life of the process.
-- **The bring-up state is inherited, not reconfigured.** The comparator/engine configuration is
-  established at boot; the app inherits it. Rewriting the FPGA config port at runtime collapses the
-  engine — do not.
+- **Full acquisition engine** — single-owner GPMC design (one goroutine owns the
+  inherited `/dev/Gpmc` fd), per-frame arm → capture-halt → drain → re-arm, triple-
+  buffered publish, wedge-recovery ladder.
+- **33-detent timebase** 1 ns – 50 s/div: native-fast, decimated, slow-envelope,
+  roll, and opt-in equivalent-time sampling (ETS).
+- **Triggering** — EDGE with software slope validation, plus PULSE / SLOPE / VIDEO
+  qualifiers, and **trigger holdoff**.
+- **Acquisition modes** — NORMAL, AVERAGE, ERES, PEAK.
+- **Vertical front end** — 12-detent V/div ladder (SPI relay + gain DAC),
+  calibrated offset DAC, **probe attenuation (×1/×10/×100)**, and
+  **AC / DC / GND coupling** (software-modelled — see the design note below).
+- **Measurements** — a shared measurement core (`internal/measure`) computes
+  Vpp/Vmax/Vmin/Vmean/Vrms, histogram Vtop/Vbase/Vamplitude, and timing
+  (frequency, period, duty, 10–90 % rise/fall, ± pulse width, over/preshoot),
+  identical on the web UI and the device LCD.
+- **Web UI** (`http://<device>:8080/`) — responsive canvas display, Y-T / X-Y / FFT
+  (per-channel), auto-measurements, draggable time/voltage cursors, waveform
+  persistence, math (C1±C2, C1×C2, FFT-carrier subtraction), **reference
+  waveforms (REF A/B)**, autoset, protocol decode (UART/I²C/SPI) with auto-detect,
+  a clipping indicator, and PNG / calibrated-CSV export.
+- **On-device UI** — LCD renderer with a softkey menu system, a calibrated
+  **on-screen MEASURE panel**, **on-screen cursors**, and per-channel
+  coupling/probe pages driven from the front panel.
+- **Host interface** — SCPI over VXI-11 (ONC-RPC): `*IDN?`, timebase / vertical /
+  trigger control, byte-exact `Cn:WF?` waveform transfers, `SCDP` screenshot.
+- **Over-the-air ops** — an on-device supervisor with A/B slots + health rollback,
+  and a host controller (`otactl`) for status, file transfer, updates, factory
+  takeover/revert, and (optional) Shelly mains-power control.
 
-The full set of traps and the reasons the architecture is shaped this way are in the architecture spec.
+### Design note: coupling on this clone
+
+On this hardware, AC coupling has no effective hardware high-pass and the GND relay
+bit alone does not reliably ground the input (it needs a factory-firmware config-plane
+write that is unsafe to reproduce; re-emitting the relay word from the boot state can
+also collapse the other channel's gain). This firmware therefore models coupling
+**in software** — AC removes the DC component, GND shows a flat ground trace, DC
+passes through — which is safe, always works, and matches on both the web and the LCD.
+See [`specs/06-vertical-and-analog.md`](specs/06-vertical-and-analog.md) §6.
+
+## On the instrument itself
+
+The firmware isn't only a web front end — it drives the scope's own LCD and front
+panel too. Front-panel softkeys toggle a calibrated on-screen MEASURE panel and
+on-screen cursors, both computed from the same measurement core as the web UI:
+
+| On-screen MEASURE panel | On-screen cursors |
+|---|---|
+| ![LCD MEASURE panel](docs/images/lcd-measure.png) | ![LCD cursors](docs/images/lcd-cursors.png) |
+
+## Quick start
+
+Requires Go (see [`app/go.mod`](app/go.mod)) and a target SDS1000CML+ prepared with
+the OTA boot anchor (see [`ota/`](ota/)).
+
+```sh
+# Build the ARM app binary (version-stamped via git):
+cd app && make app                 # → app/dist/app-arm
+
+# Run the full offline test suite (no hardware needed — scripted fake bus):
+make test
+
+# Stage + deploy to a prepared device (device /tmp is read-only, so stage to the stick):
+../ota/dist/otactl -tcp <device>:5900 \
+  -stage /usr/bin/siglent/usr/media/U-disk0/agent-slots/staging \
+  update-app dist/app-arm
+
+# One-time cutover from the factory app, then browse the UI:
+../ota/dist/otactl -tcp <device>:5900 takeover
+#   -> http://<device>:8080/    (or talk SCPI via any VXI-11 client)
+```
+
+Recovery: `otactl untakeover` restores the factory app; the last resort is a mains
+power-cycle. See [`ota/README.md`](ota/README.md) for the full supervisor/OTA model.
 
 ## Layout
 
-- [`specs/`](specs/) — the specifications. Start with `specs/README.md` for the reading order.
+| Path | What |
+|---|---|
+| [`app/`](app/) | The clean-room scope application (Go, ARMv7). Engine, front end, LCD, panel, web UI, SCPI. |
+| [`ota/`](ota/) | On-device supervisor (`agent`), host controller (`otactl`), and the USB boot anchor. |
+| [`specs/`](specs/) | The behavioural specifications the firmware is built from. Start with `specs/README.md`. |
 
-Each directory has a `README.md` describing what it contains.
+## Contributing
 
-## Status
+Contributions are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md). In short: keep
+changes validated (the offline `make test` suite plus, where relevant, the web
+end-to-end harness), match the surrounding code, and don't break the load-bearing
+architecture rules (single GPMC owner, inherit-don't-open, absolute front-end writes).
 
-Specifications under active authorship and adversarial review. Private while in progress.
+## License
+
+[MIT](LICENSE).

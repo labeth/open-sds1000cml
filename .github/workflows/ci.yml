@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        module: [app, ota]
+    defaults:
+      run:
+        working-directory: ${{ matrix.module }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: ${{ matrix.module }}/go.mod
+          cache: false
+
+      - name: vet
+        run: go vet ./...
+
+      # The web browser E2E self-skips when Playwright is absent, so the offline
+      # suite (engine, front end, LCD, panel, measure, SCPI, web guardrails) runs.
+      - name: test
+        run: go test ./...
+
+  cross-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: app/go.mod
+          cache: false
+      - name: cross-compile the ARMv7 app binary
+        working-directory: app
+        run: make app
+      - name: cross-compile otactl (host) + agent (device)
+        working-directory: ota
+        run: go build ./...
