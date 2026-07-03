@@ -126,6 +126,7 @@ type Stats struct {
 	WinColRaw   float64 `json:"wincol_std_raw"` // fixed-position variant
 	WinColMax   float64 `json:"wincol_max"`     // worst centred column
 	ValidDepth  int     `json:"valid_depth"`    // real-signal samples in the drain
+	MemDepth    int     `json:"mem_depth"`      // configured decimated drain depth
 }
 
 type Engine struct {
@@ -148,6 +149,7 @@ type Engine struct {
 	eresLen     atomic.Int32
 	avgGen      atomic.Uint32    // bumped on acq-mode/depth changes → ring clear
 	singleArmed atomic.Bool      // SINGLE: stop after the next triggered frame
+	memDepth    atomic.Int32     // decimated drain depth (samples): fps↔data tradeoff
 	chVdivBits  [2]atomic.Uint64 // per-channel V/div (float64 bits) for the
 	//                              trigger-level → display-code mapping
 	trigPosFrac atomic.Uint64 // horizontal trigger position, fraction of screen
@@ -252,6 +254,7 @@ func New(cfg Config) *Engine {
 	e.chVdivBits[0].Store(math.Float64bits(1))
 	e.chVdivBits[1].Store(math.Float64bits(1))
 	e.trigPosFrac.Store(math.Float64bits(0.5)) // trigger at screen centre
+	e.memDepth.Store(decimDrain)               // default decimated depth (fps↔data)
 	e.tp = defaultTrigParams()
 	e.eresScratch = make([]uint16, deepRecord)
 	e.mu.Lock()
@@ -447,6 +450,43 @@ func (e *Engine) SetTdiv(tdivS float64) (Band, bool) {
 	e.pendBand, e.pendSet = b, true
 	e.mu.Unlock()
 	return b, true
+}
+
+// SetMemDepth sets the decimated drain depth in samples — the fps↔data knob.
+// Shallow (down to one screen, decimWin) = highest frame rate; deep (up to the
+// physical deepRecord) = more captured record to scroll, at a lower frame rate
+// (a deeper record spans proportionally more capture time). Clamped to a valid
+// range; native-fast/envelope/roll are unaffected.
+func (e *Engine) SetMemDepth(samples int) int {
+	if samples < decimWin {
+		samples = decimWin
+	}
+	if samples > deepRecord {
+		samples = deepRecord
+	}
+	e.memDepth.Store(int32(samples))
+	return samples
+}
+
+// effDrainCols is how many samples oneFrame actually drains: the configured
+// memory depth on decimated bands, the band's own drain elsewhere. A SINGLE
+// capture always drains the FULL deep record so the one frame you keep carries
+// everything to zoom out into — frame rate is irrelevant for a single shot.
+func (e *Engine) effDrainCols() int {
+	if e.band.Kind() == KindDecimated {
+		if e.singleArmed.Load() {
+			return deepRecord
+		}
+		d := int(e.memDepth.Load())
+		if d < decimWin {
+			d = decimWin
+		}
+		if d > deepRecord {
+			d = deepRecord
+		}
+		return d
+	}
+	return e.band.DrainCols()
 }
 
 // SetTrigLevelCode stages a trigger-level DAC recommit. Codes clamp to the
@@ -758,7 +798,7 @@ func (e *Engine) waitCapture(norm bool) (anchored, sawTrig, filled, fillMoved bo
 	// 50 ms publish pace floor) and scoped to decimated NORM — native-fast, AUTO,
 	// envelope and roll are untouched. AUTO already fills densely via its budget.
 	denseWait := norm && e.band.Kind() == KindDecimated
-	denseNs := int64(float64(e.band.DrainCols()) * e.band.CaptureIntervalNs())
+	denseNs := int64(float64(e.effDrainCols()) * e.band.CaptureIntervalNs())
 	// Native-fast FREE RUN + TRIGGER HOLD (spec 04 §11): halt WHEN the HW comparator fires
 	// (bit1) so the frozen record captures the edge HW-positioned near record/2 (spec 04 §4,
 	// cross-frame std 1–2). Returning on fill-saturation instead halts at a random phase and
@@ -872,7 +912,7 @@ func (e *Engine) oneFrame(norm bool) {
 
 	haltOK := e.halt()
 	f := e.arena.Write()
-	cols := e.band.DrainCols()
+	cols := e.effDrainCols()
 	drainStart := e.clk.Now()
 	e.drain(f, cols)
 	drainMs := e.clk.Now().Sub(drainStart)
@@ -1058,6 +1098,7 @@ func (e *Engine) oneFrame(norm bool) {
 	e.stats.LastPtp = p
 	e.stats.LastTrigPos = trigPos
 	e.stats.ValidDepth = validDepth(disc)
+	e.stats.MemDepth = int(e.memDepth.Load())
 	e.stats.ArmToLatch = float64(armToLatch) / float64(time.Millisecond)
 	e.stats.DrainMs = float64(drainMs) / float64(time.Millisecond)
 	e.mu.Unlock()

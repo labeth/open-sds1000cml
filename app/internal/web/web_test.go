@@ -27,13 +27,15 @@ type fakeScope struct {
 	ets      *bool
 	single   bool
 	trigPos  float64
+	memDepth int
 	calls    [][2]any
 }
 
 func (f *fakeScope) SetOffsetDAC(ch int, code uint16) { f.offCh, f.offCode = ch, &code }
 func (f *fakeScope) SetETS(on bool)                   { f.ets = &on }
-func (f *fakeScope) SetSingle()                       { f.single = true }
-func (f *fakeScope) SetTrigPosFrac(frac float64)      { f.trigPos = frac }
+func (f *fakeScope) SetSingle()                  { f.single = true }
+func (f *fakeScope) SetTrigPosFrac(frac float64) { f.trigPos = frac }
+func (f *fakeScope) SetMemDepth(n int) int       { f.memDepth = n; return n }
 
 func (f *fakeScope) SetTrigType(t int) { f.calls = append(f.calls, [2]any{"trigtype", t}) }
 func (f *fakeScope) SetAcqMode(m int)  { f.calls = append(f.calls, [2]any{"acqmode", m}) }

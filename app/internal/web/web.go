@@ -48,6 +48,7 @@ type Scope interface {
 	SetEresLen(l int)
 	SetSingle()
 	SetTrigPosFrac(frac float64)
+	SetMemDepth(samples int) int
 }
 
 // Analog is the vertical front-end surface (implemented by
@@ -255,6 +256,12 @@ type frameReply struct {
 	// Scale factors the client uses for cursors/FFT/XY/measurements.
 	Cols     int     `json:"cols"`       // number of columns returned per trace
 	ColSpanS float64 `json:"col_span_s"` // seconds spanned by the whole column array
+
+	// Deep-memory (full=1 on decimated bands): the served array is the FULL
+	// drained record, not the 10-div screen slice; the client windows it.
+	Depth    int     `json:"depth,omitempty"` // full-record sample count served (0 = not deep)
+	EdgeFrac float64 `json:"edge_frac"`       // trigger anchor as a fraction of the served array (-1 = free-run)
+	WinFrac  float64 `json:"win_frac"`        // one 10-div screen as a fraction of the served array (1 = whole)
 	Vpc1     float64 `json:"vpc1"`       // volts per ADC code, CH1 (Vdiv/32)
 	Vpc2     float64 `json:"vpc2"`       // volts per ADC code, CH2
 	Off1V    float64 `json:"off1_v"`     // applied offset volts (input-referred)
@@ -363,6 +370,17 @@ func toCols(v []uint8, n int) []int16 {
 // stays centred except near the record ends where there is no data to slide
 // into view. Gaps (-1) only occur off the record; the client breaks the
 // polyline there.
+// rawInt16 copies a raw code slice to the []int16 wire type without resampling —
+// the deep-memory path serves every captured sample so the client can zoom in
+// losslessly. Codes are contiguous (no -1 gaps) in a drained record.
+func rawInt16(codes []uint8) []int16 {
+	out := make([]int16, len(codes))
+	for i, c := range codes {
+		out[i] = int16(c)
+	}
+	return out
+}
+
 func window(sig []uint8, valid, winCols int, edgeX float64, interp bool, n int, posFrac float64) []int16 {
 	out := make([]int16, n)
 	if valid < 1 {
@@ -445,6 +463,9 @@ func (s *Server) hFrame(w http.ResponseWriter, r *http.Request) {
 	if cols > 4096 {
 		cols = 4096
 	}
+	// full=1: serve the FULL drained record on decimated deep-memory frames so
+	// the client can window/navigate it. Off → today's windowed screen slice.
+	full := r.URL.Query().Get("full") == "1"
 	// Debug: raw undecimated record dump (diagnostics only).
 	if r.URL.Query().Get("raw") == "1" {
 		var out map[string]any
@@ -494,15 +515,39 @@ func (s *Server) hFrame(w http.ResponseWriter, r *http.Request) {
 			Vpc1:       vpc[0], Vpc2: vpc[1],
 			Off1V: off[0], Off2V: off[1],
 		}
-		if f.IsEnv {
+		// ColSpanS stays the 10-div screen time except on the deep path below,
+		// which overrides it to the full-record time.
+		switch {
+		case f.IsEnv:
 			rep.IsEnv = true
 			rep.E1Min = resampleEnv(f.EnvMin, f.EnvCols, cols)
 			rep.E1Max = resampleEnv(f.EnvMax, f.EnvCols, cols)
 			rep.E2Min = resampleEnv(f.EnvMin2, f.EnvCols, cols)
 			rep.E2Max = resampleEnv(f.EnvMax2, f.EnvCols, cols)
-		} else {
+			rep.EdgeFrac, rep.WinFrac = -1, 1
+		case full && !f.Interp && f.Valid > f.WinCols:
+			// DECIMATED deep memory: serve the FULL raw record; the client windows
+			// it. col_span_s becomes the whole-record time so every client formula
+			// (Nyquist, cursor Δt, decode, CSV) stays self-consistent.
+			n := f.Valid
+			rep.C1, rep.C2 = rawInt16(f.C1[:n]), rawInt16(f.C2[:n])
+			rep.Cols, rep.ColSpanS, rep.Depth = n, float64(n)*f.SampleS, n
+			rep.WinFrac = float64(f.WinCols) / float64(n)
+			if f.EdgeX >= 0 {
+				rep.EdgeFrac = f.EdgeX / float64(n)
+			} else {
+				rep.EdgeFrac = -1
+			}
+		default:
+			// Native-fast / non-deep decimated: today's windowed screen slice.
 			rep.C1 = window(f.C1, f.Valid, f.WinCols, f.EdgeX, f.Interp, cols, posFrac)
 			rep.C2 = window(f.C2, f.Valid, f.WinCols, f.EdgeX, f.Interp, cols, posFrac)
+			rep.WinFrac = 1
+			if f.EdgeX >= 0 {
+				rep.EdgeFrac = posFrac
+			} else {
+				rep.EdgeFrac = -1
+			}
 		}
 		// Auto-measurements over the RAW record (accurate, band-independent).
 		rawSample := f.SampleS
@@ -571,6 +616,10 @@ func (s *Server) hSet(w http.ResponseWriter, r *http.Request) {
 		s.sc.SetSingle()
 	case "trigpos":
 		s.sc.SetTrigPosFrac(req.Value)
+	case "memdepth":
+		applied := s.sc.SetMemDepth(int(req.Value))
+		writeJSON(w, map[string]any{"ok": true, "applied": applied})
+		return
 	case "trigtype":
 		s.sc.SetTrigType(int(req.Value))
 	case "pulseparams":

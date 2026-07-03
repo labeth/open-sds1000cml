@@ -202,6 +202,11 @@
       <option value="2">ERES</option><option value="3">PEAK</option>
     </select>
     <select id="acqn" style="display:none"></select></div>
+  <div class="grp"><label>mem</label>
+    <select id="memdepth">
+      <option value="2048">2k (fast)</option><option value="6144" selected>6k</option>
+      <option value="14336">14k</option><option value="20480">20k (deep)</option>
+    </select></div>
 
   <div id="qualrow" class="panel2">
     <div class="grp" id="qp-pulse" style="display:none">
@@ -246,6 +251,8 @@ let lvlDragging = false, offDragging = false;
 let frozen = false;
 const view = { mode: "YT", persist: false, cursors: false, c1: true, c2: true,
                win: { a: 0, b: 1 } };   // visible column range as fractions of 0..cols-1
+let userZoomed = false;   // true once the user pans/zooms → live frames stop re-homing
+let lastSig = "";         // acquisition signature; a change re-homes even if zoomed
 // Normalized cursor positions (fractions of width/height).
 const cur = { t1: 0.33, t2: 0.66, v1: 0.4, v2: 0.6, drag: null };
 let reqCols = 2048;   // full-resolution both channels (decode + navigator); client-side zoom
@@ -262,7 +269,25 @@ function fracForX(xpx) { const w = view.win; return w.a + (xpx / (CW - 1)) * (w.
 function navFrac(ev) { const r = nav.getBoundingClientRect(); return Math.max(0, Math.min(1, (ev.clientX - r.left) / r.width)); }
 function navY(code, zoom) { zoom = zoom || 1; return NH * (1 - (128 + (code - 128) * zoom) / 255); }
 function setWin(a, b) { view.win.a = a; view.win.b = b; redraw(); }
-function resetWin() { setWin(0, 1); }
+// The "home" window: with deep memory the default is the trigger-centered 10-div
+// SCREEN slice (win_frac of the record) — visually identical to the old fixed
+// view — EXCEPT for a single/stopped capture, where we show the WHOLE record so
+// you see the full shot and can zoom in. Non-deep frames report win_frac=1 → full.
+function homeWindow(f) {
+  if (!f) return { a: 0, b: 1 };
+  const stopped = st && !st.running;         // single shot / stopped: show it all
+  let wf = (f.win_frac > 0 && f.win_frac <= 1) ? f.win_frac : 1;
+  if (stopped || f.is_env) wf = 1;
+  const pf = (st && st.trig_pos_frac > 0 && st.trig_pos_frac < 1) ? st.trig_pos_frac : 0.5;
+  const c = (f.edge_frac >= 0) ? f.edge_frac : 0.5; // matches server window() when EdgeX<0
+  let a = c - wf * pf, b = c + wf * (1 - pf);
+  const span = Math.min(1, b - a);
+  if (a < 0) { a = 0; b = span; } else if (b > 1) { b = 1; a = 1 - span; }
+  return { a, b };
+}
+function goHome() { if (frame) { const h = homeWindow(frame); view.win.a = h.a; view.win.b = h.b; } userZoomed = false; redraw(); }
+// Acquisition signature: a change (band/env/depth/run-state) re-homes the window.
+function acqSig(f) { return (f.is_env ? "E" : "") + ":" + (f.c1 ? f.c1.length : 0) + ":" + ((st && st.running) ? "R" : "S"); }
 
 // ---- protocol decode ----
 const dcfg = {
@@ -406,7 +431,10 @@ function drawTrigMarkers(g) {
   }
   // Vertical trigger-POSITION marker (where in time the trigger sits), mapped
   // through the zoom window; hidden when it falls outside the visible range.
-  const frac = st.trig_pos_frac > 0 ? st.trig_pos_frac : 0.5;
+  // Prefer the real edge position in the served record (deep memory); fall back
+  // to the HW trigger-position fraction when there's no software edge.
+  const frac = (frame && frame.edge_frac >= 0) ? frame.edge_frac
+             : (st.trig_pos_frac > 0 ? st.trig_pos_frac : 0.5);
   if (frac >= view.win.a && frac <= view.win.b) {
     const tx = (frac - view.win.a) / (view.win.b - view.win.a) * CW;
     g.strokeStyle = "rgba(255,159,46,.35)"; g.lineWidth = dpr;
@@ -819,10 +847,11 @@ function moveCursor(ev) {
 }
 
 // Navigator: drag to pan the viewport (click outside it first recenters it);
-// double-click resets to the full record. Separate from the scope's own
-// pointer handlers, so cursor-drag / FFT-pick are untouched.
+// double-click resets to the trigger-centered "home" slice. Separate from the
+// scope's own pointer handlers, so cursor-drag / FFT-pick are untouched.
 nav.addEventListener("pointerdown", ev => {
   if (view.mode !== "YT") return;
+  userZoomed = true;
   let f = navFrac(ev), w = view.win, s = w.b - w.a;
   if (f < w.a || f > w.b) { const na = Math.max(0, Math.min(1 - s, f - s / 2)); setWin(na, na + s); }
   navDrag.active = true; navDrag.grab = f; navDrag.a0 = view.win.a; navDrag.b0 = view.win.b;
@@ -835,13 +864,14 @@ nav.addEventListener("pointermove", ev => {
   setWin(na, na + s);
 });
 nav.addEventListener("pointerup", () => navDrag.active = false);
-nav.addEventListener("dblclick", () => resetWin());
+nav.addEventListener("dblclick", () => goHome());
 
 // Wheel over the scope: zoom about the cursor (Y-T only). Anchors the record
 // fraction under the pointer so it stays put as the span grows/shrinks.
 scope.addEventListener("wheel", ev => {
   if (view.mode !== "YT") return;
   ev.preventDefault();
+  userZoomed = true;
   const w = view.win, span = w.b - w.a, sx = Math.max(0, Math.min(1, ptToNorm(ev).x));
   const fx = w.a + sx * span;
   const ns = Math.max(MINSPAN, Math.min(1, span * Math.exp(ev.deltaY * 0.001)));
@@ -855,9 +885,15 @@ scope.addEventListener("wheel", ev => {
 async function pollFrame() {
   if (!frozen) {
     try {
-      const r = await fetch("/api/frame?since=" + lastSeq + "&cols=" + reqCols);
+      const r = await fetch("/api/frame?since=" + lastSeq + "&cols=" + reqCols + "&full=1");
       const f = await r.json();
-      if (!f.unchanged) { frame = f; lastSeq = f.seq; computeDecode(); redraw(); updateMeas(); updateCursors(); }
+      if (!f.unchanged) {
+        frame = f; lastSeq = f.seq;
+        const sig = acqSig(f);
+        if (sig !== lastSig) { userZoomed = false; lastSig = sig; } // band/depth/run change → re-home
+        if (!userZoomed) { const h = homeWindow(f); view.win.a = h.a; view.win.b = h.b; }
+        computeDecode(); redraw(); updateMeas(); updateCursors();
+      }
     } catch (e) { /* keep last */ }
   }
   setTimeout(pollFrame, 90);
@@ -884,6 +920,7 @@ function applyStatus() {
   updateQualRow();
   if (document.activeElement !== $("acq")) $("acq").value = st.acq_mode || 0;
   updateAcqN();
+  if (document.activeElement !== $("memdepth") && st.mem_depth) $("memdepth").value = st.mem_depth;
   if (!lvlDragging && st.trig_code) { $("lvl").value = st.trig_volts.toFixed(2); $("lvlv").textContent = st.trig_volts.toFixed(2) + " V"; }
   if ($("tdiv").options.length === 0 && st.tdivs)
     for (const t of st.tdivs) { const o = document.createElement("option"); o.value = t; o.textContent = fmtTdiv(t); $("tdiv").appendChild(o); }
@@ -957,6 +994,7 @@ function fillAcqN(opts, sel) {
 }
 $("acq").onchange = () => { send("acqmode", +$("acq").value); if (st) st.acq_mode = +$("acq").value; updateAcqN(); };
 $("acqn").onchange = () => send(+$("acq").value === 1 ? "avgcount" : "eres", +$("acqn").value);
+$("memdepth").onchange = () => { send("memdepth", +$("memdepth").value); userZoomed = false; }; // deeper = more to scroll, fewer fps
 
 // ---- view toggles ----
 function setMode(m) {

@@ -400,6 +400,41 @@ func TestEdgeLevelOffSignalDoesNotLock(t *testing.T) {
 	}
 }
 
+func TestMemDepth(t *testing.T) {
+	// The configurable decimated drain depth (fps↔data): a deeper setting drains
+	// more samples per frame. Clamped to [decimWin, deepRecord].
+	fb := newFakeBus()
+	e, _ := newTestEngine(t, fb)
+	if got := e.SetMemDepth(14336); got != 14336 {
+		t.Fatalf("SetMemDepth(14336) = %d", got)
+	}
+	e.bringUp()
+	e.oneFrame(false)
+	if f, _ := e.Consume(); f.Valid != 14336 {
+		t.Fatalf("deep drain: Valid=%d, want 14336", f.Valid)
+	}
+	if got := e.SetMemDepth(999999); got != deepRecord {
+		t.Fatalf("clamp high = %d, want %d", got, deepRecord)
+	}
+	if got := e.SetMemDepth(10); got != decimWin {
+		t.Fatalf("clamp low = %d, want %d", got, decimWin)
+	}
+}
+
+func TestSingleForcesFullDepth(t *testing.T) {
+	// A SINGLE capture ignores the shallow mem-depth setting and drains the FULL
+	// deep record — the one frame you keep carries everything to zoom into.
+	fb := newFakeBus()
+	e, _ := newTestEngine(t, fb)
+	e.SetMemDepth(decimWin) // shallowest
+	e.SetSingle()
+	e.bringUp()
+	e.oneFrame(false)
+	if f, _ := e.Consume(); f.Valid != deepRecord {
+		t.Fatalf("SINGLE drain: Valid=%d, want deepRecord %d", f.Valid, deepRecord)
+	}
+}
+
 func TestDecimatedFlatFallback(t *testing.T) {
 	// A genuinely flat/DC decimated screen (ptp < threshold) has no lock to be had. AUTO
 	// HOLDs (re-presenting the last edge) and publishes ONE honest flat capture (EdgeX=-1)
