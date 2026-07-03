@@ -16,7 +16,7 @@
   #wedged { color: var(--stop); font-weight: 700; }
 
   #main { flex: 1 1 auto; display: flex; min-height: 0; }
-  #wrap { flex: 1 1 auto; min-width: 0; background: #05080c; display: flex; flex-direction: column; }
+  #wrap { flex: 1 1 auto; min-width: 0; background: var(--screen); display: flex; flex-direction: column; }
   #scopebox { position: relative; flex: 1 1 auto; min-height: 0; }
   #scope { position: absolute; inset: 0; display: block; touch-action: none; }
   #nav { flex: 0 0 auto; width: 100%; height: 56px; display: block;
@@ -111,3 +111,18 @@
   #help kbd { display: inline-block; min-width: 18px; text-align: center; font: 11px ui-monospace, monospace;
     background: var(--well); border: 1px solid var(--edge2); border-radius: 4px; padding: 1px 5px; }
   #help td { padding: 3px 10px 3px 0; }
+
+  /* ---- responsive: narrow screens (tablet/phone) ---- */
+  #panelToggle { display: none; }              /* hidden on wide screens */
+  @media (max-width: 820px) {
+    #panelToggle { display: inline-block; }
+    /* dock becomes an off-canvas right drawer so the scope gets full width */
+    #dock { position: fixed; top: 0; right: 0; bottom: 0; width: 260px; z-index: 40;
+      transform: translateX(100%); transition: transform .2s ease;
+      box-shadow: -8px 0 24px rgba(0,0,0,.5); }
+    body.dock-open #dock { transform: translateX(0); }
+    /* footer becomes a single horizontally-scrolling toolbar (never wraps into
+       many rows, never forces the body to scroll sideways) */
+    footer { flex-wrap: nowrap; overflow-x: auto; }
+    footer .grp { flex: 0 0 auto; }
+  }

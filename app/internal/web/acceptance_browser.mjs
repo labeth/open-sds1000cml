@@ -119,6 +119,23 @@ run(async (t) => {
   t.ok(await po.hasClass("mFFT", "on") === modeBefore, "shortcuts are suppressed while a form control is focused");
   await po.page.evaluate(() => document.activeElement.blur());
 
+  // --- responsive (narrow screen) --------------------------------------------
+  await po.page.setViewportSize({ width: 700, height: 900 });
+  await po.wait(200);
+  t.ok(await po.eval(() => getComputedStyle(document.getElementById("panelToggle")).display) !== "none",
+    "panel-toggle button appears on a narrow screen");
+  t.ok(await po.eval(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1),
+    "body never scrolls horizontally at 700px");
+  const dockLeftClosed = await po.eval(() => document.getElementById("dock").getBoundingClientRect().left);
+  t.ok(dockLeftClosed >= 700 - 2, "dock is off-canvas (drawer closed) by default on narrow screens");
+  await po.click("panelToggle");
+  await po.wait(300);
+  const dockLeftOpen = await po.eval(() => document.getElementById("dock").getBoundingClientRect().left);
+  t.ok(dockLeftOpen < 700, `panel toggle opens the drawer (dock slid in to ${Math.round(dockLeftOpen)}px)`);
+  t.ok(await po.eval(() => getComputedStyle(document.querySelector("footer")).overflowX) === "auto",
+    "footer becomes a horizontally-scrolling toolbar (no multi-row wrap)");
+  await po.page.setViewportSize({ width: 1400, height: 900 });
+
   // --- no uncaught page errors across the whole run --------------------------
   t.ok(pageErrors.length === 0, "no uncaught page errors: " + (pageErrors.join(" | ") || "none"));
 });

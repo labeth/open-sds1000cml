@@ -1088,6 +1088,7 @@ window.addEventListener("keydown", (e) => {
   if (m) { e.preventDefault(); m.run(); }
 });
 $("help").onclick = (e) => { if (e.target.id === "help") $("help").classList.remove("show"); }; // click backdrop closes
+$("panelToggle").onclick = () => document.body.classList.toggle("dock-open"); // narrow-screen drawer
 
 resize();
 pollFrame();

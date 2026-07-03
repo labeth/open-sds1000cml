@@ -263,3 +263,9 @@ Device at 192.168.1.209 (web UI :8080). `/tmp` is read-only → deploy with
   which key is active and legible at arm's length. render_test.go pins it
   (TestRenderMenuSelectedSoftkeyFilled: solid colTrig block + inverted colBG text).
   Device-verified: TRIGGER menu with "Slope/Fall" selected renders a solid amber bar.
+- **Phase (usability): responsive layout — DONE.** Below 820px the dock becomes an
+  off-canvas right DRAWER (a `☰` header toggle slides it in; scope gets full
+  width) and the footer becomes a single horizontally-scrolling toolbar, so the
+  body never scrolls sideways and the canvas stays large. Acceptance specs pin it
+  (toggle appears, no horizontal body scroll at 700px, drawer opens, footer
+  overflow-x:auto). Device-verified at 720px.
