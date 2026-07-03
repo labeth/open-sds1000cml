@@ -29,6 +29,7 @@ type MenuView struct {
 	Items          []MenuItem // up to 5, aligned F1(top)..F5(bottom)
 	Sel            int        // highlighted slot
 	ShowC1, ShowC2 bool       // per-channel display enable (DISPLAY menu / CH keys)
+	ShowMeas       bool       // on-device MEASURE panel toggle (DISPLAY menu)
 }
 
 // Menu / softkey / channel button codes (spec 08 §6.1/§6.2/§6.4/§6.5).
@@ -156,6 +157,10 @@ func (c *Controller) menuCycle(slot, dir int) {
 			c.mu.Lock()
 			c.chDisp[1] = !c.chDisp[1]
 			c.mu.Unlock()
+		case 2:
+			c.mu.Lock()
+			c.showMeas = !c.showMeas
+			c.mu.Unlock()
 		}
 	case pgHoriz:
 		switch slot {
@@ -213,9 +218,9 @@ func (c *Controller) trigPos() float64 {
 // MenuView is the render snapshot; safe to call from the render goroutine.
 func (c *Controller) MenuView() MenuView {
 	c.mu.Lock()
-	pg, sel, c1, c2 := c.menuPage, c.menuSel, c.chDisp[0], c.chDisp[1]
+	pg, sel, c1, c2, meas := c.menuPage, c.menuSel, c.chDisp[0], c.chDisp[1], c.showMeas
 	c.mu.Unlock()
-	v := MenuView{Open: pg != pgNone, Sel: sel, ShowC1: c1, ShowC2: c2}
+	v := MenuView{Open: pg != pgNone, Sel: sel, ShowC1: c1, ShowC2: c2, ShowMeas: meas}
 	if pg == pgNone {
 		return v
 	}
@@ -265,7 +270,8 @@ func (c *Controller) MenuView() MenuView {
 		v.Items = []MenuItem{
 			{"CH1", onoff(c1)},
 			{"CH2", onoff(c2)},
-			{"", ""}, {"", ""}, {"", ""},
+			{"Measure", onoff(meas)},
+			{"", ""}, {"", ""},
 		}
 	case pgHoriz:
 		v.Title = "HORIZ"

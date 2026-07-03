@@ -74,6 +74,36 @@ func TestRenderMenuSelectedSoftkeyFilled(t *testing.T) {
 	}
 }
 
+func TestRenderMeasPanel(t *testing.T) {
+	box := rgb(6, 10, 22) // drawMeasPanel background fill
+	// Off: no MEASURE panel box.
+	off := NewMemSurface()
+	Render(off, testFrame(2048), defaultHUD(), true)
+	if countColor(off, box) != 0 {
+		t.Fatal("MEASURE panel drawn while ShowMeas is off")
+	}
+	// On: the panel box + calibrated text appear at the top-left.
+	h := defaultHUD()
+	h.ShowMeas = true
+	on := NewMemSurface()
+	Render(on, testFrame(2048), h, true)
+	if countColor(on, box) < 200 {
+		t.Fatalf("MEASURE panel box not drawn (%d fill px)", countColor(on, box))
+	}
+	found := false
+	for x := 5; x < 112 && !found; x++ {
+		for y := 24; y < 90; y++ {
+			if on.At(x, y) == colInfo {
+				found = true
+				break
+			}
+		}
+	}
+	if !found {
+		t.Fatal("MEASURE panel text not drawn")
+	}
+}
+
 func TestRenderTraceFrame(t *testing.T) {
 	m := NewMemSurface()
 	Render(m, testFrame(2048), defaultHUD(), true)
@@ -204,24 +234,3 @@ func TestFormatters(t *testing.T) {
 	}
 }
 
-func TestVppFreq(t *testing.T) {
-	// 1 kHz square at 800 ns/sample: period 1250 samples.
-	sig := make([]uint8, 5000)
-	for i := range sig {
-		if (i/625)%2 == 0 {
-			sig[i] = 90
-		} else {
-			sig[i] = 190
-		}
-	}
-	vpp, freq, ok := vppFreq(sig, 800e-9)
-	if !ok {
-		t.Fatal("frequency not measured")
-	}
-	if vpp < 0.7 || vpp > 0.9 { // (190-90)/127 ≈ 0.787
-		t.Fatalf("vpp = %v", vpp)
-	}
-	if freq < 900 || freq > 1100 {
-		t.Fatalf("freq = %v, want ≈1000", freq)
-	}
-}

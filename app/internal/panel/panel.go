@@ -139,6 +139,7 @@ type Controller struct {
 	menuPage int
 	menuSel  int
 	chDisp   [2]bool
+	showMeas bool
 	inject   chan func()
 }
 

@@ -6,6 +6,7 @@ import (
 
 	"open-sds/app/internal/analog"
 	"open-sds/app/internal/engine"
+	"open-sds/app/internal/measure"
 )
 
 // Colour palette (spec 07 §2.2). The col* variables are GENERATED into
@@ -30,6 +31,7 @@ type HUD struct {
 	TrigPosFrac      float64 // horizontal trigger position, 0.5 = centre
 	OffC1V, OffC2V   float64 // applied vertical offset volts (ground markers)
 	ShowC1, ShowC2   bool    // per-channel display enable
+	ShowMeas         bool    // on-device MEASURE panel overlay
 	TwoChan          bool
 
 	// On-screen menu overlay (spec 08 §6): five softkey slots down the right edge.
@@ -220,6 +222,76 @@ func railed(sig []uint8) bool {
 	return c*200 > n
 }
 
+// fillRect paints a solid rectangle (clipped to the surface).
+func fillRect(sf Surface, x, y, w, h int, c uint16) {
+	for yy := y; yy < y+h; yy++ {
+		for xx := x; xx < x+w; xx++ {
+			sf.SetPixel(xx, yy, c)
+		}
+	}
+}
+
+// drawMeasPanel draws the on-device MEASURE overlay for the trigger-source
+// channel: a calibrated measurement set (via the shared measure package, so it
+// matches the web exactly) in a boxed panel at the top-left. Uses the real
+// probe-scaled volts/div and honours the channel's software coupling.
+func drawMeasPanel(sf Surface, f *engine.Frame, hud HUD) {
+	if f == nil || f.Valid == 0 {
+		return
+	}
+	valid := f.Valid
+	if valid > len(f.C1) {
+		valid = len(f.C1)
+	}
+	ch := hud.TrigSrc & 1
+	sig := f.C1[:valid]
+	vdiv, probe, off, cpl, col, name := hud.C1VdivV, hud.Probe1, hud.OffC1V, hud.Cpl1, colC1, "C1"
+	if ch == 1 && hud.TwoChan && len(f.C2) >= valid {
+		sig = f.C2[:valid]
+		vdiv, probe, off, cpl, col, name = hud.C2VdivV, hud.Probe2, hud.OffC2V, hud.Cpl2, colC2, "C2"
+	}
+	if probe < 1 {
+		probe = 1
+	}
+	if cpl != analog.CplDC { // match the displayed (coupled) trace
+		sig = analog.CoupleDisplay(sig, cpl)
+		off = 0
+	}
+	m := measure.Compute(sig, vdiv/32*probe, off*probe, hud.SampleS)
+	if m == nil {
+		return
+	}
+	rows := [][2]string{
+		{"Vpp", fmtVolt(m.Vpp)},
+		{"Vamp", fmtVolt(m.Vampl)},
+		{"Vrms", fmtVolt(m.Vrms)},
+		{"Vavg", fmtVolt(m.Vmean)},
+	}
+	if m.HasTiming {
+		rows = append(rows,
+			[2]string{"Freq", fmtFreq(m.Freq)},
+			[2]string{"Per", fmtTdiv(m.Period)},
+			[2]string{"Duty", fmt.Sprintf("%.0f%%", m.Duty)})
+		if m.RiseS > 0 {
+			rows = append(rows, [2]string{"Rise", fmtTdiv(m.RiseS)})
+		}
+	}
+	// Box: title + one row per line, 10 px pitch. Placed under the C1/C2 labels.
+	const x, y0, w = 4, 22, 108
+	h := 14 + len(rows)*10
+	fillRect(sf, x, y0, w, h, rgb(6, 10, 22))
+	for yy := y0; yy < y0+h; yy++ { // thin border
+		sf.SetPixel(x, yy, colGrid)
+		sf.SetPixel(x+w-1, yy, colGrid)
+	}
+	DrawText(sf, x+3, y0+2, name+" MEAS", col, 1)
+	for i, r := range rows {
+		yy := y0 + 12 + i*10
+		DrawText(sf, x+3, yy, r[0], colInfo, 1)
+		DrawTextRight(sf, x+w-3, yy, r[1], colInfo, 1)
+	}
+}
+
 // cplTag returns the coupling suffix for the HUD, shown only when it is not the
 // default DC (so the common case stays uncluttered): " AC" or " GND".
 func cplTag(mode int) string {
@@ -270,39 +342,6 @@ func fmtFreq(f float64) string {
 	}
 }
 
-// vppFreq computes the bottom-row readout (spec 07 §6.2): vpp at the fixed
-// render scale 1/127 V per code; frequency from mid-level rising crossings.
-func vppFreq(sig []uint8, sampleS float64) (vpp float64, freq float64, ok bool) {
-	if len(sig) == 0 {
-		return 0, 0, false
-	}
-	cmin, cmax := int(sig[0]), int(sig[0])
-	for _, v := range sig {
-		if int(v) < cmin {
-			cmin = int(v)
-		}
-		if int(v) > cmax {
-			cmax = int(v)
-		}
-	}
-	vpp = float64(cmax-cmin) / 127.0
-	lvl := uint8((cmin + cmax) / 2)
-	first, last, n := -1, -1, 0
-	for c := 1; c < len(sig); c++ {
-		if sig[c-1] < lvl && sig[c] >= lvl {
-			if first < 0 {
-				first = c
-			}
-			last = c
-			n++
-		}
-	}
-	if n >= 2 && last > first && sampleS > 0 {
-		period := float64(last-first) / float64(n-1) * sampleS
-		return vpp, 1 / period, true
-	}
-	return vpp, 0, false
-}
 
 // Render draws one complete frame into the back buffer (spec 07 §3.2):
 // fill → graticule → trace/envelope → liveness strip → readouts. Never
@@ -374,6 +413,9 @@ func Render(sf Surface, f *engine.Frame, hud HUD, live bool) {
 
 	drawMarkers(sf, hud)
 	drawHUD(sf, f, hud)
+	if hud.ShowMeas {
+		drawMeasPanel(sf, f, hud)
+	}
 	drawMenu(sf, hud)
 }
 
@@ -528,16 +570,29 @@ func drawHUD(sf Surface, f *engine.Frame, hud HUD) {
 	if valid > len(f.C1) {
 		valid = len(f.C1)
 	}
-	line := func(x int, sig []uint8, col uint16, name string) {
-		vpp, freq, ok := vppFreq(sig, hud.SampleS)
-		s := name + " Vpp " + fmtVolt(vpp)
-		if ok {
-			s += "  f " + fmtFreq(freq)
+	// Bottom quick-readout: calibrated Vpp + frequency per channel, via the
+	// shared measure package (real probe-scaled V/div + software coupling) so it
+	// agrees with the MEASURE panel and the web.
+	line := func(x int, sig []uint8, vdiv, probe, off float64, cpl int, col uint16, name string) {
+		if probe < 1 {
+			probe = 1
+		}
+		if cpl != analog.CplDC {
+			sig = analog.CoupleDisplay(sig, cpl)
+			off = 0
+		}
+		m := measure.Compute(sig, vdiv/32*probe, off*probe, hud.SampleS)
+		if m == nil {
+			return
+		}
+		s := name + " Vpp " + fmtVolt(m.Vpp)
+		if m.HasTiming {
+			s += "  f " + fmtFreq(m.Freq)
 		}
 		DrawText(sf, x, H-9, s, col, 1)
 	}
-	line(4, f.C1[:valid], colC1, "C1")
+	line(4, f.C1[:valid], hud.C1VdivV, hud.Probe1, hud.OffC1V, hud.Cpl1, colC1, "C1")
 	if hud.TwoChan && len(f.C2) >= valid {
-		line(410, f.C2[:valid], colC2, "C2")
+		line(410, f.C2[:valid], hud.C2VdivV, hud.Probe2, hud.OffC2V, hud.Cpl2, colC2, "C2")
 	}
 }

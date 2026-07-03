@@ -77,6 +77,7 @@ func buildHUD(e *engine.Engine, fe *analog.FrontEnd) lcd.HUD {
 	if pc := uiCtrl.Load(); pc != nil { // menu overlay + per-channel display
 		mv := pc.MenuView()
 		hud.ShowC1, hud.ShowC2 = mv.ShowC1, mv.ShowC2
+		hud.ShowMeas = mv.ShowMeas
 		hud.MenuOpen, hud.MenuTitle, hud.MenuSel = mv.Open, mv.Title, mv.Sel
 		hud.MenuItems = make([]lcd.MenuItem, len(mv.Items))
 		for i, it := range mv.Items {
