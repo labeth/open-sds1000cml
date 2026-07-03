@@ -29,6 +29,7 @@ type fakeScope struct {
 	single   bool
 	trigPos  float64
 	memDepth int
+	holdoff  float64
 	calls    [][2]any
 }
 
@@ -39,6 +40,7 @@ func (f *fakeScope) SetTrigPosFrac(frac float64)      { f.trigPos = frac }
 func (f *fakeScope) SetMemDepth(n int) int            { f.memDepth = n; return n }
 func (f *fakeScope) SetFramePeriod(ms int) int        { return ms }
 func (f *fakeScope) SetStreamMode(on bool) bool       { return on }
+func (f *fakeScope) SetHoldoff(sec float64) float64   { f.holdoff = sec; return sec }
 
 func (f *fakeScope) SetTrigType(t int) { f.calls = append(f.calls, [2]any{"trigtype", t}) }
 func (f *fakeScope) SetAcqMode(m int)  { f.calls = append(f.calls, [2]any{"acqmode", m}) }
@@ -313,6 +315,17 @@ func TestACCouplingRemovesDC(t *testing.T) {
 	}
 	if math.Abs(ac["vpp"].(float64)-dc["vpp"].(float64)) > dc["vpp"].(float64)*0.2 {
 		t.Fatalf("AC changed vpp too much: dc=%v ac=%v", dc["vpp"], ac["vpp"])
+	}
+}
+
+func TestHoldoffVerb(t *testing.T) {
+	fs := &fakeScope{}
+	s := New(fs, nil, nil, nil)
+	if out := post(t, s, "holdoff", 0.25); out["ok"] != true || out["applied"] != 0.25 {
+		t.Fatalf("holdoff: %v", out)
+	}
+	if fs.holdoff != 0.25 {
+		t.Fatalf("scope holdoff = %v, want 0.25", fs.holdoff)
 	}
 }
 

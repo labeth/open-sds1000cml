@@ -206,6 +206,37 @@ func wantWrites(t *testing.T, got, want []wr) {
 	}
 }
 
+func TestHoldoffPacing(t *testing.T) {
+	fb := newFakeBus()
+	e, _ := newTestEngine(t, fb)
+	e.SetFramePeriod(0) // no base pacing floor, so holdoff is the only delay
+	if got := e.SetHoldoff(0.2); got != 0.2 {
+		t.Fatalf("SetHoldoff returned %v, want 0.2", got)
+	}
+	if e.Snapshot().HoldoffS != 0.2 {
+		t.Fatalf("holdoff not reflected in stats: %v", e.Snapshot().HoldoffS)
+	}
+	// A triggered frame is held off by ~200 ms before the next arm.
+	start := e.clk.Now()
+	e.paceHold(start, true)
+	if d := e.clk.Now().Sub(start); d < 200*time.Millisecond {
+		t.Fatalf("triggered holdoff not applied: waited %v, want ≥200ms", d)
+	}
+	// An untriggered/AUTO frame is NOT held off (frame period is 0).
+	start = e.clk.Now()
+	e.paceHold(start, false)
+	if d := e.clk.Now().Sub(start); d != 0 {
+		t.Fatalf("untriggered frame held off %v, want 0", d)
+	}
+	// Clamp to [0,10] s and 0 disables.
+	if got := e.SetHoldoff(-1); got != 0 {
+		t.Fatalf("negative holdoff = %v, want 0", got)
+	}
+	if got := e.SetHoldoff(99); got != 10 {
+		t.Fatalf("holdoff clamp = %v, want 10", got)
+	}
+}
+
 func TestBringUpWriteOrder(t *testing.T) {
 	fb := newFakeBus()
 	e, _ := newTestEngine(t, fb)

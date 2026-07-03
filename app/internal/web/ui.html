@@ -169,6 +169,9 @@
     <button id="ets" title="equivalent-time sampling (&#8804;50 ns)">ETS</button>
     <input type="range" id="lvl" aria-label="trigger level" min="-3.8" max="4.7" step="0.05" value="0" title="trigger level (or drag the handle on the display)">
     <span id="lvlv" class="readout">0.00 V</span>
+    <label class="hint" title="minimum time after a trigger before re-arming (stabilises complex/bursty waveforms)">holdoff</label>
+    <input type="number" id="holdoff" min="0" max="10" step="0.0001" value="0" class="w-md" aria-label="trigger holdoff seconds" title="trigger holdoff (seconds); 0 = off">
+    <span class="hint">s</span>
   </div>
   <div class="fsec">
     <span class="fcap">Horizontal</span>

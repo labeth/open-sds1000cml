@@ -62,6 +62,7 @@ type Scope interface {
 	SetMemDepth(samples int) int
 	SetFramePeriod(ms int) int
 	SetStreamMode(on bool) bool
+	SetHoldoff(sec float64) float64
 }
 
 // Analog is the vertical front-end surface (implemented by
@@ -683,6 +684,10 @@ func (s *Server) hSet(w http.ResponseWriter, r *http.Request) {
 		return
 	case "frameperiod":
 		applied := s.sc.SetFramePeriod(int(req.Value))
+		writeJSON(w, map[string]any{"ok": true, "applied": applied})
+		return
+	case "holdoff":
+		applied := s.sc.SetHoldoff(req.Value)
 		writeJSON(w, map[string]any{"ok": true, "applied": applied})
 		return
 	case "stream":

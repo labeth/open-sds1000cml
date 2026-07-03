@@ -113,6 +113,7 @@ type Stats struct {
 	LastTrigPos int     `json:"last_trigpos"`
 	ArmToLatch  float64 `json:"arm_to_latch_ms"`
 	DrainMs     float64 `json:"drain_ms"`
+	HoldoffS    float64 `json:"holdoff_s"` // trigger holdoff (0 = off)
 	Seq         uint64  `json:"seq"`
 	MmapDrain   bool    `json:"mmap_drain"`
 	ETS         bool    `json:"ets"`
@@ -138,6 +139,7 @@ type Engine struct {
 	arena *arena
 
 	framePeriodNs atomic.Int64 // publish pacing floor (ns); 0 = back-to-back (stream)
+	holdoffNs     atomic.Int64 // minimum time after a triggered frame before re-arm; 0 = off
 	armSettle     time.Duration
 	pollEvery     time.Duration
 
@@ -485,6 +487,39 @@ func (e *Engine) SetFramePeriod(ms int) int {
 	}
 	e.framePeriodNs.Store(int64(ms) * int64(time.Millisecond))
 	return ms
+}
+
+// SetHoldoff sets the trigger holdoff in seconds: after a triggered frame the
+// engine waits at least this long before re-arming, so it re-triggers on the
+// same event in a complex/bursty waveform instead of an intermediate edge.
+// 0 disables it. Clamped to [0, 10] s. Returns the applied value.
+func (e *Engine) SetHoldoff(sec float64) float64 {
+	if sec < 0 {
+		sec = 0
+	}
+	if sec > 10 {
+		sec = 10
+	}
+	e.holdoffNs.Store(int64(sec * float64(time.Second)))
+	e.mu.Lock()
+	e.stats.HoldoffS = sec
+	e.mu.Unlock()
+	return sec
+}
+
+// paceHold is pace() with the trigger holdoff folded in: after a genuinely
+// triggered publish it raises the inter-frame floor to the holdoff, delaying
+// the next arm. Untriggered/AUTO frames pace at the normal floor.
+func (e *Engine) paceHold(start time.Time, triggered bool) {
+	floor := time.Duration(e.framePeriodNs.Load())
+	if triggered {
+		if h := time.Duration(e.holdoffNs.Load()); h > floor {
+			floor = h
+		}
+	}
+	if d := floor - e.clk.Now().Sub(start); d > 0 {
+		e.clk.Sleep(d)
+	}
 }
 
 // SetStreamMode toggles the stitched high-bandwidth streaming decode mode: the
@@ -1265,7 +1300,7 @@ func (e *Engine) oneFrame(norm bool) {
 	} else {
 		e.deadEvidence(false)
 	}
-	e.pace(start)
+	e.paceHold(start, publish && f.Trigd) // holdoff extends the floor after a real trigger
 }
 
 // holdFrame accounts a decimated hold and feeds the wedge ladder: a quiet

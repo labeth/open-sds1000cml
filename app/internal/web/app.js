@@ -1049,6 +1049,7 @@ function applyStatus() {
   if (document.activeElement !== $("acq")) $("acq").value = st.acq_mode || 0;
   updateAcqN();
   if (document.activeElement !== $("memdepth") && st.mem_depth) $("memdepth").value = st.mem_depth;
+  if (document.activeElement !== $("holdoff")) $("holdoff").value = st.holdoff_s || 0;
   if (!lvlDragging && st.trig_code) { $("lvl").value = st.trig_volts.toFixed(2); $("lvlv").textContent = st.trig_volts.toFixed(2) + " V"; }
   if ($("tdiv").options.length === 0 && st.tdivs)
     for (const t of st.tdivs) { const o = document.createElement("option"); o.value = t; o.textContent = fmtTdiv(t); $("tdiv").appendChild(o); }
@@ -1178,6 +1179,7 @@ $("cpl1").onchange = () => send("coupling1", +$("cpl1").value);
 $("cpl2").onchange = () => send("coupling2", +$("cpl2").value);
 $("refSaveA").onclick = () => saveRef("A");
 $("refSaveB").onclick = () => saveRef("B");
+$("holdoff").onchange = () => send("holdoff", +$("holdoff").value);
 for (const [rng, lbl, ctl, ch] of [["off1", "off1v", "offset1", 1], ["off2", "off2v", "offset2", 2]]) {
   $(rng).oninput = () => { offDragging = true; $(lbl).textContent = (+$(rng).value).toFixed(2) + " V"; };
   $(rng).onchange = () => { offDragging = false; send(ctl, +$(rng).value / probeOf(ch)); };
