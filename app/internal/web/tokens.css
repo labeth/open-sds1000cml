@@ -4,11 +4,17 @@
   --bg: #0b0f14;
   --c1: #f5d90a;
   --c2: #35c8e8;
+  --ctrl: #232c36;
   --cursor: #e6ecf2;
   --dim: #7c8894;
   --edge: #29333f;
+  --edge-hover: #3d4a58;
+  --edge2: #26384a;
   --grid: #182430;
   --math: #b98cff;
+  --on-bg: #2d4a63;
+  --on-edge: #4a7196;
+  --on-fg: #cfe6ff;
   --panel: #161c24;
   --run: #3fb950;
   --screen: #05080c;
@@ -16,4 +22,5 @@
   --text: #d6dde4;
   --trigger: #f2a63b;
   --warn: #f5a24c;
+  --well: #141c26;
 }

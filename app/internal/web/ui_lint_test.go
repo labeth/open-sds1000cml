@@ -24,11 +24,13 @@ func readUIHTML(t *testing.T) string {
 }
 
 // inlineStyleBudget RATCHETS down as the design-system migration replaces inline
-// style= attributes with token-driven classes (Phase 2, card by card). It can
-// only ever be LOWERED — a refactor that adds inline styles fails immediately,
-// and the number drops to 0 when Phase 2 completes. Start = the pre-refactor
-// baseline measured on the current file.
-const inlineStyleBudget = 66
+// style= attributes with token-driven classes. It can only ever be LOWERED — a
+// refactor that adds inline styles fails immediately. Phase 2 migrated the static
+// visual styles to primitives (66→22). The remainder is: ~14 `display:none` hooks
+// (kept inline per the load-bearing contract until Phase 4 swaps them to the
+// [hidden] attribute), 2 JS-template styles (→ classList in Phase 4), and a few
+// singletons. Target 0 after Phase 4.
+const inlineStyleBudget = 22
 
 func TestInlineStyleBudget(t *testing.T) {
 	n := strings.Count(readUIHTML(t), "style=\"")

@@ -48,12 +48,31 @@
   .modes { display: flex; gap: 4px; flex-wrap: wrap; }
   .toggles { display: flex; gap: 4px; flex-wrap: wrap; }
   button, select {
-    background: #232c36; color: var(--text); border: 1px solid var(--edge);
+    background: var(--ctrl); color: var(--text); border: 1px solid var(--edge);
     border-radius: 5px; padding: 5px 9px; font: inherit; cursor: pointer;
   }
-  button:hover { border-color: #3d4a58; }
-  button.on { background: #2d4a63; border-color: #4a7196; color: #cfe6ff; }
+  button:hover { border-color: var(--edge-hover); }
+  button.on { background: var(--on-bg); border-color: var(--on-edge); color: var(--on-fg); }
   button.sm { padding: 4px 7px; font-size: 12px; }
+
+  /* ---- design-system primitives (replace scattered inline styles) ---- */
+  .subtle { font-weight: 400; color: var(--dim); font-size: 11px; }        /* card-header hints/counts */
+  .card-actions { float: right; display: inline-flex; gap: 6px; align-items: center; } /* header button cluster */
+  .btn-mini { font: inherit; font-size: 11px; color: var(--dim); background: var(--well);
+    border: 1px solid var(--edge2); border-radius: 4px; padding: 1px 7px; cursor: pointer; }
+  .btn-mini:hover { border-color: var(--edge-hover); color: var(--text); }
+  .btn-mini.ok { color: var(--run); }                                       /* the ● live button */
+  .num { font: inherit; font-size: 11px; color: var(--text); background: var(--well);
+    border: 1px solid var(--edge2); border-radius: 4px; padding: 1px 4px; }
+  .w-xs { width: 40px; } .w-sm { width: 52px; } .w-md { width: 64px; }
+  .readout { min-width: 48px; text-align: right; font-variant-numeric: tabular-nums; }
+  .readout.xs { min-width: 26px; }
+  .grow { flex: 1; } .grow.min { min-width: 60px; }
+  .row-tight { display: inline-flex; align-items: center; gap: 3px; }
+  .transcript { width: 100%; height: 88px; resize: vertical; white-space: pre; overflow: auto;
+    font: 11px/1.5 ui-monospace, Menlo, Consolas, monospace; color: var(--text);
+    background: var(--well); border: 1px solid var(--edge2); border-radius: 4px; padding: 5px; }
+  .scroll-list { max-height: 180px; overflow: auto; font: 11px/1.5 ui-monospace, Menlo, Consolas, monospace; }
 
   footer {
     flex: 0 0 auto; border-top: 1px solid var(--edge); background: var(--panel);
@@ -67,13 +86,13 @@
   .panel2 { display: none; flex-wrap: wrap; gap: 8px 10px; align-items: center;
             width: 100%; font-size: 12px; color: var(--dim);
             border-top: 1px dashed var(--edge); padding-top: 8px; }
-  .panel2 input[type=number] { background: #232c36; color: var(--text);
+  .panel2 input[type=number] { background: var(--ctrl); color: var(--text);
             border: 1px solid var(--edge); border-radius: 4px; padding: 3px 5px; }
   .decrow { display: flex; align-items: center; gap: 5px; margin-top: 6px; }
-  .rolesel, .dsel { background: #141c26; color: var(--text); border: 1px solid #26384a;
+  .rolesel, .dsel { background: var(--well); color: var(--text); border: 1px solid var(--edge2);
             border-radius: 4px; padding: 2px 4px; font-size: 12px; }
-  #decRoles input[type=number] { background: #141c26; color: var(--text);
-            border: 1px solid #26384a; border-radius: 4px; padding: 2px 4px; font-size: 12px; }
+  #decRoles input[type=number] { background: var(--well); color: var(--text);
+            border: 1px solid var(--edge2); border-radius: 4px; padding: 2px 4px; font-size: 12px; }
 </style>
 </head>
 <body>
@@ -101,8 +120,8 @@
       <div class="toggles" style="margin-top:6px">
         <button id="tPersist" class="sm">Persist</button>
         <button id="tCursors" class="sm">Cursors</button>
-        <button id="tC1" class="sm on" style="color:var(--c1)">C1</button>
-        <button id="tC2" class="sm on" style="color:var(--c2)">C2</button>
+        <button id="tC1" class="sm on cc1">C1</button>
+        <button id="tC2" class="sm on cc2">C2</button>
       </div>
       <div class="toggles" style="margin-top:6px">
         <button id="ePNG" class="sm">PNG</button>
@@ -122,31 +141,31 @@
     </div>
 
     <div class="card" id="fftCardC1" style="display:none">
-      <h3><span style="color:var(--c1)">C1</span> FFT peaks <span style="font-weight:400;color:var(--dim);font-size:11px">click to toggle</span>
-        <span style="float:right;display:inline-flex;gap:6px;align-items:center">
-          <label style="font-weight:400;color:var(--dim);font-size:11px">top
-            <input id="fftN1" type="number" min="1" max="64" value="8" style="width:40px;font:inherit;font-size:11px;color:var(--fg);background:#141c26;border:1px solid #26384a;border-radius:4px;padding:1px 4px"></label>
-          <button id="fftClear1" style="font:inherit;font-size:11px;color:var(--dim);background:#141c26;border:1px solid #26384a;border-radius:4px;padding:1px 7px;cursor:pointer">clear</button></span></h3>
+      <h3><span class="cc1">C1</span> FFT peaks <span class="subtle">click to toggle</span>
+        <span class="card-actions">
+          <label class="subtle">top
+            <input id="fftN1" type="number" min="1" max="64" value="8" class="num w-xs"></label>
+          <button id="fftClear1" class="btn-mini">clear</button></span></h3>
       <table class="meas"><tbody id="fftBody1"></tbody></table>
     </div>
 
     <div class="card" id="fftCardC2" style="display:none">
-      <h3><span style="color:var(--c2)">C2</span> FFT peaks <span style="font-weight:400;color:var(--dim);font-size:11px">click to toggle</span>
-        <span style="float:right;display:inline-flex;gap:6px;align-items:center">
-          <label style="font-weight:400;color:var(--dim);font-size:11px">top
-            <input id="fftN2" type="number" min="1" max="64" value="8" style="width:40px;font:inherit;font-size:11px;color:var(--fg);background:#141c26;border:1px solid #26384a;border-radius:4px;padding:1px 4px"></label>
-          <button id="fftClear2" style="font:inherit;font-size:11px;color:var(--dim);background:#141c26;border:1px solid #26384a;border-radius:4px;padding:1px 7px;cursor:pointer">clear</button></span></h3>
+      <h3><span class="cc2">C2</span> FFT peaks <span class="subtle">click to toggle</span>
+        <span class="card-actions">
+          <label class="subtle">top
+            <input id="fftN2" type="number" min="1" max="64" value="8" class="num w-xs"></label>
+          <button id="fftClear2" class="btn-mini">clear</button></span></h3>
       <table class="meas"><tbody id="fftBody2"></tbody></table>
     </div>
 
     <div class="card" id="decodeCard">
       <h3>Decode
-        <span style="float:right;display:inline-flex;gap:5px;align-items:center">
+        <span class="card-actions">
           <button id="decDetect" class="sm" title="auto-detect protocol, channel roles, threshold and sub-settings from the live signal">auto</button>
           <select id="decProto" class="dsel">
           <option value="off">Off</option><option value="uart">UART</option>
           <option value="i2c">I²C</option><option value="spi">SPI</option></select></span></h3>
-      <div id="decDetectMsg" style="display:none;font-size:11px;color:var(--dim);margin:2px 0"></div>
+      <div id="decDetectMsg" class="subtle" style="display:none;margin:2px 0"></div>
       <div id="decRoles" style="display:none;font-size:12px;color:var(--dim)">
         <div class="dec-i2c decrow"><span>SCL</span><select id="decScl" class="rolesel"></select>
           <span>SDA</span><select id="decSda" class="rolesel"></select></div>
@@ -154,15 +173,15 @@
           <span>DATA</span><select id="decData" class="rolesel"></select></div>
         <div class="dec-uart decrow"><span>Line</span><select id="decLine" class="rolesel"></select></div>
         <div class="decrow"><button id="decAuto" class="sm on">auto&nbsp;thr</button>
-          <input id="decThr" type="range" min="0" max="255" value="128" style="flex:1">
-          <span id="decThrV" style="min-width:26px;text-align:right">128</span></div>
+          <input id="decThr" type="range" min="0" max="255" value="128" class="grow">
+          <span id="decThrV" class="readout xs">128</span></div>
         <div class="decrow"><span>show</span><select id="decFmt" class="dsel">
           <option value="hex">Hex</option><option value="ascii">ASCII</option><option value="both">Hex+ASCII</option></select></div>
         <div class="decrow"><button id="decWatch" class="sm" title="save decoded windows matching the rule to a review buffer">watch</button>
-          <label style="display:inline-flex;align-items:center;gap:3px"><input type="checkbox" id="decWatchErr" checked>err</label>
-          <input id="decWatchMatch" placeholder="match (text or /regex/)" style="flex:1;min-width:60px"></div>
-        <div class="dec-uart decrow"><span>baud</span><input id="decBaud" type="number" value="115200" style="width:66px">
-          <span>bits</span><input id="decBits" type="number" min="5" max="9" value="8" style="width:36px">
+          <label class="row-tight"><input type="checkbox" id="decWatchErr" checked>err</label>
+          <input id="decWatchMatch" placeholder="match (text or /regex/)" class="grow min"></div>
+        <div class="dec-uart decrow"><span>baud</span><input id="decBaud" type="number" value="115200" class="w-md">
+          <span>bits</span><input id="decBits" type="number" min="5" max="9" value="8" class="w-xs">
           <select id="decParity" class="dsel"><option value="none">N</option><option value="even">E</option><option value="odd">O</option></select></div>
         <div class="dec-spi decrow"><span>CPOL</span><select id="decCpol" class="dsel"><option>0</option><option>1</option></select>
           <span>CPHA</span><select id="decCpha" class="dsel"><option>0</option><option>1</option></select>
@@ -171,21 +190,21 @@
     </div>
 
     <div class="card" id="decodeResultCard" style="display:none">
-      <h3>Decoded <span id="decodeCount" style="font-weight:400;color:var(--dim);font-size:11px"></span>
-        <span style="float:right;display:inline-flex;gap:5px">
+      <h3>Decoded <span id="decodeCount" class="subtle"></span>
+        <span class="card-actions">
           <button id="decStream" class="sm" title="stitch back-to-back deep captures for continuous high-bandwidth decode">stream</button>
-          <button id="decHistClear" style="font:inherit;font-size:11px;color:var(--dim);background:#141c26;border:1px solid #26384a;border-radius:4px;padding:1px 7px;cursor:pointer">clr</button>
-          <button id="decodeCopy" style="font:inherit;font-size:11px;color:var(--dim);background:#141c26;border:1px solid #26384a;border-radius:4px;padding:1px 7px;cursor:pointer">copy</button></span></h3>
-      <textarea id="decodeText" readonly wrap="off" style="width:100%;height:88px;resize:vertical;white-space:pre;overflow:auto;font:11px/1.5 ui-monospace,Menlo,Consolas,monospace;color:var(--text);background:#0d131a;border:1px solid #26384a;border-radius:4px;padding:5px"></textarea>
+          <button id="decHistClear" class="btn-mini">clr</button>
+          <button id="decodeCopy" class="btn-mini">copy</button></span></h3>
+      <textarea id="decodeText" readonly wrap="off" class="transcript"></textarea>
     </div>
 
     <div class="card" id="captureCard" style="display:none">
-      <h3>Captured <span id="captureCount" style="font-weight:400;color:var(--dim);font-size:11px"></span>
-        <span style="float:right;display:inline-flex;gap:5px">
-          <button id="capLive" style="display:none;font:inherit;font-size:11px;color:#3fb950;background:#141c26;border:1px solid #26384a;border-radius:4px;padding:1px 7px;cursor:pointer">● live</button>
-          <button id="capCopy" style="font:inherit;font-size:11px;color:var(--dim);background:#141c26;border:1px solid #26384a;border-radius:4px;padding:1px 7px;cursor:pointer">copy</button>
-          <button id="capClear" style="font:inherit;font-size:11px;color:var(--dim);background:#141c26;border:1px solid #26384a;border-radius:4px;padding:1px 7px;cursor:pointer">clr</button></span></h3>
-      <div id="captureList" style="max-height:180px;overflow:auto;font:11px/1.5 ui-monospace,Menlo,Consolas,monospace"></div>
+      <h3>Captured <span id="captureCount" class="subtle"></span>
+        <span class="card-actions">
+          <button id="capLive" class="btn-mini ok" style="display:none">● live</button>
+          <button id="capCopy" class="btn-mini">copy</button>
+          <button id="capClear" class="btn-mini">clr</button></span></h3>
+      <div id="captureList" class="scroll-list"></div>
     </div>
   </div>
 </div>
@@ -207,19 +226,19 @@
   <div class="grp">
     <label>level</label>
     <input type="range" id="lvl" min="-3.8" max="4.7" step="0.05" value="0">
-    <span id="lvlv" style="min-width:52px">0.00 V</span>
+    <span id="lvlv" class="readout">0.00 V</span>
   </div>
   <div class="grp">
     <label title="horizontal trigger position">pos</label>
     <input type="range" id="tpos" min="0" max="1" step="0.02" value="0.5" title="trigger horizontal position">
   </div>
   <div class="grp"><label>time/div</label><select id="tdiv"></select></div>
-  <div class="grp"><label style="color:var(--c1)">C1</label><select id="vdiv1"></select>
+  <div class="grp"><label class="cc1">C1</label><select id="vdiv1"></select>
     <input type="range" id="off1" min="-3.8" max="3.8" step="0.05" value="0" title="C1 offset">
-    <span id="off1v" style="min-width:48px">—</span></div>
-  <div class="grp"><label style="color:var(--c2)">C2</label><select id="vdiv2"></select>
+    <span id="off1v" class="readout">—</span></div>
+  <div class="grp"><label class="cc2">C2</label><select id="vdiv2"></select>
     <input type="range" id="off2" min="-3.8" max="3.8" step="0.05" value="0" title="C2 offset">
-    <span id="off2v" style="min-width:48px">—</span></div>
+    <span id="off2v" class="readout">—</span></div>
   <div class="grp"><label>acq</label>
     <select id="acq">
       <option value="0">NORMAL</option><option value="1">AVERAGE</option>
@@ -235,25 +254,25 @@
   <div id="qualrow" class="panel2">
     <div class="grp" id="qp-pulse" style="display:none">
       <label>pulse</label>
-      lvl <input type="number" id="p-lvl" min="0" max="100" step="5" value="50" style="width:52px">%
-      w&#8712;[<input type="number" id="p-min" min="0" step="0.1" value="0" style="width:64px">,
-      <input type="number" id="p-max" min="0" step="0.1" value="0" style="width:64px">] µs
+      lvl <input type="number" id="p-lvl" min="0" max="100" step="5" value="50" class="w-sm">%
+      w&#8712;[<input type="number" id="p-min" min="0" step="0.1" value="0" class="w-md">,
+      <input type="number" id="p-max" min="0" step="0.1" value="0" class="w-md">] µs
       <select id="p-cond"><option value="0">any</option><option value="1">&lt;min</option>
         <option value="2">&gt;max</option><option value="3">inside</option></select>
     </div>
     <div class="grp" id="qp-slope" style="display:none">
       <label>slew</label>
-      lo <input type="number" id="s-lo" min="0" max="100" step="5" value="20" style="width:52px">%
-      hi <input type="number" id="s-hi" min="0" max="100" step="5" value="80" style="width:52px">%
-      t&#8712;[<input type="number" id="s-min" min="0" step="0.1" value="0" style="width:64px">,
-      <input type="number" id="s-max" min="0" step="0.1" value="0" style="width:64px">] µs
+      lo <input type="number" id="s-lo" min="0" max="100" step="5" value="20" class="w-sm">%
+      hi <input type="number" id="s-hi" min="0" max="100" step="5" value="80" class="w-sm">%
+      t&#8712;[<input type="number" id="s-min" min="0" step="0.1" value="0" class="w-md">,
+      <input type="number" id="s-max" min="0" step="0.1" value="0" class="w-md">] µs
       <select id="s-cond"><option value="0">any</option><option value="1">&lt;min</option>
         <option value="2">&gt;max</option><option value="3">inside</option></select>
     </div>
     <div class="grp" id="qp-video" style="display:none">
       <label>video</label>
       <select id="v-std"><option value="0">PAL</option><option value="1">NTSC</option></select>
-      line <input type="number" id="v-line" min="0" max="625" value="0" style="width:60px">
+      line <input type="number" id="v-line" min="0" max="625" value="0" class="w-md">
       <select id="v-neg"><option value="1">neg sync</option><option value="0">pos sync</option></select>
     </div>
   </div>

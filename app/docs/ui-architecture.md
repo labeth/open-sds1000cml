@@ -230,3 +230,12 @@ Device at 192.168.1.209 (web UI :8080). `/tmp` is read-only → deploy with
   `--stop` (vermillion #d55e00); `--cursor` moved to near-white. `TestPaletteParity`
   (pure-Go, always-run) makes web↔LCD drift + stale generation unmergeable.
   Device-verified: LCD trigger amber, web tokens resolve from the linked stylesheet.
+- **Phase 2a (primitives + inline-style migration) — DONE.** Added token-driven
+  primitive classes (`.btn-mini`, `.num` + `.w-xs/sm/md`, `.subtle`, `.card-actions`,
+  `.readout`, `.transcript`, `.scroll-list`, `.grow`, `.row-tight`) and tokenised the
+  remaining chrome hex (`--ctrl`, `--on-bg/-edge/-fg`, `--well`, `--edge2`,
+  `--edge-hover`) into tokens.json. Migrated the static inline styles to classes
+  (66→22 inline `style=`; the rest are `display:none` hooks kept per the contract
+  for Phase 4, plus 2 JS-template styles). Fixed a real bug: the FFT `top-N` inputs
+  used `color:var(--fg)` (undefined) — now `.num`. Budget ratcheted 66→22.
+  Deferred to Phase 2b: externalise the inline `<script>`→module + strict CSP.
