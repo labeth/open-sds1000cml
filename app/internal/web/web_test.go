@@ -11,9 +11,10 @@ import (
 
 // fakeScope records setter calls and serves a canned frame.
 type fakeScope struct {
-	stats engine.Stats
-	frame *engine.Frame
-	fresh bool
+	stats    engine.Stats
+	frame    *engine.Frame
+	frameGen func() *engine.Frame // when set, WithFrame serves this instead
+	fresh    bool
 
 	running  *bool
 	norm     *bool
@@ -79,8 +80,14 @@ func (f *fakeAnalog) OffsetVolts(ch int, code uint16) float64 {
 func (f *fakeAnalog) CalSource() string                    { return "defaults" }
 func (f *fakeAnalog) DCVolts(ch int, mean float64) float64 { return 0 }
 
-func (f *fakeScope) Snapshot() engine.Stats           { return f.stats }
-func (f *fakeScope) WithFrame(fn func(*engine.Frame)) { fn(f.frame) }
+func (f *fakeScope) Snapshot() engine.Stats { return f.stats }
+func (f *fakeScope) WithFrame(fn func(*engine.Frame)) {
+	if f.frameGen != nil {
+		fn(f.frameGen())
+		return
+	}
+	fn(f.frame)
+}
 func (f *fakeScope) SetRunning(on bool)               { f.running = &on }
 func (f *fakeScope) SetNorm(on bool)                  { f.norm = &on }
 func (f *fakeScope) SetTrigSlope(r bool)              { f.slope = &r }
