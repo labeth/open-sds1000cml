@@ -151,6 +151,19 @@ const SPB = 40, COLT = 1 / (SPB * 115200);
   const g = spiGen([0x80], SPB, { cpol: 0, cpha: 0, bitOrder: "lsb" });
   const rl = decodeSPI(g.clk, g.data, COLT, { cpol: 0, cpha: 0, bitOrder: "lsb" });
   ok(rl.ok && rl.bytes[0] === 0x80, `SPI LSB order: byte = ${rl.bytes[0]?.toString(16)}`);
+
+  // No-CS re-alignment: a PARTIAL first burst (capture started mid-transaction),
+  // an idle gap, then a clean transaction. The gap must re-align byte boundaries
+  // so the clean transaction decodes correctly (this is the real-scope case).
+  const clean = spiGen(bytes, SPB, { cpol: 0, cpha: 0 });
+  const gapCols = new Array(SPB * 20).fill(LO); // clk idle low (cpol0), data low
+  const clk2 = clean.clk.concat(gapCols, clean.clk);
+  const data2 = clean.data.concat(gapCols, clean.data);
+  const cut = Math.round(SPB * 3.5); // slice off ~3.5 bits so the FIRST burst is misaligned
+  const rg = decodeSPI(clk2.slice(cut), data2.slice(cut), COLT, { cpol: 0, cpha: 0 });
+  const tail = rg.bytes.slice(-4);
+  ok(JSON.stringify(tail) === JSON.stringify(bytes),
+    `SPI re-aligns after an idle gap: last 4 bytes = ${tail.map(b => b.toString(16))}`);
 }
 
 // --- 7. failure + invariants -------------------------------------------------

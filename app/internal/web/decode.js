@@ -215,8 +215,12 @@ function decodeSPI(clk, data, colTimeS, cfg) {
   if (halfGap < 3) return fail("spi", halfGap.toFixed(1) + " cols/edge; too few samples/bit", { colsPerClock: halfGap * 2 });
 
   const sampleRising = cpol === cpha; // modes 0 & 3 sample on rising, 1 & 2 on falling
+  // With no CS to frame bytes, re-align on a clock-idle gap: consecutive
+  // sampling edges are one clock period (~2·halfGap) apart within a burst; a gap
+  // longer than ~1.5 periods means a new transaction, so restart the byte.
+  const gapReset = halfGap * 3;
   const spans = [], bytes = [], toks = [];
-  let ck = -1, bitCount = 0, val = 0, bitStart = 0;
+  let ck = -1, bitCount = 0, val = 0, bitStart = 0, lastSample = -1;
   for (let i = 0; i < n; i++) {
     const l = CK.level[i];
     if (l < 0) { ck = -1; continue; }
@@ -226,6 +230,8 @@ function decodeSPI(clk, data, colTimeS, cfg) {
     if ((sampleRising && rising) || (!sampleRising && falling)) {
       const bit = logicAt(DA, i);
       if (bit < 0) continue;
+      if (lastSample >= 0 && i - lastSample > gapReset && bitCount > 0) { bitCount = 0; val = 0; } // idle gap → new frame
+      lastSample = i;
       if (bitCount === 0) { bitStart = i; val = 0; }
       if (msb) val = (val << 1) | bit; else val |= (bit << bitCount);
       bitCount++;
