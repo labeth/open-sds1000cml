@@ -226,6 +226,14 @@ const SPB = 40, COLT = 1 / (SPB * 115200);
     const dd = autodetect(f, {});
     ok(dd.proto === "spi" && dd.cfg.cpha === cpha, `autodetect SPI picks CPHA=${cpha} by sample margin (got proto=${dd.proto} cpha=${dd.cfg.cpha})`);
   }
+  // MSB/LSB: a text payload decodes to readable ASCII in the true order and to
+  // gibberish in the reversed order -> printable heuristic picks the true order.
+  for (const bo of ["msb", "lsb"]) {
+    const g = spiGen([0x48, 0x65, 0x6C, 0x6C, 0x6F], SPB, { cpol: 0, cpha: 0, bitOrder: bo }); // "Hello"
+    const f = { c1: g.clk, c2: g.data, col_span_s: g.clk.length * COLT };
+    const dd = autodetect(f, {});
+    ok(dd.proto === "spi" && dd.cfg.msb === (bo === "msb"), `autodetect SPI picks bit order ${bo} by ASCII (got proto=${dd.proto} msb=${dd.cfg.msb})`);
+  }
 }
 
 console.log(failed ? `\n${failed} FAILED` : "\nALL PASS");

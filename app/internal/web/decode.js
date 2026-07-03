@@ -311,7 +311,11 @@ function scoreResult(r) {
   if (r.proto === "spi") {
     if (bytes === 0) return -1e9;
     const margin = (r.meta && r.meta.sampleMargin) || 0;
-    return bytes * 2 + margin * 10;               // no framing -> weakest; margin breaks the CPHA tie
+    // MSB vs LSB is signal-ambiguous (same bytes, bit-reversed) — prefer the order
+    // that yields readable ASCII (real text almost always means that order is
+    // right); binary data ties and falls back to MSB (SPI convention, tried first).
+    const printable = r.bytes.filter(b => b >= 0x20 && b < 0x7f).length / bytes;
+    return bytes * 2 + margin * 10 + printable * 6; // no framing -> weakest; margin breaks CPHA, printable breaks bit-order
   }
   return -1e9;
 }
@@ -395,8 +399,9 @@ function autodetect(frame, opts) {
       const clk = u1 >= u2 ? 1 : 2, data = clk === 1 ? 2 : 1;
       const cpol = idleLevel(clk === 1 ? clk1.S : clk2.S);
       for (const cpha of [0, 1])
-        add("spi", { clk, data }, { cpol, cpha, msb: true },
-          decodeSPI(chans[clk], chans[data], colTimeS, { cpol, cpha, bitOrder: "msb", fmt }));
+        for (const bo of ["msb", "lsb"])   // msb first => the default on a binary tie
+          add("spi", { clk, data }, { cpol, cpha, msb: bo === "msb" },
+            decodeSPI(chans[clk], chans[data], colTimeS, { cpol, cpha, bitOrder: bo, fmt }));
     }
   }
 

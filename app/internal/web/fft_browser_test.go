@@ -44,11 +44,14 @@ func TestFFTBrowser(t *testing.T) {
 		c1 := make([]uint8, N)
 		c2 := make([]uint8, N)
 		for i := 0; i < N; i++ {
-			v := 128 +
+			c1[i] = clamp8(128 +
 				ampA*math.Sin(2*math.Pi*24*float64(i)/N) +
-				ampB*math.Sin(2*math.Pi*61*float64(i)/N)
-			c1[i] = clamp8(v)
-			c2[i] = 128
+				ampB*math.Sin(2*math.Pi*61*float64(i)/N))
+			// C2 carries DIFFERENT tones (37, 50 cycles) so the per-channel FFT
+			// boxes have distinct peaks and independent selection.
+			c2[i] = clamp8(128 +
+				ampB*math.Sin(2*math.Pi*37*float64(i)/N) +
+				ampA*math.Sin(2*math.Pi*50*float64(i)/N))
 		}
 		return &engine.Frame{
 			C1: c1, C2: c2, Seq: uint64(n), Valid: N, WinCols: N,
