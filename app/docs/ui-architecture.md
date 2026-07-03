@@ -332,3 +332,10 @@ softkey); and a responsive drawer/toolbar layout. Both surfaces (web + LCD) cove
   guard + near-only cursor grab); header hint text collapsed the card (excluded
   .subtle/.card-actions); math dropped under persistence (persist path draws it);
   residual ignored channel zoom. All pinned by new tests.
+- **Fix: time/div follows the view zoom.** The graticule is always DIVX=10
+  divisions, but the "µs/div" readout used the server's displayed_sdiv_s (the
+  full-record/home value) and never scaled with view.win, so it was wrong at any
+  non-home zoom. updateStatusLine() now shows effective = displayed_sdiv_s ×
+  (win_span / win_frac) and a "zoom ×N" factor, rebuilt on every redraw so it
+  tracks zoom/pan live. Device-verified: home 164µs/div → 4× zoom = 41µs/div.
+  (Cursor Δt already scaled by win_span; this aligns the readout with it.)

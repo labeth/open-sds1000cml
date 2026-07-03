@@ -667,6 +667,7 @@ function drawDecode(g) {
 
 function redraw() {
   refreshAria(); // keep aria-pressed in sync with view toggles (which call redraw)
+  updateStatusLine(); // time/div follows the zoom → keep it live, not just per status poll
   if (view.mode === "XY") { clearPersist(); drawXY(); drawCursors(); return; }
   if (view.mode === "FFT") { clearPersist(); drawFFT(); drawCursors(); return; }
   if (view.persist && !frame?.is_env) {
@@ -956,17 +957,36 @@ function applyStatus() {
     if (st.off1_v) $("off1").value = st.off1_v.toFixed(2);
     if (st.off2_v) $("off2").value = st.off2_v.toFixed(2);
   }
-  const b = frame ? frame.displayed_sdiv_s : st.displayed_sdiv_s;
-  $("line").innerHTML =
-    "<b>" + fmtTdiv(b) + "/div</b> · " + st.band + " · " + st.fps.toFixed(0) + " fps · seq <b>" + st.seq + "</b>" +
-    " · cols " + reqCols + (st.mmap_drain ? "" : " (ioctl)") + (st.dead_runs ? " · DEAD " + st.dead_runs : "") +
-    " · cal:" + (st.cal_source || "?") + " · " + st.version;
+  updateStatusLine();
   const state = trigState();
   const chip = $("trigChip");
   chip.textContent = state;
   chip.dataset.state = state;
-  $("scope").setAttribute("aria-label", "oscilloscope — trigger " + state + ", " + fmtTdiv(b) + "/div");
   refreshAria();
+}
+
+// The on-screen time/div — and its scale — FOLLOW the view zoom. The grid is
+// always DIVX divisions, so when view.win is narrower/wider than the home 10-div
+// screen (win_frac of the served record), the effective time/div scales by
+// win_span/win_frac. Rebuilt on every redraw so it tracks zoom/pan live, not just
+// on the 1s status poll. (Cursor Δt already scales by win_span.)
+function updateStatusLine() {
+  if (!st) return;
+  let b = frame ? frame.displayed_sdiv_s : st.displayed_sdiv_s;
+  let zoomTxt = "";
+  if (frame && view.mode === "YT" && frame.win_frac > 0) {
+    const winSpan = view.win.b - view.win.a;
+    b = b * (winSpan / frame.win_frac);          // effective on-screen time/div
+    const zoom = frame.win_frac / winSpan;       // relative to the home 10-div screen
+    if (Math.abs(zoom - 1) > 0.02)
+      zoomTxt = zoom >= 1 ? " · zoom ×" + (zoom < 10 ? zoom.toFixed(1) : String(Math.round(zoom)))
+                          : " · zoom ÷" + (1 / zoom).toFixed(1);
+  }
+  $("line").innerHTML =
+    "<b>" + fmtTdiv(b) + "/div</b>" + zoomTxt + " · " + st.band + " · " + st.fps.toFixed(0) + " fps · seq <b>" + st.seq + "</b>" +
+    " · cols " + reqCols + (st.mmap_drain ? "" : " (ioctl)") + (st.dead_runs ? " · DEAD " + st.dead_runs : "") +
+    " · cal:" + (st.cal_source || "?") + " · " + st.version;
+  $("scope").setAttribute("aria-label", "oscilloscope — trigger " + trigState() + ", " + fmtTdiv(b) + "/div");
 }
 
 // ---- controls ----
