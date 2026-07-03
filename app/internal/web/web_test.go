@@ -3,6 +3,7 @@ package web
 import (
 	"bytes"
 	"encoding/json"
+	"math"
 	"net/http/httptest"
 	"testing"
 
@@ -273,6 +274,54 @@ func TestFrameEndpoint(t *testing.T) {
 	}
 	if !rep.Unchanged || rep.C1 != nil {
 		t.Fatalf("expected unchanged reply, got %+v", rep)
+	}
+}
+
+func TestDeepFrameCentersOnTrigger(t *testing.T) {
+	// full=1 on a deep decimated frame (Valid>WinCols) serves the record
+	// RE-CENTERED on the trigger: fixed length = Valid, edge at posFrac, the
+	// sample under the anchor is the trigger sample, and the record end that runs
+	// past the capture is blank (-1). This is what makes the trigger — not the
+	// frame — the stable anchor.
+	const depth, winCols = 6144, 2048
+	f := &engine.Frame{
+		C1: make([]uint8, depth), C2: make([]uint8, depth),
+		Seq: 3, Valid: depth, WinCols: winCols, EdgeX: 2000,
+		TdivS: 500e-6, DisplayedS: 500e-6, SampleS: 500e-6 * 10 / winCols,
+	}
+	for i := range f.C1 {
+		f.C1[i] = uint8(i % 256) // ramp so alignment is checkable
+	}
+	fs := &fakeScope{frameGen: func() *engine.Frame { return f }, stats: engine.Stats{Running: true, TrigPosFrac: 0.5}}
+	s := New(fs, nil, nil, nil)
+
+	req := httptest.NewRequest("GET", "/api/frame?since=0&full=1", nil)
+	rec := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rec, req)
+	var rep frameReply
+	if err := json.Unmarshal(rec.Body.Bytes(), &rep); err != nil {
+		t.Fatal(err)
+	}
+	if len(rep.C1) != depth || rep.Depth != depth {
+		t.Fatalf("deep serve length = %d (depth %d), want %d (fixed, no jitter)", len(rep.C1), rep.Depth, depth)
+	}
+	if rep.EdgeFrac != 0.5 {
+		t.Fatalf("edge_frac = %v, want 0.5 (trigger centred/stable)", rep.EdgeFrac)
+	}
+	if math.Abs(rep.WinFrac-float64(winCols)/float64(depth)) > 1e-9 {
+		t.Fatalf("win_frac = %v, want %v", rep.WinFrac, float64(winCols)/float64(depth))
+	}
+	// The sample under the anchor (col depth/2) is the trigger sample (EdgeX).
+	if got, want := rep.C1[depth/2], int16(2000%256); got != want {
+		t.Fatalf("anchor sample = %d, want the trigger sample %d (record re-centred on edge)", got, want)
+	}
+	// EdgeX=2000 < depth/2 ⇒ the record is shifted right, so the LEFT end is blank.
+	if rep.C1[0] != -1 {
+		t.Fatalf("left margin = %d, want -1 (blank scrollable margin)", rep.C1[0])
+	}
+	// col_span_s is the whole-record time (keeps client Nyquist/Δt correct).
+	if math.Abs(rep.ColSpanS-float64(depth)*f.SampleS) > 1e-12 {
+		t.Fatalf("col_span_s = %v, want %v (whole record)", rep.ColSpanS, float64(depth)*f.SampleS)
 	}
 }
 

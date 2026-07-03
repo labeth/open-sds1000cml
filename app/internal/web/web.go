@@ -371,12 +371,31 @@ func toCols(v []uint8, n int) []int16 {
 // into view. Gaps (-1) only occur off the record; the client breaks the
 // polyline there.
 // rawInt16 copies a raw code slice to the []int16 wire type without resampling —
-// the deep-memory path serves every captured sample so the client can zoom in
-// losslessly. Codes are contiguous (no -1 gaps) in a drained record.
+// used when there is no trigger to anchor on (free-run). Codes are contiguous.
 func rawInt16(codes []uint8) []int16 {
 	out := make([]int16, len(codes))
 	for i, c := range codes {
 		out[i] = int16(c)
+	}
+	return out
+}
+
+// deepWindow serves the drained record RE-CENTERED on the trigger: the edge is
+// placed at posFrac of a fixed-length (outLen) output, so the trigger is the
+// stable anchor and the pre-/post-trigger record spreads symmetrically around
+// it. Where the output runs past the captured data (near the record ends), it is
+// filled with -1 = blank margin the client renders as empty but can still pan
+// through. Fixed length ⇒ the served array size never jitters (no re-home churn).
+func deepWindow(sig []uint8, valid, outLen int, edgeX, posFrac float64) []int16 {
+	out := make([]int16, outLen)
+	start := edgeX - posFrac*float64(outLen)
+	for i := 0; i < outLen; i++ {
+		si := int(math.Round(start)) + i
+		if si >= 0 && si < valid {
+			out[i] = int16(sig[si])
+		} else {
+			out[i] = -1
+		}
 	}
 	return out
 }
@@ -526,18 +545,23 @@ func (s *Server) hFrame(w http.ResponseWriter, r *http.Request) {
 			rep.E2Max = resampleEnv(f.EnvMax2, f.EnvCols, cols)
 			rep.EdgeFrac, rep.WinFrac = -1, 1
 		case full && !f.Interp && f.Valid > f.WinCols:
-			// DECIMATED deep memory: serve the FULL raw record; the client windows
-			// it. col_span_s becomes the whole-record time so every client formula
-			// (Nyquist, cursor Δt, decode, CSV) stays self-consistent.
+			// DECIMATED deep memory: serve the full drained record so the client
+			// windows/navigates it. col_span_s becomes the whole-record time so
+			// every client formula (Nyquist, cursor Δt, decode, CSV) stays
+			// self-consistent. The record is RE-CENTERED on the trigger (edge at
+			// posFrac) so the trigger — not the frame — is the stable anchor, with
+			// symmetric scrollable pre-/post-trigger margin (blank past the ends).
 			n := f.Valid
-			rep.C1, rep.C2 = rawInt16(f.C1[:n]), rawInt16(f.C2[:n])
-			rep.Cols, rep.ColSpanS, rep.Depth = n, float64(n)*f.SampleS, n
-			rep.WinFrac = float64(f.WinCols) / float64(n)
 			if f.EdgeX >= 0 {
-				rep.EdgeFrac = f.EdgeX / float64(n)
+				rep.C1 = deepWindow(f.C1, n, n, f.EdgeX, posFrac)
+				rep.C2 = deepWindow(f.C2, n, n, f.EdgeX, posFrac)
+				rep.EdgeFrac = posFrac
 			} else {
+				rep.C1, rep.C2 = rawInt16(f.C1[:n]), rawInt16(f.C2[:n])
 				rep.EdgeFrac = -1
 			}
+			rep.Cols, rep.ColSpanS, rep.Depth = n, float64(n)*f.SampleS, n
+			rep.WinFrac = float64(f.WinCols) / float64(n)
 		default:
 			// Native-fast / non-deep decimated: today's windowed screen slice.
 			rep.C1 = window(f.C1, f.Valid, f.WinCols, f.EdgeX, f.Interp, cols, posFrac)
