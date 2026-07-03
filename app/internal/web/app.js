@@ -29,14 +29,24 @@ function fracForX(xpx) { const w = view.win; return w.a + (xpx / (CW - 1)) * (w.
 function navFrac(ev) { const r = nav.getBoundingClientRect(); return Math.max(0, Math.min(1, (ev.clientX - r.left) / r.width)); }
 function navY(code, zoom) { zoom = zoom || 1; return NH * (1 - (128 + (code - 128) * zoom) / 255); }
 function setWin(a, b) { view.win.a = a; view.win.b = b; redraw(); }
-// The "home" window: with deep memory the default is the trigger-centered 10-div
-// SCREEN slice (win_frac of the record) — visually identical to the old fixed
-// view — EXCEPT for a single/stopped capture, where we show the WHOLE record so
-// you see the full shot and can zoom in. Non-deep frames report win_frac=1 → full.
+// homeSpan: one acquisition screen = DIVX divisions of the HARDWARE time/div, as
+// a fraction of the served record — so the home view (zoom 1) shows exactly the
+// hardware timebase and the grid reads tdiv_s/div (what the knob/dropdown says).
+// Deep memory holds more than one screen, so at fast HW timebases the record's
+// WinCols display window is only a zoomed-in slice of it; this uses enough of the
+// record to fill a full HW screen. Clamps to the whole record for a short capture.
+function homeSpan(f) {
+  if (!f) return 1;
+  if (f.tdiv_s > 0 && f.col_span_s > 0) return Math.min(1, DIVX * f.tdiv_s / f.col_span_s);
+  return (f.win_frac > 0 && f.win_frac <= 1) ? f.win_frac : 1;
+}
+// The "home" window: the trigger-centered HARDWARE-timebase screen (grid =
+// tdiv_s/div), EXCEPT for a single/stopped capture where we show the WHOLE record
+// so you see the full shot and can zoom in.
 function homeWindow(f) {
   if (!f) return { a: 0, b: 1 };
   const stopped = st && !st.running;         // single shot / stopped: show it all
-  let wf = (f.win_frac > 0 && f.win_frac <= 1) ? f.win_frac : 1;
+  let wf = homeSpan(f);
   if (stopped || f.is_env) wf = 1;
   const pf = (st && st.trig_pos_frac > 0 && st.trig_pos_frac < 1) ? st.trig_pos_frac : 0.5;
   const c = (f.edge_frac >= 0) ? f.edge_frac : 0.5; // matches server window() when EdgeX<0
@@ -972,12 +982,16 @@ function applyStatus() {
 // on the 1s status poll. (Cursor Δt already scales by win_span.)
 function updateStatusLine() {
   if (!st) return;
-  let b = frame ? frame.displayed_sdiv_s : st.displayed_sdiv_s;
+  // Time/div = the HARDWARE timebase, scaled by software zoom. The grid is always
+  // DIVX divisions; the on-screen time/div = the visible record time / DIVX, which
+  // equals tdiv_s at home (zoom 1) and scales as you zoom. NOT the decimation-
+  // derived displayed_sdiv_s.
+  let b = frame ? (frame.tdiv_s || frame.displayed_sdiv_s) : (st.tdiv_s || st.displayed_sdiv_s);
   let zoomTxt = "";
-  if (frame && view.mode === "YT" && frame.win_frac > 0) {
+  if (frame && view.mode === "YT" && frame.col_span_s > 0) {
     const winSpan = view.win.b - view.win.a;
-    b = b * (winSpan / frame.win_frac);          // effective on-screen time/div
-    const zoom = frame.win_frac / winSpan;       // relative to the home 10-div screen
+    b = winSpan * frame.col_span_s / DIVX;       // true on-screen time/div (= HW tdiv at home)
+    const hs = homeSpan(frame), zoom = (hs > 0 && winSpan > 0) ? hs / winSpan : 1;
     if (Math.abs(zoom - 1) > 0.02)
       zoomTxt = zoom >= 1 ? " · zoom ×" + (zoom < 10 ? zoom.toFixed(1) : String(Math.round(zoom)))
                           : " · zoom ÷" + (1 / zoom).toFixed(1);

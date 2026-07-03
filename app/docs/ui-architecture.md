@@ -346,3 +346,13 @@ softkey); and a responsive drawer/toolbar layout. Both surfaces (web + LCD) cove
   midpoint, AUTO, running) on the stronger channel. From envelope/roll (no
   per-sample measurements) it first drops to a safe 500µs/div so the next frame
   is measurable. Device-verified: 2ms/30-cycle clutter → 3 cycles triggered.
+- **Fix: time/div = the HARDWARE timebase (not a decimation-derived value).** On
+  deep decimated bands the display window (WinCols=2048) is only a zoomed-in slice
+  of the drained record, so `displayed_sdiv_s` (e.g. 81.9µs) ≠ the selected
+  `tdiv_s` (200µs) — even at "home" the grid was 2.4× more zoomed than the knob.
+  Fix: the home window now spans one HARDWARE screen (`homeSpan = DIVX·tdiv_s /
+  col_span_s`), so the grid physically shows tdiv_s/div, and the readout = the true
+  on-screen time/div (`win_span·col_span_s/DIVX`) = tdiv_s at home, scaled by zoom,
+  with the dropdown selection unchanged. Test frames have DisplayedS==TdivS so
+  homeSpan collapses to win_frac → deep-memory tests unaffected. Device-verified:
+  home 200µs/div = dropdown; zoom 2× → 100µs/div; dropdown stays 200µs.
