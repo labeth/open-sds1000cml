@@ -349,6 +349,57 @@ func TestDecimatedAutoHoldsWrongSlopeFrame(t *testing.T) {
 	}
 }
 
+func TestEdgeLevelOffSignalDoesNotLock(t *testing.T) {
+	// A trigger level set OFF the signal band cannot be crossed, so no trigger is
+	// possible. Regression: the EDGE path used to fall back to the signal's own
+	// mid-level crossing and fabricate a lock — the scope kept "triggering" with
+	// the level parked above the wave.
+	//
+	// Default fake signal is a 56..200 square. SetTrigLevelCode(27000) maps to
+	// display code 255 (off the top). AUTO must FREE-RUN unlocked (published,
+	// EdgeX = -1, Trigd = false); NORM must HOLD.
+	fb := newFakeBus()
+	e, _ := newTestEngine(t, fb)
+	e.SetTrigLevelCode(27000) // dc = 255, above the 56..200 signal
+	e.bringUp()
+	e.oneFrame(false) // AUTO
+	if s := e.Snapshot(); s.Published != 1 {
+		t.Fatalf("AUTO off-signal: published=%d, want 1 (free-run, not a hold)", s.Published)
+	}
+	f, fresh := e.Consume()
+	if !fresh {
+		t.Fatal("AUTO off-signal frame never reached the arena")
+	}
+	if f.EdgeX >= 0 {
+		t.Fatalf("AUTO off-signal EdgeX=%v, want -1 (no lock — the level is off the wave)", f.EdgeX)
+	}
+	if f.Trigd {
+		t.Fatal("AUTO off-signal frame marked Trigd; an off-wave level must not claim a trigger")
+	}
+
+	// NORM with the same off-signal level: no trigger can come → HOLD.
+	fb2 := newFakeBus()
+	e2, _ := newTestEngine(t, fb2)
+	e2.SetNorm(true)
+	e2.SetTrigLevelCode(27000)
+	e2.bringUp()
+	e2.oneFrame(true)
+	if s := e2.Snapshot(); s.Published != 0 || s.Held != 1 {
+		t.Fatalf("NORM off-signal: published=%d held=%d, want 0/1 (hold)", s.Published, s.Held)
+	}
+
+	// Control: an ON-signal level (centre, dc=128) still locks and centres.
+	fb3 := newFakeBus()
+	e3, _ := newTestEngine(t, fb3)
+	e3.SetTrigLevelCode(31434) // dc = 128, mid of 56..200
+	e3.bringUp()
+	e3.oneFrame(false)
+	f3, fresh3 := e3.Consume()
+	if !fresh3 || f3.EdgeX < 0 {
+		t.Fatalf("ON-signal AUTO: fresh=%v EdgeX=%v, want a real crossing (lock)", fresh3, f3.EdgeX)
+	}
+}
+
 func TestDecimatedFlatFallback(t *testing.T) {
 	// A genuinely flat/DC decimated screen (ptp < threshold) has no lock to be had. AUTO
 	// HOLDs (re-presenting the last edge) and publishes ONE honest flat capture (EdgeX=-1)

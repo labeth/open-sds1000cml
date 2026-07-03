@@ -896,7 +896,7 @@ func (e *Engine) oneFrame(norm bool) {
 	if int(e.trigSrc.Load()) == 1 {
 		disc = f.C2[:cols]
 	}
-	_, _, p := ptp(disc)
+	lo, hi, p := ptp(disc)
 	rising := e.trigRising.Load()
 
 	// Qualifier dispatch (spec 05): PULSE/SLOPE/VIDEO REPLACE the EDGE
@@ -906,6 +906,7 @@ func (e *Engine) oneFrame(norm bool) {
 	e.mu.Unlock()
 	interval := e.band.CaptureIntervalNs()
 	edgeX := -1.0
+	lvlOffSig := false // EDGE: trigger level is set but sits off the signal band
 	switch tp.typ {
 	case TrigPulse:
 		edgeX = qualifyPulse(disc, interval, tp, rising)
@@ -915,21 +916,22 @@ func (e *Engine) oneFrame(norm bool) {
 		edgeX = qualifyVideo(disc, tp)
 	default:
 		// EDGE: anchor on the user's HW trigger level (WYSIWYG — the display
-		// crosses where the level is set) when it yields a crossing; fall
-		// back to the mid-level crossing when the level is unset or off the
-		// signal, so the display stays stable either way (spec 05 §5.1).
-		// centerCross returns ONLY a crossing of the requested slope, so
-		// edgeX ≥ 0 already means "a right-slope crossing exists" — the lock
-		// gate below (§7.4) rests on that plus amplitude + coherence.
-		lvl := midLevel(disc)
+		// crosses where the level is set). A lock requires a right-slope crossing
+		// AT that level (centerCross returns ONLY a crossing of the requested
+		// slope, so edgeX ≥ 0 already means "a right-slope crossing exists").
+		// If the level is SET but off the signal band, NO trigger is possible —
+		// we must NOT fall back to a mid-level crossing and fabricate a lock the
+		// user never asked for (spec 05 §5.1). Leaving edgeX = -1 means no lock:
+		// AUTO free-runs unlocked, NORM holds. The mid-level fallback survives
+		// only for an UNSET (boot) level, to keep the very first frames stable.
 		if td := e.trigDispLevel(int(e.trigSrc.Load())); td >= 0 {
-			if x := centerCross(disc, td, rising); x >= 0 {
-				edgeX = x
-			} else {
-				edgeX = centerCross(disc, lvl, rising)
+			edgeX = centerCross(disc, td, rising)
+			if p >= nativeEdgeMinPtp { // a real signal the level can sit outside of
+				margin := (hi - lo) / 16
+				lvlOffSig = td < lo-margin || td > hi+margin
 			}
 		} else {
-			edgeX = centerCross(disc, lvl, rising)
+			edgeX = centerCross(disc, midLevel(disc), rising)
 		}
 	}
 
@@ -980,6 +982,15 @@ func (e *Engine) oneFrame(norm bool) {
 		// so the edge is in the record, or a coherent slope-valid decimated capture — publish
 		// it centred.
 		publish = true
+		e.flatHeld = 0
+	case !norm && !qualifier && lvlOffSig && coherent:
+		// AUTO, EDGE: the trigger level is off the signal entirely — a lock is
+		// impossible, so never claim a trig and never freeze. FREE-RUN an unlocked
+		// live capture at the record centre (EdgeX = -1, Trigd = false). NORM
+		// instead HOLDs (waits for a trigger that cannot come) via the default.
+		publish = true
+		edgeX = -1
+		f.Trigd = false
 		e.flatHeld = 0
 	case nativeFast && !norm && !qualifier && !sawTrig:
 		// AUTO native-fast, comparator did NOT fire within the budget (untriggered): FREE RUN a
