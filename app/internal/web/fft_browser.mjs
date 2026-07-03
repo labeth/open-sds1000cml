@@ -71,12 +71,13 @@ try {
   ok(nrows === peaks.length, `table row per peak (${nrows})`);
 
   // Configurable list length: "top N" caps the number of peaks shown.
-  await page.fill("#fftN", "3");
-  await page.waitForFunction(() => document.querySelectorAll("#fftBody .pk").length <= 3, null, { timeout: 4000 });
-  ok(await page.locator("#fftBody .pk").count() === 3, "top-N=3 shows exactly 3 peaks");
-  await page.fill("#fftN", "8");
-  await page.waitForFunction(() => document.querySelectorAll("#fftBody .pk").length > 3, null, { timeout: 4000 });
-  ok(await page.locator("#fftBody .pk").count() > 3, "raising top-N shows more peaks again");
+  const full = await page.locator("#fftBody .pk").count();
+  await page.fill("#fftN", "1");
+  await page.waitForFunction(() => document.querySelectorAll("#fftBody .pk").length === 1, null, { timeout: 4000 });
+  ok(await page.locator("#fftBody .pk").count() === 1, "top-N=1 caps the list to 1 peak");
+  await page.fill("#fftN", String(full));
+  await page.waitForFunction(c => document.querySelectorAll("#fftBody .pk").length === c, full, { timeout: 4000 });
+  ok(await page.locator("#fftBody .pk").count() === full, `raising top-N restores the full list (${full})`);
 
   await page.evaluate(() => clearPeaks());
   const near = (a, b) => Math.abs(a - b) < 800;

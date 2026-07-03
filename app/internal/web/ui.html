@@ -29,8 +29,11 @@
   #wedged { color: var(--stop); font-weight: 700; }
 
   #main { flex: 1 1 auto; display: flex; min-height: 0; }
-  #wrap { flex: 1 1 auto; position: relative; min-width: 0; background: #05080c; }
-  canvas { position: absolute; inset: 0; display: block; touch-action: none; }
+  #wrap { flex: 1 1 auto; min-width: 0; background: #05080c; display: flex; flex-direction: column; }
+  #scopebox { position: relative; flex: 1 1 auto; min-height: 0; }
+  #scope { position: absolute; inset: 0; display: block; touch-action: none; }
+  #nav { flex: 0 0 auto; width: 100%; height: 56px; display: block;
+         border-top: 1px solid var(--edge); cursor: ew-resize; touch-action: none; }
   #stopped {
     position: absolute; top: 8px; right: 12px; color: var(--stop);
     font-weight: 700; letter-spacing: .1em; pointer-events: none;
@@ -71,6 +74,11 @@
             border-top: 1px dashed var(--edge); padding-top: 8px; }
   .panel2 input[type=number] { background: #232c36; color: var(--text);
             border: 1px solid var(--edge); border-radius: 4px; padding: 3px 5px; }
+  .decrow { display: flex; align-items: center; gap: 5px; margin-top: 6px; }
+  .rolesel, .dsel { background: #141c26; color: var(--text); border: 1px solid #26384a;
+            border-radius: 4px; padding: 2px 4px; font-size: 12px; }
+  #decRoles input[type=number] { background: #141c26; color: var(--text);
+            border: 1px solid #26384a; border-radius: 4px; padding: 2px 4px; font-size: 12px; }
 </style>
 </head>
 <body>
@@ -81,8 +89,11 @@
 
 <div id="main">
   <div id="wrap">
-    <canvas id="scope"></canvas>
-    <div id="stopped" style="display:none">STOPPED</div>
+    <div id="scopebox">
+      <canvas id="scope"></canvas>
+      <div id="stopped" style="display:none">STOPPED</div>
+    </div>
+    <canvas id="nav"></canvas>
   </div>
   <div id="dock">
     <div class="card">
@@ -122,6 +133,35 @@
             <input id="fftN" type="number" min="1" max="64" value="8" style="width:40px;font:inherit;font-size:11px;color:var(--fg);background:#141c26;border:1px solid #26384a;border-radius:4px;padding:1px 4px"></label>
           <button id="fftClear" style="font:inherit;font-size:11px;color:var(--dim);background:#141c26;border:1px solid #26384a;border-radius:4px;padding:1px 7px;cursor:pointer">clear</button></span></h3>
       <table class="meas"><tbody id="fftBody"></tbody></table>
+    </div>
+
+    <div class="card" id="decodeCard">
+      <h3>Decode
+        <span style="float:right"><select id="decProto" class="dsel">
+          <option value="off">Off</option><option value="uart">UART</option>
+          <option value="i2c">I²C</option><option value="spi">SPI</option></select></span></h3>
+      <div id="decRoles" style="display:none;font-size:12px;color:var(--dim)">
+        <div class="dec-i2c decrow"><span>SCL</span><select id="decScl" class="rolesel"></select>
+          <span>SDA</span><select id="decSda" class="rolesel"></select></div>
+        <div class="dec-spi decrow"><span>CLK</span><select id="decClk" class="rolesel"></select>
+          <span>DATA</span><select id="decData" class="rolesel"></select></div>
+        <div class="dec-uart decrow"><span>Line</span><select id="decLine" class="rolesel"></select></div>
+        <div class="decrow"><button id="decAuto" class="sm on">auto&nbsp;thr</button>
+          <input id="decThr" type="range" min="0" max="255" value="128" style="flex:1">
+          <span id="decThrV" style="min-width:26px;text-align:right">128</span></div>
+        <div class="dec-uart decrow"><span>baud</span><input id="decBaud" type="number" value="115200" style="width:66px">
+          <span>bits</span><input id="decBits" type="number" min="5" max="9" value="8" style="width:36px">
+          <select id="decParity" class="dsel"><option value="none">N</option><option value="even">E</option><option value="odd">O</option></select></div>
+        <div class="dec-spi decrow"><span>CPOL</span><select id="decCpol" class="dsel"><option>0</option><option>1</option></select>
+          <span>CPHA</span><select id="decCpha" class="dsel"><option>0</option><option>1</option></select>
+          <select id="decMsb" class="dsel"><option value="1">MSB</option><option value="0">LSB</option></select></div>
+      </div>
+    </div>
+
+    <div class="card" id="decodeResultCard" style="display:none">
+      <h3>Decoded <span id="decodeCount" style="font-weight:400;color:var(--dim);font-size:11px"></span>
+        <button id="decodeCopy" style="float:right;font:inherit;font-size:11px;color:var(--dim);background:#141c26;border:1px solid #26384a;border-radius:4px;padding:1px 7px;cursor:pointer">copy</button></h3>
+      <textarea id="decodeText" readonly wrap="off" style="width:100%;height:88px;resize:vertical;white-space:pre;overflow:auto;font:11px/1.5 ui-monospace,Menlo,Consolas,monospace;color:var(--text);background:#0d131a;border:1px solid #26384a;border-radius:4px;padding:5px"></textarea>
     </div>
   </div>
 </div>
@@ -191,6 +231,7 @@
 </footer>
 
 <script src="peaks.js"></script>
+<script src="decode.js"></script>
 <script>
 "use strict";
 const $ = id => document.getElementById(id);
@@ -203,10 +244,37 @@ let frame = null;     // last frame reply
 let lastSeq = 0;
 let lvlDragging = false, offDragging = false;
 let frozen = false;
-const view = { mode: "YT", persist: false, cursors: false, c1: true, c2: true };
+const view = { mode: "YT", persist: false, cursors: false, c1: true, c2: true,
+               win: { a: 0, b: 1 } };   // visible column range as fractions of 0..cols-1
 // Normalized cursor positions (fractions of width/height).
 const cur = { t1: 0.33, t2: 0.66, v1: 0.4, v2: 0.6, drag: null };
-let reqCols = 800;
+let reqCols = 2048;   // full-resolution both channels (decode + navigator); client-side zoom
+
+// ---- navigator / horizontal zoom ----
+const nav = $("nav"), navCtx = nav.getContext("2d", { alpha: false });
+let NW = 0, NH = 0;
+const NAVH_CSS = 56, MINSPAN = 0.004;
+const navDrag = { active: false, grab: 0, a0: 0, b0: 0 };
+// The ONE column<->pixel mapping: traces, overlays and decode all go through it,
+// so they stay aligned at any zoom. At win={0,1} it equals the legacy i/(n-1)*(CW-1).
+function xForCol(i, n) { const w = view.win; return (i / (n - 1) - w.a) / (w.b - w.a) * (CW - 1); }
+function fracForX(xpx) { const w = view.win; return w.a + (xpx / (CW - 1)) * (w.b - w.a); }
+function navFrac(ev) { const r = nav.getBoundingClientRect(); return Math.max(0, Math.min(1, (ev.clientX - r.left) / r.width)); }
+function navY(code, zoom) { zoom = zoom || 1; return NH * (1 - (128 + (code - 128) * zoom) / 255); }
+function setWin(a, b) { view.win.a = a; view.win.b = b; redraw(); }
+function resetWin() { setWin(0, 1); }
+
+// ---- protocol decode ----
+const dcfg = {
+  proto: "off", scl: 1, sda: 2, clk: 1, data: 2, line: 1,
+  threshold: null, auto: true, baud: 115200, bits: 8, parity: "none",
+  cpol: 0, cpha: 0, msb: true, result: null,
+};
+const DECCOL = {
+  start: "#3fb950", stop: "#e8604c", addr: "#b98cff", rw: "#8fa6b8",
+  ack: "#3fb950", nak: "#e8604c", data: "#35c8e8",
+  "frame-error": "#e8604c", "parity-error": "#f5a24c", gap: "#7c8894", idle: "#3a444e",
+};
 
 const css = getComputedStyle(document.body);
 const C1COL = css.getPropertyValue("--c1").trim();
@@ -217,13 +285,19 @@ const MATHCOL = css.getPropertyValue("--math").trim();
 // ---- responsive canvas ----
 function resize() {
   dpr = window.devicePixelRatio || 1;
-  const w = Math.max(240, Math.floor($("wrap").clientWidth));
-  const h = Math.max(160, Math.floor($("wrap").clientHeight));
+  const box = $("scopebox");
+  const w = Math.max(240, Math.floor(box.clientWidth));
+  const h = Math.max(120, Math.floor(box.clientHeight));
   scope.style.width = w + "px"; scope.style.height = h + "px";
   scope.width = Math.round(w * dpr); scope.height = Math.round(h * dpr);
   CW = scope.width; CH = scope.height;
-  // Request roughly one column per CSS pixel of width (capped for payload).
-  reqCols = Math.max(64, Math.min(2048, w));
+  // Navigator canvas: full width, fixed CSS height.
+  nav.width = Math.round(w * dpr); nav.height = Math.round(NAVH_CSS * dpr);
+  NW = nav.width; NH = nav.height;
+  // 2048 is 1:1 with real samples on decimated bands (the µs–ms/div range where
+  // I2C/UART/slow-SPI live); native-fast bands downsample the window, tolerable
+  // for mid-level thresholding. Single source of truth for the fetch width.
+  reqCols = 2048;
   clearPersist();
   redraw();
 }
@@ -246,6 +320,17 @@ function fmtTdiv(s) {
   return Math.round(s * 1e9) + " ns";
 }
 function fmtVdiv(v) { return v >= 1 ? v + " V" : Math.round(v * 1e3) + " mV"; }
+function hexA(hex, a) {
+  const h = hex.replace("#", "");
+  return `rgba(${parseInt(h.substr(0, 2), 16)},${parseInt(h.substr(2, 2), 16)},${parseInt(h.substr(4, 2), 16)},${a})`;
+}
+function fitLabel(g, text, maxW) {
+  if (maxW <= 6 * dpr) return "";
+  if (g.measureText(text).width <= maxW) return text;
+  let t = text;
+  while (t.length > 1 && g.measureText(t).width > maxW) t = t.slice(0, -1);
+  return g.measureText(t).width <= maxW ? t : "";
+}
 
 // ---- persistence layer ----
 let persistCv = null, persistCtx = null;
@@ -272,15 +357,22 @@ function drawGrid(g) {
 }
 function yFor(code, zoom) { zoom = zoom || 1; return CH * (1 - (128 + (code - 128) * zoom) / 255); }
 
+// winRange returns the column index range [iLo,iHi] visible in view.win (a small
+// margin so segments enter/exit cleanly). Iterating only these is also faster
+// when zoomed in.
+function winRange(n) {
+  const w = view.win;
+  return [Math.max(0, Math.floor(w.a * (n - 1)) - 1), Math.min(n - 1, Math.ceil(w.b * (n - 1)) + 1)];
+}
 function drawTrace(g, cols, color, zoom) {
   if (!cols || !cols.length) return;
   g.strokeStyle = color; g.lineWidth = 1.4 * dpr; g.lineJoin = "round";
   g.beginPath(); let pen = false;
-  const n = cols.length;
-  for (let i = 0; i < n; i++) {
+  const n = cols.length, [iLo, iHi] = winRange(n);
+  for (let i = iLo; i <= iHi; i++) {
     const v = cols[i];
     if (v < 0) { pen = false; continue; }
-    const x = i / (n - 1) * (CW - 1), y = yFor(v, zoom);
+    const x = xForCol(i, n), y = yFor(v, zoom);
     if (y < -4 || y > CH + 4) { pen = false; continue; }
     if (pen) g.lineTo(x, y); else { g.moveTo(x, y); pen = true; }
   }
@@ -289,10 +381,11 @@ function drawTrace(g, cols, color, zoom) {
 function drawEnv(g, mn, mx, color, zoom) {
   if (!mn || !mx) return;
   zoom = zoom || 1; g.fillStyle = color; g.globalAlpha = .8;
-  const n = mn.length, sx = CW / n;
-  for (let c = 0; c < n; c++) {
+  const n = mn.length, [iLo, iHi] = winRange(n);
+  const sx = Math.max(1, (CW) / ((view.win.b - view.win.a) * n));
+  for (let c = iLo; c <= iHi; c++) {
     const yt = yFor(mx[c], zoom), yb = yFor(mn[c], zoom);
-    g.fillRect(c * sx, yt, Math.max(1, sx), Math.max(1, yb - yt));
+    g.fillRect(xForCol(c, n), yt, sx, Math.max(1, yb - yt));
   }
   g.globalAlpha = 1;
 }
@@ -311,14 +404,17 @@ function drawTrigMarkers(g) {
       g.beginPath(); g.moveTo(CW, y - 5 * dpr); g.lineTo(CW - 8 * dpr, y); g.lineTo(CW, y + 5 * dpr); g.fill();
     }
   }
-  // Vertical trigger-POSITION marker (where in time the trigger sits).
+  // Vertical trigger-POSITION marker (where in time the trigger sits), mapped
+  // through the zoom window; hidden when it falls outside the visible range.
   const frac = st.trig_pos_frac > 0 ? st.trig_pos_frac : 0.5;
-  const tx = frac * CW;
-  g.strokeStyle = "rgba(255,159,46,.35)"; g.lineWidth = dpr;
-  g.beginPath(); g.moveTo(tx + .5, 0); g.lineTo(tx + .5, CH); g.stroke();
-  g.fillStyle = CURCOL; g.font = "bold " + (10 * dpr) + "px system-ui"; g.textBaseline = "top";
-  g.beginPath(); g.moveTo(tx - 6 * dpr, 0); g.lineTo(tx + 6 * dpr, 0); g.lineTo(tx, 10 * dpr); g.fill();
-  g.fillText("T", tx + 7 * dpr, 1 * dpr);
+  if (frac >= view.win.a && frac <= view.win.b) {
+    const tx = (frac - view.win.a) / (view.win.b - view.win.a) * CW;
+    g.strokeStyle = "rgba(255,159,46,.35)"; g.lineWidth = dpr;
+    g.beginPath(); g.moveTo(tx + .5, 0); g.lineTo(tx + .5, CH); g.stroke();
+    g.fillStyle = CURCOL; g.font = "bold " + (10 * dpr) + "px system-ui"; g.textBaseline = "top";
+    g.beginPath(); g.moveTo(tx - 6 * dpr, 0); g.lineTo(tx + 6 * dpr, 0); g.lineTo(tx, 10 * dpr); g.fill();
+    g.fillText("T", tx + 7 * dpr, 1 * dpr);
+  }
 }
 
 // Per-channel GROUND (0 V) markers on the left edge: where each channel's zero
@@ -530,6 +626,99 @@ function drawCursors() {
   for (const [i, v] of [[1, cur.v1], [2, cur.v2]]) { g.fillRect(0, v * CH - 4 * dpr, 8 * dpr, 8 * dpr); }
 }
 
+// ---- navigator overview strip ----
+function drawNavTrace(cols, color) {
+  if (!cols || !cols.length) return;
+  const n = cols.length;
+  navCtx.fillStyle = color; navCtx.globalAlpha = .75;
+  for (let px = 0; px < NW; px++) {
+    let lo = 256, hi = -1;
+    const a = Math.floor(px / NW * n), b = Math.max(a + 1, Math.floor((px + 1) / NW * n));
+    for (let i = a; i < b && i < n; i++) { const v = cols[i]; if (v < 0) continue; if (v < lo) lo = v; if (v > hi) hi = v; }
+    if (hi < 0) continue;
+    const yt = navY(hi, 1), yb = navY(lo, 1);
+    navCtx.fillRect(px, yt, 1, Math.max(1, yb - yt));
+  }
+  navCtx.globalAlpha = 1;
+}
+function drawNav() {
+  if (nav.style.display === "none") return;
+  navCtx.fillStyle = "#05080c"; navCtx.fillRect(0, 0, NW, NH);
+  navCtx.strokeStyle = "#182430"; navCtx.lineWidth = 1;
+  navCtx.beginPath(); navCtx.moveTo(0, NH / 2 + .5); navCtx.lineTo(NW, NH / 2 + .5); navCtx.stroke();
+  if (frame && !frame.is_env) {
+    if (view.c2) drawNavTrace(frame.c2, C2COL);
+    if (view.c1) drawNavTrace(frame.c1, C1COL);
+  }
+  // viewport rectangle = the visible [a,b] window.
+  const x0 = view.win.a * NW, x1 = view.win.b * NW;
+  navCtx.fillStyle = "rgba(255,159,46,.13)"; navCtx.fillRect(x0, 0, x1 - x0, NH);
+  navCtx.strokeStyle = "rgba(255,159,46,.85)"; navCtx.lineWidth = 1;
+  navCtx.strokeRect(x0 + .5, .5, Math.max(1, x1 - x0 - 1), NH - 1);
+  navCtx.fillStyle = "rgba(255,159,46,.95)";
+  navCtx.fillRect(x0 - 1, 0, 2, NH); navCtx.fillRect(x1 - 1, 0, 2, NH);
+}
+
+// ---- protocol decode: compute + render ----
+function decCodes(role) { return role === 2 ? (frame && frame.c2) : (frame && frame.c1); }
+function computeDecode() {
+  dcfg.result = null;
+  if (dcfg.proto === "off" || !frame || frame.is_env || !frame.c1) { updateDecodeResults(); return; }
+  const colTimeS = (frame.col_span_s || 0) / frame.c1.length;
+  const cfg = { threshold: dcfg.auto ? null : +$("decThr").value, guard: 4 };
+  let r = null;
+  if (dcfg.proto === "uart")
+    r = decodeUART(decCodes(dcfg.line), colTimeS, Object.assign(cfg, { baud: dcfg.baud, bits: dcfg.bits, parity: dcfg.parity }));
+  else if (dcfg.proto === "i2c")
+    r = decodeI2C(decCodes(dcfg.scl), decCodes(dcfg.sda), colTimeS, cfg);
+  else if (dcfg.proto === "spi")
+    r = decodeSPI(decCodes(dcfg.clk), decCodes(dcfg.data), colTimeS, Object.assign(cfg, { cpol: dcfg.cpol, cpha: dcfg.cpha, bitOrder: dcfg.msb ? "msb" : "lsb" }));
+  dcfg.result = r;
+  if (r && r.ok && dcfg.auto && r.meta && r.meta.threshold != null) {
+    $("decThr").value = Math.round(r.meta.threshold); $("decThrV").textContent = Math.round(r.meta.threshold);
+  }
+  updateDecodeResults();
+}
+function updateDecodeResults() {
+  const card = $("decodeResultCard");
+  if (dcfg.proto === "off") { card.style.display = "none"; return; }
+  card.style.display = "";
+  const r = dcfg.result;
+  if (frame && frame.is_env) { $("decodeText").value = "(envelope — lower time/div to decode)"; $("decodeCount").textContent = "raise time/div"; return; }
+  if (!r) { $("decodeText").value = ""; $("decodeCount").textContent = ""; return; }
+  if (!r.ok) { $("decodeText").value = "(no decode)"; $("decodeCount").textContent = r.error || "no signal"; return; }
+  $("decodeText").value = r.text;
+  $("decodeCount").textContent = r.bytes.length + " bytes" + (r.meta && r.meta.noCS ? " · no CS" : "");
+}
+// On-trace decode band (YT-only), placed in a reserved bottom lane. Uses the
+// windowed xForCol so labels track the trace at any zoom; spans off-window are
+// culled.
+function drawDecode(g) {
+  if (view.mode !== "YT" || dcfg.proto === "off" || !frame || frame.is_env) return;
+  const r = dcfg.result;
+  if (!r || !r.ok || !r.spans.length || !frame.c1) return;
+  const n = frame.c1.length, bandH = 20 * dpr, bandY = CH - bandH - 6 * dpr;
+  g.save();
+  g.fillStyle = "rgba(5,8,12,0.6)"; g.fillRect(0, bandY - 2 * dpr, CW, bandH + 4 * dpr);
+  g.textBaseline = "middle"; g.textAlign = "center"; g.font = "bold " + (11 * dpr) + "px system-ui";
+  for (const s of r.spans) {
+    let x0 = xForCol(s.i0, n), x1 = xForCol(s.i1, n);
+    if (x1 < 0 || x0 > CW) continue;
+    const col = DECCOL[s.kind] || "#7c8894";
+    if (s.kind === "start" || s.kind === "stop") {
+      g.fillStyle = col; g.fillRect(x0 - dpr, bandY, 2 * dpr, bandH);
+      g.beginPath(); g.moveTo(x0 - 4 * dpr, bandY); g.lineTo(x0 + 4 * dpr, bandY); g.lineTo(x0, bandY + 5 * dpr); g.fill();
+      continue;
+    }
+    x1 = Math.max(x1, x0 + 2 * dpr); const w = x1 - x0;
+    g.fillStyle = hexA(col, 0.2); g.fillRect(x0, bandY, w, bandH);
+    g.strokeStyle = col; g.lineWidth = dpr; g.strokeRect(x0 + .5, bandY + .5, w - dpr, bandH - dpr);
+    const label = fitLabel(g, s.text, w - 6 * dpr);
+    if (label) { g.fillStyle = col; g.fillText(label, (x0 + x1) / 2, bandY + bandH / 2); }
+  }
+  g.restore(); g.textAlign = "left"; g.textBaseline = "alphabetic";
+}
+
 function redraw() {
   if (view.mode === "XY") { clearPersist(); drawXY(); drawCursors(); return; }
   if (view.mode === "FFT") { clearPersist(); drawFFT(); drawCursors(); return; }
@@ -549,7 +738,9 @@ function redraw() {
     drawYT(ctx);
   }
   drawYTPeaks(ctx);
+  drawDecode(ctx);
   drawCursors();
+  drawNav();
 }
 
 // ---- measurements ----
@@ -580,7 +771,8 @@ function updateMeas() {
 function updateCursors() {
   if (!view.cursors || !frame) { $("curCard").style.display = "none"; return; }
   $("curCard").style.display = "";
-  const dt = Math.abs(cur.t2 - cur.t1) * (frame.col_span_s || 0);
+  // Cursors are screen fractions; the screen now spans (b-a) of the record.
+  const dt = Math.abs(cur.t2 - cur.t1) * (frame.col_span_s || 0) * (view.win.b - view.win.a);
   const vFull1 = 256 * (frame.vpc1 || 1 / 32), vFull2 = 256 * (frame.vpc2 || 1 / 32);
   const dv1 = Math.abs(cur.v2 - cur.v1) * vFull1, dv2 = Math.abs(cur.v2 - cur.v1) * vFull2;
   $("curBody").innerHTML =
@@ -626,13 +818,46 @@ function moveCursor(ev) {
   updateCursors(); redraw();
 }
 
+// Navigator: drag to pan the viewport (click outside it first recenters it);
+// double-click resets to the full record. Separate from the scope's own
+// pointer handlers, so cursor-drag / FFT-pick are untouched.
+nav.addEventListener("pointerdown", ev => {
+  if (view.mode !== "YT") return;
+  let f = navFrac(ev), w = view.win, s = w.b - w.a;
+  if (f < w.a || f > w.b) { const na = Math.max(0, Math.min(1 - s, f - s / 2)); setWin(na, na + s); }
+  navDrag.active = true; navDrag.grab = f; navDrag.a0 = view.win.a; navDrag.b0 = view.win.b;
+  nav.setPointerCapture(ev.pointerId);
+});
+nav.addEventListener("pointermove", ev => {
+  if (!navDrag.active) return;
+  const f = navFrac(ev), s = navDrag.b0 - navDrag.a0;
+  const na = Math.max(0, Math.min(1 - s, navDrag.a0 + (f - navDrag.grab)));
+  setWin(na, na + s);
+});
+nav.addEventListener("pointerup", () => navDrag.active = false);
+nav.addEventListener("dblclick", () => resetWin());
+
+// Wheel over the scope: zoom about the cursor (Y-T only). Anchors the record
+// fraction under the pointer so it stays put as the span grows/shrinks.
+scope.addEventListener("wheel", ev => {
+  if (view.mode !== "YT") return;
+  ev.preventDefault();
+  const w = view.win, span = w.b - w.a, sx = Math.max(0, Math.min(1, ptToNorm(ev).x));
+  const fx = w.a + sx * span;
+  const ns = Math.max(MINSPAN, Math.min(1, span * Math.exp(ev.deltaY * 0.001)));
+  let na = fx - sx * ns, nb = na + ns;
+  if (na < 0) { na = 0; nb = ns; }
+  if (nb > 1) { nb = 1; na = 1 - ns; }
+  setWin(na, nb);
+}, { passive: false });
+
 // ---- polling ----
 async function pollFrame() {
   if (!frozen) {
     try {
       const r = await fetch("/api/frame?since=" + lastSeq + "&cols=" + reqCols);
       const f = await r.json();
-      if (!f.unchanged) { frame = f; lastSeq = f.seq; redraw(); updateMeas(); updateCursors(); }
+      if (!f.unchanged) { frame = f; lastSeq = f.seq; computeDecode(); redraw(); updateMeas(); updateCursors(); }
     } catch (e) { /* keep last */ }
   }
   setTimeout(pollFrame, 90);
@@ -741,7 +966,10 @@ function setMode(m) {
   // The peak list lives in FFT and Y-T; hide it in X-Y. (redraw() re-shows and
   // repopulates it for the active mode.)
   $("fftCard").style.display = peaksVisible() ? "" : "none";
-  clearPersist(); redraw();
+  // The navigator lives in Y-T only; toggling it changes the scope height, so
+  // re-measure (resize() ends with redraw()).
+  nav.style.display = m === "YT" ? "" : "none";
+  clearPersist(); resize();
 }
 $("mYT").onclick = () => setMode("YT");
 $("mXY").onclick = () => setMode("XY");
@@ -751,6 +979,44 @@ $("tCursors").onclick = () => { view.cursors = !view.cursors; $("tCursors").clas
 $("tC1").onclick = () => { view.c1 = !view.c1; $("tC1").classList.toggle("on", view.c1); redraw(); };
 $("tC2").onclick = () => { view.c2 = !view.c2; $("tC2").classList.toggle("on", view.c2); redraw(); };
 $("freeze").onclick = () => { frozen = !frozen; $("freeze").classList.toggle("on", frozen); };
+
+// ---- decode wiring ----
+function updateDecodePanel() {
+  const p = dcfg.proto;
+  $("decRoles").style.display = p === "off" ? "none" : "";
+  for (const c of document.querySelectorAll(".dec-uart")) c.style.display = p === "uart" ? "flex" : "none";
+  for (const c of document.querySelectorAll(".dec-i2c")) c.style.display = p === "i2c" ? "flex" : "none";
+  for (const c of document.querySelectorAll(".dec-spi")) c.style.display = p === "spi" ? "flex" : "none";
+  updateDecodeResults();
+}
+function recompute() { computeDecode(); redraw(); }
+(function initDecode() {
+  for (const sel of document.querySelectorAll(".rolesel")) {
+    sel.innerHTML = '<option value="1">C1</option><option value="2">C2</option>';
+  }
+  $("decSda").value = "2"; $("decData").value = "2"; $("decLine").value = "1";
+  $("decProto").onchange = () => { dcfg.proto = $("decProto").value; updateDecodePanel(); recompute(); };
+  $("decScl").onchange = () => { dcfg.scl = +$("decScl").value; recompute(); };
+  $("decSda").onchange = () => { dcfg.sda = +$("decSda").value; recompute(); };
+  $("decClk").onchange = () => { dcfg.clk = +$("decClk").value; recompute(); };
+  $("decData").onchange = () => { dcfg.data = +$("decData").value; recompute(); };
+  $("decLine").onchange = () => { dcfg.line = +$("decLine").value; recompute(); };
+  $("decAuto").onclick = () => { dcfg.auto = !dcfg.auto; $("decAuto").classList.toggle("on", dcfg.auto); recompute(); };
+  $("decThr").oninput = () => { dcfg.auto = false; $("decAuto").classList.remove("on"); $("decThrV").textContent = $("decThr").value; recompute(); };
+  $("decBaud").onchange = () => { dcfg.baud = Math.max(1, +$("decBaud").value | 0); recompute(); };
+  $("decBits").onchange = () => { dcfg.bits = Math.max(5, Math.min(9, +$("decBits").value | 0)); recompute(); };
+  $("decParity").onchange = () => { dcfg.parity = $("decParity").value; recompute(); };
+  $("decCpol").onchange = () => { dcfg.cpol = +$("decCpol").value; recompute(); };
+  $("decCpha").onchange = () => { dcfg.cpha = +$("decCpha").value; recompute(); };
+  $("decMsb").onchange = () => { dcfg.msb = $("decMsb").value === "1"; recompute(); };
+  $("decodeCopy").onclick = () => {
+    const t = $("decodeText").value;
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).catch(() => {});
+    else { $("decodeText").select(); try { document.execCommand("copy"); } catch (e) {} }
+    $("decodeCopy").textContent = "copied"; setTimeout(() => $("decodeCopy").textContent = "copy", 900);
+  };
+  updateDecodePanel();
+})();
 
 $("ePNG").onclick = () => {
   const a = document.createElement("a");
