@@ -22,10 +22,10 @@ run(async (t) => {
 
   // --- acquire (RUN / SINGLE) ------------------------------------------------
   await po.click("run"); // optimistic toggle running -> stopped
-  t.ok(await po.text("run") === "STOP" && await po.hasClass("run", "stopped"),
+  t.ok((await po.text("run")).includes("STOP") && await po.hasClass("run", "stopped"),
     "RUN click optimistically shows STOP + stopped style");
   await po.click("run");
-  t.ok(await po.text("run") === "RUN" && await po.hasClass("run", "running"),
+  t.ok((await po.text("run")).includes("RUN") && await po.hasClass("run", "running"),
     "second RUN click returns to RUN + running style");
   await po.click("single");
   t.ok(await po.hasClass("single", "on"), "SINGLE arms (on state)");
@@ -80,6 +80,44 @@ run(async (t) => {
     "canvas exports a PNG data URL");
   await po.click("eCSV"); // must not throw
   t.ok(true, "CSV export click completes without error");
+
+  // --- accessibility ---------------------------------------------------------
+  t.ok(await po.eval(() => document.getElementById("hstat").getAttribute("aria-live")) === "polite",
+    "status region is an aria-live=polite announcer");
+  t.ok(await po.eval(() => document.getElementById("scope").getAttribute("role")) === "img"
+    && (await po.eval(() => document.getElementById("scope").getAttribute("aria-label")) || "").includes("trigger"),
+    "canvas is role=img with a live trigger-state label");
+  await po.click("tCursors");
+  t.ok(await po.eval(() => document.getElementById("tCursors").getAttribute("aria-pressed")) === "true",
+    "toggling a control updates its aria-pressed");
+  await po.click("tCursors");
+  t.ok(await po.eval(() => document.getElementById("tCursors").getAttribute("aria-pressed")) === "false",
+    "aria-pressed clears when toggled off");
+  t.ok((await po.eval(() => document.getElementById("lvl").getAttribute("aria-label")) || "").length > 0,
+    "the trigger-level slider has an accessible label");
+
+  // --- trigger-state chip (mirrors the LCD state machine) --------------------
+  const chip = await po.text("trigChip");
+  t.ok(["AUTO", "NORM", "SNGL", "WAIT", "T'D", "STOP"].includes(chip),
+    `header shows a trigger-state chip mirroring the LCD (${chip})`);
+  t.ok((await po.text("run")).includes("▶") || (await po.text("run")).includes("■"),
+    "RUN/STOP button carries a redundant glyph (not colour-only)");
+
+  // --- keyboard shortcuts ----------------------------------------------------
+  const curBefore = await po.isCardVisible("curCard");
+  await po.page.keyboard.press("c");                 // toggle cursors via keyboard
+  t.ok(await po.isCardVisible("curCard") !== curBefore, "keyboard 'c' toggles cursors");
+  await po.page.keyboard.press("c");                 // back
+  await po.page.keyboard.press("Shift+Slash");       // '?' opens help
+  t.ok(await po.isCardVisible("help"), "'?' opens the keyboard-help overlay");
+  await po.page.keyboard.press("Escape");
+  t.ok(!(await po.isCardVisible("help")), "Escape closes the help overlay");
+  // suppressed while a form control is focused (use the always-visible level slider)
+  await po.page.focus("#lvl");
+  const modeBefore = await po.hasClass("mFFT", "on");
+  await po.page.keyboard.press("f");                 // must NOT switch to FFT while a control is focused
+  t.ok(await po.hasClass("mFFT", "on") === modeBefore, "shortcuts are suppressed while a form control is focused");
+  await po.page.evaluate(() => document.activeElement.blur());
 
   // --- no uncaught page errors across the whole run --------------------------
   t.ok(pageErrors.length === 0, "no uncaught page errors: " + (pageErrors.join(" | ") || "none"));

@@ -11,7 +11,7 @@
   }
   header h1 { font-size: 14px; font-weight: 600; margin: 0; letter-spacing: .03em; }
   header h1 .dim { color: var(--dim); font-weight: 400; }
-  #hstat { color: var(--dim); font-size: 12px; margin-left: auto; text-align: right; }
+  #hstat { color: var(--dim); font-size: 12px; text-align: right; }
   #hstat b { color: var(--text); }
   #wedged { color: var(--stop); font-weight: 700; }
 
@@ -85,3 +85,29 @@
             border-radius: 4px; padding: 2px 4px; font-size: 12px; }
   #decRoles input[type=number] { background: var(--well); color: var(--text);
             border: 1px solid var(--edge2); border-radius: 4px; padding: 2px 4px; font-size: 12px; }
+
+  /* ---- accessibility + usability (Phase: a11y/keyboard) ---- */
+  :focus-visible { outline: 2px solid var(--focus); outline-offset: 1px; }
+  .visually-hidden { position: absolute; width: 1px; height: 1px; margin: -1px;
+    padding: 0; border: 0; clip: rect(0 0 0 0); overflow: hidden; white-space: nowrap; }
+
+  /* trigger-state chip in the header — mirrors the LCD state machine */
+  #trigChip { margin-left: auto; font-size: 11px; font-weight: 700; letter-spacing: .06em; padding: 2px 8px;
+    border-radius: 999px; border: 1px solid var(--edge2); color: var(--dim);
+    background: var(--well); font-variant-numeric: tabular-nums; }
+  #trigChip[data-state="T'D"] { color: var(--run); border-color: var(--run); }
+  #trigChip[data-state="AUTO"], #trigChip[data-state="NORM"] { color: var(--trigger); border-color: var(--trigger); }
+  #trigChip[data-state="WAIT"], #trigChip[data-state="SNGL"] { color: var(--warn); border-color: var(--warn); }
+  #trigChip[data-state="STOP"] { color: var(--stop); border-color: var(--stop); }
+
+  /* ? keyboard-help overlay */
+  #help { position: fixed; inset: 0; z-index: 50; display: none; align-items: center;
+    justify-content: center; background: rgba(0,0,0,.6); }
+  #help.show { display: flex; }
+  #help .sheet { background: var(--panel); border: 1px solid var(--edge2); border-radius: 8px;
+    padding: 16px 20px; min-width: 320px; max-height: 80vh; overflow: auto; }
+  #help h2 { margin: 0 0 10px; font-size: 14px; }
+  #help table { border-collapse: collapse; font-size: 12px; }
+  #help kbd { display: inline-block; min-width: 18px; text-align: center; font: 11px ui-monospace, monospace;
+    background: var(--well); border: 1px solid var(--edge2); border-radius: 4px; padding: 1px 5px; }
+  #help td { padding: 3px 10px 3px 0; }

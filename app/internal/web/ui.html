@@ -10,13 +10,14 @@
 <body>
 <header>
   <h1>open-sds1000cml <span class="dim">— SDS1102CML+</span></h1>
-  <div id="hstat"><span id="wedged" style="display:none">ENGINE WEDGED</span><span id="line">connecting…</span></div>
+  <span id="trigChip" data-state="" title="trigger state (press ? for shortcuts)" aria-label="trigger state">—</span>
+  <div id="hstat" aria-live="polite"><span id="wedged" role="alert" style="display:none">ENGINE WEDGED</span><span id="line">connecting…</span></div>
 </header>
 
 <div id="main">
   <div id="wrap">
     <div id="scopebox">
-      <canvas id="scope"></canvas>
+      <canvas id="scope" role="img" aria-label="oscilloscope display"></canvas>
       <div id="stopped" style="display:none">STOPPED</div>
     </div>
     <canvas id="nav"></canvas>
@@ -127,7 +128,7 @@
   <div class="grp">
     <label>trig</label>
     <button id="mode">AUTO</button>
-    <select id="ttype">
+    <select id="ttype" aria-label="trigger type">
       <option value="0">EDGE</option><option value="1">PULSE</option>
       <option value="2">SLOPE</option><option value="3">VIDEO</option>
     </select>
@@ -137,28 +138,28 @@
   </div>
   <div class="grp">
     <label>level</label>
-    <input type="range" id="lvl" min="-3.8" max="4.7" step="0.05" value="0">
+    <input type="range" id="lvl" aria-label="trigger level" min="-3.8" max="4.7" step="0.05" value="0">
     <span id="lvlv" class="readout">0.00 V</span>
   </div>
   <div class="grp">
     <label title="horizontal trigger position">pos</label>
-    <input type="range" id="tpos" min="0" max="1" step="0.02" value="0.5" title="trigger horizontal position">
+    <input type="range" id="tpos" aria-label="trigger horizontal position" min="0" max="1" step="0.02" value="0.5" title="trigger horizontal position">
   </div>
-  <div class="grp"><label>time/div</label><select id="tdiv"></select></div>
+  <div class="grp"><label>time/div</label><select id="tdiv" aria-label="time per division"></select></div>
   <div class="grp"><label class="cc1">C1</label><select id="vdiv1"></select>
-    <input type="range" id="off1" min="-3.8" max="3.8" step="0.05" value="0" title="C1 offset">
+    <input type="range" id="off1" aria-label="C1 offset" min="-3.8" max="3.8" step="0.05" value="0" title="C1 offset">
     <span id="off1v" class="readout">—</span></div>
   <div class="grp"><label class="cc2">C2</label><select id="vdiv2"></select>
-    <input type="range" id="off2" min="-3.8" max="3.8" step="0.05" value="0" title="C2 offset">
+    <input type="range" id="off2" aria-label="C2 offset" min="-3.8" max="3.8" step="0.05" value="0" title="C2 offset">
     <span id="off2v" class="readout">—</span></div>
   <div class="grp"><label>acq</label>
-    <select id="acq">
+    <select id="acq" aria-label="acquisition mode">
       <option value="0">NORMAL</option><option value="1">AVERAGE</option>
       <option value="2">ERES</option><option value="3">PEAK</option>
     </select>
     <select id="acqn" style="display:none"></select></div>
   <div class="grp"><label>mem</label>
-    <select id="memdepth">
+    <select id="memdepth" aria-label="memory depth">
       <option value="2048">2k (fast)</option><option value="6144" selected>6k</option>
       <option value="14336">14k</option><option value="20480">20k (deep)</option>
     </select></div>
@@ -189,6 +190,13 @@
     </div>
   </div>
 </footer>
+
+<div id="help" role="dialog" aria-modal="true" aria-label="keyboard shortcuts">
+  <div class="sheet">
+    <h2>Keyboard shortcuts</h2>
+    <table id="helpBody"></table>
+  </div>
+</div>
 
 <script src="peaks.js"></script>
 <script src="decode.js"></script>

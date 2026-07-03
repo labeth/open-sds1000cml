@@ -625,6 +625,7 @@ function drawDecode(g) {
 }
 
 function redraw() {
+  refreshAria(); // keep aria-pressed in sync with view toggles (which call redraw)
   if (view.mode === "XY") { clearPersist(); drawXY(); drawCursors(); return; }
   if (view.mode === "FFT") { clearPersist(); drawFFT(); drawCursors(); return; }
   if (view.persist && !frame?.is_env) {
@@ -787,8 +788,25 @@ async function pollStatus() {
   setTimeout(pollStatus, 1000);
 }
 
+// trigState mirrors the LCD state machine (render.go) so a glance between the
+// bench screen and the browser shows the same word.
+function trigState() {
+  if (!st) return "—";
+  if (!st.running) return "STOP";
+  if (st.single) return "SNGL";
+  if (frame && frame.trigd) return "T'D";
+  if (st.norm) return "WAIT";
+  return "AUTO";
+}
+// Buttons that are ON/OFF toggles get an aria-pressed mirror of their .on class.
+const PRESSED = ["mYT", "mXY", "mFFT", "tPersist", "tCursors", "tC1", "tC2", "freeze",
+  "mode", "ets", "single", "decAuto", "decWatch", "decStream"];
+function refreshAria() {
+  for (const id of PRESSED) { const b = $(id); if (b) b.setAttribute("aria-pressed", b.classList.contains("on") ? "true" : "false"); }
+}
+
 function applyStatus() {
-  $("run").textContent = st.running ? "RUN" : "STOP";
+  $("run").textContent = st.running ? "RUN ▶" : "STOP ■"; // glyph + word (redundant coding)
   $("run").className = st.running ? "running" : "stopped";
   $("stopped").style.display = st.running ? "none" : "block";
   $("mode").textContent = st.norm ? "NORM" : "AUTO";
@@ -822,6 +840,12 @@ function applyStatus() {
     "<b>" + fmtTdiv(b) + "/div</b> · " + st.band + " · " + st.fps.toFixed(0) + " fps · seq <b>" + st.seq + "</b>" +
     " · cols " + reqCols + (st.mmap_drain ? "" : " (ioctl)") + (st.dead_runs ? " · DEAD " + st.dead_runs : "") +
     " · cal:" + (st.cal_source || "?") + " · " + st.version;
+  const state = trigState();
+  const chip = $("trigChip");
+  chip.textContent = state;
+  chip.dataset.state = state;
+  $("scope").setAttribute("aria-label", "oscilloscope — trigger " + state + ", " + fmtTdiv(b) + "/div");
+  refreshAria();
 }
 
 // ---- controls ----
@@ -1030,6 +1054,40 @@ $("eCSV").onclick = () => {
   a.download = "scope-" + frame.seq + ".csv";
   a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" })); a.click();
 };
+
+// ---- keyboard shortcuts + ? help overlay ----
+// One declarative registry drives the keymap AND the help sheet, so adding a
+// shortcut is a one-line change (the extensibility pattern from the ADR).
+const KEYMAP = [
+  { key: " ", label: "Space", desc: "Run / Stop", run: () => $("run").click() },
+  { key: "s", label: "S", desc: "Single shot", run: () => $("single").click() },
+  { key: "a", label: "A", desc: "AUTO / NORM trigger", run: () => $("mode").click() },
+  { key: "t", label: "T", desc: "Trigger source C1/C2", run: () => $("source").click() },
+  { key: "1", label: "1", desc: "Toggle channel 1", run: () => $("tC1").click() },
+  { key: "2", label: "2", desc: "Toggle channel 2", run: () => $("tC2").click() },
+  { key: "c", label: "C", desc: "Cursors", run: () => $("tCursors").click() },
+  { key: "p", label: "P", desc: "Persist", run: () => $("tPersist").click() },
+  { key: "z", label: "Z", desc: "Freeze", run: () => $("freeze").click() },
+  { key: "y", label: "Y", desc: "Y-T view", run: () => setMode("YT") },
+  { key: "x", label: "X", desc: "X-Y view", run: () => setMode("XY") },
+  { key: "f", label: "F", desc: "FFT view", run: () => setMode("FFT") },
+  { key: "?", label: "?", desc: "Show / hide this help", run: () => toggleHelp() },
+];
+function editableFocused() { const a = document.activeElement; return a && /^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName); }
+function toggleHelp() {
+  const el = $("help");
+  if (!el.classList.contains("show"))
+    $("helpBody").innerHTML = KEYMAP.map(x => `<tr><td><kbd>${x.label}</kbd></td><td>${x.desc}</td></tr>`).join("");
+  el.classList.toggle("show");
+}
+window.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") { $("help").classList.remove("show"); return; }
+  if (editableFocused() || e.ctrlKey || e.metaKey || e.altKey) return;
+  const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+  const m = KEYMAP.find(x => x.key === k || x.key === e.key);
+  if (m) { e.preventDefault(); m.run(); }
+});
+$("help").onclick = (e) => { if (e.target.id === "help") $("help").classList.remove("show"); }; // click backdrop closes
 
 resize();
 pollFrame();

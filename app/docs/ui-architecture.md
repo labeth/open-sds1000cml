@@ -248,3 +248,13 @@ Device at 192.168.1.209 (web UI :8080). `/tmp` is read-only → deploy with
   removes the last `display:none` hooks). Guardrails flipped: inline-script
   budget→0, CSP-present now REQUIRED. Device-verified at :8080: first-paint 200ms
   with 5 assets, no page errors, no CSP violations, decode/FFT work under CSP.
+- **Phase (usability): a11y + keyboard + trigger chip — DONE.** Added a
+  header trigger-state CHIP that mirrors the LCD state machine (AUTO/NORM/SNGL/
+  WAIT/T'D/STOP, coloured by state); RUN ▶ / STOP ■ glyphs (redundant coding, not
+  colour-only). Accessibility: `aria-live=polite` status region, `role=alert`
+  wedged banner, `role=img` + live trigger-state `aria-label` on the canvas,
+  `aria-pressed` mirroring every toggle (refreshAria on redraw + applyStatus),
+  `aria-label` on the ranges/selects, and a `:focus-visible` ring (`--focus`
+  token). Keyboard shortcuts + a `?` help overlay driven by ONE declarative
+  KEYMAP registry (add a shortcut = one line) — suppressed while a form control is
+  focused. New acceptance specs cover all of it. Device-verified at :8080.
