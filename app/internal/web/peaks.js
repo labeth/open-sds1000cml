@@ -86,6 +86,28 @@ function nearestPeak(peaks, freq) {
   return best;
 }
 
+// component: reconstruct the single-frequency contribution of `samples` at
+// cyclesPerLen cycles across the whole array (= freq * recordDuration). Fits
+// amplitude+phase of that one tone by projecting the mean-removed signal onto
+// cos/sin (a single-bin, un-windowed DFT), then returns a same-length array in
+// the SAME code units so it can be drawn straight over the time trace — "show me
+// just this frequency inside the waveform". Values < 0 are treated as gaps:
+// skipped in the fit, still produced in the output.
+function component(samples, cyclesPerLen) {
+  const M = samples.length;
+  if (M < 2) return null;
+  const w = 2 * Math.PI * cyclesPerLen / M;
+  let mean = 0, cnt = 0;
+  for (let i = 0; i < M; i++) { const v = samples[i]; if (v >= 0) { mean += v; cnt++; } }
+  if (!cnt) return null; mean /= cnt;
+  let ci = 0, si = 0;
+  for (let i = 0; i < M; i++) { const v = samples[i]; if (v < 0) continue; const d = v - mean; ci += d * Math.cos(w * i); si += d * Math.sin(w * i); }
+  ci = 2 * ci / cnt; si = 2 * si / cnt;
+  const out = new Array(M);
+  for (let i = 0; i < M; i++) out[i] = mean + ci * Math.cos(w * i) - si * Math.sin(w * i);
+  return out;
+}
+
 if (typeof module !== "undefined" && module.exports) {
-  module.exports = { fftInPlace, spectrum, detectPeaks, nearestPeak };
+  module.exports = { fftInPlace, spectrum, detectPeaks, nearestPeak, component };
 }

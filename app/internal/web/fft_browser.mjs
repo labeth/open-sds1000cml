@@ -70,23 +70,20 @@ try {
   const nrows = await page.locator("#fftBody .pk").count();
   ok(nrows === peaks.length, `table row per peak (${nrows})`);
 
-  // Click the lowest-frequency peak, then a clearly different one (the higher
-  // of the two STRONGEST peaks — a real tone that is always present). Assert by
-  // FREQUENCY, not index: the list composition can change between clicks as
-  // sidelobes cross the floor, so an index would be racy — the frequency is the
-  // contract.
-  await page.click('#fftBody .pk[data-i="0"]');
-  const f0 = await page.evaluate(() => selFreq);
-  ok(await page.evaluate(() => selPeak >= 0 && Math.abs(fftPeaks[selPeak].freq - selFreq) < 1),
-    `clicking a peak selects it (${(f0/1000).toFixed(1)}k)`);
-  const targetIdx = await page.evaluate(() => {
-    const top2 = fftPeaks.map((p, i) => ({ db: p.db, i, f: p.freq }))
-      .sort((a, b) => b.db - a.db).slice(0, 2).sort((a, b) => b.f - a.f);
-    return top2[0].i; // higher-frequency of the two main tones
-  });
-  await page.click(`#fftBody .pk[data-i="${targetIdx}"]`);
-  const f1 = await page.evaluate(() => selFreq);
-  ok(Math.abs(f1 - f0) > 2000, `re-selecting a different peak works (${(f0/1000).toFixed(1)}k -> ${(f1/1000).toFixed(1)}k)`);
+  // LIST CLICKS must be reliable: click several rows in turn; each must select
+  // that row's own frequency (rows carry data-freq, so this is robust to the
+  // list re-sorting between render and click — the old index-based bug).
+  const rowFreqs = await page.evaluate(() =>
+    [...document.querySelectorAll("#fftBody .pk")].map(r => +r.dataset.freq));
+  let f1 = 0;
+  for (const di of [0, Math.floor(nrows / 2), nrows - 1, 1]) {
+    await page.click(`#fftBody .pk[data-i="${di}"]`);
+    const sel = await page.evaluate(() => selFreq);
+    ok(Math.abs(sel - rowFreqs[di]) < 600, `list-click row ${di} selects its frequency (${(rowFreqs[di]/1000).toFixed(1)}k -> sel ${(sel/1000).toFixed(1)}k)`);
+    f1 = sel;
+  }
+  const f0 = rowFreqs[0];
+  ok(Math.abs(f1 - f0) > 2000, `re-selecting a different row changes the selection (${(f0/1000).toFixed(1)}k vs ${(f1/1000).toFixed(1)}k)`);
 
   // Stability while magnitudes reshuffle: the selection must keep pointing at a
   // peak of frequency f1, even as the STRONGEST peak (what an index-based
@@ -107,15 +104,29 @@ try {
   ok(stable, `selection stayed on ${(f1/1000).toFixed(1)}k across 16 reshuffling frames (max drift ${Math.round(worstDrift)} Hz)`);
   ok(strongestIdx.size > 1, `magnitude ranking actually reshuffled (strongest peak took ${strongestIdx.size} positions)`);
 
-  // mode-switch re-render: list hidden off FFT, restored on return
+  // mode-switch behaviour: list lives in FFT and Y-T, hidden in X-Y.
   ok(await page.evaluate(() => getComputedStyle(fftCard).display) !== "none", "list visible in FFT");
   await page.click("#mYT"); await page.waitForTimeout(200);
-  ok(await page.evaluate(() => getComputedStyle(fftCard).display) === "none", "list hidden after switch to Y-T");
+  await page.waitForFunction(() => typeof fftPeaks !== "undefined" && fftPeaks.length >= 2, null, { timeout: 8000 });
+  ok(await page.evaluate(() => getComputedStyle(fftCard).display) !== "none", "list ALSO visible in Y-T (peaks in the time view)");
+
+  // In Y-T, selecting a list frequency reconstructs that tone as an overlay.
+  const ok2 = await page.evaluate(() => {
+    const r = [...document.querySelectorAll("#fftBody .pk")]
+      .sort((a, b) => +b.dataset.freq - +a.dataset.freq)[0]; // highest-freq row
+    r.click();
+    const comp = component(peakSrc(), selFreq * frame.col_span_s);
+    return selPeak >= 0 && Array.isArray(comp) && comp.length === peakSrc().length;
+  });
+  ok(ok2, "Y-T list-click selects a frequency and it reconstructs as an overlay curve");
+
   await page.click("#mXY"); await page.waitForTimeout(150);
-  ok(await page.evaluate(() => getComputedStyle(fftCard).display) === "none", "list stays hidden in X-Y");
+  ok(await page.evaluate(() => getComputedStyle(fftCard).display) === "none", "list hidden in X-Y");
   await page.click("#mFFT");
   await page.waitForFunction(() => typeof fftPeaks !== "undefined" && fftPeaks.length >= 1, null, { timeout: 8000 });
   ok(await page.evaluate(() => getComputedStyle(fftCard).display) !== "none", "list restored on return to FFT");
+  await page.click("#mYT"); await page.waitForTimeout(200); // land on Y-T for a shot
+  if (process.env.SHOT_DIR) { await page.screenshot({ path: process.env.SHOT_DIR + "/yt_component.png" }); }
 } finally {
   await browser.close();
 }

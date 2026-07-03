@@ -3,7 +3,7 @@
 // synthetic scope frames, and checks the two things the user hit: selection
 // must survive frame-to-frame magnitude jitter, and you must be able to pick a
 // different peak afterwards. Run: node peaks.test.cjs  (exit 0 = pass).
-const { spectrum, detectPeaks, nearestPeak } = require("./peaks.js");
+const { spectrum, detectPeaks, nearestPeak, component } = require("./peaks.js");
 
 let failed = 0;
 function ok(cond, msg) { if (!cond) { console.error("FAIL:", msg); failed++; } else { console.log("ok  -", msg); } }
@@ -89,6 +89,27 @@ function frame(amp1, amp2, seed) {
   const flat = new Array(N).fill(128);
   const p = detectPeaks(spectrum(flat, NYQ), {});
   ok(p.length === 0, `flat signal -> ${p.length} peaks (0)`);
+}
+
+// --- 7. component(): isolate one tone, correct amplitude, other tone removed --
+// x = 128 + 40*cos(2π·8n/M) + 30*cos(2π·20n/M). Reconstructing the 8-cycle tone
+// must return ~128 + 40*cos(...) — amplitude ~80 ptp, and the 20-cycle tone gone.
+{
+  const M = 512, C1 = 8, C2 = 20;
+  const x = new Array(M);
+  for (let n = 0; n < M; n++) x[n] = 128 + 40 * Math.cos(2 * Math.PI * C1 * n / M) + 30 * Math.cos(2 * Math.PI * C2 * n / M);
+  const r = component(x, C1);
+  let mn = Infinity, mx = -Infinity, err = 0;
+  for (let n = 0; n < M; n++) {
+    const pure = 128 + 40 * Math.cos(2 * Math.PI * C1 * n / M); // 20-cycle tone excluded
+    err = Math.max(err, Math.abs(r[n] - pure));
+    if (r[n] < mn) mn = r[n]; if (r[n] > mx) mx = r[n];
+  }
+  near(mx - mn, 80, 2, "component() recovers the tone amplitude (ptp)");
+  ok(err < 1.5, `component() isolates the tone, other frequency removed (max err ${err.toFixed(2)})`);
+  // gaps (-1) are tolerated
+  const xg = x.slice(); for (let n = 0; n < 20; n++) xg[n] = -1;
+  ok(component(xg, C1) != null, "component() tolerates gaps (-1)");
 }
 
 console.log(failed ? `\n${failed} FAILED` : "\nALL PASS");
