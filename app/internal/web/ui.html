@@ -651,6 +651,10 @@ $("acqn").onchange = () => send(+$("acq").value === 1 ? "avgcount" : "eres", +$(
 function setMode(m) {
   view.mode = m;
   for (const [id, mm] of [["mYT", "YT"], ["mXY", "XY"], ["mFFT", "FFT"]]) $(id).classList.toggle("on", mm === m);
+  // Mode-dependent panels must be synced HERE, not only inside their drawer:
+  // leaving FFT never calls drawFFT again, so the peak list would otherwise
+  // stay on screen. Hide it up front; drawFFT re-shows it when entering FFT.
+  $("fftCard").style.display = m === "FFT" ? "" : "none";
   clearPersist(); redraw();
 }
 $("mYT").onclick = () => setMode("YT");
