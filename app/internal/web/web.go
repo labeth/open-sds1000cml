@@ -18,6 +18,9 @@ import (
 //go:embed ui.html
 var uiHTML []byte
 
+//go:embed peaks.js
+var peaksJS []byte
+
 // Scope is the engine surface the web layer needs (the setters come from
 // *engine.Engine; WithFrame comes from the frames.Fanout — the arena's
 // single-consumer read slot belongs to the fan-out, and every other reader
@@ -85,6 +88,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/api/set", s.hSet)
 	mux.HandleFunc("/api/panel", s.hPanel)
 	mux.HandleFunc("/api/screen.png", s.hScreen)
+	mux.HandleFunc("/peaks.js", s.hPeaksJS)
 	return mux
 }
 
@@ -126,6 +130,11 @@ func (s *Server) hScreen(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "image/png")
 	w.Header().Set("Cache-Control", "no-store")
 	w.Write(s.screen())
+}
+
+func (s *Server) hPeaksJS(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
+	w.Write(peaksJS)
 }
 
 func (s *Server) hRoot(w http.ResponseWriter, r *http.Request) {
