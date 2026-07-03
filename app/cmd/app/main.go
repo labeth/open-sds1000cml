@@ -13,6 +13,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"strconv"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -47,11 +48,18 @@ func buildHUD(e *engine.Engine, fe *analog.FrontEnd) lcd.HUD {
 		TrigSrc: st.TrigSource, TrigRising: st.TrigRising,
 		Running: st.Running, Norm: st.Norm, Single: st.Single,
 		TrigPosFrac: st.TrigPosFrac, TwoChan: true,
+		ShowC1: true, ShowC2: true,
 	}
 	if fe != nil {
 		idx, _ := fe.Snapshot()
 		hud.C1VdivV = analog.Detents[idx[0]].VdivV
 		hud.C2VdivV = analog.Detents[idx[1]].VdivV
+		if st.OffC1 != 0 {
+			hud.OffC1V = fe.OffsetVolts(0, st.OffC1)
+		}
+		if st.OffC2 != 0 {
+			hud.OffC2V = fe.OffsetVolts(1, st.OffC2)
+		}
 	}
 	srcVdiv := hud.C1VdivV
 	if st.TrigSource == 1 {
@@ -60,8 +68,21 @@ func buildHUD(e *engine.Engine, fe *analog.FrontEnd) lcd.HUD {
 	if st.TrigCode != 0 && srcVdiv > 0 {
 		hud.TrigLvlDiv = engine.TrigLevelVolts(st.TrigCode) / srcVdiv
 	}
+	if pc := uiCtrl.Load(); pc != nil { // menu overlay + per-channel display
+		mv := pc.MenuView()
+		hud.ShowC1, hud.ShowC2 = mv.ShowC1, mv.ShowC2
+		hud.MenuOpen, hud.MenuTitle, hud.MenuSel = mv.Open, mv.Title, mv.Sel
+		hud.MenuItems = make([]lcd.MenuItem, len(mv.Items))
+		for i, it := range mv.Items {
+			hud.MenuItems[i] = lcd.MenuItem{Label: it.Label, Value: it.Value}
+		}
+	}
 	return hud
 }
+
+// uiCtrl is the panel controller, published after creation so the LCD render
+// loop (started earlier) and the SCDP screenshot can read the menu overlay.
+var uiCtrl atomic.Pointer[panel.Controller]
 
 // runLCD drives the device panel at the 50 ms display cadence (spec 07 §8 —
 // a hard minimum; faster starves the acquisition owner). Fully optional: on
@@ -243,10 +264,24 @@ func main() {
 		pfe = fe
 	}
 	pc := panel.New(e, pfe, keyFD, engine.SupportedTdivs(), 500e-6, logf)
+	uiCtrl.Store(pc) // publish for the LCD render loop + SCDP screenshot
 	go pc.Run(stopFo)
 	logf("panel controller up (fpga_key fd=%d)", keyFD)
 
-	srv := &http.Server{Addr: listen, Handler: web.New(scopeSource{e, fo}, feIface).Handler()}
+	// Device-screen PNG for the web /api/screen.png endpoint: the exact LCD render.
+	screenPNG := func() []byte {
+		back := lcd.NewMemSurface()
+		hud := buildHUD(e, fe)
+		fo.WithFrame(func(f *engine.Frame) {
+			if f != nil {
+				hud.SampleS = f.SampleS
+				hud.Trigd = f.Trigd
+			}
+			lcd.Render(back, f, hud, true)
+		})
+		return lcd.EncodePNG(back)
+	}
+	srv := &http.Server{Addr: listen, Handler: web.New(scopeSource{e, fo}, feIface, pc, screenPNG).Handler()}
 	go func() {
 		logf("web ui listening on %s", listen)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {

@@ -34,7 +34,15 @@ func (f *fakeEng) SetTdiv(t float64) (engine.Band, bool) {
 }
 func (f *fakeEng) SetNorm(on bool)    { f.calls = append(f.calls, call{"norm", b2i(on), 0}) }
 func (f *fakeEng) SetRunning(on bool) { f.calls = append(f.calls, call{"run", b2i(on), 0}) }
-func (f *fakeEng) SetSingle()         { f.calls = append(f.calls, call{"single", 0, 0}) }
+func (f *fakeEng) SetSingle()               { f.calls = append(f.calls, call{"single", 0, 0}) }
+func (f *fakeEng) SetTrigSlope(r bool)      { f.calls = append(f.calls, call{"slope", b2i(r), 0}) }
+func (f *fakeEng) SetTrigSource(ch int)     { f.calls = append(f.calls, call{"src", ch, 0}) }
+func (f *fakeEng) SetTrigType(t int)        { f.calls = append(f.calls, call{"ttype", t, 0}) }
+func (f *fakeEng) SetAcqMode(m int)         { f.calls = append(f.calls, call{"acq", m, 0}) }
+func (f *fakeEng) SetAvgCount(n int)        { f.calls = append(f.calls, call{"avg", n, 0}) }
+func (f *fakeEng) SetEresLen(l int)         { f.calls = append(f.calls, call{"eres", l, 0}) }
+func (f *fakeEng) SetETS(on bool)           { f.calls = append(f.calls, call{"ets", b2i(on), 0}) }
+func (f *fakeEng) SetTrigPosFrac(fr float64) { f.calls = append(f.calls, call{"trigpos", int(fr * 100), 0}) }
 
 func b2i(b bool) int {
 	if b {

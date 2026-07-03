@@ -33,8 +33,19 @@ type HUD struct {
 	Trigd            bool
 	SampleS          float64 // per-sample seconds (frequency readout)
 	TrigPosFrac      float64 // horizontal trigger position, 0.5 = centre
+	OffC1V, OffC2V   float64 // applied vertical offset volts (ground markers)
+	ShowC1, ShowC2   bool    // per-channel display enable
 	TwoChan          bool
+
+	// On-screen menu overlay (spec 08 §6): five softkey slots down the right edge.
+	MenuOpen  bool
+	MenuTitle string
+	MenuItems []MenuItem
+	MenuSel   int
 }
+
+// MenuItem is one softkey slot label + value for the LCD menu overlay.
+type MenuItem struct{ Label, Value string }
 
 const (
 	traceTop = 8
@@ -263,6 +274,11 @@ func Render(sf Surface, f *engine.Frame, hud HUD, live bool) {
 	sf.Fill(colBG)
 	drawGraticule(sf)
 
+	// Both-off ⇒ show both (default / callers that don't set the flags).
+	sc1, sc2 := hud.ShowC1, hud.ShowC2
+	if !sc1 && !sc2 {
+		sc1, sc2 = true, true
+	}
 	if f != nil && len(f.C1) > 0 {
 		valid := f.Valid
 		if valid < 1 {
@@ -272,10 +288,12 @@ func Render(sf Surface, f *engine.Frame, hud HUD, live bool) {
 			valid = len(f.C1)
 		}
 		if f.IsEnv && f.EnvCols > 0 {
-			if hud.TwoChan {
+			if hud.TwoChan && sc2 {
 				drawEnvelope(sf, f.EnvMin2, f.EnvMax2, f.EnvCols, colC2)
 			}
-			drawEnvelope(sf, f.EnvMin, f.EnvMax, f.EnvCols, colC1)
+			if sc1 {
+				drawEnvelope(sf, f.EnvMin, f.EnvMax, f.EnvCols, colC1)
+			}
 		} else {
 			win := f.WinCols
 			if win <= 0 || win > valid {
@@ -290,10 +308,12 @@ func Render(sf Surface, f *engine.Frame, hud HUD, live bool) {
 				// crossing (that would jitter a flat line and diverge from web).
 				xc = float64(valid) / 2
 			}
-			if hud.TwoChan && len(f.C2) >= valid {
+			if hud.TwoChan && sc2 && len(f.C2) >= valid {
 				drawTrace(sf, f.C2[:valid], win, xc, f.Interp, colC2, hud.TrigPosFrac)
 			}
-			drawTrace(sf, c1, win, xc, f.Interp, colC1, hud.TrigPosFrac)
+			if sc1 {
+				drawTrace(sf, c1, win, xc, f.Interp, colC1, hud.TrigPosFrac)
+			}
 		}
 	}
 
@@ -308,7 +328,108 @@ func Render(sf Surface, f *engine.Frame, hud HUD, live bool) {
 		}
 	}
 
+	drawMarkers(sf, hud)
 	drawHUD(sf, f, hud)
+	drawMenu(sf, hud)
+}
+
+// drawMenu overlays the softkey menu down the right edge (spec 08 §6): a title
+// band + five slots (F1 top … F5 bottom) each a label over its current value,
+// the active slot boxed. F1..F5 select/cycle; the ADJUST knob tracks the box.
+func drawMenu(sf Surface, hud HUD) {
+	if !hud.MenuOpen {
+		return
+	}
+	const mw = 116          // menu width
+	x0 := W - mw            // left edge of the panel
+	// dim the panel background
+	for y := 12; y < H-2; y++ {
+		for x := x0; x < W; x++ {
+			sf.SetPixel(x, y, rgb(8, 12, 28))
+		}
+	}
+	for y := 12; y < H-2; y++ { // left border
+		sf.SetPixel(x0, y, colTrig)
+	}
+	DrawText(sf, x0+6, 16, hud.MenuTitle, colTrig, 1)
+	// five slots evenly spaced from y≈40 to y≈H-30
+	n := len(hud.MenuItems)
+	if n == 0 {
+		return
+	}
+	top, bot := 40, H-36
+	for i, it := range hud.MenuItems {
+		if it.Label == "" {
+			continue
+		}
+		sy := top + (bot-top)*i/5
+		if i == hud.MenuSel {
+			for x := x0 + 3; x < W-3; x++ { // highlight box
+				sf.SetPixel(x, sy-2, colTrig)
+				sf.SetPixel(x, sy+16, colTrig)
+			}
+		}
+		DrawText(sf, x0+6, sy, it.Label, colInfo, 1)
+		DrawText(sf, x0+6, sy+8, it.Value, colTrig, 1)
+	}
+}
+
+// drawMarkers overlays the trigger level (horizontal line + right handle), the
+// trigger position (top pointer), and the per-channel ground/offset arrows on
+// the left edge — the same references the web canvas shows (spec 07 §6).
+func drawMarkers(sf Surface, hud HUD) {
+	px := func(x, y int, c uint16) {
+		if x >= 0 && x < W && y >= 0 && y < H {
+			sf.SetPixel(x, y, c)
+		}
+	}
+	// Trigger LEVEL: dashed horizontal line + right-edge arrow at the level code.
+	ly := sampleToY(128 + hud.TrigLvlDiv*32)
+	if ly >= 2 && ly < H {
+		for x := 0; x < W; x += 7 {
+			px(x, ly, colTrig)
+			px(x+1, ly, colTrig)
+		}
+		for dy := -4; dy <= 4; dy++ {
+			for dx := 0; dx < 5-absI(dy); dx++ {
+				px(W-1-dx, ly+dy, colTrig)
+			}
+		}
+	}
+	// Trigger POSITION: downward pointer at the top.
+	tx := int(hud.TrigPosFrac * float64(W))
+	if hud.TrigPosFrac <= 0 || hud.TrigPosFrac > 1 {
+		tx = W / 2
+	}
+	for dy := 0; dy <= 7; dy++ {
+		hw := (7 - dy) / 2
+		for dx := -hw; dx <= hw; dx++ {
+			px(tx+dx, dy+2, colTrig)
+		}
+	}
+	// Per-channel GROUND (0 V) arrows on the left edge: code = 128 + offV·32/Vdiv.
+	ground := func(vdiv, offV float64, col uint16) {
+		if vdiv <= 0 {
+			return
+		}
+		gy := sampleToY(128 + offV*32/vdiv)
+		for dx := 0; dx <= 6; dx++ {
+			for dy := -(6 - dx); dy <= 6-dx; dy++ {
+				px(dx, gy+dy, col)
+			}
+		}
+	}
+	ground(hud.C1VdivV, hud.OffC1V, colC1)
+	if hud.TwoChan {
+		ground(hud.C2VdivV, hud.OffC2V, colC2)
+	}
+}
+
+func absI(x int) int {
+	if x < 0 {
+		return -x
+	}
+	return x
 }
 
 func drawHUD(sf Surface, f *engine.Frame, hud HUD) {

@@ -115,7 +115,7 @@ func post(t *testing.T, s *Server, control string, value float64) map[string]any
 
 func TestSetVerbs(t *testing.T) {
 	fs := &fakeScope{}
-	s := New(fs, nil)
+	s := New(fs, nil, nil, nil)
 
 	if out := post(t, s, "run", 0); out["ok"] != true || fs.running == nil || *fs.running {
 		t.Fatalf("run 0: %v running=%v", out, fs.running)
@@ -146,7 +146,7 @@ func TestSetVerbs(t *testing.T) {
 func TestVerticalVerbs(t *testing.T) {
 	fs := &fakeScope{}
 	fa := &fakeAnalog{}
-	s := New(fs, fa)
+	s := New(fs, fa, nil, nil)
 
 	if out := post(t, s, "vdiv1", 0.1); out["ok"] != true || !fa.set || fa.ch != 0 || fa.idx != 5 {
 		t.Fatalf("vdiv1 100mV: %v fa=%+v", out, fa)
@@ -170,7 +170,7 @@ func TestVerticalVerbs(t *testing.T) {
 	}
 
 	// Without a front end, vdiv verbs must fail cleanly.
-	s2 := New(fs, nil)
+	s2 := New(fs, nil, nil, nil)
 	if out := post(t, s2, "vdiv1", 0.1); out["ok"] != false {
 		t.Fatalf("vdiv without front end accepted: %v", out)
 	}
@@ -178,7 +178,7 @@ func TestVerticalVerbs(t *testing.T) {
 
 func TestQualifierAndAcqVerbs(t *testing.T) {
 	fs := &fakeScope{}
-	s := New(fs, nil)
+	s := New(fs, nil, nil, nil)
 
 	if out := post(t, s, "trigtype", 2); out["ok"] != true || fs.lastCall()[0] != "trigtype" {
 		t.Fatalf("trigtype: %v", out)
@@ -218,7 +218,7 @@ func TestFrameEndpoint(t *testing.T) {
 		f.C1[i] = uint8(i % 256)
 	}
 	fs := &fakeScope{frame: f, fresh: true}
-	s := New(fs, nil)
+	s := New(fs, nil, nil, nil)
 
 	req := httptest.NewRequest("GET", "/api/frame?since=0", nil)
 	rec := httptest.NewRecorder()
@@ -360,7 +360,7 @@ func TestWindowRailExtendCentres(t *testing.T) {
 
 func TestStatusEndpoint(t *testing.T) {
 	fs := &fakeScope{stats: engine.Stats{Frames: 5, TrigCode: 31434}}
-	s := New(fs, nil)
+	s := New(fs, nil, nil, nil)
 	req := httptest.NewRequest("GET", "/api/status", nil)
 	rec := httptest.NewRecorder()
 	s.Handler().ServeHTTP(rec, req)
@@ -380,7 +380,7 @@ func TestStatusEndpoint(t *testing.T) {
 }
 
 func TestRootServesUI(t *testing.T) {
-	s := New(&fakeScope{}, nil)
+	s := New(&fakeScope{}, nil, nil, nil)
 	req := httptest.NewRequest("GET", "/", nil)
 	rec := httptest.NewRecorder()
 	s.Handler().ServeHTTP(rec, req)

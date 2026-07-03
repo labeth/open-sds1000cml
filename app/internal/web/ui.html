@@ -114,6 +114,11 @@
       <h3>Cursors</h3>
       <table class="meas"><tbody id="curBody"></tbody></table>
     </div>
+
+    <div class="card" id="fftCard" style="display:none">
+      <h3>FFT peaks <span style="font-weight:400;color:var(--dim);font-size:11px">click to select</span></h3>
+      <table class="meas"><tbody id="fftBody"></tbody></table>
+    </div>
   </div>
 </div>
 
@@ -306,8 +311,27 @@ function drawTrigMarkers(g) {
   const tx = frac * CW;
   g.strokeStyle = "rgba(255,159,46,.35)"; g.lineWidth = dpr;
   g.beginPath(); g.moveTo(tx + .5, 0); g.lineTo(tx + .5, CH); g.stroke();
-  g.fillStyle = CURCOL;
+  g.fillStyle = CURCOL; g.font = "bold " + (10 * dpr) + "px system-ui"; g.textBaseline = "top";
   g.beginPath(); g.moveTo(tx - 6 * dpr, 0); g.lineTo(tx + 6 * dpr, 0); g.lineTo(tx, 10 * dpr); g.fill();
+  g.fillText("T", tx + 7 * dpr, 1 * dpr);
+}
+
+// Per-channel GROUND (0 V) markers on the left edge: where each channel's zero
+// sits after its offset. Ground code = 128 + offV/vpc (V = (code-128)·vpc - offV).
+function drawChannelMarkers(g) {
+  if (!frame) return;
+  g.textBaseline = "middle"; g.font = "bold " + (10 * dpr) + "px system-ui";
+  const chans = [[view.c1, frame.vpc1, frame.off1_v, st ? st.zoom1 : 1, C1COL, "1"],
+                 [view.c2, frame.vpc2, frame.off2_v, st ? st.zoom2 : 1, C2COL, "2"]];
+  for (const [en, vpc, offV, zoom, col, lbl] of chans) {
+    if (!en || !vpc) continue;
+    const y = yFor(128 + (offV || 0) / vpc, zoom || 1);
+    const yc = Math.max(6 * dpr, Math.min(CH - 6 * dpr, y));
+    g.fillStyle = col;
+    g.beginPath(); g.moveTo(0, yc - 5 * dpr); g.lineTo(9 * dpr, yc); g.lineTo(0, yc + 5 * dpr); g.fill();
+    g.fillText(lbl, 12 * dpr, yc);
+  }
+  g.textBaseline = "alphabetic";
 }
 
 function drawYT(g) {
@@ -321,6 +345,7 @@ function drawYT(g) {
       if (view.c1) drawTrace(g, frame.c1, C1COL, st ? st.zoom1 : 1);
     }
   }
+  drawChannelMarkers(g);
   drawTrigMarkers(g);
 }
 
@@ -366,13 +391,14 @@ function fft(re, im) {
   }
 }
 
+let fftPeaks = [], selPeak = -1;
 function drawFFT() {
-  drawGrid(ctx);
-  if (!frame || !frame.c1) return;
+  drawGrid(ctx); fftPeaks = [];
+  if (!frame || !frame.c1) { updateFFTList(); return; }
   const src = (view.c1 ? frame.c1 : frame.c2) || frame.c1;
   const valid = src.filter(v => v >= 0);
   let N = 1; while (N * 2 <= valid.length) N <<= 1;
-  if (N < 16) return;
+  if (N < 16) { updateFFTList(); return; }
   const re = new Float64Array(N), im = new Float64Array(N);
   let mean = 0; for (let i = 0; i < N; i++) mean += valid[i]; mean /= N;
   for (let i = 0; i < N; i++) {
@@ -382,26 +408,56 @@ function drawFFT() {
   fft(re, im);
   const half = N / 2;
   const mags = new Float64Array(half);
-  let peak = 1e-9, peakK = 0;
-  for (let k = 0; k < half; k++) {
-    mags[k] = Math.hypot(re[k], im[k]);
-    if (mags[k] > peak) { peak = mags[k]; peakK = k; }
-  }
-  // dB scale, 80 dB span.
+  let peak = 1e-9;
+  for (let k = 0; k < half; k++) { mags[k] = Math.hypot(re[k], im[k]); if (mags[k] > peak) peak = mags[k]; }
+  const nyq = frame.col_span_s > 0 ? frame.c1.length / (2 * frame.col_span_s) : 0;
+  const dbAt = k => 20 * Math.log10(mags[k] / peak + 1e-12);
+  const xAt = k => k / (half - 1) * (CW - 1);
+  const yAt = db => CH * Math.min(1, -db / 80); // 80 dB span
+  // curve
   ctx.strokeStyle = MATHCOL; ctx.lineWidth = 1.3 * dpr; ctx.beginPath();
-  for (let k = 0; k < half; k++) {
-    const db = 20 * Math.log10(mags[k] / peak + 1e-12);
-    const x = k / (half - 1) * (CW - 1);
-    const y = CH * (Math.min(1, -db / 80));
-    if (k === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-  }
+  for (let k = 0; k < half; k++) { const x = xAt(k), y = yAt(dbAt(k)); if (k === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y); }
   ctx.stroke();
-  // Axis labels: Nyquist = cols/(2·ColSpanS).
-  const nyq = frame.col_span_s > 0 ? (frame.c1.length) / (2 * frame.col_span_s) : 0;
-  const peakF = nyq > 0 ? peakK / half * nyq : 0;
+  // peak detection: local maxima above -50 dB, parabola-interpolated for sub-bin freq
+  const cand = [];
+  for (let k = 2; k < half - 2; k++) {
+    if (mags[k] > mags[k-1] && mags[k] >= mags[k+1] && mags[k] > mags[k-2] && mags[k] >= mags[k+2] && dbAt(k) > -50) {
+      const a = Math.log(mags[k-1] + 1e-12), b = Math.log(mags[k] + 1e-12), c = Math.log(mags[k+1] + 1e-12);
+      let d = 0.5 * (a - c) / (a - 2 * b + c || -1e-9); if (Math.abs(d) > 1) d = 0;
+      cand.push({ k, freq: nyq > 0 ? (k + d) / half * nyq : 0, db: dbAt(k), x: xAt(k), y: yAt(dbAt(k)) });
+    }
+  }
+  cand.sort((p, q) => q.db - p.db);
+  fftPeaks = cand.slice(0, 8);
+  if (selPeak >= fftPeaks.length) selPeak = fftPeaks.length ? 0 : -1;
+  // markers
+  ctx.textBaseline = "bottom"; ctx.font = "bold " + (11 * dpr) + "px system-ui";
+  for (let i = 0; i < fftPeaks.length; i++) {
+    const p = fftPeaks[i], sel = i === selPeak, r = (sel ? 6 : 3.5) * dpr;
+    ctx.fillStyle = sel ? "#ffd23f" : "rgba(159,176,192,.85)";
+    ctx.beginPath(); ctx.moveTo(p.x, p.y - r * 2); ctx.lineTo(p.x - r, p.y - r * 0.5); ctx.lineTo(p.x + r, p.y - r * 0.5); ctx.closePath(); ctx.fill();
+    if (sel) {
+      const tx = Math.min(p.x + 8 * dpr, CW - 96 * dpr);
+      ctx.fillText(eng(p.freq, "Hz", 4) + "  " + p.db.toFixed(1) + " dB", tx, Math.max(p.y - 10 * dpr, 30 * dpr));
+    }
+  }
+  ctx.textBaseline = "alphabetic";
   ctx.fillStyle = "#9fb0c0"; ctx.font = (12 * dpr) + "px system-ui";
-  ctx.fillText("FFT " + (view.c1 ? "C1" : "C2") + "   0 – " + eng(nyq, "Hz", 3), 8 * dpr, 16 * dpr);
-  if (peakF > 0) ctx.fillText("peak " + eng(peakF, "Hz", 4), 8 * dpr, 32 * dpr);
+  ctx.fillText("FFT " + (view.c1 ? "C1" : "C2") + "   0 – " + eng(nyq, "Hz", 3) + "   (dB re peak)", 8 * dpr, 16 * dpr);
+  updateFFTList();
+}
+function updateFFTList() {
+  const card = $("fftCard");
+  if (view.mode !== "FFT") { card.style.display = "none"; return; }
+  card.style.display = "";
+  let html = "<tr><th>#</th><th>Freq</th><th>dB</th></tr>";
+  fftPeaks.forEach((p, i) => {
+    html += `<tr class="pk" data-i="${i}" style="cursor:pointer${i === selPeak ? ';background:rgba(255,210,63,.18)' : ''}">` +
+            `<th>${i + 1}</th><td>${eng(p.freq, "Hz", 4)}</td><td>${p.db.toFixed(1)}</td></tr>`;
+  });
+  if (!fftPeaks.length) html += "<tr><td colspan='3' style='color:var(--dim)'>no peaks</td></tr>";
+  $("fftBody").innerHTML = html;
+  for (const tr of $("fftBody").querySelectorAll(".pk")) tr.onclick = () => { selPeak = +tr.dataset.i; drawFFT(); };
 }
 
 function drawCursors() {
@@ -430,6 +486,7 @@ function redraw() {
     }
     drawGrid(ctx);
     ctx.drawImage(persistCv, 0, 0);
+    drawChannelMarkers(ctx);
     drawTrigMarkers(ctx);
   } else {
     drawYT(ctx);
@@ -481,6 +538,12 @@ function ptToNorm(ev) {
   return { x: (ev.clientX - r.left) / r.width, y: (ev.clientY - r.top) / r.height };
 }
 scope.addEventListener("pointerdown", ev => {
+  if (view.mode === "FFT" && fftPeaks.length) { // pick the nearest peak by x
+    const px = ptToNorm(ev).x * CW;
+    let best = 0, bd = 1e9;
+    fftPeaks.forEach((pk, i) => { const d = Math.abs(pk.x - px); if (d < bd) { bd = d; best = i; } });
+    selPeak = best; drawFFT(); return;
+  }
   if (!view.cursors) return;
   const p = ptToNorm(ev);
   const near = (a, b) => Math.abs(a - b) < 0.02;

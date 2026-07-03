@@ -9,6 +9,7 @@ package panel
 import (
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 
@@ -26,6 +27,14 @@ type Engine interface {
 	SetNorm(on bool)
 	SetRunning(on bool)
 	SetSingle()
+	SetTrigSlope(rising bool)
+	SetTrigSource(ch int)
+	SetTrigType(typ int)
+	SetAcqMode(m int)
+	SetAvgCount(n int)
+	SetEresLen(l int)
+	SetETS(on bool)
+	SetTrigPosFrac(frac float64)
 	Snapshot() engine.Stats // authoritative state to resync knob shadows
 }
 
@@ -40,12 +49,15 @@ type Analog interface {
 // LED bits (spec 08 §5 — only the corroborated bits are wired; the low-byte
 // CURSORS/MATH/REF candidates conflict and stay unwired).
 const (
-	ledTrigd  = 0x0004
-	ledCH2    = 0x0010
-	ledCH1    = 0x0020
-	ledRun    = 0x2000
-	ledStop   = 0x4000
-	ledSingle = 0x8000
+	ledTrigd   = 0x0004
+	ledCH2     = 0x0010
+	ledCH1     = 0x0020
+	ledMeasure = 0x0100
+	ledAcquire = 0x0200
+	ledDisplay = 0x0400
+	ledRun     = 0x2000
+	ledStop    = 0x4000
+	ledSingle  = 0x8000
 )
 
 const knobPhaseMask = 0xC0C0 // encoder phase bits in every selector word
@@ -115,6 +127,15 @@ type Controller struct {
 
 	prev     [5]uint16
 	havePrev bool
+
+	// Menu state (spec 08 §6): written by the panel goroutine, read by the LCD
+	// renderer, guarded by mu. inject runs API-driven panel events on the panel
+	// goroutine so button/knob dispatch stays single-threaded.
+	mu       sync.Mutex
+	menuPage int
+	menuSel  int
+	chDisp   [2]bool
+	inject   chan func()
 }
 
 // New builds the controller. The timebase ladder is injected (the controller
@@ -127,6 +148,8 @@ func New(eng Engine, fe Analog, keyFD int, tdivs []float64, startTdiv float64, l
 		tdivs:    tdivs,
 		vIdx:     [2]int{analog.BootDetent, analog.BootDetent},
 		trigCode: 31434, // 0 V threshold
+		chDisp:   [2]bool{true, true},
+		inject:   make(chan func(), 32),
 		running:  true,
 	}
 	for i, t := range tdivs {
@@ -175,6 +198,8 @@ func (c *Controller) Run(stop <-chan struct{}) {
 		select {
 		case <-stop:
 			return
+		case fn := <-c.inject:
+			fn() // API-injected button/knob, run on the panel goroutine
 		case <-sigio:
 			if time.Since(lastSig) < 6*time.Millisecond {
 				if !pendingTrail {
@@ -251,8 +276,9 @@ func (c *Controller) button(code int) {
 		c.eng.SetNorm(false)
 		c.eng.SetRunning(true)
 	default:
-		// Claimed-and-ignored (menus, softkeys, knob pushes): claiming keeps
-		// them from cross-driving anything; behavior comes in later phases.
+		// Menu / softkey / channel buttons (spec 08 §6). Anything else is
+		// claimed-and-ignored so it can't cross-drive another control.
+		c.menuButton(code)
 		return
 	}
 	c.pushLEDs()
@@ -352,13 +378,26 @@ func (c *Controller) dispatch(name string, dir, steps int) {
 		nc = clampInt(nc, engine.TrigCodeMin, engine.TrigCodeMax)
 		c.trigCode = uint16(nc)
 		c.eng.SetTrigLevelCode(c.trigCode)
+	case "adjust":
+		// ADJUST drives the highlighted menu item (spec 08 §6.3); no-op if the
+		// menu is closed.
+		c.menuAdjust(dir)
 	default:
-		// horizpos, adjust: claimed-and-ignored for now.
+		// horizpos: claimed-and-ignored for now.
 	}
 }
 
 func (c *Controller) pushLEDs() {
-	word := uint16(ledCH1 | ledCH2)
+	c.mu.Lock()
+	c1, c2, pg := c.chDisp[0], c.chDisp[1], c.menuPage
+	c.mu.Unlock()
+	var word uint16
+	if c1 {
+		word |= ledCH1
+	}
+	if c2 {
+		word |= ledCH2
+	}
 	if c.running {
 		word |= ledRun
 	} else {
@@ -366,6 +405,12 @@ func (c *Controller) pushLEDs() {
 	}
 	if c.norm {
 		word |= ledSingle
+	}
+	switch pg { // light the active menu lamp (spec 08 §6.4/§8.2)
+	case pgAcq:
+		word |= ledAcquire
+	case pgDisp:
+		word |= ledDisplay
 	}
 	c.eng.SetLEDs(word)
 }

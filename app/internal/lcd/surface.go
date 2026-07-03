@@ -5,7 +5,11 @@
 package lcd
 
 import (
+	"bytes"
 	"fmt"
+	"image"
+	"image/color"
+	"image/png"
 	"os"
 	"syscall"
 	"unsafe"
@@ -64,6 +68,24 @@ func (m *MemSurface) At(x, y int) uint16 {
 	}
 	o := (y*W + x) * 2
 	return uint16(m.Pix[o]) | uint16(m.Pix[o+1])<<8
+}
+
+// EncodePNG renders the surface (RGB565) to a PNG — the device-screen view for
+// the web /api/screen.png endpoint.
+func EncodePNG(m *MemSurface) []byte {
+	img := image.NewRGBA(image.Rect(0, 0, W, H))
+	for y := 0; y < H; y++ {
+		for x := 0; x < W; x++ {
+			c := m.At(x, y)
+			r := uint8((c>>11)&0x1f) << 3
+			g := uint8((c>>5)&0x3f) << 2
+			b := uint8(c&0x1f) << 3
+			img.SetRGBA(x, y, color.RGBA{r, g, b, 255})
+		}
+	}
+	var buf bytes.Buffer
+	png.Encode(&buf, img)
+	return buf.Bytes()
 }
 
 // FB is the real framebuffer: a FRESH open of /dev/fb0 (the opposite of the

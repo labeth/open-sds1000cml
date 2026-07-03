@@ -57,14 +57,25 @@ type Analog interface {
 	DCVolts(ch int, meanCode float64) float64
 }
 
+// Panel is the front-panel injection surface (spec 08 §6): drive any button or
+// knob over the API so only the physical matrix decode needs a real press.
+type Panel interface {
+	InjectButton(name string) bool
+	InjectKnob(name string, dir, steps int) bool
+}
+
 // Server serves the UI and API. Frame reads happen inside Scope.WithFrame,
 // which holds the fan-out read lock for the duration of serialization.
 type Server struct {
-	sc Scope
-	fe Analog
+	sc     Scope
+	fe     Analog
+	panel  Panel
+	screen func() []byte // PNG of the current LCD render (device-screen view)
 }
 
-func New(sc Scope, fe Analog) *Server { return &Server{sc: sc, fe: fe} }
+func New(sc Scope, fe Analog, panel Panel, screen func() []byte) *Server {
+	return &Server{sc: sc, fe: fe, panel: panel, screen: screen}
+}
 
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
@@ -72,7 +83,49 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/api/status", s.hStatus)
 	mux.HandleFunc("/api/frame", s.hFrame)
 	mux.HandleFunc("/api/set", s.hSet)
+	mux.HandleFunc("/api/panel", s.hPanel)
+	mux.HandleFunc("/api/screen.png", s.hScreen)
 	return mux
+}
+
+// hPanel injects a front-panel button or knob event (spec 08 §6). Body:
+// {"button":"F1"} or {"knob":"adjust","dir":1,"steps":1}.
+func (s *Server) hPanel(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Button string `json:"button"`
+		Knob   string `json:"knob"`
+		Dir    int    `json:"dir"`
+		Steps  int    `json:"steps"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, map[string]any{"ok": false, "err": "bad json"})
+		return
+	}
+	if s.panel == nil {
+		writeJSON(w, map[string]any{"ok": false, "err": "no panel"})
+		return
+	}
+	ok := false
+	if req.Button != "" {
+		ok = s.panel.InjectButton(req.Button)
+	} else if req.Knob != "" {
+		if req.Steps == 0 {
+			req.Steps = 1
+		}
+		ok = s.panel.InjectKnob(req.Knob, req.Dir, req.Steps)
+	}
+	writeJSON(w, map[string]any{"ok": ok})
+}
+
+// hScreen returns a PNG of the current LCD render — the exact device screen.
+func (s *Server) hScreen(w http.ResponseWriter, r *http.Request) {
+	if s.screen == nil {
+		http.Error(w, "no screen", http.StatusServiceUnavailable)
+		return
+	}
+	w.Header().Set("Content-Type", "image/png")
+	w.Header().Set("Cache-Control", "no-store")
+	w.Write(s.screen())
 }
 
 func (s *Server) hRoot(w http.ResponseWriter, r *http.Request) {
