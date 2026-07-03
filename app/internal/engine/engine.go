@@ -759,6 +759,12 @@ func (e *Engine) waitCapture(norm bool) (anchored, sawTrig, filled, fillMoved bo
 	// envelope and roll are untouched. AUTO already fills densely via its budget.
 	denseWait := norm && e.band.Kind() == KindDecimated
 	denseNs := int64(float64(e.band.DrainCols()) * e.band.CaptureIntervalNs())
+	// Native-fast FREE RUN + TRIGGER HOLD (spec 04 §11): halt WHEN the HW comparator fires
+	// (bit1) so the frozen record captures the edge HW-positioned near record/2 (spec 04 §4,
+	// cross-frame std 1–2). Returning on fill-saturation instead halts at a random phase and
+	// misses the edge at the faster bands (the record spans ≪ one period). On the budget
+	// timeout (no comparator edge) AUTO free-runs a live refresh; NORM holds.
+	nativeFast := e.band.NativeFast()
 	fill0 := e.r(selFill) & fillMask
 	for {
 		s := e.r(selStatus)
@@ -783,21 +789,28 @@ func (e *Engine) waitCapture(norm bool) (anchored, sawTrig, filled, fillMoved bo
 		if fill >= latchAt {
 			filled = true
 		}
-		if anchored && filled {
-			// Decimated NORM also waits for a dense buffer (see above); other
-			// bands/modes return as soon as the post-trigger record is filled.
-			if !denseWait || e.clk.Now().Sub(start) >= time.Duration(denseNs) {
-				return // triggered, post-trigger record filled (and dense in NORM)
+		if nativeFast {
+			if sawTrig {
+				return // comparator fired → the edge is in the record; halt & drain it
 			}
-		}
-		if !norm && fill >= fillFull {
-			return // AUTO free-run: the record saturated, drain it now
+			// no fill-saturation early-out for native-fast — wait for bit1 or the budget
+		} else {
+			if anchored && filled {
+				// Decimated NORM also waits for a dense buffer (see above); other
+				// bands return as soon as the post-trigger record is filled.
+				if !denseWait || e.clk.Now().Sub(start) >= time.Duration(denseNs) {
+					return // triggered, post-trigger record filled (and dense in NORM)
+				}
+			}
+			if !norm && fill >= fillFull {
+				return // AUTO free-run: the record saturated, drain it now
+			}
 		}
 		if e.stopReq.Load() {
 			return // abandon armed+filling: safe; boundary handles shutdown
 		}
 		if !e.clk.Now().Before(deadline) {
-			return // budget expired: AUTO drains the (now full) buffer; NORM holds
+			return // budget expired: AUTO free-runs a refresh, NORM holds
 		}
 		e.clk.Sleep(e.pollEvery)
 	}
@@ -963,11 +976,24 @@ func (e *Engine) oneFrame(norm bool) {
 	publish := false
 	switch {
 	case lock:
+		// A triggered / qualified edge is present — the native-fast comparator fired (sawTrig)
+		// so the edge is in the record, or a coherent slope-valid decimated capture — publish
+		// it centred.
 		publish = true
 		e.flatHeld = 0
+	case nativeFast && !norm && !qualifier && !sawTrig:
+		// AUTO native-fast, comparator did NOT fire within the budget (untriggered): FREE RUN a
+		// live refresh at the record centre (spec 04 §3 routing + §11) instead of holding. This
+		// is the different technique the ≤200 ns bands need — there the record spans ≪ one
+		// period so the edge rarely aligns and a catch-and-HOLD would freeze (the ~0 fps case);
+		// it keeps any quiet native-fast screen live at ~20 fps. Uncentred (EdgeX = -1, the
+		// record centre where a caught edge is HW-positioned): no software anchor on noise.
+		publish = true
+		edgeX = -1
+		e.flatHeld = 0
 	case (nativeFast || !norm) && !qualifier && p < nativeEdgeMinPtp:
-		// Genuinely flat / no signal (EDGE, and either native-fast or AUTO): refresh a live
-		// flat line every nativeFlatFallbck held frames; hold the last edge in between.
+		// NORM native-fast flat (trigger-hold with an honest 60-frame refresh), or AUTO
+		// decimated flat: publish one honest flat capture every nativeFlatFallbck held frames.
 		e.flatHeld++
 		if e.flatHeld >= nativeFlatFallbck {
 			edgeX = -1 // one honest flat capture; never fabricate an edge
@@ -975,8 +1001,8 @@ func (e *Engine) oneFrame(norm bool) {
 			e.flatHeld = 0
 		}
 	default:
-		// NORM decimated quiet screen, an un-fired qualifier, or a signal present but not
-		// locked this frame (it would jitter) → HOLD the last locked frame.
+		// NORM decimated quiet screen, an un-fired qualifier, or AUTO decimated signal-present-
+		// but-not-locked this frame (it would jitter) → HOLD the last locked frame.
 		publish = false
 	}
 	if !publish {

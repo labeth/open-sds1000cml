@@ -613,8 +613,50 @@ func TestWedgeLadderResetsOnActivity(t *testing.T) {
 	}
 }
 
+func TestNativeFastAutoFreeRunUntriggered(t *testing.T) {
+	// Native-fast "free run + trigger hold" (spec 04 §11): when the HW comparator does NOT fire
+	// within the budget (untriggered), AUTO FREE-RUNS a live refresh frame (EdgeX=-1, record
+	// centre) rather than holding — this is the different technique the ≤200 ns bands need to
+	// stay live. NORM trigger-HOLDs an untriggered screen.
+	b, ok := PlanTdiv(200e-9)
+	if !ok {
+		t.Fatal("200ns not in ladder")
+	}
+
+	// AUTO, comparator silent (trigOnGo=false) → free-run a flat refresh.
+	fb := newFakeBus()
+	fb.trigOnGo, fb.doneOnGo = false, false
+	fb.mu.Lock()
+	fb.wave = func(int) (uint8, uint8) { return 128, 128 }
+	fb.mu.Unlock()
+	e, _ := newTestEngine(t, fb)
+	e.band = b
+	e.bringUp()
+	e.oneFrame(false)
+	f, fresh := e.Consume()
+	if !fresh || f.EdgeX != -1 {
+		t.Fatalf("native-fast AUTO untriggered: fresh=%v EdgeX=%v, want fresh EdgeX=-1 (free-run)", fresh, f.EdgeX)
+	}
+
+	// NORM, comparator silent → HOLD (no publish).
+	fb2 := newFakeBus()
+	fb2.trigOnGo, fb2.doneOnGo = false, false
+	fb2.mu.Lock()
+	fb2.wave = func(int) (uint8, uint8) { return 128, 128 }
+	fb2.mu.Unlock()
+	e2, _ := newTestEngine(t, fb2)
+	e2.band = b
+	e2.SetNorm(true)
+	e2.bringUp()
+	e2.oneFrame(true)
+	if _, fresh := e2.Consume(); fresh {
+		t.Fatal("native-fast NORM untriggered published — should trigger-hold")
+	}
+}
+
 func TestNativeFastContentGate(t *testing.T) {
 	fb := newFakeBus()
+	fb.trigOnGo = true // HW comparator fires → native-fast waits for it and catches the edge
 	e, _ := newTestEngine(t, fb)
 	b, ok := PlanTdiv(1e-6)
 	if !ok {
@@ -623,16 +665,19 @@ func TestNativeFastContentGate(t *testing.T) {
 	e.band = b
 	e.bringUp()
 
-	// Edge-rich wave → publish with full deep-record drain.
+	// Edge-rich wave + comparator (bit1) → the record captures the edge; publish it centred
+	// from the full deep record (spec 04 §11 trigger-hold path).
 	e.oneFrame(false)
 	f, fresh := e.Consume()
 	if !fresh || f.Valid != deepRecord || !f.Interp {
-		t.Fatalf("native-fast frame: fresh=%v valid=%d interp=%v", fresh, f.Valid, f.Interp)
+		t.Fatalf("native-fast edge frame: fresh=%v valid=%d interp=%v", fresh, f.Valid, f.Interp)
+	}
+	if f.EdgeX < 0 {
+		t.Fatalf("native-fast edge frame not centred: EdgeX=%v", f.EdgeX)
 	}
 
-	// Flat rail → only-locked-frames: HOLD (a flat capture has no lock), publishing one
-	// honest flat frame every nativeFlatFallbck held frames for liveness. This holds
-	// (does not flash) an intermittent-edge band so it never flickers edge↔flat.
+	// Comparator fires but the content is a flat rail (an inconsistent/rare case): no lock,
+	// so it HOLDS with the honest 60-frame flat fallback rather than centring noise.
 	fb.mu.Lock()
 	fb.wave = func(int) (uint8, uint8) { return 128, 128 }
 	fb.mu.Unlock()
@@ -644,11 +689,8 @@ func TestNativeFastContentGate(t *testing.T) {
 	}
 	e.oneFrame(false)
 	f, fresh = e.Consume()
-	if !fresh {
-		t.Fatal("flat liveness fallback frame not published")
-	}
-	if f.EdgeX != -1 {
-		t.Fatalf("flat fallback EdgeX = %v, want -1 (never fabricate an edge)", f.EdgeX)
+	if !fresh || f.EdgeX != -1 {
+		t.Fatalf("flat fallback: fresh=%v EdgeX=%v, want fresh EdgeX=-1", fresh, f.EdgeX)
 	}
 }
 
