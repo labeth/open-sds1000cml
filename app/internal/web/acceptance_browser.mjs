@@ -21,12 +21,15 @@ run(async (t) => {
     "STOPPED overlay hidden while running");
 
   // --- acquire (RUN / SINGLE) ------------------------------------------------
-  await po.click("run"); // optimistic toggle running -> stopped
-  t.ok((await po.text("run")).includes("STOP") && await po.hasClass("run", "stopped"),
-    "RUN click optimistically shows STOP + stopped style");
-  await po.click("run");
-  t.ok((await po.text("run")).includes("RUN") && await po.hasClass("run", "running"),
-    "second RUN click returns to RUN + running style");
+  // the button shows the ACTION you can take, not the current state
+  t.ok((await po.text("run")).includes("STOP") && await po.hasClass("run", "is-stop"),
+    "while running, the button offers STOP");
+  await po.click("run"); // stop
+  t.ok((await po.text("run")).includes("RUN") && await po.hasClass("run", "is-run"),
+    "after stopping, the button offers RUN (the correct way round)");
+  await po.click("run"); // run again
+  t.ok((await po.text("run")).includes("STOP") && await po.hasClass("run", "is-stop"),
+    "running again offers STOP");
   await po.click("single");
   t.ok(await po.hasClass("single", "on"), "SINGLE arms (on state)");
 
@@ -118,6 +121,48 @@ run(async (t) => {
   await po.page.keyboard.press("f");                 // must NOT switch to FFT while a control is focused
   t.ok(await po.hasClass("mFFT", "on") === modeBefore, "shortcuts are suppressed while a form control is focused");
   await po.page.evaluate(() => document.activeElement.blur());
+
+  // --- collapsible panels + math + mouse gestures ----------------------------
+  await po.eval(() => document.querySelector("#measCard h3").click());
+  t.ok(await po.eval(() => document.getElementById("measCard").classList.contains("collapsed")),
+    "clicking a card title minimises it");
+  await po.eval(() => document.querySelector("#measCard h3").click());
+  t.ok(!(await po.eval(() => document.getElementById("measCard").classList.contains("collapsed"))),
+    "clicking the title again expands it");
+  await po.click("panelToggle");
+  t.ok(await po.eval(() => getComputedStyle(document.getElementById("dock")).display) === "none",
+    "the panel toggle collapses the whole dock (scope fills the width)");
+  await po.click("panelToggle");
+  t.ok(await po.eval(() => getComputedStyle(document.getElementById("dock")).display) !== "none",
+    "toggling again restores the dock");
+  await po.setSelect("mathFn", "c1-c2");
+  t.ok(await po.eval(() => mathFn === "c1-c2"), "math function selectable (C1 − C2)");
+  await po.setSelect("mathFn", "off");
+  // FFT carrier removal: select a C1 tone, subtract it, the residual shrinks
+  await po.setMode("FFT"); await po.wait(400);
+  await po.eval(() => { const pk = fftCh[1].peaks.slice().sort((a, b) => b.db - a.db)[0]; if (pk) togglePeakCh(1, pk.freq); });
+  await po.setMode("YT"); await po.wait(200);
+  const cFull = await po.eval(() => { let mn = 999, mx = -999; for (const v of frame.c1) if (v >= 0) { mn = Math.min(mn, v); mx = Math.max(mx, v); } return mx - mn; });
+  await po.setSelect("mathFn", "res1"); await po.wait(200);
+  const cRes = await po.eval(() => { const m = computeMath(); if (!m) return null; let mn = 999, mx = -999; for (const v of m) if (v >= 0) { mn = Math.min(mn, v); mx = Math.max(mx, v); } return mx - mn; });
+  t.ok(cRes != null && cRes < cFull * 0.9, `removing a selected FFT peak reduces the residual (carrier removal): ${cFull} → ${cRes}`);
+  // math must still render under persistence (the persist path now draws it too)
+  await po.eval(() => { view.persist = true; });
+  await po.setSelect("mathFn", "c1-c2"); await po.wait(120);
+  await po.eval(() => { view.persist = false; }); await po.setSelect("mathFn", "off");
+  // double-click resets zoom cleanly (no cursor yank / no level nudge)
+  await po.eval(() => { view.win.a = 0.3; view.win.b = 0.55; userZoomed = true; redraw(); });
+  const lvl0 = await po.eval(() => st.trig_volts);
+  const gc = await po.eval(() => { const r = scope.getBoundingClientRect(); return { x: r.left + r.width * 0.5, y: r.top + r.height * 0.5 }; });
+  await po.page.mouse.dblclick(gc.x, gc.y); await po.wait(150);
+  t.ok(await po.eval(() => userZoomed === false), "double-click in the trace area resets the zoom");
+  t.ok(Math.abs((await po.eval(() => st.trig_volts)) - lvl0) < 0.2, "double-click doesn't nudge the trigger level (no marker side-effect)");
+  // Ctrl+wheel steps the timebase
+  const td0 = await po.eval(() => document.getElementById("tdiv").selectedIndex);
+  await po.eval(() => { const e = new WheelEvent("wheel", { deltaY: 120, ctrlKey: true, bubbles: true, cancelable: true }); document.getElementById("scope").dispatchEvent(e); });
+  await po.wait(120);
+  t.ok(await po.eval(() => document.getElementById("tdiv").selectedIndex) !== td0,
+    "Ctrl+wheel changes the timebase (time/div)");
 
   // --- direct manipulation: drag the trigger-level handle on the display ------
   // The whole point of the UX fix — a vertical quantity is moved VERTICALLY, in

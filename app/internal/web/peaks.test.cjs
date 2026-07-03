@@ -110,6 +110,23 @@ function frame(amp1, amp2, seed) {
   // gaps (-1) are tolerated
   const xg = x.slice(); for (let n = 0; n < 20; n++) xg[n] = -1;
   ok(component(xg, C1) != null, "component() tolerates gaps (-1)");
+  // NON-INTEGER cycle count must still fit accurately (least-squares, not a naive
+  // 2/N DFT coefficient which overshoots and would break carrier subtraction).
+  const y = new Array(M);
+  for (let n = 0; n < M; n++) y[n] = 128 + 40 * Math.sin(2 * Math.PI * 9.8 * n / M);
+  const ry = component(y, 9.8); let e2 = 0;
+  for (let n = 0; n < M; n++) e2 = Math.max(e2, Math.abs(ry[n] - y[n]));
+  ok(e2 < 2, `component() fits a non-integer (9.8) cycle count (max err ${e2.toFixed(2)})`);
+}
+
+// --- 8. carrier removal: subtract the carrier component to reveal minor waves --
+{
+  const M = 2048, r = [];
+  for (let n = 0; n < M; n++) r.push(128 + 40 * Math.sin(2 * Math.PI * 10 * n / M) + 6 * Math.sin(2 * Math.PI * 37 * n / M));
+  const comp = component(r, 10), res = r.slice();
+  for (let n = 0; n < M; n++) res[n] -= (comp[n] - 128); // remove the carrier's AC part
+  let mn = Infinity, mx = -Infinity; for (const v of res) { if (v < mn) mn = v; if (v > mx) mx = v; }
+  near(mx - mn, 12, 3, "removing a sine carrier reveals the ~12ptp minor wave underneath");
 }
 
 console.log(failed ? `\n${failed} FAILED` : "\nALL PASS");

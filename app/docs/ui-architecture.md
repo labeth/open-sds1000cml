@@ -316,3 +316,19 @@ softkey); and a responsive drawer/toolbar layout. Both surfaces (web + LCD) cove
   HORIZONTAL (time/div + position) · VERTICAL (C1/C2 vdiv + offset) · ACQUIRE
   (acq + mem). Sliders narrowed (secondary now that markers drag). Ids unchanged
   so the acceptance suite still pins every control.
+- **UX pass 3: interaction + math + carrier subtract — DONE.** From user feedback.
+  (1) RUN/STOP now shows the ACTION (running→STOP red / stopped→RUN green).
+  (2) Panels minimise: click a card title to collapse (▸/▾ caret); the ☰ button
+  collapses the whole dock. (3) Mouse gestures mapped + documented in ?: wheel zoom,
+  Shift+wheel pan, Ctrl+wheel time/div, double-click reset, Shift+click set trigger
+  level; cursor grab is now near-only (no yank-from-anywhere). (4) Math card
+  (C1±C2, C1×C2). (5) FFT carrier subtract: channel − selected FFT peaks =
+  residual (minor waves) in purple. FIXED a real bug: component() used a naive 2/N
+  DFT coefficient that overshot for a non-integer cycle count → carrier subtraction
+  added instead of cancelling; replaced with a least-squares fit (sine carrier now
+  cancels to ~0; also sharpens FFT overlays). An adversarial-review workflow found
+  5 more real issues, all fixed: Shift/Ctrl+wheel read only deltaY (Chromium sends
+  Shift+wheel on deltaX); double-click side-effected a cursor/marker (ev.detail
+  guard + near-only cursor grab); header hint text collapsed the card (excluded
+  .subtle/.card-actions); math dropped under persistence (persist path draws it);
+  residual ignored channel zoom. All pinned by new tests.

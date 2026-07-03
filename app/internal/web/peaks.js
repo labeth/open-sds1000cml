@@ -100,11 +100,22 @@ function component(samples, cyclesPerLen) {
   let mean = 0, cnt = 0;
   for (let i = 0; i < M; i++) { const v = samples[i]; if (v >= 0) { mean += v; cnt++; } }
   if (!cnt) return null; mean /= cnt;
-  let ci = 0, si = 0;
-  for (let i = 0; i < M; i++) { const v = samples[i]; if (v < 0) continue; const d = v - mean; ci += d * Math.cos(w * i); si += d * Math.sin(w * i); }
-  ci = 2 * ci / cnt; si = 2 * si / cnt;
+  // LEAST-SQUARES fit of A·cos(wi)+B·sin(wi) over the valid samples. A naive
+  // 2/N DFT coefficient assumes the basis is orthogonal over the window, which is
+  // only true for an INTEGER number of cycles — for a non-integer cycle count (or
+  // gaps) it overestimates the amplitude, so subtracting it to null a carrier
+  // would OVERSHOOT. Solving the 2×2 normal equations is correct in all cases.
+  let scc = 0, sss = 0, scs = 0, dc = 0, ds = 0;
+  for (let i = 0; i < M; i++) {
+    const v = samples[i]; if (v < 0) continue;
+    const c = Math.cos(w * i), s = Math.sin(w * i), d = v - mean;
+    scc += c * c; sss += s * s; scs += c * s; dc += d * c; ds += d * s;
+  }
+  const det = scc * sss - scs * scs;
+  let A = 0, B = 0;
+  if (Math.abs(det) > 1e-9) { A = (dc * sss - ds * scs) / det; B = (ds * scc - dc * scs) / det; }
   const out = new Array(M);
-  for (let i = 0; i < M; i++) out[i] = mean + ci * Math.cos(w * i) - si * Math.sin(w * i);
+  for (let i = 0; i < M; i++) out[i] = mean + A * Math.cos(w * i) + B * Math.sin(w * i);
   return out;
 }
 

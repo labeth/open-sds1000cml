@@ -229,6 +229,45 @@ function drawChannelMarkers(g) {
   g.textBaseline = "alphabetic";
 }
 
+// Math trace: arithmetic on C1/C2, or a RESIDUAL — a channel minus its selected
+// FFT peaks — so you can null out a carrier and see the minor waves underneath.
+let mathFn = "off";
+function computeMath() {
+  if (mathFn === "off" || !frame || frame.is_env || !frame.c1) return null;
+  const a = frame.c1, b = frame.c2, n = a.length, out = new Array(n);
+  const clip = v => v < 0 ? 0 : v > 255 ? 255 : v;
+  if (mathFn === "res1" || mathFn === "res2") {
+    const ch = mathFn === "res1" ? 1 : 2, src = ch === 1 ? a : b, S = fftCh[ch];
+    if (!src || !S || !S.sel.length) return null;   // nothing selected → nothing to remove
+    let mean = 0, cnt = 0; for (const v of src) if (v >= 0) { mean += v; cnt++; }
+    mean = cnt ? mean / cnt : 128;
+    const res = src.slice();
+    for (const f of S.sel) {
+      const comp = component(src, f * (frame.col_span_s || 0)); // fitted tone at that freq
+      if (!comp) continue;
+      for (let i = 0; i < n; i++) if (res[i] >= 0) res[i] -= (comp[i] - mean); // remove its AC part
+    }
+    for (let i = 0; i < n; i++) out[i] = (src[i] < 0) ? -1 : clip(res[i]);
+    return out;
+  }
+  if (!b) return null;
+  for (let i = 0; i < n; i++) {
+    if (a[i] < 0 || b[i] < 0) { out[i] = -1; continue; }
+    const x = a[i] - 128, y = b[i] - 128;
+    if (mathFn === "c1-c2") out[i] = clip(128 + (x - y));
+    else if (mathFn === "c2-c1") out[i] = clip(128 + (y - x));
+    else if (mathFn === "c1+c2") out[i] = clip(128 + (x + y));
+    else out[i] = clip(128 + (x * y) / 96); // c1*c2, scaled to stay on-screen
+  }
+  return out;
+}
+
+// Draw the math trace (if any) at its SOURCE channel's vertical zoom, so it lines
+// up with the trace it's derived from. Used by both the plain and persist paths.
+function drawMath(g) {
+  const m = computeMath();
+  if (m) drawTrace(g, m, MATHCOL, (mathFn === "res2") ? (st ? st.zoom2 : 1) : (st ? st.zoom1 : 1));
+}
 function drawYT(g) {
   drawGrid(g);
   if (frame) {
@@ -238,6 +277,7 @@ function drawYT(g) {
     } else {
       if (view.c2) drawTrace(g, frame.c2, C2COL, st ? st.zoom2 : 1);
       if (view.c1) drawTrace(g, frame.c1, C1COL, st ? st.zoom1 : 1);
+      drawMath(g);
     }
   }
   drawChannelMarkers(g);
@@ -636,6 +676,7 @@ function redraw() {
     if (frame) {
       if (view.c2) drawTrace(pg, frame.c2, C2COL, st ? st.zoom2 : 1);
       if (view.c1) drawTrace(pg, frame.c1, C1COL, st ? st.zoom1 : 1);
+      drawMath(pg);
     }
     drawGrid(ctx);
     ctx.drawImage(persistCv, 0, 0);
@@ -735,6 +776,14 @@ function commitMarker() {
 }
 
 scope.addEventListener("pointerdown", ev => {
+  if (ev.detail > 1) return; // the 2nd click of a double-click must not grab a cursor/marker (dblclick resets zoom)
+  if (ev.shiftKey && view.mode === "YT" && st && frame) { // Shift+click = set trigger level here
+    const vpc = (st.trig_source === 1 ? frame.vpc2 : frame.vpc1) || (1 / 32);
+    const volts = (255 * (1 - Math.max(0, Math.min(1, ptToNorm(ev).y))) - 128) * vpc;
+    st.trig_volts = volts; $("lvl").value = volts.toFixed(2); $("lvlv").textContent = volts.toFixed(2) + " V";
+    send("triglevelcode", Math.round(31434 - 938 * volts)); redraw();
+    return;
+  }
   if (view.mode === "FFT") { // toggle the nearest peak, across both channels
     const clickedFreq = ptToNorm(ev).x * peakNyq(); // x maps ~linearly to 0..Nyquist
     let best = null;
@@ -757,16 +806,10 @@ scope.addEventListener("pointerdown", ev => {
   }
   if (!view.cursors) return;
   const p = ptToNorm(ev);
-  const near = (a, b) => Math.abs(a - b) < 0.02;
+  const near = (a, b) => Math.abs(a - b) < 0.025;
   if (near(p.y, cur.v1)) cur.drag = "v1"; else if (near(p.y, cur.v2)) cur.drag = "v2";
   else if (near(p.x, cur.t1)) cur.drag = "t1"; else if (near(p.x, cur.t2)) cur.drag = "t2";
-  else { // grab nearest
-    const dt = Math.min(Math.abs(p.x - cur.t1), Math.abs(p.x - cur.t2));
-    const dv = Math.min(Math.abs(p.y - cur.v1), Math.abs(p.y - cur.v2));
-    cur.drag = dt < dv
-      ? (Math.abs(p.x - cur.t1) < Math.abs(p.x - cur.t2) ? "t1" : "t2")
-      : (Math.abs(p.y - cur.v1) < Math.abs(p.y - cur.v2) ? "v1" : "v2");
-  }
+  else return; // click not near any cursor → do nothing (don't yank one; keeps dbl-click reset clean)
   scope.setPointerCapture(ev.pointerId);
   moveCursor(ev);
 });
@@ -809,9 +852,27 @@ nav.addEventListener("dblclick", () => goHome());
 
 // Wheel over the scope: zoom about the cursor (Y-T only). Anchors the record
 // fraction under the pointer so it stays put as the span grows/shrinks.
+function panWin(dir) {
+  userZoomed = true;
+  const w = view.win, span = w.b - w.a;
+  const na = Math.max(0, Math.min(1 - span, w.a + span * 0.15 * dir));
+  setWin(na, na + span);
+}
+function stepTdiv(dir) {
+  const sel = $("tdiv");
+  if (!sel.options.length) return;
+  const i = Math.max(0, Math.min(sel.options.length - 1, sel.selectedIndex + dir));
+  if (i !== sel.selectedIndex) { sel.selectedIndex = i; send("tdiv", +sel.value); }
+}
+scope.addEventListener("dblclick", () => { if (view.mode === "YT") goHome(); }); // reset zoom to full
 scope.addEventListener("wheel", ev => {
   if (view.mode !== "YT") return;
   ev.preventDefault();
+  // Chromium remaps Shift+vertical-wheel onto the horizontal axis (deltaX, deltaY=0),
+  // so read whichever axis carries the notch.
+  const d = ev.deltaY || ev.deltaX;
+  if (ev.ctrlKey || ev.metaKey) { stepTdiv(d < 0 ? -1 : 1); return; } // Ctrl+wheel = time/div (up = faster)
+  if (ev.shiftKey) { panWin(d < 0 ? -1 : 1); return; }                 // Shift+wheel = pan left/right
   userZoomed = true;
   const w = view.win, span = w.b - w.a, sx = Math.max(0, Math.min(1, ptToNorm(ev).x));
   const fx = w.a + sx * span;
@@ -863,8 +924,11 @@ function refreshAria() {
 }
 
 function applyStatus() {
-  $("run").textContent = st.running ? "RUN ▶" : "STOP ■"; // glyph + word (redundant coding)
-  $("run").className = st.running ? "running" : "stopped";
+  // The button shows the ACTION you can take: running → press to STOP, stopped →
+  // press to RUN (green run / red stop). Redundant glyph + word.
+  $("run").textContent = st.running ? "STOP ■" : "RUN ▶";
+  $("run").classList.toggle("is-stop", !!st.running);
+  $("run").classList.toggle("is-run", !st.running);
   $("stopped").style.display = st.running ? "none" : "block";
   $("mode").textContent = st.norm ? "NORM" : "AUTO";
   $("mode").classList.toggle("on", st.norm);
@@ -1130,11 +1194,25 @@ const KEYMAP = [
   { key: "f", label: "F", desc: "FFT view", run: () => setMode("FFT") },
   { key: "?", label: "?", desc: "Show / hide this help", run: () => toggleHelp() },
 ];
+// Mouse gestures — listed in the ? overlay so they're discoverable.
+const MOUSEMAP = [
+  { label: "Wheel", desc: "Zoom the time axis about the cursor" },
+  { label: "Shift+Wheel", desc: "Pan left / right through the record" },
+  { label: "Ctrl+Wheel", desc: "Change time/div (zoom the acquisition)" },
+  { label: "Double-click", desc: "Reset zoom to the full record" },
+  { label: "Drag ▸ handle (right)", desc: "Move the trigger level" },
+  { label: "Drag ◂ arrow (left)", desc: "Move a channel's offset" },
+  { label: "Shift+click", desc: "Set the trigger level where you click" },
+];
 function editableFocused() { const a = document.activeElement; return a && /^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName); }
 function toggleHelp() {
   const el = $("help");
-  if (!el.classList.contains("show"))
-    $("helpBody").innerHTML = KEYMAP.map(x => `<tr><td><kbd>${x.label}</kbd></td><td>${x.desc}</td></tr>`).join("");
+  if (!el.classList.contains("show")) {
+    const rows = arr => arr.map(x => `<tr><td><kbd>${x.label}</kbd></td><td>${x.desc}</td></tr>`).join("");
+    $("helpBody").innerHTML =
+      `<tr><th colspan="2" class="fcap">Keyboard</th></tr>` + rows(KEYMAP) +
+      `<tr><th colspan="2" class="fcap">Mouse</th></tr>` + rows(MOUSEMAP);
+  }
   el.classList.toggle("show");
 }
 window.addEventListener("keydown", (e) => {
@@ -1145,7 +1223,21 @@ window.addEventListener("keydown", (e) => {
   if (m) { e.preventDefault(); m.run(); }
 });
 $("help").onclick = (e) => { if (e.target.id === "help") $("help").classList.remove("show"); }; // click backdrop closes
-$("panelToggle").onclick = () => document.body.classList.toggle("dock-open"); // narrow-screen drawer
+function updateMathHint() {
+  const h = $("mathHint");
+  if (mathFn === "res1" || mathFn === "res2")
+    h.textContent = "select the carrier peak(s) in the C" + (mathFn === "res1" ? 1 : 2) + " FFT list; the residual (minor waves) shows in purple";
+  else h.textContent = "";
+}
+$("mathFn").onchange = () => { mathFn = $("mathFn").value; updateMathHint(); redraw(); };
+$("panelToggle").onclick = () => { document.body.classList.toggle("dock-toggled"); resize(); }; // collapse/expand dock
+// Minimise/expand an individual card by clicking its title (ignore header controls).
+$("dock").addEventListener("click", ev => {
+  // ignore header controls, the action cluster, and hint text (e.g. "click to toggle")
+  if (ev.target.closest("button, input, select, label, textarea, a, .subtle, .card-actions")) return;
+  const h3 = ev.target.closest("h3");
+  if (h3 && h3.parentElement.classList.contains("card")) h3.parentElement.classList.toggle("collapsed");
+});
 
 resize();
 pollFrame();

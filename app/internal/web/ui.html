@@ -49,6 +49,20 @@
       </div>
     </div>
 
+    <div class="card" id="mathCard">
+      <h3><span class="ccm">M</span> Math</h3>
+      <select id="mathFn" class="dsel wfull" aria-label="math function">
+        <option value="off">Off</option>
+        <option value="c1-c2">C1 − C2</option>
+        <option value="c2-c1">C2 − C1</option>
+        <option value="c1+c2">C1 + C2</option>
+        <option value="c1*c2">C1 × C2</option>
+        <option value="res1">C1 − selected FFT peaks (remove carrier)</option>
+        <option value="res2">C2 − selected FFT peaks (remove carrier)</option>
+      </select>
+      <div id="mathHint" class="subtle mt"></div>
+    </div>
+
     <div class="card" id="measCard">
       <h3>Measure</h3>
       <table class="meas"><tbody id="measBody"></tbody></table>
@@ -130,7 +144,7 @@
 
 <footer>
   <div class="fsec">
-    <button id="run" class="running">RUN</button>
+    <button id="run" class="is-run">RUN ▶</button>
     <button id="single" title="NORM-arm: hold until a triggered frame">SINGLE</button>
   </div>
   <div class="fsec">
