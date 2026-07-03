@@ -16,6 +16,7 @@ import (
 // frame (spec 07 §6). It carries no capture state.
 type HUD struct {
 	C1VdivV, C2VdivV float64
+	Probe1, Probe2   float64 // probe attenuation (1/10/100); 0 treated as ×1
 	TdivS            float64
 	TrigSrc          int
 	TrigRising       bool
@@ -199,6 +200,36 @@ func fmtVolt(v float64) string {
 		return g3(x) + "V"
 	}
 	return g3(x*1e3) + "mV"
+}
+
+// railed reports whether more than 0.5 % of a trace sits at the ADC rails —
+// the same threshold the web frame uses, so both UIs flag clipping alike.
+func railed(sig []uint8) bool {
+	n := len(sig)
+	if n == 0 {
+		return false
+	}
+	c := 0
+	for _, v := range sig {
+		if v <= 1 || v >= 254 {
+			c++
+		}
+	}
+	return c*200 > n
+}
+
+// vdivLabel formats a channel's volts/div at the probe tip. A probe factor
+// >1 scales the electrical V/div and appends a "10x"/"100x" tag so the label
+// matches what the operator actually measures.
+func vdivLabel(vdivV, probe float64) string {
+	if probe < 1 {
+		probe = 1
+	}
+	s := fmtVolt(vdivV * probe)
+	if probe != 1 {
+		s += fmt.Sprintf(" %gx", probe)
+	}
+	return s
 }
 
 func fmtTdiv(s float64) string {
@@ -431,9 +462,17 @@ func absI(x int) int {
 }
 
 func drawHUD(sf Surface, f *engine.Frame, hud HUD) {
-	DrawText(sf, 4, 2, "C1 "+fmtVolt(hud.C1VdivV), colC1, 1)
+	DrawText(sf, 4, 2, "C1 "+vdivLabel(hud.C1VdivV, hud.Probe1), colC1, 1)
 	if hud.TwoChan {
-		DrawText(sf, 96, 2, "C2 "+fmtVolt(hud.C2VdivV), colC2, 1)
+		DrawText(sf, 96, 2, "C2 "+vdivLabel(hud.C2VdivV, hud.Probe2), colC2, 1)
+	}
+	if f != nil && f.Valid > 0 { // clipping warning — railed traces make readings suspect
+		if railed(f.C1[:f.Valid]) {
+			DrawText(sf, 4, 14, "CLIP", colTrig, 1)
+		}
+		if hud.TwoChan && railed(f.C2[:f.Valid]) {
+			DrawText(sf, 96, 14, "CLIP", colTrig, 1)
+		}
 	}
 	DrawText(sf, 200, 2, "M "+fmtTdiv(hud.TdivS), colInfo, 1)
 

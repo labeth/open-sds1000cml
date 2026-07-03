@@ -9,6 +9,11 @@ let frame = null;     // last frame reply
 let lastSeq = 0;
 let lvlDragging = false, offDragging = false;
 let frozen = false;
+// Probe attenuation is a tip-referred display multiplier: every volts the
+// client SHOWS is at the probe tip, but code/DAC math is electrical (at the
+// scope input), so divide tip volts by the probe factor before sending.
+const probeOf = (ch) => (st && (ch === 2 ? st.probe2 : st.probe1)) || 1;
+const trigProbe = () => probeOf(st && st.trig_source === 1 ? 2 : 1);
 const view = { mode: "YT", persist: false, cursors: false, c1: true, c2: true,
                win: { a: 0, b: 1 } };   // visible column range as fractions of 0..cols-1
 let userZoomed = false;   // true once the user pans/zooms → live frames stop re-homing
@@ -732,7 +737,9 @@ function fmtMeas(key, m) {
 }
 function updateMeas() {
   const keys = ["Vpp", "Vmax", "Vmin", "Vmean", "Vrms", "Freq", "Period", "Duty"];
-  let html = `<tr><th></th><td class="cc1">C1</td><td class="cc2">C2</td></tr>`;
+  const clipTag = c => c ? ` <span class="clip" title="signal is clipping — increase V/div or probe; measurements unreliable">⚠ CLIP</span>` : "";
+  let html = `<tr><th></th><td class="cc1">C1${clipTag(frame && frame.clip1)}</td>` +
+             `<td class="cc2">C2${clipTag(frame && frame.clip2)}</td></tr>`;
   for (const k of keys) {
     html += `<tr><th>${k}</th><td class="cc1">${fmtMeas(k, frame && frame.m1)}</td>` +
             `<td class="cc2">${fmtMeas(k, frame && frame.m2)}</td></tr>`;
@@ -745,7 +752,10 @@ function updateCursors() {
   $("curCard").style.display = "";
   // Cursors are screen fractions; the screen now spans (b-a) of the record.
   const dt = Math.abs(cur.t2 - cur.t1) * (frame.col_span_s || 0) * (view.win.b - view.win.a);
-  const vFull1 = 256 * (frame.vpc1 || 1 / 32), vFull2 = 256 * (frame.vpc2 || 1 / 32);
+  // A full-height drag spans 255 codes ÷ vertical zoom (the 2 mV/5 mV detents
+  // render magnified), times volts/code (already probe-scaled). Per channel.
+  const z1 = (st && st.zoom1) || 1, z2 = (st && st.zoom2) || 1;
+  const vFull1 = 255 * (frame.vpc1 || 1 / 32) / z1, vFull2 = 255 * (frame.vpc2 || 1 / 32) / z2;
   const dv1 = Math.abs(cur.v2 - cur.v1) * vFull1, dv2 = Math.abs(cur.v2 - cur.v1) * vFull2;
   $("curBody").innerHTML =
     `<tr><th>Δt</th><td colspan="2">${eng(dt, "s")}</td></tr>` +
@@ -795,8 +805,8 @@ function moveMarker(ev) {
   redraw();
 }
 function commitMarker() {
-  if (mk.kind === "level") send("triglevelcode", Math.round(31434 - 938 * st.trig_volts));
-  else send("offset" + (mk.kind === "off1" ? 1 : 2), mk.kind === "off1" ? st.off1_v : st.off2_v);
+  if (mk.kind === "level") send("triglevelcode", Math.round(31434 - 938 * st.trig_volts / trigProbe()));
+  else { const ch = mk.kind === "off1" ? 1 : 2; send("offset" + ch, (mk.kind === "off1" ? st.off1_v : st.off2_v) / probeOf(ch)); }
 }
 
 scope.addEventListener("pointerdown", ev => {
@@ -805,7 +815,7 @@ scope.addEventListener("pointerdown", ev => {
     const vpc = (st.trig_source === 1 ? frame.vpc2 : frame.vpc1) || (1 / 32);
     const volts = (255 * (1 - Math.max(0, Math.min(1, ptToNorm(ev).y))) - 128) * vpc;
     st.trig_volts = volts; $("lvl").value = volts.toFixed(2); $("lvlv").textContent = volts.toFixed(2) + " V";
-    send("triglevelcode", Math.round(31434 - 938 * volts)); redraw();
+    send("triglevelcode", Math.round(31434 - 938 * volts / trigProbe())); redraw();
     return;
   }
   if (view.mode === "FFT") { // toggle the nearest peak, across both channels
@@ -974,6 +984,14 @@ function applyStatus() {
     for (const id of ["vdiv1", "vdiv2"]) for (const v of st.vdivs) { const o = document.createElement("option"); o.value = v; o.textContent = fmtVdiv(v); $(id).appendChild(o); }
   for (const [id, val] of [["tdiv", st.tdiv_s], ["vdiv1", st.vdiv1], ["vdiv2", st.vdiv2]])
     if (val && document.activeElement !== $(id)) for (const o of $(id).options) if (Math.abs(+o.value - val) <= val * 1e-6) { o.selected = true; break; }
+  for (const [id, val] of [["probe1", st.probe1], ["probe2", st.probe2]])
+    if (document.activeElement !== $(id)) $(id).value = String(val || 1);
+  // Sliders read/emit tip-referred volts; widen their range for high probes so
+  // the full electrical span (±3.8 V in, +4.7 V trig) stays reachable.
+  for (const [id, lo, hi] of [["off1", -3.8, 3.8], ["off2", -3.8, 3.8], ["lvl", -3.8, 4.7]]) {
+    const p = id === "lvl" ? trigProbe() : probeOf(id === "off1" ? 1 : 2);
+    $(id).min = (lo * p).toFixed(2); $(id).max = (hi * p).toFixed(2); $(id).step = (0.05 * p).toFixed(3);
+  }
   if (!offDragging) {
     $("off1v").textContent = st.off1_v ? st.off1_v.toFixed(2) + " V" : "—";
     $("off2v").textContent = st.off2_v ? st.off2_v.toFixed(2) + " V" : "—";
@@ -1052,13 +1070,14 @@ function autoset() {
     for (const ch of [1, 2]) {
       const m = ch === 1 ? m1 : m2;
       if (!has(m)) continue;
-      const vdiv = nearestLadder(m.vpp / 6, st.vdivs);
-      send("vdiv" + ch, vdiv); send("offset" + ch, -m.vmean);
+      const p = probeOf(ch); // measurements are tip-referred; the V/div ladder is electrical
+      const vdiv = nearestLadder(m.vpp / p / 6, st.vdivs);
+      send("vdiv" + ch, vdiv); send("offset" + ch, -m.vmean / p);
       if (ch === 1) { st.vdiv1 = vdiv; st.off1_v = -m.vmean; } else { st.vdiv2 = vdiv; st.off2_v = -m.vmean; }
     }
   }
   const mid = (sm.vmax + sm.vmin) / 2;
-  send("triglevelcode", Math.round(31434 - 938 * mid));
+  send("triglevelcode", Math.round(31434 - 938 * mid / probeOf(src)));
   send("trigsource", src === 2 ? 1 : 0);
   send("trigtype", 0); // EDGE
   send("norm", 0);     // AUTO
@@ -1079,12 +1098,14 @@ $("ets").onclick = () => { const on = !(st && st.ets); send("ets", on ? 1 : 0); 
 $("tdiv").onchange = () => send("tdiv", +$("tdiv").value);
 $("vdiv1").onchange = () => send("vdiv1", +$("vdiv1").value);
 $("vdiv2").onchange = () => send("vdiv2", +$("vdiv2").value);
-for (const [rng, lbl, ctl] of [["off1", "off1v", "offset1"], ["off2", "off2v", "offset2"]]) {
+$("probe1").onchange = () => send("probe1", +$("probe1").value);
+$("probe2").onchange = () => send("probe2", +$("probe2").value);
+for (const [rng, lbl, ctl, ch] of [["off1", "off1v", "offset1", 1], ["off2", "off2v", "offset2", 2]]) {
   $(rng).oninput = () => { offDragging = true; $(lbl).textContent = (+$(rng).value).toFixed(2) + " V"; };
-  $(rng).onchange = () => { offDragging = false; send(ctl, +$(rng).value); };
+  $(rng).onchange = () => { offDragging = false; send(ctl, +$(rng).value / probeOf(ch)); };
 }
 $("lvl").oninput = () => { lvlDragging = true; $("lvlv").textContent = (+$("lvl").value).toFixed(2) + " V"; };
-$("lvl").onchange = () => { lvlDragging = false; send("triglevelcode", Math.round(31434 - 938 * (+$("lvl").value))); };
+$("lvl").onchange = () => { lvlDragging = false; send("triglevelcode", Math.round(31434 - 938 * (+$("lvl").value) / trigProbe())); };
 
 function updateQualRow() {
   const t = +$("ttype").value;
@@ -1263,9 +1284,18 @@ $("ePNG").onclick = () => {
 $("eCSV").onclick = () => {
   if (!frame || !frame.c1) return;
   const dt = (frame.col_span_s || 0) / frame.c1.length;
-  let csv = "t_s,c1_code,c2_code\n";
+  // Emit calibrated, probe-referred volts (same mapping as the measurements):
+  // v = (code-128)·vpc − offset. vpc and offset are already tip-scaled.
+  const vpc1 = frame.vpc1 || (1 / 32), vpc2 = frame.vpc2 || (1 / 32);
+  const o1 = frame.off1_v || 0, o2 = frame.off2_v || 0;
+  const toV = (code, vpc, off) => (code === undefined ? "" : ((code - 128) * vpc - off).toExponential(6));
+  let csv = "# open-sds1000cml capture seq=" + frame.seq +
+    " tdiv_s=" + (frame.tdiv_s || 0) + " probe_c1=" + (st ? st.probe1 || 1 : 1) +
+    " probe_c2=" + (st ? st.probe2 || 1 : 1) + "\n";
+  csv += "t_s,c1_v,c2_v\n";
   for (let i = 0; i < frame.c1.length; i++)
-    csv += (i * dt).toExponential(6) + "," + frame.c1[i] + "," + (frame.c2 ? frame.c2[i] : "") + "\n";
+    csv += (i * dt).toExponential(6) + "," + toV(frame.c1[i], vpc1, o1) + "," +
+      toV(frame.c2 ? frame.c2[i] : undefined, vpc2, o2) + "\n";
   const a = document.createElement("a");
   a.download = "scope-" + frame.seq + ".csv";
   a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" })); a.click();

@@ -38,6 +38,7 @@ type Analog interface {
 	Snapshot() (idx [2]int, emitted bool)
 	SetOffset(ch int, volts float64) uint16
 	OffsetVolts(ch int, code uint16) float64
+	SetProbe(ch int, x float64)
 }
 
 // Screenshot returns the SCDP hardcopy payload (BMP). Wired by main to a
@@ -466,6 +467,9 @@ func (h *Handler) execChannel(ch int, head, arg string) []byte {
 			return errTok(errOutOfRange)
 		}
 		h.attn[ch] = v
+		if h.fe != nil {
+			h.fe.SetProbe(ch, v) // probe attenuation is a display multiplier
+		}
 		return nil
 	case "ATTN?":
 		return h.reply(fmt.Sprintf("C%d:ATTN", ch+1), strconv.FormatFloat(h.attn[ch], 'g', -1, 64))

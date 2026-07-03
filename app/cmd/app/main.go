@@ -54,6 +54,8 @@ func buildHUD(e *engine.Engine, fe *analog.FrontEnd) lcd.HUD {
 		idx, _ := fe.Snapshot()
 		hud.C1VdivV = analog.Detents[idx[0]].VdivV
 		hud.C2VdivV = analog.Detents[idx[1]].VdivV
+		hud.Probe1 = fe.ProbeFactor(0)
+		hud.Probe2 = fe.ProbeFactor(1)
 		if st.OffC1 != 0 {
 			hud.OffC1V = fe.OffsetVolts(0, st.OffC1)
 		}

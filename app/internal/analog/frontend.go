@@ -89,6 +89,7 @@ type FrontEnd struct {
 	onVdiv  func(ch int, vdivV float64) // V/div change hook (engine trigger map)
 	offReqV [2]float64                  // requested input-referred offset volts
 	offSet  [2]bool                     // whether the user has set an offset
+	probe   [2]float64                  // per-channel probe attenuation (display multiplier)
 }
 
 // New seeds both channels' shadows to the boot detent WITHOUT emitting —
@@ -102,7 +103,30 @@ func New(tr Transport, sleep func(time.Duration), tab *cal.Table) *FrontEnd {
 	if tab == nil {
 		tab = cal.Defaults()
 	}
-	return &FrontEnd{tr: tr, sleep: sleep, tab: tab, idx: [2]int{BootDetent, BootDetent}}
+	return &FrontEnd{tr: tr, sleep: sleep, tab: tab, idx: [2]int{BootDetent, BootDetent}, probe: [2]float64{1, 1}}
+}
+
+// SetProbe sets a channel's probe attenuation factor (1, 10 or 100). It is a
+// pure display/readout multiplier — the analog gain is untouched; every volts
+// readout (measurements, cursors, CSV, trigger level, offset) scales by it so
+// the numbers reflect the signal at the probe tip.
+func (f *FrontEnd) SetProbe(ch int, x float64) {
+	if x < 1 {
+		x = 1
+	}
+	f.mu.Lock()
+	f.probe[ch&1] = x
+	f.mu.Unlock()
+}
+
+// ProbeFactor returns a channel's probe attenuation (default 1).
+func (f *FrontEnd) ProbeFactor(ch int) float64 {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if p := f.probe[ch&1]; p >= 1 {
+		return p
+	}
+	return 1
 }
 
 // OnOffset wires the offset-DAC stager (engine.SetOffsetDAC). Until set,

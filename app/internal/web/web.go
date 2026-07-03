@@ -74,6 +74,8 @@ type Analog interface {
 	OffsetVolts(ch int, code uint16) float64
 	CalSource() string
 	DCVolts(ch int, meanCode float64) float64
+	SetProbe(ch int, x float64)
+	ProbeFactor(ch int) float64
 }
 
 // Panel is the front-panel injection surface (spec 08 §6): drive any button or
@@ -208,6 +210,8 @@ type statusReply struct {
 	Vdivs       []float64 `json:"vdivs,omitempty"`
 	Vdiv1       float64   `json:"vdiv1,omitempty"`
 	Vdiv2       float64   `json:"vdiv2,omitempty"`
+	Probe1      float64   `json:"probe1,omitempty"`
+	Probe2      float64   `json:"probe2,omitempty"`
 	Zoom1       int       `json:"zoom1,omitempty"`
 	Zoom2       int       `json:"zoom2,omitempty"`
 	VdivLive    bool      `json:"vdiv_live"` // false until the first emit
@@ -239,6 +243,11 @@ func (s *Server) hStatus(w http.ResponseWriter, r *http.Request) {
 		rep.Zoom1 = analog.Detents[idx[0]].Zoom
 		rep.Zoom2 = analog.Detents[idx[1]].Zoom
 		rep.VdivLive = emitted
+		rep.Probe1 = s.fe.ProbeFactor(0)
+		rep.Probe2 = s.fe.ProbeFactor(1)
+		// The trigger level is input-referred to its source channel, so scale
+		// the volts readout by that channel's probe (the code is unchanged).
+		rep.TrigVolts *= s.fe.ProbeFactor(st.TrigSource)
 	}
 	offVolts := analog.OffsetVolts
 	if s.fe != nil {
@@ -268,6 +277,10 @@ func (s *Server) hStatus(w http.ResponseWriter, r *http.Request) {
 	}
 	if st.OffC2 != 0 {
 		rep.Off2V = offVolts(1, st.OffC2)
+	}
+	if s.fe != nil { // report offsets at the probe tip, matching the frame's off_v
+		rep.Off1V *= s.fe.ProbeFactor(0)
+		rep.Off2V *= s.fe.ProbeFactor(1)
 	}
 	writeJSON(w, rep)
 }
@@ -312,6 +325,9 @@ type frameReply struct {
 
 	M1 *meas `json:"m1,omitempty"` // CH1 auto-measurements
 	M2 *meas `json:"m2,omitempty"` // CH2
+
+	Clip1 bool `json:"clip1,omitempty"` // CH1 railed against the ADC full scale
+	Clip2 bool `json:"clip2,omitempty"` // CH2 railed — readings/measurements suspect
 }
 
 // meas is the standard auto-measurement set, in volts / Hz / s (Vpp and
@@ -325,6 +341,24 @@ type meas struct {
 	Freq   float64 `json:"freq"`
 	Period float64 `json:"period"`
 	Duty   float64 `json:"duty"`
+}
+
+// clipped reports whether a trace is railed against the ADC full scale: it
+// flags when more than 0.5 % of samples sit in the top/bottom code band, so a
+// single stray spike doesn't trip it but a genuinely clamped signal does. A
+// clipped trace makes Vpp/Vmax and any derived measurement untrustworthy.
+func clipped(sig []uint8) bool {
+	n := len(sig)
+	if n == 0 {
+		return false
+	}
+	railed := 0
+	for _, v := range sig {
+		if v <= 1 || v >= 254 {
+			railed++
+		}
+	}
+	return railed*200 > n // >0.5 %
 }
 
 // measure computes auto-measurements over the raw record. voltsPerCode is
@@ -507,6 +541,14 @@ func (s *Server) vertScales() (off [2]float64, vpc [2]float64) {
 		if st.OffC2 != 0 {
 			off[1] = s.fe.OffsetVolts(1, st.OffC2)
 		}
+		// Probe attenuation is input-referred: it scales both the per-code
+		// volts and the offset so every downstream readout (measurements,
+		// cursors, CSV, ground marker) reports the signal at the probe tip.
+		p0, p1 := s.fe.ProbeFactor(0), s.fe.ProbeFactor(1)
+		vpc[0] *= p0
+		vpc[1] *= p1
+		off[0] *= p0
+		off[1] *= p1
 	}
 	return off, vpc
 }
@@ -621,6 +663,8 @@ func (s *Server) hFrame(w http.ResponseWriter, r *http.Request) {
 		rawSample := f.SampleS
 		rep.M1 = measure(f.C1[:f.Valid], vpc[0], off[0], rawSample)
 		rep.M2 = measure(f.C2[:f.Valid], vpc[1], off[1], rawSample)
+		rep.Clip1 = clipped(f.C1[:f.Valid])
+		rep.Clip2 = clipped(f.C2[:f.Valid])
 	})
 	writeJSON(w, rep)
 }
@@ -758,6 +802,22 @@ func (s *Server) hSet(w http.ResponseWriter, r *http.Request) {
 			applied = analog.OffsetVolts(ch, code)
 			s.sc.SetOffsetDAC(ch, code)
 		}
+	case "probe1", "probe2":
+		if s.fe == nil {
+			ok, errStr = false, "vertical front end unavailable"
+			break
+		}
+		x := req.Value
+		if x != 1 && x != 10 && x != 100 {
+			ok, errStr = false, "probe must be 1, 10 or 100"
+			break
+		}
+		ch := 0
+		if req.Control == "probe2" {
+			ch = 1
+		}
+		s.fe.SetProbe(ch, x)
+		applied = x
 	default:
 		ok, errStr = false, "unknown control"
 	}

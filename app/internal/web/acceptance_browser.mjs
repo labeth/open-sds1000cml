@@ -68,6 +68,10 @@ run(async (t) => {
   t.ok(await po.hasClass("tC1", "on"), "C1 enable toggles back on");
   const tdivOpts = await po.eval(() => document.getElementById("tdiv").options.length);
   t.ok(tdivOpts > 3, `time/div select is populated (${tdivOpts} detents)`);
+  // Probe selects exist in the vertical group (behaviour covered by the Go
+  // unit test, which runs with a real front end wired).
+  t.ok(await po.eval(() => !!document.getElementById("probe1") && !!document.getElementById("probe2")),
+    "per-channel probe selects present");
 
   // --- cursors ---------------------------------------------------------------
   await po.click("tCursors");

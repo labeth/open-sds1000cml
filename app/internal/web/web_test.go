@@ -67,6 +67,7 @@ type fakeAnalog struct {
 	set      bool
 	offCh    int
 	offVolts float64
+	probe    [2]float64
 }
 
 func (f *fakeAnalog) SetVdiv(ch, idx int) error {
@@ -84,6 +85,13 @@ func (f *fakeAnalog) OffsetVolts(ch int, code uint16) float64 {
 }
 func (f *fakeAnalog) CalSource() string                    { return "defaults" }
 func (f *fakeAnalog) DCVolts(ch int, mean float64) float64 { return 0 }
+func (f *fakeAnalog) SetProbe(ch int, x float64)           { f.probe[ch&1] = x }
+func (f *fakeAnalog) ProbeFactor(ch int) float64 {
+	if p := f.probe[ch&1]; p >= 1 {
+		return p
+	}
+	return 1
+}
 
 func (f *fakeScope) Snapshot() engine.Stats { return f.stats }
 func (f *fakeScope) WithFrame(fn func(*engine.Frame)) {
@@ -185,6 +193,58 @@ func TestVerticalVerbs(t *testing.T) {
 	s2 := New(fs, nil, nil, nil)
 	if out := post(t, s2, "vdiv1", 0.1); out["ok"] != false {
 		t.Fatalf("vdiv without front end accepted: %v", out)
+	}
+}
+
+func getStatus(t *testing.T, s *Server) map[string]any {
+	t.Helper()
+	req := httptest.NewRequest("GET", "/api/status", nil)
+	rec := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rec, req)
+	var rep map[string]any
+	if err := json.Unmarshal(rec.Body.Bytes(), &rep); err != nil {
+		t.Fatalf("bad status json: %v", err)
+	}
+	return rep
+}
+
+func TestProbeAttenuation(t *testing.T) {
+	// code 30496 ≈ +1 V trigger level on source C1.
+	fs := &fakeScope{stats: engine.Stats{TrigCode: 30496, TrigSource: 0}}
+	fa := &fakeAnalog{}
+	s := New(fs, fa, nil, nil)
+
+	// only 1/10/100 are valid factors.
+	if out := post(t, s, "probe1", 3); out["ok"] != false {
+		t.Fatalf("probe 3× accepted: %v", out)
+	}
+	_, base := s.vertScales() // both channels ×1
+	tv1 := getStatus(t, s)["trig_volts"].(float64)
+
+	if out := post(t, s, "probe1", 10); out["ok"] != true || fa.probe[0] != 10 {
+		t.Fatalf("probe1 10×: %v fa=%+v", out, fa)
+	}
+	if out := post(t, s, "probe2", 100); out["ok"] != true || fa.probe[1] != 100 {
+		t.Fatalf("probe2 100×: %v fa=%+v", out, fa)
+	}
+
+	// vertScales multiplies each channel's volts-per-code by its probe factor.
+	_, vpc := s.vertScales()
+	if math.Abs(vpc[0]-base[0]*10) > 1e-12 {
+		t.Fatalf("vpc[0] not ×10: base %v got %v", base[0], vpc[0])
+	}
+	if math.Abs(vpc[1]-base[1]*100) > 1e-12 {
+		t.Fatalf("vpc[1] not ×100: base %v got %v", base[1], vpc[1])
+	}
+
+	// Status echoes the factors and scales the trigger-level readout by the
+	// trigger source's (C1) probe.
+	rep := getStatus(t, s)
+	if rep["probe1"] != 10.0 || rep["probe2"] != 100.0 {
+		t.Fatalf("status probes = %v / %v", rep["probe1"], rep["probe2"])
+	}
+	if tv10 := rep["trig_volts"].(float64); math.Abs(tv10-tv1*10) > 1e-9 {
+		t.Fatalf("trig_volts not ×10: base %v got %v", tv1, tv10)
 	}
 }
 
