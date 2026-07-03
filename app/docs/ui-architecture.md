@@ -310,3 +310,9 @@ softkey); and a responsive drawer/toolbar layout. Both surfaces (web + LCD) cove
   sliders remain for fine entry. (3) Fixed the trigger-level line still rendering
   the old hardcoded red — now the amber --trigger token like everything else.
   Acceptance pins the drag DIRECTION (drag up → level rises). Device-verified.
+- **UX pass 2: control-bar grouping — DONE.** The footer was one dense
+  undifferentiated row. Reworked into labelled sections separated by rules, in
+  workflow order: [RUN/SINGLE] · TRIGGER (mode/type/slope/source/ets + level) ·
+  HORIZONTAL (time/div + position) · VERTICAL (C1/C2 vdiv + offset) · ACQUIRE
+  (acq + mem). Sliders narrowed (secondary now that markers drag). Ids unchanged
+  so the acceptance suite still pins every control.

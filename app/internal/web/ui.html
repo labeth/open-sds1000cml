@@ -129,46 +129,51 @@
 </div>
 
 <footer>
-  <button id="run" class="running">RUN</button>
-  <button id="single" title="NORM-arm: hold until a triggered frame">SINGLE</button>
-  <div class="grp">
-    <label>trig</label>
+  <div class="fsec">
+    <button id="run" class="running">RUN</button>
+    <button id="single" title="NORM-arm: hold until a triggered frame">SINGLE</button>
+  </div>
+  <div class="fsec">
+    <span class="fcap">Trigger</span>
     <button id="mode">AUTO</button>
     <select id="ttype" aria-label="trigger type">
       <option value="0">EDGE</option><option value="1">PULSE</option>
       <option value="2">SLOPE</option><option value="3">VIDEO</option>
     </select>
     <button id="slope" title="trigger slope">&#8599;</button>
-    <button id="source">C1</button>
+    <button id="source" title="trigger source channel">C1</button>
     <button id="ets" title="equivalent-time sampling (&#8804;50 ns)">ETS</button>
-  </div>
-  <div class="grp">
-    <label>level</label>
-    <input type="range" id="lvl" aria-label="trigger level" min="-3.8" max="4.7" step="0.05" value="0">
+    <input type="range" id="lvl" aria-label="trigger level" min="-3.8" max="4.7" step="0.05" value="0" title="trigger level (or drag the handle on the display)">
     <span id="lvlv" class="readout">0.00 V</span>
   </div>
-  <div class="grp">
-    <label title="horizontal trigger position">pos</label>
+  <div class="fsec">
+    <span class="fcap">Horizontal</span>
+    <select id="tdiv" aria-label="time per division" title="time per division"></select>
+    <label class="hint" title="horizontal trigger position">pos</label>
     <input type="range" id="tpos" aria-label="trigger horizontal position" min="0" max="1" step="0.02" value="0.5" title="trigger horizontal position">
   </div>
-  <div class="grp"><label>time/div</label><select id="tdiv" aria-label="time per division"></select></div>
-  <div class="grp"><label class="cc1">C1</label><select id="vdiv1"></select>
-    <input type="range" id="off1" aria-label="C1 offset" min="-3.8" max="3.8" step="0.05" value="0" title="C1 offset">
-    <span id="off1v" class="readout">—</span></div>
-  <div class="grp"><label class="cc2">C2</label><select id="vdiv2"></select>
-    <input type="range" id="off2" aria-label="C2 offset" min="-3.8" max="3.8" step="0.05" value="0" title="C2 offset">
-    <span id="off2v" class="readout">—</span></div>
-  <div class="grp"><label>acq</label>
+  <div class="fsec">
+    <span class="fcap">Vertical</span>
+    <span class="cc1">C1</span><select id="vdiv1" aria-label="C1 volts per division"></select>
+    <input type="range" id="off1" aria-label="C1 offset" min="-3.8" max="3.8" step="0.05" value="0" title="C1 offset (or drag C1's arrow on the display)">
+    <span id="off1v" class="readout">—</span>
+    <span class="cc2">C2</span><select id="vdiv2" aria-label="C2 volts per division"></select>
+    <input type="range" id="off2" aria-label="C2 offset" min="-3.8" max="3.8" step="0.05" value="0" title="C2 offset (or drag C2's arrow on the display)">
+    <span id="off2v" class="readout">—</span>
+  </div>
+  <div class="fsec">
+    <span class="fcap">Acquire</span>
     <select id="acq" aria-label="acquisition mode">
       <option value="0">NORMAL</option><option value="1">AVERAGE</option>
       <option value="2">ERES</option><option value="3">PEAK</option>
     </select>
-    <select id="acqn" style="display:none"></select></div>
-  <div class="grp"><label>mem</label>
+    <select id="acqn" style="display:none"></select>
+    <label class="hint">mem</label>
     <select id="memdepth" aria-label="memory depth">
       <option value="2048">2k (fast)</option><option value="6144" selected>6k</option>
       <option value="14336">14k</option><option value="20480">20k (deep)</option>
-    </select></div>
+    </select>
+  </div>
 
   <div id="qualrow" class="panel2">
     <div class="grp" id="qp-pulse" style="display:none">
