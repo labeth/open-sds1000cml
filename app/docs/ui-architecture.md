@@ -356,3 +356,13 @@ softkey); and a responsive drawer/toolbar layout. Both surfaces (web + LCD) cove
   with the dropdown selection unchanged. Test frames have DisplayedS==TdivS so
   homeSpan collapses to win_frac → deep-memory tests unaffected. Device-verified:
   home 200µs/div = dropdown; zoom 2× → 100µs/div; dropdown stays 200µs.
+- **Corrected model: time/div label is FIXED (hardware); zoom spreads the grid
+  dividers.** Earlier passes scaled the label with zoom — wrong. Per the user: the
+  time/div label ALWAYS reads the hardware timebase and never changes with zoom;
+  software zoom instead changes the on-screen SPACING of the grid dividers. drawGrid
+  now draws vertical lines at one tdiv_s of signal each, anchored to the trigger
+  (record fraction step = tdiv_s/col_span_s), so at 1× ~10 dividers fill the screen
+  and at 2× ~5 do (each still tdiv_s, 2× further apart); the trace mapping (xForCol)
+  already aligns them. updateStatusLine shows tdiv_s verbatim + a "zoom ×N" tag.
+  Device-verified: 500µs/div home = 9.8 divisions, 2× zoom = 4.9 divisions, label
+  unchanged.

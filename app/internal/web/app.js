@@ -150,10 +150,23 @@ function clearPersist() { if (persistCtx) { persistCtx.fillStyle = "#05080c"; pe
 function drawGrid(g) {
   g.fillStyle = "#05080c"; g.fillRect(0, 0, CW, CH);
   g.strokeStyle = "#182430"; g.lineWidth = dpr;
-  for (let i = 1; i < DIVX; i++) { const x = Math.round(i * CW / DIVX) + .5; g.beginPath(); g.moveTo(x, 0); g.lineTo(x, CH); g.stroke(); }
+  const vline = xf => { const px = Math.round(xf) + .5; g.beginPath(); g.moveTo(px, 0); g.lineTo(px, CH); g.stroke(); };
+  // Vertical (TIME) divisions. In Y-T each line marks one tdiv_s of SIGNAL,
+  // anchored to the trigger — so the marker SPACING scales with zoom (further
+  // apart zoomed in, closer zoomed out) while the time/div LABEL stays the fixed
+  // hardware value. FFT/X-Y/no-frame keep the fixed DIVX graticule.
+  const w = view.win, span = w.b - w.a;
+  let drewTime = false;
+  if (view.mode === "YT" && frame && frame.tdiv_s > 0 && frame.col_span_s > 0 && span > 0) {
+    const dtFrac = frame.tdiv_s / frame.col_span_s;                 // one division as a record fraction
+    const anchor = (frame.edge_frac >= 0) ? frame.edge_frac : 0.5; // the trigger
+    const nLo = Math.ceil((w.a - anchor) / dtFrac), nHi = Math.floor((w.b - anchor) / dtFrac);
+    if (nHi - nLo <= 400) { for (let n = nLo; n <= nHi; n++) vline((anchor + n * dtFrac - w.a) / span * (CW - 1)); drewTime = true; }
+  }
+  if (!drewTime) for (let i = 1; i < DIVX; i++) vline(i * CW / DIVX);
   for (let i = 1; i < DIVY; i++) { const y = Math.round(i * CH / DIVY) + .5; g.beginPath(); g.moveTo(0, y); g.lineTo(CW, y); g.stroke(); }
   g.strokeStyle = "#26384a";
-  g.beginPath(); g.moveTo(CW / 2, 0); g.lineTo(CW / 2, CH); g.stroke();
+  vline(CW / 2);                                                    // screen-centre reference
   g.beginPath(); g.moveTo(0, CH / 2); g.lineTo(CW, CH / 2); g.stroke();
 }
 function yFor(code, zoom) { zoom = zoom || 1; return CH * (1 - (128 + (code - 128) * zoom) / 255); }
@@ -982,15 +995,13 @@ function applyStatus() {
 // on the 1s status poll. (Cursor Δt already scales by win_span.)
 function updateStatusLine() {
   if (!st) return;
-  // Time/div = the HARDWARE timebase, scaled by software zoom. The grid is always
-  // DIVX divisions; the on-screen time/div = the visible record time / DIVX, which
-  // equals tdiv_s at home (zoom 1) and scales as you zoom. NOT the decimation-
-  // derived displayed_sdiv_s.
+  // Time/div is ALWAYS the HARDWARE timebase — zoom NEVER changes it. Zoom instead
+  // spreads/compresses the on-screen grid dividers (drawGrid), and a "zoom ×N" tag
+  // reports the factor.
   let b = frame ? (frame.tdiv_s || frame.displayed_sdiv_s) : (st.tdiv_s || st.displayed_sdiv_s);
   let zoomTxt = "";
   if (frame && view.mode === "YT" && frame.col_span_s > 0) {
     const winSpan = view.win.b - view.win.a;
-    b = winSpan * frame.col_span_s / DIVX;       // true on-screen time/div (= HW tdiv at home)
     const hs = homeSpan(frame), zoom = (hs > 0 && winSpan > 0) ? hs / winSpan : 1;
     if (Math.abs(zoom - 1) > 0.02)
       zoomTxt = zoom >= 1 ? " · zoom ×" + (zoom < 10 ? zoom.toFixed(1) : String(Math.round(zoom)))

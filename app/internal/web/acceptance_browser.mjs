@@ -167,13 +167,18 @@ run(async (t) => {
   await po.page.mouse.dblclick(gc.x, gc.y); await po.wait(150);
   t.ok(await po.eval(() => userZoomed === false), "double-click in the trace area resets the zoom");
   t.ok(Math.abs((await po.eval(() => st.trig_volts)) - lvl0) < 0.2, "double-click doesn't nudge the trigger level (no marker side-effect)");
-  // time/div readout FOLLOWS the view zoom (was fixed at the acquisition value)
+  // time/div LABEL stays the hardware value at ANY zoom; zoom instead spreads the
+  // grid dividers (the visible-division count changes, not the label).
   await po.eval(() => goHome());
   await po.wait(60);
-  const tdivHome = await po.text("line");
+  const tdHome = await po.eval(() => document.getElementById("line").textContent.split(" · ")[0]);
+  const divsHome = await po.eval(() => (view.win.b - view.win.a) * frame.col_span_s / frame.tdiv_s);
   await po.eval(() => { const c = (view.win.a + view.win.b) / 2, h = (view.win.b - view.win.a) / 4; view.win.a = c - h; view.win.b = c + h; userZoomed = true; redraw(); }); // 2× zoom
-  const tdivZoom = await po.text("line");
-  t.ok(tdivZoom.includes("zoom ×") && tdivZoom !== tdivHome, "zooming scales the time/div readout (shows a zoom factor)");
+  const lineZoom = await po.text("line");
+  const divsZoom = await po.eval(() => (view.win.b - view.win.a) * frame.col_span_s / frame.tdiv_s);
+  t.ok(lineZoom.split(" · ")[0] === tdHome, `time/div label stays the hardware value at any zoom (${tdHome})`);
+  t.ok(lineZoom.includes("zoom ×"), "a zoom factor is shown");
+  t.ok(Math.abs(divsZoom - divsHome / 2) < 0.5, `zoom 2× halves the visible grid divisions (${divsHome.toFixed(1)} → ${divsZoom.toFixed(1)}) — dividers spread 2×`);
   await po.eval(() => goHome());
   t.ok(!(await po.text("line")).includes("zoom ×"), "returning home clears the zoom factor");
   await po.page.mouse.move(3, 3); await po.wait(400); // break the double-click sequence before the drag test below
