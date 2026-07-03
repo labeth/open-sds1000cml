@@ -42,6 +42,38 @@ func countColor(m *MemSurface, c uint16) int {
 	return n
 }
 
+func countColorIn(m *MemSurface, c uint16, x0, y0, x1, y1 int) int {
+	n := 0
+	for y := y0; y < y1; y++ {
+		for x := x0; x < x1; x++ {
+			if m.At(x, y) == c {
+				n++
+			}
+		}
+	}
+	return n
+}
+
+// The selected softkey is a FILLED inverted amber bar (not a 1px outline): its
+// slot must be a solid block of colTrig with dark (colBG) inverted text on top.
+func TestRenderMenuSelectedSoftkeyFilled(t *testing.T) {
+	m := NewMemSurface()
+	h := defaultHUD()
+	h.MenuOpen = true
+	h.MenuTitle = "TRIGGER"
+	h.MenuItems = []MenuItem{{"Mode", "AUTO"}, {"Slope", "Rise"}, {"Source", "C1"}}
+	h.MenuSel = 1 // second slot selected → sy = 40 + (444-40)*1/5 = 120
+	Render(m, testFrame(2048), h, true)
+	// slot i=1 bar: y in [118,136], x in [687,797]
+	fill := countColorIn(m, colTrig, 687, 118, 797, 137)
+	if fill < 800 {
+		t.Fatalf("selected softkey should be a FILLED amber bar, got only %d colTrig px in the slot", fill)
+	}
+	if inv := countColorIn(m, colBG, 687, 118, 797, 137); inv < 10 {
+		t.Fatalf("selected softkey text should be inverted (dark on amber), got %d colBG px in the bar", inv)
+	}
+}
+
 func TestRenderTraceFrame(t *testing.T) {
 	m := NewMemSurface()
 	Render(m, testFrame(2048), defaultHUD(), true)

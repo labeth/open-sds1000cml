@@ -355,14 +355,20 @@ func drawMenu(sf Surface, hud HUD) {
 			continue
 		}
 		sy := top + (bot-top)*i/5
+		labelCol, valueCol := colInfo, colTrig
 		if i == hud.MenuSel {
-			for x := x0 + 3; x < W-3; x++ { // highlight box
-				sf.SetPixel(x, sy-2, colTrig)
-				sf.SetPixel(x, sy+16, colTrig)
+			// Filled inverted highlight bar (was a 1px outline) — clearer which
+			// softkey is active, and legible at arm's length. Text goes dark on
+			// the amber fill.
+			for y := sy - 2; y <= sy+16; y++ {
+				for x := x0 + 3; x < W-3; x++ {
+					sf.SetPixel(x, y, colTrig)
+				}
 			}
+			labelCol, valueCol = colBG, colBG
 		}
-		DrawText(sf, x0+6, sy, it.Label, colInfo, 1)
-		DrawText(sf, x0+6, sy+8, it.Value, colTrig, 1)
+		DrawText(sf, x0+6, sy, it.Label, labelCol, 1)
+		DrawText(sf, x0+6, sy+8, it.Value, valueCol, 1)
 	}
 }
 

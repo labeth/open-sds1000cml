@@ -258,3 +258,8 @@ Device at 192.168.1.209 (web UI :8080). `/tmp` is read-only → deploy with
   token). Keyboard shortcuts + a `?` help overlay driven by ONE declarative
   KEYMAP registry (add a shortcut = one line) — suppressed while a form control is
   focused. New acceptance specs cover all of it. Device-verified at :8080.
+- **Phase (scope UI): LCD softkey polish — DONE.** The selected softkey is now a
+  FILLED inverted amber bar (dark text on amber) instead of a 1px outline — clearer
+  which key is active and legible at arm's length. render_test.go pins it
+  (TestRenderMenuSelectedSoftkeyFilled: solid colTrig block + inverted colBG text).
+  Device-verified: TRIGGER menu with "Slope/Fall" selected renders a solid amber bar.
