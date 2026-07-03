@@ -92,6 +92,16 @@ run(async (t) => {
   t.ok(await po.hasClass("mYT", "on") && await po.isCardVisible("fftCardC1"),
     "Y-T mode active; FFT boxes also shown in the time view (peaks-in-time feature)");
 
+  // --- reference waveforms ---------------------------------------------------
+  await po.click("refSaveA");
+  t.ok(await po.eval(() => !!document.querySelector('#refRows .reftog')),
+    "Save A creates a REF A row");
+  t.ok(await po.eval(() => typeof refs !== "undefined" && !!refs.A && refs.A.show),
+    "REF A captured and visible");
+  await po.eval(() => document.querySelector('#refRows .refclr').click());
+  t.ok(await po.eval(() => !refs.A && !document.querySelector('#refRows .reftog')),
+    "clearing REF A removes the row");
+
   // --- export (PNG data URL + CSV) ------------------------------------------
   t.ok((await po.eval(() => document.getElementById("scope").toDataURL("image/png"))).startsWith("data:image/png"),
     "canvas exports a PNG data URL");

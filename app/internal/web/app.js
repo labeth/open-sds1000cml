@@ -296,8 +296,64 @@ function drawMath(g) {
   const m = computeMath();
   if (m) drawTrace(g, m, MATHCOL, (mathFn === "res2") ? (st ? st.zoom2 : 1) : (st ? st.zoom1 : 1));
 }
+// Reference waveforms: saved snapshots (codes + their volts/code + offset)
+// overlaid for comparison. A ref stays at its ABSOLUTE voltage — it is
+// re-mapped to the current V/div/offset when drawn, not pinned to screen codes.
+const refs = { A: null, B: null };
+const REFCOL = { A: "#b48ead", B: "#a3be8c" };
+function drawRefTrace(g, cols, refVpc, refOff, curVpc, curOff, color, zoom) {
+  if (!cols || !cols.length || !curVpc) return;
+  g.strokeStyle = color; g.lineWidth = 1.2 * dpr; g.lineJoin = "round";
+  g.globalAlpha = 0.7; g.setLineDash([4 * dpr, 3 * dpr]);
+  g.beginPath(); let pen = false;
+  const n = cols.length, [iLo, iHi] = winRange(n);
+  for (let i = iLo; i <= iHi; i++) {
+    const rc = cols[i];
+    if (rc < 0) { pen = false; continue; }
+    const code = 128 + ((rc - 128) * refVpc - refOff + curOff) / curVpc;
+    const x = xForCol(i, n), y = yFor(code, zoom);
+    if (y < -4 || y > CH + 4) { pen = false; continue; }
+    if (pen) g.lineTo(x, y); else { g.moveTo(x, y); pen = true; }
+  }
+  g.stroke(); g.globalAlpha = 1; g.setLineDash([]);
+}
+function drawRefs(g) {
+  for (const slot of ["A", "B"]) {
+    const r = refs[slot];
+    if (!r || !r.show) continue;
+    if (r.c1) drawRefTrace(g, r.c1, r.vpc1, r.off1, frame ? frame.vpc1 : r.vpc1, frame ? frame.off1_v || 0 : 0, REFCOL[slot], st ? st.zoom1 : 1);
+    if (r.c2) drawRefTrace(g, r.c2, r.vpc2, r.off2, frame ? frame.vpc2 : r.vpc2, frame ? frame.off2_v || 0 : 0, REFCOL[slot], st ? st.zoom2 : 1);
+  }
+}
+
+function saveRef(slot) {
+  if (!frame) return;
+  refs[slot] = {
+    c1: (view.c1 && frame.c1) ? Array.from(frame.c1) : null,
+    c2: (view.c2 && frame.c2) ? Array.from(frame.c2) : null,
+    vpc1: frame.vpc1 || 1 / 32, vpc2: frame.vpc2 || 1 / 32,
+    off1: frame.off1_v || 0, off2: frame.off2_v || 0,
+    show: true,
+  };
+  updateRefRows(); redraw();
+}
+function updateRefRows() {
+  let html = "";
+  for (const slot of ["A", "B"]) {
+    const r = refs[slot];
+    if (!r) continue;
+    html += `<div class="decrow" style="align-items:center">` +
+      `<button class="btn-mini reftog" data-slot="${slot}" style="color:${REFCOL[slot]}">REF ${slot} ${r.show ? "●" : "○"}</button>` +
+      `<button class="btn-mini refclr" data-slot="${slot}" title="clear REF ${slot}">✕</button></div>`;
+  }
+  const el = $("refRows"); el.innerHTML = html;
+  el.querySelectorAll(".reftog").forEach(b => b.onclick = () => { refs[b.dataset.slot].show = !refs[b.dataset.slot].show; updateRefRows(); redraw(); });
+  el.querySelectorAll(".refclr").forEach(b => b.onclick = () => { refs[b.dataset.slot] = null; updateRefRows(); redraw(); });
+}
+
 function drawYT(g) {
   drawGrid(g);
+  drawRefs(g); // references sit UNDER the live traces
   if (frame) {
     if (frame.is_env) {
       if (view.c2) drawEnv(g, frame.e2min, frame.e2max, C2COL, st ? st.zoom2 : 1);
@@ -1120,6 +1176,8 @@ $("probe1").onchange = () => send("probe1", +$("probe1").value);
 $("probe2").onchange = () => send("probe2", +$("probe2").value);
 $("cpl1").onchange = () => send("coupling1", +$("cpl1").value);
 $("cpl2").onchange = () => send("coupling2", +$("cpl2").value);
+$("refSaveA").onclick = () => saveRef("A");
+$("refSaveB").onclick = () => saveRef("B");
 for (const [rng, lbl, ctl, ch] of [["off1", "off1v", "offset1", 1], ["off2", "off2v", "offset2", 2]]) {
   $(rng).oninput = () => { offDragging = true; $(lbl).textContent = (+$(rng).value).toFixed(2) + " V"; };
   $(rng).onchange = () => { offDragging = false; send(ctl, +$(rng).value / probeOf(ch)); };
