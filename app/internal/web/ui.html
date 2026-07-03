@@ -151,6 +151,9 @@
           <span id="decThrV" style="min-width:26px;text-align:right">128</span></div>
         <div class="decrow"><span>show</span><select id="decFmt" class="dsel">
           <option value="hex">Hex</option><option value="ascii">ASCII</option><option value="both">Hex+ASCII</option></select></div>
+        <div class="decrow"><button id="decWatch" class="sm" title="save decoded windows matching the rule to a review buffer">watch</button>
+          <label style="display:inline-flex;align-items:center;gap:3px"><input type="checkbox" id="decWatchErr" checked>err</label>
+          <input id="decWatchMatch" placeholder="match (text or /regex/)" style="flex:1;min-width:60px"></div>
         <div class="dec-uart decrow"><span>baud</span><input id="decBaud" type="number" value="115200" style="width:66px">
           <span>bits</span><input id="decBits" type="number" min="5" max="9" value="8" style="width:36px">
           <select id="decParity" class="dsel"><option value="none">N</option><option value="even">E</option><option value="odd">O</option></select></div>
@@ -167,6 +170,15 @@
           <button id="decHistClear" style="font:inherit;font-size:11px;color:var(--dim);background:#141c26;border:1px solid #26384a;border-radius:4px;padding:1px 7px;cursor:pointer">clr</button>
           <button id="decodeCopy" style="font:inherit;font-size:11px;color:var(--dim);background:#141c26;border:1px solid #26384a;border-radius:4px;padding:1px 7px;cursor:pointer">copy</button></span></h3>
       <textarea id="decodeText" readonly wrap="off" style="width:100%;height:88px;resize:vertical;white-space:pre;overflow:auto;font:11px/1.5 ui-monospace,Menlo,Consolas,monospace;color:var(--text);background:#0d131a;border:1px solid #26384a;border-radius:4px;padding:5px"></textarea>
+    </div>
+
+    <div class="card" id="captureCard" style="display:none">
+      <h3>Captured <span id="captureCount" style="font-weight:400;color:var(--dim);font-size:11px"></span>
+        <span style="float:right;display:inline-flex;gap:5px">
+          <button id="capLive" style="display:none;font:inherit;font-size:11px;color:#3fb950;background:#141c26;border:1px solid #26384a;border-radius:4px;padding:1px 7px;cursor:pointer">● live</button>
+          <button id="capCopy" style="font:inherit;font-size:11px;color:var(--dim);background:#141c26;border:1px solid #26384a;border-radius:4px;padding:1px 7px;cursor:pointer">copy</button>
+          <button id="capClear" style="font:inherit;font-size:11px;color:var(--dim);background:#141c26;border:1px solid #26384a;border-radius:4px;padding:1px 7px;cursor:pointer">clr</button></span></h3>
+      <div id="captureList" style="max-height:180px;overflow:auto;font:11px/1.5 ui-monospace,Menlo,Consolas,monospace"></div>
     </div>
   </div>
 </div>
@@ -300,6 +312,10 @@ const dcfg = {
   threshold: null, auto: true, baud: 115200, bits: 8, parity: "none",
   cpol: 0, cpha: 0, msb: true, fmt: "hex", result: null,
   stream: false, hist: [], lastStreamSeq: 0,   // stitched high-bandwidth decode + packet history
+  // Watch/capture: save decoded windows matching a rule to a client buffer for
+  // later review. watchErr = on any decode error; watchMatch = substring/regex on
+  // the transcript. captures[] holds {seq,t,reason,text,snap}; reviewIdx pins one.
+  watch: false, watchErr: true, watchMatch: "", captures: [], reviewIdx: -1, lastCapKey: "",
 };
 const DECCOL = {
   start: "#3fb950", stop: "#e8604c", addr: "#b98cff", rw: "#8fa6b8",
@@ -745,7 +761,64 @@ function computeDecode() {
       if (dcfg.hist.length > 200) dcfg.hist.shift();
     }
   }
+  // WATCH: save any window matching the rule to the review buffer (not while
+  // reviewing a frozen capture). Dedup consecutive identical hits.
+  if (dcfg.watch && dcfg.reviewIdx < 0 && r && r.ok) {
+    const reason = watchReason(r);
+    const key = reason + "|" + r.text; // dedup consecutive identical matches
+    if (reason && key !== dcfg.lastCapKey) {
+      dcfg.lastCapKey = key;
+      dcfg.captures.push({ seq: frame.stream_seq || frame.seq || 0, reason, text: r.text, snap: frame, t: Date.now() });
+      if (dcfg.captures.length > 80) dcfg.captures.shift();
+      updateCaptureList();
+    }
+  }
   updateDecodeResults();
+}
+// watchReason returns why a decode matches the watch rule ("" = no match): an
+// error kind (frame-error/parity-error, or NAK) and/or a transcript match of the
+// user string ("/re/" = regex, else case-insensitive substring).
+function watchReason(r) {
+  let reason = "";
+  if (dcfg.watchErr && r.spans.some(s => s.kind === "frame-error" || s.kind === "parity-error" || s.kind === "nak")) reason = "error";
+  const m = (dcfg.watchMatch || "").trim();
+  if (m) {
+    let hit = false;
+    if (m.length > 2 && m[0] === "/" && m[m.length - 1] === "/") { try { hit = new RegExp(m.slice(1, -1), "i").test(r.text); } catch (e) {} }
+    else hit = r.text.toLowerCase().includes(m.toLowerCase());
+    if (hit) reason = reason ? reason + "+" + m : "“" + m + "”";
+  }
+  return reason;
+}
+function updateCaptureList() {
+  const card = $("captureCard");
+  if (dcfg.proto === "off" || (!dcfg.watch && !dcfg.captures.length)) { card.style.display = "none"; return; }
+  card.style.display = "";
+  $("captureCount").textContent = dcfg.captures.length + (dcfg.reviewIdx >= 0 ? " · reviewing #" + (dcfg.reviewIdx + 1) : (dcfg.watch ? " · watching…" : ""));
+  let html = "";
+  for (let i = dcfg.captures.length - 1; i >= 0; i--) {
+    const c = dcfg.captures[i], sel = i === dcfg.reviewIdx, err = c.reason.startsWith("error");
+    html += `<div class="cap" data-i="${i}" style="cursor:pointer;padding:2px 4px;border-radius:3px;${sel ? "background:rgba(255,210,63,.18)" : ""}">` +
+      `<span style="color:var(--dim)">${new Date(c.t).toLocaleTimeString()} </span>` +
+      `<span style="color:${err ? "#e8604c" : "#35c8e8"}">${c.reason}</span> ` +
+      `<span style="color:var(--text)">${c.text.slice(0, 46)}${c.text.length > 46 ? "…" : ""}</span></div>`;
+  }
+  if (!dcfg.captures.length) html = `<div style="color:var(--dim);padding:2px 4px">${dcfg.watch ? "watching — no matches yet" : "watch off"}</div>`;
+  $("captureList").innerHTML = html;
+  $("capLive").style.display = dcfg.reviewIdx >= 0 ? "" : "none";
+}
+// Review a captured window: freeze on its snapshot so you can zoom/navigate/decode
+// it; "live" resumes.
+function reviewCapture(i) {
+  const c = dcfg.captures[i];
+  if (!c) return;
+  dcfg.reviewIdx = i; frozen = true; $("freeze").classList.add("on");
+  frame = c.snap; view.win.a = 0; view.win.b = 1; userZoomed = false;
+  computeDecode(); redraw(); updateMeas(); updateCursors(); updateCaptureList();
+}
+function reviewLive() {
+  dcfg.reviewIdx = -1; frozen = false; $("freeze").classList.remove("on");
+  updateCaptureList();
 }
 function updateDecodeResults() {
   const card = $("decodeResultCard");
@@ -1073,6 +1146,7 @@ function updateDecodePanel() {
   for (const c of document.querySelectorAll(".dec-i2c")) c.style.display = p === "i2c" ? "flex" : "none";
   for (const c of document.querySelectorAll(".dec-spi")) c.style.display = p === "spi" ? "flex" : "none";
   updateDecodeResults();
+  updateCaptureList();
 }
 function recompute() { computeDecode(); redraw(); }
 (function initDecode() {
@@ -1102,6 +1176,24 @@ function recompute() { computeDecode(); redraw(); }
     updateDecodeResults();
   };
   $("decHistClear").onclick = () => { dcfg.hist = []; dcfg.lastStreamSeq = 0; updateDecodeResults(); };
+  $("decWatch").onclick = () => { dcfg.watch = !dcfg.watch; $("decWatch").classList.toggle("on", dcfg.watch); updateCaptureList(); };
+  $("decWatchErr").onchange = () => { dcfg.watchErr = $("decWatchErr").checked; };
+  $("decWatchMatch").oninput = () => { dcfg.watchMatch = $("decWatchMatch").value; };
+  $("captureList").addEventListener("click", ev => { const d = ev.target.closest(".cap"); if (d) reviewCapture(+d.dataset.i); });
+  $("capLive").onclick = reviewLive;
+  $("capClear").onclick = () => { dcfg.captures = []; dcfg.reviewIdx = -1; dcfg.lastCapKey = ""; if (frozen) reviewLive(); updateCaptureList(); };
+  $("capCopy").onclick = () => {
+    const t = dcfg.captures.map(c => new Date(c.t).toISOString() + " #" + c.seq + " [" + c.reason + "] " + c.text).join("\n");
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).catch(() => {});
+    else { // plain-HTTP fallback (no navigator.clipboard off https/localhost)
+      const ta = document.createElement("textarea");
+      ta.value = t; ta.style.position = "fixed"; ta.style.opacity = "0";
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand("copy"); } catch (e) {}
+      document.body.removeChild(ta);
+    }
+    $("capCopy").textContent = "copied"; setTimeout(() => $("capCopy").textContent = "copy", 900);
+  };
   $("decodeCopy").onclick = () => {
     const t = $("decodeText").value;
     if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).catch(() => {});
