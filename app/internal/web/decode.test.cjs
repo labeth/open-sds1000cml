@@ -2,7 +2,7 @@
 // ui.html runs. Synthetic generators render ideal logic into 0..255 code arrays
 // at a chosen SPB (columns per bit); colTimeS is picked so baud = 1/(SPB*colTimeS).
 // Run: node decode.test.cjs   (exit 0 = pass).
-const { sliceChannel, logicAt, decodeUART, decodeI2C, decodeSPI } = require("./decode.js");
+const { fmtByte, sliceChannel, logicAt, decodeUART, decodeI2C, decodeSPI } = require("./decode.js");
 
 let failed = 0;
 function ok(c, m) { if (!c) { console.error("FAIL:", m); failed++; } else { console.log("ok  -", m); } }
@@ -92,6 +92,13 @@ const SPB = 40, COLT = 1 / (SPB * 115200);
   ok(r.text === "48 69 21", `UART text = "${r.text}"`);
   near(r.meta.samplesPerBit, SPB, 2, "UART auto-baud samples/bit");
   near(r.meta.baud, 115200, 6000, "UART auto-baud ~115200");
+  // display format: ascii / both
+  ok(fmtByte(0x48, "ascii") === "H" && fmtByte(0x00, "ascii") === ".", "fmtByte ascii");
+  ok(fmtByte(0x48, "both") === "48·H", "fmtByte both");
+  const ra = decodeUART(uartGen([0x48, 0x69, 0x21], SPB), COLT, { fmt: "ascii" });
+  ok(ra.text === "H i !", `UART ascii text = "${ra.text}"`);
+  const rb = decodeUART(uartGen([0x48, 0x69, 0x21], SPB), COLT, { fmt: "both" });
+  ok(rb.text === "48·H 69·i 21·!", `UART both text = "${rb.text}"`);
 }
 
 // --- 3. UART framing + parity ------------------------------------------------

@@ -149,6 +149,8 @@
         <div class="decrow"><button id="decAuto" class="sm on">auto&nbsp;thr</button>
           <input id="decThr" type="range" min="0" max="255" value="128" style="flex:1">
           <span id="decThrV" style="min-width:26px;text-align:right">128</span></div>
+        <div class="decrow"><span>show</span><select id="decFmt" class="dsel">
+          <option value="hex">Hex</option><option value="ascii">ASCII</option><option value="both">Hex+ASCII</option></select></div>
         <div class="dec-uart decrow"><span>baud</span><input id="decBaud" type="number" value="115200" style="width:66px">
           <span>bits</span><input id="decBits" type="number" min="5" max="9" value="8" style="width:36px">
           <select id="decParity" class="dsel"><option value="none">N</option><option value="even">E</option><option value="odd">O</option></select></div>
@@ -293,7 +295,7 @@ function acqSig(f) { return (f.is_env ? "E" : "") + ":" + (f.c1 ? f.c1.length : 
 const dcfg = {
   proto: "off", scl: 1, sda: 2, clk: 1, data: 2, line: 1,
   threshold: null, auto: true, baud: 115200, bits: 8, parity: "none",
-  cpol: 0, cpha: 0, msb: true, result: null,
+  cpol: 0, cpha: 0, msb: true, fmt: "hex", result: null,
 };
 const DECCOL = {
   start: "#3fb950", stop: "#e8604c", addr: "#b98cff", rw: "#8fa6b8",
@@ -717,7 +719,7 @@ function computeDecode() {
   dcfg.result = null;
   if (dcfg.proto === "off" || !frame || frame.is_env || !frame.c1) { updateDecodeResults(); return; }
   const colTimeS = (frame.col_span_s || 0) / frame.c1.length;
-  const cfg = { threshold: dcfg.auto ? null : +$("decThr").value, guard: 4 };
+  const cfg = { threshold: dcfg.auto ? null : +$("decThr").value, guard: 4, fmt: dcfg.fmt };
   let r = null;
   if (dcfg.proto === "uart")
     r = decodeUART(decCodes(dcfg.line), colTimeS, Object.assign(cfg, { baud: dcfg.baud > 0 ? dcfg.baud : null, bits: dcfg.bits, parity: dcfg.parity }));
@@ -1071,6 +1073,7 @@ function recompute() { computeDecode(); redraw(); }
   $("decCpol").onchange = () => { dcfg.cpol = +$("decCpol").value; recompute(); };
   $("decCpha").onchange = () => { dcfg.cpha = +$("decCpha").value; recompute(); };
   $("decMsb").onchange = () => { dcfg.msb = $("decMsb").value === "1"; recompute(); };
+  $("decFmt").onchange = () => { dcfg.fmt = $("decFmt").value; recompute(); }; // hex / ascii / both
   $("decodeCopy").onclick = () => {
     const t = $("decodeText").value;
     if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).catch(() => {});

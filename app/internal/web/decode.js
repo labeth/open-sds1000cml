@@ -11,6 +11,15 @@ const KINDS = ["start", "stop", "addr", "rw", "ack", "nak", "data", "frame-error
 
 function hex2(b) { return (b & 0xff).toString(16).toUpperCase().padStart(2, "0"); }
 function popcount(v) { let c = 0; while (v) { c += v & 1; v >>= 1; } return c; }
+// fmtByte renders a payload byte per the display format: "hex" -> 48, "ascii" ->
+// the printable char (else .), "both" -> 48·H. Applied to data bytes only.
+function fmtByte(v, fmt) {
+  v &= 0xff;
+  const h = hex2(v), printable = v >= 0x20 && v < 0x7f, ch = printable ? String.fromCharCode(v) : ".";
+  if (fmt === "ascii") return ch;
+  if (fmt === "both") return printable ? h + "·" + ch : h;
+  return h;
+}
 function fail(proto, error, meta) {
   return { ok: false, error, proto, spans: [], text: "", bytes: [], meta: meta || {} };
 }
@@ -94,6 +103,7 @@ function decodeUART(codes, colTimeS, cfg) {
   cfg = cfg || {};
   const bits = cfg.bits || 8, parity = cfg.parity || "none", idle = cfg.idle != null ? cfg.idle : 1;
   const lsb = (cfg.bitOrder || "lsb") === "lsb", minSPB = cfg.minSPB || 3, guard = cfg.guard != null ? cfg.guard : 4;
+  const fmt = cfg.fmt || "hex";
   const S = sliceChannel(codes, cfg);
   if (!S.ok) return fail("uart", S.reason);
   const n = S.n;
@@ -103,9 +113,21 @@ function decodeUART(codes, colTimeS, cfg) {
   else {
     const gaps = [];
     for (let k = 1; k < S.edges.length; k++) { const g = S.edges[k].i - S.edges[k - 1].i; if (g >= 2) gaps.push(g); }
-    if (!gaps.length) return fail("uart", "no edges / cannot infer baud");
-    SPB = Math.min.apply(null, gaps);
-    for (const g of gaps) { const m = Math.round(g / SPB); if (m < 1 || Math.abs(g - m * SPB) > 0.25 * SPB) return fail("uart", "baud ambiguous — set it explicitly"); }
+    if (gaps.length < 3) return fail("uart", "too few edges / cannot infer baud");
+    gaps.sort((a, b) => a - b);
+    // SPB = a robust "one bit" width: the shortest gaps cluster at 1 bit, but
+    // take a low percentile (not the raw min) so a single decimation-shrunk gap
+    // doesn't bias it small. Refine SPB from all gaps that look like ~1 bit.
+    SPB = gaps[Math.floor(gaps.length * 0.1)];
+    let sum = 0, cnt = 0;
+    for (const g of gaps) if (Math.abs(g - SPB) <= 0.35 * SPB) { sum += g; cnt++; }
+    if (cnt) SPB = sum / cnt;
+    // Accept if MOST gaps are ~integer multiples of SPB (real UART is; a random
+    // analog waveform is not) — tolerate a minority of jittery outliers instead
+    // of rejecting the whole capture on one bad gap.
+    let good = 0;
+    for (const g of gaps) { const m = Math.round(g / SPB); if (m >= 1 && Math.abs(g - m * SPB) <= 0.35 * SPB) good++; }
+    if (good < 0.7 * gaps.length) return fail("uart", "baud ambiguous — set it explicitly");
     baud = 1 / (SPB * colTimeS);
   }
   if (!(SPB >= minSPB)) return fail("uart", SPB.toFixed(1) + " samples/bit; need >= " + minSPB, { samplesPerBit: SPB, baud });
@@ -134,8 +156,8 @@ function decodeUART(codes, colTimeS, cfg) {
         }
         const sb = logicAt(S, Math.round(start + (1.5 + bits + pc) * SPB));
         if (sb >= 0 && sb !== idle) { if (kind === "data") kind = "frame-error"; pfx = "!"; }
-        spans.push({ i0: start, i1, text: pfx + hex2(val), kind });
-        toks.push(pfx + hex2(val)); bytes.push(val);
+        spans.push({ i0: start, i1, text: pfx + fmtByte(val, fmt), kind, val });
+        toks.push(pfx + fmtByte(val, fmt)); bytes.push(val);
         i = Math.round(start + (bits + 1 + pc) * SPB) + 1;
         continue;
       }
@@ -148,6 +170,7 @@ function decodeUART(codes, colTimeS, cfg) {
 
 function decodeI2C(scl, sda, colTimeS, cfg) {
   cfg = cfg || {};
+  const fmt = cfg.fmt || "hex";
   const CL = sliceChannel(scl, cfg), DA = sliceChannel(sda, cfg);
   if (!CL.ok) return fail("i2c", "SCL " + CL.reason);
   if (!DA.ok) return fail("i2c", "SDA " + DA.reason);
@@ -186,8 +209,8 @@ function decodeI2C(scl, sda, colTimeS, cfg) {
             toks.push(hex2(addr), (val & 1) ? "R" : "W");
             expectAddr = false;
           } else {
-            spans.push({ i0: bitStart, i1: i, text: hex2(val), kind: "data" });
-            toks.push(hex2(val)); bytes.push(val);
+            spans.push({ i0: bitStart, i1: i, text: fmtByte(val, fmt), kind: "data", val });
+            toks.push(fmtByte(val, fmt)); bytes.push(val);
           }
         }
       } else { // 9th clock = ACK/NAK
@@ -205,6 +228,7 @@ function decodeI2C(scl, sda, colTimeS, cfg) {
 function decodeSPI(clk, data, colTimeS, cfg) {
   cfg = cfg || {};
   const cpol = cfg.cpol ? 1 : 0, cpha = cfg.cpha ? 1 : 0, msb = (cfg.bitOrder || "msb") === "msb";
+  const fmt = cfg.fmt || "hex";
   const CK = sliceChannel(clk, cfg), DA = sliceChannel(data, cfg);
   if (!CK.ok) return fail("spi", "CLK " + CK.reason);
   if (!DA.ok) return fail("spi", "DATA " + DA.reason);
@@ -236,8 +260,8 @@ function decodeSPI(clk, data, colTimeS, cfg) {
       if (msb) val = (val << 1) | bit; else val |= (bit << bitCount);
       bitCount++;
       if (bitCount === 8) {
-        spans.push({ i0: bitStart, i1: i, text: hex2(val), kind: "data" });
-        toks.push(hex2(val)); bytes.push(val & 0xff);
+        spans.push({ i0: bitStart, i1: i, text: fmtByte(val, fmt), kind: "data", val: val & 0xff });
+        toks.push(fmtByte(val, fmt)); bytes.push(val & 0xff);
         bitCount = 0; val = 0;
       }
     }
@@ -260,4 +284,4 @@ function decode(frame, cfg) {
 }
 
 if (typeof module !== "undefined" && module.exports)
-  module.exports = { KINDS, sliceChannel, logicAt, decodeUART, decodeI2C, decodeSPI, decode };
+  module.exports = { KINDS, fmtByte, sliceChannel, logicAt, decodeUART, decodeI2C, decodeSPI, decode };
