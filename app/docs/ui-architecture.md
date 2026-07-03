@@ -299,3 +299,14 @@ softkey); and a responsive drawer/toolbar layout. Both surfaces (web + LCD) cove
   regression in the meantime.
 - **LCD softkey bezel-alignment** needs a one-time physical measurement of the
   F1–F5 button y-centres on the unit (open question in the plan).
+- **UX pass (the actual interface): direct-manipulation + panel structure — DONE.**
+  Addressed real usability complaints, not just the code behind them:
+  (1) The VIEW panel was a wall of buttons — reworked into a SEGMENTED mode control
+  [Y-T|X-Y|FFT] plus labelled CHANNELS / DISPLAY / EXPORT groups (clear hierarchy).
+  (2) Trigger-level and channel-offset were HORIZONTAL sliders driving VERTICAL
+  markers (motion fought the control). Now you DRAG the markers directly on the
+  display — the level handle (right edge) and each channel's ground/offset arrow
+  (left edge); drag up = up. Hover shows an ns-resize affordance; the footer
+  sliders remain for fine entry. (3) Fixed the trigger-level line still rendering
+  the old hardcoded red — now the amber --trigger token like everything else.
+  Acceptance pins the drag DIRECTION (drag up → level rises). Device-verified.

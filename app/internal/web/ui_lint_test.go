@@ -30,7 +30,7 @@ func readUIHTML(t *testing.T) string {
 // (kept inline per the load-bearing contract until Phase 4 swaps them to the
 // [hidden] attribute), 2 JS-template styles (→ classList in Phase 4), and a few
 // singletons. Target 0 after Phase 4.
-const inlineStyleBudget = 16
+const inlineStyleBudget = 14
 
 func TestInlineStyleBudget(t *testing.T) {
 	n := strings.Count(readUIHTML(t), "style=\"")

@@ -39,6 +39,14 @@
 
   .modes { display: flex; gap: 4px; flex-wrap: wrap; }
   .toggles { display: flex; gap: 4px; flex-wrap: wrap; }
+  /* segmented control for a mutually-exclusive choice (view mode) */
+  .seg { display: flex; width: 100%; }
+  .seg button { flex: 1; border-radius: 0; border-right-width: 0; }
+  .seg button:first-child { border-radius: 5px 0 0 5px; }
+  .seg button:last-child { border-radius: 0 5px 5px 0; border-right-width: 1px; }
+  /* sub-group caption inside a card, gives the controls order/hierarchy */
+  .grp-label { font-size: 10px; text-transform: uppercase; letter-spacing: .08em;
+    color: var(--dim); margin: 9px 0 4px; }
   button, select {
     background: var(--ctrl); color: var(--text); border: 1px solid var(--edge);
     border-radius: 5px; padding: 5px 9px; font: inherit; cursor: pointer;

@@ -71,6 +71,7 @@ const C1COL = css.getPropertyValue("--c1").trim();
 const C2COL = css.getPropertyValue("--c2").trim();
 const CURCOL = css.getPropertyValue("--cursor").trim();
 const MATHCOL = css.getPropertyValue("--math").trim();
+const TRIGCOL = css.getPropertyValue("--trigger").trim();
 
 // ---- responsive canvas ----
 function resize() {
@@ -188,10 +189,10 @@ function drawTrigMarkers(g) {
     const vpc = (frame && (st.trig_source === 1 ? frame.vpc2 : frame.vpc1)) || (1 / 32);
     const y = yFor(128 + st.trig_volts / (vpc * 32) * 32, 1);
     if (y >= 0 && y <= CH) {
-      g.strokeStyle = "rgba(232,96,76,.75)"; g.setLineDash([6 * dpr, 5 * dpr]); g.lineWidth = dpr;
-      g.beginPath(); g.moveTo(0, y + .5); g.lineTo(CW, y + .5); g.stroke(); g.setLineDash([]);
-      g.fillStyle = "rgba(232,96,76,.9)"; // level handle on the right edge
-      g.beginPath(); g.moveTo(CW, y - 5 * dpr); g.lineTo(CW - 8 * dpr, y); g.lineTo(CW, y + 5 * dpr); g.fill();
+      g.strokeStyle = TRIGCOL; g.globalAlpha = 0.7; g.setLineDash([6 * dpr, 5 * dpr]); g.lineWidth = dpr;
+      g.beginPath(); g.moveTo(0, y + .5); g.lineTo(CW, y + .5); g.stroke(); g.setLineDash([]); g.globalAlpha = 1;
+      g.fillStyle = TRIGCOL; // level handle on the right edge (drag it to move the level)
+      g.beginPath(); g.moveTo(CW, y - 6 * dpr); g.lineTo(CW - 10 * dpr, y); g.lineTo(CW, y + 6 * dpr); g.fill();
     }
   }
   // Vertical trigger-POSITION marker (where in time the trigger sits), mapped
@@ -693,6 +694,46 @@ function ptToNorm(ev) {
   const r = scope.getBoundingClientRect();
   return { x: (ev.clientX - r.left) / r.width, y: (ev.clientY - r.top) / r.height };
 }
+
+// ---- DIRECT MANIPULATION of the on-screen markers ----
+// You drag the TRIGGER-LEVEL handle (right edge) or a channel's GROUND/offset
+// arrow (left edge) right on the display — a vertical quantity moved vertically,
+// in the direction you drag. Far better than a horizontal slider for an up/down
+// value. (The footer sliders remain for fine keyboard/number entry.)
+let mk = null;
+function markerHit(p) {
+  if (!st || view.mode !== "YT" || !frame) return null;
+  const vpcT = (st.trig_source === 1 ? frame.vpc2 : frame.vpc1) || (1 / 32);
+  if (st.trig_code && p.x > 0.85) {                 // trigger LEVEL handle (right edge)
+    const ly = yFor(128 + st.trig_volts / vpcT, 1) / CH;
+    if (Math.abs(p.y - ly) < 0.06) return { kind: "level", vpc: vpcT };
+  }
+  if (p.x < 0.13) {                                 // channel GROUND / offset arrows (left edge)
+    for (const [ch, en, vpc, offV, zoom] of [[1, view.c1, frame.vpc1, frame.off1_v, st.zoom1 || 1], [2, view.c2, frame.vpc2, frame.off2_v, st.zoom2 || 1]]) {
+      if (!en || !vpc) continue;
+      const gy = yFor(128 + (offV || 0) / vpc, zoom) / CH;
+      if (Math.abs(p.y - gy) < 0.06) return { kind: "off" + ch, vpc, zoom };
+    }
+  }
+  return null;
+}
+function moveMarker(ev) {
+  const cy = Math.max(0, Math.min(1, ptToNorm(ev).y));
+  if (mk.kind === "level") {
+    const volts = (255 * (1 - cy) - 128) * mk.vpc; // top of screen = higher level = up
+    st.trig_volts = volts; $("lvl").value = volts.toFixed(2); $("lvlv").textContent = volts.toFixed(2) + " V";
+  } else {
+    const ch = mk.kind === "off1" ? 1 : 2, offV = (255 * (1 - cy) - 128) / mk.zoom * mk.vpc;
+    if (ch === 1) { st.off1_v = offV; $("off1").value = offV.toFixed(2); $("off1v").textContent = offV.toFixed(2) + " V"; }
+    else { st.off2_v = offV; $("off2").value = offV.toFixed(2); $("off2v").textContent = offV.toFixed(2) + " V"; }
+  }
+  redraw();
+}
+function commitMarker() {
+  if (mk.kind === "level") send("triglevelcode", Math.round(31434 - 938 * st.trig_volts));
+  else send("offset" + (mk.kind === "off1" ? 1 : 2), mk.kind === "off1" ? st.off1_v : st.off2_v);
+}
+
 scope.addEventListener("pointerdown", ev => {
   if (view.mode === "FFT") { // toggle the nearest peak, across both channels
     const clickedFreq = ptToNorm(ev).x * peakNyq(); // x maps ~linearly to 0..Nyquist
@@ -704,6 +745,14 @@ scope.addEventListener("pointerdown", ev => {
       if (!best || dx < best.dx) best = { ch, freq: fftCh[ch].peaks[idx].freq, dx };
     }
     if (best) togglePeakCh(best.ch, best.freq);
+    return;
+  }
+  const hit = markerHit(ptToNorm(ev));   // markers are draggable regardless of cursor mode
+  if (hit) {
+    mk = hit;
+    if (hit.kind === "level") lvlDragging = true; else offDragging = true;
+    scope.setPointerCapture(ev.pointerId);
+    moveMarker(ev);
     return;
   }
   if (!view.cursors) return;
@@ -721,8 +770,16 @@ scope.addEventListener("pointerdown", ev => {
   scope.setPointerCapture(ev.pointerId);
   moveCursor(ev);
 });
-scope.addEventListener("pointermove", ev => { if (cur.drag) moveCursor(ev); });
-scope.addEventListener("pointerup", () => cur.drag = null);
+scope.addEventListener("pointermove", ev => {
+  if (mk) { moveMarker(ev); return; }
+  if (cur.drag) { moveCursor(ev); return; }
+  const h = markerHit(ptToNorm(ev));    // hover affordance
+  scope.style.cursor = h ? "ns-resize" : (view.cursors ? "crosshair" : "default");
+});
+scope.addEventListener("pointerup", () => {
+  if (mk) { commitMarker(); lvlDragging = offDragging = false; mk = null; }
+  cur.drag = null;
+});
 function moveCursor(ev) {
   const p = ptToNorm(ev);
   const clamp = x => Math.max(0, Math.min(1, x));

@@ -26,21 +26,26 @@
   <div id="dock">
     <div class="card">
       <h3>View</h3>
-      <div class="modes">
-        <button id="mYT" class="sm on">Y-T</button>
-        <button id="mXY" class="sm">X-Y</button>
-        <button id="mFFT" class="sm">FFT</button>
+      <div class="seg" role="group" aria-label="view mode">
+        <button id="mYT" class="on">Y-T</button>
+        <button id="mXY">X-Y</button>
+        <button id="mFFT">FFT</button>
       </div>
-      <div class="toggles" style="margin-top:6px">
-        <button id="tPersist" class="sm">Persist</button>
-        <button id="tCursors" class="sm">Cursors</button>
+      <div class="grp-label">channels</div>
+      <div class="toggles">
         <button id="tC1" class="sm on cc1">C1</button>
         <button id="tC2" class="sm on cc2">C2</button>
       </div>
-      <div class="toggles" style="margin-top:6px">
+      <div class="grp-label">display</div>
+      <div class="toggles">
+        <button id="tCursors" class="sm">Cursors</button>
+        <button id="tPersist" class="sm">Persist</button>
+        <button id="freeze" class="sm">Freeze</button>
+      </div>
+      <div class="grp-label">export</div>
+      <div class="toggles">
         <button id="ePNG" class="sm">PNG</button>
         <button id="eCSV" class="sm">CSV</button>
-        <button id="freeze" class="sm">Freeze</button>
       </div>
     </div>
 

@@ -119,6 +119,26 @@ run(async (t) => {
   t.ok(await po.hasClass("mFFT", "on") === modeBefore, "shortcuts are suppressed while a form control is focused");
   await po.page.evaluate(() => document.activeElement.blur());
 
+  // --- direct manipulation: drag the trigger-level handle on the display ------
+  // The whole point of the UX fix — a vertical quantity is moved VERTICALLY, in
+  // the direction you drag, not by a sideways slider.
+  await po.setMode("YT");
+  const g0 = await po.eval(() => {
+    const r = scope.getBoundingClientRect();
+    const vpc = (st.trig_source === 1 ? frame.vpc2 : frame.vpc1) || (1 / 32);
+    return { left: r.left, top: r.top, w: r.width, h: r.height, yN: yFor(128 + st.trig_volts / vpc, 1) / CH, before: st.trig_volts };
+  });
+  t.ok(g0.yN > 0.05 && g0.yN < 0.95, `trigger-level handle is on-screen (y=${g0.yN.toFixed(2)})`);
+  const hx = g0.left + g0.w * 0.97, hy = g0.top + g0.h * g0.yN;
+  await po.page.mouse.move(hx, hy);
+  await po.page.mouse.down();
+  await po.page.mouse.move(hx, hy - 120, { steps: 8 }); // drag UP
+  await po.page.mouse.up();
+  await po.wait(150);
+  const after = await po.eval(() => st.trig_volts);
+  t.ok(after > g0.before + 0.05,
+    `dragging the level handle UP raises the level (${g0.before.toFixed(2)}V → ${after.toFixed(2)}V) — correct direction`);
+
   // --- responsive (narrow screen) --------------------------------------------
   await po.page.setViewportSize({ width: 700, height: 900 });
   await po.wait(200);
