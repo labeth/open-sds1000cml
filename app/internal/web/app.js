@@ -986,6 +986,8 @@ function applyStatus() {
     if (val && document.activeElement !== $(id)) for (const o of $(id).options) if (Math.abs(+o.value - val) <= val * 1e-6) { o.selected = true; break; }
   for (const [id, val] of [["probe1", st.probe1], ["probe2", st.probe2]])
     if (document.activeElement !== $(id)) $(id).value = String(val || 1);
+  for (const [id, val] of [["cpl1", st.cpl1], ["cpl2", st.cpl2]])
+    if (document.activeElement !== $(id)) $(id).value = String(val || 0);
   // Sliders read/emit tip-referred volts; widen their range for high probes so
   // the full electrical span (±3.8 V in, +4.7 V trig) stays reachable.
   for (const [id, lo, hi] of [["off1", -3.8, 3.8], ["off2", -3.8, 3.8], ["lvl", -3.8, 4.7]]) {
@@ -1100,6 +1102,8 @@ $("vdiv1").onchange = () => send("vdiv1", +$("vdiv1").value);
 $("vdiv2").onchange = () => send("vdiv2", +$("vdiv2").value);
 $("probe1").onchange = () => send("probe1", +$("probe1").value);
 $("probe2").onchange = () => send("probe2", +$("probe2").value);
+$("cpl1").onchange = () => send("coupling1", +$("cpl1").value);
+$("cpl2").onchange = () => send("coupling2", +$("cpl2").value);
 for (const [rng, lbl, ctl, ch] of [["off1", "off1v", "offset1", 1], ["off2", "off2v", "offset2", 2]]) {
   $(rng).oninput = () => { offDragging = true; $(lbl).textContent = (+$(rng).value).toFixed(2) + " V"; };
   $(rng).onchange = () => { offDragging = false; send(ctl, +$(rng).value / probeOf(ch)); };

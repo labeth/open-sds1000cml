@@ -39,6 +39,7 @@ type Analog interface {
 	SetOffset(ch int, volts float64) uint16
 	OffsetVolts(ch int, code uint16) float64
 	SetProbe(ch int, x float64)
+	SetCoupling(ch, mode int) error
 }
 
 // Screenshot returns the SCDP hardcopy payload (BMP). Wired by main to a
@@ -457,7 +458,17 @@ func (h *Handler) execChannel(ch int, head, arg string) []byte {
 		}
 		return h.reply(fmt.Sprintf("C%d:TRA", ch+1), v)
 	case "CPL":
-		h.cpl[ch] = arg // shadow only: coupling changes are deferred (spec 06 §7)
+		h.cpl[ch] = arg
+		if h.fe != nil { // A1M→AC, D1M→DC, GND→GND (spec 06 §6)
+			mode := analog.CplDC
+			switch {
+			case strings.HasPrefix(strings.ToUpper(arg), "A"):
+				mode = analog.CplAC
+			case strings.ToUpper(arg) == "GND":
+				mode = analog.CplGND
+			}
+			_ = h.fe.SetCoupling(ch, mode)
+		}
 		return nil
 	case "CPL?":
 		return h.reply(fmt.Sprintf("C%d:CPL", ch+1), h.cpl[ch])

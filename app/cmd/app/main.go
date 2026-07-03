@@ -56,10 +56,14 @@ func buildHUD(e *engine.Engine, fe *analog.FrontEnd) lcd.HUD {
 		hud.C2VdivV = analog.Detents[idx[1]].VdivV
 		hud.Probe1 = fe.ProbeFactor(0)
 		hud.Probe2 = fe.ProbeFactor(1)
-		if st.OffC1 != 0 {
+		hud.Cpl1 = fe.Coupling(0)
+		hud.Cpl2 = fe.Coupling(1)
+		// AC removes the DC in software (mean → centre), so the ground marker
+		// belongs at centre; leave it at 0 for an AC-coupled channel.
+		if st.OffC1 != 0 && hud.Cpl1 != analog.CplAC {
 			hud.OffC1V = fe.OffsetVolts(0, st.OffC1)
 		}
-		if st.OffC2 != 0 {
+		if st.OffC2 != 0 && hud.Cpl2 != analog.CplAC {
 			hud.OffC2V = fe.OffsetVolts(1, st.OffC2)
 		}
 	}

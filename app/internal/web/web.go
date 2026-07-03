@@ -76,6 +76,8 @@ type Analog interface {
 	DCVolts(ch int, meanCode float64) float64
 	SetProbe(ch int, x float64)
 	ProbeFactor(ch int) float64
+	SetCoupling(ch, mode int) error
+	Coupling(ch int) int
 }
 
 // Panel is the front-panel injection surface (spec 08 §6): drive any button or
@@ -212,6 +214,8 @@ type statusReply struct {
 	Vdiv2       float64   `json:"vdiv2,omitempty"`
 	Probe1      float64   `json:"probe1,omitempty"`
 	Probe2      float64   `json:"probe2,omitempty"`
+	Cpl1        int       `json:"cpl1"` // 0=DC 1=AC 2=GND
+	Cpl2        int       `json:"cpl2"`
 	Zoom1       int       `json:"zoom1,omitempty"`
 	Zoom2       int       `json:"zoom2,omitempty"`
 	VdivLive    bool      `json:"vdiv_live"` // false until the first emit
@@ -245,6 +249,8 @@ func (s *Server) hStatus(w http.ResponseWriter, r *http.Request) {
 		rep.VdivLive = emitted
 		rep.Probe1 = s.fe.ProbeFactor(0)
 		rep.Probe2 = s.fe.ProbeFactor(1)
+		rep.Cpl1 = s.fe.Coupling(0)
+		rep.Cpl2 = s.fe.Coupling(1)
 		// The trigger level is input-referred to its source channel, so scale
 		// the volts readout by that channel's probe (the code is unchanged).
 		rep.TrigVolts *= s.fe.ProbeFactor(st.TrigSource)
@@ -604,6 +610,20 @@ func (s *Server) hFrame(w http.ResponseWriter, r *http.Request) {
 			rep = frameReply{Seq: seq, Unchanged: true, EdgeX: -1}
 			return
 		}
+		// Coupling display transform (software on this clone, spec 06 §6): AC
+		// removes the DC (mean → mid-scale), GND shows a flat ground trace; both
+		// drop that channel's offset so the baseline sits at centre. DC passes
+		// through. Envelope frames are left untouched.
+		c1, c2 := f.C1, f.C2
+		moff := off
+		if s.fe != nil && f.Valid > 0 && !f.IsEnv {
+			if m := s.fe.Coupling(0); m != analog.CplDC {
+				c1, moff[0] = analog.CoupleDisplay(f.C1[:f.Valid], m), 0
+			}
+			if m := s.fe.Coupling(1); m != analog.CplDC {
+				c2, moff[1] = analog.CoupleDisplay(f.C2[:f.Valid], m), 0
+			}
+		}
 		rep = frameReply{
 			Seq:        f.Seq,
 			EdgeX:      f.EdgeX,
@@ -617,7 +637,7 @@ func (s *Server) hFrame(w http.ResponseWriter, r *http.Request) {
 			Cols:       cols,
 			ColSpanS:   f.DisplayedS * 10, // the window spans 10 divisions
 			Vpc1:       vpc[0], Vpc2: vpc[1],
-			Off1V: off[0], Off2V: off[1],
+			Off1V: moff[0], Off2V: moff[1],
 		}
 		// ColSpanS stays the 10-div screen time except on the deep path below,
 		// which overrides it to the full-record time.
@@ -638,19 +658,19 @@ func (s *Server) hFrame(w http.ResponseWriter, r *http.Request) {
 			// symmetric scrollable pre-/post-trigger margin (blank past the ends).
 			n := f.Valid
 			if f.EdgeX >= 0 {
-				rep.C1 = deepWindow(f.C1, n, n, f.EdgeX, posFrac)
-				rep.C2 = deepWindow(f.C2, n, n, f.EdgeX, posFrac)
+				rep.C1 = deepWindow(c1, n, n, f.EdgeX, posFrac)
+				rep.C2 = deepWindow(c2, n, n, f.EdgeX, posFrac)
 				rep.EdgeFrac = posFrac
 			} else {
-				rep.C1, rep.C2 = rawInt16(f.C1[:n]), rawInt16(f.C2[:n])
+				rep.C1, rep.C2 = rawInt16(c1[:n]), rawInt16(c2[:n])
 				rep.EdgeFrac = -1
 			}
 			rep.Cols, rep.ColSpanS, rep.Depth = n, float64(n)*f.SampleS, n
 			rep.WinFrac = float64(f.WinCols) / float64(n)
 		default:
 			// Native-fast / non-deep decimated: today's windowed screen slice.
-			rep.C1 = window(f.C1, f.Valid, f.WinCols, f.EdgeX, f.Interp, cols, posFrac)
-			rep.C2 = window(f.C2, f.Valid, f.WinCols, f.EdgeX, f.Interp, cols, posFrac)
+			rep.C1 = window(c1, f.Valid, f.WinCols, f.EdgeX, f.Interp, cols, posFrac)
+			rep.C2 = window(c2, f.Valid, f.WinCols, f.EdgeX, f.Interp, cols, posFrac)
 			rep.WinFrac = 1
 			if f.EdgeX >= 0 {
 				rep.EdgeFrac = posFrac
@@ -661,9 +681,9 @@ func (s *Server) hFrame(w http.ResponseWriter, r *http.Request) {
 		rep.StreamSeq, rep.WindowNs, rep.GapNs = f.StreamSeq, f.WindowNs, f.GapNs
 		// Auto-measurements over the RAW record (accurate, band-independent).
 		rawSample := f.SampleS
-		rep.M1 = measure(f.C1[:f.Valid], vpc[0], off[0], rawSample)
-		rep.M2 = measure(f.C2[:f.Valid], vpc[1], off[1], rawSample)
-		rep.Clip1 = clipped(f.C1[:f.Valid])
+		rep.M1 = measure(c1[:f.Valid], vpc[0], moff[0], rawSample)
+		rep.M2 = measure(c2[:f.Valid], vpc[1], moff[1], rawSample)
+		rep.Clip1 = clipped(f.C1[:f.Valid]) // clip flags the RAW rail state
 		rep.Clip2 = clipped(f.C2[:f.Valid])
 	})
 	writeJSON(w, rep)
@@ -818,6 +838,25 @@ func (s *Server) hSet(w http.ResponseWriter, r *http.Request) {
 		}
 		s.fe.SetProbe(ch, x)
 		applied = x
+	case "coupling1", "coupling2":
+		if s.fe == nil {
+			ok, errStr = false, "vertical front end unavailable"
+			break
+		}
+		mode := int(req.Value)
+		if mode < analog.CplDC || mode > analog.CplGND {
+			ok, errStr = false, "coupling must be 0 (DC), 1 (AC) or 2 (GND)"
+			break
+		}
+		ch := 0
+		if req.Control == "coupling2" {
+			ch = 1
+		}
+		if err := s.fe.SetCoupling(ch, mode); err != nil {
+			ok, errStr = false, err.Error()
+			break
+		}
+		applied = req.Value
 	default:
 		ok, errStr = false, "unknown control"
 	}

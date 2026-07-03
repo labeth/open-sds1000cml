@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"open-sds/app/internal/analog"
 	"open-sds/app/internal/engine"
 )
 
@@ -17,6 +18,7 @@ import (
 type HUD struct {
 	C1VdivV, C2VdivV float64
 	Probe1, Probe2   float64 // probe attenuation (1/10/100); 0 treated as ×1
+	Cpl1, Cpl2       int     // input coupling (analog.CplDC/CplAC/CplGND)
 	TdivS            float64
 	TrigSrc          int
 	TrigRising       bool
@@ -218,6 +220,18 @@ func railed(sig []uint8) bool {
 	return c*200 > n
 }
 
+// cplTag returns the coupling suffix for the HUD, shown only when it is not the
+// default DC (so the common case stays uncluttered): " AC" or " GND".
+func cplTag(mode int) string {
+	switch mode {
+	case analog.CplAC:
+		return " AC"
+	case analog.CplGND:
+		return " GND"
+	}
+	return ""
+}
+
 // vdivLabel formats a channel's volts/div at the probe tip. A probe factor
 // >1 scales the electrical V/div and appends a "10x"/"100x" tag so the label
 // matches what the operator actually measures.
@@ -323,6 +337,9 @@ func Render(sf Surface, f *engine.Frame, hud HUD, live bool) {
 				win = valid
 			}
 			c1 := f.C1[:valid]
+			if hud.Cpl1 != analog.CplDC { // software coupling: AC removes DC, GND grounds
+				c1 = analog.CoupleDisplay(c1, hud.Cpl1)
+			}
 			xc := f.EdgeX
 			if xc < 0 {
 				// Match web window(): an uncentred frame (EdgeX=-1) is always a
@@ -332,7 +349,11 @@ func Render(sf Surface, f *engine.Frame, hud HUD, live bool) {
 				xc = float64(valid) / 2
 			}
 			if hud.TwoChan && sc2 && len(f.C2) >= valid {
-				drawTrace(sf, f.C2[:valid], win, xc, f.Interp, colC2, hud.TrigPosFrac)
+				c2 := f.C2[:valid]
+				if hud.Cpl2 != analog.CplDC {
+					c2 = analog.CoupleDisplay(c2, hud.Cpl2)
+				}
+				drawTrace(sf, c2, win, xc, f.Interp, colC2, hud.TrigPosFrac)
 			}
 			if sc1 {
 				drawTrace(sf, c1, win, xc, f.Interp, colC1, hud.TrigPosFrac)
@@ -462,9 +483,9 @@ func absI(x int) int {
 }
 
 func drawHUD(sf Surface, f *engine.Frame, hud HUD) {
-	DrawText(sf, 4, 2, "C1 "+vdivLabel(hud.C1VdivV, hud.Probe1), colC1, 1)
+	DrawText(sf, 4, 2, "C1 "+vdivLabel(hud.C1VdivV, hud.Probe1)+cplTag(hud.Cpl1), colC1, 1)
 	if hud.TwoChan {
-		DrawText(sf, 96, 2, "C2 "+vdivLabel(hud.C2VdivV, hud.Probe2), colC2, 1)
+		DrawText(sf, 96, 2, "C2 "+vdivLabel(hud.C2VdivV, hud.Probe2)+cplTag(hud.Cpl2), colC2, 1)
 	}
 	if f != nil && f.Valid > 0 { // clipping warning — railed traces make readings suspect
 		if railed(f.C1[:f.Valid]) {

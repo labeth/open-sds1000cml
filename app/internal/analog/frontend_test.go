@@ -85,6 +85,86 @@ func TestRelayWordReference(t *testing.T) {
 	}
 }
 
+func lastRelay(tr *fakeTr) (uint32, bool) {
+	for i := len(tr.ops) - 1; i >= 0; i-- {
+		if tr.ops[i].kind == "relay" {
+			return tr.ops[i].word, true
+		}
+	}
+	return 0, false
+}
+
+func TestCouplingIsSoftwareOnly(t *testing.T) {
+	tr := &fakeTr{}
+	fe := newFE(tr)
+	// Coupling never touches the relay (software-only on this clone). It emits
+	// nothing on its own...
+	for _, m := range []int{CplGND, CplAC, CplDC} {
+		if err := fe.SetCoupling(0, m); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if len(tr.ops) != 0 {
+		t.Fatalf("coupling emitted %d SPI ops, want 0 (software-only)", len(tr.ops))
+	}
+	if err := fe.SetCoupling(0, 9); err == nil {
+		t.Fatal("bad coupling mode accepted")
+	}
+	// ...and even after a V/div emit with GND selected, the relay word stays DC
+	// (byte0 0x2d), never the unsafe/ineffective GND (bit1) path.
+	if err := fe.SetCoupling(0, CplGND); err != nil {
+		t.Fatal(err)
+	}
+	if err := fe.SetVdiv(0, BootDetent); err != nil {
+		t.Fatal(err)
+	}
+	if w, _ := lastRelay(tr); w != 0x70ad2d {
+		t.Fatalf("relay word with GND selected = %#06x, want DC 0x70ad2d", w)
+	}
+	if fe.Coupling(0) != CplGND {
+		t.Fatal("coupling mode not recorded")
+	}
+}
+
+func TestCoupleDisplay(t *testing.T) {
+	sig := []uint8{100, 200, 100, 200} // mean 150
+	// DC passes through unchanged (same backing array).
+	if got := CoupleDisplay(sig, CplDC); &got[0] != &sig[0] {
+		t.Fatal("DC coupling copied/altered the signal")
+	}
+	// AC removes DC: mean → 128, so 100→78, 200→178 (shift −22).
+	ac := CoupleDisplay(sig, CplAC)
+	if ac[0] != 78 || ac[1] != 178 {
+		t.Fatalf("AC = %v, want [78 178 ...]", ac[:2])
+	}
+	// GND is a flat mid-scale ground trace.
+	for _, v := range CoupleDisplay(sig, CplGND) {
+		if v != 128 {
+			t.Fatalf("GND produced %d, want flat 128", v)
+		}
+	}
+}
+
+func TestRemoveDC(t *testing.T) {
+	sig := make([]uint8, 100)
+	for i := range sig {
+		sig[i] = 200 // flat DC level well above centre
+	}
+	out := RemoveDC(sig)
+	if out[50] != 128 {
+		t.Fatalf("flat 200 recentred to %d, want 128", out[50])
+	}
+	if sig[0] != 200 {
+		t.Fatal("RemoveDC mutated its input")
+	}
+	// Clamps at the rails rather than wrapping.
+	for _, v := range RemoveDC([]uint8{0, 255}) {
+		if v > 255 {
+			t.Fatal("RemoveDC produced an out-of-range code")
+		}
+	}
+}
+
 func TestPlanVdiv(t *testing.T) {
 	if idx, ok := PlanVdiv(0.002); !ok || idx != 0 {
 		t.Fatalf("PlanVdiv(2mV) = %d,%v", idx, ok)

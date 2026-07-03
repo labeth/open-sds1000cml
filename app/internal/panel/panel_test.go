@@ -55,6 +55,8 @@ type fakeFE struct {
 	calls   []call
 	idx     [2]int
 	offReqV [2]float64
+	cpl     [2]int
+	probe   [2]float64
 }
 
 func (f *fakeFE) SetVdiv(ch, idx int) error {
@@ -69,6 +71,22 @@ func (f *fakeFE) SetOffset(ch int, volts float64) uint16 {
 	return uint16(10223 - int(volts*262))
 }
 func (f *fakeFE) OffsetReqV(ch int) float64 { return f.offReqV[ch] }
+func (f *fakeFE) SetCoupling(ch, mode int) error {
+	f.calls = append(f.calls, call{"coupling", ch, mode})
+	f.cpl[ch] = mode
+	return nil
+}
+func (f *fakeFE) Coupling(ch int) int { return f.cpl[ch] }
+func (f *fakeFE) SetProbe(ch int, x float64) {
+	f.calls = append(f.calls, call{"probe", ch, int(x)})
+	f.probe[ch] = x
+}
+func (f *fakeFE) ProbeFactor(ch int) float64 {
+	if f.probe[ch] >= 1 {
+		return f.probe[ch]
+	}
+	return 1
+}
 
 func idle() [5]uint16 {
 	return [5]uint16{0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0}

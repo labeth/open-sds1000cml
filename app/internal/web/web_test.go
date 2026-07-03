@@ -68,6 +68,7 @@ type fakeAnalog struct {
 	offCh    int
 	offVolts float64
 	probe    [2]float64
+	cpl      [2]int
 }
 
 func (f *fakeAnalog) SetVdiv(ch, idx int) error {
@@ -92,6 +93,8 @@ func (f *fakeAnalog) ProbeFactor(ch int) float64 {
 	}
 	return 1
 }
+func (f *fakeAnalog) SetCoupling(ch, mode int) error { f.cpl[ch&1] = mode; return nil }
+func (f *fakeAnalog) Coupling(ch int) int            { return f.cpl[ch&1] }
 
 func (f *fakeScope) Snapshot() engine.Stats { return f.stats }
 func (f *fakeScope) WithFrame(fn func(*engine.Frame)) {
@@ -245,6 +248,71 @@ func TestProbeAttenuation(t *testing.T) {
 	}
 	if tv10 := rep["trig_volts"].(float64); math.Abs(tv10-tv1*10) > 1e-9 {
 		t.Fatalf("trig_volts not ×10: base %v got %v", tv1, tv10)
+	}
+}
+
+func TestCouplingVerbs(t *testing.T) {
+	fs := &fakeScope{}
+	fa := &fakeAnalog{}
+	s := New(fs, fa, nil, nil)
+
+	if out := post(t, s, "coupling1", 2); out["ok"] != true || fa.cpl[0] != 2 {
+		t.Fatalf("coupling1 GND: %v fa=%+v", out, fa)
+	}
+	if out := post(t, s, "coupling2", 1); out["ok"] != true || fa.cpl[1] != 1 {
+		t.Fatalf("coupling2 AC: %v fa=%+v", out, fa)
+	}
+	if out := post(t, s, "coupling1", 5); out["ok"] != false {
+		t.Fatalf("bad coupling accepted: %v", out)
+	}
+	rep := getStatus(t, s)
+	if rep["cpl1"] != 2.0 || rep["cpl2"] != 1.0 {
+		t.Fatalf("status couplings = %v / %v", rep["cpl1"], rep["cpl2"])
+	}
+}
+
+func TestACCouplingRemovesDC(t *testing.T) {
+	const N = 512
+	// A DC-offset square-ish signal: mean well above centre.
+	c1 := make([]uint8, N)
+	for i := range c1 {
+		if i%2 == 0 {
+			c1[i] = 210
+		} else {
+			c1[i] = 190
+		}
+	}
+	fs := &fakeScope{frameGen: func() *engine.Frame {
+		return &engine.Frame{C1: c1, C2: c1, Seq: 3, Valid: N, WinCols: N, EdgeX: N / 2,
+			TdivS: 500e-6, DisplayedS: 500e-6, SampleS: 800e-9}
+	}}
+	fa := &fakeAnalog{}
+	s := New(fs, fa, nil, nil)
+
+	frameV := func() map[string]any {
+		req := httptest.NewRequest("GET", "/api/frame", nil)
+		rec := httptest.NewRecorder()
+		s.Handler().ServeHTTP(rec, req)
+		var m map[string]any
+		if err := json.Unmarshal(rec.Body.Bytes(), &m); err != nil {
+			t.Fatalf("frame json: %v", err)
+		}
+		return m
+	}
+
+	// DC-coupled: mean sits ~72 codes above centre → nonzero Vmean.
+	dc := frameV()["m1"].(map[string]any)
+	if math.Abs(dc["vmean"].(float64)) < 1e-6 {
+		t.Fatalf("DC-coupled vmean unexpectedly ~0: %v", dc["vmean"])
+	}
+	// AC-coupled: software DC-block centres the record → Vmean ≈ 0, Vpp intact.
+	post(t, s, "coupling1", 1) // AC
+	ac := frameV()["m1"].(map[string]any)
+	if math.Abs(ac["vmean"].(float64)) > math.Abs(dc["vmean"].(float64))*0.1 {
+		t.Fatalf("AC vmean not removed: dc=%v ac=%v", dc["vmean"], ac["vmean"])
+	}
+	if math.Abs(ac["vpp"].(float64)-dc["vpp"].(float64)) > dc["vpp"].(float64)*0.2 {
+		t.Fatalf("AC changed vpp too much: dc=%v ac=%v", dc["vpp"], ac["vpp"])
 	}
 }
 

@@ -15,6 +15,7 @@ const (
 	pgAcq
 	pgDisp
 	pgHoriz
+	pgChan // per-channel coupling + probe (reached by re-pressing DISPLAY)
 )
 
 // MenuItem is one softkey slot: a label and its current value.
@@ -59,7 +60,15 @@ func (c *Controller) menuButton(code int) bool {
 		c.openMenu(pgAcq)
 		return true
 	case btnDisplay:
-		c.openMenu(pgDisp)
+		// DISPLAY cycles between the channel-display page and the per-channel
+		// coupling/probe page, so both are reachable from one physical button.
+		c.mu.Lock()
+		next := pgDisp
+		if c.menuPage == pgDisp {
+			next = pgChan
+		}
+		c.mu.Unlock()
+		c.openMenu(next)
 		return true
 	case btnHorizMenu:
 		c.openMenu(pgHoriz)
@@ -157,6 +166,19 @@ func (c *Controller) menuCycle(slot, dir int) {
 		case 1: // Trigger position: step the horizontal fraction
 			c.eng.SetTrigPosFrac(clampF(c.trigPos()+float64(dir)*0.05, 0.02, 1))
 		}
+	case pgChan:
+		if c.fe != nil {
+			switch slot {
+			case 0: // CH1 coupling: cycle DC → AC → GND
+				_ = c.fe.SetCoupling(0, mod3(c.fe.Coupling(0)+dir))
+			case 1: // CH2 coupling
+				_ = c.fe.SetCoupling(1, mod3(c.fe.Coupling(1)+dir))
+			case 2: // CH1 probe: cycle ×1 → ×10 → ×100
+				c.fe.SetProbe(0, nextProbe(c.fe.ProbeFactor(0), dir))
+			case 3: // CH2 probe
+				c.fe.SetProbe(1, nextProbe(c.fe.ProbeFactor(1), dir))
+			}
+		}
 	}
 	c.pushLEDs()
 }
@@ -252,6 +274,20 @@ func (c *Controller) MenuView() MenuView {
 			{"Trig Pos", fmt.Sprintf("%d%%", int(c.trigPos()*100+0.5))},
 			{"", ""}, {"", ""}, {"", ""},
 		}
+	case pgChan:
+		cpl0, cpl1, p0, p1 := "DC", "DC", "1x", "1x"
+		if c.fe != nil {
+			cpl0, cpl1 = cplName(c.fe.Coupling(0)), cplName(c.fe.Coupling(1))
+			p0, p1 = probeName(c.fe.ProbeFactor(0)), probeName(c.fe.ProbeFactor(1))
+		}
+		v.Title = "CHANNEL"
+		v.Items = []MenuItem{
+			{"C1 Coupling", cpl0},
+			{"C2 Coupling", cpl1},
+			{"C1 Probe", p0},
+			{"C2 Probe", p1},
+			{"", ""},
+		}
 	}
 	return v
 }
@@ -339,6 +375,41 @@ func (c *Controller) InjectKnob(name string, dir, steps int) bool {
 }
 
 func mod4(x int) int { return ((x % 4) + 4) % 4 }
+func mod3(x int) int { return ((x % 3) + 3) % 3 }
+
+// cplName / probeName format the pgChan values; both mirror the analog layer's
+// coupling constants (DC=0, AC=1, GND=2) and probe ladder (×1/×10/×100).
+func cplName(mode int) string {
+	switch mode {
+	case 1:
+		return "AC"
+	case 2:
+		return "GND"
+	default:
+		return "DC"
+	}
+}
+func probeName(x float64) string {
+	if x >= 100 {
+		return "100x"
+	}
+	if x >= 10 {
+		return "10x"
+	}
+	return "1x"
+}
+
+// nextProbe steps the ×1/×10/×100 ladder in the given direction (clamped).
+func nextProbe(cur float64, dir int) float64 {
+	opts := []float64{1, 10, 100}
+	idx := 0
+	for i, v := range opts {
+		if cur >= v {
+			idx = i
+		}
+	}
+	return opts[clampInt(idx+dir, 0, len(opts)-1)]
+}
 func ternary(b bool, t, f string) string {
 	if b {
 		return t

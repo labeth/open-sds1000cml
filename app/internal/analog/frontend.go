@@ -57,12 +57,25 @@ func AnalogVdiv(idx int) float64 {
 	return d.VdivV * float64(d.Zoom)
 }
 
+// Coupling modes. On this clone coupling is handled entirely in SOFTWARE (the
+// display path), not by the relay: AC has no hardware high-pass (spec 06 §6),
+// and the GND relay bit only shifts the offset-cal baseline unless the factory
+// firmware's risky CS3 "coupling companion" write accompanies it — which we do
+// not emit. Worse, re-emitting the relay from the unseeded boot state collapses
+// the untouched channel's gain (device-observed, §7). So the relay always stays
+// DC; AC = software DC-removal, GND = a flat ground trace. See CoupleDisplay.
+const (
+	CplDC  = 0
+	CplAC  = 1
+	CplGND = 2
+)
+
 // channelByte builds a relay channel byte (spec 06 §4.2): bit0 BWL(1=off,
-// full bandwidth), bit1 GND, bit2 coarse range, bit3 DC, bit5 always 1,
-// bit7 CH2 address bit. v1 ships DC coupling, BWL off, no GND — inherited
-// boot values (coupling changes are deferred, spec 06 §7 verdict).
+// full bandwidth), bit2 coarse range, bit3 DC, bit5 always 1, bit7 CH2 address
+// bit. Coupling is software-only (see the Coupling constants), so the relay is
+// always DC — never the GND (bit1) path, which is unsafe/ineffective here.
 func channelByte(idx int, ch2 bool) uint8 {
-	b := uint8(0x20 | 0x01 | 0x08) // bit5 | BWL-off | DC
+	b := uint8(0x20 | 0x01 | 0x08) // bit5 | BWL off | bit3 DC
 	if Detents[idx].Atten {
 		b |= 0x04
 	}
@@ -90,6 +103,7 @@ type FrontEnd struct {
 	offReqV [2]float64                  // requested input-referred offset volts
 	offSet  [2]bool                     // whether the user has set an offset
 	probe   [2]float64                  // per-channel probe attenuation (display multiplier)
+	cpl     [2]int                      // per-channel coupling (CplDC/CplAC/CplGND)
 }
 
 // New seeds both channels' shadows to the boot detent WITHOUT emitting —
@@ -127,6 +141,73 @@ func (f *FrontEnd) ProbeFactor(ch int) float64 {
 		return p
 	}
 	return 1
+}
+
+// SetCoupling records a channel's input coupling (CplDC/CplAC/CplGND). It never
+// touches the relay — coupling is a pure display transform on this clone (see
+// the Coupling constants and CoupleDisplay), so it is always safe and takes
+// effect on the next served/rendered frame.
+func (f *FrontEnd) SetCoupling(ch, mode int) error {
+	if mode < CplDC || mode > CplGND {
+		return fmt.Errorf("analog: bad coupling ch=%d mode=%d", ch, mode)
+	}
+	f.mu.Lock()
+	f.cpl[ch&1] = mode
+	f.mu.Unlock()
+	return nil
+}
+
+// Coupling returns a channel's coupling mode (default CplDC).
+func (f *FrontEnd) Coupling(ch int) int {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.cpl[ch&1]
+}
+
+// CoupleDisplay applies a coupling mode's software transform to a copy of sig
+// for the display and measurements: DC passes through unchanged; AC removes the
+// DC component (mean → mid-scale — there is no hardware high-pass, spec 06 §6);
+// GND shows a flat trace at mid-scale (the ground reference). The input is never
+// mutated (it is shared with trigger/decode). Callers zero the channel's offset
+// for AC/GND so the ground marker sits at the centred baseline.
+func CoupleDisplay(sig []uint8, mode int) []uint8 {
+	switch mode {
+	case CplAC:
+		return RemoveDC(sig)
+	case CplGND:
+		out := make([]uint8, len(sig))
+		for i := range out {
+			out[i] = 128
+		}
+		return out
+	default:
+		return sig
+	}
+}
+
+// RemoveDC returns a copy of sig with its DC component removed: the record mean
+// is shifted to mid-scale (code 128), clamped to [0,255]. The input is never
+// mutated.
+func RemoveDC(sig []uint8) []uint8 {
+	if len(sig) == 0 {
+		return sig
+	}
+	var sum int
+	for _, v := range sig {
+		sum += int(v)
+	}
+	shift := 128 - int(math.Round(float64(sum)/float64(len(sig))))
+	out := make([]uint8, len(sig))
+	for i, v := range sig {
+		c := int(v) + shift
+		if c < 0 {
+			c = 0
+		} else if c > 255 {
+			c = 255
+		}
+		out[i] = uint8(c)
+	}
+	return out
 }
 
 // OnOffset wires the offset-DAC stager (engine.SetOffsetDAC). Until set,

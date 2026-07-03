@@ -170,11 +170,15 @@
   <div class="fsec">
     <span class="fcap">Vertical</span>
     <span class="cc1">C1</span><select id="vdiv1" aria-label="C1 volts per division"></select>
+    <select id="cpl1" class="dsel" aria-label="C1 coupling" title="C1 coupling (AC = software DC-block)">
+      <option value="0">DC</option><option value="1">AC</option><option value="2">GND</option></select>
     <select id="probe1" class="dsel" aria-label="C1 probe attenuation" title="C1 probe attenuation">
       <option value="1">1×</option><option value="10">10×</option><option value="100">100×</option></select>
     <input type="range" id="off1" aria-label="C1 offset" min="-3.8" max="3.8" step="0.05" value="0" title="C1 offset (or drag C1's arrow on the display)">
     <span id="off1v" class="readout">—</span>
     <span class="cc2">C2</span><select id="vdiv2" aria-label="C2 volts per division"></select>
+    <select id="cpl2" class="dsel" aria-label="C2 coupling" title="C2 coupling (AC = software DC-block)">
+      <option value="0">DC</option><option value="1">AC</option><option value="2">GND</option></select>
     <select id="probe2" class="dsel" aria-label="C2 probe attenuation" title="C2 probe attenuation">
       <option value="1">1×</option><option value="10">10×</option><option value="100">100×</option></select>
     <input type="range" id="off2" aria-label="C2 offset" min="-3.8" max="3.8" step="0.05" value="0" title="C2 offset (or drag C2's arrow on the display)">

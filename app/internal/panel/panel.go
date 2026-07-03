@@ -44,6 +44,10 @@ type Analog interface {
 	Snapshot() ([2]int, bool)
 	SetOffset(ch int, volts float64) uint16
 	OffsetReqV(ch int) float64
+	SetCoupling(ch, mode int) error
+	Coupling(ch int) int
+	SetProbe(ch int, x float64)
+	ProbeFactor(ch int) float64
 }
 
 // LED bits (spec 08 §5 — only the corroborated bits are wired; the low-byte
