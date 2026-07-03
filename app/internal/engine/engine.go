@@ -969,7 +969,8 @@ func (e *Engine) stitchFrame(norm bool) {
 	drainStart := e.clk.Now()
 	e.drain(f, cols)
 	drainMs := e.clk.Now().Sub(drainStart)
-	e.armEngine() // re-arm at once for the next window
+	// No re-arm here — the next stitchFrame arms once. (A re-arm here would be
+	// discarded by that arm's reset-head and just double the arm overhead/gap.)
 
 	// Raw, contiguous, edge-agnostic — the stream is not trigger-centred. WinCols
 	// stays the screen window so the web deep-serve path (Valid > WinCols) ships

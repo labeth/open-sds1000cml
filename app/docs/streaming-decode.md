@@ -33,21 +33,38 @@ is not watching the bus during it. Measured:
 interval, set by timebase) and gap ≈ drain + re-arm. So slow timebases → near-
 continuous but low sample rate; fast timebases → high sample rate but big holes.
 
-## Measured sample rate & stitch duty per timebase (memdepth 20k)
+## Can anything be read 100 % continuously (zero drops)?
 
-| time/div | dt (sample) | sample rate | window (20k) | stitch gap | **stitch duty** |
+**Not on the deep path.** Spec 03 §6: the deep sample ports `0x30–0x34` are frozen
+and safe to read *only after a `0xC8` halt*, and there is a single sample buffer
+(reset-head + write-pointer reset, no ping-pong). So block-draining the deep record
+**requires halting the FPGA** — it cannot keep capturing while we drain, so the
+drain (~11 ms at 20k) is always a hole. The only *non-halting* read is `0xCB`
+(roll), which is one sample per latch (slow) and, measured, does not reconstruct a
+clean waveform anyway. **So there is no 100 %-gapless HIGH-bandwidth path.**
+
+The stitch gets *close*: the drain is the only irreducible gap, so
+`duty ≈ dt/(dt + 0.54 µs)`. Pick a timebase where the window ≫ the drain.
+
+## Measured sample rate & stitch duty per timebase (memdepth 20k, gap ≈ drain)
+
+| time/div | dt (sample) | sample rate | window (20k) | gap (≈drain) | **stitch duty** |
 |---|---|---|---|---|---|
-| 50 µs   | 80 ns  | **12.5 MS/s** | 1.6 ms  | ~15 ms | ~11 % (burst only) |
-| 200 µs  | 400 ns | 2.5 MS/s | 8.2 ms  | ~15 ms | ~22 % |
-| 500 µs  | 800 ns | 1.25 MS/s | 16.4 ms | ~15 ms | **~52 %** (knee) |
-| 1 ms    | 2 µs   | 500 kS/s | 41 ms   | ~15–40 ms | ~40–65 % |
-| 2 ms    | 4 µs   | 250 kS/s | 82 ms   | ~34 ms | **~69 %** |
+| 50 µs   | 80 ns  | **12.5 MS/s** | 1.6 ms | ~12 ms | ~12 % (burst only) |
+| 200 µs  | 400 ns | 2.5 MS/s | 8.2 ms | ~12 ms | ~40 % |
+| 500 µs  | 800 ns | 1.25 MS/s | 16.4 ms | ~12 ms | ~55 % |
+| **1 ms** | 2 µs  | 500 kS/s | 41 ms | ~12.6 ms | **~76 %** |
+| **2 ms** | 4 µs  | 250 kS/s | 82 ms | ~12.5 ms | **~87 %** |
 
-- **Highest instantaneous rate:** 12.5 MS/s at 50 µs/div (a decimated deep band),
-  and native-fast bands reach ~41 MS/s but only a 2048-sample (≈50 µs) window.
-- **Best "read near-continuously" knee:** ~500 µs–1 ms/div (≈1.25 MS/s–500 kS/s,
-  ~50–65 % duty).
-- **Near-gapless (≈70 %):** 2 ms/div (250 kS/s).
+- **Highest instantaneous rate:** 12.5 MS/s at 50 µs/div (a decimated deep band);
+  native-fast reaches ~41 MS/s but only a 2048-sample (≈50 µs) window.
+- **Best "read near-continuously": 1–2 ms/div (76–87 % duty, 500–250 kS/s).**
+  The ~12.6 ms gap every 41 ms (@1 ms) is the drain; the window has to exceed it,
+  which it does from ~500 µs down (slower is better duty, lower bandwidth).
+- **Effectively 100 % on a BURSTY bus:** if the bus idles longer than the ~12.6 ms
+  gap between bursts, every transaction lands in a captured window — the stream
+  packet-history then catches *all* of them. Only a *continuously busy* stream
+  loses the ~13–24 % that falls in a drain gap.
 
 ## Per-protocol limits
 
