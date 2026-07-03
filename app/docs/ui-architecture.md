@@ -339,3 +339,10 @@ softkey); and a responsive drawer/toolbar layout. Both surfaces (web + LCD) cove
   (win_span / win_frac) and a "zoom ×N" factor, rebuilt on every redraw so it
   tracks zoom/pan live. Device-verified: home 164µs/div → 4× zoom = 41µs/div.
   (Cursor Δt already scaled by win_span; this aligns the readout with it.)
+- **Feature: AUTOSET.** One button (in the footer Acquire group) to get a stable
+  trace: reads the live per-channel measurements + measured frequency and sets
+  time/div (~3 cycles across the 10-div screen), each active channel's V/div
+  (~6 of 8 divisions) + offset (centred), and the trigger (EDGE at the signal
+  midpoint, AUTO, running) on the stronger channel. From envelope/roll (no
+  per-sample measurements) it first drops to a safe 500µs/div so the next frame
+  is measurable. Device-verified: 2ms/30-cycle clutter → 3 cycles triggered.

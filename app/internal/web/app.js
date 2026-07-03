@@ -994,6 +994,56 @@ async function send(control, value) {
   try { return await (await fetch("/api/set", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ control, value }) })).json(); }
   catch (e) { return { ok: false }; }
 }
+
+// nearest ladder value to a target (time/div, V/div).
+function nearestLadder(target, list) {
+  let best = list[0], bd = Infinity;
+  for (const v of list) { const d = Math.abs(v - target); if (d < bd) { bd = d; best = v; } }
+  return best;
+}
+// AUTOSET — one button to get a stable trace: analyse the live frame and set
+// time/div (~3 cycles across the DIVX-division screen), each channel's V/div
+// (fill ~6 of 8 divisions) + offset (centred), and the trigger (EDGE at the
+// signal midpoint, AUTO, running) on whichever channel carries the stronger signal.
+function autoset() {
+  if (!frame || !st) return;
+  const m1 = frame.m1, m2 = frame.m2, has = m => m && m.vpp > 0.02;
+  if (frame.is_env || (!has(m1) && !has(m2))) {
+    // envelope/roll (or flat): no per-sample measurements to lock onto. Drop to a
+    // safe decimated timebase + AUTO/run so the next frame IS measurable, then
+    // autoset again to fine-tune.
+    if (st.tdivs && st.tdivs.length) { st.tdiv_s = nearestLadder(500e-6, st.tdivs); send("tdiv", st.tdiv_s); }
+    send("norm", 0); send("run", 1); st.norm = false; st.running = true;
+    goHome(); applyStatus();
+    return;
+  }
+  const src = (has(m1) && (!has(m2) || m1.vpp >= m2.vpp)) ? 1 : 2;
+  const sm = src === 1 ? m1 : m2;
+  if (sm.freq > 0 && st.tdivs && st.tdivs.length) {
+    st.tdiv_s = nearestLadder((3 / sm.freq) / DIVX, st.tdivs); // 3 cycles across DIVX divisions
+    send("tdiv", st.tdiv_s);
+  }
+  if (st.vdivs && st.vdivs.length) {
+    for (const ch of [1, 2]) {
+      const m = ch === 1 ? m1 : m2;
+      if (!has(m)) continue;
+      const vdiv = nearestLadder(m.vpp / 6, st.vdivs);
+      send("vdiv" + ch, vdiv); send("offset" + ch, -m.vmean);
+      if (ch === 1) { st.vdiv1 = vdiv; st.off1_v = -m.vmean; } else { st.vdiv2 = vdiv; st.off2_v = -m.vmean; }
+    }
+  }
+  const mid = (sm.vmax + sm.vmin) / 2;
+  send("triglevelcode", Math.round(31434 - 938 * mid));
+  send("trigsource", src === 2 ? 1 : 0);
+  send("trigtype", 0); // EDGE
+  send("norm", 0);     // AUTO
+  send("run", 1);      // running
+  st.trig_volts = mid; st.trig_source = src === 2 ? 1 : 0; st.trig_type = 0; st.norm = false; st.running = true;
+  $("lvl").value = mid.toFixed(2); $("lvlv").textContent = mid.toFixed(2) + " V";
+  goHome();
+  applyStatus();
+}
+$("autoset").onclick = autoset;
 $("run").onclick = () => { const on = !(st && st.running); send("run", on ? 1 : 0); if (st) { st.running = on; applyStatus(); } };
 $("single").onclick = () => { send("single", 1); if (st) { st.norm = st.running = st.single = true; applyStatus(); } };
 $("tpos").oninput = () => send("trigpos", +$("tpos").value);
