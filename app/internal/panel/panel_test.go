@@ -276,3 +276,38 @@ func TestResyncButtonsOnly(t *testing.T) {
 		t.Fatalf("knob decoded on the re-sync tick: %v", eng.calls)
 	}
 }
+
+func TestCursorMenu(t *testing.T) {
+	c, _, _ := newC(t)
+	// HORIZONTAL once → timebase page; twice → cursor page.
+	c.menuButton(btnHorizMenu)
+	c.menuButton(btnHorizMenu)
+	if v := c.MenuView(); v.Title != "CURSOR" {
+		t.Fatalf("second HORIZ did not open the cursor page: %q", v.Title)
+	}
+	// F1 toggles cursors on.
+	c.menuButton(btnF1)
+	if !c.MenuView().CurOn {
+		t.Fatal("F1 did not enable cursors")
+	}
+	// ADJUST moves the active (A) X-cursor; default 0.35 → +2 steps ≈ 0.37.
+	before := c.MenuView().CurX[0]
+	c.menuAdjust(+1)
+	c.menuAdjust(+1)
+	if got := c.MenuView().CurX[0]; got <= before {
+		t.Fatalf("ADJUST did not move cursor A: %v → %v", before, got)
+	}
+	// F3 switches the active cursor to B; ADJUST then moves B, not A.
+	aFixed := c.MenuView().CurX[0]
+	c.menuButton(btnF3)
+	c.menuAdjust(-1)
+	v := c.MenuView()
+	if v.CurSel != 1 || v.CurX[0] != aFixed {
+		t.Fatalf("active cursor switch failed: sel=%d A=%v(want %v)", v.CurSel, v.CurX[0], aFixed)
+	}
+	// F2 flips to volts cursors.
+	c.menuButton(btnF2)
+	if c.MenuView().CurType != 1 {
+		t.Fatal("F2 did not switch to volts cursors")
+	}
+}

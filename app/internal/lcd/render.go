@@ -2,6 +2,7 @@ package lcd
 
 import (
 	"fmt"
+	"math"
 	"strconv"
 
 	"open-sds/app/internal/analog"
@@ -33,6 +34,14 @@ type HUD struct {
 	ShowC1, ShowC2   bool    // per-channel display enable
 	ShowMeas         bool    // on-device MEASURE panel overlay
 	TwoChan          bool
+
+	// On-screen cursors: two X (time) and two Y (volts), positions as screen
+	// fractions. CurType 0=X 1=Y; CurSel 0=A 1=B (the active one is highlighted).
+	CurOn   bool
+	CurType int
+	CurSel  int
+	CurX    [2]float64
+	CurY    [2]float64
 
 	// On-screen menu overlay (spec 08 §6): five softkey slots down the right edge.
 	MenuOpen  bool
@@ -292,6 +301,60 @@ func drawMeasPanel(sf Surface, f *engine.Frame, hud HUD) {
 	}
 }
 
+// drawCursors draws the on-screen X (time) or Y (volts) cursor pair and a Δ
+// readout. Time Δ uses the labelled t/div × 10 divisions; volts Δ uses the
+// trigger-source channel's probe-scaled V/div × 8 divisions.
+func drawCursors(sf Surface, hud HUD) {
+	if !hud.CurOn {
+		return
+	}
+	dash := func(vertical bool, at int, active bool) {
+		col := colGrid
+		if active {
+			col = colTrig
+		}
+		if vertical {
+			for y := traceTop; y <= traceBot; y += 2 {
+				sf.SetPixel(at, y, col)
+			}
+		} else {
+			for x := 0; x < W; x += 2 {
+				sf.SetPixel(x, at, col)
+			}
+		}
+	}
+	var label string
+	if hud.CurType == 0 { // X (time) cursors
+		xA := int(hud.CurX[0] * float64(W-1))
+		xB := int(hud.CurX[1] * float64(W-1))
+		dash(true, xA, hud.CurSel == 0)
+		dash(true, xB, hud.CurSel == 1)
+		dt := math.Abs(hud.CurX[0]-hud.CurX[1]) * hud.TdivS * 10
+		label = "dt " + fmtTdiv(dt)
+		if dt > 0 {
+			label += "  1/dt " + fmtFreq(1/dt)
+		}
+	} else { // Y (volts) cursors
+		yA := traceTop + int(hud.CurY[0]*float64(traceBot-traceTop))
+		yB := traceTop + int(hud.CurY[1]*float64(traceBot-traceTop))
+		dash(false, yA, hud.CurSel == 0)
+		dash(false, yB, hud.CurSel == 1)
+		vdiv, probe := hud.C1VdivV, hud.Probe1
+		if hud.TrigSrc == 1 {
+			vdiv, probe = hud.C2VdivV, hud.Probe2
+		}
+		if probe < 1 {
+			probe = 1
+		}
+		dv := math.Abs(hud.CurY[0]-hud.CurY[1]) * vdiv * probe * 8 // 8 vertical divisions
+		label = "dV " + fmtVolt(dv)
+	}
+	w := len(label)*6 + 6
+	x := W/2 - w/2 // top-centre, clear of the MEAS panel (left) and menu (right)
+	fillRect(sf, x, 22, w, 12, rgb(6, 10, 22))
+	DrawText(sf, x+3, 24, label, colTrig, 1)
+}
+
 // cplTag returns the coupling suffix for the HUD, shown only when it is not the
 // default DC (so the common case stays uncluttered): " AC" or " GND".
 func cplTag(mode int) string {
@@ -416,6 +479,7 @@ func Render(sf Surface, f *engine.Frame, hud HUD, live bool) {
 	if hud.ShowMeas {
 		drawMeasPanel(sf, f, hud)
 	}
+	drawCursors(sf, hud)
 	drawMenu(sf, hud)
 }
 

@@ -78,6 +78,8 @@ func buildHUD(e *engine.Engine, fe *analog.FrontEnd) lcd.HUD {
 		mv := pc.MenuView()
 		hud.ShowC1, hud.ShowC2 = mv.ShowC1, mv.ShowC2
 		hud.ShowMeas = mv.ShowMeas
+		hud.CurOn, hud.CurType, hud.CurSel = mv.CurOn, mv.CurType, mv.CurSel
+		hud.CurX, hud.CurY = mv.CurX, mv.CurY
 		hud.MenuOpen, hud.MenuTitle, hud.MenuSel = mv.Open, mv.Title, mv.Sel
 		hud.MenuItems = make([]lcd.MenuItem, len(mv.Items))
 		for i, it := range mv.Items {

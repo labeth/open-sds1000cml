@@ -140,7 +140,14 @@ type Controller struct {
 	menuSel  int
 	chDisp   [2]bool
 	showMeas bool
-	inject   chan func()
+	// On-screen cursors (spec 08 §6): two X (time) and two Y (volts) cursors,
+	// positions as screen fractions; ADJUST moves the selected one.
+	curOn   bool
+	curType int // 0 = X (time), 1 = Y (volts)
+	curSel  int // 0 = A, 1 = B
+	curX    [2]float64
+	curY    [2]float64
+	inject  chan func()
 }
 
 // New builds the controller. The timebase ladder is injected (the controller
@@ -154,6 +161,8 @@ func New(eng Engine, fe Analog, keyFD int, tdivs []float64, startTdiv float64, l
 		vIdx:     [2]int{analog.BootDetent, analog.BootDetent},
 		trigCode: 31434, // 0 V threshold
 		chDisp:   [2]bool{true, true},
+		curX:     [2]float64{0.35, 0.65},
+		curY:     [2]float64{0.35, 0.65},
 		inject:   make(chan func(), 32),
 		running:  true,
 	}

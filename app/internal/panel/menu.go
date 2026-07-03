@@ -15,7 +15,8 @@ const (
 	pgAcq
 	pgDisp
 	pgHoriz
-	pgChan // per-channel coupling + probe (reached by re-pressing DISPLAY)
+	pgChan   // per-channel coupling + probe (reached by re-pressing DISPLAY)
+	pgCursor // on-screen cursors (reached by re-pressing HORIZONTAL)
 )
 
 // MenuItem is one softkey slot: a label and its current value.
@@ -30,6 +31,12 @@ type MenuView struct {
 	Sel            int        // highlighted slot
 	ShowC1, ShowC2 bool       // per-channel display enable (DISPLAY menu / CH keys)
 	ShowMeas       bool       // on-device MEASURE panel toggle (DISPLAY menu)
+
+	CurOn   bool       // cursors visible
+	CurType int        // 0 = X (time), 1 = Y (volts)
+	CurSel  int        // active cursor (0 = A, 1 = B)
+	CurX    [2]float64 // X cursor screen fractions
+	CurY    [2]float64 // Y cursor screen fractions
 }
 
 // Menu / softkey / channel button codes (spec 08 §6.1/§6.2/§6.4/§6.5).
@@ -72,7 +79,14 @@ func (c *Controller) menuButton(code int) bool {
 		c.openMenu(next)
 		return true
 	case btnHorizMenu:
-		c.openMenu(pgHoriz)
+		// HORIZONTAL cycles between the timebase page and the cursor page.
+		c.mu.Lock()
+		next := pgHoriz
+		if c.menuPage == pgHoriz {
+			next = pgCursor
+		}
+		c.mu.Unlock()
+		c.openMenu(next)
 		return true
 	case btnMenuOnOff:
 		c.mu.Lock()
@@ -184,6 +198,25 @@ func (c *Controller) menuCycle(slot, dir int) {
 				c.fe.SetProbe(1, nextProbe(c.fe.ProbeFactor(1), dir))
 			}
 		}
+	case pgCursor:
+		switch slot {
+		case 0:
+			c.mu.Lock()
+			c.curOn = !c.curOn
+			c.mu.Unlock()
+		case 1:
+			c.mu.Lock()
+			c.curType = 1 - c.curType
+			c.mu.Unlock()
+		case 2:
+			c.mu.Lock()
+			c.curSel = 1 - c.curSel
+			c.mu.Unlock()
+		case 3: // F4 nudges the active cursor − (ADJUST moves it continuously)
+			c.moveCursor(-1)
+		case 4: // F5 nudges +
+			c.moveCursor(+1)
+		}
 	}
 	c.pushLEDs()
 }
@@ -198,13 +231,32 @@ func (c *Controller) menuCount(st engine.Stats, dir int) {
 }
 
 // menuAdjust is the ADJUST knob acting on the highlighted item (spec 08 §6.3).
+// On the cursor page the knob moves the active cursor rather than cycling a
+// softkey, so positioning feels continuous.
 func (c *Controller) menuAdjust(dir int) {
 	c.mu.Lock()
-	open, sel := c.menuPage != pgNone, c.menuSel
+	pg, sel, curOn := c.menuPage, c.menuSel, c.curOn
 	c.mu.Unlock()
-	if open {
+	if pg == pgCursor && curOn {
+		c.moveCursor(dir)
+		return
+	}
+	if pg != pgNone {
 		c.menuCycle(sel, dir)
 	}
+}
+
+// moveCursor nudges the selected cursor of the active type by ~1 % of screen.
+func (c *Controller) moveCursor(dir int) {
+	c.mu.Lock()
+	step := 0.01 * float64(dir)
+	if c.curType == 0 {
+		c.curX[c.curSel] = clampF(c.curX[c.curSel]+step, 0, 1)
+	} else {
+		c.curY[c.curSel] = clampF(c.curY[c.curSel]+step, 0, 1)
+	}
+	c.mu.Unlock()
+	c.pushLEDs()
 }
 
 func (c *Controller) trigPos() float64 {
@@ -219,8 +271,10 @@ func (c *Controller) trigPos() float64 {
 func (c *Controller) MenuView() MenuView {
 	c.mu.Lock()
 	pg, sel, c1, c2, meas := c.menuPage, c.menuSel, c.chDisp[0], c.chDisp[1], c.showMeas
+	curOn, curType, curSel, curX, curY := c.curOn, c.curType, c.curSel, c.curX, c.curY
 	c.mu.Unlock()
-	v := MenuView{Open: pg != pgNone, Sel: sel, ShowC1: c1, ShowC2: c2, ShowMeas: meas}
+	v := MenuView{Open: pg != pgNone, Sel: sel, ShowC1: c1, ShowC2: c2, ShowMeas: meas,
+		CurOn: curOn, CurType: curType, CurSel: curSel, CurX: curX, CurY: curY}
 	if pg == pgNone {
 		return v
 	}
@@ -292,6 +346,22 @@ func (c *Controller) MenuView() MenuView {
 			{"C2 Coupling", cpl1},
 			{"C1 Probe", p0},
 			{"C2 Probe", p1},
+			{"", ""},
+		}
+	case pgCursor:
+		typ, sel := "Time", "A"
+		if curType == 1 {
+			typ = "Volts"
+		}
+		if curSel == 1 {
+			sel = "B"
+		}
+		v.Title = "CURSOR"
+		v.Items = []MenuItem{
+			{"Cursors", onoff(curOn)},
+			{"Type", typ},
+			{"Active", sel},
+			{"Move ±", "ADJUST"},
 			{"", ""},
 		}
 	}

@@ -104,6 +104,37 @@ func TestRenderMeasPanel(t *testing.T) {
 	}
 }
 
+func TestRenderCursors(t *testing.T) {
+	// Off: no cursor readout box.
+	box := rgb(6, 10, 22)
+	off := NewMemSurface()
+	Render(off, testFrame(2048), defaultHUD(), true)
+	baseline := countColor(off, box)
+
+	// On, time cursors at 0.3/0.7: the readout box appears and the active
+	// cursor (A) draws in the trigger colour, the other in the grid colour.
+	h := defaultHUD()
+	h.CurOn, h.CurType, h.CurSel = true, 0, 0
+	h.CurX = [2]float64{0.3, 0.7}
+	on := NewMemSurface()
+	Render(on, testFrame(2048), h, true)
+	if countColor(on, box) <= baseline {
+		t.Fatal("cursor Δ readout box not drawn")
+	}
+	// The active vertical cursor column has trigger-colour dashes.
+	fx := h.CurX[0]
+	xA := int(fx * float64(W-1))
+	n := 0
+	for y := 8; y < 470; y++ {
+		if on.At(xA, y) == colTrig {
+			n++
+		}
+	}
+	if n < 20 {
+		t.Fatalf("active time cursor not drawn at x=%d (%d px)", xA, n)
+	}
+}
+
 func TestRenderTraceFrame(t *testing.T) {
 	m := NewMemSurface()
 	Render(m, testFrame(2048), defaultHUD(), true)
