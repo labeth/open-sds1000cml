@@ -186,8 +186,33 @@ function winRange(n) {
 function drawTrace(g, cols, color, zoom) {
   if (!cols || !cols.length) return;
   g.strokeStyle = color; g.lineWidth = 1.4 * dpr; g.lineJoin = "round";
-  g.beginPath(); let pen = false;
   const n = cols.length, [iLo, iHi] = winRange(n);
+  if (iHi - iLo > 4 * CW) {
+    // DENSE view (superres stacks reach 1.3M points; deep records zoomed
+    // out): a lineTo per sample janks the canvas, so draw the min/max
+    // envelope per pixel column instead — what a scope raster really shows.
+    g.beginPath();
+    let pen = false;
+    for (let px = 0; px < CW; px++) {
+      const a = Math.max(iLo, Math.ceil(fracForX(px) * (n - 1)));
+      const b = Math.min(iHi, Math.ceil(fracForX(px + 1) * (n - 1)) - 1);
+      let lo = Infinity, hi = -Infinity;
+      for (let i = a; i <= b; i++) {
+        const v = cols[i];
+        if (v < 0) continue;
+        if (v < lo) lo = v;
+        if (v > hi) hi = v;
+      }
+      if (hi < lo) { pen = false; continue; }
+      const y1 = yFor(hi, zoom), y2 = yFor(lo, zoom);
+      if (pen) g.lineTo(px, y1); else g.moveTo(px, y1);
+      g.lineTo(px, y2);
+      pen = true;
+    }
+    g.stroke();
+    return;
+  }
+  g.beginPath(); let pen = false;
   for (let i = iLo; i <= iHi; i++) {
     const v = cols[i];
     if (v < 0) { pen = false; continue; }
@@ -1485,6 +1510,131 @@ function runAutodetect() {
   };
   updateDecodePanel();
 })();
+
+// ---- superres: stack-and-crunch (align → lucky → drizzle → stack) ----
+// A dedicated raw long-poll (?raw=1) feeds superres.js while armed — the
+// display transport is untouched. The result is reviewed through the same
+// frozen-synthetic-frame path as captures, so zoom/cursors/CSV/PNG all work
+// on the stacked waveform, and "fit model" writes the analytic sum-of-
+// sinusoids reconstruction into REF B for overlay comparison.
+const sr = { st: null, armed: false, gen: 0, lastSeq: 0, meta: null, t0: 0, durS: 60, lastUi: 0 };
+
+function srStatus(msg) { $("srStats").textContent = msg; }
+
+function srUpdateStats(final) {
+  const now = performance.now();
+  if (!final && now - sr.lastUi < 500) return;
+  sr.lastUi = now;
+  if (!sr.st || !sr.st.frames) { srStatus("waiting for frames…"); return; }
+  const res = srResult(sr.st);
+  const el = ((now - sr.t0) / 1000).toFixed(0);
+  const rate = res.effRateSa >= 1e9 ? (res.effRateSa / 1e9).toFixed(2) + " GSa/s" : (res.effRateSa / 1e6).toFixed(0) + " MSa/s";
+  srStatus(`${res.frames} stacked · ${res.rejected} rej` + (res.clipped ? ` (${res.clipped} clip)` : "") +
+    ` · ${el}s · σ ${res.sigmaSingle.toFixed(2)}→${res.sigmaStack.toFixed(3)} codes` +
+    ` · +${res.bitsGained.toFixed(1)} bits (eff ${res.effBits.toFixed(1)})` +
+    ` · ${rate} grid · fill ${(res.fill * 100).toFixed(1)}%`);
+}
+
+function srIngest(f) {
+  const sig = +$("srCh").value === 2 ? f.c2 : f.c1;
+  if (!sig || f.is_env) { srStop("band became unsupported"); return; }
+  if (!sr.st) {
+    const K = +$("srK").value || 32;
+    sr.st = srNew(f.cols, K);
+    sr.st.sampleS = f.sample_s || 0;
+    sr.st.vpc = (+$("srCh").value === 2 ? f.vpc2 : f.vpc1) || 1 / 32;
+    sr.st.offV = (+$("srCh").value === 2 ? f.off2_v : f.off1_v) || 0;
+    sr.st.edgeX = f.edge_x;
+    sr.meta = { tdiv_s: f.tdiv_s, cols: f.cols, sample_s: f.sample_s };
+  } else if (f.cols !== sr.meta.cols || f.sample_s !== sr.meta.sample_s) {
+    srStop("acquisition changed (t/div or depth) — stack kept");
+    return;
+  }
+  srFeed(sr.st, sig, { maxLag: 8 });
+  if (sr.durS && (performance.now() - sr.t0) / 1000 >= sr.durS) {
+    srStop("done");
+    return;
+  }
+  srUpdateStats(false);
+}
+
+async function srLoop(gen) {
+  if (!sr.armed || gen !== sr.gen) return;
+  try {
+    const r = await fetch("/api/frame.bin?since=" + sr.lastSeq + "&waitms=1000&raw=1");
+    if (!r.ok) throw new Error("http " + r.status);
+    const f = decodeBinFrame(await r.arrayBuffer());
+    if (f && !f.unchanged && f.seq !== sr.lastSeq) {
+      sr.lastSeq = f.seq;
+      srIngest(f);
+    }
+  } catch (e) { /* transient — next tick retries */ }
+  setTimeout(() => srLoop(gen), 10);
+}
+
+function srStop(why) {
+  sr.armed = false;
+  $("srArm").textContent = "ARM";
+  $("srArm").classList.remove("on");
+  srUpdateStats(true);
+  if (why && sr.st) $("srStats").textContent += " · " + why;
+  else if (why) srStatus(why);
+}
+
+$("srArm").onclick = () => {
+  if (sr.armed) { srStop("stopped"); return; }
+  if (!st || (st.band !== "native-fast" && st.band !== "decimated")) {
+    srStatus("unsupported band (" + (st ? st.band : "?") + ") — use a native or decimated t/div");
+    return;
+  }
+  if (typeof decodeBinFrame !== "function" || typeof srNew !== "function") {
+    srStatus("superres/binframe scripts missing");
+    return;
+  }
+  sr.st = null; sr.meta = null; sr.lastSeq = 0;
+  sr.durS = +$("srDur").value;
+  sr.t0 = performance.now();
+  sr.armed = true;
+  $("srArm").textContent = "STOP";
+  $("srArm").classList.add("on");
+  srStatus("stacking…");
+  srLoop(++sr.gen);
+};
+
+$("srReset").onclick = () => { srStop(); sr.st = null; sr.meta = null; srStatus("idle"); };
+
+$("srShow").onclick = () => {
+  if (!sr.st || !sr.st.frames) { srStatus("nothing stacked yet"); return; }
+  const res = srResult(sr.st);
+  const n = sr.st.n;
+  frame = {
+    seq: frame ? frame.seq : 0, unchanged: false,
+    c1: res.mean, c2: null, is_env: false,
+    cols: res.mean.length, col_span_s: n * sr.st.sampleS,
+    tdiv_s: sr.meta.tdiv_s, displayed_sdiv_s: sr.meta.tdiv_s,
+    vpc1: sr.st.vpc, vpc2: 1 / 32, off1_v: sr.st.offV, off2_v: 0,
+    edge_frac: sr.st.edgeX >= 0 ? sr.st.edgeX / n : -1,
+    win_frac: 1, depth: 0, m1: null, m2: null,
+    trigd: true, interp: false, coherent: true, ptp: 0,
+  };
+  frozen = true; $("freeze").classList.add("on");
+  view.win.a = 0; view.win.b = 1; userZoomed = true; // whole stack; wheel-zoom into the detail
+  computeDecode(); redraw(); updateMeas(); updateCursors();
+  srUpdateStats(true);
+};
+
+$("srFit").onclick = () => {
+  if (!sr.st || !sr.st.frames) { srStatus("nothing stacked yet"); return; }
+  const res = srResult(sr.st);
+  const fit = srModelFit(res.mean, sr.st.K, sr.st.sampleS, { spectrum, detectPeaks }, 6);
+  if (!fit) { srStatus("model fit failed (need a fuller stack)"); return; }
+  refs.B = {
+    c1: Array.from(fit.synth(Math.min(res.mean.length, 16384))),
+    c2: null, vpc1: sr.st.vpc, vpc2: 1 / 32, off1: sr.st.offV, off2: 0, show: true,
+  };
+  updateRefRows(); redraw();
+  srStatus("model → REF B: " + fit.freqs.map(f => eng(f, "Hz", 3)).join(", "));
+};
 
 $("ePNG").onclick = () => {
   const a = document.createElement("a");

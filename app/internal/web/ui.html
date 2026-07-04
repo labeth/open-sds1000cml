@@ -63,6 +63,22 @@
       <div id="mathHint" class="subtle mt"></div>
     </div>
 
+    <div class="card" id="srCard">
+      <h3>Superres <span class="subtle">stack &amp; crunch</span></h3>
+      <div class="toggles">
+        <button id="srArm" class="sm" title="stack raw acquisitions: align (sub-sample) → lucky-select → drizzle onto a fine grid → average">ARM</button>
+        <button id="srShow" class="sm" title="review the stacked waveform (zoom/cursors/CSV all work on it)">view</button>
+        <button id="srFit" class="sm" title="least-squares sum-of-sinusoids fit of the stack → REF B overlay">fit&nbsp;model</button>
+        <button id="srReset" class="sm" title="discard the stack">✕</button>
+      </div>
+      <div class="decrow">
+        <label>grid ×<select id="srK"><option>16</option><option selected>32</option><option>64</option></select></label>
+        <label>ch <select id="srCh"><option value="1">C1</option><option value="2">C2</option></select></label>
+        <label>stop <select id="srDur"><option value="30">30 s</option><option value="60" selected>60 s</option><option value="120">120 s</option><option value="0">manual</option></select></label>
+      </div>
+      <div id="srStats" class="subtle">idle — arm on a native/decimated band with a repetitive signal</div>
+    </div>
+
     <div class="card" id="refCard">
       <h3>Reference <span class="subtle">save &amp; overlay</span></h3>
       <div class="toggles">
@@ -247,6 +263,7 @@
 <script src="peaks.js"></script>
 <script src="decode.js"></script>
 <script src="binframe.js"></script>
+<script src="superres.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

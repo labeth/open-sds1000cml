@@ -41,6 +41,9 @@ var appJS []byte
 //go:embed binframe.js
 var binframeJS []byte
 
+//go:embed superres.js
+var superresJS []byte
+
 // Scope is the engine surface the web layer needs (the setters come from
 // *engine.Engine; WithFrame comes from the frames.Fanout — the arena's
 // single-consumer read slot belongs to the fan-out, and every other reader
@@ -151,6 +154,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/peaks.js", s.hPeaksJS)
 	mux.HandleFunc("/decode.js", s.hDecodeJS)
 	mux.HandleFunc("/binframe.js", s.hBinframeJS)
+	mux.HandleFunc("/superres.js", s.hSuperresJS)
 	mux.HandleFunc("/tokens.css", s.hTokensCSS)
 	mux.HandleFunc("/base.css", s.hBaseCSS)
 	mux.HandleFunc("/app.js", s.hAppJS)
@@ -211,6 +215,8 @@ func (s *Server) hPeaksJS(w http.ResponseWriter, r *http.Request) { serveJS(w, p
 func (s *Server) hDecodeJS(w http.ResponseWriter, r *http.Request) { serveJS(w, decodeJS) }
 
 func (s *Server) hBinframeJS(w http.ResponseWriter, r *http.Request) { serveJS(w, binframeJS) }
+
+func (s *Server) hSuperresJS(w http.ResponseWriter, r *http.Request) { serveJS(w, superresJS) }
 
 func (s *Server) hTokensCSS(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/css; charset=utf-8")
@@ -383,6 +389,12 @@ type frameReply struct {
 	// runs, so the payload can carry raw uint8 codes with no in-band sentinel.
 	Head int `json:"head,omitempty"`
 	Tail int `json:"tail,omitempty"`
+
+	// Raw-shape only (/api/frame.bin?raw=1): the per-sample capture interval.
+	// The raw shape serves the un-windowed, un-interpolated record for the
+	// super-resolution stacker; edge_x is then an absolute (sub-sample)
+	// index into that record.
+	SampleS float64 `json:"sample_s,omitempty"`
 }
 
 // resampleEnv nearest-resamples an envelope column array to n output columns.
@@ -708,6 +720,7 @@ const (
 	binEnv       = 1 << 1
 	binDeep      = 1 << 2
 	binEmpty     = 1 << 3
+	binRaw       = 1 << 4 // raw=1: un-windowed record, payload c1[cols] c2[cols]
 )
 
 // encodeBinFrame serializes a built reply to the binary wire format. It runs
@@ -818,17 +831,22 @@ func (s *Server) hFrameBin(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
-	off, vpc := s.vertScales()
-	st := s.sc.Snapshot()
-	posFrac := st.TrigPosFrac
-	if posFrac <= 0 {
-		posFrac = 0.5
+	var buf []byte
+	if r.URL.Query().Get("raw") == "1" {
+		buf = s.rawBinMsg(since)
+	} else {
+		off, vpc := s.vertScales()
+		st := s.sc.Snapshot()
+		posFrac := st.TrigPosFrac
+		if posFrac <= 0 {
+			posFrac = 0.5
+		}
+		var rep frameReply
+		s.sc.WithFrame(func(f *engine.Frame) {
+			rep = s.buildReply(f, cols, full, since, off, vpc, posFrac, st.Running && !st.Single)
+		})
+		buf = encodeBinFrame(rep) // encode + write strictly outside the fan-out lock
 	}
-	var rep frameReply
-	s.sc.WithFrame(func(f *engine.Frame) {
-		rep = s.buildReply(f, cols, full, since, off, vpc, posFrac, st.Running && !st.Single)
-	})
-	buf := encodeBinFrame(rep) // encode + write strictly outside the fan-out lock
 	w.Header().Set("Content-Type", "application/octet-stream")
 	w.Header().Set("Cache-Control", "no-store")
 	// Bound the write: the server sets no global timeouts (long-poll depends
@@ -840,6 +858,59 @@ func (s *Server) hFrameBin(w http.ResponseWriter, r *http.Request) {
 	rc.SetWriteDeadline(time.Now().Add(5 * time.Second))
 	w.Write(buf)
 	rc.SetWriteDeadline(time.Time{})
+}
+
+// rawBinMsg assembles the raw-shape binary message (?raw=1): the un-windowed,
+// un-interpolated, pre-coupling record — what the browser super-resolution
+// stacker aligns and drizzles. Payload = c1[cols] c2[cols] raw ADC codes,
+// copied under the fan-out lock (the backing arrays are reused by the next
+// tick); header carries sample_s and the engine's sub-sample edge_x. No
+// measurements — the stacker computes its own statistics, and skipping the
+// meas pass keeps the raw feed cheap next to the display path.
+func (s *Server) rawBinMsg(since uint64) []byte {
+	off, vpc := s.vertScales()
+	var hdr frameReply
+	var payload []byte
+	var flags byte = binRaw
+	s.sc.WithFrame(func(f *engine.Frame) {
+		if f == nil || f.Seq == 0 || f.Seq == since {
+			var seq uint64
+			if f != nil {
+				seq = f.Seq
+			}
+			hdr = frameReply{Seq: seq, Unchanged: true, EdgeX: -1}
+			flags |= binUnchanged
+			return
+		}
+		n := f.Valid
+		if n <= 0 {
+			hdr = frameReply{Seq: f.Seq, Unchanged: true, EdgeX: -1}
+			flags |= binUnchanged | binEmpty
+			return
+		}
+		hdr = frameReply{
+			Seq: f.Seq, EdgeX: f.EdgeX, Ptp: f.Ptp, TdivS: f.TdivS,
+			DisplayedS: f.DisplayedS, Interp: f.Interp, Norm: f.Norm,
+			Trigd: f.Trigd, Coherent: f.Coherent, IsEnv: f.IsEnv,
+			Cols: n, ColSpanS: float64(n) * f.SampleS, SampleS: f.SampleS,
+			EdgeFrac: -1, WinFrac: 1,
+			Vpc1: vpc[0], Vpc2: vpc[1], Off1V: off[0], Off2V: off[1],
+		}
+		hdr.StreamSeq, hdr.WindowNs, hdr.GapNs = f.StreamSeq, f.WindowNs, f.GapNs
+		payload = make([]byte, 2*n)
+		copy(payload[:n], f.C1[:n])
+		copy(payload[n:], f.C2[:n])
+	})
+	hj, err := json.Marshal(hdr)
+	if err != nil { // unreachable with finite inputs
+		hj, payload, flags = []byte(`{"seq":0,"unchanged":true,"edge_x":-1}`), nil, binRaw|binUnchanged
+	}
+	buf := make([]byte, 8, 8+len(hj)+len(payload))
+	buf[0] = binMagic
+	buf[1] = flags
+	binary.LittleEndian.PutUint32(buf[4:8], uint32(len(hj)))
+	buf = append(buf, hj...)
+	return append(buf, payload...)
 }
 
 type setReq struct {

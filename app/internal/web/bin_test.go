@@ -249,3 +249,48 @@ func TestMeasCacheReuse(t *testing.T) {
 		t.Fatal("expired throttle window did not refresh the measurement cache")
 	}
 }
+
+// TestBinFrameRawShape: raw=1 serves the un-windowed record — payload is the
+// verbatim C1/C2 bytes, header carries sample_s + the sub-sample edge_x, and
+// no measurements are computed.
+func TestBinFrameRawShape(t *testing.T) {
+	const n = 300
+	c1, c2 := make([]uint8, n), make([]uint8, n)
+	for i := range c1 {
+		c1[i] = uint8(i % 251)
+		c2[i] = uint8((i * 3) % 249)
+	}
+	f := &engine.Frame{C1: c1, C2: c2, Seq: 31, Valid: n, WinCols: 200,
+		EdgeX: 123.625, TdivS: 5e-6, DisplayedS: 5e-6, SampleS: 1e-8, Ptp: 140, Trigd: true}
+	fs := &fakeScope{frame: f, fresh: true}
+	s := New(fs, nil, nil, nil)
+
+	rep, flags, pay := getBin(t, s, "/api/frame.bin?since=0&raw=1")
+	if flags&binRaw == 0 || flags&binUnchanged != 0 {
+		t.Fatalf("flags = %#x, want raw", flags)
+	}
+	if rep.Cols != n || rep.SampleS != 1e-8 || rep.EdgeX != 123.625 || !rep.Trigd {
+		t.Fatalf("raw header: cols=%d sample_s=%v edge_x=%v trigd=%v", rep.Cols, rep.SampleS, rep.EdgeX, rep.Trigd)
+	}
+	if rep.M1 != nil || rep.M2 != nil {
+		t.Fatal("raw shape must not compute measurements")
+	}
+	if len(pay) != 2*n {
+		t.Fatalf("raw payload %d bytes, want %d", len(pay), 2*n)
+	}
+	for i := 0; i < n; i++ {
+		if pay[i] != c1[i] || pay[n+i] != c2[i] {
+			t.Fatalf("raw payload mismatch at %d: %d/%d vs %d/%d", i, pay[i], pay[n+i], c1[i], c2[i])
+		}
+	}
+	// ColSpanS is the whole-record time.
+	if got, want := rep.ColSpanS, float64(n)*1e-8; got != want {
+		t.Fatalf("col_span_s = %v, want %v", got, want)
+	}
+
+	// unchanged short-circuit still applies.
+	rep2, flags2, pay2 := getBin(t, s, "/api/frame.bin?since=31&raw=1")
+	if !rep2.Unchanged || flags2&binUnchanged == 0 || len(pay2) != 0 {
+		t.Fatalf("raw unchanged: %+v flags=%#x pay=%d", rep2, flags2, len(pay2))
+	}
+}
