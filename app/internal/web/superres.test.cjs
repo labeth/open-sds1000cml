@@ -228,5 +228,28 @@ function frame(n, period, shift, noise, amp, harmonics) {
   check("dead tail: bits gained > 0.8", res.bitsGained > 0.8, `+${res.bitsGained.toFixed(2)}`);
 }
 
+
+// ---- minority-reference re-seed: a reference from an oddball drain must
+// not permanently reject the dominant population — the stack re-seeds and
+// converges on the majority.
+{
+  const n = 2048, period = 256, K = 8;
+  const st = srNew(n, K);
+  st.sampleS = 1e-8;
+  // Frame 1: a DIFFERENT waveform shape (minority drain population).
+  const odd = new Float64Array(n);
+  for (let i = 0; i < n; i++) odd[i] = 128 + 50 * Math.sin(2 * Math.PI * i / 977) + 1.0 * gauss();
+  srFeed(st, odd, { maxLag: 8 });
+  check("minority ref adopted first", st.frames === 1);
+  // Then 120 frames of the real (majority) signal.
+  for (let k = 0; k < 120; k++) {
+    srFeed(st, frame(n, period, (rnd() - 0.5) * 4, 1.0, 60), { maxLag: 8 });
+  }
+  const res = srResult(st);
+  check("re-seed fired", res.reseeds >= 1, `reseeds ${res.reseeds}`);
+  check("majority stacks after re-seed", res.frames > 60, `${res.frames} stacked, ${res.rejected} rej`);
+  check("stack gains bits after re-seed", res.bitsGained > 1, `+${res.bitsGained.toFixed(2)}`);
+}
+
 if (fails) { console.log(fails + " FAILURES"); process.exit(1); }
 console.log("ALL PASS");

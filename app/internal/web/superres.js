@@ -205,7 +205,8 @@ function srNew(n, K) {
     cnt: new Uint32Array(nbins),
     sumA: new Float64Array(nbins),
     cntA: new Uint32Array(nbins),
-    frames: 0, rejected: 0, clipped: 0,
+    frames: 0, rejected: 0, clipped: 0, reseeds: 0,
+    attempts: 0, // frames offered since the current reference was adopted
     scores: [], shifts: [],
     ref: null, // Float32Array reference (first accepted frame with signal)
     refEdgeX: -1,
@@ -224,6 +225,18 @@ function srFeed(st, sig, opts) {
   const maxLag = opts.maxLag || 8;
   if (sig.length < st.n) return "rejected:short";
   if (srClipped(sig)) { st.clipped++; st.rejected++; return "rejected:clip"; }
+  // REFERENCE RE-SEED: if most frames refuse to align to the current
+  // reference, the reference itself is the outlier (this hardware's deep
+  // drains come in populations — a reference from the minority rejects the
+  // majority forever). Drop the stack and re-adopt from the incoming flow;
+  // within a couple of re-seeds the reference lands in the dominant
+  // population and acceptance recovers.
+  st.attempts++;
+  if (st.ref && st.attempts >= 30 && st.frames / st.attempts < 0.3) {
+    const keep = { sampleS: st.sampleS, vpc: st.vpc, offV: st.offV, reseeds: st.reseeds + 1 };
+    const fresh = srNew(st.n, st.K);
+    Object.assign(st, fresh, keep);
+  }
   if (!st.ref) {
     // Reference quality gate: a flat/untriggered first frame would zero the
     // NCC denominator and poison the whole capture (everything after scores
@@ -359,7 +372,7 @@ function srResult(st, opts) {
   return {
     mean,
     fill: filled / Math.max(1, scanned),
-    frames: st.frames, rejected: st.rejected, clipped: st.clipped,
+    frames: st.frames, rejected: st.rejected, clipped: st.clipped, reseeds: st.reseeds,
     sigmaSingle, sigmaStack, sigmaStackTheory, bitsGained,
     effBits: 8 + bitsGained,
     fineDtS: st.sampleS > 0 ? st.sampleS / st.K : 0,

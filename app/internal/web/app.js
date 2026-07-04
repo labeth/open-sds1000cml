@@ -1570,7 +1570,7 @@ function srUpdateStats(final) {
   const res = srResult(sr.st, { statsOnly: true, stride: Math.max(1, Math.ceil(sr.st.nbins / 65536)) });
   const el = ((now - sr.t0) / 1000).toFixed(0);
   const rate = res.effRateSa >= 1e9 ? (res.effRateSa / 1e9).toFixed(2) + " GSa/s" : (res.effRateSa / 1e6).toFixed(0) + " MSa/s";
-  srStatus(`${res.frames} stacked · ${res.rejected} rej` + (res.clipped ? ` (${res.clipped} clip)` : "") +
+  srStatus(`${res.frames} stacked · ${res.rejected} rej` + (res.clipped ? ` (${res.clipped} clip)` : "") + (res.reseeds ? ` · reseed ${res.reseeds}` : "") +
     ` · ${el}s · σ ${res.sigmaSingle.toFixed(2)}→${res.sigmaStack.toFixed(3)} codes` +
     ` · +${res.bitsGained.toFixed(1)} bits (eff ${res.effBits.toFixed(1)})` +
     ` · ${rate} grid · fill ${(res.fill * 100).toFixed(1)}%`);
