@@ -264,8 +264,11 @@ function srFeed(st, sig, opts) {
   // Align + score over a window around the reference's trigger edge: that
   // region is guaranteed real signal, whereas a deep drain's dead tail sits
   // at a different position each frame and would fail genuinely good frames.
+  // ±2048 raw samples: comfortably inside the coherent capture on this
+  // hardware's deep drains (real content ≈ first ~55% of a 20480 drain; the
+  // dead tail mixes at per-frame boundaries and must stay out of the score).
   const center = st.refEdgeX >= 0 ? Math.round(st.refEdgeX) : st.n >> 1;
-  const half = Math.min(st.n >> 1, opts.winHalf || 4096);
+  const half = Math.min(st.n >> 1, opts.winHalf || 2048);
   const wLo = Math.max(0, center - half), wHi = Math.min(st.n, center + half);
   st.statLo = wLo; st.statHi = wHi;
   const al = srAlign(st.ref, sig, maxLag, base, wLo, wHi);
