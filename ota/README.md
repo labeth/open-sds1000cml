@@ -97,6 +97,12 @@ stick and **runs `startup.sh` from its root** (the vendor's own script hook).
 That is our entire entry point — `startup.sh` launches the agent, which then
 takes over the instrument. No firmware modification, no on-device login.
 
+`mkstick.sh` makes a **ready-to-run** stick: it pre-loads the clean-room app into
+both app slots plus a known-good emergency backstop, and ships `agent.env` with
+auto-takeover ON — so a fresh stick boots **straight into the working scope + web
+UI**, no network deploy required. (You still update the app later over the network
+with `otactl update-app`.)
+
 For the firmware to see the stick it **must** be:
 
 - **MBR-partitioned** (msdos/DOS partition table — **not GPT**);
@@ -150,6 +156,9 @@ ota/checkdev.sh <ip>        # exits non-zero if any check fails
     active  confirmed      app slot pointers
     staging/              upload staging
 ```
+
+`mkstick.sh` populates the `agent-slots/` app binaries + pointers for you; plain
+`make dist` only lays out the empty slot dirs (the app is pushed later via OTA).
 
 ## Env contract (set in `ota/agent.env`, exported by `startup.sh`)
 

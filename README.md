@@ -104,27 +104,24 @@ agent gets in and takes over (no firmware modification). See [`ota/`](ota/) for
 the full model.
 
 ```sh
-# 0) On your computer, prepare the USB boot stick (MBR + FAT32) once. The helper
-#    formats + populates it, or copies onto an already-mounted FAT32 stick:
+# On your computer, make a ready-to-run USB boot stick (MBR + FAT32). This builds
+# the agent AND the clean-room app, pre-loads the app into the boot slots, and
+# defaults auto-takeover ON — so the stick boots straight into the working scope:
 sudo ota/mkstick.sh --format /dev/sdX      # DESTRUCTIVE, heavily guarded
-#    edit <stick>/ota/agent.env, then move the stick to the scope and REBOOT it
-#    (the firmware runs startup.sh from the stick only at boot), then confirm:
-ota/checkdev.sh <device-ip>                # stick + agent + app are healthy
+#   (or, onto an already-mounted FAT32 stick:  ota/mkstick.sh <mountpoint>)
 
-# 1) Build the ARM app binary (version-stamped via git):
-cd app && make app                 # → app/dist/app-arm
+# Move the stick to the scope and REBOOT it (the firmware runs startup.sh from the
+# stick only at boot). Then, back on your computer, confirm it came up:
+ota/checkdev.sh <device-ip>                # -> http://<device>:8080/
+```
 
-# 2) Run the full offline test suite (no hardware needed — scripted fake bus):
-make test
+To push a newer app later (over the network, no reboot):
 
-# 3) Stage + deploy to the device (device /tmp is read-only, so stage to the stick):
+```sh
+cd app && make app && make test            # build + full offline test suite
 ../ota/dist/otactl -tcp <device>:5900 \
   -stage /usr/bin/siglent/usr/media/U-disk0/agent-slots/staging \
-  update-app dist/app-arm
-
-# 4) One-time cutover from the factory app, then browse the UI:
-../ota/dist/otactl -tcp <device>:5900 takeover
-#   -> http://<device>:8080/    (or talk SCPI via any VXI-11 client)
+  update-app dist/app-arm                  # upload -> inactive slot -> restart, health-rollback on failure
 ```
 
 Recovery: `otactl untakeover` restores the factory app; the last resort is a mains
