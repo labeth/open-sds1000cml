@@ -151,6 +151,8 @@ func (c *Controller) menuCycle(slot, dir int) {
 			c.eng.SetTrigSource(1 - st.TrigSource)
 		case 3:
 			c.eng.SetTrigType(mod4(st.TrigType + dir))
+		case 4:
+			c.eng.SetHoldoff(nextHoldoff(st.HoldoffS, dir))
 		}
 	case pgAcq:
 		switch slot {
@@ -296,13 +298,17 @@ func (c *Controller) MenuView() MenuView {
 			src = "CH2"
 		}
 		types := []string{"Edge", "Pulse", "Slope", "Video"}
+		ho := "Off"
+		if st.HoldoffS > 0 {
+			ho = fmtEng(st.HoldoffS, "s")
+		}
 		v.Title = "TRIGGER"
 		v.Items = []MenuItem{
 			{"Mode", ternary(st.Norm, "NORM", "AUTO")},
 			{"Slope", slope},
 			{"Source", src},
 			{"Type", types[st.TrigType&3]},
-			{"", ""},
+			{"Holdoff", ho},
 		}
 	case pgAcq:
 		modes := []string{"Normal", "Average", "ERes", "Peak"}
@@ -452,6 +458,19 @@ func (c *Controller) InjectKnob(name string, dir, steps int) bool {
 
 func mod4(x int) int { return ((x % 4) + 4) % 4 }
 func mod3(x int) int { return ((x % 3) + 3) % 3 }
+
+// nextHoldoff steps the trigger-holdoff ladder (Off → 100 µs → 1 ms → 10 ms →
+// 100 ms → 1 s), clamped at the ends.
+func nextHoldoff(cur float64, dir int) float64 {
+	opts := []float64{0, 100e-6, 1e-3, 10e-3, 100e-3, 1}
+	idx := 0
+	for i, v := range opts {
+		if cur >= v*(1-1e-6) {
+			idx = i
+		}
+	}
+	return opts[clampInt(idx+dir, 0, len(opts)-1)]
+}
 
 // cplName / probeName format the pgChan values; both mirror the analog layer's
 // coupling constants (DC=0, AC=1, GND=2) and probe ladder (×1/×10/×100).

@@ -43,6 +43,10 @@ func (f *fakeEng) SetAvgCount(n int)        { f.calls = append(f.calls, call{"av
 func (f *fakeEng) SetEresLen(l int)         { f.calls = append(f.calls, call{"eres", l, 0}) }
 func (f *fakeEng) SetETS(on bool)           { f.calls = append(f.calls, call{"ets", b2i(on), 0}) }
 func (f *fakeEng) SetTrigPosFrac(fr float64) { f.calls = append(f.calls, call{"trigpos", int(fr * 100), 0}) }
+func (f *fakeEng) SetHoldoff(s float64) float64 {
+	f.calls = append(f.calls, call{"holdoff", int(s * 1e6), 0})
+	return s
+}
 
 func b2i(b bool) int {
 	if b {
@@ -309,5 +313,24 @@ func TestCursorMenu(t *testing.T) {
 	c.menuButton(btnF2)
 	if c.MenuView().CurType != 1 {
 		t.Fatal("F2 did not switch to volts cursors")
+	}
+}
+
+func TestTriggerHoldoffSoftkey(t *testing.T) {
+	c, eng, _ := newC(t)
+	c.menuButton(btnTrigMenu) // open TRIGGER page
+	if v := c.MenuView(); v.Items[4].Label != "Holdoff" || v.Items[4].Value != "Off" {
+		t.Fatalf("holdoff softkey missing/wrong: %+v", v.Items[4])
+	}
+	// F5 (slot 4) steps the holdoff ladder Off -> 100us.
+	c.menuButton(btnF5)
+	last := eng.calls[len(eng.calls)-1]
+	if last != (call{"holdoff", 100, 0}) { // 100us = 100e-6 * 1e6
+		t.Fatalf("F5 did not step holdoff to 100us: %v", last)
+	}
+	// Reflect it back and confirm the menu formats it.
+	eng.stats.HoldoffS = 100e-6
+	if v := c.MenuView(); v.Items[4].Value == "Off" {
+		t.Fatalf("holdoff value not shown after set: %+v", v.Items[4])
 	}
 }
