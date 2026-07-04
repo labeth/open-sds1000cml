@@ -133,8 +133,15 @@ func (a *Agent) Run() error {
 		// the agent only provides remote access + probe. Auto-takeover happens
 		// only when explicitly armed (OTA_AUTO_TAKEOVER or a persisted flag).
 		go func() {
-			a.log.Printf("auto-takeover armed: waiting %s for factory boot to settle", a.cfg.TakeoverDelay)
-			time.Sleep(a.cfg.TakeoverDelay)
+			// The factory app is already up and settled by the time the firmware
+			// runs startup.sh (it starts long before), so take over immediately.
+			// OTA_TAKEOVER_DELAY can still add a settle wait for an odd unit.
+			if a.cfg.TakeoverDelay > 0 {
+				a.log.Printf("auto-takeover armed: settling %s", a.cfg.TakeoverDelay)
+				time.Sleep(a.cfg.TakeoverDelay)
+			} else {
+				a.log.Printf("auto-takeover armed: taking over now")
+			}
 			res := a.Takeover(TakeoverOpts{})
 			a.log.Printf("auto-takeover: ok=%v %s", res.OK, res.Summary())
 		}()

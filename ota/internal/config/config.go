@@ -49,7 +49,7 @@ type Config struct {
 
 	// Takeover.
 	FactoryNames  []string      // OTA_FACTORY_NAMES — extra exe/comm hints, comma-sep
-	TakeoverDelay time.Duration // OTA_TAKEOVER_DELAY — auto-takeover settle after boot
+	TakeoverDelay time.Duration // OTA_TAKEOVER_DELAY — settle before auto-takeover (default 0: instant; the factory app is already up when startup.sh runs)
 	AutoTakeover  bool          // OTA_AUTO_TAKEOVER — arm auto-takeover after boot (default: coexist)
 }
 
@@ -145,7 +145,7 @@ func Load() *Config {
 		MaxFails:      envInt("OTA_MAXFAILS", 3),
 		WdPet:         envDurSecs("OTA_WD_PET", 15*time.Second),
 
-		TakeoverDelay: envDurSecs("OTA_TAKEOVER_DELAY", 20*time.Second),
+		TakeoverDelay: envDurSecs("OTA_TAKEOVER_DELAY", 0),
 		AutoTakeover:  envBool("OTA_AUTO_TAKEOVER"),
 	}
 	if v := os.Getenv("OTA_FACTORY_NAMES"); v != "" {
