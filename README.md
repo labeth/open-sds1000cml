@@ -23,7 +23,8 @@ hardware does and how the firmware must behave*; the implementation in
 > other hardware. There is **no warranty** (see [LICENSE](LICENSE)); you are
 > responsible for your instrument.
 
-![The web UI driving a real SDS1102CML+](docs/images/web-ui.png)
+![The web UI driving a real SDS1102CML+](docs/images/host-yt.png)
+<sub>The web UI (Y-T mode, cursors on, live auto-measurements) driving a real SDS1102CML+.</sub>
 
 ## Highlights
 
@@ -66,15 +67,34 @@ also collapse the other channel's gain). This firmware therefore models coupling
 passes through — which is safe, always works, and matches on both the web and the LCD.
 See [`specs/06-vertical-and-analog.md`](specs/06-vertical-and-analog.md) §6.
 
-## On the instrument itself
+## The host UI (web app)
 
-The firmware isn't only a web front end — it drives the scope's own LCD and front
-panel too. Front-panel softkeys toggle a calibrated on-screen MEASURE panel and
-on-screen cursors, both computed from the same measurement core as the web UI:
+Served at `http://<device>:8080/` — a responsive, single-page control surface for
+the whole instrument. Y-T with direct-manipulation cursors and live measurements
+(the [screenshot above](docs/images/host-yt.png)), an X-Y mode, a per-channel FFT
+with clickable peak markers, waveform math and reference overlays, and one-click
+protocol decode with auto-detection.
 
-| On-screen MEASURE panel | On-screen cursors |
+| Per-channel FFT | Protocol decode (auto-detected) |
 |---|---|
-| ![LCD MEASURE panel](docs/images/lcd-measure.png) | ![LCD cursors](docs/images/lcd-cursors.png) |
+| [![FFT view](docs/images/host-fft.png)](docs/images/host-fft.png) | [![Protocol decode](docs/images/host-decode.png)](docs/images/host-decode.png) |
+| Spectra of a 20 kHz square — its odd-harmonic comb, with the strongest peaks tagged. | UART/I²C/SPI decode; here it auto-detected SPI (CLK=C2, DATA=C1), with per-channel FFT peak lists alongside. |
+
+Every acquisition control lives in the footer (run/stop, trigger, timebase,
+per-channel V/div · coupling · probe · offset, acquire mode + memory depth), and
+PNG / calibrated-CSV export is one click away.
+
+## On the instrument (LCD + front panel)
+
+The firmware isn't only a web front end — it drives the scope's own 800×480 LCD and
+front-panel matrix, so it's a self-contained instrument. Front-panel softkeys drive
+a menu system, a calibrated on-screen MEASURE panel and on-screen cursors (both from
+the *same* measurement core as the web UI), and per-channel coupling/probe pages.
+
+| On-screen MEASURE panel | On-screen cursors | Front-panel menu |
+|---|---|---|
+| [![LCD MEASURE panel](docs/images/lcd-measure.png)](docs/images/lcd-measure.png) | [![LCD cursors](docs/images/lcd-cursors.png)](docs/images/lcd-cursors.png) | [![LCD channel menu](docs/images/lcd-menu.png)](docs/images/lcd-menu.png) |
+| Calibrated Vpp/Vamp/Vrms/Vavg + timing, matching the web. | Time cursors with a live Δt / 1÷Δt readout. | The CHANNEL softkey page — coupling + probe per channel, with the "10×"/"AC" HUD tags. |
 
 ## Quick start
 
