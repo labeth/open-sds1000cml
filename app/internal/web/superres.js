@@ -362,11 +362,14 @@ function srResult(st, opts) {
   }
   const med = a => { if (!a.length) return 0; const s = [...a].sort((x, y) => x - y); return s[s.length >> 1]; };
   const sigmaSingle = med(sigSingles);
+  // Median-based like sigmaSingle (×1.4826 = gaussian MAD→σ): an RMS here
+  // would be dominated by the few EDGE bins, where the half-difference is
+  // sub-bin slope aliasing, not noise — the two stats must describe the same
+  // (flat-bin noise floor) population or bitsGained compares apples to
+  // oranges.
   let sigmaStack = 0;
   if (halves.length >= 16) {
-    let s2 = 0;
-    for (const d of halves) s2 += d * d;
-    sigmaStack = Math.sqrt(s2 / halves.length);
+    sigmaStack = 1.4826 * med(halves.map(Math.abs));
   }
   const cnts = [];
   for (let b = statLo; b < statHi; b += stride) if (st.cnt[b] > 0) cnts.push(st.cnt[b]);
