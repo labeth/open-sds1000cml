@@ -173,5 +173,36 @@ function frame(n, period, shift, noise, amp, harmonics) {
   }
 }
 
+
+// ---- deep-band case: trigger WANDERS through the record (raw deep records
+// are not re-centered) and the signal spans many periods — NCC alone is
+// ambiguous modulo the period; the trigger-edge coarse anchor must resolve
+// it and stacking must still gain bits.
+{
+  const n = 4096, period = 400, K = 8, noise = 1.5, N = 120;
+  const st = srNew(n, K);
+  st.sampleS = 4e-7;
+  let rejected = 0;
+  const refWander = 0; // reference frame trigger position offset
+  for (let k = 0; k < N; k++) {
+    const wander = k === 0 ? refWander : Math.round((rnd() - 0.5) * 600); // ±300 samples
+    const sub = (rnd() - 0.5) * 2; // sub-sample jitter on top
+    const shift = wander + sub;
+    const sig = frame(n, period, shift, noise, 60);
+    // edge_x mimics the engine: the discerned edge index in THIS record.
+    const edgeX = n / 2 + shift;
+    const d = srFeed(st, sig, { maxLag: 8, edgeX });
+    if (d.startsWith("rejected")) rejected++;
+  }
+  const res = srResult(st);
+  check("deep wander: nearly all frames stack", res.frames >= N - 2, `${res.frames}/${N} (rej ${rejected})`);
+  check("deep wander: bits gained > 1", res.bitsGained > 1, `+${res.bitsGained.toFixed(2)} bits (sigma ${res.sigmaSingle.toFixed(2)}->${res.sigmaStack.toFixed(3)})`);
+  // Mis-stacking by one period would smear the edge: verify the stacked
+  // waveform's transition is sharp by checking the mid-crossing count is the
+  // expected ~n/period*K... simpler: sigmaStack must be far below the signal
+  // swing (a period-slipped stack shows sigma comparable to the amplitude).
+  check("deep wander: no period-slip smear", res.sigmaStack < 5, res.sigmaStack.toFixed(2));
+}
+
 if (fails) { console.log(fails + " FAILURES"); process.exit(1); }
 console.log("ALL PASS");

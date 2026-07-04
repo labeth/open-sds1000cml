@@ -1587,7 +1587,6 @@ function srIngest(f) {
     sr.st.sampleS = f.sample_s || 0;
     sr.st.vpc = vpc;
     sr.st.offV = (sr.ch === 2 ? f.off2_v : f.off1_v) || 0;
-    sr.st.edgeX = f.edge_x;
     sr.meta = { tdiv_s: f.tdiv_s, cols: f.cols, sample_s: f.sample_s };
   } else if (f.cols !== sr.meta.cols || f.sample_s !== sr.meta.sample_s) {
     srStop("acquisition changed (t/div or depth) — stack kept");
@@ -1598,7 +1597,7 @@ function srIngest(f) {
     srStop("vertical scale changed — stack kept");
     return;
   }
-  srFeed(sr.st, sig, { maxLag: 8 });
+  srFeed(sr.st, sig, { maxLag: 8, edgeX: f.edge_x }); // edge anchors the coarse alignment
   if (sr.durS && (performance.now() - sr.t0) / 1000 >= sr.durS) {
     srStop("done");
     return;

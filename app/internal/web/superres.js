@@ -71,13 +71,22 @@ function srCrossings(sig, level, rising) {
 //          crossing offsets when both traces have enough edges (unbiased for
 //          square-ish signals), else (b) parabolic interpolation of the NCC
 //          peak (fine for smooth/band-limited signals).
-function srAlign(ref, sig, maxLag) {
+function srAlign(ref, sig, maxLag, base) {
+  base = base | 0;
   const n = Math.min(ref.length, sig.length);
-  if (n < 8 * maxLag || n < 32) return null;
-  const lo = maxLag, hi = n - maxLag; // central window, full overlap at all lags
-  let rm = 0, sm = 0;
-  for (let i = lo; i < hi; i++) { rm += ref[i]; sm += sig[i]; }
+  // Window of ref indices where sig[i + base + k] stays in-bounds for every
+  // searched lag. `base` is the COARSE alignment (trigger-edge difference
+  // from the frame headers): on decimated deep bands the trigger lands
+  // anywhere in the drained record — far beyond any affordable NCC search —
+  // and for periodic signals a bare NCC is ambiguous modulo the period.
+  // Anchoring on the same trigger edge resolves both; NCC refines the
+  // residual jitter.
+  const lo = Math.max(maxLag, maxLag - base);
+  const hi = Math.min(n, sig.length - base) - maxLag;
   const m = hi - lo;
+  if (m < Math.max(32, 4 * maxLag)) return null;
+  let rm = 0, sm = 0;
+  for (let i = lo; i < hi; i++) { rm += ref[i]; sm += sig[i + base]; }
   rm /= m; sm /= m;
   let rss = 0;
   for (let i = lo; i < hi; i++) { const d = ref[i] - rm; rss += d * d; }
@@ -86,7 +95,7 @@ function srAlign(ref, sig, maxLag) {
   for (let k = -maxLag; k <= maxLag; k++) {
     let dot = 0, sss = 0;
     for (let i = lo; i < hi; i++) {
-      const r = ref[i] - rm, s = sig[i + k] - sm;
+      const r = ref[i] - rm, s = sig[i + base + k] - sm;
       dot += r * s; sss += s * s;
     }
     const denom = Math.sqrt(rss * sss);
@@ -94,6 +103,8 @@ function srAlign(ref, sig, maxLag) {
     scores[k + maxLag] = sc;
     if (sc > best) { best = sc; bestK = k; }
   }
+  const resK = bestK; // residual lag (indexes `scores`); bestK = total shift
+  bestK += base;
   let shift = bestK;
   let method = "int";
   // (a) edge-crossing refinement about the integer alignment. The crossing
@@ -125,8 +136,8 @@ function srAlign(ref, sig, maxLag) {
     }
   }
   if (method === "int") {
-    // (b) parabolic refinement of the NCC peak.
-    const i = bestK + maxLag;
+    // (b) parabolic refinement of the NCC peak (residual-lag indexed).
+    const i = resK + maxLag;
     if (i > 0 && i < scores.length - 1) {
       const a = scores[i - 1], b = scores[i], c = scores[i + 1];
       const den = a - 2 * b + c;
@@ -189,6 +200,7 @@ function srNew(n, K) {
     frames: 0, rejected: 0, clipped: 0,
     scores: [], shifts: [],
     ref: null, // Float32Array reference (first accepted frame with signal)
+    refEdgeX: -1,
     sampleS: 0, vpc: 1 / 32, offV: 0, edgeX: -1,
   };
 }
@@ -209,13 +221,23 @@ function srFeed(st, sig, opts) {
     for (let i = 0; i < st.n; i++) { const v = sig[i]; if (v < lo) lo = v; if (v > hi) hi = v; }
     if (hi - lo < 12) { st.rejected++; return "rejected:flat"; }
     st.ref = Float32Array.from(sig.subarray ? sig.subarray(0, st.n) : sig.slice(0, st.n));
+    st.refEdgeX = opts.edgeX != null ? opts.edgeX : -1;
+    st.edgeX = st.refEdgeX; // the stack lives on the reference's timeline
     // The reference frame itself stacks at shift 0.
     srAccum(st, st.ref, 0);
     st.frames++;
     st.scores.push(1); st.shifts.push(0);
     return "stacked";
   }
-  const al = srAlign(st.ref, sig, maxLag);
+  // Coarse alignment from the trigger-edge headers: on decimated deep bands
+  // the trigger wanders through the drained record far beyond the NCC search
+  // window, and a periodic signal is NCC-ambiguous modulo its period — the
+  // shared trigger edge disambiguates both. NCC then refines the residual.
+  let base = 0;
+  if (st.refEdgeX >= 0 && opts.edgeX != null && opts.edgeX >= 0) {
+    base = Math.round(opts.edgeX - st.refEdgeX);
+  }
+  const al = srAlign(st.ref, sig, maxLag, base);
   if (!al) { st.rejected++; return "rejected:align"; }
   // Adaptive lucky threshold: after warm-up, cut at median − 3·MAD — but
   // never closer than 0.05 below the median. When all frames are good the
