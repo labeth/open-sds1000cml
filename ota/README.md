@@ -104,7 +104,11 @@ For the firmware to see the stick it **must** be:
 - that partition is what appears as **`/dev/sda1`**, mounted at
   `/usr/bin/siglent/usr/media/U-disk0`, on the instrument.
 
-Use the helper — it lays out the tree (`make dist`) and writes it to the stick:
+The stick is prepared **on your computer**, then physically moved to the scope,
+which reads it **only at boot** — so the last step is a reboot:
+
+**1. On your computer** — format + populate the stick (the helper runs `make dist`
+and writes the tree to the stick):
 
 ```sh
 # A) format a blank stick correctly (MBR + FAT32) and populate it, in one go:
@@ -117,9 +121,12 @@ ota/mkstick.sh --verify /run/media/you/OPENSDS   # just check the layout
 # then edit  <stick>/ota/agent.env  (device id, OTA_LISTEN, OTA_NATS, takeover policy)
 ```
 
-Plug the stick into the **powered-off** scope, power on, and verify the chain
-came up (agent reachable, stick mounted FAT32, boot.log reached the agent, app
-serving) with:
+**2. Move the stick to the scope** and **reboot it** (power-cycle) — the firmware
+runs `startup.sh` from the stick as it comes up. A stick inserted into an
+already-running scope does nothing until the next boot.
+
+**3. Back on your computer** — confirm the chain came up (agent reachable, stick
+mounted FAT32, boot.log reached the agent, app serving):
 
 ```sh
 ota/checkdev.sh <ip>        # exits non-zero if any check fails

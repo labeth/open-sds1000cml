@@ -25,7 +25,8 @@
 #   startup.sh   commands   ota/{agent.A,agent.B,agent.active,agent.confirmed,agent.env,logs/}
 #   agent-slots/{A,B,emergency,staging}/    (app slots; filled later by otactl update-app)
 #
-# After a first-time stick: plug it into the powered-OFF scope, power on, then
+# Workflow: run this ON YOUR COMPUTER to populate the stick, then move the stick
+# to the scope and REBOOT it (the firmware reads the stick only at boot). Then
 #   ota/checkdev.sh <ip>     to confirm the agent came up.
 set -eu
 
@@ -125,7 +126,8 @@ format_stick() {
   sync
   verify "$mnt"
   umount "$mnt"; rmdir "$mnt"
-  echo ">> $dev is ready. Plug it into the powered-OFF scope, then power on."
+  echo ">> $dev is ready. Move it to the scope and REBOOT (power-cycle) the scope;"
+  echo "   the firmware runs startup.sh from the stick as it boots. Then: checkdev.sh <ip>"
 }
 
 case "${1:-}" in

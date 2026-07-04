@@ -104,11 +104,12 @@ agent gets in and takes over (no firmware modification). See [`ota/`](ota/) for
 the full model.
 
 ```sh
-# 0) Prepare the USB boot stick (MBR + FAT32) once. The helper formats + populates
-#    it, or copies onto an already-mounted FAT32 stick (see ota/README.md):
+# 0) On your computer, prepare the USB boot stick (MBR + FAT32) once. The helper
+#    formats + populates it, or copies onto an already-mounted FAT32 stick:
 sudo ota/mkstick.sh --format /dev/sdX      # DESTRUCTIVE, heavily guarded
-#    edit <stick>/ota/agent.env, then boot the scope with the stick inserted and:
-ota/checkdev.sh <device-ip>                # confirms stick + agent + app are healthy
+#    edit <stick>/ota/agent.env, then move the stick to the scope and REBOOT it
+#    (the firmware runs startup.sh from the stick only at boot), then confirm:
+ota/checkdev.sh <device-ip>                # stick + agent + app are healthy
 
 # 1) Build the ARM app binary (version-stamped via git):
 cd app && make app                 # → app/dist/app-arm
