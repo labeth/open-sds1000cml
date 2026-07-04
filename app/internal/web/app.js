@@ -1368,7 +1368,8 @@ $("eCSV").onclick = () => {
   // v = (code-128)·vpc − offset. vpc and offset are already tip-scaled.
   const vpc1 = frame.vpc1 || (1 / 32), vpc2 = frame.vpc2 || (1 / 32);
   const o1 = frame.off1_v || 0, o2 = frame.off2_v || 0;
-  const toV = (code, vpc, off) => (code === undefined ? "" : ((code - 128) * vpc - off).toExponential(6));
+  // Blank the deep-window margin samples (code < 0) rather than emit a bogus rail voltage.
+  const toV = (code, vpc, off) => (code === undefined || code < 0 ? "" : ((code - 128) * vpc - off).toExponential(6));
   let csv = "# open-sds1000cml capture seq=" + frame.seq +
     " tdiv_s=" + (frame.tdiv_s || 0) + " probe_c1=" + (st ? st.probe1 || 1 : 1) +
     " probe_c2=" + (st ? st.probe2 || 1 : 1) + "\n";

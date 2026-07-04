@@ -338,24 +338,6 @@ type frameReply struct {
 	Clip2 bool `json:"clip2,omitempty"` // CH2 railed — readings/measurements suspect
 }
 
-// clipped reports whether a trace is railed against the ADC full scale: it
-// flags when more than 0.5 % of samples sit in the top/bottom code band, so a
-// single stray spike doesn't trip it but a genuinely clamped signal does. A
-// clipped trace makes Vpp/Vmax and any derived measurement untrustworthy.
-func clipped(sig []uint8) bool {
-	n := len(sig)
-	if n == 0 {
-		return false
-	}
-	railed := 0
-	for _, v := range sig {
-		if v <= 1 || v >= 254 {
-			railed++
-		}
-	}
-	return railed*200 > n // >0.5 %
-}
-
 // resampleEnv nearest-resamples an envelope column array to n output columns.
 func resampleEnv(v []uint8, envCols, n int) []int16 {
 	out := make([]int16, n)
@@ -613,8 +595,8 @@ func (s *Server) hFrame(w http.ResponseWriter, r *http.Request) {
 		rawSample := f.SampleS
 		rep.M1 = measure.Compute(c1[:f.Valid], vpc[0], moff[0], rawSample)
 		rep.M2 = measure.Compute(c2[:f.Valid], vpc[1], moff[1], rawSample)
-		rep.Clip1 = clipped(f.C1[:f.Valid]) // clip flags the RAW rail state
-		rep.Clip2 = clipped(f.C2[:f.Valid])
+		rep.Clip1 = measure.Clipped(f.C1[:f.Valid]) // RAW rail state (pre-coupling)
+		rep.Clip2 = measure.Clipped(f.C2[:f.Valid])
 	})
 	writeJSON(w, rep)
 }

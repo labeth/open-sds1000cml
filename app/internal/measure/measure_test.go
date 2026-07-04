@@ -113,6 +113,64 @@ func TestFlatHasNoTiming(t *testing.T) {
 	}
 }
 
+func TestClipped(t *testing.T) {
+	n := 800
+	// Clean square well inside the range (codes 56/200) — not clipped.
+	clean := square(100, 8, 56, 200)
+	if Clipped(clean) {
+		t.Fatal("clean square flagged as clipped")
+	}
+	// Low-side clipping: this hardware floors at ~code 6 (not 0), flat-topped there.
+	lowClip := make([]uint8, n)
+	for i := range lowClip {
+		if i%100 < 50 {
+			lowClip[i] = 6 // pinned at the low rail band
+		} else {
+			lowClip[i] = 180
+		}
+	}
+	if !Clipped(lowClip) {
+		t.Fatal("low-rail clipping (code 6) not detected")
+	}
+	// High-side clipping at the hard clamp (code 254), flat-topped — the case the
+	// old <=1/>=254 detector missed (it needed >=254; a signal topping at 253 is
+	// also caught now).
+	hiClip := make([]uint8, n)
+	for i := range hiClip {
+		if i%100 < 50 {
+			hiClip[i] = 60
+		} else {
+			hiClip[i] = 254
+		}
+	}
+	if !Clipped(hiClip) {
+		t.Fatal("high-rail clipping (code 254) not detected")
+	}
+	// A clean square whose real HIGH level sits near the top of screen (code 249,
+	// = 3.9 divisions) but is NOT clamped must NOT be flagged (the 1 V/div
+	// false-positive found on hardware).
+	nearTop := make([]uint8, n)
+	for i := range nearTop {
+		if i%100 < 50 {
+			nearTop[i] = 141 // ~0.4 V at 1 V/div
+		} else {
+			nearTop[i] = 249 // ~3.8 V at 1 V/div — near the top edge, not clamped
+		}
+	}
+	if Clipped(nearTop) {
+		t.Fatal("clean signal topping at code 249 falsely flagged as clipped")
+	}
+	// A clean sine with real headroom (peaks ~228/28, inside codes 8–248) is NOT
+	// clipped — it never enters the rail band.
+	clean2 := make([]uint8, n)
+	for i := range clean2 {
+		clean2[i] = uint8(128 + int(100*math.Sin(float64(i)/float64(n)*8*math.Pi)))
+	}
+	if Clipped(clean2) {
+		t.Fatal("clean sine with headroom falsely flagged as clipped")
+	}
+}
+
 func TestEmptyRecord(t *testing.T) {
 	if Compute(nil, 1, 0, 1e-6) != nil {
 		t.Fatal("expected nil for empty record")

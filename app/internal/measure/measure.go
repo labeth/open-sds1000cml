@@ -42,6 +42,46 @@ type Result struct {
 // considered resolvable; below it the record is treated as flat/noise.
 const minAmplCodes = 8
 
+// Clipped reports whether a trace is clipping against the ADC rails, calibrated
+// to THIS hardware (device-measured): the low rail clamps dead-consistently at
+// code 6, the high rail at 252–255 under overdrive. Crucially, a clean signal
+// whose real level sits high on screen reaches code ~249 (3.9 divisions) — only
+// a few codes below the moderate high clamp — so a high-code test alone
+// false-flags it. The low rail (6) is the robust discriminator: a clean signal's
+// low excursion is nowhere near it, and this symmetric front end rails BOTH ends
+// on overdrive, so low-rail pileup catches it; the high side only flags at the
+// hard clamp (>=253). >0.5 % of samples piled within 2 codes of the rail ⇒ clipped.
+func Clipped(sig []uint8) bool {
+	n := len(sig)
+	if n == 0 {
+		return false
+	}
+	mn, mx := 255, 0
+	for _, v := range sig {
+		iv := int(v)
+		if iv < mn {
+			mn = iv
+		}
+		if iv > mx {
+			mx = iv
+		}
+	}
+	if mn > 6 && mx < 253 { // neither extreme is against a rail
+		return false
+	}
+	hi, lo := 0, 0
+	for _, v := range sig {
+		iv := int(v)
+		if iv >= mx-2 {
+			hi++
+		}
+		if iv <= mn+2 {
+			lo++
+		}
+	}
+	return (mn <= 6 && lo*200 > n) || (mx >= 253 && hi*200 > n)
+}
+
 // Compute returns the measurement set for a record. voltsPerCode maps an ADC
 // code step to volts (already probe-scaled); offV is the input-referred offset
 // (v = (code-128)·voltsPerCode − offV); sampleS is per-sample seconds. Returns

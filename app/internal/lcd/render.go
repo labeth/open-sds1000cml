@@ -215,22 +215,6 @@ func fmtVolt(v float64) string {
 	return g3(x*1e3) + "mV"
 }
 
-// railed reports whether more than 0.5 % of a trace sits at the ADC rails —
-// the same threshold the web frame uses, so both UIs flag clipping alike.
-func railed(sig []uint8) bool {
-	n := len(sig)
-	if n == 0 {
-		return false
-	}
-	c := 0
-	for _, v := range sig {
-		if v <= 1 || v >= 254 {
-			c++
-		}
-	}
-	return c*200 > n
-}
-
 // fillRect paints a solid rectangle (clipped to the surface).
 func fillRect(sf Surface, x, y, w, h int, c uint16) {
 	for yy := y; yy < y+h; yy++ {
@@ -594,10 +578,10 @@ func drawHUD(sf Surface, f *engine.Frame, hud HUD) {
 		DrawText(sf, 96, 2, "C2 "+vdivLabel(hud.C2VdivV, hud.Probe2)+cplTag(hud.Cpl2), colC2, 1)
 	}
 	if f != nil && f.Valid > 0 { // clipping warning — railed traces make readings suspect
-		if railed(f.C1[:f.Valid]) {
+		if measure.Clipped(f.C1[:f.Valid]) {
 			DrawText(sf, 4, 14, "CLIP", colTrig, 1)
 		}
-		if hud.TwoChan && railed(f.C2[:f.Valid]) {
+		if hud.TwoChan && measure.Clipped(f.C2[:f.Valid]) {
 			DrawText(sf, 96, 14, "CLIP", colTrig, 1)
 		}
 	}
