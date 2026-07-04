@@ -12,35 +12,49 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
+    env:
+      # Single source of truth for the version — the tag. The Makefiles use
+      # `VERSION ?=`, so this overrides their git-describe and keeps the stamped
+      # binaries, the zip filename, and the release name all identical.
+      VERSION: ${{ github.ref_name }}
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0   # full history + tags so `git describe` stamps the version
+          fetch-depth: 0   # full history + tags so `git describe` also resolves
 
       - uses: actions/setup-go@v5
         with:
           go-version-file: ota/go.mod
           cache: false
 
+      - name: Test + vet (both modules) — a red build must not ship
+        run: |
+          (cd app && go vet ./... && go test ./...)
+          (cd ota && go vet ./... && go test ./...)
+
       - name: Build the USB image zip (agent + app + emergency, ARMv7)
         run: |
           mkdir -p dist
-          ota/mkstick.sh --zip "dist/open-sds1000cml-${GITHUB_REF_NAME}-usb.zip"
+          ota/mkstick.sh --zip "$GITHUB_WORKSPACE/dist/open-sds1000cml-${GITHUB_REF_NAME}-usb.zip"
 
       - name: Build otactl host controllers (linux / macOS / Windows)
         working-directory: ota
         run: |
-          VER=$(git describe --tags --always)
-          LD="-s -w -X open-sds/ota/internal/buildinfo.Version=${VER}"
+          LD="-s -w -X open-sds/ota/internal/buildinfo.Version=${VERSION}"
           for t in linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64; do
             os=${t%/*}; arch=${t#*/}; ext=""; [ "$os" = windows ] && ext=.exe
             echo "building otactl-$os-$arch$ext"
             CGO_ENABLED=0 GOOS=$os GOARCH=$arch go build -trimpath -ldflags "$LD" \
-              -o "../dist/otactl-${os}-${arch}${ext}" ./cmd/otactl
+              -o "$GITHUB_WORKSPACE/dist/otactl-${os}-${arch}${ext}" ./cmd/otactl
           done
 
-      - name: Checksums
-        run: cd dist && sha256sum open-sds1000cml-*-usb.zip otactl-* > SHA256SUMS
+      - name: Package + checksums
+        run: |
+          cp LICENSE SAFETY.txt dist/
+          cd dist
+          # fail loudly if the zip is missing/empty (guards against a silent build slip)
+          test -s open-sds1000cml-*-usb.zip || { echo "::error::USB zip missing or empty"; exit 1; }
+          sha256sum open-sds1000cml-*-usb.zip otactl-* > SHA256SUMS
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
@@ -51,15 +65,20 @@ jobs:
             dist/open-sds1000cml-*-usb.zip
             dist/otactl-*
             dist/SHA256SUMS
+            dist/LICENSE
+            dist/SAFETY.txt
           body: |
             Clean-room replacement firmware for the Siglent SDS1000CML+ (validated on the SDS1102CML+).
 
             ## Install (no build needed)
             1. Download `open-sds1000cml-${{ github.ref_name }}-usb.zip`.
-            2. Format a USB stick as **MBR + FAT32** (Windows: Rufus, MBR+FAT32 · macOS: Disk Utility, MS-DOS (FAT) + Master Boot Record · Linux: GParted msdos+fat32).
-            3. Extract the zip onto the **root** of the stick (top level = `startup.sh`, `ota/`, `agent-slots/`).
-            4. Eject, plug into the scope, and **reboot the scope** — it takes over and serves the web UI at `http://<scope-ip>:8080/` within a couple of seconds.
+            2. Format a USB stick as **MBR + FAT32** (Windows: **Rufus**, Partition scheme MBR + FAT32 — the built-in tools can't make FAT32 above 32 GB · macOS: Disk Utility, **MS-DOS (FAT)** + **Master Boot Record** · Linux: GParted **msdos** + **fat32**).
+            3. Extract the zip so its contents land on the **root** of the stick — the top level must be `startup.sh`, `ota/`, `agent-slots/`. On Windows, "Extract All" adds a folder named after the zip: **clear it so the destination is just the drive letter (e.g. `E:\`)**, then confirm `startup.sh` sits directly on the drive, not inside a subfolder.
+            4. Eject the stick (wait for the flush to finish), plug it into the scope, and **reboot the scope**. It takes over and serves the web UI within a couple of seconds.
+            5. Open `http://<scope-ip>:8080/`. Find the IP in your **router's DHCP/client list** (the vendor network menu is gone once it takes over).
 
-            Host controller: grab the matching `otactl-<os>-<arch>` to check/update the device (`otactl -tcp <ip>:5900 status`). See the README for full instructions and safety notes.
+            Verify a download: `sha256sum -c SHA256SUMS` (Linux) / `shasum -a 256 -c SHA256SUMS` (macOS) / `CertUtil -hashfile <file> SHA256` (Windows), against `SHA256SUMS`.
 
-            > ⚠️ Experimental firmware for the SDS1000CML+ series only. It takes over whatever SDS1000CML+ you boot it in. No warranty.
+            Host controller: grab the matching `otactl-<os>-<arch>` (first run: macOS `chmod +x … && xattr -d com.apple.quarantine …`; Linux `chmod +x …`; Windows SmartScreen → *More info → Run anyway*). See the README for full instructions.
+
+            > ⚠️ Experimental firmware for the SDS1000CML+ series only. It takes over **whatever** SDS1000CML+ you boot it in (edit `ota/agent.env` on the stick, `OTA_AUTO_TAKEOVER=0`, to coexist instead). No warranty.

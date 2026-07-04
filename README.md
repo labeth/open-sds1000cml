@@ -104,41 +104,65 @@ runs `startup.sh` from the stick at boot, and the agent takes over and launches
 the scope app — no firmware modification.
 
 **1. Download** `open-sds1000cml-<version>-usb.zip` from the latest release.
+Optionally verify it against `SHA256SUMS` from the same release:
+`sha256sum -c SHA256SUMS` (Linux) · `shasum -a 256 -c SHA256SUMS` (macOS) ·
+`CertUtil -hashfile open-sds1000cml-*-usb.zip SHA256` (Windows).
 
-**2. Format a USB stick as MBR + FAT32** (any small stick; this erases it — GPT
-will *not* boot):
+**2. Format a USB stick as MBR + FAT32** (any small stick; this erases it — a
+**GPT** stick will *not* boot):
 
-- **Windows** — [Rufus](https://rufus.ie): select the stick → *Partition scheme:*
-  **MBR**, *File system:* **FAT32** → **Start**. (Or `diskpart`: `select disk N`,
-  `clean`, `create partition primary`, `format fs=fat32 quick`, `active`.)
+- **Windows** — [Rufus](https://rufus.ie): select the stick → *Boot selection:*
+  **Non bootable** → *Partition scheme:* **MBR** → *File system:* **FAT32** →
+  **Start**. (Windows' own diskpart/Format can't make FAT32 above **32 GB**; use
+  Rufus, or a stick ≤32 GB.)
 - **macOS** — Disk Utility → *View ▸ Show All Devices* → pick the USB **device**
-  (the top-level entry, not the volume) → **Erase** → *Format:* **MS-DOS (FAT)**,
-  *Scheme:* **Master Boot Record** → **Erase**.
-- **Linux** — GParted: *Device ▸ Create Partition Table ▸* **msdos**, then one
-  **fat32** partition. Or, from this repo, `sudo ota/mkstick.sh --format /dev/sdX`
-  (guarded) does the partition + format + files in one step.
+  (the top-level entry, not the volume underneath) → **Erase** → *Format:*
+  **MS-DOS (FAT)**, *Scheme:* **Master Boot Record** → **Erase**. Give it a simple
+  one-word name (no spaces).
+- **Linux** — GParted (install via your package manager if needed): pick the
+  stick in the **top-right device dropdown** (double-check the size — the wrong
+  device erases your system) → *Device ▸ Create Partition Table ▸* **msdos** →
+  one **fat32** partition.
 
-**3. Extract the zip onto the stick's root** — the top level of the stick must be
-`startup.sh`, `ota/`, `agent-slots/` (not a subfolder):
+**3. Extract the zip so its contents land on the stick's ROOT** — afterwards the
+top level of the stick must be `startup.sh`, `commands`, `ota/`, `agent-slots/`
+(and `LICENSE.txt`, `SAFETY.txt`), **not** inside a subfolder:
 
-- **Windows** — right-click the zip → *Extract All…* → extract to the USB drive
-  (or extract anywhere, then copy all the extracted items to the drive's root).
-- **macOS** — `unzip ~/Downloads/open-sds1000cml-*-usb.zip -d /Volumes/YOUR_USB`
-- **Linux** — `unzip open-sds1000cml-*-usb.zip -d /run/media/$USER/YOUR_USB`
+- **Windows** — right-click the zip → *Extract All…*. The wizard pre-fills a
+  destination folder **named after the zip** — **clear it so the path is exactly
+  the drive letter (e.g. `E:\`)**, then Extract. (Easiest foolproof way: open the
+  zip and **drag the items onto the drive** — that never nests.) Then open the
+  drive and confirm `startup.sh` is right there at the root. If everything is
+  inside an `open-sds1000cml-…` folder, move it up to the root.
+- **macOS** — find the mount name (it's under `/Volumes/`), then
+  `unzip ~/Downloads/open-sds1000cml-*-usb.zip -d /Volumes/YOUR_USB`. (Finder may
+  scatter harmless `.DS_Store`/`._*` files on the stick — ignore them.)
+- **Linux** — find the mount with `lsblk`; it's usually `/media/$USER/YOUR_USB`
+  (Ubuntu/Debian) or `/run/media/$USER/YOUR_USB` (Fedora), then
+  `unzip open-sds1000cml-*-usb.zip -d <that path>`.
 
-**4. Eject the stick, plug it into the scope, and reboot the scope** (power-cycle).
-Within a couple of seconds of boot it takes over the instrument and serves the UI.
+**4. Safely eject the stick, plug it into the scope, and reboot the scope**
+(power-cycle). *Wait for the eject to finish* so the files fully flush — macOS
+`diskutil eject /Volumes/YOUR_USB`, Linux `sync && udisksctl unmount -b /dev/sdX1`,
+Windows *Safely Remove Hardware*. Within a couple of seconds of boot it takes over
+the instrument and serves the UI.
 
-**5. Open** `http://<scope-ip>:8080/` in a browser. Find the scope's IP in its
-network/Utility menu or your router's DHCP list.
+**5. Open** `http://<scope-ip>:8080/` in a browser. Find the scope's IP in your
+**router's DHCP / connected-devices list** (once it takes over, the vendor network
+menu is gone, and the clean-room LCD doesn't show the IP).
 
-To manage or update the device from your computer, download the matching
-`otactl-<os>-<arch>` from the same release and run e.g. `otactl -tcp <ip>:5900
-status` (Windows: `otactl-windows-amd64.exe`). To update the app later:
-`otactl -tcp <ip>:5900 -stage /usr/bin/siglent/usr/media/U-disk0/agent-slots/staging update-app <app-arm>`.
+**Manage / update from your computer (optional):** download the matching
+`otactl-<os>-<arch>` from the same release. First run needs a nudge on each OS —
+macOS: `chmod +x otactl-darwin-arm64 && xattr -d com.apple.quarantine otactl-darwin-arm64`;
+Linux: `chmod +x otactl-linux-amd64`; Windows: on the SmartScreen prompt click
+*More info ▸ Run anyway*. Then e.g. `otactl -tcp <ip>:5900 status`. To update the
+app later, copy a new `app` binary off the stick's `agent-slots/A/app` (or build
+one) and `otactl -tcp <ip>:5900 -stage /usr/bin/siglent/usr/media/U-disk0/agent-slots/staging update-app <app>`.
 
 > ⚠️ Same safety notes as above — experimental firmware, SDS1000CML+ series only,
-> no warranty. It will take over **whatever** SDS1000CML+ you boot it in.
+> no warranty. It will take over **whatever** SDS1000CML+ you boot it in. To try
+> it *without* taking over, edit `ota/agent.env` on the stick and set
+> `OTA_AUTO_TAKEOVER=0` (coexist mode — remote access only).
 
 ## Build from source
 

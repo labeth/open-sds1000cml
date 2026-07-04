@@ -1,0 +1,20 @@
+open-sds1000cml — SAFETY / USE AT YOUR OWN RISK
+================================================
+
+This is EXPERIMENTAL clean-room replacement firmware for the Siglent SDS1000CML+
+series oscilloscope (developed and validated on the SDS1102CML+).
+
+- It TAKES OVER the instrument. Booting a scope with this USB stick inserted will,
+  a couple of seconds after power-on, stop the factory application and run this
+  firmware instead. It will take over WHATEVER SDS1000CML+ you boot it in.
+- It drives the real hardware (relays, gain/offset DACs, the memory-mapped
+  acquisition bus). A bug can wedge the acquisition engine or leave the front end
+  in an unexpected state.
+- It is for the SDS1000CML+ SERIES ONLY. Do not run it on other hardware.
+- There is NO WARRANTY. You are responsible for your instrument. See LICENSE (MIT).
+
+Recovery: remove the USB stick and power-cycle to boot the factory firmware again.
+(To boot the stick WITHOUT taking over, edit ota/agent.env on the stick and set
+OTA_AUTO_TAKEOVER=0 — the agent then only provides remote access and coexists.)
+
+Project + full docs: https://github.com/labeth/open-sds1000cml

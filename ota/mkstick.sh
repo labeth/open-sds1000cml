@@ -92,6 +92,10 @@ ver() { git -C "$repo" describe --tags --always --dirty 2>/dev/null || echo dev;
 write_files() {
   mnt=$1
   cp -a "$tree/startup.sh" "$tree/commands" "$mnt/"
+  # License + safety text ride along on the stick (MIT requires the notice with
+  # all copies; the takeover firmware reaches the user with safety text present).
+  [ -f "$repo/LICENSE" ]    && cp -a "$repo/LICENSE"    "$mnt/LICENSE.txt"
+  [ -f "$repo/SAFETY.txt" ] && cp -a "$repo/SAFETY.txt" "$mnt/SAFETY.txt"
   mkdir -p "$mnt/ota"; cp -a "$tree/ota/." "$mnt/ota/"
   for d in A B emergency staging; do mkdir -p "$mnt/agent-slots/$d"; done
   cp -f "$appbin"  "$mnt/agent-slots/A/app"
@@ -117,10 +121,13 @@ zip_stick() {
   out=$1
   [ -n "$out" ] || out="$here/dist/open-sds1000cml-$(ver)-usb.zip"
   mkdir -p "$(dirname "$out")"
+  # Make the output path ABSOLUTE — zip runs inside the staging tmpdir below, so a
+  # relative path would resolve against that (and fail). (release-review B1.)
+  out="$(cd "$(dirname "$out")" && pwd)/$(basename "$out")"
   staging=$(mktemp -d)
   write_files "$staging"
   rm -f "$out"
-  ( cd "$staging" && zip -rq "$out" startup.sh commands ota agent-slots )
+  ( cd "$staging" && zip -rq "$out" startup.sh commands ota agent-slots LICENSE.txt SAFETY.txt )
   rm -rf "$staging"
   echo ">> USB image zip: $out  ($(du -h "$out" | cut -f1))"
   echo "   Unzip its CONTENTS onto the ROOT of an MBR + FAT32 USB stick; the top"
