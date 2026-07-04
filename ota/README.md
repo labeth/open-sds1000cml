@@ -90,6 +90,41 @@ go build ./cmd/otactl
 
 `make -C ota dist` cross-compiles both and lays out the USB stick tree under `dist/`.
 
+## Preparing the USB boot stick
+
+**How takeover starts:** the stock SDS1000CML+ firmware, at boot, mounts a USB
+stick and **runs `startup.sh` from its root** (the vendor's own script hook).
+That is our entire entry point — `startup.sh` launches the agent, which then
+takes over the instrument. No firmware modification, no on-device login.
+
+For the firmware to see the stick it **must** be:
+
+- **MBR-partitioned** (msdos/DOS partition table — **not GPT**);
+- a **single primary FAT32 partition**, type `0x0c` (W95 FAT32 LBA);
+- that partition is what appears as **`/dev/sda1`**, mounted at
+  `/usr/bin/siglent/usr/media/U-disk0`, on the instrument.
+
+Use the helper — it lays out the tree (`make dist`) and writes it to the stick:
+
+```sh
+# A) format a blank stick correctly (MBR + FAT32) and populate it, in one go:
+sudo ota/mkstick.sh --format /dev/sdX      # DESTRUCTIVE; guards: removable + size + type-to-confirm
+
+# B) or copy the tree onto an already-mounted FAT32 stick:
+ota/mkstick.sh /run/media/you/OPENSDS
+ota/mkstick.sh --verify /run/media/you/OPENSDS   # just check the layout
+
+# then edit  <stick>/ota/agent.env  (device id, OTA_LISTEN, OTA_NATS, takeover policy)
+```
+
+Plug the stick into the **powered-off** scope, power on, and verify the chain
+came up (agent reachable, stick mounted FAT32, boot.log reached the agent, app
+serving) with:
+
+```sh
+ota/checkdev.sh <ip>        # exits non-zero if any check fails
+```
+
 ## USB stick layout
 
 ```

@@ -98,22 +98,30 @@ the *same* measurement core as the web UI), and per-channel coupling/probe pages
 
 ## Quick start
 
-Requires Go (see [`app/go.mod`](app/go.mod)) and a target SDS1000CML+ prepared with
-the OTA boot anchor (see [`ota/`](ota/)).
+Requires Go (see [`app/go.mod`](app/go.mod)) and an **MBR-partitioned, FAT32 USB
+stick** — the stock firmware runs `startup.sh` from it at boot, which is how the
+agent gets in and takes over (no firmware modification). See [`ota/`](ota/) for
+the full model.
 
 ```sh
-# Build the ARM app binary (version-stamped via git):
+# 0) Prepare the USB boot stick (MBR + FAT32) once. The helper formats + populates
+#    it, or copies onto an already-mounted FAT32 stick (see ota/README.md):
+sudo ota/mkstick.sh --format /dev/sdX      # DESTRUCTIVE, heavily guarded
+#    edit <stick>/ota/agent.env, then boot the scope with the stick inserted and:
+ota/checkdev.sh <device-ip>                # confirms stick + agent + app are healthy
+
+# 1) Build the ARM app binary (version-stamped via git):
 cd app && make app                 # → app/dist/app-arm
 
-# Run the full offline test suite (no hardware needed — scripted fake bus):
+# 2) Run the full offline test suite (no hardware needed — scripted fake bus):
 make test
 
-# Stage + deploy to a prepared device (device /tmp is read-only, so stage to the stick):
+# 3) Stage + deploy to the device (device /tmp is read-only, so stage to the stick):
 ../ota/dist/otactl -tcp <device>:5900 \
   -stage /usr/bin/siglent/usr/media/U-disk0/agent-slots/staging \
   update-app dist/app-arm
 
-# One-time cutover from the factory app, then browse the UI:
+# 4) One-time cutover from the factory app, then browse the UI:
 ../ota/dist/otactl -tcp <device>:5900 takeover
 #   -> http://<device>:8080/    (or talk SCPI via any VXI-11 client)
 ```
