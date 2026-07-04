@@ -23,6 +23,8 @@
 #   ota/mkstick.sh <mountpoint>          build + copy onto an already-mounted,
 #                                        already-FAT32 stick (no root needed if
 #                                        the mount is user-writable)
+#   ota/mkstick.sh --zip [out.zip]       build the release ZIP (its contents unzip
+#                                        onto the root of an MBR+FAT32 stick)
 #   ota/mkstick.sh --verify <mountpoint> only check an existing stick's layout
 #   sudo ota/mkstick.sh --format /dev/sdX
 #                                        DESTRUCTIVE: MBR-partition + FAT32-format
@@ -83,23 +85,47 @@ verify() {
   echo ">> stick is ready: $mnt"
 }
 
-# Write the whole tree (base OTA layout + the app slots) to a mounted stick.
-populate() {
+ver() { git -C "$repo" describe --tags --always --dirty 2>/dev/null || echo dev; }
+
+# Lay the full tree (base OTA layout + the app slots) into a directory. Shared by
+# the mounted-stick, format, and zip paths.
+write_files() {
   mnt=$1
-  [ -d "$mnt" ] || die "mountpoint '$mnt' does not exist — mount the stick first"
-  echo ">> writing boot anchor + agent to $mnt ..."
   cp -a "$tree/startup.sh" "$tree/commands" "$mnt/"
   mkdir -p "$mnt/ota"; cp -a "$tree/ota/." "$mnt/ota/"
-  echo ">> staging the clean-room app into agent-slots/{A,B} + emergency ..."
   for d in A B emergency staging; do mkdir -p "$mnt/agent-slots/$d"; done
   cp -f "$appbin"  "$mnt/agent-slots/A/app"
   cp -f "$appbin"  "$mnt/agent-slots/B/app"
   cp -f "$stubbin" "$mnt/agent-slots/emergency/app"
   printf 'A\n' > "$mnt/agent-slots/active"
   printf 'A\n' > "$mnt/agent-slots/confirmed"
+}
+
+# Write the whole tree to a mounted stick.
+populate() {
+  mnt=$1
+  [ -d "$mnt" ] || die "mountpoint '$mnt' does not exist — mount the stick first"
+  echo ">> writing boot anchor + agent + app slots to $mnt ..."
+  write_files "$mnt"
   sync
   echo ">> done. Files on the stick:"
   verify "$mnt"
+}
+
+# Build a release ZIP whose CONTENTS unzip onto the root of a FAT32 stick.
+zip_stick() {
+  out=$1
+  [ -n "$out" ] || out="$here/dist/open-sds1000cml-$(ver)-usb.zip"
+  mkdir -p "$(dirname "$out")"
+  staging=$(mktemp -d)
+  write_files "$staging"
+  rm -f "$out"
+  ( cd "$staging" && zip -rq "$out" startup.sh commands ota agent-slots )
+  rm -rf "$staging"
+  echo ">> USB image zip: $out  ($(du -h "$out" | cut -f1))"
+  echo "   Unzip its CONTENTS onto the ROOT of an MBR + FAT32 USB stick; the top"
+  echo "   level of the stick must be startup.sh, ota/, agent-slots/."
+  echo "   Contents:"; unzip -l "$out" | awk 'NR>3 && $4 !~ /agent-slots\/(A|B|emergency)\/app$/ && $4!=""{print "     "$4}' | grep -E '^\s+(startup|commands|ota|agent-slots)' | head; echo "     ... (+ the app binaries in agent-slots/)"
 }
 
 format_stick() {
@@ -149,8 +175,9 @@ format_stick() {
 case "${1:-}" in
   --verify) [ $# -ge 2 ] || die "usage: mkstick.sh --verify <mountpoint>"; verify "$2" ;;
   --format) [ $# -ge 2 ] || die "usage: sudo mkstick.sh --format /dev/sdX"; build; format_stick "$2" ;;
+  --zip)    build; zip_stick "${2:-}" ;;
   ""|-h|--help)
-    sed -n '2,44p' "$0" | sed 's/^# \{0,1\}//' ;;
+    sed -n '2,46p' "$0" | sed 's/^# \{0,1\}//' ;;
   /dev/*) die "to format a device use:  sudo $0 --format $1" ;;
   *) build; populate "$1"
      echo ">> move the stick to the scope and REBOOT it — it boots straight into the app." ;;

@@ -96,7 +96,51 @@ the *same* measurement core as the web UI), and per-channel coupling/probe pages
 | [![LCD MEASURE panel](docs/images/lcd-measure.png)](docs/images/lcd-measure.png) | [![LCD cursors](docs/images/lcd-cursors.png)](docs/images/lcd-cursors.png) | [![LCD channel menu](docs/images/lcd-menu.png)](docs/images/lcd-menu.png) |
 | Calibrated Vpp/Vamp/Vrms/Vavg + timing, matching the web. | Time cursors with a live Δt / 1÷Δt readout. | The CHANNEL softkey page — coupling + probe per channel, with the "10×"/"AC" HUD tags. |
 
-## Quick start
+## Install from a release (no build — Windows / macOS / Linux)
+
+The easiest path: grab the ready-to-run USB image from
+[**Releases**](../../releases) and drop it on a USB stick. The stock firmware
+runs `startup.sh` from the stick at boot, and the agent takes over and launches
+the scope app — no firmware modification.
+
+**1. Download** `open-sds1000cml-<version>-usb.zip` from the latest release.
+
+**2. Format a USB stick as MBR + FAT32** (any small stick; this erases it — GPT
+will *not* boot):
+
+- **Windows** — [Rufus](https://rufus.ie): select the stick → *Partition scheme:*
+  **MBR**, *File system:* **FAT32** → **Start**. (Or `diskpart`: `select disk N`,
+  `clean`, `create partition primary`, `format fs=fat32 quick`, `active`.)
+- **macOS** — Disk Utility → *View ▸ Show All Devices* → pick the USB **device**
+  (the top-level entry, not the volume) → **Erase** → *Format:* **MS-DOS (FAT)**,
+  *Scheme:* **Master Boot Record** → **Erase**.
+- **Linux** — GParted: *Device ▸ Create Partition Table ▸* **msdos**, then one
+  **fat32** partition. Or, from this repo, `sudo ota/mkstick.sh --format /dev/sdX`
+  (guarded) does the partition + format + files in one step.
+
+**3. Extract the zip onto the stick's root** — the top level of the stick must be
+`startup.sh`, `ota/`, `agent-slots/` (not a subfolder):
+
+- **Windows** — right-click the zip → *Extract All…* → extract to the USB drive
+  (or extract anywhere, then copy all the extracted items to the drive's root).
+- **macOS** — `unzip ~/Downloads/open-sds1000cml-*-usb.zip -d /Volumes/YOUR_USB`
+- **Linux** — `unzip open-sds1000cml-*-usb.zip -d /run/media/$USER/YOUR_USB`
+
+**4. Eject the stick, plug it into the scope, and reboot the scope** (power-cycle).
+Within a couple of seconds of boot it takes over the instrument and serves the UI.
+
+**5. Open** `http://<scope-ip>:8080/` in a browser. Find the scope's IP in its
+network/Utility menu or your router's DHCP list.
+
+To manage or update the device from your computer, download the matching
+`otactl-<os>-<arch>` from the same release and run e.g. `otactl -tcp <ip>:5900
+status` (Windows: `otactl-windows-amd64.exe`). To update the app later:
+`otactl -tcp <ip>:5900 -stage /usr/bin/siglent/usr/media/U-disk0/agent-slots/staging update-app <app-arm>`.
+
+> ⚠️ Same safety notes as above — experimental firmware, SDS1000CML+ series only,
+> no warranty. It will take over **whatever** SDS1000CML+ you boot it in.
+
+## Build from source
 
 Requires Go (see [`app/go.mod`](app/go.mod)) and an **MBR-partitioned, FAT32 USB
 stick** — the stock firmware runs `startup.sh` from it at boot, which is how the

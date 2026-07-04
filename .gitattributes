@@ -1,0 +1,10 @@
+# The device runs busybox ash — its boot scripts and env MUST stay LF, even when
+# checked out or zipped on Windows. A CRLF startup.sh fails to boot.
+*.sh            text eol=lf
+ota/boot/commands   text eol=lf
+ota/boot/agent.env.example text eol=lf
+*.mjs           text eol=lf
+# Binaries / assets: never munge.
+*.png           binary
+*.zip           binary
+*-arm           binary
