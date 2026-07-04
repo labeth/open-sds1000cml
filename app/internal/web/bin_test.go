@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"reflect"
 	"testing"
+	"time"
 
 	"open-sds/app/internal/engine"
 )
@@ -218,20 +219,33 @@ func TestMeasCacheReuse(t *testing.T) {
 	fs := &fakeScope{frame: f, fresh: true}
 	s := New(fs, nil, nil, nil)
 
-	r1 := s.buildReply(f, 512, false, 0, [2]float64{}, [2]float64{1. / 32, 1. / 32}, 0.5)
-	r2 := s.buildReply(f, 512, false, 0, [2]float64{}, [2]float64{1. / 32, 1. / 32}, 0.5)
+	r1 := s.buildReply(f, 512, false, 0, [2]float64{}, [2]float64{1. / 32, 1. / 32}, 0.5, true)
+	r2 := s.buildReply(f, 512, false, 0, [2]float64{}, [2]float64{1. / 32, 1. / 32}, 0.5, true)
 	if r1.M1 == nil || r1.M1 != r2.M1 || r1.M2 != r2.M2 {
 		t.Fatalf("cache miss on identical inputs: %p vs %p", r1.M1, r2.M1)
 	}
-	// Any scale change must refresh.
-	r3 := s.buildReply(f, 512, false, 0, [2]float64{}, [2]float64{1. / 16, 1. / 32}, 0.5)
+	// Any scale change must refresh immediately, throttle or not.
+	r3 := s.buildReply(f, 512, false, 0, [2]float64{}, [2]float64{1. / 16, 1. / 32}, 0.5, true)
 	if r3.M1 == r1.M1 {
 		t.Fatal("vpc change did not refresh the measurement cache")
 	}
-	// New seq must refresh.
+	// Seq advance WITH the fast-flow throttle inside the 100 ms window: reuse.
 	f.Seq = 22
-	r4 := s.buildReply(f, 512, false, 0, [2]float64{}, [2]float64{1. / 16, 1. / 32}, 0.5)
-	if r4.M1 == r3.M1 {
-		t.Fatal("seq change did not refresh the measurement cache")
+	r4 := s.buildReply(f, 512, false, 0, [2]float64{}, [2]float64{1. / 16, 1. / 32}, 0.5, true)
+	if r4.M1 != r3.M1 {
+		t.Fatal("throttled seq advance should reuse the previous measurements")
+	}
+	// Same advance with the throttle off (single-shot/stopped): recompute.
+	f.Seq = 23
+	r5 := s.buildReply(f, 512, false, 0, [2]float64{}, [2]float64{1. / 16, 1. / 32}, 0.5, false)
+	if r5.M1 == r3.M1 {
+		t.Fatal("unthrottled seq change did not refresh the measurement cache")
+	}
+	// Seq advance past the throttle window: recompute.
+	f.Seq = 24
+	s.measAt = time.Time{}
+	r6 := s.buildReply(f, 512, false, 0, [2]float64{}, [2]float64{1. / 16, 1. / 32}, 0.5, true)
+	if r6.M1 == r5.M1 {
+		t.Fatal("expired throttle window did not refresh the measurement cache")
 	}
 }

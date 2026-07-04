@@ -120,6 +120,7 @@ type Server struct {
 	measMu  sync.Mutex
 	measKey measKey
 	meas    measVal
+	measAt  time.Time // when meas was computed (drives the fast-flow throttle)
 }
 
 type measKey struct {
@@ -553,14 +554,15 @@ func (s *Server) hFrame(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	off, vpc := s.vertScales()
-	posFrac := s.sc.Snapshot().TrigPosFrac
+	st := s.sc.Snapshot()
+	posFrac := st.TrigPosFrac
 	if posFrac <= 0 {
 		posFrac = 0.5
 	}
 
 	var rep frameReply
 	s.sc.WithFrame(func(f *engine.Frame) {
-		rep = s.buildReply(f, cols, full, since, off, vpc, posFrac)
+		rep = s.buildReply(f, cols, full, since, off, vpc, posFrac, st.Running && !st.Single)
 	})
 	writeJSON(w, rep)
 }
@@ -568,8 +570,10 @@ func (s *Server) hFrame(w http.ResponseWriter, r *http.Request) {
 // buildReply assembles the frame reply — shared verbatim by /api/frame (JSON)
 // and /api/frame.bin (binary header + raw payload) so the two transports can
 // never drift. MUST run inside Scope.WithFrame (f is only valid under the
-// fan-out read lock); the returned reply owns all its data.
-func (s *Server) buildReply(f *engine.Frame, cols int, full bool, since uint64, off, vpc [2]float64, posFrac float64) frameReply {
+// fan-out read lock); the returned reply owns all its data. measThrottle
+// permits reusing ≤100 ms-old measurements on a seq advance (fast free-run
+// only — pass false for single-shot/stopped, where values must be exact).
+func (s *Server) buildReply(f *engine.Frame, cols int, full bool, since uint64, off, vpc [2]float64, posFrac float64, measThrottle bool) frameReply {
 	if f == nil || f.Seq == 0 || f.Seq == since {
 		seq := uint64(0)
 		if f != nil {
@@ -654,12 +658,25 @@ func (s *Server) buildReply(f *engine.Frame, cols int, full bool, since uint64, 
 	key := measKey{seq: f.Seq, cpl1: cpl[0], cpl2: cpl[1], vpc: vpc, off: moff, sampleS: f.SampleS}
 	s.measMu.Lock()
 	if s.measKey != key {
-		s.measKey = key
-		s.meas = measVal{
-			m1:    measure.Compute(c1[:f.Valid], vpc[0], moff[0], f.SampleS),
-			m2:    measure.Compute(c2[:f.Valid], vpc[1], moff[1], f.SampleS),
-			clip1: measure.Clipped(f.C1[:f.Valid]), // RAW rail state (pre-coupling)
-			clip2: measure.Clipped(f.C2[:f.Valid]),
+		// Fast-flow throttle: while frames stream at full rate, recompute at
+		// most every 100 ms and reuse the previous values in between — the
+		// numbers jitter per frame anyway, and at 20 fps × 2×20480 samples
+		// this loop was a large share of the device's per-frame CPU. Only a
+		// SEQ advance may reuse: any config change (coupling/scale/offset)
+		// recomputes immediately, and the caller disables the throttle for
+		// single-shot/stopped captures where one frame's values must be exact
+		// (a stale reuse there would never be corrected by a next frame).
+		sameCfg := key.cpl1 == s.measKey.cpl1 && key.cpl2 == s.measKey.cpl2 &&
+			key.vpc == s.measKey.vpc && key.off == s.measKey.off && key.sampleS == s.measKey.sampleS
+		if !(measThrottle && sameCfg && s.meas.m1 != nil && time.Since(s.measAt) < 100*time.Millisecond) {
+			s.measKey = key
+			s.measAt = time.Now()
+			s.meas = measVal{
+				m1:    measure.Compute(c1[:f.Valid], vpc[0], moff[0], f.SampleS),
+				m2:    measure.Compute(c2[:f.Valid], vpc[1], moff[1], f.SampleS),
+				clip1: measure.Clipped(f.C1[:f.Valid]), // RAW rail state (pre-coupling)
+				clip2: measure.Clipped(f.C2[:f.Valid]),
+			}
 		}
 	}
 	rep.M1, rep.M2, rep.Clip1, rep.Clip2 = s.meas.m1, s.meas.m2, s.meas.clip1, s.meas.clip2
@@ -802,13 +819,14 @@ func (s *Server) hFrameBin(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	off, vpc := s.vertScales()
-	posFrac := s.sc.Snapshot().TrigPosFrac
+	st := s.sc.Snapshot()
+	posFrac := st.TrigPosFrac
 	if posFrac <= 0 {
 		posFrac = 0.5
 	}
 	var rep frameReply
 	s.sc.WithFrame(func(f *engine.Frame) {
-		rep = s.buildReply(f, cols, full, since, off, vpc, posFrac)
+		rep = s.buildReply(f, cols, full, since, off, vpc, posFrac, st.Running && !st.Single)
 	})
 	buf := encodeBinFrame(rep) // encode + write strictly outside the fan-out lock
 	w.Header().Set("Content-Type", "application/octet-stream")
