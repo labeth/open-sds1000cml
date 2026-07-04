@@ -71,18 +71,22 @@ function srCrossings(sig, level, rising) {
 //          crossing offsets when both traces have enough edges (unbiased for
 //          square-ish signals), else (b) parabolic interpolation of the NCC
 //          peak (fine for smooth/band-limited signals).
-function srAlign(ref, sig, maxLag, base) {
+function srAlign(ref, sig, maxLag, base, wLo, wHi) {
   base = base | 0;
   const n = Math.min(ref.length, sig.length);
-  // Window of ref indices where sig[i + base + k] stays in-bounds for every
-  // searched lag. `base` is the COARSE alignment (trigger-edge difference
-  // from the frame headers): on decimated deep bands the trigger lands
-  // anywhere in the drained record — far beyond any affordable NCC search —
-  // and for periodic signals a bare NCC is ambiguous modulo the period.
-  // Anchoring on the same trigger edge resolves both; NCC refines the
-  // residual jitter.
-  const lo = Math.max(maxLag, maxLag - base);
-  const hi = Math.min(n, sig.length - base) - maxLag;
+  if (wLo == null) wLo = 0;
+  if (wHi == null) wHi = n;
+  // Correlate over [wLo,wHi) of the REFERENCE (callers pass a window around
+  // the trigger edge — the region guaranteed to carry real signal; deep
+  // drains have a dead tail whose position varies per frame and would
+  // punish genuinely good frames if scored). `base` is the COARSE alignment
+  // (trigger-edge difference from the frame headers): on decimated deep
+  // bands the trigger lands anywhere in the drained record — far beyond any
+  // affordable NCC search — and for periodic signals a bare NCC is
+  // ambiguous modulo the period. The shared edge resolves both; NCC refines
+  // the residual jitter.
+  const lo = Math.max(wLo, maxLag, maxLag - base);
+  const hi = Math.min(wHi, n, sig.length - base) - maxLag;
   const m = hi - lo;
   if (m < Math.max(32, 4 * maxLag)) return null;
   let rm = 0, sm = 0;
@@ -107,14 +111,17 @@ function srAlign(ref, sig, maxLag, base) {
   bestK += base;
   let shift = bestK;
   let method = "int";
-  // (a) edge-crossing refinement about the integer alignment. The crossing
-  // level is the ROBUST mid-swing (p10/p90 midpoint of the reference) — the
-  // plain mean sits near the baseline for narrow-duty pulses, where baseline
-  // noise crossings would flood the refinement.
-  const mid = srMidSwing(ref);
-  const re = srCrossings(ref, mid, true).concat(srCrossings(ref, mid, false));
+  // (a) edge-crossing refinement about the integer alignment, over the same
+  // window. The crossing level is the ROBUST mid-swing (p10/p90 midpoint of
+  // the reference) — the plain mean sits near the baseline for narrow-duty
+  // pulses, where baseline noise crossings would flood the refinement.
+  const refWin = ref.subarray ? ref.subarray(lo, hi) : ref.slice(lo, hi);
+  const mid = srMidSwing(refWin);
+  const re = srCrossings(refWin, mid, true).concat(srCrossings(refWin, mid, false)).map(t => t + lo);
   if (re.length >= 4) {
-    const se = srCrossings(sig, mid, true).concat(srCrossings(sig, mid, false));
+    const sLo = Math.max(0, lo + base - 2 * maxLag), sHi = Math.min(sig.length, hi + base + 2 * maxLag);
+    const sigWin = sig.subarray ? sig.subarray(sLo, sHi) : sig.slice(sLo, sHi);
+    const se = srCrossings(sigWin, mid, true).concat(srCrossings(sigWin, mid, false)).map(t => t + sLo);
     const offs = [];
     for (const t of re) {
       // nearest sig crossing to t+bestK within ±1.5 samples
@@ -166,9 +173,10 @@ function srMidSwing(sig) {
 // ref[i]). Fitting unaligned would make the slope the autocorrelation at the
 // lag (g = cos(2π·lag/period) for a sine): a systematic amplitude shrink for
 // short-period signals. Returns {g, b}; callers divide out g and subtract b.
-function srGainOffset(ref, sig, lag) {
+function srGainOffset(ref, sig, lag, wLo, wHi) {
   lag = lag | 0;
-  const lo = Math.max(0, -lag), hi = Math.min(ref.length, sig.length - lag);
+  const lo = Math.max(wLo == null ? 0 : wLo, -lag);
+  const hi = Math.min(wHi == null ? ref.length : wHi, ref.length, sig.length - lag);
   const n = hi - lo;
   if (n < 16) return { g: 1, b: 0 };
   let sr = 0, ss = 0, srr = 0, srs = 0;
@@ -201,6 +209,9 @@ function srNew(n, K) {
     scores: [], shifts: [],
     ref: null, // Float32Array reference (first accepted frame with signal)
     refEdgeX: -1,
+    statLo: 0, statHi: n, // coarse-sample range the sigma stats cover (the
+    // alignment window): dead-tail bins vary per frame by drain boundary and
+    // would drown the real-signal noise figures.
     sampleS: 0, vpc: 1 / 32, offV: 0, edgeX: -1,
   };
 }
@@ -237,7 +248,14 @@ function srFeed(st, sig, opts) {
   if (st.refEdgeX >= 0 && opts.edgeX != null && opts.edgeX >= 0) {
     base = Math.round(opts.edgeX - st.refEdgeX);
   }
-  const al = srAlign(st.ref, sig, maxLag, base);
+  // Align + score over a window around the reference's trigger edge: that
+  // region is guaranteed real signal, whereas a deep drain's dead tail sits
+  // at a different position each frame and would fail genuinely good frames.
+  const center = st.refEdgeX >= 0 ? Math.round(st.refEdgeX) : st.n >> 1;
+  const half = Math.min(st.n >> 1, opts.winHalf || 4096);
+  const wLo = Math.max(0, center - half), wHi = Math.min(st.n, center + half);
+  st.statLo = wLo; st.statHi = wHi;
+  const al = srAlign(st.ref, sig, maxLag, base, wLo, wHi);
   if (!al) { st.rejected++; return "rejected:align"; }
   // Adaptive lucky threshold: after warm-up, cut at median − 3·MAD — but
   // never closer than 0.05 below the median. When all frames are good the
@@ -253,7 +271,7 @@ function srFeed(st, sig, opts) {
   if (al.score < thr) { st.rejected++; return "rejected:score"; }
   let frame = sig;
   if (opts.normalize !== false) {
-    const { g, b } = srGainOffset(st.ref, sig, Math.round(al.shift));
+    const { g, b } = srGainOffset(st.ref, sig, Math.round(al.shift), wLo, wHi);
     if (g !== 1 || b !== 0) {
       const f = new Float32Array(st.n);
       for (let i = 0; i < st.n; i++) {
@@ -305,12 +323,13 @@ function srResult(st, opts) {
   const nb = st.nbins;
   const stride = Math.max(1, opts.stride | 0 || 1);
   const mean = opts.statsOnly ? null : new Float32Array(nb);
+  const statLo = st.statLo * st.K, statHi = st.statHi * st.K;
   let filled = 0, scanned = 0;
   const sigSingles = [], halves = [];
   for (let b = 0; b < nb; b++) {
     const c = st.cnt[b];
     if (mean) mean[b] = c === 0 ? -1 : st.sum[b] / c;
-    if (b % stride !== 0) continue;
+    if (b % stride !== 0 || b < statLo || b >= statHi) continue;
     scanned++;
     if (c === 0) continue;
     filled++;
@@ -334,7 +353,7 @@ function srResult(st, opts) {
     sigmaStack = Math.sqrt(s2 / halves.length);
   }
   const cnts = [];
-  for (let b = 0; b < nb; b += stride) if (st.cnt[b] > 0) cnts.push(st.cnt[b]);
+  for (let b = statLo; b < statHi; b += stride) if (st.cnt[b] > 0) cnts.push(st.cnt[b]);
   const sigmaStackTheory = sigmaSingle > 0 && cnts.length ? sigmaSingle / Math.sqrt(med(cnts)) : 0;
   const bitsGained = sigmaStack > 0 && sigmaSingle > 0 ? Math.log2(sigmaSingle / sigmaStack) : 0;
   return {

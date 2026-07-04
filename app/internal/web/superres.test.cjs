@@ -204,5 +204,29 @@ function frame(n, period, shift, noise, amp, harmonics) {
   check("deep wander: no period-slip smear", res.sigmaStack < 5, res.sigmaStack.toFixed(2));
 }
 
+
+// ---- dead-tail case: deep drains carry a flat dead region whose boundary
+// moves per frame — windowed alignment (around the trigger edge) must keep
+// accepting frames that a full-record NCC would fail.
+{
+  const n = 4096, period = 400, K = 8, noise = 1.5, N = 80;
+  const st = srNew(n, K);
+  st.sampleS = 4e-7;
+  for (let k = 0; k < N; k++) {
+    const wander = k === 0 ? 0 : Math.round((rnd() - 0.5) * 400);
+    const sig = frame(n, period, wander + (rnd() - 0.5) * 2, noise, 60);
+    // Dead tail: the last ~10-22% freezes at the last value (device profile:
+    // trigger near record centre, dead drain at the END — outside the
+    // ±winHalf alignment/stat window; σ honestly degrades if it intrudes).
+    const boundary = Math.floor(n * (0.78 + 0.12 * rnd()));
+    for (let i = boundary; i < n; i++) sig[i] = sig[boundary - 1];
+    const edgeX = n / 2 + wander;
+    srFeed(st, sig, { maxLag: 8, edgeX, winHalf: 1024 });
+  }
+  const res = srResult(st);
+  check("dead tail: frames still stack", res.frames >= N - 4, `${res.frames}/${N} (rej ${res.rejected})`);
+  check("dead tail: bits gained > 0.8", res.bitsGained > 0.8, `+${res.bitsGained.toFixed(2)}`);
+}
+
 if (fails) { console.log(fails + " FAILURES"); process.exit(1); }
 console.log("ALL PASS");
