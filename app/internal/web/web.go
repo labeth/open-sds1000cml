@@ -4,11 +4,14 @@
 package web
 
 import (
+	"encoding/binary"
 	_ "embed"
 	"encoding/json"
 	"fmt"
 	"math"
 	"net/http"
+	"sync"
+	"time"
 
 	"open-sds/app/internal/analog"
 	"open-sds/app/internal/buildinfo"
@@ -34,6 +37,9 @@ var baseCSS []byte
 
 //go:embed app.js
 var appJS []byte
+
+//go:embed binframe.js
+var binframeJS []byte
 
 // Scope is the engine surface the web layer needs (the setters come from
 // *engine.Engine; WithFrame comes from the frames.Fanout — the arena's
@@ -89,13 +95,43 @@ type Panel interface {
 	InjectKnob(name string, dir, steps int) bool
 }
 
-// Server serves the UI and API. Frame reads happen inside Scope.WithFrame,
-// which holds the fan-out read lock for the duration of serialization.
+// frameWaiter is the optional long-poll surface: implemented by main's
+// scopeSource (delegating to frames.Fanout.WaitNext). Handlers type-assert
+// for it so test doubles without it degrade to a short seq poll.
+type frameWaiter interface {
+	WaitNextFrame(last uint64, timeout time.Duration) uint64
+}
+
+// Server serves the UI and API. Frame reads happen inside Scope.WithFrame;
+// the reply is fully assembled under the fan-out read lock and serialized +
+// written to the socket after it is released (never hold the lock over I/O).
 type Server struct {
 	sc     Scope
 	fe     Analog
 	panel  Panel
 	screen func() []byte // PNG of the current LCD render (device-screen view)
+
+	// Single-entry auto-measurement cache. measure.Compute over a deep record
+	// is the heaviest in-lock CPU besides serialization, and every /api/frame
+	// and /api/frame.bin request needs the same numbers for a given published
+	// frame — so it runs once per (seq, coupling, scale) and is shared. The
+	// key carries the measurement inputs BY VALUE, so mutations from any path
+	// (web /api/set, SCPI, panel) change the key and refresh naturally.
+	measMu  sync.Mutex
+	measKey measKey
+	meas    measVal
+}
+
+type measKey struct {
+	seq        uint64
+	cpl1, cpl2 int
+	vpc, off   [2]float64
+	sampleS    float64
+}
+
+type measVal struct {
+	m1, m2       *measure.Result
+	clip1, clip2 bool
 }
 
 func New(sc Scope, fe Analog, panel Panel, screen func() []byte) *Server {
@@ -107,11 +143,13 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/", s.hRoot)
 	mux.HandleFunc("/api/status", s.hStatus)
 	mux.HandleFunc("/api/frame", s.hFrame)
+	mux.HandleFunc("/api/frame.bin", s.hFrameBin)
 	mux.HandleFunc("/api/set", s.hSet)
 	mux.HandleFunc("/api/panel", s.hPanel)
 	mux.HandleFunc("/api/screen.png", s.hScreen)
 	mux.HandleFunc("/peaks.js", s.hPeaksJS)
 	mux.HandleFunc("/decode.js", s.hDecodeJS)
+	mux.HandleFunc("/binframe.js", s.hBinframeJS)
 	mux.HandleFunc("/tokens.css", s.hTokensCSS)
 	mux.HandleFunc("/base.css", s.hBaseCSS)
 	mux.HandleFunc("/app.js", s.hAppJS)
@@ -158,15 +196,20 @@ func (s *Server) hScreen(w http.ResponseWriter, r *http.Request) {
 	w.Write(s.screen())
 }
 
-func (s *Server) hPeaksJS(w http.ResponseWriter, r *http.Request) {
+// serveJS writes a JS asset with revalidation caching: the OTA agent swaps
+// the whole binary (embedded assets included), so a browser-cached app.js
+// must never meet a newer server's wire format without a round trip.
+func serveJS(w http.ResponseWriter, body []byte) {
 	w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
-	w.Write(peaksJS)
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Write(body)
 }
 
-func (s *Server) hDecodeJS(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
-	w.Write(decodeJS)
-}
+func (s *Server) hPeaksJS(w http.ResponseWriter, r *http.Request) { serveJS(w, peaksJS) }
+
+func (s *Server) hDecodeJS(w http.ResponseWriter, r *http.Request) { serveJS(w, decodeJS) }
+
+func (s *Server) hBinframeJS(w http.ResponseWriter, r *http.Request) { serveJS(w, binframeJS) }
 
 func (s *Server) hTokensCSS(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/css; charset=utf-8")
@@ -178,10 +221,7 @@ func (s *Server) hBaseCSS(w http.ResponseWriter, r *http.Request) {
 	w.Write(baseCSS)
 }
 
-func (s *Server) hAppJS(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
-	w.Write(appJS)
-}
+func (s *Server) hAppJS(w http.ResponseWriter, r *http.Request) { serveJS(w, appJS) }
 
 func (s *Server) hRoot(w http.ResponseWriter, r *http.Request) {
 	if r.URL.Path != "/" {
@@ -336,6 +376,12 @@ type frameReply struct {
 
 	Clip1 bool `json:"clip1,omitempty"` // CH1 railed against the ADC full scale
 	Clip2 bool `json:"clip2,omitempty"` // CH2 railed — readings/measurements suspect
+
+	// Binary-transport margin counts (set only on /api/frame.bin headers,
+	// never on the JSON endpoint): the served arrays' contiguous -1 head/tail
+	// runs, so the payload can carry raw uint8 codes with no in-band sentinel.
+	Head int `json:"head,omitempty"`
+	Tail int `json:"tail,omitempty"`
 }
 
 // resampleEnv nearest-resamples an envelope column array to n output columns.
@@ -514,91 +560,268 @@ func (s *Server) hFrame(w http.ResponseWriter, r *http.Request) {
 
 	var rep frameReply
 	s.sc.WithFrame(func(f *engine.Frame) {
-		if f == nil || f.Seq == 0 || f.Seq == since {
-			seq := uint64(0)
-			if f != nil {
-				seq = f.Seq
-			}
-			rep = frameReply{Seq: seq, Unchanged: true, EdgeX: -1}
-			return
-		}
-		// Coupling display transform (software on this clone, spec 06 §6): AC
-		// removes the DC (mean → mid-scale), GND shows a flat ground trace; both
-		// drop that channel's offset so the baseline sits at centre. DC passes
-		// through. Envelope frames are left untouched.
-		c1, c2 := f.C1, f.C2
-		moff := off
-		if s.fe != nil && f.Valid > 0 && !f.IsEnv {
-			if m := s.fe.Coupling(0); m != analog.CplDC {
-				c1, moff[0] = analog.CoupleDisplay(f.C1[:f.Valid], m), 0
-			}
-			if m := s.fe.Coupling(1); m != analog.CplDC {
-				c2, moff[1] = analog.CoupleDisplay(f.C2[:f.Valid], m), 0
-			}
-		}
-		rep = frameReply{
-			Seq:        f.Seq,
-			EdgeX:      f.EdgeX,
-			Ptp:        f.Ptp,
-			TdivS:      f.TdivS,
-			DisplayedS: f.DisplayedS,
-			Interp:     f.Interp,
-			Norm:       f.Norm,
-			Trigd:      f.Trigd,
-			Coherent:   f.Coherent,
-			Cols:       cols,
-			ColSpanS:   f.DisplayedS * 10, // the window spans 10 divisions
-			Vpc1:       vpc[0], Vpc2: vpc[1],
-			Off1V: moff[0], Off2V: moff[1],
-		}
-		// ColSpanS stays the 10-div screen time except on the deep path below,
-		// which overrides it to the full-record time.
-		switch {
-		case f.IsEnv:
-			rep.IsEnv = true
-			rep.E1Min = resampleEnv(f.EnvMin, f.EnvCols, cols)
-			rep.E1Max = resampleEnv(f.EnvMax, f.EnvCols, cols)
-			rep.E2Min = resampleEnv(f.EnvMin2, f.EnvCols, cols)
-			rep.E2Max = resampleEnv(f.EnvMax2, f.EnvCols, cols)
-			rep.EdgeFrac, rep.WinFrac = -1, 1
-		case full && !f.Interp && f.Valid > f.WinCols:
-			// DECIMATED deep memory: serve the full drained record so the client
-			// windows/navigates it. col_span_s becomes the whole-record time so
-			// every client formula (Nyquist, cursor Δt, decode, CSV) stays
-			// self-consistent. The record is RE-CENTERED on the trigger (edge at
-			// posFrac) so the trigger — not the frame — is the stable anchor, with
-			// symmetric scrollable pre-/post-trigger margin (blank past the ends).
-			n := f.Valid
-			if f.EdgeX >= 0 {
-				rep.C1 = deepWindow(c1, n, n, f.EdgeX, posFrac)
-				rep.C2 = deepWindow(c2, n, n, f.EdgeX, posFrac)
-				rep.EdgeFrac = posFrac
-			} else {
-				rep.C1, rep.C2 = rawInt16(c1[:n]), rawInt16(c2[:n])
-				rep.EdgeFrac = -1
-			}
-			rep.Cols, rep.ColSpanS, rep.Depth = n, float64(n)*f.SampleS, n
-			rep.WinFrac = float64(f.WinCols) / float64(n)
-		default:
-			// Native-fast / non-deep decimated: today's windowed screen slice.
-			rep.C1 = window(c1, f.Valid, f.WinCols, f.EdgeX, f.Interp, cols, posFrac)
-			rep.C2 = window(c2, f.Valid, f.WinCols, f.EdgeX, f.Interp, cols, posFrac)
-			rep.WinFrac = 1
-			if f.EdgeX >= 0 {
-				rep.EdgeFrac = posFrac
-			} else {
-				rep.EdgeFrac = -1
-			}
-		}
-		rep.StreamSeq, rep.WindowNs, rep.GapNs = f.StreamSeq, f.WindowNs, f.GapNs
-		// Auto-measurements over the RAW record (accurate, band-independent).
-		rawSample := f.SampleS
-		rep.M1 = measure.Compute(c1[:f.Valid], vpc[0], moff[0], rawSample)
-		rep.M2 = measure.Compute(c2[:f.Valid], vpc[1], moff[1], rawSample)
-		rep.Clip1 = measure.Clipped(f.C1[:f.Valid]) // RAW rail state (pre-coupling)
-		rep.Clip2 = measure.Clipped(f.C2[:f.Valid])
+		rep = s.buildReply(f, cols, full, since, off, vpc, posFrac)
 	})
 	writeJSON(w, rep)
+}
+
+// buildReply assembles the frame reply — shared verbatim by /api/frame (JSON)
+// and /api/frame.bin (binary header + raw payload) so the two transports can
+// never drift. MUST run inside Scope.WithFrame (f is only valid under the
+// fan-out read lock); the returned reply owns all its data.
+func (s *Server) buildReply(f *engine.Frame, cols int, full bool, since uint64, off, vpc [2]float64, posFrac float64) frameReply {
+	if f == nil || f.Seq == 0 || f.Seq == since {
+		seq := uint64(0)
+		if f != nil {
+			seq = f.Seq
+		}
+		return frameReply{Seq: seq, Unchanged: true, EdgeX: -1}
+	}
+	// Coupling display transform (software on this clone, spec 06 §6): AC
+	// removes the DC (mean → mid-scale), GND shows a flat ground trace; both
+	// drop that channel's offset so the baseline sits at centre. DC passes
+	// through. Envelope frames are left untouched.
+	c1, c2 := f.C1, f.C2
+	moff := off
+	cpl := [2]int{analog.CplDC, analog.CplDC}
+	if s.fe != nil && f.Valid > 0 && !f.IsEnv {
+		cpl[0], cpl[1] = s.fe.Coupling(0), s.fe.Coupling(1)
+		if cpl[0] != analog.CplDC {
+			c1, moff[0] = analog.CoupleDisplay(f.C1[:f.Valid], cpl[0]), 0
+		}
+		if cpl[1] != analog.CplDC {
+			c2, moff[1] = analog.CoupleDisplay(f.C2[:f.Valid], cpl[1]), 0
+		}
+	}
+	rep := frameReply{
+		Seq:        f.Seq,
+		EdgeX:      f.EdgeX,
+		Ptp:        f.Ptp,
+		TdivS:      f.TdivS,
+		DisplayedS: f.DisplayedS,
+		Interp:     f.Interp,
+		Norm:       f.Norm,
+		Trigd:      f.Trigd,
+		Coherent:   f.Coherent,
+		Cols:       cols,
+		ColSpanS:   f.DisplayedS * 10, // the window spans 10 divisions
+		Vpc1:       vpc[0], Vpc2: vpc[1],
+		Off1V: moff[0], Off2V: moff[1],
+	}
+	// ColSpanS stays the 10-div screen time except on the deep path below,
+	// which overrides it to the full-record time.
+	switch {
+	case f.IsEnv:
+		rep.IsEnv = true
+		rep.E1Min = resampleEnv(f.EnvMin, f.EnvCols, cols)
+		rep.E1Max = resampleEnv(f.EnvMax, f.EnvCols, cols)
+		rep.E2Min = resampleEnv(f.EnvMin2, f.EnvCols, cols)
+		rep.E2Max = resampleEnv(f.EnvMax2, f.EnvCols, cols)
+		rep.EdgeFrac, rep.WinFrac = -1, 1
+	case full && !f.Interp && f.Valid > f.WinCols:
+		// DECIMATED deep memory: serve the full drained record so the client
+		// windows/navigates it. col_span_s becomes the whole-record time so
+		// every client formula (Nyquist, cursor Δt, decode, CSV) stays
+		// self-consistent. The record is RE-CENTERED on the trigger (edge at
+		// posFrac) so the trigger — not the frame — is the stable anchor, with
+		// symmetric scrollable pre-/post-trigger margin (blank past the ends).
+		n := f.Valid
+		if f.EdgeX >= 0 {
+			rep.C1 = deepWindow(c1, n, n, f.EdgeX, posFrac)
+			rep.C2 = deepWindow(c2, n, n, f.EdgeX, posFrac)
+			rep.EdgeFrac = posFrac
+		} else {
+			rep.C1, rep.C2 = rawInt16(c1[:n]), rawInt16(c2[:n])
+			rep.EdgeFrac = -1
+		}
+		rep.Cols, rep.ColSpanS, rep.Depth = n, float64(n)*f.SampleS, n
+		rep.WinFrac = float64(f.WinCols) / float64(n)
+	default:
+		// Native-fast / non-deep decimated: today's windowed screen slice.
+		rep.C1 = window(c1, f.Valid, f.WinCols, f.EdgeX, f.Interp, cols, posFrac)
+		rep.C2 = window(c2, f.Valid, f.WinCols, f.EdgeX, f.Interp, cols, posFrac)
+		rep.WinFrac = 1
+		if f.EdgeX >= 0 {
+			rep.EdgeFrac = posFrac
+		} else {
+			rep.EdgeFrac = -1
+		}
+	}
+	rep.StreamSeq, rep.WindowNs, rep.GapNs = f.StreamSeq, f.WindowNs, f.GapNs
+	// Auto-measurements over the RAW record (accurate, band-independent),
+	// computed once per published frame via the value-keyed cache: repeat
+	// requests for the same seq (JSON + binary, or several clients) reuse it.
+	key := measKey{seq: f.Seq, cpl1: cpl[0], cpl2: cpl[1], vpc: vpc, off: moff, sampleS: f.SampleS}
+	s.measMu.Lock()
+	if s.measKey != key {
+		s.measKey = key
+		s.meas = measVal{
+			m1:    measure.Compute(c1[:f.Valid], vpc[0], moff[0], f.SampleS),
+			m2:    measure.Compute(c2[:f.Valid], vpc[1], moff[1], f.SampleS),
+			clip1: measure.Clipped(f.C1[:f.Valid]), // RAW rail state (pre-coupling)
+			clip2: measure.Clipped(f.C2[:f.Valid]),
+		}
+	}
+	rep.M1, rep.M2, rep.Clip1, rep.Clip2 = s.meas.m1, s.meas.m2, s.meas.clip1, s.meas.clip2
+	s.measMu.Unlock()
+	return rep
+}
+
+// Binary frame layout served by /api/frame.bin (all integers little-endian):
+//
+//	[0]     u8  magic 0xF5 — bump on any layout change
+//	[1]     u8  flags: bit0 unchanged, bit1 envelope, bit2 deep, bit3 empty
+//	[2:4]   u16 reserved (0)
+//	[4:8]   u32 H = JSON header byte length
+//	[8:8+H]     UTF-8 JSON header: frameReply with the array fields nilled,
+//	            plus head/tail = the contiguous -1 margin counts
+//	[8+H:]      payload, raw uint8 ADC codes:
+//	            native: c1[cols] c2[cols]
+//	            deep:   c1[cols-head-tail] c2[cols-head-tail] (cols == depth)
+//	            env:    e1min[cols] e1max[cols] e2min[cols] e2max[cols]
+//	            unchanged/empty: none
+//
+// The -1 sentinels in the int16 reply arrays are provably contiguous head/tail
+// runs (deepWindow walks the record monotonically; window rail-extends), so
+// two counts replace the in-band sentinel and the payload narrows to uint8.
+const binMagic = 0xF5
+
+const (
+	binUnchanged = 1 << 0
+	binEnv       = 1 << 1
+	binDeep      = 1 << 2
+	binEmpty     = 1 << 3
+)
+
+// encodeBinFrame serializes a built reply to the binary wire format. It runs
+// after WithFrame returns — rep owns its data, so no lock is held here.
+func encodeBinFrame(rep frameReply) []byte {
+	var flags byte
+	var segs [][]int16
+	head, tail := 0, 0
+	switch {
+	case rep.Unchanged:
+		flags |= binUnchanged
+	case rep.IsEnv:
+		flags |= binEnv
+		segs = [][]int16{rep.E1Min, rep.E1Max, rep.E2Min, rep.E2Max}
+	default:
+		if rep.Depth > 0 {
+			flags |= binDeep
+		}
+		n := len(rep.C1)
+		for head < n && rep.C1[head] < 0 {
+			head++
+		}
+		if head == n { // whole array is margin (defensive: Valid<1 never publishes)
+			flags |= binEmpty
+		} else {
+			for rep.C1[n-1-tail] < 0 {
+				tail++
+			}
+			segs = [][]int16{rep.C1, rep.C2}
+		}
+	}
+	hdr := rep
+	hdr.C1, hdr.C2 = nil, nil
+	hdr.E1Min, hdr.E1Max, hdr.E2Min, hdr.E2Max = nil, nil, nil, nil
+	hdr.Head, hdr.Tail = head, tail
+	hj, err := json.Marshal(hdr)
+	if err != nil { // unreachable with finite inputs; keep the wire well-formed
+		flags = binUnchanged
+		segs, head, tail = nil, 0, 0
+		hj = []byte(`{"seq":0,"unchanged":true,"edge_x":-1}`)
+	}
+	segLen := 0
+	if len(segs) > 0 {
+		segLen = len(segs[0]) - head - tail
+	}
+	buf := make([]byte, 8, 8+len(hj)+segLen*len(segs))
+	buf[0] = binMagic
+	buf[1] = flags
+	binary.LittleEndian.PutUint32(buf[4:8], uint32(len(hj)))
+	buf = append(buf, hj...)
+	for _, seg := range segs {
+		for _, v := range seg[head : head+segLen] {
+			buf = append(buf, uint8(v))
+		}
+	}
+	return buf
+}
+
+// hFrameBin is the long-poll binary frame endpoint: same reply as /api/frame
+// (built by the shared buildReply), encoded as a small JSON header + raw
+// uint8 payload — ~1 ms on the device versus 50-150 ms of reflective JSON
+// over int16 arrays, which is what capped the browser at a few fps. With
+// since= and waitms= the request parks (no locks held) until the fan-out
+// snapshots a newer frame, so delivery latency is one response write and the
+// client needs no poll timer: request-when-ready IS the backpressure, and a
+// slow client simply skips to the newest frame.
+func (s *Server) hFrameBin(w http.ResponseWriter, r *http.Request) {
+	var since uint64
+	fmt.Sscanf(r.URL.Query().Get("since"), "%d", &since)
+	cols := screenCols
+	if c := r.URL.Query().Get("cols"); c != "" {
+		fmt.Sscanf(c, "%d", &cols)
+	}
+	if cols < 64 {
+		cols = 64
+	}
+	if cols > 4096 {
+		cols = 4096
+	}
+	full := r.URL.Query().Get("full") == "1"
+	waitms := 0
+	fmt.Sscanf(r.URL.Query().Get("waitms"), "%d", &waitms)
+	if waitms < 0 {
+		waitms = 0
+	}
+	if waitms > 2000 {
+		waitms = 2000
+	}
+	// Park even for since=0: WaitNext returns immediately once ANY frame has
+	// published, and blocks when none has — otherwise a fresh page against an
+	// idle engine hot-loops instant unchanged replies at the client's tick.
+	if waitms > 0 {
+		timeout := time.Duration(waitms) * time.Millisecond
+		if fw, ok := s.sc.(frameWaiter); ok {
+			fw.WaitNextFrame(since, timeout)
+		} else { // test doubles: degrade to a short seq poll
+			for deadline := time.Now().Add(timeout); time.Now().Before(deadline); {
+				var seq uint64
+				s.sc.WithFrame(func(f *engine.Frame) {
+					if f != nil {
+						seq = f.Seq
+					}
+				})
+				if seq != since {
+					break
+				}
+				time.Sleep(20 * time.Millisecond)
+			}
+		}
+	}
+	off, vpc := s.vertScales()
+	posFrac := s.sc.Snapshot().TrigPosFrac
+	if posFrac <= 0 {
+		posFrac = 0.5
+	}
+	var rep frameReply
+	s.sc.WithFrame(func(f *engine.Frame) {
+		rep = s.buildReply(f, cols, full, since, off, vpc, posFrac)
+	})
+	buf := encodeBinFrame(rep) // encode + write strictly outside the fan-out lock
+	w.Header().Set("Content-Type", "application/octet-stream")
+	w.Header().Set("Cache-Control", "no-store")
+	// Bound the write: the server sets no global timeouts (long-poll depends
+	// on that), so a half-open peer must not hold this goroutine for minutes.
+	// CLEAR the deadline afterwards — with WriteTimeout=0 net/http never
+	// resets it, and the keep-alive connection is reused by other handlers
+	// that set none (an absolute deadline left armed would fail them later).
+	rc := http.NewResponseController(w)
+	rc.SetWriteDeadline(time.Now().Add(5 * time.Second))
+	w.Write(buf)
+	rc.SetWriteDeadline(time.Time{})
 }
 
 type setReq struct {

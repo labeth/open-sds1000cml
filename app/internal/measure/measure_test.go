@@ -192,3 +192,60 @@ func TestOvershoot(t *testing.T) {
 		t.Fatalf("overshoot = %.1f%%, want ~20.8", r.Overshoot)
 	}
 }
+
+// avgWidthBrute is the pre-merge reference implementation (rescan per crossing).
+func avgWidthBrute(from, to []float64) float64 {
+	if len(from) == 0 || len(to) == 0 {
+		return 0
+	}
+	var sum float64
+	var cnt int
+	for _, f := range from {
+		for _, t := range to {
+			if t > f {
+				sum += t - f
+				cnt++
+				break
+			}
+		}
+	}
+	if cnt == 0 {
+		return 0
+	}
+	return sum / float64(cnt)
+}
+
+// TestAvgWidthMergeParity property-checks the merge-pass avgWidth against the
+// brute-force reference on randomized ascending crossing lists (the shape
+// Compute produces), including empty/disjoint/interleaved cases.
+func TestAvgWidthMergeParity(t *testing.T) {
+	rng := uint64(1)
+	rand01 := func() float64 { // xorshift; deterministic, no seed plumbing
+		rng ^= rng << 13
+		rng ^= rng >> 7
+		rng ^= rng << 17
+		return float64(rng%1e6) / 1e6
+	}
+	ascending := func(n int, start float64) []float64 {
+		out := make([]float64, n)
+		x := start
+		for i := range out {
+			x += rand01() * 3
+			out[i] = x
+		}
+		return out
+	}
+	for trial := 0; trial < 500; trial++ {
+		nf, nt := trial%17, (trial*7)%23
+		from := ascending(nf, rand01()*10)
+		to := ascending(nt, rand01()*10)
+		got, want := avgWidth(from, to), avgWidthBrute(from, to)
+		if math.Abs(got-want) > 1e-9 {
+			t.Fatalf("trial %d: avgWidth=%v brute=%v from=%v to=%v", trial, got, want, from, to)
+		}
+	}
+	// Degenerate pins: all `to` before every `from`.
+	if got := avgWidth([]float64{5, 6}, []float64{1, 2}); got != 0 {
+		t.Fatalf("no-pair case = %v, want 0", got)
+	}
+}

@@ -39,6 +39,13 @@ type scopeSource struct {
 
 func (s scopeSource) WithFrame(fn func(*engine.Frame)) { s.fo.WithFrame(fn) }
 
+// WaitNextFrame lets the web layer park a long-poll until the fan-out
+// snapshots a frame newer than last (web.go type-asserts for this method, so
+// test doubles without it degrade to a short poll).
+func (s scopeSource) WaitNextFrame(last uint64, timeout time.Duration) uint64 {
+	return s.fo.WaitNext(last, timeout)
+}
+
 // buildHUD assembles the LCD/SCDP heads-up state from the engine + front end.
 // The trigger-level readout is scaled by the SOURCE channel's V/div.
 func buildHUD(e *engine.Engine, fe *analog.FrontEnd) lcd.HUD {
@@ -290,6 +297,10 @@ func main() {
 		})
 		return lcd.EncodePNG(back)
 	}
+	// Deliberately NO Read/Write/Idle timeouts: /api/frame.bin parks requests
+	// up to 2 s (long-poll), and a global WriteTimeout would kill every parked
+	// request. Slow-peer writes are bounded per-response inside the handler
+	// (SetWriteDeadline). Don't "harden" this without moving that contract.
 	srv := &http.Server{Addr: listen, Handler: web.New(scopeSource{e, fo}, feIface, pc, screenPNG).Handler()}
 	go func() {
 		logf("web ui listening on %s", listen)

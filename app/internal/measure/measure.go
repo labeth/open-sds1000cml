@@ -217,21 +217,27 @@ func modeInRange(hist []int, lo, hi int) int {
 }
 
 // avgWidth returns the mean sample-count from each `from` crossing to the next
-// `to` crossing after it (0 if none pair up). Used for ± pulse width.
+// `to` crossing after it (0 if none pair up). Used for ± pulse width. Both
+// lists must be ascending (they are: Compute builds them scanning the record
+// forward), which makes the matching `to` index non-decreasing across `from` —
+// a single merge pass instead of a rescan per crossing (a deep 20480-sample
+// record with many cycles made the rescan quadratic).
 func avgWidth(from, to []float64) float64 {
 	if len(from) == 0 || len(to) == 0 {
 		return 0
 	}
 	var sum float64
 	var cnt int
+	j := 0
 	for _, f := range from {
-		for _, t := range to {
-			if t > f {
-				sum += t - f
-				cnt++
-				break
-			}
+		for j < len(to) && to[j] <= f {
+			j++
 		}
+		if j == len(to) {
+			break
+		}
+		sum += to[j] - f
+		cnt++
 	}
 	if cnt == 0 {
 		return 0

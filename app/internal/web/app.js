@@ -269,7 +269,7 @@ function computeMath() {
     if (!src || !S || !S.sel.length) return null;   // nothing selected → nothing to remove
     let mean = 0, cnt = 0; for (const v of src) if (v >= 0) { mean += v; cnt++; }
     mean = cnt ? mean / cnt : 128;
-    const res = src.slice();
+    const res = Float64Array.from(src); // NOT src.slice(): an Int16Array copy would truncate the fractional accumulation below
     for (const f of S.sel) {
       const comp = component(src, f * (frame.col_span_s || 0)); // fitted tone at that freq
       if (!comp) continue;
@@ -416,10 +416,22 @@ function selColorCh(ch, i) {
 // Recompute one channel's peaks + re-anchor its selection to the nearest current
 // peak (tracks drift, dedupes, keeps a freq whose peak momentarily vanished).
 // Returns that channel's spectrum, or null if the channel is off/absent/flat.
+// Per-channel spectrum memo keyed by the frame array IDENTITY (every frame
+// allocates fresh arrays, so identity is an exact cache key): interaction
+// redraws (wheel/drag/cursor) and the peak-list refresh reuse the spectrum
+// instead of re-running a full-record FFT on the same data.
+const specMemo = { 1: { src: null, spec: null }, 2: { src: null, spec: null } };
+function spectrumFor(ch) {
+  const src = peakSrcCh(ch), m = specMemo[ch];
+  if (m.src === src) return m.spec;
+  m.src = src;
+  m.spec = spectrum(src.filter(v => v >= 0), peakNyq());
+  return m.spec;
+}
 function computePeaksCh(ch) {
   const S = fftCh[ch]; S.peaks = []; S.selIdx = new Set();
   if (!chOn(ch) || !chHas(ch)) return null;
-  const spec = spectrum(peakSrcCh(ch).filter(v => v >= 0), peakNyq());
+  const spec = spectrumFor(ch);
   if (!spec) return null;
   S.peaks = detectPeaks(spec, { floorDb: -50, maxPeaks });
   const idxs = new Set(), kept = [];
@@ -437,9 +449,10 @@ function togglePeakCh(ch, pf) {
   const before = S.sel.length;
   S.sel = S.sel.filter(f => nearestPeak(S.peaks, f) !== i);
   if (S.sel.length === before) S.sel.push(S.peaks[i].freq); // was not selected → add
+  peakListLastT = 0; // selection changed: bypass the 1 Hz list throttle this redraw
   redraw();
 }
-function clearPeaksCh(ch) { fftCh[ch].sel = []; redraw(); }
+function clearPeaksCh(ch) { fftCh[ch].sel = []; peakListLastT = 0; redraw(); }
 
 function drawFFT() {
   drawGrid(ctx);
@@ -477,8 +490,21 @@ function drawFFT() {
 // Y-T overlay: for each channel, reconstruct EACH selected tone from THAT
 // channel's trace and draw it over the waveform (one palette-coloured curve per
 // selected frequency) so picked sub-frequencies are visible as their own curves.
+let peakListLastT = 0;
 function drawYTPeaks(g) {
   if (view.mode !== "YT" || !frame || frame.is_env) return;
+  // Nothing selected and no residual math → the spectra only feed the pick
+  // lists. Refresh those at ~1 Hz instead of paying two full-record FFTs per
+  // frame (the dominant avoidable per-frame client cost at 20 fps).
+  const needFFT = fftCh[1].sel.length || fftCh[2].sel.length || mathFn === "res1" || mathFn === "res2";
+  if (!needFFT) {
+    const now = performance.now();
+    if (now - peakListLastT > 1000) {
+      peakListLastT = now;
+      for (const ch of [1, 2]) { computePeaksCh(ch); updateFFTListCh(ch); }
+    }
+    return;
+  }
   for (const ch of [1, 2]) { computePeaksCh(ch); updateFFTListCh(ch); }
   g.save();
   g.font = "bold " + (12 * dpr) + "px system-ui";
@@ -573,16 +599,32 @@ function drawNavTrace(cols, color) {
   }
   navCtx.globalAlpha = 1;
 }
+// The nav UNDERLAY (background + traces + decode lane) depends only on the
+// frame arrays, channel toggles, decode result and canvas size — not on the
+// zoom window. Cache it to an offscreen canvas so pan/zoom redraws blit it
+// instead of re-downsampling the whole record per wheel tick.
+const navCache = { key: null, cv: null };
 function drawNav() {
   if (nav.style.display === "none") return;
-  navCtx.fillStyle = "#05080c"; navCtx.fillRect(0, 0, NW, NH);
-  navCtx.strokeStyle = "#182430"; navCtx.lineWidth = 1;
-  navCtx.beginPath(); navCtx.moveTo(0, NH / 2 + .5); navCtx.lineTo(NW, NH / 2 + .5); navCtx.stroke();
-  if (frame && !frame.is_env) {
-    if (view.c2) drawNavTrace(frame.c2, C2COL);
-    if (view.c1) drawNavTrace(frame.c1, C1COL);
+  const key = [frame && frame.c1, frame && frame.c2, view.c1, view.c2, dcfg.result, NW, NH];
+  if (navCache.key && navCache.key.every((v, i) => v === key[i])) {
+    navCtx.drawImage(navCache.cv, 0, 0);
+  } else {
+    navCtx.fillStyle = "#05080c"; navCtx.fillRect(0, 0, NW, NH);
+    navCtx.strokeStyle = "#182430"; navCtx.lineWidth = 1;
+    navCtx.beginPath(); navCtx.moveTo(0, NH / 2 + .5); navCtx.lineTo(NW, NH / 2 + .5); navCtx.stroke();
+    if (frame && !frame.is_env) {
+      if (view.c2) drawNavTrace(frame.c2, C2COL);
+      if (view.c1) drawNavTrace(frame.c1, C1COL);
+    }
+    drawNavDecode(); // decode tokens across the WHOLE record (small-window view)
+    if (!navCache.cv || navCache.cv.width !== NW || navCache.cv.height !== NH) {
+      navCache.cv = document.createElement("canvas");
+      navCache.cv.width = NW; navCache.cv.height = NH;
+    }
+    navCache.cv.getContext("2d").drawImage(nav, 0, 0);
+    navCache.key = key;
   }
-  drawNavDecode(); // decode tokens across the WHOLE record (small-window view)
   // viewport rectangle = the visible [a,b] window.
   const x0 = view.win.a * NW, x1 = view.win.b * NW;
   navCtx.fillStyle = "rgba(255,159,46,.13)"; navCtx.fillRect(x0, 0, x1 - x0, NH);
@@ -804,19 +846,37 @@ function fmtMeas(key, m) {
 const MEAS_CORE = ["Vpp", "Vmax", "Vmin", "Vmean", "Vrms", "Freq", "Period", "Duty"];
 const MEAS_MORE = ["Vtop", "Vbase", "Vampl", "Rise", "Fall", "+Width", "-Width", "Overshoot"];
 let measExpanded = false;
+// The row STRUCTURE only changes on expand/collapse or a clip-flag flip; the
+// VALUES change every frame. Rebuild the table on structure changes, update
+// cell textContent in place otherwise — an innerHTML re-parse at 20 fps was
+// measurable DOM churn for identical markup.
+let measDomSig = "", measCells = null;
 function updateMeas() {
   const keys = measExpanded ? MEAS_CORE.concat(MEAS_MORE) : MEAS_CORE;
-  const clipTag = c => c ? ` <span class="clip" title="signal is clipping — increase V/div or probe; measurements unreliable">⚠ CLIP</span>` : "";
-  let html = `<tr><th></th><td class="cc1">C1${clipTag(frame && frame.clip1)}</td>` +
-             `<td class="cc2">C2${clipTag(frame && frame.clip2)}</td></tr>`;
-  for (const k of keys) {
-    html += `<tr><th>${k}</th><td class="cc1">${fmtMeas(k, frame && frame.m1)}</td>` +
-            `<td class="cc2">${fmtMeas(k, frame && frame.m2)}</td></tr>`;
+  const clip1 = !!(frame && frame.clip1), clip2 = !!(frame && frame.clip2);
+  const sig = keys.length + ":" + clip1 + ":" + clip2;
+  if (sig !== measDomSig) {
+    measDomSig = sig;
+    const clipTag = c => c ? ` <span class="clip" title="signal is clipping — increase V/div or probe; measurements unreliable">⚠ CLIP</span>` : "";
+    let html = `<tr><th></th><td class="cc1">C1${clipTag(clip1)}</td>` +
+               `<td class="cc2">C2${clipTag(clip2)}</td></tr>`;
+    for (const k of keys) {
+      html += `<tr><th>${k}</th><td class="cc1"></td><td class="cc2"></td></tr>`;
+    }
+    html += `<tr><td colspan="3" style="text-align:center;padding-top:3px">` +
+            `<button id="measMore" class="btn-mini">${measExpanded ? "less ▲" : "more ▼"}</button></td></tr>`;
+    $("measBody").innerHTML = html;
+    $("measMore").onclick = () => { measExpanded = !measExpanded; updateMeas(); };
+    const rows = $("measBody").querySelectorAll("tr");
+    measCells = {};
+    keys.forEach((k, i) => { measCells[k] = rows[i + 1].querySelectorAll("td"); });
   }
-  html += `<tr><td colspan="3" style="text-align:center;padding-top:3px">` +
-          `<button id="measMore" class="btn-mini">${measExpanded ? "less ▲" : "more ▼"}</button></td></tr>`;
-  $("measBody").innerHTML = html;
-  $("measMore").onclick = () => { measExpanded = !measExpanded; updateMeas(); };
+  for (const k of keys) {
+    const [a, b] = measCells[k];
+    const t1 = fmtMeas(k, frame && frame.m1), t2 = fmtMeas(k, frame && frame.m2);
+    if (a.textContent !== t1) a.textContent = t1;
+    if (b.textContent !== t2) b.textContent = t2;
+  }
 }
 
 function updateCursors() {
@@ -989,26 +1049,88 @@ scope.addEventListener("wheel", ev => {
   setWin(na, nb);
 }, { passive: false });
 
-// ---- polling ----
-async function pollFrame() {
+// ---- frame transport ----
+// Primary: /api/frame.bin long-poll. The server PARKS the request (waitms)
+// until a new frame publishes, then replies with a small JSON header + raw
+// uint8 payload that binframe.js expands to Int16Array — decode is ~0 vs the
+// 50-150 ms the device burned JSON-encoding int16 arrays for the old poll,
+// and the 90 ms client-side gap is gone (request-when-ready is the pacing).
+// Fallback: the original /api/frame JSON poll below, kept verbatim. Protocol
+// mismatches (old server binary, corrupt reply) downgrade to it; a 30 s probe
+// upgrades back. Network errors (OTA app restart) retry with jittered backoff
+// instead — the endpoint comes back at full speed.
+let transport = new URLSearchParams(location.search).get("transport") === "json" ? "json" : "bin";
+let binFailures = 0;
+let jsonGen = 0; // generation token: bumping it kills any older pollFrame chain
+
+function applyFrame(f) {
+  frame = f; lastSeq = f.seq;
+  const sig = acqSig(f);
+  if (sig !== lastSig) { userZoomed = false; lastSig = sig; } // band/depth/run change → re-home
+  if (!userZoomed) { const h = homeWindow(f); view.win.a = h.a; view.win.b = h.b; }
+  computeDecode(); redraw(); updateMeas(); updateCursors();
+}
+
+async function pollFrameBin() {
+  if (transport !== "bin") return;
+  if (frozen || document.hidden) { setTimeout(pollFrameBin, 90); return; } // idle tick; hidden tabs stop hitting the device
+  try {
+    const r = await fetch("/api/frame.bin?since=" + lastSeq + "&cols=" + reqCols + "&full=1&waitms=1000");
+    if (!r.ok) { fallbackToJSON(); return; }
+    const f = decodeBinFrame(await r.arrayBuffer());
+    if (f === null) { fallbackToJSON(); return; } // never render a reply that failed validation
+    binFailures = 0;
+    // Re-check frozen AFTER the await: the request parks server-side for up
+    // to 1 s, and a freeze/capture-review click mid-flight must not have its
+    // snapshot clobbered by the late reply. lastSeq stays put, so unfreezing
+    // immediately long-polls the newest frame.
+    if (!f.unchanged && !frozen) applyFrame(f);
+    setTimeout(pollFrameBin, 10); // the server did the pacing; this only guards a hot loop
+  } catch (e) {
+    binFailures++;
+    setTimeout(pollFrameBin, Math.min(2000, 250 * binFailures) + 250 * Math.random());
+  }
+}
+
+function fallbackToJSON() {
+  if (transport === "json") return;
+  transport = "json";
+  pollFrame(++jsonGen); // bump the token so any older chain dies on its next tick
+  setTimeout(probeBin, 30000);
+}
+
+async function probeBin() {
+  if (transport === "bin") return;
+  try {
+    const r = await fetch("/api/frame.bin?since=0&cols=" + reqCols + "&full=1");
+    if (r.ok && decodeBinFrame(await r.arrayBuffer()) !== null) {
+      transport = "bin"; // pollFrame sees this and stops rescheduling
+      pollFrameBin();
+      return;
+    }
+  } catch (e) { /* still down */ }
+  setTimeout(probeBin, 30000);
+}
+
+// Legacy JSON poll — the fallback transport and the ?transport=json debug
+// path. The gen token guarantees at most ONE live chain: a transport flap
+// (fallback → upgrade → fallback) spawns a new chain with a new token and
+// any in-flight older chain exits on its next tick instead of accumulating.
+async function pollFrame(gen) {
+  if (gen === undefined) gen = jsonGen;
+  if (transport !== "json" || gen !== jsonGen) return;
   if (!frozen) {
     try {
       const r = await fetch("/api/frame?since=" + lastSeq + "&cols=" + reqCols + "&full=1");
       const f = await r.json();
-      if (!f.unchanged) {
-        frame = f; lastSeq = f.seq;
-        const sig = acqSig(f);
-        if (sig !== lastSig) { userZoomed = false; lastSig = sig; } // band/depth/run change → re-home
-        if (!userZoomed) { const h = homeWindow(f); view.win.a = h.a; view.win.b = h.b; }
-        computeDecode(); redraw(); updateMeas(); updateCursors();
-      }
+      if (!f.unchanged && !frozen) applyFrame(f);
     } catch (e) { /* keep last */ }
   }
-  setTimeout(pollFrame, 90);
+  setTimeout(() => pollFrame(gen), 90);
 }
 async function pollStatus() {
   try { st = await (await fetch("/api/status")).json(); applyStatus(); }
-  catch (e) { $("line").textContent = "no connection"; }
+  catch (e) { $("line").textContent = "no connection"; lastLineHTML = ""; } // reset the diff guard or a static status keeps "no connection" stuck
   setTimeout(pollStatus, 1000);
 }
 
@@ -1026,7 +1148,12 @@ function trigState() {
 const PRESSED = ["mYT", "mXY", "mFFT", "tPersist", "tCursors", "tC1", "tC2", "freeze",
   "mode", "ets", "single", "decAuto", "decWatch", "decStream"];
 function refreshAria() {
-  for (const id of PRESSED) { const b = $(id); if (b) b.setAttribute("aria-pressed", b.classList.contains("on") ? "true" : "false"); }
+  for (const id of PRESSED) {
+    const b = $(id);
+    if (!b) continue;
+    const v = b.classList.contains("on") ? "true" : "false";
+    if (b.getAttribute("aria-pressed") !== v) b.setAttribute("aria-pressed", v);
+  }
 }
 
 function applyStatus() {
@@ -1100,12 +1227,15 @@ function updateStatusLine() {
       zoomTxt = zoom >= 1 ? " · zoom ×" + (zoom < 10 ? zoom.toFixed(1) : String(Math.round(zoom)))
                           : " · zoom ÷" + (1 / zoom).toFixed(1);
   }
-  $("line").innerHTML =
+  const html =
     "<b>" + fmtTdiv(b) + "/div</b>" + zoomTxt + " · " + st.band + " · " + st.fps.toFixed(0) + " fps · seq <b>" + st.seq + "</b>" +
     " · cols " + reqCols + (st.mmap_drain ? "" : " (ioctl)") + (st.dead_runs ? " · DEAD " + st.dead_runs : "") +
     " · cal:" + (st.cal_source || "?") + " · " + st.version;
-  $("scope").setAttribute("aria-label", "oscilloscope — trigger " + trigState() + ", " + fmtTdiv(b) + "/div");
+  if (html !== lastLineHTML) { lastLineHTML = html; $("line").innerHTML = html; }
+  const aria = "oscilloscope — trigger " + trigState() + ", " + fmtTdiv(b) + "/div";
+  if (aria !== lastAria) { lastAria = aria; $("scope").setAttribute("aria-label", aria); }
 }
+let lastLineHTML = "", lastAria = "";
 
 // ---- controls ----
 async function send(control, value) {
@@ -1446,5 +1576,9 @@ $("dock").addEventListener("click", ev => {
 });
 
 resize();
-pollFrame();
+// If binframe.js failed to load (dropped subresource fetch, OTA restart
+// mid-page-load), decodeBinFrame is undefined — pollFrameBin would throw and
+// retry forever mistaking it for a network error. Start on JSON instead.
+if (typeof decodeBinFrame !== "function") transport = "json";
+if (transport === "bin") pollFrameBin(); else pollFrame();
 pollStatus();

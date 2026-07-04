@@ -20,9 +20,10 @@ type Fanout struct {
 	mu     sync.RWMutex
 	latest engine.Frame
 	has    bool
+	wake   chan struct{} // closed+replaced under mu on every fresh snapshot
 }
 
-func New() *Fanout { return &Fanout{} }
+func New() *Fanout { return &Fanout{wake: make(chan struct{})} }
 
 // Run polls the source at the display cadence (spec 07 §8: 50 ms hard
 // minimum) and snapshots fresh frames. Blocks; run as a goroutine.
@@ -41,7 +42,36 @@ func (fo *Fanout) Run(src Source, stop <-chan struct{}) {
 			fo.mu.Lock()
 			copyFrame(&fo.latest, f)
 			fo.has = true
+			close(fo.wake) // wake WaitNext parkers; close never blocks,
+			fo.wake = make(chan struct{}) // so a stuck waiter can't stall this tick
 			fo.mu.Unlock()
+		}
+	}
+}
+
+// WaitNext parks until the fan-out snapshots a frame with Seq != last,
+// returning the new Seq, or until timeout elapses, returning whatever Seq is
+// current (possibly last, possibly 0 if nothing has been published). No lock
+// is held while parked, and Run can never block on a parker (it only closes
+// the wake channel). The timer is created once, not per wake iteration.
+func (fo *Fanout) WaitNext(last uint64, timeout time.Duration) uint64 {
+	deadline := time.NewTimer(timeout)
+	defer deadline.Stop()
+	for {
+		fo.mu.RLock()
+		var seq uint64
+		if fo.has {
+			seq = fo.latest.Seq
+		}
+		wake := fo.wake
+		fo.mu.RUnlock()
+		if seq != 0 && seq != last {
+			return seq
+		}
+		select {
+		case <-wake:
+		case <-deadline.C:
+			return seq
 		}
 	}
 }
