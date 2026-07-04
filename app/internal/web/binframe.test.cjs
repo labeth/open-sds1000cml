@@ -90,6 +90,16 @@ function msg(flags, hdrObj, payload) {
   check("no shared buffers", b.c1[0] === 1);
 }
 
+
+// raw flag (0x10) forces the c1/c2 layout even when is_env is set — a band
+// change to envelope mid-capture must decode (and be refused by the stacker),
+// not fail decode and spin the raw loop.
+{
+  const pay = new Uint8Array([1, 2, 3, 4, 9, 8, 7, 6]);
+  const f = decodeBinFrame(msg(0x10, { seq: 12, cols: 4, is_env: true, sample_s: 1e-8 }, pay));
+  check("raw env decodes as c1/c2", f && f.is_env === true && [...f.c1].join() === "1,2,3,4" && f.sample_s === 1e-8);
+}
+
 if (fails) {
   console.log(fails + " FAILURES");
   process.exit(1);

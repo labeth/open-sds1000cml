@@ -13,10 +13,12 @@
 // size not matching the header's cols/head/tail). Callers treat null as
 // "protocol failure": fall back to the JSON poll rather than render garbage.
 const BIN_MAGIC = 0xf5;
+const BIN_FLAG_RAW = 0x10;
 
 function decodeBinFrame(buf) {
   const u8 = new Uint8Array(buf);
   if (u8.length < 8 || u8[0] !== BIN_MAGIC) return null;
+  const flags = u8[1];
   const hlen = new DataView(buf).getUint32(4, true);
   if (hlen < 2 || 8 + hlen > u8.length) return null;
   let f;
@@ -30,7 +32,10 @@ function decodeBinFrame(buf) {
   if (f.unchanged) return pay.length === 0 ? f : null;
   const cols = f.cols | 0, head = f.head | 0, tail = f.tail | 0;
   if (cols <= 0 || head < 0 || tail < 0 || head + tail > cols) return null;
-  if (f.is_env) {
+  // RAW-shape payload is ALWAYS c1+c2 (even when the frame is an envelope —
+  // is_env stays set in the header so the stacker can refuse the band, but
+  // the layout must not switch to the 4-segment env decode).
+  if (f.is_env && !(flags & BIN_FLAG_RAW)) {
     if (pay.length !== 4 * cols) return null;
     const seg = (i) => {
       const out = new Int16Array(cols);
@@ -53,4 +58,4 @@ function decodeBinFrame(buf) {
   return f;
 }
 
-if (typeof module !== "undefined") module.exports = { decodeBinFrame, BIN_MAGIC };
+if (typeof module !== "undefined") module.exports = { decodeBinFrame, BIN_MAGIC, BIN_FLAG_RAW };

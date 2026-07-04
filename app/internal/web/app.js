@@ -346,6 +346,11 @@ function drawRefs(g) {
   for (const slot of ["A", "B"]) {
     const r = refs[slot];
     if (!r || !r.show) continue;
+    // A superres model fit spans the raw record it was fit on; drawing it
+    // index-proportionally over a different time base would silently show a
+    // time-compressed curve. Hide it unless the spans match (~1%).
+    if (r.srSpanS && frame && frame.col_span_s &&
+        Math.abs(r.srSpanS - frame.col_span_s) > 0.01 * r.srSpanS) continue;
     if (r.c1) drawRefTrace(g, r.c1, r.vpc1, r.off1, frame ? frame.vpc1 : r.vpc1, frame ? frame.off1_v || 0 : 0, REFCOL[slot], st ? st.zoom1 : 1);
     if (r.c2) drawRefTrace(g, r.c2, r.vpc2, r.off2, frame ? frame.vpc2 : r.vpc2, frame ? frame.off2_v || 0 : 0, REFCOL[slot], st ? st.zoom2 : 1);
   }
@@ -353,9 +358,19 @@ function drawRefs(g) {
 
 function saveRef(slot) {
   if (!frame) return;
+  // Cap stored refs (a superres stack reaches 1.3M points; drawRefTrace
+  // strokes per sample, so an uncapped ref would jank every redraw).
+  const cap = arr => {
+    if (!arr) return null;
+    const stride = Math.ceil(arr.length / 65536);
+    if (stride <= 1) return Array.from(arr);
+    const out = [];
+    for (let i = 0; i < arr.length; i += stride) out.push(arr[i]);
+    return out;
+  };
   refs[slot] = {
-    c1: (view.c1 && frame.c1) ? Array.from(frame.c1) : null,
-    c2: (view.c2 && frame.c2) ? Array.from(frame.c2) : null,
+    c1: view.c1 ? cap(frame.c1) : null,
+    c2: view.c2 ? cap(frame.c2) : null,
     vpc1: frame.vpc1 || 1 / 32, vpc2: frame.vpc2 || 1 / 32,
     off1: frame.off1_v || 0, off2: frame.off2_v || 0,
     show: true,
@@ -446,11 +461,36 @@ function selColorCh(ch, i) {
 // redraws (wheel/drag/cursor) and the peak-list refresh reuse the spectrum
 // instead of re-running a full-record FFT on the same data.
 const specMemo = { 1: { src: null, spec: null }, 2: { src: null, spec: null } };
+// gapFill trims the -1 head/tail margins and linearly interpolates interior
+// gaps so the FFT sees a UNIFORM time grid. Filtering the gaps out (the old
+// behavior) compacts time and scales every reported frequency by the fill
+// factor — badly wrong on a partially-filled superres stack, subtly wrong on
+// a deep record's margins. Trimming doesn't change the sample interval, so
+// peakNyq() (= 1/(2·dt)) stays correct.
+function gapFill(src) {
+  let a = 0, b = src.length - 1;
+  while (a <= b && src[a] < 0) a++;
+  while (b >= a && src[b] < 0) b--;
+  if (b - a < 32) return null;
+  const out = new Float64Array(b - a + 1);
+  let last = -1;
+  for (let i = a; i <= b; i++) {
+    if (src[i] < 0) continue;
+    if (last >= 0 && last < i - 1) {
+      const v0 = out[last - a], v1 = src[i];
+      for (let j = last + 1; j < i; j++) out[j - a] = v0 + (v1 - v0) * (j - last) / (i - last);
+    }
+    out[i - a] = src[i];
+    last = i;
+  }
+  return out;
+}
 function spectrumFor(ch) {
   const src = peakSrcCh(ch), m = specMemo[ch];
   if (m.src === src) return m.spec;
   m.src = src;
-  m.spec = spectrum(src.filter(v => v >= 0), peakNyq());
+  const g = gapFill(src);
+  m.spec = g ? spectrum(g, peakNyq()) : null;
   return m.spec;
 }
 function computePeaksCh(ch) {
@@ -1517,7 +1557,7 @@ function runAutodetect() {
 // frozen-synthetic-frame path as captures, so zoom/cursors/CSV/PNG all work
 // on the stacked waveform, and "fit model" writes the analytic sum-of-
 // sinusoids reconstruction into REF B for overlay comparison.
-const sr = { st: null, armed: false, gen: 0, lastSeq: 0, meta: null, t0: 0, durS: 60, lastUi: 0 };
+const sr = { st: null, armed: false, gen: 0, lastSeq: 0, meta: null, t0: 0, durS: 60, lastUi: 0, ch: 1 };
 
 function srStatus(msg) { $("srStats").textContent = msg; }
 
@@ -1526,7 +1566,8 @@ function srUpdateStats(final) {
   if (!final && now - sr.lastUi < 500) return;
   sr.lastUi = now;
   if (!sr.st || !sr.st.frames) { srStatus("waiting for frames…"); return; }
-  const res = srResult(sr.st);
+  // Strided stats-only reduction: a full one over 1.3M bins each tick janks.
+  const res = srResult(sr.st, { statsOnly: true, stride: Math.max(1, Math.ceil(sr.st.nbins / 65536)) });
   const el = ((now - sr.t0) / 1000).toFixed(0);
   const rate = res.effRateSa >= 1e9 ? (res.effRateSa / 1e9).toFixed(2) + " GSa/s" : (res.effRateSa / 1e6).toFixed(0) + " MSa/s";
   srStatus(`${res.frames} stacked · ${res.rejected} rej` + (res.clipped ? ` (${res.clipped} clip)` : "") +
@@ -1536,18 +1577,25 @@ function srUpdateStats(final) {
 }
 
 function srIngest(f) {
-  const sig = +$("srCh").value === 2 ? f.c2 : f.c1;
+  if (+$("srCh").value !== sr.ch) { srStop("channel changed — stack kept"); return; }
+  const sig = sr.ch === 2 ? f.c2 : f.c1;
   if (!sig || f.is_env) { srStop("band became unsupported"); return; }
+  const vpc = (sr.ch === 2 ? f.vpc2 : f.vpc1) || 1 / 32;
   if (!sr.st) {
     const K = +$("srK").value || 32;
     sr.st = srNew(f.cols, K);
     sr.st.sampleS = f.sample_s || 0;
-    sr.st.vpc = (+$("srCh").value === 2 ? f.vpc2 : f.vpc1) || 1 / 32;
-    sr.st.offV = (+$("srCh").value === 2 ? f.off2_v : f.off1_v) || 0;
+    sr.st.vpc = vpc;
+    sr.st.offV = (sr.ch === 2 ? f.off2_v : f.off1_v) || 0;
     sr.st.edgeX = f.edge_x;
     sr.meta = { tdiv_s: f.tdiv_s, cols: f.cols, sample_s: f.sample_s };
   } else if (f.cols !== sr.meta.cols || f.sample_s !== sr.meta.sample_s) {
     srStop("acquisition changed (t/div or depth) — stack kept");
+    return;
+  } else if (vpc !== sr.st.vpc) {
+    // NCC is gain-invariant and the drift fit clamps >10×, so a V/div change
+    // would silently corrupt code-space stacking — stop instead.
+    srStop("vertical scale changed — stack kept");
     return;
   }
   srFeed(sr.st, sig, { maxLag: 8 });
@@ -1558,18 +1606,29 @@ function srIngest(f) {
   srUpdateStats(false);
 }
 
+let srFails = 0;
 async function srLoop(gen) {
   if (!sr.armed || gen !== sr.gen) return;
   try {
     const r = await fetch("/api/frame.bin?since=" + sr.lastSeq + "&waitms=1000&raw=1");
     if (!r.ok) throw new Error("http " + r.status);
     const f = decodeBinFrame(await r.arrayBuffer());
-    if (f && !f.unchanged && f.seq !== sr.lastSeq) {
+    if (f === null) throw new Error("decode");
+    // Re-check AFTER the await: the fetch parks server-side for up to 1 s
+    // and a reset/stop click mid-flight must not resurrect the stack.
+    if (!sr.armed || gen !== sr.gen) return;
+    srFails = 0;
+    if (!f.unchanged && f.seq !== sr.lastSeq) {
       sr.lastSeq = f.seq;
       srIngest(f);
     }
-  } catch (e) { /* transient — next tick retries */ }
-  setTimeout(() => srLoop(gen), 10);
+    setTimeout(() => srLoop(gen), 10);
+  } catch (e) {
+    // Failure (outage, protocol) — back off like the display loop instead of
+    // hammering a struggling device at the 10 ms tick.
+    srFails++;
+    setTimeout(() => srLoop(gen), Math.min(2000, 250 * srFails) + 250 * Math.random());
+  }
 }
 
 function srStop(why) {
@@ -1593,6 +1652,7 @@ $("srArm").onclick = () => {
   }
   sr.st = null; sr.meta = null; sr.lastSeq = 0;
   sr.durS = +$("srDur").value;
+  sr.ch = +$("srCh").value || 1; // latched — a mid-capture change stops the stack
   sr.t0 = performance.now();
   sr.armed = true;
   $("srArm").textContent = "STOP";
@@ -1619,6 +1679,7 @@ $("srShow").onclick = () => {
   };
   frozen = true; $("freeze").classList.add("on");
   view.win.a = 0; view.win.b = 1; userZoomed = true; // whole stack; wheel-zoom into the detail
+  lastSig = "superres"; // poison the acq signature so unfreezing re-homes onto live
   computeDecode(); redraw(); updateMeas(); updateCursors();
   srUpdateStats(true);
 };
@@ -1631,6 +1692,7 @@ $("srFit").onclick = () => {
   refs.B = {
     c1: Array.from(fit.synth(Math.min(res.mean.length, 16384))),
     c2: null, vpc1: sr.st.vpc, vpc2: 1 / 32, off1: sr.st.offV, off2: 0, show: true,
+    srSpanS: sr.st.n * sr.st.sampleS, // only overlay on a matching time base
   };
   updateRefRows(); redraw();
   srStatus("model → REF B: " + fit.freqs.map(f => eng(f, "Hz", 3)).join(", "));

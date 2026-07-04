@@ -96,8 +96,11 @@ function srAlign(ref, sig, maxLag) {
   }
   let shift = bestK;
   let method = "int";
-  // (a) edge-crossing refinement about the integer alignment.
-  const mid = (rm + sm) / 2;
+  // (a) edge-crossing refinement about the integer alignment. The crossing
+  // level is the ROBUST mid-swing (p10/p90 midpoint of the reference) — the
+  // plain mean sits near the baseline for narrow-duty pulses, where baseline
+  // noise crossings would flood the refinement.
+  const mid = srMidSwing(ref);
   const re = srCrossings(ref, mid, true).concat(srCrossings(ref, mid, false));
   if (re.length >= 4) {
     const se = srCrossings(sig, mid, true).concat(srCrossings(sig, mid, false));
@@ -136,12 +139,32 @@ function srAlign(ref, sig, maxLag) {
   return { shift, score: best, method };
 }
 
-// srGainOffset fits sig ≈ g·ref + b by least squares (slow drift
-// normalization). Returns {g, b}; callers divide out g and subtract b.
-function srGainOffset(ref, sig) {
-  const n = Math.min(ref.length, sig.length);
+// srMidSwing returns the robust mid-swing level of a trace: the midpoint of
+// the p10/p90 quantiles (sampled with a stride on long records). Unlike the
+// mean, it stays mid-amplitude for any duty cycle.
+function srMidSwing(sig) {
+  const stride = Math.max(1, Math.floor(sig.length / 4096));
+  const s = [];
+  for (let i = 0; i < sig.length; i += stride) s.push(sig[i]);
+  s.sort((a, b) => a - b);
+  return (s[Math.floor(s.length * 0.1)] + s[Math.floor(s.length * 0.9)]) / 2;
+}
+
+// srGainOffset fits sig ≈ g·ref + b by least squares over the ALIGNED
+// overlap — `lag` is the frame's integer shift (sig[i+lag] pairs with
+// ref[i]). Fitting unaligned would make the slope the autocorrelation at the
+// lag (g = cos(2π·lag/period) for a sine): a systematic amplitude shrink for
+// short-period signals. Returns {g, b}; callers divide out g and subtract b.
+function srGainOffset(ref, sig, lag) {
+  lag = lag | 0;
+  const lo = Math.max(0, -lag), hi = Math.min(ref.length, sig.length - lag);
+  const n = hi - lo;
+  if (n < 16) return { g: 1, b: 0 };
   let sr = 0, ss = 0, srr = 0, srs = 0;
-  for (let i = 0; i < n; i++) { sr += ref[i]; ss += sig[i]; srr += ref[i] * ref[i]; srs += ref[i] * sig[i]; }
+  for (let i = lo; i < hi; i++) {
+    const r = ref[i], s = sig[i + lag];
+    sr += r; ss += s; srr += r * r; srs += r * s;
+  }
   const den = n * srr - sr * sr;
   if (den <= 0) return { g: 1, b: 0 };
   const g = (n * srs - sr * ss) / den;
@@ -150,6 +173,10 @@ function srGainOffset(ref, sig) {
 }
 
 // srNew allocates a stack state: n input samples drizzled onto n*K fine bins.
+// sumA/cntA hold the odd-numbered frames — the odd/even HALF-STACK split
+// measures the stacked noise honestly (astro practice): rms((meanA−meanB)/2)
+// includes quantization floor and correlated alignment error, which the
+// naive σ/√cnt would silently assume away.
 function srNew(n, K) {
   const nbins = n * K;
   return {
@@ -157,9 +184,11 @@ function srNew(n, K) {
     sum: new Float64Array(nbins),
     sum2: new Float64Array(nbins),
     cnt: new Uint32Array(nbins),
+    sumA: new Float64Array(nbins),
+    cntA: new Uint32Array(nbins),
     frames: 0, rejected: 0, clipped: 0,
     scores: [], shifts: [],
-    ref: null, // Float32Array reference (first accepted frame)
+    ref: null, // Float32Array reference (first accepted frame with signal)
     sampleS: 0, vpc: 1 / 32, offV: 0, edgeX: -1,
   };
 }
@@ -173,6 +202,12 @@ function srFeed(st, sig, opts) {
   if (sig.length < st.n) return "rejected:short";
   if (srClipped(sig)) { st.clipped++; st.rejected++; return "rejected:clip"; }
   if (!st.ref) {
+    // Reference quality gate: a flat/untriggered first frame would zero the
+    // NCC denominator and poison the whole capture (everything after scores
+    // 0 and is rejected). Wait for a frame with real signal.
+    let lo = 255, hi = 0;
+    for (let i = 0; i < st.n; i++) { const v = sig[i]; if (v < lo) lo = v; if (v > hi) hi = v; }
+    if (hi - lo < 12) { st.rejected++; return "rejected:flat"; }
     st.ref = Float32Array.from(sig.subarray ? sig.subarray(0, st.n) : sig.slice(0, st.n));
     // The reference frame itself stacks at shift 0.
     srAccum(st, st.ref, 0);
@@ -196,10 +231,13 @@ function srFeed(st, sig, opts) {
   if (al.score < thr) { st.rejected++; return "rejected:score"; }
   let frame = sig;
   if (opts.normalize !== false) {
-    const { g, b } = srGainOffset(st.ref, sig);
+    const { g, b } = srGainOffset(st.ref, sig, Math.round(al.shift));
     if (g !== 1 || b !== 0) {
       const f = new Float32Array(st.n);
-      for (let i = 0; i < st.n; i++) f[i] = (sig[i] - b) / g;
+      for (let i = 0; i < st.n; i++) {
+        const v = (sig[i] - b) / g;
+        f[i] = v < 0 ? 0 : v; // codes can't go negative; -1 is the gap sentinel
+      }
       frame = f;
     }
   }
@@ -211,46 +249,77 @@ function srFeed(st, sig, opts) {
 }
 
 // srAccum drizzles one aligned frame onto the fine grid: sample i lands at
-// fine bin round((i − shift)·K). Bins off the grid are dropped.
+// fine bin round((i − shift)·K). Bins off the grid are dropped. Odd frames
+// also land in the A half-stack (see srNew).
 function srAccum(st, sig, shift) {
   const K = st.K, nb = st.nbins, n = st.n;
   const sum = st.sum, sum2 = st.sum2, cnt = st.cnt;
+  const odd = (st.frames & 1) === 1;
+  const sumA = st.sumA, cntA = st.cntA;
   for (let i = 0; i < n; i++) {
     const b = Math.round((i - shift) * K);
     if (b < 0 || b >= nb) continue;
     const v = sig[i];
     sum[b] += v; sum2[b] += v * v; cnt[b]++;
+    if (odd) { sumA[b] += v; cntA[b]++; }
   }
 }
 
 // srResult reduces the accumulators to the stacked waveform + honest stats.
 // mean: Float32Array of code-space values, -1 in unfilled bins (pen-up, the
 // convention every renderer/exporter already understands).
-function srResult(st) {
+//
+// sigmaStack is MEASURED, not assumed: half the rms difference between the
+// odd/even half-stack means. σ/√cnt (reported as sigmaStackTheory) is what
+// independent Gaussian noise would give — the measured value also carries
+// the quantization floor and correlated alignment error, so bitsGained
+// cannot over-claim on a quiet (sub-LSB-noise) signal.
+//
+// opts.statsOnly skips the mean array; opts.stride subsamples the bins for
+// the sigma medians (the live 500 ms stats tick uses both — a full reduction
+// over 1.3M bins with two million-element sorts would jank the UI).
+function srResult(st, opts) {
+  opts = opts || {};
   const nb = st.nbins;
-  const mean = new Float32Array(nb);
-  let filled = 0;
-  const sigSingles = [], sigStacks = [];
+  const stride = Math.max(1, opts.stride | 0 || 1);
+  const mean = opts.statsOnly ? null : new Float32Array(nb);
+  let filled = 0, scanned = 0;
+  const sigSingles = [], halves = [];
   for (let b = 0; b < nb; b++) {
     const c = st.cnt[b];
-    if (c === 0) { mean[b] = -1; continue; }
-    const m = st.sum[b] / c;
-    mean[b] = m;
+    if (mean) mean[b] = c === 0 ? -1 : st.sum[b] / c;
+    if (b % stride !== 0) continue;
+    scanned++;
+    if (c === 0) continue;
     filled++;
-    if (c >= 3) {
+    const m = st.sum[b] / c;
+    if (c >= 4) {
       const v = Math.max(0, st.sum2[b] / c - m * m);
       sigSingles.push(Math.sqrt(v));
-      sigStacks.push(Math.sqrt(v / c));
+      const ca = st.cntA[b], cb = c - ca;
+      if (ca >= 2 && cb >= 2) {
+        const ma = st.sumA[b] / ca, mb = (st.sum[b] - st.sumA[b]) / cb;
+        halves.push((ma - mb) / 2);
+      }
     }
   }
   const med = a => { if (!a.length) return 0; const s = [...a].sort((x, y) => x - y); return s[s.length >> 1]; };
-  const sigmaSingle = med(sigSingles), sigmaStack = med(sigStacks);
+  const sigmaSingle = med(sigSingles);
+  let sigmaStack = 0;
+  if (halves.length >= 16) {
+    let s2 = 0;
+    for (const d of halves) s2 += d * d;
+    sigmaStack = Math.sqrt(s2 / halves.length);
+  }
+  const cnts = [];
+  for (let b = 0; b < nb; b += stride) if (st.cnt[b] > 0) cnts.push(st.cnt[b]);
+  const sigmaStackTheory = sigmaSingle > 0 && cnts.length ? sigmaSingle / Math.sqrt(med(cnts)) : 0;
   const bitsGained = sigmaStack > 0 && sigmaSingle > 0 ? Math.log2(sigmaSingle / sigmaStack) : 0;
   return {
     mean,
-    fill: filled / nb,
+    fill: filled / Math.max(1, scanned),
     frames: st.frames, rejected: st.rejected, clipped: st.clipped,
-    sigmaSingle, sigmaStack, bitsGained,
+    sigmaSingle, sigmaStack, sigmaStackTheory, bitsGained,
     effBits: 8 + bitsGained,
     fineDtS: st.sampleS > 0 ? st.sampleS / st.K : 0,
     effRateSa: st.sampleS > 0 ? st.K / st.sampleS : 0,
