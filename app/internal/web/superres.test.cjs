@@ -374,5 +374,41 @@ function frame(n, period, shift, noise, amp, harmonics) {
   check("iter4: edge blur <= 20% (node bound; device guard 10%)", rI <= rD * 1.2, `rise ${rD} -> ${rI} fine bins`);
 }
 
+
+// ---- iteration 5: Catmull-Rom vs linear resampling — sharper passband at
+// the same contributor count; noise within 10%, no spurious ringing.
+{
+  const n = 1024, period = 256, K = 16, noise = 2.0, N = 200;
+  const mk = (kernel) => {
+    const st = srNew(n, K);
+    st.kernel = kernel;
+    st.sampleS = 1e-8;
+    for (let k = 0; k < N; k++) {
+      srFeed(st, frame(n, period, (rnd() - 0.5) * 4, noise, 55, 31), { maxLag: 8 });
+    }
+    return srResult(st);
+  };
+  const rise1090 = (mean) => {
+    const nb = mean.length;
+    let lo = 1e9, hi = -1e9;
+    for (let b = nb >> 2; b < (nb * 3) >> 2; b++) { const v = mean[b]; if (v < 0) continue; if (v < lo) lo = v; if (v > hi) hi = v; }
+    const l10 = lo + 0.1 * (hi - lo), l90 = lo + 0.9 * (hi - lo);
+    for (let b = nb >> 2; b < (nb * 3) >> 2; b++) {
+      if (mean[b] < l10 && mean[b + 1] >= l10) {
+        for (let e = b + 1; e < nb; e++) {
+          if (mean[e] >= l90) return e - b;
+          if (mean[e] < l10) break;
+        }
+      }
+    }
+    return -1;
+  };
+  const lin = mk("interp"), cub = mk("cubic");
+  const rL = rise1090(lin.mean), rC = rise1090(cub.mean);
+  check("iter5: cubic rise <= linear rise", rC > 0 && rC <= rL, `linear ${rL} -> cubic ${rC} fine bins`);
+  check("iter5: cubic noise within 15% of linear", cub.sigmaStack < lin.sigmaStack * 1.15,
+    `sigma ${lin.sigmaStack.toFixed(4)} -> ${cub.sigmaStack.toFixed(4)}`);
+}
+
 if (fails) { console.log(fails + " FAILURES"); process.exit(1); }
 console.log("ALL PASS");

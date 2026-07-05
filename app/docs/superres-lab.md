@@ -115,6 +115,21 @@ jittered sample positions). Cost: linear interpolation low-passes at
 sinc²(f/fs_raw) — the stacked edge may soften. New guard metric M7 = 10–90%
 rise of the stacked edge in fine bins; keep only if M7 regresses ≤10%.
 
-Device result: PENDING.
+Device result (v0.0.1-12): interp M1 0.071 · M2 3.7% · M3 0.0003 · M4
+0.0164 · M5 +4.22 (12.2 eff bits at 25 s!) · M6 324 · M7 101 fine bins.
+Same-build drizzle control: M3 0.0406 · M4 0.0866 · M5 +2.03 · M7 95.
+**KEPT** — target M4 −81% (5.3× same-day A/B), M5 +2.2 bits, ribbon
+extinct (M3 −99%), guard M7 +6.3% ≤ 10%. The √K under-averaging hypothesis
+was the dominant artifact mechanism all along.
 
-## Iteration 5 — TBD
+## Iteration 5 — Catmull-Rom resampling (target M7; guard M4 ≤ +10%)
+
+Hypothesis: iteration 4's +6% edge blur is the linear interpolant's sinc²
+roll-off. A cubic Catmull-Rom kernel (4 raw samples) has a flatter passband
+— it should recover most of the rise-time cost at the same
+every-frame-every-bin contributor count. Risk: mild ringing at sharp edges
+(bounded, Catmull-Rom overshoot ≤ ~7% of a step) — but the REAL edge is
+analog-bandwidth-limited (~9 raw samples 10-90), far from the kernel's
+ringing regime. Keep if M7 improves ≥3% with M4/M5 within 10%.
+
+Device result: PENDING.

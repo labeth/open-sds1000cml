@@ -319,19 +319,35 @@ function srAccum(st, sig, shift) {
   const sum = st.sum, sum2 = st.sum2, cnt = st.cnt;
   const odd = (st.frames & 1) === 1;
   const sumA = st.sumA, cntA = st.cntA;
-  if (st.kernel === "interp") {
-    // Resample THIS frame at every fine bin (linear interpolation between
-    // its two neighbouring raw samples): every bin averages every frame, so
-    // per-bin noise drops ~√K versus deposit kernels. The frame's raw
+  if (st.kernel === "interp" || st.kernel === "cubic") {
+    // Resample THIS frame at every fine bin: every bin averages every frame,
+    // so per-bin noise drops ~√K versus deposit kernels. The frame's raw
     // samples sit at fine position (i − shift)·K, so bin b reads the frame
-    // at raw index b/K + shift.
+    // at raw index b/K + shift. "cubic" uses a Catmull-Rom kernel — flatter
+    // passband than linear, recovering most of the sinc² edge softening at
+    // the same contributor count (lab iteration 5).
     const invK = 1 / K;
+    const cubic = st.kernel === "cubic";
     for (let b = 0; b < nb; b++) {
       const t = b * invK + shift;
       const i0 = Math.floor(t);
-      if (i0 < 0 || i0 + 1 >= n) continue;
+      if (i0 < 1 || i0 + 2 >= n) {
+        if (i0 < 0 || i0 + 1 >= n) continue;
+        // record edges: fall back to linear
+        const w = t - i0;
+        const v = sig[i0] * (1 - w) + sig[i0 + 1] * w;
+        sum[b] += v; sum2[b] += v * v; cnt[b]++;
+        if (odd) { sumA[b] += v; cntA[b]++; }
+        continue;
+      }
       const w = t - i0;
-      const v = sig[i0] * (1 - w) + sig[i0 + 1] * w;
+      let v;
+      if (cubic) {
+        const p0 = sig[i0 - 1], p1 = sig[i0], p2 = sig[i0 + 1], p3 = sig[i0 + 2];
+        v = p1 + 0.5 * w * (p2 - p0 + w * (2 * p0 - 5 * p1 + 4 * p2 - p3 + w * (3 * (p1 - p2) + p3 - p0)));
+      } else {
+        v = sig[i0] * (1 - w) + sig[i0 + 1] * w;
+      }
       sum[b] += v; sum2[b] += v * v; cnt[b]++;
       if (odd) { sumA[b] += v; cntA[b]++; }
     }
