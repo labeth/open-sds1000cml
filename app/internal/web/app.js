@@ -621,6 +621,30 @@ function drawFFT() {
   ctx.fillStyle = "#9fb0c0"; ctx.font = (12 * dpr) + "px system-ui";
   ctx.fillText("FFT  " + eng(fw.a * nyq, "Hz", 3) + " – " + eng(fw.b * nyq, "Hz", 3) +
     (fspan < 0.999 ? "  · drag/wheel to zoom, double-click resets" : "   (dB re each channel's own peak)"), 8 * dpr, 16 * dpr);
+  // Physics markers on a superres stack: the fine grid extends the axis K×
+  // past the RAW Nyquist, but no real signal exists beyond it — and the
+  // analog front end (~100 MHz) bounds trustworthy amplitude. Mark both so
+  // the extended axis can't mislead.
+  if (sr.showing && sr.st && sr.st.sampleS > 0) {
+    const marks = [
+      { f: 1 / (2 * sr.st.sampleS), label: "raw Nyquist — no real content beyond", col: "rgba(232,96,76,.8)" },
+      { f: 100e6, label: "~analog BW 100 MHz", col: "rgba(245,162,76,.7)" },
+    ];
+    ctx.font = (10 * dpr) + "px system-ui";
+    for (const mk2 of marks) {
+      const frac = mk2.f / nyq;
+      if (frac <= fw.a || frac >= fw.b) continue;
+      const x = (frac - fw.a) / fspan * (CW - 1);
+      ctx.strokeStyle = mk2.col; ctx.lineWidth = dpr; ctx.setLineDash([8 * dpr, 5 * dpr]);
+      ctx.beginPath(); ctx.moveTo(x + .5, 22 * dpr); ctx.lineTo(x + .5, CH); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = mk2.col;
+      ctx.save();
+      ctx.translate(x - 4 * dpr, CH * 0.45); ctx.rotate(-Math.PI / 2);
+      ctx.fillText(mk2.label, 0, 0);
+      ctx.restore();
+    }
+  }
   drawFFTHover();
 }
 
