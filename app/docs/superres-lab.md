@@ -132,4 +132,25 @@ every-frame-every-bin contributor count. Risk: mild ringing at sharp edges
 analog-bandwidth-limited (~9 raw samples 10-90), far from the kernel's
 ringing regime. Keep if M7 improves ≥3% with M4/M5 within 10%.
 
-Device result: PENDING.
+Device result (v0.0.1-13, kernel=cubic): M4 0.0185 (+12.8% vs interp) ·
+M5 +4.24 · M7 98 vs 101 (−3.0%). **ROLLED BACK** — the target improvement
+is at the threshold while the M4 guard is violated; the device edge is
+analog-bandwidth-limited (~9 raw samples 10–90), so the kernel's passband
+isn't the bottleneck, exactly as the node ground truth suggested. The cubic
+kernel stays selectable (st.kernel="cubic") but off by default.
+
+## Result of the loop
+
+| | M1 | M2 | M3 rough | M4 σ_stack | M5 bits | M7 rise |
+|---|---|---|---|---|---|---|
+| baseline (nearest, v0.0.1-9) | 0.122 | 74% | 0.198 | 0.143 | +1.6 | — |
+| final (interp, v0.0.1-12/13) | 0.071 | 3.7% | **0.0003** | **0.0164** | **+4.22** | 101 |
+
+Two of five iterations kept (1: linear drizzle; 4: interpolated resampling),
+three rolled back with documented reasons (2, 3: offset dither variants —
+the quantizer was already noise-dithered at σ≈0.45 codes and the visible
+artifact was never the staircase; 5: cubic kernel — analog bandwidth, not
+kernel passband, limits the edge). Net effect on the artifact the loop was
+opened for: the zig-zag ribbon is extinct (roughness −99.8%), stacked noise
+is 8.7× lower, and a 25 s stack now measures **12.2 effective bits**
+(+4.2 over the 8-bit ADC), rising with capture time as ½·log₂(frames).
