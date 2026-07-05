@@ -105,17 +105,32 @@ function component(samples, cyclesPerLen) {
   // only true for an INTEGER number of cycles — for a non-integer cycle count (or
   // gaps) it overestimates the amplitude, so subtracting it to null a carrier
   // would OVERSHOOT. Solving the 2×2 normal equations is correct in all cases.
+  // Evaluate cos(w·i)/sin(w·i) by incremental phasor rotation rather than two
+  // trig calls per sample — the fit and synth loops each run over up to ~1.3M
+  // samples on a superres stack. Re-anchor to exact trig every 1024 steps so
+  // float drift stays ~1e-13 (negligible against 8-bit codes) and can't build up
+  // across a long record.
+  const cw = Math.cos(w), sw = Math.sin(w);
   let scc = 0, sss = 0, scs = 0, dc = 0, ds = 0;
-  for (let i = 0; i < M; i++) {
-    const v = samples[i]; if (v < 0) continue;
-    const c = Math.cos(w * i), s = Math.sin(w * i), d = v - mean;
-    scc += c * c; sss += s * s; scs += c * s; dc += d * c; ds += d * s;
+  { let c = 1, s = 0;
+    for (let i = 0; i < M; i++) {
+      if ((i & 1023) === 0) { const a = w * i; c = Math.cos(a); s = Math.sin(a); }
+      const v = samples[i];
+      if (v >= 0) { const d = v - mean; scc += c * c; sss += s * s; scs += c * s; dc += d * c; ds += d * s; }
+      const nc = c * cw - s * sw; s = s * cw + c * sw; c = nc;
+    }
   }
   const det = scc * sss - scs * scs;
   let A = 0, B = 0;
   if (Math.abs(det) > 1e-9) { A = (dc * sss - ds * scs) / det; B = (ds * scc - dc * scs) / det; }
   const out = new Array(M);
-  for (let i = 0; i < M; i++) out[i] = mean + A * Math.cos(w * i) + B * Math.sin(w * i);
+  { let c = 1, s = 0;
+    for (let i = 0; i < M; i++) {
+      if ((i & 1023) === 0) { const a = w * i; c = Math.cos(a); s = Math.sin(a); }
+      out[i] = mean + A * c + B * s;
+      const nc = c * cw - s * sw; s = s * cw + c * sw; c = nc;
+    }
+  }
   return out;
 }
 

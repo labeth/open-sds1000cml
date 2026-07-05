@@ -304,11 +304,46 @@ function drawChannelMarkers(g) {
   g.textBaseline = "alphabetic";
 }
 
+// component() is the per-redraw hot path on big stacks: a full-record tone fit
+// (2 trig/sample over up to ~1.3M samples) per selected peak, run by BOTH the
+// residual math and the Y-T peak overlay. On a static stack neither the source
+// data nor the picked frequencies change as you pan/zoom/hover — only the view
+// window — so memoize each fitted tone by (source-array identity, cycles-per-
+// record). All the interactive redraws then hit the cache; it self-clears when
+// the source array changes (new live frame, re-stack, or leaving stack view),
+// and the shared key dedups the overlay and residual calls onto one fit.
+let compMemo = { src: null, map: new Map() };
+function componentMemo(src, cyclesPerLen) {
+  if (compMemo.src !== src) { compMemo.src = src; compMemo.map.clear(); }
+  const m = compMemo.map;
+  if (m.has(cyclesPerLen)) return m.get(cyclesPerLen);
+  const out = component(src, cyclesPerLen);
+  if (m.size >= 16) m.delete(m.keys().next().value); // bound memory: evict oldest
+  m.set(cyclesPerLen, out);
+  return out;
+}
+
 // Math trace: arithmetic on C1/C2, or a RESIDUAL — a channel minus its selected
 // FFT peaks — so you can null out a carrier and see the minor waves underneath.
 let mathFn = "off";
+// The math trace rebuilds a full-length array (a copy + a subtraction loop per
+// selected tone for the residual) — cheap live, but ~1.3M points on a stack, and
+// drawMath() runs it every redraw. It only changes when the source arrays, the
+// math mode, or (for the residual) the picked frequencies change, so memoize the
+// result and let pan/zoom/hover reuse it. Same self-clearing (by-identity) scheme
+// as componentMemo.
+let mathMemo = { c1: null, c2: null, fn: null, sel: "", out: null };
 function computeMath() {
   if (mathFn === "off" || !frame || frame.is_env || !frame.c1) return null;
+  const selSig = (mathFn === "res1")
+    ? fftCh[1].sel.join(",") : (mathFn === "res2") ? fftCh[2].sel.join(",") : "";
+  if (mathMemo.c1 === frame.c1 && mathMemo.c2 === frame.c2 &&
+      mathMemo.fn === mathFn && mathMemo.sel === selSig) return mathMemo.out;
+  const out = computeMathRaw();
+  mathMemo = { c1: frame.c1, c2: frame.c2, fn: mathFn, sel: selSig, out };
+  return out;
+}
+function computeMathRaw() {
   const a = frame.c1, b = frame.c2, n = a.length, out = new Array(n);
   const clip = v => v < 0 ? 0 : v > 255 ? 255 : v;
   if (mathFn === "res1" || mathFn === "res2") {
@@ -318,7 +353,7 @@ function computeMath() {
     mean = cnt ? mean / cnt : 128;
     const res = Float64Array.from(src); // NOT src.slice(): an Int16Array copy would truncate the fractional accumulation below
     for (const f of S.sel) {
-      const comp = component(src, f * (frame.col_span_s || 0)); // fitted tone at that freq
+      const comp = componentMemo(src, f * (frame.col_span_s || 0)); // fitted tone at that freq
       if (!comp) continue;
       for (let i = 0; i < n; i++) if (res[i] >= 0) res[i] -= (comp[i] - mean); // remove its AC part
     }
@@ -716,7 +751,7 @@ function drawYTPeaks(g) {
     const src = peakSrcCh(ch), zoom = ch === 1 ? (st ? st.zoom1 : 1) : (st ? st.zoom2 : 1), pal = COMPCOLS[ch];
     let k = 0;
     for (const i of [...S.selIdx].sort((a, b) => a - b)) {
-      const f = S.peaks[i].freq, comp = component(src, f * frame.col_span_s);
+      const f = S.peaks[i].freq, comp = componentMemo(src, f * frame.col_span_s);
       if (comp) {
         const col = pal[k % pal.length];
         drawTrace(g, comp, col, zoom);
