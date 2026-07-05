@@ -43,11 +43,20 @@ hardware does and how the firmware must behave*; the implementation in
   Vpp/Vmax/Vmin/Vmean/Vrms, histogram Vtop/Vbase/Vamplitude, and timing
   (frequency, period, duty, 10–90 % rise/fall, ± pulse width, over/preshoot),
   identical on the web UI and the device LCD.
-- **Web UI** (`http://<device>:8080/`) — responsive canvas display, Y-T / X-Y / FFT
-  (per-channel), auto-measurements, draggable time/voltage cursors, waveform
-  persistence, math (C1±C2, C1×C2, FFT-carrier subtraction), **reference
+- **Web UI** (`http://<device>:8080/`) — responsive canvas display over a **binary
+  frame transport that keeps the browser at engine frame-rate** even on deep
+  captures, Y-T / X-Y / FFT (per-channel) with **rubber-band box-zoom in time *and*
+  voltage** and a **zoomable FFT with clickable peak measurements and a live
+  dB/frequency pointer readout**, auto-measurements, draggable time/voltage cursors,
+  waveform persistence, math (C1±C2, C1×C2, FFT-carrier subtraction), **reference
   waveforms (REF A/B)**, autoset, protocol decode (UART/I²C/SPI) with auto-detect,
   a clipping indicator, and PNG / calibrated-CSV export.
+- **Super-resolution (stack & crunch)** — for a repetitive waveform, equivalent-time
+  stacking (sub-sample alignment → lucky-frame selection → drizzle onto a fine grid)
+  recovers resolution below the 8-bit ADC: measured **~5 extra bits (≈13-bit
+  effective)** on a repetitive signal. It's a first-class view — toggle it, run it on
+  either channel, and do FFT / measurements / X-Y on the stacked result. (Diminishing
+  returns near Nyquist, where alignment jitter — not noise — is the limit.)
 - **On-device UI** — LCD renderer with a softkey menu system, a calibrated
   **on-screen MEASURE panel**, **on-screen cursors**, and per-channel
   coupling/probe pages driven from the front panel.
@@ -83,6 +92,21 @@ protocol decode with auto-detection.
 Every acquisition control lives in the footer (run/stop, trigger, timebase,
 per-channel V/div · coupling · probe · offset, acquire mode + memory depth), and
 PNG / calibrated-CSV export is one click away.
+
+### Super-resolution: stack & crunch
+
+For a repetitive waveform the UI can stack many captures in equivalent time —
+aligning each to sub-sample precision, keeping only the "lucky" best-aligned frames,
+and drizzling them onto a fine grid — to pull resolution out of the 8-bit ADC. Below,
+a phase-locked burst (5 cycles of 50 MHz, 15 of 150, 25 of 250 MHz, looping at
+3.33 MHz) after ~1100 stacked frames: **+5.0 bits, ≈13-bit effective**, on a
+32 GSa/s equivalent-time grid.
+
+[![Super-resolution stack of a 50/150/250 MHz burst](docs/images/host-superres.png)](docs/images/host-superres.png)
+<sub>Stack & crunch on a 50/150/250 MHz burst — the big 50 MHz cycles at full
+amplitude next to the tiny 150 MHz ripple (cursors: 153 MHz) rolled off by the analog
+bandwidth, all reconstructed from an 8-bit front end. The gain is largest at low/mid
+frequencies and tapers near Nyquist, where alignment jitter dominates.</sub>
 
 ## On the instrument (LCD + front panel)
 
