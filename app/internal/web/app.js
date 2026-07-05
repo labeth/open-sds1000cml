@@ -15,7 +15,9 @@ let frozen = false;
 const probeOf = (ch) => (st && (ch === 2 ? st.probe2 : st.probe1)) || 1;
 const trigProbe = () => probeOf(st && st.trig_source === 1 ? 2 : 1);
 const view = { mode: "YT", persist: false, cursors: false, c1: true, c2: true,
-               win: { a: 0, b: 1 } };   // visible column range as fractions of 0..cols-1
+               win: { a: 0, b: 1 },     // visible column range as fractions of 0..cols-1
+               vwin: { a: 0, b: 1 },    // visible VOLTAGE range as fractions of full scale (0=bottom)
+               fwin: { a: 0, b: 1 } };  // visible FREQUENCY range as fractions of 0..Nyquist (FFT)
 let userZoomed = false;   // true once the user pans/zooms → live frames stop re-homing
 let lastSig = "";         // acquisition signature; a change re-homes even if zoomed
 // Normalized cursor positions (fractions of width/height).
@@ -60,7 +62,7 @@ function homeWindow(f) {
   if (a < 0) { a = 0; b = span; } else if (b > 1) { b = 1; a = 1 - span; }
   return { a, b };
 }
-function goHome() { if (frame) { const h = homeWindow(frame); view.win.a = h.a; view.win.b = h.b; } userZoomed = false; redraw(); }
+function goHome() { if (frame) { const h = homeWindow(frame); view.win.a = h.a; view.win.b = h.b; } view.vwin.a = 0; view.vwin.b = 1; userZoomed = false; clearPersist(); redraw(); }
 // Acquisition signature: a change (band/env/depth/run-state) re-homes the window.
 function acqSig(f) { return (f.is_env ? "E" : "") + ":" + (f.c1 ? f.c1.length : 0) + ":" + ((st && st.running) ? "R" : "S"); }
 
@@ -169,12 +171,32 @@ function drawGrid(g) {
     if (nHi - nLo <= 400) { for (let n = nLo; n <= nHi; n++) vline((anchor + n * dtFrac - w.a) / span * (CW - 1)); drewTime = true; }
   }
   if (!drewTime) for (let i = 1; i < DIVX; i++) vline(i * CW / DIVX);
-  for (let i = 1; i < DIVY; i++) { const y = Math.round(i * CH / DIVY) + .5; g.beginPath(); g.moveTo(0, y); g.lineTo(CW, y); g.stroke(); }
+  for (let i = 1; i < DIVY; i++) { // one line per 32 codes, mapped through the voltage window
+    const y = Math.round(yFor(i * 32, 1)) + .5;
+    if (y < 0 || y > CH) continue;
+    g.beginPath(); g.moveTo(0, y); g.lineTo(CW, y); g.stroke();
+  }
   g.strokeStyle = "#26384a";
   vline(CW / 2);                                                    // screen-centre reference
-  g.beginPath(); g.moveTo(0, CH / 2); g.lineTo(CW, CH / 2); g.stroke();
+  const yMid = yFor(128, 1);                                        // code-128 (0 V) reference
+  if (yMid >= 0 && yMid <= CH) { g.beginPath(); g.moveTo(0, yMid); g.lineTo(CW, yMid); g.stroke(); }
 }
-function yFor(code, zoom) { zoom = zoom || 1; return CH * (1 - (128 + (code - 128) * zoom) / 255); }
+// yFor maps a code to a screen y through the VOLTAGE window (vwin) — box
+// zoom narrows vwin so a stack's sub-code detail becomes visible.
+function yFor(code, zoom) {
+  zoom = zoom || 1;
+  const v01 = (128 + (code - 128) * zoom) / 255; // 0=bottom .. 1=top of full scale
+  const w = view.vwin;
+  return CH * (1 - (v01 - w.a) / (w.b - w.a));
+}
+// codeAtY inverts yFor for interactions (marker drags, shift+click): cy is
+// the pointer's screen fraction (0=top), zoom the channel detent zoom.
+function codeAtY(cy, zoom) {
+  zoom = zoom || 1;
+  const w = view.vwin;
+  const v01 = w.a + (1 - cy) * (w.b - w.a);
+  return 128 + (v01 * 255 - 128) / zoom;
+}
 
 // winRange returns the column index range [iLo,iHi] visible in view.win (a small
 // margin so segments enter/exit cleanly). Iterating only these is also faster
@@ -523,6 +545,7 @@ function clearPeaksCh(ch) { fftCh[ch].sel = []; peakListLastT = 0; redraw(); }
 function drawFFT() {
   drawGrid(ctx);
   const nyq = peakNyq();
+  const fw = view.fwin, fspan = fw.b - fw.a;
   const yAt = db => CH * Math.min(1, -db / 80); // 80 dB span
   for (const ch of [1, 2]) {
     const spec = computePeaksCh(ch);
@@ -530,16 +553,20 @@ function drawFFT() {
     if (!spec) continue;
     const { mags, half, peak } = spec;
     const dbAt = k => 20 * Math.log10(mags[k] / peak + 1e-12);
-    const xAt = frac => frac / (half - 1) * (CW - 1);
+    // bin (fractional) → screen x through the frequency window
+    const xAt = frac => (frac / (half - 1) - fw.a) / fspan * (CW - 1);
     const base = ch === 1 ? C1COL : C2COL;
-    // spectrum curve in the channel's colour
+    // spectrum curve in the channel's colour, only the visible bin range
+    const kLo = Math.max(0, Math.floor(fw.a * (half - 1)) - 1);
+    const kHi = Math.min(half - 1, Math.ceil(fw.b * (half - 1)) + 1);
     ctx.strokeStyle = base; ctx.lineWidth = 1.3 * dpr; ctx.globalAlpha = 0.85; ctx.beginPath();
-    for (let k = 0; k < half; k++) { const x = xAt(k), y = yAt(dbAt(k)); if (k === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y); }
+    for (let k = kLo; k <= kHi; k++) { const x = xAt(k), y = yAt(dbAt(k)); if (k === kLo) ctx.moveTo(x, y); else ctx.lineTo(x, y); }
     ctx.stroke(); ctx.globalAlpha = 1;
     // peak markers; selected ones highlighted (palette) + labelled
     ctx.textBaseline = "bottom"; ctx.font = "bold " + (11 * dpr) + "px system-ui";
     for (let i = 0; i < fftCh[ch].peaks.length; i++) {
       const p = fftCh[ch].peaks[i], px = xAt(p.frac), py = yAt(p.db), col = selColorCh(ch, i), r = (col ? 6 : 3) * dpr;
+      if (px < -20 || px > CW + 20) continue;
       ctx.fillStyle = col || base;
       ctx.beginPath(); ctx.moveTo(px, py - r * 2); ctx.lineTo(px - r, py - r * 0.5); ctx.lineTo(px + r, py - r * 0.5); ctx.closePath(); ctx.fill();
       if (col) {
@@ -550,7 +577,8 @@ function drawFFT() {
     ctx.textBaseline = "alphabetic";
   }
   ctx.fillStyle = "#9fb0c0"; ctx.font = (12 * dpr) + "px system-ui";
-  ctx.fillText("FFT  0 – " + eng(nyq, "Hz", 3) + "   (dB re each channel's own peak)", 8 * dpr, 16 * dpr);
+  ctx.fillText("FFT  " + eng(fw.a * nyq, "Hz", 3) + " – " + eng(fw.b * nyq, "Hz", 3) +
+    (fspan < 0.999 ? "  · drag/wheel to zoom, double-click resets" : "   (dB re each channel's own peak)"), 8 * dpr, 16 * dpr);
 }
 
 // Y-T overlay: for each channel, reconstruct EACH selected tone from THAT
@@ -860,8 +888,8 @@ function drawDecode(g) {
 function redraw() {
   refreshAria(); // keep aria-pressed in sync with view toggles (which call redraw)
   updateStatusLine(); // time/div follows the zoom → keep it live, not just per status poll
-  if (view.mode === "XY") { clearPersist(); drawXY(); drawCursors(); return; }
-  if (view.mode === "FFT") { clearPersist(); drawFFT(); drawCursors(); return; }
+  if (view.mode === "XY") { clearPersist(); drawXY(); drawCursors(); drawBoxZoom(ctx); return; }
+  if (view.mode === "FFT") { clearPersist(); drawFFT(); drawCursors(); drawBoxZoom(ctx); return; }
   if (view.persist && !frame?.is_env) {
     const pg = persistLayer();
     pg.fillStyle = "rgba(5,8,12,0.14)"; pg.fillRect(0, 0, CW, CH); // fade
@@ -882,6 +910,7 @@ function redraw() {
   drawDecode(ctx);
   drawCursors();
   drawNav();
+  drawBoxZoom(ctx);
 }
 
 // ---- measurements ----
@@ -953,7 +982,8 @@ function updateCursors() {
   // A full-height drag spans 255 codes ÷ vertical zoom (the 2 mV/5 mV detents
   // render magnified), times volts/code (already probe-scaled). Per channel.
   const z1 = (st && st.zoom1) || 1, z2 = (st && st.zoom2) || 1;
-  const vFull1 = 255 * (frame.vpc1 || 1 / 32) / z1, vFull2 = 255 * (frame.vpc2 || 1 / 32) / z2;
+  const vspan = view.vwin.b - view.vwin.a; // a full-height drag spans the ZOOMED voltage range
+  const vFull1 = 255 * vspan * (frame.vpc1 || 1 / 32) / z1, vFull2 = 255 * vspan * (frame.vpc2 || 1 / 32) / z2;
   const dv1 = Math.abs(cur.v2 - cur.v1) * vFull1, dv2 = Math.abs(cur.v2 - cur.v1) * vFull2;
   $("curBody").innerHTML =
     `<tr><th>Δt</th><td colspan="2">${eng(dt, "s")}</td></tr>` +
@@ -993,10 +1023,10 @@ function markerHit(p) {
 function moveMarker(ev) {
   const cy = Math.max(0, Math.min(1, ptToNorm(ev).y));
   if (mk.kind === "level") {
-    const volts = (255 * (1 - cy) - 128) * mk.vpc; // top of screen = higher level = up
+    const volts = (codeAtY(cy, 1) - 128) * mk.vpc; // top of screen = higher level = up
     st.trig_volts = volts; $("lvl").value = volts.toFixed(2); $("lvlv").textContent = volts.toFixed(2) + " V";
   } else {
-    const ch = mk.kind === "off1" ? 1 : 2, offV = (255 * (1 - cy) - 128) / mk.zoom * mk.vpc;
+    const ch = mk.kind === "off1" ? 1 : 2, offV = (codeAtY(cy, mk.zoom) - 128) * mk.vpc;
     if (ch === 1) { st.off1_v = offV; $("off1").value = offV.toFixed(2); $("off1v").textContent = offV.toFixed(2) + " V"; }
     else { st.off2_v = offV; $("off2").value = offV.toFixed(2); $("off2v").textContent = offV.toFixed(2) + " V"; }
   }
@@ -1011,21 +1041,16 @@ scope.addEventListener("pointerdown", ev => {
   if (ev.detail > 1) return; // the 2nd click of a double-click must not grab a cursor/marker (dblclick resets zoom)
   if (ev.shiftKey && view.mode === "YT" && st && frame) { // Shift+click = set trigger level here
     const vpc = (st.trig_source === 1 ? frame.vpc2 : frame.vpc1) || (1 / 32);
-    const volts = (255 * (1 - Math.max(0, Math.min(1, ptToNorm(ev).y))) - 128) * vpc;
+    const volts = (codeAtY(Math.max(0, Math.min(1, ptToNorm(ev).y)), 1) - 128) * vpc;
     st.trig_volts = volts; $("lvl").value = volts.toFixed(2); $("lvlv").textContent = volts.toFixed(2) + " V";
     send("triglevelcode", Math.round(31434 - 938 * volts / trigProbe())); redraw();
     return;
   }
-  if (view.mode === "FFT") { // toggle the nearest peak, across both channels
-    const clickedFreq = ptToNorm(ev).x * peakNyq(); // x maps ~linearly to 0..Nyquist
-    let best = null;
-    for (const ch of [1, 2]) {
-      const idx = nearestPeak(fftCh[ch].peaks, clickedFreq);
-      if (idx < 0) continue;
-      const dx = Math.abs(fftCh[ch].peaks[idx].freq - clickedFreq);
-      if (!best || dx < best.dx) best = { ch, freq: fftCh[ch].peaks[idx].freq, dx };
-    }
-    if (best) togglePeakCh(best.ch, best.freq);
+  if (view.mode === "FFT") { // drag = frequency box zoom; plain click (on up) toggles the nearest peak
+    boxZoom.active = true; boxZoom.moved = false;
+    boxZoom.sx = ev.clientX; boxZoom.sy = ev.clientY;
+    boxZoom.ex = ev.clientX; boxZoom.ey = ev.clientY;
+    scope.setPointerCapture(ev.pointerId);
     return;
   }
   const hit = markerHit(ptToNorm(ev));   // markers are draggable regardless of cursor mode
@@ -1036,22 +1061,107 @@ scope.addEventListener("pointerdown", ev => {
     moveMarker(ev);
     return;
   }
-  if (!view.cursors) return;
-  const p = ptToNorm(ev);
-  const near = (a, b) => Math.abs(a - b) < 0.025;
-  if (near(p.y, cur.v1)) cur.drag = "v1"; else if (near(p.y, cur.v2)) cur.drag = "v2";
-  else if (near(p.x, cur.t1)) cur.drag = "t1"; else if (near(p.x, cur.t2)) cur.drag = "t2";
-  else return; // click not near any cursor → do nothing (don't yank one; keeps dbl-click reset clean)
-  scope.setPointerCapture(ev.pointerId);
-  moveCursor(ev);
+  if (view.cursors) {
+    const p = ptToNorm(ev);
+    const near = (a, b) => Math.abs(a - b) < 0.025;
+    let drag = null;
+    if (near(p.y, cur.v1)) drag = "v1"; else if (near(p.y, cur.v2)) drag = "v2";
+    else if (near(p.x, cur.t1)) drag = "t1"; else if (near(p.x, cur.t2)) drag = "t2";
+    if (drag) {
+      cur.drag = drag;
+      scope.setPointerCapture(ev.pointerId);
+      moveCursor(ev);
+      return;
+    }
+  }
+  if (view.mode === "YT") { // empty area: rubber-band box zoom (time + voltage)
+    boxZoom.active = true; boxZoom.moved = false;
+    boxZoom.sx = ev.clientX; boxZoom.sy = ev.clientY;
+    boxZoom.ex = ev.clientX; boxZoom.ey = ev.clientY;
+    scope.setPointerCapture(ev.pointerId);
+  }
 });
+
+// Rubber-band box zoom: drag a rectangle → zoom into it. In Y-T each axis
+// applies only if the box has real extent there (a flat drag zooms time
+// only); in FFT the x-extent sets the frequency window. Esc/short drags
+// cancel; double-click resets as before.
+const boxZoom = { active: false, moved: false, sx: 0, sy: 0, ex: 0, ey: 0 };
+function boxRect() {
+  const r = scope.getBoundingClientRect();
+  const x0 = (Math.min(boxZoom.sx, boxZoom.ex) - r.left) / r.width;
+  const x1 = (Math.max(boxZoom.sx, boxZoom.ex) - r.left) / r.width;
+  const y0 = (Math.min(boxZoom.sy, boxZoom.ey) - r.top) / r.height;
+  const y1 = (Math.max(boxZoom.sy, boxZoom.ey) - r.top) / r.height;
+  const wpx = Math.abs(boxZoom.ex - boxZoom.sx), hpx = Math.abs(boxZoom.ey - boxZoom.sy);
+  return { x0: Math.max(0, x0), x1: Math.min(1, x1), y0: Math.max(0, y0), y1: Math.min(1, y1), wpx, hpx };
+}
+function drawBoxZoom(g) {
+  if (!boxZoom.active || !boxZoom.moved) return;
+  const b = boxRect();
+  g.save();
+  g.strokeStyle = "rgba(255,159,46,.9)"; g.lineWidth = dpr; g.setLineDash([5 * dpr, 4 * dpr]);
+  g.fillStyle = "rgba(255,159,46,.08)";
+  const x = b.x0 * CW, y = b.y0 * CH, w = (b.x1 - b.x0) * CW, h = (b.y1 - b.y0) * CH;
+  g.fillRect(x, y, w, h); g.strokeRect(x, y, w, h);
+  g.restore();
+}
+function applyBoxZoom() {
+  const b = boxRect();
+  if (view.mode === "FFT") {
+    if (b.wpx < 12) return;
+    const fw = view.fwin, span = fw.b - fw.a;
+    const na = fw.a + b.x0 * span, nb = fw.a + b.x1 * span;
+    if (nb - na > 1e-6) { view.fwin.a = na; view.fwin.b = nb; }
+    return;
+  }
+  const w = view.win, hspan = w.b - w.a;
+  if (b.wpx >= 12) {
+    const na = w.a + b.x0 * hspan, nb = w.a + b.x1 * hspan;
+    if (nb - na >= MINSPAN * 0.01) { view.win.a = na; view.win.b = nb; }
+  }
+  if (b.hpx >= 12) {
+    const vw = view.vwin, vspan = vw.b - vw.a;
+    // screen y grows downward; vwin is bottom→top
+    const na = vw.a + (1 - b.y1) * vspan, nb = vw.a + (1 - b.y0) * vspan;
+    if (nb - na > 1e-4) { view.vwin.a = na; view.vwin.b = nb; }
+  }
+  userZoomed = true;
+  clearPersist();
+}
 scope.addEventListener("pointermove", ev => {
+  if (boxZoom.active) {
+    boxZoom.ex = ev.clientX; boxZoom.ey = ev.clientY;
+    if (Math.abs(boxZoom.ex - boxZoom.sx) + Math.abs(boxZoom.ey - boxZoom.sy) > 8) boxZoom.moved = true;
+    if (boxZoom.moved) redraw();
+    return;
+  }
   if (mk) { moveMarker(ev); return; }
   if (cur.drag) { moveCursor(ev); return; }
   const h = markerHit(ptToNorm(ev));    // hover affordance
   scope.style.cursor = h ? "ns-resize" : (view.cursors ? "crosshair" : "default");
 });
-scope.addEventListener("pointerup", () => {
+scope.addEventListener("pointerup", ev => {
+  if (boxZoom.active) {
+    const wasBox = boxZoom.moved;
+    boxZoom.active = false; boxZoom.moved = false;
+    if (wasBox) {
+      applyBoxZoom();
+      redraw();
+    } else if (view.mode === "FFT") { // plain click: toggle the nearest peak
+      const fw = view.fwin;
+      const clickedFreq = (fw.a + ptToNorm(ev).x * (fw.b - fw.a)) * peakNyq();
+      let best = null;
+      for (const ch of [1, 2]) {
+        const idx = nearestPeak(fftCh[ch].peaks, clickedFreq);
+        if (idx < 0) continue;
+        const dx = Math.abs(fftCh[ch].peaks[idx].freq - clickedFreq);
+        if (!best || dx < best.dx) best = { ch, freq: fftCh[ch].peaks[idx].freq, dx };
+      }
+      if (best) togglePeakCh(best.ch, best.freq);
+    }
+    return;
+  }
   if (mk) { commitMarker(); lvlDragging = offDragging = false; mk = null; }
   cur.drag = null;
 });
@@ -1096,8 +1206,31 @@ function stepTdiv(dir) {
   const i = Math.max(0, Math.min(sel.options.length - 1, sel.selectedIndex + dir));
   if (i !== sel.selectedIndex) { sel.selectedIndex = i; send("tdiv", +sel.value); }
 }
-scope.addEventListener("dblclick", () => { if (view.mode === "YT") goHome(); }); // reset zoom to full
+scope.addEventListener("dblclick", () => {
+  if (view.mode === "YT") goHome();
+  else if (view.mode === "FFT") { view.fwin.a = 0; view.fwin.b = 1; redraw(); }
+}); // reset zoom to full
 scope.addEventListener("wheel", ev => {
+  if (view.mode === "FFT") { // zoom the frequency axis about the pointer; shift = pan
+    ev.preventDefault();
+    const d = ev.deltaY || ev.deltaX;
+    const fw = view.fwin, span = fw.b - fw.a;
+    if (ev.shiftKey) {
+      const na = Math.max(0, Math.min(1 - span, fw.a + span * 0.15 * (d < 0 ? -1 : 1)));
+      view.fwin.a = na; view.fwin.b = na + span;
+      redraw();
+      return;
+    }
+    const sx = Math.max(0, Math.min(1, ptToNorm(ev).x));
+    const fx = fw.a + sx * span;
+    const ns = Math.max(1e-5, Math.min(1, span * Math.exp(d * 0.001)));
+    let na = fx - sx * ns, nb = na + ns;
+    if (na < 0) { na = 0; nb = ns; }
+    if (nb > 1) { nb = 1; na = 1 - ns; }
+    view.fwin.a = na; view.fwin.b = nb;
+    redraw();
+    return;
+  }
   if (view.mode !== "YT") return;
   ev.preventDefault();
   // Chromium remaps Shift+vertical-wheel onto the horizontal axis (deltaX, deltaY=0),
@@ -1138,7 +1271,7 @@ function applyFrame(f) {
   frame = f; lastSeq = f.seq;
   const sig = acqSig(f);
   if (sig !== lastSig) { userZoomed = false; lastSig = sig; } // band/depth/run change → re-home
-  if (!userZoomed) { const h = homeWindow(f); view.win.a = h.a; view.win.b = h.b; }
+  if (!userZoomed) { const h = homeWindow(f); view.win.a = h.a; view.win.b = h.b; view.vwin.a = 0; view.vwin.b = 1; }
   computeDecode(); redraw(); updateMeas(); updateCursors();
 }
 
@@ -1297,6 +1430,11 @@ function updateStatusLine() {
     if (Math.abs(zoom - 1) > 0.02)
       zoomTxt = zoom >= 1 ? " · zoom ×" + (zoom < 10 ? zoom.toFixed(1) : String(Math.round(zoom)))
                           : " · zoom ÷" + (1 / zoom).toFixed(1);
+  }
+  const vspanZ = view.vwin.b - view.vwin.a;
+  if (vspanZ < 0.999) {
+    const vz = 1 / vspanZ;
+    zoomTxt += " · vzoom ×" + (vz < 10 ? vz.toFixed(1) : String(Math.round(vz)));
   }
   const html =
     "<b>" + fmtTdiv(b) + "/div</b>" + zoomTxt + " · " + st.band + " · " + st.fps.toFixed(0) + " fps · seq <b>" + st.seq + "</b>" +
@@ -1812,10 +1950,11 @@ const KEYMAP = [
 ];
 // Mouse gestures — listed in the ? overlay so they're discoverable.
 const MOUSEMAP = [
-  { label: "Wheel", desc: "Zoom the time axis about the cursor" },
+  { label: "Drag (empty area)", desc: "Box zoom — time and voltage (Y-T), frequency (FFT)" },
+  { label: "Wheel", desc: "Zoom the time axis about the cursor (FFT: frequency axis)" },
   { label: "Shift+Wheel", desc: "Pan left / right through the record" },
   { label: "Ctrl+Wheel", desc: "Change time/div (zoom the acquisition)" },
-  { label: "Double-click", desc: "Reset zoom to the full record" },
+  { label: "Double-click", desc: "Reset zoom (time + voltage; FFT: frequency)" },
   { label: "Drag ▸ handle (right)", desc: "Move the trigger level" },
   { label: "Drag ◂ arrow (left)", desc: "Move a channel's offset" },
   { label: "Shift+click", desc: "Set the trigger level where you click" },

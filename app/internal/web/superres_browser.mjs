@@ -80,6 +80,55 @@ try {
   await page.waitForTimeout(400);
   ok(await page.evaluate(() => view.mode === "XY" && frame.c1.length > 0 && frame.c2.length > 0), "X-Y mode on the stack");
   await page.click("#mYT");
+  await page.waitForTimeout(200);
+
+  // Rubber-band box zoom: drag a rectangle → both time AND voltage zoom in.
+  await page.evaluate(() => { view.win.a = 0; view.win.b = 1; view.vwin.a = 0; view.vwin.b = 1; redraw(); });
+  const sb = await page.locator("#scope").boundingBox();
+  await page.mouse.move(sb.x + sb.width * 0.3, sb.y + sb.height * 0.3);
+  await page.mouse.down();
+  await page.mouse.move(sb.x + sb.width * 0.7, sb.y + sb.height * 0.7, { steps: 6 });
+  await page.mouse.up();
+  const bz = await page.evaluate(() => ({ w: view.win, v: view.vwin, z: userZoomed }));
+  ok(bz.w.a > 0.25 && bz.w.b < 0.75, `box zoom narrows time (${bz.w.a.toFixed(2)}..${bz.w.b.toFixed(2)})`);
+  ok(bz.v.a > 0.25 && bz.v.b < 0.75, `box zoom narrows voltage (${bz.v.a.toFixed(2)}..${bz.v.b.toFixed(2)})`);
+  // Double-click resets both axes.
+  await page.mouse.dblclick(sb.x + sb.width * 0.5, sb.y + sb.height * 0.5);
+  const rz = await page.evaluate(() => ({ v: view.vwin }));
+  ok(rz.v.a === 0 && rz.v.b === 1, "double-click resets the voltage window");
+
+  // FFT zoom: wheel narrows the frequency window; box drag narrows further;
+  // double-click resets; a plain click still toggles a peak.
+  await page.click("#mFFT");
+  await page.waitForTimeout(500);
+  await page.mouse.move(sb.x + sb.width * 0.2, sb.y + sb.height * 0.5);
+  await page.mouse.wheel(0, -600);
+  await page.mouse.wheel(0, -600);
+  const fz1 = await page.evaluate(() => view.fwin.b - view.fwin.a);
+  ok(fz1 < 0.7, `FFT wheel zoom narrows the window (span ${fz1.toFixed(3)})`);
+  await page.mouse.move(sb.x + sb.width * 0.3, sb.y + sb.height * 0.4);
+  await page.mouse.down();
+  await page.mouse.move(sb.x + sb.width * 0.6, sb.y + sb.height * 0.6, { steps: 5 });
+  await page.mouse.up();
+  const fz2 = await page.evaluate(() => view.fwin.b - view.fwin.a);
+  ok(fz2 < fz1 * 0.5, `FFT box zoom narrows further (span ${fz2.toFixed(4)})`);
+  await page.mouse.dblclick(sb.x + sb.width * 0.5, sb.y + sb.height * 0.5);
+  ok(await page.evaluate(() => view.fwin.a === 0 && view.fwin.b === 1), "FFT double-click resets");
+  const selBefore = await page.evaluate(() => fftCh[1].sel.length + fftCh[2].sel.length);
+  await page.waitForTimeout(1200); // let peaks refresh
+  // click ON a peak: use the strongest C1 peak's screen position
+  const px = await page.evaluate(() => {
+    const p = fftCh[1].peaks[0];
+    if (!p) return null;
+    const spec = spectrumFor(1);
+    return (p.frac / (spec.half - 1)) * 1; // fraction of width at fwin 0..1
+  });
+  if (px !== null) {
+    await page.mouse.click(sb.x + sb.width * px, sb.y + sb.height * 0.5);
+    const selAfter = await page.evaluate(() => fftCh[1].sel.length + fftCh[2].sel.length);
+    ok(selAfter !== selBefore, `plain click still toggles a peak (${selBefore}→${selAfter})`);
+  }
+  await page.click("#mYT");
 
   // Noise on the stack must be visibly below a single frame's noise.
   const noise = await page.evaluate(() => {
