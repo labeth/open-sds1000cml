@@ -419,14 +419,21 @@ function srResult(st, opts) {
   const mean = opts.statsOnly ? null : new Float32Array(nb);
   const mean2 = opts.statsOnly || !other.ref ? null : new Float32Array(nb);
   const statLo = st.statLo * st.K, statHi = st.statHi * st.K;
+  const EPS = 0.05; // minimum weight for a bin to count as filled
+  // Build the mean arrays in a tight loop (unavoidably O(nbins) — it IS the
+  // 1.3M-point output trace) with no per-bin stats branching.
+  const Asum = A.sum, Acnt = A.cnt;
+  if (mean) for (let b = 0; b < nb; b++) { const c = Acnt[b]; mean[b] = c < EPS ? -1 : Asum[b] / c; }
+  if (mean2) { const os = other.sum, oc = other.cnt; for (let b = 0; b < nb; b++) { const c = oc[b]; mean2[b] = c < EPS ? -1 : os[b] / c; } }
+  // Stats: SUBSAMPLE to ~4096 bins across the window. The medians of the
+  // per-bin sigmas are statistically identical from 4096 points as from a
+  // million, but collecting+sorting a million elements cost ~250 ms.
+  const span = Math.max(1, statHi - statLo);
+  const statStride = Math.max(stride, Math.ceil(span / 4096));
   let filled = 0, scanned = 0;
   const sigSingles = [], halves = [];
-  const EPS = 0.05; // minimum weight for a bin to count as filled
-  for (let b = 0; b < nb; b++) {
+  for (let b = statLo; b < statHi; b += statStride) {
     const c = A.cnt[b];
-    if (mean) mean[b] = c < EPS ? -1 : A.sum[b] / c;
-    if (mean2) { const c2 = other.cnt[b]; mean2[b] = c2 < EPS ? -1 : other.sum[b] / c2; }
-    if (b % stride !== 0 || b < statLo || b >= statHi) continue;
     scanned++;
     if (c < EPS) continue;
     filled++;
@@ -453,7 +460,7 @@ function srResult(st, opts) {
     sigmaStack = 1.4826 * med(halves.map(Math.abs));
   }
   const cnts = [];
-  for (let b = statLo; b < statHi; b += stride) if (A.cnt[b] >= EPS) cnts.push(A.cnt[b]);
+  for (let b = statLo; b < statHi; b += statStride) if (A.cnt[b] >= EPS) cnts.push(A.cnt[b]);
   const sigmaStackTheory = sigmaSingle > 0 && cnts.length ? sigmaSingle / Math.sqrt(med(cnts)) : 0;
   const bitsGained = sigmaStack > 0 && sigmaSingle > 0 ? Math.log2(sigmaSingle / sigmaStack) : 0;
   return {
@@ -473,7 +480,20 @@ function srResult(st, opts) {
 // returning {freqs, synth(nOut)} for an arbitrarily dense reconstruction.
 // Linear LSQ per frequency pair (sin,cos) + DC over the FILLED bins only.
 function srModelFit(mean, K, sampleS, peaksLib, nPeaks) {
-  const dt = sampleS / K;
+  // Decimate a huge stack up front: the fit's frequencies and coefficients are
+  // span-limited, so the K× fine-grid points don't change the result, and a
+  // full 1.3M-element gap-fill + normal-equations pass froze for ~0.4 s. The
+  // dense output (synth) is unaffected — it evaluates the fitted sinusoids at
+  // any density. dt scales by the decimation so the time axis is unchanged.
+  const FIT_MAX = 32768;
+  let dec = 1;
+  if (mean.length > FIT_MAX) {
+    dec = Math.ceil(mean.length / FIT_MAX);
+    const m2 = new Float32Array(Math.floor(mean.length / dec));
+    for (let i = 0; i < m2.length; i++) m2[i] = mean[i * dec];
+    mean = m2;
+  }
+  const dt = (sampleS / K) * dec;
   // The spectrum needs a UNIFORM grid: gap-fill unfilled bins by linear
   // interpolation between their filled neighbours (gaps are rare in a
   // well-filled stack; bail out below 50% fill).
@@ -494,7 +514,17 @@ function srModelFit(mean, K, sampleS, peaksLib, nPeaks) {
   }
   for (let j = last + 1; j < nb; j++) grid[j] = lastV; // trailing gap: hold
   if (vals.length < 64 || vals.length < nb / 2) return null;
-  const spec = peaksLib.spectrum(grid, 1 / (2 * dt));
+  // Cap the FFT input: only the low-frequency peaks matter for the fit, and a
+  // 1M-point FFT froze for ~130 ms. Decimating preserves peak frequencies
+  // (span-limited resolution); the fit uses the full-resolution grid anyway.
+  let fgrid = grid, fdt = dt;
+  const fftDec = Math.max(1, Math.ceil(nb / 32768));
+  if (fftDec > 1) {
+    fgrid = new Float64Array(Math.floor(nb / fftDec));
+    for (let i = 0; i < fgrid.length; i++) fgrid[i] = grid[i * fftDec];
+    fdt = dt * fftDec;
+  }
+  const spec = peaksLib.spectrum(fgrid, 1 / (2 * fdt));
   if (!spec) return null;
   const peaks = peaksLib.detectPeaks(spec, { floorDb: -60, maxPeaks: nPeaks || 6 });
   if (!peaks.length) return null;
@@ -509,7 +539,7 @@ function srModelFit(mean, K, sampleS, peaksLib, nPeaks) {
   const row = new Float64Array(cols);
   row[0] = 1;
   for (let r = 0; r < idx.length; r += stride) {
-    const t = idx[r] * (sampleS / K), y = vals[r];
+    const t = idx[r] * dt, y = vals[r];
     for (let f = 0; f < freqs.length; f++) {
       const w = 2 * Math.PI * freqs[f] * t;
       row[1 + 2 * f] = Math.sin(w);
@@ -544,9 +574,9 @@ function srModelFit(mean, K, sampleS, peaksLib, nPeaks) {
     coeffs: x,
     synth(nOut) {
       const out = new Float32Array(nOut);
-      const dt = (mean.length * (sampleS / K)) / nOut;
+      const dtOut = (mean.length * dt) / nOut;
       for (let i = 0; i < nOut; i++) {
-        const t = i * dt;
+        const t = i * dtOut;
         let v = x[0];
         for (let f = 0; f < freqs.length; f++) {
           const w = 2 * Math.PI * freqs[f] * t;

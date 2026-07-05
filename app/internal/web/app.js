@@ -508,12 +508,38 @@ function gapFill(src) {
   }
   return out;
 }
+// The FFT input is capped to FFT_MAX points. Frequency RESOLUTION is set by
+// the record's time span, not the point count, so decimating a huge array
+// (a superres stack reaches K× the raw rate = >1M points) only lowers the
+// axis' top Nyquist to FFT_MAX/(2·span) ≈ 400 MHz — which is above the raw
+// Nyquist, so it keeps every real spectral line while dropping the pure
+// interpolation-artifact region above it, at ~40× the FFT speed. Normal
+// records (≤20480 samples) are already under the cap → unchanged.
+const FFT_MAX = 32768;
+function fftStride() {
+  const L = frame && frame.c1 ? frame.c1.length : 0;
+  return Math.max(1, Math.ceil(L / FFT_MAX));
+}
+// displayNyq is the effective FFT Nyquist after the decimation cap — used by
+// every FFT frequency mapping so the axis stays self-consistent.
+function displayNyq() { return peakNyq() / fftStride(); }
 function spectrumFor(ch) {
   const src = peakSrcCh(ch), m = specMemo[ch];
   if (m.src === src) return m.spec;
   m.src = src;
-  const g = gapFill(src);
-  m.spec = g ? spectrum(g, peakNyq()) : null;
+  let g = gapFill(src);
+  if (g) {
+    const stride = fftStride();
+    if (stride > 1) {
+      // Pure subsample (not box-average) so a tone's magnitude — hence
+      // peakVolts — is preserved exactly; the interpolation ripple aliased
+      // in is negligible next to the signal.
+      const dg = new Float64Array(Math.floor(g.length / stride));
+      for (let i = 0; i < dg.length; i++) dg[i] = g[i * stride];
+      g = dg;
+    }
+    m.spec = spectrum(g, displayNyq());
+  } else m.spec = null;
   return m.spec;
 }
 function computePeaksCh(ch) {
@@ -547,7 +573,7 @@ function clearPeaksCh(ch) { fftCh[ch].sel = []; peakListLastT = 0; redraw(); }
 const fftHover = { on: false, x: 0, y: 0 };
 function drawFFTHover() {
   if (!fftHover.on || boxZoom.moved) return;
-  const nyq = peakNyq();
+  const nyq = displayNyq();
   const fw = view.fwin, fspan = fw.b - fw.a;
   const frac = fw.a + fftHover.x * fspan;
   const freq = frac * nyq;
@@ -586,7 +612,7 @@ function drawFFTHover() {
 
 function drawFFT() {
   drawGrid(ctx);
-  const nyq = peakNyq();
+  const nyq = displayNyq();
   const fw = view.fwin, fspan = fw.b - fw.a;
   const yAt = db => CH * Math.min(1, -db / 80); // 80 dB span
   for (const ch of [1, 2]) {
@@ -598,11 +624,25 @@ function drawFFT() {
     // bin (fractional) → screen x through the frequency window
     const xAt = frac => (frac / (half - 1) - fw.a) / fspan * (CW - 1);
     const base = ch === 1 ? C1COL : C2COL;
-    // spectrum curve in the channel's colour, only the visible bin range
     const kLo = Math.max(0, Math.floor(fw.a * (half - 1)) - 1);
     const kHi = Math.min(half - 1, Math.ceil(fw.b * (half - 1)) + 1);
     ctx.strokeStyle = base; ctx.lineWidth = 1.3 * dpr; ctx.globalAlpha = 0.85; ctx.beginPath();
-    for (let k = kLo; k <= kHi; k++) { const x = xAt(k), y = yAt(dbAt(k)); if (k === kLo) ctx.moveTo(x, y); else ctx.lineTo(x, y); }
+    if (kHi - kLo > 2 * CW) {
+      // More bins than pixels: draw the per-pixel max envelope (peaks are
+      // what matter in a spectrum) instead of one lineTo per bin.
+      let started = false;
+      for (let px = 0; px <= CW; px++) {
+        const f0 = fw.a + (px / CW) * fspan, f1 = fw.a + ((px + 1) / CW) * fspan;
+        let a = Math.floor(f0 * (half - 1)), b = Math.ceil(f1 * (half - 1));
+        if (a < 0) a = 0; if (b >= half) b = half - 1;
+        if (b < a) continue;
+        let mx = 0; for (let k = a; k <= b; k++) if (mags[k] > mx) mx = mags[k];
+        const y = yAt(20 * Math.log10(mx / peak + 1e-12));
+        if (started) ctx.lineTo(px, y); else { ctx.moveTo(px, y); started = true; }
+      }
+    } else {
+      for (let k = kLo; k <= kHi; k++) { const x = xAt(k), y = yAt(dbAt(k)); if (k === kLo) ctx.moveTo(x, y); else ctx.lineTo(x, y); }
+    }
     ctx.stroke(); ctx.globalAlpha = 1;
     // peak markers; selected ones highlighted (palette) + labelled
     ctx.textBaseline = "bottom"; ctx.font = "bold " + (11 * dpr) + "px system-ui";
@@ -1305,7 +1345,7 @@ scope.addEventListener("pointerup", ev => {
       redraw();
     } else if (view.mode === "FFT") { // plain click: toggle the nearest peak
       const fw = view.fwin;
-      const clickedFreq = (fw.a + ptToNorm(ev).x * (fw.b - fw.a)) * peakNyq();
+      const clickedFreq = (fw.a + ptToNorm(ev).x * (fw.b - fw.a)) * displayNyq();
       let best = null;
       for (const ch of [1, 2]) {
         const idx = nearestPeak(fftCh[ch].peaks, clickedFreq);
@@ -2075,22 +2115,29 @@ $("ePNG").onclick = () => {
 $("eCSV").onclick = () => {
   if (!frame || !frame.c1) return;
   const dt = (frame.col_span_s || 0) / frame.c1.length;
-  // Emit calibrated, probe-referred volts (same mapping as the measurements):
-  // v = (code-128)·vpc − offset. vpc and offset are already tip-scaled.
   const vpc1 = frame.vpc1 || (1 / 32), vpc2 = frame.vpc2 || (1 / 32);
   const o1 = frame.off1_v || 0, o2 = frame.off2_v || 0;
-  // Blank the deep-window margin samples (code < 0) rather than emit a bogus rail voltage.
   const toV = (code, vpc, off) => (code === undefined || code < 0 ? "" : ((code - 128) * vpc - off).toExponential(6));
-  let csv = "# open-sds1000cml capture seq=" + frame.seq +
+  const c2 = frame.c2;
+  // Decimate huge arrays: a superres stack's K× fine grid is interpolation,
+  // so exporting every point (>1M) means ~0.5 s of number-formatting for
+  // sub-sample rows that carry no new data. Cap at ~131072 rows — beyond the
+  // raw record's real content — and note it in the header.
+  const N = frame.c1.length, CAP = 131072;
+  const step = N > CAP ? Math.ceil(N / CAP) : 1;
+  const rowsN = Math.ceil(N / step);
+  const rows = new Array(rowsN + 1);
+  rows[0] = "# open-sds1000cml capture seq=" + frame.seq +
     " tdiv_s=" + (frame.tdiv_s || 0) + " probe_c1=" + (st ? st.probe1 || 1 : 1) +
-    " probe_c2=" + (st ? st.probe2 || 1 : 1) + "\n";
-  csv += "t_s,c1_v,c2_v\n";
-  for (let i = 0; i < frame.c1.length; i++)
-    csv += (i * dt).toExponential(6) + "," + toV(frame.c1[i], vpc1, o1) + "," +
-      toV(frame.c2 ? frame.c2[i] : undefined, vpc2, o2) + "\n";
+    " probe_c2=" + (st ? st.probe2 || 1 : 1) +
+    (step > 1 ? " decimated=" + step + "x_of_" + N + "_pts" : "") + "\nt_s,c1_v,c2_v";
+  let r = 1;
+  for (let i = 0; i < N; i += step)
+    rows[r++] = (i * dt).toExponential(6) + "," + toV(frame.c1[i], vpc1, o1) + "," +
+      toV(c2 ? c2[i] : undefined, vpc2, o2);
   const a = document.createElement("a");
   a.download = "scope-" + frame.seq + ".csv";
-  a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" })); a.click();
+  a.href = URL.createObjectURL(new Blob([rows.join("\n") + "\n"], { type: "text/csv" })); a.click();
 };
 
 // ---- keyboard shortcuts + ? help overlay ----
