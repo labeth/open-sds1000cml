@@ -75,6 +75,7 @@
         <label>grid ×<select id="srK"><option>16</option><option selected>32</option><option>64</option></select></label>
         <label>ch <select id="srCh"><option value="1">C1</option><option value="2">C2</option></select></label>
         <label>stop <select id="srDur"><option value="30">30 s</option><option value="60" selected>60 s</option><option value="120">120 s</option><option value="0">manual</option></select></label>
+        <label title="sweep the offset DAC by sub-LSB steps across frames (subtracted back in software) so the 8-bit quantizer's staircase averages out"><input type="checkbox" id="srDither" checked> dither</label>
       </div>
       <div id="srStats" class="subtle">idle — arm on a native/decimated band with a repetitive signal</div>
     </div>

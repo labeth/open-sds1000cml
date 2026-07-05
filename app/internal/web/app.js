@@ -1557,7 +1557,14 @@ function runAutodetect() {
 // frozen-synthetic-frame path as captures, so zoom/cursors/CSV/PNG all work
 // on the stacked waveform, and "fit model" writes the analytic sum-of-
 // sinusoids reconstruction into REF B for overlay comparison.
-const sr = { st: null, armed: false, gen: 0, lastSeq: 0, meta: null, t0: 0, durS: 60, lastUi: 0, ch: 1 };
+const sr = { st: null, armed: false, gen: 0, lastSeq: 0, meta: null, t0: 0, durS: 60, lastUi: 0, ch: 1,
+  // Offset dither: the 8-bit quantizer's staircase survives averaging when
+  // the front-end noise is sub-LSB. Sweeping the offset DAC by sub-LSB steps
+  // across frames (and subtracting the COMMANDED offset back in code space)
+  // slides the code thresholds across the signal, so the staircase averages
+  // out. dither.pending skips the one frame after each step — the DAC write
+  // is staged between captures, so that frame's true offset is ambiguous.
+  dither: { on: false, base: 0, steps: 8, idx: 0, pending: 0, framesAtStep: 0 } };
 
 function srStatus(msg) { $("srStats").textContent = msg; }
 
@@ -1597,7 +1604,33 @@ function srIngest(f) {
     srStop("vertical scale changed — stack kept");
     return;
   }
-  srFeed(sr.st, sig, { maxLag: 8, edgeX: f.edge_x }); // edge anchors the coarse alignment
+  let feedSig = sig;
+  const dz = sr.dither;
+  if (dz.on) {
+    if (dz.pending > 0) { dz.pending--; return; } // offset still staging — skip
+    // Subtract the commanded dither offset in code space. code = (v+off)/vpc
+    // + 128, so the same physical v reads (off−base)/vpc codes higher — take
+    // it back out (header off/vpc are both tip-referred; probe cancels).
+    const offNow = (sr.ch === 2 ? f.off2_v : f.off1_v) || 0;
+    const dCode = (offNow - dz.base) / vpc;
+    if (dCode !== 0) {
+      const fArr = new Float32Array(sig.length);
+      for (let i = 0; i < sig.length; i++) fArr[i] = sig[i] - dCode;
+      feedSig = fArr;
+    }
+    // Advance the sweep every 2 ingested frames: `steps` phases spanning one
+    // ADC LSB, cycling. The offset verb takes ELECTRICAL volts (the sliders
+    // divide tip volts by the probe the same way); the next frame is skipped
+    // (pending) while the staged DAC write lands.
+    if (++dz.framesAtStep >= 2) {
+      dz.framesAtStep = 0;
+      dz.idx = (dz.idx + 1) % dz.steps;
+      const target = dz.base - (dz.idx / dz.steps) * sr.st.vpc; // tip volts, 0..−1 LSB
+      send("offset" + sr.ch, target / probeOf(sr.ch));
+      dz.pending = 1;
+    }
+  }
+  srFeed(sr.st, feedSig, { maxLag: 8, edgeX: f.edge_x }); // edge anchors the coarse alignment
   if (sr.durS && (performance.now() - sr.t0) / 1000 >= sr.durS) {
     srStop("done");
     return;
@@ -1632,6 +1665,10 @@ async function srLoop(gen) {
 
 function srStop(why) {
   sr.armed = false;
+  if (sr.dither.on && sr.dither.idx !== 0) {
+    send("offset" + sr.ch, sr.dither.base / probeOf(sr.ch)); // restore the pre-dither offset
+    sr.dither.idx = 0;
+  }
   $("srArm").textContent = "ARM";
   $("srArm").classList.remove("on");
   srUpdateStats(true);
@@ -1652,6 +1689,9 @@ $("srArm").onclick = () => {
   sr.st = null; sr.meta = null; sr.lastSeq = 0;
   sr.durS = +$("srDur").value;
   sr.ch = +$("srCh").value || 1; // latched — a mid-capture change stops the stack
+  sr.dither.on = $("srDither").checked;
+  sr.dither.base = (st && (sr.ch === 2 ? st.off2_v : st.off1_v)) || 0;
+  sr.dither.idx = 0; sr.dither.pending = 0; sr.dither.framesAtStep = 0;
   sr.t0 = performance.now();
   sr.armed = true;
   $("srArm").textContent = "STOP";

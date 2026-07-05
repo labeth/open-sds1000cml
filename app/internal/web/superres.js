@@ -202,9 +202,9 @@ function srNew(n, K) {
     n, K, nbins,
     sum: new Float64Array(nbins),
     sum2: new Float64Array(nbins),
-    cnt: new Uint32Array(nbins),
+    cnt: new Float64Array(nbins), // WEIGHT sums (linear drizzle splits samples)
     sumA: new Float64Array(nbins),
-    cntA: new Uint32Array(nbins),
+    cntA: new Float64Array(nbins),
     frames: 0, rejected: 0, clipped: 0, reseeds: 0,
     attempts: 0, // frames offered since the current reference was adopted
     scores: [], shifts: [],
@@ -304,20 +304,32 @@ function srFeed(st, sig, opts) {
   return "stacked";
 }
 
-// srAccum drizzles one aligned frame onto the fine grid: sample i lands at
-// fine bin round((i − shift)·K). Bins off the grid are dropped. Odd frames
-// also land in the A half-stack (see srNew).
+// srAccum drizzles one aligned frame onto the fine grid with LINEAR WEIGHTS:
+// sample i lands at fine position (i − shift)·K and splits between the two
+// adjacent bins by fractional distance — nearest-bin deposit left adjacent
+// bins averaging disjoint frame subsets, whose independent errors rendered
+// as a zig-zag ribbon; the linear kernel correlates neighbours at no
+// information cost. Bins off the grid are dropped. Odd frames also land in
+// the A half-stack (see srNew).
 function srAccum(st, sig, shift) {
   const K = st.K, nb = st.nbins, n = st.n;
   const sum = st.sum, sum2 = st.sum2, cnt = st.cnt;
   const odd = (st.frames & 1) === 1;
   const sumA = st.sumA, cntA = st.cntA;
   for (let i = 0; i < n; i++) {
-    const b = Math.round((i - shift) * K);
-    if (b < 0 || b >= nb) continue;
+    const pos = (i - shift) * K;
+    const b0 = Math.floor(pos);
+    const w1 = pos - b0, w0 = 1 - w1;
     const v = sig[i];
-    sum[b] += v; sum2[b] += v * v; cnt[b]++;
-    if (odd) { sumA[b] += v; cntA[b]++; }
+    if (b0 >= 0 && b0 < nb) {
+      sum[b0] += w0 * v; sum2[b0] += w0 * v * v; cnt[b0] += w0;
+      if (odd) { sumA[b0] += w0 * v; cntA[b0] += w0; }
+    }
+    const b1 = b0 + 1;
+    if (w1 > 0 && b1 >= 0 && b1 < nb) {
+      sum[b1] += w1 * v; sum2[b1] += w1 * v * v; cnt[b1] += w1;
+      if (odd) { sumA[b1] += w1 * v; cntA[b1] += w1; }
+    }
   }
 }
 
@@ -342,12 +354,13 @@ function srResult(st, opts) {
   const statLo = st.statLo * st.K, statHi = st.statHi * st.K;
   let filled = 0, scanned = 0;
   const sigSingles = [], halves = [];
+  const EPS = 0.05; // minimum weight for a bin to count as filled
   for (let b = 0; b < nb; b++) {
     const c = st.cnt[b];
-    if (mean) mean[b] = c === 0 ? -1 : st.sum[b] / c;
+    if (mean) mean[b] = c < EPS ? -1 : st.sum[b] / c;
     if (b % stride !== 0 || b < statLo || b >= statHi) continue;
     scanned++;
-    if (c === 0) continue;
+    if (c < EPS) continue;
     filled++;
     const m = st.sum[b] / c;
     if (c >= 4) {
@@ -372,7 +385,7 @@ function srResult(st, opts) {
     sigmaStack = 1.4826 * med(halves.map(Math.abs));
   }
   const cnts = [];
-  for (let b = statLo; b < statHi; b += stride) if (st.cnt[b] > 0) cnts.push(st.cnt[b]);
+  for (let b = statLo; b < statHi; b += stride) if (st.cnt[b] >= EPS) cnts.push(st.cnt[b]);
   const sigmaStackTheory = sigmaSingle > 0 && cnts.length ? sigmaSingle / Math.sqrt(med(cnts)) : 0;
   const bitsGained = sigmaStack > 0 && sigmaSingle > 0 ? Math.log2(sigmaSingle / sigmaStack) : 0;
   return {

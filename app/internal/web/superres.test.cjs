@@ -251,5 +251,87 @@ function frame(n, period, shift, noise, amp, harmonics) {
   check("stack gains bits after re-seed", res.bitsGained > 1, `+${res.bitsGained.toFixed(2)}`);
 }
 
+
+// ---- quantization staircase + offset dither: slow (sub-LSB-slope) signal
+// regions quantized to 8 bits "stick" to code levels when stacked plainly;
+// sweeping a sub-LSB offset before quantization and subtracting it after
+// (what the UI's dither mode does via the offset DAC) recovers the truth.
+{
+  const n = 2048, K = 8, N = 240, noise = 0.15; // noise well below 0.5 LSB
+  const P = 1024, A = 40;
+  const trueVal = i => 128 + A * Math.sin(2 * Math.PI * i / P);
+  const slopeAt = i => A * 2 * Math.PI / P * Math.cos(2 * Math.PI * i / P);
+  const mkStack = (dither) => {
+    const st = srNew(n, K);
+    st.sampleS = 1e-8;
+    for (let k = 0; k < N; k++) {
+      const shift = (rnd() - 0.5) * 4;
+      const offCodes = dither ? -((k % 8) / 8) : 0; // commanded sub-LSB offset
+      const sig = new Float64Array(n);
+      for (let i = 0; i < n; i++) {
+        const v = trueVal(i - shift) + noise * gauss();
+        sig[i] = Math.round(v + offCodes) - offCodes; // quantize, then correct
+      }
+      srFeed(st, sig, { maxLag: 8, normalize: false });
+    }
+    return srResult(st);
+  };
+  // Error measured on SLOW bins only (|slope| < 0.05 codes/sample — the
+  // staircase regime); rms not max (single-bin noise shouldn't decide).
+  const errOf = (res) => {
+    let s2 = 0, c = 0;
+    for (let b = 64 * K; b < (n - 64) * K; b++) {
+      const i = b / K;
+      if (Math.abs(slopeAt(i)) > 0.05) continue;
+      const m = res.mean[b];
+      if (m < 0) continue;
+      const e = m - trueVal(i);
+      s2 += e * e; c++;
+    }
+    return Math.sqrt(s2 / Math.max(1, c));
+  };
+  const plain = mkStack(false), dithered = mkStack(true);
+  check("staircase test stacks frames", plain.frames > 200 && dithered.frames > 200, `${plain.frames}/${dithered.frames}`);
+  const e0 = errOf(plain), e1 = errOf(dithered);
+  check("staircase visible without dither", e0 > 0.1, `rmsErr ${e0.toFixed(3)} codes`);
+  check("dither removes the staircase", e1 < 0.06, `rmsErr ${e1.toFixed(3)} codes`);
+  check("dither wins by >2x", e0 / e1 > 2, `${(e0 / e1).toFixed(1)}x`);
+}
+
+// ---- weighted drizzle smooths the independent-noise ribbon: with the SAME
+// frames and sub-sample phases, the linear kernel's bin-to-bin roughness on
+// a flat region beats nearest-bin (adjacent bins share samples).
+{
+  const n = 1024, K = 16, N = 200, noise = 2.0;
+  const nb = n * K;
+  const mk = () => ({ sum: new Float64Array(nb), cnt: new Float64Array(nb) });
+  const lin = mk(), near = mk();
+  for (let k = 0; k < N; k++) {
+    const phase = rnd(); // sub-sample trigger phase (uniform, like hardware)
+    for (let i = 0; i < n; i++) {
+      const v = 150 + noise * gauss();
+      const pos = (i - phase) * K;
+      const bN = Math.round(pos);
+      if (bN >= 0 && bN < nb) { near.sum[bN] += v; near.cnt[bN]++; }
+      const b0 = Math.floor(pos), w1 = pos - b0, w0 = 1 - w1;
+      if (b0 >= 0 && b0 < nb) { lin.sum[b0] += w0 * v; lin.cnt[b0] += w0; }
+      if (b0 + 1 >= 0 && b0 + 1 < nb) { lin.sum[b0 + 1] += w1 * v; lin.cnt[b0 + 1] += w1; }
+    }
+  }
+  const roughness = (acc) => {
+    const diffs = [];
+    let prev = null;
+    for (let b = 100 * K; b < 900 * K; b++) {
+      const m = acc.cnt[b] > 0.05 ? acc.sum[b] / acc.cnt[b] : null;
+      if (m !== null && prev !== null) diffs.push(m - prev);
+      prev = m;
+    }
+    const mu = diffs.reduce((s, v) => s + v, 0) / diffs.length;
+    return Math.sqrt(diffs.reduce((s, v) => s + (v - mu) * (v - mu), 0) / diffs.length);
+  };
+  const rL = roughness(lin), rN = roughness(near);
+  check("weighted drizzle smooths the ribbon vs nearest-bin", rL < 0.8 * rN, `linear ${rL.toFixed(4)} vs nearest ${rN.toFixed(4)}`);
+}
+
 if (fails) { console.log(fails + " FAILURES"); process.exit(1); }
 console.log("ALL PASS");
