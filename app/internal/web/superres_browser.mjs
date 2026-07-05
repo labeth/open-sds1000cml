@@ -41,16 +41,45 @@ try {
   await page.click("#srArm"); // stop
   ok(await page.evaluate(() => !sr.armed), "stop disarms");
 
-  // Review the stacked result.
+  // Review the stacked result — a first-class view.
   await page.click("#srShow");
   const rev = await page.evaluate(() => ({
     frozen, len: frame.c1.length, k: sr.st.K, n: sr.st.n,
     float: frame.c1 instanceof Float32Array,
-    c2: frame.c2, span: frame.col_span_s,
+    hasC2: frame.c2 instanceof Float32Array && frame.c2.length === frame.c1.length,
+    span: frame.col_span_s, showing: sr.showing,
+    m1: frame.m1, m2: frame.m2,
   }));
-  ok(rev.frozen, "review freezes the display");
+  ok(rev.frozen && rev.showing, "review freezes the display (toggle on)");
   ok(rev.len === rev.n * rev.k, `stack is n*K fine bins (${rev.len})`);
   ok(rev.float, "stacked trace is Float32 (sub-code precision preserved)");
+  ok(rev.hasC2, "BOTH channels stacked (c2 present)");
+  ok(rev.m1 && rev.m1.vpp > 0 && rev.m1.has_timing, `measurements on the stack (vpp ${rev.m1 && rev.m1.vpp.toFixed(2)} V, f ${rev.m1 && (rev.m1.freq/1000).toFixed(1)} kHz)`);
+  ok(rev.m2 && rev.m2.vpp > 0, "C2 measurements too");
+
+  // Toggle back to live and back to the stack — the zoom is remembered.
+  await page.evaluate(() => { view.win.a = 0.4; view.win.b = 0.6; redraw(); }); // zoom into the stack
+  await page.click("#srShow"); // -> live
+  await page.waitForFunction(() => !sr.showing && !frozen, null, { timeout: 5000 });
+  await page.waitForFunction(() => frame && !(frame.c1 instanceof Float32Array), null, { timeout: 10000 });
+  ok(true, "toggle returns to live frames");
+  await page.click("#srShow"); // -> stack again
+  const back = await page.evaluate(() => ({ showing: sr.showing, a: view.win.a, b: view.win.b, float: frame.c1 instanceof Float32Array }));
+  ok(back.showing && back.float, "toggle re-enters the stack view");
+  ok(Math.abs(back.a - 0.4) < 0.01 && Math.abs(back.b - 0.6) < 0.01, `stack zoom remembered (${back.a.toFixed(2)}..${back.b.toFixed(2)})`);
+
+  // FFT mode on the stack: peaks appear for both channels.
+  await page.click("#mFFT");
+  await page.waitForTimeout(600);
+  const fft = await page.evaluate(() => ({ p1: fftCh[1].peaks.length, p2: fftCh[2].peaks.length }));
+  ok(fft.p1 > 0, `FFT peaks on stacked C1 (${fft.p1})`);
+  ok(fft.p2 > 0, `FFT peaks on stacked C2 (${fft.p2})`);
+
+  // X-Y mode on the stack renders without page errors.
+  await page.click("#mXY");
+  await page.waitForTimeout(400);
+  ok(await page.evaluate(() => view.mode === "XY" && frame.c1.length > 0 && frame.c2.length > 0), "X-Y mode on the stack");
+  await page.click("#mYT");
 
   // Noise on the stack must be visibly below a single frame's noise.
   const noise = await page.evaluate(() => {

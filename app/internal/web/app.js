@@ -414,7 +414,8 @@ function drawXY() {
   ctx.strokeStyle = MATHCOL; ctx.lineWidth = 1.2 * dpr; ctx.lineJoin = "round";
   ctx.beginPath(); let pen = false;
   const n = Math.min(frame.c1.length, frame.c2.length);
-  for (let i = 0; i < n; i++) {
+  const step = Math.max(1, Math.floor(n / 20000)); // dense stacks: stride the Lissajous
+  for (let i = 0; i < n; i += step) {
     const a = frame.c1[i], b = frame.c2[i];
     if (a < 0 || b < 0) { pen = false; continue; }
     const x = a / 255 * CW, y = CH * (1 - b / 255);
@@ -1129,6 +1130,11 @@ let binFailures = 0;
 let jsonGen = 0; // generation token: bumping it kills any older pollFrame chain
 
 function applyFrame(f) {
+  if (sr.showing) { // unfrozen behind our back (freeze button): leave stack view cleanly
+    sr.savedWin = { a: view.win.a, b: view.win.b, zoomed: userZoomed };
+    sr.showing = false;
+    $("srShow").classList.remove("on");
+  }
   frame = f; lastSeq = f.seq;
   const sig = acqSig(f);
   if (sig !== lastSig) { userZoomed = false; lastSig = sig; } // band/depth/run change → re-home
@@ -1558,6 +1564,7 @@ function runAutodetect() {
 // on the stacked waveform, and "fit model" writes the analytic sum-of-
 // sinusoids reconstruction into REF B for overlay comparison.
 const sr = { st: null, armed: false, gen: 0, lastSeq: 0, meta: null, t0: 0, durS: 60, lastUi: 0, ch: 1,
+  showing: false, savedWin: null, // stack-view toggle state + remembered zoom
   // Offset dither: the 8-bit quantizer's staircase survives averaging when
   // the front-end noise is sub-LSB. Sweeping the offset DAC by sub-LSB steps
   // across frames (and subtracting the COMMANDED offset back in code space)
@@ -1587,24 +1594,25 @@ function srIngest(f) {
   if (+$("srCh").value !== sr.ch) { srStop("channel changed — stack kept"); return; }
   const sig = sr.ch === 2 ? f.c2 : f.c1;
   if (!sig || f.is_env) { srStop("band became unsupported"); return; }
-  const vpc = (sr.ch === 2 ? f.vpc2 : f.vpc1) || 1 / 32;
   if (!sr.st) {
     const K = +$("srK").value || 32;
     sr.st = srNew(f.cols, K);
+    sr.st.align = sr.ch - 1; // alignment/lucky run on the selected channel; BOTH stack
     sr.st.sampleS = f.sample_s || 0;
-    sr.st.vpc = vpc;
-    sr.st.offV = (sr.ch === 2 ? f.off2_v : f.off1_v) || 0;
-    sr.meta = { tdiv_s: f.tdiv_s, cols: f.cols, sample_s: f.sample_s };
+    sr.st.c[0].vpc = f.vpc1 || 1 / 32;
+    sr.st.c[0].offV = f.off1_v || 0;
+    sr.st.c[1].vpc = f.vpc2 || 1 / 32;
+    sr.st.c[1].offV = f.off2_v || 0;
+    sr.meta = { tdiv_s: f.tdiv_s, cols: f.cols, sample_s: f.sample_s, vpc1: f.vpc1, vpc2: f.vpc2 };
   } else if (f.cols !== sr.meta.cols || f.sample_s !== sr.meta.sample_s) {
     srStop("acquisition changed (t/div or depth) — stack kept");
     return;
-  } else if (vpc !== sr.st.vpc) {
+  } else if (f.vpc1 !== sr.meta.vpc1 || f.vpc2 !== sr.meta.vpc2) {
     // NCC is gain-invariant and the drift fit clamps >10×, so a V/div change
     // would silently corrupt code-space stacking — stop instead.
     srStop("vertical scale changed — stack kept");
     return;
   }
-  let feedSig = sig;
   const dz = sr.dither;
   if (dz.on) {
     if (dz.pending > 0) { dz.pending--; return; } // offset still staging — skip
@@ -1620,12 +1628,13 @@ function srIngest(f) {
     if (++dz.framesAtStep >= 2) {
       dz.framesAtStep = 0;
       dz.idx = (dz.idx + 1) % dz.steps;
-      const target = dz.base - (dz.idx / dz.steps) * sr.st.vpc; // tip volts, 0..−1 LSB
+      const target = dz.base - (dz.idx / dz.steps) * sr.st.c[sr.st.align].vpc; // tip volts, 0..−1 LSB
       send("offset" + sr.ch, target / probeOf(sr.ch));
       dz.pending = 1;
     }
   }
-  srFeed(sr.st, feedSig, { maxLag: 8, edgeX: f.edge_x }); // edge anchors the coarse alignment
+  // BOTH channels stack (the align channel drives alignment/lucky-select).
+  srFeed(sr.st, f.c1, f.c2, { maxLag: 8, edgeX: f.edge_x });
   if (sr.durS && (performance.now() - sr.t0) / 1000 >= sr.durS) {
     srStop("done");
     return;
@@ -1681,7 +1690,7 @@ $("srArm").onclick = () => {
     srStatus("superres/binframe scripts missing");
     return;
   }
-  sr.st = null; sr.meta = null; sr.lastSeq = 0;
+  sr.st = null; sr.meta = null; sr.lastSeq = 0; sr.savedWin = null;
   sr.durS = +$("srDur").value;
   sr.ch = +$("srCh").value || 1; // latched — a mid-capture change stops the stack
   sr.dither.on = $("srDither").checked;
@@ -1695,25 +1704,48 @@ $("srArm").onclick = () => {
   srLoop(++sr.gen);
 };
 
-$("srReset").onclick = () => { srStop(); sr.st = null; sr.meta = null; srStatus("idle"); };
+$("srReset").onclick = () => { if (sr.showing) srExitView(); srStop(); sr.st = null; sr.meta = null; sr.savedWin = null; srStatus("idle"); };
 
+// The stack view is a first-class TOGGLE: everything a single shot can do —
+// measurements, FFT, X-Y, math, decode, cursors, CSV/PNG — works on the
+// synthetic frame, and you can flip between live and stack freely (the
+// stack zoom is remembered across visits).
+function srExitView() {
+  sr.showing = false;
+  $("srShow").classList.remove("on");
+  sr.savedWin = { a: view.win.a, b: view.win.b, zoomed: userZoomed };
+  frozen = false; $("freeze").classList.remove("on");
+  // Live frames resume on the next poll; the poisoned acq signature re-homes.
+}
 $("srShow").onclick = () => {
+  if (sr.showing) { srExitView(); return; }
   if (!sr.st || !sr.st.frames) { srStatus("nothing stacked yet"); return; }
   const res = srResult(sr.st);
   const n = sr.st.n;
+  const dt = sr.st.sampleS / sr.st.K;
+  const meas = (mean, ch) => mean ? srMeasure(mean, sr.st.c[ch].vpc, sr.st.c[ch].offV, dt) : null;
   frame = {
     seq: frame ? frame.seq : 0, unchanged: false,
-    c1: res.mean, c2: null, is_env: false,
+    c1: res.mean, c2: res.mean2, is_env: false,
     cols: res.mean.length, col_span_s: n * sr.st.sampleS,
     tdiv_s: sr.meta.tdiv_s, displayed_sdiv_s: sr.meta.tdiv_s,
-    vpc1: sr.st.vpc, vpc2: 1 / 32, off1_v: sr.st.offV, off2_v: 0,
+    vpc1: sr.st.c[0].vpc, vpc2: sr.st.c[1].vpc,
+    off1_v: sr.st.c[0].offV, off2_v: sr.st.c[1].offV,
     edge_frac: sr.st.edgeX >= 0 ? sr.st.edgeX / n : -1,
-    win_frac: 1, depth: 0, m1: null, m2: null,
+    win_frac: 1, depth: 0,
+    m1: meas(res.mean, 0), m2: meas(res.mean2, 1),
+    clip1: false, clip2: false,
     trigd: true, interp: false, coherent: true, ptp: 0,
   };
+  sr.showing = true;
+  $("srShow").classList.add("on");
   frozen = true; $("freeze").classList.add("on");
-  view.win.a = 0; view.win.b = 1; userZoomed = true; // whole stack; wheel-zoom into the detail
-  lastSig = "superres"; // poison the acq signature so unfreezing re-homes onto live
+  if (sr.savedWin) {
+    view.win.a = sr.savedWin.a; view.win.b = sr.savedWin.b; userZoomed = sr.savedWin.zoomed;
+  } else {
+    view.win.a = 0; view.win.b = 1; userZoomed = true; // whole stack; wheel-zoom into the detail
+  }
+  lastSig = "superres"; // poison the acq signature so returning to live re-homes
   computeDecode(); redraw(); updateMeas(); updateCursors();
   srUpdateStats(true);
 };
@@ -1721,11 +1753,13 @@ $("srShow").onclick = () => {
 $("srFit").onclick = () => {
   if (!sr.st || !sr.st.frames) { srStatus("nothing stacked yet"); return; }
   const res = srResult(sr.st);
-  const fit = srModelFit(res.mean, sr.st.K, sr.st.sampleS, { spectrum, detectPeaks }, 6);
+  const am = sr.st.align === 1 ? res.mean2 : res.mean; // fit the align channel
+  const ac = sr.st.c[sr.st.align];
+  const fit = srModelFit(am, sr.st.K, sr.st.sampleS, { spectrum, detectPeaks }, 6);
   if (!fit) { srStatus("model fit failed (need a fuller stack)"); return; }
   refs.B = {
-    c1: Array.from(fit.synth(Math.min(res.mean.length, 16384))),
-    c2: null, vpc1: sr.st.vpc, vpc2: 1 / 32, off1: sr.st.offV, off2: 0, show: true,
+    c1: Array.from(fit.synth(Math.min(am.length, 16384))),
+    c2: null, vpc1: ac.vpc, vpc2: 1 / 32, off1: ac.offV, off2: 0, show: true,
     srSpanS: sr.st.n * sr.st.sampleS, // only overlay on a matching time base
   };
   updateRefRows(); redraw();

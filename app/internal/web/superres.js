@@ -198,36 +198,46 @@ function srGainOffset(ref, sig, lag, wLo, wHi) {
 // naive σ/√cnt would silently assume away.
 function srNew(n, K) {
   const nbins = n * K;
-  return {
-    n, K, nbins,
-    kernel: "interp", // "interp" = resample every frame at every fine bin
-    // (each bin averages ALL frames); "drizzle" = linear deposit (each bin
-    // averages ~frames/K). See superres-lab.md iteration 4.
+  const chan = () => ({
     sum: new Float64Array(nbins),
     sum2: new Float64Array(nbins),
     cnt: new Float64Array(nbins), // WEIGHT sums (linear drizzle splits samples)
     sumA: new Float64Array(nbins),
     cntA: new Float64Array(nbins),
+    ref: null, // Float32Array reference for the drift fit
+    vpc: 1 / 32, offV: 0,
+    clipSkips: 0, // frames whose data was excluded because THIS channel clipped
+  });
+  return {
+    n, K, nbins,
+    kernel: "interp", // "interp" = resample every frame at every fine bin
+    // (each bin averages ALL frames); "drizzle" = linear deposit (each bin
+    // averages ~frames/K). See superres-lab.md iteration 4.
+    c: [chan(), chan()], // both channels stack; c[align] drives align/lucky
+    align: 0, // which channel alignment/lucky-selection runs on
     frames: 0, rejected: 0, clipped: 0, reseeds: 0,
     attempts: 0, // frames offered since the current reference was adopted
     scores: [], shifts: [],
-    ref: null, // Float32Array reference (first accepted frame with signal)
     refEdgeX: -1,
     statLo: 0, statHi: n, // coarse-sample range the sigma stats cover (the
     // alignment window): dead-tail bins vary per frame by drain boundary and
     // would drown the real-signal noise figures.
-    sampleS: 0, vpc: 1 / 32, offV: 0, edgeX: -1,
+    sampleS: 0, edgeX: -1,
   };
 }
 
 // srFeed runs the full per-frame pipeline: align → lucky-select → drift
-// normalize → drizzle. sig is a raw uint8-code array. Returns a disposition
-// string for the UI ("stacked" | "rejected:<why>").
-function srFeed(st, sig, opts) {
+// normalize → drizzle, for BOTH channels (they are sampled simultaneously,
+// so the align channel's shift serves both; each channel gets its own drift
+// fit against its own reference). sig2 may be null (single-channel feed).
+// Returns a disposition string for the UI ("stacked" | "rejected:<why>").
+function srFeed(st, sig1, sig2, opts) {
   opts = opts || {};
   const maxLag = opts.maxLag || 8;
-  if (sig.length < st.n) return "rejected:short";
-  if (srClipped(sig)) { st.clipped++; st.rejected++; return "rejected:clip"; }
+  const sigs = [sig1, sig2];
+  const alignSig = sigs[st.align];
+  if (!alignSig || alignSig.length < st.n) return "rejected:short";
+  if (srClipped(alignSig)) { st.clipped++; st.rejected++; return "rejected:clip"; }
   // REFERENCE RE-SEED: if most frames refuse to align to the current
   // reference, the reference itself is the outlier (this hardware's deep
   // drains come in populations — a reference from the minority rejects the
@@ -235,23 +245,28 @@ function srFeed(st, sig, opts) {
   // within a couple of re-seeds the reference lands in the dominant
   // population and acceptance recovers.
   st.attempts++;
-  if (st.ref && st.attempts >= 30 && st.frames / st.attempts < 0.3) {
-    const keep = { sampleS: st.sampleS, vpc: st.vpc, offV: st.offV, reseeds: st.reseeds + 1 };
+  if (st.c[st.align].ref && st.attempts >= 30 && st.frames / st.attempts < 0.3) {
+    const keep = { sampleS: st.sampleS, align: st.align, kernel: st.kernel, reseeds: st.reseeds + 1 };
+    const scales = st.c.map(c => ({ vpc: c.vpc, offV: c.offV }));
     const fresh = srNew(st.n, st.K);
     Object.assign(st, fresh, keep);
+    st.c.forEach((c, i) => { c.vpc = scales[i].vpc; c.offV = scales[i].offV; });
   }
-  if (!st.ref) {
+  if (!st.c[st.align].ref) {
     // Reference quality gate: a flat/untriggered first frame would zero the
     // NCC denominator and poison the whole capture (everything after scores
     // 0 and is rejected). Wait for a frame with real signal.
     let lo = 255, hi = 0;
-    for (let i = 0; i < st.n; i++) { const v = sig[i]; if (v < lo) lo = v; if (v > hi) hi = v; }
+    for (let i = 0; i < st.n; i++) { const v = alignSig[i]; if (v < lo) lo = v; if (v > hi) hi = v; }
     if (hi - lo < 12) { st.rejected++; return "rejected:flat"; }
-    st.ref = Float32Array.from(sig.subarray ? sig.subarray(0, st.n) : sig.slice(0, st.n));
     st.refEdgeX = opts.edgeX != null ? opts.edgeX : -1;
     st.edgeX = st.refEdgeX; // the stack lives on the reference's timeline
-    // The reference frame itself stacks at shift 0.
-    srAccum(st, st.ref, 0);
+    for (let ch = 0; ch < 2; ch++) {
+      const s = sigs[ch];
+      if (!s || !(s.length >= st.n)) continue;
+      st.c[ch].ref = Float32Array.from(s.subarray ? s.subarray(0, st.n) : s.slice(0, st.n));
+      srAccumCh(st, ch, st.c[ch].ref, 0); // the reference stacks at shift 0
+    }
     st.frames++;
     st.scores.push(1); st.shifts.push(0);
     return "stacked";
@@ -274,7 +289,7 @@ function srFeed(st, sig, opts) {
   const half = Math.min(st.n >> 1, opts.winHalf || 2048);
   const wLo = Math.max(0, center - half), wHi = Math.min(st.n, center + half);
   st.statLo = wLo; st.statHi = wHi;
-  const al = srAlign(st.ref, sig, maxLag, base, wLo, wHi);
+  const al = srAlign(st.c[st.align].ref, alignSig, maxLag, base, wLo, wHi);
   if (!al) { st.rejected++; return "rejected:align"; }
   // Adaptive lucky threshold: after warm-up, cut at median − 3·MAD — but
   // never closer than 0.05 below the median. When all frames are good the
@@ -288,19 +303,26 @@ function srFeed(st, sig, opts) {
     thr = Math.max(thr, med - Math.max(3 * 1.4826 * mad, 0.05));
   }
   if (al.score < thr) { st.rejected++; return "rejected:score"; }
-  let frame = sig;
-  if (opts.normalize !== false) {
-    const { g, b } = srGainOffset(st.ref, sig, Math.round(al.shift), wLo, wHi);
-    if (g !== 1 || b !== 0) {
-      const f = new Float32Array(st.n);
-      for (let i = 0; i < st.n; i++) {
-        const v = (sig[i] - b) / g;
-        f[i] = v < 0 ? 0 : v; // codes can't go negative; -1 is the gap sentinel
+  const shiftInt = Math.round(al.shift);
+  for (let ch = 0; ch < 2; ch++) {
+    let s = sigs[ch];
+    if (!s || !(s.length >= st.n) || !st.c[ch].ref) continue;
+    // Companion-channel clipping only excludes THAT channel's data for this
+    // frame (the align channel was already vetted above).
+    if (ch !== st.align && srClipped(s)) { st.c[ch].clipSkips++; continue; }
+    if (opts.normalize !== false) {
+      const { g, b } = srGainOffset(st.c[ch].ref, s, shiftInt, wLo, wHi);
+      if (g !== 1 || b !== 0) {
+        const f = new Float32Array(st.n);
+        for (let i = 0; i < st.n; i++) {
+          const v = (s[i] - b) / g;
+          f[i] = v < 0 ? 0 : v; // codes can't go negative; -1 is the gap sentinel
+        }
+        s = f;
       }
-      frame = f;
     }
+    srAccumCh(st, ch, s, al.shift);
   }
-  srAccum(st, frame, al.shift);
   st.frames++;
   st.scores.push(al.score);
   st.shifts.push(al.shift);
@@ -314,11 +336,15 @@ function srFeed(st, sig, opts) {
 // as a zig-zag ribbon; the linear kernel correlates neighbours at no
 // information cost. Bins off the grid are dropped. Odd frames also land in
 // the A half-stack (see srNew).
-function srAccum(st, sig, shift) {
+// srAccum kept as the single-channel entry (tests, channel 0).
+function srAccum(st, sig, shift) { srAccumCh(st, 0, sig, shift); }
+
+function srAccumCh(st, ch, sig, shift) {
   const K = st.K, nb = st.nbins, n = st.n;
-  const sum = st.sum, sum2 = st.sum2, cnt = st.cnt;
+  const C = st.c[ch];
+  const sum = C.sum, sum2 = C.sum2, cnt = C.cnt;
   const odd = (st.frames & 1) === 1;
-  const sumA = st.sumA, cntA = st.cntA;
+  const sumA = C.sumA, cntA = C.cntA;
   if (st.kernel === "interp" || st.kernel === "cubic") {
     // Resample THIS frame at every fine bin: every bin averages every frame,
     // so per-bin noise drops ~√K versus deposit kernels. The frame's raw
@@ -388,25 +414,29 @@ function srResult(st, opts) {
   opts = opts || {};
   const nb = st.nbins;
   const stride = Math.max(1, opts.stride | 0 || 1);
+  const A = st.c[st.align]; // stats run on the align channel
+  const other = st.c[1 - st.align];
   const mean = opts.statsOnly ? null : new Float32Array(nb);
+  const mean2 = opts.statsOnly || !other.ref ? null : new Float32Array(nb);
   const statLo = st.statLo * st.K, statHi = st.statHi * st.K;
   let filled = 0, scanned = 0;
   const sigSingles = [], halves = [];
   const EPS = 0.05; // minimum weight for a bin to count as filled
   for (let b = 0; b < nb; b++) {
-    const c = st.cnt[b];
-    if (mean) mean[b] = c < EPS ? -1 : st.sum[b] / c;
+    const c = A.cnt[b];
+    if (mean) mean[b] = c < EPS ? -1 : A.sum[b] / c;
+    if (mean2) { const c2 = other.cnt[b]; mean2[b] = c2 < EPS ? -1 : other.sum[b] / c2; }
     if (b % stride !== 0 || b < statLo || b >= statHi) continue;
     scanned++;
     if (c < EPS) continue;
     filled++;
-    const m = st.sum[b] / c;
+    const m = A.sum[b] / c;
     if (c >= 4) {
-      const v = Math.max(0, st.sum2[b] / c - m * m);
+      const v = Math.max(0, A.sum2[b] / c - m * m);
       sigSingles.push(Math.sqrt(v));
-      const ca = st.cntA[b], cb = c - ca;
+      const ca = A.cntA[b], cb = c - ca;
       if (ca >= 2 && cb >= 2) {
-        const ma = st.sumA[b] / ca, mb = (st.sum[b] - st.sumA[b]) / cb;
+        const ma = A.sumA[b] / ca, mb = (A.sum[b] - A.sumA[b]) / cb;
         halves.push((ma - mb) / 2);
       }
     }
@@ -423,11 +453,12 @@ function srResult(st, opts) {
     sigmaStack = 1.4826 * med(halves.map(Math.abs));
   }
   const cnts = [];
-  for (let b = statLo; b < statHi; b += stride) if (st.cnt[b] >= EPS) cnts.push(st.cnt[b]);
+  for (let b = statLo; b < statHi; b += stride) if (A.cnt[b] >= EPS) cnts.push(A.cnt[b]);
   const sigmaStackTheory = sigmaSingle > 0 && cnts.length ? sigmaSingle / Math.sqrt(med(cnts)) : 0;
   const bitsGained = sigmaStack > 0 && sigmaSingle > 0 ? Math.log2(sigmaSingle / sigmaStack) : 0;
   return {
-    mean,
+    mean, mean2,
+    clipSkips: [st.c[0].clipSkips, st.c[1].clipSkips],
     fill: filled / Math.max(1, scanned),
     frames: st.frames, rejected: st.rejected, clipped: st.clipped, reseeds: st.reseeds,
     sigmaSingle, sigmaStack, sigmaStackTheory, bitsGained,
@@ -528,6 +559,108 @@ function srModelFit(mean, K, sampleS, peaksLib, nPeaks) {
   };
 }
 
+// srMeasure computes the auto-measurement set over a stacked waveform —
+// the same semantics as the device's measure.Compute (internal/measure) but
+// over FLOAT codes, so the stack's sub-LSB precision carries through to the
+// readouts. codes: Float32Array with -1 gaps; vpc volts/code; offV applied
+// offset; dtS seconds per element. Returns the frame.m1-shaped object every
+// existing consumer (meas panel, autoset) already reads, or null.
+function srMeasure(codes, vpc, offV, dtS) {
+  // Work on the contiguous filled run (gaps only at the ends in practice).
+  let a = 0, b = codes.length - 1;
+  while (a <= b && codes[a] < 0) a++;
+  while (b >= a && codes[b] < 0) b--;
+  const n = b - a + 1;
+  if (n < 16) return null;
+  let cmin = Infinity, cmax = -Infinity, sum = 0, sum2 = 0, cnt = 0;
+  const hist = new Float64Array(256);
+  for (let i = a; i <= b; i++) {
+    const v = codes[i];
+    if (v < 0) continue;
+    if (v < cmin) cmin = v;
+    if (v > cmax) cmax = v;
+    sum += v; sum2 += v * v; cnt++;
+    const h = Math.round(v);
+    if (h >= 0 && h <= 255) hist[h]++;
+  }
+  if (!cnt) return null;
+  const mean = sum / cnt;
+  const variance = Math.max(0, sum2 / cnt - mean * mean);
+  const toV = (code) => (code - 128) * vpc - offV;
+  // Top/base via histogram modes either side of the midpoint (mirrors
+  // measure.go — robust against overshoot ringing).
+  const mid = Math.round((cmin + cmax) / 2);
+  const mode = (lo, hi) => {
+    let best = -1, bn = 0;
+    for (let c = Math.max(0, lo); c <= Math.min(255, hi); c++) if (hist[c] > bn) { best = c; bn = hist[c]; }
+    return best;
+  };
+  let topCode = mode(mid + 1, Math.ceil(cmax));
+  let baseCode = mode(Math.floor(cmin), mid);
+  if (topCode < 0) topCode = cmax;
+  if (baseCode < 0) baseCode = cmin;
+  const m = {
+    vpp: (cmax - cmin) * vpc,
+    vmax: toV(cmax), vmin: toV(cmin), vmean: toV(mean),
+    vrms: Math.sqrt(variance) * vpc,
+    vtop: toV(topCode), vbase: toV(baseCode),
+    vampl: (topCode - baseCode) * vpc,
+    overshoot: 0, preshoot: 0,
+    freq: 0, period: 0, duty: 0, rise_s: 0, fall_s: 0,
+    pos_width_s: 0, neg_width_s: 0, has_timing: false,
+  };
+  const amp = topCode - baseCode;
+  if (amp > 0) {
+    m.overshoot = (cmax - topCode) / amp * 100;
+    m.preshoot = (baseCode - cmin) / amp * 100;
+  }
+  if (amp < 8 || !(dtS > 0)) return m;
+  const run = codes.subarray ? codes.subarray(a, b + 1) : codes.slice(a, b + 1);
+  const mid50 = baseCode + 0.5 * amp;
+  const rise = srCrossings(run, mid50, true), fall = srCrossings(run, mid50, false);
+  if (rise.length >= 2) {
+    const period = (rise[rise.length - 1] - rise[0]) / (rise.length - 1) * dtS;
+    if (period > 0) { m.period = period; m.freq = 1 / period; m.has_timing = true; }
+  }
+  // Mean pulse widths by two-pointer merge (ascending lists).
+  const width = (from, to) => {
+    let j = 0, s = 0, c = 0;
+    for (const f of from) {
+      while (j < to.length && to[j] <= f) j++;
+      if (j === to.length) break;
+      s += to[j] - f; c++;
+    }
+    return c ? s / c * dtS : 0;
+  };
+  m.pos_width_s = width(rise, fall);
+  m.neg_width_s = width(fall, rise);
+  if (m.has_timing && m.period > 0) m.duty = m.pos_width_s / m.period * 100;
+  // 10–90% rise/fall over the first clean edge.
+  const lo10 = baseCode + 0.1 * amp, hi90 = baseCode + 0.9 * amp;
+  const edge = (rising) => {
+    const first = rising ? lo10 : hi90, second = rising ? hi90 : lo10;
+    for (let i = 1; i < run.length; i++) {
+      const p = run[i - 1], q = run[i];
+      const crossed = rising ? (p < first && q >= first) : (p > first && q <= first);
+      if (!crossed) continue;
+      const t1 = q === p ? i : (i - 1) + (first - p) / (q - p);
+      for (let j = i; j < run.length; j++) {
+        const c0 = run[j - 1], d0 = run[j];
+        if (rising ? d0 < first : d0 > first) break;
+        const crossed2 = rising ? (c0 < second && d0 >= second) : (c0 > second && d0 <= second);
+        if (crossed2) {
+          const t2 = d0 === c0 ? j : (j - 1) + (second - c0) / (d0 - c0);
+          return (t2 - t1) * dtS;
+        }
+      }
+    }
+    return 0;
+  };
+  m.rise_s = edge(true);
+  m.fall_s = edge(false);
+  return m;
+}
+
 if (typeof module !== "undefined") {
-  module.exports = { srAlign, srCrossings, srGainOffset, srNew, srFeed, srAccum, srResult, srModelFit, srClipped, srMeanStd };
+  module.exports = { srAlign, srCrossings, srGainOffset, srNew, srFeed, srAccum, srResult, srModelFit, srClipped, srMeanStd, srMeasure };
 }

@@ -3,7 +3,7 @@
 // the shifts, reject the junk, drop the noise ~sqrt(N), and fill the fine
 // grid without peak-locking. Run by superres_node_test.go.
 "use strict";
-const { srAlign, srGainOffset, srNew, srFeed, srResult, srModelFit, srClipped } = require("./superres.js");
+const { srAlign, srGainOffset, srNew, srFeed, srResult, srModelFit, srClipped, srMeasure } = require("./superres.js");
 const peaksLib = require("./peaks.js");
 
 let fails = 0;
@@ -91,7 +91,7 @@ function frame(n, period, shift, noise, amp, harmonics) {
   st.sampleS = 1e-8;
   for (let k = 0; k < N; k++) {
     const sig = frame(n, period, (rnd() - 0.5) * 4, noise, 60);
-    srFeed(st, sig, { maxLag: 8 });
+    srFeed(st, sig, null, { maxLag: 8 });
   }
   const res = srResult(st);
   check("all frames stacked", res.frames === N, `${res.frames}/${N} (rej ${res.rejected})`);
@@ -111,15 +111,15 @@ function frame(n, period, shift, noise, amp, harmonics) {
   const framesBefore = st.frames;
   // A flatline (missed trigger, no signal).
   const flat = new Float64Array(n).fill(128);
-  const d1 = srFeed(st, flat, { maxLag: 8 });
+  const d1 = srFeed(st, flat, null, { maxLag: 8 });
   // A glitch: right period, but half the record is garbage.
   const glitch = frame(n, period, 0, 1.0, 60);
   for (let i = 0; i < n / 2; i++) glitch[i] = 128 + (rnd() - 0.5) * 120;
-  const d2 = srFeed(st, glitch, { maxLag: 8 });
+  const d2 = srFeed(st, glitch, null, { maxLag: 8 });
   // A clipped frame: rails pile up.
   const clip = frame(n, period, 0, 1.0, 140);
   for (let i = 0; i < n; i++) clip[i] = Math.max(4, Math.min(254, clip[i]));
-  const d3 = srFeed(st, clip, { maxLag: 8 });
+  const d3 = srFeed(st, clip, null, { maxLag: 8 });
   check("flatline rejected", d1.startsWith("rejected"), d1);
   check("glitch rejected", d2.startsWith("rejected"), d2);
   check("clipped frame rejected", d3 === "rejected:clip", d3);
@@ -158,7 +158,7 @@ function frame(n, period, shift, noise, amp, harmonics) {
     const shift = (rnd() - 0.5) * 4;
     const sig = new Float64Array(n);
     for (let i = 0; i < n; i++) sig[i] = 128 + 50 * Math.sin(2 * Math.PI * (i - shift) / period) + 1.5 * gauss();
-    srFeed(st, sig, { maxLag: 8 });
+    srFeed(st, sig, null, { maxLag: 8 });
   }
   const res = srResult(st);
   const fit = srModelFit(res.mean, K, sampleS, peaksLib, 3);
@@ -192,7 +192,7 @@ function frame(n, period, shift, noise, amp, harmonics) {
     const sig = frame(n, period, shift, noise, 60);
     // edge_x mimics the engine: the discerned edge index in THIS record.
     const edgeX = n / 2 + shift;
-    const d = srFeed(st, sig, { maxLag: 8, edgeX });
+    const d = srFeed(st, sig, null, { maxLag: 8, edgeX });
     if (d.startsWith("rejected")) rejected++;
   }
   const res = srResult(st);
@@ -222,7 +222,7 @@ function frame(n, period, shift, noise, amp, harmonics) {
     const boundary = Math.floor(n * (0.78 + 0.12 * rnd()));
     for (let i = boundary; i < n; i++) sig[i] = sig[boundary - 1];
     const edgeX = n / 2 + wander;
-    srFeed(st, sig, { maxLag: 8, edgeX, winHalf: 1024 });
+    srFeed(st, sig, null, { maxLag: 8, edgeX, winHalf: 1024 });
   }
   const res = srResult(st);
   check("dead tail: frames still stack", res.frames >= N - 4, `${res.frames}/${N} (rej ${res.rejected})`);
@@ -240,7 +240,7 @@ function frame(n, period, shift, noise, amp, harmonics) {
   // Frame 1: a DIFFERENT waveform shape (minority drain population).
   const odd = new Float64Array(n);
   for (let i = 0; i < n; i++) odd[i] = 128 + 50 * Math.sin(2 * Math.PI * i / 977) + 1.0 * gauss();
-  srFeed(st, odd, { maxLag: 8 });
+  srFeed(st, odd, null, { maxLag: 8 });
   check("minority ref adopted first", st.frames === 1);
   // Then 120 frames of the real (majority) signal.
   for (let k = 0; k < 120; k++) {
@@ -273,7 +273,7 @@ function frame(n, period, shift, noise, amp, harmonics) {
         const v = trueVal(i - shift) + noise * gauss();
         sig[i] = Math.round(v + offCodes) - offCodes; // quantize, then correct
       }
-      srFeed(st, sig, { maxLag: 8, normalize: false });
+      srFeed(st, sig, null, { maxLag: 8, normalize: false });
     }
     return srResult(st);
   };
@@ -408,6 +408,67 @@ function frame(n, period, shift, noise, amp, harmonics) {
   check("iter5: cubic rise <= linear rise", rC > 0 && rC <= rL, `linear ${rL} -> cubic ${rC} fine bins`);
   check("iter5: cubic noise within 15% of linear", cub.sigmaStack < lin.sigmaStack * 1.15,
     `sigma ${lin.sigmaStack.toFixed(4)} -> ${cub.sigmaStack.toFixed(4)}`);
+}
+
+
+// ---- dual-channel stacking: C2 rides the align channel's shift and gets
+// its own drift normalization; a clipped C2 frame is excluded from C2 only.
+{
+  const n = 1024, period = 128, K = 8, N = 120;
+  const st = srNew(n, K);
+  st.sampleS = 1e-8;
+  for (let k = 0; k < N; k++) {
+    const shift = k === 0 ? 0 : (rnd() - 0.5) * 4; // ref at phase 0 (the stack lives on ITS timeline)
+    const c1 = frame(n, period, shift, 1.0, 60);
+    const c2 = new Float64Array(n); // same timing, different shape+amplitude
+    for (let i = 0; i < n; i++) c2[i] = 128 + 30 * Math.sin(2 * Math.PI * (i - shift) / period) + 1.0 * gauss();
+    srFeed(st, c1, c2, { maxLag: 8 });
+  }
+  const res = srResult(st);
+  check("dual: frames stack", res.frames === N, `${res.frames}`);
+  check("dual: mean2 present", res.mean2 !== null && res.mean2.length === n * K);
+  // C2 must be aligned by C1's shift: its stacked sine should be clean —
+  // measure its rms vs the ideal.
+  let s2 = 0, c2n = 0;
+  for (let b = 100 * K; b < 900 * K; b++) {
+    const m = res.mean2[b];
+    if (m < 0) continue;
+    const ideal = 128 + 30 * Math.sin(2 * Math.PI * (b / K) / period);
+    s2 += (m - ideal) * (m - ideal); c2n++;
+  }
+  const rms2 = Math.sqrt(s2 / c2n);
+  check("dual: C2 stacks coherently (rms < 0.3 codes)", rms2 < 0.3, `rms ${rms2.toFixed(3)}`);
+  // A frame whose C2 clips is excluded from C2 only.
+  const c1ok = frame(n, period, 0, 1.0, 60);
+  const c2clip = new Float64Array(n);
+  for (let i = 0; i < n; i++) c2clip[i] = i % 128 < 64 ? 5 : 253;
+  const before = st.c[1].clipSkips;
+  const d = srFeed(st, c1ok, c2clip, { maxLag: 8 });
+  check("dual: C2-clip frame still stacks C1", d === "stacked", d);
+  check("dual: C2-clip skips C2 data", st.c[1].clipSkips === before + 1, `${st.c[1].clipSkips}`);
+}
+
+// ---- srMeasure: the client-side measurement set matches ground truth on a
+// stacked band-limited square.
+{
+  const n = 1024, period = 128, K = 8, N = 200;
+  const st = srNew(n, K);
+  st.sampleS = 1e-8; // 10 ns/sample → period 1.28 µs → 781.25 kHz
+  for (let k = 0; k < N; k++) {
+    srFeed(st, frame(n, period, (rnd() - 0.5) * 4, 1.5, 60), null, { maxLag: 8 });
+  }
+  const res = srResult(st);
+  const m = srMeasure(res.mean, 1 / 32, 0, st.sampleS / K);
+  check("meas: returns", m !== null && m.has_timing === true);
+  const fTrue = 1 / (period * 1e-8);
+  check("meas: freq within 0.5%", Math.abs(m.freq - fTrue) / fTrue < 0.005, `${m.freq.toFixed(0)} vs ${fTrue.toFixed(0)}`);
+  check("meas: duty ~50%", Math.abs(m.duty - 50) < 3, m.duty.toFixed(1));
+  // blSquare(4/pi sum to h15) fundamental-limited swing ≈ 2*amp*(4/pi)*sum-ish;
+  // just sanity-band vpp: amp 60 → swing ≥ 100 codes → vpp ≥ 3.1 V at 1/32 V/code.
+  check("meas: vpp sane", m.vpp > 3 && m.vpp < 5, m.vpp.toFixed(2) + " V");
+  check("meas: vtop/vbase straddle mean", m.vtop > m.vmean && m.vbase < m.vmean,
+    `${m.vbase.toFixed(2)}/${m.vmean.toFixed(2)}/${m.vtop.toFixed(2)}`);
+  check("meas: rise measured", m.rise_s > 0 && m.rise_s < period * 1e-8, (m.rise_s * 1e9).toFixed(1) + " ns");
 }
 
 if (fails) { console.log(fails + " FAILURES"); process.exit(1); }
