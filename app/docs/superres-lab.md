@@ -82,8 +82,39 @@ table, immune to DAC granularity (whatever shift REALLY happened is what
 gets removed). Prediction: M1 0.25±0.05, M3 ≤ 0.165 (iter-1 level), M4 ≤
 0.12, M5 ≥ +1.9, M6 ~220/25 s (settle cost stays).
 
-Device result: PENDING.
+Device result (v0.0.1-11, dither on): M1 0.111 (wrong direction) ·
+M2 62.2% · M3 0.1706 (+4% vs iter 1) · M4 0.1212 (+5%) · M5 +1.62 (−0.33) ·
+M6 220/25 s. **ROLLED BACK** (dither stays default-off; the sweep code
+remains dormant behind the toggle).
 
-## Iteration 4 — TBD
+Post-mortem — two findings worth keeping:
+1. The data-driven fit CANCELS dither by construction: b̂ = true shift +
+   window-mean quantization error, so normalizing by it re-pins every frame
+   to the reference's quantization grid. You cannot measure the correction
+   from the same quantized data you are trying to de-bias.
+2. The premise was thin: with σ_single ≈ 0.45 codes of real front-end
+   noise, the quantizer is ALREADY noise-dithered — Gaussian theory puts the
+   residual staircase bias at ~e^(−2π²σ²)/π ≈ 0.006 codes. And M1 on a
+   two-level square mostly measures where the top level happens to sit
+   relative to a code, not bias — a weak metric. The visible artifact was
+   the RIBBON all along (iteration 1's target). Offset dither on this
+   hardware/signal attacks a solved problem and only pays overhead; the
+   loop rejected it twice for the right underlying reason.
+
+## Iteration 4 — interpolated resampling (target M4/M5; guard M7 rise ≤ +10%)
+
+Hypothesis: the linear-drizzle kernel spans 2 FINE bins (= 2/K raw
+samples), so each fine bin averages only ~N/K frames — the ribbon is
+under-averaging by design. Resampling each aligned frame onto the fine grid
+(linear interpolation between its two neighbouring RAW samples, i.e. a
+triangular kernel of width one raw interval) gives EVERY fine bin a
+contribution from EVERY frame: per-bin noise drops ~√K (K=32 → ~5.7×,
+≈ +2.5 bits), and the phase diversity across frames still carries the
+sub-sample information (each frame's interpolant is anchored at its own
+jittered sample positions). Cost: linear interpolation low-passes at
+sinc²(f/fs_raw) — the stacked edge may soften. New guard metric M7 = 10–90%
+rise of the stacked edge in fine bins; keep only if M7 regresses ≤10%.
+
+Device result: PENDING.
 
 ## Iteration 5 — TBD

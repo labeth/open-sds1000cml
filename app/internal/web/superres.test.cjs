@@ -87,6 +87,7 @@ function frame(n, period, shift, noise, amp, harmonics) {
 {
   const n = 1024, period = 128, K = 16, noise = 2.0, N = 256;
   const st = srNew(n, K);
+  st.kernel = "drizzle"; // this block calibrates the deposit kernel's stats
   st.sampleS = 1e-8;
   for (let k = 0; k < N; k++) {
     const sig = frame(n, period, (rnd() - 0.5) * 4, noise, 60);
@@ -331,6 +332,46 @@ function frame(n, period, shift, noise, amp, harmonics) {
   };
   const rL = roughness(lin), rN = roughness(near);
   check("weighted drizzle smooths the ribbon vs nearest-bin", rL < 0.8 * rN, `linear ${rL.toFixed(4)} vs nearest ${rN.toFixed(4)}`);
+}
+
+
+// ---- iteration 4: interpolated resampling vs drizzle — every fine bin
+// averages every frame, so noise drops ~sqrt(K); the guard is edge
+// sharpness (10-90% rise in fine bins) which must not blur >10%.
+{
+  const n = 1024, period = 256, K = 16, noise = 2.0, N = 200;
+  const mk = (kernel) => {
+    const st = srNew(n, K);
+    st.kernel = kernel;
+    st.sampleS = 1e-8;
+    for (let k = 0; k < N; k++) {
+      srFeed(st, frame(n, period, (rnd() - 0.5) * 4, noise, 55), { maxLag: 8 });
+    }
+    return srResult(st);
+  };
+  const rise1090 = (mean) => {
+    // find the largest rising edge in the middle half and measure 10-90%
+    const nb = mean.length;
+    let lo = 1e9, hi = -1e9;
+    for (let b = nb >> 2; b < (nb * 3) >> 2; b++) { const v = mean[b]; if (v < 0) continue; if (v < lo) lo = v; if (v > hi) hi = v; }
+    const l10 = lo + 0.1 * (hi - lo), l90 = lo + 0.9 * (hi - lo);
+    for (let b = nb >> 2; b < (nb * 3) >> 2; b++) {
+      if (mean[b] < l10 && mean[b + 1] >= l10) {
+        for (let e = b + 1; e < nb; e++) {
+          if (mean[e] >= l90) return e - b;
+          if (mean[e] < l10) break;
+        }
+      }
+    }
+    return -1;
+  };
+  const din = mk("drizzle"), inn = mk("interp");
+  check("iter4: both kernels stack all frames", din.frames === N && inn.frames === N, `${din.frames}/${inn.frames}`);
+  const gain = din.sigmaStack / inn.sigmaStack;
+  check("iter4: interp cuts noise >2.5x vs drizzle", gain > 2.5, `x${gain.toFixed(2)} (sigma ${din.sigmaStack.toFixed(4)} -> ${inn.sigmaStack.toFixed(4)})`);
+  const rD = rise1090(din.mean), rI = rise1090(inn.mean);
+  check("iter4: rise found on both", rD > 0 && rI > 0, `${rD}/${rI} fine bins`);
+  check("iter4: edge blur <= 20% (node bound; device guard 10%)", rI <= rD * 1.2, `rise ${rD} -> ${rI} fine bins`);
 }
 
 if (fails) { console.log(fails + " FAILURES"); process.exit(1); }

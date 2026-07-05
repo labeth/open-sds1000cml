@@ -200,6 +200,9 @@ function srNew(n, K) {
   const nbins = n * K;
   return {
     n, K, nbins,
+    kernel: "interp", // "interp" = resample every frame at every fine bin
+    // (each bin averages ALL frames); "drizzle" = linear deposit (each bin
+    // averages ~frames/K). See superres-lab.md iteration 4.
     sum: new Float64Array(nbins),
     sum2: new Float64Array(nbins),
     cnt: new Float64Array(nbins), // WEIGHT sums (linear drizzle splits samples)
@@ -316,6 +319,25 @@ function srAccum(st, sig, shift) {
   const sum = st.sum, sum2 = st.sum2, cnt = st.cnt;
   const odd = (st.frames & 1) === 1;
   const sumA = st.sumA, cntA = st.cntA;
+  if (st.kernel === "interp") {
+    // Resample THIS frame at every fine bin (linear interpolation between
+    // its two neighbouring raw samples): every bin averages every frame, so
+    // per-bin noise drops ~√K versus deposit kernels. The frame's raw
+    // samples sit at fine position (i − shift)·K, so bin b reads the frame
+    // at raw index b/K + shift.
+    const invK = 1 / K;
+    for (let b = 0; b < nb; b++) {
+      const t = b * invK + shift;
+      const i0 = Math.floor(t);
+      if (i0 < 0 || i0 + 1 >= n) continue;
+      const w = t - i0;
+      const v = sig[i0] * (1 - w) + sig[i0 + 1] * w;
+      sum[b] += v; sum2[b] += v * v; cnt[b]++;
+      if (odd) { sumA[b] += v; cntA[b]++; }
+    }
+    return;
+  }
+  // "drizzle": linear-weighted deposit into the two adjacent fine bins.
   for (let i = 0; i < n; i++) {
     const pos = (i - shift) * K;
     const b0 = Math.floor(pos);
