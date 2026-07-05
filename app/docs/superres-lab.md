@@ -42,7 +42,10 @@ unchanged or better, M6 unchanged.
 Ground truth (node): flat-noise A/B with identical phases — roughness 0.592
 (linear) vs 0.845 (nearest) = −30% ✓.
 
-Device result: PENDING.
+Device result (v0.0.1-10, dither off): M1 0.175 · M2 55.9% · M3 0.1645
+(−17%) · M4 0.1156 (−19%) · M5 +1.95 · M6 345/345. **KEPT** — target M3
+improved ≥15%, M2 dropped below the iid line (structure gone), every
+secondary metric improved.
 
 ## Iteration 2 — offset-DAC dither (target M1; secondarily M4/M5)
 
@@ -58,9 +61,28 @@ staging skew handled by the settle-skip.
 Ground truth (node): sub-LSB-slope sine, noise 0.15 LSB, quantized —
 slow-region rms error 0.145 → 0.051 codes (2.8×) with simulated dither ✓.
 
-Device result: PENDING.
+Device result (v0.0.1-10, dither on, commanded-value correction):
+M1 0.371 (!) · M2 64.6% · M3 0.1833 (+11% vs iter 1) · M4 0.1362 (+18%) ·
+M5 +1.57 (−0.38) · M6 219 in 25 s (settle-skips cost 37%). **ROLLED BACK**
+(default off). Analysis: M1 OVERSHOT past 0.25 to half-code clustering — the
+signature of a ~2-phase dither: the offset DAC applies coarser steps than
+the commanded 8 phases and/or the cal volts mapping doesn't match the true
+analog shift, so subtracting the COMMANDED value mis-corrects frames and
+adds noise instead of removing bias. The mechanism is right (ground truth
+holds); the correction source is wrong.
 
-## Iteration 3 — TBD from iteration 1–2 data
+## Iteration 3 — data-driven dither correction (target M1 → 0.25±0.05)
+
+Hypothesis: don't trust the offset cal — measure it. Keep the DAC sweep +
+settle-skip, drop the commanded-value subtraction, and let the ALIGNED
+gain/offset drift fit (already in srFeed, window-restricted) absorb each
+frame's actual vertical shift vs the base-offset reference. Per-frame b-fit
+precision ≈ σ/√window ≈ 0.45/√4096 ≈ 0.007 codes — far better than any cal
+table, immune to DAC granularity (whatever shift REALLY happened is what
+gets removed). Prediction: M1 0.25±0.05, M3 ≤ 0.165 (iter-1 level), M4 ≤
+0.12, M5 ≥ +1.9, M6 ~220/25 s (settle cost stays).
+
+Device result: PENDING.
 
 ## Iteration 4 — TBD
 

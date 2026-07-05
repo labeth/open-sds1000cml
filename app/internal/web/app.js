@@ -1608,16 +1608,11 @@ function srIngest(f) {
   const dz = sr.dither;
   if (dz.on) {
     if (dz.pending > 0) { dz.pending--; return; } // offset still staging — skip
-    // Subtract the commanded dither offset in code space. code = (v+off)/vpc
-    // + 128, so the same physical v reads (off−base)/vpc codes higher — take
-    // it back out (header off/vpc are both tip-referred; probe cancels).
-    const offNow = (sr.ch === 2 ? f.off2_v : f.off1_v) || 0;
-    const dCode = (offNow - dz.base) / vpc;
-    if (dCode !== 0) {
-      const fArr = new Float32Array(sig.length);
-      for (let i = 0; i < sig.length; i++) fArr[i] = sig[i] - dCode;
-      feedSig = fArr;
-    }
+    // No commanded-value correction: iteration 2 of the lab showed the cal
+    // volts mapping / DAC granularity mis-corrects (half-code clustering).
+    // The ALIGNED drift fit in srFeed measures each frame's ACTUAL vertical
+    // shift vs the base-offset reference (b-fit precision ~0.007 codes over
+    // the window) and normalizes it out — whatever the DAC really did.
     // Advance the sweep every 2 ingested frames: `steps` phases spanning one
     // ADC LSB, cycling. The offset verb takes ELECTRICAL volts (the sliders
     // divide tip volts by the probe the same way); the next frame is skipped
