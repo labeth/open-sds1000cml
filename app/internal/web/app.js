@@ -542,6 +542,48 @@ function togglePeakCh(ch, pf) {
 }
 function clearPeaksCh(ch) { fftCh[ch].sel = []; peakListLastT = 0; redraw(); }
 
+// Pointer readout state (FFT mode): frequency at x, dB at y, and each
+// visible channel's curve level at that frequency.
+const fftHover = { on: false, x: 0, y: 0 };
+function drawFFTHover() {
+  if (!fftHover.on || boxZoom.moved) return;
+  const nyq = peakNyq();
+  const fw = view.fwin, fspan = fw.b - fw.a;
+  const frac = fw.a + fftHover.x * fspan;
+  const freq = frac * nyq;
+  const ptrDb = -fftHover.y * 80;
+  const px = fftHover.x * CW, py = fftHover.y * CH;
+  ctx.save();
+  ctx.strokeStyle = "rgba(255,210,63,.4)"; ctx.lineWidth = dpr; ctx.setLineDash([3 * dpr, 3 * dpr]);
+  ctx.beginPath(); ctx.moveTo(px + .5, 0); ctx.lineTo(px + .5, CH); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(0, py + .5); ctx.lineTo(CW, py + .5); ctx.stroke();
+  ctx.setLineDash([]);
+  const lines = ["f " + eng(freq, "Hz", 4) + " · ptr " + ptrDb.toFixed(1) + " dB"];
+  for (const ch of [1, 2]) {
+    if (!(ch === 1 ? view.c1 : view.c2)) continue;
+    const spec = specMemo[ch].spec;
+    if (!spec) continue;
+    const k = Math.round(frac * (spec.half - 1));
+    if (k < 0 || k >= spec.half) continue;
+    const db = 20 * Math.log10(spec.mags[k] / spec.peak + 1e-12);
+    lines.push("C" + ch + " " + Math.max(-99.9, db).toFixed(1) + " dB");
+  }
+  ctx.font = (11 * dpr) + "px system-ui";
+  const w = Math.max(...lines.map(t => ctx.measureText(t).width)) + 12 * dpr;
+  const h = lines.length * 14 * dpr + 8 * dpr;
+  const bx = px + 12 * dpr + w > CW ? px - 12 * dpr - w : px + 12 * dpr;
+  const by = Math.max(4 * dpr, Math.min(CH - h - 4 * dpr, py - h / 2));
+  ctx.fillStyle = "rgba(5,8,12,.88)";
+  ctx.fillRect(bx, by, w, h);
+  ctx.strokeStyle = "rgba(255,210,63,.5)"; ctx.strokeRect(bx + .5, by + .5, w - 1, h - 1);
+  const cols = { 0: "#ffd24f", 1: C1COL, 2: C2COL };
+  lines.forEach((t, i) => {
+    ctx.fillStyle = i === 0 ? cols[0] : (t.startsWith("C1") ? C1COL : C2COL);
+    ctx.fillText(t, bx + 6 * dpr, by + (i + 1) * 14 * dpr - 2 * dpr);
+  });
+  ctx.restore();
+}
+
 function drawFFT() {
   drawGrid(ctx);
   const nyq = peakNyq();
@@ -579,6 +621,7 @@ function drawFFT() {
   ctx.fillStyle = "#9fb0c0"; ctx.font = (12 * dpr) + "px system-ui";
   ctx.fillText("FFT  " + eng(fw.a * nyq, "Hz", 3) + " – " + eng(fw.b * nyq, "Hz", 3) +
     (fspan < 0.999 ? "  · drag/wheel to zoom, double-click resets" : "   (dB re each channel's own peak)"), 8 * dpr, 16 * dpr);
+  drawFFTHover();
 }
 
 // Y-T overlay: for each channel, reconstruct EACH selected tone from THAT
@@ -623,6 +666,40 @@ function drawYTPeaks(g) {
   g.restore();
 }
 
+// peakVolts: absolute amplitude (volts, peak) of a spectral line. |X| of a
+// sine of amplitude A through a Hann window is A·N·cg/2 with coherent gain
+// cg = 0.5, so A = 4·|X|/N codes; ×vpc for volts. Parabolic-refined peaks
+// under-read by up to ~15% (scalloping) — labelled ≈ for that reason.
+function peakVolts(ch, p) {
+  const spec = specMemo[ch].spec;
+  if (!spec || !frame) return 0;
+  const N = spec.half * 2;
+  const mag = spec.peak * Math.pow(10, p.db / 20);
+  const ampCodes = 4 * mag / N;
+  return ampCodes * ((ch === 2 ? frame.vpc2 : frame.vpc1) || 1 / 32);
+}
+
+// Selected-peak measurement lines under each FFT list: exact frequency,
+// level re the channel's strongest line, and absolute amplitude.
+function updateFFTSel(ch) {
+  const el = $("fftSel" + ch);
+  const S = fftCh[ch];
+  if (!peaksVisible() || !S.selIdx.size) { el.textContent = ""; return; }
+  const rows = [];
+  for (const i of [...S.selIdx].sort((a, b) => a - b)) {
+    const p = S.peaks[i];
+    if (!p) continue;
+    rows.push(eng(p.freq, "Hz", 4) + " · " + p.db.toFixed(1) + " dBc · ≈" + eng(peakVolts(ch, p), "Vpk", 3));
+  }
+  // Harmonic/delta line when 2+ peaks are picked: spacing and ratio.
+  if (S.selIdx.size >= 2) {
+    const fs = [...S.selIdx].map(i => S.peaks[i] && S.peaks[i].freq).filter(Boolean).sort((a, b) => a - b);
+    if (fs.length >= 2) rows.push("Δf " + eng(fs[1] - fs[0], "Hz", 3) + " · f2/f1 " + (fs[1] / fs[0]).toFixed(3));
+  }
+  el.textContent = rows.join("\n");
+  el.style.whiteSpace = "pre-line";
+}
+
 function updateFFTListCh(ch) {
   const card = $("fftCardC" + ch);
   if (!(peaksVisible() && chOn(ch) && chHas(ch))) { card.style.display = "none"; return; }
@@ -646,6 +723,7 @@ function updateFFTListCh(ch) {
     tr.querySelector(".pf").textContent = eng(p.freq, "Hz", 4);
     tr.querySelector(".pd").textContent = p.db.toFixed(1);
   }
+  updateFFTSel(ch);
 }
 function updateFFTLists() { updateFFTListCh(1); updateFFTListCh(2); }
 // One delegated handler per channel's (never-replaced) tbody. Toggling by the
@@ -698,8 +776,51 @@ function drawNavTrace(cols, color) {
 // zoom window. Cache it to an offscreen canvas so pan/zoom redraws blit it
 // instead of re-downsampling the whole record per wheel tick.
 const navCache = { key: null, cv: null };
+// FFT navigator underlay: the FULL spectrum (max-per-pixel dB) per channel,
+// cached by spectrum identity so pan/zoom redraws are a blit.
+const navFFTCache = { key: null, cv: null };
+function drawNavFFT() {
+  const key = [specMemo[1].spec, specMemo[2].spec, view.c1, view.c2, NW, NH];
+  if (!(navFFTCache.key && navFFTCache.key.every((v, i) => v === key[i]))) {
+    navCtx.fillStyle = "#05080c"; navCtx.fillRect(0, 0, NW, NH);
+    for (const ch of [1, 2]) {
+      if (!(ch === 1 ? view.c1 : view.c2)) continue;
+      const spec = specMemo[ch].spec;
+      if (!spec) continue;
+      const { mags, half, peak } = spec;
+      navCtx.fillStyle = ch === 1 ? C1COL : C2COL;
+      navCtx.globalAlpha = 0.7;
+      for (let px = 0; px < NW; px++) {
+        const a = Math.floor(px / NW * half), b = Math.max(a + 1, Math.floor((px + 1) / NW * half));
+        let mx = 0;
+        for (let k = a; k < b && k < half; k++) if (mags[k] > mx) mx = mags[k];
+        const db = 20 * Math.log10(mx / peak + 1e-12);
+        const h = Math.max(1, NH * Math.max(0, 1 + db / 80)); // 80 dB floor
+        navCtx.fillRect(px, NH - h, 1, h);
+      }
+      navCtx.globalAlpha = 1;
+    }
+    if (!navFFTCache.cv || navFFTCache.cv.width !== NW || navFFTCache.cv.height !== NH) {
+      navFFTCache.cv = document.createElement("canvas");
+      navFFTCache.cv.width = NW; navFFTCache.cv.height = NH;
+    }
+    navFFTCache.cv.getContext("2d").drawImage(nav, 0, 0);
+    navFFTCache.key = key;
+  } else {
+    navCtx.drawImage(navFFTCache.cv, 0, 0);
+  }
+  // viewport rectangle = the visible frequency window
+  const x0 = view.fwin.a * NW, x1 = view.fwin.b * NW;
+  navCtx.fillStyle = "rgba(255,159,46,.13)"; navCtx.fillRect(x0, 0, x1 - x0, NH);
+  navCtx.strokeStyle = "rgba(255,159,46,.85)"; navCtx.lineWidth = 1;
+  navCtx.strokeRect(x0 + .5, .5, Math.max(1, x1 - x0 - 1), NH - 1);
+  navCtx.fillStyle = "rgba(255,159,46,.95)";
+  navCtx.fillRect(x0 - 1, 0, 2, NH); navCtx.fillRect(x1 - 1, 0, 2, NH);
+}
+
 function drawNav() {
   if (nav.style.display === "none") return;
+  if (view.mode === "FFT") { drawNavFFT(); return; }
   const key = [frame && frame.c1, frame && frame.c2, view.c1, view.c2, dcfg.result, NW, NH];
   if (navCache.key && navCache.key.every((v, i) => v === key[i])) {
     navCtx.drawImage(navCache.cv, 0, 0);
@@ -889,7 +1010,7 @@ function redraw() {
   refreshAria(); // keep aria-pressed in sync with view toggles (which call redraw)
   updateStatusLine(); // time/div follows the zoom → keep it live, not just per status poll
   if (view.mode === "XY") { clearPersist(); drawXY(); drawCursors(); drawBoxZoom(ctx); return; }
-  if (view.mode === "FFT") { clearPersist(); drawFFT(); drawCursors(); drawBoxZoom(ctx); return; }
+  if (view.mode === "FFT") { clearPersist(); drawFFT(); drawCursors(); drawNav(); drawBoxZoom(ctx); return; }
   if (view.persist && !frame?.is_env) {
     const pg = persistLayer();
     pg.fillStyle = "rgba(5,8,12,0.14)"; pg.fillRect(0, 0, CW, CH); // fade
@@ -1129,7 +1250,14 @@ function applyBoxZoom() {
   userZoomed = true;
   clearPersist();
 }
+let fftHoverRaf = 0;
 scope.addEventListener("pointermove", ev => {
+  if (view.mode === "FFT" && !boxZoom.active) {
+    const p = ptToNorm(ev);
+    fftHover.on = true; fftHover.x = Math.max(0, Math.min(1, p.x)); fftHover.y = Math.max(0, Math.min(1, p.y));
+    if (!fftHoverRaf) fftHoverRaf = requestAnimationFrame(() => { fftHoverRaf = 0; redraw(); });
+    return;
+  }
   if (boxZoom.active) {
     boxZoom.ex = ev.clientX; boxZoom.ey = ev.clientY;
     if (Math.abs(boxZoom.ex - boxZoom.sx) + Math.abs(boxZoom.ey - boxZoom.sy) > 8) boxZoom.moved = true;
@@ -1140,6 +1268,9 @@ scope.addEventListener("pointermove", ev => {
   if (cur.drag) { moveCursor(ev); return; }
   const h = markerHit(ptToNorm(ev));    // hover affordance
   scope.style.cursor = h ? "ns-resize" : (view.cursors ? "crosshair" : "default");
+});
+scope.addEventListener("pointerleave", () => {
+  if (fftHover.on) { fftHover.on = false; if (view.mode === "FFT") redraw(); }
 });
 scope.addEventListener("pointerup", ev => {
   if (boxZoom.active) {
@@ -1175,22 +1306,29 @@ function moveCursor(ev) {
 // Navigator: drag to pan the viewport (click outside it first recenters it);
 // double-click resets to the trigger-centered "home" slice. Separate from the
 // scope's own pointer handlers, so cursor-drag / FFT-pick are untouched.
+const navWin = () => view.mode === "FFT" ? view.fwin : view.win; // which window the strip controls
 nav.addEventListener("pointerdown", ev => {
-  if (view.mode !== "YT") return;
-  userZoomed = true;
-  let f = navFrac(ev), w = view.win, s = w.b - w.a;
-  if (f < w.a || f > w.b) { const na = Math.max(0, Math.min(1 - s, f - s / 2)); setWin(na, na + s); }
-  navDrag.active = true; navDrag.grab = f; navDrag.a0 = view.win.a; navDrag.b0 = view.win.b;
+  if (view.mode !== "YT" && view.mode !== "FFT") return;
+  if (view.mode === "YT") userZoomed = true;
+  const w = navWin();
+  let f = navFrac(ev), s = w.b - w.a;
+  if (f < w.a || f > w.b) { const na = Math.max(0, Math.min(1 - s, f - s / 2)); w.a = na; w.b = na + s; redraw(); }
+  navDrag.active = true; navDrag.grab = f; navDrag.a0 = w.a; navDrag.b0 = w.b;
   nav.setPointerCapture(ev.pointerId);
 });
 nav.addEventListener("pointermove", ev => {
   if (!navDrag.active) return;
+  const w = navWin();
   const f = navFrac(ev), s = navDrag.b0 - navDrag.a0;
   const na = Math.max(0, Math.min(1 - s, navDrag.a0 + (f - navDrag.grab)));
-  setWin(na, na + s);
+  w.a = na; w.b = na + s;
+  redraw();
 });
 nav.addEventListener("pointerup", () => navDrag.active = false);
-nav.addEventListener("dblclick", () => goHome());
+nav.addEventListener("dblclick", () => {
+  if (view.mode === "FFT") { view.fwin.a = 0; view.fwin.b = 1; redraw(); }
+  else goHome();
+});
 
 // Wheel over the scope: zoom about the cursor (Y-T only). Anchors the record
 // fraction under the pointer so it stays put as the span grows/shrinks.
@@ -1567,9 +1705,10 @@ function setMode(m) {
   // The peak boxes live in FFT and Y-T; hide them in X-Y. (redraw() re-shows and
   // repopulates them for the active mode.)
   updateFFTLists();
-  // The navigator lives in Y-T only; toggling it changes the scope height, so
-  // re-measure (resize() ends with redraw()).
-  nav.style.display = m === "YT" ? "" : "none";
+  // The navigator lives in Y-T (record overview) and FFT (spectrum
+  // overview); toggling it changes the scope height, so re-measure
+  // (resize() ends with redraw()).
+  nav.style.display = (m === "YT" || m === "FFT") ? "" : "none";
   clearPersist(); resize();
 }
 $("mYT").onclick = () => setMode("YT");

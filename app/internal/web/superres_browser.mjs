@@ -114,6 +114,31 @@ try {
   ok(fz2 < fz1 * 0.5, `FFT box zoom narrows further (span ${fz2.toFixed(4)})`);
   await page.mouse.dblclick(sb.x + sb.width * 0.5, sb.y + sb.height * 0.5);
   ok(await page.evaluate(() => view.fwin.a === 0 && view.fwin.b === 1), "FFT double-click resets");
+
+  // FFT navigator strip: visible, and dragging it pans the frequency window.
+  ok(await page.evaluate(() => nav.style.display !== "none"), "FFT navigator strip visible");
+  await page.evaluate(() => { view.fwin.a = 0.0; view.fwin.b = 0.2; redraw(); }); // zoomed → room to pan
+  const nb = await page.locator("#nav").boundingBox();
+  await page.mouse.move(nb.x + nb.width * 0.1, nb.y + nb.height * 0.5);
+  await page.mouse.down();
+  await page.mouse.move(nb.x + nb.width * 0.6, nb.y + nb.height * 0.5, { steps: 4 });
+  await page.mouse.up();
+  const pan = await page.evaluate(() => view.fwin);
+  ok(pan.a > 0.3 && Math.abs((pan.b - pan.a) - 0.2) < 0.01, `nav drag pans fwin (${pan.a.toFixed(2)}..${pan.b.toFixed(2)})`);
+  await page.mouse.dblclick(nb.x + nb.width * 0.5, nb.y + nb.height * 0.5);
+  ok(await page.evaluate(() => view.fwin.a === 0 && view.fwin.b === 1), "nav double-click resets fwin");
+
+  // Selected-peak measurement line: pick the strongest C1 peak via the list.
+  await page.evaluate(() => { if (fftCh[1].peaks.length) togglePeakCh(1, fftCh[1].peaks[0].freq); });
+  await page.waitForTimeout(300);
+  const selTxt = await page.evaluate(() => $("fftSel1").textContent);
+  ok(/Vpk/.test(selTxt) && /dBc/.test(selTxt), `peak measurement shown: ${selTxt.slice(0, 60)}`);
+  await page.evaluate(() => clearPeaksCh(1));
+
+  // Pointer readout: hovering sets the crosshair state (drawn each frame).
+  await page.mouse.move(sb.x + sb.width * 0.4, sb.y + sb.height * 0.3);
+  await page.waitForTimeout(200);
+  ok(await page.evaluate(() => fftHover.on === true && fftHover.x > 0.3 && fftHover.x < 0.5), "pointer readout tracks the cursor");
   const selBefore = await page.evaluate(() => fftCh[1].sel.length + fftCh[2].sel.length);
   await page.waitForTimeout(1200); // let peaks refresh
   // click ON a peak: use the strongest C1 peak's screen position
