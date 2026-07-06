@@ -1,0 +1,287 @@
+package panel
+
+import (
+	"time"
+
+	"open-sds/app/internal/analog"
+	"open-sds/app/internal/engine"
+	"open-sds/app/internal/measure"
+)
+
+const divX = 10 // horizontal graticule divisions (spec 07)
+
+// settleMs is how long autoset waits after each scale change before re-measuring
+// — long enough for the offset DAC to move AND a fresh frame to publish (~13 fps)
+// so the trigger level is read off the trace we actually settled on.
+const settleMs = 220
+
+// SetFrameSource wires the latest-frame accessor (fo.WithFrame) so autoset can
+// measure the live signal. Optional — without it, AUTO falls back to plain run.
+func (c *Controller) SetFrameSource(fn func(func(*engine.Frame))) { c.frameFn = fn }
+
+// autoset is the AUTO button: it starts a background sweep that fits the whole
+// scope to the live signal. A second AUTO press while it's running CANCELS it
+// (the LCD shows "AUTOSET…" with that hint). Multi-frame — measuring at the old
+// scale then applying a big scale change never translates (offset/trigger land
+// off-screen), so it settles and RE-MEASURES between steps.
+func (c *Controller) autoset() {
+	if c.frameFn == nil { // no frame source: best-effort AUTO/run
+		c.norm, c.running = false, true
+		c.eng.SetNorm(false)
+		c.eng.SetRunning(true)
+		c.pushLEDs()
+		return
+	}
+	c.mu.Lock()
+	if c.autosetBusy { // second press cancels
+		if c.autosetStop != nil {
+			close(c.autosetStop)
+			c.autosetStop = nil
+		}
+		c.mu.Unlock()
+		return
+	}
+	stop := make(chan struct{})
+	c.autosetBusy, c.autosetStop = true, stop
+	c.mu.Unlock()
+	c.pushLEDs()
+	go c.runAutoset(stop)
+}
+
+func (c *Controller) runAutoset(stop chan struct{}) {
+	defer func() {
+		c.mu.Lock()
+		c.autosetBusy = false
+		if c.autosetStop == stop {
+			c.autosetStop = nil
+		}
+		c.mu.Unlock()
+		c.pushLEDs()
+	}()
+	cancelled := func() bool {
+		select {
+		case <-stop:
+			return true
+		default:
+			return false
+		}
+	}
+	c.eng.SetNorm(false)
+	c.eng.SetRunning(true)
+
+	// 1. Coarse vertical first so nothing is railed (a clipped trace measures as
+	//    ~0 Vpp and can't be fit), then sweep the timebase fast→slow to find the
+	//    signal (an unknown frequency needs a scale where a few cycles are on
+	//    screen and native — not decimated — so the frequency reads true).
+	if c.fe != nil {
+		for ch := 0; ch < 2; ch++ {
+			c.setVdiv(ch, nearestDetent(2.0)) // 2 V/div: ±8 V unclipped
+			c.fe.SetOffset(ch, 0)
+		}
+	}
+	sweep := []float64{1e-6, 1e-5, 1e-4, 1e-3, 1e-2}
+	var found *measure.Result
+	var foundCh int
+	for _, td := range sweep {
+		if cancelled() {
+			return
+		}
+		c.setTdivNearest(td)
+		if !c.waitFrame(stop) {
+			return
+		}
+		m, _ := c.measureChans()
+		if has(m[0]) || has(m[1]) {
+			foundCh = strongerCh(m)
+			found = m[foundCh]
+			break
+		}
+	}
+	if found == nil || found.Freq <= 0 {
+		return // nothing measurable — leave it running in AUTO at 10 ms/div
+	}
+
+	// 2. Timebase = ~3 cycles across the screen; settle and re-measure at the
+	//    final scale so Vpp/Vmean are read on the trace we'll actually show.
+	c.setTdivNearest((3 / found.Freq) / divX)
+	if !c.waitFrame(stop) {
+		return
+	}
+	m, _ := c.measureChans()
+	if !has(m[0]) && !has(m[1]) {
+		return
+	}
+
+	// 3. Vertical: ~6 of 8 divisions, centred. Vpp/Vmean are in volts so they
+	//    hold across the scale change; still settle before the trigger step.
+	if c.fe != nil {
+		for ch := 0; ch < 2; ch++ {
+			if !has(m[ch]) {
+				continue
+			}
+			p := c.fe.ProbeFactor(ch)
+			c.setVdiv(ch, detentForVpp(m[ch].Vpp/p))
+			c.fe.SetOffset(ch, -m[ch].Vmean/p)
+		}
+		if !c.waitFrame(stop) {
+			return
+		}
+	}
+
+	// 4. Trigger: re-measure the now-centred trace and put an EDGE trigger at its
+	//    midpoint on the stronger channel (this is why it must be measured AFTER
+	//    the vertical settles — else the level lands off-screen).
+	m, _ = c.measureChans()
+	src := strongerCh(m)
+	if !has(m[src]) {
+		return
+	}
+	p := 1.0
+	if c.fe != nil {
+		p = c.fe.ProbeFactor(src)
+	}
+	mid := (m[src].Vmax + m[src].Vmin) / 2
+	code := 31434 - int(938*mid/p+0.5) // inverse of engine.TrigLevelVolts
+	if code < engine.TrigCodeMin {
+		code = engine.TrigCodeMin
+	}
+	if code > engine.TrigCodeMax {
+		code = engine.TrigCodeMax
+	}
+	c.eng.SetTrigLevelCode(uint16(code))
+	c.trigCode = uint16(code)
+	c.eng.SetTrigSource(src)
+	c.eng.SetTrigType(0) // EDGE
+}
+
+// waitFrame sleeps ~one publish interval so a frame at the new scale exists,
+// returning false if autoset was cancelled during the wait.
+func (c *Controller) waitFrame(stop chan struct{}) bool {
+	select {
+	case <-stop:
+		return false
+	case <-time.After(settleMs * time.Millisecond):
+		return true
+	}
+}
+
+// measureChans reads the latest frame and computes each channel's measurement in
+// tip-referred volts (using the CURRENT V/div + offset), plus whether it holds
+// real signal.
+func (c *Controller) measureChans() ([2]*measure.Result, bool) {
+	st := c.eng.Snapshot()
+	var m [2]*measure.Result
+	ok := false
+	c.frameFn(func(f *engine.Frame) {
+		if f == nil || len(f.C1) == 0 || f.IsEnv {
+			return
+		}
+		ok = true
+		valid := f.Valid
+		if valid < 1 {
+			valid = 1
+		}
+		if valid > len(f.C1) {
+			valid = len(f.C1)
+		}
+		off := [2]uint16{st.OffC1, st.OffC2}
+		for ch := 0; ch < 2; ch++ {
+			var sig []uint8
+			if ch == 0 {
+				sig = f.C1[:valid]
+			} else if len(f.C2) >= valid {
+				sig = f.C2[:valid]
+			} else {
+				continue
+			}
+			idx := analog.BootDetent
+			probe, offV := 1.0, 0.0
+			if c.fe != nil {
+				snap, _ := c.fe.Snapshot()
+				idx = snap[ch]
+				probe = c.fe.ProbeFactor(ch)
+				offV = analog.OffsetVolts(ch, off[ch])
+			}
+			vdiv := analog.Detents[idx].VdivV
+			m[ch] = measure.Compute(sig, vdiv/32*probe, offV*probe, f.SampleS)
+		}
+	})
+	return m, ok
+}
+
+func has(r *measure.Result) bool { return r != nil && r.Vpp > 0.02 }
+
+func strongerCh(m [2]*measure.Result) int {
+	if has(m[1]) && (!has(m[0]) || m[1].Vpp > m[0].Vpp) {
+		return 1
+	}
+	return 0
+}
+
+// AutosetBusy reports whether an autoset sweep is in progress (for the LCD hint).
+func (c *Controller) AutosetBusy() bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.autosetBusy
+}
+
+// setVdiv applies a vertical detent and keeps the shadow in sync (guarded).
+func (c *Controller) setVdiv(ch, idx int) {
+	if c.fe == nil {
+		return
+	}
+	_ = c.fe.SetVdiv(ch, idx)
+	c.mu.Lock()
+	c.vIdx[ch] = idx
+	c.mu.Unlock()
+}
+
+// setTdivNearest snaps the timebase ladder to the detent nearest target.
+func (c *Controller) setTdivNearest(target float64) {
+	if len(c.tdivs) == 0 {
+		return
+	}
+	best, bd := 0, 1e30
+	for i, t := range c.tdivs {
+		d := t - target
+		if d < 0 {
+			d = -d
+		}
+		if d < bd {
+			bd, best = d, i
+		}
+	}
+	c.mu.Lock()
+	c.tdivIdx = best
+	c.mu.Unlock()
+	c.eng.SetTdiv(c.tdivs[best])
+}
+
+// detentForVpp picks the most sensitive V/div whose 8-division window still
+// fits Vpp within ~6 divisions — so autoset never lands on a range that clips
+// (a clipped trace measures a too-small Vpp, which would pick an even more
+// sensitive range: a trap). Detents are ascending, so the first that fits wins.
+func detentForVpp(vpp float64) int {
+	for i := range analog.Detents {
+		if vpp/analog.Detents[i].VdivV <= 6.0 {
+			return i
+		}
+	}
+	return len(analog.Detents) - 1
+}
+
+// nearestDetent returns the vertical detent index whose V/div is nearest the
+// (electrical, pre-probe) target.
+func nearestDetent(target float64) int {
+	best, bd := analog.BootDetent, 1e30
+	for i, d := range analog.Detents {
+		diff := d.VdivV - target
+		if diff < 0 {
+			diff = -diff
+		}
+		if diff < bd {
+			bd, best = diff, i
+		}
+	}
+	return best
+}

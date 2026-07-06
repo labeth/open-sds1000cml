@@ -33,6 +33,7 @@ type MenuView struct {
 	ShowMeas       bool       // on-device MEASURE panel toggle (DISPLAY menu)
 	ViewMode       int        // 0 = Y-T, 1 = X-Y, 2 = FFT (DISPLAY menu "View")
 	MathMode       int        // 0 = off, 1 = C1+C2, 2 = C1-C2, 3 = C1×C2
+	AutosetBusy    bool       // an autoset sweep is running (LCD shows a hint)
 
 	CurOn   bool       // cursors visible
 	CurType int        // 0 = X (time), 1 = Y (volts)
@@ -283,11 +284,11 @@ func (c *Controller) trigPos() float64 {
 func (c *Controller) MenuView() MenuView {
 	c.mu.Lock()
 	pg, sel, c1, c2, meas := c.menuPage, c.menuSel, c.chDisp[0], c.chDisp[1], c.showMeas
-	view, mth := c.viewMode, c.mathMode
+	view, mth, busy := c.viewMode, c.mathMode, c.autosetBusy
 	curOn, curType, curSel, curX, curY := c.curOn, c.curType, c.curSel, c.curX, c.curY
 	c.mu.Unlock()
 	v := MenuView{Open: pg != pgNone, Sel: sel, ShowC1: c1, ShowC2: c2, ShowMeas: meas,
-		ViewMode: view, MathMode: mth,
+		ViewMode: view, MathMode: mth, AutosetBusy: busy,
 		CurOn: curOn, CurType: curType, CurSel: curSel, CurX: curX, CurY: curY}
 	if pg == pgNone {
 		return v

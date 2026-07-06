@@ -54,6 +54,51 @@ func countColorIn(m *MemSurface, c uint16, x0, y0, x1, y1 int) int {
 	return n
 }
 
+// The alternate views (web parity) must each render distinct output: X-Y and
+// math draw the purple math colour; FFT draws a spectrum; the autoset banner
+// draws its amber box centred.
+func TestRenderAltViews(t *testing.T) {
+	f := testFrame(2048)
+	f.C2 = make([]uint8, len(f.C2))
+	for i := range f.C2 { // give C2 a ramp so X-Y/math aren't degenerate
+		f.C2[i] = uint8(i % 200)
+	}
+
+	xy := NewMemSurface()
+	h := defaultHUD()
+	h.ViewMode = 1
+	Render(xy, f, h, true)
+	if countColor(xy, colMath) == 0 {
+		t.Error("X-Y view drew no math-coloured points")
+	}
+
+	fft := NewMemSurface()
+	h = defaultHUD()
+	h.ViewMode = 2
+	Render(fft, f, h, true)
+	// FFT draws the channel colour across the plot; must differ from a blank fill.
+	if countColor(fft, colC1) == 0 {
+		t.Error("FFT view drew no spectrum")
+	}
+
+	math := NewMemSurface()
+	h = defaultHUD()
+	h.MathMode = 1 // C1+C2
+	Render(math, f, h, true)
+	if countColor(math, colMath) == 0 {
+		t.Error("math overlay drew no math-coloured trace")
+	}
+
+	banner := NewMemSurface()
+	h = defaultHUD()
+	h.AutosetBusy = true
+	Render(banner, f, h, true)
+	// the banner box is centred; assert amber pixels in the middle region.
+	if countColorIn(banner, colTrig, W/2-160, H/2-30, W/2+160, H/2+30) == 0 {
+		t.Error("autoset banner not drawn centre-screen")
+	}
+}
+
 // The selected softkey is a FILLED inverted amber bar (not a 1px outline): its
 // slot must be a solid block of colTrig with dark (colBG) inverted text on top.
 func TestRenderMenuSelectedSoftkeyFilled(t *testing.T) {

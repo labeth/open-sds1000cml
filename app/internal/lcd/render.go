@@ -35,6 +35,7 @@ type HUD struct {
 	ShowMeas         bool    // on-device MEASURE panel overlay
 	ViewMode         int     // 0 = Y-T, 1 = X-Y, 2 = FFT
 	MathMode         int     // 0 = off, 1 = C1+C2, 2 = C1-C2, 3 = C1×C2
+	AutosetBusy      bool    // autoset sweep running → show a cancelable banner
 	TwoChan          bool
 
 	// On-screen cursors: two X (time) and two Y (volts), positions as screen
@@ -655,6 +656,33 @@ func Render(sf Surface, f *engine.Frame, hud HUD, live bool) {
 	}
 	drawCursors(sf, hud)
 	drawMenu(sf, hud)
+	if hud.AutosetBusy {
+		drawAutosetBanner(sf)
+	}
+}
+
+// drawAutosetBanner overlays a centred "AUTOSET…" progress banner while the
+// sweep runs, with the cancel hint (a second AUTO press stops it).
+func drawAutosetBanner(sf Surface) {
+	const bw, bh = 300, 44
+	x0, y0 := (W-bw)/2, (H-bh)/2
+	for y := y0; y < y0+bh; y++ {
+		for x := x0; x < x0+bw; x++ {
+			sf.SetPixel(x, y, rgb(8, 12, 28))
+		}
+	}
+	for x := x0; x < x0+bw; x++ {
+		sf.SetPixel(x, y0, colTrig)
+		sf.SetPixel(x, y0+bh-1, colTrig)
+	}
+	for y := y0; y < y0+bh; y++ {
+		sf.SetPixel(x0, y, colTrig)
+		sf.SetPixel(x0+bw-1, y, colTrig)
+	}
+	msg := "AUTOSET…"
+	DrawText(sf, x0+(bw-TextWidth(msg, 2))/2, y0+6, msg, colTrig, 2)
+	hint := "AUTO again to cancel"
+	DrawText(sf, x0+(bw-TextWidth(hint, 1))/2, y0+30, hint, colDim, 1)
 }
 
 // drawMenu overlays the softkey menu down the right edge (spec 08 §6): a title

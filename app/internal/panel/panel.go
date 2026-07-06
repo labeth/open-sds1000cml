@@ -151,6 +151,13 @@ type Controller struct {
 	curX    [2]float64
 	curY    [2]float64
 	inject  chan func()
+
+	// frameFn reads the latest published frame (fo.WithFrame) for autoset; nil
+	// until SetFrameSource is called (AUTO then falls back to plain AUTO/run).
+	frameFn func(func(*engine.Frame))
+	// autoset runs as a background sweep; autosetStop cancels it (second AUTO).
+	autosetBusy bool
+	autosetStop chan struct{}
 }
 
 // New builds the controller. The timebase ladder is injected (the controller
@@ -281,6 +288,14 @@ func (c *Controller) decode(m [5]uint16, knobsOn bool) {
 }
 
 func (c *Controller) button(code int) {
+	// While an autoset sweep runs, ignore everything except AUTO (which cancels)
+	// — this both gives a clean "busy" UX and avoids racing its scale changes.
+	c.mu.Lock()
+	busy := c.autosetBusy
+	c.mu.Unlock()
+	if busy && code != btnAuto {
+		return
+	}
 	switch code {
 	case btnRunStop:
 		c.running = !c.running
@@ -289,9 +304,8 @@ func (c *Controller) button(code int) {
 		c.norm, c.running = true, true
 		c.eng.SetSingle() // true single-shot: capture one triggered frame, stop
 	case btnAuto:
-		c.norm, c.running = false, true
-		c.eng.SetNorm(false)
-		c.eng.SetRunning(true)
+		c.autoset()
+		return
 	default:
 		// Menu / softkey / channel buttons (spec 08 §6). Anything else is
 		// claimed-and-ignored so it can't cross-drive another control.
@@ -358,6 +372,12 @@ func (c *Controller) knob(m [5]uint16) {
 }
 
 func (c *Controller) dispatch(name string, dir, steps int) {
+	c.mu.Lock()
+	busy := c.autosetBusy
+	c.mu.Unlock()
+	if busy { // knobs are inert while autoset sweeps (avoids racing its writes)
+		return
+	}
 	switch name {
 	case "tdiv":
 		// CW (+1) → slower timebase; ladder is ascending.

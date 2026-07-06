@@ -86,6 +86,7 @@ func buildHUD(e *engine.Engine, fe *analog.FrontEnd) lcd.HUD {
 		hud.ShowC1, hud.ShowC2 = mv.ShowC1, mv.ShowC2
 		hud.ShowMeas = mv.ShowMeas
 		hud.ViewMode, hud.MathMode = mv.ViewMode, mv.MathMode
+		hud.AutosetBusy = mv.AutosetBusy
 		hud.CurOn, hud.CurType, hud.CurSel = mv.CurOn, mv.CurType, mv.CurSel
 		hud.CurX, hud.CurY = mv.CurX, mv.CurY
 		hud.MenuOpen, hud.MenuTitle, hud.MenuSel = mv.Open, mv.Title, mv.Sel
@@ -281,6 +282,7 @@ func main() {
 		pfe = fe
 	}
 	pc := panel.New(e, pfe, keyFD, engine.SupportedTdivs(), 500e-6, logf)
+	pc.SetFrameSource(fo.WithFrame) // let the AUTO button measure the live signal
 	uiCtrl.Store(pc) // publish for the LCD render loop + SCDP screenshot
 	go pc.Run(stopFo)
 	logf("panel controller up (fpga_key fd=%d)", keyFD)
