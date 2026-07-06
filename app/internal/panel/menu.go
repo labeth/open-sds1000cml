@@ -20,6 +20,7 @@ const (
 	pgRef    // reference waveforms REF A/B (reached by re-pressing ACQUIRE)
 	pgMain   // MAIN menu (MENU key): navigates to every sub-page
 	pgTrigQ  // trigger-qualifier params (reached by re-pressing TRIGGER)
+	pgDecode // protocol decode (MAIN ▸ Decode)
 )
 
 // MenuItem is one softkey slot: a label and its current value.
@@ -41,6 +42,11 @@ type MenuView struct {
 	Zoom           int        // horizontal magnification (1 = none)
 	ZoomOff        float64    // zoom-window pan offset (fraction of the record)
 	Persist        bool       // display persistence (afterglow)
+	DecProto       int        // 0=off,1=UART,2=I2C,3=SPI
+	DecBaud        int
+	DecChA, DecChB int  // channel roles (0=C1,1=C2)
+	DecCPOL        bool
+	DecCPHA        bool
 
 	CurOn   bool       // cursors visible
 	CurType int        // 0 = X (time), 1 = Y (volts)
@@ -196,6 +202,8 @@ func pageSlots(pg int) int {
 		return 4
 	case pgChan:
 		return 5
+	case pgDecode:
+		return 4
 	default: // pgTrig, pgDisp, pgCursor, pgRef
 		return 5
 	}
@@ -223,8 +231,36 @@ func (c *Controller) menuCycle(slot, dir int) {
 		case 3:
 			c.openMenu(pgHoriz)
 		case 4:
-			c.openMenu(pgCursor)
+			c.openMenu(pgDecode) // Cursors has its own key, so Decode gets this slot
 		}
+		return
+	case pgDecode:
+		c.mu.Lock()
+		switch slot {
+		case 0:
+			c.decProto = mod4(c.decProto + dir)
+		case 1:
+			switch c.decProto {
+			case 1: // UART baud
+				c.decBaud = nextOpt([]int{9600, 19200, 38400, 57600, 115200, 230400}, c.decBaud, dir)
+			case 2, 3: // I2C SCL / SPI CLK channel
+				c.decChA = 1 - c.decChA
+			}
+		case 2:
+			switch c.decProto {
+			case 1: // UART source channel
+				c.decChA = 1 - c.decChA
+			case 2, 3: // I2C SDA / SPI DATA channel
+				c.decChB = 1 - c.decChB
+			}
+		case 3:
+			if c.decProto == 3 { // SPI mode: cycle CPOL/CPHA (0..3)
+				m := (b2ic(c.decCPOL)<<1 | b2ic(c.decCPHA)) + dir
+				m = ((m % 4) + 4) % 4
+				c.decCPOL, c.decCPHA = m&2 != 0, m&1 != 0
+			}
+		}
+		c.mu.Unlock()
 		return
 	case pgTrigQ: // trigger-qualifier params for the current trigger TYPE
 		c.mu.Lock()
@@ -463,10 +499,13 @@ func (c *Controller) MenuView() MenuView {
 	slo, shi, smn, smx, scnd := c.slopeLo, c.slopeHi, c.slopeMin, c.slopeMax, c.slopeCond
 	vstd, vln, vneg := c.videoStd, c.videoLine, c.videoNeg
 	zoom, zoomOff, persist := c.zoom, c.zoomOff, c.persist
+	decProto, decBaud, decChA, decChB := c.decProto, c.decBaud, c.decChA, c.decChB
+	decCPOL, decCPHA := c.decCPOL, c.decCPHA
 	c.mu.Unlock()
 	v := MenuView{Open: pg != pgNone, Sel: sel, ShowC1: c1, ShowC2: c2, ShowMeas: meas,
 		ViewMode: view, MathMode: mth, AutosetBusy: busy, AutosetMsg: amsg,
 		Zoom: zoom, ZoomOff: zoomOff, Persist: persist,
+		DecProto: decProto, DecBaud: decBaud, DecChA: decChA, DecChB: decChB, DecCPOL: decCPOL, DecCPHA: decCPHA,
 		CurOn: curOn, CurType: curType, CurSel: curSel, CurX: curX, CurY: curY}
 	if pg == pgNone {
 		return v
@@ -486,8 +525,31 @@ func (c *Controller) MenuView() MenuView {
 			{"Acquire", ">"},
 			{"Display", ">"},
 			{"Horizontal", ">"},
-			{"Cursors", ">"},
+			{"Decode", ">"}, // Cursors has its own dedicated key
 		}
+	case pgDecode:
+		protos := []string{"Off", "UART", "I2C", "SPI"}
+		ch := func(c int) string {
+			if c == 1 {
+				return "C2"
+			}
+			return "C1"
+		}
+		v.Title = "DECODE"
+		it := []MenuItem{{"Proto", protos[decProto&3]}, {"", ""}, {"", ""}, {"", ""}, {"", ""}}
+		switch decProto {
+		case 1: // UART
+			it[1] = MenuItem{"Baud", fmt.Sprint(decBaud)}
+			it[2] = MenuItem{"Source", ch(decChA)}
+		case 2: // I2C
+			it[1] = MenuItem{"SCL", ch(decChA)}
+			it[2] = MenuItem{"SDA", ch(decChB)}
+		case 3: // SPI
+			it[1] = MenuItem{"CLK", ch(decChA)}
+			it[2] = MenuItem{"DATA", ch(decChB)}
+			it[3] = MenuItem{"Mode", fmt.Sprintf("%d", b2ic(decCPOL)<<1|b2ic(decCPHA))}
+		}
+		v.Items = it
 	case pgTrigQ:
 		cond := []string{"any", "<min", ">max", "in"}
 		pct := func(f float64) string { return fmt.Sprintf("%d%%", int(f*100+0.5)) }
@@ -754,6 +816,13 @@ func depthLabel(n int) string {
 		return fmt.Sprintf("%dk", n/1000)
 	}
 	return fmt.Sprint(n)
+}
+
+func b2ic(b bool) int {
+	if b {
+		return 1
+	}
+	return 0
 }
 
 func mod5(x int) int { return ((x % 5) + 5) % 5 }

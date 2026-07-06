@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"open-sds/app/internal/analog"
+	"open-sds/app/internal/decode"
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/measure"
 )
@@ -39,7 +40,11 @@ type HUD struct {
 	AutosetMsg       string  // banner text while AutosetBusy
 	Zoom             int     // horizontal magnification (1 = none)
 	ZoomOff          float64 // zoom-window pan offset (fraction of the record)
-	Persist          bool    // display persistence (afterglow) on
+	Persist          bool    // display persistence (afterglow)
+	DecProto         int     // protocol decode: 0=off,1=UART,2=I2C,3=SPI
+	DecBaud          int
+	DecChA, DecChB   int // channel roles (0=C1,1=C2)
+	DecCPOL, DecCPHA bool
 	RefC1, RefC2     [2][]uint8 // saved reference waveforms (REF A/B); nil if unset
 	RefShow          [2]bool
 	TwoChan          bool
@@ -309,6 +314,78 @@ func drawRefs(sf Surface, hud HUD, win int, xc float64, interp bool, posFrac flo
 			if r := hud.RefC2[i]; len(r) > 0 {
 				drawTrace(sf, r, win, xc, interp, cols[i], posFrac)
 			}
+		}
+	}
+}
+
+// decodeColor maps a decode span kind to a display colour.
+func decodeColor(kind string) uint16 {
+	switch kind {
+	case "start", "stop", "ack":
+		return colOK
+	case "addr", "rw":
+		return colTrig
+	case "nak", "frame-error", "parity-error":
+		return colStale
+	case "gap":
+		return colDim
+	default: // data
+		return colInfo
+	}
+}
+
+// drawDecode runs the protocol decoder on the frame and draws the decoded byte
+// spans in a strip below the trace (parity with the web decode overlay). Only in
+// Y-T; the span sample indices map to screen x through the same trace window.
+func drawDecode(sf Surface, f *engine.Frame, hud HUD, win int, xc, posFrac float64) {
+	if hud.DecProto == 0 || f == nil {
+		return
+	}
+	valid := frameValid(f)
+	ch := func(c int) []uint8 {
+		if c == 1 && len(f.C2) >= valid {
+			return f.C2[:valid]
+		}
+		return f.C1[:valid]
+	}
+	var res decode.Result
+	switch hud.DecProto {
+	case 1:
+		res = decode.DecodeUART(ch(hud.DecChA), f.SampleS, decode.UARTCfg{Baud: hud.DecBaud})
+	case 2:
+		res = decode.DecodeI2C(ch(hud.DecChA), ch(hud.DecChB), f.SampleS, decode.I2CCfg{})
+	case 3:
+		res = decode.DecodeSPI(ch(hud.DecChA), ch(hud.DecChB), f.SampleS, decode.SPICfg{CPOL: hud.DecCPOL, CPHA: hud.DecCPHA, MSB: true})
+	}
+	name := []string{"", "UART", "I2C", "SPI"}[hud.DecProto&3]
+	yLbl := traceBot - 24
+	fillRect(sf, 0, yLbl-1, W, 28, rgb(6, 10, 22)) // dark strip so bytes read over the trace
+	if !res.OK {
+		DrawText(sf, 10, yLbl, name+": "+res.Error, colStale, 1)
+		return
+	}
+	DrawText(sf, 10, yLbl, fmt.Sprintf("%s  %d bytes", name, len(res.Bytes)), colDim, 1)
+	// Map a sample index to screen x via the same window the trace uses.
+	left := xc - float64(win)*posFrac
+	sx := func(s float64) int { return int((s - left) * float64(W) / float64(win)) }
+	yTxt, yBar := traceBot-14, traceBot-4
+	for _, s := range res.Spans {
+		x0, x1 := sx(float64(s.I0)), sx(float64(s.I1))
+		if x1 < 0 || x0 >= W {
+			continue // off-screen
+		}
+		col := decodeColor(s.Kind)
+		if x1 < x0+2 {
+			x1 = x0 + 2
+		}
+		for x := x0; x <= x1 && x < W; x++ { // span bar
+			if x >= 0 {
+				sf.SetPixel(x, yBar, col)
+				sf.SetPixel(x, yBar+1, col)
+			}
+		}
+		if x0 >= 0 && x0 < W-len(s.Text)*6 { // byte text if it fits
+			DrawText(sf, x0+1, yTxt, s.Text, col, 1)
 		}
 	}
 }
@@ -826,6 +903,9 @@ func Render(sf Surface, f *engine.Frame, hud HUD, live bool, persist ...*MemSurf
 				drawMath(traceTarget, f, hud, win, xc, posFrac)
 			}
 			drawRefs(traceTarget, hud, win, xc, f.Interp, posFrac)
+			if hud.DecProto != 0 {
+				drawDecode(sf, f, hud, win, xc, posFrac)
+			}
 		}
 	}
 	if persisting { // composite the decayed trace layer over the graticule

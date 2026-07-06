@@ -140,6 +140,12 @@ type Controller struct {
 	zoom     int     // horizontal magnification (1,2,5,10,20,50); 1 = no zoom
 	zoomOff  float64 // pan offset of the zoom window, fraction of the record
 	persist  bool    // display persistence (afterglow)
+	// Protocol decode: proto 0=off,1=UART,2=I2C,3=SPI. chA/chB = channel roles
+	// (0=C1,1=C2): UART uses chA (source); I2C chA=SCL,chB=SDA; SPI chA=CLK,chB=DATA.
+	decProto           int
+	decBaud            int
+	decChA, decChB     int
+	decCPOL, decCPHA   bool
 
 	// Menu state (spec 08 §6): written by the panel goroutine, read by the LCD
 	// renderer, guarded by mu. inject runs API-driven panel events on the panel
@@ -195,6 +201,8 @@ func New(eng Engine, fe Analog, keyFD int, tdivs []float64, startTdiv float64, l
 		inject:   make(chan func(), 32),
 		running:  true,
 		zoom:     1,
+		decBaud:  115200,
+		decChA:   0, decChB: 1, // UART on C1; I2C/SPI clk on C1, data on C2
 		// Seed the qualifier shadows to the engine's defaultTrigParams so the
 		// pgTrigQ page agrees with the engine from boot (slope 0.2/0.8, neg sync).
 		pulseLvl: 0.5, pulseMin: 100, pulseMax: 1000,

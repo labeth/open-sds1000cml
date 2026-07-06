@@ -92,6 +92,9 @@ func buildHUD(e *engine.Engine, fe *analog.FrontEnd) lcd.HUD {
 		hud.AutosetBusy, hud.AutosetMsg = mv.AutosetBusy, mv.AutosetMsg
 		hud.Zoom, hud.ZoomOff = mv.Zoom, mv.ZoomOff
 		hud.Persist = mv.Persist
+		hud.DecProto, hud.DecBaud = mv.DecProto, mv.DecBaud
+		hud.DecChA, hud.DecChB = mv.DecChA, mv.DecChB
+		hud.DecCPOL, hud.DecCPHA = mv.DecCPOL, mv.DecCPHA
 		rv := pc.RefView()
 		for i := 0; i < 2; i++ {
 			hud.RefC1[i], hud.RefC2[i], hud.RefShow[i] = rv[i].C1, rv[i].C2, rv[i].Show
