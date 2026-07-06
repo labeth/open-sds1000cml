@@ -90,6 +90,10 @@ func buildHUD(e *engine.Engine, fe *analog.FrontEnd) lcd.HUD {
 		hud.ShowMeas = mv.ShowMeas
 		hud.ViewMode, hud.MathMode = mv.ViewMode, mv.MathMode
 		hud.AutosetBusy = mv.AutosetBusy
+		rv := pc.RefView()
+		for i := 0; i < 2; i++ {
+			hud.RefC1[i], hud.RefC2[i], hud.RefShow[i] = rv[i].C1, rv[i].C2, rv[i].Show
+		}
 		hud.CurOn, hud.CurType, hud.CurSel = mv.CurOn, mv.CurType, mv.CurSel
 		hud.CurX, hud.CurY = mv.CurX, mv.CurY
 		hud.MenuOpen, hud.MenuTitle, hud.MenuSel = mv.Open, mv.Title, mv.Sel

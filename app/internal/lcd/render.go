@@ -36,6 +36,8 @@ type HUD struct {
 	ViewMode         int     // 0 = Y-T, 1 = X-Y, 2 = FFT
 	MathMode         int     // 0 = off, 1 = C1+C2, 2 = C1-C2, 3 = C1×C2
 	AutosetBusy      bool    // autoset sweep running → show a cancelable banner
+	RefC1, RefC2     [2][]uint8 // saved reference waveforms (REF A/B); nil if unset
+	RefShow          [2]bool
 	TwoChan          bool
 
 	// On-screen cursors: two X (time) and two Y (volts), positions as screen
@@ -282,6 +284,27 @@ func drawMath(sf Surface, f *engine.Frame, hud HUD, win int, xc float64) {
 		m[i] = uint8(v)
 	}
 	drawTrace(sf, m, win, xc, f.Interp, colMath, hud.TrigPosFrac)
+}
+
+// drawRefs overlays the saved reference waveforms (REF A/B) as dim traces for
+// comparison against the live trace (parity with the web REF A/B). Screen-space
+// snapshots — they align while the timebase/scale are unchanged. A is purple,
+// B is the info tint, so they read apart from the live channels.
+func drawRefs(sf Surface, hud HUD, win int, xc float64, interp bool) {
+	cols := [2]uint16{colMath, colInfo}
+	for i := 0; i < 2; i++ {
+		if !hud.RefShow[i] {
+			continue
+		}
+		if r := hud.RefC1[i]; len(r) > 0 {
+			drawTrace(sf, r, win, xc, interp, cols[i], hud.TrigPosFrac)
+		}
+		if hud.TwoChan {
+			if r := hud.RefC2[i]; len(r) > 0 {
+				drawTrace(sf, r, win, xc, interp, cols[i], hud.TrigPosFrac)
+			}
+		}
+	}
 }
 
 // fftRadix2 is an in-place iterative Cooley–Tukey FFT (len must be a power of
@@ -635,6 +658,7 @@ func Render(sf Surface, f *engine.Frame, hud HUD, live bool) {
 			if hud.MathMode != 0 {
 				drawMath(sf, f, hud, win, xc)
 			}
+			drawRefs(sf, hud, win, xc, f.Interp)
 		}
 	}
 

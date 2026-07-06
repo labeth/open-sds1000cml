@@ -17,6 +17,7 @@ const (
 	pgHoriz
 	pgChan   // per-channel coupling + probe (reached by re-pressing DISPLAY)
 	pgCursor // on-screen cursors (reached by re-pressing HORIZONTAL)
+	pgRef    // reference waveforms REF A/B (reached by re-pressing ACQUIRE)
 )
 
 // MenuItem is one softkey slot: a label and its current value.
@@ -68,7 +69,14 @@ func (c *Controller) menuButton(code int) bool {
 		c.openMenu(pgTrig)
 		return true
 	case btnAcquire:
-		c.openMenu(pgAcq)
+		// ACQUIRE cycles between the acquire page and the reference (REF A/B) page.
+		c.mu.Lock()
+		next := pgAcq
+		if c.menuPage == pgAcq {
+			next = pgRef
+		}
+		c.mu.Unlock()
+		c.openMenu(next)
 		return true
 	case btnDisplay:
 		// DISPLAY cycles between the channel-display page and the per-channel
@@ -211,6 +219,29 @@ func (c *Controller) menuCycle(slot, dir int) {
 				c.fe.SetProbe(1, nextProbe(c.fe.ProbeFactor(1), dir))
 			}
 		}
+	case pgRef:
+		switch slot {
+		case 0: // Save A: snapshot the current frame
+			c.captureRef(0)
+		case 1: // Save B
+			c.captureRef(1)
+		case 2: // Show/hide A
+			c.mu.Lock()
+			if c.refs[0].has {
+				c.refs[0].show = !c.refs[0].show
+			}
+			c.mu.Unlock()
+		case 3: // Show/hide B
+			c.mu.Lock()
+			if c.refs[1].has {
+				c.refs[1].show = !c.refs[1].show
+			}
+			c.mu.Unlock()
+		case 4: // Clear both
+			c.mu.Lock()
+			c.refs = [2]refWave{}
+			c.mu.Unlock()
+		}
 	case pgCursor:
 		switch slot {
 		case 0:
@@ -285,6 +316,7 @@ func (c *Controller) MenuView() MenuView {
 	c.mu.Lock()
 	pg, sel, c1, c2, meas := c.menuPage, c.menuSel, c.chDisp[0], c.chDisp[1], c.showMeas
 	view, mth, busy := c.viewMode, c.mathMode, c.autosetBusy
+	rA, rAs, rB, rBs := c.refs[0].has, c.refs[0].show, c.refs[1].has, c.refs[1].show
 	curOn, curType, curSel, curX, curY := c.curOn, c.curType, c.curSel, c.curX, c.curY
 	c.mu.Unlock()
 	v := MenuView{Open: pg != pgNone, Sel: sel, ShowC1: c1, ShowC2: c2, ShowMeas: meas,
@@ -367,6 +399,27 @@ func (c *Controller) MenuView() MenuView {
 			{"C1 Probe", p0},
 			{"C2 Probe", p1},
 			{"", ""},
+		}
+	case pgRef:
+		saved := func(has bool) string {
+			if has {
+				return "saved"
+			}
+			return "empty"
+		}
+		show := func(has, s bool) string {
+			if !has {
+				return "—"
+			}
+			return onoff(s)
+		}
+		v.Title = "REF A/B"
+		v.Items = []MenuItem{
+			{"Save A", saved(rA)},
+			{"Save B", saved(rB)},
+			{"Show A", show(rA, rAs)},
+			{"Show B", show(rB, rBs)},
+			{"Clear", ""},
 		}
 	case pgCursor:
 		typ, sel := "Time", "A"

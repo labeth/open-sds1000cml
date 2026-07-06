@@ -158,6 +158,7 @@ type Controller struct {
 	// autoset runs as a background sweep; autosetStop cancels it (second AUTO).
 	autosetBusy bool
 	autosetStop chan struct{}
+	refs        [2]refWave // saved reference waveforms (REF A/B)
 }
 
 // New builds the controller. The timebase ladder is injected (the controller
