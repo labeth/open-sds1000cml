@@ -981,14 +981,20 @@ function drawNavDecode() {
   const n = frame.c1.length, laneH = 13 * dpr, laneY = NH - laneH;
   navCtx.fillStyle = "rgba(5,8,12,0.66)"; navCtx.fillRect(0, laneY, NW, laneH);
   navCtx.textBaseline = "middle"; navCtx.textAlign = "center"; navCtx.font = "bold " + (9 * dpr) + "px system-ui";
-  const nx = i => i / (n - 1) * NW;
-  for (const s of r.spans) {
-    const col = DECCOL[s.kind] || "#7c8894";
+  const nx = i => i / (n - 1) * NW, spans = r.spans, cy = laneY + laneH / 2;
+  for (let k = 0; k < spans.length; k++) {
+    const s = spans[k], col = DECCOL[s.kind] || "#7c8894";
     let x0 = nx(s.i0), x1 = Math.max(nx(s.i1), x0 + 1.5 * dpr);
     if (s.kind === "start" || s.kind === "stop") { navCtx.fillStyle = col; navCtx.fillRect(x0 - dpr, laneY, 1.6 * dpr, laneH); continue; }
     navCtx.fillStyle = hexA(col, 0.85); navCtx.fillRect(x0, laneY + dpr, x1 - x0, laneH - 2 * dpr);
-    const label = fitLabel(navCtx, s.text, x1 - x0 - 2 * dpr);
-    if (label) { navCtx.fillStyle = "#05080c"; navCtx.fillText(label, (x0 + x1) / 2, laneY + laneH / 2); }
+    // Fit inside the token box, else spill right into the gap to the next token.
+    if (navCtx.measureText(s.text).width <= x1 - x0 - 2 * dpr) {
+      navCtx.fillStyle = "#05080c"; navCtx.textAlign = "center"; navCtx.fillText(s.text, (x0 + x1) / 2, cy);
+    } else {
+      const nextX0 = k + 1 < spans.length ? nx(spans[k + 1].i0) : NW;
+      const label = fitLabel(navCtx, s.text, nextX0 - x0 - 2 * dpr);
+      if (label) { navCtx.fillStyle = col; navCtx.textAlign = "left"; navCtx.fillText(label, x0 + 2 * dpr, cy); }
+    }
   }
   navCtx.textAlign = "left"; navCtx.textBaseline = "alphabetic";
 }
@@ -1106,10 +1112,12 @@ function drawDecode(g) {
   const r = dcfg.result;
   if (!r || !r.ok || !r.spans.length || !frame.c1) return;
   const n = frame.c1.length, bandH = 20 * dpr, bandY = CH - bandH - 6 * dpr;
+  const spans = r.spans, cy = bandY + bandH / 2;
   g.save();
   g.fillStyle = "rgba(5,8,12,0.6)"; g.fillRect(0, bandY - 2 * dpr, CW, bandH + 4 * dpr);
-  g.textBaseline = "middle"; g.textAlign = "center"; g.font = "bold " + (11 * dpr) + "px system-ui";
-  for (const s of r.spans) {
+  g.textBaseline = "middle"; g.font = "bold " + (11 * dpr) + "px system-ui";
+  for (let i = 0; i < spans.length; i++) {
+    const s = spans[i];
     let x0 = xForCol(s.i0, n), x1 = xForCol(s.i1, n);
     if (x1 < 0 || x0 > CW) continue;
     const col = DECCOL[s.kind] || "#7c8894";
@@ -1121,8 +1129,17 @@ function drawDecode(g) {
     x1 = Math.max(x1, x0 + 2 * dpr); const w = x1 - x0;
     g.fillStyle = hexA(col, 0.2); g.fillRect(x0, bandY, w, bandH);
     g.strokeStyle = col; g.lineWidth = dpr; g.strokeRect(x0 + .5, bandY + .5, w - dpr, bandH - dpr);
-    const label = fitLabel(g, s.text, w - 6 * dpr);
-    if (label) { g.fillStyle = col; g.fillText(label, (x0 + x1) / 2, bandY + bandH / 2); }
+    // Label: center it when it fits inside the box; when the box is too narrow
+    // (zoomed out) let it spill RIGHT into the idle/gap up to the next token, so
+    // a byte never loses its value just because its box shrank.
+    g.fillStyle = col;
+    if (g.measureText(s.text).width <= w - 6 * dpr) {
+      g.textAlign = "center"; g.fillText(s.text, (x0 + x1) / 2, cy);
+    } else {
+      const nextX0 = i + 1 < spans.length ? xForCol(spans[i + 1].i0, n) : CW;
+      const label = fitLabel(g, s.text, Math.min(nextX0, CW) - x0 - 4 * dpr);
+      if (label) { g.textAlign = "left"; g.fillText(label, x0 + 3 * dpr, cy); }
+    }
   }
   g.restore(); g.textAlign = "left"; g.textBaseline = "alphabetic";
 }

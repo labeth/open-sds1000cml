@@ -61,6 +61,23 @@ try {
   await page.waitForTimeout(120);
   ok(await page.evaluate(() => view.win.a === 0 && view.win.b === 1), "double-click nav resets to the full record");
 
+  // Regression: "when zoomed out I can only see 1 of the 2 bytes". Two bytes with
+  // tiny boxes but idle space around them (the zoomed-out geometry) — each label
+  // must spill into the gap and render, instead of being dropped. This exact case
+  // drew ZERO labels before the fit-to-gap fix.
+  const spill = await page.evaluate(() => {
+    const n = frame.c1.length;
+    dcfg.result = { ok: true, proto: "uart", bytes: [0x00, 0xff], text: "00 FF",
+      spans: [{ i0: Math.round(n * 0.20), i1: Math.round(n * 0.205), text: "00", kind: "data", val: 0 },
+              { i0: Math.round(n * 0.60), i1: Math.round(n * 0.605), text: "FF", kind: "data", val: 255 }] };
+    const seen = [], orig = ctx.fillText;
+    ctx.fillText = function (t, x, y) { seen.push(String(t)); return orig.call(this, t, x, y); };
+    try { redraw(); } finally { ctx.fillText = orig; }
+    return seen.filter(t => t === "00" || t === "FF");
+  });
+  ok(spill.includes("00") && spill.includes("FF"),
+    `both narrow-box bytes still labelled via gap-spill (drew: ${spill.join(",") || "none"})`);
+
   if (process.env.SHOT_DIR) await page.screenshot({ path: process.env.SHOT_DIR + "/decode.png" });
 } finally {
   await browser.close();
