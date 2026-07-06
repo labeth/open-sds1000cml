@@ -61,6 +61,110 @@ func TestDecodeUARTRoundTrip(t *testing.T) {
 	}
 }
 
+// spiWave synthesizes an SPI Mode-0 (CPOL=0,CPHA=0) MSB-first waveform:
+// SCLK idle low, data set up while SCLK low and sampled on the rising edge; a
+// long idle gap between message repeats so the gap-reset re-frames. Mirrors the
+// FPGA spi.v ground truth. Returns parallel (clk, data) code slices.
+func spiWave(bytes []int, h int) (clk, data []uint8) {
+	lo, hi := uint8(40), uint8(210)
+	seg := func(c, d uint8, n int) {
+		for i := 0; i < n; i++ {
+			clk = append(clk, c)
+			data = append(data, d)
+		}
+	}
+	seg(lo, lo, h*20) // lead idle (SCLK low)
+	for _, b := range bytes {
+		for k := 7; k >= 0; k-- { // MSB first
+			bit := lo
+			if (b>>k)&1 == 1 {
+				bit = hi
+			}
+			seg(lo, bit, h) // SCLK low: set up data
+			seg(hi, bit, h) // SCLK high: sampled on the rising edge
+		}
+	}
+	seg(lo, lo, h*20) // trail idle
+	return clk, data
+}
+
+func TestDecodeSPIRoundTrip(t *testing.T) {
+	want := []int{0x48, 0x69, 0x20, 0x55, 0xAA, 0x0F, 0xF0, 0x0A}
+	clk, data := spiWave(want, 20)
+	r := DecodeSPI(clk, data, 2e-7, SPICfg{CPOL: false, CPHA: false, MSB: true})
+	if !r.OK {
+		t.Fatalf("SPI decode failed: %s", r.Error)
+	}
+	if got := fmt.Sprintf("%v", r.Bytes); got != fmt.Sprintf("%v", want) {
+		t.Errorf("SPI: got %v want %v", r.Bytes, want)
+	}
+}
+
+// i2cWave synthesizes a full I2C transaction: START, addr+RW, ACK, data bytes
+// (each ACKed), STOP. SDA changes while SCL is low and is sampled on SCL rising.
+func i2cWave(addr7, rw int, data []int, h int) (scl, sda []uint8) {
+	lo, hi := uint8(40), uint8(210)
+	seg := func(c, d uint8, n int) {
+		for i := 0; i < n; i++ {
+			scl = append(scl, c)
+			sda = append(sda, d)
+		}
+	}
+	pushByte := func(v int) {
+		for k := 7; k >= 0; k-- {
+			b := lo
+			if (v>>k)&1 == 1 {
+				b = hi
+			}
+			seg(lo, b, h)
+			seg(hi, b, h)
+		}
+		seg(lo, lo, h) // ACK=0 on the 9th clock
+		seg(hi, lo, h)
+	}
+	seg(hi, hi, h*4) // idle
+	seg(hi, lo, h)   // START: SDA falls while SCL high
+	pushByte(addr7<<1 | (rw & 1))
+	for _, d := range data {
+		pushByte(d)
+	}
+	seg(lo, lo, h)     // STOP: bring SDA low while SCL low...
+	seg(hi, lo, h/2)   // ...SCL high...
+	seg(hi, hi, h*2)   // ...SDA rises while SCL high = STOP
+	seg(hi, hi, h*4)   // idle
+	return scl, sda
+}
+
+func TestDecodeI2CRoundTrip(t *testing.T) {
+	scl, sda := i2cWave(0x24, 0 /*W*/, []int{0x55, 0xAA}, 20)
+	r := DecodeI2C(scl, sda, 2e-7, I2CCfg{})
+	if !r.OK {
+		t.Fatalf("I2C decode failed: %s", r.Error)
+	}
+	if got := fmt.Sprintf("%v", r.Bytes); got != "[85 170]" { // 0x55 0xAA
+		t.Errorf("I2C data bytes: got %v want [85 170]", r.Bytes)
+	}
+	// The span stream must carry START, addr 0x24, W, ACK, data, STOP.
+	var kinds string
+	for _, s := range r.Spans {
+		kinds += s.Kind + " "
+	}
+	for _, need := range []string{"start", "addr", "rw", "ack", "data", "stop"} {
+		if !containsWord(kinds, need) {
+			t.Errorf("I2C spans missing %q; got %s", need, kinds)
+		}
+	}
+}
+
+func containsWord(s, w string) bool {
+	for i := 0; i+len(w) <= len(s); i++ {
+		if s[i:i+len(w)] == w {
+			return true
+		}
+	}
+	return false
+}
+
 func TestDecodeUARTFrameError(t *testing.T) {
 	// A byte with the stop bit corrupted -> frame-error span with "!" prefix.
 	spb := 30
