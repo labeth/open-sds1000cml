@@ -33,8 +33,8 @@ this way on the real unit at `192.168.1.209`.
 | Horizontal zoom / window navigation | ✓ | ✓ **added** | HORIZ ▸ Zoom (1–50×); horizpos knob pans the window across the record |
 | FFT frequency zoom | ✓ | ✓ **added** | same Zoom control magnifies a spectrum band; horizpos pans it |
 | FFT peak markers | ✓ | ✓ **added** | significant peaks (> −40 dBc) ticked in each spectrum |
-| Persistence | ✓ | ✗ deferred | needs a persistence buffer in the LCD render loop (today it clears each tick) |
-| Protocol decode (UART/I²C/SPI) | ✓ | ✗ deferred | large: on-LCD transcript rendering + a Go decoder port |
+| Persistence (afterglow) | ✓ | ✓ **added** | CHANNEL ▸ Persist; decaying trace layer composited over the graticule |
+| Protocol decode (UART/I²C/SPI) | ✓ | ✗ deferred | large: on-LCD transcript rendering + a Go decoder port; also needs a menu-access path (the menu tree is now full) |
 | Super-res stack & crunch | ✓ | ✗ deferred | large: a long-running accumulate (reuse the autoset cancelable-progress pattern) + on-LCD stack review |
 | PNG/CSV waveform export to file | ✓ | ✗ deferred | needs a file destination decision (USB stick); SCPI `SCDP` already dumps the screen |
 | PNG / CSV export | ✓ | n/a | no user file destination standalone; `SCDP` (SCPI) already returns a screen dump |
