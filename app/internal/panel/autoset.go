@@ -15,6 +15,13 @@ const divX = 10 // horizontal graticule divisions (spec 07)
 // so the trigger level is read off the trace we actually settled on.
 const settleMs = 220
 
+// Cycle counts for the two autoset scales: fit the vertical over many cycles so
+// Vpp is read on the full swing (measCycles), then show a few cycles (dispCycles).
+const (
+	measCycles = 30
+	dispCycles = 4
+)
+
 // SetFrameSource wires the latest-frame accessor (fo.WithFrame) so autoset can
 // measure the live signal. Optional — without it, AUTO falls back to plain run.
 func (c *Controller) SetFrameSource(fn func(func(*engine.Frame))) { c.frameFn = fn }
@@ -137,9 +144,11 @@ func (c *Controller) runAutoset(stop chan struct{}) {
 		return
 	}
 
-	// 2. Timebase = ~3 cycles across the screen; settle and re-measure at the
-	//    final scale so Vpp/Vmean are read on the trace we'll actually show.
-	c.setTdivNearest((3 / found.Freq) / divX)
+	// 2. Fit the VERTICAL from a window holding MANY cycles: a short capture of an
+	//    aperiodic/serial signal (UART, a bursty stream) can miss the full swing,
+	//    under-reading Vpp — which then picks a too-sensitive V/div that CLIPS.
+	//    Measuring over ~30 cycles captures the true min/max regardless of pattern.
+	c.setTdivNearest((measCycles / found.Freq) / divX)
 	if !c.waitFrame(stop) {
 		return
 	}
@@ -149,8 +158,9 @@ func (c *Controller) runAutoset(stop chan struct{}) {
 		return
 	}
 
-	// 3. Vertical: ~6 of 8 divisions, centred. Vpp/Vmean are in volts so they
-	//    hold across the scale change; still settle before the trigger step.
+	// 3. Vertical: fit Vpp into <6 of 8 divisions, centred on the MIDPOINT
+	//    (Vmax+Vmin)/2 — NOT the mean, which for a duty-cycled signal (UART idles
+	//    high) skews toward a rail and would push the other rail off-screen.
 	if c.fe != nil {
 		for ch := 0; ch < 2; ch++ {
 			if !has(m[ch]) {
@@ -158,7 +168,28 @@ func (c *Controller) runAutoset(stop chan struct{}) {
 			}
 			p := c.fe.ProbeFactor(ch)
 			c.setVdiv(ch, detentForVpp(m[ch].Vpp/p))
-			c.fe.SetOffset(ch, -m[ch].Vmean/p)
+			c.fe.SetOffset(ch, -(m[ch].Vmax+m[ch].Vmin)/2/p)
+		}
+		if !c.waitFrame(stop) {
+			return
+		}
+	}
+
+	// 3b. Close the loop on centring: the offset-DAC volts→code model drifts across
+	//     detents (up to a couple divisions), so read where the trace ACTUALLY
+	//     landed and nudge the offset to bring the mean to screen centre. This is
+	//     model-independent — it works off the raw codes.
+	if c.fe != nil {
+		for ch := 0; ch < 2; ch++ {
+			if !has(m[ch]) {
+				continue
+			}
+			errDiv := c.rawCenterErr(ch) // +ve => trace sits above centre
+			if errDiv > 0.4 || errDiv < -0.4 {
+				snap, _ := c.fe.Snapshot()
+				vdiv := analog.Detents[snap[ch]].VdivV
+				c.fe.SetOffset(ch, c.fe.OffsetReqV(ch)-errDiv*vdiv)
+			}
 		}
 		if !c.waitFrame(stop) {
 			return
@@ -191,6 +222,13 @@ func (c *Controller) runAutoset(stop chan struct{}) {
 	c.mu.Unlock()
 	c.eng.SetTrigSource(src)
 	c.eng.SetTrigType(0) // EDGE
+
+	// 5. Finally, set the DISPLAY timebase to a few cycles of the (accurately
+	//    measured) signal for a clean, well-resolved view. The trigger level is in
+	//    volts, so this timebase change does not disturb it.
+	if f := m[src].Freq; f > 0 {
+		c.setTdivNearest((dispCycles / f) / divX)
+	}
 }
 
 // waitFrame sleeps ~one publish interval so a frame at the new scale exists,
@@ -239,13 +277,59 @@ func (c *Controller) measureChans() ([2]*measure.Result, bool) {
 				snap, _ := c.fe.Snapshot()
 				idx = snap[ch]
 				probe = c.fe.ProbeFactor(ch)
-				offV = analog.OffsetVolts(ch, off[ch])
+				offV = c.fe.OffsetVolts(ch, off[ch]) // calibrated per-detent zero, not the fixed fallback
 			}
 			vdiv := analog.Detents[idx].VdivV
 			m[ch] = measure.Compute(sig, vdiv/32*probe, offV*probe, f.SampleS)
 		}
 	})
 	return m, ok
+}
+
+// rawCenterErr reports how far a channel's signal MIDPOINT ((min+max)/2) sits from
+// screen centre, in divisions (+ve = above centre), read straight off the ADC codes
+// (128 = centre, 32 codes/div). Uses 1%-trimmed rails so a stray spike can't skew it,
+// and the midpoint (not the mean) so duty cycle doesn't matter. Model-independent, so
+// it corrects any offset-DAC calibration drift.
+func (c *Controller) rawCenterErr(ch int) float64 {
+	var errDiv float64
+	c.frameFn(func(f *engine.Frame) {
+		if f == nil {
+			return
+		}
+		sig := f.C1
+		if ch == 1 {
+			sig = f.C2
+		}
+		valid := f.Valid
+		if valid < 1 || valid > len(sig) {
+			valid = len(sig)
+		}
+		if valid < 8 {
+			return
+		}
+		var h [256]int
+		for _, v := range sig[:valid] {
+			h[v]++
+		}
+		trim := valid / 100 // ignore the extreme 1% each end
+		lo, hi, acc := 0, 255, 0
+		for i := 0; i < 256; i++ {
+			if acc += h[i]; acc > trim {
+				lo = i
+				break
+			}
+		}
+		acc = 0
+		for i := 255; i >= 0; i-- {
+			if acc += h[i]; acc > trim {
+				hi = i
+				break
+			}
+		}
+		errDiv = (float64(lo+hi)/2 - 128) / 32
+	})
+	return errDiv
 }
 
 func has(r *measure.Result) bool { return r != nil && r.Vpp > 0.02 }
