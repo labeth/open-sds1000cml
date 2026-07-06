@@ -1,128 +1,189 @@
-# Super-res: device port + reference-locked stacking — plan
+# Super-res: device port + reference-locked stacking — plan (rev 2)
 
-Goal: bring super-res "stack & crunch" to the standalone scope (LCD + front
-panel) at parity with the web, add **reference-locked stacking** and **target-
-based stopping**, and make the two surfaces produce the **same result**. Built
-through: plan → design → review → implement → review → verify → validate.
+Goal: bring super-res "stack & crunch" to the standalone scope (LCD + panel) at
+parity with the web, add **reference-locked stacking** and **target-based
+stopping**, make the two surfaces **converge to the same stack**. Process:
+plan → design → **review** (done, rev 2 folds it in) → implement → review → verify
+→ validate. All file:line refs under `app/`.
 
-## 1. Requirements (consolidated)
+## 1. Requirements
 
-R1. **Device super-res** — port the web stack-and-crunch to run on the instrument
-    (Go), reachable from the front panel, rendered on the LCD.
-R2. **Stop targets, order bit → stacks → time**, on BOTH web and device. Set e.g.
-    "+4 bits" and it stops when reached. **bits and stacks are crunch-rate
-    independent** — the device (which crunches slower than the engine produces
-    frames) reaches the *same* stack as the web. Time is the wall-clock fallback.
-R3. **Reference-locked stacking** — SINGLE until you catch a frame you like, then
-    arm super-res using THAT frame as the alignment reference; it is *locked*
-    (the auto re-seed must not drift off it).
-R4. **Smart matching** — stack only frames whose *pattern* matches the reference;
-    reject the rest. On `burst → slow → burst`, single'd on a burst, it stacks
-    bursts and rejects the slow parts.
-R5. **Translation tolerance** — a matching frame shifted "some distance" from the
-    reference's trigger position must still stack (align by pattern/timing, not
-    exact trigger). Reject only genuine non-matches.
-R6. **Triggers** — device: **UTILITY** button; web: the super-res card **ARM**
-    button. UTILITY toggles on/off like SINGLE (press = start, press = cancel).
-R7. **Device review UX** — while active the softkeys map to super-res functions;
-    a live status line (frames / rejected / +bits / target) with the cancelable
-    pattern; the **ADJUST (intensity) knob-push** soft-closes/reopens the stack
-    view (like the web "view" toggle); the review shows the super-resolved trace
-    usable with the existing zoom/cursors. No on-LCD peak-pick/model-fit (v1).
+R1 Device super-res (Go), front-panel reachable, LCD-rendered.
+R2 Stop targets, order **bit → stacks → time**, both surfaces. bits/stacks are
+   crunch-rate independent; time is wall-clock.
+R3 Reference-locked stacking — SINGLE a frame you like, arm super-res using THAT
+   frame as the alignment reference, locked (no re-seed off it).
+R4 Smart matching — stack only pattern-matching frames; on burst→slow→burst
+   single'd on a burst, stack bursts, reject slow.
+R5 Translation tolerance — a matching burst shifted "some distance" from the
+   reference trigger still stacks (align by pattern, reject genuine non-matches).
+R6 Triggers — device UTILITY; web ARM. UTILITY toggles like SINGLE.
+R7 Device UX — softkeys map to super-res while active; live status; ADJUST
+   (intensity) knob-push toggles the stack-review view; review usable with the
+   existing zoom/cursors. No on-LCD peak-pick/model-fit (v1).
 
-## 2. Current architecture (what exists)
+## 2. Reality (from the design review)
 
-- **Web engine** `internal/web/superres.js` (707 lines, 13 fns, pure JS, unit-
-  tested via `superres_node_test.go` + browser tests). Pipeline per frame
-  (`srFeed`): clip-check → coarse trigger-edge align (`base`) → NCC sub-sample
-  align+score (`srAlign`) → **lucky** gate (adaptive threshold, floor 0.6) →
-  per-channel gain/offset drift-normalize (`srGainOffset`) → linear-weight
-  drizzle onto an n·K fine grid (`srAccumCh`). Reference = first non-flat frame;
-  an auto **re-seed** drops it if >70% reject. `srResult` computes MEASURED
-  `bitsGained` from the odd/even half-stack σ, plus frames/rejected/fill/rate.
-- **Web loop** `app.js` `sr{}` + `srIngest`/`srLoop`: a dedicated `?raw=1`
-  long-poll feeds `srFeed`; stack-view toggle re-renders the crunched trace.
-- **Device**: nothing yet. The Go trace/HUD/menu render (`internal/lcd`) and the
-  panel matrix/knob handling (`internal/panel`) are where the device UX lands.
+The web engine `superres.js` exists and is tested, BUT the three things this
+design leans on are **not built**: reference-lock (`srSeedRef` is a comment,
+`userRef` is read but never set), a **discriminative** match gate, and real
+translation tolerance. Default behaviour today is the *inverse* of R3/R4: on a
+slow-majority signal the auto re-seed (>70% reject) drops a burst reference and
+re-adopts the slow majority. Build these first.
 
-## 3. Design
+## 3. Design (corrected)
 
-### 3.1 Shared semantics (device == host)
+### 3.0 The parity contract (was overstated — this is the core correction)
 
-- **Stop targets**: `{mode: bits|stacks|time, target}`. Check after each stacked
-  frame: `bits` → measured bitsGained ≥ target; `stacks` → frames ≥ target;
-  `time` → elapsed ≥ target. bits/stacks depend only on the stack, not wall time,
-  so both surfaces converge to the same stack. Web ✅ drafted; device mirrors it.
-- **Reference lock** (`userRef`): `srSeedRef(st, sig1, sig2, edgeX)` adopts a
-  specific frame as the reference and sets `userRef`, which disables the re-seed.
-  Web ✅ guard drafted; add `srSeedRef` + the Go equivalent.
-- **Match gate**: keep the NCC lucky gate. For a locked reference the floor (0.6)
-  is the operative cut — a burst-vs-slow NCC sits well below it → rejected.
-- **Translation tolerance**: `srAlign` already *searches* for the best shift
-  (`base` coarse trigger diff + `±maxLag` NCC refine). Widen `maxLag` for the
-  locked-reference path (8 → ~64) so a burst offset from the trigger is found and
-  aligned before scoring; genuine non-matches still score below the floor.
+- **`stacks` = STRICT parity.** `st.frames` is an exact counter. Same *ordered*
+  frame list + same *seeded* reference + dither off + single-threaded fixed feed
+  order → bit-identical integer intermediates, accept/reject set, and the
+  `float32` `mean` array. This is what the golden-vector test asserts, and the
+  contractually consistent stop target.
+- **`bits` = CONVERGENCE only (±tolerance).** `bitsGained` is stride-dependent,
+  the odd/even half-stack (`st.frames & 1`) makes one flipped accept cascade the
+  A/B parity of the whole tail, and `log2` is not correctly-rounded across V8 vs
+  Go. So bits is "reach ~the same level," pinned to the `interp` kernel, never
+  bit-exact. Live device-vs-host cross-checks compare **levels with tolerance**,
+  never sample equality.
+- **`time` is wall-clock, excluded from the guarantee** (by design).
+- Live device and host consume *independent frame subsets* (each skips to the
+  newest published frame at its own rate) — so live results **converge**, they
+  are not identical. Only a replay of the *same ordered frames* is deterministic.
 
-### 3.2 Web (finish reference-lock; stop-targets done)
+### 3.1 Reference-lock (build it)
 
-1. `superres.js`: add `srSeedRef` (+ export); re-seed guarded by `!userRef` ✅.
-2. `app.js`: ARM while STOPPED (frozen on a SINGLE) → seed+lock that frame, then
-   RUN and stack matches at the wider `maxLag`; ARM while running → current
-   auto-adopt (keeps the deep-drain re-seed recovery). Reset `lastBits`.
-3. `ui.html`: ARM tooltip — "freeze a frame (SINGLE) first to lock it as the
-   match reference". Stop control ✅ (bits/stacks/time selector + target).
+`srSeedRef(st, sig1, sig2, edgeX)`: validate the frozen frame (reject flat
+`hi−lo<12`, reject `srClipped`), set `c[ch].ref`, `refEdgeX`/`edgeX`,
+**`userRef=true`**. The re-seed guard (`!userRef`, already added) then never
+drops it. ARM-from-frozen seeds **before** RUN resumes. Crunch-rate independence
+holds **only** for a locked `userRef`.
 
-### 3.3 Device (the port)
+### 3.2 Discriminative match gate (build it — plain NCC fails R4)
 
-1. **`internal/superres/` (new Go pkg)** — port the core: `New(n,K)`, `Feed`,
-   `Align`, `Accum`, `Result`(frames/rejected/bitsGained/fill), `SeedRef`,
-   clip/gain-offset/mean-std helpers. Skip model-fit/peaks (not in v1 UX).
-   Algorithm-faithful to superres.js; a shared golden-vector test asserts the Go
-   stack matches the JS stack bit-for-bit on the same frames.
-2. **Panel** (`internal/panel`): wire **UTILITY** (`0x66:3`) as a super-res
-   toggle (arm from the frozen/last frame as the locked reference; press again =
-   cancel — like SINGLE). While active: a `pgSuperres` softkey page (Ch / grid ×K
-   / kernel / **Stop** mode+target / Dither / Reset). Wire the **ADJUST knob-push**
-   (`0x65:1`) to toggle the stack-review view. Feed frames to the stacker from the
-   render loop's frame source (reuse `frameFn`).
-3. **LCD** (`internal/lcd`): a super-res status HUD (frames · rejected · +bits ·
-   target · fill) reusing the autoset cancelable-banner idiom; a **stack-review**
-   view (ViewMode-style) that draws the crunched fine-grid trace via `drawTrace`,
-   working with the existing horizontal zoom + cursors.
-4. **Stop targets + reference** identical to web semantics (§3.1).
+A plain NCC over the ±2048 window centred on the trigger edge is dominated by
+the *shared* triggering transition (burst and slow both fired on it): measured
+false-accepts 0.955–0.996. Fix: **remove the shared low-frequency content before
+scoring** — detrend (subtract a fitted low-order trend, or the aligned reference-
+edge template) / high-pass both traces, then NCC on the residual, so only the
+burst's *distinguishing* content is scored. Use a **fixed** cut (0.6–0.7) when
+`userRef` (the adaptive median−3·MAD ratchet over-rejects genuine weak/translated
+bursts once locked). Score at the **sub-sample-refined** alignment, not the
+integer-lag peak. Fixture: burst→slow→burst locked on a burst → slow rejected.
 
-### 3.4 Consistency guarantee
+### 3.3 Translation tolerance (build it — do NOT widen maxLag)
 
-Same K, same kernel, same stop target (bits or stacks), same reference frame →
-same stack, independent of crunch rate. Validate by stacking the *same* recorded
-frames through both the JS and Go engines and comparing `bitsGained` + the
-crunched samples within tolerance (golden-vector test).
+Widening `maxLag` 8→64 silently misaligns: period-aliasing (aligns 14 periods
+off at score 0.955) and partial-overlap smear (capped at the maxLag rail). Keep
+the **local** NCC refine small (≤ period/2) around a trustworthy `base`, prefer
+the argmax nearest k=0, reject ambiguous peaks (2nd-best within ε of best). Make
+a **full-record normalized matched-filter / xcorr that returns a location + peak
+sharpness** the PRIMARY locate step (align to the found location, never a
+maxLag-capped lag; reject cleanly beyond ±X% of record; this also handles the
+`edgeX=−1` no-trigger case). Fixture proves the max tolerated shift.
 
-## 4. Process / phases (tracked as tasks)
+### 3.4 Stop targets (fix bits determinism on the web first)
 
-1. **Plan** (this doc) → review.
-2. **Design review** — adversarial pass on §3 (algorithm fidelity, matching
-   correctness on burst/slow/burst, device UX on 5 softkeys, consistency).
-3. **Web reference-lock** — implement, browser-test (burst-vs-slow fixture:
-   assert slow frames rejected, bursts stacked, target-stop fires), commit.
-4. **Go superres pkg** — port + golden-vector parity test vs JS, unit tests.
-5. **Device UX** — UTILITY toggle, pgSuperres page, ADJUST-push view, status +
-   stack-review render; deploy.
-6. **Verify on hardware** — FPGA burst signal; SINGLE on a burst, UTILITY, watch
-   frames accepted/rejected + bits climb to target; review the stacked trace;
-   screenshot each step. Cross-check device bits vs web bits on the same signal.
-7. **Review + fix** loop until clean; update the parity matrix.
+`bits` currently checks `sr.lastBits`, refreshed only inside the 500 ms-throttled
+`srUpdateStats` → the stop runs on wall-clock cadence and overshoots by a
+rate-dependent frame count. Fix: compute a **deterministic stop-bits every
+stacked frame** with a *fixed* reduction (fixed stride + gates, identical both
+surfaces); keep the throttled strided `srResult` for display only. `stacks`/
+`time` check per-frame. Mirror exactly in Go.
 
-## 5. Risks / open questions
+### 3.5 Device integration
 
-- **Go DSP fidelity** — subtle NCC/drizzle differences vs JS. Mitigation: golden-
-  vector parity test, port line-by-line.
-- **Translation range** — a burst far from the trigger needs a wide search; a
-  full-record FFT cross-correlation is the fallback if `maxLag≈64` is too narrow.
-  Start with widened `maxLag`; measure on the real burst signal.
-- **ARM-from-frozen ordering** — must seed the reference from the frozen frame
-  BEFORE resuming RUN, or the first live frame becomes the reference.
-- **Device CPU** — stacking 20k-sample frames × K on the ARM per frame; measure,
-  and stride/throttle the crunch if it can't keep the 50 ms LCD tick (it need not
-  — stacking slower than the engine is explicitly fine; that's why bits/stacks
-  targets exist).
+- **Frame feed = RAW acquisition**, mirroring `rawBinMsg`: `f.C1[:f.Valid]`,
+  `f.C2[:f.Valid]`, `cols=f.Valid`, `edgeX=f.EdgeX`, `sampleS=f.SampleS`, same
+  `Vpc`/`OffV` — NOT the drawn/windowed trace. **Dedup on engine `Seq`.**
+- **Crunch OFF the render lock.** Inside `WithFrame` copy raw `C1/C2[:Valid]` +
+  `EdgeX/SampleS/Seq` under the arena lock, release, hand off to the stacker's
+  **own goroutine** (bounded) — never align+accum in the 50 ms render tick or it
+  freezes the LCD and stalls the producer. Keep the panel goroutine free so
+  UTILITY-cancel stays responsive mid-crunch.
+- **Geometry-change stop**: mirror the web meta-change stop (cols/sampleS/vpc);
+  **auto-cancel SR on AUTO / tdiv / vdiv / memdepth** changes (they rescale the
+  frame mid-stack). Document the acquisition state machine
+  `{idle, single-frozen, SR-active, review} × {RUN/STOP, SINGLE, UTILITY}`; guard
+  every shadow write under the controller mutex (this surface produced the
+  autoset LED race).
+- **Memory**: `srNew` ≈ 13 MB @K=8, 26 MB @K=16 for n=20480. Cap K on device;
+  use float32 accumulators and/or **align-channel-only stacking** (documented
+  parity tradeoff) to fit the ARM budget.
+
+### 3.6 Device UX (decouple SR-active from the menu page)
+
+- **UTILITY** (`0x66:3`) toggles an **SR-active flag** (arm-from-frozen-reference
+  / cancel), which drives `ledUtility` — NOT `menuPage`. Re-pressing UTILITY
+  re-opens `pgSuperres` **without disarming**; **long-press = cancel/reset**. So
+  the user can visit `pgHoriz`/`pgCursor` (zoom/cursors) and return without
+  losing the stack (or drive zoom/cursors from knobs while SR active).
+- **`pgSuperres` = exactly 5 slots**: Ch / grid×K / Stop-mode / Stop-target /
+  Reset. Add it to `pageSlots()` and `pushLEDs()`. For the Stop slots,
+  distinguish the **F-press** path (cycle mode) from **ADJUST-rotate** (edit the
+  highlighted numeric target) — every existing page treats press==knob, so this
+  needs bespoke handling. Per-mode ladders (bits +0.5; stacks decades; time s).
+- **ADJUST knob-push** (`0x65:1`) toggles the review view.
+- **Cuts (v1):** dither (fights the offset DAC live → breaks the guarantee),
+  kernel selection + cubic (ship `interp` only — bits needs it), K as a live
+  control (fixed quality setting), model-fit/peaks. These frees the softkeys and
+  shrink the parity surface.
+- **Review render**: a dedicated **gap-aware, float-code, min/max decimate-to-
+  320px** renderer for the ~1.3M-value `float32` stack with `-1` gap sentinels
+  (NOT `drawTrace`, which takes `[]uint8`). Define precedence vs X-Y/FFT ViewMode.
+  ASCII-only HUD: `frames/rej +Nb`, `gridxK`.
+
+## 4. Go↔JS numeric parity (the golden-vector test must survive these)
+
+- `Math.round` → `jsRound(x)=math.Floor(x+0.5)` everywhere (`base`, `shiftInt`
+  are routinely negative x.5); mirror `|0` as truncate-toward-zero.
+- **FMA**: Go fuses `a*b+c` on amd64/arm64 but **NOT on `GOARCH=arm`** (the scope
+  target). node==arm, amd64-CI diverges. **Materialize each product into a named
+  `float64` local** (structurally suppress fusion) AND/OR run the parity test
+  on-arm; a green amd64 CI is not on-target proof.
+- **Single-threaded, fixed feed order, single accumulator per bin** — no
+  goroutine fan-out over frames/bins (float add is non-associative).
+- `srAlign` three-way branch (edges|parabola|int) via `srCrossings`/`srMidSwing`,
+  ±1.5 window, rising-then-falling concat, `floor(len/4)` — port verbatim; assert
+  `method` per frame in the golden vectors.
+- float32 `ref` + drift-normalized frame; float64 accum/scores; float32 `mean`;
+  `t=float64(b)/K` via precomputed `invK`; low-side clamp `v<0?0`; `-1` gap
+  sentinel. Port the integer gates (`hi−lo<12`, `srClipped` `>6 && <253`, `+2`,
+  `nlo*200>n`), `med()`=`s[len>>1]` (upper-middle, not averaged), `1.4826/0.05/
+  0.6`, `>=10` warm-up, the seed `scores.push(1)` — exactly.
+- Assert **bit-exact** on integer intermediates + accept/reject set + `mean`;
+  tolerance only on `log2`-derived scalars (`sqrt` IS correctly-rounded → sigmas
+  match).
+
+## 5. Phases (risk pulled forward)
+
+1. Plan + review — **done**.
+2. **Spikes (cheap, de-risk before the big build):**
+   a. **On-device bcode spike** — press physical UTILITY + push ADJUST, log the
+      raw matrix, confirm clean `1→0` edges and no spurious edge during ADJUST
+      *rotation*; add `nameCode` cases (`utility`, `adjustpush`) for headless
+      drive; have a fallback binding if `0x65:1` is unreliable.
+   b. **Web burst/slow/burst + shifted-burst fixture** (node) — locked burst
+      reference: assert slow frames rejected, bursts stacked, max tolerated shift.
+   c. **ARM micro-benchmark** of Feed+Accum over one 20480×K frame → set K before
+      it's wired into the UX.
+3. **Web**: `srSeedRef` + discriminative gate + full-record locate + deterministic
+   per-frame stop-bits + ARM-from-frozen. Pass fixture (2b). Commit.
+4. **Go `internal/superres`**: port core (New/SeedRef/Locate/Align/Accum/Result +
+   helpers; skip fit/peaks) with the §4 parity rules; **golden-vector parity test**
+   (same ordered frames JS↔Go → bit-exact integer + accept/reject + mean;
+   `stacks` exact; bits within tol). Materialize-products for on-arm parity.
+5. **Device UX** (§3.5/3.6): raw off-lock feed, SR state machine, UTILITY toggle,
+   pgSuperres (5 slots), ADJUST-push view, status HUD + float min/max review
+   renderer, geometry-change auto-cancel. Deploy.
+6. **Verify/validate on hardware**: FPGA burst signal — SINGLE on a burst,
+   UTILITY, watch accepted/rejected + bits climb to target, review the stacked
+   trace, screenshot each. Cross-check device bits vs web **levels within
+   tolerance** (NOT sample equality). Update the parity matrix.
+7. Review + fix loop until clean.
+
+## 6. Open risk
+
+Full-record locate cost per frame on the ARM (matched filter over 20480) — may
+need an FFT xcorr or a coarse-stride search; measure in spike 2c. If translation
+range can't be met affordably, cap R5 to ±X% and say so.
