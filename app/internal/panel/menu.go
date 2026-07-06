@@ -194,7 +194,8 @@ func (c *Controller) openMenu(pg int) {
 // ADJUST knob → ±1). It highlights the slot so ADJUST then tracks it.
 // pageSlots is how many softkey slots a page actually populates — presses on
 // the rest are inert (no highlight moves onto a blank slot).
-func pageSlots(pg int) int {
+// pageSlots may read c.decProto, so callers must hold c.mu.
+func (c *Controller) pageSlots(pg int) int {
 	switch pg {
 	case pgHoriz:
 		return 3
@@ -202,8 +203,15 @@ func pageSlots(pg int) int {
 		return 4
 	case pgChan:
 		return 5
-	case pgDecode:
-		return 4
+	case pgDecode: // varies by protocol — don't let the highlight land on a blank slot
+		switch c.decProto {
+		case 0: // Off — only the Proto selector
+			return 1
+		case 3: // SPI — Proto, CLK, DATA, Mode
+			return 4
+		default: // UART, I2C — Proto + two params
+			return 3
+		}
 	default: // pgTrig, pgDisp, pgCursor, pgRef
 		return 5
 	}
@@ -212,7 +220,7 @@ func pageSlots(pg int) int {
 func (c *Controller) menuCycle(slot, dir int) {
 	c.mu.Lock()
 	pg := c.menuPage
-	if slot >= pageSlots(pg) { // empty slot: don't move the highlight or act
+	if slot >= c.pageSlots(pg) { // empty slot: don't move the highlight or act
 		c.mu.Unlock()
 		return
 	}
@@ -243,15 +251,17 @@ func (c *Controller) menuCycle(slot, dir int) {
 			switch c.decProto {
 			case 1: // UART baud
 				c.decBaud = nextOpt([]int{9600, 19200, 38400, 57600, 115200, 230400}, c.decBaud, dir)
-			case 2, 3: // I2C SCL / SPI CLK channel
+			case 2, 3: // I2C SCL / SPI CLK channel — keep data on the OTHER channel
 				c.decChA = 1 - c.decChA
+				c.decChB = 1 - c.decChA
 			}
 		case 2:
 			switch c.decProto {
 			case 1: // UART source channel
 				c.decChA = 1 - c.decChA
-			case 2, 3: // I2C SDA / SPI DATA channel
+			case 2, 3: // I2C SDA / SPI DATA channel — keep clock on the OTHER channel
 				c.decChB = 1 - c.decChB
+				c.decChA = 1 - c.decChB
 			}
 		case 3:
 			if c.decProto == 3 { // SPI mode: cycle CPOL/CPHA (0..3)

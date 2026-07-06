@@ -330,6 +330,54 @@ func TestCursorMenu(t *testing.T) {
 	}
 }
 
+func TestDecodeMenu(t *testing.T) {
+	c, _, _ := newC(t)
+	c.menuButton(btnMenuOnOff) // MAIN menu
+	if v := c.MenuView(); v.Title != "MENU" {
+		t.Fatalf("MENU not open: %q", v.Title)
+	}
+	c.menuButton(btnF5) // slot 4 -> Decode
+	if v := c.MenuView(); v.Title != "DECODE" {
+		t.Fatalf("DECODE page not open: %q", v.Title)
+	}
+	// Proto Off -> UART -> I2C.
+	c.menuButton(btnF1)
+	c.menuButton(btnF1)
+	v := c.MenuView()
+	if v.DecProto != 2 || v.Items[1].Label != "SCL" || v.Items[2].Label != "SDA" {
+		t.Fatalf("I2C not selected/labelled: proto=%d items=%+v", v.DecProto, v.Items)
+	}
+	// Clock and data must never share a channel, at start or after any toggle
+	// (slot 1 = SCL, slot 2 = SDA).
+	if v.DecChA == v.DecChB {
+		t.Fatalf("SCL/SDA share a channel at start: A=%d B=%d", v.DecChA, v.DecChB)
+	}
+	c.menuButton(btnF2) // toggle SCL
+	if v := c.MenuView(); v.DecChA == v.DecChB {
+		t.Fatalf("SCL/SDA share a channel after SCL toggle: A=%d B=%d", v.DecChA, v.DecChB)
+	}
+	c.menuButton(btnF3) // toggle SDA
+	if v := c.MenuView(); v.DecChA == v.DecChB {
+		t.Fatalf("SCL/SDA share a channel after SDA toggle: A=%d B=%d", v.DecChA, v.DecChB)
+	}
+	// I2C fills slots 0..2, so F4 (slot 3) is inert — the highlight must not
+	// jump onto the blank slot.
+	sel := c.MenuView().Sel
+	c.menuButton(btnF4)
+	if got := c.MenuView().Sel; got != sel {
+		t.Fatalf("F4 moved the highlight onto an empty I2C slot: %d -> %d", sel, got)
+	}
+	// SPI exposes a real 4th slot (Mode); there F4 is live.
+	c.menuButton(btnF1) // I2C -> SPI
+	if v := c.MenuView(); v.DecProto != 3 || v.Items[3].Label != "Mode" {
+		t.Fatalf("SPI Mode slot missing: proto=%d items=%+v", v.DecProto, v.Items)
+	}
+	c.menuButton(btnF4)
+	if got := c.MenuView().Sel; got != 3 {
+		t.Fatalf("F4 in SPI did not reach the Mode slot: Sel=%d", got)
+	}
+}
+
 func TestTriggerHoldoffSoftkey(t *testing.T) {
 	c, eng, _ := newC(t)
 	c.menuButton(btnTrigMenu) // open TRIGGER page

@@ -358,8 +358,10 @@ func drawDecode(sf Surface, f *engine.Frame, hud HUD, win int, xc, posFrac float
 		res = decode.DecodeSPI(ch(hud.DecChA), ch(hud.DecChB), f.SampleS, decode.SPICfg{CPOL: hud.DecCPOL, CPHA: hud.DecCPHA, MSB: true})
 	}
 	name := []string{"", "UART", "I2C", "SPI"}[hud.DecProto&3]
-	yLbl := traceBot - 24
-	fillRect(sf, 0, yLbl-1, W, 28, rgb(6, 10, 22)) // dark strip so bytes read over the trace
+	// Decode lane: a dark band that sits ABOVE the bottom Vpp/freq readout row
+	// (drawn later by drawHUD at H-9), so the two never overwrite each other.
+	yLbl, yTxt, yBar := H-36, H-26, H-14 // label / byte hex / span bars, top→bottom
+	fillRect(sf, 0, yLbl-2, W, 27, rgb(6, 10, 22))
 	if !res.OK {
 		DrawText(sf, 10, yLbl, name+": "+res.Error, colStale, 1)
 		return
@@ -368,7 +370,6 @@ func drawDecode(sf Surface, f *engine.Frame, hud HUD, win int, xc, posFrac float
 	// Map a sample index to screen x via the same window the trace uses.
 	left := xc - float64(win)*posFrac
 	sx := func(s float64) int { return int((s - left) * float64(W) / float64(win)) }
-	yTxt, yBar := traceBot-14, traceBot-4
 	for _, s := range res.Spans {
 		x0, x1 := sx(float64(s.I0)), sx(float64(s.I1))
 		if x1 < 0 || x0 >= W {
