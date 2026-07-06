@@ -31,6 +31,8 @@ type MenuView struct {
 	Sel            int        // highlighted slot
 	ShowC1, ShowC2 bool       // per-channel display enable (DISPLAY menu / CH keys)
 	ShowMeas       bool       // on-device MEASURE panel toggle (DISPLAY menu)
+	ViewMode       int        // 0 = Y-T, 1 = X-Y, 2 = FFT (DISPLAY menu "View")
+	MathMode       int        // 0 = off, 1 = C1+C2, 2 = C1-C2, 3 = C1×C2
 
 	CurOn   bool       // cursors visible
 	CurType int        // 0 = X (time), 1 = Y (volts)
@@ -177,6 +179,14 @@ func (c *Controller) menuCycle(slot, dir int) {
 			c.mu.Lock()
 			c.showMeas = !c.showMeas
 			c.mu.Unlock()
+		case 3: // View: Y-T → X-Y → FFT
+			c.mu.Lock()
+			c.viewMode = mod3(c.viewMode + dir)
+			c.mu.Unlock()
+		case 4: // Math: off → C1+C2 → C1-C2 → C1×C2
+			c.mu.Lock()
+			c.mathMode = mod4(c.mathMode + dir)
+			c.mu.Unlock()
 		}
 	case pgHoriz:
 		switch slot {
@@ -273,9 +283,11 @@ func (c *Controller) trigPos() float64 {
 func (c *Controller) MenuView() MenuView {
 	c.mu.Lock()
 	pg, sel, c1, c2, meas := c.menuPage, c.menuSel, c.chDisp[0], c.chDisp[1], c.showMeas
+	view, mth := c.viewMode, c.mathMode
 	curOn, curType, curSel, curX, curY := c.curOn, c.curType, c.curSel, c.curX, c.curY
 	c.mu.Unlock()
 	v := MenuView{Open: pg != pgNone, Sel: sel, ShowC1: c1, ShowC2: c2, ShowMeas: meas,
+		ViewMode: view, MathMode: mth,
 		CurOn: curOn, CurType: curType, CurSel: curSel, CurX: curX, CurY: curY}
 	if pg == pgNone {
 		return v
@@ -331,7 +343,8 @@ func (c *Controller) MenuView() MenuView {
 			{"CH1", onoff(c1)},
 			{"CH2", onoff(c2)},
 			{"Measure", onoff(meas)},
-			{"", ""}, {"", ""},
+			{"View", []string{"Y-T", "X-Y", "FFT"}[view%3]},
+			{"Math", []string{"Off", "C1+C2", "C1-C2", "C1×C2"}[mth%4]},
 		}
 	case pgHoriz:
 		v.Title = "HORIZ"

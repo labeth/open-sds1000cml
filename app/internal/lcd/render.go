@@ -33,6 +33,8 @@ type HUD struct {
 	OffC1V, OffC2V   float64 // applied vertical offset volts (ground markers)
 	ShowC1, ShowC2   bool    // per-channel display enable
 	ShowMeas         bool    // on-device MEASURE panel overlay
+	ViewMode         int     // 0 = Y-T, 1 = X-Y, 2 = FFT
+	MathMode         int     // 0 = off, 1 = C1+C2, 2 = C1-C2, 3 = C1×C2
 	TwoChan          bool
 
 	// On-screen cursors: two X (time) and two Y (volts), positions as screen
@@ -198,6 +200,187 @@ func drawEnvelope(sf Surface, mn, mx []uint8, cols int, col uint16) {
 			sf.SetPixel(x, y, col)
 		}
 	}
+}
+
+// frameValid clamps a frame's valid-sample count into range (shared by the
+// alternate-view renderers below).
+func frameValid(f *engine.Frame) int {
+	valid := f.Valid
+	if valid < 1 {
+		valid = 1
+	}
+	if valid > len(f.C1) {
+		valid = len(f.C1)
+	}
+	return valid
+}
+
+// coupledDisplay applies the software coupling model for a channel (mirrors the
+// Y-T path so the alternate views see the same trace).
+func coupledDisplay(sig []uint8, cpl int) []uint8 {
+	if cpl != analog.CplDC {
+		return analog.CoupleDisplay(sig, cpl)
+	}
+	return sig
+}
+
+// drawXY plots C1 (x) against C2 (y) — the Lissajous view (parity with the web
+// X-Y mode). Codes 0..255 map across the graticule (x) and up it (y); a stride
+// keeps dense records cheap.
+func drawXY(sf Surface, f *engine.Frame, hud HUD) {
+	valid := frameValid(f)
+	if len(f.C2) < valid {
+		DrawText(sf, 10, 10, "X-Y needs CH2", colDim, 1)
+		return
+	}
+	c1 := coupledDisplay(f.C1[:valid], hud.Cpl1)
+	c2 := coupledDisplay(f.C2[:valid], hud.Cpl2)
+	step := 1
+	if valid > 4000 {
+		step = valid / 4000
+	}
+	px, py := -1, -1
+	for i := 0; i < valid; i += step {
+		x := int(float64(c1[i]) * float64(W-1) / 255.0)
+		y := sampleToY(float64(c2[i]))
+		if px >= 0 {
+			drawLine(sf, px, py, x, y, colMath)
+		}
+		px, py = x, y
+	}
+	DrawText(sf, 10, 10, "X:C1  Y:C2", colDim, 1)
+}
+
+// drawMath overlays the math trace (C1+C2 / C1-C2 / C1×C2) in purple, in code
+// space centred at 128 so it shares the Y-T trace mapping (parity with the web
+// math card).
+func drawMath(sf Surface, f *engine.Frame, hud HUD, win int, xc float64) {
+	valid := frameValid(f)
+	if len(f.C2) < valid {
+		return
+	}
+	c1 := coupledDisplay(f.C1[:valid], hud.Cpl1)
+	c2 := coupledDisplay(f.C2[:valid], hud.Cpl2)
+	m := make([]uint8, valid)
+	for i := 0; i < valid; i++ {
+		a, b := int(c1[i])-128, int(c2[i])-128
+		var v int
+		switch hud.MathMode {
+		case 1:
+			v = 128 + a + b
+		case 2:
+			v = 128 + a - b
+		default:
+			v = 128 + a*b/96 // C1×C2, scaled to stay on-screen (matches web)
+		}
+		if v < 0 {
+			v = 0
+		} else if v > 255 {
+			v = 255
+		}
+		m[i] = uint8(v)
+	}
+	drawTrace(sf, m, win, xc, f.Interp, colMath, hud.TrigPosFrac)
+}
+
+// fftRadix2 is an in-place iterative Cooley–Tukey FFT (len must be a power of
+// two). Kept here (not shared with peaks.js) so the LCD has no JS dependency.
+func fftRadix2(re, im []float64) {
+	n := len(re)
+	for i, j := 1, 0; i < n; i++ {
+		bit := n >> 1
+		for ; j&bit != 0; bit >>= 1 {
+			j ^= bit
+		}
+		j ^= bit
+		if i < j {
+			re[i], re[j] = re[j], re[i]
+			im[i], im[j] = im[j], im[i]
+		}
+	}
+	for l := 2; l <= n; l <<= 1 {
+		ang := -2 * math.Pi / float64(l)
+		wr, wi := math.Cos(ang), math.Sin(ang)
+		for i := 0; i < n; i += l {
+			cr, ci := 1.0, 0.0
+			for k := 0; k < l/2; k++ {
+				tr := re[i+k+l/2]*cr - im[i+k+l/2]*ci
+				ti := re[i+k+l/2]*ci + im[i+k+l/2]*cr
+				re[i+k+l/2] = re[i+k] - tr
+				im[i+k+l/2] = im[i+k] - ti
+				re[i+k] += tr
+				im[i+k] += ti
+				cr, ci = cr*wr-ci*wi, cr*wi+ci*wr
+			}
+		}
+	}
+}
+
+// drawFFT renders the Hann-windowed magnitude spectrum (dB, peak-normalised) of
+// the display channel across the graticule (parity with the web FFT mode). n is
+// capped so the per-frame cost stays well under the render budget.
+func drawFFT(sf Surface, f *engine.Frame, hud HUD) {
+	valid := frameValid(f)
+	src, col, label := f.C1[:valid], colC1, "FFT C1"
+	if hud.ShowC2 && !hud.ShowC1 && len(f.C2) >= valid {
+		src, col, label = f.C2[:valid], colC2, "FFT C2"
+	}
+	n := 1
+	for n*2 <= valid && n < 8192 {
+		n <<= 1
+	}
+	if n < 16 {
+		return
+	}
+	re := make([]float64, n)
+	im := make([]float64, n)
+	var mean float64
+	for i := 0; i < n; i++ {
+		mean += float64(src[i])
+	}
+	mean /= float64(n)
+	for i := 0; i < n; i++ {
+		w := 0.5 - 0.5*math.Cos(2*math.Pi*float64(i)/float64(n-1))
+		re[i] = (float64(src[i]) - mean) * w
+	}
+	fftRadix2(re, im)
+	half := n / 2
+	mags := make([]float64, half)
+	peak, peakK := 1e-9, 1
+	for k := 0; k < half; k++ {
+		mags[k] = math.Hypot(re[k], im[k])
+		if mags[k] > peak {
+			peak = mags[k]
+		}
+		if k >= 1 && mags[k] > mags[peakK] {
+			peakK = k
+		}
+	}
+	const floorDb = -60.0
+	prevY := -1
+	for x := 0; x < W; x++ {
+		k := x * (half - 1) / (W - 1)
+		if k < 1 {
+			k = 1
+		}
+		db := 20 * math.Log10(mags[k]/peak+1e-12)
+		if db < floorDb {
+			db = floorDb
+		}
+		y := traceTop + int(-db/-floorDb*float64(traceBot-traceTop))
+		if prevY >= 0 {
+			drawLine(sf, x-1, prevY, x, y, col)
+		}
+		prevY = y
+	}
+	nyq := 0.0
+	if hud.SampleS > 0 {
+		nyq = 0.5 / hud.SampleS
+	}
+	fpk := float64(peakK) / float64(half) * nyq
+	DrawText(sf, 10, 10, label, colDim, 1)
+	DrawText(sf, 10, 22, "peak "+fmtFreq(fpk), colInfo, 1)
+	DrawText(sf, 10, 34, "0.."+fmtFreq(nyq), colDim, 1)
 }
 
 // ---- value formatting (spec 07 §6.2): 3 sig figs, ASCII suffixes ----
@@ -402,7 +585,11 @@ func Render(sf Surface, f *engine.Frame, hud HUD, live bool) {
 	if !sc1 && !sc2 {
 		sc1, sc2 = true, true
 	}
-	if f != nil && len(f.C1) > 0 {
+	if hud.ViewMode == 1 && f != nil && len(f.C1) > 0 {
+		drawXY(sf, f, hud)
+	} else if hud.ViewMode == 2 && f != nil && len(f.C1) > 0 {
+		drawFFT(sf, f, hud)
+	} else if f != nil && len(f.C1) > 0 {
 		valid := f.Valid
 		if valid < 1 {
 			valid = 1
@@ -443,6 +630,9 @@ func Render(sf Surface, f *engine.Frame, hud HUD, live bool) {
 			}
 			if sc1 {
 				drawTrace(sf, c1, win, xc, f.Interp, colC1, hud.TrigPosFrac)
+			}
+			if hud.MathMode != 0 {
+				drawMath(sf, f, hud, win, xc)
 			}
 		}
 	}

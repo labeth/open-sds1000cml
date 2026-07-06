@@ -141,6 +141,8 @@ type Controller struct {
 	menuSel  int
 	chDisp   [2]bool
 	showMeas bool
+	viewMode int // 0 = Y-T, 1 = X-Y, 2 = FFT (DISPLAY menu "View")
+	mathMode int // 0 = off, 1 = C1+C2, 2 = C1-C2, 3 = C1×C2 (DISPLAY menu "Math")
 	// On-screen cursors (spec 08 §6): two X (time) and two Y (volts) cursors,
 	// positions as screen fractions; ADJUST moves the selected one.
 	curOn   bool
