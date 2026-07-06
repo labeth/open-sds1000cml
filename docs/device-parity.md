@@ -34,8 +34,10 @@ this way on the real unit at `192.168.1.209`.
 | FFT frequency zoom | ✓ | ✓ **added** | same Zoom control magnifies a spectrum band; horizpos pans it |
 | FFT peak markers | ✓ | ✓ **added** | significant peaks (> −40 dBc) ticked in each spectrum |
 | Persistence (afterglow) | ✓ | ✓ **added** | CHANNEL ▸ Persist; decaying trace layer composited over the graticule |
-| Protocol decode (UART/I²C/SPI) | ✓ | ✗ deferred | large: on-LCD transcript rendering + a Go decoder port; also needs a menu-access path (the menu tree is now full) |
-| Super-res stack & crunch | ✓ | ✗ deferred | large: a long-running accumulate (reuse the autoset cancelable-progress pattern) + on-LCD stack review |
+| **Protocol decode (UART/I²C/SPI)** | ✓ | ✓ **added** | MENU ▸ Decode: Proto (Off/**Auto**/UART/I²C/SPI), channel roles, baud/SPI-mode, **Show** Hex/ASCII/Both; on-trace byte strip. Go decoder == web decoder byte-for-byte, HW-validated. **Auto** detects protocol/roles/settings from the live signal |
+| Trigger source / slope from knobs | ✓ | ✓ **added** | push CH1/CH2 V/DIV knob → trigger source; push TRIG LEVEL knob → flip slope |
+| Super-res stack & crunch | ✓ | ✗ deferred | large: a long-running accumulate (reuse the autoset cancelable-progress pattern) + on-LCD stack review + kernel select + ENOB readout + peak selection |
+| Decode review aids (transcript list / watch / stream) | ✓ | ✗ deferred | web-only convenience: scrollable transcript, save-matching-windows "watch", stitched deep-capture "stream". On-trace strip covers the core need |
 | PNG/CSV waveform export to file | ✓ | ✗ deferred | needs a file destination decision (USB stick); SCPI `SCDP` already dumps the screen |
 | PNG / CSV export | ✓ | n/a | no user file destination standalone; `SCDP` (SCPI) already returns a screen dump |
 
@@ -55,14 +57,18 @@ this way on the real unit at `192.168.1.209`.
 
 ## Deferred, with rationale
 
-The deferred items are genuinely large on a 5-softkey LCD and lower-value for
-bench-standalone use than the core added above (autoset/FFT/X-Y/math/refs):
+Only three items remain web-only; the rest of the parity work above is done
+(persistence and protocol decode, once deferred, are now on the device):
 
-- **Persistence** — a render-loop change (accumulate + fade instead of clear).
-- **Protocol decode** — the decoder core is shared Go already; the work is an
-  on-LCD transcript view and a compact config surface.
-- **Super-res** — the heaviest: a long accumulate (reuse the autoset progress +
-  cancel pattern) plus an on-LCD stacked-trace review mode.
+- **Super-res stack & crunch** — the heaviest remaining port: a long accumulate
+  (reuse the autoset progress + cancel pattern), an on-LCD stacked-trace review
+  mode, the resample-kernel selector, an ENOB/bits-gained readout, and a
+  menu-driven FFT-peak selection to feed the model (the web does this by click).
+- **Decode review aids** — the scrollable transcript, the "watch" match buffer,
+  and the stitched deep-capture "stream". Web-only conveniences; the on-trace
+  byte strip already covers reading the live decode standalone.
+- **Waveform file export (CSV/PNG to USB)** — needs a user file-destination
+  decision (which mount, naming). SCPI `SCDP` already returns a screen dump.
 
 Note: `/api/screen.png` (the web "device screen" mirror) PNG-encodes on the ARM
 CPU and takes ~0.65 s — fine as a mirror, but it is **not** the standalone path
