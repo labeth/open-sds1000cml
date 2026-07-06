@@ -370,7 +370,7 @@ func drawDecode(sf Surface, f *engine.Frame, hud HUD, win int, xc, posFrac float
 	// Map a sample index to screen x via the same window the trace uses.
 	left := xc - float64(win)*posFrac
 	sx := func(s float64) int { return int((s - left) * float64(W) / float64(win)) }
-	for _, s := range res.Spans {
+	for i, s := range res.Spans {
 		x0, x1 := sx(float64(s.I0)), sx(float64(s.I1))
 		if x1 < 0 || x0 >= W {
 			continue // off-screen
@@ -385,7 +385,13 @@ func drawDecode(sf Surface, f *engine.Frame, hud HUD, win int, xc, posFrac float
 				sf.SetPixel(x, yBar+1, col)
 			}
 		}
-		if x0 >= 0 && x0 < W-len(s.Text)*6 { // byte text if it fits
+		// Byte text, but only if it fits before the next span — otherwise a dense
+		// stream turns the strip into unreadable mush; the coloured bars remain.
+		nextX0 := W
+		if i+1 < len(res.Spans) {
+			nextX0 = sx(float64(res.Spans[i+1].I0))
+		}
+		if end := x0 + 1 + len(s.Text)*6; x0 >= 0 && end <= W && end <= nextX0 {
 			DrawText(sf, x0+1, yTxt, s.Text, col, 1)
 		}
 	}
