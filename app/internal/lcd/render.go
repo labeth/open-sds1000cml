@@ -39,6 +39,7 @@ type HUD struct {
 	AutosetMsg       string  // banner text while AutosetBusy
 	Zoom             int     // horizontal magnification (1 = none)
 	ZoomOff          float64 // zoom-window pan offset (fraction of the record)
+	Persist          bool    // display persistence (afterglow) on
 	RefC1, RefC2     [2][]uint8 // saved reference waveforms (REF A/B); nil if unset
 	RefShow          [2]bool
 	TwoChan          bool
@@ -737,9 +738,24 @@ func fmtFreq(f float64) string {
 // Render draws one complete frame into the back buffer (spec 07 §3.2):
 // fill → graticule → trace/envelope → liveness strip → readouts. Never
 // blanks on a held frame; the strip goes red instead.
-func Render(sf Surface, f *engine.Frame, hud HUD, live bool) {
+func Render(sf Surface, f *engine.Frame, hud HUD, live bool, persist ...*MemSurface) {
 	sf.Fill(colBG)
 	drawGraticule(sf)
+
+	// Persistence: when on (Y-T only, non-envelope), draw the traces onto a
+	// separate layer that decays each frame, then composite it over the fresh
+	// graticule — an afterglow that catches jitter/glitches. The layer is owned
+	// by the caller (LCD loop); nil disables it (screenshot path, tests).
+	var pb *MemSurface
+	if len(persist) > 0 {
+		pb = persist[0]
+	}
+	persisting := pb != nil && hud.Persist && hud.ViewMode == 0 && f != nil && !f.IsEnv && len(f.C1) > 0
+	traceTarget := sf
+	if persisting {
+		pb.FadeToBlack()
+		traceTarget = pb
+	}
 
 	// Both-off ⇒ show both (default / callers that don't set the flags).
 	sc1, sc2 := hud.ShowC1, hud.ShowC2
@@ -801,15 +817,20 @@ func Render(sf Surface, f *engine.Frame, hud HUD, live bool) {
 				if hud.Cpl2 != analog.CplDC {
 					c2 = analog.CoupleDisplay(c2, hud.Cpl2)
 				}
-				drawTrace(sf, c2, win, xc, f.Interp, colC2, posFrac)
+				drawTrace(traceTarget, c2, win, xc, f.Interp, colC2, posFrac)
 			}
 			if sc1 {
-				drawTrace(sf, c1, win, xc, f.Interp, colC1, posFrac)
+				drawTrace(traceTarget, c1, win, xc, f.Interp, colC1, posFrac)
 			}
 			if hud.MathMode != 0 {
-				drawMath(sf, f, hud, win, xc, posFrac)
+				drawMath(traceTarget, f, hud, win, xc, posFrac)
 			}
-			drawRefs(sf, hud, win, xc, f.Interp, posFrac)
+			drawRefs(traceTarget, hud, win, xc, f.Interp, posFrac)
+		}
+	}
+	if persisting { // composite the decayed trace layer over the graticule
+		if ms, ok := sf.(*MemSurface); ok {
+			ms.BlitBright(pb)
 		}
 	}
 

@@ -54,6 +54,47 @@ func countColorIn(m *MemSurface, c uint16, x0, y0, x1, y1 int) int {
 	return n
 }
 
+// Persistence: rendering two frames with the trace at different vertical
+// positions must leave BOTH on the persist layer — the previous one faded (but
+// still non-black) and the current one bright — i.e. an afterglow.
+func TestRenderPersistence(t *testing.T) {
+	persist := NewMemSurface()
+	sf := NewMemSurface()
+	h := defaultHUD()
+	h.Persist = true
+	h.ShowC1, h.ShowC2 = true, false
+	flat := func(v uint8) *engine.Frame {
+		f := testFrame(2048)
+		for i := range f.C1 {
+			f.C1[i] = v
+		}
+		return f
+	}
+	rowHasInk := func(m *MemSurface, y int) bool {
+		for x := 0; x < W-160; x++ {
+			if m.At(x, y) != 0 {
+				return true
+			}
+		}
+		return false
+	}
+	Render(sf, flat(210), h, true, persist) // high trace
+	Render(sf, flat(46), h, true, persist)  // low trace (different position)
+	if !rowHasInk(persist, sampleToY(210)) {
+		t.Error("persistence lost the previous (faded) trace — no afterglow")
+	}
+	if !rowHasInk(persist, sampleToY(46)) {
+		t.Error("persistence missing the current trace")
+	}
+	// With persistence OFF, the persist layer is untouched (no fade/draw).
+	blank := NewMemSurface()
+	h.Persist = false
+	Render(sf, flat(128), h, true, blank)
+	if rowHasInk(blank, sampleToY(128)) {
+		t.Error("persistence off should not draw onto the persist layer")
+	}
+}
+
 // The alternate views (web parity) must each render distinct output: X-Y and
 // math draw the purple math colour; FFT draws a spectrum; the autoset banner
 // draws its amber box centred.

@@ -70,6 +70,44 @@ func (m *MemSurface) At(x, y int) uint16 {
 	return uint16(m.Pix[o]) | uint16(m.Pix[o+1])<<8
 }
 
+// FadeToBlack dims every RGB565 pixel toward black by 1/4 (the persistence decay
+// step). Pixels already black are skipped. Traces drawn onto this layer at full
+// brightness thus glow and fade over ~8 frames.
+func (m *MemSurface) FadeToBlack() {
+	p := m.Pix
+	for i := 0; i+1 < len(p); i += 2 {
+		c := uint16(p[i]) | uint16(p[i+1])<<8
+		if c == 0 {
+			continue
+		}
+		r := ((c >> 11) & 0x1f) * 3 / 4
+		g := ((c >> 5) & 0x3f) * 3 / 4
+		b := (c & 0x1f) * 3 / 4
+		nc := r<<11 | g<<5 | b
+		p[i], p[i+1] = byte(nc), byte(nc>>8)
+	}
+}
+
+// BlitBright copies the non-black (bright enough) pixels of src onto m — the
+// persistence trace layer composited over the fresh graticule.
+func (m *MemSurface) BlitBright(src *MemSurface) {
+	d, s := m.Pix, src.Pix
+	n := len(s)
+	if len(d) < n {
+		n = len(d)
+	}
+	for i := 0; i+1 < n; i += 2 {
+		c := uint16(s[i]) | uint16(s[i+1])<<8
+		if c == 0 {
+			continue
+		}
+		if (c>>11)&0x1f+(c>>6)&0x1f+c&0x1f < 3 { // too dim → let the graticule show
+			continue
+		}
+		d[i], d[i+1] = s[i], s[i+1]
+	}
+}
+
 // EncodePNG renders the surface (RGB565) to a PNG — the device-screen view for
 // the web /api/screen.png endpoint.
 func EncodePNG(m *MemSurface) []byte {

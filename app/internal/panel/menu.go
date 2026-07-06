@@ -40,6 +40,7 @@ type MenuView struct {
 	AutosetMsg     string     // banner text while AutosetBusy
 	Zoom           int        // horizontal magnification (1 = none)
 	ZoomOff        float64    // zoom-window pan offset (fraction of the record)
+	Persist        bool       // display persistence (afterglow)
 
 	CurOn   bool       // cursors visible
 	CurType int        // 0 = X (time), 1 = Y (volts)
@@ -194,7 +195,7 @@ func pageSlots(pg int) int {
 	case pgAcq:
 		return 4
 	case pgChan:
-		return 4
+		return 5
 	default: // pgTrig, pgDisp, pgCursor, pgRef
 		return 5
 	}
@@ -354,6 +355,11 @@ func (c *Controller) menuCycle(slot, dir int) {
 				c.fe.SetProbe(1, nextProbe(c.fe.ProbeFactor(1), dir))
 			}
 		}
+		if slot == 4 { // Persistence toggle (works even without a front end)
+			c.mu.Lock()
+			c.persist = !c.persist
+			c.mu.Unlock()
+		}
 	case pgRef:
 		switch slot {
 		case 0: // Save A: snapshot the current frame
@@ -456,11 +462,11 @@ func (c *Controller) MenuView() MenuView {
 	pl, pmn, pmx, pc := c.pulseLvl, c.pulseMin, c.pulseMax, c.pulseCond
 	slo, shi, smn, smx, scnd := c.slopeLo, c.slopeHi, c.slopeMin, c.slopeMax, c.slopeCond
 	vstd, vln, vneg := c.videoStd, c.videoLine, c.videoNeg
-	zoom, zoomOff := c.zoom, c.zoomOff
+	zoom, zoomOff, persist := c.zoom, c.zoomOff, c.persist
 	c.mu.Unlock()
 	v := MenuView{Open: pg != pgNone, Sel: sel, ShowC1: c1, ShowC2: c2, ShowMeas: meas,
 		ViewMode: view, MathMode: mth, AutosetBusy: busy, AutosetMsg: amsg,
-		Zoom: zoom, ZoomOff: zoomOff,
+		Zoom: zoom, ZoomOff: zoomOff, Persist: persist,
 		CurOn: curOn, CurType: curType, CurSel: curSel, CurX: curX, CurY: curY}
 	if pg == pgNone {
 		return v
@@ -598,7 +604,7 @@ func (c *Controller) MenuView() MenuView {
 			{"C2 Coupling", cpl1},
 			{"C1 Probe", p0},
 			{"C2 Probe", p1},
-			{"", ""},
+			{"Persist", onoff(persist)},
 		}
 	case pgRef:
 		saved := func(has bool) string {

@@ -91,6 +91,7 @@ func buildHUD(e *engine.Engine, fe *analog.FrontEnd) lcd.HUD {
 		hud.ViewMode, hud.MathMode = mv.ViewMode, mv.MathMode
 		hud.AutosetBusy, hud.AutosetMsg = mv.AutosetBusy, mv.AutosetMsg
 		hud.Zoom, hud.ZoomOff = mv.Zoom, mv.ZoomOff
+		hud.Persist = mv.Persist
 		rv := pc.RefView()
 		for i := 0; i < 2; i++ {
 			hud.RefC1[i], hud.RefC2[i], hud.RefShow[i] = rv[i].C1, rv[i].C2, rv[i].Show
@@ -125,6 +126,7 @@ func runLCD(e *engine.Engine, fe *analog.FrontEnd, fo *frames.Fanout) {
 	}
 	logf("lcd: renderer up on /dev/fb0")
 	back := lcd.NewMemSurface()
+	persistLayer := lcd.NewMemSurface() // afterglow trace layer, owned by this loop
 	var lastSeq uint64
 	var lastFresh time.Time
 	t := time.NewTicker(50 * time.Millisecond)
@@ -147,7 +149,7 @@ func runLCD(e *engine.Engine, fe *analog.FrontEnd, fo *frames.Fanout) {
 				}
 			}
 			live := f != nil && time.Since(lastFresh) < 300*time.Millisecond
-			lcd.Render(back, f, hud, live)
+			lcd.Render(back, f, hud, live, persistLayer)
 		})
 		fb.Present(back)
 	}

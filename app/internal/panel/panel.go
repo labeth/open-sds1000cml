@@ -139,6 +139,7 @@ type Controller struct {
 	trigd    bool    // live trigger status (from the render loop) → TRIG'd lamp
 	zoom     int     // horizontal magnification (1,2,5,10,20,50); 1 = no zoom
 	zoomOff  float64 // pan offset of the zoom window, fraction of the record
+	persist  bool    // display persistence (afterglow)
 
 	// Menu state (spec 08 §6): written by the panel goroutine, read by the LCD
 	// renderer, guarded by mu. inject runs API-driven panel events on the panel
