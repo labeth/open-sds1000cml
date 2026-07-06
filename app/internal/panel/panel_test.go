@@ -43,6 +43,15 @@ func (f *fakeEng) SetAvgCount(n int)        { f.calls = append(f.calls, call{"av
 func (f *fakeEng) SetEresLen(l int)         { f.calls = append(f.calls, call{"eres", l, 0}) }
 func (f *fakeEng) SetETS(on bool)           { f.calls = append(f.calls, call{"ets", b2i(on), 0}) }
 func (f *fakeEng) SetMemDepth(n int) int    { f.calls = append(f.calls, call{"memdepth", n, 0}); return n }
+func (f *fakeEng) SetPulseParams(l, mn, mx float64, c int) {
+	f.calls = append(f.calls, call{"pulse", c, 0})
+}
+func (f *fakeEng) SetSlopeParams(lo, hi, mn, mx float64, c int) {
+	f.calls = append(f.calls, call{"slope", c, 0})
+}
+func (f *fakeEng) SetVideoParams(std, line int, neg bool) {
+	f.calls = append(f.calls, call{"video", std, line})
+}
 func (f *fakeEng) SetTrigPosFrac(fr float64) { f.calls = append(f.calls, call{"trigpos", int(fr * 100), 0}) }
 func (f *fakeEng) SetHoldoff(s float64) float64 {
 	f.calls = append(f.calls, call{"holdoff", int(s * 1e6), 0})

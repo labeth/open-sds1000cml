@@ -19,6 +19,7 @@ const (
 	pgCursor // on-screen cursors (reached by re-pressing HORIZONTAL / CURSORS key)
 	pgRef    // reference waveforms REF A/B (reached by re-pressing ACQUIRE)
 	pgMain   // MAIN menu (MENU key): navigates to every sub-page
+	pgTrigQ  // trigger-qualifier params (reached by re-pressing TRIGGER)
 )
 
 // MenuItem is one softkey slot: a label and its current value.
@@ -70,7 +71,14 @@ var softkeys = []int{btnF1, btnF2, btnF3, btnF4, btnF5}
 func (c *Controller) menuButton(code int) bool {
 	switch code {
 	case btnTrigMenu:
-		c.openMenu(pgTrig)
+		// TRIGGER cycles between the trigger page and its qualifier-params page.
+		c.mu.Lock()
+		next := pgTrig
+		if c.menuPage == pgTrig {
+			next = pgTrigQ
+		}
+		c.mu.Unlock()
+		c.openMenu(next)
 		return true
 	case btnAcquire:
 		// ACQUIRE cycles between the acquire page and the reference (REF A/B) page.
@@ -202,6 +210,56 @@ func (c *Controller) menuCycle(slot, dir int) {
 		case 4:
 			c.openMenu(pgCursor)
 		}
+		return
+	case pgTrigQ: // trigger-qualifier params for the current trigger TYPE
+		c.mu.Lock()
+		switch st.TrigType {
+		case 1: // PULSE: Level% / Wmin / Wmax / Cond
+			switch slot {
+			case 0:
+				c.pulseLvl = clampF(c.pulseLvl+float64(dir)*0.05, 0.05, 0.95)
+			case 1:
+				c.pulseMin = stepNs(c.pulseMin, dir)
+			case 2:
+				c.pulseMax = stepNs(c.pulseMax, dir)
+			case 3:
+				c.pulseCond = mod4(c.pulseCond + dir)
+			}
+			pl, pmn, pmx, pc := c.pulseLvl, c.pulseMin, c.pulseMax, c.pulseCond
+			c.mu.Unlock()
+			c.eng.SetPulseParams(pl, pmn, pmx, pc)
+		case 2: // SLOPE: Lo% / Hi% / Tmin / Tmax / Cond
+			switch slot {
+			case 0:
+				c.slopeLo = clampF(c.slopeLo+float64(dir)*0.05, 0.05, 0.95)
+			case 1:
+				c.slopeHi = clampF(c.slopeHi+float64(dir)*0.05, 0.05, 0.95)
+			case 2:
+				c.slopeMin = stepNs(c.slopeMin, dir)
+			case 3:
+				c.slopeMax = stepNs(c.slopeMax, dir)
+			case 4:
+				c.slopeCond = mod4(c.slopeCond + dir)
+			}
+			lo, hi, tmn, tmx, sc := c.slopeLo, c.slopeHi, c.slopeMin, c.slopeMax, c.slopeCond
+			c.mu.Unlock()
+			c.eng.SetSlopeParams(lo, hi, tmn, tmx, sc)
+		case 3: // VIDEO: Std / Line / Polarity
+			switch slot {
+			case 0:
+				c.videoStd = 1 - c.videoStd
+			case 1:
+				c.videoLine = clampInt(c.videoLine+dir, 0, 625)
+			case 2:
+				c.videoNeg = !c.videoNeg
+			}
+			std, ln, neg := c.videoStd, c.videoLine, c.videoNeg
+			c.mu.Unlock()
+			c.eng.SetVideoParams(std, ln, neg)
+		default:
+			c.mu.Unlock()
+		}
+		c.pushLEDs()
 		return
 	case pgTrig:
 		switch slot {
@@ -372,6 +430,9 @@ func (c *Controller) MenuView() MenuView {
 	view, mth, busy, amsg := c.viewMode, c.mathMode, c.autosetBusy, c.autosetMsg
 	rA, rAs, rB, rBs := c.refs[0].has, c.refs[0].show, c.refs[1].has, c.refs[1].show
 	curOn, curType, curSel, curX, curY := c.curOn, c.curType, c.curSel, c.curX, c.curY
+	pl, pmn, pmx, pc := c.pulseLvl, c.pulseMin, c.pulseMax, c.pulseCond
+	slo, shi, smn, smx, scnd := c.slopeLo, c.slopeHi, c.slopeMin, c.slopeMax, c.slopeCond
+	vstd, vln, vneg := c.videoStd, c.videoLine, c.videoNeg
 	c.mu.Unlock()
 	v := MenuView{Open: pg != pgNone, Sel: sel, ShowC1: c1, ShowC2: c2, ShowMeas: meas,
 		ViewMode: view, MathMode: mth, AutosetBusy: busy, AutosetMsg: amsg,
@@ -395,6 +456,51 @@ func (c *Controller) MenuView() MenuView {
 			{"Display", ">"},
 			{"Horizontal", ">"},
 			{"Cursors", ">"},
+		}
+	case pgTrigQ:
+		cond := []string{"any", "<min", ">max", "in"}
+		pct := func(f float64) string { return fmt.Sprintf("%d%%", int(f*100+0.5)) }
+		switch st.TrigType {
+		case 1: // PULSE
+			v.Title = "PULSE"
+			v.Items = []MenuItem{
+				{"Level", pct(pl)},
+				{"W min", fmtEng(pmn*1e-9, "s")},
+				{"W max", fmtEng(pmx*1e-9, "s")},
+				{"Cond", cond[pc&3]},
+				{"", ""},
+			}
+		case 2: // SLOPE
+			v.Title = "SLOPE"
+			v.Items = []MenuItem{
+				{"Low", pct(slo)},
+				{"High", pct(shi)},
+				{"T min", fmtEng(smn*1e-9, "s")},
+				{"T max", fmtEng(smx*1e-9, "s")},
+				{"Cond", cond[scnd&3]},
+			}
+		case 3: // VIDEO
+			std := "PAL"
+			if vstd == 1 {
+				std = "NTSC"
+			}
+			pol := "pos"
+			if vneg {
+				pol = "neg"
+			}
+			v.Title = "VIDEO"
+			v.Items = []MenuItem{
+				{"Std", std},
+				{"Line", fmt.Sprint(vln)},
+				{"Sync", pol},
+				{"", ""}, {"", ""},
+			}
+		default: // EDGE — no qualifier
+			v.Title = "EDGE"
+			v.Items = []MenuItem{
+				{"(no params)", ""},
+				{"", ""}, {"", ""}, {"", ""}, {"", ""},
+			}
 		}
 	case pgTrig:
 		slope := "Rise" // LCD font is ASCII — no arrow glyphs
@@ -589,6 +695,18 @@ func (c *Controller) InjectKnob(name string, dir, steps int) bool {
 	default:
 		return false
 	}
+}
+
+// stepNs steps a width/time value along a 1-2-5 nanosecond ladder.
+func stepNs(cur float64, dir int) float64 {
+	ladder := []float64{10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000}
+	idx := 0
+	for i, v := range ladder {
+		if cur >= v*(1-1e-9) {
+			idx = i
+		}
+	}
+	return ladder[clampInt(idx+dir, 0, len(ladder)-1)]
 }
 
 func depthLabel(n int) string {

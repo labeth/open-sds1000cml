@@ -37,6 +37,9 @@ type Engine interface {
 	SetTrigPosFrac(frac float64)
 	SetHoldoff(sec float64) float64
 	SetMemDepth(samples int) int
+	SetPulseParams(lvlFrac, wMinNs, wMaxNs float64, cond int)
+	SetSlopeParams(loFrac, hiFrac, tMinNs, tMaxNs float64, cond int)
+	SetVideoParams(std, line int, neg bool)
 	Snapshot() engine.Stats // authoritative state to resync knob shadows
 }
 
@@ -161,6 +164,15 @@ type Controller struct {
 	autosetStop chan struct{}
 	autosetMsg  string     // banner text while busy ("AUTOSET…" / a result note)
 	refs        [2]refWave // saved reference waveforms (REF A/B)
+
+	// Trigger-qualifier shadows (the engine has no getters for these), edited on
+	// the TRIGGER-qualifier sub-page. ns for widths/times; fractions 0..1.
+	pulseLvl, pulseMin, pulseMax         float64
+	pulseCond                            int
+	slopeLo, slopeHi, slopeMin, slopeMax float64
+	slopeCond                            int
+	videoStd, videoLine                  int
+	videoNeg                             bool
 }
 
 // New builds the controller. The timebase ladder is injected (the controller
@@ -178,6 +190,9 @@ func New(eng Engine, fe Analog, keyFD int, tdivs []float64, startTdiv float64, l
 		curY:     [2]float64{0.35, 0.65},
 		inject:   make(chan func(), 32),
 		running:  true,
+		pulseLvl: 0.5, pulseMin: 100, pulseMax: 1000,
+		slopeLo: 0.1, slopeHi: 0.9, slopeMin: 100, slopeMax: 1000,
+		videoLine: 1,
 	}
 	for i, t := range tdivs {
 		if t >= startTdiv*(1-1e-6) {
