@@ -18,8 +18,11 @@ this way on the real unit at `192.168.1.209`.
 | **Math C1±C2, C1×C2** | ✓ | ✓ **added** | DISPLAY ▸ Math |
 | **Autoset** | ✓ | ✓ **added** | AUTO button (was a stub); cancelable sweep |
 | **References REF A/B** | ✓ | ✓ **added** | ACQUIRE ▸ (again) ▸ REF A/B: Save/Show/Clear |
-| Cursors (time / volts, Δ) | ✓ | ✓ | HORIZ ▸ (again) ▸ CURSOR |
-| Measurements panel | ✓ | ✓ | DISPLAY ▸ Measure |
+| Cursors (time / volts, Δ) | ✓ | ✓ | **CURSORS key** or HORIZ ▸ (again) |
+| **Main menu** (navigate all sub-menus) | ✓ | ✓ **added** | **MENU key** → Trigger/Acquire/Display/Horiz/Cursors |
+| Measurements panel (full set, **both channels**) | ✓ | ✓ **added** | **MEASURE key**; Vpp/Vmax/Vmin/Vamp/Vtop/Vbase/Vrms/Vavg + Freq/Per/Duty/Rise/Fall/±Wid/OS |
+| **Trigger qualifier params** (pulse/slope/video) | ✓ | ✓ **added** | TRIGGER ▸ (again) → params for the current type |
+| **Memory depth** (2k/6k/14k/20k) | ✓ | ✓ **added** | ACQUIRE ▸ Mem |
 | Trigger: edge/pulse/slope/video | ✓ | ✓ | TRIGGER menu |
 | Trigger holdoff | ✓ | ✓ | TRIGGER ▸ Holdoff |
 | Acquire: Normal/Average/ERes/Peak | ✓ | ✓ | ACQUIRE menu |
@@ -27,10 +30,12 @@ this way on the real unit at `192.168.1.209`.
 | V/div, offset, coupling, probe | ✓ | ✓ | knobs + CHANNEL menu |
 | Time/div, trig position | ✓ | ✓ | knobs + HORIZ menu |
 | Run/Stop, Single | ✓ | ✓ | front-panel keys |
+| Horizontal zoom / window navigation | ✓ | ✗ deferred | wire the horizpos knob + a HORIZ Zoom item feeding a sub-window into drawTrace |
+| FFT peak list / cursor analysis | ✓ | ✗ deferred | extend fftTrace to top-N detectPeaks + markers + an FFT menu page |
 | Persistence | ✓ | ✗ deferred | needs a persistence buffer in the LCD render loop (today it clears each tick) |
-| Protocol decode (UART/I²C/SPI) | ✓ | ✗ deferred | large: on-LCD transcript rendering + a config surface with few softkeys |
-| Super-res stack & crunch | ✓ | ✗ deferred | large: a long-running accumulate needs the cancelable-progress pattern (now proven by autoset) + on-LCD stack review |
-| FFT-carrier residual (math res1) | ✓ | ✗ deferred | niche; needs FFT-peak selection UI on the LCD |
+| Protocol decode (UART/I²C/SPI) | ✓ | ✗ deferred | large: on-LCD transcript rendering + a Go decoder port |
+| Super-res stack & crunch | ✓ | ✗ deferred | large: a long-running accumulate (reuse the autoset cancelable-progress pattern) + on-LCD stack review |
+| PNG/CSV waveform export to file | ✓ | ✗ deferred | needs a file destination decision (USB stick); SCPI `SCDP` already dumps the screen |
 | PNG / CSV export | ✓ | n/a | no user file destination standalone; `SCDP` (SCPI) already returns a screen dump |
 
 ## UX + responsiveness (goal requirements)
