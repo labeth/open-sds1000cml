@@ -136,7 +136,9 @@ type Controller struct {
 
 	prev     [5]uint16
 	havePrev bool
-	trigd    bool // live trigger status (from the render loop) → TRIG'd lamp
+	trigd    bool    // live trigger status (from the render loop) → TRIG'd lamp
+	zoom     int     // horizontal magnification (1,2,5,10,20,50); 1 = no zoom
+	zoomOff  float64 // pan offset of the zoom window, fraction of the record
 
 	// Menu state (spec 08 §6): written by the panel goroutine, read by the LCD
 	// renderer, guarded by mu. inject runs API-driven panel events on the panel
@@ -191,6 +193,7 @@ func New(eng Engine, fe Analog, keyFD int, tdivs []float64, startTdiv float64, l
 		curY:     [2]float64{0.35, 0.65},
 		inject:   make(chan func(), 32),
 		running:  true,
+		zoom:     1,
 		// Seed the qualifier shadows to the engine's defaultTrigParams so the
 		// pgTrigQ page agrees with the engine from boot (slope 0.2/0.8, neg sync).
 		pulseLvl: 0.5, pulseMin: 100, pulseMax: 1000,
@@ -470,9 +473,17 @@ func (c *Controller) dispatch(name string, dir, steps int) {
 		// menu is closed.
 		c.menuAdjust(dir)
 	case "horizpos":
-		// Horizontal POSITION knob: pan the trigger point within the record
-		// (same setting the HORIZ ▸ Trig Pos softkey steps). Was a dead knob.
-		c.eng.SetTrigPosFrac(clampF(c.trigPos()+float64(dir*steps)*0.01, 0.02, 1))
+		// Horizontal POSITION knob: when zoomed, pan the zoom window across the
+		// record; otherwise pan the trigger point (was a dead knob before).
+		c.mu.Lock()
+		z := c.zoom
+		if z > 1 {
+			c.zoomOff = clampF(c.zoomOff+float64(dir*steps)*0.02, -0.5, 0.5)
+			c.mu.Unlock()
+		} else {
+			c.mu.Unlock()
+			c.eng.SetTrigPosFrac(clampF(c.trigPos()+float64(dir*steps)*0.01, 0.02, 1))
+		}
 	}
 }
 

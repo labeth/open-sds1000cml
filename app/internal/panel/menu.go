@@ -38,6 +38,8 @@ type MenuView struct {
 	MathMode       int        // 0 = off, 1 = C1+C2, 2 = C1-C2, 3 = C1×C2
 	AutosetBusy    bool       // an autoset sweep is running (LCD shows a hint)
 	AutosetMsg     string     // banner text while AutosetBusy
+	Zoom           int        // horizontal magnification (1 = none)
+	ZoomOff        float64    // zoom-window pan offset (fraction of the record)
 
 	CurOn   bool       // cursors visible
 	CurType int        // 0 = X (time), 1 = Y (volts)
@@ -188,7 +190,7 @@ func (c *Controller) openMenu(pg int) {
 func pageSlots(pg int) int {
 	switch pg {
 	case pgHoriz:
-		return 2
+		return 3
 	case pgAcq:
 		return 4
 	case pgChan:
@@ -331,6 +333,13 @@ func (c *Controller) menuCycle(slot, dir int) {
 			c.eng.SetTdiv(c.tdivs[c.tdivIdx])
 		case 1: // Trigger position: step the horizontal fraction
 			c.eng.SetTrigPosFrac(clampF(c.trigPos()+float64(dir)*0.05, 0.02, 1))
+		case 2: // Horizontal zoom (magnify the displayed window)
+			c.mu.Lock()
+			c.zoom = nextOpt([]int{1, 2, 5, 10, 20, 50}, c.zoom, dir)
+			if c.zoom <= 1 {
+				c.zoomOff = 0 // reset pan when back to 1x
+			}
+			c.mu.Unlock()
 		}
 	case pgChan:
 		if c.fe != nil {
@@ -447,9 +456,11 @@ func (c *Controller) MenuView() MenuView {
 	pl, pmn, pmx, pc := c.pulseLvl, c.pulseMin, c.pulseMax, c.pulseCond
 	slo, shi, smn, smx, scnd := c.slopeLo, c.slopeHi, c.slopeMin, c.slopeMax, c.slopeCond
 	vstd, vln, vneg := c.videoStd, c.videoLine, c.videoNeg
+	zoom, zoomOff := c.zoom, c.zoomOff
 	c.mu.Unlock()
 	v := MenuView{Open: pg != pgNone, Sel: sel, ShowC1: c1, ShowC2: c2, ShowMeas: meas,
 		ViewMode: view, MathMode: mth, AutosetBusy: busy, AutosetMsg: amsg,
+		Zoom: zoom, ZoomOff: zoomOff,
 		CurOn: curOn, CurType: curType, CurSel: curSel, CurX: curX, CurY: curY}
 	if pg == pgNone {
 		return v
@@ -564,11 +575,16 @@ func (c *Controller) MenuView() MenuView {
 			{"Math", []string{"Off", "C1+C2", "C1-C2", "C2-C1", "C1xC2"}[mth%5]}, // ASCII font: no '×'
 		}
 	case pgHoriz:
+		zl := "1x"
+		if zoom > 1 {
+			zl = fmt.Sprintf("%dx", zoom)
+		}
 		v.Title = "HORIZ"
 		v.Items = []MenuItem{
 			{"Time/div", fmtEng(st.DisplayedS, "s")},
 			{"Trig Pos", fmt.Sprintf("%d%%", int(c.trigPos()*100+0.5))},
-			{"", ""}, {"", ""}, {"", ""},
+			{"Zoom", zl},
+			{"", ""}, {"", ""},
 		}
 	case pgChan:
 		cpl0, cpl1, p0, p1 := "DC", "DC", "1x", "1x"

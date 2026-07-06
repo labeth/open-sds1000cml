@@ -37,6 +37,8 @@ type HUD struct {
 	MathMode         int     // 0 = off, 1 = C1+C2, 2 = C1-C2, 3 = C1×C2
 	AutosetBusy      bool    // autoset sweep running → show a cancelable banner
 	AutosetMsg       string  // banner text while AutosetBusy
+	Zoom             int     // horizontal magnification (1 = none)
+	ZoomOff          float64 // zoom-window pan offset (fraction of the record)
 	RefC1, RefC2     [2][]uint8 // saved reference waveforms (REF A/B); nil if unset
 	RefShow          [2]bool
 	TwoChan          bool
@@ -258,7 +260,7 @@ func drawXY(sf Surface, f *engine.Frame, hud HUD) {
 // drawMath overlays the math trace (C1+C2 / C1-C2 / C1×C2) in purple, in code
 // space centred at 128 so it shares the Y-T trace mapping (parity with the web
 // math card).
-func drawMath(sf Surface, f *engine.Frame, hud HUD, win int, xc float64) {
+func drawMath(sf Surface, f *engine.Frame, hud HUD, win int, xc, posFrac float64) {
 	valid := frameValid(f)
 	if len(f.C2) < valid {
 		return
@@ -286,25 +288,25 @@ func drawMath(sf Surface, f *engine.Frame, hud HUD, win int, xc float64) {
 		}
 		m[i] = uint8(v)
 	}
-	drawTrace(sf, m, win, xc, f.Interp, colMath, hud.TrigPosFrac)
+	drawTrace(sf, m, win, xc, f.Interp, colMath, posFrac)
 }
 
 // drawRefs overlays the saved reference waveforms (REF A/B) as dim traces for
 // comparison against the live trace (parity with the web REF A/B). Screen-space
 // snapshots — they align while the timebase/scale are unchanged. A is purple,
 // B is the info tint, so they read apart from the live channels.
-func drawRefs(sf Surface, hud HUD, win int, xc float64, interp bool) {
+func drawRefs(sf Surface, hud HUD, win int, xc float64, interp bool, posFrac float64) {
 	cols := [2]uint16{colInfo, colDim} // distinct from the purple math trace
 	for i := 0; i < 2; i++ {
 		if !hud.RefShow[i] {
 			continue
 		}
 		if r := hud.RefC1[i]; len(r) > 0 {
-			drawTrace(sf, r, win, xc, interp, cols[i], hud.TrigPosFrac)
+			drawTrace(sf, r, win, xc, interp, cols[i], posFrac)
 		}
 		if hud.TwoChan {
 			if r := hud.RefC2[i]; len(r) > 0 {
-				drawTrace(sf, r, win, xc, interp, cols[i], hud.TrigPosFrac)
+				drawTrace(sf, r, win, xc, interp, cols[i], posFrac)
 			}
 		}
 	}
@@ -746,20 +748,31 @@ func Render(sf Surface, f *engine.Frame, hud HUD, live bool) {
 				// crossing (that would jitter a flat line and diverge from web).
 				xc = float64(valid) / 2
 			}
+			// Horizontal ZOOM: show win/zoom samples magnified across the screen,
+			// panned by ZoomOff across the record (centred, so posFrac=0.5).
+			posFrac := hud.TrigPosFrac
+			if hud.Zoom > 1 {
+				win /= hud.Zoom
+				if win < 8 {
+					win = 8
+				}
+				xc += hud.ZoomOff * float64(valid)
+				posFrac = 0.5
+			}
 			if hud.TwoChan && sc2 && len(f.C2) >= valid {
 				c2 := f.C2[:valid]
 				if hud.Cpl2 != analog.CplDC {
 					c2 = analog.CoupleDisplay(c2, hud.Cpl2)
 				}
-				drawTrace(sf, c2, win, xc, f.Interp, colC2, hud.TrigPosFrac)
+				drawTrace(sf, c2, win, xc, f.Interp, colC2, posFrac)
 			}
 			if sc1 {
-				drawTrace(sf, c1, win, xc, f.Interp, colC1, hud.TrigPosFrac)
+				drawTrace(sf, c1, win, xc, f.Interp, colC1, posFrac)
 			}
 			if hud.MathMode != 0 {
-				drawMath(sf, f, hud, win, xc)
+				drawMath(sf, f, hud, win, xc, posFrac)
 			}
-			drawRefs(sf, hud, win, xc, f.Interp)
+			drawRefs(sf, hud, win, xc, f.Interp, posFrac)
 		}
 	}
 
@@ -954,6 +967,9 @@ func drawHUD(sf Surface, f *engine.Frame, hud HUD) {
 		DrawText(sf, 200, 2, "FFT", colMath, 1)
 	default:
 		DrawText(sf, 200, 2, "M "+fmtTdiv(hud.TdivS), colInfo, 1)
+		if hud.Zoom > 1 { // horizontal magnification tag
+			DrawText(sf, 262, 2, fmt.Sprintf("Z%dx", hud.Zoom), colTrig, 1)
+		}
 	}
 	// Math legend so the purple trace is identified (and not confused with a ref).
 	if hud.MathMode != 0 && hud.ViewMode == 0 {
