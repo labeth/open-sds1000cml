@@ -455,20 +455,27 @@ function srResult(st, opts) {
   // sub-bin slope aliasing, not noise — the two stats must describe the same
   // (flat-bin noise floor) population or bitsGained compares apples to
   // oranges.
-  let sigmaStack = 0;
+  let sigmaStack = 0, sigmaMeasured = true;
   if (halves.length >= 16) {
     sigmaStack = 1.4826 * med(halves.map(Math.abs));
   }
   const cnts = [];
   for (let b = statLo; b < statHi; b += statStride) if (A.cnt[b] >= EPS) cnts.push(A.cnt[b]);
   const sigmaStackTheory = sigmaSingle > 0 && cnts.length ? sigmaSingle / Math.sqrt(med(cnts)) : 0;
+  // The measured half-difference needs dense bins (≥4 frames each). Deposit
+  // kernels ("drizzle") spread ~frames/K contributors per fine bin, so on a fine
+  // grid most bins are too sparse to pair odd/even and `halves` stays empty —
+  // report the theory estimate (σ_single/√cnt) instead of a bogus 0, flagged so
+  // the UI can mark it as not-measured. It slightly over-claims (ignores
+  // correlated error) but is the honest low-frames-per-bin figure.
+  if (sigmaStack === 0 && sigmaStackTheory > 0) { sigmaStack = sigmaStackTheory; sigmaMeasured = false; }
   const bitsGained = sigmaStack > 0 && sigmaSingle > 0 ? Math.log2(sigmaSingle / sigmaStack) : 0;
   return {
     mean, mean2,
     clipSkips: [st.c[0].clipSkips, st.c[1].clipSkips],
     fill: filled / Math.max(1, scanned),
     frames: st.frames, rejected: st.rejected, clipped: st.clipped, reseeds: st.reseeds,
-    sigmaSingle, sigmaStack, sigmaStackTheory, bitsGained,
+    sigmaSingle, sigmaStack, sigmaStackTheory, sigmaMeasured, bitsGained,
     effBits: 8 + bitsGained,
     fineDtS: st.sampleS > 0 ? st.sampleS / st.K : 0,
     effRateSa: st.sampleS > 0 ? st.K / st.sampleS : 0,

@@ -108,6 +108,14 @@ amplitude next to the tiny 150 MHz ripple (cursors: 153 MHz) rolled off by the a
 bandwidth, all reconstructed from an 8-bit front end. The gain is largest at low/mid
 frequencies and tapers near Nyquist, where alignment jitter dominates.</sub>
 
+A **resample-kernel** selector trades noise floor against near-Nyquist fidelity:
+*interp* (default) resamples every frame at every fine bin — lowest noise floor and
+a measurable ENOB, but it softens content near the raw Nyquist; *drizzle* deposits
+each real sample at its aligned sub-sample position — on the burst it preserves the
+250 MHz tone ~9 dB better (and reconstructs it more faithfully), at a higher noise
+floor. On a fine grid the deposit bins are too sparse for a time-domain σ, so read
+each tone's improvement from the per-peak **FFT SNR** readout instead.
+
 ## On the instrument (LCD + front panel)
 
 The firmware isn't only a web front end — it drives the scope's own 800×480 LCD and

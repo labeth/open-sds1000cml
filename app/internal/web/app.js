@@ -1982,10 +1982,15 @@ function srUpdateStats(final) {
   const res = srResult(sr.st, { statsOnly: true, stride: Math.max(1, Math.ceil(sr.st.nbins / 65536)) });
   const el = ((now - sr.t0) / 1000).toFixed(0);
   const rate = res.effRateSa >= 1e9 ? (res.effRateSa / 1e9).toFixed(2) + " GSa/s" : (res.effRateSa / 1e6).toFixed(0) + " MSa/s";
+  // A deposit kernel (drizzle) puts only ~frames/K contributors in each fine
+  // bin, too sparse to measure per-bin σ — the time-domain bits estimate needs
+  // dense (resampled) bins. Rather than report a bogus +0.0, say so and point to
+  // the per-tone FFT SNR (which is the right kernel-independent figure there).
+  const noise = res.sigmaStack > 0
+    ? `σ ${res.sigmaSingle.toFixed(2)}→${res.sigmaStack.toFixed(3)} codes · +${res.bitsGained.toFixed(1)} bits${res.sigmaMeasured ? "" : "~"} (eff ${res.effBits.toFixed(1)})`
+    : "σ n/a on this grid — read per-tone SNR in FFT";
   srStatus(`${res.frames} stacked · ${res.rejected} rej` + (res.clipped ? ` (${res.clipped} clip)` : "") + (res.reseeds ? ` · reseed ${res.reseeds}` : "") +
-    ` · ${el}s · σ ${res.sigmaSingle.toFixed(2)}→${res.sigmaStack.toFixed(3)} codes` +
-    ` · +${res.bitsGained.toFixed(1)} bits (eff ${res.effBits.toFixed(1)})` +
-    ` · ${rate} grid · fill ${(res.fill * 100).toFixed(1)}%`);
+    ` · ${el}s · ${noise} · ${rate} grid · fill ${(res.fill * 100).toFixed(1)}%`);
 }
 
 function srIngest(f) {
@@ -1995,6 +2000,7 @@ function srIngest(f) {
   if (!sr.st) {
     const K = +$("srK").value || 32;
     sr.st = srNew(f.cols, K);
+    sr.st.kernel = $("srKernel").value || "interp"; // resample vs deposit (near-Nyquist)
     sr.st.align = sr.ch - 1; // alignment/lucky run on the selected channel; BOTH stack
     sr.st.sampleS = f.sample_s || 0;
     sr.st.c[0].vpc = f.vpc1 || 1 / 32;
