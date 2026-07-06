@@ -943,11 +943,14 @@ func drawHUD(sf Surface, f *engine.Frame, hud HUD) {
 		}
 	}
 	// The horizontal axis is time only in Y-T; in FFT it's frequency and in X-Y
-	// it's C1 voltage, so "M <t/div>" would be misleading there.
-	switch hud.ViewMode {
-	case 1:
+	// it's C1 voltage, so "M <t/div>" would be misleading there. But X-Y/FFT
+	// fall through to Y-T on an envelope frame, so only label them when the
+	// alternate view actually renders (matches the Render() branch condition).
+	altView := f != nil && !f.IsEnv && len(f.C1) > 0
+	switch {
+	case hud.ViewMode == 1 && altView:
 		DrawText(sf, 200, 2, "X-Y", colMath, 1)
-	case 2:
+	case hud.ViewMode == 2 && altView:
 		DrawText(sf, 200, 2, "FFT", colMath, 1)
 	default:
 		DrawText(sf, 200, 2, "M "+fmtTdiv(hud.TdivS), colInfo, 1)
