@@ -16,8 +16,9 @@ const (
 	pgDisp
 	pgHoriz
 	pgChan   // per-channel coupling + probe (reached by re-pressing DISPLAY)
-	pgCursor // on-screen cursors (reached by re-pressing HORIZONTAL)
+	pgCursor // on-screen cursors (reached by re-pressing HORIZONTAL / CURSORS key)
 	pgRef    // reference waveforms REF A/B (reached by re-pressing ACQUIRE)
+	pgMain   // MAIN menu (MENU key): navigates to every sub-page
 )
 
 // MenuItem is one softkey slot: a label and its current value.
@@ -57,6 +58,8 @@ var (
 	btnDisplay   = bcode(1, 3)
 	btnHorizMenu = bcode(1, 12)
 	btnMenuOnOff = bcode(0, 13)
+	btnMeasure   = bcode(1, 4)  // spec 08 §7 — was unwired (dead button)
+	btnCursors   = bcode(0, 12) // spec 08 §7 — was unwired (dead button)
 	btnCh1       = bcode(2, 4)
 	btnCh2       = bcode(3, 4)
 )
@@ -101,17 +104,29 @@ func (c *Controller) menuButton(code int) bool {
 		c.openMenu(next)
 		return true
 	case btnMenuOnOff:
+		// MENU opens the MAIN menu (a navigable list of every sub-page); pressing
+		// it again closes the menu overlay.
 		c.mu.Lock()
-		open := c.menuPage == pgNone
+		closed := c.menuPage == pgNone
 		c.mu.Unlock()
-		if open {
-			c.openMenu(pgTrig) // resets menuSel to 0 (no stale highlight on reopen)
+		if closed {
+			c.openMenu(pgMain)
 		} else {
 			c.mu.Lock()
 			c.menuPage = pgNone
 			c.mu.Unlock()
 			c.pushLEDs()
 		}
+		return true
+	case btnMeasure:
+		// Dedicated MEASURE key: toggle the on-screen measurement panel.
+		c.mu.Lock()
+		c.showMeas = !c.showMeas
+		c.mu.Unlock()
+		c.pushLEDs()
+		return true
+	case btnCursors:
+		c.openMenu(pgCursor) // dedicated CURSORS key -> straight to the cursor page
 		return true
 	case btnCh1:
 		c.mu.Lock()
@@ -155,7 +170,7 @@ func pageSlots(pg int) int {
 	case pgHoriz:
 		return 2
 	case pgAcq:
-		return 3
+		return 4
 	case pgChan:
 		return 4
 	default: // pgTrig, pgDisp, pgCursor, pgRef
@@ -174,6 +189,20 @@ func (c *Controller) menuCycle(slot, dir int) {
 	c.mu.Unlock()
 	st := c.eng.Snapshot()
 	switch pg {
+	case pgMain: // MAIN menu: each softkey navigates to a sub-page
+		switch slot {
+		case 0:
+			c.openMenu(pgTrig)
+		case 1:
+			c.openMenu(pgAcq)
+		case 2:
+			c.openMenu(pgDisp)
+		case 3:
+			c.openMenu(pgHoriz)
+		case 4:
+			c.openMenu(pgCursor)
+		}
+		return
 	case pgTrig:
 		switch slot {
 		case 0:
@@ -196,6 +225,8 @@ func (c *Controller) menuCycle(slot, dir int) {
 			c.menuCount(st, dir)
 		case 2:
 			c.eng.SetETS(!st.ETS)
+		case 3: // memory depth (fps <-> data knob)
+			c.eng.SetMemDepth(nextOpt([]int{2000, 6000, 14000, 20480}, st.MemDepth, dir))
 		}
 	case pgDisp:
 		switch slot {
@@ -356,6 +387,15 @@ func (c *Controller) MenuView() MenuView {
 		return "Off"
 	}
 	switch pg {
+	case pgMain:
+		v.Title = "MENU"
+		v.Items = []MenuItem{
+			{"Trigger", ">"},
+			{"Acquire", ">"},
+			{"Display", ">"},
+			{"Horizontal", ">"},
+			{"Cursors", ">"},
+		}
 	case pgTrig:
 		slope := "Rise" // LCD font is ASCII — no arrow glyphs
 		if !st.TrigRising {
@@ -391,7 +431,8 @@ func (c *Controller) MenuView() MenuView {
 			{"Acquire", modes[st.AcqMode&3]},
 			{"Count", cnt},
 			{"ETS", onoff(st.ETS)},
-			{"", ""}, {"", ""},
+			{"Mem", depthLabel(st.MemDepth)},
+			{"", ""},
 		}
 	case pgDisp:
 		v.Title = "DISPLAY"
@@ -498,6 +539,10 @@ func nameCode(name string) (int, bool) {
 		return btnHorizMenu, true
 	case "menu":
 		return btnMenuOnOff, true
+	case "measure", "meas":
+		return btnMeasure, true
+	case "cursors", "cursor":
+		return btnCursors, true
 	case "ch1":
 		return btnCh1, true
 	case "ch2":
@@ -544,6 +589,13 @@ func (c *Controller) InjectKnob(name string, dir, steps int) bool {
 	default:
 		return false
 	}
+}
+
+func depthLabel(n int) string {
+	if n >= 1000 {
+		return fmt.Sprintf("%dk", n/1000)
+	}
+	return fmt.Sprint(n)
 }
 
 func mod5(x int) int { return ((x % 5) + 5) % 5 }

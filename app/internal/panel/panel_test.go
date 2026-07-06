@@ -42,6 +42,7 @@ func (f *fakeEng) SetAcqMode(m int)         { f.calls = append(f.calls, call{"ac
 func (f *fakeEng) SetAvgCount(n int)        { f.calls = append(f.calls, call{"avg", n, 0}) }
 func (f *fakeEng) SetEresLen(l int)         { f.calls = append(f.calls, call{"eres", l, 0}) }
 func (f *fakeEng) SetETS(on bool)           { f.calls = append(f.calls, call{"ets", b2i(on), 0}) }
+func (f *fakeEng) SetMemDepth(n int) int    { f.calls = append(f.calls, call{"memdepth", n, 0}); return n }
 func (f *fakeEng) SetTrigPosFrac(fr float64) { f.calls = append(f.calls, call{"trigpos", int(fr * 100), 0}) }
 func (f *fakeEng) SetHoldoff(s float64) float64 {
 	f.calls = append(f.calls, call{"holdoff", int(s * 1e6), 0})

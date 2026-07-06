@@ -453,14 +453,15 @@ func fftTrace(sf Surface, src []uint8, n, stride int, col uint16, effNyq float64
 func g3(x float64) string { return strconv.FormatFloat(x, 'g', 3, 64) }
 
 func fmtVolt(v float64) string {
+	neg := ""
 	x := v
-	if x < 0 {
-		x = -x
+	if x < 0 { // keep the sign — Vmin/Vtop/Vbase/Vavg can be negative
+		neg, x = "-", -x
 	}
 	if x >= 1 {
-		return g3(x) + "V"
+		return neg + g3(x) + "V"
 	}
-	return g3(x*1e3) + "mV"
+	return neg + g3(x*1e3) + "mV"
 }
 
 // fillRect paints a solid rectangle (clipped to the surface).
@@ -472,22 +473,37 @@ func fillRect(sf Surface, x, y, w, h int, c uint16) {
 	}
 }
 
-// drawMeasPanel draws the on-device MEASURE overlay for the trigger-source
-// channel: a calibrated measurement set (via the shared measure package, so it
-// matches the web exactly) in a boxed panel at the top-left. Uses the real
-// probe-scaled volts/div and honours the channel's software coupling.
+// drawMeasPanel draws the on-device MEASURE overlay — a calibrated measurement
+// box PER enabled channel (via the shared measure package, so it matches the web
+// exactly), so both C1 and C2 are readable at once without disturbing the trigger
+// source. Uses the real probe-scaled volts/div and the channel's software coupling.
 func drawMeasPanel(sf Surface, f *engine.Frame, hud HUD) {
 	if f == nil || f.Valid == 0 {
 		return
 	}
+	sc1, sc2 := hud.ShowC1, hud.ShowC2
+	if !sc1 && !sc2 {
+		sc1, sc2 = true, true
+	}
+	x := 4
+	if sc1 {
+		measBox(sf, f, hud, 0, x)
+		x += 116
+	}
+	if sc2 && hud.TwoChan && len(f.C2) >= f.Valid {
+		measBox(sf, f, hud, 1, x)
+	}
+}
+
+// measBox renders one channel's full measurement set at left edge x.
+func measBox(sf Surface, f *engine.Frame, hud HUD, ch, x int) {
 	valid := f.Valid
 	if valid > len(f.C1) {
 		valid = len(f.C1)
 	}
-	ch := hud.TrigSrc & 1
 	sig := f.C1[:valid]
 	vdiv, probe, off, cpl, col, name := hud.C1VdivV, hud.Probe1, hud.OffC1V, hud.Cpl1, colC1, "C1"
-	if ch == 1 && hud.TwoChan && len(f.C2) >= valid {
+	if ch == 1 {
 		sig = f.C2[:valid]
 		vdiv, probe, off, cpl, col, name = hud.C2VdivV, hud.Probe2, hud.OffC2V, hud.Cpl2, colC2, "C2"
 	}
@@ -504,7 +520,11 @@ func drawMeasPanel(sf Surface, f *engine.Frame, hud HUD) {
 	}
 	rows := [][2]string{
 		{"Vpp", fmtVolt(m.Vpp)},
+		{"Vmax", fmtVolt(m.Vmax)},
+		{"Vmin", fmtVolt(m.Vmin)},
 		{"Vamp", fmtVolt(m.Vampl)},
+		{"Vtop", fmtVolt(m.Vtop)},
+		{"Vbase", fmtVolt(m.Vbase)},
 		{"Vrms", fmtVolt(m.Vrms)},
 		{"Vavg", fmtVolt(m.Vmean)},
 	}
@@ -516,9 +536,20 @@ func drawMeasPanel(sf Surface, f *engine.Frame, hud HUD) {
 		if m.RiseS > 0 {
 			rows = append(rows, [2]string{"Rise", fmtTdiv(m.RiseS)})
 		}
+		if m.FallS > 0 {
+			rows = append(rows, [2]string{"Fall", fmtTdiv(m.FallS)})
+		}
+		if m.PosWidthS > 0 {
+			rows = append(rows, [2]string{"+Wid", fmtTdiv(m.PosWidthS)})
+		}
+		if m.NegWidthS > 0 {
+			rows = append(rows, [2]string{"-Wid", fmtTdiv(m.NegWidthS)})
+		}
+		if m.Overshoot > 0 {
+			rows = append(rows, [2]string{"OS", fmt.Sprintf("%.0f%%", m.Overshoot)})
+		}
 	}
-	// Box: title + one row per line, 10 px pitch. Placed under the C1/C2 labels.
-	const x, y0, w = 4, 22, 108
+	const y0, w = 22, 112
 	h := 14 + len(rows)*10
 	fillRect(sf, x, y0, w, h, rgb(6, 10, 22))
 	for yy := y0; yy < y0+h; yy++ { // thin border

@@ -36,6 +36,7 @@ type Engine interface {
 	SetETS(on bool)
 	SetTrigPosFrac(frac float64)
 	SetHoldoff(sec float64) float64
+	SetMemDepth(samples int) int
 	Snapshot() engine.Stats // authoritative state to resync knob shadows
 }
 
