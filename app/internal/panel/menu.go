@@ -61,6 +61,8 @@ var (
 	btnMenuOnOff = bcode(0, 13)
 	btnMeasure   = bcode(1, 4)  // spec 08 §7 — was unwired (dead button)
 	btnCursors   = bcode(0, 12) // spec 08 §7 — was unwired (dead button)
+	btnMath      = bcode(2, 12) // spec 08 §6.4 — was unwired (dead button)
+	btnRef       = bcode(3, 12) // spec 08 §6.4 — was unwired (dead button)
 	btnCh1       = bcode(2, 4)
 	btnCh2       = bcode(3, 4)
 )
@@ -135,6 +137,16 @@ func (c *Controller) menuButton(code int) bool {
 		return true
 	case btnCursors:
 		c.openMenu(pgCursor) // dedicated CURSORS key -> straight to the cursor page
+		return true
+	case btnRef:
+		c.openMenu(pgRef) // dedicated REF key -> straight to the REF A/B page
+		return true
+	case btnMath:
+		// Dedicated MATH key: cycle the math trace (off->C1+C2->C1-C2->C2-C1->C1xC2).
+		c.mu.Lock()
+		c.mathMode = mod5(c.mathMode + 1)
+		c.mu.Unlock()
+		c.pushLEDs()
 		return true
 	case btnCh1:
 		c.mu.Lock()
@@ -265,7 +277,9 @@ func (c *Controller) menuCycle(slot, dir int) {
 		switch slot {
 		case 0:
 			c.eng.SetNorm(!st.Norm)
-			c.norm = !st.Norm
+			c.mu.Lock()
+			c.norm = !st.Norm // guarded — pushLEDs reads it
+			c.mu.Unlock()
 		case 1:
 			c.eng.SetTrigSlope(!st.TrigRising)
 		case 2:
@@ -284,7 +298,7 @@ func (c *Controller) menuCycle(slot, dir int) {
 		case 2:
 			c.eng.SetETS(!st.ETS)
 		case 3: // memory depth (fps <-> data knob)
-			c.eng.SetMemDepth(nextOpt([]int{2000, 6000, 14000, 20480}, st.MemDepth, dir))
+			c.eng.SetMemDepth(nextOpt([]int{2048, 6144, 14336, 20480}, st.MemDepth, dir))
 		}
 	case pgDisp:
 		switch slot {
@@ -604,8 +618,8 @@ func (c *Controller) MenuView() MenuView {
 			{"Cursors", onoff(curOn)},
 			{"Type", typ},
 			{"Active", sel},
-			{"Move +/-", "ADJUST"},
-			{"", ""},
+			{"Move -", "F4"}, // F4 nudges -, F5 nudges + (ADJUST moves continuously)
+			{"Move +", "F5"},
 		}
 	}
 	return v
@@ -649,6 +663,10 @@ func nameCode(name string) (int, bool) {
 		return btnMeasure, true
 	case "cursors", "cursor":
 		return btnCursors, true
+	case "math":
+		return btnMath, true
+	case "ref":
+		return btnRef, true
 	case "ch1":
 		return btnCh1, true
 	case "ch2":

@@ -435,6 +435,20 @@ func fftTrace(sf Surface, src []uint8, n, stride int, col uint16, effNyq float64
 		}
 		prevY = y
 	}
+	// Mark the significant spectral peaks (local maxima above -40 dBc) with a small
+	// tick above each — parity with the web's peak markers, capped to avoid clutter.
+	markFloor := peak * math.Pow(10, -40.0/20)
+	for k, marks := 2, 0; k < half-1 && marks < 8; k++ {
+		if mags[k] > mags[k-1] && mags[k] >= mags[k+1] && mags[k] > markFloor {
+			mx := k * (W - 1) / (half - 1)
+			db := 20 * math.Log10(mags[k]/peak+1e-12)
+			my := traceTop + int(-db/-floorDb*float64(traceBot-traceTop))
+			for d := 2; d < 6; d++ {
+				sf.SetPixel(mx, my-d, col)
+			}
+			marks++
+		}
+	}
 	// 3-point log-parabolic vertex refine of the peak bin (matches peaks.js).
 	kref := float64(peakK)
 	if peakK > 1 && peakK < half-1 {
@@ -597,20 +611,32 @@ func drawCursors(sf Surface, hud HUD) {
 		if dt > 0 {
 			label += "  1/dt " + fmtFreq(1/dt)
 		}
-	} else { // Y (volts) cursors
+	} else { // Y (volts) cursors — report ΔV for BOTH channels (web parity)
 		yA := traceTop + int(hud.CurY[0]*float64(traceBot-traceTop))
 		yB := traceTop + int(hud.CurY[1]*float64(traceBot-traceTop))
 		dash(false, yA, hud.CurSel == 0)
 		dash(false, yB, hud.CurSel == 1)
-		vdiv, probe := hud.C1VdivV, hud.Probe1
-		if hud.TrigSrc == 1 {
-			vdiv, probe = hud.C2VdivV, hud.Probe2
+		frac := math.Abs(hud.CurY[0] - hud.CurY[1])
+		dvOf := func(vdiv, probe float64) string {
+			if probe < 1 {
+				probe = 1
+			}
+			return fmtVolt(frac * vdiv * probe * 8) // 8 vertical divisions
 		}
-		if probe < 1 {
-			probe = 1
+		sc1, sc2 := hud.ShowC1, hud.ShowC2
+		if !sc1 && !sc2 {
+			sc1, sc2 = true, true
 		}
-		dv := math.Abs(hud.CurY[0]-hud.CurY[1]) * vdiv * probe * 8 // 8 vertical divisions
-		label = "dV " + fmtVolt(dv)
+		label = ""
+		if sc1 {
+			label = "dV1 " + dvOf(hud.C1VdivV, hud.Probe1)
+		}
+		if sc2 && hud.TwoChan {
+			if label != "" {
+				label += "  "
+			}
+			label += "dV2 " + dvOf(hud.C2VdivV, hud.Probe2)
+		}
 	}
 	w := len(label)*6 + 6
 	x := W/2 - w/2 // top-centre, clear of the MEAS panel (left) and menu (right)
@@ -908,10 +934,11 @@ func drawHUD(sf Surface, f *engine.Frame, hud HUD) {
 		DrawText(sf, 96, 2, "C2 "+vdivLabel(hud.C2VdivV, hud.Probe2)+cplTag(hud.Cpl2), colC2, 1)
 	}
 	if f != nil && f.Valid > 0 { // clipping warning — railed traces make readings suspect
-		if measure.Clipped(f.C1[:f.Valid]) {
+		valid := frameValid(f) // clamp to len(C1) — f.Valid can exceed the slice
+		if measure.Clipped(f.C1[:valid]) {
 			DrawText(sf, 4, 14, "CLIP", colTrig, 1)
 		}
-		if hud.TwoChan && measure.Clipped(f.C2[:f.Valid]) {
+		if hud.TwoChan && len(f.C2) >= valid && measure.Clipped(f.C2[:valid]) {
 			DrawText(sf, 96, 14, "CLIP", colTrig, 1)
 		}
 	}

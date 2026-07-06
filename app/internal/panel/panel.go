@@ -136,6 +136,7 @@ type Controller struct {
 
 	prev     [5]uint16
 	havePrev bool
+	trigd    bool // live trigger status (from the render loop) → TRIG'd lamp
 
 	// Menu state (spec 08 §6): written by the panel goroutine, read by the LCD
 	// renderer, guarded by mu. inject runs API-driven panel events on the panel
@@ -190,9 +191,11 @@ func New(eng Engine, fe Analog, keyFD int, tdivs []float64, startTdiv float64, l
 		curY:     [2]float64{0.35, 0.65},
 		inject:   make(chan func(), 32),
 		running:  true,
+		// Seed the qualifier shadows to the engine's defaultTrigParams so the
+		// pgTrigQ page agrees with the engine from boot (slope 0.2/0.8, neg sync).
 		pulseLvl: 0.5, pulseMin: 100, pulseMax: 1000,
-		slopeLo: 0.1, slopeHi: 0.9, slopeMin: 100, slopeMax: 1000,
-		videoLine: 1,
+		slopeLo: 0.2, slopeHi: 0.8, slopeMin: 100, slopeMax: 1000,
+		videoLine: 0, videoNeg: true,
 	}
 	for i, t := range tdivs {
 		if t >= startTdiv*(1-1e-6) {
@@ -207,6 +210,11 @@ func New(eng Engine, fe Analog, keyFD int, tdivs []float64, startTdiv float64, l
 // plus the MANDATORY 40 ms re-sync tick (buttons only — a timer-driven read
 // lands mid-detent and misreads quadrature). Blocks; run as a goroutine.
 func (c *Controller) Run(stop <-chan struct{}) {
+	// Push the qualifier shadows to the engine once so the pgTrigQ page and the
+	// engine agree from boot (inert until a non-Edge trigger type is selected).
+	c.eng.SetPulseParams(c.pulseLvl, c.pulseMin, c.pulseMax, c.pulseCond)
+	c.eng.SetSlopeParams(c.slopeLo, c.slopeHi, c.slopeMin, c.slopeMax, c.slopeCond)
+	c.eng.SetVideoParams(c.videoStd, c.videoLine, c.videoNeg)
 	sigio := make(chan os.Signal, 8)
 	haveSIGIO := false
 	if c.keyFD >= 0 {
@@ -316,10 +324,15 @@ func (c *Controller) button(code int) {
 	}
 	switch code {
 	case btnRunStop:
+		c.mu.Lock()
 		c.running = !c.running
-		c.eng.SetRunning(c.running)
+		r := c.running
+		c.mu.Unlock()
+		c.eng.SetRunning(r)
 	case btnSingle:
+		c.mu.Lock()
 		c.norm, c.running = true, true
+		c.mu.Unlock()
 		c.eng.SetSingle() // true single-shot: capture one triggered frame, stop
 	case btnAuto:
 		c.autoset()
@@ -349,7 +362,9 @@ func (c *Controller) resync() {
 	if st.TrigCode != 0 {
 		c.trigCode = st.TrigCode
 	}
-	c.running, c.norm = st.Running, st.Norm
+	c.mu.Lock()
+	c.running, c.norm = st.Running, st.Norm // guarded — pushLEDs reads these
+	c.mu.Unlock()
 	for i, t := range c.tdivs {
 		if st.TdivS > 0 && absf(t-st.TdivS) <= t*1e-6 {
 			c.tdivIdx = i
@@ -454,15 +469,30 @@ func (c *Controller) dispatch(name string, dir, steps int) {
 		// ADJUST drives the highlighted menu item (spec 08 §6.3); no-op if the
 		// menu is closed.
 		c.menuAdjust(dir)
-	default:
-		// horizpos: claimed-and-ignored for now.
+	case "horizpos":
+		// Horizontal POSITION knob: pan the trigger point within the record
+		// (same setting the HORIZ ▸ Trig Pos softkey steps). Was a dead knob.
+		c.eng.SetTrigPosFrac(clampF(c.trigPos()+float64(dir*steps)*0.01, 0.02, 1))
 	}
+}
+
+// SetTrigdLED updates the live trigger-status lamp from the render loop; it only
+// re-latches the LEDs when the state actually changes.
+func (c *Controller) SetTrigdLED(t bool) {
+	c.mu.Lock()
+	if c.trigd == t {
+		c.mu.Unlock()
+		return
+	}
+	c.trigd = t
+	c.mu.Unlock()
+	c.pushLEDs()
 }
 
 func (c *Controller) pushLEDs() {
 	c.mu.Lock()
-	c1, c2, pg := c.chDisp[0], c.chDisp[1], c.menuPage
-	running, norm := c.running, c.norm // read under the lock — both goroutines write these
+	c1, c2, pg, meas := c.chDisp[0], c.chDisp[1], c.menuPage, c.showMeas
+	running, norm, trigd := c.running, c.norm, c.trigd // read under the lock — multiple goroutines write these
 	c.mu.Unlock()
 	var word uint16
 	if c1 {
@@ -478,6 +508,12 @@ func (c *Controller) pushLEDs() {
 	}
 	if norm {
 		word |= ledSingle
+	}
+	if meas {
+		word |= ledMeasure // MEASURE key lamp tracks the panel toggle
+	}
+	if trigd {
+		word |= ledTrigd // TRIG'd lamp tracks live trigger status
 	}
 	switch pg { // light the active menu lamp (spec 08 §6.4/§8.2)
 	case pgAcq, pgRef: // REF is ACQUIRE's second page

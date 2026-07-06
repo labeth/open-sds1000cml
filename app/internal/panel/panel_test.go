@@ -164,15 +164,19 @@ func TestSingleAndAuto(t *testing.T) {
 
 func TestKnobPriorityOneRowPerEvent(t *testing.T) {
 	c, eng, fe := newC(t)
-	// Two knobs "moving" at once: HORIZ POSITION (pri 1, claim-ignore) must
-	// win over TIME/DIV (pri 3) — nothing dispatched to tdiv.
+	// Two knobs "moving" at once: HORIZ POSITION (pri 1) must win over TIME/DIV
+	// (pri 3) — exactly one knob is serviced per event, so trigpos is dispatched
+	// and tdiv is NOT.
 	m := idle()
 	m[3] &^= 1 << 14 // horizpos CW
 	m[2] &^= 1 << 14 // tdiv CW
 	m[4] = 1
 	c.decode(m, true)
-	if len(eng.calls) != 0 || len(fe.calls) != 0 {
-		t.Fatalf("priority walk dispatched more than the first knob: %v %v", eng.calls, fe.calls)
+	if len(eng.calls) != 1 || eng.calls[0].what != "trigpos" {
+		t.Fatalf("expected exactly one trigpos dispatch (horizpos wins priority), got %v", eng.calls)
+	}
+	if len(fe.calls) != 0 {
+		t.Fatalf("no front-end call expected, got %v", fe.calls)
 	}
 }
 
