@@ -396,6 +396,50 @@ func TestDecodeMenu(t *testing.T) {
 	}
 }
 
+func TestLEDMap(t *testing.T) {
+	// Shadow-word bits must match spec 02 §7.5 (corroborated PCB wiring).
+	if ledCH1 != 0x0010 || ledMath != 0x0020 || ledCH2 != 0x0040 {
+		t.Fatalf("LED bits drifted from spec: CH1=%#x MATH=%#x CH2=%#x (want 0x10/0x20/0x40)", ledCH1, ledMath, ledCH2)
+	}
+	c, eng, _ := newC(t)
+	last := func() uint16 {
+		if len(eng.leds) == 0 {
+			t.Fatal("no LED word latched")
+		}
+		return eng.leds[len(eng.leds)-1]
+	}
+	// Both channels on by default; math off. Toggle C2 to force a fresh flush.
+	c.menuButton(btnCh2) // C2 off
+	if w := last(); w&ledCH2 != 0 {
+		t.Errorf("CH2 lamp still lit after toggling C2 off: %#x", w)
+	}
+	c.menuButton(btnCh2) // C2 back on
+	w := last()
+	if w&ledCH2 == 0 {
+		t.Errorf("CH2 lamp (0x40) not lit when C2 on: %#x", w)
+	}
+	if w&ledMath != 0 { // the reported bug: C2 was lighting the MATH lamp
+		t.Errorf("MATH lamp lit while math is off: %#x", w)
+	}
+	if w&ledCH1 == 0 {
+		t.Errorf("CH1 lamp (0x10) not lit when C1 on: %#x", w)
+	}
+	// A math function lights the MATH lamp (and only then).
+	c.menuButton(btnMath)
+	if w := last(); w&ledMath == 0 {
+		t.Errorf("MATH lamp not lit when math active: %#x", w)
+	}
+	// Toggling C1 off updates its lamp immediately (direct key must flush LEDs).
+	c.menuButton(btnCh1)
+	w = last()
+	if w&ledCH1 != 0 {
+		t.Errorf("CH1 lamp should be dark after toggle: %#x", w)
+	}
+	if w&ledCH2 == 0 {
+		t.Errorf("CH2 lamp should stay lit: %#x", w)
+	}
+}
+
 func TestTriggerHoldoffSoftkey(t *testing.T) {
 	c, eng, _ := newC(t)
 	c.menuButton(btnTrigMenu) // open TRIGGER page

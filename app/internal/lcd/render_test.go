@@ -165,14 +165,15 @@ func TestRenderMenuSelectedSoftkeyFilled(t *testing.T) {
 	h.MenuOpen = true
 	h.MenuTitle = "TRIGGER"
 	h.MenuItems = []MenuItem{{"Mode", "AUTO"}, {"Slope", "Rise"}, {"Source", "C1"}}
-	h.MenuSel = 1 // second slot selected → sy = 40 + (444-40)*1/5 = 120
+	h.MenuSel = 1 // second slot (F2), aligned to the physical button at softkeyY[1]
 	Render(m, testFrame(2048), h, true)
-	// slot i=1 bar: y in [118,136], x in [687,797]
-	fill := countColorIn(m, colTrig, 687, 118, 797, 137)
+	// slot i=1 bar spans y in [softkeyY[1]-9, softkeyY[1]+9], x in [687,797]
+	y0, y1 := softkeyY[1]-9, softkeyY[1]+9
+	fill := countColorIn(m, colTrig, 687, y0, 797, y1)
 	if fill < 800 {
 		t.Fatalf("selected softkey should be a FILLED amber bar, got only %d colTrig px in the slot", fill)
 	}
-	if inv := countColorIn(m, colBG, 687, 118, 797, 137); inv < 10 {
+	if inv := countColorIn(m, colBG, 687, y0, 797, y1); inv < 10 {
 		t.Fatalf("selected softkey text should be inverted (dark on amber), got %d colBG px in the bar", inv)
 	}
 }

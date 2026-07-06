@@ -55,17 +55,24 @@ type Analog interface {
 	ProbeFactor(ch int) float64
 }
 
-// LED bits (spec 08 §5 — only the corroborated bits are wired; the low-byte
-// CURSORS/MATH/REF candidates conflict and stay unwired).
+// LED shadow-word bits — spec 02 §7.5 "LED shadow-word bit map". This is the
+// corroborated PCB wiring; the boot firmware's internal LED-index order does NOT
+// match it, so this map is authoritative. (There is no TRIG'd latch LED —
+// trigger-armed is a read-only HW status shown on-screen, not a lamp.)
 const (
-	ledTrigd   = 0x0004
-	ledCH2     = 0x0010
-	ledCH1     = 0x0020
+	ledCursors = 0x0002
+	ledIntens  = 0x0004 // INTENSITY / ADJUST-knob (not driven)
+	ledCH1     = 0x0010
+	ledMath    = 0x0020
+	ledCH2     = 0x0040
+	ledRef     = 0x0080
 	ledMeasure = 0x0100
 	ledAcquire = 0x0200
 	ledDisplay = 0x0400
-	ledRun     = 0x2000
-	ledStop    = 0x4000
+	ledSaveRec = 0x0800 // SAVE/RECALL (not driven)
+	ledUtility = 0x1000 // UTILITY (not driven)
+	ledRun     = 0x2000 // RUN (green element of the bicolor RUN/STOP lamp)
+	ledStop    = 0x4000 // STOP (red element)
 	ledSingle  = 0x8000
 )
 
@@ -136,7 +143,6 @@ type Controller struct {
 
 	prev     [5]uint16
 	havePrev bool
-	trigd    bool    // live trigger status (from the render loop) → TRIG'd lamp
 	zoom     int     // horizontal magnification (1,2,5,10,20,50); 1 = no zoom
 	zoomOff  float64 // pan offset of the zoom window, fraction of the record
 	persist  bool    // display persistence (afterglow)
@@ -497,23 +503,10 @@ func (c *Controller) dispatch(name string, dir, steps int) {
 	}
 }
 
-// SetTrigdLED updates the live trigger-status lamp from the render loop; it only
-// re-latches the LEDs when the state actually changes.
-func (c *Controller) SetTrigdLED(t bool) {
-	c.mu.Lock()
-	if c.trigd == t {
-		c.mu.Unlock()
-		return
-	}
-	c.trigd = t
-	c.mu.Unlock()
-	c.pushLEDs()
-}
-
 func (c *Controller) pushLEDs() {
 	c.mu.Lock()
 	c1, c2, pg, meas := c.chDisp[0], c.chDisp[1], c.menuPage, c.showMeas
-	running, norm, trigd := c.running, c.norm, c.trigd // read under the lock — multiple goroutines write these
+	running, norm, math := c.running, c.norm, c.mathMode
 	c.mu.Unlock()
 	var word uint16
 	if c1 {
@@ -521,6 +514,9 @@ func (c *Controller) pushLEDs() {
 	}
 	if c2 {
 		word |= ledCH2
+	}
+	if math != 0 {
+		word |= ledMath // MATH lamp tracks the math function being active
 	}
 	if running {
 		word |= ledRun
@@ -533,14 +529,15 @@ func (c *Controller) pushLEDs() {
 	if meas {
 		word |= ledMeasure // MEASURE key lamp tracks the panel toggle
 	}
-	if trigd {
-		word |= ledTrigd // TRIG'd lamp tracks live trigger status
-	}
-	switch pg { // light the active menu lamp (spec 08 §6.4/§8.2)
-	case pgAcq, pgRef: // REF is ACQUIRE's second page
+	switch pg { // light the lamp of the button whose page is showing (spec 08 §6.4/§8.2)
+	case pgAcq:
 		word |= ledAcquire
-	case pgDisp, pgChan: // CHANNEL is DISPLAY's second page
+	case pgRef: // dedicated REF key / ACQUIRE's second page — its own lamp
+		word |= ledRef
+	case pgDisp, pgChan: // CHANNEL is DISPLAY's second page (no lamp of its own)
 		word |= ledDisplay
+	case pgCursor: // dedicated CURSORS key / HORIZONTAL's second page
+		word |= ledCursors
 	}
 	c.eng.SetLEDs(word)
 }

@@ -997,6 +997,10 @@ func drawAutosetBanner(sf Surface, msg string) {
 	DrawText(sf, x0+(bw-TextWidth(hint, 1))/2, y0+30, hint, colDim, 1)
 }
 
+// softkeyY is the on-screen Y (slot centre) of each physical F1..F5 button,
+// measured on the unit against the bezel (F1..F4 an 80 px pitch, F5 +90).
+var softkeyY = [5]int{80, 160, 240, 320, 410}
+
 // drawMenu overlays the softkey menu down the right edge (spec 08 §6): a title
 // band + five slots (F1 top … F5 bottom) each a label over its current value,
 // the active slot boxed. F1..F5 select/cycle; the ADJUST knob tracks the box.
@@ -1016,17 +1020,16 @@ func drawMenu(sf Surface, hud HUD) {
 		sf.SetPixel(x0, y, colTrig)
 	}
 	DrawText(sf, x0+6, 16, hud.MenuTitle, colTrig, 1)
-	// five slots evenly spaced from y≈40 to y≈H-30
+	// slots aligned to the physical F1..F5 buttons (measured centres in softkeyY)
 	n := len(hud.MenuItems)
 	if n == 0 {
 		return
 	}
-	top, bot := 40, H-36
 	for i, it := range hud.MenuItems {
-		if it.Label == "" {
+		if it.Label == "" || i >= len(softkeyY) {
 			continue
 		}
-		sy := top + (bot-top)*i/5
+		sy := softkeyY[i] - 7 // label baseline; slot centre (highlight) lands on softkeyY[i]
 		labelCol, valueCol := colInfo, colTrig
 		if i == hud.MenuSel {
 			// Filled inverted highlight bar (was a 1px outline) — clearer which

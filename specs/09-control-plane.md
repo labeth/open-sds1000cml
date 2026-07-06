@@ -438,9 +438,12 @@ WriteRegCS(3, 0x0a, word>>8)    ; high byte
 WriteRegCS(3, 0x09, word&0xff)  ; low byte
 WriteRegCS(3, 0x0b, 1)          ; latch
 ```
-LED bitmap for this clone (`word`): `0x2000` RUN green, `0x4000` STOP red, `0x8000` SINGLE/armed,
-`0x0020` CH1, `0x0010` CH2, `0x0004` TRIG'd. The producer composes the word from UI state
-and stages it via `SetLEDs`; the shadow only flushes on change (§1.2).
+LED bitmap for this clone (`word`) — the full corroborated PCB map is in
+[spec 02 §7.5](02-register-map.md); the driven lamps are: `0x2000` RUN green, `0x4000` STOP red,
+`0x8000` SINGLE, `0x0010` CH1, `0x0020` MATH, `0x0040` CH2, `0x0080` REF, `0x0100` MEASURE,
+`0x0200` ACQUIRE, `0x0400` DISPLAY, `0x0002` CURSORS. There is **no TRIG'd lamp** (`0x0004` is the
+INTENSITY/ADJUST knob LED, not driven; trigger-armed is shown on-screen only). The producer composes
+the word from UI state and stages it via `SetLEDs`; the shadow only flushes on change (§1.2).
 
 ### 6.2 Vertical offset DAC write
 

@@ -162,11 +162,13 @@ func (c *Controller) menuButton(code int) bool {
 		c.mu.Lock()
 		c.chDisp[0] = !c.chDisp[0]
 		c.mu.Unlock()
+		c.pushLEDs() // CH1 lamp follows the toggle immediately
 		return true
 	case btnCh2:
 		c.mu.Lock()
 		c.chDisp[1] = !c.chDisp[1]
 		c.mu.Unlock()
+		c.pushLEDs() // CH2 lamp follows the toggle immediately
 		return true
 	}
 	for i, sk := range softkeys {
