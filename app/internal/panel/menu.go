@@ -35,6 +35,7 @@ type MenuView struct {
 	ViewMode       int        // 0 = Y-T, 1 = X-Y, 2 = FFT (DISPLAY menu "View")
 	MathMode       int        // 0 = off, 1 = C1+C2, 2 = C1-C2, 3 = C1×C2
 	AutosetBusy    bool       // an autoset sweep is running (LCD shows a hint)
+	AutosetMsg     string     // banner text while AutosetBusy
 
 	CurOn   bool       // cursors visible
 	CurType int        // 0 = X (time), 1 = Y (volts)
@@ -101,13 +102,16 @@ func (c *Controller) menuButton(code int) bool {
 		return true
 	case btnMenuOnOff:
 		c.mu.Lock()
-		if c.menuPage == pgNone {
-			c.menuPage = pgTrig
-		} else {
-			c.menuPage = pgNone
-		}
+		open := c.menuPage == pgNone
 		c.mu.Unlock()
-		c.pushLEDs()
+		if open {
+			c.openMenu(pgTrig) // resets menuSel to 0 (no stale highlight on reopen)
+		} else {
+			c.mu.Lock()
+			c.menuPage = pgNone
+			c.mu.Unlock()
+			c.pushLEDs()
+		}
 		return true
 	case btnCh1:
 		c.mu.Lock()
@@ -144,9 +148,28 @@ func (c *Controller) openMenu(pg int) {
 
 // menuCycle changes the item in slot `slot` by `dir` (F-key press → +1; the
 // ADJUST knob → ±1). It highlights the slot so ADJUST then tracks it.
+// pageSlots is how many softkey slots a page actually populates — presses on
+// the rest are inert (no highlight moves onto a blank slot).
+func pageSlots(pg int) int {
+	switch pg {
+	case pgHoriz:
+		return 2
+	case pgAcq:
+		return 3
+	case pgChan:
+		return 4
+	default: // pgTrig, pgDisp, pgCursor, pgRef
+		return 5
+	}
+}
+
 func (c *Controller) menuCycle(slot, dir int) {
 	c.mu.Lock()
 	pg := c.menuPage
+	if slot >= pageSlots(pg) { // empty slot: don't move the highlight or act
+		c.mu.Unlock()
+		return
+	}
 	c.menuSel = slot
 	c.mu.Unlock()
 	st := c.eng.Snapshot()
@@ -315,12 +338,12 @@ func (c *Controller) trigPos() float64 {
 func (c *Controller) MenuView() MenuView {
 	c.mu.Lock()
 	pg, sel, c1, c2, meas := c.menuPage, c.menuSel, c.chDisp[0], c.chDisp[1], c.showMeas
-	view, mth, busy := c.viewMode, c.mathMode, c.autosetBusy
+	view, mth, busy, amsg := c.viewMode, c.mathMode, c.autosetBusy, c.autosetMsg
 	rA, rAs, rB, rBs := c.refs[0].has, c.refs[0].show, c.refs[1].has, c.refs[1].show
 	curOn, curType, curSel, curX, curY := c.curOn, c.curType, c.curSel, c.curX, c.curY
 	c.mu.Unlock()
 	v := MenuView{Open: pg != pgNone, Sel: sel, ShowC1: c1, ShowC2: c2, ShowMeas: meas,
-		ViewMode: view, MathMode: mth, AutosetBusy: busy,
+		ViewMode: view, MathMode: mth, AutosetBusy: busy, AutosetMsg: amsg,
 		CurOn: curOn, CurType: curType, CurSel: curSel, CurX: curX, CurY: curY}
 	if pg == pgNone {
 		return v

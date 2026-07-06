@@ -42,7 +42,7 @@ func (c *Controller) autoset() {
 		return
 	}
 	stop := make(chan struct{})
-	c.autosetBusy, c.autosetStop = true, stop
+	c.autosetBusy, c.autosetStop, c.autosetMsg = true, stop, "AUTOSET…"
 	c.mu.Unlock()
 	c.pushLEDs()
 	go c.runAutoset(stop)
@@ -66,8 +66,43 @@ func (c *Controller) runAutoset(stop chan struct{}) {
 			return false
 		}
 	}
+	// Snapshot the entry scale so a no-signal sweep can restore it instead of
+	// abandoning the user on the coarse sweep state.
+	entry := c.eng.Snapshot()
+	entryTdiv := entry.TdivS
+	var entryVidx [2]int
+	var entryOff [2]float64
+	if c.fe != nil {
+		entryVidx, _ = c.fe.Snapshot()
+		entryOff[0] = analog.OffsetVolts(0, entry.OffC1)
+		entryOff[1] = analog.OffsetVolts(1, entry.OffC2)
+	}
+	restore := func() {
+		if entryTdiv > 0 {
+			c.setTdivNearest(entryTdiv)
+		}
+		if c.fe != nil {
+			for ch := 0; ch < 2; ch++ {
+				c.setVdiv(ch, entryVidx[ch])
+				c.fe.SetOffset(ch, entryOff[ch])
+			}
+		}
+	}
+	// No-signal exit: restore the scale and show a brief "no signal" banner.
+	noSignal := func() {
+		restore()
+		c.mu.Lock()
+		c.autosetMsg = "AUTOSET: no signal"
+		c.mu.Unlock()
+		c.pushLEDs()
+		c.waitFrame(stop) // hold the note briefly (cancelable)
+		c.waitFrame(stop)
+	}
 	c.eng.SetNorm(false)
 	c.eng.SetRunning(true)
+	c.mu.Lock()
+	c.norm, c.running = false, true // keep the shadows in step (RUN/STOP + LEDs)
+	c.mu.Unlock()
 
 	// 1. Coarse vertical first so nothing is railed (a clipped trace measures as
 	//    ~0 Vpp and can't be fit), then sweep the timebase fast→slow to find the
@@ -98,7 +133,8 @@ func (c *Controller) runAutoset(stop chan struct{}) {
 		}
 	}
 	if found == nil || found.Freq <= 0 {
-		return // nothing measurable — leave it running in AUTO at 10 ms/div
+		noSignal() // restore the user's scale + tell them nothing was found
+		return
 	}
 
 	// 2. Timebase = ~3 cycles across the screen; settle and re-measure at the
@@ -109,6 +145,7 @@ func (c *Controller) runAutoset(stop chan struct{}) {
 	}
 	m, _ := c.measureChans()
 	if !has(m[0]) && !has(m[1]) {
+		noSignal()
 		return
 	}
 
@@ -149,7 +186,9 @@ func (c *Controller) runAutoset(stop chan struct{}) {
 		code = engine.TrigCodeMax
 	}
 	c.eng.SetTrigLevelCode(uint16(code))
-	c.trigCode = uint16(code)
+	c.mu.Lock()
+	c.trigCode = uint16(code) // guarded — the panel goroutine also touches trigCode
+	c.mu.Unlock()
 	c.eng.SetTrigSource(src)
 	c.eng.SetTrigType(0) // EDGE
 }

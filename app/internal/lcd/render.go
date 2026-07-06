@@ -36,6 +36,7 @@ type HUD struct {
 	ViewMode         int     // 0 = Y-T, 1 = X-Y, 2 = FFT
 	MathMode         int     // 0 = off, 1 = C1+C2, 2 = C1-C2, 3 = C1×C2
 	AutosetBusy      bool    // autoset sweep running → show a cancelable banner
+	AutosetMsg       string  // banner text while AutosetBusy
 	RefC1, RefC2     [2][]uint8 // saved reference waveforms (REF A/B); nil if unset
 	RefShow          [2]bool
 	TwoChan          bool
@@ -291,7 +292,7 @@ func drawMath(sf Surface, f *engine.Frame, hud HUD, win int, xc float64) {
 // snapshots — they align while the timebase/scale are unchanged. A is purple,
 // B is the info tint, so they read apart from the live channels.
 func drawRefs(sf Surface, hud HUD, win int, xc float64, interp bool) {
-	cols := [2]uint16{colMath, colInfo}
+	cols := [2]uint16{colInfo, colDim} // distinct from the purple math trace
 	for i := 0; i < 2; i++ {
 		if !hud.RefShow[i] {
 			continue
@@ -345,10 +346,6 @@ func fftRadix2(re, im []float64) {
 // capped so the per-frame cost stays well under the render budget.
 func drawFFT(sf Surface, f *engine.Frame, hud HUD) {
 	valid := frameValid(f)
-	src, col, label := f.C1[:valid], colC1, "FFT C1"
-	if hud.ShowC2 && !hud.ShowC1 && len(f.C2) >= valid {
-		src, col, label = f.C2[:valid], colC2, "FFT C2"
-	}
 	n := 1
 	for n*2 <= valid && n < 8192 {
 		n <<= 1
@@ -356,31 +353,70 @@ func drawFFT(sf Surface, f *engine.Frame, hud HUD) {
 	if n < 16 {
 		return
 	}
+	// Stride the WHOLE record down to n (not the leading prefix) so the spectrum
+	// represents the full capture; the effective sample interval grows by stride,
+	// so the axis' Nyquist shrinks accordingly.
+	stride := valid / n
+	if stride < 1 {
+		stride = 1
+	}
+	nyq := 0.0
+	if hud.SampleS > 0 {
+		nyq = 0.5 / hud.SampleS
+	}
+	effNyq := nyq / float64(stride)
+
+	sc1, sc2 := hud.ShowC1, hud.ShowC2
+	if !sc1 && !sc2 {
+		sc1, sc2 = true, true
+	}
+	row := 10
+	// Overlay both enabled channels' spectra (parity with the web), each in its
+	// channel colour and normalised to its own peak.
+	if sc2 && hud.TwoChan && len(f.C2) >= valid {
+		fpk := fftTrace(sf, f.C2, n, stride, colC2, effNyq)
+		DrawText(sf, 10, row, "FFT C2 peak "+fmtFreq(fpk), colC2, 1)
+		row += 12
+	}
+	if sc1 {
+		fpk := fftTrace(sf, f.C1, n, stride, colC1, effNyq)
+		DrawText(sf, 10, row, "FFT C1 peak "+fmtFreq(fpk), colC1, 1)
+		row += 12
+	}
+	DrawText(sf, 10, row, "0.."+fmtFreq(effNyq), colDim, 1)
+}
+
+// fftTrace draws one channel's Hann magnitude spectrum (dB, peak-normalised)
+// across the graticule and returns its parabola-refined peak frequency. src is
+// strided by `stride` down to `n` samples.
+func fftTrace(sf Surface, src []uint8, n, stride int, col uint16, effNyq float64) float64 {
 	re := make([]float64, n)
 	im := make([]float64, n)
 	var mean float64
 	for i := 0; i < n; i++ {
-		mean += float64(src[i])
+		mean += float64(src[i*stride])
 	}
 	mean /= float64(n)
 	for i := 0; i < n; i++ {
 		w := 0.5 - 0.5*math.Cos(2*math.Pi*float64(i)/float64(n-1))
-		re[i] = (float64(src[i]) - mean) * w
+		re[i] = (float64(src[i*stride]) - mean) * w
 	}
 	fftRadix2(re, im)
 	half := n / 2
 	mags := make([]float64, half)
+	// Exclude the DC bin (k=0) from BOTH the 0 dB reference and the peak search —
+	// Hann leakage at DC would otherwise become a false 0 dB anchor.
 	peak, peakK := 1e-9, 1
-	for k := 0; k < half; k++ {
+	for k := 1; k < half; k++ {
 		mags[k] = math.Hypot(re[k], im[k])
 		if mags[k] > peak {
 			peak = mags[k]
 		}
-		if k >= 1 && mags[k] > mags[peakK] {
+		if mags[k] > mags[peakK] {
 			peakK = k
 		}
 	}
-	const floorDb = -60.0
+	const floorDb = -80.0 // match the web FFT full-scale span
 	prevY := -1
 	for x := 0; x < W; x++ {
 		k := x * (half - 1) / (W - 1)
@@ -397,14 +433,17 @@ func drawFFT(sf Surface, f *engine.Frame, hud HUD) {
 		}
 		prevY = y
 	}
-	nyq := 0.0
-	if hud.SampleS > 0 {
-		nyq = 0.5 / hud.SampleS
+	// 3-point log-parabolic vertex refine of the peak bin (matches peaks.js).
+	kref := float64(peakK)
+	if peakK > 1 && peakK < half-1 {
+		a, b, cc := math.Log(mags[peakK-1]+1e-12), math.Log(mags[peakK]+1e-12), math.Log(mags[peakK+1]+1e-12)
+		if den := a - 2*b + cc; den < 0 {
+			if d := 0.5 * (a - cc) / den; d > -1 && d < 1 {
+				kref = float64(peakK) + d
+			}
+		}
 	}
-	fpk := float64(peakK) / float64(half) * nyq
-	DrawText(sf, 10, 10, label, colDim, 1)
-	DrawText(sf, 10, 22, "peak "+fmtFreq(fpk), colInfo, 1)
-	DrawText(sf, 10, 34, "0.."+fmtFreq(nyq), colDim, 1)
+	return kref / float64(half) * effNyq
 }
 
 // ---- value formatting (spec 07 §6.2): 3 sig figs, ASCII suffixes ----
@@ -609,9 +648,12 @@ func Render(sf Surface, f *engine.Frame, hud HUD, live bool) {
 	if !sc1 && !sc2 {
 		sc1, sc2 = true, true
 	}
-	if hud.ViewMode == 1 && f != nil && len(f.C1) > 0 {
+	// X-Y / FFT only make sense on per-sample (native/decimated) frames — an
+	// envelope/roll frame has no paired samples or usable spectrum, so fall
+	// through to the Y-T envelope rendering (matches the web, which gates these).
+	if hud.ViewMode == 1 && f != nil && !f.IsEnv && len(f.C1) > 0 {
 		drawXY(sf, f, hud)
-	} else if hud.ViewMode == 2 && f != nil && len(f.C1) > 0 {
+	} else if hud.ViewMode == 2 && f != nil && !f.IsEnv && len(f.C1) > 0 {
 		drawFFT(sf, f, hud)
 	} else if f != nil && len(f.C1) > 0 {
 		valid := f.Valid
@@ -673,21 +715,30 @@ func Render(sf Surface, f *engine.Frame, hud HUD, live bool) {
 		}
 	}
 
-	drawMarkers(sf, hud)
+	// Trigger/ground markers, the MEASURE panel and cursors are time-domain
+	// concepts — only overlay them in Y-T, not on the X-Y/FFT plots.
+	if hud.ViewMode == 0 {
+		drawMarkers(sf, hud)
+	}
 	drawHUD(sf, f, hud)
-	if hud.ShowMeas {
+	if hud.ShowMeas && hud.ViewMode == 0 {
 		drawMeasPanel(sf, f, hud)
 	}
-	drawCursors(sf, hud)
+	if hud.ViewMode == 0 {
+		drawCursors(sf, hud)
+	}
 	drawMenu(sf, hud)
 	if hud.AutosetBusy {
-		drawAutosetBanner(sf)
+		drawAutosetBanner(sf, hud.AutosetMsg)
 	}
 }
 
 // drawAutosetBanner overlays a centred "AUTOSET…" progress banner while the
 // sweep runs, with the cancel hint (a second AUTO press stops it).
-func drawAutosetBanner(sf Surface) {
+func drawAutosetBanner(sf Surface, msg string) {
+	if msg == "" {
+		msg = "AUTOSET…"
+	}
 	const bw, bh = 300, 44
 	x0, y0 := (W-bw)/2, (H-bh)/2
 	for y := y0; y < y0+bh; y++ {
@@ -703,9 +754,13 @@ func drawAutosetBanner(sf Surface) {
 		sf.SetPixel(x0, y, colTrig)
 		sf.SetPixel(x0+bw-1, y, colTrig)
 	}
-	msg := "AUTOSET…"
 	DrawText(sf, x0+(bw-TextWidth(msg, 2))/2, y0+6, msg, colTrig, 2)
+	// Only the working banner is cancelable; a result note (e.g. "no signal")
+	// just clears on its own.
 	hint := "AUTO again to cancel"
+	if msg != "AUTOSET…" {
+		hint = "check the probe / scale"
+	}
 	DrawText(sf, x0+(bw-TextWidth(hint, 1))/2, y0+30, hint, colDim, 1)
 }
 
@@ -827,7 +882,21 @@ func drawHUD(sf Surface, f *engine.Frame, hud HUD) {
 			DrawText(sf, 96, 14, "CLIP", colTrig, 1)
 		}
 	}
-	DrawText(sf, 200, 2, "M "+fmtTdiv(hud.TdivS), colInfo, 1)
+	// The horizontal axis is time only in Y-T; in FFT it's frequency and in X-Y
+	// it's C1 voltage, so "M <t/div>" would be misleading there.
+	switch hud.ViewMode {
+	case 1:
+		DrawText(sf, 200, 2, "X-Y", colMath, 1)
+	case 2:
+		DrawText(sf, 200, 2, "FFT", colMath, 1)
+	default:
+		DrawText(sf, 200, 2, "M "+fmtTdiv(hud.TdivS), colInfo, 1)
+	}
+	// Math legend so the purple trace is identified (and not confused with a ref).
+	if hud.MathMode != 0 && hud.ViewMode == 0 {
+		names := []string{"", "C1+C2", "C1-C2", "C1×C2"}
+		DrawText(sf, 300, 2, "M:"+names[hud.MathMode&3], colMath, 1)
+	}
 
 	edge := "^"
 	if !hud.TrigRising {

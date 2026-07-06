@@ -89,7 +89,7 @@ func buildHUD(e *engine.Engine, fe *analog.FrontEnd) lcd.HUD {
 		hud.ShowC1, hud.ShowC2 = mv.ShowC1, mv.ShowC2
 		hud.ShowMeas = mv.ShowMeas
 		hud.ViewMode, hud.MathMode = mv.ViewMode, mv.MathMode
-		hud.AutosetBusy = mv.AutosetBusy
+		hud.AutosetBusy, hud.AutosetMsg = mv.AutosetBusy, mv.AutosetMsg
 		rv := pc.RefView()
 		for i := 0; i < 2; i++ {
 			hud.RefC1[i], hud.RefC2[i], hud.RefShow[i] = rv[i].C1, rv[i].C2, rv[i].Show

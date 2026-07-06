@@ -158,6 +158,7 @@ type Controller struct {
 	// autoset runs as a background sweep; autosetStop cancels it (second AUTO).
 	autosetBusy bool
 	autosetStop chan struct{}
+	autosetMsg  string     // banner text while busy ("AUTOSET…" / a result note)
 	refs        [2]refWave // saved reference waveforms (REF A/B)
 }
 
@@ -320,6 +321,14 @@ func (c *Controller) button(code int) {
 // so a step lands relative to whatever the web UI / SCPI last set — not a
 // stale panel-local value (which would snap the setting on the first click).
 func (c *Controller) resync() {
+	// Autoset owns the shadows while it sweeps (it writes them under mu on its own
+	// goroutine). Skip here so the injected-knob path can't race it either.
+	c.mu.Lock()
+	busy := c.autosetBusy
+	c.mu.Unlock()
+	if busy {
+		return
+	}
 	st := c.eng.Snapshot()
 	if st.TrigCode != 0 {
 		c.trigCode = st.TrigCode
@@ -349,6 +358,15 @@ func absf(x float64) float64 {
 func (c *Controller) knob(m [5]uint16) {
 	raw := m[4]
 	if raw == 0 {
+		return
+	}
+	// Autoset owns the shadows while it sweeps; resync() below writes them
+	// unguarded, so the busy check MUST be here (before resync), not just in
+	// dispatch() — otherwise a knob turn mid-sweep races the autoset goroutine.
+	c.mu.Lock()
+	busy := c.autosetBusy
+	c.mu.Unlock()
+	if busy {
 		return
 	}
 	c.resync()
@@ -428,6 +446,7 @@ func (c *Controller) dispatch(name string, dir, steps int) {
 func (c *Controller) pushLEDs() {
 	c.mu.Lock()
 	c1, c2, pg := c.chDisp[0], c.chDisp[1], c.menuPage
+	running, norm := c.running, c.norm // read under the lock — both goroutines write these
 	c.mu.Unlock()
 	var word uint16
 	if c1 {
@@ -436,18 +455,18 @@ func (c *Controller) pushLEDs() {
 	if c2 {
 		word |= ledCH2
 	}
-	if c.running {
+	if running {
 		word |= ledRun
 	} else {
 		word |= ledStop
 	}
-	if c.norm {
+	if norm {
 		word |= ledSingle
 	}
 	switch pg { // light the active menu lamp (spec 08 §6.4/§8.2)
-	case pgAcq:
+	case pgAcq, pgRef: // REF is ACQUIRE's second page
 		word |= ledAcquire
-	case pgDisp:
+	case pgDisp, pgChan: // CHANNEL is DISPLAY's second page
 		word |= ledDisplay
 	}
 	c.eng.SetLEDs(word)
