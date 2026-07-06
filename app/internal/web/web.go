@@ -98,6 +98,12 @@ type Panel interface {
 	InjectKnob(name string, dir, steps int) bool
 }
 
+// superresReporter is the optional device super-res status surface (the panel
+// Controller implements it). Handlers type-assert so test doubles can omit it.
+type superresReporter interface {
+	SuperresStatus() (active, review bool, bits float64, frames, rejected int, status string)
+}
+
 // frameWaiter is the optional long-poll surface: implemented by main's
 // scopeSource (delegating to frames.Fanout.WaitNext). Handlers type-assert
 // for it so test doubles without it degrade to a short seq poll.
@@ -274,6 +280,14 @@ type statusReply struct {
 	DC1V        float64   `json:"dc1_v"` // calibrated DC diagnostic (GAIN/110)
 	DC2V        float64   `json:"dc2_v"`
 	Version     string    `json:"version"`
+
+	// Device super-res (panel stack-and-crunch) live state; omitted when inactive.
+	SRActive   bool    `json:"sr_active,omitempty"`
+	SRReview   bool    `json:"sr_review,omitempty"`
+	SRBits     float64 `json:"sr_bits,omitempty"`
+	SRFrames   int     `json:"sr_frames,omitempty"`
+	SRRejected int     `json:"sr_rejected,omitempty"`
+	SRStatus   string  `json:"sr_status,omitempty"`
 }
 
 func (s *Server) hStatus(w http.ResponseWriter, r *http.Request) {
@@ -285,6 +299,9 @@ func (s *Server) hStatus(w http.ResponseWriter, r *http.Request) {
 		TrigCodeMin: engine.TrigCodeMin,
 		TrigCodeMax: engine.TrigCodeMax,
 		Version:     buildinfo.String(),
+	}
+	if sr, ok := s.panel.(superresReporter); ok {
+		rep.SRActive, rep.SRReview, rep.SRBits, rep.SRFrames, rep.SRRejected, rep.SRStatus = sr.SuperresStatus()
 	}
 	if s.fe != nil {
 		idx, emitted := s.fe.Snapshot()

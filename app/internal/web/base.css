@@ -71,7 +71,7 @@
   .btn-mini.ok { color: var(--run); }                                       /* the ● live button */
   .num { font: inherit; font-size: 11px; color: var(--text); background: var(--well);
     border: 1px solid var(--edge2); border-radius: 4px; padding: 1px 4px; }
-  .w-xs { width: 40px; } .w-sm { width: 52px; } .w-md { width: 64px; }
+  .w-xs { width: 40px; } .w-sm { width: 52px; } .w-md { width: 64px; } .w-num { width: 4.5em; }
   .readout { min-width: 48px; text-align: right; font-variant-numeric: tabular-nums; }
   .readout.xs { min-width: 26px; }
   .grow { flex: 1; } .grow.min { min-width: 60px; }

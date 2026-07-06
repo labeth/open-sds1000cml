@@ -502,3 +502,82 @@ func TestTriggerHoldoffSoftkey(t *testing.T) {
 		t.Fatalf("holdoff value not shown after set: %+v", v.Items[4])
 	}
 }
+
+// TestSuperresUX drives the device super-res state machine: UTILITY arms/cancels
+// (like SINGLE), the SUPER-RES page maps to the softkeys, and ADJUST-push toggles
+// the review view. Constant-Seq frame source → the stacker seeds once and idles
+// on dedup, so the test sees only the synchronous transitions (the stacking
+// numerics are covered by the golden-vector parity test).
+func TestSuperresUX(t *testing.T) {
+	c, eng, _ := newC(t)
+	page := func() int { c.mu.Lock(); defer c.mu.Unlock(); return c.menuPage }
+
+	n := 256
+	sig := make([]uint8, n)
+	for i := range sig {
+		sig[i] = uint8(40 + (i*7)%160) // varied — not flat, not railed
+	}
+	fr := &engine.Frame{C1: sig, C2: sig, Valid: n, EdgeX: 32, SampleS: 1e-9, Seq: 0}
+	c.SetFrameSource(func(fn func(*engine.Frame)) { fn(fr) })
+
+	// UTILITY arms super-res.
+	c.button(btnUtility)
+	if !c.SuperresView().Active {
+		t.Fatal("UTILITY did not arm super-res")
+	}
+	if page() != pgSuperres {
+		t.Fatalf("arming did not open the SUPER-RES page: page=%d", page())
+	}
+	if got := eng.calls[len(eng.calls)-1]; got != (call{"run", 1, 0}) {
+		t.Fatalf("arm did not resume RUN: %v", got)
+	}
+	if w := eng.leds[len(eng.leds)-1]; w&ledUtility == 0 {
+		t.Errorf("UTILITY lamp not lit while active: %#x", w)
+	}
+
+	// Default menu: Channel C1 / Grid x32 / Stop on bits / Target +4.0b / Reset.
+	want := []MenuItem{{"Channel", "C1"}, {"Grid", "x32"}, {"Stop on", "bits"}, {"Target", "+4.0b"}, {"Reset", ""}}
+	v := c.MenuView()
+	if v.Title != "SUPER-RES" || len(v.Items) != 5 {
+		t.Fatalf("SUPER-RES menu wrong: title=%q items=%d", v.Title, len(v.Items))
+	}
+	for i, w := range want {
+		if v.Items[i] != w {
+			t.Errorf("slot %d = %+v, want %+v", i, v.Items[i], w)
+		}
+	}
+
+	// F3 (slot 2) cycles the stop mode bits→stacks and reseeds a sensible target.
+	c.menuButton(btnF3)
+	if v = c.MenuView(); v.Items[2].Value != "stacks" || v.Items[3].Value != "500" {
+		t.Errorf("stop-mode cycle: %+v / %+v", v.Items[2], v.Items[3])
+	}
+
+	// F1 (slot 0) toggles the aligned channel C1→C2 (rebuilds the stack).
+	c.menuButton(btnF1)
+	if v = c.MenuView(); v.Items[0].Value != "C2" {
+		t.Errorf("channel toggle: %+v", v.Items[0])
+	}
+
+	// ADJUST/intensity push toggles the stacked-trace review view.
+	c.button(btnAdjustPsh)
+	if !c.SuperresView().Review {
+		t.Error("ADJUST-push did not enter review")
+	}
+	c.button(btnAdjustPsh)
+	if c.SuperresView().Review {
+		t.Error("ADJUST-push did not leave review")
+	}
+
+	// UTILITY again cancels: mode off, page closed, lamp dark.
+	c.button(btnUtility)
+	if c.SuperresView().Active {
+		t.Fatal("second UTILITY did not cancel super-res")
+	}
+	if page() != pgNone {
+		t.Errorf("cancel did not close the menu: page=%d", page())
+	}
+	if w := eng.leds[len(eng.leds)-1]; w&ledUtility != 0 {
+		t.Errorf("UTILITY lamp still lit after cancel: %#x", w)
+	}
+}

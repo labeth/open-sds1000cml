@@ -2007,7 +2007,10 @@ function srUpdateStats(final) {
   const noise = res.sigmaStack > 0
     ? `σ ${res.sigmaSingle.toFixed(2)}→${res.sigmaStack.toFixed(3)} codes · +${res.bitsGained.toFixed(1)} bits${res.sigmaMeasured ? "" : "~"} (eff ${res.effBits.toFixed(1)})`
     : "σ n/a on this grid — read per-tone SNR in FFT";
-  srStatus(`${res.frames} stacked · ${res.rejected} rej` + (res.clipped ? ` (${res.clipped} clip)` : "") + (res.reseeds ? ` · reseed ${res.reseeds}` : "") +
+  // Gated reference-lock stacks OCCURRENCES (hits) — one frame yields many on a
+  // repetitive signal — so report hits · frames; the auto path reports frames.
+  const count = res.gated ? `${res.hits} hits · ${res.frames} fr` : `${res.frames} stacked`;
+  srStatus(`${count} · ${res.rejected} rej` + (res.clipped ? ` (${res.clipped} clip)` : "") + (res.reseeds ? ` · reseed ${res.reseeds}` : "") +
     ` · ${el}s · ${noise} · ${rate} grid · fill ${(res.fill * 100).toFixed(1)}%`);
 }
 
@@ -2018,7 +2021,7 @@ function srTargetReached() {
   if (!sr.st || sr.stopVal <= 0) return false;
   switch (sr.stopMode) {
     case "bits":   return sr.lastBits >= sr.stopVal;
-    case "stacks": return sr.st.frames >= sr.stopVal;
+    case "stacks": return (sr.st.gated ? sr.st.hits : sr.st.frames) >= sr.stopVal;
     case "time":   return (performance.now() - sr.t0) / 1000 >= sr.stopVal;
   }
   return false;

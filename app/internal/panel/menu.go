@@ -19,8 +19,9 @@ const (
 	pgCursor // on-screen cursors (reached by re-pressing HORIZONTAL / CURSORS key)
 	pgRef    // reference waveforms REF A/B (reached by re-pressing ACQUIRE)
 	pgMain   // MAIN menu (MENU key): navigates to every sub-page
-	pgTrigQ  // trigger-qualifier params (reached by re-pressing TRIGGER)
-	pgDecode // protocol decode (MAIN ▸ Decode)
+	pgTrigQ    // trigger-qualifier params (reached by re-pressing TRIGGER)
+	pgDecode   // protocol decode (MAIN ▸ Decode)
+	pgSuperres // super-res stack-and-crunch config (opened by UTILITY while active)
 )
 
 // MenuItem is one softkey slot: a label and its current value.
@@ -206,6 +207,8 @@ func (c *Controller) pageSlots(pg int) int {
 		return 4
 	case pgChan:
 		return 5
+	case pgSuperres: // Channel / Grid×K / Stop-on / Target / Reset
+		return 5
 	case pgDecode: // varies by protocol — don't let the highlight land on a blank slot
 		switch c.decProto {
 		case 0: // Off — only the Proto selector
@@ -245,6 +248,38 @@ func (c *Controller) menuCycle(slot, dir int) {
 			c.openMenu(pgHoriz)
 		case 4:
 			c.openMenu(pgDecode) // Cursors has its own key, so Decode gets this slot
+		}
+		return
+	case pgSuperres:
+		switch slot {
+		case 0: // Channel C1/C2 — rebuild the stack aligned on the chosen channel
+			c.mu.Lock()
+			c.srCh = 1 - c.srCh
+			c.mu.Unlock()
+			c.srRearm()
+		case 1: // Grid ×K — finer/coarser fine grid; the stack size changes → rebuild
+			c.mu.Lock()
+			c.srK = nextOpt([]int{8, 16, 32, 64}, c.srK, dir)
+			c.mu.Unlock()
+			c.srRearm()
+		case 2: // Stop-on: bit → stacks → time (menu order); seed a sensible target
+			c.mu.Lock()
+			c.srStopMode = ((c.srStopMode+dir)%3 + 3) % 3
+			c.srStopVal = []float64{4, 500, 60}[c.srStopMode]
+			c.mu.Unlock()
+		case 3: // Target for the active stop mode
+			c.mu.Lock()
+			switch c.srStopMode {
+			case 0: // bits
+				c.srStopVal = clampF(c.srStopVal+float64(dir)*0.5, 0.5, 8)
+			case 1: // stacks
+				c.srStopVal = clampF(c.srStopVal+float64(dir)*50, 50, 100000)
+			case 2: // seconds
+				c.srStopVal = clampF(c.srStopVal+float64(dir)*10, 5, 3600)
+			}
+			c.mu.Unlock()
+		case 4: // Reset — clear the accumulation, keep the locked reference
+			c.srReqReset()
 		}
 		return
 	case pgDecode:
@@ -526,6 +561,7 @@ func (c *Controller) MenuView() MenuView {
 	zoom, zoomOff, persist := c.zoom, c.zoomOff, c.persist
 	decProto, decBaud, decChA, decChB := c.decProto, c.decBaud, c.decChA, c.decChB
 	decCPOL, decCPHA, decFormat := c.decCPOL, c.decCPHA, c.decFormat
+	srMode, srVal, srCh, srK := c.srStopMode, c.srStopVal, c.srCh, c.srK
 	c.mu.Unlock()
 	v := MenuView{Open: pg != pgNone, Sel: sel, ShowC1: c1, ShowC2: c2, ShowMeas: meas,
 		ViewMode: view, MathMode: mth, AutosetBusy: busy, AutosetMsg: amsg,
@@ -721,6 +757,25 @@ func (c *Controller) MenuView() MenuView {
 			{"Show B", show(rB, rBs)},
 			{"Clear", ""},
 		}
+	case pgSuperres:
+		modes := []string{"bits", "stacks", "time"}
+		tgt := ""
+		switch srMode {
+		case 0:
+			tgt = fmt.Sprintf("+%.1fb", srVal)
+		case 1:
+			tgt = fmt.Sprintf("%d", int(srVal+0.5))
+		case 2:
+			tgt = fmtEng(srVal, "s")
+		}
+		v.Title = "SUPER-RES"
+		v.Items = []MenuItem{
+			{"Channel", ternary(srCh == 1, "C2", "C1")},
+			{"Grid", fmt.Sprintf("x%d", srK)},
+			{"Stop on", modes[srMode%3]},
+			{"Target", tgt},
+			{"Reset", ""},
+		}
 	case pgCursor:
 		typ, sel := "Time", "A"
 		if curType == 1 {
@@ -761,6 +816,10 @@ func nameCode(name string) (int, bool) {
 		return btnCh2VdivPush, true
 	case "triglvlpush": // push TRIG LEVEL knob → flip slope rise/fall
 		return btnTrigLvlPush, true
+	case "utility", "util": // toggle super-res like SINGLE (arm ⇄ cancel)
+		return btnUtility, true
+	case "adjustpush", "intensity": // ADJUST/intensity knob push → toggle SR review
+		return btnAdjustPsh, true
 	case "f1":
 		return btnF1, true
 	case "f2":

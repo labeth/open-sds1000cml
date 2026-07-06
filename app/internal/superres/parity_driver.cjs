@@ -13,17 +13,18 @@ st.c[0].vpc = st.c[1].vpc = 1 / 32;
 const arr = a => Int16Array.from(a);
 const f0 = frames[0];
 const seedOk = SR.srSeedRef(st, arr(f0.c1), arr(f0.c2), f0.edgeX);
-const disp = [], shifts = [];
+const disp = [], hitsAfter = [];
 for (let i = 1; i < frames.length; i++) {
-  const f = frames[i], before = st.frames;
+  const f = frames[i];
   disp.push(SR.srFeed(st, arr(f.c1), arr(f.c2), { edgeX: f.edgeX }));
-  shifts.push(st.frames > before ? st.shifts[st.shifts.length - 1] : null);
+  hitsAfter.push(st.hits);
 }
 const res = SR.srResult(st, { stride: 1 });
 let meanSum = 0, meanCount = 0;
 for (let b = 0; b < res.mean.length; b++) if (res.mean[b] !== -1) { meanSum += res.mean[b]; meanCount++; }
 process.stdout.write(JSON.stringify({
-  seedOk, disp, shifts, frames: st.frames, rejected: st.rejected,
+  seedOk, disp, hitsAfter, gridL: st.gridL, gateLo: st.gateLo, gateHi: st.gateHi,
+  frames: st.frames, hits: st.hits, rejected: st.rejected,
   bitsGained: res.bitsGained, sigmaSingle: res.sigmaSingle, sigmaStack: res.sigmaStack,
   meanSum, meanCount,
 }));

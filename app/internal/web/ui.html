@@ -76,7 +76,7 @@
         <label>ch <select id="srCh"><option value="1">C1</option><option value="2">C2</option></select></label>
         <label title="stop the crunch when the target is reached. +bits and stacks are ACQUISITION-RATE INDEPENDENT (same result whether crunching fast or slow — matches the device); time is not.">stop
           <select id="srStopMode"><option value="bits">+bits</option><option value="stacks">stacks</option><option value="time" selected>time&nbsp;s</option><option value="manual">manual</option></select>
-          <input id="srStopVal" type="number" min="0" step="10" value="60" style="width:4.5em"></label>
+          <input id="srStopVal" type="number" min="0" step="10" value="60" class="w-num"></label>
         <label title="resample kernel. interp: every bin averages every frame — lowest noise floor, but softens content near the raw Nyquist. cubic: Catmull-Rom, flatter passband. drizzle: deposit real samples at their aligned sub-sample position — best fidelity for near-Nyquist tones (needs frames ≫ grid×), at a higher noise floor.">kernel <select id="srKernel"><option value="interp" selected>interp</option><option value="cubic">cubic</option><option value="drizzle">drizzle</option></select></label>
         <label title="sweep the offset DAC by sub-LSB steps across frames (subtracted back in software) so the 8-bit quantizer's staircase averages out"><input type="checkbox" id="srDither"> dither</label>
       </div>

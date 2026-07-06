@@ -15,6 +15,7 @@ import (
 
 	"open-sds/app/internal/analog"
 	"open-sds/app/internal/engine"
+	"open-sds/app/internal/superres"
 )
 
 // Engine is the command surface the controller drives (spec 08 §4).
@@ -71,7 +72,7 @@ const (
 	ledAcquire = 0x0200
 	ledDisplay = 0x0400
 	ledSaveRec = 0x0800 // SAVE/RECALL (not driven)
-	ledUtility = 0x1000 // UTILITY (not driven)
+	ledUtility = 0x1000 // UTILITY — lit while super-res is active (toggle like SINGLE)
 	ledRun     = 0x2000 // RUN (green element of the bicolor RUN/STOP lamp)
 	ledStop    = 0x4000 // STOP (red element)
 	ledSingle  = 0x8000
@@ -92,6 +93,9 @@ var (
 	btnCh1VdivPush = bcode(1, 9) // 0x65:9 — push CH1 V/DIV → trigger source C1
 	btnCh2VdivPush = bcode(2, 1) // 0x66:1 — push CH2 V/DIV → trigger source C2
 	btnTrigLvlPush = bcode(0, 9) // 0x64:9 — push TRIG LEVEL → flip slope rise/fall
+
+	btnUtility   = bcode(2, 3) // 0x66:3 (spec 08 §6.4) — toggle super-res like SINGLE
+	btnAdjustPsh = bcode(1, 1) // 0x65:1 (spec 08 §6.3) — ADJUST/intensity push: toggle SR review
 )
 
 // knobDef is one row of the FIXED FPGA priority order (spec 08 §3): exactly
@@ -189,6 +193,25 @@ type Controller struct {
 	autosetMsg  string     // banner text while busy ("AUTOSET…" / a result note)
 	refs        [2]refWave // saved reference waveforms (REF A/B)
 
+	// Super-res (device stack-and-crunch, reference-locked — SINGLE a frame, then
+	// UTILITY). srActive gates the mode; a stacker goroutine feeds srStack OFF the
+	// render lock; srReview toggles the stacked-trace view (ADJUST-knob push).
+	srActive   bool
+	srReview   bool
+	srStack    *superres.Stack
+	srStop     chan struct{}
+	srStatus   string
+	srK        int     // fine-grid factor
+	srStopMode int     // 0=bits, 1=stacks, 2=time (menu order bit→stacks→time)
+	srStopVal  float64 // target for the active stop mode
+	srCh       int     // stacked/aligned channel (0=C1,1=C2)
+	srT0       time.Time
+	srMean     []float32 // latest crunched trace for the review render (guarded by mu)
+	srBits     float64   // latest measured bits gained (guarded by mu)
+	srFrames   int       // stacked frame count (guarded by mu — srStack.Frames races)
+	srRejected int       // rejected (non-matching) frame count (guarded by mu)
+	srResetReq bool      // Reset softkey → srLoop clears the accumulation next tick
+
 	// Trigger-qualifier shadows (the engine has no getters for these), edited on
 	// the TRIGGER-qualifier sub-page. ns for widths/times; fractions 0..1.
 	pulseLvl, pulseMin, pulseMax         float64
@@ -217,6 +240,9 @@ func New(eng Engine, fe Analog, keyFD int, tdivs []float64, startTdiv float64, l
 		zoom:     1,
 		decBaud:  115200,
 		decChA:   0, decChB: 1, // UART on C1; I2C/SPI clk on C1, data on C2
+		// Super-res defaults: fine-grid ×32, stop on +4 bits (the user's example),
+		// stacking C1. Menu stop-mode order is bit→stacks→time (0/1/2).
+		srK: 32, srStopMode: 0, srStopVal: 4, srCh: 0,
 		// Seed the qualifier shadows to the engine's defaultTrigParams so the
 		// pgTrigQ page agrees with the engine from boot (slope 0.2/0.8, neg sync).
 		pulseLvl: 0.5, pulseMin: 100, pulseMax: 1000,
@@ -374,6 +400,12 @@ func (c *Controller) button(code int) {
 		return
 	case btnTrigLvlPush:
 		c.eng.SetTrigSlope(!c.eng.Snapshot().TrigRising) // push TRIG LEVEL → flip edge
+		return
+	case btnUtility:
+		c.srToggle() // arm ⇄ cancel super-res (like SINGLE); handles its own LEDs
+		return
+	case btnAdjustPsh:
+		c.srReviewToggle() // ADJUST/intensity push → toggle the stacked-trace review
 		return
 	default:
 		// Menu / softkey / channel buttons (spec 08 §6). Anything else is
@@ -540,6 +572,7 @@ func (c *Controller) pushLEDs() {
 	c.mu.Lock()
 	c1, c2, pg, meas := c.chDisp[0], c.chDisp[1], c.menuPage, c.showMeas
 	running, single, math := c.running, c.single, c.mathMode
+	srActive := c.srActive
 	c.mu.Unlock()
 	var word uint16
 	if c1 {
@@ -558,6 +591,9 @@ func (c *Controller) pushLEDs() {
 	}
 	if single { // SINGLE lamp: a single-shot is armed (NOT the NORM trigger mode)
 		word |= ledSingle
+	}
+	if srActive { // UTILITY lamp lit while super-res is stacking (toggle like SINGLE)
+		word |= ledUtility
 	}
 	if meas {
 		word |= ledMeasure // MEASURE key lamp tracks the panel toggle

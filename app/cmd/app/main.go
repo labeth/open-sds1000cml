@@ -107,6 +107,9 @@ func buildHUD(e *engine.Engine, fe *analog.FrontEnd) lcd.HUD {
 		for i, it := range mv.Items {
 			hud.MenuItems[i] = lcd.MenuItem{Label: it.Label, Value: it.Value}
 		}
+		sv := pc.SuperresView()
+		hud.SRActive, hud.SRReview, hud.SRStatus = sv.Active, sv.Review, sv.Status
+		hud.SRBits, hud.SRMean, hud.SRk = sv.Bits, sv.Mean, sv.K
 	}
 	return hud
 }

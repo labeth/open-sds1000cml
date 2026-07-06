@@ -9,11 +9,13 @@ import (
 	"testing"
 )
 
-// synthetic burst/slow frames, generated ONCE in Go and fed to BOTH engines
-// (the same values, so noise is baked in identically). Mirrors the web fixture.
+// synthetic REPETITIVE frames (triangle) plus one non-matching frame, generated
+// ONCE in Go and fed to BOTH engines (same values, noise baked in identically).
+// Mirrors the web multi-hit fixture: the auto-gate narrows to one period, so each
+// frame yields many hits; the last frame carries a different waveform → reject.
 func genFrames() (N, K, align int, frames []jframe) {
-	N, K, align = 2048, 32, 0
-	const edge = 200
+	N, K, align = 2048, 16, 0
+	const edge, P = 40, 40
 	var seed int64 = 12345
 	rnd := func() float64 { // deterministic LCG in [-0.5,0.5]
 		seed = (seed*1103515245 + 12345) & 0x7fffffff
@@ -29,46 +31,33 @@ func genFrames() (N, K, align int, frames []jframe) {
 		}
 		return int16(r)
 	}
-	base := func(i int) float64 {
-		if i < edge {
-			return 128
+	tval := func(t float64) float64 {
+		ph := math.Mod(math.Mod(t, P)+P, P)
+		if ph < P/2 {
+			return 128 + (-40 + 160*ph/P)
 		}
-		if i < edge+5 {
-			return 128 + 62*float64(i-edge)/5
-		}
-		return 190
+		return 128 + (120 - 160*ph/P)
 	}
-	burst := func(packetShift int, na float64) []int16 {
+	tri := func(frac, na float64) []int16 {
 		a := make([]int16, N)
 		for i := 0; i < N; i++ {
-			v := base(i)
-			p0 := 260 + packetShift
-			if i >= p0 && i < p0+320 {
-				v = 190 + 48*math.Sin(float64(i-p0)*2*math.Pi/9)
-			}
-			a[i] = clamp(v + na*rnd())
+			a[i] = clamp(tval(float64(i)-frac) + na*rnd())
 		}
 		return a
 	}
-	slow := func(na float64) []int16 {
+	other := func(na float64) []int16 { // a DIFFERENT waveform (slow ramp) → no hits
 		a := make([]int16, N)
 		for i := 0; i < N; i++ {
-			v := base(i)
-			if i >= 260 && i < 900 {
-				v = 190 - 40*float64(i-260)/640
-			}
-			a[i] = clamp(v + na*rnd())
+			a[i] = clamp(90 + 70*float64(i)/float64(N) + na*rnd())
 		}
 		return a
 	}
 	mk := func(sig []int16) jframe { return jframe{C1: sig, C2: sig, EdgeX: edge} }
-	frames = append(frames, mk(burst(0, 0))) // reference
-	for _, s := range []int{0, 6, 30, -18, 12, -6} {
-		frames = append(frames, mk(burst(s, 6)))
+	frames = append(frames, mk(tri(0, 0))) // reference
+	for _, fr := range []float64{0, 0.5, 0, 0.5} {
+		frames = append(frames, mk(tri(fr, 6)))
 	}
-	for i := 0; i < 5; i++ {
-		frames = append(frames, mk(slow(6)))
-	}
+	frames = append(frames, mk(other(6))) // non-matching → rejected
 	return
 }
 
@@ -79,16 +68,20 @@ type jframe struct {
 }
 
 type jsResult struct {
-	SeedOk      bool      `json:"seedOk"`
-	Disp        []string  `json:"disp"`
-	Shifts      []float64 `json:"shifts"` // JSON null → 0; fine, we key off Disp
-	Frames      int       `json:"frames"`
-	Rejected    int       `json:"rejected"`
-	BitsGained  float64   `json:"bitsGained"`
-	SigmaSingle float64   `json:"sigmaSingle"`
-	SigmaStack  float64   `json:"sigmaStack"`
-	MeanSum     float64   `json:"meanSum"`
-	MeanCount   int       `json:"meanCount"`
+	SeedOk      bool     `json:"seedOk"`
+	Disp        []string `json:"disp"`
+	HitsAfter   []int    `json:"hitsAfter"`
+	GridL       int      `json:"gridL"`
+	GateLo      int      `json:"gateLo"`
+	GateHi      int      `json:"gateHi"`
+	Frames      int      `json:"frames"`
+	Hits        int      `json:"hits"`
+	Rejected    int      `json:"rejected"`
+	BitsGained  float64  `json:"bitsGained"`
+	SigmaSingle float64  `json:"sigmaSingle"`
+	SigmaStack  float64  `json:"sigmaStack"`
+	MeanSum     float64  `json:"meanSum"`
+	MeanCount   int      `json:"meanCount"`
 }
 
 // TestParityJS asserts the Go reference-locked stacker converges to the SAME
@@ -133,36 +126,33 @@ func TestParityJS(t *testing.T) {
 		t.Fatal("JS seed failed")
 	}
 	var goDisp []string
-	var goShift []float64
+	var goHits []int
 	for i := 1; i < len(frames); i++ {
-		before := st.Frames
 		d := st.Feed(u8(frames[i].C1), u8(frames[i].C2), frames[i].EdgeX)
 		goDisp = append(goDisp, d)
-		if st.Frames > before {
-			goShift = append(goShift, st.Shifts[len(st.Shifts)-1])
-		} else {
-			goShift = append(goShift, math.NaN())
-		}
+		goHits = append(goHits, st.Hits)
 	}
 	res := st.Result(false, 1)
 
-	// --- compare ---
-	acc := func(d string) bool { return d == "stacked" }
+	// --- compare (bit-identical: same gate, same per-frame disposition, same
+	// running hit count, same mean checksum; bits within a small log2 tol) ---
+	if st.GateLo != js.GateLo || st.GateHi != js.GateHi || st.GridL != js.GridL {
+		t.Errorf("gate mismatch: go [%d,%d) L=%d, js [%d,%d) L=%d", st.GateLo, st.GateHi, st.GridL, js.GateLo, js.GateHi, js.GridL)
+	}
 	if len(goDisp) != len(js.Disp) {
 		t.Fatalf("disp length %d vs %d", len(goDisp), len(js.Disp))
 	}
 	for i := range goDisp {
-		if acc(goDisp[i]) != acc(js.Disp[i]) {
-			t.Errorf("frame %d accept mismatch: go=%q js=%q", i+1, goDisp[i], js.Disp[i])
+		if goDisp[i] != js.Disp[i] {
+			t.Errorf("frame %d disp mismatch: go=%q js=%q", i+1, goDisp[i], js.Disp[i])
 		}
-		if acc(goDisp[i]) && acc(js.Disp[i]) {
-			if math.Abs(goShift[i]-js.Shifts[i]) > 1e-6 {
-				t.Errorf("frame %d shift mismatch: go=%v js=%v", i+1, goShift[i], js.Shifts[i])
-			}
+		if goHits[i] != js.HitsAfter[i] {
+			t.Errorf("frame %d running-hits mismatch: go=%d js=%d", i+1, goHits[i], js.HitsAfter[i])
 		}
 	}
-	if st.Frames != js.Frames || st.Rejected != js.Rejected {
-		t.Errorf("counts mismatch: go frames=%d rej=%d, js frames=%d rej=%d", st.Frames, st.Rejected, js.Frames, js.Rejected)
+	if st.Frames != js.Frames || st.Hits != js.Hits || st.Rejected != js.Rejected {
+		t.Errorf("counts mismatch: go frames=%d hits=%d rej=%d, js frames=%d hits=%d rej=%d",
+			st.Frames, st.Hits, st.Rejected, js.Frames, js.Hits, js.Rejected)
 	}
 	if res.MeanCountNonGap() != js.MeanCount {
 		t.Errorf("mean count mismatch: go=%d js=%d", res.MeanCountNonGap(), js.MeanCount)
@@ -173,8 +163,11 @@ func TestParityJS(t *testing.T) {
 	if d := math.Abs(res.BitsGained - js.BitsGained); d > 0.02 {
 		t.Errorf("bitsGained mismatch: go=%.4f js=%.4f (Δ%.4f)", res.BitsGained, js.BitsGained, d)
 	}
-	t.Logf("parity: frames go=%d js=%d, bits go=%.3f js=%.3f, meanSum go=%.4f js=%.4f",
-		st.Frames, js.Frames, res.BitsGained, js.BitsGained, res.MeanSumNonGap(), js.MeanSum)
+	if st.Hits < 20 {
+		t.Errorf("expected multi-hit (>=20 hits from repetitive frames), got %d", st.Hits)
+	}
+	t.Logf("parity: gate [%d,%d) L=%d, frames go=%d/js=%d, hits go=%d/js=%d, bits go=%.3f/js=%.3f, meanSum go=%.4f/js=%.4f",
+		st.GateLo, st.GateHi, st.GridL, st.Frames, js.Frames, st.Hits, js.Hits, res.BitsGained, js.BitsGained, res.MeanSumNonGap(), js.MeanSum)
 }
 
 // helpers on Result for the mean checksum (sum/count of non-gap bins).

@@ -63,6 +63,15 @@ type HUD struct {
 	MenuTitle string
 	MenuItems []MenuItem
 	MenuSel   int
+
+	// Super-res stack-and-crunch overlay (reference-locked). SRActive shows the
+	// status HUD; SRReview replaces the live trace with the super-resolved mean.
+	SRActive bool
+	SRReview bool
+	SRStatus string
+	SRBits   float64
+	SRMean   []float32 // review trace on the n·K fine grid; -1 = gap (nil unless review)
+	SRk      int
 }
 
 // MenuItem is one softkey slot label + value for the LCD menu overlay.
@@ -863,7 +872,11 @@ func Render(sf Surface, f *engine.Frame, hud HUD, live bool, persist ...*MemSurf
 	// X-Y / FFT only make sense on per-sample (native/decimated) frames — an
 	// envelope/roll frame has no paired samples or usable spectrum, so fall
 	// through to the Y-T envelope rendering (matches the web, which gates these).
-	if hud.ViewMode == 1 && f != nil && !f.IsEnv && len(f.C1) > 0 {
+	srReview := hud.SRReview && len(hud.SRMean) > 0
+	if srReview {
+		// Review the super-resolved mean instead of the live trace.
+		drawSuperresTrace(traceTarget, hud)
+	} else if hud.ViewMode == 1 && f != nil && !f.IsEnv && len(f.C1) > 0 {
 		drawXY(sf, f, hud)
 	} else if hud.ViewMode == 2 && f != nil && !f.IsEnv && len(f.C1) > 0 {
 		drawFFT(sf, f, hud)
@@ -959,8 +972,90 @@ func Render(sf Surface, f *engine.Frame, hud HUD, live bool, persist ...*MemSurf
 		drawCursors(sf, hud)
 	}
 	drawMenu(sf, hud)
+	if hud.SRActive {
+		drawSuperresHUD(sf, hud)
+	}
 	if hud.AutosetBusy {
 		drawAutosetBanner(sf, hud.AutosetMsg)
+	}
+}
+
+// colSR is the super-res overlay colour — magenta, distinct from C1/C2/trigger.
+var colSR = rgb(230, 120, 240)
+
+// drawSuperresHUD overlays the super-res status line (mode/bits/frames) along the
+// bottom edge while stacking is active, plus a REVIEW tag when the stacked mean
+// is on screen instead of the live trace.
+func drawSuperresHUD(sf Surface, hud HUD) {
+	tag := "SR"
+	if hud.SRReview {
+		tag = "SR REVIEW"
+	}
+	msg := fmt.Sprintf("%s  +%.1fb  x%d  %s", tag, hud.SRBits, hud.SRk, hud.SRStatus)
+	// Bottom-left, above the liveness strip; a thin backing bar keeps it legible
+	// over the trace.
+	y := H - 12
+	for by := y - 1; by < y+9 && by < H; by++ {
+		for bx := 0; bx < TextWidth(msg, 1)+8 && bx < W; bx++ {
+			sf.SetPixel(bx, by, colBG)
+		}
+	}
+	DrawText(sf, 4, y, msg, colSR, 1)
+}
+
+// drawSuperresTrace renders the super-resolved mean across the trace area. The
+// mean lives on the n·K fine grid (values ~0..255, -1 for gap bins); it is
+// decimated to one min/max vertical run per screen column so the whole record
+// shows regardless of the fine-grid size.
+func drawSuperresTrace(sf Surface, hud HUD) {
+	m := hud.SRMean
+	nb := len(m)
+	if nb == 0 {
+		return
+	}
+	prevY, havePrev := 0, false
+	for x := 0; x < W; x++ {
+		b0 := x * nb / W
+		b1 := (x + 1) * nb / W
+		if b1 <= b0 {
+			b1 = b0 + 1
+		}
+		if b1 > nb {
+			b1 = nb
+		}
+		lo, hi, any := float32(1e9), float32(-1e9), false
+		for b := b0; b < b1; b++ {
+			v := m[b]
+			if v < 0 { // gap bin
+				continue
+			}
+			if v < lo {
+				lo = v
+			}
+			if v > hi {
+				hi = v
+			}
+			any = true
+		}
+		if !any {
+			havePrev = false
+			continue
+		}
+		yHi := sampleToY(float64(hi)) // higher code → higher on screen (smaller y)
+		yLo := sampleToY(float64(lo))
+		// Connect from the previous column so single-sample columns still form a line.
+		if havePrev {
+			if prevY < yHi {
+				yHi = prevY
+			}
+			if prevY > yLo {
+				yLo = prevY
+			}
+		}
+		for y := yHi; y <= yLo; y++ {
+			sf.SetPixel(x, y, colSR)
+		}
+		prevY, havePrev = sampleToY(float64((lo+hi)/2)), true
 	}
 }
 

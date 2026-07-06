@@ -471,82 +471,79 @@ function frame(n, period, shift, noise, amp, harmonics) {
   check("meas: rise measured", m.rise_s > 0 && m.rise_s < period * 1e-8, (m.rise_s * 1e9).toFixed(1) + " ns");
 }
 
-// ---- reference-locked matching (R3/R4/R5): burst→slow→burst ----
-// single'd on a burst → stack bursts (incl. displaced from the trigger), reject
-// slow-stuff. burst and slow SHARE the trigger step (the hard case: a plain NCC
-// over the wide window is dominated by that shared DC edge and false-accepts).
+// ---- reference-lock v2: gated MULTI-HIT on a repetitive waveform ----
+// The auto-gate narrows to ONE period, so every cycle in every frame is an
+// independent occurrence — one frame yields many stacks (fast convergence), and
+// the sub-sample offset of each hit fills the fine grid (super-resolution, not
+// just averaging).
 {
-  const N = 2048, EDGE = 200;
+  const N = 2048, EDGE = 40, P = 40;         // triangle, 40-sample period
   const clampC = v => Math.max(12, Math.min(243, Math.round(v)));
-  const base = i => (i < EDGE ? 128 : (i < EDGE + 5 ? 128 + 62 * (i - EDGE) / 5 : 190));
-  const burst = (packetShift, na) => { // shared step + oscillatory packet at 260+shift
+  const tval = t => { const ph = ((t % P) + P) % P; return 128 + (ph < P / 2 ? -40 + 160 * ph / P : 120 - 160 * ph / P); };
+  const tri = (frac, na) => {                 // triangle, sub-sample shiftable by `frac`
     const a = new Int16Array(N);
-    for (let i = 0; i < N; i++) {
-      let v = base(i);
-      const p0 = 260 + packetShift;
-      if (i >= p0 && i < p0 + 320) v = 190 + 48 * Math.sin((i - p0) * 2 * Math.PI / 9);
-      a[i] = clampC(v + na * (rnd() - 0.5));
-    }
+    for (let i = 0; i < N; i++) a[i] = clampC(tval(i - frac) + na * (rnd() - 0.5));
     return a;
   };
-  const slow = na => { // SAME shared step, then a slow ramp (no oscillation)
-    const a = new Int16Array(N);
-    for (let i = 0; i < N; i++) {
-      let v = base(i);
-      if (i >= 260 && i < 900) v = 190 - 40 * (i - 260) / 640;
-      a[i] = clampC(v + na * (rnd() - 0.5));
-    }
-    return a;
-  };
-  const st = srNew(N, 32);
+  const st = srNew(N, 16);
   st.align = 0; st.c[0].vpc = st.c[1].vpc = 1 / 32;
-  const ref = burst(0, 0);
-  check("reflock: seed accepts a burst reference", srSeedRef(st, ref, ref, EDGE) === true && st.userRef === true);
-  const disp = f => srFeed(st, f, f, { maxLag: 8, edgeX: EDGE });
-  // bursts — incl. displaced from the trigger (R5) — must stack, aligned to the packet
-  check("reflock: burst +0 stacked",  disp(burst(0, 6)) === "stacked");
-  check("reflock: burst +6 stacked",  disp(burst(6, 6)) === "stacked");
-  check("reflock: burst +30 stacked (displaced)", disp(burst(30, 6)) === "stacked");
-  check("reflock: burst -18 stacked (displaced)", disp(burst(-18, 6)) === "stacked");
-  const shifts = st.shifts.slice(-4);
-  check("reflock: displaced bursts aligned to the PACKET, not the edge",
-    Math.abs(shifts[1] - 6) < 2 && Math.abs(shifts[2] - 30) < 2 && Math.abs(shifts[3] + 18) < 2,
-    shifts.map(s => s.toFixed(1)).join(","));
-  // slow frames share the edge but carry no packet → must be REJECTED (R4)
-  let slowRej = 0;
-  for (let i = 0; i < 4; i++) if (disp(slow(6)) !== "stacked") slowRej++;
-  check("reflock: all 4 slow frames rejected", slowRej === 4, slowRej + "/4");
-  check("reflock: stack held only the 4 bursts + reference", st.frames === 5, "frames=" + st.frames);
+  check("v2/multihit: seed a repetitive reference", srSeedRef(st, tri(0, 0), tri(0, 0), EDGE) === true && st.gated === true);
+  check("v2/multihit: auto-gate narrowed to ~1 period", Math.abs(st.gridL - P) <= 8, "gridL=" + st.gridL);
+  const before = st.hits;
+  const disp = srFeed(st, tri(0, 6), tri(0, 6), { edgeX: EDGE });
+  check("v2/multihit: one frame -> many hits", disp.startsWith("stacked") && st.hits - before >= 10, "hits+=" + (st.hits - before) + " " + disp);
+  for (let k = 0; k < 10; k++) srFeed(st, tri(0, 6), tri(0, 6), { edgeX: EDGE });
+  const res = srResult(st, { stride: 1 });
+  check("v2/multihit: bits gained > 0.5", res.bitsGained > 0.5, "+" + res.bitsGained.toFixed(2) + "b, hits=" + st.hits);
+  // a sub-sample-shifted repeat must still align (parabolic offset), not reject
+  check("v2/multihit: sub-sample-shifted frame stacks", srFeed(st, tri(0.5, 6), tri(0.5, 6), { edgeX: EDGE }).startsWith("stacked"));
 }
 
-// ---- reference-locked matching is GENERAL (not burst-specific) ----
-// Freeze a SPECIFIC byte pattern (e.g. a UART frame with an error) → stack frames
-// carrying the SAME pattern (incl. shifted), reject a DIFFERENT byte pattern. Both
-// share the start-bit trigger edge (the shared feature the matcher must ignore).
+// ---- reference-lock v2: GATED feature detection (UART-with-a-glitch) ----
+// Freeze a specific feature → the gate isolates it. Frames CONTAINING it stack;
+// frames without it (zero occurrences) are rejected. General: the feature is
+// whatever you froze — a glitch, one UART byte, a runt pulse.
 {
-  const N = 2048, EDGE = 300, SPB = 24, LO = 50, HI = 190;
+  const N = 1024, EDGE = 100;
   const clampC = v => Math.max(12, Math.min(243, Math.round(v)));
-  const uart = (bits, shift, na) => {
+  const withFeat = na => {                    // flat baseline + one distinctive bipolar pulse
     const a = new Int16Array(N);
-    for (let i = 0; i < N; i++) {
-      const j = i - shift;
-      let v = HI; // idle high + stop
-      if (j >= EDGE && j < EDGE + SPB) v = LO; // start bit — the shared trigger edge
-      else if (j >= EDGE + SPB && j < EDGE + SPB * 9) v = bits[((j - EDGE - SPB) / SPB) | 0] ? HI : LO;
-      a[i] = clampC(v + na * (rnd() - 0.5));
-    }
+    for (let i = 0; i < N; i++) { let v = 128; const j = i - 400; if (j >= 0 && j < 40) v = 128 + 70 * Math.sin(j * 2 * Math.PI / 40); a[i] = clampC(v + na * (rnd() - 0.5)); }
     return a;
   };
-  const A = [0, 1, 1, 0, 1, 0, 0, 1], B = [1, 0, 0, 1, 0, 1, 1, 0]; // two distinct bytes
-  const st = srNew(N, 32);
+  const other = na => {                        // a DIFFERENT, non-matching waveform (slow ramp)
+    const a = new Int16Array(N);
+    for (let i = 0; i < N; i++) a[i] = clampC(90 + 70 * i / N + na * (rnd() - 0.5));
+    return a;
+  };
+  const st = srNew(N, 16);
   st.align = 0; st.c[0].vpc = st.c[1].vpc = 1 / 32;
-  check("reflock/uart: seed a byte-pattern reference", srSeedRef(st, uart(A, 0, 0), uart(A, 0, 0), EDGE) === true);
-  const disp = f => srFeed(st, f, f, { maxLag: 8, edgeX: EDGE });
-  check("reflock/uart: same pattern stacked", disp(uart(A, 0, 6)) === "stacked");
-  check("reflock/uart: same pattern SHIFTED stacked", disp(uart(A, 25, 6)) === "stacked");
-  check("reflock/uart: DIFFERENT byte rejected", disp(uart(B, 0, 6)) !== "stacked");
-  check("reflock/uart: DIFFERENT byte shifted rejected", disp(uart(B, 25, 6)) !== "stacked");
-  check("reflock/uart: stack held only the 2 matching + reference", st.frames === 3, "frames=" + st.frames);
+  check("v2/gate: seed a feature reference", srSeedRef(st, withFeat(0), withFeat(0), EDGE) === true);
+  check("v2/gate: gate isolates the feature", st.gridL >= 16 && st.gridL <= 90, "gridL=" + st.gridL);
+  check("v2/gate: frame WITH the feature stacks", srFeed(st, withFeat(6), withFeat(6), { edgeX: EDGE }).startsWith("stacked"));
+  const rejBefore = st.rejected;
+  const d2 = srFeed(st, other(6), other(6), { edgeX: EDGE });
+  check("v2/gate: frame WITHOUT the feature rejected", d2.startsWith("rejected") && st.rejected === rejBefore + 1, d2);
+}
+
+// ---- reference-lock v2: the DRIZZLE kernel is preserved on the gated path ----
+// interp is the default (smooth, lowest noise); drizzle deposits real samples at
+// their sub-sample position — near-Nyquist fidelity at a higher noise floor (the
+// 250 MHz path). Both must stack; drizzle must fill the fine grid (not all gaps).
+{
+  const N = 2048, EDGE = 40, P = 40;
+  const clampC = v => Math.max(12, Math.min(243, Math.round(v)));
+  const tval = t => { const ph = ((t % P) + P) % P; return 128 + (ph < P / 2 ? -40 + 160 * ph / P : 120 - 160 * ph / P); };
+  const tri = (frac, na) => { const a = new Int16Array(N); for (let i = 0; i < N; i++) a[i] = clampC(tval(i - frac) + na * (rnd() - 0.5)); return a; };
+  const st = srNew(N, 16);
+  st.align = 0; st.c[0].vpc = st.c[1].vpc = 1 / 32;
+  st.kernel = "drizzle";
+  check("v2/drizzle: seed", srSeedRef(st, tri(0, 0), tri(0, 0), EDGE) === true && st.kernel === "drizzle");
+  for (let k = 0; k < 12; k++) srFeed(st, tri(k * 0.13, 6), tri(k * 0.13, 6), { edgeX: EDGE }); // varied sub-sample phase
+  const res = srResult(st, { stride: 1 });
+  const filled = res.mean.reduce((a, v) => a + (v >= 0 ? 1 : 0), 0);
+  check("v2/drizzle: fine grid filled (not gappy staircase)", filled / res.mean.length > 0.6, (100 * filled / res.mean.length).toFixed(0) + "% filled");
+  check("v2/drizzle: bits gained > 0.5", res.bitsGained > 0.5, "+" + res.bitsGained.toFixed(2) + "b, hits=" + st.hits);
 }
 
 if (fails) { console.log(fails + " FAILURES"); process.exit(1); }

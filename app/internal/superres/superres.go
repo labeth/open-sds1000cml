@@ -13,7 +13,10 @@
 //     accumulators/scores. Single-threaded, fixed feed order, one accumulator/bin.
 package superres
 
-import "math"
+import (
+	"math"
+	"strconv"
+)
 
 // jsRound mirrors JS Math.round (round half UP, toward +Inf): base/shift are
 // routinely negative x.5 where Go's math.Round (half away from zero) diverges.
@@ -50,6 +53,19 @@ type Stack struct {
 	tpl         *template
 	MaxShift    int     // translation budget (samples) for the locate; 0 → default 64
 	MinMatch    float64 // match-score cut; 0 → default 0.8
+
+	// Reference-lock v2: gated multi-hit sub-sample stacker (see superres.js).
+	// The gate [GateLo,GateHi) is the deterministic feature; the grid is GridL·K
+	// (not N·K); Hits counts occurrences (one frame yields many on a repetitive
+	// signal). SearchR bounds the per-frame search to trigger-predicted ±R (0 =
+	// whole frame).
+	Gated    bool
+	Hits     int
+	GateLo   int
+	GateHi   int
+	GridL    int
+	SearchR  int
+	gtpl     *gateTpl
 }
 
 // New allocates a stack: n input samples → n*K fine bins per channel.
@@ -251,10 +267,255 @@ func (st *Stack) matchLocate(sig []uint8, base, R int) (matchResult, bool) {
 	return matchResult{shift: float64(bestLoc - t.lo), score: best, ambig: second > 0.9*best}, true
 }
 
-// SeedRef adopts a specific (frozen) frame as the LOCKED alignment reference and
-// stacks it at shift 0. Sets UserRef so the matcher never drifts off it. Returns
-// false if the frame is unusable (flat/clipped).
+// gateTpl is the gate's matched filter: zero-mean reference window + its norm.
+type gateTpl struct {
+	data []float64
+	L    int
+	norm float64
+}
+
+type hit struct {
+	loc   int
+	score float64
+	delta float64
+}
+
+// gateTemplate builds the zero-mean unit-referenced matched filter for [lo,hi).
+func gateTemplate(ref []float32, lo, hi int) *gateTpl {
+	L := hi - lo
+	if L < 4 {
+		return nil
+	}
+	data := make([]float64, L)
+	mean := 0.0
+	for i := 0; i < L; i++ {
+		mean += float64(ref[lo+i])
+	}
+	mean /= float64(L)
+	ss := 0.0
+	for i := 0; i < L; i++ {
+		d := float64(ref[lo+i]) - mean
+		data[i] = d
+		p := d * d // materialize (no FMA fuse)
+		ss += p
+	}
+	norm := math.Sqrt(ss)
+	if !(norm > 0) {
+		return nil
+	}
+	return &gateTpl{data: data, L: L, norm: norm}
+}
+
+// detectPeriod returns the fundamental period (samples) of ref[lo:hi) via
+// normalized autocorrelation — the first local peak above 0.5 — or 0 if not
+// clearly periodic. Mirrors srDetectPeriod.
+func detectPeriod(ref []float32, lo, hi int) int {
+	W := hi - lo
+	if W < 32 {
+		return 0
+	}
+	mean := 0.0
+	for i := lo; i < hi; i++ {
+		mean += float64(ref[i])
+	}
+	mean /= float64(W)
+	x := make([]float64, W)
+	for i := 0; i < W; i++ {
+		x[i] = float64(ref[lo+i]) - mean
+	}
+	minLag, maxLag := 8, W>>1
+	prev, rising := -2.0, false
+	for lag := minLag; lag <= maxLag; lag++ {
+		dot, ea, eb := 0.0, 0.0, 0.0
+		m := W - lag
+		for i := 0; i < m; i++ {
+			a, b := x[i], x[i+lag]
+			p := a * b
+			dot += p
+			qa := a * a
+			ea += qa
+			qb := b * b
+			eb += qb
+		}
+		den := math.Sqrt(ea * eb)
+		r := 0.0
+		if den > 0 {
+			r = dot / den
+		}
+		if rising && r < prev && prev > 0.5 {
+			return lag - 1
+		}
+		rising = r > prev
+		prev = r
+	}
+	return 0
+}
+
+// gateInstall resizes the stack to an L·K gate grid, builds the gate template,
+// and seeds the reference's own gate at fractional offset 0. gate = [gLo,gHi).
+func (st *Stack) gateInstall(gLo, gHi int) bool {
+	L := gHi - gLo
+	st.Gated = true
+	st.UserRef = true
+	st.GateLo, st.GateHi, st.GridL = gLo, gHi, L
+	st.Nbins = L * st.K
+	st.StatLo, st.StatHi = 0, L
+	st.Hits = 0
+	for ch := 0; ch < 2; ch++ {
+		C := &st.C[ch]
+		C.sum = make([]float64, st.Nbins)
+		C.sum2 = make([]float64, st.Nbins)
+		C.cnt = make([]float64, st.Nbins)
+		C.sumA = make([]float64, st.Nbins)
+		C.cntA = make([]float64, st.Nbins)
+	}
+	st.gtpl = gateTemplate(st.C[st.Align].ref, gLo, gHi)
+	st.Hits = 1
+	for ch := 0; ch < 2; ch++ {
+		if st.C[ch].ref != nil {
+			st.drizzleHit(ch, st.C[ch].ref, float64(gLo), true)
+		}
+	}
+	st.Frames = 1
+	st.Scores = append(st.Scores[:0], 1)
+	st.Shifts = append(st.Shifts[:0], 0)
+	return st.gtpl != nil
+}
+
+// drizzleHit stacks one aligned occurrence onto the L·K grid by INTERP-resampling
+// (the same kernel as accumCh): grid bin b reads the frame at sub-sample position
+// p + b/K, linearly interpolated. Every fine bin gets a contribution from every
+// hit — gap-free and staircase-free. odd routes it into the A half-stack. Mirrors
+// srDrizzleHit (interp/linear branch — the device kernel).
+func (st *Stack) drizzleHit(ch int, sig []float32, p float64, odd bool) {
+	K, G, n := st.K, st.Nbins, st.N
+	C := &st.C[ch]
+	invK := 1.0 / float64(K)
+	for b := 0; b < G; b++ {
+		t := p + float64(b)*invK
+		i0 := int(math.Floor(t))
+		if i0 < 0 || i0+1 >= n {
+			continue
+		}
+		w := t - float64(i0)
+		a := float64(sig[i0]) * (1 - w)
+		bb := float64(sig[i0+1]) * w
+		v := a + bb
+		p2 := v * v // materialize (no FMA fuse)
+		C.sum[b] += v
+		C.sum2[b] += p2
+		C.cnt[b]++
+		if odd {
+			C.sumA[b] += v
+			C.cntA[b]++
+		}
+	}
+}
+
+// gateFind matched-filters the gate template across the frame and returns every
+// occurrence: NCC local maxima above the floor, L/2-separated, each with a
+// parabolic sub-sample offset. R>0 bounds to trigger-predicted ±R; R=0 = whole
+// frame. Mirrors srGateFind.
+func (st *Stack) gateFind(sig []uint8, base, R int) []hit {
+	t := st.gtpl
+	if t == nil {
+		return nil
+	}
+	L, data, tnorm, n := t.L, t.data, t.norm, st.N
+	lo, hi := 0, n-L
+	if R > 0 {
+		c := st.GateLo + base
+		lo = c - R
+		if lo < 0 {
+			lo = 0
+		}
+		hi = c + R
+		if hi > n-L {
+			hi = n - L
+		}
+	}
+	if hi < lo {
+		return nil
+	}
+	M := hi - lo + 1
+	ncc := make([]float64, M)
+	for loc := lo; loc <= hi; loc++ {
+		mean := 0.0
+		for i := 0; i < L; i++ {
+			mean += float64(sig[loc+i])
+		}
+		mean /= float64(L)
+		dot, ss := 0.0, 0.0
+		for i := 0; i < L; i++ {
+			s := float64(sig[loc+i]) - mean
+			p := data[i] * s // materialize
+			dot += p
+			q := s * s
+			ss += q
+		}
+		den := tnorm * math.Sqrt(ss)
+		sc := 0.0
+		if den > 0 {
+			sc = dot / den
+		}
+		ncc[loc-lo] = sc
+	}
+	floor := st.MinMatch
+	if floor == 0 {
+		floor = 0.8
+	}
+	minSep := L >> 1
+	if minSep < 1 {
+		minSep = 1
+	}
+	var hits []hit
+	lastLoc := -(1 << 30)
+	for k := 0; k < M; k++ {
+		sc := ncc[k]
+		if sc < floor {
+			continue
+		}
+		if k > 0 && ncc[k-1] >= sc {
+			continue
+		}
+		if k+1 < M && ncc[k+1] > sc {
+			continue
+		}
+		loc := lo + k
+		if loc-lastLoc < minSep {
+			continue
+		}
+		delta := 0.0
+		if k > 0 && k+1 < M {
+			yl, y0, yr := ncc[k-1], sc, ncc[k+1]
+			t2 := 2 * y0 // materialize (no FMA fuse of yl - 2*y0)
+			den2 := yl - t2 + yr
+			if den2 < 0 {
+				num := 0.5 * (yl - yr)
+				delta = num / den2
+				if delta > 0.5 {
+					delta = 0.5
+				} else if delta < -0.5 {
+					delta = -0.5
+				}
+			}
+		}
+		hits = append(hits, hit{loc: loc, score: sc, delta: delta})
+		lastLoc = loc
+	}
+	return hits
+}
+
+// SeedRef locks the frozen frame as the reference with an AUTO gate (active
+// region, narrowed to one period if periodic). See SeedRefGate for manual gates.
 func (st *Stack) SeedRef(sig1, sig2 []uint8, edgeX float64) bool {
+	return st.SeedRefGate(sig1, sig2, edgeX, -1, -1)
+}
+
+// SeedRefGate locks the frozen frame as the reference and installs the gate. A
+// gateLo<gateHi with gateLo>=0 is a manual gate; otherwise the gate is
+// auto-derived. Returns false if the frame is unusable (flat/clipped/no feature).
+func (st *Stack) SeedRefGate(sig1, sig2 []uint8, edgeX float64, gateLo, gateHi int) bool {
 	sigs := [2][]uint8{sig1, sig2}
 	alignSig := sigs[st.Align]
 	if len(alignSig) < st.N || Clipped(alignSig) {
@@ -284,14 +545,52 @@ func (st *Stack) SeedRef(sig1, sig2 []uint8, edgeX float64) bool {
 			ref[i] = float32(s[i])
 		}
 		st.C[ch].ref = ref
-		st.accumCh(ch, ref, 0)
 	}
-	st.Frames++
+	var gLo, gHi int
+	if gateHi > gateLo && gateLo >= 0 {
+		gLo, gHi = gateLo, gateHi
+		if gHi > st.N {
+			gHi = st.N
+		}
+	} else {
+		active := buildTemplate(st.C[st.Align].ref, st.N, st.RefEdgeX, st.N)
+		if active == nil {
+			return false
+		}
+		gLo, gHi = active.lo, active.hi+1
+		period := detectPeriod(st.C[st.Align].ref, gLo, gHi)
+		if period >= 16 && period < gHi-gLo {
+			gHi = gLo + period
+		}
+	}
+	if gHi-gLo < 4 {
+		return false
+	}
+	return st.gateInstall(gLo, gHi)
+}
+
+// ResetKeepRef clears the accumulation and re-stacks the locked reference at
+// shift 0 — a "start the stack over" that keeps the same match reference/template
+// (the Reset softkey). Must be called on the stacker goroutine (mutates the
+// accumulators), never concurrently with Feed.
+func (st *Stack) ResetKeepRef() {
+	for ch := range st.C {
+		C := &st.C[ch]
+		for i := range C.sum {
+			C.sum[i], C.sum2[i], C.cnt[i], C.sumA[i], C.cntA[i] = 0, 0, 0, 0, 0
+		}
+	}
+	st.Frames, st.Rejected, st.Clipped, st.Hits = 0, 0, 0, 0
+	st.Scores, st.Shifts = st.Scores[:0], st.Shifts[:0]
+	st.Hits = 1
+	for ch := 0; ch < 2; ch++ {
+		if st.C[ch].ref != nil {
+			st.drizzleHit(ch, st.C[ch].ref, float64(st.GateLo), true) // re-seed the gate
+		}
+	}
+	st.Frames = 1
 	st.Scores = append(st.Scores, 1)
 	st.Shifts = append(st.Shifts, 0)
-	st.UserRef = true
-	st.tpl = buildTemplate(st.C[st.Align].ref, st.N, st.RefEdgeX, st.N)
-	return true
 }
 
 // gainOffset fits g,b minimizing |ref − (g·sig[·+lag] + b)|² over [wLo,wHi).
@@ -362,9 +661,11 @@ func (st *Stack) accumCh(ch int, sig []float32, shift float64) {
 	}
 }
 
-// Feed runs the reference-locked pipeline for one frame: match against the locked
-// template, reject non-matches, drift-normalize both channels and drizzle the
-// match. Returns "stacked" | "rejected:<why>". SeedRef must have run first.
+// Feed runs the gated multi-hit pipeline for one frame: find EVERY occurrence of
+// the gate feature, then sub-sample align + drift-normalize + drizzle each onto
+// the L·K grid (both channels at the align channel's positions). Zero occurrences
+// → the frame is rejected. Returns "stacked:<n>" | "rejected:<why>". SeedRef must
+// have run first. Mirrors srGateFeed.
 func (st *Stack) Feed(sig1, sig2 []uint8, edgeX float64) string {
 	sigs := [2][]uint8{sig1, sig2}
 	alignSig := sigs[st.Align]
@@ -376,7 +677,7 @@ func (st *Stack) Feed(sig1, sig2 []uint8, edgeX float64) string {
 		st.Rejected++
 		return "rejected:clip"
 	}
-	if !st.UserRef || st.tpl == nil {
+	if !st.Gated || st.gtpl == nil {
 		st.Rejected++
 		return "rejected:no-ref"
 	}
@@ -384,66 +685,54 @@ func (st *Stack) Feed(sig1, sig2 []uint8, edgeX float64) string {
 	if st.RefEdgeX >= 0 && edgeX >= 0 {
 		base = jsRound(edgeX - st.RefEdgeX)
 	}
-	R := st.MaxShift
-	if R == 0 {
-		R = 64
-	}
-	minMatch := st.MinMatch
-	if minMatch == 0 {
-		minMatch = 0.8
-	}
-	m, ok := st.matchLocate(alignSig, base, R)
-	if !ok || m.ambig || m.score < minMatch {
+	hits := st.gateFind(alignSig, base, st.SearchR)
+	if len(hits) == 0 {
 		st.Rejected++
 		return "rejected:nomatch"
 	}
-	shiftInt := jsRound(m.shift)
-	wLo := st.tpl.lo - st.tpl.L
-	if wLo < 0 {
-		wLo = 0
-	}
-	wHi := st.tpl.hi + st.tpl.L
-	if wHi > st.N {
-		wHi = st.N
-	}
-	st.StatLo, st.StatHi = wLo, wHi
-	for ch := 0; ch < 2; ch++ {
-		s := sigs[ch]
-		if len(s) < st.N || st.C[ch].ref == nil {
-			continue
-		}
-		if ch != st.Align && Clipped(s) {
-			st.C[ch].clipSkips++
-			continue
-		}
-		f := make([]float32, st.N)
-		g, b := gainOffset(st.C[ch].ref, s, shiftInt, wLo, wHi)
-		if g != 1 || b != 0 {
-			for i := 0; i < st.N; i++ {
-				v := (float64(s[i]) - b) / g
-				if v < 0 {
-					v = 0
+	for _, h := range hits {
+		p := float64(h.loc) + h.delta
+		lag := h.loc - st.GateLo
+		st.Hits++
+		odd := (st.Hits & 1) == 1
+		for ch := 0; ch < 2; ch++ {
+			s := sigs[ch]
+			if len(s) < st.N || st.C[ch].ref == nil {
+				continue
+			}
+			if ch != st.Align && Clipped(s) {
+				st.C[ch].clipSkips++
+				continue
+			}
+			f := make([]float32, st.N)
+			g, b := gainOffset(st.C[ch].ref, s, lag, st.GateLo, st.GateHi)
+			if g != 1 || b != 0 {
+				for i := 0; i < st.N; i++ {
+					v := (float64(s[i]) - b) / g
+					if v < 0 {
+						v = 0
+					}
+					f[i] = float32(v)
 				}
-				f[i] = float32(v)
+			} else {
+				for i := 0; i < st.N; i++ {
+					f[i] = float32(s[i])
+				}
 			}
-		} else {
-			for i := 0; i < st.N; i++ {
-				f[i] = float32(s[i])
-			}
+			st.drizzleHit(ch, f, p, odd)
 		}
-		st.accumCh(ch, f, m.shift)
+		st.Scores = append(st.Scores, h.score)
+		st.Shifts = append(st.Shifts, float64(lag)+h.delta)
 	}
 	st.Frames++
-	st.Scores = append(st.Scores, m.score)
-	st.Shifts = append(st.Shifts, m.shift)
-	return "stacked"
+	return "stacked:" + strconv.Itoa(len(hits))
 }
 
 // Result is the crunch output: the super-resolved mean trace (nil if statsOnly)
 // plus the measured resolution figures.
 type Result struct {
 	Mean                    []float32 // nil if statsOnly
-	Frames, Rejected        int
+	Frames, Rejected, Hits  int
 	Fill                    float64
 	SigmaSingle, SigmaStack float64
 	SigmaMeasured           bool
@@ -537,7 +826,7 @@ func (st *Stack) Result(statsOnly bool, stride int) Result {
 		fill = float64(filled) / float64(scanned)
 	}
 	return Result{
-		Mean: mean, Frames: st.Frames, Rejected: st.Rejected, Fill: fill,
+		Mean: mean, Frames: st.Frames, Rejected: st.Rejected, Hits: st.Hits, Fill: fill,
 		SigmaSingle: sigmaSingle, SigmaStack: sigmaStack, SigmaMeasured: sigmaMeasured,
 		BitsGained: bitsGained, EffBits: 8 + bitsGained,
 		FineDtS: fineDt, EffRateSa: effRate,
