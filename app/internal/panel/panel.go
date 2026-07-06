@@ -146,6 +146,7 @@ type Controller struct {
 	decBaud            int
 	decChA, decChB     int
 	decCPOL, decCPHA   bool
+	decFormat          int // 0=hex, 1=ascii, 2=both
 
 	// Menu state (spec 08 §6): written by the panel goroutine, read by the LCD
 	// renderer, guarded by mu. inject runs API-driven panel events on the panel

@@ -360,21 +360,39 @@ func TestDecodeMenu(t *testing.T) {
 	if v := c.MenuView(); v.DecChA == v.DecChB {
 		t.Fatalf("SCL/SDA share a channel after SDA toggle: A=%d B=%d", v.DecChA, v.DecChB)
 	}
-	// I2C fills slots 0..2, so F4 (slot 3) is inert — the highlight must not
+	// I2C now carries a "Show" (byte format) slot at slot 3, cycling Hex/ASCII/Both.
+	if v := c.MenuView(); v.Items[3].Label != "Show" || v.Items[3].Value != "Hex" {
+		t.Fatalf("I2C Show slot missing/wrong: %+v", v.Items[3])
+	}
+	c.menuButton(btnF4) // slot 3 = Show -> ASCII
+	if v := c.MenuView(); v.DecFormat != 1 || v.Items[3].Value != "ASCII" {
+		t.Fatalf("Show did not cycle to ASCII: fmt=%d items=%+v", v.DecFormat, v.Items[3])
+	}
+	// I2C fills slots 0..3, so F5 (slot 4) is inert — the highlight must not
 	// jump onto the blank slot.
 	sel := c.MenuView().Sel
-	c.menuButton(btnF4)
+	c.menuButton(btnF5)
 	if got := c.MenuView().Sel; got != sel {
-		t.Fatalf("F4 moved the highlight onto an empty I2C slot: %d -> %d", sel, got)
+		t.Fatalf("F5 moved the highlight onto an empty I2C slot: %d -> %d", sel, got)
 	}
-	// SPI exposes a real 4th slot (Mode); there F4 is live.
+	// SPI exposes a real 4th slot (Mode) plus Show on slot 4.
 	c.menuButton(btnF1) // I2C -> SPI
-	if v := c.MenuView(); v.DecProto != 3 || v.Items[3].Label != "Mode" {
-		t.Fatalf("SPI Mode slot missing: proto=%d items=%+v", v.DecProto, v.Items)
+	if v := c.MenuView(); v.DecProto != 3 || v.Items[3].Label != "Mode" || v.Items[4].Label != "Show" {
+		t.Fatalf("SPI slots wrong: proto=%d items=%+v", v.DecProto, v.Items)
 	}
-	c.menuButton(btnF4)
-	if got := c.MenuView().Sel; got != 3 {
-		t.Fatalf("F4 in SPI did not reach the Mode slot: Sel=%d", got)
+	c.menuButton(btnF5) // slot 4 = Show live in SPI
+	if got := c.MenuView().Sel; got != 4 {
+		t.Fatalf("F5 in SPI did not reach the Show slot: Sel=%d", got)
+	}
+	// Auto: Proto + Show only (slots 0..1); F3+ inert.
+	c.menuButton(btnF1) // SPI -> Auto
+	if v := c.MenuView(); v.DecProto != 4 || v.Items[1].Label != "Show" {
+		t.Fatalf("Auto layout wrong: proto=%d items=%+v", v.DecProto, v.Items)
+	}
+	sel = c.MenuView().Sel
+	c.menuButton(btnF3) // slot 2 empty in Auto -> inert
+	if got := c.MenuView().Sel; got != sel {
+		t.Fatalf("F3 moved highlight onto an empty Auto slot: %d -> %d", sel, got)
 	}
 }
 

@@ -41,10 +41,11 @@ type HUD struct {
 	Zoom             int     // horizontal magnification (1 = none)
 	ZoomOff          float64 // zoom-window pan offset (fraction of the record)
 	Persist          bool    // display persistence (afterglow)
-	DecProto         int     // protocol decode: 0=off,1=UART,2=I2C,3=SPI
+	DecProto         int     // protocol decode: 0=off,1=UART,2=I2C,3=SPI,4=Auto
 	DecBaud          int
 	DecChA, DecChB   int // channel roles (0=C1,1=C2)
 	DecCPOL, DecCPHA bool
+	DecFormat        int // byte display: 0=hex,1=ascii,2=both
 	RefC1, RefC2     [2][]uint8 // saved reference waveforms (REF A/B); nil if unset
 	RefShow          [2]bool
 	TwoChan          bool
@@ -348,16 +349,31 @@ func drawDecode(sf Surface, f *engine.Frame, hud HUD, win int, xc, posFrac float
 		}
 		return f.C1[:valid]
 	}
+	format := []string{"hex", "ascii", "both"}[hud.DecFormat%3]
 	var res decode.Result
 	switch hud.DecProto {
 	case 1:
-		res = decode.DecodeUART(ch(hud.DecChA), f.SampleS, decode.UARTCfg{Baud: hud.DecBaud})
+		res = decode.DecodeUART(ch(hud.DecChA), f.SampleS, decode.UARTCfg{Baud: hud.DecBaud, Format: format})
 	case 2:
-		res = decode.DecodeI2C(ch(hud.DecChA), ch(hud.DecChB), f.SampleS, decode.I2CCfg{})
+		res = decode.DecodeI2C(ch(hud.DecChA), ch(hud.DecChB), f.SampleS, decode.I2CCfg{Format: format})
 	case 3:
-		res = decode.DecodeSPI(ch(hud.DecChA), ch(hud.DecChB), f.SampleS, decode.SPICfg{CPOL: hud.DecCPOL, CPHA: hud.DecCPHA, MSB: true})
+		res = decode.DecodeSPI(ch(hud.DecChA), ch(hud.DecChB), f.SampleS, decode.SPICfg{CPOL: hud.DecCPOL, CPHA: hud.DecCPHA, MSB: true, Format: format})
+	case 4: // Auto: detect protocol / channel roles / sub-settings from the signal
+		res = decode.Autodetect(ch(0), ch(1), f.SampleS, format)
 	}
 	name := []string{"", "UART", "I2C", "SPI"}[hud.DecProto&3]
+	if hud.DecProto == 4 { // Auto — label with whatever it found
+		switch res.Proto {
+		case "uart":
+			name = "AUTO UART"
+		case "i2c":
+			name = "AUTO I2C"
+		case "spi":
+			name = "AUTO SPI"
+		default:
+			name = "AUTO"
+		}
+	}
 	// Decode lane: a dark band that sits ABOVE the bottom Vpp/freq readout row
 	// (drawn later by drawHUD at H-9), so the two never overwrite each other.
 	yLbl, yTxt, yBar := H-36, H-26, H-14 // label / byte hex / span bars, top→bottom

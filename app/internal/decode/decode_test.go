@@ -165,6 +165,45 @@ func containsWord(s, w string) bool {
 	return false
 }
 
+func TestAutodetect(t *testing.T) {
+	msg := []int{0x48, 0x69, 0x55, 0xAA}
+	// UART on C1 only, no second channel.
+	uw := uartWave(msg, 40)
+	if r := Autodetect(uw, nil, 1e-6, "hex"); r.Proto != "uart" {
+		t.Errorf("UART-only: got %q (%d bytes)", r.Proto, len(r.Bytes))
+	}
+	// SPI: clock on C1, data on C2 — must beat the UART/I2C hypotheses.
+	clk, dat := spiWave(msg, 20)
+	if r := Autodetect(clk, dat, 2e-7, "hex"); r.Proto != "spi" {
+		t.Errorf("SPI pair: got %q (%d bytes)", r.Proto, len(r.Bytes))
+	}
+	// I2C: SCL on C1, SDA on C2 — START/STOP framing must win over the swap.
+	scl, sda := i2cWave(0x24, 0, []int{0x55, 0xAA}, 20)
+	if r := Autodetect(scl, sda, 2e-7, "hex"); r.Proto != "i2c" {
+		t.Errorf("I2C pair: got %q (%d bytes)", r.Proto, len(r.Bytes))
+	}
+	// Nothing but a flat line -> off.
+	flat := make([]uint8, 2000)
+	for i := range flat {
+		flat[i] = 128
+	}
+	if r := Autodetect(flat, nil, 1e-6, "hex"); r.Proto != "off" {
+		t.Errorf("flat: got %q, want off", r.Proto)
+	}
+}
+
+func TestFmtByte(t *testing.T) {
+	if got := FmtByte(0x48, "both"); got != "48'H" {
+		t.Errorf("both 0x48 = %q, want 48'H", got)
+	}
+	if got := FmtByte(0x0A, "both"); got != "0A" { // non-printable -> hex only
+		t.Errorf("both 0x0A = %q, want 0A", got)
+	}
+	if got := FmtByte(0x48, "ascii"); got != "H" {
+		t.Errorf("ascii 0x48 = %q, want H", got)
+	}
+}
+
 func TestDecodeUARTFrameError(t *testing.T) {
 	// A byte with the stop bit corrupted -> frame-error span with "!" prefix.
 	spb := 30
