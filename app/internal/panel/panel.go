@@ -195,9 +195,13 @@ type Controller struct {
 
 	// Super-res (device stack-and-crunch, reference-locked — SINGLE a frame, then
 	// UTILITY). srActive gates the mode; a stacker goroutine feeds srStack OFF the
-	// render lock; srReview toggles the stacked-trace view (ADJUST-knob push).
+	// render lock. srFocus is the intensity-button cycle: 0=watch (live+gate),
+	// 1=edit gate START, 2=edit gate END (ADJUST knob moves the edge), 3=review
+	// the stacked trace. srManLo/srManHi are the manual gate (-1 = auto).
 	srActive   bool
-	srReview   bool
+	srFocus    int
+	srManLo    int
+	srManHi    int
 	srStack    *superres.Stack
 	srStop     chan struct{}
 	srStatus   string
@@ -405,7 +409,7 @@ func (c *Controller) button(code int) {
 		c.srToggle() // arm ⇄ cancel super-res (like SINGLE); handles its own LEDs
 		return
 	case btnAdjustPsh:
-		c.srReviewToggle() // ADJUST/intensity push → toggle the stacked-trace review
+		c.srFocusCycle() // ADJUST/intensity push → cycle watch/gate-start/gate-end/review
 		return
 	default:
 		// Menu / softkey / channel buttons (spec 08 §6). Anything else is
@@ -536,8 +540,11 @@ func (c *Controller) dispatch(name string, dir, steps int) {
 		c.trigCode = uint16(nc)
 		c.eng.SetTrigLevelCode(c.trigCode)
 	case "adjust":
-		// ADJUST drives the highlighted menu item (spec 08 §6.3); no-op if the
-		// menu is closed.
+		// While editing a super-res gate edge, ADJUST moves that edge; otherwise it
+		// drives the highlighted menu item (spec 08 §6.3; no-op if the menu is shut).
+		if c.srGateAdjust(dir * steps) {
+			return
+		}
 		c.menuAdjust(dir)
 	case "horizpos":
 		// Horizontal POSITION knob: when zoomed, pan the zoom window across the

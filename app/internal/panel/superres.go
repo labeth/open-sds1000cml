@@ -32,6 +32,10 @@ func (c *Controller) srToggle() {
 // maps the softkeys to the super-res page. (Freeze a frame you like with SINGLE
 // first.) UTILITY handler for the arm direction.
 func (c *Controller) srArm() {
+	c.mu.Lock()
+	c.srFocus = 0             // watch
+	c.srManLo, c.srManHi = -1, -1 // auto gate
+	c.mu.Unlock()
 	if !c.srSeedAndStart() {
 		return
 	}
@@ -44,9 +48,62 @@ func (c *Controller) srArm() {
 func (c *Controller) srRearm() {
 	c.mu.Lock()
 	active := c.srActive
+	c.srManLo, c.srManHi = -1, -1 // Channel/K change → auto gate for the new stack
 	c.mu.Unlock()
 	if active {
 		c.srSeedAndStart()
+	}
+}
+
+// srGateAdjust moves the super-res gate edge under the ADJUST knob while a gate
+// edge is focused (intensity button selects start/end). Re-seeds the stack with
+// the new manual gate. Returns true if it consumed the knob step.
+func (c *Controller) srGateAdjust(delta int) bool {
+	c.mu.Lock()
+	if !c.srActive || (c.srFocus != 1 && c.srFocus != 2) || c.srStack == nil {
+		c.mu.Unlock()
+		return false
+	}
+	if c.srManLo < 0 { // first edit: seed the manual gate from the auto gate
+		c.srManLo, c.srManHi = c.srStack.GateLo, c.srStack.GateHi
+	}
+	n := c.srStack.N
+	step := delta * 4 // samples per accel-step
+	const minW = 8
+	if c.srFocus == 2 {
+		c.srManHi += step
+	} else {
+		c.srManLo += step
+	}
+	if c.srManLo < 0 {
+		c.srManLo = 0
+	}
+	if c.srManHi > n {
+		c.srManHi = n
+	}
+	if c.srManHi-c.srManLo < minW { // keep a minimum width, pushing the moved edge
+		if c.srFocus == 2 {
+			c.srManHi = c.srManLo + minW
+		} else {
+			c.srManLo = c.srManHi - minW
+		}
+	}
+	c.mu.Unlock()
+	c.srSeedAndStart() // rebuild the stack on the new gate
+	return true
+}
+
+// srFocusName returns the label for the current intensity-cycle focus.
+func srFocusName(f int) string {
+	switch f {
+	case 1:
+		return "gate start"
+	case 2:
+		return "gate end"
+	case 3:
+		return "review"
+	default:
+		return "watch"
 	}
 }
 
@@ -87,12 +144,12 @@ func (c *Controller) srSeedAndStart() bool {
 		return false
 	}
 	c.mu.Lock()
-	k, ch := c.srK, c.srCh
+	k, ch, mlo, mhi := c.srK, c.srCh, c.srManLo, c.srManHi
 	c.mu.Unlock()
 	st := superres.New(cols, k)
 	st.Align = ch
 	st.SampleS = sampleS
-	if !st.SeedRef(c1, c2, edgeX) {
+	if !st.SeedRefGate(c1, c2, edgeX, mlo, mhi) { // mlo<0 → auto gate; else manual
 		c.srSetStatus("ref unusable (flat/clipped) - freeze a cleaner frame")
 		return false
 	}
@@ -101,8 +158,9 @@ func (c *Controller) srSeedAndStart() bool {
 	if c.srStop != nil { // stop the previous stacker before swapping the Stack
 		close(c.srStop)
 	}
-	c.srStack, c.srActive, c.srReview, c.srStop = st, true, false, stop
+	c.srStack, c.srActive, c.srStop = st, true, stop // srFocus preserved (gate-edit)
 	c.srT0, c.srStatus, c.srMean, c.srBits, c.srResetReq = time.Now(), "stacking...", nil, 0, false
+	c.srFrames, c.srRejected = st.Hits, 0 // fresh counts (not stale from a prior arm)
 	c.running, c.single = true, false
 	c.mu.Unlock()
 	c.eng.SetRunning(true) // resume so matching frames flow in
@@ -118,7 +176,7 @@ func (c *Controller) srCancel(why string) {
 		close(c.srStop)
 		c.srStop = nil
 	}
-	c.srActive, c.srReview = false, false
+	c.srActive, c.srFocus = false, 0
 	if why != "" {
 		c.srStatus = why
 	}
@@ -130,11 +188,13 @@ func (c *Controller) srCancel(why string) {
 	c.pushLEDs()
 }
 
-// srReviewToggle (ADJUST-knob push) flips the stacked-trace review view.
-func (c *Controller) srReviewToggle() {
+// srFocusCycle (ADJUST/intensity push) advances the super-res focus:
+// watch → gate-start → gate-end → review → watch. In the gate-edit foci the
+// ADJUST knob moves that edge; review shows the stacked trace.
+func (c *Controller) srFocusCycle() {
 	c.mu.Lock()
 	if c.srActive {
-		c.srReview = !c.srReview
+		c.srFocus = (c.srFocus + 1) % 4
 	}
 	c.mu.Unlock()
 }
@@ -161,7 +221,7 @@ func (c *Controller) srSetStatus(s string) {
 func (c *Controller) srReachReview(st *superres.Stack, status string) {
 	full := st.Result(false, 1)
 	c.mu.Lock()
-	c.srMean, c.srBits, c.srReview, c.srStatus = full.Mean, full.BitsGained, true, status
+	c.srMean, c.srBits, c.srFocus, c.srStatus = full.Mean, full.BitsGained, 3, status // 3=review
 	c.srFrames, c.srRejected = st.Hits, st.Rejected
 	c.mu.Unlock()
 }
@@ -170,7 +230,7 @@ func (c *Controller) srReachReview(st *superres.Stack, status string) {
 func (c *Controller) SuperresStatus() (active, review bool, bits float64, frames, rejected int, status string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	return c.srActive, c.srReview, c.srBits, c.srFrames, c.srRejected, c.srStatus
+	return c.srActive, c.srFocus == 3, c.srBits, c.srFrames, c.srRejected, c.srStatus
 }
 
 // srLoop feeds the stacker: pull the latest raw frame (deduped by Seq), copy it
@@ -197,7 +257,10 @@ func (c *Controller) srLoop(stop chan struct{}, st *superres.Stack) {
 			c.srResetReq = false
 			st.ResetKeepRef()
 			reached, lastSeq = false, 0
-			c.srT0, c.srMean, c.srBits, c.srReview = time.Now(), nil, 0, false
+			c.srT0, c.srMean, c.srBits = time.Now(), nil, 0
+			if c.srFocus == 3 { // leave review on reset; keep gate-edit foci
+				c.srFocus = 0
+			}
 			c.srFrames, c.srRejected = st.Hits, 0
 			c.srStatus = "reset - stacking..."
 		}
@@ -249,7 +312,7 @@ func (c *Controller) srLoop(stop chan struct{}, st *superres.Stack) {
 		st.Feed(c1, c2, edgeX)
 		res := st.Result(true, 0) // stats-only: cheap, for status + stop
 		c.mu.Lock()
-		mode, val, t0, review := c.srStopMode, c.srStopVal, c.srT0, c.srReview
+		mode, val, t0, review := c.srStopMode, c.srStopVal, c.srT0, c.srFocus == 3
 		// Hits (occurrences) is the meaningful stack count — one frame contributes
 		// many on a repetitive signal — so status + the "stacks" target key off it.
 		c.srBits, c.srFrames, c.srRejected = res.BitsGained, st.Hits, st.Rejected
@@ -281,25 +344,30 @@ func (c *Controller) srLoop(stop chan struct{}, st *superres.Stack) {
 
 // SuperresView is the render snapshot (safe from the render goroutine).
 type SuperresView struct {
-	Active, Review bool
+	Active         bool
+	Focus          int // 0=watch, 1=gate-start, 2=gate-end, 3=review
 	Status         string
 	Bits           float64
-	Mean           []float32 // crunched trace (review only); nil otherwise
+	Mean           []float32 // crunched trace (review only, Focus==3); nil otherwise
 	K              int
 	SampleS        float64
+	GateLo, GateHi int // gate on the frame (samples) — the live-view overlay
+	N              int // frame width (samples)
 }
 
 // SuperresView returns the current super-res state for the LCD overlay/review.
+// GateLo/GateHi/N/K/SampleS come off the Stack; they are set once at seed and not
+// mutated by Feed, so reading them from the render goroutine is race-free.
 func (c *Controller) SuperresView() SuperresView {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	v := SuperresView{Active: c.srActive, Review: c.srReview, Status: c.srStatus, Bits: c.srBits, K: c.srK}
-	if c.srReview {
+	v := SuperresView{Active: c.srActive, Focus: c.srFocus, Status: c.srStatus, Bits: c.srBits, K: c.srK}
+	if c.srStack != nil {
+		v.GateLo, v.GateHi, v.N = c.srStack.GateLo, c.srStack.GateHi, c.srStack.N
+		v.SampleS, v.K = c.srStack.SampleS, c.srStack.K
+	}
+	if c.srFocus == 3 {
 		v.Mean = c.srMean
-		if c.srStack != nil {
-			v.K = c.srStack.K
-			v.SampleS = c.srStack.SampleS
-		}
 	}
 	return v
 }

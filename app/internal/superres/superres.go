@@ -563,6 +563,14 @@ func (st *Stack) SeedRefGate(sig1, sig2 []uint8, edgeX float64, gateLo, gateHi i
 			gHi = gLo + period
 		}
 	}
+	// Cap the gate width so the per-frame matched-filter is cheap on the device
+	// CPU: gateFind is O((N−L)·L), so a wide gate over a 20480 deep record is
+	// seconds/frame. ~256 samples is ≈ one period of a mid-band repetitive signal
+	// — still multi-hits (many occurrences per frame) while keeping Feed ~100 ms.
+	const maxGate = 256
+	if gHi-gLo > maxGate {
+		gHi = gLo + maxGate
+	}
 	if gHi-gLo < 4 {
 		return false
 	}

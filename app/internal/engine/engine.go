@@ -874,11 +874,15 @@ func (e *Engine) waitCapture(norm bool) (anchored, sawTrig, filled, fillMoved bo
 	// envelope and roll are untouched. AUTO already fills densely via its budget.
 	denseWait := norm && e.band.Kind() == KindDecimated
 	denseNs := int64(float64(e.effDrainCols()) * e.band.CaptureIntervalNs())
-	// Native-fast FREE RUN + TRIGGER HOLD (spec 04 §11): halt WHEN the HW comparator fires
-	// (bit1) so the frozen record captures the edge HW-positioned near record/2 (spec 04 §4,
-	// cross-frame std 1–2). Returning on fill-saturation instead halts at a random phase and
-	// misses the edge at the faster bands (the record spans ≪ one period). On the budget
-	// timeout (no comparator edge) AUTO free-runs a live refresh; NORM holds.
+	// Native-fast FREE RUN + TRIGGER HOLD (spec 04 §11): halt once the HW comparator has fired
+	// (bit1) AND the deep record has FILLED — so the frozen record is coherent to ~20480 (spec
+	// 04 §4) with the edge near record/2 (cross-frame std 1–2). The comparator fires almost
+	// immediately on a continuous signal, so returning on bit1 ALONE freezes a half-filled
+	// buffer whose unwritten tail drains as a flat dead repeat (display then centres on the
+	// live/dead boundary; super-res sees the dead tail). The fill counter saturates at 11 bits
+	// well before drainCols, so gate the fill on TIME — the interval to clock drainCols samples
+	// (denseNs) — exactly as decimated NORM does above. On the budget timeout (no comparator
+	// edge) AUTO free-runs a live refresh; NORM holds.
 	nativeFast := e.band.NativeFast()
 	fill0 := e.r(selFill) & fillMask
 	for {
@@ -905,10 +909,16 @@ func (e *Engine) waitCapture(norm bool) (anchored, sawTrig, filled, fillMoved bo
 			filled = true
 		}
 		if nativeFast {
-			if sawTrig {
-				return // comparator fired → the edge is in the record; halt & drain it
+			// Spec 04 §8.1/§8.2/§8.3: native-fast halts when the free-run fill
+			// COMPLETES — bit2(done) AND fill ≥ LatchAt, both of which assert on the
+			// untriggered free-run — NOT on bit1(trig), which "can lag or never
+			// assert" (§8.3). Gating on bit1 (sawTrig) waits for a trigger that never
+			// comes → the budget times out on a half-filled buffer whose unwritten
+			// tail drains as a flat dead repeat. Halt is unconditional; content
+			// discrimination (§8.2) then decides publish vs hold.
+			if anchored && filled {
+				return
 			}
-			// no fill-saturation early-out for native-fast — wait for bit1 or the budget
 		} else {
 			if anchored && filled {
 				// Decimated NORM also waits for a dense buffer (see above); other

@@ -559,14 +559,28 @@ func TestSuperresUX(t *testing.T) {
 		t.Errorf("channel toggle: %+v", v.Items[0])
 	}
 
-	// ADJUST/intensity push toggles the stacked-trace review view.
-	c.button(btnAdjustPsh)
-	if !c.SuperresView().Review {
-		t.Error("ADJUST-push did not enter review")
+	// ADJUST/intensity push cycles focus: watch → gate-start → gate-end → review → watch.
+	if f := c.SuperresView().Focus; f != 0 {
+		t.Errorf("armed focus = %d, want 0 (watch)", f)
 	}
-	c.button(btnAdjustPsh)
-	if c.SuperresView().Review {
-		t.Error("ADJUST-push did not leave review")
+	for i, want := range []int{1, 2, 3, 0} {
+		c.button(btnAdjustPsh)
+		if f := c.SuperresView().Focus; f != want {
+			t.Errorf("ADJUST-push #%d → focus %d, want %d", i+1, f, want)
+		}
+	}
+
+	// Manual gate: focus the start edge, nudge with ADJUST → the gate moves and the
+	// stack re-seeds on the new (manual) gate.
+	c.mu.Lock()
+	c.srFocus = 1 // gate-start
+	c.mu.Unlock()
+	lo0 := c.SuperresView().GateLo
+	if !c.srGateAdjust(3) {
+		t.Error("srGateAdjust not consumed while a gate edge is focused")
+	}
+	if lo := c.SuperresView().GateLo; lo <= lo0 {
+		t.Errorf("gate start did not move right: %d → %d", lo0, lo)
 	}
 
 	// UTILITY again cancels: mode off, page closed, lamp dark.

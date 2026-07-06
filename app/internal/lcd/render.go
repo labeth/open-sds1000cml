@@ -65,13 +65,17 @@ type HUD struct {
 	MenuSel   int
 
 	// Super-res stack-and-crunch overlay (reference-locked). SRActive shows the
-	// status HUD; SRReview replaces the live trace with the super-resolved mean.
-	SRActive bool
-	SRReview bool
-	SRStatus string
-	SRBits   float64
-	SRMean   []float32 // review trace on the n·K fine grid; -1 = gap (nil unless review)
-	SRk      int
+	// status HUD; SRFocus 3 (review) replaces the live trace with the stacked mean;
+	// SRFocus 1/2 overlay the gate markers (active edge highlighted) for editing.
+	SRActive       bool
+	SRFocus        int // 0=watch, 1=gate-start, 2=gate-end, 3=review
+	SRStatus       string
+	SRBits         float64
+	SRMean         []float32 // review trace on the L·K fine grid; -1 = gap (nil unless review)
+	SRk            int
+	SRGateLo       int
+	SRGateHi       int
+	SRN            int
 }
 
 // MenuItem is one softkey slot label + value for the LCD menu overlay.
@@ -872,7 +876,7 @@ func Render(sf Surface, f *engine.Frame, hud HUD, live bool, persist ...*MemSurf
 	// X-Y / FFT only make sense on per-sample (native/decimated) frames — an
 	// envelope/roll frame has no paired samples or usable spectrum, so fall
 	// through to the Y-T envelope rendering (matches the web, which gates these).
-	srReview := hud.SRReview && len(hud.SRMean) > 0
+	srReview := hud.SRFocus == 3 && len(hud.SRMean) > 0
 	if srReview {
 		// Review the super-resolved mean instead of the live trace.
 		drawSuperresTrace(traceTarget, hud)
@@ -983,14 +987,36 @@ func Render(sf Surface, f *engine.Frame, hud HUD, live bool, persist ...*MemSurf
 // colSR is the super-res overlay colour — magenta, distinct from C1/C2/trigger.
 var colSR = rgb(230, 120, 240)
 
-// drawSuperresHUD overlays the super-res status line (mode/bits/frames) along the
-// bottom edge while stacking is active, plus a REVIEW tag when the stacked mean
-// is on screen instead of the live trace.
+// drawSuperresHUD overlays the super-res status line (focus/bits/count) along the
+// bottom edge while stacking is active, and — in the gate-edit foci — the gate
+// markers over the live trace with the active edge highlighted.
 func drawSuperresHUD(sf Surface, hud HUD) {
-	tag := "SR"
-	if hud.SRReview {
-		tag = "SR REVIEW"
+	// Gate overlay while watching/editing (focus 0/1/2): two vertical markers at
+	// the gate edges mapped proportionally across the record; the edge being
+	// edited is drawn solid/bright, the other dim.
+	if hud.SRFocus != 3 && hud.SRN > 0 && hud.SRGateHi > hud.SRGateLo {
+		xAt := func(s int) int {
+			x := s * W / hud.SRN
+			if x < 0 {
+				x = 0
+			}
+			if x > W-1 {
+				x = W - 1
+			}
+			return x
+		}
+		marker := func(x int, active bool) {
+			for y := traceTop; y < traceBot; y++ {
+				if active || (y&3) == 0 { // active edge solid; idle edge dashed
+					sf.SetPixel(x, y, colSR)
+				}
+			}
+		}
+		marker(xAt(hud.SRGateLo), hud.SRFocus == 1)
+		marker(xAt(hud.SRGateHi), hud.SRFocus == 2)
 	}
+
+	tag := "SR " + srFocusTag(hud.SRFocus)
 	msg := fmt.Sprintf("%s  +%.1fb  x%d  %s", tag, hud.SRBits, hud.SRk, hud.SRStatus)
 	// Bottom-left, above the liveness strip; a thin backing bar keeps it legible
 	// over the trace.
@@ -1001,6 +1027,19 @@ func drawSuperresHUD(sf Surface, hud HUD) {
 		}
 	}
 	DrawText(sf, 4, y, msg, colSR, 1)
+}
+
+func srFocusTag(f int) string {
+	switch f {
+	case 1:
+		return "GATE<" // editing the start edge
+	case 2:
+		return "GATE>" // editing the end edge
+	case 3:
+		return "REVIEW"
+	default:
+		return "WATCH"
+	}
 }
 
 // drawSuperresTrace renders the super-resolved mean across the trace area. The

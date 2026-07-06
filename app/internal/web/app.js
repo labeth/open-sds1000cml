@@ -2044,8 +2044,17 @@ function srIngest(f) {
     sr.meta = { tdiv_s: f.tdiv_s, cols: f.cols, sample_s: f.sample_s, vpc1: f.vpc1, vpc2: f.vpc2 };
     if (sr.lockRef) {
       // Lock THIS (frozen) frame as the match reference, then resume acquisition
-      // so matching frames flow in and stack; non-matches are rejected.
-      if (!srSeedRef(sr.st, f.c1, f.c2, f.edge_x != null ? f.edge_x : -1)) {
+      // so matching frames flow in and stack; non-matches are rejected. When the
+      // cursors are on, THEY define the gate (the feature to align+stack on) —
+      // manual override; otherwise the gate is auto (active region / one period).
+      let gate = null;
+      if (view.cursors) {
+        const span = view.win.b - view.win.a, cols = f.cols;
+        const s1 = Math.round((view.win.a + Math.min(cur.t1, cur.t2) * span) * (cols - 1));
+        const s2 = Math.round((view.win.a + Math.max(cur.t1, cur.t2) * span) * (cols - 1));
+        if (s2 - s1 >= 8) gate = { lo: Math.max(0, s1), hi: Math.min(cols, s2) };
+      }
+      if (!srSeedRef(sr.st, f.c1, f.c2, f.edge_x != null ? f.edge_x : -1, gate)) {
         srStop("reference frame unusable (flat/clipped) — freeze a cleaner one"); return;
       }
       send("run", 1);
@@ -2159,7 +2168,7 @@ $("srArm").onclick = () => {
   sr.armed = true;
   $("srArm").textContent = "STOP";
   $("srArm").classList.add("on");
-  srStatus("stacking…");
+  srStatus(sr.lockRef && view.cursors ? "stacking… (gate = cursors)" : "stacking…");
   srLoop(++sr.gen);
 };
 
