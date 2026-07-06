@@ -412,6 +412,34 @@ func TestSingleThenRunLamp(t *testing.T) {
 	}
 }
 
+func TestKnobPushTrigger(t *testing.T) {
+	c, eng, _ := newC(t)
+	last := func() call { return eng.calls[len(eng.calls)-1] }
+	// Push CH1 V/DIV (0x65:9 → m[1] bit 9) → trigger source C1.
+	m := idle()
+	m[1] &^= 1 << 9
+	c.decode(m, true)
+	if got := last(); got != (call{"src", 0, 0}) {
+		t.Fatalf("CH1 V/DIV push → trig source C1: got %v", got)
+	}
+	c.decode(idle(), true) // release
+	// Push CH2 V/DIV (0x66:1 → m[2] bit 1) → trigger source C2.
+	m = idle()
+	m[2] &^= 1 << 1
+	c.decode(m, true)
+	if got := last(); got != (call{"src", 1, 0}) {
+		t.Fatalf("CH2 V/DIV push → trig source C2: got %v", got)
+	}
+	c.decode(idle(), true)
+	// Push TRIG LEVEL (0x64:9 → m[0] bit 9) → flip slope (default rising=false → true).
+	m = idle()
+	m[0] &^= 1 << 9
+	c.decode(m, true)
+	if got := last(); got != (call{"slope", 1, 0}) {
+		t.Fatalf("TRIG LEVEL push → flip slope to rising: got %v", got)
+	}
+}
+
 func TestLEDMap(t *testing.T) {
 	// Shadow-word bits must match spec 02 §7.5 (corroborated PCB wiring).
 	if ledCH1 != 0x0010 || ledMath != 0x0020 || ledCH2 != 0x0040 {

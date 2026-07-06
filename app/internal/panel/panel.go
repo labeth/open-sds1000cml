@@ -87,6 +87,11 @@ var (
 	btnRunStop = bcode(1, 2)
 	btnSingle  = bcode(1, 10)
 	btnAuto    = bcode(3, 10)
+
+	// Knob push-switches (spec 08 §6.3), repurposed as trigger shortcuts:
+	btnCh1VdivPush = bcode(1, 9) // 0x65:9 — push CH1 V/DIV → trigger source C1
+	btnCh2VdivPush = bcode(2, 1) // 0x66:1 — push CH2 V/DIV → trigger source C2
+	btnTrigLvlPush = bcode(0, 9) // 0x64:9 — push TRIG LEVEL → flip slope rise/fall
 )
 
 // knobDef is one row of the FIXED FPGA priority order (spec 08 §3): exactly
@@ -360,6 +365,15 @@ func (c *Controller) button(code int) {
 		c.eng.SetSingle() // true single-shot: capture one triggered frame, stop
 	case btnAuto:
 		c.autoset()
+		return
+	case btnCh1VdivPush:
+		c.eng.SetTrigSource(0) // push CH1 V/DIV → trigger on C1
+		return
+	case btnCh2VdivPush:
+		c.eng.SetTrigSource(1) // push CH2 V/DIV → trigger on C2
+		return
+	case btnTrigLvlPush:
+		c.eng.SetTrigSlope(!c.eng.Snapshot().TrigRising) // push TRIG LEVEL → flip edge
 		return
 	default:
 		// Menu / softkey / channel buttons (spec 08 §6). Anything else is

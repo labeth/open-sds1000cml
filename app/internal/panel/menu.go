@@ -755,6 +755,12 @@ func nameCode(name string) (int, bool) {
 		return btnSingle, true
 	case "auto":
 		return btnAuto, true
+	case "ch1vdivpush": // push CH1 V/DIV knob → trigger source C1
+		return btnCh1VdivPush, true
+	case "ch2vdivpush": // push CH2 V/DIV knob → trigger source C2
+		return btnCh2VdivPush, true
+	case "triglvlpush": // push TRIG LEVEL knob → flip slope rise/fall
+		return btnTrigLvlPush, true
 	case "f1":
 		return btnF1, true
 	case "f2":
