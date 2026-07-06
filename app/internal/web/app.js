@@ -778,17 +778,39 @@ function peakVolts(ch, p) {
   return ampCodes * ((ch === 2 ? frame.vpc2 : frame.vpc1) || 1 / 32);
 }
 
+// Noise-floor magnitude of a channel's current spectrum = the MEDIAN AC-bin
+// magnitude (the handful of real peaks are sparse, so they don't move the
+// median). Memoized on the spectrum object, so the sort runs once per new
+// spectrum, not per redraw. Lets each selected peak report its SNR above the
+// floor — on a stack that's the improved (crunched) per-frequency figure.
+function specFloor(ch) {
+  const spec = specMemo[ch] && specMemo[ch].spec;
+  if (!spec) return 0;
+  if (spec._floor !== undefined) return spec._floor;
+  const lo = Math.max(1, Math.floor(spec.half * 0.02)); // skip DC / near-DC
+  const tmp = Array.prototype.slice.call(spec.mags, lo, spec.half).sort((a, b) => a - b);
+  spec._floor = tmp.length ? tmp[tmp.length >> 1] : 0;
+  return spec._floor;
+}
+
 // Selected-peak measurement lines under each FFT list: exact frequency,
-// level re the channel's strongest line, and absolute amplitude.
+// level re the channel's strongest line, absolute amplitude, and the tone's SNR
+// above the noise floor (with the equivalent bits of resolution, 6.02 dB/bit).
 function updateFFTSel(ch) {
   const el = $("fftSel" + ch);
   const S = fftCh[ch];
   if (!peaksVisible() || !S.selIdx.size) { el.textContent = ""; return; }
+  const spec = specMemo[ch] && specMemo[ch].spec, floor = specFloor(ch);
   const rows = [];
   for (const i of [...S.selIdx].sort((a, b) => a - b)) {
     const p = S.peaks[i];
     if (!p) continue;
-    rows.push(eng(p.freq, "Hz", 4) + " · " + p.db.toFixed(1) + " dBc · ≈" + eng(peakVolts(ch, p), "Vpk", 3));
+    let snrStr = "";
+    if (spec && floor > 0) {
+      const snr = 20 * Math.log10((spec.peak * Math.pow(10, p.db / 20)) / floor);
+      snrStr = " · " + snr.toFixed(0) + " dB SNR (~" + Math.max(0, snr / 6.02).toFixed(1) + " bit)";
+    }
+    rows.push(eng(p.freq, "Hz", 4) + " · " + p.db.toFixed(1) + " dBc · ≈" + eng(peakVolts(ch, p), "Vpk", 3) + snrStr);
   }
   // Harmonic/delta line when 2+ peaks are picked: spacing and ratio.
   if (S.selIdx.size >= 2) {

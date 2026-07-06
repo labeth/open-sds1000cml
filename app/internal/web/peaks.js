@@ -111,13 +111,20 @@ function component(samples, cyclesPerLen) {
   // float drift stays ~1e-13 (negligible against 8-bit codes) and can't build up
   // across a long record.
   const cw = Math.cos(w), sw = Math.sin(w);
+  // A single tone is massively over-determined: fitting A/B on ~64k samples is
+  // statistically indistinguishable from fitting all ~1.3M, so stride the FIT
+  // (the synth below stays full-res — its output is drawn/subtracted per sample).
+  // The phasor then rotates by fstep·w each step (re-anchored the same way).
+  const FIT_MAX = 65536;
+  const fstep = M > FIT_MAX ? Math.floor(M / FIT_MAX) : 1;
+  const cwF = fstep === 1 ? cw : Math.cos(fstep * w), swF = fstep === 1 ? sw : Math.sin(fstep * w);
   let scc = 0, sss = 0, scs = 0, dc = 0, ds = 0;
-  { let c = 1, s = 0;
-    for (let i = 0; i < M; i++) {
-      if ((i & 1023) === 0) { const a = w * i; c = Math.cos(a); s = Math.sin(a); }
+  { let c = 1, s = 0, k = 0;
+    for (let i = 0; i < M; i += fstep) {
+      if ((k++ & 1023) === 0) { const a = w * i; c = Math.cos(a); s = Math.sin(a); }
       const v = samples[i];
       if (v >= 0) { const d = v - mean; scc += c * c; sss += s * s; scs += c * s; dc += d * c; ds += d * s; }
-      const nc = c * cw - s * sw; s = s * cw + c * sw; c = nc;
+      const nc = c * cwF - s * swF; s = s * cwF + c * swF; c = nc;
     }
   }
   const det = scc * sss - scs * scs;
