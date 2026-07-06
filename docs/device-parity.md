@@ -30,8 +30,9 @@ this way on the real unit at `192.168.1.209`.
 | V/div, offset, coupling, probe | ✓ | ✓ | knobs + CHANNEL menu |
 | Time/div, trig position | ✓ | ✓ | knobs + HORIZ menu |
 | Run/Stop, Single | ✓ | ✓ | front-panel keys |
-| Horizontal zoom / window navigation | ✓ | ✗ deferred | wire the horizpos knob + a HORIZ Zoom item feeding a sub-window into drawTrace |
-| FFT peak list / cursor analysis | ✓ | ✗ deferred | extend fftTrace to top-N detectPeaks + markers + an FFT menu page |
+| Horizontal zoom / window navigation | ✓ | ✓ **added** | HORIZ ▸ Zoom (1–50×); horizpos knob pans the window across the record |
+| FFT frequency zoom | ✓ | ✓ **added** | same Zoom control magnifies a spectrum band; horizpos pans it |
+| FFT peak markers | ✓ | ✓ **added** | significant peaks (> −40 dBc) ticked in each spectrum |
 | Persistence | ✓ | ✗ deferred | needs a persistence buffer in the LCD render loop (today it clears each tick) |
 | Protocol decode (UART/I²C/SPI) | ✓ | ✗ deferred | large: on-LCD transcript rendering + a Go decoder port |
 | Super-res stack & crunch | ✓ | ✗ deferred | large: a long-running accumulate (reuse the autoset cancelable-progress pattern) + on-LCD stack review |
