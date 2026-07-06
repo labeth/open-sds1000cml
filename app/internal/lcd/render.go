@@ -271,9 +271,11 @@ func drawMath(sf Surface, f *engine.Frame, hud HUD, win int, xc float64) {
 		var v int
 		switch hud.MathMode {
 		case 1:
-			v = 128 + a + b
+			v = 128 + a + b // C1+C2
 		case 2:
-			v = 128 + a - b
+			v = 128 + a - b // C1-C2
+		case 3:
+			v = 128 + b - a // C2-C1
 		default:
 			v = 128 + a*b/96 // C1×C2, scaled to stay on-screen (matches web)
 		}
@@ -894,8 +896,10 @@ func drawHUD(sf Surface, f *engine.Frame, hud HUD) {
 	}
 	// Math legend so the purple trace is identified (and not confused with a ref).
 	if hud.MathMode != 0 && hud.ViewMode == 0 {
-		names := []string{"", "C1+C2", "C1-C2", "C1xC2"} // ASCII font has no '×'
-		DrawText(sf, 300, 2, "M:"+names[hud.MathMode&3], colMath, 1)
+		names := []string{"", "C1+C2", "C1-C2", "C2-C1", "C1xC2"} // ASCII font has no '×'
+		if m := hud.MathMode; m >= 1 && m < len(names) {
+			DrawText(sf, 300, 2, "M:"+names[m], colMath, 1)
+		}
 	}
 
 	edge := "^"

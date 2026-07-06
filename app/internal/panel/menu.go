@@ -215,9 +215,9 @@ func (c *Controller) menuCycle(slot, dir int) {
 			c.mu.Lock()
 			c.viewMode = mod3(c.viewMode + dir)
 			c.mu.Unlock()
-		case 4: // Math: off → C1+C2 → C1-C2 → C1×C2
+		case 4: // Math: off -> C1+C2 -> C1-C2 -> C2-C1 -> C1xC2
 			c.mu.Lock()
-			c.mathMode = mod4(c.mathMode + dir)
+			c.mathMode = mod5(c.mathMode + dir)
 			c.mu.Unlock()
 		}
 	case pgHoriz:
@@ -400,7 +400,7 @@ func (c *Controller) MenuView() MenuView {
 			{"CH2", onoff(c2)},
 			{"Measure", onoff(meas)},
 			{"View", []string{"Y-T", "X-Y", "FFT"}[view%3]},
-			{"Math", []string{"Off", "C1+C2", "C1-C2", "C1xC2"}[mth%4]}, // ASCII font: no '×'
+			{"Math", []string{"Off", "C1+C2", "C1-C2", "C2-C1", "C1xC2"}[mth%5]}, // ASCII font: no '×'
 		}
 	case pgHoriz:
 		v.Title = "HORIZ"
@@ -546,6 +546,7 @@ func (c *Controller) InjectKnob(name string, dir, steps int) bool {
 	}
 }
 
+func mod5(x int) int { return ((x % 5) + 5) % 5 }
 func mod4(x int) int { return ((x % 4) + 4) % 4 }
 func mod3(x int) int { return ((x % 3) + 3) % 3 }
 
