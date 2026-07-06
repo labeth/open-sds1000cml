@@ -76,9 +76,26 @@ func TestRenderAltViews(t *testing.T) {
 	h = defaultHUD()
 	h.ViewMode = 2
 	Render(fft, f, h, true)
-	// FFT draws the channel colour across the plot; must differ from a blank fill.
+	// FFT overlays BOTH enabled channels' spectra (both colours present).
 	if countColor(fft, colC1) == 0 {
-		t.Error("FFT view drew no spectrum")
+		t.Error("FFT view drew no C1 spectrum")
+	}
+	if countColor(fft, colC2) == 0 {
+		t.Error("FFT view drew no C2 spectrum (should overlay both channels)")
+	}
+	// No trigger-level dashed line / ground arrows should intrude on the FFT plot
+	// BODY (below the top HUD bar, which legitimately shows the trigger state).
+	if countColorIn(fft, colTrig, 0, 40, W-140, traceBot-20) > 20 {
+		t.Error("trigger/ground markers drawn over the FFT plot")
+	}
+	// Sanity: the SAME markers DO appear in the Y-T plot body (so the test isn't
+	// just checking an always-empty region).
+	yt2 := NewMemSurface()
+	hy := defaultHUD()
+	hy.TrigLvlDiv = 0 // centre dashed line
+	Render(yt2, f, hy, true)
+	if countColorIn(yt2, colTrig, 0, 40, W-140, traceBot-20) < 40 {
+		t.Error("expected trigger markers in the Y-T plot body (test region wrong)")
 	}
 
 	math := NewMemSurface()

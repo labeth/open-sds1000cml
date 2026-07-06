@@ -357,9 +357,9 @@ func (c *Controller) MenuView() MenuView {
 	}
 	switch pg {
 	case pgTrig:
-		slope := "Rise ↗"
+		slope := "Rise" // LCD font is ASCII — no arrow glyphs
 		if !st.TrigRising {
-			slope = "Fall ↘"
+			slope = "Fall"
 		}
 		src := "CH1"
 		if st.TrigSource == 1 {
@@ -380,7 +380,7 @@ func (c *Controller) MenuView() MenuView {
 		}
 	case pgAcq:
 		modes := []string{"Normal", "Average", "ERes", "Peak"}
-		cnt := "—"
+		cnt := "-"
 		if st.AcqMode == 1 {
 			cnt = fmt.Sprint(st.AvgCount)
 		} else if st.AcqMode == 2 {
@@ -400,7 +400,7 @@ func (c *Controller) MenuView() MenuView {
 			{"CH2", onoff(c2)},
 			{"Measure", onoff(meas)},
 			{"View", []string{"Y-T", "X-Y", "FFT"}[view%3]},
-			{"Math", []string{"Off", "C1+C2", "C1-C2", "C1×C2"}[mth%4]},
+			{"Math", []string{"Off", "C1+C2", "C1-C2", "C1xC2"}[mth%4]}, // ASCII font: no '×'
 		}
 	case pgHoriz:
 		v.Title = "HORIZ"
@@ -432,7 +432,7 @@ func (c *Controller) MenuView() MenuView {
 		}
 		show := func(has, s bool) string {
 			if !has {
-				return "—"
+				return "-"
 			}
 			return onoff(s)
 		}
@@ -457,7 +457,7 @@ func (c *Controller) MenuView() MenuView {
 			{"Cursors", onoff(curOn)},
 			{"Type", typ},
 			{"Active", sel},
-			{"Move ±", "ADJUST"},
+			{"Move +/-", "ADJUST"},
 			{"", ""},
 		}
 	}
@@ -631,7 +631,7 @@ func fmtEng(v float64, unit string) string {
 	case a >= 1e-3:
 		return fmt.Sprintf("%.3g m%s", v*1e3, unit)
 	case a >= 1e-6:
-		return fmt.Sprintf("%.3g µ%s", v*1e6, unit)
+		return fmt.Sprintf("%.3g u%s", v*1e6, unit) // ASCII 'u' — the LCD font has no 'µ'
 	default:
 		return fmt.Sprintf("%.3g n%s", v*1e9, unit)
 	}

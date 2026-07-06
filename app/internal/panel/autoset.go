@@ -42,7 +42,7 @@ func (c *Controller) autoset() {
 		return
 	}
 	stop := make(chan struct{})
-	c.autosetBusy, c.autosetStop, c.autosetMsg = true, stop, "AUTOSET…"
+	c.autosetBusy, c.autosetStop, c.autosetMsg = true, stop, "AUTOSET..."
 	c.mu.Unlock()
 	c.pushLEDs()
 	go c.runAutoset(stop)

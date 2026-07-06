@@ -737,7 +737,7 @@ func Render(sf Surface, f *engine.Frame, hud HUD, live bool) {
 // sweep runs, with the cancel hint (a second AUTO press stops it).
 func drawAutosetBanner(sf Surface, msg string) {
 	if msg == "" {
-		msg = "AUTOSET…"
+		msg = "AUTOSET..."
 	}
 	const bw, bh = 300, 44
 	x0, y0 := (W-bw)/2, (H-bh)/2
@@ -758,7 +758,7 @@ func drawAutosetBanner(sf Surface, msg string) {
 	// Only the working banner is cancelable; a result note (e.g. "no signal")
 	// just clears on its own.
 	hint := "AUTO again to cancel"
-	if msg != "AUTOSET…" {
+	if msg != "AUTOSET..." {
 		hint = "check the probe / scale"
 	}
 	DrawText(sf, x0+(bw-TextWidth(hint, 1))/2, y0+30, hint, colDim, 1)
@@ -894,7 +894,7 @@ func drawHUD(sf Surface, f *engine.Frame, hud HUD) {
 	}
 	// Math legend so the purple trace is identified (and not confused with a ref).
 	if hud.MathMode != 0 && hud.ViewMode == 0 {
-		names := []string{"", "C1+C2", "C1-C2", "C1×C2"}
+		names := []string{"", "C1+C2", "C1-C2", "C1xC2"} // ASCII font has no '×'
 		DrawText(sf, 300, 2, "M:"+names[hud.MathMode&3], colMath, 1)
 	}
 
