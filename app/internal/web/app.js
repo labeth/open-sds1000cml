@@ -1978,7 +1978,7 @@ function runAutodetect() {
 // frozen-synthetic-frame path as captures, so zoom/cursors/CSV/PNG all work
 // on the stacked waveform, and "fit model" writes the analytic sum-of-
 // sinusoids reconstruction into REF B for overlay comparison.
-const sr = { st: null, armed: false, gen: 0, lastSeq: 0, meta: null, t0: 0, durS: 60, lastUi: 0, ch: 1,
+const sr = { st: null, armed: false, gen: 0, lastSeq: 0, meta: null, t0: 0, stopMode: "time", stopVal: 60, lastBits: 0, lockRef: false, lastUi: 0, ch: 1,
   showing: false, savedWin: null, // stack-view toggle state + remembered zoom
   // Offset dither: the 8-bit quantizer's staircase survives averaging when
   // the front-end noise is sub-LSB. Sweeping the offset DAC by sub-LSB steps
@@ -1997,6 +1997,7 @@ function srUpdateStats(final) {
   if (!sr.st || !sr.st.frames) { srStatus("waiting for frames…"); return; }
   // Strided stats-only reduction: a full one over 1.3M bins each tick janks.
   const res = srResult(sr.st, { statsOnly: true, stride: Math.max(1, Math.ceil(sr.st.nbins / 65536)) });
+  if (res.sigmaStack > 0) sr.lastBits = res.bitsGained || 0; // for the +bits stop target
   const el = ((now - sr.t0) / 1000).toFixed(0);
   const rate = res.effRateSa >= 1e9 ? (res.effRateSa / 1e9).toFixed(2) + " GSa/s" : (res.effRateSa / 1e6).toFixed(0) + " MSa/s";
   // A deposit kernel (drizzle) puts only ~frames/K contributors in each fine
@@ -2008,6 +2009,19 @@ function srUpdateStats(final) {
     : "σ n/a on this grid — read per-tone SNR in FFT";
   srStatus(`${res.frames} stacked · ${res.rejected} rej` + (res.clipped ? ` (${res.clipped} clip)` : "") + (res.reseeds ? ` · reseed ${res.reseeds}` : "") +
     ` · ${el}s · ${noise} · ${rate} grid · fill ${(res.fill * 100).toFixed(1)}%`);
+}
+
+// srTargetReached: has the selected stop target been met? bits + stacks are
+// acquisition-rate independent (the device gets the same result crunching
+// slower than the engine); time is the wall-clock fallback; manual never stops.
+function srTargetReached() {
+  if (!sr.st || sr.stopVal <= 0) return false;
+  switch (sr.stopMode) {
+    case "bits":   return sr.lastBits >= sr.stopVal;
+    case "stacks": return sr.st.frames >= sr.stopVal;
+    case "time":   return (performance.now() - sr.t0) / 1000 >= sr.stopVal;
+  }
+  return false;
 }
 
 function srIngest(f) {
@@ -2025,6 +2039,16 @@ function srIngest(f) {
     sr.st.c[1].vpc = f.vpc2 || 1 / 32;
     sr.st.c[1].offV = f.off2_v || 0;
     sr.meta = { tdiv_s: f.tdiv_s, cols: f.cols, sample_s: f.sample_s, vpc1: f.vpc1, vpc2: f.vpc2 };
+    if (sr.lockRef) {
+      // Lock THIS (frozen) frame as the match reference, then resume acquisition
+      // so matching frames flow in and stack; non-matches are rejected.
+      if (!srSeedRef(sr.st, f.c1, f.c2, f.edge_x != null ? f.edge_x : -1)) {
+        srStop("reference frame unusable (flat/clipped) — freeze a cleaner one"); return;
+      }
+      send("run", 1);
+      srUpdateStats(false);
+      return; // reference seeded; match+stack subsequent frames against it
+    }
   } else if (f.cols !== sr.meta.cols || f.sample_s !== sr.meta.sample_s) {
     srStop("acquisition changed (t/div or depth) — stack kept");
     return;
@@ -2056,11 +2080,17 @@ function srIngest(f) {
   }
   // BOTH channels stack (the align channel drives alignment/lucky-select).
   srFeed(sr.st, f.c1, f.c2, { maxLag: 8, edgeX: f.edge_x });
-  if (sr.durS && (performance.now() - sr.t0) / 1000 >= sr.durS) {
-    srStop("done");
-    return;
-  }
   srUpdateStats(false);
+  // Stop when the target is reached. stacks (exact) and bits are acquisition-rate
+  // INDEPENDENT — the device, crunching slower than the engine, reaches the same
+  // stack; time is the wall-clock fallback. For bits, recompute EVERY stacked
+  // frame with a FIXED stride (not the throttled display cadence) so the stop
+  // frame is a function of the stack, not wall-clock.
+  if (sr.stopMode === "bits" && sr.stopVal > 0) {
+    const r = srResult(sr.st, { statsOnly: true, stride: Math.max(1, Math.ceil(sr.st.nbins / 8192)) });
+    if (r.sigmaStack > 0) sr.lastBits = r.bitsGained || 0;
+  }
+  if (sr.stopVal > 0 && srTargetReached()) { srStop("target reached"); return; }
 }
 
 let srFails = 0;
@@ -2112,7 +2142,12 @@ $("srArm").onclick = () => {
     return;
   }
   sr.st = null; sr.meta = null; sr.lastSeq = 0; sr.savedWin = null;
-  sr.durS = +$("srDur").value;
+  sr.stopMode = $("srStopMode").value;
+  sr.stopVal = +$("srStopVal").value || 0;
+  sr.lastBits = 0;
+  // Frozen (SINGLE'd / stopped) at ARM → LOCK that frame as the match reference
+  // and stack only frames matching its pattern (R3/R4). Running → auto-adopt.
+  sr.lockRef = !!(st && !st.running);
   sr.ch = +$("srCh").value || 1; // latched — a mid-capture change stops the stack
   sr.dither.on = $("srDither").checked;
   sr.dither.base = (st && (sr.ch === 2 ? st.off2_v : st.off1_v)) || 0;
@@ -2126,6 +2161,14 @@ $("srArm").onclick = () => {
 };
 
 $("srReset").onclick = () => { if (sr.showing) srExitView(); srStop(); sr.st = null; sr.meta = null; sr.savedWin = null; srStatus("idle"); };
+
+// Stop-mode selector: adapt the target field's default + step to the units.
+$("srStopMode").onchange = () => {
+  const m = $("srStopMode").value, v = $("srStopVal");
+  const d = { bits: [4, 0.5], stacks: [500, 50], time: [60, 10] }[m];
+  v.disabled = !d;
+  if (d) { v.value = d[0]; v.step = d[1]; }
+};
 
 // The stack view is a first-class TOGGLE: everything a single shot can do —
 // measurements, FFT, X-Y, math, decode, cursors, CSV/PNG — works on the

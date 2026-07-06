@@ -28,7 +28,7 @@ try {
   await page.waitForFunction(() => typeof frame !== "undefined" && frame && frame.c1 && frame.c1.length > 0, null, { timeout: 15000 });
 
   // Arm with manual stop and a fine grid.
-  await page.selectOption("#srDur", "0");
+  await page.selectOption("#srStopMode", "manual"); // no auto-stop during the e2e
   await page.selectOption("#srK", "16");
   await page.click("#srArm");
   // Frames must accumulate (fakeScope publishes continuously).

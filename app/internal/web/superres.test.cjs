@@ -3,7 +3,7 @@
 // the shifts, reject the junk, drop the noise ~sqrt(N), and fill the fine
 // grid without peak-locking. Run by superres_node_test.go.
 "use strict";
-const { srAlign, srGainOffset, srNew, srFeed, srResult, srModelFit, srClipped, srMeasure } = require("./superres.js");
+const { srAlign, srGainOffset, srNew, srSeedRef, srFeed, srResult, srModelFit, srClipped, srMeasure } = require("./superres.js");
 const peaksLib = require("./peaks.js");
 
 let fails = 0;
@@ -469,6 +469,84 @@ function frame(n, period, shift, noise, amp, harmonics) {
   check("meas: vtop/vbase straddle mean", m.vtop > m.vmean && m.vbase < m.vmean,
     `${m.vbase.toFixed(2)}/${m.vmean.toFixed(2)}/${m.vtop.toFixed(2)}`);
   check("meas: rise measured", m.rise_s > 0 && m.rise_s < period * 1e-8, (m.rise_s * 1e9).toFixed(1) + " ns");
+}
+
+// ---- reference-locked matching (R3/R4/R5): burst→slow→burst ----
+// single'd on a burst → stack bursts (incl. displaced from the trigger), reject
+// slow-stuff. burst and slow SHARE the trigger step (the hard case: a plain NCC
+// over the wide window is dominated by that shared DC edge and false-accepts).
+{
+  const N = 2048, EDGE = 200;
+  const clampC = v => Math.max(12, Math.min(243, Math.round(v)));
+  const base = i => (i < EDGE ? 128 : (i < EDGE + 5 ? 128 + 62 * (i - EDGE) / 5 : 190));
+  const burst = (packetShift, na) => { // shared step + oscillatory packet at 260+shift
+    const a = new Int16Array(N);
+    for (let i = 0; i < N; i++) {
+      let v = base(i);
+      const p0 = 260 + packetShift;
+      if (i >= p0 && i < p0 + 320) v = 190 + 48 * Math.sin((i - p0) * 2 * Math.PI / 9);
+      a[i] = clampC(v + na * (rnd() - 0.5));
+    }
+    return a;
+  };
+  const slow = na => { // SAME shared step, then a slow ramp (no oscillation)
+    const a = new Int16Array(N);
+    for (let i = 0; i < N; i++) {
+      let v = base(i);
+      if (i >= 260 && i < 900) v = 190 - 40 * (i - 260) / 640;
+      a[i] = clampC(v + na * (rnd() - 0.5));
+    }
+    return a;
+  };
+  const st = srNew(N, 32);
+  st.align = 0; st.c[0].vpc = st.c[1].vpc = 1 / 32;
+  const ref = burst(0, 0);
+  check("reflock: seed accepts a burst reference", srSeedRef(st, ref, ref, EDGE) === true && st.userRef === true);
+  const disp = f => srFeed(st, f, f, { maxLag: 8, edgeX: EDGE });
+  // bursts — incl. displaced from the trigger (R5) — must stack, aligned to the packet
+  check("reflock: burst +0 stacked",  disp(burst(0, 6)) === "stacked");
+  check("reflock: burst +6 stacked",  disp(burst(6, 6)) === "stacked");
+  check("reflock: burst +30 stacked (displaced)", disp(burst(30, 6)) === "stacked");
+  check("reflock: burst -18 stacked (displaced)", disp(burst(-18, 6)) === "stacked");
+  const shifts = st.shifts.slice(-4);
+  check("reflock: displaced bursts aligned to the PACKET, not the edge",
+    Math.abs(shifts[1] - 6) < 2 && Math.abs(shifts[2] - 30) < 2 && Math.abs(shifts[3] + 18) < 2,
+    shifts.map(s => s.toFixed(1)).join(","));
+  // slow frames share the edge but carry no packet → must be REJECTED (R4)
+  let slowRej = 0;
+  for (let i = 0; i < 4; i++) if (disp(slow(6)) !== "stacked") slowRej++;
+  check("reflock: all 4 slow frames rejected", slowRej === 4, slowRej + "/4");
+  check("reflock: stack held only the 4 bursts + reference", st.frames === 5, "frames=" + st.frames);
+}
+
+// ---- reference-locked matching is GENERAL (not burst-specific) ----
+// Freeze a SPECIFIC byte pattern (e.g. a UART frame with an error) → stack frames
+// carrying the SAME pattern (incl. shifted), reject a DIFFERENT byte pattern. Both
+// share the start-bit trigger edge (the shared feature the matcher must ignore).
+{
+  const N = 2048, EDGE = 300, SPB = 24, LO = 50, HI = 190;
+  const clampC = v => Math.max(12, Math.min(243, Math.round(v)));
+  const uart = (bits, shift, na) => {
+    const a = new Int16Array(N);
+    for (let i = 0; i < N; i++) {
+      const j = i - shift;
+      let v = HI; // idle high + stop
+      if (j >= EDGE && j < EDGE + SPB) v = LO; // start bit — the shared trigger edge
+      else if (j >= EDGE + SPB && j < EDGE + SPB * 9) v = bits[((j - EDGE - SPB) / SPB) | 0] ? HI : LO;
+      a[i] = clampC(v + na * (rnd() - 0.5));
+    }
+    return a;
+  };
+  const A = [0, 1, 1, 0, 1, 0, 0, 1], B = [1, 0, 0, 1, 0, 1, 1, 0]; // two distinct bytes
+  const st = srNew(N, 32);
+  st.align = 0; st.c[0].vpc = st.c[1].vpc = 1 / 32;
+  check("reflock/uart: seed a byte-pattern reference", srSeedRef(st, uart(A, 0, 0), uart(A, 0, 0), EDGE) === true);
+  const disp = f => srFeed(st, f, f, { maxLag: 8, edgeX: EDGE });
+  check("reflock/uart: same pattern stacked", disp(uart(A, 0, 6)) === "stacked");
+  check("reflock/uart: same pattern SHIFTED stacked", disp(uart(A, 25, 6)) === "stacked");
+  check("reflock/uart: DIFFERENT byte rejected", disp(uart(B, 0, 6)) !== "stacked");
+  check("reflock/uart: DIFFERENT byte shifted rejected", disp(uart(B, 25, 6)) !== "stacked");
+  check("reflock/uart: stack held only the 2 matching + reference", st.frames === 3, "frames=" + st.frames);
 }
 
 if (fails) { console.log(fails + " FAILURES"); process.exit(1); }

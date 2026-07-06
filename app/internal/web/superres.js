@@ -231,6 +231,121 @@ function srNew(n, K) {
 // so the align channel's shift serves both; each channel gets its own drift
 // fit against its own reference). sig2 may be null (single-channel feed).
 // Returns a disposition string for the UI ("stacked" | "rejected:<why>").
+// srBuildTemplate isolates the frozen reference's DISTINGUISHING content — a
+// zero-mean template the locate matched-filters against every frame. GENERAL
+// PURPOSE: the "signal" is whatever you froze (a burst, a specific UART byte
+// pattern, a glitch, a slow ramp — anything). It is the reference's active
+// region AFTER the trigger transition: the trigger edge is the ONE feature every
+// triggered frame shares (it fired on the same level-crossing), so it carries no
+// match information and is excluded — otherwise a plain NCC over it false-accepts
+// everything. The active span is trimmed to where the reference deviates from its
+// pre-trigger flat baseline (deviation, not high-frequency energy, so a slow
+// reference is kept too). NCC (mean- and scale-invariant) then matches shape.
+function srBuildTemplate(ref, n, edgeX, valid) {
+  const hi0 = valid > 0 && valid <= n ? valid : n;
+  const lo0 = edgeX >= 0 ? Math.min(hi0 - 1, Math.round(edgeX) + 16) : 0; // skip the shared trigger transition
+  if (hi0 - lo0 < 16) return null;
+  // Local variation = moving range over a short window. The active region is
+  // where it rises above the flat-region noise floor — this trims constant/idle
+  // stretches at ANY level (so a burst packet sitting at a variable delay after
+  // the trigger is isolated and found; UART bytes, a ramp, a glitch likewise),
+  // while keeping genuinely varying content. General, no signal-type assumption.
+  const W = 12, h = W >> 1;
+  const mr = new Float64Array(hi0);
+  for (let i = lo0; i < hi0; i++) {
+    let mn = 255, mx = 0;
+    const a = i - h < lo0 ? lo0 : i - h, b = i + h + 1 > hi0 ? hi0 : i + h + 1;
+    for (let j = a; j < b; j++) { const v = ref[j]; if (v < mn) mn = v; if (v > mx) mx = v; }
+    mr[i] = mx - mn;
+  }
+  const sorted = Array.from(mr.subarray(lo0, hi0)).sort((a, b) => a - b);
+  const floor = sorted[Math.floor(sorted.length * 0.2)] || 0;
+  const peak = sorted[sorted.length - 1] || 0;
+  if (peak - floor < 6) return null; // no distinguishing variation
+  const thr = floor + Math.max(4, 0.2 * (peak - floor));
+  let lo = -1, hi = -1;
+  for (let i = lo0; i < hi0; i++) {
+    if (mr[i] < thr) continue;
+    if (lo < 0) lo = i;
+    hi = i;
+  }
+  if (lo < 0 || hi - lo < 8) { lo = lo0; hi = hi0 - 1; } // fall back to the whole post-edge region
+  else { lo = lo - h < lo0 ? lo0 : lo - h; hi = hi + h >= hi0 ? hi0 - 1 : hi + h; } // pad, don't clip a feature
+  const L = hi - lo + 1;
+  const data = new Float64Array(L);
+  let mean = 0;
+  for (let i = 0; i < L; i++) mean += ref[lo + i];
+  mean /= L;
+  let ss = 0;
+  for (let i = 0; i < L; i++) { data[i] = ref[lo + i] - mean; ss += data[i] * data[i]; }
+  const norm = Math.sqrt(ss);
+  if (!(norm > 0)) return null;
+  return { data, lo, hi, L, norm };
+}
+
+// srSeedRef adopts a SPECIFIC frame as the LOCKED alignment reference (e.g. a
+// frame frozen with SINGLE), instead of auto-adopting the first live frame. Sets
+// userRef so srFeed never re-seeds off it: only frames whose PATTERN matches this
+// reference get stacked, the rest rejected (a burst stays a burst; the slow-stuff
+// majority is thrown away instead of taking over). Returns true, or false if the
+// frame is unusable (flat/clipped) — a bad locked reference poisons the capture.
+function srSeedRef(st, sig1, sig2, edgeX) {
+  const sigs = [sig1, sig2];
+  const alignSig = sigs[st.align];
+  if (!alignSig || alignSig.length < st.n) return false;
+  if (srClipped(alignSig)) return false;
+  let lo = 255, hi = 0;
+  for (let i = 0; i < st.n; i++) { const v = alignSig[i]; if (v < lo) lo = v; if (v > hi) hi = v; }
+  if (hi - lo < 12) return false; // flat/untriggered — not a usable reference
+  st.refEdgeX = edgeX != null ? edgeX : -1;
+  st.edgeX = st.refEdgeX; // the stack lives on the reference's timeline
+  for (let ch = 0; ch < 2; ch++) {
+    const s = sigs[ch];
+    if (!s || !(s.length >= st.n)) continue;
+    st.c[ch].ref = Float32Array.from(s.subarray ? s.subarray(0, st.n) : s.slice(0, st.n));
+    srAccumCh(st, ch, st.c[ch].ref, 0);
+  }
+  st.frames++;
+  st.scores.push(1); st.shifts.push(0);
+  st.userRef = true;
+  st.tpl = srBuildTemplate(st.c[st.align].ref, st.n, st.refEdgeX, st.n);
+  return true;
+}
+
+// srMatchLocate slides the reference's distinguishing TEMPLATE (srBuildTemplate)
+// over the high-passed frame and returns the best sub-window match: {shift, score,
+// ambig}. score = normalized correlation at the best location; ambig = a rival
+// peak (≥0.9·best, well separated) exists → the pattern is period-ambiguous or
+// absent, reject. shift aligns the frame's found pattern back onto the reference's
+// (so srAccumCh stacks the matched content, wherever it sat vs the trigger). This
+// is R4 (reject non-matches) + R5 (find a pattern displaced from the trigger).
+function srMatchLocate(st, sig, base, R) {
+  const t = st.tpl;
+  if (!t) return null;
+  const L = t.L, data = t.data, tnorm = t.norm;
+  base = base | 0;
+  // Search the template's expected position (trigger-predicted `base`) ± R, NOT
+  // the whole record: an unbounded search lets a DIFFERENT pattern reach for a
+  // favorable far partial-overlap and false-accept. R is the translation budget —
+  // how far the pattern may sit from where the trigger predicts (R5).
+  const center = t.lo + base;
+  const lo = Math.max(0, center - R), hi = Math.min(st.n - L, center + R);
+  if (hi < lo) return null;
+  let best = -2, bestLoc = center, second = -2;
+  for (let loc = lo; loc <= hi; loc++) {
+    let mean = 0;
+    for (let i = 0; i < L; i++) mean += sig[loc + i];
+    mean /= L;
+    let dot = 0, ss = 0;
+    for (let i = 0; i < L; i++) { const s = sig[loc + i] - mean; dot += data[i] * s; ss += s * s; }
+    const den = tnorm * Math.sqrt(ss);
+    const sc = den > 0 ? dot / den : 0;
+    if (sc > best) { if (Math.abs(loc - bestLoc) > (L >> 1)) second = best; best = sc; bestLoc = loc; }
+    else if (sc > second && Math.abs(loc - bestLoc) > (L >> 1)) second = sc;
+  }
+  return { shift: bestLoc - t.lo, score: best, ambig: second > 0.9 * best };
+}
+
 function srFeed(st, sig1, sig2, opts) {
   opts = opts || {};
   const maxLag = opts.maxLag || 8;
@@ -245,7 +360,11 @@ function srFeed(st, sig1, sig2, opts) {
   // within a couple of re-seeds the reference lands in the dominant
   // population and acceptance recovers.
   st.attempts++;
-  if (st.c[st.align].ref && st.attempts >= 30 && st.frames / st.attempts < 0.3) {
+  // Re-seed recovery is for AUTO references (a deep-drain minority-population
+  // first frame). A USER reference (srSeedRef, e.g. a frame frozen with SINGLE)
+  // is deliberately chosen and LOCKED — never drift off it, so a burst stays the
+  // reference and the slow-stuff majority is rejected instead of taking over.
+  if (st.c[st.align].ref && !st.userRef && st.attempts >= 30 && st.frames / st.attempts < 0.3) {
     const keep = { sampleS: st.sampleS, align: st.align, kernel: st.kernel, reseeds: st.reseeds + 1 };
     const scales = st.c.map(c => ({ vpc: c.vpc, offV: c.offV }));
     const fresh = srNew(st.n, st.K);
@@ -269,6 +388,44 @@ function srFeed(st, sig1, sig2, opts) {
     }
     st.frames++;
     st.scores.push(1); st.shifts.push(0);
+    return "stacked";
+  }
+  // LOCKED USER REFERENCE (R3/R4/R5): match the frame against the reference's
+  // distinguishing template, not the shared trigger edge. Reject non-matches
+  // (slow stuff), find a burst wherever it sits, align to it, and stack. A FIXED
+  // cut (0.62) — the adaptive ratchet over-rejects genuine weak/displaced bursts
+  // once the reference is locked (it exists only for the auto deep-drain case).
+  if (st.userRef && st.tpl) {
+    // base = where the trigger predicts the pattern; R = translation budget (how
+    // far it may sit from there, R5). Default ±25% of the record.
+    let base = 0;
+    if (st.refEdgeX >= 0 && opts.edgeX != null && opts.edgeX >= 0) base = Math.round(opts.edgeX - st.refEdgeX);
+    const R = opts.maxShift != null ? opts.maxShift : (st.maxShift || 64);
+    const m = srMatchLocate(st, alignSig, base, R);
+    if (!m || m.ambig || m.score < (opts.minScore != null ? opts.minScore : (st.minMatch || 0.8))) {
+      st.rejected++;
+      return "rejected:nomatch";
+    }
+    const shiftInt = Math.round(m.shift);
+    const wLo = Math.max(0, st.tpl.lo - st.tpl.L), wHi = Math.min(st.n, st.tpl.hi + st.tpl.L);
+    st.statLo = wLo; st.statHi = wHi;
+    for (let ch = 0; ch < 2; ch++) {
+      let s = sigs[ch];
+      if (!s || !(s.length >= st.n) || !st.c[ch].ref) continue;
+      if (ch !== st.align && srClipped(s)) { st.c[ch].clipSkips++; continue; }
+      if (opts.normalize !== false) {
+        const { g, b } = srGainOffset(st.c[ch].ref, s, shiftInt, wLo, wHi);
+        if (g !== 1 || b !== 0) {
+          const f = new Float32Array(st.n);
+          for (let i = 0; i < st.n; i++) { const v = (s[i] - b) / g; f[i] = v < 0 ? 0 : v; }
+          s = f;
+        }
+      }
+      srAccumCh(st, ch, s, m.shift);
+    }
+    st.frames++;
+    st.scores.push(m.score);
+    st.shifts.push(m.shift);
     return "stacked";
   }
   // Coarse alignment from the trigger-edge headers: on decimated deep bands
@@ -699,5 +856,5 @@ function srMeasure(codes, vpc, offV, dtS) {
 }
 
 if (typeof module !== "undefined") {
-  module.exports = { srAlign, srCrossings, srGainOffset, srNew, srFeed, srAccum, srResult, srModelFit, srClipped, srMeanStd, srMeasure };
+  module.exports = { srAlign, srCrossings, srGainOffset, srNew, srSeedRef, srFeed, srAccum, srResult, srModelFit, srClipped, srMeanStd, srMeasure };
 }

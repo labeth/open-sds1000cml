@@ -66,7 +66,7 @@
     <div class="card" id="srCard">
       <h3>Superres <span class="subtle">stack &amp; crunch</span></h3>
       <div class="toggles">
-        <button id="srArm" class="sm" title="stack raw acquisitions: align (sub-sample) → lucky-select → drizzle onto a fine grid → average">ARM</button>
+        <button id="srArm" class="sm" title="stack raw acquisitions: align (sub-sample) → lucky-select → drizzle onto a fine grid → average. Tip: SINGLE a frame you like FIRST (freeze it), then ARM — it locks THAT frame as the match reference and stacks only frames whose pattern matches (rejecting the rest), wherever they sit vs the trigger.">ARM</button>
         <button id="srShow" class="sm" title="review the stacked waveform (zoom/cursors/CSV all work on it)">view</button>
         <button id="srFit" class="sm" title="least-squares sum-of-sinusoids fit of the stack → REF B overlay">fit&nbsp;model</button>
         <button id="srReset" class="sm" title="discard the stack">✕</button>
@@ -74,7 +74,9 @@
       <div class="decrow">
         <label>grid ×<select id="srK"><option>16</option><option selected>32</option><option>64</option></select></label>
         <label>ch <select id="srCh"><option value="1">C1</option><option value="2">C2</option></select></label>
-        <label>stop <select id="srDur"><option value="30">30 s</option><option value="60" selected>60 s</option><option value="120">120 s</option><option value="0">manual</option></select></label>
+        <label title="stop the crunch when the target is reached. +bits and stacks are ACQUISITION-RATE INDEPENDENT (same result whether crunching fast or slow — matches the device); time is not.">stop
+          <select id="srStopMode"><option value="bits">+bits</option><option value="stacks">stacks</option><option value="time" selected>time&nbsp;s</option><option value="manual">manual</option></select>
+          <input id="srStopVal" type="number" min="0" step="10" value="60" style="width:4.5em"></label>
         <label title="resample kernel. interp: every bin averages every frame — lowest noise floor, but softens content near the raw Nyquist. cubic: Catmull-Rom, flatter passband. drizzle: deposit real samples at their aligned sub-sample position — best fidelity for near-Nyquist tones (needs frames ≫ grid×), at a higher noise floor.">kernel <select id="srKernel"><option value="interp" selected>interp</option><option value="cubic">cubic</option><option value="drizzle">drizzle</option></select></label>
         <label title="sweep the offset DAC by sub-LSB steps across frames (subtracted back in software) so the 8-bit quantizer's staircase averages out"><input type="checkbox" id="srDither"> dither</label>
       </div>
