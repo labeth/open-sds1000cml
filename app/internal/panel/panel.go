@@ -141,6 +141,7 @@ type Controller struct {
 	trigCode uint16
 	running  bool
 	norm     bool
+	single   bool // a single-shot is armed/waiting → SINGLE lamp
 
 	prev     [5]uint16
 	havePrev bool
@@ -344,14 +345,17 @@ func (c *Controller) button(code int) {
 	}
 	switch code {
 	case btnRunStop:
+		// Toggle RUN/STOP and leave SINGLE mode (SyncLEDs keeps the shadow in step
+		// with a single that self-stopped, so this toggles from the right state).
 		c.mu.Lock()
 		c.running = !c.running
 		r := c.running
+		c.single = false
 		c.mu.Unlock()
 		c.eng.SetRunning(r)
 	case btnSingle:
 		c.mu.Lock()
-		c.norm, c.running = true, true
+		c.norm, c.running, c.single = true, true, true
 		c.mu.Unlock()
 		c.eng.SetSingle() // true single-shot: capture one triggered frame, stop
 	case btnAuto:
@@ -383,7 +387,7 @@ func (c *Controller) resync() {
 		c.trigCode = st.TrigCode
 	}
 	c.mu.Lock()
-	c.running, c.norm = st.Running, st.Norm // guarded — pushLEDs reads these
+	c.running, c.norm, c.single = st.Running, st.Norm, st.Single // guarded — pushLEDs reads these
 	c.mu.Unlock()
 	for i, t := range c.tdivs {
 		if st.TdivS > 0 && absf(t-st.TdivS) <= t*1e-6 {
@@ -504,10 +508,24 @@ func (c *Controller) dispatch(name string, dir, steps int) {
 	}
 }
 
+// SyncLEDs refreshes the acquisition lamps (RUN/STOP, SINGLE) from the engine and
+// re-latches only when the state actually changed — so the lamps follow a single-shot
+// self-stopping, or the web/SCPI toggling run, without a front-panel key press.
+func (c *Controller) SyncLEDs() {
+	st := c.eng.Snapshot()
+	c.mu.Lock()
+	changed := c.running != st.Running || c.single != st.Single || c.norm != st.Norm
+	c.running, c.norm, c.single = st.Running, st.Norm, st.Single
+	c.mu.Unlock()
+	if changed {
+		c.pushLEDs()
+	}
+}
+
 func (c *Controller) pushLEDs() {
 	c.mu.Lock()
 	c1, c2, pg, meas := c.chDisp[0], c.chDisp[1], c.menuPage, c.showMeas
-	running, norm, math := c.running, c.norm, c.mathMode
+	running, single, math := c.running, c.single, c.mathMode
 	c.mu.Unlock()
 	var word uint16
 	if c1 {
@@ -524,7 +542,7 @@ func (c *Controller) pushLEDs() {
 	} else {
 		word |= ledStop
 	}
-	if norm {
+	if single { // SINGLE lamp: a single-shot is armed (NOT the NORM trigger mode)
 		word |= ledSingle
 	}
 	if meas {

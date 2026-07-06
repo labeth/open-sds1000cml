@@ -42,7 +42,7 @@ type MenuView struct {
 	Zoom           int        // horizontal magnification (1 = none)
 	ZoomOff        float64    // zoom-window pan offset (fraction of the record)
 	Persist        bool       // display persistence (afterglow)
-	DecProto       int        // 0=off,1=UART,2=I2C,3=SPI,4=Auto
+	DecProto       int        // 0=off,1=Auto,2=UART,3=I2C,4=SPI
 	DecBaud        int
 	DecChA, DecChB int  // channel roles (0=C1,1=C2)
 	DecCPOL        bool
@@ -210,9 +210,9 @@ func (c *Controller) pageSlots(pg int) int {
 		switch c.decProto {
 		case 0: // Off — only the Proto selector
 			return 1
-		case 4: // Auto — Proto, Format
+		case 1: // Auto — Proto, Format
 			return 2
-		case 3: // SPI — Proto, CLK, DATA, Mode, Format
+		case 4: // SPI — Proto, CLK, DATA, Mode, Format
 			return 5
 		default: // UART, I2C — Proto, param, param, Format
 			return 4
@@ -252,36 +252,36 @@ func (c *Controller) menuCycle(slot, dir int) {
 		fmtCycle := func() { c.decFormat = ((c.decFormat+dir)%3 + 3) % 3 } // Hex/ASCII/Both
 		switch slot {
 		case 0:
-			c.decProto = ((c.decProto+dir)%5 + 5) % 5 // Off/UART/I2C/SPI/Auto
+			c.decProto = ((c.decProto+dir)%5 + 5) % 5 // Off/Auto/UART/I2C/SPI (Auto first — most used)
 		case 1:
 			switch c.decProto {
-			case 1: // UART baud
+			case 1: // Auto: slot 1 is the display format
+				fmtCycle()
+			case 2: // UART baud
 				c.decBaud = nextOpt([]int{9600, 19200, 38400, 57600, 115200, 230400}, c.decBaud, dir)
-			case 2, 3: // I2C SCL / SPI CLK channel — keep data on the OTHER channel
+			case 3, 4: // I2C SCL / SPI CLK channel — keep data on the OTHER channel
 				c.decChA = 1 - c.decChA
 				c.decChB = 1 - c.decChA
-			case 4: // Auto: slot 1 is the display format
-				fmtCycle()
 			}
 		case 2:
 			switch c.decProto {
-			case 1: // UART source channel
+			case 2: // UART source channel
 				c.decChA = 1 - c.decChA
-			case 2, 3: // I2C SDA / SPI DATA channel — keep clock on the OTHER channel
+			case 3, 4: // I2C SDA / SPI DATA channel — keep clock on the OTHER channel
 				c.decChB = 1 - c.decChB
 				c.decChA = 1 - c.decChB
 			}
 		case 3:
 			switch c.decProto {
-			case 1, 2: // UART / I2C: slot 3 is the display format
+			case 2, 3: // UART / I2C: slot 3 is the display format
 				fmtCycle()
-			case 3: // SPI mode: cycle CPOL/CPHA (0..3)
+			case 4: // SPI mode: cycle CPOL/CPHA (0..3)
 				m := (b2ic(c.decCPOL)<<1 | b2ic(c.decCPHA)) + dir
 				m = ((m % 4) + 4) % 4
 				c.decCPOL, c.decCPHA = m&2 != 0, m&1 != 0
 			}
 		case 4:
-			if c.decProto == 3 { // SPI: slot 4 is the display format
+			if c.decProto == 4 { // SPI: slot 4 is the display format
 				fmtCycle()
 			}
 		}
@@ -553,7 +553,7 @@ func (c *Controller) MenuView() MenuView {
 			{"Decode", ">"}, // Cursors has its own dedicated key
 		}
 	case pgDecode:
-		protos := []string{"Off", "UART", "I2C", "SPI", "Auto"}
+		protos := []string{"Off", "Auto", "UART", "I2C", "SPI"}
 		fmts := []string{"Hex", "ASCII", "Both"}
 		ch := func(c int) string {
 			if c == 1 {
@@ -565,21 +565,21 @@ func (c *Controller) MenuView() MenuView {
 		it := []MenuItem{{"Proto", protos[decProto%5]}, {"", ""}, {"", ""}, {"", ""}, {"", ""}}
 		show := MenuItem{"Show", fmts[decFormat%3]}
 		switch decProto {
-		case 1: // UART
+		case 1: // Auto — detects protocol/roles/params from the live signal each frame
+			it[1] = show
+		case 2: // UART
 			it[1] = MenuItem{"Baud", fmt.Sprint(decBaud)}
 			it[2] = MenuItem{"Source", ch(decChA)}
 			it[3] = show
-		case 2: // I2C
+		case 3: // I2C
 			it[1] = MenuItem{"SCL", ch(decChA)}
 			it[2] = MenuItem{"SDA", ch(decChB)}
 			it[3] = show
-		case 3: // SPI
+		case 4: // SPI
 			it[1] = MenuItem{"CLK", ch(decChA)}
 			it[2] = MenuItem{"DATA", ch(decChB)}
 			it[3] = MenuItem{"Mode", fmt.Sprintf("%d", b2ic(decCPOL)<<1|b2ic(decCPHA))}
 			it[4] = show
-		case 4: // Auto — detects protocol/roles/params from the live signal each frame
-			it[1] = show
 		}
 		v.Items = it
 	case pgTrigQ:

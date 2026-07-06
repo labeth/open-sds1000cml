@@ -41,7 +41,7 @@ type HUD struct {
 	Zoom             int     // horizontal magnification (1 = none)
 	ZoomOff          float64 // zoom-window pan offset (fraction of the record)
 	Persist          bool    // display persistence (afterglow)
-	DecProto         int     // protocol decode: 0=off,1=UART,2=I2C,3=SPI,4=Auto
+	DecProto         int     // protocol decode: 0=off,1=Auto,2=UART,3=I2C,4=SPI
 	DecBaud          int
 	DecChA, DecChB   int // channel roles (0=C1,1=C2)
 	DecCPOL, DecCPHA bool
@@ -351,18 +351,18 @@ func drawDecode(sf Surface, f *engine.Frame, hud HUD, win int, xc, posFrac float
 	}
 	format := []string{"hex", "ascii", "both"}[hud.DecFormat%3]
 	var res decode.Result
-	switch hud.DecProto {
-	case 1:
-		res = decode.DecodeUART(ch(hud.DecChA), f.SampleS, decode.UARTCfg{Baud: hud.DecBaud, Format: format})
-	case 2:
-		res = decode.DecodeI2C(ch(hud.DecChA), ch(hud.DecChB), f.SampleS, decode.I2CCfg{Format: format})
-	case 3:
-		res = decode.DecodeSPI(ch(hud.DecChA), ch(hud.DecChB), f.SampleS, decode.SPICfg{CPOL: hud.DecCPOL, CPHA: hud.DecCPHA, MSB: true, Format: format})
-	case 4: // Auto: detect protocol / channel roles / sub-settings from the signal
+	switch hud.DecProto { // 0=off 1=Auto 2=UART 3=I2C 4=SPI
+	case 1: // Auto: detect protocol / channel roles / sub-settings from the signal
 		res = decode.Autodetect(ch(0), ch(1), f.SampleS, format)
+	case 2:
+		res = decode.DecodeUART(ch(hud.DecChA), f.SampleS, decode.UARTCfg{Baud: hud.DecBaud, Format: format})
+	case 3:
+		res = decode.DecodeI2C(ch(hud.DecChA), ch(hud.DecChB), f.SampleS, decode.I2CCfg{Format: format})
+	case 4:
+		res = decode.DecodeSPI(ch(hud.DecChA), ch(hud.DecChB), f.SampleS, decode.SPICfg{CPOL: hud.DecCPOL, CPHA: hud.DecCPHA, MSB: true, Format: format})
 	}
-	name := []string{"", "UART", "I2C", "SPI"}[hud.DecProto&3]
-	if hud.DecProto == 4 { // Auto — label with whatever it found
+	name := []string{"", "AUTO", "UART", "I2C", "SPI"}[hud.DecProto%5]
+	if hud.DecProto == 1 { // Auto — label with whatever it found
 		switch res.Proto {
 		case "uart":
 			name = "AUTO UART"
@@ -370,8 +370,6 @@ func drawDecode(sf Surface, f *engine.Frame, hud HUD, win int, xc, posFrac float
 			name = "AUTO I2C"
 		case "spi":
 			name = "AUTO SPI"
-		default:
-			name = "AUTO"
 		}
 	}
 	// Decode lane: a dark band that sits ABOVE the bottom Vpp/freq readout row

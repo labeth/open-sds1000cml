@@ -149,6 +149,9 @@ func runLCD(e *engine.Engine, fe *analog.FrontEnd, fo *frames.Fanout) {
 				hud.Trigd = f.Trigd // on-screen TRIG'd indicator (there is no TRIG'd lamp)
 				hud.SampleS = f.SampleS
 			}
+			if pc := uiCtrl.Load(); pc != nil {
+				pc.SyncLEDs() // keep RUN/STOP + SINGLE lamps in step (re-latches only on change)
+			}
 			live := f != nil && time.Since(lastFresh) < 300*time.Millisecond
 			lcd.Render(back, f, hud, live, persistLayer)
 		})

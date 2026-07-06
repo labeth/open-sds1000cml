@@ -341,15 +341,29 @@ func TestDecodeMenu(t *testing.T) {
 	if v := c.MenuView(); v.Title != "DECODE" {
 		t.Fatalf("DECODE page not open: %q", v.Title)
 	}
-	// Proto Off -> UART -> I2C.
+	// Auto is FIRST after Off (most used) — one F1 press reaches it, and it shows
+	// only Proto + the format slot.
 	c.menuButton(btnF1)
+	if v := c.MenuView(); v.DecProto != 1 || v.Items[0].Value != "Auto" || v.Items[1].Label != "Show" {
+		t.Fatalf("Auto not first/labelled: proto=%d items=%+v", v.DecProto, v.Items)
+	}
+	// Auto fills slots 0..1, so F3 (slot 2) is inert.
+	sel := c.MenuView().Sel
+	c.menuButton(btnF3)
+	if got := c.MenuView().Sel; got != sel {
+		t.Fatalf("F3 moved highlight onto an empty Auto slot: %d -> %d", sel, got)
+	}
+	// Auto -> UART.
+	c.menuButton(btnF1)
+	if v := c.MenuView(); v.DecProto != 2 || v.Items[1].Label != "Baud" || v.Items[2].Label != "Source" {
+		t.Fatalf("UART not selected/labelled: proto=%d items=%+v", v.DecProto, v.Items)
+	}
+	// UART -> I2C. Clock and data must never share a channel (slot 1=SCL, 2=SDA).
 	c.menuButton(btnF1)
 	v := c.MenuView()
-	if v.DecProto != 2 || v.Items[1].Label != "SCL" || v.Items[2].Label != "SDA" {
+	if v.DecProto != 3 || v.Items[1].Label != "SCL" || v.Items[2].Label != "SDA" {
 		t.Fatalf("I2C not selected/labelled: proto=%d items=%+v", v.DecProto, v.Items)
 	}
-	// Clock and data must never share a channel, at start or after any toggle
-	// (slot 1 = SCL, slot 2 = SDA).
 	if v.DecChA == v.DecChB {
 		t.Fatalf("SCL/SDA share a channel at start: A=%d B=%d", v.DecChA, v.DecChB)
 	}
@@ -361,7 +375,7 @@ func TestDecodeMenu(t *testing.T) {
 	if v := c.MenuView(); v.DecChA == v.DecChB {
 		t.Fatalf("SCL/SDA share a channel after SDA toggle: A=%d B=%d", v.DecChA, v.DecChB)
 	}
-	// I2C now carries a "Show" (byte format) slot at slot 3, cycling Hex/ASCII/Both.
+	// I2C carries a "Show" (byte format) slot at slot 3, cycling Hex/ASCII/Both.
 	if v := c.MenuView(); v.Items[3].Label != "Show" || v.Items[3].Value != "Hex" {
 		t.Fatalf("I2C Show slot missing/wrong: %+v", v.Items[3])
 	}
@@ -369,31 +383,32 @@ func TestDecodeMenu(t *testing.T) {
 	if v := c.MenuView(); v.DecFormat != 1 || v.Items[3].Value != "ASCII" {
 		t.Fatalf("Show did not cycle to ASCII: fmt=%d items=%+v", v.DecFormat, v.Items[3])
 	}
-	// I2C fills slots 0..3, so F5 (slot 4) is inert — the highlight must not
-	// jump onto the blank slot.
-	sel := c.MenuView().Sel
+	// I2C fills slots 0..3, so F5 (slot 4) is inert.
+	sel = c.MenuView().Sel
 	c.menuButton(btnF5)
 	if got := c.MenuView().Sel; got != sel {
 		t.Fatalf("F5 moved the highlight onto an empty I2C slot: %d -> %d", sel, got)
 	}
-	// SPI exposes a real 4th slot (Mode) plus Show on slot 4.
-	c.menuButton(btnF1) // I2C -> SPI
-	if v := c.MenuView(); v.DecProto != 3 || v.Items[3].Label != "Mode" || v.Items[4].Label != "Show" {
+	// I2C -> SPI: real 4th slot (Mode) plus Show on slot 4.
+	c.menuButton(btnF1)
+	if v := c.MenuView(); v.DecProto != 4 || v.Items[3].Label != "Mode" || v.Items[4].Label != "Show" {
 		t.Fatalf("SPI slots wrong: proto=%d items=%+v", v.DecProto, v.Items)
 	}
 	c.menuButton(btnF5) // slot 4 = Show live in SPI
 	if got := c.MenuView().Sel; got != 4 {
 		t.Fatalf("F5 in SPI did not reach the Show slot: Sel=%d", got)
 	}
-	// Auto: Proto + Show only (slots 0..1); F3+ inert.
-	c.menuButton(btnF1) // SPI -> Auto
-	if v := c.MenuView(); v.DecProto != 4 || v.Items[1].Label != "Show" {
-		t.Fatalf("Auto layout wrong: proto=%d items=%+v", v.DecProto, v.Items)
+}
+
+func TestSingleThenRunLamp(t *testing.T) {
+	c, eng, _ := newC(t)
+	c.button(btnSingle)
+	if last := eng.leds[len(eng.leds)-1]; last&ledSingle == 0 {
+		t.Fatalf("SINGLE lamp not lit after SINGLE: %#04x", last)
 	}
-	sel = c.MenuView().Sel
-	c.menuButton(btnF3) // slot 2 empty in Auto -> inert
-	if got := c.MenuView().Sel; got != sel {
-		t.Fatalf("F3 moved highlight onto an empty Auto slot: %d -> %d", sel, got)
+	c.button(btnRunStop) // RUN/STOP leaves single mode → lamp must darken
+	if last := eng.leds[len(eng.leds)-1]; last&ledSingle != 0 {
+		t.Fatalf("SINGLE lamp still lit after RUN/STOP: %#04x", last)
 	}
 }
 

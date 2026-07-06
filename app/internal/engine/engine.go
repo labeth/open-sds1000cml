@@ -362,12 +362,10 @@ func (e *Engine) SetEresLen(l int) {
 
 func (e *Engine) SetRunning(on bool) {
 	e.running.Store(on)
-	if on {
-		e.singleArmed.Store(false) // RUN cancels a pending single-shot
-	}
+	e.singleArmed.Store(false) // an explicit RUN or STOP both cancel a pending single-shot
 	e.mu.Lock()
 	e.stats.Running = on
-	e.stats.Single = e.singleArmed.Load()
+	e.stats.Single = false
 	e.mu.Unlock()
 }
 
