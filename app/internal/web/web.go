@@ -44,6 +44,9 @@ var binframeJS []byte
 //go:embed superres.js
 var superresJS []byte
 
+//go:embed eyejitter.js
+var eyejitterJS []byte
+
 // Scope is the engine surface the web layer needs (the setters come from
 // *engine.Engine; WithFrame comes from the frames.Fanout — the arena's
 // single-consumer read slot belongs to the fan-out, and every other reader
@@ -161,6 +164,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/decode.js", s.hDecodeJS)
 	mux.HandleFunc("/binframe.js", s.hBinframeJS)
 	mux.HandleFunc("/superres.js", s.hSuperresJS)
+	mux.HandleFunc("/eyejitter.js", s.hEyejitterJS)
 	mux.HandleFunc("/tokens.css", s.hTokensCSS)
 	mux.HandleFunc("/base.css", s.hBaseCSS)
 	mux.HandleFunc("/app.js", s.hAppJS)
@@ -223,6 +227,8 @@ func (s *Server) hDecodeJS(w http.ResponseWriter, r *http.Request) { serveJS(w, 
 func (s *Server) hBinframeJS(w http.ResponseWriter, r *http.Request) { serveJS(w, binframeJS) }
 
 func (s *Server) hSuperresJS(w http.ResponseWriter, r *http.Request) { serveJS(w, superresJS) }
+
+func (s *Server) hEyejitterJS(w http.ResponseWriter, r *http.Request) { serveJS(w, eyejitterJS) }
 
 func (s *Server) hTokensCSS(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/css; charset=utf-8")

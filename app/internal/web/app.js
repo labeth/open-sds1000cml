@@ -2243,6 +2243,7 @@ $("srArm").onclick = () => {
     srStatus("superres/binframe scripts missing");
     return;
   }
+  if (typeof ej !== "undefined" && ej.armed) ejStop("stopped — superres armed (one raw consumer)");
   sr.st = null; sr.meta = null; sr.lastSeq = 0; sr.savedWin = null;
   sr.stopMode = $("srStopMode").value;
   sr.stopVal = +$("srStopVal").value || 0;
@@ -2487,3 +2488,182 @@ resize();
 if (typeof decodeBinFrame !== "function") transport = "json";
 if (transport === "bin") pollFrameBin(); else pollFrame();
 pollStatus();
+
+
+// ---- eye diagram / jitter analysis (eyejitter.js engine) ----
+// The serial-analysis package: software CDR over raw records, persistence eye,
+// TIE jitter (histogram, RJ/DJ, spectrum). One raw-feed consumer at a time —
+// arming the eye stops superres and vice versa.
+const ej = { st: null, armed: false, gen: 0, lastSeq: 0, fails: 0, lastUi: 0, vpc: 1 / 32 };
+const ejStatus = m => { $("ejStats").textContent = m; };
+
+$("ejArm").onclick = () => {
+  if (ej.armed) { ejStop("stopped"); return; }
+  if (!st || (st.band !== "native-fast" && st.band !== "decimated")) {
+    ejStatus("unsupported band (" + (st ? st.band : "?") + ") — use a native/decimated t/div");
+    return;
+  }
+  if (typeof ejNew !== "function" || typeof decodeBinFrame !== "function") { ejStatus("eyejitter/binframe scripts missing"); return; }
+  if (sr.armed) srStop("stopped — eye/jitter armed (one raw consumer)");
+  ej.st = ejNew({});
+  ej.lastSeq = 0; ej.gen++; ej.fails = 0;
+  ej.armed = true;
+  $("ejArm").textContent = "STOP";
+  $("ejArm").classList.add("on");
+  ejStatus("locking…");
+  ejLoop(ej.gen);
+};
+$("ejReset").onclick = () => { ej.st = ejNew({}); ej.lastUi = 0; ejRender(true); ejStatus(ej.armed ? "reset — locking…" : "idle"); };
+function ejStop(why) {
+  ej.armed = false;
+  $("ejArm").textContent = "ARM";
+  $("ejArm").classList.remove("on");
+  if (why) ejStatus(($("ejStats").textContent || "") + " · " + why);
+}
+
+async function ejLoop(gen) {
+  if (!ej.armed || gen !== ej.gen) return;
+  try {
+    const r = await fetch("/api/frame.bin?since=" + ej.lastSeq + "&waitms=1000&raw=1");
+    if (!r.ok) throw new Error("http " + r.status);
+    const f = decodeBinFrame(await r.arrayBuffer());
+    if (f === null) throw new Error("decode");
+    if (!ej.armed || gen !== ej.gen) return; // stop clicked mid-flight
+    ej.fails = 0;
+    if (!f.unchanged && f.seq !== ej.lastSeq) {
+      ej.lastSeq = f.seq;
+      ejIngest(f);
+    }
+    setTimeout(() => ejLoop(gen), 10);
+  } catch (e) {
+    ej.fails++;
+    setTimeout(() => ejLoop(gen), Math.min(2000, 250 * ej.fails) + 250 * Math.random());
+  }
+}
+
+function ejIngest(f) {
+  const ch = +$("ejCh").value === 2 ? 2 : 1;
+  const sig = ch === 2 ? f.c2 : f.c1;
+  if (!sig || f.is_env) { ejStop("band became unsupported"); return; }
+  ej.vpc = (ch === 2 ? f.vpc2 : f.vpc1) || (1 / 32);
+  ejFeed(ej.st, sig, f.cols, f.sample_s || 0);
+  ejRender(false);
+}
+
+// ---- rendering (throttled) ----
+let ejLastUi = 0, ejEyeCv = null;
+function ejRender(force) {
+  const now = performance.now();
+  if (!force && now - ejLastUi < 500) return;
+  ejLastUi = now;
+  const st2 = ej.st;
+  if (!st2) return;
+  const res = ejResult(st2);
+  // status line
+  if (res.records === 0) {
+    ejStatus("no lock yet · " + st2.rejected + " rejected (" + (res.lastErr || "…") + ") — needs a clean NRZ stream");
+  } else {
+    ejStatus(res.records + " records · " + res.edges + " edges · " + st2.rejected + " rej · " +
+      eng(res.bitRate, "b/s", 4) + " · UI " + eng(res.uiSeconds, "s", 3));
+  }
+  ejDrawEye(st2);
+  ejDrawHist(st2, res);
+  ejDrawSpec(res);
+  ejMetricsTable(res);
+}
+
+// log-density heatmap: dark well -> blue -> cyan -> yellow -> white
+function ejHeatColor(t) {
+  const r = Math.min(255, Math.max(0, Math.round(t < 0.5 ? 0 : (t - 0.5) * 2 * 255)));
+  const g = Math.min(255, Math.max(0, Math.round(t < 0.25 ? t * 4 * 130 : 130 + (t - 0.25) * 167)));
+  const b = Math.min(255, Math.max(0, Math.round(t < 0.5 ? 120 + t * 270 : 255 - (t - 0.5) * 2 * 200)));
+  return [r, g, b];
+}
+function ejDrawEye(st2) {
+  const cv = $("ejEye"), g = cv.getContext("2d");
+  const W = st2.eyeW, H = st2.eyeH;
+  if (!ejEyeCv) { ejEyeCv = document.createElement("canvas"); ejEyeCv.width = W; ejEyeCv.height = H; }
+  const og = ejEyeCv.getContext("2d");
+  const img = og.createImageData(W, H);
+  let mx = 0;
+  for (let i = 0; i < st2.eye.length; i++) if (st2.eye[i] > mx) mx = st2.eye[i];
+  const lmax = Math.log1p(mx) || 1;
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      const d = st2.eye[y * W + x];
+      const o = ((H - 1 - y) * W + x) * 4; // row 0 = lowest code -> bottom of canvas
+      if (d <= 0) { img.data[o + 3] = 0; continue; }
+      const t = Math.log1p(d) / lmax;
+      const [r, gg, b] = ejHeatColor(t);
+      img.data[o] = r; img.data[o + 1] = gg; img.data[o + 2] = b; img.data[o + 3] = 255;
+    }
+  }
+  og.putImageData(img, 0, 0);
+  g.fillStyle = "#05080c";
+  g.fillRect(0, 0, cv.width, cv.height);
+  g.imageSmoothingEnabled = false;
+  g.drawImage(ejEyeCv, 0, 0, cv.width, cv.height);
+  // UI grid: the fold spans exactly 2 UI; mark the two bit boundaries
+  g.strokeStyle = "rgba(255,255,255,0.25)";
+  g.setLineDash([3, 4]);
+  for (const fx of [0.25, 0.5, 0.75]) {
+    g.beginPath(); g.moveTo(fx * cv.width, 0); g.lineTo(fx * cv.width, cv.height); g.stroke();
+  }
+  g.setLineDash([]);
+}
+function ejDrawHist(st2, res) {
+  const cv = $("ejHist"), g = cv.getContext("2d");
+  g.fillStyle = "#05080c"; g.fillRect(0, 0, cv.width, cv.height);
+  const tie = st2.tie;
+  if (tie.length < 50) return;
+  let mn = Infinity, mx = -Infinity;
+  for (const v of tie) { if (v < mn) mn = v; if (v > mx) mx = v; }
+  if (!(mx > mn)) return;
+  const NB = 64, hist = new Float64Array(NB);
+  for (const v of tie) hist[Math.min(NB - 1, Math.floor((v - mn) / (mx - mn) * NB))]++;
+  let hmax = 0;
+  for (const h of hist) if (h > hmax) hmax = h;
+  g.fillStyle = "#35c8e8";
+  const bw = cv.width / NB;
+  for (let i = 0; i < NB; i++) {
+    const h = hist[i] / hmax * (cv.height - 14);
+    g.fillRect(i * bw, cv.height - h, Math.max(1, bw - 1), h);
+  }
+  g.fillStyle = "#8899aa"; g.font = "10px sans-serif";
+  g.fillText("TIE " + eng(mx - mn, "s", 2) + " pp", 4, 10);
+}
+function ejDrawSpec(res) {
+  const cv = $("ejSpec"), g = cv.getContext("2d");
+  g.fillStyle = "#05080c"; g.fillRect(0, 0, cv.width, cv.height);
+  const sp = res.spectrum;
+  if (!sp || !res.specDf) return;
+  let mx = 0;
+  for (let k = 2; k < sp.length; k++) if (sp[k] > mx) mx = sp[k];
+  if (!(mx > 0)) return;
+  g.strokeStyle = "#f5d90a";
+  g.beginPath();
+  for (let k = 2; k < sp.length; k++) {
+    const x = (k - 2) / (sp.length - 2) * cv.width;
+    const y = cv.height - sp[k] / mx * (cv.height - 14);
+    if (k === 2) g.moveTo(x, y); else g.lineTo(x, y);
+  }
+  g.stroke();
+  g.fillStyle = "#8899aa"; g.font = "10px sans-serif";
+  g.fillText("TIE spectrum — pk " + eng(res.specPeakHz, "Hz", 3) + " / " + eng(res.specPeakAmp, "s", 2), 4, 10);
+}
+function ejMetricsTable(res) {
+  const rows = [];
+  const push = (k, v) => rows.push("<tr><th>" + k + "</th><td>" + v + "</td></tr>");
+  if (res.bitRate) push("bit rate", eng(res.bitRate, "b/s", 5) + " (UI " + eng(res.uiSeconds, "s", 4) + ")");
+  if (res.tieRms !== undefined) {
+    push("TIE", eng(res.tieRms, "s", 3) + " rms · " + eng(res.tiePp, "s", 3) + " pp");
+    push("RJ / DJ(δδ)", eng(res.rj, "s", 3) + " / " + (res.dj ? eng(res.dj, "s", 3) : "—"));
+    push("period / c2c", eng(res.periodJRms, "s", 3) + " / " + eng(res.c2cJRms, "s", 3) + " rms");
+  }
+  const em = res.eyeMetrics;
+  if (em && em.eyeHeightCodes > 0) {
+    push("eye height", (em.eyeHeightCodes * ej.vpc * 1000).toFixed(1) + " mV (" + em.eyeHeightCodes.toFixed(0) + " codes)");
+    if (em.eyeWidthUI > 0) push("eye width", em.eyeWidthUI.toFixed(2) + " UI");
+  }
+  $("ejBody").innerHTML = rows.join("");
+}

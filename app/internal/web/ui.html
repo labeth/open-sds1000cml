@@ -88,6 +88,22 @@
       <div id="srStats" class="subtle">idle — autogate, adjust the markers, then ARM</div>
     </div>
 
+    <div class="card" id="ejCard">
+      <h3>Eye / Jitter <span class="subtle">serial analysis</span></h3>
+      <div class="toggles">
+        <button id="ejArm" class="sm" title="analyze a serial NRZ stream: recover the bit clock from the edges (software CDR), fold every sample into a persistence eye, and measure TIE jitter (histogram / RJ / DJ / spectrum). Use a native band with the signal triggered.">ARM</button>
+        <label>ch <select id="ejCh"><option value="1" selected>C1</option><option value="2">C2</option></select></label>
+        <button id="ejReset" class="sm" title="discard the accumulated eye/jitter data">✕</button>
+      </div>
+      <canvas id="ejEye" class="ejcv" width="460" height="200" aria-label="eye diagram"></canvas>
+      <div class="ejrow">
+        <canvas id="ejHist" width="224" height="72" aria-label="TIE histogram"></canvas>
+        <canvas id="ejSpec" width="224" height="72" aria-label="TIE spectrum"></canvas>
+      </div>
+      <table class="meas"><tbody id="ejBody"></tbody></table>
+      <div id="ejStats" class="subtle">idle — needs a triggered serial (NRZ) signal on a native band</div>
+    </div>
+
     <div class="card" id="refCard">
       <h3>Reference <span class="subtle">save &amp; overlay</span></h3>
       <div class="toggles">
@@ -275,6 +291,7 @@
 <script src="decode.js"></script>
 <script src="binframe.js"></script>
 <script src="superres.js"></script>
+<script src="eyejitter.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
