@@ -369,3 +369,48 @@ func TestFormatters(t *testing.T) {
 	}
 }
 
+
+func TestRenderZoneMaskOverlay(t *testing.T) {
+	f := testFrame(2048)
+	hud := defaultHUD()
+	// mask envelope matching the frame's window geometry
+	lo := make([]uint8, 2048)
+	hi := make([]uint8, 2048)
+	for i := range lo {
+		lo[i], hi[i] = 40, 216
+	}
+	hud.MaskMode = 1
+	hud.MaskLo, hud.MaskHi, hud.MaskWin = lo, hi, 2048
+	hud.MaskPass, hud.MaskFail = 12, 3
+	hud.ZoneMode = 1
+	hud.Zones = []engine.Zone{
+		{DtLoS: -200e-6, DtHiS: 200e-6, CodeLo: 60, CodeHi: 90},              // intersect (green)
+		{DtLoS: 250e-6, DtHiS: 500e-6, CodeLo: 180, CodeHi: 220, Avoid: true}, // avoid (red)
+	}
+	m := NewMemSurface()
+	Render(m, f, hud, true)
+	if countColor(m, colMask) < W { // two boundary lines + the HUD text
+		t.Errorf("mask envelope lines missing: %d colMask px", countColor(m, colMask))
+	}
+	if countColorIn(m, colOK, 0, traceTop, W-1, traceBot) < 50 {
+		t.Error("intersect zone rectangle missing")
+	}
+	if countColorIn(m, colStale, 0, traceTop+20, W-1, traceBot) < 50 {
+		t.Error("avoid zone rectangle missing")
+	}
+	// failures flash the meter red/orange: text at the top edge
+	if countColorIn(m, colStale, 0, 0, W-1, 14) == 0 {
+		t.Error("mask fail meter missing at the top edge")
+	}
+	// geometry mismatch: mask must NOT render (engine skips those frames too)
+	hud.MaskWin = 1024
+	hud.Zones = nil
+	hud.MaskMsg = ""
+	hud.ZoneMode = 0
+	hud.MaskMode = 0
+	m2 := NewMemSurface()
+	Render(m2, f, hud, true)
+	if got := countColor(m2, colMask); got != 0 {
+		t.Errorf("mask rendered despite geometry mismatch/off: %d px", got)
+	}
+}

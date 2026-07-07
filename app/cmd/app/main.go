@@ -112,6 +112,19 @@ func buildHUD(e *engine.Engine, fe *analog.FrontEnd) lcd.HUD {
 		hud.SRBits, hud.SRMean, hud.SRk = sv.Bits, sv.Mean, sv.K
 		hud.SRGateLo, hud.SRGateHi, hud.SRN = sv.GateLo, sv.GateHi, sv.N
 		hud.SRWinLo, hud.SRWinHi, hud.SRPeriod = sv.WinLo, sv.WinHi, sv.Period
+		hud.MaskMsg = pc.MaskStatus()
+	}
+	// Zone/mask overlay state (engine-side test; render parity with the web).
+	hud.ZoneMode, hud.MaskMode = st.ZoneMode, st.MaskMode
+	hud.MaskPass, hud.MaskFail, hud.MaskSkip = st.MaskPass, st.MaskFail, st.MaskSkip
+	hud.MaskStopped = st.MaskStopped
+	if st.ZoneCount > 0 {
+		hud.Zones = e.Zones()
+	}
+	if st.MaskMode > 0 && st.MaskSet {
+		if m := e.MaskEnvelope(); m != nil {
+			hud.MaskLo, hud.MaskHi, hud.MaskWin = m.Lo, m.Hi, m.WinCols
+		}
 	}
 	return hud
 }

@@ -41,6 +41,9 @@ type Engine interface {
 	SetPulseParams(lvlFrac, wMinNs, wMaxNs float64, cond int)
 	SetSlopeParams(loFrac, hiFrac, tMinNs, tMaxNs float64, cond int)
 	SetVideoParams(std, line int, neg bool)
+	SetMask(m *engine.Mask)
+	SetMaskMode(m int)
+	ClearMaskFails()
 	Snapshot() engine.Stats // authoritative state to resync knob shadows
 }
 
@@ -212,6 +215,14 @@ type Controller struct {
 	srT0       time.Time
 	srMean     []float32 // latest crunched trace for the review render (guarded by mu)
 	srBits     float64   // latest measured bits gained (guarded by mu)
+
+	// Mask testing (device flow, docs/zonemask-plan.md §3): build a golden
+	// envelope from N live frames on the trigger-source channel, dilate by the
+	// selected tolerance preset, install in the engine. All guarded by mu.
+	maskN        int    // frames per build
+	maskTol      int    // index into maskTols presets
+	maskBuilding bool   // a build goroutine is running
+	maskMsg      string // build/status line for the LCD HUD
 	srFrames   int       // stacked frame count (guarded by mu — srStack.Frames races)
 	srRejected int       // rejected (non-matching) frame count (guarded by mu)
 	srResetReq bool      // Reset softkey → srLoop clears the accumulation next tick
@@ -251,6 +262,9 @@ func New(eng Engine, fe Analog, keyFD int, tdivs []float64, startTdiv float64, l
 		// Super-res defaults: fine-grid ×32, stop on +4 bits (the user's example),
 		// stacking C1. Menu stop-mode order is bit→stacks→time (0/1/2).
 		srK: 32, srStopMode: 0, srStopVal: 4, srCh: 0,
+		// Mask defaults: 32 build frames, tolerance preset ±5 samp / ±8 codes
+		// (covers trigger-point jitter + 3σ noise — docs/zonemask-plan.md §1.4).
+		maskN: 32, maskTol: 1,
 		// Seed the qualifier shadows to the engine's defaultTrigParams so the
 		// pgTrigQ page agrees with the engine from boot (slope 0.2/0.8, neg sync).
 		pulseLvl: 0.5, pulseMin: 100, pulseMax: 1000,

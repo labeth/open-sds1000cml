@@ -104,6 +104,30 @@
       <div id="ejStats" class="subtle">idle — needs a triggered serial (NRZ) signal on a native band</div>
     </div>
 
+    <div class="card" id="zmCard">
+      <h3>Zone / Mask <span class="subtle">pass-fail testing</span></h3>
+      <div class="toggles">
+        <button id="zmDraw" class="sm" title="arm zone drawing, then DRAG a rectangle on the scope. Frames must intersect it (or avoid it — toggle in the list) to publish when the zone trigger is on.">draw zone</button>
+        <button id="zmTrig" class="sm" title="zone trigger: only frames qualifying against ALL zones publish (NORM holds; AUTO lets a liveness frame through occasionally)">zone trig</button>
+        <button id="zmClearZones" class="sm" title="remove all zones">✕ zones</button>
+      </div>
+      <div id="zmZoneList" class="subtle"></div>
+      <div class="decrow">
+        <button id="zmBuild" class="sm" title="build the golden mask envelope from the next N raw frames of the selected channel, dilated by the tolerances">build mask</button>
+        <label>N <input id="zmN" type="number" min="4" max="200" value="32" class="num w-xs"></label>
+        <label>±t <input id="zmTolT" type="number" min="0" max="200" value="5" class="num w-xs" title="horizontal dilation in samples — must cover trigger-point jitter"></label>
+        <label>±V <input id="zmTolV" type="number" min="0" max="60" value="8" class="num w-xs" title="vertical dilation in codes — at least 3x the noise sigma"></label>
+        <label>ch <select id="zmCh"><option value="0" selected>C1</option><option value="1">C2</option></select></label>
+      </div>
+      <div class="decrow">
+        <label>test <select id="zmMode"><option value="0" selected>off</option><option value="1">count</option><option value="2">stop on fail</option></select></label>
+        <button id="zmClearStats" class="sm" title="reset pass/fail counters and the failure ring">reset</button>
+      </div>
+      <div id="zmMeter" class="subtle"></div>
+      <div id="zmGallery" class="subtle"></div>
+      <div id="zmStats" class="subtle">no mask — build one from a clean signal first</div>
+    </div>
+
     <div class="card" id="refCard">
       <h3>Reference <span class="subtle">save &amp; overlay</span></h3>
       <div class="toggles">

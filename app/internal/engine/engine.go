@@ -127,9 +127,21 @@ type Stats struct {
 	WinColRaw   float64 `json:"wincol_std_raw"` // fixed-position variant
 	WinColMax   float64 `json:"wincol_max"`     // worst centred column
 	ValidDepth  int     `json:"valid_depth"`    // real-signal samples in the drain
+	WinCols     int     `json:"win_cols"`       // display-window width in raw samples
 	MemDepth    int     `json:"mem_depth"`      // configured decimated drain depth
 	Stream      bool    `json:"stream"`         // stitched streaming decode mode on
 	GapMs       float64 `json:"gap_ms"`         // stream: blackout between windows
+
+	// Zone trigger + mask testing (docs/zonemask-plan.md)
+	ZoneMode    int   `json:"zone_mode,omitempty"`  // 0 off, 1 trigger
+	ZoneCount   int   `json:"zone_count,omitempty"` // installed zones
+	MaskMode    int   `json:"mask_mode,omitempty"`  // 0 off, 1 test, 2 stop-on-fail
+	MaskPass    int64 `json:"mask_pass,omitempty"`
+	MaskFail    int64 `json:"mask_fail,omitempty"`
+	MaskSkip    int64 `json:"mask_skip,omitempty"`    // frames not comparable (scale/mode changed)
+	MaskRing    int   `json:"mask_ring,omitempty"`    // captured failures available
+	MaskStopped bool  `json:"mask_stopped,omitempty"` // stop-on-fail latched
+	MaskSet     bool  `json:"mask_set,omitempty"`     // an envelope mask is installed
 }
 
 type Engine struct {
@@ -158,6 +170,16 @@ type Engine struct {
 	chVdivBits  [2]atomic.Uint64 // per-channel V/div (float64 bits) for the
 	//                              trigger-level → display-code mapping
 	trigPosFrac atomic.Uint64 // horizontal trigger position, fraction of screen
+
+	// zone trigger + mask testing (zonemask.go)
+	zoneMode    atomic.Int32
+	maskMode    atomic.Int32
+	maskPass    atomic.Int64
+	maskFail    atomic.Int64
+	maskSkip    atomic.Int64
+	maskStopped atomic.Bool
+	zoneHeld    int // engine goroutine only: AUTO liveness fallback counter
+	zm          zoneMaskState
 
 	// mu guards the command shadows and the stats mirror. Setters record and
 	// return; only the owner touches the bus (spec 09 §1). Bus writes happen
@@ -266,6 +288,7 @@ func New(cfg Config) *Engine {
 	e.eresScratch = make([]uint16, deepRecord)
 	e.mu.Lock()
 	e.stats.Running, e.stats.TrigRising = true, true
+	e.stats.TrigPosFrac = 0.5 // mirror the atomic's boot default (readers normalize 0, but don't lie)
 	e.stats.MmapDrain = cfg.Bus.MmapDrain()
 	e.stats.AvgCount, e.stats.EresLen = 16, 1
 	e.syncBandStatsLocked()
@@ -363,6 +386,9 @@ func (e *Engine) SetEresLen(l int) {
 func (e *Engine) SetRunning(on bool) {
 	e.running.Store(on)
 	e.singleArmed.Store(false) // an explicit RUN or STOP both cancel a pending single-shot
+	if on {
+		e.maskStopped.Store(false) // resuming releases the stop-on-fail latch
+	}
 	e.mu.Lock()
 	e.stats.Running = on
 	e.stats.Single = false
@@ -677,6 +703,19 @@ func (e *Engine) Snapshot() Stats {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	s := e.stats
+	// zone/mask live state (atomics + ring size)
+	s.WinCols = e.band.WinCols()
+	s.ZoneMode = int(e.zoneMode.Load())
+	s.MaskMode = int(e.maskMode.Load())
+	s.MaskPass = e.maskPass.Load()
+	s.MaskFail = e.maskFail.Load()
+	s.MaskSkip = e.maskSkip.Load()
+	s.MaskStopped = e.maskStopped.Load()
+	e.zm.mu.Lock()
+	s.ZoneCount = len(e.zm.zones)
+	s.MaskRing = len(e.zm.ring)
+	s.MaskSet = e.zm.mask != nil
+	e.zm.mu.Unlock()
 	// FPS = publishes within the trailing second.
 	now := e.clk.Now()
 	n := 0
@@ -1223,6 +1262,46 @@ func (e *Engine) oneFrame(norm bool) {
 		// but-not-locked this frame (it would jitter) → HOLD the last locked frame.
 		publish = false
 	}
+	// ZONE TRIGGER (zonemask.go): a locked frame must also QUALIFY against the
+	// zones — a graphical software trigger in the same publish policy. NORM
+	// holds non-qualifying frames strictly; AUTO publishes one unqualified
+	// liveness frame every zoneFallback holds (same idea as the flat fallback).
+	// Un-locked AUTO publishes (free-run refreshes, EdgeX=-1) cannot be zone-
+	// tested at all — throttle them by the same counter so a broken/absent lock
+	// doesn't stream unfiltered frames past an active zone trigger.
+	if publish && e.zoneMode.Load() == ZoneTrigger {
+		qualified := lock && e.zonesQualify(f, cols, edgeX, f.SampleS)
+		if qualified {
+			e.zoneHeld = 0
+		} else {
+			e.zoneHeld++
+			if norm || e.zoneHeld < zoneFallback {
+				publish = false
+			} else {
+				e.zoneHeld = 0 // AUTO liveness: let one un(qualified) frame through
+			}
+		}
+	}
+
+	// MASK TEST (zonemask.go): every LOCKED frame is tested and counted, at
+	// the full acquisition rate, published or held. The dead tail of a deep
+	// drain is excluded (validDepth). Stop-on-fail freezes acquisition ON the
+	// offending frame — it force-publishes so the screen shows the failure,
+	// not whatever a zone hold left there.
+	liveDepth := 0
+	if lock && e.maskMode.Load() != MaskOff {
+		liveDepth = validDepth(disc)
+		posFrac := math.Float64frombits(e.trigPosFrac.Load())
+		if failed, stop := e.maskEval(f, cols, liveDepth, edgeX, f.SampleS, posFrac, e.seq+1); failed && stop {
+			e.maskStopped.Store(true)
+			e.running.Store(false)
+			publish = true // show the failing frame itself
+			e.mu.Lock()
+			e.stats.Running = false
+			e.mu.Unlock()
+		}
+	}
+
 	if !publish {
 		edgeX = -1 // held frames never leave the arena; keep metadata sane
 	}

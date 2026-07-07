@@ -1228,6 +1228,7 @@ function redraw() {
   drawDecode(ctx);
   drawCursors();
   drawSrGate();
+  if (window.zm) drawZones(ctx);
   drawNav();
   drawBoxZoom(ctx);
 }
@@ -1365,6 +1366,10 @@ scope.addEventListener("pointerdown", ev => {
     send("triglevelcode", Math.round(31434 - 938 * volts / trigProbe())); redraw();
     return;
   }
+  if (typeof zmPointerDown === "function" && zmPointerDown(ptToNorm(ev))) { // armed zone drawing
+    scope.setPointerCapture(ev.pointerId);
+    return;
+  }
   if (view.mode === "FFT") { // drag = frequency box zoom; plain click (on up) toggles the nearest peak
     boxZoom.active = true; boxZoom.moved = false;
     boxZoom.sx = ev.clientX; boxZoom.sy = ev.clientY;
@@ -1473,6 +1478,7 @@ scope.addEventListener("pointermove", ev => {
     if (boxZoom.moved) redraw();
     return;
   }
+  if (typeof zmPointerMove === "function" && zmPointerMove(ptToNorm(ev))) return;
   if (mk) { moveMarker(ev); return; }
   if (srGate.drag) { moveSrGate(ev); return; }
   if (cur.drag) { moveCursor(ev); return; }
@@ -1483,6 +1489,7 @@ scope.addEventListener("pointerleave", () => {
   if (fftHover.on) { fftHover.on = false; if (view.mode === "FFT") redraw(); }
 });
 scope.addEventListener("pointerup", ev => {
+  if (typeof zmPointerUp === "function" && zmPointerUp()) return;
   if (boxZoom.active) {
     const wasBox = boxZoom.moved;
     boxZoom.active = false; boxZoom.moved = false;
@@ -2793,3 +2800,255 @@ function ejDrawEyeTo(cv, st2, detailed) {
   }
   g.setLineDash([]);
 }
+
+
+// ---- zone trigger + mask testing (engine-side; this is the config surface) ----
+// window property (not const): the scope draw path runs during load BEFORE
+// this glue executes — a lexical binding would be a TDZ landmine there.
+window.zm = {
+  zones: [],      // client copy for rendering + editing: engine-format objects
+  mask: null,     // {lo, hi, win} client copy for rendering
+  drawArmed: false, drawA: null, drawB: null,
+  failMark: null, // {frac, code} violation marker on a gallery frame
+  lastRing: -1,
+};
+
+// --- coordinate transforms (display point <-> edge-anchored zone coords) ---
+function zmPointToZone(p) { // p = ptToNorm point -> {dtS, code}
+  if (!frame || !frame.cols || !(frame.col_span_s > 0)) return null;
+  const cols = frame.cols;
+  const frac = view.win.a + p.x * (view.win.b - view.win.a);
+  const c = frac * (cols - 1);
+  const edgeCol = frame.edge_frac >= 0 ? frame.edge_frac * cols : cols / 2;
+  return { dtS: (c - edgeCol) * (frame.col_span_s / cols), code: codeAtY(p.y, 1) };
+}
+function zmZoneToRect(z) { // zone -> on-screen rect {x0,x1,y0,y1} in px, or null
+  if (!frame || !frame.cols || !(frame.col_span_s > 0)) return null;
+  const cols = frame.cols;
+  const edgeCol = frame.edge_frac >= 0 ? frame.edge_frac * cols : cols / 2;
+  const spc = frame.col_span_s / cols;
+  const span = view.win.b - view.win.a || 1;
+  const xOf = dt => ((edgeCol + dt / spc) / (cols - 1) - view.win.a) / span * CW;
+  return {
+    x0: xOf(Math.min(z.dt_lo_s, z.dt_hi_s)), x1: xOf(Math.max(z.dt_lo_s, z.dt_hi_s)),
+    y0: yFor(z.code_hi, 1), y1: yFor(z.code_lo, 1),
+  };
+}
+
+// --- overlay rendering (called from redraw) ---
+function drawZones(g) {
+  if (view.mode !== "YT") return;
+  for (const z of zm.zones) {
+    const r = zmZoneToRect(z);
+    if (!r) continue;
+    g.fillStyle = z.avoid ? "rgba(240,80,80,0.13)" : "rgba(80,220,120,0.13)";
+    g.strokeStyle = z.avoid ? "rgba(240,80,80,0.6)" : "rgba(80,220,120,0.6)";
+    g.fillRect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0);
+    g.strokeRect(r.x0, r.y0, r.x1 - r.x0, r.y1 - r.y0);
+  }
+  if (zm.drawArmed && zm.drawA && zm.drawB) { // live preview while dragging
+    const x0 = Math.min(zm.drawA.x, zm.drawB.x) * CW, x1 = Math.max(zm.drawA.x, zm.drawB.x) * CW;
+    const y0 = Math.min(zm.drawA.y, zm.drawB.y) * CH, y1 = Math.max(zm.drawA.y, zm.drawB.y) * CH;
+    g.setLineDash([4, 4]);
+    g.strokeStyle = "rgba(80,220,120,0.9)";
+    g.strokeRect(x0, y0, x1 - x0, y1 - y0);
+    g.setLineDash([]);
+  }
+  // mask envelope (standard windowed display only; deep serves skip the render)
+  if (zm.mask && frame && frame.win_frac === 1 && st && st.win_cols === zm.mask.win) {
+    const win = zm.mask.win, span = view.win.b - view.win.a || 1;
+    g.strokeStyle = "rgba(242,166,59,0.55)";
+    for (const env of [zm.mask.lo, zm.mask.hi]) {
+      g.beginPath();
+      let started = false;
+      for (let x = 0; x < CW; x += 2) {
+        const fr = view.win.a + (x / CW) * span;
+        const j = Math.round(fr * (win - 1));
+        if (j < 0 || j >= win) { started = false; continue; }
+        const y = yFor(env[j], 1);
+        if (!started) { g.moveTo(x, y); started = true; } else g.lineTo(x, y);
+      }
+      g.stroke();
+    }
+  }
+  if (zm.failMark && frame) { // violation marker on a gallery frame
+    const span = view.win.b - view.win.a || 1;
+    const x = (zm.failMark.frac - view.win.a) / span * CW;
+    const y = yFor(zm.failMark.code, 1);
+    g.strokeStyle = "#f05050";
+    g.lineWidth = 2 * dpr;
+    g.beginPath(); g.arc(x, y, 9 * dpr, 0, 2 * Math.PI); g.stroke();
+    g.lineWidth = dpr;
+  }
+}
+
+// Zone/mask test RAW capture codes; AC/GND coupling is a display-only
+// transform here, so what the user sees would not be what is tested.
+// Refuse to create misaligned artifacts (review finding).
+function zmCplOK(ch) {
+  const cpl = ch === 1 ? (st && st.cpl2) : (st && st.cpl1);
+  if (cpl) {
+    zmStatus("zone/mask test the RAW capture — set C" + (ch + 1) + " coupling to DC first");
+    return false;
+  }
+  return true;
+}
+
+// --- zone drawing (armed drag; wired into the scope pointer handlers) ---
+$("zmDraw").onclick = () => {
+  if (!zm.drawArmed && !zmCplOK(+$("zmCh").value || 0)) return;
+  zm.drawArmed = !zm.drawArmed;
+  zm.drawA = zm.drawB = null;
+  $("zmDraw").classList.toggle("on", zm.drawArmed);
+  zmStatus(zm.drawArmed ? "drag a rectangle on the scope to add a zone" : "");
+};
+function zmPointerDown(p) { // true = consumed
+  if (!zm.drawArmed || view.mode !== "YT") return false;
+  zm.drawA = p; zm.drawB = p;
+  return true;
+}
+function zmPointerMove(p) {
+  if (!zm.drawArmed || !zm.drawA) return false;
+  zm.drawB = p;
+  redraw();
+  return true;
+}
+function zmPointerUp() {
+  if (!zm.drawArmed || !zm.drawA || !zm.drawB) return false;
+  const a = zmPointToZone(zm.drawA), b = zmPointToZone(zm.drawB);
+  zm.drawArmed = false;
+  $("zmDraw").classList.remove("on");
+  zm.drawA = zm.drawB = null;
+  if (a && b && Math.abs(a.dtS - b.dtS) > 0) {
+    zm.zones.push({
+      dt_lo_s: Math.min(a.dtS, b.dtS), dt_hi_s: Math.max(a.dtS, b.dtS),
+      code_lo: Math.round(Math.min(a.code, b.code)), code_hi: Math.round(Math.max(a.code, b.code)),
+      avoid: false, ch: +$("zmCh").value || 0,
+    });
+    zmPushZones();
+  }
+  redraw();
+  return true;
+}
+function zmPushZones() {
+  fetch("/api/zones", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(zm.zones) }).catch(() => {});
+  zmZoneList();
+}
+function zmZoneList() {
+  const rows = zm.zones.map((z, i) =>
+    `<div>z${i + 1} <button class="btn-mini zmm" data-i="${i}">${z.avoid ? "avoid" : "hit"}</button> ` +
+    `${eng(z.dt_lo_s, "s", 2)}..${eng(z.dt_hi_s, "s", 2)} · ${z.code_lo}-${z.code_hi} ` +
+    `<button class="btn-mini zmx" data-i="${i}">✕</button></div>`).join("");
+  $("zmZoneList").innerHTML = rows;
+  for (const b of document.querySelectorAll("#zmZoneList .zmm")) {
+    b.onclick = () => { zm.zones[+b.dataset.i].avoid = !zm.zones[+b.dataset.i].avoid; zmPushZones(); redraw(); };
+  }
+  for (const b of document.querySelectorAll("#zmZoneList .zmx")) {
+    b.onclick = () => { zm.zones.splice(+b.dataset.i, 1); zmPushZones(); redraw(); };
+  }
+}
+$("zmClearZones").onclick = () => { zm.zones = []; zmPushZones(); redraw(); };
+$("zmTrig").onclick = () => {
+  const on = !$("zmTrig").classList.contains("on");
+  $("zmTrig").classList.toggle("on", on);
+  send("zonemode", on ? 1 : 0);
+  zmStatus(on ? "zone trigger ON — only qualifying frames publish" : "zone trigger off");
+};
+
+// --- mask build from N raw frames (dilated client-side, uploaded) ---
+$("zmBuild").onclick = async () => {
+  if (!st || !st.win_cols) { zmStatus("no window info yet"); return; }
+  const N = Math.max(4, Math.min(200, +$("zmN").value || 32));
+  const tolT = Math.max(0, +$("zmTolT").value || 0), tolV = Math.max(0, +$("zmTolV").value || 0);
+  const ch = +$("zmCh").value || 0;
+  if (!zmCplOK(ch)) return;
+  const win = st.win_cols, posFrac = st.trig_pos_frac > 0 ? st.trig_pos_frac : 0.5;
+  const lo = new Array(win).fill(255), hi = new Array(win).fill(0);
+  let got = 0, lastSeq = 0, tries = 0;
+  zmStatus("building mask 0/" + N + "…");
+  while (got < N && tries < N * 6) {
+    tries++;
+    try {
+      const r = await fetch("/api/frame.bin?since=" + lastSeq + "&waitms=1000&raw=1");
+      const f = decodeBinFrame(await r.arrayBuffer());
+      if (!f || f.unchanged || f.seq === lastSeq) continue;
+      lastSeq = f.seq;
+      if (!(f.edge_x >= 0) || !(f.sample_s > 0)) continue;
+      const sig = ch === 1 ? f.c2 : f.c1;
+      if (!sig) continue;
+      const left = Math.round(f.edge_x - posFrac * win);
+      for (let j = 0; j < win; j++) {
+        const s = left + j;
+        if (s < 0 || s >= f.cols) continue;
+        const v = sig[s];
+        if (v < lo[j]) lo[j] = v;
+        if (v > hi[j]) hi[j] = v;
+      }
+      got++;
+      if (got % 8 === 0) zmStatus("building mask " + got + "/" + N + "…");
+    } catch (e) { break; }
+  }
+  if (got < 4) { zmStatus("mask build failed — no locked frames (trigger on-signal?)"); return; }
+  // unobserved columns (lo>hi) are UNTESTABLE — normalize to always-pass before
+  // dilating, or they become inverted-garbage bounds that fail every sample
+  for (let j = 0; j < win; j++) if (lo[j] > hi[j]) { lo[j] = 0; hi[j] = 255; }
+  // dilation (same morphology as engine.BuildMaskFromEnvelope)
+  const dLo = new Array(win), dHi = new Array(win);
+  for (let j = 0; j < win; j++) {
+    let mn = 255, mx = 0;
+    for (let k = Math.max(0, j - tolT); k <= Math.min(win - 1, j + tolT); k++) {
+      if (lo[k] < mn) mn = lo[k];
+      if (hi[k] > mx) mx = hi[k];
+    }
+    dLo[j] = Math.max(0, mn - tolV);
+    dHi[j] = Math.min(255, mx + tolV);
+  }
+  zm.mask = { lo: dLo, hi: dHi, win };
+  await fetch("/api/mask", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ lo: dLo, hi: dHi, win, ch }) }).catch(() => {});
+  zmStatus("mask built from " + got + " frames (±" + tolT + " samp, ±" + tolV + " codes) — set test mode");
+  redraw();
+};
+$("zmMode").onchange = () => send("maskmode", +$("zmMode").value);
+$("zmClearStats").onclick = () => { send("maskclear", 0); zm.failMark = null; redraw(); };
+function zmStatus(m) { if (m !== undefined) $("zmStats").textContent = m || "—"; }
+
+// --- live meter + failure gallery (driven off the 1 Hz status poll) ---
+setInterval(() => {
+  if (!st) return;
+  if (st.mask_mode > 0 || st.mask_fail > 0 || st.mask_pass > 0) {
+    const total = (st.mask_pass || 0) + (st.mask_fail || 0);
+    $("zmMeter").textContent = `pass ${st.mask_pass || 0} · FAIL ${st.mask_fail || 0}` +
+      (total ? ` · ${((st.mask_fail || 0) / total * 100).toFixed(3)}%` : "") +
+      (st.mask_stopped ? " · STOPPED ON FAIL" : "");
+  } else $("zmMeter").textContent = "";
+  if ((st.mask_ring || 0) !== zm.lastRing) {
+    zm.lastRing = st.mask_ring || 0;
+    let html = "";
+    for (let i = 0; i < zm.lastRing; i++) html += `<button class="btn-mini zmf" data-i="${i}">fail ${i + 1}</button> `;
+    $("zmGallery").innerHTML = html;
+    for (const b of document.querySelectorAll("#zmGallery .zmf")) {
+      b.onclick = async () => {
+        try {
+          const r = await (await fetch("/api/maskfail?i=" + b.dataset.i)).json();
+          if (!r.ok) return;
+          frame = {
+            seq: r.seq, unchanged: false,
+            c1: Int16Array.from(r.c1), c2: r.c2 ? Int16Array.from(r.c2) : null,
+            is_env: false, cols: r.valid, col_span_s: r.valid * r.sample_s,
+            tdiv_s: st.tdiv_s, displayed_sdiv_s: st.displayed_sdiv_s,
+            vpc1: 1 / 32, vpc2: 1 / 32, off1_v: 0, off2_v: 0,
+            edge_frac: r.edge_x >= 0 ? r.edge_x / r.valid : -1,
+            win_frac: Math.min(1, r.win_cols / r.valid), depth: r.valid,
+            trigd: true, interp: false, coherent: true, ptp: 0,
+          };
+          zm.failMark = { frac: r.fail_sample / (r.valid - 1), code: r.fail_code };
+          frozen = true; $("freeze").classList.add("on");
+          userZoomed = false; lastSig = "maskfail";
+          const h = homeWindow(frame); view.win.a = h.a; view.win.b = h.b;
+          redraw();
+          zmStatus("failure " + (+b.dataset.i + 1) + " @ seq " + r.seq + " — violation circled (unfreeze to resume)");
+        } catch (e) { }
+      };
+    }
+  }
+}, 1000);

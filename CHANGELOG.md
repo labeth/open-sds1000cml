@@ -1,5 +1,25 @@
 # Changelog
 
+## Unreleased
+
+### Added
+- **Zone trigger** — draw up to 4 rectangles on the display (web); frames must
+  intersect (or avoid) every zone to publish: a graphical software trigger the
+  hardware comparator cannot express. NORM holds strictly; AUTO keeps a
+  liveness fallback. Validated live: zero unqualified leaks in both polarities.
+- **Mask testing** — build a golden min/max envelope from N live frames
+  (web or on-device), dilate by ±time/±voltage tolerances, then test EVERY
+  captured frame at the full acquisition rate: pass/fail/skip counters, a
+  failure ring with capture-and-view, stop-on-fail that freezes the offending
+  frame on screen. Guards make the verdict honest: band/vertical identity
+  stamps (a stale mask counts skips instead of lying), dead-tail exclusion,
+  average-mode exclusion, DC-coupling precondition. On-device MASK page
+  (re-press ACQUIRE past REF) + LCD envelope/zone render + live meter.
+  Validated with a counted-truth FPGA source: 0 false positives over a clean
+  soak, catch rate on the binomial expectation (n=2350), every capture
+  localized to the known violation offset, and a 50-waveform adversarial
+  breaker locking the envelope morphology (see docs/zonemask-plan.md).
+
 ## v0.0.2 — 2026-07-05
 
 ### Added

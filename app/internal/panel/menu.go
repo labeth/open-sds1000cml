@@ -22,6 +22,7 @@ const (
 	pgTrigQ    // trigger-qualifier params (reached by re-pressing TRIGGER)
 	pgDecode   // protocol decode (MAIN ▸ Decode)
 	pgSuperres // super-res stack-and-crunch config (opened by UTILITY while active)
+	pgMask     // mask testing (reached by re-pressing ACQUIRE past REF)
 )
 
 // MenuItem is one softkey slot: a label and its current value.
@@ -94,11 +95,14 @@ func (c *Controller) menuButton(code int) bool {
 		c.openMenu(next)
 		return true
 	case btnAcquire:
-		// ACQUIRE cycles between the acquire page and the reference (REF A/B) page.
+		// ACQUIRE cycles acquire -> reference -> mask pages, so all three
+		// acquisition-side surfaces hang off one physical button.
 		c.mu.Lock()
 		next := pgAcq
 		if c.menuPage == pgAcq {
 			next = pgRef
+		} else if c.menuPage == pgRef {
+			next = pgMask
 		}
 		c.mu.Unlock()
 		c.openMenu(next)
@@ -209,6 +213,8 @@ func (c *Controller) pageSlots(pg int) int {
 		return 5
 	case pgSuperres: // Channel / Grid×K / Stop-on / Target / Reset
 		return 5
+	case pgMask: // Mode / Build / Frames / Tol / Reset
+		return 5
 	case pgDecode: // varies by protocol — don't let the highlight land on a blank slot
 		switch c.decProto {
 		case 0: // Off — only the Proto selector
@@ -280,6 +286,25 @@ func (c *Controller) menuCycle(slot, dir int) {
 			c.mu.Unlock()
 		case 4: // Reset — clear the accumulation, keep the locked reference
 			c.srReqReset()
+		}
+		return
+	case pgMask:
+		switch slot {
+		case 0: // Mode Off/Test/Stop-F (engine resets counters on off->on)
+			c.eng.SetMaskMode(((st.MaskMode+dir)%3 + 3) % 3)
+		case 1: // Build a golden mask from N live frames (trigger-source channel)
+			c.maskBuildStart()
+		case 2: // Frames per build
+			c.mu.Lock()
+			c.maskN = nextOpt([]int{16, 32, 64, 128}, c.maskN, dir)
+			c.mu.Unlock()
+		case 3: // Tolerance preset (±samples / ±codes, plan §1.4 floor rule)
+			c.mu.Lock()
+			c.maskTol = ((c.maskTol+dir)%len(maskTols) + len(maskTols)) % len(maskTols)
+			c.mu.Unlock()
+		case 4: // Reset counters + failure ring
+			c.eng.ClearMaskFails()
+			c.maskSetMsg("")
 		}
 		return
 	case pgDecode:
@@ -562,6 +587,7 @@ func (c *Controller) MenuView() MenuView {
 	decProto, decBaud, decChA, decChB := c.decProto, c.decBaud, c.decChA, c.decChB
 	decCPOL, decCPHA, decFormat := c.decCPOL, c.decCPHA, c.decFormat
 	srMode, srVal, srCh, srK := c.srStopMode, c.srStopVal, c.srCh, c.srK
+	maskN, maskTol, maskBusy := c.maskN, c.maskTol, c.maskBuilding
 	c.mu.Unlock()
 	v := MenuView{Open: pg != pgNone, Sel: sel, ShowC1: c1, ShowC2: c2, ShowMeas: meas,
 		ViewMode: view, MathMode: mth, AutosetBusy: busy, AutosetMsg: amsg,
@@ -756,6 +782,22 @@ func (c *Controller) MenuView() MenuView {
 			{"Show A", show(rA, rAs)},
 			{"Show B", show(rB, rBs)},
 			{"Clear", ""},
+		}
+	case pgMask:
+		tol := maskTols[maskTol%len(maskTols)]
+		build := "-"
+		if maskBusy {
+			build = "busy"
+		} else if st.MaskSet {
+			build = "ready"
+		}
+		v.Title = "MASK"
+		v.Items = []MenuItem{
+			{"Mode", []string{"Off", "Test", "Stop-F"}[st.MaskMode%3]},
+			{"Build", build},
+			{"Frames", fmt.Sprint(maskN)},
+			{"Tol", fmt.Sprintf("%ds/%dV", tol[0], tol[1])}, // ASCII font: no ±
+			{"Reset", fmt.Sprintf("%d/%d", st.MaskPass, st.MaskFail)},
 		}
 	case pgSuperres:
 		modes := []string{"bits", "stacks", "time"}

@@ -32,27 +32,32 @@ func (f *fakeEng) SetTdiv(t float64) (engine.Band, bool) {
 	f.calls = append(f.calls, call{"tdiv", int(t * 1e9), 0})
 	return engine.Band{}, true
 }
-func (f *fakeEng) SetNorm(on bool)    { f.calls = append(f.calls, call{"norm", b2i(on), 0}) }
-func (f *fakeEng) SetRunning(on bool) { f.calls = append(f.calls, call{"run", b2i(on), 0}) }
-func (f *fakeEng) SetSingle()               { f.calls = append(f.calls, call{"single", 0, 0}) }
-func (f *fakeEng) SetTrigSlope(r bool)      { f.calls = append(f.calls, call{"slope", b2i(r), 0}) }
-func (f *fakeEng) SetTrigSource(ch int)     { f.calls = append(f.calls, call{"src", ch, 0}) }
-func (f *fakeEng) SetTrigType(t int)        { f.calls = append(f.calls, call{"ttype", t, 0}) }
-func (f *fakeEng) SetAcqMode(m int)         { f.calls = append(f.calls, call{"acq", m, 0}) }
-func (f *fakeEng) SetAvgCount(n int)        { f.calls = append(f.calls, call{"avg", n, 0}) }
-func (f *fakeEng) SetEresLen(l int)         { f.calls = append(f.calls, call{"eres", l, 0}) }
-func (f *fakeEng) SetETS(on bool)           { f.calls = append(f.calls, call{"ets", b2i(on), 0}) }
-func (f *fakeEng) SetMemDepth(n int) int    { f.calls = append(f.calls, call{"memdepth", n, 0}); return n }
+func (f *fakeEng) SetNorm(on bool)       { f.calls = append(f.calls, call{"norm", b2i(on), 0}) }
+func (f *fakeEng) SetRunning(on bool)    { f.calls = append(f.calls, call{"run", b2i(on), 0}) }
+func (f *fakeEng) SetSingle()            { f.calls = append(f.calls, call{"single", 0, 0}) }
+func (f *fakeEng) SetTrigSlope(r bool)   { f.calls = append(f.calls, call{"slope", b2i(r), 0}) }
+func (f *fakeEng) SetTrigSource(ch int)  { f.calls = append(f.calls, call{"src", ch, 0}) }
+func (f *fakeEng) SetTrigType(t int)     { f.calls = append(f.calls, call{"ttype", t, 0}) }
+func (f *fakeEng) SetAcqMode(m int)      { f.calls = append(f.calls, call{"acq", m, 0}) }
+func (f *fakeEng) SetAvgCount(n int)     { f.calls = append(f.calls, call{"avg", n, 0}) }
+func (f *fakeEng) SetEresLen(l int)      { f.calls = append(f.calls, call{"eres", l, 0}) }
+func (f *fakeEng) SetETS(on bool)        { f.calls = append(f.calls, call{"ets", b2i(on), 0}) }
+func (f *fakeEng) SetMemDepth(n int) int { f.calls = append(f.calls, call{"memdepth", n, 0}); return n }
 func (f *fakeEng) SetPulseParams(l, mn, mx float64, c int) {
 	f.calls = append(f.calls, call{"pulse", c, 0})
 }
 func (f *fakeEng) SetSlopeParams(lo, hi, mn, mx float64, c int) {
 	f.calls = append(f.calls, call{"slope", c, 0})
 }
+func (f *fakeEng) SetMask(m *engine.Mask) { f.calls = append(f.calls, call{"mask", m.WinCols, 0}) }
+func (f *fakeEng) SetMaskMode(m int)      { f.calls = append(f.calls, call{"maskmode", m, 0}) }
+func (f *fakeEng) ClearMaskFails()        { f.calls = append(f.calls, call{"maskclear", 0, 0}) }
 func (f *fakeEng) SetVideoParams(std, line int, neg bool) {
 	f.calls = append(f.calls, call{"video", std, line})
 }
-func (f *fakeEng) SetTrigPosFrac(fr float64) { f.calls = append(f.calls, call{"trigpos", int(fr * 100), 0}) }
+func (f *fakeEng) SetTrigPosFrac(fr float64) {
+	f.calls = append(f.calls, call{"trigpos", int(fr * 100), 0})
+}
 func (f *fakeEng) SetHoldoff(s float64) float64 {
 	f.calls = append(f.calls, call{"holdoff", int(s * 1e6), 0})
 	return s
@@ -84,7 +89,7 @@ func (f *fakeFE) SetOffset(ch int, volts float64) uint16 {
 	f.offReqV[ch] = volts
 	return uint16(10223 - int(volts*262))
 }
-func (f *fakeFE) OffsetReqV(ch int) float64          { return f.offReqV[ch] }
+func (f *fakeFE) OffsetReqV(ch int) float64               { return f.offReqV[ch] }
 func (f *fakeFE) OffsetVolts(ch int, code uint16) float64 { return (10223 - float64(code)) / 262 }
 func (f *fakeFE) SetCoupling(ch, mode int) error {
 	f.calls = append(f.calls, call{"coupling", ch, mode})

@@ -79,6 +79,20 @@ type HUD struct {
 	SRWinLo        int // the selected span the review renders — the frozen view, unchanged
 	SRWinHi        int
 	SRPeriod       int // >0: the stack is one period; tile it across the span
+
+	// Zone trigger + mask testing overlay (engine-side capture qualification;
+	// parity with the web card). Zones render edge-anchored; the mask renders
+	// as its envelope boundary lines when the window geometry matches.
+	ZoneMode       int
+	Zones          []engine.Zone
+	MaskMode       int // 0 off, 1 test, 2 stop-on-fail
+	MaskLo, MaskHi []uint8
+	MaskWin        int
+	MaskPass       int64
+	MaskFail       int64
+	MaskSkip       int64
+	MaskStopped    bool
+	MaskMsg        string // panel build/status line ("" when idle)
 }
 
 // MenuItem is one softkey slot label + value for the LCD menu overlay.
@@ -930,6 +944,7 @@ func Render(sf Surface, f *engine.Frame, hud HUD, live bool, persist ...*MemSurf
 				xc += hud.ZoomOff * float64(valid)
 				posFrac = 0.5
 			}
+			drawZoneMask(traceTarget, f, hud, win, xc, posFrac)
 			if hud.TwoChan && sc2 && len(f.C2) >= valid {
 				c2 := f.C2[:valid]
 				if hud.Cpl2 != analog.CplDC {
@@ -982,9 +997,99 @@ func Render(sf Surface, f *engine.Frame, hud HUD, live bool, persist ...*MemSurf
 	if hud.SRActive {
 		drawSuperresHUD(sf, hud)
 	}
+	drawMaskHUD(sf, hud)
 	if hud.AutosetBusy {
 		drawAutosetBanner(sf, hud.AutosetMsg)
 	}
+}
+
+// colMask is the mask/zone overlay colour — dim steel blue, under the traces.
+var colMask = rgb(90, 120, 160)
+
+// drawZoneMask overlays the installed zones (edge-anchored rectangles) and the
+// mask envelope boundaries, mapped with the SAME window mapping as drawTrace
+// (left = xc - win*posFrac; column j of the mask reads raw sample left+j), so
+// LCD == web == engine test point. The mask band only renders when the frame's
+// window geometry matches the mask (zoom or a band change break the column
+// alignment — the engine skips those frames too).
+func drawZoneMask(sf Surface, f *engine.Frame, hud HUD, win int, xc, posFrac float64) {
+	if posFrac <= 0 || posFrac > 1 {
+		posFrac = 0.5
+	}
+	left := xc - float64(win)*posFrac
+	// mask envelope boundary lines
+	if hud.MaskMode > 0 && hud.MaskWin == win && len(hud.MaskLo) == win && len(hud.MaskHi) == win {
+		for x := 0; x < W; x++ {
+			j := x * win / W
+			sf.SetPixel(x, sampleToY(float64(hud.MaskLo[j])), colMask)
+			sf.SetPixel(x, sampleToY(float64(hud.MaskHi[j])), colMask)
+		}
+	}
+	// zone rectangles: dt (seconds from the edge) -> raw sample -> screen x
+	if len(hud.Zones) > 0 && f.SampleS > 0 && f.EdgeX >= 0 {
+		for _, z := range hud.Zones {
+			x0 := int((f.EdgeX + z.DtLoS/f.SampleS - left) * float64(W) / float64(win))
+			x1 := int((f.EdgeX + z.DtHiS/f.SampleS - left) * float64(W) / float64(win))
+			if x1 < x0 {
+				x0, x1 = x1, x0
+			}
+			if x1 < 0 || x0 >= W {
+				continue
+			}
+			if x0 < 0 {
+				x0 = 0
+			}
+			if x1 >= W {
+				x1 = W - 1
+			}
+			y0 := sampleToY(float64(z.CodeHi)) // higher code = higher on screen
+			y1 := sampleToY(float64(z.CodeLo))
+			col := colOK // intersect: the frame must enter -> green
+			if z.Avoid {
+				col = colStale // avoid: the frame must miss -> red/orange
+			}
+			drawLine(sf, x0, y0, x1, y0, col)
+			drawLine(sf, x0, y1, x1, y1, col)
+			drawLine(sf, x0, y0, x0, y1, col)
+			drawLine(sf, x1, y0, x1, y1, col)
+		}
+	}
+}
+
+// drawMaskHUD paints the mask pass/fail meter (top edge, under the liveness
+// strip) whenever mask testing or the zone trigger is on, plus the panel's
+// build/status line.
+func drawMaskHUD(sf Surface, hud HUD) {
+	if hud.MaskMode == 0 && hud.MaskMsg == "" && hud.ZoneMode == 0 {
+		return
+	}
+	line := ""
+	if hud.MaskMode > 0 {
+		line = fmt.Sprintf("MASK pass %d  FAIL %d", hud.MaskPass, hud.MaskFail)
+		if hud.MaskSkip > 0 {
+			line += fmt.Sprintf("  skip %d", hud.MaskSkip)
+		}
+		if hud.MaskStopped {
+			line += "  STOPPED"
+		}
+	}
+	if hud.ZoneMode > 0 {
+		if line != "" {
+			line += "   "
+		}
+		line += fmt.Sprintf("ZONE x%d", len(hud.Zones))
+	}
+	if hud.MaskMsg != "" {
+		if line != "" {
+			line += "   "
+		}
+		line += hud.MaskMsg
+	}
+	col := colMask
+	if hud.MaskFail > 0 || hud.MaskStopped {
+		col = colStale // failures flash the meter red/orange
+	}
+	DrawText(sf, 330, 2, line, col, 1) // top-centre gap: right of "M <tdiv>", left of the trigger readout
 }
 
 // colSR is the super-res overlay colour — magenta, distinct from C1/C2/trigger.

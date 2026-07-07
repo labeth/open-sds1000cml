@@ -8,6 +8,7 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
+	"io"
 	"math"
 	"net/http"
 	"sync"
@@ -75,6 +76,12 @@ type Scope interface {
 	SetFramePeriod(ms int) int
 	SetStreamMode(on bool) bool
 	SetHoldoff(sec float64) float64
+	SetZones(z []engine.Zone)
+	SetZoneMode(m int)
+	SetMask(m *engine.Mask)
+	SetMaskMode(m int)
+	ClearMaskFails()
+	MaskFails() []engine.MaskFail
 }
 
 // Analog is the vertical front-end surface (implemented by
@@ -159,6 +166,9 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/api/frame.bin", s.hFrameBin)
 	mux.HandleFunc("/api/set", s.hSet)
 	mux.HandleFunc("/api/panel", s.hPanel)
+	mux.HandleFunc("/api/zones", s.hZones)
+	mux.HandleFunc("/api/mask", s.hMask)
+	mux.HandleFunc("/api/maskfail", s.hMaskFail)
 	mux.HandleFunc("/api/screen.png", s.hScreen)
 	mux.HandleFunc("/peaks.js", s.hPeaksJS)
 	mux.HandleFunc("/decode.js", s.hDecodeJS)
@@ -719,6 +729,108 @@ func (s *Server) buildReply(f *engine.Frame, cols int, full bool, since uint64, 
 	return rep
 }
 
+// hZones installs the zone-trigger rectangles (POST JSON array of zones in
+// edge-anchored seconds x display codes). Empty array clears.
+func (s *Server) hZones(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "POST only", http.StatusMethodNotAllowed)
+		return
+	}
+	var zs []struct {
+		DtLoS  float64 `json:"dt_lo_s"`
+		DtHiS  float64 `json:"dt_hi_s"`
+		CodeLo int     `json:"code_lo"`
+		CodeHi int     `json:"code_hi"`
+		Avoid  bool    `json:"avoid"`
+		Ch     int     `json:"ch"`
+	}
+	if err := json.NewDecoder(io.LimitReader(r.Body, 1<<16)).Decode(&zs); err != nil {
+		writeJSON(w, map[string]any{"ok": false, "err": "bad json"})
+		return
+	}
+	if len(zs) > 4 {
+		zs = zs[:4]
+	}
+	out := make([]engine.Zone, 0, len(zs))
+	for _, z := range zs {
+		if math.IsNaN(z.DtLoS) || math.IsNaN(z.DtHiS) || math.IsInf(z.DtLoS, 0) || math.IsInf(z.DtHiS, 0) {
+			continue
+		}
+		out = append(out, engine.Zone{DtLoS: z.DtLoS, DtHiS: z.DtHiS,
+			CodeLo: clampI(z.CodeLo, 0, 255), CodeHi: clampI(z.CodeHi, 0, 255),
+			Avoid: z.Avoid, Ch: z.Ch & 1})
+	}
+	s.sc.SetZones(out)
+	writeJSON(w, map[string]any{"ok": true, "zones": len(out)})
+}
+
+func clampI(v, lo, hi int) int {
+	if v < lo {
+		return lo
+	}
+	if v > hi {
+		return hi
+	}
+	return v
+}
+
+// hMask uploads the envelope mask (POST JSON {lo:[],hi:[],win,ch}; empty lo
+// clears). The envelopes are display-window columns (win = engine WinCols at
+// build time); the client builds + dilates.
+func (s *Server) hMask(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "POST only", http.StatusMethodNotAllowed)
+		return
+	}
+	var m struct {
+		Lo  []int `json:"lo"`
+		Hi  []int `json:"hi"`
+		Win int   `json:"win"`
+		Ch  int   `json:"ch"`
+	}
+	if err := json.NewDecoder(io.LimitReader(r.Body, 1<<20)).Decode(&m); err != nil {
+		writeJSON(w, map[string]any{"ok": false, "err": "bad json"})
+		return
+	}
+	if len(m.Lo) == 0 {
+		s.sc.SetMask(nil)
+		writeJSON(w, map[string]any{"ok": true, "cleared": true})
+		return
+	}
+	if len(m.Lo) != m.Win || len(m.Hi) != m.Win || m.Win <= 0 || m.Win > 1<<16 {
+		writeJSON(w, map[string]any{"ok": false, "err": "length mismatch"})
+		return
+	}
+	lo := make([]uint8, m.Win)
+	hi := make([]uint8, m.Win)
+	for i := 0; i < m.Win; i++ {
+		lo[i] = uint8(clampI(m.Lo[i], 0, 255))
+		hi[i] = uint8(clampI(m.Hi[i], 0, 255))
+	}
+	s.sc.SetMask(&engine.Mask{Lo: lo, Hi: hi, WinCols: m.Win, Ch: m.Ch & 1})
+	writeJSON(w, map[string]any{"ok": true, "win": m.Win})
+}
+
+// hMaskFail serves one captured failing frame from the ring as JSON (gallery
+// click — not a hot path). ?i=k indexes the snapshot, most recent last.
+func (s *Server) hMaskFail(w http.ResponseWriter, r *http.Request) {
+	ring := s.sc.MaskFails()
+	i := 0
+	fmt.Sscanf(r.URL.Query().Get("i"), "%d", &i)
+	if i < 0 || i >= len(ring) {
+		writeJSON(w, map[string]any{"ok": false, "err": "no such failure", "count": len(ring)})
+		return
+	}
+	f := ring[i]
+	writeJSON(w, map[string]any{
+		"ok": true, "i": i, "count": len(ring),
+		"seq": f.Seq, "at_ms": f.AtNs / 1e6,
+		"fail_col": f.FailCol, "fail_code": f.FailCode, "fail_sample": f.FailSample,
+		"edge_x": f.EdgeX, "sample_s": f.SampleS, "valid": f.Valid, "win_cols": f.WinCols,
+		"c1": f.C1, "c2": f.C2,
+	})
+}
+
 // Binary frame layout served by /api/frame.bin (all integers little-endian):
 //
 //	[0]     u8  magic 0xF5 — bump on any layout change
@@ -1011,6 +1123,12 @@ func (s *Server) hSet(w http.ResponseWriter, r *http.Request) {
 		on := s.sc.SetStreamMode(req.Value != 0)
 		writeJSON(w, map[string]any{"ok": true, "applied": on})
 		return
+	case "zonemode":
+		s.sc.SetZoneMode(int(req.Value))
+	case "maskmode":
+		s.sc.SetMaskMode(int(req.Value))
+	case "maskclear":
+		s.sc.ClearMaskFails()
 	case "trigtype":
 		s.sc.SetTrigType(int(req.Value))
 	case "pulseparams":
