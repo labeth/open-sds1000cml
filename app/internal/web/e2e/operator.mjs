@@ -42,9 +42,13 @@ export class Op {
       const clk = (id) => { const e = document.getElementById(id); if (e) e.click(); };
       const setSel = (id, v) => { const e = document.getElementById(id); if (e && e.value !== v) { e.value = v; e.dispatchEvent(new Event("change")); } };
       if (typeof frozen !== "undefined" && frozen) clk("freeze");
+      // stop the eye/jitter + superres analyzers if armed (both are toggles)
+      if (typeof ej !== "undefined" && ej && ej.armed) clk("ejArm");
+      if (typeof sr !== "undefined" && sr && sr.armed) clk("srArm");
       setSel("decProto", "off");
       setSel("zmMode", "0");
       setSel("mathFn", "off");
+      setSel("acq", "0");
       setSel("cpl1", "0"); setSel("cpl2", "0");
       // view back to Y-T
       const yt = document.getElementById("mYT"); if (yt && !yt.classList.contains("on")) yt.click();
@@ -110,9 +114,21 @@ export class Op {
     for (;;) {
       let ok = false;
       try { ok = await effect(); } catch { ok = false; }
-      if (ok) return;
+      if (ok) return true;
       if (Date.now() - t0 > timeout) throw new Error(failMsg);
       await this.page.waitForTimeout(120);
+    }
+  }
+  // readUntil resolves to the first non-null/non-false value `fn` returns, or
+  // throws after timeout — the value-returning companion to _settle.
+  async readUntil(fn, timeout, failMsg) {
+    const t0 = Date.now();
+    for (;;) {
+      let v = null;
+      try { v = await fn(); } catch { v = null; }
+      if (v != null && v !== false) return v;
+      if (Date.now() - t0 > timeout) throw new Error(failMsg);
+      await this.page.waitForTimeout(150);
     }
   }
 

@@ -109,6 +109,119 @@ const tone1M = [
   }},
 ];
 
+// ---------------------------------------------------------------------------
+// SOURCE prbs2M — build-prbs.sh 2  (PRBS7 NRZ data on C1, bit clock on C2)
+// Two channels: exercises eye/jitter, two-channel measure, math, X-Y, cursors.
+// ---------------------------------------------------------------------------
+const prbs2M = [
+  { id: "P1", name: "Autoset a two-channel serial+clock and see both channels", run: async (op) => {
+    await op.clickExpect("autoset", async () => (await op.readMeasValue(1, "Vpp")) != null, { timeout: 12000, why: "autoset a two-channel signal" });
+    const v1 = await op.waitMeas(1, "Vpp"), v2 = await op.waitMeas(2, "Vpp");
+    assert(v1 > 0.1 && v2 > 0.1, `both channels must carry signal: C1 ${v1} V, C2 ${v2} V`);
+  }},
+  { id: "P2", name: "Measure the recovered bit-clock frequency on C2", run: async (op) => {
+    const f = await op.waitMeas(2, "Freq");
+    // clock is one cycle per bit at 2 Mbps → ~2 MHz (allow the /2 convention too)
+    assert(f != null && (near(f, 2e6, 0.05) || near(f, 1e6, 0.05)), `C2 clock freq ${f} Hz, expected ~2 MHz (or 1 MHz)`);
+  }},
+  { id: "P3", name: "Eye diagram: arm the analyzer and get a locked eye with height", run: async (op) => {
+    await op.selectExpect("ejCh", "1", null, { why: "analyze the data channel C1" });
+    await op.clickExpect("ejArm", async () => {
+      const s = await op.readText("ejStats");
+      return s && !/idle/i.test(s);
+    }, { timeout: 8000, why: "ARM must start the eye/jitter analyzer" });
+    // wait for a real eye: the ejBody table must list an eye height in codes/mV
+    const h = await op._settle(async () => {
+      const t = await op.page.evaluate(() => {
+        const b = document.querySelector("#ejBody");
+        if (!b) return null;
+        for (const r of b.querySelectorAll("tr")) { const th = r.querySelector("th"); if (th && /eye height/i.test(th.textContent)) return r.querySelector("td") ? r.querySelector("td").textContent : null; }
+        return null;
+      });
+      return t && /code|mV/.test(t) ? t : false;
+    }, 15000, "eye never locked (no eye-height measured on a serial signal)").then(async () => await op.readText("ejStats"));
+    assert(h != null, "eye analyzer produced no status");
+  }},
+  { id: "P4", name: "Jitter: read a TIE measurement from the locked eye", run: async (op) => {
+    await op.selectExpect("ejCh", "1", null, { why: "C1" });
+    await op.clickExpect("ejArm", async () => !/idle/i.test(await op.readText("ejStats") || ""), { timeout: 8000, why: "ARM eye/jitter" });
+    const tie = await op.readUntil(async () => {
+      const t = await op.page.evaluate(() => {
+        const b = document.querySelector("#ejBody");
+        if (!b) return null;
+        for (const r of b.querySelectorAll("tr")) { const th = r.querySelector("th"); if (th && th.textContent.trim() === "TIE") return r.querySelector("td") ? r.querySelector("td").textContent : null; }
+        return null;
+      });
+      return t && /s/.test(t) ? t : null;
+    }, 15000, "no TIE jitter measurement appeared");
+    assert(/rms/.test(tie) && /pp/.test(tie), `TIE row should read rms/pp jitter, got "${tie}"`);
+    await op.click("ejReset", { why: "clear the eye after reading" });
+  }},
+  { id: "P5", name: "X-Y mode: plot C1 vs C2 (Lissajous) renders", run: async (op) => {
+    await op.clickExpect("mXY", async () => await op.page.evaluate(() => document.getElementById("mXY").classList.contains("on")),
+      { why: "X-Y view button must switch the display" });
+    const sz = await op.lcdPng();
+    assert(sz > 3000, `X-Y did not render (png ${sz} B)`);
+    await op.clickExpect("mYT", async () => await op.page.evaluate(() => document.getElementById("mYT").classList.contains("on")), { why: "back to Y-T" });
+  }},
+  { id: "P6", name: "Math: display C1−C2 and confirm the math trace renders", run: async (op) => {
+    await op.selectExpect("mathFn", "c1-c2", async () => await op.page.evaluate(() => {
+      const c = document.getElementById("mathCard"); return c && getComputedStyle(c).display !== "none";
+    }), { why: "selecting a math function must reveal/enable the math trace" });
+    const hint = await op.readText("mathHint");
+    assert(hint != null, "math hint not shown");
+    await op.selectExpect("mathFn", "off", null, { why: "math off" });
+  }},
+  { id: "P7", name: "Cursors: enable manual cursors and read a Δ value off the screen", run: async (op) => {
+    await op.clickExpect("tCursors", async () => await op.page.evaluate(() => {
+      const c = document.getElementById("curCard"); return c && getComputedStyle(c).display !== "none";
+    }), { why: "Cursors button must reveal the cursor readout card" });
+    // the cursor card must show a Δ (delta) row the operator reads
+    const hasDelta = await op._settle(async () => await op.page.evaluate(() => {
+      const b = document.querySelector("#curBody"); return b && /Δ|delta|d[tx]/i.test(b.textContent);
+    }), 4000, "cursor readout never showed a delta value");
+    assert(hasDelta, "no cursor delta");
+    await op.click("tCursors", { why: "cursors off" });
+  }},
+  { id: "P8", name: "FFT the clock and confirm its fundamental peak", run: async (op) => {
+    await op.clickExpect("mFFT", async () => (await op.page.$("#fftCardC2")) !== null || (await op.page.$("#fftCardC1")) !== null,
+      { why: "FFT view" });
+    const peak = await op.readUntil(async () => {
+      return await op.page.evaluate(() => {
+        for (const id of ["fftBody2", "fftBody1"]) { const b = document.querySelector("#" + id); const c = b && b.querySelector("tr td"); if (c && /Hz/.test(c.textContent)) return c.textContent; }
+        return null;
+      });
+    }, 8000, "FFT produced no peak");
+    const { parseEng } = await import("./operator.mjs");
+    const hz = parseEng(peak);
+    assert(hz > 5e5 && hz < 5e6, `FFT clock peak ${peak} (${hz} Hz) out of the expected 1–2 MHz range`);
+    await op.click("mYT", { why: "back to Y-T" });
+  }},
+  { id: "P9", name: "Save C1 to reference A and confirm it is stored", run: async (op) => {
+    await op.clickExpect("refSaveA", async () => await op.page.evaluate(() => {
+      const rows = document.querySelector("#refRows"); return rows && /REF\s*A/.test(rows.textContent);
+    }), { timeout: 5000, why: "Save A must store the live C1 as reference A" });
+  }},
+  { id: "P10", name: "AC coupling on C1 removes the DC component (mean → ~0)", run: async (op) => {
+    await op.selectExpect("cpl1", "1", null, { why: "AC coupling" });
+    const mean = await op.waitMeas(1, "Vmean");
+    assert(mean != null && Math.abs(mean) < 0.3, `AC-coupled mean should be near 0, got ${mean} V`);
+    await op.selectExpect("cpl1", "0", null, { why: "back to DC" });
+  }},
+  { id: "P11", name: "Peak-detect acquisition mode still renders a trace", run: async (op) => {
+    await op.selectExpect("acq", "3", null, { why: "peak-detect acquisition" });
+    await op.page.waitForTimeout(1500);
+    const sz = await op.lcdPng();
+    assert(sz > 3000, "peak-detect mode did not render");
+    await op.selectExpect("acq", "0", null, { why: "back to normal acq" });
+  }},
+  { id: "P12", name: "Both channels report a plausible amplitude simultaneously", run: async (op) => {
+    const v1 = await op.waitMeas(1, "Vpp"), v2 = await op.waitMeas(2, "Vpp");
+    assert(v1 > 0.1 && v1 < 12 && v2 > 0.1 && v2 < 12, `two-channel Vpp implausible: C1 ${v1}, C2 ${v2}`);
+  }},
+];
+
 export const WORKFLOWS = [
   ...tone1M.map((w) => ({ ...w, source: "tone1M" })),
+  ...prbs2M.map((w) => ({ ...w, source: "prbs2M" })),
 ];
