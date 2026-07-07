@@ -324,7 +324,7 @@ func detectPeriod(ref []float32, lo, hi int) int {
 		x[i] = float64(ref[lo+i]) - mean
 	}
 	minLag, maxLag := 8, W>>1
-	prev, rising := -2.0, false
+	prev, rising, dipped := -2.0, false, false
 	for lag := minLag; lag <= maxLag; lag++ {
 		dot, ea, eb := 0.0, 0.0, 0.0
 		m := W - lag
@@ -342,7 +342,14 @@ func detectPeriod(ref []float32, lo, hi int) int {
 		if den > 0 {
 			r = dot / den
 		}
-		if rising && r < prev && prev > 0.5 {
+		// A SQUARE stays highly self-correlated across its flat tops, so the raw
+		// "first peak > 0.5" fires at lag ~8 (the main lobe) → a bogus tiny period.
+		// Require the autocorrelation to DIP below 0.3 first (proof we crossed a
+		// half-period); the first strong peak AFTER that is the true fundamental.
+		if r < 0.3 {
+			dipped = true
+		}
+		if dipped && rising && r < prev && prev > 0.5 {
 			return lag - 1
 		}
 		rising = r > prev
@@ -547,8 +554,11 @@ func (st *Stack) SeedRefGate(sig1, sig2 []uint8, edgeX float64, gateLo, gateHi i
 		st.C[ch].ref = ref
 	}
 	var gLo, gHi int
-	if gateHi > gateLo && gateLo >= 0 {
+	if gateHi > gateLo && gateLo >= 0 { // manual gate: the on-screen view region
 		gLo, gHi = gateLo, gateHi
+		if gLo < 0 {
+			gLo = 0
+		}
 		if gHi > st.N {
 			gHi = st.N
 		}
@@ -558,18 +568,14 @@ func (st *Stack) SeedRefGate(sig1, sig2 []uint8, edgeX float64, gateLo, gateHi i
 			return false
 		}
 		gLo, gHi = active.lo, active.hi+1
-		period := detectPeriod(st.C[st.Align].ref, gLo, gHi)
-		if period >= 16 && period < gHi-gLo {
-			gHi = gLo + period
-		}
 	}
-	// Cap the gate width so the per-frame matched-filter is cheap on the device
-	// CPU: gateFind is O((N−L)·L), so a wide gate over a 20480 deep record is
-	// seconds/frame. ~256 samples is ≈ one period of a mid-band repetitive signal
-	// — still multi-hits (many occurrences per frame) while keeping Feed ~100 ms.
-	const maxGate = 256
-	if gHi-gLo > maxGate {
-		gHi = gLo + maxGate
+	// Narrow the gate to ONE period when the selected region is clearly periodic —
+	// stacks every cycle in it (multi-hit) AND keeps the per-frame search cheap.
+	// Applies to the manual (view/marker) region too, so you super-res one period of
+	// exactly what's on screen — never a random feature elsewhere in the record. A
+	// wide aperiodic gate is handled by bounding the search in Feed, not by a cap.
+	if period := detectPeriod(st.C[st.Align].ref, gLo, gHi); period >= 16 && period < gHi-gLo {
+		gHi = gLo + period
 	}
 	if gHi-gLo < 4 {
 		return false
@@ -693,7 +699,22 @@ func (st *Stack) Feed(sig1, sig2 []uint8, edgeX float64) string {
 	if st.RefEdgeX >= 0 && edgeX >= 0 {
 		base = jsRound(edgeX - st.RefEdgeX)
 	}
-	hits := st.gateFind(alignSig, base, st.SearchR)
+	// Whole-frame multi-hit is O((N−L)·L). A gate narrowed to one period is small
+	// and searches the whole frame cheaply; a wide aperiodic gate would be
+	// seconds/frame on the device, so bound its search to trigger-predicted ±R
+	// (it occurs once per frame at the aligned position anyway) — no hang.
+	R := st.SearchR
+	if R == 0 {
+		L := st.gtpl.L
+		const maxWork = 12000000
+		if int64(st.N-L)*int64(L) > maxWork {
+			R = maxWork / (2 * L)
+			if R < 64 {
+				R = 64
+			}
+		}
+	}
+	hits := st.gateFind(alignSig, base, R)
 	if len(hits) == 0 {
 		st.Rejected++
 		return "rejected:nomatch"

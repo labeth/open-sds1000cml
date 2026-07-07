@@ -119,7 +119,7 @@ func (c *Controller) srSeedAndStart() bool {
 	}
 	var c1, c2 []uint8
 	var edgeX, sampleS float64
-	var cols int
+	var cols, winCols int
 	c.frameFn(func(f *engine.Frame) {
 		if f == nil || f.IsEnv {
 			return
@@ -131,7 +131,7 @@ func (c *Controller) srSeedAndStart() bool {
 		if v < 8 {
 			return
 		}
-		cols, edgeX, sampleS = v, f.EdgeX, f.SampleS
+		cols, edgeX, sampleS, winCols = v, f.EdgeX, f.SampleS, f.WinCols
 		c1 = append([]uint8(nil), f.C1[:v]...)
 		if len(f.C2) >= v {
 			c2 = append([]uint8(nil), f.C2[:v]...)
@@ -146,6 +146,21 @@ func (c *Controller) srSeedAndStart() bool {
 	c.mu.Lock()
 	k, ch, mlo, mhi := c.srK, c.srCh, c.srManLo, c.srManHi
 	c.mu.Unlock()
+	// Default gate = the ON-SCREEN window (super-res exactly what's displayed —
+	// winCols samples centred on the trigger edge), so you never stack a random
+	// feature elsewhere in the deep record. The engine narrows it to one period.
+	// A manual gate-edit (ADJUST markers, srManLo≥0) overrides this.
+	if mlo < 0 && winCols > 0 && winCols < cols && edgeX >= 0 {
+		half := winCols / 2
+		e := int(edgeX)
+		mlo, mhi = e-half, e+half
+		if mlo < 0 {
+			mlo = 0
+		}
+		if mhi > cols {
+			mhi = cols
+		}
+	}
 	st := superres.New(cols, k)
 	st.Align = ch
 	st.SampleS = sampleS

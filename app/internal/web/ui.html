@@ -66,7 +66,8 @@
     <div class="card" id="srCard">
       <h3>Superres <span class="subtle">stack &amp; crunch</span></h3>
       <div class="toggles">
-        <button id="srArm" class="sm" title="stack raw acquisitions: align (sub-sample) → lucky-select → drizzle onto a fine grid → average. Tip: SINGLE a frame you like FIRST (freeze it), then ARM — it locks THAT frame as the match reference and stacks only frames whose pattern matches (rejecting the rest), wherever they sit vs the trigger.">ARM</button>
+        <button id="srArm" class="sm" title="stack raw acquisitions: align (sub-sample) → drizzle onto a fine grid → average. Turn on GATE, drag the two markers over the feature you want (defaults to the current view), then ARM — it super-reses one period of exactly that, stacking every occurrence.">ARM</button>
+        <button id="srGate" class="sm" title="show two draggable markers on the scope selecting WHAT to super-res (defaults to the on-screen view). Position them over the feature, then ARM. Re-mark and ARM again to change it.">gate</button>
         <button id="srShow" class="sm" title="review the stacked waveform (zoom/cursors/CSV all work on it)">view</button>
         <button id="srFit" class="sm" title="least-squares sum-of-sinusoids fit of the stack → REF B overlay">fit&nbsp;model</button>
         <button id="srReset" class="sm" title="discard the stack">✕</button>

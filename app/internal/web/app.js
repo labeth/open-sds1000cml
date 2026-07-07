@@ -22,6 +22,14 @@ let userZoomed = false;   // true once the user pans/zooms → live frames stop 
 let lastSig = "";         // acquisition signature; a change re-homes even if zoomed
 // Normalized cursor positions (fractions of width/height).
 const cur = { t1: 0.33, t2: 0.66, v1: 0.4, v2: 0.6, drag: null };
+// Super-res GATE markers: which region of the record to super-res. a/b are RECORD
+// fractions (0..1), so they stay pinned to the signal through zoom/pan. `on`
+// toggles the on-scope markers; they default to the current view when turned on.
+const srGate = { on: false, a: 0.4, b: 0.6, drag: null };
+function srGateDefaultFromView() {
+  const w = view.win, s = w.b - w.a;      // inset from the visible edges so both
+  srGate.a = w.a + 0.1 * s; srGate.b = w.a + 0.9 * s; // handles are easy to grab
+}
 let reqCols = 2048;   // full-resolution both channels (decode + navigator); client-side zoom
 
 // ---- navigator / horizontal zoom ----
@@ -864,6 +872,25 @@ for (const ch of [1, 2]) {
   };
 }
 
+// drawSrGate overlays the super-res gate markers (magenta, matching the device)
+// with a shaded region between them. Positions are RECORD fractions mapped into
+// the current view, so they track the signal through zoom/pan.
+function drawSrGate() {
+  if (!srGate.on || view.mode !== "YT") return;
+  const g = ctx, span = view.win.b - view.win.a || 1;
+  const xf = f => (f - view.win.a) / span * CW;
+  const xa = xf(Math.min(srGate.a, srGate.b)), xb = xf(Math.max(srGate.a, srGate.b));
+  g.save();
+  g.fillStyle = "rgba(230,120,240,0.10)"; g.fillRect(xa, 0, xb - xa, CH);
+  g.strokeStyle = "rgb(230,120,240)"; g.lineWidth = dpr; g.fillStyle = "rgb(230,120,240)";
+  for (const x of [xa, xb]) {
+    g.beginPath(); g.moveTo(x, 0); g.lineTo(x, CH); g.stroke();
+    g.fillRect(x - 4 * dpr, 0, 8 * dpr, 10 * dpr); g.fillRect(x - 4 * dpr, CH - 10 * dpr, 8 * dpr, 10 * dpr);
+  }
+  g.font = `${11 * dpr}px sans-serif`; g.fillText("gate", (xa + xb) / 2 - 11 * dpr, 12 * dpr);
+  g.restore();
+}
+
 function drawCursors() {
   if (!view.cursors) return;
   const g = ctx;
@@ -1168,6 +1195,7 @@ function redraw() {
   drawYTPeaks(ctx);
   drawDecode(ctx);
   drawCursors();
+  drawSrGate();
   drawNav();
   drawBoxZoom(ctx);
 }
@@ -1320,6 +1348,17 @@ scope.addEventListener("pointerdown", ev => {
     moveMarker(ev);
     return;
   }
+  if (srGate.on && view.mode === "YT") { // grab a gate marker if the pointer is near one
+    const p = ptToNorm(ev), span = view.win.b - view.win.a || 1;
+    const af = (srGate.a - view.win.a) / span, bf = (srGate.b - view.win.a) / span;
+    const da = Math.abs(p.x - af), db = Math.abs(p.x - bf);
+    if (Math.min(da, db) < 0.02) {
+      srGate.drag = da <= db ? "a" : "b";
+      scope.setPointerCapture(ev.pointerId);
+      moveSrGate(ev);
+      return;
+    }
+  }
   if (view.cursors) {
     const p = ptToNorm(ev);
     const near = (a, b) => Math.abs(a - b) < 0.025;
@@ -1403,6 +1442,7 @@ scope.addEventListener("pointermove", ev => {
     return;
   }
   if (mk) { moveMarker(ev); return; }
+  if (srGate.drag) { moveSrGate(ev); return; }
   if (cur.drag) { moveCursor(ev); return; }
   const h = markerHit(ptToNorm(ev));    // hover affordance
   scope.style.cursor = h ? "ns-resize" : (view.cursors ? "crosshair" : "default");
@@ -1433,12 +1473,20 @@ scope.addEventListener("pointerup", ev => {
   }
   if (mk) { commitMarker(); lvlDragging = offDragging = false; mk = null; }
   cur.drag = null;
+  srGate.drag = null;
 });
 function moveCursor(ev) {
   const p = ptToNorm(ev);
   const clamp = x => Math.max(0, Math.min(1, x));
   if (cur.drag[0] === "t") cur[cur.drag] = clamp(p.x); else cur[cur.drag] = clamp(p.y);
   updateCursors(); redraw();
+}
+// moveSrGate maps the pointer's canvas-x into a RECORD fraction (so the marker
+// stays on the signal through zoom) and updates the dragged gate edge.
+function moveSrGate(ev) {
+  const px = ptToNorm(ev).x, span = view.win.b - view.win.a;
+  srGate[srGate.drag] = Math.max(0, Math.min(1, view.win.a + px * span));
+  redraw();
 }
 
 // Navigator: drag to pan the viewport (click outside it first recenters it);
@@ -2043,15 +2091,15 @@ function srIngest(f) {
     sr.st.c[1].offV = f.off2_v || 0;
     sr.meta = { tdiv_s: f.tdiv_s, cols: f.cols, sample_s: f.sample_s, vpc1: f.vpc1, vpc2: f.vpc2 };
     if (sr.lockRef) {
-      // Lock THIS (frozen) frame as the match reference, then resume acquisition
-      // so matching frames flow in and stack; non-matches are rejected. When the
-      // cursors are on, THEY define the gate (the feature to align+stack on) —
-      // manual override; otherwise the gate is auto (active region / one period).
+      // Seed THIS frame as the match reference, then run so matching frames stack.
+      // When the GATE markers are on, THEY are the region to super-res (record
+      // fractions → raw sample indices); otherwise the gate is auto (active region,
+      // narrowed to one period). The engine narrows a wide gate to one period.
       let gate = null;
-      if (view.cursors) {
-        const span = view.win.b - view.win.a, cols = f.cols;
-        const s1 = Math.round((view.win.a + Math.min(cur.t1, cur.t2) * span) * (cols - 1));
-        const s2 = Math.round((view.win.a + Math.max(cur.t1, cur.t2) * span) * (cols - 1));
+      if (srGate.on) {
+        const cols = f.cols;
+        const s1 = Math.round(Math.min(srGate.a, srGate.b) * (cols - 1));
+        const s2 = Math.round(Math.max(srGate.a, srGate.b) * (cols - 1));
         if (s2 - s1 >= 8) gate = { lo: Math.max(0, s1), hi: Math.min(cols, s2) };
       }
       if (!srSeedRef(sr.st, f.c1, f.c2, f.edge_x != null ? f.edge_x : -1, gate)) {
@@ -2157,9 +2205,10 @@ $("srArm").onclick = () => {
   sr.stopMode = $("srStopMode").value;
   sr.stopVal = +$("srStopVal").value || 0;
   sr.lastBits = 0;
-  // Frozen (SINGLE'd / stopped) at ARM → LOCK that frame as the match reference
-  // and stack only frames matching its pattern (R3/R4). Running → auto-adopt.
-  sr.lockRef = !!(st && !st.running);
+  // GATE markers set → seed the first frame as the reference with THAT region
+  // (works from SINGLE or free-run). Otherwise: frozen → lock the frozen frame;
+  // running → auto-adopt.
+  sr.lockRef = srGate.on || !!(st && !st.running);
   sr.ch = +$("srCh").value || 1; // latched — a mid-capture change stops the stack
   sr.dither.on = $("srDither").checked;
   sr.dither.base = (st && (sr.ch === 2 ? st.off2_v : st.off1_v)) || 0;
@@ -2168,11 +2217,22 @@ $("srArm").onclick = () => {
   sr.armed = true;
   $("srArm").textContent = "STOP";
   $("srArm").classList.add("on");
-  srStatus(sr.lockRef && view.cursors ? "stacking… (gate = cursors)" : "stacking…");
+  srStatus(srGate.on ? "stacking… (gate = markers)" : "stacking…");
   srLoop(++sr.gen);
 };
 
 $("srReset").onclick = () => { if (sr.showing) srExitView(); srStop(); sr.st = null; sr.meta = null; sr.savedWin = null; srStatus("idle"); };
+
+// GATE: toggle the on-scope markers. Turning them on seeds them from the current
+// view so you don't have to hunt for them. Adjust + press ARM (or ARM again while
+// running) to super-res exactly the marked region.
+$("srGate").onclick = () => {
+  srGate.on = !srGate.on;
+  if (srGate.on) srGateDefaultFromView();
+  $("srGate").classList.toggle("on", srGate.on);
+  if (srGate.on) srStatus("gate on — drag the markers over the feature, then ARM");
+  redraw();
+};
 
 // Stop-mode selector: adapt the target field's default + step to the units.
 $("srStopMode").onchange = () => {

@@ -309,21 +309,20 @@ function srSeedRef(st, sig1, sig2, edgeX, gate) {
   // period when the region is clearly periodic so a repetitive waveform stacks
   // every cycle (multi-hit). A caller-supplied gate {lo,hi} overrides (manual).
   let gLo, gHi;
-  if (gate && gate.hi > gate.lo) {
+  if (gate && gate.hi > gate.lo) { // manual gate: the on-screen view region
     gLo = Math.max(0, gate.lo | 0); gHi = Math.min(st.n, gate.hi | 0);
   } else {
     const active = srBuildTemplate(st.c[st.align].ref, st.n, st.refEdgeX, st.n);
     if (!active) return false; // no distinguishing content to gate
     gLo = active.lo; gHi = active.hi + 1;
-    const period = srDetectPeriod(st.c[st.align].ref, gLo, gHi);
-    if (period >= 16 && period < gHi - gLo) gHi = gLo + period;
   }
-  // Cap the gate width so the per-frame matched-filter is cheap on the device
-  // CPU: gateFind is O((N−L)·L), so a wide gate over a 20480 deep record is
-  // seconds/frame. ~256 samples is ≈ one period of a mid-band repetitive signal
-  // — still multi-hits (many occurrences per frame) while keeping Feed ~100 ms.
-  const maxGate = 256;
-  if (gHi - gLo > maxGate) gHi = gLo + maxGate;
+  // Narrow the gate to ONE period when the selected region is clearly periodic —
+  // stacks every cycle in it (multi-hit) AND keeps the per-frame search cheap.
+  // Applies to the manual (view/marker) region too, so you super-res one period of
+  // exactly what's on screen — never a random feature elsewhere in the record. A
+  // wide aperiodic gate is handled by bounding the search in srGateFeed, not a cap.
+  const period = srDetectPeriod(st.c[st.align].ref, gLo, gHi);
+  if (period >= 16 && period < gHi - gLo) gHi = gLo + period;
   if (gHi - gLo < 4) return false;
   return srGateInstall(st, gLo, gHi);
 }
@@ -400,7 +399,7 @@ function srDetectPeriod(ref, lo, hi) {
   const x = new Float64Array(W);
   for (let i = 0; i < W; i++) x[i] = ref[lo + i] - mean;
   const minLag = 8, maxLag = W >> 1;
-  let prev = -2, rising = false;
+  let prev = -2, rising = false, dipped = false;
   for (let lag = minLag; lag <= maxLag; lag++) {
     let dot = 0, ea = 0, eb = 0;
     const m = W - lag;
@@ -412,8 +411,12 @@ function srDetectPeriod(ref, lo, hi) {
     }
     const den = Math.sqrt(ea * eb);
     const r = den > 0 ? dot / den : 0;
-    // first local maximum above 0.5 = the fundamental period
-    if (rising && r < prev && prev > 0.5) return lag - 1;
+    // A SQUARE stays highly self-correlated across its flat tops, so the raw
+    // "first peak > 0.5" fires at lag ~8 (the main lobe) → a bogus tiny period.
+    // Require the autocorrelation to DIP below 0.3 first (proof we crossed a
+    // half-period); the first strong peak AFTER that is the true fundamental.
+    if (r < 0.3) dipped = true;
+    if (dipped && rising && r < prev && prev > 0.5) return lag - 1;
     rising = r > prev;
     prev = r;
   }
@@ -555,7 +558,14 @@ function srGateFeed(st, sig1, sig2, opts) {
   if (srClipped(alignSig)) { st.clipped++; st.rejected++; return "rejected:clip"; }
   let base = 0;
   if (st.refEdgeX >= 0 && opts.edgeX != null && opts.edgeX >= 0) base = Math.round(opts.edgeX - st.refEdgeX);
-  const R = opts.maxShift != null ? opts.maxShift : (st.searchR || 0);
+  // Whole-frame multi-hit is O((N−L)·L). A one-period gate searches the whole
+  // frame cheaply; bound a wide aperiodic gate to trigger-predicted ±R (it occurs
+  // once per frame at the aligned position) so it never becomes seconds/frame.
+  let R = opts.maxShift != null ? opts.maxShift : (st.searchR || 0);
+  if (R === 0) {
+    const L = st.gtpl.L, maxWork = 12000000;
+    if ((st.n - L) * L > maxWork) { R = Math.floor(maxWork / (2 * L)); if (R < 64) R = 64; }
+  }
   const hits = srGateFind(st, alignSig, base, R);
   if (!hits.length) { st.rejected++; return "rejected:nomatch"; }
   for (let hIdx = 0; hIdx < hits.length; hIdx++) {
