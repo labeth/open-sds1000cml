@@ -475,6 +475,9 @@ func rawInt16(codes []uint8) []int16 {
 // through. Fixed length ⇒ the served array size never jitters (no re-home churn).
 func deepWindow(sig []uint8, valid, outLen int, edgeX, posFrac float64) []int16 {
 	out := make([]int16, outLen)
+	if !(edgeX >= 0) { // NaN/-Inf edge -> centre on the record (see window())
+		edgeX = float64(valid) / 2
+	}
 	start := edgeX - posFrac*float64(outLen)
 	for i := 0; i < outLen; i++ {
 		si := int(math.Round(start)) + i
@@ -500,7 +503,10 @@ func window(sig []uint8, valid, winCols int, edgeX float64, interp bool, n int, 
 		win = valid
 	}
 	xc := edgeX
-	if xc < 0 {
+	// !(xc >= 0) also catches NaN and -Inf; +Inf is handled by the per-column
+	// upper clamp below. A non-finite index (int(NaN) = min-int) panicked the
+	// whole serve goroutine on one bad frame (frame-serve fuzz).
+	if !(xc >= 0) {
 		xc = float64(valid) / 2
 	}
 	// Anchor the crossing at posFrac of the window (0.5 = centre). Do NOT clamp
@@ -514,7 +520,7 @@ func window(sig []uint8, valid, winCols int, edgeX float64, interp bool, n int, 
 	left := xc - float64(win)*posFrac
 	for x := 0; x < n; x++ {
 		pos := left + float64(x)*float64(win)/float64(n)
-		if pos < 0 {
+		if !(pos >= 0) { // NaN/-Inf -> first sample (belt-and-suspenders)
 			pos = 0
 		} else if pos > float64(valid-1) {
 			pos = float64(valid - 1)
@@ -588,8 +594,12 @@ func (s *Server) hFrame(w http.ResponseWriter, r *http.Request) {
 				out = map[string]any{"seq": 0}
 				return
 			}
-			c1 := make([]uint8, f.Valid)
-			copy(c1, f.C1[:f.Valid])
+			n := f.Valid
+			if n > len(f.C1) { // Valid>len invariant slip: never panic the dump
+				n = len(f.C1)
+			}
+			c1 := make([]uint8, n)
+			copy(c1, f.C1[:n])
 			out = map[string]any{
 				"seq": f.Seq, "valid": f.Valid, "wincols": f.WinCols,
 				"edgex": f.EdgeX, "trigpos": f.TrigPos, "c1": c1,
@@ -625,6 +635,21 @@ func (s *Server) buildReply(f *engine.Frame, cols int, full bool, since uint64, 
 			seq = f.Seq
 		}
 		return frameReply{Seq: seq, Unchanged: true, EdgeX: -1}
+	}
+	// Clamp Valid to what the sample slices actually hold. Valid > len is an
+	// engine-invariant violation, but every downstream f.C1[:f.Valid] would
+	// panic the serve goroutine and crash the UI on one bad frame (frame-serve
+	// fuzz). Clamp ONCE here so every path below is safe. Work on a shallow
+	// copy — the fan-out snapshot is shared read-only across clients.
+	if f.Valid > len(f.C1) || f.Valid > len(f.C2) {
+		fc := *f
+		if fc.Valid > len(fc.C1) {
+			fc.Valid = len(fc.C1)
+		}
+		if fc.Valid > len(fc.C2) {
+			fc.Valid = len(fc.C2)
+		}
+		f = &fc
 	}
 	// Coupling display transform (software on this clone, spec 06 §6): AC
 	// removes the DC (mean → mid-scale), GND shows a flat ground trace; both
@@ -1018,6 +1043,15 @@ func (s *Server) rawBinMsg(since uint64) []byte {
 			return
 		}
 		n := f.Valid
+		// clamp to the actual sample slices: Valid > len is an engine-invariant
+		// violation, but a serve-path slice panic on one bad frame must never
+		// crash the UI (frame-serve fuzz). C2 may be shorter than C1.
+		if n > len(f.C1) {
+			n = len(f.C1)
+		}
+		if n > len(f.C2) {
+			n = len(f.C2)
+		}
 		if n <= 0 {
 			hdr = frameReply{Seq: f.Seq, Unchanged: true, EdgeX: -1}
 			flags |= binUnchanged | binEmpty
