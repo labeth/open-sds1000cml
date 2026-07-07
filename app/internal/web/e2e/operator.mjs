@@ -214,8 +214,26 @@ export class Op {
     }
   }
   async readText(id) {
-    const el = await this.page.$("#" + id);
-    return el ? (await el.textContent()).trim() : null;
+    // textarea/input hold their live content in .value, not textContent
+    return await this.page.evaluate((i) => {
+      const el = document.getElementById(i);
+      if (!el) return null;
+      const v = ("value" in el && el.value !== undefined) ? el.value : el.textContent;
+      return (v || "").trim();
+    }, id);
+  }
+  // setBand snaps the timebase select to the option nearest `tdivS` — the
+  // operator picking a scale appropriate to the task (e.g. a byte-viewing band
+  // for protocol decode, which autoset's edge-detail band is too fast for).
+  async setBand(tdivS) {
+    await this.page.evaluate((tv) => {
+      const e = document.getElementById("tdiv");
+      if (!e || !e.options.length) return;
+      let best = e.options[0];
+      for (const o of e.options) if (Math.abs(parseFloat(o.value) - tv) < Math.abs(parseFloat(best.value) - tv)) best = o;
+      e.value = best.value; e.dispatchEvent(new Event("change"));
+    }, tdivS);
+    await this.page.waitForTimeout(1500);
   }
   // autosetStable clicks AUTOSET and waits for a stable frequency reading on
   // `ch` — the self-contained setup a measurement workflow needs so it does not

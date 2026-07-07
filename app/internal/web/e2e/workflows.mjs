@@ -535,7 +535,123 @@ const maskv = [
   }},
 ];
 
+// ---------------------------------------------------------------------------
+// SOURCE uart — build-uart.sh  (8N1 115200-baud TX on C1 AND C2; repeats the
+// 8-byte message "Hi " 0x55 0xAA 0x0F 0xF0 0x0A). Exercises protocol decode.
+// ---------------------------------------------------------------------------
+const uart = [
+  { id: "U1", name: "Autoset the UART line and get a measurable signal", run: async (op) => {
+    const v = await op.autosetStable(1);
+    assert(v != null, "no signal on the UART line after autoset");
+  }},
+  { id: "U2", name: "Decode UART at 115200 baud and get transcript bytes", run: async (op) => {
+    await op.autosetStable(1);
+    await op.setBand(100e-6); // slow to a band showing several bytes (decode-appropriate)
+    await op.selectExpect("decProto", "uart", async () => await op.page.evaluate(() => {
+      const c = document.getElementById("decodeResultCard"); return c && getComputedStyle(c).display !== "none";
+    }), { why: "selecting UART must reveal the decode result panel" });
+    await op.fill("decBaud", "115200", { why: "115200 baud" });
+    await op.page.evaluate(() => { const e = document.getElementById("decBaud"); e.dispatchEvent(new Event("change")); });
+    const txt = await op.readUntil(async () => {
+      const t = await op.readText("decodeText");
+      return t && t.replace(/\s/g, "").length > 2 ? t : null;
+    }, 12000, "UART decode produced no transcript bytes");
+    assert(txt != null, "empty decode transcript");
+  }},
+  { id: "U3", name: "Hex format shows the known message bytes (0x55 0xAA …)", run: async (op) => {
+    await op.autosetStable(1);
+    await op.setBand(100e-6);
+    await op.selectExpect("decProto", "uart", null, { why: "UART" });
+    await op.fill("decBaud", "115200", { why: "baud" });
+    await op.page.evaluate(() => { document.getElementById("decBaud").dispatchEvent(new Event("change")); });
+    await op.selectExpect("decFmt", "hex", null, { why: "hex byte display" }).catch(() => {});
+    const txt = await op.readUntil(async () => {
+      const t = (await op.readText("decodeText")) || "";
+      return /55/.test(t) && /AA/i.test(t) ? t : null;
+    }, 14000, "UART hex decode never showed the known 0x55/0xAA bytes");
+    assert(/55/.test(txt) && /AA/i.test(txt), `decode should contain 55 and AA, got "${txt.slice(0, 60)}"`);
+  }},
+  { id: "U4", name: "ASCII format shows the readable 'Hi' prefix", run: async (op) => {
+    await op.autosetStable(1);
+    await op.setBand(100e-6);
+    await op.selectExpect("decProto", "uart", null, { why: "UART" });
+    await op.fill("decBaud", "115200", { why: "baud" });
+    await op.page.evaluate(() => { document.getElementById("decBaud").dispatchEvent(new Event("change")); });
+    await op.selectExpect("decFmt", "ascii", null, { why: "ASCII display" }).catch(() => {});
+    // the ASCII transcript renders bytes space-separated: "H i   U . . ."
+    const txt = await op.readUntil(async () => {
+      const t = (await op.readText("decodeText")) || "";
+      return /H\s*i/.test(t) ? t : null;
+    }, 14000, "UART ASCII decode never showed the 'Hi' text");
+    assert(/H\s*i/.test(txt), `ASCII decode should contain 'Hi', got "${txt.slice(0, 60)}"`);
+    await op.selectExpect("decProto", "off", null, { why: "decode off" });
+  }},
+  { id: "U5", name: "Auto-detect recognizes the protocol as UART", run: async (op) => {
+    await op.autosetStable(1);
+    await op.setBand(100e-6);
+    await op.clickExpect("decDetect", async () => {
+      const p = await op.page.evaluate(() => document.getElementById("decProto").value);
+      const msg = await op.readText("decDetectMsg");
+      return p === "uart" || /uart/i.test(msg || "");
+    }, { timeout: 12000, why: "auto-detect must identify the UART stream" });
+    await op.selectExpect("decProto", "off", null, { why: "decode off" });
+  }},
+  { id: "U6", name: "Decode the SAME stream on channel C2 (roles switchable)", run: async (op) => {
+    await op.autosetStable(2);
+    await op.setBand(100e-6);
+    await op.selectExpect("decProto", "uart", null, { why: "UART" });
+    await op.fill("decBaud", "115200", { why: "baud" });
+    await op.page.evaluate(() => { document.getElementById("decBaud").dispatchEvent(new Event("change")); });
+    // switch the UART source channel to C2 if the roles control exists
+    await op.page.evaluate(() => { const e = document.getElementById("decData") || document.getElementById("decScl"); if (e) { e.value = "2"; e.dispatchEvent(new Event("change")); } });
+    const txt = await op.readUntil(async () => {
+      const t = (await op.readText("decodeText")) || "";
+      return t.replace(/\s/g, "").length > 2 ? t : null;
+    }, 12000, "UART decode on C2 produced nothing");
+    assert(txt != null, "no C2 decode");
+    await op.selectExpect("decProto", "off", null, { why: "decode off" });
+  }},
+  { id: "U7", name: "A wrong baud rate yields framing errors / garbage, not clean bytes", run: async (op) => {
+    await op.autosetStable(1);
+    await op.setBand(100e-6);
+    await op.selectExpect("decProto", "uart", null, { why: "UART" });
+    await op.fill("decBaud", "9600", { why: "deliberately wrong baud" });
+    await op.page.evaluate(() => { document.getElementById("decBaud").dispatchEvent(new Event("change")); });
+    await op.page.waitForTimeout(3000);
+    const good = await op.page.evaluate(() => { const t = document.getElementById("decodeText").value || document.getElementById("decodeText").textContent || ""; return /Hi/.test(t); });
+    assert(!good, "a wrong baud should NOT cleanly decode the 'Hi' message");
+    await op.fill("decBaud", "115200", { why: "restore baud" });
+    await op.page.evaluate(() => { document.getElementById("decBaud").dispatchEvent(new Event("change")); });
+    await op.selectExpect("decProto", "off", null, { why: "decode off" });
+  }},
+  { id: "U8", name: "Measure the UART line amplitude (a real logic swing)", run: async (op) => {
+    await op.autosetStable(1);
+    const v = await op.waitMeas(1, "Vpp");
+    assert(v != null && v > 0.2, `UART line Vpp ${v} V — expected a real logic swing`);
+  }},
+  { id: "U9", name: "FFT of the UART line shows spectral content", run: async (op) => {
+    await op.autosetStable(1);
+    await op.clickExpect("mFFT", async () => (await op.page.$("#fftCardC1")) !== null, { why: "FFT view" });
+    const peak = await op.readUntil(async () => await op.page.evaluate(() => { const b = document.querySelector("#fftBody1"); const c = b && b.querySelector("tr td"); return c && /Hz/.test(c.textContent) ? c.textContent : null; }), 8000, "no FFT peak on the UART line");
+    assert(peak != null, "no UART FFT peak");
+    await op.click("mYT", { why: "back to Y-T" });
+  }},
+  { id: "U10", name: "Copy the decode transcript to the clipboard control", run: async (op) => {
+    await op.autosetStable(1);
+    await op.setBand(100e-6);
+    await op.selectExpect("decProto", "uart", null, { why: "UART" });
+    await op.fill("decBaud", "115200", { why: "baud" });
+    await op.page.evaluate(() => { document.getElementById("decBaud").dispatchEvent(new Event("change")); });
+    await op.readUntil(async () => { const t = (await op.readText("decodeText")) || ""; return t.replace(/\s/g, "").length > 2 ? t : null; }, 12000, "no transcript to copy");
+    // the copy control must exist and be clickable (a real operator export path)
+    assert(await op.exists("decodeCopy"), "decode copy control missing");
+    await op.click("decodeCopy", { why: "copy transcript" });
+    await op.selectExpect("decProto", "off", null, { why: "decode off" });
+  }},
+];
+
 export const WORKFLOWS = [
+  ...uart.map((w) => ({ ...w, source: "uart" })),
   ...tone1M.map((w) => ({ ...w, source: "tone1M" })),
   ...tone1Mb.map((w) => ({ ...w, source: "tone1M" })),
   ...prbs2M.map((w) => ({ ...w, source: "prbs2M" })),
