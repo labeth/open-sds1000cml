@@ -55,7 +55,14 @@ func (h *Handler) dat2(ch int, f *engine.Frame) []byte {
 	if ch == 1 {
 		sig = f.C2
 	}
-	sig = sig[:f.Valid]
+	valid := f.Valid
+	if valid > len(sig) { // Valid>len invariant slip must not panic the VXI readout
+		valid = len(sig)
+	}
+	if valid < 0 {
+		valid = 0
+	}
+	sig = sig[:valid]
 	if h.wfFP >= len(sig) {
 		return nil // reject at readout time; never index past the record
 	}
