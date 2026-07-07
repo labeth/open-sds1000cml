@@ -153,21 +153,38 @@ func (x *xdr) u32() uint32 {
 
 func (x *xdr) opaque() []byte {
 	n := int(x.u32())
-	// A declared length ≥ 0x80000000 is negative once cast to int on 32-bit
-	// ARM; guard n < 0 as well as overflow so it can't bypass the bound.
-	if x.err || n < 0 || x.off+n > len(x.b) {
+	// Overflow-safe bound: on the 32-bit ARM target `int` is 32-bit, so
+	// `x.off + n` wraps for a crafted length near 0x7fffffff and would slip
+	// past a `... > len(x.b)` check straight into a panicking slice. Compare
+	// against the REMAINING space instead (len-off is always in range), and
+	// reject a padded length that itself overflows. n<0 catches lengths
+	// ≥ 0x80000000 (negative once cast to int).
+	if x.err || n < 0 || n > len(x.b)-x.off {
 		x.err = true
 		return nil
 	}
 	v := x.b[x.off : x.off+n]
-	x.off += (n + 3) &^ 3
+	pad := (n + 3) &^ 3
+	if pad < n || pad > len(x.b)-x.off { // padding overflowed or ran off the end
+		x.off = len(x.b)
+	} else {
+		x.off += pad
+	}
 	return v
 }
 
 func (x *xdr) skipAuth() {
 	x.u32() // flavor
 	n := int(x.u32())
-	x.off += (n + 3) &^ 3
+	// Same overflow-safe advance as opaque(): never let a hostile auth length
+	// push x.off past the buffer via wraparound (it would corrupt every
+	// subsequent bound check). Clamp to the end; the next read sets err.
+	pad := (n + 3) &^ 3
+	if x.err || n < 0 || pad < n || pad > len(x.b)-x.off {
+		x.off = len(x.b)
+		return
+	}
+	x.off += pad
 }
 
 func putU32(b []byte, v uint32) []byte {
