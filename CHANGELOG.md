@@ -9,9 +9,12 @@
   only on new frames). Fixed a decoder hang on a malformed serial config, a
   lock-ordering deadlock between a status poll and a mask install, and several
   frame-serving crashes reachable from degenerate frame geometry; request
-  bodies on every control endpoint are now size-capped. Added fuzz/chaos test
-  suites (API, frame-serve, SCPI, decoders, measurements, LCD render, panel,
-  engine concurrency, and a browser UI monkey) that lock these down.
+  bodies on every control endpoint are now size-capped; and a remotely
+  triggerable crash in the VXI-11/SCPI server's length parsing (an integer
+  overflow on the 32-bit target) is closed. Added fuzz/chaos test suites (API,
+  frame-serve, SCPI command + waveform readout, VXI-11 RPC, decoders,
+  measurements, super-resolution, LCD render, panel, engine concurrency, and a
+  browser UI monkey) that lock these down.
 
 ### Added
 - **Zone trigger** — draw up to 4 rectangles on the display (web); frames must
