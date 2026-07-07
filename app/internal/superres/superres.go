@@ -554,7 +554,11 @@ func (st *Stack) SeedRefGate(sig1, sig2 []uint8, edgeX float64, gateLo, gateHi i
 		st.C[ch].ref = ref
 	}
 	var gLo, gHi int
-	if gateHi > gateLo && gateLo >= 0 { // manual gate: the on-screen view region
+	if gateHi > gateLo && gateLo >= 0 {
+		// MANUAL gate (the on-screen view / dragged markers): use it EXACTLY. The
+		// user picked this region — do not narrow it. A wide gate stays cheap
+		// because Feed bounds the per-frame search; a repetitive wide gate still
+		// multi-hits (it matches at every period offset).
 		gLo, gHi = gateLo, gateHi
 		if gLo < 0 {
 			gLo = 0
@@ -563,19 +567,16 @@ func (st *Stack) SeedRefGate(sig1, sig2 []uint8, edgeX float64, gateLo, gateHi i
 			gHi = st.N
 		}
 	} else {
+		// AUTO default: the active region, narrowed to ONE period when clearly
+		// periodic — a fast, sensible default (multi-hit, cheap search).
 		active := buildTemplate(st.C[st.Align].ref, st.N, st.RefEdgeX, st.N)
 		if active == nil {
 			return false
 		}
 		gLo, gHi = active.lo, active.hi+1
-	}
-	// Narrow the gate to ONE period when the selected region is clearly periodic —
-	// stacks every cycle in it (multi-hit) AND keeps the per-frame search cheap.
-	// Applies to the manual (view/marker) region too, so you super-res one period of
-	// exactly what's on screen — never a random feature elsewhere in the record. A
-	// wide aperiodic gate is handled by bounding the search in Feed, not by a cap.
-	if period := detectPeriod(st.C[st.Align].ref, gLo, gHi); period >= 16 && period < gHi-gLo {
-		gHi = gLo + period
+		if period := detectPeriod(st.C[st.Align].ref, gLo, gHi); period >= 16 && period < gHi-gLo {
+			gHi = gLo + period
+		}
 	}
 	if gHi-gLo < 4 {
 		return false

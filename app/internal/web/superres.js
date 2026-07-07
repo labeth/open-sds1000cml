@@ -309,20 +309,20 @@ function srSeedRef(st, sig1, sig2, edgeX, gate) {
   // period when the region is clearly periodic so a repetitive waveform stacks
   // every cycle (multi-hit). A caller-supplied gate {lo,hi} overrides (manual).
   let gLo, gHi;
-  if (gate && gate.hi > gate.lo) { // manual gate: the on-screen view region
+  if (gate && gate.hi > gate.lo) {
+    // MANUAL gate (dragged markers): use it EXACTLY — the user picked this region,
+    // do not narrow it. A wide gate stays cheap (srGateFeed bounds the search) and
+    // a repetitive one still multi-hits (it matches at every period offset).
     gLo = Math.max(0, gate.lo | 0); gHi = Math.min(st.n, gate.hi | 0);
   } else {
+    // AUTO default: active region, narrowed to ONE period when clearly periodic —
+    // a fast, sensible default (multi-hit, cheap search).
     const active = srBuildTemplate(st.c[st.align].ref, st.n, st.refEdgeX, st.n);
     if (!active) return false; // no distinguishing content to gate
     gLo = active.lo; gHi = active.hi + 1;
+    const period = srDetectPeriod(st.c[st.align].ref, gLo, gHi);
+    if (period >= 16 && period < gHi - gLo) gHi = gLo + period;
   }
-  // Narrow the gate to ONE period when the selected region is clearly periodic —
-  // stacks every cycle in it (multi-hit) AND keeps the per-frame search cheap.
-  // Applies to the manual (view/marker) region too, so you super-res one period of
-  // exactly what's on screen — never a random feature elsewhere in the record. A
-  // wide aperiodic gate is handled by bounding the search in srGateFeed, not a cap.
-  const period = srDetectPeriod(st.c[st.align].ref, gLo, gHi);
-  if (period >= 16 && period < gHi - gLo) gHi = gLo + period;
   if (gHi - gLo < 4) return false;
   return srGateInstall(st, gLo, gHi);
 }
