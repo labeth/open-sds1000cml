@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+### Fixed
+- **Reliability hardening (whole-stack fuzz campaign).** A long-holdoff or
+  no-trigger acquisition no longer trips the OTA health watchdog into killing
+  a healthy app (the health heartbeat now advances through long waits, not
+  only on new frames). Fixed a decoder hang on a malformed serial config, a
+  lock-ordering deadlock between a status poll and a mask install, and several
+  frame-serving crashes reachable from degenerate frame geometry; request
+  bodies on every control endpoint are now size-capped. Added fuzz/chaos test
+  suites (API, frame-serve, SCPI, decoders, measurements, LCD render, panel,
+  engine concurrency, and a browser UI monkey) that lock these down.
+
 ### Added
 - **Zone trigger** — draw up to 4 rectangles on the display (web); frames must
   intersect (or avoid) every zone to publish: a graphical software trigger the
