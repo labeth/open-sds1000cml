@@ -747,8 +747,82 @@ const spi = [
   }},
 ];
 
+// spi part 2 — analyzing the two-wire bus further (cursors, refs, math, eye…).
+const spiB = [
+  { id: "S11", name: "Cursors measure one SCLK period on the bus", run: async (op) => {
+    await op.autosetStable(1);
+    await op.clickExpect("tCursors", async () => await op.page.evaluate(() => { const c = document.getElementById("curCard"); return c && getComputedStyle(c).display !== "none"; }), { why: "cursors on" });
+    const inv = await op.readUntil(async () => {
+      const t = await op.page.evaluate(() => { const b = document.querySelector("#curBody"); const rows = b.querySelectorAll("tr"); for (const r of rows) { const th = r.querySelector("th"); if (th && /1\/Δt/.test(th.textContent)) return r.querySelector("td").textContent; } return null; });
+      return t && /Hz/.test(t) ? t : null;
+    }, 5000, "cursor 1/Δt frequency readout missing");
+    assert(inv != null, "no cursor frequency readout");
+    await op.click("tCursors", { why: "cursors off" });
+  }},
+  { id: "S12", name: "Save the SCLK as reference A and toggle its display", run: async (op) => {
+    await op.autosetStable(1);
+    await op.clickExpect("refSaveA", async () => await op.page.evaluate(() => /REF\s*A/.test(document.getElementById("refRows").textContent)), { why: "save A" });
+    // toggle the reference show state via its row button
+    await op.page.evaluate(() => { const b = document.querySelector("#refRows .reftog"); if (b) b.click(); });
+    assert((await op.lcdPng()) > 3000, "reference toggle broke rendering");
+  }},
+  { id: "S13", name: "Math CLK×DATA (the gated product) renders", run: async (op) => {
+    await op.selectExpect("mathFn", "c1*c2", async () => await op.page.evaluate(() => { const c = document.getElementById("mathCard"); return c && getComputedStyle(c).display !== "none"; }), { why: "CLK×DATA math" });
+    assert((await op.lcdPng()) > 3000, "CLK×DATA math did not render");
+    await op.selectExpect("mathFn", "off", null, { why: "math off" });
+  }},
+  { id: "S14", name: "Zoom into a single SCLK cycle and keep a valid reading", run: async (op) => {
+    await op.autosetStable(1);
+    const box = await (await op.page.$("#scope")).boundingBox();
+    await op.page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await op.page.mouse.wheel(0, -500);
+    await op.page.waitForTimeout(1000);
+    const f = await op.waitMeas(1, "Freq");
+    assert(near(f, 200e3, 0.1), `after zoom SCLK reads ${f} Hz`);
+  }},
+  { id: "S15", name: "AC coupling on the clock keeps a measurable edge", run: async (op) => {
+    await op.autosetStable(1);
+    await op.selectExpect("cpl1", "1", null, { why: "AC couple the clock" });
+    await op.page.waitForTimeout(1500);
+    const v = await op.waitMeas(1, "Vpp");
+    assert(v != null && v > 0.1, `AC-coupled SCLK Vpp ${v} V — edge lost`);
+    await op.selectExpect("cpl1", "0", null, { why: "back to DC" });
+  }},
+  { id: "S16", name: "Peak-detect catches the fast SCLK edges", run: async (op) => {
+    await op.autosetStable(1);
+    await op.selectExpect("acq", "3", null, { why: "peak detect" });
+    await op.page.waitForTimeout(1500);
+    assert((await op.lcdPng()) > 3000, "peak-detect did not render");
+    await op.selectExpect("acq", "0", null, { why: "normal acq" });
+  }},
+  { id: "S17", name: "Both bus lines report Vmax simultaneously", run: async (op) => {
+    await op.autosetStable(1);
+    const a = await op.waitMeas(1, "Vmax"), b = await op.waitMeas(2, "Vmax");
+    assert(a != null && b != null, "one bus line had no Vmax");
+  }},
+  { id: "S18", name: "Trigger-level slider adjusts and keeps the clock locked", run: async (op) => {
+    await op.autosetStable(1);
+    await op.page.evaluate(() => { const e = document.getElementById("lvl"); e.value = "1.5"; e.dispatchEvent(new Event("input", { bubbles: true })); e.dispatchEvent(new Event("change", { bubbles: true })); });
+    await op.page.waitForTimeout(1500);
+    const f = await op.waitMeas(1, "Freq");
+    assert(near(f, 200e3, 0.15), `after a level move SCLK reads ${f} Hz`);
+  }},
+  { id: "S19", name: "Freeze the bus capture and hold it for inspection", run: async (op) => {
+    await op.autosetStable(1);
+    await op.clickExpect("freeze", async () => await op.page.evaluate(() => typeof frozen !== "undefined" && frozen), { why: "freeze" });
+    assert((await op.lcdPng()) > 3000, "frozen bus capture blank");
+    await op.clickExpect("freeze", async () => await op.page.evaluate(() => typeof frozen !== "undefined" && !frozen), { why: "unfreeze" });
+  }},
+  { id: "S20", name: "Read the SCLK RMS voltage", run: async (op) => {
+    await op.autosetStable(1);
+    const rms = await op.waitMeas(1, "Vrms");
+    assert(rms != null && rms > 0.1, `SCLK Vrms ${rms} V implausible`);
+  }},
+];
+
 export const WORKFLOWS = [
   ...spi.map((w) => ({ ...w, source: "spi" })),
+  ...spiB.map((w) => ({ ...w, source: "spi" })),
   ...uart.map((w) => ({ ...w, source: "uart" })),
   ...tone1M.map((w) => ({ ...w, source: "tone1M" })),
   ...tone1Mb.map((w) => ({ ...w, source: "tone1M" })),
