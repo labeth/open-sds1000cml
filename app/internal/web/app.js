@@ -154,6 +154,9 @@ window.addEventListener("resize", resize);
 // ---- formatting ----
 function eng(x, unit, digits) {
   digits = digits || 3;
+  // a non-finite / undefined value (e.g. an eye metric not yet available)
+  // must render as a dash, not crash on x.toExponential(...) below.
+  if (typeof x !== "number" || !isFinite(x)) return "— " + unit;
   const a = Math.abs(x);
   if (a === 0) return "0 " + unit;
   const pfx = [["G",1e9],["M",1e6],["k",1e3],["",1],["m",1e-3],["µ",1e-6],["n",1e-9],["p",1e-12]];
@@ -2821,7 +2824,7 @@ function ejDrawBig() {
   const em = res.eyeMetrics;
   $("ejBigInfo").textContent =
     (res.bitRate ? eng(res.bitRate, "b/s", 4) + " · UI " + eng(res.uiSeconds, "s", 3) : "") +
-    (res.tieRms !== undefined ? " · TIE " + eng(res.tieRms, "s", 3) + " rms · RJ " + eng(res.rj, "s", 3) + " · DJ " + (res.dj ? eng(res.dj, "s", 3) : "—") : "") +
+    (res.tieRms !== undefined ? " · TIE " + eng(res.tieRms, "s", 3) + " rms · RJ " + (res.rj !== undefined ? eng(res.rj, "s", 3) : "—") + " · DJ " + (res.dj ? eng(res.dj, "s", 3) : "—") : "") +
     (em && em.eyeHeightCodes > 0 ? " · eye " + (em.eyeHeightCodes * ej.vpc * 1000).toFixed(0) + " mV / " + em.eyeWidthUI.toFixed(2) + " UI" : "") +
     " · " + res.records + " records — click to close";
 }

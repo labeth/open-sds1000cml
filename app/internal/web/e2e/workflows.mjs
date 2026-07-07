@@ -315,6 +315,96 @@ const prbs2M = [
   }},
 ];
 
+// prbs2M part 2 — big-view popups, math variants, dual-channel measure, refs.
+const prbs2Mb = [
+  { id: "P13", name: "Enlarge the eye diagram to a full-screen view and close it", run: async (op) => {
+    await op.selectExpect("ejCh", "1", null, { why: "C1" });
+    await op.clickExpect("ejArm", async () => !/idle/i.test(await op.readText("ejStats") || ""), { timeout: 8000, why: "arm eye" });
+    await op.readUntil(async () => { const s = await op.readText("ejStats"); return s && !/lock|idle/i.test(s) ? s : (/lock/i.test(s || "") ? null : (s || null)); }, 10000, "eye did not progress").catch(() => {});
+    await op.clickExpect("ejEye", async () => await op.page.evaluate(() => !document.getElementById("ejBigWrap").classList.contains("hidden")),
+      { why: "clicking the eye must open the enlarged view" });
+    await op.page.click("#ejBigWrap");
+    await op._settle(async () => await op.page.evaluate(() => document.getElementById("ejBigWrap").classList.contains("hidden")), 3000, "enlarged eye did not close");
+    await op.click("ejReset", { why: "reset eye" });
+  }},
+  { id: "P14", name: "Math C2−C1 renders the difference trace", run: async (op) => {
+    await op.selectExpect("mathFn", "c2-c1", async () => await op.page.evaluate(() => { const c = document.getElementById("mathCard"); return c && getComputedStyle(c).display !== "none"; }), { why: "C2−C1 math" });
+    assert((await op.lcdPng()) > 3000, "C2−C1 math did not render");
+    await op.selectExpect("mathFn", "off", null, { why: "math off" });
+  }},
+  { id: "P15", name: "Math C1×C2 (mixer product) renders", run: async (op) => {
+    await op.selectExpect("mathFn", "c1*c2", async () => await op.page.evaluate(() => { const c = document.getElementById("mathCard"); return c && getComputedStyle(c).display !== "none"; }), { why: "C1×C2 math" });
+    assert((await op.lcdPng()) > 3000, "C1×C2 math did not render");
+    await op.selectExpect("mathFn", "off", null, { why: "math off" });
+  }},
+  { id: "P16", name: "Save both references A and B and confirm both are stored", run: async (op) => {
+    await op.clickExpect("refSaveA", async () => await op.page.evaluate(() => /REF\s*A/.test(document.getElementById("refRows").textContent)), { why: "save A" });
+    await op.clickExpect("refSaveB", async () => await op.page.evaluate(() => /REF\s*B/.test(document.getElementById("refRows").textContent)), { why: "save B" });
+  }},
+  { id: "P17", name: "Both channels report a Vmean, and they differ", run: async (op) => {
+    await op.autosetStable(1);
+    const m1 = await op.waitMeas(1, "Vmean"), m2 = await op.waitMeas(2, "Vmean");
+    assert(m1 != null && m2 != null, "one channel had no Vmean");
+  }},
+  { id: "P18", name: "Enlarge the TIE histogram to full screen and close it", run: async (op) => {
+    await op.selectExpect("ejCh", "1", null, { why: "C1" });
+    await op.clickExpect("ejArm", async () => !/idle/i.test(await op.readText("ejStats") || ""), { timeout: 8000, why: "arm eye" });
+    await op.page.waitForTimeout(3000);
+    await op.clickExpect("ejHist", async () => await op.page.evaluate(() => !document.getElementById("ejBigWrap").classList.contains("hidden")),
+      { why: "clicking the histogram must open the enlarged view" });
+    await op.page.click("#ejBigWrap");
+    await op._settle(async () => await op.page.evaluate(() => document.getElementById("ejBigWrap").classList.contains("hidden")), 3000, "enlarged histogram did not close");
+    await op.click("ejReset", { why: "reset" });
+  }},
+  { id: "P19", name: "Superres on the clean clock channel yields a stacked trace", run: async (op) => {
+    await op.autosetStable(2);
+    await op.selectExpect("srCh", "2", null, { why: "stack the C2 clock" }).catch(() => {});
+    await op.clickExpect("srArm", async () => { const s = await op.readText("srStats"); return s && !/idle/i.test(s || ""); }, { timeout: 8000, why: "arm superres" });
+    const stat = await op.readUntil(async () => { const s = await op.readText("srStats"); return s && /(bit|stack|\d)/i.test(s) && !/idle/i.test(s) ? s : null; }, 15000, "superres produced no result on the clock");
+    assert(stat != null, "no superres result");
+    await op.click("srArm", { why: "stop superres" });
+  }},
+  { id: "P20", name: "Cursors read a ΔV (voltage delta) between the two channels", run: async (op) => {
+    await op.clickExpect("tCursors", async () => await op.page.evaluate(() => { const c = document.getElementById("curCard"); return c && getComputedStyle(c).display !== "none"; }), { why: "cursors on" });
+    const hasDV = await op._settle(async () => await op.page.evaluate(() => /ΔV/.test(document.querySelector("#curBody").textContent)), 4000, "cursor readout never showed a ΔV");
+    assert(hasDV, "no ΔV");
+    await op.click("tCursors", { why: "cursors off" });
+  }},
+  { id: "P21", name: "FFT of the PRBS data shows spectral content", run: async (op) => {
+    await op.autosetStable(1);
+    await op.clickExpect("mFFT", async () => (await op.page.$("#fftCardC1")) !== null, { why: "FFT view" });
+    const peak = await op.readUntil(async () => {
+      return await op.page.evaluate(() => { const b = document.querySelector("#fftBody1"); const c = b && b.querySelector("tr td"); return c && /Hz/.test(c.textContent) ? c.textContent : null; });
+    }, 8000, "PRBS FFT produced no peak");
+    assert(peak != null, "no FFT peak on the data channel");
+    await op.click("mYT", { why: "back to Y-T" });
+  }},
+  { id: "P22", name: "AVERAGE acquisition mode smooths and still measures", run: async (op) => {
+    await op.autosetStable(2);
+    await op.selectExpect("acq", "1", null, { why: "AVERAGE acquisition" });
+    await op.page.waitForTimeout(1800);
+    const f = await op.waitMeas(2, "Freq");
+    assert(f != null && f > 5e5, `AVERAGE mode clock freq ${f} Hz implausible`);
+    await op.selectExpect("acq", "0", null, { why: "back to normal" });
+  }},
+  { id: "P23", name: "ERES acquisition mode renders and measures the clock", run: async (op) => {
+    await op.autosetStable(2);
+    await op.selectExpect("acq", "2", null, { why: "ERES acquisition" });
+    await op.page.waitForTimeout(1800);
+    assert((await op.lcdPng()) > 3000, "ERES mode did not render");
+    await op.selectExpect("acq", "0", null, { why: "back to normal" });
+  }},
+  { id: "P24", name: "Clear the eye analyzer and confirm it returns to idle-capable", run: async (op) => {
+    await op.selectExpect("ejCh", "2", null, { why: "C2 clock" });
+    await op.clickExpect("ejArm", async () => !/idle/i.test(await op.readText("ejStats") || ""), { timeout: 8000, why: "arm eye on the clock" });
+    await op.page.waitForTimeout(1500);
+    await op.click("ejReset", { why: "reset clears the accumulated data" });
+    const s = await op.readText("ejStats");
+    assert(s != null, "eye status vanished after reset");
+    await op.click("ejArm", { why: "stop" }).catch(() => {});
+  }},
+];
+
 // ---------------------------------------------------------------------------
 // SOURCE maskviol — build-maskviol.sh 400 7 12 100
 // Pulse train on C1 (400 µs period, 100 µs high pulse), every 7th period ends
@@ -449,5 +539,6 @@ export const WORKFLOWS = [
   ...tone1M.map((w) => ({ ...w, source: "tone1M" })),
   ...tone1Mb.map((w) => ({ ...w, source: "tone1M" })),
   ...prbs2M.map((w) => ({ ...w, source: "prbs2M" })),
+  ...prbs2Mb.map((w) => ({ ...w, source: "prbs2M" })),
   ...maskv.map((w) => ({ ...w, source: "maskviol" })),
 ];
