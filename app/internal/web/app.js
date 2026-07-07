@@ -22,13 +22,45 @@ let userZoomed = false;   // true once the user pans/zooms → live frames stop 
 let lastSig = "";         // acquisition signature; a change re-homes even if zoomed
 // Normalized cursor positions (fractions of width/height).
 const cur = { t1: 0.33, t2: 0.66, v1: 0.4, v2: 0.6, drag: null };
-// Super-res GATE markers: which region of the record to super-res. a/b are RECORD
-// fractions (0..1), so they stay pinned to the signal through zoom/pan. `on`
-// toggles the on-scope markers; they default to the current view when turned on.
-const srGate = { on: false, a: 0.4, b: 0.6, drag: null };
+// Super-res GATE markers: which region to super-res. a/b are fractions of the
+// DISPLAY record (0..1), so they stay pinned to the signal through zoom/pan
+// (the display is trigger-anchored). Turning the gate on AUTO-PLACES them on the
+// best thing in the current view (active region, one period); after that the
+// markers are the ONLY truth — arming stacks exactly what they span.
+const srGate = { on: false, placed: false, a: 0.4, b: 0.6, drag: null };
 function srGateDefaultFromView() {
-  const w = view.win, s = w.b - w.a;      // inset from the visible edges so both
-  srGate.a = w.a + 0.1 * s; srGate.b = w.a + 0.9 * s; // handles are easy to grab
+  const w = view.win, s = w.b - w.a;
+  // fallback: inset from the visible edges so both handles are easy to grab
+  srGate.a = w.a + 0.1 * s; srGate.b = w.a + 0.9 * s;
+  const f = frame;
+  if (!f || !f.cols || f.is_env) return;
+  // Propose on the channel that will drive the matching: C1/C2 as selected, or
+  // (both) the trigger-source channel — the one the user is triggering on.
+  const sel = +$("srCh").value || 0;
+  const alignIdx = sel === 2 ? 1 : sel === 1 ? 0 : (st && st.trig_source === 1 ? 1 : 0);
+  const ch = alignIdx === 1 ? f.c2 : f.c1;
+  if (!ch) return;
+  // Visible slice, trimmed of the -1 blank margins the deep serve pads with.
+  let lo = Math.max(0, Math.round(w.a * (f.cols - 1)));
+  let hi = Math.min(f.cols, Math.round(w.b * (f.cols - 1)) + 1);
+  while (lo < hi && ch[lo] < 0) lo++;
+  while (hi > lo && ch[hi - 1] < 0) hi--;
+  if (hi - lo < 32) return;
+  const slice = Float32Array.from(ch.subarray(lo, hi));
+  // Propose the ACTIVE region of the view (no trigger-edge exclusion — if the
+  // edge is the interesting thing on screen, that's what gets marked), narrowed
+  // to one period when clearly periodic. srBuildTemplate/srDetectPeriod are the
+  // same primitives the engine's auto path uses.
+  const act = (typeof srBuildTemplate === "function") ? srBuildTemplate(slice, slice.length, -1, slice.length) : null;
+  if (!act) return;
+  let gLo = act.lo, gHi = act.hi + 1;
+  if (typeof srDetectPeriod === "function") {
+    const p = srDetectPeriod(slice, gLo, gHi);
+    if (p >= 16 && p < gHi - gLo) gHi = gLo + p;
+  }
+  if (gHi - gLo < 8) return;
+  srGate.a = (lo + gLo) / (f.cols - 1);
+  srGate.b = (lo + gHi) / (f.cols - 1);
 }
 let reqCols = 2048;   // full-resolution both channels (decode + navigator); client-side zoom
 
@@ -1486,6 +1518,7 @@ function moveCursor(ev) {
 function moveSrGate(ev) {
   const px = ptToNorm(ev).x, span = view.win.b - view.win.a;
   srGate[srGate.drag] = Math.max(0, Math.min(1, view.win.a + px * span));
+  srGate.placed = true; // user-positioned: gate toggles must not auto-replace it
   redraw();
 }
 
@@ -2026,7 +2059,7 @@ function runAutodetect() {
 // frozen-synthetic-frame path as captures, so zoom/cursors/CSV/PNG all work
 // on the stacked waveform, and "fit model" writes the analytic sum-of-
 // sinusoids reconstruction into REF B for overlay comparison.
-const sr = { st: null, armed: false, gen: 0, lastSeq: 0, meta: null, t0: 0, stopMode: "time", stopVal: 60, lastBits: 0, lockRef: false, lastUi: 0, ch: 1,
+const sr = { st: null, armed: false, gen: 0, lastSeq: 0, meta: null, t0: 0, stopMode: "bits", stopVal: 4, lastBits: 0, lockRef: false, gateDt: null, lastUi: 0, ch: 0, alignCh: 0,
   showing: false, savedWin: null, // stack-view toggle state + remembered zoom
   // Offset dither: the 8-bit quantizer's staircase survives averaging when
   // the front-end noise is sub-LSB. Sweeping the offset DAC by sub-LSB steps
@@ -2077,13 +2110,13 @@ function srTargetReached() {
 
 function srIngest(f) {
   if (+$("srCh").value !== sr.ch) { srStop("channel changed — stack kept"); return; }
-  const sig = sr.ch === 2 ? f.c2 : f.c1;
+  const sig = sr.alignCh === 1 ? f.c2 : f.c1;
   if (!sig || f.is_env) { srStop("band became unsupported"); return; }
   if (!sr.st) {
     const K = +$("srK").value || 32;
     sr.st = srNew(f.cols, K);
     sr.st.kernel = $("srKernel").value || "interp"; // resample vs deposit (near-Nyquist)
-    sr.st.align = sr.ch - 1; // alignment/lucky run on the selected channel; BOTH stack
+    sr.st.align = sr.alignCh; // matching/alignment channel; BOTH channels stack
     sr.st.sampleS = f.sample_s || 0;
     sr.st.c[0].vpc = f.vpc1 || 1 / 32;
     sr.st.c[0].offV = f.off1_v || 0;
@@ -2092,15 +2125,18 @@ function srIngest(f) {
     sr.meta = { tdiv_s: f.tdiv_s, cols: f.cols, sample_s: f.sample_s, vpc1: f.vpc1, vpc2: f.vpc2 };
     if (sr.lockRef) {
       // Seed THIS frame as the match reference, then run so matching frames stack.
-      // When the GATE markers are on, THEY are the region to super-res (record
-      // fractions → raw sample indices); otherwise the gate is auto (active region,
-      // narrowed to one period). The engine narrows a wide gate to one period.
+      // When the GATE markers are set, THEY are the region — exactly. sr.gateDt is
+      // the marked span in SECONDS relative to the display's trigger edge (set at
+      // ARM); anchor it on THIS raw frame's own edge. Otherwise the gate is auto.
       let gate = null;
-      if (srGate.on) {
-        const cols = f.cols;
-        const s1 = Math.round(Math.min(srGate.a, srGate.b) * (cols - 1));
-        const s2 = Math.round(Math.max(srGate.a, srGate.b) * (cols - 1));
-        if (s2 - s1 >= 8) gate = { lo: Math.max(0, s1), hi: Math.min(cols, s2) };
+      if (sr.gateDt) {
+        if (!(f.sample_s > 0)) { srStop("no sample interval on the raw feed — can't place the gate"); return; }
+        const anchor = f.edge_x != null && f.edge_x >= 0 ? f.edge_x : f.cols / 2;
+        const s1 = Math.round(anchor + sr.gateDt.lo / f.sample_s);
+        const s2 = Math.round(anchor + sr.gateDt.hi / f.sample_s);
+        const lo = Math.max(0, s1), hi = Math.min(f.cols, s2);
+        if (hi - lo < 8) { srStop("gate lies outside the captured record — move the markers nearer the trigger"); return; }
+        gate = { lo, hi };
       }
       if (!srSeedRef(sr.st, f.c1, f.c2, f.edge_x != null ? f.edge_x : -1, gate)) {
         srStop("reference frame unusable (flat/clipped) — freeze a cleaner one"); return;
@@ -2134,7 +2170,8 @@ function srIngest(f) {
       dz.framesAtStep = 0;
       dz.idx = (dz.idx + 1) % dz.steps;
       const target = dz.base - (dz.idx / dz.steps) * sr.st.c[sr.st.align].vpc; // tip volts, 0..−1 LSB
-      send("offset" + sr.ch, target / probeOf(sr.ch));
+      const dch = sr.alignCh + 1; // dither sweeps the ALIGN channel's offset DAC
+      send("offset" + dch, target / probeOf(dch));
       dz.pending = 1;
     }
   }
@@ -2181,7 +2218,8 @@ async function srLoop(gen) {
 function srStop(why) {
   sr.armed = false;
   if (sr.dither.on && sr.dither.idx !== 0) {
-    send("offset" + sr.ch, sr.dither.base / probeOf(sr.ch)); // restore the pre-dither offset
+    const dch = (sr.alignCh || 0) + 1;
+    send("offset" + dch, sr.dither.base / probeOf(dch)); // restore the pre-dither offset
     sr.dither.idx = 0;
   }
   $("srArm").textContent = "ARM";
@@ -2209,9 +2247,28 @@ $("srArm").onclick = () => {
   // (works from SINGLE or free-run). Otherwise: frozen → lock the frozen frame;
   // running → auto-adopt.
   sr.lockRef = srGate.on || !!(st && !st.running);
-  sr.ch = +$("srCh").value || 1; // latched — a mid-capture change stops the stack
+  // Markers live on the DISPLAY record (a windowed/decimated, trigger-anchored
+  // serve); the stacker feeds on the RAW record. The trigger edge is the common
+  // anchor, so convert markers → SECONDS from the display's edge now, and map
+  // onto the raw frame's own edge at seed time. Applying display fractions to
+  // the raw record directly is wrong (it stacked ~10 waves for an edge-wide mark).
+  sr.gateDt = null;
+  if (srGate.on) {
+    if (frame && frame.cols > 1 && frame.col_span_s > 0 && !frame.is_env) {
+      const cols = frame.cols, spc = frame.col_span_s / cols; // seconds per display column
+      const edgeCol = frame.edge_frac >= 0 ? frame.edge_frac * cols : cols / 2;
+      const cLo = Math.min(srGate.a, srGate.b) * (cols - 1);
+      const cHi = Math.max(srGate.a, srGate.b) * (cols - 1);
+      sr.gateDt = { lo: (cLo - edgeCol) * spc, hi: (cHi - edgeCol) * spc };
+    } else {
+      srStatus("gate needs a live/frozen trace on screen"); return;
+    }
+  }
+  sr.ch = +$("srCh").value || 0; // latched — a mid-capture change stops the stack
+  // "both" (0) aligns on the trigger-source channel; C1/C2 lock the alignment.
+  sr.alignCh = sr.ch === 2 ? 1 : sr.ch === 1 ? 0 : (st && st.trig_source === 1 ? 1 : 0);
   sr.dither.on = $("srDither").checked;
-  sr.dither.base = (st && (sr.ch === 2 ? st.off2_v : st.off1_v)) || 0;
+  sr.dither.base = (st && (sr.alignCh === 1 ? st.off2_v : st.off1_v)) || 0;
   sr.dither.idx = 0; sr.dither.pending = 0; sr.dither.framesAtStep = 0;
   sr.t0 = performance.now();
   sr.armed = true;
@@ -2223,12 +2280,20 @@ $("srArm").onclick = () => {
 
 $("srReset").onclick = () => { if (sr.showing) srExitView(); srStop(); sr.st = null; sr.meta = null; sr.savedWin = null; srStatus("idle"); };
 
-// GATE: toggle the on-scope markers. Turning them on seeds them from the current
-// view so you don't have to hunt for them. Adjust + press ARM (or ARM again while
-// running) to super-res exactly the marked region.
+// AUTOGATE: always (re-)place the markers on the best feature in the current
+// view, then show them. GATE: show/hide toggle — auto-places only the first time;
+// after that the markers are wherever you dragged them (the only truth).
+$("srAutoGate").onclick = () => {
+  srGateDefaultFromView();
+  srGate.placed = true;
+  srGate.on = true;
+  $("srGate").classList.add("on");
+  srStatus("gate placed — drag to adjust, then ARM");
+  redraw();
+};
 $("srGate").onclick = () => {
   srGate.on = !srGate.on;
-  if (srGate.on) srGateDefaultFromView();
+  if (srGate.on && !srGate.placed) { srGateDefaultFromView(); srGate.placed = true; }
   $("srGate").classList.toggle("on", srGate.on);
   if (srGate.on) srStatus("gate on — drag the markers over the feature, then ARM");
   redraw();
@@ -2260,16 +2325,27 @@ $("srShow").onclick = () => {
   const n = sr.st.n;
   const dt = sr.st.sampleS / sr.st.K;
   const meas = (mean, ch) => mean ? srMeasure(mean, sr.st.c[ch].vpc, sr.st.c[ch].offV, dt) : null;
+  // res.mean is the ALIGN channel's stack, res.mean2 the other — map them back to
+  // the PHYSICAL channels so the review honors the selection (align C2 must show
+  // as the cyan C2 trace, not swap into C1).
+  const c1m = sr.st.align === 0 ? res.mean : res.mean2;
+  const c2m = sr.st.align === 0 ? res.mean2 : res.mean;
+  // A gated stack's mean spans only the gate (gridL raw samples), not the whole
+  // record — size the time axis and edge anchor to the grid actually served.
+  const spanCols = sr.st.gated ? sr.st.gridL : n;
+  const edgeFrac = sr.st.gated
+    ? (sr.st.refEdgeX >= sr.st.gateLo && sr.st.refEdgeX < sr.st.gateHi ? (sr.st.refEdgeX - sr.st.gateLo) / sr.st.gridL : -1)
+    : (sr.st.edgeX >= 0 ? sr.st.edgeX / n : -1);
   frame = {
     seq: frame ? frame.seq : 0, unchanged: false,
-    c1: res.mean, c2: res.mean2, is_env: false,
-    cols: res.mean.length, col_span_s: n * sr.st.sampleS,
+    c1: c1m, c2: c2m, is_env: false,
+    cols: res.mean.length, col_span_s: spanCols * sr.st.sampleS,
     tdiv_s: sr.meta.tdiv_s, displayed_sdiv_s: sr.meta.tdiv_s,
     vpc1: sr.st.c[0].vpc, vpc2: sr.st.c[1].vpc,
     off1_v: sr.st.c[0].offV, off2_v: sr.st.c[1].offV,
-    edge_frac: sr.st.edgeX >= 0 ? sr.st.edgeX / n : -1,
+    edge_frac: edgeFrac,
     win_frac: 1, depth: 0,
-    m1: meas(res.mean, 0), m2: meas(res.mean2, 1),
+    m1: meas(c1m, 0), m2: meas(c2m, 1),
     clip1: false, clip2: false,
     trigd: true, interp: false, coherent: true, ptp: 0,
   };
@@ -2289,14 +2365,15 @@ $("srShow").onclick = () => {
 $("srFit").onclick = () => {
   if (!sr.st || !sr.st.frames) { srStatus("nothing stacked yet"); return; }
   const res = srResult(sr.st);
-  const am = sr.st.align === 1 ? res.mean2 : res.mean; // fit the align channel
+  const am = res.mean; // res.mean IS the align channel's stack
   const ac = sr.st.c[sr.st.align];
   const fit = srModelFit(am, sr.st.K, sr.st.sampleS, { spectrum, detectPeaks }, 6);
   if (!fit) { srStatus("model fit failed (need a fuller stack)"); return; }
   refs.B = {
     c1: Array.from(fit.synth(Math.min(am.length, 16384))),
     c2: null, vpc1: ac.vpc, vpc2: 1 / 32, off1: ac.offV, off2: 0, show: true,
-    srSpanS: sr.st.n * sr.st.sampleS, // only overlay on a matching time base
+    // only overlay on a matching time base; a gated stack spans just the gate
+    srSpanS: (sr.st.gated ? sr.st.gridL : sr.st.n) * sr.st.sampleS,
   };
   updateRefRows(); redraw();
   srStatus("model → REF B: " + fit.freqs.map(f => eng(f, "Hz", 3)).join(", "));

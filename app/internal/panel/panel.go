@@ -215,6 +215,10 @@ type Controller struct {
 	srFrames   int       // stacked frame count (guarded by mu — srStack.Frames races)
 	srRejected int       // rejected (non-matching) frame count (guarded by mu)
 	srResetReq bool      // Reset softkey → srLoop clears the accumulation next tick
+	srWinLo    int       // the selected span (frozen on-screen window / manual gate):
+	srWinHi    int       // the review renders exactly this span, so the view is unchanged
+	srPeriod   int       // detected period within the span (samples); >0 → the stack is
+	// ONE period and the review TILES it across the span (fast multi-wave cheat)
 
 	// Trigger-qualifier shadows (the engine has no getters for these), edited on
 	// the TRIGGER-qualifier sub-page. ns for widths/times; fractions 0..1.

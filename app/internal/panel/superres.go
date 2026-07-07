@@ -148,12 +148,14 @@ func (c *Controller) srSeedAndStart() bool {
 	c.mu.Unlock()
 	// Default gate = the ON-SCREEN window (super-res exactly what's displayed —
 	// winCols samples centred on the trigger edge), so you never stack a random
-	// feature elsewhere in the deep record. The engine narrows it to one period.
-	// A manual gate-edit (ADJUST markers, srManLo≥0) overrides this.
+	// feature elsewhere in the deep record. A manual gate-edit (ADJUST markers,
+	// srManLo≥0) overrides this with the user's exact span.
 	if mlo < 0 && winCols > 0 && winCols < cols && edgeX >= 0 {
-		half := winCols / 2
-		e := int(edgeX)
-		mlo, mhi = e-half, e+half
+		// Anchor exactly like the display window(): the edge sits at the trigger-
+		// position fraction of the screen (not always centred) — the review then
+		// reproduces the frozen view phase-for-phase.
+		mlo = int(edgeX - float64(winCols)*c.trigPos())
+		mhi = mlo + winCols
 		if mlo < 0 {
 			mlo = 0
 		}
@@ -161,10 +163,24 @@ func (c *Controller) srSeedAndStart() bool {
 			mhi = cols
 		}
 	}
+	// The REVIEW must show exactly the selected span (the view is not changed).
+	// When the span holds multiple periods of the same wave, CHEAT for speed:
+	// stack ONE period (small grid, every cycle is a hit → converges fast) and
+	// let the renderer TILE the stacked period back across the span.
+	stackLo, stackHi, period := mlo, mhi, 0
+	if mlo >= 0 {
+		alignSig := c1
+		if ch == 1 {
+			alignSig = c2
+		}
+		if p := superres.DetectPeriodU8(alignSig, mlo, mhi); p >= 16 && p < mhi-mlo {
+			period, stackHi = p, mlo+p
+		}
+	}
 	st := superres.New(cols, k)
 	st.Align = ch
 	st.SampleS = sampleS
-	if !st.SeedRefGate(c1, c2, edgeX, mlo, mhi) { // mlo<0 → auto gate; else manual
+	if !st.SeedRefGate(c1, c2, edgeX, stackLo, stackHi) { // lo<0 → auto gate; else manual
 		c.srSetStatus("ref unusable (flat/clipped) - freeze a cleaner frame")
 		return false
 	}
@@ -176,6 +192,7 @@ func (c *Controller) srSeedAndStart() bool {
 	c.srStack, c.srActive, c.srStop = st, true, stop // srFocus preserved (gate-edit)
 	c.srT0, c.srStatus, c.srMean, c.srBits, c.srResetReq = time.Now(), "stacking...", nil, 0, false
 	c.srFrames, c.srRejected = st.Hits, 0 // fresh counts (not stale from a prior arm)
+	c.srWinLo, c.srWinHi, c.srPeriod = mlo, mhi, period // review span + tile period
 	c.running, c.single = true, false
 	c.mu.Unlock()
 	c.eng.SetRunning(true) // resume so matching frames flow in
@@ -366,8 +383,10 @@ type SuperresView struct {
 	Mean           []float32 // crunched trace (review only, Focus==3); nil otherwise
 	K              int
 	SampleS        float64
-	GateLo, GateHi int // gate on the frame (samples) — the live-view overlay
+	GateLo, GateHi int // stack gate on the frame (samples) — the live-view overlay
 	N              int // frame width (samples)
+	WinLo, WinHi   int // the selected span the review renders (= the frozen view)
+	Period         int // >0: the stack is one period; the review tiles it over the span
 }
 
 // SuperresView returns the current super-res state for the LCD overlay/review.
@@ -380,6 +399,10 @@ func (c *Controller) SuperresView() SuperresView {
 	if c.srStack != nil {
 		v.GateLo, v.GateHi, v.N = c.srStack.GateLo, c.srStack.GateHi, c.srStack.N
 		v.SampleS, v.K = c.srStack.SampleS, c.srStack.K
+		v.WinLo, v.WinHi, v.Period = c.srWinLo, c.srWinHi, c.srPeriod
+		if v.WinLo < 0 { // auto gate (no on-screen window): review the gate itself
+			v.WinLo, v.WinHi = v.GateLo, v.GateHi
+		}
 	}
 	if c.srFocus == 3 {
 		v.Mean = c.srMean

@@ -76,6 +76,9 @@ type HUD struct {
 	SRGateLo       int
 	SRGateHi       int
 	SRN            int
+	SRWinLo        int // the selected span the review renders — the frozen view, unchanged
+	SRWinHi        int
+	SRPeriod       int // >0: the stack is one period; tile it across the span
 }
 
 // MenuItem is one softkey slot label + value for the LCD menu overlay.
@@ -992,9 +995,14 @@ var colSR = rgb(230, 120, 240)
 // markers over the live trace with the active edge highlighted.
 func drawSuperresHUD(sf Surface, hud HUD) {
 	// Gate overlay while watching/editing (focus 0/1/2): two vertical markers at
-	// the gate edges mapped proportionally across the record; the edge being
-	// edited is drawn solid/bright, the other dim.
-	if hud.SRFocus != 3 && hud.SRN > 0 && hud.SRGateHi > hud.SRGateLo {
+	// the SELECTED span's edges (the user's region — not the internal one-period
+	// stack gate, which would jump after arming); the edge being edited is drawn
+	// solid/bright, the other dim.
+	mLo, mHi := hud.SRWinLo, hud.SRWinHi
+	if mHi <= mLo {
+		mLo, mHi = hud.SRGateLo, hud.SRGateHi
+	}
+	if hud.SRFocus != 3 && hud.SRN > 0 && mHi > mLo {
 		xAt := func(s int) int {
 			x := s * W / hud.SRN
 			if x < 0 {
@@ -1012,8 +1020,8 @@ func drawSuperresHUD(sf Surface, hud HUD) {
 				}
 			}
 		}
-		marker(xAt(hud.SRGateLo), hud.SRFocus == 1)
-		marker(xAt(hud.SRGateHi), hud.SRFocus == 2)
+		marker(xAt(mLo), hud.SRFocus == 1)
+		marker(xAt(mHi), hud.SRFocus == 2)
 	}
 
 	tag := "SR " + srFocusTag(hud.SRFocus)
@@ -1042,39 +1050,70 @@ func srFocusTag(f int) string {
 	}
 }
 
-// drawSuperresTrace renders the super-resolved mean across the trace area. The
-// mean lives on the n·K fine grid (values ~0..255, -1 for gap bins); it is
-// decimated to one min/max vertical run per screen column so the whole record
-// shows regardless of the fine-grid size.
+// drawSuperresTrace renders the super-resolved review across the trace area,
+// spanning EXACTLY the selected window [SRWinLo,SRWinHi) — the same span the
+// user froze, so the view does not change. The mean lives on the stack-gate's
+// L·K fine grid; when SRPeriod > 0 the stack is ONE period and it is TILED
+// across the window (phase-locked to the gate start), reconstructing the frozen
+// multi-wave view from the fast one-period stack. Each screen column takes the
+// min/max over its covered fine bins so detail survives any grid size.
 func drawSuperresTrace(sf Surface, hud HUD) {
 	m := hud.SRMean
 	nb := len(m)
 	if nb == 0 {
 		return
 	}
+	K := hud.SRk
+	if K < 1 {
+		K = 1
+	}
+	winLo, winHi := float64(hud.SRWinLo), float64(hud.SRWinHi)
+	if winHi <= winLo { // no recorded span: render the whole grid across the screen
+		winLo, winHi = float64(hud.SRGateLo), float64(hud.SRGateLo)+float64(nb)/float64(K)
+	}
+	span := winHi - winLo
+	gateLo := float64(hud.SRGateLo)
+	period := float64(hud.SRPeriod)
+	// binAt maps a raw-sample position within the window to a fine-grid bin.
+	binAt := func(s float64) int {
+		off := s - gateLo
+		if period > 0 {
+			off = math.Mod(off, period)
+			if off < 0 {
+				off += period
+			}
+		}
+		return int(off * float64(K))
+	}
 	prevY, havePrev := 0, false
 	for x := 0; x < W; x++ {
-		b0 := x * nb / W
-		b1 := (x + 1) * nb / W
-		if b1 <= b0 {
-			b1 = b0 + 1
-		}
-		if b1 > nb {
-			b1 = nb
-		}
+		s0 := winLo + float64(x)*span/float64(W)
+		s1 := winLo + float64(x+1)*span/float64(W)
+		b0, b1 := binAt(s0), binAt(s1)
 		lo, hi, any := float32(1e9), float32(-1e9), false
-		for b := b0; b < b1; b++ {
-			v := m[b]
-			if v < 0 { // gap bin
-				continue
+		scan := func(a, b int) {
+			for bi := a; bi <= b; bi++ {
+				if bi < 0 || bi >= nb {
+					continue
+				}
+				v := m[bi]
+				if v < 0 { // gap bin
+					continue
+				}
+				if v < lo {
+					lo = v
+				}
+				if v > hi {
+					hi = v
+				}
+				any = true
 			}
-			if v < lo {
-				lo = v
-			}
-			if v > hi {
-				hi = v
-			}
-			any = true
+		}
+		if period > 0 && b1 < b0 { // the column wraps a tile boundary
+			scan(b0, nb-1)
+			scan(0, b1)
+		} else {
+			scan(b0, b1)
 		}
 		if !any {
 			havePrev = false

@@ -358,6 +358,25 @@ func detectPeriod(ref []float32, lo, hi int) int {
 	return 0
 }
 
+// DetectPeriodU8 is the exported period probe for callers holding raw codes
+// (the device panel): the fundamental period of sig[lo:hi) in samples, or 0.
+func DetectPeriodU8(sig []uint8, lo, hi int) int {
+	if lo < 0 {
+		lo = 0
+	}
+	if hi > len(sig) {
+		hi = len(sig)
+	}
+	if hi-lo < 32 {
+		return 0
+	}
+	ref := make([]float32, hi)
+	for i := lo; i < hi; i++ {
+		ref[i] = float32(sig[i])
+	}
+	return detectPeriod(ref, lo, hi)
+}
+
 // gateInstall resizes the stack to an L·K gate grid, builds the gate template,
 // and seeds the reference's own gate at fractional offset 0. gate = [gLo,gHi).
 func (st *Stack) gateInstall(gLo, gHi int) bool {
