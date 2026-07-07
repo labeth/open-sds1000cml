@@ -72,9 +72,16 @@
   .num { font: inherit; font-size: 11px; color: var(--text); background: var(--well);
     border: 1px solid var(--edge2); border-radius: 4px; padding: 1px 4px; }
   .w-xs { width: 40px; } .w-sm { width: 52px; } .w-md { width: 64px; } .w-num { width: 4.5em; }
-  .ejcv { width: 100%; background: var(--well); border: 1px solid var(--edge2); border-radius: 4px; margin-top: 5px; }
+  .ejcv { width: 100%; background: var(--well); border: 1px solid var(--edge2); border-radius: 4px; margin-top: 5px; cursor: zoom-in; }
+  .ejbig { position: fixed; inset: 0; background: rgba(2,4,7,0.88); display: flex;
+    align-items: center; justify-content: center; z-index: 60; cursor: zoom-out; }
+  .ejbig.hidden { display: none; }
+  .ejbig-inner { display: flex; flex-direction: column; gap: 6px; max-width: 94vw; }
+  .ejbig-inner canvas { background: #05080c; border: 1px solid var(--edge2); border-radius: 6px;
+    width: min(92vw, 1200px); height: min(78vh, 620px); }
+  .ejbig-inner .subtle { text-align: center; }
   .ejrow { display: flex; gap: 4px; margin-top: 4px; }
-  .ejrow canvas { flex: 1; min-width: 0; background: var(--well); border: 1px solid var(--edge2); border-radius: 4px; }
+  .ejrow canvas { flex: 1; min-width: 0; background: var(--well); border: 1px solid var(--edge2); border-radius: 4px; cursor: zoom-in; }
   .readout { min-width: 48px; text-align: right; font-variant-numeric: tabular-nums; }
   .readout.xs { min-width: 26px; }
   .grow { flex: 1; } .grow.min { min-width: 60px; }

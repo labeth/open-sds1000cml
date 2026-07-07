@@ -95,10 +95,10 @@
         <label>ch <select id="ejCh"><option value="1" selected>C1</option><option value="2">C2</option></select></label>
         <button id="ejReset" class="sm" title="discard the accumulated eye/jitter data">✕</button>
       </div>
-      <canvas id="ejEye" class="ejcv" width="460" height="200" aria-label="eye diagram"></canvas>
+      <canvas id="ejEye" class="ejcv" width="460" height="200" aria-label="eye diagram" title="click for a full-screen view"></canvas>
       <div class="ejrow">
-        <canvas id="ejHist" width="224" height="72" aria-label="TIE histogram"></canvas>
-        <canvas id="ejSpec" width="224" height="72" aria-label="TIE spectrum"></canvas>
+        <canvas id="ejHist" width="224" height="72" aria-label="TIE histogram" title="click for a full-screen view with axes"></canvas>
+        <canvas id="ejSpec" width="224" height="72" aria-label="TIE spectrum" title="click for a full-screen view with axes + CDR corner"></canvas>
       </div>
       <table class="meas"><tbody id="ejBody"></tbody></table>
       <div id="ejStats" class="subtle">idle — needs a triggered serial (NRZ) signal on a native band</div>
@@ -284,6 +284,13 @@
   <div class="sheet">
     <h2>Keyboard shortcuts</h2>
     <table id="helpBody"></table>
+  </div>
+</div>
+
+<div id="ejBigWrap" class="ejbig hidden" role="dialog" aria-label="eye diagram, enlarged">
+  <div class="ejbig-inner">
+    <canvas id="ejBig"></canvas>
+    <div id="ejBigInfo" class="subtle"></div>
   </div>
 </div>
 

@@ -29,12 +29,21 @@ function ejNew(opts) {
     uiN: 0,                             // records contributing to ui
     sampleS: 0,
     records: 0, rejected: 0, edges: 0,
-    tie: [],                            // aggregated TIE values (seconds), capped
+    tie: [],                            // TIE sample buffer for histogram/RJ-DJ
+    // (decimated when full — stays representative of the WHOLE run)
     tieCap: opts.tieCap || 60000,
+    tieDecim: 1,                        // current decimation of the tie buffer
+    tieSeen: 0,
+    // exact running aggregates — never capped, never frozen (review finding:
+    // a first-N window froze rms/pp after ~1 min while the panel looked live)
+    tieSum: 0, tieSum2: 0, tieMin: Infinity, tieMax: -Infinity, tieN: 0,
     periodJ: [], c2cJ: [],              // period + cycle-cycle jitter samples (s)
     fftN: opts.fftN || 512,
     spec: null, specN: 0,               // magnitude-sum spectrum + record count
     specDf: 0,                          // Hz per spectrum bin
+    dPool: [],                          // cross-record edge intervals: a HUGE-UI
+    // record holds too few edges to estimate UI alone; the pool accumulates
+    // intervals across records so the grid resolves after a few of them.
     lastErr: "",
   };
 }
@@ -45,11 +54,26 @@ function ejNew(opts) {
 // sub-sample linear interpolation. Returns {t:[...positions in samples], pol:[+1/-1]}
 // or null when the record has no usable swing.
 function ejEdges(sig, n) {
-  // robust levels: p5/p95 of a strided sample (cheap, rail-insensitive)
-  const stride = Math.max(1, n >> 12), vals = [];
-  for (let i = 0; i < n; i += stride) vals.push(sig[i]);
-  vals.sort((a, b) => a - b);
-  const lo = vals[Math.floor(vals.length * 0.05)], hi = vals[Math.floor(vals.length * 0.95)];
+  // Base/top levels by DUAL HISTOGRAM MODE (IEEE pulse-measurement style): the
+  // two dominant population levels, regardless of duty. Percentile levels (the
+  // first cut) systematically under-read the rare rail of a low-duty signal
+  // (a sparse pulse train is low ~95% of the time), biasing the mid threshold
+  // and fabricating ~±0.5-sample DCD between rising and falling edges.
+  const hist = new Float64Array(256);
+  const stride = Math.max(1, n >> 13);
+  for (let i = 0; i < n; i += stride) hist[Math.max(0, Math.min(255, sig[i]))]++;
+  // light smoothing so single-code noise spikes don't win the mode
+  const sm = new Float64Array(256);
+  for (let c = 0; c < 256; c++) sm[c] = (hist[c - 1] || 0) + 2 * hist[c] + (hist[c + 1] || 0);
+  let m1 = 0;
+  for (let c = 1; c < 256; c++) if (sm[c] > sm[m1]) m1 = c;
+  let m2 = -1;
+  for (let c = 0; c < 256; c++) {
+    if (Math.abs(c - m1) < 24) continue; // must be a DISTINCT level
+    if (m2 < 0 || sm[c] > sm[m2]) m2 = c;
+  }
+  if (m2 < 0 || sm[m2] < 4) return null; // single-level record: no serial swing
+  const lo = Math.min(m1, m2), hi = Math.max(m1, m2);
   if (hi - lo < 24) return null; // no serial swing
   const mid = (lo + hi) / 2, hys = (hi - lo) * 0.15;
   const t = [], pol = [];
@@ -87,6 +111,12 @@ function ejEdges(sig, n) {
 function ejEstimateUI(t) {
   const d = [];
   for (let i = 1; i < t.length; i++) d.push(t[i] - t[i - 1]);
+  return ejEstimateUIFromIntervals(d);
+}
+
+// ejEstimateUIFromIntervals: the estimator core over a bag of intervals (used
+// per-record and over the cross-record pool for edge-starved signals).
+function ejEstimateUIFromIntervals(d) {
   if (d.length < 8) return 0;
   const s = [...d].sort((a, b) => a - b);
   let ui = s[Math.floor(s.length * 0.1)]; // near the shortest run
@@ -95,7 +125,12 @@ function ejEstimateUI(t) {
     let num = 0, den = 0, bad = 0;
     for (const dd of d) {
       const k = Math.round(dd / ui);
-      if (k < 1 || k > 16) { bad++; continue; }
+      // k caps the accepted run length: sparse pulse trains and framed protocols
+      // legitimately idle for tens of UI (a 16-UI cap silently rejected them);
+      // beyond ~64 UI the k-assignment ambiguity dominates, so such intervals
+      // are EXCLUDED from the average but are not evidence against the grid.
+      if (k < 1) { bad++; continue; }
+      if (k > 64) continue;
       const frac = Math.abs(dd / ui - k);
       if (frac > 0.3) { bad++; continue; } // off-grid interval
       num += dd; den += k;
@@ -175,7 +210,15 @@ function ejFFT(re, im) {
 function ejFeed(st, sig, n, sampleS) {
   const e = ejEdges(sig, n);
   if (!e) { st.rejected++; st.lastErr = "no-swing"; return "rejected:no-swing"; }
-  const ui0 = ejEstimateUI(e.t);
+  // pool intervals across records (cap: keep the freshest ~4000)
+  for (let i = 1; i < e.t.length; i++) st.dPool.push(e.t[i] - e.t[i - 1]);
+  if (st.dPool.length > 4000) st.dPool.splice(0, st.dPool.length - 4000);
+  let ui0 = ejEstimateUI(e.t);
+  if (!ui0 && st.dPool.length >= 8) {
+    // thin record (few edges): estimate from the cross-record interval pool,
+    // then still fit THIS record's edges against it.
+    ui0 = ejEstimateUIFromIntervals(st.dPool);
+  }
   if (!ui0) { st.rejected++; st.lastErr = "no-bit-grid"; return "rejected:no-bit-grid"; }
   // UI consistency across records: a drifting/false lock is not the same signal
   if (st.uiN > 0 && Math.abs(ui0 - st.ui) > 0.02 * st.ui) {
@@ -184,25 +227,61 @@ function ejFeed(st, sig, n, sampleS) {
   }
   const fit = ejFitGrid(e.t, ui0);
   if (!fit) { st.rejected++; st.lastErr = "no-lock"; return "rejected:no-lock"; }
+  // Vertical scale is FROZEN at the first locked record: the density map's
+  // deposits are binned against it and cannot be rebinned, so a level shift
+  // (amplitude change, DC drift) must reject rather than corrupt eye metrics.
+  if (st.uiN === 0) {
+    // The vertical mapping is FROZEN at first lock with generous headroom (the
+    // review's corruption came from a MUTATING mapping re-interpreting old
+    // deposits). Later level wander/modulation lands at its true code position
+    // in the fixed mapping — the rails honestly widen and the measured eye
+    // shrinks, which is exactly what an eye diagram is for. Content beyond the
+    // headroom clamps at the border bins, far from the center/mid metrics rows.
+    st.lo = e.lo; st.hi = e.hi;
+    const head = Math.max(8, 0.4 * (e.hi - e.lo));
+    st.eyeY0 = Math.max(0, e.lo - head);
+    st.eyeY1 = Math.min(255, e.hi + head);
+  }
   st.ui = st.uiN === 0 ? fit.ui : st.ui + (fit.ui - st.ui) / Math.min(st.uiN + 1, 32);
   st.uiN++;
   st.sampleS = sampleS;
-  if (e.lo < st.lo) st.lo = e.lo;
-  if (e.hi > st.hi) st.hi = e.hi;
 
-  // --- TIE aggregation (seconds) ---
-  for (let i = 0; i < fit.tie.length && st.tie.length < st.tieCap; i++) {
-    st.tie.push(fit.tie[i] * sampleS);
+  // --- TIE aggregation (seconds): exact running stats + decimated buffer ---
+  for (let i = 0; i < fit.tie.length; i++) {
+    const v = fit.tie[i] * sampleS;
+    st.tieSum += v;
+    const p = v * v;
+    st.tieSum2 += p;
+    if (v < st.tieMin) st.tieMin = v;
+    if (v > st.tieMax) st.tieMax = v;
+    st.tieN++;
+    if (st.tieSeen % st.tieDecim === 0) {
+      st.tie.push(v);
+      if (st.tie.length >= st.tieCap) { // halve: keep every other, double stride
+        const half = [];
+        for (let j = 0; j < st.tie.length; j += 2) half.push(st.tie[j]);
+        st.tie = half;
+        st.tieDecim *= 2;
+      }
+    }
+    st.tieSeen++;
   }
-  // period jitter (consecutive same-polarity edge spacing error) + cycle-cycle
-  let prevP = null, prevPeriod = null;
-  for (let i = 1; i < e.t.length; i++) {
-    const dk = fit.nIdx[i] - fit.nIdx[i - 1];
-    if (dk < 1) continue;
-    const err = (e.t[i] - e.t[i - 1] - dk * fit.ui) * sampleS;
-    if (st.periodJ.length < st.tieCap) st.periodJ.push(err);
-    if (prevP !== null && st.c2cJ.length < st.tieCap) st.c2cJ.push(err - prevPeriod);
-    prevP = i; prevPeriod = err;
+  // period + cycle-cycle jitter over consecutive SAME-POLARITY edges (rising to
+  // rising): mixing polarities lets duty-cycle distortion masquerade as period
+  // jitter — a stable clock with DCD must read ~0 here (review finding).
+  let prevIdx = -1, prevPeriod = null;
+  for (let i = 0; i < e.t.length; i++) {
+    if (e.pol[i] <= 0) continue;
+    if (prevIdx >= 0) {
+      const dk = fit.nIdx[i] - fit.nIdx[prevIdx];
+      if (dk >= 1) {
+        const err = (e.t[i] - e.t[prevIdx] - dk * fit.ui) * sampleS;
+        ejPushCapped(st.periodJ, err, st.tieCap);
+        if (prevPeriod !== null) ejPushCapped(st.c2cJ, err - prevPeriod, st.tieCap);
+        prevPeriod = err;
+      }
+    }
+    prevIdx = i;
   }
   st.edges += e.t.length;
 
@@ -219,9 +298,10 @@ function ejFeed(st, sig, n, sampleS) {
     }
     const span = Math.min(N, nUI + 1);
     // linear-interp the data-dependent gaps (PRBS7 max run 7 UI)
-    let last = -1;
+    let last = -1, haveCnt = 0;
     for (let i = 0; i < span; i++) {
       if (have[i]) {
+        haveCnt++;
         if (last >= 0 && i - last > 1) {
           for (let j = last + 1; j < i; j++) grid[j] = grid[last] + (grid[i] - grid[last]) * (j - last) / (i - last);
         } else if (last < 0) {
@@ -231,27 +311,39 @@ function ejFeed(st, sig, n, sampleS) {
       }
     }
     if (last >= 0) for (let j = last + 1; j < span; j++) grid[j] = grid[last];
-    // detrend (mean) + Hann over the covered span, zero-pad to N
-    let mean = 0;
-    for (let i = 0; i < span; i++) mean += grid[i];
-    mean /= span;
-    const re = new Float64Array(N), im = new Float64Array(N);
-    for (let i = 0; i < span; i++) {
-      const w = 0.5 - 0.5 * Math.cos(2 * Math.PI * i / (span - 1));
-      re[i] = (grid[i] - mean) * w;
+    // Spectrum honesty gate: when most of the UI grid is INTERPOLATED (bursty
+    // signals with long idle gaps), the resampling fabricates spectral structure
+    // (measured: subharmonic images of the injected tone). Normal NRZ tops out
+    // at ~50% slot coverage (a transition every other bit), bursty traffic sits
+    // near ~30% — the gate lives between them. TIE stats always accumulate.
+    if (haveCnt >= 0.35 * span) {
+      // detrend (mean) + Hann over the covered span, zero-pad to N
+      let mean = 0;
+      for (let i = 0; i < span; i++) mean += grid[i];
+      mean /= span;
+      const re = new Float64Array(N), im = new Float64Array(N);
+      for (let i = 0; i < span; i++) {
+        const w = 0.5 - 0.5 * Math.cos(2 * Math.PI * i / (span - 1));
+        re[i] = (grid[i] - mean) * w;
+      }
+      ejFFT(re, im);
+      if (!st.spec) st.spec = new Float64Array(N / 2);
+      // calibrate EACH record's contribution with its own Hann span (records
+      // differ in edge coverage; a last-record-only calibration biased the
+      // averaged tone amplitude — review finding)
+      const cal1 = 2 / (0.5 * span);
+      for (let k = 0; k < N / 2; k++) {
+        const p = re[k] * re[k];
+        const q = im[k] * im[k];
+        st.spec[k] += Math.sqrt(p + q) * cal1;
+      }
+      st.specN++;
+      // bin width: UI-grid sample spacing = ui*sampleS seconds
+      st.specDf = 1 / (N * fit.ui * sampleS);
     }
-    ejFFT(re, im);
-    if (!st.spec) st.spec = new Float64Array(N / 2);
-    for (let k = 0; k < N / 2; k++) {
-      const p = re[k] * re[k];
-      const q = im[k] * im[k];
-      st.spec[k] += Math.sqrt(p + q);
-    }
-    st.specN++;
-    // bin width: UI-grid sample spacing = ui*sampleS seconds, span samples used
-    st.specDf = 1 / (N * fit.ui * sampleS);
-    st.specSpan = span;
   }
+
+  st.lastSpanUI = nUI; // record span in UI (for the TIE high-pass corner report)
 
   // --- eye fold: every sample at phase (t − t0) mod 2UI ---
   const W = st.eyeW, H = st.eyeH;
@@ -266,12 +358,13 @@ function ejFeed(st, sig, n, sampleS) {
     const y = Math.min(H - 1, Math.max(0, Math.round((sig[i] - y0) * yscale)));
     st.eye[y * W + x]++;
   }
-  st.eyeY0 = y0; st.eyeY1 = y1;
   st.records++;
   return "locked:" + e.t.length;
 }
 
 // ---------- results ----------
+
+function ejPushCapped(arr, v, cap) { if (arr.length < cap) arr.push(v); }
 
 function ejMedian(a) {
   if (!a.length) return 0;
@@ -317,31 +410,28 @@ function ejResult(st) {
     uiSeconds: st.ui * st.sampleS,
     bitRate: st.ui > 0 && st.sampleS > 0 ? 1 / (st.ui * st.sampleS) : 0,
     lastErr: st.lastErr,
+    // The TIE reference clock is a PER-RECORD linear fit: jitter slower than
+    // ~1/T_record is absorbed by the fit (the scope-world analogue of a golden
+    // PLL's loop bandwidth). Report the corner so slow wander is never
+    // mistaken for a clean source.
+    tieHpHz: st.lastSpanUI > 0 && st.ui > 0 && st.sampleS > 0
+      ? 1 / (st.lastSpanUI * st.ui * st.sampleS) : 0,
   };
-  // TIE stats
-  if (st.tie.length >= 8) {
-    let ss = 0, mn = Infinity, mx = -Infinity, mean = 0;
-    for (const v of st.tie) mean += v;
-    mean /= st.tie.length;
-    for (const v of st.tie) {
-      const d = v - mean;
-      const p = d * d;
-      ss += p;
-      if (v < mn) mn = v;
-      if (v > mx) mx = v;
-    }
-    out.tieRms = Math.sqrt(ss / st.tie.length);
-    out.tiePp = mx - mn;
-    const rd = ejRjDj(st.tie);
-    out.rj = rd.rj; out.dj = rd.dj;
+  // TIE stats from the EXACT running aggregates (never frozen by the buffer cap)
+  if (st.tieN >= 8) {
+    const mean = st.tieSum / st.tieN;
+    const varc = Math.max(0, st.tieSum2 / st.tieN - mean * mean);
+    out.tieRms = Math.sqrt(varc);
+    out.tiePp = st.tieMax - st.tieMin;
+    const rd = ejRjDj(st.tie); // histogram-shape stats from the decimated buffer
+    if (rd.ok) { out.rj = rd.rj; out.dj = rd.dj; } // undefined until measurable
     out.periodJRms = rmsOf(st.periodJ);
     out.c2cJRms = rmsOf(st.c2cJ);
+    out.tieWindow = st.tieN; // how many edges the stats cover
   }
-  // spectrum (averaged magnitude, calibrated to sinusoid zero-peak amplitude)
+  // spectrum (per-record-calibrated magnitudes, averaged)
   if (st.spec && st.specN > 0) {
-    const N = st.fftN, span = st.specSpan || N;
-    // Hann coherent gain over the covered span, single-sided ×2, /span
-    const cal = 2 / (0.5 * span) / st.specN;
+    const cal = 1 / st.specN;
     const mags = new Float64Array(st.spec.length);
     for (let k = 0; k < st.spec.length; k++) mags[k] = st.spec[k] * cal;
     out.spectrum = mags;
@@ -403,24 +493,22 @@ function ejEyeMetrics(st) {
   }
   let eyeWidthUI = 0;
   if (rowTot > 200) {
-    // crossings cluster near phase 0 / 0.5 / 1.0; the eye is the empty span
-    // between the cluster around 0.5±  — find the density-weighted cluster edges
-    const xc = colAt(0.5);
+    // The eye width is the LONGEST CONTIGUOUS mid-row gap containing the eye
+    // centre (crossings cluster at phases 0 / 0.5 / 1 of the 2-UI fold; the
+    // opening around 0.75 is one eye). Counting ALL empty columns across the
+    // fold over-reads by including the second eye.
+    const thr = rowTot / W * 0.5; // half of uniform density = crossing cluster
+    const xc = colAt(0.75);
     let l = xc, r = xc;
-    const thr = rowTot / W * 0.5; // half of uniform density = cluster boundary
-    while (l > 0 && row[l] < thr) l--;
-    while (l > 0 && row[l] >= thr) l--;
-    while (r < W - 1 && row[r] < thr) r++;
-    while (r < W - 1 && row[r] >= thr) r++;
-    // measure between the 0-cluster right edge and the 0.5-cluster left edge:
-    // simpler honest figure: fraction of the mid row that is EMPTY between crossings
-    let empty = 0;
-    for (let x = 0; x < W; x++) if (row[x] < thr) empty++;
-    eyeWidthUI = empty / W * 2; // fold spans 2 UI → empty fraction × 2 = width in UI
+    if (row[xc] < thr) {
+      while (l > 0 && row[l - 1] < thr) l--;
+      while (r < W - 1 && row[r + 1] < thr) r++;
+      eyeWidthUI = (r - l + 1) / W * 2; // fold spans 2 UI
+    }
   }
-  return { eyeHeightCodes: eyeHeight, eyeWidthUI: Math.min(1, eyeWidthUI / 2 * 2) / 1, crossTotal: total };
+  return { eyeHeightCodes: eyeHeight, eyeWidthUI: Math.min(1, eyeWidthUI), crossTotal: total };
 }
 
 if (typeof module !== "undefined" && module.exports) {
-  module.exports = { ejNew, ejFeed, ejResult, ejEdges, ejEstimateUI, ejFitGrid, ejFFT, ejEyeMetrics };
+  module.exports = { ejNew, ejFeed, ejResult, ejEdges, ejEstimateUI, ejEstimateUIFromIntervals, ejFitGrid, ejFFT, ejEyeMetrics };
 }

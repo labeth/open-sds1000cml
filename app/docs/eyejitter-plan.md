@@ -1,4 +1,4 @@
-# Eye diagram + jitter analysis — design (rev2, as built + validated)
+# Eye diagram + jitter analysis — design (rev3: hardened + measured envelope)
 
 The flagship serial-analysis package of high-end scopes (SDA/DPOJET-class paid
 options), built on this clone's existing machinery: raw 500 MS/s deep records,
@@ -148,3 +148,73 @@ at its median always fabricates DJ = 1.35σ; test the central-band occupancy
 about the midpoint of the side modes first). Test generators must build
 waveforms from the EDGE LIST — a cell-indexed builder clips shifted edges at
 the ideal boundary and injected jitter never reaches the waveform.
+
+
+## 9. Adversarial hardening (2026-07-07, 50-family breaker)
+
+`internal/web/eyejitter_breaker.cjs` (dev tool, seconds): 50 signal families —
+encodings (PRBS7/15, UART-framed, burst/idle, clock, sparse pulses), unit
+intervals (4…2000 samples, fractional), jitter types (square/sine/gaussian/
+DCD/ISI at various amplitudes and rates), impairments (noise to swing/4,
+baseline wander, AM, clipping, dropouts, runt glitches), degenerate inputs
+(sine, chirp, noise, flat, two-tone, staircase). All 50 pass against ground
+truth. Root causes found and fixed:
+
+- **Dual-histogram-mode base/top levels** (IEEE-style): percentile levels
+  under-read the rare rail of low-duty signals → the mid threshold sat low and
+  fabricated ~±0.5-sample DCD on a clean sparse pulse train.
+- **Run-length cap 16→64 UI** in the UI estimator: sparse trains and framed
+  protocols legitimately idle for tens of UI; >64-UI intervals are excluded
+  from the average but no longer count as evidence against the grid.
+- **Cross-record interval pool**: an edge-starved record (huge UI: ~10 bits
+  per record) cannot estimate UI alone; intervals pool across records and the
+  grid resolves after a few.
+- **Spectrum gap gate** (≥35% real UI-grid coverage): bursty streams made the
+  TIE resampling mostly interpolation, fabricating subharmonic images of the
+  injected tone. NRZ tops out at ~50% coverage, bursts sit near ~30%.
+- **Eye width = the longest contiguous mid-row gap at the eye centre** (was
+  over-counting both eye openings of the 2-UI fold).
+- Guards: channel or V/div change mid-run stops honestly (same policy as
+  superres). AM→PM conversion at a fixed threshold is documented physics.
+
+Adversarial code review (3-lens workflow, all confirmed findings fixed with
+regressions):
+
+- **Period/cycle-cycle jitter over same-polarity edges only** — the
+  cross-polarity accumulation let duty-cycle distortion masquerade as period
+  instability (a stable clock with 8 ns DCD read "period 8 ns"; now DJ = the
+  DCD and period jitter reads its true ~0).
+- **TIE statistics never freeze**: exact running sum/sum²/min/max drive rms/pp
+  (the first-N buffer froze all TIE stats ~1 min into a run while the panel
+  looked live); the histogram/RJ-DJ buffer decimates (halve + double stride)
+  so it stays representative of the whole run.
+- **Eye vertical mapping frozen at first lock** (with 40%-of-swing headroom):
+  the mutating y-scale re-interpreted old deposits and corrupted eye-height mV.
+  Level wander now honestly widens the rails instead.
+- **Per-record spectrum calibration** (each record's Hann span) before
+  averaging — a last-record-only calibration biased the averaged tone
+  amplitude when edge coverage varied.
+- RJ/DJ display "—" until measurable (≥200 edges); PJ-dominated flag when the
+  spectrum's tone explains most of the TIE power (dual-Dirac-lite caveat);
+  t/div change mid-run stops with a message instead of rejecting forever;
+  records without a timebase are skipped; mV readouts only with a real
+  vertical calibration; click any diagram (eye / histogram / spectrum) for a
+  full-screen live view with axes and the CDR-corner marker.
+
+## 10. Measured hardware envelope (FPGA PRBS7 ladder)
+
+| configuration | measured | truth / expectation |
+|---|---|---|
+| 2 Mbps, JA=8 (0.32 UI pp) | TIE rms 79.9 ns, DJ 156.5 ns, peak 62.49 kHz | 80 ns, 160 ns, 62.5 kHz |
+| 5 Mbps clean | 5.00014 Mbps, floor 1.10 ns rms, RJ 112 ps | crystal ppm; chain ISI ~2 ns |
+| 5 Mbps, f_j = 39 kHz (near 24 kHz corner) | peak 39.06 kHz, amp 13.5 ns | 39.06 kHz, 12.7 ns |
+| 10 Mbps clean | 10.00056 Mbps, floor 1.09 ns, RJ 144 ps | crystal ppm |
+| 10 Mbps, JA=1 | DJ 19.89 ns, peak 312.52 kHz, amp 12.35 ns | 20 ns, 312.5 kHz, 12.7 ns |
+| 25 Mbps clean | locked, eye 112 codes, floor 1.11 ns, RJ 1.34 ns | 20 samples/UI |
+| 50 Mbps | honest refusal (no-bit-grid, no false lock) | rise 8.75 ns = 0.44 UI: the ~40 MHz chain closes the eye |
+
+Operating envelope: **2–25 Mbps** solid lock; jitter measured accurately from
+the ~1 ns chain floor up to at least 0.32 UI pp; injected tones recovered in
+frequency (exact) and amplitude (±10%) from ~1.6× the CDR corner up to
+f_edge/2. 50 Mbps is an analog-bandwidth limit, not an algorithm limit — the
+engine refuses rather than fabricating a lock.

@@ -144,5 +144,130 @@ const SAMPLE_S = 2e-9;
   check(d === "rejected:ui-inconsistent", "guard: bit-rate change rejected", d);
 }
 
+
+// ---- 5) breaker distillates: the root-cause fixes stay fixed ----
+{
+  // (a) LOW-DUTY signal (sparse pulse train): percentile levels used to sit the
+  // threshold low, fabricating ~1-sample DCD between rise/fall. With dual-
+  // histogram-mode levels the clean sparse train must show NO significant DJ.
+  const st = EJ.ejNew({});
+  const bitsOf = nb => { const b = new Uint8Array(nb); for (let i = 3; i < nb; i += 19) b[i] = 1; return b; };
+  for (let r = 0; r < 15; r++) {
+    const bits = bitsOf(230);
+    const edges = [];
+    for (let k = 1; k < bits.length; k++) if (bits[k] !== bits[k - 1]) edges.push({ t: 30 + (r * 37.3) % 100 + k * 100, a: bits[k - 1] ? 198 : 58, b: bits[k] ? 198 : 58 });
+    const sig = new Int16Array(20480);
+    let e = 0;
+    for (let i = 0; i < 20480; i++) {
+      while (e < edges.length - 1 && i > edges[e].t + 40) e++;
+      const ed = edges[Math.min(e, edges.length - 1)];
+      let v = i < ed.t - 40 ? ed.a : i > ed.t + 40 ? ed.b : ed.a + (ed.b - ed.a) / (1 + Math.exp(-2.2 * (i - ed.t) / 4.5));
+      sig[i] = Math.round(v + 1.5 * rnd() * 2);
+    }
+    EJ.ejFeed(st, sig, 20480, SAMPLE_S);
+  }
+  const res = EJ.ejResult(st);
+  check(st.records >= 10, "sparse: low-duty pulse train locks (k-cap fix)", st.records + "/15");
+  check(!res.dj || res.dj < 1e-9, "sparse: no fabricated DCD (histogram-mode levels)", ((res.dj || 0) * 1e9).toFixed(2) + " ns");
+}
+{
+  // (b) BURSTY stream: long idle gaps make the UI-grid mostly interpolation —
+  // the spectrum must be withheld (subharmonic images were measured), while
+  // TIE stats still accumulate.
+  const st = EJ.ejNew({});
+  const bits = new Uint8Array(230).fill(1);
+  let s = 0x7f;
+  for (let i = 8; i < 230; i++) {
+    if (Math.floor(i / 32) % 2 === 0) { bits[i] = (s >> 6) & 1; const fb = ((s >> 6) ^ (s >> 5)) & 1; s = ((s << 1) | fb) & 0x7f; }
+  }
+  for (let r = 0; r < 10; r++) {
+    const edges = [];
+    for (let k = 1; k < bits.length; k++) if (bits[k] !== bits[k - 1]) edges.push({ t: 30 + (r * 41.3) % 100 + k * 88.6, a: bits[k - 1] ? 198 : 58, b: bits[k] ? 198 : 58 });
+    const sig = new Int16Array(20480);
+    let e = 0;
+    for (let i = 0; i < 20480; i++) {
+      while (e < edges.length - 1 && i > edges[e].t + 40) e++;
+      const ed = edges[Math.min(e, edges.length - 1)];
+      let v = i < ed.t - 40 ? ed.a : i > ed.t + 40 ? ed.b : ed.a + (ed.b - ed.a) / (1 + Math.exp(-2.2 * (i - ed.t) / 4.5));
+      sig[i] = Math.round(v + 1.5 * rnd() * 2);
+    }
+    EJ.ejFeed(st, sig, 20480, SAMPLE_S);
+  }
+  check(st.records >= 6, "burst: idle-gapped stream locks", st.records + "/10");
+  check(st.specN === 0, "burst: spectrum withheld when the UI grid is mostly gaps", "specN=" + st.specN);
+  check(st.tie.length > 100, "burst: TIE stats still accumulate", st.tie.length);
+}
+{
+  // (c) EDGE-STARVED records (huge UI): a single record has too few intervals;
+  // the cross-record pool must resolve the grid within a few records.
+  const st = EJ.ejNew({});
+  let locked = 0;
+  for (let r = 0; r < 12; r++) {
+    const bits = [];
+    let s2 = 0x5a + r;
+    for (let k = 0; k < 16; k++) { bits.push((s2 >> (k % 7)) & 1); }
+    const edges = [];
+    for (let k = 1; k < bits.length; k++) if (bits[k] !== bits[k - 1]) edges.push({ t: 500 + k * 1900.0, a: bits[k - 1] ? 198 : 58, b: bits[k] ? 198 : 58 });
+    if (edges.length < 3) continue;
+    const sig = new Int16Array(20480);
+    let e = 0;
+    for (let i = 0; i < 20480; i++) {
+      while (e < edges.length - 1 && i > edges[e].t + 40) e++;
+      const ed = edges[Math.min(e, edges.length - 1)];
+      let v = i < ed.t - 40 ? ed.a : i > ed.t + 40 ? ed.b : ed.a + (ed.b - ed.a) / (1 + Math.exp(-2.2 * (i - ed.t) / 4.5));
+      sig[i] = Math.round(v + 1.5 * rnd() * 2);
+    }
+    if (EJ.ejFeed(st, sig, 20480, SAMPLE_S).startsWith("locked")) locked++;
+  }
+  check(locked >= 4, "pool: edge-starved records lock via the cross-record pool", locked + " locked");
+  const res = EJ.ejResult(st);
+  if (locked) check(Math.abs(res.ui - 1900) < 5, "pool: UI recovered", res.ui.toFixed(1));
+  check(res.tieHpHz > 0, "corner: TIE high-pass corner reported", res.tieHpHz ? (res.tieHpHz / 1e3).toFixed(1) + " kHz" : "0");
+}
+
+
+// ---- 6) review distillates ----
+{
+  // (a) BLOCKER regression: a stable clock with pure DCD (rising on-grid,
+  // falling late) must show DJ = the DCD but period/c2c jitter ≈ 0 — the old
+  // cross-polarity accumulation read the duty error as period instability.
+  const st = EJ.ejNew({});
+  const n = 20480, ui = 100, dcd = 4; // falling edges 4 samples late
+  for (let r = 0; r < 12; r++) {
+    const edges = [];
+    for (let k = 1; k < 200; k++) {
+      const rising = (k & 1) === 0;
+      edges.push({ t: 20 + (r * 37.3) % ui + k * ui + (rising ? 0 : dcd), a: rising ? 58 : 198, b: rising ? 198 : 58 });
+    }
+    const sig = new Int16Array(n);
+    let e = 0;
+    for (let i = 0; i < n; i++) {
+      while (e < edges.length - 1 && i > edges[e].t + 40) e++;
+      const ed = edges[Math.min(e, edges.length - 1)];
+      let v = i < ed.t - 40 ? ed.a : i > ed.t + 40 ? ed.b : ed.a + (ed.b - ed.a) / (1 + Math.exp(-2.2 * (i - ed.t) / 4.5));
+      sig[i] = Math.round(v + 1.2 * rnd() * 2);
+    }
+    EJ.ejFeed(st, sig, n, SAMPLE_S);
+  }
+  const res = EJ.ejResult(st);
+  check(res.dj > 5e-9 && res.dj < 11e-9, "review: DCD measured as DJ ≈ 8 ns", ((res.dj || 0) * 1e9).toFixed(2) + " ns");
+  check(res.periodJRms < 1e-9, "review: period jitter immune to DCD (same-polarity)", (res.periodJRms * 1e12).toFixed(0) + " ps");
+  check(res.c2cJRms < 1.5e-9, "review: c2c jitter immune to DCD", (res.c2cJRms * 1e12).toFixed(0) + " ps");
+}
+{
+  // (b) TIE stats never freeze: with a tiny buffer cap, later bigger jitter
+  // must still move the running rms (decimation keeps the histogram honest).
+  const st = EJ.ejNew({ tieCap: 64 });
+  const bits = prbs7(300);
+  for (let r = 0; r < 6; r++) EJ.ejFeed(st, genRecord(20480, 100, 20 + r * 31 % 100, bits, () => 0, 1.2, 9), 20480, SAMPLE_S);
+  const early = EJ.ejResult(st).tieRms;
+  for (let r = 0; r < 12; r++) {
+    const tieFn = k => 5 * Math.sin(2 * Math.PI * k / 16); // big PJ late in the run
+    EJ.ejFeed(st, genRecord(20480, 100, 20 + r * 37 % 100, bits, tieFn, 1.2, 9), 20480, SAMPLE_S);
+  }
+  const late = EJ.ejResult(st).tieRms;
+  check(late > 3 * early, "review: running TIE rms tracks post-cap jitter", (early * 1e12).toFixed(0) + "ps -> " + (late * 1e12).toFixed(0) + "ps");
+}
+
 if (fails) { console.log(fails + " FAILURES"); process.exit(1); }
 console.log("ALL PASS");
