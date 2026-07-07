@@ -59,13 +59,16 @@ type Stack struct {
 	// (not N·K); Hits counts occurrences (one frame yields many on a repetitive
 	// signal). SearchR bounds the per-frame search to trigger-predicted ±R (0 =
 	// whole frame).
-	Gated    bool
-	Hits     int
-	GateLo   int
-	GateHi   int
-	GridL    int
-	SearchR  int
-	gtpl     *gateTpl
+	Gated      bool
+	Hits       int
+	GateLo     int
+	GateHi     int
+	GridL      int
+	SearchR    int
+	AdaptFloor float64 // self-calibrated hit floor (≥ MinMatch): above the
+	// reference's own ambient lookalikes, so junk that merely resembles a
+	// low-information gate can't stack. 0 = uncalibrated (use MinMatch).
+	gtpl *gateTpl
 }
 
 // New allocates a stack: n input samples → n*K fine bins per channel.
@@ -267,11 +270,25 @@ func (st *Stack) matchLocate(sig []uint8, base, R int) (matchResult, bool) {
 	return matchResult{shift: float64(bestLoc - t.lo), score: best, ambig: second > 0.9*best}, true
 }
 
-// gateTpl is the gate's matched filter: zero-mean reference window + its norm.
+// gateTpl is the gate's matched filter: zero-mean reference window + its norm,
+// plus SEGMENT sub-templates for the per-hit consistency check (see segMatch).
 type gateTpl struct {
 	data []float64
 	L    int
 	norm float64
+	rms  float64
+	segs []gateSeg
+}
+
+// gateSeg is one template segment: re-zero-meaned shape data + its own norm,
+// share of the total template energy, and its raw level relative to the window
+// mean (relMean) — dead/flat segments discriminate by LEVEL, not shape.
+type gateSeg struct {
+	a, len  int
+	data    []float64
+	norm    float64
+	share   float64
+	relMean float64
 }
 
 type hit struct {
@@ -280,7 +297,8 @@ type hit struct {
 	delta float64
 }
 
-// gateTemplate builds the zero-mean unit-referenced matched filter for [lo,hi).
+// gateTemplate builds the zero-mean unit-referenced matched filter for [lo,hi),
+// with per-segment sub-templates for the consistency check. Mirrors srGateTemplate.
 func gateTemplate(ref []float32, lo, hi int) *gateTpl {
 	L := hi - lo
 	if L < 4 {
@@ -303,7 +321,149 @@ func gateTemplate(ref []float32, lo, hi int) *gateTpl {
 	if !(norm > 0) {
 		return nil
 	}
-	return &gateTpl{data: data, L: L, norm: norm}
+	// Segments: ~8 across the gate, each ≥24 samples (shorter is too noisy).
+	nseg := L / 24
+	if nseg > 8 {
+		nseg = 8
+	}
+	if nseg < 1 {
+		nseg = 1
+	}
+	var segs []gateSeg
+	for s := 0; s < nseg; s++ {
+		a := s * L / nseg
+		b := (s + 1) * L / nseg
+		sl := b - a
+		if sl < 8 {
+			continue
+		}
+		sm := 0.0
+		for i := a; i < b; i++ {
+			sm += float64(ref[lo+i])
+		}
+		sm /= float64(sl)
+		sdata := make([]float64, sl)
+		sss := 0.0
+		for i := 0; i < sl; i++ {
+			d := float64(ref[lo+a+i]) - sm
+			sdata[i] = d
+			p := d * d // materialize
+			sss += p
+		}
+		den := ss
+		if den == 0 {
+			den = 1
+		}
+		segs = append(segs, gateSeg{a: a, len: sl, data: sdata, norm: math.Sqrt(sss), share: sss / den, relMean: sm - mean})
+	}
+	return &gateTpl{data: data, L: L, norm: norm, rms: math.Sqrt(ss / float64(L)), segs: segs}
+}
+
+// segMatch verifies one candidate hit against the template's segments: every
+// segment must sit at the template's LEVEL (relative to the window mean, gain-
+// scaled — flat plateaus discriminate by level), and every segment with real
+// shape energy must correlate ≥0.65. A partial overlap or a lookalike matches
+// only where the energy is concentrated — the global energy-weighted NCC cannot
+// tell those apart, and depositing them contaminates the stack. Mirrors
+// srSegMatch (thresholds measured on the adversarial 50-family corpus).
+func (t *gateTpl) segMatch(sig []uint8, loc int) bool {
+	if len(t.segs) < 2 {
+		return true // nothing to cross-check
+	}
+	L := t.L
+	wm := 0.0
+	for i := 0; i < L; i++ {
+		wm += float64(sig[loc+i])
+	}
+	wm /= float64(L)
+	wss := 0.0
+	for i := 0; i < L; i++ {
+		d := float64(sig[loc+i]) - wm
+		p := d * d // materialize
+		wss += p
+	}
+	gGain := 1.0
+	if t.rms > 0 {
+		gGain = math.Sqrt(wss/float64(L)) / t.rms
+	}
+	if gGain < 0.5 {
+		gGain = 0.5
+	} else if gGain > 2 {
+		gGain = 2
+	}
+	lvlTol := 0.25 * gGain * t.rms
+	if lvlTol < 5 {
+		lvlTol = 5
+	}
+	for gi := range t.segs {
+		g := &t.segs[gi]
+		sm := 0.0
+		for i := 0; i < g.len; i++ {
+			sm += float64(sig[loc+g.a+i])
+		}
+		sm /= float64(g.len)
+		if math.Abs((sm-wm)-gGain*g.relMean) > lvlTol {
+			return false
+		}
+		if g.share < 0.02 {
+			continue // dead segment: level checked above, no shape to correlate
+		}
+		dot, ss := 0.0, 0.0
+		for i := 0; i < g.len; i++ {
+			s := float64(sig[loc+g.a+i]) - sm
+			p := g.data[i] * s // materialize
+			dot += p
+			q := s * s
+			ss += q
+		}
+		den := g.norm * math.Sqrt(ss)
+		if !(den > 0) || dot/den < 0.65 {
+			return false
+		}
+	}
+	return true
+}
+
+// ambientMax measures the reference record's own ambient similarity to the gate
+// template: the max off-gate local-maximum NCC below 0.93 (≥0.93 = genuine
+// periodic repeats, which must keep stacking). Mirrors srAmbientMax.
+func (st *Stack) ambientMax(ref []float32) float64 {
+	t := st.gtpl
+	L, n := t.L, st.N
+	best, prev, prev2 := 0.0, -2.0, -2.0
+	for loc := 0; loc <= n-L; loc++ {
+		mean := 0.0
+		for i := 0; i < L; i++ {
+			mean += float64(ref[loc+i])
+		}
+		mean /= float64(L)
+		dot, ss := 0.0, 0.0
+		for i := 0; i < L; i++ {
+			s := float64(ref[loc+i]) - mean
+			p := t.data[i] * s // materialize
+			dot += p
+			q := s * s
+			ss += q
+		}
+		den := t.norm * math.Sqrt(ss)
+		sc := 0.0
+		if den > 0 {
+			sc = dot / den
+		}
+		if prev > prev2 && prev >= sc {
+			ploc := loc - 1
+			d := ploc - st.GateLo
+			if d < 0 {
+				d = -d
+			}
+			if d >= L>>1 && prev < 0.93 && prev > best {
+				best = prev
+			}
+		}
+		prev2 = prev
+		prev = sc
+	}
+	return best
 }
 
 // detectPeriod returns the fundamental period (samples) of ref[lo:hi) via
@@ -396,6 +556,23 @@ func (st *Stack) gateInstall(gLo, gHi int) bool {
 		C.cntA = make([]float64, st.Nbins)
 	}
 	st.gtpl = gateTemplate(st.C[st.Align].ref, gLo, gHi)
+	// Self-calibrated floor: sit above the reference's own ambient lookalikes
+	// (see ambientMax). Mirrors srGateInstall.
+	if st.gtpl != nil {
+		amb := st.ambientMax(st.C[st.Align].ref)
+		base := st.MinMatch
+		if base == 0 {
+			base = 0.8
+		}
+		f := amb + 0.06
+		if f > 0.92 {
+			f = 0.92
+		}
+		if f < base {
+			f = base
+		}
+		st.AdaptFloor = f
+	}
 	st.Hits = 1
 	for ch := 0; ch < 2; ch++ {
 		if st.C[ch].ref != nil {
@@ -486,7 +663,10 @@ func (st *Stack) gateFind(sig []uint8, base, R int) []hit {
 		}
 		ncc[loc-lo] = sc
 	}
-	floor := st.MinMatch
+	floor := st.AdaptFloor
+	if floor == 0 {
+		floor = st.MinMatch
+	}
 	if floor == 0 {
 		floor = 0.8
 	}
@@ -509,6 +689,9 @@ func (st *Stack) gateFind(sig []uint8, base, R int) []hit {
 		}
 		loc := lo + k
 		if loc-lastLoc < minSep {
+			continue
+		}
+		if !t.segMatch(sig, loc) { // partial/mixed match → not a hit
 			continue
 		}
 		delta := 0.0

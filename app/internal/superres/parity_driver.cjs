@@ -6,13 +6,13 @@
 const fs = require("fs");
 const SR = require("../web/superres.js");
 const inp = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
-const { N, K, align, frames } = inp;
+const { N, K, align, frames, gate } = inp;
 const st = SR.srNew(N, K);
 st.align = align;
 st.c[0].vpc = st.c[1].vpc = 1 / 32;
 const arr = a => Int16Array.from(a);
 const f0 = frames[0];
-const seedOk = SR.srSeedRef(st, arr(f0.c1), arr(f0.c2), f0.edgeX);
+const seedOk = SR.srSeedRef(st, arr(f0.c1), arr(f0.c2), f0.edgeX, gate || null);
 const disp = [], hitsAfter = [];
 for (let i = 1; i < frames.length; i++) {
   const f = frames[i];

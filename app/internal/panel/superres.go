@@ -348,8 +348,14 @@ func (c *Controller) srLoop(stop chan struct{}, st *superres.Stack) {
 		// Hits (occurrences) is the meaningful stack count — one frame contributes
 		// many on a repetitive signal — so status + the "stacks" target key off it.
 		c.srBits, c.srFrames, c.srRejected = res.BitsGained, st.Hits, st.Rejected
-		c.srStatus = fmt.Sprintf("%d stk / %df / %d rej  +%.1fb",
-			st.Hits, st.Frames, st.Rejected, res.BitsGained)
+		if st.Hits <= 1 && st.Rejected >= 12 {
+			// Honest no-repeat feedback: the gated content does not recur as a
+			// whole — tell the user to move/narrow the gate, don't spin silently.
+			c.srStatus = fmt.Sprintf("gate not repeating (%d rej) - adjust gate", st.Rejected)
+		} else {
+			c.srStatus = fmt.Sprintf("%d stk / %df / %d rej  +%.1fb",
+				st.Hits, st.Frames, st.Rejected, res.BitsGained)
+		}
 		c.mu.Unlock()
 		if review && time.Since(lastMean) > 400*time.Millisecond {
 			full := st.Result(false, 1)

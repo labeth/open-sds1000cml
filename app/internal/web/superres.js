@@ -373,6 +373,11 @@ function srMatchLocate(st, sig, base, R) {
 
 // srGateTemplate builds the zero-mean, unit-referenced matched filter for the
 // gate window [lo,hi) of the reference. Returns null if the window is flat.
+// It also precomputes SEGMENT sub-templates (each segment re-zero-meaned with
+// its own norm + share of the total energy) for the per-hit consistency check:
+// a genuine occurrence matches the template EVERYWHERE it has energy, whereas a
+// partial overlap / lookalike matches only where the energy is concentrated —
+// the global energy-weighted NCC cannot tell those apart.
 function srGateTemplate(ref, lo, hi) {
   const L = hi - lo;
   if (L < 4) return null;
@@ -383,7 +388,70 @@ function srGateTemplate(ref, lo, hi) {
   let ss = 0;
   for (let i = 0; i < L; i++) { const d = ref[lo + i] - mean; data[i] = d; const p = d * d; ss += p; }
   const norm = Math.sqrt(ss);
-  return norm > 0 ? { data, L, norm } : null;
+  if (!(norm > 0)) return null;
+  // Segments: ~8 across the gate, each ≥24 samples (shorter is too noisy to judge).
+  // relMean = the segment's raw level RELATIVE to the window mean: dead (flat)
+  // segments have no shape to correlate but their LEVEL still discriminates — a
+  // lookalike whose extra pulse sits in the template's flat plateau shifts it.
+  const nseg = Math.max(1, Math.min(8, Math.floor(L / 24)));
+  const segs = [];
+  for (let s = 0; s < nseg; s++) {
+    const a = Math.floor(s * L / nseg), b = Math.floor((s + 1) * L / nseg);
+    const sl = b - a;
+    if (sl < 8) continue;
+    let sm = 0;
+    for (let i = a; i < b; i++) sm += ref[lo + i];
+    sm /= sl;
+    const sdata = new Float64Array(sl);
+    let sss = 0;
+    for (let i = 0; i < sl; i++) { const d = ref[lo + a + i] - sm; sdata[i] = d; const p = d * d; sss += p; }
+    segs.push({ a, len: sl, data: sdata, norm: Math.sqrt(sss), share: sss / (ss || 1), relMean: sm - mean });
+  }
+  return { data, L, norm, rms: Math.sqrt(ss / L), segs };
+}
+
+// srSegMatch verifies one candidate hit against the template's energetic
+// segments: every segment carrying ≥8% of the template energy must correlate
+// ≥0.5 with the frame content it lands on. Returns false for partial overlaps
+// (the non-overlapping segment fails) and mixed feature+junk windows (the junk
+// segment fails), which the global NCC accepts whenever the matching part
+// carries the energy — the root cause of stack contamination.
+function srSegMatch(t, sig, loc) {
+  const segs = t.segs;
+  if (!segs || segs.length < 2) return true; // nothing to cross-check
+  const L = t.L;
+  // window mean + rms → gain estimate for the level check
+  let wm = 0;
+  for (let i = 0; i < L; i++) wm += sig[loc + i];
+  wm /= L;
+  let wss = 0;
+  for (let i = 0; i < L; i++) { const d = sig[loc + i] - wm; const p = d * d; wss += p; }
+  let gGain = t.rms > 0 ? Math.sqrt(wss / L) / t.rms : 1;
+  if (gGain < 0.5) gGain = 0.5; else if (gGain > 2) gGain = 2;
+  const lvlTol = Math.max(5, 0.25 * gGain * t.rms);
+  for (const g of segs) {
+    let sm = 0;
+    for (let i = 0; i < g.len; i++) sm += sig[loc + g.a + i];
+    sm /= g.len;
+    // LEVEL check (all segments, dead ones especially): the segment must sit at
+    // the template's level relative to the window mean, gain-scaled. Catches
+    // lookalikes whose differences live in the template's flat plateaus, where
+    // the shape check below has nothing to correlate against.
+    if (Math.abs((sm - wm) - gGain * g.relMean) > lvlTol) return false;
+    // SHAPE check: skip only truly dead segments (constant in the reference).
+    // Even a few-%-share segment discriminates: genuine hits match ~0.99 there,
+    // impostors ~0 (measured on the adversarial corpus).
+    if (g.share < 0.02) continue;
+    let dot = 0, ss = 0;
+    for (let i = 0; i < g.len; i++) {
+      const s = sig[loc + g.a + i] - sm;
+      const p = g.data[i] * s; dot += p;
+      const q = s * s; ss += q;
+    }
+    const den = g.norm * Math.sqrt(ss);
+    if (!(den > 0) || dot / den < 0.65) return false;
+  }
+  return true;
 }
 
 // srDetectPeriod returns the fundamental period (samples) of ref[lo:hi] via
@@ -438,12 +506,48 @@ function srGateInstall(st, gLo, gHi) {
     C.cnt = new Float64Array(st.nbins); C.sumA = new Float64Array(st.nbins); C.cntA = new Float64Array(st.nbins);
   }
   st.gtpl = srGateTemplate(st.c[st.align].ref, gLo, gHi);
+  // SELF-CALIBRATED floor: scan the reference's own record off-gate. Ambient
+  // content that already resembles the gate (filler humps against a smooth
+  // single-bump template — a LOW-INFORMATION template) sets how selective the
+  // matcher must be: the floor sits above the strongest ambient lookalike, so
+  // junk that merely resembles the feature can't stack. Matches ≥0.93 in the
+  // reference are taken to be the feature itself (periodic repeats) and do NOT
+  // raise the floor — a repetitive signal keeps multi-hitting at the base floor.
+  if (st.gtpl) {
+    const amb = srAmbientMax(st, st.c[st.align].ref);
+    const base = st.minMatch || 0.8;
+    st.adaptFloor = Math.max(base, Math.min(0.92, amb + 0.06));
+  }
   // Seed: drizzle each channel's own reference gate at fractional offset 0.
   st.hits = 1;
   for (let ch = 0; ch < 2; ch++) if (st.c[ch].ref) srDrizzleHit(st, ch, st.c[ch].ref, gLo, true);
   st.frames = 1;
   st.scores = [1]; st.shifts = [0];
   return !!st.gtpl;
+}
+
+// srAmbientMax measures the reference record's own ambient similarity to the
+// gate template: the maximum off-gate local-maximum NCC BELOW 0.93 (values at
+// or above that are genuine periodic repeats of the feature, not lookalikes).
+function srAmbientMax(st, ref) {
+  const t = st.gtpl, L = t.L, n = st.n;
+  let best = 0, prev = -2, prev2 = -2;
+  for (let loc = 0; loc <= n - L; loc++) {
+    let mean = 0;
+    for (let i = 0; i < L; i++) mean += ref[loc + i];
+    mean /= L;
+    let dot = 0, ss = 0;
+    for (let i = 0; i < L; i++) { const s = ref[loc + i] - mean; const p = t.data[i] * s; dot += p; const q = s * s; ss += q; }
+    const den = t.norm * Math.sqrt(ss);
+    const sc = den > 0 ? dot / den : 0;
+    // local maximum at the PREVIOUS position, outside the gate's own span
+    if (prev > prev2 && prev >= sc) {
+      const ploc = loc - 1;
+      if (Math.abs(ploc - st.gateLo) >= (L >> 1) && prev < 0.93 && prev > best) best = prev;
+    }
+    prev2 = prev; prev = sc;
+  }
+  return best;
 }
 
 // srDrizzleHit stacks one aligned occurrence onto the L*K grid by INTERP-
@@ -523,7 +627,7 @@ function srGateFind(st, sig, base, R) {
     const den = tnorm * Math.sqrt(ss);
     ncc[loc - lo] = den > 0 ? dot / den : 0;
   }
-  const floor = st.minMatch || 0.8;
+  const floor = st.adaptFloor || st.minMatch || 0.8;
   const minSep = Math.max(1, L >> 1);
   const hits = [];
   let lastLoc = -1e9;
@@ -534,6 +638,7 @@ function srGateFind(st, sig, base, R) {
     if (k + 1 < M && ncc[k + 1] > sc) continue;    // and ≥ right (plateau → first)
     const loc = lo + k;
     if (loc - lastLoc < minSep) continue;
+    if (!srSegMatch(t, sig, loc)) continue;        // partial/mixed match → not a hit
     let delta = 0;
     if (k > 0 && k + 1 < M) {
       const yl = ncc[k - 1], y0 = sc, yr = ncc[k + 1];

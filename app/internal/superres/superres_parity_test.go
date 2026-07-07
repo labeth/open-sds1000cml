@@ -52,12 +52,27 @@ func genFrames() (N, K, align int, frames []jframe) {
 		}
 		return a
 	}
+	// decoy: a square at the triangle's period — same scale/period, different
+	// shape. Exercises the segment-consistency + level checks cross-engine.
+	decoy := func(na float64) []int16 {
+		a := make([]int16, N)
+		for i := 0; i < N; i++ {
+			ph := math.Mod(math.Mod(float64(i), P)+P, P)
+			v := 88.0
+			if ph >= P/2 {
+				v = 208
+			}
+			a[i] = clamp(v + na*rnd())
+		}
+		return a
+	}
 	mk := func(sig []int16) jframe { return jframe{C1: sig, C2: sig, EdgeX: edge} }
 	frames = append(frames, mk(tri(0, 0))) // reference
 	for _, fr := range []float64{0, 0.5, 0, 0.5} {
 		frames = append(frames, mk(tri(fr, 6)))
 	}
-	frames = append(frames, mk(other(6))) // non-matching → rejected
+	frames = append(frames, mk(other(6))) // non-matching ramp → rejected
+	frames = append(frames, mk(decoy(6))) // same-period lookalike → rejected
 	return
 }
 
@@ -88,7 +103,14 @@ type jsResult struct {
 // stack as superres.js on identical frames: same accept/reject set, same integer
 // shifts, same frame/reject counts, the same mean array (sum + count), and
 // bitsGained within a small log2 tolerance. Skips if node is absent.
-func TestParityJS(t *testing.T) {
+func TestParityJS(t *testing.T) { runParity(t, -1, -1) }
+
+// TestParityManualGate pins the MANUAL-gate path cross-engine with a 3-period
+// gate — wide enough to have segments, so the segment/level consistency checks
+// and the decoy REJECTION run identically in both engines.
+func TestParityManualGate(t *testing.T) { runParity(t, 40, 160) }
+
+func runParity(t *testing.T, gateLo, gateHi int) {
 	if _, err := exec.LookPath("node"); err != nil {
 		t.Skip("node not installed")
 	}
@@ -96,6 +118,10 @@ func TestParityJS(t *testing.T) {
 
 	// --- JS engine via the driver ---
 	payload, _ := json.Marshal(map[string]any{"N": N, "K": K, "align": align, "frames": frames})
+	if gateHi > gateLo && gateLo >= 0 {
+		payload, _ = json.Marshal(map[string]any{"N": N, "K": K, "align": align, "frames": frames,
+			"gate": map[string]int{"lo": gateLo, "hi": gateHi}})
+	}
 	tmp := filepath.Join(t.TempDir(), "frames.json")
 	if err := os.WriteFile(tmp, payload, 0o644); err != nil {
 		t.Fatal(err)
@@ -119,7 +145,7 @@ func TestParityJS(t *testing.T) {
 		}
 		return b
 	}
-	if !st.SeedRef(u8(frames[0].C1), u8(frames[0].C2), frames[0].EdgeX) {
+	if !st.SeedRefGate(u8(frames[0].C1), u8(frames[0].C2), frames[0].EdgeX, gateLo, gateHi) {
 		t.Fatal("Go SeedRef failed")
 	}
 	if !js.SeedOk {

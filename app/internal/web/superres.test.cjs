@@ -546,5 +546,70 @@ function frame(n, period, shift, noise, amp, harmonics) {
   check("v2/drizzle: bits gained > 0.5", res.bitsGained > 0.5, "+" + res.bitsGained.toFixed(2) + "b, hits=" + st.hits);
 }
 
+// ---- reference-lock v2: SEGMENT + LEVEL consistency (breaker distillates) ----
+// A hit must match the template everywhere it has information, not just on
+// energy-weighted average. Distilled from the 50-family adversarial corpus:
+// (a) a two-level DECOY whose differences sit in the template's flat plateaus
+// (dead segments) is caught by the per-segment LEVEL check; (b) ambient
+// lookalikes in the reference RAISE the acceptance floor (low-info templates).
+{
+  const N = 1024, L = 180;
+  const clampC = v => Math.max(12, Math.min(243, Math.round(v)));
+  let s = 77;
+  const rnd = () => { s = (s * 1103515245 + 12345) & 0x7fffffff; return s / 0x7fffffff - 0.5; };
+  // square feature: low 30%, high 70% — one transition, wide plateaus
+  const square = i => (i / L) < 0.3 ? -1 : 1;
+  // decoy: same transition + an EXTRA pulse in the square's high plateau
+  const dec = i => { const p = i / L; return (p < 0.3 ? -1 : 1) * (p > 0.6 && p < 0.75 ? -1 : 1); };
+  const mkframe = (shape, na) => {
+    const a = new Int16Array(N);
+    for (let i = 0; i < N; i++) {
+      let v = 128;
+      const j = i - 300;
+      if (j >= 0 && j < L) v = 128 + 55 * shape(j);
+      a[i] = clampC(v + na * rnd());
+    }
+    return a;
+  };
+  const st = srNew(N, 16);
+  st.align = 0; st.c[0].vpc = st.c[1].vpc = 1 / 32;
+  check("v2/seg: seed square feature", srSeedRef(st, mkframe(square, 0), mkframe(square, 0), -1, { lo: 300, hi: 300 + L }) === true);
+  check("v2/seg: genuine square stacks", srFeed(st, mkframe(square, 5), mkframe(square, 5), {}).startsWith("stacked"));
+  const d = srFeed(st, mkframe(dec, 5), mkframe(dec, 5), {});
+  check("v2/seg: plateau-pulse decoy REJECTED (level check)", d.startsWith("rejected"), d);
+}
+{
+  // ambient-floor: a single smooth hump (low-information template) in an
+  // environment whose filler already produces ~0.85 lookalikes. The self-
+  // calibrated floor must sit above the ambient so junk humps don't stack.
+  const N = 2048, L = 100;
+  const clampC = v => Math.max(12, Math.min(243, Math.round(v)));
+  let s = 33;
+  const rnd = () => { s = (s * 1103515245 + 12345) & 0x7fffffff; return s / 0x7fffffff - 0.5; };
+  const hump = (c, w, a, out) => { for (let i = 0; i < N; i++) out[i] += a * Math.exp(-((i - c) ** 2) / (2 * w * w)); };
+  const rect = (c, w, a, out) => { for (let i = Math.max(0, c - w); i < Math.min(N, c + w); i++) out[i] += a; };
+  const mk = (humps, rects, na) => {
+    const f = new Float64Array(N);
+    for (const [c, w, a] of humps) hump(c, w, a, f);
+    for (const [c, w, a] of rects) rect(c, w, a, f);
+    const out = new Int16Array(N);
+    for (let i = 0; i < N; i++) out[i] = clampC(128 + f[i] + na * rnd());
+    return out;
+  };
+  // ref: the real (gauss) hump at 400 + ambient RECT pulses elsewhere — the
+  // ~0.85-similarity lookalike class the self-calibrated floor must sit above.
+  const ref = mk([[400, 12, 60]], [[900, 14, 40], [1500, 10, 45]], 0);
+  const st = srNew(N, 16);
+  st.align = 0; st.c[0].vpc = st.c[1].vpc = 1 / 32;
+  check("v2/ambient: seed hump", srSeedRef(st, ref, ref, -1, { lo: 360, hi: 460 }) === true);
+  check("v2/ambient: floor raised above ambient", st.adaptFloor > 0.82, "floor=" + st.adaptFloor.toFixed(2));
+  // a frame with the REAL hump + fresh rect junk: only the real one may stack
+  const f1 = mk([[700, 12, 60]], [[1200, 12, 42], [1800, 9, 47]], 4);
+  const before = st.hits;
+  const disp = srFeed(st, f1, f1, {});
+  check("v2/ambient: real hump found once (junk pulses not stacked)",
+    disp === "stacked:1" && st.hits === before + 1, disp + " hits+=" + (st.hits - before));
+}
+
 if (fails) { console.log(fails + " FAILURES"); process.exit(1); }
 console.log("ALL PASS");

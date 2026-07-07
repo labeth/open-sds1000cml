@@ -2091,8 +2091,12 @@ function srUpdateStats(final) {
   // Gated reference-lock stacks OCCURRENCES (hits) — one frame yields many on a
   // repetitive signal — so report hits · frames; the auto path reports frames.
   const count = res.gated ? `${res.hits} hits · ${res.frames} fr` : `${res.frames} stacked`;
+  // Honest no-repeat feedback: everything rejected for a while means the GATED
+  // CONTENT does not recur (as a whole) — tell the user instead of spinning.
+  const noRepeat = res.gated && res.hits <= 1 && res.rejected >= 12
+    ? " · gate content doesn't repeat — move/narrow the markers onto the repeating part" : "";
   srStatus(`${count} · ${res.rejected} rej` + (res.clipped ? ` (${res.clipped} clip)` : "") + (res.reseeds ? ` · reseed ${res.reseeds}` : "") +
-    ` · ${el}s · ${noise} · ${rate} grid · fill ${(res.fill * 100).toFixed(1)}%`);
+    ` · ${el}s · ${noise} · ${rate} grid · fill ${(res.fill * 100).toFixed(1)}%` + noRepeat);
 }
 
 // srTargetReached: has the selected stop target been met? bits + stacks are
