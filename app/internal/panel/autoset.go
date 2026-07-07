@@ -1,6 +1,7 @@
 package panel
 
 import (
+	"math"
 	"time"
 
 	"open-sds/app/internal/analog"
@@ -121,6 +122,18 @@ func (c *Controller) runAutoset(stop chan struct{}) {
 			c.fe.SetOffset(ch, 0)
 		}
 	}
+	// If we START on an envelope/roll band (≥5 ms/div), the direct jump to
+	// 1 µs/div in the sweep transitions through a slow, envelope-publishing
+	// state and the first measurable frame can arrive aliased. Drop to a
+	// decimated band FIRST and wait for a real per-sample frame, so the sweep
+	// begins from a clean decimated state (autoset from ≥5 ms/div used to
+	// converge on a low aliased frequency).
+	if entry.TdivS >= 5e-3 {
+		ss := c.setTdivNearest(500e-6)
+		if !c.waitBandFrame(stop, ss) {
+			return
+		}
+	}
 	sweep := []float64{1e-6, 1e-5, 1e-4, 1e-3, 1e-2}
 	var found *measure.Result
 	var foundCh int
@@ -128,8 +141,8 @@ func (c *Controller) runAutoset(stop chan struct{}) {
 		if cancelled() {
 			return
 		}
-		c.setTdivNearest(td)
-		if !c.waitFrame(stop) {
+		ss := c.setTdivNearest(td)
+		if !c.waitBandFrame(stop, ss) {
 			return
 		}
 		m, _ := c.measureChans()
@@ -148,8 +161,8 @@ func (c *Controller) runAutoset(stop chan struct{}) {
 	//    aperiodic/serial signal (UART, a bursty stream) can miss the full swing,
 	//    under-reading Vpp — which then picks a too-sensitive V/div that CLIPS.
 	//    Measuring over ~30 cycles captures the true min/max regardless of pattern.
-	c.setTdivNearest((measCycles / found.Freq) / divX)
-	if !c.waitFrame(stop) {
+	ss := c.setTdivNearest((measCycles / found.Freq) / divX)
+	if !c.waitBandFrame(stop, ss) {
 		return
 	}
 	m, _ := c.measureChans()
@@ -359,10 +372,12 @@ func (c *Controller) setVdiv(ch, idx int) {
 	c.mu.Unlock()
 }
 
-// setTdivNearest snaps the timebase ladder to the detent nearest target.
-func (c *Controller) setTdivNearest(target float64) {
+// setTdivNearest snaps the timebase ladder to the detent nearest target and
+// returns the new band's per-sample seconds (0 if no ladder) so the caller can
+// wait for a frame that ACTUALLY reflects the new band before measuring.
+func (c *Controller) setTdivNearest(target float64) float64 {
 	if len(c.tdivs) == 0 {
-		return
+		return 0
 	}
 	best, bd := 0, 1e30
 	for i, t := range c.tdivs {
@@ -377,7 +392,46 @@ func (c *Controller) setTdivNearest(target float64) {
 	c.mu.Lock()
 	c.tdivIdx = best
 	c.mu.Unlock()
-	c.eng.SetTdiv(c.tdivs[best])
+	band, _ := c.eng.SetTdiv(c.tdivs[best])
+	return band.CaptureIntervalNs() * 1e-9
+}
+
+// waitBandFrame waits for a published frame whose sample rate matches the band
+// just installed (wantSampleS) — a band change from a SLOW timebase publishes
+// its last old-band frame for a while, and measuring THAT aliases the signal
+// (autoset landed on the wrong timebase / read a bogus frequency, found by the
+// 1 MHz operator workflow from a slow start). Bounded so autoset never hangs;
+// on timeout it returns true and the caller measures best-effort.
+func (c *Controller) waitBandFrame(stop chan struct{}, wantSampleS float64) bool {
+	if wantSampleS <= 0 || c.frameFn == nil {
+		return c.waitFrame(stop) // no band info: fall back to the fixed settle
+	}
+	// The target sweep/fit bands are always per-sample (non-envelope); an
+	// envelope/roll START keeps publishing ENVELOPE frames through the
+	// transition, and measuring one of those aliases the signal. Require a
+	// FRESH, NON-ENVELOPE frame whose sample rate matches the new band before
+	// the caller measures (found by the 1 MHz workflow from a 10 ms/div start).
+	for i := 0; i < 16; i++ { // ~16×settle ≈ 3.5 s worst case (roll→fast)
+		if !c.waitFrame(stop) {
+			return false // cancelled
+		}
+		matched := false
+		c.frameFn(func(f *engine.Frame) {
+			if f == nil || len(f.C1) == 0 || f.IsEnv {
+				return // an envelope/roll frame from the old band aliases the measurement
+			}
+			// A genuine band change moves SampleS by integer decimation factors,
+			// so a 1% window is unambiguous — and since the old band had a
+			// different SampleS, a match here is necessarily a post-change frame.
+			if f.SampleS > 0 && math.Abs(f.SampleS-wantSampleS) <= wantSampleS*0.01 {
+				matched = true
+			}
+		})
+		if matched {
+			return true
+		}
+	}
+	return true // best-effort: don't stall autoset on a stubborn transition
 }
 
 // detentForVpp picks the most sensitive V/div whose 8-division window still

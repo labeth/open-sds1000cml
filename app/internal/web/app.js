@@ -157,7 +157,21 @@ function eng(x, unit, digits) {
   const a = Math.abs(x);
   if (a === 0) return "0 " + unit;
   const pfx = [["G",1e9],["M",1e6],["k",1e3],["",1],["m",1e-3],["µ",1e-6],["n",1e-9],["p",1e-12]];
-  for (const [p, s] of pfx) if (a >= s) return (x / s).toPrecision(digits) + " " + p + unit;
+  for (let i = 0; i < pfx.length; i++) {
+    const [p, s] = pfx[i];
+    if (a >= s) {
+      const str = (x / s).toPrecision(digits);
+      // toPrecision emits SCIENTIFIC notation when rounding pushes the mantissa
+      // to 1000 at a prefix boundary (e.g. 999.9 ns -> "1.00e+3 ns"). Promote
+      // to the next-larger prefix so the operator reads "1.00 µs", never
+      // "1.00e+3 ns", on any measurement just under a 1000x boundary.
+      if (str.includes("e") && i > 0) {
+        const [p2, s2] = pfx[i - 1];
+        return (x / s2).toPrecision(digits) + " " + p2 + unit;
+      }
+      return str + " " + p + unit;
+    }
+  }
   return x.toExponential(digits - 1) + " " + unit;
 }
 function fmtTdiv(s) {
@@ -1699,7 +1713,11 @@ async function pollFrame(gen) {
 async function pollStatus() {
   try { st = await (await fetch("/api/status")).json(); applyStatus(); }
   catch (e) { $("line").textContent = "no connection"; lastLineHTML = ""; } // reset the diff guard or a static status keeps "no connection" stuck
-  setTimeout(pollStatus, 1000);
+  // While a SINGLE is armed, poll fast so the self-stop on capture reaches the
+  // UI promptly: the RUN/STOP button toggles off st.running, and a 1 s-stale
+  // "running" shadow made a post-capture RUN click send STOP instead (the scope
+  // would not resume). 250 ms closes that window; steady state stays 1 s.
+  setTimeout(pollStatus, st && st.single ? 250 : 1000);
 }
 
 // trigState mirrors the LCD state machine (render.go) so a glance between the
@@ -1822,52 +1840,73 @@ function nearestLadder(target, list) {
   for (const v of list) { const d = Math.abs(v - target); if (d < bd) { bd = d; best = v; } }
   return best;
 }
-// AUTOSET — one button to get a stable trace: analyse the live frame and set
-// time/div (~3 cycles across the DIVX-division screen), each channel's V/div
-// (fill ~6 of 8 divisions) + offset (centred), and the trigger (EDGE at the
-// signal midpoint, AUTO, running) on whichever channel carries the stronger signal.
-function autoset() {
-  if (!frame || !st) return;
-  const m1 = frame.m1, m2 = frame.m2, has = m => m && m.vpp > 0.02;
-  if (frame.is_env || (!has(m1) && !has(m2))) {
-    // envelope/roll (or flat): no per-sample measurements to lock onto. Drop to a
-    // safe decimated timebase + AUTO/run so the next frame IS measurable, then
-    // autoset again to fine-tune.
-    if (st.tdivs && st.tdivs.length) { st.tdiv_s = nearestLadder(500e-6, st.tdivs); send("tdiv", st.tdiv_s); }
-    send("norm", 0); send("run", 1); st.norm = false; st.running = true;
-    goHome(); applyStatus();
-    return;
-  }
-  const src = (has(m1) && (!has(m2) || m1.vpp >= m2.vpp)) ? 1 : 2;
-  const sm = src === 1 ? m1 : m2;
-  if (sm.freq > 0 && st.tdivs && st.tdivs.length) {
-    st.tdiv_s = nearestLadder((3 / sm.freq) / DIVX, st.tdivs); // 3 cycles across DIVX divisions
-    send("tdiv", st.tdiv_s);
-  }
-  if (st.vdivs && st.vdivs.length) {
-    for (const ch of [1, 2]) {
-      const m = ch === 1 ? m1 : m2;
-      if (!has(m)) continue;
-      const p = probeOf(ch); // measurements are tip-referred; the V/div ladder is electrical
-      const vdiv = nearestLadder(m.vpp / p / 6, st.vdivs);
-      send("vdiv" + ch, vdiv); send("offset" + ch, -m.vmean / p);
-      if (ch === 1) { st.vdiv1 = vdiv; st.off1_v = -m.vmean; } else { st.vdiv2 = vdiv; st.off2_v = -m.vmean; }
+// awaitFrame resolves when a fresh frame satisfying `pred` arrives (the global
+// `frame` is updated by the poll loop), or after `timeout` ms. Used by autoset
+// to converge across scale changes instead of relying on one stale capture.
+function awaitFrame(pred, timeout = 2500) {
+  return new Promise((resolve) => {
+    const startSeq = frame ? frame.seq : 0;
+    const t0 = Date.now();
+    const tick = () => {
+      if (frame && frame.seq !== startSeq && pred(frame)) return resolve(true);
+      if (Date.now() - t0 > timeout) return resolve(false);
+      setTimeout(tick, 60);
+    };
+    tick();
+  });
+}
+
+// AUTOSET — one click fits the whole scope to the live signal. It delegates to
+// the DEVICE autoset routine (the same one the front-panel AUTO button runs):
+// a single, robust implementation that sweeps the timebase to find the signal's
+// NATIVE band (so the frequency is never read off an aliased slow band), fits
+// each channel's vertical, and sets an edge trigger. The web UI used to carry a
+// second, divergent autoset that mis-read aliased frequencies from slow/roll
+// timebases — delegating removes that whole class of bug.
+let autosetBusy = false;
+async function autoset() {
+  if (autosetBusy) return;
+  autosetBusy = true;
+  const btn = $("autoset"); btn.classList.add("on");
+  try {
+    // trigger the device autoset (the hard-button path — one implementation)
+    try { await fetch("/api/panel", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ button: "auto" }) }); }
+    catch (e) { return; }
+    // wait for it to converge: a measurable, non-envelope frame whose measured
+    // frequency is stable across two reads (the sweep has settled on the native
+    // band). Bounded so the button always releases.
+    const has = m => m && m.vpp > 0.02;
+    const meas = () => { const m = frame && (has(frame.m1) ? frame.m1 : (has(frame.m2) ? frame.m2 : null)); return m && !frame.is_env ? m.freq : null; };
+    let prev = null, t0 = Date.now();
+    while (Date.now() - t0 < 9000) {
+      await awaitFrame(() => true, 700);
+      const f = meas();
+      if (f != null && f > 0 && prev != null && Math.abs(f - prev) <= prev * 0.03) break; // stable
+      prev = f;
     }
+    goHome();
+    applyStatus();
+  } finally {
+    autosetBusy = false;
+    $("autoset").classList.remove("on");
   }
-  const mid = (sm.vmax + sm.vmin) / 2;
-  send("triglevelcode", Math.round(31434 - 938 * mid / probeOf(src)));
-  send("trigsource", src === 2 ? 1 : 0);
-  send("trigtype", 0); // EDGE
-  send("norm", 0);     // AUTO
-  send("run", 1);      // running
-  st.trig_volts = mid; st.trig_source = src === 2 ? 1 : 0; st.trig_type = 0; st.norm = false; st.running = true;
-  $("lvl").value = mid.toFixed(2); $("lvlv").textContent = mid.toFixed(2) + " V";
-  goHome();
-  applyStatus();
 }
 $("autoset").onclick = autoset;
 $("run").onclick = () => { const on = !(st && st.running); send("run", on ? 1 : 0); if (st) { st.running = on; applyStatus(); } };
-$("single").onclick = () => { send("single", 1); if (st) { st.norm = st.running = st.single = true; applyStatus(); } };
+$("single").onclick = () => {
+  send("single", 1);
+  if (st) { st.norm = st.running = st.single = true; applyStatus(); }
+  // A one-shot self-stops on capture. Poll fast until it does so the RUN button
+  // — which toggles off st.running — sees the stop immediately; otherwise a
+  // post-capture RUN click reads a stale "running" and sends STOP (scope would
+  // not resume). Bounded; the steady 1 s poll takes over after.
+  let n = 0;
+  const chk = async () => {
+    try { st = await (await fetch("/api/status")).json(); applyStatus(); } catch (e) {}
+    if (st && st.running && st.single && n++ < 50) setTimeout(chk, 200);
+  };
+  setTimeout(chk, 200);
+};
 $("tpos").oninput = () => send("trigpos", +$("tpos").value);
 $("mode").onclick = () => { const on = !(st && st.norm); send("norm", on ? 1 : 0); if (st) { st.norm = on; applyStatus(); } };
 $("slope").onclick = () => { const r = !(st && st.trig_rising); send("trigslope", r ? 1 : 0); if (st) { st.trig_rising = r; applyStatus(); } };

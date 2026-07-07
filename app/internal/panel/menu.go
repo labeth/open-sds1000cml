@@ -15,10 +15,10 @@ const (
 	pgAcq
 	pgDisp
 	pgHoriz
-	pgChan   // per-channel coupling + probe (reached by re-pressing DISPLAY)
-	pgCursor // on-screen cursors (reached by re-pressing HORIZONTAL / CURSORS key)
-	pgRef    // reference waveforms REF A/B (reached by re-pressing ACQUIRE)
-	pgMain   // MAIN menu (MENU key): navigates to every sub-page
+	pgChan     // per-channel coupling + probe (reached by re-pressing DISPLAY)
+	pgCursor   // on-screen cursors (reached by re-pressing HORIZONTAL / CURSORS key)
+	pgRef      // reference waveforms REF A/B (reached by re-pressing ACQUIRE)
+	pgMain     // MAIN menu (MENU key): navigates to every sub-page
 	pgTrigQ    // trigger-qualifier params (reached by re-pressing TRIGGER)
 	pgDecode   // protocol decode (MAIN ▸ Decode)
 	pgSuperres // super-res stack-and-crunch config (opened by UTILITY while active)
@@ -46,10 +46,10 @@ type MenuView struct {
 	Persist        bool       // display persistence (afterglow)
 	DecProto       int        // 0=off,1=Auto,2=UART,3=I2C,4=SPI
 	DecBaud        int
-	DecChA, DecChB int  // channel roles (0=C1,1=C2)
+	DecChA, DecChB int // channel roles (0=C1,1=C2)
 	DecCPOL        bool
 	DecCPHA        bool
-	DecFormat      int        // 0=hex,1=ascii,2=both
+	DecFormat      int // 0=hex,1=ascii,2=both
 
 	CurOn   bool       // cursors visible
 	CurType int        // 0 = X (time), 1 = Y (volts)
@@ -1044,13 +1044,17 @@ func fmtEng(v float64, unit string) string {
 	if a < 0 {
 		a = -a
 	}
+	// Rounding-aware prefix boundaries: %.3g rounds 999.9 up to "1e+03", which
+	// would print e.g. "1e+03 ns" for a 1 µs value. 0.9995·scale as the boundary
+	// promotes such a value to the next prefix ("1 us"). ASCII 'u' for micro —
+	// the LCD font has no 'µ'.
 	switch {
-	case a >= 1:
+	case a >= 0.9995:
 		return fmt.Sprintf("%.3g %s", v, unit)
-	case a >= 1e-3:
+	case a >= 0.9995e-3:
 		return fmt.Sprintf("%.3g m%s", v*1e3, unit)
-	case a >= 1e-6:
-		return fmt.Sprintf("%.3g u%s", v*1e6, unit) // ASCII 'u' — the LCD font has no 'µ'
+	case a >= 0.9995e-6:
+		return fmt.Sprintf("%.3g u%s", v*1e6, unit)
 	default:
 		return fmt.Sprintf("%.3g n%s", v*1e9, unit)
 	}

@@ -45,7 +45,7 @@ type HUD struct {
 	DecBaud          int
 	DecChA, DecChB   int // channel roles (0=C1,1=C2)
 	DecCPOL, DecCPHA bool
-	DecFormat        int // byte display: 0=hex,1=ascii,2=both
+	DecFormat        int        // byte display: 0=hex,1=ascii,2=both
 	RefC1, RefC2     [2][]uint8 // saved reference waveforms (REF A/B); nil if unset
 	RefShow          [2]bool
 	TwoChan          bool
@@ -67,18 +67,18 @@ type HUD struct {
 	// Super-res stack-and-crunch overlay (reference-locked). SRActive shows the
 	// status HUD; SRFocus 3 (review) replaces the live trace with the stacked mean;
 	// SRFocus 1/2 overlay the gate markers (active edge highlighted) for editing.
-	SRActive       bool
-	SRFocus        int // 0=watch, 1=gate-start, 2=gate-end, 3=review
-	SRStatus       string
-	SRBits         float64
-	SRMean         []float32 // review trace on the L·K fine grid; -1 = gap (nil unless review)
-	SRk            int
-	SRGateLo       int
-	SRGateHi       int
-	SRN            int
-	SRWinLo        int // the selected span the review renders — the frozen view, unchanged
-	SRWinHi        int
-	SRPeriod       int // >0: the stack is one period; tile it across the span
+	SRActive bool
+	SRFocus  int // 0=watch, 1=gate-start, 2=gate-end, 3=review
+	SRStatus string
+	SRBits   float64
+	SRMean   []float32 // review trace on the L·K fine grid; -1 = gap (nil unless review)
+	SRk      int
+	SRGateLo int
+	SRGateHi int
+	SRN      int
+	SRWinLo  int // the selected span the review renders — the frozen view, unchanged
+	SRWinHi  int
+	SRPeriod int // >0: the stack is one period; tile it across the span
 
 	// Zone trigger + mask testing overlay (engine-side capture qualification;
 	// parity with the web card). Zones render edge-anchored; the mask renders
@@ -635,17 +635,40 @@ func fftTrace(sf Surface, src []uint8, n, stride int, col uint16, effNyq float64
 
 func g3(x float64) string { return strconv.FormatFloat(x, 'g', 3, 64) }
 
-func fmtVolt(v float64) string {
-	neg := ""
-	x := v
-	if x < 0 { // keep the sign — Vmin/Vtop/Vbase/Vavg can be negative
-		neg, x = "-", -x
-	}
-	if x >= 1 {
-		return neg + g3(x) + "V"
-	}
-	return neg + g3(x*1e3) + "mV"
+// siUnit is one prefix row for siScale (high→low).
+type siUnit struct {
+	scale  float64
+	suffix string
 }
+
+// siScale formats v at 3 significant figures with an SI prefix, NEVER emitting
+// scientific notation. The 'g' verb switches to "1e+03" once a mantissa rounds
+// to ≥1000 (e.g. a 999.9 ns period), which is unreadable on a scope. The
+// boundary is rounding-aware — 0.9995·scale is where g3 rounds up to 1000 — so
+// such a value PROMOTES to the next-larger prefix ("1.00 µs"). `units` is
+// ordered high→low; the sign is preserved.
+func siScale(v float64, units []siUnit) string {
+	neg := ""
+	a := v
+	if a < 0 {
+		neg, a = "-", -a
+	}
+	for _, u := range units {
+		if a >= u.scale*0.9995 {
+			return neg + g3(a/u.scale) + u.suffix
+		}
+	}
+	last := units[len(units)-1]
+	return neg + g3(a/last.scale) + last.suffix
+}
+
+var (
+	voltUnits = []siUnit{{1, "V"}, {1e-3, "mV"}}
+	freqUnits = []siUnit{{1e6, "MHz"}, {1e3, "kHz"}, {1, "Hz"}}
+	timeUnits = []siUnit{{1, "s"}, {1e-3, "ms"}, {1e-6, "us"}, {1e-9, "ns"}}
+)
+
+func fmtVolt(v float64) string { return siScale(v, voltUnits) }
 
 // fillRect paints a solid rectangle (clipped to the surface).
 func fillRect(sf Surface, x, y, w, h int, c uint16) {
@@ -839,30 +862,9 @@ func vdivLabel(vdivV, probe float64) string {
 	return s
 }
 
-func fmtTdiv(s float64) string {
-	switch {
-	case s >= 1:
-		return g3(s) + "s"
-	case s >= 1e-3:
-		return g3(s*1e3) + "ms"
-	case s >= 1e-6:
-		return g3(s*1e6) + "us"
-	default:
-		return g3(s*1e9) + "ns"
-	}
-}
+func fmtTdiv(s float64) string { return siScale(s, timeUnits) }
 
-func fmtFreq(f float64) string {
-	switch {
-	case f >= 1e6:
-		return g3(f/1e6) + "MHz"
-	case f >= 1e3:
-		return g3(f/1e3) + "kHz"
-	default:
-		return g3(f) + "Hz"
-	}
-}
-
+func fmtFreq(f float64) string { return siScale(f, freqUnits) }
 
 // Render draws one complete frame into the back buffer (spec 07 §3.2):
 // fill → graticule → trace/envelope → liveness strip → readouts. Never
@@ -1288,8 +1290,8 @@ func drawMenu(sf Surface, hud HUD) {
 	if !hud.MenuOpen {
 		return
 	}
-	const mw = 116          // menu width
-	x0 := W - mw            // left edge of the panel
+	const mw = 116 // menu width
+	x0 := W - mw   // left edge of the panel
 	// dim the panel background
 	for y := 12; y < H-2; y++ {
 		for x := x0; x < W; x++ {

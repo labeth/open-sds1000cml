@@ -32,16 +32,20 @@ run(async (t) => {
     "running again offers STOP");
   await po.click("single");
   t.ok(await po.hasClass("single", "on"), "SINGLE arms (on state)");
-  // AUTOSET: pick a timebase from the measured frequency + EDGE/AUTO/running
-  const as = await po.eval(() => {
-    const f = frame.m1 ? frame.m1.freq : 0;
-    autoset();
-    return { f, tdiv: st.tdiv_s, tdivs: st.tdivs, trigType: st.trig_type, norm: st.norm, running: st.running };
-  });
-  t.ok(as.f > 0, `signal has a measured frequency for autoset (${Math.round(as.f)} Hz)`);
-  const target = 0.3 / as.f, exp = as.tdivs.reduce((a, b) => Math.abs(b - target) < Math.abs(a - target) ? b : a);
-  t.ok(Math.abs(as.tdiv - exp) < 1e-15, `autoset sets time/div to ~3 cycles (${as.tdiv}s)`);
-  t.ok(as.trigType === 0 && as.norm === false && as.running === true, "autoset selects EDGE / AUTO / running");
+  // AUTOSET delegates to the DEVICE autoset routine (one robust implementation,
+  // shared with the front-panel AUTO button; the web no longer carries a second,
+  // divergent client-side autoset that mis-scaled aliased frequencies). Here we
+  // verify the delegation contract — a POST to /api/panel {button:"auto"} — since
+  // the fake test server has no engine to run the sweep. The end-to-end autoset
+  // OUTCOME (correct timebase/trigger, no aliasing) is covered by the live e2e
+  // workflows against the real device.
+  const asReq = po.page.waitForRequest(
+    (r) => r.url().includes("/api/panel") && r.method() === "POST" && (r.postData() || "").includes('"auto"'),
+    { timeout: 5000 });
+  await po.click("autoset");
+  let delegated = true;
+  try { await asReq; } catch (e) { delegated = false; }
+  t.ok(delegated, "autoset delegates to the device routine (POST /api/panel button=auto)");
 
   // --- trigger ---------------------------------------------------------------
   const mode0 = await po.text("mode");
