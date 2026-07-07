@@ -214,7 +214,7 @@ func envOr(k, d string) string {
 // ~400 ms. A wedged engine stops the touches, so the agent relaunches us on
 // the still-live fd.
 func healthLoop(e *engine.Engine, path string) {
-	var lastFrames uint64
+	var lastBeats uint64
 	var lastWrite time.Time
 	var started bool
 	for {
@@ -230,15 +230,21 @@ func healthLoop(e *engine.Engine, path string) {
 			started = true
 			logf("engine healthy: %d coherent frames — starting health reports", s.Coherent)
 		}
-		if s.Frames == lastFrames || time.Since(lastWrite) < 400*time.Millisecond {
+		// Key on the BEAT counter, not the frame counter: holdoff pacing (up
+		// to 10 s between frames) and recovery bring-up are healthy states
+		// that advance beats without advancing frames; a frame-keyed token
+		// went stale inside the agent's 3 s window and got a healthy app
+		// killed (live-storm finding).
+		beats := e.Beats()
+		if beats == lastBeats || time.Since(lastWrite) < 400*time.Millisecond {
 			continue
 		}
-		tok := fmt.Sprintf("frames=%d coherent=%d published=%d ts=%d\n",
-			s.Frames, s.Coherent, s.Published, time.Now().UnixNano())
+		tok := fmt.Sprintf("frames=%d beats=%d coherent=%d published=%d ts=%d\n",
+			s.Frames, beats, s.Coherent, s.Published, time.Now().UnixNano())
 		tmp := path + ".tmp"
 		if err := os.WriteFile(tmp, []byte(tok), 0o644); err == nil {
 			if os.Rename(tmp, path) == nil {
-				lastFrames, lastWrite = s.Frames, time.Now()
+				lastBeats, lastWrite = beats, time.Now()
 			}
 		}
 	}
@@ -319,7 +325,7 @@ func main() {
 	}
 	pc := panel.New(e, pfe, keyFD, engine.SupportedTdivs(), 500e-6, logf)
 	pc.SetFrameSource(fo.WithFrame) // let the AUTO button measure the live signal
-	uiCtrl.Store(pc) // publish for the LCD render loop + SCDP screenshot
+	uiCtrl.Store(pc)                // publish for the LCD render loop + SCDP screenshot
 	go pc.Run(stopFo)
 	logf("panel controller up (fpga_key fd=%d)", keyFD)
 

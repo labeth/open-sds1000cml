@@ -180,8 +180,9 @@ type Engine struct {
 	maskSkip    atomic.Int64
 	maskStopped atomic.Bool
 	maskCap     atomic.Uint64 // capture ordinal: counts every mask-tested frame
+	beatN       atomic.Uint64 // liveness heartbeat (see Beats)
 	zoneSkip    atomic.Int64  // zone-armed publishes that could not be tested (env/roll)
-	zoneHeld    int // engine goroutine only: AUTO liveness fallback counter
+	zoneHeld    int           // engine goroutine only: AUTO liveness fallback counter
 	zm          zoneMaskState
 
 	// mu guards the command shadows and the stats mirror. Setters record and
@@ -548,7 +549,7 @@ func (e *Engine) paceHold(start time.Time, triggered bool) {
 		}
 	}
 	if d := floor - e.clk.Now().Sub(start); d > 0 {
-		e.clk.Sleep(d)
+		e.sleepBeating(d) // holdoff can be 10 s — must beat through it
 	}
 }
 
@@ -822,9 +823,32 @@ func (e *Engine) normNow() bool {
 }
 
 func (e *Engine) bumpFrames() {
+	e.beatN.Add(1)
 	e.mu.Lock()
 	e.stats.Frames++
 	e.mu.Unlock()
+}
+
+// Beats is the liveness heartbeat for the OTA health contract: it advances on
+// every loop iteration AND inside every legitimate long wait (holdoff pacing,
+// budget polls, recovery bring-up). The health token must key on THIS, not on
+// frame count alone — a 10 s holdoff between frames is a healthy scope, but
+// with a 3 s supervisor staleness window a frame-keyed token reads as a wedge
+// and the agent kills a perfectly healthy app (found by the live storm).
+func (e *Engine) Beats() uint64 { return e.beatN.Load() }
+
+// sleepBeating sleeps d in ≤500 ms slices, beating each slice so long pacing
+// stays visibly alive to the supervisor; aborts early on a stop request.
+func (e *Engine) sleepBeating(d time.Duration) {
+	for d > 0 && !e.stopReq.Load() {
+		s := d
+		if s > 500*time.Millisecond {
+			s = 500 * time.Millisecond
+		}
+		e.clk.Sleep(s)
+		e.beatN.Add(1)
+		d -= s
+	}
 }
 
 func (e *Engine) runWord() uint16 {
@@ -983,6 +1007,7 @@ func (e *Engine) waitCapture(norm bool) (anchored, sawTrig, filled, fillMoved bo
 		if !e.clk.Now().Before(deadline) {
 			return // budget expired: AUTO free-runs a refresh, NORM holds
 		}
+		e.beatN.Add(1)
 		e.clk.Sleep(e.pollEvery)
 	}
 }
@@ -1046,6 +1071,7 @@ func (e *Engine) stitchFrame(norm bool) {
 		if rem > e.pollEvery {
 			rem = e.pollEvery
 		}
+		e.beatN.Add(1)
 		e.clk.Sleep(rem)
 	}
 	if e.stopReq.Load() {
@@ -1437,7 +1463,9 @@ func (e *Engine) deadEvidence(certain bool) {
 		return
 	}
 	e.logf("engine: %d dead frames (fill frozen, flat drain) — re-asserting bring-up", e.deadRuns)
+	e.beatN.Add(1)
 	e.bringUp()
+	e.beatN.Add(1)
 	if e.deadRuns%50 != 0 {
 		return
 	}
@@ -1559,7 +1587,7 @@ func (e *Engine) syncBandStatsLocked() {
 // the single shared ARM core and lowers delivered fps.
 func (e *Engine) pace(start time.Time) {
 	if d := time.Duration(e.framePeriodNs.Load()) - e.clk.Now().Sub(start); d > 0 {
-		e.clk.Sleep(d)
+		e.sleepBeating(d)
 	}
 }
 

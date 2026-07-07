@@ -91,6 +91,7 @@ func (e *Engine) envFrame(norm bool) {
 		}
 		if (i+1)%16 == 0 {
 			e.serviceCommands() // mid-frame pump: fill-wait is not a halt window
+			e.beatN.Add(1)
 		}
 		e.clk.Sleep(200 * time.Microsecond)
 	}

@@ -78,6 +78,9 @@ type MaskFail struct {
 }
 
 type zoneMaskState struct {
+	// LOCK ORDER: e.mu is acquired BEFORE zm.mu (Snapshot nests that way).
+	// Never take e.mu while holding zm.mu — that is an ABBA deadlock against
+	// any status poll (found by the concurrency chaos test).
 	mu      sync.Mutex
 	zones   []Zone
 	mask    *Mask
@@ -103,21 +106,24 @@ func (e *Engine) SetZoneMode(m int) {
 }
 
 // SetMask installs the envelope mask (nil clears). Copies the envelopes.
+// Identity is stamped BEFORE taking zm.mu — e.mu inside zm.mu would invert
+// the lock order against Snapshot (e.mu -> zm.mu) and deadlock.
 func (e *Engine) SetMask(m *Mask) {
-	e.zm.mu.Lock()
-	if m == nil {
-		e.zm.mask = nil
-	} else {
-		cp := &Mask{Lo: append([]uint8(nil), m.Lo...), Hi: append([]uint8(nil), m.Hi...), WinCols: m.WinCols, Ch: m.Ch}
-		// stamp the install-time identity (band + vertical mapping)
-		cp.TdivS = e.band.TdivS
-		cp.SampleS = e.band.CaptureIntervalNs() * 1e-9
+	var cp *Mask
+	if m != nil {
+		cp = &Mask{Lo: append([]uint8(nil), m.Lo...), Hi: append([]uint8(nil), m.Hi...), WinCols: m.WinCols, Ch: m.Ch}
+		// stamp the install-time identity (band + vertical mapping); e.band is
+		// written under e.mu at the loop boundary — reading it lock-free here
+		// (an API goroutine) could stamp a TORN identity matching neither band
 		cp.VdivKey = e.chVdivBits[m.Ch&1].Load()
 		e.mu.Lock()
+		cp.TdivS = e.band.TdivS
+		cp.SampleS = e.band.CaptureIntervalNs() * 1e-9
 		cp.OffKey = e.offCode[m.Ch&1]
 		e.mu.Unlock()
-		e.zm.mask = cp
 	}
+	e.zm.mu.Lock()
+	e.zm.mask = cp
 	e.zm.mu.Unlock()
 }
 

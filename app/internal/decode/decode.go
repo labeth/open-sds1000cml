@@ -20,12 +20,12 @@ type Span struct {
 
 // Result is a decode outcome.
 type Result struct {
-	OK    bool
-	Error string
-	Proto string
-	Spans []Span
-	Text  string
-	Bytes []int
+	OK     bool
+	Error  string
+	Proto  string
+	Spans  []Span
+	Text   string
+	Bytes  []int
 	Baud   int
 	SPB    float64 // samples per bit / cols per clock
 	Thr    float64 // threshold code
@@ -35,10 +35,14 @@ type Result struct {
 func hex2(b int) string { return fmt.Sprintf("%02X", b&0xff) }
 
 func popcount(v int) int {
+	// UNSIGNED shift: an arithmetic >> on a negative int shifts in sign bits
+	// and never reaches 0 — an infinite loop. A hostile UART bit count can set
+	// the sign bit of the assembled word (found by the decoder fuzz DoS).
+	u := uint64(v)
 	c := 0
-	for v != 0 {
-		c += v & 1
-		v >>= 1
+	for u != 0 {
+		c += int(u & 1)
+		u >>= 1
 	}
 	return c
 }
@@ -71,17 +75,17 @@ type edge struct {
 }
 
 type sliced struct {
-	ok             bool
-	reason         string
-	n              int
-	codes          []uint8
-	threshold      float64
-	lowRail        float64
-	highRail       float64
-	amp            float64
-	thHi, thLo     float64
-	level          []int8
-	edges          []edge
+	ok         bool
+	reason     string
+	n          int
+	codes      []uint8
+	threshold  float64
+	lowRail    float64
+	highRail   float64
+	amp        float64
+	thHi, thLo float64
+	level      []int8
+	edges      []edge
 }
 
 // sliceChannel builds the threshold/hysteresis + level/edge model for one
@@ -217,6 +221,9 @@ func DecodeUART(codes []uint8, colTimeS float64, cfg UARTCfg) Result {
 	bits := cfg.Bits
 	if bits == 0 {
 		bits = 8
+	}
+	if bits < 1 || bits > 16 { // physical UART is 5..9; bound the shift/mask math
+		return Result{Proto: "uart", Error: "data bits out of range (1..16)"}
 	}
 	parity := cfg.Parity
 	if parity == "" {

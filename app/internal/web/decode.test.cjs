@@ -236,5 +236,27 @@ const SPB = 40, COLT = 1 / (SPB * 115200);
   }
 }
 
+// --- fuzz: hostile input must never hang or throw (parity of the Go fuzz) ---
+{
+  let s = 12345 >>> 0;
+  const rnd = () => (s = (s + 0x6d2b79f5) | 0, ((Math.imul(s ^ (s >>> 15), 1 | s) + 0x6d2b79f5) >>> 0) / 4294967296);
+  const t0 = Date.now();
+  for (let i = 0; i < 2000; i++) {
+    const n = Math.floor(rnd() * 3000);
+    const a = new Uint8Array(n), b = new Uint8Array(n);
+    for (let k = 0; k < n; k++) { a[k] = Math.floor(rnd() * 256); b[k] = Math.floor(rnd() * 256); }
+    const ct = [0, 1e-12, 800e-9, 1][Math.floor(rnd() * 4)];
+    const fm = ["hex", "ascii", "both", "x"][Math.floor(rnd() * 4)];
+    try {
+      decodeUART(a, ct, { baud: [0, -9600, 110, 115200][Math.floor(rnd() * 4)], bits: [0, 5, 8, 9, 64][Math.floor(rnd() * 5)], parity: ["none", "even", "odd"][Math.floor(rnd() * 3)], fmt: fm });
+      decodeI2C(a, b, ct, { fmt: fm });
+      decodeSPI(a, b, ct, { cpol: rnd() < 0.5, cpha: rnd() < 0.5, fmt: fm });
+      autodetect({ c1: a, c2: b, col_span_s: n * ct }, {});
+    } catch (e) { ok(false, `fuzz iter ${i} threw: ${e.message}`); break; }
+    if (Date.now() - t0 > 15000) { ok(false, `fuzz hung after ${i} iters (DoS)`); break; }
+  }
+  ok(true, `decoder fuzz survived hostile input (${Date.now() - t0}ms)`);
+}
+
 console.log(failed ? `\n${failed} FAILED` : "\nALL PASS");
 process.exit(failed ? 1 : 0);

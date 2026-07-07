@@ -190,7 +190,7 @@ func (s *Server) hPanel(w http.ResponseWriter, r *http.Request) {
 		Dir    int    `json:"dir"`
 		Steps  int    `json:"steps"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := json.NewDecoder(io.LimitReader(r.Body, 4<<10)).Decode(&req); err != nil {
 		writeJSON(w, map[string]any{"ok": false, "err": "bad json"})
 		return
 	}
@@ -1069,7 +1069,9 @@ func (s *Server) hSet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req setReq
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	// 4 KB cap: a scalar-verb body is tens of bytes; an unbounded decoder
+	// would buffer an attacker-sized body on a 64 MB-class ARM.
+	if err := json.NewDecoder(io.LimitReader(r.Body, 4<<10)).Decode(&req); err != nil {
 		writeJSON(w, map[string]any{"ok": false, "err": "bad json"})
 		return
 	}

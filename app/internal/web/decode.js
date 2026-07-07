@@ -10,7 +10,10 @@
 const KINDS = ["start", "stop", "addr", "rw", "ack", "nak", "data", "frame-error", "parity-error", "gap", "idle"];
 
 function hex2(b) { return (b & 0xff).toString(16).toUpperCase().padStart(2, "0"); }
-function popcount(v) { let c = 0; while (v) { c += v & 1; v >>= 1; } return c; }
+// UNSIGNED shift (>>>): a signed >> on a value with the sign bit set shifts
+// in 1s and never reaches 0 — an infinite loop, the same DoS the Go popcount
+// had. cfg.bits is bounded below so the assembled word stays non-negative.
+function popcount(v) { let c = 0; v = v >>> 0; while (v) { c += v & 1; v >>>= 1; } return c; }
 // fmtByte renders a payload byte per the display format: "hex" -> 48, "ascii" ->
 // the printable char (else .), "both" -> 48·H. Applied to data bytes only.
 function fmtByte(v, fmt) {
@@ -102,6 +105,7 @@ function minEdgeGap(edges, dirOk) {
 function decodeUART(codes, colTimeS, cfg) {
   cfg = cfg || {};
   const bits = cfg.bits || 8, parity = cfg.parity || "none", idle = cfg.idle != null ? cfg.idle : 1;
+  if (bits < 1 || bits > 16) return fail("uart", "data bits out of range (1..16)"); // guard shift/mask math
   const lsb = (cfg.bitOrder || "lsb") === "lsb", minSPB = cfg.minSPB || 3, guard = cfg.guard != null ? cfg.guard : 4;
   const fmt = cfg.fmt || "hex";
   const S = sliceChannel(codes, cfg);
