@@ -257,7 +257,7 @@ func TestZoneMaskBreaker(t *testing.T) {
 		// ---- clean frames must all pass ----
 		for k := 0; k < 16; k++ {
 			f, edgeX, _, _ := zmGen(fam, 100+k, -1, rng)
-			if fail, _ := e.maskEval(f, f.Valid, 0, edgeX, sampleS, posFrac, uint64(k)); fail {
+			if fail, _ := e.maskEval(f, f.Valid, 0, edgeX, sampleS, posFrac); fail {
 				mf := e.MaskFails()
 				t.Fatalf("fam %s: CLEAN frame %d failed the mask at col %d (false positive)", fam.name, k, mf[len(mf)-1].FailCol)
 			}
@@ -287,7 +287,7 @@ func TestZoneMaskBreaker(t *testing.T) {
 			if !det {
 				continue // physically undetectable — no assert either way
 			}
-			fail, _ := e.maskEval(f, f.Valid, 0, edgeX, sampleS, posFrac, uint64(100+k))
+			fail, _ := e.maskEval(f, f.Valid, 0, edgeX, sampleS, posFrac)
 			if !fail {
 				t.Fatalf("fam %s: VIOLATED frame %d passed the mask (missed %s at %d)", fam.name, k, fam.violate, violSample)
 			}

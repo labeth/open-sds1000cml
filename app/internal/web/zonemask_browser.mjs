@@ -69,13 +69,28 @@ try {
   ok(m.win === m.n, "mask envelope length matches the window");
   ok(m.hi0 > m.lo0, "mask bounds ordered");
 
-  // (5) failure gallery: the Go fixture preloads one ring entry; the 1 Hz
+  // (5) vertical re-anchor: masks/zones are physically VOLTS — halving the
+  // volts-per-code must re-map their codes (2x further from centre) and
+  // re-install. Everything inside ONE evaluate: the live transport would
+  // overwrite frame.vpc1 between round-trips.
+  const rr = await page.evaluate(() => {
+    const before = { lo0: zm.mask.lo[0], zlo: zm.zones[0].code_lo, zhi: zm.zones[0].code_hi };
+    frame.vpc1 = frame.vpc1 / 2;
+    window.zmRescale();
+    return { before, after: { lo0: zm.mask.lo[0], zlo: zm.zones[0].code_lo, zhi: zm.zones[0].code_hi } };
+  });
+  const stretch = (c) => Math.round(128 + 2 * (c - 128));
+  ok(Math.abs(rr.after.zlo - stretch(rr.before.zlo)) <= 2 && Math.abs(rr.after.zhi - stretch(rr.before.zhi)) <= 2,
+    "zone re-anchored to the new V/div (codes stretched 2x about centre)");
+  ok(Math.abs(rr.after.lo0 - stretch(rr.before.lo0)) <= 2, "mask envelope re-anchored to the new V/div");
+
+  // (6) failure gallery: the Go fixture preloads one ring entry; the 1 Hz
   // meter renders it -> click freezes the failing frame with the mark.
   await page.waitForFunction(() => document.querySelectorAll("#zmGallery .zmf").length > 0, null, { timeout: 5000 });
   await page.click("#zmGallery .zmf");
   await page.waitForFunction(() => zm.failMark !== null && typeof frozen !== "undefined" && frozen, null, { timeout: 5000 });
   ok(true, "gallery click froze the failing frame with the violation marked");
-  ok((await page.evaluate(() => $("zmStats").textContent)).includes("seq"), "status names the failing seq");
+  ok((await page.evaluate(() => $("zmStats").textContent)).includes("capture"), "status names the failing capture ordinal");
 } catch (e) {
   console.log("FAIL- driver error:", e.message);
   fails++;

@@ -2811,6 +2811,7 @@ window.zm = {
   drawArmed: false, drawA: null, drawB: null,
   failMark: null, // {frac, code} violation marker on a gallery frame
   lastRing: -1,
+  lastSkip: -1, lastZoneSkip: -1, // skip-delta trackers (stale-test warnings)
 };
 
 // --- coordinate transforms (display point <-> edge-anchored zone coords) ---
@@ -2920,11 +2921,18 @@ function zmPointerUp() {
   $("zmDraw").classList.remove("on");
   zm.drawA = zm.drawB = null;
   if (a && b && Math.abs(a.dtS - b.dtS) > 0) {
-    zm.zones.push({
+    const ch = +$("zmCh").value || 0;
+    const z = {
       dt_lo_s: Math.min(a.dtS, b.dtS), dt_hi_s: Math.max(a.dtS, b.dtS),
       code_lo: Math.round(Math.min(a.code, b.code)), code_hi: Math.round(Math.max(a.code, b.code)),
-      avoid: false, ch: +$("zmCh").value || 0,
-    });
+      avoid: false, ch,
+    };
+    // A zone is physically VOLTS: freeze its source codes + vertical context
+    // so V/div or offset changes re-map it instead of silently re-aiming it
+    // (server ignores the underscore fields).
+    const c = zmVctx(ch);
+    if (c) { z._sclo = z.code_lo; z._schi = z.code_hi; z._svpc = c.vpc; z._soff = c.off; z._avpc = c.vpc; z._aoff = c.off; }
+    zm.zones.push(z);
     zmPushZones();
   }
   redraw();
@@ -3003,7 +3011,12 @@ $("zmBuild").onclick = async () => {
     dLo[j] = Math.max(0, mn - tolV);
     dHi[j] = Math.min(255, mx + tolV);
   }
-  zm.mask = { lo: dLo, hi: dHi, win };
+  zm.mask = { lo: dLo, hi: dHi, win, ch };
+  const c = zmVctx(ch);
+  if (c) { // frozen source for exact re-mapping on later V/div / offset changes
+    zm.mask.srcLo = dLo.slice(); zm.mask.srcHi = dHi.slice();
+    zm.mask.svpc = c.vpc; zm.mask.soff = c.off; zm.mask.avpc = c.vpc; zm.mask.aoff = c.off;
+  }
   await fetch("/api/mask", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ lo: dLo, hi: dHi, win, ch }) }).catch(() => {});
   zmStatus("mask built from " + got + " frames (±" + tolT + " samp, ±" + tolV + " codes) — set test mode");
   redraw();
@@ -3012,15 +3025,69 @@ $("zmMode").onchange = () => send("maskmode", +$("zmMode").value);
 $("zmClearStats").onclick = () => { send("maskclear", 0); zm.failMark = null; redraw(); };
 function zmStatus(m) { if (m !== undefined) $("zmStats").textContent = m || "—"; }
 
+// --- vertical re-anchoring: masks and zones are physically VOLTS ---
+// The engine tests raw codes and honestly SKIPS a mask whose vertical
+// mapping changed (VdivKey/OffKey identity) — but a skipping test plus a
+// stale overlay LOOKS happy. The client owns the volts<->code mapping, so on
+// any V/div or offset change it re-maps the frozen volts-space source into
+// the new code space and re-installs (same precedent as the REF rescale).
+function zmVctx(ch) { // live vertical context; null while frozen/env (no authority)
+  if (!frame || frozen || frame.is_env || !(frame.vpc1 > 0)) return null;
+  return ch === 1 ? { vpc: frame.vpc2, off: frame.off2_v || 0 } : { vpc: frame.vpc1, off: frame.off1_v || 0 };
+}
+function zmRescale() {
+  const near = (a, b) => Math.abs(a - b) <= Math.abs(b) * 1e-9 + 1e-12;
+  let zchg = false;
+  for (const z of zm.zones) {
+    if (!(z._svpc > 0)) continue;
+    const c = zmVctx(z.ch || 0);
+    if (!c || (near(c.vpc, z._avpc) && near(c.off, z._aoff))) continue;
+    const map = v => 128 + ((v - 128) * z._svpc - z._soff + c.off) / c.vpc;
+    const a = Math.round(map(z._sclo)), b = Math.round(map(z._schi));
+    z.code_lo = Math.max(0, Math.min(255, Math.min(a, b)));
+    z.code_hi = Math.max(0, Math.min(255, Math.max(a, b)));
+    z._avpc = c.vpc; z._aoff = c.off;
+    zchg = true;
+  }
+  if (zchg) zmPushZones();
+  const m = zm.mask;
+  let mchg = false;
+  if (m && m.srcLo && m.svpc > 0) {
+    const c = zmVctx(m.ch || 0);
+    if (c && !(near(c.vpc, m.avpc) && near(c.off, m.aoff))) {
+      const map = v => 128 + ((v - 128) * m.svpc - m.soff + c.off) / c.vpc;
+      for (let j = 0; j < m.win; j++) { // floor/ceil: never shrink the physical envelope
+        m.lo[j] = Math.max(0, Math.min(255, Math.floor(map(m.srcLo[j]))));
+        m.hi[j] = Math.max(0, Math.min(255, Math.ceil(map(m.srcHi[j]))));
+      }
+      m.avpc = c.vpc; m.aoff = c.off;
+      mchg = true;
+      fetch("/api/mask", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ lo: m.lo, hi: m.hi, win: m.win, ch: m.ch || 0 }) }).catch(() => {});
+    }
+  }
+  if (zchg || mchg) { zmStatus("re-anchored to the new vertical scale"); redraw(); }
+}
+window.zmRescale = zmRescale; // exercised directly by the browser e2e
+
 // --- live meter + failure gallery (driven off the 1 Hz status poll) ---
 setInterval(() => {
   if (!st) return;
+  zmRescale();
   if (st.mask_mode > 0 || st.mask_fail > 0 || st.mask_pass > 0) {
     const total = (st.mask_pass || 0) + (st.mask_fail || 0);
-    $("zmMeter").textContent = `pass ${st.mask_pass || 0} · FAIL ${st.mask_fail || 0}` +
+    let line = `pass ${st.mask_pass || 0} · FAIL ${st.mask_fail || 0}` +
       (total ? ` · ${((st.mask_fail || 0) / total * 100).toFixed(3)}%` : "") +
       (st.mask_stopped ? " · STOPPED ON FAIL" : "");
-  } else $("zmMeter").textContent = "";
+    if (st.mask_skip > 0) line += ` · skip ${st.mask_skip}`;
+    // a test that only skips is DEAD — say so instead of looking happy
+    if (st.mask_mode > 0 && (st.mask_skip || 0) > zm.lastSkip && zm.lastSkip >= 0)
+      line += " · MASK STALE (scale/timebase changed) — rebuild";
+    zm.lastSkip = st.mask_skip || 0;
+    $("zmMeter").textContent = line;
+  } else { $("zmMeter").textContent = ""; zm.lastSkip = st.mask_skip || 0; }
+  if (st.zone_mode > 0 && (st.zone_skip || 0) > zm.lastZoneSkip && zm.lastZoneSkip >= 0)
+    zmStatus("zone trigger inactive at this timebase (env/roll frames can't qualify)");
+  zm.lastZoneSkip = st.zone_skip || 0;
   if ((st.mask_ring || 0) !== zm.lastRing) {
     zm.lastRing = st.mask_ring || 0;
     let html = "";
@@ -3046,7 +3113,7 @@ setInterval(() => {
           userZoomed = false; lastSig = "maskfail";
           const h = homeWindow(frame); view.win.a = h.a; view.win.b = h.b;
           redraw();
-          zmStatus("failure " + (+b.dataset.i + 1) + " @ seq " + r.seq + " — violation circled (unfreeze to resume)");
+          zmStatus("failure " + (+b.dataset.i + 1) + " @ capture #" + r.seq + " — violation circled (unfreeze to resume)");
         } catch (e) { }
       };
     }

@@ -128,6 +128,7 @@ func (e *Engine) envFrame(norm bool) {
 	f.Norm = norm
 
 	e.commitStats(f.Coherent, haltOK, p, 0, 0, 0)
+	e.zoneMaskUncomparable() // env frames have no edge anchor: zone/mask can't run
 	e.commitPublish(f)
 
 	if !fillMoved && p < 3 {
@@ -337,6 +338,7 @@ func (e *Engine) rollUpdate(norm bool) {
 	f.Norm = norm
 
 	e.commitStats(true, true, p, 0, 0, 0)
+	e.zoneMaskUncomparable() // roll frames free-run untriggered: zone/mask can't run
 	e.commitPublish(f)
 	e.resetDeadRuns()
 }

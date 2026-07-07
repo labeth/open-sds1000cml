@@ -37,6 +37,15 @@ implemented and regression-locked by a test.
   signal crosses mid; a freeze inside an oscillating region opened up by
   horizontal dilation) are invisible to ANY per-column envelope — that is
   physics, not a bug. The breaker's referee encodes this rule.
+- **Vertical re-anchoring** (user finding): masks and zones are physically
+  VOLTS; the engine tests raw codes. On a V/div or offset change the engine
+  honestly SKIPS (identity guards) — but a skipping test plus a stale
+  overlay LOOKS happy. The web client (which owns the volts↔code mapping,
+  same precedent as the REF rescale) keeps the frozen volts-space source of
+  every mask/zone it created and re-maps + re-installs on any vertical
+  change; the meter shows skips and a MASK STALE warning whenever a test is
+  only skipping (covers device-built masks and band changes, which cannot be
+  re-mapped — the window geometry itself changed: rebuild).
 
 ## 1. Engine (Go, app/internal/engine — single implementation, no JS mirror)
 
@@ -204,6 +213,26 @@ validation source must be phase-locked BY CONSTRUCTION:
 6. Device parity (done): LCD renders the envelope + zone rects + live
    pass/fail meter (screenshot-verified against the same counters as the
    web); panel MASK page (ACQUIRE ×3) drives mode/build/tol/reset live.
+7. **Second breaker campaign** (done, in-repo): 50 NEW wave families
+   (chirp/pwm/damped/multitone/gausstrain/rampplateau/halfsine/noiseburst/
+   randstairs/ecg × 5 params) —
+   - zone DIFFERENTIAL fuzz: 2250 verdicts against an independent reference
+     with a half-sample boundary-tolerance envelope (66 ties skipped);
+   - publish-policy integration through the real oneFrame loop: NORM holds
+     exactly the non-qualifying frames, AUTO livenesses 1-per-60, the mask
+     tests HELD frames, stop-on-fail force-publishes past a zone hold;
+   - mask window-geometry fuzz: 432 posFrac × edge × liveDepth cases with
+     exact localization;
+   - live V/div re-anchor check on HW (build → detent change → counting
+     continues at the new scale, zero false fails, exact round-trip).
+   Root causes found and fixed: ring capture-identity (held frames all wore
+   the NEXT publish seq — now a capture ordinal); env/roll frames silently
+   bypassing the zone trigger and freezing mask counters (now published but
+   COUNTED as zone_skip/mask_skip — structural, not transient); a frame with
+   zero testable columns counting as a PASS (now a skip); NaN trigger
+   position un-mapping every mask column (now guarded); vertical staleness
+   looking happy (§0 re-anchoring). Regression-locked: SINGLE+zone waits for
+   a QUALIFYING frame (composes correctly by construction).
 
 ## 6. Resolved review findings (record)
 

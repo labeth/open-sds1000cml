@@ -118,6 +118,7 @@ func buildHUD(e *engine.Engine, fe *analog.FrontEnd) lcd.HUD {
 	hud.ZoneMode, hud.MaskMode = st.ZoneMode, st.MaskMode
 	hud.MaskPass, hud.MaskFail, hud.MaskSkip = st.MaskPass, st.MaskFail, st.MaskSkip
 	hud.MaskStopped = st.MaskStopped
+	hud.ZoneSkip = st.ZoneSkip
 	if st.ZoneCount > 0 {
 		hud.Zones = e.Zones()
 	}

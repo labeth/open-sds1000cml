@@ -93,6 +93,7 @@ type HUD struct {
 	MaskSkip       int64
 	MaskStopped    bool
 	MaskMsg        string // panel build/status line ("" when idle)
+	ZoneSkip       int64  // zone-armed publishes that were untestable (env/roll)
 }
 
 // MenuItem is one softkey slot label + value for the LCD menu overlay.
@@ -1078,6 +1079,9 @@ func drawMaskHUD(sf Surface, hud HUD) {
 			line += "   "
 		}
 		line += fmt.Sprintf("ZONE x%d", len(hud.Zones))
+		if hud.ZoneSkip > 0 {
+			line += fmt.Sprintf(" (skip %d)", hud.ZoneSkip)
+		}
 	}
 	if hud.MaskMsg != "" {
 		if line != "" {

@@ -81,12 +81,12 @@ func TestMaskEvalAndRing(t *testing.T) {
 	edgeX := float64(n) / 2
 	// passing frame: flat 100
 	f := zmFrame(n, 100, 0, 0)
-	if fail, _ := e.maskEval(f, n, 0, edgeX, 2e-9, 0.5, 1); fail {
+	if fail, _ := e.maskEval(f, n, 0, edgeX, 2e-9, 0.5); fail {
 		t.Fatal("flat frame inside the envelope must pass")
 	}
 	// failing frame: a spike to 200 at the window centre
 	f2 := zmFrame(n, 200, n/2-4, n/2+4)
-	fail, stop := e.maskEval(f2, n, 0, edgeX, 2e-9, 0.5, 2)
+	fail, stop := e.maskEval(f2, n, 0, edgeX, 2e-9, 0.5)
 	if !fail || stop {
 		t.Fatalf("spike must fail without stopping in MaskTest (fail=%v stop=%v)", fail, stop)
 	}
@@ -99,12 +99,12 @@ func TestMaskEvalAndRing(t *testing.T) {
 	}
 	// stop-on-fail
 	e.SetMaskMode(MaskStopFail)
-	if _, stop := e.maskEval(f2, n, 0, edgeX, 2e-9, 0.5, 3); !stop {
+	if _, stop := e.maskEval(f2, n, 0, edgeX, 2e-9, 0.5); !stop {
 		t.Fatal("MaskStopFail must request a stop")
 	}
 	// ring caps at maskRingCap
 	for i := 0; i < maskRingCap+4; i++ {
-		e.maskEval(f2, n, 0, edgeX, 2e-9, 0.5, uint64(10+i))
+		e.maskEval(f2, n, 0, edgeX, 2e-9, 0.5)
 	}
 	if len(e.MaskFails()) != maskRingCap {
 		t.Fatalf("ring cap: %d", len(e.MaskFails()))
@@ -112,7 +112,7 @@ func TestMaskEvalAndRing(t *testing.T) {
 	// WinCols mismatch → not comparable, no counting
 	e.ClearMaskFails()
 	e.SetMask(&Mask{Lo: lo[:win-1], Hi: hi[:win-1], WinCols: win - 1, Ch: 0})
-	if fail, _ := e.maskEval(f2, n, 0, edgeX, 2e-9, 0.5, 99); fail {
+	if fail, _ := e.maskEval(f2, n, 0, edgeX, 2e-9, 0.5); fail {
 		t.Fatal("mismatched WinCols must skip, not fail")
 	}
 }

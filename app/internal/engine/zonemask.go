@@ -61,8 +61,12 @@ const (
 
 // MaskFail is one captured failing frame (ring entry).
 type MaskFail struct {
-	C1, C2     []uint8
-	Valid      int
+	C1, C2 []uint8
+	Valid  int
+	// Seq is the mask CAPTURE ordinal (the Nth tested frame), not the publish
+	// sequence: held frames are tested too, and stamping them with the next
+	// publish seq gave every hold-window failure the same — and wrong —
+	// identity (found by the publish-policy breaker).
 	Seq        uint64
 	EdgeX      float64
 	SampleS    float64
@@ -171,6 +175,21 @@ func (e *Engine) MaskEnvelope() *Mask {
 	return &cp
 }
 
+// zoneMaskUncomparable counts an env/roll publish that the zone trigger and
+// mask CANNOT test (no edge anchor, no per-sample record). The frame still
+// publishes — at those bands unqualifiability is structural, not transient,
+// and holding would blank the display — but the bypass is COUNTED so the UI
+// can say "zone/mask inactive at this timebase" instead of the feature
+// silently wearing a clean run's signature (same principle as MaskSkip).
+func (e *Engine) zoneMaskUncomparable() {
+	if e.zoneMode.Load() == ZoneTrigger {
+		e.zoneSkip.Add(1)
+	}
+	if e.maskMode.Load() != MaskOff {
+		e.maskSkip.Add(1)
+	}
+}
+
 // zonesQualify tests a locked frame against the installed zones. Runs on the
 // engine goroutine; f is the producer slot (safe to read). All zones must
 // pass (intersect zones must be hit, avoid zones must be missed).
@@ -219,7 +238,7 @@ func (e *Engine) zonesQualify(f *Frame, valid int, edgeX, sampleS float64) bool 
 // maskEval tests a locked frame against the envelope mask, updates counters,
 // captures failures into the ring, and reports whether acquisition should
 // stop (stop-on-fail). Runs on the engine goroutine.
-func (e *Engine) maskEval(f *Frame, valid, liveDepth int, edgeX, sampleS, posFrac float64, seq uint64) (fail, stop bool) {
+func (e *Engine) maskEval(f *Frame, valid, liveDepth int, edgeX, sampleS, posFrac float64) (fail, stop bool) {
 	mode := int(e.maskMode.Load())
 	if mode == MaskOff {
 		return false, false
@@ -264,6 +283,7 @@ func (e *Engine) maskEval(f *Frame, valid, liveDepth int, edgeX, sampleS, posFra
 		e.maskSkip.Add(1)
 		return false, false
 	}
+	seq := e.maskCap.Add(1) // this frame IS comparable: it gets a capture ordinal
 	// deep drains go dead past validDepth (repeated last sample) — testing the
 	// dead tail would judge garbage, so cap the testable range at the live part
 	if liveDepth > 0 && liveDepth < valid {
@@ -273,11 +293,13 @@ func (e *Engine) maskEval(f *Frame, valid, liveDepth int, edgeX, sampleS, posFra
 	// sample left+j where left anchors the edge at posFrac of the window.
 	left := int(math.Round(edgeX - float64(win)*posFrac))
 	failCol, failCode, failSample := -1, 0, 0
+	tested := 0
 	for j := 0; j < win; j++ {
 		s := left + j
 		if s < 0 || s >= valid {
 			continue // off-record columns are not testable (rail-extend on display)
 		}
+		tested++
 		v := sig[s]
 		if v < m.Lo[j] || v > m.Hi[j] {
 			failCol, failCode, failSample = j, int(v), s
@@ -285,6 +307,12 @@ func (e *Engine) maskEval(f *Frame, valid, liveDepth int, edgeX, sampleS, posFra
 		}
 	}
 	if failCol < 0 {
+		if tested == 0 {
+			// the whole window fell off the record / into the dead tail: a
+			// zero-column "pass" wears a clean run's signature — count a skip
+			e.maskSkip.Add(1)
+			return false, false
+		}
 		e.maskPass.Add(1)
 		return false, false
 	}

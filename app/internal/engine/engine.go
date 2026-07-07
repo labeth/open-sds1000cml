@@ -135,6 +135,7 @@ type Stats struct {
 	// Zone trigger + mask testing (docs/zonemask-plan.md)
 	ZoneMode    int   `json:"zone_mode,omitempty"`  // 0 off, 1 trigger
 	ZoneCount   int   `json:"zone_count,omitempty"` // installed zones
+	ZoneSkip    int64 `json:"zone_skip,omitempty"`  // zone-armed publishes that were untestable (env/roll)
 	MaskMode    int   `json:"mask_mode,omitempty"`  // 0 off, 1 test, 2 stop-on-fail
 	MaskPass    int64 `json:"mask_pass,omitempty"`
 	MaskFail    int64 `json:"mask_fail,omitempty"`
@@ -178,6 +179,8 @@ type Engine struct {
 	maskFail    atomic.Int64
 	maskSkip    atomic.Int64
 	maskStopped atomic.Bool
+	maskCap     atomic.Uint64 // capture ordinal: counts every mask-tested frame
+	zoneSkip    atomic.Int64  // zone-armed publishes that could not be tested (env/roll)
 	zoneHeld    int // engine goroutine only: AUTO liveness fallback counter
 	zm          zoneMaskState
 
@@ -421,6 +424,9 @@ func (e *Engine) SetChannelVdiv(ch int, vdivV float64) {
 // 0.5=centre (default), 1=right. Pure software — the display window is offset
 // so the anchor lands at this fraction (spec 05 §8: position is software).
 func (e *Engine) SetTrigPosFrac(frac float64) {
+	if math.IsNaN(frac) {
+		frac = 0.5 // a NaN would silently un-map every mask column downstream
+	}
 	if frac < 0 {
 		frac = 0
 	}
@@ -706,6 +712,7 @@ func (e *Engine) Snapshot() Stats {
 	// zone/mask live state (atomics + ring size)
 	s.WinCols = e.band.WinCols()
 	s.ZoneMode = int(e.zoneMode.Load())
+	s.ZoneSkip = e.zoneSkip.Load()
 	s.MaskMode = int(e.maskMode.Load())
 	s.MaskPass = e.maskPass.Load()
 	s.MaskFail = e.maskFail.Load()
@@ -1292,7 +1299,7 @@ func (e *Engine) oneFrame(norm bool) {
 	if lock && e.maskMode.Load() != MaskOff {
 		liveDepth = validDepth(disc)
 		posFrac := math.Float64frombits(e.trigPosFrac.Load())
-		if failed, stop := e.maskEval(f, cols, liveDepth, edgeX, f.SampleS, posFrac, e.seq+1); failed && stop {
+		if failed, stop := e.maskEval(f, cols, liveDepth, edgeX, f.SampleS, posFrac); failed && stop {
 			e.maskStopped.Store(true)
 			e.running.Store(false)
 			publish = true // show the failing frame itself

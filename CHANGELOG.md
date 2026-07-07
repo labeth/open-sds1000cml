@@ -17,8 +17,13 @@
   (re-press ACQUIRE past REF) + LCD envelope/zone render + live meter.
   Validated with a counted-truth FPGA source: 0 false positives over a clean
   soak, catch rate on the binomial expectation (n=2350), every capture
-  localized to the known violation offset, and a 50-waveform adversarial
-  breaker locking the envelope morphology (see docs/zonemask-plan.md).
+  localized to the known violation offset, and two 50-waveform adversarial
+  breaker campaigns (envelope morphology; zone differential fuzz + publish
+  policy + window geometry — see docs/zonemask-plan.md).
+- Masks and zones re-anchor automatically when V/div or offset changes (they
+  are physically volts); a test that can only skip says MASK STALE instead
+  of looking happy, and slow env/roll timebases count their structural
+  zone/mask bypass instead of hiding it.
 
 ## v0.0.2 — 2026-07-05
 
