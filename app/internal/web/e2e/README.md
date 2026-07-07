@@ -35,7 +35,30 @@ Results are read from the rendered DOM (`#measBody`, decode text, `#ejBody`,
 
 ## Note on sources
 
-maskviol drives a very-low-duty pulse (25%); autoset on such signals is a hard
-case and this board's maskviol FPGA config drifts over minutes, so that batch
-is best-effort. tone1M (10/10) and prbs2M (12/12) are rock-solid and cover the
-bulk of the scope's features.
+100 workflows across 6 sources:
+
+    tone1M   22   1 MHz square — measure/trigger/view/FFT/cursors/math/superres/
+                  coupling/probe/help/single/freeze/persist/zoom/panel
+    prbs2M   24   PRBS7 + clock — eye/jitter/big-views/two-channel/math/X-Y/refs/
+                  superres/AVERAGE/ERES/spectrum
+    spi      20   SPI Mode 0 — decode (hex/auto/bit-order)/cursors/refs/math/zoom/
+                  coupling/peak-detect/measurements
+    maskviol 12   pulse train + width violation — pulse measure/trigger/mask/zone
+    uart     10   UART 8N1 115200 — decode transcript/hex/ASCII/auto/C2/wrong-baud
+    burst    12   50/150/250 MHz stepped burst — FFT/superres/zone/persist/envelope
+
+88 (all but maskviol) are rock-solid. maskviol drives a very-low-duty pulse
+(25%): autoset on such signals is a hard case AND this board's maskviol FPGA
+config drifts over minutes, so that batch is best-effort — not a scope bug (the
+scope measures whatever the FPGA emits).
+
+## Bugs this campaign found and fixed
+
+- Scientific notation on readouts (`1.00e+3 ns` for a 1 µs value) — web + LCD +
+  panel formatters.
+- Autoset read an aliased frequency from a slow/roll start (two divergent
+  autoset implementations; unified on the robust device sweep + web delegates).
+- RUN did nothing after a SINGLE capture (stale run-state shadow).
+- Autoset couldn't find a low-duty pulse train (amplitude-only "found" test).
+- Clicking the eye diagram to enlarge it crashed the page when RJ was not yet
+  available (`eng(undefined)`); `eng()` now dashes non-finite input.

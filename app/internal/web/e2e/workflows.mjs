@@ -820,9 +820,107 @@ const spiB = [
   }},
 ];
 
+// ---------------------------------------------------------------------------
+// SOURCE burst — build-burst.sh  (frequency-stepped burst on C1: 50/150/250 MHz
+// segments in a 300 ns period, 3.33 MHz repeat). A hard, high-frequency
+// repetitive signal — exercises FFT, superres, zone, persistence, ETS.
+// ---------------------------------------------------------------------------
+const burst = [
+  { id: "B1", name: "Autoset the repetitive burst and get a stable trace", run: async (op) => {
+    await op.clickExpect("autoset", async () => (await op.readMeasValue(1, "Vpp")) != null, { timeout: 13000, why: "autoset the burst" });
+    const v = await op.waitMeas(1, "Vpp");
+    assert(v != null && v > 0.1, `burst amplitude ${v} V — no signal`);
+  }},
+  { id: "B2", name: "FFT reveals the burst's high-frequency components", run: async (op) => {
+    await op.autosetStable(1);
+    await op.clickExpect("mFFT", async () => (await op.page.$("#fftCardC1")) !== null, { why: "FFT view" });
+    const peak = await op.readUntil(async () => await op.page.evaluate(() => { const b = document.querySelector("#fftBody1"); const c = b && b.querySelector("tr td"); return c && /Hz/.test(c.textContent) ? c.textContent : null; }), 9000, "FFT produced no peak on the burst");
+    const { parseEng } = await import("./operator.mjs");
+    const hz = parseEng(peak);
+    assert(hz > 1e6, `FFT peak ${peak} (${hz} Hz) — expected MHz-scale content`);
+    await op.click("mYT", { why: "back to Y-T" });
+  }},
+  { id: "B3", name: "Persistence accumulates the repetitive burst structure", run: async (op) => {
+    await op.autosetStable(1);
+    await op.clickExpect("tPersist", async () => await op.page.evaluate(() => document.getElementById("tPersist").classList.contains("on")), { why: "persistence on" });
+    await op.page.waitForTimeout(1500);
+    assert((await op.lcdPng()) > 3000, "persistence view of the burst did not render");
+    await op.click("tPersist", { why: "persistence off" });
+  }},
+  { id: "B4", name: "Super-resolution stacks the repetitive burst", run: async (op) => {
+    await op.autosetStable(1);
+    await op.clickExpect("srArm", async () => { const s = await op.readText("srStats"); return s && !/idle/i.test(s || ""); }, { timeout: 8000, why: "arm superres on the repetitive burst" });
+    const stat = await op.readUntil(async () => { const s = await op.readText("srStats"); return s && /(bit|stack|\d)/i.test(s) && !/idle/i.test(s) ? s : null; }, 16000, "superres produced no stacked result on the burst");
+    assert(stat != null, "no superres result");
+    await op.click("srArm", { why: "stop superres" });
+  }},
+  { id: "B5", name: "Zone trigger: draw a zone and keep the burst publishing", run: async (op) => {
+    await op.autosetStable(1);
+    await op.clickExpect("zmDraw", async () => await op.page.evaluate(() => typeof zm !== "undefined" && zm.drawArmed), { why: "arm zone drawing" });
+    const box = await (await op.page.$("#scope")).boundingBox();
+    await op.page.mouse.move(box.x + box.width * 0.4, box.y + box.height * 0.3);
+    await op.page.mouse.down();
+    await op.page.mouse.move(box.x + box.width * 0.6, box.y + box.height * 0.5, { steps: 5 });
+    await op.page.mouse.up();
+    assert(await op.page.evaluate(() => zm.zones && zm.zones.length >= 1), "zone not created on the burst");
+    await op.click("zmClearZones", { why: "clear zones" });
+  }},
+  { id: "B6", name: "Single-shot captures one burst period and holds it", run: async (op) => {
+    await op.autosetStable(1);
+    await op.clickExpect("single", async () => { const st = await op.status(); return st.single === true || st.running === false; }, { timeout: 8000, why: "arm SINGLE" });
+    await op._settle(async () => (await op.status()).running === false, 8000, "SINGLE never captured the burst");
+    assert((await op.lcdPng()) > 3000, "captured burst blank");
+    await op.clickExpect("run", async () => (await op.status()).running === true, { why: "resume" });
+  }},
+  { id: "B7", name: "Zoom into one burst period on the display", run: async (op) => {
+    await op.autosetStable(1);
+    const box = await (await op.page.$("#scope")).boundingBox();
+    await op.page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await op.page.mouse.wheel(0, -500);
+    await op.page.waitForTimeout(1000);
+    assert((await op.lcdPng()) > 3000, "zoomed burst did not render");
+  }},
+  { id: "B8", name: "Read the burst amplitude (Vpp)", run: async (op) => {
+    await op.autosetStable(1);
+    const v = await op.waitMeas(1, "Vpp");
+    assert(v != null && v > 0.1 && v < 12, `burst Vpp ${v} V implausible`);
+  }},
+  { id: "B9", name: "Envelope band shows the burst as a filled envelope", run: async (op) => {
+    await op.setBand(5e-3); // an envelope (≥5 ms/div) band
+    await op.page.waitForTimeout(2000);
+    assert((await op.lcdPng()) > 3000, "envelope band did not render the burst");
+    await op.setBand(2e-7); // back to a fast band
+  }},
+  { id: "B10", name: "FFT peak click selects the component (spectral marker)", run: async (op) => {
+    await op.autosetStable(1);
+    await op.clickExpect("mFFT", async () => (await op.page.$("#fftCardC1")) !== null, { why: "FFT view" });
+    await op.readUntil(async () => await op.page.evaluate(() => { const b = document.querySelector("#fftBody1"); const c = b && b.querySelector("tr td"); return c && /Hz/.test(c.textContent) ? true : null; }), 9000, "no FFT peak to click");
+    // click the first FFT peak row (an operator selecting a component to measure)
+    await op.page.evaluate(() => { const r = document.querySelector("#fftBody1 tr"); if (r) r.click(); });
+    await op.page.waitForTimeout(500);
+    assert((await op.lcdPng()) > 3000, "spectral marker interaction broke rendering");
+    await op.click("mYT", { why: "back to Y-T" });
+  }},
+  { id: "B11", name: "Persistence + single together capture and hold a burst", run: async (op) => {
+    await op.autosetStable(1);
+    await op.clickExpect("tPersist", async () => await op.page.evaluate(() => document.getElementById("tPersist").classList.contains("on")), { why: "persistence on" });
+    await op.page.waitForTimeout(1200);
+    assert((await op.lcdPng()) > 3000, "persistence render failed");
+    await op.click("tPersist", { why: "persistence off" });
+  }},
+  { id: "B12", name: "The burst repeats — Vmax stays stable across captures", run: async (op) => {
+    await op.autosetStable(1);
+    const a = await op.waitMeas(1, "Vmax");
+    await op.page.waitForTimeout(1500);
+    const b = await op.waitMeas(1, "Vmax");
+    assert(a != null && b != null && near(a, b, 0.25), `Vmax unstable across captures (${a} → ${b}) — burst not repetitive?`);
+  }},
+];
+
 export const WORKFLOWS = [
   ...spi.map((w) => ({ ...w, source: "spi" })),
   ...spiB.map((w) => ({ ...w, source: "spi" })),
+  ...burst.map((w) => ({ ...w, source: "burst" })),
   ...uart.map((w) => ({ ...w, source: "uart" })),
   ...tone1M.map((w) => ({ ...w, source: "tone1M" })),
   ...tone1Mb.map((w) => ({ ...w, source: "tone1M" })),
