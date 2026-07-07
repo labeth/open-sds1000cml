@@ -109,6 +109,100 @@ const tone1M = [
   }},
 ];
 
+// tone1M part 2 — more single-channel operator tasks on the 1 MHz square.
+const tone1Mb = [
+  { id: "T11", name: "Toggle the trigger slope rising↔falling", run: async (op) => {
+    const before = await op.readText("slope");
+    await op.clickExpect("slope", async () => (await op.readText("slope")) !== before, { why: "slope button must flip the edge" });
+    await op.click("slope", { why: "restore slope" });
+  }},
+  { id: "T12", name: "GND coupling flattens C1 to the ground reference", run: async (op) => {
+    await op.autosetStable(1);
+    await op.selectExpect("cpl1", "2", null, { why: "GND coupling" });
+    const vpp = await op.waitMeas(1, "Vpp");
+    assert(vpp != null && vpp < 0.15, `GND-coupled Vpp should be ~0, got ${vpp} V`);
+    await op.selectExpect("cpl1", "0", null, { why: "back to DC" });
+  }},
+  { id: "T13", name: "×10 probe scales the voltage readout by 10", run: async (op) => {
+    await op.autosetStable(1);
+    const v1 = await op.waitMeas(1, "Vpp");
+    await op.selectExpect("probe1", "10", null, { why: "set a ×10 probe" });
+    await op.page.waitForTimeout(1200);
+    const v10 = await op.waitMeas(1, "Vpp");
+    assert(near(v10, v1 * 10, 0.15), `×10 probe should read ~10× (${v1} → ${v10})`);
+    await op.selectExpect("probe1", "1", null, { why: "back to ×1" });
+  }},
+  { id: "T14", name: "Help overlay opens with '?' and closes with Escape", run: async (op) => {
+    await op.page.keyboard.press("?");
+    const shown = await op._settle(async () => await op.page.evaluate(() => document.getElementById("help").classList.contains("show")), 3000, "help overlay did not open on '?'");
+    assert(shown, "help did not open");
+    await op.page.keyboard.press("Escape");
+    await op._settle(async () => await op.page.evaluate(() => !document.getElementById("help").classList.contains("show")), 3000, "help overlay did not close on Escape");
+  }},
+  { id: "T15", name: "Expand the measurement panel to reveal rise/fall time", run: async (op) => {
+    await op.autosetStable(1);
+    await op.measMore();
+    const rise = await op.readMeas(1, "Rise");
+    assert(rise != null, "expanded panel did not show a Rise-time row");
+  }},
+  { id: "T16", name: "Vmax, Vmin and Vpp are internally consistent", run: async (op) => {
+    await op.autosetStable(1);
+    const vmax = await op.waitMeas(1, "Vmax"), vmin = await op.waitMeas(1, "Vmin"), vpp = await op.waitMeas(1, "Vpp");
+    assert(vmax > vmin, `Vmax ${vmax} must exceed Vmin ${vmin}`);
+    assert(near(vpp, vmax - vmin, 0.1), `Vpp ${vpp} should equal Vmax−Vmin (${vmax - vmin})`);
+  }},
+  { id: "T17", name: "Math C1+C2 renders without error (C2 idle)", run: async (op) => {
+    await op.selectExpect("mathFn", "c1+c2", async () => await op.page.evaluate(() => {
+      const c = document.getElementById("mathCard"); return c && getComputedStyle(c).display !== "none";
+    }), { why: "math function must engage" });
+    const sz = await op.lcdPng();
+    assert(sz > 3000, "math trace did not render");
+    await op.selectExpect("mathFn", "off", null, { why: "math off" });
+  }},
+  { id: "T18", name: "Superres: stack the repetitive square and get an improved trace", run: async (op) => {
+    await op.autosetStable(1);
+    await op.clickExpect("srArm", async () => {
+      const s = await op.readText("srStats");
+      return s && !/idle/i.test(s || "");
+    }, { timeout: 8000, why: "ARM must start the super-resolution stacker on a repetitive signal" });
+    // it must accumulate stacks and report a result (bits gained / stack count)
+    const stat = await op.readUntil(async () => {
+      const s = await op.readText("srStats");
+      return s && /(bit|stack|\d)/i.test(s) && !/idle/i.test(s) ? s : null;
+    }, 15000, "super-resolution never produced a stacked result");
+    assert(stat != null, "no superres result");
+    await op.click("srArm", { why: "stop superres" });
+  }},
+  { id: "T19", name: "Wheel-zoom into the trace and keep a valid frequency", run: async (op) => {
+    await op.autosetStable(1);
+    const box = await (await op.page.$("#scope")).boundingBox();
+    await op.page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await op.page.mouse.wheel(0, -500);
+    await op.page.waitForTimeout(1000);
+    const f = await op.waitMeas(1, "Freq");
+    assert(near(f, 1e6, 0.05), `after zoom the frequency reads ${f} Hz`);
+  }},
+  { id: "T20", name: "Overshoot/preshoot reads a finite percentage", run: async (op) => {
+    await op.autosetStable(1);
+    await op.measMore();
+    const os = await op.readMeas(1, "Overshoot");
+    assert(os != null && os !== "—", "overshoot did not read a value on a square edge");
+  }},
+  { id: "T21", name: "Collapse the side dock and let the scope fill the width", run: async (op) => {
+    await op.clickExpect("panelToggle", async () => await op.page.evaluate(() => {
+      const d = document.getElementById("dock"); return d && (getComputedStyle(d).display === "none" || d.classList.contains("collapsed") || document.body.classList.contains("nopanel"));
+    }), { why: "panel toggle must collapse the dock" });
+    await op.click("panelToggle", { why: "restore the dock" });
+  }},
+  { id: "T22", name: "Trigger level slider moves the level and keeps a lock", run: async (op) => {
+    await op.autosetStable(1);
+    await op.page.evaluate(() => { const e = document.getElementById("lvl"); e.value = "1"; e.dispatchEvent(new Event("input", { bubbles: true })); e.dispatchEvent(new Event("change", { bubbles: true })); });
+    await op.page.waitForTimeout(1500);
+    const f = await op.waitMeas(1, "Freq");
+    assert(near(f, 1e6, 0.06), `after a trigger-level move the scope still reads ${f} Hz`);
+  }},
+];
+
 // ---------------------------------------------------------------------------
 // SOURCE prbs2M — build-prbs.sh 2  (PRBS7 NRZ data on C1, bit clock on C2)
 // Two channels: exercises eye/jitter, two-channel measure, math, X-Y, cursors.
@@ -353,6 +447,7 @@ const maskv = [
 
 export const WORKFLOWS = [
   ...tone1M.map((w) => ({ ...w, source: "tone1M" })),
+  ...tone1Mb.map((w) => ({ ...w, source: "tone1M" })),
   ...prbs2M.map((w) => ({ ...w, source: "prbs2M" })),
   ...maskv.map((w) => ({ ...w, source: "maskviol" })),
 ];
