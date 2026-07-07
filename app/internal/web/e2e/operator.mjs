@@ -22,7 +22,9 @@ export async function launch(url) {
   const pageErrors = [];
   page.on("pageerror", (e) => pageErrors.push(e.message));
   await page.goto(url, { waitUntil: "domcontentloaded", timeout: 20000 });
-  await page.waitForFunction(() => typeof frame !== "undefined" && frame && frame.c1 && frame.c1.length > 0, null, { timeout: 20000 });
+  // a frame of ANY kind (a slow envelope/roll band has no per-sample c1 array,
+  // so don't require c1 — just that the transport is delivering frames)
+  await page.waitForFunction(() => typeof frame !== "undefined" && frame && frame.seq > 0, null, { timeout: 25000 });
   return new Op(browser, page, pageErrors, url);
 }
 
@@ -214,6 +216,13 @@ export class Op {
   async readText(id) {
     const el = await this.page.$("#" + id);
     return el ? (await el.textContent()).trim() : null;
+  }
+  // autosetStable clicks AUTOSET and waits for a stable frequency reading on
+  // `ch` — the self-contained setup a measurement workflow needs so it does not
+  // depend on a prior workflow's state.
+  async autosetStable(ch = 1) {
+    await this.clickExpect("autoset", async () => (await this.readMeasValue(ch, "Freq")) != null, { timeout: 13000, why: "autoset to establish a triggered, scaled signal" });
+    return await this.waitMeas(ch, "Freq");
   }
   async status() { // ONLY for harness health checks (fps/running), never for results
     return await this.page.evaluate(async () => (await (await fetch("/api/status")).json()));

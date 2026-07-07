@@ -146,8 +146,24 @@ func (c *Controller) runAutoset(stop chan struct{}) {
 			return
 		}
 		m, _ := c.measureChans()
-		if has(m[0]) || has(m[1]) {
+		// "Found" requires a measurable FREQUENCY at this band, not just
+		// amplitude: a low-duty pulse train (e.g. a 400 µs-period, 100 µs-wide
+		// pulse) shows only a brief edge at a fast band — enough amplitude to
+		// trip a Vpp test but NO visible period, so autoset would lock a far-
+		// too-fast timebase and read no frequency. Requiring Freq>0 makes the
+		// sweep continue to a band where the repetition is actually resolved.
+		// The LAST (slowest) sweep step falls back to amplitude-only so a
+		// genuinely aperiodic-looking capture is still fitted rather than lost.
+		lastStep := td == sweep[len(sweep)-1]
+		fq := func(r *measure.Result) bool { return has(r) && r.Freq > 0 }
+		if fq(m[0]) || fq(m[1]) || (lastStep && (has(m[0]) || has(m[1]))) {
 			foundCh = strongerCh(m)
+			if fq(m[0]) || fq(m[1]) { // prefer the channel that actually has timing
+				foundCh = 0
+				if fq(m[1]) && (!fq(m[0]) || m[1].Vpp > m[0].Vpp) {
+					foundCh = 1
+				}
+			}
 			found = m[foundCh]
 			break
 		}
