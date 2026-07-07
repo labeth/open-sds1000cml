@@ -226,20 +226,35 @@ export class Op {
   // operator picking a scale appropriate to the task (e.g. a byte-viewing band
   // for protocol decode, which autoset's edge-detail band is too fast for).
   async setBand(tdivS) {
-    await this.page.evaluate((tv) => {
+    // Set the band and VERIFY it stuck: a device-side autoset can land its final
+    // display-timebase step AFTER this call and override it, so re-apply until
+    // the status reflects the requested band (a few tries).
+    const apply = async () => await this.page.evaluate((tv) => {
       const e = document.getElementById("tdiv");
-      if (!e || !e.options.length) return;
+      if (!e || !e.options.length) return null;
       let best = e.options[0];
       for (const o of e.options) if (Math.abs(parseFloat(o.value) - tv) < Math.abs(parseFloat(best.value) - tv)) best = o;
       e.value = best.value; e.dispatchEvent(new Event("change"));
+      return parseFloat(best.value);
     }, tdivS);
-    await this.page.waitForTimeout(1500);
+    const want = await apply();
+    if (want == null) return;
+    for (let i = 0; i < 8; i++) {
+      await this.page.waitForTimeout(700);
+      const cur = (await this.status()).tdiv_s;
+      if (Math.abs(cur - want) <= want * 0.01) return; // stuck
+      await apply(); // re-apply if a late autoset tick overrode it
+    }
   }
   // autosetStable clicks AUTOSET and waits for a stable frequency reading on
   // `ch` — the self-contained setup a measurement workflow needs so it does not
   // depend on a prior workflow's state.
   async autosetStable(ch = 1) {
     await this.clickExpect("autoset", async () => (await this.readMeasValue(ch, "Freq")) != null, { timeout: 13000, why: "autoset to establish a triggered, scaled signal" });
+    // wait for the autoset routine to FULLY finish (its final display-band step)
+    // before returning, so a subsequent setBand isn't overridden by a late
+    // autoset tick.
+    await this._settle(async () => await this.page.evaluate(() => typeof autosetBusy === "undefined" || !autosetBusy), 6000, "autoset never signalled done").catch(() => {});
     return await this.waitMeas(ch, "Freq");
   }
   async status() { // ONLY for harness health checks (fps/running), never for results

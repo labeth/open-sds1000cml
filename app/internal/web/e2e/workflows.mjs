@@ -650,7 +650,105 @@ const uart = [
   }},
 ];
 
+// ---------------------------------------------------------------------------
+// SOURCE spi — build-spi.sh  (SCLK 200 kHz on C1, MOSI on C2, Mode 0, MSB-first;
+// same 8-byte message with idle gaps). Exercises the SPI protocol decoder.
+// ---------------------------------------------------------------------------
+const spi = [
+  { id: "S1", name: "Autoset the SPI bus and see clock + data on both channels", run: async (op) => {
+    await op.clickExpect("autoset", async () => (await op.readMeasValue(1, "Vpp")) != null, { timeout: 12000, why: "autoset the SPI bus" });
+    const v1 = await op.waitMeas(1, "Vpp"), v2 = await op.waitMeas(2, "Vpp");
+    assert(v1 > 0.1 && v2 > 0.1, `both SPI lines must carry signal: SCLK ${v1} V, MOSI ${v2} V`);
+  }},
+  { id: "S2", name: "Measure the SPI clock frequency (~200 kHz)", run: async (op) => {
+    await op.autosetStable(1);
+    const f = await op.waitMeas(1, "Freq");
+    assert(near(f, 200e3, 0.1), `SCLK freq ${f} Hz, expected ~200 kHz`);
+  }},
+  { id: "S3", name: "Decode SPI (mode 0, CLK=C1, DATA=C2) and get transcript bytes", run: async (op) => {
+    await op.autosetStable(1);
+    await op.setBand(100e-6); // a full message + gap on screen (SPI frames cleanly here)
+    await op.selectExpect("decProto", "spi", async () => await op.page.evaluate(() => {
+      const c = document.getElementById("decodeResultCard"); return c && getComputedStyle(c).display !== "none";
+    }), { why: "selecting SPI must reveal the decode result panel" });
+    // set roles CLK=C1, DATA=C2, mode 0, MSB-first
+    await op.page.evaluate(() => {
+      const set = (id, v) => { const e = document.getElementById(id); if (e) { e.value = v; e.dispatchEvent(new Event("change")); } };
+      set("decClk", "1"); set("decData", "2"); set("decCpol", "0"); set("decCpha", "0"); set("decMsb", "1");
+    });
+    const txt = await op.readUntil(async () => {
+      const t = (await op.readText("decodeText")) || "";
+      return t.replace(/\s/g, "").length > 2 ? t : null;
+    }, 14000, "SPI decode produced no transcript bytes");
+    assert(txt != null, "empty SPI decode");
+  }},
+  { id: "S4", name: "SPI hex decode shows the known message bytes (55 AA …)", run: async (op) => {
+    await op.autosetStable(1);
+    await op.setBand(100e-6);
+    await op.selectExpect("decProto", "spi", null, { why: "SPI" });
+    await op.page.evaluate(() => {
+      const set = (id, v) => { const e = document.getElementById(id); if (e) { e.value = v; e.dispatchEvent(new Event("change")); } };
+      set("decClk", "1"); set("decData", "2"); set("decCpol", "0"); set("decCpha", "0"); set("decMsb", "1"); set("decFmt", "hex");
+    });
+    const txt = await op.readUntil(async () => {
+      const t = (await op.readText("decodeText")) || "";
+      return /55/.test(t) && /AA/i.test(t) ? t : null;
+    }, 16000, "SPI decode never showed the known 0x55/0xAA bytes");
+    assert(/55/.test(txt) && /AA/i.test(txt), `SPI decode should contain 55 and AA, got "${txt.slice(0, 60)}"`);
+    await op.selectExpect("decProto", "off", null, { why: "decode off" });
+  }},
+  { id: "S5", name: "Auto-detect recognizes the protocol as SPI", run: async (op) => {
+    await op.autosetStable(1);
+    await op.setBand(100e-6);
+    await op.clickExpect("decDetect", async () => {
+      const p = await op.page.evaluate(() => document.getElementById("decProto").value);
+      const msg = await op.readText("decDetectMsg");
+      return p === "spi" || /spi/i.test(msg || "");
+    }, { timeout: 14000, why: "auto-detect must identify the SPI bus" });
+    await op.selectExpect("decProto", "off", null, { why: "decode off" });
+  }},
+  { id: "S6", name: "Wrong bit order (LSB) changes the decoded byte values", run: async (op) => {
+    await op.autosetStable(1);
+    await op.setBand(100e-6);
+    await op.selectExpect("decProto", "spi", null, { why: "SPI" });
+    await op.page.evaluate(() => {
+      const set = (id, v) => { const e = document.getElementById(id); if (e) { e.value = v; e.dispatchEvent(new Event("change")); } };
+      set("decClk", "1"); set("decData", "2"); set("decCpol", "0"); set("decCpha", "0"); set("decMsb", "1"); set("decFmt", "hex");
+    });
+    const msb = await op.readUntil(async () => { const t = (await op.readText("decodeText")) || ""; return /55/.test(t) ? t : null; }, 16000, "no MSB decode");
+    await op.page.evaluate(() => { const e = document.getElementById("decMsb"); e.value = "0"; e.dispatchEvent(new Event("change")); });
+    await op.page.waitForTimeout(2500);
+    const lsb = (await op.readText("decodeText")) || "";
+    // reversing bit order must change the transcript (0x55 is symmetric, but the
+    // whole message isn't — 0x0F<->0xF0, 0x48<->0x12, etc.)
+    assert(lsb !== msb, "LSB-first produced an identical transcript to MSB-first");
+    await op.selectExpect("decProto", "off", null, { why: "decode off" });
+  }},
+  { id: "S7", name: "Measure the MOSI data-line amplitude", run: async (op) => {
+    await op.autosetStable(2);
+    const v = await op.waitMeas(2, "Vpp");
+    assert(v != null && v > 0.2, `MOSI Vpp ${v} V — expected a real logic swing`);
+  }},
+  { id: "S8", name: "X-Y plots SCLK against MOSI without error", run: async (op) => {
+    await op.autosetStable(1);
+    await op.clickExpect("mXY", async () => await op.page.evaluate(() => document.getElementById("mXY").classList.contains("on")), { why: "X-Y view" });
+    assert((await op.lcdPng()) > 3000, "SPI X-Y did not render");
+    await op.clickExpect("mYT", async () => await op.page.evaluate(() => document.getElementById("mYT").classList.contains("on")), { why: "back to Y-T" });
+  }},
+  { id: "S9", name: "The SPI clock has ~50% duty on the SCLK line", run: async (op) => {
+    await op.autosetStable(1);
+    const d = await op.waitMeas(1, "Duty");
+    assert(near(d, 50, 0, 15), `SCLK duty ${d}%, expected ~50%`);
+  }},
+  { id: "S10", name: "Both channels stay measurable together on the bus", run: async (op) => {
+    await op.autosetStable(1);
+    const f1 = await op.waitMeas(1, "Freq"), v2 = await op.waitMeas(2, "Vpp");
+    assert(near(f1, 200e3, 0.15) && v2 > 0.1, `SCLK ${f1} Hz / MOSI ${v2} V — bus not cleanly measurable`);
+  }},
+];
+
 export const WORKFLOWS = [
+  ...spi.map((w) => ({ ...w, source: "spi" })),
   ...uart.map((w) => ({ ...w, source: "uart" })),
   ...tone1M.map((w) => ({ ...w, source: "tone1M" })),
   ...tone1Mb.map((w) => ({ ...w, source: "tone1M" })),
