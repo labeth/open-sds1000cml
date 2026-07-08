@@ -128,10 +128,10 @@ func i2cWave(addr7, rw int, data []int, h int) (scl, sda []uint8) {
 	for _, d := range data {
 		pushByte(d)
 	}
-	seg(lo, lo, h)     // STOP: bring SDA low while SCL low...
-	seg(hi, lo, h/2)   // ...SCL high...
-	seg(hi, hi, h*2)   // ...SDA rises while SCL high = STOP
-	seg(hi, hi, h*4)   // idle
+	seg(lo, lo, h)   // STOP: bring SDA low while SCL low...
+	seg(hi, lo, h/2) // ...SCL high...
+	seg(hi, hi, h*2) // ...SDA rises while SCL high = STOP
+	seg(hi, hi, h*4) // idle
 	return scl, sda
 }
 
