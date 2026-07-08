@@ -1,6 +1,7 @@
 // app_decode.js — protocol-decode UI (classic script; shares app.js globals).
 
 // ---- protocol decode: compute + render ----
+"use strict";
 function decCodes(role) { return role === 2 ? (frame && frame.c2) : (frame && frame.c1); }
 
 function computeDecode() {
@@ -215,3 +216,61 @@ function runAutodetect() {
   setDetectMsg("detected " + detectLabel(d) + " · " + nb + " bytes");
 }
 
+// ==== wiring ====
+
+// ---- decode panel init + wiring ----
+
+(function initDecode() {
+  for (const sel of document.querySelectorAll(".rolesel")) {
+    sel.innerHTML = '<option value="1">C1</option><option value="2">C2</option>';
+  }
+  $("decSda").value = "2"; $("decData").value = "2"; $("decLine").value = "1";
+  $("decDetect").onclick = runAutodetect;
+  $("decProto").onchange = () => { dcfg.proto = $("decProto").value; setDetectMsg(""); updateDecodePanel(); recompute(); };
+  $("decScl").onchange = () => { dcfg.scl = +$("decScl").value; recompute(); };
+  $("decSda").onchange = () => { dcfg.sda = +$("decSda").value; recompute(); };
+  $("decClk").onchange = () => { dcfg.clk = +$("decClk").value; recompute(); };
+  $("decData").onchange = () => { dcfg.data = +$("decData").value; recompute(); };
+  $("decLine").onchange = () => { dcfg.line = +$("decLine").value; recompute(); };
+  $("decAuto").onclick = () => { dcfg.auto = !dcfg.auto; $("decAuto").classList.toggle("on", dcfg.auto); recompute(); };
+  $("decThr").oninput = () => { dcfg.auto = false; $("decAuto").classList.remove("on"); $("decThrV").textContent = $("decThr").value; recompute(); };
+  $("decBaud").onchange = () => { dcfg.baud = Math.max(0, +$("decBaud").value | 0); recompute(); }; // 0 = auto-baud
+  $("decBits").onchange = () => { dcfg.bits = Math.max(5, Math.min(9, +$("decBits").value | 0)); recompute(); };
+  $("decParity").onchange = () => { dcfg.parity = $("decParity").value; recompute(); };
+  $("decCpol").onchange = () => { dcfg.cpol = +$("decCpol").value; recompute(); };
+  $("decCpha").onchange = () => { dcfg.cpha = +$("decCpha").value; recompute(); };
+  $("decMsb").onchange = () => { dcfg.msb = $("decMsb").value === "1"; recompute(); };
+  $("decFmt").onchange = () => { dcfg.fmt = $("decFmt").value; recompute(); }; // hex / ascii / both
+  $("decStream").onclick = () => {
+    dcfg.stream = !dcfg.stream; $("decStream").classList.toggle("on", dcfg.stream);
+    dcfg.hist = []; dcfg.lastStreamSeq = 0;
+    fetch("/api/set", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ control: "stream", value: dcfg.stream ? 1 : 0 }) }).catch(() => {});
+    updateDecodeResults();
+  };
+  $("decHistClear").onclick = () => { dcfg.hist = []; dcfg.lastStreamSeq = 0; updateDecodeResults(); };
+  $("decWatch").onclick = () => { dcfg.watch = !dcfg.watch; $("decWatch").classList.toggle("on", dcfg.watch); updateCaptureList(); };
+  $("decWatchErr").onchange = () => { dcfg.watchErr = $("decWatchErr").checked; };
+  $("decWatchMatch").oninput = () => { dcfg.watchMatch = $("decWatchMatch").value; };
+  $("captureList").addEventListener("click", ev => { const d = ev.target.closest(".cap"); if (d) reviewCapture(+d.dataset.i); });
+  $("capLive").onclick = reviewLive;
+  $("capClear").onclick = () => { dcfg.captures = []; dcfg.reviewIdx = -1; dcfg.lastCapKey = ""; if (frozen) reviewLive(); updateCaptureList(); };
+  $("capCopy").onclick = () => {
+    const t = dcfg.captures.map(c => new Date(c.t).toISOString() + " #" + c.seq + " [" + c.reason + "] " + c.text).join("\n");
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).catch(() => {});
+    else { // plain-HTTP fallback (no navigator.clipboard off https/localhost)
+      const ta = document.createElement("textarea");
+      ta.value = t; ta.style.position = "fixed"; ta.style.opacity = "0";
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand("copy"); } catch (e) {}
+      document.body.removeChild(ta);
+    }
+    $("capCopy").textContent = "copied"; setTimeout(() => $("capCopy").textContent = "copy", 900);
+  };
+  $("decodeCopy").onclick = () => {
+    const t = $("decodeText").value;
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).catch(() => {});
+    else { $("decodeText").select(); try { document.execCommand("copy"); } catch (e) {} }
+    $("decodeCopy").textContent = "copied"; setTimeout(() => $("decodeCopy").textContent = "copy", 900);
+  };
+  updateDecodePanel();
+})();

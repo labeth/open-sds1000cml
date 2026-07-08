@@ -1,5 +1,6 @@
 // app_superres.js — super-res stacker UI glue (classic script; shares app.js globals).
 
+"use strict";
 function srStatus(msg) { $("srStats").textContent = msg; }
 
 function srUpdateStats(final) {
@@ -151,3 +152,170 @@ function srExitView() {
   // Live frames resume on the next poll; the poisoned acq signature re-homes.
 }
 
+// ==== wiring ====
+
+// ---- super-res stacker wiring ----
+async function srLoop(gen) {
+  if (!sr.armed || gen !== sr.gen) return;
+  try {
+    const r = await fetch("/api/frame.bin?since=" + sr.lastSeq + "&waitms=1000&raw=1");
+    if (!r.ok) throw new Error("http " + r.status);
+    const f = decodeBinFrame(await r.arrayBuffer());
+    if (f === null) throw new Error("decode");
+    // Re-check AFTER the await: the fetch parks server-side for up to 1 s
+    // and a reset/stop click mid-flight must not resurrect the stack.
+    if (!sr.armed || gen !== sr.gen) return;
+    srFails = 0;
+    if (!f.unchanged && f.seq !== sr.lastSeq) {
+      sr.lastSeq = f.seq;
+      srIngest(f);
+    }
+    setTimeout(() => srLoop(gen), 10);
+  } catch (e) {
+    // Failure (outage, protocol) — back off like the display loop instead of
+    // hammering a struggling device at the 10 ms tick.
+    srFails++;
+    setTimeout(() => srLoop(gen), Math.min(2000, 250 * srFails) + 250 * Math.random());
+  }
+}
+
+
+$("srArm").onclick = () => {
+  if (sr.armed) { srStop("stopped"); return; }
+  if (!st || (st.band !== "native-fast" && st.band !== "decimated")) {
+    srStatus("unsupported band (" + (st ? st.band : "?") + ") — use a native or decimated t/div");
+    return;
+  }
+  if (typeof decodeBinFrame !== "function" || typeof srNew !== "function") {
+    srStatus("superres/binframe scripts missing");
+    return;
+  }
+  if (typeof ej !== "undefined" && ej.armed) ejStop("stopped — superres armed (one raw consumer)");
+  sr.st = null; sr.meta = null; sr.lastSeq = 0; sr.savedWin = null;
+  sr.stopMode = $("srStopMode").value;
+  sr.stopVal = +$("srStopVal").value || 0;
+  sr.lastBits = 0;
+  // GATE markers set → seed the first frame as the reference with THAT region
+  // (works from SINGLE or free-run). Otherwise: frozen → lock the frozen frame;
+  // running → auto-adopt.
+  sr.lockRef = srGate.on || !!(st && !st.running);
+  // Markers live on the DISPLAY record (a windowed/decimated, trigger-anchored
+  // serve); the stacker feeds on the RAW record. The trigger edge is the common
+  // anchor, so convert markers → SECONDS from the display's edge now, and map
+  // onto the raw frame's own edge at seed time. Applying display fractions to
+  // the raw record directly is wrong (it stacked ~10 waves for an edge-wide mark).
+  sr.gateDt = null;
+  if (srGate.on) {
+    if (frame && frame.cols > 1 && frame.col_span_s > 0 && !frame.is_env) {
+      const cols = frame.cols, spc = frame.col_span_s / cols; // seconds per display column
+      const edgeCol = frame.edge_frac >= 0 ? frame.edge_frac * cols : cols / 2;
+      const cLo = Math.min(srGate.a, srGate.b) * (cols - 1);
+      const cHi = Math.max(srGate.a, srGate.b) * (cols - 1);
+      sr.gateDt = { lo: (cLo - edgeCol) * spc, hi: (cHi - edgeCol) * spc };
+    } else {
+      srStatus("gate needs a live/frozen trace on screen"); return;
+    }
+  }
+  sr.ch = +$("srCh").value || 0; // latched — a mid-capture change stops the stack
+  // "both" (0) aligns on the trigger-source channel; C1/C2 lock the alignment.
+  sr.alignCh = sr.ch === 2 ? 1 : sr.ch === 1 ? 0 : (st && st.trig_source === 1 ? 1 : 0);
+  sr.dither.on = $("srDither").checked;
+  sr.dither.base = (st && (sr.alignCh === 1 ? st.off2_v : st.off1_v)) || 0;
+  sr.dither.idx = 0; sr.dither.pending = 0; sr.dither.framesAtStep = 0;
+  sr.t0 = performance.now();
+  sr.armed = true;
+  $("srArm").textContent = "STOP";
+  $("srArm").classList.add("on");
+  srStatus(srGate.on ? "stacking… (gate = markers)" : "stacking…");
+  srLoop(++sr.gen);
+};
+
+$("srReset").onclick = () => { if (sr.showing) srExitView(); srStop(); sr.st = null; sr.meta = null; sr.savedWin = null; srStatus("idle"); };
+
+// AUTOGATE: always (re-)place the markers on the best feature in the current
+// view, then show them. GATE: show/hide toggle — auto-places only the first time;
+// after that the markers are wherever you dragged them (the only truth).
+$("srAutoGate").onclick = () => {
+  srGateDefaultFromView();
+  srGate.placed = true;
+  srGate.on = true;
+  $("srGate").classList.add("on");
+  srStatus("gate placed — drag to adjust, then ARM");
+  redraw();
+};
+$("srGate").onclick = () => {
+  srGate.on = !srGate.on;
+  if (srGate.on && !srGate.placed) { srGateDefaultFromView(); srGate.placed = true; }
+  $("srGate").classList.toggle("on", srGate.on);
+  if (srGate.on) srStatus("gate on — drag the markers over the feature, then ARM");
+  redraw();
+};
+
+// Stop-mode selector: adapt the target field's default + step to the units.
+$("srStopMode").onchange = () => {
+  const m = $("srStopMode").value, v = $("srStopVal");
+  const d = { bits: [4, 0.5], stacks: [500, 50], time: [60, 10] }[m];
+  v.disabled = !d;
+  if (d) { v.value = d[0]; v.step = d[1]; }
+};
+
+$("srShow").onclick = () => {
+  if (sr.showing) { srExitView(); return; }
+  if (!sr.st || !sr.st.frames) { srStatus("nothing stacked yet"); return; }
+  const res = srResult(sr.st);
+  const n = sr.st.n;
+  const dt = sr.st.sampleS / sr.st.K;
+  const meas = (mean, ch) => mean ? srMeasure(mean, sr.st.c[ch].vpc, sr.st.c[ch].offV, dt) : null;
+  // res.mean is the ALIGN channel's stack, res.mean2 the other — map them back to
+  // the PHYSICAL channels so the review honors the selection (align C2 must show
+  // as the cyan C2 trace, not swap into C1).
+  const c1m = sr.st.align === 0 ? res.mean : res.mean2;
+  const c2m = sr.st.align === 0 ? res.mean2 : res.mean;
+  // A gated stack's mean spans only the gate (gridL raw samples), not the whole
+  // record — size the time axis and edge anchor to the grid actually served.
+  const spanCols = sr.st.gated ? sr.st.gridL : n;
+  const edgeFrac = sr.st.gated
+    ? (sr.st.refEdgeX >= sr.st.gateLo && sr.st.refEdgeX < sr.st.gateHi ? (sr.st.refEdgeX - sr.st.gateLo) / sr.st.gridL : -1)
+    : (sr.st.edgeX >= 0 ? sr.st.edgeX / n : -1);
+  frame = {
+    seq: frame ? frame.seq : 0, unchanged: false,
+    c1: c1m, c2: c2m, is_env: false,
+    cols: res.mean.length, col_span_s: spanCols * sr.st.sampleS,
+    tdiv_s: sr.meta.tdiv_s, displayed_sdiv_s: sr.meta.tdiv_s,
+    vpc1: sr.st.c[0].vpc, vpc2: sr.st.c[1].vpc,
+    off1_v: sr.st.c[0].offV, off2_v: sr.st.c[1].offV,
+    edge_frac: edgeFrac,
+    win_frac: 1, depth: 0,
+    m1: meas(c1m, 0), m2: meas(c2m, 1),
+    clip1: false, clip2: false,
+    trigd: true, interp: false, coherent: true, ptp: 0,
+  };
+  sr.showing = true;
+  $("srShow").classList.add("on");
+  frozen = true; $("freeze").classList.add("on");
+  if (sr.savedWin) {
+    view.win.a = sr.savedWin.a; view.win.b = sr.savedWin.b; userZoomed = sr.savedWin.zoomed;
+  } else {
+    view.win.a = 0; view.win.b = 1; userZoomed = true; // whole stack; wheel-zoom into the detail
+  }
+  lastSig = "superres"; // poison the acq signature so returning to live re-homes
+  computeDecode(); redraw(); updateMeas(); updateCursors();
+  srUpdateStats(true);
+};
+
+$("srFit").onclick = () => {
+  if (!sr.st || !sr.st.frames) { srStatus("nothing stacked yet"); return; }
+  const res = srResult(sr.st);
+  const am = res.mean; // res.mean IS the align channel's stack
+  const ac = sr.st.c[sr.st.align];
+  const fit = srModelFit(am, sr.st.K, sr.st.sampleS, { spectrum, detectPeaks }, 6);
+  if (!fit) { srStatus("model fit failed (need a fuller stack)"); return; }
+  refs.B = {
+    c1: Array.from(fit.synth(Math.min(am.length, 16384))),
+    c2: null, vpc1: ac.vpc, vpc2: 1 / 32, off1: ac.offV, off2: 0, show: true,
+    // only overlay on a matching time base; a gated stack spans just the gate
+    srSpanS: (sr.st.gated ? sr.st.gridL : sr.st.n) * sr.st.sampleS,
+  };
+  updateRefRows(); redraw();
+  srStatus("model → REF B: " + fit.freqs.map(f => eng(f, "Hz", 3)).join(", "));
+};

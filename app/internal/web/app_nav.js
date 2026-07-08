@@ -3,6 +3,7 @@
 // drawSrGate overlays the super-res gate markers (magenta, matching the device)
 // with a shaded region between them. Positions are RECORD fractions mapped into
 // the current view, so they track the signal through zoom/pan.
+"use strict";
 function drawSrGate() {
   if (!srGate.on || view.mode !== "YT") return;
   const g = ctx, span = view.win.b - view.win.a || 1;

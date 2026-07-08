@@ -1,5 +1,6 @@
 // app_core.js — frame/status apply, redraw dispatch, measurement/status UI updates (classic script; shares app.js globals).
 
+"use strict";
 function redraw() {
   refreshAria(); // keep aria-pressed in sync with view toggles (which call redraw)
   updateStatusLine(); // time/div follows the zoom → keep it live, not just per status poll
@@ -262,3 +263,101 @@ function updateMathHint() {
   else h.textContent = "";
 }
 
+// ==== wiring ====
+
+// ---- frame + status polling / transport / send ----
+
+
+async function pollFrameBin() {
+  if (transport !== "bin") return;
+  if (frozen || document.hidden) { setTimeout(pollFrameBin, 90); return; } // idle tick; hidden tabs stop hitting the device
+  try {
+    const r = await fetch("/api/frame.bin?since=" + lastSeq + "&cols=" + reqCols + "&full=1&waitms=1000");
+    if (!r.ok) { fallbackToJSON(); return; }
+    const f = decodeBinFrame(await r.arrayBuffer());
+    if (f === null) { fallbackToJSON(); return; } // never render a reply that failed validation
+    binFailures = 0;
+    // Re-check frozen AFTER the await: the request parks server-side for up
+    // to 1 s, and a freeze/capture-review click mid-flight must not have its
+    // snapshot clobbered by the late reply. lastSeq stays put, so unfreezing
+    // immediately long-polls the newest frame.
+    if (!f.unchanged && !frozen) applyFrame(f);
+    setTimeout(pollFrameBin, 10); // the server did the pacing; this only guards a hot loop
+  } catch (e) {
+    binFailures++;
+    setTimeout(pollFrameBin, Math.min(2000, 250 * binFailures) + 250 * Math.random());
+  }
+}
+
+
+async function probeBin() {
+  if (transport === "bin") return;
+  try {
+    const r = await fetch("/api/frame.bin?since=0&cols=" + reqCols + "&full=1");
+    if (r.ok && decodeBinFrame(await r.arrayBuffer()) !== null) {
+      transport = "bin"; // pollFrame sees this and stops rescheduling
+      pollFrameBin();
+      return;
+    }
+  } catch (e) { /* still down */ }
+  setTimeout(probeBin, 30000);
+}
+
+// Legacy JSON poll — the fallback transport and the ?transport=json debug
+// path. The gen token guarantees at most ONE live chain: a transport flap
+// (fallback → upgrade → fallback) spawns a new chain with a new token and
+// any in-flight older chain exits on its next tick instead of accumulating.
+async function pollFrame(gen) {
+  if (gen === undefined) gen = jsonGen;
+  if (transport !== "json" || gen !== jsonGen) return;
+  if (!frozen) {
+    try {
+      const r = await fetch("/api/frame?since=" + lastSeq + "&cols=" + reqCols + "&full=1");
+      const f = await r.json();
+      if (!f.unchanged && !frozen) applyFrame(f);
+    } catch (e) { /* keep last */ }
+  }
+  setTimeout(() => pollFrame(gen), 90);
+}
+async function pollStatus() {
+  try { st = await (await fetch("/api/status")).json(); applyStatus(); }
+  catch (e) { $("line").textContent = "no connection"; lastLineHTML = ""; } // reset the diff guard or a static status keeps "no connection" stuck
+  // While a SINGLE is armed, poll fast so the self-stop on capture reaches the
+  // UI promptly: the RUN/STOP button toggles off st.running, and a 1 s-stale
+  // "running" shadow made a post-capture RUN click send STOP instead (the scope
+  // would not resume). 250 ms closes that window; steady state stays 1 s.
+  setTimeout(pollStatus, st && st.single ? 250 : 1000);
+}
+
+// ---- controls ----
+async function send(control, value) {
+  try { return await (await fetch("/api/set", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ control, value }) })).json(); }
+  catch (e) { return { ok: false }; }
+}
+async function autoset() {
+  if (autosetBusy) return;
+  autosetBusy = true;
+  const btn = $("autoset"); btn.classList.add("on");
+  try {
+    // trigger the device autoset (the hard-button path — one implementation)
+    try { await fetch("/api/panel", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ button: "auto" }) }); }
+    catch (e) { return; }
+    // wait for it to converge: a measurable, non-envelope frame whose measured
+    // frequency is stable across two reads (the sweep has settled on the native
+    // band). Bounded so the button always releases.
+    const has = m => m && m.vpp > 0.02;
+    const meas = () => { const m = frame && (has(frame.m1) ? frame.m1 : (has(frame.m2) ? frame.m2 : null)); return m && !frame.is_env ? m.freq : null; };
+    let prev = null, t0 = Date.now();
+    while (Date.now() - t0 < 9000) {
+      await awaitFrame(() => true, 700);
+      const f = meas();
+      if (f != null && f > 0 && prev != null && Math.abs(f - prev) <= prev * 0.03) break; // stable
+      prev = f;
+    }
+    goHome();
+    applyStatus();
+  } finally {
+    autosetBusy = false;
+    $("autoset").classList.remove("on");
+  }
+}

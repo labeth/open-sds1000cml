@@ -1,6 +1,7 @@
 // app_zonemask.js — zone-trigger + mask editor UI (classic script; shares app.js globals).
 
 // --- coordinate transforms (display point <-> edge-anchored zone coords) ---
+"use strict";
 function zmPointToZone(p) { // p = ptToNorm point -> {dtS, code}
   if (!frame || !frame.cols || !(frame.col_span_s > 0)) return null;
   const cols = frame.cols;
@@ -185,3 +186,152 @@ function zmRescale() {
   if (zchg || mchg) { zmStatus("re-anchored to the new vertical scale"); redraw(); }
 }
 
+// ==== wiring ====
+
+// ---- zone-trigger + mask wiring ----
+
+
+// ---- zone trigger + mask testing (engine-side; this is the config surface) ----
+// window property (not const): the scope draw path runs during load BEFORE
+// this glue executes — a lexical binding would be a TDZ landmine there.
+window.zm = {
+  zones: [],      // client copy for rendering + editing: engine-format objects
+  mask: null,     // {lo, hi, win} client copy for rendering
+  drawArmed: false, drawA: null, drawB: null,
+  failMark: null, // {frac, code} violation marker on a gallery frame
+  lastRing: -1,
+  lastSkip: -1, lastZoneSkip: -1, // skip-delta trackers (stale-test warnings)
+};
+
+
+
+
+// --- zone drawing (armed drag; wired into the scope pointer handlers) ---
+$("zmDraw").onclick = () => {
+  if (!zm.drawArmed && !zmCplOK(+$("zmCh").value || 0)) return;
+  zm.drawArmed = !zm.drawArmed;
+  zm.drawA = zm.drawB = null;
+  $("zmDraw").classList.toggle("on", zm.drawArmed);
+  zmStatus(zm.drawArmed ? "drag a rectangle on the scope to add a zone" : "");
+};
+$("zmClearZones").onclick = () => { zm.zones = []; zmPushZones(); redraw(); };
+$("zmTrig").onclick = () => {
+  const on = !$("zmTrig").classList.contains("on");
+  $("zmTrig").classList.toggle("on", on);
+  send("zonemode", on ? 1 : 0);
+  zmStatus(on ? "zone trigger ON — only qualifying frames publish" : "zone trigger off");
+};
+
+// --- mask build from N raw frames (dilated client-side, uploaded) ---
+$("zmBuild").onclick = async () => {
+  if (!st || !st.win_cols) { zmStatus("no window info yet"); return; }
+  const N = Math.max(4, Math.min(200, +$("zmN").value || 32));
+  const tolT = Math.max(0, +$("zmTolT").value || 0), tolV = Math.max(0, +$("zmTolV").value || 0);
+  const ch = +$("zmCh").value || 0;
+  if (!zmCplOK(ch)) return;
+  const win = st.win_cols, posFrac = st.trig_pos_frac > 0 ? st.trig_pos_frac : 0.5;
+  const lo = new Array(win).fill(255), hi = new Array(win).fill(0);
+  let got = 0, lastSeq = 0, tries = 0;
+  zmStatus("building mask 0/" + N + "…");
+  while (got < N && tries < N * 6) {
+    tries++;
+    try {
+      const r = await fetch("/api/frame.bin?since=" + lastSeq + "&waitms=1000&raw=1");
+      const f = decodeBinFrame(await r.arrayBuffer());
+      if (!f || f.unchanged || f.seq === lastSeq) continue;
+      lastSeq = f.seq;
+      if (!(f.edge_x >= 0) || !(f.sample_s > 0)) continue;
+      const sig = ch === 1 ? f.c2 : f.c1;
+      if (!sig) continue;
+      const left = Math.round(f.edge_x - posFrac * win);
+      for (let j = 0; j < win; j++) {
+        const s = left + j;
+        if (s < 0 || s >= f.cols) continue;
+        const v = sig[s];
+        if (v < lo[j]) lo[j] = v;
+        if (v > hi[j]) hi[j] = v;
+      }
+      got++;
+      if (got % 8 === 0) zmStatus("building mask " + got + "/" + N + "…");
+    } catch (e) { break; }
+  }
+  if (got < 4) { zmStatus("mask build failed — no locked frames (trigger on-signal?)"); return; }
+  // unobserved columns (lo>hi) are UNTESTABLE — normalize to always-pass before
+  // dilating, or they become inverted-garbage bounds that fail every sample
+  for (let j = 0; j < win; j++) if (lo[j] > hi[j]) { lo[j] = 0; hi[j] = 255; }
+  // dilation (same morphology as engine.BuildMaskFromEnvelope)
+  const dLo = new Array(win), dHi = new Array(win);
+  for (let j = 0; j < win; j++) {
+    let mn = 255, mx = 0;
+    for (let k = Math.max(0, j - tolT); k <= Math.min(win - 1, j + tolT); k++) {
+      if (lo[k] < mn) mn = lo[k];
+      if (hi[k] > mx) mx = hi[k];
+    }
+    dLo[j] = Math.max(0, mn - tolV);
+    dHi[j] = Math.min(255, mx + tolV);
+  }
+  zm.mask = { lo: dLo, hi: dHi, win, ch };
+  const c = zmVctx(ch);
+  if (c) { // frozen source for exact re-mapping on later V/div / offset changes
+    zm.mask.srcLo = dLo.slice(); zm.mask.srcHi = dHi.slice();
+    zm.mask.svpc = c.vpc; zm.mask.soff = c.off; zm.mask.avpc = c.vpc; zm.mask.aoff = c.off;
+  }
+  await fetch("/api/mask", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ lo: dLo, hi: dHi, win, ch }) }).catch(() => {});
+  zmStatus("mask built from " + got + " frames (±" + tolT + " samp, ±" + tolV + " codes) — set test mode");
+  redraw();
+};
+$("zmMode").onchange = () => send("maskmode", +$("zmMode").value);
+$("zmClearStats").onclick = () => { send("maskclear", 0); zm.failMark = null; redraw(); };
+
+window.zmRescale = zmRescale; // exercised directly by the browser e2e
+
+// --- live meter + failure gallery (driven off the 1 Hz status poll) ---
+setInterval(() => {
+  if (!st) return;
+  zmRescale();
+  if (st.mask_mode > 0 || st.mask_fail > 0 || st.mask_pass > 0) {
+    const total = (st.mask_pass || 0) + (st.mask_fail || 0);
+    let line = `pass ${st.mask_pass || 0} · FAIL ${st.mask_fail || 0}` +
+      (total ? ` · ${((st.mask_fail || 0) / total * 100).toFixed(3)}%` : "") +
+      (st.mask_stopped ? " · STOPPED ON FAIL" : "");
+    if (st.mask_skip > 0) line += ` · skip ${st.mask_skip}`;
+    // a test that only skips is DEAD — say so instead of looking happy
+    if (st.mask_mode > 0 && (st.mask_skip || 0) > zm.lastSkip && zm.lastSkip >= 0)
+      line += " · MASK STALE (scale/timebase changed) — rebuild";
+    zm.lastSkip = st.mask_skip || 0;
+    $("zmMeter").textContent = line;
+  } else { $("zmMeter").textContent = ""; zm.lastSkip = st.mask_skip || 0; }
+  if (st.zone_mode > 0 && (st.zone_skip || 0) > zm.lastZoneSkip && zm.lastZoneSkip >= 0)
+    zmStatus("zone trigger inactive at this timebase (env/roll frames can't qualify)");
+  zm.lastZoneSkip = st.zone_skip || 0;
+  if ((st.mask_ring || 0) !== zm.lastRing) {
+    zm.lastRing = st.mask_ring || 0;
+    let html = "";
+    for (let i = 0; i < zm.lastRing; i++) html += `<button class="btn-mini zmf" data-i="${i}">fail ${i + 1}</button> `;
+    $("zmGallery").innerHTML = html;
+    for (const b of document.querySelectorAll("#zmGallery .zmf")) {
+      b.onclick = async () => {
+        try {
+          const r = await (await fetch("/api/maskfail?i=" + b.dataset.i)).json();
+          if (!r.ok) return;
+          frame = {
+            seq: r.seq, unchanged: false,
+            c1: Int16Array.from(r.c1), c2: r.c2 ? Int16Array.from(r.c2) : null,
+            is_env: false, cols: r.valid, col_span_s: r.valid * r.sample_s,
+            tdiv_s: st.tdiv_s, displayed_sdiv_s: st.displayed_sdiv_s,
+            vpc1: 1 / 32, vpc2: 1 / 32, off1_v: 0, off2_v: 0,
+            edge_frac: r.edge_x >= 0 ? r.edge_x / r.valid : -1,
+            win_frac: Math.min(1, r.win_cols / r.valid), depth: r.valid,
+            trigd: true, interp: false, coherent: true, ptp: 0,
+          };
+          zm.failMark = { frac: r.fail_sample / (r.valid - 1), code: r.fail_code };
+          frozen = true; $("freeze").classList.add("on");
+          userZoomed = false; lastSig = "maskfail";
+          const h = homeWindow(frame); view.win.a = h.a; view.win.b = h.b;
+          redraw();
+          zmStatus("failure " + (+b.dataset.i + 1) + " @ capture #" + r.seq + " — violation circled (unfreeze to resume)");
+        } catch (e) { }
+      };
+    }
+  }
+}, 1000);

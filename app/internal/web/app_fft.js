@@ -1,5 +1,6 @@
 // app_fft.js — FFT/peak detection + FFT view rendering (classic script; shares app.js globals).
 
+"use strict";
 function peaksVisible() { return view.mode === "FFT" || view.mode === "YT"; }
 
 function chOn(ch) { return ch === 1 ? view.c1 : view.c2; }
@@ -338,3 +339,26 @@ function updateFFTListCh(ch) {
 
 function updateFFTLists() { updateFFTListCh(1); updateFFTListCh(2); }
 
+// ==== wiring ====
+
+// ---- FFT peak-row selection wiring ----
+
+
+
+
+// One delegated handler per channel's (never-replaced) tbody. Toggling by the
+// row's own frequency is robust to the list re-sorting between render and click.
+for (const ch of [1, 2]) {
+  $("fftBody" + ch).addEventListener("click", ev => {
+    const tr = ev.target.closest(".pk");
+    if (!tr || tr.dataset.freq == null) return;
+    togglePeakCh(ch, +tr.dataset.freq);
+  });
+  $("fftClear" + ch).onclick = () => clearPeaksCh(ch);
+  $("fftN" + ch).oninput = () => {
+    const v = Math.round(+$("fftN" + ch).value);
+    maxPeaks = Number.isFinite(v) && v >= 1 ? Math.min(64, v) : 8;
+    $("fftN1").value = maxPeaks; $("fftN2").value = maxPeaks; // shared count
+    redraw();
+  };
+}

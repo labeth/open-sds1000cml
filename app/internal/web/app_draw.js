@@ -1,5 +1,6 @@
 // app_draw.js — Y-T/X-Y trace, grid, math, refs, cursors drawing (classic script; shares app.js globals).
 
+"use strict";
 function persistLayer() {
   if (!persistCv || persistCv.width !== CW || persistCv.height !== CH) {
     persistCv = document.createElement("canvas");

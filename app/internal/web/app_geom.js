@@ -1,5 +1,6 @@
 // app_geom.js — viewport/window/nav geometry + marker/zoom math (classic script; shares app.js globals).
 
+"use strict";
 function srGateDefaultFromView() {
   const w = view.win, s = w.b - w.a;
   // fallback: inset from the visible edges so both handles are easy to grab

@@ -348,24 +348,29 @@
 <script src="superres_math.js"></script>
 <script src="superres_template.js"></script>
 <script src="superres_gate.js"></script>
+<script src="superres_measure.js"></script>
 <script src="superres.js"></script>
+<script src="eyejitter_analysis.js"></script>
 <script src="eyejitter.js"></script>
 <script src="bode.js"></script>
 <script src="spectrogram.js"></script>
-<!-- app.js split into topical classic scripts: definitions first (any order —
-     functions resolve globals at call-time), then app.js (state + consts), then
-     app_wire.js (top-level event wiring + init, needs everything defined). -->
-<script src="app_geom.js"></script>
-<script src="app_draw.js"></script>
-<script src="app_fft.js"></script>
-<script src="app_nav.js"></script>
-<script src="app_decode.js"></script>
-<script src="app_superres.js"></script>
-<script src="app_eye.js"></script>
-<script src="app_zonemask.js"></script>
-<script src="app_views.js"></script>
-<script src="app_core.js"></script>
-<script src="app.js"></script>
-<script src="app_wire.js"></script>
+<!-- The client, in load order: shared state first, then pure helpers, then the
+     orchestration/transport core, then one file per feature (its functions AND
+     its event wiring together), then the cross-cutting control/canvas wiring,
+     and finally app_init (first paint + poll) once everything is defined. -->
+<script src="app.js"></script>            <!-- shared state + globals + small helpers -->
+<script src="app_geom.js"></script>       <!-- viewport/window/marker geometry (pure) -->
+<script src="app_draw.js"></script>       <!-- trace/grid/math/ref/cursor drawing (pure) -->
+<script src="app_nav.js"></script>        <!-- navigator strip drawing (pure) -->
+<script src="app_core.js"></script>       <!-- redraw/apply/setMode + frame/status polling -->
+<script src="app_fft.js"></script>        <!-- FFT view + peak wiring -->
+<script src="app_decode.js"></script>     <!-- protocol decode + wiring -->
+<script src="app_superres.js"></script>   <!-- super-res stacker + wiring -->
+<script src="app_eye.js"></script>        <!-- eye/jitter + wiring -->
+<script src="app_zonemask.js"></script>   <!-- zone-trigger/mask + wiring -->
+<script src="app_views.js"></script>      <!-- Bode + spectrogram + wiring -->
+<script src="app_controls.js"></script>   <!-- acquisition/trigger/timebase/vertical/view controls -->
+<script src="app_canvas.js"></script>     <!-- scope + navigator pointer/wheel interactions -->
+<script src="app_init.js"></script>       <!-- first paint + first poll (must be last) -->
 </body>
 </html>

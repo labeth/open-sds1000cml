@@ -1,3 +1,9 @@
+// app.js — the client's shared foundation: global state, config constants, the
+// palette/DOM handles, and a few small helpers. Loaded FIRST (after the JS
+// libraries) so every feature module (app_*.js) and the wiring can close over
+// these globals. Feature logic + its event wiring live in the per-feature files;
+// app_init.js runs last (first paint + poll). See ui.html for the load order.
+"use strict";
 const $ = id => document.getElementById(id);
 const scope = $("scope"), ctx = scope.getContext("2d", { alpha: false });
 let CW = 800, CH = 400, dpr = 1;

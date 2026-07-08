@@ -1,5 +1,6 @@
 // app_views.js — Bode + spectrogram view glue + small formatters (classic script; shares app.js globals).
 
+"use strict";
 function fmtTdiv(s) {
   const strip = x => x.replace(/(\.\d*?)0+$/, "$1").replace(/\.$/, "");
   if (s >= 1) return strip(s.toPrecision(3)) + " s";
@@ -95,3 +96,90 @@ function spgDrawBig() {
   $("ejBigInfo").textContent = "Spectrogram — FFT over time · click to close";
 }
 
+// ==== wiring ====
+
+// ---- Bode + spectrogram wiring ----
+
+
+async function bodeRenderNow() {
+  if (typeof bodeDraw !== "function") return;
+  const cv = $("bodeCv"); if (!cv) return;
+  let pts = { freq: [], gain_db: [], phase_deg: [] };
+  try { const r = await (await fetch("/api/bode")).json(); if (r.ok) pts = r; } catch (e) { }
+  // crisp render at the element's CSS box × dpr
+  const rect = cv.getBoundingClientRect();
+  const W = Math.max(200, Math.round(rect.width || cv.width)), H = cv.height;
+  if (cv.width !== W) cv.width = W;
+  const g = cv.getContext("2d");
+  bodeDraw(g, cv.width, H, pts, bodeColors());
+  return pts.n || 0;
+}
+
+$("bodeArm").onclick = () => {
+  bode.armed = !bode.armed;
+  $("bodeArm").classList.toggle("on", bode.armed);
+  $("bodeArm").textContent = bode.armed ? "STOP" : "ARM";
+  const ref = +$("bodeRef").value || 0, dut = +$("bodeDut").value || 0;
+  if (ref === dut) { bodeStatus("REF and DUT must be different channels"); }
+  // /api/set bodemode carries ref/dut in lo/hi
+  fetch("/api/set", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ control: "bodemode", value: bode.armed ? 1 : 0, lo: ref, hi: dut }) }).catch(() => {});
+  bodeStatus(bode.armed ? "armed — sweep the source frequency to add points" : "stopped");
+};
+$("bodeClear").onclick = () => {
+  send("bodeclear", 0);
+  bode.lastN = -1;
+  bodeRenderNow();
+  bodeStatus(bode.armed ? "cleared — sweeping" : "cleared");
+};
+for (const id of ["bodeRef", "bodeDut"]) $(id).onchange = () => {
+  if (bode.armed) {
+    const ref = +$("bodeRef").value || 0, dut = +$("bodeDut").value || 0;
+    fetch("/api/set", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ control: "bodemode", value: 1, lo: ref, hi: dut }) }).catch(() => {});
+  }
+};
+// full-screen enlarge on click, reusing the eye big-view dialog shell
+$("bodeCv").onclick = () => {
+  if (typeof ejBigVisible !== "function") return;
+  ejBigKind = "bode";
+  $("ejBigWrap").classList.remove("hidden");
+  bodeDrawBig();
+};
+
+// 1 Hz: refresh the curve + the live-point readout while armed (or non-empty).
+setInterval(async () => {
+  if (!st) return;
+  const active = st.bode_mode > 0 || (st.bode_points || 0) > 0;
+  if (!active) return;
+  const n = await bodeRenderNow();
+  if (typeof ejBigVisible === "function" && ejBigVisible() && ejBigKind === "bode") bodeDrawBig();
+  let line = `${n || 0} points`;
+  if (st.bode_mode > 0) {
+    line = st.bode_valid
+      ? `live: ${eng(st.bode_freq_hz, "Hz", 3)} · ${st.bode_gain_db.toFixed(2)} dB · ${st.bode_phase_deg.toFixed(1)}° — ${n || 0} pts`
+      : `armed — no single-frequency lock yet (${n || 0} pts)`;
+  }
+  bodeStatus(line);
+}, 1000);
+
+$("spgArm").onclick = () => {
+  spg.armed = !spg.armed;
+  $("spgArm").classList.toggle("on", spg.armed);
+  $("spgArm").textContent = spg.armed ? "STOP" : "ARM";
+  if (spg.armed) spgEnsure();
+  spgStatus(spg.armed ? "armed — building the waterfall from each capture" : "stopped");
+};
+$("spgClear").onclick = () => { if (spg.sg) sgClear(spg.sg); spgRender(); spgStatus(spg.armed ? "cleared — building" : "cleared"); };
+$("spgCh").onchange = () => { spg.ch = +$("spgCh").value === 2 ? 2 : 1; };
+$("spgFloor").onchange = () => { if (spg.sg) spg.sg.floorDb = +$("spgFloor").value || -60; };
+$("spgCv").onclick = () => {
+  if (typeof ejBigVisible !== "function") return;
+  ejBigKind = "spg"; $("ejBigWrap").classList.remove("hidden"); spgDrawBig();
+};
+// push + render on a fast tick so the waterfall scrolls at ~frame rate
+setInterval(() => {
+  if (!spg.armed && (!spg.sg || spg.sg.rows === 0)) return;
+  spgPushCurrent();
+  spgRender();
+  if (typeof ejBigVisible === "function" && ejBigVisible() && ejBigKind === "spg") spgDrawBig();
+  if (spg.armed) spgStatus(`waterfall live · ${spg.sg ? spg.sg.rows : 0} rows · Nyquist ${eng(peakNyq(), "Hz", 3)}`);
+}, 80);

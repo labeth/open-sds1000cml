@@ -1,5 +1,6 @@
 // app_eye.js — eye-diagram + jitter view (classic script; shares app.js globals).
 
+"use strict";
 function ejStop(why) {
   ej.armed = false;
   $("ejArm").textContent = "ARM";
@@ -258,3 +259,49 @@ function ejDrawEyeTo(cv, st2, detailed) {
   g.setLineDash([]);
 }
 
+// ==== wiring ====
+
+// ---- eye / jitter wiring ----
+
+$("ejArm").onclick = () => {
+  if (ej.armed) { ejStop("stopped"); return; }
+  if (!st || (st.band !== "native-fast" && st.band !== "decimated")) {
+    ejStatus("unsupported band (" + (st ? st.band : "?") + ") — use a native/decimated t/div");
+    return;
+  }
+  if (typeof ejNew !== "function" || typeof decodeBinFrame !== "function") { ejStatus("eyejitter/binframe scripts missing"); return; }
+  if (sr.armed) srStop("stopped — eye/jitter armed (one raw consumer)");
+  ej.st = ejNew({});
+  ej.lastSeq = 0; ej.gen++; ej.fails = 0;
+  ej.ch = 0; ej.vpc0 = 0; ej.incons = 0;
+  ej.armed = true;
+  $("ejArm").textContent = "STOP";
+  $("ejArm").classList.add("on");
+  ejStatus("locking…");
+  ejLoop(ej.gen);
+};
+$("ejReset").onclick = () => { ej.st = ejNew({}); ej.lastUi = 0; ejRender(true); ejStatus(ej.armed ? "reset — locking…" : "idle"); };
+
+async function ejLoop(gen) {
+  if (!ej.armed || gen !== ej.gen) return;
+  try {
+    const r = await fetch("/api/frame.bin?since=" + ej.lastSeq + "&waitms=1000&raw=1");
+    if (!r.ok) throw new Error("http " + r.status);
+    const f = decodeBinFrame(await r.arrayBuffer());
+    if (f === null) throw new Error("decode");
+    if (!ej.armed || gen !== ej.gen) return; // stop clicked mid-flight
+    ej.fails = 0;
+    if (!f.unchanged && f.seq !== ej.lastSeq) {
+      ej.lastSeq = f.seq;
+      ejIngest(f);
+    }
+    setTimeout(() => ejLoop(gen), 10);
+  } catch (e) {
+    ej.fails++;
+    setTimeout(() => ejLoop(gen), Math.min(2000, 250 * ej.fails) + 250 * Math.random());
+  }
+}
+$("ejEye").onclick = () => ejOpenBig("eye");
+$("ejHist").onclick = () => ejOpenBig("hist");
+$("ejSpec").onclick = () => ejOpenBig("spec");
+$("ejBigWrap").onclick = () => $("ejBigWrap").classList.add("hidden");
