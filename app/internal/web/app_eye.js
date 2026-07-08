@@ -1,6 +1,7 @@
 // app_eye.js — eye-diagram + jitter view (classic script; shares app.js globals).
 
 "use strict";
+let ejOptBusy = false; // eye "optimize" search in progress (ejIngest guards re-learn instead of stopping)
 function ejStop(why) {
   ej.armed = false;
   $("ejArm").textContent = "ARM";
@@ -19,13 +20,17 @@ function ejIngest(f) {
   ej.vpcReal = !!(ch === 2 ? f.vpc2 : f.vpc1); // mV readouts only with a real calibration
   // a V/div change rescales the codes mid-accumulation — the eye/levels would
   // mix scales; stop honestly (same policy as superres)
-  if (ej.vpc0 && Math.abs(vpc - ej.vpc0) > 0.02 * ej.vpc0) { ejStop("vertical scale changed — data kept, re-ARM to continue"); return; }
+  if (ej.vpc0 && Math.abs(vpc - ej.vpc0) > 0.02 * ej.vpc0) {
+    if (ejOptBusy) { ejFreshState(); ej.vpc0 = vpc; return; } // optimize changes V/div on purpose — re-learn, don't stop
+    ejStop("vertical scale changed — data kept, re-ARM to continue"); return;
+  }
   ej.vpc0 = vpc;
   ej.vpc = vpc;
   const disp = ejFeed(ej.st, sig, f.cols, f.sample_s);
   // a t/div change alters the UI in samples: every record rejects forever while
   // the panel looks live — stop honestly like the V/div and channel guards
   if (disp === "rejected:ui-inconsistent") {
+    if (ejOptBusy) { ejFreshState(); return; } // optimize steps the timebase on purpose — re-learn the new band
     ej.incons = (ej.incons || 0) + 1;
     if (ej.incons >= 10) { ejStop("signal scale/timebase changed — data kept, re-ARM to continue"); return; }
   } else if (disp.startsWith("locked")) ej.incons = 0;
@@ -262,10 +267,105 @@ function ejDrawEyeTo(g, cv, st2, detailed) {
   g.setLineDash([]);
 }
 
+// ---- OPTIMIZE: find the best acquisition settings for the eye on the current
+// signal. The eye folds every sample at (t−t0) mod 2UI and pools edge intervals
+// across records, so it needs NO trigger lock — it works free-run above the
+// comparator ceiling. Quality is governed by SAMPLES PER UI (CDR sub-sample
+// resolution + phase bins): more is better until the record spans too few UIs.
+// So: fit the vertical (autoset), then step the timebase to drive samples/UI
+// (ej.st.ui, measured) into a sweet spot — for a fast signal that means the
+// FASTEST band that still LOCKS, which is exactly the rate limit.
+const ejSleep = ms => new Promise(r => setTimeout(r, ms));
+// fresh accumulation for a NEW band during the search: also clear the guard
+// state (vpc0/incons) so the intentional V/div + timebase changes we make don't
+// trip the "vertical/timebase changed — re-ARM" guards mid-optimize.
+function ejFreshState() { ej.st = ejNew({}); ej.lastUi = 0; ej.vpc0 = 0; ej.incons = 0; }
+
+// wait for the eye to lock at the current band; resolve to samples/UI or null.
+function ejWaitLock(timeoutMs) {
+  return new Promise(resolve => {
+    const t0 = Date.now();
+    const poll = () => {
+      if (ej.st && ej.st.uiN >= 3 && ej.st.records >= 2) return resolve(ej.st.ui);
+      if (Date.now() - t0 > timeoutMs) return resolve(ej.st && ej.st.uiN > 0 ? ej.st.ui : null);
+      setTimeout(poll, 120);
+    };
+    poll();
+  });
+}
+// step the timebase one detent (dir<0 faster / more samples/UI, dir>0 slower),
+// staying on an eye-usable band (native-fast/decimated, tdiv < 5 ms). false at edge.
+function ejStepTdiv(dir) {
+  if (!st || !st.tdivs || !st.tdiv_s) return false;
+  const tds = st.tdivs.filter(t => t < 5e-3).sort((a, b) => a - b);
+  let i = tds.findIndex(t => Math.abs(t - st.tdiv_s) <= t * 1e-6);
+  if (i < 0) { let best = Infinity; tds.forEach((t, k) => { const d = Math.abs(t - st.tdiv_s); if (d < best) { best = d; i = k; } }); }
+  const ni = i + dir;
+  if (ni < 0 || ni >= tds.length) return false;
+  send("tdiv", tds[ni]);
+  return true;
+}
+// wait for the band change to land in the status poll, then settle.
+function ejSettleBand(prevTdiv) {
+  return new Promise(resolve => {
+    const t0 = Date.now();
+    const poll = () => {
+      if (st && st.tdiv_s && Math.abs(st.tdiv_s - prevTdiv) > prevTdiv * 1e-6) return setTimeout(resolve, 450);
+      if (Date.now() - t0 > 3500) return resolve();
+      setTimeout(poll, 100);
+    };
+    poll();
+  });
+}
+
+async function ejOptimize() {
+  if (ejOptBusy) return;
+  ejOptBusy = true;
+  const btn = $("ejOpt"); if (btn) btn.classList.add("on");
+  try {
+    // 1. fit the vertical + find the signal (best-effort; the CDR is hardier than
+    //    the frame frequency read for very fast / untriggered signals).
+    ejStatus("optimize: fitting the signal…");
+    try { await autoset(); } catch (e) { }
+    // 2. arm the eye if it isn't already.
+    if (!ej.armed) { $("ejArm").click(); await ejSleep(300); }
+    if (!ej.armed) { ejStatus("optimize needs a native/decimated band with a signal"); return; }
+    // 3. 1-D search on samples/UI (monotone in band: faster band → more samples/UI).
+    const LO = 12, HI = 32;
+    let lastGood = null;
+    for (let step = 0; step < 8; step++) {
+      ejFreshState();
+      const spu = await ejWaitLock(4500);
+      if (spu == null) { // this band won't lock — fall back to the last that did
+        if (lastGood != null) {
+          const prev = st.tdiv_s; send("tdiv", lastGood); await ejSettleBand(prev);
+          ejFreshState(); await ejWaitLock(3000);
+          ejStatus(`optimized at the lock limit · ${eng(ejResult(ej.st).bitRate, "b/s", 3)} · ${ej.st.ui.toFixed(1)} samp/UI`);
+        } else ejStatus("no lock — no repetitive serial signal found on this channel");
+        return;
+      }
+      const rate = ejResult(ej.st).bitRate;
+      lastGood = st.tdiv_s;
+      if (spu >= LO && spu <= HI) { ejStatus(`optimized · ${spu.toFixed(1)} samp/UI · ${eng(rate, "b/s", 3)}`); return; }
+      const dir = spu < LO ? -1 : +1; // too coarse → faster; too fine → slower
+      const prev = st.tdiv_s;
+      if (!ejStepTdiv(dir)) { ejStatus(`optimized (band ${dir < 0 ? "floor" : "ceiling"}) · ${spu.toFixed(1)} samp/UI · ${eng(rate, "b/s", 3)}`); return; }
+      ejStatus(`optimize: ${spu.toFixed(1)} samp/UI → ${dir < 0 ? "faster" : "slower"}…`);
+      await ejSettleBand(prev);
+    }
+    ejStatus("optimize: converged");
+  } finally {
+    ejOptBusy = false;
+    if ($("ejOpt")) $("ejOpt").classList.remove("on");
+    ejFreshState(); // clean accumulation on the settled band
+  }
+}
+
 // ==== wiring ====
 
 // ---- eye / jitter wiring ----
 
+$("ejOpt").onclick = ejOptimize;
 $("ejArm").onclick = () => {
   if (ej.armed) { ejStop("stopped"); return; }
   if (!st || (st.band !== "native-fast" && st.band !== "decimated")) {
