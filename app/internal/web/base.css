@@ -17,8 +17,12 @@
 
   #main { flex: 1 1 auto; display: flex; min-height: 0; }
   #wrap { flex: 1 1 auto; min-width: 0; background: var(--screen); display: flex; flex-direction: column; }
-  #scopebox { position: relative; flex: 1 1 auto; min-height: 0; }
-  #scope { position: absolute; inset: 0; display: block; touch-action: none; }
+  #scopebox { position: relative; flex: 1 1 auto; min-height: 0; overflow: hidden; }
+  /* width/height:100% (NOT just inset:0) is required: a <canvas> is a REPLACED
+     element, so under position:absolute it uses its intrinsic (backing-store)
+     size for width:auto and ignores `right` — on a HiDPI display that's 2× the
+     box and spills over the side panel. 100% ties it to #scopebox instead. */
+  #scope { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
   #nav { flex: 0 0 auto; width: 100%; height: 56px; display: block;
          border-top: 1px solid var(--edge); cursor: ew-resize; touch-action: none; }
   #stopped {

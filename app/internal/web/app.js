@@ -73,7 +73,11 @@ function resize() {
   const box = $("scopebox");
   const w = Math.max(240, Math.floor(box.clientWidth));
   const h = Math.max(120, Math.floor(box.clientHeight));
-  scope.style.width = w + "px"; scope.style.height = h + "px";
+  // The canvas ELEMENT is sized purely by CSS (#scope is position:absolute
+  // inset:0, so it's bound to #scopebox's edges and can NEVER exceed the flex
+  // layout / overflow the side panel). We only set the BACKING store here (device
+  // px) for crisp rendering — never an explicit style width/height, which (being
+  // absolute) would paint outside #scopebox if the measurement were ever stale.
   scope.width = Math.round(w * dpr); scope.height = Math.round(h * dpr);
   CW = scope.width; CH = scope.height;
   // Navigator canvas: full width, fixed CSS height.
@@ -116,8 +120,8 @@ function eng(x, unit, digits) {
   return x.toExponential(digits - 1) + " " + unit;
 }
 
-// ---- persistence layer ----
-let persistCv = null, persistCtx = null;
+// ---- persistence / afterglow lives in a WebGL accumulation framebuffer inside
+// the scope renderer (GLR.persistFade/Composite/Clear) — no 2D canvas ----
 
 
 

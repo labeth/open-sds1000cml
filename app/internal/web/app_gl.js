@@ -76,6 +76,7 @@ function glRenderer(canvas) {
   // loss (initGL re-runs on webglcontextrestored). Everything downstream reads
   // the current values, so a rebuild is transparent to the draw methods.
   let prog, aPos, aUV, aCol, aMode, uRes, buf, atlasTex, curTex, blitTex;
+  let persistFB = null, persistTex = null, persistW = 0, persistH = 0; // afterglow FBO
 
   function initGL() {
     prog = glCompile(gl, vs, fs);
@@ -97,6 +98,7 @@ function glRenderer(canvas) {
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
     curTex = atlasTex;
     blitTex = null;                 // dynamic heatmap texture; lazily (re)created
+    persistFB = null; persistTex = null; persistW = 0; persistH = 0; // afterglow FBO, lazily (re)created
     return true;
   }
   if (!initGL()) return null;
@@ -265,6 +267,66 @@ function glRenderer(canvas) {
     R.image(blitTex, dx, dy, dw, dh);
     flush();                                   // draw now; texture is reused next blit
     curTex = atlasTex;
+  };
+
+  // --- persistence / afterglow ------------------------------------------------
+  // An accumulation framebuffer: each frame the old content decays toward
+  // transparent (only alpha fades, so colour is preserved) and the new trace is
+  // drawn on top; the whole layer is then composited over the grid, so the grid
+  // shows through wherever the afterglow has faded out. Replaces the old 2D
+  // offscreen-canvas persistence layer.
+  function ensurePersist() {
+    if (persistTex && persistW === R.w && persistH === R.h) return;
+    if (!persistFB) persistFB = gl.createFramebuffer();
+    if (!persistTex) persistTex = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, persistTex);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, R.w, R.h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, persistFB);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, persistTex, 0);
+    gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT); // start fully transparent
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    persistW = R.w; persistH = R.h;
+    curTex = atlasTex;
+  }
+  R.persistClear = function () {
+    if (!persistTex || gl.isContextLost()) return;
+    gl.bindFramebuffer(gl.FRAMEBUFFER, persistFB);
+    gl.viewport(0, 0, persistW, persistH);
+    gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.viewport(0, 0, R.w, R.h);
+  };
+  // route subsequent draws into the accumulation FBO, first decaying old content
+  R.persistFade = function (fade) {
+    flush();                                   // emit the grid/refs to the screen first
+    ensurePersist();
+    gl.bindFramebuffer(gl.FRAMEBUFFER, persistFB);
+    gl.viewport(0, 0, R.w, R.h);
+    // dst.a *= (1-fade) (colour preserved) — a full-screen quad with src ignored
+    const k = 1 - fade;
+    gl.blendFunc(gl.ZERO, gl.CONSTANT_COLOR);
+    gl.blendColor(1, 1, 1, k);
+    const u = atlas.whiteU, v = atlas.whiteV, c = [0, 0, 0, 1];
+    curTex = atlasTex; curMode = 0;
+    quad(0, 0, R.w, 0, R.w, R.h, 0, R.h, u, v, u, v, u, v, u, v, c);
+    flush();
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA); // normal blend for the new trace
+  };
+  // composite the accumulation FBO back over the screen (over the grid)
+  R.persistComposite = function () {
+    flush();                                   // emit the new trace into the FBO
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.viewport(0, 0, R.w, R.h);
+    curTex = persistTex; curMode = 1;
+    const c = [1, 1, 1, 1];
+    // the FBO is y-flipped vs the screen convention, so map top-left → v=1
+    quad(0, 0, R.w, 0, R.w, R.h, 0, R.h, 0, 1, 1, 1, 1, 0, 0, 0, c);
+    flush();
+    curTex = atlasTex; curMode = 0;
   };
   R.gl = gl;
 

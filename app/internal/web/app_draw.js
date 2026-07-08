@@ -1,17 +1,9 @@
 // app_draw.js — Y-T/X-Y trace, grid, math, refs, cursors drawing (classic script; shares app.js globals).
 
 "use strict";
-function persistLayer() {
-  if (!persistCv || persistCv.width !== CW || persistCv.height !== CH) {
-    persistCv = document.createElement("canvas");
-    persistCv.width = CW; persistCv.height = CH;
-    persistCtx = persistCv.getContext("2d");
-    persistCtx.fillStyle = "#05080c"; persistCtx.fillRect(0, 0, CW, CH);
-  }
-  return persistCtx;
-}
-
-function clearPersist() { if (persistCtx) { persistCtx.fillStyle = "#05080c"; persistCtx.fillRect(0, 0, CW, CH); } }
+// Clear the afterglow accumulation buffer (the WebGL persistence framebuffer).
+// Called on view/zoom/scale changes so stale trails don't linger.
+function clearPersist() { if (GLR) GLR.persistClear(); }
 
 // ---- drawing ----
 function drawGrid(g) {

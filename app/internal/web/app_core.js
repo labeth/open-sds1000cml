@@ -29,7 +29,22 @@ function redraw() {
   glBeginFrame();     // clear the scope's WebGL frame; ctx routes every draw to the GPU
   if (view.mode === "XY") { drawXY(); drawCursors(); drawBoxZoom(ctx); glEndFrame(); return; }
   if (view.mode === "FFT") { drawFFT(); drawCursors(); drawBoxZoom(ctx); glEndFrame(); drawNav(); return; }
-  // (persist afterglow: TODO reimplement with a GL ping-pong framebuffer)
+  if (view.persist && GLR && frame && !frame.is_env) {
+    // Afterglow: grid + refs paint on the screen; the live traces accumulate
+    // (with per-frame fade) in a GL framebuffer that is then composited over the
+    // grid; channel/trigger markers sit on top. See R.persistFade/Composite.
+    drawGrid(ctx); drawRefs(ctx);
+    GLR.persistFade(0.14);
+    if (view.c2) drawTrace(ctx, frame.c2, C2COL, st ? st.zoom2 : 1);
+    if (view.c1) drawTrace(ctx, frame.c1, C1COL, st ? st.zoom1 : 1);
+    drawMath(ctx);
+    GLR.persistComposite();
+    drawChannelMarkers(ctx); drawTrigMarkers(ctx);
+    drawYTPeaks(ctx); drawDecode(ctx); drawCursors(); drawSrGate();
+    if (window.zm) drawZones(ctx);
+    drawBoxZoom(ctx); glEndFrame(); drawNav();
+    return;
+  }
   drawYT(ctx);
   drawYTPeaks(ctx);
   drawDecode(ctx);
