@@ -526,8 +526,9 @@ they CAPTURE at 2 ns/sample, so 10 divisions shows the same span/screen-fraction
 The `0x22` mux value is `0x03` = internal channel, `0x00` = EXT, and is otherwise derived from the
 slope+mode state; it distinguishes internal-vs-EXT but does **not** cleanly encode C1-vs-C2 (its 2
 low bits are not a pinned C1/C2 selector), so it cannot be used for a reliable runtime C1↔C2 switch.
-**Open:** binding the coarse `0x22` mux to a definite C1/C2 code pair is a follow-up; source is
-currently a pure software channel select.
+The mux is channel-independent: C1 and C2 both drive `0x0003` (internal) and EXT drives `0x0000`, so
+there is no C1/C2 code pair on `0x22` — it selects internal-vs-EXT only. The trigger source channel is
+selected upstream by the front-end relay word (spec 06, `byte2` `trigSrc` field) and refined in software.
 
 ---
 
