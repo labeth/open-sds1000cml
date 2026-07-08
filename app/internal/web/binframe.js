@@ -11,7 +11,7 @@
 //
 // Returns null on ANY protocol mismatch (bad magic, truncated header, payload
 // size not matching the header's cols/head/tail). Callers treat null as
-// "protocol failure": fall back to the JSON poll rather than render garbage.
+// "protocol failure" and retry the poll with backoff rather than render garbage.
 const BIN_MAGIC = 0xf5;
 const BIN_FLAG_RAW = 0x10;
 

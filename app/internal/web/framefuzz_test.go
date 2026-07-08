@@ -68,7 +68,6 @@ func TestFrameServeFuzz(t *testing.T) {
 	client := srv.Client()
 
 	paths := []string{
-		"/api/frame", "/api/frame?raw=1",
 		"/api/frame.bin", "/api/frame.bin?raw=1",
 		"/api/frame.bin?since=0&waitms=0", "/api/frame.bin?depth=1",
 	}

@@ -112,7 +112,7 @@ func TestAPIFuzz(t *testing.T) {
 		"/api/frame.bin?since=-1&waitms=-5&raw=2",
 		"/api/frame.bin?since=99999999999999999999&waitms=999999999",
 		"/api/frame.bin?since=NaN&waitms=abc",
-		"/api/frame?raw=1",
+		"/api/frame.bin?raw=1&since=x",
 		"/api/maskfail?i=-1", "/api/maskfail?i=999999999999999999", "/api/maskfail?i=x",
 		"/api/status", "/api/frame.bin", "/api/measure?ch=99",
 	}

@@ -11,10 +11,10 @@ import (
 )
 
 // TestTransportBrowser drives transport_browser.mjs: asserts the binary
-// long-poll is the ACTIVE transport in a real browser (so a silent fallback
-// can never fake-pass the other suites), that a dead /api/frame.bin degrades
-// to the JSON poll with frames still advancing, and that ?transport=json
-// forces the legacy path. Self-skips when node/Playwright is absent.
+// long-poll is the ONE transport delivering Int16Array frames + header
+// measurements in a real browser, and that a dead /api/frame.bin STOPS frames
+// (no silent fallback that could fake-pass the other suites) yet self-heals on
+// retry when the endpoint returns. Self-skips when node/Playwright is absent.
 func TestTransportBrowser(t *testing.T) {
 	if _, err := exec.LookPath("node"); err != nil {
 		t.Skip("node not installed")

@@ -32,15 +32,36 @@ func getBin(t *testing.T, s *Server, url string) (frameReply, byte, []byte) {
 	return rep, b[1], b[8+int(h):]
 }
 
-// getJSON fetches /api/frame with the same params for the parity oracle.
-func getJSON(t *testing.T, s *Server, url string) frameReply {
-	t.Helper()
-	req := httptest.NewRequest("GET", url, nil)
-	rec := httptest.NewRecorder()
-	s.Handler().ServeHTTP(rec, req)
+// refReply builds a frame reply directly via the shared buildReply path — the
+// SAME code the binary endpoint runs — so it is the reference the binary encoder
+// is validated against (there is one transport now, so parity is checked against
+// the builder, not a second HTTP endpoint).
+func refReply(s *Server, cols int, full bool, since uint64) frameReply {
+	off, vpc := s.vertScales()
+	st := s.sc.Snapshot()
+	posFrac := st.TrigPosFrac
+	if posFrac <= 0 {
+		posFrac = 0.5
+	}
 	var rep frameReply
-	if err := json.Unmarshal(rec.Body.Bytes(), &rep); err != nil {
-		t.Fatalf("json reply: %v", err)
+	s.sc.WithFrame(func(f *engine.Frame) {
+		rep = s.buildReply(f, cols, full, since, off, vpc, posFrac, st.Running && !st.Single)
+	})
+	return rep
+}
+
+// getRef returns the reference reply as the client sees it after the binary
+// header's JSON round-trip (marshal→unmarshal), so scalar parity comparisons are
+// exact against getBin's decoded header.
+func getRef(t *testing.T, s *Server, cols int, full bool, since uint64) frameReply {
+	t.Helper()
+	b, err := json.Marshal(refReply(s, cols, full, since))
+	if err != nil {
+		t.Fatalf("marshal ref: %v", err)
+	}
+	var rep frameReply
+	if err := json.Unmarshal(b, &rep); err != nil {
+		t.Fatalf("unmarshal ref: %v", err)
 	}
 	return rep
 }
@@ -121,8 +142,7 @@ func TestBinFrameParity(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			fs := &fakeScope{frame: tc.f, fresh: true}
 			s := New(fs, nil, nil, nil)
-			url := "/api/frame?since=0&cols=2048&full=1"
-			want := getJSON(t, s, url)
+			want := getRef(t, s, 2048, true, 0)
 			got, flags, pay := getBin(t, s, "/api/frame.bin?since=0&cols=2048&full=1")
 
 			if flags&^binEmpty != tc.want {

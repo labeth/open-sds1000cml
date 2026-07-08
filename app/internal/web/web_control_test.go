@@ -151,11 +151,14 @@ func TestACCouplingRemovesDC(t *testing.T) {
 	s := New(fs, fa, nil, nil)
 
 	frameV := func() map[string]any {
-		req := httptest.NewRequest("GET", "/api/frame", nil)
-		rec := httptest.NewRecorder()
-		s.Handler().ServeHTTP(rec, req)
+		// The single frame path is buildReply; marshal its reply to a generic map
+		// so the coupling assertions read m1.vmean/vpp as before.
+		b, err := json.Marshal(refReply(s, screenCols, false, 0))
+		if err != nil {
+			t.Fatalf("marshal frame: %v", err)
+		}
 		var m map[string]any
-		if err := json.Unmarshal(rec.Body.Bytes(), &m); err != nil {
+		if err := json.Unmarshal(b, &m); err != nil {
 			t.Fatalf("frame json: %v", err)
 		}
 		return m

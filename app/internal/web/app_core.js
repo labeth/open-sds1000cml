@@ -115,13 +115,6 @@ function applyFrame(f) {
   scheduleRender(); // coalesced paint on the next rAF — never block the poll callback
 }
 
-function fallbackToJSON() {
-  if (transport === "json") return;
-  transport = "json";
-  pollFrame(++jsonGen); // bump the token so any older chain dies on its next tick
-  setTimeout(probeBin, 30000);
-}
-
 // trigState mirrors the LCD state machine (render.go) so a glance between the
 // bench screen and the browser shows the same word.
 function trigState() {
@@ -294,13 +287,12 @@ function updateMathHint() {
 
 
 async function pollFrameBin() {
-  if (transport !== "bin") return;
   if (frozen || document.hidden) { setTimeout(pollFrameBin, 90); return; } // idle tick; hidden tabs stop hitting the device
   try {
     const r = await fetch("/api/frame.bin?since=" + lastSeq + "&cols=" + reqCols + "&full=1&waitms=1000");
-    if (!r.ok) { fallbackToJSON(); return; }
+    if (!r.ok) throw new Error("http " + r.status);
     const f = decodeBinFrame(await r.arrayBuffer());
-    if (f === null) { fallbackToJSON(); return; } // never render a reply that failed validation
+    if (f === null) throw new Error("bad frame"); // never render a reply that failed validation
     binFailures = 0;
     // Re-check frozen AFTER the await: the request parks server-side for up
     // to 1 s, and a freeze/capture-review click mid-flight must not have its
@@ -309,41 +301,13 @@ async function pollFrameBin() {
     if (!f.unchanged && !frozen) applyFrame(f);
     setTimeout(pollFrameBin, 10); // the server did the pacing; this only guards a hot loop
   } catch (e) {
+    // Bad reply or network error (OTA app restart) — retry the SAME transport
+    // with jittered backoff; the endpoint comes back at full speed.
     binFailures++;
     setTimeout(pollFrameBin, Math.min(2000, 250 * binFailures) + 250 * Math.random());
   }
 }
 
-
-async function probeBin() {
-  if (transport === "bin") return;
-  try {
-    const r = await fetch("/api/frame.bin?since=0&cols=" + reqCols + "&full=1");
-    if (r.ok && decodeBinFrame(await r.arrayBuffer()) !== null) {
-      transport = "bin"; // pollFrame sees this and stops rescheduling
-      pollFrameBin();
-      return;
-    }
-  } catch (e) { /* still down */ }
-  setTimeout(probeBin, 30000);
-}
-
-// Legacy JSON poll — the fallback transport and the ?transport=json debug
-// path. The gen token guarantees at most ONE live chain: a transport flap
-// (fallback → upgrade → fallback) spawns a new chain with a new token and
-// any in-flight older chain exits on its next tick instead of accumulating.
-async function pollFrame(gen) {
-  if (gen === undefined) gen = jsonGen;
-  if (transport !== "json" || gen !== jsonGen) return;
-  if (!frozen) {
-    try {
-      const r = await fetch("/api/frame?since=" + lastSeq + "&cols=" + reqCols + "&full=1");
-      const f = await r.json();
-      if (!f.unchanged && !frozen) applyFrame(f);
-    } catch (e) { /* keep last */ }
-  }
-  setTimeout(() => pollFrame(gen), 90);
-}
 async function pollStatus() {
   try { st = await (await fetch("/api/status")).json(); applyStatus(); }
   catch (e) { $("line").textContent = "no connection"; lastLineHTML = ""; } // reset the diff guard or a static status keeps "no connection" stuck

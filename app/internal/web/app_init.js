@@ -15,9 +15,5 @@ if (typeof ResizeObserver === "function") {
     rafPending = requestAnimationFrame(() => { rafPending = 0; resize(); });
   }).observe($("scopebox"));
 }
-// If binframe.js failed to load (dropped subresource, OTA restart mid-load),
-// decodeBinFrame is undefined — pollFrameBin would throw and retry forever
-// mistaking it for a network error. Start on JSON instead.
-if (typeof decodeBinFrame !== "function") transport = "json";
-if (transport === "bin") pollFrameBin(); else pollFrame();
+pollFrameBin();   // the only frame transport (binframe.js is an embedded asset)
 pollStatus();

@@ -1,9 +1,7 @@
 package web
 
 import (
-	"encoding/json"
 	"math"
-	"net/http/httptest"
 	"open-sds/app/internal/engine"
 	"testing"
 )
@@ -20,48 +18,29 @@ func TestFrameEndpoint(t *testing.T) {
 	fs := &fakeScope{frame: f, fresh: true}
 	s := New(fs, nil, nil, nil)
 
-	req := httptest.NewRequest("GET", "/api/frame?since=0", nil)
-	rec := httptest.NewRecorder()
-	s.Handler().ServeHTTP(rec, req)
-	var rep frameReply
-	if err := json.Unmarshal(rec.Body.Bytes(), &rep); err != nil {
-		t.Fatal(err)
-	}
+	// buildReply is the one shared reply path (behind /api/frame.bin); test it
+	// directly for the windowed reply + measurements + scale factors.
+	rep := refReply(s, screenCols, false, 0)
 	if rep.Seq != 7 || rep.Unchanged || len(rep.C1) != screenCols || len(rep.C2) != screenCols {
 		t.Fatalf("frame reply: seq=%d unchanged=%v len=%d/%d", rep.Seq, rep.Unchanged, len(rep.C1), len(rep.C2))
 	}
-	// Measurements + scale factors present.
 	if rep.M1 == nil || rep.Cols != screenCols || rep.ColSpanS <= 0 {
 		t.Fatalf("frame reply missing scale/meas: m1=%v cols=%d span=%v", rep.M1, rep.Cols, rep.ColSpanS)
 	}
 
 	// cols param scales the returned column count.
-	req = httptest.NewRequest("GET", "/api/frame?since=0&cols=1280", nil)
-	rec = httptest.NewRecorder()
-	s.Handler().ServeHTTP(rec, req)
-	var rep2 frameReply
-	json.Unmarshal(rec.Body.Bytes(), &rep2)
+	rep2 := refReply(s, 1280, false, 0)
 	if len(rep2.C1) != 1280 || rep2.Cols != 1280 {
 		t.Fatalf("cols param ignored: len=%d cols=%d", len(rep2.C1), rep2.Cols)
 	}
-	// Clamp: absurd cols is bounded.
-	req = httptest.NewRequest("GET", "/api/frame?since=0&cols=99999", nil)
-	rec = httptest.NewRecorder()
-	s.Handler().ServeHTTP(rec, req)
-	var rep3 frameReply
-	json.Unmarshal(rec.Body.Bytes(), &rep3)
-	if len(rep3.C1) != 4096 {
-		t.Fatalf("cols not clamped: %d", len(rep3.C1))
+	// Clamp: absurd cols is bounded by the HANDLER (the /api/frame.bin path).
+	got, _, _ := getBin(t, s, "/api/frame.bin?since=0&cols=99999")
+	if got.Cols != 4096 {
+		t.Fatalf("cols not clamped: %d", got.Cols)
 	}
 
 	// since == current seq → unchanged short-circuit, no samples.
-	req = httptest.NewRequest("GET", "/api/frame?since=7", nil)
-	rec = httptest.NewRecorder()
-	s.Handler().ServeHTTP(rec, req)
-	rep = frameReply{}
-	if err := json.Unmarshal(rec.Body.Bytes(), &rep); err != nil {
-		t.Fatal(err)
-	}
+	rep = refReply(s, screenCols, false, 7)
 	if !rep.Unchanged || rep.C1 != nil {
 		t.Fatalf("expected unchanged reply, got %+v", rep)
 	}
@@ -85,13 +64,7 @@ func TestDeepFrameCentersOnTrigger(t *testing.T) {
 	fs := &fakeScope{frameGen: func() *engine.Frame { return f }, stats: engine.Stats{Running: true, TrigPosFrac: 0.5}}
 	s := New(fs, nil, nil, nil)
 
-	req := httptest.NewRequest("GET", "/api/frame?since=0&full=1", nil)
-	rec := httptest.NewRecorder()
-	s.Handler().ServeHTTP(rec, req)
-	var rep frameReply
-	if err := json.Unmarshal(rec.Body.Bytes(), &rep); err != nil {
-		t.Fatal(err)
-	}
+	rep := refReply(s, screenCols, true, 0)
 	if len(rep.C1) != depth || rep.Depth != depth {
 		t.Fatalf("deep serve length = %d (depth %d), want %d (fixed, no jitter)", len(rep.C1), rep.Depth, depth)
 	}

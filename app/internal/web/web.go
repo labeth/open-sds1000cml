@@ -137,7 +137,6 @@ func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", s.hRoot)
 	mux.HandleFunc("/api/status", s.hStatus)
-	mux.HandleFunc("/api/frame", s.hFrame)
 	mux.HandleFunc("/api/frame.bin", s.hFrameBin)
 	mux.HandleFunc("/api/set", s.hSet)
 	mux.HandleFunc("/api/panel", s.hPanel)

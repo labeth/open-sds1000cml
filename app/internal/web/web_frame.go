@@ -1,9 +1,7 @@
 package web
 
 import (
-	"fmt"
 	"math"
-	"net/http"
 	"open-sds/app/internal/analog"
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/measure"
@@ -204,62 +202,8 @@ func (s *Server) vertScales() (off [2]float64, vpc [2]float64) {
 	return off, vpc
 }
 
-func (s *Server) hFrame(w http.ResponseWriter, r *http.Request) {
-	var since uint64
-	fmt.Sscanf(r.URL.Query().Get("since"), "%d", &since)
-	cols := screenCols
-	if c := r.URL.Query().Get("cols"); c != "" {
-		fmt.Sscanf(c, "%d", &cols)
-	}
-	// Scale to the client's canvas width; clamp to a sane band.
-	if cols < 64 {
-		cols = 64
-	}
-	if cols > 4096 {
-		cols = 4096
-	}
-	// full=1: serve the FULL drained record on decimated deep-memory frames so
-	// the client can window/navigate it. Off → today's windowed screen slice.
-	full := r.URL.Query().Get("full") == "1"
-	// Debug: raw undecimated record dump (diagnostics only).
-	if r.URL.Query().Get("raw") == "1" {
-		var out map[string]any
-		s.sc.WithFrame(func(f *engine.Frame) {
-			if f == nil {
-				out = map[string]any{"seq": 0}
-				return
-			}
-			n := f.Valid
-			if n > len(f.C1) { // Valid>len invariant slip: never panic the dump
-				n = len(f.C1)
-			}
-			c1 := make([]uint8, n)
-			copy(c1, f.C1[:n])
-			out = map[string]any{
-				"seq": f.Seq, "valid": f.Valid, "wincols": f.WinCols,
-				"edgex": f.EdgeX, "trigpos": f.TrigPos, "c1": c1,
-			}
-		})
-		writeJSON(w, out)
-		return
-	}
-	off, vpc := s.vertScales()
-	st := s.sc.Snapshot()
-	posFrac := st.TrigPosFrac
-	if posFrac <= 0 {
-		posFrac = 0.5
-	}
-
-	var rep frameReply
-	s.sc.WithFrame(func(f *engine.Frame) {
-		rep = s.buildReply(f, cols, full, since, off, vpc, posFrac, st.Running && !st.Single)
-	})
-	writeJSON(w, rep)
-}
-
-// buildReply assembles the frame reply — shared verbatim by /api/frame (JSON)
-// and /api/frame.bin (binary header + raw payload) so the two transports can
-// never drift. MUST run inside Scope.WithFrame (f is only valid under the
+// buildReply assembles the frame reply for /api/frame.bin (binary header + raw
+// payload). MUST run inside Scope.WithFrame (f is only valid under the
 // fan-out read lock); the returned reply owns all its data. measThrottle
 // permits reusing ≤100 ms-old measurements on a seq advance (fast free-run
 // only — pass false for single-shot/stopped, where values must be exact).

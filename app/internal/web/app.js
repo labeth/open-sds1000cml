@@ -239,19 +239,14 @@ let fftHoverRaf = 0;
 // scope's own pointer handlers, so cursor-drag / FFT-pick are untouched.
 const navWin = () => view.mode === "FFT" ? view.fwin : view.win; // which window the strip controls
 
-// ---- frame transport ----
-// Primary: /api/frame.bin long-poll. The server PARKS the request (waitms)
-// until a new frame publishes, then replies with a small JSON header + raw
-// uint8 payload that binframe.js expands to Int16Array — decode is ~0 vs the
-// 50-150 ms the device burned JSON-encoding int16 arrays for the old poll,
-// and the 90 ms client-side gap is gone (request-when-ready is the pacing).
-// Fallback: the original /api/frame JSON poll below, kept verbatim. Protocol
-// mismatches (old server binary, corrupt reply) downgrade to it; a 30 s probe
-// upgrades back. Network errors (OTA app restart) retry with jittered backoff
-// instead — the endpoint comes back at full speed.
-let transport = new URLSearchParams(location.search).get("transport") === "json" ? "json" : "bin";
+// ---- frame transport: /api/frame.bin long-poll (the ONE transport) ----
+// The server PARKS the request (waitms) until a new frame publishes, then
+// replies with a small JSON header + raw uint8 payload that binframe.js expands
+// to Int16Array — decode is ~0 vs the 50-150 ms the device burned JSON-encoding
+// int16 arrays, and there's no client-side poll gap (request-when-ready is the
+// pacing). Any failure (bad reply, OTA app restart) retries with jittered
+// backoff — the endpoint comes back at full speed; there is no second transport.
 let binFailures = 0;
-let jsonGen = 0; // generation token: bumping it kills any older pollFrame chain
 
 // Buttons that are ON/OFF toggles get an aria-pressed mirror of their .on class.
 const PRESSED = ["mYT", "mXY", "mFFT", "tPersist", "tCursors", "tC1", "tC2", "freeze",
