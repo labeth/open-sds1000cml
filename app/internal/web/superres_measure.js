@@ -4,6 +4,8 @@
 // of the stacked waveform (frequencies from peaksLib.spectrum/detectPeaks),
 // returning {freqs, synth(nOut)} for an arbitrarily dense reconstruction.
 // Linear LSQ per frequency pair (sin,cos) + DC over the FILLED bins only.
+"use strict";
+
 if (typeof require !== "undefined") { Object.assign(globalThis, require("./superres_math.js"), require("./superres_template.js"), require("./superres_gate.js")); }
 
 function srModelFit(mean, K, sampleS, peaksLib, nPeaks) {

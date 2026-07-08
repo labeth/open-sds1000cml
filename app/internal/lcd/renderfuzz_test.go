@@ -76,7 +76,7 @@ func TestRenderFuzzNoPanic(t *testing.T) {
 			TrigPosFrac: []float64{-3, 0, 0.5, 1, 9}[rng.Intn(5)],
 			TwoChan:     rng.Intn(2) == 0, ShowC1: rng.Intn(2) == 0, ShowC2: rng.Intn(2) == 0,
 			ShowMeas: rng.Intn(2) == 0,
-			ViewMode: rng.Intn(4), MathMode: rng.Intn(6),
+			ViewMode: rng.Intn(5), MathMode: rng.Intn(6), // 0..4 incl. spectrogram
 			Zoom: []int{0, 1, 2, 50, 9999}[rng.Intn(5)], ZoomOff: rng.Float64()*4 - 2,
 			Persist:  rng.Intn(2) == 0,
 			DecProto: rng.Intn(6), DecBaud: []int{0, 115200}[rng.Intn(2)],

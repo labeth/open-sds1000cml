@@ -219,3 +219,45 @@ func TestQualifierAndAcqVerbs(t *testing.T) {
 		t.Fatalf("pulseparams args: %v", args)
 	}
 }
+
+// The /api/bode endpoint (hBode) JSON contract had no Go coverage.
+func TestBodeEndpoint(t *testing.T) {
+	fs := &fakeScope{bodePts: []engine.BodePoint{
+		{FreqHz: 1e6, GainDB: -6, PhaseDeg: -45},
+		{FreqHz: 2e6, GainDB: -12, PhaseDeg: -90},
+	}}
+	s := New(fs, nil, nil, nil)
+	req := httptest.NewRequest("GET", "/api/bode", nil)
+	rec := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rec, req)
+	var rep struct {
+		OK    bool      `json:"ok"`
+		N     int       `json:"n"`
+		Freq  []float64 `json:"freq"`
+		Gain  []float64 `json:"gain_db"`
+		Phase []float64 `json:"phase_deg"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &rep); err != nil {
+		t.Fatalf("bad JSON: %v\n%s", err, rec.Body.Bytes())
+	}
+	if !rep.OK || rep.N != 2 {
+		t.Fatalf("ok=%v n=%d, want true/2", rep.OK, rep.N)
+	}
+	if len(rep.Freq) != 2 || rep.Freq[0] != 1e6 || rep.Freq[1] != 2e6 {
+		t.Errorf("freq = %v", rep.Freq)
+	}
+	if rep.Gain[1] != -12 || rep.Phase[0] != -45 {
+		t.Errorf("gain/phase mismatch: %v %v", rep.Gain, rep.Phase)
+	}
+	// empty curve → n:0, valid arrays (not null-crash)
+	s2 := New(&fakeScope{}, nil, nil, nil)
+	rec2 := httptest.NewRecorder()
+	s2.Handler().ServeHTTP(rec2, httptest.NewRequest("GET", "/api/bode", nil))
+	var rep2 map[string]any
+	if err := json.Unmarshal(rec2.Body.Bytes(), &rep2); err != nil {
+		t.Fatalf("empty bode bad JSON: %v", err)
+	}
+	if rep2["n"].(float64) != 0 {
+		t.Errorf("empty bode n = %v, want 0", rep2["n"])
+	}
+}

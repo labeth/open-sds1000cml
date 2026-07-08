@@ -20,6 +20,10 @@ const ok = (c, m) => { if (!c) { console.log("FAIL " + m); fail++; } };
 // endpoints
 ok(JSON.stringify(s.sgHeat(0)) === "[0,0,0]", "heat(0) black");
 ok(JSON.stringify(s.sgHeat(1)) === "[255,255,255]", "heat(1) white");
+// the 6-segment inferno stops must match Go heat() exactly (parity — the Go side
+// is locked by TestHeatStops; t=i/6 lands on stop i, so both check the same table)
+const stops = [[0,0,0],[40,0,90],[130,20,90],[200,50,20],[240,150,10],[250,220,80],[255,255,255]];
+for (let i = 0; i < 7; i++) { ok(JSON.stringify(s.sgHeat(i/6)) === JSON.stringify(stops[i]), "sgHeat("+i+"/6) == stop "+i); }
 // monotone in a rough luminance
 const lum = ([r,g,b]) => 2*r + 4*g + b;
 let prev = -1, mono = true;

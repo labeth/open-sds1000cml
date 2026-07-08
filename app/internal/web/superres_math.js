@@ -1,6 +1,8 @@
 // superres_math.js — leaf math/util for the stacker (mean/std, clip, crossings, align, gain-offset, srNew).
 
 // srMeanStd returns {mean, std} of arr (population std).
+"use strict";
+
 function srMeanStd(arr) {
   let s = 0, s2 = 0;
   const n = arr.length;

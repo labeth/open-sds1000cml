@@ -15,6 +15,8 @@
 // everything. The active span is trimmed to where the reference deviates from its
 // pre-trigger flat baseline (deviation, not high-frequency energy, so a slow
 // reference is kept too). NCC (mean- and scale-invariant) then matches shape.
+"use strict";
+
 function srBuildTemplate(ref, n, edgeX, valid) {
   const hi0 = valid > 0 && valid <= n ? valid : n;
   const lo0 = edgeX >= 0 ? Math.min(hi0 - 1, Math.round(edgeX) + 16) : 0; // skip the shared trigger transition

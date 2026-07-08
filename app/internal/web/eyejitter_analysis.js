@@ -3,6 +3,8 @@
 // ejEdges extracts all mid-level crossings with hysteresis (±15% of swing) and
 // sub-sample linear interpolation. Returns {t:[...positions in samples], pol:[+1/-1]}
 // or null when the record has no usable swing.
+"use strict";
+
 function ejEdges(sig, n) {
   // Base/top levels by DUAL HISTOGRAM MODE (IEEE pulse-measurement style): the
   // two dominant population levels, regardless of duty. Percentile levels (the

@@ -4,6 +4,8 @@
 // normalized autocorrelation — the first local peak above 0.5 — or 0 if the
 // window isn't clearly periodic. Used to narrow the auto-gate to ONE period so
 // a repetitive waveform stacks every cycle (multi-hit) instead of once.
+"use strict";
+
 // node: pull the sibling modules onto globalThis so bare calls resolve
 // (the browser loads them as classic scripts before this one — same globals).
 if (typeof require !== "undefined") { Object.assign(globalThis, require("./superres_math.js"), require("./superres_template.js")); }

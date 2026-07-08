@@ -1,9 +1,5 @@
 
-// node: pull the sibling modules onto globalThis so bare calls resolve
-// (the browser loads them as classic scripts before this one — same globals).
-if (typeof require !== "undefined") { Object.assign(globalThis, require("./superres_math.js"), require("./superres_template.js"), require("./superres_gate.js"), require("./superres_measure.js")); }
 
-"use strict";
 // superres.js — stack-and-crunch super-resolution for a repetitive waveform.
 //
 // Many raw acquisitions of the same repeating signal are combined into one
@@ -44,6 +40,12 @@ if (typeof require !== "undefined") { Object.assign(globalThis, require("./super
 // reference get stacked, the rest rejected (a burst stays a burst; the slow-stuff
 // majority is thrown away instead of taking over). Returns true, or false if the
 // frame is unusable (flat/clipped) — a bad locked reference poisons the capture.
+"use strict";
+
+// node: pull the sibling modules onto globalThis so bare calls resolve
+// (the browser loads them as classic scripts before this one — same globals).
+if (typeof require !== "undefined") { Object.assign(globalThis, require("./superres_math.js"), require("./superres_template.js"), require("./superres_gate.js"), require("./superres_measure.js")); }
+
 function srSeedRef(st, sig1, sig2, edgeX, gate) {
   const sigs = [sig1, sig2];
   const alignSig = sigs[st.align];

@@ -98,3 +98,78 @@ func TestSpectrogramTracksSteppedFrequency(t *testing.T) {
 		t.Errorf("newest row peak %.0f MHz, want 100 MHz", gotHz/1e6)
 	}
 }
+
+// The spectrogram VIEW render path (Render → ViewMode 4 → drawSpectrogram) had
+// no coverage: dispatch + the heatmap blit, and the empty-Spect hint.
+func TestRenderSpectrogramView(t *testing.T) {
+	const n = 4096
+	const dt = 2e-9
+	// A broadband (noisy) record lights every frequency column, so the waterfall
+	// densely fills the heatmap — a clean discriminator from the centred hint.
+	noise := func() *engine.Frame {
+		c := make([]uint8, n)
+		s := uint32(12345)
+		for i := range c {
+			s = s*1664525 + 1013904223
+			c[i] = uint8(64 + s>>25) // 64..191 spread
+		}
+		return &engine.Frame{C1: c, C2: c, Valid: n, SampleS: dt}
+	}
+	sg := NewSpectrogram()
+	for i := 0; i < 30; i++ { // many rows so the waterfall (not just the hint) is drawn
+		sg.Push(noise(), 0, 0.5/dt)
+	}
+	hud := defaultHUD()
+	hud.ViewMode = 4
+	hud.Spect = sg
+	m := NewMemSurface()
+	Render(m, noise(), hud, true)
+	// count painted (non-background, non-black) pixels inside the heatmap rect —
+	// proves the ViewMode==4 dispatch ran and the blit loop drew the waterfall.
+	painted := 0
+	bg := m.At(0, 0) // corner is background/graticule
+	for y := sgY0; y < sgY1; y++ {
+		for x := sgX0; x < sgX1; x++ {
+			if c := m.At(x, y); c != bg && c != rgb(0, 0, 0) {
+				painted++
+			}
+		}
+	}
+	if painted < 500 {
+		t.Errorf("spectrogram view drew only %d painted pixels in the heatmap rect (want a filled waterfall)", painted)
+	}
+	// empty spectrogram must render the hint, not panic
+	hud2 := defaultHUD()
+	hud2.ViewMode = 4
+	hud2.Spect = NewSpectrogram()
+	Render(NewMemSurface(), nil, hud2, true)
+	// nil Spect must also be safe
+	hud3 := defaultHUD()
+	hud3.ViewMode = 4
+	Render(NewMemSurface(), nil, hud3, true)
+}
+
+// heatStops is the inferno ramp both heat() (Go) and sgHeat() (JS) hardcode.
+// This test + the JS TestSpectrogramJS stop check lock the two in parity: change
+// either side's stops and one of the two tests fails.
+var heatStops = [7][3]uint8{
+	{0, 0, 0}, {40, 0, 90}, {130, 20, 90}, {200, 50, 20}, {240, 150, 10}, {250, 220, 80}, {255, 255, 255},
+}
+
+func TestHeatStops(t *testing.T) {
+	for i := 0; i < 7; i++ {
+		r, g, b := unrgb(heat(float64(i) / 6)) // t=i/6 lands exactly on stop i
+		want := heatStops[i]
+		// RGB565 quantisation: R/B 5-bit (±8), G 6-bit (±4)
+		if absU8(r, want[0]) > 8 || absU8(g, want[1]) > 4 || absU8(b, want[2]) > 8 {
+			t.Errorf("heat(%d/6) = (%d,%d,%d), want stop %v (±565)", i, r, g, b, want)
+		}
+	}
+}
+
+func absU8(a, b uint8) int {
+	if a > b {
+		return int(a - b)
+	}
+	return int(b - a)
+}

@@ -15,13 +15,15 @@
 // Honesty rules: a record that does not LOCK (too few edges, inconsistent UI,
 // fit residual too large) is rejected, never guessed at. All metrics report
 // what was measured at the accumulated density — no BER extrapolation.
+
+
+// ejNew allocates the analysis state. opts: {eyeW, eyeH, fftN}
+"use strict";
+
 // node: pull the analysis module onto globalThis so bare calls resolve
 // (the browser loads it as a classic script before this one).
 if (typeof require !== "undefined") { Object.assign(globalThis, require("./eyejitter_analysis.js")); }
 
-"use strict";
-
-// ejNew allocates the analysis state. opts: {eyeW, eyeH, fftN}
 function ejNew(opts) {
   opts = opts || {};
   const eyeW = opts.eyeW || 256, eyeH = opts.eyeH || 128;
