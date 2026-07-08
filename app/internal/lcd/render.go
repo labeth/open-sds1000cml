@@ -67,18 +67,21 @@ type HUD struct {
 	// Super-res stack-and-crunch overlay (reference-locked). SRActive shows the
 	// status HUD; SRFocus 3 (review) replaces the live trace with the stacked mean;
 	// SRFocus 1/2 overlay the gate markers (active edge highlighted) for editing.
-	SRActive bool
-	SRFocus  int // 0=watch, 1=gate-start, 2=gate-end, 3=review
-	SRStatus string
-	SRBits   float64
-	SRMean   []float32 // review trace on the L·K fine grid; -1 = gap (nil unless review)
-	SRk      int
-	SRGateLo int
-	SRGateHi int
-	SRN      int
-	SRWinLo  int // the selected span the review renders — the frozen view, unchanged
-	SRWinHi  int
-	SRPeriod int // >0: the stack is one period; tile it across the span
+	SRActive  bool
+	SRFocus   int // 0=watch, 1=gate-start, 2=gate-end, 3=review
+	SRStatus  string
+	SRBits    float64
+	SRMean    []float32 // align-channel review trace on the L·K fine grid; -1 = gap (nil unless review)
+	SRMean2   []float32 // the OTHER channel's review trace (stacked X-Y / dual FFT); -1 = gap
+	SRAlign   int       // which physical channel SRMean is (0=C1,1=C2); SRMean2 is the other
+	SRSampleS float64   // the stack's raw per-sample seconds (fine dt = SRSampleS/SRk)
+	SRk       int
+	SRGateLo  int
+	SRGateHi  int
+	SRN       int
+	SRWinLo   int // the selected span the review renders — the frozen view, unchanged
+	SRWinHi   int
+	SRPeriod  int // >0: the stack is one period; tile it across the span
 
 	// Zone trigger + mask testing overlay (engine-side capture qualification;
 	// parity with the web card). Zones render edge-anchored; the mask renders
@@ -692,16 +695,30 @@ func niceRange(vals []float64, flo, fhi, step float64) (float64, float64) {
 // across the graticule and returns its parabola-refined peak frequency. src is
 // strided by `stride` down to `n` samples.
 func fftTrace(sf Surface, src []uint8, n, stride int, col uint16, effNyq float64, kLo, kHi int) float64 {
+	samples := make([]float64, n)
+	for i := 0; i < n; i++ {
+		samples[i] = float64(src[i*stride])
+	}
+	return fftCore(sf, samples, col, effNyq, kLo, kHi)
+}
+
+// fftCore Hann-windows `samples` (DC included; mean-subtracted here), FFTs it,
+// draws the magnitude over the visible band [kLo,kHi] magnified across the
+// screen, marks peaks, and returns the refined peak frequency. Shared by the
+// live FFT (uint8) and the super-res FFT (float fine grid — the float input is
+// what lets the crunched sub-LSB bits lower the spectrum noise floor).
+func fftCore(sf Surface, samples []float64, col uint16, effNyq float64, kLo, kHi int) float64 {
+	n := len(samples)
 	re := make([]float64, n)
 	im := make([]float64, n)
 	var mean float64
 	for i := 0; i < n; i++ {
-		mean += float64(src[i*stride])
+		mean += samples[i]
 	}
 	mean /= float64(n)
 	for i := 0; i < n; i++ {
 		w := 0.5 - 0.5*math.Cos(2*math.Pi*float64(i)/float64(n-1))
-		re[i] = (float64(src[i*stride]) - mean) * w
+		re[i] = (samples[i] - mean) * w
 	}
 	fftRadix2(re, im)
 	half := n / 2
@@ -1041,8 +1058,18 @@ func Render(sf Surface, f *engine.Frame, hud HUD, live bool, persist ...*MemSurf
 	// through to the Y-T envelope rendering (matches the web, which gates these).
 	srReview := hud.SRFocus == 3 && len(hud.SRMean) > 0
 	if srReview {
-		// Review the super-resolved mean instead of the live trace.
-		drawSuperresTrace(traceTarget, hud)
+		// Review the super-resolved stack in the SELECTED view, so FFT and X-Y
+		// operate on the crunched (extra-bit, K× fine-grid) trace — not just Y-T.
+		// Bode (3) / Spectrogram (4) are sweep/time-evolving views with no meaning
+		// for a frozen stack, so they fall back to the Y-T super-res trace.
+		switch hud.ViewMode {
+		case 1:
+			drawSuperresXY(sf, hud)
+		case 2:
+			drawSuperresFFT(sf, hud)
+		default:
+			drawSuperresTrace(traceTarget, hud)
+		}
 	} else if hud.ViewMode == 1 && f != nil && !f.IsEnv && len(f.C1) > 0 {
 		drawXY(sf, f, hud)
 	} else if hud.ViewMode == 2 && f != nil && !f.IsEnv && len(f.C1) > 0 {
@@ -1393,6 +1420,205 @@ func drawSuperresTrace(sf Surface, hud HUD) {
 		}
 		prevY, havePrev = sampleToY(float64((lo+hi)/2)), true
 	}
+}
+
+// srFilled returns a gap-free float64 copy of a fine-grid mean: -1 (uncovered)
+// bins are linear-interpolated from their nearest valid neighbours (held at the
+// ends). The crunched float values are preserved, so the sub-LSB super-res bits
+// survive into the FFT/X-Y — the whole point of super-resolving these views.
+func srFilled(mean []float32) []float64 {
+	nb := len(mean)
+	out := make([]float64, nb)
+	first, last := -1, -1
+	for i := 0; i < nb; i++ {
+		if mean[i] < 0 {
+			out[i] = math.NaN()
+		} else {
+			out[i] = float64(mean[i])
+			if first < 0 {
+				first = i
+			}
+			last = i
+		}
+	}
+	if first < 0 { // all gaps → flat mid-scale
+		for i := range out {
+			out[i] = 128
+		}
+		return out
+	}
+	for i := 0; i < first; i++ {
+		out[i] = out[first]
+	}
+	for i := last + 1; i < nb; i++ {
+		out[i] = out[last]
+	}
+	for i := first; i <= last; {
+		if math.IsNaN(out[i]) {
+			j := i
+			for j <= last && math.IsNaN(out[j]) {
+				j++
+			}
+			a, b := out[i-1], out[j]
+			for k := i; k < j; k++ {
+				out[k] = a + (b-a)*float64(k-i+1)/float64(j-i+1)
+			}
+			i = j
+		} else {
+			i++
+		}
+	}
+	return out
+}
+
+// srResampleWindow samples the DISPLAYED super-res waveform (the same span the
+// Y-T review shows: [SRWinLo,SRWinHi), period-tiled when SRPeriod>0) uniformly
+// into nOut float64 code values — the common representation the stacked FFT and
+// X-Y both consume, guaranteeing they match what Y-T draws.
+func srResampleArray(mean []float32, nOut int) (out []float64, valid []bool) {
+	nb := len(mean)
+	if nb == 0 || nOut < 2 {
+		return nil, nil
+	}
+	filled := srFilled(mean)
+	out = make([]float64, nOut)
+	valid = make([]bool, nOut)
+	for i := 0; i < nOut; i++ {
+		p := (float64(i) + 0.5) * float64(nb) / float64(nOut) // sample centres
+		i0 := int(p)
+		if i0 >= nb-1 {
+			out[i] = filled[nb-1]
+			valid[i] = mean[nb-1] >= 0
+		} else {
+			out[i] = filled[i0] + (filled[i0+1]-filled[i0])*(p-float64(i0))
+			valid[i] = mean[i0] >= 0 && mean[i0+1] >= 0
+		}
+	}
+	return out, valid
+}
+
+// srFFTPlan sizes the super-res FFT: n = smallest pow2 ≥ the fine-grid length nb
+// (capped for the ARM redraw budget), at dt = (nb/n)·(SRSampleS/K) ≈ SRSampleS/K,
+// so effNyq ≈ 0.5·K/SRSampleS — the FULL K× fine-grid Nyquist. It transforms the
+// one-period fine grid DIRECTLY (like the web FFTs res.mean), NOT the tiled Y-T
+// display window, so the super-res band is never decimated/aliased away.
+func srFFTPlan(hud HUD) (n int, effNyq float64, kLo, kHi int, ok bool) {
+	nb := len(hud.SRMean)
+	if nb < 16 || hud.SRSampleS <= 0 {
+		return 0, 0, 0, 0, false
+	}
+	K := hud.SRk
+	if K < 1 {
+		K = 1
+	}
+	n = 1
+	for n < nb && n < 8192 { // smallest pow2 ≥ nb (capped): dt ≈ fine dt, no aliasing
+		n <<= 1
+	}
+	if n < 16 {
+		return 0, 0, 0, 0, false
+	}
+	dtFine := hud.SRSampleS / float64(K)
+	if dtOut := float64(nb) * dtFine / float64(n); dtOut > 0 {
+		effNyq = 0.5 / dtOut
+	}
+	// Frequency zoom (reuse the horizontal-zoom control), same as the live FFT.
+	half := n / 2
+	kLo, kHi = 1, half-1
+	if hud.Zoom > 1 {
+		bandSpan := (half - 1) / hud.Zoom
+		if bandSpan < 4 {
+			bandSpan = 4
+		}
+		center := (half-1)/2 + int(hud.ZoomOff*float64(half-1))
+		kLo = center - bandSpan/2
+		if kLo < 1 {
+			kLo = 1
+		}
+		kHi = kLo + bandSpan
+		if kHi > half-1 {
+			kHi = half - 1
+			if kLo = kHi - bandSpan; kLo < 1 {
+				kLo = 1
+			}
+		}
+	}
+	return n, effNyq, kLo, kHi, true
+}
+
+// drawSuperresFFT renders the FFT of the crunched stack (both channels, parity
+// with the web). The transform runs on the FLOAT fine grid at dt = SRSampleS/K,
+// so its Nyquist extends K× past the raw single-shot Nyquist AND its noise floor
+// drops by the gained bits — the super-res win, now visible in the spectrum.
+func drawSuperresFFT(sf Surface, hud HUD) {
+	n, effNyq, kLo, kHi, ok := srFFTPlan(hud)
+	if !ok {
+		DrawText(sf, 10, 10, "SR FFT — stacking...", colDim, 1)
+		return
+	}
+	half := n / 2
+	// Map the align/other means back to physical C1/C2 for colour + labels.
+	c1Mean, c2Mean := hud.SRMean, hud.SRMean2
+	if hud.SRAlign == 1 {
+		c1Mean, c2Mean = hud.SRMean2, hud.SRMean
+	}
+	sc1, sc2 := hud.ShowC1, hud.ShowC2
+	if !sc1 && !sc2 {
+		sc1, sc2 = true, true
+	}
+	row := 10
+	if sc2 && hud.TwoChan && len(c2Mean) > 0 {
+		if s2, _ := srResampleArray(c2Mean, n); s2 != nil {
+			fpk := fftCore(sf, s2, colC2, effNyq, kLo, kHi)
+			DrawText(sf, 10, row, "SR FFT C2 peak "+fmtFreq(fpk), colC2, 1)
+			row += 12
+		}
+	}
+	if sc1 {
+		if s1, _ := srResampleArray(c1Mean, n); s1 != nil {
+			fpk := fftCore(sf, s1, colC1, effNyq, kLo, kHi)
+			DrawText(sf, 10, row, "SR FFT C1 peak "+fmtFreq(fpk), colC1, 1)
+			row += 12
+		}
+	}
+	fLo := float64(kLo) / float64(half) * effNyq
+	fHi := float64(kHi) / float64(half) * effNyq
+	DrawText(sf, 10, row, fmtFreq(fLo)+".."+fmtFreq(fHi)+"  (fine "+fmtFreq(effNyq)+" Nyq)", colDim, 1)
+}
+
+// drawSuperresXY plots the two crunched channel means as a Lissajous — X = the
+// C1 stack, Y = the C2 stack, sampled index-for-index on the same fine grid so
+// they pair up. Float grid ⇒ smoother than the live X-Y. The pen lifts over
+// uncovered (-1 gap) bins rather than drawing a false chord (matches the web).
+func drawSuperresXY(sf Surface, hud HUD) {
+	c1Mean, c2Mean := hud.SRMean, hud.SRMean2
+	if hud.SRAlign == 1 {
+		c1Mean, c2Mean = hud.SRMean2, hud.SRMean
+	}
+	if !hud.TwoChan || len(c2Mean) == 0 {
+		DrawText(sf, 10, 10, "X-Y needs CH2", colDim, 1)
+		return
+	}
+	const nOut = 2000
+	x, vx := srResampleArray(c1Mean, nOut)
+	y, vy := srResampleArray(c2Mean, nOut)
+	if x == nil || y == nil {
+		return
+	}
+	px, py := -1, -1
+	for i := 0; i < nOut; i++ {
+		if !vx[i] || !vy[i] { // gap in either channel → lift the pen
+			px = -1
+			continue
+		}
+		sx := int(x[i] * float64(W-1) / 255.0)
+		sy := sampleToY(y[i])
+		if px >= 0 {
+			drawLine(sf, px, py, sx, sy, colMath)
+		}
+		px, py = sx, sy
+	}
+	DrawText(sf, 10, 10, "X:C1  Y:C2 (SR)", colDim, 1)
 }
 
 // drawAutosetBanner overlays a centred "AUTOSET…" progress banner while the

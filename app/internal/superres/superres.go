@@ -963,7 +963,8 @@ func (st *Stack) Feed(sig1, sig2 []uint8, edgeX float64) string {
 // Result is the crunch output: the super-resolved mean trace (nil if statsOnly)
 // plus the measured resolution figures.
 type Result struct {
-	Mean                    []float32 // nil if statsOnly
+	Mean                    []float32 // align-channel mean; nil if statsOnly
+	Mean2                   []float32 // the OTHER channel, same fine grid; nil if statsOnly
 	Frames, Rejected, Hits  int
 	Fill                    float64
 	SigmaSingle, SigmaStack float64
@@ -981,15 +982,25 @@ func (st *Stack) Result(statsOnly bool, stride int) Result {
 	}
 	A := &st.C[st.Align]
 	const EPS = 0.05
-	var mean []float32
+	var mean, mean2 []float32
 	if !statsOnly {
+		// Align channel (Mean) plus the OTHER channel (Mean2), both on the same
+		// L·K fine grid so a stacked X-Y / dual-spectrum can pair them index-for-
+		// index. The other channel is drizzled at the align channel's positions,
+		// so an unlocked C1↔C2 phase shows up as honest smear (matches the web).
+		B := &st.C[1-st.Align]
 		mean = make([]float32, nb)
+		mean2 = make([]float32, nb)
 		for b := 0; b < nb; b++ {
-			c := A.cnt[b]
-			if c < EPS {
+			if c := A.cnt[b]; c < EPS {
 				mean[b] = -1
 			} else {
 				mean[b] = float32(A.sum[b] / c)
+			}
+			if c := B.cnt[b]; c < EPS {
+				mean2[b] = -1
+			} else {
+				mean2[b] = float32(B.sum[b] / c)
 			}
 		}
 	}
@@ -1058,7 +1069,7 @@ func (st *Stack) Result(statsOnly bool, stride int) Result {
 		fill = float64(filled) / float64(scanned)
 	}
 	return Result{
-		Mean: mean, Frames: st.Frames, Rejected: st.Rejected, Hits: st.Hits, Fill: fill,
+		Mean: mean, Mean2: mean2, Frames: st.Frames, Rejected: st.Rejected, Hits: st.Hits, Fill: fill,
 		SigmaSingle: sigmaSingle, SigmaStack: sigmaStack, SigmaMeasured: sigmaMeasured,
 		BitsGained: bitsGained, EffBits: 8 + bitsGained,
 		FineDtS: fineDt, EffRateSa: effRate,

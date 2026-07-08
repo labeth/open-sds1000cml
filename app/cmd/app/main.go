@@ -110,6 +110,7 @@ func buildHUD(e *engine.Engine, fe *analog.FrontEnd) lcd.HUD {
 		sv := pc.SuperresView()
 		hud.SRActive, hud.SRFocus, hud.SRStatus = sv.Active, sv.Focus, sv.Status
 		hud.SRBits, hud.SRMean, hud.SRk = sv.Bits, sv.Mean, sv.K
+		hud.SRMean2, hud.SRAlign, hud.SRSampleS = sv.Mean2, sv.Align, sv.SampleS
 		hud.SRGateLo, hud.SRGateHi, hud.SRN = sv.GateLo, sv.GateHi, sv.N
 		hud.SRWinLo, hud.SRWinHi, hud.SRPeriod = sv.WinLo, sv.WinHi, sv.Period
 		hud.MaskMsg = pc.MaskStatus()

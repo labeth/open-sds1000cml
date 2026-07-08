@@ -162,11 +162,11 @@ type Controller struct {
 	persist  bool    // display persistence (afterglow)
 	// Protocol decode: proto 0=off,1=UART,2=I2C,3=SPI. chA/chB = channel roles
 	// (0=C1,1=C2): UART uses chA (source); I2C chA=SCL,chB=SDA; SPI chA=CLK,chB=DATA.
-	decProto           int
-	decBaud            int
-	decChA, decChB     int
-	decCPOL, decCPHA   bool
-	decFormat          int // 0=hex, 1=ascii, 2=both
+	decProto         int
+	decBaud          int
+	decChA, decChB   int
+	decCPOL, decCPHA bool
+	decFormat        int // 0=hex, 1=ascii, 2=both
 
 	// Menu state (spec 08 §6): written by the panel goroutine, read by the LCD
 	// renderer, guarded by mu. inject runs API-driven panel events on the panel
@@ -214,6 +214,7 @@ type Controller struct {
 	srCh       int     // stacked/aligned channel (0=C1,1=C2)
 	srT0       time.Time
 	srMean     []float32 // latest crunched trace for the review render (guarded by mu)
+	srMean2    []float32 // the OTHER channel's crunched trace (stacked X-Y / dual FFT)
 	srBits     float64   // latest measured bits gained (guarded by mu)
 
 	// Mask testing (device flow, docs/zonemask-plan.md §3): build a golden
@@ -223,12 +224,12 @@ type Controller struct {
 	maskTol      int    // index into maskTols presets
 	maskBuilding bool   // a build goroutine is running
 	maskMsg      string // build/status line for the LCD HUD
-	srFrames   int       // stacked frame count (guarded by mu — srStack.Frames races)
-	srRejected int       // rejected (non-matching) frame count (guarded by mu)
-	srResetReq bool      // Reset softkey → srLoop clears the accumulation next tick
-	srWinLo    int       // the selected span (frozen on-screen window / manual gate):
-	srWinHi    int       // the review renders exactly this span, so the view is unchanged
-	srPeriod   int       // detected period within the span (samples); >0 → the stack is
+	srFrames     int    // stacked frame count (guarded by mu — srStack.Frames races)
+	srRejected   int    // rejected (non-matching) frame count (guarded by mu)
+	srResetReq   bool   // Reset softkey → srLoop clears the accumulation next tick
+	srWinLo      int    // the selected span (frozen on-screen window / manual gate):
+	srWinHi      int    // the review renders exactly this span, so the view is unchanged
+	srPeriod     int    // detected period within the span (samples); >0 → the stack is
 	// ONE period and the review TILES it across the span (fast multi-wave cheat)
 
 	// Trigger-qualifier shadows (the engine has no getters for these), edited on

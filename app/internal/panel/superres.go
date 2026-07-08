@@ -33,7 +33,7 @@ func (c *Controller) srToggle() {
 // first.) UTILITY handler for the arm direction.
 func (c *Controller) srArm() {
 	c.mu.Lock()
-	c.srFocus = 0             // watch
+	c.srFocus = 0                 // watch
 	c.srManLo, c.srManHi = -1, -1 // auto gate
 	c.mu.Unlock()
 	if !c.srSeedAndStart() {
@@ -190,8 +190,8 @@ func (c *Controller) srSeedAndStart() bool {
 		close(c.srStop)
 	}
 	c.srStack, c.srActive, c.srStop = st, true, stop // srFocus preserved (gate-edit)
-	c.srT0, c.srStatus, c.srMean, c.srBits, c.srResetReq = time.Now(), "stacking...", nil, 0, false
-	c.srFrames, c.srRejected = st.Hits, 0 // fresh counts (not stale from a prior arm)
+	c.srT0, c.srStatus, c.srMean, c.srMean2, c.srBits, c.srResetReq = time.Now(), "stacking...", nil, nil, 0, false
+	c.srFrames, c.srRejected = st.Hits, 0               // fresh counts (not stale from a prior arm)
 	c.srWinLo, c.srWinHi, c.srPeriod = mlo, mhi, period // review span + tile period
 	c.running, c.single = true, false
 	c.mu.Unlock()
@@ -253,7 +253,8 @@ func (c *Controller) srSetStatus(s string) {
 func (c *Controller) srReachReview(st *superres.Stack, status string) {
 	full := st.Result(false, 1)
 	c.mu.Lock()
-	c.srMean, c.srBits, c.srFocus, c.srStatus = full.Mean, full.BitsGained, 3, status // 3=review
+	c.srMean, c.srMean2 = full.Mean, full.Mean2
+	c.srBits, c.srFocus, c.srStatus = full.BitsGained, 3, status // 3=review
 	c.srFrames, c.srRejected = st.Hits, st.Rejected
 	c.mu.Unlock()
 }
@@ -289,7 +290,7 @@ func (c *Controller) srLoop(stop chan struct{}, st *superres.Stack) {
 			c.srResetReq = false
 			st.ResetKeepRef()
 			reached, lastSeq = false, 0
-			c.srT0, c.srMean, c.srBits = time.Now(), nil, 0
+			c.srT0, c.srMean, c.srMean2, c.srBits = time.Now(), nil, nil, 0
 			if c.srFocus == 3 { // leave review on reset; keep gate-edit foci
 				c.srFocus = 0
 			}
@@ -360,7 +361,7 @@ func (c *Controller) srLoop(stop chan struct{}, st *superres.Stack) {
 		if review && time.Since(lastMean) > 400*time.Millisecond {
 			full := st.Result(false, 1)
 			c.mu.Lock()
-			c.srMean = full.Mean
+			c.srMean, c.srMean2 = full.Mean, full.Mean2
 			c.mu.Unlock()
 			lastMean = time.Now()
 		}
@@ -386,7 +387,9 @@ type SuperresView struct {
 	Focus          int // 0=watch, 1=gate-start, 2=gate-end, 3=review
 	Status         string
 	Bits           float64
-	Mean           []float32 // crunched trace (review only, Focus==3); nil otherwise
+	Mean           []float32 // align-channel crunched trace (review only, Focus==3); nil otherwise
+	Mean2          []float32 // the OTHER channel's crunched trace (stacked X-Y / dual FFT)
+	Align          int       // which physical channel Mean is (0=C1,1=C2); Mean2 is the other
 	K              int
 	SampleS        float64
 	GateLo, GateHi int // stack gate on the frame (samples) — the live-view overlay
@@ -404,14 +407,14 @@ func (c *Controller) SuperresView() SuperresView {
 	v := SuperresView{Active: c.srActive, Focus: c.srFocus, Status: c.srStatus, Bits: c.srBits, K: c.srK}
 	if c.srStack != nil {
 		v.GateLo, v.GateHi, v.N = c.srStack.GateLo, c.srStack.GateHi, c.srStack.N
-		v.SampleS, v.K = c.srStack.SampleS, c.srStack.K
+		v.SampleS, v.K, v.Align = c.srStack.SampleS, c.srStack.K, c.srStack.Align
 		v.WinLo, v.WinHi, v.Period = c.srWinLo, c.srWinHi, c.srPeriod
 		if v.WinLo < 0 { // auto gate (no on-screen window): review the gate itself
 			v.WinLo, v.WinHi = v.GateLo, v.GateHi
 		}
 	}
 	if c.srFocus == 3 {
-		v.Mean = c.srMean
+		v.Mean, v.Mean2 = c.srMean, c.srMean2
 	}
 	return v
 }

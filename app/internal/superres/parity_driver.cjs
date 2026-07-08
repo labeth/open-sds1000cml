@@ -22,9 +22,11 @@ for (let i = 1; i < frames.length; i++) {
 const res = SR.srResult(st, { stride: 1 });
 let meanSum = 0, meanCount = 0;
 for (let b = 0; b < res.mean.length; b++) if (res.mean[b] !== -1) { meanSum += res.mean[b]; meanCount++; }
+let mean2Sum = 0, mean2Count = 0;
+if (res.mean2) for (let b = 0; b < res.mean2.length; b++) if (res.mean2[b] !== -1) { mean2Sum += res.mean2[b]; mean2Count++; }
 process.stdout.write(JSON.stringify({
   seedOk, disp, hitsAfter, gridL: st.gridL, gateLo: st.gateLo, gateHi: st.gateHi,
   frames: st.frames, hits: st.hits, rejected: st.rejected,
   bitsGained: res.bitsGained, sigmaSingle: res.sigmaSingle, sigmaStack: res.sigmaStack,
-  meanSum, meanCount,
+  meanSum, meanCount, mean2Sum, mean2Count,
 }));

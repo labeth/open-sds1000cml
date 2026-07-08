@@ -88,6 +88,8 @@ func TestRenderFuzzNoPanic(t *testing.T) {
 			MenuItems: make([]MenuItem, rng.Intn(9)),
 			SRActive:  rng.Intn(3) == 0, SRFocus: rng.Intn(5),
 			SRMean: make([]float32, rng.Intn(3)*512), SRk: rng.Intn(65),
+			SRMean2: make([]float32, rng.Intn(3)*512), SRAlign: rng.Intn(2),
+			SRSampleS: []float64{0, -1, 2e-9, 1e-6}[rng.Intn(4)],
 			SRGateLo: rng.Intn(4096) - 100, SRGateHi: rng.Intn(4096) - 100,
 			SRWinLo: rng.Intn(4096) - 100, SRWinHi: rng.Intn(4096) - 100, SRPeriod: rng.Intn(300) - 10,
 			ZoneMode: rng.Intn(2), MaskMode: rng.Intn(3),
@@ -103,6 +105,20 @@ func TestRenderFuzzNoPanic(t *testing.T) {
 			hud.RefC1[0] = f.C1 // ref same as live
 			hud.RefShow[0] = true
 		}
+		// Fill the super-res means with real values + occasional -1 gaps so the
+		// stacked FFT/X-Y resample+transform paths are exercised (not just their
+		// nil/zero guards) under the hostile K/window/period values above.
+		fillSR := func(m []float32) {
+			for j := range m {
+				if rng.Intn(8) == 0 {
+					m[j] = -1 // gap
+				} else {
+					m[j] = float32(rng.Intn(256))
+				}
+			}
+		}
+		fillSR(hud.SRMean)
+		fillSR(hud.SRMean2)
 		func() {
 			defer func() {
 				if r := recover(); r != nil {

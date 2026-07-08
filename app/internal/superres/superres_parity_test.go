@@ -97,6 +97,8 @@ type jsResult struct {
 	SigmaStack  float64  `json:"sigmaStack"`
 	MeanSum     float64  `json:"meanSum"`
 	MeanCount   int      `json:"meanCount"`
+	Mean2Sum    float64  `json:"mean2Sum"`
+	Mean2Count  int      `json:"mean2Count"`
 }
 
 // TestParityJS asserts the Go reference-locked stacker converges to the SAME
@@ -186,6 +188,14 @@ func runParity(t *testing.T, gateLo, gateHi int) {
 	if d := math.Abs(res.MeanSumNonGap() - js.MeanSum); d > 1e-3 {
 		t.Errorf("mean sum mismatch: go=%.6f js=%.6f (Δ%.2e)", res.MeanSumNonGap(), js.MeanSum, d)
 	}
+	// Second (non-align) channel too — the stacked X-Y / dual FFT read it, so it
+	// must be bit-parity with the web just like the align channel.
+	if res.Mean2CountNonGap() != js.Mean2Count {
+		t.Errorf("mean2 count mismatch: go=%d js=%d", res.Mean2CountNonGap(), js.Mean2Count)
+	}
+	if d := math.Abs(res.Mean2SumNonGap() - js.Mean2Sum); d > 1e-3 {
+		t.Errorf("mean2 sum mismatch: go=%.6f js=%.6f (Δ%.2e)", res.Mean2SumNonGap(), js.Mean2Sum, d)
+	}
 	if d := math.Abs(res.BitsGained - js.BitsGained); d > 0.02 {
 		t.Errorf("bitsGained mismatch: go=%.4f js=%.4f (Δ%.4f)", res.BitsGained, js.BitsGained, d)
 	}
@@ -209,6 +219,24 @@ func (r Result) MeanSumNonGap() float64 {
 func (r Result) MeanCountNonGap() int {
 	c := 0
 	for _, v := range r.Mean {
+		if v != -1 {
+			c++
+		}
+	}
+	return c
+}
+func (r Result) Mean2SumNonGap() float64 {
+	s := 0.0
+	for _, v := range r.Mean2 {
+		if v != -1 {
+			s += float64(v)
+		}
+	}
+	return s
+}
+func (r Result) Mean2CountNonGap() int {
+	c := 0
+	for _, v := range r.Mean2 {
 		if v != -1 {
 			c++
 		}
