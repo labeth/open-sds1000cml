@@ -44,13 +44,16 @@ function ejRender(force) {
   const st2 = ej.st;
   if (!st2) return;
   const res = ejResult(st2);
-  // status line
-  if (res.records === 0) {
-    ejStatus("no lock yet · " + st2.rejected + " rejected (" + (res.lastErr || "…") + ") — needs a clean NRZ stream");
-  } else {
-    ejStatus(res.records + " records · " + res.edges + " edges · " + st2.rejected + " rej" +
-      (st2.rejected > 0 && res.lastErr ? " (" + res.lastErr + ")" : "") + " · " +
-      eng(res.bitRate, "b/s", 4) + " · UI " + eng(res.uiSeconds, "s", 3));
+  // status line — optimize owns the status line while it runs (its transient
+  // per-band accumulation must not clobber the search progress).
+  if (!ejOptBusy) {
+    if (res.records === 0) {
+      ejStatus("no lock yet · " + st2.rejected + " rejected (" + (res.lastErr || "…") + ") — needs a clean NRZ stream");
+    } else {
+      ejStatus(res.records + " records · " + res.edges + " edges · " + st2.rejected + " rej" +
+        (st2.rejected > 0 && res.lastErr ? " (" + res.lastErr + ")" : "") + " · " +
+        eng(res.bitRate, "b/s", 4) + " · UI " + eng(res.uiSeconds, "s", 3));
+    }
   }
   ejDrawEye(st2);
   ejDrawHist(st2, res);
@@ -305,6 +308,14 @@ function ejStepTdiv(dir) {
   send("tdiv", tds[ni]);
   return true;
 }
+// set the timebase to the nearest eye-usable detent to `want`.
+function ejStepToNearest(want) {
+  if (!st || !st.tdivs) return;
+  const tds = st.tdivs.filter(t => t < 5e-3);
+  let best = tds[0], bd = Infinity;
+  for (const t of tds) { const d = Math.abs(t - want); if (d < bd) { bd = d; best = t; } }
+  if (best) send("tdiv", best);
+}
 // wait for the band change to land in the status poll, then settle.
 function ejSettleBand(prevTdiv) {
   return new Promise(resolve => {
@@ -323,10 +334,15 @@ async function ejOptimize() {
   ejOptBusy = true;
   const btn = $("ejOpt"); if (btn) btn.classList.add("on");
   try {
-    // 1. fit the vertical + find the signal (best-effort; the CDR is hardier than
-    //    the frame frequency read for very fast / untriggered signals).
+    // 1. fit the vertical + find the signal via the device autoset. Then anchor
+    //    on a FAST native band before the search: a slow start lets a fast signal
+    //    ALIAS into a false low-frequency lock (huge samples/UI) that would drive
+    //    the search the wrong way; starting fast shows the true rate and the
+    //    search only slows down for a genuinely slow signal.
     ejStatus("optimize: fitting the signal…");
     try { await autoset(); } catch (e) { }
+    ejStepToNearest(5e-8);
+    await ejSleep(500);
     // 2. arm the eye if it isn't already.
     if (!ej.armed) { $("ejArm").click(); await ejSleep(300); }
     if (!ej.armed) { ejStatus("optimize needs a native/decimated band with a signal"); return; }
@@ -355,9 +371,12 @@ async function ejOptimize() {
     }
     ejStatus("optimize: converged");
   } finally {
+    // keep the accumulation from the settled band (a fresh wipe here re-locks and
+    // catches the last band transition, tripping the ui-inconsistent stop); just
+    // clear the transition counter so the eye keeps accumulating cleanly.
     ejOptBusy = false;
+    ej.incons = 0;
     if ($("ejOpt")) $("ejOpt").classList.remove("on");
-    ejFreshState(); // clean accumulation on the settled band
   }
 }
 
