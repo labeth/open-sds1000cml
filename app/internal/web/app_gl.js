@@ -24,6 +24,18 @@ function glInit() {
   const vs = "attribute vec2 p; uniform vec2 res;" +
     "void main(){ vec2 c = (p / res) * 2.0 - 1.0; gl_Position = vec4(c.x, -c.y, 0.0, 1.0); }";
   const fs = "precision mediump float; uniform vec4 col; void main(){ gl_FragColor = col; }";
+  // Only use the GPU path when there's REAL hardware acceleration. Software
+  // WebGL (SwiftShader / llvmpipe / a blocklisted GPU) rasterises lines on the
+  // CPU too — and for a dense screen-filling trace that is SLOWER than the 2D
+  // path — so on those renderers we stay on 2D. Missing renderer info → assume
+  // hardware (the overwhelmingly common case).
+  try {
+    const ext = gl.getExtension("WEBGL_debug_renderer_info");
+    if (ext) {
+      const r = String(gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) || "");
+      if (/swiftshader|llvmpipe|software|basic render|microsoft basic/i.test(r)) { gl = null; return false; }
+    }
+  } catch (e) { /* keep GL */ }
   const prog = glLink(vs, fs);
   if (!prog) { gl = null; return false; }
   glProg = prog;
