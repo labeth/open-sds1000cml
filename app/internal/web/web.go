@@ -4,8 +4,8 @@
 package web
 
 import (
-	"encoding/binary"
 	_ "embed"
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -48,6 +48,9 @@ var superresJS []byte
 //go:embed eyejitter.js
 var eyejitterJS []byte
 
+//go:embed bode.js
+var bodeJS []byte
+
 // Scope is the engine surface the web layer needs (the setters come from
 // *engine.Engine; WithFrame comes from the frames.Fanout — the arena's
 // single-consumer read slot belongs to the fan-out, and every other reader
@@ -82,6 +85,9 @@ type Scope interface {
 	SetMaskMode(m int)
 	ClearMaskFails()
 	MaskFails() []engine.MaskFail
+	SetBodeMode(on bool, refCh, dutCh int)
+	ClearBode()
+	BodePoints() []engine.BodePoint
 }
 
 // Analog is the vertical front-end surface (implemented by
@@ -169,12 +175,14 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/api/zones", s.hZones)
 	mux.HandleFunc("/api/mask", s.hMask)
 	mux.HandleFunc("/api/maskfail", s.hMaskFail)
+	mux.HandleFunc("/api/bode", s.hBode)
 	mux.HandleFunc("/api/screen.png", s.hScreen)
 	mux.HandleFunc("/peaks.js", s.hPeaksJS)
 	mux.HandleFunc("/decode.js", s.hDecodeJS)
 	mux.HandleFunc("/binframe.js", s.hBinframeJS)
 	mux.HandleFunc("/superres.js", s.hSuperresJS)
 	mux.HandleFunc("/eyejitter.js", s.hEyejitterJS)
+	mux.HandleFunc("/bode.js", s.hBodeJS)
 	mux.HandleFunc("/tokens.css", s.hTokensCSS)
 	mux.HandleFunc("/base.css", s.hBaseCSS)
 	mux.HandleFunc("/app.js", s.hAppJS)
@@ -239,6 +247,7 @@ func (s *Server) hBinframeJS(w http.ResponseWriter, r *http.Request) { serveJS(w
 func (s *Server) hSuperresJS(w http.ResponseWriter, r *http.Request) { serveJS(w, superresJS) }
 
 func (s *Server) hEyejitterJS(w http.ResponseWriter, r *http.Request) { serveJS(w, eyejitterJS) }
+func (s *Server) hBodeJS(w http.ResponseWriter, r *http.Request)      { serveJS(w, bodeJS) }
 
 func (s *Server) hTokensCSS(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/css; charset=utf-8")
@@ -403,13 +412,13 @@ type frameReply struct {
 	WinFrac  float64 `json:"win_frac"`        // one 10-div screen as a fraction of the served array (1 = whole)
 
 	// Stream/stitch mode: continuity so the client stitches windows on one axis.
-	StreamSeq uint64 `json:"stream_seq,omitempty"` // monotonic window counter (0 = not a stream frame)
-	WindowNs  int64  `json:"window_ns,omitempty"`  // this window's captured duration
-	GapNs     int64  `json:"gap_ns,omitempty"`     // blackout (drain+re-arm) before this window
-	Vpc1     float64 `json:"vpc1"`       // volts per ADC code, CH1 (Vdiv/32)
-	Vpc2     float64 `json:"vpc2"`       // volts per ADC code, CH2
-	Off1V    float64 `json:"off1_v"`     // applied offset volts (input-referred)
-	Off2V    float64 `json:"off2_v"`
+	StreamSeq uint64  `json:"stream_seq,omitempty"` // monotonic window counter (0 = not a stream frame)
+	WindowNs  int64   `json:"window_ns,omitempty"`  // this window's captured duration
+	GapNs     int64   `json:"gap_ns,omitempty"`     // blackout (drain+re-arm) before this window
+	Vpc1      float64 `json:"vpc1"`                 // volts per ADC code, CH1 (Vdiv/32)
+	Vpc2      float64 `json:"vpc2"`                 // volts per ADC code, CH2
+	Off1V     float64 `json:"off1_v"`               // applied offset volts (input-referred)
+	Off2V     float64 `json:"off2_v"`
 
 	M1 *measure.Result `json:"m1,omitempty"` // CH1 auto-measurements
 	M2 *measure.Result `json:"m2,omitempty"` // CH2
@@ -838,6 +847,20 @@ func (s *Server) hMask(w http.ResponseWriter, r *http.Request) {
 
 // hMaskFail serves one captured failing frame from the ring as JSON (gallery
 // click — not a hot path). ?i=k indexes the snapshot, most recent last.
+// hBode serves the accumulated Frequency-Response (Bode) curve as parallel
+// arrays (compact for the plot): frequency (Hz), magnitude (dB), phase (deg),
+// sorted ascending by frequency.
+func (s *Server) hBode(w http.ResponseWriter, r *http.Request) {
+	pts := s.sc.BodePoints()
+	f := make([]float64, len(pts))
+	g := make([]float64, len(pts))
+	p := make([]float64, len(pts))
+	for i, pt := range pts {
+		f[i], g[i], p[i] = pt.FreqHz, pt.GainDB, pt.PhaseDeg
+	}
+	writeJSON(w, map[string]any{"ok": true, "n": len(pts), "freq": f, "gain_db": g, "phase_deg": p})
+}
+
 func (s *Server) hMaskFail(w http.ResponseWriter, r *http.Request) {
 	ring := s.sc.MaskFails()
 	i := 0
@@ -1165,6 +1188,11 @@ func (s *Server) hSet(w http.ResponseWriter, r *http.Request) {
 		s.sc.SetMaskMode(int(req.Value))
 	case "maskclear":
 		s.sc.ClearMaskFails()
+	case "bodemode":
+		// value: 0 off, else on; ref/dut channels come in via Lo/Hi (0=C1,1=C2)
+		s.sc.SetBodeMode(req.Value != 0, int(req.Lo), int(req.Hi))
+	case "bodeclear":
+		s.sc.ClearBode()
 	case "trigtype":
 		s.sc.SetTrigType(int(req.Value))
 	case "pulseparams":

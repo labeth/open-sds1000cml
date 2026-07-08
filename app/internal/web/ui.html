@@ -104,6 +104,18 @@
       <div id="ejStats" class="subtle">idle — needs a triggered serial (NRZ) signal on a native band</div>
     </div>
 
+    <div class="card" id="bodeCard">
+      <h3>Bode / FRA <span class="subtle">frequency response</span></h3>
+      <div class="toggles">
+        <button id="bodeArm" class="sm" title="Frequency Response Analysis: with the DUT input on the REF channel and its output on the DUT channel, ARM and sweep the source frequency — each frequency adds a magnitude (dB) + phase (deg) point. No built-in generator: drive the sweep externally (a signal gen, or step the FPGA source).">ARM</button>
+        <label>ref <select id="bodeRef"><option value="0" selected>C1</option><option value="1">C2</option></select></label>
+        <label>DUT <select id="bodeDut"><option value="0">C1</option><option value="1" selected>C2</option></select></label>
+        <button id="bodeClear" class="sm" title="clear the accumulated response curve">✕</button>
+      </div>
+      <canvas id="bodeCv" class="ejcv" width="460" height="230" aria-label="Bode plot: magnitude (dB) and phase (deg) vs log frequency" title="click for a full-screen view"></canvas>
+      <div id="bodeStats" class="subtle">idle — put the DUT input on REF, output on DUT, ARM, then sweep the source</div>
+    </div>
+
     <div class="card" id="zmCard">
       <h3>Zone / Mask <span class="subtle">pass-fail testing</span></h3>
       <div class="toggles">
@@ -323,6 +335,7 @@
 <script src="binframe.js"></script>
 <script src="superres.js"></script>
 <script src="eyejitter.js"></script>
+<script src="bode.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

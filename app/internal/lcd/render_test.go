@@ -1,6 +1,7 @@
 package lcd
 
 import (
+	"math"
 	"testing"
 
 	"open-sds/app/internal/engine"
@@ -369,7 +370,6 @@ func TestFormatters(t *testing.T) {
 	}
 }
 
-
 func TestRenderZoneMaskOverlay(t *testing.T) {
 	f := testFrame(2048)
 	hud := defaultHUD()
@@ -384,7 +384,7 @@ func TestRenderZoneMaskOverlay(t *testing.T) {
 	hud.MaskPass, hud.MaskFail = 12, 3
 	hud.ZoneMode = 1
 	hud.Zones = []engine.Zone{
-		{DtLoS: -200e-6, DtHiS: 200e-6, CodeLo: 60, CodeHi: 90},              // intersect (green)
+		{DtLoS: -200e-6, DtHiS: 200e-6, CodeLo: 60, CodeHi: 90},               // intersect (green)
 		{DtLoS: 250e-6, DtHiS: 500e-6, CodeLo: 180, CodeHi: 220, Avoid: true}, // avoid (red)
 	}
 	m := NewMemSurface()
@@ -413,4 +413,29 @@ func TestRenderZoneMaskOverlay(t *testing.T) {
 	if got := countColor(m2, colMask); got != 0 {
 		t.Errorf("mask rendered despite geometry mismatch/off: %d px", got)
 	}
+}
+
+func TestRenderBodeView(t *testing.T) {
+	hud := defaultHUD()
+	hud.ViewMode = 3
+	// a synthetic swept curve: -6 dB flat, phase ramping
+	for i := 0; i < 20; i++ {
+		f := 1e6 * math.Pow(10, float64(i)/10) // 1 MHz .. ~8 MHz over 2 decades
+		hud.BodeFreq = append(hud.BodeFreq, f)
+		hud.BodeGain = append(hud.BodeGain, -6)
+		hud.BodePhase = append(hud.BodePhase, -float64(i)*15)
+	}
+	m := NewMemSurface()
+	Render(m, testFrame(2048), hud, true)
+	// magnitude trace (colC1) and phase trace (colC2) must both be present
+	if countColor(m, colC1) < 40 {
+		t.Errorf("Bode magnitude trace missing (%d colC1 px)", countColor(m, colC1))
+	}
+	if countColor(m, colC2) < 40 {
+		t.Errorf("Bode phase trace missing (%d colC2 px)", countColor(m, colC2))
+	}
+	// empty curve must render the hint, not panic
+	hud2 := defaultHUD()
+	hud2.ViewMode = 3
+	Render(NewMemSurface(), nil, hud2, true)
 }

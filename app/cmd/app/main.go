@@ -127,8 +127,32 @@ func buildHUD(e *engine.Engine, fe *analog.FrontEnd) lcd.HUD {
 			hud.MaskLo, hud.MaskHi, hud.MaskWin = m.Lo, m.Hi, m.WinCols
 		}
 	}
+	// FRA / Bode: selecting the BODE view (ViewMode 3) arms the engine's
+	// accumulation (default ref C1 / DUT C2) and feeds the accumulated curve
+	// to the renderer; leaving it disarms. The web can also arm FRA — both
+	// observe the same accumulated points.
+	if hud.ViewMode == 3 {
+		e.SetBodeMode(true, 0, 1)
+		pts := e.BodePoints()
+		hud.BodeFreq = make([]float64, len(pts))
+		hud.BodeGain = make([]float64, len(pts))
+		hud.BodePhase = make([]float64, len(pts))
+		for i, p := range pts {
+			hud.BodeFreq[i], hud.BodeGain[i], hud.BodePhase[i] = p.FreqHz, p.GainDB, p.PhaseDeg
+		}
+	} else if st.BodeMode > 0 && lastViewWasBode.Swap(false) {
+		// only the device auto-arm gets auto-disarmed; a web-armed FRA persists
+		e.SetBodeMode(false, 0, 1)
+	}
+	if hud.ViewMode == 3 {
+		lastViewWasBode.Store(true)
+	}
 	return hud
 }
+
+// lastViewWasBode tracks whether the DEVICE's BODE view armed FRA, so leaving
+// the view disarms only the device's own auto-arm (a web-armed sweep persists).
+var lastViewWasBode atomic.Bool
 
 // uiCtrl is the panel controller, published after creation so the LCD render
 // loop (started earlier) and the SCDP screenshot can read the menu overlay.

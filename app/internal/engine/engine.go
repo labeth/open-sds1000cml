@@ -143,6 +143,14 @@ type Stats struct {
 	MaskRing    int   `json:"mask_ring,omitempty"`    // captured failures available
 	MaskStopped bool  `json:"mask_stopped,omitempty"` // stop-on-fail latched
 	MaskSet     bool  `json:"mask_set,omitempty"`     // an envelope mask is installed
+
+	// FRA / Bode plot (bode.go)
+	BodeMode     int     `json:"bode_mode,omitempty"`      // 0 off, 1 armed
+	BodePoints   int     `json:"bode_points,omitempty"`    // accumulated curve size
+	BodeValid    bool    `json:"bode_valid,omitempty"`     // the live point is valid
+	BodeFreqHz   float64 `json:"bode_freq_hz,omitempty"`   // live point frequency
+	BodeGainDB   float64 `json:"bode_gain_db,omitempty"`   // live point magnitude (dB)
+	BodePhaseDeg float64 `json:"bode_phase_deg,omitempty"` // live point phase (deg)
 }
 
 type Engine struct {
@@ -184,6 +192,8 @@ type Engine struct {
 	zoneSkip    atomic.Int64  // zone-armed publishes that could not be tested (env/roll)
 	zoneHeld    int           // engine goroutine only: AUTO liveness fallback counter
 	zm          zoneMaskState
+	bodeMode    atomic.Int32  // FRA (Bode) accumulation armed (bode.go)
+	bode        bodeState
 
 	// mu guards the command shadows and the stats mirror. Setters record and
 	// return; only the owner touches the bus (spec 09 §1). Bus writes happen
@@ -724,6 +734,16 @@ func (e *Engine) Snapshot() Stats {
 	s.MaskRing = len(e.zm.ring)
 	s.MaskSet = e.zm.mask != nil
 	e.zm.mu.Unlock()
+	s.BodeMode = int(e.bodeMode.Load())
+	e.bode.mu.Lock()
+	s.BodePoints = len(e.bode.bins)
+	s.BodeValid = e.bode.liveValid
+	if e.bode.liveValid {
+		s.BodeFreqHz = e.bode.live.FreqHz
+		s.BodeGainDB = e.bode.live.GainDB
+		s.BodePhaseDeg = e.bode.live.PhaseDeg
+	}
+	e.bode.mu.Unlock()
 	// FPS = publishes within the trailing second.
 	now := e.clk.Now()
 	n := 0
@@ -1333,6 +1353,17 @@ func (e *Engine) oneFrame(norm bool) {
 			e.stats.Running = false
 			e.mu.Unlock()
 		}
+	}
+
+	// FRA / Bode (bode.go): accumulate a transfer-function point between the
+	// reference and DUT channels on every locked frame. Independent of the
+	// publish policy — it observes the signal, does not gate it.
+	if lock && e.bodeMode.Load() == BodeOn {
+		bd := validDepth(disc)
+		if bd <= 0 || bd > cols {
+			bd = cols
+		}
+		e.bodeEval(f, bd, f.SampleS)
 	}
 
 	if !publish {

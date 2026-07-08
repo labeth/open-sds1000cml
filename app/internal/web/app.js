@@ -3161,3 +3161,84 @@ setInterval(() => {
     }
   }
 }, 1000);
+
+// ---- Bode / Frequency-Response-Analysis (engine-accumulated; this is the
+// control + render surface) ------------------------------------------------
+const bode = { armed: false, lastN: -1, timer: 0 };
+const GRIDCOL = css.getPropertyValue("--grid").trim() || "#243";
+const AXISCOL = css.getPropertyValue("--axis").trim() || "#456";
+const DIMCOL = css.getPropertyValue("--dim").trim() || "#9ab";
+
+function bodeColors() {
+  return { grid: GRIDCOL, axis: AXISCOL, mag: C1COL, phase: C2COL, text: DIMCOL };
+}
+function bodeStatus(m) { if (m !== undefined) $("bodeStats").textContent = m; }
+
+async function bodeRenderNow() {
+  if (typeof bodeDraw !== "function") return;
+  const cv = $("bodeCv"); if (!cv) return;
+  let pts = { freq: [], gain_db: [], phase_deg: [] };
+  try { const r = await (await fetch("/api/bode")).json(); if (r.ok) pts = r; } catch (e) { }
+  // crisp render at the element's CSS box × dpr
+  const rect = cv.getBoundingClientRect();
+  const W = Math.max(200, Math.round(rect.width || cv.width)), H = cv.height;
+  if (cv.width !== W) cv.width = W;
+  const g = cv.getContext("2d");
+  bodeDraw(g, cv.width, H, pts, bodeColors());
+  return pts.n || 0;
+}
+
+$("bodeArm").onclick = () => {
+  bode.armed = !bode.armed;
+  $("bodeArm").classList.toggle("on", bode.armed);
+  $("bodeArm").textContent = bode.armed ? "STOP" : "ARM";
+  const ref = +$("bodeRef").value || 0, dut = +$("bodeDut").value || 0;
+  if (ref === dut) { bodeStatus("REF and DUT must be different channels"); }
+  // /api/set bodemode carries ref/dut in lo/hi
+  fetch("/api/set", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ control: "bodemode", value: bode.armed ? 1 : 0, lo: ref, hi: dut }) }).catch(() => {});
+  bodeStatus(bode.armed ? "armed — sweep the source frequency to add points" : "stopped");
+};
+$("bodeClear").onclick = () => {
+  send("bodeclear", 0);
+  bode.lastN = -1;
+  bodeRenderNow();
+  bodeStatus(bode.armed ? "cleared — sweeping" : "cleared");
+};
+for (const id of ["bodeRef", "bodeDut"]) $(id).onchange = () => {
+  if (bode.armed) {
+    const ref = +$("bodeRef").value || 0, dut = +$("bodeDut").value || 0;
+    fetch("/api/set", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ control: "bodemode", value: 1, lo: ref, hi: dut }) }).catch(() => {});
+  }
+};
+// full-screen enlarge on click, reusing the eye big-view dialog shell
+$("bodeCv").onclick = () => {
+  if (typeof ejBigVisible !== "function") return;
+  ejBigKind = "bode";
+  $("ejBigWrap").classList.remove("hidden");
+  bodeDrawBig();
+};
+function bodeDrawBig() {
+  const cv = $("ejBig"); if (!cv) return;
+  const r = cv.getBoundingClientRect(), dpr2 = window.devicePixelRatio || 1;
+  if (cv.width !== Math.round(r.width * dpr2)) { cv.width = Math.round(r.width * dpr2); cv.height = Math.round(r.height * dpr2); }
+  fetch("/api/bode").then(x => x.json()).then(pts => {
+    bodeDraw(cv.getContext("2d"), cv.width, cv.height, pts.ok ? pts : { freq: [] }, bodeColors());
+    $("ejBigInfo").textContent = "Bode / FRA — " + (pts.n || 0) + " points · click to close";
+  }).catch(() => { });
+}
+
+// 1 Hz: refresh the curve + the live-point readout while armed (or non-empty).
+setInterval(async () => {
+  if (!st) return;
+  const active = st.bode_mode > 0 || (st.bode_points || 0) > 0;
+  if (!active) return;
+  const n = await bodeRenderNow();
+  if (typeof ejBigVisible === "function" && ejBigVisible() && ejBigKind === "bode") bodeDrawBig();
+  let line = `${n || 0} points`;
+  if (st.bode_mode > 0) {
+    line = st.bode_valid
+      ? `live: ${eng(st.bode_freq_hz, "Hz", 3)} · ${st.bode_gain_db.toFixed(2)} dB · ${st.bode_phase_deg.toFixed(1)}° — ${n || 0} pts`
+      : `armed — no single-frequency lock yet (${n || 0} pts)`;
+  }
+  bodeStatus(line);
+}, 1000);

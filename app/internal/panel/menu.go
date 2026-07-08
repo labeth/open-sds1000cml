@@ -438,9 +438,9 @@ func (c *Controller) menuCycle(slot, dir int) {
 			c.mu.Lock()
 			c.showMeas = !c.showMeas
 			c.mu.Unlock()
-		case 3: // View: Y-T → X-Y → FFT
+		case 3: // View: Y-T → X-Y → FFT → Bode (FRA)
 			c.mu.Lock()
-			c.viewMode = mod3(c.viewMode + dir)
+			c.viewMode = mod4(c.viewMode + dir)
 			c.mu.Unlock()
 		case 4: // Math: off -> C1+C2 -> C1-C2 -> C2-C1 -> C1xC2
 			c.mu.Lock()
@@ -733,7 +733,7 @@ func (c *Controller) MenuView() MenuView {
 			{"CH1", onoff(c1)},
 			{"CH2", onoff(c2)},
 			{"Measure", onoff(meas)},
-			{"View", []string{"Y-T", "X-Y", "FFT"}[view%3]},
+			{"View", []string{"Y-T", "X-Y", "FFT", "Bode"}[view%4]},
 			{"Math", []string{"Off", "C1+C2", "C1-C2", "C2-C1", "C1xC2"}[mth%5]}, // ASCII font: no '×'
 		}
 	case pgHoriz:
