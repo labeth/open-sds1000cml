@@ -34,7 +34,7 @@ type HUD struct {
 	OffC1V, OffC2V   float64 // applied vertical offset volts (ground markers)
 	ShowC1, ShowC2   bool    // per-channel display enable
 	ShowMeas         bool    // on-device MEASURE panel overlay
-	ViewMode         int     // 0 = Y-T, 1 = X-Y, 2 = FFT, 3 = BODE (FRA)
+	ViewMode         int     // 0=Y-T 1=X-Y 2=FFT 3=BODE 4=SPECTROGRAM
 	MathMode         int     // 0 = off, 1 = C1+C2, 2 = C1-C2, 3 = C1×C2
 	AutosetBusy      bool    // autoset sweep running → show a cancelable banner
 	AutosetMsg       string  // banner text while AutosetBusy
@@ -100,6 +100,10 @@ type HUD struct {
 	BodeFreq  []float64
 	BodeGain  []float64
 	BodePhase []float64
+
+	// Spectrogram ("FFT over time", spectrogram.go): the scrolling waterfall
+	// image, accumulated by the LCD loop and blitted when ViewMode == 4.
+	Spect *Spectrogram
 }
 
 // MenuItem is one softkey slot label + value for the LCD menu overlay.
@@ -1045,6 +1049,8 @@ func Render(sf Surface, f *engine.Frame, hud HUD, live bool, persist ...*MemSurf
 		drawFFT(sf, f, hud)
 	} else if hud.ViewMode == 3 {
 		drawBode(sf, hud)
+	} else if hud.ViewMode == 4 {
+		drawSpectrogram(sf, hud.Spect)
 	} else if f != nil && len(f.C1) > 0 {
 		valid := f.Valid
 		if valid < 1 {

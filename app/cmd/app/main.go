@@ -147,12 +147,18 @@ func buildHUD(e *engine.Engine, fe *analog.FrontEnd) lcd.HUD {
 	if hud.ViewMode == 3 {
 		lastViewWasBode.Store(true)
 	}
+	hud.Spect = lcdSpect
 	return hud
 }
 
 // lastViewWasBode tracks whether the DEVICE's BODE view armed FRA, so leaving
 // the view disarms only the device's own auto-arm (a web-armed sweep persists).
 var lastViewWasBode atomic.Bool
+
+// lcdSpect is the one "FFT over time" waterfall buffer: the LCD loop pushes new
+// spectrum rows into it (SPECTROGRAM view); every render path (panel, the
+// /api/screen.png PNG, the SCDP hardcopy) blits it, so all three agree.
+var lcdSpect = lcd.NewSpectrogram()
 
 // uiCtrl is the panel controller, published after creation so the LCD render
 // loop (started earlier) and the SCDP screenshot can read the menu overlay.
@@ -174,6 +180,7 @@ func runLCD(e *engine.Engine, fe *analog.FrontEnd, fo *frames.Fanout) {
 	logf("lcd: renderer up on /dev/fb0")
 	back := lcd.NewMemSurface()
 	persistLayer := lcd.NewMemSurface() // afterglow trace layer, owned by this loop
+	var sgSeq uint64                    // last frame pushed into the shared spectrogram (lcdSpect)
 	var lastSeq uint64
 	var lastFresh time.Time
 	t := time.NewTicker(50 * time.Millisecond)
@@ -191,6 +198,16 @@ func runLCD(e *engine.Engine, fe *analog.FrontEnd, fo *frames.Fanout) {
 			if f != nil {
 				hud.Trigd = f.Trigd // on-screen TRIG'd indicator (there is no TRIG'd lamp)
 				hud.SampleS = f.SampleS
+				// Spectrogram: push each fresh per-sample frame's spectrum as a
+				// new waterfall row while the SPECTROGRAM view is active.
+				if hud.ViewMode == 4 && !f.IsEnv && f.Seq != sgSeq && len(f.C1) > 0 {
+					sgSeq = f.Seq
+					effNyq := 0.0
+					if f.SampleS > 0 {
+						effNyq = 0.5 / f.SampleS
+					}
+					lcdSpect.Push(f, 0, effNyq) // C1
+				}
 			}
 			if pc := uiCtrl.Load(); pc != nil {
 				pc.SyncLEDs() // keep RUN/STOP + SINGLE lamps in step (re-latches only on change)

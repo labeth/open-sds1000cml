@@ -3242,3 +3242,56 @@ setInterval(async () => {
   }
   bodeStatus(line);
 }, 1000);
+
+// ---- Spectrogram ("FFT over time") waterfall ------------------------------
+const spg = { armed: false, sg: null, lastSeq: -1, ch: 1 };
+function spgStatus(m) { if (m !== undefined) $("spgStats").textContent = m; }
+function spgEnsure() { if (!spg.sg) spg.sg = sgNew(400, 200); return spg.sg; }
+
+function spgPushCurrent() {
+  if (!spg.armed || !frame || typeof spectrum !== "function") return;
+  if (frame.seq === spg.lastSeq || frame.is_env) return;
+  const src = spg.ch === 2 ? frame.c2 : frame.c1;
+  if (!src || src.length < 32) return;
+  spg.lastSeq = frame.seq;
+  const s = spectrum(src, peakNyq());
+  if (!s) return;
+  const sg = spgEnsure();
+  sgPushRow(sg, s.mags, s.half, s.peak, s.nyq || peakNyq());
+}
+function spgRender(cv) {
+  cv = cv || $("spgCv");
+  const rect = cv.getBoundingClientRect();
+  const W = Math.max(200, Math.round(rect.width || cv.width));
+  if (cv.width !== W) cv.width = W;
+  sgBlit(cv.getContext("2d"), cv.width, cv.height, spg.sg, DIMCOL);
+}
+$("spgArm").onclick = () => {
+  spg.armed = !spg.armed;
+  $("spgArm").classList.toggle("on", spg.armed);
+  $("spgArm").textContent = spg.armed ? "STOP" : "ARM";
+  if (spg.armed) spgEnsure();
+  spgStatus(spg.armed ? "armed — building the waterfall from each capture" : "stopped");
+};
+$("spgClear").onclick = () => { if (spg.sg) sgClear(spg.sg); spgRender(); spgStatus(spg.armed ? "cleared — building" : "cleared"); };
+$("spgCh").onchange = () => { spg.ch = +$("spgCh").value === 2 ? 2 : 1; };
+$("spgFloor").onchange = () => { if (spg.sg) spg.sg.floorDb = +$("spgFloor").value || -60; };
+$("spgCv").onclick = () => {
+  if (typeof ejBigVisible !== "function") return;
+  ejBigKind = "spg"; $("ejBigWrap").classList.remove("hidden"); spgDrawBig();
+};
+function spgDrawBig() {
+  const cv = $("ejBig"); if (!cv) return;
+  const r = cv.getBoundingClientRect(), dpr2 = window.devicePixelRatio || 1;
+  if (cv.width !== Math.round(r.width * dpr2)) { cv.width = Math.round(r.width * dpr2); cv.height = Math.round(r.height * dpr2); }
+  sgBlit(cv.getContext("2d"), cv.width, cv.height, spg.sg, DIMCOL);
+  $("ejBigInfo").textContent = "Spectrogram — FFT over time · click to close";
+}
+// push + render on a fast tick so the waterfall scrolls at ~frame rate
+setInterval(() => {
+  if (!spg.armed && (!spg.sg || spg.sg.rows === 0)) return;
+  spgPushCurrent();
+  spgRender();
+  if (typeof ejBigVisible === "function" && ejBigVisible() && ejBigKind === "spg") spgDrawBig();
+  if (spg.armed) spgStatus(`waterfall live · ${spg.sg ? spg.sg.rows : 0} rows · Nyquist ${eng(peakNyq(), "Hz", 3)}`);
+}, 80);

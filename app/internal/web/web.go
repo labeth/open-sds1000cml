@@ -51,6 +51,9 @@ var eyejitterJS []byte
 //go:embed bode.js
 var bodeJS []byte
 
+//go:embed spectrogram.js
+var spectrogramJS []byte
+
 // Scope is the engine surface the web layer needs (the setters come from
 // *engine.Engine; WithFrame comes from the frames.Fanout — the arena's
 // single-consumer read slot belongs to the fan-out, and every other reader
@@ -183,6 +186,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/superres.js", s.hSuperresJS)
 	mux.HandleFunc("/eyejitter.js", s.hEyejitterJS)
 	mux.HandleFunc("/bode.js", s.hBodeJS)
+	mux.HandleFunc("/spectrogram.js", s.hSpectrogramJS)
 	mux.HandleFunc("/tokens.css", s.hTokensCSS)
 	mux.HandleFunc("/base.css", s.hBaseCSS)
 	mux.HandleFunc("/app.js", s.hAppJS)
@@ -246,8 +250,9 @@ func (s *Server) hBinframeJS(w http.ResponseWriter, r *http.Request) { serveJS(w
 
 func (s *Server) hSuperresJS(w http.ResponseWriter, r *http.Request) { serveJS(w, superresJS) }
 
-func (s *Server) hEyejitterJS(w http.ResponseWriter, r *http.Request) { serveJS(w, eyejitterJS) }
-func (s *Server) hBodeJS(w http.ResponseWriter, r *http.Request)      { serveJS(w, bodeJS) }
+func (s *Server) hEyejitterJS(w http.ResponseWriter, r *http.Request)   { serveJS(w, eyejitterJS) }
+func (s *Server) hBodeJS(w http.ResponseWriter, r *http.Request)        { serveJS(w, bodeJS) }
+func (s *Server) hSpectrogramJS(w http.ResponseWriter, r *http.Request) { serveJS(w, spectrogramJS) }
 
 func (s *Server) hTokensCSS(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/css; charset=utf-8")

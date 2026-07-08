@@ -438,9 +438,9 @@ func (c *Controller) menuCycle(slot, dir int) {
 			c.mu.Lock()
 			c.showMeas = !c.showMeas
 			c.mu.Unlock()
-		case 3: // View: Y-T → X-Y → FFT → Bode (FRA)
+		case 3: // View: Y-T → X-Y → FFT → Bode → Spectrogram
 			c.mu.Lock()
-			c.viewMode = mod4(c.viewMode + dir)
+			c.viewMode = mod5b(c.viewMode + dir)
 			c.mu.Unlock()
 		case 4: // Math: off -> C1+C2 -> C1-C2 -> C2-C1 -> C1xC2
 			c.mu.Lock()
@@ -733,7 +733,7 @@ func (c *Controller) MenuView() MenuView {
 			{"CH1", onoff(c1)},
 			{"CH2", onoff(c2)},
 			{"Measure", onoff(meas)},
-			{"View", []string{"Y-T", "X-Y", "FFT", "Bode"}[view%4]},
+			{"View", []string{"Y-T", "X-Y", "FFT", "Bode", "Spgm"}[view%5]},
 			{"Math", []string{"Off", "C1+C2", "C1-C2", "C2-C1", "C1xC2"}[mth%5]}, // ASCII font: no '×'
 		}
 	case pgHoriz:
@@ -964,9 +964,10 @@ func b2ic(b bool) int {
 	return 0
 }
 
-func mod5(x int) int { return ((x % 5) + 5) % 5 }
-func mod4(x int) int { return ((x % 4) + 4) % 4 }
-func mod3(x int) int { return ((x % 3) + 3) % 3 }
+func mod5(x int) int  { return ((x % 5) + 5) % 5 }
+func mod5b(x int) int { return ((x % 5) + 5) % 5 } // view-mode cycle (Y-T/X-Y/FFT/Bode/Spgm)
+func mod4(x int) int  { return ((x % 4) + 4) % 4 }
+func mod3(x int) int  { return ((x % 3) + 3) % 3 }
 
 // nextHoldoff steps the trigger-holdoff ladder (Off → 100 µs → 1 ms → 10 ms →
 // 100 ms → 1 s), clamped at the ends.

@@ -116,6 +116,18 @@
       <div id="bodeStats" class="subtle">idle — put the DUT input on REF, output on DUT, ARM, then sweep the source</div>
     </div>
 
+    <div class="card" id="spgCard">
+      <h3>Spectrogram <span class="subtle">FFT over time</span></h3>
+      <div class="toggles">
+        <button id="spgArm" class="sm" title="waterfall of the spectrum over time: each capture's FFT becomes a colour row (X = frequency, Y = time, newest on top). Watch tones drift, step, or come and go.">ARM</button>
+        <label>ch <select id="spgCh"><option value="1" selected>C1</option><option value="2">C2</option></select></label>
+        <label>floor <select id="spgFloor"><option value="-40">-40dB</option><option value="-60" selected>-60dB</option><option value="-80">-80dB</option></select></label>
+        <button id="spgClear" class="sm" title="clear the waterfall">✕</button>
+      </div>
+      <canvas id="spgCv" class="ejcv" width="460" height="220" aria-label="spectrogram: FFT magnitude over time" title="click for a full-screen view"></canvas>
+      <div id="spgStats" class="subtle">idle — ARM and feed a triggered signal to build the waterfall</div>
+    </div>
+
     <div class="card" id="zmCard">
       <h3>Zone / Mask <span class="subtle">pass-fail testing</span></h3>
       <div class="toggles">
@@ -336,6 +348,7 @@
 <script src="superres.js"></script>
 <script src="eyejitter.js"></script>
 <script src="bode.js"></script>
+<script src="spectrogram.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
