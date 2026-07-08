@@ -40,9 +40,9 @@ type Frame struct {
 
 	// Stream/stitch mode continuity metadata: the client places consecutive
 	// windows on one time axis and marks the blackout (GapNs) between them.
-	StreamSeq uint64  // monotonic stream window counter (0 = not a stream frame)
-	WindowNs  int64   // this window's captured duration (= Valid × SampleS)
-	GapNs     int64   // measured blackout (drain+re-arm) before this window
+	StreamSeq uint64 // monotonic stream window counter (0 = not a stream frame)
+	WindowNs  int64  // this window's captured duration (= Valid × SampleS)
+	GapNs     int64  // measured blackout (drain+re-arm) before this window
 }
 
 // arena is the triple buffer between the engine owner and consumers

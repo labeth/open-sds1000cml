@@ -24,8 +24,8 @@ const (
 	// drain stays well inside the record actually captured by halt time
 	// (arm-to-latch clocks ~14k samples at 500 µs/div), verified per-frame by
 	// ValidDepth telemetry.
-	decimWin   = 2048 // decimated display window (10-division span cap)
-	decimDrain = 6144 // decimated drain depth = window + centring margin
+	decimWin    = 2048  // decimated display window (10-division span cap)
+	decimDrain  = 6144  // decimated drain depth = window + centring margin
 	latchAt     = 0x200 // fill-counter gate before capture-halt
 	fillMask    = 0x07ff
 	screenDivsH = 10 // horizontal graticule divisions
