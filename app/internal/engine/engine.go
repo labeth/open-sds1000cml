@@ -144,6 +144,12 @@ type Stats struct {
 	MaskStopped bool  `json:"mask_stopped,omitempty"` // stop-on-fail latched
 	MaskSet     bool  `json:"mask_set,omitempty"`     // an envelope mask is installed
 
+	// Serial / protocol trigger (serialtrig.go)
+	SerialMode    int   `json:"serial_mode,omitempty"`    // 0 off, 1 armed
+	SerialMatches int64 `json:"serial_matches,omitempty"` // frames that matched the pattern
+	SerialSkip    int64 `json:"serial_skip,omitempty"`    // armed publishes on env/roll (untestable)
+	SerialSet     bool  `json:"serial_set,omitempty"`     // a match pattern is configured
+
 	// FRA / Bode plot (bode.go)
 	BodeMode     int     `json:"bode_mode,omitempty"`      // 0 off, 1 armed
 	BodePoints   int     `json:"bode_points,omitempty"`    // accumulated curve size
@@ -192,8 +198,14 @@ type Engine struct {
 	zoneSkip    atomic.Int64  // zone-armed publishes that could not be tested (env/roll)
 	zoneHeld    int           // engine goroutine only: AUTO liveness fallback counter
 	zm          zoneMaskState
-	bodeMode    atomic.Int32 // FRA (Bode) accumulation armed (bode.go)
-	bode        bodeState
+	// serial / protocol trigger (serialtrig.go)
+	serialMode    atomic.Int32
+	serialMatches atomic.Int64
+	serialSkip    atomic.Int64 // serial-armed publishes on env/roll (no per-sample stream)
+	serialHeld    int          // engine goroutine only: AUTO liveness fallback counter
+	ser           serialState
+	bodeMode      atomic.Int32 // FRA (Bode) accumulation armed (bode.go)
+	bode          bodeState
 
 	// mu guards the command shadows and the stats mirror. Setters record and
 	// return; only the owner touches the bus (spec 09 §1). Bus writes happen
@@ -348,6 +360,12 @@ func (e *Engine) Snapshot() Stats {
 	s.MaskRing = len(e.zm.ring)
 	s.MaskSet = e.zm.mask != nil
 	e.zm.mu.Unlock()
+	s.SerialMode = int(e.serialMode.Load())
+	s.SerialMatches = e.serialMatches.Load()
+	s.SerialSkip = e.serialSkip.Load()
+	e.ser.mu.Lock()
+	s.SerialSet = !e.ser.params.empty()
+	e.ser.mu.Unlock()
 	s.BodeMode = int(e.bodeMode.Load())
 	e.bode.mu.Lock()
 	s.BodePoints = len(e.bode.bins)

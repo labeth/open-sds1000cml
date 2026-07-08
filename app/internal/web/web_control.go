@@ -45,6 +45,35 @@ func (s *Server) hZones(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, map[string]any{"ok": true, "zones": len(out)})
 }
 
+// hSerial installs the serial/protocol-trigger config (POST JSON = SerialParams:
+// {proto,chA,chB,baud,cpol,cpha,msb,addr,rw,bytes}). Arm/disarm is separate, via
+// /api/set {control:"serialmode"}. The byte pattern is clamped to 0..255.
+func (s *Server) hSerial(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "POST only", http.StatusMethodNotAllowed)
+		return
+	}
+	var p engine.SerialParams
+	if err := json.NewDecoder(io.LimitReader(r.Body, 1<<16)).Decode(&p); err != nil {
+		writeJSON(w, map[string]any{"ok": false, "err": "bad json"})
+		return
+	}
+	p.Proto = clampI(p.Proto, 0, 3)
+	p.ChA, p.ChB = p.ChA&1, p.ChB&1
+	p.RW = clampI(p.RW, 0, 2)
+	if p.Baud < 0 {
+		p.Baud = 0
+	}
+	if len(p.Bytes) > 64 { // a match pattern longer than a record is pointless
+		p.Bytes = p.Bytes[:64]
+	}
+	for i := range p.Bytes {
+		p.Bytes[i] = clampI(p.Bytes[i], 0, 255)
+	}
+	s.sc.SetSerialParams(p)
+	writeJSON(w, map[string]any{"ok": true})
+}
+
 func clampI(v, lo, hi int) int {
 	if v < lo {
 		return lo
@@ -203,6 +232,8 @@ func (s *Server) hSet(w http.ResponseWriter, r *http.Request) {
 		on := s.sc.SetStreamMode(req.Value != 0)
 		writeJSON(w, map[string]any{"ok": true, "applied": on})
 		return
+	case "serialmode":
+		s.sc.SetSerialMode(int(req.Value))
 	case "zonemode":
 		s.sc.SetZoneMode(int(req.Value))
 	case "maskmode":

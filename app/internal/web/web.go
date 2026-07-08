@@ -54,6 +54,8 @@ type Scope interface {
 	SetMaskMode(m int)
 	ClearMaskFails()
 	MaskFails() []engine.MaskFail
+	SetSerialParams(p engine.SerialParams)
+	SetSerialMode(m int)
 	SetBodeMode(on bool, refCh, dutCh int)
 	ClearBode()
 	BodePoints() []engine.BodePoint
@@ -141,6 +143,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/api/set", s.hSet)
 	mux.HandleFunc("/api/panel", s.hPanel)
 	mux.HandleFunc("/api/zones", s.hZones)
+	mux.HandleFunc("/api/serial", s.hSerial)
 	mux.HandleFunc("/api/mask", s.hMask)
 	mux.HandleFunc("/api/maskfail", s.hMaskFail)
 	mux.HandleFunc("/api/bode", s.hBode)

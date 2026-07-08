@@ -17,6 +17,18 @@
   browser UI monkey) that lock these down.
 
 ### Added
+- **Serial / protocol trigger** — trigger on a *decoded* value, not just an
+  edge: publish only frames whose UART / I²C / SPI stream contains an
+  operator-specified pattern (I²C address + R/W ± data byte; a byte or byte
+  sequence for UART/SPI), re-centred on the match. It runs in the acquisition
+  engine (reusing the pure `internal/decode` package the LCD/web decoders share),
+  so it works for SINGLE/NORM and device-standalone, and composes with the zone
+  trigger. NORM/SINGLE hold strictly for the match; AUTO keeps a liveness
+  fallback (use AUTO for async UART, NORM for clocked I²C/SPI). Configured from
+  the web "Serial Trigger" card. Validated live against the FPGA protocol
+  generators: matched the exact UART sequence and the SPI payload byte on real
+  captures, rejected absent patterns, and gated the display correctly (AUTO
+  liveness heartbeat vs NORM strict hold).
 - **Zone trigger** — draw up to 4 rectangles on the display (web); frames must
   intersect (or avoid) every zone to publish: a graphical software trigger the
   hardware comparator cannot express. NORM holds strictly; AUTO keeps a

@@ -152,6 +152,40 @@
       <div id="zmStats" class="subtle">no mask — build one from a clean signal first</div>
     </div>
 
+    <div class="card" id="stCard">
+      <h3>Serial Trigger <span class="subtle">protocol match</span></h3>
+      <div class="decrow">
+        <label>proto <select id="stProto">
+          <option value="0" selected>off</option>
+          <option value="1">UART</option>
+          <option value="2">I2C</option>
+          <option value="3">SPI</option>
+        </select></label>
+        <button id="stArm" class="sm" title="arm: only frames whose decoded stream matches publish, centred on the match (AUTO passes a liveness frame occasionally; NORM/SINGLE hold for the match — use AUTO for async UART, NORM/SINGLE for clocked I2C/SPI)">arm</button>
+      </div>
+      <div id="stRoles" class="decrow">
+        <span class="st-uart">line <select id="stLine" class="rolesel"></select></span>
+        <span class="st-i2c">SCL <select id="stScl" class="rolesel"></select> SDA <select id="stSda" class="rolesel"></select></span>
+        <span class="st-spi">CLK <select id="stClk" class="rolesel"></select> DATA <select id="stData" class="rolesel"></select></span>
+      </div>
+      <div id="stUartRow" class="decrow">
+        <label>baud <input id="stBaud" type="number" min="0" value="0" class="num w-md" title="0 = auto-infer"></label>
+      </div>
+      <div id="stSpiRow" class="decrow">
+        <label>CPOL <select id="stCpol"><option value="0">0</option><option value="1">1</option></select></label>
+        <label>CPHA <select id="stCpha"><option value="0">0</option><option value="1">1</option></select></label>
+        <label>bit <select id="stMsb"><option value="1" selected>MSB</option><option value="0">LSB</option></select></label>
+      </div>
+      <div id="stI2cRow" class="decrow">
+        <label>addr <input id="stAddr" type="text" value="" placeholder="any" class="num w-sm" title="7-bit hex, e.g. 50 — blank = any address"></label>
+        <label>dir <select id="stRW"><option value="2" selected>any</option><option value="0">W</option><option value="1">R</option></select></label>
+      </div>
+      <div id="stPatRow" class="decrow">
+        <label>data <input id="stBytes" type="text" value="" placeholder="any" class="num grow min" title="hex byte sequence to match in order, e.g. FF 3C — blank = any byte/transaction"></label>
+      </div>
+      <div id="stStats" class="subtle">off</div>
+    </div>
+
     <div class="card" id="refCard">
       <h3>Reference <span class="subtle">save &amp; overlay</span></h3>
       <div class="toggles">
@@ -369,6 +403,7 @@
 <script src="app_superres.js"></script>   <!-- super-res stacker + wiring -->
 <script src="app_eye.js"></script>        <!-- eye/jitter + wiring -->
 <script src="app_zonemask.js"></script>   <!-- zone-trigger/mask + wiring -->
+<script src="app_serialtrig.js"></script> <!-- serial/protocol trigger + wiring -->
 <script src="app_views.js"></script>      <!-- Bode + spectrogram + wiring -->
 <script src="app_controls.js"></script>   <!-- acquisition/trigger/timebase/vertical/view controls -->
 <script src="app_canvas.js"></script>     <!-- scope + navigator pointer/wheel interactions -->

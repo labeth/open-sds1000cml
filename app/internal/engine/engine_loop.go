@@ -287,6 +287,34 @@ func (e *Engine) oneFrame(norm bool) {
 		}
 	}
 
+	// SERIAL TRIGGER (serialtrig.go): decode the captured record and publish
+	// only frames whose UART/I2C/SPI stream contains the armed byte/address
+	// pattern, re-anchoring the display on the match. Unlike the zone gate this
+	// is NOT gated on `lock` — async UART in AUTO never edge-locks, so we decode
+	// every publish candidate. NORM holds non-matching frames strictly; AUTO
+	// publishes one unmatched liveness frame every serialFallback holds. Composes
+	// (AND) with the zone gate above. Envelope/roll frames have no per-sample
+	// stream to decode — pass them through and count them.
+	if publish && e.serialMode.Load() == SerialTrigger {
+		if f.IsEnv {
+			e.serialSkip.Add(1)
+		} else if matched, anchor := e.serialQualify(f, cols, f.SampleS); matched {
+			e.serialHeld = 0
+			e.serialMatches.Add(1)
+			if anchor >= 0 && anchor < cols {
+				edgeX = float64(anchor) // centre the matched byte
+				f.Trigd = true
+			}
+		} else {
+			e.serialHeld++
+			if norm || e.serialHeld < serialFallback {
+				publish = false
+			} else {
+				e.serialHeld = 0 // AUTO liveness: let one unmatched frame through
+			}
+		}
+	}
+
 	// MASK TEST (zonemask.go): every LOCKED frame is tested and counted, at
 	// the full acquisition rate, published or held. The dead tail of a deep
 	// drain is excluded (validDepth). Stop-on-fail freezes acquisition ON the
