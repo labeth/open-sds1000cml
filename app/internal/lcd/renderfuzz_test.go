@@ -90,7 +90,7 @@ func TestRenderFuzzNoPanic(t *testing.T) {
 			SRMean: make([]float32, rng.Intn(3)*512), SRk: rng.Intn(65),
 			SRMean2: make([]float32, rng.Intn(3)*512), SRAlign: rng.Intn(2),
 			SRSampleS: []float64{0, -1, 2e-9, 1e-6}[rng.Intn(4)],
-			SRGateLo: rng.Intn(4096) - 100, SRGateHi: rng.Intn(4096) - 100,
+			SRGateLo:  rng.Intn(4096) - 100, SRGateHi: rng.Intn(4096) - 100,
 			SRWinLo: rng.Intn(4096) - 100, SRWinHi: rng.Intn(4096) - 100, SRPeriod: rng.Intn(300) - 10,
 			ZoneMode: rng.Intn(2), MaskMode: rng.Intn(3),
 			Zones: []engine.Zone{{DtLoS: rng.Float64()*2e-4 - 1e-4, DtHiS: rng.Float64()*2e-4 - 1e-4,
