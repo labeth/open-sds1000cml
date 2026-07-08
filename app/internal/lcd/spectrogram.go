@@ -42,7 +42,9 @@ func NewSpectrogram() *Spectrogram {
 // heat maps t∈[0,1] to a perceptual black→blue→cyan→green→yellow→red→white
 // ramp (RGB565). Monotone in brightness so higher dB always reads "hotter".
 func heat(t float64) uint16 {
-	if t <= 0 {
+	// Total in t: a NaN (from a degenerate 0·Inf in the paint math) must not
+	// reach int(NaN) → a garbage stops[] index. NaN and the low tail → black.
+	if math.IsNaN(t) || t <= 0 {
 		return rgb(0, 0, 0)
 	}
 	if t >= 1 {
@@ -52,6 +54,12 @@ func heat(t float64) uint16 {
 	const seg = 6.0
 	s := t * seg
 	i := int(s)
+	if i < 0 { // defensive: keep the index in range whatever float slips through
+		i = 0
+	}
+	if i > 5 {
+		i = 5
+	}
 	f := s - float64(i)
 	lerp := func(a, b uint8) uint8 { return uint8(float64(a) + (float64(b)-float64(a))*f) }
 	// inferno-like ramp: monotone in brightness so higher dB always reads hotter
@@ -100,7 +108,11 @@ func (sg *Spectrogram) Push(f *engine.Frame, ch int, effNyq float64) {
 	}
 	// paint the newest spectrum on the top row: column x → freq bin, dB → colour
 	half := len(mags)
-	invFloor := 1.0 / (-sg.floorDB)
+	floor := sg.floorDB
+	if !(floor < 0) { // NaN or >=0 would make invFloor Inf/NaN → poison the paint
+		floor = -60
+	}
+	invFloor := 1.0 / (-floor)
 	for x := 0; x < sgCols; x++ {
 		k := x * half / sgCols
 		db := 20 * math.Log10(mags[k]/peak+1e-12)

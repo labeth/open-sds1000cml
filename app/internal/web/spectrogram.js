@@ -6,10 +6,13 @@
 // sgHeat maps t∈[0,1] to an inferno-like [r,g,b] ramp — monotone in brightness
 // so higher dB always reads hotter. Identical stops to the Go heat().
 function sgHeat(t) {
-  if (t <= 0) return [0, 0, 0];
+  if (!(t > 0)) return [0, 0, 0]; // NaN or <=0 → black (total, matches Go heat())
   if (t >= 1) return [255, 255, 255];
   const stops = [[0, 0, 0], [40, 0, 90], [130, 20, 90], [200, 50, 20], [240, 150, 10], [250, 220, 80], [255, 255, 255]];
-  const s = t * 6, i = Math.floor(s), f = s - i;
+  const s = t * 6;
+  let i = Math.floor(s);
+  if (i < 0) i = 0; else if (i > 5) i = 5; // keep the stops[] index in range
+  const f = s - i;
   const a = stops[i], b = stops[i + 1];
   return [Math.round(a[0] + (b[0] - a[0]) * f), Math.round(a[1] + (b[1] - a[1]) * f), Math.round(a[2] + (b[2] - a[2]) * f)];
 }
@@ -25,7 +28,8 @@ function sgPushRow(sg, mags, half, peak, nyq) {
   const { w, h, data } = sg;
   if (!(half > 0) || !(peak > 0)) return;
   data.copyWithin(w * 4, 0, w * 4 * (h - 1)); // scroll down 1 row
-  const invFloor = 1 / (-sg.floorDb);
+  const floor = sg.floorDb < 0 ? sg.floorDb : -60; // NaN/>=0 → Inf/NaN paint
+  const invFloor = 1 / (-floor);
   for (let x = 0; x < w; x++) {
     const k = Math.min(half - 1, Math.floor(x * half / w));
     const db = 20 * Math.log10(mags[k] / peak + 1e-12);
