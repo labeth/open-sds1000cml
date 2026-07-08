@@ -38,8 +38,8 @@ func TestFFTBrowser(t *testing.T) {
 		phase := float64(n) * 0.6
 		// Both tones stay strong (28..52) so neither peak ever disappears; only
 		// which one is STRONGER swaps — that's what reshuffles the ranking.
-		ampA := 40 + 12*math.Sin(phase)        // low tone
-		ampB := 40 - 12*math.Sin(phase)        // high tone, anti-correlated
+		ampA := 40 + 12*math.Sin(phase) // low tone
+		ampB := 40 - 12*math.Sin(phase) // high tone, anti-correlated
 		const N = 2048
 		c1 := make([]uint8, N)
 		c2 := make([]uint8, N)
