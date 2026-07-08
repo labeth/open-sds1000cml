@@ -1,84 +1,116 @@
-// app_serialtrig.js — serial/protocol trigger panel (classic script; shares
-// app.js globals). Configures the ENGINE-side serial trigger (serialtrig.go):
-// only frames whose decoded UART/I2C/SPI stream contains the pattern publish,
-// centred on the match. Config → POST /api/serial; arm → /api/set serialmode.
+// app_serialtrig.js — serial-trigger sub-panel, nested INSIDE the decode card.
+// It reuses the live decode config (dcfg): protocol, channel roles, baud, bits,
+// parity, CPOL/CPHA/MSB and threshold all come from decode, so the operator only
+// enters the MATCH pattern here. Decode must be a concrete protocol to arm; the
+// sub-panel is inside #decRoles, so it hides automatically when decode is off,
+// and turning decode off auto-disarms. Config → POST /api/serial (the whole
+// SerialParams, assembled from dcfg + the match), arm → /api/set serialmode.
 "use strict";
 
-// "FF 3C" / "0xff,0x3c" → [255,60]; blank → []
+// strict hex-token parse: "FF 3C" / "0x24" → [255,60] / 0x24; a token that is
+// not 1-2 hex digits returns null so the caller can REJECT (never silently drop
+// or truncate — "AA GG BB" must not become [AA,BB]).
 function stParseBytes(s) {
-  return (s || "").trim().split(/[\s,]+/).filter(x => x !== "")
-    .map(x => parseInt(x.replace(/^0x/i, ""), 16))
-    .filter(x => Number.isInteger(x) && x >= 0 && x <= 255);
+  const toks = (s || "").trim().split(/[\s,]+/).filter(x => x !== "");
+  const out = [];
+  for (const t of toks) {
+    if (!/^(0x)?[0-9a-fA-F]{1,2}$/.test(t)) return null;
+    out.push(parseInt(t.replace(/^0x/i, ""), 16));
+  }
+  return out.slice(0, 64);
 }
-// "50" / "0x50" → 0x50 (7-bit); blank/invalid → -1 (any)
 function stParseAddr(s) {
   s = (s || "").trim();
-  if (s === "") return -1;
+  if (s === "") return -1; // any
+  if (!/^(0x)?[0-9a-fA-F]{1,2}$/.test(s)) return null;
   const v = parseInt(s.replace(/^0x/i, ""), 16);
-  return (Number.isInteger(v) && v >= 0 && v <= 127) ? v : -1;
+  return v <= 127 ? v : null;
 }
 
+function stProtoNum() { return { uart: 1, i2c: 2, spi: 3 }[dcfg.proto] || 0; }
+function stArmed() { return $("stArm") && $("stArm").classList.contains("on"); }
+
+// build the full SerialParams from the live decode config + the match inputs;
+// returns null if the match pattern has invalid hex.
 function stParams() {
-  const p = +$("stProto").value;
+  const P = stProtoNum();
+  const rc = r => (r === 2 ? 1 : 0);             // dcfg role 1/2 → engine chan 0/1
+  const addr = stParseAddr($("stAddr").value);
+  const bytes = stParseBytes($("stBytes").value);
+  if (addr === null || bytes === null) return null;
   return {
-    proto: p,
-    chA: p === 1 ? +$("stLine").value : p === 2 ? +$("stScl").value : +$("stClk").value,
-    chB: p === 2 ? +$("stSda").value : p === 3 ? +$("stData").value : 0,
-    baud: Math.max(0, +$("stBaud").value | 0),
-    cpol: $("stCpol").value === "1",
-    cpha: $("stCpha").value === "1",
-    msb: $("stMsb").value === "1",
-    addr: stParseAddr($("stAddr").value),
-    rw: +$("stRW").value,
-    bytes: stParseBytes($("stBytes").value),
+    proto: P,
+    chA: P === 1 ? rc(dcfg.line) : P === 2 ? rc(dcfg.scl) : rc(dcfg.clk),
+    chB: P === 2 ? rc(dcfg.sda) : P === 3 ? rc(dcfg.data) : 0,
+    baud: dcfg.baud > 0 ? dcfg.baud : 0,
+    bits: dcfg.bits || 8,
+    parity: dcfg.parity || "none",
+    cpol: !!dcfg.cpol, cpha: !!dcfg.cpha, msb: !!dcfg.msb,
+    threshold: dcfg.auto ? 0 : (+$("decThr").value || 0),
+    haveThr: !dcfg.auto,
+    addr, rw: +$("stRW").value, bytes,
   };
 }
 
+let stLastSig = "";
 function stPush() {
-  fetch("/api/serial", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(stParams()) }).catch(() => {});
+  const p = stParams();
+  if (!p) return Promise.reject(new Error("bad pattern")); // stStatus() surfaces the invalid hex
+  stLastSig = JSON.stringify(p);
+  return fetch("/api/serial", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(p) })
+    .then(r => r.json()).then(j => { if (!j || !j.ok) throw new Error("rejected"); });
 }
 
-// show only the rows relevant to the selected protocol
-function updateStPanel() {
-  const p = +$("stProto").value;
-  $("stRoles").style.display = p === 0 ? "none" : "flex";
-  for (const [cls, on] of [["st-uart", p === 1], ["st-i2c", p === 2], ["st-spi", p === 3]])
-    for (const el of document.querySelectorAll("." + cls)) el.style.display = on ? "" : "none";
-  $("stUartRow").style.display = p === 1 ? "flex" : "none";
-  $("stSpiRow").style.display = p === 3 ? "flex" : "none";
-  $("stI2cRow").style.display = p === 2 ? "flex" : "none";
-  $("stPatRow").style.display = p === 0 ? "none" : "flex";
+function stSetArmed(on) { $("stArm").classList.toggle("on", on); send("serialmode", on ? 1 : 0); }
+
+// serial is only tested on the real-time bands that flow through the trigger
+// gate — envelope/roll/stream/ETS bypass it, so warn when armed on those.
+function stBandInactive() {
+  return !!(st && (st.band === "envelope" || st.band === "roll" || st.stream || st.ets));
 }
 
-function stStatus(m) { $("stStats").textContent = m; }
+function stStatus(msg) {
+  if (!$("stStats")) return;
+  if (msg !== undefined) { $("stStats").textContent = msg; return; }
+  if (stProtoNum() && stParams() === null) { $("stStats").textContent = "invalid hex in the match pattern"; return; }
+  if (!stArmed()) { $("stStats").textContent = ""; return; }
+  if (stBandInactive()) { $("stStats").textContent = "⚠ inactive on this band (env/roll/stream/ETS)"; return; }
+  $("stStats").textContent = `armed · ${(st && st.serial_matches) || 0} matches`;
+}
+
+// called by the decode panel (updateDecodePanel) when the decode config changes:
+// disarm if decode was turned off, else re-push the (now different) config.
+function stOnDecodeChange() {
+  if (!$("stArm")) return;
+  if (stProtoNum() === 0) { if (stArmed()) stSetArmed(false); stStatus(""); return; }
+  if (stArmed()) stPush().catch(() => {});
+}
 
 // ==== wiring ====
 (function initSerialTrig() {
-  if (!$("stCard")) return;
-  for (const id of ["stLine", "stScl", "stSda", "stClk", "stData"])
-    $(id).innerHTML = '<option value="0">C1</option><option value="1">C2</option>';
-  $("stSda").value = "1"; $("stData").value = "1"; // SDA/DATA default to C2, clock to C1
-
-  $("stProto").onchange = () => { updateStPanel(); stPush(); };
-  for (const id of ["stLine", "stScl", "stSda", "stClk", "stData", "stBaud",
-    "stCpol", "stCpha", "stMsb", "stAddr", "stRW", "stBytes"])
-    $(id).onchange = stPush;
-
-  $("stArm").onclick = () => {
-    const on = !$("stArm").classList.contains("on");
-    $("stArm").classList.toggle("on", on);
-    if (on) stPush();                 // push the latest config before arming
-    send("serialmode", on ? 1 : 0);
-    stStatus(on ? "armed — waiting for match" : "off");
+  if (!$("stArm")) return;
+  $("stArm").onclick = async () => {
+    if (stProtoNum() === 0) { stStatus("turn on decode to arm a serial trigger"); return; }
+    const on = !stArmed();
+    if (on) {
+      try { await stPush(); } catch { stStatus(); return; } // install config BEFORE arming; abort on invalid/rejected
+    }
+    stSetArmed(on);
+    stStatus();
   };
-  updateStPanel();
+  for (const id of ["stAddr", "stRW", "stBytes"])
+    $(id).onchange = () => { if (stArmed()) stPush().catch(() => {}); stStatus(); };
 })();
 
-// live match count from the engine status poll (st.serial_*)
+// resync + live status (both directions); re-push if the config drifted.
 setInterval(() => {
-  if (!st || !$("stCard")) return;
-  const armed = $("stArm").classList.contains("on");
-  if (st.serial_mode && !armed) $("stArm").classList.add("on"); // resync after a reload
-  if (armed || st.serial_mode)
-    stStatus(`armed · ${st.serial_matches || 0} matches` + (st.serial_skip ? ` · ${st.serial_skip} skipped` : ""));
+  if (!$("stArm") || !st) return;
+  if (stProtoNum() === 0) { if (stArmed()) stSetArmed(false); return; }
+  if (st.serial_mode && !stArmed()) $("stArm").classList.add("on");   // engine armed, UI didn't know
+  if (!st.serial_mode && stArmed()) $("stArm").classList.remove("on"); // engine disarmed elsewhere
+  if (stArmed()) {
+    const p = stParams();
+    if (p && JSON.stringify(p) !== stLastSig) stPush().catch(() => {}); // decode/match changed
+  }
+  stStatus();
 }, 1000);

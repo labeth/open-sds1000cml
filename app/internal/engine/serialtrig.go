@@ -34,13 +34,20 @@ const (
 // Copied by value into the engine under ser.mu; Bytes is replaced wholesale by
 // the setter (never mutated in place).
 type SerialParams struct {
-	Proto int  `json:"proto"` // 0 off, 1 uart, 2 i2c, 3 spi
-	ChA   int  `json:"chA"`   // primary channel role: 0=C1 1=C2 (uart line / i2c SCL / spi CLK)
-	ChB   int  `json:"chB"`   // secondary channel role (i2c SDA / spi DATA)
-	Baud  int  `json:"baud"`  // uart: 0 = auto-infer
-	CPOL  bool `json:"cpol"`
-	CPHA  bool `json:"cpha"`
-	MSB   bool `json:"msb"` // spi bit order (true = MSB-first)
+	// Decode settings — mirrored from the operator's live decode config so the
+	// trigger decodes IDENTICALLY to the decode strip (the UI does not re-enter
+	// these; it sends whatever decode is set to).
+	Proto     int     `json:"proto"`  // 0 off, 1 uart, 2 i2c, 3 spi
+	ChA       int     `json:"chA"`    // primary channel role: 0=C1 1=C2 (uart line / i2c SCL / spi CLK)
+	ChB       int     `json:"chB"`    // secondary channel role (i2c SDA / spi DATA)
+	Baud      int     `json:"baud"`   // uart: 0 = auto-infer
+	Bits      int     `json:"bits"`   // uart: data bits (0 = decode default 8)
+	Parity    string  `json:"parity"` // uart: "none"|"even"|"odd" ("" = none)
+	CPOL      bool    `json:"cpol"`
+	CPHA      bool    `json:"cpha"`
+	MSB       bool    `json:"msb"`       // spi bit order (true = MSB-first)
+	Threshold float64 `json:"threshold"` // slice threshold code, used only if HaveThr
+	HaveThr   bool    `json:"haveThr"`   // false = decode auto-threshold
 	// match spec:
 	Addr  int   `json:"addr"`  // i2c 7-bit address; <0 = any
 	RW    int   `json:"rw"`    // i2c: 0=write 1=read 2=any
@@ -71,7 +78,6 @@ func (e *Engine) SetSerialMode(m int) {
 	}
 	if m != SerialOff && int(e.serialMode.Load()) == SerialOff {
 		e.serialMatches.Store(0) // reset the running count on the off→on edge
-		e.serialSkip.Store(0)
 	}
 	e.serialMode.Store(int32(m))
 }
@@ -88,7 +94,7 @@ func (e *Engine) serialQualify(f *Frame, valid int, sampleS float64) (bool, int)
 	if p.empty() {
 		return true, -1 // armed but unconfigured → pass through, don't re-anchor
 	}
-	if valid < 8 || sampleS <= 0 {
+	if valid < 8 || !(sampleS > 0) { // !(>0) also rejects NaN (every NaN compare is false)
 		return false, -1
 	}
 	chA, chB := f.C1, f.C1
@@ -104,11 +110,11 @@ func (e *Engine) serialQualify(f *Frame, valid int, sampleS float64) (bool, int)
 	var res decode.Result
 	switch p.Proto {
 	case serUART:
-		res = decode.DecodeUART(chA[:valid], sampleS, decode.UARTCfg{Baud: p.Baud})
+		res = decode.DecodeUART(chA[:valid], sampleS, decode.UARTCfg{Baud: p.Baud, Bits: p.Bits, Parity: p.Parity, Threshold: p.Threshold, HaveThr: p.HaveThr})
 	case serI2C:
-		res = decode.DecodeI2C(chA[:valid], chB[:valid], sampleS, decode.I2CCfg{})
+		res = decode.DecodeI2C(chA[:valid], chB[:valid], sampleS, decode.I2CCfg{Threshold: p.Threshold, HaveThr: p.HaveThr})
 	case serSPI:
-		res = decode.DecodeSPI(chA[:valid], chB[:valid], sampleS, decode.SPICfg{CPOL: p.CPOL, CPHA: p.CPHA, MSB: p.MSB})
+		res = decode.DecodeSPI(chA[:valid], chB[:valid], sampleS, decode.SPICfg{CPOL: p.CPOL, CPHA: p.CPHA, MSB: p.MSB, Threshold: p.Threshold, HaveThr: p.HaveThr})
 	default:
 		return true, -1
 	}
@@ -166,22 +172,47 @@ func matchI2C(sp []decode.Span, p SerialParams) (bool, int) {
 
 // matchBytes finds the wanted byte sequence in the UART/SPI data stream (empty
 // want = any decodable byte). Anchors on the first matching byte's sample index.
+// Two rules keep it honest: (1) only Kind=="data" spans count — a byte the
+// decoder flagged frame-error/parity-error is NOT a valid protocol byte and must
+// not satisfy a data trigger (matchI2C is data-only too); (2) a MULTI-byte
+// pattern must be CONTIGUOUS on the wire — consecutive matched bytes must abut
+// (no large idle gap / burst boundary between them), so "AB" cannot be forged
+// from an 'A' and a 'B' emitted far apart in separate transmissions.
 func matchBytes(sp []decode.Span, want []int) (bool, int) {
-	var vals, at []int
+	type db struct{ val, i0, i1 int }
+	var seq []db
 	for _, s := range sp {
-		if s.Kind == "data" || s.Kind == "frame-error" || s.Kind == "parity-error" {
-			vals = append(vals, s.Val)
-			at = append(at, s.I0)
+		if s.Kind == "data" {
+			seq = append(seq, db{s.Val, s.I0, s.I1})
 		}
 	}
 	if len(want) == 0 {
-		if len(vals) == 0 {
+		if len(seq) == 0 {
 			return false, -1
 		}
-		return true, at[0] // any byte present
+		return true, seq[0].i0 // any valid data byte present
 	}
-	if k := indexSeq(vals, want); k >= 0 {
-		return true, at[k]
+	for start := 0; start+len(want) <= len(seq); start++ {
+		ok := true
+		for k := 0; k < len(want); k++ {
+			if seq[start+k].val != want[k] {
+				ok = false
+				break
+			}
+			if k > 0 { // require adjacency: gap ≤ ~2 byte-widths, else it bridged a gap
+				w := seq[start+k].i1 - seq[start+k].i0
+				if w < 1 {
+					w = 1
+				}
+				if seq[start+k].i0-seq[start+k-1].i1 > 2*w {
+					ok = false
+					break
+				}
+			}
+		}
+		if ok {
+			return true, seq[start].i0
+		}
 	}
 	return false, -1
 }

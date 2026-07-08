@@ -24,11 +24,18 @@
   engine (reusing the pure `internal/decode` package the LCD/web decoders share),
   so it works for SINGLE/NORM and device-standalone, and composes with the zone
   trigger. NORM/SINGLE hold strictly for the match; AUTO keeps a liveness
-  fallback (use AUTO for async UART, NORM for clocked I²C/SPI). Configured from
-  the web "Serial Trigger" card. Validated live against the FPGA protocol
-  generators: matched the exact UART sequence and the SPI payload byte on real
-  captures, rejected absent patterns, and gated the display correctly (AUTO
-  liveness heartbeat vs NORM strict hold).
+  fallback (use AUTO for async UART, NORM for clocked I²C/SPI). It is a sub-panel
+  of the Decode card and REUSES the live decode config (protocol, channels, baud,
+  CPOL/CPHA/MSB, threshold) — decode must be on, and you enter only the match
+  pattern. Hardened via an adversarial-review pass: the match resolves before the
+  zone/mask/average gates so all share one anchor (a rejected frame can no longer
+  trip mask stop-on-fail or smear an average); only valid `data` bytes match
+  (never framing/parity-error bytes) and a multi-byte pattern must be contiguous
+  on the wire (no bridging idle gaps); addr/baud are range-clamped server-side and
+  the arm handler installs the config before arming. Validated live against the
+  FPGA protocol generators (UART + SPI): matched sequences/bytes, rejected absent
+  patterns, correct AUTO-liveness vs NORM-strict gating, and no wedge — with only
+  ~5 % fps cost at normal memory (a bounded cost on deep memory).
 - **Zone trigger** — draw up to 4 rectangles on the display (web); frames must
   intersect (or avoid) every zone to publish: a graphical software trigger the
   hardware comparator cannot express. NORM holds strictly; AUTO keeps a

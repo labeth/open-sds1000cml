@@ -152,40 +152,6 @@
       <div id="zmStats" class="subtle">no mask — build one from a clean signal first</div>
     </div>
 
-    <div class="card" id="stCard">
-      <h3>Serial Trigger <span class="subtle">protocol match</span></h3>
-      <div class="decrow">
-        <label>proto <select id="stProto">
-          <option value="0" selected>off</option>
-          <option value="1">UART</option>
-          <option value="2">I2C</option>
-          <option value="3">SPI</option>
-        </select></label>
-        <button id="stArm" class="sm" title="arm: only frames whose decoded stream matches publish, centred on the match (AUTO passes a liveness frame occasionally; NORM/SINGLE hold for the match — use AUTO for async UART, NORM/SINGLE for clocked I2C/SPI)">arm</button>
-      </div>
-      <div id="stRoles" class="decrow">
-        <span class="st-uart">line <select id="stLine" class="rolesel"></select></span>
-        <span class="st-i2c">SCL <select id="stScl" class="rolesel"></select> SDA <select id="stSda" class="rolesel"></select></span>
-        <span class="st-spi">CLK <select id="stClk" class="rolesel"></select> DATA <select id="stData" class="rolesel"></select></span>
-      </div>
-      <div id="stUartRow" class="decrow">
-        <label>baud <input id="stBaud" type="number" min="0" value="0" class="num w-md" title="0 = auto-infer"></label>
-      </div>
-      <div id="stSpiRow" class="decrow">
-        <label>CPOL <select id="stCpol"><option value="0">0</option><option value="1">1</option></select></label>
-        <label>CPHA <select id="stCpha"><option value="0">0</option><option value="1">1</option></select></label>
-        <label>bit <select id="stMsb"><option value="1" selected>MSB</option><option value="0">LSB</option></select></label>
-      </div>
-      <div id="stI2cRow" class="decrow">
-        <label>addr <input id="stAddr" type="text" value="" placeholder="any" class="num w-sm" title="7-bit hex, e.g. 50 — blank = any address"></label>
-        <label>dir <select id="stRW"><option value="2" selected>any</option><option value="0">W</option><option value="1">R</option></select></label>
-      </div>
-      <div id="stPatRow" class="decrow">
-        <label>data <input id="stBytes" type="text" value="" placeholder="any" class="num grow min" title="hex byte sequence to match in order, e.g. FF 3C — blank = any byte/transaction"></label>
-      </div>
-      <div id="stStats" class="subtle">off</div>
-    </div>
-
     <div class="card" id="refCard">
       <h3>Reference <span class="subtle">save &amp; overlay</span></h3>
       <div class="toggles">
@@ -253,6 +219,14 @@
         <div class="dec-spi decrow"><span>CPOL</span><select id="decCpol" class="dsel"><option>0</option><option>1</option></select>
           <span>CPHA</span><select id="decCpha" class="dsel"><option>0</option><option>1</option></select>
           <select id="decMsb" class="dsel"><option value="1">MSB</option><option value="0">LSB</option></select></div>
+        <div class="grp-label">trigger on match</div>
+        <div class="decrow">
+          <span class="dec-i2c"><span>addr</span><input id="stAddr" type="text" placeholder="any" class="num w-xs" title="7-bit hex address to trigger on, e.g. 24 — blank = any">
+            <select id="stRW" class="dsel"><option value="2">any</option><option value="0">W</option><option value="1">R</option></select></span>
+          <input id="stBytes" type="text" placeholder="any" class="num grow min" title="hex byte sequence to trigger on (I²C: data bytes) — blank = any byte/transaction">
+          <button id="stArm" class="sm" title="serial trigger: publish only frames whose decoded stream matches, centred on the match. Uses the decode settings above. AUTO passes a liveness frame; NORM/SINGLE hold for the match.">arm</button>
+        </div>
+        <div id="stStats" class="subtle"></div>
       </div>
     </div>
 

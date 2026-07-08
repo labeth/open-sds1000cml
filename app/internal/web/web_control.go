@@ -61,8 +61,14 @@ func (s *Server) hSerial(w http.ResponseWriter, r *http.Request) {
 	p.Proto = clampI(p.Proto, 0, 3)
 	p.ChA, p.ChB = p.ChA&1, p.ChB&1
 	p.RW = clampI(p.RW, 0, 2)
-	if p.Baud < 0 {
+	if p.Addr > 127 || p.Addr < -1 {
+		p.Addr = -1 // out of 7-bit range → "any" (never a silent never-match)
+	}
+	if p.Baud < 0 || p.Baud > 50_000_000 {
 		p.Baud = 0
+	}
+	if p.Bits != 0 {
+		p.Bits = clampI(p.Bits, 1, 16)
 	}
 	if len(p.Bytes) > 64 { // a match pattern longer than a record is pointless
 		p.Bytes = p.Bytes[:64]

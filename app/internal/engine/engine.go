@@ -147,7 +147,6 @@ type Stats struct {
 	// Serial / protocol trigger (serialtrig.go)
 	SerialMode    int   `json:"serial_mode,omitempty"`    // 0 off, 1 armed
 	SerialMatches int64 `json:"serial_matches,omitempty"` // frames that matched the pattern
-	SerialSkip    int64 `json:"serial_skip,omitempty"`    // armed publishes on env/roll (untestable)
 	SerialSet     bool  `json:"serial_set,omitempty"`     // a match pattern is configured
 
 	// FRA / Bode plot (bode.go)
@@ -201,8 +200,7 @@ type Engine struct {
 	// serial / protocol trigger (serialtrig.go)
 	serialMode    atomic.Int32
 	serialMatches atomic.Int64
-	serialSkip    atomic.Int64 // serial-armed publishes on env/roll (no per-sample stream)
-	serialHeld    int          // engine goroutine only: AUTO liveness fallback counter
+	serialHeld    int // engine goroutine only: AUTO liveness fallback counter
 	ser           serialState
 	bodeMode      atomic.Int32 // FRA (Bode) accumulation armed (bode.go)
 	bode          bodeState
@@ -362,7 +360,6 @@ func (e *Engine) Snapshot() Stats {
 	e.zm.mu.Unlock()
 	s.SerialMode = int(e.serialMode.Load())
 	s.SerialMatches = e.serialMatches.Load()
-	s.SerialSkip = e.serialSkip.Load()
 	e.ser.mu.Lock()
 	s.SerialSet = !e.ser.params.empty()
 	e.ser.mu.Unlock()

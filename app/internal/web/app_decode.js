@@ -162,6 +162,7 @@ function updateDecodePanel() {
   for (const c of document.querySelectorAll(".dec-spi")) c.style.display = p === "spi" ? "flex" : "none";
   updateDecodeResults();
   updateCaptureList();
+  if (typeof stOnDecodeChange === "function") stOnDecodeChange(); // serial trigger reuses this config
 }
 
 // syncDecodeControls: write dcfg back into the DOM controls (used after

@@ -266,6 +266,41 @@ func (e *Engine) oneFrame(norm bool) {
 		// but-not-locked this frame (it would jitter) → HOLD the last locked frame.
 		publish = false
 	}
+	// SERIAL TRIGGER (serialtrig.go): decode the captured record and publish only
+	// frames whose UART/I2C/SPI stream contains the armed byte/address pattern,
+	// re-anchoring the display on the match. Resolved FIRST so the match anchor is
+	// the ONE consistent anchor the zone gate, mask, average and uniformity below
+	// all use (resolving it BETWEEN gates split them onto different anchors). NOT
+	// gated on `lock` — async UART in AUTO never edge-locks, so decode every
+	// publish candidate. NORM holds non-matching frames strictly; AUTO shows one
+	// unmatched LIVENESS frame every serialFallback holds. A liveness frame is
+	// DISPLAYED but not OBSERVED: with serial armed, only MATCHED frames feed the
+	// mask/average/uniformity/Bode consumers, so a non-match can never trip
+	// stop-on-fail or smear an average against a wandering anchor.
+	serialMatched := true // true when serial is not armed → everything observes normally
+	if e.serialMode.Load() == SerialTrigger {
+		serialMatched = false
+		if publish { // only test frames that would otherwise publish
+			if matched, anchor := e.serialQualify(f, cols, f.SampleS); matched {
+				serialMatched = true
+				e.serialHeld = 0
+				e.serialMatches.Add(1)
+				if anchor >= 0 && anchor < cols {
+					edgeX = float64(anchor) // centre the matched byte
+					f.Trigd = true
+				}
+			} else {
+				e.serialHeld++
+				if norm || e.serialHeld < serialFallback {
+					publish = false
+				} else {
+					e.serialHeld = 0 // AUTO liveness: display it, but do not observe it
+				}
+			}
+		}
+	}
+	observeOK := serialMatched // gate the "observe every locked frame" consumers
+
 	// ZONE TRIGGER (zonemask.go): a locked frame must also QUALIFY against the
 	// zones — a graphical software trigger in the same publish policy. NORM
 	// holds non-qualifying frames strictly; AUTO publishes one unqualified
@@ -287,41 +322,14 @@ func (e *Engine) oneFrame(norm bool) {
 		}
 	}
 
-	// SERIAL TRIGGER (serialtrig.go): decode the captured record and publish
-	// only frames whose UART/I2C/SPI stream contains the armed byte/address
-	// pattern, re-anchoring the display on the match. Unlike the zone gate this
-	// is NOT gated on `lock` — async UART in AUTO never edge-locks, so we decode
-	// every publish candidate. NORM holds non-matching frames strictly; AUTO
-	// publishes one unmatched liveness frame every serialFallback holds. Composes
-	// (AND) with the zone gate above. Envelope/roll frames have no per-sample
-	// stream to decode — pass them through and count them.
-	if publish && e.serialMode.Load() == SerialTrigger {
-		if f.IsEnv {
-			e.serialSkip.Add(1)
-		} else if matched, anchor := e.serialQualify(f, cols, f.SampleS); matched {
-			e.serialHeld = 0
-			e.serialMatches.Add(1)
-			if anchor >= 0 && anchor < cols {
-				edgeX = float64(anchor) // centre the matched byte
-				f.Trigd = true
-			}
-		} else {
-			e.serialHeld++
-			if norm || e.serialHeld < serialFallback {
-				publish = false
-			} else {
-				e.serialHeld = 0 // AUTO liveness: let one unmatched frame through
-			}
-		}
-	}
-
 	// MASK TEST (zonemask.go): every LOCKED frame is tested and counted, at
 	// the full acquisition rate, published or held. The dead tail of a deep
 	// drain is excluded (validDepth). Stop-on-fail freezes acquisition ON the
 	// offending frame — it force-publishes so the screen shows the failure,
-	// not whatever a zone hold left there.
+	// not whatever a zone hold left there. observeOK excludes serial-REJECTED
+	// frames so a non-match can never trip stop-on-fail.
 	liveDepth := 0
-	if lock && e.maskMode.Load() != MaskOff {
+	if lock && observeOK && e.maskMode.Load() != MaskOff {
 		liveDepth = validDepth(disc)
 		posFrac := math.Float64frombits(e.trigPosFrac.Load())
 		if failed, stop := e.maskEval(f, cols, liveDepth, edgeX, f.SampleS, posFrac); failed && stop {
@@ -337,7 +345,7 @@ func (e *Engine) oneFrame(norm bool) {
 	// FRA / Bode (bode.go): accumulate a transfer-function point between the
 	// reference and DUT channels on every locked frame. Independent of the
 	// publish policy — it observes the signal, does not gate it.
-	if lock && e.bodeMode.Load() == BodeOn {
+	if lock && observeOK && e.bodeMode.Load() == BodeOn {
 		bd := validDepth(disc)
 		if bd <= 0 || bd > cols {
 			bd = cols
@@ -354,7 +362,7 @@ func (e *Engine) oneFrame(norm bool) {
 	// enter the ring; the published samples become the ring mean. Flat
 	// fallbacks publish RAW. The ring clears on acq-mode/depth/band/NORM
 	// changes (avgKey tracks all four).
-	if publish && mode == AcqAverage && coherent && edgeX >= 0 {
+	if publish && observeOK && mode == AcqAverage && coherent && edgeX >= 0 {
 		if n := int(e.avgCount.Load()); n > 1 {
 			gen := e.avgGen.Load()
 			width := e.band.WinCols()
@@ -369,7 +377,8 @@ func (e *Engine) oneFrame(norm bool) {
 	}
 
 	// Cross-frame uniformity telemetry over published frames (spec 03 §11).
-	if publish {
+	// observeOK excludes serial liveness frames whose anchor differs from a match.
+	if publish && observeOK {
 		e.uni.push(disc, e.band.WinCols(), edgeX)
 		std, raw, worst := e.uni.stats()
 		e.mu.Lock()
