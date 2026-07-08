@@ -62,6 +62,10 @@ $("tC2").onclick = () => { view.c2 = !view.c2; $("tC2").classList.toggle("on", v
 $("freeze").onclick = () => { frozen = !frozen; $("freeze").classList.toggle("on", frozen); };
 
 $("ePNG").onclick = () => {
+  // The scope is a WebGL canvas without preserveDrawingBuffer, so its buffer is
+  // cleared after compositing — repaint synchronously in THIS tick so toDataURL
+  // reads a live frame instead of a blank buffer.
+  redraw();
   const a = document.createElement("a");
   a.download = "scope-" + (frame ? frame.seq : 0) + ".png";
   a.href = scope.toDataURL("image/png"); a.click();
