@@ -1,9 +1,32 @@
 // app_core.js — frame/status apply, redraw dispatch, measurement/status UI updates (classic script; shares app.js globals).
 
 "use strict";
+
+// scheduleRender coalesces render work onto ONE requestAnimationFrame tick, so a
+// burst of frame arrivals or pointer-move events collapses to a single paint at
+// the display rate — and, crucially, the paint runs in a fresh task that yields
+// to input between frames instead of blocking inside a network/pointer callback.
+// The expensive protocol decode is throttled so it never dominates the loop.
+let _renderRaf = 0, _lastDecodeMs = 0;
+function scheduleRender() {
+  if (_renderRaf) return;
+  _renderRaf = requestAnimationFrame(() => {
+    _renderRaf = 0;
+    const now = performance.now();
+    // decode is the heaviest per-frame work; refresh it at most ~8×/s (the
+    // overlay a few frames stale is imperceptible). Skipped entirely when off —
+    // the proto→off change clears the overlay once, so it stays clear.
+    if (dcfg.proto !== "off" && now - _lastDecodeMs > 120) { computeDecode(); _lastDecodeMs = now; }
+    redraw();
+    updateMeas();
+    updateCursors();
+  });
+}
+
 function redraw() {
   refreshAria(); // keep aria-pressed in sync with view toggles (which call redraw)
   updateStatusLine(); // time/div follows the zoom → keep it live, not just per status poll
+  if (glReady) glClear(); // wipe the GPU trace layer; only the Y-T path repaints it
   if (view.mode === "XY") { clearPersist(); drawXY(); drawCursors(); drawBoxZoom(ctx); return; }
   if (view.mode === "FFT") { clearPersist(); drawFFT(); drawCursors(); drawNav(); drawBoxZoom(ctx); return; }
   if (view.persist && !frame?.is_env) {
@@ -87,7 +110,7 @@ function applyFrame(f) {
   const sig = acqSig(f);
   if (sig !== lastSig) { userZoomed = false; lastSig = sig; } // band/depth/run change → re-home
   if (!userZoomed) { const h = homeWindow(f); view.win.a = h.a; view.win.b = h.b; view.vwin.a = 0; view.vwin.b = 1; }
-  computeDecode(); redraw(); updateMeas(); updateCursors();
+  scheduleRender(); // coalesced paint on the next rAF — never block the poll callback
 }
 
 function fallbackToJSON() {

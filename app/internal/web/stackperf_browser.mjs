@@ -57,6 +57,13 @@ try {
 
   const r = await page.evaluate(() => {
     const once = fn => { const a = performance.now(); fn(); return performance.now() - a; };
+    // Force a genuinely COLD state atomically: rendering is now coalesced onto a
+    // background rAF (poll-driven), which may have warmed the memos between the
+    // two page.evaluate calls. Freeze the poll and invalidate BOTH memos here so
+    // the first timed redraw truly recomputes every tone fit.
+    frozen = true;
+    compMemo.src = null; compMemo.map.clear();
+    mathMemo = {};
     const cold = once(() => redraw());              // must fit every selected tone
     let sum = 0, best = Infinity;
     for (let i = 0; i < 6; i++) { const d = once(() => redraw()); sum += d; if (d < best) best = d; }

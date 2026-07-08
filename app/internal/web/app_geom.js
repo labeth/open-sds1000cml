@@ -46,7 +46,7 @@ function navFrac(ev) { const r = nav.getBoundingClientRect(); return Math.max(0,
 
 function navY(code, zoom) { zoom = zoom || 1; return NH * (1 - (128 + (code - 128) * zoom) / 255); }
 
-function setWin(a, b) { view.win.a = a; view.win.b = b; redraw(); }
+function setWin(a, b) { view.win.a = a; view.win.b = b; scheduleRender(); }
 
 // homeSpan: one acquisition screen = DIVX divisions of the HARDWARE time/div, as
 // a fraction of the served record — so the home view (zoom 1) shows exactly the
@@ -122,7 +122,7 @@ function moveMarker(ev) {
     if (ch === 1) { st.off1_v = offV; $("off1").value = offV.toFixed(2); $("off1v").textContent = offV.toFixed(2) + " V"; }
     else { st.off2_v = offV; $("off2").value = offV.toFixed(2); $("off2v").textContent = offV.toFixed(2) + " V"; }
   }
-  redraw();
+  scheduleRender();
 }
 
 function commitMarker() {
@@ -168,7 +168,7 @@ function moveCursor(ev) {
   const p = ptToNorm(ev);
   const clamp = x => Math.max(0, Math.min(1, x));
   if (cur.drag[0] === "t") cur[cur.drag] = clamp(p.x); else cur[cur.drag] = clamp(p.y);
-  updateCursors(); redraw();
+  scheduleRender();
 }
 
 // moveSrGate maps the pointer's canvas-x into a RECORD fraction (so the marker
@@ -177,7 +177,7 @@ function moveSrGate(ev) {
   const px = ptToNorm(ev).x, span = view.win.b - view.win.a;
   srGate[srGate.drag] = Math.max(0, Math.min(1, view.win.a + px * span));
   srGate.placed = true; // user-positioned: gate toggles must not auto-replace it
-  redraw();
+  scheduleRender();
 }
 
 // Wheel over the scope: zoom about the cursor (Y-T only). Anchors the record

@@ -72,7 +72,7 @@ scope.addEventListener("pointermove", ev => {
   if (boxZoom.active) {
     boxZoom.ex = ev.clientX; boxZoom.ey = ev.clientY;
     if (Math.abs(boxZoom.ex - boxZoom.sx) + Math.abs(boxZoom.ey - boxZoom.sy) > 8) boxZoom.moved = true;
-    if (boxZoom.moved) redraw();
+    if (boxZoom.moved) scheduleRender();
     return;
   }
   if (typeof zmPointerMove === "function" && zmPointerMove(ptToNorm(ev))) return;
@@ -126,7 +126,7 @@ nav.addEventListener("pointermove", ev => {
   const f = navFrac(ev), s = navDrag.b0 - navDrag.a0;
   const na = Math.max(0, Math.min(1 - s, navDrag.a0 + (f - navDrag.grab)));
   w.a = na; w.b = na + s;
-  redraw();
+  scheduleRender();
 });
 nav.addEventListener("pointerup", () => navDrag.active = false);
 nav.addEventListener("dblclick", () => {
@@ -146,7 +146,7 @@ scope.addEventListener("wheel", ev => {
     if (ev.shiftKey) {
       const na = Math.max(0, Math.min(1 - span, fw.a + span * 0.15 * (d < 0 ? -1 : 1)));
       view.fwin.a = na; view.fwin.b = na + span;
-      redraw();
+      scheduleRender();
       return;
     }
     const sx = Math.max(0, Math.min(1, ptToNorm(ev).x));
@@ -156,7 +156,7 @@ scope.addEventListener("wheel", ev => {
     if (na < 0) { na = 0; nb = ns; }
     if (nb > 1) { nb = 1; na = 1 - ns; }
     view.fwin.a = na; view.fwin.b = nb;
-    redraw();
+    scheduleRender();
     return;
   }
   if (view.mode !== "YT") return;

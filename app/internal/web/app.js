@@ -77,6 +77,7 @@ function resize() {
   // Navigator canvas: full width, fixed CSS height.
   nav.width = Math.round(w * dpr); nav.height = Math.round(NAVH_CSS * dpr);
   NW = nav.width; NH = nav.height;
+  if (typeof glResize === "function") glResize(); // keep the GPU layer sized to the 2D canvas
   // 2048 is 1:1 with real samples on decimated bands (the µs–ms/div range where
   // I2C/UART/slow-SPI live); native-fast bands downsample the window, tolerable
   // for mid-level thresholding. Single source of truth for the fetch width.

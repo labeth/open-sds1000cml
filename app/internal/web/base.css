@@ -19,6 +19,7 @@
   #wrap { flex: 1 1 auto; min-width: 0; background: var(--screen); display: flex; flex-direction: column; }
   #scopebox { position: relative; flex: 1 1 auto; min-height: 0; }
   #scope { position: absolute; inset: 0; display: block; touch-action: none; }
+  #glscope { position: absolute; inset: 0; display: block; pointer-events: none; }
   #nav { flex: 0 0 auto; width: 100%; height: 56px; display: block;
          border-top: 1px solid var(--edge); cursor: ew-resize; touch-action: none; }
   #stopped {

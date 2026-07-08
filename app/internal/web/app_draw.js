@@ -291,6 +291,12 @@ function drawYT(g) {
     if (frame.is_env) {
       if (view.c2) drawEnv(g, frame.e2min, frame.e2max, C2COL, st ? st.zoom2 : 1);
       if (view.c1) drawEnv(g, frame.e1min, frame.e1max, C1COL, st ? st.zoom1 : 1);
+    } else if (glReady && g === ctx) {
+      // GPU trace layer (the big paint win). The persist path passes its own 2D
+      // layer as g, so it keeps the CPU trace; the live ctx path uses WebGL.
+      if (view.c2) glLines(glTraceVerts(frame.c2, st ? st.zoom2 : 1), glColor(C2COL));
+      if (view.c1) glLines(glTraceVerts(frame.c1, st ? st.zoom1 : 1), glColor(C1COL));
+      drawMath(g);
     } else {
       if (view.c2) drawTrace(g, frame.c2, C2COL, st ? st.zoom2 : 1);
       if (view.c1) drawTrace(g, frame.c1, C1COL, st ? st.zoom1 : 1);
