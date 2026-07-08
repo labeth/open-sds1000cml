@@ -63,43 +63,40 @@ function ejHeatColor(t) {
 }
 
 function ejDrawEye(st2) {
-  const cv = $("ejEye"), g = cv.getContext("2d");
   const W = st2.eyeW, H = st2.eyeH;
-  if (!ejEyeCv) { ejEyeCv = document.createElement("canvas"); ejEyeCv.width = W; ejEyeCv.height = H; }
-  const og = ejEyeCv.getContext("2d");
-  const img = og.createImageData(W, H);
+  // Build the RGBA density buffer once (kept in ejEyeCv for the enlarge view to
+  // reuse — the small and big canvases are separate GL contexts, so each uploads
+  // its own texture from this shared buffer). Row 0 = lowest code -> bottom.
+  if (!ejEyeCv || ejEyeCv.w !== W || ejEyeCv.h !== H) ejEyeCv = { data: new Uint8Array(W * H * 4), w: W, h: H };
+  const data = ejEyeCv.data;
+  data.fill(0);
   let mx = 0;
   for (let i = 0; i < st2.eye.length; i++) if (st2.eye[i] > mx) mx = st2.eye[i];
   const lmax = Math.log1p(mx) || 1;
   for (let y = 0; y < H; y++) {
     for (let x = 0; x < W; x++) {
       const d = st2.eye[y * W + x];
-      const o = ((H - 1 - y) * W + x) * 4; // row 0 = lowest code -> bottom of canvas
-      if (d <= 0) { img.data[o + 3] = 0; continue; }
+      if (d <= 0) continue;
+      const o = ((H - 1 - y) * W + x) * 4;
       const t = Math.log1p(d) / lmax;
       const [r, gg, b] = ejHeatColor(t);
-      img.data[o] = r; img.data[o + 1] = gg; img.data[o + 2] = b; img.data[o + 3] = 255;
+      data[o] = r; data[o + 1] = gg; data[o + 2] = b; data[o + 3] = 255;
     }
   }
-  og.putImageData(img, 0, 0);
-  g.fillStyle = "#05080c";
-  g.fillRect(0, 0, cv.width, cv.height);
-  g.imageSmoothingEnabled = false;
-  g.drawImage(ejEyeCv, 0, 0, cv.width, cv.height);
-  // UI grid: the fold spans exactly 2 UI; mark the two bit boundaries
-  g.strokeStyle = "rgba(255,255,255,0.25)";
-  g.setLineDash([3, 4]);
-  for (const fx of [0.25, 0.5, 0.75]) {
-    g.beginPath(); g.moveTo(fx * cv.width, 0); g.lineTo(fx * cv.width, cv.height); g.stroke();
-  }
-  g.setLineDash([]);
+  const cv = $("ejEye"), g = glCardCtx(cv, "#05080c");
+  if (!g) return;
+  ejDrawEyeTo(g, cv, st2, false);
+  glCardEnd(cv);
 }
 
-function ejDrawHist(st2, res) { ejDrawHistTo($("ejHist"), st2, res, false); }
+function ejDrawHist(st2, res) {
+  const cv = $("ejHist"), g = glCardCtx(cv, "#05080c");
+  if (!g) return;
+  ejDrawHistTo(g, cv, st2, res, false);
+  glCardEnd(cv);
+}
 
-function ejDrawHistTo(cv, st2, res, detailed) {
-  const g = cv.getContext("2d");
-  g.fillStyle = "#05080c"; g.fillRect(0, 0, cv.width, cv.height);
+function ejDrawHistTo(g, cv, st2, res, detailed) {
   const tie = st2.tie;
   if (tie.length < 50) return;
   let mn = Infinity, mx = -Infinity;
@@ -138,11 +135,14 @@ function ejDrawHistTo(cv, st2, res, detailed) {
   }
 }
 
-function ejDrawSpec(res) { ejDrawSpecTo($("ejSpec"), res, false); }
+function ejDrawSpec(res) {
+  const cv = $("ejSpec"), g = glCardCtx(cv, "#05080c");
+  if (!g) return;
+  ejDrawSpecTo(g, cv, res, false);
+  glCardEnd(cv);
+}
 
-function ejDrawSpecTo(cv, res, detailed) {
-  const g = cv.getContext("2d");
-  g.fillStyle = "#05080c"; g.fillRect(0, 0, cv.width, cv.height);
+function ejDrawSpecTo(g, cv, res, detailed) {
   const sp = res.spectrum;
   if (!sp || !res.specDf) return;
   let mx = 0;
@@ -233,9 +233,13 @@ function ejDrawBig() {
     cv.height = Math.round(r.height * dpr2);
   }
   const res = ejResult(st2);
-  if (ejBigKind === "hist") ejDrawHistTo(cv, st2, res, true);
-  else if (ejBigKind === "spec") ejDrawSpecTo(cv, res, true);
-  else ejDrawEyeTo(cv, st2, true);
+  const g = glCardCtx(cv, "#05080c");
+  if (g) {
+    if (ejBigKind === "hist") ejDrawHistTo(g, cv, st2, res, true);
+    else if (ejBigKind === "spec") ejDrawSpecTo(g, cv, res, true);
+    else ejDrawEyeTo(g, cv, st2, true);
+    glCardEnd(cv);
+  }
   const em = res.eyeMetrics;
   $("ejBigInfo").textContent =
     (res.bitRate ? eng(res.bitRate, "b/s", 4) + " · UI " + eng(res.uiSeconds, "s", 3) : "") +
@@ -244,15 +248,14 @@ function ejDrawBig() {
     " · " + res.records + " records — click to close";
 }
 
-function ejDrawEyeTo(cv, st2, detailed) {
+function ejDrawEyeTo(g, cv, st2, detailed) {
   if (!ejEyeCv) return;
-  const g = cv.getContext("2d");
-  g.fillStyle = "#05080c";
-  g.fillRect(0, 0, cv.width, cv.height);
-  g.imageSmoothingEnabled = detailed; // large view: smooth the density upscale
-  g.drawImage(ejEyeCv, 0, 0, cv.width, cv.height);
+  // upload the density buffer as a texture, scaled to the canvas (detailed =
+  // smooth/LINEAR upscale for the enlarge view; small view stays crisp/NEAREST)
+  g.blit(ejEyeCv.data, ejEyeCv.w, ejEyeCv.h, 0, 0, cv.width, cv.height, detailed);
+  // UI grid: the fold spans exactly 2 UI; mark the two bit boundaries
   g.strokeStyle = "rgba(255,255,255,0.25)";
-  g.setLineDash([4, 6]);
+  g.setLineDash(detailed ? [4, 6] : [3, 4]);
   for (const fx of [0.25, 0.5, 0.75]) {
     g.beginPath(); g.moveTo(fx * cv.width, 0); g.lineTo(fx * cv.width, cv.height); g.stroke();
   }

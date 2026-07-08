@@ -20,12 +20,20 @@ run(async (t) => {
   const rows = await po.eval(() => spg.sg.rows);
   t.ok(rows > 2, "waterfall accumulated rows over successive frames: " + rows);
 
-  // the canvas is actually painted (non-black pixels = a drawn waterfall)
+  // the canvas is actually painted: force a synchronous GL frame, then readPixels
+  // and count pixels that differ from the cleared background (#141c26 = 20,28,38)
+  // — i.e. the drawn waterfall + axis, not just the clear.
   const painted = await po.eval(() => {
     const cv = document.getElementById("spgCv");
-    const d = cv.getContext("2d").getImageData(0, 0, cv.width, cv.height).data;
+    if (typeof spgRender === "function") spgRender(cv);
+    const gl = cv._glbox && cv._glbox.R.gl;
+    if (!gl) return -1;
+    const px = new Uint8Array(cv.width * cv.height * 4);
+    gl.readPixels(0, 0, cv.width, cv.height, gl.RGBA, gl.UNSIGNED_BYTE, px);
     let n = 0;
-    for (let i = 0; i < d.length; i += 4) if (d[i] | d[i + 1] | d[i + 2]) n++;
+    for (let i = 0; i < px.length; i += 4) {
+      if (Math.abs(px[i] - 20) + Math.abs(px[i + 1] - 28) + Math.abs(px[i + 2] - 38) > 40) n++;
+    }
     return n;
   });
   t.ok(painted > 50, "spectrogram canvas has painted pixels: " + painted);

@@ -26,32 +26,19 @@ function scheduleRender() {
 function redraw() {
   refreshAria(); // keep aria-pressed in sync with view toggles (which call redraw)
   updateStatusLine(); // time/div follows the zoom → keep it live, not just per status poll
-  if (glReady) glClear(); // wipe the GPU trace layer; only the Y-T path repaints it
-  if (view.mode === "XY") { clearPersist(); drawXY(); drawCursors(); drawBoxZoom(ctx); return; }
-  if (view.mode === "FFT") { clearPersist(); drawFFT(); drawCursors(); drawNav(); drawBoxZoom(ctx); return; }
-  if (view.persist && !frame?.is_env) {
-    const pg = persistLayer();
-    pg.fillStyle = "rgba(5,8,12,0.14)"; pg.fillRect(0, 0, CW, CH); // fade
-    // draw new trace onto the persistence layer (no grid)
-    if (frame) {
-      if (view.c2) drawTrace(pg, frame.c2, C2COL, st ? st.zoom2 : 1);
-      if (view.c1) drawTrace(pg, frame.c1, C1COL, st ? st.zoom1 : 1);
-      drawMath(pg);
-    }
-    drawGrid(ctx);
-    ctx.drawImage(persistCv, 0, 0);
-    drawChannelMarkers(ctx);
-    drawTrigMarkers(ctx);
-  } else {
-    drawYT(ctx);
-  }
+  glBeginFrame();     // clear the scope's WebGL frame; ctx routes every draw to the GPU
+  if (view.mode === "XY") { drawXY(); drawCursors(); drawBoxZoom(ctx); glEndFrame(); return; }
+  if (view.mode === "FFT") { drawFFT(); drawCursors(); drawBoxZoom(ctx); glEndFrame(); drawNav(); return; }
+  // (persist afterglow: TODO reimplement with a GL ping-pong framebuffer)
+  drawYT(ctx);
   drawYTPeaks(ctx);
   drawDecode(ctx);
   drawCursors();
   drawSrGate();
   if (window.zm) drawZones(ctx);
-  drawNav();
   drawBoxZoom(ctx);
+  glEndFrame();       // flush the scope batch; #nav is its own canvas, drawn after
+  drawNav();
 }
 
 function updateMeas() {

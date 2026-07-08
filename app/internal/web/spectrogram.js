@@ -44,10 +44,10 @@ function sgPushRow(sg, mags, half, peak, nyq) {
 
 function sgClear(sg) { sg.data.fill(0); sg.rows = 0; }
 
-// sgBlit draws the waterfall onto a 2D context sized cw×ch (the ImageData is
-// the same size, so it maps 1:1), plus a frequency axis and a dB colour key.
+// sgBlit draws the waterfall onto a GL 2D-facade context sized cw×ch, plus a
+// frequency axis and a dB colour key. The caller clears the background (via
+// R.begin) and flushes (R.end); the waterfall itself is a texture blit.
 function sgBlit(g, cw, ch, sg, textColor) {
-  g.clearRect(0, 0, cw, ch);
   if (!sg || sg.rows === 0) {
     g.fillStyle = textColor || "#9ab"; g.textAlign = "center"; g.font = "11px system-ui";
     g.fillText("FFT over time — needs a triggered signal", cw / 2, ch / 2);
@@ -55,12 +55,8 @@ function sgBlit(g, cw, ch, sg, textColor) {
   }
   // the heatmap occupies the top (ch-16) px; the bottom 16 px carry the axis
   const plotH = ch - 16;
-  // draw via a temp canvas so we can scale the ImageData to the plot area
-  const tmp = sgBlit._tmp || (sgBlit._tmp = document.createElement("canvas"));
-  tmp.width = sg.w; tmp.height = sg.h;
-  tmp.getContext("2d").putImageData(new ImageData(sg.data, sg.w, sg.h), 0, 0);
-  g.imageSmoothingEnabled = false;
-  g.drawImage(tmp, 0, 0, sg.w, sg.h, 0, 0, cw, plotH);
+  // upload the waterfall RGBA straight to a texture, scaled to the plot area
+  g.blit(sg.data, sg.w, sg.h, 0, 0, cw, plotH, false);
   // frequency axis
   g.fillStyle = textColor || "#9ab"; g.font = "10px system-ui"; g.textAlign = "center"; g.textBaseline = "top";
   for (let i = 0; i <= 4; i++) {

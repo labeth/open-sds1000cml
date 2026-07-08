@@ -234,6 +234,9 @@ run(async (t) => {
     "panel-toggle button appears on a narrow screen");
   t.ok(await po.eval(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1),
     "body never scrolls horizontally at 700px");
+  // the drawer slides off-canvas over a .2s transform transition — wait for it to
+  // settle (deterministic under load) rather than assuming a fixed delay
+  await po.waitFor(() => document.getElementById("dock").getBoundingClientRect().left >= 698, null, 3000).catch(() => {});
   const dockLeftClosed = await po.eval(() => document.getElementById("dock").getBoundingClientRect().left);
   t.ok(dockLeftClosed >= 700 - 2, "dock is off-canvas (drawer closed) by default on narrow screens");
   await po.click("panelToggle");

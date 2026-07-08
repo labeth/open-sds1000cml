@@ -65,7 +65,14 @@ export async function run(body) {
 export async function openScope(url, opts = {}) {
   const pwPath = findPlaywright();
   const { chromium } = (await import(pwPath)).default;
-  const browser = await chromium.launch({ headless: true, args: ["--no-sandbox"] });
+  // The whole UI (scope, nav, analysis cards) is WebGL. Headless Chromium's
+  // default GL backend (SwiftShader-GL) drops the context under sustained
+  // rendering; --use-gl=egl selects the stable ANGLE-Vulkan backend so the
+  // contexts survive and pixel reads work. On a real GPU host it uses that GPU.
+  const browser = await chromium.launch({
+    headless: true,
+    args: ["--no-sandbox", "--use-gl=egl", "--enable-gpu", "--ignore-gpu-blocklist"],
+  });
   const page = await browser.newPage({ viewport: opts.viewport || { width: 1400, height: 900 } });
   const pageErrors = [];
   page.on("pageerror", (e) => pageErrors.push(e.message));

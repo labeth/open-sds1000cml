@@ -59,7 +59,8 @@ function bodeDrawBig() {
   const r = cv.getBoundingClientRect(), dpr2 = window.devicePixelRatio || 1;
   if (cv.width !== Math.round(r.width * dpr2)) { cv.width = Math.round(r.width * dpr2); cv.height = Math.round(r.height * dpr2); }
   fetch("/api/bode").then(x => x.json()).then(pts => {
-    bodeDraw(cv.getContext("2d"), cv.width, cv.height, pts.ok ? pts : { freq: [] }, bodeColors());
+    const g = glCardCtx(cv, "#05080c");
+    if (g) { bodeDraw(g, cv.width, cv.height, pts.ok ? pts : { freq: [] }, bodeColors()); glCardEnd(cv); }
     $("ejBigInfo").textContent = "Bode / FRA — " + (pts.n || 0) + " points · click to close";
   }).catch(() => { });
 }
@@ -85,14 +86,18 @@ function spgRender(cv) {
   const rect = cv.getBoundingClientRect();
   const W = Math.max(200, Math.round(rect.width || cv.width));
   if (cv.width !== W) cv.width = W;
-  sgBlit(cv.getContext("2d"), cv.width, cv.height, spg.sg, DIMCOL);
+  const g = glCardCtx(cv, "#141c26");
+  if (!g) return;
+  sgBlit(g, cv.width, cv.height, spg.sg, DIMCOL);
+  glCardEnd(cv);
 }
 
 function spgDrawBig() {
   const cv = $("ejBig"); if (!cv) return;
   const r = cv.getBoundingClientRect(), dpr2 = window.devicePixelRatio || 1;
   if (cv.width !== Math.round(r.width * dpr2)) { cv.width = Math.round(r.width * dpr2); cv.height = Math.round(r.height * dpr2); }
-  sgBlit(cv.getContext("2d"), cv.width, cv.height, spg.sg, DIMCOL);
+  const g = glCardCtx(cv, "#05080c");
+  if (g) { sgBlit(g, cv.width, cv.height, spg.sg, DIMCOL); glCardEnd(cv); }
   $("ejBigInfo").textContent = "Spectrogram — FFT over time · click to close";
 }
 
@@ -110,8 +115,10 @@ async function bodeRenderNow() {
   const rect = cv.getBoundingClientRect();
   const W = Math.max(200, Math.round(rect.width || cv.width)), H = cv.height;
   if (cv.width !== W) cv.width = W;
-  const g = cv.getContext("2d");
+  const g = glCardCtx(cv, "#141c26");
+  if (!g) return pts.n || 0;
   bodeDraw(g, cv.width, H, pts, bodeColors());
+  glCardEnd(cv);
   return pts.n || 0;
 }
 

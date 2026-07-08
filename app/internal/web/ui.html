@@ -19,7 +19,6 @@
   <div id="wrap">
     <div id="scopebox">
       <canvas id="scope" role="img" aria-label="oscilloscope display"></canvas>
-      <canvas id="glscope" aria-hidden="true"></canvas><!-- GPU trace layer, over the 2D grid/overlays -->
       <div id="stopped" style="display:none">STOPPED</div>
     </div>
     <canvas id="nav"></canvas>
@@ -360,7 +359,7 @@
      its event wiring together), then the cross-cutting control/canvas wiring,
      and finally app_init (first paint + poll) once everything is defined. -->
 <script src="app.js"></script>            <!-- shared state + globals + small helpers -->
-<script src="app_gl.js"></script>         <!-- WebGL GPU trace renderer (falls back to 2D) -->
+<script src="app_gl.js"></script>         <!-- WebGL 2D renderer + facade (all graphics boxes) -->
 <script src="app_geom.js"></script>       <!-- viewport/window/marker geometry (pure) -->
 <script src="app_draw.js"></script>       <!-- trace/grid/math/ref/cursor drawing (pure) -->
 <script src="app_nav.js"></script>        <!-- navigator strip drawing (pure) -->

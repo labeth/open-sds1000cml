@@ -36,35 +36,26 @@ function drawNavTrace(cols, color) {
   navCtx.globalAlpha = 1;
 }
 
+// The navigator overview redraws fully each frame on the GPU (no offscreen-canvas
+// cache: a full-record downsample is a few hundred batched fillRects — cheap on
+// WebGL, and a GL canvas can't be blit-cached the way a 2D one was).
 function drawNavFFT() {
-  const key = [specMemo[1].spec, specMemo[2].spec, view.c1, view.c2, NW, NH];
-  if (!(navFFTCache.key && navFFTCache.key.every((v, i) => v === key[i]))) {
-    navCtx.fillStyle = "#05080c"; navCtx.fillRect(0, 0, NW, NH);
-    for (const ch of [1, 2]) {
-      if (!(ch === 1 ? view.c1 : view.c2)) continue;
-      const spec = specMemo[ch].spec;
-      if (!spec) continue;
-      const { mags, half, peak } = spec;
-      navCtx.fillStyle = ch === 1 ? C1COL : C2COL;
-      navCtx.globalAlpha = 0.7;
-      for (let px = 0; px < NW; px++) {
-        const a = Math.floor(px / NW * half), b = Math.max(a + 1, Math.floor((px + 1) / NW * half));
-        let mx = 0;
-        for (let k = a; k < b && k < half; k++) if (mags[k] > mx) mx = mags[k];
-        const db = 20 * Math.log10(mx / peak + 1e-12);
-        const h = Math.max(1, NH * Math.max(0, 1 + db / 80)); // 80 dB floor
-        navCtx.fillRect(px, NH - h, 1, h);
-      }
-      navCtx.globalAlpha = 1;
+  for (const ch of [1, 2]) {
+    if (!(ch === 1 ? view.c1 : view.c2)) continue;
+    const spec = specMemo[ch].spec;
+    if (!spec) continue;
+    const { mags, half, peak } = spec;
+    navCtx.fillStyle = ch === 1 ? C1COL : C2COL;
+    navCtx.globalAlpha = 0.7;
+    for (let px = 0; px < NW; px++) {
+      const a = Math.floor(px / NW * half), b = Math.max(a + 1, Math.floor((px + 1) / NW * half));
+      let mx = 0;
+      for (let k = a; k < b && k < half; k++) if (mags[k] > mx) mx = mags[k];
+      const db = 20 * Math.log10(mx / peak + 1e-12);
+      const h = Math.max(1, NH * Math.max(0, 1 + db / 80)); // 80 dB floor
+      navCtx.fillRect(px, NH - h, 1, h);
     }
-    if (!navFFTCache.cv || navFFTCache.cv.width !== NW || navFFTCache.cv.height !== NH) {
-      navFFTCache.cv = document.createElement("canvas");
-      navFFTCache.cv.width = NW; navFFTCache.cv.height = NH;
-    }
-    navFFTCache.cv.getContext("2d").drawImage(nav, 0, 0);
-    navFFTCache.key = key;
-  } else {
-    navCtx.drawImage(navFFTCache.cv, 0, 0);
+    navCtx.globalAlpha = 1;
   }
   // viewport rectangle = the visible frequency window
   const x0 = view.fwin.a * NW, x1 = view.fwin.b * NW;
@@ -75,28 +66,14 @@ function drawNavFFT() {
   navCtx.fillRect(x0 - 1, 0, 2, NH); navCtx.fillRect(x1 - 1, 0, 2, NH);
 }
 
-function drawNav() {
-  if (nav.style.display === "none") return;
-  if (view.mode === "FFT") { drawNavFFT(); return; }
-  const key = [frame && frame.c1, frame && frame.c2, view.c1, view.c2, dcfg.result, NW, NH];
-  if (navCache.key && navCache.key.every((v, i) => v === key[i])) {
-    navCtx.drawImage(navCache.cv, 0, 0);
-  } else {
-    navCtx.fillStyle = "#05080c"; navCtx.fillRect(0, 0, NW, NH);
-    navCtx.strokeStyle = "#182430"; navCtx.lineWidth = 1;
-    navCtx.beginPath(); navCtx.moveTo(0, NH / 2 + .5); navCtx.lineTo(NW, NH / 2 + .5); navCtx.stroke();
-    if (frame && !frame.is_env) {
-      if (view.c2) drawNavTrace(frame.c2, C2COL);
-      if (view.c1) drawNavTrace(frame.c1, C1COL);
-    }
-    drawNavDecode(); // decode tokens across the WHOLE record (small-window view)
-    if (!navCache.cv || navCache.cv.width !== NW || navCache.cv.height !== NH) {
-      navCache.cv = document.createElement("canvas");
-      navCache.cv.width = NW; navCache.cv.height = NH;
-    }
-    navCache.cv.getContext("2d").drawImage(nav, 0, 0);
-    navCache.key = key;
+function drawNavYT() {
+  navCtx.strokeStyle = "#182430"; navCtx.lineWidth = 1;
+  navCtx.beginPath(); navCtx.moveTo(0, NH / 2 + .5); navCtx.lineTo(NW, NH / 2 + .5); navCtx.stroke();
+  if (frame && !frame.is_env) {
+    if (view.c2) drawNavTrace(frame.c2, C2COL);
+    if (view.c1) drawNavTrace(frame.c1, C1COL);
   }
+  drawNavDecode(); // decode tokens across the WHOLE record (small-window view)
   // viewport rectangle = the visible [a,b] window.
   const x0 = view.win.a * NW, x1 = view.win.b * NW;
   navCtx.fillStyle = "rgba(255,159,46,.13)"; navCtx.fillRect(x0, 0, x1 - x0, NH);
@@ -104,6 +81,14 @@ function drawNav() {
   navCtx.strokeRect(x0 + .5, .5, Math.max(1, x1 - x0 - 1), NH - 1);
   navCtx.fillStyle = "rgba(255,159,46,.95)";
   navCtx.fillRect(x0 - 1, 0, 2, NH); navCtx.fillRect(x1 - 1, 0, 2, NH);
+}
+
+function drawNav() {
+  if (nav.style.display === "none" || !NAVR || NAVR.lost()) return;
+  NAVR.begin("#05080c");            // clears to the navigator background
+  if (view.mode === "FFT") drawNavFFT();
+  else drawNavYT();
+  NAVR.end();
 }
 
 // Decode lane in the NAVIGATOR: every token across the whole record, so you see

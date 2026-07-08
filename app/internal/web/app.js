@@ -5,7 +5,8 @@
 // app_init.js runs last (first paint + poll). See ui.html for the load order.
 "use strict";
 const $ = id => document.getElementById(id);
-const scope = $("scope"), ctx = scope.getContext("2d", { alpha: false });
+const scope = $("scope");
+let ctx = null; // the scope's 2D-facade over WebGL — set by glInit() (app_gl.js)
 let CW = 800, CH = 400, dpr = 1;
 const DIVX = 10, DIVY = 8;
 
@@ -36,7 +37,8 @@ const srGate = { on: false, placed: false, a: 0.4, b: 0.6, drag: null };
 let reqCols = 2048;   // full-resolution both channels (decode + navigator); client-side zoom
 
 // ---- navigator / horizontal zoom ----
-const nav = $("nav"), navCtx = nav.getContext("2d", { alpha: false });
+const nav = $("nav");
+let navCtx = null; // WebGL 2D facade, set by glInit (the navigator is a GL canvas)
 let NW = 0, NH = 0;
 const NAVH_CSS = 56, MINSPAN = 0.004;
 const navDrag = { active: false, grab: 0, a0: 0, b0: 0 };
@@ -77,7 +79,8 @@ function resize() {
   // Navigator canvas: full width, fixed CSS height.
   nav.width = Math.round(w * dpr); nav.height = Math.round(NAVH_CSS * dpr);
   NW = nav.width; NH = nav.height;
-  if (typeof glResize === "function") glResize(); // keep the GPU layer sized to the 2D canvas
+  if (GLR) GLR.resize(); // size the scope's WebGL backing store to the CSS box
+  if (NAVR) NAVR.resize();
   // 2048 is 1:1 with real samples on decimated bands (the µs–ms/div range where
   // I2C/UART/slow-SPI live); native-fast bands downsample the window, tolerable
   // for mid-level thresholding. Single source of truth for the fetch width.
@@ -195,15 +198,6 @@ const fftHover = { on: false, x: 0, y: 0 };
 let peakListLastT = 0;
 
 
-
-// The nav UNDERLAY (background + traces + decode lane) depends only on the
-// frame arrays, channel toggles, decode result and canvas size — not on the
-// zoom window. Cache it to an offscreen canvas so pan/zoom redraws blit it
-// instead of re-downsampling the whole record per wheel tick.
-const navCache = { key: null, cv: null };
-// FFT navigator underlay: the FULL spectrum (max-per-pixel dB) per channel,
-// cached by spectrum identity so pan/zoom redraws are a blit.
-const navFFTCache = { key: null, cv: null };
 
 
 
