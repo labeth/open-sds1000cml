@@ -4,10 +4,10 @@
 package web
 
 import (
-	_ "embed"
 	"encoding/json"
 	"io"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -15,39 +15,10 @@ import (
 	"open-sds/app/internal/measure"
 )
 
-//go:embed ui.html
-var uiHTML []byte
-
-//go:embed peaks.js
-var peaksJS []byte
-
-//go:embed decode.js
-var decodeJS []byte
-
 //go:generate go run gen_tokens.go
-//go:embed tokens.css
-var tokensCSS []byte
 
-//go:embed base.css
-var baseCSS []byte
-
-//go:embed app.js
-var appJS []byte
-
-//go:embed binframe.js
-var binframeJS []byte
-
-//go:embed superres.js
-var superresJS []byte
-
-//go:embed eyejitter.js
-var eyejitterJS []byte
-
-//go:embed bode.js
-var bodeJS []byte
-
-//go:embed spectrogram.js
-var spectrogramJS []byte
+// Client assets (page + classic-script JS modules + CSS) are embedded and
+// served generically — see assets.go.
 
 // Scope is the engine surface the web layer needs (the setters come from
 // *engine.Engine; WithFrame comes from the frames.Fanout — the arena's
@@ -175,16 +146,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/api/maskfail", s.hMaskFail)
 	mux.HandleFunc("/api/bode", s.hBode)
 	mux.HandleFunc("/api/screen.png", s.hScreen)
-	mux.HandleFunc("/peaks.js", s.hPeaksJS)
-	mux.HandleFunc("/decode.js", s.hDecodeJS)
-	mux.HandleFunc("/binframe.js", s.hBinframeJS)
-	mux.HandleFunc("/superres.js", s.hSuperresJS)
-	mux.HandleFunc("/eyejitter.js", s.hEyejitterJS)
-	mux.HandleFunc("/bode.js", s.hBodeJS)
-	mux.HandleFunc("/spectrogram.js", s.hSpectrogramJS)
-	mux.HandleFunc("/tokens.css", s.hTokensCSS)
-	mux.HandleFunc("/base.css", s.hBaseCSS)
-	mux.HandleFunc("/app.js", s.hAppJS)
+	// "/" catches the page plus every embedded .js/.css (served in hRoot).
 	return mux
 }
 
@@ -228,54 +190,27 @@ func (s *Server) hScreen(w http.ResponseWriter, r *http.Request) {
 	w.Write(s.screen())
 }
 
-// serveJS writes a JS asset with revalidation caching: the OTA agent swaps
-// the whole binary (embedded assets included), so a browser-cached app.js
-// must never meet a newer server's wire format without a round trip.
-func serveJS(w http.ResponseWriter, body []byte) {
-	w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
-	w.Header().Set("Cache-Control", "no-cache")
-	w.Write(body)
-}
-
-func (s *Server) hPeaksJS(w http.ResponseWriter, r *http.Request) { serveJS(w, peaksJS) }
-
-func (s *Server) hDecodeJS(w http.ResponseWriter, r *http.Request) { serveJS(w, decodeJS) }
-
-func (s *Server) hBinframeJS(w http.ResponseWriter, r *http.Request) { serveJS(w, binframeJS) }
-
-func (s *Server) hSuperresJS(w http.ResponseWriter, r *http.Request) { serveJS(w, superresJS) }
-
-func (s *Server) hEyejitterJS(w http.ResponseWriter, r *http.Request)   { serveJS(w, eyejitterJS) }
-func (s *Server) hBodeJS(w http.ResponseWriter, r *http.Request)        { serveJS(w, bodeJS) }
-func (s *Server) hSpectrogramJS(w http.ResponseWriter, r *http.Request) { serveJS(w, spectrogramJS) }
-
-func (s *Server) hTokensCSS(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/css; charset=utf-8")
-	w.Write(tokensCSS)
-}
-
-func (s *Server) hBaseCSS(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/css; charset=utf-8")
-	w.Write(baseCSS)
-}
-
-func (s *Server) hAppJS(w http.ResponseWriter, r *http.Request) { serveJS(w, appJS) }
-
+// hRoot serves the page at "/" (with the strict CSP) and every embedded
+// .js/.css asset by bare filename. It is the ServeMux catch-all; the /api/*
+// routes are registered explicitly and never reach here.
 func (s *Server) hRoot(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path != "/" {
-		http.NotFound(w, r)
+	p := strings.TrimPrefix(r.URL.Path, "/")
+	if p == "" {
+		// Strict same-origin CSP. Script and connect are 'self' only (no inline
+		// script — every module is an external same-origin classic script).
+		// style keeps 'unsafe-inline' for the display:none hooks. img allows
+		// data: for the canvas PNG export.
+		w.Header().Set("Content-Security-Policy",
+			"default-src 'self'; script-src 'self'; connect-src 'self'; "+
+				"style-src 'self' 'unsafe-inline'; img-src 'self' data:; "+
+				"object-src 'none'; base-uri 'none'")
+		serveAsset(w, "ui.html")
 		return
 	}
-	// Strict same-origin CSP. Script and connect are 'self' only (no inline
-	// script — app.js/peaks.js/decode.js are all external same-origin modules).
-	// style keeps 'unsafe-inline' until Phase 4 removes the last inline style=
-	// hooks (display:none). img allows data: for the canvas PNG export.
-	w.Header().Set("Content-Security-Policy",
-		"default-src 'self'; script-src 'self'; connect-src 'self'; "+
-			"style-src 'self' 'unsafe-inline'; img-src 'self' data:; "+
-			"object-src 'none'; base-uri 'none'")
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.Write(uiHTML)
+	if staticName(p) && serveAsset(w, p) {
+		return
+	}
+	http.NotFound(w, r)
 }
 
 func writeJSON(w http.ResponseWriter, v any) {

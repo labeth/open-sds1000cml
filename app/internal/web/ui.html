@@ -349,6 +349,20 @@
 <script src="eyejitter.js"></script>
 <script src="bode.js"></script>
 <script src="spectrogram.js"></script>
+<!-- app.js split into topical classic scripts: definitions first (any order —
+     functions resolve globals at call-time), then app.js (state + consts), then
+     app_wire.js (top-level event wiring + init, needs everything defined). -->
+<script src="app_geom.js"></script>
+<script src="app_draw.js"></script>
+<script src="app_fft.js"></script>
+<script src="app_nav.js"></script>
+<script src="app_decode.js"></script>
+<script src="app_superres.js"></script>
+<script src="app_eye.js"></script>
+<script src="app_zonemask.js"></script>
+<script src="app_views.js"></script>
+<script src="app_core.js"></script>
 <script src="app.js"></script>
+<script src="app_wire.js"></script>
 </body>
 </html>
