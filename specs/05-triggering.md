@@ -117,10 +117,17 @@ V/div, drive the raw 16-bit code directly (`SetTrigLevel`) rather than volts.
 volts→code is fully pinned — formula and field addresses:
 
 ```
-code = round((V − Vcenter)/Vref · 50)          # clamp to ±6·Vref about Vcenter
+code = round((V − Vcenter)/Vref · 50)          # 50 DAC codes/div = 25 on-screen codes/div;
+                                               # clamp to ±6 div (±150 on-screen codes) about
+                                               # Vcenter, tracking the offset window
 ```
 
-- `Vref` (the level-code unit; ±50 codes = one V/div half-span): for C1/C2 it is the per-channel
+Equivalently, at a per-channel V/div this is `level_code = 50·(TRLV / VDIV)` DAC codes = **25
+on-screen ADC codes per division**, clamped to **±6 divisions (±150 on-screen codes)** about the
+per-channel zero and tracking the offset window. The DAC runs at 2× the display grid (50 DAC codes =
+1 division = 25 on-screen codes), the same scale as the offset DAC (`06-vertical-and-analog.md` §5.2).
+
+- `Vref` (the level-code unit; 50 DAC codes = one V/div = 25 on-screen codes): for C1/C2 it is the per-channel
   **VDIV** field at cal byte address `0x410bf0 + src·0x10 + 8`; the EXT input uses fixed
   `Vref = 200`, the EXT/5 input fixed `Vref = 1000`.
 - `Vcenter` is the per-channel zero from the active RAM cal record at

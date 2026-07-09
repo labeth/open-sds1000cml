@@ -139,6 +139,15 @@ There are **12 fully-populated per-V/div records per channel** — no PGA-stage
 sub-table, no interpolation, no expansion. Do not attempt to reconstruct extra
 stages.
 
+**Two per-tier vertical offset-zeros.** The per-V/div `OFFSET-zero` code changes
+only across the coarse-attenuator boundary, so each channel effectively carries
+**two** offset-zeros: one for the **×1 sensitive tier** (V/div ≤ 200 mV, records
+idx 0–6, coarse relay bit 2 = 0) and one for the **×25 attenuated tier** (V/div ≥
+500 mV, records idx 7–11, bit 2 = 1). Centring a channel uses the offset-zero of
+the tier the active V/div falls in (≈10445 at 1 V/div in the attenuated tier;
+boot default `0x27ef` = 10223). Do not centre across both tiers with one code —
+the two tiers have distinct zeros.
+
 ### 3.1 Second record block (optional / not required for a first build)
 
 The payload carries a second stride-8 block ("Block B": a range-2 / probe-×10
@@ -302,8 +311,10 @@ reconfigures the FPGA, and it must never be written at runtime.
 
 ### 7.1 Display scale (code → volts)
 
-The render vertical scale is **32 codes/div** (`256/8`): a calibrated
-1-division signal occupies exactly 32 captured codes about screen centre.
+The render vertical scale is **25 codes/div**: a calibrated
+1-division signal occupies exactly 25 on-screen codes about screen centre.
+(The offset and trigger-level DACs run at 2× this grid — 50 DAC codes = 1
+division = 25 on-screen codes.)
 
 Per-detent vertical gain is done in **HARDWARE** — the fine-gain DAC (record
 `+0x00`, §7.2) plus the coarse-range relay (§7.3) — so a 1-division signal always
@@ -409,19 +420,24 @@ separate strobe), then re-assert the CS1 run word `0x35` so the front-end change
 leaves the engine coherent.
 
 **Volts → code.** The offset is **input-referred** (the DAC injects a level shift
-ahead of the gain stage), so the slope is a **fixed constant in input volts** —
-it is **not** scaled by V/div or the gain trim:
+ahead of the gain stage) and runs at **50 DAC codes per division of offset** (= 25
+on-screen codes), so the code **is** scaled by V/div:
 
 ```
-K     = 262                      DAC-codes per input-volt (fixed; env-tunable via SCOPE_OFFSET_K)
-zero  = record +0x12             per-unit live-zero code (default 0x27ef = 10223)
-code  = clamp16( round( zero − V·K ) )        clamp to [0, 0xFFFF]
+zero  = per-tier offset-zero (default 0x27ef = 10223; ≈10445 at 1 V/div)
+code  = clamp( round( zero − 50·(V/VDIV) ) )       final clamp to [0, 0xFFFF]
 ```
+
+`VDIV` is the active volts/division detent, so codes-per-volt = `50/VDIV`. The
+per-tier clamp is `NUMERATOR/(1000·VDIV)`, with `NUMERATOR = 80000` on the ×1
+sensitive tier (→ ±1.6 V) and `2000000` on the ×25 attenuated tier (→ ±40 V); the
+tier is set by the coarse attenuator (relay bit 2, V/div ≥ 500 mV). See
+`06-vertical-and-analog.md` §5.2.
 
 The DAC is **inverting**: a positive offset yields a lower code (the trace moves
 up). `0 V` programs exactly `zero`.
 
-Inverse (code → volts): `V = (zero − code) / K`.
+Inverse (code → volts): `V = (zero − code)·VDIV/50`.
 
 > **Trap — inherited fd.** The CS3/Gpmc device must **not** be freshly opened at
 > runtime. A fresh `open()` of the node fails (`EFAULT`) post-takeover, because the
@@ -470,10 +486,14 @@ serialization + inherited fd + arm-boundary timing + the following re-arm, not a
 latch strobe.
 
 **Volts → code.** The level DAC rides the per-V/div cal ladder, so the exact map
-is per-detent. A fit at 1 V/2 V-div: `code = 31434 (0x7aca) − 938·V` (higher level
-→ lower code), rounded, clamped to 16 bits. For a HW sweep or other detents,
-prefer the raw 16-bit code and/or the active cal record; treat the fit as exact
-only at 1 V/2 V-div. Code `0` means "clear/none".
+is per-detent. In cal-ladder form the level is `50·(TRLV/VDIV)` DAC codes about
+the per-channel zero — **50 DAC codes = 1 division = 25 on-screen codes** (the
+same 2× grid as the offset DAC) — clamped to **±6 divisions (±150 on-screen
+codes)** and tracking the offset window (spec 05 §2.1, spec 06 §5.2). A fit at 1
+V/2 V-div: `code = 31434 (0x7aca) − 938·V` (higher level → lower code), rounded,
+clamped to 16 bits. For a HW sweep or other detents, prefer the raw 16-bit code
+and/or the active cal record; treat the fit as exact only at 1 V/2 V-div. Code `0`
+means "clear/none".
 
 **Open:** the per-detent level-code map that rides the full cal ladder is not
 tabulated; only the 1 V/2 V-div fit is pinned. Drive HW sweeps by raw code.
