@@ -91,6 +91,7 @@ func (f *fakeFE) SetOffset(ch int, volts float64) uint16 {
 }
 func (f *fakeFE) OffsetReqV(ch int) float64               { return f.offReqV[ch] }
 func (f *fakeFE) OffsetVolts(ch int, code uint16) float64 { return (10223 - float64(code)) / 262 }
+func (f *fakeFE) OffsetK(ch int) float64                  { return 262 }
 func (f *fakeFE) SetCoupling(ch, mode int) error {
 	f.calls = append(f.calls, call{"coupling", ch, mode})
 	f.cpl[ch] = mode

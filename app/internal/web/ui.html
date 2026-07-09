@@ -74,6 +74,10 @@
         <button id="srReset" class="sm" title="discard the stack">✕</button>
       </div>
       <div class="decrow">
+        <label title="Goal presets that set the grid/kernel/stop/BW-comp for a tradeoff, then ARM. max bandwidth: accumulate bits and spend them as high-frequency boost (highest recovered −3 dB). max ENOB: accumulate with NO boost (lowest noise — boost trades noise for bandwidth). fast capture: coarse grid + short stop for a quick usable stack with a modest auto boost. custom leaves the controls as-is.">preset
+          <select id="srPreset"><option value="custom" selected>custom</option><option value="hibw">max bandwidth</option><option value="enob">max ENOB (clean)</option><option value="fast">fast capture</option></select></label>
+      </div>
+      <div class="decrow">
         <label title="which channel drives the matching/alignment. both = follow the trigger source; C1/C2 = lock to that channel. Both channels are always stacked.">ch
           <select id="srCh"><option value="0" selected>both</option><option value="1">C1</option><option value="2">C2</option></select></label>
         <label>grid ×<select id="srK"><option>16</option><option selected>32</option><option>64</option></select></label>
@@ -84,6 +88,20 @@
       <div class="decrow">
         <label title="resample kernel. interp: every bin averages every frame — lowest noise floor, but softens content near the raw Nyquist. cubic: Catmull-Rom, flatter passband. drizzle: deposit real samples at their aligned sub-sample position — best fidelity for near-Nyquist tones (needs frames ≫ grid×), at a higher noise floor.">kernel <select id="srKernel"><option value="interp" selected>interp</option><option value="cubic">cubic</option><option value="drizzle">drizzle</option></select></label>
         <label title="sweep the offset DAC by sub-LSB steps across frames (subtracted back in software) so the 8-bit quantizer's staircase averages out"><input type="checkbox" id="srDither"> dither</label>
+      </div>
+      <div class="decrow">
+        <label title="Reconstruct a FREE-RUN, UN-TRIGGERABLE periodic signal — a clock above the ~65 MHz trigger comparator or near the ADC Nyquist (few samples/cycle), where normal trigger-edge/NCC alignment can't lock. Phase-coherent equivalent-time folding: measure each free-run frame's phase with a single-bin DFT at the clock frequency (precise — it uses every cycle in the record) and fold every sample onto ONE period. No trigger needed; recovers frequency + shape + ENOB, and (with BW comp on) the true amplitude of the attenuated high-frequency clock. Use AUTO trigger."><input type="checkbox" id="srEts"> clock (ETS)</label>
+        <label title="Clock frequency in MHz. Blank = auto-detect the dominant tone above 20 MHz. Set it explicitly for a weak tone or to force a specific harmonic.">f <input id="srEtsFreq" type="text" placeholder="auto" class="w-num" inputmode="decimal"></label>
+        <span id="srEtsInfo" class="subtle"></span>
+      </div>
+      <div class="decrow">
+        <label title="Decode-triggered super-res: a SOFTWARE trigger on a decoded protocol value. With the Decode card set to UART, it stacks every occurrence of a target BYTE among the data — finds e.g. the letter 'H' buried in random bytes, sub-sample aligns each occurrence, and super-resolves it. The generalization of the free-run clock ETS to aperiodic DECODED events. Because the decoder (not a waveform match) decides what an occurrence is, lookalike bytes are never stacked. Use AUTO trigger."><input type="checkbox" id="srEvt"> decode trig</label>
+        <label title="Target byte: hex (e.g. 48) or a single character (e.g. H).">byte <input id="srEvtByte" type="text" placeholder="48 or H" class="w-num" value="H"></label>
+      </div>
+      <div class="decrow">
+        <label title="Analog-falloff compensation (DSP bandwidth enhancement). De-embeds the MEASURED channel magnitude response (scope front-end + interconnect, −3 dB ≈ 16 MHz on this bench) by reshaping the crunched spectrum toward flat — recovering resolution the analog rolloff cost. It spends the stack's extra ENOB as high-frequency boost, so it only works on a stack (a single frame has no headroom). Every view (Y-T / FFT / X-Y / measure) shows the recovered signal."><input type="checkbox" id="srComp"> BW comp</label>
+        <label title="Recovered-bandwidth target. auto: spend the stack's MEASURED noise reduction (bits gained) as boost and recover the highest −3 dB that budget allows — so a longer stack automatically reaches higher (e.g. +5 bit ≈ 150 MHz). Fixed values force a target regardless of headroom (more high-frequency noise if the stack is short).">to <select id="srCompBw"><option value="auto" selected>auto</option><option value="50e6">50 MHz</option><option value="60e6">60 MHz</option><option value="70e6">70 MHz</option><option value="80e6">80 MHz</option><option value="120e6">120 MHz</option></select></label>
+        <span id="srCompInfo" class="subtle"></span>
       </div>
       <div id="srStats" class="subtle">idle — autogate, adjust the markers, then ARM</div>
     </div>
@@ -358,6 +376,8 @@
 <script src="superres_template.js"></script>
 <script src="superres_gate.js"></script>
 <script src="superres_measure.js"></script>
+<script src="superres_comp.js"></script>
+<script src="superres_ets.js"></script>
 <script src="superres.js"></script>
 <script src="eyejitter_analysis.js"></script>
 <script src="eyejitter.js"></script>

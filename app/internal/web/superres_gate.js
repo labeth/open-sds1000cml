@@ -189,17 +189,32 @@ function srGateFeed(st, sig1, sig2, opts) {
   const alignSig = sigs[st.align];
   if (!alignSig || alignSig.length < st.n) return "rejected:short";
   if (srClipped(alignSig)) { st.clipped++; st.rejected++; return "rejected:clip"; }
-  let base = 0;
-  if (st.refEdgeX >= 0 && opts.edgeX != null && opts.edgeX >= 0) base = Math.round(opts.edgeX - st.refEdgeX);
-  // Whole-frame multi-hit is O((N−L)·L). A one-period gate searches the whole
-  // frame cheaply; bound a wide aperiodic gate to trigger-predicted ±R (it occurs
-  // once per frame at the aligned position) so it never becomes seconds/frame.
-  let R = opts.maxShift != null ? opts.maxShift : (st.searchR || 0);
-  if (R === 0) {
-    const L = st.gtpl.L, maxWork = 12000000;
-    if ((st.n - L) * L > maxWork) { R = Math.floor(maxWork / (2 * L)); if (R < 64) R = 64; }
+  let hits;
+  if (opts.hitCenters) {
+    // DECODE-DRIVEN: a software trigger (e.g. a decoded protocol byte) supplied
+    // the coarse window-start of each occurrence; align the gate template LOCALLY
+    // around each (sub-sample) and stack. The decoder — not the waveform match —
+    // decides what an occurrence IS, so lookalikes (a decoy byte a bit away from
+    // the target) are never stacked; the local match only refines the alignment.
+    hits = [];
+    const R = opts.centerR != null ? opts.centerR : Math.max(8, st.gridL >> 1);
+    for (let ci = 0; ci < opts.hitCenters.length; ci++) {
+      const found = srGateFind(st, alignSig, (opts.hitCenters[ci] | 0) - st.gateLo, R);
+      if (found.length) hits.push(found.reduce((a, b) => (b.score > a.score ? b : a)));
+    }
+  } else {
+    let base = 0;
+    if (st.refEdgeX >= 0 && opts.edgeX != null && opts.edgeX >= 0) base = Math.round(opts.edgeX - st.refEdgeX);
+    // Whole-frame multi-hit is O((N−L)·L). A one-period gate searches the whole
+    // frame cheaply; bound a wide aperiodic gate to trigger-predicted ±R (it occurs
+    // once per frame at the aligned position) so it never becomes seconds/frame.
+    let R = opts.maxShift != null ? opts.maxShift : (st.searchR || 0);
+    if (R === 0) {
+      const L = st.gtpl.L, maxWork = 12000000;
+      if ((st.n - L) * L > maxWork) { R = Math.floor(maxWork / (2 * L)); if (R < 64) R = 64; }
+    }
+    hits = srGateFind(st, alignSig, base, R);
   }
-  const hits = srGateFind(st, alignSig, base, R);
   if (!hits.length) { st.rejected++; return "rejected:nomatch"; }
   for (let hIdx = 0; hIdx < hits.length; hIdx++) {
     const h = hits[hIdx];

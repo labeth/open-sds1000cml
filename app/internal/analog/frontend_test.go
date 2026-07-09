@@ -212,8 +212,38 @@ func TestCalibratedGainAndZero(t *testing.T) {
 	if got := fe.OffsetCode(0, 0); got != 10440 {
 		t.Fatalf("calibrated zero = %d, want 10440", got)
 	}
-	if v := fe.OffsetVolts(0, 10440-262); v < 0.99 || v > 1.01 {
-		t.Fatalf("calibrated OffsetVolts = %v, want 1.0", v)
+	// vd 5 (100 mV) is a sensitive ×1 range, so K = 262·lever; a small offset
+	// (within the ~±0.08 V sensitive ceiling) round-trips through the per-detent
+	// K without hard-coding its value.
+	if v := fe.OffsetVolts(0, fe.OffsetCode(0, 0.05)); v < 0.049 || v > 0.051 {
+		t.Fatalf("sensitive OffsetVolts round-trip = %v, want 0.05", v)
+	}
+}
+
+// TestOffsetKStepsByAtten pins the core of the offset fix: the DAC injects
+// downstream of the coarse attenuator, so K must step on Detents[idx].Atten —
+// base 262 on the attenuated ranges, 262·lever on the sensitive ×1 ranges.
+func TestOffsetKStepsByAtten(t *testing.T) {
+	tr := &fakeTr{}
+	fe := New(tr, func(time.Duration) {}, cal.Defaults())
+
+	// Sensitive ×1 range (200 mV, idx 6, Atten=false).
+	if err := fe.SetVdiv(0, 6); err != nil {
+		t.Fatal(err)
+	}
+	ks := fe.OffsetK(0)
+	if ks < 262*40 || ks > 262*50 {
+		t.Fatalf("sensitive OffsetK = %v, want ≈262·46", ks)
+	}
+	// Attenuated range (1 V, idx 8, Atten=true): base K = 262.
+	if err := fe.SetVdiv(0, 8); err != nil {
+		t.Fatal(err)
+	}
+	if ka := fe.OffsetK(0); ka < 261 || ka > 263 {
+		t.Fatalf("attenuated OffsetK = %v, want 262", ka)
+	}
+	if lever := ks / 262; lever < 40 || lever > 50 {
+		t.Fatalf("attenuator lever = %v, want ≈46", lever)
 	}
 }
 

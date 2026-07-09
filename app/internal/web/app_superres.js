@@ -44,7 +44,131 @@ function srTargetReached() {
   return false;
 }
 
+// ==== ETS: phase-coherent equivalent-time reconstruction of a free-run clock ==
+function srEtsInit(f, fref, dt) {
+  const nbins = 4 * (+$("srK").value || 32); // K16→64, K32→128, K64→256 phase bins
+  sr.etsSt = srEtsNew(nbins, dt);
+  sr.etsSt.f = fref; sr.etsSt.align = sr.alignCh;
+  sr.etsSt.c[0].vpc = f.vpc1 || 1 / 32; sr.etsSt.c[0].offV = f.off1_v || 0;
+  sr.etsSt.c[1].vpc = f.vpc2 || 1 / 32; sr.etsSt.c[1].offV = f.off2_v || 0;
+  sr.meta = { tdiv_s: f.tdiv_s, cols: f.cols, sample_s: dt };
+}
+
+function srEtsIngest(f) {
+  const alignSig = sr.alignCh === 1 ? f.c2 : f.c1;
+  if (!alignSig || f.is_env) { srStop("band unsupported for ETS — use a native/decimated t/div"); return; }
+  const dt = f.sample_s;
+  if (!(dt > 0)) { srStop("no sample interval on the raw feed"); return; }
+  if (!sr.etsSt) {
+    if (sr.etsF > 0) {
+      srEtsInit(f, srEtsRefineFreq(Float64Array.from(alignSig), dt, sr.etsF), dt);
+    } else {
+      // AUTO detect: incoherent-average the spectrum over a few frames before
+      // locking — one free-run frame's peak is unreliable (a square clock's
+      // above-Nyquist harmonics ALIAS back in and can outweigh the attenuated
+      // fundamental on any single frame; the average makes the true tone win).
+      if (typeof spectrum !== "function") { srStop("ETS auto-detect needs the FFT — set the frequency"); return; }
+      const spec = spectrum(alignSig, 1 / (2 * dt));
+      if (!sr.etsDetect) sr.etsDetect = { sum: new Float64Array(spec.half), n: 0, half: spec.half, nyq: 1 / (2 * dt) };
+      for (let k = 0; k < spec.half; k++) sr.etsDetect.sum[k] += spec.mags[k] * spec.mags[k];
+      if (++sr.etsDetect.n < 8) { srStatus(`ETS: detecting clock… ${sr.etsDetect.n}/8`); return; }
+      const { sum, half, nyq } = sr.etsDetect;
+      const kMin = Math.max(1, Math.floor(20e6 / nyq * half));
+      let best = 0, bk = 0; for (let k = kMin; k < half; k++) if (sum[k] > best) { best = sum[k]; bk = k; }
+      sr.etsDetect = null;
+      if (!bk) { srStop("ETS: no tone above 20 MHz — set the frequency"); return; }
+      srEtsInit(f, srEtsRefineFreq(Float64Array.from(alignSig), dt, (bk / half) * nyq), dt);
+    }
+  } else if (f.sample_s !== sr.meta.sample_s) {
+    srStop("acquisition changed (t/div or depth) — reconstruction kept"); return;
+  }
+  srEtsFeed(sr.etsSt, f.c1, f.c2);
+  srEtsUpdateStats(false);
+  if (sr.stopMode === "stacks" && sr.stopVal > 0 && sr.etsSt.frames >= sr.stopVal) { srStop("target reached"); return; }
+  if (sr.stopMode === "time" && sr.stopVal > 0 && (performance.now() - sr.t0) / 1000 >= sr.stopVal) { srStop("target reached"); return; }
+  if (sr.stopMode === "bits" && sr.stopVal > 0) {
+    const r = srEtsResult(sr.etsSt);
+    if ((r.bitsGained || 0) >= sr.stopVal) { srStop("target reached"); return; }
+  }
+}
+
+function srEtsUpdateStats(final) {
+  const now = performance.now();
+  if (!final && now - sr.lastUi < 500) return;
+  sr.lastUi = now;
+  if (!sr.etsSt || !sr.etsSt.frames) { srStatus("waiting for free-run frames…"); return; }
+  const r = srEtsResult(sr.etsSt);
+  const el = ((now - sr.t0) / 1000).toFixed(0);
+  const eqRate = r.periodS > 0 ? r.nbins / r.periodS : 0;
+  const rate = eqRate >= 1e9 ? (eqRate / 1e9).toFixed(1) + " GSa/s" : (eqRate / 1e6).toFixed(0) + " MSa/s";
+  srStatus(`ETS ${eng(r.f, "Hz", 5)} · ${r.frames} fr${r.rejected ? " · " + r.rejected + " rej" : ""} · ${el}s · ` +
+    `σ ${r.sigmaSingle.toFixed(2)}→${r.sigmaStack.toFixed(3)} · +${(r.bitsGained || 0).toFixed(1)} bits (eff ${(r.effBits || 8).toFixed(1)}) · ` +
+    `swing ${r.swing.toFixed(1)} codes · ${rate} equiv · fill ${(r.fill * 100).toFixed(0)}%`);
+}
+
+// ==== decode-triggered super-res: stack a decoded protocol BYTE event ========
+// Software trigger on a decoded value (like the serial trigger), then align +
+// stack every occurrence — the "sw triggered on random events" generalization of
+// the free-run clock ETS. Reuses the DECODE config from the Decode card and the
+// gated multi-hit stacker (srSeedRef seeds the gate on the first occurrence's
+// waveform; srGateFeed with hitCenters aligns+stacks the rest).
+function srEvtParseByte(s) {
+  s = (s || "").trim().replace(/^0x/i, "").replace(/^'|'$/g, "");
+  if (s.length === 1 && !/^[0-9a-fA-F]$/.test(s)) return s.charCodeAt(0); // a single non-hex char, e.g. H
+  if (/^[0-9a-fA-F]{1,2}$/.test(s)) return parseInt(s, 16);               // hex byte, e.g. 48
+  if (s.length >= 1) return s.charCodeAt(0);
+  return NaN;
+}
+
+// srEvtDecode decodes the align channel of a RAW frame and returns the spans of
+// the target byte (data only). v1: UART (the Decode card must be set to UART).
+function srEvtDecode(sig, sampleS, target) {
+  if (typeof dcfg === "undefined" || dcfg.proto !== "uart" || typeof decodeUART !== "function") return null;
+  const cfg = { baud: dcfg.baud > 0 ? dcfg.baud : null, bits: dcfg.bits || 8, parity: dcfg.parity || "none",
+    threshold: dcfg.auto ? null : (+$("decThr").value || null), guard: 4 };
+  const r = decodeUART(sig, sampleS, cfg);
+  if (!r || !r.ok) return { spb: 0, occ: [] };
+  return { spb: r.meta.samplesPerBit || 0, occ: r.spans.filter(s => s.kind === "data" && s.val === target) };
+}
+
+function srEvtIngest(f) {
+  const alignSig = sr.alignCh === 1 ? f.c2 : f.c1;
+  if (!alignSig || f.is_env) { srStop("band unsupported for decode-trig — use a native/decimated t/div"); return; }
+  const dt = f.sample_s;
+  if (!(dt > 0)) { srStop("no sample interval on the raw feed"); return; }
+  if (!(sr.evtByte >= 0)) { srStop("decode-trig: enter a target byte (e.g. 48 or H)"); return; }
+  const d = srEvtDecode(alignSig, dt, sr.evtByte);
+  if (!d) { srStop("decode-trig needs the Decode card set to UART"); return; }
+  let firstFrame = false;
+  if (!sr.st) {
+    if (!d.occ.length) { srStatus(`decode-trig: waiting for 0x${sr.evtByte.toString(16).toUpperCase()} (${d.spb ? d.spb.toFixed(0) + " samp/bit" : "no decode"})…`); return; }
+    const K = +$("srK").value || 32;
+    sr.st = srNew(f.cols, K);
+    sr.st.kernel = $("srKernel").value || "interp";
+    sr.st.align = sr.alignCh; sr.st.sampleS = dt;
+    sr.st.c[0].vpc = f.vpc1 || 1 / 32; sr.st.c[0].offV = f.off1_v || 0;
+    sr.st.c[1].vpc = f.vpc2 || 1 / 32; sr.st.c[1].offV = f.off2_v || 0;
+    sr.meta = { tdiv_s: f.tdiv_s, cols: f.cols, sample_s: dt, vpc1: f.vpc1, vpc2: f.vpc2 };
+    const h = d.occ[0];
+    sr.evtMargin = Math.max(4, Math.round(d.spb || (h.i1 - h.i0) / 10));
+    const gLo = Math.max(0, h.i0 - sr.evtMargin), gHi = Math.min(f.cols, h.i1 + sr.evtMargin);
+    if (gHi - gLo < 8 || !srSeedRef(sr.st, f.c1, f.c2, -1, { lo: gLo, hi: gHi })) { sr.st = null; srStatus("decode-trig: reference byte unusable (raise V/div for headroom)"); return; }
+    firstFrame = true; // srSeedRef already stacked occ[0]
+  } else if (f.sample_s !== sr.meta.sample_s) {
+    srStop("acquisition changed (t/div or depth) — stack kept"); return;
+  }
+  const list = firstFrame ? d.occ.slice(1) : d.occ;
+  if (list.length) {
+    const centers = list.map(o => Math.max(0, o.i0 - sr.evtMargin));
+    srGateFeed(sr.st, f.c1, f.c2, { hitCenters: centers, centerR: sr.evtMargin });
+  }
+  srUpdateStats(false);
+  if (sr.stopVal > 0 && srTargetReached()) { srStop("target reached"); return; }
+}
+
 function srIngest(f) {
+  if (sr.ets) { srEtsIngest(f); return; }
+  if (sr.evt) { srEvtIngest(f); return; }
   if (+$("srCh").value !== sr.ch) { srStop("channel changed — stack kept"); return; }
   const sig = sr.alignCh === 1 ? f.c2 : f.c1;
   if (!sig || f.is_env) { srStop("band became unsupported"); return; }
@@ -191,10 +315,17 @@ $("srArm").onclick = () => {
     return;
   }
   if (typeof ej !== "undefined" && ej.armed) ejStop("stopped — superres armed (one raw consumer)");
-  sr.st = null; sr.meta = null; sr.lastSeq = 0; sr.savedWin = null;
+  sr.st = null; sr.etsSt = null; sr.etsDetect = null; sr.meta = null; sr.lastSeq = 0; sr.savedWin = null;
   sr.stopMode = $("srStopMode").value;
   sr.stopVal = +$("srStopVal").value || 0;
   sr.lastBits = 0;
+  // ETS (free-run clock reconstruction) — a distinct feed path; skip the
+  // gate/reference machinery, it folds every free-run frame by measured phase.
+  sr.ets = $("srEts").checked;
+  sr.etsF = (parseFloat($("srEtsFreq").value) || 0) * 1e6;
+  sr.evt = $("srEvt").checked && !sr.ets; // decode-triggered byte-event stack (ETS wins if both)
+  sr.evtByte = srEvtParseByte($("srEvtByte").value);
+  if ((sr.ets || sr.evt) && st && st.norm) send("norm", 0); // free-run so every event/cycle is captured
   // GATE markers set → seed the first frame as the reference with THAT region
   // (works from SINGLE or free-run). Otherwise: frozen → lock the frozen frame;
   // running → auto-adopt.
@@ -205,7 +336,7 @@ $("srArm").onclick = () => {
   // onto the raw frame's own edge at seed time. Applying display fractions to
   // the raw record directly is wrong (it stacked ~10 waves for an edge-wide mark).
   sr.gateDt = null;
-  if (srGate.on) {
+  if (srGate.on && !sr.ets) {
     if (frame && frame.cols > 1 && frame.col_span_s > 0 && !frame.is_env) {
       const cols = frame.cols, spc = frame.col_span_s / cols; // seconds per display column
       const edgeCol = frame.edge_frac >= 0 ? frame.edge_frac * cols : cols / 2;
@@ -226,11 +357,11 @@ $("srArm").onclick = () => {
   sr.armed = true;
   $("srArm").textContent = "STOP";
   $("srArm").classList.add("on");
-  srStatus(srGate.on ? "stacking… (gate = markers)" : "stacking…");
+  srStatus(sr.ets ? "reconstructing (equivalent-time)… use AUTO trigger" : sr.evt ? "decode-trig stacking… (Decode = UART, free-run)" : srGate.on ? "stacking… (gate = markers)" : "stacking…");
   srLoop(++sr.gen);
 };
 
-$("srReset").onclick = () => { if (sr.showing) srExitView(); srStop(); sr.st = null; sr.meta = null; sr.savedWin = null; srStatus("idle"); };
+$("srReset").onclick = () => { if (sr.showing) srExitView(); srStop(); sr.st = null; sr.etsSt = null; sr.etsDetect = null; sr.meta = null; sr.savedWin = null; srStatus("idle"); };
 
 // AUTOGATE: always (re-)place the markers on the best feature in the current
 // view, then show them. GATE: show/hide toggle — auto-places only the first time;
@@ -259,18 +390,38 @@ $("srStopMode").onchange = () => {
   if (d) { v.value = d[0]; v.step = d[1]; }
 };
 
-$("srShow").onclick = () => {
-  if (sr.showing) { srExitView(); return; }
-  if (!sr.st || !sr.st.frames) { srStatus("nothing stacked yet"); return; }
+// Build the synthetic review frame from the current stack into the global
+// `frame`, optionally analog-falloff compensated. Factored out so the BW-comp
+// toggle can re-render the already-showing view in place.
+function srMakeViewFrame() {
+  if (sr.ets) { srMakeEtsViewFrame(); return; }
   const res = srResult(sr.st);
   const n = sr.st.n;
-  const dt = sr.st.sampleS / sr.st.K;
-  const meas = (mean, ch) => mean ? srMeasure(mean, sr.st.c[ch].vpc, sr.st.c[ch].offV, dt) : null;
+  const dt = sr.st.sampleS / sr.st.K; // seconds per fine bin
   // res.mean is the ALIGN channel's stack, res.mean2 the other — map them back to
   // the PHYSICAL channels so the review honors the selection (align C2 must show
   // as the cyan C2 trace, not swap into C1).
-  const c1m = sr.st.align === 0 ? res.mean : res.mean2;
-  const c2m = sr.st.align === 0 ? res.mean2 : res.mean;
+  let c1m = sr.st.align === 0 ? res.mean : res.mean2;
+  let c2m = sr.st.align === 0 ? res.mean2 : res.mean;
+  // Analog-falloff compensation: de-embed the measured chain rolloff on the
+  // crunched fine grid so EVERY downstream view (Y-T/FFT/X-Y/measure) shows the
+  // recovered signal. The stack's extra ENOB is the SNR headroom the boost
+  // spends. Applied per channel; the filter figures are the same for both.
+  sr.compInfo = null;
+  if (sr.comp && typeof srCompensate === "function" && dt > 0) {
+    // auto: pick the target from the stack's MEASURED bit budget (a longer,
+    // quieter stack recovers a higher −3 dB). Fixed: force the target.
+    const rawNyq = sr.st.sampleS > 0 ? 1 / (2 * sr.st.sampleS) : 250e6;
+    const opts = sr.compFbw === "auto"
+      ? srCompAuto(res.bitsGained, rawNyq, sr.compSpend)
+      : { fbw: +sr.compFbw };
+    if (c1m) c1m = srCompensate(c1m, dt, opts).comp;
+    if (c2m) { const r = srCompensate(c2m, dt, opts); c2m = r.comp; sr.compInfo = r; }
+    if (!sr.compInfo) sr.compInfo = srCompInfo(opts);
+    sr.compInfo.auto = !!opts.auto; sr.compInfo.budgetDb = opts.budgetDb; sr.compInfo.bitsGained = opts.bitsGained;
+  }
+  srUpdateCompInfo();
+  const meas = (mean, ch) => mean ? srMeasure(mean, sr.st.c[ch].vpc, sr.st.c[ch].offV, dt) : null;
   // A gated stack's mean spans only the gate (gridL raw samples), not the whole
   // record — size the time axis and edge anchor to the grid actually served.
   const spanCols = sr.st.gated ? sr.st.gridL : n;
@@ -290,6 +441,86 @@ $("srShow").onclick = () => {
     clip1: false, clip2: false,
     trigd: true, interp: false, coherent: true, ptp: 0,
   };
+}
+
+// srMakeEtsViewFrame builds the ONE-PERIOD equivalent-time reconstruction into
+// the global `frame` (optionally BW-compensated to recover the attenuated
+// high-frequency amplitude). Two periods are tiled so a full cycle is easy to
+// see. dtFine = period / phase-bins.
+function srMakeEtsViewFrame() {
+  const st = sr.etsSt, r = srEtsResult(st);
+  const nb = st.nbins, dtFine = r.periodS / nb;
+  let c1m = r.c1 ? r.c1.mean : null;
+  let c2m = r.c2 && r.c2.mean ? r.c2.mean : null;
+  sr.compInfo = null;
+  if (sr.comp && typeof srCompensate === "function" && dtFine > 0) {
+    const rawNyq = 0.5 / dtFine; // fine-grid Nyquist (huge); comp cal caps itself
+    const opts = sr.compFbw === "auto" ? srCompAuto(r.bitsGained, rawNyq, sr.compSpend) : { fbw: +sr.compFbw };
+    if (c1m) c1m = srCompensate(c1m, dtFine, opts).comp;
+    if (c2m) { const cr = srCompensate(c2m, dtFine, opts); c2m = cr.comp; sr.compInfo = cr; }
+    if (!sr.compInfo) sr.compInfo = srCompInfo(opts);
+    sr.compInfo.auto = !!opts.auto; sr.compInfo.budgetDb = opts.budgetDb; sr.compInfo.bitsGained = opts.bitsGained;
+  }
+  srUpdateCompInfo();
+  // tile two periods so a whole cycle reads clearly
+  const tile = (m) => { if (!m) return null; const out = new Float32Array(nb * 2); for (let i = 0; i < nb * 2; i++) out[i] = m[i % nb]; return out; };
+  const c1t = tile(c1m), c2t = tile(c2m);
+  const meas = (m, ch) => m ? srMeasure(m, st.c[ch].vpc, st.c[ch].offV, dtFine) : null;
+  frame = {
+    seq: frame ? frame.seq : 0, unchanged: false,
+    c1: c1t, c2: c2t, is_env: false,
+    cols: nb * 2, col_span_s: 2 * r.periodS,
+    tdiv_s: sr.meta.tdiv_s, displayed_sdiv_s: sr.meta.tdiv_s,
+    vpc1: st.c[0].vpc, vpc2: st.c[1].vpc, off1_v: st.c[0].offV, off2_v: st.c[1].offV,
+    edge_frac: -1, win_frac: 1, depth: 0,
+    m1: meas(c1t, 0), m2: meas(c2t, 1),
+    clip1: false, clip2: false, trigd: true, interp: false, coherent: true, ptp: 0,
+  };
+}
+
+// srUpdateCompInfo writes the compensation readout (measured → recovered −3 dB
+// and the peak boost) into the panel.
+function srUpdateCompInfo() {
+  const el = $("srCompInfo");
+  if (!el) return;
+  if (!sr.comp) { el.textContent = ""; return; }
+  const info = sr.compInfo;
+  if (!info) { el.textContent = sr.compFbw === "auto" ? "auto — view the stack to size the boost" : ""; return; }
+  const body = `−3 dB ${eng(info.measF3, "Hz", 2)} → ${eng(info.recoveredF3, "Hz", 2)} · +${info.peakBoostDb.toFixed(1)} dB boost`;
+  el.textContent = info.auto ? `auto (+${(info.bitsGained || 0).toFixed(1)} bit budget) · ${body}` : body;
+}
+
+// Goal presets — configure EVERY optimization knob (grid/kernel/stop/dither/
+// BW-comp/target/spend), leaving only the signal choices (ch, gate) to the
+// user. Applied to the controls + state; grid/kernel/stop take effect on ARM.
+const SR_PRESETS = {
+  // Accumulate bits and spend them as boost: highest recovered −3 dB.
+  hibw: { K: "64", kernel: "interp", stopMode: "time", stopVal: 60, dither: false, comp: true, fbw: "auto", spend: 0.9 },
+  // Accumulate with NO boost: lowest noise floor / most effective bits.
+  enob: { K: "32", kernel: "interp", stopMode: "bits", stopVal: 4, dither: false, comp: false, fbw: "auto", spend: 0.8 },
+  // Coarse grid fills fast + short stop: a quick usable stack, modest boost.
+  fast: { K: "16", kernel: "interp", stopMode: "time", stopVal: 8, dither: false, comp: true, fbw: "auto", spend: 0.65 },
+};
+function srApplyPreset(name) {
+  const p = SR_PRESETS[name];
+  if (!p) return; // "custom" — leave the controls as the user set them
+  $("srK").value = p.K;
+  $("srKernel").value = p.kernel;
+  $("srStopMode").value = p.stopMode;
+  if ($("srStopMode").onchange) $("srStopMode").onchange();
+  $("srStopVal").value = p.stopVal;
+  $("srDither").checked = p.dither;
+  $("srComp").checked = p.comp; sr.comp = p.comp;
+  $("srCompBw").value = p.fbw; sr.compFbw = p.fbw; sr.compSpend = p.spend;
+  if (sr.showing) { srMakeViewFrame(); computeDecode(); redraw(); updateMeas(); updateCursors(); }
+  else srUpdateCompInfo();
+}
+
+$("srShow").onclick = () => {
+  if (sr.showing) { srExitView(); return; }
+  const has = sr.ets ? (sr.etsSt && sr.etsSt.frames) : (sr.st && sr.st.frames);
+  if (!has) { srStatus(sr.ets ? "nothing reconstructed yet" : "nothing stacked yet"); return; }
+  srMakeViewFrame();
   sr.showing = true;
   $("srShow").classList.add("on");
   frozen = true; $("freeze").classList.add("on");
@@ -300,7 +531,25 @@ $("srShow").onclick = () => {
   }
   lastSig = "superres"; // poison the acq signature so returning to live re-homes
   computeDecode(); redraw(); updateMeas(); updateCursors();
-  srUpdateStats(true);
+  if (sr.ets) srEtsUpdateStats(true); else srUpdateStats(true);
+};
+
+// BW-compensation toggle + target: re-render the stack view in place when it's
+// already showing (a pure post-process of the crunched grid, no re-stacking).
+$("srComp").onchange = () => {
+  sr.comp = $("srComp").checked;
+  if (sr.showing) { srMakeViewFrame(); computeDecode(); redraw(); updateMeas(); updateCursors(); }
+  else srUpdateCompInfo();
+};
+$("srCompBw").onchange = () => {
+  const v = $("srCompBw").value;
+  sr.compFbw = v === "auto" ? "auto" : (+v || 70e6);
+  if (sr.comp && sr.showing) { srMakeViewFrame(); computeDecode(); redraw(); updateMeas(); updateCursors(); }
+  else if (sr.comp) srUpdateCompInfo();
+};
+$("srPreset").onchange = () => {
+  srApplyPreset($("srPreset").value);
+  srStatus(`preset: ${$("srPreset").selectedOptions[0].textContent} — ARM to apply`);
 };
 
 $("srFit").onclick = () => {

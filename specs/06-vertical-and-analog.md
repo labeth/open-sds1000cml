@@ -234,30 +234,49 @@ vocabulary.
 
 ### 5.2 Volts → code
 
-The offset DAC is **input-referred**: it injects a level shift *ahead of* the gain stage, so the
-code is a single fixed slope in **input volts**, **independent of V/div and of the per-detent gain
-coefficient**:
+The offset DAC injects a level shift **ahead of the fine gain stage but DOWNSTREAM of the coarse
+attenuator relay** (bit 2). Its slope in **input volts** is input-referred *within* a relay range but
+**steps across the attenuator boundary**: on the attenuated ranges (≥500 mV/div, bit 2 = 1) the ~46×
+relay gain amplifies the injected shift back to the input; on the sensitive ×1 ranges (≤200 mV/div,
+bit 2 = 0) that lever is gone, so the same DAC excursion reaches the input ~46× less far.
 
 ```
-code = clamp16( round( zero − V · K ) )
+code = clamp16( round( zero − V · K(range) ) )
 ```
 
 - `V` = requested offset in volts (input-referred).
-- `K` = **262 DAC codes per input-volt** — a fixed constant. It is **not** scaled by V/div and
-  **not** multiplied by the gain coefficient. (Env-tunable via `SCOPE_OFFSET_K` while calibrating a
-  reference unit.)
+- `K(range)` = DAC codes per input-volt — a **two-level step on the coarse-attenuator bit**, NOT a
+  continuous function of V/div:
+  - **bit 2 = 1 (attenuated, ≥500 mV/div): `K = 262`** — calibrated at the boot detent (1 V/div).
+    Env-tunable via `SCOPE_OFFSET_K`.
+  - **bit 2 = 0 (sensitive ×1, ≤200 mV/div): `K = 262 · lever`, lever ≈ 45.8 (≈ 11 996)** — the
+    attenuator lever, bench-measured on both channels (`g_atten/g_sens = 2.05/0.045 ≈ 46`).
+    Env-tunable via `SCOPE_OFFSET_LEVER`.
 - `zero` = the 0 V code for the **active channel and active V/div**, calibration RAM record `+0x12`
   (`rec = 0x32ced8 + ch*0xf0 + vd*0x14`, field `+0x12`; sourced from file Block A `+0x2` unless the
   Block-B override applies — see `10-calibration.md` §4). Boot default `0x27ef` = 10223; uncalibrated
   fixed fallback ≈ 10600.
 - **Inverting:** a *positive* offset yields a *lower* code (trace moves *up*).
-- `clamp16` clamps only the **final** 16-bit code to `[0, 0xFFFF]`. There is no intermediate
-  divisions/±230 clamp.
+- `clamp16` clamps only the **final** 16-bit code to `[0, 0xFFFF]` (the linear window is `[9600,
+  11600]`, spec 09 §4). Because `K` is ~46× larger on the sensitive ranges, that window spans only
+  **~±0.08 V input-referred there** (≈ ±0.15 V on the 32-codes/div render scale — see the codes/div
+  note below): a DC larger than that **cannot be centred on a ×1 range** — use an attenuated range or
+  remove the DC at the input.
 
-**Trap — do not scale K by V/div or by the gain coefficient.** A form that scales the slope by
-`50·V/VDIV·gainK` overshoots the DAC at fine V/div (the offset goes inert / rails) and under-drives
-it at coarse V/div; it only tracks near ~1 V/div. `K` is a single fixed input-volts slope for all
-detents.
+**Trap — do not scale K *continuously* by V/div or by the gain coefficient.** A form that scales the
+slope by `50·V/VDIV·gainK` overshoots the DAC at fine V/div and under-drives it at coarse V/div. But
+`K` is **not** a single constant either: the injection point sits past the coarse attenuator, so it
+**must** take the two-level attenuator step above. Using the attenuated `262` on the sensitive ranges
+(the pre-fix bug) makes the offset ~46× too weak — effectively **inert**, unable to centre any real
+DC below 500 mV/div. Verified on hardware (input grounded): a ±3 V offset command moved the trace by
+only ~0.26 V-equiv on 50/100/200 mV/div vs full-screen on 500 mV/div and up; authority tracks bit 2
+exactly.
+
+> **Codes/div convention.** `K` is expressed on the **64 codes/div** calibration scale (the
+> `DCVolts` DC diagnostic, `110/GAIN`; see `10-calibration.md`), which is 2× the **32 codes/div**
+> render scale (spec 07). So `K`'s "volts" are a factor of 2 off the on-screen graticule volts on
+> *every* range — a pre-existing firmware-wide 32/50/64-codes/div incoherence, tracked separately;
+> it is not introduced by the attenuator step here.
 
 **Inverse** (for readback / WAVEDESC offset): `V = (zero − stored_code) / K`.
 

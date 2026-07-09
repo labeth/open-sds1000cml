@@ -7,9 +7,22 @@ function chOn(ch) { return ch === 1 ? view.c1 : view.c2; }
 
 function chHas(ch) { return !!(frame && (ch === 1 ? frame.c1 : frame.c2)); }
 
-function peakSrcCh(ch) { return frame ? (ch === 2 ? frame.c2 : frame.c1) : null; }
+// In FFT mode over a LIVE band the frequency source is the full-record RAW feed
+// (fftRaw), not the display frame: on native-fast the display is an interpolated
+// ~50 ns window whose FFT is a few real samples on a bogus multi-GHz axis. The
+// raw record is the un-interpolated capture (e.g. 20480 samples @ its real rate
+// → true Nyquist + fine resolution). Frozen/single and the super-res review keep
+// their own shown frame.
+function fftUseRaw() { return view.mode === "FFT" && fftRaw && fftRaw.c1 && !frozen && !(typeof sr !== "undefined" && sr.showing); }
+function peakSrcCh(ch) {
+  if (fftUseRaw()) { const s = ch === 2 ? fftRaw.c2 : fftRaw.c1; if (s) return s; }
+  return frame ? (ch === 2 ? frame.c2 : frame.c1) : null;
+}
 
-function peakNyq() { return frame && frame.col_span_s > 0 ? frame.c1.length / (2 * frame.col_span_s) : 0; }
+function peakNyq() {
+  if (fftUseRaw() && fftRaw.sample_s > 0) return 1 / (2 * fftRaw.sample_s); // real Nyquist from the raw rate
+  return frame && frame.col_span_s > 0 ? frame.c1.length / (2 * frame.col_span_s) : 0;
+}
 
 // The palette slot a peak index occupies among a channel's (sorted) selection —
 // keeps a peak's colour stable across the FFT markers, its list, and the overlay.
@@ -191,14 +204,19 @@ function drawFFT() {
   ctx.fillText("FFT  " + eng(fw.a * nyq, "Hz", 3) + " – " + eng(fw.b * nyq, "Hz", 3) +
     (fspan < 0.999 ? "  · drag/wheel to zoom, double-click resets" : "   (dB re each channel's own peak)"), 8 * dpr, 16 * dpr);
   // Physics markers on a superres stack: the fine grid extends the axis K×
-  // past the RAW Nyquist, but no real signal exists beyond it — and the
-  // analog front end (~100 MHz) bounds trustworthy amplitude. Mark both so
-  // the extended axis can't mislead.
+  // past the RAW Nyquist (no real signal beyond it), and the MEASURED analog
+  // rolloff (chain −3 dB ≈ 16 MHz on this bench — see superres_comp.js) bounds
+  // trustworthy amplitude. With BW compensation on, the recovered −3 dB is
+  // marked too, so the extended axis + boost can't mislead.
   if (sr.showing && sr.st && sr.st.sampleS > 0) {
+    const measF3 = typeof SRCOMP_MEAS_F3_HZ !== "undefined" ? SRCOMP_MEAS_F3_HZ : 16.4e6;
     const marks = [
       { f: 1 / (2 * sr.st.sampleS), label: "raw Nyquist — no real content beyond", col: "rgba(232,96,76,.8)" },
-      { f: 100e6, label: "~analog BW 100 MHz", col: "rgba(245,162,76,.7)" },
+      { f: measF3, label: "chain −3 dB (measured analog rolloff)", col: "rgba(245,162,76,.7)" },
     ];
+    if (sr.comp && sr.compInfo && sr.compInfo.recoveredF3 > 0) {
+      marks.push({ f: sr.compInfo.recoveredF3, label: "BW-comp −3 dB (recovered)", col: "rgba(120,220,140,.85)" });
+    }
     ctx.font = (10 * dpr) + "px system-ui";
     for (const mk2 of marks) {
       const frac = mk2.f / nyq;

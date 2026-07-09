@@ -68,12 +68,17 @@ hardware does and how the firmware must behave*; the implementation in
 
 ### Design note: coupling on this clone
 
-On this hardware, AC coupling has no effective hardware high-pass and the GND relay
-bit alone does not reliably ground the input (it needs a factory-firmware config-plane
-write that is unsafe to reproduce; re-emitting the relay word from the boot state can
-also collapse the other channel's gain). This firmware therefore models coupling
-**in software** — AC removes the DC component, GND shows a flat ground trace, DC
-passes through — which is safe, always works, and matches on both the web and the LCD.
+On this hardware the relay's coupling bit selects a different offset-cal baseline
+(~36 codes), **not** a coupling capacitor — there is no effective hardware high-pass,
+so AC on the relay would not actually block DC (spec 06 §6). GND grounds reliably only
+with the relay bit *plus* a factory config-plane companion write. Both hardware paths
+are reproducible with the usual disciplines (emit the relay word carrying *both*
+channels' seeded bytes — a collapse only happens re-emitting from the un-seeded boot
+state; stage the CS3 companion under the single-owner rule), but they buy nothing here:
+there is no real DC block to gain. So this firmware models coupling **in software** —
+AC removes the DC component, GND shows a flat ground trace, DC passes through — which
+always works and matches on both the web and the LCD. For a true hardware high-pass at
+the input, add a physical series cap (small, low-lead-inductance for high frequencies).
 See [`specs/06-vertical-and-analog.md`](specs/06-vertical-and-analog.md) §6.
 
 ## The host UI (web app)

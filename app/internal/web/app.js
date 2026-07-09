@@ -12,6 +12,7 @@ const DIVX = 10, DIVY = 8;
 
 let st = null;        // last /api/status
 let frame = null;     // last frame reply
+let fftRaw = null, fftRawT = 0, fftRawBusy = false; // full-record RAW frame for FFT mode (native-fast display is an interpolated window)
 let lastSeq = 0;
 let lvlDragging = false, offDragging = false;
 let frozen = false;
@@ -276,6 +277,9 @@ const sendVideo = () => sendParams("videoparams", { std: +$("v-std").value, line
 // sinusoids reconstruction into REF B for overlay comparison.
 const sr = { st: null, armed: false, gen: 0, lastSeq: 0, meta: null, t0: 0, stopMode: "bits", stopVal: 4, lastBits: 0, lockRef: false, gateDt: null, lastUi: 0, ch: 0, alignCh: 0,
   showing: false, savedWin: null, // stack-view toggle state + remembered zoom
+  comp: false, compFbw: "auto", compSpend: 0.8, compInfo: null, // analog-falloff compensation (de-embed the measured chain rolloff; auto target from the stack's bit budget)
+  ets: false, etsF: 0, etsSt: null, etsInfo: null, // phase-coherent equivalent-time reconstruction of a free-run/untriggerable clock
+  evt: false, evtByte: NaN, evtMargin: 0, // decode-triggered super-res: stack a decoded protocol byte event
   // Offset dither: the 8-bit quantizer's staircase survives averaging when
   // the front-end noise is sub-LSB. Sweeping the offset DAC by sub-LSB steps
   // across frames (and subtracting the COMMANDED offset back in code space)

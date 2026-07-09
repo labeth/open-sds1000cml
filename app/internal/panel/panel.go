@@ -51,6 +51,7 @@ type Analog interface {
 	SetOffset(ch int, volts float64) uint16
 	OffsetReqV(ch int) float64
 	OffsetVolts(ch int, code uint16) float64 // calibrated per-detent DAC code → volts
+	OffsetK(ch int) float64                  // offset slope (codes/volt) for the current detent
 	SetCoupling(ch, mode int) error
 	Coupling(ch int) int
 	SetProbe(ch int, x float64)

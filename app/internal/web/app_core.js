@@ -299,6 +299,10 @@ async function pollFrameBin() {
     // snapshot clobbered by the late reply. lastSeq stays put, so unfreezing
     // immediately long-polls the newest frame.
     if (!f.unchanged && !frozen) applyFrame(f);
+    // In FFT mode, keep a fresh full-record RAW frame for the spectrum source
+    // (the display frame is an interpolated window on native-fast). Throttled;
+    // fire-and-forget so it never paces the display loop.
+    if (view.mode === "FFT" && !frozen && !(typeof sr !== "undefined" && sr.showing) && performance.now() - fftRawT > 150) fetchFftRaw();
     setTimeout(pollFrameBin, 10); // the server did the pacing; this only guards a hot loop
   } catch (e) {
     // Bad reply or network error (OTA app restart) — retry the SAME transport
@@ -306,6 +310,18 @@ async function pollFrameBin() {
     binFailures++;
     setTimeout(pollFrameBin, Math.min(2000, 250 * binFailures) + 250 * Math.random());
   }
+}
+
+// fetchFftRaw pulls one full-record raw frame (un-windowed, un-interpolated,
+// carries sample_s) to source the FFT in FFT mode. Fire-and-forget + throttled
+// by the caller; sets fftRaw + fftRawT, then a redraw picks it up.
+async function fetchFftRaw() {
+  if (fftRawBusy) return;
+  fftRawBusy = true; fftRawT = performance.now();
+  try {
+    const r = await fetch("/api/frame.bin?raw=1&waitms=300");
+    if (r.ok) { const f = decodeBinFrame(await r.arrayBuffer()); if (f && !f.unchanged && f.c1 && f.sample_s > 0) { fftRaw = f; if (view.mode === "FFT") redraw(); } }
+  } catch (e) { /* transient — the next tick retries */ } finally { fftRawBusy = false; }
 }
 
 async function pollStatus() {

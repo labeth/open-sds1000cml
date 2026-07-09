@@ -57,13 +57,16 @@ func AnalogVdiv(idx int) float64 {
 	return d.VdivV * float64(d.Zoom)
 }
 
-// Coupling modes. On this clone coupling is handled entirely in SOFTWARE (the
-// display path), not by the relay: AC has no hardware high-pass (spec 06 §6),
-// and the GND relay bit only shifts the offset-cal baseline unless the factory
-// firmware's risky CS3 "coupling companion" write accompanies it — which we do
-// not emit. Worse, re-emitting the relay from the unseeded boot state collapses
-// the untouched channel's gain (device-observed, §7). So the relay always stays
-// DC; AC = software DC-removal, GND = a flat ground trace. See CoupleDisplay.
+// Coupling modes. On this clone coupling is modelled in SOFTWARE (the display
+// path), not driven on the relay — deliberately, because the relay buys nothing
+// here: its coupling bit selects a different offset-cal baseline (~36 codes), NOT
+// a coupling cap, so there is no hardware high-pass to gain (spec 06 §6); GND
+// grounds only with a companion CS3 config-plane write. Both are reproducible
+// with the usual disciplines (emit the relay carrying BOTH channels' seeded bytes
+// — a gain collapse only happens re-emitting from the un-seeded boot state; stage
+// the CS3 companion single-owner), but pointless without a real DC block. So the
+// relay stays DC; AC = software DC-removal, GND = a flat ground trace. See
+// CoupleDisplay. A physical series cap is the route to a true hardware high-pass.
 const (
 	CplDC  = 0
 	CplAC  = 1
@@ -263,24 +266,39 @@ func (f *FrontEnd) gainFor(ch, idx int) uint8 {
 	return Detents[idx].Gain
 }
 
-// offsetZero is the calibrated 0 V offset-DAC code for the channel's
-// CURRENT detent (per-(ch,vd) cal record; fallback boot default 10223).
-func (f *FrontEnd) offsetZero(ch int) float64 {
+// offsetZeroAndDetent returns the channel's current detent index and its
+// calibrated 0 V offset-DAC code (per-(ch,vd) cal record; fallback boot
+// default 10223). f.tab is immutable after New, so only f.idx needs the lock.
+func (f *FrontEnd) offsetZeroAndDetent(ch int) (int, float64) {
 	f.mu.Lock()
 	vd := f.idx[ch&1]
 	f.mu.Unlock()
-	return float64(f.tab.Rec[ch&1][vd].Zero)
+	return vd, float64(f.tab.Rec[ch&1][vd].Zero)
 }
 
-// OffsetCode converts input-referred volts to a DAC code using the
-// calibrated zero: code = zero − V·K, clamped to the linear region.
+// OffsetCode converts input-referred volts to a DAC code using the calibrated
+// zero: code = zero − V·K, clamped to the linear region. K steps on the
+// coarse-attenuator bit (see offsetKForDetent) — the DAC injects downstream of
+// the relay, so its authority collapses on the sensitive ×1 ranges.
 func (f *FrontEnd) OffsetCode(ch int, volts float64) uint16 {
-	return clampOffset(f.offsetZero(ch) - volts*offsetK)
+	vd, zero := f.offsetZeroAndDetent(ch)
+	return clampOffset(zero - volts*offsetKForDetent(vd))
 }
 
 // OffsetVolts is the inverse for labels/readback.
 func (f *FrontEnd) OffsetVolts(ch int, code uint16) float64 {
-	return (f.offsetZero(ch) - float64(code)) / offsetK
+	vd, zero := f.offsetZeroAndDetent(ch)
+	return (zero - float64(code)) / offsetKForDetent(vd)
+}
+
+// OffsetK returns the offset-DAC slope (codes per input-volt) for the channel's
+// current detent — range-dependent (offsetKForDetent). The panel offset knob
+// uses it to step a fixed number of DAC codes regardless of V/div.
+func (f *FrontEnd) OffsetK(ch int) float64 {
+	f.mu.Lock()
+	vd := f.idx[ch&1]
+	f.mu.Unlock()
+	return offsetKForDetent(vd)
 }
 
 // DCVolts is the calibrated detent-invariant DC diagnostic (spec 10 §3.3).
@@ -349,23 +367,52 @@ func (f *FrontEnd) Snapshot() (idx [2]int, emitted bool) {
 // ---- vertical offset DAC value mapping (spec 06 §5) ----
 //
 // The offset DAC itself is on CS3 (GPMC) and is flushed by the engine owner;
-// this is only the volts↔code math. The transfer is inverting and
-// input-referred with a FIXED slope — never scale K by V/div.
+// this is only the volts↔code math. The transfer is inverting. K is codes per
+// input-referred volt. It is NOT continuous in V/div — but it DOES step on the
+// coarse-attenuator relay (Detents[idx].Atten), because the DAC injects
+// DOWNSTREAM of that relay: on the attenuated ranges (≥500 mV/div) the ~46×
+// relay lever amplifies the injected shift to the input; on the sensitive ×1
+// ranges (≤200 mV/div) there is no lever, so the SAME DAC range shifts the
+// input ~46× less (bench-measured g_atten/g_sens = 2.05/0.045 ≈ 46 on both
+// channels — the DAC full-range then only reaches ~±0.08 V control-referred).
+// The base K=262 was calibrated at the boot detent (1 V/div, attenuated).
 
-var offsetK = func() float64 {
-	if v := os.Getenv("SCOPE_OFFSET_K"); v != "" {
+func envF(name string, def float64) float64 {
+	if v := os.Getenv(name); v != "" {
 		if k, err := strconv.ParseFloat(v, 64); err == nil && k > 0 {
 			return k
 		}
 	}
-	return 262 // codes per input-referred volt
-}()
+	return def
+}
+
+// offsetKAtten is the attenuated-range slope (codes/input-volt), calibrated per
+// spec 06 §5.2. offsetLever is the attenuated/sensitive authority ratio (the
+// coarse relay lever), bench-measured ≈45.8 on both channels. Both env-tunable
+// for calibrating a reference unit.
+var (
+	offsetKAtten = envF("SCOPE_OFFSET_K", 262.0)
+	offsetLever  = envF("SCOPE_OFFSET_LEVER", 45.8)
+)
+
+// offsetKForDetent returns the offset slope for a detent, stepping on the
+// coarse-attenuator bit: Atten=false (sensitive ×1 range) needs K·lever because
+// the DAC injects past the relay and loses its ~46× leverage.
+func offsetKForDetent(idx int) float64 {
+	if idx >= 0 && idx < len(Detents) && !Detents[idx].Atten {
+		return offsetKAtten * offsetLever
+	}
+	return offsetKAtten
+}
 
 // offsetZeroFallback is the boot-default 0 V code (0x27ef, spec 10 §4) used
 // only when no FrontEnd/cal table exists.
 const offsetZeroFallback = 10223
 
-// Offset DAC linear region clamp (spec 09 §4).
+// Offset DAC linear region clamp (spec 09 §4). NOTE: the fine CS3 position DAC
+// only spans ~±0.15 V (sensitive) / ~±3.8 V (attenuated) input-referred within
+// this window — an order of magnitude short of the datasheet offset range
+// (±1.6 V / ±40 V), which needs a coarse-offset path not yet identified.
 const (
 	OffsetCodeMin = 9600
 	OffsetCodeMax = 11600
@@ -384,10 +431,12 @@ func clampOffset(c float64) uint16 {
 
 // OffsetCode is the table-less fallback mapping (front end unavailable).
 func OffsetCode(ch int, volts float64) uint16 {
-	return clampOffset(offsetZeroFallback - volts*offsetK)
+	return clampOffset(offsetZeroFallback - volts*offsetKAtten)
 }
 
-// OffsetVolts is the fallback inverse for labels/readback.
+// OffsetVolts is the fallback inverse for labels/readback. The table-less
+// fallback has no detent context; it uses the attenuated K (boot detent is
+// 1 V/div, attenuated).
 func OffsetVolts(ch int, code uint16) float64 {
-	return (offsetZeroFallback - float64(code)) / offsetK
+	return (offsetZeroFallback - float64(code)) / offsetKAtten
 }

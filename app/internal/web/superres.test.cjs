@@ -611,5 +611,26 @@ function frame(n, period, shift, noise, amp, harmonics) {
     disp === "stacked:1" && st.hits === before + 1, disp + " hits+=" + (st.hits - before));
 }
 
+// ---- decode-driven hitCenters (software-trigger super-res): srGateFeed aligns
+// + stacks ONLY the supplied occurrence positions whose local waveform matches
+// the seeded gate; a supplied position with no matching waveform is rejected. --
+{
+  const N = 1200;
+  const stamp = (a, at) => { // a distinctive multi-transition "byte" waveform
+    const pat = [230, 230, 30, 30, 230, 30, 30, 230, 230, 30, 230, 30]; // ~12 half-bit levels
+    for (let k = 0; k < pat.length; k++) for (let j = 0; j < 8; j++) a[at + k * 8 + j] = pat[k];
+  };
+  const sig = new Float32Array(N).fill(30);
+  stamp(sig, 100); stamp(sig, 500); // two identical occurrences; 900 left flat (decoy)
+  const st = srNew(N, 16); st.align = 0; st.c[0].vpc = st.c[1].vpc = 1 / 32; st.kernel = "interp";
+  check("evt: seed gate on the occurrence waveform", srSeedRef(st, sig, sig, -1, { lo: 100, hi: 196 }) === true);
+  const afterSeed = st.hits;
+  srGateFeed(st, sig, sig, { hitCenters: [500], centerR: 30 });
+  check("evt: matching supplied center is stacked", st.hits === afterSeed + 1, "hits+=" + (st.hits - afterSeed));
+  const afterMatch = st.hits;
+  srGateFeed(st, sig, sig, { hitCenters: [900], centerR: 30 }); // 900 = flat, not the pattern
+  check("evt: non-matching supplied center rejected", st.hits === afterMatch, "hits+=" + (st.hits - afterMatch));
+}
+
 if (fails) { console.log(fails + " FAILURES"); process.exit(1); }
 console.log("ALL PASS");
