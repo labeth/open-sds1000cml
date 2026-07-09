@@ -49,7 +49,7 @@ func measBox(sf Surface, f *engine.Frame, hud HUD, ch, x int) {
 		sig = analog.CoupleDisplay(sig, cpl)
 		off = 0
 	}
-	m := measure.Compute(sig, vdiv/32*probe, off*probe, hud.SampleS)
+	m := measure.Compute(sig, vdiv/25*probe, off*probe, hud.SampleS)
 	if m == nil {
 		return
 	}
@@ -256,7 +256,7 @@ func drawMarkers(sf Surface, hud HUD) {
 		}
 	}
 	// Trigger LEVEL: dashed horizontal line + right-edge arrow at the level code.
-	ly := sampleToY(128 + hud.TrigLvlDiv*32)
+	ly := sampleToY(128 + hud.TrigLvlDiv*25)
 	if ly >= 2 && ly < H {
 		for x := 0; x < W; x += 7 {
 			px(x, ly, colTrig)
@@ -279,12 +279,12 @@ func drawMarkers(sf Surface, hud HUD) {
 			px(tx+dx, dy+2, colTrig)
 		}
 	}
-	// Per-channel GROUND (0 V) arrows on the left edge: code = 128 + offV·32/Vdiv.
+	// Per-channel GROUND (0 V) arrows on the left edge: code = 128 + offV·25/Vdiv.
 	ground := func(vdiv, offV float64, col uint16) {
 		if vdiv <= 0 {
 			return
 		}
-		gy := sampleToY(128 + offV*32/vdiv)
+		gy := sampleToY(128 + offV*25/vdiv)
 		for dx := 0; dx <= 6; dx++ {
 			for dy := -(6 - dx); dy <= 6-dx; dy++ {
 				px(dx, gy+dy, col)
@@ -377,7 +377,7 @@ func drawHUD(sf Surface, f *engine.Frame, hud HUD) {
 			sig = analog.CoupleDisplay(sig, cpl)
 			off = 0
 		}
-		m := measure.Compute(sig, vdiv/32*probe, off*probe, hud.SampleS)
+		m := measure.Compute(sig, vdiv/25*probe, off*probe, hud.SampleS)
 		if m == nil {
 			return
 		}

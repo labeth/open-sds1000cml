@@ -225,6 +225,59 @@ func (c *Controller) runAutoset(stop chan struct{}) {
 		}
 	}
 
+	// 3c. Coarsen off the screen edge: on the sensitive ×1 ranges (V/div ≤ 200 mV,
+	//     attenuator bit off) the vertical offset DAC is DEAD — its code moves but
+	//     the trace does not — so a small AC riding a large DC lands there (the AC
+	//     fits) yet the DC can't be pulled to centre. detentForVpp only sees the AC,
+	//     so it has no way to know. That off-screen trace shows up two ways: a hard
+	//     ADC RAIL (codes pinned ≤1/≥254), OR — when the large DC SATURATES THE
+	//     FRONT-END AMP before the ADC — the trace pins at the screen EDGE (mean
+	//     ~251, ~+4.9 div) while the codes never quite reach the rail. So coarsen
+	//     while the trace is either railed OR still > 2.5 div off centre after the
+	//     offset nudge: step up one detent (coarser) and re-centre. Each step is
+	//     model-independent (re-measure Vpp/midpoint at the new V/div, re-run the
+	//     midpoint offset + the rawCenterErr nudge from 3b). This walks a DC-heavy
+	//     signal onto an ATTENUATED range (V/div ≥ 500 mV) where the offset actually
+	//     works. Bounded by the detent count so it can never spin.
+	if c.fe != nil {
+		for ch := 0; ch < 2; ch++ {
+			if !has(m[ch]) {
+				continue
+			}
+			for i := 0; i < len(analog.Detents); i++ {
+				if !c.offScreen(ch) {
+					break // trace is on-screen AND centred — nothing to coarsen
+				}
+				snap, _ := c.fe.Snapshot()
+				if snap[ch] >= len(analog.Detents)-1 {
+					break // already the coarsest detent — can't fit it any better
+				}
+				c.setVdiv(ch, snap[ch]+1) // one detent coarser
+				if !c.waitFrame(stop) {
+					return
+				}
+				mc, _ := c.measureChans() // re-measure Vpp/midpoint at the new V/div
+				if !has(mc[ch]) {
+					break
+				}
+				p := c.fe.ProbeFactor(ch)
+				c.fe.SetOffset(ch, -(mc[ch].Vmax+mc[ch].Vmin)/2/p) // re-centre on midpoint
+				if !c.waitFrame(stop) {
+					return
+				}
+				errDiv := c.rawCenterErr(ch) // close the loop on centring (as in 3b)
+				if errDiv > 0.4 || errDiv < -0.4 {
+					snap2, _ := c.fe.Snapshot()
+					vdiv := analog.Detents[snap2[ch]].VdivV
+					c.fe.SetOffset(ch, c.fe.OffsetReqV(ch)-errDiv*vdiv)
+					if !c.waitFrame(stop) {
+						return
+					}
+				}
+			}
+		}
+	}
+
 	// 4. Trigger: re-measure the now-centred trace and put an EDGE trigger at its
 	//    midpoint on the stronger channel (this is why it must be measured AFTER
 	//    the vertical settles — else the level lands off-screen).
@@ -309,7 +362,7 @@ func (c *Controller) measureChans() ([2]*measure.Result, bool) {
 				offV = c.fe.OffsetVolts(ch, off[ch]) // calibrated per-detent zero, not the fixed fallback
 			}
 			vdiv := analog.Detents[idx].VdivV
-			m[ch] = measure.Compute(sig, vdiv/32*probe, offV*probe, f.SampleS)
+			m[ch] = measure.Compute(sig, vdiv/25*probe, offV*probe, f.SampleS)
 		}
 	})
 	return m, ok
@@ -317,7 +370,7 @@ func (c *Controller) measureChans() ([2]*measure.Result, bool) {
 
 // rawCenterErr reports how far a channel's signal MIDPOINT ((min+max)/2) sits from
 // screen centre, in divisions (+ve = above centre), read straight off the ADC codes
-// (128 = centre, 32 codes/div). Uses 1%-trimmed rails so a stray spike can't skew it,
+// (128 = centre, 25 codes/div). Uses 1%-trimmed rails so a stray spike can't skew it,
 // and the midpoint (not the mean) so duty cycle doesn't matter. Model-independent, so
 // it corrects any offset-DAC calibration drift.
 func (c *Controller) rawCenterErr(ch int) float64 {
@@ -356,9 +409,55 @@ func (c *Controller) rawCenterErr(ch int) float64 {
 				break
 			}
 		}
-		errDiv = (float64(lo+hi)/2 - 128) / 32
+		errDiv = (float64(lo+hi)/2 - 128) / 25
 	})
 	return errDiv
+}
+
+// railing reports whether a channel's trace is clipped against a rail: more than
+// ~5% of its valid samples pinned at an extreme code (≤1 or ≥254). A DC-heavy
+// signal parked on a sensitive ×1 range (V/div ≤ 200 mV, where the offset DAC is
+// dead) stays railed even after centring; the 3c guard uses this to coarsen onto
+// an attenuated range where the offset works. Model-independent — reads raw ADC
+// codes straight off the latest frame, so it needs no calibration model.
+func (c *Controller) railing(ch int) bool {
+	railed := false
+	c.frameFn(func(f *engine.Frame) {
+		if f == nil || f.IsEnv {
+			return // an envelope frame's min/max bands aren't per-sample rails
+		}
+		sig := f.C1
+		if ch == 1 {
+			sig = f.C2
+		}
+		valid := f.Valid
+		if valid < 1 || valid > len(sig) {
+			valid = len(sig)
+		}
+		if valid < 8 {
+			return
+		}
+		n := 0
+		for _, v := range sig[:valid] {
+			if v <= 1 || v >= 254 {
+				n++
+			}
+		}
+		railed = n*20 > valid // >5% pinned at a rail
+	})
+	return railed
+}
+
+// offScreen reports whether a channel's trace still sits off-screen after
+// centring, so the 3c guard must coarsen it onto a range where the offset works.
+// It catches BOTH ways a DC-heavy signal escapes a sensitive range: a hard ADC
+// rail (railing), and front-end-amp SATURATION — where the trace pins at the
+// screen edge (raw-code midpoint ~251, i.e. > 2.5 div off centre) yet the codes
+// never reach the ADC rail. rawCenterErr is the same model-independent raw-code
+// midpoint read used by step 3b (+ve = above centre), so a legitimately centred
+// full-screen signal reads ≈0 and never false-coarsens.
+func (c *Controller) offScreen(ch int) bool {
+	return c.railing(ch) || math.Abs(c.rawCenterErr(ch)) > 2.5
 }
 
 func has(r *measure.Result) bool { return r != nil && r.Vpp > 0.02 }

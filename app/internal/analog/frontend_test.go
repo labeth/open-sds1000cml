@@ -212,60 +212,77 @@ func TestCalibratedGainAndZero(t *testing.T) {
 	if got := fe.OffsetCode(0, 0); got != 10440 {
 		t.Fatalf("calibrated zero = %d, want 10440", got)
 	}
-	// vd 5 (100 mV) is a sensitive ×1 range, so K = 262·lever; a small offset
-	// (within the ~±0.08 V sensitive ceiling) round-trips through the per-detent
-	// K without hard-coding its value.
-	if v := fe.OffsetVolts(0, fe.OffsetCode(0, 0.05)); v < 0.049 || v > 0.051 {
-		t.Fatalf("sensitive OffsetVolts round-trip = %v, want 0.05", v)
+	// vd 5 (100 mV) is a sensitive ×1 tier: slope 50/0.1 = 500 codes/V, ±1.6 V
+	// range. A 0.5 V offset (far past the old ~±0.08 V ceiling) round-trips.
+	if v := fe.OffsetVolts(0, fe.OffsetCode(0, 0.5)); v < 0.499 || v > 0.501 {
+		t.Fatalf("sensitive OffsetVolts round-trip = %v, want 0.5", v)
 	}
 }
 
-// TestOffsetKStepsByAtten pins the core of the offset fix: the DAC injects
-// downstream of the coarse attenuator, so K must step on Detents[idx].Atten —
-// base 262 on the attenuated ranges, 262·lever on the sensitive ×1 ranges.
-func TestOffsetKStepsByAtten(t *testing.T) {
+// TestOffsetKPerDivision pins the vendor slope: codes/volt = 50/VDIV, the same
+// on both tiers (the attenuator sets the clamp, not the slope — spec 06 §5.2).
+func TestOffsetKPerDivision(t *testing.T) {
 	tr := &fakeTr{}
 	fe := New(tr, func(time.Duration) {}, cal.Defaults())
+	if err := fe.SetVdiv(0, 6); err != nil { // 200 mV/div: fixed slope
+		t.Fatal(err)
+	}
+	if k := fe.OffsetK(0); k < 99.9 || k > 100.1 {
+		t.Fatalf("200mV OffsetK = %v, want 100 (fixed codes/volt)", k)
+	}
+	if err := fe.SetVdiv(0, 8); err != nil { // 1 V/div: same fixed slope
+		t.Fatal(err)
+	}
+	if k := fe.OffsetK(0); k < 99.9 || k > 100.1 {
+		t.Fatalf("1V OffsetK = %v, want 100 (fixed codes/volt)", k)
+	}
+}
 
-	// Sensitive ×1 range (200 mV, idx 6, Atten=false).
-	if err := fe.SetVdiv(0, 6); err != nil {
+// TestOffsetTierRangeAndClamp checks per-tier authority (spec 06 §5.2.1):
+// ±1.6 V on the sensitive ×1 tier, ±40 V on the attenuated ×25 tier.
+func TestOffsetTierRangeAndClamp(t *testing.T) {
+	tr := &fakeTr{}
+	fe := New(tr, func(time.Duration) {}, cal.Defaults()) // zeros 10223
+	if err := fe.SetVdiv(0, 6); err != nil {              // 200 mV sensitive
 		t.Fatal(err)
 	}
-	ks := fe.OffsetK(0)
-	if ks < 262*40 || ks > 262*50 {
-		t.Fatalf("sensitive OffsetK = %v, want ≈262·46", ks)
+	if c := fe.OffsetCode(0, 1.6); c != 10223-160 { // 100·1.6=160 (fixed codes/volt)
+		t.Fatalf("200mV +1.6V code = %d, want %d", c, 10223-160)
 	}
-	// Attenuated range (1 V, idx 8, Atten=true): base K = 262.
-	if err := fe.SetVdiv(0, 8); err != nil {
+	if v := fe.OffsetVolts(0, fe.OffsetCode(0, 1.6)); v < 1.599 || v > 1.601 {
+		t.Fatalf("200mV +1.6V readback = %v", v)
+	}
+	if c := fe.OffsetCode(0, 5.0); c != 10223-160 { // clamps to ±1.6 V (×1 tier)
+		t.Fatalf("200mV +5V clamps to %d, want %d", c, 10223-160)
+	}
+	if err := fe.SetVdiv(0, 8); err != nil { // 1 V attenuated
 		t.Fatal(err)
 	}
-	if ka := fe.OffsetK(0); ka < 261 || ka > 263 {
-		t.Fatalf("attenuated OffsetK = %v, want 262", ka)
+	if c := fe.OffsetCode(0, 40); c != 10223-4000 { // 100·40=4000
+		t.Fatalf("1V +40V code = %d, want %d", c, 10223-4000)
 	}
-	if lever := ks / 262; lever < 40 || lever > 50 {
-		t.Fatalf("attenuator lever = %v, want ≈46", lever)
+	if c := fe.OffsetCode(0, 100); c != 10223-4000 { // clamps to ±40 V
+		t.Fatalf("1V +100V clamps to %d, want %d", c, 10223-4000)
 	}
 }
 
 func TestOffsetCodeMapping(t *testing.T) {
-	// 0 V → per-channel zero; positive volts → lower code (inverting).
+	// Table-less fallback: boot detent 1 V/div (idx 8), zero 10223, slope 50.
 	if got := OffsetCode(0, 0); got != 10223 {
 		t.Fatalf("C1 zero = %d, want 10223 (boot default)", got)
 	}
 	if got := OffsetCode(1, 0); got != 10223 {
 		t.Fatalf("C2 zero = %d, want 10223 (boot default)", got)
 	}
-	if got := OffsetCode(0, 1.0); got != 10223-262 {
-		t.Fatalf("C1 +1V = %d, want %d", got, 10223-262)
+	if got := OffsetCode(0, 1.0); got != 10223-100 { // +1 V → 100 codes below zero
+		t.Fatalf("C1 +1V = %d, want %d", got, 10223-100)
 	}
-	// Clamp to the DAC linear region.
-	if got := OffsetCode(0, 100); got != OffsetCodeMin {
-		t.Fatalf("clamp low = %d", got)
+	if got := OffsetCode(0, 100); got != 10223-4000 { // clamp to ×25 tier (±40 V = 4000 codes)
+		t.Fatalf("clamp low = %d, want %d", got, 10223-4000)
 	}
-	if got := OffsetCode(0, -100); got != OffsetCodeMax {
-		t.Fatalf("clamp high = %d", got)
+	if got := OffsetCode(0, -100); got != 10223+4000 {
+		t.Fatalf("clamp high = %d, want %d", got, 10223+4000)
 	}
-	// Round-trip.
 	if v := OffsetVolts(0, OffsetCode(0, 1.5)); v < 1.49 || v > 1.51 {
 		t.Fatalf("round-trip 1.5V = %v", v)
 	}

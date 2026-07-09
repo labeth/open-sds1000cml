@@ -182,7 +182,7 @@ function srNew(n, K) {
     sumA: new Float64Array(nbins),
     cntA: new Float64Array(nbins),
     ref: null, // Float32Array reference for the drift fit
-    vpc: 1 / 32, offV: 0,
+    vpc: 1 / 25, offV: 0,
     clipSkips: 0, // frames whose data was excluded because THIS channel clipped
   });
   return {

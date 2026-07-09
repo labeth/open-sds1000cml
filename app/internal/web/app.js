@@ -340,7 +340,7 @@ function toggleHelp() {
 // The serial-analysis package: software CDR over raw records, persistence eye,
 // TIE jitter (histogram, RJ/DJ, spectrum). One raw-feed consumer at a time —
 // arming the eye stops superres and vice versa.
-const ej = { st: null, armed: false, gen: 0, lastSeq: 0, fails: 0, lastUi: 0, vpc: 1 / 32 };
+const ej = { st: null, armed: false, gen: 0, lastSeq: 0, fails: 0, lastUi: 0, vpc: 1 / 25 };
 const ejStatus = m => { $("ejStats").textContent = m; };
 
 

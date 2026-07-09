@@ -112,8 +112,11 @@ const (
 )
 
 // sampleToY: higher code = higher on screen; clamp to panel (spec 07 §3.4).
+// 25 codes/div render scale (spec 10 §7.1): 8 divisions = 200 codes centred on
+// code 128, so the ADC's 256 codes span 10.24 div and the trace clips at the
+// graticule edge beyond ±4 div.
 func sampleToY(v float64) int {
-	y := traceBot - int(v*float64(traceBot-traceTop)/255+0.5)
+	y := traceBot - int(((v-128)/200+0.5)*float64(traceBot-traceTop)+0.5)
 	if y < 0 {
 		y = 0
 	}

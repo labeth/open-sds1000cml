@@ -103,12 +103,12 @@ func (f *fakeAnalog) SetVdiv(ch, idx int) error {
 }
 func (f *fakeAnalog) Snapshot() ([2]int, bool) { return [2]int{f.idx, f.idx}, f.set }
 func (f *fakeAnalog) SetOffset(ch int, volts float64) uint16 {
-	c := uint16(10223 - int(volts*262))
+	c := uint16(10223 - int(volts*100))
 	f.offCh, f.offVolts = ch, volts
 	return c
 }
 func (f *fakeAnalog) OffsetVolts(ch int, code uint16) float64 {
-	return float64(10223-int(code)) / 262
+	return float64(10223-int(code)) / 100
 }
 func (f *fakeAnalog) CalSource() string                    { return "defaults" }
 func (f *fakeAnalog) DCVolts(ch int, mean float64) float64 { return 0 }

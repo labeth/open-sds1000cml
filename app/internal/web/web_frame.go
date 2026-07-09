@@ -175,15 +175,16 @@ func window(sig []uint8, valid, winCols int, edgeX float64, interp bool, n int, 
 	return out
 }
 
-// vertScales returns the applied offset volts and volts-per-code (Vdiv/32)
-// for each channel, using the front-end V/div when available.
+// vertScales returns the applied offset volts and volts-per-code (Vdiv/25 —
+// the 25-codes/div render scale, spec 10 §7.1) for each channel, using the
+// front-end V/div when available.
 func (s *Server) vertScales() (off [2]float64, vpc [2]float64) {
-	vpc = [2]float64{1.0 / 32, 1.0 / 32} // nominal 1 V/div when no front end
+	vpc = [2]float64{1.0 / 25, 1.0 / 25} // nominal 1 V/div when no front end
 	st := s.sc.Snapshot()
 	if s.fe != nil {
 		idx, _ := s.fe.Snapshot()
-		vpc[0] = analog.Detents[idx[0]].VdivV / 32
-		vpc[1] = analog.Detents[idx[1]].VdivV / 32
+		vpc[0] = analog.Detents[idx[0]].VdivV / 25
+		vpc[1] = analog.Detents[idx[1]].VdivV / 25
 		if st.OffC1 != 0 {
 			off[0] = s.fe.OffsetVolts(0, st.OffC1)
 		}

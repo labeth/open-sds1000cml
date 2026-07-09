@@ -159,7 +159,7 @@ func (e *Engine) trigDispLevel(srcCh int) int {
 	if code == 0 {
 		return -1
 	}
-	dc := int(math.Round(128 + TrigLevelVolts(code)*32/e.chVdivV(srcCh)))
+	dc := int(math.Round(128 + TrigLevelVolts(code)*25/e.chVdivV(srcCh)))
 	if dc < 0 {
 		dc = 0
 	}

@@ -97,7 +97,7 @@ function ptToNorm(ev) {
 
 function markerHit(p) {
   if (!st || view.mode !== "YT" || !frame) return null;
-  const vpcT = (st.trig_source === 1 ? frame.vpc2 : frame.vpc1) || (1 / 32);
+  const vpcT = (st.trig_source === 1 ? frame.vpc2 : frame.vpc1) || (1 / 25);
   if (st.trig_code && p.x > 0.85) {                 // trigger LEVEL handle (right edge)
     const ly = yFor(128 + st.trig_volts / vpcT, 1) / CH;
     if (Math.abs(p.y - ly) < 0.06) return { kind: "level", vpc: vpcT };

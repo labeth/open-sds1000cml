@@ -16,7 +16,7 @@ function ejIngest(f) {
   const sig = ch === 2 ? f.c2 : f.c1;
   if (!sig || f.is_env) { ejStop("band became unsupported"); return; }
   if (!(f.sample_s > 0)) return; // no timebase → zero-second TIE would be fabricated
-  const vpc = (ch === 2 ? f.vpc2 : f.vpc1) || (1 / 32);
+  const vpc = (ch === 2 ? f.vpc2 : f.vpc1) || (1 / 25);
   ej.vpcReal = !!(ch === 2 ? f.vpc2 : f.vpc1); // mV readouts only with a real calibration
   // a V/div change rescales the codes mid-accumulation — the eye/levels would
   // mix scales; stop honestly (same policy as superres)

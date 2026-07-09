@@ -3,22 +3,36 @@
 ## Unreleased
 
 ### Fixed
-- **Vertical offset was inert on the sensitive ranges (≤200 mV/div).** The
-  offset DAC injects *downstream* of the coarse attenuator relay, so its
-  input-referred authority is ~46× weaker on the ×1 (sensitive) ranges than on
-  the attenuated ranges. The firmware used one fixed slope (K = 262 codes/V,
-  calibrated on the attenuated 1 V boot detent), leaving the offset ~46× too
-  weak below 500 mV/div — effectively dead: no DC could be centred there. `K`
-  now steps on the coarse-attenuator bit (`Detents[idx].Atten`): 262 attenuated,
-  262·lever (≈ 11 996, lever ≈ 45.8) on the sensitive ranges; the panel offset
-  knob steps a constant DAC-code count per range. Bench-validated on hardware:
-  sensitive-range offset authority `g` rose from ~0.045 to ~2.0, matching the
-  attenuated ranges (attenuated K unchanged). The sensitive-range offset span
-  is now the true hardware ~±0.15 V (a larger DC still needs an attenuated range
-  or external removal). Spec 06 §5.2 corrected. Env-tunable via
-  `SCOPE_OFFSET_K` / `SCOPE_OFFSET_LEVER`. (Note: a separate firmware-wide
-  32/50/64-codes-per-div convention incoherence — display vs SCPI vs cal — is
-  now documented but unchanged here.)
+- **Vertical recalibration to the reverse-engineered vendor laws** (offset,
+  gain/display scale, trigger) — from an RE pass on the vendor firmware (spec
+  commit f6c3eb7) plus bench validation:
+  - **Offset** is a single input-referred DAC with a **fixed** slope in volts:
+    `code = clamp(zero − 100·V)` — **100 DAC codes per input-volt, not scaled by
+    V/div** (`offsetCodesPerVolt`). The coarse attenuator tiers only the *range*
+    via a per-tier clamp: **±1.6 V** on the sensitive ×1 ranges (≤200 mV/div),
+    **±40 V** on the attenuated ×25 ranges (≥500 mV/div). Bench-validated on the
+    unit: one −1.6 V command writes a fixed **160 DAC codes at every range**, and
+    the trace moves **input-referred** — **0.80 / 1.59 / 3.22 div at 2 V / 1 V /
+    500 mV/div** (1:1 with the signal, because the per-range analog gain already
+    scales offset authority ∝1/VDIV). The RE's scaled `100·(V/VDIV)` form
+    (spec commit c98d5d1) would give 0.4/1.6/6.5 div (16:1) and is disproven; the
+    per-range gain double-counts the 1/VDIV if the code is scaled too. **The
+    offset DAC is dead on the sensitive ×1 ranges** — a large DC saturates the
+    front-end before the ADC, so autoset coarsens off-center/railed channels down
+    to an attenuated range where offset works. (Law history: an RE pass gave
+    50 codes/div → corrected to 100 → then scaled→fixed on the bench; supersedes
+    an earlier stepped-K/lever attempt that topped out near ±0.15 V.)
+  - **Display/gain scale is 25 codes/div, not 32** (the offset & trigger DACs run
+    at 2× = 50/div). This was the ~22% voltage under-read — a 3 V cal wave read
+    2.31 V. The render grid is now 200 codes = 8 divisions (the ADC's 256 codes
+    span 10.24 div; the trace clips at the graticule edge beyond ±4 div).
+  - **Trigger DAC left unchanged:** the RE "50 codes/div" claim is wrong for the
+    trigger — bench-measured ~938 codes/V (the comparator fired over ~2100 DAC
+    codes across a 3 Vpp wave, 14× the 50/div prediction). Only the on-screen
+    level-marker mapping follows the 25-codes/div grid.
+  - Specs 05/06/10 corrected (spec 06 §5.2 carries a bench-correction flagging the
+    fixed-per-volt result vs the RE's scaled "per-division" trap); the
+    `SCOPE_OFFSET_K`/`SCOPE_OFFSET_LEVER` env knobs are removed.
 - **FFT on fast (native-fast) timebases used the interpolated display window.**
   At a fast t/div the display is a short interpolated window (e.g. ~50 ns), so
   the FFT ran over a few real samples on a bogus multi-GHz axis (blocky, no

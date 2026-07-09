@@ -23,8 +23,8 @@ function drawGrid(g) {
     if (nHi - nLo <= 400) { for (let n = nLo; n <= nHi; n++) vline((anchor + n * dtFrac - w.a) / span * (CW - 1)); drewTime = true; }
   }
   if (!drewTime) for (let i = 1; i < DIVX; i++) vline(i * CW / DIVX);
-  for (let i = 1; i < DIVY; i++) { // one line per 32 codes, mapped through the voltage window
-    const y = Math.round(yFor(i * 32, 1)) + .5;
+  for (let i = 1; i < DIVY; i++) { // one line per 25 codes, mapped through the voltage window
+    const y = Math.round(yFor(128 + (i - DIVY / 2) * 25, 1)) + .5;
     if (y < 0 || y > CH) continue;
     g.beginPath(); g.moveTo(0, y); g.lineTo(CW, y); g.stroke();
   }
@@ -38,7 +38,7 @@ function drawGrid(g) {
 // zoom narrows vwin so a stack's sub-code detail becomes visible.
 function yFor(code, zoom) {
   zoom = zoom || 1;
-  const v01 = (128 + (code - 128) * zoom) / 255; // 0=bottom .. 1=top of full scale
+  const v01 = 0.5 + (code - 128) * zoom / 200; // 0=bottom .. 1=top of full scale
   const w = view.vwin;
   return CH * (1 - (v01 - w.a) / (w.b - w.a));
 }
@@ -49,7 +49,7 @@ function codeAtY(cy, zoom) {
   zoom = zoom || 1;
   const w = view.vwin;
   const v01 = w.a + (1 - cy) * (w.b - w.a);
-  return 128 + (v01 * 255 - 128) / zoom;
+  return 128 + (v01 - 0.5) * 200 / zoom;
 }
 
 function drawTrace(g, cols, color, zoom) {
@@ -109,8 +109,8 @@ function drawTrigMarkers(g) {
   // Horizontal trigger-LEVEL line (where the level sits on the trace = the
   // point the display now anchors on).
   if (st.trig_code) {
-    const vpc = (frame && (st.trig_source === 1 ? frame.vpc2 : frame.vpc1)) || (1 / 32);
-    const y = yFor(128 + st.trig_volts / (vpc * 32) * 32, 1);
+    const vpc = (frame && (st.trig_source === 1 ? frame.vpc2 : frame.vpc1)) || (1 / 25);
+    const y = yFor(128 + st.trig_volts / vpc, 1);
     if (y >= 0 && y <= CH) {
       g.strokeStyle = TRIGCOL; g.globalAlpha = 0.7; g.setLineDash([6 * dpr, 5 * dpr]); g.lineWidth = dpr;
       g.beginPath(); g.moveTo(0, y + .5); g.lineTo(CW, y + .5); g.stroke(); g.setLineDash([]); g.globalAlpha = 1;
@@ -255,7 +255,7 @@ function saveRef(slot) {
   refs[slot] = {
     c1: view.c1 ? cap(frame.c1) : null,
     c2: view.c2 ? cap(frame.c2) : null,
-    vpc1: frame.vpc1 || 1 / 32, vpc2: frame.vpc2 || 1 / 32,
+    vpc1: frame.vpc1 || 1 / 25, vpc2: frame.vpc2 || 1 / 25,
     off1: frame.off1_v || 0, off2: frame.off2_v || 0,
     show: true,
   };

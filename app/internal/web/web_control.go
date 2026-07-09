@@ -293,10 +293,9 @@ func (s *Server) hSet(w http.ResponseWriter, r *http.Request) {
 		}
 		applied = analog.Detents[idx].VdivV
 	case "offset1", "offset2":
-		// Value in input-referred volts; the code mapping clamps to the DAC
-		// linear region and uses the calibrated per-detent zero when the
-		// front end (and its cal table) is present.
-		if req.Value < -10 || req.Value > 10 {
+		// Outer sanity guard only; the per-tier offset law clamps to the real
+		// ±1.6 V (×1) / ±40 V (×25) authority and readback reports the applied V.
+		if req.Value < -40 || req.Value > 40 {
 			ok, errStr = false, "offset out of range"
 			break
 		}

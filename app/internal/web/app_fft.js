@@ -283,7 +283,7 @@ function peakVolts(ch, p) {
   const N = spec.half * 2;
   const mag = spec.peak * Math.pow(10, p.db / 20);
   const ampCodes = 4 * mag / N;
-  return ampCodes * ((ch === 2 ? frame.vpc2 : frame.vpc1) || 1 / 32);
+  return ampCodes * ((ch === 2 ? frame.vpc2 : frame.vpc1) || 1 / 25);
 }
 
 // Noise-floor magnitude of a channel's current spectrum = the MEDIAN AC-bin

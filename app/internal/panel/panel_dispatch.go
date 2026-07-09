@@ -274,11 +274,10 @@ func (c *Controller) dispatch(name string, dir, steps int) {
 		if c.fe == nil {
 			return // no analog front end: offset knob claim-and-ignore
 		}
-		// Offset step is 20 DAC codes/accel-step. K is codes/V for the current
-		// detent (range-dependent — it steps on the coarse attenuator), so step
-		// the input-referred volts by 20/K and let the front end re-derive the
-		// code. This keeps a constant DAC-code granularity on every range
-		// instead of slamming the clamp on the sensitive ×1 ranges.
+		// Offset step is 20 DAC codes/accel-step. K = 50/VDIV is codes/V for the
+		// current detent (spec 06 §5.2), so stepping the input-referred volts by
+		// 20/K moves a constant 20 DAC codes (0.4 division) on every range —
+		// re-derived to a code by the front end's per-tier offset law.
 		v := c.fe.OffsetReqV(ch) + float64(dir*steps)*20.0/c.fe.OffsetK(ch)
 		c.fe.SetOffset(ch, v)
 	case "triglevel":

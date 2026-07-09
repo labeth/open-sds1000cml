@@ -261,10 +261,21 @@ code = clamp( round( zero − 100 · (V / VDIV) ) )
 
 **Inverse** (for readback / WAVEDESC offset): `V = (zero − code) · VDIV / 100`.
 
-**Trap — the slope is per-division, not a fixed codes-per-volt.** A form that uses one fixed
-codes-per-input-volt (independent of V/div) under-drives the DAC at fine V/div and overshoots at
-coarse V/div. The code scales as `100 / VDIV`; the attenuator sets only the tier and the clamp
-(§5.2.1), it does not change the 100-codes-per-division slope.
+> **Bench correction (2026-07-09, HW-measured — CONTRADICTS the superseded trap below).** On the unit
+> the offset slope is a **FIXED codes-per-volt** (input-referred), **NOT** scaled by V/div. One
+> `−1.6 V` command moved the trace **0.4 / 1.6 / 6.5 div at 2 V / 1 V / 500 mV/div** (16:1);
+> input-referred it must be **0.8 / 1.6 / 3.2 div** (4:1). The `100·(V/VDIV)` scaled form over-drives
+> at fine V/div and under-drives at coarse — the *opposite* of the trap — because the per-range analog
+> gain already scales the offset with V/div, so scaling the code too double-counts it. The firmware
+> uses **`code = zero − 100·V`** (100 codes **per volt**, fixed) and validates 1:1 across all
+> attenuated ranges. **Also: the offset DAC is DEAD on the sensitive ×1 ranges** (≤200 mV/div — a
+> `−1.6 V` command moved the trace 0 div despite 800/1600-code writes), so the ±1.6 V sensitive range
+> is not reachable through this DAC. RE follow-up: re-derive the vendor volts→code — the
+> disassembly-implied `100·(V/VDIV)` is likely a mis-read of a fixed-per-volt transfer.
+
+**Trap (SUPERSEDED — see the bench correction above).** A form using one fixed codes-per-volt was
+believed to under-drive at fine V/div and overshoot at coarse; the bench shows the reverse — the
+fixed-per-volt form is the correct one, and the scaled `100/VDIV` form is what over/under-drives.
 
 #### 5.2.1 Tiered offset range and per-tier clamp
 

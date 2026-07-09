@@ -89,11 +89,11 @@ function updateCursors() {
   $("curCard").style.display = "";
   // Cursors are screen fractions; the screen now spans (b-a) of the record.
   const dt = Math.abs(cur.t2 - cur.t1) * (frame.col_span_s || 0) * (view.win.b - view.win.a);
-  // A full-height drag spans 255 codes ÷ vertical zoom (the 2 mV/5 mV detents
+  // A full-height drag spans 200 codes ÷ vertical zoom (the 2 mV/5 mV detents
   // render magnified), times volts/code (already probe-scaled). Per channel.
   const z1 = (st && st.zoom1) || 1, z2 = (st && st.zoom2) || 1;
   const vspan = view.vwin.b - view.vwin.a; // a full-height drag spans the ZOOMED voltage range
-  const vFull1 = 255 * vspan * (frame.vpc1 || 1 / 32) / z1, vFull2 = 255 * vspan * (frame.vpc2 || 1 / 32) / z2;
+  const vFull1 = 200 * vspan * (frame.vpc1 || 1 / 25) / z1, vFull2 = 200 * vspan * (frame.vpc2 || 1 / 25) / z2;
   const dv1 = Math.abs(cur.v2 - cur.v1) * vFull1, dv2 = Math.abs(cur.v2 - cur.v1) * vFull2;
   $("curBody").innerHTML =
     `<tr><th>Δt</th><td colspan="2">${eng(dt, "s")}</td></tr>` +

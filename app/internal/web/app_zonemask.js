@@ -319,7 +319,7 @@ setInterval(() => {
             c1: Int16Array.from(r.c1), c2: r.c2 ? Int16Array.from(r.c2) : null,
             is_env: false, cols: r.valid, col_span_s: r.valid * r.sample_s,
             tdiv_s: st.tdiv_s, displayed_sdiv_s: st.displayed_sdiv_s,
-            vpc1: 1 / 32, vpc2: 1 / 32, off1_v: 0, off2_v: 0,
+            vpc1: 1 / 25, vpc2: 1 / 25, off1_v: 0, off2_v: 0,
             edge_frac: r.edge_x >= 0 ? r.edge_x / r.valid : -1,
             win_frac: Math.min(1, r.win_cols / r.valid), depth: r.valid,
             trigd: true, interp: false, coherent: true, ptp: 0,

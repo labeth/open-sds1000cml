@@ -77,7 +77,7 @@ func New(n, K int) *Stack {
 		return chanState{
 			sum: make([]float64, nb), sum2: make([]float64, nb), cnt: make([]float64, nb),
 			sumA: make([]float64, nb), cntA: make([]float64, nb),
-			vpc: 1.0 / 32, offV: 0,
+			vpc: 1.0 / 25, offV: 0,
 		}
 	}
 	return &Stack{

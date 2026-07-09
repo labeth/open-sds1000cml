@@ -85,13 +85,13 @@ func (f *fakeFE) SetVdiv(ch, idx int) error {
 }
 func (f *fakeFE) Snapshot() ([2]int, bool) { return f.idx, false }
 func (f *fakeFE) SetOffset(ch int, volts float64) uint16 {
-	f.calls = append(f.calls, call{"offset", ch, int(volts * 262)})
+	f.calls = append(f.calls, call{"offset", ch, int(volts * 100)})
 	f.offReqV[ch] = volts
-	return uint16(10223 - int(volts*262))
+	return uint16(10223 - int(volts*100))
 }
 func (f *fakeFE) OffsetReqV(ch int) float64               { return f.offReqV[ch] }
-func (f *fakeFE) OffsetVolts(ch int, code uint16) float64 { return (10223 - float64(code)) / 262 }
-func (f *fakeFE) OffsetK(ch int) float64                  { return 262 }
+func (f *fakeFE) OffsetVolts(ch int, code uint16) float64 { return (10223 - float64(code)) / 100 }
+func (f *fakeFE) OffsetK(ch int) float64                  { return 100 }
 func (f *fakeFE) SetCoupling(ch, mode int) error {
 	f.calls = append(f.calls, call{"coupling", ch, mode})
 	f.cpl[ch] = mode

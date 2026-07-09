@@ -110,12 +110,12 @@ func TestTrigLevelSign(t *testing.T) {
 func TestPositionKnobAccel(t *testing.T) {
 	c, _, fe := newC(t)
 	// CH1 POSITION (continuous) with raw 0x69 = 25 → 100 steps. Each step is
-	// 20 codes = 20/262 V; CW (+1) → +100·20/262 V, routed through fe.
+	// 20 codes = 20/100 V at the fake's 1 V/div slope; CW (+1) → +100·20/100 V.
 	m := idle()
 	m[0] &^= 1 << 6
 	m[4] = 25
 	c.decode(m, true)
-	want := 100 * 20.0 / 262.0
+	want := 100 * 20.0 / 100.0
 	if len(fe.calls) != 1 || fe.calls[0].what != "offset" || fe.offReqV[0] < want-1e-9 || fe.offReqV[0] > want+1e-9 {
 		t.Fatalf("ch1 pos accel: fe=%+v want volts %v", fe.calls, want)
 	}

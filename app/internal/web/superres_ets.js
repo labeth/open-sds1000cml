@@ -55,7 +55,7 @@ function srEtsNew(nbins, dt) {
   const chan = () => ({
     sum: new Float64Array(nbins), sum2: new Float64Array(nbins), cnt: new Float64Array(nbins),
     sumA: new Float64Array(nbins), cntA: new Float64Array(nbins), // odd half-stack for honest σ
-    vpc: 1 / 32, offV: 0, present: false,
+    vpc: 1 / 25, offV: 0, present: false,
   });
   return {
     nbins, dt, f: 0, align: 0,

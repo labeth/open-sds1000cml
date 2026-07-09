@@ -49,8 +49,8 @@ function srEtsInit(f, fref, dt) {
   const nbins = 4 * (+$("srK").value || 32); // K16→64, K32→128, K64→256 phase bins
   sr.etsSt = srEtsNew(nbins, dt);
   sr.etsSt.f = fref; sr.etsSt.align = sr.alignCh;
-  sr.etsSt.c[0].vpc = f.vpc1 || 1 / 32; sr.etsSt.c[0].offV = f.off1_v || 0;
-  sr.etsSt.c[1].vpc = f.vpc2 || 1 / 32; sr.etsSt.c[1].offV = f.off2_v || 0;
+  sr.etsSt.c[0].vpc = f.vpc1 || 1 / 25; sr.etsSt.c[0].offV = f.off1_v || 0;
+  sr.etsSt.c[1].vpc = f.vpc2 || 1 / 25; sr.etsSt.c[1].offV = f.off2_v || 0;
   sr.meta = { tdiv_s: f.tdiv_s, cols: f.cols, sample_s: dt };
 }
 
@@ -146,8 +146,8 @@ function srEvtIngest(f) {
     sr.st = srNew(f.cols, K);
     sr.st.kernel = $("srKernel").value || "interp";
     sr.st.align = sr.alignCh; sr.st.sampleS = dt;
-    sr.st.c[0].vpc = f.vpc1 || 1 / 32; sr.st.c[0].offV = f.off1_v || 0;
-    sr.st.c[1].vpc = f.vpc2 || 1 / 32; sr.st.c[1].offV = f.off2_v || 0;
+    sr.st.c[0].vpc = f.vpc1 || 1 / 25; sr.st.c[0].offV = f.off1_v || 0;
+    sr.st.c[1].vpc = f.vpc2 || 1 / 25; sr.st.c[1].offV = f.off2_v || 0;
     sr.meta = { tdiv_s: f.tdiv_s, cols: f.cols, sample_s: dt, vpc1: f.vpc1, vpc2: f.vpc2 };
     const h = d.occ[0];
     sr.evtMargin = Math.max(4, Math.round(d.spb || (h.i1 - h.i0) / 10));
@@ -178,9 +178,9 @@ function srIngest(f) {
     sr.st.kernel = $("srKernel").value || "interp"; // resample vs deposit (near-Nyquist)
     sr.st.align = sr.alignCh; // matching/alignment channel; BOTH channels stack
     sr.st.sampleS = f.sample_s || 0;
-    sr.st.c[0].vpc = f.vpc1 || 1 / 32;
+    sr.st.c[0].vpc = f.vpc1 || 1 / 25;
     sr.st.c[0].offV = f.off1_v || 0;
-    sr.st.c[1].vpc = f.vpc2 || 1 / 32;
+    sr.st.c[1].vpc = f.vpc2 || 1 / 25;
     sr.st.c[1].offV = f.off2_v || 0;
     sr.meta = { tdiv_s: f.tdiv_s, cols: f.cols, sample_s: f.sample_s, vpc1: f.vpc1, vpc2: f.vpc2 };
     if (sr.lockRef) {
@@ -561,7 +561,7 @@ $("srFit").onclick = () => {
   if (!fit) { srStatus("model fit failed (need a fuller stack)"); return; }
   refs.B = {
     c1: Array.from(fit.synth(Math.min(am.length, 16384))),
-    c2: null, vpc1: ac.vpc, vpc2: 1 / 32, off1: ac.offV, off2: 0, show: true,
+    c2: null, vpc1: ac.vpc, vpc2: 1 / 25, off1: ac.offV, off2: 0, show: true,
     // only overlay on a matching time base; a gated stack spans just the gate
     srSpanS: (sr.st.gated ? sr.st.gridL : sr.st.n) * sr.st.sampleS,
   };

@@ -241,7 +241,7 @@ func (h *Handler) execChannel(ch int, head, arg string) []byte {
 		if err != nil {
 			return errTok(errHeader)
 		}
-		if math.IsNaN(v) || math.IsInf(v, 0) || v < -10 || v > 10 {
+		if math.IsNaN(v) || math.IsInf(v, 0) || v < -40 || v > 40 {
 			return errTok(errOutOfRange)
 		}
 		if h.fe != nil {

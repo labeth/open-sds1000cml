@@ -73,7 +73,7 @@ $("ePNG").onclick = () => {
 $("eCSV").onclick = () => {
   if (!frame || !frame.c1) return;
   const dt = (frame.col_span_s || 0) / frame.c1.length;
-  const vpc1 = frame.vpc1 || (1 / 32), vpc2 = frame.vpc2 || (1 / 32);
+  const vpc1 = frame.vpc1 || (1 / 25), vpc2 = frame.vpc2 || (1 / 25);
   const o1 = frame.off1_v || 0, o2 = frame.off2_v || 0;
   const toV = (code, vpc, off) => (code === undefined || code < 0 ? "" : ((code - 128) * vpc - off).toExponential(6));
   const c2 = frame.c2;

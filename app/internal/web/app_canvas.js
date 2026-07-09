@@ -6,7 +6,7 @@
 scope.addEventListener("pointerdown", ev => {
   if (ev.detail > 1) return; // the 2nd click of a double-click must not grab a cursor/marker (dblclick resets zoom)
   if (ev.shiftKey && view.mode === "YT" && st && frame) { // Shift+click = set trigger level here
-    const vpc = (st.trig_source === 1 ? frame.vpc2 : frame.vpc1) || (1 / 32);
+    const vpc = (st.trig_source === 1 ? frame.vpc2 : frame.vpc1) || (1 / 25);
     const volts = (codeAtY(Math.max(0, Math.min(1, ptToNorm(ev).y)), 1) - 128) * vpc;
     st.trig_volts = volts; $("lvl").value = volts.toFixed(2); $("lvlv").textContent = volts.toFixed(2) + " V";
     send("triglevelcode", Math.round(31434 - 938 * volts / trigProbe())); redraw();
