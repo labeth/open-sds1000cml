@@ -124,16 +124,16 @@ code = round((V − Vcenter)/Vref · K_lvl)       # K_lvl ≈ 938 DAC codes/div 
 ```
 
 Equivalently, at a per-channel V/div this is `level_code ≈ 938·(TRLV − Vcenter)/VDIV` DAC codes at
-1 V/2 V-div — the comparator DAC is a **distinct, much finer DAC** (~37× the display grid, ~9× the
-offset DAC's 100 codes/div), **not** the offset DAC's grid. Clamped to **±6 divisions** about the
+1 V/2 V-div — the comparator DAC is a **distinct, much finer DAC** (~37× the display grid), a
+separate actuator from the offset DAC. Clamped to **±6 divisions** about the
 per-channel zero and tracking the offset window. The `938` is the 1 V/2 V-div value of the
 per-detent cal ladder; drive the raw 16-bit code for an exact level at other V/div.
 
-> **The trigger comparator DAC is a distinct, finer DAC than the offset DAC.** It runs at **~938
-> codes/V** (≈938 codes/div at 1 V/div, ~37× the display grid), whereas the offset DAC is **100
-> codes/div** (4× the display grid — `06` §5.2). Its level code follows the §2.1 fit `code = 31434 −
-> 938·V` within the working code window `[27000, 35000]`; only the on-screen level **marker** uses the
-> 25-codes/div render grid. Drive the raw 16-bit code for an exact level.
+> **The trigger comparator DAC is a distinct DAC from the offset DAC.** It runs at **~938
+> codes/V** (≈938 codes/div at 1 V/div, ~37× the display grid); the offset DAC is a separate
+> actuator running at a fixed codes-per-volt per tier (`06` §5.2). Its level code follows the §2.1 fit
+> `code = 31434 − 938·V` within the working code window `[27000, 35000]`; only the on-screen level
+> **marker** uses the 25-codes/div render grid. Drive the raw 16-bit code for an exact level.
 
 - `Vref` (the level-code unit; ≈938 DAC codes = one V/div at 1 V/2 V-div, ~37× the screen grid): for C1/C2 it is the per-channel
   **VDIV** field at cal byte address `0x410bf0 + src·0x10 + 8`; the EXT input uses fixed

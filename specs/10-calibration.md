@@ -148,6 +148,14 @@ the tier the active V/div falls in (≈10445 at 1 V/div in the attenuated tier;
 boot default `0x27ef` = 10223). Do not centre across both tiers with one code —
 the two tiers have distinct zeros.
 
+Two per-tier calibration constants govern the **single** offset DAC (there is no
+second offset actuator): the per-tier offset-zero, which is the DAC's centre code,
+and the per-tier analog gain, which sets how far the injected offset moves the
+trace. The per-V/div GAIN coefficient (`+0x04`) tracks that analog gain and is
+proportional to V/div within a tier. Because the analog gain scales the offset by
+V/div, the offset code runs at a **fixed codes-per-volt within each tier** (≈100
+codes/V attenuated, ≈4392 codes/V sensitive), not scaled by V/div (§7.4).
+
 ### 3.1 Second record block (optional / not required for a first build)
 
 The payload carries a second stride-8 block ("Block B": a range-2 / probe-×10
@@ -313,8 +321,9 @@ reconfigures the FPGA, and it must never be written at runtime.
 
 The render vertical scale is **25 codes/div**: a calibrated
 1-division signal occupies exactly 25 on-screen codes about screen centre.
-(The offset and trigger-level DACs run at 2× this grid — 50 DAC codes = 1
-division = 25 on-screen codes.)
+(The offset DAC and trigger-level DAC run at their own resolutions, distinct
+from this display grid — the offset DAC at a fixed codes-per-volt per tier
+(§7.4), the trigger-level DAC per §7.5.)
 
 Per-detent vertical gain is done in **HARDWARE** — the fine-gain DAC (record
 `+0x00`, §7.2) plus the coarse-range relay (§7.3) — so a 1-division signal always
@@ -420,26 +429,32 @@ separate strobe), then re-assert the CS1 run word `0x35` so the front-end change
 leaves the engine coherent.
 
 **Volts → code.** The offset is **input-referred** (the DAC injects a level shift
-ahead of the gain stage) and runs at **100 DAC codes per division of offset** (= 25
-on-screen codes; the offset DAC is 4× the display grid), so the code **is** scaled
-by V/div:
+ahead of the gain stage) and runs at a **fixed codes-per-volt within each V/div
+tier** — it is **NOT** scaled by V/div:
 
 ```
 zero  = per-tier offset-zero (default 0x27ef = 10223; ≈10445 at 1 V/div)
-code  = clamp( round( zero − 100·(V/VDIV) ) )      final clamp to [0, 0xFFFF]
+K     = fixed codes-per-volt for the active tier
+        (≈100 codes/V attenuated, ≈4392 codes/V sensitive)
+code  = clamp( round( zero − K·V ) )      final clamp to [0, 0xFFFF]
 ```
 
-`VDIV` is the active volts/division detent, so codes-per-volt = `100/VDIV`. The
-per-tier clamp is `NUMERATOR/(1000·VDIV)`, with `NUMERATOR = 160000` on the ×1
-sensitive tier (→ ±1.6 V) and `4000000` on the ×25 attenuated tier (→ ±40 V); the
-tier is set by the coarse attenuator (relay bit 2, V/div ≥ 500 mV). The ±1.6 V /
-±40 V range is set by the attenuator and is independent of the code slope. See
+The V/div dependence is carried by the per-tier calibration gain (proportional to
+V/div within a tier), which cancels the V/div term and makes the displacement
+input-referred (`V` volts of offset moves the trace `V/VDIV` divisions). The tier
+is set by the coarse attenuator (relay bit 2, V/div ≥ 500 mV); the attenuator only
+selects the tier and widens the offset-volts clamp — offset is never injected
+through it. There is a **single** offset DAC: no second/coarse offset DAC, no
+offset relay. Clamp the offset in volts to ±1.6 V (sensitive tier) / ±40 V
+(attenuated tier) before forming the code. On the sensitive tier the full ±1.6 V is
+clamp-authorized, but the analog front-end saturates before the ADC for large
+offsets, so the usable sensitive-tier offset is analog-limited. See
 `06-vertical-and-analog.md` §5.2.
 
 The DAC is **inverting**: a positive offset yields a lower code (the trace moves
 up). `0 V` programs exactly `zero`.
 
-Inverse (code → volts): `V = (zero − code)·VDIV/100`.
+Inverse (code → volts): `V = (zero − code)/K`, using the active tier's `K`.
 
 > **Trap — inherited fd.** The CS3/Gpmc device must **not** be freshly opened at
 > runtime. A fresh `open()` of the node fails (`EFAULT`) post-takeover, because the
@@ -490,9 +505,8 @@ latch strobe.
 **Volts → code.** The level DAC rides the per-V/div cal ladder. The trigger DAC is
 **~938 codes/V** — the fit `code = 31434 (0x7aca) − 938·V` (higher level → lower
 code), ≈938 codes/div at 1 V/div. The trigger level DAC is a
-**distinct, finer DAC than the offset DAC**: the offset DAC is a coarser
-100 codes/div (4× the display grid, §7.4), the trigger DAC ~938 codes/div (~37×
-the grid, ~9× finer than the offset DAC). The app implements the 938-codes/V fit, clamped to
+**distinct DAC from the offset DAC** — a separate CS3 actuator on its own transfer
+(the offset DAC uses a fixed codes-per-volt per tier, §7.4). The app implements the 938-codes/V fit, clamped to
 `[27000,35000]` (16-bit), exact at 1 V/2 V-div (per-detent map otherwise via the
 active cal record); only the on-screen level marker uses the 25-codes/div render
 grid. Code `0` means "clear/none".
