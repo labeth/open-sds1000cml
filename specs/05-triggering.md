@@ -117,17 +117,25 @@ V/div, drive the raw 16-bit code directly (`SetTrigLevel`) rather than volts.
 volts→code is fully pinned — formula and field addresses:
 
 ```
-code = round((V − Vcenter)/Vref · 50)          # 50 DAC codes/div = 25 on-screen codes/div;
-                                               # clamp to ±6 div (±150 on-screen codes) about
+code = round((V − Vcenter)/Vref · K_lvl)       # K_lvl ≈ 938 DAC codes/div (~37× the 25-codes/div
+                                               # screen grid); per-detent via the cal ladder,
+                                               # ≈938 at 1 V/2 V-div. Clamp to ±6 div about
                                                # Vcenter, tracking the offset window
 ```
 
-Equivalently, at a per-channel V/div this is `level_code = 50·(TRLV / VDIV)` DAC codes = **25
-on-screen ADC codes per division**, clamped to **±6 divisions (±150 on-screen codes)** about the
-per-channel zero and tracking the offset window. The DAC runs at 2× the display grid (50 DAC codes =
-1 division = 25 on-screen codes), the same scale as the offset DAC (`06-vertical-and-analog.md` §5.2).
+Equivalently, at a per-channel V/div this is `level_code ≈ 938·(TRLV − Vcenter)/VDIV` DAC codes at
+1 V/2 V-div — the comparator DAC is a **distinct, much finer DAC** (~37× the display grid, ~9× the
+offset DAC's 100 codes/div), **not** the offset DAC's grid. Clamped to **±6 divisions** about the
+per-channel zero and tracking the offset window. The `938` is the 1 V/2 V-div value of the
+per-detent cal ladder; drive the raw 16-bit code for an exact level at other V/div.
 
-- `Vref` (the level-code unit; 50 DAC codes = one V/div = 25 on-screen codes): for C1/C2 it is the per-channel
+> **The trigger comparator DAC is a distinct, finer DAC than the offset DAC.** It runs at **~938
+> codes/V** (≈938 codes/div at 1 V/div, ~37× the display grid), whereas the offset DAC is **100
+> codes/div** (4× the display grid — `06` §5.2). Its level code follows the §2.1 fit `code = 31434 −
+> 938·V` within the working code window `[27000, 35000]`; only the on-screen level **marker** uses the
+> 25-codes/div render grid. Drive the raw 16-bit code for an exact level.
+
+- `Vref` (the level-code unit; ≈938 DAC codes = one V/div at 1 V/2 V-div, ~37× the screen grid): for C1/C2 it is the per-channel
   **VDIV** field at cal byte address `0x410bf0 + src·0x10 + 8`; the EXT input uses fixed
   `Vref = 200`, the EXT/5 input fixed `Vref = 1000`.
 - `Vcenter` is the per-channel zero from the active RAM cal record at

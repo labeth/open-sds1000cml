@@ -358,10 +358,11 @@ block across multiple `device_read` calls until `reason = END`. A full ~20 k-poi
 
 - **`Cn:WF? DAT2`** — payload is the **8-bit sample codes**, one byte per sample, **no descriptor**.
   A full deep record is 20480 codes. Code → volts requires the WAVEDESC scaling (§5.1). These are the
-  **deep-frame / `WF?`-scale codes** (`VERTICAL_GAIN = Vdiv/50`, unsigned byte centred at 128), the same
-  8-bit ADC codes the deep acquisition engine drains (spec 03). **They are NOT the live-roll codes**
-  (`0x41/0x59`, ~`Vdiv/25`, half-scale, config-dependent centre): presenting raw roll codes here would
-  read exactly **half** the true voltage under the DESC's `Vdiv/50` gain. `WFSU` (`SP`/`NP`/`FP`/`SN`)
+  **published deep-frame codes** on the **25-codes/div display scale** (`VERTICAL_GAIN = Vdiv/25`,
+  unsigned byte centred at 128) — the same 8-bit ADC codes the deep acquisition engine drains (spec 03),
+  normalised to the display grid. **They are NOT the raw live-roll codes**
+  (`0x41/0x59`, half-amplitude, config-dependent centre): presenting raw roll codes here would
+  read about **half** the true voltage under the DESC's `Vdiv/25` gain. `WFSU` (`SP`/`NP`/`FP`/`SN`)
   selects sparsing/point-count/first-point/segment before the transfer, and the block header reports the
   actual transferred count.
 - **`Cn:WF? DESC`** — payload is the **346-byte WAVEDESC** block (§5). Its length prefix is
@@ -390,7 +391,7 @@ The WAVEDESC is a **346-byte** block using the LeCroy **`DSO`** template, **litt
 | `136` | `SPARSING_FACTOR` | i32 | = the `SP` set via `WFSU` |
 | `140` | `SEGMENT_INDEX` | i32 | = the `SN` set via `WFSU` |
 | `144` | `SUBARRAY_COUNT` | i32 | segment/subarray count |
-| `156` | `VERTICAL_GAIN` | f32 | volts per code = `(Vdiv / 50) · probe_factor` (**50 codes/div**; `probe_factor` = `1` for 1×, `10` for 10×) |
+| `156` | `VERTICAL_GAIN` | f32 | volts per code = `(Vdiv / 25) · probe_factor` (**25 codes/div** — the DAT2 codes are the 8-bit display codes; `probe_factor` = `1` for 1×, `10` for 10×) |
 | `160` | `VERTICAL_OFFSET` | f32 | vertical offset, volts (= the `Cn:OFST` value) |
 | `164` | `MAX_VALUE` | f32 | `+127` (signed-8-bit code ceiling, grid top) |
 | `168` | `MIN_VALUE` | f32 | `−128` (signed-8-bit code floor, grid bottom) |
@@ -426,8 +427,8 @@ t_n      = HORIZ_OFFSET + n · HORIZ_INTERVAL
 
 Both `VERTICAL_GAIN` and `VERTICAL_OFFSET` are in the descriptor, so a DAT2 code array plus its DESC
 block fully reconstructs the calibrated waveform. This is the **only** endianness/format contract a host
-needs: little-endian descriptor fields, 8-bit codes centred at 128, `VERTICAL_GAIN = (Vdiv/50)·probe`
-(50 codes/div — the deep-frame/`WF?` scale), the linear transfer above.
+needs: little-endian descriptor fields, 8-bit codes centred at 128, `VERTICAL_GAIN = (Vdiv/25)·probe`
+(25 codes/div — the DAT2 codes are the 8-bit display codes), the linear transfer above.
 
 ---
 
@@ -466,7 +467,7 @@ variant in this contract.
 |---|---|
 | `set`-style SCPI command | staging setter (spec 09 §2), applied by the bus owner at the frame boundary |
 | `?` query of a live setting | lock-guarded snapshot/peek (spec 09 §8) — no bus access |
-| `Cn:WF? DAT2` | copy of the most-recently published frame's channel codes on the deep-frame/`WF?` scale (`Vdiv/50`, centred at 128 — **not** the half-scale live-roll codes; spec 03 arena), sparsed per `WFSU` |
+| `Cn:WF? DAT2` | copy of the most-recently published frame's channel codes on the 25-codes/div display scale (`Vdiv/25`, centred at 128 — **not** the half-amplitude live-roll codes; spec 03 arena), sparsed per `WFSU` |
 | `Cn:WF? DESC` | WAVEDESC assembled from the active timebase (spec 04) + per-(channel, V/div) cal (spec 10) |
 | `SCDP` | serialize the current framebuffer (spec 07) as the §6 BMP |
 

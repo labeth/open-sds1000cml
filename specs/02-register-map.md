@@ -402,21 +402,22 @@ read 0. For an unambiguous HW sweep, use the raw code.
 **Offset DAC** — 16-bit code per channel; low byte then high byte, the high byte self-latches (no
 strobe). The code moves the captured window's DC centre (the render reflects it with no render-side
 change). The DAC is **inverting and input-referred** (it injects a level shift ahead of the gain
-stage) and runs at **50 DAC codes per division of offset** (= 25 on-screen codes), so the code **is**
-scaled by V/div:
+stage) and runs at **100 DAC codes per division of offset** (= 25 on-screen codes; the offset DAC is
+4× the display grid), so the code **is** scaled by V/div:
 
 ```
-code = clamp(round(zero − 50·(volts/VDIV)))     # 50 codes per division; +offset → lower code → trace UP
+code = clamp(round(zero − 100·(volts/VDIV)))    # 100 codes per division; +offset → lower code → trace UP
 ```
 
-codes-per-volt = `50/VDIV`. `zero` is the **calibrated per-tier offset-zero** — one for the ×1
+codes-per-volt = `100/VDIV`. `zero` is the **calibrated per-tier offset-zero** — one for the ×1
 sensitive tier (V/div ≤ 200 mV), one for the ×25 attenuated tier (V/div ≥ 500 mV) — from cal RAM
 (spec 10 §7.4; boot default `0x27ef` = 10223; ≈10445 at 1 V/div); with no cal loaded the actuator
 uses mid-scale `0x8000` = 32768. The **offset range is tiered** by the coarse attenuator (relay bit
 2, engages at V/div ≥ 500 mV): ±1.6 V on the ×1 tier, ±40 V on the ×25 tier — a 25× step at the
 200 mV ↔ 500 mV boundary, produced by the attenuator dividing the input (a **single** offset DAC,
-not a wider or second one). The per-tier code clamp is `NUMERATOR/(1000·VDIV)`, `NUMERATOR = 80000`
-(×1 tier) or `2000000` (×25 tier), plus a final 16-bit clamp. Use raw codes for centring and sweeps.
+not a wider or second one). The ±1.6 V / ±40 V range is attenuator-set and slope-independent; the
+per-tier code clamp is `NUMERATOR/(1000·VDIV)`, `NUMERATOR = 160000` (×1 tier) or `4000000` (×25
+tier), plus a final 16-bit clamp. Use raw codes for centring and sweeps.
 
 ---
 
@@ -635,7 +636,7 @@ edge frame between real edges (so noisy flat frames do not flash the display).
 
 - **Trigger-level volts→code across all V/div.** The 1 V/2 V-div trigger-level fit is exact; every
   other V/div rides the per-V/div cal ladder and needs the active cal record (spec 06/10). The offset
-  DAC volts→code is resolved (§6.1, `50·(volts/VDIV)` about the calibrated per-tier zero); only the
+  DAC volts→code is resolved (§6.1, `100·(volts/VDIV)` about the calibrated per-tier zero); only the
   trigger-level ladder remains cal-dependent. Use raw codes for sweeps.
 - **Panel LED controllability on other clone revisions.** All 14 panel LEDs are CPU-drivable via the
   CS3 latch (§7.5); the write is effective, not a no-op. Whether every clone PCB revision wires the

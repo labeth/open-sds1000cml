@@ -236,31 +236,35 @@ vocabulary.
 ### 5.2 Volts → code
 
 The offset DAC injects a level shift **ahead of the fine gain stage** — the offset is
-**input-referred**. Its code is **scaled by V/div**: the DAC runs at **50 codes per division of
+**input-referred**. Its code is **scaled by V/div**: the DAC runs at **100 codes per division of
 offset**, so
 
 ```
-code = clamp( round( zero − 50 · (V / VDIV) ) )
+code = clamp( round( zero − 100 · (V / VDIV) ) )
 ```
 
 - `V` = requested offset in volts (input-referred).
 - `VDIV` = the active volts/division detent.
-- **50 DAC codes = 1 division = 25 on-screen ADC codes.** The offset (and trigger-level) DAC runs at
-  **2× the display grid**: the on-screen graticule is 25 codes/div, the DAC is 50 codes/div.
-  Codes-per-volt is therefore `50 / VDIV` — it **IS** scaled by V/div (a smaller V/div moves more
-  DAC codes per input volt).
+- **100 DAC codes = 1 division = 25 on-screen ADC codes** (the DAC is **4× the display grid**).
+  Codes-per-volt is `100 / VDIV` — scaled by V/div (a smaller V/div moves more DAC codes per input
+  volt).
+
+> **The offset DAC wire code is 100 codes per division** (4× the 25-codes/div display grid): a
+> 1-division offset moves the trace 25 on-screen codes — 1:1 with the signal, so a DC level of `D`
+> volts is centred by an offset of `−D`. The offset DAC (100 codes/div) and the trigger level DAC
+> (~938 codes/V — spec 05 §2.1) run at different resolutions; they are not both 2× the display grid.
 - `zero` = the calibrated per-tier offset-zero for the active channel (§5.2.1): one value for the ×1
   sensitive tier, one for the ×25 attenuated tier (≈ 10445 at 1 V/div; boot default `0x27ef` =
   10223).
 - **Inverting:** a *positive* offset yields a *lower* code (the trace moves *up*); `0 V` programs
   exactly `zero`.
 
-**Inverse** (for readback / WAVEDESC offset): `V = (zero − code) · VDIV / 50`.
+**Inverse** (for readback / WAVEDESC offset): `V = (zero − code) · VDIV / 100`.
 
 **Trap — the slope is per-division, not a fixed codes-per-volt.** A form that uses one fixed
 codes-per-input-volt (independent of V/div) under-drives the DAC at fine V/div and overshoots at
-coarse V/div. The code scales as `50 / VDIV`; the attenuator sets only the tier and the clamp
-(§5.2.1), it does not change the 50-codes-per-division slope.
+coarse V/div. The code scales as `100 / VDIV`; the attenuator sets only the tier and the clamp
+(§5.2.1), it does not change the 100-codes-per-division slope.
 
 #### 5.2.1 Tiered offset range and per-tier clamp
 
@@ -281,10 +285,18 @@ The code is clamped per tier:
 clamp_codes = NUMERATOR / (1000 · VDIV)
 ```
 
-with `NUMERATOR = 80000` on the sensitive tier (→ ±1.6 V) and `NUMERATOR = 2000000` on the
+with `NUMERATOR = 160000` on the sensitive tier (→ ±1.6 V) and `NUMERATOR = 4000000` on the
 attenuated tier (→ ±40 V). `1000 · VDIV` for the 12 detents is
 `[2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000]`. The final 16-bit code is additionally
 clamped to `[0, 0xFFFF]`.
+
+> **Note — the numerators track the code slope; the volt range does not.** The ±1.6 V / ±40 V
+> centring range is fixed by the coarse attenuator and is **independent of the DAC code slope** — it
+> is the physical authority the front end can reach. Expressed as a code clamp, the numerators are
+> `clamp_codes = 100 · (range_V / VDIV)`, i.e. `160·1000` (±1.6 V) and `4000·1000` (±40 V). When the
+> code slope was mis-stated as 50/div these read `80000` / `2000000`; at the true **100/div** slope
+> they **double** to `160000` / `4000000` so the same ±1.6 V / ±40 V range is preserved. Equivalently,
+> clamp the *offset in volts* to ±1.6 / ±40 before forming the code — that form is slope-independent.
 
 **Per-tier / per-channel centring is automatic.** Because the coarse range bit is itself a function
 of the V/div index (`bit 2 = idx ≥ 7`), indexing the offset-zero by tier follows the V/div detent:
@@ -377,10 +389,10 @@ required, apply a software low-pass as a fallback.
   untouched channel.
 - **Relay settle.** Wait ~400 µs after a relay emit before the next front-end step; the coarse
   attenuator needs physical settle.
-- **Offset slope is per-division and input-referred.** `code = clamp(zero − 50·(V/VDIV))` — 50 DAC
-  codes per division of offset (= 25 on-screen codes). Take `zero` from the calibrated per-tier
-  offset-zero (×1 sensitive tier vs ×25 attenuated tier) for the active channel; clamp per tier
-  (±1.6 V on ×1, ±40 V on ×25).
+- **Offset slope is per-division and input-referred.** `code = clamp(zero − 100·(V/VDIV))` — 100 DAC
+  codes per division of offset (= 25 on-screen codes; the offset DAC is 4× the display grid). Take
+  `zero` from the calibrated per-tier offset-zero (×1 sensitive tier vs ×25 attenuated tier) for the
+  active channel; clamp per tier (±1.6 V on ×1, ±40 V on ×25).
 - **Trailing run-word re-assert after an offset write** (CS1 `0x35`), so the once-armed engine stays
   coherent.
 - **Centre the offset before any gain measurement.** Off-centre offsets clip the trace and corrupt a
