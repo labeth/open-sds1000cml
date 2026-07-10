@@ -58,7 +58,7 @@ func (s *Server) hSerial(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, map[string]any{"ok": false, "err": "bad json"})
 		return
 	}
-	p.Proto = clampI(p.Proto, 0, 3)
+	p.Proto = clampI(p.Proto, 0, 10) // 0 off … 6 can, 7 mil1553, 8 arinc429, 9 usb, 10 flexray
 	p.ChA, p.ChB = p.ChA&1, p.ChB&1
 	p.RW = clampI(p.RW, 0, 2)
 	if p.Addr > 127 || p.Addr < -1 {
@@ -194,6 +194,9 @@ func (s *Server) hSet(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+	// Instrumentation (realtime acquisition checker): log what we did so the
+	// acq log can be read against the command that preceded it.
+	s.sc.NoteCmd(req.Control, req.Value)
 	ok, applied, errStr := true, req.Value, ""
 	switch req.Control {
 	case "run":

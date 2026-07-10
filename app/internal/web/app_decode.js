@@ -16,6 +16,20 @@ function computeDecode() {
     r = decodeI2C(decCodes(dcfg.scl), decCodes(dcfg.sda), colTimeS, cfg);
   else if (dcfg.proto === "spi")
     r = decodeSPI(decCodes(dcfg.clk), decCodes(dcfg.data), colTimeS, Object.assign(cfg, { cpol: dcfg.cpol, cpha: dcfg.cpha, bitOrder: dcfg.msb ? "msb" : "lsb" }));
+  else if (dcfg.proto === "manchester") // single line, self-clocking (auto bit rate)
+    r = decodeManchester(decCodes(dcfg.line), colTimeS, Object.assign(cfg, { bitrate: dcfg.baud > 0 ? dcfg.baud : 0, ieee: true, msb: dcfg.msb, bits: dcfg.bits || 8, haveThr: !dcfg.auto }));
+  else if (dcfg.proto === "sent") // single line, tick auto-derived from the 56-tick sync
+    r = decodeSENT(decCodes(dcfg.line), colTimeS, Object.assign(cfg, { tickNs: 0, nibbles: 0, pausePulse: false, haveThr: !dcfg.auto }));
+  else if (dcfg.proto === "can") // single line (dominant = low), nominal baud auto or from decBaud
+    r = decodeCANFD(decCodes(dcfg.line), colTimeS, Object.assign(cfg, { nominalBaud: dcfg.baud > 0 ? dcfg.baud : 0, dataBaud: 0, dominantLow: true, haveThr: !dcfg.auto }));
+  else if (dcfg.proto === "mil1553") // single line, 1Mbit Manchester + 3-bit sync
+    r = decodeMIL1553(decCodes(dcfg.line), colTimeS, Object.assign(cfg, { bitrate: dcfg.baud > 0 ? dcfg.baud : 0, haveThr: !dcfg.auto }));
+  else if (dcfg.proto === "arinc429") // single line, bipolar tri-level RZ
+    r = decodeARINC429(decCodes(dcfg.line), colTimeS, Object.assign(cfg, { bitrate: dcfg.baud > 0 ? dcfg.baud : 0, haveThr: !dcfg.auto }));
+  else if (dcfg.proto === "usb") // single line = D+ single-ended, NRZI
+    r = decodeUSBLS(decCodes(dcfg.line), colTimeS, Object.assign(cfg, { bitrate: dcfg.baud > 0 ? dcfg.baud : 0, haveThr: !dcfg.auto }));
+  else if (dcfg.proto === "flexray") // single line, BSS-framed bytes
+    r = decodeFlexRay(decCodes(dcfg.line), colTimeS, Object.assign(cfg, { bitrate: dcfg.baud > 0 ? dcfg.baud : 0, haveThr: !dcfg.auto }));
   dcfg.result = r;
   if (r && r.ok && dcfg.auto && r.meta && r.meta.threshold != null) {
     $("decThr").value = Math.round(r.meta.threshold); $("decThrV").textContent = Math.round(r.meta.threshold);

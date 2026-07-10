@@ -35,7 +35,7 @@ type HUD struct {
 	Zoom             int     // horizontal magnification (1 = none)
 	ZoomOff          float64 // zoom-window pan offset (fraction of the record)
 	Persist          bool    // display persistence (afterglow)
-	DecProto         int     // protocol decode: 0=off,1=Auto,2=UART,3=I2C,4=SPI
+	DecProto         int     // 0=off,1=Auto,2=UART,3=I2C,4=SPI,5=Manchester,6=SENT,7=CAN,8=MIL1553,9=ARINC429,10=USB,11=FlexRay
 	DecBaud          int
 	DecChA, DecChB   int // channel roles (0=C1,1=C2)
 	DecCPOL, DecCPHA bool

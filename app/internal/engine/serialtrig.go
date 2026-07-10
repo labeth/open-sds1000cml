@@ -24,9 +24,16 @@ const (
 	serialFallback = 60 // AUTO liveness: publish one unmatched frame every N holds
 
 	// protocol ids (match the web/panel decode convention: uart/i2c/spi)
-	serUART = 1
-	serI2C  = 2
-	serSPI  = 3
+	serUART       = 1
+	serI2C        = 2
+	serSPI        = 3
+	serManchester = 4
+	serSENT       = 5
+	serCAN        = 6
+	serMIL1553    = 7
+	serARINC      = 8
+	serUSB        = 9
+	serFlexRay    = 10
 )
 
 // SerialParams is the self-contained serial-trigger config: the protocol +
@@ -45,7 +52,11 @@ type SerialParams struct {
 	Parity    string  `json:"parity"` // uart: "none"|"even"|"odd" ("" = none)
 	CPOL      bool    `json:"cpol"`
 	CPHA      bool    `json:"cpha"`
-	MSB       bool    `json:"msb"`       // spi bit order (true = MSB-first)
+	MSB       bool    `json:"msb"`       // spi bit order (true = MSB-first) / manchester bit order
+	IEEE      bool    `json:"ieee"`      // manchester: true = IEEE 802.3, false = Thomas/G.E.
+	TickNs    float64 `json:"tickNs"`    // sent: tick override (ns); 0 = auto from the 56-tick SYNC
+	Nibbles   int     `json:"nibbles"`   // sent: nibbles per frame (0 = default 8)
+	DataBaud  int     `json:"dataBaud"`  // can-fd: data-phase baud (0 = same as nominal Baud)
 	Threshold float64 `json:"threshold"` // slice threshold code, used only if HaveThr
 	HaveThr   bool    `json:"haveThr"`   // false = decode auto-threshold
 	// match spec:
@@ -115,6 +126,20 @@ func (e *Engine) serialQualify(f *Frame, valid int, sampleS float64) (bool, int)
 		res = decode.DecodeI2C(chA[:valid], chB[:valid], sampleS, decode.I2CCfg{Threshold: p.Threshold, HaveThr: p.HaveThr})
 	case serSPI:
 		res = decode.DecodeSPI(chA[:valid], chB[:valid], sampleS, decode.SPICfg{CPOL: p.CPOL, CPHA: p.CPHA, MSB: p.MSB, Threshold: p.Threshold, HaveThr: p.HaveThr})
+	case serManchester:
+		res = decode.DecodeManchester(chA[:valid], sampleS, decode.ManchesterCfg{Bitrate: p.Baud, IEEE: p.IEEE, MSB: p.MSB, Bits: p.Bits, Threshold: p.Threshold, HaveThr: p.HaveThr})
+	case serSENT:
+		res = decode.DecodeSENT(chA[:valid], sampleS, decode.SENTCfg{TickNs: p.TickNs, Nibbles: p.Nibbles, Threshold: p.Threshold, HaveThr: p.HaveThr})
+	case serCAN:
+		res = decode.DecodeCANFD(chA[:valid], sampleS, decode.CANFDCfg{NominalBaud: p.Baud, DataBaud: p.DataBaud, DominantLow: true, Threshold: p.Threshold, HaveThr: p.HaveThr})
+	case serMIL1553:
+		res = decode.DecodeMIL1553(chA[:valid], sampleS, decode.MIL1553Cfg{Bitrate: p.Baud, Threshold: p.Threshold, HaveThr: p.HaveThr})
+	case serARINC:
+		res = decode.DecodeARINC429(chA[:valid], sampleS, decode.ARINC429Cfg{Bitrate: p.Baud, Threshold: p.Threshold, HaveThr: p.HaveThr})
+	case serUSB:
+		res = decode.DecodeUSBLS(chA[:valid], sampleS, decode.USBLSCfg{Bitrate: p.Baud, Threshold: p.Threshold, HaveThr: p.HaveThr})
+	case serFlexRay:
+		res = decode.DecodeFlexRay(chA[:valid], sampleS, decode.FlexRayCfg{Bitrate: p.Baud, Threshold: p.Threshold, HaveThr: p.HaveThr})
 	default:
 		return true, -1
 	}

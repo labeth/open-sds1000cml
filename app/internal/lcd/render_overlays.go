@@ -129,8 +129,22 @@ func drawDecode(sf Surface, f *engine.Frame, hud HUD, win int, xc, posFrac float
 		res = decode.DecodeI2C(ch(hud.DecChA), ch(hud.DecChB), f.SampleS, decode.I2CCfg{Format: format})
 	case 4:
 		res = decode.DecodeSPI(ch(hud.DecChA), ch(hud.DecChB), f.SampleS, decode.SPICfg{CPOL: hud.DecCPOL, CPHA: hud.DecCPHA, MSB: true, Format: format})
+	case 5:
+		res = decode.DecodeManchester(ch(hud.DecChA), f.SampleS, decode.ManchesterCfg{Bitrate: hud.DecBaud, IEEE: true, Format: format})
+	case 6:
+		res = decode.DecodeSENT(ch(hud.DecChA), f.SampleS, decode.SENTCfg{})
+	case 7:
+		res = decode.DecodeCANFD(ch(hud.DecChA), f.SampleS, decode.CANFDCfg{NominalBaud: hud.DecBaud, DominantLow: true})
+	case 8:
+		res = decode.DecodeMIL1553(ch(hud.DecChA), f.SampleS, decode.MIL1553Cfg{Bitrate: hud.DecBaud})
+	case 9:
+		res = decode.DecodeARINC429(ch(hud.DecChA), f.SampleS, decode.ARINC429Cfg{Bitrate: hud.DecBaud})
+	case 10:
+		res = decode.DecodeUSBLS(ch(hud.DecChA), f.SampleS, decode.USBLSCfg{Bitrate: hud.DecBaud})
+	case 11:
+		res = decode.DecodeFlexRay(ch(hud.DecChA), f.SampleS, decode.FlexRayCfg{Bitrate: hud.DecBaud})
 	}
-	name := []string{"", "AUTO", "UART", "I2C", "SPI"}[hud.DecProto%5]
+	name := []string{"", "AUTO", "UART", "I2C", "SPI", "MANCH", "SENT", "CAN", "1553", "ARINC", "USB", "FLEXR"}[hud.DecProto%12]
 	if hud.DecProto == 1 { // Auto — label with whatever it found
 		switch res.Proto {
 		case "uart":

@@ -216,7 +216,11 @@
           <button id="decDetect" class="sm" title="auto-detect protocol, channel roles, threshold and sub-settings from the live signal">auto</button>
           <select id="decProto" class="dsel">
           <option value="off">Off</option><option value="uart">UART</option>
-          <option value="i2c">I²C</option><option value="spi">SPI</option></select></span></h3>
+          <option value="i2c">I²C</option><option value="spi">SPI</option>
+          <option value="manchester">Manchester</option><option value="sent">SENT</option>
+          <option value="can">CAN</option><option value="mil1553">MIL-1553B</option>
+          <option value="arinc429">ARINC 429</option><option value="usb">USB LS/FS</option>
+          <option value="flexray">FlexRay</option></select></span></h3>
       <div id="decDetectMsg" class="subtle" style="display:none;margin:2px 0"></div>
       <div id="decRoles" style="display:none;font-size:12px;color:var(--dim)">
         <div class="dec-i2c decrow"><span>SCL</span><select id="decScl" class="rolesel"></select>
@@ -371,6 +375,13 @@
 
 <script src="peaks.js"></script>
 <script src="decode.js"></script>
+<script src="decode_manchester.js"></script>
+<script src="decode_sent.js"></script>
+<script src="decode_canfd.js"></script>
+<script src="decode_mil1553.js"></script>
+<script src="decode_arinc429.js"></script>
+<script src="decode_usbls.js"></script>
+<script src="decode_flexray.js"></script>
 <script src="binframe.js"></script>
 <script src="superres_math.js"></script>
 <script src="superres_template.js"></script>
