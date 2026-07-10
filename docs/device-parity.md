@@ -34,9 +34,14 @@ this way on the real unit at `192.168.1.209`.
 | FFT frequency zoom | ✓ | ✓ **added** | same Zoom control magnifies a spectrum band; horizpos pans it |
 | FFT peak markers | ✓ | ✓ **added** | significant peaks (> −40 dBc) ticked in each spectrum |
 | Persistence (afterglow) | ✓ | ✓ **added** | CHANNEL ▸ Persist; decaying trace layer composited over the graticule |
-| **Protocol decode (UART/I²C/SPI)** | ✓ | ✓ **added** | MENU ▸ Decode: Proto (Off/**Auto**/UART/I²C/SPI), channel roles, baud/SPI-mode, **Show** Hex/ASCII/Both; on-trace byte strip. Go decoder == web decoder byte-for-byte, HW-validated. **Auto** detects protocol/roles/settings from the live signal |
+| **Protocol decode (ten protocols)** | ✓ | ✓ **added** | MENU ▸ Decode: UART, I²C, SPI, Manchester, SENT, CAN/CAN-FD, MIL-STD-1553B, ARINC 429, USB LS, FlexRay (+ **Auto** detect for UART/I²C/SPI); channel roles, baud/SPI-mode, **Show** Hex/ASCII/Both; on-trace byte strip. Go decoder == web decoder byte-for-byte (243-vector parity test), HW-validated on FPGA signals |
 | Trigger source / slope from knobs | ✓ | ✓ **added** | push CH1/CH2 V/DIV knob → trigger source; push TRIG LEVEL knob → flip slope |
-| Super-res stack & crunch | ✓ | ✗ deferred | large: a long-running accumulate (reuse the autoset cancelable-progress pattern) + on-LCD stack review + kernel select + ENOB readout + peak selection |
+| Super-res stack & crunch | ✓ | ✓ **added** | ACQUIRE ▸ (again) ▸ Super-res page: accumulate + on-LCD stack review (falloff compensation is being ported; web applies it already) |
+| **Bode / FRA** | ✓ | ✓ **added** | DISPLAY ▸ View cycle: magnitude+phase vs log-f, single-bin DFT, HW-validated |
+| **Spectrogram (FFT waterfall)** | ✓ | ✓ **added** | DISPLAY ▸ View cycle: scrolling FFT heatmap |
+| **Mask (golden-template) testing** | ✓ | ✓ **added** | on-device mask build/test with pass/fail counters (panel mask page) |
+| **Serial / protocol trigger** | ✓ | ✓ | engine-side publish gate — same engine serves both surfaces |
+| Eye diagram + TIE jitter | ✓ | ✗ web-only | browser-side analysis (eyejitter.js); no LCD port planned |
 | Decode review aids (transcript list / watch / stream) | ✓ | ✗ deferred | web-only convenience: scrollable transcript, save-matching-windows "watch", stitched deep-capture "stream". On-trace strip covers the core need |
 | PNG/CSV waveform export to file | ✓ | ✗ deferred | needs a file destination decision (USB stick); SCPI `SCDP` already dumps the screen |
 | PNG / CSV export | ✓ | n/a | no user file destination standalone; `SCDP` (SCPI) already returns a screen dump |
@@ -58,12 +63,10 @@ this way on the real unit at `192.168.1.209`.
 ## Deferred, with rationale
 
 Only three items remain web-only; the rest of the parity work above is done
-(persistence and protocol decode, once deferred, are now on the device):
+(persistence, protocol decode and super-res, once deferred, are now on the device):
 
-- **Super-res stack & crunch** — the heaviest remaining port: a long accumulate
-  (reuse the autoset progress + cancel pattern), an on-LCD stacked-trace review
-  mode, the resample-kernel selector, an ENOB/bits-gained readout, and a
-  menu-driven FFT-peak selection to feed the model (the web does this by click).
+- **Eye diagram + TIE jitter** — browser-side analysis (eyejitter.js); the LCD
+  has no port planned (dense scatter rendering suits the web canvas better).
 - **Decode review aids** — the scrollable transcript, the "watch" match buffer,
   and the stitched deep-capture "stream". Web-only conveniences; the on-trace
   byte strip already covers reading the live decode standalone.

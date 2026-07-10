@@ -1,5 +1,9 @@
 # 11 — Host Interface
 
+> **Implementation status:** the clean-room app implements the **VXI-11 (LAN)** transport and the SCPI
+> set below. **USB-TMC and USB-GPIB are specified here but deliberately not implemented** (a documented
+> cut — see "deliberately deferred" in [`app/README.md`](../app/README.md)).
+
 This document specifies the **external, standards-based host/remote interface** the firmware presents to
 a controlling computer: the three transports (VXI-11 over LAN, USB-TMC over the USB device port, and
 USB-GPIB via a USB-to-GPIB adapter), the LeCroy/Siglent short-form SCPI command model spoken over all of

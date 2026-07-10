@@ -1,5 +1,9 @@
 # 10 — Calibration
 
+> **Implementation status:** the clean-room app loads and applies **Block A** (checksum → involutions →
+> gain/offset-zero). **Block B is specified below but deliberately not applied** — its analog role is
+> still open (a documented cut — see "deliberately deferred" in [`app/README.md`](../app/README.md)).
+
 Per-unit analog calibration: the on-flash `calibration.dat` blob, its on-disk
 envelope (checksum + scramble), its record layout, and how those records are
 unpacked into the in-RAM cal table that the vertical (gain/offset) and trigger

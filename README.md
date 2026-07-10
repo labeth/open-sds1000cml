@@ -34,7 +34,11 @@ hardware does and how the firmware must behave*; the implementation in
 - **33-detent timebase** 1 ns – 50 s/div: native-fast, decimated, slow-envelope,
   roll, and opt-in equivalent-time sampling (ETS).
 - **Triggering** — EDGE with software slope validation, plus PULSE / SLOPE / VIDEO
-  qualifiers, and **trigger holdoff**.
+  qualifiers, and **trigger holdoff** — and software qualification beyond the
+  comparator: a **zone trigger** (drawn qualification rectangles), **golden-mask
+  pass/fail testing** (build an envelope from N frames, count violations — also
+  on-device), and a **serial / protocol trigger** that publishes only frames whose
+  decoded stream matches (address / byte sequence), re-centred on the match.
 - **Acquisition modes** — NORMAL, AVERAGE, ERES, PEAK.
 - **Vertical front end** — 12-detent V/div ladder (SPI relay + gain DAC),
   calibrated offset DAC, **probe attenuation (×1/×10/×100)**, and
@@ -43,23 +47,42 @@ hardware does and how the firmware must behave*; the implementation in
   Vpp/Vmax/Vmin/Vmean/Vrms, histogram Vtop/Vbase/Vamplitude, and timing
   (frequency, period, duty, 10–90 % rise/fall, ± pulse width, over/preshoot),
   identical on the web UI and the device LCD.
-- **Web UI** (`http://<device>:8080/`) — responsive canvas display over a **binary
-  frame transport that keeps the browser at engine frame-rate** even on deep
-  captures, Y-T / X-Y / FFT (per-channel) with **rubber-band box-zoom in time *and*
-  voltage** and a **zoomable FFT with clickable peak measurements and a live
-  dB/frequency pointer readout**, auto-measurements, draggable time/voltage cursors,
-  waveform persistence, math (C1±C2, C1×C2, FFT-carrier subtraction), **reference
-  waveforms (REF A/B)**, autoset, protocol decode (UART/I²C/SPI) with auto-detect,
-  a clipping indicator, and PNG / calibrated-CSV export.
+- **Web UI** (`http://<device>:8080/`) — responsive display (every graphics
+  surface rendered through a WebGL pipeline) over a **binary frame transport that
+  keeps the browser at engine frame-rate** even on deep captures, Y-T / X-Y / FFT
+  (per-channel) with **rubber-band box-zoom in time *and* voltage** and a
+  **zoomable FFT with clickable peak measurements and a live dB/frequency pointer
+  readout**, a deep-record navigator strip, auto-measurements, draggable
+  time/voltage cursors, waveform persistence, math (C1±C2, C1×C2, FFT-carrier
+  subtraction), **reference waveforms (REF A/B)**, autoset, protocol decode
+  (next bullet), a clipping indicator, and PNG / calibrated-CSV export.
+- **Protocol decode — ten protocols** — UART, I²C, SPI, Manchester, SENT,
+  CAN / CAN-FD, MIL-STD-1553B, ARINC 429, USB low-speed, and FlexRay, with
+  auto-detect (protocol + channel roles + baud) for UART/I²C/SPI. The Go decoders
+  have JS twins in the browser, held byte-for-byte identical by a 243-vector
+  parity test, and render as an on-trace byte strip on both the web UI and the
+  device LCD.
+- **Analysis suite** — **eye diagram + TIE jitter** (software clock recovery,
+  RJ/DJ decomposition, jitter histogram + spectrum), **Bode / FRA**
+  (magnitude + phase vs log-frequency, externally driven sweep), and a
+  **spectrogram** (scrolling FFT-over-time waterfall) — Bode and the spectrogram
+  render on the device LCD too.
 - **Super-resolution (stack & crunch)** — for a repetitive waveform, equivalent-time
   stacking (sub-sample alignment → lucky-frame selection → drizzle onto a fine grid)
   recovers resolution below the 8-bit ADC: measured **~5 extra bits (≈13-bit
   effective)** on a repetitive signal. It's a first-class view — toggle it, run it on
   either channel, and do FFT / measurements / X-Y on the stacked result. (Diminishing
   returns near Nyquist, where alignment jitter — not noise — is the limit.)
+  Variants: an **ETS mode** phase-locks a non-triggerable clock, a **decode-driven
+  gate** stacks around protocol matches, and an **analog-falloff compensation**
+  stage recovers the front end's high-frequency roll-off.
 - **On-device UI** — LCD renderer with a softkey menu system, a calibrated
   **on-screen MEASURE panel**, **on-screen cursors**, and per-channel
-  coupling/probe pages driven from the front panel.
+  coupling/probe pages driven from the front panel — plus standalone X-Y / FFT /
+  math views, autoset, REF traces, persistence, zoom, on-LCD protocol decode (all
+  ten protocols), mask testing, super-res, Bode and the spectrogram. The
+  web ↔ device feature matrix is tracked in
+  [`docs/device-parity.md`](docs/device-parity.md).
 - **Host interface** — SCPI over VXI-11 (ONC-RPC): `*IDN?`, timebase / vertical /
   trigger control, byte-exact `Cn:WF?` waveform transfers, `SCDP` screenshot.
 - **Over-the-air ops** — an on-device supervisor with A/B slots + health rollback,
@@ -86,13 +109,15 @@ See [`specs/06-vertical-and-analog.md`](specs/06-vertical-and-analog.md) §6.
 Served at `http://<device>:8080/` — a responsive, single-page control surface for
 the whole instrument. Y-T with direct-manipulation cursors and live measurements
 (the [screenshot above](docs/images/host-yt.png)), an X-Y mode, a per-channel FFT
-with clickable peak markers, waveform math and reference overlays, and one-click
-protocol decode with auto-detection.
+with clickable peak markers, waveform math and reference overlays, one-click
+protocol decode (ten protocols) with auto-detection, and dedicated analysis cards
+for eye/jitter, Bode/FRA, the spectrogram, zone/mask testing and the serial
+trigger.
 
 | Per-channel FFT | Protocol decode (auto-detected) |
 |---|---|
 | [![FFT view](docs/images/host-fft.png)](docs/images/host-fft.png) | [![Protocol decode](docs/images/host-decode.png)](docs/images/host-decode.png) |
-| Spectra of a 20 kHz square — its odd-harmonic comb, with the strongest peaks tagged. | UART/I²C/SPI decode; here it auto-detected SPI (CLK=C2, DATA=C1), with per-channel FFT peak lists alongside. |
+| Spectra of a 20 kHz square — its odd-harmonic comb, with the strongest peaks tagged. | Protocol decode (ten protocols, UART through FlexRay); here it auto-detected SPI (CLK=C2, DATA=C1), with per-channel FFT peak lists alongside. |
 
 Every acquisition control lives in the footer (run/stop, trigger, timebase,
 per-channel V/div · coupling · probe · offset, acquire mode + memory depth), and
@@ -127,6 +152,10 @@ The firmware isn't only a web front end — it drives the scope's own 800×480 L
 front-panel matrix, so it's a self-contained instrument. Front-panel softkeys drive
 a menu system, a calibrated on-screen MEASURE panel and on-screen cursors (both from
 the *same* measurement core as the web UI), and per-channel coupling/probe pages.
+Most of the web feature set runs standalone too — X-Y / FFT / math, autoset, REF
+traces, persistence, zoom, on-trace decode of all ten protocols, mask testing,
+super-res, Bode and the spectrogram — tracked feature-by-feature in
+[`docs/device-parity.md`](docs/device-parity.md).
 
 | On-screen MEASURE panel | On-screen cursors | Front-panel menu |
 |---|---|---|
@@ -236,7 +265,9 @@ power-cycle. See [`ota/README.md`](ota/README.md) for the full supervisor/OTA mo
 
 | Path | What |
 |---|---|
-| [`app/`](app/) | The clean-room scope application (Go, ARMv7). Engine, front end, LCD, panel, web UI, SCPI. |
+| [`app/`](app/) | The clean-room scope application (Go, ARMv7). Engine, front end, decode, LCD, panel, web UI, SCPI. |
+| [`app/docs/`](app/docs/) | Design docs for the bigger subsystems — super-res ([lab](app/docs/superres-lab.md), [device](app/docs/superres-device-plan.md), [ETS clock](app/docs/ets-clock-plan.md), [falloff comp](app/docs/falloff-comp-plan.md)), [eye/jitter](app/docs/eyejitter-plan.md), [Bode/FRA](app/docs/bode-plan.md), [spectrogram](app/docs/spectrogram-plan.md), [zone/mask](app/docs/zonemask-plan.md), [streaming decode](app/docs/streaming-decode.md), [UI architecture](app/docs/ui-architecture.md). |
+| [`docs/`](docs/) | Project docs — the web ↔ device [feature-parity matrix](docs/device-parity.md) and the README screenshots. |
 | [`ota/`](ota/) | On-device supervisor (`agent`), host controller (`otactl`), and the USB boot anchor. |
 | [`specs/`](specs/) | The behavioural specifications the firmware is built from. Start with `specs/README.md`. |
 

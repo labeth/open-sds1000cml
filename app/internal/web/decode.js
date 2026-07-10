@@ -1,4 +1,5 @@
-// Serial-protocol decoders (UART / I2C / SPI), pure JS mirroring peaks.js:
+// Serial-protocol decoders (UART / I2C / SPI here; the other seven protocols
+// live in the sibling decode_*.js files), pure JS mirroring peaks.js:
 // no DOM, no globals. Served at /decode.js, loaded by ui.html via <script src>,
 // and require()d by decode.test.cjs under node. All column indices (i0/i1) are
 // indices into the frame's sample arrays (codes 0..255; a value < 0 marks a

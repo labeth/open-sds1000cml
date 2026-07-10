@@ -1,5 +1,8 @@
 # UI/UX architecture — ADR-001 + phased plan
 
+> **Status note:** the rendering layer described here (canvas-2D) was superseded by the full-WebGL pipeline (`app_gl.js` glContext2D facade); the architectural decisions (classic scripts, no build step, single page) still stand.
+
+
 _Produced by a research→design→judge→synthesize workflow (audit of web + LCD UIs, UX research, e2e-gap audit → 3 competing architectures → 3 independent judges → synthesis). All three judges ranked "Structured Vanilla" first, Preact last/second. Grounded against the real codebase._
 
 ## Decision

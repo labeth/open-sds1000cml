@@ -102,7 +102,7 @@ hand-off and is responsible for:
    boundary. See `08-front-panel.md` (matrix bit map, encoder direction/step decode, LED latch strobe,
    inherited `fpga_key` SIGIO wiring) and `09-control-plane.md` (staged-command struct, per-control
    coalescing, boundary apply sequence).
-7. **Host interface.** Serve VXI-11 / USB-TMC SCPI and waveform/screenshot export. See
+7. **Host interface.** Serve VXI-11 SCPI (USB-TMC specified, not implemented) and waveform/screenshot export. See
    `11-host-interface.md` for the VXI-11 (portmap → DEVICE_CORE) / USB-TMC transport framing, the
    LeCroy short-form SCPI command/query set, the byte-exact `WF?` transfer and its 346-byte WAVEDESC
    layout, and the `SCDP` hardcopy BMP. The firmware's private control-plane line protocol is separate

@@ -23,4 +23,4 @@ code can be written directly from the text. Where a value is a fixed constant, g
 | 08 | [`08-front-panel.md`](08-front-panel.md) | Front-panel input (inherited key device, interrupt-driven matrix scan, knob/encoder decode), panel LEDs, and how panel bus access obeys the single-owner discipline. |
 | 09 | [`09-control-plane.md`](09-control-plane.md) | How commands (timebase, vertical, trigger, run/stop) are staged and applied at the frame boundary; the network/status interface. |
 | 10 | [`10-calibration.md`](10-calibration.md) | The calibration data layout and how it maps to the runtime gain/offset tables. |
-| 11 | [`11-host-interface.md`](11-host-interface.md) | The external host/remote interface: VXI-11 (LAN) and USB-TMC transports, the LeCroy short-form SCPI set, the byte-exact `WF?`/WAVEDESC waveform transfer, and the `SCDP` hardcopy image. |
+| 11 | [`11-host-interface.md`](11-host-interface.md) | The external host/remote interface: VXI-11 (LAN) transport (USB-TMC specified, not implemented), the LeCroy short-form SCPI set, the byte-exact `WF?`/WAVEDESC waveform transfer, and the `SCDP` hardcopy image. |
