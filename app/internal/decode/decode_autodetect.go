@@ -6,27 +6,31 @@ import (
 )
 
 // scoreResult ranks competing protocol/role hypotheses. The discriminators are
-// structural: I2C's START/STOP framing is hard to forge, UART's auto-baud only
-// locks on clean bit gaps + stop bits, SPI has no framing (weakest, the fallback).
+// structural and layered by how hard each protocol's own validity signals are
+// to forge: CRC-validated protocols (CAN's CRC-15, FlexRay's header CRC-11,
+// SENT's CRC-4) outscore parity/structure-validated ones (MIL-1553B word
+// parity, ARINC 429 word parity, USB's PID complement, I2C's START/addr/ACK
+// framing), which outscore the purely heuristic ones (UART stop bits,
+// Manchester mid-cell coding, and SPI — no framing at all, the fallback).
 func scoreResult(r Result) float64 {
 	if !r.OK {
 		return -1e9
 	}
-	switch r.Proto {
-	case "i2c":
-		addrs, acks, datas, starts := 0, 0, 0, 0
+	kinds := func(ks ...string) []int {
+		out := make([]int, len(ks))
 		for _, s := range r.Spans {
-			switch s.Kind {
-			case "addr":
-				addrs++
-			case "ack", "nak":
-				acks++
-			case "data":
-				datas++
-			case "start":
-				starts++
+			for i, k := range ks {
+				if s.Kind == k {
+					out[i]++
+				}
 			}
 		}
+		return out
+	}
+	switch r.Proto {
+	case "i2c":
+		c := kinds("addr", "ack", "nak", "data", "start")
+		addrs, acks, datas, starts := c[0], c[1]+c[2], c[3], c[4]
 		if addrs == 0 { // no addressed device -> a channel-swap mis-read, not real I2C
 			return -1e9
 		}
@@ -35,16 +39,8 @@ func scoreResult(r Result) float64 {
 		if len(r.Bytes) == 0 {
 			return -1e9
 		}
-		ferr, perr := 0, 0
-		for _, s := range r.Spans {
-			switch s.Kind {
-			case "frame-error":
-				ferr++
-			case "parity-error":
-				perr++
-			}
-		}
-		return float64(len(r.Bytes)*10 - ferr*35 - perr*18 + 15)
+		c := kinds("frame-error", "parity-error")
+		return float64(len(r.Bytes)*10 - c[0]*35 - c[1]*18 + 15)
 	case "spi":
 		if len(r.Bytes) == 0 {
 			return -1e9
@@ -58,6 +54,59 @@ func scoreResult(r Result) float64 {
 		pf := float64(printable) / float64(len(r.Bytes))
 		// no framing -> weakest; Margin breaks CPHA, printable breaks bit-order.
 		return float64(len(r.Bytes)*2) + r.Margin*10 + pf*6
+	case "manchester":
+		// Heuristic (no CRC): must clear real UART/SPI on their own signals, so
+		// it is weighted between them; coding violations pull it down hard.
+		if len(r.Bytes) == 0 {
+			return -1e9
+		}
+		c := kinds("start", "frame-error")
+		return float64(len(r.Bytes)*8 + c[0]*10 - c[1]*30)
+	case "sent":
+		// OK already gates on >=1 CRC-4-valid frame; score by validated frames.
+		c := kinds("crc", "data", "frame-error")
+		if c[0] == 0 {
+			return -1e9
+		}
+		return float64(c[0]*300 + c[1]*4 - c[2]*20)
+	case "canfd":
+		// Require a CRC-15-validated classic frame (FD trailers are best-effort
+		// and carry no verified CRC here — never auto-claim CAN on those alone).
+		c := kinds("crc", "frame-error")
+		if c[0] == 0 {
+			return -1e9
+		}
+		return float64(c[0]*500 + len(r.Bytes)*2 - c[1]*60)
+	case "mil1553":
+		// One "data" span per word; a parity-failed word adds one frame-error.
+		c := kinds("data", "frame-error")
+		good := c[0] - c[1]
+		if good <= 0 {
+			return -1e9
+		}
+		return float64(good*150 + c[0]*10 - c[1]*40)
+	case "arinc429":
+		// One "addr" (label) span per word; a parity-failed word adds "!P".
+		c := kinds("addr", "frame-error")
+		good := c[0] - c[1]
+		if good <= 0 {
+			return -1e9
+		}
+		return float64(good*150 + c[0]*15 - c[1]*40)
+	case "usbls":
+		// A valid PID (nibble + matching complement) spans "addr"; bad -> error.
+		c := kinds("addr", "frame-error")
+		if c[0] == 0 {
+			return -1e9
+		}
+		return float64(c[0]*120 + len(r.Bytes)*4 - c[1]*30)
+	case "flexray":
+		// The header note span is "addr" only when the header CRC-11 verified.
+		c := kinds("addr", "frame-error")
+		if c[0] == 0 {
+			return -1e9
+		}
+		return float64(c[0]*400 + len(r.Bytes)*2 - c[1]*50)
 	}
 	return -1e9
 }
@@ -157,6 +206,27 @@ func Autodetect(c1, c2 []uint8, colTimeS float64, format string) Result {
 				consider(DecodeUART(chans[k], colTimeS, UARTCfg{Bits: 8, Parity: "none", Format: format}))
 			}
 		}
+	}
+	// Manchester — heuristic like UART, and a bare square wave IS valid
+	// constant-bit Manchester, so apply the same clock suppression: never claim
+	// Manchester on a clocked pair (that's SPI) or on a lone clock line.
+	if !clockedPair {
+		for _, k := range active {
+			if !isClocky(k) {
+				consider(DecodeManchester(chans[k], colTimeS, ManchesterCfg{IEEE: true, MSB: true, Format: format}))
+			}
+		}
+	}
+	// The remaining single-wire protocols self-validate (CRC-4/CRC-15/CRC-11,
+	// word parity, PID complement, strict framing), so their scoring gates make
+	// false claims on foreign signals cosmically unlikely — try every channel.
+	for _, k := range active {
+		consider(DecodeSENT(chans[k], colTimeS, SENTCfg{}))
+		consider(DecodeCANFD(chans[k], colTimeS, CANFDCfg{DominantLow: true}))
+		consider(DecodeMIL1553(chans[k], colTimeS, MIL1553Cfg{}))
+		consider(DecodeARINC429(chans[k], colTimeS, ARINC429Cfg{}))
+		consider(DecodeUSBLS(chans[k], colTimeS, USBLSCfg{}))
+		consider(DecodeFlexRay(chans[k], colTimeS, FlexRayCfg{}))
 	}
 	if len(active) >= 2 {
 		for _, ord := range [][2]int{{0, 1}, {1, 0}} { // I2C: scoring resolves SCL/SDA order

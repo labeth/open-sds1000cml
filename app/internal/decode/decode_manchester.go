@@ -271,7 +271,15 @@ func decodeManchesterAt(S sliced, T float64, cfg ManchesterCfg, bits int, colTim
 		}
 		frames++
 		totalGood += bestGood
-		spans = append(spans, Span{cells[0].I0, cells[run-1].I1, "SYNC", "start", 0})
+		// run==0 (an interior frame whose FIRST cell is a coding violation) has no
+		// preamble to span — anchor the SYNC marker on the first cell instead of
+		// indexing cells[-1] (this exact shape panicked on a real SENT capture fed
+		// through autodetect's Manchester hypothesis).
+		runEnd := cells[0].I0
+		if run > 0 {
+			runEnd = cells[run-1].I1
+		}
+		spans = append(spans, Span{cells[0].I0, runEnd, "SYNC", "start", 0})
 		// Pack this frame's cells into words; a coding violation flushes the word.
 		curVal, curBits, byteStart, lastI1 := 0, 0, 0, 0
 		for _, c := range cells {

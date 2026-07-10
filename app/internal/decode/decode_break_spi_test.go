@@ -10,13 +10,14 @@ import (
 // Red-team suite for DecodeSPI (app/internal/decode/decode_i2c_spi.go).
 //
 // SPI here has NO chip-select and NO CRC/parity: it is a "checksum-less" shape.
-// The decoder slices CLK+DATA, requires >=2 CLK edges, computes halfGap = the
-// minimum gap between consecutive CLK edges (must be >=3), samples DATA on the
-// rising edge when CPOL==CPHA else the falling edge, and re-frames on an idle
-// gap ( > 3*halfGap while a byte is partially assembled ). Because there is no
-// integrity field, "false positive" for SPI is limited to: flat/DC or
-// degenerate clock must NOT yield a confident (OK && bytes>0) decode, and a
-// frame TRUNCATED mid-byte must not have the partial byte reported.
+// The decoder slices CLK+DATA, requires >=2 CLK edges, samples DATA on the
+// rising edge when CPOL==CPHA else the falling edge, derives the typical clock
+// period from the SAMPLING-edge gap cluster (must be >=6 cols), and re-frames
+// on an idle gap ( > 1.5x that typical period while a byte is partially
+// assembled ). Because there is no integrity field, "false positive" for SPI
+// is limited to: flat/DC or degenerate clock must NOT yield a confident
+// (OK && bytes>0) decode, and a frame TRUNCATED mid-byte must not have the
+// partial byte reported.
 //
 // This file does not modify the decoder; it only documents true behaviour.
 // ---------------------------------------------------------------------------
@@ -401,14 +402,86 @@ func TestBreakSpi(t *testing.T) {
 			}
 		}
 
-		// ---- Robustness probe (informational): asymmetric clock duty. Real SPI
-		// masters are ~50% duty; the decoder's gapReset=3*halfGap heuristic can
-		// mis-fire a frame reset when duty is skewed. Logged, not asserted.
+		// ---- Robustness probe (informational): asymmetric clock duty. The old
+		// gapReset=3*min-edge-gap heuristic mis-fired on skewed duty; the
+		// sampling-cadence reset handles it (asserted in
+		// TestBreakSpiSamplingCadence/AsymmetricDuty). Logged here for context.
 		for _, duty := range [][2]int{{6, 6}, {4, 8}, {3, 9}, {2, 12}} {
 			want := []int{0x5A, 0x3C}
 			clk, data := spiWaveAsym(want, duty[0], duty[1])
 			r := safeDecodeSPI(t, fmt.Sprintf("probe duty %d/%d", duty[0], duty[1]), clk, data, 2e-7, SPICfg{MSB: true})
 			t.Logf("asym-duty setup=%d active=%d -> ok=%v bytes=%v (want %v)", duty[0], duty[1], r.OK, r.Bytes, want)
+		}
+	})
+}
+
+// TestBreakSpiSamplingCadence pins the HW-found byte-framing bug: on a real
+// rebuilt 2 MHz clock the SAMPLING-edge gaps ran 374-376 cols while the frame
+// reset was derived as 3x the minimum gap over ALL edges — a single narrow
+// half-cycle (the partial clock cycle at the record start, 124 cols here) put
+// that reset at 372 < every real inter-bit gap, so the byte assembly restarted
+// on every bit and a clean capture decoded to 0 bytes. The fix derives the
+// reset from the typical SAMPLING-edge cadence, so this exact shape must now
+// round-trip. Also covers heavy duty-cycle asymmetry (setup 2 / active 12),
+// which mis-fired the old min-gap reset the same way.
+func TestBreakSpiSamplingCadence(t *testing.T) {
+	lo, hi := uint8(40), uint8(210)
+	t.Run("PartialFirstCycle374vs372", func(t *testing.T) {
+		want := []int{0xA7, 0x3C, 0x81}
+		var clk, data []uint8
+		seg := func(c, d uint8, n int) {
+			for i := 0; i < n; i++ {
+				clk = append(clk, c)
+				data = append(data, d)
+			}
+		}
+		// Partial first clock cycle: HIGH for 124 cols (capture began mid-cycle),
+		// then settle low. The 124-col half-cycle is the record's MINIMUM edge gap.
+		seg(hi, lo, 124)
+		seg(lo, lo, 187)
+		// Mode-0 MSB bits at ~375 cols/period with ±1-col jitter: setup 187/188,
+		// active 188 — sampling-edge gaps land on 374..376 like the real capture.
+		bit := 0
+		for _, b := range want {
+			for k := 7; k >= 0; k-- {
+				dv := lo
+				if (b>>uint(k))&1 == 1 {
+					dv = hi
+				}
+				seg(lo, dv, 187+bit%2) // setup half (187 or 188)
+				seg(hi, dv, 188)       // active half; rising edge = sample
+				bit++
+			}
+		}
+		seg(lo, lo, 400)
+		r := safeDecodeSPI(t, "sampling-cadence 374vs372", clk, data, 2e-7, SPICfg{MSB: true})
+		if !r.OK || !eqInts(r.Bytes, want) {
+			t.Errorf("HW-shape regression: ok=%v bytes=%v want=%v err=%q (min all-edge gap 124 must not derive the frame reset)",
+				r.OK, r.Bytes, want, r.Error)
+		}
+		if r.OK && (r.SPB < 370 || r.SPB > 380) {
+			t.Errorf("SPB (cols/clock) = %.1f, want ~375 from the sampling cadence", r.SPB)
+		}
+	})
+	t.Run("AsymmetricDuty", func(t *testing.T) {
+		// setup 2 / active 12: old reset = 3*min-gap = 6 < period 14 -> reset every
+		// bit -> 0 bytes (the old suite could only LOG this). Now asserted fixed.
+		want := []int{0x5A, 0x3C}
+		clk, data := spiWaveAsym(want, 2, 12)
+		r := safeDecodeSPI(t, "asym duty 2/12", clk, data, 2e-7, SPICfg{MSB: true})
+		if !r.OK || !eqInts(r.Bytes, want) {
+			t.Errorf("asymmetric duty 2/12: ok=%v bytes=%v want=%v err=%q", r.OK, r.Bytes, want, r.Error)
+		}
+	})
+	t.Run("IdleGapStillReframes", func(t *testing.T) {
+		// The new typical-cadence reset must still re-align on a real idle gap:
+		// a partial burst (capture began mid-byte), idle, then a whole frame.
+		frames := [][]int{{0x11, 0x22}, {0x33, 0x44}}
+		clk, data, _ := spiSynth(frames, 8, true, true, 32, 8*10, 32)
+		cut := 8*2*3 + 8 // slice off 3.5 bits so the first burst is misaligned
+		r := safeDecodeSPI(t, "idle reframe", clk[cut:], data[cut:], 2e-7, SPICfg{MSB: true})
+		if !r.OK || len(r.Bytes) < 2 || !eqInts(r.Bytes[len(r.Bytes)-2:], frames[1]) {
+			t.Errorf("idle-gap reframe: ok=%v bytes=%v want tail %v err=%q", r.OK, r.Bytes, frames[1], r.Error)
 		}
 	})
 }

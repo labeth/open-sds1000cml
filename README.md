@@ -58,8 +58,9 @@ hardware does and how the firmware must behave*; the implementation in
   (next bullet), a clipping indicator, and PNG / calibrated-CSV export.
 - **Protocol decode — ten protocols** — UART, I²C, SPI, Manchester, SENT,
   CAN / CAN-FD, MIL-STD-1553B, ARINC 429, USB low-speed, and FlexRay, with
-  auto-detect (protocol + channel roles + baud) for UART/I²C/SPI. The Go decoders
-  have JS twins in the browser, held byte-for-byte identical by a 243-vector
+  auto-detect that scores all ten against the live signal (protocol + channel
+  roles + baud). The Go decoders have JS twins in the browser, held
+  byte-for-byte identical by a 286-vector
   parity test, and render as an on-trace byte strip on both the web UI and the
   device LCD.
 - **Analysis suite** — **eye diagram + TIE jitter** (software clock recovery,
@@ -117,7 +118,7 @@ trigger.
 | Per-channel FFT | Protocol decode (auto-detected) |
 |---|---|
 | [![FFT view](docs/images/host-fft.png)](docs/images/host-fft.png) | [![Protocol decode](docs/images/host-decode.png)](docs/images/host-decode.png) |
-| Spectra of a 20 kHz square — its odd-harmonic comb, with the strongest peaks tagged. | Protocol decode (ten protocols, UART through FlexRay); here it auto-detected SPI (CLK=C2, DATA=C1), with per-channel FFT peak lists alongside. |
+| Spectra of a 20 kHz square — its odd-harmonic comb, with the strongest peaks tagged. | Ten-protocol decode (UART/I²C/SPI/CAN/Manchester/SENT/1553B/ARINC 429/USB/FlexRay); here auto-detect scored all ten and picked SPI (CLK=C2, DATA=C1), with per-channel FFT peak lists alongside. |
 
 Every acquisition control lives in the footer (run/stop, trigger, timebase,
 per-channel V/div · coupling · probe · offset, acquire mode + memory depth), and

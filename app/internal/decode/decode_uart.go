@@ -17,6 +17,110 @@ type UARTCfg struct {
 	HaveThr   bool
 }
 
+// inferUARTspb estimates the samples-per-bit from the edge-gap statistics,
+// robust to RINGY edges (1-3-sample spurious toggles around real transitions —
+// the HW-documented auto-baud killer). It borrows the Manchester inference
+// rigor: sub-sample crossing positions (edge.x, not the integer index), then a
+// deterministic ascending CLUSTER WALK over the sorted gaps instead of a blind
+// low percentile — ring-spur gaps form their own tiny cluster that a percentile
+// would mistake for the bit width. Each cluster is tried as the 1-bit
+// hypothesis: edges within the ring scale of the last kept edge are collapsed
+// (a ring bounce is part of the SAME transition), the candidate is refined on the
+// de-glitched 1-bit cluster, and it must explain >=70% of the de-glitched gaps
+// as ~integer bit multiples. Among validating candidates the BEST-fitting one
+// wins, ties to the larger period: ring debris at an exact sub-multiple of the
+// true bit (spur gaps of 4 under a 16-sample bit) can validate perfectly, but
+// so does the true bit — and the true bit is the wide one. If nothing
+// validates the input is genuinely ambiguous and the caller must set the baud
+// — that honesty is preserved. Mirrors decode.js inferUARTspb step for step.
+func inferUARTspb(S sliced) (float64, string) {
+	var gaps []float64
+	for k := 1; k < len(S.edges); k++ {
+		if g := S.edges[k].x - S.edges[k-1].x; g >= 1 {
+			gaps = append(gaps, g)
+		}
+	}
+	if len(gaps) < 3 {
+		return 0, "too few edges / cannot infer baud"
+	}
+	sort.Float64s(gaps)
+	// Deterministic greedy clusters: each starts at the smallest unassigned gap
+	// and absorbs everything within 1.5x its seed (bit multiples sit a full
+	// factor of 2 up, so clusters never bleed into the next multiple).
+	var cands []float64
+	for i := 0; i < len(gaps); {
+		seed := gaps[i]
+		sum, j := 0.0, i
+		for j < len(gaps) && gaps[j] <= 1.5*seed {
+			sum += gaps[j]
+			j++
+		}
+		cands = append(cands, sum/float64(j-i))
+		i = j
+	}
+	best, bestFrac := 0.0, -1.0
+	for _, cand := range cands {
+		if cand < 2.5 { // below the 3-samples/bit floor: a ring-spur cluster
+			continue
+		}
+		// De-glitch: collapse edges within the RING SCALE of the last KEPT edge —
+		// ring bounces cluster tightly (a few samples) around the true transition
+		// instant. The window is capped at 5 samples, NOT half the candidate:
+		// ringing is a fixed-time artifact, so a window that scaled with the
+		// candidate would let a 2x-bit hypothesis swallow real 1-bit edges and
+		// then validate on the merged gaps it manufactured itself.
+		win := 0.5 * cand
+		if win > 5 {
+			win = 5
+		}
+		var kg []float64
+		prevX := S.edges[0].x
+		for k := 1; k < len(S.edges); k++ {
+			if g := S.edges[k].x - prevX; g >= win {
+				kg = append(kg, g)
+				prevX = S.edges[k].x
+			}
+		}
+		if len(kg) < 3 {
+			continue
+		}
+		// Refine on the de-glitched 1-bit cluster by MEAN-SHIFT (two passes,
+		// re-centering the ±0.35 window on the running estimate): the raw cluster
+		// mean is ring-shortened, and a single window around it clips the upper
+		// quantization branch of the true bit ({12,13} for spb 12.4 seen from a
+		// cand of 9.5) — biasing spb low enough to mis-sample late bits. A WIDER
+		// window instead would merge genuinely incommensurate pulse widths and
+		// destroy the ambiguity honesty; re-centering does not.
+		ref := cand
+		for pass := 0; pass < 2; pass++ {
+			sum, cnt := 0.0, 0
+			for _, g := range kg {
+				if math.Abs(g-ref) <= 0.35*ref {
+					sum += g
+					cnt++
+				}
+			}
+			if cnt > 0 {
+				ref = sum / float64(cnt)
+			}
+		}
+		good := 0
+		for _, g := range kg {
+			if m := math.Round(g / ref); m >= 1 && math.Abs(g-m*ref) <= 0.35*ref {
+				good++
+			}
+		}
+		// >= keeps the LARGER candidate on an exact tie (candidates ascend).
+		if frac := float64(good) / float64(len(kg)); frac >= 0.7 && frac >= bestFrac {
+			best, bestFrac = ref, frac
+		}
+	}
+	if best > 0 {
+		return best, ""
+	}
+	return 0, "baud ambiguous — set it explicitly"
+}
+
 // DecodeUART decodes 8N1-style UART on one channel's codes (decode.js decodeUART).
 func DecodeUART(codes []uint8, colTimeS float64, cfg UARTCfg) Result {
 	bits := cfg.Bits
@@ -43,35 +147,10 @@ func DecodeUART(codes []uint8, colTimeS float64, cfg UARTCfg) Result {
 		spb = (1.0 / float64(cfg.Baud)) / colTimeS
 		baud = float64(cfg.Baud)
 	} else {
-		var gaps []float64
-		for k := 1; k < len(S.edges); k++ {
-			if g := float64(S.edges[k].i - S.edges[k-1].i); g >= 2 {
-				gaps = append(gaps, g)
-			}
-		}
-		if len(gaps) < 3 {
-			return Result{Proto: "uart", Error: "too few edges / cannot infer baud"}
-		}
-		sort.Float64s(gaps)
-		spb = gaps[int(float64(len(gaps))*0.1)]
-		sum, cnt := 0.0, 0
-		for _, g := range gaps {
-			if math.Abs(g-spb) <= 0.35*spb {
-				sum += g
-				cnt++
-			}
-		}
-		if cnt > 0 {
-			spb = sum / float64(cnt)
-		}
-		good := 0
-		for _, g := range gaps {
-			if m := math.Round(g / spb); m >= 1 && math.Abs(g-m*spb) <= 0.35*spb {
-				good++
-			}
-		}
-		if float64(good) < 0.7*float64(len(gaps)) {
-			return Result{Proto: "uart", Error: "baud ambiguous — set it explicitly"}
+		var reason string
+		spb, reason = inferUARTspb(S)
+		if reason != "" {
+			return Result{Proto: "uart", Error: reason}
 		}
 		baud = 1.0 / (spb * colTimeS)
 	}

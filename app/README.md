@@ -68,7 +68,7 @@ A working oscilloscope, end to end — every subsystem validated on the real uni
   cursors with Δt/1/Δt/ΔV, Y-T / X-Y / per-channel FFT view modes, waveform
   persistence, math (C1±C2, C1×C2, FFT-carrier subtraction), reference waveforms
   (REF A/B, absolute-voltage overlay), autoset, protocol decode (the ten
-  protocols above, with auto-detect), a deep-record navigator strip, a clipping
+  protocols above, with auto-detect that scores all ten against the live signal), a deep-record navigator strip, a clipping
   indicator, per-channel probe/coupling, and PNG / calibrated-CSV export — plus
   every acquisition control. All graphics surfaces render through a WebGL
   pipeline fed by a binary long-poll frame transport (`/api/frame.bin`).

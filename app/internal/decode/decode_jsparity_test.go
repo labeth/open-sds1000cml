@@ -25,13 +25,15 @@ func TestJSDecoderParity(t *testing.T) {
 
 	type jsCfg map[string]interface{}
 	type vec struct {
-		Proto string  `json:"proto"`
-		Codes []int   `json:"codes"`
-		ColT  float64 `json:"colT"`
-		Cfg   jsCfg   `json:"cfg"`
-		OK    bool    `json:"ok"`
-		Bytes []int   `json:"bytes"`
-		Text  string  `json:"text"`
+		Proto  string  `json:"proto"`
+		Codes  []int   `json:"codes"`
+		Codes2 []int   `json:"codes2,omitempty"` // second channel: I2C/SPI + autodetect
+		ColT   float64 `json:"colT"`
+		Cfg    jsCfg   `json:"cfg"`
+		OK     bool    `json:"ok"`
+		Bytes  []int   `json:"bytes"`
+		Text   string  `json:"text"`
+		Det    string  `json:"det,omitempty"` // autodetect: the protocol Go chose
 	}
 	u8 := func(c []uint8) []int {
 		out := make([]int, len(c))
@@ -46,7 +48,16 @@ func TestJSDecoderParity(t *testing.T) {
 		if b == nil {
 			b = []int{}
 		}
-		vecs = append(vecs, vec{proto, u8(codes), colT, cfg, r.OK, b, r.Text})
+		vecs = append(vecs, vec{Proto: proto, Codes: u8(codes), ColT: colT, Cfg: cfg,
+			OK: r.OK, Bytes: b, Text: r.Text})
+	}
+	add2 := func(proto string, c1, c2 []uint8, colT float64, cfg jsCfg, r Result) {
+		b := r.Bytes
+		if b == nil {
+			b = []int{}
+		}
+		vecs = append(vecs, vec{Proto: proto, Codes: u8(c1), Codes2: u8(c2), ColT: colT,
+			Cfg: cfg, OK: r.OK, Bytes: b, Text: r.Text, Det: r.Proto})
 	}
 
 	// ---- Manchester: auto-bitrate across spb (incl. spb=5), both conventions.
@@ -142,6 +153,158 @@ func TestJSDecoderParity(t *testing.T) {
 		baud := int(1.0 / (float64(spb) * ct))
 		add("uart", w, ct, jsCfg{"baud": baud, "parity": par},
 			DecodeUART(w, ct, UARTCfg{Baud: baud, Parity: par}))
+	}
+
+	// ---- UART auto-baud on RINGY edges (the task-2 hardening): the cluster-walk
+	// inference must land on the same spb — hence the same bytes — in Go and JS.
+	{
+		rrng := rand.New(rand.NewSource(0x21A6))
+		for it := 0; it < 8; it++ {
+			spb := []float64{12.0, 14.5, 16.0, 20.25}[it%4]
+			want := make([]int, 5)
+			for i := range want {
+				want[i] = rrng.Intn(256)
+			}
+			w := buInjectRing(buRasterize(buBuildSeq(want, 8, "none", 8, 24, 1), spb, it%3), rrng, 3)
+			ct := 1e-6
+			add("uart", w, ct, jsCfg{"parity": "none"}, DecodeUART(w, ct, UARTCfg{}))
+		}
+		// Genuinely ambiguous two-tone pulses: both sides must refuse identically.
+		var amb []uint8
+		lv := uint8(210)
+		for p := 0; p < 60; p++ {
+			n := 11
+			if p%2 == 1 {
+				n = 17
+			}
+			for j := 0; j < n; j++ {
+				amb = append(amb, lv)
+			}
+			lv = 250 - lv
+		}
+		add("uart", amb, 1e-6, jsCfg{}, DecodeUART(amb, 1e-6, UARTCfg{}))
+	}
+
+	// ---- SPI: all four modes + both bit orders, the HW 374-vs-372 sampling-
+	// cadence shape (task 1), and an asymmetric-duty clock. Two-channel vectors.
+	{
+		ct := 2e-7
+		msg := []int{0x48, 0x65, 0x6C, 0x6C, 0x6F}
+		for _, mode := range [][2]bool{{false, false}, {false, true}, {true, false}, {true, true}} {
+			for _, msb := range []bool{true, false} {
+				clk, dat, _ := spiSynth([][]int{msg}, 8, msb, mode[0] == mode[1], 32, 0, 32)
+				bo := "lsb"
+				if msb {
+					bo = "msb"
+				}
+				add2("spi", clk, dat, ct, jsCfg{"cpol": mode[0], "cpha": mode[1], "bitOrder": bo},
+					DecodeSPI(clk, dat, ct, SPICfg{CPOL: mode[0], CPHA: mode[1], MSB: msb, Format: "hex"}))
+			}
+		}
+		// The 374-vs-372 HW shape: partial 124-col first half-cycle + ~375-col
+		// jittered periods (built like TestBreakSpiSamplingCadence).
+		var clk, dat []uint8
+		seg := func(c, d uint8, n int) {
+			for i := 0; i < n; i++ {
+				clk = append(clk, c)
+				dat = append(dat, d)
+			}
+		}
+		seg(210, 40, 124)
+		seg(40, 40, 187)
+		bit := 0
+		for _, b := range []int{0xA7, 0x3C} {
+			for k := 7; k >= 0; k-- {
+				dv := uint8(40)
+				if (b>>uint(k))&1 == 1 {
+					dv = 210
+				}
+				seg(40, dv, 187+bit%2)
+				seg(210, dv, 188)
+				bit++
+			}
+		}
+		seg(40, 40, 400)
+		add2("spi", clk, dat, ct, jsCfg{"cpol": false, "cpha": false, "bitOrder": "msb"},
+			DecodeSPI(clk, dat, ct, SPICfg{MSB: true, Format: "hex"}))
+		aclk, adat := spiWaveAsym([]int{0x5A, 0x3C}, 2, 12)
+		add2("spi", aclk, adat, ct, jsCfg{"cpol": false, "cpha": false, "bitOrder": "msb"},
+			DecodeSPI(aclk, adat, ct, SPICfg{MSB: true, Format: "hex"}))
+	}
+
+	// ---- I2C: a full transaction, plus the channel swap (SCL<->SDA).
+	{
+		ct := 2e-7
+		scl, sda := i2cWave(0x24, 0, []int{0x55, 0xAA}, 20)
+		add2("i2c", scl, sda, ct, jsCfg{}, DecodeI2C(scl, sda, ct, I2CCfg{}))
+		add2("i2c", sda, scl, ct, jsCfg{}, DecodeI2C(sda, scl, ct, I2CCfg{}))
+	}
+
+	// ---- Autodetect: the FINAL CHOICE (protocol + decoded bytes/text) must
+	// match byte-for-byte across all ten protocols, on either channel, plus the
+	// no-signal and corrupted-CRC shapes.
+	{
+		addAuto := func(c1, c2 []uint8, ct float64) {
+			add2("autodetect", c1, c2, ct, jsCfg{"fmt": "hex"}, Autodetect(c1, c2, ct, "hex"))
+		}
+		uaW2 := uartWave([]int{0x48, 0x69, 0x55, 0xAA}, 40)
+		clkW, datW := spiWave([]int{0x48, 0x69, 0x55, 0xAA}, 20)
+		sclW, sdaW := i2cWave(0x24, 0, []int{0x55, 0xAA}, 20)
+		manW2, manCT2 := bkBuild([]int{0xAA, 0xB3, 0x2C, 0x47, 0x99}, true, true, 8, 20, 100000, 0, 0)
+		milW2 := mil1553Wave([]int{0x1234, 0xAAAA}, []bool{true, false},
+			[]int{mil1553OddParity(0x1234), mil1553OddParity(0xAAAA)}, 20)
+		nibs2 := []int{0x1, 0xA, 0x5, 0xF, 0x0, 0xC, 0x3, 0}
+		nibs2[7] = sentCRC4(nibs2[1:7])
+		sntW2 := sentWave([][]int{nibs2}, 6, 0, 0)
+		_, cw2 := canStdFrame(0x123, 3, []int{0xDE, 0xAD, 0xBE})
+		canW2 := canRender(cw2, 20, true, 160, 160)
+		var arW2 []uint8
+		arincIdle(&arW2, 240)
+		arincAppendWord(&arW2, arincMakeWord(0o107, 1, 0x5A5A, 2), 40)
+		arincIdle(&arW2, 240)
+		usbW2 := usbWave([]usbPkt{{pid: 0xD, data: []int{0x12, 0x00}}, {pid: 0x2}}, 20)
+		flxW2 := brFlexFrame(brFlexFixCRC([]int{0x12, 0x34, 0x56, 0x78, 0x9A, 0xBC, 0xDE}), 20, 8, 8, 8)
+
+		addAuto(uaW2, nil, 1e-6)
+		addAuto(clkW, datW, 2e-7)
+		addAuto(datW, clkW, 2e-7) // SPI roles swapped
+		addAuto(sclW, sdaW, 2e-7)
+		addAuto(sdaW, sclW, 2e-7) // I2C roles swapped
+		addAuto(manW2, nil, manCT2)
+		addAuto(nil, manW2, manCT2)
+		addAuto(milW2, nil, 1.0/(20.0*1e6))
+		addAuto(nil, milW2, 1.0/(20.0*1e6))
+		addAuto(sntW2, nil, 1e-6)
+		addAuto(nil, sntW2, 1e-6)
+		addAuto(canW2, nil, 1.0/(20.0*500000.0))
+		addAuto(nil, canW2, 1.0/(20.0*500000.0))
+		addAuto(arW2, nil, 2.5e-7)
+		addAuto(nil, arW2, 2.5e-7)
+		addAuto(usbW2, nil, 1.0/(20.0*1.5e6))
+		addAuto(nil, usbW2, 1.0/(20.0*1.5e6))
+		addAuto(flxW2, nil, ctForExact(10_000_000, 20))
+		addAuto(nil, flxW2, ctForExact(10_000_000, 20))
+		// No signal / corrupted integrity: the (possibly "off") choice must agree.
+		flat := make([]uint8, 1500)
+		for i := range flat {
+			flat[i] = 128
+		}
+		addAuto(flat, nil, 1e-6)
+		badCan := append([]uint8{}, canW2...)
+		for i := 400; i < 420 && i < len(badCan); i++ {
+			badCan[i] = 255 - badCan[i]
+		}
+		addAuto(badCan, nil, 1.0/(20.0*500000.0))
+		// A bare clock (the constant-bit Manchester trap) must stay "off" in both.
+		var sq []uint8
+		for i := 0; i < 60*40; i++ {
+			if (i/20)%2 == 0 {
+				sq = append(sq, 210)
+			} else {
+				sq = append(sq, 40)
+			}
+		}
+		addAuto(sq, nil, 1e-6)
 	}
 
 	// ---- Corruption fuzz: flip/truncate random regions of each base waveform and
