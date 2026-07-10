@@ -21,7 +21,11 @@ function peakSrcCh(ch) {
 
 function peakNyq() {
   if (fftUseRaw() && fftRaw.sample_s > 0) return 1 / (2 * fftRaw.sample_s); // real Nyquist from the raw rate
-  return frame && frame.col_span_s > 0 ? frame.c1.length / (2 * frame.col_span_s) : 0;
+  // A frame may carry NO per-sample array for a channel (channel disabled, or an
+  // envelope/roll band ships env min/max instead of c1) — use whichever channel
+  // array exists; 0 when neither does (callers already treat 0 as "no Nyquist").
+  const sig = frame ? (frame.c1 || frame.c2) : null;
+  return sig && frame.col_span_s > 0 ? sig.length / (2 * frame.col_span_s) : 0;
 }
 
 // The palette slot a peak index occupies among a channel's (sorted) selection —
@@ -38,6 +42,7 @@ function selColorCh(ch, i) {
 // a deep record's margins. Trimming doesn't change the sample interval, so
 // peakNyq() (= 1/(2·dt)) stays correct.
 function gapFill(src) {
+  if (!src) return null; // defensive: a missing channel array is "nothing to fill"
   let a = 0, b = src.length - 1;
   while (a <= b && src[a] < 0) a++;
   while (b >= a && src[b] < 0) b--;
@@ -67,6 +72,7 @@ function displayNyq() { return peakNyq() / fftStride(); }
 
 function spectrumFor(ch) {
   const src = peakSrcCh(ch), m = specMemo[ch];
+  if (!src) { m.src = null; m.spec = null; return null; } // channel off / env frame: no source
   if (m.src === src) return m.spec;
   m.src = src;
   let g = gapFill(src);
@@ -257,6 +263,7 @@ function drawYTPeaks(g) {
     const S = fftCh[ch];
     if (!S.selIdx.size) continue;
     const src = peakSrcCh(ch), zoom = ch === 1 ? (st ? st.zoom1 : 1) : (st ? st.zoom2 : 1), pal = COMPCOLS[ch];
+    if (!src) continue; // selections can outlive a channel being toggled off
     let k = 0;
     for (const i of [...S.selIdx].sort((a, b) => a - b)) {
       const f = S.peaks[i].freq, comp = componentMemo(src, f * frame.col_span_s);

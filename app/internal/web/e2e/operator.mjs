@@ -57,6 +57,7 @@ export class Op {
       // ensure running + AUTO
       if (typeof st !== "undefined" && st) {
         if (!st.running) clk("run");
+        if (st.norm) clk("mode"); // NORM holds frames without a trigger — baseline is AUTO
       }
       const cur = document.getElementById("tCursors"); if (cur && cur.classList.contains("on")) cur.click();
     });

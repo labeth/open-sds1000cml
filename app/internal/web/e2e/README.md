@@ -62,3 +62,23 @@ scope measures whatever the FPGA emits).
 - Autoset couldn't find a low-duty pulse train (amplitude-only "found" test).
 - Clicking the eye diagram to enlarge it crashed the page when RJ was not yet
   available (`eng(undefined)`); `eng()` now dashes non-finite input.
+
+## Operator fuzzer (`fuzz.mjs`)
+
+Seeded random-operator campaign against the LIVE scope UI: weighted realistic
+GUI actions (timebase/vertical/trigger churn, view modes, decode, analyzer
+arm/disarm cycles, zoom/pan/freeze), with invariants checked after EVERY action
+(no page errors, frames keep flowing, no NaN/undefined readouts, /api/status
+healthy, no horizontal scroll, no 5xx). Findings land in OUT/findings.jsonl with
+a screenshot each; the run continues so one pass surfaces the population.
+
+    ITERS=200 SEED=42 OUT=/tmp/fuzz node fuzz.mjs
+    ITERS=19  SEED=42 DEBUG_AT=19 node fuzz.mjs   # replay to a finding with layout diagnostics
+
+Bugs found by the first 200-iteration run (both fixed):
+  * peakNyq() crashed on frames lacking a per-sample channel array (channel
+    off / envelope+roll bands) — storming page errors from FFT, spectrogram
+    and zoom paths (app_fft.js; regress_missing_channel.mjs guards the class).
+  * the floated .card-actions header cluster overflowed its h3, letting the
+    decode role-select row paint over the auto-detect button and swallow its
+    clicks (base.css flow-root containment).
