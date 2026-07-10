@@ -2,6 +2,7 @@ package scpi
 
 import (
 	"fmt"
+	"math"
 	"math/rand"
 	"strconv"
 	"strings"
@@ -29,6 +30,11 @@ func TestSCPIFuzzNoPanic(t *testing.T) {
 		"C1:BWL", "C1:BWL ON", "C1:BWL?", "C2:UNIT AMP", "C1:UNIT",
 		"C1:SKEW", "C1:SKEW 1E309", "C1:SKEW \x00NS", "C2:SKEW?",
 		"C1:INVS ON;C1:INVS?", "C1:INVS MAYBE", "TRCP HFREJ", "TRCP",
+		"TRSE EDGE,SR,EX,HT,OFF", "TRSE EDGE,SR", "TRSE SR", "TRSE ,SR,",
+		"C1:CPL A50", "C1:CPL", "C2:CPL \xffM", "XYDS ON", "XYDS",
+		"PESU INFINITE", "PESU 2", "PESU", "MENU ON", "MENU",
+		"GRDS FULL", "GRDS OFF", "GRDS", "INTS GRID,100,TRACE,100",
+		"INTS GRID", "INTS GRID,", "INTS ,,,,", "INTS", "BUZZ ON", "BUZZ",
 		strings.Repeat(":", 4096), strings.Repeat(";", 4096),
 		"\x00\x01\x02\xff\xfe", "C1:VDIV \x00", "TDIV \xff\xff",
 		"*RST;*IDN?;TDIV 1E-3;;;",
@@ -45,7 +51,7 @@ func TestSCPIFuzzNoPanic(t *testing.T) {
 	}
 	// random mutations of real-looking commands
 	rng := rand.New(rand.NewSource(42))
-	seeds := []string{"C1:VDIV 0.5", "TDIV 1E-3", "TRMD NORM", "C1:WF? DAT2", "WFSU SP,4,NP,1000,FP,0", "MSIZ 14K", "TRSE EDGE,SR,C1,HT,TI,HV,100NS", "C1:BWL OFF", "C2:UNIT A", "C1:SKEW -5NS", "C1:INVS ON", "TRCP DC"}
+	seeds := []string{"C1:VDIV 0.5", "TDIV 1E-3", "TRMD NORM", "C1:WF? DAT2", "WFSU SP,4,NP,1000,FP,0", "MSIZ 14K", "TRSE EDGE,SR,C1,HT,TI,HV,100NS", "C1:BWL OFF", "C2:UNIT A", "C1:SKEW -5NS", "C1:INVS ON", "TRCP DC", "C1:CPL A1M", "XYDS ON", "PESU INFINITE", "MENU ON", "GRDS FULL", "INTS GRID,100,TRACE,100", "BUZZ OFF"}
 	for i := 0; i < 20000; i++ {
 		b := []byte(seeds[rng.Intn(len(seeds))])
 		for k := 0; k < 1+rng.Intn(6); k++ {
@@ -100,6 +106,18 @@ func TestSCPIFuzzSetQueryInvariant(t *testing.T) {
 		want   string // exact query reply
 	}
 	pick := func(ss ...string) string { return ss[rng.Intn(len(ss))] }
+	onoff := func(b bool) string {
+		if b {
+			return "ON"
+		}
+		return "OFF"
+	}
+	// Walk-local mirrors of state that error rounds must leave untouched: the
+	// last successfully-set trigger source / couplings / display flags. The
+	// harness asserts the query still reports these after every rejected set.
+	trseSrc := "C1"
+	cplLast := [2]string{"D1M", "D1M"}
+	xyOn, peOn, menuOn := false, false, false
 	gens := []func() round{
 		func() round { // UNIT: shadow round-trip
 			ch, u := 1+rng.Intn(2), pick("V", "A")
@@ -140,10 +158,18 @@ func TestSCPIFuzzSetQueryInvariant(t *testing.T) {
 			return round{"TDIV " + strconv.FormatFloat(v, 'E', -1, 64), "",
 				"TDIV?", "TDIV " + sciS(v) + "\n"}
 		},
-		func() round { // TRLV: shadow echoes the requested level
-			v := rng.Float64()*6 - 3
+		func() round { // TRLV: the query reflects the CLAMPED+quantized effective level
+			v := rng.Float64()*20 - 10 // spans well past the DAC window to exercise the clamp
+			code := int(math.Round(31434 - 938*v))
+			if code < engine.TrigCodeMin {
+				code = engine.TrigCodeMin
+			}
+			if code > engine.TrigCodeMax {
+				code = engine.TrigCodeMax
+			}
+			eff := engine.TrigLevelVolts(uint16(code))
 			return round{"TRLV " + strconv.FormatFloat(v, 'E', -1, 64), "",
-				"TRLV?", "TRLV " + sciV(v) + "\n"}
+				"TRLV?", "TRLV " + sciV(eff) + "\n"}
 		},
 		func() round { // TRDL
 			v := (rng.Float64()*2 - 1) * 1e-3
@@ -154,10 +180,19 @@ func TestSCPIFuzzSetQueryInvariant(t *testing.T) {
 			s := pick("POS", "NEG")
 			return round{"TRSL " + s, "", "TRSL?", "TRSL " + s + "\n"}
 		},
-		func() round { // TRSE source
-			src := pick("C1", "C2")
-			return round{"TRSE EDGE,SR," + src + ",HT,OFF", "",
-				"TRSE?", "TRSE EDGE,SR," + src + ",HT,OFF\n"}
+		func() round { // TRSE source: C1/C2 switch; EX/LINE (unroutable) and garbage error
+			q := func() string { return "TRSE EDGE,SR," + trseSrc + ",HT,OFF\n" }
+			switch rng.Intn(4) {
+			case 2:
+				return round{"TRSE EDGE,SR," + pick("EX", "EX5", "EX10", "LINE") + ",HT,OFF",
+					"Data out of range\n", "TRSE?", q()}
+			case 3:
+				return round{"TRSE EDGE,SR," + pick("ZZ", "C9", "12") + ",HT,OFF",
+					"Command header error\n", "TRSE?", q()}
+			default:
+				trseSrc = pick("C1", "C2")
+				return round{"TRSE EDGE,SR," + trseSrc + ",HT,OFF", "", "TRSE?", q()}
+			}
 		},
 		func() round { // TRMD
 			m := pick("AUTO", "NORM", "SINGLE", "STOP")
@@ -181,10 +216,81 @@ func TestSCPIFuzzSetQueryInvariant(t *testing.T) {
 			return round{fmt.Sprintf("C%d:TRA %s", ch, s), "",
 				fmt.Sprintf("C%d:TRA?", ch), fmt.Sprintf("C%d:TRA %s\n", ch, s)}
 		},
-		func() round { // CPL
-			ch, s := 1+rng.Intn(2), pick("A1M", "D1M", "GND")
-			return round{fmt.Sprintf("C%d:CPL %s", ch, s), "",
-				fmt.Sprintf("C%d:CPL?", ch), fmt.Sprintf("C%d:CPL %s\n", ch, s)}
+		func() round { // CPL: A1M/D1M/GND round-trip; 50Ω forms + garbage error, shadow untouched
+			ch := 1 + rng.Intn(2)
+			q := fmt.Sprintf("C%d:CPL?", ch)
+			switch rng.Intn(4) {
+			case 2:
+				return round{fmt.Sprintf("C%d:CPL %s", ch, pick("A50", "D50")),
+					"Data out of range\n", q, fmt.Sprintf("C%d:CPL %s\n", ch, cplLast[ch-1])}
+			case 3:
+				return round{fmt.Sprintf("C%d:CPL %s", ch, pick("AC", "DC", "XYZ", "A1")),
+					"Command header error\n", q, fmt.Sprintf("C%d:CPL %s\n", ch, cplLast[ch-1])}
+			default:
+				s := pick("A1M", "D1M", "GND")
+				cplLast[ch-1] = s
+				return round{fmt.Sprintf("C%d:CPL %s", ch, s), "", q,
+					fmt.Sprintf("C%d:CPL %s\n", ch, s)}
+			}
+		},
+		func() round { // XYDS ↔ the panel view state; garbage errors, state untouched
+			if rng.Intn(3) == 0 {
+				return round{"XYDS " + pick("MAYBE", "1", "TRUE"), "Command header error\n",
+					"XYDS?", "XYDS " + onoff(xyOn) + "\n"}
+			}
+			xyOn = rng.Intn(2) == 0
+			return round{"XYDS " + onoff(xyOn), "", "XYDS?", "XYDS " + onoff(xyOn) + "\n"}
+		},
+		func() round { // PESU ↔ the panel persistence; timed decays are unsupported → error
+			p := func() string {
+				if peOn {
+					return "INFINITE"
+				}
+				return "OFF"
+			}
+			switch rng.Intn(4) {
+			case 2:
+				return round{"PESU " + pick("1", "2", "5", "10", "20"),
+					"Data out of range\n", "PESU?", "PESU " + p() + "\n"}
+			case 3:
+				return round{"PESU " + pick("FOREVER", "0.5", "ON"),
+					"Command header error\n", "PESU?", "PESU " + p() + "\n"}
+			default:
+				peOn = rng.Intn(2) == 0
+				return round{"PESU " + p(), "", "PESU?", "PESU " + p() + "\n"}
+			}
+		},
+		func() round { // MENU ↔ the panel softkey-menu state
+			if rng.Intn(3) == 0 {
+				return round{"MENU " + pick("2", "SHOW"), "Command header error\n",
+					"MENU?", "MENU " + onoff(menuOn) + "\n"}
+			}
+			menuOn = rng.Intn(2) == 0
+			return round{"MENU " + onoff(menuOn), "", "MENU?", "MENU " + onoff(menuOn) + "\n"}
+		},
+		func() round { // GRDS: fixed FULL (no half/off graticule) — the BWL rule
+			r := round{"GRDS FULL", "", "GRDS?", "GRDS FULL\n"}
+			if rng.Intn(2) == 0 {
+				r.set = "GRDS " + pick("HALF", "OFF")
+				r.setErr = "Data out of range\n"
+			}
+			return r
+		},
+		func() round { // INTS: fixed GRID,100,TRACE,100 (no dimming) — the BWL rule
+			r := round{"INTS GRID,100,TRACE,100", "", "INTS?", "INTS GRID,100,TRACE,100\n"}
+			if rng.Intn(2) == 0 {
+				r.set = fmt.Sprintf("INTS GRID,%d,TRACE,%d", rng.Intn(100), rng.Intn(100))
+				r.setErr = "Data out of range\n"
+			}
+			return r
+		},
+		func() round { // BUZZ: no buzzer — fixed OFF
+			r := round{"BUZZ OFF", "", "BUZZ?", "BUZZ OFF\n"}
+			if rng.Intn(2) == 0 {
+				r.set = "BUZZ ON"
+				r.setErr = "Data out of range\n"
+			}
+			return r
 		},
 		func() round { // VDIV: detent ladder round-trip through the fake FE
 			ch := 1 + rng.Intn(2)

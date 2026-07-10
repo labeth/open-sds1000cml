@@ -41,6 +41,14 @@ func (f *fakeScope) SetTdiv(t float64) (engine.Band, bool) {
 }
 func (f *fakeScope) SetTrigLevelCode(c uint16) uint16 {
 	f.calls = append(f.calls, "trlv")
+	// Mirror the real engine: codes clamp to the operational window and the
+	// CLAMPED code is returned (TRLV? must reflect the effective level).
+	if c < engine.TrigCodeMin {
+		c = engine.TrigCodeMin
+	}
+	if c > engine.TrigCodeMax {
+		c = engine.TrigCodeMax
+	}
 	f.stats.TrigCode = c
 	return c
 }
@@ -73,14 +81,16 @@ func (f *fakeScope) SetAvgCount(n int) {
 // and SetOffset stages the DAC code into the scope stats exactly like the
 // real analog front end does through the engine.
 type fakeFE struct {
-	fs  *fakeScope
-	idx [2]int
+	fs    *fakeScope
+	idx   [2]int
+	cpl   [2]int
+	probe [2]float64
 }
 
 func (f *fakeFE) SetVdiv(ch, idx int) error      { f.idx[ch] = idx; return nil }
 func (f *fakeFE) Snapshot() ([2]int, bool)       { return f.idx, true }
-func (f *fakeFE) SetProbe(ch int, x float64)     {}
-func (f *fakeFE) SetCoupling(ch, mode int) error { return nil }
+func (f *fakeFE) SetProbe(ch int, x float64)     { f.probe[ch] = x }
+func (f *fakeFE) SetCoupling(ch, mode int) error { f.cpl[ch] = mode; return nil }
 func (f *fakeFE) OffsetVolts(ch int, code uint16) float64 {
 	return analog.OffsetVolts(ch, code)
 }
@@ -89,6 +99,19 @@ func (f *fakeFE) SetOffset(ch int, volts float64) uint16 {
 	f.fs.SetOffsetDAC(ch, code)
 	return code
 }
+
+// fakeDisplay is a truthful device-display double (the panel controller's
+// scpi.Display surface): plain state the XYDS/PESU/MENU handlers read+write.
+type fakeDisplay struct {
+	xy, persist, menu bool
+}
+
+func (d *fakeDisplay) ViewXY() bool        { return d.xy }
+func (d *fakeDisplay) SetViewXY(on bool)   { d.xy = on }
+func (d *fakeDisplay) PersistOn() bool     { return d.persist }
+func (d *fakeDisplay) SetPersist(on bool)  { d.persist = on }
+func (d *fakeDisplay) MenuOpen() bool      { return d.menu }
+func (d *fakeDisplay) SetMenuOpen(on bool) { d.menu = on }
 
 func newH(t *testing.T) (*Handler, *fakeScope) {
 	t.Helper()
@@ -103,15 +126,17 @@ func newH(t *testing.T) (*Handler, *fakeScope) {
 		stats: engine.Stats{Running: true, TdivS: 500e-6, AvgCount: 16, TrigRising: true},
 		frame: f,
 	}
-	return New(fs, nil, nil, t.Logf), fs
+	return New(fs, nil, nil, nil, t.Logf), fs
 }
 
-// newHFE is newH plus a truthful fake front end (VDIV/OFST round-trips).
+// newHFE is newH plus a truthful fake front end (VDIV/OFST round-trips) and a
+// fake display (XYDS/PESU/MENU round-trips).
 func newHFE(t *testing.T) (*Handler, *fakeScope, *fakeFE) {
 	t.Helper()
 	h, fs := newH(t)
-	fe := &fakeFE{fs: fs}
+	fe := &fakeFE{fs: fs, probe: [2]float64{1, 1}}
 	h.fe = fe
+	h.disp = &fakeDisplay{}
 	return h, fs, fe
 }
 
@@ -286,6 +311,43 @@ func TestSetNeverLies(t *testing.T) {
 		{"TRCP DC", "", "TRCP?", "TRCP DC\n"},
 		{"TRCP AC", "Data out of range\n", "TRCP?", "TRCP DC\n"},
 		{"TRCP JUNK", "Command header error\n", "TRCP?", "TRCP DC\n"},
+		// TRSE: C1/C2 are the only routable sources (spec 05 §6 — EXT has no
+		// software path). A real-but-unroutable vendor source errors and the
+		// source stays put; a garbage token is a grammar error.
+		{"TRSE EDGE,SR,EX,HT,OFF", "Data out of range\n", "TRSE?", "TRSE EDGE,SR,C1,HT,OFF\n"},
+		{"TRSE EDGE,SR,LINE,HT,OFF", "Data out of range\n", "TRSE?", "TRSE EDGE,SR,C1,HT,OFF\n"},
+		{"TRSE EDGE,SR,BOGUS,HT,OFF", "Command header error\n", "TRSE?", "TRSE EDGE,SR,C1,HT,OFF\n"},
+		// CPL: only the couplings the hardware has (A1M/D1M/GND — 1 MΩ only);
+		// the 50 Ω vendor forms error, garbage no longer echoes back.
+		{"C2:CPL GND", "", "C2:CPL?", "C2:CPL GND\n"},
+		{"C1:CPL A50", "Data out of range\n", "C1:CPL?", "C1:CPL D1M\n"},
+		{"C1:CPL D50", "Data out of range\n", "C1:CPL?", "C1:CPL D1M\n"},
+		{"C1:CPL GARBAGE", "Command header error\n", "C1:CPL?", "C1:CPL D1M\n"},
+		// TRLV: the query reflects the CLAMPED effective level, never a
+		// request past the DAC window (±(31434−27000)/938 … see spec 05 §1.2).
+		{"TRLV 100", "", "TRLV?", "TRLV 4.73E+00V\n"},
+		{"TRLV -100", "", "TRLV?", "TRLV -3.80E+00V\n"},
+		{"TRLV 5E-4", "", "TRLV?", "TRLV 0.00E+00V\n"}, // quantized to code 31434 = 0 V
+		// Display commands: XYDS/PESU/MENU wire to the REAL panel state
+		// (fakeDisplay here); GRDS/INTS/BUZZ are fixed truths (BWL rule).
+		{"XYDS ON", "", "XYDS?", "XYDS ON\n"},
+		{"XYDS OFF", "", "XYDS?", "XYDS OFF\n"},
+		{"XYDS MAYBE", "Command header error\n", "XYDS?", "XYDS OFF\n"},
+		{"PESU INFINITE", "", "PESU?", "PESU INFINITE\n"},
+		{"PESU OFF", "", "PESU?", "PESU OFF\n"},
+		{"PESU 2", "Data out of range\n", "PESU?", "PESU OFF\n"},
+		{"PESU FOREVER", "Command header error\n", "PESU?", "PESU OFF\n"},
+		{"MENU ON", "", "MENU?", "MENU ON\n"},
+		{"MENU OFF", "", "MENU?", "MENU OFF\n"},
+		{"GRDS FULL", "", "GRDS?", "GRDS FULL\n"},
+		{"GRDS OFF", "Data out of range\n", "GRDS?", "GRDS FULL\n"},
+		{"GRDS X", "Command header error\n", "GRDS?", "GRDS FULL\n"},
+		{"INTS GRID,100,TRACE,100", "", "INTS?", "INTS GRID,100,TRACE,100\n"},
+		{"INTS TRACE,100", "", "INTS?", "INTS GRID,100,TRACE,100\n"},
+		{"INTS GRID,50,TRACE,80", "Data out of range\n", "INTS?", "INTS GRID,100,TRACE,100\n"},
+		{"INTS GRID,100,TRACE", "Command header error\n", "INTS?", "INTS GRID,100,TRACE,100\n"},
+		{"BUZZ OFF", "", "BUZZ?", "BUZZ OFF\n"},
+		{"BUZZ ON", "Data out of range\n", "BUZZ?", "BUZZ OFF\n"},
 		// The rest of the settable surface with query forms.
 		{"CHDR SHORT", "", "CHDR?", "CHDR SHORT\n"},
 		{"TDIV 1E-3", "", "TDIV?", "TDIV 1.00E-03s\n"},
@@ -336,6 +398,71 @@ func TestRSTResetsChannelShadows(t *testing.T) {
 	got := do(t, h, "C1:INVS?;C1:UNIT?;C1:SKEW?")
 	if got != "C1:INVS OFF\nC1:UNIT V\nC1:SKEW 0.00E+00s\n" {
 		t.Fatalf("*RST left shadows: %q", got)
+	}
+}
+
+// *RST also restores the pre-existing tra/cpl/attn shadows to the power-on
+// state (TRA ON, D1M, ×1 — the New() defaults), pushes the coupling/probe
+// reset through the front end, and returns the display to Y-T/persist-off —
+// so the post-reset queries describe the real instrument.
+func TestRSTResetsTraCplAttn(t *testing.T) {
+	h, _, fe := newHFE(t)
+	do(t, h, "C1:TRA OFF;C2:TRA OFF;C1:CPL A1M;C2:CPL GND;C1:ATTN 100;C2:ATTN 10")
+	do(t, h, "XYDS ON;PESU INFINITE")
+	do(t, h, "*RST")
+	got := do(t, h, "C1:TRA?;C2:TRA?;C1:CPL?;C2:CPL?;C1:ATTN?;C2:ATTN?;XYDS?;PESU?")
+	want := "C1:TRA ON\nC2:TRA ON\nC1:CPL D1M\nC2:CPL D1M\nC1:ATTN 1\nC2:ATTN 1\nXYDS OFF\nPESU OFF\n"
+	if got != want {
+		t.Fatalf("*RST left shadows:\n got %q\nwant %q", got, want)
+	}
+	// The front end really was reset, not just the bookkeeping.
+	if fe.cpl != [2]int{analog.CplDC, analog.CplDC} {
+		t.Fatalf("*RST left front-end coupling %v", fe.cpl)
+	}
+	if fe.probe != [2]float64{1, 1} {
+		t.Fatalf("*RST left probe factors %v", fe.probe)
+	}
+}
+
+// Without a panel (disp == nil) the display commands degrade to the BWL rule:
+// the fixed state round-trips, anything else errors — never a silent no-op.
+func TestDisplayStubsWithoutPanel(t *testing.T) {
+	h, _ := newH(t)
+	for _, c := range []struct{ cmd, want string }{
+		{"XYDS OFF", ""},
+		{"XYDS ON", "Data out of range\n"},
+		{"XYDS?", "XYDS OFF\n"},
+		{"PESU OFF", ""},
+		{"PESU INFINITE", "Data out of range\n"},
+		{"PESU?", "PESU OFF\n"},
+		{"MENU OFF", ""},
+		{"MENU ON", "Data out of range\n"},
+		{"MENU?", "MENU OFF\n"},
+	} {
+		if got := do(t, h, c.cmd); got != c.want {
+			t.Fatalf("%q = %q, want %q", c.cmd, got, c.want)
+		}
+	}
+}
+
+// Inverted() is the render surface's view of the INVS shadow (the web status
+// snapshot and the LCD HUD read it) — it must track sets and *RST exactly.
+func TestInvertedSnapshot(t *testing.T) {
+	h, _ := newH(t)
+	if h.Inverted() != [2]bool{} {
+		t.Fatal("power-on invert state not OFF/OFF")
+	}
+	do(t, h, "C1:INVS ON")
+	if h.Inverted() != [2]bool{true, false} {
+		t.Fatalf("after C1:INVS ON: %v", h.Inverted())
+	}
+	do(t, h, "C2:INVS ON;C1:INVS OFF")
+	if h.Inverted() != [2]bool{false, true} {
+		t.Fatalf("after C2 ON / C1 OFF: %v", h.Inverted())
+	}
+	do(t, h, "C1:INVS ON;*RST")
+	if h.Inverted() != [2]bool{} {
+		t.Fatalf("*RST left invert: %v", h.Inverted())
 	}
 }
 

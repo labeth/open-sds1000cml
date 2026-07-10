@@ -121,6 +121,12 @@ type Server struct {
 	panel  Panel
 	screen func() []byte // PNG of the current LCD render (device-screen view)
 
+	// invSrc reports the per-channel display-invert state (SCPI Cn:INVS).
+	// The SCPI handler's shadow is the single source of truth; main wires
+	// this to scpi.Handler.Inverted via SetInvertSource before serving.
+	// Nil (tests, no SCPI) means no inversion.
+	invSrc func() [2]bool
+
 	// epoch is the single-active-client token. Each page load calls /api/claim,
 	// which bumps epoch; the frame.bin long-poll (the only sustained load) carries
 	// its claimed epoch and is refused (409) once a newer client has claimed. So a
@@ -157,6 +163,11 @@ type measVal struct {
 func New(sc Scope, fe Analog, panel Panel, screen func() []byte) *Server {
 	return &Server{sc: sc, fe: fe, panel: panel, screen: screen}
 }
+
+// SetInvertSource wires the SCPI INVS shadow — the single source of truth for
+// display-level trace inversion — into the /api/status snapshot (inv1/inv2),
+// which the page applies in its trace draw path. Call before serving.
+func (s *Server) SetInvertSource(fn func() [2]bool) { s.invSrc = fn }
 
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()

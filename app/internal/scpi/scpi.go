@@ -10,6 +10,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 
 	"open-sds/app/internal/engine"
 )
@@ -40,6 +41,20 @@ type Analog interface {
 	SetCoupling(ch, mode int) error
 }
 
+// Display is the device display/panel surface (implemented by
+// *panel.Controller); may be nil. It backs the SCPI display commands whose
+// state genuinely lives in the panel — X-Y view (XYDS), persistence (PESU),
+// the softkey menu (MENU) — so their set→query round-trips reflect the REAL
+// on-screen state, never a private shadow that could drift from the LCD.
+type Display interface {
+	ViewXY() bool
+	SetViewXY(on bool)
+	PersistOn() bool
+	SetPersist(on bool)
+	MenuOpen() bool
+	SetMenuOpen(on bool)
+}
+
 // Screenshot returns the SCDP hardcopy payload (BMP). Wired by main to a
 // headless render of the current frame; may be nil.
 type Screenshot func() []byte
@@ -55,8 +70,13 @@ const (
 type Handler struct {
 	sc   Scope
 	fe   Analog
+	disp Display
 	shot Screenshot
 	logf func(string, ...any)
+
+	// mu serializes HandleLine against the cross-goroutine snapshot readers
+	// (Inverted() feeds the web status snapshot and the LCD HUD builder).
+	mu sync.Mutex
 
 	chdr string // "SHORT" | "OFF" (power-on default SHORT)
 	wfSP int
@@ -82,9 +102,9 @@ type Handler struct {
 	serial string
 }
 
-func New(sc Scope, fe Analog, shot Screenshot, logf func(string, ...any)) *Handler {
+func New(sc Scope, fe Analog, disp Display, shot Screenshot, logf func(string, ...any)) *Handler {
 	return &Handler{
-		sc: sc, fe: fe, shot: shot, logf: logf,
+		sc: sc, fe: fe, disp: disp, shot: shot, logf: logf,
 		chdr: "SHORT", wfSP: 1,
 		tra:    [2]bool{true, true},
 		cpl:    [2]string{"D1M", "D1M"},
@@ -93,6 +113,15 @@ func New(sc Scope, fe Analog, shot Screenshot, logf func(string, ...any)) *Handl
 		trmd:   "AUTO",
 		serial: loadSerial(),
 	}
+}
+
+// Inverted reports the per-channel INVS (display invert) state. The SCPI
+// shadow is the single source of truth for display-level inversion: the web
+// status snapshot and the LCD HUD both read it here.
+func (h *Handler) Inverted() [2]bool {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return h.invs
 }
 
 func loadSerial() string {
@@ -118,6 +147,8 @@ func loadSerial() string {
 // compound commands) and returns the concatenated reply bytes. Pure setters
 // are silent (spec 11: no OK acknowledgements).
 func (h *Handler) HandleLine(line []byte) []byte {
+	h.mu.Lock()
+	defer h.mu.Unlock()
 	var out []byte
 	for _, part := range strings.Split(strings.TrimRight(string(line), "\r\n"), ";") {
 		part = strings.TrimSpace(part)
