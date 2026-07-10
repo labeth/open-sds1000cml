@@ -1,3 +1,7 @@
 # Release / build artifacts assembled at the repo root by the release flow.
 /dist/
 *.zip
+# local HW-verification tools — the repo maintains exactly ONE app main (cmd/app);
+# workstation probes live untracked so they never add device-testing surface
+/app/cmd/decodeprobe/
+/app/cmd/bandcheck/
