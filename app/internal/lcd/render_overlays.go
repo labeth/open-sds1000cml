@@ -111,6 +111,9 @@ func drawDecode(sf Surface, f *engine.Frame, hud HUD, win int, xc, posFrac float
 	if hud.DecProto == 0 || f == nil {
 		return
 	}
+	if posFrac <= 0 || posFrac > 1 { // same normalization as drawTrace/drawZoneMask:
+		posFrac = 0.5 // an unset fraction must not shift the strip half a screen off the trace
+	}
 	valid := frameValid(f)
 	ch := func(c int) []uint8 {
 		if c == 1 && len(f.C2) >= valid {
