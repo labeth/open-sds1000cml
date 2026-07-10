@@ -210,6 +210,55 @@ func TestDecimatedAutoLivenessTimeBound(t *testing.T) {
 	}
 }
 
+func TestSingleShotNotConsumedByFlatFallback(t *testing.T) {
+	// SINGLE on a QUIET screen must never fire (a real scope's single-shot waits
+	// forever without a trigger). On native-fast NORM the flat fallback publishes
+	// one honest coherent frame every nativeFlatFallbck holds — the single latch
+	// used to gate on `coherent` and consumed exactly that refresh, stopping the
+	// engine with a "captured" flat screen. It now gates on `lock`.
+	fb := newFakeBus()
+	fb.mu.Lock()
+	fb.wave = func(i int) (uint8, uint8) { return 128, 128 } // flat rail: no lock possible
+	fb.mu.Unlock()
+	e, _ := newTestEngine(t, fb)
+	b, ok := PlanTdiv(1e-6)
+	if !ok {
+		t.Fatal("1 µs not in ladder")
+	}
+	e.band = b
+	e.SetSingle()
+	e.bringUp()
+	for i := 0; i < nativeFlatFallbck+5; i++ {
+		e.oneFrame(true) // single forces NORM
+	}
+	s := e.Snapshot()
+	if s.Published == 0 {
+		t.Fatal("flat fallback never refreshed (test premise broken)")
+	}
+	if !s.Running || !s.Single {
+		t.Fatalf("flat refresh consumed the single-shot: running=%v single=%v", s.Running, s.Single)
+	}
+	// A real edge then fires the single and stops.
+	fb.mu.Lock()
+	fb.wave = func(i int) (uint8, uint8) {
+		if (i/512)%2 == 0 {
+			return 200, 60
+		}
+		return 56, 190
+	}
+	fb.mu.Unlock()
+	fb.trigOnGo = true
+	e.oneFrame(true)
+	if s := e.Snapshot(); !s.Running && !s.Single {
+		return // stopped on the genuine trigger — pass
+	}
+	// allow one extra frame for the comparator path on this harness
+	e.oneFrame(true)
+	if s := e.Snapshot(); s.Running || s.Single {
+		t.Fatalf("single did not stop on a genuine trigger: running=%v single=%v", s.Running, s.Single)
+	}
+}
+
 func TestEdgeLevelOffSignalDoesNotLock(t *testing.T) {
 	// A trigger level set OFF the signal band cannot be crossed, so no trigger is
 	// possible. Regression: the EDGE path used to fall back to the signal's own

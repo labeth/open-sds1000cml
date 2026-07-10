@@ -219,13 +219,14 @@ STOP on top.
 | SINGLE | `0x0003` (armed) | armed, identical to NORM | enter NORM and HOLD the display until an edge (see note) |
 | STOP | (unchanged) | FSM stays armed+alive on the bus | publish nothing; display holds last frame |
 
-**SINGLE note:** SINGLE is implemented as plain NORM (armed run word `0x0003`, publish qualified
-frames + hold otherwise). Automatic STOP-after-first-frame is **not implemented** — there is no
-engine one-shot latch and no `SetSingle`/arm-single command. The display holds on a quiet armed
-screen but the engine keeps re-arming and will publish subsequent qualifying frames.
-True single-shot (auto-STOP after the first qualified frame) is a `SetSingle`/arm-single control
-command plus an engine latch that flips `SetRunning(false)` on the first `publish==true` frame. Until
-that command is wired, SINGLE behaves as plain NORM (armed, holds a quiet screen, keeps re-arming).
+**SINGLE note:** true single-shot IS implemented (`Engine.SetSingle`, engine_control.go): arming
+forces NORM (armed run word `0x0003`); an engine latch then stops the run (`running=false`,
+`single=false`) after the first published frame that carries a genuine LOCK — a qualified
+edge/pulse/slope/video event (`lock` in the publish policy), or a serial/zone-gated NORM publish
+(those gates only pass frames that would otherwise publish, so a pass implies the lock). The latch
+deliberately does NOT fire on the honest unlocked refreshes the publish policy emits to keep a
+display alive (the flat fallback and the AUTO liveness refresh) — a quiet screen never consumes a
+single-shot, exactly like a hardware scope. An explicit RUN or STOP cancels a pending single.
 
 Arm-opcode port CS1 `0x21`: `0xC0` = reset read/write head, `0xC3` = go (arm), `0xC8` =
 capture-halt (latch the coherent frozen frame), `0xCB` = latch-without-halt (roll snapshot; the

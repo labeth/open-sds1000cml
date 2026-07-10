@@ -116,6 +116,7 @@ func (e *Engine) envFrame(norm bool) {
 	f.EdgeX = -1
 	f.Interp = false
 	f.IsEnv = true
+	f.Degraded = false
 	f.EnvCols = envDisplayCols
 	f.Ptp = p
 	f.Trigd = false
@@ -326,6 +327,7 @@ func (e *Engine) rollUpdate(norm bool) {
 	f.EdgeX = -1
 	f.Interp = false
 	f.IsEnv = true
+	f.Degraded = false
 	f.EnvCols = envDisplayCols
 	f.Ptp = p
 	f.Trigd = false

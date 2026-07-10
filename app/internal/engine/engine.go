@@ -61,6 +61,12 @@ const (
 
 	nativeEdgeMinPtp  = 40    // codes; flat rail ≈ 5, real cal edge ≈ 150
 	nativeFlatFallbck = 60    // held frames before one honest flat publish
+	// stuckSuspectRuns: consecutive degraded (dead-tail-after-retries) captures
+	// before the persistent stuck-FSM state is assumed. The intermittent half-
+	// record never survives the re-capture retries many frames in a row; the
+	// stuck state survives ALL of them, indefinitely (bench: 100% for hours,
+	// cured only by a power-cycle). ~2 s at the native-fast frame rate.
+	stuckSuspectRuns = 40
 	// autoLivenessMaxWait bounds the AUTO liveness fallback by WALL CLOCK as well
 	// as by held-frame count: at slow decimated bands one hold cycle costs the
 	// full 40-80 ms wait budget, so 60 held frames is 5-8 s of frozen screen —
@@ -99,6 +105,9 @@ type Stats struct {
 	Coherent    uint64  `json:"coherent"`     // frames that latched+drained coherently
 	Published   uint64  `json:"published"`    // frames handed to the arena
 	Held        uint64  `json:"held"`         // display-hold cycles
+	Degraded     bool `json:"degraded,omitempty"`      // last native-fast capture kept a dead tail through the retries
+	DegradedRun  int  `json:"degraded_run,omitempty"`  // consecutive degraded captures
+	StuckSuspect bool `json:"stuck_suspect,omitempty"` // the run crossed the stuck-FSM threshold: power-cycle likely needed
 	HaltConfirm uint64  `json:"halt_confirm"` // halts with fill frozen across the double read
 	BusErrors   uint64  `json:"bus_errors"`
 	DeadRuns    int     `json:"dead_runs"` // consecutive fill-frozen + flat-drain frames
@@ -295,6 +304,7 @@ type Engine struct {
 	seq           uint64
 	flatHeld      int
 	lastPubAt     time.Time // engine goroutine only: instant of the last oneFrame publish
+	degradedRun   int       // engine goroutine only: consecutive dead-tail captures
 	lastFirstHalf bool // the last frame's FIRST drain was a half record (pre re-capture)
 	deadRuns      int
 	streamSeq uint64    // stitch-mode window counter

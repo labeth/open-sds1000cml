@@ -257,6 +257,7 @@ func (e *Engine) stitchFrame(norm bool) {
 	f.SampleS = e.band.CaptureIntervalNs() * 1e-9
 	_, _, p := ptp(f.C1[:cols])
 	f.Ptp, f.Trigd, f.Coherent, f.HaltOK = p, false, true, haltOK
+	f.Degraded = false // arena slots are reused; only the native-fast path sets this
 	e.streamSeq++
 	f.StreamSeq, f.WindowNs, f.GapNs = e.streamSeq, fillNs, gapNs
 

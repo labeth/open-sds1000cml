@@ -21,6 +21,8 @@ type Frame struct {
 	TrigPos  int     // HW trigger-position latch (telemetry only)
 	Coherent bool
 	HaltOK   bool
+	Degraded bool // native-fast: a dead tail survived the re-capture retries — the
+	//               record is a half-capture; content beyond realDepth is not signal
 
 	// Per-column (min,max) envelope bands, valid [:EnvCols] when IsEnv.
 	// Every value is a real ADC min or max — nothing synthesized.

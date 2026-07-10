@@ -211,9 +211,16 @@ function updateStatusLine() {
     const vz = 1 / vspanZ;
     zoomTxt += " · vzoom ×" + (vz < 10 ? vz.toFixed(1) : String(Math.round(vz)));
   }
+  // Capture-integrity badge: a degraded frame is a half-capture (the dead tail
+  // survived the retries); a long run of them is the stuck acquisition state
+  // that only a power-cycle clears — say so instead of silently showing it.
+  const degradedTxt = st.stuck_suspect
+    ? ' · <b style="color:var(--stale,#e66)">⚠ ACQ STUCK — POWER-CYCLE</b>'
+    : ((frame && frame.degraded) || st.degraded ? ' · <b style="color:var(--stale,#e66)">⚠ DEGRADED</b>' : "");
   const html =
     "<b>" + fmtTdiv(b) + "/div</b>" + zoomTxt + " · " + st.band + " · " + st.fps.toFixed(0) + " fps · seq <b>" + st.seq + "</b>" +
     " · cols " + reqCols + (st.mmap_drain ? "" : " (ioctl)") + (st.dead_runs ? " · DEAD " + st.dead_runs : "") +
+    degradedTxt +
     " · cal:" + (st.cal_source || "?") + " · " + st.version;
   if (html !== lastLineHTML) { lastLineHTML = html; $("line").innerHTML = html; }
   const aria = "oscilloscope — trigger " + trigState() + ", " + fmtTdiv(b) + "/div";

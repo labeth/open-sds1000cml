@@ -26,6 +26,7 @@ type frameReply struct {
 	Norm       bool    `json:"norm"`
 	Trigd      bool    `json:"trigd"`
 	Coherent   bool    `json:"coherent"`
+	Degraded   bool    `json:"degraded,omitempty"` // native-fast dead tail survived retries: half-capture
 
 	// Scale factors the client uses for cursors/FFT/XY/measurements.
 	Cols     int     `json:"cols"`       // number of columns returned per trace
@@ -257,6 +258,7 @@ func (s *Server) buildReply(f *engine.Frame, cols int, full bool, since uint64, 
 		Norm:       f.Norm,
 		Trigd:      f.Trigd,
 		Coherent:   f.Coherent,
+		Degraded:   f.Degraded,
 		Cols:       cols,
 		ColSpanS:   f.DisplayedS * 10, // the window spans 10 divisions
 		Vpc1:       vpc[0], Vpc2: vpc[1],

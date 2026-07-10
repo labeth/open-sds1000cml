@@ -186,6 +186,7 @@ func (e *Engine) etsFrame(norm bool) {
 	f.WinCols = nCols
 	f.Interp = true
 	f.IsEnv = false // mandatory clears: ETS is a real-time frame
+	f.Degraded = false
 	f.EnvCols = 0
 	f.Ptp = p
 	f.Trigd = false

@@ -76,6 +76,14 @@ func realDepth(sig []uint8) int {
 
 // realDepthP is realDepth with the peak-to-peak span precomputed (see
 // validDepthP) — one shared ptp pass per frame instead of one per caller.
+//
+// The tail match is TOLERANT, not exact: the frozen stream-port values that a
+// dead tail repeats can carry ±1-2 LSB of read noise, and an exact
+// sig[i]==sig[i-5] comparison breaks on the first such sample — which let a
+// noisy half-record sail through as "full" (the stuck-FPGA state published
+// coherent:true for hours on the bench). A period-5 sample matches within
+// ±realDepthTol codes, and up to realDepthMiss consecutive misses are forgiven
+// (sparse glitches inside the dead tail); a longer miss streak is live signal.
 func realDepthP(sig []uint8, p int) int {
 	n := len(sig)
 	if n < 6 {
@@ -84,13 +92,25 @@ func realDepthP(sig []uint8, p int) int {
 	if p < 8 {
 		return n // flat / quiet screen: a legitimate display, not a half record
 	}
-	run := 0
+	const (
+		realDepthTol  = 2 // |Δ| per period-5 pair still "frozen"
+		realDepthMiss = 3 // forgiven consecutive misses inside the tail
+	)
+	run, miss := 0, 0
 	for i := n - 1; i >= 5; i-- {
-		if sig[i] == sig[i-5] {
+		d := int(sig[i]) - int(sig[i-5])
+		if d < 0 {
+			d = -d
+		}
+		if d <= realDepthTol {
 			run++
-		} else {
+			miss = 0
+			continue
+		}
+		if miss++; miss > realDepthMiss {
 			break
 		}
+		run++ // forgiven glitch: still inside the dead tail
 	}
 	return n - run
 }

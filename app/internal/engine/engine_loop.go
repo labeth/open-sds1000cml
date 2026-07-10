@@ -208,6 +208,18 @@ func (e *Engine) oneFrame(norm bool) {
 		rd = realDepthP(f.C1[:cols], pC1)
 	}
 	drainMs := e.clk.Now().Sub(drainStart)
+	// Degraded = the dead tail survived every re-capture retry: the published
+	// record is a half-capture (content beyond realDepth is the frozen ports,
+	// not signal). Track the run of consecutive degraded captures — the
+	// intermittent half-record recovers within a retry or two, so a long run is
+	// the persistent stuck-FSM state that only a power-cycle clears; surface
+	// both so the UI can say so instead of silently showing broken sweeps.
+	degraded := nativeFast && rd*4 < cols*3
+	if degraded {
+		e.degradedRun++
+	} else {
+		e.degradedRun = 0
+	}
 	e.armEngine() // re-arm immediately (spec 03 §5.1 RE-ARM): filling again before publish/render
 
 	// ERES boxcar runs on the whole record BEFORE any discrimination, so the
@@ -281,6 +293,7 @@ func (e *Engine) oneFrame(norm bool) {
 	f.Trigd = sawTrig
 	f.TrigPos = trigPos
 	f.Coherent = coherent
+	f.Degraded = degraded
 	f.HaltOK = haltOK
 	f.RollCodes = false
 	f.TdivS = e.band.TdivS
@@ -503,6 +516,9 @@ func (e *Engine) oneFrame(norm bool) {
 	}
 	armToLatchMs := float64(armToLatch) / float64(time.Millisecond)
 	e.mu.Lock()
+	e.stats.Degraded = degraded
+	e.stats.DegradedRun = e.degradedRun
+	e.stats.StuckSuspect = e.degradedRun >= stuckSuspectRuns
 	if coherent {
 		e.stats.Coherent++
 	}
@@ -549,9 +565,13 @@ func (e *Engine) oneFrame(norm bool) {
 		}
 		e.mu.Unlock()
 		// True single-shot: a real triggered frame just published — stop and
-		// hold it. `coherent` here is a NORM/qualifier-gated capture (single
-		// forces NORM), so this is a genuine trigger, not a free-run frame.
-		if e.singleArmed.Load() && coherent {
+		// hold it. Gate on `lock`, NOT `coherent`: on a native-fast band every
+		// haltOK capture is "coherent", including the honest FLAT refresh the
+		// fallback publishes every nativeFlatFallbck holds — a quiet screen must
+		// never consume the single-shot. `lock` is exactly the genuinely
+		// qualified edge/qualifier event (and a serial/zone NORM publish implies
+		// it — those gates only pass frames that would otherwise publish).
+		if e.singleArmed.Load() && lock {
 			e.singleArmed.Store(false)
 			e.running.Store(false)
 			e.mu.Lock()
