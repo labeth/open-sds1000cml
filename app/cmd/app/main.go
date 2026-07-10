@@ -26,6 +26,7 @@ import (
 	"open-sds/app/internal/lcd"
 	"open-sds/app/internal/panel"
 	"open-sds/app/internal/scpi"
+	"open-sds/app/internal/settings"
 	"open-sds/app/internal/vxi11srv"
 	"open-sds/app/internal/web"
 )
@@ -443,6 +444,26 @@ func main() {
 	go pc.Run(stopFo)
 	logf("panel controller up (fpga_key fd=%d)", keyFD)
 
+	// Settings persistence: restore the last user setup now that the engine is
+	// up — through the SAME setter paths the panel/web use, so every clamp and
+	// side-effect applies — then watch for changes and save them debounced to
+	// the U-disk. A missing/corrupt file just means "boot with defaults".
+	var setFE settings.Analog
+	if fe != nil {
+		setFE = fe
+	}
+	setPath := settings.DefaultPath()
+	if st, ok := settings.Load(setPath, logf); ok {
+		settings.Apply(st, e, setFE, pc, logf)
+		logf("settings: restored %s", setPath)
+	} else {
+		logf("settings: no saved setup at %s — defaults", setPath)
+	}
+	saver := settings.NewSaver(setPath, func() settings.Settings {
+		return settings.Collect(e, setFE, pc)
+	}, logf)
+	go saver.Run(stopFo)
+
 	// Device-screen PNG for the web /api/screen.png endpoint: the exact LCD render.
 	screenPNG := func() []byte {
 		back := lcd.NewMemSurface()
@@ -495,6 +516,7 @@ func main() {
 
 	s := <-sig
 	logf("signal %v — stopping engine at frame boundary", s)
+	saver.Flush() // a change still inside the debounce window survives the restart
 	if !e.Stop(2 * time.Second) {
 		logf("WARNING: engine did not stop in time")
 	}
