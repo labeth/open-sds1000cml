@@ -18,13 +18,13 @@ function decodeMIL1553(codes, colTimeS, cfg) {
   if (S.edges.length < 2) return fail("mil1553", "too few edges");
 
   // Bit period T (samples/bit). cfg.bitrate pins it; otherwise infer from the edge
-  // gaps as Manchester does — and with the same ambiguity: the shortest-gap
-  // cluster is T/2 for mixed data but T for alternating data (a 0xAAAA payload).
-  // Don't guess: build BOTH candidate periods (2·base and base) and keep whichever
-  // decodes more words. The SYNC's long ~1.5T holds sit above both clusters.
-  let cands;
+  // gaps as Manchester does, and resolve the T/2-vs-T ambiguity the same
+  // deterministic way: mixed data has gaps at both base(=T/2) and 2·base(=T), while
+  // alternating data (a 0xAAAA payload) has only base(=T) gaps. Choose from the gap
+  // distribution and decode ONCE — never re-read at a half period.
+  let T;
   if (cfg.bitrate > 0) {
-    cands = [(1 / cfg.bitrate) / colTimeS];
+    T = (1 / cfg.bitrate) / colTimeS;
   } else {
     const gaps = [];
     // sub-sample crossings: at small T the integer index quantizes a T/2 gap low.
@@ -35,17 +35,15 @@ function decodeMIL1553(codes, colTimeS, cfg) {
     let sum = 0, cnt = 0;
     for (const g of gaps) if (Math.abs(g - base) <= 0.5 * base) { sum += g; cnt++; } // ±0.5 window
     if (cnt) base = sum / cnt;
-    cands = [2 * base, base];
+    let nBase = 0, n2 = 0;
+    for (const g of gaps) {
+      if (Math.abs(g - base) <= 0.5 * base) nBase++;
+      else if (Math.abs(g - 2 * base) <= 0.5 * base) n2++;
+    }
+    T = (n2 > 0 && n2 * 8 >= nBase) ? 2 * base : base;
   }
-
-  let best = null, bestWords = -1;
-  for (const T of cands) {
-    if (!isFinite(T) || !(T >= minSPB)) continue;
-    const r = decodeMIL1553At(S, T, colTimeS);
-    if (r.words > 0 && r.words > bestWords) { bestWords = r.words; best = r.res; }
-  }
-  if (bestWords < 0) return fail("mil1553", "no MIL-STD-1553 sync found");
-  return best;
+  if (!isFinite(T) || !(T >= minSPB)) return fail("mil1553", T.toFixed(1) + " samples/bit; need >= " + minSPB);
+  return decodeMIL1553At(S, T, colTimeS).res;
 }
 
 // decodeMIL1553At finds each word's SYNC and decodes it at bit period T, returning

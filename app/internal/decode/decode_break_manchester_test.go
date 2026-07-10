@@ -543,4 +543,50 @@ func TestBreakManchester(t *testing.T) {
 			t.Errorf("long record: ok=%v n=%d (want %d) err=%q", r.OK, len(r.Bytes), len(want), r.Error)
 		}
 	})
+
+	// [HW REGRESSION] Found on a real FPGA Manchester capture: a mixed-data signal
+	// (gaps at BOTH T/2 and T) whose true period cannot cleanly frame (real coding
+	// violations / missed edges) must NOT be silently re-read at HALF the true
+	// period as a confident all-alternating readout. Auto-inference must pick the
+	// true period from the gap distribution and decode there — or report no-decode.
+	t.Run("HW_half_period_false_positive", func(t *testing.T) {
+		spb := 40
+		ct := 1.0 / (float64(spb) * 100000.0)
+		// mixed data: 0x4D/0x31/0xC3 have equal-adjacent bits (T/2 gaps) while the
+		// 0xAA preamble and 0x55 are alternating (T gaps) — both clusters present.
+		want := []int{0xAA, 0x4D, 0x31, 0x55, 0xC3}
+		w := manchesterWave(mBits(want, true, 8), true, spb)
+		rc := DecodeManchester(w, ct, ManchesterCfg{IEEE: true, MSB: true})
+		if !rc.OK || !bkEqual(rc.Bytes, want) {
+			t.Fatalf("clean control failed: ok=%v got=%v want=%v", rc.OK, rc.Bytes, want)
+		}
+		if rc.SPB < float64(spb)-4 || rc.SPB > float64(spb)+4 {
+			t.Errorf("clean control chose spb=%.1f, not the true %d (half-period misread)", rc.SPB, spb)
+		}
+		// Flatten several cells per iteration so the true-period frame degrades, then
+		// require the decoder never to fall back to a ~half-period misread.
+		rng := rand.New(rand.NewSource(0x1553FA))
+		fp := 0
+		for it := 0; it < 60; it++ {
+			w2 := append([]uint8{}, w...)
+			for f := 0; f < 5+rng.Intn(4); f++ {
+				cell := 8 + rng.Intn(len(want)*8-8)
+				start := 6*spb + cell*spb
+				lvl := uint8(210)
+				if rng.Intn(2) == 0 {
+					lvl = 40
+				}
+				for j := start; j < start+spb && j < len(w2); j++ {
+					w2[j] = lvl
+				}
+			}
+			r := DecodeManchester(w2, ct, ManchesterCfg{IEEE: true, MSB: true})
+			if r.OK && r.SPB > 0 && r.SPB < float64(spb)*0.75 { // decoded at ~half the true period
+				fp++
+			}
+		}
+		if fp > 0 {
+			t.Errorf("[HW regression] %d/60 degraded frames mis-decoded at HALF the true period (confident garbage)", fp)
+		}
+	})
 }

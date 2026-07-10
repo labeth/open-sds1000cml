@@ -62,38 +62,31 @@ function decodeManchester(codes, colTimeS, cfg) {
   if (S.edges.length < 2) return fail("manchester", "too few edges");
 
   // Bit period T (samples/bit). cfg.bitrate pins it; otherwise infer from edge
-  // gaps — with an inherent ambiguity: the shortest-gap cluster is T/2 for mixed
-  // data (both T/2 and T gaps) but T for pure-alternating (…1010…) or constant
-  // data (a single cluster). So don't guess: build BOTH candidate periods
-  // (2·base and base) and keep whichever decodes more clean cells.
-  let cands;
+  // gaps: consecutive edges are T/2 apart when adjacent bits are EQUAL, or T apart
+  // when they DIFFER. Any real Manchester frame (preamble + varied data) has its
+  // SHORTEST gaps at T/2, so T = 2·(shortest-gap cluster). We deliberately do NOT
+  // try the half period T/2: for a degraded signal the true period can't frame, a
+  // T/2 hypothesis cherry-picks alternating runs into confident all-0x55 GARBAGE
+  // (a false positive). If the true period can't frame, we report no-decode.
+  let T;
   if (cfg.bitrate > 0) {
-    cands = [(1 / cfg.bitrate) / colTimeS];
+    T = (1 / cfg.bitrate) / colTimeS;
   } else {
     const gaps = [];
     // sub-sample crossings: at small T the integer index quantizes a T/2 gap of
-    // 2.5 down to 2, mis-scaling both candidate periods below the truth.
+    // 2.5 down to 2, mis-scaling the inferred period below the truth.
     for (let k = 1; k < S.edges.length; k++) { const g = S.edges[k].x - S.edges[k - 1].x; if (g >= 1) gaps.push(g); }
     if (gaps.length < 3) return fail("manchester", "too few edges / cannot infer bitrate");
     gaps.sort((a, b) => a - b);
-    let base = gaps[Math.floor(gaps.length * 0.1)];
+    let hp = gaps[Math.floor(gaps.length * 0.1)];
     let sum = 0, cnt = 0;
     // ±0.5 window (not ±0.35): absorb the {2,3} quantization spread at small T.
-    for (const g of gaps) if (Math.abs(g - base) <= 0.5 * base) { sum += g; cnt++; }
-    if (cnt) base = sum / cnt;
-    cands = [2 * base, base];
+    for (const g of gaps) if (Math.abs(g - hp) <= 0.5 * hp) { sum += g; cnt++; }
+    if (cnt) hp = sum / cnt;
+    T = 2 * hp;
   }
-
-  // Try each candidate; keep the decode with the most GOOD cells (not frames —
-  // a wrong period fragments the record into tiny frames but decodes few cells).
-  let best = null, bestScore = -1;
-  for (const T of cands) {
-    if (!isFinite(T) || !(T >= minSPB)) continue;
-    const r = decodeManchesterAt(S, T, cfg, bits, colTimeS);
-    if (r.frames > 0 && r.totalGood > bestScore) { bestScore = r.totalGood; best = r.res; }
-  }
-  if (bestScore < 0) return fail("manchester", "no Manchester frame (preamble) found");
-  return best;
+  if (!isFinite(T) || !(T >= minSPB)) return fail("manchester", T.toFixed(1) + " samples/bit; need >= " + minSPB);
+  return decodeManchesterAt(S, T, cfg, bits, colTimeS).res;
 }
 
 // decodeManchesterAt segments the edges into frames and decodes each at bit

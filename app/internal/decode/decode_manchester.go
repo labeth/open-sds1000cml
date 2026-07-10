@@ -1,6 +1,7 @@
 package decode
 
 import (
+	"fmt"
 	"math"
 	"sort"
 	"strings"
@@ -118,23 +119,24 @@ func DecodeManchester(codes []uint8, colTimeS float64, cfg ManchesterCfg) Result
 		return Result{Proto: "manchester", Error: "too few edges"}
 	}
 
-	// Bit period T in samples. cfg.Bitrate pins it; otherwise infer it from the
-	// edge gaps: consecutive edges are T/2 apart (a cell boundary then a mid-cell
-	// transition) or T apart (mid to mid). The shortest-gap cluster is the base
-	// unit — but it is AMBIGUOUS: mixed data has both T/2 and T gaps (base = T/2),
-	// while pure-alternating data (…1010…) has ONLY T gaps and constant data has
-	// ONLY T/2 gaps — a single cluster that could be either. So we don't guess: we
-	// build BOTH candidate periods (2·base and base) and keep whichever actually
-	// decodes more frames. (cfg.Bitrate, when set, pins T exactly.)
-	var cands []float64
+	// Bit period T in samples. cfg.Bitrate pins it; otherwise infer it from the edge
+	// gaps: consecutive edges are T/2 apart when adjacent bits are EQUAL (a cell
+	// boundary then a mid-cell transition) or T apart when they DIFFER (mid to mid).
+	// Any real Manchester frame — a preamble followed by varied data — therefore has
+	// its SHORTEST gaps at T/2, so T = 2·(shortest-gap cluster). We deliberately do
+	// NOT try the half period T/2 as an alternative: for a fragmented/degraded
+	// signal that the true period can't frame, a T/2 hypothesis cherry-picks the
+	// alternating runs into confident all-0x55/0xAA GARBAGE — a false positive. If
+	// the true period can't frame, we report no-decode. (Pinning cfg.Bitrate on a
+	// pathological pure-alternating-only capture overrides this if ever needed.)
+	var T float64
 	if cfg.Bitrate > 0 {
-		cands = []float64{(1.0 / float64(cfg.Bitrate)) / colTimeS}
+		T = (1.0 / float64(cfg.Bitrate)) / colTimeS
 	} else {
 		var gaps []float64
 		for k := 1; k < len(S.edges); k++ {
-			// use the sub-sample interpolated crossings: at small T the integer
-			// index quantizes a T/2 gap of 2.5 down to 2, which then mis-scales
-			// both candidate periods below the true value.
+			// sub-sample crossings: at small T the integer index quantizes a T/2 gap
+			// of 2.5 down to 2, which would mis-scale the inferred period low.
 			if g := S.edges[k].x - S.edges[k-1].x; g >= 1 {
 				gaps = append(gaps, g)
 			}
@@ -143,44 +145,28 @@ func DecodeManchester(codes []uint8, colTimeS float64, cfg ManchesterCfg) Result
 			return Result{Proto: "manchester", Error: "too few edges / cannot infer bitrate"}
 		}
 		sort.Float64s(gaps)
-		base := gaps[int(float64(len(gaps))*0.1)]
-		// Average the shortest-gap cluster. Use a ±0.5 window (not ±0.35): at small
+		hp := gaps[int(float64(len(gaps))*0.1)]
+		// Average the shortest-gap cluster with a ±0.5 window (not ±0.35): at small
 		// periods the half-gap quantizes across two integers (T/2=2.5 -> {2,3}), and
-		// the tighter window would keep only the 2s and bias `base` low. The next
-		// cluster (T, or 2T) sits a full factor of 2 away, so ±0.5 never bleeds in.
+		// a tighter window would keep only the 2s and bias it low. The next cluster
+		// (T) sits a full factor of 2 away, so ±0.5 never bleeds in.
 		sum, cnt := 0.0, 0
 		for _, g := range gaps {
-			if math.Abs(g-base) <= 0.5*base {
+			if math.Abs(g-hp) <= 0.5*hp {
 				sum += g
 				cnt++
 			}
 		}
 		if cnt > 0 {
-			base = sum / float64(cnt)
+			hp = sum / float64(cnt)
 		}
-		cands = []float64{2 * base, base} // base is either T/2 (=> 2·base) or T
+		T = 2 * hp
 	}
-
-	// Try each candidate period; keep the decode with the most GOOD cells. Score
-	// on clean-cell coverage, NOT frame count: a wrong period (T/2) fragments the
-	// record into many tiny "frames" — winning any frame-count race — while
-	// decoding only a fraction of the cells cleanly (the rest become violations).
-	// The true period decodes the whole payload, so it maximizes good cells.
-	var best Result
-	bestScore := -1
-	for _, T := range cands {
-		if math.IsInf(T, 0) || math.IsNaN(T) || !(T >= minSPB) {
-			continue
-		}
-		r, frames, good := decodeManchesterAt(S, T, cfg, bits, colTimeS)
-		if frames > 0 && good > bestScore {
-			bestScore, best = good, r
-		}
+	if math.IsInf(T, 0) || math.IsNaN(T) || !(T >= minSPB) {
+		return Result{Proto: "manchester", Error: fmt.Sprintf("%.1f samples/bit; need >= %g", T, minSPB)}
 	}
-	if bestScore < 0 {
-		return Result{Proto: "manchester", Error: "no Manchester frame (preamble) found"}
-	}
-	return best
+	res, _, _ := decodeManchesterAt(S, T, cfg, bits, colTimeS)
+	return res
 }
 
 // decodeManchesterAt segments the edges into frames and decodes each at bit
