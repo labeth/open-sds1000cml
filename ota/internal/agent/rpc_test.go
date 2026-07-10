@@ -2,6 +2,7 @@ package agent
 
 import (
 	"encoding/json"
+	"os"
 	"strings"
 	"testing"
 
@@ -16,6 +17,19 @@ func testAgent(t *testing.T) *Agent {
 	t.Setenv("OTA_HEALTH_DIR", dir)
 	t.Setenv("OTA_LISTEN", "") // don't bind in tests
 	t.Setenv("OTA_NATS", "")
+	// Never let a test near the host's real devices: the watchdog points at a
+	// plain temp file (write-safe, arming the host watchdog would be a real
+	// reset risk) and the GPMC/fpga-key at paths no process holds.
+	wd := dir + "/watchdog"
+	if err := os.WriteFile(wd, nil, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("OTA_WD_DEV", wd)
+	t.Setenv("OTA_GPMC", dir+"/Gpmc")
+	t.Setenv("OTA_FPGA_KEY", dir+"/fpga_key")
+	if err := os.MkdirAll(dir+"/ota", 0o755); err != nil {
+		t.Fatal(err) // state.json / agent.intent need the dir to exist
+	}
 	return New(config.Load())
 }
 
