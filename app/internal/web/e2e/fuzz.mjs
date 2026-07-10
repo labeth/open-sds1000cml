@@ -227,6 +227,14 @@ async function checkInvariants(op, act, iter) {
   let st = null;
   try { st = await op.status(); } catch (e) { errs.push({ inv: "I4-status", detail: "status fetch failed: " + e.message }); }
   if (st && st.wedged) errs.push({ inv: "I4-wedged", detail: "engine wedged" });
+  // I7 stuck acquisition (ONE-SHOT): the persistent half-record FSM state needs a
+  // power-cycle, so every later iteration would just repeat the report — record
+  // only the FIRST transition, with the action tail, so the tipping sequence is
+  // captured for the root-cause hunt (task: vendor full-record op).
+  if (st && st.stuck_suspect && !globalThis.__stuckSeen) {
+    globalThis.__stuckSeen = true;
+    errs.push({ inv: "I7-stuck", detail: `stuck_suspect first seen (degraded_run=${st.degraded_run || "?"}) — FPGA half-record state; power-cycle needed` });
+  }
   // I2 frames flow (when they should). NORM is exempt: a NORM engine with no
   // qualifying trigger legitimately holds frames indefinitely (the UI shows
   // WAIT) — only AUTO promises a continuously updating display.
