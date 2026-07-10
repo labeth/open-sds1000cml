@@ -27,6 +27,23 @@ function fxFail(reason) {
   return { ok: false, error: reason, proto: "flexray", spans: [], text: "", bytes: [] };
 }
 
+// flexHeaderCRC11 — FlexRay header CRC-11 (poly 0x385 = x^11+x^9+x^8+x^7+x^2+1,
+// init 0x1A) over the 20 protected header bits, MSB-first: sync(1), startup(1),
+// frameID(11), payloadLen(7). A frame whose transmitted header-CRC field
+// disagrees is corrupt and must not be accepted as a valid frame.
+function flexHeaderCRC11(sync, startup, frameID, payloadLen) {
+  const bits = [sync & 1, startup & 1];
+  for (let b = 10; b >= 0; b--) bits.push((frameID >> b) & 1);
+  for (let b = 6; b >= 0; b--) bits.push((payloadLen >> b) & 1);
+  let crc = 0x1A;
+  for (const bit of bits) {
+    const msb = (crc >> 10) & 1;
+    crc = (crc << 1) & 0x7FF;
+    if ((msb ^ bit) === 1) crc ^= 0x385;
+  }
+  return crc & 0x7FF;
+}
+
 function decodeFlexRay(codes, colTimeS, cfg) {
   cfg = cfg || {};
   const minSPB = 4;
@@ -74,7 +91,7 @@ function decodeFlexRay(codes, colTimeS, cfg) {
   };
 
   const spans = [], bytes = [], toks = [];
-  let frames = 0, consumedUntil = -1;
+  let frames = 0, goodFrames = 0, consumedUntil = -1;
 
   // Scan rising edges for a TSS->FSS boundary: a rising edge preceded by a LOW
   // run of >= tssMinLowBits bit-times. Requiring a preceding falling edge means
@@ -123,19 +140,26 @@ function decodeFlexRay(codes, colTimeS, cfg) {
     // Header bonus: the first 5 bytes are the FlexRay header —
     // flags(5) frameID(11) payloadLen(7) headerCRC(11) cycle(6) = 40 bits,
     // MSB-first. Emit a note span (kind "addr") right after the TSS.
+    let crcOK = false;
     if (frameBytes.length >= 5) {
       let hdr = 0;
       for (let hb = 0; hb < 5; hb++) hdr = hdr * 256 + (frameBytes[hb] & 0xff); // 40-bit value
       // Use 2**n (not 1<<n): JS shift counts are masked mod 32, so 1<<36 == 1<<4.
       const frameID = Math.floor(hdr / 2 ** 24) & 0x7FF;
       const payloadLen = Math.floor(hdr / 2 ** 17) & 0x7F;
+      const hdrCRC = Math.floor(hdr / 2 ** 6) & 0x7FF;
       const cycle = hdr % 64;
       const sync = Math.floor(hdr / 2 ** 36) & 1;
       const startup = Math.floor(hdr / 2 ** 35) & 1;
+      crcOK = flexHeaderCRC11(sync, startup, frameID, payloadLen) === hdrCRC;
       let note = "ID=" + frameID + " LEN=" + payloadLen + " CYC=" + cycle;
       if (sync === 1) note += " SYNC";
       if (startup === 1) note += " STARTUP";
-      frameSpans.splice(1, 0, { i0: frameSpans[1].i0, i1: frameSpans[5].i1, text: note, kind: "addr", val: frameID });
+      // A bad header CRC marks the frame corrupt: flag the header span and note
+      // so a consumer never treats the (still-extracted) bytes as trustworthy.
+      let kind = "addr";
+      if (!crcOK) { kind = "frame-error"; note = "!CRC " + note; }
+      frameSpans.splice(1, 0, { i0: frameSpans[1].i0, i1: frameSpans[5].i1, text: note, kind, val: frameID });
       frameToks.unshift("[" + note + "]");
     }
 
@@ -144,6 +168,7 @@ function decodeFlexRay(codes, colTimeS, cfg) {
       toks.push("|");
     }
     frames++;
+    if (crcOK) goodFrames++;
     for (const s of frameSpans) spans.push(s);
     for (const t of frameToks) toks.push(t);
     for (const bb of frameBytes) bytes.push(bb);
@@ -153,7 +178,11 @@ function decodeFlexRay(codes, colTimeS, cfg) {
   if (frames === 0) return fxFail("no FlexRay frame (TSS) found");
   let baud = cfg.bitrate || 0;
   if (colTimeS > 0) baud = Math.round(1 / (T * colTimeS));
-  return { ok: true, error: null, proto: "flexray", spans, text: toks.join(" "), bytes,
+  // OK requires at least one frame with a valid header CRC. Framed-but-bad-CRC
+  // frames are still returned (flagged) in spans/bytes for display, but never make
+  // OK true on their own — a corrupted header must not read as a confident frame.
+  return { ok: goodFrames > 0, error: goodFrames > 0 ? null : "no CRC-valid FlexRay header", proto: "flexray",
+    spans, text: toks.join(" "), bytes,
     meta: { bitrate: baud, samplesPerBit: T, threshold: S.threshold, lowRail: S.lowRail, highRail: S.highRail, frames } };
 }
 

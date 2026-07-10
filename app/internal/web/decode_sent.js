@@ -8,6 +8,20 @@
 
 function sentHex1(v) { return (v & 0xf).toString(16).toUpperCase(); }
 
+// sentCRC4Table is the SAE J2716 CRC-4 nibble table (polynomial x^4+x^3+x^2+1).
+const sentCRC4Table = [0, 13, 7, 10, 14, 3, 9, 4, 1, 12, 6, 11, 15, 2, 8, 5];
+
+// sentCRC4 computes the J2716 CRC-4 over the DATA nibbles (seed 5, augmented with
+// a final table step). Covers the data nibbles only — not status, not the CRC
+// nibble. A frame whose trailing CRC nibble differs is flagged, so a corrupted
+// CRC (and noise, whose CRC is essentially never self-consistent) is not accepted.
+function sentCRC4(data) {
+  let crc = 5;
+  for (const d of data) crc = sentCRC4Table[crc] ^ (d & 0xf);
+  crc = sentCRC4Table[crc]; // augmented final nibble
+  return crc & 0xf;
+}
+
 function decodeSENT(codes, colTimeS, cfg) {
   cfg = cfg || {};
   const slice = (typeof sliceChannel === "function")
@@ -69,6 +83,7 @@ function decodeSENT(codes, colTimeS, cfg) {
   const looksSync = (P, tick) => tick > 0 && Math.abs(P / tick - SYNC) <= TOL * SYNC;
 
   const spans = [], bytes = [], toks = [];
+  let goodCRC = false; // at least one frame whose CRC-4 checks out
   let curTick = seedTick, k = firstSync, guard = 0;
   const maxIter = np + 4; // paranoia: k strictly advances, so this never trips
   while (k < np) {
@@ -79,17 +94,33 @@ function decodeSENT(codes, colTimeS, cfg) {
     if (!haveTick) curTick = period[k] / SYNC; // recalibrate the tick every frame
     k++;
 
+    // Collect the frame's nibbles so the trailing CRC nibble can be VERIFIED
+    // (J2716 CRC-4 over the data nibbles) — a bad CRC is flagged, not accepted.
+    const frameNibs = [];
     for (let nbIdx = 0; nbIdx < nib && k < np; nbIdx++) {
       const P = period[k];
       if (looksSync(P, curTick)) break; // SYNC mid-frame => truncated; re-handle it
       const val = Math.round(P / curTick) - 12;
-      const kind = (nbIdx === nib - 1) ? "crc" : "data";
-      if (val < 0 || val > 15) {
-        const cv = val < 0 ? 0 : (val > 15 ? 15 : val);
+      if (val < 0 || val > 15) {        // out-of-range pulse: a coding error
+        const cv = val < 0 ? 0 : 15;
         spans.push({ i0: fallI[k], i1: fallI[k + 1], text: "!" + sentHex1(cv), kind: "frame-error", val: cv });
         toks.push("!" + sentHex1(cv));
+        frameNibs.push(cv);
+        k++;
+        continue;
+      }
+      frameNibs.push(val);
+      if (nbIdx === nib - 1) {          // CRC nibble: verify over the data nibbles [1 .. len-2]
+        const nn = frameNibs.length;
+        const data = nn >= 2 ? frameNibs.slice(1, nn - 1) : [];
+        const valid = sentCRC4(data) === val;
+        let kind = "crc", txt = sentHex1(val);
+        if (!valid) { kind = "frame-error"; txt = "!" + sentHex1(val); } else { goodCRC = true; }
+        spans.push({ i0: fallI[k], i1: fallI[k + 1], text: txt, kind, val });
+        toks.push(txt);
+        bytes.push(val);
       } else {
-        spans.push({ i0: fallI[k], i1: fallI[k + 1], text: sentHex1(val), kind, val });
+        spans.push({ i0: fallI[k], i1: fallI[k + 1], text: sentHex1(val), kind: "data", val });
         toks.push(sentHex1(val));
         bytes.push(val);
       }
@@ -103,8 +134,11 @@ function decodeSENT(codes, colTimeS, cfg) {
     }
   }
   if (spans.length === 0) return fail("no SENT SYNC (~56-tick) pulse found");
-  return { ok: true, error: null, proto: "sent", spans, text: toks.join(" "), bytes,
-    meta: { tickSamples: curTick, threshold: S.threshold, nibbles: nib } };
+  // OK means a genuinely valid frame was decoded — at least one with a good CRC-4.
+  // Corrupted frames still return their spans (flagged) but OK=false so nothing
+  // downstream treats garbage as a confirmed SENT frame.
+  return { ok: goodCRC, error: goodCRC ? null : "no CRC-valid SENT frame", proto: "sent",
+    spans, text: toks.join(" "), bytes, meta: { tickSamples: curTick, threshold: S.threshold, nibbles: nib } };
 }
 
 if (typeof module !== "undefined" && module.exports) module.exports = { decodeSENT, sentHex1 };

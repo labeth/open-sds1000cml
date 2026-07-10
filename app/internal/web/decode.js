@@ -138,7 +138,10 @@ function decodeUART(codes, colTimeS, cfg) {
 
   const parityOf = v => { const p = popcount(v & ((1 << bits) - 1)) & 1; return parity === "even" ? p : (1 - p); };
   const spans = [], bytes = [], toks = [];
-  const need = Math.ceil((bits + 2) * SPB);
+  // The parity bit lengthens the frame — count it so a frame near the record end
+  // isn't started with its stop bit off the captured range.
+  const pcNeed = parity !== "none" ? 1 : 0;
+  const need = Math.ceil((bits + 2 + pcNeed) * SPB);
   let i = guard;
   while (i < n - need - guard) {
     if (logicAt(S, i - 1) === idle && logicAt(S, i) === (1 - idle)) { // start edge
@@ -159,7 +162,8 @@ function decodeUART(codes, colTimeS, cfg) {
           if (pb >= 0 && pb !== parityOf(val)) { kind = "parity-error"; pfx = "!"; }
         }
         const sb = logicAt(S, Math.round(start + (1.5 + bits + pc) * SPB));
-        if (sb >= 0 && sb !== idle) { if (kind === "data") kind = "frame-error"; pfx = "!"; }
+        if (sb < 0) { spans.push({ i0: start, i1, text: "gap", kind: "gap" }); i = start + 1; continue; } // stop bit off the record: incomplete frame
+        if (sb !== idle) { if (kind === "data") kind = "frame-error"; pfx = "!"; } // wrong stop level = framing error
         spans.push({ i0: start, i1, text: pfx + fmtByte(val, fmt), kind, val });
         toks.push(pfx + fmtByte(val, fmt)); bytes.push(val);
         i = Math.round(start + (bits + 1 + pc) * SPB) + 1;

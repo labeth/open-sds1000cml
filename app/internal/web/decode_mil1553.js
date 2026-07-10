@@ -17,27 +17,40 @@ function decodeMIL1553(codes, colTimeS, cfg) {
   if (!S.ok) return fail("mil1553", S.reason);
   if (S.edges.length < 2) return fail("mil1553", "too few edges");
 
-  // Bit period T (samples/bit). cfg.bitrate pins it; otherwise infer from the
-  // edge gaps as Manchester does: consecutive edges are T/2 apart (a cell
-  // boundary then a mid-cell transition) or T apart, so the shortest gaps
-  // cluster at the half-period. Low percentile, refine on the cluster, double.
-  // The SYNC's long ~1.5T/2T holds sit far above the T/2 cluster.
-  let T;
+  // Bit period T (samples/bit). cfg.bitrate pins it; otherwise infer from the edge
+  // gaps as Manchester does — and with the same ambiguity: the shortest-gap
+  // cluster is T/2 for mixed data but T for alternating data (a 0xAAAA payload).
+  // Don't guess: build BOTH candidate periods (2·base and base) and keep whichever
+  // decodes more words. The SYNC's long ~1.5T holds sit above both clusters.
+  let cands;
   if (cfg.bitrate > 0) {
-    T = (1 / cfg.bitrate) / colTimeS;
+    cands = [(1 / cfg.bitrate) / colTimeS];
   } else {
     const gaps = [];
-    for (let k = 1; k < S.edges.length; k++) { const g = S.edges[k].i - S.edges[k - 1].i; if (g >= 1) gaps.push(g); }
+    // sub-sample crossings: at small T the integer index quantizes a T/2 gap low.
+    for (let k = 1; k < S.edges.length; k++) { const g = S.edges[k].x - S.edges[k - 1].x; if (g >= 1) gaps.push(g); }
     if (gaps.length < 3) return fail("mil1553", "too few edges / cannot infer bitrate");
     gaps.sort((a, b) => a - b);
-    let hp = gaps[Math.floor(gaps.length * 0.1)];
+    let base = gaps[Math.floor(gaps.length * 0.1)];
     let sum = 0, cnt = 0;
-    for (const g of gaps) if (Math.abs(g - hp) <= 0.35 * hp) { sum += g; cnt++; }
-    if (cnt) hp = sum / cnt;
-    T = 2 * hp;
+    for (const g of gaps) if (Math.abs(g - base) <= 0.5 * base) { sum += g; cnt++; } // ±0.5 window
+    if (cnt) base = sum / cnt;
+    cands = [2 * base, base];
   }
-  if (!isFinite(T) || !(T >= minSPB)) return fail("mil1553", T.toFixed(1) + " samples/bit; need >= " + minSPB);
 
+  let best = null, bestWords = -1;
+  for (const T of cands) {
+    if (!isFinite(T) || !(T >= minSPB)) continue;
+    const r = decodeMIL1553At(S, T, colTimeS);
+    if (r.words > 0 && r.words > bestWords) { bestWords = r.words; best = r.res; }
+  }
+  if (bestWords < 0) return fail("mil1553", "no MIL-STD-1553 sync found");
+  return best;
+}
+
+// decodeMIL1553At finds each word's SYNC and decodes it at bit period T, returning
+// { res, words } so the caller can score competing T hypotheses.
+function decodeMIL1553At(S, T, colTimeS) {
   const spans = [], bytes = [], toks = [];
   let words = 0;
   const hex4 = v => (v & 0xffff).toString(16).toUpperCase().padStart(4, "0");
@@ -85,12 +98,13 @@ function decodeMIL1553(codes, colTimeS, cfg) {
     bytes.push(word);
     words++;
   }
-  if (words === 0) return fail("mil1553", "no MIL-STD-1553 sync found");
+  if (words === 0) return { res: fail("mil1553", "no MIL-STD-1553 sync found"), words: 0 };
 
-  let baud = cfg.bitrate || 0;
+  let baud = 0;
   if (colTimeS > 0) baud = Math.round(1 / (T * colTimeS));
-  return { ok: true, error: null, proto: "mil1553", spans, text: toks.join(" "), bytes,
+  const res = { ok: true, error: null, proto: "mil1553", spans, text: toks.join(" "), bytes,
     meta: { bitrate: baud, samplesPerBit: T, threshold: S.threshold, lowRail: S.lowRail, highRail: S.highRail } };
+  return { res, words };
 }
 
 if (typeof module !== "undefined" && module.exports)

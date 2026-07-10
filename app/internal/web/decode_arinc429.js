@@ -93,14 +93,19 @@ function decodeARINC429(codes, colTimeS, cfg) {
   for (const sg of segs) {
     const s0 = pulses[sg[0]].i;
     const bits = new Array(32).fill(-1);
-    let filled = 0;
+    let filled = 0, hits = 0;
     for (let j = sg[0]; j <= sg[1]; j++) {
       const k = Math.round((pulses[j].i - s0) / T);
       if (k < 0 || k >= 32) continue; // stray pulse outside the 32-bit window
+      hits++;                         // pulses that land inside the word window
       if (bits[k] === -1) filled++;
       bits[k] = pulses[j].sign > 0 ? 1 : 0;
     }
-    if (filled !== 32) continue; // partial / malformed word (record-edge) — drop it
+    // A real ARINC word is one RZ pulse per bit cell => ~32 pulses. Far more means
+    // MANY per cell — dense noise that merely happened to fill all 32 slots. The
+    // 1-bit odd parity passes ~50% of the time, so without this density gate noise
+    // is confidently mis-accepted.
+    if (filled !== 32 || hits > 34) continue; // partial word, or noise (multiple pulses/cell)
 
     // Fields, transmission order (bits[0] = first bit on the wire = ARINC #1).
     let labelRev = 0;

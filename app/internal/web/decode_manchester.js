@@ -56,67 +56,93 @@ function decodeManchester(codes, colTimeS, cfg) {
   cfg = cfg || {};
   const bits = cfg.bits || 8;
   if (bits < 1 || bits > 16) return fail("manchester", "data bits out of range (1..16)");
-  const ieee = !!cfg.ieee, msb = !!cfg.msb, fmt = cfg.fmt || "hex";
   const minSPB = 4;
   const S = sliceChannel(codes, cfg);
   if (!S.ok) return fail("manchester", S.reason);
   if (S.edges.length < 2) return fail("manchester", "too few edges");
 
   // Bit period T (samples/bit). cfg.bitrate pins it; otherwise infer from edge
-  // gaps: consecutive edges are T/2 apart (a cell boundary then a mid-cell
-  // transition) or T apart (mid to mid), so the shortest gaps cluster at the
-  // half-period. Take a low percentile (robust to one stray short gap), refine
-  // on that cluster, and double it.
-  let T;
+  // gaps — with an inherent ambiguity: the shortest-gap cluster is T/2 for mixed
+  // data (both T/2 and T gaps) but T for pure-alternating (…1010…) or constant
+  // data (a single cluster). So don't guess: build BOTH candidate periods
+  // (2·base and base) and keep whichever decodes more clean cells.
+  let cands;
   if (cfg.bitrate > 0) {
-    T = (1 / cfg.bitrate) / colTimeS;
+    cands = [(1 / cfg.bitrate) / colTimeS];
   } else {
     const gaps = [];
-    for (let k = 1; k < S.edges.length; k++) { const g = S.edges[k].i - S.edges[k - 1].i; if (g >= 1) gaps.push(g); }
+    // sub-sample crossings: at small T the integer index quantizes a T/2 gap of
+    // 2.5 down to 2, mis-scaling both candidate periods below the truth.
+    for (let k = 1; k < S.edges.length; k++) { const g = S.edges[k].x - S.edges[k - 1].x; if (g >= 1) gaps.push(g); }
     if (gaps.length < 3) return fail("manchester", "too few edges / cannot infer bitrate");
     gaps.sort((a, b) => a - b);
-    let hp = gaps[Math.floor(gaps.length * 0.1)];
+    let base = gaps[Math.floor(gaps.length * 0.1)];
     let sum = 0, cnt = 0;
-    for (const g of gaps) if (Math.abs(g - hp) <= 0.35 * hp) { sum += g; cnt++; }
-    if (cnt) hp = sum / cnt;
-    T = 2 * hp;
+    // ±0.5 window (not ±0.35): absorb the {2,3} quantization spread at small T.
+    for (const g of gaps) if (Math.abs(g - base) <= 0.5 * base) { sum += g; cnt++; }
+    if (cnt) base = sum / cnt;
+    cands = [2 * base, base];
   }
-  if (!isFinite(T) || !(T >= minSPB)) return fail("manchester", T.toFixed(1) + " samples/bit; need >= " + minSPB);
 
-  // Segment the edges into FRAMES: a captured record holds several frames
-  // separated by idle gaps, and a free-running scope starts at a random phase,
-  // so the leading frame is usually partial. Split where consecutive edges are
-  // more than 1.5·T apart (an inter-frame idle), then decode each frame on its
-  // OWN phase lock — one global phase cannot align frames whose gaps are a
-  // non-integer number of bit periods.
-  const segs = [];       // inclusive edge-index ranges
+  // Try each candidate; keep the decode with the most GOOD cells (not frames —
+  // a wrong period fragments the record into tiny frames but decodes few cells).
+  let best = null, bestScore = -1;
+  for (const T of cands) {
+    if (!isFinite(T) || !(T >= minSPB)) continue;
+    const r = decodeManchesterAt(S, T, cfg, bits, colTimeS);
+    if (r.frames > 0 && r.totalGood > bestScore) { bestScore = r.totalGood; best = r.res; }
+  }
+  if (bestScore < 0) return fail("manchester", "no Manchester frame (preamble) found");
+  return best;
+}
+
+// decodeManchesterAt segments the edges into frames and decodes each at bit
+// period T, returning { res, frames, totalGood } so the caller can score
+// competing T hypotheses. Mirrors the Go helper of the same name.
+function decodeManchesterAt(S, T, cfg, bits, colTimeS) {
+  const ieee = !!cfg.ieee, msb = !!cfg.msb, fmt = cfg.fmt || "hex";
+  // Split on an inter-frame idle. Use 2.5·T (not 1.5·T): a single flattened cell
+  // (coding violation) opens a ~2·T gap that 1.5·T would split, orphaning the
+  // corrupted tail unreported. Keeping it in-frame lets recoverManchester mark it.
+  const segs = [];
   let segStart = 0;
   for (let k = 1; k < S.edges.length; k++) {
-    if (S.edges[k].i - S.edges[k - 1].i > 1.5 * T) { segs.push([segStart, k - 1]); segStart = k; }
+    if (S.edges[k].i - S.edges[k - 1].i > 2.5 * T) { segs.push([segStart, k - 1]); segStart = k; }
   }
   segs.push([segStart, S.edges.length - 1]);
 
   const spans = [], bytes = [], toks = [];
-  let frames = 0;
+  let frames = 0, totalGood = 0;
   for (let sgIdx = 0; sgIdx < segs.length; sgIdx++) {
     const sg = segs[sgIdx];
     if (sg[1] <= sg[0]) continue;              // a lone edge carries no cell
-    // Phase lock this frame: the segment's first edge is a cell boundary or a
-    // mid-cell transition (cell began half a period earlier). Try both, keep
-    // the phase with more clean mid transitions and fewer coding violations.
+    // Phase lock: the segment's first edge is a cell boundary (phase A) or a
+    // mid-cell transition (phase B, boundary half a period earlier). Score each.
     const s0e = S.edges[sg[0]].x, lastE = S.edges[sg[1]].x;
-    let cells = [], bestScore = -(1 << 30), bestGood = 0;
-    for (const s0 of [s0e, s0e - 0.5 * T]) {
-      const rec = recoverManchester(S, s0, T, ieee, lastE);
-      const sc = rec.good - 4 * rec.viol;
-      if (sc > bestScore) { bestScore = sc; bestGood = rec.good; cells = rec.cells; }
+    const rA = recoverManchester(S, s0e, T, ieee, lastE);
+    const rB = recoverManchester(S, s0e - 0.5 * T, T, ieee, lastE);
+    const scA = rA.good - 4 * rA.viol, scB = rB.good - 4 * rB.viol;
+    let cells, bestGood;
+    const bestScore = Math.max(scA, scB);
+    if (scA > scB) { cells = rA.cells; bestGood = rA.good; }
+    else if (scB > scA) { cells = rB.cells; bestGood = rB.good; }
+    else {
+      // A bare constant-bit frame is a pure square wave: both phases decode
+      // cleanly but into complementary bits — an inherent ±half-cell ambiguity.
+      // Resolve it by idle SYMMETRY: the bit whose leading half-cell equals the
+      // idle leaves an extra ~half-period of idle on the LEAD side (first edge is
+      // a mid, not a boundary), so the leading idle run outlasts the trailing one.
+      let leadRun = s0e;
+      if (sg[0] > 0) leadRun = s0e - S.edges[sg[0] - 1].x;
+      let trailRun = S.n - lastE;
+      if (sg[1] < S.edges.length - 1) trailRun = S.edges[sg[1] + 1].x - lastE;
+      if (leadRun > trailRun) { cells = rB.cells; bestGood = rB.good; }
+      else { cells = rA.cells; bestGood = rA.good; }
     }
-    if (!cells.length || bestScore <= 0 || bestGood < bits) continue; // need at least one whole byte of clean cells
-    // Leading alternating run = preamble. The FIRST/LAST segment of a free-
-    // running capture may be a frame truncated by the record edge (it starts or
-    // ends mid-data); require a preamble there to drop that partial. Interior
-    // segments are whole frames bounded by idle gaps on both sides, so accept
-    // them as-is (and a lone single frame — the synthetic test case — too).
+    if (!cells.length || bestScore <= 0 || bestGood < bits) continue; // need one whole byte of clean cells
+    // Leading alternating run = preamble. A FIRST/LAST segment of a free-running
+    // capture may be truncated by the record edge; require a preamble there to
+    // drop that partial. Interior segments are whole frames — accept as-is.
     let run = 0;
     if (cells[0].bit >= 0) {
       run = 1;
@@ -129,9 +155,10 @@ function decodeManchester(codes, colTimeS, cfg) {
       toks.push("|");
     }
     frames++;
+    totalGood += bestGood;
     spans.push({ i0: cells[0].i0, i1: cells[run - 1].i1, text: "SYNC", kind: "start" });
     // Pack this frame's cells into words; a coding violation flushes the word.
-    let curVal = 0, curBits = 0, byteStart = 0;
+    let curVal = 0, curBits = 0, byteStart = 0, lastI1 = 0;
     for (const c of cells) {
       if (c.bit < 0) {
         spans.push({ i0: c.i0, i1: c.i1, text: "!", kind: "frame-error" });
@@ -139,6 +166,7 @@ function decodeManchester(codes, colTimeS, cfg) {
         continue;
       }
       if (curBits === 0) { byteStart = c.i0; curVal = 0; }
+      lastI1 = c.i1;
       if (msb) curVal = (curVal << 1) | c.bit; else curVal |= c.bit << curBits;
       curBits++;
       if (curBits === bits) {
@@ -147,14 +175,22 @@ function decodeManchester(codes, colTimeS, cfg) {
         curVal = 0; curBits = 0;
       }
     }
+    // A dangling partial word means a coding violation ate the frame's tail (the
+    // erased mid-transition erased the last edge, so the violated cell fell just
+    // outside recoverManchester's window) — flag the stub, don't drop it silently.
+    if (curBits > 0) {
+      spans.push({ i0: byteStart, i1: lastI1, text: "!", kind: "frame-error" });
+      toks.push("!");
+    }
   }
-  if (frames === 0) return fail("manchester", "no Manchester frame (preamble) found");
+  if (frames === 0) return { res: fail("manchester", "no Manchester frame (preamble) found"), frames: 0, totalGood: 0 };
 
   let baud = cfg.bitrate || 0;
   if (colTimeS > 0) baud = Math.round(1 / (T * colTimeS));
-  return { ok: true, error: null, proto: "manchester", spans, text: toks.join(" "), bytes,
+  const res = { ok: true, error: null, proto: "manchester", spans, text: toks.join(" "), bytes,
     meta: { bitrate: baud, samplesPerBit: T, ieee, bitOrder: msb ? "msb" : "lsb", threshold: S.threshold, lowRail: S.lowRail, highRail: S.highRail } };
+  return { res, frames, totalGood };
 }
 
 if (typeof module !== "undefined" && module.exports)
-  module.exports = { recoverManchester, decodeManchester };
+  module.exports = { recoverManchester, decodeManchester, decodeManchesterAt };

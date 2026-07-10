@@ -55,6 +55,7 @@ function canNext(r) {
   if (r.stuffOn && r.runLen >= 5) {
     const sv = canReadRaw(r);
     if (sv < 0) return -1;
+    if (sv === r.runVal) r.stuffErr = true; // 6th identical bit = a stuff violation
     r.stuffed++;
     r.runVal = sv; r.runLen = 1;
   }
@@ -98,7 +99,7 @@ function canInferSPB(S) {
 // Returns { ok, spans, toks, bytes, endI }.
 function canOneFrame(S, dominantLow, sofStart, spb, dataSpb) {
   const r = { S, dominantLow, pos: sofStart, spb, runVal: -1, runLen: 0,
-    stuffOn: true, record: true, stuffed: 0, bits: [], li0: -1, li1: -1 };
+    stuffOn: true, record: true, stuffed: 0, stuffErr: false, bits: [], li0: -1, li1: -1 };
   const fail = { ok: false };
   const spans = [], toks = [];
 
@@ -186,8 +187,9 @@ function canOneFrame(S, dominantLow, sofStart, spb, dataSpb) {
   const crcF = canReadField(r, 15);
   if (!crcF.ok) return fail;
   let crcTxt = crcF.val.toString(16).toUpperCase().padStart(4, "0");
-  if (crcF.val !== want) crcTxt = "!" + crcTxt;
-  spans.push({ i0: crcF.i0, i1: crcF.i1, text: "CRC:" + crcTxt, kind: "crc", val: crcF.val });
+  let crcKind = "crc";
+  if (crcF.val !== want || r.stuffErr) { crcTxt = "!" + crcTxt; crcKind = "frame-error"; } // CRC mismatch OR stuff violation
+  spans.push({ i0: crcF.i0, i1: crcF.i1, text: "CRC:" + crcTxt, kind: crcKind, val: crcF.val });
   toks.push("CRC:" + crcTxt);
 
   // CRC delimiter (stuffing still on to swallow a trailing stuff bit), then ACK.
