@@ -15,6 +15,10 @@ import (
 
 var handlers = map[string]handlerFn{}
 
+// osExit is os.Exit behind a var so the agent.update/agent.restart happy
+// paths are testable in-process; production behavior is identical.
+var osExit = os.Exit
+
 func register(cmd string, fn handlerFn) { handlers[cmd] = fn }
 
 func init() {
@@ -357,7 +361,7 @@ func hAgentUpdate(a *Agent, args json.RawMessage) (any, error) {
 		a.log.Printf("agent.update: exiting to hand off to slot %s", target)
 		a.markIntent("update") // deliberate exit — not a crash for the respawn loop
 		a.Stop()
-		os.Exit(0)
+		osExit(0)
 	}()
 	return map[string]any{"active_agent": target, "sha256": sum, "note": "agent exiting; startup.sh will launch the new slot"}, nil
 }
@@ -368,7 +372,7 @@ func hAgentRestart(a *Agent, _ json.RawMessage) (any, error) {
 		a.log.Printf("agent.restart requested")
 		a.markIntent("restart") // deliberate exit — the respawn loop must not count it as a crash
 		a.Stop()
-		os.Exit(0)
+		osExit(0)
 	}()
 	return map[string]any{"ok": true, "note": "agent exiting; startup.sh will respawn"}, nil
 }

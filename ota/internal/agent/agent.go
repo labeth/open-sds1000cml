@@ -36,6 +36,17 @@ const (
 	agentPidFile = "ota-agent.pid"
 )
 
+// gpmcReader is the read-only register surface the agent needs from the
+// inherited /dev/Gpmc descriptor. *gpmc.Reader is the sole production
+// implementation (assigned in New); the interface exists so the off-device
+// test harness can stand in an idle/busy engine without a real bus.
+type gpmcReader interface {
+	OK() bool
+	Read(plane uint8, sel uint16) (uint16, error)
+	VerifyVersion() (uint16, bool)
+	FillFrozen(pairs int, gap time.Duration) (bool, []uint16, error)
+}
+
 type Agent struct {
 	cfg   *config.Config
 	st    *stateFile
@@ -46,7 +57,7 @@ type Agent struct {
 	// Inherited boot descriptors (raw ints; never closed, never wrapped).
 	gpmcFD    int
 	fpgaKeyFD int
-	gpmc      *gpmc.Reader
+	gpmc      gpmcReader
 
 	started time.Time
 	hbSeq   atomic.Int64
@@ -71,6 +82,11 @@ type Agent struct {
 
 	// takeover serialization
 	tkMu sync.Mutex
+
+	// TCP control listener bound address (set once serveTCP is listening;
+	// observable so tests and diagnostics can find an OTA_LISTEN=:0 port)
+	tcpMu   sync.Mutex
+	tcpAddr string
 }
 
 type appState struct {

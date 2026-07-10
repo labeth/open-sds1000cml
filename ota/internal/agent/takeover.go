@@ -56,6 +56,17 @@ func (r *TakeoverResult) step(format string, args ...any) {
 
 func (r *TakeoverResult) Summary() string { return strings.Join(r.Steps, "; ") }
 
+// Test seams: production values are the real implementations and every call
+// site behaves exactly as before. They exist because the factory SCPI service
+// sits behind the fixed (privileged) portmapper port 111, the idle window is
+// multiple seconds, and reassertNetwork is a fire-and-forget goroutine —
+// none of which an off-device test can observe otherwise.
+var (
+	vxi11Dial           = vxi11.Dial
+	takeoverIdleTimeout = 12 * time.Second
+	reassertNetworkFn   = (*Agent).reassertNetwork
+)
+
 // shellish exe basenames are infrastructure (our own boot chain / shells)
 // that may hold the inherited fds but are not the factory app.
 var shellish = map[string]bool{
@@ -153,7 +164,7 @@ func (a *Agent) Takeover(opts TakeoverOpts) *TakeoverResult {
 	}
 
 	// Gate 3: idle landing confirmed on the inherited fd (post-STOP reads).
-	if err := a.confirmIdle(res, 12*time.Second); err != nil {
+	if err := a.confirmIdle(res, takeoverIdleTimeout); err != nil {
 		if !opts.Force {
 			res.Err = "idle landing not confirmed: " + err.Error()
 			return res
@@ -183,7 +194,7 @@ func (a *Agent) Takeover(opts TakeoverOpts) *TakeoverResult {
 	// Network re-assert (async): the kill may take the vendor's network
 	// management with it; the address usually persists in the kernel, but if
 	// it drops, remote access dies with it.
-	go a.reassertNetwork(preIPs)
+	go reassertNetworkFn(a, preIPs)
 
 	a.event("takeover.done", map[string]any{"killed": killed})
 	res.OK = true
@@ -220,7 +231,7 @@ func (a *Agent) reclaimBus() {
 // factoryStop speaks the factory app's own VXI-11 SCPI (spec 11): both the
 // momentary STOP verb and TRMD STOP for good measure. Always destroy_link.
 func (a *Agent) factoryStop() error {
-	cl, err := vxi11.Dial("127.0.0.1", 5*time.Second)
+	cl, err := vxi11Dial("127.0.0.1", 5*time.Second)
 	if err != nil {
 		return err
 	}

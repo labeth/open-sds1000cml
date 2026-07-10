@@ -17,6 +17,9 @@ func (a *Agent) serveTCP() {
 		a.log.Printf("tcp listen %s: %v", a.cfg.TCPListen, err)
 		return
 	}
+	a.tcpMu.Lock()
+	a.tcpAddr = ln.Addr().String()
+	a.tcpMu.Unlock()
 	a.log.Printf("tcp control listening on %s", a.cfg.TCPListen)
 	for {
 		select {
@@ -37,6 +40,15 @@ func (a *Agent) serveTCP() {
 		}
 		go a.handleConn(conn)
 	}
+}
+
+// TCPAddr reports the TCP control listener's bound address ("" until it is
+// listening). With OTA_LISTEN=127.0.0.1:0 this is how a harness learns the
+// ephemeral port; it records state only and changes no listener behavior.
+func (a *Agent) TCPAddr() string {
+	a.tcpMu.Lock()
+	defer a.tcpMu.Unlock()
+	return a.tcpAddr
 }
 
 func (a *Agent) handleConn(conn net.Conn) {

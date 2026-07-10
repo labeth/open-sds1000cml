@@ -124,6 +124,13 @@ func Dial(host string, timeout time.Duration) (*Client, error) {
 	return dialAt(net.JoinHostPort(host, "111"), host, timeout)
 }
 
+// DialAt is Dial with an explicit portmapper address instead of the fixed
+// host:111 — a seam for test harnesses, which cannot bind the privileged
+// portmapper port. Dial(host, t) is exactly DialAt(host+":111", host, t).
+func DialAt(pmAddr, host string, timeout time.Duration) (*Client, error) {
+	return dialAt(pmAddr, host, timeout)
+}
+
 // dialAt is Dial with an explicit portmapper address (test seam).
 func dialAt(pmAddr, host string, timeout time.Duration) (*Client, error) {
 	pm, err := net.DialTimeout("tcp", pmAddr, timeout)
