@@ -119,6 +119,104 @@ func buCountKinds(spans []Span) (frameErr, parityErr, gap int) {
 	return
 }
 
+// buInjectRing models RINGY edges: for every transition in w it injects a
+// spurious 1..maxW-sample bounce back to the pre-transition level immediately
+// after the edge (full-rail, so it crosses the slicer's hysteresis band) — the
+// documented auto-baud killer shape (1-3-sample spurious toggles near
+// transitions). Reads the clean wave, writes a ringing copy.
+func buInjectRing(w []uint8, rng *rand.Rand, maxW int) []uint8 {
+	out := append([]uint8{}, w...)
+	for i := 1; i < len(w); i++ {
+		if w[i] == w[i-1] {
+			continue
+		}
+		d := 1 + rng.Intn(maxW)
+		for j := i + 1; j <= i+d && j < len(out); j++ {
+			out[j] = w[i-1]
+		}
+	}
+	return out
+}
+
+// TestBreakUartRingyEdges pins the auto-baud hardening: ringy/glitchy edges
+// (spurious toggles hugging every transition) used to hijack the gap
+// percentile and yield a bogus samples-per-bit — auto-baud then decoded
+// garbage or nothing. The cluster-walk + ring-scale de-glitch inference must
+// round-trip clean payloads through heavy ringing, while GENUINELY ambiguous
+// input (pulse widths that fit no single bit period) must still be refused
+// with the explicit "set it explicitly" error — honesty is not negotiable.
+func TestBreakUartRingyEdges(t *testing.T) {
+	const ct = 1e-6
+	rng := rand.New(rand.NewSource(0x51C4))
+
+	// ---- 60 ringy round-trips: every transition rings, payload must survive.
+	for it := 0; it < 60; it++ {
+		bits := 8
+		parity := []string{"none", "even", "odd"}[rng.Intn(3)]
+		spbT := 12.0 + rng.Float64()*20.0 // 12..32 samples/bit (ring ≤4 ≪ bit)
+		baud := int(1.0/(spbT*ct) + 0.5)
+		spb := (1.0 / float64(baud)) / ct
+		nb := 4 + rng.Intn(6)
+		want := make([]int, nb)
+		for i := range want {
+			want[i] = rng.Intn(256)
+		}
+		seq := buBuildSeq(want, bits, parity, 6+rng.Intn(10), bits+16, 1+rng.Intn(3))
+		w := buInjectRing(buRasterize(seq, spb, rng.Intn(int(spb))), rng, 3)
+		r := DecodeUART(w, ct, UARTCfg{Bits: bits, Parity: parity}) // AUTO baud
+		if !r.OK {
+			t.Errorf("ringy it=%d (spb=%.2f par=%s): auto-baud refused a clean ringing frame: %s",
+				it, spb, parity, r.Error)
+			continue
+		}
+		if !buEq(r.Bytes, want) {
+			t.Errorf("ringy it=%d (spb=%.2f par=%s): payload mismatch\n  want=%v\n  got =%v (SPB=%.2f)",
+				it, spb, parity, want, r.Bytes, r.SPB)
+			continue
+		}
+		if fe, pe, _ := buCountKinds(r.Spans); fe != 0 || pe != 0 {
+			t.Errorf("ringy it=%d: clean ringing frame flagged frame-err=%d parity-err=%d", it, fe, pe)
+		}
+	}
+
+	// ---- Explicit-baud sanity under the same ringing (mid-bit samples are
+	// unaffected by edge ring, so this must also hold).
+	{
+		want := []int{0x48, 0x69, 0x21, 0xF0}
+		spb := 16.0
+		w := buInjectRing(buRasterize(buBuildSeq(want, 8, "none", 8, 24, 1), spb, 3), rng, 3)
+		r := DecodeUART(w, ct, UARTCfg{Baud: int(1.0 / (spb * ct))})
+		if !r.OK || !buEq(r.Bytes, want) {
+			t.Errorf("ringy explicit baud: ok=%v got=%v want=%v err=%s", r.OK, r.Bytes, want, r.Error)
+		}
+	}
+
+	// ---- Honesty: alternating 11/17-sample pulses fit NO single bit width
+	// (neither is an integer multiple of the other within tolerance). The
+	// hardened inference must refuse, not guess.
+	{
+		var w []uint8
+		lv := uint8(210)
+		for p := 0; p < 60; p++ {
+			n := 11
+			if p%2 == 1 {
+				n = 17
+			}
+			for j := 0; j < n; j++ {
+				w = append(w, lv)
+			}
+			lv = 250 - lv // 210 <-> 40
+		}
+		r := DecodeUART(w, ct, UARTCfg{})
+		if r.OK || len(r.Bytes) != 0 {
+			t.Errorf("ambiguous 11/17 pulses: got ok=%v bytes=%v — must refuse", r.OK, r.Bytes)
+		}
+		if r.Error != "baud ambiguous — set it explicitly" {
+			t.Errorf("ambiguous 11/17 pulses: error %q, want the explicit-honesty message", r.Error)
+		}
+	}
+}
+
 func TestBreakUart(t *testing.T) {
 	rng := rand.New(rand.NewSource(0xBEEF))
 	const ct = 1e-6

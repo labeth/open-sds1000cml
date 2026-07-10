@@ -192,6 +192,69 @@ func TestAutodetect(t *testing.T) {
 	}
 }
 
+// TestAutodetectAllProtocols covers the seven added single-wire protocols: each
+// one's own synthetic signal must be claimed as ITSELF (not a lookalike — a
+// 1553 word IS Manchester, a CAN frame is UART-shaped), on either channel, and
+// a bare clock must stay "off" rather than decode as constant-bit Manchester.
+func TestAutodetectAllProtocols(t *testing.T) {
+	type tc struct {
+		name string
+		want string
+		c1   []uint8
+		ct   float64
+	}
+	var cases []tc
+
+	manW, manCT := bkBuild([]int{0xAA, 0xB3, 0x2C, 0x47, 0x99}, true, true, 8, 20, 100000, 0, 0)
+	cases = append(cases, tc{"manchester", "manchester", manW, manCT})
+
+	milW := mil1553Wave([]int{0x1234, 0xAAAA}, []bool{true, false},
+		[]int{mil1553OddParity(0x1234), mil1553OddParity(0xAAAA)}, 20)
+	cases = append(cases, tc{"mil1553", "mil1553", milW, 1.0 / (20.0 * 1e6)})
+
+	nibs := []int{0x1, 0xA, 0x5, 0xF, 0x0, 0xC, 0x3, 0}
+	nibs[7] = sentCRC4(nibs[1:7])
+	cases = append(cases, tc{"sent", "sent", sentWave([][]int{nibs}, 6, 0, 0), 1e-6})
+
+	_, cw := canStdFrame(0x123, 3, []int{0xDE, 0xAD, 0xBE})
+	cases = append(cases, tc{"canfd", "canfd", canRender(cw, 20, true, 160, 160), 1.0 / (20.0 * 500000.0)})
+
+	var arW []uint8
+	arincIdle(&arW, 240)
+	arincAppendWord(&arW, arincMakeWord(0o107, 1, 0x5A5A, 2), 40)
+	arincIdle(&arW, 240)
+	cases = append(cases, tc{"arinc429", "arinc429", arW, 2.5e-7})
+
+	usbW := usbWave([]usbPkt{{pid: 0xD /*SETUP*/, data: []int{0x12, 0x00}}, {pid: 0x2 /*ACK*/}}, 20)
+	cases = append(cases, tc{"usbls", "usbls", usbW, 1.0 / (20.0 * 1.5e6)})
+
+	flxW := brFlexFrame(brFlexFixCRC([]int{0x12, 0x34, 0x56, 0x78, 0x9A, 0xBC, 0xDE}), 20, 8, 8, 8)
+	cases = append(cases, tc{"flexray", "flexray", flxW, ctForExact(10_000_000, 20)})
+
+	for _, c := range cases {
+		if r := Autodetect(c.c1, nil, c.ct, "hex"); r.Proto != c.want {
+			t.Errorf("%s on C1: got %q (%d bytes, err=%q)", c.name, r.Proto, len(r.Bytes), r.Error)
+		}
+		if r := Autodetect(nil, c.c1, c.ct, "hex"); r.Proto != c.want { // channel-swapped
+			t.Errorf("%s on C2: got %q (%d bytes, err=%q)", c.name, r.Proto, len(r.Bytes), r.Error)
+		}
+	}
+
+	// A bare clock (pure square, >40 edges) must NOT be claimed as constant-bit
+	// Manchester (or 0x55 UART) — there is no data on a clock, so Auto says off.
+	var sq []uint8
+	for i := 0; i < 60*40; i++ {
+		if (i/20)%2 == 0 {
+			sq = append(sq, 210)
+		} else {
+			sq = append(sq, 40)
+		}
+	}
+	if r := Autodetect(sq, nil, 1e-6, "hex"); r.Proto != "off" {
+		t.Errorf("bare clock: got %q (%d bytes), want off", r.Proto, len(r.Bytes))
+	}
+}
+
 func TestFmtByte(t *testing.T) {
 	if got := FmtByte(0x48, "both"); got != "48'H" {
 		t.Errorf("both 0x48 = %q, want 48'H", got)

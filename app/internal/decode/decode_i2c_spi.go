@@ -3,6 +3,7 @@ package decode
 import (
 	"fmt"
 	"math"
+	"sort"
 	"strings"
 )
 
@@ -152,10 +153,6 @@ func DecodeSPI(clk, data []uint8, colTimeS float64, cfg SPICfg) Result {
 	if len(eIn) < 2 {
 		return Result{Proto: "spi", Error: "no CLK edges"}
 	}
-	halfGap := minEdgeGap(eIn, func(int) bool { return true })
-	if halfGap < 3 {
-		return Result{Proto: "spi", Error: fmt.Sprintf("%.1f cols/edge; too few samples/bit", halfGap)}
-	}
 	cpol, cpha := 0, 0
 	if cfg.CPOL {
 		cpol = 1
@@ -164,7 +161,49 @@ func DecodeSPI(clk, data []uint8, colTimeS float64, cfg SPICfg) Result {
 		cpha = 1
 	}
 	sampleRising := cpol == cpha
-	gapReset := halfGap * 3
+	// Frame-split threshold from the SAMPLING-edge cadence — the edges actually
+	// used for bits — never from the minimum gap over ALL edges. On a real
+	// (rebuilt) clock a single narrow half-cycle (partial first cycle, duty skew)
+	// makes min-gap*3 land BELOW one true period (HW: sampling gaps 374-376 cols
+	// vs 3*124=372), so every inter-bit gap "exceeded" the reset and the byte
+	// assembly restarted on each bit — 0 bytes from a clean signal. Cluster the
+	// sampling-edge gaps like the UART/Manchester inference: seed on a low
+	// percentile, average the cluster (±0.5 window absorbs quantization/jitter),
+	// and reset at 1.5x the TYPICAL clock period.
+	dirWant := -1
+	if sampleRising {
+		dirWant = 1
+	}
+	var sgaps []float64
+	prevI := -1
+	for _, e := range eIn {
+		if e.dir != dirWant {
+			continue
+		}
+		if prevI >= 0 && e.i > prevI {
+			sgaps = append(sgaps, float64(e.i-prevI))
+		}
+		prevI = e.i
+	}
+	if len(sgaps) == 0 {
+		return Result{Proto: "spi", Error: "no CLK sampling edges"}
+	}
+	sort.Float64s(sgaps)
+	period := sgaps[int(float64(len(sgaps))*0.1)]
+	sum, cnt := 0.0, 0
+	for _, g := range sgaps {
+		if math.Abs(g-period) <= 0.5*period {
+			sum += g
+			cnt++
+		}
+	}
+	if cnt > 0 {
+		period = sum / float64(cnt)
+	}
+	if period < 6 {
+		return Result{Proto: "spi", Error: fmt.Sprintf("%.1f cols/clock; too few samples/bit", period)}
+	}
+	gapReset := 1.5 * period
 	var spans []Span
 	var bytes []int
 	var toks []string
@@ -218,5 +257,5 @@ func DecodeSPI(clk, data []uint8, colTimeS float64, cfg SPICfg) Result {
 		margin = mSum / float64(mN)
 	}
 	return Result{OK: true, Proto: "spi", Spans: spans, Text: strings.Join(toks, " "),
-		Bytes: bytes, SPB: halfGap * 2, Thr: CK.threshold, Margin: margin}
+		Bytes: bytes, SPB: period, Thr: CK.threshold, Margin: margin}
 }

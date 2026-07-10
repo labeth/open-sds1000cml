@@ -46,8 +46,10 @@ A working oscilloscope, end to end — every subsystem validated on the real uni
   full auto-measurement set (expandable timing/pulse group), draggable time+voltage
   cursors with Δt/1/Δt/ΔV, Y-T / X-Y / per-channel FFT view modes, waveform
   persistence, math (C1±C2, C1×C2, FFT-carrier subtraction), reference waveforms
-  (REF A/B, absolute-voltage overlay), autoset, protocol decode (UART/I²C/SPI) with
-  auto-detect, a clipping indicator, per-channel probe/coupling, and PNG /
+  (REF A/B, absolute-voltage overlay), autoset, protocol decode across ten
+  protocols (UART, I²C, SPI, CAN/CAN-FD, Manchester, SENT, MIL-STD-1553B,
+  ARINC 429, USB LS/FS, FlexRay) with auto-detect that scores all ten against
+  the live signal, a clipping indicator, per-channel probe/coupling, and PNG /
   calibrated-CSV export — plus every acquisition control.
 - **OTA contract**: health token gated on ≥3 coherent frames; clean SIGTERM exit.
 

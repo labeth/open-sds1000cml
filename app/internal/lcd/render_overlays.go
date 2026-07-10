@@ -145,7 +145,7 @@ func drawDecode(sf Surface, f *engine.Frame, hud HUD, win int, xc, posFrac float
 		res = decode.DecodeFlexRay(ch(hud.DecChA), f.SampleS, decode.FlexRayCfg{Bitrate: hud.DecBaud})
 	}
 	name := []string{"", "AUTO", "UART", "I2C", "SPI", "MANCH", "SENT", "CAN", "1553", "ARINC", "USB", "FLEXR"}[hud.DecProto%12]
-	if hud.DecProto == 1 { // Auto — label with whatever it found
+	if hud.DecProto == 1 { // Auto — label with whatever it found (all ten protocols)
 		switch res.Proto {
 		case "uart":
 			name = "AUTO UART"
@@ -153,6 +153,20 @@ func drawDecode(sf Surface, f *engine.Frame, hud HUD, win int, xc, posFrac float
 			name = "AUTO I2C"
 		case "spi":
 			name = "AUTO SPI"
+		case "manchester":
+			name = "AUTO MANCH"
+		case "sent":
+			name = "AUTO SENT"
+		case "canfd":
+			name = "AUTO CAN"
+		case "mil1553":
+			name = "AUTO 1553"
+		case "arinc429":
+			name = "AUTO ARINC"
+		case "usbls":
+			name = "AUTO USB"
+		case "flexray":
+			name = "AUTO FLEXR"
 		}
 	}
 	// Decode lane: a dark band that sits ABOVE the bottom Vpp/freq readout row

@@ -107,6 +107,76 @@ function minEdgeGap(edges, dirOk) {
   return min;
 }
 
+// inferUARTspb: samples-per-bit from edge-gap statistics, robust to RINGY edges
+// (1-3-sample spurious toggles around real transitions). Manchester-inference
+// rigor: sub-sample crossings (edge.x), then a deterministic ascending CLUSTER
+// WALK over the sorted gaps instead of a blind low percentile — ring-spur gaps
+// form their own tiny cluster that a percentile would mistake for the bit
+// width. Each cluster is tried as the 1-bit hypothesis: edges within the ring
+// scale of the last kept edge are collapsed (a ring bounce is part of the SAME
+// transition), the candidate is refined on the de-glitched 1-bit cluster, and it must
+// explain >=70% of the de-glitched gaps as ~integer bit multiples. Among
+// validating candidates the BEST-fitting one wins, ties to the larger period
+// (ring debris at an exact sub-multiple of the true bit validates perfectly —
+// but so does the true bit, and the true bit is the wide one); none =>
+// genuinely ambiguous, be honest. Mirrors decode_uart.go inferUARTspb step for
+// step. Returns { spb, reason }.
+function inferUARTspb(S) {
+  const gaps = [];
+  for (let k = 1; k < S.edges.length; k++) { const g = S.edges[k].x - S.edges[k - 1].x; if (g >= 1) gaps.push(g); }
+  if (gaps.length < 3) return { spb: 0, reason: "too few edges / cannot infer baud" };
+  gaps.sort((a, b) => a - b);
+  // Deterministic greedy clusters: each starts at the smallest unassigned gap
+  // and absorbs everything within 1.5x its seed (bit multiples sit a full
+  // factor of 2 up, so clusters never bleed into the next multiple).
+  const cands = [];
+  for (let i = 0; i < gaps.length;) {
+    const seed = gaps[i];
+    let sum = 0, j = i;
+    for (; j < gaps.length && gaps[j] <= 1.5 * seed; j++) sum += gaps[j];
+    cands.push(sum / (j - i));
+    i = j;
+  }
+  let best = 0, bestFrac = -1;
+  for (const cand of cands) {
+    if (cand < 2.5) continue; // below the 3-samples/bit floor: a ring-spur cluster
+    // De-glitch: collapse edges within the RING SCALE of the last KEPT edge —
+    // ring bounces cluster tightly (a few samples) around the true transition
+    // instant. The window is capped at 5 samples, NOT half the candidate:
+    // ringing is a fixed-time artifact, so a window that scaled with the
+    // candidate would let a 2x-bit hypothesis swallow real 1-bit edges and
+    // then validate on the merged gaps it manufactured itself.
+    const win = Math.min(0.5 * cand, 5);
+    const kg = [];
+    let prevX = S.edges[0].x;
+    for (let k = 1; k < S.edges.length; k++) {
+      const g = S.edges[k].x - prevX;
+      if (g >= win) { kg.push(g); prevX = S.edges[k].x; }
+    }
+    if (kg.length < 3) continue;
+    // Refine on the de-glitched 1-bit cluster by MEAN-SHIFT (two passes,
+    // re-centering the ±0.35 window on the running estimate): the raw cluster
+    // mean is ring-shortened, and a single window around it clips the upper
+    // quantization branch of the true bit — biasing spb low enough to
+    // mis-sample late bits. A WIDER window instead would merge genuinely
+    // incommensurate pulse widths and destroy the ambiguity honesty;
+    // re-centering does not.
+    let ref = cand;
+    for (let pass = 0; pass < 2; pass++) {
+      let sum = 0, cnt = 0;
+      for (const g of kg) if (Math.abs(g - ref) <= 0.35 * ref) { sum += g; cnt++; }
+      if (cnt) ref = sum / cnt;
+    }
+    let good = 0;
+    for (const g of kg) { const m = Math.round(g / ref); if (m >= 1 && Math.abs(g - m * ref) <= 0.35 * ref) good++; }
+    // >= keeps the LARGER candidate on an exact tie (candidates ascend).
+    const frac = good / kg.length;
+    if (frac >= 0.7 && frac >= bestFrac) { best = ref; bestFrac = frac; }
+  }
+  if (best > 0) return { spb: best, reason: null };
+  return { spb: 0, reason: "baud ambiguous — set it explicitly" };
+}
+
 function decodeUART(codes, colTimeS, cfg) {
   cfg = cfg || {};
   const bits = cfg.bits || 8, parity = cfg.parity || "none", idle = cfg.idle != null ? cfg.idle : 1;
@@ -120,23 +190,9 @@ function decodeUART(codes, colTimeS, cfg) {
   let SPB, baud;
   if (cfg.baud) { SPB = (1 / cfg.baud) / colTimeS; baud = cfg.baud; }
   else {
-    const gaps = [];
-    for (let k = 1; k < S.edges.length; k++) { const g = S.edges[k].i - S.edges[k - 1].i; if (g >= 2) gaps.push(g); }
-    if (gaps.length < 3) return fail("uart", "too few edges / cannot infer baud");
-    gaps.sort((a, b) => a - b);
-    // SPB = a robust "one bit" width: the shortest gaps cluster at 1 bit, but
-    // take a low percentile (not the raw min) so a single decimation-shrunk gap
-    // doesn't bias it small. Refine SPB from all gaps that look like ~1 bit.
-    SPB = gaps[Math.floor(gaps.length * 0.1)];
-    let sum = 0, cnt = 0;
-    for (const g of gaps) if (Math.abs(g - SPB) <= 0.35 * SPB) { sum += g; cnt++; }
-    if (cnt) SPB = sum / cnt;
-    // Accept if MOST gaps are ~integer multiples of SPB (real UART is; a random
-    // analog waveform is not) — tolerate a minority of jittery outliers instead
-    // of rejecting the whole capture on one bad gap.
-    let good = 0;
-    for (const g of gaps) { const m = Math.round(g / SPB); if (m >= 1 && Math.abs(g - m * SPB) <= 0.35 * SPB) good++; }
-    if (good < 0.7 * gaps.length) return fail("uart", "baud ambiguous — set it explicitly");
+    const inf = inferUARTspb(S);
+    if (inf.reason) return fail("uart", inf.reason);
+    SPB = inf.spb;
     baud = 1 / (SPB * colTimeS);
   }
   if (!(SPB >= minSPB)) return fail("uart", SPB.toFixed(1) + " samples/bit; need >= " + minSPB, { samplesPerBit: SPB, baud });
@@ -248,14 +304,36 @@ function decodeSPI(clk, data, colTimeS, cfg) {
   const n = Math.min(CK.n, DA.n);
   const eIn = CK.edges.filter(e => e.i < n);
   if (eIn.length < 2) return fail("spi", "no CLK edges");
-  const halfGap = minEdgeGap(eIn, () => true);
-  if (halfGap < 3) return fail("spi", halfGap.toFixed(1) + " cols/edge; too few samples/bit", { colsPerClock: halfGap * 2 });
 
   const sampleRising = cpol === cpha; // modes 0 & 3 sample on rising, 1 & 2 on falling
+  // Frame-split threshold from the SAMPLING-edge cadence — the edges actually
+  // used for bits — never from the minimum gap over ALL edges. On a real
+  // (rebuilt) clock a single narrow half-cycle (partial first cycle, duty skew)
+  // makes min-gap*3 land BELOW one true period (HW: sampling gaps 374-376 cols
+  // vs 3*124=372), so every inter-bit gap "exceeded" the reset and the byte
+  // assembly restarted on each bit — 0 bytes from a clean signal. Cluster the
+  // sampling-edge gaps like the UART/Manchester inference: seed on a low
+  // percentile, average the cluster (±0.5 window absorbs quantization/jitter),
+  // and reset at 1.5x the TYPICAL clock period. Mirrors decode_i2c_spi.go.
+  const dirWant = sampleRising ? 1 : -1;
+  const sgaps = [];
+  let prevI = -1;
+  for (const e of eIn) {
+    if (e.dir !== dirWant) continue;
+    if (prevI >= 0 && e.i > prevI) sgaps.push(e.i - prevI);
+    prevI = e.i;
+  }
+  if (!sgaps.length) return fail("spi", "no CLK sampling edges");
+  sgaps.sort((a, b) => a - b);
+  let period = sgaps[Math.floor(sgaps.length * 0.1)];
+  let pSum = 0, pCnt = 0;
+  for (const g of sgaps) if (Math.abs(g - period) <= 0.5 * period) { pSum += g; pCnt++; }
+  if (pCnt) period = pSum / pCnt;
+  if (period < 6) return fail("spi", period.toFixed(1) + " cols/clock; too few samples/bit", { colsPerClock: period });
   // With no CS to frame bytes, re-align on a clock-idle gap: consecutive
-  // sampling edges are one clock period (~2·halfGap) apart within a burst; a gap
-  // longer than ~1.5 periods means a new transaction, so restart the byte.
-  const gapReset = halfGap * 3;
+  // sampling edges are one clock period apart within a burst; a gap longer than
+  // ~1.5 typical periods means a new transaction, so restart the byte.
+  const gapReset = 1.5 * period;
   const spans = [], bytes = [], toks = [];
   let ck = -1, bitCount = 0, val = 0, bitStart = 0, lastSample = -1;
   // sampleMargin = how far the sampled data sits from the threshold, averaged over
@@ -288,38 +366,34 @@ function decodeSPI(clk, data, colTimeS, cfg) {
     }
   }
   return { ok: true, error: null, proto: "spi", spans, text: toks.join(" "), bytes,
-    meta: { cpol, cpha, sampleOnRising: sampleRising, bitOrder: msb ? "msb" : "lsb", noCS: true, colsPerClock: halfGap * 2, threshold: CK.threshold, sampleMargin: mN ? mSum / mN : 0 } };
+    meta: { cpol, cpha, sampleOnRising: sampleRising, bitOrder: msb ? "msb" : "lsb", noCS: true, colsPerClock: period, threshold: CK.threshold, sampleMargin: mN ? mSum / mN : 0 } };
 }
 
 // ---- autodetect -------------------------------------------------------------
 // Score a decode Result so competing protocol/role hypotheses can be ranked.
-// The key discriminators are STRUCTURAL: I2C is framed by START/STOP (very hard
-// to forge), UART's auto-baud only locks on real integer-multiple bit gaps and
-// clean stop bits, SPI has no framing at all (fallback, lowest weight). A bad
-// hypothesis (e.g. a clock misread as UART) racks up frame-errors and scores
-// negative, so the genuine match wins.
+// The discriminators are STRUCTURAL, layered by how hard each protocol's own
+// validity signals are to forge: CRC-validated protocols (CAN CRC-15, FlexRay
+// header CRC-11, SENT CRC-4) outscore parity/structure-validated ones
+// (MIL-1553B word parity, ARINC 429 word parity, USB PID complement, I2C
+// START/addr/ACK framing), which outscore the purely heuristic ones (UART stop
+// bits, Manchester mid-cell coding, and SPI — no framing at all, the
+// fallback). A bad hypothesis racks up frame-errors and scores negative, so
+// the genuine match wins. Mirrors decode_autodetect.go scoreResult exactly.
 function scoreResult(r) {
   if (!r || !r.ok) return -1e9;
   const spans = r.spans || [], bytes = r.bytes ? r.bytes.length : 0;
+  const kind = k => spans.filter(s => s.kind === k).length;
   if (r.proto === "i2c") {
     // Score on real CONTENT, not bare framing: a channel-swapped mis-read floods
     // "START STOP START STOP" (0 addresses, 0 data), which must NOT beat the true
     // ordering. A real transaction addresses a device and clocks bytes+ACKs.
-    let addrs = 0, acks = 0, datas = 0, starts = 0;
-    for (const s of spans) {
-      if (s.kind === "addr") addrs++;
-      else if (s.kind === "ack" || s.kind === "nak") acks++;
-      else if (s.kind === "data") datas++;
-      else if (s.kind === "start") starts++;
-    }
+    const addrs = kind("addr"), acks = kind("ack") + kind("nak"), datas = kind("data"), starts = kind("start");
     if (addrs === 0) return -1e9;                  // no addressed device -> not real I2C
     return addrs * 100 + acks * 30 + datas * 20 + starts * 5;
   }
   if (r.proto === "uart") {
     if (bytes === 0) return -1e9;
-    const ferr = spans.filter(s => s.kind === "frame-error").length;
-    const perr = spans.filter(s => s.kind === "parity-error").length;
-    return bytes * 10 - ferr * 35 - perr * 18 + 15;
+    return bytes * 10 - kind("frame-error") * 35 - kind("parity-error") * 18 + 15;
   }
   if (r.proto === "spi") {
     if (bytes === 0) return -1e9;
@@ -329,6 +403,48 @@ function scoreResult(r) {
     // right); binary data ties and falls back to MSB (SPI convention, tried first).
     const printable = r.bytes.filter(b => b >= 0x20 && b < 0x7f).length / bytes;
     return bytes * 2 + margin * 10 + printable * 6; // no framing -> weakest; margin breaks CPHA, printable breaks bit-order
+  }
+  if (r.proto === "manchester") {
+    // Heuristic (no CRC): weighted between UART and SPI; violations pull hard.
+    if (bytes === 0) return -1e9;
+    return bytes * 8 + kind("start") * 10 - kind("frame-error") * 30;
+  }
+  if (r.proto === "sent") {
+    // ok already gates on >=1 CRC-4-valid frame; score by validated frames.
+    const crcs = kind("crc");
+    if (crcs === 0) return -1e9;
+    return crcs * 300 + kind("data") * 4 - kind("frame-error") * 20;
+  }
+  if (r.proto === "canfd") {
+    // Require a CRC-15-validated classic frame (FD trailers are best-effort and
+    // carry no verified CRC here — never auto-claim CAN on those alone).
+    const crcs = kind("crc");
+    if (crcs === 0) return -1e9;
+    return crcs * 500 + bytes * 2 - kind("frame-error") * 60;
+  }
+  if (r.proto === "mil1553") {
+    // One "data" span per word; a parity-failed word adds one frame-error.
+    const datas = kind("data"), ferr = kind("frame-error"), good = datas - ferr;
+    if (good <= 0) return -1e9;
+    return good * 150 + datas * 10 - ferr * 40;
+  }
+  if (r.proto === "arinc429") {
+    // One "addr" (label) span per word; a parity-failed word adds "!P".
+    const words = kind("addr"), ferr = kind("frame-error"), good = words - ferr;
+    if (good <= 0) return -1e9;
+    return good * 150 + words * 15 - ferr * 40;
+  }
+  if (r.proto === "usbls") {
+    // A valid PID (nibble + matching complement) spans "addr"; bad -> error.
+    const pids = kind("addr");
+    if (pids === 0) return -1e9;
+    return pids * 120 + bytes * 4 - kind("frame-error") * 30;
+  }
+  if (r.proto === "flexray") {
+    // The header note span is "addr" only when the header CRC-11 verified.
+    const hdrs = kind("addr");
+    if (hdrs === 0) return -1e9;
+    return hdrs * 400 + bytes * 2 - kind("frame-error") * 50;
   }
   return -1e9;
 }
@@ -400,6 +516,35 @@ function autodetect(frame, opts) {
       if (!isClocky(k))
         add("uart", { line: k }, { baud: 0, bits: 8, parity: "none" },
           decodeUART(chans[k], colTimeS, { baud: null, bits: 8, parity: "none", fmt }));
+
+  // Single-wire protocol twins live in their own scripts (decode_*.js); resolve
+  // them lazily so decode.js alone (the node unit test) still loads — in the
+  // browser and the parity bundle every twin is present and every hypothesis
+  // runs, mirroring decode_autodetect.go.
+  const fn = name => (typeof globalThis !== "undefined" && typeof globalThis[name] === "function") ? globalThis[name] : null;
+  const dManch = fn("decodeManchester"), dSent = fn("decodeSENT"), dCan = fn("decodeCANFD"),
+    dMil = fn("decodeMIL1553"), dArinc = fn("decodeARINC429"), dUsb = fn("decodeUSBLS"), dFlex = fn("decodeFlexRay");
+
+  // Manchester — heuristic like UART, and a bare square wave IS valid
+  // constant-bit Manchester, so apply the same clock suppression: never claim
+  // Manchester on a clocked pair (that's SPI) or on a lone clock line.
+  if (!clockedPair && dManch)
+    for (const k of active)
+      if (!isClocky(k))
+        add("manchester", { line: k }, { baud: 0, msb: true, bits: 8 },
+          dManch(chans[k], colTimeS, { bitrate: 0, ieee: true, msb: true, bits: 8, fmt }));
+
+  // The remaining single-wire protocols self-validate (CRC-4/CRC-15/CRC-11,
+  // word parity, PID complement, strict framing), so their scoring gates make
+  // false claims on foreign signals cosmically unlikely — try every channel.
+  for (const k of active) {
+    if (dSent) add("sent", { line: k }, { baud: 0 }, dSent(chans[k], colTimeS, { tickNs: 0, nibbles: 0, fmt }));
+    if (dCan) add("canfd", { line: k }, { baud: 0 }, dCan(chans[k], colTimeS, { nominalBaud: 0, dominantLow: true, fmt }));
+    if (dMil) add("mil1553", { line: k }, { baud: 0 }, dMil(chans[k], colTimeS, { bitrate: 0, fmt }));
+    if (dArinc) add("arinc429", { line: k }, { baud: 0 }, dArinc(chans[k], colTimeS, { bitrate: 0, fmt }));
+    if (dUsb) add("usbls", { line: k }, { baud: 0 }, dUsb(chans[k], colTimeS, { bitrate: 0, fmt }));
+    if (dFlex) add("flexray", { line: k }, { baud: 0 }, dFlex(chans[k], colTimeS, { bitrate: 0, fmt }));
+  }
 
   if (active.length >= 2) {
     // I2C — try both SCL/SDA orderings (scoring, not clock-detection, resolves it).

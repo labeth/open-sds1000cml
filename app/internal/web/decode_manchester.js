@@ -149,7 +149,11 @@ function decodeManchesterAt(S, T, cfg, bits, colTimeS) {
     }
     frames++;
     totalGood += bestGood;
-    spans.push({ i0: cells[0].i0, i1: cells[run - 1].i1, text: "SYNC", kind: "start" });
+    // run==0 (an interior frame whose FIRST cell is a coding violation) has no
+    // preamble to span — anchor the SYNC marker on the first cell instead of
+    // reading cells[-1] (this exact shape crashed on a real SENT capture fed
+    // through autodetect's Manchester hypothesis; mirrors decode_manchester.go).
+    spans.push({ i0: cells[0].i0, i1: run > 0 ? cells[run - 1].i1 : cells[0].i0, text: "SYNC", kind: "start" });
     // Pack this frame's cells into words; a coding violation flushes the word.
     let curVal = 0, curBits = 0, byteStart = 0, lastI1 = 0;
     for (const c of cells) {

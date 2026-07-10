@@ -49,7 +49,9 @@ hardware does and how the firmware must behave*; the implementation in
   voltage** and a **zoomable FFT with clickable peak measurements and a live
   dB/frequency pointer readout**, auto-measurements, draggable time/voltage cursors,
   waveform persistence, math (C1±C2, C1×C2, FFT-carrier subtraction), **reference
-  waveforms (REF A/B)**, autoset, protocol decode (UART/I²C/SPI) with auto-detect,
+  waveforms (REF A/B)**, autoset, protocol decode across ten protocols (UART, I²C,
+  SPI, CAN/CAN-FD, Manchester, SENT, MIL-STD-1553B, ARINC 429, USB LS/FS, FlexRay)
+  with auto-detect that scores all ten against the live signal,
   a clipping indicator, and PNG / calibrated-CSV export.
 - **Super-resolution (stack & crunch)** — for a repetitive waveform, equivalent-time
   stacking (sub-sample alignment → lucky-frame selection → drizzle onto a fine grid)
@@ -92,7 +94,7 @@ protocol decode with auto-detection.
 | Per-channel FFT | Protocol decode (auto-detected) |
 |---|---|
 | [![FFT view](docs/images/host-fft.png)](docs/images/host-fft.png) | [![Protocol decode](docs/images/host-decode.png)](docs/images/host-decode.png) |
-| Spectra of a 20 kHz square — its odd-harmonic comb, with the strongest peaks tagged. | UART/I²C/SPI decode; here it auto-detected SPI (CLK=C2, DATA=C1), with per-channel FFT peak lists alongside. |
+| Spectra of a 20 kHz square — its odd-harmonic comb, with the strongest peaks tagged. | Ten-protocol decode (UART/I²C/SPI/CAN/Manchester/SENT/1553B/ARINC 429/USB/FlexRay); here auto-detect scored all ten and picked SPI (CLK=C2, DATA=C1), with per-channel FFT peak lists alongside. |
 
 Every acquisition control lives in the footer (run/stop, trigger, timebase,
 per-channel V/div · coupling · probe · offset, acquire mode + memory depth), and

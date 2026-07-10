@@ -192,12 +192,19 @@ function syncDecodeControls() {
   $("decAuto").classList.toggle("on", dcfg.auto);
 }
 
+// detectProtoUI maps a decoder's canonical proto name to the #decProto select
+// value (the decoders say "canfd"/"usbls"; the UI options are "can"/"usb").
+function detectProtoUI(p) { return p === "canfd" ? "can" : p === "usbls" ? "usb" : p; }
+
 function detectLabel(d) {
   const b = d.result && d.result.meta || {};
   if (d.proto === "uart") return "UART · C" + d.roles.line + " · " + (b.baud ? b.baud + " bd" : "auto");
   if (d.proto === "i2c") return "I²C · SCL=C" + d.roles.scl + " SDA=C" + d.roles.sda;
   if (d.proto === "spi") return "SPI · CLK=C" + d.roles.clk + " DATA=C" + d.roles.data + " · mode " + (d.cfg.cpol * 2 + d.cfg.cpha) + " · " + (d.cfg.msb ? "MSB" : "LSB");
-  return d.proto;
+  // Single-wire protocols: name · line · detected bit rate (when known).
+  const names = { manchester: "Manchester", sent: "SENT", canfd: "CAN", mil1553: "MIL-1553B", arinc429: "ARINC 429", usbls: "USB LS/FS", flexray: "FlexRay" };
+  const name = names[d.proto] || d.proto;
+  return name + (d.roles.line ? " · C" + d.roles.line : "") + (b.bitrate ? " · " + b.bitrate + " bd" : "");
 }
 
 function setDetectMsg(t, err) {
@@ -213,7 +220,7 @@ function runAutodetect() {
   if (!frame || !frame.c1 || frame.is_env) { setDetectMsg("no live waveform to analyse", true); return; }
   const d = autodetect(frame, { fmt: dcfg.fmt });
   if (d.proto === "off") { setDetectMsg("no protocol matched — " + (d.reason || "check the probes"), true); return; }
-  dcfg.proto = d.proto;
+  dcfg.proto = detectProtoUI(d.proto);
   if (d.roles.line) dcfg.line = d.roles.line;
   if (d.roles.scl) { dcfg.scl = d.roles.scl; dcfg.sda = d.roles.sda; }
   if (d.roles.clk) { dcfg.clk = d.roles.clk; dcfg.data = d.roles.data; }
