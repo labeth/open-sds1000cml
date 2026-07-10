@@ -44,11 +44,19 @@ type fakeScope struct {
 	bodeDut      int
 	bodeCleared  bool
 	bodePts      []engine.BodePoint
+
+	acqLog   []engine.AcqSample
+	halfRate float64
+	cmdLog   []engine.CmdNote
 }
 
 func (f *fakeScope) SetOffsetDAC(ch int, code uint16)      { f.offCh, f.offCode = ch, &code }
 func (f *fakeScope) SetETS(on bool)                        { f.ets = &on }
 func (f *fakeScope) SetSingle()                            { f.single = true }
+func (f *fakeScope) QuietRLock()                           {}
+func (f *fakeScope) QuietRUnlock()                         {}
+func (f *fakeScope) Tune(t engine.TuneVals) engine.TuneVals { return t }
+func (f *fakeScope) TuneSnapshot() engine.TuneVals          { return engine.TuneVals{} }
 func (f *fakeScope) SetTrigPosFrac(frac float64)           { f.trigPos = frac }
 func (f *fakeScope) SetMemDepth(n int) int                 { f.memDepth = n; return n }
 func (f *fakeScope) SetFramePeriod(ms int) int             { return ms }
@@ -65,6 +73,12 @@ func (f *fakeScope) SetSerialMode(m int)                   { f.serialMode = m }
 func (f *fakeScope) SetBodeMode(on bool, ref, dut int)     { f.bodeOn, f.bodeRef, f.bodeDut = on, ref, dut }
 func (f *fakeScope) ClearBode()                            { f.bodeCleared = true }
 func (f *fakeScope) BodePoints() []engine.BodePoint        { return f.bodePts }
+
+func (f *fakeScope) AcqLog(n int) ([]engine.AcqSample, float64) { return f.acqLog, f.halfRate }
+func (f *fakeScope) CmdLog(n int) []engine.CmdNote              { return f.cmdLog }
+func (f *fakeScope) NoteCmd(name string, val float64) {
+	f.cmdLog = append(f.cmdLog, engine.CmdNote{Name: name, Val: val})
+}
 
 func (f *fakeScope) SetTrigType(t int) { f.calls = append(f.calls, [2]any{"trigtype", t}) }
 func (f *fakeScope) SetAcqMode(m int)  { f.calls = append(f.calls, [2]any{"acqmode", m}) }

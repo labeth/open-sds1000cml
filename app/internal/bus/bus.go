@@ -24,6 +24,11 @@ type Bus interface {
 	// DrainRead reads one frozen CS1 sample port (0x30–0x34) post capture-halt.
 	// One bus transaction per call — the port auto-increments per transaction.
 	DrainRead(sel uint16) uint16
+	// DrainInto reads `cols` frozen samples straight into c1/c2 in ONE tight
+	// pass (hi byte C1, lo byte C2), cycling ports 0x30–0x34. No per-sample
+	// interface dispatch — the halted record un-freezes if the drain is slow, so
+	// this must finish fast (spec 03 §2). c1,c2 must each have len ≥ cols.
+	DrainInto(c1, c2 []uint8, cols int)
 	// DrainWrite writes one CS1 register via the /dev/mem fast path when
 	// available (falls back to ioctl). Used by the continuous-stream loop to
 	// pulse the roll-FIFO latch without a syscall per sample. Refuses the same
@@ -174,6 +179,28 @@ func (d *Dev) DrainRead(sel uint16) uint16 {
 	}
 	v, _ := d.Read(PlaneCS1, sel)
 	return v
+}
+
+// DrainInto drains the frozen record in one tight pass — no per-sample interface
+// call, no modulo — so the drain completes before the HW un-freezes the halt.
+func (d *Dev) DrainInto(c1, c2 []uint8, cols int) {
+	if d.regs != nil {
+		port := uint16(0x30)
+		for i := 0; i < cols; i++ {
+			w := load16(&d.regs[port])
+			c1[i] = uint8(w >> 8)
+			c2[i] = uint8(w)
+			if port++; port > 0x34 {
+				port = 0x30
+			}
+		}
+		return
+	}
+	for i := 0; i < cols; i++ {
+		v, _ := d.Read(PlaneCS1, uint16(0x30+i%5))
+		c1[i] = uint8(v >> 8)
+		c2[i] = uint8(v)
+	}
 }
 
 func (d *Dev) DrainWrite(sel, val uint16) error {

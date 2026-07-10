@@ -162,6 +162,20 @@ func (f *fakeBus) DrainRead(sel uint16) uint16 {
 	return uint16(c1)<<8 | uint16(c2)
 }
 
+// DrainInto mirrors the real bulk drain via DrainRead so the fake keeps tracking
+// earlyDrain / drainSels / drainN and generating the same wave.
+func (f *fakeBus) DrainInto(c1, c2 []uint8, cols int) {
+	sel := uint16(0x30)
+	for i := 0; i < cols; i++ {
+		w := f.DrainRead(sel)
+		c1[i] = uint8(w >> 8)
+		c2[i] = uint8(w)
+		if sel++; sel > 0x34 {
+			sel = 0x30
+		}
+	}
+}
+
 func (f *fakeBus) DrainWrite(sel, val uint16) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()

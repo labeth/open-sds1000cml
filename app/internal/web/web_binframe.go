@@ -74,6 +74,10 @@ func encodeBinFrame(rep frameReply) []byte {
 // client needs no poll timer: request-when-ready IS the backpressure, and a
 // slow client simply skips to the newest frame.
 func (s *Server) hFrameBin(w http.ResponseWriter, r *http.Request) {
+	if s.superseded(r) {
+		w.WriteHeader(http.StatusConflict) // 409 — a newer browser claimed the device
+		return
+	}
 	var since uint64
 	fmt.Sscanf(r.URL.Query().Get("since"), "%d", &since)
 	cols := screenCols
@@ -118,9 +122,16 @@ func (s *Server) hFrameBin(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	var buf []byte
-	if r.URL.Query().Get("raw") == "1" {
-		buf = s.rawBinMsg(since)
-	} else {
+	// Serialize under the quiet READ-lock so this CPU burst pauses during the
+	// engine's arm-settle+drain (which it would otherwise corrupt on the single
+	// core). Held only for the ~ms of serialization, not the network write.
+	func() {
+		s.sc.QuietRLock()
+		defer s.sc.QuietRUnlock()
+		if r.URL.Query().Get("raw") == "1" {
+			buf = s.rawBinMsg(since)
+			return
+		}
 		off, vpc := s.vertScales()
 		st := s.sc.Snapshot()
 		posFrac := st.TrigPosFrac
@@ -131,8 +142,8 @@ func (s *Server) hFrameBin(w http.ResponseWriter, r *http.Request) {
 		s.sc.WithFrame(func(f *engine.Frame) {
 			rep = s.buildReply(f, cols, full, since, off, vpc, posFrac, st.Running && !st.Single)
 		})
-		buf = encodeBinFrame(rep) // encode + write strictly outside the fan-out lock
-	}
+		buf = encodeBinFrame(rep) // encode inside the quiet lock; network write is outside
+	}()
 	w.Header().Set("Content-Type", "application/octet-stream")
 	w.Header().Set("Cache-Control", "no-store")
 	// Bound the write: the server sets no global timeouts (long-poll depends

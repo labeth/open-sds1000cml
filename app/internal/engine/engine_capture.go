@@ -2,6 +2,9 @@ package engine
 
 import "time"
 
+// The native-fast fill busy-poll window is the tunable tuneBusyFillUs (default 0
+// = off; it burned CPU without lowering the bus-driven half rate). See waitCapture.
+
 // bringUp is the engine enable+divisor sequence (spec 03 §4.1), run once at
 // start and again on every band or trigger-mode change — never per frame.
 // Divisor-hi is cleared FIRST (a stale hi silently mis-clocks every hi=0
@@ -27,8 +30,30 @@ func (e *Engine) armEngine() {
 	e.w(selArm, opResetHead)
 	e.w(selWrPtr, 0x0001)
 	e.w(selWrPtr, 0x0000)
-	e.clk.Sleep(e.armSettle)
+	// ROOT CAUSE of the native-fast half-record: the settle must HOLD the single
+	// core, not yield it. As a time.Sleep it yields — concurrent goroutines (GC,
+	// net/http, the LCD render) run during this capture-setup window and freeze
+	// the pre-trigger half of the record (bench: 33% half under load with Sleep,
+	// 2% with a busy-wait; the 2% residual is the drain, which the gate + re-
+	// capture mop up). SCHED_FIFO couldn't fix it — a sleeping FIFO thread yields
+	// anyway — and the RE never saw it because it ran with no concurrent load.
+	// Busy-wait on the real monotonic clock; fake-clock tests keep the Sleep so
+	// their synthetic Now still advances. Also hold the quiet gate: the busy-wait
+	// denies the core to CPU-bound goroutines, but the LCD render's framebuffer
+	// blit contends on the memory bus (not just the CPU), so the render must be
+	// PAUSED — not merely out-scheduled — across the settle+go. The gate blocks it
+	// (and the web serialize) here and across the drain; both run in the dead time.
+	e.quiet.Lock()
+	settle := time.Duration(e.tuneArmSettleUs.Load()) * time.Microsecond
+	if e.armBusy && e.tuneArmSpin.Load() {
+		for start := time.Now(); time.Since(start) < settle; {
+			// spin: deny the core to competing goroutines for these ~2ms
+		}
+	} else {
+		e.clk.Sleep(settle)
+	}
 	e.w(selArm, opGo)
+	e.quiet.Unlock()
 }
 
 // waitCapture runs the bounded wait gate (spec 03 §5.2): poll 0x39 + 0x46
@@ -122,6 +147,19 @@ func (e *Engine) waitCapture(norm bool) (anchored, sawTrig, filled, fillMoved bo
 			return // budget expired: AUTO free-runs a refresh, NORM holds
 		}
 		e.beatN.Add(1)
+		// Native-fast fill is load-sensitive like the settle: a concurrent bus burst
+		// (LCD blit, GC, socket I/O) while the deep record is freezing corrupts it —
+		// and the fill's poll-sleep YIELDS the core, letting exactly that run. On a
+		// real signal the record fills in ~µs, so busy-poll (hold the core, no yield)
+		// for a short bounded window that covers the fast fill; past it (a quiet
+		// screen with no edge) fall back to sleeping — there is no coherent record to
+		// protect, and holding the core for the whole budget would starve the UI.
+		// Gated on armBusy so fake-clock tests keep sleeping (their Now only advances
+		// on Sleep).
+		busyFill := time.Duration(e.tuneBusyFillUs.Load()) * time.Microsecond
+		if nativeFast && e.armBusy && busyFill > 0 && e.clk.Now().Sub(start) < busyFill {
+			continue // spin-poll: deny the core to competing bus traffic
+		}
 		e.clk.Sleep(e.pollEvery)
 	}
 }
@@ -134,8 +172,10 @@ func (e *Engine) waitCapture(norm bool) (anchored, sawTrig, filled, fillMoved bo
 func (e *Engine) halt() bool {
 	e.w(selArm, opHalt)
 	prev := e.r(selFill) & fillMask
+	e.lastFillAtHalt = int(prev) // instrumentation: final fill read (updated below)
 	for i := 0; i < 5; i++ {
 		cur := e.r(selFill) & fillMask
+		e.lastFillAtHalt = int(cur)
 		if cur == prev {
 			return true
 		}
@@ -147,11 +187,15 @@ func (e *Engine) halt() bool {
 // drain reads the frozen deep record into the producer slot: sample i comes
 // from port 0x30+(i mod 5); each word packs C1 in the high byte, C2 low.
 func (e *Engine) drain(f *Frame, cols int) {
-	for i := 0; i < cols; i++ {
-		w := e.b.DrainRead(uint16(drainBase + i%5))
-		f.C1[i] = uint8(w >> 8)
-		f.C2[i] = uint8(w)
-	}
+	// ONE tight bulk read — no per-sample interface dispatch, no modulo. The
+	// busy-wait settle (armEngine) is the root-cause fix; the drain is the
+	// second-order window (the residual ~2%): a concurrent CPU burst here can
+	// corrupt the frozen record. Hold the quiet gate so the render/web/panel
+	// pause for the ~17ms drain — shrinking the residual so re-capture rarely
+	// fires. They run freely during the loop's ~90ms of dead time.
+	e.quiet.Lock()
+	e.b.DrainInto(f.C1[:cols], f.C2[:cols], cols)
+	e.quiet.Unlock()
 }
 
 // stitchFrame runs one STREAM window: arm → PURE TIMED wait of exactly N·dt

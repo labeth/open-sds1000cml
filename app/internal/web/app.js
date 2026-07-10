@@ -14,6 +14,8 @@ let st = null;        // last /api/status
 let frame = null;     // last frame reply
 let fftRaw = null, fftRawT = 0, fftRawBusy = false; // full-record RAW frame for FFT mode (native-fast display is an interpolated window)
 let lastSeq = 0;
+let myEpoch = 0;      // single-active-client token from /api/claim; a newer browser supersedes us
+let superseded = false; // set when the device is taken over by another browser
 let lvlDragging = false, offDragging = false;
 let frozen = false;
 // Probe attenuation is a tip-referred display multiplier: every volts the
@@ -59,6 +61,9 @@ const DECCOL = {
   start: "#3fb950", stop: "#e8604c", addr: "#b98cff", rw: "#8fa6b8",
   ack: "#3fb950", nak: "#e8604c", data: "#35c8e8",
   "frame-error": "#e8604c", "parity-error": "#f5a24c", gap: "#7c8894", idle: "#3a444e",
+  // new decoders: SENT (sync/crc/pause), CAN (sof/id/rtr/ide/dlc/crc)
+  sync: "#3fb950", crc: "#b98cff", pause: "#7c8894",
+  sof: "#3fb950", id: "#b98cff", rtr: "#8fa6b8", ide: "#8fa6b8", dlc: "#f5a24c",
 };
 
 const css = getComputedStyle(document.body);

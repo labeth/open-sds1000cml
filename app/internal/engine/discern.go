@@ -52,6 +52,35 @@ func validDepth(sig []uint8) int {
 	return last
 }
 
+// realDepth is the count of leading samples the FPGA actually captured, before
+// the native-fast DEAD TAIL. When the HW freezes a half record, DrainInto reads
+// past the captured samples by cycling its 5 stream ports (0x30-0x34), so once
+// the FIFO is dry each port returns a frozen value and the drain emits an EXACT
+// period-5 repeat (e.g. 185,171,159,153,155,...). validDepth cannot see this —
+// the repeat toggles, so its window peak-to-peak reads as live activity, which is
+// exactly why a half record (realDepth ≈ cols/2) sailed through the old
+// valid_depth re-capture gate and got published broken. Here we detect it head
+// on: scan from the end while sig[i]==sig[i-5]; that contiguous run IS the dead
+// tail. A flat record (no signal) has no tail to trim — return full.
+func realDepth(sig []uint8) int {
+	n := len(sig)
+	if n < 6 {
+		return n
+	}
+	if _, _, p := ptp(sig); p < 8 {
+		return n // flat / quiet screen: a legitimate display, not a half record
+	}
+	run := 0
+	for i := n - 1; i >= 5; i-- {
+		if sig[i] == sig[i-5] {
+			run++
+		} else {
+			break
+		}
+	}
+	return n - run
+}
+
 // midLevel is the crossing threshold: (min+max)/2 over the drained samples
 // (128 for an empty slice). It floats with amplitude so it works at any V/div.
 func midLevel(sig []uint8) int {

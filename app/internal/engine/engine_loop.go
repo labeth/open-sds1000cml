@@ -3,6 +3,8 @@ package engine
 import (
 	"math"
 	"open-sds/app/internal/bus"
+	"runtime"
+	"runtime/debug"
 	"time"
 )
 
@@ -26,6 +28,7 @@ func (e *Engine) Run() {
 		}
 	}()
 
+
 	if v, err := e.b.Read(bus.PlaneCS1, selVersion); err != nil || v != bus.VersionMagic {
 		e.logf("engine: version gate failed (v=%#04x err=%v) — refusing to drive", v, err)
 		e.mu.Lock()
@@ -40,9 +43,49 @@ func (e *Engine) Run() {
 	e.bringUp()
 	e.lastNorm = e.normNow()
 
+	// Realtime GC policy (device only). The arm-settle busy-wait (armEngine) holds
+	// the single core for ~2ms so no goroutine corrupts the capture setup — but an
+	// automatic GC can async-preempt that tight loop to reach its STW safepoint,
+	// breaking the hold (bench: alloc-driven GC pressure took the first-drain half
+	// rate from ~1% to ~17%). So disable proportional auto-GC and run it ourselves
+	// at the top of the loop — a safe window with no settle or drain in flight. The
+	// memory limit is the backstop: on a leak, GC resumes rather than OOM the 128MB
+	// unit. Gated on armBusy so fake-clock tests keep the stock collector.
+	const gcEvery = 8
+	gcTick := 0
+	lastGcCtl := false
+	if e.armBusy {
+		// OOM backstop, sized above the measured working set: in steady state the
+		// per-loop manual GC keeps the heap far below this, so it never fires during
+		// a settle; only a genuine leak (e.g. engine parked while the web keeps
+		// serving) climbs to it, where GC beats an OOM-kill into a slot rollback.
+		var ms runtime.MemStats
+		runtime.ReadMemStats(&ms)
+		debug.SetMemoryLimit(int64(ms.Sys) + 32<<20)
+	}
+
 	for !e.stopReq.Load() {
 		e.serviceCommands()
 		e.bumpFrames() // heartbeat advances every iteration, stopped or not
+		if e.armBusy {
+			// Controlled GC (tunable): disable proportional auto-GC and run it here,
+			// a safe point (previous frame drained + paced), so no collection async-
+			// preempts a settle. Toggle restores the stock collector.
+			if gcCtl := e.tuneGcCtl.Load(); gcCtl != lastGcCtl {
+				lastGcCtl = gcCtl
+				if gcCtl {
+					debug.SetGCPercent(-1)
+				} else {
+					debug.SetGCPercent(100)
+				}
+			}
+			if lastGcCtl {
+				if gcTick++; gcTick >= gcEvery {
+					gcTick = 0
+					runtime.GC()
+				}
+			}
+		}
 
 		if !e.running.Load() {
 			// STOP keeps the FSM alive and servicing; it never parks the
@@ -120,13 +163,44 @@ func (e *Engine) oneFrame(norm bool) {
 		return
 	}
 
+	// Native-fast half-record probe: the free-run wait returns as soon as done+fill
+	// asserts, which can catch the deep record only half-filled (one bank). Optionally
+	// let it keep filling for a bounded extra window before halt (busy-held so the
+	// fill isn't starved). Tunable via fill_extra_us; 0 = off.
+	if nativeFast && e.armBusy {
+		if ex := time.Duration(e.tuneFillExtraUs.Load()) * time.Microsecond; ex > 0 {
+			for st := time.Now(); time.Since(st) < ex; {
+			}
+		}
+	}
 	haltOK := e.halt()
 	f := e.arena.Write()
 	cols := e.effDrainCols()
 	drainStart := e.clk.Now()
 	e.drain(f, cols)
+	// Native-fast RE-CAPTURE. The HW intermittently freezes only the pre-trigger
+	// HALF of the deep record (valid_depth ~cols/2, a flat dead tail after) on ~40%
+	// of frames — proven inherent to the capture, independent of load, the bus
+	// lock, and drain speed. ~60% of captures are coherent, so re-arm+re-drain
+	// until the record is full (bounded), keeping every PUBLISHED frame whole
+	// (spec 04 §4). validDepth returns the full n for a genuinely flat screen, so a
+	// quiet band never retries. If it stays half after the cap it's the persistent
+	// stuck state (power-cycle) — publish what we have; half_rate telemetry flags it.
+	// Gate on realDepth, not validDepth: the half-record's dead tail is a period-5
+	// port repeat that validDepth reads as live (see realDepth) — so validDepth
+	// passed broken frames. realDepth < 0.75·cols means the FPGA froze a half.
+	e.lastFirstHalf = nativeFast && realDepth(f.C1[:cols])*4 < cols*3 // raw half-record rate (before re-capture)
+	maxRetry := int(e.tuneMaxRetry.Load())
+	for tries := 0; nativeFast && tries < maxRetry && realDepth(f.C1[:cols])*4 < cols*3; tries++ {
+		e.armEngine()
+		e.waitCapture(norm)
+		if !e.halt() {
+			break
+		}
+		e.drain(f, cols)
+	}
 	drainMs := e.clk.Now().Sub(drainStart)
-	e.armEngine() // re-arm immediately: filling again before publish/render
+	e.armEngine() // re-arm immediately (spec 03 §5.1 RE-ARM): filling again before publish/render
 
 	// ERES boxcar runs on the whole record BEFORE any discrimination, so the
 	// anchor and the display see the same enhanced samples (spec 03 §7.4).
@@ -386,6 +460,11 @@ func (e *Engine) oneFrame(norm bool) {
 		e.mu.Unlock()
 	}
 
+	vd := validDepth(disc)
+	if nativeFast {
+		vd = realDepth(disc) // dead-tail-aware: half_rate must count the period-5 tail
+	}
+	armToLatchMs := float64(armToLatch) / float64(time.Millisecond)
 	e.mu.Lock()
 	if coherent {
 		e.stats.Coherent++
@@ -395,10 +474,28 @@ func (e *Engine) oneFrame(norm bool) {
 	}
 	e.stats.LastPtp = p
 	e.stats.LastTrigPos = trigPos
-	e.stats.ValidDepth = validDepth(disc)
+	e.stats.ValidDepth = vd
 	e.stats.MemDepth = int(e.memDepth.Load())
-	e.stats.ArmToLatch = float64(armToLatch) / float64(time.Millisecond)
+	e.stats.ArmToLatch = armToLatchMs
 	e.stats.DrainMs = float64(drainMs) / float64(time.Millisecond)
+	// Realtime acquisition checker (instrumentation only): record every
+	// halt+drain frame so a HALF record can be traced to its wait/halt state.
+	e.acqRing[e.acqHead] = AcqSample{
+		Seq:          e.stats.Frames,
+		Band:         e.stats.BandKind,
+		ValidDepth:   vd,
+		Cols:         cols,
+		FillAtHalt:   e.lastFillAtHalt,
+		HaltOK:       haltOK,
+		SawTrig:      sawTrig,
+		Anchored:     anchored,
+		Filled:       filled,
+		ArmToLatchMs: armToLatchMs,
+		TrigPos:      trigPos,
+		Half:         vd*10 < cols*6,
+		FirstHalf:    e.lastFirstHalf,
+	}
+	e.acqHead = (e.acqHead + 1) % len(e.acqRing)
 	e.mu.Unlock()
 
 	if publish {

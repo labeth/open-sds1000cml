@@ -103,9 +103,11 @@ func buildHUD(e *engine.Engine, fe *analog.FrontEnd) lcd.HUD {
 		hud.CurOn, hud.CurType, hud.CurSel = mv.CurOn, mv.CurType, mv.CurSel
 		hud.CurX, hud.CurY = mv.CurX, mv.CurY
 		hud.MenuOpen, hud.MenuTitle, hud.MenuSel = mv.Open, mv.Title, mv.Sel
-		hud.MenuItems = make([]lcd.MenuItem, len(mv.Items))
-		for i, it := range mv.Items {
-			hud.MenuItems[i] = lcd.MenuItem{Label: it.Label, Value: it.Value}
+		if mv.Open { // only the visible menu needs its item list copied each tick
+			hud.MenuItems = make([]lcd.MenuItem, len(mv.Items))
+			for i, it := range mv.Items {
+				hud.MenuItems[i] = lcd.MenuItem{Label: it.Label, Value: it.Value}
+			}
 		}
 		sv := pc.SuperresView()
 		hud.SRActive, hud.SRFocus, hud.SRStatus = sv.Active, sv.Focus, sv.Status
@@ -165,6 +167,52 @@ var lcdSpect = lcd.NewSpectrogram()
 // loop (started earlier) and the SCDP screenshot can read the menu overlay.
 var uiCtrl atomic.Pointer[panel.Controller]
 
+// renderSig is a scalar fingerprint of everything the static (Y-T / X-Y / FFT)
+// views draw. When it is unchanged tick-to-tick the display is identical, so the
+// LCD loop skips the rasterize+blit — the heavy, bus-contending part that
+// otherwise ran 20×/s even on a held frame. Time-evolving views (persistence,
+// Bode, spectrogram, super-res review, an active mask/zone test) bypass this and
+// always repaint. All fields are comparable so `==` decides.
+type renderSig struct {
+	seq                   uint64
+	view, math, dec, zoom int
+	curType, curSel       int
+	menuSel               int
+	tdiv, zoomOff         float64
+	c1v, c2v, off1, off2  float64
+	trig                  float64
+	curX, curY            [2]float64
+	probe1, probe2        float64
+	cpl1, cpl2            int
+	showMeas, persist     bool
+	running, single, norm bool
+	trigd, live           bool
+	showC1, showC2        bool
+	menuOpen, curOn       bool
+	ref0, ref1            bool
+}
+
+func renderSigOf(f *engine.Frame, hud lcd.HUD, live bool) renderSig {
+	var seq uint64
+	if f != nil {
+		seq = f.Seq
+	}
+	return renderSig{
+		seq: seq,
+		view: hud.ViewMode, math: hud.MathMode, dec: hud.DecProto, zoom: hud.Zoom,
+		curType: hud.CurType, curSel: hud.CurSel, menuSel: hud.MenuSel,
+		tdiv: hud.TdivS, zoomOff: hud.ZoomOff,
+		c1v: hud.C1VdivV, c2v: hud.C2VdivV, off1: hud.OffC1V, off2: hud.OffC2V,
+		trig: hud.TrigLvlDiv, curX: hud.CurX, curY: hud.CurY,
+		probe1: hud.Probe1, probe2: hud.Probe2, cpl1: hud.Cpl1, cpl2: hud.Cpl2,
+		showMeas: hud.ShowMeas, persist: hud.Persist,
+		running: hud.Running, single: hud.Single, norm: hud.Norm,
+		trigd: hud.Trigd, live: live, showC1: hud.ShowC1, showC2: hud.ShowC2,
+		menuOpen: hud.MenuOpen, curOn: hud.CurOn,
+		ref0: hud.RefShow[0], ref1: hud.RefShow[1],
+	}
+}
+
 // runLCD drives the device panel at the 50 ms display cadence (spec 07 §8 —
 // a hard minimum; faster starves the acquisition owner). Fully optional: on
 // any bring-up failure the scope keeps running headless.
@@ -184,10 +232,16 @@ func runLCD(e *engine.Engine, fe *analog.FrontEnd, fo *frames.Fanout) {
 	var sgSeq uint64                    // last frame pushed into the shared spectrogram (lcdSpect)
 	var lastSeq uint64
 	var lastFresh time.Time
-	t := time.NewTicker(50 * time.Millisecond)
-	defer t.Stop()
-	for range t.C {
+	var lastSig renderSig
+	haveSig := false
+	for {
+		time.Sleep(e.RenderPeriod()) // tunable display cadence (default 50ms, spec 07 §8 floor)
+		// Render only OUTSIDE the engine's load-sensitive windows (arm-settle +
+		// drain): a concurrent render burst there corrupts the HW capture on this
+		// single core. This pauses ~19ms/frame; the wait+pace (~90ms) is free.
+		e.QuietRLock()
 		hud := buildHUD(e, fe)
+		present := false
 		fo.WithFrame(func(f *engine.Frame) {
 			// The publish rate is slower than the render tick, so "fresh"
 			// is a short window, not a per-tick flag — otherwise the
@@ -214,9 +268,24 @@ func runLCD(e *engine.Engine, fe *analog.FrontEnd, fo *frames.Fanout) {
 				pc.SyncLEDs() // keep RUN/STOP + SINGLE lamps in step (re-latches only on change)
 			}
 			live := f != nil && time.Since(lastFresh) < 300*time.Millisecond
+			// Repaint only when the picture changed. Time-evolving views and active
+			// tests bypass the cache and always repaint (afterglow decay, the Bode
+			// sweep, the spectrogram waterfall, super-res review, a running mask/zone
+			// test whose live counters advance faster than the published frame seq).
+			force := hud.Persist || hud.ViewMode >= 3 || hud.SRActive ||
+				hud.MaskMode > 0 || hud.ZoneMode > 0
+			sig := renderSigOf(f, hud, live)
+			if haveSig && !force && sig == lastSig {
+				return // nothing visible changed — skip the rasterize + framebuffer blit
+			}
+			lastSig, haveSig = sig, true
 			lcd.Render(back, f, hud, live, persistLayer)
+			present = true
 		})
-		fb.Present(back)
+		if present {
+			fb.Present(back)
+		}
+		e.QuietRUnlock()
 	}
 }
 

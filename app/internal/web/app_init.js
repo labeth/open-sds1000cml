@@ -15,5 +15,10 @@ if (typeof ResizeObserver === "function") {
     rafPending = requestAnimationFrame(() => { rafPending = 0; resize(); });
   }).observe($("scopebox"));
 }
-pollFrameBin();   // the only frame transport (binframe.js is an embedded asset)
-pollStatus();
+// Claim single-active-client control, THEN start polling (opening a second
+// browser supersedes us — we show a "refresh to reclaim" overlay and stop).
+fetch("/api/claim").then(r => r.json()).then(j => { myEpoch = j.epoch || 0; }).catch(() => {})
+  .finally(() => {
+    pollFrameBin();   // the only frame transport (binframe.js is an embedded asset)
+    pollStatus();
+  });

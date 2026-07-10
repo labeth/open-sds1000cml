@@ -37,6 +37,11 @@ type statusReply struct {
 	SRFrames   int     `json:"sr_frames,omitempty"`
 	SRRejected int     `json:"sr_rejected,omitempty"`
 	SRStatus   string  `json:"sr_status,omitempty"`
+
+	// Realtime acquisition checker (instrumentation only): HALF-record diagnosis.
+	HalfRate float64            `json:"half_rate"` // fraction HALF over the last ≤64 samples
+	AcqLog   []engine.AcqSample `json:"acq_log"`   // last ≤24 frames, most-recent-last
+	CmdLog   []engine.CmdNote   `json:"cmd_log"`   // last ≤16 web set-control calls
 }
 
 func (s *Server) hStatus(w http.ResponseWriter, r *http.Request) {
@@ -52,6 +57,8 @@ func (s *Server) hStatus(w http.ResponseWriter, r *http.Request) {
 	if sr, ok := s.panel.(superresReporter); ok {
 		rep.SRActive, rep.SRReview, rep.SRBits, rep.SRFrames, rep.SRRejected, rep.SRStatus = sr.SuperresStatus()
 	}
+	rep.AcqLog, rep.HalfRate = s.sc.AcqLog(24)
+	rep.CmdLog = s.sc.CmdLog(16)
 	if s.fe != nil {
 		idx, emitted := s.fe.Snapshot()
 		for _, d := range analog.Detents {

@@ -5,10 +5,12 @@ package web
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"open-sds/app/internal/engine"
@@ -27,6 +29,8 @@ import (
 type Scope interface {
 	Snapshot() engine.Stats
 	WithFrame(fn func(*engine.Frame))
+	QuietRLock()   // block during the engine's load-sensitive windows (settle+drain)
+	QuietRUnlock() // release
 	SetRunning(bool)
 	SetNorm(bool)
 	SetTdiv(float64) (engine.Band, bool)
@@ -59,6 +63,15 @@ type Scope interface {
 	SetBodeMode(on bool, refCh, dutCh int)
 	ClearBode()
 	BodePoints() []engine.BodePoint
+
+	// Realtime acquisition checker (instrumentation only).
+	AcqLog(n int) ([]engine.AcqSample, float64)
+	CmdLog(n int) []engine.CmdNote
+	NoteCmd(name string, val float64)
+
+	// Live tuning (debug /api/debug/tune) for the framerate/CPU/success campaign.
+	Tune(engine.TuneVals) engine.TuneVals
+	TuneSnapshot() engine.TuneVals
 }
 
 // Analog is the vertical front-end surface (implemented by
@@ -107,6 +120,15 @@ type Server struct {
 	panel  Panel
 	screen func() []byte // PNG of the current LCD render (device-screen view)
 
+	// epoch is the single-active-client token. Each page load calls /api/claim,
+	// which bumps epoch; the frame.bin long-poll (the only sustained load) carries
+	// its claimed epoch and is refused (409) once a newer client has claimed. So a
+	// second browser "steals" the device and the first stops polling — the device
+	// serves at most ONE live client, bounding the CPU that competes with the
+	// engine's drain (spec 03 §2). epoch 0 (unclaimed: SCPI, curl, tests) is never
+	// refused.
+	epoch atomic.Uint64
+
 	// Single-entry auto-measurement cache. measure.Compute over a deep record
 	// is the heaviest in-lock CPU besides serialization, and every /api/frame
 	// and /api/frame.bin request needs the same numbers for a given published
@@ -148,8 +170,49 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/api/maskfail", s.hMaskFail)
 	mux.HandleFunc("/api/bode", s.hBode)
 	mux.HandleFunc("/api/screen.png", s.hScreen)
+	mux.HandleFunc("/api/claim", s.hClaim)
+	mux.HandleFunc("/api/debug/tune", s.hTune)
 	// "/" catches the page plus every embedded .js/.css (served in hRoot).
 	return mux
+}
+
+// hClaim issues a fresh single-client epoch (see Server.epoch). The page calls
+// it once on load; opening a second browser bumps the epoch and takes over.
+func (s *Server) hClaim(w http.ResponseWriter, r *http.Request) {
+	e := s.epoch.Add(1)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]uint64{"epoch": e})
+}
+
+// hTune applies live tuning knobs for the framerate/CPU/success campaign and
+// returns the effective values. GET reports current values; POST {json} sets
+// them. Fields omitted / negative are left unchanged (see engine.Tune).
+func (s *Server) hTune(w http.ResponseWriter, r *http.Request) {
+	cur := s.sc.TuneSnapshot()
+	if r.Method != http.MethodPost {
+		writeJSON(w, cur)
+		return
+	}
+	// Decode onto the current values so any omitted field (bools included) keeps
+	// its present setting; only what the body carries is overridden.
+	t := cur
+	if err := json.NewDecoder(io.LimitReader(r.Body, 4<<10)).Decode(&t); err != nil {
+		writeJSON(w, map[string]any{"ok": false, "err": "bad json"})
+		return
+	}
+	writeJSON(w, s.sc.Tune(t))
+}
+
+// superseded reports whether a request's ?epoch is older than the active client
+// (a newer browser has claimed). epoch 0 / absent (SCPI, curl, tests) is exempt.
+func (s *Server) superseded(r *http.Request) bool {
+	q := r.URL.Query().Get("epoch")
+	if q == "" {
+		return false
+	}
+	var e uint64
+	fmt.Sscanf(q, "%d", &e)
+	return e != 0 && e < s.epoch.Load()
 }
 
 // hPanel injects a front-panel button or knob event (spec 08 §6). Body:

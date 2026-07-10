@@ -62,6 +62,7 @@ const (
 	nativeEdgeMinPtp  = 40    // codes; flat rail ≈ 5, real cal edge ≈ 150
 	nativeFlatFallbck = 60    // held frames before one honest flat publish
 	fillFull          = 0x7f0 // fill counter near the 11-bit max = record full
+	// native-fast re-capture cap is the tunable tuneMaxRetry (default 8); see engine.New
 
 	// TrigCodeMin/Max clamp the UI trigger-level DAC range (spec 05 §1.2).
 	TrigCodeMin = 27000
@@ -158,6 +159,37 @@ type Stats struct {
 	BodePhaseDeg float64 `json:"bode_phase_deg,omitempty"` // live point phase (deg)
 }
 
+// AcqSample is one per-frame acquisition record captured by the realtime
+// acquisition checker (pure instrumentation — it never influences the FSM). It
+// snapshots the hardware/wait state of a single halt+drain frame so a HALF
+// record (valid_depth ≈ half of cols on a native-fast band) can be correlated
+// with the arm/wait/halt outcome that produced it. Recorded for every frame
+// that reaches halt+drain, published or held.
+type AcqSample struct {
+	Seq          uint64  `json:"seq"`          // FSM heartbeat (stats.Frames) at record time
+	Band         string  `json:"band"`         // native-fast | decimated | envelope | roll
+	ValidDepth   int     `json:"valid_depth"`  // live samples before the dead tail
+	Cols         int     `json:"cols"`         // drained record width (effDrainCols)
+	FillAtHalt   int     `json:"fill_at_halt"` // 0x46 & fillMask, final read inside halt()
+	HaltOK       bool    `json:"halt_ok"`      // halt() confirmed the fill froze
+	SawTrig      bool    `json:"saw_trig"`     // status bit1 asserted during the wait
+	Anchored     bool    `json:"anchored"`     // wait anchored on done/valid
+	Filled       bool    `json:"filled"`       // post-trigger record filled (0x46 ≥ LatchAt)
+	ArmToLatchMs float64 `json:"arm_to_latch_ms"`
+	TrigPos      int     `json:"trig_pos"`
+	Half         bool    `json:"half"`       // published ValidDepth < 0.6*Cols (after re-capture)
+	FirstHalf    bool    `json:"first_half"` // the FIRST drain was half (raw HW rate, before re-capture)
+}
+
+// CmdNote records one web set-control invocation (name + numeric value +
+// the published Seq at the time), so the acq log can be read against "what we
+// did just before". Pure instrumentation.
+type CmdNote struct {
+	Name string  `json:"name"`
+	Val  float64 `json:"val"`
+	Seq  uint64  `json:"at_seq"`
+}
+
 type Engine struct {
 	b     bus.Bus
 	clk   Clock
@@ -167,7 +199,20 @@ type Engine struct {
 	framePeriodNs atomic.Int64 // publish pacing floor (ns); 0 = back-to-back (stream)
 	holdoffNs     atomic.Int64 // minimum time after a triggered frame before re-arm; 0 = off
 	armSettle     time.Duration
+	armBusy       bool // busy-wait the settle (real clock) instead of Sleep — the native-fast root-cause fix
 	pollEvery     time.Duration
+
+	// Live tuning knobs (debug /api/debug/tune) for the framerate/CPU/success
+	// optimization campaign — atomics so the web handler sets them lock-free and
+	// the owner loop reads them each frame. Defaults mirror the compile-time
+	// constants; gated on armBusy (device) so tests are unaffected.
+	tuneArmSettleUs atomic.Int64 // arm settle duration (µs)
+	tuneArmSpin     atomic.Bool  // busy-wait the settle vs Sleep
+	tuneBusyFillUs  atomic.Int64 // native-fast fill busy-poll window (µs; 0 = off)
+	tuneGcCtl       atomic.Bool  // controlled GC (SetGCPercent(-1)+manual) vs stock
+	tuneMaxRetry    atomic.Int64 // native-fast re-capture cap
+	tuneRenderMs    atomic.Int64 // LCD render period (ms)
+	tuneFillExtraUs atomic.Int64 // native-fast: extra fill time after done, before halt (µs)
 
 	// Lock-free control reads by the owner.
 	running     atomic.Bool
@@ -209,6 +254,15 @@ type Engine struct {
 	// return; only the owner touches the bus (spec 09 §1). Bus writes happen
 	// with mu released.
 	mu        sync.Mutex
+	// quiet gates the ~19ms load-sensitive windows (arm-settle + drain). The
+	// engine takes the WRITE lock across those; the LCD render / web serialize /
+	// panel take the READ lock around their CPU bursts. On this single core, a
+	// concurrent CPU burst *during* the arm-settle or drain corrupts the HW
+	// capture (proven: it freezes only the pre-trigger half). Pausing the other
+	// goroutines for those ~19ms — a minority of the ~110ms loop — is enough; they
+	// run freely during the ~90ms wait+pace. Cheaper than a busy-wait (no CPU
+	// burned) and it kills the root cause instead of re-capturing after the fact.
+	quiet     sync.RWMutex
 	norm      bool
 	pendBand  Band
 	pendSet   bool
@@ -233,12 +287,23 @@ type Engine struct {
 	band      Band
 	prevKind  Kind
 	lastNorm  bool
-	seq       uint64
-	flatHeld  int
-	deadRuns  int
+	seq           uint64
+	flatHeld      int
+	lastFirstHalf bool // the last frame's FIRST drain was a half record (pre re-capture)
+	deadRuns      int
 	streamSeq uint64    // stitch-mode window counter
 	lastHalt  time.Time // wall-clock of the previous window's halt (for GapNs)
 	done      chan struct{}
+
+	// Realtime acquisition checker (instrumentation only, spec: diagnose HALF
+	// records). acqRing/cmdRing are guarded by e.mu (the status handler reads
+	// them off the HTTP goroutine). lastFillAtHalt is written only from the
+	// engine goroutine inside halt() and copied into the ring under e.mu.
+	acqRing        [128]AcqSample
+	acqHead        int
+	lastFillAtHalt int
+	cmdRing        [64]CmdNote
+	cmdHead        int
 
 	// Envelope band state (spec 04 §1): ring of phase-scattered windows.
 	envRing1, envRing2     [][]uint8
@@ -271,7 +336,11 @@ type Engine struct {
 }
 
 func New(cfg Config) *Engine {
-	if cfg.Clock.Now == nil {
+	// A nil clock means the real monotonic clock (production). Only then may the
+	// arm-settle busy-wait, which spins on time.Now(); a fake clock's Now advances
+	// only via Sleep, so tests must keep the sleep path (see armEngine).
+	realTime := cfg.Clock.Now == nil
+	if realTime {
 		cfg.Clock = realClock()
 	}
 	if cfg.FramePeriod == 0 {
@@ -293,12 +362,29 @@ func New(cfg Config) *Engine {
 		logf:      cfg.Logf,
 		arena:     newArena(deepRecord),
 		armSettle: cfg.ArmSettle,
+		armBusy:   realTime,
 		pollEvery: cfg.PollEvery,
 		band:      start,
 		prevKind:  start.Kind(),
 		done:      make(chan struct{}),
 		matrixReq: make(chan chan [5]uint16, 4),
 	}
+	// Tuning defaults. ROOT-CAUSE FIX for the native-fast half-record: the free-run
+	// wait returned the instant done+fill asserted and halted immediately, catching
+	// the deep record half-filled (one memory bank). Holding ~2 ms more before halt
+	// lets the second bank fill — verified by a content checker (real_depth, which
+	// detects the drain's period-5 dead tail that fooled valid_depth): base full
+	// rate 7.5%→100%, so re-capture is no longer needed. Combined with the CPU/fps
+	// tuning (no busy spins, slowed change-detected render, stock GC) this beats the
+	// original defaults on all three: CPU ~96%→~86%, fps ~13.4→~18, frame_success
+	// (real content, not valid_depth) ~5%→100%.
+	e.tuneArmSettleUs.Store(cfg.ArmSettle.Microseconds()) // spec-safe 2 ms
+	e.tuneArmSpin.Store(false)                            // no busy-wait spin (pure CPU cost)
+	e.tuneBusyFillUs.Store(0)                             // no fill busy-poll (pure CPU cost)
+	e.tuneGcCtl.Store(false)                              // stock GC (nothing spins to be preempted)
+	e.tuneMaxRetry.Store(2)                               // light backstop; full records are now the norm
+	e.tuneRenderMs.Store(120)                             // ~8 Hz LCD: big CPU win, still smooth enough
+	e.tuneFillExtraUs.Store(2000)                         // THE FIX: fill both banks before halt
 	e.running.Store(true)
 	e.trigRising.Store(true)
 	e.avgCount.Store(16) // boot-firmware default; menu {4,16,32,64,128,256}
@@ -337,6 +423,72 @@ func (e *Engine) Stop(timeout time.Duration) bool {
 	case <-time.After(timeout):
 		return false
 	}
+}
+
+// QuietRLock/QuietRUnlock bracket a concurrent CPU consumer's work (LCD render,
+// web serialize, panel). It blocks while the engine is in a load-sensitive
+// window (arm-settle or drain), so the consumer runs only during the loop's
+// ~90ms of dead time — never during the ~19ms that corrupts the HW capture.
+func (e *Engine) QuietRLock()   { e.quiet.RLock() }
+func (e *Engine) QuietRUnlock() { e.quiet.RUnlock() }
+
+// TuneVals is the live-tunable knob set (see the tune* atomics).
+type TuneVals struct {
+	ArmSettleUs int64 `json:"arm_settle_us"`
+	ArmSpin     bool  `json:"arm_spin"`
+	BusyFillUs  int64 `json:"busy_fill_us"`
+	GcCtl       bool  `json:"gc_ctl"`
+	MaxRetry    int64 `json:"max_retry"`
+	RenderMs    int64 `json:"render_ms"`
+	FillExtraUs int64 `json:"fill_extra_us"`
+}
+
+// Tune applies a knob set (debug /api/debug/tune) and returns the effective
+// values. Ignored on a non-device (fake clock) engine so tests stay stock.
+func (e *Engine) Tune(t TuneVals) TuneVals {
+	if !e.armBusy {
+		return e.TuneSnapshot()
+	}
+	if t.ArmSettleUs > 0 {
+		e.tuneArmSettleUs.Store(t.ArmSettleUs)
+	}
+	if t.BusyFillUs >= 0 {
+		e.tuneBusyFillUs.Store(t.BusyFillUs)
+	}
+	if t.MaxRetry >= 0 {
+		e.tuneMaxRetry.Store(t.MaxRetry)
+	}
+	if t.RenderMs > 0 {
+		e.tuneRenderMs.Store(t.RenderMs)
+	}
+	if t.FillExtraUs >= 0 {
+		e.tuneFillExtraUs.Store(t.FillExtraUs)
+	}
+	e.tuneArmSpin.Store(t.ArmSpin)
+	e.tuneGcCtl.Store(t.GcCtl)
+	return e.TuneSnapshot()
+}
+
+// TuneSnapshot reports the current knob values.
+func (e *Engine) TuneSnapshot() TuneVals {
+	return TuneVals{
+		ArmSettleUs: e.tuneArmSettleUs.Load(),
+		ArmSpin:     e.tuneArmSpin.Load(),
+		BusyFillUs:  e.tuneBusyFillUs.Load(),
+		GcCtl:       e.tuneGcCtl.Load(),
+		MaxRetry:    e.tuneMaxRetry.Load(),
+		RenderMs:    e.tuneRenderMs.Load(),
+		FillExtraUs: e.tuneFillExtraUs.Load(),
+	}
+}
+
+// RenderPeriod is the LCD loop's tunable tick (read each render tick).
+func (e *Engine) RenderPeriod() time.Duration {
+	ms := e.tuneRenderMs.Load()
+	if ms < 10 {
+		ms = 10
+	}
+	return time.Duration(ms) * time.Millisecond
 }
 
 // Snapshot returns a copy of the stats. Never touches the bus.
@@ -387,6 +539,96 @@ func (e *Engine) Snapshot() Stats {
 
 // Consume hands the newest published frame to a consumer (the web layer).
 func (e *Engine) Consume() (*Frame, bool) { return e.arena.Consume() }
+
+// AcqLog returns the last n acquisition samples (most-recent-last) plus the
+// HALF rate over the last up-to-64 recorded samples. Instrumentation only; the
+// ring is read under e.mu since it is written by the engine goroutine. n is
+// clamped to the ring size.
+func (e *Engine) AcqLog(n int) ([]AcqSample, float64) {
+	if n < 0 {
+		n = 0
+	}
+	if n > len(e.acqRing) {
+		n = len(e.acqRing)
+	}
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	// Count how many valid (recorded) entries exist: acqHead has wrapped past
+	// filled entries; a never-written slot has Seq==0 && Cols==0.
+	avail := 0
+	for i := 0; i < len(e.acqRing); i++ {
+		idx := (e.acqHead - 1 - i + len(e.acqRing)) % len(e.acqRing)
+		if e.acqRing[idx].Cols == 0 {
+			break
+		}
+		avail++
+	}
+	// HALF rate over the last up-to-64 recorded samples.
+	rateN := avail
+	if rateN > 64 {
+		rateN = 64
+	}
+	half := 0
+	for i := 0; i < rateN; i++ {
+		idx := (e.acqHead - 1 - i + len(e.acqRing)) % len(e.acqRing)
+		if e.acqRing[idx].Half {
+			half++
+		}
+	}
+	rate := 0.0
+	if rateN > 0 {
+		rate = float64(half) / float64(rateN)
+	}
+	if n > avail {
+		n = avail
+	}
+	out := make([]AcqSample, n)
+	for i := 0; i < n; i++ { // most-recent-last: fill from the tail back
+		idx := (e.acqHead - n + i + len(e.acqRing)) % len(e.acqRing)
+		out[i] = e.acqRing[idx]
+	}
+	return out, rate
+}
+
+// CmdLog returns the last n command notes (most-recent-last). Instrumentation
+// only; read under e.mu since NoteCmd writes from the HTTP goroutine.
+func (e *Engine) CmdLog(n int) []CmdNote {
+	if n < 0 {
+		n = 0
+	}
+	if n > len(e.cmdRing) {
+		n = len(e.cmdRing)
+	}
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	avail := 0
+	for i := 0; i < len(e.cmdRing); i++ {
+		idx := (e.cmdHead - 1 - i + len(e.cmdRing)) % len(e.cmdRing)
+		if e.cmdRing[idx].Name == "" {
+			break
+		}
+		avail++
+	}
+	if n > avail {
+		n = avail
+	}
+	out := make([]CmdNote, n)
+	for i := 0; i < n; i++ {
+		idx := (e.cmdHead - n + i + len(e.cmdRing)) % len(e.cmdRing)
+		out[i] = e.cmdRing[idx]
+	}
+	return out
+}
+
+// NoteCmd records a web set-control invocation into the command ring, stamping
+// the current published Seq. Called from the HTTP goroutine → locks e.mu.
+// Instrumentation only; it never touches the bus or the FSM.
+func (e *Engine) NoteCmd(name string, val float64) {
+	e.mu.Lock()
+	e.cmdRing[e.cmdHead] = CmdNote{Name: name, Val: val, Seq: e.stats.Seq}
+	e.cmdHead = (e.cmdHead + 1) % len(e.cmdRing)
+	e.mu.Unlock()
+}
 
 // ---- owner goroutine ----
 

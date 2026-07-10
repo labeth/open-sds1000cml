@@ -286,10 +286,36 @@ function updateMathHint() {
 // ---- frame + status polling / transport / send ----
 
 
+// showSuperseded stops this view and puts up a full-screen "refresh to reclaim"
+// overlay. The device serves ONE live client at a time (to keep the engine's
+// drain fast); a newer browser's /api/claim supersedes this one. Multiple tabs
+// can stay open — refreshing any one reclaims control and supersedes the rest.
+function showSuperseded() {
+  if (superseded) return;
+  superseded = true;
+  let o = document.getElementById("supersededOverlay");
+  if (!o) {
+    o = document.createElement("div");
+    o.id = "supersededOverlay";
+    o.style.cssText = "position:fixed;inset:0;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1.2em;background:rgba(0,0,0,.86);color:#eee;font:16px system-ui,-apple-system,sans-serif;text-align:center;padding:2em;backdrop-filter:blur(2px)";
+    o.innerHTML = '<div style="font-size:1.5em;font-weight:600">Disconnected</div>' +
+      '<div style="max-width:22em;line-height:1.5;opacity:.85">Another browser took control of the scope. Only one live view runs at a time so the acquisition stays fast.</div>';
+    const b = document.createElement("button");
+    b.textContent = "Refresh to reclaim";
+    b.style.cssText = "font:inherit;padding:.6em 1.3em;cursor:pointer;border-radius:7px;border:1px solid #6a9;background:#183028;color:#cfe;font-weight:600";
+    b.onclick = () => location.reload();
+    o.appendChild(b);
+    document.body.appendChild(o);
+  }
+  o.style.display = "flex";
+}
+
 async function pollFrameBin() {
+  if (superseded) return; // another browser took control; wait for a manual refresh
   if (frozen || document.hidden) { setTimeout(pollFrameBin, 90); return; } // idle tick; hidden tabs stop hitting the device
   try {
-    const r = await fetch("/api/frame.bin?since=" + lastSeq + "&cols=" + reqCols + "&full=1&waitms=1000");
+    const r = await fetch("/api/frame.bin?since=" + lastSeq + "&cols=" + reqCols + "&full=1&waitms=1000&epoch=" + myEpoch);
+    if (r.status === 409) { showSuperseded(); return; } // a newer browser claimed the device — stop loading it
     if (!r.ok) throw new Error("http " + r.status);
     const f = decodeBinFrame(await r.arrayBuffer());
     if (f === null) throw new Error("bad frame"); // never render a reply that failed validation
@@ -325,6 +351,7 @@ async function fetchFftRaw() {
 }
 
 async function pollStatus() {
+  if (superseded) return; // taken over by another browser; stop loading the device
   try { st = await (await fetch("/api/status")).json(); applyStatus(); }
   catch (e) { $("line").textContent = "no connection"; lastLineHTML = ""; } // reset the diff guard or a static status keeps "no connection" stuck
   // While a SINGLE is armed, poll fast so the self-stop on capture reaches the
