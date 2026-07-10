@@ -334,6 +334,7 @@ for (let i = 1; i <= N; i++) {
   // small pacing so the device isn't hammered unrealistically
   await op.page.waitForTimeout(80);
 }
+if (process.env.LOG_ACTIONS) console.log("\nactions:\n" + log.join("\n"));
 console.log(`\n\ndone: ${N} iterations, ${findings} findings -> ${findingsPath}`);
 await op.close();
 process.exit(findings ? 1 : 0);

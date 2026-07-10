@@ -38,6 +38,13 @@ jobs:
   # node JS, and Go<->JS parity suites actually RUN. CI_REQUIRE_BROWSER=1 turns
   # their environment self-skips into hard failures (internal/testenv), so this
   # half of the product can never go silently unguarded again.
+  #
+  # This lane includes the device-free operator-fuzz campaign
+  # (TestFuzzBrowserSynthetic in internal/web): e2e/fuzz.mjs — the same seeded
+  # random-operator driver used against the live scope — runs 60 deterministic
+  # iterations (SEED=1) against a local httptest server with a stateful
+  # synthetic engine, so every PR replays the identical campaign and any
+  # finding fails the job with findings.jsonl in the test output.
   browser-test:
     runs-on: ubuntu-latest
     env:
@@ -74,11 +81,11 @@ jobs:
           # the drivers locate the module via PLAYWRIGHT_DIR (see scope_po.mjs)
           echo "PLAYWRIGHT_DIR=$HOME/pw/node_modules" >> "$GITHUB_ENV"
 
-      - name: browser / node / JS-parity tests (skips are failures here)
+      - name: browser / node / JS-parity tests + operator fuzz (skips are failures here)
         working-directory: app
         env:
           CI_REQUIRE_BROWSER: "1"
-        run: go test -timeout 20m ./internal/web/ ./internal/decode/ ./internal/superres/
+        run: go test -timeout 25m ./internal/web/ ./internal/decode/ ./internal/superres/
 
   cross-build:
     runs-on: ubuntu-latest
