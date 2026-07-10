@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"open-sds/app/internal/engine"
+	"open-sds/app/internal/testenv"
 )
 
 // TestAcceptanceBrowser drives the shared page-object acceptance suite
@@ -16,9 +17,7 @@ import (
 // acquire, trigger, vertical/horizontal, cursors, view modes + panel visibility,
 // and export. Self-skips (via the driver) when node/Playwright is absent.
 func TestAcceptanceBrowser(t *testing.T) {
-	if _, err := exec.LookPath("node"); err != nil {
-		t.Skip("node not installed")
-	}
+	testenv.NeedNode(t)
 	const N = 2048
 	c1 := make([]uint8, N)
 	c2 := make([]uint8, N)
@@ -40,7 +39,7 @@ func TestAcceptanceBrowser(t *testing.T) {
 	out, err := exec.Command("node", "acceptance_browser.mjs", srv.URL).CombinedOutput()
 	t.Logf("acceptance_browser.mjs:\n%s", out)
 	if strings.HasPrefix(strings.TrimSpace(string(out)), "SKIP:") {
-		t.Skip("browser unavailable")
+		testenv.SkipBrowser(t, "browser unavailable")
 	}
 	if err != nil {
 		t.Fatalf("acceptance e2e failed: %v", err)

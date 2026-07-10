@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"open-sds/app/internal/engine"
+	"open-sds/app/internal/testenv"
 )
 
 // TestDeepMemBrowser drives the real ui.html against a server serving a DEEP
@@ -18,9 +19,7 @@ import (
 // ~1/3 slice), wheel-zoom-out reaches the full record, dragging pans, and the
 // deep record decodes/FFTs. Device-independent; self-skips without node/browser.
 func TestDeepMemBrowser(t *testing.T) {
-	if _, err := exec.LookPath("node"); err != nil {
-		t.Skip("node not installed")
-	}
+	testenv.NeedNode(t)
 	const depth, winCols = 6144, 2048
 	const edge = 2677.0 // mid-record trigger edge (as seen on the device)
 	var seq atomic.Int64
@@ -50,7 +49,7 @@ func TestDeepMemBrowser(t *testing.T) {
 	out, err := exec.Command("node", "deepmem_browser.mjs", srv.URL).CombinedOutput()
 	t.Logf("deepmem_browser.mjs:\n%s", out)
 	if strings.Contains(string(out), "SKIP:") {
-		t.Skipf("browser driver skipped: %s", firstLine(out))
+		testenv.SkipBrowser(t, "browser driver skipped: %s", firstLine(out))
 	}
 	if err != nil {
 		t.Fatalf("deep-memory browser e2e failed: %v", err)

@@ -4,6 +4,8 @@ import (
 	"os/exec"
 	"strings"
 	"testing"
+
+	"open-sds/app/internal/testenv"
 )
 
 // TestDecodeJS runs the protocol-decoder logic (decode.js) under node against
@@ -11,10 +13,8 @@ import (
 // the browser decode code without a headless browser. Skips if node is absent
 // so `go test ./...` stays green everywhere.
 func TestDecodeJS(t *testing.T) {
-	node, err := exec.LookPath("node")
-	if err != nil {
-		t.Skip("node not installed; skipping decode.js e2e test")
-	}
+	testenv.NeedNode(t)
+	node, _ := exec.LookPath("node")
 	out, err := exec.Command(node, "decode.test.cjs").CombinedOutput()
 	t.Logf("decode.test.cjs output:\n%s", out)
 	if err != nil {

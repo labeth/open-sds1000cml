@@ -7,6 +7,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"testing"
+
+	"open-sds/app/internal/testenv"
 )
 
 // synthetic REPETITIVE frames (triangle) plus one non-matching frame, generated
@@ -113,9 +115,7 @@ func TestParityJS(t *testing.T) { runParity(t, -1, -1) }
 func TestParityManualGate(t *testing.T) { runParity(t, 40, 160) }
 
 func runParity(t *testing.T, gateLo, gateHi int) {
-	if _, err := exec.LookPath("node"); err != nil {
-		t.Skip("node not installed")
-	}
+	testenv.NeedNode(t)
 	N, K, align, frames := genFrames()
 
 	// --- JS engine via the driver ---

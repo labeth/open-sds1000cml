@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"open-sds/app/internal/engine"
+	"open-sds/app/internal/testenv"
 )
 
 // TestSpectrogramBrowser drives the real web SPECTROGRAM card in headless
@@ -16,9 +17,7 @@ import (
 // (arm → accumulate rows → paint → enlarge → clear) works end to end with no
 // page errors. Skips (never fails) without node or a Playwright browser.
 func TestSpectrogramBrowser(t *testing.T) {
-	if _, err := exec.LookPath("node"); err != nil {
-		t.Skip("node not installed")
-	}
+	testenv.NeedNode(t)
 	var seq atomic.Int64
 	gen := func() *engine.Frame {
 		n := seq.Add(1)
@@ -42,7 +41,7 @@ func TestSpectrogramBrowser(t *testing.T) {
 	out, err := exec.Command("node", "spectrogram_browser.mjs", srv.URL).CombinedOutput()
 	t.Logf("spectrogram_browser.mjs:\n%s", out)
 	if strings.Contains(string(out), "SKIP:") {
-		t.Skipf("browser driver skipped: %s", firstLine(out))
+		testenv.SkipBrowser(t, "browser driver skipped: %s", firstLine(out))
 	}
 	if err != nil {
 		t.Fatalf("browser e2e failed: %v", err)

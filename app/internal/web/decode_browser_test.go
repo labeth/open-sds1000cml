@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"open-sds/app/internal/engine"
+	"open-sds/app/internal/testenv"
 )
 
 // i2cWave renders one I2C transaction (START, addr 0x50 W, ACK, 0x00, ACK, 0xFF,
@@ -58,9 +59,7 @@ func i2cWave(n int) (scl, sda []uint8) {
 // byte count, the Copy button, and the navigator wheel-zoom + reset. Fully
 // device-independent; self-skips when node/Playwright are unavailable.
 func TestDecodeBrowser(t *testing.T) {
-	if _, err := exec.LookPath("node"); err != nil {
-		t.Skip("node not installed")
-	}
+	testenv.NeedNode(t)
 	const N = 2048
 	scl, sda := i2cWave(N)
 	var seq atomic.Int64
@@ -82,7 +81,7 @@ func TestDecodeBrowser(t *testing.T) {
 	out, err := exec.Command("node", "decode_browser.mjs", srv.URL).CombinedOutput()
 	t.Logf("decode_browser.mjs:\n%s", out)
 	if strings.Contains(string(out), "SKIP:") {
-		t.Skipf("browser driver skipped: %s", firstLine(out))
+		testenv.SkipBrowser(t, "browser driver skipped: %s", firstLine(out))
 	}
 	if err != nil {
 		t.Fatalf("decode browser e2e failed: %v", err)

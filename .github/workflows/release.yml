@@ -27,6 +27,12 @@ jobs:
           go-version-file: ota/go.mod
           cache: false
 
+      # Reproducible builds: stamp Built from the tagged commit's time, not the
+      # runner clock — the Makefiles honor SOURCE_DATE_EPOCH, so rebuilding the
+      # same tag yields bit-identical binaries (verifiable against SHA256SUMS).
+      - name: Set SOURCE_DATE_EPOCH from the tagged commit
+        run: echo "SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)" >> "$GITHUB_ENV"
+
       - name: Test + vet (both modules) — a red build must not ship
         run: |
           (cd app && go vet ./... && go test ./...)

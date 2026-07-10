@@ -4,6 +4,8 @@ import (
 	"os/exec"
 	"strings"
 	"testing"
+
+	"open-sds/app/internal/testenv"
 )
 
 // TestSuperresEtsJS runs the phase-coherent equivalent-time reconstruction
@@ -12,10 +14,8 @@ import (
 // period at the correct amplitude, gain measured ENOB, keep a square's
 // harmonics, and reject a pure-noise frame. Skips if node is absent.
 func TestSuperresEtsJS(t *testing.T) {
-	node, err := exec.LookPath("node")
-	if err != nil {
-		t.Skip("node not installed; skipping superres_ets.js test")
-	}
+	testenv.NeedNode(t)
+	node, _ := exec.LookPath("node")
 	out, err := exec.Command(node, "superres_ets.test.cjs").CombinedOutput()
 	t.Logf("superres_ets.test.cjs output:\n%s", out)
 	if err != nil {

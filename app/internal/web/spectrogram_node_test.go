@@ -4,15 +4,15 @@ import (
 	"os/exec"
 	"strings"
 	"testing"
+
+	"open-sds/app/internal/testenv"
 )
 
 // Locks the JS spectrogram helpers under node: the colormap endpoints/segments
 // match the Go heat() (parity), the ramp is monotone in brightness, and a
 // pushed tone row lights the correct frequency column.
 func TestSpectrogramJS(t *testing.T) {
-	if _, err := exec.LookPath("node"); err != nil {
-		t.Skip("node not installed")
-	}
+	testenv.NeedNode(t)
 	script := `
 const s = require("./spectrogram.js");
 let fail = 0;
@@ -56,9 +56,7 @@ process.exit(fail ? 1 : 0);
 // and sgPushRow must survive any floorDb (0, NaN, ±Inf, positive) and any
 // degenerate spectrum without throwing or emitting a NaN pixel.
 func TestSpectrogramJSBreaker(t *testing.T) {
-	if _, err := exec.LookPath("node"); err != nil {
-		t.Skip("node not installed")
-	}
+	testenv.NeedNode(t)
 	script := `
 const s = require("./spectrogram.js");
 let fail = 0;

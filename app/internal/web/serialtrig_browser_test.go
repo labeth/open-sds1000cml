@@ -8,15 +8,14 @@ import (
 	"testing"
 
 	"open-sds/app/internal/engine"
+	"open-sds/app/internal/testenv"
 )
 
 // TestSerialTrigBrowser drives serialtrig_browser.mjs against a live server:
 // the serial-trigger panel reveals per-protocol config rows and ARM pushes the
 // config + arms the engine over the real API. Self-skips without node/Playwright.
 func TestSerialTrigBrowser(t *testing.T) {
-	if _, err := exec.LookPath("node"); err != nil {
-		t.Skip("node not installed")
-	}
+	testenv.NeedNode(t)
 	const N = 2048
 	var seq uint64
 	gen := func() *engine.Frame {
@@ -37,7 +36,7 @@ func TestSerialTrigBrowser(t *testing.T) {
 	out, err := exec.Command("node", "serialtrig_browser.mjs", srv.URL).CombinedOutput()
 	t.Logf("serialtrig_browser.mjs:\n%s", out)
 	if strings.HasPrefix(strings.TrimSpace(string(out)), "SKIP:") {
-		t.Skip("browser unavailable")
+		testenv.SkipBrowser(t, "browser unavailable")
 	}
 	if err != nil {
 		t.Fatalf("serial-trigger e2e failed: %v", err)

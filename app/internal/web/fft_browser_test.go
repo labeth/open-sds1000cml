@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"open-sds/app/internal/engine"
+	"open-sds/app/internal/testenv"
 )
 
 // TestFFTBrowser drives the real UI in headless Chromium (via Playwright) against
@@ -19,9 +20,7 @@ import (
 // device-independent. Skips (never fails) when node or a Playwright browser is
 // not available, so `go test ./...` stays green on machines without them.
 func TestFFTBrowser(t *testing.T) {
-	if _, err := exec.LookPath("node"); err != nil {
-		t.Skip("node not installed")
-	}
+	testenv.NeedNode(t)
 
 	var seq atomic.Int64
 	clamp8 := func(v float64) uint8 {
@@ -67,7 +66,7 @@ func TestFFTBrowser(t *testing.T) {
 	out, err := exec.Command("node", "fft_browser.mjs", srv.URL).CombinedOutput()
 	t.Logf("fft_browser.mjs:\n%s", out)
 	if strings.Contains(string(out), "SKIP:") {
-		t.Skipf("browser driver skipped: %s", firstLine(out))
+		testenv.SkipBrowser(t, "browser driver skipped: %s", firstLine(out))
 	}
 	if err != nil {
 		t.Fatalf("browser e2e failed: %v", err)

@@ -4,6 +4,8 @@ import (
 	"os/exec"
 	"strings"
 	"testing"
+
+	"open-sds/app/internal/testenv"
 )
 
 // TestSuperresCompJS runs the analog-falloff compensation math
@@ -12,10 +14,8 @@ import (
 // toward flat, DC/offset preservation, gap-sentinel preservation and the
 // non-power-of-two resample path. Skips if node is absent.
 func TestSuperresCompJS(t *testing.T) {
-	node, err := exec.LookPath("node")
-	if err != nil {
-		t.Skip("node not installed; skipping superres_comp.js test")
-	}
+	testenv.NeedNode(t)
+	node, _ := exec.LookPath("node")
 	out, err := exec.Command(node, "superres_comp.test.cjs").CombinedOutput()
 	t.Logf("superres_comp.test.cjs output:\n%s", out)
 	if err != nil {

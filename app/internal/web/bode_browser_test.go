@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"open-sds/app/internal/engine"
+	"open-sds/app/internal/testenv"
 )
 
 // TestBodeBrowser drives the real web BODE/FRA card in headless Chromium: ARM
@@ -16,9 +17,7 @@ import (
 // draws, the enlarge opens, CLEAR runs — no page errors. Exercises the
 // app_views.js bode wiring this refactor relocated. Skips without node/browser.
 func TestBodeBrowser(t *testing.T) {
-	if _, err := exec.LookPath("node"); err != nil {
-		t.Skip("node not installed")
-	}
+	testenv.NeedNode(t)
 	var seq atomic.Int64
 	gen := func() *engine.Frame {
 		n := seq.Add(1)
@@ -46,7 +45,7 @@ func TestBodeBrowser(t *testing.T) {
 	out, err := exec.Command("node", "bode_browser.mjs", srv.URL).CombinedOutput()
 	t.Logf("bode_browser.mjs:\n%s", out)
 	if strings.Contains(string(out), "SKIP:") {
-		t.Skipf("browser driver skipped: %s", firstLine(out))
+		testenv.SkipBrowser(t, "browser driver skipped: %s", firstLine(out))
 	}
 	if err != nil {
 		t.Fatalf("browser e2e failed: %v", err)

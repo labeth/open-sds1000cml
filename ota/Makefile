@@ -3,7 +3,14 @@
 
 VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 COMMIT  ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)
-BUILT   ?= $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
+# Honor SOURCE_DATE_EPOCH (reproducible-builds.org): with it set, two builds of
+# the same tree stamp the same Built and hash bit-identically.
+# `date -d @sec` is GNU, `date -r sec` is BSD/macOS — try both.
+ifdef SOURCE_DATE_EPOCH
+BUILT ?= $(shell date -u -d "@$(SOURCE_DATE_EPOCH)" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u -r "$(SOURCE_DATE_EPOCH)" +%Y-%m-%dT%H:%M:%SZ)
+else
+BUILT ?= $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
+endif
 LDFLAGS := -s -w \
   -X open-sds/ota/internal/buildinfo.Version=$(VERSION) \
   -X open-sds/ota/internal/buildinfo.Commit=$(COMMIT) \

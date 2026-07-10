@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"open-sds/app/internal/engine"
+	"open-sds/app/internal/testenv"
 )
 
 // TestSuperresBrowser drives superres_browser.mjs against a fakeScope whose
@@ -15,9 +16,7 @@ import (
 // exact signal class the stacker exists for. Covers arm → accumulate →
 // stats → review (frozen synthetic frame) → model fit → resume live.
 func TestSuperresBrowser(t *testing.T) {
-	if _, err := exec.LookPath("node"); err != nil {
-		t.Skip("node not installed")
-	}
+	testenv.NeedNode(t)
 	const N = 2048
 	n := uint64(0)
 	rng := uint64(0x5eed)
@@ -54,7 +53,7 @@ func TestSuperresBrowser(t *testing.T) {
 	out, err := exec.Command("node", "superres_browser.mjs", srv.URL).CombinedOutput()
 	t.Logf("superres_browser.mjs:\n%s", out)
 	if strings.HasPrefix(strings.TrimSpace(string(out)), "SKIP:") {
-		t.Skip("browser unavailable")
+		testenv.SkipBrowser(t, "browser unavailable")
 	}
 	if err != nil {
 		t.Fatalf("superres e2e failed: %v", err)

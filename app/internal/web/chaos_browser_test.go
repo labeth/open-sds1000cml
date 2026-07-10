@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"open-sds/app/internal/engine"
+	"open-sds/app/internal/testenv"
 )
 
 // TestChaosBrowser drives chaos_browser.mjs: a seeded monkey pokes every
@@ -16,9 +17,7 @@ import (
 // reachable broken UI state. Three seeds per run keep it cheap but varied.
 // Self-skips when node/Playwright is absent.
 func TestChaosBrowser(t *testing.T) {
-	if _, err := exec.LookPath("node"); err != nil {
-		t.Skip("node not installed")
-	}
+	testenv.NeedNode(t)
 	const N = 2048
 	n := uint64(0)
 	gen := func() *engine.Frame {
@@ -42,7 +41,7 @@ func TestChaosBrowser(t *testing.T) {
 		out, err := exec.Command("node", "chaos_browser.mjs", srv.URL, strconv.Itoa(seed), "400").CombinedOutput()
 		t.Logf("chaos seed %d:\n%s", seed, out)
 		if strings.HasPrefix(strings.TrimSpace(string(out)), "SKIP:") {
-			t.Skip("browser unavailable")
+			testenv.SkipBrowser(t, "browser unavailable")
 		}
 		if err != nil {
 			t.Fatalf("chaos seed %d failed: %v", seed, err)

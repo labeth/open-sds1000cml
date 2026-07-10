@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"open-sds/app/internal/engine"
+	"open-sds/app/internal/testenv"
 )
 
 // TestTransportBrowser drives transport_browser.mjs: asserts the binary
@@ -16,9 +17,7 @@ import (
 // (no silent fallback that could fake-pass the other suites) yet self-heals on
 // retry when the endpoint returns. Self-skips when node/Playwright is absent.
 func TestTransportBrowser(t *testing.T) {
-	if _, err := exec.LookPath("node"); err != nil {
-		t.Skip("node not installed")
-	}
+	testenv.NeedNode(t)
 	const N = 2048
 	n := uint64(0)
 	gen := func() *engine.Frame {
@@ -41,7 +40,7 @@ func TestTransportBrowser(t *testing.T) {
 	out, err := exec.Command("node", "transport_browser.mjs", srv.URL).CombinedOutput()
 	t.Logf("transport_browser.mjs:\n%s", out)
 	if strings.HasPrefix(strings.TrimSpace(string(out)), "SKIP:") {
-		t.Skip("browser unavailable")
+		testenv.SkipBrowser(t, "browser unavailable")
 	}
 	if err != nil {
 		t.Fatalf("transport e2e failed: %v", err)

@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"open-sds/app/internal/testenv"
 )
 
 // TestJSDecoderParity guarantees the browser JS twins (internal/web/decode_*.js)
@@ -18,10 +20,8 @@ import (
 // exact {ok, bytes} match. Self-skips when node is unavailable so `go test ./...`
 // stays green everywhere.
 func TestJSDecoderParity(t *testing.T) {
-	node, err := exec.LookPath("node")
-	if err != nil {
-		t.Skip("node not installed; skipping Go<->JS decoder parity")
-	}
+	testenv.NeedNode(t)
+	node, _ := exec.LookPath("node")
 
 	type jsCfg map[string]interface{}
 	type vec struct {

@@ -34,6 +34,52 @@ jobs:
       - name: test
         run: go test ./...
 
+  # Second lane: node + Playwright Chromium installed, so the browser e2e,
+  # node JS, and Go<->JS parity suites actually RUN. CI_REQUIRE_BROWSER=1 turns
+  # their environment self-skips into hard failures (internal/testenv), so this
+  # half of the product can never go silently unguarded again.
+  browser-test:
+    runs-on: ubuntu-latest
+    env:
+      PW_VERSION: 1.58.2 # pin: cache key + reproducible lane (matches the dev machines)
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: app/go.mod
+          cache: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+
+      - name: Cache Playwright Chromium
+        id: pw-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ runner.os }}-${{ env.PW_VERSION }}
+
+      - name: Install Playwright + Chromium
+        run: |
+          mkdir -p "$HOME/pw" && cd "$HOME/pw"
+          npm init -y >/dev/null
+          npm install "playwright@${PW_VERSION}"
+          if [ "${{ steps.pw-cache.outputs.cache-hit }}" = "true" ]; then
+            npx playwright install-deps chromium   # browsers cached — just the OS libs
+          else
+            npx playwright install --with-deps chromium
+          fi
+          # the drivers locate the module via PLAYWRIGHT_DIR (see scope_po.mjs)
+          echo "PLAYWRIGHT_DIR=$HOME/pw/node_modules" >> "$GITHUB_ENV"
+
+      - name: browser / node / JS-parity tests (skips are failures here)
+        working-directory: app
+        env:
+          CI_REQUIRE_BROWSER: "1"
+        run: go test -timeout 20m ./internal/web/ ./internal/decode/ ./internal/superres/
+
   cross-build:
     runs-on: ubuntu-latest
     steps:

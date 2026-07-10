@@ -4,6 +4,8 @@ import (
 	"os/exec"
 	"strings"
 	"testing"
+
+	"open-sds/app/internal/testenv"
 )
 
 // TestSuperresJS runs the super-resolution stacker math (superres.js) under
@@ -12,10 +14,8 @@ import (
 // noise reduction, lucky-frame rejection, drift normalization and the
 // sum-of-sinusoids model fit. Skips if node is absent.
 func TestSuperresJS(t *testing.T) {
-	node, err := exec.LookPath("node")
-	if err != nil {
-		t.Skip("node not installed; skipping superres.js test")
-	}
+	testenv.NeedNode(t)
+	node, _ := exec.LookPath("node")
 	out, err := exec.Command(node, "superres.test.cjs").CombinedOutput()
 	t.Logf("superres.test.cjs output:\n%s", out)
 	if err != nil {

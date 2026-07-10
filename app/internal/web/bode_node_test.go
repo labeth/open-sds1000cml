@@ -4,14 +4,14 @@ import (
 	"os/exec"
 	"strings"
 	"testing"
+
+	"open-sds/app/internal/testenv"
 )
 
 // Runs the bode.js pure helpers under node (log ticks, nice range, hz format)
 // to lock the web renderer's math. Self-skips without node.
 func TestBodeJSHelpers(t *testing.T) {
-	if _, err := exec.LookPath("node"); err != nil {
-		t.Skip("node not installed")
-	}
+	testenv.NeedNode(t)
 	script := `
 const b = require("./bode.js");
 let fail = 0;
@@ -43,9 +43,7 @@ process.exit(fail ? 1 : 0);
 // a huge point count — without throwing or feeding a NaN coordinate into a
 // canvas draw call. A mock 2D context records every coordinate it is handed.
 func TestBodeJSBreaker(t *testing.T) {
-	if _, err := exec.LookPath("node"); err != nil {
-		t.Skip("node not installed")
-	}
+	testenv.NeedNode(t)
 	script := `
 const b = require("./bode.js");
 let fail = 0;

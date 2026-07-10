@@ -4,6 +4,8 @@ import (
 	"os/exec"
 	"strings"
 	"testing"
+
+	"open-sds/app/internal/testenv"
 )
 
 // TestEyejitterJS runs the eye-diagram/jitter engine (eyejitter.js) under node
@@ -13,10 +15,8 @@ import (
 // plus negative controls (sine must not fabricate DJ; noise must not lock;
 // a mid-run bit-rate change is rejected). Skips if node is absent.
 func TestEyejitterJS(t *testing.T) {
-	node, err := exec.LookPath("node")
-	if err != nil {
-		t.Skip("node not installed; skipping eyejitter.js test")
-	}
+	testenv.NeedNode(t)
+	node, _ := exec.LookPath("node")
 	out, err := exec.Command(node, "eyejitter.test.cjs").CombinedOutput()
 	t.Logf("eyejitter.test.cjs output:\n%s", out)
 	if err != nil {
