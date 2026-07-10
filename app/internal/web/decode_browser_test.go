@@ -57,7 +57,7 @@ func i2cWave(n int) (scl, sda []uint8) {
 // TestDecodeBrowser drives the real ui.html in headless Chromium against a local
 // server serving a synthetic I2C frame, and checks the decode transcript, the
 // byte count, the Copy button, and the navigator wheel-zoom + reset. Fully
-// device-independent; self-skips when node/Playwright are unavailable.
+// device-independent; skips when node/Playwright are unavailable (fails under CI_REQUIRE_BROWSER=1).
 func TestDecodeBrowser(t *testing.T) {
 	testenv.NeedNode(t)
 	const N = 2048

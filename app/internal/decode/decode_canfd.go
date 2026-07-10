@@ -421,7 +421,7 @@ func decodeCANOneFrame(S sliced, cfg CANFDCfg, sofStart, spb, dataSpb float64) c
 	if crc != want || r.stuffErr {
 		crcTxt = "!" + crcTxt   // CRC mismatch OR a bit-stuff violation (6 identical
 		crcKind = "frame-error" // bits — e.g. an all-dominant/aliased "bus") — flag it,
-	}                           // never pass such garbage off as a clean CAN frame
+	} // never pass such garbage off as a clean CAN frame
 	spans = append(spans, Span{c0, c1, "CRC:" + crcTxt, crcKind, crc})
 	toks = append(toks, "CRC:"+crcTxt)
 

@@ -12,7 +12,7 @@ import (
 // (superres_comp.js) under node: FFT/IFFT round-trip, the filter figures
 // (recovered -3 dB, bounded boost), restoration of an attenuated multi-tone
 // toward flat, DC/offset preservation, gap-sentinel preservation and the
-// non-power-of-two resample path. Skips if node is absent.
+// non-power-of-two resample path. Skips if node is absent (fails under CI_REQUIRE_BROWSER=1).
 func TestSuperresCompJS(t *testing.T) {
 	testenv.NeedNode(t)
 	node, _ := exec.LookPath("node")

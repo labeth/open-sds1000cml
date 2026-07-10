@@ -11,7 +11,7 @@ import (
 // TestBinframeJS runs the binary-transport decoder (binframe.js) under node
 // against golden wire fixtures — the client half of the /api/frame.bin
 // parity story (the server half is TestBinFrameParity). Skips if node is
-// absent so `go test ./...` stays green everywhere.
+// absent (a hard failure under CI_REQUIRE_BROWSER=1).
 func TestBinframeJS(t *testing.T) {
 	testenv.NeedNode(t)
 	node, _ := exec.LookPath("node")

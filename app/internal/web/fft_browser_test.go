@@ -17,8 +17,8 @@ import (
 // swap dominance every poll. That reproduces the conditions of the reported FFT
 // bugs — unreliable/jumping selection, inability to re-select, and the peak list
 // lingering after a mode switch — and asserts they stay fixed. It is fully
-// device-independent. Skips (never fails) when node or a Playwright browser is
-// not available, so `go test ./...` stays green on machines without them.
+// device-independent. Skips when node or a Playwright browser is not
+// available — a hard failure under CI_REQUIRE_BROWSER=1 (internal/testenv).
 func TestFFTBrowser(t *testing.T) {
 	testenv.NeedNode(t)
 

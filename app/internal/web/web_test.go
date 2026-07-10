@@ -50,29 +50,29 @@ type fakeScope struct {
 	cmdLog   []engine.CmdNote
 }
 
-func (f *fakeScope) SetOffsetDAC(ch int, code uint16)      { f.offCh, f.offCode = ch, &code }
-func (f *fakeScope) SetETS(on bool)                        { f.ets = &on }
-func (f *fakeScope) SetSingle()                            { f.single = true }
-func (f *fakeScope) QuietRLock()                           {}
-func (f *fakeScope) QuietRUnlock()                         {}
+func (f *fakeScope) SetOffsetDAC(ch int, code uint16)       { f.offCh, f.offCode = ch, &code }
+func (f *fakeScope) SetETS(on bool)                         { f.ets = &on }
+func (f *fakeScope) SetSingle()                             { f.single = true }
+func (f *fakeScope) QuietRLock()                            {}
+func (f *fakeScope) QuietRUnlock()                          {}
 func (f *fakeScope) Tune(t engine.TuneVals) engine.TuneVals { return t }
 func (f *fakeScope) TuneSnapshot() engine.TuneVals          { return engine.TuneVals{} }
-func (f *fakeScope) SetTrigPosFrac(frac float64)           { f.trigPos = frac }
-func (f *fakeScope) SetMemDepth(n int) int                 { f.memDepth = n; return n }
-func (f *fakeScope) SetFramePeriod(ms int) int             { return ms }
-func (f *fakeScope) SetStreamMode(on bool) bool            { return on }
-func (f *fakeScope) SetHoldoff(sec float64) float64        { f.holdoff = sec; return sec }
-func (f *fakeScope) SetZones(z []engine.Zone)              { f.zones = z }
-func (f *fakeScope) SetZoneMode(m int)                     { f.zoneMode = m }
-func (f *fakeScope) SetMask(m *engine.Mask)                { f.mask = m }
-func (f *fakeScope) SetMaskMode(m int)                     { f.maskMode = m }
-func (f *fakeScope) ClearMaskFails()                       { f.maskCleared = true }
-func (f *fakeScope) MaskFails() []engine.MaskFail          { return f.maskRing }
-func (f *fakeScope) SetSerialParams(p engine.SerialParams) { f.serialParams = p }
-func (f *fakeScope) SetSerialMode(m int)                   { f.serialMode = m }
-func (f *fakeScope) SetBodeMode(on bool, ref, dut int)     { f.bodeOn, f.bodeRef, f.bodeDut = on, ref, dut }
-func (f *fakeScope) ClearBode()                            { f.bodeCleared = true }
-func (f *fakeScope) BodePoints() []engine.BodePoint        { return f.bodePts }
+func (f *fakeScope) SetTrigPosFrac(frac float64)            { f.trigPos = frac }
+func (f *fakeScope) SetMemDepth(n int) int                  { f.memDepth = n; return n }
+func (f *fakeScope) SetFramePeriod(ms int) int              { return ms }
+func (f *fakeScope) SetStreamMode(on bool) bool             { return on }
+func (f *fakeScope) SetHoldoff(sec float64) float64         { f.holdoff = sec; return sec }
+func (f *fakeScope) SetZones(z []engine.Zone)               { f.zones = z }
+func (f *fakeScope) SetZoneMode(m int)                      { f.zoneMode = m }
+func (f *fakeScope) SetMask(m *engine.Mask)                 { f.mask = m }
+func (f *fakeScope) SetMaskMode(m int)                      { f.maskMode = m }
+func (f *fakeScope) ClearMaskFails()                        { f.maskCleared = true }
+func (f *fakeScope) MaskFails() []engine.MaskFail           { return f.maskRing }
+func (f *fakeScope) SetSerialParams(p engine.SerialParams)  { f.serialParams = p }
+func (f *fakeScope) SetSerialMode(m int)                    { f.serialMode = m }
+func (f *fakeScope) SetBodeMode(on bool, ref, dut int)      { f.bodeOn, f.bodeRef, f.bodeDut = on, ref, dut }
+func (f *fakeScope) ClearBode()                             { f.bodeCleared = true }
+func (f *fakeScope) BodePoints() []engine.BodePoint         { return f.bodePts }
 
 func (f *fakeScope) AcqLog(n int) ([]engine.AcqSample, float64) { return f.acqLog, f.halfRate }
 func (f *fakeScope) CmdLog(n int) []engine.CmdNote              { return f.cmdLog }

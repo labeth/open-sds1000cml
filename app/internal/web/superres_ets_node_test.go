@@ -12,7 +12,7 @@ import (
 // (superres_ets.js) under node: synthetic FREE-RUN frames of a near-Nyquist
 // clock at random phase + noise must recover the frequency, reconstruct the
 // period at the correct amplitude, gain measured ENOB, keep a square's
-// harmonics, and reject a pure-noise frame. Skips if node is absent.
+// harmonics, and reject a pure-noise frame. Skips if node is absent (fails under CI_REQUIRE_BROWSER=1).
 func TestSuperresEtsJS(t *testing.T) {
 	testenv.NeedNode(t)
 	node, _ := exec.LookPath("node")

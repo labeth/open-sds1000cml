@@ -17,8 +17,8 @@ import (
 // on-device LCD never disagree. It generates a battery of waveforms with the SAME
 // generators the Go break/round-trip suites use, records each Go decode as ground
 // truth, then replays the vectors through the JS twins under node and asserts an
-// exact {ok, bytes} match. Self-skips when node is unavailable so `go test ./...`
-// stays green everywhere.
+// exact {ok, bytes} match. Skips when node is unavailable — a hard failure
+// under CI_REQUIRE_BROWSER=1 (internal/testenv).
 func TestJSDecoderParity(t *testing.T) {
 	testenv.NeedNode(t)
 	node, _ := exec.LookPath("node")

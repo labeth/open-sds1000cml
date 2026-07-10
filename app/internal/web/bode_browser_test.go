@@ -15,7 +15,7 @@ import (
 // TestBodeBrowser drives the real web BODE/FRA card in headless Chromium: ARM
 // posts bodemode, the render path fetches /api/bode (synthetic points) and
 // draws, the enlarge opens, CLEAR runs — no page errors. Exercises the
-// app_views.js bode wiring this refactor relocated. Skips without node/browser.
+// app_views.js bode wiring this refactor relocated. Skips without node/browser (fails under CI_REQUIRE_BROWSER=1).
 func TestBodeBrowser(t *testing.T) {
 	testenv.NeedNode(t)
 	var seq atomic.Int64

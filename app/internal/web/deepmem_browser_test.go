@@ -17,7 +17,7 @@ import (
 // checks that: the default window is the trigger-centered screen slice (edge at
 // screen centre, like today), the navigator shows the whole record (window is a
 // ~1/3 slice), wheel-zoom-out reaches the full record, dragging pans, and the
-// deep record decodes/FFTs. Device-independent; self-skips without node/browser.
+// deep record decodes/FFTs. Device-independent; skips without node/browser (fails under CI_REQUIRE_BROWSER=1).
 func TestDeepMemBrowser(t *testing.T) {
 	testenv.NeedNode(t)
 	const depth, winCols = 6144, 2048

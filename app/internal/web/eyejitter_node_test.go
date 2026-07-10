@@ -13,7 +13,7 @@ import (
 // TIE noise floor, injected square-wave jitter (rms, dual-Dirac DJ, spectral
 // peak frequency AND fundamental amplitude vs the analytic (4/π)·A value),
 // plus negative controls (sine must not fabricate DJ; noise must not lock;
-// a mid-run bit-rate change is rejected). Skips if node is absent.
+// a mid-run bit-rate change is rejected). Skips if node is absent (fails under CI_REQUIRE_BROWSER=1).
 func TestEyejitterJS(t *testing.T) {
 	testenv.NeedNode(t)
 	node, _ := exec.LookPath("node")

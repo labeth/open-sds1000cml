@@ -126,8 +126,20 @@ zip_stick() {
   out="$(cd "$(dirname "$out")" && pwd)/$(basename "$out")"
   staging=$(mktemp -d)
   write_files "$staging"
+  # Reproducible zip: with SOURCE_DATE_EPOCH set (the Makefiles already stamp
+  # the binaries from it), pin every staged mtime to that epoch — zip stores
+  # per-entry mtimes, which would otherwise differ between builds. Always zip
+  # in sorted order with -X (no uid/gid/timestamp extra fields) so two builds
+  # of the same tree produce byte-identical archives. TZ=UTC because zip's DOS
+  # timestamps (and touch -t) are local-time.
+  if [ -n "${SOURCE_DATE_EPOCH:-}" ]; then
+    ts=$(date -u -d "@$SOURCE_DATE_EPOCH" +%Y%m%d%H%M.%S 2>/dev/null \
+         || date -u -r "$SOURCE_DATE_EPOCH" +%Y%m%d%H%M.%S)   # GNU / BSD date
+    ( cd "$staging" && TZ=UTC find . -mindepth 1 -exec touch -t "$ts" {} + )
+  fi
   rm -f "$out"
-  ( cd "$staging" && zip -rq "$out" startup.sh commands ota agent-slots LICENSE.txt SAFETY.txt )
+  ( cd "$staging" && find . -mindepth 1 | sed 's,^\./,,' | LC_ALL=C sort \
+      | TZ=UTC zip -Xq "$out" -@ )
   rm -rf "$staging"
   echo ">> USB image zip: $out  ($(du -h "$out" | cut -f1))"
   echo "   Unzip its CONTENTS onto the ROOT of an MBR + FAT32 USB stick; the top"

@@ -16,7 +16,7 @@ import (
 // transform), the zone-trigger toggle, the raw-frame mask build + upload, the
 // AC-coupling guard, and the failure gallery (click -> frozen failing frame
 // with the violation marked). Server-side effects are asserted here after the
-// browser run. Self-skips when node/Playwright is absent.
+// browser run. Skips when node/Playwright is absent (fails under CI_REQUIRE_BROWSER=1).
 func TestZoneMaskBrowser(t *testing.T) {
 	testenv.NeedNode(t)
 	const N = 2048

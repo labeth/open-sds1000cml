@@ -11,7 +11,7 @@ import (
 // TestDecodeJS runs the protocol-decoder logic (decode.js) under node against
 // synthetic UART/I2C/SPI waveforms — the closest thing to an end-to-end test of
 // the browser decode code without a headless browser. Skips if node is absent
-// so `go test ./...` stays green everywhere.
+// (a hard failure under CI_REQUIRE_BROWSER=1).
 func TestDecodeJS(t *testing.T) {
 	testenv.NeedNode(t)
 	node, _ := exec.LookPath("node")

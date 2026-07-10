@@ -60,7 +60,9 @@ jobs:
           cd dist
           # fail loudly if the zip is missing/empty (guards against a silent build slip)
           test -s open-sds1000cml-*-usb.zip || { echo "::error::USB zip missing or empty"; exit 1; }
-          sha256sum open-sds1000cml-*-usb.zip otactl-* > SHA256SUMS
+          # checksum EVERY uploaded artifact (zip + controllers + license/safety
+          # text), so `sha256sum -c SHA256SUMS` verifies the whole download set
+          sha256sum open-sds1000cml-*-usb.zip otactl-* LICENSE SAFETY.txt > SHA256SUMS
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2

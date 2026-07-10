@@ -16,19 +16,19 @@ import (
 // THREE attack classes (>=50 iterations each) plus edge/no-panic coverage, and a
 // gated block that pins two REAL findings surfaced by this campaign:
 //
-//   FINDING 1 (false-negative / false-positive): DecodeUSBLS splits packets only
-//   on an inter-packet idle wider than splitK=10 bit-times. Real USB LS/FS
-//   captures place consecutive packets ~2 bit-times apart, so two well-formed,
-//   adjacent packets MERGE into one segment: the decoder returns OK=true with a
-//   payload that matches NEITHER packet and only ONE SYNC span (the 2nd packet is
-//   lost). It neither recovers both frames nor reports an error — it fabricates
-//   bytes and calls them valid.
+//	FINDING 1 (false-negative / false-positive): DecodeUSBLS splits packets only
+//	on an inter-packet idle wider than splitK=10 bit-times. Real USB LS/FS
+//	captures place consecutive packets ~2 bit-times apart, so two well-formed,
+//	adjacent packets MERGE into one segment: the decoder returns OK=true with a
+//	payload that matches NEITHER packet and only ONE SYNC span (the 2nd packet is
+//	lost). It neither recovers both frames nor reports an error — it fabricates
+//	bytes and calls them valid.
 //
-//   FINDING 2 (false-positive): DecodeUSBLS performs NO USB CRC5/CRC16 check. A
-//   frame whose CRC field is corrupted is emitted byte-for-byte as data with
-//   OK=true and no error flagged. The only integrity checks are the SYNC pattern
-//   and the PID ones-complement (which ARE enforced — a corrupted PID is flagged
-//   frame-error, a corrupted SYNC is dropped).
+//	FINDING 2 (false-positive): DecodeUSBLS performs NO USB CRC5/CRC16 check. A
+//	frame whose CRC field is corrupted is emitted byte-for-byte as data with
+//	OK=true and no error flagged. The only integrity checks are the SYNC pattern
+//	and the PID ones-complement (which ARE enforced — a corrupted PID is flagged
+//	frame-error, a corrupted SYNC is dropped).
 //
 // The known-bug assertions are guarded by pinKnownBugs so the rest of the suite
 // runs green; flip it to true (or fix the decoder) to enforce correct behavior.

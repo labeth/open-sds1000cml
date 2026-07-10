@@ -15,7 +15,7 @@ import (
 // TestSpectrogramBrowser drives the real web SPECTROGRAM card in headless
 // Chromium against a synthetic live signal, asserting the app_views.js wiring
 // (arm → accumulate rows → paint → enlarge → clear) works end to end with no
-// page errors. Skips (never fails) without node or a Playwright browser.
+// page errors. Skips without node or a Playwright browser (fails under CI_REQUIRE_BROWSER=1).
 func TestSpectrogramBrowser(t *testing.T) {
 	testenv.NeedNode(t)
 	var seq atomic.Int64

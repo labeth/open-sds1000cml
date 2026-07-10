@@ -15,7 +15,7 @@ import (
 // (acceptance_browser.mjs) over the REAL ui.html against httptest+fakeScope,
 // covering the paths not owned by the decode/fft/deepmem drivers: boot/liveness,
 // acquire, trigger, vertical/horizontal, cursors, view modes + panel visibility,
-// and export. Self-skips (via the driver) when node/Playwright is absent.
+// and export. Skips (via the driver) without node/Playwright (fails under CI_REQUIRE_BROWSER=1).
 func TestAcceptanceBrowser(t *testing.T) {
 	testenv.NeedNode(t)
 	const N = 2048

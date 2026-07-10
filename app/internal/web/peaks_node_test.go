@@ -11,7 +11,7 @@ import (
 // TestPeaksJS runs the browser FFT peak-detection/selection logic (peaks.js)
 // under node against synthetic frames — the closest thing to an end-to-end test
 // of the client code without a headless browser. Skips if node is unavailable
-// (e.g. CI images without it) so `go test ./...` stays green everywhere.
+// (a hard failure under CI_REQUIRE_BROWSER=1).
 func TestPeaksJS(t *testing.T) {
 	testenv.NeedNode(t)
 	node, _ := exec.LookPath("node")

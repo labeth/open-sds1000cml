@@ -10,9 +10,10 @@ import (
 )
 
 // These are ALWAYS-RUN pure-Go guardrails for the UI/UX refactor. They must NOT
-// depend on node/Playwright (the *_browser.mjs suite self-skips when the browser
-// is absent, e.g. on the device or a bare CI), so the load-bearing invariants
-// live here where `go test ./...` always executes them. See app/docs/ui-architecture.md.
+// depend on node/Playwright (the *_browser.mjs suite skips when the browser is
+// absent — unless CI_REQUIRE_BROWSER=1 — e.g. on the device or a bare CI), so the
+// load-bearing invariants live here where `go test ./...` always executes them.
+// See app/docs/ui-architecture.md.
 
 func readUIHTML(t *testing.T) string {
 	t.Helper()

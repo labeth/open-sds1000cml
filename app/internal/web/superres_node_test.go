@@ -12,7 +12,7 @@ import (
 // node against synthetic jittered/noisy/glitchy frames with known ground
 // truth: sub-sample alignment accuracy, peak-locking uniformity, sqrt(N)
 // noise reduction, lucky-frame rejection, drift normalization and the
-// sum-of-sinusoids model fit. Skips if node is absent.
+// sum-of-sinusoids model fit. Skips if node is absent (fails under CI_REQUIRE_BROWSER=1).
 func TestSuperresJS(t *testing.T) {
 	testenv.NeedNode(t)
 	node, _ := exec.LookPath("node")

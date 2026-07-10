@@ -28,7 +28,6 @@ func (e *Engine) Run() {
 		}
 	}()
 
-
 	if v, err := e.b.Read(bus.PlaneCS1, selVersion); err != nil || v != bus.VersionMagic {
 		e.logf("engine: version gate failed (v=%#04x err=%v) — refusing to drive", v, err)
 		e.mu.Lock()

@@ -59,8 +59,8 @@ const (
 	statTrig  = 0x0002
 	statDone  = 0x0004
 
-	nativeEdgeMinPtp  = 40    // codes; flat rail ≈ 5, real cal edge ≈ 150
-	nativeFlatFallbck = 60    // held frames before one honest flat publish
+	nativeEdgeMinPtp  = 40 // codes; flat rail ≈ 5, real cal edge ≈ 150
+	nativeFlatFallbck = 60 // held frames before one honest flat publish
 	// stuckSuspectRuns: consecutive degraded (dead-tail-after-retries) captures
 	// before the persistent stuck-FSM state is assumed. The intermittent half-
 	// record never survives the re-capture retries many frames in a row; the
@@ -72,7 +72,7 @@ const (
 	// full 40-80 ms wait budget, so 60 held frames is 5-8 s of frozen screen —
 	// far past what an AUTO display may freeze (fuzz-found at 500 µs/div).
 	autoLivenessMaxWait = 1500 * time.Millisecond
-	fillFull          = 0x7f0 // fill counter near the 11-bit max = record full
+	fillFull            = 0x7f0 // fill counter near the 11-bit max = record full
 	// native-fast re-capture cap is the tunable tuneMaxRetry (default 8); see engine.New
 
 	// TrigCodeMin/Max clamp the UI trigger-level DAC range (spec 05 §1.2).
@@ -101,51 +101,51 @@ type Config struct {
 // Stats is the exported snapshot for the health writer and the web UI.
 // Field meanings follow the spec 09 stats shape.
 type Stats struct {
-	Frames      uint64  `json:"frames"`       // FSM heartbeat: +1 per loop iteration, publish or not
-	Coherent    uint64  `json:"coherent"`     // frames that latched+drained coherently
-	Published   uint64  `json:"published"`    // frames handed to the arena
-	Held        uint64  `json:"held"`         // display-hold cycles
-	Degraded     bool `json:"degraded,omitempty"`      // last native-fast capture kept a dead tail through the retries
-	DegradedRun  int  `json:"degraded_run,omitempty"`  // consecutive degraded captures
-	StuckSuspect bool `json:"stuck_suspect,omitempty"` // the run crossed the stuck-FSM threshold: power-cycle likely needed
-	HaltConfirm uint64  `json:"halt_confirm"` // halts with fill frozen across the double read
-	BusErrors   uint64  `json:"bus_errors"`
-	DeadRuns    int     `json:"dead_runs"` // consecutive fill-frozen + flat-drain frames
-	Wedged      bool    `json:"wedged"`
-	FPS         float64 `json:"fps"`
-	Running     bool    `json:"running"`
-	Norm        bool    `json:"norm"`
-	Single      bool    `json:"single"`        // a single-shot is armed/waiting
-	TrigPosFrac float64 `json:"trig_pos_frac"` // horizontal trigger position 0..1
-	TdivS       float64 `json:"tdiv_s"`
-	DisplayedS  float64 `json:"displayed_sdiv_s"`
-	TrigCode    uint16  `json:"trig_code"` // 0 = boot-inherited comparator untouched
-	OffC1       uint16  `json:"off_c1"`    // 0 = boot-inherited offset untouched
-	OffC2       uint16  `json:"off_c2"`
-	TrigRising  bool    `json:"trig_rising"`
-	TrigSource  int     `json:"trig_source"` // 0=C1, 1=C2
-	LastPtp     int     `json:"last_ptp"`
-	LastTrigPos int     `json:"last_trigpos"`
-	ArmToLatch  float64 `json:"arm_to_latch_ms"`
-	DrainMs     float64 `json:"drain_ms"`
-	HoldoffS    float64 `json:"holdoff_s"` // trigger holdoff (0 = off)
-	Seq         uint64  `json:"seq"`
-	MmapDrain   bool    `json:"mmap_drain"`
-	ETS         bool    `json:"ets"`
-	BandKind    string  `json:"band"`      // native-fast | decimated | envelope | roll
-	HaltMode    string  `json:"halt_mode"` // capture-halt | latch-no-halt
-	TrigType    int     `json:"trig_type"` // 0=edge 1=pulse 2=slope 3=video
-	AcqMode     int     `json:"acq_mode"`  // 0=normal 1=average 2=eres 3=peak
-	AvgCount    int     `json:"avg_count"`
-	EresLen     int     `json:"eres_len"`
-	WinColStd   float64 `json:"wincol_std"`     // centred cross-frame uniformity
-	WinColRaw   float64 `json:"wincol_std_raw"` // fixed-position variant
-	WinColMax   float64 `json:"wincol_max"`     // worst centred column
-	ValidDepth  int     `json:"valid_depth"`    // real-signal samples in the drain
-	WinCols     int     `json:"win_cols"`       // display-window width in raw samples
-	MemDepth    int     `json:"mem_depth"`      // configured decimated drain depth
-	Stream      bool    `json:"stream"`         // stitched streaming decode mode on
-	GapMs       float64 `json:"gap_ms"`         // stream: blackout between windows
+	Frames       uint64  `json:"frames"`                  // FSM heartbeat: +1 per loop iteration, publish or not
+	Coherent     uint64  `json:"coherent"`                // frames that latched+drained coherently
+	Published    uint64  `json:"published"`               // frames handed to the arena
+	Held         uint64  `json:"held"`                    // display-hold cycles
+	Degraded     bool    `json:"degraded,omitempty"`      // last native-fast capture kept a dead tail through the retries
+	DegradedRun  int     `json:"degraded_run,omitempty"`  // consecutive degraded captures
+	StuckSuspect bool    `json:"stuck_suspect,omitempty"` // the run crossed the stuck-FSM threshold: power-cycle likely needed
+	HaltConfirm  uint64  `json:"halt_confirm"`            // halts with fill frozen across the double read
+	BusErrors    uint64  `json:"bus_errors"`
+	DeadRuns     int     `json:"dead_runs"` // consecutive fill-frozen + flat-drain frames
+	Wedged       bool    `json:"wedged"`
+	FPS          float64 `json:"fps"`
+	Running      bool    `json:"running"`
+	Norm         bool    `json:"norm"`
+	Single       bool    `json:"single"`        // a single-shot is armed/waiting
+	TrigPosFrac  float64 `json:"trig_pos_frac"` // horizontal trigger position 0..1
+	TdivS        float64 `json:"tdiv_s"`
+	DisplayedS   float64 `json:"displayed_sdiv_s"`
+	TrigCode     uint16  `json:"trig_code"` // 0 = boot-inherited comparator untouched
+	OffC1        uint16  `json:"off_c1"`    // 0 = boot-inherited offset untouched
+	OffC2        uint16  `json:"off_c2"`
+	TrigRising   bool    `json:"trig_rising"`
+	TrigSource   int     `json:"trig_source"` // 0=C1, 1=C2
+	LastPtp      int     `json:"last_ptp"`
+	LastTrigPos  int     `json:"last_trigpos"`
+	ArmToLatch   float64 `json:"arm_to_latch_ms"`
+	DrainMs      float64 `json:"drain_ms"`
+	HoldoffS     float64 `json:"holdoff_s"` // trigger holdoff (0 = off)
+	Seq          uint64  `json:"seq"`
+	MmapDrain    bool    `json:"mmap_drain"`
+	ETS          bool    `json:"ets"`
+	BandKind     string  `json:"band"`      // native-fast | decimated | envelope | roll
+	HaltMode     string  `json:"halt_mode"` // capture-halt | latch-no-halt
+	TrigType     int     `json:"trig_type"` // 0=edge 1=pulse 2=slope 3=video
+	AcqMode      int     `json:"acq_mode"`  // 0=normal 1=average 2=eres 3=peak
+	AvgCount     int     `json:"avg_count"`
+	EresLen      int     `json:"eres_len"`
+	WinColStd    float64 `json:"wincol_std"`     // centred cross-frame uniformity
+	WinColRaw    float64 `json:"wincol_std_raw"` // fixed-position variant
+	WinColMax    float64 `json:"wincol_max"`     // worst centred column
+	ValidDepth   int     `json:"valid_depth"`    // real-signal samples in the drain
+	WinCols      int     `json:"win_cols"`       // display-window width in raw samples
+	MemDepth     int     `json:"mem_depth"`      // configured decimated drain depth
+	Stream       bool    `json:"stream"`         // stitched streaming decode mode on
+	GapMs        float64 `json:"gap_ms"`         // stream: blackout between windows
 
 	// Zone trigger + mask testing (docs/zonemask-plan.md)
 	ZoneMode    int   `json:"zone_mode,omitempty"`  // 0 off, 1 trigger
@@ -267,7 +267,7 @@ type Engine struct {
 	// mu guards the command shadows and the stats mirror. Setters record and
 	// return; only the owner touches the bus (spec 09 §1). Bus writes happen
 	// with mu released.
-	mu        sync.Mutex
+	mu sync.Mutex
 	// quiet gates the ~19ms load-sensitive windows (arm-settle + drain). The
 	// engine takes the WRITE lock across those; the LCD render / web serialize /
 	// panel take the READ lock around their CPU bursts. On this single core, a
@@ -298,18 +298,18 @@ type Engine struct {
 	matrixReq chan chan [5]uint16
 
 	// Owner-private state (no locking needed).
-	band      Band
-	prevKind  Kind
-	lastNorm  bool
+	band          Band
+	prevKind      Kind
+	lastNorm      bool
 	seq           uint64
 	flatHeld      int
 	lastPubAt     time.Time // engine goroutine only: instant of the last oneFrame publish
 	degradedRun   int       // engine goroutine only: consecutive dead-tail captures
-	lastFirstHalf bool // the last frame's FIRST drain was a half record (pre re-capture)
+	lastFirstHalf bool      // the last frame's FIRST drain was a half record (pre re-capture)
 	deadRuns      int
-	streamSeq uint64    // stitch-mode window counter
-	lastHalt  time.Time // wall-clock of the previous window's halt (for GapNs)
-	done      chan struct{}
+	streamSeq     uint64    // stitch-mode window counter
+	lastHalt      time.Time // wall-clock of the previous window's halt (for GapNs)
+	done          chan struct{}
 
 	// Realtime acquisition checker (instrumentation only, spec: diagnose HALF
 	// records). acqRing/cmdRing are guarded by e.mu (the status handler reads

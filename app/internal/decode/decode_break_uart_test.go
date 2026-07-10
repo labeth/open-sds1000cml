@@ -364,7 +364,7 @@ func TestBreakUart(t *testing.T) {
 		want := []int{fill, fill, fill, fill}
 		seq := buBuildSeq(want, 8, "none", 6, 24, 1)
 		w := buRasterize(seq, 12, 0)
-		r := DecodeUART(w, ct, UARTCfg{Baud: int(math.Round(1.0/(12*ct)))})
+		r := DecodeUART(w, ct, UARTCfg{Baud: int(math.Round(1.0 / (12 * ct)))})
 		if !r.OK || !buEq(r.Bytes, want) {
 			t.Errorf("EDGE: all-0x%02X payload ok=%v got=%v err=%s", fill, r.OK, r.Bytes, r.Error)
 		}
@@ -378,7 +378,7 @@ func TestBreakUart(t *testing.T) {
 		}
 		seq := buBuildSeq(want, bits, "none", 6, bits+20, 1)
 		w := buRasterize(seq, 12, 0)
-		r := DecodeUART(w, ct, UARTCfg{Baud: int(math.Round(1.0/(12*ct))), Bits: bits})
+		r := DecodeUART(w, ct, UARTCfg{Baud: int(math.Round(1.0 / (12 * ct))), Bits: bits})
 		if !r.OK || !buEq(r.Bytes, want) {
 			t.Errorf("EDGE: bits=%d ok=%v want=%v got=%v err=%s", bits, r.OK, want, r.Bytes, r.Error)
 		}

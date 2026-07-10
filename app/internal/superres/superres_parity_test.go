@@ -106,7 +106,7 @@ type jsResult struct {
 // TestParityJS asserts the Go reference-locked stacker converges to the SAME
 // stack as superres.js on identical frames: same accept/reject set, same integer
 // shifts, same frame/reject counts, the same mean array (sum + count), and
-// bitsGained within a small log2 tolerance. Skips if node is absent.
+// bitsGained within a small log2 tolerance. Skips if node is absent (fails under CI_REQUIRE_BROWSER=1).
 func TestParityJS(t *testing.T) { runParity(t, -1, -1) }
 
 // TestParityManualGate pins the MANUAL-gate path cross-engine with a 3-period

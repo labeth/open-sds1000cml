@@ -9,7 +9,7 @@ import (
 )
 
 // Runs the bode.js pure helpers under node (log ticks, nice range, hz format)
-// to lock the web renderer's math. Self-skips without node.
+// to lock the web renderer's math. Skips without node (fails under CI_REQUIRE_BROWSER=1).
 func TestBodeJSHelpers(t *testing.T) {
 	testenv.NeedNode(t)
 	script := `

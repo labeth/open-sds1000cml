@@ -171,14 +171,14 @@ func TestEnvDurSecs(t *testing.T) {
 		val  string
 		want time.Duration
 	}{
-		{"", def},         // unset -> default
+		{"", def}, // unset -> default
 		{"2", 2 * time.Second},
 		{"0.5", 500 * time.Millisecond},
-		{"0", def},        // zero is not a valid interval -> default
-		{"-3", def},       // negative -> default
-		{"abc", def},      // malformed -> default
+		{"0", def},   // zero is not a valid interval -> default
+		{"-3", def},  // negative -> default
+		{"abc", def}, // malformed -> default
 		{"1e-3", time.Millisecond},
-		{" 5", def},       // ParseFloat rejects leading space -> default
+		{" 5", def}, // ParseFloat rejects leading space -> default
 	}
 	for _, tc := range cases {
 		t.Setenv(key, tc.val)
@@ -194,11 +194,11 @@ func TestEnvInt(t *testing.T) {
 		val  string
 		want int
 	}{
-		{"", 3},     // unset -> default
+		{"", 3}, // unset -> default
 		{"5", 5},
-		{"0", 3},    // non-positive -> default (0 retries would disable rollback)
+		{"0", 3}, // non-positive -> default (0 retries would disable rollback)
 		{"-1", 3},
-		{"2.5", 3},  // not an int -> default
+		{"2.5", 3}, // not an int -> default
 		{"junk", 3},
 	}
 	for _, tc := range cases {

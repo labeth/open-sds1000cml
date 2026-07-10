@@ -7,6 +7,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"testing"
+
+	"open-sds/app/internal/testenv"
 )
 
 // jsOpts is a PARTIAL options object for the JS side: omitempty drops zero
@@ -46,12 +48,10 @@ type compCase struct {
 // stacks with gaps. Curve agreement is required to 1e-9 (relative); the
 // end-to-end compensated arrays to one float32 ULP (both engines round the
 // same ~1e-10-agreeing float64 stream to float32 independently). Skips when
-// node is unavailable so `go test ./...` stays green everywhere.
+// node is unavailable (a hard failure under CI_REQUIRE_BROWSER=1).
 func TestCompParityJS(t *testing.T) {
-	node, err := exec.LookPath("node")
-	if err != nil {
-		t.Skip("node not installed; skipping comp parity")
-	}
+	testenv.NeedNode(t)
+	node, _ := exec.LookPath("node")
 
 	// Frequency grid: the whole cal + extrapolation band at 0.25 MHz, the cal
 	// table boundary (92 MHz) at ±ULP-ish offsets, negatives (even symmetry),

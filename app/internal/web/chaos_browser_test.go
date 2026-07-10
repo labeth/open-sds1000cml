@@ -15,7 +15,7 @@ import (
 // TestChaosBrowser drives chaos_browser.mjs: a seeded monkey pokes every
 // interactive control and gesture path in a real browser; any pageerror is a
 // reachable broken UI state. Three seeds per run keep it cheap but varied.
-// Self-skips when node/Playwright is absent.
+// Skips when node/Playwright is absent (fails under CI_REQUIRE_BROWSER=1).
 func TestChaosBrowser(t *testing.T) {
 	testenv.NeedNode(t)
 	const N = 2048

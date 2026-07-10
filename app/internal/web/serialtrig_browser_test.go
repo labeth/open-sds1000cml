@@ -13,7 +13,7 @@ import (
 
 // TestSerialTrigBrowser drives serialtrig_browser.mjs against a live server:
 // the serial-trigger panel reveals per-protocol config rows and ARM pushes the
-// config + arms the engine over the real API. Self-skips without node/Playwright.
+// config + arms the engine over the real API. Skips without node/Playwright (fails under CI_REQUIRE_BROWSER=1).
 func TestSerialTrigBrowser(t *testing.T) {
 	testenv.NeedNode(t)
 	const N = 2048

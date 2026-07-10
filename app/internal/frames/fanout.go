@@ -42,7 +42,7 @@ func (fo *Fanout) Run(src Source, stop <-chan struct{}) {
 			fo.mu.Lock()
 			copyFrame(&fo.latest, f)
 			fo.has = true
-			close(fo.wake) // wake WaitNext parkers; close never blocks,
+			close(fo.wake)                // wake WaitNext parkers; close never blocks,
 			fo.wake = make(chan struct{}) // so a stuck waiter can't stall this tick
 			fo.mu.Unlock()
 		}
