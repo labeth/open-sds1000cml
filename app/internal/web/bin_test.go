@@ -281,7 +281,8 @@ func TestBinFrameRawShape(t *testing.T) {
 		c2[i] = uint8((i * 3) % 249)
 	}
 	f := &engine.Frame{C1: c1, C2: c2, Seq: 31, Valid: n, WinCols: 200,
-		EdgeX: 123.625, TdivS: 5e-6, DisplayedS: 5e-6, SampleS: 1e-8, Ptp: 140, Trigd: true}
+		EdgeX: 123.625, TdivS: 5e-6, DisplayedS: 5e-6, SampleS: 1e-8, Ptp: 140, Trigd: true,
+		Degraded: true}
 	fs := &fakeScope{frame: f, fresh: true}
 	s := New(fs, nil, nil, nil)
 
@@ -291,6 +292,9 @@ func TestBinFrameRawShape(t *testing.T) {
 	}
 	if rep.Cols != n || rep.SampleS != 1e-8 || rep.EdgeX != 123.625 || !rep.Trigd {
 		t.Fatalf("raw header: cols=%d sample_s=%v edge_x=%v trigd=%v", rep.Cols, rep.SampleS, rep.EdgeX, rep.Trigd)
+	}
+	if !rep.Degraded {
+		t.Fatal("raw header must carry the half-capture degraded flag (bandcheck reads it)")
 	}
 	if rep.M1 != nil || rep.M2 != nil {
 		t.Fatal("raw shape must not compute measurements")

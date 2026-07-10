@@ -198,7 +198,8 @@ func (s *Server) rawBinMsg(since uint64) []byte {
 			Seq: f.Seq, EdgeX: f.EdgeX, Ptp: f.Ptp, TdivS: f.TdivS,
 			DisplayedS: f.DisplayedS, Interp: f.Interp, Norm: f.Norm,
 			Trigd: f.Trigd, Coherent: f.Coherent, IsEnv: f.IsEnv,
-			Cols: n, ColSpanS: float64(n) * f.SampleS, SampleS: f.SampleS,
+			Degraded: f.Degraded, // half-capture flag travels with the raw record it describes
+			Cols:     n, ColSpanS: float64(n) * f.SampleS, SampleS: f.SampleS,
 			EdgeFrac: -1, WinFrac: 1,
 			Vpc1: vpc[0], Vpc2: vpc[1], Off1V: off[0], Off2V: off[1],
 		}

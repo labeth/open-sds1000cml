@@ -94,8 +94,11 @@ func (c *Controller) menuCycle(slot, dir int) {
 			}
 		case 2:
 			switch c.decProto {
-			case 2: // UART source channel
+			case 2: // UART source channel — keep the (here unused) data role on
+				// the OTHER channel, so a later switch to I2C/SPI can never land
+				// clock+data on one channel (fuzz-found invariant violation)
 				c.decChA = 1 - c.decChA
+				c.decChB = 1 - c.decChA
 			case 3, 4: // I2C SDA / SPI DATA channel — keep clock on the OTHER channel
 				c.decChB = 1 - c.decChB
 				c.decChA = 1 - c.decChB
