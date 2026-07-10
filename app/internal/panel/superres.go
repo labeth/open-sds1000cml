@@ -248,12 +248,46 @@ func (c *Controller) srSetStatus(s string) {
 	c.mu.Unlock()
 }
 
+// srCompMeans de-embeds the measured analog falloff from the crunched review
+// means — the SAME curve and gating the web applies when it builds its review
+// frame (app_superres.js srMakeViewFrame + superres_comp.js): the auto target
+// sized by THIS stack's measured bit budget at the web's default spend (0.8),
+// applied per channel on the fine grid dt = SampleS/K, so every review view
+// (Y-T/FFT/X-Y) inherits the recovered bandwidth. Compensate itself preserves
+// the −1 gap sentinels and returns the input untouched when the gates say no
+// (dt ≤ 0, < 8 bins, all-gap) — identical to the JS. Runs on the stacker
+// goroutine, off the render lock.
+func srCompMeans(st *superres.Stack, res superres.Result) (mean, mean2 []float32) {
+	mean, mean2 = res.Mean, res.Mean2
+	k := st.K
+	if k < 1 {
+		k = 1
+	}
+	dt := st.SampleS / float64(k)
+	if !(dt > 0) { // web gate: comp applies only with a real fine-grid dt
+		return
+	}
+	rawNyq := 250e6 // web fallback (dt > 0 ⇒ SampleS > 0, so normally taken)
+	if st.SampleS > 0 {
+		rawNyq = 1 / (2 * st.SampleS)
+	}
+	o := superres.CompAuto(res.BitsGained, rawNyq, 0.8)
+	if mean != nil {
+		mean = superres.Compensate(mean, dt, o)
+	}
+	if mean2 != nil {
+		mean2 = superres.Compensate(mean2, dt, o)
+	}
+	return
+}
+
 // srReachReview crunches the final mean and switches to the review view. Called
 // from srLoop when a stop target is hit or the geometry changes.
 func (c *Controller) srReachReview(st *superres.Stack, status string) {
 	full := st.Result(false, 1)
+	mean, mean2 := srCompMeans(st, full)
 	c.mu.Lock()
-	c.srMean, c.srMean2 = full.Mean, full.Mean2
+	c.srMean, c.srMean2 = mean, mean2
 	c.srBits, c.srFocus, c.srStatus = full.BitsGained, 3, status // 3=review
 	c.srFrames, c.srRejected = st.Hits, st.Rejected
 	c.mu.Unlock()
@@ -360,8 +394,9 @@ func (c *Controller) srLoop(stop chan struct{}, st *superres.Stack) {
 		c.mu.Unlock()
 		if review && time.Since(lastMean) > 400*time.Millisecond {
 			full := st.Result(false, 1)
+			mean, mean2 := srCompMeans(st, full) // falloff comp, exactly like the web review
 			c.mu.Lock()
-			c.srMean, c.srMean2 = full.Mean, full.Mean2
+			c.srMean, c.srMean2 = mean, mean2
 			c.mu.Unlock()
 			lastMean = time.Now()
 		}

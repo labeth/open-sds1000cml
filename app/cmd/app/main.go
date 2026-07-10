@@ -56,6 +56,7 @@ func buildHUD(e *engine.Engine, fe *analog.FrontEnd) lcd.HUD {
 		Running: st.Running, Norm: st.Norm, Single: st.Single,
 		TrigPosFrac: st.TrigPosFrac, TwoChan: true,
 		ShowC1: true, ShowC2: true,
+		URL: lcd.DeviceURL(), // cached; re-enumerates at most every few seconds
 	}
 	if fe != nil {
 		idx, _ := fe.Snapshot()
@@ -178,6 +179,7 @@ type renderSig struct {
 	view, math, dec, zoom int
 	curType, curSel       int
 	menuSel               int
+	url                   string
 	tdiv, zoomOff         float64
 	c1v, c2v, off1, off2  float64
 	trig                  float64
@@ -198,9 +200,10 @@ func renderSigOf(f *engine.Frame, hud lcd.HUD, live bool) renderSig {
 		seq = f.Seq
 	}
 	return renderSig{
-		seq: seq,
+		seq:  seq,
 		view: hud.ViewMode, math: hud.MathMode, dec: hud.DecProto, zoom: hud.Zoom,
 		curType: hud.CurType, curSel: hud.CurSel, menuSel: hud.MenuSel,
+		url:  hud.URL, // an IP appearing/changing must repaint a held display
 		tdiv: hud.TdivS, zoomOff: hud.ZoomOff,
 		c1v: hud.C1VdivV, c2v: hud.C2VdivV, off1: hud.OffC1V, off2: hud.OffC2V,
 		trig: hud.TrigLvlDiv, curX: hud.CurX, curY: hud.CurY,

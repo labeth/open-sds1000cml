@@ -402,6 +402,14 @@ func drawHUD(sf Surface, f *engine.Frame, hud HUD) {
 		fmt.Sprintf("T C%d %s %+.2fdiv %s", hud.TrigSrc+1, edge, hud.TrigLvlDiv, state),
 		colTrig, 1)
 
+	// Device URL (post-takeover support: "what do I browse to?"). Right-aligned
+	// on the top bar in the dead zone between the math legend (ends ≤ ~345) and
+	// the trigger readout (starts ≥ ~670) — clear of the trace band, readouts
+	// and the menu panel in every view. No network → nothing.
+	if hud.URL != "" {
+		DrawTextRight(sf, 664, 2, hud.URL, colDim, 1)
+	}
+
 	if f == nil || f.Valid == 0 {
 		return
 	}
