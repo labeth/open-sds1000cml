@@ -88,7 +88,11 @@ func DecodeUART(codes []uint8, colTimeS float64, cfg UARTCfg) Result {
 	var spans []Span
 	var bytes []int
 	var toks []string
-	need := int(math.Ceil(float64(bits+2) * spb))
+	pcNeed := 0 // the parity bit lengthens the frame — count it so a frame near the
+	if parity != "none" {
+		pcNeed = 1 // record end isn't started with its stop bit off the captured range
+	}
+	need := int(math.Ceil(float64(bits+2+pcNeed) * spb))
 	i := guard
 	for i < n-need-guard {
 		if logicAt(S, float64(i-1)) == idle && logicAt(S, float64(i)) == 1-idle { // start edge
@@ -118,7 +122,12 @@ func DecodeUART(codes []uint8, colTimeS float64, cfg UARTCfg) Result {
 					}
 				}
 				sb := logicAt(S, float64(start)+(1.5+float64(bits)+float64(pc))*spb)
-				if sb >= 0 && sb != idle {
+				if sb < 0 { // stop bit ran off the record: an incomplete frame, not clean
+					spans = append(spans, Span{start, i1, "gap", "gap", 0})
+					i = start + 1
+					continue
+				}
+				if sb != idle { // wrong stop level = framing error
 					if kind == "data" {
 						kind = "frame-error"
 					}

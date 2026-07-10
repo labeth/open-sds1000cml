@@ -39,18 +39,21 @@ func DecodeMIL1553(codes []uint8, colTimeS float64, cfg MIL1553Cfg) Result {
 	}
 
 	// Bit period T in samples. cfg.Bitrate pins it; otherwise infer it from the
-	// edge gaps exactly as Manchester does: consecutive edges are T/2 apart (a
-	// cell boundary followed by a mid-cell transition) or T apart, so the
-	// shortest gaps cluster at the half-period. Take a low percentile (robust to
-	// a stray short gap) then refine on that cluster; T is twice it. The SYNC's
-	// long ~1.5T/2T holds sit far above the T/2 cluster and never bias it.
-	var T float64
+	// edge gaps exactly as Manchester does — and with the same ambiguity: the
+	// shortest-gap cluster is either T/2 (mixed data has both T/2 and T gaps) or T
+	// (alternating data, e.g. a 0xAAAA payload, has only T gaps). We don't guess:
+	// build BOTH candidate periods (2·base and base) and keep whichever decodes
+	// more words. The SYNC's long ~1.5T holds sit above both clusters and don't
+	// bias the base.
+	var cands []float64
 	if cfg.Bitrate > 0 {
-		T = (1.0 / float64(cfg.Bitrate)) / colTimeS
+		cands = []float64{(1.0 / float64(cfg.Bitrate)) / colTimeS}
 	} else {
 		var gaps []float64
 		for k := 1; k < len(S.edges); k++ {
-			if g := float64(S.edges[k].i - S.edges[k-1].i); g >= 1 {
+			// sub-sample crossings: at small T the integer index quantizes a T/2 gap
+			// of 2.5 down to 2, mis-scaling both candidate periods below the truth.
+			if g := S.edges[k].x - S.edges[k-1].x; g >= 1 {
 				gaps = append(gaps, g)
 			}
 		}
@@ -58,23 +61,41 @@ func DecodeMIL1553(codes []uint8, colTimeS float64, cfg MIL1553Cfg) Result {
 			return Result{Proto: "mil1553", Error: "too few edges / cannot infer bitrate"}
 		}
 		sort.Float64s(gaps)
-		hp := gaps[int(float64(len(gaps))*0.1)]
+		base := gaps[int(float64(len(gaps))*0.1)]
 		sum, cnt := 0.0, 0
 		for _, g := range gaps {
-			if math.Abs(g-hp) <= 0.35*hp {
+			if math.Abs(g-base) <= 0.5*base { // ±0.5: absorb the {2,3} quantization spread
 				sum += g
 				cnt++
 			}
 		}
 		if cnt > 0 {
-			hp = sum / float64(cnt)
+			base = sum / float64(cnt)
 		}
-		T = 2 * hp
-	}
-	if math.IsInf(T, 0) || math.IsNaN(T) || !(T >= minSPB) {
-		return Result{Proto: "mil1553", Error: fmt.Sprintf("%.1f samples/bit; need >= %g", T, minSPB)}
+		cands = []float64{2 * base, base}
 	}
 
+	// Try each candidate period; keep the decode with the most words.
+	var best Result
+	bestWords := -1
+	for _, T := range cands {
+		if math.IsInf(T, 0) || math.IsNaN(T) || !(T >= minSPB) {
+			continue
+		}
+		r, words := decodeMIL1553At(S, T, colTimeS)
+		if words > bestWords && words > 0 {
+			bestWords, best = words, r
+		}
+	}
+	if bestWords < 0 {
+		return Result{Proto: "mil1553", Error: "no MIL-STD-1553 sync found"}
+	}
+	return best
+}
+
+// decodeMIL1553At finds each word's SYNC and decodes it at bit period T, returning
+// the Result plus the word count so the caller can score competing T hypotheses.
+func decodeMIL1553At(S sliced, T, colTimeS float64) (Result, int) {
 	var spans []Span
 	var bytesOut []int
 	var toks []string
@@ -160,13 +181,13 @@ func DecodeMIL1553(codes []uint8, colTimeS float64, cfg MIL1553Cfg) Result {
 	}
 
 	if words == 0 {
-		return Result{Proto: "mil1553", Error: "no MIL-STD-1553 sync found"}
+		return Result{Proto: "mil1553", Error: "no MIL-STD-1553 sync found"}, 0
 	}
 
-	baud := cfg.Bitrate
+	baud := 0
 	if colTimeS > 0 {
 		baud = int(math.Round(1.0 / (T * colTimeS)))
 	}
 	return Result{OK: true, Proto: "mil1553", Spans: spans, Text: strings.Join(toks, " "),
-		Bytes: bytesOut, Baud: baud, SPB: T, Thr: S.threshold}
+		Bytes: bytesOut, Baud: baud, SPB: T, Thr: S.threshold}, words
 }

@@ -193,12 +193,13 @@ func DecodeARINC429(codes []uint8, colTimeS float64, cfg ARINC429Cfg) Result {
 		for i := range bits {
 			bits[i] = -1
 		}
-		filled := 0
+		filled, hits := 0, 0
 		for j := sg[0]; j <= sg[1]; j++ {
 			k := int(math.Round((float64(pulses[j].i) - s0) / T))
 			if k < 0 || k >= 32 {
 				continue // stray pulse outside the 32-bit window
 			}
+			hits++ // pulses that land inside the word window
 			if bits[k] == -1 {
 				filled++
 			}
@@ -208,8 +209,12 @@ func DecodeARINC429(codes []uint8, colTimeS float64, cfg ARINC429Cfg) Result {
 				bits[k] = 0
 			}
 		}
-		if filled != 32 {
-			continue // partial / malformed word (record-edge truncation) — drop it
+		// A real ARINC word is one RZ pulse per bit cell => ~32 pulses. Far more
+		// pulses in the window means MANY per cell — i.e. dense noise that merely
+		// happened to fill all 32 slots. The 1-bit odd parity passes ~50% of the
+		// time, so without this density gate noise is confidently mis-accepted.
+		if filled != 32 || hits > 34 {
+			continue // partial word, or noise (multiple pulses per cell)
 		}
 
 		// Fields, transmission order (bits[0] = first bit on the wire = ARINC #1).

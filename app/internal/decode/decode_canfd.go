@@ -77,6 +77,7 @@ type canReader struct {
 	stuffOn     bool
 	record      bool
 	stuffed     int
+	stuffErr    bool // a stuff bit was NOT the opposite of its 5-run (6 same = violation)
 	bits        []int
 	li0, li1    int // sample span of the last raw bit read
 }
@@ -113,6 +114,9 @@ func (r *canReader) next() (int, bool) {
 			return -1, false
 		}
 		r.stuffed++
+		if sv == r.runVal { // 6 consecutive identical bits => bit-stuff violation
+			r.stuffErr = true // (e.g. an all-dominant / aliased-constant "bus" is not a legal frame)
+		}
 		r.runVal, r.runLen = sv, 1
 	}
 	v, ok := r.readRaw()
@@ -414,9 +418,10 @@ func decodeCANOneFrame(S sliced, cfg CANFDCfg, sofStart, spb, dataSpb float64) c
 	}
 	crcTxt := fmt.Sprintf("%04X", crc)
 	crcKind := "crc"
-	if crc != want {
-		crcTxt = "!" + crcTxt // form/CRC mismatch, still emit the frame
-	}
+	if crc != want || r.stuffErr {
+		crcTxt = "!" + crcTxt   // CRC mismatch OR a bit-stuff violation (6 identical
+		crcKind = "frame-error" // bits — e.g. an all-dominant/aliased "bus") — flag it,
+	}                           // never pass such garbage off as a clean CAN frame
 	spans = append(spans, Span{c0, c1, "CRC:" + crcTxt, crcKind, crc})
 	toks = append(toks, "CRC:"+crcTxt)
 

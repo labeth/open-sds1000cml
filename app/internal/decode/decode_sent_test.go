@@ -55,7 +55,8 @@ func sentWave(frames [][]int, tick, pauseTicks, jit int) []uint8 {
 
 func TestDecodeSENTRoundTrip(t *testing.T) {
 	// status + 6 data + CRC. The CRC nibble is emitted, not verified.
-	nibs := []int{0x1, 0xA, 0x5, 0xF, 0x0, 0xC, 0x3, 0xB}
+	nibs := []int{0x1, 0xA, 0x5, 0xF, 0x0, 0xC, 0x3, 0}
+	nibs[7] = sentCRC4(nibs[1:7]) // real J2716 CRC-4 over the 6 data nibbles
 	w := sentWave([][]int{nibs}, 6, 0, 0)
 	r := DecodeSENT(w, 1e-6, SENTCfg{Nibbles: 8})
 	if !r.OK {
@@ -67,13 +68,14 @@ func TestDecodeSENTRoundTrip(t *testing.T) {
 	if len(r.Spans) < 2 || r.Spans[0].Kind != "sync" {
 		t.Fatalf("expected a leading sync span, got %+v", r.Spans)
 	}
-	if last := r.Spans[len(r.Spans)-1]; last.Kind != "crc" || last.Val != 0xB {
-		t.Errorf("expected trailing crc nibble 0xB, got kind=%q val=%d", last.Kind, last.Val)
+	if last := r.Spans[len(r.Spans)-1]; last.Kind != "crc" || last.Val != nibs[7] {
+		t.Errorf("expected trailing crc nibble %X, got kind=%q val=%d", nibs[7], last.Kind, last.Val)
 	}
 }
 
 func TestDecodeSENTTickOverride(t *testing.T) {
-	nibs := []int{0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9}
+	nibs := []int{0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0}
+	nibs[7] = sentCRC4(nibs[1:7])
 	tick := 8
 	colTimeS := 5e-7
 	w := sentWave([][]int{nibs}, tick, 0, 0)
@@ -90,7 +92,8 @@ func TestDecodeSENTTickOverride(t *testing.T) {
 
 func TestDecodeSENTJitter(t *testing.T) {
 	// ±(tick/4)-sample jitter on each nibble must still round to the right value.
-	nibs := []int{0xF, 0x0, 0x8, 0x1, 0x7, 0xE, 0x2, 0x9}
+	nibs := []int{0xF, 0x0, 0x8, 0x1, 0x7, 0xE, 0x2, 0}
+	nibs[7] = sentCRC4(nibs[1:7])
 	tick := 12
 	w := sentWave([][]int{nibs}, tick, 0, tick/4)
 	r := DecodeSENT(w, 1e-6, SENTCfg{Nibbles: 8})
@@ -103,8 +106,10 @@ func TestDecodeSENTJitter(t *testing.T) {
 }
 
 func TestDecodeSENTMultiFramePause(t *testing.T) {
-	fa := []int{0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8}
-	fb := []int{0x9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF, 0x0}
+	fa := []int{0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0}
+	fb := []int{0x9, 0xA, 0xB, 0xC, 0xD, 0xE, 0xF, 0}
+	fa[7] = sentCRC4(fa[1:7])
+	fb[7] = sentCRC4(fb[1:7])
 	// A 100-tick pause pulse trails each frame; the flag makes the decoder skip it.
 	w := sentWave([][]int{fa, fb}, 6, 100, 0)
 	r := DecodeSENT(w, 1e-6, SENTCfg{Nibbles: 8, PausePulse: true})

@@ -62,7 +62,7 @@ func headerNote(b []int) string {
 }
 
 func TestDecodeFlexRayRoundTrip(t *testing.T) {
-	want := []int{0x12, 0x34, 0x56, 0x78, 0x9A, 0xBC, 0xDE, 0xF0} // 5 header + 3 payload
+	want := brFlexFixCRC([]int{0x12, 0x34, 0x56, 0x78, 0x9A, 0xBC, 0xDE, 0xF0}) // 5 header + 3 payload, valid CRC
 	spb := 20
 	colTimeS := 5e-9 // 200 MSa/s
 	bitrate := int(1.0 / (float64(spb) * colTimeS))
@@ -120,8 +120,8 @@ func TestDecodeFlexRayMultiFrame(t *testing.T) {
 	// Two frames in one record, separated by idle — segmentation must recover
 	// both, in order, with a gap between them. Second frame's header is all-zero
 	// data to exercise the long in-frame LOW run NOT being read as a new TSS.
-	f1 := []int{0x81, 0x02, 0x03, 0x04, 0x05, 0xAA, 0x55}
-	f2 := []int{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0F}
+	f1 := brFlexFixCRC([]int{0x81, 0x02, 0x03, 0x04, 0x05, 0xAA, 0x55})
+	f2 := brFlexFixCRC([]int{0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0F})
 	spb := 16
 	colTimeS := 1e-8
 	w := flexrayWave([][]int{f1, f2}, spb, 6)
@@ -155,7 +155,7 @@ func TestDecodeFlexRayPartialAtStart(t *testing.T) {
 	// A record that begins in the middle of the TSS LOW (no captured idle->TSS
 	// falling edge) is a frame truncated at the record start: it must be dropped,
 	// and a following whole frame still recovered.
-	good := []int{0x11, 0x22, 0x33, 0x44, 0x55, 0x66}
+	good := brFlexFixCRC([]int{0x11, 0x22, 0x33, 0x44, 0x55, 0x66})
 	spb := 16
 	colTimeS := 1e-8
 	full := flexrayWave([][]int{{0x99, 0x88, 0x77, 0x66, 0x55}, good}, spb, 8)

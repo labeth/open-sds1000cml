@@ -18,6 +18,30 @@ type FlexRayCfg struct {
 	HaveThr   bool
 }
 
+// flexHeaderCRC11 computes the FlexRay header CRC-11 (poly 0x385 = x^11+x^9+x^8+
+// x^7+x^2+1, init 0x1A) over the 20 protected header bits, MSB-first: sync(1),
+// startup(1), frameID(11), payloadLen(7). A frame whose transmitted header-CRC
+// field disagrees with this is corrupt and must not be accepted as a valid frame.
+func flexHeaderCRC11(sync, startup, frameID, payloadLen int) int {
+	bits := make([]int, 0, 20)
+	bits = append(bits, sync&1, startup&1)
+	for b := 10; b >= 0; b-- {
+		bits = append(bits, (frameID>>b)&1)
+	}
+	for b := 6; b >= 0; b-- {
+		bits = append(bits, (payloadLen>>b)&1)
+	}
+	crc := 0x1A
+	for _, bit := range bits {
+		msb := (crc >> 10) & 1
+		crc = (crc << 1) & 0x7FF
+		if (msb ^ bit) == 1 {
+			crc ^= 0x385
+		}
+	}
+	return crc & 0x7FF
+}
+
 // DecodeFlexRay decodes a FlexRay byte stream on one channel's codes. The bus is
 // shown here as a single logic line (the BP/BM pair collapsed to two levels):
 // idle sits HIGH. A frame is framed like a stretched async word:
@@ -111,6 +135,7 @@ func DecodeFlexRay(codes []uint8, colTimeS float64, cfg FlexRayCfg) Result {
 	var bytesOut []int
 	var toks []string
 	frames := 0
+	goodFrames := 0 // frames with a valid header CRC (OK gates on this)
 	consumedUntil := -1
 
 	// Scan rising edges for a TSS->FSS boundary: a rising edge preceded by a LOW
@@ -186,6 +211,7 @@ func DecodeFlexRay(codes []uint8, colTimeS float64, cfg FlexRayCfg) Result {
 		// Header bonus: the first 5 bytes are the FlexRay header —
 		// flags(5) frameID(11) payloadLen(7) headerCRC(11) cycle(6) = 40 bits,
 		// MSB-first. Emit a note span (kind "addr") right after the TSS.
+		crcOK := false
 		if len(frameBytes) >= 5 {
 			var hdr uint64
 			for hb := 0; hb < 5; hb++ {
@@ -193,9 +219,11 @@ func DecodeFlexRay(codes []uint8, colTimeS float64, cfg FlexRayCfg) Result {
 			}
 			frameID := int((hdr >> 24) & 0x7FF)
 			payloadLen := int((hdr >> 17) & 0x7F)
+			hdrCRC := int((hdr >> 6) & 0x7FF)
 			cycle := int(hdr & 0x3F)
 			sync := (hdr >> 36) & 1
 			startup := (hdr >> 35) & 1
+			crcOK = flexHeaderCRC11(int(sync), int(startup), frameID, payloadLen) == hdrCRC
 			note := fmt.Sprintf("ID=%d LEN=%d CYC=%d", frameID, payloadLen, cycle)
 			if sync == 1 {
 				note += " SYNC"
@@ -203,7 +231,14 @@ func DecodeFlexRay(codes []uint8, colTimeS float64, cfg FlexRayCfg) Result {
 			if startup == 1 {
 				note += " STARTUP"
 			}
-			hdrSpan := Span{frameSpans[1].I0, frameSpans[5].I1, note, "addr", frameID}
+			// A bad header CRC marks the frame corrupt: flag the header span and note
+			// so a consumer never treats the (still-extracted) bytes as trustworthy.
+			kind := "addr"
+			if !crcOK {
+				kind = "frame-error"
+				note = "!CRC " + note
+			}
+			hdrSpan := Span{frameSpans[1].I0, frameSpans[5].I1, note, kind, frameID}
 			// insert the note right after the TSS span (index 0), before the data.
 			out := make([]Span, 0, len(frameSpans)+1)
 			out = append(out, frameSpans[0], hdrSpan)
@@ -217,6 +252,9 @@ func DecodeFlexRay(codes []uint8, colTimeS float64, cfg FlexRayCfg) Result {
 			toks = append(toks, "|")
 		}
 		frames++
+		if crcOK {
+			goodFrames++
+		}
 		spans = append(spans, frameSpans...)
 		toks = append(toks, frameToks...)
 		bytesOut = append(bytesOut, frameBytes...)
@@ -230,6 +268,14 @@ func DecodeFlexRay(codes []uint8, colTimeS float64, cfg FlexRayCfg) Result {
 	if colTimeS > 0 {
 		baud = int(math.Round(1.0 / (T * colTimeS)))
 	}
-	return Result{OK: true, Proto: "flexray", Spans: spans, Text: strings.Join(toks, " "),
+	// OK requires at least one frame with a valid header CRC. Frames that framed
+	// correctly but failed the CRC are still returned (flagged) in Spans/Bytes so
+	// the UI can show them, but they never make OK true on their own — a corrupted
+	// header must not read as a confident, valid FlexRay frame.
+	res := Result{OK: goodFrames > 0, Proto: "flexray", Spans: spans, Text: strings.Join(toks, " "),
 		Bytes: bytesOut, Baud: baud, SPB: T, Thr: S.threshold}
+	if goodFrames == 0 {
+		res.Error = "no CRC-valid FlexRay header"
+	}
+	return res
 }

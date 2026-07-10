@@ -29,6 +29,23 @@ const (
 
 func sentHex1(v int) string { return fmt.Sprintf("%X", v&0xf) }
 
+// sentCRC4Table is the SAE J2716 CRC-4 nibble table (polynomial x^4+x^3+x^2+1).
+var sentCRC4Table = [16]int{0, 13, 7, 10, 14, 3, 9, 4, 1, 12, 6, 11, 15, 2, 8, 5}
+
+// sentCRC4 computes the J2716 CRC-4 over the DATA nibbles (seed 5, augmented with
+// a final table step). The CRC covers the data nibbles only — not the status
+// nibble and not the CRC nibble itself. A frame whose trailing CRC nibble does
+// not equal this is flagged, so a corrupted CRC (and random noise, whose CRC is
+// essentially never self-consistent) is no longer accepted as a valid frame.
+func sentCRC4(data []int) int {
+	crc := 5
+	for _, d := range data {
+		crc = sentCRC4Table[crc] ^ (d & 0xf)
+	}
+	crc = sentCRC4Table[crc] // augmented final nibble
+	return crc & 0xf
+}
+
 func sentClampNib(v int) int {
 	if v < 0 {
 		return 0
@@ -150,6 +167,7 @@ func DecodeSENT(codes []uint8, colTimeS float64, cfg SENTCfg) Result {
 	var spans []Span
 	var bytes []int
 	var toks []string
+	goodCRC := false // at least one frame whose CRC-4 checks out
 	curTick := seedTick
 	k := firstSync
 	guard, maxIter := 0, np+4 // paranoia: k strictly advances, so this never trips
@@ -169,23 +187,43 @@ func DecodeSENT(codes []uint8, colTimeS float64, cfg SENTCfg) Result {
 		}
 		k++
 
-		// Decode up to `nib` nibble pulses.
+		// Decode up to `nib` nibble pulses. Collect the frame's nibbles so the
+		// trailing CRC nibble can be VERIFIED (J2716 CRC-4 over the data nibbles) —
+		// a bad CRC is flagged, not silently accepted.
+		var frameNibs []int
 		for nbIdx := 0; nbIdx < nib && k < np; nbIdx++ {
 			P := period[k]
 			if looksSync(P, curTick) { // a SYNC mid-frame => frame truncated; re-handle it
 				break
 			}
 			val := int(math.Round(P/curTick)) - 12
-			kind := "data"
-			if nbIdx == nib-1 {
-				kind = "crc"
-			}
-			if val < 0 || val > 15 {
+			if val < 0 || val > 15 { // out-of-range pulse: a coding error, not a nibble
 				cv := sentClampNib(val)
 				spans = append(spans, Span{fallI[k], fallI[k+1], "!" + sentHex1(cv), "frame-error", cv})
 				toks = append(toks, "!"+sentHex1(cv))
+				frameNibs = append(frameNibs, cv)
+				k++
+				continue
+			}
+			frameNibs = append(frameNibs, val)
+			if nbIdx == nib-1 { // CRC nibble: verify over the data nibbles [1 .. len-2]
+				n := len(frameNibs)
+				data := frameNibs[:0] // status-only / crc-only frames => CRC over no data
+				if n >= 2 {
+					data = frameNibs[1 : n-1]
+				}
+				valid := sentCRC4(data) == val
+				kind, txt := "crc", sentHex1(val)
+				if !valid {
+					kind, txt = "frame-error", "!"+sentHex1(val)
+				} else {
+					goodCRC = true
+				}
+				spans = append(spans, Span{fallI[k], fallI[k+1], txt, kind, val})
+				toks = append(toks, txt)
+				bytes = append(bytes, val)
 			} else {
-				spans = append(spans, Span{fallI[k], fallI[k+1], sentHex1(val), kind, val})
+				spans = append(spans, Span{fallI[k], fallI[k+1], sentHex1(val), "data", val})
 				toks = append(toks, sentHex1(val))
 				bytes = append(bytes, val)
 			}
@@ -202,6 +240,14 @@ func DecodeSENT(codes []uint8, colTimeS float64, cfg SENTCfg) Result {
 	if len(spans) == 0 {
 		return Result{Proto: "sent", Error: "no SENT SYNC (~56-tick) pulse found"}
 	}
-	return Result{OK: true, Proto: "sent", Spans: spans, Text: strings.Join(toks, " "),
+	// OK means a genuinely valid frame was decoded — at least one with a good
+	// CRC-4. Noise and corrupted frames still return their spans (so the display
+	// can show them with the CRC flagged), but OK=false so nothing downstream (the
+	// serial trigger, callers) treats garbage as a confirmed SENT frame.
+	res := Result{OK: goodCRC, Proto: "sent", Spans: spans, Text: strings.Join(toks, " "),
 		Bytes: bytes, SPB: curTick, Thr: S.threshold}
+	if !goodCRC {
+		res.Error = "no CRC-valid SENT frame"
+	}
+	return res
 }
