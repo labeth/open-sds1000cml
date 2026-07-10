@@ -269,7 +269,7 @@ func (e *Engine) stitchFrame(norm bool) {
 	e.stats.Seq = e.seq
 	e.stats.Coherent++
 	e.stats.LastPtp = p
-	e.stats.ValidDepth = validDepth(f.C1[:cols])
+	e.stats.ValidDepth = validDepthP(f.C1[:cols], p) // reuse the ptp scan from above
 	e.stats.MemDepth = int(e.memDepth.Load())
 	e.stats.DrainMs = float64(drainMs) / float64(time.Millisecond)
 	e.stats.GapMs = float64(gapNs) / float64(time.Millisecond)

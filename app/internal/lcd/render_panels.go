@@ -3,10 +3,53 @@ package lcd
 import (
 	"fmt"
 	"math"
+	"sync"
+	"time"
+
 	"open-sds/app/internal/analog"
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/measure"
 )
+
+// measFor throttles the full-record auto-measurement to readout rate. The HUD
+// bottom line and the MEASURE panel both recomputed measure.Compute (a full
+// min/max/sum/sum²/histogram pass over 20480 samples, per channel) at EVERY LCD
+// render (~8 Hz) — 11% of the core on the device profile, for a text readout
+// that only needs to refresh a few times a second. Within one frame (same Seq +
+// params) both surfaces share the identical Result, keeping HUD↔panel agreement
+// exact; across frames the previous Result is reused until measRefresh elapses.
+// The scale/coupling params key the cache so a knob turn recomputes immediately.
+// Seq==0 (hand-built test frames) bypasses the cache entirely. The mutex covers
+// the /api/screen.png render running on the HTTP goroutine.
+const measRefresh = 250 * time.Millisecond
+
+var (
+	measMu    sync.Mutex
+	measSlots [2]struct {
+		seq          uint64
+		at           time.Time
+		vpc, off, ss float64
+		cpl          int
+		m            *measure.Result
+	}
+)
+
+func measFor(ch int, sig []uint8, seq uint64, vpc, off, ss float64, cpl int) *measure.Result {
+	if seq == 0 || ch < 0 || ch > 1 {
+		return measure.Compute(sig, vpc, off, ss)
+	}
+	measMu.Lock()
+	defer measMu.Unlock()
+	c := &measSlots[ch]
+	if c.m != nil && c.vpc == vpc && c.off == off && c.ss == ss && c.cpl == cpl {
+		if seq == c.seq || time.Since(c.at) < measRefresh {
+			return c.m
+		}
+	}
+	m := measure.Compute(sig, vpc, off, ss)
+	c.seq, c.at, c.vpc, c.off, c.ss, c.cpl, c.m = seq, time.Now(), vpc, off, ss, cpl, m
+	return m
+}
 
 // drawMeasPanel draws the on-device MEASURE overlay — a calibrated measurement
 // box PER enabled channel (via the shared measure package, so it matches the web
@@ -49,7 +92,7 @@ func measBox(sf Surface, f *engine.Frame, hud HUD, ch, x int) {
 		sig = analog.CoupleDisplay(sig, cpl)
 		off = 0
 	}
-	m := measure.Compute(sig, vdiv/25*probe, off*probe, hud.SampleS)
+	m := measFor(ch, sig, f.Seq, vdiv/25*probe, off*probe, hud.SampleS, cpl)
 	if m == nil {
 		return
 	}
@@ -369,7 +412,7 @@ func drawHUD(sf Surface, f *engine.Frame, hud HUD) {
 	// Bottom quick-readout: calibrated Vpp + frequency per channel, via the
 	// shared measure package (real probe-scaled V/div + software coupling) so it
 	// agrees with the MEASURE panel and the web.
-	line := func(x int, sig []uint8, vdiv, probe, off float64, cpl int, col uint16, name string) {
+	line := func(ch, x int, sig []uint8, vdiv, probe, off float64, cpl int, col uint16, name string) {
 		if probe < 1 {
 			probe = 1
 		}
@@ -377,7 +420,7 @@ func drawHUD(sf Surface, f *engine.Frame, hud HUD) {
 			sig = analog.CoupleDisplay(sig, cpl)
 			off = 0
 		}
-		m := measure.Compute(sig, vdiv/25*probe, off*probe, hud.SampleS)
+		m := measFor(ch, sig, f.Seq, vdiv/25*probe, off*probe, hud.SampleS, cpl)
 		if m == nil {
 			return
 		}
@@ -387,8 +430,8 @@ func drawHUD(sf Surface, f *engine.Frame, hud HUD) {
 		}
 		DrawText(sf, x, H-9, s, col, 1)
 	}
-	line(4, f.C1[:valid], hud.C1VdivV, hud.Probe1, hud.OffC1V, hud.Cpl1, colC1, "C1")
+	line(0, 4, f.C1[:valid], hud.C1VdivV, hud.Probe1, hud.OffC1V, hud.Cpl1, colC1, "C1")
 	if hud.TwoChan && len(f.C2) >= valid {
-		line(410, f.C2[:valid], hud.C2VdivV, hud.Probe2, hud.OffC2V, hud.Cpl2, colC2, "C2")
+		line(1, 410, f.C2[:valid], hud.C2VdivV, hud.Probe2, hud.OffC2V, hud.Cpl2, colC2, "C2")
 	}
 }

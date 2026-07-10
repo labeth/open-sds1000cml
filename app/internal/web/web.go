@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/http/pprof"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -172,6 +173,9 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/api/screen.png", s.hScreen)
 	mux.HandleFunc("/api/claim", s.hClaim)
 	mux.HandleFunc("/api/debug/tune", s.hTune)
+	// pprof (lab device): live CPU/heap profiling for optimization work.
+	mux.HandleFunc("/debug/pprof/", pprof.Index)
+	mux.HandleFunc("/debug/pprof/profile", pprof.Profile)
 	// "/" catches the page plus every embedded .js/.css (served in hRoot).
 	return mux
 }

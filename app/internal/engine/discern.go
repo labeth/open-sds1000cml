@@ -29,11 +29,18 @@ func ptp(sig []uint8) (lo, hi, p int) {
 // peak-to-peak still shows activity. Used to size the decimated drain safely:
 // draining past validDepth would centre the display on dead samples.
 func validDepth(sig []uint8) int {
+	_, _, p := ptp(sig)
+	return validDepthP(sig, p)
+}
+
+// validDepthP is validDepth with the record's peak-to-peak span precomputed, so
+// a caller that already scanned the record (oneFrame does exactly one ptp pass
+// per frame) doesn't pay a second O(n) pass here. Same arithmetic as validDepth.
+func validDepthP(sig []uint8, p int) int {
 	n := len(sig)
 	if n == 0 {
 		return 0
 	}
-	_, _, p := ptp(sig)
 	if p < 8 {
 		return n // essentially flat everywhere — nothing to trim
 	}
@@ -63,11 +70,18 @@ func validDepth(sig []uint8) int {
 // on: scan from the end while sig[i]==sig[i-5]; that contiguous run IS the dead
 // tail. A flat record (no signal) has no tail to trim — return full.
 func realDepth(sig []uint8) int {
+	_, _, p := ptp(sig)
+	return realDepthP(sig, p)
+}
+
+// realDepthP is realDepth with the peak-to-peak span precomputed (see
+// validDepthP) — one shared ptp pass per frame instead of one per caller.
+func realDepthP(sig []uint8, p int) int {
 	n := len(sig)
 	if n < 6 {
 		return n
 	}
-	if _, _, p := ptp(sig); p < 8 {
+	if p < 8 {
 		return n // flat / quiet screen: a legitimate display, not a half record
 	}
 	run := 0

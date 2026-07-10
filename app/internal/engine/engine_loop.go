@@ -189,15 +189,23 @@ func (e *Engine) oneFrame(norm bool) {
 	// Gate on realDepth, not validDepth: the half-record's dead tail is a period-5
 	// port repeat that validDepth reads as live (see realDepth) — so validDepth
 	// passed broken frames. realDepth < 0.75·cols means the FPGA froze a half.
-	e.lastFirstHalf = nativeFast && realDepth(f.C1[:cols])*4 < cols*3 // raw half-record rate (before re-capture)
+	// One ptp + tail scan per drained record, shared by the raw-rate flag and the
+	// loop gate (they used to scan the same bytes twice); re-scanned only after a
+	// re-drain actually changes the data. loC1/hiC1/pC1 stay valid for the final
+	// record and seed the single canonical scan below.
+	loC1, hiC1, pC1 := ptp(f.C1[:cols])
+	rd := realDepthP(f.C1[:cols], pC1)
+	e.lastFirstHalf = nativeFast && rd*4 < cols*3 // raw half-record rate (before re-capture)
 	maxRetry := int(e.tuneMaxRetry.Load())
-	for tries := 0; nativeFast && tries < maxRetry && realDepth(f.C1[:cols])*4 < cols*3; tries++ {
+	for tries := 0; nativeFast && tries < maxRetry && rd*4 < cols*3; tries++ {
 		e.armEngine()
 		e.waitCapture(norm)
 		if !e.halt() {
 			break
 		}
 		e.drain(f, cols)
+		loC1, hiC1, pC1 = ptp(f.C1[:cols])
+		rd = realDepthP(f.C1[:cols], pC1)
 	}
 	drainMs := e.clk.Now().Sub(drainStart)
 	e.armEngine() // re-arm immediately (spec 03 §5.1 RE-ARM): filling again before publish/render
@@ -217,10 +225,16 @@ func (e *Engine) oneFrame(norm bool) {
 	// AUTO free-run full record; that is the `ready` gate that let us drain.
 	coherent := haltOK && (nativeFast || ready)
 	disc := f.C1[:cols]
-	if int(e.trigSrc.Load()) == 1 {
+	discIsC2 := int(e.trigSrc.Load()) == 1
+	if discIsC2 {
 		disc = f.C2[:cols]
 	}
-	lo, hi, p := ptp(disc)
+	// Canonical scan of the discrimination record — reuse the retry loop's C1
+	// scan unless the data differs (C2 source) or ERES just rewrote the samples.
+	lo, hi, p := loC1, hiC1, pC1
+	if discIsC2 || (mode == AcqEres && clampEresLen(int(e.eresLen.Load())) > 1) {
+		lo, hi, p = ptp(disc)
+	}
 	rising := e.trigRising.Load()
 
 	// Qualifier dispatch (spec 05): PULSE/SLOPE/VIDEO REPLACE the EDGE
@@ -255,7 +269,7 @@ func (e *Engine) oneFrame(norm bool) {
 				lvlOffSig = td < lo-margin || td > hi+margin
 			}
 		} else {
-			edgeX = centerCross(disc, midLevel(disc), rising)
+			edgeX = centerCross(disc, (lo+hi)/2, rising) // == midLevel(disc); reuse the canonical scan
 		}
 	}
 
@@ -404,7 +418,7 @@ func (e *Engine) oneFrame(norm bool) {
 	// frames so a non-match can never trip stop-on-fail.
 	liveDepth := 0
 	if lock && observeOK && e.maskMode.Load() != MaskOff {
-		liveDepth = validDepth(disc)
+		liveDepth = validDepthP(disc, p)
 		posFrac := math.Float64frombits(e.trigPosFrac.Load())
 		if failed, stop := e.maskEval(f, cols, liveDepth, edgeX, f.SampleS, posFrac); failed && stop {
 			e.maskStopped.Store(true)
@@ -420,7 +434,7 @@ func (e *Engine) oneFrame(norm bool) {
 	// reference and DUT channels on every locked frame. Independent of the
 	// publish policy — it observes the signal, does not gate it.
 	if lock && observeOK && e.bodeMode.Load() == BodeOn {
-		bd := validDepth(disc)
+		bd := validDepthP(disc, p)
 		if bd <= 0 || bd > cols {
 			bd = cols
 		}
@@ -460,9 +474,11 @@ func (e *Engine) oneFrame(norm bool) {
 		e.mu.Unlock()
 	}
 
-	vd := validDepth(disc)
+	var vd int
 	if nativeFast {
-		vd = realDepth(disc) // dead-tail-aware: half_rate must count the period-5 tail
+		vd = realDepthP(disc, p) // dead-tail-aware: half_rate must count the period-5 tail
+	} else {
+		vd = validDepthP(disc, p)
 	}
 	armToLatchMs := float64(armToLatch) / float64(time.Millisecond)
 	e.mu.Lock()
