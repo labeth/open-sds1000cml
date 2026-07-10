@@ -34,6 +34,11 @@ function fail(proto, error, meta) {
 // VALUE is never read from the hysteretic level[] (which lags); callers use
 // logicAt(), which thresholds the raw code at the sample instant.
 function sliceChannel(codes, opts) {
+  // A frame may carry NO per-sample array for a channel (channel toggled off,
+  // or an envelope/roll band ships env min/max instead) — decCodes()/autodetect
+  // then hand us undefined. Report it like any other unusable input; every
+  // caller already checks S.ok.
+  if (!codes) return { ok: false, reason: "no channel data (channel off / envelope frame)" };
   opts = opts || {};
   const hystFrac = opts.hystFrac != null ? opts.hystFrac : 0.20;
   const minAmp = opts.minAmp != null ? opts.minAmp : 20;

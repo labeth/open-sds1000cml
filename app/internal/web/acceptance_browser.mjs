@@ -243,6 +243,19 @@ run(async (t) => {
   await po.wait(300);
   const dockLeftOpen = await po.eval(() => document.getElementById("dock").getBoundingClientRect().left);
   t.ok(dockLeftOpen < 700, `panel toggle opens the drawer (dock slid in to ${Math.round(dockLeftOpen)}px)`);
+  // the open drawer (position:fixed, top:0) overlays the header's right edge —
+  // the ☰ toggle must stack ABOVE it (base.css z-index 41) or the drawer swallows
+  // the only control that closes it. Playwright refuses a click on a covered
+  // element ("subtree intercepts pointer events"), so this click IS the guard.
+  t.ok(await po.eval(() => {
+    const el = document.getElementById("panelToggle"), r = el.getBoundingClientRect();
+    const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+    return hit === el || el.contains(hit);
+  }), "the ☰ toggle stays clickable above the open drawer (nothing intercepts its center)");
+  await po.click("panelToggle");
+  await po.waitFor(() => document.getElementById("dock").getBoundingClientRect().left >= 698, null, 3000).catch(() => {});
+  t.ok(await po.eval(() => document.getElementById("dock").getBoundingClientRect().left) >= 700 - 2,
+    "the toggle also CLOSES the drawer (drawer slid back off-canvas)");
   t.ok(await po.eval(() => getComputedStyle(document.querySelector("footer")).overflowX) === "auto",
     "footer becomes a horizontally-scrolling toolbar (no multi-row wrap)");
   await po.page.setViewportSize({ width: 1400, height: 900 });

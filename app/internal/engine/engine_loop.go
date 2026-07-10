@@ -352,7 +352,24 @@ func (e *Engine) oneFrame(norm bool) {
 	default:
 		// NORM decimated quiet screen, an un-fired qualifier, or AUTO decimated signal-present-
 		// but-not-locked this frame (it would jitter) → HOLD the last locked frame.
+		// AUTO LIVENESS (fuzz-found, HW-verified): "not locked THIS frame" can be
+		// PERSISTENT, not transient — e.g. a fast signal aliased by a slow band can
+		// have no crossing of the requested slope at all (a 2 Mbps stream at 50 µs/div
+		// froze AUTO indefinitely on falling-edge; flipping the slope un-froze it).
+		// Every other hold path (flat, zone, serial) already publishes an honest
+		// unlocked refresh every nativeFlatFallbck holds; give the default arm the
+		// same guarantee so AUTO can never freeze while the signal is alive. NORM
+		// keeps holding strictly, as it must.
 		publish = false
+		if !norm {
+			e.flatHeld++
+			if e.flatHeld >= nativeFlatFallbck {
+				edgeX = -1 // honest unlocked refresh; never fabricate an edge
+				f.Trigd = false
+				publish = true
+				e.flatHeld = 0
+			}
+		}
 	}
 	// SERIAL TRIGGER (serialtrig.go): decode the captured record and publish only
 	// frames whose UART/I2C/SPI stream contains the armed byte/address pattern,

@@ -62,8 +62,11 @@ function gapFill(src) {
 }
 
 function fftStride() {
-  const L = frame && frame.c1 ? frame.c1.length : 0;
-  return Math.max(1, Math.ceil(L / FFT_MAX));
+  // Match peakNyq(): a channel array can be absent (channel off / env frame),
+  // so size the stride from whichever channel array exists — otherwise a
+  // C2-only frame would skip the FFT_MAX decimation entirely.
+  const sig = frame ? (frame.c1 || frame.c2) : null;
+  return Math.max(1, Math.ceil((sig ? sig.length : 0) / FFT_MAX));
 }
 
 // displayNyq is the effective FFT Nyquist after the decimation cap — used by

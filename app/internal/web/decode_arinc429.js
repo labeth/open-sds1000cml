@@ -16,7 +16,9 @@ function decodeARINC429(codes, colTimeS, cfg) {
   const proto = "arinc429";
   const minSPB = 4;
   const fail = (error) => ({ ok: false, error, proto, spans: [], text: "", bytes: [], meta: {} });
-  const n = codes.length;
+  // The role channel's array can be absent (channel toggled off / envelope
+  // frame); this decoder has its own slicer, so guard here like sliceChannel.
+  const n = codes ? codes.length : 0;
   if (n < 8) return fail("no/too-few samples");
 
   // --- tri-level slice: histogram -> NULL(mid), HI rail(gmax), LO rail(gmin).

@@ -127,6 +127,57 @@ func TestDecimatedAutoHoldsWrongSlopeFrame(t *testing.T) {
 	}
 }
 
+func TestDecimatedAutoWrongSlopeLiveness(t *testing.T) {
+	// AUTO LIVENESS on a persistently un-lockable signal (fuzz-found, HW-verified):
+	// a live signal whose record NEVER contains the requested slope (e.g. a fast
+	// stream aliased by a slow band — on the bench, 2 Mbps Manchester at 50 µs/div
+	// on falling-edge froze AUTO forever) must still refresh the display with an
+	// honest unlocked frame every nativeFlatFallbck holds. NORM keeps holding.
+	fb := newFakeBus()
+	fb.mu.Lock()
+	fb.wave = func(i int) (uint8, uint8) { // single FALLING edge: no rising crossing, ever
+		if i < 900 {
+			return 200, 60
+		}
+		return 56, 190
+	}
+	fb.mu.Unlock()
+	e, _ := newTestEngine(t, fb)
+	e.bringUp()
+	for i := 0; i < nativeFlatFallbck+2; i++ {
+		e.oneFrame(false) // AUTO
+	}
+	s := e.Snapshot()
+	if s.Published == 0 {
+		t.Fatalf("AUTO froze: %d holds, 0 liveness publishes (want >=1 per %d holds)", s.Held, nativeFlatFallbck)
+	}
+	f, _ := e.Consume()
+	if f.EdgeX >= 0 || f.Trigd {
+		t.Fatalf("liveness frame must be honest/unlocked: EdgeX=%v Trigd=%v", f.EdgeX, f.Trigd)
+	}
+	// NORM: strictly held, no liveness.
+	fb2 := newFakeBus()
+	fb2.mu.Lock()
+	fb2.wave = func(i int) (uint8, uint8) {
+		if i < 900 {
+			return 200, 60
+		}
+		return 56, 190
+	}
+	fb2.mu.Unlock()
+	e2, _ := newTestEngine(t, fb2)
+	e2.bringUp()
+	e2.SetNorm(true)
+	e2.serviceCommands()
+	e2.transition(true, false)
+	for i := 0; i < nativeFlatFallbck+2; i++ {
+		e2.oneFrame(true)
+	}
+	if s2 := e2.Snapshot(); s2.Published != 0 {
+		t.Fatalf("NORM published %d liveness frames; NORM must hold strictly", s2.Published)
+	}
+}
+
 func TestEdgeLevelOffSignalDoesNotLock(t *testing.T) {
 	// A trigger level set OFF the signal band cannot be crossed, so no trigger is
 	// possible. Regression: the EDGE path used to fall back to the signal's own

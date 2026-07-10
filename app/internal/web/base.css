@@ -163,6 +163,13 @@
       transform: translateX(100%); transition: transform .2s ease;
       box-shadow: -8px 0 24px rgba(0,0,0,.5); }
     body.dock-toggled #dock { display: flex; transform: translateX(0); } /* narrow: open the drawer */
+    /* the open drawer is position:fixed at top:0/right:0, so it paints over the
+       header's right edge — including this ☰ toggle, the ONLY control that closes
+       it (clicks were landing on the drawer's first card h3 and collapsing that
+       card instead — the same swallowed-click class as the .card-actions float).
+       A fixed overlay can only be ordered by stacking, so the toggle sits one
+       step above the drawer (40) and below the modals (#help 50, .ejbig 60). */
+    #panelToggle { position: relative; z-index: 41; }
     /* footer becomes a single horizontally-scrolling toolbar (never wraps into
        many rows, never forces the body to scroll sideways) */
     footer { flex-wrap: nowrap; overflow-x: auto; }
