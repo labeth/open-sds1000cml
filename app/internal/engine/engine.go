@@ -414,14 +414,14 @@ func New(cfg Config) *Engine {
 	// original defaults on all three: CPU ~96%→~86%, fps ~13.4→~18, frame_success
 	// (real content, not valid_depth) ~5%→100%.
 	e.tuneArmSettleUs.Store(cfg.ArmSettle.Microseconds()) // spec-safe 2 ms
-	// The FPGA's arm/setup interval is load-sensitive. Sleeping here hands the
-	// single core to the renderer, net stack, or GC before the free-run fill has
-	// stabilised; keep it non-preemptible for this bounded 2 ms interval.
-	e.tuneArmSpin.Store(true)
+	// The settle busy-spin and manual GC control were workarounds tuned against
+	// the UNTRIGGERED half-record state. With captures gated on trigger
+	// evidence, HW A/B under web-stream load shows a plain Sleep settle and
+	// stock GC are strictly better (spin: 16 fps / 20% idle → sleep: 18-19 fps
+	// / 27% idle, both 20/20 full records, half_rate 0).
+	e.tuneArmSpin.Store(false)
 	e.tuneBusyFillUs.Store(0) // no fill busy-poll (pure CPU cost)
-	// Keep automatic GC out of native-fast arm/drain windows; Run performs a
-	// bounded manual collection at the owner-loop boundary instead.
-	e.tuneGcCtl.Store(true)
+	e.tuneGcCtl.Store(false)
 	e.tuneMaxRetry.Store(2)   // light backstop; full records are now the norm
 	e.tuneRenderMs.Store(120) // ~8 Hz LCD: big CPU win, still smooth enough
 	// fill-extra and halt-settle were workarounds tuned against what turned out
