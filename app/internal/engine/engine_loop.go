@@ -86,6 +86,10 @@ func (e *Engine) Run() {
 			}
 		}
 
+		if lvl := e.reinitReq.Swap(0); lvl > 0 {
+			e.doReinit(lvl) // staged debug/recovery re-init; loop boundary = no capture in flight
+		}
+
 		if !e.running.Load() {
 			// STOP keeps the FSM alive and servicing; it never parks the
 			// engine in a halted state (spec 03 §8).
@@ -139,15 +143,24 @@ func (e *Engine) bumpFrames() {
 // oneFrame runs one arm→wait→halt→drain→re-arm→publish iteration.
 func (e *Engine) oneFrame(norm bool) {
 	start := e.clk.Now()
+	nativeFast := e.band.NativeFast()
+	if nativeFast {
+		// Keep every competing CPU/memory burst out of the complete fast-band
+		// acquisition, including the fill window between opGo and opHalt.  The
+		// old armEngine/drain locks left that exact interval exposed.
+		e.quiet.Lock()
+	}
 
-	e.armEngine()
+	e.armEngineQuiet(nativeFast)
 	anchored, sawTrig, filled, fillMoved, trigPos := e.waitCapture(norm)
 	armToLatch := e.clk.Now().Sub(start)
 	if e.stopReq.Load() {
+		if nativeFast {
+			e.quiet.Unlock()
+		}
 		return
 	}
 
-	nativeFast := e.band.NativeFast()
 	// Decimated readiness: NORM requires a real trigger with the post-trigger
 	// record filled (0x46 counts post-trigger samples, so it only advances
 	// after a comparator edge). AUTO always drains — either the fast
@@ -173,10 +186,16 @@ func (e *Engine) oneFrame(norm bool) {
 		}
 	}
 	haltOK := e.halt()
+	e.haltSettle(nativeFast)
 	f := e.arena.Write()
 	cols := e.effDrainCols()
 	drainStart := e.clk.Now()
-	e.drain(f, cols)
+	if nativeFast {
+		e.drainQuiet(f, cols)
+	} else {
+		e.drain(f, cols)
+	}
+	e.frameTail() // reference-device frame completion: re-trigger strobe before any re-arm
 	// Native-fast RE-CAPTURE. The HW intermittently freezes only the pre-trigger
 	// HALF of the deep record (valid_depth ~cols/2, a flat dead tail after) on ~40%
 	// of frames — proven inherent to the capture, independent of load, the bus
@@ -196,30 +215,55 @@ func (e *Engine) oneFrame(norm bool) {
 	rd := realDepthP(f.C1[:cols], pC1)
 	e.lastFirstHalf = nativeFast && rd*4 < cols*3 // raw half-record rate (before re-capture)
 	maxRetry := int(e.tuneMaxRetry.Load())
-	for tries := 0; nativeFast && tries < maxRetry && rd*4 < cols*3; tries++ {
-		e.armEngine()
+	// Re-capture only when the comparator FIRED and the record still kept a dead
+	// tail — that is the genuine intermittent corruption a retry can fix. An
+	// UNTRIGGERED half-record is the FSM's normal parked state (pre-trigger half
+	// live, post-trigger half never runs — e.g. the level sits outside the
+	// signal band); retrying it burns ~120 ms/frame for an identical result.
+	for tries := 0; nativeFast && sawTrig && tries < maxRetry && rd*4 < cols*3; tries++ {
+		e.armEngineQuiet(nativeFast)
 		e.waitCapture(norm)
 		if !e.halt() {
 			break
 		}
-		e.drain(f, cols)
+		e.haltSettle(nativeFast)
+		e.drainQuiet(f, cols)
+		e.frameTail()
 		loC1, hiC1, pC1 = ptp(f.C1[:cols])
 		rd = realDepthP(f.C1[:cols], pC1)
 	}
 	drainMs := e.clk.Now().Sub(drainStart)
-	// Degraded = the dead tail survived every re-capture retry: the published
-	// record is a half-capture (content beyond realDepth is the frozen ports,
-	// not signal). Track the run of consecutive degraded captures — the
-	// intermittent half-record recovers within a retry or two, so a long run is
-	// the persistent stuck-FSM state that only a power-cycle clears; surface
-	// both so the UI can say so instead of silently showing broken sweeps.
-	degraded := nativeFast && rd*4 < cols*3
+	// Degraded = the comparator fired but the dead tail survived every
+	// re-capture retry: a genuinely corrupt triggered capture. An untriggered
+	// half-record is NOT degraded — it is the FSM's normal no-trigger state and
+	// is published honestly as a free-run view of its live half (below). This
+	// is what the historical "ACQ STUCK — POWER-CYCLE" actually was: a trigger
+	// level parked outside the signal band (persisted across restarts by the
+	// settings file), not a wedged FPGA — a real level write cures it instantly.
+	degraded := nativeFast && sawTrig && rd*4 < cols*3
 	if degraded {
 		e.degradedRun++
 	} else {
 		e.degradedRun = 0
 	}
-	e.armEngine() // re-arm immediately (spec 03 §5.1 RE-ARM): filling again before publish/render
+	// Untriggered half-record: clamp the frame to its live region so the
+	// display window, measurements and serializers never see the frozen-port
+	// dead tail. The live half (~10k samples) is 5× a native-fast display
+	// window — the screen shows a full-width live free-run sweep.
+	usable := cols
+	if nativeFast && !sawTrig && rd*4 < cols*3 {
+		if min := e.band.WinCols(); rd < min {
+			rd = min
+			if rd > cols {
+				rd = cols
+			}
+		}
+		usable = rd
+	}
+	e.armEngineQuiet(nativeFast) // re-arm immediately (spec 03 §5.1 RE-ARM)
+	if nativeFast {
+		e.quiet.Unlock()
+	}
 
 	// ERES boxcar runs on the whole record BEFORE any discrimination, so the
 	// anchor and the display see the same enhanced samples (spec 03 §7.4).
@@ -235,15 +279,16 @@ func (e *Engine) oneFrame(norm bool) {
 	// decimated frame is coherent when triggered (anchored+filled) OR an
 	// AUTO free-run full record; that is the `ready` gate that let us drain.
 	coherent := haltOK && (nativeFast || ready)
-	disc := f.C1[:cols]
+	disc := f.C1[:usable]
 	discIsC2 := int(e.trigSrc.Load()) == 1
 	if discIsC2 {
-		disc = f.C2[:cols]
+		disc = f.C2[:usable]
 	}
 	// Canonical scan of the discrimination record — reuse the retry loop's C1
-	// scan unless the data differs (C2 source) or ERES just rewrote the samples.
+	// scan unless the data differs (C2 source, a clamped untriggered record) or
+	// ERES just rewrote the samples.
 	lo, hi, p := loC1, hiC1, pC1
-	if discIsC2 || (mode == AcqEres && clampEresLen(int(e.eresLen.Load())) > 1) {
+	if discIsC2 || usable != cols || (mode == AcqEres && clampEresLen(int(e.eresLen.Load())) > 1) {
 		lo, hi, p = ptp(disc)
 	}
 	rising := e.trigRising.Load()
@@ -284,7 +329,7 @@ func (e *Engine) oneFrame(norm bool) {
 		}
 	}
 
-	f.Valid = cols
+	f.Valid = usable
 	f.WinCols = e.band.WinCols()
 	f.Interp = nativeFast
 	f.IsEnv, f.EnvCols = false, 0

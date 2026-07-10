@@ -24,8 +24,45 @@ func (e *Engine) bringUp() {
 	e.w(selDivHi, hi)
 }
 
+// doReinit runs a staged FSM re-initialization on the OWNER goroutine at a loop
+// boundary (no capture in flight). Levels escalate; all writes are CS1-plane FSM
+// controls, never CS3 (the boot comparator stays inherited, spec 03 §2):
+//
+//	1  the documented bring-up sequence (identical to a band change)
+//	2  a deeper knock for the stuck half-record FSM state: clean halt, reset-head
+//	   strobe, a 1→0 PULSE on the secondary reset 0x36 (bring-up only ever writes
+//	   0 — but its sibling resets 0x44/0x57 are both pulsed, so the pulse shape is
+//	   the natural hypothesis for the reset the vendor init performs that we
+//	   lack), run word OFF, settle, then the full bring-up.
+//
+// Recovery target: the persistent stuck state (every native-fast capture keeps a
+// dead tail; bench-proven to survive band changes, app restarts, ETS class flips,
+// memdepth cycles and autoset — historically cured only by a power-cycle).
+func (e *Engine) doReinit(level int64) {
+	e.logf("engine: FSM re-init level %d (degraded_run=%d)", level, e.degradedRun)
+	if level >= 2 {
+		e.w(selArm, opHalt) // freeze whatever is in flight, cleanly
+		e.w(selResetHd, 0x0001)
+		e.w(selResetHd, 0x0000)
+		e.w(selReset2, 0x0001) // secondary-reset PULSE — the untried lever
+		e.w(selReset2, 0x0000)
+		e.w(selRunWord, 0x0000) // run word OFF: stop the fill FSM outright
+		e.clk.Sleep(2 * time.Millisecond)
+	}
+	e.bringUp()
+	e.degradedRun = 0 // give the detector a fresh window to judge the result
+}
+
 // armEngine per spec 03 §5.1: reset-head ×2, write-pointer pulse, settle, go.
 func (e *Engine) armEngine() {
+	e.armEngineQuiet(false)
+}
+
+// armEngineQuiet is armEngine with an optional already-held quiet lock.
+func (e *Engine) armEngineQuiet(quietHeld bool) {
+	if e.armBusy && e.tuneFrameTail.Load() {
+		e.w(selPreamble, 0x0000) // reference-device frame preamble
+	}
 	e.w(selArm, opResetHead)
 	e.w(selArm, opResetHead)
 	e.w(selWrPtr, 0x0001)
@@ -43,7 +80,9 @@ func (e *Engine) armEngine() {
 	// blit contends on the memory bus (not just the CPU), so the render must be
 	// PAUSED — not merely out-scheduled — across the settle+go. The gate blocks it
 	// (and the web serialize) here and across the drain; both run in the dead time.
-	e.quiet.Lock()
+	if !quietHeld {
+		e.quiet.Lock()
+	}
 	settle := time.Duration(e.tuneArmSettleUs.Load()) * time.Microsecond
 	if e.armBusy && e.tuneArmSpin.Load() {
 		for start := time.Now(); time.Since(start) < settle; {
@@ -53,7 +92,9 @@ func (e *Engine) armEngine() {
 		e.clk.Sleep(settle)
 	}
 	e.w(selArm, opGo)
-	e.quiet.Unlock()
+	if !quietHeld {
+		e.quiet.Unlock()
+	}
 }
 
 // waitCapture runs the bounded wait gate (spec 03 §5.2): poll 0x39 + 0x46
@@ -93,6 +134,22 @@ func (e *Engine) waitCapture(norm bool) (anchored, sawTrig, filled, fillMoved bo
 	// (denseNs) — exactly as decimated NORM does above. On the budget timeout (no comparator
 	// edge) AUTO free-runs a live refresh; NORM holds.
 	nativeFast := e.band.NativeFast()
+	// Native-fast maturation: 0x39 DONE and 0x46≥LatchAt assert ~1 ms after arm
+	// but the deep record may not be fully written yet; halting too early keeps
+	// a dead tail. The historical 40 ms "lower bound" was measured in what is
+	// now known to have been the UNTRIGGERED state (where the record parks at
+	// half regardless of time) — tunable so the true triggered-state bound can
+	// be measured on hardware.
+	nativeMature := time.Duration(e.tuneMatureUs.Load()) * time.Microsecond
+	// AUTO FORCE-TRIGGER (reference-device op): with no comparator edge — e.g.
+	// the level outside the signal band — the FSM never runs the post-trigger
+	// fill and every deep record keeps a ~half dead tail (the "ACQ STUCK"
+	// state). The reference device pulses 0x2c (0→1) on its untriggered AUTO
+	// frames, forcing the FSM to complete the record. Issue it once per wait,
+	// after force_after_us without a trigger. NORM never forces — it holds.
+	forced := false
+	forceMode := e.tuneForceMode.Load()
+	forceAfter := time.Duration(e.tuneForceAfterUs.Load()) * time.Microsecond
 	fill0 := e.r(selFill) & fillMask
 	for {
 		s := e.r(selStatus)
@@ -118,14 +175,17 @@ func (e *Engine) waitCapture(norm bool) (anchored, sawTrig, filled, fillMoved bo
 			filled = true
 		}
 		if nativeFast {
-			// Spec 04 §8.1/§8.2/§8.3: native-fast halts when the free-run fill
-			// COMPLETES — bit2(done) AND fill ≥ LatchAt, both of which assert on the
-			// untriggered free-run — NOT on bit1(trig), which "can lag or never
-			// assert" (§8.3). Gating on bit1 (sawTrig) waits for a trigger that never
-			// comes → the budget times out on a half-filled buffer whose unwritten
-			// tail drains as a flat dead repeat. Halt is unconditional; content
-			// discrimination (§8.2) then decides publish vs hold.
-			if anchored && filled {
+			// Native-fast halts on CONTENT, not the status bits: bit2(done) is
+			// bimodal on hardware (asserts in ~1 ms or not at all within the
+			// budget) while the drained record is full either way once the
+			// maturation floor has passed. So once mature+filled, return when
+			// EITHER completion evidence arrived (done or the comparator edge)
+			// OR this is AUTO (an untriggered AUTO frame stays parked at the
+			// pre-trigger half no matter how long we wait — return and publish
+			// the honest free-run view instead of burning the 40 ms budget).
+			// NORM without a trigger still waits the full budget, then holds.
+			if filled && e.clk.Now().Sub(start) >= nativeMature &&
+				(anchored || sawTrig || !norm) {
 				return
 			}
 		} else {
@@ -138,6 +198,30 @@ func (e *Engine) waitCapture(norm bool) (anchored, sawTrig, filled, fillMoved bo
 			}
 			if !norm && fill >= fillFull {
 				return // AUTO free-run: the record saturated, drain it now
+			}
+		}
+		if nativeFast && !norm && e.armBusy && !sawTrig && forceMode > 0 &&
+			e.clk.Now().Sub(start) >= forceAfter {
+			if !forced {
+				forced = true
+				if forceMode&1 != 0 {
+					e.w(selForce, 0x0000)
+					e.w(selForce, 0x0001)
+				}
+				if forceMode&2 != 0 {
+					e.w(selRetrig, 0x0001)
+				}
+			}
+			// bit3: the reference device's untriggered-wait spin — while no
+			// trigger, continuously rewrite the acq-control pair and pulse the
+			// 0x16 re-arm strobe (~800 Hz on the reference; here every poll
+			// pass the deadline check reaches, ~150 µs–1 ms).
+			if forceMode&8 != 0 {
+				e.w(selTailC, 0x0000)
+				e.w(selTailD, 0x0000)
+				e.w(selTailA, uint16(e.tuneTail3c.Load()))
+				e.w(selTailB, uint16(e.tuneTail3d.Load()))
+				e.w(selRetrig, 0x0001)
 			}
 		}
 		if e.stopReq.Load() {
@@ -184,6 +268,19 @@ func (e *Engine) halt() bool {
 	return false
 }
 
+// haltSettle gives a confirmed native-fast capture-halt a short, quiet window
+// before the first mmap sample-port read.  It tests whether the FPGA's two
+// deep-memory banks complete their read-side latch after the fill counter has
+// already frozen.
+func (e *Engine) haltSettle(nativeFast bool) {
+	if !nativeFast || !e.armBusy {
+		return
+	}
+	d := time.Duration(e.tuneHaltSettleUs.Load()) * time.Microsecond
+	for start := time.Now(); time.Since(start) < d; {
+	}
+}
+
 // drain reads the frozen deep record into the producer slot: sample i comes
 // from port 0x30+(i mod 5); each word packs C1 in the high byte, C2 low.
 func (e *Engine) drain(f *Frame, cols int) {
@@ -194,8 +291,39 @@ func (e *Engine) drain(f *Frame, cols int) {
 	// pause for the ~17ms drain — shrinking the residual so re-capture rarely
 	// fires. They run freely during the loop's ~90ms of dead time.
 	e.quiet.Lock()
-	e.b.DrainInto(f.C1[:cols], f.C2[:cols], cols)
+	e.drainQuiet(f, cols)
 	e.quiet.Unlock()
+}
+
+// drainQuiet drains while the caller already owns quiet exclusively.  The
+// native-fast path holds that lock across arm -> fill -> halt -> drain, because
+// releasing it after opGo lets a waiting web serializer run during the
+// load-sensitive fill window.  Other paths use drain(), which brackets only
+// the drain as before.
+func (e *Engine) drainQuiet(f *Frame, cols int) {
+	e.b.DrainInto(f.C1[:cols], f.C2[:cols], cols)
+}
+
+// frameTail issues the reference device's per-frame completion op after the
+// drain and before the re-arm: clear 0x3e/0x58, reload 0x3c/0x3d, then strobe
+// 0x16=1 (re-trigger). This is the op whose absence starves the trigger engine
+// into the persistent half-record state (every capture keeps a ~cols/2 dead
+// tail, saw_trig never asserts, survives restarts/band changes/power-cycle).
+func (e *Engine) frameTail() {
+	if !e.armBusy || !e.tuneFrameTail.Load() {
+		return
+	}
+	e.w(selTailC, 0x0000)
+	e.w(selTailD, 0x0000)
+	e.w(selTailA, uint16(e.tuneTail3c.Load()))
+	e.w(selTailB, uint16(e.tuneTail3d.Load()))
+	e.w(selRetrig, 0x0001)
+	// force_mode bit2: issue the 0x2c force pulse HERE (post-drain, pre-arm —
+	// the reference device's actual placement) instead of mid-wait.
+	if e.tuneForceMode.Load()&4 != 0 {
+		e.w(selForce, 0x0000)
+		e.w(selForce, 0x0001)
+	}
 }
 
 // stitchFrame runs one STREAM window: arm → PURE TIMED wait of exactly N·dt

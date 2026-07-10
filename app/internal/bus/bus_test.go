@@ -20,7 +20,6 @@ func TestForbiddenWrites(t *testing.T) {
 	}{
 		{3, 0x07},            // nCONFIG/config-status — writing collapses the engine
 		{1, 0x01}, {1, 0x0f}, // cal bank low
-		{1, 0x16},            // cal latch strobe
 		{1, 0x27}, {1, 0x2a}, // gain-cal words
 		{1, 0x5a}, {1, 0x7f}, // cal bank
 	}
@@ -33,8 +32,9 @@ func TestForbiddenWrites(t *testing.T) {
 		plane uint8
 		sel   uint16
 	}{
-		{1, 0x00}, {1, 0x19}, {1, 0x1a}, {1, 0x1b}, {1, 0x21},
-		{1, 0x35}, {1, 0x36}, {1, 0x44}, {1, 0x57},
+		{1, 0x00}, {1, 0x16}, {1, 0x19}, {1, 0x1a}, {1, 0x1b}, {1, 0x21},
+		{1, 0x35}, {1, 0x36}, {1, 0x3c}, {1, 0x3d}, {1, 0x3e},
+		{1, 0x44}, {1, 0x57}, {1, 0x58},
 		{3, 0x14}, {3, 0x34}, {3, 0x15}, {3, 0x35},
 	}
 	for _, c := range allowed {

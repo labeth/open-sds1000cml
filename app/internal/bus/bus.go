@@ -163,8 +163,10 @@ func forbiddenWrite(plane uint8, sel uint16) bool {
 	switch {
 	case sel >= 0x01 && sel <= 0x0f: // cal-coefficient bank
 		return true
-	case sel == 0x16: // cal latch strobe
-		return true
+	// 0x16 is NOT a cal latch: the reference device strobes 0x16=1 as the
+	// final step of every acquisition frame (the frame-completion/re-trigger
+	// op). It must stay writable or the trigger engine starves into
+	// permanent half-records.
 	case sel >= 0x27 && sel <= 0x2a: // gain-cal words
 		return true
 	case sel >= 0x5a && sel <= 0x7f: // cal-coefficient bank

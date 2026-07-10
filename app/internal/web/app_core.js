@@ -211,11 +211,12 @@ function updateStatusLine() {
     const vz = 1 / vspanZ;
     zoomTxt += " · vzoom ×" + (vz < 10 ? vz.toFixed(1) : String(Math.round(vz)));
   }
-  // Capture-integrity badge: a degraded frame is a half-capture (the dead tail
-  // survived the retries); a long run of them is the stuck acquisition state
-  // that only a power-cycle clears — say so instead of silently showing it.
+  // Capture-integrity badge: a degraded frame is a TRIGGERED capture that kept
+  // its dead tail through the retries (untriggered half-records are published
+  // honestly as free-run views and are not degraded); a long run of them means
+  // captures are persistently incomplete.
   const degradedTxt = st.stuck_suspect
-    ? ' · <b style="color:var(--stale,#e66)">⚠ ACQ STUCK — POWER-CYCLE</b>'
+    ? ' · <b style="color:var(--stale,#e66)">⚠ ACQ DEGRADED — CAPTURES INCOMPLETE</b>'
     : ((frame && frame.degraded) || st.degraded ? ' · <b style="color:var(--stale,#e66)">⚠ DEGRADED</b>' : "");
   const html =
     "<b>" + fmtTdiv(b) + "/div</b>" + zoomTxt + " · " + st.band + " · " + st.fps.toFixed(0) + " fps · seq <b>" + st.seq + "</b>" +

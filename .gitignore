@@ -5,3 +5,4 @@
 # workstation probes live untracked so they never add device-testing surface
 /app/cmd/decodeprobe/
 /app/cmd/bandcheck/
+/app/cmd/draintest/

@@ -32,6 +32,17 @@ const (
 	selWrPtr    = 0x57
 	drainBase   = 0x30 // 0x30–0x34 round-robin sample ports
 
+	// Per-frame completion tail (reference-device trace: written after every
+	// drain, before the next arm). 0x16=1 is the load-bearing re-trigger
+	// strobe — omitting it starves the trigger engine into permanent
+	// half-records (saw_trig never asserts again).
+	selTailA  = 0x3c // written 0x0002 after each drain
+	selTailB  = 0x3d // written 0x0008 after each drain
+	selTailC  = 0x3e // written 0x0000 after each drain
+	selTailD  = 0x58 // written 0x0000 after each drain
+	selRetrig = 0x16 // 0x0001 = frame-completion / re-trigger strobe
+	selForce  = 0x2c // 0→1 pulse = AUTO force-trigger (untriggered frames)
+
 	// CS3 trigger-level DAC lanes (spec 05 §1). High bytes self-latch.
 	cs3LevelALo = 0x14
 	cs3LevelAHi = 0x34
@@ -220,13 +231,21 @@ type Engine struct {
 	// optimization campaign — atomics so the web handler sets them lock-free and
 	// the owner loop reads them each frame. Defaults mirror the compile-time
 	// constants; gated on armBusy (device) so tests are unaffected.
-	tuneArmSettleUs atomic.Int64 // arm settle duration (µs)
-	tuneArmSpin     atomic.Bool  // busy-wait the settle vs Sleep
-	tuneBusyFillUs  atomic.Int64 // native-fast fill busy-poll window (µs; 0 = off)
-	tuneGcCtl       atomic.Bool  // controlled GC (SetGCPercent(-1)+manual) vs stock
-	tuneMaxRetry    atomic.Int64 // native-fast re-capture cap
-	tuneRenderMs    atomic.Int64 // LCD render period (ms)
-	tuneFillExtraUs atomic.Int64 // native-fast: extra fill time after done, before halt (µs)
+	tuneArmSettleUs  atomic.Int64 // arm settle duration (µs)
+	tuneArmSpin      atomic.Bool  // busy-wait the settle vs Sleep
+	tuneBusyFillUs   atomic.Int64 // native-fast fill busy-poll window (µs; 0 = off)
+	tuneGcCtl        atomic.Bool  // controlled GC (SetGCPercent(-1)+manual) vs stock
+	tuneMaxRetry     atomic.Int64 // native-fast re-capture cap
+	tuneRenderMs     atomic.Int64 // LCD render period (ms)
+	tuneFillExtraUs  atomic.Int64 // native-fast: extra fill time after done, before halt (µs)
+	tuneHaltSettleUs atomic.Int64 // native-fast: post-halt settle before deep-port reads (µs)
+	tuneFrameTail    atomic.Bool  // per-frame completion tail + 0x16 re-trigger strobe (reference-device op)
+	tuneForceMode    atomic.Int64 // AUTO force-trigger op: 0 off, bit0 = 0x2c pulse, bit1 = 0x16 strobe
+	tuneForceAfterUs atomic.Int64 // µs after arm without a comparator edge before forcing
+	tuneMatureUs     atomic.Int64 // native-fast maturation floor before halt (µs)
+	tuneTail3c       atomic.Int64 // acq-control pair value for 0x3c (band-dependent; native-fast 0x00fd)
+	tuneTail3d       atomic.Int64 // acq-control pair value for 0x3d (band-dependent; native-fast 0x0007)
+	reinitReq        atomic.Int64 // staged FSM re-init level (debug/recovery); serviced at the loop boundary
 
 	// Lock-free control reads by the owner.
 	running     atomic.Bool
@@ -395,12 +414,35 @@ func New(cfg Config) *Engine {
 	// original defaults on all three: CPU ~96%→~86%, fps ~13.4→~18, frame_success
 	// (real content, not valid_depth) ~5%→100%.
 	e.tuneArmSettleUs.Store(cfg.ArmSettle.Microseconds()) // spec-safe 2 ms
-	e.tuneArmSpin.Store(false)                            // no busy-wait spin (pure CPU cost)
-	e.tuneBusyFillUs.Store(0)                             // no fill busy-poll (pure CPU cost)
-	e.tuneGcCtl.Store(false)                              // stock GC (nothing spins to be preempted)
-	e.tuneMaxRetry.Store(2)                               // light backstop; full records are now the norm
-	e.tuneRenderMs.Store(120)                             // ~8 Hz LCD: big CPU win, still smooth enough
-	e.tuneFillExtraUs.Store(2000)                         // THE FIX: fill both banks before halt
+	// The FPGA's arm/setup interval is load-sensitive. Sleeping here hands the
+	// single core to the renderer, net stack, or GC before the free-run fill has
+	// stabilised; keep it non-preemptible for this bounded 2 ms interval.
+	e.tuneArmSpin.Store(true)
+	e.tuneBusyFillUs.Store(0) // no fill busy-poll (pure CPU cost)
+	// Keep automatic GC out of native-fast arm/drain windows; Run performs a
+	// bounded manual collection at the owner-loop boundary instead.
+	e.tuneGcCtl.Store(true)
+	e.tuneMaxRetry.Store(2)   // light backstop; full records are now the norm
+	e.tuneRenderMs.Store(120) // ~8 Hz LCD: big CPU win, still smooth enough
+	// fill-extra and halt-settle were workarounds tuned against what turned out
+	// to be the UNTRIGGERED half-record state (level outside the signal band);
+	// with triggered captures they buy nothing (HW A/B: 15/15 full without
+	// them) and cost 4 ms/frame. Knobs kept at 0 for experiments.
+	e.tuneFillExtraUs.Store(0)
+	e.tuneHaltSettleUs.Store(0)
+	// Reference-device experiment knobs, OFF by default: A/B on hardware showed
+	// neither the per-frame tail (0x3e/0x58/0x3c/0x3d/0x16) nor any placement
+	// of the 0x2c force pulse completes an untriggered record or affects a
+	// triggered one. Kept as live knobs for further vendor-op experiments.
+	e.tuneFrameTail.Store(false)
+	e.tuneForceMode.Store(0)
+	e.tuneForceAfterUs.Store(10000)
+	// HW sweep 40→2 ms: full records at every step once captures are gated on
+	// trigger evidence (the historical 40 ms bound was measured in the
+	// untriggered parked state). 3 ms keeps margin over the proven 2 ms.
+	e.tuneMatureUs.Store(3000)
+	e.tuneTail3c.Store(0x00fd)  // reference-device native-fast acq-control pair
+	e.tuneTail3d.Store(0x0007)
 	e.running.Store(true)
 	e.trigRising.Store(true)
 	e.avgCount.Store(16) // boot-firmware default; menu {4,16,32,64,128,256}
@@ -450,13 +492,21 @@ func (e *Engine) QuietRUnlock() { e.quiet.RUnlock() }
 
 // TuneVals is the live-tunable knob set (see the tune* atomics).
 type TuneVals struct {
-	ArmSettleUs int64 `json:"arm_settle_us"`
-	ArmSpin     bool  `json:"arm_spin"`
-	BusyFillUs  int64 `json:"busy_fill_us"`
-	GcCtl       bool  `json:"gc_ctl"`
-	MaxRetry    int64 `json:"max_retry"`
-	RenderMs    int64 `json:"render_ms"`
-	FillExtraUs int64 `json:"fill_extra_us"`
+	ArmSettleUs  int64 `json:"arm_settle_us"`
+	ArmSpin      bool  `json:"arm_spin"`
+	BusyFillUs   int64 `json:"busy_fill_us"`
+	GcCtl        bool  `json:"gc_ctl"`
+	MaxRetry     int64 `json:"max_retry"`
+	RenderMs     int64 `json:"render_ms"`
+	FillExtraUs  int64 `json:"fill_extra_us"`
+	HaltSettleUs int64 `json:"halt_settle_us"`
+	FrameTail    bool  `json:"frame_tail"`       // per-frame completion tail + 0x16 re-trigger strobe
+	ForceMode    int64 `json:"force_mode"`       // AUTO force-trigger: 0 off, bit0 0x2c pulse, bit1 0x16 strobe
+	ForceAfterUs int64 `json:"force_after_us"`   // µs after arm without a trigger before forcing
+	MatureUs     int64 `json:"mature_us"`        // native-fast maturation floor before halt (µs)
+	Tail3c       int64 `json:"tail_3c"`          // acq-control 0x3c value (band-dependent)
+	Tail3d       int64 `json:"tail_3d"`          // acq-control 0x3d value (band-dependent)
+	Reinit       int64 `json:"reinit,omitempty"` // one-shot: stage an FSM re-init at this level (1=bringUp, 2=+runword/reset pulses)
 }
 
 // Tune applies a knob set (debug /api/debug/tune) and returns the effective
@@ -480,21 +530,50 @@ func (e *Engine) Tune(t TuneVals) TuneVals {
 	if t.FillExtraUs >= 0 {
 		e.tuneFillExtraUs.Store(t.FillExtraUs)
 	}
+	if t.HaltSettleUs >= 0 {
+		e.tuneHaltSettleUs.Store(t.HaltSettleUs)
+	}
+	if t.ForceMode >= 0 {
+		e.tuneForceMode.Store(t.ForceMode)
+	}
+	if t.ForceAfterUs > 0 {
+		e.tuneForceAfterUs.Store(t.ForceAfterUs)
+	}
+	if t.MatureUs > 0 {
+		e.tuneMatureUs.Store(t.MatureUs)
+	}
+	if t.Tail3c >= 0 {
+		e.tuneTail3c.Store(t.Tail3c)
+	}
+	if t.Tail3d >= 0 {
+		e.tuneTail3d.Store(t.Tail3d)
+	}
+	if t.Reinit > 0 {
+		e.reinitReq.Store(t.Reinit) // one-shot; the owner loop consumes it
+	}
 	e.tuneArmSpin.Store(t.ArmSpin)
 	e.tuneGcCtl.Store(t.GcCtl)
+	e.tuneFrameTail.Store(t.FrameTail)
 	return e.TuneSnapshot()
 }
 
 // TuneSnapshot reports the current knob values.
 func (e *Engine) TuneSnapshot() TuneVals {
 	return TuneVals{
-		ArmSettleUs: e.tuneArmSettleUs.Load(),
-		ArmSpin:     e.tuneArmSpin.Load(),
-		BusyFillUs:  e.tuneBusyFillUs.Load(),
-		GcCtl:       e.tuneGcCtl.Load(),
-		MaxRetry:    e.tuneMaxRetry.Load(),
-		RenderMs:    e.tuneRenderMs.Load(),
-		FillExtraUs: e.tuneFillExtraUs.Load(),
+		ArmSettleUs:  e.tuneArmSettleUs.Load(),
+		ArmSpin:      e.tuneArmSpin.Load(),
+		BusyFillUs:   e.tuneBusyFillUs.Load(),
+		GcCtl:        e.tuneGcCtl.Load(),
+		MaxRetry:     e.tuneMaxRetry.Load(),
+		RenderMs:     e.tuneRenderMs.Load(),
+		FillExtraUs:  e.tuneFillExtraUs.Load(),
+		HaltSettleUs: e.tuneHaltSettleUs.Load(),
+		FrameTail:    e.tuneFrameTail.Load(),
+		ForceMode:    e.tuneForceMode.Load(),
+		ForceAfterUs: e.tuneForceAfterUs.Load(),
+		MatureUs:     e.tuneMatureUs.Load(),
+		Tail3c:       e.tuneTail3c.Load(),
+		Tail3d:       e.tuneTail3d.Load(),
 	}
 }
 
