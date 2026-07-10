@@ -557,7 +557,7 @@ the calibration table (see spec 10); they are not part of the runtime acquisitio
 
 | sel | Name | Purpose |
 |---|---|---|
-| `0x16` | Cal latch | Latch strobe for the `0x27`–`0x2a` gain-cal words |
+| `0x16` | Cal latch / frame strobe | Latch strobe for the `0x27`–`0x2a` gain-cal words. A reference unit ALSO strobes `0x16 = 1` once per acquisition frame (after the drain, with the `0x3c/0x3d` position pair re-written) and continuously (~800 Hz) while waiting untriggered — so it must stay runtime-writable. On this clone the strobe showed no measurable effect on capture completion (A/B on hardware); it is kept available, not required |
 | `0x27`–`0x2a` | Gain-cal ("cal32") | Per-acq-mode / per-V/div digital gain-cal coefficients (32-bit across 4 words) |
 | `0x5a`–`0x7f` | Cal-coefficient bank | Calibration coefficient store |
 | `0x01`–`0x0f` | Cal-coefficient bank (low) | Calibration coefficient store (low selectors) |

@@ -257,11 +257,28 @@ ptp; native-fast flat-hold fallback `nativeFlatFallback` = `60` frames; poll pac
 post-trigger record has finished filling, so a bare bit2 break grabs a half-empty frame at
 large divisors.
 
-**Native-fast bands do NOT gate on the wait outcome.** `0x39` bit2 does not reliably assert
-for a real native-fast edge capture (edge frames commonly hit the wait deadline un-`filled`),
-so a status early-hold would reject nearly every edge frame and starve the display. Native-fast
-therefore **always** proceeds to halt+drain and discriminates purely on captured-sample
-**content** (§6). No `0x38` poll is performed anywhere in the shipping FSM.
+**Native-fast bands gate on trigger evidence + a short maturation, not on bit2 alone.**
+Hardware behaviour (measured on a reference unit, ~900 kHz square input):
+
+- **The deep record completes ONLY after a comparator edge.** The FSM free-runs the
+  pre-trigger half (~10,240 of 20,480 words) and then PARKS until the comparator fires;
+  only a trigger runs the post-trigger fill. **An untriggered capture is therefore a
+  permanent half-record** — it does not complete no matter how long the wait. Its drained
+  tail reads as an exact period-5 port repeat (§6). This parked state is NORMAL, not a
+  wedge: it is what any trigger level outside the signal's effective comparator band
+  produces, 100% of frames, and it persists across re-arms, band changes, restarts and
+  power-cycles for as long as the level stays out of band. Treat it as "no trigger",
+  never as hardware failure (§7 untriggered publish, §11 telemetry).
+- **bit2 (done) is bimodal on triggered captures** — it asserts within ~1 ms on some
+  frames and not at all within the budget on others, while the drained record is full
+  either way once a short maturation (~2–3 ms; 3 ms with margin) has passed and `filled`
+  holds. The native-fast return condition is `filled && mature && (bit2 || sawTrig || AUTO)`.
+  AUTO returns at maturation even untriggered (the record will never complete — return and
+  publish the honest free-run view of the live half); NORM without a trigger waits out the
+  budget, then holds. A 40 ms maturation "requirement" measured on an untriggered input is
+  an artifact of the parked state.
+- Halt is unconditional after the wait; content discrimination (§6, §7) decides publish.
+  No `0x38` poll is performed anywhere in the shipping FSM.
 
 ### 5.3 Loop pacing floor
 
