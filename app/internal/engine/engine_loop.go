@@ -363,7 +363,11 @@ func (e *Engine) oneFrame(norm bool) {
 		publish = false
 		if !norm {
 			e.flatHeld++
-			if e.flatHeld >= nativeFlatFallbck {
+			// Bound the fallback by TIME too: the hold-cycle rate varies ~20x with
+			// the band's wait budget, so a pure frame count gives a 3 s guarantee on
+			// native-fast but 5-8 s at slow decimated bands (fuzz-found @ 500 µs/div).
+			stale := !e.lastPubAt.IsZero() && e.clk.Now().Sub(e.lastPubAt) >= autoLivenessMaxWait
+			if e.flatHeld >= nativeFlatFallbck || stale {
 				edgeX = -1 // honest unlocked refresh; never fabricate an edge
 				f.Trigd = false
 				publish = true
@@ -538,7 +542,8 @@ func (e *Engine) oneFrame(norm bool) {
 		e.mu.Lock()
 		e.stats.Published++
 		e.stats.Seq = e.seq
-		e.pubTimes = append(e.pubTimes, e.clk.Now())
+		e.lastPubAt = e.clk.Now()
+		e.pubTimes = append(e.pubTimes, e.lastPubAt)
 		if len(e.pubTimes) > 64 {
 			e.pubTimes = e.pubTimes[len(e.pubTimes)-64:]
 		}

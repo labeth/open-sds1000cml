@@ -61,6 +61,11 @@ const (
 
 	nativeEdgeMinPtp  = 40    // codes; flat rail ≈ 5, real cal edge ≈ 150
 	nativeFlatFallbck = 60    // held frames before one honest flat publish
+	// autoLivenessMaxWait bounds the AUTO liveness fallback by WALL CLOCK as well
+	// as by held-frame count: at slow decimated bands one hold cycle costs the
+	// full 40-80 ms wait budget, so 60 held frames is 5-8 s of frozen screen —
+	// far past what an AUTO display may freeze (fuzz-found at 500 µs/div).
+	autoLivenessMaxWait = 1500 * time.Millisecond
 	fillFull          = 0x7f0 // fill counter near the 11-bit max = record full
 	// native-fast re-capture cap is the tunable tuneMaxRetry (default 8); see engine.New
 
@@ -289,6 +294,7 @@ type Engine struct {
 	lastNorm  bool
 	seq           uint64
 	flatHeld      int
+	lastPubAt     time.Time // engine goroutine only: instant of the last oneFrame publish
 	lastFirstHalf bool // the last frame's FIRST drain was a half record (pre re-capture)
 	deadRuns      int
 	streamSeq uint64    // stitch-mode window counter

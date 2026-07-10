@@ -178,6 +178,38 @@ func TestDecimatedAutoWrongSlopeLiveness(t *testing.T) {
 	}
 }
 
+func TestDecimatedAutoLivenessTimeBound(t *testing.T) {
+	// The AUTO liveness fallback must be bounded by WALL CLOCK, not only by the
+	// 60-frame count: at slow bands one hold cycle costs the full wait budget, so
+	// counting alone stretches the refresh to 5-8 s (fuzz-found @ 500 µs/div).
+	// After autoLivenessMaxWait without a publish, a single held frame refreshes.
+	fb := newFakeBus()
+	fb.mu.Lock()
+	fb.wave = func(i int) (uint8, uint8) { // falling edge only: never locks on rising
+		if i < 900 {
+			return 200, 60
+		}
+		return 56, 190
+	}
+	fb.mu.Unlock()
+	e, _ := newTestEngine(t, fb)
+	e.bringUp()
+	e.oneFrame(false) // hold #1 (flatHeld=1, no lastPubAt yet -> count path only)
+	if s := e.Snapshot(); s.Published != 0 {
+		t.Fatalf("first wrong-slope hold published (%d); want hold", s.Published)
+	}
+	// Simulate a stale last publish: the engine published long ago.
+	e.lastPubAt = e.clk.Now().Add(-2 * autoLivenessMaxWait)
+	e.oneFrame(false)
+	if s := e.Snapshot(); s.Published != 1 {
+		t.Fatalf("time-bound liveness did not fire: published=%d, want 1", s.Published)
+	}
+	f, _ := e.Consume()
+	if f.EdgeX >= 0 || f.Trigd {
+		t.Fatalf("liveness frame must be honest/unlocked: EdgeX=%v Trigd=%v", f.EdgeX, f.Trigd)
+	}
+}
+
 func TestEdgeLevelOffSignalDoesNotLock(t *testing.T) {
 	// A trigger level set OFF the signal band cannot be crossed, so no trigger is
 	// possible. Regression: the EDGE path used to fall back to the signal's own
