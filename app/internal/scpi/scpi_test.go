@@ -7,9 +7,13 @@ import (
 	"strings"
 	"testing"
 
+	"open-sds/app/internal/analog"
 	"open-sds/app/internal/engine"
 )
 
+// fakeScope is a truthful mini-instrument: every setter updates the stats
+// snapshot the way the real engine eventually would, so set→query
+// round-trips can be asserted exactly.
 type fakeScope struct {
 	stats engine.Stats
 	frame *engine.Frame
@@ -18,22 +22,73 @@ type fakeScope struct {
 
 func (f *fakeScope) Snapshot() engine.Stats           { return f.stats }
 func (f *fakeScope) WithFrame(fn func(*engine.Frame)) { fn(f.frame) }
-func (f *fakeScope) SetRunning(on bool)               { f.calls = append(f.calls, "run") }
-func (f *fakeScope) SetNorm(on bool)                  { f.calls = append(f.calls, "norm") }
-func (f *fakeScope) SetSingle()                       { f.calls = append(f.calls, "single") }
+func (f *fakeScope) SetRunning(on bool) {
+	f.calls = append(f.calls, "run")
+	f.stats.Running = on
+}
+func (f *fakeScope) SetNorm(on bool) {
+	f.calls = append(f.calls, "norm")
+	f.stats.Norm = on
+}
+func (f *fakeScope) SetSingle() { f.calls = append(f.calls, "single") }
 func (f *fakeScope) SetTdiv(t float64) (engine.Band, bool) {
 	f.calls = append(f.calls, "tdiv")
-	return engine.PlanTdiv(t)
+	b, ok := engine.PlanTdiv(t)
+	if ok {
+		f.stats.TdivS = b.TdivS
+	}
+	return b, ok
 }
 func (f *fakeScope) SetTrigLevelCode(c uint16) uint16 {
 	f.calls = append(f.calls, "trlv")
+	f.stats.TrigCode = c
 	return c
 }
-func (f *fakeScope) SetTrigSlope(r bool)           { f.calls = append(f.calls, "slope") }
-func (f *fakeScope) SetTrigSource(ch int)          { f.calls = append(f.calls, "src") }
-func (f *fakeScope) SetOffsetDAC(ch int, c uint16) { f.calls = append(f.calls, "ofst") }
-func (f *fakeScope) SetAcqMode(m int)              { f.calls = append(f.calls, "acq") }
-func (f *fakeScope) SetAvgCount(n int)             { f.calls = append(f.calls, "avg") }
+func (f *fakeScope) SetTrigSlope(r bool) {
+	f.calls = append(f.calls, "slope")
+	f.stats.TrigRising = r
+}
+func (f *fakeScope) SetTrigSource(ch int) {
+	f.calls = append(f.calls, "src")
+	f.stats.TrigSource = ch
+}
+func (f *fakeScope) SetOffsetDAC(ch int, c uint16) {
+	f.calls = append(f.calls, "ofst")
+	if ch == 0 {
+		f.stats.OffC1 = c
+	} else {
+		f.stats.OffC2 = c
+	}
+}
+func (f *fakeScope) SetAcqMode(m int) {
+	f.calls = append(f.calls, "acq")
+	f.stats.AcqMode = m
+}
+func (f *fakeScope) SetAvgCount(n int) {
+	f.calls = append(f.calls, "avg")
+	f.stats.AvgCount = n
+}
+
+// fakeFE is a truthful vertical front end: SetVdiv tracks the detent index
+// and SetOffset stages the DAC code into the scope stats exactly like the
+// real analog front end does through the engine.
+type fakeFE struct {
+	fs  *fakeScope
+	idx [2]int
+}
+
+func (f *fakeFE) SetVdiv(ch, idx int) error      { f.idx[ch] = idx; return nil }
+func (f *fakeFE) Snapshot() ([2]int, bool)       { return f.idx, true }
+func (f *fakeFE) SetProbe(ch int, x float64)     {}
+func (f *fakeFE) SetCoupling(ch, mode int) error { return nil }
+func (f *fakeFE) OffsetVolts(ch int, code uint16) float64 {
+	return analog.OffsetVolts(ch, code)
+}
+func (f *fakeFE) SetOffset(ch int, volts float64) uint16 {
+	code := analog.OffsetCode(ch, volts)
+	f.fs.SetOffsetDAC(ch, code)
+	return code
+}
 
 func newH(t *testing.T) (*Handler, *fakeScope) {
 	t.Helper()
@@ -49,6 +104,15 @@ func newH(t *testing.T) (*Handler, *fakeScope) {
 		frame: f,
 	}
 	return New(fs, nil, nil, t.Logf), fs
+}
+
+// newHFE is newH plus a truthful fake front end (VDIV/OFST round-trips).
+func newHFE(t *testing.T) (*Handler, *fakeScope, *fakeFE) {
+	t.Helper()
+	h, fs := newH(t)
+	fe := &fakeFE{fs: fs}
+	h.fe = fe
+	return h, fs, fe
 }
 
 func do(t *testing.T, h *Handler, cmd string) string {
@@ -180,6 +244,98 @@ func TestWavedesc(t *testing.T) {
 	ho := math.Float64frombits(binary.LittleEndian.Uint64(d[180:]))
 	if math.Abs(ho-(-2048*800e-9/2)) > 1e-12 {
 		t.Fatalf("HORIZ_OFFSET = %v", ho)
+	}
+}
+
+// ofstRoundTrip is the expected OFST? value after OFST <v>: the set stages
+// the DAC code, the query inverts it — same quantizer both ways.
+func ofstRoundTrip(ch int, v float64) string {
+	code := analog.OffsetCode(ch, v)
+	w := 0.0
+	if code != 0 {
+		w = analog.OffsetVolts(ch, code)
+	}
+	return sciV(w)
+}
+
+// TestSetNeverLies is the automation-correctness contract over the settable
+// command surface (spec 11 §3.3/§3.4): every set either round-trips through
+// its query, or returns an explicit §3.4 error token — NEVER a silent
+// success that the query then contradicts.
+func TestSetNeverLies(t *testing.T) {
+	cases := []struct {
+		set     string
+		setWant string // "" = silent success; otherwise the exact error line
+		query   string
+		want    string // exact query reply (CHDR SHORT grammar)
+	}{
+		// The four formerly-lying stubs.
+		{"C1:UNIT A", "", "C1:UNIT?", "C1:UNIT A\n"},
+		{"C2:UNIT V", "", "C2:UNIT?", "C2:UNIT V\n"},
+		{"C1:UNIT W", "Command header error\n", "C1:UNIT?", "C1:UNIT V\n"},
+		{"C1:SKEW 100NS", "", "C1:SKEW?", "C1:SKEW 1.00E-07s\n"},
+		{"C2:SKEW -2.5E-9", "", "C2:SKEW?", "C2:SKEW -2.50E-09s\n"},
+		{"C1:SKEW ABC", "Command header error\n", "C1:SKEW?", "C1:SKEW 0.00E+00s\n"},
+		{"C1:INVS ON", "", "C1:INVS?", "C1:INVS ON\n"},
+		{"C1:INVS OFF", "", "C1:INVS?", "C1:INVS OFF\n"},
+		{"C2:INVS 1", "Command header error\n", "C2:INVS?", "C2:INVS OFF\n"},
+		{"C1:BWL OFF", "", "C1:BWL?", "C1:BWL OFF\n"},
+		{"C1:BWL ON", "Data out of range\n", "C1:BWL?", "C1:BWL OFF\n"},
+		{"C2:BWL X", "Command header error\n", "C2:BWL?", "C2:BWL OFF\n"},
+		// Same bug class: trigger coupling is fixed DC on this build.
+		{"TRCP DC", "", "TRCP?", "TRCP DC\n"},
+		{"TRCP AC", "Data out of range\n", "TRCP?", "TRCP DC\n"},
+		{"TRCP JUNK", "Command header error\n", "TRCP?", "TRCP DC\n"},
+		// The rest of the settable surface with query forms.
+		{"CHDR SHORT", "", "CHDR?", "CHDR SHORT\n"},
+		{"TDIV 1E-3", "", "TDIV?", "TDIV 1.00E-03s\n"},
+		{"TRDL 2E-6", "", "TRDL?", "TRDL 2.00E-06s\n"},
+		{"TRMD NORM", "", "TRMD?", "TRMD NORM\n"},
+		{"TRLV 0.5", "", "TRLV?", "TRLV 5.00E-01V\n"},
+		{"TRSL NEG", "", "TRSL?", "TRSL NEG\n"},
+		{"TRSE EDGE,SR,C2,HT,OFF", "", "TRSE?", "TRSE EDGE,SR,C2,HT,OFF\n"},
+		{"ACQW AVERAGE", "", "ACQW?", "ACQW AVERAGE\n"},
+		{"ACQW PEAK_DETECT", "", "ACQW?", "ACQW PEAK_DETECT\n"},
+		{"AVGA 64", "", "AVGA?", "AVGA 64\n"},
+		{"WFSU SP,4,NP,100,FP,8", "", "WFSU?", "WFSU SP,4,NP,100,FP,8,SN,0\n"},
+		{"C1:VDIV 0.5", "", "C1:VDIV?", "C1:VDIV 5.00E-01V\n"},
+		{"C2:VDIV 0.02", "", "C2:VDIV?", "C2:VDIV 2.00E-02V\n"},
+		{"C1:OFST 1.0", "", "C1:OFST?", "C1:OFST " + ofstRoundTrip(0, 1.0) + "\n"},
+		{"C1:CPL A1M", "", "C1:CPL?", "C1:CPL A1M\n"},
+		{"C1:ATTN 10", "", "C1:ATTN?", "C1:ATTN 10\n"},
+		{"C1:TRA OFF", "", "C1:TRA?", "C1:TRA OFF\n"},
+	}
+	for _, c := range cases {
+		t.Run(c.set, func(t *testing.T) {
+			h, _, _ := newHFE(t)
+			if got := do(t, h, c.set); got != c.setWant {
+				t.Fatalf("set %q replied %q, want %q", c.set, got, c.setWant)
+			}
+			if got := do(t, h, c.query); got != c.want {
+				t.Fatalf("after %q, %q = %q, want %q", c.set, c.query, got, c.want)
+			}
+		})
+	}
+}
+
+// Per-channel shadows must not leak across channels.
+func TestChannelShadowIndependence(t *testing.T) {
+	h, _, _ := newHFE(t)
+	do(t, h, "C1:INVS ON;C1:UNIT A;C1:SKEW 5NS")
+	got := do(t, h, "C2:INVS?;C2:UNIT?;C2:SKEW?")
+	if got != "C2:INVS OFF\nC2:UNIT V\nC2:SKEW 0.00E+00s\n" {
+		t.Fatalf("C2 shadows leaked: %q", got)
+	}
+}
+
+// *RST is Default Setup: the new channel shadows return to power-on state.
+func TestRSTResetsChannelShadows(t *testing.T) {
+	h, _ := newH(t)
+	do(t, h, "C1:INVS ON;C1:UNIT A;C1:SKEW 5NS")
+	do(t, h, "*RST")
+	got := do(t, h, "C1:INVS?;C1:UNIT?;C1:SKEW?")
+	if got != "C1:INVS OFF\nC1:UNIT V\nC1:SKEW 0.00E+00s\n" {
+		t.Fatalf("*RST left shadows: %q", got)
 	}
 }
 

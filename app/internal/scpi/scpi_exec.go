@@ -22,6 +22,9 @@ func (h *Handler) execGlobal(head, arg string) []byte {
 		h.trmd = "AUTO"
 		h.chdr = "SHORT"
 		h.wfSP, h.wfNP, h.wfFP, h.wfSN = 1, 0, 0, 0
+		h.invs = [2]bool{}
+		h.unit = [2]string{"V", "V"}
+		h.skew = [2]float64{}
 		return nil
 	case "*CLS", "*OPC", "*WAI", "*SAV", "*RCL", "*ESE", "*SRE", "BUZZ", "MENU", "GRDS", "INTS", "PESU":
 		return nil // accepted, silent (stubs where state is display-only)
@@ -131,11 +134,20 @@ func (h *Handler) execGlobal(head, arg string) []byte {
 			src = "C2"
 		}
 		return h.reply("TRSE", "EDGE,SR,"+src+",HT,OFF")
-	case "TRCP", "TRCP?":
-		if head == "TRCP?" {
-			return h.reply("TRCP", "DC")
+	case "TRCP":
+		// Trigger coupling is fixed DC on this build (no engine control).
+		// Accept only the state that is true; any other request must error,
+		// never silently succeed while TRCP? keeps answering DC.
+		switch arg {
+		case "DC":
+			return nil
+		case "AC", "HFREJ", "LFREJ":
+			return errTok(errOutOfRange)
+		default:
+			return errTok(errHeader)
 		}
-		return nil
+	case "TRCP?":
+		return h.reply("TRCP", "DC")
 	case "ARM", "FRTR":
 		h.sc.SetRunning(true)
 		return nil
@@ -308,8 +320,69 @@ func (h *Handler) execChannel(ch int, head, arg string) []byte {
 		return nil
 	case "ATTN?":
 		return h.reply(fmt.Sprintf("C%d:ATTN", ch+1), strconv.FormatFloat(h.attn[ch], 'g', -1, 64))
-	case "BWL", "UNIT", "SKEW", "INVS":
-		return nil // shadow-only stubs (BWL/coupling deferred per spec 06)
+	case "BWL":
+		// This build cannot engage the 20 MHz limit: only the relay-bit
+		// write is pinned, the roll-off itself is unvalidated (spec 06 §6),
+		// and the handler has no front-end hook for it. BWL is therefore
+		// fixed OFF: setting OFF matches reality (and round-trips through
+		// BWL?), setting ON must error — never silent success — per the
+		// spec 11 §3.4 convention (rejected argument → error token).
+		switch arg {
+		case "OFF":
+			return nil
+		case "ON":
+			return errTok(errOutOfRange)
+		default:
+			return errTok(errHeader)
+		}
+	case "BWL?":
+		return h.reply(fmt.Sprintf("C%d:BWL", ch+1), "OFF")
+	case "UNIT":
+		// Vertical unit label (display/bookkeeping): real shadow state.
+		switch arg {
+		case "V", "A":
+			h.unit[ch] = arg
+			return nil
+		default:
+			return errTok(errHeader)
+		}
+	case "UNIT?":
+		return h.reply(fmt.Sprintf("C%d:UNIT", ch+1), h.unit[ch])
+	case "SKEW":
+		// Channel deskew (display/bookkeeping): real shadow state, echoed
+		// in the §3.1 float grammar by SKEW?.
+		v, err := parseNum(arg)
+		if err != nil {
+			return errTok(errHeader)
+		}
+		if math.IsNaN(v) || math.IsInf(v, 0) {
+			return errTok(errOutOfRange)
+		}
+		h.skew[ch] = v
+		return nil
+	case "SKEW?":
+		return h.reply(fmt.Sprintf("C%d:SKEW", ch+1), sciS(h.skew[ch]))
+	case "INVS":
+		// Trace invert (display-level): real shadow state. A render hook
+		// (per-channel invert flag into the web/LCD draw path) is the
+		// natural next step but is cross-package plumbing, out of scope
+		// here — the shadow keeps set→query truthful meanwhile.
+		switch arg {
+		case "ON":
+			h.invs[ch] = true
+			return nil
+		case "OFF":
+			h.invs[ch] = false
+			return nil
+		default:
+			return errTok(errHeader)
+		}
+	case "INVS?":
+		v := "OFF"
+		if h.invs[ch] {
+			v = "ON"
+		}
+		return h.reply(fmt.Sprintf("C%d:INVS", ch+1), v)
 	case "WF?":
 		return h.waveform(ch, arg)
 	}

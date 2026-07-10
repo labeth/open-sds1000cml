@@ -65,12 +65,17 @@ type Handler struct {
 	wfSN int
 
 	// Instrument-state shadows for echo-back of controls with no engine
-	// representation yet.
+	// representation yet. Every shadowed set MUST round-trip through its
+	// query (spec 11 §3.3): a silent success that the query then
+	// contradicts corrupts automation. BWL has no shadow on purpose — this
+	// build cannot engage the 20 MHz limit (spec 06 §6), so a BWL ON set
+	// errors and the query reports the fixed OFF state.
 	tra    [2]bool
 	cpl    [2]string
 	attn   [2]float64
-	bwl    [2]bool
 	invs   [2]bool
+	unit   [2]string
+	skew   [2]float64
 	trmd   string
 	trlvV  float64
 	trdlS  float64
@@ -84,6 +89,7 @@ func New(sc Scope, fe Analog, shot Screenshot, logf func(string, ...any)) *Handl
 		tra:    [2]bool{true, true},
 		cpl:    [2]string{"D1M", "D1M"},
 		attn:   [2]float64{1, 1},
+		unit:   [2]string{"V", "V"},
 		trmd:   "AUTO",
 		serial: loadSerial(),
 	}
