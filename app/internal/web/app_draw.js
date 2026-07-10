@@ -52,7 +52,14 @@ function codeAtY(cy, zoom) {
   return 128 + (v01 - 0.5) * 200 / zoom;
 }
 
-function drawTrace(g, cols, color, zoom) {
+// inv (optional): display-level trace invert (SCPI Cn:INVS, st.inv1/st.inv2 —
+// the SCPI shadow is the truth). Mirrors the RENDERED code about the display
+// centre (127.5): v' = 255 − v, byte-identical to the LCD's invertCodes.
+// Deliberately display-only and Y-T-only: measurements, decode, math, X-Y/FFT
+// and mask/zone tests keep the true captured polarity (hardware scopes vary
+// here; this clone pins the narrow, unsurprising meaning — what you SEE flips,
+// what is measured does not). Gap sentinels (-1) pass through untouched.
+function drawTrace(g, cols, color, zoom, inv) {
   if (!cols || !cols.length) return;
   g.strokeStyle = color; g.lineWidth = 1.4 * dpr; g.lineJoin = "round";
   const n = cols.length, [iLo, iHi] = winRange(n);
@@ -67,8 +74,9 @@ function drawTrace(g, cols, color, zoom) {
       const b = Math.min(iHi, Math.ceil(fracForX(px + 1) * (n - 1)) - 1);
       let lo = Infinity, hi = -Infinity;
       for (let i = a; i <= b; i++) {
-        const v = cols[i];
+        let v = cols[i];
         if (v < 0) continue;
+        if (inv) v = 255 - v;
         if (v < lo) lo = v;
         if (v > hi) hi = v;
       }
@@ -83,8 +91,9 @@ function drawTrace(g, cols, color, zoom) {
   }
   g.beginPath(); let pen = false;
   for (let i = iLo; i <= iHi; i++) {
-    const v = cols[i];
+    let v = cols[i];
     if (v < 0) { pen = false; continue; }
+    if (inv) v = 255 - v;
     const x = xForCol(i, n), y = yFor(v, zoom);
     if (y < -4 || y > CH + 4) { pen = false; continue; }
     if (pen) g.lineTo(x, y); else { g.moveTo(x, y); pen = true; }
@@ -92,13 +101,15 @@ function drawTrace(g, cols, color, zoom) {
   g.stroke();
 }
 
-function drawEnv(g, mn, mx, color, zoom) {
+function drawEnv(g, mn, mx, color, zoom, inv) {
   if (!mn || !mx) return;
   zoom = zoom || 1; g.fillStyle = color; g.globalAlpha = .8;
   const n = mn.length, [iLo, iHi] = winRange(n);
   const sx = Math.max(1, (CW) / ((view.win.b - view.win.a) * n));
   for (let c = iLo; c <= iHi; c++) {
-    const yt = yFor(mx[c], zoom), yb = yFor(mn[c], zoom);
+    // INVS mirrors the band: top code = inv(min), bottom code = inv(max).
+    const vt = inv ? 255 - mn[c] : mx[c], vb = inv ? 255 - mx[c] : mn[c];
+    const yt = yFor(vt, zoom), yb = yFor(vb, zoom);
     g.fillRect(xForCol(c, n), yt, sx, Math.max(1, yb - yt));
   }
   g.globalAlpha = 1;
@@ -281,11 +292,11 @@ function drawYT(g) {
   drawRefs(g); // references sit UNDER the live traces
   if (frame) {
     if (frame.is_env) {
-      if (view.c2) drawEnv(g, frame.e2min, frame.e2max, C2COL, st ? st.zoom2 : 1);
-      if (view.c1) drawEnv(g, frame.e1min, frame.e1max, C1COL, st ? st.zoom1 : 1);
+      if (view.c2) drawEnv(g, frame.e2min, frame.e2max, C2COL, st ? st.zoom2 : 1, !!(st && st.inv2));
+      if (view.c1) drawEnv(g, frame.e1min, frame.e1max, C1COL, st ? st.zoom1 : 1, !!(st && st.inv1));
     } else {
-      if (view.c2) drawTrace(g, frame.c2, C2COL, st ? st.zoom2 : 1);
-      if (view.c1) drawTrace(g, frame.c1, C1COL, st ? st.zoom1 : 1);
+      if (view.c2) drawTrace(g, frame.c2, C2COL, st ? st.zoom2 : 1, !!(st && st.inv2));
+      if (view.c1) drawTrace(g, frame.c1, C1COL, st ? st.zoom1 : 1, !!(st && st.inv1));
       drawMath(g);
     }
   }

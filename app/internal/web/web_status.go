@@ -20,6 +20,8 @@ type statusReply struct {
 	Probe2      float64   `json:"probe2,omitempty"`
 	Cpl1        int       `json:"cpl1"` // 0=DC 1=AC 2=GND
 	Cpl2        int       `json:"cpl2"`
+	Inv1        bool      `json:"inv1"` // display-level trace invert (SCPI Cn:INVS shadow — the truth)
+	Inv2        bool      `json:"inv2"`
 	Zoom1       int       `json:"zoom1,omitempty"`
 	Zoom2       int       `json:"zoom2,omitempty"`
 	VdivLive    bool      `json:"vdiv_live"` // false until the first emit
@@ -56,6 +58,10 @@ func (s *Server) hStatus(w http.ResponseWriter, r *http.Request) {
 	}
 	if sr, ok := s.panel.(superresReporter); ok {
 		rep.SRActive, rep.SRReview, rep.SRBits, rep.SRFrames, rep.SRRejected, rep.SRStatus = sr.SuperresStatus()
+	}
+	if s.invSrc != nil {
+		inv := s.invSrc()
+		rep.Inv1, rep.Inv2 = inv[0], inv[1]
 	}
 	rep.AcqLog, rep.HalfRate = s.sc.AcqLog(24)
 	rep.CmdLog = s.sc.CmdLog(16)

@@ -119,6 +119,10 @@ func buildHUD(e *engine.Engine, fe *analog.FrontEnd) lcd.HUD {
 		hud.SRWinLo, hud.SRWinHi, hud.SRPeriod = sv.WinLo, sv.WinHi, sv.Period
 		hud.MaskMsg = pc.MaskStatus()
 	}
+	if sh := scpiCtrl.Load(); sh != nil { // display-level INVS: the SCPI shadow is the truth
+		inv := sh.Inverted()
+		hud.Inv1, hud.Inv2 = inv[0], inv[1]
+	}
 	// Zone/mask overlay state (engine-side test; render parity with the web).
 	hud.ZoneMode, hud.MaskMode = st.ZoneMode, st.MaskMode
 	hud.MaskPass, hud.MaskFail, hud.MaskSkip = st.MaskPass, st.MaskFail, st.MaskSkip
@@ -169,6 +173,10 @@ var lcdSpect = lcd.NewSpectrogram()
 // loop (started earlier) and the SCDP screenshot can read the menu overlay.
 var uiCtrl atomic.Pointer[panel.Controller]
 
+// scpiCtrl is the SCPI handler, published after creation so the LCD render
+// loop and the screenshot paths can read the display-invert (INVS) truth.
+var scpiCtrl atomic.Pointer[scpi.Handler]
+
 // renderSig is a scalar fingerprint of everything the static (Y-T / X-Y / FFT)
 // views draw. When it is unchanged tick-to-tick the display is identical, so the
 // LCD loop skips the rasterize+blit — the heavy, bus-contending part that
@@ -187,6 +195,7 @@ type renderSig struct {
 	curX, curY            [2]float64
 	probe1, probe2        float64
 	cpl1, cpl2            int
+	inv1, inv2            bool
 	showMeas, persist     bool
 	running, single, norm bool
 	trigd, live           bool
@@ -209,6 +218,7 @@ func renderSigOf(f *engine.Frame, hud lcd.HUD, live bool) renderSig {
 		c1v: hud.C1VdivV, c2v: hud.C2VdivV, off1: hud.OffC1V, off2: hud.OffC2V,
 		trig: hud.TrigLvlDiv, curX: hud.CurX, curY: hud.CurY,
 		probe1: hud.Probe1, probe2: hud.Probe2, cpl1: hud.Cpl1, cpl2: hud.Cpl2,
+		inv1: hud.Inv1, inv2: hud.Inv2, // an INVS flip must repaint a held display
 		showMeas: hud.ShowMeas, persist: hud.Persist,
 		running: hud.Running, single: hud.Single, norm: hud.Norm,
 		trigd: hud.Trigd, live: live, showC1: hud.ShowC1, showC2: hud.ShowC2,
@@ -477,20 +487,11 @@ func main() {
 		})
 		return lcd.EncodePNG(back)
 	}
-	// Deliberately NO Read/Write/Idle timeouts: /api/frame.bin parks requests
-	// up to 2 s (long-poll), and a global WriteTimeout would kill every parked
-	// request. Slow-peer writes are bounded per-response inside the handler
-	// (SetWriteDeadline). Don't "harden" this without moving that contract.
-	srv := &http.Server{Addr: listen, Handler: web.New(scopeSource{e, fo}, feIface, pc, screenPNG).Handler()}
-	go func() {
-		logf("web ui listening on %s", listen)
-		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			logf("web server: %v", err)
-		}
-	}()
-
 	// SCPI over VXI-11 (spec 11): the host instrument-control interface.
 	// SCDP renders a fresh headless frame — works with or without the LCD.
+	// Created BEFORE the web server so its INVS shadow (the display-invert
+	// truth) can be wired into the status snapshot; the panel controller
+	// backs the SCPI display commands (XYDS/PESU/MENU) with the real state.
 	var sfe scpi.Analog
 	if fe != nil {
 		sfe = fe
@@ -507,12 +508,27 @@ func main() {
 		})
 		return lcd.EncodeBMP(back)
 	}
-	scpiH := scpi.New(scopeSource{e, fo}, sfe, shot, logf)
+	scpiH := scpi.New(scopeSource{e, fo}, sfe, pc, shot, logf)
+	scpiCtrl.Store(scpiH) // publish for the LCD render loop + screenshot paths
 	if _, port, err := vxi11srv.Start(scpiH.HandleLine, true, logf); err != nil {
 		logf("WARNING: VXI-11 server failed: %v", err)
 	} else {
 		logf("scpi: VXI-11 DEVICE_CORE on tcp/%d", port)
 	}
+
+	// Deliberately NO Read/Write/Idle timeouts: /api/frame.bin parks requests
+	// up to 2 s (long-poll), and a global WriteTimeout would kill every parked
+	// request. Slow-peer writes are bounded per-response inside the handler
+	// (SetWriteDeadline). Don't "harden" this without moving that contract.
+	ws := web.New(scopeSource{e, fo}, feIface, pc, screenPNG)
+	ws.SetInvertSource(scpiH.Inverted) // display-level INVS: SCPI shadow → /api/status
+	srv := &http.Server{Addr: listen, Handler: ws.Handler()}
+	go func() {
+		logf("web ui listening on %s", listen)
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			logf("web server: %v", err)
+		}
+	}()
 
 	s := <-sig
 	logf("signal %v — stopping engine at frame boundary", s)

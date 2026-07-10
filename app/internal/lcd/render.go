@@ -16,6 +16,7 @@ type HUD struct {
 	C1VdivV, C2VdivV float64
 	Probe1, Probe2   float64 // probe attenuation (1/10/100); 0 treated as ×1
 	Cpl1, Cpl2       int     // input coupling (analog.CplDC/CplAC/CplGND)
+	Inv1, Inv2       bool    // display-level trace invert (SCPI Cn:INVS — the shadow there is the truth)
 	TdivS            float64
 	TrigSrc          int
 	TrigRising       bool
@@ -283,6 +284,20 @@ func coupledDisplay(sig []uint8, cpl int) []uint8 {
 	return sig
 }
 
+// invertCodes mirrors a code slice about the display centre (127.5): the
+// display-level INVS transform v' = 255 − v, matching the web draw path
+// byte-for-byte. Returns a fresh slice — the input may be the shared fan-out
+// frame. Applied to the RENDERED Y-T trace/envelope only: measurements,
+// decode, math, X-Y/FFT and mask/zone tests keep the true captured polarity
+// (see the Cn:INVS handler for the rationale).
+func invertCodes(sig []uint8) []uint8 {
+	out := make([]uint8, len(sig))
+	for i, v := range sig {
+		out[i] = 255 - v
+	}
+	return out
+}
+
 // ---- value formatting (spec 07 §6.2): 3 sig figs, ASCII suffixes ----
 
 // siUnit is one prefix row for siScale (high→low).
@@ -368,10 +383,18 @@ func Render(sf Surface, f *engine.Frame, hud HUD, live bool, persist ...*MemSurf
 		}
 		if f.IsEnv && f.EnvCols > 0 {
 			if hud.TwoChan && sc2 {
-				drawEnvelope(sf, f.EnvMin2, f.EnvMax2, f.EnvCols, colC2)
+				mn2, mx2 := f.EnvMin2, f.EnvMax2
+				if hud.Inv2 { // INVS mirrors the band: min'=inv(max), max'=inv(min)
+					mn2, mx2 = invertCodes(mx2), invertCodes(mn2)
+				}
+				drawEnvelope(sf, mn2, mx2, f.EnvCols, colC2)
 			}
 			if sc1 {
-				drawEnvelope(sf, f.EnvMin, f.EnvMax, f.EnvCols, colC1)
+				mn1, mx1 := f.EnvMin, f.EnvMax
+				if hud.Inv1 {
+					mn1, mx1 = invertCodes(mx1), invertCodes(mn1)
+				}
+				drawEnvelope(sf, mn1, mx1, f.EnvCols, colC1)
 			}
 		} else {
 			win := f.WinCols
@@ -381,6 +404,9 @@ func Render(sf Surface, f *engine.Frame, hud HUD, live bool, persist ...*MemSurf
 			c1 := f.C1[:valid]
 			if hud.Cpl1 != analog.CplDC { // software coupling: AC removes DC, GND grounds
 				c1 = analog.CoupleDisplay(c1, hud.Cpl1)
+			}
+			if hud.Inv1 { // display-level INVS: mirror the rendered trace only
+				c1 = invertCodes(c1)
 			}
 			xc := f.EdgeX
 			if xc < 0 {
@@ -406,6 +432,9 @@ func Render(sf Surface, f *engine.Frame, hud HUD, live bool, persist ...*MemSurf
 				c2 := f.C2[:valid]
 				if hud.Cpl2 != analog.CplDC {
 					c2 = analog.CoupleDisplay(c2, hud.Cpl2)
+				}
+				if hud.Inv2 {
+					c2 = invertCodes(c2)
 				}
 				drawTrace(traceTarget, c2, win, xc, f.Interp, colC2, posFrac)
 			}
