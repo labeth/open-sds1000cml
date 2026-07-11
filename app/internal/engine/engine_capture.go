@@ -165,13 +165,20 @@ func (e *Engine) waitCapture(norm bool) (anchored, sawTrig, filled, fillMoved bo
 		if s&statTrig != 0 && !sawTrig {
 			sawTrig = true
 			trigAt = e.clk.Now()
-			// 0x46 RESETS when the comparator fires (it counts post-trigger
-			// samples). Gates latched during the pre-trigger free-run must not
-			// satisfy a post-trigger record: without this reset, a late edge on
-			// a decimated AUTO band returned on the stale pre-trigger `filled`
-			// and halted with the post-trigger half unwritten — the fuzz-caught
-			// published triggered-half (fill_at_halt ≈ 25–68, valid ≈ cols/2).
-			filled = false
+			// DECIMATED: 0x46 RESETS when the comparator fires (it counts
+			// post-trigger samples). Gates latched during the pre-trigger
+			// free-run must not satisfy a post-trigger record: without this
+			// reset, a late edge on a decimated AUTO band returned on the stale
+			// pre-trigger `filled` and halted with the post-trigger half
+			// unwritten — the fuzz-caught published triggered-half
+			// (fill_at_halt ≈ 25–68, valid ≈ cols/2). NATIVE-FAST is excluded:
+			// there 0x46 reads 0 after the edge and never re-asserts (per-band
+			// counter semantics), so resetting `filled` would defeat the early
+			// return and pin every frame at the full wait budget (HW-verified
+			// fps 19→13) while the record is complete regardless.
+			if !nativeFast {
+				filled = false
+			}
 			trigPos = int(e.r(selTrigHi))<<8 | int(e.r(selTrigLo)&0xff)
 			// The budget bounds the UNTRIGGERED wait. Once the edge HAS fired
 			// the record completes within the post-trigger time — extend the
