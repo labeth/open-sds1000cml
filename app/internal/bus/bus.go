@@ -36,6 +36,15 @@ type Bus interface {
 	DrainWrite(sel, val uint16) error
 	// MmapDrain reports whether DrainRead uses the /dev/mem fast path.
 	MmapDrain() bool
+	// SetDrainMode selects the DrainInto strategy (experiment): 0 = 5-port
+	// round-robin (default), 1 = single fixed port 0x30 (prefetch-semantic
+	// probe). Returns the applied mode.
+	SetDrainMode(mode int) int
+	// SetReadCycle rewrites the CS1 async RDCYCLETIME (GPMC CONFIG5) to `ticks`
+	// GPMC_FCLK cycles (experiment: faster FPGA reads). ticks<=0 restores the
+	// boot value. Returns the previous RDCYCLETIME and any error. No-op unless
+	// the /dev/mem GPMC config port maps.
+	SetReadCycle(ticks int) (int, error)
 }
 
 const (
@@ -50,6 +59,11 @@ const (
 
 	SelVersion   = 0x12
 	VersionMagic = 0x0052
+
+	// GPMC controller config port (AM335x, read-only for us except the CS1
+	// RDCYCLETIME experiment). CS1 config block at 0x60+1*0x30; CONFIG5 at +0x10.
+	gpmcCfgBase    = 0x50000000
+	gpmcCS1Config5 = 0x90 + 0x10 // CONFIG5_1 byte offset within the config page
 )
 
 // Dev drives the real GPMC through the boot-inherited /dev/Gpmc fd. The fd is
@@ -59,6 +73,11 @@ type Dev struct {
 	fd   int
 	mem  []byte // /dev/mem mapping of the CS1 window; nil → ioctl drain
 	regs *[mmapLen / 2]uint16
+
+	drainMode int    // 0 round-robin (default), 1 single-port 0x30 (experiment)
+	gpmc      []byte // /dev/mem mapping of the GPMC config port (experiment)
+	cfg5Orig  uint32 // boot CS1 CONFIG5, for restore
+	cfg5Have  bool
 }
 
 // New wraps the inherited /dev/Gpmc fd. If mmapDrain is set it tries to map
@@ -187,6 +206,19 @@ func (d *Dev) DrainRead(sel uint16) uint16 {
 // call, no modulo — so the drain completes before the HW un-freezes the halt.
 func (d *Dev) DrainInto(c1, c2 []uint8, cols int) {
 	if d.regs != nil {
+		if d.drainMode == 1 {
+			// EXPERIMENT: read a single fixed port for the whole record. This
+			// probes whether a fixed-address FIFO reader (GPMC prefetch / EDMA)
+			// could reproduce the stream — if port 0x30 alone pops consecutive
+			// samples, prefetch offload is viable; if it stalls/repeats, the
+			// 5-port round-robin is structural and prefetch cannot drain it.
+			for i := 0; i < cols; i++ {
+				w := load16(&d.regs[0x30])
+				c1[i] = uint8(w >> 8)
+				c2[i] = uint8(w)
+			}
+			return
+		}
 		port := uint16(0x30)
 		for i := 0; i < cols; i++ {
 			w := load16(&d.regs[port])
@@ -204,6 +236,66 @@ func (d *Dev) DrainInto(c1, c2 []uint8, cols int) {
 		c2[i] = uint8(v)
 	}
 }
+
+// SetDrainMode selects the DrainInto strategy (experiment).
+func (d *Dev) SetDrainMode(mode int) int {
+	if mode != 1 {
+		mode = 0
+	}
+	d.drainMode = mode
+	return mode
+}
+
+// mapGPMC lazily maps the GPMC controller config port (read/write) so the CS1
+// read-timing experiment can rewrite RDCYCLETIME. Read-only for every other
+// register — we only ever touch CONFIG5_1.
+func (d *Dev) mapGPMC() error {
+	if d.gpmc != nil {
+		return nil
+	}
+	f, err := os.OpenFile("/dev/mem", os.O_RDWR|syscall.O_SYNC, 0)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	m, err := syscall.Mmap(int(f.Fd()), gpmcCfgBase, mmapLen,
+		syscall.PROT_READ|syscall.PROT_WRITE, syscall.MAP_SHARED)
+	if err != nil {
+		return err
+	}
+	d.gpmc = m
+	return nil
+}
+
+// SetReadCycle rewrites CS1 RDCYCLETIME (GPMC CONFIG5[4:0]). ticks<=0 restores
+// the boot value. Returns the previous RDCYCLETIME.
+func (d *Dev) SetReadCycle(ticks int) (int, error) {
+	if err := d.mapGPMC(); err != nil {
+		return -1, err
+	}
+	p := (*uint32)(unsafe.Pointer(&d.gpmc[gpmcCS1Config5]))
+	cur := *p
+	if !d.cfg5Have {
+		d.cfg5Orig, d.cfg5Have = cur, true
+	}
+	prev := int(cur & 0x1f)
+	var next uint32
+	if ticks <= 0 {
+		next = d.cfg5Orig // restore boot config
+	} else {
+		if ticks > 31 {
+			ticks = 31
+		}
+		next = (cur &^ 0x1f) | uint32(ticks)
+	}
+	store32(p, next)
+	return prev, nil
+}
+
+// store32 is the 32-bit write dual of store16 (noinline: volatile MMIO write).
+//
+//go:noinline
+func store32(p *uint32, v uint32) { *p = v }
 
 func (d *Dev) DrainWrite(sel, val uint16) error {
 	if forbiddenWrite(PlaneCS1, sel) {

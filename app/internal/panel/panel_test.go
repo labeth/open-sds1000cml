@@ -19,9 +19,9 @@ type fakeEng struct {
 	acqLog []engine.AcqSample
 }
 
-func (f *fakeEng) ReadMatrix() ([5]uint16, bool) { return f.matrix, true }
-func (f *fakeEng) SetLEDs(w uint16)              { f.leds = append(f.leds, w) }
-func (f *fakeEng) Snapshot() engine.Stats        { return f.stats }
+func (f *fakeEng) ReadMatrix() ([5]uint16, bool)              { return f.matrix, true }
+func (f *fakeEng) SetLEDs(w uint16)                           { f.leds = append(f.leds, w) }
+func (f *fakeEng) Snapshot() engine.Stats                     { return f.stats }
 func (f *fakeEng) AcqLog(n int) ([]engine.AcqSample, float64) { return f.acqLog, 0 }
 func (f *fakeEng) SetOffsetDAC(ch int, code uint16) {
 	f.calls = append(f.calls, call{"offset", ch, int(code)})

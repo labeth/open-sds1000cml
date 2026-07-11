@@ -183,7 +183,9 @@ func (f *fakeBus) DrainWrite(sel, val uint16) error {
 	return nil
 }
 
-func (f *fakeBus) MmapDrain() bool { return true }
+func (f *fakeBus) MmapDrain() bool                     { return true }
+func (f *fakeBus) SetDrainMode(mode int) int           { return 0 }
+func (f *fakeBus) SetReadCycle(ticks int) (int, error) { return 0, nil }
 
 func (f *fakeBus) snapWrites() []wr {
 	f.mu.Lock()

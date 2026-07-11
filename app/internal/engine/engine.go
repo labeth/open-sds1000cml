@@ -248,6 +248,9 @@ type Engine struct {
 	tuneMatureUs     atomic.Int64 // native-fast maturation floor before halt (µs)
 	tuneTail3c       atomic.Int64 // acq-control pair value for 0x3c (band-dependent; native-fast 0x00fd)
 	tuneTail3d       atomic.Int64 // acq-control pair value for 0x3d (band-dependent; native-fast 0x0007)
+	tuneDrainMode    atomic.Int64 // burst experiment: drain strategy
+	tuneRdCycle      atomic.Int64 // burst experiment: CS1 RDCYCLETIME ticks
+	tuneRdCyclePrev  atomic.Int64 // readback of previous RDCYCLETIME
 	reinitReq        atomic.Int64 // staged FSM re-init level (debug/recovery); serviced at the loop boundary
 
 	// Lock-free control reads by the owner.
@@ -444,7 +447,7 @@ func New(cfg Config) *Engine {
 	// trigger evidence (the historical 40 ms bound was measured in the
 	// untriggered parked state). 3 ms keeps margin over the proven 2 ms.
 	e.tuneMatureUs.Store(3000)
-	e.tuneTail3c.Store(0x00fd)  // reference-device native-fast acq-control pair
+	e.tuneTail3c.Store(0x00fd) // reference-device native-fast acq-control pair
 	e.tuneTail3d.Store(0x0007)
 	e.running.Store(true)
 	e.trigRising.Store(true)
@@ -503,13 +506,16 @@ type TuneVals struct {
 	RenderMs     int64 `json:"render_ms"`
 	FillExtraUs  int64 `json:"fill_extra_us"`
 	HaltSettleUs int64 `json:"halt_settle_us"`
-	FrameTail    bool  `json:"frame_tail"`       // per-frame completion tail + 0x16 re-trigger strobe
-	ForceMode    int64 `json:"force_mode"`       // AUTO force-trigger: 0 off, bit0 0x2c pulse, bit1 0x16 strobe
-	ForceAfterUs int64 `json:"force_after_us"`   // µs after arm without a trigger before forcing
-	MatureUs     int64 `json:"mature_us"`        // native-fast maturation floor before halt (µs)
-	Tail3c       int64 `json:"tail_3c"`          // acq-control 0x3c value (band-dependent)
-	Tail3d       int64 `json:"tail_3d"`          // acq-control 0x3d value (band-dependent)
-	Reinit       int64 `json:"reinit,omitempty"` // one-shot: stage an FSM re-init at this level (1=bringUp, 2=+runword/reset pulses)
+	FrameTail    bool  `json:"frame_tail"`              // per-frame completion tail + 0x16 re-trigger strobe
+	ForceMode    int64 `json:"force_mode"`              // AUTO force-trigger: 0 off, bit0 0x2c pulse, bit1 0x16 strobe
+	ForceAfterUs int64 `json:"force_after_us"`          // µs after arm without a trigger before forcing
+	MatureUs     int64 `json:"mature_us"`               // native-fast maturation floor before halt (µs)
+	Tail3c       int64 `json:"tail_3c"`                 // acq-control 0x3c value (band-dependent)
+	Tail3d       int64 `json:"tail_3d"`                 // acq-control 0x3d value (band-dependent)
+	DrainMode    int64 `json:"drain_mode"`              // burst experiment: 0 round-robin, 1 single-port
+	RdCycle      int64 `json:"rd_cycle"`                // burst experiment: CS1 RDCYCLETIME ticks (0=restore)
+	RdCyclePrev  int64 `json:"rd_cycle_prev,omitempty"` // readback of the previous RDCYCLETIME
+	Reinit       int64 `json:"reinit,omitempty"`        // one-shot: stage an FSM re-init at this level (1=bringUp, 2=+runword/reset pulses)
 }
 
 // Tune applies a knob set (debug /api/debug/tune) and returns the effective
@@ -551,6 +557,18 @@ func (e *Engine) Tune(t TuneVals) TuneVals {
 	if t.Tail3d >= 0 {
 		e.tuneTail3d.Store(t.Tail3d)
 	}
+	// Burst-drain experiments (branch burst-drain): applied directly on the bus.
+	// DrainMode is safe (read strategy). RdCycle rewrites CS1 GPMC timing — the
+	// owner loop is the single bus owner, but the write itself is atomic; apply
+	// it here and let the next drain use the new timing.
+	e.tuneDrainMode.Store(t.DrainMode)
+	e.b.SetDrainMode(int(t.DrainMode))
+	if prev, err := e.b.SetReadCycle(int(t.RdCycle)); err == nil {
+		e.tuneRdCycle.Store(t.RdCycle)
+		e.tuneRdCyclePrev.Store(int64(prev))
+	} else {
+		e.logf("engine: SetReadCycle(%d) failed: %v", t.RdCycle, err)
+	}
 	if t.Reinit > 0 {
 		e.reinitReq.Store(t.Reinit) // one-shot; the owner loop consumes it
 	}
@@ -577,6 +595,9 @@ func (e *Engine) TuneSnapshot() TuneVals {
 		MatureUs:     e.tuneMatureUs.Load(),
 		Tail3c:       e.tuneTail3c.Load(),
 		Tail3d:       e.tuneTail3d.Load(),
+		DrainMode:    e.tuneDrainMode.Load(),
+		RdCycle:      e.tuneRdCycle.Load(),
+		RdCyclePrev:  e.tuneRdCyclePrev.Load(),
 	}
 }
 
