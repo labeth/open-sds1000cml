@@ -1,6 +1,9 @@
 package engine
 
-import "time"
+import (
+	"math"
+	"time"
+)
 
 // The native-fast fill busy-poll window is the tunable tuneBusyFillUs (default 0
 // = off; it burned CPU without lowering the bus-driven half rate). See waitCapture.
@@ -97,6 +100,11 @@ func (e *Engine) armEngineQuiet(quietHeld bool) {
 	}
 }
 
+// trigPosFracVal reads the horizontal trigger-position fraction (0..1).
+func (e *Engine) trigPosFracVal() float64 {
+	return math.Float64frombits(e.trigPosFrac.Load())
+}
+
 // waitCapture runs the bounded wait gate (spec 03 §5.2): poll 0x39 + 0x46
 // every 150 µs within the band budget. Returns the gate results plus whether
 // the fill counter advanced at all (wedge evidence when it never does).
@@ -151,10 +159,19 @@ func (e *Engine) waitCapture(norm bool) (anchored, sawTrig, filled, fillMoved bo
 	forceMode := e.tuneForceMode.Load()
 	forceAfter := time.Duration(e.tuneForceAfterUs.Load()) * time.Microsecond
 	fill0 := e.r(selFill) & fillMask
+	var trigAt time.Time
 	for {
 		s := e.r(selStatus)
 		if s&statTrig != 0 && !sawTrig {
 			sawTrig = true
+			trigAt = e.clk.Now()
+			// 0x46 RESETS when the comparator fires (it counts post-trigger
+			// samples). Gates latched during the pre-trigger free-run must not
+			// satisfy a post-trigger record: without this reset, a late edge on
+			// a decimated AUTO band returned on the stale pre-trigger `filled`
+			// and halted with the post-trigger half unwritten — the fuzz-caught
+			// published triggered-half (fill_at_halt ≈ 25–68, valid ≈ cols/2).
+			filled = false
 			trigPos = int(e.r(selTrigHi))<<8 | int(e.r(selTrigLo)&0xff)
 		}
 		completed := s&statDone != 0
@@ -191,13 +208,25 @@ func (e *Engine) waitCapture(norm bool) (anchored, sawTrig, filled, fillMoved bo
 		} else {
 			if anchored && filled {
 				// Decimated NORM also waits for a dense buffer (see above); other
-				// bands return as soon as the post-trigger record is filled.
-				if !denseWait || e.clk.Now().Sub(start) >= time.Duration(denseNs) {
+				// bands return as soon as the post-trigger record is filled. A
+				// TRIGGERED capture additionally waits out the post-trigger
+				// record time FROM THE EDGE — the fill counter alone (≥ LatchAt
+				// = 512) is far short of the post-trigger half, and both status
+				// gates can pre-date the edge.
+				postOK := true
+				if sawTrig {
+					postNs := time.Duration(denseNs)
+					if frac := e.trigPosFracVal(); frac > 0 && frac < 1 {
+						postNs = time.Duration(float64(denseNs) * (1 - frac) * 1.15)
+					}
+					postOK = e.clk.Now().Sub(trigAt) >= postNs
+				}
+				if postOK && (!denseWait || e.clk.Now().Sub(start) >= time.Duration(denseNs)) {
 					return // triggered, post-trigger record filled (and dense in NORM)
 				}
 			}
-			if !norm && fill >= fillFull {
-				return // AUTO free-run: the record saturated, drain it now
+			if !norm && !sawTrig && fill >= fillFull {
+				return // AUTO free-run (no edge): the record saturated, drain it now
 			}
 		}
 		if nativeFast && !norm && e.armBusy && !sawTrig && forceMode > 0 &&
