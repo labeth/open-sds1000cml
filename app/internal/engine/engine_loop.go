@@ -246,12 +246,15 @@ func (e *Engine) oneFrame(norm bool) {
 	} else {
 		e.degradedRun = 0
 	}
-	// Untriggered half-record: clamp the frame to its live region so the
+	// Half-record honesty clamp: bound the frame to its live region so the
 	// display window, measurements and serializers never see the frozen-port
-	// dead tail. The live half (~10k samples) is 5× a native-fast display
-	// window — the screen shows a full-width live free-run sweep.
+	// dead tail. Applies to BOTH kinds of half record — the untriggered parked
+	// state (normal no-trigger behaviour) and the rare triggered-but-half
+	// capture that survives the retries (fuzz-caught): the latter still counts
+	// as Degraded telemetry, but what publishes is the live half, never
+	// garbage. The live half (~10k samples) is 5× a native-fast display window.
 	usable := cols
-	if nativeFast && !sawTrig && rd*4 < cols*3 {
+	if nativeFast && rd*4 < cols*3 {
 		if min := e.band.WinCols(); rd < min {
 			rd = min
 			if rd > cols {
@@ -591,6 +594,9 @@ func (e *Engine) oneFrame(norm bool) {
 		TrigPos:      trigPos,
 		Half:         vd*10 < cols*6,
 		FirstHalf:    e.lastFirstHalf,
+		Published:    publish,
+		Norm:         norm,
+		TdivS:        e.band.TdivS,
 	}
 	e.acqHead = (e.acqHead + 1) % len(e.acqRing)
 	e.mu.Unlock()

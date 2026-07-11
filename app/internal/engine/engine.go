@@ -204,6 +204,9 @@ type AcqSample struct {
 	TrigPos      int     `json:"trig_pos"`
 	Half         bool    `json:"half"`       // published ValidDepth < 0.6*Cols (after re-capture)
 	FirstHalf    bool    `json:"first_half"` // the FIRST drain was half (raw HW rate, before re-capture)
+	Published    bool    `json:"published"`  // this capture became user-visible (vs held/discarded)
+	Norm         bool    `json:"norm"`       // NORM (vs AUTO) at capture time
+	TdivS        float64 `json:"tdiv_s"`     // band timebase at capture time
 }
 
 // CmdNote records one web set-control invocation (name + numeric value +
