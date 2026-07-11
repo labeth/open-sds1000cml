@@ -305,12 +305,68 @@ func (c *Controller) runAutoset(stop chan struct{}) {
 	c.eng.SetTrigSource(src)
 	c.eng.SetTrigType(0) // EDGE
 
+	// 4b. VERIFY the level actually fires the comparator, closed-loop. The
+	// code←volts fit above is exact only at 1–2 V/div; at other detents the
+	// comparator's real mapping shifts and the computed code can land outside
+	// the signal's band — the display then free-runs untriggered (honest, but
+	// not what AUTO promises). Rather than model every detent, probe the
+	// hardware: if the comparator isn't firing, scan the code range and centre
+	// on the band that fires (WYSIWYG — same discipline as the level recommit).
+	if !c.verifyTrigLevel(stop, uint16(code)) || cancelled() {
+		return
+	}
+
 	// 5. Finally, set the DISPLAY timebase to a few cycles of the (accurately
 	//    measured) signal for a clean, well-resolved view. The trigger level is in
 	//    volts, so this timebase change does not disturb it.
 	if f := m[src].Freq; f > 0 {
 		c.setTdivNearest((dispCycles / f) / divX)
 	}
+}
+
+// trigFiring reports whether the comparator fired on most recent captures.
+func (c *Controller) trigFiring() bool {
+	log, _ := c.eng.AcqLog(4)
+	n := 0
+	for _, e := range log {
+		if e.SawTrig {
+			n++
+		}
+	}
+	return n >= 2 && len(log) >= 2
+}
+
+// verifyTrigLevel checks the committed level fires; if not, it scans the DAC
+// range and centres the level on the empirically-firing band. Returns false
+// only when cancelled; a no-fire-anywhere signal keeps the computed code (a
+// quiet or non-repetitive input legitimately never fires — AUTO free-runs).
+func (c *Controller) verifyTrigLevel(stop chan struct{}, computed uint16) bool {
+	if !c.waitFrame(stop) || !c.waitFrame(stop) {
+		return false
+	}
+	if c.trigFiring() {
+		return true // the fit was right at this detent — nothing to do
+	}
+	const step = (engine.TrigCodeMax - engine.TrigCodeMin) / 10
+	var fires []uint16
+	for code := engine.TrigCodeMin + step/2; code <= engine.TrigCodeMax-step/2; code += step {
+		c.eng.SetTrigLevelCode(uint16(code))
+		if !c.waitFrame(stop) {
+			return false
+		}
+		if c.trigFiring() {
+			fires = append(fires, uint16(code))
+		}
+	}
+	pick := computed
+	if len(fires) > 0 {
+		pick = fires[len(fires)/2] // centre of the firing band
+	}
+	c.eng.SetTrigLevelCode(pick)
+	c.mu.Lock()
+	c.trigCode = pick
+	c.mu.Unlock()
+	return true
 }
 
 // waitFrame sleeps ~one publish interval so a frame at the new scale exists,

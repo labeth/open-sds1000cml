@@ -42,6 +42,9 @@ type Engine interface {
 	SetMaskMode(m int)
 	ClearMaskFails()
 	Snapshot() engine.Stats // authoritative state to resync knob shadows
+	// AcqLog exposes the per-capture instrumentation ring; autoset uses it to
+	// verify its chosen trigger level actually fires the comparator.
+	AcqLog(n int) ([]engine.AcqSample, float64)
 }
 
 // Analog is the off-bus V/div front end; nil → V/div knobs claim-and-ignore.

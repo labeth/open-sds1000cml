@@ -63,6 +63,7 @@ func (f *fuzzEng) takeIllegal() []string {
 func (f *fuzzEng) ReadMatrix() ([5]uint16, bool) { return idle(), true }
 func (f *fuzzEng) SetLEDs(uint16)                {}
 
+func (f *fuzzEng) AcqLog(n int) ([]engine.AcqSample, float64) { return nil, 0 }
 func (f *fuzzEng) Snapshot() engine.Stats {
 	f.mu.Lock()
 	defer f.mu.Unlock()
