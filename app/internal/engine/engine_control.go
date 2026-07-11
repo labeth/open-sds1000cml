@@ -133,6 +133,13 @@ func (e *Engine) SetChannelVdiv(ch int, vdivV, zero, cpv float64) {
 // the package-level TrigLevelVolts (which assumes the global fit).
 func (e *Engine) TrigVoltsAt(code uint16, srcCh int) float64 { return e.trigVolts(code, srcCh) }
 
+// SetChannelOffsetV records a channel's applied input-referred offset volts
+// (from the analog front end) so trigDispLevel places the discrimination level
+// on the same offset-shifted reference as the drained samples and the markers.
+func (e *Engine) SetChannelOffsetV(ch int, offV float64) {
+	e.trigOffV[ch&1].Store(math.Float64bits(offV))
+}
+
 // trigVolts converts a trigger DAC code to (un-probed) input volts at the given
 // source channel, using that channel's active per-detent cal.
 func (e *Engine) trigVolts(code uint16, srcCh int) float64 {
@@ -182,7 +189,15 @@ func (e *Engine) trigDispLevel(srcCh int) int {
 	if code == 0 {
 		return -1
 	}
-	dc := int(math.Round(128 + e.trigVolts(code, srcCh)*25/e.chVdivV(srcCh)))
+	// Include the source channel's offset: the drained samples are shifted by
+	// the offset DAC, and the HW comparator fires on that shifted signal (the
+	// firing code moves ~cpv codes per offset-volt, measured). So the level the
+	// samples cross is (trigVolts + offset) — omitting it puts the anchor (and
+	// the markers) at the wrong height, so the trigger never lines up with the
+	// wave. Probe cancels: both trigVolts and offset are BNC-referred, matching
+	// the raw ADC codes.
+	offV := math.Float64frombits(e.trigOffV[srcCh&1].Load())
+	dc := int(math.Round(128 + (e.trigVolts(code, srcCh)+offV)*25/e.chVdivV(srcCh)))
 	if dc < 0 {
 		dc = 0
 	}

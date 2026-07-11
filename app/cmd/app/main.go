@@ -428,8 +428,9 @@ func main() {
 		logf("WARNING: SPI front end unavailable (%v) — V/div control disabled", err)
 	} else {
 		fe = analog.New(dev, nil, calTab)
-		fe.OnOffset(e.SetOffsetDAC) // offset re-anchors to each detent's cal zero
-		fe.OnVdiv(e.SetChannelVdiv) // keep the trigger level→display-code map current
+		fe.OnOffset(e.SetOffsetDAC)       // offset re-anchors to each detent's cal zero
+		fe.OnOffsetV(e.SetChannelOffsetV) // trigger level rides the same offset reference as the samples
+		fe.OnVdiv(e.SetChannelVdiv)       // keep the trigger level→display-code map current
 		feIface = fe
 		logf("SPI front end up (seeded to boot detent, not emitted)")
 	}

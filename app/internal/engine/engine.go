@@ -271,6 +271,7 @@ type Engine struct {
 	//                              trigger-level → display-code mapping
 	trigZero    [2]atomic.Uint64 // per-channel active trig-cal Zero (float64 bits)
 	trigCPV     [2]atomic.Uint64 // per-channel active trig-cal CPV (float64 bits)
+	trigOffV    [2]atomic.Uint64 // per-channel applied offset volts (float64 bits)
 	trigPosFrac atomic.Uint64    // horizontal trigger position, fraction of screen
 
 	// zone trigger + mask testing (zonemask.go)

@@ -100,6 +100,7 @@ type FrontEnd struct {
 	emitted bool // seed-don't-emit: leave the inherited analog range alone
 
 	stage   func(ch int, code uint16)              // offset-DAC stager (engine.SetOffsetDAC)
+	onOffV  func(ch int, offV float64)             // applied-offset-volts hook (engine trigger reference)
 	onVdiv  func(ch int, vdivV, zero, cpv float64) // V/div change hook (engine trigger map + per-detent cal)
 	offReqV [2]float64                             // requested input-referred offset volts
 	offSet  [2]bool                                // whether the user has set an offset
@@ -216,6 +217,30 @@ func RemoveDC(sig []uint8) []uint8 {
 // SetOffset just records the requested volts.
 func (f *FrontEnd) OnOffset(fn func(ch int, code uint16)) { f.stage = fn }
 
+// OnOffsetV wires the applied-offset-volts hook (engine.SetChannelOffsetV) so
+// the trigger discrimination level rides the same offset reference as the
+// samples. Called immediately with both channels' current applied offset.
+func (f *FrontEnd) OnOffsetV(fn func(ch int, offV float64)) {
+	f.onOffV = fn
+	if fn != nil {
+		fn(0, f.appliedOffV(0))
+		fn(1, f.appliedOffV(1))
+	}
+}
+
+// appliedOffV is the input-referred offset volts currently applied to a channel
+// (0 if the user has never set one — the boot offset is left inherited and the
+// display treats it as 0, matching vertScales).
+func (f *FrontEnd) appliedOffV(ch int) float64 {
+	f.mu.Lock()
+	set, req := f.offSet[ch&1], f.offReqV[ch&1]
+	f.mu.Unlock()
+	if !set {
+		return 0
+	}
+	return f.OffsetVolts(ch, f.OffsetCode(ch, req))
+}
+
 // OnVdiv wires a V/div-change hook (engine.SetChannelVdiv) so the trigger
 // level maps to the right display code. Called immediately with the seeded
 // detents so the engine starts consistent.
@@ -243,6 +268,9 @@ func (f *FrontEnd) SetOffset(ch int, volts float64) uint16 {
 	f.mu.Unlock()
 	if f.stage != nil {
 		f.stage(ch, code)
+	}
+	if f.onOffV != nil {
+		f.onOffV(ch, f.OffsetVolts(ch, code)) // keep the trigger reference current
 	}
 	return code
 }
@@ -352,7 +380,11 @@ func (f *FrontEnd) SetVdiv(ch, idx int) error {
 		f.onVdiv(ch, Detents[idx].VdivV, z, c) // keep the engine's trigger map + per-detent cal current
 	}
 	if reSet && f.stage != nil {
-		f.stage(ch, f.OffsetCode(ch, reReq)) // OffsetCode uses the new detent zero
+		code := f.OffsetCode(ch, reReq) // OffsetCode uses the new detent zero
+		f.stage(ch, code)
+		if f.onOffV != nil {
+			f.onOffV(ch, f.OffsetVolts(ch, code)) // detent change moves the offset code → refresh
+		}
 	}
 	return nil
 }

@@ -121,7 +121,11 @@ function drawTrigMarkers(g) {
   // point the display now anchors on).
   if (st.trig_code) {
     const vpc = (frame && (st.trig_source === 1 ? frame.vpc2 : frame.vpc1)) || (1 / 25);
-    const y = yFor(128 + st.trig_volts / vpc, 1);
+    // Include the source channel's offset so the level line sits where the
+    // trigger actually is on the offset-shifted trace (matches the engine's
+    // centering anchor and the LCD marker).
+    const off = (frame && (st.trig_source === 1 ? frame.off2_v : frame.off1_v)) || 0;
+    const y = yFor(128 + (st.trig_volts + off) / vpc, 1);
     if (y >= 0 && y <= CH) {
       g.strokeStyle = TRIGCOL; g.globalAlpha = 0.7; g.setLineDash([6 * dpr, 5 * dpr]); g.lineWidth = dpr;
       g.beginPath(); g.moveTo(0, y + .5); g.lineTo(CW, y + .5); g.stroke(); g.setLineDash([]); g.globalAlpha = 1;
