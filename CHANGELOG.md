@@ -1,8 +1,52 @@
 # Changelog
 
-## Unreleased
+## v0.0.3 — 2026-07-11
 
 ### Fixed
+- **The "ACQ STUCK — POWER-CYCLE" state is gone, root-caused end to end.** A
+  native-fast half-record (valid ≈ 10,240/20,480 with a frozen dead tail) is
+  the FSM's normal **untriggered parked state** — the pre-trigger half fills
+  free-running and only a comparator edge runs the post-trigger half. The
+  "permanently stuck" scope was a trigger level parked outside the signal's
+  effective comparator band, **persisted in scope-settings.json** (hence
+  surviving restarts, band changes and even power-cycles); any real level write
+  cures it instantly. The engine now publishes untriggered captures as honest
+  free-run views of their live half (never dead-tail garbage, on any surface),
+  re-captures and DEGRADED/stuck telemetry gate on a fired trigger, and the
+  badge no longer claims a power-cycle is needed.
+- **Two decimated wait-gate bugs found by an on-hardware fuzz campaign**
+  (baseline 28 published half-records per 15 min of adversarial control churn →
+  0 after the fixes): the fill counter **resets when the comparator fires** on
+  decimated bands, so completion gates latched during the pre-trigger free-run
+  no longer satisfy a triggered record (the post-trigger record time is waited
+  from the edge); and a fired trigger now **extends the wait deadline** so an
+  edge landing late in the budget is not halted mid post-fill. Both are
+  band-scoped: on native-fast the counter reads 0 post-edge and the reset would
+  pin every frame at the full wait budget.
+- **AUTOSET verifies its trigger level closed-loop.** The volts→DAC fit is
+  exact only at 1–2 V/div; when the computed level does not fire, autoset now
+  scans the DAC range and centres the level on the band that empirically fires
+  (12/12 triggered from adversarial states; previously 0/12).
+
+### Changed
+- **Native frame rate restored: ~19–20 fps across the real-time bands (was
+  4–5 in the degraded state), CPU 51% unloaded (was ~96% at the start of the
+  campaign).** The untriggered-era workarounds — 40 ms maturation floor, 2 ms
+  fill-extra and halt-settle busy-spins, settle busy-wait, manual GC — are all
+  retired after hardware A/B showed each unnecessary or harmful once captures
+  gate on trigger evidence (native-fast waits are now uniform ~6 ms).
+- Acquisition instrumentation records the publish decision, NORM/AUTO and
+  timebase per capture, so a flagged half-record is attributable in the field.
+
+### Validated
+- Certification sweep on the real unit: all 31 control verbs, every on-LCD
+  view (X-Y/FFT/Bode/spectrogram/decode/super-res/measure/cursors/math/refs/
+  persistence), SCPI paths and burst endpoints — 69 steps clean; a 5-minute
+  all-features-armed soak at 100% CPU saturation — 21/21 clean; ~2,900
+  seeded operator-fuzz iterations + four focused acquisition hunts — zero
+  capture-integrity failures on the final build.
+
+### Fixed (pre-campaign, since v0.0.2)
 - **Vertical recalibration to the reverse-engineered vendor laws** (offset,
   gain/display scale, trigger) — from an RE pass on the vendor firmware (spec
   commit f6c3eb7) plus bench validation:
