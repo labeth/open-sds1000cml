@@ -173,6 +173,20 @@ func (e *Engine) waitCapture(norm bool) (anchored, sawTrig, filled, fillMoved bo
 			// published triggered-half (fill_at_halt ≈ 25–68, valid ≈ cols/2).
 			filled = false
 			trigPos = int(e.r(selTrigHi))<<8 | int(e.r(selTrigLo)&0xff)
+			// The budget bounds the UNTRIGGERED wait. Once the edge HAS fired
+			// the record completes within the post-trigger time — extend the
+			// deadline so an edge landing late in the budget is not halted
+			// mid post-fill by the unconditional expiry return (fuzz-caught
+			// residual: NORM 2 ms/div, arm_to_latch ≈ 42 ms, valid ≈ cols/2).
+			if !nativeFast {
+				postNs := time.Duration(denseNs)
+				if frac := e.trigPosFracVal(); frac > 0 && frac < 1 {
+					postNs = time.Duration(float64(denseNs) * (1 - frac) * 1.15)
+				}
+				if d2 := trigAt.Add(postNs + 2*time.Millisecond); d2.After(deadline) {
+					deadline = d2
+				}
+			}
 		}
 		completed := s&statDone != 0
 		if !norm && s&statValid != 0 {
