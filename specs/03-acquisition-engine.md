@@ -255,7 +255,20 @@ ptp; native-fast flat-hold fallback `nativeFlatFallback` = `60` frames; poll pac
 
 **Decimated bands** require `anchored && filled` — bit2 can assert on the edge before the
 post-trigger record has finished filling, so a bare bit2 break grabs a half-empty frame at
-large divisors.
+large divisors. Two hardware behaviours (fuzz-attributed on a real unit) make the naive
+latched-gate loop wrong:
+
+- **`0x46` RESETS when the comparator fires on a decimated band** (it counts post-trigger
+  samples). Gates latched during the pre-trigger free-run must not satisfy a triggered
+  record: clear the latched `filled` on the first trigger observation and require the
+  post-trigger record time to elapse FROM THE EDGE (`denseNs · (1 − trigPosFrac) · 1.15`)
+  before returning — otherwise a late edge halts with the post-trigger half unwritten
+  (`fill_at_halt` tens of counts, valid ≈ cols/2, published). On **native-fast** bands the
+  counter instead reads 0 after the edge and never re-asserts — the reset must NOT be
+  applied there or every frame pins at the full wait budget.
+- **A fired trigger extends the wait deadline** by that same post-trigger time: the budget
+  bounds the UNTRIGGERED wait, and an edge landing late in the budget must not be cut off
+  by the unconditional expiry return mid post-fill.
 
 **Native-fast bands gate on trigger evidence + a short maturation, not on bit2 alone.**
 Hardware behaviour (measured on a reference unit, ~900 kHz square input):
