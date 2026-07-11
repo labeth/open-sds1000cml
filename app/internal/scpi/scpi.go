@@ -39,6 +39,8 @@ type Analog interface {
 	OffsetVolts(ch int, code uint16) float64
 	SetProbe(ch int, x float64)
 	SetCoupling(ch, mode int) error
+	TrigVolts(code uint16, srcCh int) float64
+	TrigCode(volts float64, srcCh int) float64
 }
 
 // Display is the device display/panel surface (implemented by

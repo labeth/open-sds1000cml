@@ -90,6 +90,8 @@ type Analog interface {
 	ProbeFactor(ch int) float64
 	SetCoupling(ch, mode int) error
 	Coupling(ch int) int
+	TrigVolts(code uint16, srcCh int) float64
+	TrigCalActive(srcCh int) (zero, cpv float64)
 }
 
 // Panel is the front-panel injection surface (spec 08 §6): drive any button or

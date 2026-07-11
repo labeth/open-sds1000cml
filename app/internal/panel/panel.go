@@ -59,6 +59,9 @@ type Analog interface {
 	Coupling(ch int) int
 	SetProbe(ch int, x float64)
 	ProbeFactor(ch int) float64
+	TrigCode(volts float64, srcCh int) float64
+	TrigVolts(code uint16, srcCh int) float64
+	SetTrigCalDetent(ch, detent int, c analog.TrigCal)
 }
 
 // LED shadow-word bits — spec 02 §7.5 "LED shadow-word bit map". This is the

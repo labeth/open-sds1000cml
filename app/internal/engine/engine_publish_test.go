@@ -349,7 +349,7 @@ func TestLevelAnchoredCentering(t *testing.T) {
 	fb.wave = func(i int) (uint8, uint8) { v := uint8(i * 255 / decimDrain); return v, v }
 	fb.mu.Unlock()
 	e, _ := newTestEngine(t, fb)
-	e.SetChannelVdiv(0, 1) // 1 V/div: display code = 128 + volts·32
+	e.SetChannelVdiv(0, 1, 0, 0) // 1 V/div: display code = 128 + volts·32
 	e.bringUp()
 
 	// No level set (boot): anchors at the mid-level (~128) crossing near centre.

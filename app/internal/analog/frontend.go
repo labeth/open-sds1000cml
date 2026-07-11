@@ -99,12 +99,13 @@ type FrontEnd struct {
 	trigSrc int  // relay byte2 source nibble: 0=C1, 1=C2, 2=EXT
 	emitted bool // seed-don't-emit: leave the inherited analog range alone
 
-	stage   func(ch int, code uint16)   // offset-DAC stager (engine.SetOffsetDAC)
-	onVdiv  func(ch int, vdivV float64) // V/div change hook (engine trigger map)
-	offReqV [2]float64                  // requested input-referred offset volts
-	offSet  [2]bool                     // whether the user has set an offset
-	probe   [2]float64                  // per-channel probe attenuation (display multiplier)
-	cpl     [2]int                      // per-channel coupling (CplDC/CplAC/CplGND)
+	stage   func(ch int, code uint16)              // offset-DAC stager (engine.SetOffsetDAC)
+	onVdiv  func(ch int, vdivV, zero, cpv float64) // V/div change hook (engine trigger map + per-detent cal)
+	offReqV [2]float64                             // requested input-referred offset volts
+	offSet  [2]bool                                // whether the user has set an offset
+	probe   [2]float64                             // per-channel probe attenuation (display multiplier)
+	cpl     [2]int                                 // per-channel coupling (CplDC/CplAC/CplGND)
+	trigCal [2][numDetents]TrigCal                 // per-channel, per-detent trigger DAC cal
 }
 
 // New seeds both channels' shadows to the boot detent WITHOUT emitting —
@@ -218,14 +219,16 @@ func (f *FrontEnd) OnOffset(fn func(ch int, code uint16)) { f.stage = fn }
 // OnVdiv wires a V/div-change hook (engine.SetChannelVdiv) so the trigger
 // level maps to the right display code. Called immediately with the seeded
 // detents so the engine starts consistent.
-func (f *FrontEnd) OnVdiv(fn func(ch int, vdivV float64)) {
+func (f *FrontEnd) OnVdiv(fn func(ch int, vdivV, zero, cpv float64)) {
 	f.onVdiv = fn
 	if fn != nil {
 		f.mu.Lock()
 		i0, i1 := f.idx[0], f.idx[1]
 		f.mu.Unlock()
-		fn(0, Detents[i0].VdivV)
-		fn(1, Detents[i1].VdivV)
+		z0, c0 := f.TrigCalActive(0)
+		z1, c1 := f.TrigCalActive(1)
+		fn(0, Detents[i0].VdivV, z0, c0)
+		fn(1, Detents[i1].VdivV, z1, c1)
 	}
 }
 
@@ -345,7 +348,8 @@ func (f *FrontEnd) SetVdiv(ch, idx int) error {
 		return err
 	}
 	if f.onVdiv != nil {
-		f.onVdiv(ch, Detents[idx].VdivV) // keep the engine's trigger map current
+		z, c := f.TrigCalActive(ch)
+		f.onVdiv(ch, Detents[idx].VdivV, z, c) // keep the engine's trigger map + per-detent cal current
 	}
 	if reSet && f.stage != nil {
 		f.stage(ch, f.OffsetCode(ch, reReq)) // OffsetCode uses the new detent zero

@@ -112,13 +112,36 @@ func (e *Engine) SetSingle() {
 	e.mu.Unlock()
 }
 
-// SetChannelVdiv records a channel's V/div (from the analog front end) so the
-// trigger level maps to a display code for level-anchored centring.
-func (e *Engine) SetChannelVdiv(ch int, vdivV float64) {
+// SetChannelVdiv records a channel's V/div and its active per-detent trigger
+// cal (Zero, CPV — from the analog front end) so the trigger level maps to a
+// display code for level-anchored centring at the CORRECT per-detent slope.
+// zero/cpv ≤ 0 fall back to the global fit.
+func (e *Engine) SetChannelVdiv(ch int, vdivV, zero, cpv float64) {
 	if vdivV <= 0 {
 		vdivV = 1
 	}
 	e.chVdivBits[ch&1].Store(math.Float64bits(vdivV))
+	if cpv <= 0 {
+		zero, cpv = trigZeroDefault, trigCPVDefault
+	}
+	e.trigZero[ch&1].Store(math.Float64bits(zero))
+	e.trigCPV[ch&1].Store(math.Float64bits(cpv))
+}
+
+// TrigVoltsAt converts a trigger DAC code to (un-probed) input volts at the
+// given source channel's active per-detent cal — the per-detent replacement for
+// the package-level TrigLevelVolts (which assumes the global fit).
+func (e *Engine) TrigVoltsAt(code uint16, srcCh int) float64 { return e.trigVolts(code, srcCh) }
+
+// trigVolts converts a trigger DAC code to (un-probed) input volts at the given
+// source channel, using that channel's active per-detent cal.
+func (e *Engine) trigVolts(code uint16, srcCh int) float64 {
+	zero := math.Float64frombits(e.trigZero[srcCh&1].Load())
+	cpv := math.Float64frombits(e.trigCPV[srcCh&1].Load())
+	if cpv <= 0 {
+		zero, cpv = trigZeroDefault, trigCPVDefault
+	}
+	return (zero - float64(code)) / cpv
 }
 
 // SetTrigPosFrac sets where the trigger sits horizontally on screen: 0=left,
@@ -159,7 +182,7 @@ func (e *Engine) trigDispLevel(srcCh int) int {
 	if code == 0 {
 		return -1
 	}
-	dc := int(math.Round(128 + TrigLevelVolts(code)*25/e.chVdivV(srcCh)))
+	dc := int(math.Round(128 + e.trigVolts(code, srcCh)*25/e.chVdivV(srcCh)))
 	if dc < 0 {
 		dc = 0
 	}

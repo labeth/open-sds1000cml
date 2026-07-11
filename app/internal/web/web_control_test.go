@@ -264,3 +264,6 @@ func TestBodeEndpoint(t *testing.T) {
 		t.Errorf("empty bode n = %v, want 0", rep2["n"])
 	}
 }
+
+func (f *fakeAnalog) TrigVolts(code uint16, srcCh int) float64   { return (31434 - float64(code)) / 938 }
+func (f *fakeAnalog) TrigCalActive(srcCh int) (float64, float64) { return 31434, 938 }

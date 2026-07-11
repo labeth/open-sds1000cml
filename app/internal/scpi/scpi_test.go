@@ -489,3 +489,6 @@ func TestRollRescale(t *testing.T) {
 		t.Fatalf("roll rescale clamp: %d, want 255", out[len(head)])
 	}
 }
+
+func (f *fakeFE) TrigCode(volts float64, srcCh int) float64 { return 31434 - 938*volts }
+func (f *fakeFE) TrigVolts(code uint16, srcCh int) float64  { return (31434 - float64(code)) / 938 }

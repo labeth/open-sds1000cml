@@ -196,7 +196,15 @@ func (h *Handler) execGlobal(head, arg string) []byte {
 		if math.IsNaN(v) || math.IsInf(v, 0) {
 			return errTok(errOutOfRange)
 		}
-		code := int(math.Round(31434 - 938*v))
+		src := 0
+		if h.sc.Snapshot().TrigSource == 1 {
+			src = 1
+		}
+		codeF := 31434 - 938*v // per-detent cal when the front end is present
+		if h.fe != nil {
+			codeF = h.fe.TrigCode(v, src)
+		}
+		code := int(math.Round(codeF))
 		if code < engine.TrigCodeMin {
 			code = engine.TrigCodeMin
 		}
@@ -207,7 +215,11 @@ func (h *Handler) execGlobal(head, arg string) []byte {
 		// clamped, always quantized) DAC code the engine accepted maps back
 		// to — so TRLV? never echoes a level the comparator isn't at.
 		if eff := h.sc.SetTrigLevelCode(uint16(code)); eff != 0 {
-			h.trlvV = engine.TrigLevelVolts(eff)
+			if h.fe != nil {
+				h.trlvV = h.fe.TrigVolts(eff, src)
+			} else {
+				h.trlvV = engine.TrigLevelVolts(eff)
+			}
 		}
 		return nil
 	case "TRLV?":

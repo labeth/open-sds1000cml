@@ -126,7 +126,7 @@ function moveMarker(ev) {
 }
 
 function commitMarker() {
-  if (mk.kind === "level") send("triglevelcode", Math.round(31434 - 938 * st.trig_volts / trigProbe()));
+  if (mk.kind === "level") send("triglevelcode", trigCodeFor(st.trig_volts));
   else { const ch = mk.kind === "off1" ? 1 : 2; send("offset" + ch, (mk.kind === "off1" ? st.off1_v : st.off2_v) / probeOf(ch)); }
 }
 

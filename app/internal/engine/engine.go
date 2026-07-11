@@ -89,6 +89,11 @@ const (
 	// TrigCodeMin/Max clamp the UI trigger-level DAC range (spec 05 §1.2).
 	TrigCodeMin = 27000
 	TrigCodeMax = 35000
+
+	// Pre-calibration global trigger fit (spec 05 §1.2), used until the front
+	// end pushes a per-detent cal: code = trigZeroDefault − trigCPVDefault·V.
+	trigZeroDefault = 31434.0
+	trigCPVDefault  = 938.0
 )
 
 // Clock abstracts time for tests. Sleep must also advance Now in fakes.
@@ -264,7 +269,9 @@ type Engine struct {
 	streamMode  atomic.Bool      // stitched high-bandwidth streaming decode mode
 	chVdivBits  [2]atomic.Uint64 // per-channel V/div (float64 bits) for the
 	//                              trigger-level → display-code mapping
-	trigPosFrac atomic.Uint64 // horizontal trigger position, fraction of screen
+	trigZero    [2]atomic.Uint64 // per-channel active trig-cal Zero (float64 bits)
+	trigCPV     [2]atomic.Uint64 // per-channel active trig-cal CPV (float64 bits)
+	trigPosFrac atomic.Uint64    // horizontal trigger position, fraction of screen
 
 	// zone trigger + mask testing (zonemask.go)
 	zoneMode    atomic.Int32
@@ -444,7 +451,7 @@ func New(cfg Config) *Engine {
 	// trigger evidence (the historical 40 ms bound was measured in the
 	// untriggered parked state). 3 ms keeps margin over the proven 2 ms.
 	e.tuneMatureUs.Store(3000)
-	e.tuneTail3c.Store(0x00fd)  // reference-device native-fast acq-control pair
+	e.tuneTail3c.Store(0x00fd) // reference-device native-fast acq-control pair
 	e.tuneTail3d.Store(0x0007)
 	e.running.Store(true)
 	e.trigRising.Store(true)
@@ -452,6 +459,10 @@ func New(cfg Config) *Engine {
 	e.eresLen.Store(1)
 	e.chVdivBits[0].Store(math.Float64bits(1))
 	e.chVdivBits[1].Store(math.Float64bits(1))
+	e.trigZero[0].Store(math.Float64bits(trigZeroDefault))
+	e.trigZero[1].Store(math.Float64bits(trigZeroDefault))
+	e.trigCPV[0].Store(math.Float64bits(trigCPVDefault))
+	e.trigCPV[1].Store(math.Float64bits(trigCPVDefault))
 	e.trigPosFrac.Store(math.Float64bits(0.5)) // trigger at screen centre
 	e.memDepth.Store(decimDrain)               // default decimated depth (fps↔data)
 	e.framePeriodNs.Store(int64(cfg.FramePeriod))

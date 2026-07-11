@@ -11,6 +11,8 @@ type statusReply struct {
 	engine.Stats
 	Tdivs       []float64 `json:"tdivs"`
 	TrigVolts   float64   `json:"trig_volts"`
+	TrigZero    float64   `json:"trig_zero"` // active source-detent trig cal: code = zero − cpv·V (BNC volts)
+	TrigCpv     float64   `json:"trig_cpv"`  // DAC codes per input-volt at the source detent
 	TrigCodeMin uint16    `json:"trig_code_min"`
 	TrigCodeMax uint16    `json:"trig_code_max"`
 	Vdivs       []float64 `json:"vdivs,omitempty"`
@@ -79,9 +81,12 @@ func (s *Server) hStatus(w http.ResponseWriter, r *http.Request) {
 		rep.Probe2 = s.fe.ProbeFactor(1)
 		rep.Cpl1 = s.fe.Coupling(0)
 		rep.Cpl2 = s.fe.Coupling(1)
-		// The trigger level is input-referred to its source channel, so scale
-		// the volts readout by that channel's probe (the code is unchanged).
-		rep.TrigVolts *= s.fe.ProbeFactor(st.TrigSource)
+		// The trigger level is input-referred to its source channel through
+		// that channel's per-detent cal (slope + zero) AND its probe. Also
+		// publish the active {zero, cpv} so the browser converts drag→code with
+		// the same per-detent slope instead of the global 938 fit.
+		rep.TrigVolts = s.fe.TrigVolts(st.TrigCode, st.TrigSource)
+		rep.TrigZero, rep.TrigCpv = s.fe.TrigCalActive(st.TrigSource)
 	}
 	offVolts := analog.OffsetVolts
 	if s.fe != nil {

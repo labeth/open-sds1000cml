@@ -23,6 +23,12 @@ let frozen = false;
 // scope input), so divide tip volts by the probe factor before sending.
 const probeOf = (ch) => (st && (ch === 2 ? st.probe2 : st.probe1)) || 1;
 const trigProbe = () => probeOf(st && st.trig_source === 1 ? 2 : 1);
+// Per-detent trigger cal pushed by the server (code = zero − cpv·V, BNC volts).
+// Falls back to the pre-cal global fit so an old server still works.
+const trigCodeFor = (tipVolts) => {
+  const zero = (st && st.trig_zero) || 31434, cpv = (st && st.trig_cpv) || 938;
+  return Math.round(zero - cpv * tipVolts / trigProbe());
+};
 const view = { mode: "YT", persist: false, cursors: false, c1: true, c2: true,
                win: { a: 0, b: 1 },     // visible column range as fractions of 0..cols-1
                vwin: { a: 0, b: 1 },    // visible VOLTAGE range as fractions of full scale (0=bottom)

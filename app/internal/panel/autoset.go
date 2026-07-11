@@ -286,12 +286,15 @@ func (c *Controller) runAutoset(stop chan struct{}) {
 	if !has(m[src]) {
 		return
 	}
-	p := 1.0
-	if c.fe != nil {
-		p = c.fe.ProbeFactor(src)
-	}
 	mid := (m[src].Vmax + m[src].Vmin) / 2
-	code := 31434 - int(938*mid/p+0.5) // inverse of engine.TrigLevelVolts
+	// Per-detent cal maps tip-volts→code correctly at this V/div; fall back to
+	// the global fit if no front end. (mid is tip-referred; TrigCode divides by
+	// the source probe internally.)
+	codeF := 31434 - 938*mid
+	if c.fe != nil {
+		codeF = c.fe.TrigCode(mid, src)
+	}
+	code := int(codeF + 0.5)
 	if code < engine.TrigCodeMin {
 		code = engine.TrigCodeMin
 	}

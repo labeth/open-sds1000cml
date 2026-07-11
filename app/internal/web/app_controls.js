@@ -38,7 +38,7 @@ for (const [rng, lbl, ctl, ch] of [["off1", "off1v", "offset1", 1], ["off2", "of
   $(rng).onchange = () => { offDragging = false; send(ctl, +$(rng).value / probeOf(ch)); };
 }
 $("lvl").oninput = () => { lvlDragging = true; $("lvlv").textContent = (+$("lvl").value).toFixed(2) + " V"; };
-$("lvl").onchange = () => { lvlDragging = false; send("triglevelcode", Math.round(31434 - 938 * (+$("lvl").value) / trigProbe())); };
+$("lvl").onchange = () => { lvlDragging = false; send("triglevelcode", trigCodeFor(+$("lvl").value)); };
 
 $("ttype").onchange = () => { send("trigtype", +$("ttype").value); if (st) st.trig_type = +$("ttype").value; updateQualRow(); };
 async function sendParams(control, extra) {

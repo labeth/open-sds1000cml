@@ -84,7 +84,7 @@ func buildHUD(e *engine.Engine, fe *analog.FrontEnd) lcd.HUD {
 		// Include the source channel's offset so the level marker sits in the
 		// same display frame as the (offset-shifted) trace and ground marker —
 		// otherwise centring a signal with DC pushes the marker off-screen.
-		hud.TrigLvlDiv = (engine.TrigLevelVolts(st.TrigCode) + srcOff) / srcVdiv
+		hud.TrigLvlDiv = (e.TrigVoltsAt(st.TrigCode, st.TrigSource) + srcOff) / srcVdiv
 	}
 	if pc := uiCtrl.Load(); pc != nil { // menu overlay + per-channel display
 		mv := pc.MenuView()

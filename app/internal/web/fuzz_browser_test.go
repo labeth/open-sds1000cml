@@ -354,3 +354,6 @@ func TestFuzzBrowserSynthetic(t *testing.T) {
 		t.Fatalf("fuzz driver failed without recording findings: %v", err)
 	}
 }
+
+func (a *fuzzAnalog) TrigVolts(code uint16, srcCh int) float64   { return (31434 - float64(code)) / 938 }
+func (a *fuzzAnalog) TrigCalActive(srcCh int) (float64, float64) { return 31434, 938 }
