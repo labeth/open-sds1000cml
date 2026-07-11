@@ -23,19 +23,52 @@ type TrigCal struct {
 	CPV  float64 `json:"cpv"`
 }
 
-// DefaultTrigCal is the pre-calibration global fit (spec 05 §1.2): exact only
-// near 1–2 V/div. Every detent uses it until a per-detent cal is installed, so
-// an uncalibrated build behaves exactly as before.
-var DefaultTrigCal = TrigCal{Zero: 31434, CPV: 938}
+// globalFit is the historical single-detent fit (spec 05 §1.2): code = 31434 −
+// 938·V. Exact only near 1–2 V/div. Kept as the ultimate fallback.
+var globalFit = TrigCal{Zero: 31434, CPV: 938}
 
-// calFor returns the source channel's active cal (its current detent), falling
-// back to the global fit for any detent with no stored cal. Caller holds f.mu.
+// defaultTrigCal is the NOMINAL per-detent trigger cal. It is EMPTY (every
+// detent falls back to globalFit) until a reliable characterization exists, so
+// the shipped build behaves exactly as before. The infrastructure (SetTrigCal-
+// Detent, the per-detent routing) is ready to carry accurate values.
+//
+// Hardware characterization on the reference unit (see docs/trigcal-notes.md)
+// established the SHAPE of the correct cal but not per-unit-shippable values:
+//   - ×25 tier (0.5–10 V/div): codes-per-division is ~constant (~1056), i.e.
+//     code = zero − (1056/AnalogVdiv)·V, confirming the slope varies as 1/V-div
+//     within a tier. The current global fit's constant 938 codes/V is therefore
+//     ~2–3× wrong at 5 V/div (bench: >1.8 V level error) and off at every
+//     detent except ~1 V/div.
+//   - Two blockers to shipping values: (a) the mapping is ALSO per-CHANNEL (the
+//     same code fired at 1.74 V on C1 but 0.20 V on C2 — different analog
+//     gain/DC per channel), so a single per-detent table is insufficient; and
+//     (b) the ×1 sensitive tier (≤200 mV/div) could not be measured (its firing
+//     band exceeds the DAC code range even for a ~0.9 V input). A correct cal
+//     needs a per-channel routine driven by a controlled, amplitude-appropriate
+//     cal signal (or the calibrated offset DAC as the reference), stored per
+//     unit — not a hardcoded nominal table.
+var defaultTrigCal [numDetents]TrigCal
+
+// calFor returns the source channel's active cal for its current detent: a
+// per-unit override if installed, else the nominal per-detent default, else the
+// global fit. Caller holds f.mu.
 func (f *FrontEnd) calFor(srcCh int) TrigCal {
-	c := f.trigCal[srcCh&1][f.idx[srcCh&1]]
-	if c.CPV == 0 { // unset → the pre-cal global fit
-		return DefaultTrigCal
+	i := f.idx[srcCh&1]
+	if c := f.trigCal[srcCh&1][i]; c.CPV != 0 {
+		return c
 	}
-	return c
+	if c := defaultTrigCal[i]; c.CPV != 0 {
+		return c
+	}
+	return globalFit
+}
+
+// DefaultTrigCal reports the nominal cal for a detent (globalFit if unset).
+func DefaultTrigCal(detent int) TrigCal {
+	if detent >= 0 && detent < numDetents && defaultTrigCal[detent].CPV != 0 {
+		return defaultTrigCal[detent]
+	}
+	return globalFit
 }
 
 // TrigVolts converts a trigger DAC code to probe-tip input volts at the source
