@@ -125,12 +125,58 @@ func midLevel(sig []uint8) int {
 	return (lo + hi) / 2
 }
 
-// centerCross finds the qualifying mid-level crossing nearest the frame
-// centre (phase-stable) and returns its sub-sample position, or -1 if none.
-// rising: sig[c-1] < lvl && sig[c] >= lvl; falling mirrored.
+// centerCross finds the qualifying level crossing nearest the frame centre
+// (phase-stable) and returns its sub-sample position, or -1 if none. rising:
+// sig[c-1] < lvl && sig[c] >= lvl; falling mirrored.
+//
+// It only accepts a CONFIRMED crossing — one where the trace clearly sits on
+// the low side just before and the high side just after (adaptive hysteresis,
+// scaled to the signal). This rejects noise wiggles and near-tangent crossings
+// where the level grazes a peak/trough: those produce clustered rising+falling
+// crossings that make the anchor flip frame-to-frame (the display "jitter").
+// If no crossing is confirmed (e.g. the level really does sit on a turning
+// point), it falls back to the nearest bare crossing so behaviour degrades
+// gracefully rather than losing lock.
 func centerCross(sig []uint8, lvl int, rising bool) float64 {
 	n := len(sig)
+	if n < 2 {
+		return -1
+	}
+	lo, hi := int(sig[0]), int(sig[0])
+	for _, v := range sig {
+		c := int(v)
+		if c < lo {
+			lo = c
+		}
+		if c > hi {
+			hi = c
+		}
+	}
+	hyst := (hi - lo) / 12 // ~8% of the signal span; scales with amplitude
+	if hyst < 2 {
+		hyst = 2 // never below ADC noise
+	}
+	const w = 5 // confirmation window (samples each side)
+	confirmed := func(c int) bool {
+		lowSide, highSide := false, false
+		for i := c - 1; i >= 0 && i >= c-w; i-- {
+			s := int(sig[i])
+			if (rising && s <= lvl-hyst) || (!rising && s >= lvl+hyst) {
+				lowSide = true
+				break
+			}
+		}
+		for j := c; j < n && j < c+w; j++ {
+			s := int(sig[j])
+			if (rising && s >= lvl+hyst) || (!rising && s <= lvl-hyst) {
+				highSide = true
+				break
+			}
+		}
+		return lowSide && highSide
+	}
 	best, bestDist := -1, n+1
+	bestAny, bestAnyDist := -1, n+1
 	for c := 1; c < n; c++ {
 		a, b := int(sig[c-1]), int(sig[c])
 		var q bool
@@ -146,9 +192,15 @@ func centerCross(sig []uint8, lvl int, rising bool) float64 {
 		if d < 0 {
 			d = -d
 		}
-		if d < bestDist {
+		if d < bestAnyDist {
+			bestAny, bestAnyDist = c, d
+		}
+		if d < bestDist && confirmed(c) {
 			best, bestDist = c, d
 		}
+	}
+	if best < 0 {
+		best = bestAny // no confirmed crossing: fall back to nearest bare crossing
 	}
 	if best < 0 {
 		return -1
@@ -157,8 +209,10 @@ func centerCross(sig []uint8, lvl int, rising bool) float64 {
 	frac := 0.0
 	if b != a {
 		frac = float64(lvl-a) / float64(b-a)
-		if frac < 0 || frac >= 1 {
+		if frac < 0 {
 			frac = 0
+		} else if frac > 1 {
+			frac = 1 // clamp (old code snapped >=1 to 0, a ~1-sample jump)
 		}
 	}
 	return float64(best-1) + frac
