@@ -272,6 +272,7 @@ type Engine struct {
 	trigZero    [2]atomic.Uint64 // per-channel active trig-cal Zero (float64 bits)
 	trigCPV     [2]atomic.Uint64 // per-channel active trig-cal CPV (float64 bits)
 	trigOffV    [2]atomic.Uint64 // per-channel applied offset volts (float64 bits)
+	hintReset   atomic.Bool      // clear the phase-continuity hint (config changed)
 	trigPosFrac atomic.Uint64    // horizontal trigger position, fraction of screen
 
 	// zone trigger + mask testing (zonemask.go)
@@ -334,6 +335,7 @@ type Engine struct {
 	seq           uint64
 	flatHeld      int
 	lastPubAt     time.Time // engine goroutine only: instant of the last oneFrame publish
+	lastEdgeX     float64   // engine goroutine only: previous frame's edge (phase-continuity hint); <0 = none
 	degradedRun   int       // engine goroutine only: consecutive dead-tail captures
 	lastFirstHalf bool      // the last frame's FIRST drain was a half record (pre re-capture)
 	deadRuns      int
@@ -464,6 +466,7 @@ func New(cfg Config) *Engine {
 	e.trigZero[1].Store(math.Float64bits(trigZeroDefault))
 	e.trigCPV[0].Store(math.Float64bits(trigCPVDefault))
 	e.trigCPV[1].Store(math.Float64bits(trigCPVDefault))
+	e.lastEdgeX = -1
 	e.trigPosFrac.Store(math.Float64bits(0.5)) // trigger at screen centre
 	e.memDepth.Store(decimDrain)               // default decimated depth (fps↔data)
 	e.framePeriodNs.Store(int64(cfg.FramePeriod))

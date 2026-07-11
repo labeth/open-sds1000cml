@@ -143,6 +143,9 @@ func (e *Engine) bumpFrames() {
 // oneFrame runs one arm→wait→halt→drain→re-arm→publish iteration.
 func (e *Engine) oneFrame(norm bool) {
 	start := e.clk.Now()
+	if e.hintReset.Swap(false) {
+		e.lastEdgeX = -1 // config changed → drop the stale phase hint
+	}
 	nativeFast := e.band.NativeFast()
 	if nativeFast {
 		// Keep every competing CPU/memory burst out of the complete fast-band

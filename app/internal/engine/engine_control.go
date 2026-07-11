@@ -212,6 +212,7 @@ func (e *Engine) SetNorm(on bool) {
 	e.norm = on
 	e.stats.Norm = on
 	e.mu.Unlock()
+	e.hintReset.Store(true)
 }
 
 // SetTdiv stages a timebase change; it is applied at the next frame boundary
@@ -225,6 +226,7 @@ func (e *Engine) SetTdiv(tdivS float64) (Band, bool) {
 	e.mu.Lock()
 	e.pendBand, e.pendSet = b, true
 	e.mu.Unlock()
+	e.hintReset.Store(true)
 	return b, true
 }
 
@@ -348,11 +350,15 @@ func (e *Engine) SetTrigLevelCode(code uint16) uint16 {
 		code = TrigCodeMax
 	}
 	e.mu.Lock()
-	if !e.trigInit || code != e.trigCode {
+	changed := !e.trigInit || code != e.trigCode
+	if changed {
 		e.trigCode, e.trigDirty, e.trigInit = code, true, true
 		e.stats.TrigCode = code
 	}
 	e.mu.Unlock()
+	if changed {
+		e.hintReset.Store(true)
+	}
 	return code
 }
 
@@ -379,6 +385,7 @@ func (e *Engine) SetTrigSlope(rising bool) {
 	e.mu.Lock()
 	e.stats.TrigRising = rising
 	e.mu.Unlock()
+	e.hintReset.Store(true)
 }
 
 // SetETS stages the equivalent-time opt-in (spec 04 §3: never auto-routed;
@@ -399,4 +406,5 @@ func (e *Engine) SetTrigSource(ch int) {
 	e.mu.Lock()
 	e.stats.TrigSource = ch
 	e.mu.Unlock()
+	e.hintReset.Store(true)
 }

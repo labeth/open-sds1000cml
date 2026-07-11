@@ -134,49 +134,61 @@ func midLevel(sig []uint8) int {
 // scaled to the signal). This rejects noise wiggles and near-tangent crossings
 // where the level grazes a peak/trough: those produce clustered rising+falling
 // crossings that make the anchor flip frame-to-frame (the display "jitter").
-// If no crossing is confirmed (e.g. the level really does sit on a turning
-// point), it falls back to the nearest bare crossing so behaviour degrades
-// gracefully rather than losing lock.
+// A crossing must be CONFIRMED to anchor. If none is (the level grazes a peak,
+// or the only "crossings" near the centre are single-sample noise blips in an
+// otherwise falling region), it returns -1 = no lock, so NORM holds the last
+// good frame and AUTO free-runs — far better than anchoring a noise blip, which
+// centres a falling stretch under a rising trigger and makes the display flip.
+//
+// hint (a previous frame's edge index, or <0 for none) provides PHASE
+// CONTINUITY: among confirmed crossings it prefers the one nearest the hint
+// rather than nearest the record centre, so the anchor sticks to the same
+// physical trigger event across frames instead of hopping to an adjacent
+// same-slope crossing when the capture phase drifts — the residual display
+// jitter on a multi-period record.
 func centerCross(sig []uint8, lvl int, rising bool) float64 {
+	return centerCrossHint(sig, lvl, rising, -1)
+}
+
+func centerCrossHint(sig []uint8, lvl int, rising bool, hint float64) float64 {
 	n := len(sig)
 	if n < 2 {
 		return -1
 	}
-	lo, hi := int(sig[0]), int(sig[0])
-	for _, v := range sig {
-		c := int(v)
-		if c < lo {
-			lo = c
-		}
-		if c > hi {
-			hi = c
-		}
+	ref := n / 2
+	if hint >= 0 && hint < float64(n) {
+		ref = int(hint)
 	}
-	hyst := (hi - lo) / 12 // ~8% of the signal span; scales with amplitude
-	if hyst < 2 {
-		hyst = 2 // never below ADC noise
-	}
-	const w = 5 // confirmation window (samples each side)
+	// A CONFIRMED crossing is one the trace genuinely transits and stays across:
+	// a majority of the window before sits on the low side and a majority after
+	// on the high side (for rising). This accepts both steep edges and gentle
+	// ramps, but rejects single-sample noise blips (which immediately cross
+	// back, so the "after" side is NOT mostly high). The window scales with the
+	// record but is bounded so it stays a small fraction of a period.
+	const w = 8 // local confirmation window (samples each side)
 	confirmed := func(c int) bool {
-		lowSide, highSide := false, false
+		beforeOK, nb := 0, 0
 		for i := c - 1; i >= 0 && i >= c-w; i-- {
+			nb++
 			s := int(sig[i])
-			if (rising && s <= lvl-hyst) || (!rising && s >= lvl+hyst) {
-				lowSide = true
-				break
+			if (rising && s < lvl) || (!rising && s > lvl) {
+				beforeOK++ // was on the near side
 			}
 		}
+		afterOK, na := 0, 0
 		for j := c; j < n && j < c+w; j++ {
+			na++
 			s := int(sig[j])
-			if (rising && s >= lvl+hyst) || (!rising && s <= lvl-hyst) {
-				highSide = true
-				break
+			if (rising && s >= lvl) || (!rising && s <= lvl) {
+				afterOK++ // stays on the far side
 			}
 		}
-		return lowSide && highSide
+		// Genuine crossing: mostly near side before, mostly far side after. A
+		// single-sample noise blip crosses back immediately, so the "after"
+		// majority fails. 60% tolerates ADC noise on a real edge.
+		return nb > 0 && na > 0 && beforeOK*5 >= nb*3 && afterOK*5 >= na*3
 	}
 	best, bestDist := -1, n+1
-	bestAny, bestAnyDist := -1, n+1
 	for c := 1; c < n; c++ {
 		a, b := int(sig[c-1]), int(sig[c])
 		var q bool
@@ -185,25 +197,19 @@ func centerCross(sig []uint8, lvl int, rising bool) float64 {
 		} else {
 			q = a > lvl && b <= lvl
 		}
-		if !q {
+		if !q || !confirmed(c) {
 			continue
 		}
-		d := c - n/2
+		d := c - ref
 		if d < 0 {
 			d = -d
 		}
-		if d < bestAnyDist {
-			bestAny, bestAnyDist = c, d
-		}
-		if d < bestDist && confirmed(c) {
+		if d < bestDist {
 			best, bestDist = c, d
 		}
 	}
 	if best < 0 {
-		best = bestAny // no confirmed crossing: fall back to nearest bare crossing
-	}
-	if best < 0 {
-		return -1
+		return -1 // no confirmed crossing → no lock (hold/free-run), never anchor noise
 	}
 	a, b := int(sig[best-1]), int(sig[best])
 	frac := 0.0
