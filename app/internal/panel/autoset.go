@@ -290,7 +290,7 @@ func (c *Controller) runAutoset(stop chan struct{}) {
 	// Per-detent cal maps tip-volts→code correctly at this V/div; fall back to
 	// the global fit if no front end. (mid is tip-referred; TrigCode divides by
 	// the source probe internally.)
-	codeF := 31434 - 938*mid
+	codeF := 31437 - 911*mid
 	if c.fe != nil {
 		codeF = c.fe.TrigCode(mid, src)
 	}

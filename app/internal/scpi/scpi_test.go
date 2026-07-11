@@ -324,10 +324,10 @@ func TestSetNeverLies(t *testing.T) {
 		{"C1:CPL D50", "Data out of range\n", "C1:CPL?", "C1:CPL D1M\n"},
 		{"C1:CPL GARBAGE", "Command header error\n", "C1:CPL?", "C1:CPL D1M\n"},
 		// TRLV: the query reflects the CLAMPED effective level, never a
-		// request past the DAC window (±(31434−27000)/938 … see spec 05 §1.2).
-		{"TRLV 100", "", "TRLV?", "TRLV 4.73E+00V\n"},
-		{"TRLV -100", "", "TRLV?", "TRLV -3.80E+00V\n"},
-		{"TRLV 5E-4", "", "TRLV?", "TRLV 0.00E+00V\n"}, // quantized to code 31434 = 0 V
+		// request past the DAC window (±(31437−27000)/911 … measured global fit).
+		{"TRLV 100", "", "TRLV?", "TRLV 4.87E+00V\n"},
+		{"TRLV -100", "", "TRLV?", "TRLV -3.91E+00V\n"},
+		{"TRLV 5E-4", "", "TRLV?", "TRLV 0.00E+00V\n"}, // quantized to code 31437 = 0 V
 		// Display commands: XYDS/PESU/MENU wire to the REAL panel state
 		// (fakeDisplay here); GRDS/INTS/BUZZ are fixed truths (BWL rule).
 		{"XYDS ON", "", "XYDS?", "XYDS ON\n"},
@@ -353,7 +353,7 @@ func TestSetNeverLies(t *testing.T) {
 		{"TDIV 1E-3", "", "TDIV?", "TDIV 1.00E-03s\n"},
 		{"TRDL 2E-6", "", "TRDL?", "TRDL 2.00E-06s\n"},
 		{"TRMD NORM", "", "TRMD?", "TRMD NORM\n"},
-		{"TRLV 0.5", "", "TRLV?", "TRLV 5.00E-01V\n"},
+		{"TRLV 0.5", "", "TRLV?", "TRLV 4.99E-01V\n"},
 		{"TRSL NEG", "", "TRSL?", "TRSL NEG\n"},
 		{"TRSE EDGE,SR,C2,HT,OFF", "", "TRSE?", "TRSE EDGE,SR,C2,HT,OFF\n"},
 		{"ACQW AVERAGE", "", "ACQW?", "ACQW AVERAGE\n"},
@@ -490,5 +490,5 @@ func TestRollRescale(t *testing.T) {
 	}
 }
 
-func (f *fakeFE) TrigCode(volts float64, srcCh int) float64 { return 31434 - 938*volts }
-func (f *fakeFE) TrigVolts(code uint16, srcCh int) float64  { return (31434 - float64(code)) / 938 }
+func (f *fakeFE) TrigCode(volts float64, srcCh int) float64 { return 31437 - 911*volts }
+func (f *fakeFE) TrigVolts(code uint16, srcCh int) float64  { return (31437 - float64(code)) / 911 }

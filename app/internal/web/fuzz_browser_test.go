@@ -355,5 +355,5 @@ func TestFuzzBrowserSynthetic(t *testing.T) {
 	}
 }
 
-func (a *fuzzAnalog) TrigVolts(code uint16, srcCh int) float64   { return (31434 - float64(code)) / 938 }
-func (a *fuzzAnalog) TrigCalActive(srcCh int) (float64, float64) { return 31434, 938 }
+func (a *fuzzAnalog) TrigVolts(code uint16, srcCh int) float64   { return (31437 - float64(code)) / 911 }
+func (a *fuzzAnalog) TrigCalActive(srcCh int) (float64, float64) { return 31437, 911 }

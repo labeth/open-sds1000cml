@@ -265,5 +265,7 @@ func TestBodeEndpoint(t *testing.T) {
 	}
 }
 
-func (f *fakeAnalog) TrigVolts(code uint16, srcCh int) float64   { return (31434 - float64(code)) / 938 }
-func (f *fakeAnalog) TrigCalActive(srcCh int) (float64, float64) { return 31434, 938 }
+func (f *fakeAnalog) TrigVolts(code uint16, srcCh int) float64 {
+	return (31437 - float64(code)) / 911 * f.ProbeFactor(srcCh) // fold probe like the real front end
+}
+func (f *fakeAnalog) TrigCalActive(srcCh int) (float64, float64) { return 31437, 911 }

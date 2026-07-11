@@ -160,7 +160,7 @@ func TestSCPIFuzzSetQueryInvariant(t *testing.T) {
 		},
 		func() round { // TRLV: the query reflects the CLAMPED+quantized effective level
 			v := rng.Float64()*20 - 10 // spans well past the DAC window to exercise the clamp
-			code := int(math.Round(31434 - 938*v))
+			code := int(math.Round(31437 - 911*v))
 			if code < engine.TrigCodeMin {
 				code = engine.TrigCodeMin
 			}

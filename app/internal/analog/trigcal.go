@@ -1,15 +1,22 @@
 package analog
 
-// Per-detent trigger-level calibration.
+// Trigger-level calibration.
 //
-// The trigger comparator's threshold DAC maps to an input-referred voltage that
-// depends on the front-end gain in effect — so a single global fit
-// (code = 31434 − 938·V) is only correct near the detent it was pinned to
-// (1–2 V/div). Bench characterization (sweep the DAC against a known signal,
-// record the firing-band edges vs the calibrated Vmax/Vmin) shows the slope
-// (DAC codes per input-volt) varies strongly across the V/div ladder while the
-// 0 V code is roughly constant. This stores a per-(channel, detent)
-// {Zero, CPV} so every code↔volts conversion is correct at every detent.
+// The trigger comparator threshold is referred to the DISPLAYED signal: the
+// threshold DAC is compared to the post-gain (post-PGA) trace, so a fixed DAC
+// code corresponds to a fixed number of DISPLAY volts regardless of the V/div
+// detent. Clean bench characterization (FPGA DAC driving a triangle whose
+// amplitude is shaped per detent so it sits on-screen and non-railed; the
+// firing-band CENTRE regressed against the calibrated Vmean, which is immune to
+// edge-rounding bias) proved this directly: across 0.05–1.0 V/div (a 20× span,
+// both the ×1 and ×25 attenuator tiers) the codes-per-DISPLAY-volt slope is
+// CONSTANT (911 ± ~10) and the 0 V code is constant (31437 ± ~15). See
+// docs/trigcal-notes.md. So the cal is a single GLOBAL {Zero, CPV}, NOT a
+// per-detent table — the earlier "codes/div ~1056, slope ∝ 1/AnalogVdiv" theory
+// was a measurement artifact (rounded sine peaks + offset-DAC contamination in
+// the old offset-slope method). The per-(channel, detent) storage below is kept
+// as future-proof override infrastructure but is unused: every detent resolves
+// to globalFit.
 
 // numDetents is the V/div ladder length (len(Detents)); a fixed array keeps the
 // cal cheap to copy and index.
@@ -23,30 +30,20 @@ type TrigCal struct {
 	CPV  float64 `json:"cpv"`
 }
 
-// globalFit is the historical single-detent fit (spec 05 §1.2): code = 31434 −
-// 938·V. Exact only near 1–2 V/div. Kept as the ultimate fallback.
-var globalFit = TrigCal{Zero: 31434, CPV: 938}
+// globalFit is the measured global trigger cal: code = 31437 − 911·V (BNC volts,
+// probe not folded). Established by clean FPGA-DAC characterization on the
+// reference unit (docs/trigcal-notes.md): a per-detent regression of firing-band
+// centre vs Vmean across 0.05–1.0 V/div gives CPV = 911.3 codes/display-volt and
+// Zero = 31437, constant across the whole ladder. This cuts the worst-case
+// WYSIWYG level error from 0.041 V (old 938/31434 fit) to 0.012 V. Because the
+// slope is genuinely constant, this single value is correct at every detent.
+var globalFit = TrigCal{Zero: 31437, CPV: 911}
 
-// defaultTrigCal is the NOMINAL per-detent trigger cal. It is EMPTY (every
-// detent falls back to globalFit) until a reliable characterization exists, so
-// the shipped build behaves exactly as before. The infrastructure (SetTrigCal-
-// Detent, the per-detent routing) is ready to carry accurate values.
-//
-// Hardware characterization on the reference unit (see docs/trigcal-notes.md)
-// established the SHAPE of the correct cal but not per-unit-shippable values:
-//   - ×25 tier (0.5–10 V/div): codes-per-division is ~constant (~1056), i.e.
-//     code = zero − (1056/AnalogVdiv)·V, confirming the slope varies as 1/V-div
-//     within a tier. The current global fit's constant 938 codes/V is therefore
-//     ~2–3× wrong at 5 V/div (bench: >1.8 V level error) and off at every
-//     detent except ~1 V/div.
-//   - Two blockers to shipping values: (a) the mapping is ALSO per-CHANNEL (the
-//     same code fired at 1.74 V on C1 but 0.20 V on C2 — different analog
-//     gain/DC per channel), so a single per-detent table is insufficient; and
-//     (b) the ×1 sensitive tier (≤200 mV/div) could not be measured (its firing
-//     band exceeds the DAC code range even for a ~0.9 V input). A correct cal
-//     needs a per-channel routine driven by a controlled, amplitude-appropriate
-//     cal signal (or the calibrated offset DAC as the reference), stored per
-//     unit — not a hardcoded nominal table.
+// defaultTrigCal is the per-detent override table. It is EMPTY: the measured cal
+// is a single global constant (globalFit), so no per-detent values are needed.
+// Kept as infrastructure — SetTrigCalDetent can install per-unit/per-channel
+// overrides if a future unit is found to deviate — but every detent resolves to
+// globalFit today.
 var defaultTrigCal [numDetents]TrigCal
 
 // calFor returns the source channel's active cal for its current detent: a

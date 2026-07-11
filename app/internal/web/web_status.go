@@ -84,7 +84,7 @@ func (s *Server) hStatus(w http.ResponseWriter, r *http.Request) {
 		// The trigger level is input-referred to its source channel through
 		// that channel's per-detent cal (slope + zero) AND its probe. Also
 		// publish the active {zero, cpv} so the browser converts drag→code with
-		// the same per-detent slope instead of the global 938 fit.
+		// the same slope the server uses (measured global fit, 911 codes/V).
 		rep.TrigVolts = s.fe.TrigVolts(st.TrigCode, st.TrigSource)
 		rep.TrigZero, rep.TrigCpv = s.fe.TrigCalActive(st.TrigSource)
 	}

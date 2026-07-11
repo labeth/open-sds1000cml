@@ -1,58 +1,68 @@
-# Per-detent trigger-level calibration — findings and status
+# Trigger-level calibration — findings and status
 
-## Problem
-The trigger-level DAC maps to an input-referred voltage that depends on the
-front-end gain in effect, so the historical single global fit
-`code = 31434 − 938·V` is only correct near 1 V/div. At other detents a
-manually-set trigger level lands at the wrong voltage.
+## Result (branch `trig-cal`)
+The trigger-level cal is a **single global constant**: `code = 31437 − 911·V`
+(BNC volts, probe not folded), correct at **every** V/div detent. There is no
+per-detent or per-tier variation to model. This replaced the older global fit
+`31434 − 938·V` and cut the worst-case WYSIWYG level error from **0.041 V to
+0.012 V** across the ladder.
 
-## What shipped (branch `trig-cal`)
-The full per-detent infrastructure, defaulting to the old global fit at every
-detent (**zero behaviour change** until accurate values exist):
-- `analog.FrontEnd`: a per-(channel, detent) `TrigCal{Zero, CPV}` table
-  (`code = Zero − CPV·V`), with `TrigVolts` / `TrigCode` / `TrigCalActive` /
-  `SetTrigCalDetent` / `TrigCalTable` (`trigcal.go`).
-- Every code↔volts conversion routes through it: the web `trig_volts` readout
-  and the three browser drag/click/slider senders (via `trig_zero`/`trig_cpv`
-  pushed in `/api/status`), the LCD HUD, SCPI `TRLV`, panel autoset, and the
-  engine's `trigDispLevel` (per-channel `{zero,cpv}` pushed via `SetChannelVdiv`
-  from the front-end `OnVdiv` hook).
+## Why it is global (the physics)
+The trigger comparator threshold is referred to the **post-gain (post-PGA)**
+trace — the same signal the display draws — so a fixed DAC code corresponds to a
+fixed number of **display volts** regardless of the V/div detent. Changing V/div
+changes the analog gain (and thus the raw ADC codes), but the trigger threshold
+scales with it, keeping codes-per-display-volt constant.
 
-## What hardware characterization found (reference unit, FPGA square)
-Method: sweep the trigger DAC against a known signal and read the firing-band
-edges; the rail-proof variant tracks the firing-band **centre** while stepping
-the calibrated offset DAC (band-centre-vs-offset), which extracts codes/volt
-without needing the band edges in range.
+## How it was measured (FPGA DAC, clean method)
+An Alchitry Au drives a TLC7524CN 8-bit DAC into C1 (see the FPGA signal-source
+project). Key enablers over the earlier failed attempt:
+- **Amplitude + offset shaping per detent** (`dacgen.v` `AMP`/`OFF` params): a
+  triangle sized to sit ~3 divisions on-screen and non-railed at each detent —
+  this is what finally made the ×1 sensitive tier (≤0.2 V/div) measurable
+  (full-scale rails it; a small shaped signal does not).
+- **Triangle, not sine**: a linear ramp crosses every code, giving sharp firing
+  bands (no rounded-peak smear).
+- **NORM `seq`-advance fire detector**: in NORM the published frame `seq` only
+  advances on a real, software-confirmed trigger — an unambiguous binary, free of
+  the `acq_log` staleness that corrupted the old scans.
+- **Gain-settle gate**: the analog gain updates ~1.2 s AFTER a V/div change; the
+  scan waits for the raw code pp to stabilise before measuring (a stale-gain
+  frame gave the earlier bogus readings).
+- **Band-CENTRE regression, not edges**: `centre_code = Zero − CPV·Vmean`
+  regressed across detents. The centre is immune to the edge-rounding bias that
+  makes narrow-band (fine-detent) *edge* fits underestimate CPV.
 
-- **The slope is genuinely per-detent.** Within the ×25 tier (0.5–10 V/div),
-  DAC **codes-per-division is ~constant (~1056)**, i.e. `CPV = 1056/AnalogVdiv`.
-  Measured cpv: ~1067 @1 V/div, ~533 @2, ~207 @5 (codes/div 1067/1067/1034).
-  So the current 938 codes/V is ~2–3× wrong by 5 V/div (bench level error
-  > 1.8 V) and off at every detent but ~1 V.
-- **The 0 V code is roughly stable (~32100)** across the ×25 tier, but ~700
-  codes from the global fit's 31434.
+Measured (C1), firing-band centre vs calibrated `Vmean`:
 
-## Why accurate values were NOT shipped (two blockers)
-1. **Per-channel, not just per-detent.** The same trigger code fired at 1.74 V
-   on C1 but 0.20 V on C2 at 2 V/div — the two channels have different analog
-   gain / DC baseline (and C2 carried a ×10 probe). A single per-detent table
-   is insufficient; the cal must be per channel.
-2. **The ×1 sensitive tier (≤200 mV/div) is unmeasurable with available
-   signals.** It sits after the coarse ×25 attenuator, so its codes/division is
-   higher; its firing band exceeds the whole DAC code range even for a ~0.9 V
-   input, so neither the band edges nor its centre can be found. It needs a
-   controlled ~0.1–0.2 V cal signal.
+| V/div | display Vpp | band centre | CPV (from fit) |
+|------:|------------:|------------:|---------------:|
+| 1.0   | 2.48 V      | 32484       |                |
+| 0.5   | 2.36 V      | 32451       |                |
+| 0.1   | 0.29 V      | 31592       |                |
+| 0.05  | 0.15 V      | 31535       |                |
 
-Additional confound: the anchor is the vertical cal's `Vmean`, so vertical-cal
-imperfections (and signal clipping at large-signal/low-V-div combos) propagate
-into the trigger cal, and wide firing bands make the band centre imprecise.
+Least-squares over 0.05–1.0 V/div (a 20× span, spanning both the ×1 and ×25
+attenuator tiers): **CPV = 911.3 codes/display-volt, Zero = 31437**, residual
+WYSIWYG error ≤ 0.012 V.
 
-## What a correct cal needs (next step)
-A per-channel on-device characterization routine (autoset-style, using
-`SetTrigCalDetent`) driven by a **controlled, amplitude-appropriate cal signal**
-per detent — or, better, using the **calibrated offset DAC** (100 codes/input-
-volt, fixed) as the voltage reference: at a fixed trigger code, step the offset
-to find where the signal edge crosses the threshold, giving a rail-free
-`code↔volts` point per (channel, detent). Store the result per unit alongside
-the factory cal (a separate U-disk file), load it at boot, install via
-`SetTrigCalDetent`. The infrastructure above is ready to carry it.
+## Correcting the earlier (wrong) conclusion
+The previous notes claimed a per-detent slope `CPV ≈ 1056/AnalogVdiv` and a
+per-channel split. Both were **measurement artifacts**:
+- The "1/AnalogVdiv" slope came from rounded **sine** peaks (mushy band edges)
+  plus **offset-DAC contamination** in the old band-centre-vs-offset method (the
+  offset cal's own slope leaked into the trigger slope). The clean triangle +
+  offset-0 method shows the slope is flat.
+- The ×1 tier is not unmeasurable — it just needs a small shaped signal.
+
+## Caveats / open items
+- Measured on **C1 only** (that is the channel wired to the DAC). C2 uses the
+  same global constant; if a unit is later found to have a per-channel skew,
+  `SetTrigCalDetent` can install a C2 override. No evidence of skew today.
+- Vertical-cal imperfection is the noise floor: the same DAC input reads −2.28 V
+  at 0.5 V/div vs −2.40 V at 1.0 V/div (~2–5% inter-detent vertical-cal slop), so
+  the trigger cal is only as tight as the display it matches. 0.012 V residual is
+  at that floor.
+- **Small-signal lock** (separate issue, same reliability goal): a trace with
+  on-screen pp < ~40 codes (≈1.3 div) fails `centerCross` (`edge_x = −1`) and
+  will not lock in NORM even though the HW comparator fires. Tracked separately.

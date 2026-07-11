@@ -90,10 +90,11 @@ const (
 	TrigCodeMin = 27000
 	TrigCodeMax = 35000
 
-	// Pre-calibration global trigger fit (spec 05 §1.2), used until the front
-	// end pushes a per-detent cal: code = trigZeroDefault − trigCPVDefault·V.
-	trigZeroDefault = 31434.0
-	trigCPVDefault  = 938.0
+	// Measured global trigger fit (docs/trigcal-notes.md), used until the front
+	// end pushes its cal: code = trigZeroDefault − trigCPVDefault·V. CPV is
+	// constant across the whole V/div ladder (proven by FPGA-DAC bench cal).
+	trigZeroDefault = 31437.0
+	trigCPVDefault  = 911.0
 )
 
 // Clock abstracts time for tests. Sleep must also advance Now in fakes.
@@ -745,6 +746,6 @@ func (e *Engine) NoteCmd(name string, val float64) {
 
 // ---- owner goroutine ----
 
-// TrigLevelVolts converts a DAC code to approximate volts using the linear
-// fit exact at 1 V/2 V-div (spec 05 §1.2): code = 31434 − 938·V.
-func TrigLevelVolts(code uint16) float64 { return (31434 - float64(code)) / 938 }
+// TrigLevelVolts converts a DAC code to approximate volts using the measured
+// global fit (docs/trigcal-notes.md): code = 31437 − 911·V.
+func TrigLevelVolts(code uint16) float64 { return (31437 - float64(code)) / 911 }

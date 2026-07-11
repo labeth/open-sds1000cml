@@ -184,6 +184,6 @@ func TestLEDMap(t *testing.T) {
 	}
 }
 
-func (f *fakeFE) TrigCode(volts float64, srcCh int) float64         { return 31434 - 938*volts }
-func (f *fakeFE) TrigVolts(code uint16, srcCh int) float64          { return (31434 - float64(code)) / 938 }
+func (f *fakeFE) TrigCode(volts float64, srcCh int) float64         { return 31437 - 911*volts }
+func (f *fakeFE) TrigVolts(code uint16, srcCh int) float64          { return (31437 - float64(code)) / 911 }
 func (f *fakeFE) SetTrigCalDetent(ch, detent int, c analog.TrigCal) {}

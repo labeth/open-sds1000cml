@@ -26,7 +26,7 @@ const trigProbe = () => probeOf(st && st.trig_source === 1 ? 2 : 1);
 // Per-detent trigger cal pushed by the server (code = zero − cpv·V, BNC volts).
 // Falls back to the pre-cal global fit so an old server still works.
 const trigCodeFor = (tipVolts) => {
-  const zero = (st && st.trig_zero) || 31434, cpv = (st && st.trig_cpv) || 938;
+  const zero = (st && st.trig_zero) || 31437, cpv = (st && st.trig_cpv) || 911;
   return Math.round(zero - cpv * tipVolts / trigProbe());
 };
 const view = { mode: "YT", persist: false, cursors: false, c1: true, c2: true,

@@ -136,7 +136,13 @@ func (f *fakeAnalog) ProbeFactor(ch int) float64 {
 func (f *fakeAnalog) SetCoupling(ch, mode int) error { f.cpl[ch&1] = mode; return nil }
 func (f *fakeAnalog) Coupling(ch int) int            { return f.cpl[ch&1] }
 
-func (f *fakeScope) Snapshot() engine.Stats { return f.stats }
+func (f *fakeScope) Snapshot() engine.Stats {
+	s := f.stats
+	if f.trigCode != nil { // reflect an echoed SetTrigLevelCode so status round-trips
+		s.TrigCode = *f.trigCode
+	}
+	return s
+}
 func (f *fakeScope) WithFrame(fn func(*engine.Frame)) {
 	if f.frameGen != nil {
 		fn(f.frameGen())
@@ -189,7 +195,7 @@ func getStatus(t *testing.T, s *Server) map[string]any {
 }
 
 func TestStatusEndpoint(t *testing.T) {
-	fs := &fakeScope{stats: engine.Stats{Frames: 5, TrigCode: 31434}}
+	fs := &fakeScope{stats: engine.Stats{Frames: 5, TrigCode: 31437}}
 	s := New(fs, nil, nil, nil)
 	req := httptest.NewRequest("GET", "/api/status", nil)
 	rec := httptest.NewRecorder()
@@ -202,7 +208,7 @@ func TestStatusEndpoint(t *testing.T) {
 		t.Fatalf("frames = %v", rep["frames"])
 	}
 	if rep["trig_volts"] != 0.0 {
-		t.Fatalf("trig_volts for code 31434 = %v, want 0", rep["trig_volts"])
+		t.Fatalf("trig_volts for code 31437 = %v, want 0", rep["trig_volts"])
 	}
 	if len(rep["tdivs"].([]any)) != 33 {
 		t.Fatalf("tdivs length = %d", len(rep["tdivs"].([]any)))
