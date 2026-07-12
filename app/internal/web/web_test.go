@@ -9,7 +9,12 @@ import (
 	"open-sds/app/internal/engine"
 )
 
-// fakeScope records setter calls and serves a canned frame.
+// fakeScope records setter calls and serves a canned frame. Status-visible
+// writes are ALSO mirrored into stats so /api/status round-trips them like
+// the real engine: the browser suites poll status every second, and a double
+// that keeps serving boot state reverts the UI's optimistically-applied
+// controls whenever the focus guard doesn't cover them — a whole class of
+// e2e flakes (trig type/source, RUN/STOP label, level readout).
 type fakeScope struct {
 	stats    engine.Stats
 	frame    *engine.Frame
@@ -51,21 +56,21 @@ type fakeScope struct {
 }
 
 func (f *fakeScope) SetOffsetDAC(ch int, code uint16)       { f.offCh, f.offCode = ch, &code }
-func (f *fakeScope) SetETS(on bool)                         { f.ets = &on }
-func (f *fakeScope) SetSingle()                             { f.single = true }
+func (f *fakeScope) SetETS(on bool)                         { f.ets = &on; f.stats.ETS = on }
+func (f *fakeScope) SetSingle()                             { f.single = true; f.stats.Single = true }
 func (f *fakeScope) QuietRLock()                            {}
 func (f *fakeScope) QuietRUnlock()                          {}
 func (f *fakeScope) Tune(t engine.TuneVals) engine.TuneVals { return t }
 func (f *fakeScope) TuneSnapshot() engine.TuneVals          { return engine.TuneVals{} }
-func (f *fakeScope) SetTrigPosFrac(frac float64)            { f.trigPos = frac }
-func (f *fakeScope) SetMemDepth(n int) int                  { f.memDepth = n; return n }
+func (f *fakeScope) SetTrigPosFrac(frac float64)            { f.trigPos = frac; f.stats.TrigPosFrac = frac }
+func (f *fakeScope) SetMemDepth(n int) int                  { f.memDepth = n; f.stats.MemDepth = n; return n }
 func (f *fakeScope) SetFramePeriod(ms int) int              { return ms }
-func (f *fakeScope) SetStreamMode(on bool) bool             { return on }
-func (f *fakeScope) SetHoldoff(sec float64) float64         { f.holdoff = sec; return sec }
+func (f *fakeScope) SetStreamMode(on bool) bool             { f.stats.Stream = on; return on }
+func (f *fakeScope) SetHoldoff(sec float64) float64         { f.holdoff = sec; f.stats.HoldoffS = sec; return sec }
 func (f *fakeScope) SetZones(z []engine.Zone)               { f.zones = z }
-func (f *fakeScope) SetZoneMode(m int)                      { f.zoneMode = m }
+func (f *fakeScope) SetZoneMode(m int)                      { f.zoneMode = m; f.stats.ZoneMode = m }
 func (f *fakeScope) SetMask(m *engine.Mask)                 { f.mask = m }
-func (f *fakeScope) SetMaskMode(m int)                      { f.maskMode = m }
+func (f *fakeScope) SetMaskMode(m int)                      { f.maskMode = m; f.stats.MaskMode = m }
 func (f *fakeScope) ClearMaskFails()                        { f.maskCleared = true }
 func (f *fakeScope) MaskFails() []engine.MaskFail           { return f.maskRing }
 func (f *fakeScope) SetSerialParams(p engine.SerialParams)  { f.serialParams = p }
@@ -80,10 +85,10 @@ func (f *fakeScope) NoteCmd(name string, val float64) {
 	f.cmdLog = append(f.cmdLog, engine.CmdNote{Name: name, Val: val})
 }
 
-func (f *fakeScope) SetTrigType(t int) { f.calls = append(f.calls, [2]any{"trigtype", t}) }
-func (f *fakeScope) SetAcqMode(m int)  { f.calls = append(f.calls, [2]any{"acqmode", m}) }
-func (f *fakeScope) SetAvgCount(n int) { f.calls = append(f.calls, [2]any{"avgcount", n}) }
-func (f *fakeScope) SetEresLen(l int)  { f.calls = append(f.calls, [2]any{"eres", l}) }
+func (f *fakeScope) SetTrigType(t int) { f.calls = append(f.calls, [2]any{"trigtype", t}); f.stats.TrigType = t }
+func (f *fakeScope) SetAcqMode(m int)  { f.calls = append(f.calls, [2]any{"acqmode", m}); f.stats.AcqMode = m }
+func (f *fakeScope) SetAvgCount(n int) { f.calls = append(f.calls, [2]any{"avgcount", n}); f.stats.AvgCount = n }
+func (f *fakeScope) SetEresLen(l int)  { f.calls = append(f.calls, [2]any{"eres", l}); f.stats.EresLen = l }
 func (f *fakeScope) SetPulseParams(lvl, wMin, wMax float64, cond int) {
 	f.calls = append(f.calls, [2]any{"pulse", []any{lvl, wMin, wMax, cond}})
 }
@@ -150,10 +155,10 @@ func (f *fakeScope) WithFrame(fn func(*engine.Frame)) {
 	}
 	fn(f.frame)
 }
-func (f *fakeScope) SetRunning(on bool)   { f.running = &on }
-func (f *fakeScope) SetNorm(on bool)      { f.norm = &on }
-func (f *fakeScope) SetTrigSlope(r bool)  { f.slope = &r }
-func (f *fakeScope) SetTrigSource(ch int) { f.source = &ch }
+func (f *fakeScope) SetRunning(on bool)   { f.running = &on; f.stats.Running = on }
+func (f *fakeScope) SetNorm(on bool)      { f.norm = &on; f.stats.Norm = on }
+func (f *fakeScope) SetTrigSlope(r bool)  { f.slope = &r; f.stats.TrigRising = r }
+func (f *fakeScope) SetTrigSource(ch int) { f.source = &ch; f.stats.TrigSource = ch }
 func (f *fakeScope) SetTrigLevelCode(c uint16) uint16 {
 	if c < engine.TrigCodeMin {
 		c = engine.TrigCodeMin
@@ -165,6 +170,7 @@ func (f *fakeScope) SetTdiv(s float64) (engine.Band, bool) {
 	b, ok := engine.PlanTdiv(s)
 	if ok {
 		f.tdiv = &s
+		f.stats.TdivS, f.stats.DisplayedS = b.TdivS, b.DisplayedSdivS()
 	}
 	return b, ok
 }

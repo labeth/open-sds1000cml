@@ -47,6 +47,17 @@ export async function run(body) {
   const t = {
     ok: (c, m) => { console.log((c ? "ok  - " : "FAIL- ") + m); if (!c) fails++; },
     near: (a, b, tol, m) => { const c = Math.abs(a - b) <= tol; console.log((c ? "ok  - " : "FAIL- ") + `${m} (got ${a}, want ${b}±${tol})`); if (!c) fails++; },
+    // Poll-convergent assertion. The UI mirrors /api/status once a second, so
+    // state a control applied optimistically can be reverted for one poll
+    // period by a stale in-flight status reply (the same tiny race exists
+    // against the real device). Assert by retrying until the state converges
+    // instead of racing the poll; the deadline keeps real failures loud.
+    until: async (fn, m, ms = 3000) => {
+      const end = Date.now() + ms;
+      let c = !!(await fn());
+      while (!c && Date.now() < end) { await new Promise((r) => setTimeout(r, 50)); c = !!(await fn()); }
+      t.ok(c, m);
+    },
     browser: null,
   };
   try {

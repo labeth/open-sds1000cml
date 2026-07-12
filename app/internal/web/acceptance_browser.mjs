@@ -25,13 +25,13 @@ run(async (t) => {
   t.ok((await po.text("run")).includes("STOP") && await po.hasClass("run", "is-stop"),
     "while running, the button offers STOP");
   await po.click("run"); // stop
-  t.ok((await po.text("run")).includes("RUN") && await po.hasClass("run", "is-run"),
+  await t.until(async () => (await po.text("run")).includes("RUN") && await po.hasClass("run", "is-run"),
     "after stopping, the button offers RUN (the correct way round)");
   await po.click("run"); // run again
-  t.ok((await po.text("run")).includes("STOP") && await po.hasClass("run", "is-stop"),
+  await t.until(async () => (await po.text("run")).includes("STOP") && await po.hasClass("run", "is-stop"),
     "running again offers STOP");
   await po.click("single");
-  t.ok(await po.hasClass("single", "on"), "SINGLE arms (on state)");
+  await t.until(() => po.hasClass("single", "on"), "SINGLE arms (on state)");
   // AUTOSET delegates to the DEVICE autoset routine (one robust implementation,
   // shared with the front-panel AUTO button; the web no longer carries a second,
   // divergent client-side autoset that mis-scaled aliased frequencies). Here we
@@ -50,20 +50,20 @@ run(async (t) => {
   // --- trigger ---------------------------------------------------------------
   const mode0 = await po.text("mode");
   await po.click("mode");
-  t.ok(await po.text("mode") !== mode0, `trig mode toggles (${mode0} -> ${await po.text("mode")})`);
+  await t.until(async () => (await po.text("mode")) !== mode0, `trig mode toggles (from ${mode0})`);
   const src0 = await po.text("source");
   await po.click("source");
-  t.ok(await po.text("source") !== src0, `trig source toggles (${src0} -> ${await po.text("source")})`);
+  await t.until(async () => (await po.text("source")) !== src0, `trig source toggles (from ${src0})`);
   await po.setSelect("ttype", "1"); // PULSE
-  t.ok(await po.isCardVisible("qualrow") && await po.isCardVisible("qp-pulse"),
+  await t.until(async () => (await po.isCardVisible("qualrow")) && (await po.isCardVisible("qp-pulse")),
     "PULSE type reveals the pulse qualifier panel");
   await po.setSelect("ttype", "2"); // SLOPE
-  t.ok(await po.isCardVisible("qp-slope") && !(await po.isCardVisible("qp-pulse")),
+  await t.until(async () => (await po.isCardVisible("qp-slope")) && !(await po.isCardVisible("qp-pulse")),
     "switching to SLOPE reveals slope, hides pulse");
   await po.setSelect("ttype", "0"); // EDGE
-  t.ok(!(await po.isCardVisible("qualrow")), "EDGE hides the qualifier panel");
+  await t.until(async () => !(await po.isCardVisible("qualrow")), "EDGE hides the qualifier panel");
   await po.setRange("lvl", 1.5);
-  t.ok((await po.text("lvlv") || "").includes("1.5"), "trigger level readout tracks the slider");
+  await t.until(async () => ((await po.text("lvlv")) || "").includes("1.5"), "trigger level readout tracks the slider");
 
   // --- vertical / horizontal -------------------------------------------------
   await po.click("tC1");
@@ -214,7 +214,7 @@ run(async (t) => {
   const td0 = await po.eval(() => document.getElementById("tdiv").selectedIndex);
   await po.eval(() => { const e = new WheelEvent("wheel", { deltaY: 120, ctrlKey: true, bubbles: true, cancelable: true }); document.getElementById("scope").dispatchEvent(e); });
   await po.wait(120);
-  t.ok(await po.eval(() => document.getElementById("tdiv").selectedIndex) !== td0,
+  await t.until(async () => (await po.eval(() => document.getElementById("tdiv").selectedIndex)) !== td0,
     "Ctrl+wheel changes the timebase (time/div)");
 
   // --- direct manipulation: drag the trigger-level handle on the display ------
@@ -227,15 +227,34 @@ run(async (t) => {
     return { left: r.left, top: r.top, w: r.width, h: r.height, yN: yFor(128 + st.trig_volts / vpc, 1) / CH, before: st.trig_volts };
   });
   t.ok(g0.yN > 0.05 && g0.yN < 0.95, `trigger-level handle is on-screen (y=${g0.yN.toFixed(2)})`);
-  const hx = g0.left + g0.w * 0.97, hy = g0.top + g0.h * g0.yN;
-  await po.page.mouse.move(hx, hy);
-  await po.page.mouse.down();
-  await po.page.mouse.move(hx, hy - 120, { steps: 8 }); // drag UP
-  await po.page.mouse.up();
-  await po.wait(150);
-  const after = await po.eval(() => st.trig_volts);
-  t.ok(after > g0.before + 0.05,
-    `dragging the level handle UP raises the level (${g0.before.toFixed(2)}V → ${after.toFixed(2)}V) — correct direction`);
+  // The grab needs the pointer within ±6% of canvas height of the handle's
+  // LIVE y (markerHit, app_geom.js) — a status poll or frame re-render between
+  // measuring and pressing can shift it on a loaded runner, and a missed grab
+  // falls through to rubber-band box-zoom (the level then never moves, so no
+  // amount of waiting converges). Re-measure and retry the whole gesture,
+  // resetting any accidental zoom between attempts.
+  let rose = false;
+  for (let attempt = 0; attempt < 3 && !rose; attempt++) {
+    const g = await po.eval(() => {
+      const r = scope.getBoundingClientRect();
+      const vpc = (st.trig_source === 1 ? frame.vpc2 : frame.vpc1) || (1 / 32);
+      return { left: r.left, top: r.top, w: r.width, h: r.height, yN: yFor(128 + st.trig_volts / vpc, 1) / CH };
+    });
+    const hx = g.left + g.w * 0.97, hy = g.top + g.h * g.yN;
+    await po.page.mouse.move(hx, hy);
+    await po.page.mouse.down();
+    await po.page.mouse.move(hx, hy - 120, { steps: 8 }); // drag UP
+    await po.page.mouse.up();
+    for (const end = Date.now() + 1500; !rose && Date.now() < end; ) {
+      rose = (await po.eval(() => st.trig_volts)) > g0.before + 0.05;
+      if (!rose) await po.wait(50);
+    }
+    if (!rose) { // a missed grab box-zoomed — reset to home before retrying
+      await po.page.mouse.dblclick(g.left + g.w * 0.5, g.top + g.h * 0.5);
+      await po.wait(200);
+    }
+  }
+  t.ok(rose, `dragging the level handle UP raises the level (from ${g0.before.toFixed(2)}V) — correct direction`);
 
   // --- responsive (narrow screen) --------------------------------------------
   await po.page.setViewportSize({ width: 700, height: 900 });
