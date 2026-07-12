@@ -212,34 +212,79 @@ func centerCrossHint(sig []uint8, lvl int, rising bool, hint float64) float64 {
 	if hint >= 0 && hint < float64(n) {
 		ref = int(hint)
 	}
-	// A CONFIRMED crossing is one the trace genuinely transits and stays across:
-	// a majority of the window before sits on the low side and a majority after
-	// on the high side (for rising). This accepts both steep edges and gentle
-	// ramps, but rejects single-sample noise blips (which immediately cross
-	// back, so the "after" side is NOT mostly high). The window scales with the
-	// record but is bounded so it stays a small fraction of a period.
-	const w = 8 // local confirmation window (samples each side)
+	// A CONFIRMED crossing is one the trace genuinely TRANSITS and STAYS across,
+	// judged with NOISE-SCALED HYSTERESIS: going outward from the crossing the
+	// trace must reach the far state (≥ lvl+h after / < lvl−h before, for rising)
+	// WITHOUT first bouncing back to the near state. h = hystK · noiseFloor, so a
+	// transition of ~8·noise is required. This rejects two failure modes that a
+	// fixed-count majority window (the old w=8, 60% test) could not, because on a
+	// SLOW ramp the trace barely moves over 8 samples so ADC noise dominates:
+	//   • a single-sample noise BLIP (never reaches the far state) — the display
+	//     jitter this fix originally targeted; and, crucially,
+	//   • a noise DITHER on a ramp of the OPPOSITE slope: as a rising trace dithers
+	//     up through the level, a momentary down-blip is a valid "falling" crossing
+	//     that the majority test occasionally confirmed → the residual rising⇄
+	//     falling FLIP at ~1-period-on-screen bands. Hysteresis rejects it: a
+	//     falling crossing must reach lvl+h going BACKWARD, but a rising trace goes
+	//     LOW backward, so it cannot. Scale-free (h tracks the noise floor), so it
+	//     holds from steep native edges to shallow slow ramps.
+	nf := noiseFloor(sig)
+	h := int(hystK*nf + 0.5)
+	if h < hystMinCodes {
+		h = hystMinCodes
+	}
+	loT, hiT := lvl-h, lvl+h
+	maxW := n
+	if maxW > hystMaxReach {
+		maxW = hystMaxReach
+	}
 	confirmed := func(c int) bool {
-		beforeOK, nb := 0, 0
-		for i := c - 1; i >= 0 && i >= c-w; i-- {
-			nb++
+		// Backward target: rising→low(loT), falling→high(hiT). Forward mirror.
+		backFound, fwdFound := false, false
+		for i := c - 1; i >= 0 && i >= c-maxW; i-- {
 			s := int(sig[i])
-			if (rising && s < lvl) || (!rising && s > lvl) {
-				beforeOK++ // was on the near side
+			if rising {
+				if s >= hiT {
+					break // bounced high before reaching the low state
+				}
+				if s <= loT {
+					backFound = true
+					break
+				}
+			} else {
+				if s <= loT {
+					break
+				}
+				if s >= hiT {
+					backFound = true
+					break
+				}
 			}
 		}
-		afterOK, na := 0, 0
-		for j := c; j < n && j < c+w; j++ {
-			na++
+		if !backFound {
+			return false
+		}
+		for j := c; j < n && j < c+maxW; j++ {
 			s := int(sig[j])
-			if (rising && s >= lvl) || (!rising && s <= lvl) {
-				afterOK++ // stays on the far side
+			if rising {
+				if s <= loT {
+					break
+				}
+				if s >= hiT {
+					fwdFound = true
+					break
+				}
+			} else {
+				if s >= hiT {
+					break
+				}
+				if s <= loT {
+					fwdFound = true
+					break
+				}
 			}
 		}
-		// Genuine crossing: mostly near side before, mostly far side after. A
-		// single-sample noise blip crosses back immediately, so the "after"
-		// majority fails. 60% tolerates ADC noise on a real edge.
-		return nb > 0 && na > 0 && beforeOK*5 >= nb*3 && afterOK*5 >= na*3
+		return fwdFound
 	}
 	best, bestDist := -1, n+1
 	for c := 1; c < n; c++ {

@@ -51,6 +51,54 @@ func TestCenterCrossNearestCentre(t *testing.T) {
 	}
 }
 
+// TestCenterCrossNoDitherFlip — a slow RISING ramp that dithers through the
+// level (ADC noise) must NEVER anchor as a FALLING crossing. A momentary
+// down-step (100→99) on the way up is a valid sample-level "falling" crossing
+// that the old fixed-count window occasionally confirmed → the rising⇄falling
+// display flip at ~1-period-on-screen bands. Noise-scaled hysteresis rejects it.
+func TestCenterCrossNoDitherFlip(t *testing.T) {
+	// A shallow rising ramp 90→110 over 200 samples (0.1 code/sample), with ±1
+	// code of dither so it crosses the level 100 up-and-down several times.
+	n := 200
+	sig := make([]uint8, n)
+	r := lcg(99)
+	for i := range sig {
+		v := 90.0 + 20.0*float64(i)/float64(n) + 1.0*r.gauss()
+		if v < 0 {
+			v = 0
+		} else if v > 255 {
+			v = 255
+		}
+		sig[i] = uint8(v)
+	}
+	// A rising anchor exists (the ramp genuinely transits 100 upward).
+	if xr := centerCross(sig, 100, true); xr < 0 {
+		t.Error("rising ramp: no rising crossing found, want one")
+	}
+	// A falling anchor must NOT — the trace never sustains a high→low transition.
+	if xf := centerCross(sig, 100, false); xf >= 0 {
+		t.Errorf("rising ramp dither anchored a FALLING crossing at %v (flip), want -1", xf)
+	}
+	// Mirror: a falling ramp must not anchor a rising crossing.
+	fall := make([]uint8, n)
+	r = lcg(99)
+	for i := range fall {
+		v := 110.0 - 20.0*float64(i)/float64(n) + 1.0*r.gauss()
+		if v < 0 {
+			v = 0
+		} else if v > 255 {
+			v = 255
+		}
+		fall[i] = uint8(v)
+	}
+	if xr := centerCross(fall, 100, true); xr >= 0 {
+		t.Errorf("falling ramp dither anchored a RISING crossing at %v (flip), want -1", xr)
+	}
+	if xf := centerCross(fall, 100, false); xf < 0 {
+		t.Error("falling ramp: no falling crossing found, want one")
+	}
+}
+
 func TestCenterCrossFlat(t *testing.T) {
 	flat := make([]uint8, 500)
 	for i := range flat {

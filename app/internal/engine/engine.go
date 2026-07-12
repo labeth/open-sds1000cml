@@ -72,6 +72,15 @@ const (
 
 	nativeEdgeMinPtp  = 40 // codes; flat rail ≈ 5, real cal edge ≈ 150
 	nativeFlatFallbck = 60 // held frames before one honest flat publish
+	// centerCross confirmed-crossing hysteresis (discern.go): a crossing must
+	// transit ±hystK·noiseFloor to anchor. hystMinCodes floors it for clean
+	// synthetic signals; hystMaxReach bounds the outward search (a real edge
+	// reaches the far state within a fraction of a period; a flat region never
+	// does and stops here). Chosen so a signal that clears signalPresent
+	// (ptp ≥ 8·noiseFloor) can always transit ±4·noiseFloor around a mid level.
+	hystK        = 4.0
+	hystMinCodes = 2
+	hystMaxReach = 2048
 	// stuckSuspectRuns: consecutive degraded (dead-tail-after-retries) captures
 	// before the persistent stuck-FSM state is assumed. The intermittent half-
 	// record never survives the re-capture retries many frames in a row; the
