@@ -1,6 +1,34 @@
 # Changelog
 
-## v0.0.4 — 2026-07-12
+## v0.0.5 — 2026-07-12
+
+Web display and super-resolution gating: the browser now works from the **full
+raw record** in one trigger-locked coordinate, and the super-res gate stacks
+exactly the region you mark. Validated on hardware.
+
+### Fixed
+- **The web trace is trigger-locked at every zoom.** The display serves the full
+  raw record (no server-side re-centred window); the client re-centres on the
+  trigger edge each frame. The raw record is **not phase-stable** — the trigger
+  lands on a different sample each acquisition — so at home the client already
+  re-homed onto the edge, but once you **zoomed** the window froze and the
+  wandering edge slid the trace off-centre ("jumps around, frame-locked not
+  trigger-locked"). Zooming now **follows the edge** (shifts the frozen window by
+  the frame-to-frame edge delta), so the trigger point stays put at any zoom.
+  Measured on the live signal, edge-aligned frames match to **0.6–1.0 codes RMS**.
+- **The super-resolution gate stacks exactly what you mark.** Dragging the gate
+  markers, then arming, used to stack a different region (or looked auto-gated) —
+  the markers were stored as *absolute* record fractions while the display
+  re-centres on an edge that swings ~1 screen per frame, so a marker drifted off
+  its feature and the armed gate never matched. Markers are now **edge-relative**
+  (an offset from the trigger edge), the same coordinate as the trace and the
+  raw-fed stacker seed, so what you drag is what gets stacked.
+
+### Changed
+- The deep web frame is served **verbatim** (full record, real trigger position)
+  instead of a re-centred fixed-length window; centring is a client display
+  transform. The dead server-side `deepWindow` re-center path is removed.
+
 
 Triggering is now reliable and WYSIWYG across every timebase and voltage level.
 Every fix was validated on hardware against a controllable FPGA-driven cal signal
