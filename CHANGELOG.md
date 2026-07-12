@@ -1,5 +1,49 @@
 # Changelog
 
+## v0.0.4 — 2026-07-12
+
+Triggering is now reliable and WYSIWYG across every timebase and voltage level.
+Every fix was validated on hardware against a controllable FPGA-driven cal signal
+(amplitude / offset / frequency shaped per detent), unit-tested, and adversarially
+reviewed. See `app/docs/trigcal-notes.md` for the characterization method.
+
+### Fixed
+- **Trigger-level calibration corrected to a single global constant**
+  `code = 31437 − 911·V` (volts at the BNC). The previous per-detent "×25 law"
+  was a measurement artifact (rounded sine peaks + offset-DAC contamination in
+  the old method); clean characterization — firing-band **centre** vs the
+  calibrated Vmean across 0.05–1.0 V/div, spanning both attenuator tiers — shows
+  codes-per-display-volt is constant. The set trigger voltage now lands where the
+  trace actually crosses it: worst-case WYSIWYG level error drops **0.041 V →
+  0.012 V**, at the vertical-cal noise floor.
+- **Small on-screen signals now lock.** A real signal under ~1.6 divisions (a
+  2.4 Vpp signal is peak-to-peak 8–32 codes at 2–10 V/div) never locked in NORM —
+  the edge was found but the lock gate required raw ptp ≥ 40. Raw ptp cannot tell
+  a small real signal from a noisy flat rail (the rail's ptp can EXCEED the
+  signal's), so the gate now tests **coherence**: `ptp ≥ k·noiseFloor`, where
+  noiseFloor is a period-independent median-second-difference estimate that also
+  survives aliased (many-period) screens. Flat / quiet screens still HOLD.
+- **The rising⇄falling slope flip is gone.** On a slow ramp the discrimination
+  record dithers through the level in ADC noise; the old fixed-count confirmation
+  occasionally accepted a down-blip on a *rising* ramp as a "falling" edge (~10 %
+  of frames at ~1-period-on-screen bands). Confirmation is now **noise-scaled
+  hysteresis** — a crossing must transit ±k·noiseFloor without bouncing back —
+  which is scale-free and rejects the dither. Zero flips across the decimated
+  ladder, both slopes.
+- **Channel offset is folded into the trigger discrimination level and the
+  on-screen markers**, so the trigger point and its vertical/horizontal markers
+  line up with the trace at any offset.
+
+### Changed
+- **Envelope timebases (5–50 ms/div) now show a triggered waveform.** They were
+  untriggered by design — a repetitive signal displayed a filled rail-to-rail
+  min/max band (random-phase acquisitions). The band now trigger-anchors the
+  drained record and captures a centring margin, so the display is edge-stable
+  across the full width; it falls back to the min/max envelope only when a signal
+  genuinely cannot be triggered (aliased, flat, or the level off the signal). The
+  counter-limited slowest band reports its honest displayed s/div. Roll
+  (≥100 ms/div) remains an untriggered live scroll (standard).
+
 ## v0.0.3 — 2026-07-11
 
 ### Fixed
