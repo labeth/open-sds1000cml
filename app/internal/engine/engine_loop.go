@@ -299,6 +299,22 @@ func (e *Engine) oneFrame(norm bool) {
 	}
 	rising := e.trigRising.Load()
 
+	// "Signal present" evidence. A large signal (ptp ≥ nativeEdgeMinPtp) always
+	// qualifies — this is the ORIGINAL test, preserved exactly, so nothing that
+	// locked before regresses (a big aliased signal at a slow timebase has few
+	// samples/period, which defeats the coherence test below, but its raw ptp
+	// carries it). ADDITIONALLY, on DECIMATED bands a SMALL signal qualifies when
+	// its ptp clears k·noiseFloor: that distinguishes a real sub-1.6-division
+	// signal (ptp 8..32 for a 2.4 Vpp cal signal at 2..10 V/div) from a noisy flat
+	// rail (raw ptp can EXCEED a small real signal's, so raw ptp alone can't) at
+	// every well-sampled timebase. Gating decimated NORM on raw ptp≥40 alone
+	// wrongly froze every real small on-screen signal (edge_x found, ptp<40 →
+	// never locked). Native-fast keeps raw ptp only (record spans < 1 period).
+	sigPresent := p >= nativeEdgeMinPtp
+	if !nativeFast && !sigPresent {
+		sigPresent = signalPresent(disc, float64(e.tuneSigK.Load()))
+	}
+
 	// Qualifier dispatch (spec 05): PULSE/SLOPE/VIDEO REPLACE the EDGE
 	// pipeline; their own polarity/monotonicity logic is the validation.
 	e.mu.Lock()
@@ -326,7 +342,7 @@ func (e *Engine) oneFrame(norm bool) {
 		// only for an UNSET (boot) level, to keep the very first frames stable.
 		if td := e.trigDispLevel(int(e.trigSrc.Load())); td >= 0 {
 			edgeX = centerCross(disc, td, rising)
-			if p >= nativeEdgeMinPtp { // a real signal the level can sit outside of
+			if sigPresent { // a real signal the level can sit outside of
 				margin := (hi - lo) / 16
 				lvlOffSig = td < lo-margin || td > hi+margin
 			}
@@ -371,7 +387,7 @@ func (e *Engine) oneFrame(norm bool) {
 	// flicker.
 	qualifier := tp.typ != TrigEdge
 
-	lock := edgeX >= 0 && (qualifier || p >= nativeEdgeMinPtp)
+	lock := edgeX >= 0 && (qualifier || sigPresent)
 	if !nativeFast {
 		lock = lock && coherent
 	}
@@ -403,7 +419,7 @@ func (e *Engine) oneFrame(norm bool) {
 		publish = true
 		edgeX = -1
 		e.flatHeld = 0
-	case (nativeFast || !norm) && !qualifier && p < nativeEdgeMinPtp:
+	case (nativeFast || !norm) && !qualifier && !sigPresent:
 		// NORM native-fast flat (trigger-hold with an honest 60-frame refresh), or AUTO
 		// decimated flat: publish one honest flat capture every nativeFlatFallbck held frames.
 		e.flatHeld++

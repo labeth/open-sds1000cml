@@ -115,6 +115,59 @@ func realDepthP(sig []uint8, p int) int {
 	return n - run
 }
 
+// noiseFloor estimates the per-sample ADC noise as the MEDIAN absolute second
+// difference |s[i+1] − 2·s[i] + s[i−1]|. The second difference cancels any
+// linear ramp (independent of its slope AND of the signal period), leaving only
+// high-frequency noise — so this is a PERIOD-INDEPENDENT noise estimate. That is
+// what a moving-average gate could not be: a fixed window washes out a signal
+// with many periods on screen (aliased/slow-timebase), whereas this holds at
+// every timebase. Exact median via a histogram over the small integer |Δ²|
+// values: O(n) time, O(1) space. Floored at 0.5 (a perfectly clean slow ramp has
+// median |Δ²| = 0 because adjacent codes repeat).
+func noiseFloor(sig []uint8) float64 {
+	n := len(sig)
+	if n < 3 {
+		return 0.5
+	}
+	var hist [513]int
+	total := 0
+	for i := 1; i < n-1; i++ {
+		d := int(sig[i+1]) - 2*int(sig[i]) + int(sig[i-1])
+		if d < 0 {
+			d = -d
+		}
+		if d > 512 {
+			d = 512
+		}
+		hist[d]++
+		total++
+	}
+	half := total / 2
+	cum, med := 0, 0
+	for b := 0; b <= 512; b++ {
+		if cum += hist[b]; cum > half {
+			med = b
+			break
+		}
+	}
+	if med < 1 {
+		return 0.5
+	}
+	return float64(med)
+}
+
+// signalPresent reports whether the record holds a real signal rather than a
+// flat / quiet rail: peak-to-peak must exceed k times the noiseFloor. Raw ptp
+// alone CANNOT decide this — a noisy rail (ptp up to ~18 at σ≈2.5) can exceed a
+// real small on-screen signal (a 2.4 Vpp cal signal is ptp 8 at 10 V/div) — but
+// ptp-relative-to-noise separates them cleanly at ANY timebase (a real signal
+// has ptp ≫ noise; a rail's ptp IS its noise, ~5σ). Used as the DECIMATED lock
+// gate; native-fast keeps the raw-ptp test (its record spans < 1 period).
+func signalPresent(sig []uint8, k float64) bool {
+	_, _, p := ptp(sig)
+	return float64(p) >= k*noiseFloor(sig)
+}
+
 // midLevel is the crossing threshold: (min+max)/2 over the drained samples
 // (128 for an empty slice). It floats with amplitude so it works at any V/div.
 func midLevel(sig []uint8) int {

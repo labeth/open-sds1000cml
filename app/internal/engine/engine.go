@@ -254,6 +254,7 @@ type Engine struct {
 	tuneMatureUs     atomic.Int64 // native-fast maturation floor before halt (µs)
 	tuneTail3c       atomic.Int64 // acq-control pair value for 0x3c (band-dependent; native-fast 0x00fd)
 	tuneTail3d       atomic.Int64 // acq-control pair value for 0x3d (band-dependent; native-fast 0x0007)
+	tuneSigK         atomic.Int64 // decimated small-signal gate: min ptp / noiseFloor ratio to lock
 	reinitReq        atomic.Int64 // staged FSM re-init level (debug/recovery); serviced at the loop boundary
 
 	// Lock-free control reads by the owner.
@@ -457,6 +458,12 @@ func New(cfg Config) *Engine {
 	e.tuneMatureUs.Store(3000)
 	e.tuneTail3c.Store(0x00fd) // reference-device native-fast acq-control pair
 	e.tuneTail3d.Store(0x0007)
+	// Decimated small-signal lock gate: a real signal has ptp ≥ SigK × noiseFloor
+	// (period-independent 2nd-difference noise estimate), which separates a real
+	// sub-1.6-div signal from a noisy flat rail at EVERY timebase — raw ptp alone
+	// cannot (a noisy rail's ptp can exceed a small real signal's). Bench-tuned:
+	// real signals ratio ≥16, flat rails ≤7 (σ up to 3.5). See docs/trigcal-notes.md.
+	e.tuneSigK.Store(8)
 	e.running.Store(true)
 	e.trigRising.Store(true)
 	e.avgCount.Store(16) // boot-firmware default; menu {4,16,32,64,128,256}
@@ -525,6 +532,7 @@ type TuneVals struct {
 	MatureUs     int64 `json:"mature_us"`        // native-fast maturation floor before halt (µs)
 	Tail3c       int64 `json:"tail_3c"`          // acq-control 0x3c value (band-dependent)
 	Tail3d       int64 `json:"tail_3d"`          // acq-control 0x3d value (band-dependent)
+	SigK         int64 `json:"sig_k"`            // decimated small-signal gate: min ptp/noiseFloor ratio to lock (default 8)
 	Reinit       int64 `json:"reinit,omitempty"` // one-shot: stage an FSM re-init at this level (1=bringUp, 2=+runword/reset pulses)
 }
 
@@ -567,6 +575,9 @@ func (e *Engine) Tune(t TuneVals) TuneVals {
 	if t.Tail3d >= 0 {
 		e.tuneTail3d.Store(t.Tail3d)
 	}
+	if t.SigK > 0 {
+		e.tuneSigK.Store(t.SigK)
+	}
 	if t.Reinit > 0 {
 		e.reinitReq.Store(t.Reinit) // one-shot; the owner loop consumes it
 	}
@@ -593,6 +604,7 @@ func (e *Engine) TuneSnapshot() TuneVals {
 		MatureUs:     e.tuneMatureUs.Load(),
 		Tail3c:       e.tuneTail3c.Load(),
 		Tail3d:       e.tuneTail3d.Load(),
+		SigK:         e.tuneSigK.Load(),
 	}
 }
 
