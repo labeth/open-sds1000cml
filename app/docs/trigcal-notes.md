@@ -63,6 +63,46 @@ per-channel split. Both were **measurement artifacts**:
   at 0.5 V/div vs −2.40 V at 1.0 V/div (~2–5% inter-detent vertical-cal slop), so
   the trigger cal is only as tight as the display it matches. 0.012 V residual is
   at that floor.
-- **Small-signal lock** (separate issue, same reliability goal): a trace with
-  on-screen pp < ~40 codes (≈1.3 div) fails `centerCross` (`edge_x = −1`) and
-  will not lock in NORM even though the HW comparator fires. Tracked separately.
+- Envelope-band edge margin (see below): the trace centre is stable; the outer
+  columns can shimmer on the fastest envelope band (5 ms/div, few periods).
+
+# Triggering reliability (discern.go / engine_loop.go / envroll.go)
+
+Three fixes made triggering trustworthy across the band ladder, all validated on
+the reference unit with the FPGA cal signal.
+
+## Small-signal lock (decimated bands)
+A real signal under ~1.6 divisions (a 2.4 Vpp cal signal is ptp 8..32 at 2..10
+V/div) never locked in NORM: `centerCross` found the edge but the lock gate
+required raw ptp ≥ `nativeEdgeMinPtp` (40), so it held forever. Raw ptp cannot be
+lowered safely — a noisy flat rail's ptp (up to ~18 at σ≈2.5) can EXCEED a small
+real signal's, so amplitude cannot separate them. `signalPresent()` gates on
+`ptp ≥ SigK·noiseFloor` instead, where `noiseFloor` is the median absolute SECOND
+difference (cancels the linear ramp regardless of slope/period → a PERIOD-
+INDEPENDENT noise estimate that also survives aliased many-period screens). Kept
+as an OR with the original ptp≥40 fast-path so nothing that locked before
+regresses. Decimated only; native-fast keeps raw ptp (record spans <1 period).
+Bench: real signals ratio ≥16, flat rails ≤7 (σ to 3.5). Tunable `SigK` (def 8).
+
+## Slope flip (dither-on-ramp)
+At ~1-period-on-screen bands (100 µs/div) the anchor still flipped rising⇄falling
+on ~10% of frames: on a slow ramp the disc holds many periods that dither through
+the level in noise, and over the old fixed-count w=8 window a momentary down-blip
+on a RISING ramp passed as a "falling" crossing. Replaced with noise-scaled
+HYSTERESIS: a crossing confirms only if, going outward, the trace reaches the far
+state (±`hystK`·noiseFloor) without bouncing back. A falling crossing must reach
+lvl+h going backward — a rising trace goes low backward, so a rising-ramp dither
+can no longer confirm as falling. Scale-free; also rejects the single-sample blip
+the old test targeted. HW: 0 flips across 50µs–2ms/div × both slopes.
+
+## Triggered envelope (5–50 ms/div)
+Envelope bands were untriggered by design (a repetitive signal showed a solid
+min/max band — random-phase acquisitions). Now `envFrame` trigger-anchors the
+drained record (centerCross + signalPresent) and publishes it as a normal edge-
+centred trace, falling back to the min/max scatter only when there is no trigger
+(aliased / flat / level-off-signal). The record spans exactly one screen with no
+centring margin, so the trace CENTRE is rock-stable but the outer columns repeat-
+extend as the anchor wanders — negligible on 20/50 ms/div (many periods), up to
+~20% width on 5 ms/div (few periods). A future refinement could add capture
+headroom (larger `EnvFillTarget` + a windowed sub-region) for perfect edges, at
+~1.5× fill time. Roll bands (≥100 ms/div) remain untriggered live scroll.
