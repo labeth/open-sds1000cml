@@ -111,6 +111,16 @@ run(async (t) => {
     "canvas exports a PNG data URL");
   await po.click("eCSV"); // must not throw
   t.ok(true, "CSV export click completes without error");
+  t.ok(await po.eval(() => {
+    const s = sigrokSeries(frame);
+    const wav = s && sigrokWAV(s);
+    return !!s && sigrokSR(s).length > 100 && sigrokVCD(s).includes("$enddefinitions") &&
+      (wav === null || wav.length > 46); // null only for >uint32-Hz rates
+  }), "sigrok encoders produce output from the live frame");
+  await po.click("eSR"); // the three sigrok buttons must not throw
+  await po.click("eVCD");
+  await po.click("eWAV");
+  t.ok(true, "sigrok export clicks complete without error");
 
   // --- accessibility ---------------------------------------------------------
   t.ok(await po.eval(() => document.getElementById("hstat").getAttribute("aria-live")) === "polite",

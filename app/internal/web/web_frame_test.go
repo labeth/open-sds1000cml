@@ -179,3 +179,87 @@ func TestWindowRailExtendCentres(t *testing.T) {
 		}
 	}
 }
+
+func TestDtSTrueCapturePitch(t *testing.T) {
+	// dt_s must report the TRUE capture time per served point. On the
+	// 1–200 ns/div bands col_span_s is a display nominal (the window is sized
+	// at 1 ns/sample while the hardware captures every 2 ns, spec 04 §6), so
+	// an exporter or decoder using col_span_s/cols there reconstructs a time
+	// axis compressed 2×. dt_s carries min(WinCols,Valid)·SampleS/cols instead.
+
+	// Windowed native-fast, class 0x20 shape: 200 ns/div, 2000-sample window
+	// at the real 2 ns pitch, DisplayedS carrying the 1 ns nominal.
+	f := &engine.Frame{
+		C1: make([]uint8, 4000), C2: make([]uint8, 4000),
+		Seq: 1, Valid: 4000, WinCols: 2000, EdgeX: -1, Interp: true,
+		TdivS: 200e-9, DisplayedS: 200e-9, SampleS: 2e-9,
+	}
+	s := New(&fakeScope{frame: f, fresh: true}, nil, nil, nil)
+	rep := refReply(s, 800, false, 0)
+	if want := 2000 * 2e-9 / 800; math.Abs(rep.DtS-want) > 1e-18 {
+		t.Fatalf("windowed dt_s = %v, want %v (true pitch)", rep.DtS, want)
+	}
+	if nominal := rep.ColSpanS / float64(rep.Cols); math.Abs(rep.DtS-2*nominal) > 1e-18 {
+		t.Fatalf("dt_s = %v, want 2× the nominal col pitch %v on the 0x20 shape", rep.DtS, nominal)
+	}
+	// The exporter reads dt_s from the binary transport's JSON header — pin
+	// that the corrected value (not the nominal) survives the wire.
+	if got, _, _ := getBin(t, s, "/api/frame.bin?since=0&cols=800"); math.Abs(got.DtS-2000*2e-9/800) > 1e-18 {
+		t.Fatalf("dt_s over the binary transport = %v, want %v", got.DtS, 2000*2e-9/800)
+	}
+
+	// ETS-shaped frame (equivalent-time publish: Valid == WinCols == nCols,
+	// SampleS = 10·tdiv/nCols is the reconstructed column pitch): dt_s must
+	// agree with col_span_s/cols — ETS spans are honest, no 2× correction.
+	fe := &engine.Frame{
+		C1: make([]uint8, 2500), C2: make([]uint8, 2500),
+		Seq: 9, Valid: 2500, WinCols: 2500, EdgeX: 1250, Interp: true,
+		TdivS: 50e-9, DisplayedS: 50e-9, SampleS: 10 * 50e-9 / 2500,
+	}
+	se := New(&fakeScope{frame: fe, fresh: true}, nil, nil, nil)
+	repe := refReply(se, 800, false, 0)
+	if math.Abs(repe.DtS-repe.ColSpanS/float64(repe.Cols)) > 1e-18 {
+		t.Fatalf("ETS-shaped dt_s = %v, want col pitch %v (no correction)", repe.DtS, repe.ColSpanS/float64(repe.Cols))
+	}
+
+	// Windowed with a short record (Valid < WinCols): the window clamps to
+	// Valid samples and dt_s must clamp with it.
+	f2 := &engine.Frame{
+		C1: make([]uint8, 1000), C2: make([]uint8, 1000),
+		Seq: 2, Valid: 1000, WinCols: 3000, EdgeX: -1,
+		TdivS: 500e-6, DisplayedS: 500e-6, SampleS: 800e-9,
+	}
+	s2 := New(&fakeScope{frame: f2, fresh: true}, nil, nil, nil)
+	if rep2, want := refReply(s2, 800, false, 0), 1000*800e-9/800; math.Abs(rep2.DtS-want) > 1e-18 {
+		t.Fatalf("clamped dt_s = %v, want %v", rep2.DtS, want)
+	}
+
+	// Deep serve: every point is one hardware sample, dt_s == SampleS and
+	// agrees exactly with col_span_s/cols.
+	f3 := &engine.Frame{
+		C1: make([]uint8, 6144), C2: make([]uint8, 6144),
+		Seq: 3, Valid: 6144, WinCols: 2048, EdgeX: 100,
+		TdivS: 500e-6, DisplayedS: 500e-6, SampleS: 2.4414e-6,
+	}
+	s3 := New(&fakeScope{frame: f3, fresh: true}, nil, nil, nil)
+	rep3 := refReply(s3, 800, true, 0)
+	if rep3.Depth != 6144 || rep3.DtS != f3.SampleS {
+		t.Fatalf("deep dt_s = %v (depth %d), want SampleS %v", rep3.DtS, rep3.Depth, f3.SampleS)
+	}
+	if math.Abs(rep3.DtS-rep3.ColSpanS/float64(rep3.Cols)) > 1e-18 {
+		t.Fatalf("deep dt_s %v disagrees with col_span_s/cols %v", rep3.DtS, rep3.ColSpanS/float64(rep3.Cols))
+	}
+
+	// Envelope frames aggregate many acquisitions — no per-point time, dt_s
+	// stays 0 (omitted on the wire).
+	f4 := &engine.Frame{
+		Seq: 4, IsEnv: true, EnvCols: 800, Valid: 800,
+		EnvMin: make([]uint8, 800), EnvMax: make([]uint8, 800),
+		EnvMin2: make([]uint8, 800), EnvMax2: make([]uint8, 800),
+		TdivS: 10e-3, DisplayedS: 10e-3,
+	}
+	s4 := New(&fakeScope{frame: f4, fresh: true}, nil, nil, nil)
+	if rep4 := refReply(s4, 800, false, 0); !rep4.IsEnv || rep4.DtS != 0 {
+		t.Fatalf("envelope dt_s = %v (is_env=%v), want 0", rep4.DtS, rep4.IsEnv)
+	}
+}

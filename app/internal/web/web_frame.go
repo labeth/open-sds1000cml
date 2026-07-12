@@ -32,6 +32,15 @@ type frameReply struct {
 	Cols     int     `json:"cols"`       // number of columns returned per trace
 	ColSpanS float64 `json:"col_span_s"` // seconds spanned by the whole column array
 
+	// DtS is the TRUE capture time per served point. It differs from
+	// col_span_s/cols on the 1–200 ns/div bands, where the display window is
+	// deliberately sized at the 1 ns nominal while the hardware samples every
+	// 2 ns (spec 04 §6): col_span_s carries the nominal so the screen matches
+	// the labelled tdiv, and anything reconstructing real time from the served
+	// points (CSV/sigrok export, decode) must use dt_s instead. 0 on envelope/
+	// roll frames, which aggregate many acquisitions and have no per-point time.
+	DtS float64 `json:"dt_s,omitempty"`
+
 	// Deep-memory (full=1 on decimated bands): the served array is the FULL
 	// drained record, not the 10-div screen slice; the client windows it.
 	Depth    int     `json:"depth,omitempty"` // full-record sample count served (0 = not deep)
@@ -270,11 +279,21 @@ func (s *Server) buildReply(f *engine.Frame, cols int, full bool, since uint64, 
 			rep.EdgeFrac = -1
 		}
 		rep.Cols, rep.ColSpanS, rep.Depth = n, float64(n)*f.SampleS, n
+		rep.DtS = f.SampleS
 		rep.WinFrac = float64(f.WinCols) / float64(n)
 	default:
 		// Native-fast / non-deep decimated: today's windowed screen slice.
 		rep.C1 = window(c1, f.Valid, f.WinCols, f.EdgeX, f.Interp, cols, posFrac)
 		rep.C2 = window(c2, f.Valid, f.WinCols, f.EdgeX, f.Interp, cols, posFrac)
+		// True per-column time: the window really spans min(WinCols, Valid)
+		// hardware samples (mirrors window()'s clamp) at SampleS each — NOT
+		// col_span_s/cols, which is nominal on the 1–200 ns/div bands.
+		if win := f.WinCols; f.Valid >= 1 {
+			if win > f.Valid {
+				win = f.Valid
+			}
+			rep.DtS = float64(win) * f.SampleS / float64(cols)
+		}
 		rep.WinFrac = 1
 		if f.EdgeX >= 0 {
 			rep.EdgeFrac = posFrac

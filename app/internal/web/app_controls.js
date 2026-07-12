@@ -72,7 +72,10 @@ $("ePNG").onclick = () => {
 };
 $("eCSV").onclick = () => {
   if (!frame || !frame.c1) return;
-  const dt = (frame.col_span_s || 0) / frame.c1.length;
+  // dt_s is the true capture pitch; col_span_s is a display nominal on the
+  // 1–200 ns/div bands (2 ns/sample shown at 1 ns — see frameReply.DtS).
+  // Fall back for client-synthesized frames and captures saved before dt_s.
+  const dt = frame.dt_s > 0 ? frame.dt_s : (frame.col_span_s || 0) / frame.c1.length;
   const vpc1 = frame.vpc1 || (1 / 25), vpc2 = frame.vpc2 || (1 / 25);
   const o1 = frame.off1_v || 0, o2 = frame.off2_v || 0;
   const toV = (code, vpc, off) => (code === undefined || code < 0 ? "" : ((code - 128) * vpc - off).toExponential(6));
@@ -93,9 +96,32 @@ $("eCSV").onclick = () => {
   for (let i = 0; i < N; i += step)
     rows[r++] = (i * dt).toExponential(6) + "," + toV(frame.c1[i], vpc1, o1) + "," +
       toV(c2 ? c2[i] : undefined, vpc2, o2);
+  exportFile("scope-" + frame.seq + ".csv", "text/csv", rows.join("\n") + "\n");
+};
+// ---- sigrok exports (encoders in sigrok_export.js) ----
+// Same contract as eCSV: export the frame on screen — live, frozen, a capture
+// under review, or a superres view — as calibrated volts. Envelope/roll frames
+// have no per-sample record, so the click is a silent no-op like eCSV.
+function exportFile(name, type, data) {
   const a = document.createElement("a");
-  a.download = "scope-" + frame.seq + ".csv";
-  a.href = URL.createObjectURL(new Blob([rows.join("\n") + "\n"], { type: "text/csv" })); a.click();
+  a.download = name;
+  a.href = URL.createObjectURL(new Blob([data], { type })); a.click();
+  // Revoke once the download has surely started — otherwise every exported
+  // blob (10 MB for a superres .sr) stays pinned until the page unloads.
+  setTimeout(() => URL.revokeObjectURL(a.href), 60000);
+}
+$("eSR").onclick = () => {
+  const s = sigrokSeries(frame);
+  if (s) exportFile("scope-" + s.seq + ".sr", "application/zip", sigrokSR(s));
+};
+$("eVCD").onclick = () => {
+  const s = sigrokSeries(frame);
+  if (s) exportFile("scope-" + s.seq + ".vcd", "text/plain", sigrokVCD(s));
+};
+$("eWAV").onclick = () => {
+  const s = sigrokSeries(frame);
+  const wav = s && sigrokWAV(s); // null when the rate exceeds WAV's uint32 Hz
+  if (wav) exportFile("scope-" + s.seq + ".wav", "audio/wav", wav);
 };
 window.addEventListener("keydown", (e) => {
   if (e.key === "Escape") { $("help").classList.remove("show"); return; }

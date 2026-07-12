@@ -46,6 +46,9 @@
       <div class="toggles">
         <button id="ePNG" class="sm">PNG</button>
         <button id="eCSV" class="sm">CSV</button>
+        <button id="eSR" class="sm" title="sigrok session (.sr) — calibrated volts at the true sample rate; opens directly in PulseView / sigrok-cli for their protocol decoders and measurements">SR</button>
+        <button id="eVCD" class="sm" title="value change dump (.vcd) — analog channels as real vars for GTKWave and sigrok (import needs a recent libsigrok)">VCD</button>
+        <button id="eWAV" class="sm" title="float32 WAV — calibrated volts, importable by sigrok and any DSP/audio tool (unavailable when the rate exceeds WAV's 4.29 GHz limit)">WAV</button>
       </div>
     </div>
 
@@ -383,6 +386,7 @@
 <script src="decode_usbls.js"></script>
 <script src="decode_flexray.js"></script>
 <script src="binframe.js"></script>
+<script src="sigrok_export.js"></script>
 <script src="superres_math.js"></script>
 <script src="superres_template.js"></script>
 <script src="superres_gate.js"></script>
