@@ -55,7 +55,9 @@ hardware does and how the firmware must behave*; the implementation in
   readout**, a deep-record navigator strip, auto-measurements, draggable
   time/voltage cursors, waveform persistence, math (C1±C2, C1×C2, FFT-carrier
   subtraction), **reference waveforms (REF A/B)**, autoset, protocol decode
-  (next bullet), a clipping indicator, and PNG / calibrated-CSV export.
+  (next bullet), a clipping indicator, and PNG / calibrated-CSV / **sigrok
+  export** (`.sr` opens directly in PulseView / sigrok-cli, plus VCD and
+  float32 WAV — see [`app/docs/sigrok-export.md`](app/docs/sigrok-export.md)).
 - **Protocol decode — ten protocols** — UART, I²C, SPI, Manchester, SENT,
   CAN / CAN-FD, MIL-STD-1553B, ARINC 429, USB low-speed, and FlexRay, with
   auto-detect that scores all ten against the live signal (protocol + channel
@@ -122,7 +124,7 @@ trigger.
 
 Every acquisition control lives in the footer (run/stop, trigger, timebase,
 per-channel V/div · coupling · probe · offset, acquire mode + memory depth), and
-PNG / calibrated-CSV export is one click away.
+PNG / calibrated-CSV / sigrok (`.sr` / VCD / WAV) export is one click away.
 
 ### Super-resolution: stack & crunch
 

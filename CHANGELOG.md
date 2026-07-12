@@ -1,5 +1,26 @@
 # Changelog
 
+## Unreleased
+
+### Added
+- **Sigrok export from the web UI.** Three new one-click exports next to
+  PNG/CSV: **`.sr`** (the srzip session format — opens directly in PulseView
+  and sigrok-cli, carrying channel names, the true sample rate, and calibrated
+  float32 volts), **VCD** (analog channels as `real` vars, for GTKWave and
+  recent libsigrok), and **float32 WAV** (calibrated volts, importable by
+  sigrok and any DSP tool). Pure client-side encoders (`sigrok_export.js`,
+  zero deps, node-tested against the byte layouts libsigrok's readers parse);
+  same contract as the CSV export — the frame on screen, live, frozen, a
+  capture under review, or a superres view. See `app/docs/sigrok-export.md`.
+
+### Fixed
+- **Exported time axes are no longer 2× compressed on 1–200 ns/div.** Those
+  bands capture at 2 ns/sample but size the display window at the 1 ns nominal
+  (spec 04 §6), so the frame's `col_span_s` understates the real span 2× and
+  the CSV export inherited the error. The frame reply now carries `dt_s` — the
+  true capture time per served point — and the CSV and sigrok exports use it;
+  the display keeps the spec'd nominal.
+
 ## v0.0.5 — 2026-07-12
 
 Web display and super-resolution gating: the browser now works from the **full

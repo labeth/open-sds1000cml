@@ -44,6 +44,7 @@ this way on the real unit at `192.168.1.209`.
 | Eye diagram + TIE jitter | ✓ | ✗ web-only | browser-side analysis (eyejitter.js); no LCD port planned |
 | Decode review aids (transcript list / watch / stream) | ✓ | ✗ deferred | web-only convenience: scrollable transcript, save-matching-windows "watch", stitched deep-capture "stream". On-trace strip covers the core need |
 | PNG/CSV waveform export to file | ✓ | ✗ deferred | needs a file destination decision (USB stick); SCPI `SCDP` already dumps the screen |
+| sigrok export (.sr / VCD / WAV) | ✓ | ✗ web-only | browser-side encoders (sigrok_export.js) feeding a file download; the device has no file destination |
 | PNG / CSV export | ✓ | n/a | no user file destination standalone; `SCDP` (SCPI) already returns a screen dump |
 
 ## UX + responsiveness (goal requirements)
