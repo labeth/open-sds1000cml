@@ -79,8 +79,9 @@ func TestEnvelopeFrame(t *testing.T) {
 	if !fresh || !f.IsEnv || f.EnvCols != envDisplayCols {
 		t.Fatalf("env frame: fresh=%v isEnv=%v cols=%d", fresh, f.IsEnv, f.EnvCols)
 	}
-	if f.Valid != 217 || f.WinCols != 217 {
-		t.Fatalf("env geometry: valid=%d win=%d, want 217", f.Valid, f.WinCols)
+	// Capture carries centring margin (217 display + 2×128); WinCols is the span.
+	if f.Valid != 473 || f.WinCols != 217 {
+		t.Fatalf("env geometry: valid=%d win=%d, want 473/217", f.Valid, f.WinCols)
 	}
 	// The square wave (56..200) must appear as a wide band in min/max.
 	lo, hi := f.EnvMin[400], f.EnvMax[400]

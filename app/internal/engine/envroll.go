@@ -75,7 +75,16 @@ func (e *Engine) envFrame(norm bool) {
 	e.armEngine()
 
 	target := e.band.EnvFillTarget()
-	deadline := start.Add(250 * time.Millisecond)
+	// Give the fill time to actually REACH the (margin-inclusive) target: the
+	// capture takes target·CaptureInterval, so grow the deadline past the
+	// responsiveness floor when the centring margin makes the capture longer (the
+	// slower envelope bands). Fast bands stay snappy; 20 ms/div gets to complete
+	// its margin instead of dead-tailing it.
+	capNs := float64(target) * e.band.CaptureIntervalNs()
+	deadline := start.Add(envFillFloorMs * time.Millisecond)
+	if grow := start.Add(time.Duration(capNs * envFillSlack)); grow.After(deadline) {
+		deadline = grow
+	}
 	fill0 := e.r(selFill) & fillMask
 	fillMoved := false
 	for i := 0; ; i++ {
@@ -98,27 +107,29 @@ func (e *Engine) envFrame(norm bool) {
 
 	haltOK := e.halt()
 	f := e.arena.Write()
-	w := e.band.DrainCols()
-	e.drain(f, w)
+	capCols := e.band.DrainCols() // display span + deadline-gated centring margin
+	winCols := e.band.WinCols()   // the 10-division display span
+	e.drain(f, capCols)
 	e.armEngine() // refill during the reduction
 
-	disc := f.C1[:w]
+	disc := f.C1[:capCols]
 	if int(e.trigSrc.Load()) == 1 {
-		disc = f.C2[:w]
+		disc = f.C2[:capCols]
 	}
 	_, _, p := ptp(disc)
 
 	// TRIGGER the envelope band when the drained record carries a confident edge
 	// on a real, well-sampled signal: publish it as a normal edge-centred trace
-	// (the same window() path the decimated bands use — the whole record spans one
-	// screen, so window() anchors the crossing at the trigger position and repeat-
-	// extends the small centring margin). This gives 5–50 ms/div a STABLE triggered
-	// waveform instead of a free-running min/max band (a repetitive signal was a
-	// filled rail-to-rail band because untriggered acquisitions accumulate at random
-	// phase). Fall back to the envelope min/max SCATTER when there is no trigger to
-	// be had — an aliased (few-samples/period) signal, a flat/quiet screen, or the
-	// level off the signal — which keeps a live display and the glitch-catching
-	// envelope exactly where triggering is impossible.
+	// (the same window() path the decimated bands use). The record carries a
+	// centring margin (EnvCaptureCols > WinCols on the fast bands), so window()
+	// re-centres the anchor onto real captured samples instead of repeat-extending
+	// the screen edges — a STABLE triggered waveform across the whole width. This
+	// replaces the free-running min/max band a repetitive signal used to show
+	// (untriggered acquisitions accumulate at random phase). Fall back to the
+	// envelope min/max SCATTER when there is no trigger to be had — an aliased
+	// (few-samples/period) signal, a flat/quiet screen, or the level off the
+	// signal — which keeps a live display and the glitch-catching envelope exactly
+	// where triggering is impossible.
 	td := e.trigDispLevel(int(e.trigSrc.Load()))
 	edgeX := -1.0
 	if td >= 0 && signalPresent(disc, float64(e.tuneSigK.Load())) {
@@ -126,8 +137,8 @@ func (e *Engine) envFrame(norm bool) {
 	}
 	triggered := edgeX >= 0
 
-	f.Valid = w
-	f.WinCols = w
+	f.Valid = capCols
+	f.WinCols = winCols
 	f.Interp = false
 	f.Degraded = false
 	f.Ptp = p
@@ -145,7 +156,10 @@ func (e *Engine) envFrame(norm bool) {
 		f.EnvCols = 0
 		f.Trigd = true
 	} else {
-		e.envPush(f, w)
+		// Scatter the CENTRAL display span (not the margin) so the untriggered
+		// envelope keeps the intended 10-division width.
+		off := (capCols - winCols) / 2
+		e.envPush(f, off, winCols)
 		e.envReduce(f)
 		f.EdgeX = -1
 		f.IsEnv = true
@@ -165,8 +179,10 @@ func (e *Engine) envFrame(norm bool) {
 	e.pace(start)
 }
 
-// envPush copies the drained window into the phase-scatter ring.
-func (e *Engine) envPush(f *Frame, w int) {
+// envPush copies the central [off:off+n] slice of the drained record into the
+// phase-scatter ring (off skips the centring margin captured for the triggered
+// path, so the untriggered envelope keeps the intended display width).
+func (e *Engine) envPush(f *Frame, off, n int) {
 	if e.envRing1 == nil {
 		e.envRing1 = make([][]uint8, envRingN)
 		e.envRing2 = make([][]uint8, envRingN)
@@ -175,9 +191,12 @@ func (e *Engine) envPush(f *Frame, w int) {
 			e.envRing2[i] = make([]uint8, 0, envMaxWin)
 		}
 	}
+	if off < 0 {
+		off = 0
+	}
 	i := e.envRingPos
-	e.envRing1[i] = append(e.envRing1[i][:0], f.C1[:w]...)
-	e.envRing2[i] = append(e.envRing2[i][:0], f.C2[:w]...)
+	e.envRing1[i] = append(e.envRing1[i][:0], f.C1[off:off+n]...)
+	e.envRing2[i] = append(e.envRing2[i][:0], f.C2[off:off+n]...)
 	e.envRingPos = (e.envRingPos + 1) % envRingN
 	if e.envRingCnt < envRingN {
 		e.envRingCnt++

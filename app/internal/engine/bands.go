@@ -40,6 +40,13 @@ const (
 	envMaxWin      = 2048
 	envRingN       = 24
 	envFillCap     = 0x600 // fill target cap (the 11-bit counter saturates)
+	// Triggered-envelope centring margin (samples each side) captured beyond the
+	// display window, so a triggered envelope frame re-centres the anchor without
+	// repeat-extending the screen edges. Deadline-gated: only added where the
+	// extra capture clears the 250 ms fill deadline with headroom.
+	envMargin          = 128
+	envFillFloorMs     = 250  // responsiveness floor for the envelope fill deadline
+	envFillSlack       = 1.30 // grow the deadline to 1.3× the expected capture time
 
 	// Roll constants (spec 04): a FIXED phase-scatter divisor for every roll
 	// tdiv — the table divisor would pace reads at exactly one signal period
@@ -154,13 +161,39 @@ func (b Band) EnvPlan() (winCols int, divisor uint32) {
 	return w, d
 }
 
-// EnvFillTarget is the fill-counter gate for an envelope frame.
-func (b Band) EnvFillTarget() uint16 {
+// EnvCaptureCols is how many samples a triggered envelope frame FILLS and
+// DRAINS: the display window (EnvPlan) plus centring margin on each side, so
+// envFrame can re-centre the trigger anchor within the record instead of repeat-
+// extending the screen edges (which shimmered as the anchor wandered on the
+// few-periods bands). The margin is DEADLINE-GATED: capturing w samples already
+// takes 10·TdivS (the screen time) and the fill deadline is 250 ms, so margin is
+// added only where the extra capture clears the deadline with headroom — the
+// fast envelope bands (5–10 ms/div), which is exactly where the few-periods
+// anchor wander makes the shimmer worst. At 20–50 ms/div the deadline binds (and
+// the wander is already sub-5 %), so the capture stays the display span.
+func (b Band) EnvCaptureCols() int {
 	w, _ := b.EnvPlan()
-	if w > envFillCap {
+	want := w + 2*envMargin
+	if want > envFillCap {
+		want = envFillCap // the fill counter can't gate higher — the slowest band
+	} //                     (50 ms/div, w>envFillCap) then displays fewer real
+	if want > envMaxWin { //  samples via WinCols, instead of draining dead-tail.
+		want = envMaxWin
+	}
+	if want < 2*envMargin+envMinWin {
+		want = 2*envMargin + envMinWin
+	}
+	return want
+}
+
+// EnvFillTarget is the fill-counter gate for an envelope frame: the capture
+// width (display + deadline-gated centring margin), capped at the counter's cap.
+func (b Band) EnvFillTarget() uint16 {
+	c := b.EnvCaptureCols()
+	if c > envFillCap {
 		return envFillCap
 	}
-	return uint16(w)
+	return uint16(c)
 }
 
 // Prog is what bringUp actually programs (spec 04 §5).
@@ -229,8 +262,7 @@ func (b Band) DrainCols() int {
 	case KindNativeFast:
 		return deepRecord
 	case KindEnvelope:
-		w, _ := b.EnvPlan()
-		return w
+		return b.EnvCaptureCols() // display span + deadline-gated centring margin
 	case KindRoll:
 		return rollWin
 	}
@@ -241,8 +273,14 @@ func (b Band) DrainCols() int {
 func (b Band) WinCols() int {
 	switch b.Kind() {
 	case KindEnvelope:
-		w, _ := b.EnvPlan()
-		return w
+		// Display span = capture minus the centring margin. Equals the EnvPlan
+		// span on every band except the counter-limited slowest one (50 ms/div),
+		// where it shrinks so the window holds only real captured samples (no
+		// dead-tail) — DisplayedSdivS reports the honest s/div for that band.
+		if w := b.EnvCaptureCols() - 2*envMargin; w >= envMinWin {
+			return w
+		}
+		return envMinWin
 	case KindRoll:
 		return rollWin
 	}
@@ -263,12 +301,14 @@ func (b Band) WinCols() int {
 	return w
 }
 
-// DisplayedSdivS is the on-screen seconds/div actually delivered. On
-// decimated bands the WinCols clamp makes it differ from the nominal label;
-// envelope preserves the label by construction; roll reports the label.
+// DisplayedSdivS is the on-screen seconds/div actually delivered. On decimated
+// bands the WinCols clamp makes it differ from the nominal label; envelope
+// preserves the label on every band except the counter-limited slowest one,
+// where the reduced display span honestly reports fewer s/div; roll reports the
+// label.
 func (b Band) DisplayedSdivS() float64 {
 	switch b.Kind() {
-	case KindEnvelope, KindRoll:
+	case KindRoll:
 		return b.TdivS
 	}
 	return float64(b.WinCols()) * b.displayIntervalNs() * 1e-9 / screenDivsH
