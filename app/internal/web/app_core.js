@@ -111,6 +111,11 @@ function applyFrame(f) {
   frame = f; lastSeq = f.seq;
   const sig = acqSig(f);
   if (sig !== lastSig) { userZoomed = false; lastSig = sig; } // band/depth/run change → re-home
+  // Re-home every live frame onto the trigger: the raw record is NOT phase-stable
+  // (the trigger lands at a different sample each acquisition), so the edge — not
+  // a fixed sample — is the stable anchor. homeWindow keeps the edge at posFrac
+  // WITHOUT clamping the deep window into the record (it shows blank past the
+  // ends), so the trace is edge-steady even when the edge sits near a record end.
   if (!userZoomed) { const h = homeWindow(f); view.win.a = h.a; view.win.b = h.b; view.vwin.a = 0; view.vwin.b = 1; }
   scheduleRender(); // coalesced paint on the next rAF — never block the poll callback
 }

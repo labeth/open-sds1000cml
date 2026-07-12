@@ -103,29 +103,6 @@ func rawInt16(codes []uint8) []int16 {
 	return out
 }
 
-// deepWindow serves the drained record RE-CENTERED on the trigger: the edge is
-// placed at posFrac of a fixed-length (outLen) output, so the trigger is the
-// stable anchor and the pre-/post-trigger record spreads symmetrically around
-// it. Where the output runs past the captured data (near the record ends), it is
-// filled with -1 = blank margin the client renders as empty but can still pan
-// through. Fixed length ⇒ the served array size never jitters (no re-home churn).
-func deepWindow(sig []uint8, valid, outLen int, edgeX, posFrac float64) []int16 {
-	out := make([]int16, outLen)
-	if !(edgeX >= 0) { // NaN/-Inf edge -> centre on the record (see window())
-		edgeX = float64(valid) / 2
-	}
-	start := edgeX - posFrac*float64(outLen)
-	for i := 0; i < outLen; i++ {
-		si := int(math.Round(start)) + i
-		if si >= 0 && si < valid {
-			out[i] = int16(sig[si])
-		} else {
-			out[i] = -1
-		}
-	}
-	return out
-}
-
 func window(sig []uint8, valid, winCols int, edgeX float64, interp bool, n int, posFrac float64) []int16 {
 	out := make([]int16, n)
 	if valid < 1 {
@@ -275,19 +252,21 @@ func (s *Server) buildReply(f *engine.Frame, cols int, full bool, since uint64, 
 		rep.E2Max = resampleEnv(f.EnvMax2, f.EnvCols, cols)
 		rep.EdgeFrac, rep.WinFrac = -1, 1
 	case full && !f.Interp && f.Valid > f.WinCols:
-		// DECIMATED deep memory: serve the full drained record so the client
-		// windows/navigates it. col_span_s becomes the whole-record time so
-		// every client formula (Nyquist, cursor Δt, decode, CSV) stays
-		// self-consistent. The record is RE-CENTERED on the trigger (edge at
-		// posFrac) so the trigger — not the frame — is the stable anchor, with
-		// symmetric scrollable pre-/post-trigger margin (blank past the ends).
+		// DECIMATED deep memory: serve the full drained record VERBATIM (NOT
+		// re-centered) and report the trigger's REAL position (edge_frac =
+		// EdgeX/n). The web centers/windows it client-side, so the display, the
+		// super-res gate and the raw-fed stacker all share ONE coordinate system —
+		// the raw record. (Server-side re-centering put the display in a different,
+		// edge-shifted, -1-margin-padded frame than the stacker's raw feed, so a
+		// gate dragged on the display stacked a different region.) The record is
+		// HW-trigger-anchored (phase-stable), so the client homes it ONCE per
+		// acquisition instead of chasing the edge — see applyFrame. col_span_s is
+		// the whole-record time so client Nyquist/Δt/decode/CSV stay consistent.
 		n := f.Valid
+		rep.C1, rep.C2 = rawInt16(c1[:n]), rawInt16(c2[:n])
 		if f.EdgeX >= 0 {
-			rep.C1 = deepWindow(c1, n, n, f.EdgeX, posFrac)
-			rep.C2 = deepWindow(c2, n, n, f.EdgeX, posFrac)
-			rep.EdgeFrac = posFrac
+			rep.EdgeFrac = f.EdgeX / float64(n)
 		} else {
-			rep.C1, rep.C2 = rawInt16(c1[:n]), rawInt16(c2[:n])
 			rep.EdgeFrac = -1
 		}
 		rep.Cols, rep.ColSpanS, rep.Depth = n, float64(n)*f.SampleS, n

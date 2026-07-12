@@ -185,9 +185,10 @@ function srIngest(f) {
     sr.meta = { tdiv_s: f.tdiv_s, cols: f.cols, sample_s: f.sample_s, vpc1: f.vpc1, vpc2: f.vpc2 };
     if (sr.lockRef) {
       // Seed THIS frame as the match reference, then run so matching frames stack.
-      // When the GATE markers are set, THEY are the region — exactly. sr.gateDt is
-      // the marked span in SECONDS relative to the display's trigger edge (set at
-      // ARM); anchor it on THIS raw frame's own edge. Otherwise the gate is auto.
+      // When the GATE markers are set, THEY are the region. sr.gateDt is the marked
+      // span in SECONDS from the display's trigger edge (set at ARM); anchor it on
+      // THIS raw frame's own edge — edge-relative, so a periodic feature is gated
+      // the same whichever period's crossing anchors either frame. Otherwise auto.
       let gate = null;
       if (sr.gateDt) {
         if (!(f.sample_s > 0)) { srStop("no sample interval on the raw feed — can't place the gate"); return; }
@@ -330,15 +331,17 @@ $("srArm").onclick = () => {
   // (works from SINGLE or free-run). Otherwise: frozen → lock the frozen frame;
   // running → auto-adopt.
   sr.lockRef = srGate.on || !!(st && !st.running);
-  // Markers live on the DISPLAY record (a windowed/decimated, trigger-anchored
-  // serve); the stacker feeds on the RAW record. The trigger edge is the common
-  // anchor, so convert markers → SECONDS from the display's edge now, and map
-  // onto the raw frame's own edge at seed time. Applying display fractions to
-  // the raw record directly is wrong (it stacked ~10 waves for an edge-wide mark).
+  // The markers are EDGE-RELATIVE: the raw record is not phase-stable, so the
+  // trigger crossing — not a fixed sample — is the anchor. Convert the marked
+  // span to SECONDS from the display's edge now, and re-anchor on the raw
+  // reference frame's own edge at seed. The display and the stacker now share the
+  // SAME raw record (web_frame.go), so seconds-per-column here equals the raw
+  // sample interval — the scale is consistent, which is what a re-centered
+  // display + a raw-fed stacker need to agree on the region.
   sr.gateDt = null;
   if (srGate.on && !sr.ets) {
     if (frame && frame.cols > 1 && frame.col_span_s > 0 && !frame.is_env) {
-      const cols = frame.cols, spc = frame.col_span_s / cols; // seconds per display column
+      const cols = frame.cols, spc = frame.col_span_s / cols; // seconds per column
       const edgeCol = frame.edge_frac >= 0 ? frame.edge_frac * cols : cols / 2;
       const cLo = Math.min(srGate.a, srGate.b) * (cols - 1);
       const cHi = Math.max(srGate.a, srGate.b) * (cols - 1);

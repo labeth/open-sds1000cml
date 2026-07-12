@@ -107,15 +107,16 @@ func TestBinFrameParity(t *testing.T) {
 			return &engine.Frame{C1: c1, C2: c2, Seq: 12, Valid: 400, WinCols: 320,
 				EdgeX: 200, Interp: true, TdivS: 1e-6, DisplayedS: 1e-6, SampleS: 25e-9}
 		}(), 0},
-		{"deep-trig-margins", func() *engine.Frame {
+		{"deep-trig-edge-start", func() *engine.Frame {
 			c1, c2 := deepC(6144)
-			// Edge near the record start → head margin after re-centering.
+			// Edge near the record start: the record is served VERBATIM (the client
+			// centres it), so there are no head/tail margins regardless of edge pos.
 			return &engine.Frame{C1: c1, C2: c2, Seq: 13, Valid: 6144, WinCols: 2048,
 				EdgeX: 100, TdivS: 1e-3, DisplayedS: 1e-3, SampleS: 1.6e-6}
 		}(), binDeep},
-		{"deep-trig-tail", func() *engine.Frame {
+		{"deep-trig-edge-end", func() *engine.Frame {
 			c1, c2 := deepC(6144)
-			// Edge near the record end → tail margin.
+			// Edge near the record end: still served verbatim, still no margins.
 			return &engine.Frame{C1: c1, C2: c2, Seq: 14, Valid: 6144, WinCols: 2048,
 				EdgeX: 6100, TdivS: 1e-3, DisplayedS: 1e-3, SampleS: 1.6e-6}
 		}(), binDeep},
@@ -181,12 +182,11 @@ func TestBinFrameParity(t *testing.T) {
 			if !reflect.DeepEqual(c2, want.C2) {
 				t.Fatalf("c2 reconstruction mismatch (head %d tail %d)", got.Head, got.Tail)
 			}
-			// Deep margin shapes must actually exercise margins.
-			if tc.name == "deep-trig-margins" && got.Head == 0 {
-				t.Fatal("expected a head margin, got none")
-			}
-			if tc.name == "deep-trig-tail" && got.Tail == 0 {
-				t.Fatal("expected a tail margin, got none")
+			// Deep frames now serve the raw record VERBATIM (the web centers it
+			// client-side via edge_frac), so there are NEVER -1 margins to encode —
+			// head and tail are 0 even with the edge near a record end.
+			if (tc.name == "deep-trig-edge-start" || tc.name == "deep-trig-edge-end") && (got.Head != 0 || got.Tail != 0) {
+				t.Fatalf("%s: head=%d tail=%d, want 0/0 (raw record has no blank margins)", tc.name, got.Head, got.Tail)
 			}
 		})
 	}

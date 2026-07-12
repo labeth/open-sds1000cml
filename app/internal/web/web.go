@@ -317,8 +317,8 @@ const screenCols = 800
 //	            unchanged/empty: none
 //
 // The -1 sentinels in the int16 reply arrays are provably contiguous head/tail
-// runs (deepWindow walks the record monotonically; window rail-extends), so
-// two counts replace the in-band sentinel and the payload narrows to uint8.
+// runs (the deep path serves the record verbatim; window() rail-extends off-record
+// columns), so two counts replace the in-band sentinel and the payload narrows to uint8.
 const binMagic = 0xF5
 
 const (

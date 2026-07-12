@@ -12,7 +12,7 @@ import (
 
 // Frame-serving fuzz: even if an engine invariant slipped (Valid > len,
 // absurd WinCols, NaN/negative EdgeX, mismatched env metadata), the web serve
-// path — buildReply + measurement + window/deepWindow + binary encode — must
+// path — buildReply + measurement + window + binary encode — must
 // not panic. A serving panic on ONE bad frame crashes the whole scope UI.
 func TestFrameServeFuzz(t *testing.T) {
 	rng := rand.New(rand.NewSource(0xF00D))

@@ -46,12 +46,13 @@ func TestFrameEndpoint(t *testing.T) {
 	}
 }
 
-func TestDeepFrameCentersOnTrigger(t *testing.T) {
-	// full=1 on a deep decimated frame (Valid>WinCols) serves the record
-	// RE-CENTERED on the trigger: fixed length = Valid, edge at posFrac, the
-	// sample under the anchor is the trigger sample, and the record end that runs
-	// past the capture is blank (-1). This is what makes the trigger — not the
-	// frame — the stable anchor.
+func TestDeepFrameServesRawRecord(t *testing.T) {
+	// full=1 on a deep decimated frame (Valid>WinCols) serves the record VERBATIM
+	// — NOT re-centered — reporting the trigger's REAL position (edge_frac =
+	// EdgeX/Valid). The web centers/windows it client-side (and homes deep records
+	// once, since they are phase-stable), so the display, the super-res gate and
+	// the raw-fed stacker share one coordinate system (the raw record). No blank
+	// -1 margins: every column is a real captured sample.
 	const depth, winCols = 6144, 2048
 	f := &engine.Frame{
 		C1: make([]uint8, depth), C2: make([]uint8, depth),
@@ -66,21 +67,21 @@ func TestDeepFrameCentersOnTrigger(t *testing.T) {
 
 	rep := refReply(s, screenCols, true, 0)
 	if len(rep.C1) != depth || rep.Depth != depth {
-		t.Fatalf("deep serve length = %d (depth %d), want %d (fixed, no jitter)", len(rep.C1), rep.Depth, depth)
+		t.Fatalf("deep serve length = %d (depth %d), want %d (whole record)", len(rep.C1), rep.Depth, depth)
 	}
-	if rep.EdgeFrac != 0.5 {
-		t.Fatalf("edge_frac = %v, want 0.5 (trigger centred/stable)", rep.EdgeFrac)
+	if want := 2000.0 / depth; math.Abs(rep.EdgeFrac-want) > 1e-9 {
+		t.Fatalf("edge_frac = %v, want %v (EdgeX/Valid — the REAL edge position)", rep.EdgeFrac, want)
 	}
 	if math.Abs(rep.WinFrac-float64(winCols)/float64(depth)) > 1e-9 {
 		t.Fatalf("win_frac = %v, want %v", rep.WinFrac, float64(winCols)/float64(depth))
 	}
-	// The sample under the anchor (col depth/2) is the trigger sample (EdgeX).
-	if got, want := rep.C1[depth/2], int16(2000%256); got != want {
-		t.Fatalf("anchor sample = %d, want the trigger sample %d (record re-centred on edge)", got, want)
+	// Verbatim: column i is raw sample i, so the sample at the edge column (EdgeX)
+	// is the trigger sample, and there are NO -1 margins.
+	if got, want := rep.C1[2000], int16(2000%256); got != want {
+		t.Fatalf("edge-column sample = %d, want the trigger sample %d (record served verbatim)", got, want)
 	}
-	// EdgeX=2000 < depth/2 ⇒ the record is shifted right, so the LEFT end is blank.
-	if rep.C1[0] != -1 {
-		t.Fatalf("left margin = %d, want -1 (blank scrollable margin)", rep.C1[0])
+	if rep.C1[0] == -1 || rep.C1[depth-1] == -1 {
+		t.Fatalf("found a -1 margin (%d/%d); the raw record has no blank margins", rep.C1[0], rep.C1[depth-1])
 	}
 	// col_span_s is the whole-record time (keeps client Nyquist/Δt correct).
 	if math.Abs(rep.ColSpanS-float64(depth)*f.SampleS) > 1e-12 {

@@ -13,11 +13,10 @@ function srGateDefaultFromView() {
   const alignIdx = sel === 2 ? 1 : sel === 1 ? 0 : (st && st.trig_source === 1 ? 1 : 0);
   const ch = alignIdx === 1 ? f.c2 : f.c1;
   if (!ch) return;
-  // Visible slice, trimmed of the -1 blank margins the deep serve pads with.
+  // Visible slice, clamped to the record: the deep home window can now run past
+  // the record ends (blank margin, no samples), so view.win maps outside [0,1].
   let lo = Math.max(0, Math.round(w.a * (f.cols - 1)));
   let hi = Math.min(f.cols, Math.round(w.b * (f.cols - 1)) + 1);
-  while (lo < hi && ch[lo] < 0) lo++;
-  while (hi > lo && ch[hi - 1] < 0) hi--;
   if (hi - lo < 32) return;
   const slice = Float32Array.from(ch.subarray(lo, hi));
   // Propose the ACTIVE region of the view (no trigger-edge exclusion — if the
@@ -71,8 +70,16 @@ function homeWindow(f) {
   const pf = (st && st.trig_pos_frac > 0 && st.trig_pos_frac < 1) ? st.trig_pos_frac : 0.5;
   const c = (f.edge_frac >= 0) ? f.edge_frac : 0.5; // matches server window() when EdgeX<0
   let a = c - wf * pf, b = c + wf * (1 - pf);
-  const span = Math.min(1, b - a);
-  if (a < 0) { a = 0; b = span; } else if (b > 1) { b = 1; a = 1 - span; }
+  // DEEP record with a real edge: keep the edge EXACTLY at posFrac and let the
+  // window run past the record ends (blank margin, like the LCD) — do NOT clamp
+  // it back into the record. The raw record is not phase-stable, so the edge is
+  // the anchor; clamping would slide the edge off-centre when it sits near a
+  // record end and make the trace jitter as the (multi-period) edge wanders.
+  const deep = f.win_frac > 0 && f.win_frac < 1 && !f.is_env && f.edge_frac >= 0 && !(st && !st.running);
+  if (!deep) {
+    const span = Math.min(1, b - a);
+    if (a < 0) { a = 0; b = span; } else if (b > 1) { b = 1; a = 1 - span; }
+  }
   return { a, b };
 }
 
