@@ -282,7 +282,7 @@ func (c *Controller) dispatch(name string, dir, steps int) {
 		c.fe.SetOffset(ch, v)
 	case "triglevel":
 		// Sign trap: CW RAISES the level, which LOWERS the code
-		// (−938 codes/V); step 40 codes per accel step.
+		// (−911 codes/V); step 40 codes per accel step.
 		nc := int(c.trigCode) - dir*40*steps
 		nc = clampInt(nc, engine.TrigCodeMin, engine.TrigCodeMax)
 		c.trigCode = uint16(nc)

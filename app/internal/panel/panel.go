@@ -255,7 +255,7 @@ func New(eng Engine, fe Analog, keyFD int, tdivs []float64, startTdiv float64, l
 		eng: eng, fe: fe, keyFD: keyFD, logf: logf,
 		tdivs:    tdivs,
 		vIdx:     [2]int{analog.BootDetent, analog.BootDetent},
-		trigCode: 31434, // 0 V threshold
+		trigCode: 31437, // 0 V threshold (measured global fit zero)
 		chDisp:   [2]bool{true, true},
 		curX:     [2]float64{0.35, 0.65},
 		curY:     [2]float64{0.35, 0.65},

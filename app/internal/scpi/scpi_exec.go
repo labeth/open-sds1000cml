@@ -200,7 +200,7 @@ func (h *Handler) execGlobal(head, arg string) []byte {
 		if h.sc.Snapshot().TrigSource == 1 {
 			src = 1
 		}
-		codeF := 31434 - 938*v // per-detent cal when the front end is present
+		codeF := 31437 - 911*v // measured global fit; overridden by the front-end cal below
 		if h.fe != nil {
 			codeF = h.fe.TrigCode(v, src)
 		}
