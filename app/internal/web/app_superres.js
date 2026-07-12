@@ -331,21 +331,17 @@ $("srArm").onclick = () => {
   // (works from SINGLE or free-run). Otherwise: frozen → lock the frozen frame;
   // running → auto-adopt.
   sr.lockRef = srGate.on || !!(st && !st.running);
-  // The markers are EDGE-RELATIVE: the raw record is not phase-stable, so the
-  // trigger crossing — not a fixed sample — is the anchor. Convert the marked
-  // span to SECONDS from the display's edge now, and re-anchor on the raw
-  // reference frame's own edge at seed. The display and the stacker now share the
-  // SAME raw record (web_frame.go), so seconds-per-column here equals the raw
-  // sample interval — the scale is consistent, which is what a re-centered
-  // display + a raw-fed stacker need to agree on the region.
+  // The markers are EDGE-RELATIVE (record-fraction offsets from the trigger edge):
+  // the raw record is not phase-stable, so the crossing — not a fixed sample — is
+  // the anchor. The span in SECONDS from the edge is just the offset times the
+  // record's time span; the raw-fed seed re-anchors that on each frame's own edge,
+  // so a periodic feature is gated identically whichever period's crossing anchors
+  // either frame.
   sr.gateDt = null;
   if (srGate.on && !sr.ets) {
     if (frame && frame.cols > 1 && frame.col_span_s > 0 && !frame.is_env) {
-      const cols = frame.cols, spc = frame.col_span_s / cols; // seconds per column
-      const edgeCol = frame.edge_frac >= 0 ? frame.edge_frac * cols : cols / 2;
-      const cLo = Math.min(srGate.a, srGate.b) * (cols - 1);
-      const cHi = Math.max(srGate.a, srGate.b) * (cols - 1);
-      sr.gateDt = { lo: (cLo - edgeCol) * spc, hi: (cHi - edgeCol) * spc };
+      const gLo = Math.min(srGate.a, srGate.b), gHi = Math.max(srGate.a, srGate.b);
+      sr.gateDt = { lo: gLo * frame.col_span_s, hi: gHi * frame.col_span_s };
     } else {
       srStatus("gate needs a live/frozen trace on screen"); return;
     }

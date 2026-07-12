@@ -111,12 +111,20 @@ function applyFrame(f) {
   frame = f; lastSeq = f.seq;
   const sig = acqSig(f);
   if (sig !== lastSig) { userZoomed = false; lastSig = sig; } // band/depth/run change → re-home
-  // Re-home every live frame onto the trigger: the raw record is NOT phase-stable
-  // (the trigger lands at a different sample each acquisition), so the edge — not
-  // a fixed sample — is the stable anchor. homeWindow keeps the edge at posFrac
-  // WITHOUT clamping the deep window into the record (it shows blank past the
-  // ends), so the trace is edge-steady even when the edge sits near a record end.
-  if (!userZoomed) { const h = homeWindow(f); view.win.a = h.a; view.win.b = h.b; view.vwin.a = 0; view.vwin.b = 1; }
+  // Keep the display TRIGGER-LOCKED every frame: the raw record is NOT phase-stable
+  // (the trigger lands at a different sample each acquisition), so the edge — not a
+  // fixed sample — is the anchor. At home, homeWindow re-centres the edge at posFrac
+  // WITHOUT clamping the deep window into the record. When the user has ZOOMED, the
+  // window is frozen — but the edge still wanders, so without following it the trace
+  // slides ("frame-locked, not trigger-locked"). EDGE-FOLLOW shifts the frozen window
+  // by the frame-to-frame edge delta so the trigger stays put at any zoom.
+  if (!userZoomed) {
+    const h = homeWindow(f); view.win.a = h.a; view.win.b = h.b; view.vwin.a = 0; view.vwin.b = 1;
+  } else if (f.edge_frac >= 0 && lastEdgeFrac != null && lastEdgeFrac >= 0) {
+    const d = f.edge_frac - lastEdgeFrac;
+    view.win.a += d; view.win.b += d;
+  }
+  lastEdgeFrac = f.edge_frac;
   scheduleRender(); // coalesced paint on the next rAF — never block the poll callback
 }
 

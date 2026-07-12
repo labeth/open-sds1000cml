@@ -33,7 +33,7 @@ scope.addEventListener("pointerdown", ev => {
   }
   if (srGate.on && view.mode === "YT") { // grab a gate marker if the pointer is near one
     const p = ptToNorm(ev), span = view.win.b - view.win.a || 1;
-    const af = (srGate.a - view.win.a) / span, bf = (srGate.b - view.win.a) / span;
+    const af = (srGateRF(srGate.a) - view.win.a) / span, bf = (srGateRF(srGate.b) - view.win.a) / span;
     const da = Math.abs(p.x - af), db = Math.abs(p.x - bf);
     if (Math.min(da, db) < 0.02) {
       srGate.drag = da <= db ? "a" : "b";

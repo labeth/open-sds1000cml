@@ -1,10 +1,20 @@
 // app_geom.js — viewport/window/nav geometry + marker/zoom math (classic script; shares app.js globals).
 
 "use strict";
+// Gate markers are stored EDGE-RELATIVE: srGate.a/b are a record-fraction OFFSET
+// from the trigger edge, not an absolute record fraction. The served raw record is
+// not phase-stable and the display re-centres on the edge every frame, so an
+// absolute fraction would slide ~1 screen/frame; anchoring to the edge pins a
+// marker to its feature. srEdgeAnchor is the current frame's edge (record fraction,
+// 0.5 when free-run); srGateRF maps a stored offset to THIS frame's record fraction.
+function srEdgeAnchor() { return (frame && frame.edge_frac >= 0) ? frame.edge_frac : 0.5; }
+function srGateRF(off) { return off + srEdgeAnchor(); }
+
 function srGateDefaultFromView() {
-  const w = view.win, s = w.b - w.a;
-  // fallback: inset from the visible edges so both handles are easy to grab
-  srGate.a = w.a + 0.1 * s; srGate.b = w.a + 0.9 * s;
+  const w = view.win, s = w.b - w.a, anchor = srEdgeAnchor();
+  // fallback: inset from the visible edges so both handles are easy to grab.
+  // Stored EDGE-RELATIVE (record fraction minus the edge anchor), like all markers.
+  srGate.a = w.a + 0.1 * s - anchor; srGate.b = w.a + 0.9 * s - anchor;
   const f = frame;
   if (!f || !f.cols || f.is_env) return;
   // Propose on the channel that will drive the matching: C1/C2 as selected, or
@@ -31,8 +41,8 @@ function srGateDefaultFromView() {
     if (p >= 16 && p < gHi - gLo) gHi = gLo + p;
   }
   if (gHi - gLo < 8) return;
-  srGate.a = (lo + gLo) / (f.cols - 1);
-  srGate.b = (lo + gHi) / (f.cols - 1);
+  srGate.a = (lo + gLo) / (f.cols - 1) - anchor;
+  srGate.b = (lo + gHi) / (f.cols - 1) - anchor;
 }
 
 // The ONE column<->pixel mapping: traces, overlays and decode all go through it,
@@ -182,7 +192,12 @@ function moveCursor(ev) {
 // stays on the signal through zoom) and updates the dragged gate edge.
 function moveSrGate(ev) {
   const px = ptToNorm(ev).x, span = view.win.b - view.win.a;
-  srGate[srGate.drag] = Math.max(0, Math.min(1, view.win.a + px * span));
+  // Record fraction under the pointer, clamped onto the record, stored EDGE-RELATIVE
+  // (minus the edge anchor) so the marker tracks the trigger-locked trace, not a
+  // fixed sample. Recomputed per move: the same screen x maps to the same offset
+  // whichever frame's edge is current, so the marker stays under the pointer.
+  const rf = Math.max(0, Math.min(1, view.win.a + px * span));
+  srGate[srGate.drag] = rf - srEdgeAnchor();
   srGate.placed = true; // user-positioned: gate toggles must not auto-replace it
   scheduleRender();
 }

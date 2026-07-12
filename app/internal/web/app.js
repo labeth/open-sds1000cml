@@ -35,14 +35,17 @@ const view = { mode: "YT", persist: false, cursors: false, c1: true, c2: true,
                fwin: { a: 0, b: 1 } };  // visible FREQUENCY range as fractions of 0..Nyquist (FFT)
 let userZoomed = false;   // true once the user pans/zooms → live frames stop re-homing
 let lastSig = "";         // acquisition signature; a change re-homes even if zoomed
+let lastEdgeFrac = null;  // previous frame's edge_frac, for EDGE-FOLLOW when zoomed
 // Normalized cursor positions (fractions of width/height).
 const cur = { t1: 0.33, t2: 0.66, v1: 0.4, v2: 0.6, drag: null };
-// Super-res GATE markers: which region to super-res. a/b are fractions of the
-// DISPLAY record (0..1), so they stay pinned to the signal through zoom/pan
-// (the display is trigger-anchored). Turning the gate on AUTO-PLACES them on the
-// best thing in the current view (active region, one period); after that the
-// markers are the ONLY truth — arming stacks exactly what they span.
-const srGate = { on: false, placed: false, a: 0.4, b: 0.6, drag: null };
+// Super-res GATE markers: which region to super-res. a/b are EDGE-RELATIVE record
+// offsets — the record fraction FROM the trigger edge (see srGateRF), not an
+// absolute fraction. The served raw record is not phase-stable, so the display
+// re-centres on the edge every frame; anchoring the markers to the edge (like the
+// content and the edge-relative seed) keeps them pinned to the same feature at any
+// zoom. Turning the gate on AUTO-PLACES them on the best thing in the current view
+// (active region, one period); after that the markers are the ONLY truth.
+const srGate = { on: false, placed: false, a: -0.1, b: 0.1, drag: null };
 let reqCols = 2048;   // full-resolution both channels (decode + navigator); client-side zoom
 
 // ---- navigator / horizontal zoom ----
