@@ -102,24 +102,35 @@ func (e *Engine) envFrame(norm bool) {
 	e.drain(f, w)
 	e.armEngine() // refill during the reduction
 
-	e.envPush(f, w)
-	e.envReduce(f)
-
 	disc := f.C1[:w]
 	if int(e.trigSrc.Load()) == 1 {
 		disc = f.C2[:w]
 	}
 	_, _, p := ptp(disc)
 
+	// TRIGGER the envelope band when the drained record carries a confident edge
+	// on a real, well-sampled signal: publish it as a normal edge-centred trace
+	// (the same window() path the decimated bands use — the whole record spans one
+	// screen, so window() anchors the crossing at the trigger position and repeat-
+	// extends the small centring margin). This gives 5–50 ms/div a STABLE triggered
+	// waveform instead of a free-running min/max band (a repetitive signal was a
+	// filled rail-to-rail band because untriggered acquisitions accumulate at random
+	// phase). Fall back to the envelope min/max SCATTER when there is no trigger to
+	// be had — an aliased (few-samples/period) signal, a flat/quiet screen, or the
+	// level off the signal — which keeps a live display and the glitch-catching
+	// envelope exactly where triggering is impossible.
+	td := e.trigDispLevel(int(e.trigSrc.Load()))
+	edgeX := -1.0
+	if td >= 0 && signalPresent(disc, float64(e.tuneSigK.Load())) {
+		edgeX = centerCross(disc, td, e.trigRising.Load())
+	}
+	triggered := edgeX >= 0
+
 	f.Valid = w
 	f.WinCols = w
-	f.EdgeX = -1
 	f.Interp = false
-	f.IsEnv = true
 	f.Degraded = false
-	f.EnvCols = envDisplayCols
 	f.Ptp = p
-	f.Trigd = false
 	f.TrigPos = 0
 	f.Coherent = haltOK && fillMoved
 	f.HaltOK = haltOK
@@ -128,9 +139,22 @@ func (e *Engine) envFrame(norm bool) {
 	f.DisplayedS = e.band.DisplayedSdivS()
 	f.SampleS = e.band.CaptureIntervalNs() * 1e-9
 	f.Norm = norm
+	if triggered {
+		f.EdgeX = edgeX
+		f.IsEnv = false
+		f.EnvCols = 0
+		f.Trigd = true
+	} else {
+		e.envPush(f, w)
+		e.envReduce(f)
+		f.EdgeX = -1
+		f.IsEnv = true
+		f.EnvCols = envDisplayCols
+		f.Trigd = false
+	}
 
 	e.commitStats(f.Coherent, haltOK, p, 0, 0, 0)
-	e.zoneMaskUncomparable() // env frames have no edge anchor: zone/mask can't run
+	e.zoneMaskUncomparable() // envelope-origin frames don't participate in zone/mask
 	e.commitPublish(f)
 
 	if !fillMoved && p < 3 {
