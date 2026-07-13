@@ -42,6 +42,26 @@ func flexHeaderCRC11(sync, startup, frameID, payloadLen int) int {
 	return crc & 0x7FF
 }
 
+// flexFrameCRC24 computes the FlexRay frame CRC-24 (poly 0x5D6DCB, init
+// 0xFEDCBA — channel A) over the header + payload bytes, MSB-first. The
+// 3-byte trailer every complete frame carries must equal this. Found by the
+// sigrok oracle cross-check: this decoder validated only the header CRC-11,
+// so a corrupted payload/trailer read back as a clean frame while sigrok's
+// flexray decoder flagged it (oracle_flexray_test.go pins both now).
+func flexFrameCRC24(frameBytes []int) int {
+	crc := 0xFEDCBA
+	for _, by := range frameBytes {
+		for b := 7; b >= 0; b-- {
+			msb := (crc >> 23) & 1
+			crc = (crc << 1) & 0xFFFFFF
+			if (msb ^ ((by >> b) & 1)) == 1 {
+				crc ^= 0x5D6DCB
+			}
+		}
+	}
+	return crc & 0xFFFFFF
+}
+
 // DecodeFlexRay decodes a FlexRay byte stream on one channel's codes. The bus is
 // shown here as a single logic line (the BP/BM pair collapsed to two levels):
 // idle sits HIGH. A frame is framed like a stretched async word:
@@ -135,7 +155,7 @@ func DecodeFlexRay(codes []uint8, colTimeS float64, cfg FlexRayCfg) Result {
 	var bytesOut []int
 	var toks []string
 	frames := 0
-	goodFrames := 0 // frames with a valid header CRC (OK gates on this)
+	goodFrames := 0 // frames with valid header AND frame CRCs (OK gates on this)
 	consumedUntil := -1
 
 	// Scan rising edges for a TSS->FSS boundary: a rising edge preceded by a LOW
@@ -212,6 +232,7 @@ func DecodeFlexRay(codes []uint8, colTimeS float64, cfg FlexRayCfg) Result {
 		// flags(5) frameID(11) payloadLen(7) headerCRC(11) cycle(6) = 40 bits,
 		// MSB-first. Emit a note span (kind "addr") right after the TSS.
 		crcOK := false
+		fcrcOK := true
 		if len(frameBytes) >= 5 {
 			var hdr uint64
 			for hb := 0; hb < 5; hb++ {
@@ -224,6 +245,13 @@ func DecodeFlexRay(codes []uint8, colTimeS float64, cfg FlexRayCfg) Result {
 			sync := (hdr >> 36) & 1
 			startup := (hdr >> 35) & 1
 			crcOK = flexHeaderCRC11(int(sync), int(startup), frameID, payloadLen) == hdrCRC
+			// Frame CRC-24 seals header + payload; the last 3 bytes carry it.
+			// Only checkable when the capture holds exactly the LEN-implied
+			// byte count — a truncated tail already reads as untrustworthy.
+			if want := 5 + 2*payloadLen + 3; len(frameBytes) == want {
+				got := frameBytes[want-3]<<16 | frameBytes[want-2]<<8 | frameBytes[want-1]
+				fcrcOK = flexFrameCRC24(frameBytes[:want-3]) == got
+			}
 			note := fmt.Sprintf("ID=%d LEN=%d CYC=%d", frameID, payloadLen, cycle)
 			if sync == 1 {
 				note += " SYNC"
@@ -231,12 +259,15 @@ func DecodeFlexRay(codes []uint8, colTimeS float64, cfg FlexRayCfg) Result {
 			if startup == 1 {
 				note += " STARTUP"
 			}
-			// A bad header CRC marks the frame corrupt: flag the header span and note
+			// A bad CRC marks the frame corrupt: flag the header span and note
 			// so a consumer never treats the (still-extracted) bytes as trustworthy.
 			kind := "addr"
 			if !crcOK {
 				kind = "frame-error"
 				note = "!CRC " + note
+			} else if !fcrcOK {
+				kind = "frame-error"
+				note = "!FCRC " + note
 			}
 			hdrSpan := Span{frameSpans[1].I0, frameSpans[5].I1, note, kind, frameID}
 			// insert the note right after the TSS span (index 0), before the data.
@@ -252,7 +283,7 @@ func DecodeFlexRay(codes []uint8, colTimeS float64, cfg FlexRayCfg) Result {
 			toks = append(toks, "|")
 		}
 		frames++
-		if crcOK {
+		if crcOK && fcrcOK {
 			goodFrames++
 		}
 		spans = append(spans, frameSpans...)
@@ -268,14 +299,15 @@ func DecodeFlexRay(codes []uint8, colTimeS float64, cfg FlexRayCfg) Result {
 	if colTimeS > 0 {
 		baud = int(math.Round(1.0 / (T * colTimeS)))
 	}
-	// OK requires at least one frame with a valid header CRC. Frames that framed
-	// correctly but failed the CRC are still returned (flagged) in Spans/Bytes so
-	// the UI can show them, but they never make OK true on their own — a corrupted
-	// header must not read as a confident, valid FlexRay frame.
+	// OK requires at least one frame whose header CRC-11 AND frame CRC-24 both
+	// verify. Frames that framed correctly but failed either CRC are still
+	// returned (flagged) in Spans/Bytes so the UI can show them, but they never
+	// make OK true on their own — a corrupted frame must not read as a
+	// confident, valid FlexRay frame.
 	res := Result{OK: goodFrames > 0, Proto: "flexray", Spans: spans, Text: strings.Join(toks, " "),
 		Bytes: bytesOut, Baud: baud, SPB: T, Thr: S.threshold}
 	if goodFrames == 0 {
-		res.Error = "no CRC-valid FlexRay header"
+		res.Error = "no CRC-valid FlexRay frame"
 	}
 	return res
 }

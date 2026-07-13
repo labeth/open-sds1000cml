@@ -44,6 +44,23 @@ function flexHeaderCRC11(sync, startup, frameID, payloadLen) {
   return crc & 0x7FF;
 }
 
+// flexFrameCRC24 — FlexRay frame CRC-24 (poly 0x5D6DCB, init 0xFEDCBA —
+// channel A) over the header + payload bytes, MSB-first; the 3-byte trailer
+// every complete frame carries must equal this. Found by the sigrok oracle
+// cross-check (Go side): only the header CRC-11 was validated, so a corrupted
+// payload/trailer read back as a clean frame. Mirrors decode_flexray.go.
+function flexFrameCRC24(frameBytes) {
+  let crc = 0xFEDCBA;
+  for (const by of frameBytes) {
+    for (let b = 7; b >= 0; b--) {
+      const msb = (crc >> 23) & 1;
+      crc = (crc << 1) & 0xFFFFFF;
+      if ((msb ^ ((by >> b) & 1)) === 1) crc ^= 0x5D6DCB;
+    }
+  }
+  return crc & 0xFFFFFF;
+}
+
 function decodeFlexRay(codes, colTimeS, cfg) {
   cfg = cfg || {};
   const minSPB = 4;
@@ -140,7 +157,7 @@ function decodeFlexRay(codes, colTimeS, cfg) {
     // Header bonus: the first 5 bytes are the FlexRay header —
     // flags(5) frameID(11) payloadLen(7) headerCRC(11) cycle(6) = 40 bits,
     // MSB-first. Emit a note span (kind "addr") right after the TSS.
-    let crcOK = false;
+    let crcOK = false, fcrcOK = true;
     if (frameBytes.length >= 5) {
       let hdr = 0;
       for (let hb = 0; hb < 5; hb++) hdr = hdr * 256 + (frameBytes[hb] & 0xff); // 40-bit value
@@ -152,13 +169,22 @@ function decodeFlexRay(codes, colTimeS, cfg) {
       const sync = Math.floor(hdr / 2 ** 36) & 1;
       const startup = Math.floor(hdr / 2 ** 35) & 1;
       crcOK = flexHeaderCRC11(sync, startup, frameID, payloadLen) === hdrCRC;
+      // Frame CRC-24 seals header + payload; the last 3 bytes carry it. Only
+      // checkable when the capture holds exactly the LEN-implied byte count —
+      // a truncated tail already reads as untrustworthy.
+      const want = 5 + 2 * payloadLen + 3;
+      if (frameBytes.length === want) {
+        const got = frameBytes[want - 3] * 65536 + frameBytes[want - 2] * 256 + frameBytes[want - 1];
+        fcrcOK = flexFrameCRC24(frameBytes.slice(0, want - 3)) === got;
+      }
       let note = "ID=" + frameID + " LEN=" + payloadLen + " CYC=" + cycle;
       if (sync === 1) note += " SYNC";
       if (startup === 1) note += " STARTUP";
-      // A bad header CRC marks the frame corrupt: flag the header span and note
+      // A bad CRC marks the frame corrupt: flag the header span and note
       // so a consumer never treats the (still-extracted) bytes as trustworthy.
       let kind = "addr";
       if (!crcOK) { kind = "frame-error"; note = "!CRC " + note; }
+      else if (!fcrcOK) { kind = "frame-error"; note = "!FCRC " + note; }
       frameSpans.splice(1, 0, { i0: frameSpans[1].i0, i1: frameSpans[5].i1, text: note, kind, val: frameID });
       frameToks.unshift("[" + note + "]");
     }
@@ -168,7 +194,7 @@ function decodeFlexRay(codes, colTimeS, cfg) {
       toks.push("|");
     }
     frames++;
-    if (crcOK) goodFrames++;
+    if (crcOK && fcrcOK) goodFrames++;
     for (const s of frameSpans) spans.push(s);
     for (const t of frameToks) toks.push(t);
     for (const bb of frameBytes) bytes.push(bb);
@@ -178,10 +204,11 @@ function decodeFlexRay(codes, colTimeS, cfg) {
   if (frames === 0) return fxFail("no FlexRay frame (TSS) found");
   let baud = cfg.bitrate || 0;
   if (colTimeS > 0) baud = Math.round(1 / (T * colTimeS));
-  // OK requires at least one frame with a valid header CRC. Framed-but-bad-CRC
-  // frames are still returned (flagged) in spans/bytes for display, but never make
-  // OK true on their own — a corrupted header must not read as a confident frame.
-  return { ok: goodFrames > 0, error: goodFrames > 0 ? null : "no CRC-valid FlexRay header", proto: "flexray",
+  // OK requires at least one frame whose header CRC-11 AND frame CRC-24 both
+  // verify. Framed-but-bad-CRC frames are still returned (flagged) in spans/bytes
+  // for display, but never make OK true on their own — a corrupted frame must not
+  // read as a confident frame.
+  return { ok: goodFrames > 0, error: goodFrames > 0 ? null : "no CRC-valid FlexRay frame", proto: "flexray",
     spans, text: toks.join(" "), bytes,
     meta: { bitrate: baud, samplesPerBit: T, threshold: S.threshold, lowRail: S.lowRail, highRail: S.highRail, frames } };
 }
