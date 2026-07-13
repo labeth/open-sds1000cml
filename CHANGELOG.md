@@ -3,6 +3,17 @@
 ## Unreleased
 
 ### Added
+- **Sigrok-oracle decoder test suite.** The protocol decoders are now
+  cross-validated against libsigrokdecode (via sigrok-cli) on identical
+  synthetic waveforms — 46 subtests across UART, I2C, SPI, CAN (+FD base),
+  FlexRay and USB-LS, covering the classic torture cases (fractional
+  samples/bit, parity/frame/CRC corruption, bit-stuffing maximizers,
+  repeated START, all four SPI modes, RTR, token extremes, back-to-back
+  frames at minimum spacing). A dedicated `oracle-decode` CI lane installs
+  sigrok-cli and hard-fails on skips. The exercise also pinned two
+  libsigrokdecode `can` PD bugs (phantom RTR data bytes; CRC check is a
+  stub) where the repo decoders are correct. See
+  `app/docs/decode-oracle.md`.
 - **Sigrok export from the web UI.** Three new one-click exports next to
   PNG/CSV: **`.sr`** (the srzip session format — opens directly in PulseView
   and sigrok-cli, carrying channel names, the true sample rate, and calibrated
@@ -14,6 +25,11 @@
   capture under review, or a superres view. See `app/docs/sigrok-export.md`.
 
 ### Fixed
+- **FlexRay frames with a corrupted frame CRC-24 no longer decode as clean.**
+  Found by the sigrok oracle: the decoder verified only the 11-bit header
+  CRC, so payload/trailer corruption was invisible. Both the Go decoder and
+  its JS twin now seal header+payload with the CRC-24 (poly 0x5D6DCB, init
+  0xFEDCBA), flag `!FCRC` frames, and gate `OK` on both CRCs.
 - **Exported time axes are no longer 2× compressed on 1–200 ns/div.** Those
   bands capture at 2 ns/sample but size the display window at the 1 ns nominal
   (spec 04 §6), so the frame's `col_span_s` understates the real span 2× and

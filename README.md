@@ -63,8 +63,10 @@ hardware does and how the firmware must behave*; the implementation in
   auto-detect that scores all ten against the live signal (protocol + channel
   roles + baud). The Go decoders have JS twins in the browser, held
   byte-for-byte identical by a 286-vector
-  parity test, and render as an on-trace byte strip on both the web UI and the
-  device LCD.
+  parity test, are **cross-validated against libsigrokdecode** (sigrok as the
+  oracle, on payloads, errors, and sample alignment — see
+  [`app/docs/decode-oracle.md`](app/docs/decode-oracle.md)), and render as an
+  on-trace byte strip on both the web UI and the device LCD.
 - **Analysis suite** — **eye diagram + TIE jitter** (software clock recovery,
   RJ/DJ decomposition, jitter histogram + spectrum), **Bode / FRA**
   (magnitude + phase vs log-frequency, externally driven sweep), and a

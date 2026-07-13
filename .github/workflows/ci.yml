@@ -87,6 +87,29 @@ jobs:
           CI_REQUIRE_BROWSER: "1"
         run: go test -timeout 25m ./internal/web/ ./internal/decode/ ./internal/superres/
 
+  # Oracle lane: libsigrokdecode's protocol decoders (via sigrok-cli) act as
+  # the reference implementation for the Go protocol decoders — the
+  # oracle_*_test.go suites in internal/decode generate identical waveforms,
+  # decode them with both, and require agreement on payloads, errors, and
+  # alignment. CI_REQUIRE_SIGROK=1 turns the no-sigrok self-skip into a hard
+  # failure so the suite can never silently vanish from CI (same policy as
+  # the browser lane's CI_REQUIRE_BROWSER).
+  oracle-decode:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: app/go.mod
+          cache: false
+      - name: Install sigrok-cli
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends sigrok-cli
+      - name: sigrok-oracle decoder cross-check (skips are failures here)
+        working-directory: app
+        env:
+          CI_REQUIRE_SIGROK: "1"
+        run: go test -timeout 10m -run 'TestOracle' -v ./internal/decode/
+
   cross-build:
     runs-on: ubuntu-latest
     steps:
