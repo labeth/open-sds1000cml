@@ -677,5 +677,21 @@ func TestOracleFlexRay(t *testing.T) {
 				t.Fatalf("payload byte %d misaligned: repo BSS at %d, sigrok data at %d", i, pSpans[i].I0, dataAnns[i].I0)
 			}
 		}
+
+		// AUTO inference must survive the fractional grid — this is what
+		// makes the bit-period refine loop and the per-byte BSS resync
+		// load-bearing: the review proved by mutation that with either
+		// disabled the whole suite still passed when only integer-spb
+		// vectors existed (resync corrections were all zero-magnitude, and a
+		// collapsed 18.0 estimate still decoded short frames). The inferred
+		// period must be the true 18.3, not a rounded 18.0 (~10.28 Mbit).
+		ra := DecodeFlexRay(bitsToCodes(bits), 1.0/float64(srF), FlexRayCfg{})
+		if !ra.OK {
+			t.Fatalf("repo AUTO decode failed: %s", ra.Error)
+		}
+		if d := ra.SPB - spbF; d > 0.15 || d < -0.15 {
+			t.Fatalf("auto-inferred SPB %.3f, want %.1f (refine-loss regression?)", ra.SPB, spbF)
+		}
+		eqBytes(t, "fractional auto bytes", ra.Bytes, fb)
 	})
 }

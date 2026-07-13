@@ -50,10 +50,19 @@ func DecodeUSBLS(dp []uint8, colTimeS float64, cfg USBLSCfg) Result {
 		return Result{Proto: "usbls", Error: "too few edges"}
 	}
 
-	// Bit period T (samples/bit). cfg.Bitrate pins it; otherwise infer it as the
-	// shortest level-run: NRZI edge gaps are integer multiples of one bit period
-	// (1..7, capped by bit stuffing), so the shortest cluster is T. Take a low
-	// percentile (robust to a stray short gap), then refine on that cluster.
+	// Bit period T (samples/bit). cfg.Bitrate pins it; otherwise infer it: NRZI
+	// edge gaps are integer multiples of one bit period (1..7, capped by bit
+	// stuffing), so the shortest cluster is T. A blind low percentile broke on
+	// realistic idle-bus captures — a keep-alive train (one 2-bit SE0 every
+	// ~1 ms) floods the gap list with 2-bit and huge inter-KA gaps, drags the
+	// percentile past the packet's few 1-bit gaps, and the collapsed estimate
+	// made auto decode fail on a capture sigrok reads fine (found by the
+	// sigrok oracle). Use inferUARTspb's deterministic cluster walk instead:
+	// each ascending gap cluster is tried as the 1-bit hypothesis, refined by
+	// re-centered mean, validated by the fraction of gaps it explains as
+	// integer bit multiples; ties go to the larger period. Gaps beyond ~16
+	// candidate bits (inter-packet / keep-alive spacing) carry no bit-timing
+	// evidence and are excluded from refine and validation.
 	var T float64
 	if cfg.Bitrate > 0 {
 		T = (1.0 / float64(cfg.Bitrate)) / colTimeS
@@ -68,18 +77,59 @@ func DecodeUSBLS(dp []uint8, colTimeS float64, cfg USBLSCfg) Result {
 			return Result{Proto: "usbls", Error: "too few edges / cannot infer bitrate"}
 		}
 		sort.Float64s(gaps)
-		est := gaps[int(float64(len(gaps))*0.1)]
-		sum, cnt := 0.0, 0
-		for _, g := range gaps {
-			if math.Abs(g-est) <= 0.4*est {
-				sum += g
-				cnt++
+		var cands []float64
+		for i := 0; i < len(gaps); {
+			seed := gaps[i]
+			sum, j := 0.0, i
+			for j < len(gaps) && gaps[j] <= 1.5*seed {
+				sum += gaps[j]
+				j++
+			}
+			cands = append(cands, sum/float64(j-i))
+			i = j
+		}
+		best, bestFrac := 0.0, -1.0
+		for _, cand := range cands {
+			if cand < 2.5 { // below the samples/bit floor: a spur cluster
+				continue
+			}
+			var kg []float64
+			for _, g := range gaps {
+				if g <= 16*cand {
+					kg = append(kg, g)
+				}
+			}
+			if len(kg) < 3 {
+				continue
+			}
+			ref := cand
+			for pass := 0; pass < 2; pass++ {
+				sum, cnt := 0.0, 0
+				for _, g := range kg {
+					if math.Abs(g-ref) <= 0.35*ref {
+						sum += g
+						cnt++
+					}
+				}
+				if cnt > 0 {
+					ref = sum / float64(cnt)
+				}
+			}
+			good := 0
+			for _, g := range kg {
+				if m := math.Round(g / ref); m >= 1 && math.Abs(g-m*ref) <= 0.35*ref {
+					good++
+				}
+			}
+			// >= keeps the LARGER candidate on an exact tie (candidates ascend).
+			if frac := float64(good) / float64(len(kg)); frac >= 0.7 && frac >= bestFrac {
+				best, bestFrac = ref, frac
 			}
 		}
-		if cnt > 0 {
-			est = sum / float64(cnt)
+		if best <= 0 {
+			return Result{Proto: "usbls", Error: "bitrate ambiguous — set it explicitly"}
 		}
-		T = est
+		T = best
 	}
 	if math.IsInf(T, 0) || math.IsNaN(T) || !(T >= minSPB) {
 		return Result{Proto: "usbls", Error: fmt.Sprintf("%.1f samples/bit; need >= %g", T, minSPB)}

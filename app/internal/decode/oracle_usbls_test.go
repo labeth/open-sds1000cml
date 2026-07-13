@@ -169,6 +169,47 @@ func oracleUSBLSWave(sr float64, packets [][]int, gapBits float64) (dp, dm []byt
 	return wp.bits, wm.bits
 }
 
+// oracleUSBLSWaveKA prepends a keep-alive train to the packet wave: nKA bare
+// EOPs (2 bit-times SE0 + 1 J) spaced kaGapBits of idle J apart — an idle
+// low-speed bus, where the hub emits a keep-alive every millisecond. Real
+// spacing is ~1500 bit-times; the test uses a smaller one to keep the vector
+// small — the estimator failure mode this guards (gap-COUNT flooding of a
+// percentile) is spacing-independent.
+func oracleUSBLSWaveKA(sr float64, nKA int, kaGapBits float64, packets [][]int, gapBits float64) (dp, dm []byte) {
+	bt := 1.0 / usblsBitrate
+	wp, wm := newTimeline(sr), newTimeline(sr)
+	sym := func(p, m byte, cells float64) {
+		wp.add(p, cells*bt)
+		wm.add(m, cells*bt)
+	}
+	stJ, stK := 1, 0
+	emit := func(st int, cells float64) {
+		if st == stJ {
+			sym(0, 1, cells) // J: dp low, dm high (LOW-speed polarity)
+		} else {
+			sym(1, 0, cells) // K
+		}
+	}
+	emit(stJ, 20) // lead idle
+	for k := 0; k < nKA; k++ {
+		sym(0, 0, 2)           // keep-alive: bare EOP (2 bit-times SE0)
+		emit(stJ, 1+kaGapBits) // closing J + inter-KA idle
+	}
+	for _, bits := range packets {
+		st := stJ
+		for _, b := range bits {
+			if b == 0 {
+				st = stJ + stK - st
+			}
+			emit(st, 1)
+		}
+		sym(0, 0, 2)         // EOP: SE0
+		emit(stJ, 1+gapBits) // EOP's closing J, then inter-packet idle
+	}
+	emit(stJ, 20) // trail idle
+	return wp.bits, wm.bits
+}
+
 // usblsSigrok runs the stacked usb_signalling->usb_packet decode for one
 // usb_packet annotation class.
 func usblsSigrok(t *testing.T, sr int, dp, dm []byte, class string) []ann {
@@ -176,6 +217,14 @@ func usblsSigrok(t *testing.T, sr int, dp, dm []byte, class string) []ann {
 	return sigrokDecode(t, sr, []string{"DP", "DM"}, [][]byte{dp, dm},
 		"usb_signalling:dp=DP:dm=DM:signalling=low-speed,usb_packet:signalling=low-speed",
 		"usb_packet="+class)
+}
+
+// usblsSignalling fetches one usb_signalling (not usb_packet) annotation class.
+func usblsSignalling(t *testing.T, sr int, dp, dm []byte, class string) []ann {
+	t.Helper()
+	return sigrokDecode(t, sr, []string{"DP", "DM"}, [][]byte{dp, dm},
+		"usb_signalling:dp=DP:dm=DM:signalling=low-speed",
+		"usb_signalling="+class)
 }
 
 // usblsAnnNum strips a fixed prefix (and any 0x) from each annotation text and
@@ -738,6 +787,41 @@ func TestOracleUSBLS(t *testing.T) {
 		eqBytes(t, "clean DATA1 payload", pay1, []int{0x01, 0x02})
 		okAnns := usblsSigrok(t, sr, dp, dm, "crc16-ok")
 		eqBytes(t, "clean DATA1 CRC16", []int{crc1}, usblsAnnNum(t, okAnns, "CRC16: ", 16))
+	})
+
+	t.Run("keep-alive-train-auto-bitrate", func(t *testing.T) {
+		// The idle-bus killer the sigrok oracle exposed: a realistic keep-
+		// alive train ahead of the traffic floods the edge-gap list with
+		// 2-bit SE0 gaps and huge inter-KA gaps. The old blind low-percentile
+		// estimator drifted past the packet's few 1-bit gaps, the refined
+		// bit period collapsed toward 2 bits, SYNC never matched, and AUTO
+		// decode hard-failed ("no USB packet found") on a capture sigrok
+		// reads fine — while a pinned bitrate decoded normally. The cluster
+		// walk (with >16-bit gaps excluded as non-evidence) must now infer
+		// the true rate and decode identically to the pinned run and sigrok.
+		const nKA = 60
+		pkts := [][]int{usblsPacketBits(0xD, usblsTokenBits(21, 10))}
+		dp, dm := oracleUSBLSWaveKA(sr, nKA, 100, pkts, 40)
+		if kas := usblsSignalling(t, sr, dp, dm, "keep-alive"); len(kas) != nKA {
+			t.Fatalf("sigrok saw %d keep-alives, want %d (vector broken?)", len(kas), nKA)
+		}
+		oraclePIDs := usblsPIDs(t, usblsSigrok(t, sr, dp, dm, "pid"))
+		if len(oraclePIDs) != 1 || oraclePIDs[0] != "SETUP" {
+			t.Fatalf("sigrok PIDs %v, want [SETUP]", oraclePIDs)
+		}
+		rAuto := DecodeUSBLS(bitsToCodes(dm), 1.0/float64(sr), USBLSCfg{}) // Bitrate 0: infer
+		if !rAuto.OK {
+			t.Fatalf("repo AUTO decode failed on a keep-alive capture: %s", rAuto.Error)
+		}
+		rPin := DecodeUSBLS(bitsToCodes(dm), 1.0/float64(sr), cfg)
+		if !rPin.OK {
+			t.Fatalf("repo pinned decode failed: %s", rPin.Error)
+		}
+		ap, pp := usblsRepoPackets(rAuto), usblsRepoPackets(rPin)
+		if len(ap) != 1 || len(pp) != 1 || ap[0].name != pp[0].name {
+			t.Fatalf("auto %d packets vs pinned %d", len(ap), len(pp))
+		}
+		eqBytes(t, "keep-alive auto vs pinned bytes", ap[0].bytes, pp[0].bytes)
 	})
 
 	t.Run("fractional-spb", func(t *testing.T) {

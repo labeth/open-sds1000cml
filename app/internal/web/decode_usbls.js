@@ -36,15 +36,45 @@ function decodeUSBLS(dp, colTimeS, cfg) {
   if (cfg.bitrate > 0) {
     T = (1 / cfg.bitrate) / colTimeS;
   } else {
+    // Cluster walk (mirrors decode_usbls.go): a keep-alive train floods the
+    // gap list with 2-bit SE0s and huge inter-KA gaps, and the old blind
+    // low-percentile collapsed the estimate until decode failed on a capture
+    // sigrok reads fine (found by the sigrok oracle). Gaps beyond ~16
+    // candidate bits carry no bit-timing evidence and are excluded.
     const gaps = [];
     for (let k = 1; k < S.edges.length; k++) { const g = S.edges[k].i - S.edges[k - 1].i; if (g >= 1) gaps.push(g); }
     if (gaps.length < 3) return fail("usbls", "too few edges / cannot infer bitrate");
     gaps.sort((a, b) => a - b);
-    let est = gaps[Math.floor(gaps.length * 0.1)];
-    let sum = 0, cnt = 0;
-    for (const g of gaps) if (Math.abs(g - est) <= 0.4 * est) { sum += g; cnt++; }
-    if (cnt) est = sum / cnt;
-    T = est;
+    const cands = [];
+    for (let i = 0; i < gaps.length; ) {
+      const seed = gaps[i];
+      let sum = 0, j = i;
+      for (; j < gaps.length && gaps[j] <= 1.5 * seed; j++) sum += gaps[j];
+      cands.push(sum / (j - i));
+      i = j;
+    }
+    let best = 0, bestFrac = -1;
+    for (const cand of cands) {
+      if (cand < 2.5) continue; // below the samples/bit floor: a spur cluster
+      const kg = gaps.filter((g) => g <= 16 * cand);
+      if (kg.length < 3) continue;
+      let ref = cand;
+      for (let pass = 0; pass < 2; pass++) {
+        let sum = 0, cnt = 0;
+        for (const g of kg) if (Math.abs(g - ref) <= 0.35 * ref) { sum += g; cnt++; }
+        if (cnt) ref = sum / cnt;
+      }
+      let good = 0;
+      for (const g of kg) {
+        const m = Math.round(g / ref);
+        if (m >= 1 && Math.abs(g - m * ref) <= 0.35 * ref) good++;
+      }
+      const frac = good / kg.length;
+      // >= keeps the LARGER candidate on an exact tie (candidates ascend).
+      if (frac >= 0.7 && frac >= bestFrac) { best = ref; bestFrac = frac; }
+    }
+    if (best <= 0) return fail("usbls", "bitrate ambiguous — set it explicitly");
+    T = best;
   }
   if (!isFinite(T) || !(T >= minSPB)) return fail("usbls", T.toFixed(1) + " samples/bit; need >= " + minSPB);
 

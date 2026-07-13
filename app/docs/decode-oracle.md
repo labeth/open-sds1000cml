@@ -22,10 +22,10 @@ suite cannot silently vanish.
 |---|---|---|
 | UART | `uart` | back-to-back frames, fractional samples/bit, even/odd parity clean + violated (error POSITION pinned), frame error (bad stop, position pinned), 7- and 9-bit data, break condition, auto-baud vs explicit oracle — clean and with deterministic ring glitches (1–2-sample bounces on every transition, exercising the cluster-walk inference) |
 | I2C | `i2c` | write/read, repeated START, NAK'd address, NAK'd last read byte, address extremes 0x00/0x7F, asymmetric clock duty, fractional samples/clock, clock stretching mid-byte and pre-ACK, SDA glitch during SCL high (divergence pinned — see below) |
-| SPI | `spi` | all four CPOL/CPHA modes, LSB/MSB order, fractional bit rate, long-gap re-framing, gaps straddling the 1.5× reset threshold (1.2× and 2.0×, with self-verifying vector geometry), back-to-back words, the no-CS framing difference (pinned per side) |
-| CAN (+FD base) | `can` | DLC 0..8 sweep, extended ID, RTR, recessive ACK slot, stuff-bit maximizers (0x00/0xFF/0x55), corrupted CRC, classic DLC>8 (divergence pinned), auto-baud vs explicit oracle, minimum interframe space, fractional samples/bit, FD base frame |
-| FlexRay | `flexray` | static frames, sync/startup flag combinations, 0x00/0xFF payloads (BSS stress), corrupted header CRC-11, corrupted frame CRC-24, dynamic-frame DTS tail (no phantom TSS), fractional samples/bit, back-to-back frames |
-| USB LS | `usb_signalling` + `usb_packet` | SETUP/DATA0/ACK exchange, IN→NAK and SETUP→DATA0→STALL sequences, zero-length DATA (CRC16 = 0x0000), bit-stuffing payloads, corrupted CRC16, corrupted PID complement (both flag), token ADDR/ENDP extremes, EOP packet separation, fractional samples/bit |
+| SPI | `spi` | all four CPOL/CPHA modes, LSB/MSB order, fractional bit rate, long-gap re-framing, gaps straddling the 1.5× reset threshold (1.2× and 2.0× on byte boundaries, 1.4× mid-word), back-to-back words, the no-CS framing difference (pinned per side) |
+| CAN (+FD base) | `can` | DLC 0..8 sweep, extended ID, RTR, recessive ACK slot, stuff-bit maximizers (0x00/0xFF/0x55), corrupted CRC, classic DLC>8 (divergence pinned), auto-baud vs explicit oracle — clean and on the sparse-single-bit-gap percentile-killer payload, minimum interframe space, fractional samples/bit, FD base frame |
+| FlexRay | `flexray` | static frames, sync/startup flag combinations, 0x00/0xFF payloads (BSS stress), corrupted header CRC-11, corrupted frame CRC-24, dynamic-frame DTS tail (no phantom TSS), fractional samples/bit — pinned and auto-inferred (SPB asserted, making resync and the refine loop load-bearing), back-to-back frames |
+| USB LS | `usb_signalling` + `usb_packet` | SETUP/DATA0/ACK exchange, IN→NAK and SETUP→DATA0→STALL sequences, zero-length DATA (CRC16 = 0x0000), bit-stuffing payloads, corrupted CRC16, corrupted PID complement (both flag), token ADDR/ENDP extremes, EOP packet separation, keep-alive trains (auto-bitrate survives an idle bus), fractional samples/bit |
 
 Every payload assertion is anchored twice: repo == sigrok AND repo == the
 generated truth, so agreement can never be vacuous. Error cases assert the
@@ -39,11 +39,20 @@ round-trip and adversarial `decode_break_*_test.go` suites.
 
 ## What the oracle found
 
-- **A real repo gap, fixed:** `DecodeFlexRay` verified only the header
-  CRC-11 — a corrupted 24-bit frame CRC decoded as a clean frame while
-  sigrok flagged it. The decoder (Go + JS twin) now seals header+payload
-  with `flexFrameCRC24` (poly 0x5D6DCB, init 0xFEDCBA) and gates `OK` on
-  both CRCs; the oracle subtest requires both sides to flag.
+- **Three real repo gaps, fixed** (each in the Go decoder AND its JS twin):
+  `DecodeFlexRay` verified only the header CRC-11 — a corrupted 24-bit frame
+  CRC decoded as a clean frame while sigrok flagged it; it now seals
+  header+payload with `flexFrameCRC24` and gates `OK` on both CRCs.
+  `inferCANspb`'s blind 10th-percentile halved the rate on a legal frame
+  whose 0x33/0xCC-style payload leaves one single-bit gap in a sea of 2-bit
+  ones — auto decode then hallucinated a clean-looking garbage frame with
+  `ok=true`. And the USB-LS auto-bitrate estimator collapsed on a realistic
+  idle-bus keep-alive train (2-bit SE0 every millisecond) until decode
+  hard-failed on a capture sigrok reads fine. Both estimators now use
+  `inferUARTspb`'s deterministic cluster walk (integer-multiple validation,
+  ties to the larger period, >16-bit gaps excluded as non-evidence); each
+  fix has a red/green-verified oracle subtest pinning the exact failure
+  vector.
 - **Four sigrok PD bugs, pinned** (the repo decoder is correct in each):
   the `can` PD decodes phantom data bytes for RTR frames with DLC>0 (remote
   frames carry no data field per ISO 11898-1); the `can` PD's CRC check is a

@@ -227,9 +227,19 @@ func DecodeCANFD(codes []uint8, colTimeS float64, cfg CANFDCfg) Result {
 		Bytes: allBytes, SPB: spb, Thr: S.threshold}
 }
 
-// inferCANspb estimates the samples-per-bit from the edge-gap distribution: real
-// CAN has isolated single-bit runs (bit stuffing caps a run at 5), so the short
-// gaps cluster at one bit time. Robust low percentile + refine (as UART).
+// inferCANspb estimates the samples-per-bit from the edge-gap distribution.
+// Bit stuffing caps any run at 5 bits, so real captures always contain
+// near-single-bit gaps — but not necessarily MANY: a low-transition payload
+// (0x33/0xCC-style patterns) can leave one single-bit gap in a sea of 2-bit
+// ones, and the old blind low-percentile seeded on the 2-bit cluster and
+// halved the rate — auto decode then hallucinated a clean-looking frame
+// (found by the sigrok oracle's auto-baud cross-check). Borrow
+// inferUARTspb's deterministic cluster walk instead: ascending greedy
+// clusters over the sorted gaps, each tried as the 1-bit hypothesis, refined
+// by a re-centered mean, and validated by how much of the record it explains
+// as integer bit multiples — best fraction wins, ties to the larger period.
+// Gaps beyond ~16 candidate bits are idle/interframe spacing, not bit-timing
+// evidence, and are excluded from refine and validation.
 func inferCANspb(S sliced) (float64, string) {
 	var gaps []float64
 	for k := 1; k < len(S.edges); k++ {
@@ -241,18 +251,59 @@ func inferCANspb(S sliced) (float64, string) {
 		return 0, "too few edges / cannot infer baud"
 	}
 	sort.Float64s(gaps)
-	spb := gaps[len(gaps)/10]
-	sum, cnt := 0.0, 0
-	for _, g := range gaps {
-		if math.Abs(g-spb) <= 0.35*spb {
-			sum += g
-			cnt++
+	var cands []float64
+	for i := 0; i < len(gaps); {
+		seed := gaps[i]
+		sum, j := 0.0, i
+		for j < len(gaps) && gaps[j] <= 1.5*seed {
+			sum += gaps[j]
+			j++
+		}
+		cands = append(cands, sum/float64(j-i))
+		i = j
+	}
+	best, bestFrac := 0.0, -1.0
+	for _, cand := range cands {
+		if cand < 2.5 { // below the samples/bit floor: a spur cluster
+			continue
+		}
+		var kg []float64
+		for _, g := range gaps {
+			if g <= 16*cand {
+				kg = append(kg, g)
+			}
+		}
+		if len(kg) < 3 {
+			continue
+		}
+		ref := cand
+		for pass := 0; pass < 2; pass++ {
+			sum, cnt := 0.0, 0
+			for _, g := range kg {
+				if math.Abs(g-ref) <= 0.35*ref {
+					sum += g
+					cnt++
+				}
+			}
+			if cnt > 0 {
+				ref = sum / float64(cnt)
+			}
+		}
+		good := 0
+		for _, g := range kg {
+			if m := math.Round(g / ref); m >= 1 && math.Abs(g-m*ref) <= 0.35*ref {
+				good++
+			}
+		}
+		// >= keeps the LARGER candidate on an exact tie (candidates ascend).
+		if frac := float64(good) / float64(len(kg)); frac >= 0.7 && frac >= bestFrac {
+			best, bestFrac = ref, frac
 		}
 	}
-	if cnt > 0 {
-		spb = sum / float64(cnt)
+	if best > 0 {
+		return best, ""
 	}
-	return spb, ""
+	return 0, "baud ambiguous — set it explicitly"
 }
 
 // decodeCANOneFrame decodes a single frame starting at sofStart (the SOF bit

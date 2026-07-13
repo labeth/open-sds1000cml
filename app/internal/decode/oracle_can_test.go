@@ -446,8 +446,8 @@ func TestOracleCAN(t *testing.T) {
 
 	t.Run("auto-baud", func(t *testing.T) {
 		// NominalBaud=0: the repo infers samples/bit from the edge-gap
-		// distribution (inferCANspb: 10th-percentile gap, refined by the mean
-		// of the 1-bit cluster). sigrok has no auto-baud, so it gets the TRUE
+		// distribution (inferCANspb: deterministic cluster walk with integer-
+		// multiple validation). sigrok has no auto-baud, so it gets the TRUE
 		// bitrate explicitly — the repo, told nothing, must still match
 		// sigrok AND the generated truth. Three frames; the 0x55/0xAA payload
 		// alternates every bit, anchoring the 1-bit gap cluster the inference
@@ -489,6 +489,37 @@ func TestOracleCAN(t *testing.T) {
 		// land on sigrok's true-bitrate annotations.
 		eqAligned(t, "auto-baud data spans", res, "data", dataAnns, sr/baud)
 		eqBytes(t, "auto-baud crc values", spanBytes(res, "crc"), canAnnVals(t, run(t, bits, baud, "crc-sequence")))
+		if n := countSpans(res, "frame-error"); n != 0 {
+			t.Fatalf("repo flagged %d frame errors on clean traffic", n)
+		}
+		noWarnings(t, bits, baud)
+	})
+
+	t.Run("auto-baud-sparse-single-bit-gaps", func(t *testing.T) {
+		// The percentile-killer the sigrok oracle exposed: a perfectly legal
+		// frame whose 0x33/0x99/0xCC payload leaves roughly ONE single-bit
+		// gap among ~40 two-bit ones. inferCANspb's old blind 10th-percentile
+		// seeded on the 2-bit cluster and HALVED the rate — auto decode then
+		// returned ok=true with a hallucinated frame ("XID:1646A956 RTR
+		// DLC:10" and no payload) while pinned decode and sigrok read the
+		// real frame cleanly. The cluster walk must find the lone 1-bit gap:
+		// auto must now match sigrok (pinned at the true rate) and the
+		// generated truth exactly.
+		const baud = 50_000
+		fr := canOFrame{id: 0x19C, dlc: 8, data: []int{0x33, 0x99, 0xCC, 0x33, 0x33, 0xCC, 0x33, 0x33}}
+		wire, _, _ := canOracleWire(fr)
+		bits := canOracleBits(sr, baud, wire)
+		res := decode(t, bits, 0) // NominalBaud=0 => auto-infer
+		if truth := float64(sr) / baud; res.SPB < truth-0.5 || res.SPB > truth+0.5 {
+			t.Fatalf("inferred %.2f samples/bit, true rate is %.0f (rate-halving regression?)", res.SPB, truth)
+		}
+		eqBytes(t, "sparse-gap auto id", spanBytes(res, "id"), []int{0x19C})
+		eqBytes(t, "sparse-gap auto id (sigrok)", spanBytes(res, "id"), canAnnVals(t, run(t, bits, baud, "id")))
+		eqBytes(t, "sparse-gap auto dlc", spanBytes(res, "dlc"), []int{8})
+		dataAnns := run(t, bits, baud, "data")
+		eqBytes(t, "sparse-gap auto payload (sigrok view)", canAnnVals(t, dataAnns), fr.data)
+		eqBytes(t, "sparse-gap auto payload", res.Bytes, canAnnVals(t, dataAnns))
+		eqAligned(t, "sparse-gap auto data spans", res, "data", dataAnns, sr/baud)
 		if n := countSpans(res, "frame-error"); n != 0 {
 			t.Fatalf("repo flagged %d frame errors on clean traffic", n)
 		}

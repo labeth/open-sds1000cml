@@ -80,6 +80,14 @@ function canReadField(r, nbits) {
   return { val, i0, i1, ok: true };
 }
 
+// canInferSPB — deterministic cluster walk (mirrors decode_canfd.go's
+// inferCANspb, which mirrors inferUARTspb): a low-transition payload (0x33/
+// 0xCC patterns) can leave ONE single-bit gap in a sea of 2-bit ones, and
+// the old blind low-percentile seeded on the 2-bit cluster and halved the
+// rate (found by the sigrok oracle). Each ascending gap cluster is tried as
+// the 1-bit hypothesis, refined by re-centered mean, validated by the
+// fraction of gaps explained as integer bit multiples; ties go to the larger
+// period. Gaps beyond ~16 candidate bits are idle spacing, not evidence.
 function canInferSPB(S) {
   const gaps = [];
   for (let k = 1; k < S.edges.length; k++) {
@@ -88,11 +96,36 @@ function canInferSPB(S) {
   }
   if (gaps.length < 3) return { spb: 0, reason: "too few edges / cannot infer baud" };
   gaps.sort((a, b) => a - b);
-  let spb = gaps[Math.floor(gaps.length / 10)];
-  let sum = 0, cnt = 0;
-  for (const g of gaps) if (Math.abs(g - spb) <= 0.35 * spb) { sum += g; cnt++; }
-  if (cnt) spb = sum / cnt;
-  return { spb, reason: "" };
+  const cands = [];
+  for (let i = 0; i < gaps.length; ) {
+    const seed = gaps[i];
+    let sum = 0, j = i;
+    for (; j < gaps.length && gaps[j] <= 1.5 * seed; j++) sum += gaps[j];
+    cands.push(sum / (j - i));
+    i = j;
+  }
+  let best = 0, bestFrac = -1;
+  for (const cand of cands) {
+    if (cand < 2.5) continue; // below the samples/bit floor: a spur cluster
+    const kg = gaps.filter((g) => g <= 16 * cand);
+    if (kg.length < 3) continue;
+    let ref = cand;
+    for (let pass = 0; pass < 2; pass++) {
+      let sum = 0, cnt = 0;
+      for (const g of kg) if (Math.abs(g - ref) <= 0.35 * ref) { sum += g; cnt++; }
+      if (cnt) ref = sum / cnt;
+    }
+    let good = 0;
+    for (const g of kg) {
+      const m = Math.round(g / ref);
+      if (m >= 1 && Math.abs(g - m * ref) <= 0.35 * ref) good++;
+    }
+    const frac = good / kg.length;
+    // >= keeps the LARGER candidate on an exact tie (candidates ascend).
+    if (frac >= 0.7 && frac >= bestFrac) { best = ref; bestFrac = frac; }
+  }
+  if (best > 0) return { spb: best, reason: "" };
+  return { spb: 0, reason: "baud ambiguous — set it explicitly" };
 }
 
 // canOneFrame decodes a single frame starting at sofStart (fractional samples).

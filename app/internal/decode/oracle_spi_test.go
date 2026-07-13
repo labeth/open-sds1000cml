@@ -259,6 +259,27 @@ func TestOracleSPI(t *testing.T) {
 		})
 	}
 
+	t.Run("mid-word-pause-below-reset", func(t *testing.T) {
+		// A 1.4-bit-time clock pause INSIDE a byte (after 4 of its 8 bits):
+		// below the repo's 1.5x gapReset threshold, so it must NOT re-frame —
+		// the byte assembles across the pause and both sides read the same
+		// bytes (sigrok counts clock edges and cannot see gaps at all). This
+		// is the observability hole the review proved: a regression lowering
+		// the effective threshold into (1.0x, 1.5x) — a multiplier change or
+		// a deflated period estimate — passed the ENTIRE suite because every
+		// other gap sits on a byte boundary where a reset is a no-op. Here it
+		// shears the byte into an orphan (repo 0x53 vs A5 3C, verified on a
+		// 1.25x-mutated decoder).
+		words := []spiOWord{{v: 0xA0, bits: 4, gapBits: 0.4}, {v: 0x50, bits: 4}, {v: 0x3C}} // bits:4 = TOP nibble of v
+		clk, mosi := oracleSPIBits(sr, rate, false, false, true, words)
+		r := DecodeSPI(bitsToCodes(clk), bitsToCodes(mosi), 1.0/sr, SPICfg{MSB: true})
+		if !r.OK {
+			t.Fatalf("repo decode failed: %s", r.Error)
+		}
+		eqBytes(t, "mid-word pause payload vs generated", spanBytes(r, "data"), []int{0xA5, 0x3C})
+		eqBytes(t, "mid-word pause payload", spanBytes(r, "data"), annBytes(t, run(clk, mosi, 0, 0, "msb-first")))
+	})
+
 	t.Run("mid-word-gap-framing-difference", func(t *testing.T) {
 		// KNOWN DESIGN DIFFERENCE, not a divergence bug: 4 orphan bits (1111),
 		// a 40-bit idle gap, then A5 3C. sigrok (no CS) counts clocks straight

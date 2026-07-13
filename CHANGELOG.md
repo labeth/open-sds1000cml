@@ -5,15 +5,19 @@
 ### Added
 - **Sigrok-oracle decoder test suite.** The protocol decoders are now
   cross-validated against libsigrokdecode (via sigrok-cli) on identical
-  synthetic waveforms — 46 subtests across UART, I2C, SPI, CAN (+FD base),
-  FlexRay and USB-LS, covering the classic torture cases (fractional
-  samples/bit, parity/frame/CRC corruption, bit-stuffing maximizers,
-  repeated START, all four SPI modes, RTR, token extremes, back-to-back
-  frames at minimum spacing). A dedicated `oracle-decode` CI lane installs
-  sigrok-cli and hard-fails on skips. The exercise also pinned two
-  libsigrokdecode `can` PD bugs (phantom RTR data bytes; CRC check is a
-  stub) where the repo decoders are correct. See
-  `app/docs/decode-oracle.md`.
+  synthetic waveforms — 65 subtests across UART, I2C, SPI, CAN (+FD base),
+  FlexRay and USB-LS, covering the classic torture cases: fractional
+  samples/bit everywhere, parity/frame/CRC corruption with error POSITIONS
+  pinned, ring-glitched and adversarial auto-baud, break, clock stretching,
+  SDA glitches, all four SPI modes, gap thresholds straddled mid-word, RTR,
+  recessive ACK, stuff maximizers, DLC>8, sync/startup flags, DTS tails,
+  NAK/STALL, zero-length DATA, corrupted PID, keep-alive trains. Every
+  payload is anchored against the generated truth as well as sigrok. A
+  dedicated `oracle-decode` CI lane installs sigrok-cli and hard-fails on
+  skips. The exercise also pinned four libsigrokdecode PD bugs (can: phantom
+  RTR data bytes, stub CRC check, FD length table on classic DLC>8; i2c:
+  phantom address after an SDA glitch) where the repo decoders are correct.
+  See `app/docs/decode-oracle.md`.
 - **Sigrok export from the web UI.** Three new one-click exports next to
   PNG/CSV: **`.sr`** (the srzip session format — opens directly in PulseView
   and sigrok-cli, carrying channel names, the true sample rate, and calibrated
@@ -25,6 +29,18 @@
   capture under review, or a superres view. See `app/docs/sigrok-export.md`.
 
 ### Fixed
+- **CAN auto-baud no longer halves the rate on low-transition payloads.**
+  Found by the sigrok oracle: a legal frame whose payload (0x33/0xCC
+  patterns) leaves one single-bit gap in a sea of 2-bit ones made the old
+  10th-percentile inference seed on the 2-bit cluster — auto decode then
+  hallucinated a clean-looking garbage frame with `ok=true`. `inferCANspb`
+  (Go + JS twin) now uses the UART cluster walk with integer-multiple
+  validation; the exact killer vector is pinned red/green in the oracle.
+- **USB-LS auto-bitrate survives an idle bus.** A realistic keep-alive
+  train (2-bit SE0 every millisecond) flooded the old percentile estimator
+  until the bit period collapsed and decode hard-failed on a capture sigrok
+  reads fine. Same cluster-walk fix (Go + JS twin), with >16-bit gaps
+  excluded as non-evidence; pinned in the oracle with a 60-keep-alive train.
 - **FlexRay frames with a corrupted frame CRC-24 no longer decode as clean.**
   Found by the sigrok oracle: the decoder verified only the 11-bit header
   CRC, so payload/trailer corruption was invisible. Both the Go decoder and
