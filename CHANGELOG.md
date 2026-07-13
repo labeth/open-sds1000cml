@@ -3,6 +3,24 @@
 ## Unreleased
 
 ### Added
+- **Spec-derived truth vectors for the non-oracled protocols.** SENT,
+  MIL-STD-1553B, ARINC 429 and Manchester (no libsigrokdecode decoder
+  exists) previously validated their CRCs/parity against the decoders' own
+  helpers — circular. `truth_vectors_test.go` hardcodes published
+  known-answer values (Allegro/Melexis SENT CRC tables and simulator frame,
+  1553 tutorial words with parity derived from the standard's odd rule,
+  published ARINC words incl. a tutorial misprint pinned as a parity-error
+  vector, Atmel's Manchester worked example in both conventions). All pass —
+  the decoders' conventions match the specs. Legacy-2008 SENT CRCs are
+  pinned as must-NOT-validate. The decode fuzz suites also gained
+  DECODE_FUZZ_SEED/MULT env knobs for long local campaigns.
+- **The .sr export carries logic channels.** Each analog channel is also
+  digitized (midpoint of its own rails) into a D1/D2 logic probe in the same
+  session file, so PulseView / sigrok-cli protocol decoders attach to the
+  export directly — no analog-to-logic conversion step. Verified end-to-end:
+  a real sigrok-cli opens the export and its uart decoder reads the encoded
+  bytes off D1 (TestSigrokExportLogicE2E, run in CI with sigrok-cli
+  installed on the browser lane).
 - **Sigrok-oracle decoder test suite.** The protocol decoders are now
   cross-validated against libsigrokdecode (via sigrok-cli) on identical
   synthetic waveforms — 65 subtests across UART, I2C, SPI, CAN (+FD base),
@@ -29,6 +47,24 @@
   capture under review, or a superres view. See `app/docs/sigrok-export.md`.
 
 ### Fixed
+- **Protocol decode readouts use the true time base.** The web decoders and
+  auto-detect derived bit timing from `col_span_s`, which is a display
+  nominal on the 1–200 ns/div bands — absolute baud readouts and
+  auto-detect's baud scoring read 2× high there. All client decode call
+  sites (and the FFT's Nyquist fallback and fitted-tone overlays, which had
+  the same family of error — including a raw-record overlay computed against
+  the display frame's span) now go through dt_s-aware helpers
+  (`frameDtS`/`frameSpanS` in decode.js). The device LCD always used the
+  true `SampleS` and is unaffected; the on-screen time grid keeps the
+  spec'd nominal.
+- **Mask-failure replays read real volts.** The replay view hard-coded
+  1 V/div ×1 probe; `/api/maskfail` now returns the current calibrated
+  scales (exact unless V/div/offset/probe changed since the failure) and the
+  replay frame uses them — cursors and exports from a mask failure are now
+  calibrated. The replay frame also carries `dt_s`.
+- **Superres exports no longer collide with live-frame exports.** The
+  superres view reuses the live frame's seq; its CSV/SR/VCD/WAV files are
+  now named `scope-<seq>-superres.*`.
 - **CAN auto-baud no longer halves the rate on low-transition payloads.**
   Found by the sigrok oracle: a legal frame whose payload (0x33/0xCC
   patterns) leaves one single-bit gap in a sea of 2-bit ones made the old

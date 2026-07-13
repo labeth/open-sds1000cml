@@ -152,11 +152,18 @@ func (s *Server) hMaskFail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	f := ring[i]
+	// Current calibrated vertical scales, so the replay view reads real volts.
+	// The ring stores raw codes only (the engine has no volts), so these are
+	// the scales NOW — exact unless V/div, offset, or probe changed since the
+	// failure was captured, and far better than the hard-coded 1 V/div ×1 the
+	// client used to assume (its CSV/sigrok exports were wrong off that scale).
+	off, vpc := s.vertScales()
 	writeJSON(w, map[string]any{
 		"ok": true, "i": i, "count": len(ring),
 		"seq": f.Seq, "at_ms": f.AtNs / 1e6,
 		"fail_col": f.FailCol, "fail_code": f.FailCode, "fail_sample": f.FailSample,
 		"edge_x": f.EdgeX, "sample_s": f.SampleS, "valid": f.Valid, "win_cols": f.WinCols,
+		"vpc1": vpc[0], "vpc2": vpc[1], "off1_v": off[0], "off2_v": off[1],
 		"c1": f.C1, "c2": f.C2,
 	})
 }

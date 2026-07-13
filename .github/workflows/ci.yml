@@ -81,10 +81,17 @@ jobs:
           # the drivers locate the module via PLAYWRIGHT_DIR (see scope_po.mjs)
           echo "PLAYWRIGHT_DIR=$HOME/pw/node_modules" >> "$GITHUB_ENV"
 
+      # sigrok-cli feeds the export e2e (TestSigrokExportLogicE2E): the .sr
+      # written by the real encoder must open in a real sigrok and its uart
+      # PD must decode the exported logic channel.
+      - name: Install sigrok-cli
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends sigrok-cli
+
       - name: browser / node / JS-parity tests + operator fuzz (skips are failures here)
         working-directory: app
         env:
           CI_REQUIRE_BROWSER: "1"
+          CI_REQUIRE_SIGROK: "1"
         run: go test -timeout 25m ./internal/web/ ./internal/decode/ ./internal/superres/
 
   # Oracle lane: libsigrokdecode's protocol decoders (via sigrok-cli) act as

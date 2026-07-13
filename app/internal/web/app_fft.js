@@ -25,7 +25,18 @@ function peakNyq() {
   // envelope/roll band ships env min/max instead of c1) — use whichever channel
   // array exists; 0 when neither does (callers already treat 0 as "no Nyquist").
   const sig = frame ? (frame.c1 || frame.c2) : null;
-  return sig && frame.col_span_s > 0 ? sig.length / (2 * frame.col_span_s) : 0;
+  const dt = sig ? frameDtS(frame, sig.length) : 0; // dt_s-aware: true Nyquist on the nominal bands
+  return dt > 0 ? 1 / (2 * dt) : 0;
+}
+
+// peakSpanS — the true time span of peakSrcCh's record: cycles-per-record =
+// freq x this. In FFT-raw mode the source is the RAW record, so its span is
+// sample_s x its length — NOT the display frame's col_span_s (a different
+// record AND a nominal scale); the fitted-tone overlay was 2x off in
+// frequency on 1-200 ns/div because of exactly that mix.
+function peakSpanS(src) {
+  if (fftUseRaw() && fftRaw.sample_s > 0) return fftRaw.sample_s * src.length;
+  return frame ? frameSpanS(frame, src.length) : 0;
 }
 
 // The palette slot a peak index occupies among a channel's (sorted) selection —
@@ -269,7 +280,7 @@ function drawYTPeaks(g) {
     if (!src) continue; // selections can outlive a channel being toggled off
     let k = 0;
     for (const i of [...S.selIdx].sort((a, b) => a - b)) {
-      const f = S.peaks[i].freq, comp = componentMemo(src, f * frame.col_span_s);
+      const f = S.peaks[i].freq, comp = componentMemo(src, f * peakSpanS(src));
       if (comp) {
         const col = pal[k % pal.length];
         drawTrace(g, comp, col, zoom);

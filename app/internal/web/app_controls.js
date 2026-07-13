@@ -96,12 +96,18 @@ $("eCSV").onclick = () => {
   for (let i = 0; i < N; i += step)
     rows[r++] = (i * dt).toExponential(6) + "," + toV(frame.c1[i], vpc1, o1) + "," +
       toV(c2 ? c2[i] : undefined, vpc2, o2);
-  exportFile("scope-" + frame.seq + ".csv", "text/csv", rows.join("\n") + "\n");
+  exportFile(exportName(frame.seq, "csv"), "text/csv", rows.join("\n") + "\n");
 };
 // ---- sigrok exports (encoders in sigrok_export.js) ----
 // Same contract as eCSV: export the frame on screen — live, frozen, a capture
 // under review, or a superres view — as calibrated volts. Envelope/roll frames
 // have no per-sample record, so the click is a silent no-op like eCSV.
+// exportName — superres view frames REUSE the live frame's seq (they have no
+// publish seq), so their files get a "-superres" marker instead of silently
+// overwriting the live frame's export of the same seq.
+function exportName(seq, ext) {
+  return "scope-" + seq + (frame && frame.sr_view ? "-superres" : "") + "." + ext;
+}
 function exportFile(name, type, data) {
   const a = document.createElement("a");
   a.download = name;
@@ -112,16 +118,16 @@ function exportFile(name, type, data) {
 }
 $("eSR").onclick = () => {
   const s = sigrokSeries(frame);
-  if (s) exportFile("scope-" + s.seq + ".sr", "application/zip", sigrokSR(s));
+  if (s) exportFile(exportName(s.seq, "sr"), "application/zip", sigrokSR(s));
 };
 $("eVCD").onclick = () => {
   const s = sigrokSeries(frame);
-  if (s) exportFile("scope-" + s.seq + ".vcd", "text/plain", sigrokVCD(s));
+  if (s) exportFile(exportName(s.seq, "vcd"), "text/plain", sigrokVCD(s));
 };
 $("eWAV").onclick = () => {
   const s = sigrokSeries(frame);
   const wav = s && sigrokWAV(s); // null when the rate exceeds WAV's uint32 Hz
-  if (wav) exportFile("scope-" + s.seq + ".wav", "audio/wav", wav);
+  if (wav) exportFile(exportName(s.seq, "wav"), "audio/wav", wav);
 };
 window.addEventListener("keydown", (e) => {
   if (e.key === "Escape") { $("help").classList.remove("show"); return; }

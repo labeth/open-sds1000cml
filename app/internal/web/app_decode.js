@@ -7,7 +7,7 @@ function decCodes(role) { return role === 2 ? (frame && frame.c2) : (frame && fr
 function computeDecode() {
   dcfg.result = null;
   if (dcfg.proto === "off" || !frame || frame.is_env || !frame.c1) { updateDecodeResults(); return; }
-  const colTimeS = (frame.col_span_s || 0) / frame.c1.length;
+  const colTimeS = frameDtS(frame, frame.c1.length); // dt_s-aware: true baud on the 1-200 ns/div nominal bands
   const cfg = { threshold: dcfg.auto ? null : +$("decThr").value, guard: 4, fmt: dcfg.fmt };
   let r = null;
   if (dcfg.proto === "uart")

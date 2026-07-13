@@ -66,18 +66,22 @@ func (f *fakeScope) SetTrigPosFrac(frac float64)            { f.trigPos = frac; 
 func (f *fakeScope) SetMemDepth(n int) int                  { f.memDepth = n; f.stats.MemDepth = n; return n }
 func (f *fakeScope) SetFramePeriod(ms int) int              { return ms }
 func (f *fakeScope) SetStreamMode(on bool) bool             { f.stats.Stream = on; return on }
-func (f *fakeScope) SetHoldoff(sec float64) float64         { f.holdoff = sec; f.stats.HoldoffS = sec; return sec }
-func (f *fakeScope) SetZones(z []engine.Zone)               { f.zones = z }
-func (f *fakeScope) SetZoneMode(m int)                      { f.zoneMode = m; f.stats.ZoneMode = m }
-func (f *fakeScope) SetMask(m *engine.Mask)                 { f.mask = m }
-func (f *fakeScope) SetMaskMode(m int)                      { f.maskMode = m; f.stats.MaskMode = m }
-func (f *fakeScope) ClearMaskFails()                        { f.maskCleared = true }
-func (f *fakeScope) MaskFails() []engine.MaskFail           { return f.maskRing }
-func (f *fakeScope) SetSerialParams(p engine.SerialParams)  { f.serialParams = p }
-func (f *fakeScope) SetSerialMode(m int)                    { f.serialMode = m }
-func (f *fakeScope) SetBodeMode(on bool, ref, dut int)      { f.bodeOn, f.bodeRef, f.bodeDut = on, ref, dut }
-func (f *fakeScope) ClearBode()                             { f.bodeCleared = true }
-func (f *fakeScope) BodePoints() []engine.BodePoint         { return f.bodePts }
+func (f *fakeScope) SetHoldoff(sec float64) float64 {
+	f.holdoff = sec
+	f.stats.HoldoffS = sec
+	return sec
+}
+func (f *fakeScope) SetZones(z []engine.Zone)              { f.zones = z }
+func (f *fakeScope) SetZoneMode(m int)                     { f.zoneMode = m; f.stats.ZoneMode = m }
+func (f *fakeScope) SetMask(m *engine.Mask)                { f.mask = m }
+func (f *fakeScope) SetMaskMode(m int)                     { f.maskMode = m; f.stats.MaskMode = m }
+func (f *fakeScope) ClearMaskFails()                       { f.maskCleared = true }
+func (f *fakeScope) MaskFails() []engine.MaskFail          { return f.maskRing }
+func (f *fakeScope) SetSerialParams(p engine.SerialParams) { f.serialParams = p }
+func (f *fakeScope) SetSerialMode(m int)                   { f.serialMode = m }
+func (f *fakeScope) SetBodeMode(on bool, ref, dut int)     { f.bodeOn, f.bodeRef, f.bodeDut = on, ref, dut }
+func (f *fakeScope) ClearBode()                            { f.bodeCleared = true }
+func (f *fakeScope) BodePoints() []engine.BodePoint        { return f.bodePts }
 
 func (f *fakeScope) AcqLog(n int) ([]engine.AcqSample, float64) { return f.acqLog, f.halfRate }
 func (f *fakeScope) CmdLog(n int) []engine.CmdNote              { return f.cmdLog }
@@ -85,10 +89,22 @@ func (f *fakeScope) NoteCmd(name string, val float64) {
 	f.cmdLog = append(f.cmdLog, engine.CmdNote{Name: name, Val: val})
 }
 
-func (f *fakeScope) SetTrigType(t int) { f.calls = append(f.calls, [2]any{"trigtype", t}); f.stats.TrigType = t }
-func (f *fakeScope) SetAcqMode(m int)  { f.calls = append(f.calls, [2]any{"acqmode", m}); f.stats.AcqMode = m }
-func (f *fakeScope) SetAvgCount(n int) { f.calls = append(f.calls, [2]any{"avgcount", n}); f.stats.AvgCount = n }
-func (f *fakeScope) SetEresLen(l int)  { f.calls = append(f.calls, [2]any{"eres", l}); f.stats.EresLen = l }
+func (f *fakeScope) SetTrigType(t int) {
+	f.calls = append(f.calls, [2]any{"trigtype", t})
+	f.stats.TrigType = t
+}
+func (f *fakeScope) SetAcqMode(m int) {
+	f.calls = append(f.calls, [2]any{"acqmode", m})
+	f.stats.AcqMode = m
+}
+func (f *fakeScope) SetAvgCount(n int) {
+	f.calls = append(f.calls, [2]any{"avgcount", n})
+	f.stats.AvgCount = n
+}
+func (f *fakeScope) SetEresLen(l int) {
+	f.calls = append(f.calls, [2]any{"eres", l})
+	f.stats.EresLen = l
+}
 func (f *fakeScope) SetPulseParams(lvl, wMin, wMax float64, cond int) {
 	f.calls = append(f.calls, [2]any{"pulse", []any{lvl, wMin, wMax, cond}})
 }

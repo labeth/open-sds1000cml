@@ -34,8 +34,16 @@ error's position, not just its count. `eqAligned` checks span starts and ends
 differs, e.g. its i2c data annotations extend one SCL period further).
 
 Manchester, SENT, ARINC 429 and MIL-STD-1553 have **no libsigrokdecode
-decoder** and cannot be oracled; they are covered by the package's own
-round-trip and adversarial `decode_break_*_test.go` suites.
+decoder** and cannot be oracled. Their round-trip suites proved decoder
+self-consistency but used the decoders' own CRC/parity helpers as truth —
+circular. `truth_vectors_test.go` breaks that: every CRC, parity bit and
+encoding there is hardcoded from a published source (Allegro AN296177 SENT
+CRC tables, the Melexis SENTAnalyzer simulator frame, MIL-STD-1553B's quoted
+word examples with parity derived from the stated odd rule, published ARINC
+429 words — including a GE tutorial figure whose printed parity violates its
+own rule, used as the parity-error vector — and Atmel's Manchester 0xC5
+worked example in both conventions). Legacy-2008 SENT CRCs are pinned as
+must-NOT-validate.
 
 ## What the oracle found
 

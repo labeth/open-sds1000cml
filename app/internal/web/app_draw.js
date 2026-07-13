@@ -198,7 +198,7 @@ function computeMathRaw() {
     mean = cnt ? mean / cnt : 128;
     const res = Float64Array.from(src); // NOT src.slice(): an Int16Array copy would truncate the fractional accumulation below
     for (const f of S.sel) {
-      const comp = componentMemo(src, f * (frame.col_span_s || 0)); // fitted tone at that freq
+      const comp = componentMemo(src, f * frameSpanS(frame, n)); // fitted tone at that freq (true span: peak freqs are dt_s/raw-true)
       if (!comp) continue;
       for (let i = 0; i < n; i++) if (res[i] >= 0) res[i] -= (comp[i] - mean); // remove its AC part
     }

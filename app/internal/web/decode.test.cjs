@@ -2,7 +2,7 @@
 // ui.html runs. Synthetic generators render ideal logic into 0..255 code arrays
 // at a chosen SPB (columns per bit); colTimeS is picked so baud = 1/(SPB*colTimeS).
 // Run: node decode.test.cjs   (exit 0 = pass).
-const { fmtByte, sliceChannel, logicAt, decodeUART, decodeI2C, decodeSPI, autodetect } = require("./decode.js");
+const { fmtByte, frameDtS, frameSpanS, sliceChannel, logicAt, decodeUART, decodeI2C, decodeSPI, decode, autodetect } = require("./decode.js");
 
 let failed = 0;
 function ok(c, m) { if (!c) { console.error("FAIL:", m); failed++; } else { console.log("ok  -", m); } }
@@ -82,6 +82,28 @@ const SPB = 40, COLT = 1 / (SPB * 115200);
   ok(logicAt(s, SPB * 4 + SPB * 0.5) === 0, "logicAt reads the start bit low (raw threshold)");
   const flat = new Array(500).fill(128);
   ok(!sliceChannel(flat, {}).ok, "slice: flat DC -> not ok");
+}
+
+// --- 1b. dt_s is authoritative for the decode time base ----------------------
+// On the 1-200 ns/div bands col_span_s is a display nominal (2 ns capture
+// shown at 1 ns), so a baud derived from it reads 2x high. The frame helpers
+// and the dispatcher/autodetect must prefer the server's dt_s and fall back
+// to col_span_s/n for frames that lack it (superres view, old captures).
+{
+  const SPB = 16, dt = 1 / (SPB * 115200); // true col time for 115200 baud
+  const codes = uartGen([0x41, 0x42, 0x55], SPB);
+  // A "nominal band" frame: col_span_s claims HALF the true span.
+  const f = { c1: codes, col_span_s: codes.length * dt / 2, dt_s: dt };
+  near(frameDtS(f, codes.length), dt, dt * 1e-6, "frameDtS prefers dt_s");
+  near(frameSpanS(f, codes.length), codes.length * dt, dt, "frameSpanS prefers dt_s");
+  const noDt = { c1: codes, col_span_s: codes.length * dt };
+  near(frameDtS(noDt, codes.length), dt, dt * 1e-6, "frameDtS falls back to col_span_s/n");
+  const r = decode(f, { protocol: "uart", baud: 115200 });
+  ok(r.ok && r.bytes.length === 3 && r.bytes[0] === 0x41, "dispatcher decodes via dt_s");
+  near(r.meta.baud, 115200, 6000, "dispatcher baud from dt_s, not the 2x nominal");
+  const ad = autodetect(f, {});
+  ok(ad.proto === "uart", "autodetect finds UART via dt_s");
+  near(ad.cfg.baud || ad.result.meta.baud, 115200, 6000, "autodetect baud from dt_s, not the 2x nominal");
 }
 
 // --- 2. UART auto-baud -------------------------------------------------------

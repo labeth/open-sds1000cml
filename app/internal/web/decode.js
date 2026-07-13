@@ -3,12 +3,32 @@
 // no DOM, no globals. Served at /decode.js, loaded by ui.html via <script src>,
 // and require()d by decode.test.cjs under node. All column indices (i0/i1) are
 // indices into the frame's sample arrays (codes 0..255; a value < 0 marks a
-// gap). Per-column time is frame.col_span_s / n. Every decoder returns the SAME
+// gap). Per-column time is frameDtS(frame, n) — the server's dt_s when
+// present (col_span_s is a display nominal on the 1-200 ns/div bands, where a
+// baud derived from it reads 2x high), else col_span_s / n. Every decoder returns the SAME
 // Result shape and NEVER emits garbage: when there are too few samples per bit
 // it returns { ok:false, error } so the UI can say "raise time/div" instead.
 
 // Frozen annotation-kind vocabulary — the UI colours spans by exactly these.
 const KINDS = ["start", "stop", "addr", "rw", "ack", "nak", "data", "frame-error", "parity-error", "gap", "idle"];
+
+// frameDtS / frameSpanS — the TRUE per-point time / record span of a frame
+// object. The server's dt_s is authoritative: on the 1-200 ns/div bands
+// col_span_s is a display nominal (2 ns capture shown at 1 ns, spec 04 §6),
+// so any measurement derived from it — decode baud, FFT frequency axes —
+// reads 2x off. Fall back to col_span_s for client-synthesized frames
+// (superres/ETS view, mask replay — their spans are already true) and
+// captures saved before dt_s existed. The on-screen time GRID deliberately
+// keeps the nominal (it must match the labelled tdiv); these helpers are for
+// measurements.
+function frameDtS(frame, n) {
+  if (frame.dt_s > 0) return frame.dt_s;
+  return (frame.col_span_s || 0) / (n || 1);
+}
+function frameSpanS(frame, n) {
+  if (frame.dt_s > 0) return frame.dt_s * n;
+  return frame.col_span_s || 0;
+}
 
 function hex2(b) { return (b & 0xff).toString(16).toUpperCase().padStart(2, "0"); }
 // UNSIGNED shift (>>>): a signed >> on a value with the sign bit set shifts
@@ -489,7 +509,7 @@ function autodetect(frame, opts) {
   opts = opts || {};
   const fmt = opts.fmt || "hex";
   const n = frame.c1 ? frame.c1.length : 0;
-  const colTimeS = (frame.col_span_s || 0) / (n || 1);
+  const colTimeS = frameDtS(frame, n);
   const chans = { 1: frame.c1, 2: frame.c2 };
   const slOpts = { minAmp: opts.minAmp != null ? opts.minAmp : 20 };
   const active = [1, 2].filter(k => {
@@ -576,7 +596,7 @@ function autodetect(frame, opts) {
 // cfg.protocol in {uart,i2c,spi}; role fields are 1|2 (=> c1|c2).
 function decode(frame, cfg) {
   cfg = cfg || {};
-  const n = frame.c1.length, colTimeS = (frame.col_span_s || 0) / n;
+  const n = frame.c1.length, colTimeS = frameDtS(frame, n);
   const pick = r => (r === 2 || r === "c2") ? frame.c2 : frame.c1;
   const p = cfg.protocol || cfg.proto;
   if (p === "uart") return decodeUART(pick(cfg.line || 1), colTimeS, cfg);
@@ -586,5 +606,5 @@ function decode(frame, cfg) {
 }
 
 if (typeof module !== "undefined" && module.exports)
-  module.exports = { KINDS, fmtByte, sliceChannel, logicAt, decodeUART, decodeI2C, decodeSPI, decode,
+  module.exports = { KINDS, fmtByte, frameDtS, frameSpanS, sliceChannel, logicAt, decodeUART, decodeI2C, decodeSPI, decode,
     scoreResult, clockScore, idleLevel, autodetect };

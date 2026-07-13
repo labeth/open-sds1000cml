@@ -121,23 +121,69 @@ function sigrokSeries(frame) {
 
 const SIGROK_CHUNK_SAMPLES = 1 << 20; // 4 MiB of float32 — libsigrok's flush size
 
-// sigrokSR encodes a series as a .sr (srzip v2) archive. Gaps are written as
-// float32 NaN — the honest equivalent of the CSV's empty cell.
+// sigrokLogicBytes packs per-sample logic levels for all channels: one byte
+// per sample (unitsize 1 — up to 8 probes), bit k−1 carrying probe k, which
+// is how session_driver.c hands them back. Each channel is thresholded at
+// the midpoint between its own rails (min/max of the valid volts) — a plain,
+// predictable digitization so PulseView's protocol decoders attach directly
+// to the exported capture. NaN gaps hold the previous level (logic has no
+// "no sample"); a flat channel digitizes as constant 0.
+function sigrokLogicBytes(series) {
+  const n = series.n;
+  const out = new Uint8Array(n);
+  series.ch.forEach((c, k) => {
+    let lo = Infinity, hi = -Infinity;
+    for (let i = 0; i < n; i++) {
+      const v = c.v[i];
+      if (!Number.isNaN(v)) {
+        if (v < lo) lo = v;
+        if (v > hi) hi = v;
+      }
+    }
+    if (!(hi > lo)) return; // flat or all-gap: constant 0
+    const thr = (lo + hi) / 2;
+    let level = 0;
+    for (let i = 0; i < n; i++) {
+      const v = c.v[i];
+      if (!Number.isNaN(v)) level = v >= thr ? 1 : 0;
+      if (level) out[i] |= 1 << k;
+    }
+  });
+  return out;
+}
+
+// sigrokSR encodes the series as a MIXED analog+logic session: the analog
+// channels as CH1/CH2 float32 chunks, plus one thresholded logic probe per
+// channel (D1/D2) so sigrok/PulseView protocol decoders run on the export
+// without an analog-to-logic conversion step. Reader facts this follows
+// (srzip.c/session_file.c/session_driver.c): with logic present the metadata
+// carries capturefile=logic-1, `total probes` (which must precede the probeK
+// name keys, as `total analog` must precede analogK), and unitsize; the
+// FIRST analog index is total probes + 1 (analog3/analog4 here); logic data
+// lives in logic-1-<chunk> files, chunked like the analog ones.
 function sigrokSR(series) {
   const enc = new TextEncoder();
-  let meta = "[global]\nsigrok version=0.5.2\n\n[device 1]\nsamplerate=" + series.rateHz + "\ntotal analog=" + series.ch.length + "\n";
-  series.ch.forEach((c, i) => (meta += "analog" + (i + 1) + "=" + c.name + "\n"));
+  const nL = series.ch.length; // one derived probe per analog channel
+  let meta = "[global]\nsigrok version=0.5.2\n\n[device 1]\ncapturefile=logic-1\ntotal probes=" + nL +
+    "\nsamplerate=" + series.rateHz + "\ntotal analog=" + series.ch.length + "\n";
+  series.ch.forEach((c, i) => (meta += "probe" + (i + 1) + "=D" + (i + 1) + "\n"));
+  series.ch.forEach((c, i) => (meta += "analog" + (nL + i + 1) + "=" + c.name + "\n"));
+  meta += "unitsize=1\n";
   const entries = [
     { name: "version", data: enc.encode("2") },
     { name: "metadata", data: enc.encode(meta) },
   ];
+  const logic = sigrokLogicBytes(series);
+  for (let s = 0, chunk = 1; s < logic.length; s += 4 * SIGROK_CHUNK_SAMPLES, chunk++) {
+    entries.push({ name: "logic-1-" + chunk, data: logic.subarray(s, Math.min(s + 4 * SIGROK_CHUNK_SAMPLES, logic.length)) });
+  }
   series.ch.forEach((c, i) => {
     for (let s = 0, chunk = 1; s < c.v.length; s += SIGROK_CHUNK_SAMPLES, chunk++) {
       const m = Math.min(SIGROK_CHUNK_SAMPLES, c.v.length - s);
       const data = new Uint8Array(4 * m);
       const dv = new DataView(data.buffer);
       for (let j = 0; j < m; j++) dv.setFloat32(4 * j, c.v[s + j], true);
-      entries.push({ name: "analog-1-" + (i + 1) + "-" + chunk, data });
+      entries.push({ name: "analog-1-" + (nL + i + 1) + "-" + chunk, data });
     }
   });
   return sigrokZip(entries);
@@ -240,4 +286,4 @@ function sigrokWAV(series) {
 }
 
 if (typeof module !== "undefined")
-  module.exports = { sigrokCrc32, sigrokZip, sigrokSeries, sigrokSR, sigrokVCD, sigrokWAV, sigrokVcdTimescale, sigrokVcdPeriod, SIGROK_CHUNK_SAMPLES };
+  module.exports = { sigrokCrc32, sigrokZip, sigrokSeries, sigrokSR, sigrokVCD, sigrokWAV, sigrokLogicBytes, sigrokVcdTimescale, sigrokVcdPeriod, SIGROK_CHUNK_SAMPLES };

@@ -2,15 +2,30 @@ package decode
 
 import (
 	"math/rand"
+	"os"
+	"strconv"
 	"testing"
 	"time"
 )
+
+// fuzzKnob reads an integer env override so local campaigns can scale the
+// deterministic default (mirrors the browser fuzz's FUZZ_ITERS/FUZZ_SEED):
+// DECODE_FUZZ_SEED shifts the base seed, DECODE_FUZZ_MULT multiplies the
+// iteration counts. CI always runs the fixed defaults.
+func fuzzKnob(name string, def int) int {
+	if v := os.Getenv(name); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			return n
+		}
+	}
+	return def
+}
 
 // Decoder fuzz: the protocol decoders parse UNTRUSTED analog data every
 // frame — random noise, rail garbage, and degenerate configs must never
 // panic (index arithmetic on edge positions is the classic failure).
 func TestDecodeFuzzNoPanic(t *testing.T) {
-	rng := rand.New(rand.NewSource(2718))
+	rng := rand.New(rand.NewSource(int64(2718 + fuzzKnob("DECODE_FUZZ_SEED", 0))))
 	sig := func(n int, kind int) []uint8 {
 		s := make([]uint8, n)
 		switch kind {
@@ -43,7 +58,7 @@ func TestDecodeFuzzNoPanic(t *testing.T) {
 	}
 	colTimes := []float64{0, 1e-12, 800e-9, 1}
 	formats := []string{"", "hex", "ascii", "both", "garbage"}
-	for i := 0; i < 600; i++ {
+	for i := 0; i < 600*fuzzKnob("DECODE_FUZZ_MULT", 1); i++ {
 		n := rng.Intn(5000)
 		a := sig(n, rng.Intn(5))
 		b := sig(n, rng.Intn(5))
@@ -86,7 +101,7 @@ func TestDecodeFuzzNoPanic(t *testing.T) {
 // record almost never contains a whole frame), the input class HW validation
 // showed the round-trip tests miss.
 func TestDecodeFuzzNewProtos(t *testing.T) {
-	rng := rand.New(rand.NewSource(31415))
+	rng := rand.New(rand.NewSource(int64(31415 + fuzzKnob("DECODE_FUZZ_SEED", 0))))
 	mk := func(n, kind int) []uint8 {
 		s := make([]uint8, n)
 		switch kind {
@@ -120,7 +135,7 @@ func TestDecodeFuzzNewProtos(t *testing.T) {
 	}
 	cts := []float64{0, -1, 1e-12, 500e-9, 2e-6, 1}
 	brs := []int{0, -1, 1, 100, 115200, 1_000_000, 12_000_000, 1 << 30}
-	for i := 0; i < 900; i++ {
+	for i := 0; i < 900*fuzzKnob("DECODE_FUZZ_MULT", 1); i++ {
 		a := mk(rng.Intn(6000), rng.Intn(5))
 		ct := cts[rng.Intn(len(cts))]
 		br := brs[rng.Intn(len(brs))]

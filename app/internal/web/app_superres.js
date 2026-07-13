@@ -428,7 +428,10 @@ function srMakeViewFrame() {
     ? (sr.st.refEdgeX >= sr.st.gateLo && sr.st.refEdgeX < sr.st.gateHi ? (sr.st.refEdgeX - sr.st.gateLo) / sr.st.gridL : -1)
     : (sr.st.edgeX >= 0 ? sr.st.edgeX / n : -1);
   frame = {
-    seq: frame ? frame.seq : 0, unchanged: false,
+    // seq is REUSED from the live frame (the stack has no publish seq of its
+    // own); sr_view marks the frame so exports don't collide with the live
+    // frame's files ("scope-<seq>-superres.csv" vs "scope-<seq>.csv").
+    seq: frame ? frame.seq : 0, unchanged: false, sr_view: true,
     c1: c1m, c2: c2m, is_env: false,
     cols: res.mean.length, col_span_s: spanCols * sr.st.sampleS,
     tdiv_s: sr.meta.tdiv_s, displayed_sdiv_s: sr.meta.tdiv_s,
@@ -466,7 +469,7 @@ function srMakeEtsViewFrame() {
   const c1t = tile(c1m), c2t = tile(c2m);
   const meas = (m, ch) => m ? srMeasure(m, st.c[ch].vpc, st.c[ch].offV, dtFine) : null;
   frame = {
-    seq: frame ? frame.seq : 0, unchanged: false,
+    seq: frame ? frame.seq : 0, unchanged: false, sr_view: true,
     c1: c1t, c2: c2t, is_env: false,
     cols: nb * 2, col_span_s: 2 * r.periodS,
     tdiv_s: sr.meta.tdiv_s, displayed_sdiv_s: sr.meta.tdiv_s,

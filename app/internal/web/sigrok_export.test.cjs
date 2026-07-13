@@ -5,7 +5,7 @@
 // sigrok_export_node_test.go.
 "use strict";
 const {
-  sigrokCrc32, sigrokZip, sigrokSeries, sigrokSR, sigrokVCD, sigrokWAV,
+  sigrokCrc32, sigrokZip, sigrokSeries, sigrokSR, sigrokVCD, sigrokWAV, sigrokLogicBytes,
   sigrokVcdTimescale, sigrokVcdPeriod, SIGROK_CHUNK_SAMPLES,
 } = require("./sigrok_export.js");
 
@@ -109,17 +109,23 @@ function unzip(u8) {
   };
   const es = unzip(sigrokSR(sigrokSeries(f)));
   const names = es.map((e) => e.name);
-  check("sr: entry set", JSON.stringify(names) === JSON.stringify(["version", "metadata", "analog-1-1-1", "analog-1-2-1"]));
+  check("sr: entry set (logic-1 chunk + shifted analog indices)",
+    JSON.stringify(names) === JSON.stringify(["version", "metadata", "logic-1-1", "analog-1-3-1", "analog-1-4-1"]), JSON.stringify(names));
   check("sr: version is the single byte '2'", es[0].data.length === 1 && text(es[0].data) === "2");
-  check("sr: metadata exact ('total analog' before analogK, integer Hz)",
-    text(es[1].data) === "[global]\nsigrok version=0.5.2\n\n[device 1]\nsamplerate=500000000\ntotal analog=2\nanalog1=CH1\nanalog2=CH2\n",
+  check("sr: metadata exact (counts precede name keys; analog index = probes+K; unitsize last)",
+    text(es[1].data) === "[global]\nsigrok version=0.5.2\n\n[device 1]\ncapturefile=logic-1\ntotal probes=2\nsamplerate=500000000\ntotal analog=2\nprobe1=D1\nprobe2=D2\nanalog3=CH1\nanalog4=CH2\nunitsize=1\n",
     JSON.stringify(text(es[1].data)));
-  const dv = new DataView(es[2].data.buffer, es[2].data.byteOffset, es[2].data.byteLength);
-  check("sr: chunk is float32 LE volts", es[2].data.length === 16 && dv.getFloat32(0, true) === 0 && dv.getFloat32(4, true) === 0.25 && dv.getFloat32(12, true) === 0.75);
+  // Logic digitization: CH1 codes 128..131 -> volts 0..0.75, mid-rail 0.375
+  // -> bits 0,0,1,1; CH2 codes 120..123 -> bits 0,0,1,1 on bit 1.
+  check("sr: logic chunk thresholds each channel at its mid-rail",
+    es[2].data.length === 4 && es[2].data[0] === 0 && es[2].data[1] === 0 && es[2].data[2] === 3 && es[2].data[3] === 3,
+    JSON.stringify([...es[2].data]));
+  const dv = new DataView(es[3].data.buffer, es[3].data.byteOffset, es[3].data.byteLength);
+  check("sr: chunk is float32 LE volts", es[3].data.length === 16 && dv.getFloat32(0, true) === 0 && dv.getFloat32(4, true) === 0.25 && dv.getFloat32(12, true) === 0.75);
 
   // interior gap -> NaN in the payload (the honest empty cell)
   const gap = unzip(sigrokSR(sigrokSeries({ seq: 1, c1: new Int16Array([128, -1, 128]), c2: new Int16Array([128, 128, 128]), col_span_s: 3e-6 })));
-  const gdv = new DataView(gap[2].data.buffer, gap[2].data.byteOffset, gap[2].data.byteLength);
+  const gdv = new DataView(gap[3].data.buffer, gap[3].data.byteOffset, gap[3].data.byteLength);
   check("sr: interior gap encodes as NaN", Number.isNaN(gdv.getFloat32(4, true)));
 
   // chunking: cross the 1 Mi-sample flush boundary like libsigrok's writer —
@@ -134,9 +140,9 @@ function unzip(u8) {
   const bes = unzip(sigrokSR(sigrokSeries(big)));
   check("sr: >1Mi samples split into per-channel chunks numbered from 1",
     JSON.stringify(bes.map((e) => e.name)) ===
-    JSON.stringify(["version", "metadata", "analog-1-1-1", "analog-1-1-2", "analog-1-2-1", "analog-1-2-2"]) &&
-    bes[2].data.length === 4 * SIGROK_CHUNK_SAMPLES && bes[3].data.length === 20 &&
-    bes[4].data.length === 4 * SIGROK_CHUNK_SAMPLES && bes[5].data.length === 20);
+    JSON.stringify(["version", "metadata", "logic-1-1", "analog-1-3-1", "analog-1-3-2", "analog-1-4-1", "analog-1-4-2"]) &&
+    bes[3].data.length === 4 * SIGROK_CHUNK_SAMPLES && bes[4].data.length === 20 &&
+    bes[5].data.length === 4 * SIGROK_CHUNK_SAMPLES && bes[6].data.length === 20, JSON.stringify(bes.map((e) => e.name)));
 }
 
 // ---- VCD ----
