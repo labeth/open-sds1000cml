@@ -63,11 +63,10 @@ module acq (
     output wire        dac_sdi
 );
 
-    // ---- OPCODE command payloads (values written to the OPCODE strobe register,
-    //      NOT selectors — kept at bench-continuity encodings). --------------
-    localparam [7:0] OP_RESET = 8'hC0;   // -> idle, clear
-    localparam [7:0] OP_GO    = 8'hC3;   // arm / fast re-arm
-    localparam [7:0] OP_HALT  = 8'hC8;   // manual freeze
+    // ---- OPCODE command payloads: values written to the OPCODE strobe
+    //      register (NOT selectors). `OP_RESET/`OP_GO/`OP_HALT come from the
+    //      generated regs.vh, so the app and this decode share one literal and
+    //      the encoding is folded into the build-ID (no silent drift). ------
 
     // ---- sized geometry / clamp constants ---------------------------------
     localparam [15:0] REC_DEPTH16   = `REC_DEPTH;    // 20480
@@ -182,9 +181,11 @@ module acq (
     end
 
     // ---- OPCODE decode -> single-cycle engine pulses ----
-    wire op_reset = we_OPCODE && (d_q2[7:0] == OP_RESET);
-    wire op_go    = we_OPCODE && (d_q2[7:0] == OP_GO) && run_en;    // honored only while RUN
-    wire op_halt  = we_OPCODE && (d_q2[7:0] == OP_HALT);
+    // Full 16-bit compare against the generated payload macros (d_q2 is the
+    // registered 16-bit write word); the app writes the identical iface.OP_* value.
+    wire op_reset = we_OPCODE && (d_q2 == `OP_RESET);
+    wire op_go    = we_OPCODE && (d_q2 == `OP_GO) && run_en;    // honored only while RUN
+    wire op_halt  = we_OPCODE && (d_q2 == `OP_HALT);
 
     // =======================================================================
     // 3) Arm-time joint pre/post clamp (C2): field-clamp each, then trim the

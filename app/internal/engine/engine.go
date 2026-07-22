@@ -66,10 +66,12 @@ const (
 	cs3LevelBLo   = iface.SelLVL_B_LO
 	cs3LevelBHi   = iface.SelLVL_B_HI
 
-	// OPCODE strobe values (spec 03 §5): the capture FSM opcodes.
-	opGo    uint16 = 0x0001 // arm / re-arm
-	opHalt  uint16 = 0x0002 // freeze the record
-	opReset uint16 = 0x0000 // idle
+	// OPCODE strobe values (spec 03 §5): sourced from the generated interface so
+	// the app and the fabric decode the same literal (the encoding is folded into
+	// the build-ID; a divergence fails the drift gate and the identity handshake).
+	opGo    = iface.OP_GO    // arm / re-arm
+	opHalt  = iface.OP_HALT  // freeze the record
+	opReset = iface.OP_RESET // idle
 
 	// RUN.MODE values (spec 03 §5.1).
 	modeAuto uint8 = 0

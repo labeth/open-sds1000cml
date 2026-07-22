@@ -21,7 +21,15 @@
 `define REC_DEPTH {{.Capture.Depth}}
 `define ADDR_W {{.Capture.AddrBits}}
 `define PRETRIG_MAX {{.Capture.PretrigMax}}
-{{range .Blocks}}
+{{if .Opcodes}}
+// strobe payload opcodes — the app writes these 16-bit values to the named
+// strobe register; the RTL compares the full write word against these macros,
+// so app and fabric decode the same literal (folded into the build-ID).
+{{- range .Opcodes}}
+`define {{.Name}} 16'h{{.ValHex}}  // {{.Reg}}: {{.Desc}}
+{{- end}}
+{{end}}
+{{- range .Blocks}}
 // ---- block {{.Name}} ({{.Plane}} 0x{{.BaseHex}}+0x{{printf "%02x" .Span}}) {{.Desc}}
 {{- range .Regs}}
 // SEL_{{.Name}}: {{.Access}} {{.SemList}} [{{.Plane}}]

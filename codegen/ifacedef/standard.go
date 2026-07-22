@@ -259,5 +259,15 @@ func Standard() schema.Interface {
 				{Name: "word_count", Bits: 16, Desc: "16-bit words this pass (<=8192)"},
 			},
 		},
+
+		// OPCODE strobe payloads — the acquisition command encoding. Owned values
+		// (clean-sheet, not the vendor 0xC0/0xC3/0xC8): the app writes these to
+		// OPCODE (0x20) and the RTL decodes the same generated macro, so app and
+		// fabric can never disagree on a command (spec 03 §5).
+		Opcodes: []schema.Opcode{
+			{Name: "OP_RESET", Reg: "OPCODE", Value: 0x0000, Desc: "idle the capture FSM"},
+			{Name: "OP_GO", Reg: "OPCODE", Value: 0x0001, Desc: "arm / fast re-arm (honored only while RUN)"},
+			{Name: "OP_HALT", Reg: "OPCODE", Value: 0x0002, Desc: "freeze the record"},
+		},
 	}
 }

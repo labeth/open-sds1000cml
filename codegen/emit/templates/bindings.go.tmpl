@@ -53,6 +53,16 @@ const (
 	Sel{{.Name}} uint16 = 0x{{.SelHex}}
 {{- end}}
 )
+{{if .Opcodes}}
+// Opcodes — strobe payload values. The app writes these to the named strobe
+// register; the RTL decodes the same macro literal (folded into BuildID), so the
+// command encoding cannot silently drift between app and fabric.
+const (
+{{- range .Opcodes}}
+	{{.Name}} uint16 = 0x{{.ValHex}} // {{.Reg}}: {{.Desc}}
+{{- end}}
+)
+{{end}}
 
 // Reg is one register's metadata (for runtime assertion / tooling).
 type Reg struct {

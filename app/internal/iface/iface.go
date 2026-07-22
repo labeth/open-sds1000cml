@@ -13,7 +13,7 @@ import "fmt"
 
 // BuildID fingerprints the schema; the app checks it vs BUILDID_LO/HI at bring-up
 // and refuses to drive a fabric whose build-ID differs.
-const BuildID uint32 = 0xfa08ff55
+const BuildID uint32 = 0x4a9ccfa4
 
 // Version is the schema version string.
 const Version = "1"
@@ -86,6 +86,15 @@ const (
 	SelLVL_B_LO     uint16 = 0x15
 	SelLVL_A_HI     uint16 = 0x34
 	SelLVL_B_HI     uint16 = 0x35
+)
+
+// Opcodes — strobe payload values. The app writes these to the named strobe
+// register; the RTL decodes the same macro literal (folded into BuildID), so the
+// command encoding cannot silently drift between app and fabric.
+const (
+	OP_RESET uint16 = 0x0000 // OPCODE: idle the capture FSM
+	OP_GO    uint16 = 0x0001 // OPCODE: arm / fast re-arm (honored only while RUN)
+	OP_HALT  uint16 = 0x0002 // OPCODE: freeze the record
 )
 
 // Reg is one register's metadata (for runtime assertion / tooling).

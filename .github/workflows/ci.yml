@@ -32,7 +32,8 @@ jobs:
       # The web browser E2E self-skips when Playwright is absent, so the offline
       # suite (engine, front end, LCD, panel, measure, SCPI, web guardrails) runs.
       # The codegen lane runs schema validation, emitter determinism, and codec
-      # round-trip tests; the fpga lane has no Go packages yet (Phase B).
+      # round-trip tests; the fpga lane runs the Quartus-driver + buildacq unit
+      # tests (the bitstream build itself is not run in CI — it needs Quartus).
       - name: test
         run: go test ./...
 

@@ -37,6 +37,14 @@ type View struct {
 	ChanPorts  []chanPortsView
 	Descriptor descriptorView
 	Verify     verifyView
+	Opcodes    []opcodeView
+}
+
+type opcodeView struct {
+	Name   string // e.g. OP_GO — emitted verbatim as both a Verilog macro and a Go const
+	ValHex string // 4 hex digits
+	Reg    string
+	Desc   string
 }
 
 type nameVal struct {
@@ -264,6 +272,12 @@ func newView(i schema.Interface) View {
 	dv.Bits = doff
 	dv.Words = words(doff)
 	v.Descriptor = dv
+
+	for _, o := range i.Opcodes {
+		v.Opcodes = append(v.Opcodes, opcodeView{
+			Name: o.Name, ValHex: fmt.Sprintf("%04x", o.Value), Reg: o.Reg, Desc: o.Desc,
+		})
+	}
 
 	// Build-ID / version handshake registers.
 	v.Verify = verifyView{LoReg: i.BuildIDLo, HiReg: i.BuildIDHi}

@@ -218,3 +218,65 @@ func TestBuildIDMovesOnChange(t *testing.T) {
 }
 
 func p16(v uint16) *uint16 { return &v }
+
+// A register with an omitted/zero Access must fail — else it is silently
+// mislabeled AccR in the bindings yet dropped from the read/write decode.
+func TestAccessEnum(t *testing.T) {
+	i := base()
+	i.Blocks[0].Regs[3].Access = 0 // omit Access (CNT)
+	mustErr(t, i, "invalid Access")
+}
+
+func TestDescriptorZeroWidthField(t *testing.T) {
+	i := base()
+	i.Descriptor.Fields = append(i.Descriptor.Fields, schema.RecField{Name: "pad", Bits: 0})
+	mustErr(t, i, "zero width")
+}
+
+func TestDescriptorDuplicateField(t *testing.T) {
+	i := base()
+	i.Descriptor.Fields = append(i.Descriptor.Fields, schema.RecField{Name: "x", Bits: 4})
+	mustErr(t, i, "duplicate field name")
+}
+
+// Opcodes: a valid strobe payload passes; bad targets/collisions fail.
+func withOpcodeReg() schema.Interface {
+	i := base()
+	i.Blocks[0].Regs = append(i.Blocks[0].Regs, schema.Register{
+		Name: "OPCODE", Sel: 0x14, Plane: schema.CS1, Access: schema.W, Sem: schema.SemStrobe,
+	})
+	return i
+}
+
+func TestOpcodeValid(t *testing.T) {
+	i := withOpcodeReg()
+	i.Opcodes = []schema.Opcode{{Name: "OP_GO", Reg: "OPCODE", Value: 0x0001}}
+	if errs := i.Validate(); len(errs) > 0 {
+		t.Fatalf("a valid opcode should pass, got %v", errs)
+	}
+	// and it must move the build-ID (folded into the hash).
+	if withOpcodeReg().BuildID() == i.BuildID() {
+		t.Fatal("adding an opcode must change the BuildID")
+	}
+}
+
+func TestOpcodeUnknownReg(t *testing.T) {
+	i := withOpcodeReg()
+	i.Opcodes = []schema.Opcode{{Name: "OP_GO", Reg: "NOPE", Value: 0x0001}}
+	mustErr(t, i, "unknown register")
+}
+
+func TestOpcodeNonStrobeReg(t *testing.T) {
+	i := withOpcodeReg()
+	i.Opcodes = []schema.Opcode{{Name: "OP_GO", Reg: "BID_LO", Value: 0x0001}} // read-only, not a strobe
+	mustErr(t, i, "not a writable strobe")
+}
+
+func TestOpcodeValueCollision(t *testing.T) {
+	i := withOpcodeReg()
+	i.Opcodes = []schema.Opcode{
+		{Name: "OP_GO", Reg: "OPCODE", Value: 0x0001},
+		{Name: "OP_DUP", Reg: "OPCODE", Value: 0x0001},
+	}
+	mustErr(t, i, "value collision")
+}

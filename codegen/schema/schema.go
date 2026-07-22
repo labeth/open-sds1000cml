@@ -225,6 +225,21 @@ type Capture struct {
 // a still-needed pre-trigger cell in the circular buffer (see DESIGN §4.4).
 func (c Capture) PretrigMax() uint { return c.RecordDepth - c.Margin }
 
+// Opcode is a payload VALUE written to a strobe register (e.g. OPCODE = OP_GO).
+// Opcodes are part of the contract but are not addressable registers, so they
+// would otherwise be the one command-encoding surface the generated interface
+// does not cover — the exact gap that let the app and the fabric disagree on the
+// OPCODE values. Declaring them here folds the encoding into BuildID and emits it
+// as both a Verilog macro (`OP_GO) and a Go constant (iface.OP_GO), so the app
+// and the RTL decode the same literal by construction and any divergence fails
+// the drift gate and the build-ID handshake.
+type Opcode struct {
+	Name  string // the emitted identifier, e.g. "OP_GO" (valid in both Verilog and Go)
+	Reg   string // the strobe Register.Name this value is written to (e.g. "OPCODE")
+	Value uint16
+	Desc  string
+}
+
 // Interface is the whole FPGA<->app contract: the single source of truth.
 type Interface struct {
 	Name       string
@@ -236,6 +251,7 @@ type Interface struct {
 	Blocks     []Block
 	Channels   []Channel
 	Descriptor Descriptor
+	Opcodes    []Opcode // strobe payload values (folded into BuildID; emitted as macros + consts)
 }
 
 // AllRegs returns every register across all blocks, in declaration order.
@@ -321,9 +337,21 @@ func (i Interface) Validate() []error {
 			add("channel %q: fields sum to %d bits, RecordBits=%d", c.Name, sum, c.RecordBits)
 		}
 	}
-	// Descriptor sanity.
+	// Descriptor sanity — same per-field guards the channel loop applies (a
+	// zero-width field underflows the unsigned bit-offset math in the view and a
+	// duplicate name emits duplicate Go struct fields).
 	if len(i.Descriptor.Fields) == 0 {
 		add("descriptor %q: no fields", i.Descriptor.Name)
+	}
+	dfNames := map[string]bool{}
+	for _, f := range i.Descriptor.Fields {
+		if f.Bits == 0 {
+			add("descriptor %q field %q: zero width", i.Descriptor.Name, f.Name)
+		}
+		if dfNames[f.Name] {
+			add("descriptor %q: duplicate field name %q", i.Descriptor.Name, f.Name)
+		}
+		dfNames[f.Name] = true
 	}
 
 	// C4 + structural: registers.
@@ -347,6 +375,13 @@ func (i Interface) Validate() []error {
 		// C4 — explicit semantics.
 		if r.Sem == 0 {
 			add("C4: register %q has no access-semantics (set SemNormal explicitly if plain)", r.Name)
+		}
+		// Access must be exactly one of R/W/RW. A zero/unknown Access has
+		// CanRead()==CanWrite()==false, so it is dropped from the read-mux and
+		// write-strobe decode, yet accessConst() still labels it "AccR" in the
+		// bindings — a silent producer/consumer split. Reject it like C4 does Sem.
+		if r.Access != R && r.Access != W && r.Access != RW {
+			add("register %q has invalid Access %d (want R, W, or RW)", r.Name, uint8(r.Access))
 		}
 		// selector collision within a plane.
 		k := key{r.Plane, r.Sel}
@@ -379,6 +414,31 @@ func (i Interface) Validate() []error {
 			}
 			used |= mask
 		}
+	}
+
+	// Opcodes — each must target an existing strobe register and be unique.
+	opNames := map[string]bool{}
+	type opKey struct {
+		reg string
+		val uint16
+	}
+	opSeen := map[opKey]string{}
+	for _, o := range i.Opcodes {
+		if opNames[o.Name] {
+			add("duplicate opcode name %q", o.Name)
+		}
+		opNames[o.Name] = true
+		r, ok := i.findReg(o.Reg)
+		switch {
+		case !ok:
+			add("opcode %q targets unknown register %q", o.Name, o.Reg)
+		case r.Sem&SemStrobe == 0 || !r.Access.CanWrite():
+			add("opcode %q targets register %q which is not a writable strobe", o.Name, o.Reg)
+		}
+		if prev, dup := opSeen[opKey{o.Reg, o.Value}]; dup {
+			add("opcode value collision: %s and %s both write %s = %#04x", prev, o.Name, o.Reg, o.Value)
+		}
+		opSeen[opKey{o.Reg, o.Value}] = o.Name
 	}
 
 	// block overlaps within a plane.
@@ -490,6 +550,9 @@ func (i Interface) canonical() string {
 	fmt.Fprintf(&b, "desc %s\n", i.Descriptor.Name)
 	for _, f := range i.Descriptor.Fields {
 		fmt.Fprintf(&b, "  df %s %d\n", f.Name, f.Bits)
+	}
+	for _, o := range i.Opcodes {
+		fmt.Fprintf(&b, "opcode %s %s %#04x\n", o.Name, o.Reg, o.Value)
 	}
 	return b.String()
 }
