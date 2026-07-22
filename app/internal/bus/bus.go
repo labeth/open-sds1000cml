@@ -57,26 +57,35 @@ type Dev struct {
 	regs *[mmapLen / 2]uint16
 }
 
-// New wraps the inherited /dev/Gpmc fd and verifies the fabric identity: it
-// runs iface.Verify (VERSION magic + BUILDID_LO/HI == the compiled build-ID)
-// and REFUSES to drive a mispaired build (the app generated the bitstream, so a
-// mismatch is a build error, not a negotiation — spec 02, codegen doc §3.4). If
-// mmapDrain is set it also maps the CS1 window from /dev/mem for the fast-path
-// drain; on any mmap failure it silently falls back to ioctl drains.
-func New(fd int, mmapDrain bool) (*Dev, error) {
+// New wraps the inherited /dev/Gpmc fd. It ONLY constructs the driver — it does
+// NOT verify the fabric identity and does NOT map the fast-path drain. At cold
+// boot the fabric still holds the factory NAND image, which must be reconfigured
+// to the owned build first (fpgaload.Bringup); verifying identity here would trip
+// before that reconfiguration could run. The boot sequence therefore verifies
+// identity via Bringup (which reloads on mismatch) and then calls EnableMmap once
+// the owned fabric is confirmed. Refusing to drive a mispaired build is preserved
+// — it just lives in Bringup / the boot gate now, not in construction.
+func New(fd int) (*Dev, error) {
 	if fd < 0 {
 		return nil, fmt.Errorf("bus: no inherited gpmc fd")
 	}
-	d := &Dev{fd: fd}
-	if err := iface.Verify(d.Read); err != nil {
-		return nil, fmt.Errorf("bus: %w", err)
+	return &Dev{fd: fd}, nil
+}
+
+// EnableMmap maps the CS1 window from /dev/mem for the fast-path drain when want
+// is true. It MUST be called only after the fabric is confirmed to be the owned
+// build: mapCS1 checks the VERSION magic to catch the addressing double-shift
+// trap, and a factory (or unconfigured) fabric would fail that check. On any
+// failure it stays on ioctl drains. Returns whether the mmap fast path is active;
+// idempotent.
+func (d *Dev) EnableMmap(want bool) bool {
+	if !want || d.regs != nil {
+		return d.regs != nil
 	}
-	if mmapDrain {
-		if err := d.mapCS1(); err != nil {
-			fmt.Printf("[app] mmap drain unavailable, using ioctl drain: %v\n", err)
-		}
+	if err := d.mapCS1(); err != nil {
+		fmt.Printf("[app] mmap drain unavailable, using ioctl drain: %v\n", err)
 	}
-	return d, nil
+	return d.regs != nil
 }
 
 func (d *Dev) mapCS1() error {

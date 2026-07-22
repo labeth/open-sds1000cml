@@ -61,3 +61,23 @@ func TestWriteGuardIsSchemaDerived(t *testing.T) {
 		}
 	}
 }
+
+// New must construct WITHOUT verifying the fabric identity: at cold boot the
+// factory image is still loaded and the fabric is reconfigured (fpgaload.Bringup)
+// only after construction, so a construction-time verify would make the owned
+// build unreachable. New touches no hardware here (Read is never called), so a
+// valid fd succeeds regardless of what the fabric would report; only a negative
+// fd fails.
+func TestNewDoesNotVerifyAtConstruction(t *testing.T) {
+	if _, err := New(0); err != nil {
+		t.Fatalf("New(0) must construct without verifying the fabric, got %v", err)
+	}
+	if _, err := New(-1); err == nil {
+		t.Fatal("New(-1) must fail: no inherited gpmc fd")
+	}
+	// EnableMmap(false) is a no-op and reports the drain inactive.
+	d, _ := New(0)
+	if d.EnableMmap(false) {
+		t.Fatal("EnableMmap(false) must not activate the mmap drain")
+	}
+}
