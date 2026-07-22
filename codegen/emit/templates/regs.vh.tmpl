@@ -1,0 +1,35 @@
+// {{.Banner}}
+// iface {{.Name}} v{{.Version}}  build-ID 0x{{.BuildIDHex}}
+// stream: lane={{.Stream.LaneBits}} stages={{.Stream.Stages}} | capture: depth={{.Capture.Depth}} pretrig+mark
+//
+// Verilog-2001 `define macros (localparams at global scope are SystemVerilog-only,
+// and a macro expands to a literal you cannot part-select). `include this header at
+// global scope, then reference `SEL_X / `IFACE_BUILD_ID / `STATUS_A_DONE_MASK /
+// `STATUS_A_DONE_LSB / `REC_DEPTH, etc.
+`ifndef IFACE_REGS_VH
+`define IFACE_REGS_VH
+
+`define IFACE_BUILD_ID 32'h{{.BuildIDHex}}
+`define IFACE_BUILD_ID_LO 16'h{{.LoHex}}
+`define IFACE_BUILD_ID_HI 16'h{{.HiHex}}
+`define PLANE_CS1 8'd{{.CS1}}
+`define PLANE_CS3 8'd{{.CS3}}
+
+// capture geometry — the single source of truth for the RTL, too: the circular
+// writer derives REC_DEPTH / ADDR_W / PRETRIG_MAX from here (no Verilog module
+// parameter to drift from the schema).
+`define REC_DEPTH {{.Capture.Depth}}
+`define ADDR_W {{.Capture.AddrBits}}
+`define PRETRIG_MAX {{.Capture.PretrigMax}}
+{{range .Blocks}}
+// ---- block {{.Name}} ({{.Plane}} 0x{{.BaseHex}}+0x{{printf "%02x" .Span}}) {{.Desc}}
+{{- range .Regs}}
+// SEL_{{.Name}}: {{.Access}} {{.SemList}} [{{.Plane}}]
+`define SEL_{{.Name}} 8'h{{.SelHex}}
+{{- range .Fields}}
+`define {{.RegName}}_{{.Name}}_MASK 16'h{{.MaskHex}}
+`define {{.RegName}}_{{.Name}}_LSB 5'd{{.Lsb}}
+{{- end}}
+{{- end}}
+{{end}}
+`endif

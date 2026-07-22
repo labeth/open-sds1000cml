@@ -1,0 +1,38 @@
+// {{.Banner}}
+// iface {{.Name}} v{{.Version}}  build-ID 0x{{.BuildIDHex}}
+//
+// Register-decode include: per-register write-strobe wires + the read-data mux,
+// generated from Access/Sem so the selector decode can NEVER drift from the
+// schema (the exact bug class this codegen exists to kill). Hand RTL only assigns
+// behavior behind the named wires — it never writes a selector case.
+//
+// `include this INSIDE the acq top module, AFTER `include "regs.vh". The top
+// module must provide these signals:
+//     we_commit          1-cycle "write accepted" pulse (GPMC write, synchronized)
+//     wr_plane [7:0]     plane of the accepted write
+//     wr_sel   [7:0]     selector of the accepted write
+//     rd_plane [7:0]     plane of the current read
+//     rd_sel   [7:0]     selector of the current read
+//     rdata_<REG> [15:0] the read value the behavior drives, for each readable
+//                        register whose read source is a hand-RTL wire (identity /
+//                        build-ID / fixed-Expect regs are driven here, from the
+//                        schema, and need no rdata_ wire).
+// This include produces:
+//     we_<REG>           1-cycle write strobe, one per writable register
+//     rmux_rdata [15:0]  the muxed read value for {rd_plane, rd_sel}
+
+// ---- write-strobe decode -------------------------------------------------
+{{range .WriteRegs -}}
+wire we_{{.Name}} = we_commit & (wr_plane == {{.PlaneMacro}}) & (wr_sel == {{.SelMacro}});
+{{end}}
+// ---- read-data mux -------------------------------------------------------
+reg [15:0] rmux_rdata;
+always @* begin
+    rmux_rdata = 16'h0000;
+    case ({rd_plane, rd_sel})
+{{- range .ReadRegs}}
+        { {{.PlaneMacro}}, {{.SelMacro}} }: rmux_rdata = {{.ReadExpr}}; // {{.ReadKind}}
+{{- end}}
+        default: rmux_rdata = 16'h0000;
+    endcase
+end

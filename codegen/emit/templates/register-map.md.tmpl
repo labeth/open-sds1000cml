@@ -1,0 +1,48 @@
+<!-- {{.Banner}} -->
+# {{.Name}} — register map (v{{.Version}})
+
+**Build-ID:** `0x{{.BuildIDHex}}` (schema fingerprint; the app checks it vs `BUILDID_LO/HI`
+and refuses to drive a fabric whose build-ID differs).
+
+Generated from `codegen/ifacedef` by `ifacegen` — do not edit; edit the schema and
+run `make -C codegen generate`. This map traces to one source: `specs/03` (behavioral)
+→ `ifacedef` (schema) → {`regs.vh`, `regmux.vh`, `iface.go`, this doc}.
+
+## Frozen contracts
+
+- **C1 stream:** {{.Stream.LaneBits}}-bit sample lane, {{.Stream.Stages}} reserved bypassable transform stage(s). {{.Stream.Desc}}
+- **C2 capture:** depth {{.Capture.Depth}} (`ADDR_W` {{.Capture.AddrBits}}, `MARGIN` {{.Capture.Margin}}, `PRETRIG_MAX` {{.Capture.PretrigMax}}), programmable pre-trigger, `trig_mark`. {{.Capture.Desc}}
+- **C3 channels:** every result/event channel carries an overflow/lost-count field; its fields sum to the record width.
+- **C4 access-semantics:** every register declares its behavioral semantics (columns below).
+{{range .Blocks}}
+## block `{{.Name}}` — {{.Plane}} `0x{{.BaseHex}}..0x{{.LastHex}}`
+
+{{.Desc}}
+{{if .Regs}}
+| sel | name | acc | semantics | fields | notes |
+|---|---|---|---|---|---|
+{{- range .Regs}}
+| `0x{{.SelHex}}` | `{{.Name}}` | {{.Access}} | {{.SemDoc}} | {{.FieldSum}} | {{md .Note}} |
+{{- end}}
+{{else}}
+_Reserved — range claimed, no registers yet._
+{{end}}{{end}}
+## result/event channels
+{{range .Channels}}
+### `{{.Name}}` — {{.RecordBits}}-bit record, {{.Words}} words
+
+{{.Desc}}
+
+| field | bits | notes |
+|---|---|---|
+{{- range .Fields}}
+| `{{.Name}}` | `[{{.Hi}}:{{.Lo}}]` | {{md .Note}} |
+{{- end}}
+{{end}}
+## DMA descriptor `{{.Descriptor.Name}}` — {{.Descriptor.Bits}}-bit, {{.Descriptor.Words}} words
+
+| field | bits | notes |
+|---|---|---|
+{{- range .Descriptor.Fields}}
+| `{{.Name}}` | `[{{.Hi}}:{{.Lo}}]` | {{md .Desc}} |
+{{- end}}

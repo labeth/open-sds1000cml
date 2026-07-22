@@ -4,7 +4,11 @@
 ota/boot/commands   text eol=lf
 ota/boot/agent.env.example text eol=lf
 *.mjs           text eol=lf
+# Generated Verilog register headers/includes stay LF (deterministic, drift-gated).
+*.vh            text eol=lf
 # Binaries / assets: never munge.
 *.png           binary
 *.zip           binary
 *-arm           binary
+# The built bitstream is a tracked artifact — never munge it (exactly 368011 bytes).
+*.rbf           binary

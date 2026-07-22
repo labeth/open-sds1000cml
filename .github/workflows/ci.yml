@@ -14,7 +14,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        module: [app, ota]
+        module: [app, ota, codegen, fpga]
     defaults:
       run:
         working-directory: ${{ matrix.module }}
@@ -31,8 +31,17 @@ jobs:
 
       # The web browser E2E self-skips when Playwright is absent, so the offline
       # suite (engine, front end, LCD, panel, measure, SCPI, web guardrails) runs.
+      # The codegen lane runs schema validation, emitter determinism, and codec
+      # round-trip tests; the fpga lane has no Go packages yet (Phase B).
       - name: test
         run: go test ./...
+
+      # Drift gate (codegen only): regenerate the interface in memory and fail if
+      # any checked-in generated file (iface.go, regs.vh, regmux.vh, the doc) is
+      # stale — the "fabric and app can never drift" guarantee.
+      - name: drift
+        if: matrix.module == 'codegen'
+        run: make drift
 
   # Second lane: node + Playwright Chromium installed, so the browser e2e,
   # node JS, and Go<->JS parity suites actually RUN. CI_REQUIRE_BROWSER=1 turns
