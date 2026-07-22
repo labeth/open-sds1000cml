@@ -50,9 +50,44 @@ a macro literal). Capture geometry (`` `REC_DEPTH ``/`` `ADDR_W ``/`` `PRETRIG_M
 comes from the schema too, so the RTL circular writer and the app agree by
 construction — one geometry source.
 
+## Build tooling (`internal/quartus` + `cmd/buildacq`)
+
+`internal/quartus` is a pure-Go, stdlib-only headless Quartus driver. It compiles
+a **multi-file** Verilog `Project` (N `.v` sources + a QSF + `` `include ``d
+headers) into a Cyclone IV E `.rbf`:
+
+```go
+p := quartus.Project{
+    Name: "acq", Top: "acq",       // revision / top-level entity
+    QSF:      string(acqQSF),       // bench-supplied device / pins / IO
+    Sources:  sources,              // acq.v, spine.v, capture.v, … (each a VERILOG_FILE)
+    Includes: includes,             // regs.vh, regmux.vh (copied next to the sources)
+}
+if err := quartus.GateReady(2200); err != nil { … }   // refuse a 2nd flow / low RAM
+rbf, err := quartus.New(work).Compile(p, out)          // map→fit→asm→cpf; must be 368011 B
+```
+
+The driver assembles the QSF (adds a `VERILOG_FILE` line per source the QSF
+omits, and `TOP_LEVEL_ENTITY` / `PROJECT_OUTPUT_DIRECTORY` if absent), copies the
+`` `include ``d headers into a scratch work dir (wiped on both sides),
+memory-gates the flow (`GateReady` — the 3.8 GiB box OOMs on two flows), runs
+`map → fit → asm → cpf`, and fails unless the result is exactly
+`quartus.RBFBytes` (368011). `DefaultRoot()` is `$QUARTUS_ROOTDIR` or
+`~/intelFPGA_lite/21.1/quartus`.
+
+`cmd/buildacq` wires it to `standard/`: it reads `standard/*.v` + `standard/acq.qsf`,
+resolves each source's `` `include "x.vh" `` against the design dir (where the
+generated `regs.vh` / `regmux.vh` live), gates on memory, compiles, and writes
+`standard/acq.rbf`, printing `OK: <path> (368011 bytes)`.
+
+```
+make bitstream        # go run ./cmd/buildacq  — bench only, NOT run in CI
+make build test vet   # the Go tooling itself (CI-safe; no Quartus)
+```
+
 ## Status
 
 Phase A (this) delivers the generated interface + `standard/` scaffold. The RTL,
-the Quartus driver, and `cmd/buildacq` land in Phase B (which does **not** run in
-CI — no Quartus toolchain, and the bench box runs one flow at a time). The `.rbf`
-is a bench artifact.
+the Quartus driver (`internal/quartus`), and `cmd/buildacq` land in Phase B (which
+does **not** run in CI — no Quartus toolchain, and the bench box runs one flow at
+a time). The `.rbf` is a bench artifact.

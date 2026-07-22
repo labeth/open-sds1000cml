@@ -6,3 +6,4 @@
 /app/cmd/decodeprobe/
 /app/cmd/bandcheck/
 /app/cmd/draintest/
+fpga/standard/acq.rbf

@@ -1,0 +1,171 @@
+# =============================================================================
+# acq.qsf -- Quartus settings for the standard (owned) acquisition bitstream
+# Device: Altera Cyclone IV E  EP4CE10F17C8  (SDS1000CML acquisition FPGA)
+#
+# Top: acq. The design is the six-module streaming-spine engine (acq / spine /
+# capture / envelope / drain / dac). It `include`s the GENERATED interface headers
+# regs.vh and regmux.vh (the register single-source-of-truth); SEARCH_PATH "." lets
+# the `include resolve them. cmd/buildacq copies regs.vh/regmux.vh into the compile
+# work dir alongside the six sources.
+#
+# BUILD (serially, later -- DO NOT parallel-build, the 3.8 GiB box OOMs; NOT in CI):
+#   quartus_map  acq
+#   quartus_fit  acq
+#   quartus_asm  acq
+#   quartus_cpf -c -o compression=off acq.sof acq.rbf
+# (compression off so the CPU passive-serial loader is happy; shipped .rbf = 368011 B)
+# =============================================================================
+
+set_global_assignment -name FAMILY "Cyclone IV E"
+set_global_assignment -name DEVICE EP4CE10F17C8
+set_global_assignment -name TOP_LEVEL_ENTITY acq
+set_global_assignment -name PROJECT_OUTPUT_DIRECTORY output_files
+
+# --- so the RTL `include "regs.vh" / "regmux.vh" resolves (buildacq copies them here)
+set_global_assignment -name SEARCH_PATH .
+
+# --- the six RTL sources (multi-file design) ---
+set_global_assignment -name VERILOG_FILE acq.v
+set_global_assignment -name VERILOG_FILE spine.v
+set_global_assignment -name VERILOG_FILE capture.v
+set_global_assignment -name VERILOG_FILE envelope.v
+set_global_assignment -name VERILOG_FILE drain.v
+set_global_assignment -name VERILOG_FILE dac.v
+
+# --- IO defaults: bottom cluster = banks 3/4, LVCMOS 3.3 V (GPMC is 3.3 V) ---
+set_global_assignment -name STRATIX_DEVICE_IO_STANDARD "3.3-V LVTTL"
+
+# --- SAFETY: every ball we do NOT drive stays a tri-stated input, so this design
+#     never fights the CPU / aux-FPGA / ADC / panel / DAC balls the board drives.
+#     CRITICAL while the pin map is still a CANDIDATE. ---
+set_global_assignment -name RESERVE_ALL_UNUSED_PINS "AS INPUT TRI-STATED"
+set_global_assignment -name RESERVE_ALL_UNUSED_PINS_NO_OUTPUT_GND "AS INPUT TRI-STATED"
+
+# =============================================================================
+# >>>>>>>>>>>>>>>>>>>>>  HARDWARE-DISCOVERED PIN BLOCK  <<<<<<<<<<<<<<<<<<<<<<<<<
+# =============================================================================
+# EVERYTHING BELOW IS A PLACEHOLDER GUESS carried over from the proving-ground
+# pinout (v0_spine.qsf / test3_burst_drain.qsf). The exact ball<->signal mapping is
+# resolved ON THE BENCH (walking-1 data balls, version strobe/addr balls, adc-probe
+# sample-bus balls), not from the bitstream. This engine drives the SAME balls as the
+# proving ground and adds NO new ball, so this fenced block is byte-identical to it.
+# Edit ONLY the "PIN_xx" ball names after the discovery flashes; the signal names on
+# the left are fixed by the RTL. The shipped .rbf waits on the real pin map; a
+# placeholder build is for fit/timing only.
+#
+# Candidate balls (CANDIDATE-PINOUT.md):
+#   GPMC data (17 bidir, banks 3/4): K8 K9 K10 L11 L12 M8 N9 P8 P9 R4 R6 R7 R9 T2 T11 T13 T15
+#   GPMC addr/ctrl (in, banks 3/4) : K2 L7 L8 L9 L10 M6 M9 M10 T3 T5 T6 T8 ...
+#   inter-FPGA sample bus (in, top): A2 A3 A4 A5 B3 B4 B5 C3 D3 D4 D5 C2 A6 A10 A11 A12
+#   trigger sense (in)             : G11
+#   DAC/SPI out (left edge, bank 1): D1 F1 G1
+#   WAIT out candidate             : L6
+#   clock/ref (in)                 : M2
+# -----------------------------------------------------------------------------
+
+# ---- 16-bit GPMC data bus (16 of the 17 bidir balls; T15 left spare) --------
+set_location_assignment PIN_K8  -to gpmc_d[0]
+set_location_assignment PIN_K9  -to gpmc_d[1]
+set_location_assignment PIN_K10 -to gpmc_d[2]
+set_location_assignment PIN_L11 -to gpmc_d[3]
+set_location_assignment PIN_L12 -to gpmc_d[4]
+set_location_assignment PIN_M8  -to gpmc_d[5]
+set_location_assignment PIN_N9  -to gpmc_d[6]
+set_location_assignment PIN_P8  -to gpmc_d[7]
+set_location_assignment PIN_P9  -to gpmc_d[8]
+set_location_assignment PIN_R4  -to gpmc_d[9]
+set_location_assignment PIN_R6  -to gpmc_d[10]
+set_location_assignment PIN_R7  -to gpmc_d[11]
+set_location_assignment PIN_R9  -to gpmc_d[12]
+set_location_assignment PIN_T2  -to gpmc_d[13]
+set_location_assignment PIN_T11 -to gpmc_d[14]
+set_location_assignment PIN_T13 -to gpmc_d[15]
+
+# ---- control strobes (active-low, INPUTS) ----
+set_location_assignment PIN_T3  -to nCS1
+set_location_assignment PIN_T8  -to nCS3
+set_location_assignment PIN_T5  -to nOE
+set_location_assignment PIN_T6  -to nWE
+
+# ---- selector address sel[7:0] (== byte_addr>>1, INPUTS) ----
+set_location_assignment PIN_K2  -to sel[0]
+set_location_assignment PIN_L7  -to sel[1]
+set_location_assignment PIN_L8  -to sel[2]
+set_location_assignment PIN_L9  -to sel[3]
+set_location_assignment PIN_L10 -to sel[4]
+set_location_assignment PIN_M6  -to sel[5]
+set_location_assignment PIN_M9  -to sel[6]
+set_location_assignment PIN_M10 -to sel[7]
+
+# ---- WAIT / ready line (FPGA -> GPMC), an OUT-capable ball ----
+set_location_assignment PIN_L6  -to gpmc_wait
+
+# ---- free-running reference / SAMPLE-BUS clock (clock-capable ball, INPUT) ----
+# BENCH-VERIFY #2: clk MUST be the sample-bus domain for coherent capture.
+set_location_assignment PIN_M2  -to clk
+
+# ---- inter-FPGA sample bus INPUTS (resolved by rung 3; hi=CH1, lo=CH2) ----
+set_location_assignment PIN_A2  -to sample_in[0]
+set_location_assignment PIN_A3  -to sample_in[1]
+set_location_assignment PIN_A4  -to sample_in[2]
+set_location_assignment PIN_A5  -to sample_in[3]
+set_location_assignment PIN_B3  -to sample_in[4]
+set_location_assignment PIN_B4  -to sample_in[5]
+set_location_assignment PIN_B5  -to sample_in[6]
+set_location_assignment PIN_C3  -to sample_in[7]
+set_location_assignment PIN_D3  -to sample_in[8]
+set_location_assignment PIN_D4  -to sample_in[9]
+set_location_assignment PIN_D5  -to sample_in[10]
+set_location_assignment PIN_C2  -to sample_in[11]
+set_location_assignment PIN_A6  -to sample_in[12]
+set_location_assignment PIN_A10 -to sample_in[13]
+set_location_assignment PIN_A11 -to sample_in[14]
+set_location_assignment PIN_A12 -to sample_in[15]
+
+# ---- trigger SENSE input (HW comparator digital output, INPUT) ----
+set_location_assignment PIN_G11 -to trig_sense
+
+# ---- trigger LEVEL DAC serial output (left-edge DAC/SPI candidates) ----
+set_location_assignment PIN_D1  -to dac_sync
+set_location_assignment PIN_F1  -to dac_sclk
+set_location_assignment PIN_G1  -to dac_sdi
+
+# =============================================================================
+# >>>>>>>>>>>>>>>>>>>>>  END HARDWARE-DISCOVERED PIN BLOCK  <<<<<<<<<<<<<<<<<<<<<
+# =============================================================================
+
+# --- SAFETY: cap drive to MINIMUM CURRENT on every ball this design actively
+#     drives (the 16 data balls, the always-on gpmc_wait, the 3 level-DAC serial
+#     outputs). Every input ball (clk, sample_in, trig_sense, strobes, sel) is never
+#     driven, so needs no cap. A mis-mapped driven ball on a factory push-pull output
+#     is then bounded to a few mA instead of full 3.3-V LVTTL drive. ---
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MINIMUM CURRENT" -to gpmc_d[0]
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MINIMUM CURRENT" -to gpmc_d[1]
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MINIMUM CURRENT" -to gpmc_d[2]
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MINIMUM CURRENT" -to gpmc_d[3]
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MINIMUM CURRENT" -to gpmc_d[4]
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MINIMUM CURRENT" -to gpmc_d[5]
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MINIMUM CURRENT" -to gpmc_d[6]
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MINIMUM CURRENT" -to gpmc_d[7]
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MINIMUM CURRENT" -to gpmc_d[8]
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MINIMUM CURRENT" -to gpmc_d[9]
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MINIMUM CURRENT" -to gpmc_d[10]
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MINIMUM CURRENT" -to gpmc_d[11]
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MINIMUM CURRENT" -to gpmc_d[12]
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MINIMUM CURRENT" -to gpmc_d[13]
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MINIMUM CURRENT" -to gpmc_d[14]
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MINIMUM CURRENT" -to gpmc_d[15]
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MINIMUM CURRENT" -to gpmc_wait
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MINIMUM CURRENT" -to dac_sync
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MINIMUM CURRENT" -to dac_sclk
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MINIMUM CURRENT" -to dac_sdi
+
+# =============================================================================
+# Timing: the GPMC read/write side is asynchronous and is brought into the `clk`
+# domain by FF synchronizers, so there is no cross-domain path to constrain there.
+# `clk` itself is a real free-running clock (the sample-bus domain, BENCH-VERIFY #2);
+# a bench build wanting a bounded fMAX can add a minimal .sdc with
+# `create_clock -period <ns> [get_ports clk]`. No .sdc ships with this first cut
+# (default single-clock analysis; the datapath is shallow counters + two block-RAM
+# ports + the live min/max reducer + a 16-step interpolation divider).
+# =============================================================================
