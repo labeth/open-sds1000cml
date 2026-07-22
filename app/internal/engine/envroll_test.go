@@ -4,11 +4,14 @@ import (
 	"math"
 	"testing"
 	"time"
+
+	"open-sds/app/internal/iface"
 )
 
-func TestEnvelopeProgDivisor(t *testing.T) {
-	// Spec 04 §5 verification constants: the PROGRAMMED divisor comes from
-	// the phase-scatter formula, never the nominal table row.
+func TestEnvelopeDecim(t *testing.T) {
+	// Spec 04 §5 verification constants: the phase-scatter divisor comes from the
+	// formula (EnvPlan), never the nominal table row; the programmed DECIM is that
+	// divisor × 5 (CaptureIntervalNs = divisor·10 ns, baseTickNs = 2 ns).
 	cases := []struct {
 		tdiv    float64
 		winCols int
@@ -28,26 +31,56 @@ func TestEnvelopeProgDivisor(t *testing.T) {
 		if w != c.winCols || d != c.divisor {
 			t.Errorf("EnvPlan(%g) = %d/%d, want %d/%d", c.tdiv, w, d, c.winCols, c.divisor)
 		}
-		class, lo, hi := b.Prog()
-		if class != 0x80 || uint32(lo) != c.divisor&0xffff || hi != uint16(c.divisor>>16) {
-			t.Errorf("Prog(%g) = %#x/%#x/%#x", c.tdiv, class, lo, hi)
+		if got, want := b.Decim(), c.divisor*5; got != want {
+			t.Errorf("Decim(%g) = %d, want %d", c.tdiv, got, want)
 		}
 	}
 }
 
-func TestRollProgDivisor(t *testing.T) {
+func TestRollDecim(t *testing.T) {
 	for _, tdiv := range []float64{100e-3, 1, 50} {
 		b, ok := PlanTdiv(tdiv)
 		if !ok || b.Kind() != KindRoll {
 			t.Fatalf("PlanTdiv(%g): ok=%v kind=%v", tdiv, ok, b.Kind())
 		}
-		class, lo, hi := b.Prog()
-		if class != 0x80 || lo != 0x9088 || hi != 0 { // rollDivisor 37000
-			t.Errorf("roll Prog(%g) = %#x/%#x/%#x, want 0x80/0x9088/0", tdiv, class, lo, hi)
+		if got, want := b.Decim(), uint32(rollDivisor*5); got != want { // rollDivisor 37000
+			t.Errorf("roll Decim(%g) = %d, want %d", tdiv, got, want)
 		}
 	}
 	if got := RollPaceNs(); got != 370000 {
 		t.Errorf("RollPaceNs = %d, want 370000", got)
+	}
+}
+
+// TestEnvelopeChannelPrimary: when the fabric envelope channel carries records,
+// the min/max band is built from ENV_DATA (primary), not the software reducer.
+func TestEnvelopeChannelPrimary(t *testing.T) {
+	fb := newFakeBus()
+	// Flat, off-level drain so the triggered-edge path never fires — the frame
+	// takes the min/max band path, which prefers the fabric channel.
+	fb.mu.Lock()
+	fb.wave = func(int) (uint8, uint8) { return 128, 128 }
+	fb.mu.Unlock()
+	// Script a wide band at column 400 on channel 0.
+	fb.setEnvRecords([]iface.EnvelopeRecord{
+		{Col: 400, Min: 40, Max: 210, Ch: 0},
+		{Col: 401, Min: 45, Max: 205, Ch: 0},
+	}, false)
+	e, _ := newTestEngine(t, fb)
+	b, _ := PlanTdiv(5e-3)
+	e.band = b
+	e.transition(false, false)
+	e.envFrame(false)
+	f, fresh := e.Consume()
+	if !fresh || !f.IsEnv {
+		t.Fatalf("env frame: fresh=%v isEnv=%v", fresh, f.IsEnv)
+	}
+	if f.EnvMin[400] != 40 || f.EnvMax[400] != 210 {
+		t.Fatalf("fabric envelope band at col 400 = [%d,%d], want [40,210]", f.EnvMin[400], f.EnvMax[400])
+	}
+	// A column the fabric never reported draws mid-line (128), never a 0-rail bar.
+	if f.EnvMin[0] != 128 || f.EnvMax[0] != 128 {
+		t.Fatalf("unseen column = [%d,%d], want mid-line [128,128]", f.EnvMin[0], f.EnvMax[0])
 	}
 }
 
@@ -105,34 +138,23 @@ func TestRollBand(t *testing.T) {
 	fb.clearWrites()
 	e.transition(false, false)
 
-	// Bring-up: divisor 37000, single reset-head, wrptr pulse, arm ONCE, latch.
-	sawDiv, sawGo, sawLatch := false, 0, 0
+	// Bring-up programs the roll decimation (rollDivisor × 5) into DECIM_LO/HI.
+	decim := uint32(rollDivisor * 5)
+	sawDecim := false
 	for _, w := range fb.snapWrites() {
-		if w.plane == 1 && w.sel == selDivLo && w.val == 0x9088 {
-			sawDiv = true
-		}
-		if w.plane == 1 && w.sel == selArm && w.val == opGo {
-			sawGo++
-		}
-		if w.plane == 1 && w.sel == selArm && w.val == opLatch {
-			sawLatch++
+		if w.plane == iface.CS1 && w.sel == selDecimLo && w.val == uint16(decim&0xffff) {
+			sawDecim = true
 		}
 	}
-	if !sawDiv || sawGo != 1 || sawLatch != 1 {
-		t.Fatalf("roll bring-up: div=%v go=%d latch=%d", sawDiv, sawGo, sawLatch)
+	if !sawDecim {
+		t.Fatalf("roll bring-up did not program DECIM_LO = %#04x", uint16(decim&0xffff))
 	}
 
+	// A roll update captures on the halt engine (owned fabric halts cleanly) and
+	// publishes an envelope frame — never a live-buffer (pre-halt) read.
 	e.rollUpdate(false)
-	if fb.rollUnarmed {
-		t.Fatal("roll FIFO read while unarmed (WAIT-line wedge)")
-	}
-	if fb.rollNoLatch {
-		t.Fatal("roll FIFO popped without a preceding 0xCB re-latch")
-	}
-	for _, w := range fb.snapWrites() {
-		if w.plane == 1 && w.sel == selArm && w.val == opHalt {
-			t.Fatal("0xC8 written on a roll band (freezes the free-run)")
-		}
+	if fb.earlyDrain {
+		t.Fatal("roll drained the live buffer before halt")
 	}
 	f, fresh := e.Consume()
 	if !fresh || !f.IsEnv || f.Valid != rollWin {
@@ -148,15 +170,15 @@ func TestRollToRealTimeTransition(t *testing.T) {
 	e.transition(false, false)
 	e.rollUpdate(false)
 
-	// Leave roll for a decimated band: the FIRST writes must be the double
-	// reset-head that drops the latched free-run state.
+	// Leave roll for a decimated band: the FIRST writes must idle the capture
+	// FSM (OPCODE = OP_RESET ×2) so the next armed capture starts clean.
 	b2, _ := PlanTdiv(500e-6)
 	e.band = b2
 	fb.clearWrites()
 	e.transition(false, false)
 	w := fb.snapWrites()
-	if len(w) < 2 || w[0] != (wr{1, selArm, opResetHead}) || w[1] != (wr{1, selArm, opResetHead}) {
-		t.Fatalf("roll→real-time did not start with reset-head ×2: %#v", w[:2])
+	if len(w) < 2 || w[0] != (wr{iface.CS1, selOpcode, opReset}) || w[1] != (wr{iface.CS1, selOpcode, opReset}) {
+		t.Fatalf("roll→real-time did not start with OP_RESET ×2: %#v", w[:2])
 	}
 
 	// The next real-time frame must clear the envelope metadata.

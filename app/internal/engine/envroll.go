@@ -3,19 +3,18 @@ package engine
 import (
 	"time"
 
-	"open-sds/app/internal/bus"
+	"open-sds/app/internal/iface"
 )
 
 // Slow-envelope and roll band paths (spec 04). Both display a per-column
-// (min,max) band whose every value is a real ADC sample; solidity comes from
-// PHASE SCATTER — the per-sample interval is a good fraction of the signal
-// period, accumulated over a ring of frames/snapshots.
+// (min,max) band. The owned fabric folds min/max on the LIVE stream into an
+// envelope result channel (ENV_DATA/ENV_COUNT, fpga doc §6): the primary path
+// consumes those records; the software min/max reducer over phase-scattered
+// drained windows is kept as the CPU fallback (spec 03 §3).
 
-const (
-	selRollC1 = 0x41 // roll FIFO C1: each ioctl read pops one live sample
-	selRollC2 = 0x59 // roll FIFO C2 (same mux-selected source, byte-replicated)
-	opLatch   = 0x00cb
-)
+// envMaxRecords caps a single envelope-channel drain (2 channels × the display
+// columns, with headroom for the overflow re-read).
+const envMaxRecords = 2 * envDisplayCols
 
 // interrupted reports whether the owner must bail out of a long capture loop
 // NOW: shutdown, STOP, or a staged band/mode/ETS change (spec 09 §3.1 —
@@ -46,12 +45,12 @@ func (e *Engine) clearCrossFrame() {
 // transition applies a staged band/mode/ETS change at the frame boundary.
 func (e *Engine) transition(norm, etsWant bool) {
 	newKind := e.band.Kind()
-	// Leaving envelope/roll for a real-time band: drop the latched free-run
-	// state FIRST, or the next armed arm mis-inits (spec 04 §4.2 step 1).
+	// Leaving envelope/roll for a real-time band: idle the capture FSM FIRST so
+	// the next armed capture starts clean (spec 04 §4.2 step 1).
 	if (e.prevKind == KindEnvelope || e.prevKind == KindRoll) &&
 		newKind != KindEnvelope && newKind != KindRoll {
-		e.w(selArm, opResetHead)
-		e.w(selArm, opResetHead)
+		e.w(selOpcode, opReset)
+		e.w(selOpcode, opReset)
 	}
 	e.rollArmed = false
 	e.etsOn = etsWant
@@ -66,20 +65,17 @@ func (e *Engine) transition(norm, etsWant bool) {
 
 // ---- slow envelope (5–50 ms/div) ----
 
-// envFrame runs one envelope frame: arm → modest fill wait (no status gate;
-// a partial fill is fine, the ring accumulates scatter) → halt → drain the
-// window → re-arm → ring push + 800-column min/max reduction → publish.
+// envFrame runs one envelope frame: arm → modest fill wait → halt → burst-drain
+// the window → re-arm → publish. A repetitive, well-sampled signal triggers as a
+// normal edge-centred trace (window() re-centres on the captured margin); an
+// aliased / flat / off-level signal falls back to the min/max band, taken from
+// the fabric's envelope channel (primary) or the software reducer (fallback).
 // Publishes EVERY frame in both AUTO and NORM (phase-independent band).
 func (e *Engine) envFrame(norm bool) {
 	start := e.clk.Now()
 	e.armEngine()
 
 	target := e.band.EnvFillTarget()
-	// Give the fill time to actually REACH the (margin-inclusive) target: the
-	// capture takes target·CaptureInterval, so grow the deadline past the
-	// responsiveness floor when the centring margin makes the capture longer (the
-	// slower envelope bands). Fast bands stay snappy; 20 ms/div gets to complete
-	// its margin instead of dead-tailing it.
 	capNs := float64(target) * e.band.CaptureIntervalNs()
 	deadline := start.Add(envFillFloorMs * time.Millisecond)
 	if grow := start.Add(time.Duration(capNs * envFillSlack)); grow.After(deadline) {
@@ -119,17 +115,9 @@ func (e *Engine) envFrame(norm bool) {
 	_, _, p := ptp(disc)
 
 	// TRIGGER the envelope band when the drained record carries a confident edge
-	// on a real, well-sampled signal: publish it as a normal edge-centred trace
-	// (the same window() path the decimated bands use). The record carries a
-	// centring margin (EnvCaptureCols > WinCols on the fast bands), so window()
-	// re-centres the anchor onto real captured samples instead of repeat-extending
-	// the screen edges — a STABLE triggered waveform across the whole width. This
-	// replaces the free-running min/max band a repetitive signal used to show
-	// (untriggered acquisitions accumulate at random phase). Fall back to the
-	// envelope min/max SCATTER when there is no trigger to be had — an aliased
-	// (few-samples/period) signal, a flat/quiet screen, or the level off the
-	// signal — which keeps a live display and the glitch-catching envelope exactly
-	// where triggering is impossible.
+	// on a real, well-sampled signal: publish it as a normal edge-centred trace.
+	// Otherwise fall back to the envelope min/max band where triggering is
+	// impossible (aliased, flat, or the level off the signal).
 	td := e.trigDispLevel(int(e.trigSrc.Load()))
 	edgeX := -1.0
 	if td >= 0 && signalPresent(disc, float64(e.tuneSigK.Load())) {
@@ -156,11 +144,13 @@ func (e *Engine) envFrame(norm bool) {
 		f.EnvCols = 0
 		f.Trigd = true
 	} else {
-		// Scatter the CENTRAL display span (not the margin) so the untriggered
-		// envelope keeps the intended 10-division width.
-		off := (capCols - winCols) / 2
-		e.envPush(f, off, winCols)
-		e.envReduce(f)
+		// Min/max band: prefer the fabric's envelope channel; fall back to the
+		// software reducer over phase-scattered drained windows.
+		if !e.envConsumeChannel(f) {
+			off := (capCols - winCols) / 2
+			e.envPush(f, off, winCols)
+			e.envReduce(f)
+		}
 		f.EdgeX = -1
 		f.IsEnv = true
 		f.EnvCols = envDisplayCols
@@ -179,9 +169,63 @@ func (e *Engine) envFrame(norm bool) {
 	e.pace(start)
 }
 
+// envConsumeChannel fills the frame's per-column (min,max) band from the
+// fabric's envelope result channel (ENV_COUNT record count + ENV_DATA packed
+// records, fpga doc §6). Returns false when the channel is empty, so the caller
+// runs the software reducer fallback. An overflow flag is honored implicitly:
+// the newest records win the fold.
+func (e *Engine) envConsumeChannel(f *Frame) bool {
+	cw := e.r(selEnvCount)
+	n := int(iface.EnvCountCount(cw))
+	if n <= 0 {
+		return false
+	}
+	if n > envMaxRecords {
+		n = envMaxRecords
+	}
+	const recW = 3 // envelope record is 3 words (iface.EnvelopeRecord)
+	need := n * recW
+	if len(e.envChanBuf) < need {
+		e.envChanBuf = make([]uint16, need)
+	}
+	e.b.ChannelInto(selEnvData, e.envChanBuf[:need], need)
+
+	for c := 0; c < envDisplayCols; c++ {
+		f.EnvMin[c], f.EnvMax[c] = 0xff, 0
+		f.EnvMin2[c], f.EnvMax2[c] = 0xff, 0
+	}
+	var rec iface.EnvelopeRecord
+	for i := 0; i < n; i++ {
+		rec.Unpack(e.envChanBuf[i*recW : i*recW+recW])
+		c := int(rec.Col)
+		if c < 0 || c >= envDisplayCols {
+			continue
+		}
+		mn, mx := f.EnvMin, f.EnvMax
+		if rec.Ch == 1 {
+			mn, mx = f.EnvMin2, f.EnvMax2
+		}
+		if rec.Min < mn[c] {
+			mn[c] = rec.Min
+		}
+		if rec.Max > mx[c] {
+			mx[c] = rec.Max
+		}
+	}
+	fillUnseen := func(mn, mx []uint8) {
+		for c := 0; c < envDisplayCols; c++ {
+			if mn[c] > mx[c] { // never-seen column
+				mn[c], mx[c] = 128, 128
+			}
+		}
+	}
+	fillUnseen(f.EnvMin, f.EnvMax)
+	fillUnseen(f.EnvMin2, f.EnvMax2)
+	return true
+}
+
 // envPush copies the central [off:off+n] slice of the drained record into the
-// phase-scatter ring (off skips the centring margin captured for the triggered
-// path, so the untriggered envelope keeps the intended display width).
+// phase-scatter ring (the software min/max fallback).
 func (e *Engine) envPush(f *Frame, off, n int) {
 	if e.envRing1 == nil {
 		e.envRing1 = make([][]uint8, envRingN)
@@ -259,101 +303,76 @@ func (e *Engine) envReduce(f *Frame) {
 
 // ---- roll (≥100 ms/div) ----
 
-// rollBringUp arms the free-running roll engine ONCE (spec 04 §2.3): single
-// reset-head, write-pointer pulse, go — then a first latched pop pre-fills
-// the whole ring with a real sample so unpopulated columns never draw a
-// false 0-rail bar. The divisor (fixed 7400) was programmed by bringUp().
+// rollBringUp initializes the scroll ring. The owned fabric halts and re-arms
+// cleanly (spec 03 §5, no vendor free-run freeze), so roll is just a slow,
+// scrolled capture band: each rollUpdate captures a fresh batch and scrolls it
+// into the ring. No roll FIFO, no latch strobe, no never-halt constraint.
 func (e *Engine) rollBringUp() {
 	if e.rollRing1 == nil {
 		e.rollRing1 = make([]uint8, rollWin)
 		e.rollRing2 = make([]uint8, rollWin)
 	}
-	e.w(selArm, opResetHead)
-	e.w(selWrPtr, 0x0001)
-	e.w(selWrPtr, 0x0000)
-	e.w(selArm, opGo)
-	e.clk.Sleep(3 * time.Millisecond)
-	e.w(selArm, opLatch)
-	w1, err1 := e.b.Read(bus.PlaneCS1, selRollC1)
-	w2, err2 := e.b.Read(bus.PlaneCS1, selRollC2)
-	s1, s2 := uint8(w1>>8), uint8(w2>>8)
-	if err1 != nil {
-		s1 = 128
-	}
-	if err2 != nil {
-		s2 = 128
-	}
 	for i := range e.rollRing1 {
-		e.rollRing1[i] = s1
-		e.rollRing2[i] = s2
+		e.rollRing1[i] = 128
+		e.rollRing2[i] = 128
 	}
 	e.rollPos = 0
 	e.rollArmed = true
 }
 
-// rollUpdate runs one roll update (~220 ms of paced FIFO pops), then pushes
-// a scroll snapshot and publishes the 24-snapshot min/max reduction plus the
-// raw scrolling ring. NEVER halts (0xC8 freezes the free-run) and NEVER
-// reads un-armed (GPMC WAIT wedge, power-cycle only).
+// rollUpdate runs one roll update: capture a fresh batch on the halt engine,
+// scroll it into the ring, and publish the 24-snapshot min/max reduction plus
+// the raw scrolling ring.
 func (e *Engine) rollUpdate(norm bool) {
 	if !e.rollArmed {
 		e.rollBringUp()
 	}
+	if e.interrupted() {
+		return // bail unpublished; boundary applies the change
+	}
+
+	e.armEngine()
+	// Pace the fill so the batch spans real capture time; the boundary-style
+	// service pump runs mid-fill (no halt window yet).
 	deadline := e.clk.Now().Add(rollBudgetMs * time.Millisecond)
 	pace := time.Duration(RollPaceNs())
-	errRun := 0
-	prev := uint8(0)
-	havePrev := false
-	for i := 0; i < rollBatch; i++ {
+	for i := 0; ; i++ {
 		if e.interrupted() {
-			return // bail unpublished; port stays armed (that is safe)
-		}
-		e.w(selArm, opLatch) // re-snapshot so the FIFO advances
-		w1, err := e.b.Read(bus.PlaneCS1, selRollC1)
-		if err != nil {
-			e.busErr(err)
-			if errRun++; errRun >= 8 {
-				e.deadEvidence(false)
-				return
-			}
-			// A read error must still be PACED — an unpaced burst of latch+
-			// read pairs is exactly the roll-FIFO wedge hazard (spec 04 §10).
-			e.clk.Sleep(pace)
-			continue
-		}
-		errRun = 0
-		s1 := uint8(w1 >> 8)
-		if havePrev && s1 == prev {
-			// Dwell: the FIFO re-latched the SAME sample (its output changes far slower than
-			// we can read it). Storing dwells stacks a long single-rail run and a thin band —
-			// skip it so the ring holds only fresh, phase-advancing samples (a solid band).
-			prev = s1
-			if !e.clk.Now().Before(deadline) {
-				break
-			}
-			e.clk.Sleep(pace)
-			continue
-		}
-		prev, havePrev = s1, true
-		e.rollRing1[e.rollPos] = s1
-		w2, err2 := e.b.Read(bus.PlaneCS1, selRollC2)
-		if err2 == nil {
-			e.rollRing2[e.rollPos] = uint8(w2 >> 8)
-		} else {
-			e.busErr(err2) // C2 errors count toward the wedge signal too
-		}
-		e.rollPos = (e.rollPos + 1) % rollWin
-		if (i+1)%16 == 0 {
-			e.serviceCommands() // safe mid-frame: free-running, no halt window
+			return
 		}
 		if !e.clk.Now().Before(deadline) {
 			break
 		}
+		if (i+1)%16 == 0 {
+			e.serviceCommands()
+			e.beatN.Add(1)
+		}
 		e.clk.Sleep(pace)
 	}
 
-	// Copy the ring in scroll order (oldest first) into the frame, snapshot
-	// it, and reduce the snapshot deque to the 800-column band.
+	haltOK := e.halt()
+	if e.rollScratch1 == nil {
+		e.rollScratch1 = make([]uint8, rollBatch)
+		e.rollScratch2 = make([]uint8, rollBatch)
+	}
+	e.b.BurstInto(e.rollScratch1, e.rollScratch2, rollBatch)
+	e.armEngine() // re-arm during the reduction
+
+	// Scroll the fresh batch into the ring, skipping frozen repeats so the band
+	// stays solid (a dwell would stack a single-rail run).
+	prev := uint8(0)
+	havePrev := false
+	for i := 0; i < rollBatch; i++ {
+		s1 := e.rollScratch1[i]
+		if havePrev && s1 == prev {
+			continue
+		}
+		prev, havePrev = s1, true
+		e.rollRing1[e.rollPos] = s1
+		e.rollRing2[e.rollPos] = e.rollScratch2[i]
+		e.rollPos = (e.rollPos + 1) % rollWin
+	}
+
 	f := e.arena.Write()
 	for i := 0; i < rollWin; i++ {
 		j := (e.rollPos + i) % rollWin
@@ -375,15 +394,15 @@ func (e *Engine) rollUpdate(norm bool) {
 	f.Ptp = p
 	f.Trigd = false
 	f.TrigPos = 0
-	f.Coherent = true // paced pops succeeded; there is no halt to confirm
-	f.HaltOK = true
+	f.Coherent = haltOK
+	f.HaltOK = haltOK
 	f.RollCodes = true
 	f.TdivS = e.band.TdivS
 	f.DisplayedS = e.band.DisplayedSdivS()
 	f.SampleS = e.band.CaptureIntervalNs() * 1e-9
 	f.Norm = norm
 
-	e.commitStats(true, true, p, 0, 0, 0)
+	e.commitStats(true, haltOK, p, 0, 0, 0)
 	e.zoneMaskUncomparable() // roll frames free-run untriggered: zone/mask can't run
 	e.commitPublish(f)
 	e.resetDeadRuns()
@@ -425,15 +444,11 @@ func (e *Engine) rollReduce(f *Frame) {
 				}
 			}
 		}
-		// Solidity (spec 04 §5.3). The roll FIFO reads slowly and its per-0xCB phase step
-		// aliases the signal, so per-column binning leaves many columns single-rail during the
-		// (multi-second) ring fill. But a signal at a roll timebase (≥100 ms/div) is far faster
-		// than the sweep — its TRUE display is a solid rail-to-rail band, every column spanning
-		// the full excursion. So when most columns are single-rail yet the GLOBAL excursion over
-		// real samples is large (a fast signal aliased thin), fill every column to the real
-		// [gmn, gmx] — real ADC min/max, never invented. A genuinely slow signal (columns already
-		// show their excursion, few thin) keeps its per-column shape. Never-seen columns draw a
-		// mid-line, never a false 0-rail bar.
+		// Solidity (spec 04 §5.3): a fast signal aliased thin at a roll timebase
+		// has a large GLOBAL excursion but many single-rail columns — fill every
+		// column to the real [gmn, gmx] (real ADC min/max, never invented). A
+		// genuinely slow signal keeps its per-column shape; never-seen columns
+		// draw a mid-line, never a false 0-rail bar.
 		gmn, gmx := uint8(0xff), uint8(0)
 		thin := 0
 		for c := 0; c < envDisplayCols; c++ {

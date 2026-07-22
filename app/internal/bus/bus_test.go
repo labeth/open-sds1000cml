@@ -1,6 +1,10 @@
 package bus
 
-import "testing"
+import (
+	"testing"
+
+	"open-sds/app/internal/iface"
+)
 
 func TestEncode(t *testing.T) {
 	// Verified encodings (spec 01 §1.2 / ota gpmc_test.go): raw selector,
@@ -13,33 +17,47 @@ func TestEncode(t *testing.T) {
 	}
 }
 
-func TestForbiddenWrites(t *testing.T) {
-	forbidden := []struct {
-		plane uint8
+// TestWriteGuardIsSchemaDerived checks that the write guard is exactly
+// iface.Writable — read-only registers (CONF_DONE, status/drain/channel ports)
+// and unknown selectors are refused; RW/W registers pass. It is a clean-room
+// restatement of the old forbidden-write test against the OWNED map.
+func TestWriteGuardIsSchemaDerived(t *testing.T) {
+	// Read-only / non-writable: must be refused.
+	nonWritable := []struct {
+		plane iface.Plane
 		sel   uint16
 	}{
-		{3, 0x07},            // nCONFIG/config-status — writing collapses the engine
-		{1, 0x01}, {1, 0x0f}, // cal bank low
-		{1, 0x27}, {1, 0x2a}, // gain-cal words
-		{1, 0x5a}, {1, 0x7f}, // cal bank
+		{iface.CS3, iface.SelCONF_DONE}, // config-status / nCONFIG — a write collapses the engine
+		{iface.CS1, iface.SelSTATUS_A},  // level-status port, read-only
+		{iface.CS1, iface.SelBURST},     // auto-inc drain port, read-only
+		{iface.CS1, iface.SelFILL},      // fill progress, read-only
+		{iface.CS1, iface.SelENV_DATA},  // envelope channel DATA, read-only
+		{iface.CS1, 0x0100},             // selector the schema does not define
 	}
-	for _, c := range forbidden {
-		if !forbiddenWrite(c.plane, c.sel) {
-			t.Errorf("cs%d sel %#04x not guarded", c.plane, c.sel)
+	for _, c := range nonWritable {
+		if iface.Writable(c.plane, c.sel) {
+			t.Errorf("cs%d sel %#04x wrongly writable", c.plane, c.sel)
 		}
 	}
-	allowed := []struct {
-		plane uint8
+	// Writable control / front-end registers: must pass.
+	writable := []struct {
+		plane iface.Plane
 		sel   uint16
 	}{
-		{1, 0x00}, {1, 0x16}, {1, 0x19}, {1, 0x1a}, {1, 0x1b}, {1, 0x21},
-		{1, 0x35}, {1, 0x36}, {1, 0x3c}, {1, 0x3d}, {1, 0x3e},
-		{1, 0x44}, {1, 0x57}, {1, 0x58},
-		{3, 0x14}, {3, 0x34}, {3, 0x15}, {3, 0x35},
+		{iface.CS1, iface.SelOPCODE},
+		{iface.CS1, iface.SelRUN},
+		{iface.CS1, iface.SelDECIM_LO},
+		{iface.CS1, iface.SelPRETRIG_LO},
+		{iface.CS1, iface.SelPOSTTRIG_HI},
+		{iface.CS1, iface.SelENV_COLS},
+		{iface.CS1, iface.SelENV_RESET},
+		{iface.CS3, iface.SelLVL_A_LO},
+		{iface.CS3, iface.SelLVL_A_HI},
+		{iface.CS3, iface.SelOFF_C1_LO},
 	}
-	for _, c := range allowed {
-		if forbiddenWrite(c.plane, c.sel) {
-			t.Errorf("cs%d sel %#04x wrongly guarded", c.plane, c.sel)
+	for _, c := range writable {
+		if !iface.Writable(c.plane, c.sel) {
+			t.Errorf("cs%d sel %#04x not writable but should be", c.plane, c.sel)
 		}
 	}
 }

@@ -196,20 +196,42 @@ func (b Band) EnvFillTarget() uint16 {
 	return uint16(c)
 }
 
-// Prog is what bringUp actually programs (spec 04 §5).
-func (b Band) Prog() (class, lo, hi uint16) {
-	switch b.Kind() {
-	case KindEnvelope:
-		_, d := b.EnvPlan()
-		return 0x80, uint16(d & 0xffff), uint16(d >> 16)
-	case KindRoll:
-		return 0x80, rollDivisor & 0xffff, 0
-	default:
-		return b.Class, b.Lo, b.Hi
+// baseTickNs is the owned streaming spine's base sample interval — the interval
+// at DECIM = 1 (native-fast, the fastest bands). Every band's on-wire decimation
+// factor is CaptureIntervalNs / baseTickNs (spec 03 §4.2, §5.1).
+const baseTickNs = 2.0
+
+// Decim is the stream decimation factor bringUp programs into DECIM_LO/HI: the
+// number of base samples per captured sample (fpga doc §4.2). It is derived
+// from the band's real per-sample interval, so the display timing math and the
+// programmed decimation stay in lock-step. Envelope/roll fold their scatter
+// divisor in exactly the same way.
+func (b Band) Decim() uint32 {
+	d := uint32(math.Round(b.CaptureIntervalNs() / baseTickNs))
+	if d < 1 {
+		d = 1
 	}
+	return d
 }
 
-// Divisor is the 32-bit NOMINAL decimation divisor of the table row.
+// capWindow is the record window (pre+post samples) the FSM programs, clamped to
+// the C2 capture depth: pre+post <= REC_DEPTH − MARGIN (the exact-window
+// invariant, fpga doc §4.4). The band drains at most this many samples.
+func (b Band) capWindow() int {
+	n := b.DrainCols()
+	if n > deepRecord-2 {
+		n = deepRecord - 2
+	}
+	return n
+}
+
+// PreTrig / PostTrig are the programmable pre/post-trigger depths (PRETRIG_*,
+// POSTTRIG_*): the record is split around the trigger mark. Software trigger
+// positioning (SetTrigPosFrac) then re-windows within the captured record.
+func (b Band) PreTrig() uint32  { return uint32(b.capWindow() / 2) }
+func (b Band) PostTrig() uint32 { return uint32(b.capWindow() - b.capWindow()/2) }
+
+// Divisor is the 32-bit NOMINAL decimation divisor of the table row (reporting).
 func (b Band) Divisor() uint32 { return uint32(b.Lo) | uint32(b.Hi)<<16 }
 
 // NativeFast: class 0x20/0x01 always, class 0x80 with divisor ≤ 4. The

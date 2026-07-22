@@ -6,21 +6,21 @@ import (
 
 	"open-sds/app/internal/analog"
 	"open-sds/app/internal/engine"
+	"open-sds/app/internal/iface"
 	"open-sds/app/internal/panel"
 	"open-sds/app/internal/settings"
 )
 
-// nullBus satisfies bus.Bus without any hardware: the engine is constructed
-// (never Run) purely so Apply exercises the REAL staging setters and their
-// clamps, and Snapshot reports what they stored.
+// nullBus satisfies bus.Bus (the owned interface) without any hardware: the
+// engine is constructed (never Run) purely so Apply exercises the REAL staging
+// setters and their clamps, and Snapshot reports what they stored.
 type nullBus struct{}
 
-func (nullBus) Read(plane uint8, sel uint16) (uint16, error) { return 0, nil }
-func (nullBus) Write(plane uint8, sel, val uint16) error     { return nil }
-func (nullBus) DrainRead(sel uint16) uint16                  { return 0 }
-func (nullBus) DrainInto(c1, c2 []uint8, cols int)           {}
-func (nullBus) DrainWrite(sel, val uint16) error             { return nil }
-func (nullBus) MmapDrain() bool                              { return true }
+func (nullBus) Read(plane iface.Plane, sel uint16) (uint16, error) { return 0, nil }
+func (nullBus) Write(plane iface.Plane, sel, val uint16) error     { return nil }
+func (nullBus) BurstInto(c1, c2 []uint8, n int)                    {}
+func (nullBus) ChannelInto(sel uint16, dst []uint16, n int)        {}
+func (nullBus) MmapDrain() bool                                    { return true }
 
 // nullSPI satisfies analog.Transport so the real FrontEnd (with its per-tier
 // offset law, ladder and emit tracking) runs against no hardware.

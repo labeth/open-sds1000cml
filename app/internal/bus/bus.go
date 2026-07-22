@@ -1,7 +1,10 @@
-// Package bus is the clean-room app's GPMC register access layer (spec 01 §1,
-// spec 02 §0). It owns the write side of the wire protocol — the agent's
-// internal/gpmc stays read-only by design — and the /dev/mem mmap fast path
-// used to drain frozen sample ports.
+// Package bus is the owned FPGA's GPMC register-access layer (specs 01 §1,
+// 02). It drives ONLY our fabric through the generated iface bindings: the
+// register semantics (which selectors exist, which are writable, which
+// auto-increment) come from iface, never from hand-packed masks or magic
+// ranges. It keeps the mmap/ioctl mechanics — the boot-inherited /dev/Gpmc fd,
+// the /dev/mem O_SYNC fast path, the single 16-bit load16/store16, and the
+// 6-byte ioctl encode — but the wire protocol's meaning is schema-derived.
 //
 // Every method on *Dev must be called from the single engine-owner goroutine
 // only (spec 01 §3). The package does not enforce that; the engine does.
@@ -12,29 +15,26 @@ import (
 	"os"
 	"syscall"
 	"unsafe"
+
+	"open-sds/app/internal/iface"
 )
 
 // Bus is the register surface the acquisition engine drives. Implementations:
-// *Dev (real hardware) and the test fake.
+// *Dev (real hardware) and the offline fake acquisition fabric.
 type Bus interface {
-	// Read reads one 16-bit register. plane is 1 (CS1) or 3 (CS3).
-	Read(plane uint8, sel uint16) (uint16, error)
-	// Write writes one 16-bit register. plane is 1 (CS1) or 3 (CS3).
-	Write(plane uint8, sel, val uint16) error
-	// DrainRead reads one frozen CS1 sample port (0x30–0x34) post capture-halt.
-	// One bus transaction per call — the port auto-increments per transaction.
-	DrainRead(sel uint16) uint16
-	// DrainInto reads `cols` frozen samples straight into c1/c2 in ONE tight
-	// pass (hi byte C1, lo byte C2), cycling ports 0x30–0x34. No per-sample
-	// interface dispatch — the halted record un-freezes if the drain is slow, so
-	// this must finish fast (spec 03 §2). c1,c2 must each have len ≥ cols.
-	DrainInto(c1, c2 []uint8, cols int)
-	// DrainWrite writes one CS1 register via the /dev/mem fast path when
-	// available (falls back to ioctl). Used by the continuous-stream loop to
-	// pulse the roll-FIFO latch without a syscall per sample. Refuses the same
-	// forbidden registers as Write.
-	DrainWrite(sel, val uint16) error
-	// MmapDrain reports whether DrainRead uses the /dev/mem fast path.
+	// Read reads one 16-bit register through the given plane window.
+	Read(plane iface.Plane, sel uint16) (uint16, error)
+	// Write writes one 16-bit register. Schema-read-only selectors are refused
+	// by iface.Writable (CONF_DONE, every status/drain port, unknown sels).
+	Write(plane iface.Plane, sel, val uint16) error
+	// BurstInto drains n frozen record words from the single fixed auto-inc
+	// BURST port in one tight pass (hi byte = C1, lo byte = C2). Post-halt only;
+	// the port pops one word per read. c1,c2 must each have len >= n.
+	BurstInto(c1, c2 []uint8, n int)
+	// ChannelInto reads n words from a result-channel auto-inc DATA port
+	// (e.g. ENV_DATA) into dst. Post-halt only; the port pops one word per read.
+	ChannelInto(sel uint16, dst []uint16, n int)
+	// MmapDrain reports whether the drain uses the /dev/mem fast path.
 	MmapDrain() bool
 }
 
@@ -42,14 +42,10 @@ const (
 	reqRead  = 0x80026700 // ioctl request: register read (spec 01 §1.2)
 	reqWrite = 0x40026701 // ioctl request: register write
 
-	PlaneCS1 = 1
-	PlaneCS3 = 3
-
 	cs1PhysBase = 0x01000000 // CS1 /dev/mem physical base (spec 02 §0.4)
 	mmapLen     = 4096
 
-	SelVersion   = 0x12
-	VersionMagic = 0x0052
+	versionMagic = 0x0052 // VERSION fabric self-check magic (iface.Verify)
 )
 
 // Dev drives the real GPMC through the boot-inherited /dev/Gpmc fd. The fd is
@@ -61,16 +57,19 @@ type Dev struct {
 	regs *[mmapLen / 2]uint16
 }
 
-// New wraps the inherited /dev/Gpmc fd. If mmapDrain is set it tries to map
-// the CS1 window from /dev/mem and verifies it (version selector must read
-// 0x0052); on any failure it silently falls back to ioctl drains.
+// New wraps the inherited /dev/Gpmc fd and verifies the fabric identity: it
+// runs iface.Verify (VERSION magic + BUILDID_LO/HI == the compiled build-ID)
+// and REFUSES to drive a mispaired build (the app generated the bitstream, so a
+// mismatch is a build error, not a negotiation — spec 02, codegen doc §3.4). If
+// mmapDrain is set it also maps the CS1 window from /dev/mem for the fast-path
+// drain; on any mmap failure it silently falls back to ioctl drains.
 func New(fd int, mmapDrain bool) (*Dev, error) {
 	if fd < 0 {
 		return nil, fmt.Errorf("bus: no inherited gpmc fd")
 	}
 	d := &Dev{fd: fd}
-	if _, err := d.Read(PlaneCS1, SelVersion); err != nil {
-		return nil, fmt.Errorf("bus: probe read: %w", err)
+	if err := iface.Verify(d.Read); err != nil {
+		return nil, fmt.Errorf("bus: %w", err)
 	}
 	if mmapDrain {
 		if err := d.mapCS1(); err != nil {
@@ -94,26 +93,20 @@ func (d *Dev) mapCS1() error {
 	}
 	regs := (*[mmapLen / 2]uint16)(unsafe.Pointer(&mem[0]))
 	// Verify addressing before trusting the map (double-shift trap, spec 01 §1B).
-	if v := load16(&regs[SelVersion]); v != VersionMagic {
+	if v := load16(&regs[iface.SelVERSION]); v != versionMagic {
 		syscall.Munmap(mem)
-		return fmt.Errorf("mmap verify: version reads %#04x, want %#04x", v, VersionMagic)
+		return fmt.Errorf("mmap verify: version reads %#04x, want %#04x", v, versionMagic)
 	}
 	d.mem, d.regs = mem, regs
 	return nil
 }
 
 // load16 performs exactly one aligned 16-bit load. noinline keeps the compiler
-// from splitting, hoisting, or CSE-ing the access — a sample port pops its
-// FIFO once per bus transaction (spec 02 §0.4).
+// from splitting, hoisting, or CSE-ing the access — an auto-inc port pops its
+// FIFO once per bus transaction (spec 02 §0.4, iface.IsAutoInc).
 //
 //go:noinline
 func load16(p *uint16) uint16 { return *p }
-
-// store16 is the write dual of load16: noinline so the compiler can't hoist,
-// split, or drop the volatile register write.
-//
-//go:noinline
-func store16(p *uint16, v uint16) { *p = v }
 
 func encode(plane uint8, sel, val uint16) [6]byte {
 	return [6]byte{plane, 0, byte(sel), byte(sel >> 8), byte(val), byte(val >> 8)}
@@ -127,93 +120,73 @@ func (d *Dev) ioctl(req uintptr, b *[6]byte) error {
 	return nil
 }
 
-func (d *Dev) Read(plane uint8, sel uint16) (uint16, error) {
-	if plane != PlaneCS1 && plane != PlaneCS3 {
+func validPlane(plane iface.Plane) bool { return plane == iface.CS1 || plane == iface.CS3 }
+
+func (d *Dev) Read(plane iface.Plane, sel uint16) (uint16, error) {
+	if !validPlane(plane) {
 		// plane 0 underflows the driver's base index and stalls the bus for
 		// seconds — reject before the syscall (spec 01 §1A).
 		return 0, fmt.Errorf("bus: invalid plane %d", plane)
 	}
-	b := encode(plane, sel, 0)
+	b := encode(uint8(plane), sel, 0)
 	if err := d.ioctl(reqRead, &b); err != nil {
 		return 0, fmt.Errorf("bus: read cs%d sel %#04x: %w", plane, sel, err)
 	}
 	return uint16(b[4]) | uint16(b[5])<<8, nil
 }
 
-func (d *Dev) Write(plane uint8, sel, val uint16) error {
-	if plane != PlaneCS1 && plane != PlaneCS3 {
+func (d *Dev) Write(plane iface.Plane, sel, val uint16) error {
+	if !validPlane(plane) {
 		return fmt.Errorf("bus: invalid plane %d", plane)
 	}
-	if forbiddenWrite(plane, sel) {
-		return fmt.Errorf("bus: write to forbidden register cs%d sel %#04x", plane, sel)
+	// The write guard is entirely schema-derived: iface.Writable is false for
+	// every read-only register (CONF_DONE, all status/drain/channel ports) and
+	// for any selector the schema does not define. No hand-maintained ranges.
+	if !iface.Writable(plane, sel) {
+		return fmt.Errorf("bus: write to non-writable register cs%d sel %#04x", plane, sel)
 	}
-	b := encode(plane, sel, val)
+	b := encode(uint8(plane), sel, val)
 	if err := d.ioctl(reqWrite, &b); err != nil {
 		return fmt.Errorf("bus: write cs%d sel %#04x: %w", plane, sel, err)
 	}
 	return nil
 }
 
-// forbiddenWrite guards the registers the app must never write at runtime
-// (spec 02 §5): the CS3 config/nCONFIG port and the calibration banks.
-func forbiddenWrite(plane uint8, sel uint16) bool {
-	if plane == PlaneCS3 {
-		return sel == 0x07 // config-status / nCONFIG — writing collapses the engine
-	}
-	switch {
-	case sel >= 0x01 && sel <= 0x0f: // cal-coefficient bank
-		return true
-	// 0x16 is NOT a cal latch: the reference device strobes 0x16=1 as the
-	// final step of every acquisition frame (the frame-completion/re-trigger
-	// op). It must stay writable or the trigger engine starves into
-	// permanent half-records.
-	case sel >= 0x27 && sel <= 0x2a: // gain-cal words
-		return true
-	case sel >= 0x5a && sel <= 0x7f: // cal-coefficient bank
-		return true
-	}
-	return false
-}
-
-func (d *Dev) DrainRead(sel uint16) uint16 {
+// BurstInto drains the frozen record in one tight pass from the single fixed
+// auto-inc BURST port — no per-sample interface dispatch, no modulo, no port
+// cycling. Each read pops one word (hi byte C1, lo byte C2); the port
+// auto-increments through samples 0..n-1 (iface.IsAutoInc(CS1, SelBURST)).
+func (d *Dev) BurstInto(c1, c2 []uint8, n int) {
 	if d.regs != nil {
-		return load16(&d.regs[sel])
-	}
-	v, _ := d.Read(PlaneCS1, sel)
-	return v
-}
-
-// DrainInto drains the frozen record in one tight pass — no per-sample interface
-// call, no modulo — so the drain completes before the HW un-freezes the halt.
-func (d *Dev) DrainInto(c1, c2 []uint8, cols int) {
-	if d.regs != nil {
-		port := uint16(0x30)
-		for i := 0; i < cols; i++ {
-			w := load16(&d.regs[port])
+		p := &d.regs[iface.SelBURST]
+		for i := 0; i < n; i++ {
+			w := load16(p) // one bus transaction per read: pops one word
 			c1[i] = uint8(w >> 8)
 			c2[i] = uint8(w)
-			if port++; port > 0x34 {
-				port = 0x30
-			}
 		}
 		return
 	}
-	for i := 0; i < cols; i++ {
-		v, _ := d.Read(PlaneCS1, uint16(0x30+i%5))
+	for i := 0; i < n; i++ {
+		v, _ := d.Read(iface.CS1, iface.SelBURST)
 		c1[i] = uint8(v >> 8)
 		c2[i] = uint8(v)
 	}
 }
 
-func (d *Dev) DrainWrite(sel, val uint16) error {
-	if forbiddenWrite(PlaneCS1, sel) {
-		return fmt.Errorf("bus: write to forbidden register cs1 sel %#04x", sel)
-	}
+// ChannelInto reads n words from a result-channel auto-inc DATA port (packed
+// record words) into dst. Same auto-inc discipline as BurstInto.
+func (d *Dev) ChannelInto(sel uint16, dst []uint16, n int) {
 	if d.regs != nil && int(sel) < len(d.regs) {
-		store16(&d.regs[sel], val)
-		return nil
+		p := &d.regs[sel]
+		for i := 0; i < n; i++ {
+			dst[i] = load16(p)
+		}
+		return
 	}
-	return d.Write(PlaneCS1, sel, val)
+	for i := 0; i < n; i++ {
+		v, _ := d.Read(iface.CS1, sel)
+		dst[i] = v
+	}
 }
 
 func (d *Dev) MmapDrain() bool { return d.regs != nil }

@@ -2,10 +2,11 @@ package engine
 
 import (
 	"math"
-	"open-sds/app/internal/bus"
 	"runtime"
 	"runtime/debug"
 	"time"
+
+	"open-sds/app/internal/iface"
 )
 
 // Run is the engine owner loop. It must be the only goroutine that ever
@@ -28,8 +29,12 @@ func (e *Engine) Run() {
 		}
 	}()
 
-	if v, err := e.b.Read(bus.PlaneCS1, selVersion); err != nil || v != bus.VersionMagic {
-		e.logf("engine: version gate failed (v=%#04x err=%v) — refusing to drive", v, err)
+	// Build-ID handshake (spec 03 §6): refuse to drive a fabric whose build-ID
+	// or VERSION magic differs from the compiled iface — a mispaired build, not
+	// a negotiation. The bus layer already checked this at New; the engine
+	// re-checks so a wedged/re-flashed fabric is caught before the first arm.
+	if err := iface.Verify(e.b.Read); err != nil {
+		e.logf("engine: fabric identity gate failed (%v) — refusing to drive", err)
 		e.mu.Lock()
 		e.stats.Wedged = true
 		e.mu.Unlock()
@@ -45,19 +50,14 @@ func (e *Engine) Run() {
 	// Realtime GC policy (device only). The arm-settle busy-wait (armEngine) holds
 	// the single core for ~2ms so no goroutine corrupts the capture setup — but an
 	// automatic GC can async-preempt that tight loop to reach its STW safepoint,
-	// breaking the hold (bench: alloc-driven GC pressure took the first-drain half
-	// rate from ~1% to ~17%). So disable proportional auto-GC and run it ourselves
-	// at the top of the loop — a safe window with no settle or drain in flight. The
-	// memory limit is the backstop: on a leak, GC resumes rather than OOM the 128MB
-	// unit. Gated on armBusy so fake-clock tests keep the stock collector.
+	// breaking the hold. So disable proportional auto-GC and run it ourselves at
+	// the top of the loop — a safe window with no settle or drain in flight. The
+	// memory limit is the backstop: on a leak, GC resumes rather than OOM the unit.
+	// Gated on armBusy so fake-clock tests keep the stock collector.
 	const gcEvery = 8
 	gcTick := 0
 	lastGcCtl := false
 	if e.armBusy {
-		// OOM backstop, sized above the measured working set: in steady state the
-		// per-loop manual GC keeps the heap far below this, so it never fires during
-		// a settle; only a genuine leak (e.g. engine parked while the web keeps
-		// serving) climbs to it, where GC beats an OOM-kill into a slot rollback.
 		var ms runtime.MemStats
 		runtime.ReadMemStats(&ms)
 		debug.SetMemoryLimit(int64(ms.Sys) + 32<<20)
@@ -67,9 +67,6 @@ func (e *Engine) Run() {
 		e.serviceCommands()
 		e.bumpFrames() // heartbeat advances every iteration, stopped or not
 		if e.armBusy {
-			// Controlled GC (tunable): disable proportional auto-GC and run it here,
-			// a safe point (previous frame drained + paced), so no collection async-
-			// preempts a settle. Toggle restores the stock collector.
 			if gcCtl := e.tuneGcCtl.Load(); gcCtl != lastGcCtl {
 				lastGcCtl = gcCtl
 				if gcCtl {
@@ -140,7 +137,11 @@ func (e *Engine) bumpFrames() {
 	e.mu.Unlock()
 }
 
-// oneFrame runs one arm→wait→halt→drain→re-arm→publish iteration.
+// oneFrame runs one owned-FSM iteration: arm → wait-on-real-DONE → halt →
+// burst-drain → re-arm → discriminate → publish (spec 03 §5). The vendor
+// half-record re-capture / maturation / force / frame-tail machinery is gone —
+// the owned fabric's trustworthy trigger + static-freeze record make a single
+// clean drain authoritative.
 func (e *Engine) oneFrame(norm bool) {
 	start := e.clk.Now()
 	if e.hintReset.Swap(false) {
@@ -149,8 +150,8 @@ func (e *Engine) oneFrame(norm bool) {
 	nativeFast := e.band.NativeFast()
 	if nativeFast {
 		// Keep every competing CPU/memory burst out of the complete fast-band
-		// acquisition, including the fill window between opGo and opHalt.  The
-		// old armEngine/drain locks left that exact interval exposed.
+		// acquisition, including the fill window between OP_GO and OP_HALT
+		// (Phase-E-retired; see armEngineQuiet).
 		e.quiet.Lock()
 	}
 
@@ -165,12 +166,9 @@ func (e *Engine) oneFrame(norm bool) {
 	}
 
 	// Decimated readiness: NORM requires a real trigger with the post-trigger
-	// record filled (0x46 counts post-trigger samples, so it only advances
-	// after a comparator edge). AUTO always drains — either the fast
-	// triggered path, or, after the budget, the frozen free-running buffer
-	// (which holds a coherent 2048-sample snapshot of the live signal). This
-	// is what makes an untriggered AUTO display update at the full rate
-	// instead of holding on every frame that fails to trigger.
+	// record filled. AUTO always drains — either the fast triggered path, or,
+	// after the budget, the frozen free-running buffer. This is what makes an
+	// untriggered AUTO display update at the full rate instead of holding.
 	ready := (anchored && filled) || !norm
 	if !nativeFast && !ready {
 		e.holdFrame(fillMoved, norm)
@@ -178,18 +176,7 @@ func (e *Engine) oneFrame(norm bool) {
 		return
 	}
 
-	// Native-fast half-record probe: the free-run wait returns as soon as done+fill
-	// asserts, which can catch the deep record only half-filled (one bank). Optionally
-	// let it keep filling for a bounded extra window before halt (busy-held so the
-	// fill isn't starved). Tunable via fill_extra_us; 0 = off.
-	if nativeFast && e.armBusy {
-		if ex := time.Duration(e.tuneFillExtraUs.Load()) * time.Microsecond; ex > 0 {
-			for st := time.Now(); time.Since(st) < ex; {
-			}
-		}
-	}
 	haltOK := e.halt()
-	e.haltSettle(nativeFast)
 	f := e.arena.Write()
 	cols := e.effDrainCols()
 	drainStart := e.clk.Now()
@@ -198,74 +185,7 @@ func (e *Engine) oneFrame(norm bool) {
 	} else {
 		e.drain(f, cols)
 	}
-	e.frameTail() // reference-device frame completion: re-trigger strobe before any re-arm
-	// Native-fast RE-CAPTURE. The HW intermittently freezes only the pre-trigger
-	// HALF of the deep record (valid_depth ~cols/2, a flat dead tail after) on ~40%
-	// of frames — proven inherent to the capture, independent of load, the bus
-	// lock, and drain speed. ~60% of captures are coherent, so re-arm+re-drain
-	// until the record is full (bounded), keeping every PUBLISHED frame whole
-	// (spec 04 §4). validDepth returns the full n for a genuinely flat screen, so a
-	// quiet band never retries. If it stays half after the cap it's the persistent
-	// stuck state (power-cycle) — publish what we have; half_rate telemetry flags it.
-	// Gate on realDepth, not validDepth: the half-record's dead tail is a period-5
-	// port repeat that validDepth reads as live (see realDepth) — so validDepth
-	// passed broken frames. realDepth < 0.75·cols means the FPGA froze a half.
-	// One ptp + tail scan per drained record, shared by the raw-rate flag and the
-	// loop gate (they used to scan the same bytes twice); re-scanned only after a
-	// re-drain actually changes the data. loC1/hiC1/pC1 stay valid for the final
-	// record and seed the single canonical scan below.
-	loC1, hiC1, pC1 := ptp(f.C1[:cols])
-	rd := realDepthP(f.C1[:cols], pC1)
-	e.lastFirstHalf = nativeFast && rd*4 < cols*3 // raw half-record rate (before re-capture)
-	maxRetry := int(e.tuneMaxRetry.Load())
-	// Re-capture only when the comparator FIRED and the record still kept a dead
-	// tail — that is the genuine intermittent corruption a retry can fix. An
-	// UNTRIGGERED half-record is the FSM's normal parked state (pre-trigger half
-	// live, post-trigger half never runs — e.g. the level sits outside the
-	// signal band); retrying it burns ~120 ms/frame for an identical result.
-	for tries := 0; nativeFast && sawTrig && tries < maxRetry && rd*4 < cols*3; tries++ {
-		e.armEngineQuiet(nativeFast)
-		e.waitCapture(norm)
-		if !e.halt() {
-			break
-		}
-		e.haltSettle(nativeFast)
-		e.drainQuiet(f, cols)
-		e.frameTail()
-		loC1, hiC1, pC1 = ptp(f.C1[:cols])
-		rd = realDepthP(f.C1[:cols], pC1)
-	}
 	drainMs := e.clk.Now().Sub(drainStart)
-	// Degraded = the comparator fired but the dead tail survived every
-	// re-capture retry: a genuinely corrupt triggered capture. An untriggered
-	// half-record is NOT degraded — it is the FSM's normal no-trigger state and
-	// is published honestly as a free-run view of its live half (below). This
-	// is what the historical "ACQ STUCK — POWER-CYCLE" actually was: a trigger
-	// level parked outside the signal band (persisted across restarts by the
-	// settings file), not a wedged FPGA — a real level write cures it instantly.
-	degraded := nativeFast && sawTrig && rd*4 < cols*3
-	if degraded {
-		e.degradedRun++
-	} else {
-		e.degradedRun = 0
-	}
-	// Half-record honesty clamp: bound the frame to its live region so the
-	// display window, measurements and serializers never see the frozen-port
-	// dead tail. Applies to BOTH kinds of half record — the untriggered parked
-	// state (normal no-trigger behaviour) and the rare triggered-but-half
-	// capture that survives the retries (fuzz-caught): the latter still counts
-	// as Degraded telemetry, but what publishes is the live half, never
-	// garbage. The live half (~10k samples) is 5× a native-fast display window.
-	usable := cols
-	if nativeFast && rd*4 < cols*3 {
-		if min := e.band.WinCols(); rd < min {
-			rd = min
-			if rd > cols {
-				rd = cols
-			}
-		}
-		usable = rd
-	}
 	e.armEngineQuiet(nativeFast) // re-arm immediately (spec 03 §5.1 RE-ARM)
 	if nativeFast {
 		e.quiet.Unlock()
@@ -285,31 +205,18 @@ func (e *Engine) oneFrame(norm bool) {
 	// decimated frame is coherent when triggered (anchored+filled) OR an
 	// AUTO free-run full record; that is the `ready` gate that let us drain.
 	coherent := haltOK && (nativeFast || ready)
-	disc := f.C1[:usable]
+	disc := f.C1[:cols]
 	discIsC2 := int(e.trigSrc.Load()) == 1
 	if discIsC2 {
-		disc = f.C2[:usable]
+		disc = f.C2[:cols]
 	}
-	// Canonical scan of the discrimination record — reuse the retry loop's C1
-	// scan unless the data differs (C2 source, a clamped untriggered record) or
-	// ERES just rewrote the samples.
-	lo, hi, p := loC1, hiC1, pC1
-	if discIsC2 || usable != cols || (mode == AcqEres && clampEresLen(int(e.eresLen.Load())) > 1) {
-		lo, hi, p = ptp(disc)
-	}
+	lo, hi, p := ptp(disc)
 	rising := e.trigRising.Load()
 
 	// "Signal present" evidence. A large signal (ptp ≥ nativeEdgeMinPtp) always
-	// qualifies — this is the ORIGINAL test, preserved exactly, so nothing that
-	// locked before regresses (a big aliased signal at a slow timebase has few
-	// samples/period, which defeats the coherence test below, but its raw ptp
-	// carries it). ADDITIONALLY, on DECIMATED bands a SMALL signal qualifies when
-	// its ptp clears k·noiseFloor: that distinguishes a real sub-1.6-division
-	// signal (ptp 8..32 for a 2.4 Vpp cal signal at 2..10 V/div) from a noisy flat
-	// rail (raw ptp can EXCEED a small real signal's, so raw ptp alone can't) at
-	// every well-sampled timebase. Gating decimated NORM on raw ptp≥40 alone
-	// wrongly froze every real small on-screen signal (edge_x found, ptp<40 →
-	// never locked). Native-fast keeps raw ptp only (record spans < 1 period).
+	// qualifies; on DECIMATED bands a SMALL signal also qualifies when its ptp
+	// clears k·noiseFloor, distinguishing a real sub-division signal from a noisy
+	// flat rail. Native-fast keeps raw ptp only (record spans < 1 period).
 	sigPresent := p >= nativeEdgeMinPtp
 	if !nativeFast && !sigPresent {
 		sigPresent = signalPresent(disc, float64(e.tuneSigK.Load()))
@@ -331,15 +238,11 @@ func (e *Engine) oneFrame(norm bool) {
 	case TrigVideo:
 		edgeX = qualifyVideo(disc, tp)
 	default:
-		// EDGE: anchor on the user's HW trigger level (WYSIWYG — the display
-		// crosses where the level is set). A lock requires a right-slope crossing
-		// AT that level (centerCross returns ONLY a crossing of the requested
-		// slope, so edgeX ≥ 0 already means "a right-slope crossing exists").
-		// If the level is SET but off the signal band, NO trigger is possible —
-		// we must NOT fall back to a mid-level crossing and fabricate a lock the
-		// user never asked for (spec 05 §5.1). Leaving edgeX = -1 means no lock:
-		// AUTO free-runs unlocked, NORM holds. The mid-level fallback survives
-		// only for an UNSET (boot) level, to keep the very first frames stable.
+		// EDGE: anchor on the user's HW trigger level (WYSIWYG). A lock requires a
+		// right-slope crossing AT that level. If the level is SET but off the
+		// signal band, NO trigger is possible — do NOT fall back to a mid-level
+		// crossing and fabricate a lock (spec 05 §5.1). The mid-level fallback
+		// survives only for an UNSET (boot) level, to keep the first frames stable.
 		if td := e.trigDispLevel(int(e.trigSrc.Load())); td >= 0 {
 			edgeX = centerCross(disc, td, rising)
 			if sigPresent { // a real signal the level can sit outside of
@@ -347,11 +250,11 @@ func (e *Engine) oneFrame(norm bool) {
 				lvlOffSig = td < lo-margin || td > hi+margin
 			}
 		} else {
-			edgeX = centerCross(disc, (lo+hi)/2, rising) // == midLevel(disc); reuse the canonical scan
+			edgeX = centerCross(disc, (lo+hi)/2, rising) // == midLevel(disc); reuse the scan
 		}
 	}
 
-	f.Valid = usable
+	f.Valid = cols
 	f.WinCols = e.band.WinCols()
 	f.Interp = nativeFast
 	f.IsEnv, f.EnvCols = false, 0
@@ -359,7 +262,7 @@ func (e *Engine) oneFrame(norm bool) {
 	f.Trigd = sawTrig
 	f.TrigPos = trigPos
 	f.Coherent = coherent
-	f.Degraded = degraded
+	f.Degraded = false // owned fabric drains a clean full record — never a half-capture
 	f.HaltOK = haltOK
 	f.RollCodes = false
 	f.TdivS = e.band.TdivS
@@ -369,22 +272,10 @@ func (e *Engine) oneFrame(norm bool) {
 
 	// Publish policy — ONLY DISPLAY FRAMES THAT HAVE A LOCK (spec 03 §7.4, spec 05 §4,
 	// spec 04 §8.2). A "lock" is a validated triggered event on the captured CONTENT:
-	//   native-fast: real edge content (ptp ≥ nativeEdgeMinPtp) AND a right-slope crossing —
-	//                the done-gate is unreliable here so content decides (spec 03 §6, §8.2)
-	//   decimated:   a COHERENT capture AND a right-slope crossing (spec 05 §4.2)
-	//   qualifier:   a qualifying PULSE/SLOPE/VIDEO event (its own edgeX) on the same basis
-	// The gate is a right-slope crossing (edgeX ≥ 0) on a REAL signal (ptp ≥ nativeEdgeMinPtp
-	// rejects a flat rail / noise), plus a COHERENT capture on decimated bands. We deliberately
-	// do NOT fold in windowSlopeMatches here: that plateau test is reliable only while winCols/4
-	// stays within one signal period, so at a dense multi-period window (1–2 ms) landing on a
-	// non-integer phase it false-rejects a genuine edge and silently freezes the band. The
-	// right-slope crossing + amplitude + coherence already define the lock. No lock → HOLD the
-	// last locked frame; never flash a jittery un-anchored capture. A genuinely flat / no-signal
-	// screen has no lock to be had: AUTO (and native-fast in either mode, spec §8.2) keeps it
-	// live with one honest flat capture (EdgeX = -1) every nativeFlatFallbck held frames.
-	// HOLDING — not free-running — between fallbacks re-presents the last edge, so an
-	// intermittent-edge sub-period band (2–20 µs) shows a stable held edge, never an edge↔flat
-	// flicker.
+	// a right-slope crossing (edgeX ≥ 0) on a REAL signal (ptp ≥ nativeEdgeMinPtp
+	// rejects a flat rail / noise), plus a COHERENT capture on decimated bands. No
+	// lock → HOLD the last locked frame; a genuinely flat / no-signal screen keeps
+	// live with one honest flat capture (EdgeX = -1) every nativeFlatFallbck holds.
 	qualifier := tp.typ != TrigEdge
 
 	lock := edgeX >= 0 && (qualifier || sigPresent)
@@ -395,33 +286,27 @@ func (e *Engine) oneFrame(norm bool) {
 	publish := false
 	switch {
 	case lock:
-		// A triggered / qualified edge is present — the native-fast comparator fired (sawTrig)
-		// so the edge is in the record, or a coherent slope-valid decimated capture — publish
-		// it centred.
+		// A triggered / qualified edge is present — publish it centred.
 		publish = true
 		e.flatHeld = 0
 	case !norm && !qualifier && lvlOffSig && coherent:
 		// AUTO, EDGE: the trigger level is off the signal entirely — a lock is
 		// impossible, so never claim a trig and never freeze. FREE-RUN an unlocked
-		// live capture at the record centre (EdgeX = -1, Trigd = false). NORM
-		// instead HOLDs (waits for a trigger that cannot come) via the default.
+		// live capture at the record centre. NORM instead HOLDs via the default.
 		publish = true
 		edgeX = -1
 		f.Trigd = false
 		e.flatHeld = 0
 	case nativeFast && !norm && !qualifier && !sawTrig:
-		// AUTO native-fast, comparator did NOT fire within the budget (untriggered): FREE RUN a
-		// live refresh at the record centre (spec 04 §3 routing + §11) instead of holding. This
-		// is the different technique the ≤200 ns bands need — there the record spans ≪ one
-		// period so the edge rarely aligns and a catch-and-HOLD would freeze (the ~0 fps case);
-		// it keeps any quiet native-fast screen live at ~20 fps. Uncentred (EdgeX = -1, the
-		// record centre where a caught edge is HW-positioned): no software anchor on noise.
+		// AUTO native-fast, comparator did NOT fire within the budget (untriggered):
+		// FREE RUN a live refresh at the record centre (spec 04 §11) instead of
+		// holding. Uncentred (EdgeX = -1): no software anchor on noise.
 		publish = true
 		edgeX = -1
 		e.flatHeld = 0
 	case (nativeFast || !norm) && !qualifier && !sigPresent:
-		// NORM native-fast flat (trigger-hold with an honest 60-frame refresh), or AUTO
-		// decimated flat: publish one honest flat capture every nativeFlatFallbck held frames.
+		// NORM native-fast flat (trigger-hold with an honest refresh), or AUTO
+		// decimated flat: publish one honest flat capture every nativeFlatFallbck holds.
 		e.flatHeld++
 		if e.flatHeld >= nativeFlatFallbck {
 			edgeX = -1 // one honest flat capture; never fabricate an edge
@@ -429,22 +314,16 @@ func (e *Engine) oneFrame(norm bool) {
 			e.flatHeld = 0
 		}
 	default:
-		// NORM decimated quiet screen, an un-fired qualifier, or AUTO decimated signal-present-
-		// but-not-locked this frame (it would jitter) → HOLD the last locked frame.
-		// AUTO LIVENESS (fuzz-found, HW-verified): "not locked THIS frame" can be
-		// PERSISTENT, not transient — e.g. a fast signal aliased by a slow band can
-		// have no crossing of the requested slope at all (a 2 Mbps stream at 50 µs/div
-		// froze AUTO indefinitely on falling-edge; flipping the slope un-froze it).
-		// Every other hold path (flat, zone, serial) already publishes an honest
-		// unlocked refresh every nativeFlatFallbck holds; give the default arm the
-		// same guarantee so AUTO can never freeze while the signal is alive. NORM
-		// keeps holding strictly, as it must.
+		// NORM decimated quiet screen, an un-fired qualifier, or AUTO decimated
+		// signal-present-but-not-locked this frame → HOLD the last locked frame.
+		// AUTO LIVENESS: "not locked THIS frame" can be PERSISTENT (a fast signal
+		// aliased by a slow band can have no crossing of the requested slope) —
+		// give the default arm an honest unlocked refresh every nativeFlatFallbck
+		// holds (or after autoLivenessMaxWait), so AUTO can never freeze while the
+		// signal is alive. NORM keeps holding strictly.
 		publish = false
 		if !norm {
 			e.flatHeld++
-			// Bound the fallback by TIME too: the hold-cycle rate varies ~20x with
-			// the band's wait budget, so a pure frame count gives a 3 s guarantee on
-			// native-fast but 5-8 s at slow decimated bands (fuzz-found @ 500 µs/div).
 			stale := !e.lastPubAt.IsZero() && e.clk.Now().Sub(e.lastPubAt) >= autoLivenessMaxWait
 			if e.flatHeld >= nativeFlatFallbck || stale {
 				edgeX = -1 // honest unlocked refresh; never fabricate an edge
@@ -454,17 +333,13 @@ func (e *Engine) oneFrame(norm bool) {
 			}
 		}
 	}
+
 	// SERIAL TRIGGER (serialtrig.go): decode the captured record and publish only
-	// frames whose UART/I2C/SPI stream contains the armed byte/address pattern,
-	// re-anchoring the display on the match. Resolved FIRST so the match anchor is
-	// the ONE consistent anchor the zone gate, mask, average and uniformity below
-	// all use (resolving it BETWEEN gates split them onto different anchors). NOT
-	// gated on `lock` — async UART in AUTO never edge-locks, so decode every
-	// publish candidate. NORM holds non-matching frames strictly; AUTO shows one
-	// unmatched LIVENESS frame every serialFallback holds. A liveness frame is
-	// DISPLAYED but not OBSERVED: with serial armed, only MATCHED frames feed the
-	// mask/average/uniformity/Bode consumers, so a non-match can never trip
-	// stop-on-fail or smear an average against a wandering anchor.
+	// frames whose UART/I2C/SPI stream contains the armed pattern, re-anchoring on
+	// the match. Resolved FIRST so the match anchor is the ONE anchor the zone/mask/
+	// average/uniformity/Bode consumers all use. NOT gated on `lock` (async UART in
+	// AUTO never edge-locks). NORM holds non-matching frames; AUTO shows one
+	// unmatched LIVENESS frame every serialFallback holds (displayed, not observed).
 	serialMatched := true // true when serial is not armed → everything observes normally
 	if e.serialMode.Load() == SerialTrigger {
 		serialMatched = false
@@ -490,12 +365,8 @@ func (e *Engine) oneFrame(norm bool) {
 	observeOK := serialMatched // gate the "observe every locked frame" consumers
 
 	// ZONE TRIGGER (zonemask.go): a locked frame must also QUALIFY against the
-	// zones — a graphical software trigger in the same publish policy. NORM
-	// holds non-qualifying frames strictly; AUTO publishes one unqualified
-	// liveness frame every zoneFallback holds (same idea as the flat fallback).
-	// Un-locked AUTO publishes (free-run refreshes, EdgeX=-1) cannot be zone-
-	// tested at all — throttle them by the same counter so a broken/absent lock
-	// doesn't stream unfiltered frames past an active zone trigger.
+	// zones. NORM holds non-qualifying frames strictly; AUTO publishes one
+	// unqualified liveness frame every zoneFallback holds.
 	if publish && e.zoneMode.Load() == ZoneTrigger {
 		qualified := lock && e.zonesQualify(f, cols, edgeX, f.SampleS)
 		if qualified {
@@ -510,12 +381,9 @@ func (e *Engine) oneFrame(norm bool) {
 		}
 	}
 
-	// MASK TEST (zonemask.go): every LOCKED frame is tested and counted, at
-	// the full acquisition rate, published or held. The dead tail of a deep
-	// drain is excluded (validDepth). Stop-on-fail freezes acquisition ON the
-	// offending frame — it force-publishes so the screen shows the failure,
-	// not whatever a zone hold left there. observeOK excludes serial-REJECTED
-	// frames so a non-match can never trip stop-on-fail.
+	// MASK TEST (zonemask.go): every LOCKED frame is tested and counted, at the
+	// full acquisition rate, published or held. Stop-on-fail freezes acquisition
+	// ON the offending frame. observeOK excludes serial-REJECTED frames.
 	liveDepth := 0
 	if lock && observeOK && e.maskMode.Load() != MaskOff {
 		liveDepth = validDepthP(disc, p)
@@ -531,8 +399,7 @@ func (e *Engine) oneFrame(norm bool) {
 	}
 
 	// FRA / Bode (bode.go): accumulate a transfer-function point between the
-	// reference and DUT channels on every locked frame. Independent of the
-	// publish policy — it observes the signal, does not gate it.
+	// reference and DUT channels on every locked frame. It observes, not gates.
 	if lock && observeOK && e.bodeMode.Load() == BodeOn {
 		bd := validDepthP(disc, p)
 		if bd <= 0 || bd > cols {
@@ -547,9 +414,8 @@ func (e *Engine) oneFrame(norm bool) {
 	f.EdgeX = edgeX
 
 	// AVERAGE (spec 03 §7.4): only published, coherent, edge-aligned frames
-	// enter the ring; the published samples become the ring mean. Flat
-	// fallbacks publish RAW. The ring clears on acq-mode/depth/band/NORM
-	// changes (avgKey tracks all four).
+	// enter the ring; the published samples become the ring mean. The ring
+	// clears on acq-mode/depth/band/NORM changes (avgKey tracks all four).
 	if publish && observeOK && mode == AcqAverage && coherent && edgeX >= 0 {
 		if n := int(e.avgCount.Load()); n > 1 {
 			gen := e.avgGen.Load()
@@ -565,7 +431,6 @@ func (e *Engine) oneFrame(norm bool) {
 	}
 
 	// Cross-frame uniformity telemetry over published frames (spec 03 §11).
-	// observeOK excludes serial liveness frames whose anchor differs from a match.
 	if publish && observeOK {
 		e.uni.push(disc, e.band.WinCols(), edgeX)
 		std, raw, worst := e.uni.stats()
@@ -574,31 +439,23 @@ func (e *Engine) oneFrame(norm bool) {
 		e.mu.Unlock()
 	}
 
-	var vd int
-	if nativeFast {
-		vd = realDepthP(disc, p) // dead-tail-aware: half_rate must count the period-5 tail
-	} else {
-		vd = validDepthP(disc, p)
-	}
+	vd := validDepthP(disc, p)
 	armToLatchMs := float64(armToLatch) / float64(time.Millisecond)
 	e.mu.Lock()
-	e.stats.Degraded = degraded
-	e.stats.DegradedRun = e.degradedRun
-	e.stats.StuckSuspect = e.degradedRun >= stuckSuspectRuns
-	if coherent {
-		e.stats.Coherent++
-	}
-	if haltOK {
-		e.stats.HaltConfirm++
-	}
 	e.stats.LastPtp = p
 	e.stats.LastTrigPos = trigPos
 	e.stats.ValidDepth = vd
 	e.stats.MemDepth = int(e.memDepth.Load())
 	e.stats.ArmToLatch = armToLatchMs
 	e.stats.DrainMs = float64(drainMs) / float64(time.Millisecond)
-	// Realtime acquisition checker (instrumentation only): record every
-	// halt+drain frame so a HALF record can be traced to its wait/halt state.
+	if coherent {
+		e.stats.Coherent++
+	}
+	if haltOK {
+		e.stats.HaltConfirm++
+	}
+	// Acquisition telemetry ring (instrumentation only): record every halt+drain
+	// frame so a short/flat record can be traced to its wait/halt state.
 	e.acqRing[e.acqHead] = AcqSample{
 		Seq:          e.stats.Frames,
 		Band:         e.stats.BandKind,
@@ -612,7 +469,6 @@ func (e *Engine) oneFrame(norm bool) {
 		ArmToLatchMs: armToLatchMs,
 		TrigPos:      trigPos,
 		Half:         vd*10 < cols*6,
-		FirstHalf:    e.lastFirstHalf,
 		Published:    publish,
 		Norm:         norm,
 		TdivS:        e.band.TdivS,
@@ -634,12 +490,8 @@ func (e *Engine) oneFrame(norm bool) {
 		}
 		e.mu.Unlock()
 		// True single-shot: a real triggered frame just published — stop and
-		// hold it. Gate on `lock`, NOT `coherent`: on a native-fast band every
-		// haltOK capture is "coherent", including the honest FLAT refresh the
-		// fallback publishes every nativeFlatFallbck holds — a quiet screen must
-		// never consume the single-shot. `lock` is exactly the genuinely
-		// qualified edge/qualifier event (and a serial/zone NORM publish implies
-		// it — those gates only pass frames that would otherwise publish).
+		// hold it. Gate on `lock`, NOT `coherent`: a quiet screen's honest FLAT
+		// refresh must never consume the single-shot.
 		if e.singleArmed.Load() && lock {
 			e.singleArmed.Store(false)
 			e.running.Store(false)
@@ -655,9 +507,8 @@ func (e *Engine) oneFrame(norm bool) {
 	}
 
 	// Wedge evidence must survive the drain path too (spec 03 §11): a frozen
-	// fill fakes both the halt confirmation (equal double-read) and
-	// "coherent", so reset the ladder only on genuine activity — fill
-	// advancing or a non-flat drain.
+	// fill fakes both the halt confirmation and "coherent", so reset the ladder
+	// only on genuine activity — fill advancing or a non-flat drain.
 	if fillMoved || p >= nativeEdgeMinPtp {
 		e.resetDeadRuns()
 	} else {

@@ -4,6 +4,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"open-sds/app/internal/iface"
 )
 
 // fakeClock advances instantly on Sleep so FSM waits are deterministic.
@@ -28,42 +30,50 @@ func (c *fakeClock) clock() Clock {
 }
 
 type wr struct {
-	plane uint8
+	plane iface.Plane
 	sel   uint16
 	val   uint16
 }
 
-// fakeBus mimics the FPGA well enough to drive the FSM: status/fill respond
-// to arm state, drains only make sense after a halt, and every write is
-// recorded for order assertions.
+// fakeBus models the STANDARD FPGA's generated interface well enough to drive
+// the owned FSM, keyed on iface selectors so it can never drift from the schema:
+// the build-ID/VERSION handshake, the OPCODE arm/halt/idle model, RUN mode,
+// stored/read-back DECIM/PRE/POST, STATUS_A per the armed/mode model, FILL that
+// advances while filling and freezes on halt, a scripted TRIGPOS, the single
+// auto-inc BURST drain (post-halt only), and the envelope result channel.
 type fakeBus struct {
 	mu          sync.Mutex
 	writes      []wr
-	doneOnGo    bool // 0x39 bit2 asserts while armed
-	trigOnGo    bool // 0x39 bit1 asserts while armed
-	validOnGo   bool // 0x39 bit0 asserts while armed (AUTO free-run timeout)
+	doneOnGo    bool // STATUS_A.DONE asserts while armed
+	trigOnGo    bool // STATUS_A.TRIG asserts while armed
+	validOnGo   bool // STATUS_A.VALID asserts while armed (AUTO free-run timeout)
 	fillAdvance bool
-	confDone    uint16 // CS3 0x07 value; bit7 = CONF_DONE
+	confDone    uint16 // CS3 CONF_DONE value; bit7 = DONE
 	wave        func(i int) (c1, c2 uint8)
 
-	armed       bool
-	halted      bool
-	fill        uint16
-	drainN      int
-	drainSels   []uint16
-	earlyDrain  bool // a drain before halt = the CPU-hang trap
-	armCount    int  // 0xC3 writes; lets waves shift phase per capture
-	rollN       int
-	rollUnarmed bool // roll FIFO read while unarmed = the WAIT-line wedge
-	rollDwell   int  // reads since the last 0xCB latch
-	rollNoLatch bool // a pop without a preceding re-latch
+	armed      bool
+	halted     bool
+	fill       uint16
+	burstN     int  // BURST auto-inc pointer (samples from 0 after halt)
+	burstReads int  // total BURST/ChannelInto pops (order/telemetry)
+	earlyDrain bool // a BURST read before halt = the live-buffer trap
+	armCount   int  // OP_GO writes; lets waves shift phase per capture
+
+	trigIdx  uint16 // scripted TRIGPOS_HI (physical index)
+	trigFrac uint16 // scripted TRIGPOS_LO (fractional word)
+
+	// scripted envelope result channel (ENV_DATA/ENV_COUNT).
+	envWords    []uint16 // packed record words, popped by ChannelInto/ENV_DATA
+	envCount    int      // ENV_COUNT record count
+	envPos      int
+	envOverflow bool
 }
 
 func newFakeBus() *fakeBus {
 	return &fakeBus{
 		doneOnGo:    true,
 		fillAdvance: true,
-		confDone:    0x80,
+		confDone:    iface.Mask_CONF_DONE_DONE,
 		// Square wave, period 256: edges everywhere, ptp = 144.
 		wave: func(i int) (uint8, uint8) {
 			if (i/128)%2 == 0 {
@@ -74,113 +84,141 @@ func newFakeBus() *fakeBus {
 	}
 }
 
-func (f *fakeBus) Read(plane uint8, sel uint16) (uint16, error) {
+// setEnvRecords scripts the envelope result channel: packs recs into ENV_DATA
+// words and sets ENV_COUNT, so the envelope band's fabric-consuming path runs.
+func (f *fakeBus) setEnvRecords(recs []iface.EnvelopeRecord, overflow bool) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	if plane == 3 {
-		if sel == 0x07 {
+	f.envWords = nil
+	for _, r := range recs {
+		f.envWords = append(f.envWords, r.Pack()...)
+	}
+	f.envCount = len(recs)
+	f.envPos = 0
+	f.envOverflow = overflow
+}
+
+func (f *fakeBus) Read(plane iface.Plane, sel uint16) (uint16, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if plane == iface.CS3 {
+		if sel == iface.SelCONF_DONE {
 			return f.confDone, nil
 		}
 		return 0, nil
 	}
 	switch sel {
-	case 0x12:
+	case iface.SelVERSION:
 		return 0x0052, nil
-	case 0x39:
+	case iface.SelBUILDID_LO:
+		return uint16(iface.BuildID & 0xffff), nil
+	case iface.SelBUILDID_HI:
+		return uint16(iface.BuildID >> 16), nil
+	case iface.SelSTATUS_A:
 		var s uint16
 		if f.armed && f.doneOnGo {
-			s |= 0x04
+			s |= statDone
 		}
 		if f.armed && f.trigOnGo {
-			s |= 0x02
+			s |= statTrig
 		}
 		if f.armed && f.validOnGo {
-			s |= 0x01
+			s |= statValid
 		}
 		return s, nil
-	case 0x46:
+	case iface.SelFILL:
 		if f.armed && !f.halted && f.fillAdvance {
 			f.fill += 64
-			if f.fill > 0x7ff {
-				f.fill = 0x7ff
+			if f.fill > fillMask {
+				f.fill = fillMask
 			}
 		}
 		return f.fill, nil
-	case 0x3a:
-		return 0x90, nil
-	case 0x3b:
-		return 0x27, nil
-	case selRollC1:
-		if !f.armed {
-			f.rollUnarmed = true
+	case iface.SelTRIGPOS_LO:
+		return f.trigFrac, nil
+	case iface.SelTRIGPOS_HI:
+		return f.trigIdx, nil
+	case iface.SelBURST:
+		// Single fixed auto-inc port: successive samples from 0 after halt. A
+		// read before halt is a live-buffer read — trip the trap.
+		if !f.halted {
+			f.earlyDrain = true
 		}
-		if f.rollDwell > 0 {
-			f.rollNoLatch = true
+		c1, c2 := f.wave(f.burstN)
+		f.burstN++
+		f.burstReads++
+		return uint16(c1)<<8 | uint16(c2), nil
+	case iface.SelBURST_REMAIN:
+		return iface.Mask_BURST_REMAIN_READY, nil // DMA-ready, count elided
+	case iface.SelENV_COUNT:
+		w := uint16(f.envCount) & iface.Mask_ENV_COUNT_COUNT
+		if f.envOverflow {
+			w |= iface.Mask_ENV_COUNT_OVERFLOW
 		}
-		f.rollDwell++
-		c1, _ := f.wave(f.rollN)
-		f.rollN++
-		return uint16(c1) << 8, nil
-	case selRollC2:
-		_, c2 := f.wave(f.rollN)
-		return uint16(c2) << 8, nil
+		return w, nil
+	case iface.SelENV_DATA:
+		if f.envPos < len(f.envWords) {
+			v := f.envWords[f.envPos]
+			f.envPos++
+			return v, nil
+		}
+		return 0, nil
 	}
 	return 0, nil
 }
 
-func (f *fakeBus) Write(plane uint8, sel, val uint16) error {
+func (f *fakeBus) Write(plane iface.Plane, sel, val uint16) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.writes = append(f.writes, wr{plane, sel, val})
-	if plane == 1 && sel == selArm {
+	if plane == iface.CS1 && sel == iface.SelOPCODE {
 		switch val {
 		case opGo:
 			f.armed, f.halted, f.fill = true, false, 0
 			f.armCount++
+			f.burstN = 0
 		case opHalt:
-			// Halt freezes the record and resets the read pointer: each
-			// frame drains the wave from sample 0. drainSels accumulates
-			// across frames for order assertions.
+			// Halt freezes the record and resets the read pointer: each frame
+			// drains the wave from sample 0.
 			f.halted = true
-			f.drainN = 0
-		case opLatch:
-			f.rollDwell = 0
+			f.burstN = 0
+			f.envPos = 0
+		case opReset:
+			f.armed, f.halted, f.fill = false, false, 0
 		}
 	}
 	return nil
 }
 
-func (f *fakeBus) DrainRead(sel uint16) uint16 {
+// BurstInto is the single auto-inc BURST drain: sequential samples from the
+// current pointer (hi byte C1, lo byte C2), each read popping one word.
+func (f *fakeBus) BurstInto(c1, c2 []uint8, n int) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if !f.halted {
 		f.earlyDrain = true
 	}
-	f.drainSels = append(f.drainSels, sel)
-	c1, c2 := f.wave(f.drainN)
-	f.drainN++
-	return uint16(c1)<<8 | uint16(c2)
-}
-
-// DrainInto mirrors the real bulk drain via DrainRead so the fake keeps tracking
-// earlyDrain / drainSels / drainN and generating the same wave.
-func (f *fakeBus) DrainInto(c1, c2 []uint8, cols int) {
-	sel := uint16(0x30)
-	for i := 0; i < cols; i++ {
-		w := f.DrainRead(sel)
-		c1[i] = uint8(w >> 8)
-		c2[i] = uint8(w)
-		if sel++; sel > 0x34 {
-			sel = 0x30
-		}
+	for i := 0; i < n; i++ {
+		cc1, cc2 := f.wave(f.burstN)
+		f.burstN++
+		f.burstReads++
+		c1[i] = cc1
+		c2[i] = cc2
 	}
 }
 
-func (f *fakeBus) DrainWrite(sel, val uint16) error {
+// ChannelInto pops packed result-channel words (ENV_DATA).
+func (f *fakeBus) ChannelInto(sel uint16, dst []uint16, n int) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	f.writes = append(f.writes, wr{1, sel, val})
-	return nil
+	for i := 0; i < n; i++ {
+		if f.envPos < len(f.envWords) {
+			dst[i] = f.envWords[f.envPos]
+			f.envPos++
+		} else {
+			dst[i] = 0
+		}
+	}
 }
 
 func (f *fakeBus) MmapDrain() bool { return true }
@@ -255,13 +293,15 @@ func TestBringUpWriteOrder(t *testing.T) {
 	fb := newFakeBus()
 	e, _ := newTestEngine(t, fb)
 	e.bringUp()
-	// Spec 03 §4.1 — divisor-hi cleared FIRST, then class, lo, real hi.
+	// Spec 03 §5.1 — idle, RUN{mode+run}, then DECIM / PRE / POST (lo,hi each).
+	// Default band 500 µs/div: decim 0x0190, capWindow decimDrain=6144 → pre/post
+	// 0x0C00 each; RUN = mode AUTO (0) + run bit = 0x0004.
 	wantWrites(t, fb.snapWrites(), []wr{
-		{1, selResetHd, 0x0001}, {1, selResetHd, 0x0000},
-		{1, selRunWord, runAuto},
-		{1, selReset2, 0x0000},
-		{1, selDivHi, 0x0000},
-		{1, selClass, 0x80}, {1, selDivLo, 0x0050}, {1, selDivHi, 0x0000},
+		{1, selOpcode, opReset},
+		{1, selRun, iface.RunWithMode(modeAuto) | iface.RunWithRun(true)},
+		{1, selDecimLo, 0x0190}, {1, selDecimHi, 0x0000},
+		{1, selPreLo, 0x0c00}, {1, selPreHi, 0x0000},
+		{1, selPostLo, 0x0c00}, {1, selPostHi, 0x0000},
 	})
 }
 
@@ -269,10 +309,9 @@ func TestArmSequence(t *testing.T) {
 	fb := newFakeBus()
 	e, _ := newTestEngine(t, fb)
 	e.armEngine()
+	// Owned arm is a single OPCODE = OP_GO strobe (spec 03 §5.1).
 	wantWrites(t, fb.snapWrites(), []wr{
-		{1, selArm, opResetHead}, {1, selArm, opResetHead},
-		{1, selWrPtr, 0x0001}, {1, selWrPtr, 0x0000},
-		{1, selArm, opGo},
+		{1, selOpcode, opGo},
 	})
 }
 
@@ -317,7 +356,7 @@ func TestStopKeepsHeartbeatAndServicesCommands(t *testing.T) {
 		t.Fatalf("published advanced while stopped: %d → %d", base.Published, pub)
 	}
 	for _, w := range fb.snapWrites() {
-		if w.sel == selArm {
+		if w.plane == iface.CS1 && w.sel == selOpcode && w.val == opGo {
 			t.Fatalf("arm opcode written while stopped: %#v", w)
 		}
 	}

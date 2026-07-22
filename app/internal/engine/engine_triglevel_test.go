@@ -1,6 +1,10 @@
 package engine
 
-import "testing"
+import (
+	"testing"
+
+	"open-sds/app/internal/iface"
+)
 
 func TestTriggerLevelRecommit(t *testing.T) {
 	fb := newFakeBus()
@@ -8,15 +12,12 @@ func TestTriggerLevelRecommit(t *testing.T) {
 	e.SetTrigLevelCode(0x7530)
 	fb.clearWrites()
 	e.serviceCommands()
-	// Spec 05 §1.3: level quad (lanes A+B, same code, hi self-latches),
-	// preamble ×2, then the full re-arm.
+	// Spec 05 §1.3: level quad (lanes A+B, same code, the hi bytes self-latch +
+	// load the serializer — REGISTER-MAP frontend block), then a re-arm (OP_GO).
 	wantWrites(t, fb.snapWrites(), []wr{
 		{3, cs3LevelALo, 0x30}, {3, cs3LevelAHi, 0x75},
 		{3, cs3LevelBLo, 0x30}, {3, cs3LevelBHi, 0x75},
-		{1, selPreamble, 0x0080}, {1, selPreamble, 0x0080},
-		{1, selArm, opResetHead}, {1, selArm, opResetHead},
-		{1, selWrPtr, 0x0001}, {1, selWrPtr, 0x0000},
-		{1, selArm, opGo},
+		{1, selOpcode, opGo},
 	})
 
 	// Once-on-change: same code again must not re-emit.
@@ -55,11 +56,11 @@ func TestOffsetDACFlush(t *testing.T) {
 	fb.clearWrites()
 	e.serviceCommands()
 	got := fb.snapWrites()
-	// Offsets: C1 lo/hi, C2 lo/hi, run-word re-assert — then the level quad.
+	// Offsets: C1 lo/hi, C2 lo/hi, RUN re-assert — then the level quad.
 	want := []wr{
 		{3, cs3OffC1Lo, 0x68}, {3, cs3OffC1Hi, 0x29},
 		{3, cs3OffC2Lo, 0x30}, {3, cs3OffC2Hi, 0x2A},
-		{1, selRunWord, runAuto},
+		{1, selRun, iface.RunWithMode(modeAuto) | iface.RunWithRun(true)},
 	}
 	if len(got) < len(want) {
 		t.Fatalf("only %d writes: %#v", len(got), got)

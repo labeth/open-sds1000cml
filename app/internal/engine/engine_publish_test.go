@@ -1,6 +1,10 @@
 package engine
 
-import "testing"
+import (
+	"testing"
+
+	"open-sds/app/internal/iface"
+)
 
 func TestDecimatedAutoPublishes(t *testing.T) {
 	fb := newFakeBus()
@@ -32,13 +36,12 @@ func TestDecimatedAutoPublishes(t *testing.T) {
 	if f.IsEnv || f.EnvCols != 0 {
 		t.Fatal("envelope metadata not cleared")
 	}
-	// Round-robin drain port order 0x30..0x34 repeating.
+	// Single auto-inc BURST drain: exactly cols pops per frame (3 frames), no
+	// round-robin, no over-read.
 	fb.mu.Lock()
 	defer fb.mu.Unlock()
-	for i, sel := range fb.drainSels[:10] {
-		if want := uint16(0x30 + i%5); sel != want {
-			t.Fatalf("drain[%d] port %#04x, want %#04x", i, sel, want)
-		}
+	if fb.burstReads != 3*decimDrain {
+		t.Fatalf("burst pops = %d, want %d (single BURST port, 3 frames)", fb.burstReads, 3*decimDrain)
 	}
 }
 
@@ -55,7 +58,7 @@ func TestDecimatedNormHoldsWithoutDone(t *testing.T) {
 	}
 	// The engine must not have halted a half-empty record.
 	for _, w := range fb.snapWrites() {
-		if w.plane == 1 && w.sel == selArm && w.val == opHalt {
+		if w.plane == iface.CS1 && w.sel == selOpcode && w.val == opHalt {
 			t.Fatal("capture-halt issued on an unanchored decimated frame")
 		}
 	}

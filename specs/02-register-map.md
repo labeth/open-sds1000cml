@@ -1,8 +1,14 @@
 # 02 — Register Map
 
-The firmware talks to the FPGA over the OMAP **GPMC** bus through the `/dev/Gpmc` character
-driver. Every acquisition, trigger, front-panel and calibration action reduces to reads and writes
-of the registers below. This document is the complete register reference the firmware uses.
+The firmware talks to **our owned acquisition FPGA** over the OMAP **GPMC** bus through the
+`/dev/Gpmc` character driver. Every acquisition, trigger, front-panel and calibration action reduces
+to reads and writes of the registers our fabric exposes. The register **table itself is generated**
+from the interface schema; this document is the human reference for the bus/addressing model and the
+block layout, and it points at the generated map as the single source of truth.
+
+This is a **clean replacement**, not a compatibility layer: there is no vendor factory register map,
+no divisor/class/run-word opcodes, no round-robin sample ports, no re-trigger strobe, no force pulse.
+The app drives **only** our fabric and refuses to drive anything else (the build-ID handshake, §4).
 
 ---
 
@@ -14,24 +20,24 @@ The FPGA presents **two** register windows, selected by the chip-select (CS) fie
 
 | Plane | Register/bus base | mmap physical base | Purpose | Access |
 |---|---|---|---|---|
-| **CS1** | `0x20200000` | `0x01000000` | Acquisition / read plane: arm FSM, status, sample ports, timebase, panel matrix, trigger source mux, on-bus calibration | ioctl (read + write); post-halt sample drain may use mmap |
-| **CS3** | `0x20100000` | `0x03000000` | Config / control plane: config port, CONF_DONE, trigger-level DAC, offset DAC, LED latch | ioctl (read + write); CONF_DONE also mmap-readable |
+| **CS1** | `0x20200000` | `0x01000000` | Acquisition / read plane: capture opcode + program, status, the auto-inc BURST drain port, the streaming spine + envelope result channel | ioctl (read + write); the post-halt drain may use the mmap fast path |
+| **CS3** | `0x20100000` | `0x03000000` | Config / control plane: `CONF_DONE`, trigger-level DAC, offset DACs, LED latch | ioctl (read + write); `CONF_DONE` also mmap-readable |
 
 A third chip-select (CS2) is allocated by the kernel bring-up but is **not used** by the acquisition
-firmware (see `00-overview.md` §2); the LCD framebuffer is `/dev/fb0` (spec 07), not a GPMC plane.
+firmware; the LCD framebuffer is `/dev/fb0` (spec 07), not a GPMC plane.
 
 **Two addressing axes are in play; do not conflate them.**
 
 - The **register/bus-address base** is what a register's byte address is computed from:
-  `byte_addr = register_base + (sel << 1)`. CS1 registers are at `0x20200000 + sel·2`, CS3 registers at
-  `0x20100000 + sel·2`. e.g. CS3 sel `0x14` → `0x20100028`; CS3 sel `0x34` → `0x20100068`; CS3 sel `0x07`
-  → `0x2010000e` (the config port); CS1 sel `0x22` → `0x20200044` (the trigger source mux).
-- The **mmap physical base** is the `/dev/mem` mapping address for the syscall-free drain/read fast path
-  (§1.4): CS1 maps at `0x01000000`; CS3's CONF_DONE is mmap-readable at `0x03000000`.
+  `byte_addr = register_base + (sel << 1)`. CS1 registers are at `0x20200000 + sel·2`, CS3 registers
+  at `0x20100000 + sel·2`.
+- The **mmap physical base** is the `/dev/mem` mapping address for the syscall-free drain/read fast
+  path (§1.4): CS1 maps at `0x01000000`; CS3's `CONF_DONE` is mmap-readable at `0x03000000`.
 
 A **register selector** `sel` addresses the 16-bit FPGA **word** `sel << 1` within its plane. On the
 ioctl path the driver shifts `<<1` internally — pass the **selector**, never the pre-shifted byte
-address.
+address. Selectors in the generated bindings and in `fpga/standard/docs/REGISTER-MAP.md` are already
+**unshifted**.
 
 ### 1.2 Obtaining the `/dev/Gpmc` fd (inherited, do not open fresh)
 
@@ -41,15 +47,14 @@ only in the boot process context. A fresh `open("/dev/Gpmc", O_RDWR)` therefore 
 the first reads **wedge the bus for seconds**. The firmware MUST instead reuse the descriptor the
 boot process already opened and passed down the exec tree:
 
-1. Scan `/proc/self/fd`; for each entry read the symlink target and match it against the string
-   `"/dev/Gpmc"`. The matching entry's numeric name is the inherited fd.
-2. Wrap that fd **number directly** without duplicating it (`os.NewFile(fd, …)` — same open file
-   description as the boot holder). Do **not** `dup()`.
-3. **Never `Close()` it**, and **clear any GC finalizer** on the wrapper so it is never auto-closed.
-   Closing this fd closes the single-open device for the whole process tree and kills acquisition.
+1. Scan `/proc/self/fd`; match each symlink target against `"/dev/Gpmc"`. The matching entry's
+   numeric name is the inherited fd.
+2. Wrap that fd **number directly** without duplicating it (same open file description as the boot
+   holder). Do **not** `dup()`.
+3. **Never `Close()` it**, and clear any GC finalizer on the wrapper. Closing this fd closes the
+   single-open device for the whole process tree and kills acquisition.
 
-Reference: `app/device/internal/gpmc/gpmc.go` `FindInheritedFD` / `OpenInherited`. Every other
-section assumes you already hold this working inherited fd.
+Every other section assumes you already hold this working inherited fd.
 
 ### 1.3 ioctl encoding
 
@@ -68,582 +73,91 @@ ioctl request codes:
 
 | Direction | Request code |
 |---|---|
-| Read | `0x80026700` |
+| Read  | `0x80026700` |
 | Write | `0x40026701` |
 
-Read vs write is selected by the **request code**, not by `b[0]`. `b[0]` MUST be a valid plane:
-the kernel computes `index = b[0] − 1` to pick the ioremap base, so `b[0] = 0` yields index `0xFF`
-→ a garbage base → the access **stalls for seconds**. Use `1` or `3` explicitly, never `0`.
+**Plane 0 is illegal.** Plane 0 underflows the driver's ioremap base index and stalls the bus for
+seconds; the bus layer rejects any plane that is not 1 (CS1) or 3 (CS3) *before* the syscall.
 
-### 1.4 mmap fast path (drain only)
+### 1.4 The mmap `O_SYNC` single-16-bit-load fast path
 
-After a capture-halt the CS1 sample ports are frozen, so the drain reads them via an mmap of the
-CS1 window — a syscall-free aligned load, ~50× faster than ioctl, which keeps the halt window near
-1 ms. Mapping parameters (all load-bearing):
+The post-halt record drain is the only high-rate transfer. It may bypass the ioctl by mapping the
+CS1 window from `/dev/mem` opened `O_RDWR|O_SYNC` at physical base `0x01000000`, length one page.
+Reads then go through a **single, un-inlined, aligned 16-bit load** (`load16`, `//go:noinline`) so
+the compiler can never split, hoist, or CSE the access — an **auto-increment** port (§3, `BURST`,
+`ENV_DATA`) pops exactly one word per bus transaction, so a coalesced or speculated read corrupts the
+stream. Before trusting the mapping the driver re-reads `VERSION` through it (the double-shift trap):
+a value other than `0x0052` means the addressing is wrong and it falls back to the ioctl drain.
 
-- Open **`/dev/mem`** with `O_RDWR | O_SYNC`. `O_SYNC` is required: it makes the mapping
-  uncached/device memory. Without it you get cached loads and stale/incoherent samples.
-- `mmap(fd, phys = 0x01000000, len = 4096, PROT_READ | PROT_WRITE, MAP_SHARED)` — one page maps the
-  whole CS1 register window.
-- Read a register as **exactly one 16-bit aligned load**: `*(uint16*)(base + (sel << 1))`. Mark it
-  no-inline / volatile so the compiler cannot split it into two byte loads, hoist it, or CSE it out
-  of the drain loop. A sample port **auto-increments its read pointer once per bus transaction**, so
-  two byte loads pop the FIFO twice and corrupt the drain.
+### 1.5 Single-owner discipline
 
-mmap reads are **only** valid for the frozen post-halt sample ports; all control writes and all reads
-of a live (non-halted) register go through the ioctl path. Reference: `internal/gpmc/mmap.go`
-(`OpenMMap` / `Read`).
-
-Addressing self-check: on CS1, selector `0x12` (byte `+0x24`) reads `0x0052`. Use this to identify
-the acquisition plane at bring-up.
-
-### 1.5 Single-owner requirement (load-bearing)
-
-**Exactly one thread may touch the GPMC bus.** The per-frame capture-halt (`0x21 = 0xC8`) freezes
-the acquisition engine for the ~1 ms drain; any *other* GPMC access (a second sample read, a panel
-matrix read, a CS3 LED/DAC write) landing inside that halt window collides with the engine's
-in-flight burst — the HW bus is serialized with no software lock — and the acquisition/render path
-stalls, producing a **black framebuffer with the backlight still on**. Therefore:
-
-- The acquisition owner goroutine is the sole reader/writer of the bus.
-- Panel matrix reads, LED-latch writes, offset-DAC writes and trigger-level writes are **staged**
-  by their producers and flushed by the owner at the **frame boundary** (engine armed + filling,
-  never mid-halt).
-- The analog V/div front-end (relay word on spidev1.0, fine gain DAC on spidev1.1) is **off** the
-  GPMC bus and is driven directly by its producer — it is not subject to this rule.
+Every register touch happens on the **single engine-owner goroutine** (spec 01 §3, spec 03). The bus
+layer does not enforce this; the engine does. Reads of an auto-increment port are **mutations** and
+must never be deduplicated, speculated, or reordered.
 
 ---
 
-## 2. CS1 — acquisition / read plane
+## 2. The write guard is schema-derived
 
-All selectors below are on plane 1. `sel` is the register selector; access is ioctl unless noted.
+The bus layer permits a write **iff the schema marks the register writable** (`iface.Writable(plane,
+sel)`): it is false for every read-only register (`CONF_DONE`, all status/drain/channel ports) and
+for any selector the schema does not define. There are **no hand-maintained forbidden ranges** — the
+guard cannot drift from the fabric because it is generated from the same schema the fabric is.
 
-| sel | Name | Access | Value / format | Purpose |
-|---|---|---|---|---|
-| `0x00` | Reset / head | W | `0x0080` preamble | Head/reset strobe; written `0x80` (×2) as the preamble of the trigger-level recommit re-arm |
-| `0x19` | Divisor class | W | `0x20` / `0x01` / `0x80` | Sample-clock class: `0x20` = 500 MSa/s (2 ns/sample), `0x01` = 250 MSa/s (4 ns), `0x80` = 100 MSa/s base, decimated by the divisor word |
-| `0x1a` | Divisor low | W | 16-bit low word | Decimation divisor low half (class-`0x80` sample interval = divisor·10 ns) |
-| `0x1b` | Divisor high | W | 16-bit high word | Decimation divisor high half; write `0` before writing `0x19`/`0x1a`, then the real high word |
-| `0x21` | **Arm / halt opcode** | W | see §4.1 | Acquisition FSM control: reset-head / go / capture-halt / latch-no-halt |
-| `0x22` | Trigger source mux (CH1) | W | `code & 3` | Engine-safe internal/EXT select, CH1: `0x03` = internal channel, `0x00` = EXT (EXT also sets `0x35` bit3). Byte `0x20200044`; commit strobe `0x53` = 1→0. CONF_DONE-safe; shifts the coarse trigger anchor. Does NOT distinguish C1-vs-C2 (both internal = `0x03`) — the source **channel** is the SPI relay-word byte2 (`0x70 \| src<<2`, off-bus; full encoding §8.1) + software (spec 05 §6) |
-| `0x42` | Trigger source mux (CH2) | W | `code & 3` | Per-channel int/EXT mux for CH2, same encoding as `0x22`; companion `0x43` |
-| `0x35` | **Run word** | W | `0x0001` / `0x0003` | Run mode: `0x0001` = free-run (AUTO), `0x0003` = armed (NORM). Re-asserted after any front-end change |
-| `0x36` | Reset | W | `0x0000` | Cleared during bring-up |
-| `0x38` | **Status B** | R | bitfield, see §3.2 | Native-fast done gate (bit5) + idle/hold state |
-| `0x39` | **Status A** | R | bitfield, see §3.1 | Primary acquisition status: capture DONE (bit2), trigger edge (bit1) |
-| `0x3a` | Trigger position low | R | low byte | HW trigger-position latch low byte (trustworthy ONLY at decimated/deep bands; see §3.3) |
-| `0x3b` | Trigger position high | R | high byte | HW trigger-position latch high byte; `trigPos = (0x3b << 8) | (0x3a & 0xff)` |
-| `0x3c` | Trigger delay/position low | W | `count & 0xff` | Trigger delay/position sample-count, low byte. Steady-loop value `0x02` (count word `0x0802`). One of the mode-multiplexed position alternates (`0x17/0x18`, `0x24/0x25`, `0x3e/0x58` carry the same value in other modes) |
-| `0x3d` | Trigger delay/position high | W | `(count >> 8) & 0xff` | Trigger delay/position sample-count, high byte. Steady-loop value `0x08`. `count = round(t/Tsample)/div` (`div = 2` at TB-idx `0x0b`, else `4`). On the single-owner capture-halt engine the edge lands mid-record regardless of this value, so the firmware does not rely on it |
-| `0x44` | Reset-head strobe | W | `0x0001` then `0x0000` | Reset-head pulse issued first in the bring-up sequence |
-| `0x46` | Fill counter | R | 11-bit (`& 0x07ff`) | Samples written into the deep record since arm; used as the latch gate (`>= LatchAt`, default `0x0200`) and to confirm the halt froze the fill |
-| `0x57` | Write-pointer reset | W | `0x0001` then `0x0000` | Write-pointer reset pulse inside each arm; also phase-aligns the drain frame-to-frame |
-| `0x30`–`0x34` | **Deep sample ports** | R (ioctl or mmap) | packed word: hi byte = C1, lo byte = C2 | Round-robin deep-record read ports. Read `0x30,0x31,0x32,0x33,0x34,0x30,…` for successive samples. Coherent only after a `0xC8` halt |
-| `0x41` | **Roll port C1** | R (ioctl only) | hi byte = C1 sample | Free-running roll FIFO, channel 1. Each ioctl read pops one live sample; mmap does **not** advance the FIFO |
-| `0x59` | **Roll port C2** | R (ioctl only) | hi byte = C2 sample | Free-running roll FIFO, channel 2 |
-
-### 2.1 Panel key-matrix selectors (CS1, read-only)
-
-Read as one 5-word snapshot in this order: `0x64, 0x65, 0x66, 0x67, 0x69`.
-
-| sel | Purpose |
-|---|---|
-| `0x64` | Key-matrix row (active-low) — lowest-priority knob group + keys |
-| `0x65` | Key-matrix row; idle level `0xbf` (edge-select masking) |
-| `0x66` | Key-matrix row |
-| `0x67` | Key-matrix row — highest priority; first-active row by fixed priority `[0x67 hi … 0x64 lo]` identifies which knob generated the event |
-| `0x69` | Shared knob step-magnitude counter (read-to-clear); bits also carry direction (bit6/bit7) |
-
-The 8×8 matrix is active-low. The FPGA decodes and counts quadrature in hardware; software reads
-which row fired (knob identity by priority), the direction bit, and the shared magnitude in `0x69`.
-
-**Decode rule.** Snapshot all five words `0x67,0x66,0x65,0x64,0x69`. A pressed key pulls one bit
-`1→0`; the button is the `selector:bit` cell. For a knob turn, find the first non-`0xFF` row in the
-fixed priority `[0x67 hi, 0x67 lo, 0x66 hi, 0x66 lo, 0x65 hi, 0x65 lo, 0x64 hi, 0x64 lo]` — that row
-identifies the knob (one knob per event; no per-selector quadrature state machine). Bits 6/7 (low
-pair) and 14/15 (high pair) carry the two rotation phases; the active phase gives direction; the
-shared magnitude/velocity counter `0x69` gives the step size (read-to-clear; forced 1 for the three
-div knobs, accelerated for the five continuous knobs). `0x65` idles at `0xbf` (edge-select masking).
-
-**Full `selector:bit` map** (buttons, five softkeys F1..F5, eight knobs rotate-pair + push):
-
-- Buttons (examples): SINGLE = `0x65:10`; PRINT/Hardcopy = `0x67:13`; RUN/STOP = `0x65:2`;
-  AUTO = `0x67:10`; CH1 = `0x66:4`; CH2 = `0x67:4`; MATH = `0x66:12`; MEASURE = `0x65:4`;
-  ACQUIRE = `0x64:11`; DISPLAY = `0x65:3`; CURSOR = `0x64:12`; UTILITY = `0x66:3`;
-  SAVE/RECALL = `0x65:11`; TRIGGER MENU = `0x64:10`; HORIZONTAL MENU = `0x65:12`; FORCE = `0x67:2`;
-  SET-TO-50% = `0x66:2`; DEFAULT SETUP = `0x66:10`.
-- Softkeys F1..F5 (top→bottom): `0x65:5`, `0x65:13`, `0x66:5`, `0x66:13`, `0x67:5`.
-- Knobs (rotate low·high / push): CH1 V/div `0x65:14·15` / push `0x65:9`; CH1 pos `0x64:6·7` /
-  `0x64:1`; CH2 V/div `0x66:6·7` / `0x66:1`; CH2 pos `0x67:6·7` / `0x67:1`; TIME/div `0x66:14·15` /
-  `0x66:9`; HORIZ pos `0x67:14·15` / `0x67:9`; TRIG level `0x64:14·15` / `0x64:9`; ADJUST
-  `0x65:6·7` / `0x65:1`. All eight knob pushes land at matrix Position 7 of their row.
-
-The complete row/position identity-code table lives in the front-panel decode spec; the map above is
-the authoritative `selector:bit` form the register decoder consumes.
+Writing `CONF_DONE` (CS3) collapses the config engine and is refused. Reads are not guarded (a read of
+an undefined selector simply returns whatever the fabric drives).
 
 ---
 
-## 3. CS1 status registers
+## 3. The register table (generated — single source of truth)
 
-### 3.1 `0x39` — primary status
+The complete register table is **generated** from `codegen/ifacedef` and lives at
+[`../fpga/standard/docs/REGISTER-MAP.md`](../fpga/standard/docs/REGISTER-MAP.md) (and, for the app, in
+the compiled `app/internal/iface` bindings). Do **not** hand-maintain a register table here — edit the
+schema and regenerate. Provenance is clean-room: this behavioral spec (and spec 03) → `ifacedef`
+(schema) → {`regs.vh`, `regmux.vh`, `iface.go`, the generated map doc}.
 
-| Bit | Mask | Name | Meaning |
-|---|---|---|---|
-| 1 | `0x0002` | TRIG | A trigger edge was seen this acquisition |
-| 2 | `0x0004` | DONE | Capture complete — the deep record is coherent for a halt+drain |
+The owned CS1 plane is organized into **blocks** by selector range; the CS3 plane carries config +
+the analog front end. Each register declares its **access** (R/W/RW) and **behavioral semantics**
+(normal, strobe, auto-inc-port, read-after-halt, level-status, wait-guarded), which the engine and
+the bus layer honor.
 
-At the **decimated/deep bands (≥ 50 µs/div, class `0x80` divisor ≥ 8)** the wait gate is: poll
-`0x39`; on bit2 (DONE) anchor the trigger position from `0x3a/0x3b`, then wait until
-`0x46 & 0x07ff >= LatchAt`. In NORM (`0x35 = 0x0003`) bit2 asserts only on a real comparator edge,
-so a completed frame is phase-locked. **This gate does NOT apply at native-fast bands** — see §3.2,
-§3.3, §5 and §7.8.
-
-### 3.2 `0x38` — secondary status
-
-| Bit | Mask | Name | Meaning |
-|---|---|---|---|
-| 5 | `0x0020` | NFDONE | Native-fast capture-done gate; used as the fast-band fill/done indicator where `0x39` bit2 is unreliable |
-
-`0x38` also reflects the engine's run/hold state (a settled, held-idle value versus a momentary
-capture value). At the **native-fast bands (§5)** neither `0x39` bit2 nor `0x38` bit5 discriminates
-a real trigger edge from an untriggered free-run fill — **both assert on the untriggered fill too**.
-The shipping FSM therefore does **not** poll `0x38` in the native-fast path (`0x38` bit5 = NFDONE is a
-diagnostic-only capture-done indicator); it waits a bounded fill budget on `0x39`/`0x46`, halts
-unconditionally when the budget expires, and decides *whether a real edge was captured* purely from
-**captured content** (peak-to-peak + valid same-slope crossing, §9). It never gates the fast-band
-publish on a status bit.
-
-### 3.3 Trigger-position latch trustworthiness (`0x3a/0x3b`)
-
-`0x3a/0x3b` hold a usable trigger position **only at the decimated/deep and slow bands**, where the
-comparator crossing lands in-window. At the **native-fast bands (2 ns – 20 µs/div)** the register
-is **not trustworthy**: the real edge lands mid-record and the latch does not give a usable position
-(it jitters, std ≈ 89 codes). At native-fast the firmware MUST NOT anchor the render to `0x3a/0x3b`;
-instead it **locates the edge in the drained sample content and re-centres in software** (find edge →
-shift to record centre), and sets the render trigger position from that software-found index. Keep
-the `0x3a/0x3b` anchor only for the decimated/deep bands.
-
----
-
-## 4. CS1 value formats
-
-### 4.1 `0x21` arm / halt opcodes
-
-| Value | Name | Effect |
+| Block | Plane · range | Role |
 |---|---|---|
-| `0x00C0` | RESET-HEAD | Reset read/write head. Issued ×2 at the start of every arm; also phase-aligns the drain |
-| `0x00C3` | GO | Arm / start the capture |
-| `0x00C8` | **CAPTURE-HALT** | Latch the coherent frozen deep record and stop filling — the per-frame halt the drain reads. Freezes `0x30`–`0x34` |
-| `0x00CB` | LATCH-NO-HALT | Snapshot the read pointer **without** halting; the FIFO keeps producing. Used only by the roll path (`0x41`/`0x59`) |
+| `meta` | CS1 `0x10..0x17` | identity: `BUILDID_LO/HI`, `VERSION` (build-ID handshake, §4) |
+| `capture` | CS1 `0x20..0x2f` | `OPCODE` strobe (GO/HALT/RESET), `RUN` (mode+run), `DECIM_LO/HI`, `PRETRIG_LO/HI`, `POSTTRIG_LO/HI` |
+| `drain` | CS1 `0x30..0x3f` | the single fixed auto-inc `BURST` port + `BURST_REMAIN` (words-remaining / DMA-ready) |
+| `status` | CS1 `0x40..0x4f` | `STATUS_A` (VALID/TRIG/DONE level), `TRIGPOS_LO/HI` (interpolating position), `FILL` |
+| `spine` | CS1 `0x50..0x5f` | `XFORM_CTRL` (transform-stage bypass), `ENV_COLS` (envelope column count) |
+| `channels` | CS1 `0x60..0x7f` | result/event channels; the wired one is `envelope` (`ENV_DATA`/`ENV_COUNT`/`ENV_RESET`) |
+| `trigger`/`measure`/`decode` | CS1 `0x80..0xdf` | **reserved** ranges for the v1/v2 fabric taps — no registers yet |
+| `config` | CS3 `0x00..0x08` | `CONF_DONE` (nCONFIG/config-status; **never written**) |
+| `frontend` | CS3 `0x09..0x3f` | `LED_*`, per-channel offset DACs (`OFF_C1/C2_*`), trigger-level DAC lanes (`LVL_A/B_*`; the hi write self-latches + loads the serializer) |
 
-### 4.2 `0x35` run word
+Field layouts (e.g. `STATUS_A.{VALID,TRIG,DONE}`, `RUN.{MODE,RUN}`, `TRIGPOS_HI.IDX`,
+`BURST_REMAIN.{READY,REMAIN}`, `ENV_COUNT.{COUNT,OVERFLOW}`, `CONF_DONE.DONE`) and the packed channel
+record codecs (`EnvelopeRecord`, …) are in the generated map / bindings — use the generated field
+accessors, never hand-packed masks.
 
-| Value | Mode |
-|---|---|
-| `0x0001` | AUTO (free-run) |
-| `0x0003` | NORM (armed — hold for the HW comparator edge, decimated/deep bands only) |
+### 3.1 Behavioral semantics that constrain access
 
-### 4.3 Sample-port packing
-
-Each read of a `0x30`–`0x34` or roll port returns one 16-bit word: **high byte = channel 1**,
-**low byte = channel 2**. ADC codes are unsigned 8-bit per channel.
-
-### 4.4 Divisor / sample interval
-
-| Class (`0x19`) | Sample rate | Per-sample interval |
-|---|---|---|
-| `0x20` | 500 MSa/s | 2 ns (displayed as 1 ns/sample; see spec 04) |
-| `0x01` | 250 MSa/s | 4 ns |
-| `0x80` | 100 MSa/s ÷ divisor | `divisor · 10 ns`, where `divisor = 0x1a | (0x1b << 16)` |
-
-**The physical class-`0x80` count period is 10 ns (100 MSa/s base).** This one value governs all
-deep-record window sizing and the envelope divisor computation (which targets ~0.23 ms/sample and is
-validated at that interval). The roll **read-pacing** constant in §7.7 is expressed as
-`divisor · 50 ns`; that is a software read cadence (deliberately slower than the physical count so
-every ioctl read pops a fresh, non-dwell sample), **not** a second physical count period. Do not use
-the 50 ns figure for window/timebase sizing.
-
-#### Per-timebase divisor table
-
-The complete `(class, divisor-lo, divisor-hi)` written to `0x19/0x1a/0x1b` for every seconds/division
-detent (cross-ref spec 04 `PlanTdiv`). `divisor = lo | (hi << 16)`. A requested s/div matches its row
-within a `1e-6` relative tolerance. The fast detent step is **25 ns** (`2.5e-8`, a first-class
-class-`0x20` band), not 20 ns.
-
-| s/div | class | lo | hi | | s/div | class | lo | hi |
-|---|---|---|---|---|---|---|---|---|
-| 1 ns | `0x20` | `0x0000` | `0` | | 500 µs | `0x80` | `0x0050` | `0` |
-| 2 ns | `0x20` | `0x0000` | `0` | | 1 ms | `0x80` | `0x00c8` | `0` |
-| 5 ns | `0x20` | `0x0000` | `0` | | 2 ms | `0x80` | `0x0190` | `0` |
-| 10 ns | `0x20` | `0x0000` | `0` | | 5 ms | `0x80` | `0x0320` | `0` |
-| 25 ns | `0x20` | `0x0000` | `0` | | 10 ms | `0x80` | `0x07d0` | `0` |
-| 50 ns | `0x20` | `0x0000` | `0` | | 20 ms | `0x80` | `0x0fa0` | `0` |
-| 100 ns | `0x20` | `0x0000` | `0` | | 50 ms | `0x80` | `0x1f40` | `0` |
-| 200 ns | `0x20` | `0x0000` | `0` | | 100 ms | `0x80` | `0x4e20` | `0` |
-| 500 ns | `0x01` | `0x0000` | `0` | | 200 ms | `0x80` | `0x9c40` | `0` |
-| 1 µs | `0x01` | `0x0000` | `0` | | 500 ms | `0x80` | `0x3880` | `0x001` |
-| 2 µs | `0x80` | `0x0001` | `0` | | 1 s | `0x80` | `0x0640` | `0x003` |
-| 5 µs | `0x80` | `0x0001` | `0` | | 2 s | `0x80` | `0x1a80` | `0x006` |
-| 10 µs | `0x80` | `0x0001` | `0` | | 5 s | `0x80` | `0x3500` | `0x00c` |
-| 20 µs | `0x80` | `0x0004` | `0` | | 10 s | `0x80` | `0x8480` | `0x01e` |
-| 50 µs | `0x80` | `0x0008` | `0` | | 20 s | `0x80` | `0x0900` | `0x03d` |
-| 100 µs | `0x80` | `0x0014` | `0` | | 50 s | `0x80` | `0x1200` | `0x07a` |
-| 200 µs | `0x80` | `0x0028` | `0` | | | | | |
-
-Class-`0x20` and `0x01` bands ignore the divisor (fixed 500/250 MSa/s); the 2/5/10 µs steps all share
-divisor `1` and collapse to one displayed per-div when rendered from a fixed column count. Bring-up
-§7.1 steps 5–7 and `SetTimebase` write the row's `(class, lo, hi)` directly.
+- **strobe** (`OPCODE`, `ENV_RESET`, `LVL_A/B_HI`, `LED_STROBE`): a write is an event, not a value.
+- **auto-inc-port** (`BURST`, `ENV_DATA`): each read pops one word; never dedup/speculate/CSE.
+- **read-after-halt** (`BURST`, `BURST_REMAIN`, `TRIGPOS_*`, `ENV_DATA`): only valid after a HALT; the
+  engine reads these solely on a frozen record.
+- **level-status** (`STATUS_A`, `FILL`, `BURST_REMAIN`, `ENV_COUNT`, `CONF_DONE`): a live level, not a
+  sticky latch — re-read for the current value.
 
 ---
 
-## 5. Band classification (which registers a timebase uses)
+## 4. Build-ID handshake (refuse a mispaired fabric)
 
-The timebase decides the register path. The concrete `(class, 32-bit divisor)` for each s/div is the
-per-timebase table in §4.4; the ranges below are the routing boundaries.
+Because the app **generates** the bitstream from the same schema it compiles against, a mismatch is a
+build error, not a negotiation. At bring-up the bus layer runs `iface.Verify`:
 
-| Band | Timebase | Class / divisor | Path |
-|---|---|---|---|
-| Native-fast | 2 ns – 20 µs/div | class `0x20`, `0x01`, or `0x80` with divisor ≤ 4 | Deep capture-halt + drain `0x30`–`0x34`; **content-discriminated, software-centred** (§7.8) — do NOT gate on `0x39` bit2, do NOT anchor on `0x3a/0x3b` |
-| Decimated (deep) | ≥ 50 µs/div | class `0x80` with divisor ≥ 8 (> 4) | Deep capture-halt + drain, gated by `0x39` bit2 + `0x46` fill; anchor on `0x3a/0x3b` (§7.3) |
-| Envelope | ≥ 5 ms/div | class `0x80`, moderate divisor | Deep drain reduced to per-column min/max |
-| Roll | ≥ 100 ms/div | class `0x80`, large divisor | Free-run roll ports `0x41`/`0x59` (arm-once + per-update `0xCB`, §7.7) |
-| ETS | ≤ 50 ns/div (**opt-in**) | class `0x20` | Equivalent-time DENSITY refinement for a fast repetitive source; many halted sub-acquisitions interleaved by a **software** sub-sample crossing phase (§5.1) |
+1. read `VERSION` (CS1 `0x12`); it must read `0x0052` (a cheap addressing sanity check);
+2. read `BUILDID_LO`/`BUILDID_HI` (CS1 `0x10`/`0x11`); `(HI<<16)|LO` must equal the compiled
+   `iface.BuildID` (the schema fingerprint).
 
-**Native-fast vs decimated is a closed partition** on the class-`0x80` divisor: divisor ≤ 4 (≤ 20 µs/div)
-→ native-fast, divisor ≥ 8 (≥ 50 µs/div) → decimated. The §4.4 divisor table contains **no row with a
-divisor of 5, 6 or 7** (it steps 4 → 8), so every settable timebase maps to exactly one path; a
-classifier may treat "divisor ≤ 4" as native-fast and "divisor > 4" as decimated with no gap. Class
-`0x20`/`0x01` (all ≤ 1 µs/div) are always native-fast.
-
-**ETS is opt-in only.** All class-`0x20` bands **2–50 ns/div** take the native-fast catch +
-content-discriminate + HOLD + software-centre + zoom path (they window the caught deep-record edge),
-**not** ETS. ETS is a separate density refinement enabled explicitly for a fast (≳ 1 MHz) repetitive
-source; no timebase auto-routes to it. The 1 kHz cal square renders as its real mostly-flat rail at
-these bands under both paths.
-
-The **physical deep-record depth is 20480 samples** — the drain stays a real captured waveform to
-~20480 then reads a flat dead tail; there is no memory wrap below that. Drains are clamped to it.
-
-### 5.1 ETS interleave phase source
-
-ETS reconstructs a dense equivalent-time record from many halted sub-acquisitions. The sub-sample
-phase for the interleave is a **software** measurement: in each drained record, take the source
-channel's own mid-level rising crossing, sub-sample-interpolate its fractional position `xref`, and
-map `frac = xref − floor(xref)` to one of `factor` phase bins. Each real sample `k` is placed on the
-equivalent-time grid at `tEq = (k − xref)·Ts + W/2` where `Ts` = per-sample interval (2 ns at class
-`0x20`, §4.4) and `W = 10 · tdiv` in ns (the 10-division equivalent-time window). Each grid column
-spans `etColTime = W / nCols` ns. Captures land at different sub-sample phases, so the grid densifies
-as bins fill; empty columns are linear-interpolated (never a fabricated edge). `0x3a/0x3b` is read for
-**telemetry only** and is NOT used for the interleave — the FPGA comparator cannot HW-lock a fast
-repetitive source from the register plane, so the register is unusable as the phase key.
-
-**`factor` and record sizing** (per band; `factor` = number of sub-sample phase bins, `nCols` =
-equivalent-time record/display columns = `0xA000 / factor + 10`):
-
-| Timebase | `factor` | `nCols` |
-|---|---|---|
-| 1 / 2 / 5 ns/div | 500 | 91 |
-| 10 ns/div | 250 | 173 |
-| 20 ns/div | 100 | 419 |
-| 50 ns/div | 50 | 829 |
-
-Loop/liveness budget: each sub-acquisition drains `etsDrainCols = 2048` samples; one display frame
-runs at most `etsMaxAcqPerFrame = 40` sub-acquisitions or `etsFrameBudget = 650 ms`, whichever first.
-The phase-bin accumulator **persists across frames** and rebuilds when coverage reaches `factor · 9/10`
-bins or after `etsMaxAccFrames = 8` frames (keeps the reconstruction live and re-tracking). A capture
-is accepted into the interleave only if its record ptp ≥ `etsEdgeMinPtp = 40` codes and a mid-level
-crossing exists; a slow/flat source anchors on almost no capture, so it correctly falls back to a real
-single-capture flat rail. Because `isETSTdiv` returns false for every timebase, ETS runs **only when
-explicitly enabled** (`Config.ETS`); the auto-router never selects it.
-
----
-
-## 6. CS3 — config / control plane
-
-All selectors below are on plane 3. Access is ioctl (`WriteRegCS(3, sel, val)` /
-`ReadRegCS(3, sel)`).
-
-| sel | Byte addr | Name | Access | Value / format | Purpose |
-|---|---|---|---|---|---|
-| `0x07` | `0x2010000e` | **Config port / CONF_DONE** | R only at runtime | read: `& 0x80` = CONF_DONE | Read for FPGA-configured status. **NEVER WRITE at runtime** — writing this port is nCONFIG and reconfigures the FPGA, collapsing the acquisition engine |
-| `0x09` | `0x20100012` | LED latch low | W | byte = `word & 0xff` | Panel-LED shadow low byte (part of the strobe sequence, §7.5) |
-| `0x0a` | `0x20100014` | LED latch high | W | byte = `word >> 8` | Panel-LED shadow high byte |
-| `0x0b` | `0x20100016` | LED latch strobe | W | `0` then `1` | Strobe/commit line for the LED latch |
-| `0x10` | `0x20100020` | Offset DAC C1 low | W | `code & 0xff` | Vertical offset DAC, channel 1, low byte |
-| `0x30` | `0x20100060` | Offset DAC C1 high | W | `code >> 8` | Vertical offset DAC, channel 1, high byte (self-latches) |
-| `0x11` | `0x20100022` | Offset DAC C2 low | W | `code & 0xff` | Vertical offset DAC, channel 2, low byte |
-| `0x31` | `0x20100062` | Offset DAC C2 high | W | `code >> 8` | Vertical offset DAC, channel 2, high byte (self-latches) |
-| `0x14` | `0x20100028` | **Trigger LEVEL DAC lane A low** | W | `code & 0xff` | HW trigger comparator threshold, lane A, low byte |
-| `0x34` | `0x20100068` | **Trigger LEVEL DAC lane A high** | W | `code >> 8` | Lane A high byte (self-latches lane A) |
-| `0x15` | `0x2010002a` | Trigger LEVEL DAC lane B low | W | `code & 0xff` | Mirror lane B, low byte (write the SAME code as lane A) |
-| `0x35` | `0x2010006a` | Trigger LEVEL DAC lane B high | W | `code >> 8` | Mirror lane B high byte (self-latches lane B). **NOT** the CS1 run word `0x35` — different plane |
-
-The **trigger source mux is NOT on this plane** — it is CS1 `0x22` (byte `0x20200044`), listed in §2.
-Do not write it as a CS3 register.
-
-### 6.1 DAC value computation (calibration dependency)
-
-The DAC **register formats** are fixed (below), but the **code value** to write for a meaningful
-volts target is a normative dependency on the active per-V/div calibration record (spec 06/10) and
-is out of scope for this document. For HW bring-up and sweeps, write **raw codes**.
-
-**Trigger LEVEL DAC** — one 16-bit code, `code16 = (hi << 8) | lo`, written low-then-high per lane
-and mirrored to both lanes. Higher level = lower code. The volts fit
-
-```
-code16 ≈ 31434 − 938 · V        # 0 V = 0x7aca = 31434; slope −938 codes/V
-```
-
-is exact only at 1 V/2 V-div; every other V/div rides the per-V/div cal ladder and needs the active
-cal record. Boot-inherited anchor ≈ `0x754c`. The comparator responds only within a code window
-(crossings latch into `0x3a/0x3b` only when the level sits on the signal); outside it `0x3a/0x3b`
-read 0. For an unambiguous HW sweep, use the raw code.
-
-**Offset DAC** — 16-bit code per channel; low byte then high byte, the high byte self-latches (no
-strobe). The code moves the captured window's DC centre (the render reflects it with no render-side
-change). The DAC is **inverting and input-referred** (it injects a level shift ahead of the gain
-stage) and runs at a **fixed codes-per-volt within each V/div tier** — it is **NOT** scaled by V/div:
-
-```
-code = clamp(round(zero − K·volts))    # K fixed per tier; +offset → lower code → trace UP
-```
-
-`K` is a fixed codes-per-volt constant within the active tier: **K ≈ 100 codes/V** on the attenuated
-tier (V/div ≥ 500 mV) and **K ≈ 4392 codes/V** (~45× steeper) on the sensitive tier (V/div ≤ 200 mV).
-The V/div dependence is carried by the per-tier calibration gain (proportional to V/div within a
-tier), which cancels the V/div term — that is what makes the displacement input-referred. `zero` is
-the **calibrated per-tier offset-zero** — one for the sensitive tier, one for the attenuated tier —
-from cal RAM (spec 10 §7.4; boot default `0x27ef` = 10223; ≈10445 at 1 V/div); with no cal loaded the
-actuator uses mid-scale `0x8000` = 32768. The **offset range is tiered** by the coarse attenuator
-(relay bit 2, engages at V/div ≥ 500 mV): ±1.6 V on the sensitive tier, ±40 V on the attenuated tier.
-The attenuator only **sets the tier and widens the offset-volts clamp** — offset is never injected
-through it; there is a **single** offset DAC (no second/coarse offset DAC, no offset relay). Clamp
-the offset in volts to ±1.6 V (sensitive) / ±40 V (attenuated) before forming the code, plus a final
-16-bit clamp. Use raw codes for centring and sweeps.
-
----
-
-## 7. Register sequences (write order matters)
-
-### 7.1 Engine bring-up (enable + divisor)
-
-Run once per band change, on the owner goroutine:
-
-1. `0x44 = 0x0001`, `0x44 = 0x0000`  (reset-head strobe)
-2. `0x35 = run`  (`0x0001` AUTO / `0x0003` NORM)
-3. `0x36 = 0x0000`
-4. `0x1b = 0x0000`  (clear divisor high first)
-5. `0x19 = class`
-6. `0x1a = divisor_lo`
-7. `0x1b = divisor_hi`
-
-Writes NO CS3 level/mask/slope — the boot comparator is inherited so `0x39` bit2 keeps asserting.
-Clobbering CS3 during bring-up is what stops bit2 from ever firing.
-
-### 7.2 Per-frame arm
-
-1. `0x21 = 0x00C0`  (reset head)
-2. `0x21 = 0x00C0`  (again)
-3. `0x57 = 0x0001`, `0x57 = 0x0000`  (write-pointer reset pulse)
-4. wait `ArmSettle` (default 2 ms)
-5. `0x21 = 0x00C3`  (go)
-
-### 7.3 Capture → halt → drain → re-arm (decimated/deep bands ≥ 50 µs/div)
-
-1. Arm (§7.2).
-2. Poll `0x39`: on bit2 (DONE) anchor `trigPos = (0x3b<<8)|(0x3a&0xff)`; then wait
-   `0x46 & 0x07ff >= LatchAt`. Bounded budget (40–80 ms), poll interval ~150 µs.
-3. `0x21 = 0x00C8`  (capture-halt). Confirm the halt froze: read `0x46` twice, expect equal.
-4. Drain `drainCols` samples round-robin from `0x30`–`0x34` (mmap fast path). hi = C1, lo = C2.
-5. Re-arm immediately (§7.2) — the engine refills before the frame is rendered.
-
-The engine is halted only for the ~1 ms drain (steps 3–4); no other bus access may occur in that
-window (§1.5). In NORM this path may **hold** (publish nothing) when `0x39` bit2 + `0x46` fill do
-not both assert within the budget — that is the intended comparator gate. **This holding behaviour
-applies ONLY to the decimated/deep bands.** For native-fast use §7.8.
-
-### 7.4 Trigger LEVEL recommit (safe write)
-
-Fired ONLY at the bus-idle frame boundary, once per change:
-
-1. `WriteRegCS(3, 0x14, lo)`  `WriteRegCS(3, 0x34, hi)`  (lane A, hi self-latches)
-2. `WriteRegCS(3, 0x15, lo)`  `WriteRegCS(3, 0x35, hi)`  (lane B mirror, same code)
-3. `WriteReg(0x00, 0x80)` ×2  (reset/head preamble)
-4. Full re-arm (§7.2)
-
-A bare `0x14/0x34` poke off this boundary collides with the engine's in-flight burst and black-LCDs
-the unit. Safety is serialization + inherited fd + frame-boundary timing + the following re-arm —
-not a latch strobe. Cadence: once-on-change, never re-pushed per frame.
-
-### 7.5 Panel-LED latch
-
-All 14 front-panel LEDs are a single 16-bit shadow word committed to the CS3 latch. On this clone
-they are all **CPU-drivable** through the inherited fd (a lamp test of `0xffff` lights
-every button LED; each bit toggles its LED independently). The `0x0b = 0` strobe-low **before** the
-data bytes is required — skipping it leaves the latch uncommitted.
-
-Strobe order (all CS3):
-
-1. `WriteRegCS(3, 0x0b, 0)`  (strobe low)
-2. `WriteRegCS(3, 0x0a, word >> 8)`
-3. `WriteRegCS(3, 0x09, word & 0xff)`
-4. `WriteRegCS(3, 0x0b, 1)`  (latch)
-
-LED shadow-word bit map (this clone; the PCB wiring does NOT match the boot firmware's internal
-LED-index order — use this map):
-
-| Bit | LED | | Bit | LED |
-|---|---|---|---|---|
-| `0x0001` | *(unused)* | | `0x0100` | MEASURE |
-| `0x0002` | CURSORS | | `0x0200` | ACQUIRE |
-| `0x0004` | INTENSITY / ADJUST-knob | | `0x0400` | DISPLAY |
-| `0x0008` | *(unused)* | | `0x0800` | SAVE/RECALL |
-| `0x0010` | CH1 | | `0x1000` | UTILITY |
-| `0x0020` | MATH | | `0x2000` | RUN (green element) |
-| `0x0040` | CH2 | | `0x4000` | STOP (red element) |
-| `0x0080` | REF | | `0x8000` | SINGLE |
-
-**RUN/STOP is one bicolor LED:** `0x2000` = green, `0x4000` = red, both (`0x6000`) = amber. There is
-no CS3-latch "TRIG'd" LED — trigger-armed is a read-only HW status, not a latch bit. `0xffff` lights
-every LED (lamp test). Set/clear bits in the shadow and flush once per change (the strobe latches the
-whole word, so per-bit flushes flash intermediate states).
-
-### 7.6 Offset DAC write (safe)
-
-1. `WriteRegCS(3, lo_sel, code & 0xff)`  (CH1 `0x10` / CH2 `0x11`)
-2. `WriteRegCS(3, hi_sel, code >> 8 & 0xff)`  (CH1 `0x30` / CH2 `0x31`, latches)
-3. `WriteReg(0x35, run)`  (re-assert the run word so the front-end change leaves the engine coherent)
-
-### 7.7 Roll bring-up (≥ 100 ms/div, ports `0x41`/`0x59`)
-
-1. Bring-up (§7.1).
-2. `0x21 = 0x00C0`; `0x57 = 1`, `0x57 = 0`; `0x21 = 0x00C3`  (arm ONCE).
-3. wait ~3 ms.
-4. Per update: `0x21 = 0x00CB` (latch-no-halt), then ioctl-read a paced batch from `0x41`/`0x59`.
-
-**Never arm/halt on the roll path** — `0xC0/0xC3/0xC8` freeze the free-run. Pace the reads at a
-software cadence of `divisor · 50 ns` (clamped ~50 µs … 40 ms); this is a read-pacing heuristic, not
-the physical sample clock (§4.4). Rapid un-paced `0x41` reads wedge the FIFO and also re-read a
-dwell value instead of a fresh sample.
-
-### 7.8 Native-fast capture (2 ns – 20 µs/div)
-
-At native-fast bands neither status bit discriminates a real edge, so this path **always** drains
-and decides from content, in **both AUTO and NORM** (do NOT hold on `0x39` bit2 / `0x38` bit5):
-
-1. Arm (§7.2).
-2. Wait a bounded fill budget, polling `0x39`/`0x46` (not `0x38`); halt when the budget expires.
-   `0x38` bit5 (NFDONE) documents the native-fast capture-done bit but is a diagnostic-only indicator —
-   the shipping FSM does not poll it. Do NOT gate publish on any status bit.
-3. `0x21 = 0x00C8`  (capture-halt). Confirm the halt froze: read `0x46` twice, expect equal.
-4. Drain the record round-robin from `0x30`–`0x34` (mmap fast path). hi = C1, lo = C2.
-5. **Content-discriminate** on the selected trigger-source channel (§9):
-   `edgeFrame = (ptp ≥ nativeEdgeMinPtp) AND (a valid same-slope mid-level crossing exists)`.
-6. If `edgeFrame`: locate the crossing, **software-centre** it to record centre, set the render
-   trigger position from that index (`0x3a/0x3b` is ignored here, §3.3), publish.
-   If not `edgeFrame`: HOLD the last edge frame, **except** after `nativeFlatFallback` consecutive
-   no-edge frames publish one honest flat capture (liveness).
-7. Re-arm immediately (§7.2).
-
-The `norm && !nativeFast` early-hold of §7.3 is **bypassed** here — the edge is selected by content,
-not the done-gate. The engine is halted only for the ~1 ms drain; §1.5 applies.
-
----
-
-## 8. On-bus calibration registers (CS1)
-
-These carry the per-V/div and per-acq-mode gain/offset calibration. The firmware writes them from
-the calibration table (see spec 10); they are not part of the runtime acquisition loop.
-
-| sel | Name | Purpose |
-|---|---|---|
-| `0x16` | Cal latch / frame strobe | Latch strobe for the `0x27`–`0x2a` gain-cal words. A reference unit ALSO strobes `0x16 = 1` once per acquisition frame (after the drain, with the `0x3c/0x3d` position pair re-written) and continuously (~800 Hz) while waiting untriggered — so it must stay runtime-writable. On this clone the strobe showed no measurable effect on capture completion (A/B on hardware); it is kept available, not required |
-| `0x27`–`0x2a` | Gain-cal ("cal32") | Per-acq-mode / per-V/div digital gain-cal coefficients (32-bit across 4 words) |
-| `0x5a`–`0x7f` | Cal-coefficient bank | Calibration coefficient store |
-| `0x01`–`0x0f` | Cal-coefficient bank (low) | Calibration coefficient store (low selectors) |
-| `0x2c` | Bandwidth limit (BWL) | `0` = BWL on, `1` = BWL off |
-
-Analog V/div gain and channel/trigger coupling are NOT GPMC registers — they are on spidev1.0 (relay
-word: coarse V/div range bit + coupling) and spidev1.1 (fine gain DAC). See spec 06.
-
-### 8.1 Front-end relay word & trigger-source channel (off-bus, spidev1.0)
-
-The trigger-source **channel** (C1 vs C2 vs EXT) and the per-channel input relays live in a 24-bit
-word serialized over `/dev/spidev1.0` (mode 3 = CPOL1/CPHA1, 24 bits/word, 300 kHz), packed
-little-endian as `b0 = CH1`, `b1 = CH2`, `b2 = trigger`. The CS1 `0x22`/`0x42` mux only selects
-internal-vs-EXT; the C1/C2 trigger channel is `b2`. Re-emitting this word never touches the nCONFIG
-config port, so CONF_DONE holds — it is the safe way to switch trigger source.
-
-- **`b2` (trigger):** `(trigCoupling << 4) | (src << 2)`, `trigCoupling = 0x7` (DC) → `b2 = 0x70 | (src << 2)`,
-  with `src`: `0` = C1, `1` = C2, `2` = EXT.
-- **`b0`/`b1` (per channel):** bit0 = BWL (off = 1), bit1 = GND-coupling, bit2 = V/div-range-hi
-  (coarse ~25× attenuator, engaged at the high detents), bit3 = DC-coupling, bit5 = enable (always 1);
-  `b1` (CH2) additionally preloads bit7 (`0xA0` base).
-- **Boot/live word:** `0x70ad2d` (CH1 & CH2 = DC, high V/div range, BWL off; trigger = DC / C1).
-
-Cross-ref spec 06 §9.3.
-
----
-
-## 9. Native-fast content discrimination (thresholds)
-
-At native-fast bands the publish decision is purely content-based (§3.2, §7.8). A frame passes iff
-**BOTH** hold on the selected trigger-source channel's drained samples:
-
-- **Amplitude:** `peak-to-peak ≥ nativeEdgeMinPtp = 40` codes. A flat capture is ~5 codes of ADC
-  noise; a real cal edge is ~150. The threshold is amplitude-independent (flat-vs-edge separation).
-- **Shape:** a valid mid-level crossing on the configured slope exists in the record.
-
-**Liveness fallback:** after `nativeFlatFallback = 60` consecutive no-edge frames, publish one real
-flat capture (a genuinely flat band must not freeze forever on a stale edge). Otherwise HOLD the last
-edge frame between real edges (so noisy flat frames do not flash the display).
-
----
-
-## 10. Load-bearing constraints (traps)
-
-- **Single owner (§1.5).** Only the acquisition owner touches the bus. Panel reads, LED, offset and
-  trigger-level writes are staged and flushed at the frame boundary. A stray access during a
-  `0x21 = 0xC8` halt black-LCDs the unit.
-- **Inherited `/dev/Gpmc` fd (§1.2).** Reuse the boot-inherited fd from `/proc/self/fd`; never open
-  fresh, never `dup`, never `Close`, clear its finalizer. A fresh open fails the single-open guard or
-  wedges the bus for seconds.
-- **mmap needs `O_SYNC` and single 16-bit loads (§1.4).** `/dev/mem` mapped without `O_SYNC` returns
-  cached/stale samples; a byte-pair load double-pops the auto-incrementing sample port and corrupts
-  the drain.
-- **Never write CS3 `0x07` at runtime.** It is the nCONFIG config port; a write reconfigures the
-  FPGA and collapses the engine. Read it for CONF_DONE only.
-- **`b[0]` (plane) must be 1 or 3.** `b[0] = 0` → garbage ioremap base → multi-second stall.
-- **Pass the selector, not the byte address** — the driver shifts `<<1`.
-- **Selectors are plane-specific.** `0x09` is a reject byte on CS1 but the LED-latch low byte on
-  CS3; a CS3 write mis-issued on CS1 silently fails. Name the plane on every config actuator.
-- **CS3 `0x35` ≠ CS1 `0x35`.** CS3 `0x35` = trigger LEVEL lane-B high byte; CS1 `0x35` = the run
-  word. Different plane, do not conflate.
-- **Do not clobber the inherited comparator during bring-up.** Bring-up writes no CS3 level/mask —
-  writing them stops `0x39` bit2 from asserting.
-- **Native-fast: no status gate, no `0x3a/0x3b` anchor.** At 2 ns – 20 µs/div both status bits
-  assert on the untriggered fill and the position latch is junk; discriminate on content and centre
-  in software (§3.2, §3.3, §7.8, §9). Gating on `0x39` bit2 there starves the display to ~2 fps.
-- **Roll path never arms.** Arm/halt freezes the free-run; pace `0x41`/`0x59` reads.
-- **Clamp drains to 20480.** Beyond the physical deep-record depth the ports read a flat dead tail
-  (harmless but not signal).
-- **Reused frame buffers carry stale metadata.** A real-time frame reusing a buffer last used by an
-  envelope band must clear the envelope flag/columns, or the renderer draws the stale min/max band.
-- **DAC volts→code needs the cal record (§6.1).** Only raw-code writes are self-contained; a
-  meaningful volts target across all V/div depends on spec 06/10.
-
----
-
-## 11. Open
-
-- **Trigger-level volts→code across all V/div.** The 1 V/2 V-div trigger-level fit is exact; every
-  other V/div rides the per-V/div cal ladder and needs the active cal record (spec 06/10). The offset
-  DAC volts→code is resolved (§6.1, `zero − K·volts` with `K` fixed per tier); only the trigger-level
-  ladder remains cal-dependent. Use raw codes for sweeps.
-- **Panel LED controllability on other clone revisions.** All 14 panel LEDs are CPU-drivable via the
-  CS3 latch (§7.5); the write is effective, not a no-op. Whether every clone PCB revision wires the
-  same latch is not established across hardware variants.
-- **Class-`0x80` roll pacing constant.** Roll read pacing is expressed as `divisor · 50 ns` while the
-  physical count period is 10 ns (§4.4). The 50 ns is a read-cadence multiplier (chosen to guarantee
-  fresh non-dwell samples), not a second physical rate; the exact relationship of the pacing
-  multiplier to the FIFO dwell time is not formally characterised.
+Any mismatch → **refuse to drive** (no dual mode, no fallback). The engine re-checks the same
+handshake at the top of its run loop so a re-flashed or wedged fabric is caught before the first arm.

@@ -12,63 +12,73 @@ import (
 	"time"
 
 	"open-sds/app/internal/bus"
+	"open-sds/app/internal/iface"
 )
 
-// Register selectors (CS1 unless noted). Spec 02.
+// Owned FPGA register selectors and field values (fpga/standard/docs/REGISTER-MAP.md;
+// specs 02/03). The engine drives the fabric ONLY through these iface bindings —
+// there is no vendor register map, no divisor/class/run-word opcodes, no
+// round-robin drain, no re-trigger strobe, no force pulse.
 const (
-	selPreamble = 0x00 // 0x80 ×2 only in the trigger-level recommit
-	selVersion  = 0x12
-	selClass    = 0x19
-	selDivLo    = 0x1a
-	selDivHi    = 0x1b
-	selArm      = 0x21 // 0xC0 reset-head, 0xC3 go, 0xC8 capture-halt
-	selRunWord  = 0x35 // 0x0001 AUTO, 0x0003 NORM
-	selReset2   = 0x36
-	selStatus   = 0x39 // bit1 trig, bit2 done
-	selTrigLo   = 0x3a
-	selTrigHi   = 0x3b
-	selResetHd  = 0x44
-	selFill     = 0x46
-	selWrPtr    = 0x57
-	drainBase   = 0x30 // 0x30–0x34 round-robin sample ports
+	// meta / identity (CS1)
+	selVersion   = iface.SelVERSION
+	selBuildIDLo = iface.SelBUILDID_LO
+	selBuildIDHi = iface.SelBUILDID_HI
 
-	// Per-frame completion tail (reference-device trace: written after every
-	// drain, before the next arm). 0x16=1 is the load-bearing re-trigger
-	// strobe — omitting it starves the trigger engine into permanent
-	// half-records (saw_trig never asserts again).
-	selTailA  = 0x3c // written 0x0002 after each drain
-	selTailB  = 0x3d // written 0x0008 after each drain
-	selTailC  = 0x3e // written 0x0000 after each drain
-	selTailD  = 0x58 // written 0x0000 after each drain
-	selRetrig = 0x16 // 0x0001 = frame-completion / re-trigger strobe
-	selForce  = 0x2c // 0→1 pulse = AUTO force-trigger (untriggered frames)
+	// capture control (CS1)
+	selOpcode  = iface.SelOPCODE // GO / HALT / RESET strobe
+	selRun     = iface.SelRUN    // MODE + RUN
+	selDecimLo = iface.SelDECIM_LO
+	selDecimHi = iface.SelDECIM_HI
+	selPreLo   = iface.SelPRETRIG_LO
+	selPreHi   = iface.SelPRETRIG_HI
+	selPostLo  = iface.SelPOSTTRIG_LO
+	selPostHi  = iface.SelPOSTTRIG_HI
 
-	// CS3 trigger-level DAC lanes (spec 05 §1). High bytes self-latch.
-	cs3LevelALo = 0x14
-	cs3LevelAHi = 0x34
-	cs3LevelBLo = 0x15
-	cs3LevelBHi = 0x35
+	// drain (CS1): single fixed auto-inc BURST port + remaining/DMA-ready.
+	selBurst    = iface.SelBURST
+	selBurstRem = iface.SelBURST_REMAIN
 
-	cs3ConfStatus = 0x07 // CS3 config-status: bit7 = CONF_DONE. READ ONLY.
+	// status (CS1)
+	selStatus    = iface.SelSTATUS_A
+	selTrigPosLo = iface.SelTRIGPOS_LO
+	selTrigPosHi = iface.SelTRIGPOS_HI
+	selFill      = iface.SelFILL
 
-	// CS3 vertical-offset DAC lanes per channel (spec 06 §5.1): low byte
-	// first, high byte self-latches. These selectors ALIAS live acquisition
-	// ports on CS1 — the plane must be explicit on every write.
-	cs3OffC1Lo = 0x10
-	cs3OffC1Hi = 0x30
-	cs3OffC2Lo = 0x11
-	cs3OffC2Hi = 0x31
+	// streaming spine + envelope result channel (CS1)
+	selXformCtrl = iface.SelXFORM_CTRL
+	selEnvCols   = iface.SelENV_COLS
+	selEnvData   = iface.SelENV_DATA
+	selEnvCount  = iface.SelENV_COUNT
+	selEnvReset  = iface.SelENV_RESET
 
-	opResetHead = 0x00c0
-	opGo        = 0x00c3
-	opHalt      = 0x00c8
+	// config / analog front end (CS3). CONF_DONE is READ ONLY.
+	cs3ConfStatus = iface.SelCONF_DONE
+	cs3LedLo      = iface.SelLED_LO
+	cs3LedHi      = iface.SelLED_HI
+	cs3LedStrobe  = iface.SelLED_STROBE
+	cs3OffC1Lo    = iface.SelOFF_C1_LO
+	cs3OffC1Hi    = iface.SelOFF_C1_HI
+	cs3OffC2Lo    = iface.SelOFF_C2_LO
+	cs3OffC2Hi    = iface.SelOFF_C2_HI
+	cs3LevelALo   = iface.SelLVL_A_LO
+	cs3LevelAHi   = iface.SelLVL_A_HI // self-latches + loads the serializer
+	cs3LevelBLo   = iface.SelLVL_B_LO
+	cs3LevelBHi   = iface.SelLVL_B_HI
 
-	runAuto = 0x0001
-	runNorm = 0x0003
+	// OPCODE strobe values (spec 03 §5): the capture FSM opcodes.
+	opGo    uint16 = 0x0001 // arm / re-arm
+	opHalt  uint16 = 0x0002 // freeze the record
+	opReset uint16 = 0x0000 // idle
 
-	statValid = 0x0001 // AUTO free-run: acquisition completed without a trigger
-	statTrig  = 0x0002
-	statDone  = 0x0004
+	// RUN.MODE values (spec 03 §5.1).
+	modeAuto uint8 = 0
+	modeNorm uint8 = 1
+
+	// STATUS_A level bits (iface field masks).
+	statValid = iface.Mask_STATUS_A_VALID // AUTO free-run: completed without a real trigger
+	statTrig  = iface.Mask_STATUS_A_TRIG
+	statDone  = iface.Mask_STATUS_A_DONE
 
 	nativeEdgeMinPtp  = 40 // codes; flat rail ≈ 5, real cal edge ≈ 150
 	nativeFlatFallbck = 60 // held frames before one honest flat publish
@@ -245,26 +255,18 @@ type Engine struct {
 	armBusy       bool // busy-wait the settle (real clock) instead of Sleep — the native-fast root-cause fix
 	pollEvery     time.Duration
 
-	// Live tuning knobs (debug /api/debug/tune) for the framerate/CPU/success
-	// optimization campaign — atomics so the web handler sets them lock-free and
-	// the owner loop reads them each frame. Defaults mirror the compile-time
-	// constants; gated on armBusy (device) so tests are unaffected.
-	tuneArmSettleUs  atomic.Int64 // arm settle duration (µs)
-	tuneArmSpin      atomic.Bool  // busy-wait the settle vs Sleep
-	tuneBusyFillUs   atomic.Int64 // native-fast fill busy-poll window (µs; 0 = off)
-	tuneGcCtl        atomic.Bool  // controlled GC (SetGCPercent(-1)+manual) vs stock
-	tuneMaxRetry     atomic.Int64 // native-fast re-capture cap
-	tuneRenderMs     atomic.Int64 // LCD render period (ms)
-	tuneFillExtraUs  atomic.Int64 // native-fast: extra fill time after done, before halt (µs)
-	tuneHaltSettleUs atomic.Int64 // native-fast: post-halt settle before deep-port reads (µs)
-	tuneFrameTail    atomic.Bool  // per-frame completion tail + 0x16 re-trigger strobe (reference-device op)
-	tuneForceMode    atomic.Int64 // AUTO force-trigger op: 0 off, bit0 = 0x2c pulse, bit1 = 0x16 strobe
-	tuneForceAfterUs atomic.Int64 // µs after arm without a comparator edge before forcing
-	tuneMatureUs     atomic.Int64 // native-fast maturation floor before halt (µs)
-	tuneTail3c       atomic.Int64 // acq-control pair value for 0x3c (band-dependent; native-fast 0x00fd)
-	tuneTail3d       atomic.Int64 // acq-control pair value for 0x3d (band-dependent; native-fast 0x0007)
-	tuneSigK         atomic.Int64 // decimated small-signal gate: min ptp / noiseFloor ratio to lock
-	reinitReq        atomic.Int64 // staged FSM re-init level (debug/recovery); serviced at the loop boundary
+	// Live tuning knobs (debug /api/debug/tune) — atomics so the web handler
+	// sets them lock-free and the owner loop reads them each frame. The vendor
+	// half-record/force/maturation/re-capture knobs are DELETED (the owned
+	// fabric's trustworthy trigger + static-freeze make them unnecessary, spec 03);
+	// what remains is FPGA-agnostic loop/CPU tuning. Gated on armBusy (device) so
+	// tests are unaffected.
+	tuneArmSettleUs atomic.Int64 // arm settle duration (µs)
+	tuneArmSpin     atomic.Bool  // busy-wait the settle vs Sleep
+	tuneGcCtl       atomic.Bool  // controlled GC (SetGCPercent(-1)+manual) vs stock
+	tuneRenderMs    atomic.Int64 // LCD render period (ms)
+	tuneSigK        atomic.Int64 // decimated small-signal gate: min ptp / noiseFloor ratio to lock
+	reinitReq       atomic.Int64 // staged FSM re-init level (debug/recovery); serviced at the loop boundary
 
 	// Lock-free control reads by the owner.
 	running     atomic.Bool
@@ -340,19 +342,17 @@ type Engine struct {
 	matrixReq chan chan [5]uint16
 
 	// Owner-private state (no locking needed).
-	band          Band
-	prevKind      Kind
-	lastNorm      bool
-	seq           uint64
-	flatHeld      int
-	lastPubAt     time.Time // engine goroutine only: instant of the last oneFrame publish
-	lastEdgeX     float64   // engine goroutine only: previous frame's edge (phase-continuity hint); <0 = none
-	degradedRun   int       // engine goroutine only: consecutive dead-tail captures
-	lastFirstHalf bool      // the last frame's FIRST drain was a half record (pre re-capture)
-	deadRuns      int
-	streamSeq     uint64    // stitch-mode window counter
-	lastHalt      time.Time // wall-clock of the previous window's halt (for GapNs)
-	done          chan struct{}
+	band      Band
+	prevKind  Kind
+	lastNorm  bool
+	seq       uint64
+	flatHeld  int
+	lastPubAt time.Time // engine goroutine only: instant of the last oneFrame publish
+	lastEdgeX float64   // engine goroutine only: previous frame's edge (phase-continuity hint); <0 = none
+	deadRuns  int
+	streamSeq uint64    // stitch-mode window counter
+	lastHalt  time.Time // wall-clock of the previous window's halt (for GapNs)
+	done      chan struct{}
 
 	// Realtime acquisition checker (instrumentation only, spec: diagnose HALF
 	// records). acqRing/cmdRing are guarded by e.mu (the status handler reads
@@ -364,15 +364,19 @@ type Engine struct {
 	cmdRing        [64]CmdNote
 	cmdHead        int
 
-	// Envelope band state (spec 04 §1): ring of phase-scattered windows.
+	// Envelope band state (spec 04 §1): fabric envelope-channel record buffer
+	// (primary) + a ring of phase-scattered windows for the software fallback.
+	envChanBuf             []uint16
 	envRing1, envRing2     [][]uint8
 	envRingPos, envRingCnt int
 
-	// Roll band state (spec 04 §2): free-run raw ring + scroll snapshots.
-	rollArmed              bool
-	rollRing1, rollRing2   []uint8
-	rollPos                int
-	rollSnaps1, rollSnaps2 [][]uint8
+	// Roll band state (spec 04 §2): scrolled raw ring + scroll snapshots +
+	// per-update burst-drain scratch.
+	rollArmed                bool
+	rollRing1, rollRing2     []uint8
+	rollScratch1, rollScratch2 []uint8
+	rollPos                  int
+	rollSnaps1, rollSnaps2   [][]uint8
 
 	// ETS state (spec 04 §3): persistent phase-interleave accumulator.
 	etsOn                    bool
@@ -428,45 +432,15 @@ func New(cfg Config) *Engine {
 		done:      make(chan struct{}),
 		matrixReq: make(chan chan [5]uint16, 4),
 	}
-	// Tuning defaults. ROOT-CAUSE FIX for the native-fast half-record: the free-run
-	// wait returned the instant done+fill asserted and halted immediately, catching
-	// the deep record half-filled (one memory bank). Holding ~2 ms more before halt
-	// lets the second bank fill — verified by a content checker (real_depth, which
-	// detects the drain's period-5 dead tail that fooled valid_depth): base full
-	// rate 7.5%→100%, so re-capture is no longer needed. Combined with the CPU/fps
-	// tuning (no busy spins, slowed change-detected render, stock GC) this beats the
-	// original defaults on all three: CPU ~96%→~86%, fps ~13.4→~18, frame_success
-	// (real content, not valid_depth) ~5%→100%.
+	// Tuning defaults. The owned FSM is a clean program → arm → wait-on-real-DONE →
+	// halt → burst-drain → re-arm cycle: with a trustworthy HW trigger and a
+	// static-freeze M9K there is no half-record to work around, so the vendor
+	// maturation/re-capture/fill-extra/halt-settle/force knobs are gone. What
+	// remains is FPGA-agnostic loop tuning.
 	e.tuneArmSettleUs.Store(cfg.ArmSettle.Microseconds()) // spec-safe 2 ms
-	// The settle busy-spin and manual GC control were workarounds tuned against
-	// the UNTRIGGERED half-record state. With captures gated on trigger
-	// evidence, HW A/B under web-stream load shows a plain Sleep settle and
-	// stock GC are strictly better (spin: 16 fps / 20% idle → sleep: 18-19 fps
-	// / 27% idle, both 20/20 full records, half_rate 0).
 	e.tuneArmSpin.Store(false)
-	e.tuneBusyFillUs.Store(0) // no fill busy-poll (pure CPU cost)
 	e.tuneGcCtl.Store(false)
-	e.tuneMaxRetry.Store(2)   // light backstop; full records are now the norm
 	e.tuneRenderMs.Store(120) // ~8 Hz LCD: big CPU win, still smooth enough
-	// fill-extra and halt-settle were workarounds tuned against what turned out
-	// to be the UNTRIGGERED half-record state (level outside the signal band);
-	// with triggered captures they buy nothing (HW A/B: 15/15 full without
-	// them) and cost 4 ms/frame. Knobs kept at 0 for experiments.
-	e.tuneFillExtraUs.Store(0)
-	e.tuneHaltSettleUs.Store(0)
-	// Reference-device experiment knobs, OFF by default: A/B on hardware showed
-	// neither the per-frame tail (0x3e/0x58/0x3c/0x3d/0x16) nor any placement
-	// of the 0x2c force pulse completes an untriggered record or affects a
-	// triggered one. Kept as live knobs for further vendor-op experiments.
-	e.tuneFrameTail.Store(false)
-	e.tuneForceMode.Store(0)
-	e.tuneForceAfterUs.Store(10000)
-	// HW sweep 40→2 ms: full records at every step once captures are gated on
-	// trigger evidence (the historical 40 ms bound was measured in the
-	// untriggered parked state). 3 ms keeps margin over the proven 2 ms.
-	e.tuneMatureUs.Store(3000)
-	e.tuneTail3c.Store(0x00fd) // reference-device native-fast acq-control pair
-	e.tuneTail3d.Store(0x0007)
 	// Decimated small-signal lock gate: a real signal has ptp ≥ SigK × noiseFloor
 	// (period-independent 2nd-difference noise estimate), which separates a real
 	// sub-1.6-div signal from a noisy flat rail at EVERY timebase — raw ptp alone
@@ -525,24 +499,16 @@ func (e *Engine) Stop(timeout time.Duration) bool {
 func (e *Engine) QuietRLock()   { e.quiet.RLock() }
 func (e *Engine) QuietRUnlock() { e.quiet.RUnlock() }
 
-// TuneVals is the live-tunable knob set (see the tune* atomics).
+// TuneVals is the live-tunable knob set (see the tune* atomics). The vendor
+// half-record/force/maturation/re-capture knobs are gone with the vendor path;
+// what remains is FPGA-agnostic loop/CPU tuning.
 type TuneVals struct {
-	ArmSettleUs  int64 `json:"arm_settle_us"`
-	ArmSpin      bool  `json:"arm_spin"`
-	BusyFillUs   int64 `json:"busy_fill_us"`
-	GcCtl        bool  `json:"gc_ctl"`
-	MaxRetry     int64 `json:"max_retry"`
-	RenderMs     int64 `json:"render_ms"`
-	FillExtraUs  int64 `json:"fill_extra_us"`
-	HaltSettleUs int64 `json:"halt_settle_us"`
-	FrameTail    bool  `json:"frame_tail"`       // per-frame completion tail + 0x16 re-trigger strobe
-	ForceMode    int64 `json:"force_mode"`       // AUTO force-trigger: 0 off, bit0 0x2c pulse, bit1 0x16 strobe
-	ForceAfterUs int64 `json:"force_after_us"`   // µs after arm without a trigger before forcing
-	MatureUs     int64 `json:"mature_us"`        // native-fast maturation floor before halt (µs)
-	Tail3c       int64 `json:"tail_3c"`          // acq-control 0x3c value (band-dependent)
-	Tail3d       int64 `json:"tail_3d"`          // acq-control 0x3d value (band-dependent)
-	SigK         int64 `json:"sig_k"`            // decimated small-signal gate: min ptp/noiseFloor ratio to lock (default 8)
-	Reinit       int64 `json:"reinit,omitempty"` // one-shot: stage an FSM re-init at this level (1=bringUp, 2=+runword/reset pulses)
+	ArmSettleUs int64 `json:"arm_settle_us"`
+	ArmSpin     bool  `json:"arm_spin"`
+	GcCtl       bool  `json:"gc_ctl"`
+	RenderMs    int64 `json:"render_ms"`
+	SigK        int64 `json:"sig_k"`            // decimated small-signal gate: min ptp/noiseFloor ratio to lock (default 8)
+	Reinit      int64 `json:"reinit,omitempty"` // one-shot: stage an FSM re-init at this level (1=bringUp, 2=+clean reset)
 }
 
 // Tune applies a knob set (debug /api/debug/tune) and returns the effective
@@ -554,35 +520,8 @@ func (e *Engine) Tune(t TuneVals) TuneVals {
 	if t.ArmSettleUs > 0 {
 		e.tuneArmSettleUs.Store(t.ArmSettleUs)
 	}
-	if t.BusyFillUs >= 0 {
-		e.tuneBusyFillUs.Store(t.BusyFillUs)
-	}
-	if t.MaxRetry >= 0 {
-		e.tuneMaxRetry.Store(t.MaxRetry)
-	}
 	if t.RenderMs > 0 {
 		e.tuneRenderMs.Store(t.RenderMs)
-	}
-	if t.FillExtraUs >= 0 {
-		e.tuneFillExtraUs.Store(t.FillExtraUs)
-	}
-	if t.HaltSettleUs >= 0 {
-		e.tuneHaltSettleUs.Store(t.HaltSettleUs)
-	}
-	if t.ForceMode >= 0 {
-		e.tuneForceMode.Store(t.ForceMode)
-	}
-	if t.ForceAfterUs > 0 {
-		e.tuneForceAfterUs.Store(t.ForceAfterUs)
-	}
-	if t.MatureUs > 0 {
-		e.tuneMatureUs.Store(t.MatureUs)
-	}
-	if t.Tail3c >= 0 {
-		e.tuneTail3c.Store(t.Tail3c)
-	}
-	if t.Tail3d >= 0 {
-		e.tuneTail3d.Store(t.Tail3d)
 	}
 	if t.SigK > 0 {
 		e.tuneSigK.Store(t.SigK)
@@ -592,28 +531,17 @@ func (e *Engine) Tune(t TuneVals) TuneVals {
 	}
 	e.tuneArmSpin.Store(t.ArmSpin)
 	e.tuneGcCtl.Store(t.GcCtl)
-	e.tuneFrameTail.Store(t.FrameTail)
 	return e.TuneSnapshot()
 }
 
 // TuneSnapshot reports the current knob values.
 func (e *Engine) TuneSnapshot() TuneVals {
 	return TuneVals{
-		ArmSettleUs:  e.tuneArmSettleUs.Load(),
-		ArmSpin:      e.tuneArmSpin.Load(),
-		BusyFillUs:   e.tuneBusyFillUs.Load(),
-		GcCtl:        e.tuneGcCtl.Load(),
-		MaxRetry:     e.tuneMaxRetry.Load(),
-		RenderMs:     e.tuneRenderMs.Load(),
-		FillExtraUs:  e.tuneFillExtraUs.Load(),
-		HaltSettleUs: e.tuneHaltSettleUs.Load(),
-		FrameTail:    e.tuneFrameTail.Load(),
-		ForceMode:    e.tuneForceMode.Load(),
-		ForceAfterUs: e.tuneForceAfterUs.Load(),
-		MatureUs:     e.tuneMatureUs.Load(),
-		Tail3c:       e.tuneTail3c.Load(),
-		Tail3d:       e.tuneTail3d.Load(),
-		SigK:         e.tuneSigK.Load(),
+		ArmSettleUs: e.tuneArmSettleUs.Load(),
+		ArmSpin:     e.tuneArmSpin.Load(),
+		GcCtl:       e.tuneGcCtl.Load(),
+		RenderMs:    e.tuneRenderMs.Load(),
+		SigK:        e.tuneSigK.Load(),
 	}
 }
 

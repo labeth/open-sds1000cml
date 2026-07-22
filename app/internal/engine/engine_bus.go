@@ -1,8 +1,9 @@
 package engine
 
 import (
-	"open-sds/app/internal/bus"
 	"time"
+
+	"open-sds/app/internal/iface"
 )
 
 // ReadMatrix requests a key-matrix snapshot from the bus owner (spec 08 §4):
@@ -55,27 +56,30 @@ func (e *Engine) sleepBeating(d time.Duration) {
 	}
 }
 
+// runWord composes the RUN register word: MODE (AUTO/NORM) plus the RUN bit
+// (spec 03 §5.1). It replaces the vendor run-word magic (0x0001/0x0003).
 func (e *Engine) runWord() uint16 {
+	mode := modeAuto
 	if e.normNow() {
-		return runNorm
+		mode = modeNorm
 	}
-	return runAuto
+	return iface.RunWithMode(mode) | iface.RunWithRun(true)
 }
 
 func (e *Engine) w(sel, val uint16) {
-	if err := e.b.Write(bus.PlaneCS1, sel, val); err != nil {
+	if err := e.b.Write(iface.CS1, sel, val); err != nil {
 		e.busErr(err)
 	}
 }
 
 func (e *Engine) w3(sel, val uint16) {
-	if err := e.b.Write(bus.PlaneCS3, sel, val); err != nil {
+	if err := e.b.Write(iface.CS3, sel, val); err != nil {
 		e.busErr(err)
 	}
 }
 
 func (e *Engine) r(sel uint16) uint16 {
-	v, err := e.b.Read(bus.PlaneCS1, sel)
+	v, err := e.b.Read(iface.CS1, sel)
 	if err != nil {
 		e.busErr(err)
 	}
@@ -130,7 +134,7 @@ func (e *Engine) deadEvidence(certain bool) {
 		e.mu.Unlock()
 		return
 	}
-	if v, err := e.b.Read(bus.PlaneCS3, cs3ConfStatus); err == nil && v&0x80 == 0 {
+	if v, err := e.b.Read(iface.CS3, cs3ConfStatus); err == nil && !iface.ConfDoneDone(v) {
 		e.logf("engine: CONF_DONE lost after %d dead frames — marking wedged (agent will relaunch)", e.deadRuns)
 		e.mu.Lock()
 		e.stats.Wedged = true

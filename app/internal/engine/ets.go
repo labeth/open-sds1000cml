@@ -95,11 +95,7 @@ func (e *Engine) etsFrame(norm bool) {
 			return
 		}
 		haltOK := e.halt()
-		for i := 0; i < etsDrainCols; i++ {
-			w := e.b.DrainRead(uint16(drainBase + i%5))
-			e.etsScratch1[i] = uint8(w >> 8)
-			e.etsScratch2[i] = uint8(w)
-		}
+		e.b.BurstInto(e.etsScratch1[:etsDrainCols], e.etsScratch2[:etsDrainCols], etsDrainCols)
 		e.armEngine()
 		if !haltOK {
 			continue

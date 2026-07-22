@@ -57,22 +57,21 @@ drain:
 		e.w3(cs3OffC2Hi, offCode[1]>>8)
 	}
 	if offDirty[0] || offDirty[1] {
-		e.w(selRunWord, e.runWord())
+		e.w(selRun, e.runWord()) // re-assert RUN to re-anchor the front-end change
 	}
 
 	if !trigDirty {
 		return
 	}
-	// The trigger-level safe recommit (spec 05 §1.3): level quad (both lanes
-	// the same code, high bytes self-latch), comparator re-anchor preamble,
-	// then a full re-arm. A bare level poke off this path wedges the display.
+	// The trigger-level safe recommit (spec 05 §1.3): level quad (both lanes the
+	// same code, the high bytes self-latch + load the serializer, REGISTER-MAP
+	// frontend block), then a full re-arm (OPCODE = OP_GO). A bare level poke off
+	// this path wedges the display.
 	lo, hi := code&0xff, code>>8
 	e.w3(cs3LevelALo, lo)
 	e.w3(cs3LevelAHi, hi)
 	e.w3(cs3LevelBLo, lo)
 	e.w3(cs3LevelBHi, hi)
-	e.w(selPreamble, 0x0080)
-	e.w(selPreamble, 0x0080)
 	e.armEngine()
 	e.logf("engine: trigger level recommitted, code=%#04x", code)
 }
