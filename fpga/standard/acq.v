@@ -193,8 +193,11 @@ module acq (
     //    can never wrap the circular buffer over a still-needed pre-trigger cell.
     // =======================================================================
     wire [15:0] pre_req  = (pretrig_reg[15:0] > PRETRIG_MAX16) ? PRETRIG_MAX16 : pretrig_reg[15:0];
-    wire [15:0] post_req = (posttrig_reg[15:0] == 16'd0) ? 16'd1 : posttrig_reg[15:0];
-    wire [15:0] req_sum  = pre_req + post_req;                 // <= 40956, fits 16 bits
+    wire [15:0] post_raw = (posttrig_reg[15:0] == 16'd0) ? 16'd1 : posttrig_reg[15:0];
+    // clamp post to CAP_MAX just like pre, so req_sum cannot overflow 16 bits and
+    // silently bypass the pre+post <= REC_DEPTH-2 guarantee for out-of-range post.
+    wire [15:0] post_req = (post_raw > CAP_MAX) ? CAP_MAX : post_raw;
+    wire [15:0] req_sum  = pre_req + post_req;                 // <= 2*CAP_MAX = 40956, fits 16 bits
     wire        req_over = (req_sum > CAP_MAX);
     wire [15:0] excess   = req_over ? (req_sum - CAP_MAX) : 16'd0;
 

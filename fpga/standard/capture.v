@@ -108,7 +108,17 @@ module capture (
     //   pretrig_ok uses the PRE-increment wrote_count, so the earliest accept writes
     //   physical index == pretrig_work (proof of the drained-index invariant).
     wire pretrig_ok = (wrote_count >= pretrig_work);
-    wire trig_cond  = (!mode_norm) ? 1'b1 : (trig_rise | comp_pending);
+    // NORM bound (fix): if the comparator edge never arrives, force the trigger before
+    // the circular writer could wrap past a still-needed pre-trigger cell. At
+    // wrote_count == REC_DEPTH-posttrig_work the post-fill lands exactly at REC_DEPTH,
+    // so the linear drain (0..rec_len-1) stays chronologically coherent and trig_idx is
+    // accurate -- a late NORM edge can never corrupt the record. (The live envelope's
+    // column split is exact for the AUTO/prompt window; for a late-NORM longer record it
+    // reduces the leading window -- the raw BURST record is always the coherent ground
+    // truth, and the CPU does final content-centring.)
+    wire [15:0] norm_bound = REC_DEPTH16 - posttrig_work;
+    wire        norm_full  = mode_norm && (wrote_count >= norm_bound);
+    wire trig_cond  = (!mode_norm) ? 1'b1 : (trig_rise | comp_pending | norm_full);
     wire trig_fire  = filling && cap_tick && !triggered && pretrig_ok && trig_cond;
 
     // ---- exact post-count finalize -------------------------------------------
