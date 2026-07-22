@@ -7,3 +7,5 @@
 /app/cmd/bandcheck/
 /app/cmd/draintest/
 fpga/standard/acq.rbf
+# the bitstream copied in for `make app-release` (-tags withbitstream embed)
+app/internal/fpgaload/acq.rbf

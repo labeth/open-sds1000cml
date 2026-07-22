@@ -245,8 +245,43 @@ on the bench (fpga doc §7/§10), **retire the quiet-lock across the drain** (§
   quirk-workaround code are **removed**, not ported.
 - A small clean FSM: program → arm → wait-on-real-DONE → halt → DMA/channel drain → timestamp →
   re-arm → publish.
-- Software centring demoted to a fallback (trustworthy `TRIGPOS` is the primary path).
+- Software centring is the **primary** path (it works for every band and needs no bench trust in
+  the HW interpolator). `TRIGPOS_HI.IDX` is read as telemetry (`Frame.TrigPos`); `TRIGPOS_LO.FRAC`
+  is reserved. Promoting HW-TRIGPOS to the centring source is a future, bench-gated change — until
+  then the shipping code centres in software.
 - **Retire the quiet-lock across the drain** — the single biggest app simplification, gated on the
-  fabric's static-freeze byte-identity test.
+  fabric's static-freeze byte-identity test. Until that bench gate passes, the drain still holds
+  `quiet.Lock()`.
 - The arena + CPU-side processing are re-homed to the new frame source; the fake bus + specs 02/03
   are replaced to describe OUR FPGA; `make test` stays green offline with no hardware.
+
+## 9. FPGA bring-up & deploy — the app carries and loads its own bitstream
+
+The app owns the acquisition fabric, so it also *loads* it. Cold boot leaves the factory NAND image
+in the FPGA; at startup — after `bus.New`, before the engine drives the bus and before the analog
+front end opens the shared `spidev1.1` — `internal/fpgaload.Bringup` reconfigures the volatile CRAM
+to the owned build (method B) and verifies it by the interface build-ID:
+
+1. Verify the fabric via `iface.Verify(bus.Read)`. A cold-boot (factory) fabric fails this, which is
+   the expected trigger to reconfigure.
+2. Reconfigure (method B): open + set the passive-serial loader mode on `spidev1.1`, pulse nCONFIG
+   over the GPMC config port (a **raw** write to the read-only `CONF_DONE` selector — it cannot go
+   through `bus.Write`, whose schema guard rejects it), stream the bitstream LSB-first in `bufsiz`
+   chunks + init clocks, then poll `CONF_DONE`.
+3. Re-verify the build-ID. On any failure the app refuses to drive (like a missing GPMC fd), staying
+   alive for diagnosis rather than driving an unknown fabric.
+
+Reconfiguring CRAM is non-destructive: a bad load only black-screens acquisition and a power-cycle
+restores the factory image from NAND. Nothing in `fpgaload` writes any configuration flash (NAND or
+EPCS) — there is no flash path in the package by construction.
+
+**Two binaries.** `make app` is the default: it carries no bitstream (an ordinary `go build`), so it
+verifies-and-drives a fabric already on the standard build but cannot configure a cold-boot one — for
+that case set `SCOPE_SKIP_FPGA_LOAD=1`. `make app-release` builds the shipping binary with
+`-tags withbitstream`, embedding `fpga/standard/acq.rbf` (built by `cd ../fpga && make bitstream`) so
+one self-contained binary reconfigures a cold-boot fabric. The `.rbf` is a hardware build artifact
+(candidate pin assignment) and is **not committed**; the release target copies it in at build time.
+
+The nCONFIG bit mapping, low-hold/settle timings, LSB-first bit order, `bufsiz`, and 24 MHz DCLK
+ceiling are carried from the proving-ground reloader as documented **bench assumptions** — see the
+`fpgaload` package doc and `device.go` — to be confirmed against real silicon.

@@ -22,6 +22,7 @@ import (
 	"open-sds/app/internal/bus"
 	"open-sds/app/internal/cal"
 	"open-sds/app/internal/engine"
+	"open-sds/app/internal/fpgaload"
 	"open-sds/app/internal/frames"
 	"open-sds/app/internal/lcd"
 	"open-sds/app/internal/panel"
@@ -405,6 +406,20 @@ func main() {
 		os.Exit(0)
 	}
 	logf("bus up, mmap drain=%v", b.MmapDrain())
+
+	// Configure the fabric with OUR standard bitstream before the engine drives
+	// it. Cold boot leaves the factory NAND image in the fabric; method-B reload
+	// reconfigures the volatile CRAM to the owned build and verifies it by the
+	// interface build-ID. This runs before the analog front end opens the shared
+	// passive-serial node (spidev1.1).
+	loaderSPI := envOr("SCOPE_LOADER_SPIDEV", "/dev/spidev1.1")
+	if os.Getenv("SCOPE_SKIP_FPGA_LOAD") == "1" {
+		logf("fpgaload: SCOPE_SKIP_FPGA_LOAD=1 — skipping reconfig (fabric assumed pre-loaded)")
+	} else if err := fpgaload.Bringup(gpmcFD, loaderSPI, b.Read, logf); err != nil {
+		logf("FATAL: fpga bringup: %v — refusing to drive", err)
+		<-sig
+		os.Exit(0)
+	}
 
 	e := engine.New(engine.Config{Bus: b, Logf: logf})
 	go e.Run()
