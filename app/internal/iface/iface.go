@@ -18,6 +18,12 @@ const BuildID uint32 = 0x4a9ccfa4
 // Version is the schema version string.
 const Version = "1"
 
+// ExpectVERSION is the value a correct fabric returns for the
+// VERSION identity register — the cheap addressing self-check the
+// app performs (both iface.Verify and the mmap fast path use this one const, so no
+// consumer hand-maintains the magic).
+const ExpectVERSION uint16 = 0x0052
+
 // Plane is a GPMC chip-select register window.
 type Plane uint8
 
@@ -540,8 +546,8 @@ func Verify(r func(plane Plane, sel uint16) (uint16, error)) error {
 	if err != nil {
 		return fmt.Errorf("iface.Verify: read VERSION: %w", err)
 	}
-	if v != 0x0052 {
-		return fmt.Errorf("iface.Verify: VERSION %#04x, want %#04x", v, uint16(0x0052))
+	if v != ExpectVERSION {
+		return fmt.Errorf("iface.Verify: VERSION %#04x, want %#04x", v, ExpectVERSION)
 	}
 	lo, err := r(CS1, SelBUILDID_LO)
 	if err != nil {

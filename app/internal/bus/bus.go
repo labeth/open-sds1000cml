@@ -44,8 +44,6 @@ const (
 
 	cs1PhysBase = 0x01000000 // CS1 /dev/mem physical base (spec 02 §0.4)
 	mmapLen     = 4096
-
-	versionMagic = 0x0052 // VERSION fabric self-check magic (iface.Verify)
 )
 
 // Dev drives the real GPMC through the boot-inherited /dev/Gpmc fd. The fd is
@@ -102,9 +100,11 @@ func (d *Dev) mapCS1() error {
 	}
 	regs := (*[mmapLen / 2]uint16)(unsafe.Pointer(&mem[0]))
 	// Verify addressing before trusting the map (double-shift trap, spec 01 §1B).
-	if v := load16(&regs[iface.SelVERSION]); v != versionMagic {
+	// Uses the schema-derived iface.ExpectVERSION — the same const iface.Verify
+	// checks — so the mmap self-check can't drift from the fabric's VERSION magic.
+	if v := load16(&regs[iface.SelVERSION]); v != iface.ExpectVERSION {
 		syscall.Munmap(mem)
-		return fmt.Errorf("mmap verify: version reads %#04x, want %#04x", v, versionMagic)
+		return fmt.Errorf("mmap verify: version reads %#04x, want %#04x", v, iface.ExpectVERSION)
 	}
 	d.mem, d.regs = mem, regs
 	return nil
