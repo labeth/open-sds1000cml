@@ -70,9 +70,11 @@ module acq (
 
     // ---- sized geometry / clamp constants ---------------------------------
     localparam [15:0] REC_DEPTH16   = `REC_DEPTH;    // 20480
-    localparam [15:0] PRETRIG_MAX16 = `PRETRIG_MAX;  // 20478
-    localparam [15:0] MARGIN16      = 16'd2;         // C2 MARGIN (registered-tail cover)
-    localparam [15:0] CAP_MAX       = REC_DEPTH16 - MARGIN16;  // 20478 (pre+post ceiling)
+    localparam [15:0] PRETRIG_MAX16 = `PRETRIG_MAX;  // 20478 = RecordDepth-Margin (schema)
+    // pre+post ceiling == the schema's PretrigMax. Derived from the generated
+    // `PRETRIG_MAX (not a hand copy of MARGIN) so a schema Margin change can't
+    // leave this clamp one cell too loose while `PRETRIG_MAX tracks it.
+    localparam [15:0] CAP_MAX       = PRETRIG_MAX16;
 
     // =======================================================================
     // 1) GPMC-strobe / selector / data / sample / trigger synchronizers
