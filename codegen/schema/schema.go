@@ -397,6 +397,13 @@ func (i Interface) Validate() []error {
 		if r.Sel < b.Base || r.Sel >= b.Base+b.Span {
 			add("register %q sel %#04x outside block %q range [%#04x,%#04x)", r.Name, r.Sel, b.Name, b.Base, b.Base+b.Span)
 		}
+		// Selectors must fit the 8-bit space the RTL decodes: the emitter renders
+		// SEL_<NAME> as 8'h.. and the fabric compares 8-bit wr_sel/rd_sel, so a
+		// selector >= 0x100 would truncate on the fabric (silently aliasing a
+		// low selector) while the Go bindings drive the full 16 bits.
+		if r.Sel > 0xFF {
+			add("register %q sel %#04x exceeds the 8-bit selector space (the RTL decodes 8-bit selectors)", r.Name, r.Sel)
+		}
 		// Expect only on readable regs.
 		if r.Expect != nil && !r.Access.CanRead() {
 			add("register %q has Expect but is not readable", r.Name)
@@ -446,6 +453,9 @@ func (i Interface) Validate() []error {
 	for _, b := range i.Blocks {
 		if b.Span == 0 {
 			add("block %q: zero span", b.Name)
+		}
+		if int(b.Base)+int(b.Span) > 0x100 {
+			add("block %q range [%#04x,%#04x) exceeds the 8-bit selector space", b.Name, b.Base, int(b.Base)+int(b.Span))
 		}
 		byPlane[b.Plane] = append(byPlane[b.Plane], b)
 	}

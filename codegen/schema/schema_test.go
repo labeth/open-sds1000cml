@@ -227,6 +227,20 @@ func TestAccessEnum(t *testing.T) {
 	mustErr(t, i, "invalid Access")
 }
 
+// A selector past the 8-bit space the RTL decodes must fail Validate — else it
+// truncates on the fabric and silently aliases a low selector.
+func TestSelectorExceeds8Bit(t *testing.T) {
+	i := base()
+	// widen a block into the >0xFF space and put a register there.
+	i.Blocks = append(i.Blocks, schema.Block{
+		Name: "hi", Plane: schema.CS1, Base: 0x100, Span: 0x20,
+		Regs: []schema.Register{
+			{Name: "HI_REG", Sel: 0x110, Plane: schema.CS1, Access: schema.RW, Sem: schema.SemNormal},
+		},
+	})
+	mustErr(t, i, "8-bit selector space")
+}
+
 func TestDescriptorZeroWidthField(t *testing.T) {
 	i := base()
 	i.Descriptor.Fields = append(i.Descriptor.Fields, schema.RecField{Name: "pad", Bits: 0})

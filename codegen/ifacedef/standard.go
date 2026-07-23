@@ -66,7 +66,7 @@ func Standard() schema.Interface {
 						Desc: "capture opcode strobe: GO (arm/re-arm) / HALT (freeze) / RESET (idle)"},
 					{Name: "RUN", Sel: 0x21, Plane: schema.CS1, Access: schema.RW, Sem: S,
 						Fields: []schema.Field{
-							{Name: "MODE", Hi: 1, Lo: 0, Desc: "0=auto 1=norm 2=single"},
+							{Name: "MODE", Hi: 1, Lo: 0, Desc: "0=auto 1=norm; single-shot is app-orchestrated over norm (no distinct fabric mode)"},
 							{Name: "RUN", Hi: 2, Lo: 2, Desc: "1=running"},
 						},
 						Desc: "run/mode control"},
