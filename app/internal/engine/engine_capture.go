@@ -41,7 +41,7 @@ func (e *Engine) bringUp() {
 	e.w(selPostLo, uint16(post))
 	e.w(selPostHi, uint16(post>>16))
 	if k := e.band.Kind(); k == KindEnvelope || k == KindRoll {
-		e.w(selEnvCols, uint16(envDisplayCols)) // fabric folds min/max into this many columns
+		e.w(selEnvCols, uint16(envFabricCols)) // fold into this many columns (fits the fabric FIFO; app stretches to the display)
 		e.w(selEnvReset, 0x0001)                // clear the envelope FIFO on (re)program
 	}
 }

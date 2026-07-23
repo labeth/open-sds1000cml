@@ -22,11 +22,16 @@
 //       exactly cols_work columns close (== programmed ENV_COLS, clamped to [1,N]).
 //
 // OVERFLOW is first-class (C3, set-and-skip)
-//   A closed column latches into a 6-word emit and is drained into the FIFO. If a new
-//   column closes while the emit is still busy, or the FIFO lacks room for a full
-//   record, the OVERFLOW bit sets and that column is skipped — never a silent drop.
-//   For display column counts (~256-1000) columns are ~N/cols apart (tens of clocks),
-//   so overflow cannot occur in normal use; it only guards a pathological ENV_COLS.
+//   A closed column latches into a 6-word emit (two 3-word records) and is drained
+//   into the FIFO. If a new column closes while the emit is still busy, or the FIFO
+//   lacks room for a full column, the OVERFLOW bit sets and that column is skipped —
+//   never a silent drop.
+//   Two distinct triggers: (1) emit-busy — columns are ~N/cols apart (tens of
+//   clocks), so this is rare in normal use; (2) FIFO CAPACITY — the FIFO is 2048
+//   words at 6 words/column, so it holds floor(2048/6) = 341 columns. ENV_COLS
+//   ABOVE that ALWAYS overflows and drops the tail. The app must therefore program
+//   ENV_COLS <= 341 (it uses 336, engine.envFabricCols) and stretches those columns
+//   across the wider display; a larger FIFO (more M9K) is the path to finer columns.
 //
 // M9K INFERENCE — `envmem` is the same single-write / registered-read template; the
 //   reducer writes packed 40-bit records as 3 words each (CH1 then CH2), the CPU reads

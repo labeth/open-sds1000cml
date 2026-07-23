@@ -12,9 +12,10 @@ import (
 // consumes those records; the software min/max reducer over phase-scattered
 // drained windows is kept as the CPU fallback (spec 03 §3).
 
-// envMaxRecords caps a single envelope-channel drain (2 channels × the display
-// columns, with headroom for the overflow re-read).
-const envMaxRecords = 2 * envDisplayCols
+// envMaxRecords caps a single envelope-channel drain: the fabric folds
+// envFabricCols columns and emits at most one (min,max) record per channel per
+// column, so 2 × envFabricCols bounds a well-formed drain.
+const envMaxRecords = 2 * envFabricCols
 
 // interrupted reports whether the owner must bail out of a long capture loop
 // NOW: shutdown, STOP, or a staged band/mode/ETS change (spec 09 §3.1 —
@@ -194,22 +195,33 @@ func (e *Engine) envConsumeChannel(f *Frame) bool {
 		f.EnvMin[c], f.EnvMax[c] = 0xff, 0
 		f.EnvMin2[c], f.EnvMax2[c] = 0xff, 0
 	}
+	// The fabric folds envFabricCols columns (bounded by its FIFO); stretch each
+	// onto its slice of the wider display so every display column is real. Fabric
+	// column fc tiles the display span [fc·D/F, (fc+1)·D/F) — the spans partition
+	// [0,D) exactly (hi(fc) == lo(fc+1)), so there are no gaps to blank.
 	var rec iface.EnvelopeRecord
 	for i := 0; i < n; i++ {
 		rec.Unpack(e.envChanBuf[i*recW : i*recW+recW])
-		c := int(rec.Col)
-		if c < 0 || c >= envDisplayCols {
+		fc := int(rec.Col)
+		if fc < 0 || fc >= envFabricCols {
 			continue
+		}
+		lo := fc * envDisplayCols / envFabricCols
+		hi := (fc + 1) * envDisplayCols / envFabricCols
+		if hi > envDisplayCols {
+			hi = envDisplayCols
 		}
 		mn, mx := f.EnvMin, f.EnvMax
 		if rec.Ch == 1 {
 			mn, mx = f.EnvMin2, f.EnvMax2
 		}
-		if rec.Min < mn[c] {
-			mn[c] = rec.Min
-		}
-		if rec.Max > mx[c] {
-			mx[c] = rec.Max
+		for c := lo; c < hi; c++ {
+			if rec.Min < mn[c] {
+				mn[c] = rec.Min
+			}
+			if rec.Max > mx[c] {
+				mx[c] = rec.Max
+			}
 		}
 	}
 	fillUnseen := func(mn, mx []uint8) {

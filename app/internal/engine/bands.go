@@ -36,7 +36,14 @@ const (
 	// dense sampling yields a thin wandering band.
 	envIntervalS   = 2.3e-4
 	envDisplayCols = 800
-	envMinWin      = 200
+	// envFabricCols is how many envelope columns the FABRIC folds and buffers per
+	// frame. The fabric's envelope FIFO is 2048 words at 6 words/column (two
+	// channels × a 3-word record), so it holds floor(2048/6) = 341 columns; asking
+	// for more overflows the FIFO and silently drops the tail. We program a value
+	// safely under that ceiling and stretch the columns across the wider display
+	// (envConsumeChannel), so every display column is real — never blanked.
+	envFabricCols = 336
+	envMinWin     = 200
 	envMaxWin      = 2048
 	envRingN       = 24
 	envFillCap     = 0x600 // fill target cap (the 11-bit counter saturates)

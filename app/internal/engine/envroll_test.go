@@ -61,10 +61,12 @@ func TestEnvelopeChannelPrimary(t *testing.T) {
 	fb.mu.Lock()
 	fb.wave = func(int) (uint8, uint8) { return 128, 128 }
 	fb.mu.Unlock()
-	// Script a wide band at column 400 on channel 0.
+	// The fabric folds envFabricCols columns; script a band at a middle fabric
+	// column on channel 0. It must land on that fabric column's stretched display
+	// span, NOT a raw 1:1 display index.
+	const fcol = 168 // a mid-range fabric column (< envFabricCols)
 	fb.setEnvRecords([]iface.EnvelopeRecord{
-		{Col: 400, Min: 40, Max: 210, Ch: 0},
-		{Col: 401, Min: 45, Max: 205, Ch: 0},
+		{Col: fcol, Min: 40, Max: 210, Ch: 0},
 	}, false)
 	e, _ := newTestEngine(t, fb)
 	b, _ := PlanTdiv(5e-3)
@@ -75,12 +77,53 @@ func TestEnvelopeChannelPrimary(t *testing.T) {
 	if !fresh || !f.IsEnv {
 		t.Fatalf("env frame: fresh=%v isEnv=%v", fresh, f.IsEnv)
 	}
-	if f.EnvMin[400] != 40 || f.EnvMax[400] != 210 {
-		t.Fatalf("fabric envelope band at col 400 = [%d,%d], want [40,210]", f.EnvMin[400], f.EnvMax[400])
+	// Fabric column fcol stretches onto display span [fcol·D/F, (fcol+1)·D/F).
+	lo := fcol * envDisplayCols / envFabricCols
+	hi := (fcol + 1) * envDisplayCols / envFabricCols
+	if hi <= lo {
+		t.Fatalf("empty stretch span for fabric col %d", fcol)
 	}
-	// A column the fabric never reported draws mid-line (128), never a 0-rail bar.
+	mid := (lo + hi) / 2
+	if f.EnvMin[mid] != 40 || f.EnvMax[mid] != 210 {
+		t.Fatalf("fabric col %d -> display [%d,%d): band at %d = [%d,%d], want [40,210]",
+			fcol, lo, hi, mid, f.EnvMin[mid], f.EnvMax[mid])
+	}
+	// A display column outside any reported fabric column draws mid-line (128),
+	// never a 0-rail bar.
 	if f.EnvMin[0] != 128 || f.EnvMax[0] != 128 {
 		t.Fatalf("unseen column = [%d,%d], want mid-line [128,128]", f.EnvMin[0], f.EnvMax[0])
+	}
+}
+
+// With every fabric column reported, the stretch must leave NO display column
+// blanked to mid-line — the bug where a too-small fabric FIFO left the right of
+// the display flat. This directly guards the overflow regression.
+func TestEnvelopeStretchNoGaps(t *testing.T) {
+	fb := newFakeBus()
+	fb.mu.Lock()
+	fb.wave = func(int) (uint8, uint8) { return 128, 128 }
+	fb.mu.Unlock()
+	recs := make([]iface.EnvelopeRecord, 0, envFabricCols)
+	for c := 0; c < envFabricCols; c++ {
+		recs = append(recs, iface.EnvelopeRecord{Col: uint16(c), Min: 40, Max: 210, Ch: 0})
+	}
+	fb.setEnvRecords(recs, false)
+	e, _ := newTestEngine(t, fb)
+	b, _ := PlanTdiv(5e-3)
+	e.band = b
+	e.transition(false, false)
+	e.envFrame(false)
+	f, fresh := e.Consume()
+	if !fresh || !f.IsEnv {
+		t.Fatalf("env frame: fresh=%v isEnv=%v", fresh, f.IsEnv)
+	}
+	for c := 0; c < envDisplayCols; c++ {
+		if f.EnvMin[c] == 128 && f.EnvMax[c] == 128 {
+			t.Fatalf("display column %d blanked to mid-line despite full fabric coverage (stretch gap)", c)
+		}
+		if f.EnvMin[c] != 40 || f.EnvMax[c] != 210 {
+			t.Fatalf("display column %d = [%d,%d], want [40,210]", c, f.EnvMin[c], f.EnvMax[c])
+		}
 	}
 }
 
