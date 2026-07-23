@@ -343,6 +343,20 @@ func (e *Engine) effDrainCols() int {
 	return e.band.DrainCols()
 }
 
+// capDepth is effDrainCols() clamped to the largest programmable record
+// (REC_DEPTH-MARGIN, the exact-window invariant). It is the pre/post record size
+// bringUp programs AND the value the loop compares against lastCapCols — using
+// the SAME clamped quantity on both sides is what keeps them in agreement. (A
+// prior version stored the clamped value but compared the unclamped effDrainCols,
+// so at max depth 20480 != 20478 fired the re-program guard every frame.)
+func (e *Engine) capDepth() int {
+	c := e.effDrainCols()
+	if c > deepRecord-2 {
+		c = deepRecord - 2
+	}
+	return c
+}
+
 // SetTrigLevelCode stages a trigger-level DAC recommit. Codes clamp to the
 // operational window. Compare-on-change with an init flag so the first set
 // applies even if equal to the default. Code 0 means "keep the boot-inherited

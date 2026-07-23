@@ -413,6 +413,31 @@ func TestEnvFabricColsFitsFIFO(t *testing.T) {
 	}
 }
 
+// After bringUp, the loop's re-program guard (capDepth() != lastCapCols) must NOT
+// fire at maximum depth — else it re-runs bringUp (OP_RESET + reprogram) every
+// frame. Regression guard for the clamp-vs-unclamped mismatch.
+func TestDeepMemoryNoReBringUpThrash(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		setup func(*Engine)
+	}{
+		{"max-memdepth", func(e *Engine) { e.SetMemDepth(deepRecord) }},
+		{"single", func(e *Engine) { e.SetSingle() }},
+		{"stream", func(e *Engine) { e.SetStreamMode(true) }},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			fb := newFakeBus()
+			e, _ := newTestEngine(t, fb) // decimated default band
+			tc.setup(e)
+			e.bringUp()
+			if e.capDepth() != e.lastCapCols {
+				t.Fatalf("%s: capDepth()=%d != lastCapCols=%d — loop guard would re-bringUp every frame",
+					tc.name, e.capDepth(), e.lastCapCols)
+			}
+		})
+	}
+}
+
 func TestArmSequence(t *testing.T) {
 	fb := newFakeBus()
 	e, _ := newTestEngine(t, fb)

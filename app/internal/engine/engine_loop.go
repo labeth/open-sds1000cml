@@ -108,11 +108,12 @@ func (e *Engine) Run() {
 		e.mu.Unlock()
 		if bandChange || norm != e.lastNorm || etsWant != e.etsOn {
 			e.transition(norm, etsWant)
-		} else if e.effDrainCols() != e.lastCapCols {
-			// memDepth / stream / SINGLE changed the effective drain without a band
-			// change: re-program the fabric record so the capture depth still matches
-			// the drain (otherwise the drain over-reads a dead tail). Safe here — a
-			// loop boundary with no capture in flight.
+		} else if e.capDepth() != e.lastCapCols {
+			// memDepth / stream / SINGLE changed the effective record depth without a
+			// band change: re-program so the capture depth still matches the drain.
+			// Compare capDepth() (the clamped quantity bringUp actually programs), not
+			// raw effDrainCols(), or the clamp gap would re-fire this every frame at
+			// max depth. Safe here — a loop boundary with no capture in flight.
 			e.bringUp()
 		}
 

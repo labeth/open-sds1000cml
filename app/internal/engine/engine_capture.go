@@ -35,10 +35,7 @@ func (e *Engine) bringUp() {
 	// from the band's fixed DrainCols() would leave a decimated deep-memory / stream
 	// / SINGLE frame capturing only decimDrain samples while the app drains up to
 	// deepRecord, over-reading a dead (clamped) tail and mislabeling the time axis.
-	capCols := e.effDrainCols()
-	if capCols > deepRecord-2 { // exact-window invariant: pre+post <= REC_DEPTH-MARGIN
-		capCols = deepRecord - 2
-	}
+	capCols := e.capDepth() // effDrainCols clamped to REC_DEPTH-MARGIN (exact-window)
 	e.lastCapCols = capCols
 	pre := uint32(capCols / 2)
 	post := uint32(capCols - capCols/2)
