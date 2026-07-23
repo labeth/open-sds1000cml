@@ -287,6 +287,96 @@ func TestAppUpdateInstallsIntoInactiveSlot(t *testing.T) {
 	}
 }
 
+// A second app.update that arrives before the first has gone stable (active !=
+// confirmed) must overwrite the still-un-confirmed slot, NOT the confirmed
+// known-good binary the rollback ladder falls back to.
+func TestAppUpdateNeverClobbersConfirmedKnownGood(t *testing.T) {
+	a := testAgent(t)
+	_ = a.store.Init() // provisions confirmed = active = A
+
+	// A holds the known-good factory binary; active == confirmed == A.
+	knownGood := []byte("#!/bin/sh\necho known-good\nexit 0\n")
+	if err := os.WriteFile(a.store.BinPath(slots.SlotA), knownGood, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if got := a.store.Confirmed(); got != slots.SlotA {
+		t.Fatalf("precondition: confirmed = %s, want A", got)
+	}
+
+	update := func(content string) string {
+		t.Helper()
+		src := filepath.Join(t.TempDir(), "app")
+		if err := os.WriteFile(src, []byte(content), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		resp := a.Dispatch([]byte(fmt.Sprintf(`{"cmd":"app.update","args":{"src":%q}}`, src)))
+		if !resp.OK {
+			t.Fatalf("app.update: %s", resp.Err)
+		}
+		return mustData[struct {
+			Slot string `json:"slot"`
+		}](t, resp).Slot
+	}
+
+	// First update lands in B (Other(confirmed A)); active flips to B, but the
+	// slot has not run stably yet so confirmed stays A.
+	if slot := update("#!/bin/sh\nexit 0\n# v1\n"); slot != slots.SlotB {
+		t.Fatalf("first update slot = %s, want B", slot)
+	}
+	if got := a.store.Active(); got != slots.SlotB {
+		t.Fatalf("active = %s, want B after first update", got)
+	}
+	if got := a.store.Confirmed(); got != slots.SlotA {
+		t.Fatalf("confirmed = %s, want A (first update not yet stable)", got)
+	}
+
+	// Second update within the stable window. The naive Other(Active()) choice
+	// would target A and destroy the known-good binary; the fix targets B again.
+	if slot := update("#!/bin/sh\nexit 0\n# v2\n"); slot != slots.SlotB {
+		t.Fatalf("second update slot = %s, want B (must not clobber confirmed A)", slot)
+	}
+
+	// The confirmed known-good A binary must be byte-for-byte intact.
+	gotA, err := os.ReadFile(a.store.BinPath(slots.SlotA))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(gotA) != string(knownGood) {
+		t.Errorf("confirmed slot A was overwritten by the second update:\n got %q\nwant %q", gotA, knownGood)
+	}
+	if got := a.store.Confirmed(); got != slots.SlotA {
+		t.Errorf("confirmed = %s, want A preserved", got)
+	}
+}
+
+// On a fresh stick with no confirmed pointer file, Store.Init anchors confirmed
+// to the active slot so Confirmed() cannot silently follow active after the
+// first update flips it (which would defeat the no-clobber guard above).
+func TestAppUpdateConfirmedAnchoredOnFreshStick(t *testing.T) {
+	a := testAgent(t)
+	// Simulate a truly fresh provisioning: no confirmed file on disk.
+	_ = os.Remove(filepath.Join(a.store.Root(), "confirmed"))
+	_ = a.store.Init() // must write confirmed = A
+	if _, err := os.Stat(filepath.Join(a.store.Root(), "confirmed")); err != nil {
+		t.Fatalf("Init must materialize a confirmed pointer on a fresh stick: %v", err)
+	}
+	if got := a.store.Confirmed(); got != slots.SlotA {
+		t.Fatalf("confirmed = %s, want A", got)
+	}
+
+	// First update flips active to B. Because confirmed is a real file (A), a
+	// follow-up update still targets B and never A.
+	src := filepath.Join(t.TempDir(), "app")
+	os.WriteFile(src, []byte("#!/bin/sh\nexit 0\n"), 0o755)
+	_ = a.Dispatch([]byte(fmt.Sprintf(`{"cmd":"app.update","args":{"src":%q}}`, src)))
+	if got := a.store.Active(); got != slots.SlotB {
+		t.Fatalf("active = %s, want B", got)
+	}
+	if got := a.store.Confirmed(); got != slots.SlotA {
+		t.Errorf("confirmed = %s, want A (must not follow active once flipped)", got)
+	}
+}
+
 func TestAppActivate(t *testing.T) {
 	a := testAgent(t)
 	_ = a.store.Init()

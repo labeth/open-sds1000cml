@@ -4,9 +4,11 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 
+	"open-sds/ota/internal/fdinherit"
 	"open-sds/ota/internal/slots"
 )
 
@@ -268,7 +270,8 @@ func TestSuperviseAdoptedTornDownByControl(t *testing.T) {
 	}
 }
 
-func TestSuperviseAdoptedKillsWhenNoHealthEverArrives(t *testing.T) {
+func TestSuperviseAdoptedKillsAfterGraceWhenNoHealthArrives(t *testing.T) {
+	t.Setenv("OTA_APP_GRACE", "0.8")
 	a := testAgent(t)
 	cmd := exec.Command("sleep", "30")
 	if err := cmd.Start(); err != nil {
@@ -276,14 +279,21 @@ func TestSuperviseAdoptedKillsWhenNoHealthEverArrives(t *testing.T) {
 	}
 	go cmd.Wait()
 	pid := cmd.Process.Pid
-	// No health token: superviseAdopted backdates started by an hour, so the
-	// grace deadline has long passed and the first verdict kills it.
+	// No health token ever arrives. The adopted app gets the normal AppGrace
+	// from adoption (started = now, NOT a backdated already-expired deadline);
+	// only once that grace lapses without a first report is it torn down.
+	start := time.Now()
 	done := make(chan struct{})
 	go func() { a.superviseAdopted(pid); close(done) }()
 	select {
 	case <-done:
 	case <-time.After(10 * time.Second):
-		t.Fatal("unhealthy adopted app was not torn down")
+		t.Fatal("unhealthy adopted app was not torn down after grace")
+	}
+	// A backdated started would have killed it on the very first tick (~500ms,
+	// before the 800ms grace). Honoring the grace means it survives past it.
+	if elapsed := time.Since(start); elapsed < 700*time.Millisecond {
+		t.Errorf("adopted app torn down after %s — grace was not honored (backdated?)", elapsed)
 	}
 	st := appOf(a)
 	if st.Fails != 1 {
@@ -291,6 +301,47 @@ func TestSuperviseAdoptedKillsWhenNoHealthEverArrives(t *testing.T) {
 	}
 	if !strings.HasPrefix(st.LastExit, "adopted:") {
 		t.Errorf("LastExit = %q, want an adopted: reason", st.LastExit)
+	}
+}
+
+// A self-update that adopts an app mid-startup (before its first health token)
+// must NOT kill the still-initializing healthy app: it gets the full AppGrace
+// from adoption, not a backdated deadline that expires on the first tick.
+func TestSuperviseAdoptedGivesStartingAppTheFullGrace(t *testing.T) {
+	t.Setenv("OTA_APP_GRACE", "5")
+	t.Setenv("OTA_HEALTH_TIMEOUT", "5")
+	a := testAgent(t)
+	cmd := exec.Command("sleep", "30")
+	if err := cmd.Start(); err != nil {
+		t.Fatal(err)
+	}
+	go cmd.Wait()
+	pid := cmd.Process.Pid
+	defer syscall.Kill(pid, syscall.SIGKILL)
+	// No token yet: the app is still coming up (withholds the token until >=3
+	// coherent frames). Adoption must give it grace, not a spurious failure.
+	os.WriteFile(a.pidPath(appPidFile), []byte(itoa64(int64(pid))+"\n"), 0o644)
+
+	done := make(chan struct{})
+	go func() { a.superviseAdopted(pid); close(done) }()
+
+	// Comfortably inside the 5s grace: the app must still be alive and uncharged.
+	time.Sleep(1500 * time.Millisecond)
+	if !fdinherit.Alive(pid) {
+		t.Fatal("adopted app was killed during its startup grace window")
+	}
+	if f := appOf(a).Fails; f != 0 {
+		t.Errorf("Fails = %d, want 0 (no spurious failure charged during grace)", f)
+	}
+
+	// Tear down cleanly via a control op (the adopted-app teardown path).
+	if err := a.ctlRequest("stop", 5*time.Second); err != nil {
+		t.Fatalf("ctl stop on adopted app: %v", err)
+	}
+	select {
+	case <-done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("superviseAdopted did not return after ctl stop")
 	}
 }
 

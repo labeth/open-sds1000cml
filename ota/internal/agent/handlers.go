@@ -260,12 +260,13 @@ func hAppUpdate(a *Agent, args json.RawMessage) (any, error) {
 			return nil, fmt.Errorf("app.update: sha256 mismatch (got %s)", got)
 		}
 	}
-	target := slots.Other(a.store.Active())
-	sum, err := a.store.Install(target, p.Src)
+	// Install into the slot that is NOT the confirmed known-good one and flip
+	// active to it, atomically. Targeting Other(Confirmed()) — rather than
+	// Other(Active()) — means a second update that lands before the first has
+	// gone stable (active != confirmed) overwrites the still-un-confirmed slot,
+	// never the confirmed binary rollbackIfNeeded needs to revert to.
+	target, sum, err := a.store.InstallUpdate(p.Src)
 	if err != nil {
-		return nil, err
-	}
-	if err := a.store.SetActive(target); err != nil {
 		return nil, err
 	}
 	a.clearEmergency()

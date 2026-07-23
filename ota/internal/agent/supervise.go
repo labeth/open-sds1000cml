@@ -138,12 +138,28 @@ func (a *Agent) orphanAppPid() int {
 // or control request tears it down so the normal child path takes over.
 func (a *Agent) superviseAdopted(pid int) {
 	a.log.Printf("adopted running app pid=%d from previous agent generation", pid)
-	h := &healthWatcher{path: a.cfg.HealthPath(), started: time.Now().Add(-time.Hour)}
-	// The adopted app may have reported healthy long ago; seed by polling once
-	// and treating existing content as the baseline. First change marks it
-	// healthy; absence of change is judged against staleness from now.
+	h := &healthWatcher{path: a.cfg.HealthPath()}
+	// Seed the baseline by polling once. Two cases, distinguished by whether a
+	// health token already exists:
+	//
+	//   - token present: the adopted app reported healthy before we adopted it.
+	//     It is past the first-report phase, so backdate started (a missing
+	//     first report must not re-trigger the grace deadline) and judge it on
+	//     staleness from now.
+	//   - token absent: an agent self-update landed while the app is still
+	//     starting up (it withholds the token until >=3 coherent frames). Give
+	//     it the normal AppGrace from now — backdating here would make the very
+	//     first verdict() exceed the grace deadline and KILL a healthy, still-
+	//     initializing app, charging a spurious failure toward the rollback
+	//     threshold.
 	h.poll()
-	h.healthyOnce = h.lastSig != ""
+	if h.lastSig != "" {
+		h.healthyOnce = true
+		h.started = time.Now().Add(-time.Hour)
+	} else {
+		h.healthyOnce = false
+		h.started = time.Now()
+	}
 	h.lastChange = time.Now()
 	a.setAppState(func(s *appState) {
 		*s = appState{Running: true, Adopted: true, PID: pid, StartedAt: time.Now().Format(time.RFC3339)}

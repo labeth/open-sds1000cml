@@ -3,7 +3,9 @@ package slots
 import (
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
+	"time"
 )
 
 func mkbin(t *testing.T, path, content string) {
@@ -78,6 +80,88 @@ func TestInstallAndStatus(t *testing.T) {
 	}
 	if _, ok := st.Binaries[SlotA]; ok {
 		t.Error("status should not list empty slot A")
+	}
+}
+
+// TestConcurrentUpdateAndRollback drives the OTA update path (InstallUpdate:
+// read confirmed -> install the non-confirmed slot -> SetActive) concurrently
+// with rollback-style pointer writes, mirroring the RPC/handler goroutine
+// racing the supervisor. Run under -race. Without the Store mutex the update's
+// read-modify-write interleaves with the rollback writes and two updaters
+// collide on the same slot's temp file (dst+".tmp"), corrupting the install;
+// serialized, every op succeeds and the pointers stay valid.
+func TestConcurrentUpdateAndRollback(t *testing.T) {
+	s := New(t.TempDir())
+	if err := s.Init(); err != nil {
+		t.Fatal(err)
+	}
+	src := filepath.Join(t.TempDir(), "app")
+	mkbin(t, src, "#!/bin/sh\nexit 0\n")
+
+	var wg sync.WaitGroup
+	stop := make(chan struct{})
+	errs := make(chan error, 128)
+
+	// Updaters: the app.update path.
+	for i := 0; i < 4; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for {
+				select {
+				case <-stop:
+					return
+				default:
+				}
+				slot, sum, err := s.InstallUpdate(src)
+				if err != nil {
+					errs <- err
+					return
+				}
+				// The installed target binary must be intact right after install.
+				if got, err := FileSHA256(s.BinPath(slot)); err != nil || got != sum {
+					errs <- err
+					return
+				}
+			}
+		}()
+	}
+	// Rollback-style writers: the supervisor flipping active/confirmed.
+	for i := 0; i < 4; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			slot := SlotA
+			if i%2 == 0 {
+				slot = SlotB
+			}
+			for {
+				select {
+				case <-stop:
+					return
+				default:
+				}
+				_ = s.SetActive(slot)
+				_ = s.SetConfirmed(Other(slot))
+				_ = s.Status()
+			}
+		}(i)
+	}
+
+	time.Sleep(300 * time.Millisecond)
+	close(stop)
+	wg.Wait()
+	close(errs)
+	for err := range errs {
+		t.Errorf("concurrent store op failed: %v", err)
+	}
+
+	// Pointers must never end torn — always a valid slot.
+	if a := s.Active(); a != SlotA && a != SlotB {
+		t.Errorf("active pointer torn: %q", a)
+	}
+	if c := s.Confirmed(); c != SlotA && c != SlotB {
+		t.Errorf("confirmed pointer torn: %q", c)
 	}
 }
 
