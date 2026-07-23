@@ -51,9 +51,15 @@ build() {
   echo ">> building OTA tree + agent (make -C ota dist) ..."
   ( cd "$here" && make dist >/dev/null )
   [ -f "$tree/startup.sh" ] && [ -d "$tree/ota" ] || die "make dist did not produce $tree"
-  echo ">> building the clean-room app (make -C app app) ..."
-  ( cd "$repo/app" && make app >/dev/null )
-  [ -f "$appbin" ] || die "app build failed ($appbin)"
+  echo ">> building the clean-room app (make -C app app-release — embeds the FPGA bitstream) ..."
+  # MUST be app-release, not app: a ready-to-run stick boots on a FACTORY scope
+  # whose fabric still carries the vendor bitstream, so the app has to reconfigure
+  # the FPGA itself, which needs the embedded bitstream (-tags withbitstream). A
+  # plain `make app` has no bitstream, so fpgaload.Bringup FATAL-refuses on every
+  # cold-boot factory unit and the stick never runs. app-release fails loudly if
+  # fpga/standard/acq.rbf is absent (build it first: cd fpga && make bitstream).
+  ( cd "$repo/app" && make app-release >/dev/null )
+  [ -f "$appbin" ] || die "app-release build failed ($appbin) — build the FPGA bitstream first: (cd fpga && make bitstream)"
   echo ">> building the emergency backstop (make -C ota stubapp) ..."
   ( cd "$here" && make stubapp >/dev/null )
   [ -f "$stubbin" ] || die "stubapp build failed ($stubbin)"

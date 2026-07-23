@@ -69,3 +69,29 @@ through the normal register interface, where the fabric can never answer.
 per-register flag) so codegen does not emit a fabric read-mux case for
 config-port-only registers, and document that CONF_DONE is read via the ioctl
 config port only.
+
+## 5. Release pipeline needs a real bitstream to build a bootable stick — release
+
+`ota/mkstick.sh` now builds the app with `make app-release` (embeds
+`fpga/standard/acq.rbf` so the stick can reconfigure a cold-boot factory fabric);
+it fails loudly if the `.rbf` is absent. But the `.rbf` is an uncommitted hardware
+build artifact and the CI runner has no Quartus, so **the CI release job
+(`release.yml` → `mkstick.sh`) cannot currently produce a bootable stick and will
+fail** until one of: (a) a Quartus-capable release runner builds the bitstream
+first, or (b) a final-pin `acq.rbf` is committed/published as a release input.
+Failing loud is intentional — it is strictly better than the previous behavior
+(silently shipping a `make app` binary that FATAL-refuses on every factory unit).
+This is gated on the physical bench producing a final pin assignment.
+
+## 6. Bench-confirm native-fast NORM completion timing — bench-gate
+
+`waitCapture` returns a native-fast frame on `filled && (anchored || sawTrig || !norm)`,
+i.e. it treats the comparator edge (`sawTrig`) as sufficient completion evidence
+alongside `STATUS_A.DONE`. The RTL sets `DONE` only at the exact post-trigger count
+(`post_count == posttrig_work`), which lags `sawTrig` by the post-fill time. This is
+safe at the default poll (native-fast fill 41–82 µs < `pollEvery` 150 µs, so `DONE`
+always accompanies `sawTrig` at the first meaningful poll), but it is a timing
+assumption: with a much shorter `pollEvery` a poll could land in the `sawTrig`→`DONE`
+window and halt a partially-filled deep record. Confirm on the bench that `DONE`
+accompanies `sawTrig` for native-fast NORM; if not, require `anchored` (DONE) rather
+than `sawTrig` for the NORM native-fast return.
