@@ -221,6 +221,15 @@ func singleBinDFT(sig []uint8, f0, sampleS float64) (re, im float64) {
 		re += v * cosk
 		im -= v * sink
 		cosk, sink = cosk*c-sink*s, sink*c+cosk*s
+		// Renormalize the rotation to unit magnitude periodically: the recurrence
+		// magnitude drifts as (1±eps)^i, which is negligible for 8-bit data over a
+		// 20k record but grows unbounded with depth/width. A hypot every 1024
+		// samples bounds it at near-zero cost.
+		if i&0x3FF == 0x3FF {
+			if h := math.Hypot(cosk, sink); h != 0 {
+				cosk, sink = cosk/h, sink/h
+			}
+		}
 	}
 	return re, im
 }

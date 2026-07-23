@@ -170,3 +170,38 @@ func TestBodeAccumulationBinsByFrequency(t *testing.T) {
 		t.Errorf("re-visiting 5 MHz should update, not add a bin (now %d)", len(e.BodePoints()))
 	}
 }
+
+// singleBinDFT's incremental rotation must match a direct-trig reference over a
+// deep record — the periodic renormalization keeps the recurrence from drifting.
+func TestSingleBinDFTMatchesDirect(t *testing.T) {
+	const n = 20480
+	const sampleS = 1e-8 // 100 MS/s
+	const f0 = 1e6
+	sig := make([]uint8, n)
+	for i := range sig { // a real tone + offset, 8-bit
+		sig[i] = uint8(128 + 60*math.Sin(2*math.Pi*f0*float64(i)*sampleS))
+	}
+	re, im := singleBinDFT(sig, f0, sampleS)
+
+	// direct reference: a fresh trig call per sample (no accumulation)
+	var sum float64
+	for _, v := range sig {
+		sum += float64(v)
+	}
+	mean := sum / n
+	var reRef, imRef float64
+	for i := 0; i < n; i++ {
+		ang := 2 * math.Pi * f0 * float64(i) * sampleS
+		v := float64(sig[i]) - mean
+		reRef += v * math.Cos(ang)
+		imRef -= v * math.Sin(ang)
+	}
+	magRef := math.Hypot(reRef, imRef)
+	if magRef == 0 {
+		t.Fatal("reference magnitude is zero")
+	}
+	relErr := math.Hypot(re-reRef, im-imRef) / magRef
+	if relErr > 1e-6 {
+		t.Fatalf("incremental DFT drifted from direct: rel err %g (re=%g/%g im=%g/%g)", relErr, re, reRef, im, imRef)
+	}
+}
