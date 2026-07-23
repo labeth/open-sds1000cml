@@ -435,7 +435,9 @@ func (e *Engine) rollUpdate(norm bool) {
 	f.SampleS = e.band.CaptureIntervalNs() * 1e-9
 	f.Norm = norm
 
-	e.commitStats(true, haltOK, p, 0, 0, 0)
+	// Report the real coherence, not a hardcoded true (roll's record must actually
+	// freeze for the drain to carry data).
+	e.commitStats(f.Coherent, haltOK, p, 0, 0, 0)
 	e.zoneMaskUncomparable() // roll frames free-run untriggered: zone/mask can't run
 	e.commitPublish(f)
 	e.resetDeadRuns()

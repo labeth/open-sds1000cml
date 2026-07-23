@@ -319,7 +319,8 @@ func (e *Engine) SetStreamMode(on bool) bool {
 // capture always drains the FULL deep record so the one frame you keep carries
 // everything to zoom out into — frame rate is irrelevant for a single shot.
 func (e *Engine) effDrainCols() int {
-	if e.band.Kind() == KindDecimated {
+	switch e.band.Kind() {
+	case KindDecimated:
 		if e.singleArmed.Load() {
 			return deepRecord
 		}
@@ -331,6 +332,13 @@ func (e *Engine) effDrainCols() int {
 			d = deepRecord
 		}
 		return d
+	case KindRoll:
+		// Roll drains rollBatch samples per time-boxed update (rollUpdate), NOT
+		// the rollWin display ring. Sizing the fabric record to rollBatch keeps
+		// pretrig (= rollBatch/2) reachable within the roll budget so the record
+		// coheres — a rollWin-sized record has pretrig=rollWin/2 that the budget
+		// can't fill, leaving the band a flat coherent-gated blank.
+		return rollBatch
 	}
 	return e.band.DrainCols()
 }

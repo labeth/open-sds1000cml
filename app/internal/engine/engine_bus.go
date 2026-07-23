@@ -58,9 +58,17 @@ func (e *Engine) sleepBeating(d time.Duration) {
 
 // runWord composes the RUN register word: MODE (AUTO/NORM) plus the RUN bit
 // (spec 03 §5.1). It replaces the vendor run-word magic (0x0001/0x0003).
+//
+// Envelope/roll bands ALWAYS arm in AUTO, regardless of the user's NORM selection:
+// they publish every frame and are never fabric-trigger-centred, and an aliased /
+// flat / off-level signal (the exact case the min/max band exists for) can never
+// satisfy a NORM trigger — under NORM the record would never cohere and both the
+// raw BURST and the envelope channel would read coherent-gated zeros (a blank
+// band). Software still decides triggered-vs-min/max per frame from the drained
+// record, so forcing AUTO here costs nothing.
 func (e *Engine) runWord() uint16 {
 	mode := modeAuto
-	if e.normNow() {
+	if k := e.band.Kind(); e.normNow() && k != KindEnvelope && k != KindRoll {
 		mode = modeNorm
 	}
 	return iface.RunWithMode(mode) | iface.RunWithRun(true)

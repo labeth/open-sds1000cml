@@ -359,6 +359,60 @@ func TestBringUpDeepMemorySizesRecord(t *testing.T) {
 	}
 }
 
+// Envelope/roll bands must arm in AUTO even when the user selected NORM — a
+// NORM trigger is impossible for a flat/aliased min/max band, so under NORM the
+// record would never cohere and the band would be a coherent-gated blank. A
+// decimated band under NORM must still program NORM.
+func TestEnvelopeRollForceAuto(t *testing.T) {
+	autoRun := iface.RunWithMode(modeAuto) | iface.RunWithRun(true)
+	normRun := iface.RunWithMode(modeNorm) | iface.RunWithRun(true)
+	cases := []struct {
+		name string
+		tdiv float64
+		want uint16
+	}{
+		{"envelope", 5e-3, autoRun},
+		{"roll", 100e-3, autoRun},
+		{"decimated", 500e-6, normRun}, // control: NORM is honored here
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			fb := newFakeBus()
+			e, _ := newTestEngine(t, fb)
+			e.SetNorm(true) // user selects NORM
+			b, ok := PlanTdiv(tc.tdiv)
+			if !ok {
+				t.Fatalf("PlanTdiv(%g) rejected", tc.tdiv)
+			}
+			e.band = b
+			fb.snapWrites()
+			e.bringUp()
+			var run uint16
+			found := false
+			for _, w := range fb.snapWrites() {
+				if w.sel == selRun {
+					run, found = w.val, true
+				}
+			}
+			if !found {
+				t.Fatal("bringUp wrote no RUN word")
+			}
+			if run != tc.want {
+				t.Fatalf("%s under NORM programmed RUN=%#04x, want %#04x", tc.name, run, tc.want)
+			}
+		})
+	}
+}
+
+// The programmed envelope column count must fit the fabric FIFO (2048 words / 6
+// words-per-column = 341 columns); above that the fabric drops the tail.
+func TestEnvFabricColsFitsFIFO(t *testing.T) {
+	const fifoCols = 2048 / 6 // 341
+	if envFabricCols > fifoCols {
+		t.Fatalf("envFabricCols=%d exceeds the fabric FIFO capacity of %d columns", envFabricCols, fifoCols)
+	}
+}
+
 func TestArmSequence(t *testing.T) {
 	fb := newFakeBus()
 	e, _ := newTestEngine(t, fb)
