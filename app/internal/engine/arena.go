@@ -70,8 +70,19 @@ func newArena(capacity int) *arena {
 	return &arena{write: mk(), ready: mk(), read: mk()}
 }
 
-// Write returns the producer's private slot. Owner-only.
-func (a *arena) Write() *Frame { return a.write }
+// Write returns the producer's private slot. Owner-only. It clears the
+// mode-specific metadata that only SOME producers set, so a reused slot can never
+// carry a stale value into a producer that leaves the field untouched (the arena
+// contract: set-or-clear ALL metadata every frame). 0 is the correct "not set"
+// default for each — StreamSeq 0 = not a stream frame, TrigPos 0 = no latch — and
+// any producer that uses one overwrites it. Without this, a stream window leaks
+// its StreamSeq/WindowNs/GapNs into the next non-stream frame (wrong decode duty
+// readout) and a triggered frame leaks its TrigPos into the next stitch window.
+func (a *arena) Write() *Frame {
+	f := a.write
+	f.StreamSeq, f.WindowNs, f.GapNs, f.TrigPos = 0, 0, 0, 0
+	return f
+}
 
 // Publish swaps the drained write slot into ready. The mutex guards only the
 // pointer swap — never held across bus access. If the consumer hasn't taken

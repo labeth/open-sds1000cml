@@ -2,6 +2,22 @@ package engine
 
 import "testing"
 
+// Write() must hand back a slot with the mode-specific metadata cleared, so a
+// stream window's StreamSeq/WindowNs/GapNs (or a triggered frame's TrigPos) can't
+// leak into the next producer that leaves those fields untouched.
+func TestArenaWriteClearsModeMetadata(t *testing.T) {
+	a := newArena(16)
+	f := a.Write()
+	f.StreamSeq, f.WindowNs, f.GapNs, f.TrigPos = 5, 100, 50, 7 // as if a stream+trig frame filled it
+	// The next producer takes its private slot via Write(); it must be clean of
+	// the mode-specific metadata regardless of what the previous frame set.
+	g := a.Write()
+	if g.StreamSeq != 0 || g.WindowNs != 0 || g.GapNs != 0 || g.TrigPos != 0 {
+		t.Fatalf("Write() left stale metadata: StreamSeq=%d WindowNs=%d GapNs=%d TrigPos=%d",
+			g.StreamSeq, g.WindowNs, g.GapNs, g.TrigPos)
+	}
+}
+
 func TestArenaPublishConsume(t *testing.T) {
 	a := newArena(16)
 
