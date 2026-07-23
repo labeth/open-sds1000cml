@@ -221,22 +221,11 @@ func (b Band) Decim() uint32 {
 	return d
 }
 
-// capWindow is the record window (pre+post samples) the FSM programs, clamped to
-// the C2 capture depth: pre+post <= REC_DEPTH − MARGIN (the exact-window
-// invariant, fpga doc §4.4). The band drains at most this many samples.
-func (b Band) capWindow() int {
-	n := b.DrainCols()
-	if n > deepRecord-2 {
-		n = deepRecord - 2
-	}
-	return n
-}
-
-// PreTrig / PostTrig are the programmable pre/post-trigger depths (PRETRIG_*,
-// POSTTRIG_*): the record is split around the trigger mark. Software trigger
-// positioning (SetTrigPosFrac) then re-windows within the captured record.
-func (b Band) PreTrig() uint32  { return uint32(b.capWindow() / 2) }
-func (b Band) PostTrig() uint32 { return uint32(b.capWindow() - b.capWindow()/2) }
+// The pre/post-trigger record split (PRETRIG_*, POSTTRIG_*) lives in bringUp
+// (engine_capture.go): it splits capDepth() — effDrainCols() clamped to the
+// exact-window ceiling REC_DEPTH-MARGIN — around the trigger mark. The former
+// band-level capWindow/PreTrig/PostTrig helpers were removed when the deep-memory
+// fix moved that split inline, so there is no second copy of the invariant to drift.
 
 // Divisor is the 32-bit NOMINAL decimation divisor of the table row (reporting).
 func (b Band) Divisor() uint32 { return uint32(b.Lo) | uint32(b.Hi)<<16 }

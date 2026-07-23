@@ -309,7 +309,7 @@ func TestBringUpWriteOrder(t *testing.T) {
 	e, _ := newTestEngine(t, fb)
 	e.bringUp()
 	// Spec 03 §5.1 — idle, RUN{mode+run}, then DECIM / PRE / POST (lo,hi each).
-	// Default band 500 µs/div: decim 0x0190, capWindow decimDrain=6144 → pre/post
+	// Default band 500 µs/div: decim 0x0190, capDepth() = decimDrain = 6144 → pre/post
 	// 0x0C00 each; RUN = mode AUTO (0) + run bit = 0x0004.
 	wantWrites(t, fb.snapWrites(), []wr{
 		{1, selOpcode, opReset},
