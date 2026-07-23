@@ -1,6 +1,7 @@
 package vxi11srv
 
 import (
+	"bytes"
 	"encoding/binary"
 	"fmt"
 	"net"
@@ -127,6 +128,31 @@ func TestLinkWriteRead(t *testing.T) {
 	errc, reason, data := tc.read(t, lid, 0x400000)
 	if errc != 0 || reason != reasonEND || string(data) != "Siglent,TEST,0,0\n" {
 		t.Fatalf("read: err=%d reason=%d data=%q", errc, reason, data)
+	}
+}
+
+// A crafted oversized record must be REJECTED by the size bound, never handed to
+// make([]byte, n). On the 32-bit ARM target the old additive guard len(msg)+n
+// wrapped negative for a two-fragment attack (small non-final, then ~0x7fffffff),
+// bypassing the bound and driving a ~2GB allocation -> OOM on a pre-auth conn.
+func TestReadRecordRejectsOversized(t *testing.T) {
+	be := func(v uint32) []byte {
+		b := make([]byte, 4)
+		binary.BigEndian.PutUint32(b, v)
+		return b
+	}
+	// single huge non-final fragment
+	if _, err := readRecord(bytes.NewReader(be(0x7fffffff))); err == nil {
+		t.Fatal("oversized single fragment accepted; want rejection")
+	}
+	// two-fragment attack: 1-byte non-final, then a huge fragment. The additive
+	// guard wrapped negative here on int32; the remaining-budget guard rejects it.
+	var b2 bytes.Buffer
+	b2.Write(be(0x00000001)) // non-final, length 1
+	b2.WriteByte(0xAA)
+	b2.Write(be(0x7fffffff)) // huge second fragment
+	if _, err := readRecord(&b2); err == nil {
+		t.Fatal("two-fragment overflow accepted; want rejection")
 	}
 }
 

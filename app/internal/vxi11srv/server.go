@@ -109,8 +109,15 @@ func readRecord(r io.Reader) ([]byte, error) {
 		}
 		mark := binary.BigEndian.Uint32(hdr[:])
 		n := int(mark & 0x7fffffff)
-		if len(msg)+n > maxRecord {
-			return nil, fmt.Errorf("vxi11: record too large (%d bytes)", len(msg)+n)
+		// Overflow-safe bound (same hardening as opaque()/skipAuth): on the 32-bit
+		// ARM target `int` is 32-bit, so the additive form `len(msg)+n` wraps
+		// negative for a crafted fragment length near 0x7fffffff and would slip the
+		// guard, driving a multi-GB make([]byte, n) -> OOM on a pre-auth connection.
+		// Compare against the REMAINING budget instead: the loop keeps len(msg) <=
+		// maxRecord, so maxRecord-len(msg) is always in [0, maxRecord] and n (>=0,
+		// 31-bit) can be compared without overflow.
+		if n > maxRecord-len(msg) {
+			return nil, fmt.Errorf("vxi11: record too large (%d + %d bytes)", len(msg), n)
 		}
 		frag := make([]byte, n)
 		if _, err := io.ReadFull(r, frag); err != nil {
