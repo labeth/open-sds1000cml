@@ -183,7 +183,20 @@ func (e *Engine) envFrame(norm bool) {
 	e.pace(start)
 }
 
-const envRecW = 3 // envelope record stride, words (iface.EnvelopeRecord, 3 words)
+// envRecW is the envelope record stride in words, sourced from the generated
+// channel table (iface.ChannelPorts) rather than hand-coded, so a schema change
+// to the envelope record width can't silently desync the app's per-record stride
+// from the generated EnvelopeRecord codec. Resolved once at init (not per frame).
+var envRecW = envRecordWords()
+
+func envRecordWords() int {
+	for _, p := range iface.ChannelPorts {
+		if p.DataSel == selEnvData {
+			return p.RecordWords
+		}
+	}
+	return 3 // envelope is a wired channel; this fallback should be unreachable
+}
 
 // envSnapshotChannel reads the fabric envelope result channel (ENV_COUNT record
 // count + ENV_DATA packed records, fpga doc §6) into e.envChanBuf. It MUST be
@@ -212,7 +225,7 @@ func (e *Engine) envSnapshotChannel() (int, bool) {
 // the frame's per-column (min,max) band. Safe to call after the re-arm (it works
 // on the captured buffer, not the live fabric).
 func (e *Engine) envFoldChannel(f *Frame, n int) {
-	const recW = envRecW
+	recW := envRecW
 	for c := 0; c < envDisplayCols; c++ {
 		f.EnvMin[c], f.EnvMax[c] = 0xff, 0
 		f.EnvMin2[c], f.EnvMax2[c] = 0xff, 0

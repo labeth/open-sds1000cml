@@ -39,10 +39,10 @@ drain:
 	// LED latch strobe (spec 08 §5): one indivisible 4-write burst, never
 	// interleaved with any other CS3 write.
 	if ledDirty {
-		e.w3(0x0b, 0)
-		e.w3(0x0a, ledWord>>8)
-		e.w3(0x09, ledWord&0xff)
-		e.w3(0x0b, 1)
+		e.w3(cs3LedStrobe, 0)
+		e.w3(cs3LedHi, ledWord>>8)
+		e.w3(cs3LedLo, ledWord&0xff)
+		e.w3(cs3LedStrobe, 1)
 	}
 
 	// Vertical offset (spec 06 §5.3): low byte, then self-latching high

@@ -31,8 +31,9 @@ func (e *Engine) Run() {
 
 	// Build-ID handshake (spec 03 §6): refuse to drive a fabric whose build-ID
 	// or VERSION magic differs from the compiled iface — a mispaired build, not
-	// a negotiation. The bus layer already checked this at New; the engine
-	// re-checks so a wedged/re-flashed fabric is caught before the first arm.
+	// a negotiation. Boot already verified/reconfigured the fabric (fpgaload.
+	// Bringup — bus.New itself no longer verifies); the engine re-checks here so a
+	// wedged/re-flashed fabric is caught before the first arm.
 	if err := iface.Verify(e.b.Read); err != nil {
 		e.logf("engine: fabric identity gate failed (%v) — refusing to drive", err)
 		e.mu.Lock()
