@@ -67,6 +67,12 @@ type fakeBus struct {
 	envCount    int      // ENV_COUNT record count
 	envPos      int
 	envOverflow bool
+	// envCoherent models the fabric's coherent gate: ENV_DATA (like the raw
+	// BURST record) reads back the frozen fold only while coherent, which the
+	// fabric sets on OP_HALT and CLEARS on OP_GO (the re-arm also wipes the
+	// envelope FIFO). Reading ENV_DATA after a re-arm returns coherent-gated
+	// zeros — the exact failure the envelope-ordering bug produces.
+	envCoherent bool
 }
 
 func newFakeBus() *fakeBus {
@@ -157,6 +163,9 @@ func (f *fakeBus) Read(plane iface.Plane, sel uint16) (uint16, error) {
 		}
 		return w, nil
 	case iface.SelENV_DATA:
+		if !f.envCoherent { // coherent-gated: re-armed fabric returns zeros
+			return 0, nil
+		}
 		if f.envPos < len(f.envWords) {
 			v := f.envWords[f.envPos]
 			f.envPos++
@@ -174,17 +183,23 @@ func (f *fakeBus) Write(plane iface.Plane, sel, val uint16) error {
 	if plane == iface.CS1 && sel == iface.SelOPCODE {
 		switch val {
 		case opGo:
+			// Re-arm wipes the frozen record + envelope FIFO and drops coherent:
+			// any ENV_DATA/record read after this returns coherent-gated zeros.
 			f.armed, f.halted, f.fill = true, false, 0
 			f.armCount++
 			f.burstN = 0
+			f.envPos = 0
+			f.envCoherent = false
 		case opHalt:
 			// Halt freezes the record and resets the read pointer: each frame
-			// drains the wave from sample 0.
+			// drains the wave from sample 0, and the fold becomes coherent.
 			f.halted = true
 			f.burstN = 0
 			f.envPos = 0
+			f.envCoherent = true
 		case opReset:
 			f.armed, f.halted, f.fill = false, false, 0
+			f.envCoherent = false
 		}
 	}
 	return nil
@@ -212,7 +227,7 @@ func (f *fakeBus) ChannelInto(sel uint16, dst []uint16, n int) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	for i := 0; i < n; i++ {
-		if f.envPos < len(f.envWords) {
+		if f.envCoherent && f.envPos < len(f.envWords) { // coherent-gated
 			dst[i] = f.envWords[f.envPos]
 			f.envPos++
 		} else {

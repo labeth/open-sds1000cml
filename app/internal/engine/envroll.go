@@ -107,7 +107,6 @@ func (e *Engine) envFrame(norm bool) {
 	capCols := e.band.DrainCols() // display span + deadline-gated centring margin
 	winCols := e.band.WinCols()   // the 10-division display span
 	e.drain(f, capCols)
-	e.armEngine() // refill during the reduction
 
 	disc := f.C1[:capCols]
 	if int(e.trigSrc.Load()) == 1 {
@@ -125,6 +124,17 @@ func (e *Engine) envFrame(norm bool) {
 		edgeX = centerCross(disc, td, e.trigRising.Load())
 	}
 	triggered := edgeX >= 0
+
+	// Snapshot the fabric envelope channel while the record is STILL COHERENT —
+	// i.e. before the re-arm below. OP_GO wipes the envelope FIFO and drops the
+	// coherent gate, so a read after re-arm returns zeros (the min/max primary
+	// path would go dead or corrupt). Only needed for the untriggered min/max band.
+	envN, envOK := 0, false
+	if !triggered {
+		envN, envOK = e.envSnapshotChannel()
+	}
+
+	e.armEngine() // now safe to re-arm: refill during the reduction
 
 	f.Valid = capCols
 	f.WinCols = winCols
@@ -145,9 +155,12 @@ func (e *Engine) envFrame(norm bool) {
 		f.EnvCols = 0
 		f.Trigd = true
 	} else {
-		// Min/max band: prefer the fabric's envelope channel; fall back to the
-		// software reducer over phase-scattered drained windows.
-		if !e.envConsumeChannel(f) {
+		// Min/max band: prefer the fabric's envelope channel (snapshotted above
+		// while coherent); fall back to the software reducer over phase-scattered
+		// drained windows when the fabric channel was empty.
+		if envOK {
+			e.envFoldChannel(f, envN)
+		} else {
 			off := (capCols - winCols) / 2
 			e.envPush(f, off, winCols)
 			e.envReduce(f)
@@ -170,27 +183,36 @@ func (e *Engine) envFrame(norm bool) {
 	e.pace(start)
 }
 
-// envConsumeChannel fills the frame's per-column (min,max) band from the
-// fabric's envelope result channel (ENV_COUNT record count + ENV_DATA packed
-// records, fpga doc §6). Returns false when the channel is empty, so the caller
-// runs the software reducer fallback. An overflow flag is honored implicitly:
-// the newest records win the fold.
-func (e *Engine) envConsumeChannel(f *Frame) bool {
+const envRecW = 3 // envelope record stride, words (iface.EnvelopeRecord, 3 words)
+
+// envSnapshotChannel reads the fabric envelope result channel (ENV_COUNT record
+// count + ENV_DATA packed records, fpga doc §6) into e.envChanBuf. It MUST be
+// called while the record is still coherent — i.e. BEFORE the OP_GO re-arm, which
+// wipes the envelope FIFO and drops the coherent gate (so a post-re-arm read
+// returns coherent-gated zeros). Returns the record count and whether any
+// records were captured; envFoldChannel then folds them into the frame.
+func (e *Engine) envSnapshotChannel() (int, bool) {
 	cw := e.r(selEnvCount)
 	n := int(iface.EnvCountCount(cw))
 	if n <= 0 {
-		return false
+		return 0, false
 	}
 	if n > envMaxRecords {
 		n = envMaxRecords
 	}
-	const recW = 3 // envelope record is 3 words (iface.EnvelopeRecord)
-	need := n * recW
+	need := n * envRecW
 	if len(e.envChanBuf) < need {
 		e.envChanBuf = make([]uint16, need)
 	}
 	e.b.ChannelInto(selEnvData, e.envChanBuf[:need], need)
+	return n, true
+}
 
+// envFoldChannel folds the n records already snapshotted into e.envChanBuf into
+// the frame's per-column (min,max) band. Safe to call after the re-arm (it works
+// on the captured buffer, not the live fabric).
+func (e *Engine) envFoldChannel(f *Frame, n int) {
+	const recW = envRecW
 	for c := 0; c < envDisplayCols; c++ {
 		f.EnvMin[c], f.EnvMax[c] = 0xff, 0
 		f.EnvMin2[c], f.EnvMax2[c] = 0xff, 0
@@ -233,7 +255,6 @@ func (e *Engine) envConsumeChannel(f *Frame) bool {
 	}
 	fillUnseen(f.EnvMin, f.EnvMax)
 	fillUnseen(f.EnvMin2, f.EnvMax2)
-	return true
 }
 
 // envPush copies the central [off:off+n] slice of the drained record into the
