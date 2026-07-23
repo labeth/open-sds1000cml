@@ -100,16 +100,18 @@ wait:           poll STATUS_A until DONE (NORM: real TRIG required; AUTO: DONE o
 halt:           Write OPCODE = OP_HALT ; read FILL twice (froze) — coherence telemetry
 drain:          slow/envelope band → ChannelInto(ENV_DATA)     (results, O(columns))
                 zoom / raw band     → BurstInto(c1,c2,n)        (raw, O(n), DMA-shaped)
-timestamp:      read TRIGPOS{idx,frac} → the edge position (replaces software centring)
+timestamp:      read TRIGPOS_HI.IDX → trigger-sample index (telemetry only; software centres)
 re-arm:         Write OPCODE = OP_GO   (fill resumes before the frame renders)
 publish:        arena.Publish()  (unchanged discipline)
 ```
 
-- **Software centring becomes the fallback, not the primary path.** With a trustworthy `TRIGPOS`
-  (fpga doc §4), native-fast frames are centred from the HW timestamp. The CPU `centerCross` /
-  `windowSlopeMatches` code is **re-homed** to serve (a) EDGE refinement when the fabric lacks a
-  discrimination tap and (b) the PULSE/SLOPE/VIDEO qualifiers, serial trigger, zone/mask, which
-  remain CPU-side now and move to fabric taps in v1/v2.
+- **Software centring stays the primary path; HW-TRIGPOS is telemetry.** The CPU `centerCross` /
+  `windowSlopeMatches` path centres every band and needs no bench trust in the HW interpolator.
+  `TRIGPOS_HI.IDX` is read only as telemetry (`Frame.TrigPos`); `TRIGPOS_LO.FRAC` is not read.
+  Promoting HW-TRIGPOS (fpga doc §4) to the centring source is a future, bench-gated change — until
+  then the shipping code centres in software. That same CPU code additionally serves (a) EDGE
+  refinement when the fabric lacks a discrimination tap and (b) the PULSE/SLOPE/VIDEO qualifiers,
+  serial trigger, zone/mask, which remain CPU-side now and move to fabric taps in v1/v2.
 - **Retire `quiet.Lock()` across the drain** (fabric static-freeze guarantee, fpga doc §7): the
   owner is still the sole bus toucher, but render/web/panel no longer pause for the drain because
   the frozen M9K is immune to memory-bus contention. Keep the quiet gate only where it still guards

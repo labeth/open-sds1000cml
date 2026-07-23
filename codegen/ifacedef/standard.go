@@ -126,7 +126,7 @@ func Standard() schema.Interface {
 				Regs: []schema.Register{
 					{Name: "XFORM_CTRL", Sel: 0x50, Plane: schema.CS1, Access: schema.RW, Sem: S,
 						Fields: []schema.Field{
-							{Name: "BYPASS0", Hi: 0, Lo: 0, Desc: "1=bypass transform stage 0 (the decimator)"},
+							{Name: "BYPASS0", Hi: 0, Lo: 0, Desc: "1=bypass the stage-0 in-line data transform (reserved identity slot today); no effect on decimation — sample rate is set only by DECIM"},
 							{Name: "BYPASS1", Hi: 1, Lo: 1, Desc: "1=bypass transform stage 1 (reserved identity slot)"},
 						},
 						Desc: "in-line transform-stage bypass"},

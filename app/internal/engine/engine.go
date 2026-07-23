@@ -104,7 +104,14 @@ const (
 	// full 40-80 ms wait budget, so 60 held frames is 5-8 s of frozen screen —
 	// far past what an AUTO display may freeze (fuzz-found at 500 µs/div).
 	autoLivenessMaxWait = 1500 * time.Millisecond
-	fillFull            = 0x7f0 // fill counter near the 11-bit max = record full
+	// fillFull is the AUTO free-run completion FALLBACK: only consulted when the
+	// fabric has NOT reported TRIG (a flat/wedged fabric), where early completion
+	// is harmless. FILL.COUNT is 11-bit (wrote_count[10:0], wraps every 2048), so
+	// this is a fill-progress fraction within that range, NOT a true record-full
+	// mark for a deep (20480) record — the engine deliberately caps fill-gated
+	// windows to envFillCap < 2048 (bands.go). Widening FILL.COUNT to a full
+	// sample count is a future enhancement (would allow deep fill-gating).
+	fillFull = 0x7f0
 	// native-fast re-capture cap is the tunable tuneMaxRetry (default 8); see engine.New
 
 	// TrigCodeMin/Max clamp the UI trigger-level DAC range (spec 05 §1.2).
@@ -171,7 +178,7 @@ type Stats struct {
 	MmapDrain    bool    `json:"mmap_drain"`
 	ETS          bool    `json:"ets"`
 	BandKind     string  `json:"band"`      // native-fast | decimated | envelope | roll
-	HaltMode     string  `json:"halt_mode"` // capture-halt | latch-no-halt
+	HaltMode     string  `json:"halt_mode"` // capture-halt | halt-per-update
 	TrigType     int     `json:"trig_type"` // 0=edge 1=pulse 2=slope 3=video
 	AcqMode      int     `json:"acq_mode"`  // 0=normal 1=average 2=eres 3=peak
 	AvgCount     int     `json:"avg_count"`

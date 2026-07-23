@@ -90,7 +90,7 @@ func (e *Engine) syncBandStatsLocked() {
 		e.stats.BandKind = "roll"
 	}
 	if e.band.Kind() == KindRoll {
-		e.stats.HaltMode = "latch-no-halt"
+		e.stats.HaltMode = "halt-per-update"
 	} else {
 		e.stats.HaltMode = "capture-halt"
 	}

@@ -21,7 +21,7 @@ The FPGA presents **two** register windows, selected by the chip-select (CS) fie
 | Plane | Register/bus base | mmap physical base | Purpose | Access |
 |---|---|---|---|---|
 | **CS1** | `0x20200000` | `0x01000000` | Acquisition / read plane: capture opcode + program, status, the auto-inc BURST drain port, the streaming spine + envelope result channel | ioctl (read + write); the post-halt drain may use the mmap fast path |
-| **CS3** | `0x20100000` | `0x03000000` | Config / control plane: `CONF_DONE`, trigger-level DAC, offset DACs, LED latch | ioctl (read + write); `CONF_DONE` also mmap-readable |
+| **CS3** | `0x20100000` | — (not mmapped) | Config / control plane: `CONF_DONE`, trigger-level DAC, offset DACs, LED latch | ioctl only (read + write); `CONF_DONE` is read via the CS3 ioctl config port |
 
 A third chip-select (CS2) is allocated by the kernel bring-up but is **not used** by the acquisition
 firmware; the LCD framebuffer is `/dev/fb0` (spec 07), not a GPMC plane.
@@ -32,7 +32,8 @@ firmware; the LCD framebuffer is `/dev/fb0` (spec 07), not a GPMC plane.
   `byte_addr = register_base + (sel << 1)`. CS1 registers are at `0x20200000 + sel·2`, CS3 registers
   at `0x20100000 + sel·2`.
 - The **mmap physical base** is the `/dev/mem` mapping address for the syscall-free drain/read fast
-  path (§1.4): CS1 maps at `0x01000000`; CS3's `CONF_DONE` is mmap-readable at `0x03000000`.
+  path (§1.4): only CS1 maps, at `0x01000000`. CS3 is not mmapped — `CONF_DONE` is read via the
+  CS3 ioctl config port, never through mmap.
 
 A **register selector** `sel` addresses the 16-bit FPGA **word** `sel << 1` within its plane. On the
 ioctl path the driver shifts `<<1` internally — pass the **selector**, never the pre-shifted byte
