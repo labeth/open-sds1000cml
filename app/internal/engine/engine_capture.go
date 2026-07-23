@@ -30,8 +30,18 @@ import (
 // frame. It writes no CS3 registers: the analog front end is driven separately.
 func (e *Engine) bringUp() {
 	decim := e.band.Decim()
-	pre := e.band.PreTrig()
-	post := e.band.PostTrig()
+	// Size the fabric record to what oneFrame will actually DRAIN — effDrainCols()
+	// tracks memDepth / stream / SINGLE, not just the band. Programming pre/post
+	// from the band's fixed DrainCols() would leave a decimated deep-memory / stream
+	// / SINGLE frame capturing only decimDrain samples while the app drains up to
+	// deepRecord, over-reading a dead (clamped) tail and mislabeling the time axis.
+	capCols := e.effDrainCols()
+	if capCols > deepRecord-2 { // exact-window invariant: pre+post <= REC_DEPTH-MARGIN
+		capCols = deepRecord - 2
+	}
+	e.lastCapCols = capCols
+	pre := uint32(capCols / 2)
+	post := uint32(capCols - capCols/2)
 	e.w(selOpcode, opReset) // idle the capture FSM before reprogramming
 	e.w(selRun, e.runWord())
 	e.w(selDecimLo, uint16(decim))

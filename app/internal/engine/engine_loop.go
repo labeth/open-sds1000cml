@@ -107,6 +107,12 @@ func (e *Engine) Run() {
 		e.mu.Unlock()
 		if bandChange || norm != e.lastNorm || etsWant != e.etsOn {
 			e.transition(norm, etsWant)
+		} else if e.effDrainCols() != e.lastCapCols {
+			// memDepth / stream / SINGLE changed the effective drain without a band
+			// change: re-program the fabric record so the capture depth still matches
+			// the drain (otherwise the drain over-reads a dead tail). Safe here — a
+			// loop boundary with no capture in flight.
+			e.bringUp()
 		}
 
 		switch {

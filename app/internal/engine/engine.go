@@ -351,17 +351,18 @@ type Engine struct {
 	matrixReq chan chan [5]uint16
 
 	// Owner-private state (no locking needed).
-	band      Band
-	prevKind  Kind
-	lastNorm  bool
-	seq       uint64
-	flatHeld  int
-	lastPubAt time.Time // engine goroutine only: instant of the last oneFrame publish
-	lastEdgeX float64   // engine goroutine only: previous frame's edge (phase-continuity hint); <0 = none
-	deadRuns  int
-	streamSeq uint64    // stitch-mode window counter
-	lastHalt  time.Time // wall-clock of the previous window's halt (for GapNs)
-	done      chan struct{}
+	band        Band
+	prevKind    Kind
+	lastNorm    bool
+	lastCapCols int // effDrainCols() the last bringUp programmed into PRE/POSTTRIG
+	seq         uint64
+	flatHeld    int
+	lastPubAt   time.Time // engine goroutine only: instant of the last oneFrame publish
+	lastEdgeX   float64   // engine goroutine only: previous frame's edge (phase-continuity hint); <0 = none
+	deadRuns    int
+	streamSeq   uint64    // stitch-mode window counter
+	lastHalt    time.Time // wall-clock of the previous window's halt (for GapNs)
+	done        chan struct{}
 
 	// Realtime acquisition checker (instrumentation only, spec: diagnose HALF
 	// records). acqRing/cmdRing are guarded by e.mu (the status handler reads
@@ -381,11 +382,11 @@ type Engine struct {
 
 	// Roll band state (spec 04 §2): scrolled raw ring + scroll snapshots +
 	// per-update burst-drain scratch.
-	rollArmed                bool
-	rollRing1, rollRing2     []uint8
+	rollArmed                  bool
+	rollRing1, rollRing2       []uint8
 	rollScratch1, rollScratch2 []uint8
-	rollPos                  int
-	rollSnaps1, rollSnaps2   [][]uint8
+	rollPos                    int
+	rollSnaps1, rollSnaps2     [][]uint8
 
 	// ETS state (spec 04 §3): persistent phase-interleave accumulator.
 	etsOn                    bool

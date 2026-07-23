@@ -320,6 +320,45 @@ func TestBringUpWriteOrder(t *testing.T) {
 	})
 }
 
+// progPrePost reconstructs the last PRE/POST-trigger depths bringUp programmed.
+func progPrePost(t *testing.T, ws []wr) (pre, post uint32) {
+	t.Helper()
+	var preLo, preHi, postLo, postHi uint32
+	for _, w := range ws {
+		switch w.sel {
+		case selPreLo:
+			preLo = uint32(w.val)
+		case selPreHi:
+			preHi = uint32(w.val)
+		case selPostLo:
+			postLo = uint32(w.val)
+		case selPostHi:
+			postHi = uint32(w.val)
+		}
+	}
+	return preHi<<16 | preLo, postHi<<16 | postLo
+}
+
+// A decimated band with a deep memory depth must size the FABRIC record from
+// effDrainCols(), not the fixed decimDrain — otherwise the drain over-reads a
+// dead tail past the captured record (the deep-memory/stream/SINGLE HIGH bug).
+func TestBringUpDeepMemorySizesRecord(t *testing.T) {
+	fb := newFakeBus()
+	e, _ := newTestEngine(t, fb) // default band is decimated (500 µs/div)
+	e.SetMemDepth(deepRecord)    // deep memory: the drain wants the full record
+	fb.snapWrites()              // clear
+	e.bringUp()
+	pre, post := progPrePost(t, fb.snapWrites())
+	want := e.effDrainCols() // the count oneFrame will actually drain
+	if want > deepRecord-2 {
+		want = deepRecord - 2 // exact-window clamp
+	}
+	if sum := int(pre + post); sum != want {
+		t.Fatalf("deep-memory decimated pre+post = %d, want %d (record must track effDrainCols=%d, not decimDrain=%d)",
+			sum, want, e.effDrainCols(), decimDrain)
+	}
+}
+
 func TestArmSequence(t *testing.T) {
 	fb := newFakeBus()
 	e, _ := newTestEngine(t, fb)
