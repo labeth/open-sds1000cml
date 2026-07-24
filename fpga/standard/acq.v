@@ -65,7 +65,9 @@ module acq (
     input  wire        nCS1,        // CS1 acquisition/read plane, active-low
     input  wire        nOE,         // read strobe, active-low
     input  wire        nWE,         // write strobe, active-low
-    input  wire [7:0]  sel,         // selector == byte_addr>>1 (pre-decoded)
+    input  wire [6:0]  sel,         // selector = byte_addr>>1 => sel[k]=GPMC A(k+1). Only
+                                    // 7 bits: the map is 0x00-0x7f, so A8/bit7 is never
+                                    // needed and is not brought in (can't misdecode).
     inout  wire [15:0] gpmc_d,      // 16-bit data bus; driven ONLY on a CS1 read
     output wire        gpmc_wait    // WAIT/ready line (held ready; WAIT-monitoring off)
 );
@@ -88,7 +90,7 @@ module acq (
     //    (bus -> clk domain). 3-bit shift regs: [2]=oldest/settled, [0]=newest.
     // =======================================================================
     reg [2:0]  cs1_q = 3'b111, oe_q = 3'b111, we_q = 3'b111;
-    reg [7:0]  sel_q1 = 8'h00, sel_q2 = 8'h00;
+    reg [6:0]  sel_q1 = 7'h00, sel_q2 = 7'h00;
     reg [15:0] d_q1 = 16'h0, d_q2 = 16'h0;
     reg [2:0]  trig_q = 3'b000;
 
@@ -107,9 +109,9 @@ module acq (
     // ---- regmux write/read handshake signals (provided to the generated include) --
     wire       we_commit = (we_q[2] == 1'b0) && (we_q[1] == 1'b1);  // nWE rising: data+sel settled
     wire [7:0] wr_plane  = cs1_low ? `PLANE_CS1 : 8'h00;   // CS1-only slave (CS3 = MAX V)
-    wire [7:0] wr_sel    = sel_q2;
+    wire [7:0] wr_sel    = {1'b0, sel_q2};   // A8/bit7 forced 0 (never needed by the 0x00-0x7f map)
     wire [7:0] rd_plane  = (~nCS1) ? `PLANE_CS1 : 8'h00;   // CS1-only slave (CS3 = MAX V)
-    wire [7:0] rd_sel    = sel;    // raw for the combinational read mux (CPU holds nOE)
+    wire [7:0] rd_sel    = {1'b0, sel};   // A8/bit7 forced 0; CPU holds nOE for the combinational read mux
 
     // ---- auto-inc read decode (synchronized; one pop / nOE-rise) -----------
     wire sel_is_burst    = (sel_q2 == `SEL_BURST);

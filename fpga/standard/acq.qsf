@@ -94,15 +94,16 @@ set_location_assignment PIN_D4  -to sel[3]
 set_location_assignment PIN_A3  -to sel[4]
 set_location_assignment PIN_B3  -to sel[5]
 set_location_assignment PIN_A4  -to sel[6]
-set_location_assignment PIN_F3  -to sel[7]
 #   sel[0]=A1(M2, verified; NOT a clock -- the old guess was wrong).
 #   sel[1]=A2 [CAND]: rung-2 saw A2 "open", ball unresolved. Needed to tell e.g. 0x10
-#          from 0x12 (VERSION). If A2 is truly unwired to the Cyclone, the schema
-#          selectors must avoid bit-1-only differences (a schema follow-up). Parked on
-#          D1 (NOT D2 — D2 is the reserved ALTERA_FLASH_nCE_nCSO config pin).
+#          from 0x12 (VERSION). Parked on D1 (NOT D2 — D2 is the reserved
+#          ALTERA_FLASH_nCE_nCSO config pin). *** CRITICAL BENCH ITEM: find A2's real
+#          ball. *** The factory addresses CS1 0x30 vs 0x32 (drain), so A2 DOES reach
+#          the Cyclone — its ball just isn't pinned yet.
 #   sel[2..6]=A3..A7 (C3,D4,A3,B3,A4, all verified).
-#   sel[7]=A8 [CAND]: unused by the 0x10-0x7f map (always 0); parked on F3 -- it MUST
-#          read 0 for reads to decode. Confirm/relocate when the address map is mapped.
+#   sel[7]=A8 REMOVED: the map is 0x00-0x7f so bit7 is always 0 — the fabric forces it
+#          to 0 (acq.v rd_sel/wr_sel) and does not bring the port in, so a floating A8
+#          ball can never misdecode. (was a [CAND] hazard flagged in review.)
 
 # ---- WAIT / ready line (FPGA -> GPMC) ----
 set_location_assignment PIN_L6  -to gpmc_wait
