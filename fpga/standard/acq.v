@@ -2,16 +2,20 @@
 //         acquisition FPGA (Altera Cyclone IV E, EP4CE10F17C8).
 //
 // This is the GPMC async slave + the generated register interface + the wiring of the
-// six-module streaming-spine acquisition engine. It replaces the vendor acquisition
-// path outright (the app refuses a fabric whose build-ID differs). Module set:
+// five-module streaming-spine acquisition engine. It replaces the vendor acquisition
+// path outright (the app refuses a fabric whose build-ID differs). The Cyclone is a
+// CS1-ONLY slave: CS3 (config, offset/level DACs, LED) is decoded by the MAX V CPLD
+// (bench-proven — nCS3 never reaches this device), so there is NO DAC serializer and
+// NO CS3 decode here. Module set:
 //
+//   adcif.v     ADC front-end: the AD9288-class converters feed the Cyclone DIRECTLY
+//               on 36 raw lanes (CH1=21, CH2=15); de-interleave + drive ENCODE (JTAG).
 //   spine.v     canonical >=18-bit stream {ch1,ch2,valid,idx,trig_mark}: the live
 //               decimator (transform stage 0) + two reserved bypassable stages (C1).
 //   capture.v   circular pre/post-trigger writer + record M9K + trigger accept +
 //               EXACT post-count window + interpolating TRIGPOS + static freeze (C2).
 //   envelope.v  LIVE-STREAM min/max reducer + envelope result FIFO (C3, overflow).
 //   drain.v     single auto-inc BURST port (1-D DMA source) + BURST_REMAIN.
-//   dac.v       trigger-level DAC serializer, tri-stated until the first level load.
 //
 // GENERATED INTERFACE (single source of truth — do NOT hand-define selectors)
 //   `include "regs.vh"   : `SEL_* selectors, plane ids, field _MASK/_LSB, the capture
@@ -25,42 +29,45 @@
 //
 // HARDWARE-SAFETY ENVELOPE (NON-NEGOTIABLE, DESIGN.md sec.1)
 //   * ONE tri-state driver on gpmc_d, enabled ONLY on read_active = ~nCS1 & ~nOE
-//     (CS1 reads only); every other cycle Hi-Z. CS3 reads (incl. CONF_DONE) stay
-//     Hi-Z — the config port is NEVER driven.
-//   * gpmc_wait held ready at all times (never wedge the bus).
-//   * DAC balls Hi-Z until the first level load (inside dac.v).
-//   * clk is the SAMPLE-BUS domain (BENCH-VERIFY #2); the async GPMC strobes/selector/
-//     data + the sample bus + trig_sense cross in via 2-3 FF synchronizers + edge
-//     detect. sample_in / trig_sense / the GPMC strobe balls are inputs only.
-//   * every driven ball is capped to MINIMUM CURRENT in acq.qsf.
+//     (CS1 reads only); every other cycle Hi-Z. There is no CS3 decode in this device.
+//   * gpmc_wait held ready at all times (never wedge the bus; WAIT-monitoring is off).
+//   * clk is the fabric reference (ball C2, ~80 MHz free-running). The ADC lanes are
+//     captured in this domain (source-synchronous to the ENCODE we drive); the async
+//     GPMC strobes/selector/data + trig_sense cross in via 2-3 FF synchronizers + edge
+//     detect. adc_ch1/adc_ch2 / trig_sense / the GPMC strobe balls are inputs only.
+//   * the only driven balls are gpmc_d (on CS1 reads), gpmc_wait, and adc_encode;
+//     every driven ball is capped to MINIMUM CURRENT in acq.qsf.
 //
 // Clean-room: design/spec-derived, never vendor RTL. Synthesizable Verilog-2001.
 
 `include "regs.vh"
 
 module acq (
-    // free-running reference / SAMPLE-BUS clock (BENCH-VERIFY #2).
+    // fabric reference clock: verified ball C2 (~80 MHz free-running input). The ADC
+    // ENCODE we drive is derived from it; the whole datapath is this single domain.
     input  wire        clk,
 
-    // inter-FPGA sample bus (INPUT — the aux FPGA drives it; hi=CH1, lo=CH2).
-    input  wire [15:0] sample_in,
+    // ADC data bus (INPUTS ONLY) — the AD9288-class converters feed the Cyclone
+    // DIRECTLY on 40 raw lanes = 5 * 8-bit cores (board trace: 8 top + 16 mid + 16
+    // bottom), split CH1 = 3 cores (24 bits) / CH2 = 2 cores (16 bits). 36 of the 40
+    // balls are JTAG-verified; 4 are CANDIDATE in acq.qsf. adcif.v de-interleaves them
+    // into the canonical {CH1,CH2} sample the spine consumes.
+    input  wire [23:0] adc_ch1,
+    input  wire [15:0] adc_ch2,
+    // ADC ENCODE clock we DRIVE back to the converters (they do NOT free-run).
+    output wire        adc_encode,
 
-    // HW trigger comparator output (level-DAC-fed): "a crossing occurred".
+    // HW trigger comparator output (MAX V level-DAC-fed, ball A12): "a crossing occurred".
     input  wire        trig_sense,
 
-    // GPMC bus.
+    // GPMC bus — the Cyclone is a CS1-ONLY slave (CS3 is decoded by the MAX V CPLD;
+    // nCS3 does not reach this device, bench-proven).
     input  wire        nCS1,        // CS1 acquisition/read plane, active-low
-    input  wire        nCS3,        // CS3 config/control plane, active-low
     input  wire        nOE,         // read strobe, active-low
     input  wire        nWE,         // write strobe, active-low
     input  wire [7:0]  sel,         // selector == byte_addr>>1 (pre-decoded)
     inout  wire [15:0] gpmc_d,      // 16-bit data bus; driven ONLY on a CS1 read
-    output wire        gpmc_wait,   // WAIT/ready line (held ready)
-
-    // trigger LEVEL DAC (3-wire serial, FPGA-driven; Hi-Z until first load).
-    output wire        dac_sync,
-    output wire        dac_sclk,
-    output wire        dac_sdi
+    output wire        gpmc_wait    // WAIT/ready line (held ready; WAIT-monitoring off)
 );
 
     // ---- OPCODE command payloads: values written to the OPCODE strobe
@@ -80,32 +87,28 @@ module acq (
     // 1) GPMC-strobe / selector / data / sample / trigger synchronizers
     //    (bus -> clk domain). 3-bit shift regs: [2]=oldest/settled, [0]=newest.
     // =======================================================================
-    reg [2:0]  cs1_q = 3'b111, cs3_q = 3'b111, oe_q = 3'b111, we_q = 3'b111;
+    reg [2:0]  cs1_q = 3'b111, oe_q = 3'b111, we_q = 3'b111;
     reg [7:0]  sel_q1 = 8'h00, sel_q2 = 8'h00;
     reg [15:0] d_q1 = 16'h0, d_q2 = 16'h0;
-    reg [15:0] samp_q1 = 16'h0, samp_q2 = 16'h0;
     reg [2:0]  trig_q = 3'b000;
 
     always @(posedge clk) begin
         cs1_q   <= {cs1_q[1:0], nCS1};
-        cs3_q   <= {cs3_q[1:0], nCS3};
         oe_q    <= {oe_q[1:0],  nOE};
         we_q    <= {we_q[1:0],  nWE};
         sel_q1  <= sel;        sel_q2  <= sel_q1;
         d_q1    <= gpmc_d;     d_q2    <= d_q1;      // meaningful only during a write
-        samp_q1 <= sample_in;  samp_q2 <= samp_q1;
         trig_q  <= {trig_q[1:0], trig_sense};
     end
 
     wire cs1_low   = (cs1_q[2] == 1'b0);
-    wire cs3_low   = (cs3_q[2] == 1'b0);
     wire trig_rise = (trig_q[2] == 1'b0) && (trig_q[1] == 1'b1);   // comparator rising edge
 
     // ---- regmux write/read handshake signals (provided to the generated include) --
     wire       we_commit = (we_q[2] == 1'b0) && (we_q[1] == 1'b1);  // nWE rising: data+sel settled
-    wire [7:0] wr_plane  = cs1_low ? `PLANE_CS1 : (cs3_low ? `PLANE_CS3 : 8'h00);
+    wire [7:0] wr_plane  = cs1_low ? `PLANE_CS1 : 8'h00;   // CS1-only slave (CS3 = MAX V)
     wire [7:0] wr_sel    = sel_q2;
-    wire [7:0] rd_plane  = (~nCS1) ? `PLANE_CS1 : ((~nCS3) ? `PLANE_CS3 : 8'h00);
+    wire [7:0] rd_plane  = (~nCS1) ? `PLANE_CS1 : 8'h00;   // CS1-only slave (CS3 = MAX V)
     wire [7:0] rd_sel    = sel;    // raw for the combinational read mux (CPU holds nOE)
 
     // ---- auto-inc read decode (synchronized; one pop / nOE-rise) -----------
@@ -125,18 +128,14 @@ module acq (
     reg [31:0] posttrig_reg= 32'd10240;
     reg [15:0] xform_reg   = 16'h0003;     // both transform stages bypassed at reset (raw)
     reg [15:0] env_cols_reg= 16'd256;
-    reg [15:0] led_reg     = 16'h0000;     // reserved front-end latches (no ball this cut)
-    reg [15:0] off_c1      = 16'h0000;
-    reg [15:0] off_c2      = 16'h0000;
-    reg [7:0]  dac_lo_a    = 8'h00;
-    reg [7:0]  dac_lo_b    = 8'h00;
-    reg [15:0] dac_code    = 16'h0000;     // last-loaded serializer code
-    reg [15:0] dac_code_a  = 16'h0000;     // lane-A code (source of the CH1 trig level)
-    reg        dac_load    = 1'b0;
 
     wire       run_en    = run_word[`RUN_RUN_LSB];
     wire       mode_norm = (run_word[`RUN_MODE_LSB +: 2] == 2'd1);   // 0=AUTO, 1=NORM
-    wire [7:0] trig_level= dac_code_a[15:8];   // CH1 trigger level, sample units [BENCH-TUNE]
+    // CH1 trigger level in sample units, for the TRIGPOS sub-sample interpolation.
+    // The physical level DAC now lives on the MAX V (CS3), so the Cyclone no longer
+    // sees the code; mid-scale keeps the interpolator well-defined (the trigger itself
+    // is the A12 comparator edge). [BENCH-TUNE] wire the real level in via a CS1 reg.
+    wire [7:0] trig_level = 8'h80;
 
     // ---- rdata_<REG> nets consumed by the generated read mux (declared before
     //      the include; driven by continuous assigns / instance ports below). --
@@ -152,7 +151,6 @@ module acq (
 
     // ---- register writes (one we_<REG> pulse per accepted write) ----
     always @(posedge clk) begin
-        dac_load <= 1'b0;                          // 1-cycle pulse default
         if (we_RUN)         run_word          <= d_q2;
         if (we_DECIM_LO)    decim_reg[15:0]   <= d_q2;
         if (we_DECIM_HI)    decim_reg[31:16]  <= d_q2;
@@ -162,24 +160,10 @@ module acq (
         if (we_POSTTRIG_HI) posttrig_reg[31:16]<= d_q2;
         if (we_XFORM_CTRL)  xform_reg         <= d_q2;
         if (we_ENV_COLS)    env_cols_reg      <= d_q2;
-        if (we_LED_LO)      led_reg[7:0]      <= d_q2[7:0];
-        if (we_LED_HI)      led_reg[15:8]     <= d_q2[7:0];
-        if (we_OFF_C1_LO)   off_c1[7:0]       <= d_q2[7:0];
-        if (we_OFF_C1_HI)   off_c1[15:8]      <= d_q2[7:0];
-        if (we_OFF_C2_LO)   off_c2[7:0]       <= d_q2[7:0];
-        if (we_OFF_C2_HI)   off_c2[15:8]      <= d_q2[7:0];
-        if (we_LVL_A_LO)    dac_lo_a          <= d_q2[7:0];
-        if (we_LVL_B_LO)    dac_lo_b          <= d_q2[7:0];
-        if (we_LVL_A_HI) begin
-            dac_code   <= {d_q2[7:0], dac_lo_a};
-            dac_code_a <= {d_q2[7:0], dac_lo_a};
-            dac_load   <= 1'b1;                     // self-latch + load serializer
-        end
-        if (we_LVL_B_HI) begin
-            dac_code <= {d_q2[7:0], dac_lo_b};
-            dac_load <= 1'b1;
-        end
-        // we_LED_STROBE / we_ENV_RESET are consumed by their target blocks; no-op here.
+        // The CS3 front-end writes (LED / offset DAC / trigger-level DAC) are decoded
+        // by the MAX V, not the Cyclone: the generated we_LED_*/we_OFF_*/we_LVL_*
+        // strobes never fire here (wr_plane is CS1-only) and are intentionally unused.
+        // we_ENV_RESET is consumed by envelope.v; no-op here.
     end
 
     // ---- OPCODE decode -> single-cycle engine pulses ----
@@ -221,6 +205,7 @@ module acq (
     // =======================================================================
     // 4) Engine wiring
     // =======================================================================
+    wire [15:0]        samp;         // canonical {CH1[7:0],CH2[7:0]} from the ADC front-end
     wire [15:0]        cap_word;
     wire               cap_tick;
     wire               filling;
@@ -234,10 +219,19 @@ module acq (
     wire [`ADDR_W-1:0] burst_addr;
     wire [15:0]        rec_rd_data;
 
+    // ADC front-end: 36 raw lanes -> canonical {CH1,CH2} sample + drive ENCODE.
+    adcif u_adcif (
+        .clk        (clk),
+        .adc_ch1    (adc_ch1),
+        .adc_ch2    (adc_ch2),
+        .adc_encode (adc_encode),
+        .samp       (samp)
+    );
+
     spine u_spine (
         .clk      (clk),
         .filling  (filling),
-        .samp     (samp_q2),
+        .samp     (samp),
         .decim    (decim_reg),
         .bypass0  (xform_reg[`XFORM_CTRL_BYPASS0_LSB]),
         .bypass1  (xform_reg[`XFORM_CTRL_BYPASS1_LSB]),
@@ -301,15 +295,6 @@ module acq (
         .rdata_burst_remain(rdata_BURST_REMAIN)
     );
 
-    dac u_dac (
-        .clk      (clk),
-        .dac_load (dac_load),
-        .dac_code (dac_code),
-        .dac_sync (dac_sync),
-        .dac_sclk (dac_sclk),
-        .dac_sdi  (dac_sdi)
-    );
-
     // =======================================================================
     // 5) rdata_<REG> behavior wires (the generated mux selects among these)
     // =======================================================================
@@ -328,7 +313,9 @@ module acq (
     assign rdata_XFORM_CTRL  = {14'd0, xform_reg[`XFORM_CTRL_BYPASS1_LSB],
                                        xform_reg[`XFORM_CTRL_BYPASS0_LSB]};
     assign rdata_ENV_COLS    = env_cols_reg;
-    assign rdata_CONF_DONE   = 16'h0000;   // CS3 read stays Hi-Z (never electrically driven)
+    assign rdata_CONF_DONE   = 16'h0000;   // required stub: regmux.vh (schema SSOT) still
+                                           // names this CS3 read; the mux case never fires
+                                           // (rd_plane is CS1-only) — CONF_DONE is a MAX V reg.
     // rdata_BURST_REMAIN / rdata_ENV_DATA / rdata_ENV_COUNT are driven by the instances.
 
     // =======================================================================

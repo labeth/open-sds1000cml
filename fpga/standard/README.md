@@ -1,12 +1,27 @@
 # standard — the standard (owned) acquisition bitstream
 
 The standard bitstream is a **streaming-spine acquisition fabric** for the
-EP4CE10F17C8 (Cyclone IV E): a canonical 18-bit sample spine with a programmable
-decimator, a circular pre/post-trigger capture with an exact window, a trustworthy
-HW trigger with an interpolating (Q16) timestamp, a **live-stream** min/max
-envelope reducer, and a single DMA-shaped auto-inc `BURST` drain. It replaces the
-vendor acquisition path outright — there is no vendor register map, no dual mode,
-no fallback (the app refuses to drive a fabric whose build-ID differs).
+EP4CE10F17C8 (Cyclone IV E): a real ADC front-end, a canonical 18-bit sample spine
+with a programmable decimator, a circular pre/post-trigger capture with an exact
+window, a trustworthy HW trigger with an interpolating (Q16) timestamp, a
+**live-stream** min/max envelope reducer, and a single DMA-shaped auto-inc `BURST`
+drain. It replaces the vendor acquisition path outright — there is no vendor register
+map, no dual mode, no fallback (the app refuses to drive a fabric whose build-ID differs).
+
+## Hardware anchoring (bench-verified, 2026-07)
+
+The pins and the front-end architecture are anchored to hardware, not guessed:
+
+- **ADC → Cyclone directly.** Three AD9288-class dual 8-bit ADCs feed the Cyclone on
+  **40 raw data lanes = 5 cores × 8 bits** (board trace: 8 top + 16 mid + 16 bottom;
+  split CH1 = 3 cores / CH2 = 2 cores). 36 balls are JTAG-boundary-scan-verified; 4
+  (constant-MSB / via-hidden) are still CANDIDATE. `adcif.v` de-interleaves them.
+- **The Cyclone DRIVES the ADC ENCODE clock** (the converters do not free-run — the
+  reason every passive monitor fabric saw a static ADC). Reference clock = ball C2.
+- **CS1-only slave.** The GPMC data/ctrl/addr balls are bench-verified. **CS3 is
+  decoded by the MAX V CPLD, not the Cyclone**, so this fabric has no CS3 decode and
+  no DAC serializer — the offset/level DACs + LED live on the MAX V (the app's CS3
+  writes land there unchanged). See `acq.qsf` for the verified vs [CAND] pin split.
 
 Full behavior is specified in [`docs/DESIGN.md`](docs/DESIGN.md) §4 and
 (clean-room) in `specs/03`.
@@ -31,8 +46,14 @@ Block/selector summary (CS1 = acquisition plane, CS3 = config/control plane):
 | CS1 | `spine` | `0x50–0x5f` | transform-stage bypass + envelope columns |
 | CS1 | `channels` | `0x60–0x7f` | envelope `DATA`/`COUNT`/`RESET` triad |
 | CS1 | reserved | `0x80–0xdf` | `trigger` (v1) / `measure` (v1) / `decode` (v2) |
-| CS3 | `config` | `0x00–0x08` | `CONF_DONE` (never written) |
-| CS3 | `frontend` | `0x09–0x3f` | LED latch + offset DACs + trigger-level DAC |
+| CS3 | `config` | `0x00–0x08` | `CONF_DONE` — **decoded by the MAX V, not this fabric** |
+| CS3 | `frontend` | `0x09–0x3f` | LED + offset/level DACs — **on the MAX V, not this fabric** |
+
+The CS3 rows stay in the schema because they document the *whole system's* register
+contract (the app drives them; the MAX V CPLD decodes them). This Cyclone fabric
+implements only the CS1 plane — it never decodes CS3 (the generated `we_LED_*/
+we_OFF_*/we_LVL_*` strobes are present but unused). The build-ID still covers the
+full schema, so app ↔ fabric agreement is unchanged.
 
 ## Generated build inputs
 

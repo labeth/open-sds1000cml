@@ -4,8 +4,17 @@ See also: [`../../../codegen/docs/DESIGN.md`](../../../codegen/docs/DESIGN.md) (
 schema + codegen that generates this bitstream's `regs.vh`/`regmux.vh`) ·
 [`../../../app/docs/DESIGN.md`](../../../app/docs/DESIGN.md) (the app that drives this fabric).
 
-Status: **design only** (no code, no Quartus). This document is the design of record for the
-**standard** owned acquisition bitstream — its RTL module decomposition and behavior. The
+Status: **RTL implemented + hardware-anchored** (2026-07-24; builds offline via iverilog, Quartus
+not re-run). This document is the design of record for the **standard** owned acquisition bitstream —
+its RTL module decomposition and behavior.
+
+**HARDWARE UPDATE (2026-07-24) — read `../README.md` "Hardware anchoring".** The two biggest premises
+in the prose below are now corrected by the bench: (1) there is **no aux FPGA / inter-FPGA sample bus**
+— the AD9288 ADCs feed the Cyclone DIRECTLY on 40 lanes (5×8-bit cores), captured by the new `adcif.v`
+front-end which also drives the ADC ENCODE clock; (2) the Cyclone is a **CS1-only** slave — CS3
+(config, offset/level DACs, LED) is the MAX V CPLD's plane, so the **`dac.v` serializer is deleted**
+and there is no CS3 decode. Where §2/§3 below say "aux ADC is a fixed-rate source" or list `dac.v`,
+read them through this correction. The
 register map, the schema, and the generated `regs.vh`/`regmux.vh`/`REGISTER-MAP.md` it `` `include ``s
 are fixed by the codegen doc; this document is the RTL that implements that contract. It is
 opinionated; every decision left to the maintainer is tagged **[DECIDE]**. Branch: `owned-fpga`.

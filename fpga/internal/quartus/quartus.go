@@ -3,7 +3,7 @@
 // only, and memory-gated so the small dev box never runs two flows at once.
 //
 // It is the fpga module's Phase-B build driver. cmd/buildacq hands it the
-// standard design's sources (acq.v + spine/capture/envelope/drain/dac.v), the
+// standard design's sources (acq.v + adcif/spine/capture/envelope/drain.v), the
 // bench-supplied acq.qsf (device / pins / IO), and the generated regs.vh /
 // regmux.vh includes; Compile writes them all into a scratch work dir, runs
 // map -> fit -> asm -> cpf, and returns the path to a bitstream that must be
