@@ -63,10 +63,15 @@ module adcif #(
     // clean reconstructed waveform (mean|Δ|~4, hits the 0/255 rails). CH1 is PROVEN;
     // CH2's bench signal was weak (thin/low-amplitude window) so its order is best-effort
     // toggle-ranked over the rail-verified CH2 lanes — refine with a stronger CH2 input.
-    //   CH1 bit7..bit0 = adc_lane[3,0,1,11,9,12,6,5]
-    //   CH2 bit7..bit0 = adc_lane[18,20,22,23,28,24,30,31] (best-effort)
+    //   CH1 bit7..bit0 = adc_lane[3,0,1,11,9,12,6,5]  (PROVEN, clean sweep)
+    //   CH2 bit7..bit0 = adc_lane[18,23,28,24,30,27,20,22]  (data-derived, PARTIAL)
+    // CH2 update: with CH2 on a 1x probe (strong signal) + gain set to ~200 mV/div so the
+    // triangle fills the ADC range, rawcap clustered CH2's 11 mapped lanes to only ~6 DISTINCT
+    // bits (toggle-rate gaps show bit6/bit0 lanes are NOT among the mapped set). So CH2 is a
+    // partial map pending the "find the missing lanes" hunt (full 8*5=40 core map). Order here
+    // is the best data-derived assignment (mean|d|~10); finalise once the missing lanes land.
     localparam integer C1B7=3,  C1B6=0,  C1B5=1,  C1B4=11, C1B3=9,  C1B2=12, C1B1=6,  C1B0=5;   // CH1 (proven)
-    localparam integer C2B7=18, C2B6=20, C2B5=22, C2B4=23, C2B3=28, C2B2=24, C2B1=30, C2B0=31;  // CH2 (best-effort)
+    localparam integer C2B7=18, C2B6=23, C2B5=28, C2B4=24, C2B3=30, C2B2=27, C2B1=20, C2B0=22;  // CH2 (partial)
 
     wire [7:0] ch1_byte = { lane_r[C1B7], lane_r[C1B6], lane_r[C1B5], lane_r[C1B4],
                             lane_r[C1B3], lane_r[C1B2], lane_r[C1B1], lane_r[C1B0] };
