@@ -12,16 +12,18 @@
 module acq_tb;
     reg         clk = 1'b0, nCS1 = 1'b1, nOE = 1'b1, nWE = 1'b1, trig_sense = 1'b0;
     reg  [6:0]  sel = 7'd0;
-    reg  [23:0] adc_ch1 = 24'd0;
-    reg  [15:0] adc_ch2 = 16'd0;
+    reg  [32:0] adc_lane = 33'd0;
     reg  [15:0] d_drive = 16'd0;
     reg         drive_en = 1'b0;
     wire [15:0] gpmc_d = drive_en ? d_drive : 16'hzzzz;   // CPU drives only on a write
-    wire        gpmc_wait, adc_encode;
+    wire        gpmc_wait;
+    wire [7:0]  adc_enc;
+    wire [3:0]  adc_ctl_hi;
+    wire [2:0]  adc_ctl_lo;
     integer     errors = 0;
 
     acq dut (
-        .clk(clk), .adc_ch1(adc_ch1), .adc_ch2(adc_ch2), .adc_encode(adc_encode),
+        .clk(clk), .adc_lane(adc_lane), .adc_enc(adc_enc), .adc_ctl_hi(adc_ctl_hi), .adc_ctl_lo(adc_ctl_lo),
         .trig_sense(trig_sense), .nCS1(nCS1), .nOE(nOE), .nWE(nWE), .sel(sel),
         .gpmc_d(gpmc_d), .gpmc_wait(gpmc_wait));
 

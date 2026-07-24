@@ -1,220 +1,116 @@
 # =============================================================================
 # acq.qsf -- Quartus settings for the standard (owned) acquisition bitstream
 # Device: Altera Cyclone IV E  EP4CE10F17C8  (SDS1000CML acquisition FPGA)
+# Top: acq (five-module streaming engine acq/adcif/spine/capture/envelope/drain).
 #
-# Top: acq. The design is the five-module streaming-spine engine (acq / adcif /
-# spine / capture / envelope / drain). It `include`s the GENERATED interface headers
-# regs.vh and regmux.vh (the register single-source-of-truth); SEARCH_PATH "." lets
-# the `include resolve them. cmd/buildacq copies regs.vh/regmux.vh into the compile
-# work dir alongside the RTL sources.
-#
-# BUILD (serially, later -- DO NOT parallel-build, the low-RAM box OOMs; NOT in CI):
-#   quartus_map  acq
-#   quartus_fit  acq
-#   quartus_asm  acq
-#   quartus_cpf -c -o compression=off acq.sof acq.rbf
-# (compression off so the CPU passive-serial loader is happy; shipped .rbf = 368011 B)
+# The GPMC slave is HW-VERIFIED (read+write). The ADC drive/read is the bench-cracked
+# recipe (docs/aux-bus-re.md "ADC-DRIVE RECIPE"): drive 8 ENCODE clocks + hold 7 mode
+# controls -> the AD9288s CONVERT; read the 27 verified data lanes. All from the FPGA
+# side (no schematic). Build: cd fpga && make bitstream (368011-byte rbf).
 # =============================================================================
-
 set_global_assignment -name FAMILY "Cyclone IV E"
 set_global_assignment -name DEVICE EP4CE10F17C8
 set_global_assignment -name TOP_LEVEL_ENTITY acq
 set_global_assignment -name PROJECT_OUTPUT_DIRECTORY output_files
-
-# --- so the RTL `include "regs.vh" / "regmux.vh" resolves (buildacq copies them here)
 set_global_assignment -name SEARCH_PATH .
-
-# --- the RTL sources (multi-file design) ---
 set_global_assignment -name VERILOG_FILE acq.v
 set_global_assignment -name VERILOG_FILE adcif.v
 set_global_assignment -name VERILOG_FILE spine.v
 set_global_assignment -name VERILOG_FILE capture.v
 set_global_assignment -name VERILOG_FILE envelope.v
 set_global_assignment -name VERILOG_FILE drain.v
-
-# --- IO default: the GPMC bus is bench-verified 3.3 V. NOTE: the ADC-lane and clock
-#     banks' VCCIO are not yet confirmed (the JTAG bank measured 2.5 V, j13-pinout.md);
-#     if quartus_fit rejects a bank's VCCIO vs this default, set that bank's ports to
-#     their real I/O standard. This is the one build-time follow-up beyond the pins. ---
 set_global_assignment -name STRATIX_DEVICE_IO_STANDARD "3.3-V LVTTL"
-
-# --- SAFETY: every ball we do NOT drive stays a tri-stated input, so this design
-#     never fights the CPU / ADC / panel / MAX V balls the board drives. The ADC data
-#     lanes and every strobe/selector are INPUTS ONLY; the only driven balls are the
-#     16 gpmc_d (and only during a CS1 read), gpmc_wait, and adc_encode. ---
 set_global_assignment -name RESERVE_ALL_UNUSED_PINS "AS INPUT TRI-STATED"
 set_global_assignment -name RESERVE_ALL_UNUSED_PINS_NO_OUTPUT_GND "AS INPUT TRI-STATED"
 
-# =============================================================================
-# >>>>>>>>>>>>>>>>>>>>>  HARDWARE-DISCOVERED PIN BLOCK  <<<<<<<<<<<<<<<<<<<<<<<<<
-# =============================================================================
-# Unlike the proving-ground QSF (which was ALL placeholder guesses), the GPMC bus,
-# trigger sense, reference clock, and the 36 ADC data lanes below are BENCH-VERIFIED:
-#   * GPMC data/ctrl : binary-encoded probe (tools/pindiag) + single-ball confirm,
-#                      memory gpmc-databus-map (beacon 0xA53C reads back exact).
-#   * ADC data lanes : JTAG boundary-scan SAMPLE + code correlation
-#                      (open-sds1000cml-fpga/docs/aux-bus-re.md, committed).
-# The two independent methods share ZERO ball (a strong cross-check).
-#
-# Only FOUR balls remain CANDIDATE (clearly fenced with [CAND] below): the ENCODE
-# output, the two unresolved GPMC address bits (A2, A8), and the WAIT line. Edit only
-# those once the bench resolves them; every "verified" line is ground truth.
-# -----------------------------------------------------------------------------
+# ===== HW-VERIFIED GPMC (top-cluster data, nCS1=B4/nOE=E6/nWE=B10, A3..A7 selectors) =====
 
-# ---- 16-bit GPMC data bus (VERIFIED: top-cluster A/B/C/D/E/F rows) ----------
 set_location_assignment PIN_A10 -to gpmc_d[0]
-set_location_assignment PIN_B9  -to gpmc_d[1]
-set_location_assignment PIN_A9  -to gpmc_d[2]
-set_location_assignment PIN_B8  -to gpmc_d[3]
-set_location_assignment PIN_A8  -to gpmc_d[4]
-set_location_assignment PIN_B7  -to gpmc_d[5]
-set_location_assignment PIN_A7  -to gpmc_d[6]
-set_location_assignment PIN_B6  -to gpmc_d[7]
-set_location_assignment PIN_A6  -to gpmc_d[8]
-set_location_assignment PIN_D6  -to gpmc_d[9]
-set_location_assignment PIN_C6  -to gpmc_d[10]
-set_location_assignment PIN_B5  -to gpmc_d[11]
-set_location_assignment PIN_A5  -to gpmc_d[12]
-set_location_assignment PIN_F6  -to gpmc_d[13]
-set_location_assignment PIN_D5  -to gpmc_d[14]
-set_location_assignment PIN_E5  -to gpmc_d[15]
-
-# ---- GPMC control strobes (VERIFIED: busmon per-ball edge counters) ----------
-set_location_assignment PIN_B4  -to nCS1
-set_location_assignment PIN_E6  -to nOE
+set_location_assignment PIN_B9 -to gpmc_d[1]
+set_location_assignment PIN_A9 -to gpmc_d[2]
+set_location_assignment PIN_B8 -to gpmc_d[3]
+set_location_assignment PIN_A8 -to gpmc_d[4]
+set_location_assignment PIN_B7 -to gpmc_d[5]
+set_location_assignment PIN_A7 -to gpmc_d[6]
+set_location_assignment PIN_B6 -to gpmc_d[7]
+set_location_assignment PIN_A6 -to gpmc_d[8]
+set_location_assignment PIN_D6 -to gpmc_d[9]
+set_location_assignment PIN_C6 -to gpmc_d[10]
+set_location_assignment PIN_B5 -to gpmc_d[11]
+set_location_assignment PIN_A5 -to gpmc_d[12]
+set_location_assignment PIN_F6 -to gpmc_d[13]
+set_location_assignment PIN_D5 -to gpmc_d[14]
+set_location_assignment PIN_E5 -to gpmc_d[15]
+set_location_assignment PIN_B4 -to nCS1
+set_location_assignment PIN_E6 -to nOE
 set_location_assignment PIN_B10 -to nWE
-# nCS3 is NOT on the Cyclone (decoded by the MAX V CPLD) -> no port, no pin.
-
-# ---- selector sel[7:0] == byte_addr>>1, i.e. sel[k] = GPMC address line A(k+1) ----
-#   VERIFIED (mirror-mode sweep): A1=M2, A3=C3, A4=D4, A5=A3, A6=B3, A7=A4.
-set_location_assignment PIN_M2  -to sel[0]
-set_location_assignment PIN_D1  -to sel[1]
-set_location_assignment PIN_C3  -to sel[2]
-set_location_assignment PIN_D4  -to sel[3]
-set_location_assignment PIN_A3  -to sel[4]
-set_location_assignment PIN_B3  -to sel[5]
-set_location_assignment PIN_A4  -to sel[6]
-#   sel[0]=A1(M2, verified; NOT a clock -- the old guess was wrong).
-#   sel[1]=A2: RESOLVED BY DESIGN, not by a ball. HW readback proved D1 (a guess) floats
-#          HIGH and A2 is not reliably wired to the Cyclone (a read of 0x10 aliased to
-#          0x12/VERSION). The CS1 map now uses bit1=0 for EVERY selector and the fabric
-#          MASKS sel[1] to 0 (acq.v rd_sel/wr_sel) -> D1's value is ignored; decode uses
-#          only verified lines A1,A3..A7. D1 kept assigned (harmless) to avoid auto-place.
-#   sel[2..6]=A3..A7 (C3,D4,A3,B3,A4, all verified).
-#   sel[7]=A8 REMOVED: the map is 0x00-0x7f so bit7 is always 0 — the fabric forces it
-#          to 0 (acq.v rd_sel/wr_sel) and does not bring the port in, so a floating A8
-#          ball can never misdecode. (was a [CAND] hazard flagged in review.)
-
-# ---- WAIT / ready line (FPGA -> GPMC) ----
-set_location_assignment PIN_L6  -to gpmc_wait
-#   [CAND] WAIT-monitoring is OFF (CONFIG1), so the CPU ignores this line -> low
-#   consequence if this ball is wrong. Held ready in RTL regardless.
-
-# ---- fabric reference clock (VERIFIED: ball C2, ~80 MHz free-running input) ----
-#   The old guess put clk on M2, but M2 is GPMC address A1 (above). C2 is the real
-#   free-running reference (signal-independent ~80 MHz); the ADC ENCODE derives from it.
-set_location_assignment PIN_C2  -to clk
-
-# ---- ADC ENCODE clock OUTPUT (Cyclone drives it; the converters do not free-run) ----
-#   [CAND / TUNE-1]  THE #1 bench-tune item. The boundary-scan "CLK2" ENCODE candidate
-#   resolved to ball M2 == GPMC A1 (a confounder, ruled out). B16 is a generic output-
-#   capable ball from the high-rate acq-active candidate set. Alternatives to try on the
-#   bench: F11, N8, T7, and the dedicated clock-out pins CLK4=E15 / CLK6=M15. Drive is
-#   capped to MINIMUM CURRENT below, and we reboot after each test, bounding a mis-map.
-set_location_assignment PIN_B16 -to adc_encode
-
-# ---- HW trigger SENSE input (VERIFIED: ball A12, the trigger comparator) ----
-#   A full-device liveness sweep found A12 toggling with the signal; an A12-clocked
-#   counter tracks the sig-gen and stops on DC. Comparator is MAX V level-DAC-fed.
+set_location_assignment PIN_L6 -to gpmc_wait
+set_location_assignment PIN_C2 -to clk
 set_location_assignment PIN_A12 -to trig_sense
+set_location_assignment PIN_M2 -to sel[0]
+set_location_assignment PIN_D1 -to sel[1]
+set_location_assignment PIN_C3 -to sel[2]
+set_location_assignment PIN_D4 -to sel[3]
+set_location_assignment PIN_A3 -to sel[4]
+set_location_assignment PIN_B3 -to sel[5]
+set_location_assignment PIN_A4 -to sel[6]
 
-# ---- ADC CH1 data lanes (VERIFIED: JTAG boundary-scan, 21 balls, discovery order) ----
-#   The lane ORDER here is discovery order, NOT bit order; adcif.v's de-interleave
-#   table maps lanes -> bits and is the [TUNE-2] knob. Do not reorder these to "fix"
-#   the waveform -- fix it in adcif.v so the ball<->lane record stays authoritative.
-set_location_assignment PIN_F8  -to adc_ch1[0]
-set_location_assignment PIN_D8  -to adc_ch1[1]
-set_location_assignment PIN_B12 -to adc_ch1[2]
-set_location_assignment PIN_K15 -to adc_ch1[3]
-set_location_assignment PIN_L13 -to adc_ch1[4]
-set_location_assignment PIN_N15 -to adc_ch1[5]
-set_location_assignment PIN_P15 -to adc_ch1[6]
-set_location_assignment PIN_T11 -to adc_ch1[7]
-set_location_assignment PIN_T9  -to adc_ch1[8]
-set_location_assignment PIN_E8  -to adc_ch1[9]
-set_location_assignment PIN_C8  -to adc_ch1[10]
-set_location_assignment PIN_C9  -to adc_ch1[11]
-set_location_assignment PIN_C11 -to adc_ch1[12]
-set_location_assignment PIN_A11 -to adc_ch1[13]
-set_location_assignment PIN_A13 -to adc_ch1[14]
-set_location_assignment PIN_L16 -to adc_ch1[15]
-set_location_assignment PIN_L14 -to adc_ch1[16]
-set_location_assignment PIN_R10 -to adc_ch1[17]
-set_location_assignment PIN_R5  -to adc_ch1[18]
-set_location_assignment PIN_T3  -to adc_ch1[19]
-set_location_assignment PIN_R3  -to adc_ch1[20]
-# [CAND] the 3 via-hidden / constant-MSB CH1 lanes JTAG could not light up (a lane
-# must TOGGLE to correlate). A railed-triangle SAMPLE (2026-07) narrowed these to a
-# bottom-cluster pool that perfectly matches the CH1 rail (ones=9, r=1.0); railing
-# can't separate a data MSB from an OTR flag, so these stay CANDIDATE pending the
-# board trace. Pool alternates: K11, and (top-cluster, likelier OTR) E9 E10 A15 C15.
-set_location_assignment PIN_R9  -to adc_ch1[21]
-set_location_assignment PIN_P16 -to adc_ch1[22]
-set_location_assignment PIN_K12 -to adc_ch1[23]
+# ===== ADC drive (bench-cracked): 8 ENCODE clocks + held mode controls =====
+set_location_assignment PIN_K8 -to adc_enc[0]
+set_location_assignment PIN_K9 -to adc_enc[1]
+set_location_assignment PIN_K10 -to adc_enc[2]
+set_location_assignment PIN_L8 -to adc_enc[3]
+set_location_assignment PIN_L9 -to adc_enc[4]
+set_location_assignment PIN_L10 -to adc_enc[5]
+set_location_assignment PIN_M7 -to adc_enc[6]
+set_location_assignment PIN_M8 -to adc_enc[7]
+set_location_assignment PIN_F1 -to adc_ctl_hi[0]
+set_location_assignment PIN_L4 -to adc_ctl_hi[1]
+set_location_assignment PIN_T2 -to adc_ctl_hi[2]
+set_location_assignment PIN_T7 -to adc_ctl_hi[3]
+set_location_assignment PIN_G1 -to adc_ctl_lo[0]
+set_location_assignment PIN_G2 -to adc_ctl_lo[1]
+set_location_assignment PIN_K1 -to adc_ctl_lo[2]
 
-# ---- ADC CH2 data lanes (VERIFIED: JTAG boundary-scan, 15 balls, discovery order) ----
-set_location_assignment PIN_F9  -to adc_ch2[0]
-set_location_assignment PIN_K16 -to adc_ch2[1]
-set_location_assignment PIN_L12 -to adc_ch2[2]
-set_location_assignment PIN_P11 -to adc_ch2[3]
-set_location_assignment PIN_R11 -to adc_ch2[4]
-set_location_assignment PIN_E11 -to adc_ch2[5]
-set_location_assignment PIN_D12 -to adc_ch2[6]
-set_location_assignment PIN_G15 -to adc_ch2[7]
-set_location_assignment PIN_G16 -to adc_ch2[8]
-set_location_assignment PIN_N14 -to adc_ch2[9]
-set_location_assignment PIN_M12 -to adc_ch2[10]
-set_location_assignment PIN_M10 -to adc_ch2[11]
-set_location_assignment PIN_T13 -to adc_ch2[12]
-set_location_assignment PIN_P9  -to adc_ch2[13]
-set_location_assignment PIN_R12 -to adc_ch2[14]
-# [CAND] the 4th via-hidden / constant-MSB lane (CH2 = 2 cores = 16 bits; 15 mapped).
-# Railed-triangle best CH2 match (bottom-cluster); confirm/replace from the board trace.
-set_location_assignment PIN_M9  -to adc_ch2[15]
+# ===== ADC data lanes (27 verified converting + headroom) =====
+set_location_assignment PIN_F8 -to adc_lane[0]
+set_location_assignment PIN_D8 -to adc_lane[1]
+set_location_assignment PIN_B12 -to adc_lane[2]
+set_location_assignment PIN_K15 -to adc_lane[3]
+set_location_assignment PIN_L13 -to adc_lane[4]
+set_location_assignment PIN_N15 -to adc_lane[5]
+set_location_assignment PIN_P15 -to adc_lane[6]
+set_location_assignment PIN_T11 -to adc_lane[7]
+set_location_assignment PIN_T9 -to adc_lane[8]
+set_location_assignment PIN_E8 -to adc_lane[9]
+set_location_assignment PIN_C8 -to adc_lane[10]
+set_location_assignment PIN_C9 -to adc_lane[11]
+set_location_assignment PIN_C11 -to adc_lane[12]
+set_location_assignment PIN_A11 -to adc_lane[13]
+set_location_assignment PIN_A13 -to adc_lane[14]
+set_location_assignment PIN_L16 -to adc_lane[15]
+set_location_assignment PIN_L14 -to adc_lane[16]
+set_location_assignment PIN_R10 -to adc_lane[17]
+set_location_assignment PIN_F9 -to adc_lane[18]
+set_location_assignment PIN_K16 -to adc_lane[19]
+set_location_assignment PIN_L12 -to adc_lane[20]
+set_location_assignment PIN_P11 -to adc_lane[21]
+set_location_assignment PIN_R11 -to adc_lane[22]
+set_location_assignment PIN_E11 -to adc_lane[23]
+set_location_assignment PIN_D12 -to adc_lane[24]
+set_location_assignment PIN_G15 -to adc_lane[25]
+set_location_assignment PIN_G16 -to adc_lane[26]
+set_location_assignment PIN_N14 -to adc_lane[27]
+set_location_assignment PIN_M12 -to adc_lane[28]
+set_location_assignment PIN_M10 -to adc_lane[29]
+set_location_assignment PIN_T13 -to adc_lane[30]
+set_location_assignment PIN_P9 -to adc_lane[31]
+set_location_assignment PIN_R12 -to adc_lane[32]
 
-# =============================================================================
-# >>>>>>>>>>>>>>>>>>>>>  END HARDWARE-DISCOVERED PIN BLOCK  <<<<<<<<<<<<<<<<<<<<<
-# =============================================================================
-
-# --- SAFETY: cap drive to MINIMUM CURRENT on every ball this design actively drives
-#     (the 16 data balls on CS1 reads, the always-on gpmc_wait, and adc_encode). Every
-#     input ball (clk, adc_ch1/2, trig_sense, strobes, sel) is never driven -> no cap.
-#     A mis-mapped driven ball on a factory push-pull output is then bounded to a few
-#     mA instead of full 3.3-V LVTTL drive. ---
-set_instance_assignment -name CURRENT_STRENGTH_NEW "MINIMUM CURRENT" -to gpmc_d[0]
-set_instance_assignment -name CURRENT_STRENGTH_NEW "MINIMUM CURRENT" -to gpmc_d[1]
-set_instance_assignment -name CURRENT_STRENGTH_NEW "MINIMUM CURRENT" -to gpmc_d[2]
-set_instance_assignment -name CURRENT_STRENGTH_NEW "MINIMUM CURRENT" -to gpmc_d[3]
-set_instance_assignment -name CURRENT_STRENGTH_NEW "MINIMUM CURRENT" -to gpmc_d[4]
-set_instance_assignment -name CURRENT_STRENGTH_NEW "MINIMUM CURRENT" -to gpmc_d[5]
-set_instance_assignment -name CURRENT_STRENGTH_NEW "MINIMUM CURRENT" -to gpmc_d[6]
-set_instance_assignment -name CURRENT_STRENGTH_NEW "MINIMUM CURRENT" -to gpmc_d[7]
-set_instance_assignment -name CURRENT_STRENGTH_NEW "MINIMUM CURRENT" -to gpmc_d[8]
-set_instance_assignment -name CURRENT_STRENGTH_NEW "MINIMUM CURRENT" -to gpmc_d[9]
-set_instance_assignment -name CURRENT_STRENGTH_NEW "MINIMUM CURRENT" -to gpmc_d[10]
-set_instance_assignment -name CURRENT_STRENGTH_NEW "MINIMUM CURRENT" -to gpmc_d[11]
-set_instance_assignment -name CURRENT_STRENGTH_NEW "MINIMUM CURRENT" -to gpmc_d[12]
-set_instance_assignment -name CURRENT_STRENGTH_NEW "MINIMUM CURRENT" -to gpmc_d[13]
-set_instance_assignment -name CURRENT_STRENGTH_NEW "MINIMUM CURRENT" -to gpmc_d[14]
-set_instance_assignment -name CURRENT_STRENGTH_NEW "MINIMUM CURRENT" -to gpmc_d[15]
+# ===== SAFETY: min current on every driven ball; weak pull-up on ADC data inputs =====
+set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to adc_lane
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MINIMUM CURRENT" -to gpmc_d
 set_instance_assignment -name CURRENT_STRENGTH_NEW "MINIMUM CURRENT" -to gpmc_wait
-set_instance_assignment -name CURRENT_STRENGTH_NEW "MINIMUM CURRENT" -to adc_encode
-
-# =============================================================================
-# Timing: the GPMC read/write side is asynchronous and is brought into the `clk`
-# domain by FF synchronizers, so there is no cross-domain path to constrain there.
-# `clk` is the real free-running reference (ball C2, ~80 MHz); the ADC lanes are
-# source-synchronous to the ENCODE we forward from it. A bench build wanting a bounded
-# fMAX can add a minimal .sdc with `create_clock -period 12.5 [get_ports clk]` (80 MHz)
-# and `create_generated_clock` on adc_encode. No .sdc ships with this first cut.
-# =============================================================================
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MINIMUM CURRENT" -to adc_enc
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MINIMUM CURRENT" -to adc_ctl_hi
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MINIMUM CURRENT" -to adc_ctl_lo

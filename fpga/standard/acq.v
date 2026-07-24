@@ -47,15 +47,13 @@ module acq (
     // ENCODE we drive is derived from it; the whole datapath is this single domain.
     input  wire        clk,
 
-    // ADC data bus (INPUTS ONLY) — the AD9288-class converters feed the Cyclone
-    // DIRECTLY on 40 raw lanes = 5 * 8-bit cores (board trace: 8 top + 16 mid + 16
-    // bottom), split CH1 = 3 cores (24 bits) / CH2 = 2 cores (16 bits). 36 of the 40
-    // balls are JTAG-verified; 4 are CANDIDATE in acq.qsf. adcif.v de-interleaves them
-    // into the canonical {CH1,CH2} sample the spine consumes.
-    input  wire [23:0] adc_ch1,
-    input  wire [15:0] adc_ch2,
-    // ADC ENCODE clock we DRIVE back to the converters (they do NOT free-run).
-    output wire        adc_encode,
+    // ADC data bus (INPUTS) — 27 verified AD9288 data lanes (+ headroom) read directly.
+    input  wire [32:0] adc_lane,
+    // ADC DRIVE (bench-cracked recipe, docs/aux-bus-re.md): 8 ENCODE clocks + the held
+    // mode controls (F1/L4/T2/T7=1, G1/G2/K1=0) bring the converters out of power-down.
+    output wire [7:0]  adc_enc,
+    output wire [3:0]  adc_ctl_hi,
+    output wire [2:0]  adc_ctl_lo,
 
     // HW trigger comparator output (MAX V level-DAC-fed, ball A12): "a crossing occurred".
     input  wire        trig_sense,
@@ -229,9 +227,10 @@ module acq (
     // ADC front-end: 36 raw lanes -> canonical {CH1,CH2} sample + drive ENCODE.
     adcif u_adcif (
         .clk        (clk),
-        .adc_ch1    (adc_ch1),
-        .adc_ch2    (adc_ch2),
-        .adc_encode (adc_encode),
+        .adc_lane   (adc_lane),
+        .adc_enc    (adc_enc),
+        .adc_ctl_hi (adc_ctl_hi),
+        .adc_ctl_lo (adc_ctl_lo),
         .samp       (samp)
     );
 
