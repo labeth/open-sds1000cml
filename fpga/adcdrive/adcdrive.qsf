@@ -1,0 +1,119 @@
+# adcdrive.qsf -- shotgun ADC-drive replication diagnostic (EP4CE10F17C8). Top: adcdrive.
+# Build: cd fpga && go run ./cmd/buildacq -design adcdrive -name adcdrive -out adcdrive/adcdrive.rbf
+set_global_assignment -name FAMILY "Cyclone IV E"
+set_global_assignment -name DEVICE EP4CE10F17C8
+set_global_assignment -name TOP_LEVEL_ENTITY adcdrive
+set_global_assignment -name PROJECT_OUTPUT_DIRECTORY output_files
+set_global_assignment -name SEARCH_PATH .
+set_global_assignment -name VERILOG_FILE adcdrive.v
+set_global_assignment -name STRATIX_DEVICE_IO_STANDARD "3.3-V LVTTL"
+set_global_assignment -name RESERVE_ALL_UNUSED_PINS "AS INPUT TRI-STATED"
+set_global_assignment -name RESERVE_ALL_UNUSED_PINS_NO_OUTPUT_GND "AS INPUT TRI-STATED"
+
+set_location_assignment PIN_A10 -to gpmc_d[0]
+set_location_assignment PIN_B9 -to gpmc_d[1]
+set_location_assignment PIN_A9 -to gpmc_d[2]
+set_location_assignment PIN_B8 -to gpmc_d[3]
+set_location_assignment PIN_A8 -to gpmc_d[4]
+set_location_assignment PIN_B7 -to gpmc_d[5]
+set_location_assignment PIN_A7 -to gpmc_d[6]
+set_location_assignment PIN_B6 -to gpmc_d[7]
+set_location_assignment PIN_A6 -to gpmc_d[8]
+set_location_assignment PIN_D6 -to gpmc_d[9]
+set_location_assignment PIN_C6 -to gpmc_d[10]
+set_location_assignment PIN_B5 -to gpmc_d[11]
+set_location_assignment PIN_A5 -to gpmc_d[12]
+set_location_assignment PIN_F6 -to gpmc_d[13]
+set_location_assignment PIN_D5 -to gpmc_d[14]
+set_location_assignment PIN_E5 -to gpmc_d[15]
+set_location_assignment PIN_B4 -to nCS1
+set_location_assignment PIN_E6 -to nOE
+set_location_assignment PIN_B10 -to nWE
+set_location_assignment PIN_L6 -to gpmc_wait
+set_location_assignment PIN_C2 -to clk
+set_location_assignment PIN_M2 -to sel[0]
+set_location_assignment PIN_D1 -to sel[1]
+set_location_assignment PIN_C3 -to sel[2]
+set_location_assignment PIN_D4 -to sel[3]
+set_location_assignment PIN_A3 -to sel[4]
+set_location_assignment PIN_B3 -to sel[5]
+set_location_assignment PIN_A4 -to sel[6]
+set_location_assignment PIN_F8 -to adc_lane[0]
+set_location_assignment PIN_D8 -to adc_lane[1]
+set_location_assignment PIN_B12 -to adc_lane[2]
+set_location_assignment PIN_K15 -to adc_lane[3]
+set_location_assignment PIN_L13 -to adc_lane[4]
+set_location_assignment PIN_N15 -to adc_lane[5]
+set_location_assignment PIN_P15 -to adc_lane[6]
+set_location_assignment PIN_T11 -to adc_lane[7]
+set_location_assignment PIN_T9 -to adc_lane[8]
+set_location_assignment PIN_E8 -to adc_lane[9]
+set_location_assignment PIN_C8 -to adc_lane[10]
+set_location_assignment PIN_C9 -to adc_lane[11]
+set_location_assignment PIN_C11 -to adc_lane[12]
+set_location_assignment PIN_A11 -to adc_lane[13]
+set_location_assignment PIN_A13 -to adc_lane[14]
+set_location_assignment PIN_L16 -to adc_lane[15]
+set_location_assignment PIN_L14 -to adc_lane[16]
+set_location_assignment PIN_R10 -to adc_lane[17]
+set_location_assignment PIN_F9 -to adc_lane[18]
+set_location_assignment PIN_K16 -to adc_lane[19]
+set_location_assignment PIN_L12 -to adc_lane[20]
+set_location_assignment PIN_P11 -to adc_lane[21]
+set_location_assignment PIN_R11 -to adc_lane[22]
+set_location_assignment PIN_E11 -to adc_lane[23]
+set_location_assignment PIN_D12 -to adc_lane[24]
+set_location_assignment PIN_G15 -to adc_lane[25]
+set_location_assignment PIN_G16 -to adc_lane[26]
+set_location_assignment PIN_N14 -to adc_lane[27]
+set_location_assignment PIN_M12 -to adc_lane[28]
+set_location_assignment PIN_M10 -to adc_lane[29]
+set_location_assignment PIN_T13 -to adc_lane[30]
+set_location_assignment PIN_P9 -to adc_lane[31]
+set_location_assignment PIN_R12 -to adc_lane[32]
+set_location_assignment PIN_K10 -to shot[0]
+set_location_assignment PIN_K2 -to shot[1]
+set_location_assignment PIN_K5 -to shot[2]
+set_location_assignment PIN_K8 -to shot[3]
+set_location_assignment PIN_K9 -to shot[4]
+set_location_assignment PIN_L1 -to shot[5]
+set_location_assignment PIN_L10 -to shot[6]
+set_location_assignment PIN_L2 -to shot[7]
+set_location_assignment PIN_L3 -to shot[8]
+set_location_assignment PIN_L8 -to shot[9]
+set_location_assignment PIN_L9 -to shot[10]
+set_location_assignment PIN_M6 -to shot[11]
+set_location_assignment PIN_M7 -to shot[12]
+set_location_assignment PIN_M8 -to shot[13]
+set_location_assignment PIN_N1 -to shot[14]
+set_location_assignment PIN_N2 -to shot[15]
+set_location_assignment PIN_N3 -to shot[16]
+set_location_assignment PIN_N5 -to shot[17]
+set_location_assignment PIN_N6 -to shot[18]
+set_location_assignment PIN_P1 -to shot[19]
+set_location_assignment PIN_P2 -to shot[20]
+set_location_assignment PIN_P3 -to shot[21]
+set_location_assignment PIN_R1 -to shot[22]
+set_location_assignment PIN_R3 -to shot[23]
+set_location_assignment PIN_R4 -to shot[24]
+set_location_assignment PIN_R5 -to shot[25]
+set_location_assignment PIN_R6 -to shot[26]
+set_location_assignment PIN_R7 -to shot[27]
+set_location_assignment PIN_T3 -to shot[28]
+set_location_assignment PIN_T4 -to shot[29]
+set_location_assignment PIN_T5 -to shot[30]
+set_location_assignment PIN_T6 -to shot[31]
+set_location_assignment PIN_F1 -to hold_hi[0]
+set_location_assignment PIN_L4 -to hold_hi[1]
+set_location_assignment PIN_T2 -to hold_hi[2]
+set_location_assignment PIN_T7 -to hold_hi[3]
+set_location_assignment PIN_G1 -to hold_lo[0]
+set_location_assignment PIN_G2 -to hold_lo[1]
+set_location_assignment PIN_K1 -to hold_lo[2]
+# weak pull-ups on ADC inputs (clean no-conversion baseline); min current on all driven balls
+set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to adc_lane
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MINIMUM CURRENT" -to gpmc_d
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MINIMUM CURRENT" -to gpmc_wait
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MINIMUM CURRENT" -to shot
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MINIMUM CURRENT" -to hold_hi
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MINIMUM CURRENT" -to hold_lo
