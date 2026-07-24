@@ -92,6 +92,7 @@ set_location_assignment PIN_P8 -to sram_dq[18]
 set_location_assignment PIN_R8 -to sram_dq[19]
 set_location_assignment PIN_R16 -to sram_dq[20]
 set_location_assignment PIN_T8 -to sram_dq[21]
-set_instance_assignment -name CURRENT_STRENGTH_NEW "MINIMUM CURRENT" -to sram_ac
 set_instance_assignment -name CURRENT_STRENGTH_NEW "MINIMUM CURRENT" -to gpmc_d
 set_instance_assignment -name CURRENT_STRENGTH_NEW "MINIMUM CURRENT" -to gpmc_wait
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to sram_ac
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to sram_dq
