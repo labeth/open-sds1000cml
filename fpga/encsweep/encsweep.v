@@ -32,6 +32,7 @@ module encsweep #(
     input  wire [23:0] adc_ch1,              // ADC data lanes (verified 36 + candidates)
     input  wire [15:0] adc_ch2,
     output wire [NCAND-1:0] enc_cand,        // candidate ENCODE outputs (one driven at a time)
+    output wire [2:0]  s1_out,               // ADC mode-select S1 candidates, held HIGH (normal
 
     input  wire        nCS1,
     input  wire        nOE,
@@ -112,5 +113,10 @@ module encsweep #(
     wire read_active = (~nCS1) & (~nOE);
     assign gpmc_d    = read_active ? rdata : 16'hzzzz;
     assign gpmc_wait = 1'b1;
+
+    // Hold the 3 factory-driven-HIGH bottom-cluster control balls (S1 mode-select
+    // candidates T2/L4/T7) high, matching the factory, so the AD9288s leave power-down
+    // (S1=1) and can actually convert when we drive their ENCODE.
+    assign s1_out = 3'b111;
 
 endmodule
