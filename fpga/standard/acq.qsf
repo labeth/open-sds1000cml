@@ -88,7 +88,7 @@ set_location_assignment PIN_B10 -to nWE
 # ---- selector sel[7:0] == byte_addr>>1, i.e. sel[k] = GPMC address line A(k+1) ----
 #   VERIFIED (mirror-mode sweep): A1=M2, A3=C3, A4=D4, A5=A3, A6=B3, A7=A4.
 set_location_assignment PIN_M2  -to sel[0]
-set_location_assignment PIN_D2  -to sel[1]
+set_location_assignment PIN_D1  -to sel[1]
 set_location_assignment PIN_C3  -to sel[2]
 set_location_assignment PIN_D4  -to sel[3]
 set_location_assignment PIN_A3  -to sel[4]
@@ -98,7 +98,8 @@ set_location_assignment PIN_F3  -to sel[7]
 #   sel[0]=A1(M2, verified; NOT a clock -- the old guess was wrong).
 #   sel[1]=A2 [CAND]: rung-2 saw A2 "open", ball unresolved. Needed to tell e.g. 0x10
 #          from 0x12 (VERSION). If A2 is truly unwired to the Cyclone, the schema
-#          selectors must avoid bit-1-only differences (a schema follow-up). D2 parked.
+#          selectors must avoid bit-1-only differences (a schema follow-up). Parked on
+#          D1 (NOT D2 — D2 is the reserved ALTERA_FLASH_nCE_nCSO config pin).
 #   sel[2..6]=A3..A7 (C3,D4,A3,B3,A4, all verified).
 #   sel[7]=A8 [CAND]: unused by the 0x10-0x7f map (always 0); parked on F3 -- it MUST
 #          read 0 for reads to decode. Confirm/relocate when the address map is mapped.
