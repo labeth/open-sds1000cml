@@ -28,12 +28,12 @@ module adcif_tb;
     endtask
     task settle; begin @(posedge clk); @(posedge clk); @(posedge clk); #1; end endtask
 
-    // Channel-split masks (offset-DAC-sweep-determined): the lanes adcif routes to each
-    // byte. CH1 = {0,1,3,4,5,6,7,8}, CH2 = {18,20,21,22,23,24,27,28} (disjoint sets).
-    localparam [32:0] CH1_MASK = (33'd1<<0)|(33'd1<<1)|(33'd1<<3)|(33'd1<<4)|
-                                 (33'd1<<5)|(33'd1<<6)|(33'd1<<7)|(33'd1<<8);
-    localparam [32:0] CH2_MASK = (33'd1<<18)|(33'd1<<20)|(33'd1<<21)|(33'd1<<22)|
-                                 (33'd1<<23)|(33'd1<<24)|(33'd1<<27)|(33'd1<<28);
+    // Channel-split masks (rawcap-diagnostic-derived): the lanes adcif routes to each byte.
+    // CH1 = {0,1,3,5,6,9,11,12}, CH2 = {18,20,22,23,24,28,30,31} (disjoint sets).
+    localparam [32:0] CH1_MASK = (33'd1<<0)|(33'd1<<1)|(33'd1<<3)|(33'd1<<5)|
+                                 (33'd1<<6)|(33'd1<<9)|(33'd1<<11)|(33'd1<<12);
+    localparam [32:0] CH2_MASK = (33'd1<<18)|(33'd1<<20)|(33'd1<<22)|(33'd1<<23)|
+                                 (33'd1<<24)|(33'd1<<28)|(33'd1<<30)|(33'd1<<31);
 
     integer i; reg saw0, saw1;
     initial begin

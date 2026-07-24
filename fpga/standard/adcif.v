@@ -56,12 +56,17 @@ module adcif #(
     //   builds and streams a real waveform; correct the 16 indices to the true bit-order
     //   / channel-split once the streamed data is compared to a known ramp/triangle.
     // =======================================================================
-    // CHANNEL SPLIT determined by an offset-DAC sweep (bench): the 15 lanes that rail with
-    // the C1 offset are CH1; the ~12 that carry C2's signal are CH2 (docs/aux-bus-re.md).
-    // The 8-of-15 core selection + per-BIT order are the remaining [TUNE] (need a DC-hold
-    // ramp — the offset rails here, so it only gives the split + MSBs cleanly).
-    localparam integer C1B0=0,  C1B1=1,  C1B2=3,  C1B3=4,  C1B4=5,  C1B5=6,  C1B6=7,  C1B7=8;   // CH1 lanes
-    localparam integer C2B0=18, C2B1=20, C2B2=21, C2B3=22, C2B4=23, C2B5=24, C2B6=27, C2B7=28;  // CH2 lanes
+    // DE-INTERLEAVE derived on the bench via the rawcap diagnostic (fpga/rawcap): a
+    // decimated raw-lane TIME-SERIES was captured while a triangle swept each channel's
+    // converting window (C1 offset 0x29 / C2 offset 0x28). Lanes were clustered by the
+    // common-ENCODE core-redundancy and ordered by toggle rate; CH1 was optimised to a
+    // clean reconstructed waveform (mean|Δ|~4, hits the 0/255 rails). CH1 is PROVEN;
+    // CH2's bench signal was weak (thin/low-amplitude window) so its order is best-effort
+    // toggle-ranked over the rail-verified CH2 lanes — refine with a stronger CH2 input.
+    //   CH1 bit7..bit0 = adc_lane[3,0,1,11,9,12,6,5]
+    //   CH2 bit7..bit0 = adc_lane[18,20,22,23,28,24,30,31] (best-effort)
+    localparam integer C1B7=3,  C1B6=0,  C1B5=1,  C1B4=11, C1B3=9,  C1B2=12, C1B1=6,  C1B0=5;   // CH1 (proven)
+    localparam integer C2B7=18, C2B6=20, C2B5=22, C2B4=23, C2B3=28, C2B2=24, C2B1=30, C2B0=31;  // CH2 (best-effort)
 
     wire [7:0] ch1_byte = { lane_r[C1B7], lane_r[C1B6], lane_r[C1B5], lane_r[C1B4],
                             lane_r[C1B3], lane_r[C1B2], lane_r[C1B1], lane_r[C1B0] };
