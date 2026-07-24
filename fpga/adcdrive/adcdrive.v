@@ -55,27 +55,33 @@ module adcdrive (
     wire [7:0] wr_sel    = {1'b0, sel_q2[6:2], 2'b00};
     wire [7:0] rd_sel    = {1'b0, sel[6:2],   2'b00};
 
-    reg [15:0] enc_div = 16'd3;          // clk/(2*4)=~10 MHz default
-    reg        chg_rst = 1'b0;
+    reg [15:0] enc_div   = 16'd3;             // clk/(2*4)=~10 MHz default
+    reg [31:0] shot_mask = 32'hFFFFFFFF;      // which of the 32 shot balls to DRIVE (else Hi-Z)
+    reg        chg_rst   = 1'b0;
     always @(posedge clk) begin
         chg_rst <= 1'b0;
         if (we_commit && cs1_low) begin
             case (wr_sel)
-                8'h24: enc_div <= d_q2;
-                8'h28: chg_rst <= 1'b1;
+                8'h20: shot_mask[15:0]  <= d_q2;   // binary-search the ENCODE/clock set
+                8'h24: shot_mask[31:16] <= d_q2;
+                8'h28: enc_div          <= d_q2;
+                8'h2C: chg_rst          <= 1'b1;
                 default: ;
             endcase
         end
     end
 
-    // ---- common shotgun clock ----
+    // ---- common shotgun clock (only masked-in balls are driven; the rest Hi-Z) ----
     reg        enc_clk = 1'b0;
     reg [15:0] dv = 16'd0;
     always @(posedge clk) begin
         if (dv >= enc_div) begin dv <= 16'd0; enc_clk <= ~enc_clk; end
         else                     dv <= dv + 16'd1;
     end
-    assign shot    = {32{enc_clk}};
+    genvar gi;
+    generate for (gi = 0; gi < 32; gi = gi + 1) begin : gshot
+        assign shot[gi] = shot_mask[gi] ? enc_clk : 1'bz;
+    end endgenerate
     assign hold_hi = 4'b1111;
     assign hold_lo = 3'b000;
 
@@ -92,7 +98,9 @@ module adcdrive (
     always @* begin
         case (rd_sel)
             8'h10:   rdata = 16'hADC0;
-            8'h24:   rdata = enc_div;
+            8'h20:   rdata = shot_mask[15:0];
+            8'h24:   rdata = shot_mask[31:16];
+            8'h28:   rdata = enc_div;
             8'h40:   rdata = chg[15:0];
             8'h44:   rdata = chg[31:16];
             8'h48:   rdata = {15'd0, chg[32]};

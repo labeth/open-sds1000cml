@@ -28,15 +28,27 @@ module adcif_tb;
     endtask
     task settle; begin @(posedge clk); @(posedge clk); @(posedge clk); #1; end endtask
 
+    // Channel-split masks (offset-DAC-sweep-determined): the lanes adcif routes to each
+    // byte. CH1 = {0,1,3,4,5,6,7,8}, CH2 = {18,20,21,22,23,24,27,28} (disjoint sets).
+    localparam [32:0] CH1_MASK = (33'd1<<0)|(33'd1<<1)|(33'd1<<3)|(33'd1<<4)|
+                                 (33'd1<<5)|(33'd1<<6)|(33'd1<<7)|(33'd1<<8);
+    localparam [32:0] CH2_MASK = (33'd1<<18)|(33'd1<<20)|(33'd1<<21)|(33'd1<<22)|
+                                 (33'd1<<23)|(33'd1<<24)|(33'd1<<27)|(33'd1<<28);
+
     integer i; reg saw0, saw1;
     initial begin
-        // default de-interleave: CH1 = lanes[7:0], CH2 = lanes[15:8]
-        adc_lane = 33'h0000_00AB;  // lanes[7:0]=0xAB, [15:8]=0x00
-        settle; expect_samp(16'hAB00, "CH1=lanes[7:0]=AB, CH2=lanes[15:8]=00");
-        adc_lane = 33'h0000_CDAB;  // [7:0]=0xAB, [15:8]=0xCD
-        settle; expect_samp(16'hABCD, "hi=CH1(AB) lo=CH2(CD)");
-        adc_lane = {17'h1FFFF, 16'h0000}; // upper lanes set, low 16 clear
-        settle; expect_samp(16'h0000, "upper lanes masked out");
+        // all CH1 lanes high, all CH2 lanes low -> hi byte 0xFF, lo byte 0x00
+        adc_lane = CH1_MASK;
+        settle; expect_samp(16'hFF00, "CH1 lanes -> hi=FF, CH2 lanes clear -> lo=00");
+        // all CH2 lanes high, all CH1 lanes low -> hi 0x00, lo 0xFF
+        adc_lane = CH2_MASK;
+        settle; expect_samp(16'h00FF, "CH2 lanes -> lo=FF, CH1 lanes clear -> hi=00");
+        // both channels' lanes high -> 0xFFFF
+        adc_lane = CH1_MASK | CH2_MASK;
+        settle; expect_samp(16'hFFFF, "both channel lane sets -> FFFF");
+        // lanes NOT in either channel set must not leak into samp
+        adc_lane = ~(CH1_MASK | CH2_MASK) & 33'h1FFFFFFFF;
+        settle; expect_samp(16'h0000, "non-channel lanes masked out");
 
         // held mode controls
         #1 if (adc_ctl_hi !== 4'b1111) begin $display("FAIL ctl_hi=%b", adc_ctl_hi); errors=errors+1; end

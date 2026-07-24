@@ -56,8 +56,12 @@ module adcif #(
     //   builds and streams a real waveform; correct the 16 indices to the true bit-order
     //   / channel-split once the streamed data is compared to a known ramp/triangle.
     // =======================================================================
-    localparam integer C1B0=0,  C1B1=1,  C1B2=2,  C1B3=3,  C1B4=4,  C1B5=5,  C1B6=6,  C1B7=7;
-    localparam integer C2B0=8,  C2B1=9,  C2B2=10, C2B3=11, C2B4=12, C2B5=13, C2B6=14, C2B7=15;
+    // CHANNEL SPLIT determined by an offset-DAC sweep (bench): the 15 lanes that rail with
+    // the C1 offset are CH1; the ~12 that carry C2's signal are CH2 (docs/aux-bus-re.md).
+    // The 8-of-15 core selection + per-BIT order are the remaining [TUNE] (need a DC-hold
+    // ramp — the offset rails here, so it only gives the split + MSBs cleanly).
+    localparam integer C1B0=0,  C1B1=1,  C1B2=3,  C1B3=4,  C1B4=5,  C1B5=6,  C1B6=7,  C1B7=8;   // CH1 lanes
+    localparam integer C2B0=18, C2B1=20, C2B2=21, C2B3=22, C2B4=23, C2B5=24, C2B6=27, C2B7=28;  // CH2 lanes
 
     wire [7:0] ch1_byte = { lane_r[C1B7], lane_r[C1B6], lane_r[C1B5], lane_r[C1B4],
                             lane_r[C1B3], lane_r[C1B2], lane_r[C1B1], lane_r[C1B0] };
