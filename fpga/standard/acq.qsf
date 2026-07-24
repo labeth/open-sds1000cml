@@ -95,11 +95,11 @@ set_location_assignment PIN_A3  -to sel[4]
 set_location_assignment PIN_B3  -to sel[5]
 set_location_assignment PIN_A4  -to sel[6]
 #   sel[0]=A1(M2, verified; NOT a clock -- the old guess was wrong).
-#   sel[1]=A2 [CAND]: rung-2 saw A2 "open", ball unresolved. Needed to tell e.g. 0x10
-#          from 0x12 (VERSION). Parked on D1 (NOT D2 — D2 is the reserved
-#          ALTERA_FLASH_nCE_nCSO config pin). *** CRITICAL BENCH ITEM: find A2's real
-#          ball. *** The factory addresses CS1 0x30 vs 0x32 (drain), so A2 DOES reach
-#          the Cyclone — its ball just isn't pinned yet.
+#   sel[1]=A2: RESOLVED BY DESIGN, not by a ball. HW readback proved D1 (a guess) floats
+#          HIGH and A2 is not reliably wired to the Cyclone (a read of 0x10 aliased to
+#          0x12/VERSION). The CS1 map now uses bit1=0 for EVERY selector and the fabric
+#          MASKS sel[1] to 0 (acq.v rd_sel/wr_sel) -> D1's value is ignored; decode uses
+#          only verified lines A1,A3..A7. D1 kept assigned (harmless) to avoid auto-place.
 #   sel[2..6]=A3..A7 (C3,D4,A3,B3,A4, all verified).
 #   sel[7]=A8 REMOVED: the map is 0x00-0x7f so bit7 is always 0 — the fabric forces it
 #          to 0 (acq.v rd_sel/wr_sel) and does not bring the port in, so a floating A8

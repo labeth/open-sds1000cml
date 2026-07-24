@@ -109,9 +109,14 @@ module acq (
     // ---- regmux write/read handshake signals (provided to the generated include) --
     wire       we_commit = (we_q[2] == 1'b0) && (we_q[1] == 1'b1);  // nWE rising: data+sel settled
     wire [7:0] wr_plane  = cs1_low ? `PLANE_CS1 : 8'h00;   // CS1-only slave (CS3 = MAX V)
-    wire [7:0] wr_sel    = {1'b0, sel_q2};   // A8/bit7 forced 0 (never needed by the 0x00-0x7f map)
+    // bits 0/1/7 (A1/A2/A8) forced 0 — all THREE are unusable Cyclone address lines,
+    // HW-confirmed by a flashed-fabric readback: A2 (D1) floats high, and A1 (M2) carries
+    // a CLOCK (M2 toggles ~50% at rest, so sel[0] flipped mid-read and mixed adjacent
+    // registers). The CS1 map is laid out with bit0=bit1=0 for every selector (mult-of-4,
+    // codegen) so the decode uses ONLY the verified, stable lines A3,A4,A5,A6,A7 (sel[6:2]).
+    wire [7:0] wr_sel    = {1'b0, sel_q2[6:2], 2'b00};
     wire [7:0] rd_plane  = (~nCS1) ? `PLANE_CS1 : 8'h00;   // CS1-only slave (CS3 = MAX V)
-    wire [7:0] rd_sel    = {1'b0, sel};   // A8/bit7 forced 0; CPU holds nOE for the combinational read mux
+    wire [7:0] rd_sel    = {1'b0, sel[6:2], 2'b00};   // bits 0/1/7 forced 0 (see wr_sel)
 
     // ---- auto-inc read decode (synchronized; one pop / nOE-rise) -----------
     wire sel_is_burst    = (sel_q2 == `SEL_BURST);

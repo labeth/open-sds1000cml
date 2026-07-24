@@ -45,48 +45,54 @@ func Standard() schema.Interface {
 
 		Blocks: []schema.Block{
 			// ================= CS1 (acquisition / read plane) =================
+			// HARDWARE CONSTRAINT (bench-confirmed 2026-07, live flashed-fabric readback):
+			// only GPMC address lines A3,A4,A5,A6,A7 (= sel bits 2..6) are reliably wired to
+			// the Cyclone AND stable. A2 (sel[1]) floats high, and A1 (sel[0], ball M2) carries
+			// a CLOCK — both scramble the decode. So every CS1 selector below is a MULTIPLE OF 4
+			// (bit0 == bit1 == 0), the fabric masks bits 0/1/7 to 0, and the decode uses ONLY
+			// A3..A7. That is 32 slots for the ~22 CS1 registers. CS3 (MAX V) is unchanged.
 
 			// ---- meta 0x10-0x17 -----------------------------------------
-			{Name: "meta", Plane: schema.CS1, Base: 0x10, Span: 0x08,
+			{Name: "meta", Plane: schema.CS1, Base: 0x10, Span: 0x10,
 				Desc: "identity / build-ID handshake",
 				Regs: []schema.Register{
 					{Name: "BUILDID_LO", Sel: 0x10, Plane: schema.CS1, Access: schema.R, Sem: S,
 						Desc: "low 16 bits of the schema build-ID (app checks vs compiled-in iface.BuildID)"},
-					{Name: "BUILDID_HI", Sel: 0x11, Plane: schema.CS1, Access: schema.R, Sem: S,
+					{Name: "BUILDID_HI", Sel: 0x14, Plane: schema.CS1, Access: schema.R, Sem: S,
 						Desc: "high 16 bits of the schema build-ID"},
-					{Name: "VERSION", Sel: 0x12, Plane: schema.CS1, Access: schema.R, Sem: S, Expect: u16(0x0052),
+					{Name: "VERSION", Sel: 0x18, Plane: schema.CS1, Access: schema.R, Sem: S, Expect: u16(0x0052),
 						Desc: "fabric self-check magic (a cheap addressing sanity check the app already performs)"},
 				}},
 
 			// ---- capture 0x20-0x2f --------------------------------------
-			{Name: "capture", Plane: schema.CS1, Base: 0x20, Span: 0x10,
+			{Name: "capture", Plane: schema.CS1, Base: 0x20, Span: 0x20,
 				Desc: "arm / halt / re-arm + stream decimation + programmable pre/post-trigger depth",
 				Regs: []schema.Register{
 					{Name: "OPCODE", Sel: 0x20, Plane: schema.CS1, Access: schema.W, Sem: schema.SemStrobe,
 						Desc: "capture opcode strobe: GO (arm/re-arm) / HALT (freeze) / RESET (idle)"},
-					{Name: "RUN", Sel: 0x21, Plane: schema.CS1, Access: schema.RW, Sem: S,
+					{Name: "RUN", Sel: 0x24, Plane: schema.CS1, Access: schema.RW, Sem: S,
 						Fields: []schema.Field{
 							{Name: "MODE", Hi: 1, Lo: 0, Desc: "0=auto 1=norm; single-shot is app-orchestrated over norm (no distinct fabric mode)"},
 							{Name: "RUN", Hi: 2, Lo: 2, Desc: "1=running"},
 						},
 						Desc: "run/mode control"},
-					{Name: "DECIM_LO", Sel: 0x22, Plane: schema.CS1, Access: schema.RW, Sem: S,
+					{Name: "DECIM_LO", Sel: 0x28, Plane: schema.CS1, Access: schema.RW, Sem: S,
 						Desc: "stream decimation factor, low word (transform stage 0; cap_tick once per DECIM samples, §4.2)"},
-					{Name: "DECIM_HI", Sel: 0x23, Plane: schema.CS1, Access: schema.RW, Sem: S,
+					{Name: "DECIM_HI", Sel: 0x2C, Plane: schema.CS1, Access: schema.RW, Sem: S,
 						Desc: "stream decimation factor, high word"},
-					{Name: "PRETRIG_LO", Sel: 0x24, Plane: schema.CS1, Access: schema.RW, Sem: S, Desc: "pre-trigger depth, low word"},
-					{Name: "PRETRIG_HI", Sel: 0x25, Plane: schema.CS1, Access: schema.RW, Sem: S, Desc: "pre-trigger depth, high word"},
-					{Name: "POSTTRIG_LO", Sel: 0x26, Plane: schema.CS1, Access: schema.RW, Sem: S, Desc: "post-trigger depth, low word"},
-					{Name: "POSTTRIG_HI", Sel: 0x27, Plane: schema.CS1, Access: schema.RW, Sem: S, Desc: "post-trigger depth, high word"},
+					{Name: "PRETRIG_LO", Sel: 0x30, Plane: schema.CS1, Access: schema.RW, Sem: S, Desc: "pre-trigger depth, low word"},
+					{Name: "PRETRIG_HI", Sel: 0x34, Plane: schema.CS1, Access: schema.RW, Sem: S, Desc: "pre-trigger depth, high word"},
+					{Name: "POSTTRIG_LO", Sel: 0x38, Plane: schema.CS1, Access: schema.RW, Sem: S, Desc: "post-trigger depth, low word"},
+					{Name: "POSTTRIG_HI", Sel: 0x3C, Plane: schema.CS1, Access: schema.RW, Sem: S, Desc: "post-trigger depth, high word"},
 				}},
 
 			// ---- drain 0x30-0x3f ----------------------------------------
-			{Name: "drain", Plane: schema.CS1, Base: 0x30, Span: 0x10,
+			{Name: "drain", Plane: schema.CS1, Base: 0x40, Span: 0x10,
 				Desc: "frozen-record readout: a single fixed auto-inc BURST port (1-D DMA source) + remaining",
 				Regs: []schema.Register{
-					{Name: "BURST", Sel: 0x30, Plane: schema.CS1, Access: schema.R, Sem: schema.SemAutoIncPort | schema.SemReadAfterHalt,
+					{Name: "BURST", Sel: 0x40, Plane: schema.CS1, Access: schema.R, Sem: schema.SemAutoIncPort | schema.SemReadAfterHalt,
 						Desc: "single fixed-address auto-inc raw-record port (reads 0..N-1 in order; hi byte C1, lo byte C2)"},
-					{Name: "BURST_REMAIN", Sel: 0x3E, Plane: schema.CS1, Access: schema.R, Sem: schema.SemLevelStatus | schema.SemReadAfterHalt,
+					{Name: "BURST_REMAIN", Sel: 0x44, Plane: schema.CS1, Access: schema.R, Sem: schema.SemLevelStatus | schema.SemReadAfterHalt,
 						Fields: []schema.Field{
 							{Name: "READY", Hi: 15, Lo: 15, Desc: "1=coherent frozen record present"},
 							{Name: "REMAIN", Hi: 14, Lo: 0, Desc: "words not yet popped through BURST (flow-controls a self-paced drain)"},
@@ -95,58 +101,58 @@ func Standard() schema.Interface {
 				}},
 
 			// ---- status 0x40-0x4f ---------------------------------------
-			{Name: "status", Plane: schema.CS1, Base: 0x40, Span: 0x10,
+			{Name: "status", Plane: schema.CS1, Base: 0x50, Span: 0x10,
 				Desc: "clean level acquisition status + interpolating trigger position + fill",
 				Regs: []schema.Register{
-					{Name: "STATUS_A", Sel: 0x41, Plane: schema.CS1, Access: schema.R, Sem: schema.SemLevelStatus,
+					{Name: "STATUS_A", Sel: 0x50, Plane: schema.CS1, Access: schema.R, Sem: schema.SemLevelStatus,
 						Fields: []schema.Field{
 							{Name: "VALID", Hi: 0, Lo: 0, Desc: "a coherent record is present"},
 							{Name: "TRIG", Hi: 1, Lo: 1, Desc: "a comparator crossing was accepted this frame"},
 							{Name: "DONE", Hi: 2, Lo: 2, Desc: "post-trigger record complete and drain open (means done — gate on it directly)"},
 						},
 						Desc: "primary status (clean live level)"},
-					{Name: "TRIGPOS_LO", Sel: 0x42, Plane: schema.CS1, Access: schema.R, Sem: schema.SemLevelStatus | schema.SemReadAfterHalt,
+					{Name: "TRIGPOS_LO", Sel: 0x54, Plane: schema.CS1, Access: schema.R, Sem: schema.SemLevelStatus | schema.SemReadAfterHalt,
 						Fields: []schema.Field{
 							{Name: "FRAC", Hi: 15, Lo: 0, Desc: "sub-sample interpolation fraction (Q16): frac=(lvl-s[k-1])/(s[k]-s[k-1])"},
 						},
 						Desc: "interpolating trigger position, fractional word (§4.3)"},
-					{Name: "TRIGPOS_HI", Sel: 0x43, Plane: schema.CS1, Access: schema.R, Sem: schema.SemLevelStatus | schema.SemReadAfterHalt,
+					{Name: "TRIGPOS_HI", Sel: 0x58, Plane: schema.CS1, Access: schema.R, Sem: schema.SemLevelStatus | schema.SemReadAfterHalt,
 						Fields: []schema.Field{
 							{Name: "IDX", Hi: 14, Lo: 0, Desc: "physical mem index of the trigger sample (locates the trigger in the drained array)"},
 						},
 						Desc: "interpolating trigger position, physical-index word (§4.3)"},
-					{Name: "FILL", Sel: 0x44, Plane: schema.CS1, Access: schema.R, Sem: schema.SemLevelStatus,
+					{Name: "FILL", Sel: 0x5C, Plane: schema.CS1, Access: schema.R, Sem: schema.SemLevelStatus,
 						Fields: []schema.Field{{Name: "COUNT", Hi: 10, Lo: 0, Desc: "fill counter (11-bit); frozen after halt (coherence telemetry)"}},
 						Desc: "fill progress"},
 				}},
 
 			// ---- spine 0x50-0x5f ----------------------------------------
-			{Name: "spine", Plane: schema.CS1, Base: 0x50, Span: 0x10,
+			{Name: "spine", Plane: schema.CS1, Base: 0x60, Span: 0x10,
 				Desc: "streaming-spine control: transform-stage bypass + envelope config",
 				Regs: []schema.Register{
-					{Name: "XFORM_CTRL", Sel: 0x50, Plane: schema.CS1, Access: schema.RW, Sem: S,
+					{Name: "XFORM_CTRL", Sel: 0x60, Plane: schema.CS1, Access: schema.RW, Sem: S,
 						Fields: []schema.Field{
 							{Name: "BYPASS0", Hi: 0, Lo: 0, Desc: "1=bypass the stage-0 in-line data transform (reserved identity slot today); no effect on decimation — sample rate is set only by DECIM"},
 							{Name: "BYPASS1", Hi: 1, Lo: 1, Desc: "1=bypass transform stage 1 (reserved identity slot)"},
 						},
 						Desc: "in-line transform-stage bypass"},
-					{Name: "ENV_COLS", Sel: 0x51, Plane: schema.CS1, Access: schema.RW, Sem: S,
+					{Name: "ENV_COLS", Sel: 0x64, Plane: schema.CS1, Access: schema.RW, Sem: S,
 						Desc: "envelope reducer column count (min/max folded on the live stream, §4.5)"},
 				}},
 
 			// ---- channels 0x60-0x7f -------------------------------------
-			{Name: "channels", Plane: schema.CS1, Base: 0x60, Span: 0x20,
+			{Name: "channels", Plane: schema.CS1, Base: 0x70, Span: 0x10,
 				Desc: "result/event channel ports (the uniform DATA/COUNT/RESET triad); envelope is the first instance of the reusable result_fifo contract",
 				Regs: []schema.Register{
-					{Name: "ENV_DATA", Sel: 0x60, Plane: schema.CS1, Access: schema.R, Sem: schema.SemAutoIncPort | schema.SemReadAfterHalt,
+					{Name: "ENV_DATA", Sel: 0x70, Plane: schema.CS1, Access: schema.R, Sem: schema.SemAutoIncPort | schema.SemReadAfterHalt,
 						Desc: "envelope channel DATA: successive 16-bit words of packed records (pops one word/read)"},
-					{Name: "ENV_COUNT", Sel: 0x61, Plane: schema.CS1, Access: schema.R, Sem: schema.SemLevelStatus,
+					{Name: "ENV_COUNT", Sel: 0x74, Plane: schema.CS1, Access: schema.R, Sem: schema.SemLevelStatus,
 						Fields: []schema.Field{
 							{Name: "COUNT", Hi: 14, Lo: 0, Desc: "envelope records available"},
 							{Name: "OVERFLOW", Hi: 15, Lo: 15, Desc: "records dropped (ENV_COLS too large for the FIFO); never a silent drop"},
 						},
 						Desc: "envelope channel COUNT: record count + overflow (level-status)"},
-					{Name: "ENV_RESET", Sel: 0x62, Plane: schema.CS1, Access: schema.W, Sem: schema.SemStrobe,
+					{Name: "ENV_RESET", Sel: 0x78, Plane: schema.CS1, Access: schema.W, Sem: schema.SemStrobe,
 						Desc: "envelope channel RESET: clears the envelope FIFO (strobe)"},
 				}},
 

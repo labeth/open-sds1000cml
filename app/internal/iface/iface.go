@@ -13,7 +13,7 @@ import "fmt"
 
 // BuildID fingerprints the schema; the app checks it vs BUILDID_LO/HI at bring-up
 // and refuses to drive a fabric whose build-ID differs.
-const BuildID uint32 = 0x4a9ccfa4
+const BuildID uint32 = 0xc2f6eb5f
 
 // Version is the schema version string.
 const Version = "1"
@@ -59,27 +59,27 @@ const (
 // Selectors — pass UNSHIFTED; the driver applies the <<1 byte-address shift.
 const (
 	SelBUILDID_LO   uint16 = 0x10
-	SelBUILDID_HI   uint16 = 0x11
-	SelVERSION      uint16 = 0x12
+	SelBUILDID_HI   uint16 = 0x14
+	SelVERSION      uint16 = 0x18
 	SelOPCODE       uint16 = 0x20
-	SelRUN          uint16 = 0x21
-	SelDECIM_LO     uint16 = 0x22
-	SelDECIM_HI     uint16 = 0x23
-	SelPRETRIG_LO   uint16 = 0x24
-	SelPRETRIG_HI   uint16 = 0x25
-	SelPOSTTRIG_LO  uint16 = 0x26
-	SelPOSTTRIG_HI  uint16 = 0x27
-	SelBURST        uint16 = 0x30
-	SelBURST_REMAIN uint16 = 0x3e
-	SelSTATUS_A     uint16 = 0x41
-	SelTRIGPOS_LO   uint16 = 0x42
-	SelTRIGPOS_HI   uint16 = 0x43
-	SelFILL         uint16 = 0x44
-	SelXFORM_CTRL   uint16 = 0x50
-	SelENV_COLS     uint16 = 0x51
-	SelENV_DATA     uint16 = 0x60
-	SelENV_COUNT    uint16 = 0x61
-	SelENV_RESET    uint16 = 0x62
+	SelRUN          uint16 = 0x24
+	SelDECIM_LO     uint16 = 0x28
+	SelDECIM_HI     uint16 = 0x2c
+	SelPRETRIG_LO   uint16 = 0x30
+	SelPRETRIG_HI   uint16 = 0x34
+	SelPOSTTRIG_LO  uint16 = 0x38
+	SelPOSTTRIG_HI  uint16 = 0x3c
+	SelBURST        uint16 = 0x40
+	SelBURST_REMAIN uint16 = 0x44
+	SelSTATUS_A     uint16 = 0x50
+	SelTRIGPOS_LO   uint16 = 0x54
+	SelTRIGPOS_HI   uint16 = 0x58
+	SelFILL         uint16 = 0x5c
+	SelXFORM_CTRL   uint16 = 0x60
+	SelENV_COLS     uint16 = 0x64
+	SelENV_DATA     uint16 = 0x70
+	SelENV_COUNT    uint16 = 0x74
+	SelENV_RESET    uint16 = 0x78
 	SelCONF_DONE    uint16 = 0x07
 	SelLED_LO       uint16 = 0x09
 	SelLED_HI       uint16 = 0x0a
@@ -115,27 +115,27 @@ type Reg struct {
 // Registers is the full metadata table, in declaration order.
 var Registers = []Reg{
 	{"BUILDID_LO", 0x10, CS1, AccR, 1},
-	{"BUILDID_HI", 0x11, CS1, AccR, 1},
-	{"VERSION", 0x12, CS1, AccR, 1},
+	{"BUILDID_HI", 0x14, CS1, AccR, 1},
+	{"VERSION", 0x18, CS1, AccR, 1},
 	{"OPCODE", 0x20, CS1, AccW, 2},
-	{"RUN", 0x21, CS1, AccRW, 1},
-	{"DECIM_LO", 0x22, CS1, AccRW, 1},
-	{"DECIM_HI", 0x23, CS1, AccRW, 1},
-	{"PRETRIG_LO", 0x24, CS1, AccRW, 1},
-	{"PRETRIG_HI", 0x25, CS1, AccRW, 1},
-	{"POSTTRIG_LO", 0x26, CS1, AccRW, 1},
-	{"POSTTRIG_HI", 0x27, CS1, AccRW, 1},
-	{"BURST", 0x30, CS1, AccR, 12},
-	{"BURST_REMAIN", 0x3e, CS1, AccR, 24},
-	{"STATUS_A", 0x41, CS1, AccR, 16},
-	{"TRIGPOS_LO", 0x42, CS1, AccR, 24},
-	{"TRIGPOS_HI", 0x43, CS1, AccR, 24},
-	{"FILL", 0x44, CS1, AccR, 16},
-	{"XFORM_CTRL", 0x50, CS1, AccRW, 1},
-	{"ENV_COLS", 0x51, CS1, AccRW, 1},
-	{"ENV_DATA", 0x60, CS1, AccR, 12},
-	{"ENV_COUNT", 0x61, CS1, AccR, 16},
-	{"ENV_RESET", 0x62, CS1, AccW, 2},
+	{"RUN", 0x24, CS1, AccRW, 1},
+	{"DECIM_LO", 0x28, CS1, AccRW, 1},
+	{"DECIM_HI", 0x2c, CS1, AccRW, 1},
+	{"PRETRIG_LO", 0x30, CS1, AccRW, 1},
+	{"PRETRIG_HI", 0x34, CS1, AccRW, 1},
+	{"POSTTRIG_LO", 0x38, CS1, AccRW, 1},
+	{"POSTTRIG_HI", 0x3c, CS1, AccRW, 1},
+	{"BURST", 0x40, CS1, AccR, 12},
+	{"BURST_REMAIN", 0x44, CS1, AccR, 24},
+	{"STATUS_A", 0x50, CS1, AccR, 16},
+	{"TRIGPOS_LO", 0x54, CS1, AccR, 24},
+	{"TRIGPOS_HI", 0x58, CS1, AccR, 24},
+	{"FILL", 0x5c, CS1, AccR, 16},
+	{"XFORM_CTRL", 0x60, CS1, AccRW, 1},
+	{"ENV_COLS", 0x64, CS1, AccRW, 1},
+	{"ENV_DATA", 0x70, CS1, AccR, 12},
+	{"ENV_COUNT", 0x74, CS1, AccR, 16},
+	{"ENV_RESET", 0x78, CS1, AccW, 2},
 	{"CONF_DONE", 0x07, CS3, AccR, 16},
 	{"LED_LO", 0x09, CS3, AccW, 1},
 	{"LED_HI", 0x0a, CS3, AccW, 1},
@@ -155,8 +155,8 @@ var Registers = []Reg{
 // never selector alone (a selector can repeat across planes). The bus layer must
 // treat such a read as a mutation: never dedup, speculate, or CSE it.
 var AutoIncPorts = []Reg{
-	{"BURST", 0x30, CS1, AccR, 12},
-	{"ENV_DATA", 0x60, CS1, AccR, 12},
+	{"BURST", 0x40, CS1, AccR, 12},
+	{"ENV_DATA", 0x70, CS1, AccR, 12},
 }
 
 // Field masks and shifts.
