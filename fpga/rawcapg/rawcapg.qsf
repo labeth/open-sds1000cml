@@ -1,0 +1,81 @@
+set_global_assignment -name FAMILY "Cyclone IV E"
+set_global_assignment -name DEVICE EP4CE10F17C8
+set_global_assignment -name TOP_LEVEL_ENTITY rawcapg
+set_global_assignment -name PROJECT_OUTPUT_DIRECTORY output_files
+set_global_assignment -name SEARCH_PATH .
+set_global_assignment -name VERILOG_FILE rawcapg.v
+set_global_assignment -name STRATIX_DEVICE_IO_STANDARD "3.3-V LVTTL"
+set_global_assignment -name RESERVE_ALL_UNUSED_PINS "AS INPUT TRI-STATED"
+set_global_assignment -name RESERVE_ALL_UNUSED_PINS_NO_OUTPUT_GND "AS INPUT TRI-STATED"
+set_location_assignment PIN_A10 -to gpmc_d[0]
+set_location_assignment PIN_B9 -to gpmc_d[1]
+set_location_assignment PIN_A9 -to gpmc_d[2]
+set_location_assignment PIN_B8 -to gpmc_d[3]
+set_location_assignment PIN_A8 -to gpmc_d[4]
+set_location_assignment PIN_B7 -to gpmc_d[5]
+set_location_assignment PIN_A7 -to gpmc_d[6]
+set_location_assignment PIN_B6 -to gpmc_d[7]
+set_location_assignment PIN_A6 -to gpmc_d[8]
+set_location_assignment PIN_D6 -to gpmc_d[9]
+set_location_assignment PIN_C6 -to gpmc_d[10]
+set_location_assignment PIN_B5 -to gpmc_d[11]
+set_location_assignment PIN_A5 -to gpmc_d[12]
+set_location_assignment PIN_F6 -to gpmc_d[13]
+set_location_assignment PIN_D5 -to gpmc_d[14]
+set_location_assignment PIN_E5 -to gpmc_d[15]
+set_location_assignment PIN_B4 -to nCS1
+set_location_assignment PIN_E6 -to nOE
+set_location_assignment PIN_B10 -to nWE
+set_location_assignment PIN_L6 -to gpmc_wait
+set_location_assignment PIN_C2 -to clk
+set_location_assignment PIN_M2 -to sel[0]
+set_location_assignment PIN_D1 -to sel[1]
+set_location_assignment PIN_C3 -to sel[2]
+set_location_assignment PIN_D4 -to sel[3]
+set_location_assignment PIN_A3 -to sel[4]
+set_location_assignment PIN_B3 -to sel[5]
+set_location_assignment PIN_A4 -to sel[6]
+set_location_assignment PIN_K8 -to adc_enc[0]
+set_location_assignment PIN_K9 -to adc_enc[1]
+set_location_assignment PIN_K10 -to adc_enc[2]
+set_location_assignment PIN_L8 -to adc_enc[3]
+set_location_assignment PIN_L9 -to adc_enc[4]
+set_location_assignment PIN_L10 -to adc_enc[5]
+set_location_assignment PIN_M7 -to adc_enc[6]
+set_location_assignment PIN_M8 -to adc_enc[7]
+set_location_assignment PIN_F1 -to adc_ctl_hi[0]
+set_location_assignment PIN_L4 -to adc_ctl_hi[1]
+set_location_assignment PIN_T2 -to adc_ctl_hi[2]
+set_location_assignment PIN_T7 -to adc_ctl_hi[3]
+set_location_assignment PIN_G1 -to adc_ctl_lo[0]
+set_location_assignment PIN_G2 -to adc_ctl_lo[1]
+set_location_assignment PIN_K1 -to adc_ctl_lo[2]
+set_location_assignment PIN_A2 -to probe[0]
+set_location_assignment PIN_A14 -to probe[1]
+set_location_assignment PIN_A15 -to probe[2]
+set_location_assignment PIN_B1 -to probe[3]
+set_location_assignment PIN_B11 -to probe[4]
+set_location_assignment PIN_B13 -to probe[5]
+set_location_assignment PIN_B14 -to probe[6]
+set_location_assignment PIN_B16 -to probe[7]
+set_location_assignment PIN_C14 -to probe[8]
+set_location_assignment PIN_C15 -to probe[9]
+set_location_assignment PIN_C16 -to probe[10]
+set_location_assignment PIN_D3 -to probe[11]
+set_location_assignment PIN_D9 -to probe[12]
+set_location_assignment PIN_D11 -to probe[13]
+set_location_assignment PIN_D14 -to probe[14]
+set_location_assignment PIN_D15 -to probe[15]
+set_location_assignment PIN_D16 -to probe[16]
+set_location_assignment PIN_E1 -to probe[17]
+set_location_assignment PIN_E7 -to probe[18]
+set_location_assignment PIN_F2 -to probe[19]
+set_location_assignment PIN_F3 -to probe[20]
+set_location_assignment PIN_F5 -to probe[21]
+set_location_assignment PIN_F7 -to probe[22]
+set_location_assignment PIN_G5 -to probe[23]
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MINIMUM CURRENT" -to gpmc_d
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MINIMUM CURRENT" -to gpmc_wait
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MINIMUM CURRENT" -to adc_enc
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MINIMUM CURRENT" -to adc_ctl_hi
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MINIMUM CURRENT" -to adc_ctl_lo
