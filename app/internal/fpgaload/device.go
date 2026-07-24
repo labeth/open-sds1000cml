@@ -27,10 +27,18 @@ const (
 	// passive-serial cycle, with a low hold and a post-release settle
 	// (Cyclone IV tCFG / nSTATUS recovery). Verify the mapping and timings on
 	// real silicon.
-	nconfigAssertLow = 0x0000
-	nconfigReleaseHi = 0x0001
+	//
+	// CS3 0x07 config-port WRITE bit map (factory loader FUN_001b0dc4, bench-proven
+	// by tools/fpga_reload): b0=DCLK  b1=nCONFIG  b2=DATA0  b3=SPI-route-enable.
+	nconfigAssertLow = 0x0000 // all low -> nCONFIG asserted (start a fresh passive-serial cycle)
+	nconfigReleaseHi = 0x0002 // nCONFIG(b1)=1, DCLK/DATA low (0x0001 was a guess bug: that is DCLK)
 	nconfigLowHold   = 2 * time.Millisecond
 	nconfigSettle    = 5 * time.Millisecond
+
+	// config-port data-path bits for the bit-bang loader (SPI-route incapable unit):
+	cfgDCLK  = 0x0001 // b0
+	cfgNCONF = 0x0002 // b1 (held high while clocking data)
+	cfgDATA0 = 0x0004 // b2
 )
 
 // gpmcConfigPort drives the config port over a /dev/Gpmc fd. The fd is shared
@@ -202,24 +210,59 @@ func (s *spidevLoader) SendChunk(buf []byte) error {
 // It must run BEFORE the engine drives the bus and BEFORE the analog front end
 // opens the shared spidev node. A returned error means the fabric is not the
 // standard build and cannot be made so — the caller should refuse to drive.
+// bitbangLoader clocks the passive-serial bitstream in by BIT-BANGING DATA0(b2)
+// and DCLK(b0) on the CS3 0x07 config port with nCONFIG(b1) held high — the PROVEN
+// path on this unit (the SPI-route capability bit CS3 0x03 b3 reads 0, so spidev
+// cannot reach DATA0). Mirrors tools/fpga_reload. Each bit is MSB-first of the
+// already-BitReverse'd byte: present DATA0 with DCLK low, then raise DCLK to latch.
+// Uses the shared /dev/Gpmc fd via the 6-byte ioctl. [OPT] a /dev/mem mmap tight
+// loop (as in fpga_reload) would cut the ~2.9M-bit load from ~10s to ~2.5s.
+type bitbangLoader struct{ fd int }
+
+func (l *bitbangLoader) Configure() error { return nil } // no loader bus to program
+
+func (l *bitbangLoader) writeCfg(val uint16) error {
+	b := encode6(uint8(iface.CS3), iface.SelCONF_DONE, val)
+	if _, _, errno := syscall.Syscall(syscall.SYS_IOCTL, uintptr(l.fd), reqWrite, uintptr(unsafe.Pointer(&b[0]))); errno != 0 {
+		return fmt.Errorf("bitbang write cfg %#04x: %w", val, errno)
+	}
+	return nil
+}
+
+func (l *bitbangLoader) SendChunk(buf []byte) error {
+	for _, by := range buf {
+		for i := 7; i >= 0; i-- {
+			lo := uint16(cfgNCONF) // nCONFIG high, DCLK low
+			if (by>>uint(i))&1 == 1 {
+				lo |= cfgDATA0
+			}
+			if err := l.writeCfg(lo); err != nil {
+				return err
+			}
+			if err := l.writeCfg(lo | cfgDCLK); err != nil { // rising DCLK latches the bit
+				return err
+			}
+		}
+	}
+	return nil
+}
+
 func Bringup(gpmcFD int, spidevPath string, read func(iface.Plane, uint16) (uint16, error), logf func(string, ...any)) error {
 	if logf == nil {
 		logf = func(string, ...any) {}
 	}
-	cfg := &gpmcConfigPort{fd: gpmcFD, sleep: time.Sleep}
-	opts := Options{BitReverse: true, Logf: logf}
-
-	ser, err := OpenSpidev(spidevPath, DefaultSpeedHz)
-	if err != nil {
-		// No loader bus: we can still run iff the fabric already happens to be
-		// the standard build; otherwise we cannot configure it.
-		logf("fpgaload: loader node %s unavailable (%v) — verify only", spidevPath, err)
-		if verr := iface.Verify(read); verr != nil {
-			return fmt.Errorf("no loader bus and fabric not standard: %w", verr)
-		}
-		logf("fpgaload: fabric already the standard build — continuing without loader")
+	// Already the owned build (e.g. pre-flashed via fpga_reload)? Skip the reload —
+	// pulsing nCONFIG would needlessly black-screen a working fabric.
+	if iface.Verify(read) == nil {
+		logf("fpgaload: fabric already the standard build — skipping reconfigure")
 		return nil
 	}
-	defer ser.Close()
+	// This unit is SPI-route incapable, so bit-bang the bitstream over CS3 0x07
+	// (the tools/fpga_reload path). spidevPath is retained for signature/back-compat
+	// (the OpenSpidev path is kept for a future SPI-route-capable unit) but unused here.
+	_ = spidevPath
+	cfg := &gpmcConfigPort{fd: gpmcFD, sleep: time.Sleep}
+	ser := &bitbangLoader{fd: gpmcFD}
+	opts := Options{BitReverse: true, Logf: logf}
 	return EnsureStandard(read, cfg, ser, opts)
 }
