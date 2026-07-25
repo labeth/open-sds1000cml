@@ -432,7 +432,131 @@
 					"strict" : false
 				},
 				{
-					"name" : "sel[6]",
+					"name" : "dq[48]",
+					"strict" : false
+				},
+				{
+					"name" : "dq[49]",
+					"strict" : false
+				},
+				{
+					"name" : "dq[50]",
+					"strict" : false
+				},
+				{
+					"name" : "dq[51]",
+					"strict" : false
+				},
+				{
+					"name" : "dq[52]",
+					"strict" : false
+				},
+				{
+					"name" : "dq[53]",
+					"strict" : false
+				},
+				{
+					"name" : "dq[54]",
+					"strict" : false
+				},
+				{
+					"name" : "dq[55]",
+					"strict" : false
+				},
+				{
+					"name" : "dq[56]",
+					"strict" : false
+				},
+				{
+					"name" : "dq[57]",
+					"strict" : false
+				},
+				{
+					"name" : "dq[58]",
+					"strict" : false
+				},
+				{
+					"name" : "dq[59]",
+					"strict" : false
+				},
+				{
+					"name" : "dq[60]",
+					"strict" : false
+				},
+				{
+					"name" : "dq[61]",
+					"strict" : false
+				},
+				{
+					"name" : "dq[62]",
+					"strict" : false
+				},
+				{
+					"name" : "dq[63]",
+					"strict" : false
+				},
+				{
+					"name" : "dq[64]",
+					"strict" : false
+				},
+				{
+					"name" : "dq[65]",
+					"strict" : false
+				},
+				{
+					"name" : "dq[66]",
+					"strict" : false
+				},
+				{
+					"name" : "dq[67]",
+					"strict" : false
+				},
+				{
+					"name" : "dq[68]",
+					"strict" : false
+				},
+				{
+					"name" : "dq[69]",
+					"strict" : false
+				},
+				{
+					"name" : "dq[70]",
+					"strict" : false
+				},
+				{
+					"name" : "dq[71]",
+					"strict" : false
+				},
+				{
+					"name" : "dq[72]",
+					"strict" : false
+				},
+				{
+					"name" : "dq[73]",
+					"strict" : false
+				},
+				{
+					"name" : "dq[74]",
+					"strict" : false
+				},
+				{
+					"name" : "dq[75]",
+					"strict" : false
+				},
+				{
+					"name" : "dq[76]",
+					"strict" : false
+				},
+				{
+					"name" : "dq[77]",
+					"strict" : false
+				},
+				{
+					"name" : "dq[78]",
+					"strict" : false
+				},
+				{
+					"name" : "dq[79]",
 					"strict" : false
 				},
 				{
@@ -445,6 +569,10 @@
 				},
 				{
 					"name" : "sel[3]",
+					"strict" : false
+				},
+				{
+					"name" : "sel[6]",
 					"strict" : false
 				},
 				{

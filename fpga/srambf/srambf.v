@@ -17,7 +17,7 @@ module srambf (
     input  wire nCS1, input wire nOE, input wire nWE, input wire [6:0] sel,
     inout  wire [15:0] gpmc_d, output wire gpmc_wait,
     inout  wire [42:0] ctrl,          // control/address candidate pool
-    inout  wire [47:0] dq             // data candidates (sampled)
+    inout  wire [79:0] dq             // data candidates (sampled) — widened to all data candidates
 );
     localparam NC=43;
     reg [2:0] cs1_q=3'b111, we_q=3'b111; reg [6:0] sel_q1=0, sel_q2=0; reg [15:0] d_q1=0, d_q2=0;
@@ -39,8 +39,10 @@ module srambf (
         8'h44: addr_mask[15:0]<=d_q2;8'h48:addr_mask[31:16]<=d_q2;8'h4C:addr_mask[42:32]<=d_q2[10:0];
         8'h50: clk_sel<=d_q2[6:0]; 8'h54: cen_sel<=d_q2[6:0]; 8'h58: advld_sel<=d_q2[6:0]; 8'h5C: oe_sel<=d_q2[6:0];
         8'h60: clkdiv<=d_q2[7:0]; 8'h64: latency<=d_q2[4:0]; 8'h68: waddr[15:0]<=d_q2; 8'h6C: waddr[19:16]<=d_q2[3:0];
+        8'h08: selftest<=d_q2[0];
         default:;
     endcase
+    reg selftest=0;   // positive control: when set, dq[1:0] echo oe_val (detector must see 2 flips)
 
     // spread waddr over addr_mask balls (lsb..msb)
     function [42:0] spread(input [42:0] mask, input [19:0] a); integer k,p; begin
@@ -54,13 +56,13 @@ module srambf (
     always @(posedge clk) if (dv>=clkdiv) begin dv<=0; sck<=~sck; end else dv<=dv+1;
     wire tick = (dv>=clkdiv) && (sck==1'b1);      // one sram-clock period boundary
 
-    reg running=0, oe_val=0; reg [4:0] cc=0; reg [47:0] capdq=0;
+    reg running=0, oe_val=0, captured=0; reg [4:0] cc=0; reg [79:0] capdq=0;
     always @(posedge clk) begin
-        if (go) begin running<=1; cc<=0; oe_val<=d_q2[2]; end
+        if (go) begin running<=1; cc<=0; oe_val<=d_q2[2]; captured<=0; end
         else if (running && tick) begin
             if (cc>=latency+5'd2) running<=0; else cc<=cc+1;
         end
-        if (running && tick && cc==latency) capdq<=dq;   // sample DQ at read latency
+        if (running && tick && cc==latency) begin capdq<=dq; captured<=1; end // sample + flag done
     end
     wire advld_low = running && (cc==0);              // ADV/LD low to load address at cc0
     wire cen_low   = running;                          // CEN low throughout access
@@ -76,13 +78,15 @@ module srambf (
                          cehigh[g]                  ? 1'b1 :
                          addr_mask[g]               ? apat[g] : 1'b1;
     end endgenerate
-    assign dq = 48'bz;                                 // always sample (read-only)
+    assign dq[79:16] = 64'bz;                           // always sample (read-only)
+    assign dq[15:0]  = selftest ? waddr[15:0] : 16'bz;  // address-dependence positive control
 
     reg [15:0] rdata;
     always @* case(rd_sel)
         8'h10: rdata=16'hBF01;
-        8'h14: rdata={running,10'd0,cc};
+        8'h14: rdata={running,captured,9'd0,cc};
         8'h74: rdata=capdq[15:0]; 8'h78: rdata=capdq[31:16]; 8'h7C: rdata=capdq[47:32];
+        8'h04: rdata=capdq[63:48]; 8'h0C: rdata=capdq[79:64];
         default: rdata=16'h0000;
     endcase
     wire ra=(~nCS1)&(~nOE); assign gpmc_d=ra?rdata:16'hzzzz; assign gpmc_wait=1'b1;

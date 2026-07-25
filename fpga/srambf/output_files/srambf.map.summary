@@ -1,13 +1,13 @@
-Analysis & Synthesis Status : Successful - Sat Jul 25 23:42:27 2026
+Analysis & Synthesis Status : Successful - Sun Jul 26 00:45:09 2026
 Quartus Prime Version : 21.1.0 Build 842 10/21/2021 SJ Lite Edition
 Revision Name : srambf
 Top-level Entity Name : srambf
 Family : Cyclone IV E
-Total logic elements : 1,555
-    Total combinational functions : 1,258
-    Dedicated logic registers : 345
-Total registers : 345
-Total pins : 119
+Total logic elements : 1,637
+    Total combinational functions : 1,308
+    Dedicated logic registers : 379
+Total registers : 379
+Total pins : 151
 Total virtual pins : 0
 Total memory bits : 0
 Embedded Multiplier 9-bit elements : 0

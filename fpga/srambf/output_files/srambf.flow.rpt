@@ -1,5 +1,5 @@
 Flow report for srambf
-Sat Jul 25 23:42:37 2026
+Sun Jul 26 00:45:19 2026
 Quartus Prime Version 21.1.0 Build 842 10/21/2021 SJ Lite Edition
 
 
@@ -41,18 +41,18 @@ https://fpgasoftware.intel.com/eula.
 +----------------------------------------------------------------------------------+
 ; Flow Summary                                                                     ;
 +------------------------------------+---------------------------------------------+
-; Flow Status                        ; Successful - Sat Jul 25 23:42:37 2026       ;
+; Flow Status                        ; Successful - Sun Jul 26 00:45:19 2026       ;
 ; Quartus Prime Version              ; 21.1.0 Build 842 10/21/2021 SJ Lite Edition ;
 ; Revision Name                      ; srambf                                      ;
 ; Top-level Entity Name              ; srambf                                      ;
 ; Family                             ; Cyclone IV E                                ;
 ; Device                             ; EP4CE10F17C8                                ;
 ; Timing Models                      ; Final                                       ;
-; Total logic elements               ; 1,375 / 10,320 ( 13 % )                     ;
-;     Total combinational functions  ; 1,258 / 10,320 ( 12 % )                     ;
-;     Dedicated logic registers      ; 345 / 10,320 ( 3 % )                        ;
-; Total registers                    ; 345                                         ;
-; Total pins                         ; 119 / 180 ( 66 % )                          ;
+; Total logic elements               ; 1,390 / 10,320 ( 13 % )                     ;
+;     Total combinational functions  ; 1,308 / 10,320 ( 13 % )                     ;
+;     Dedicated logic registers      ; 379 / 10,320 ( 4 % )                        ;
+; Total registers                    ; 379                                         ;
+; Total pins                         ; 151 / 180 ( 84 % )                          ;
 ; Total virtual pins                 ; 0                                           ;
 ; Total memory bits                  ; 0 / 423,936 ( 0 % )                         ;
 ; Embedded Multiplier 9-bit elements ; 0 / 46 ( 0 % )                              ;
@@ -65,7 +65,7 @@ https://fpgasoftware.intel.com/eula.
 +-------------------+---------------------+
 ; Option            ; Setting             ;
 +-------------------+---------------------+
-; Start date & time ; 07/25/2026 23:42:18 ;
+; Start date & time ; 07/26/2026 00:45:00 ;
 ; Main task         ; Compilation         ;
 ; Revision Name     ; srambf              ;
 +-------------------+---------------------+
@@ -76,7 +76,7 @@ https://fpgasoftware.intel.com/eula.
 +--------------------------+---------------------------------+---------------+-------------+------------+
 ; Assignment Name          ; Value                           ; Default Value ; Entity Name ; Section Id ;
 +--------------------------+---------------------------------+---------------+-------------+------------+
-; COMPILER_SIGNATURE_ID    ; 228800471304300.178501573835594 ; --            ; --          ; --         ;
+; COMPILER_SIGNATURE_ID    ; 228800471304300.178501950050679 ; --            ; --          ; --         ;
 ; PROJECT_OUTPUT_DIRECTORY ; output_files                    ; --            ; --          ; --         ;
 +--------------------------+---------------------------------+---------------+-------------+------------+
 
@@ -86,10 +86,10 @@ https://fpgasoftware.intel.com/eula.
 +----------------------+--------------+-------------------------+---------------------+------------------------------------+
 ; Module Name          ; Elapsed Time ; Average Processors Used ; Peak Virtual Memory ; Total CPU Time (on all processors) ;
 +----------------------+--------------+-------------------------+---------------------+------------------------------------+
-; Analysis & Synthesis ; 00:00:09     ; 1.0                     ; 632 MB              ; 00:00:18                           ;
-; Fitter               ; 00:00:08     ; 1.0                     ; 1224 MB             ; 00:00:10                           ;
+; Analysis & Synthesis ; 00:00:10     ; 1.0                     ; 635 MB              ; 00:00:18                           ;
+; Fitter               ; 00:00:08     ; 1.0                     ; 1217 MB             ; 00:00:11                           ;
 ; Assembler            ; 00:00:01     ; 1.0                     ; 577 MB              ; 00:00:01                           ;
-; Total                ; 00:00:18     ; --                      ; --                  ; 00:00:29                           ;
+; Total                ; 00:00:19     ; --                      ; --                  ; 00:00:30                           ;
 +----------------------+--------------+-------------------------+---------------------+------------------------------------+
 
 

@@ -1,5 +1,5 @@
 Assembler report for srambf
-Sat Jul 25 23:42:37 2026
+Sun Jul 26 00:45:19 2026
 Quartus Prime Version 21.1.0 Build 842 10/21/2021 SJ Lite Edition
 
 
@@ -38,7 +38,7 @@ https://fpgasoftware.intel.com/eula.
 +---------------------------------------------------------------+
 ; Assembler Summary                                             ;
 +-----------------------+---------------------------------------+
-; Assembler Status      ; Successful - Sat Jul 25 23:42:37 2026 ;
+; Assembler Status      ; Successful - Sun Jul 26 00:45:19 2026 ;
 ; Revision Name         ; srambf                                ;
 ; Top-level Entity Name ; srambf                                ;
 ; Family                ; Cyclone IV E                          ;
@@ -93,8 +93,8 @@ https://fpgasoftware.intel.com/eula.
 +----------------+---------------------+
 ; Option         ; Setting             ;
 +----------------+---------------------+
-; JTAG usercode  ; 0x00173EAF          ;
-; Checksum       ; 0x00173EAF          ;
+; JTAG usercode  ; 0x0017C5DC          ;
+; Checksum       ; 0x0017C5DC          ;
 +----------------+---------------------+
 
 
@@ -118,14 +118,14 @@ Info: Running Quartus Prime Assembler
     Info: Intel and sold by Intel or its authorized distributors.  Please
     Info: refer to the applicable agreement for further details, at
     Info: https://fpgasoftware.intel.com/eula.
-    Info: Processing started: Sat Jul 25 23:42:36 2026
+    Info: Processing started: Sun Jul 26 00:45:18 2026
 Info: Command: quartus_asm srambf
 Warning (18236): Number of processors has not been specified which may cause overloading on shared machines.  Set the global assignment NUM_PARALLEL_PROCESSORS in your QSF to an appropriate value for best performance.
 Info (115031): Writing out detailed assembly data for power analysis
 Info (115030): Assembler is generating device programming files
 Info: Quartus Prime Assembler was successful. 0 errors, 1 warning
     Info: Peak virtual memory: 577 megabytes
-    Info: Processing ended: Sat Jul 25 23:42:37 2026
+    Info: Processing ended: Sun Jul 26 00:45:19 2026
     Info: Elapsed time: 00:00:01
     Info: Total CPU time (on all processors): 00:00:01
 
