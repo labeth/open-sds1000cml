@@ -174,5 +174,5 @@ set_global_assignment -name STRATIX_DEVICE_IO_STANDARD "3.3-V LVTTL"
 set_global_assignment -name RESERVE_ALL_UNUSED_PINS "AS INPUT TRI-STATED"
 set_global_assignment -name RESERVE_ALL_UNUSED_PINS_NO_OUTPUT_GND "AS INPUT TRI-STATED"
 set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to dq
-set_instance_assignment -name CURRENT_STRENGTH_NEW "MINIMUM CURRENT" -to cand
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MAXIMUM CURRENT" -to cand
 set_instance_assignment -name CURRENT_STRENGTH_NEW "MINIMUM CURRENT" -to sck_pin
