@@ -27,15 +27,15 @@ module sramrd (
     endcase
     reg [21:0] wdata=0; reg drive_dq=0;
     assign sram_dq = drive_dq ? wdata : 22'bz;   // drive DQ for writes; else Hi-Z (read)
-    // controlled clock: writing STEP (0x34)=N pulses the clock N toggles then STOPS,
-    // so the SRAM holds the addressed data for a stable read. clk_sel=0xFF -> free-run.
-    reg sck=0; reg [15:0] dv=0; reg [15:0] npulse=0;
+    // clock: freerun (0x5c=1) -> continuous clock on clk_sel; else STEP(0x34)=N pulses.
+    reg sck=0; reg [15:0] dv=0; reg [15:0] npulse=0; reg freerun=0;
     wire step_wr = we_commit && cs1_low && (wr_sel==8'h34);
     always @(posedge clk) begin
-        if (step_wr) begin npulse<=d_q2; dv<=0; end
-        else if (clk_sel==8'hFF) begin if (dv>=clkdiv) begin dv<=0; sck<=~sck; end else dv<=dv+1; end
+        if (we_commit && cs1_low && wr_sel==8'h5C) freerun<=d_q2[0];
+        if (freerun) begin if (dv>=clkdiv) begin dv<=0; sck<=~sck; end else dv<=dv+16'd1; end
+        else if (step_wr) begin npulse<=d_q2; dv<=0; end
         else if (npulse!=0) begin
-            if (dv>=clkdiv) begin dv<=0; sck<=~sck; npulse<=npulse-16'd1; end else dv<=dv+1;
+            if (dv>=clkdiv) begin dv<=0; sck<=~sck; npulse<=npulse-16'd1; end else dv<=dv+16'd1;
         end
     end
     assign sram_ac[0] = (clk_sel==8'd0) ? sck : pat[0];
