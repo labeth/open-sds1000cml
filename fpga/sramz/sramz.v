@@ -30,15 +30,18 @@ module sramz (
     wire [7:0] wr_sel={1'b0,sel_q2[6:2],2'b00}; wire [7:0] rd_sel={1'b0,sel[6:2],2'b00};
 
     reg [16:0] waddr=0; reg [39:0] wdata=0; reg [39:0] drive_mask=~40'd0;
-    reg [7:0] clkdiv=8'd0; reg [3:0] rlat=4'd3; reg [3:0] wdcyc=4'd2; reg [3:0] ncyc=4'd8;
+    reg [7:0] clkdiv=8'd0; reg [3:0] rlat=4'd3; reg [3:0] wdcyc=4'd2; reg [3:0] ncyc=4'd8; reg hold=0;
     wire go = we_commit && cs1_low && (wr_sel==8'h50);
     always @(posedge clk) if (we_commit&&cs1_low) case(wr_sel)
         8'h20: waddr[15:0]<=d_q2; 8'h24: waddr[16]<=d_q2[0];
         8'h28: wdata[15:0]<=d_q2; 8'h2C: wdata[31:16]<=d_q2; 8'h30: wdata[39:32]<=d_q2[7:0];
         8'h34: drive_mask[15:0]<=d_q2; 8'h38: drive_mask[31:16]<=d_q2; 8'h3C: drive_mask[39:32]<=d_q2[7:0];
         8'h40: clkdiv<=d_q2[7:0]; 8'h44: rlat<=d_q2[3:0]; 8'h48: wdcyc<=d_q2[3:0]; 8'h4C: ncyc<=d_q2[3:0];
+        8'h54: hold<=d_q2[0];
+        8'h58: clksel<=d_q2[4:0];
         default:;
     endcase
+    reg [4:0] clksel=5'd0;   // 0=D14(default). 1..17=sram_a[0..16] becomes clock. 18..21=strobe[0..3].
 
     // ---- free-running SRAM clock: sram_clk = C2 divided by 2*(clkdiv+1). clkdiv=0 => C2/2 ----
     reg [7:0] dv=0; reg sclk=0;
@@ -53,7 +56,7 @@ module sramz (
     always @(posedge clk) begin
         if (go) begin running<=1; rw<=d_q2[1]; cc<=0; end
         else if (running && adv) begin
-            if (cc>=ncyc) running<=0; else cc<=cc+1;
+            if (cc<ncyc) cc<=cc+1; else if (!hold) running<=0;   // hold: stay read-active (OE# low, addr held)
         end
         // capture DQ at read-latency cycle (sample near end of high phase)
         if (running && rw && adv && cc==rlat) capdq<=dq;
@@ -61,13 +64,22 @@ module sramz (
 
     // ---- SRAM control choreography (combinational from cc) ----
     wire acc = running;
-    assign sram_clk   = sclk;
+    // runtime clock-ball mux: route the free-running sclk onto the clksel-selected candidate ball
+    assign sram_clk   = (clksel==5'd0) ? sclk : 1'b0;          // D14 = clock when clksel==0
     assign sram_sel   = ~acc;                                  // select low during access
     assign sram_adsc  = ~(acc && cc==0);                       // ADSC# low at cc0 (load address)
     assign sram_oe    = ~(acc && rw==1'b1);                    // OE# low during reads
     assign sram_we    = {5{~(acc && rw==1'b0 && cc==0)}};      // WE# low at cc0 during writes
-    assign sram_strobe= {4{~(acc && cc==0)}};                  // strobe low at cc0
-    assign sram_a     = waddr;
+    wire [3:0] strobe_norm = {4{~(acc && cc==0)}};             // strobe low at cc0
+    wire [16:0] addr_norm  = waddr;
+    genvar a2;
+    generate for (a2=0;a2<17;a2=a2+1) begin: amux
+        assign sram_a[a2] = (clksel==(a2+1)) ? sclk : addr_norm[a2];
+    end endgenerate
+    genvar s2;
+    generate for (s2=0;s2<4;s2=s2+1) begin: smux
+        assign sram_strobe[s2] = (clksel==(18+s2)) ? sclk : strobe_norm[s2];
+    end endgenerate
     // drive DQ during write data cycles (cc 1..wdcyc), else tri-state (read/idle)
     wire drv = acc && (rw==1'b0) && (cc>=4'd1) && (cc<=wdcyc);
     genvar g;
