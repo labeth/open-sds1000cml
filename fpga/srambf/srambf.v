@@ -64,8 +64,8 @@ module srambf (
         end
         if (running && tick && cc==latency) begin capdq<=dq; captured<=1; end // sample + flag done
     end
-    wire advld_low = running && (cc==0);              // ADV/LD low to load address at cc0
-    wire cen_low   = running;                          // CEN low throughout access
+    wire advld_low = running;                          // ADSC# LOW throughout = reload ext addr EVERY clock
+    wire cen_low   = running;                          // spare force-low role (extra CE/ZZ held low)
 
     genvar g;
     generate for (g=0; g<NC; g=g+1) begin: cdrv
