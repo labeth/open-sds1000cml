@@ -41,10 +41,13 @@ module srambf (
         8'h60: clkdiv<=d_q2[7:0]; 8'h64: latency<=d_q2[4:0]; 8'h68: waddr[15:0]<=d_q2; 8'h6C: waddr[19:16]<=d_q2[3:0];
         8'h08: selftest<=d_q2[0];
         8'h1C: hold<=d_q2[0];      // HOLD: keep CE#/ADSC#/OE# asserted + addr fixed (static SRAM read for JTAG)
+        8'h00: wdata<=d_q2;        // 16-bit write pattern (replicated across dq[79:0] during a write cycle)
+        8'h18: gw_sel<=d_q2[6:0];  // GW# ball index (driven LOW during write, HIGH otherwise)
         default:;
     endcase
     reg selftest=0;   // positive control: when set, dq[1:0] echo oe_val (detector must see 2 flips)
     reg hold=0;       // static-read hold for JTAG SAMPLE (SRAM continuously outputs M[waddr])
+    reg [15:0] wdata=0; reg [6:0] gw_sel=7'h7F; reg wmode=0;   // write path
 
     // spread waddr over addr_mask balls (lsb..msb)
     function [42:0] spread(input [42:0] mask, input [19:0] a); integer k,p; begin
@@ -53,19 +56,28 @@ module srambf (
     end endfunction
     wire [42:0] apat = spread(addr_mask, waddr);
 
-    // free-running SRAM clock (C2 / 2*(clkdiv+1))
-    reg [7:0] dv=0; reg sck=0;
-    always @(posedge clk) if (dv>=clkdiv) begin dv<=0; sck<=~sck; end else dv<=dv+1;
+    // free-running SRAM clock (C2 / 2*(clkdiv+1)); in HOLD it runs HCYC edges after each waddr write then
+    // FREEZES so the SRAM output is truly static for a clean (metastability-free) sample.
+    reg [7:0] dv=0; reg sck=0; reg [6:0] hcnt=7'h7f;
+    wire waddr_wr = we_commit && cs1_low && ((wr_sel==8'h68)||(wr_sel==8'h6C));
+    wire run_clk  = (~hold) | (hcnt < 7'd64);
+    always @(posedge clk) begin
+        if (dv>=clkdiv) begin dv<=0; if (run_clk) sck<=~sck; end else dv<=dv+1;
+        if (waddr_wr) hcnt<=0;
+        else if ((dv>=clkdiv) && hold && (hcnt<7'h7f)) hcnt<=hcnt+1;
+    end
     wire tick = (dv>=clkdiv) && (sck==1'b1);      // one sram-clock period boundary
 
     reg running=0, oe_val=0, captured=0; reg [4:0] cc=0; reg [79:0] capdq=0;
     always @(posedge clk) begin
-        if (go) begin running<=1; cc<=0; oe_val<=d_q2[2]; captured<=0; end
+        if (go) begin running<=1; cc<=0; oe_val<=d_q2[2]; wmode<=d_q2[1]; captured<=0; end
         else if (running && tick) begin
             if (cc>=latency+5'd2) running<=0; else cc<=cc+1;
         end
         if (running && tick && cc==latency) begin capdq<=dq; captured<=1; end // sample + flag done
+        if (hold) capdq<=dq;                          // HOLD: track live (static) SRAM output every cycle
     end
+    wire writing   = running & wmode;                  // drive dq + GW# low + OE# high during a write cycle
     wire advld_low = running | hold;                   // ADSC# LOW throughout = reload ext addr EVERY clock
     wire cen_low   = running | hold;                   // spare force-low role (extra CE/ZZ held low)
 
@@ -74,14 +86,16 @@ module srambf (
         assign ctrl[g] = ({1'b0,g[6:0]}==clk_sel)   ? sck :
                          ({1'b0,g[6:0]}==cen_sel)   ? ~cen_low :
                          ({1'b0,g[6:0]}==advld_sel) ? ~advld_low :
-                         ({1'b0,g[6:0]}==oe_sel)    ? (hold ? 1'b0 : oe_val) :
+                         ({1'b0,g[6:0]}==oe_sel)    ? (writing ? 1'b1 : (hold ? 1'b0 : oe_val)) :
+                         ({1'b0,g[6:0]}==gw_sel)    ? (writing ? 1'b0 : 1'b1) :
                          we_mask[g]                 ? 1'b1 :
                          celow[g]                   ? 1'b0 :
                          cehigh[g]                  ? 1'b1 :
                          addr_mask[g]               ? apat[g] : 1'b1;
     end endgenerate
-    assign dq[79:16] = 64'bz;                           // always sample (read-only)
-    assign dq[15:0]  = selftest ? waddr[15:0] : 16'bz;  // address-dependence positive control
+    // dq: drive wdata (replicated) during a WRITE cycle; else Hi-Z (sample). selftest forces a known pattern.
+    assign dq = writing  ? {wdata,wdata,wdata,wdata,wdata} :
+                selftest ? {waddr[15:0],waddr[15:0],waddr[15:0],waddr[15:0],waddr[15:0]} : 80'bz;
 
     reg [15:0] rdata;
     always @* case(rd_sel)
