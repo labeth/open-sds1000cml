@@ -24,13 +24,14 @@ module srambf (
     wire cs1_low=(cs1_q[2]==0); wire we_commit=(we_q[2]==0)&&(we_q[1]==1);
     wire [7:0] wr_sel={1'b0,sel_q2[6:2],2'b00}; wire [7:0] rd_sel={1'b0,sel[6:2],2'b00};
 
-    reg [63:0] celow=0, data_mask=0, addr_mask=0;
+    reg [63:0] celow=0, data_mask=0, addr_mask=0, wmask=0;  // wmask = WE#+BWSa-d (all low DURING write)
     reg [6:0] clk_sel=7'h7F, cen_sel=7'h7F, advld_sel=7'h7F, oe_sel=7'h7F, gw_sel=7'h7F;
     reg [15:0] wpat=0; reg [7:0] clkdiv=8'd0; reg [4:0] latency=5'd3; reg [19:0] waddr=0; reg hold=0;
     always @(posedge clk) if (we_commit&&cs1_low) case(wr_sel)
         8'h18: celow[15:0]<=d_q2;   8'h1C: celow[31:16]<=d_q2;   8'h20: celow[47:32]<=d_q2;   8'h24: celow[63:48]<=d_q2;
         8'h28: data_mask[15:0]<=d_q2;8'h2C:data_mask[31:16]<=d_q2;8'h30:data_mask[47:32]<=d_q2;8'h34:data_mask[63:48]<=d_q2;
         8'h38: addr_mask[15:0]<=d_q2;8'h3C:addr_mask[31:16]<=d_q2;8'h40:addr_mask[47:32]<=d_q2;8'h44:addr_mask[63:48]<=d_q2;
+        8'h00: wmask[15:0]<=d_q2;   8'h04: wmask[31:16]<=d_q2;   8'h0C: wmask[47:32]<=d_q2;
         8'h48: clk_sel<=d_q2[6:0]; 8'h4C: cen_sel<=d_q2[6:0]; 8'h50: advld_sel<=d_q2[6:0]; 8'h54: oe_sel<=d_q2[6:0]; 8'h58: gw_sel<=d_q2[6:0];
         8'h5C: wpat<=d_q2;
         8'h60: waddr[15:0]<=d_q2; 8'h64: waddr[19:16]<=d_q2[3:0];
@@ -64,6 +65,7 @@ module srambf (
         if (hold) capdq<=pool;
     end
     wire writing   = running & wmode;
+    wire we_active = writing & (cc <= latency);   // WE#/BWS# low for load edges, HIGH for last 2 (late-write drain: NoBL data lands T+2)
     wire advld_low = running | hold;
     wire cen_low   = running | hold;
 
@@ -73,7 +75,8 @@ module srambf (
                          ({1'b0,g[6:0]}==cen_sel)   ? ~cen_low :
                          ({1'b0,g[6:0]}==advld_sel) ? ~advld_low :
                          ({1'b0,g[6:0]}==oe_sel)    ? (writing ? 1'b1 : oe_val) :
-                         ({1'b0,g[6:0]}==gw_sel)    ? (writing ? 1'b0 : 1'b1) :
+                         ({1'b0,g[6:0]}==gw_sel)    ? (we_active ? 1'b0 : 1'b1) :  // WE# (drained)
+                         (wmask[g] & we_active)     ? 1'b0 :          // BWSa-d# etc: all write-selects LOW during write
                          (data_mask[g] & writing)   ? wpat[g[3:0]] : // DQ: driven on WRITE, Hi-Z(sample) on READ
                          celow[g]                   ? 1'b0 :
                          addr_mask[g]               ? apat[g] :
