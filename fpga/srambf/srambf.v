@@ -16,10 +16,10 @@ module srambf (
     input  wire clk,
     input  wire nCS1, input wire nOE, input wire nWE, input wire [6:0] sel,
     inout  wire [15:0] gpmc_d, output wire gpmc_wait,
-    inout  wire [42:0] ctrl,          // control/address candidate pool
-    inout  wire [79:0] dq             // data candidates (sampled) — widened to all data candidates
+    inout  wire [22:0] ctrl,          // control/address pool (JTAG-derived SRAM addr+ctrl outputs)
+    inout  wire [79:0] dq             // data candidates (sampled); dq[0..22]=JTAG DQ cluster
 );
-    localparam NC=43;
+    localparam NC=23;
     reg [2:0] cs1_q=3'b111, we_q=3'b111; reg [6:0] sel_q1=0, sel_q2=0; reg [15:0] d_q1=0, d_q2=0;
     always @(posedge clk) begin
         cs1_q<={cs1_q[1:0],nCS1}; we_q<={we_q[1:0],nWE};
