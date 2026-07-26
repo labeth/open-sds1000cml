@@ -40,9 +40,11 @@ module srambf (
         8'h50: clk_sel<=d_q2[6:0]; 8'h54: cen_sel<=d_q2[6:0]; 8'h58: advld_sel<=d_q2[6:0]; 8'h5C: oe_sel<=d_q2[6:0];
         8'h60: clkdiv<=d_q2[7:0]; 8'h64: latency<=d_q2[4:0]; 8'h68: waddr[15:0]<=d_q2; 8'h6C: waddr[19:16]<=d_q2[3:0];
         8'h08: selftest<=d_q2[0];
+        8'h1C: hold<=d_q2[0];      // HOLD: keep CE#/ADSC#/OE# asserted + addr fixed (static SRAM read for JTAG)
         default:;
     endcase
     reg selftest=0;   // positive control: when set, dq[1:0] echo oe_val (detector must see 2 flips)
+    reg hold=0;       // static-read hold for JTAG SAMPLE (SRAM continuously outputs M[waddr])
 
     // spread waddr over addr_mask balls (lsb..msb)
     function [42:0] spread(input [42:0] mask, input [19:0] a); integer k,p; begin
@@ -64,15 +66,15 @@ module srambf (
         end
         if (running && tick && cc==latency) begin capdq<=dq; captured<=1; end // sample + flag done
     end
-    wire advld_low = running;                          // ADSC# LOW throughout = reload ext addr EVERY clock
-    wire cen_low   = running;                          // spare force-low role (extra CE/ZZ held low)
+    wire advld_low = running | hold;                   // ADSC# LOW throughout = reload ext addr EVERY clock
+    wire cen_low   = running | hold;                   // spare force-low role (extra CE/ZZ held low)
 
     genvar g;
     generate for (g=0; g<NC; g=g+1) begin: cdrv
         assign ctrl[g] = ({1'b0,g[6:0]}==clk_sel)   ? sck :
                          ({1'b0,g[6:0]}==cen_sel)   ? ~cen_low :
                          ({1'b0,g[6:0]}==advld_sel) ? ~advld_low :
-                         ({1'b0,g[6:0]}==oe_sel)    ? oe_val :
+                         ({1'b0,g[6:0]}==oe_sel)    ? (hold ? 1'b0 : oe_val) :
                          we_mask[g]                 ? 1'b1 :
                          celow[g]                   ? 1'b0 :
                          cehigh[g]                  ? 1'b1 :
