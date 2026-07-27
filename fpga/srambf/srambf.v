@@ -13,7 +13,8 @@ module srambf (
     input  wire clk,
     input  wire nCS1, input wire nOE, input wire nWE, input wire [6:0] sel,
     inout  wire [15:0] gpmc_d, output wire gpmc_wait,
-    inout  wire [63:0] pool
+    inout  wire [63:0] pool,
+    output wire d2_ce   // D2=nCSO: drive LOW -> MAX-V asserts the external-SRAM CE1# (chip select). THE enable.
 );
     localparam NC=64;
     reg [2:0] cs1_q=3'b111, we_q=3'b111; reg [6:0] sel_q1=0, sel_q2=0; reg [15:0] d_q1=0, d_q2=0;
@@ -91,4 +92,5 @@ module srambf (
         default: rdata=16'h0000;
     endcase
     wire ra=(~nCS1)&(~nOE); assign gpmc_d=ra?rdata:16'hzzzz; assign gpmc_wait=1'b1;
+    assign d2_ce = 1'b0;  // hold nCSO(D2) low -> SRAM selected the whole time (matches the vendor)
 endmodule
