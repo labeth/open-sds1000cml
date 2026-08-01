@@ -52,6 +52,7 @@ module acq (
     // ADC DRIVE (bench-cracked recipe, docs/aux-bus-re.md): 8 ENCODE clocks + the held
     // mode controls (F1/L4/T2/T7=1, G1/G2/K1=0) bring the converters out of power-down.
     output wire [7:0]  adc_enc,
+    output wire [1:0]  adc_enc2,    // C14/D14 differential ADC sample clock (factory drives these; was the ADC-dead regression)
     output wire [3:0]  adc_ctl_hi,
     output wire [2:0]  adc_ctl_lo,
 
@@ -229,6 +230,7 @@ module acq (
         .clk        (clk),
         .adc_lane   (adc_lane),
         .adc_enc    (adc_enc),
+        .adc_enc2   (adc_enc2),
         .adc_ctl_hi (adc_ctl_hi),
         .adc_ctl_lo (adc_ctl_lo),
         .samp       (samp)

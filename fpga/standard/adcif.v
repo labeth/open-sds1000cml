@@ -29,6 +29,7 @@ module adcif #(
     input  wire [32:0] adc_lane,               // ADC data lanes (27 live + headroom)
 
     output wire [7:0]  adc_enc,                // 8 ENCODE clock outputs (common clock)
+    output wire [1:0]  adc_enc2,               // C14/D14 differential ADC sample clock (JTAG: factory drives these; own fabric left them floating -> ADC dead)
     output wire [3:0]  adc_ctl_hi,             // held-HIGH mode controls (F1 L4 T2 T7)
     output wire [2:0]  adc_ctl_lo,             // held-LOW  mode controls (G1 G2 K1)
 
@@ -42,6 +43,7 @@ module adcif #(
         else                                       dv <= dv + 16'd1;
     end
     assign adc_enc    = {8{enc_clk}};          // common ENCODE on all 8 balls
+    assign adc_enc2   = {~enc_clk, enc_clk};   // D14=~enc, C14=enc — differential ADC sample clock
     assign adc_ctl_hi = 4'b1111;
     assign adc_ctl_lo = 3'b000;
 

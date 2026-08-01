@@ -64,6 +64,9 @@ set_location_assignment PIN_L9 -to adc_enc[4]
 set_location_assignment PIN_L10 -to adc_enc[5]
 set_location_assignment PIN_M7 -to adc_enc[6]
 set_location_assignment PIN_M8 -to adc_enc[7]
+# C14/D14 = differential ADC sample clock (factory drives these; adding it fixes the ADC-dead regression)
+set_location_assignment PIN_C14 -to adc_enc2[0]
+set_location_assignment PIN_D14 -to adc_enc2[1]
 set_location_assignment PIN_F1 -to adc_ctl_hi[0]
 set_location_assignment PIN_L4 -to adc_ctl_hi[1]
 set_location_assignment PIN_T2 -to adc_ctl_hi[2]
@@ -112,5 +115,8 @@ set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to adc_lane
 set_instance_assignment -name CURRENT_STRENGTH_NEW "MINIMUM CURRENT" -to gpmc_d
 set_instance_assignment -name CURRENT_STRENGTH_NEW "MINIMUM CURRENT" -to gpmc_wait
 set_instance_assignment -name CURRENT_STRENGTH_NEW "MINIMUM CURRENT" -to adc_enc
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MINIMUM CURRENT" -to adc_enc2
 set_instance_assignment -name CURRENT_STRENGTH_NEW "MINIMUM CURRENT" -to adc_ctl_hi
 set_instance_assignment -name CURRENT_STRENGTH_NEW "MINIMUM CURRENT" -to adc_ctl_lo
+
+set_global_assignment -name LAST_QUARTUS_VERSION "21.1.0 Lite Edition"
