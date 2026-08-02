@@ -159,6 +159,12 @@ module capsram (
     reg        adc_ovr_en_r  = 1'b0;        // apply override while draining (release shared DQ bus)
     reg        we_level      = 1'b0;        // 0=WE# pulsed per write (orig), 1=WE# held LOW as write-mode level over FILL
     reg        cap_dly       = 1'b0;        // 0=capture DQ this edge, 1=capture DQ delayed 1 clk (SPB +1 pipeline)
+    // read-handshake knobs (0x58 [12:10]): read-only skips FILL; drain P6 wait/polarity
+    reg        read_only     = 1'b0;        // arm -> go straight to ST_DRAIN_SRAM (read vendor-written SRAM, no fill/overwrite)
+    reg        drain_p6_wait = 1'b0;        // hold slurp until P6==drain_p6_pol (MAX-V read grant) before reading
+    reg        drain_p6_pol  = 1'b0;        // P6 grant polarity for the drain handshake
+    reg        drain_pend    = 1'b0;        // in ST_DRAIN_SRAM, waiting for the P6 read grant
+    reg        read_sync     = 1'b0;        // 1 => slurp captures on the free-run F2/J2/K2 edge (MAX-V walks the read addr on it), D14=F2/J2/K2
     reg [15:0] rd_clkdiv = 16'd25;
     reg [4:0]  amap [0:17];               // ADDRESS ball <- waddr18[amap[i]] (order sweep)
     reg [4:0]  lmap [0:15];               // word bit  <- dq[lmap[j]]         (lane_sel sweep)
@@ -175,7 +181,8 @@ module capsram (
             8'h4c: begin we_phase <= d_q2[3:0]; load_phase <= d_q2[7:4]; end
             8'h68: begin load_sel <= d_q2[2:0]; we_sel <= d_q2[6:4]; low_mask <= d_q2[13:8]; end
             8'h6c: begin eng_enable <= d_q2[0]; d2_wr <= d_q2[1]; d2_rd <= d_q2[2]; d2_idle <= d_q2[3]; clk_mode <= d_q2[5:4]; end
-            8'h58: begin adc_ctl_ovr_r <= d_q2[6:0]; adc_ovr_en_r <= d_q2[7]; we_level <= d_q2[8]; cap_dly <= d_q2[9]; end
+            8'h58: begin adc_ctl_ovr_r <= d_q2[6:0]; adc_ovr_en_r <= d_q2[7]; we_level <= d_q2[8]; cap_dly <= d_q2[9];
+                         read_only <= d_q2[10]; drain_p6_wait <= d_q2[11]; drain_p6_pol <= d_q2[12]; read_sync <= d_q2[13]; end
             8'h0c: rd_clkdiv <= d_q2;
             8'h08: begin
                 if (d_q2[11:10] == 2'b00)      amap[d_q2[9:5]] <= d_q2[4:0];
@@ -258,8 +265,13 @@ module capsram (
     reg               slurp_done = 1'b0;
     reg [21:0]        dq_lat     = 22'd0;    // last latched candidate vector (lane confirm)
 
-    // one captured word per D14 period, at the sck-high->low edge (sramdump phase).
-    wire slurp_tick = (state == ST_DRAIN_SRAM) && slurp_run && (rd_dv >= rd_clkdiv) && sck_rd;
+    // one captured word per read tick. read_sync => capture on the free-run F2/J2/K2 rising
+    // edge (the clock the MAX-V walks its read address on); else the original D14 timing.
+    reg  sck_wr_d = 1'b0;
+    always @(posedge clk) sck_wr_d <= sck_wr;
+    wire sck_wr_rise = sck_wr & ~sck_wr_d;
+    wire slurp_tick = (state == ST_DRAIN_SRAM) && slurp_run &&
+                      (read_sync ? sck_wr_rise : ((rd_dv >= rd_clkdiv) && sck_rd));
 
     // word assembly: programmable lane_sel over the DQ candidate vector, with an
     // optional 1-clk capture delay (SPB read pipeline is +1: Q(A) lands the edge AFTER).
@@ -351,7 +363,16 @@ module capsram (
                 rec_len_r       <= wrote_count;
                 frame_done      <= 1'b1;             // envelope flush (may precede slurp)
                 slurp_addr <= {`ADDR_W{1'b0}}; rd_dv <= 16'd0;
-                sck_rd <= 1'b0; slurp_run <= 1'b1; slurp_done <= 1'b0;
+                sck_rd <= 1'b0; slurp_run <= 1'b0; slurp_done <= 1'b0;
+                drain_pend <= 1'b1;   // wait for the MAX-V read grant (P6) before slurping
+            end
+        end
+
+        // ---- drain P6 read-handshake: D2=d2_rd is asserted while in ST_DRAIN_SRAM;
+        //      start the slurp only once the MAX-V grants (P6==pol), or immediately if wait off.
+        if (state == ST_DRAIN_SRAM && drain_pend) begin
+            if (!drain_p6_wait || (p6 == drain_p6_pol)) begin
+                drain_pend <= 1'b0; slurp_run <= 1'b1;
             end
         end
 
@@ -360,7 +381,15 @@ module capsram (
         // D14 period; capture at the sck-high->low edge into mem[] (mem block).
         // ================================================================
         if (state == ST_DRAIN_SRAM && slurp_run) begin
-            if (rd_dv >= rd_clkdiv) begin
+            if (read_sync) begin
+                sck_rd <= sck_wr;                    // D14 tracks F2/J2/K2
+                if (slurp_tick) begin                // = sck_wr rising edge
+                    dq_lat <= dq;
+                    if (slurp_addr >= (rec_len_r[`ADDR_W-1:0] - 1'b1)) begin
+                        slurp_run <= 1'b0; slurp_done <= 1'b1;
+                    end else slurp_addr <= slurp_addr + 1'b1;
+                end
+            end else if (rd_dv >= rd_clkdiv) begin
                 rd_dv  <= 16'd0;
                 sck_rd <= ~sck_rd;
                 if (sck_rd) begin                    // sck-high -> capture this period
@@ -396,14 +425,17 @@ module capsram (
             prev_trig_ch <= 8'd0; div_busy <= 1'b0; rec_len_r <= 16'd0;
             slurp_run <= 1'b0; slurp_done <= 1'b0;
         end else if (arm) begin
-            state <= ST_FILL;
+            state <= read_only ? ST_DRAIN_SRAM : ST_FILL;   // read-only: skip FILL, read the SRAM as-is
             waddr <= {`ADDR_W{1'b0}};
             wrote_count <= 16'd0; post_count <= 16'd0;
             triggered <= 1'b0; comp_pending <= 1'b0;
             coherent <= 1'b0; r_valid <= 1'b0; r_trig <= 1'b0; r_done <= 1'b0;
             fill_frozen <= 1'b0; trig_frac <= 16'h0000; trig_idx_r <= {`ADDR_W{1'b0}};
-            prev_trig_ch <= 8'd0; div_busy <= 1'b0; rec_len_r <= 16'd0;
+            prev_trig_ch <= 8'd0; div_busy <= 1'b0;
+            rec_len_r <= read_only ? REC_DEPTH16 : 16'd0;   // slurp a full record in read-only
+            slurp_addr <= {`ADDR_W{1'b0}}; rd_dv <= 16'd0; sck_rd <= 1'b0;
             slurp_run <= 1'b0; slurp_done <= 1'b0;
+            drain_pend <= read_only;   // read-only arms the drain P6 handshake immediately
             pretrig_work  <= pre_work_w;
             posttrig_work <= post_work_w;
         end else if (halt) begin
