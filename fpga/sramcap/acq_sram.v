@@ -82,10 +82,17 @@ module acq (
     wire [7:0] rd_plane  = (~nCS1) ? `PLANE_CS1 : 8'h00;
     wire [7:0] rd_sel    = {1'b0, sel[6:2], 2'b00};
 
-    // ---- auto-inc read decode (UNCHANGED) ----------------------------------
-    wire sel_is_burst    = (sel_q2 == `SEL_BURST);
+    // ---- auto-inc read decode --------------------------------------------
+    // BUGFIX (same as standard/acq.v): compare ONLY the stable selector lines
+    // sel[6:2]. Bits 0/1/7 (A1/A2/A8 — M2 ~50% clock, D1 floats high) made the
+    // full-width `sel_q2 == SEL_BURST` never true, so burst_addr never auto-
+    // incremented and the drained SRAM record collapsed to mem[0] replicated.
+    // This is why capsram "drained all-zero / no real SRAM read" — a DRAIN
+    // artifact, NOT a failed SRAM read. rd_sel already masked (line above).
+    wire [7:0] sel_q2_masked = {1'b0, sel_q2[6:2], 2'b00};
+    wire sel_is_burst    = (sel_q2_masked == `SEL_BURST);
     wire burst_rd_done   = cs1_low && (oe_q[2] == 1'b0) && (oe_q[1] == 1'b1) && sel_is_burst;
-    wire sel_is_env      = (sel_q2 == `SEL_ENV_DATA);
+    wire sel_is_env      = (sel_q2_masked == `SEL_ENV_DATA);
     wire env_rd_active   = cs1_low && (oe_q[2] == 1'b0) && sel_is_env;
     wire env_rd_done     = cs1_low && (oe_q[2] == 1'b0) && (oe_q[1] == 1'b1) && sel_is_env;
 
