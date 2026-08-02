@@ -53,6 +53,7 @@ module acq (
     // mode controls (F1/L4/T2/T7=1, G1/G2/K1=0) bring the converters out of power-down.
     output wire [7:0]  adc_enc,
     output wire [1:0]  adc_enc2,    // C14/D14 differential ADC sample clock (factory drives these; was the ADC-dead regression)
+    output wire        adc_enc3,    // A11 — 3rd ENCODE candidate (factory drives toggling)
     output wire [3:0]  adc_ctl_hi,
     output wire [2:0]  adc_ctl_lo,
 
@@ -118,9 +119,15 @@ module acq (
     wire [7:0] rd_sel    = {1'b0, sel[6:2], 2'b00};   // bits 0/1/7 forced 0 (see wr_sel)
 
     // ---- auto-inc read decode (synchronized; one pop / nOE-rise) -----------
-    wire sel_is_burst    = (sel_q2 == `SEL_BURST);
+    // BUGFIX: compare ONLY the stable selector lines sel[6:2] (bits 0/1/7 are the
+    // unusable A1/A2/A8 lines — D1 floats high, M2 carries a ~50% clock — see wr_sel/
+    // rd_sel above). The old full-width `sel_q2 == SEL_BURST` was never true once A1/A2
+    // float high, so burst_addr never auto-incremented and the whole drained record
+    // collapsed to mem[0] replicated (the "flat trace / ADC-dead" symptom).
+    wire [7:0] sel_q2_masked = {1'b0, sel_q2[6:2], 2'b00};
+    wire sel_is_burst    = (sel_q2_masked == `SEL_BURST);
     wire burst_rd_done   = cs1_low && (oe_q[2] == 1'b0) && (oe_q[1] == 1'b1) && sel_is_burst;
-    wire sel_is_env      = (sel_q2 == `SEL_ENV_DATA);
+    wire sel_is_env      = (sel_q2_masked == `SEL_ENV_DATA);
     wire env_rd_active   = cs1_low && (oe_q[2] == 1'b0) && sel_is_env;
     wire env_rd_done     = cs1_low && (oe_q[2] == 1'b0) && (oe_q[1] == 1'b1) && sel_is_env;
 
@@ -231,6 +238,7 @@ module acq (
         .adc_lane   (adc_lane),
         .adc_enc    (adc_enc),
         .adc_enc2   (adc_enc2),
+        .adc_enc3   (adc_enc3),
         .adc_ctl_hi (adc_ctl_hi),
         .adc_ctl_lo (adc_ctl_lo),
         .samp       (samp)

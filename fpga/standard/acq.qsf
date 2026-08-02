@@ -89,7 +89,7 @@ set_location_assignment PIN_E8 -to adc_lane[9]
 set_location_assignment PIN_C8 -to adc_lane[10]
 set_location_assignment PIN_C9 -to adc_lane[11]
 set_location_assignment PIN_C11 -to adc_lane[12]
-set_location_assignment PIN_A11 -to adc_lane[13]
+set_location_assignment PIN_A11 -to adc_enc3
 set_location_assignment PIN_A13 -to adc_lane[14]
 set_location_assignment PIN_L16 -to adc_lane[15]
 set_location_assignment PIN_L14 -to adc_lane[16]
@@ -120,3 +120,4 @@ set_instance_assignment -name CURRENT_STRENGTH_NEW "MINIMUM CURRENT" -to adc_ctl
 set_instance_assignment -name CURRENT_STRENGTH_NEW "MINIMUM CURRENT" -to adc_ctl_lo
 
 set_global_assignment -name LAST_QUARTUS_VERSION "21.1.0 Lite Edition"
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MINIMUM CURRENT" -to adc_enc3

@@ -30,6 +30,7 @@ module adcif #(
 
     output wire [7:0]  adc_enc,                // 8 ENCODE clock outputs (common clock)
     output wire [1:0]  adc_enc2,               // C14/D14 differential ADC sample clock (JTAG: factory drives these; own fabric left them floating -> ADC dead)
+    output wire        adc_enc3,               // A11 — factory drives this TOGGLING (candidate 3rd ENCODE); own fabric read it as data lane -> chip unclocked?
     output wire [3:0]  adc_ctl_hi,             // held-HIGH mode controls (F1 L4 T2 T7)
     output wire [2:0]  adc_ctl_lo,             // held-LOW  mode controls (G1 G2 K1)
 
@@ -44,6 +45,7 @@ module adcif #(
     end
     assign adc_enc    = {8{enc_clk}};          // common ENCODE on all 8 balls
     assign adc_enc2   = {~enc_clk, enc_clk};   // D14=~enc, C14=enc — differential ADC sample clock
+    assign adc_enc3   = enc_clk;               // A11 — 3rd ENCODE candidate (match factory toggling)
     assign adc_ctl_hi = 4'b1111;
     assign adc_ctl_lo = 3'b000;
 
@@ -81,6 +83,6 @@ module adcif #(
                             lane_r[C2B3], lane_r[C2B2], lane_r[C2B1], lane_r[C2B0] };
 
     always @(posedge clk)
-        samp <= { ch1_byte, ch2_byte };        // spine contract: hi=CH1, lo=CH2
+        samp <= { ch1_byte, ch2_byte };        // spine contract: hi=CH1, lo=CH2 (proven de-interleave)
 
 endmodule

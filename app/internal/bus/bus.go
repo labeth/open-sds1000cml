@@ -166,15 +166,13 @@ func (d *Dev) Write(plane iface.Plane, sel, val uint16) error {
 // cycling. Each read pops one word (hi byte C1, lo byte C2); the port
 // auto-increments through samples 0..n-1 (iface.IsAutoInc(CS1, SelBURST)).
 func (d *Dev) BurstInto(c1, c2 []uint8, n int) {
-	if d.regs != nil {
-		p := &d.regs[iface.SelBURST]
-		for i := 0; i < n; i++ {
-			w := load16(p) // one bus transaction per read: pops one word
-			c1[i] = uint8(w >> 8)
-			c2[i] = uint8(w)
-		}
-		return
-	}
+	// NOTE: the /dev/mem mmap fast path is DISABLED for auto-inc drains. On this
+	// AM3352 GPMC, repeated reads of the single fixed auto-inc address are served
+	// from the GPMC prefetch/post-write FIFO WITHOUT re-strobing CS1, so the FPGA
+	// port never pops — the whole record collapses to the first sample replicated
+	// (observed: C1/C2 constant, ramp reads its reset value). The ioctl path issues
+	// one real GPMC transaction per read, which pops correctly. Correctness > the
+	// few ms of mmap drain speed. (Was the "ADC-dead / flat trace" root cause.)
 	for i := 0; i < n; i++ {
 		v, _ := d.Read(iface.CS1, iface.SelBURST)
 		c1[i] = uint8(v >> 8)
@@ -185,13 +183,8 @@ func (d *Dev) BurstInto(c1, c2 []uint8, n int) {
 // ChannelInto reads n words from a result-channel auto-inc DATA port (packed
 // record words) into dst. Same auto-inc discipline as BurstInto.
 func (d *Dev) ChannelInto(sel uint16, dst []uint16, n int) {
-	if d.regs != nil && int(sel) < len(d.regs) {
-		p := &d.regs[sel]
-		for i := 0; i < n; i++ {
-			dst[i] = load16(p)
-		}
-		return
-	}
+	// Same GPMC-prefetch auto-inc hazard as BurstInto: always drain via ioctl so
+	// each read is a real CS1 transaction that pops the port.
 	for i := 0; i < n; i++ {
 		v, _ := d.Read(iface.CS1, sel)
 		dst[i] = v
