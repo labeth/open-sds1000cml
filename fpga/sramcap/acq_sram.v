@@ -89,6 +89,8 @@ module acq (
     // incremented and the drained SRAM record collapsed to mem[0] replicated.
     // This is why capsram "drained all-zero / no real SRAM read" — a DRAIN
     // artifact, NOT a failed SRAM read. rd_sel already masked (line above).
+    // ALIAS CAVEAT: 0x41-0x43 alias to SEL_BURST and 0x71-0x73 to SEL_ENV_DATA
+    // and WILL pop; the app issues only 0x40/0x70, but bench probes must avoid them.
     wire [7:0] sel_q2_masked = {1'b0, sel_q2[6:2], 2'b00};
     wire sel_is_burst    = (sel_q2_masked == `SEL_BURST);
     wire burst_rd_done   = cs1_low && (oe_q[2] == 1'b0) && (oe_q[1] == 1'b1) && sel_is_burst;

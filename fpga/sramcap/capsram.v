@@ -71,7 +71,7 @@ module capsram (
     output wire                 d2,             // nCSO MAX-V mode lever (static-low default)
     output reg                  sck_rd,         // D14 read clock (only net driven on drain)
     input  wire [21:0]          dq,             // SRAM DQ read candidates (proven sramdump order)
-    output wire [17:0]          dq_wr,          // TEST-WRITE data driven on DQ during ST_FILL (= cell address; ADC is dead so the DQ bus is free)
+    output wire [17:0]          dq_wr,          // TEST-WRITE data on the 18 DEDICATED sram_dq balls during ST_FILL (= cell address). NO ADC contention: separate from the 4 ADC-input shared balls (dqv[0]/[3]/[14]/[15] = A13/B12/G15/G16) the FPGA cannot drive — exclude those 4 bit positions from any write-verify.
     output wire                 dq_wr_oe,       // 1 => drive DQ with dq_wr (ST_FILL only); Hi-Z on drain so the SRAM drives it
     input  wire                 p6,             // MAX-V status mirror (input only)
 

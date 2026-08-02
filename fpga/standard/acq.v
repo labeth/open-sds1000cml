@@ -124,6 +124,9 @@ module acq (
     // rd_sel above). The old full-width `sel_q2 == SEL_BURST` was never true once A1/A2
     // float high, so burst_addr never auto-incremented and the whole drained record
     // collapsed to mem[0] replicated (the "flat trace / ADC-dead" symptom).
+    // ALIAS CAVEAT: masking bits 0/1/7 means reads to 0x41-0x43 alias to SEL_BURST
+    // (0x40) and 0x71-0x73 to SEL_ENV_DATA (0x70) and WILL pop the port. The app
+    // only issues 0x40/0x70 so it is unaffected; a bench probe must avoid those.
     wire [7:0] sel_q2_masked = {1'b0, sel_q2[6:2], 2'b00};
     wire sel_is_burst    = (sel_q2_masked == `SEL_BURST);
     wire burst_rd_done   = cs1_low && (oe_q[2] == 1'b0) && (oe_q[1] == 1'b1) && sel_is_burst;

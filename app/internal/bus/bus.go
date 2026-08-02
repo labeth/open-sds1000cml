@@ -34,7 +34,11 @@ type Bus interface {
 	// ChannelInto reads n words from a result-channel auto-inc DATA port
 	// (e.g. ENV_DATA) into dst. Post-halt only; the port pops one word per read.
 	ChannelInto(sel uint16, dst []uint16, n int)
-	// MmapDrain reports whether the drain uses the /dev/mem fast path.
+	// MmapDrain reports whether the auto-inc drain uses the /dev/mem fast path.
+	// Always false now: the fast path is disabled (GPMC prefetch serves repeated
+	// reads of the fixed auto-inc address without re-strobing CS1, so it never
+	// pops). Drains are always ioctl. The /dev/mem mapping, if present, is retained
+	// only for the boot-time VERSION self-check, not for I/O.
 	MmapDrain() bool
 }
 
@@ -191,4 +195,7 @@ func (d *Dev) ChannelInto(sel uint16, dst []uint16, n int) {
 	}
 }
 
-func (d *Dev) MmapDrain() bool { return d.regs != nil }
+// MmapDrain is always false: BurstInto/ChannelInto always drain via ioctl (the
+// mmap fast path never popped the auto-inc port under GPMC prefetch). d.regs may
+// still be non-nil (mapped for the boot VERSION check) but is not a drain path.
+func (d *Dev) MmapDrain() bool { return false }
