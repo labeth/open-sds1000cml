@@ -184,6 +184,7 @@ module acq (
     wire [5:0]  cap_sram_ctrl;
     wire        cap_sram_wclk;
     wire        cap_wr_oe;
+    wire        cap_wclk_oe;
     wire [17:0] cap_dq_wr;
     wire        cap_dq_wr_oe;
     wire        dbg_rd_hit;
@@ -266,6 +267,7 @@ module acq (
         .sram_addr   (cap_sram_addr),
         .sram_ctrl   (cap_sram_ctrl),
         .sram_wclk   (cap_sram_wclk),
+        .wclk_oe     (cap_wclk_oe),
         .wr_oe       (cap_wr_oe),
         .d2          (d2),
         .sck_rd      (sck_rd),
@@ -287,7 +289,7 @@ module acq (
     // (ST_FILL), Hi-Z during the proven non-contending drain read.
     assign sram_a = cap_wr_oe ? cap_sram_addr      : 18'bz;
     assign sram_c = cap_wr_oe ? cap_sram_ctrl      : 6'bz;
-    assign sram_k = cap_wr_oe ? {3{cap_sram_wclk}} : 3'bz;
+    assign sram_k = cap_wclk_oe ? {3{cap_sram_wclk}} : 3'bz;   // clk_mode-gated (free-run per report §4)
     // TEST WRITE: drive DQ with the cell-address ramp during ST_FILL; Hi-Z on drain (SRAM drives it).
     assign sram_dq = cap_dq_wr_oe ? cap_dq_wr : 18'bz;
 

@@ -67,6 +67,7 @@ module capsram (
     output wire [17:0]          sram_addr,     // 18 ADDRESS balls (spread(waddr))
     output wire [5:0]           sram_ctrl,     // 6 CONTROL balls (CS#/WE#/load, idle-HIGH)
     output wire                 sram_wclk,     // write sample clock (fans to F2/J2/K2)
+    output wire                 wclk_oe,        // tri-state enable for F2/J2/K2 (clk_mode: report says free-run every phase)
     output wire                 wr_oe,          // 1 => drive the 27 write balls (ST_FILL only)
     output wire                 d2,             // nCSO MAX-V mode lever (static-low default)
     output reg                  sck_rd,         // D14 read clock (only net driven on drain)
@@ -146,6 +147,7 @@ module capsram (
     reg        d2_wr     = 1'b0;
     reg        d2_rd     = 1'b0;
     reg        d2_idle   = 1'b0;
+    reg [1:0]  clk_mode  = 2'd0;          // F2/J2/K2 drive: 0=gated to FILL (orig), 1=free-run ALWAYS, 2=FILL+DRAIN
     reg [15:0] rd_clkdiv = 16'd25;
     reg [4:0]  amap [0:17];               // ADDRESS ball <- waddr18[amap[i]] (order sweep)
     reg [4:0]  lmap [0:15];               // word bit  <- dq[lmap[j]]         (lane_sel sweep)
@@ -161,7 +163,7 @@ module capsram (
             8'h48: clkdiv     <= d_q2;
             8'h4c: begin we_phase <= d_q2[3:0]; load_phase <= d_q2[7:4]; end
             8'h68: begin load_sel <= d_q2[2:0]; we_sel <= d_q2[6:4]; low_mask <= d_q2[13:8]; end
-            8'h6c: begin eng_enable <= d_q2[0]; d2_wr <= d_q2[1]; d2_rd <= d_q2[2]; d2_idle <= d_q2[3]; end
+            8'h6c: begin eng_enable <= d_q2[0]; d2_wr <= d_q2[1]; d2_rd <= d_q2[2]; d2_idle <= d_q2[3]; clk_mode <= d_q2[5:4]; end
             8'h0c: rd_clkdiv <= d_q2;
             8'h08: begin
                 if (d_q2[11:10] == 2'b00)      amap[d_q2[9:5]] <= d_q2[4:0];
@@ -184,13 +186,11 @@ module capsram (
     reg [`ADDR_W-1:0] wsample_addr = {`ADDR_W{1'b0}};   // address of the sample in flight
 
     always @(posedge clk) begin
-        // divided write sample clock (only while filling)
-        if (state == ST_FILL) begin
-            if (wdv >= clkdiv) begin wdv <= 16'd0; sck_wr <= ~sck_wr; end
-            else                     wdv <= wdv + 16'd1;
-        end else begin
-            wdv <= 16'd0; sck_wr <= 1'b0;
-        end
+        // FREE-RUNNING divided SRAM clock — toggles in EVERY state (report §4: F2/J2/K2
+        // free-run as the SRAM clock in every phase; the OLD design gated it to ST_FILL,
+        // starving the MAX-V's synchronous write/read FSM). Drive/tri-state is clk_mode.
+        if (wdv >= clkdiv) begin wdv <= 16'd0; sck_wr <= ~sck_wr; end
+        else                     wdv <= wdv + 16'd1;
         // per-sample strobe pulse windows (active while timer != 0)
         if (wr_commit) begin
             we_timer     <= we_phase;
@@ -222,6 +222,11 @@ module capsram (
     end endgenerate
 
     assign sram_wclk = sck_wr;
+    // F2/J2/K2 tri-state enable by clk_mode: 0=only FILL (orig), 1=ALWAYS free-run,
+    // 2=FILL+DRAIN (give the MAX-V read FSM a clock too). eng_enable still gates it.
+    assign wclk_oe   = eng_enable && ( (clk_mode == 2'd1) ? 1'b1 :
+                                       (clk_mode == 2'd2) ? ((state == ST_FILL) || (state == ST_DRAIN_SRAM)) :
+                                                            (state == ST_FILL) );
     assign wr_oe     = (state == ST_FILL) && eng_enable;   // Hi-Z everywhere else
     // TEST WRITE: drive the DQ bus with the write ADDRESS (data==addr ramp) so a drain
     // read-back that returns the ramp PROVES distinct-address->distinct-data through the
