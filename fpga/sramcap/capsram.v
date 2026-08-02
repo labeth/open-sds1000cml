@@ -68,6 +68,9 @@ module capsram (
     output wire [5:0]           sram_ctrl,     // 6 CONTROL balls (CS#/WE#/load, idle-HIGH)
     output wire                 sram_wclk,     // write sample clock (fans to F2/J2/K2)
     output wire                 wclk_oe,        // tri-state enable for F2/J2/K2 (clk_mode: report says free-run every phase)
+    output wire                 draining,       // 1 => ST_DRAIN_SRAM (for ADC-standby-on-drain override)
+    output wire [6:0]           adc_ctl_ovr,    // 7-bit ADC mode-control override {F1,L4,T2,T7,G1,G2,K1}
+    output wire                 adc_ctl_ovr_en, // 1 => apply adc_ctl_ovr while draining (AD9288 S1/S2 standby -> release DQ)
     output wire                 wr_oe,          // 1 => drive the 27 write balls (ST_FILL only)
     output wire                 d2,             // nCSO MAX-V mode lever (static-low default)
     output reg                  sck_rd,         // D14 read clock (only net driven on drain)
@@ -109,6 +112,9 @@ module capsram (
     reg [7:0]         prev_trig_ch = 8'd0;
 
     assign filling  = (state == ST_FILL);
+    assign draining       = (state == ST_DRAIN_SRAM);
+    assign adc_ctl_ovr    = adc_ctl_ovr_r;
+    assign adc_ctl_ovr_en = adc_ovr_en_r;
     assign fill_out = fill_frozen ? fill_frozen_val : wrote_count[10:0];
     assign trig_idx = trig_idx_r;
     assign rec_len  = rec_len_r;
@@ -148,6 +154,11 @@ module capsram (
     reg        d2_rd     = 1'b0;
     reg        d2_idle   = 1'b0;
     reg [1:0]  clk_mode  = 2'd0;          // F2/J2/K2 drive: 0=gated to FILL (orig), 1=free-run ALWAYS, 2=FILL+DRAIN
+    // ---- research-derived multi-variant knobs (0x58 DBG_ADV) ----
+    reg [6:0]  adc_ctl_ovr_r = 7'b1111000; // default = normal (F1/L4/T2/T7=1, G1/G2/K1=0); sweep for AD9288 standby
+    reg        adc_ovr_en_r  = 1'b0;        // apply override while draining (release shared DQ bus)
+    reg        we_level      = 1'b0;        // 0=WE# pulsed per write (orig), 1=WE# held LOW as write-mode level over FILL
+    reg        cap_dly       = 1'b0;        // 0=capture DQ this edge, 1=capture DQ delayed 1 clk (SPB +1 pipeline)
     reg [15:0] rd_clkdiv = 16'd25;
     reg [4:0]  amap [0:17];               // ADDRESS ball <- waddr18[amap[i]] (order sweep)
     reg [4:0]  lmap [0:15];               // word bit  <- dq[lmap[j]]         (lane_sel sweep)
@@ -164,6 +175,7 @@ module capsram (
             8'h4c: begin we_phase <= d_q2[3:0]; load_phase <= d_q2[7:4]; end
             8'h68: begin load_sel <= d_q2[2:0]; we_sel <= d_q2[6:4]; low_mask <= d_q2[13:8]; end
             8'h6c: begin eng_enable <= d_q2[0]; d2_wr <= d_q2[1]; d2_rd <= d_q2[2]; d2_idle <= d_q2[3]; clk_mode <= d_q2[5:4]; end
+            8'h58: begin adc_ctl_ovr_r <= d_q2[6:0]; adc_ovr_en_r <= d_q2[7]; we_level <= d_q2[8]; cap_dly <= d_q2[9]; end
             8'h0c: rd_clkdiv <= d_q2;
             8'h08: begin
                 if (d_q2[11:10] == 2'b00)      amap[d_q2[9:5]] <= d_q2[4:0];
@@ -202,7 +214,7 @@ module capsram (
         end
     end
 
-    wire        we_active   = (we_timer   != 4'd0);
+    wire        we_active   = we_level ? filling : (we_timer != 4'd0);   // level (write-mode) vs per-write pulse
     wire        load_active = (load_timer != 4'd0);
     wire [17:0] waddr18     = {3'b000, wsample_addr};    // A18 strap is off-FPGA (not driven)
 
@@ -249,11 +261,15 @@ module capsram (
     // one captured word per D14 period, at the sck-high->low edge (sramdump phase).
     wire slurp_tick = (state == ST_DRAIN_SRAM) && slurp_run && (rd_dv >= rd_clkdiv) && sck_rd;
 
-    // word assembly: programmable lane_sel over the DQ candidate vector.
+    // word assembly: programmable lane_sel over the DQ candidate vector, with an
+    // optional 1-clk capture delay (SPB read pipeline is +1: Q(A) lands the edge AFTER).
+    reg  [21:0] dq_d1 = 22'd0;
+    always @(posedge clk) dq_d1 <= dq;
+    wire [21:0] dq_sel = cap_dly ? dq_d1 : dq;
     wire [15:0] rd_word;
     genvar gl;
     generate for (gl = 0; gl < 16; gl = gl + 1) begin: lanemap
-        assign rd_word[gl] = dq[lmap[gl]];
+        assign rd_word[gl] = dq_sel[lmap[gl]];
     end endgenerate
 
     // ---- record M9K: single write / registered read, one clocked block --------

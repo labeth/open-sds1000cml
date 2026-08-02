@@ -217,14 +217,25 @@ module acq (
     assign dqv[20] = sram_dq[16];    // R16
     assign dqv[21] = sram_dq[17];    // T8
 
+    wire [3:0] adcif_ctl_hi;   // adcif's normal ADC mode controls (F1/L4/T2/T7)
+    wire [2:0] adcif_ctl_lo;   // (G1/G2/K1)
     adcif u_adcif (
         .clk        (clk),
         .adc_lane   (adc_lane),
         .adc_enc    (adc_enc),
-        .adc_ctl_hi (adc_ctl_hi),
-        .adc_ctl_lo (adc_ctl_lo),
+        .adc_ctl_hi (adcif_ctl_hi),
+        .adc_ctl_lo (adcif_ctl_lo),
         .samp       (samp)
     );
+    // ADC-standby-on-drain override: while capsram is draining and the override is
+    // enabled, replace the ADC mode controls with adc_ctl_ovr so the AD9288s enter
+    // S1/S2 standby (outputs high-Z) and RELEASE the shared DQ bus for a clean read.
+    wire       cap_draining, cap_adc_ovr_en;
+    wire [6:0] cap_adc_ovr;
+    wire [6:0] eff_ctl = (cap_draining && cap_adc_ovr_en) ? cap_adc_ovr
+                                                          : {adcif_ctl_hi, adcif_ctl_lo};
+    assign adc_ctl_hi = eff_ctl[6:3];
+    assign adc_ctl_lo = eff_ctl[2:0];
 
     spine u_spine (
         .clk      (clk),
@@ -268,6 +279,9 @@ module acq (
         .sram_ctrl   (cap_sram_ctrl),
         .sram_wclk   (cap_sram_wclk),
         .wclk_oe     (cap_wclk_oe),
+        .draining       (cap_draining),
+        .adc_ctl_ovr    (cap_adc_ovr),
+        .adc_ctl_ovr_en (cap_adc_ovr_en),
         .wr_oe       (cap_wr_oe),
         .d2          (d2),
         .sck_rd      (sck_rd),
