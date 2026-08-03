@@ -28,6 +28,7 @@ module srambf (
     reg [63:0] celow=0, data_mask=0, addr_mask=0, wmask=0;  // wmask = WE#+BWSa-d (all low DURING write)
     reg [6:0] clk_sel=7'h7F, cen_sel=7'h7F, advld_sel=7'h7F, oe_sel=7'h7F, gw_sel=7'h7F;
     reg [15:0] wpat=0; reg [7:0] clkdiv=8'd0; reg [4:0] latency=5'd3; reg [19:0] waddr=0; reg hold=0;
+    reg pulse_ld=0;   // 1 => advld (ADSC#) PULSES low at cc==0 only (SyncBurst address-load), else held
     always @(posedge clk) if (we_commit&&cs1_low) case(wr_sel)
         8'h18: celow[15:0]<=d_q2;   8'h1C: celow[31:16]<=d_q2;   8'h20: celow[47:32]<=d_q2;   8'h24: celow[63:48]<=d_q2;
         8'h28: data_mask[15:0]<=d_q2;8'h2C:data_mask[31:16]<=d_q2;8'h30:data_mask[47:32]<=d_q2;8'h34:data_mask[63:48]<=d_q2;
@@ -36,7 +37,7 @@ module srambf (
         8'h48: clk_sel<=d_q2[6:0]; 8'h4C: cen_sel<=d_q2[6:0]; 8'h50: advld_sel<=d_q2[6:0]; 8'h54: oe_sel<=d_q2[6:0]; 8'h58: gw_sel<=d_q2[6:0];
         8'h5C: wpat<=d_q2;
         8'h60: waddr[15:0]<=d_q2; 8'h64: waddr[19:16]<=d_q2[3:0];
-        8'h68: clkdiv<=d_q2[7:0]; 8'h6C: latency<=d_q2[4:0]; 8'h08: hold<=d_q2[0];
+        8'h68: clkdiv<=d_q2[7:0]; 8'h6C: latency<=d_q2[4:0]; 8'h08: begin hold<=d_q2[0]; pulse_ld<=d_q2[1]; end
         default:;
     endcase
     wire go = we_commit && cs1_low && (wr_sel==8'h70);
@@ -67,7 +68,7 @@ module srambf (
     end
     wire writing   = running & wmode;
     wire we_active = writing & (cc <= latency);   // WE#/BWS# low for load edges, HIGH for last 2 (late-write drain: NoBL data lands T+2)
-    wire advld_low = running | hold;
+    wire advld_low = pulse_ld ? (running & (cc==5'd0)) : (running | hold);
     wire cen_low   = running | hold;
 
     genvar g;
