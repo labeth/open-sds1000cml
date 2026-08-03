@@ -74,3 +74,37 @@ fabric breaks the MAX-V read (the MAX-V does not stream for our D14/D2 stimulus 
 Together with the write blocker (900-config sweep = 0 commits), BOTH directions are closed for our
 fabric remotely — the SRAM round-trip is inextricably factory-fabric-bound without bench access to
 the MAX-V. read_only default reverted to 0 after the test.
+
+## 2026-08-03 (cont.³) — DECOMPILE REVISIT + vendor-style-read (vread): decode-grounded, HW-verified NEGATIVE
+Re-mined the vendor Cyclone decompile (re_workflows/out/{acqpath,datapath,sramf,sramnet,vendorctl,maxv})
+with the corrected DQ ground truth. Two payoffs + a decisive test:
+
+**Decompile corrected 3 wrong moves in our old D14-slurp/tri-state read model:**
+1. D14 is the ADC *sample* clock, NOT the SRAM read clock — the SRAM read is clocked on **F2/J2/K2**
+   (free-running). (`hundred/sramwr`, `jtag/1_harness.md` flags D14-as-read-clock as superseded scaffolding.)
+2. D2 (nCSO) is **static LOW = MAX-V CE** through capture AND drain (HW-SAMPLE: 0 flips) — there is NO
+   "read-mode level". Moving D2 off 0 drops CE. (`vendorctl/B_fsm.md`.)
+3. The address counter is **Cyclone-owned ARITH and must keep WALKING during read** (do NOT tri-state);
+   the MAX-V latches the presented address (ADSC#) + asserts OE# when CS#=low & WE#=high. (`acqpath/2_fsm.md`,
+   `datapath/SRAM_DATAPATH_VERDICT.md`; specimen FSM `maxv/3_fsm.md`: OE#.next = reg(~cs_n & we_n).)
+
+**Also: my earlier "no MAX-V .pof / bench-only" was too strong** — a COMPLETE MAX-V FSM decode toolchain
+exists and is validated bit-exact on fresh designs (`maxv/MAXV_VERDICT3.md`, pof_cfm→cone_decode→fsm_sim);
+it only lacks the vendor CPLD's config DUMP as input (the CPLD is off-JTAG, never dumped).
+
+**Implemented the corrected read as `vread` (capsram.v 0x58 bit14):** during drain, keep driving the address
+counter (walking), control balls in READ posture (CS# low via low_mask, all WE/load HIGH), F2/J2/K2 clocked,
+D2 static low, capture adc-lane DQ. **JTAG-VERIFIED the fabric drives EXACTLY that posture** (L2=CS# p1=0.00,
+N1/M6/N5/R6/T5 p1=1.00, address balls L1/N2/P1 drv=1.00 tog~0.5 walking). Tested vs the verified 0xFF prime,
+swept every CS#-ball selection (low_mask 0x01..0x3f): **0/6144 samples read 0xFF** — the SRAM never drives.
+Then tested the full corrected ROUND-TRIP (our fabric capture WE#-low + vread drain, one session, no
+reconfigure): eng_enable 0↔1 = NO change (coherent climbs both ways) → write does not commit AND read returns
+the float artifact.
+
+**DECISIVE, decode-grounded + HW-verified: the MAX-V does NOT act on ANY Cyclone-boundary stimulus we can
+produce**, even when we drive the exact posture the decompile prescribes. This empirically confirms
+`sramcensus/CENSUS_RECIPE.md`: "D2=nCSO alone does not drive a read; ADSP#/ADSC#/OE# are MAX-V-owned and this
+lever does not reach them." The blocker is the MAX-V internal FSM, which is unreadable from the Cyclone rbf
+(LEIM wall) and un-decodable without the vendor CPLD dump. **Single remaining unlock: dump the vendor MAX-V
+config (JTAG lead to its TAP at the bench) → the ready toolchain decodes the strobe FSM bit-exact.**
+vread left in capsram.v (default off) for when a MAX-V dump makes it testable.

@@ -168,6 +168,14 @@ module capsram (
     reg        drain_p6_pol  = 1'b0;        // P6 grant polarity for the drain handshake
     reg        drain_pend    = 1'b0;        // in ST_DRAIN_SRAM, waiting for the P6 read grant
     reg        read_sync     = 1'b0;        // 1 => slurp captures on the free-run F2/J2/K2 edge (MAX-V walks the read addr on it), D14=F2/J2/K2
+    // ---- VENDOR-STYLE READ (0x58 bit14, 2026-08-03 decompile-grounded) ----
+    // Decompile verdict corrections to the old D14-slurp/tri-state model:
+    //   * D14 is the ADC sample clock, NOT the SRAM read clock -> clock the read on F2/J2/K2.
+    //   * D2 is STATIC LOW (MAX-V CE) through capture AND drain -> hold d2_rd=0.
+    //   * the address counter is CYCLONE-owned and must KEEP WALKING during read (do NOT tri-state);
+    //     MAX-V latches the presented address (ADSC#) + asserts OE# when CS#=low & WE#=high (read).
+    // vread=1 makes the drain drive addr(walking)+ctrl(CS# low, WE# HIGH)+F2/J2/K2, capture adc_lane DQ.
+    reg        vread         = 1'b0;
     reg [15:0] rd_clkdiv = 16'd25;
     reg [4:0]  amap [0:17];               // ADDRESS ball <- waddr18[amap[i]] (order sweep)
     reg [4:0]  lmap [0:15];               // word bit  <- dq[lmap[j]]         (lane_sel sweep)
@@ -185,7 +193,8 @@ module capsram (
             8'h68: begin load_sel <= d_q2[2:0]; we_sel <= d_q2[6:4]; low_mask <= d_q2[13:8]; end
             8'h6c: begin eng_enable <= d_q2[0]; d2_wr <= d_q2[1]; d2_rd <= d_q2[2]; d2_idle <= d_q2[3]; clk_mode <= d_q2[5:4]; end
             8'h58: begin adc_ctl_ovr_r <= d_q2[6:0]; adc_ovr_en_r <= d_q2[7]; we_level <= d_q2[8]; cap_dly <= d_q2[9];
-                         read_only <= d_q2[10]; drain_p6_wait <= d_q2[11]; drain_p6_pol <= d_q2[12]; read_sync <= d_q2[13]; end
+                         read_only <= d_q2[10]; drain_p6_wait <= d_q2[11]; drain_p6_pol <= d_q2[12]; read_sync <= d_q2[13];
+                         vread <= d_q2[14]; end
             8'h0c: rd_clkdiv <= d_q2;
             8'h08: begin
                 if (d_q2[11:10] == 2'b00)      amap[d_q2[9:5]] <= d_q2[4:0];
@@ -224,11 +233,17 @@ module capsram (
         end
     end
 
-    wire        we_active   = we_level ? filling : (we_timer != 4'd0);   // level (write-mode) vs per-write pulse
-    wire        load_active = (load_timer != 4'd0);
-    wire [17:0] waddr18     = {3'b000, wsample_addr};    // A18 strap is off-FPGA (not driven)
+    // VENDOR-STYLE READ: during drain with vread=1 the Cyclone keeps driving the
+    // address counter (walking = slurp_addr) and control balls in READ posture
+    // (all WE/load strobes HIGH, CS# low), so the MAX-V can latch+assert OE#.
+    wire        reading     = (state == ST_DRAIN_SRAM) && vread;
+    wire        we_active   = reading ? 1'b0 :
+                              (we_level ? filling : (we_timer != 4'd0));   // read=WE# high; else level/pulse
+    wire        load_active = reading ? 1'b0 : (load_timer != 4'd0);       // read=load(ADSC-req) high
+    wire [17:0] waddr18     = reading ? {3'b000, slurp_addr}               // read walks the drain counter
+                                      : {3'b000, wsample_addr};            // A18 strap is off-FPGA (not driven)
 
-    // ADDRESS balls: programmable bit-order spread of the write pointer.
+    // ADDRESS balls: programmable bit-order spread of the write/read pointer.
     genvar ga;
     generate for (ga = 0; ga < 18; ga = ga + 1) begin: addrdrv
         assign sram_addr[ga] = waddr18[amap[ga]];
@@ -249,7 +264,7 @@ module capsram (
     assign wclk_oe   = eng_enable && ( (clk_mode == 2'd1) ? 1'b1 :
                                        (clk_mode == 2'd2) ? ((state == ST_FILL) || (state == ST_DRAIN_SRAM)) :
                                                             (state == ST_FILL) );
-    assign wr_oe     = (state == ST_FILL) && eng_enable;   // Hi-Z everywhere else
+    assign wr_oe     = ((state == ST_FILL) || reading) && eng_enable;   // drive addr/ctrl in FILL and vread-drain; Hi-Z else
     // TEST WRITE: drive the DQ bus with the write ADDRESS (data==addr ramp) so a drain
     // read-back that returns the ramp PROVES distinct-address->distinct-data through the
     // external SRAM, independent of the ADC. Enabled only during ST_FILL (Hi-Z on drain).
@@ -274,7 +289,7 @@ module capsram (
     always @(posedge clk) sck_wr_d <= sck_wr;
     wire sck_wr_rise = sck_wr & ~sck_wr_d;
     wire slurp_tick = (state == ST_DRAIN_SRAM) && slurp_run &&
-                      (read_sync ? sck_wr_rise : ((rd_dv >= rd_clkdiv) && sck_rd));
+                      ((read_sync || vread) ? sck_wr_rise : ((rd_dv >= rd_clkdiv) && sck_rd));
 
     // word assembly: programmable lane_sel over the DQ candidate vector, with an
     // optional 1-clk capture delay (SPB read pipeline is +1: Q(A) lands the edge AFTER).
@@ -384,8 +399,8 @@ module capsram (
         // D14 period; capture at the sck-high->low edge into mem[] (mem block).
         // ================================================================
         if (state == ST_DRAIN_SRAM && slurp_run) begin
-            if (read_sync) begin
-                sck_rd <= sck_wr;                    // D14 tracks F2/J2/K2
+            if (read_sync || vread) begin
+                sck_rd <= sck_wr;                    // D14 tracks F2/J2/K2 (vread: read clocked on F2/J2/K2)
                 if (slurp_tick) begin                // = sck_wr rising edge
                     dq_lat <= dq;
                     if (slurp_addr >= (rec_len_r[`ADDR_W-1:0] - 1'b1)) begin
