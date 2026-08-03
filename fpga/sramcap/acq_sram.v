@@ -193,29 +193,34 @@ module acq (
     // ---- DQ candidate vector (proven sramdump order). PATH A shared bus: 4 of
     //      the 22 lanes ARE acq's adc_lane input balls (A13/B12/G15/G16), read in
     //      the SAME input direction -> no conflict; the other 18 are dedicated. ----
+    // ---- CONTENT-DIFFERENTIAL FINDING (2026-08-03): the vendor 246-vs-21 rail
+    //      showed the ACTUAL data bus is the adc_lane balls, NOT the sram_dq
+    //      balls (those never flipped -> not the DQ). Route dqv entirely to the
+    //      real adc_lane data bus. dqv[7:0] = proven CH1 de-interleave byte so a
+    //      faithful read yields the raw ADC code directly. ----
     wire [21:0] dqv;
-    assign dqv[0]  = adc_lane[14];   // A13 (shared with adc_lane[14])
-    assign dqv[3]  = adc_lane[2];    // B12 (shared with adc_lane[2])
-    assign dqv[14] = adc_lane[25];   // G15 (shared with adc_lane[25])
-    assign dqv[15] = adc_lane[26];   // G16 (shared with adc_lane[26])
-    assign dqv[1]  = sram_dq[0];     // A14
-    assign dqv[2]  = sram_dq[1];     // A15
-    assign dqv[4]  = sram_dq[2];     // B13
-    assign dqv[5]  = sram_dq[3];     // B14
-    assign dqv[6]  = sram_dq[4];     // B16
-    assign dqv[7]  = sram_dq[5];     // C15
-    assign dqv[8]  = sram_dq[6];     // C16
-    assign dqv[9]  = sram_dq[7];     // D9
-    assign dqv[10] = sram_dq[8];     // D11
-    assign dqv[11] = sram_dq[9];     // D15
-    assign dqv[12] = sram_dq[10];    // D16
-    assign dqv[13] = sram_dq[11];    // F15
-    assign dqv[16] = sram_dq[12];    // J16
-    assign dqv[17] = sram_dq[13];    // L7
-    assign dqv[18] = sram_dq[14];    // P8
-    assign dqv[19] = sram_dq[15];    // R8
-    assign dqv[20] = sram_dq[16];    // R16
-    assign dqv[21] = sram_dq[17];    // T8
+    assign dqv[7]  = adc_lane[3];    // CH1 b7
+    assign dqv[6]  = adc_lane[0];    // CH1 b6
+    assign dqv[5]  = adc_lane[1];    // CH1 b5
+    assign dqv[4]  = adc_lane[11];   // CH1 b4
+    assign dqv[3]  = adc_lane[9];    // CH1 b3
+    assign dqv[2]  = adc_lane[12];   // CH1 b2
+    assign dqv[1]  = adc_lane[6];    // CH1 b1
+    assign dqv[0]  = adc_lane[5];    // CH1 b0
+    assign dqv[8]  = adc_lane[10];   // C8  (flipped 246/21)
+    assign dqv[9]  = adc_lane[14];   // A13 (flipped)
+    assign dqv[10] = adc_lane[15];   // L16 (flipped)
+    assign dqv[11] = adc_lane[16];   // L14 (flipped)
+    assign dqv[12] = adc_lane[17];   // R10 (flipped)
+    assign dqv[13] = adc_lane[29];   // M10 (flipped)
+    assign dqv[14] = adc_lane[7];    // T11
+    assign dqv[15] = adc_lane[8];    // T9
+    assign dqv[16] = adc_lane[4];    // L13
+    assign dqv[17] = adc_lane[18];   // F9
+    assign dqv[18] = adc_lane[19];   // K16
+    assign dqv[19] = adc_lane[20];   // L12
+    assign dqv[20] = adc_lane[21];   // P11
+    assign dqv[21] = adc_lane[24];   // D12
 
     wire [3:0] adcif_ctl_hi;   // adcif's normal ADC mode controls (F1/L4/T2/T7)
     wire [2:0] adcif_ctl_lo;   // (G1/G2/K1)
