@@ -49,3 +49,28 @@ With the corrected routing + full app (SPI analog up, ADC driving):
 
 **Honest status: no faithful our-fabric SRAM fill+read achieved. The remaining blocker is
 the MAX-V read/write predicate, which is not observable or decodable remotely.**
+
+## 2026-08-03 (cont.) — FACTORY-PRIME → OUR-READ test: GROUND-TRUTH NEGATIVE (decisive)
+Made the factory SRAM prime survive the flaky auto-takeover by (a) building acq_sram with
+`read_only=1` DEFAULT so our fabric can NEVER fill/overwrite, and (b) `sync`ing the vfat before
+the Shelly power-cut so `untakeover` (taken_over=false, auto_takeover=false) actually persists —
+factory then booted STABLE (no delayed takeover, 84s+ verified).
+
+Procedure: factory @ TDIV 100NS (fast → external SRAM exercised), railed C1:OFST +3V →
+SRAM filled with a **verified constant 0xFF** (factory's own VXI `C1:WF? DAT2` = 20480 samples,
+mean 253.8, ptp 3, values 252-255). Then takeover → force-load our read-only fabric (SRAM 0xFF
+survives, read-only can't overwrite) → drain → read.
+
+**Result: our drain reads mean~117, uniq~19, a fixed 0x3D/0xBD float artifact — 0/6144 samples
+≥ 250, i.e. NOT ONE sample reflects the 0xFF that is verifiably in the SRAM.** Swept
+clk_mode/d2_rd/read_sync/drain_p6_wait/pol/rd_clkdiv with the KNOWN 0xFF target to score against:
+every config = 0/6144 hits. The read is completely independent of both the SRAM content and the
+handshake knobs.
+
+CONCLUSION (experiment-backed, ground-truth): **our fabric cannot read the external SRAM even when
+it is primed with known content.** The only proven read (sramdump/draintest) did capture+drain in
+the SAME factory fabric with NO reconfigure between; the reconfigure required to load our read
+fabric breaks the MAX-V read (the MAX-V does not stream for our D14/D2 stimulus post-reconfigure).
+Together with the write blocker (900-config sweep = 0 commits), BOTH directions are closed for our
+fabric remotely — the SRAM round-trip is inextricably factory-fabric-bound without bench access to
+the MAX-V. read_only default reverted to 0 after the test.

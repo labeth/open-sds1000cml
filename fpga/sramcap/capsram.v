@@ -161,6 +161,9 @@ module capsram (
     reg        cap_dly       = 1'b0;        // 0=capture DQ this edge, 1=capture DQ delayed 1 clk (SPB +1 pipeline)
     // read-handshake knobs (0x58 [12:10]): read-only skips FILL; drain P6 wait/polarity
     reg        read_only     = 1'b0;        // arm -> go straight to ST_DRAIN_SRAM (read vendor-written SRAM, no fill/overwrite)
+                                             //   (2026-08-03: temporarily defaulted 1 for the factory-prime read test — see
+                                             //    CONTENT_DIFFERENTIAL.md; that test proved our drain can't read a known
+                                             //    factory-written constant, so reverted to the normal fill-capable default.)
     reg        drain_p6_wait = 1'b0;        // hold slurp until P6==drain_p6_pol (MAX-V read grant) before reading
     reg        drain_p6_pol  = 1'b0;        // P6 grant polarity for the drain handshake
     reg        drain_pend    = 1'b0;        // in ST_DRAIN_SRAM, waiting for the P6 read grant
