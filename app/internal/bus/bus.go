@@ -190,11 +190,15 @@ func (d *Dev) Write(plane iface.Plane, sel, val uint16) error {
 // cycling. Each read pops one word (hi byte C1, lo byte C2); the port
 // auto-increments through samples 0..n-1 (iface.IsAutoInc(CS1, SelBURST)).
 func (d *Dev) BurstInto(c1, c2 []uint8, n int) {
-	// FAST PATH: EDMA/sDMA. Unlike a CPU mmap read (served from the GPMC read buffer
-	// WITHOUT re-strobing → never pops), the EDMA engine is a bus master, so each of
-	// its reads is a real GPMC cycle that pops the port — CPU-free, ~21 MB/s, byte-
-	// validated. Falls through to ioctl on any failure.
-	if d.edma != nil && d.edma.drain(c1, c2, n) {
+	// EDMA FAST PATH — DISABLED (2026-08-04): a ramp drop/reorder test proved the EDMA
+	// bus-master drain of the fixed auto-inc port is NOT byte-exact. The TPTC pipelines
+	// multiple outstanding reads of the pop-on-read port, so pops complete out of order
+	// (~1 reorder/dup per 30-40 words; 535 breaks in 20478 on a known +1 ramp). The
+	// earlier "~21 MB/s byte-validated" claim was validated only by pointer-advancement
+	// and structural match, which CANNOT see reorder/dup. Only strictly-serialized single
+	// reads (the ioctl path below) drain this port correctly (0 breaks on the same ramp).
+	// A fast+clean drain needs an addressable (re-readable) readout, not the pop port.
+	if false && d.edma != nil && d.edma.drain(c1, c2, n) {
 		return
 	}
 	// IOCTL FALLBACK: the /dev/mem mmap CPU path is DISABLED for auto-inc drains — on

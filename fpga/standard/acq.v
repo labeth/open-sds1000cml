@@ -152,6 +152,7 @@ module acq (
     wire       mode_norm = (run_word[`RUN_MODE_LSB +: 2] == 2'd1);   // 0=AUTO, 1=NORM
     // gapless raw-stream mode (run_word bit 3): continuous ring capture + live drain.
     wire       stream_on = run_word[3];
+    wire       test_ramp = run_word[4];   // stream ramp test pattern (drop/reorder proof)
     wire [`ADDR_W-1:0] wr_ptr;   // capture's live write pointer -> drain (stream mode)
     // CH1 trigger level in sample units, for the TRIGPOS sub-sample interpolation.
     // The physical level DAC now lives on the MAX V (CS3), so the Cyclone no longer
@@ -257,6 +258,7 @@ module acq (
         .clk      (clk),
         .filling  (filling),
         .stream_on(stream_on),
+        .test_ramp(test_ramp),
         .samp     (samp),
         .decim    (decim_reg),
         .bypass0  (xform_reg[`XFORM_CTRL_BYPASS0_LSB]),

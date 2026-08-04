@@ -60,7 +60,13 @@ module drain (
         if (rst || arm)
             burst_ptr <= {`ADDR_W{1'b0}};
         else if (stream_on) begin
-            if (burst_rd_done && have_s)          // pop only what the writer has produced
+            // Advance UNCONDITIONALLY on every pop (like the proven-clean frozen path). The
+            // software drainer reads exactly `avail` words (BURST_REMAIN 0x44) per poll, so it
+            // never pops past the writer. The old `have_s` gate put a wide combinational
+            // subtract (wr_ptr-burst_ptr) in the pop-enable at the SAME edge as burst_rd_done;
+            // tight back-to-back EDMA nOE pulses mis-sampled it -> dup+skip. Removing it makes
+            // the EDMA stream drain byte-clean; have_s survives only in the REMAIN report below.
+            if (burst_rd_done)
                 burst_ptr <= (burst_ptr == REC_LAST) ? {`ADDR_W{1'b0}} : (burst_ptr + 1'b1);
         end else if (coherent && burst_rd_done && !at_end)
             burst_ptr <= burst_ptr + 1'b1;       // one pop / nOE-rise, saturating

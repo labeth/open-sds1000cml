@@ -30,6 +30,8 @@ module spine (
     input  wire        filling,
     // stream mode: decimate CONTINUOUSLY (gapless raw stream), not gated by `filling`.
     input  wire        stream_on,
+    // test-pattern: replace the sample with a per-tick ramp counter (gapless drop/reorder proof).
+    input  wire        test_ramp,
 
     // synchronized 16-bit sample word (hi byte = CH1, lo byte = CH2).
     input  wire [15:0] samp,
@@ -85,6 +87,11 @@ module spine (
     wire [17:0] xf1_out         = bypass1 ? xf0_out : xf1_transformed;
 
     // capture consumes the transformed stream, keeping the low 16 bits.
-    assign cap_word = xf1_out[15:0];
+    // per-tick ramp counter for the gapless drop/reorder test: every committed sample is
+    // prev+1, so a drained stream MUST be a perfect +1 sequence (a jump != +1 = drop/reorder).
+    reg [15:0] ramp_ctr = 16'd0;
+    always @(posedge clk) if (cap_tick) ramp_ctr <= ramp_ctr + 16'd1;
+
+    assign cap_word = test_ramp ? ramp_ctr : xf1_out[15:0];
 
 endmodule
