@@ -229,6 +229,17 @@ module acq (
     // 4) Engine wiring
     // =======================================================================
     wire [15:0]        samp;         // canonical {CH1[7:0],CH2[7:0]} from the ADC front-end
+    // RAW-LANE DEBUG capture: XFORM_CTRL[4]=raw_mode routes a 16-lane slice of adc_lane
+    // (selected by [6:5]) into the record instead of the de-interleaved sample, so a known
+    // railed triangle can be captured per-lane to solve the CH2 de-interleave bit-order.
+    reg  [32:0] adc_lane_q = 33'd0;
+    always @(posedge clk) adc_lane_q <= adc_lane;
+    wire        raw_mode = xform_reg[4];
+    wire [1:0]  raw_sel  = xform_reg[6:5];
+    wire [15:0] raw_word = (raw_sel == 2'd0) ? adc_lane_q[15:0]
+                         : (raw_sel == 2'd1) ? adc_lane_q[31:16]
+                                             : {15'd0, adc_lane_q[32]};
+    wire [15:0] samp_eff = raw_mode ? raw_word : samp;
     wire [15:0]        cap_word;
     wire               cap_tick;
     wire               filling;
@@ -259,7 +270,7 @@ module acq (
         .filling  (filling),
         .stream_on(stream_on),
         .test_ramp(test_ramp),
-        .samp     (samp),
+        .samp     (samp_eff),
         .decim    (decim_reg),
         .bypass0  (xform_reg[`XFORM_CTRL_BYPASS0_LSB]),
         .bypass1  (xform_reg[`XFORM_CTRL_BYPASS1_LSB]),
