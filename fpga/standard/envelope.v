@@ -50,9 +50,13 @@ module envelope (
     input  wire [15:0] post_work_w,
     input  wire [15:0] env_cols,     // requested display column count
 
-    // live stream (folded exactly on committed samples).
-    input  wire [15:0] cap_word,     // hi=CH1, lo=CH2
-    input  wire        smp_valid,    // == capture wr_commit
+    // live stream. cap_word is the RAW sample (spine's identity transform passes samp
+    // through combinationally), so folding it every fill clock = true peak-detect over
+    // ALL raw ADC samples. smp_valid (the decimated tick) closes columns; fill_active
+    // enables the per-clock fold so narrow glitches between decimated samples still land.
+    input  wire [15:0] cap_word,     // hi=CH1, lo=CH2 (== raw samp)
+    input  wire        smp_valid,    // == capture wr_commit (decimated tick: closes columns)
+    input  wire        fill_active,  // == capture filling (per-clock peak-detect fold enable)
     input  wire        frame_done,   // finalize -> flush the open partial column
 
     // read side (auto-inc ENV_DATA + level-status ENV_COUNT).
@@ -133,18 +137,24 @@ module envelope (
     // ======================================================================
     always @(posedge clk) begin
 
-        // ---- fold the live sample / advance the column ----
-        if (smp_valid) begin
-            if (close) begin
-                col_idx  <= col_idx + 1'b1;
-                col_open <= 1'b0;
-                min1 <= 8'hFF; max1 <= 8'h00; min2 <= 8'hFF; max2 <= 8'h00;
-                acc  <= acc_nx - {1'b0, Nreg};
-            end else begin
-                min1 <= n1min; max1 <= n1max; min2 <= n2min; max2 <= n2max;
-                col_open <= 1'b1;
-                acc  <= acc_nx;
-            end
+        // ---- PEAK-DETECT fold: fold EVERY raw sample while filling (not only the
+        //      decimated ticks), so a narrow glitch between kept samples still lands in
+        //      the column min/max. cap_word is the raw samp (spine identity xform).
+        if (fill_active) begin
+            min1 <= n1min; max1 <= n1max; min2 <= n2min; max2 <= n2max;
+            col_open <= 1'b1;
+        end
+        // ---- advance / close the column on the DECIMATED tick (Bresenham unchanged,
+        //      N = decimated record depth). The close reset is written AFTER the fold
+        //      above, so on a closing tick it wins and the next column starts fresh; the
+        //      emit still latches the folded n1min/n1max (this sample included).
+        if (smp_valid && close) begin
+            col_idx  <= col_idx + 1'b1;
+            col_open <= 1'b0;
+            min1 <= 8'hFF; max1 <= 8'h00; min2 <= 8'hFF; max2 <= 8'h00;
+            acc  <= acc_nx - {1'b0, Nreg};
+        end else if (smp_valid) begin
+            acc  <= acc_nx;
         end else if (flush_req) begin
             col_idx  <= col_idx + 1'b1;
             col_open <= 1'b0;

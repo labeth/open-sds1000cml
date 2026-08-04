@@ -306,6 +306,7 @@ module acq (
         .env_cols       (env_cols_reg),
         .cap_word       (cap_word),
         .smp_valid      (smp_valid),
+        .fill_active    (filling),
         .frame_done     (frame_done),
         .coherent       (coherent),
         .env_rd_active  (env_rd_active),
