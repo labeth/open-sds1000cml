@@ -57,6 +57,7 @@ type Dev struct {
 	fd   int
 	mem  []byte // /dev/mem mapping of the CS1 window; nil → ioctl drain
 	regs *[mmapLen / 2]uint16
+	edma *edmaDrainer // EDMA/sDMA fast drain; nil → ioctl drain
 }
 
 // New wraps the inherited /dev/Gpmc fd. It ONLY constructs the driver — it does
@@ -88,6 +89,25 @@ func (d *Dev) EnableMmap(want bool) bool {
 		fmt.Printf("[app] mmap drain unavailable, using ioctl drain: %v\n", err)
 	}
 	return d.regs != nil
+}
+
+// EnableEDMA sets up the EDMA/sDMA fast drain, sized for maxWords record words.
+// MUST be called only after the owned fabric is confirmed (same gate as EnableMmap):
+// EDMA reads the auto-inc BURST port, which only exists on the owned build. On any
+// failure it stays on the ioctl drain (logged, non-fatal). Returns whether EDMA is
+// active; idempotent.
+func (d *Dev) EnableEDMA(maxWords int) bool {
+	if d.edma != nil {
+		return true
+	}
+	e, err := newEDMADrainer(maxWords)
+	if err != nil {
+		fmt.Printf("[app] EDMA drain unavailable, using ioctl drain: %v\n", err)
+		return false
+	}
+	d.edma = e
+	fmt.Printf("[app] EDMA drain enabled (channel %d, %d words)\n", edmaChan, maxWords)
+	return true
 }
 
 func (d *Dev) mapCS1() error {
@@ -170,13 +190,19 @@ func (d *Dev) Write(plane iface.Plane, sel, val uint16) error {
 // cycling. Each read pops one word (hi byte C1, lo byte C2); the port
 // auto-increments through samples 0..n-1 (iface.IsAutoInc(CS1, SelBURST)).
 func (d *Dev) BurstInto(c1, c2 []uint8, n int) {
-	// NOTE: the /dev/mem mmap fast path is DISABLED for auto-inc drains. On this
-	// AM3352 GPMC, repeated reads of the single fixed auto-inc address are served
-	// from the GPMC prefetch/post-write FIFO WITHOUT re-strobing CS1, so the FPGA
-	// port never pops — the whole record collapses to the first sample replicated
-	// (observed: C1/C2 constant, ramp reads its reset value). The ioctl path issues
-	// one real GPMC transaction per read, which pops correctly. Correctness > the
-	// few ms of mmap drain speed. (Was the "ADC-dead / flat trace" root cause.)
+	// FAST PATH: EDMA/sDMA. Unlike a CPU mmap read (served from the GPMC read buffer
+	// WITHOUT re-strobing → never pops), the EDMA engine is a bus master, so each of
+	// its reads is a real GPMC cycle that pops the port — CPU-free, ~21 MB/s, byte-
+	// validated. Falls through to ioctl on any failure.
+	if d.edma != nil && d.edma.drain(c1, c2, n) {
+		return
+	}
+	// IOCTL FALLBACK: the /dev/mem mmap CPU path is DISABLED for auto-inc drains — on
+	// this AM3352 GPMC, repeated CPU reads of the fixed auto-inc address are served
+	// from the GPMC read buffer WITHOUT re-strobing CS1, so the port never pops (the
+	// whole record collapses to sample 0 replicated — the "ADC-dead / flat trace"
+	// root cause). The ioctl path issues one real GPMC transaction per read, popping
+	// correctly. Correct but ~0.8 MB/s (syscall per word).
 	for i := 0; i < n; i++ {
 		v, _ := d.Read(iface.CS1, iface.SelBURST)
 		c1[i] = uint8(v >> 8)

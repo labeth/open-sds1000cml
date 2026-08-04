@@ -430,8 +430,11 @@ func main() {
 		os.Exit(0)
 	}
 
-	// Fabric confirmed to be the owned build — now enable the fast-path drain.
+	// Fabric confirmed to be the owned build — now enable the fast-path drains.
 	logf("bus up, mmap drain=%v", b.EnableMmap(mmapDrain))
+	// EDMA/sDMA drain: CPU-free ~21 MB/s record drain (vs ~0.8 MB/s ioctl). Sized for
+	// the max record depth; falls back to ioctl if EDMA can't initialize.
+	logf("edma drain=%v", b.EnableEDMA(20480))
 
 	e := engine.New(engine.Config{Bus: b, Logf: logf})
 	go e.Run()
