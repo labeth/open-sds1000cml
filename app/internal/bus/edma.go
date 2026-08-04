@@ -39,8 +39,7 @@ var burstPortPhys = uint32(cs1PhysBase + int(iface.SelBURST)<<1)
 
 type edmaDrainer struct {
 	cc       []byte   // /dev/mem map of the EDMA3CC register block
-	buf      []byte   // pinned DMA destination (contiguous virtual, scattered phys)
-	physes   []uint32 // physical base of each destination page
+	pm       *os.File // /proc/self/pagemap, kept open for per-drain phys resolution
 	maxWords int
 }
 
@@ -78,39 +77,52 @@ func newEDMADrainer(maxWords int) (*edmaDrainer, error) {
 	if err != nil {
 		return nil, fmt.Errorf("edma cc mmap: %w", err)
 	}
-	nbytes := (maxWords*2 + pageSize - 1) &^ (pageSize - 1)
-	buf, err := syscall.Mmap(-1, 0, nbytes, syscall.PROT_READ|syscall.PROT_WRITE,
-		syscall.MAP_ANON|syscall.MAP_PRIVATE)
-	if err != nil {
-		syscall.Munmap(cc)
-		return nil, fmt.Errorf("edma buf mmap: %w", err)
-	}
-	for i := range buf { // fault in every page before locking/resolving
-		buf[i] = 0
-	}
-	if err := syscall.Mlock(buf); err != nil {
-		syscall.Munmap(cc)
-		syscall.Munmap(buf)
-		return nil, fmt.Errorf("edma mlock: %w", err)
-	}
 	pm, err := os.Open("/proc/self/pagemap")
 	if err != nil {
 		syscall.Munmap(cc)
-		syscall.Munmap(buf)
 		return nil, err
 	}
-	defer pm.Close()
+	// Validate the DMA path once with a throwaway buffer (pagemap needs root; fail early
+	// so the caller falls back to ioctl rather than silently drain nothing).
+	probe, _, err := allocPinned(pm, pageSize)
+	if err != nil {
+		syscall.Munmap(cc)
+		pm.Close()
+		return nil, err
+	}
+	syscall.Munmap(probe)
+	return &edmaDrainer{cc: cc, pm: pm, maxWords: maxWords}, nil
+}
+
+// allocPinned mmaps, faults, and mlocks a fresh anonymous buffer of nbytes and
+// resolves each page's physical address. The buffer is CACHE-COLD from the CPU's
+// point of view — nothing has read it — which is REQUIRED for DMA-read coherency:
+// the EDMA writes DRAM as a bus master (not through the CPU cache), so a REUSED
+// buffer would be read back from stale cache lines (proven: reused = thousands of
+// reorder/dup breaks on a ramp; a fresh buffer = zero). A fresh buffer per drain is
+// the userspace-only fix (Linux 3.2 ARM has no D-cache-invalidate syscall, and the
+// EDMA is not cache-coherent on this AM3352). Caller munmaps the returned buffer.
+func allocPinned(pm *os.File, nbytes int) ([]byte, []uint32, error) {
+	nbytes = (nbytes + pageSize - 1) &^ (pageSize - 1)
+	buf, err := syscall.Mmap(-1, 0, nbytes, syscall.PROT_READ|syscall.PROT_WRITE,
+		syscall.MAP_ANON|syscall.MAP_PRIVATE)
+	if err != nil {
+		return nil, nil, fmt.Errorf("edma buf mmap: %w", err)
+	}
+	if err := syscall.Mlock(buf); err != nil { // fault + pin (pages are zero-filled by MAP_ANON)
+		syscall.Munmap(buf)
+		return nil, nil, fmt.Errorf("edma mlock: %w", err)
+	}
 	npages := nbytes / pageSize
 	physes := make([]uint32, npages)
 	for pg := 0; pg < npages; pg++ {
 		physes[pg] = physOf(pm, unsafe.Pointer(&buf[pg*pageSize]))
 		if physes[pg] == 0 {
-			syscall.Munmap(cc)
 			syscall.Munmap(buf)
-			return nil, fmt.Errorf("edma pagemap resolve failed (need root)")
+			return nil, nil, fmt.Errorf("edma pagemap resolve failed (need root)")
 		}
 	}
-	return &edmaDrainer{cc: cc, buf: buf, physes: physes, maxWords: maxWords}, nil
+	return buf, physes, nil
 }
 
 // runParam programs the channel PaRAM for a fixed-source (bcnt x 2-byte) transfer
@@ -159,18 +171,25 @@ func (e *edmaDrainer) drain(c1, c2 []uint8, n int) bool {
 	if n > e.maxWords {
 		return false
 	}
+	// Fresh cache-cold buffer per drain (see allocPinned): the EDMA is not cache-coherent,
+	// so reusing a buffer reads stale cached data from the previous record.
+	buf, physes, err := allocPinned(e.pm, n*2)
+	if err != nil {
+		return false
+	}
+	defer syscall.Munmap(buf)
 	for base := 0; base < n; base += wordsPage {
 		w := wordsPage
 		if base+w > n {
 			w = n - base
 		}
-		if !e.runParam(burstPortPhys, e.physes[base/wordsPage], uint32(w)) {
+		if !e.runParam(burstPortPhys, physes[base/wordsPage], uint32(w)) {
 			return false
 		}
 	}
 	for i := 0; i < n; i++ {
-		c1[i] = e.buf[i*2+1] // hi byte = C1
-		c2[i] = e.buf[i*2]   // lo byte = C2
+		c1[i] = buf[i*2+1] // hi byte = C1
+		c2[i] = buf[i*2]   // lo byte = C2
 	}
 	return true
 }
