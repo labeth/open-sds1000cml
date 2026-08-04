@@ -29,6 +29,9 @@ module adcif #(
     // runtime ENCODE-rate select (XFORM_CTRL[13:12]): 0=div4(10MHz,default) 1=div2(20MHz)
     // 2=div1(40MHz) — sweep the fast-timebase sample rate against the railed edge remotely.
     input  wire [1:0]  enc_div_sel,
+    // INTERLEAVE probe/step (XFORM_CTRL[14]): drive ENCODE balls 4-7 a HALF-period late so
+    // the cores they clock sample interleaved with balls 0-3 → 2x if they land on other lanes.
+    input  wire        enc_split,
     input  wire [32:0] adc_lane,               // ADC data lanes (27 live + headroom)
 
     output wire [7:0]  adc_enc,                // 8 ENCODE clock outputs (common clock)
@@ -49,7 +52,15 @@ module adcif #(
         if (dv >= (enc_div - 16'd1)) begin dv <= 16'd0; enc_clk <= ~enc_clk; end
         else                              dv <= dv + 16'd1;
     end
-    assign adc_enc    = {8{enc_clk}};          // common ENCODE on all 8 balls
+    // half-ENCODE-period delayed clock (delay = enc_div clks) for the interleave split.
+    reg  [3:0] enc_sr = 4'd0;
+    always @(posedge clk) enc_sr <= {enc_sr[2:0], enc_clk};
+    wire enc_clk_b = (enc_div == 16'd4) ? enc_sr[3]
+                   : (enc_div == 16'd2) ? enc_sr[1] : enc_sr[0];
+    // ENCODE: common on all 8 balls, OR split (balls 7..4 half-period late) to interleave.
+    assign adc_enc    = enc_split ? {enc_clk_b, enc_clk_b, enc_clk_b, enc_clk_b,
+                                     enc_clk,   enc_clk,   enc_clk,   enc_clk}
+                                  : {8{enc_clk}};
     assign adc_enc2   = {~enc_clk, enc_clk};   // D14=~enc, C14=enc — differential ADC sample clock
     assign adc_enc3   = enc_clk;               // A11 — 3rd ENCODE candidate (match factory toggling)
     assign adc_ctl_hi = 4'b1111;
