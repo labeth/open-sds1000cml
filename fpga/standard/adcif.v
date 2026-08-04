@@ -23,9 +23,12 @@
 // Clean-room: design/spec-derived, never vendor RTL. Synthesizable Verilog-2001, EP4CE10.
 
 module adcif #(
-    parameter integer ENCODE_DIV = 4          // clk/(2*4) ~ 10 MHz ENCODE (>= 1 MSPS)
+    parameter integer ENCODE_DIV = 4          // default clk/(2*4) ~ 10 MHz ENCODE (>= 1 MSPS)
 )(
     input  wire        clk,                    // C2 ~80 MHz reference
+    // runtime ENCODE-rate select (XFORM_CTRL[13:12]): 0=div4(10MHz,default) 1=div2(20MHz)
+    // 2=div1(40MHz) — sweep the fast-timebase sample rate against the railed edge remotely.
+    input  wire [1:0]  enc_div_sel,
     input  wire [32:0] adc_lane,               // ADC data lanes (27 live + headroom)
 
     output wire [7:0]  adc_enc,                // 8 ENCODE clock outputs (common clock)
@@ -37,11 +40,14 @@ module adcif #(
     output reg  [15:0] samp                    // canonical {CH1[7:0], CH2[7:0]} (clk domain)
 );
     // ---- ENCODE clock + static controls (bring the AD9288s out of power-down) ----
+    //   ENCODE half-period = enc_div clocks (runtime-selectable). 4=10MHz,2=20MHz,1=40MHz.
+    wire [15:0] enc_div = (enc_div_sel == 2'd0) ? 16'd4
+                        : (enc_div_sel == 2'd1) ? 16'd2 : 16'd1;
     reg        enc_clk = 1'b0;
     reg [15:0] dv = 16'd0;
     always @(posedge clk) begin
-        if (dv >= (ENCODE_DIV[15:0] - 16'd1)) begin dv <= 16'd0; enc_clk <= ~enc_clk; end
-        else                                       dv <= dv + 16'd1;
+        if (dv >= (enc_div - 16'd1)) begin dv <= 16'd0; enc_clk <= ~enc_clk; end
+        else                              dv <= dv + 16'd1;
     end
     assign adc_enc    = {8{enc_clk}};          // common ENCODE on all 8 balls
     assign adc_enc2   = {~enc_clk, enc_clk};   // D14=~enc, C14=enc — differential ADC sample clock

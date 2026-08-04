@@ -265,6 +265,7 @@ module acq (
     // ADC front-end: 36 raw lanes -> canonical {CH1,CH2} sample + drive ENCODE.
     adcif u_adcif (
         .clk        (clk),
+        .enc_div_sel(xform_reg[13:12]),   // ENCODE rate: 0=10MHz(default) 1=20MHz 2=40MHz
         .adc_lane   (adc_lane[32:0]),
         .adc_enc    (adc_enc),
         .adc_enc2   (adc_enc2),
