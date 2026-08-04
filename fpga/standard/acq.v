@@ -150,6 +150,9 @@ module acq (
 
     wire       run_en    = run_word[`RUN_RUN_LSB];
     wire       mode_norm = (run_word[`RUN_MODE_LSB +: 2] == 2'd1);   // 0=AUTO, 1=NORM
+    // gapless raw-stream mode (run_word bit 3): continuous ring capture + live drain.
+    wire       stream_on = run_word[3];
+    wire [`ADDR_W-1:0] wr_ptr;   // capture's live write pointer -> drain (stream mode)
     // CH1 trigger level in sample units, for the TRIGPOS sub-sample interpolation.
     // The physical level DAC now lives on the MAX V (CS3), so the Cyclone no longer
     // sees the code; mid-scale keeps the interpolator well-defined (the trigger itself
@@ -253,6 +256,7 @@ module acq (
     spine u_spine (
         .clk      (clk),
         .filling  (filling),
+        .stream_on(stream_on),
         .samp     (samp),
         .decim    (decim_reg),
         .bypass0  (xform_reg[`XFORM_CTRL_BYPASS0_LSB]),
@@ -266,6 +270,7 @@ module acq (
         .arm         (op_go),
         .halt        (op_halt),
         .rst         (op_reset),
+        .stream_on   (stream_on),
         .pre_work_w  (pre_work_w),
         .post_work_w (post_work_w),
         .cap_word    (cap_word),
@@ -285,7 +290,8 @@ module acq (
         .trig_idx    (trig_idx),
         .trig_frac   (trig_frac),
         .rec_len     (rec_len),
-        .frame_done  (frame_done)
+        .frame_done  (frame_done),
+        .wr_ptr      (wr_ptr)
     );
 
     envelope u_envelope (
@@ -313,6 +319,8 @@ module acq (
         .coherent          (coherent),
         .rec_len           (rec_len),
         .burst_rd_done     (burst_rd_done),
+        .stream_on         (stream_on),
+        .wr_ptr            (wr_ptr),
         .burst_addr        (burst_addr),
         .rdata_burst_remain(rdata_BURST_REMAIN)
     );
@@ -327,7 +335,7 @@ module acq (
     assign rdata_PRETRIG_HI  = pretrig_reg[31:16];
     assign rdata_POSTTRIG_LO = posttrig_reg[15:0];
     assign rdata_POSTTRIG_HI = posttrig_reg[31:16];
-    assign rdata_BURST       = coherent ? rec_rd_data : 16'h0000;   // auto-inc record word
+    assign rdata_BURST       = (coherent || stream_on) ? rec_rd_data : 16'h0000; // auto-inc record word (stream = live ring)
     assign rdata_STATUS_A    = {13'd0, r_done, r_trig, r_valid};    // clean level status
     assign rdata_TRIGPOS_LO  = trig_frac;                           // FRAC[15:0] (Q16)
     assign rdata_TRIGPOS_HI  = {1'b0, trig_idx};                    // IDX[14:0] (`ADDR_W=15)

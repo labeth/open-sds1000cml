@@ -28,6 +28,8 @@ module spine (
 
     // filling gate (from capture FSM): the decimator only ticks while a frame fills.
     input  wire        filling,
+    // stream mode: decimate CONTINUOUSLY (gapless raw stream), not gated by `filling`.
+    input  wire        stream_on,
 
     // synchronized 16-bit sample word (hi byte = CH1, lo byte = CH2).
     input  wire [15:0] samp,
@@ -54,8 +56,9 @@ module spine (
     wire [31:0] decim_m1 = (decim == 32'd0) ? 32'd0 : (decim - 32'd1);
 
     reg  [31:0] dcnt = 32'd0;
+    wire run_decim = filling || stream_on; // stream mode keeps the decimator live between records
     always @(posedge clk) begin
-        if (!filling)
+        if (!run_decim)
             dcnt <= 32'd0;               // hold reset while idle -> first fill tick fires
         else if (dcnt == 32'd0)
             dcnt <= decim_m1;            // reload the decimation period
@@ -63,7 +66,7 @@ module spine (
             dcnt <= dcnt - 32'd1;
     end
 
-    assign cap_tick = filling && (dcnt == 32'd0);
+    assign cap_tick = run_decim && (dcnt == 32'd0);
 
     // -----------------------------------------------------------------------
     // Canonical >=18-bit lane + the two reserved bypassable transform slots.

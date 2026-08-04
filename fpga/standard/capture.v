@@ -47,6 +47,10 @@ module capture (
     input  wire                 halt,          // OP_HALT: manual freeze
     input  wire                 rst,           // OP_RESET: -> idle, clear
 
+    // stream mode: continuous ring — never finalize/halt, waddr wraps forever, drain
+    // reads live behind wr_ptr. Additive: stream_on=0 => the triggered path is unchanged.
+    input  wire                 stream_on,
+
     // arm-time working depths (already field- and joint-clamped in acq.v).
     input  wire [15:0]          pre_work_w,
     input  wire [15:0]          post_work_w,
@@ -75,7 +79,8 @@ module capture (
     output wire [`ADDR_W-1:0]   trig_idx,      // TRIGPOS.IDX (physical index of trigger sample)
     output reg  [15:0]          trig_frac,     // TRIGPOS.FRAC (Q16 sub-sample interpolation)
     output wire [15:0]          rec_len,       // frozen captured length (for BURST remain)
-    output reg                  frame_done     // 1-cycle pulse at finalize (envelope flush)
+    output reg                  frame_done,    // 1-cycle pulse at finalize (envelope flush)
+    output wire [`ADDR_W-1:0]   wr_ptr         // stream mode: live circular write pointer
 );
 
     // ---- sized geometry constants (never part-select an int macro) -----------
@@ -125,8 +130,10 @@ module capture (
     //   post_full is registered (post_count) -> becomes true the edge AFTER the last
     //   post write. On that edge the would-be extra write is suppressed and we halt.
     wire post_full  = triggered && (post_count == posttrig_work);
-    wire wr_commit  = filling && cap_tick && !post_full;   // atomic single-cycle write
+    // stream mode commits every decimated tick (no post-count suppression, never finalizes).
+    wire wr_commit  = filling && cap_tick && (stream_on || !post_full);
     assign smp_valid = wr_commit;                          // envelope folds exactly these
+    assign wr_ptr    = waddr;                               // live write pointer for the ring drain
 
     // ---- record M9K: single write / registered read, one clocked block --------
     (* ramstyle = "M9K" *) reg [15:0] mem [0:`REC_DEPTH-1];
@@ -206,7 +213,8 @@ module capture (
             end
 
             // exact finalize -> HALT + static freeze; envelope is already live.
-            if (post_full) begin
+            // stream mode NEVER finalizes: stays in ST_FILL, waddr wraps continuously.
+            if (post_full && !stream_on) begin
                 state           <= ST_HALT;
                 fill_frozen     <= 1'b1;
                 fill_frozen_val <= wrote_count[10:0];
