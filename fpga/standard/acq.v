@@ -128,7 +128,10 @@ module acq (
     // (0x40) and 0x71-0x73 to SEL_ENV_DATA (0x70) and WILL pop the port. The app
     // only issues 0x40/0x70 so it is unaffected; a bench probe must avoid those.
     wire [7:0] sel_q2_masked = {1'b0, sel_q2[6:2], 2'b00};
-    wire sel_is_burst    = (sel_q2_masked == `SEL_BURST);
+    // sel 0x00 is unused by the schema; ALIAS it to the burst-pop so the GPMC prefetch/sDMA
+    // engine (which reads the CS base = sel 0x00) drains the record. Additive: nothing reads 0x00,
+    // the app only issues 0x40, and CS3/config (MAX-V) is a different plane — all unaffected.
+    wire sel_is_burst    = (sel_q2_masked == `SEL_BURST) || (sel_q2_masked == 8'h00);
     wire burst_rd_done   = cs1_low && (oe_q[2] == 1'b0) && (oe_q[1] == 1'b1) && sel_is_burst;
     wire sel_is_env      = (sel_q2_masked == `SEL_ENV_DATA);
     wire env_rd_active   = cs1_low && (oe_q[2] == 1'b0) && sel_is_env;

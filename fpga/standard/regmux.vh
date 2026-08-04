@@ -60,6 +60,7 @@ always @* begin
         { `PLANE_CS1, `SEL_PRETRIG_HI }: rmux_rdata = rdata_PRETRIG_HI; // behavior
         { `PLANE_CS1, `SEL_POSTTRIG_LO }: rmux_rdata = rdata_POSTTRIG_LO; // behavior
         { `PLANE_CS1, `SEL_POSTTRIG_HI }: rmux_rdata = rdata_POSTTRIG_HI; // behavior
+        { `PLANE_CS1, 8'h00 }: rmux_rdata = rdata_BURST; // ALIAS: prefetch/sDMA drain port at CS base
         { `PLANE_CS1, `SEL_BURST }: rmux_rdata = rdata_BURST; // behavior
         { `PLANE_CS1, `SEL_BURST_REMAIN }: rmux_rdata = rdata_BURST_REMAIN; // behavior
         { `PLANE_CS1, `SEL_STATUS_A }: rmux_rdata = rdata_STATUS_A; // behavior
