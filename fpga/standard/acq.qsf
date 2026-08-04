@@ -109,6 +109,26 @@ set_location_assignment PIN_M10 -to adc_lane[29]
 set_location_assignment PIN_T13 -to adc_lane[30]
 set_location_assignment PIN_P9 -to adc_lane[31]
 set_location_assignment PIN_R12 -to adc_lane[32]
+# CH2 LSB hunt: 18 candidate wide-bus/SRAM-DQ balls (free, Cyclone-input). The ADC drives the
+# shared wide bus during CAPTURE, so these may carry CH2's missing LSB lanes (raw-lane capture).
+set_location_assignment PIN_A14 -to adc_lane[33]
+set_location_assignment PIN_A15 -to adc_lane[34]
+set_location_assignment PIN_B13 -to adc_lane[35]
+set_location_assignment PIN_B14 -to adc_lane[36]
+set_location_assignment PIN_B16 -to adc_lane[37]
+set_location_assignment PIN_C15 -to adc_lane[38]
+set_location_assignment PIN_C16 -to adc_lane[39]
+set_location_assignment PIN_D9 -to adc_lane[40]
+set_location_assignment PIN_D11 -to adc_lane[41]
+set_location_assignment PIN_D15 -to adc_lane[42]
+set_location_assignment PIN_D16 -to adc_lane[43]
+set_location_assignment PIN_F15 -to adc_lane[44]
+set_location_assignment PIN_J16 -to adc_lane[45]
+set_location_assignment PIN_L7 -to adc_lane[46]
+set_location_assignment PIN_P8 -to adc_lane[47]
+set_location_assignment PIN_R8 -to adc_lane[48]
+set_location_assignment PIN_R16 -to adc_lane[49]
+set_location_assignment PIN_T8 -to adc_lane[50]
 
 # ===== SAFETY: min current on every driven ball; weak pull-up on ADC data inputs =====
 set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to adc_lane

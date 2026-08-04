@@ -47,8 +47,10 @@ module acq (
     // ENCODE we drive is derived from it; the whole datapath is this single domain.
     input  wire        clk,
 
-    // ADC data bus (INPUTS) — 27 verified AD9288 data lanes (+ headroom) read directly.
-    input  wire [32:0] adc_lane,
+    // ADC data bus (INPUTS) — 33 verified AD9288 lanes [32:0] + 18 candidate wide-bus/SRAM-DQ
+    // balls [50:33] (the ADC drives the shared wide bus during CAPTURE) to hunt CH2's missing
+    // LSB lanes via raw-lane capture. adcif still de-interleaves from [32:0] only.
+    input  wire [50:0] adc_lane,
     // ADC DRIVE (bench-cracked recipe, docs/aux-bus-re.md): 8 ENCODE clocks + the held
     // mode controls (F1/L4/T2/T7=1, G1/G2/K1=0) bring the converters out of power-down.
     output wire [7:0]  adc_enc,
@@ -232,13 +234,20 @@ module acq (
     // RAW-LANE DEBUG capture: XFORM_CTRL[4]=raw_mode routes a 16-lane slice of adc_lane
     // (selected by [6:5]) into the record instead of the de-interleaved sample, so a known
     // railed triangle can be captured per-lane to solve the CH2 de-interleave bit-order.
-    reg  [32:0] adc_lane_q = 33'd0;
+    reg  [50:0] adc_lane_q = 51'd0;
     always @(posedge clk) adc_lane_q <= adc_lane;
     wire        raw_mode = xform_reg[4];
     wire [1:0]  raw_sel  = xform_reg[6:5];
+    // raw_sel=3 = CURATED 16 CH2-active lanes (across the original + new wide-bus balls), so all
+    // of CH2's bits are captured in ONE time-aligned record for the de-interleave order search.
+    wire [15:0] raw_curated = {adc_lane_q[46], adc_lane_q[45], adc_lane_q[44], adc_lane_q[43],
+                               adc_lane_q[42], adc_lane_q[41], adc_lane_q[39], adc_lane_q[32],
+                               adc_lane_q[31], adc_lane_q[27], adc_lane_q[26], adc_lane_q[24],
+                               adc_lane_q[23], adc_lane_q[22], adc_lane_q[20], adc_lane_q[18]};
     wire [15:0] raw_word = (raw_sel == 2'd0) ? adc_lane_q[15:0]
                          : (raw_sel == 2'd1) ? adc_lane_q[31:16]
-                                             : {15'd0, adc_lane_q[32]};
+                         : (raw_sel == 2'd2) ? adc_lane_q[47:32]        // lane32 + new 33..47
+                                             : raw_curated;             // curated CH2 lanes
     wire [15:0] samp_eff = raw_mode ? raw_word : samp;
     wire [15:0]        cap_word;
     wire               cap_tick;
@@ -256,7 +265,7 @@ module acq (
     // ADC front-end: 36 raw lanes -> canonical {CH1,CH2} sample + drive ENCODE.
     adcif u_adcif (
         .clk        (clk),
-        .adc_lane   (adc_lane),
+        .adc_lane   (adc_lane[32:0]),
         .adc_enc    (adc_enc),
         .adc_enc2   (adc_enc2),
         .adc_enc3   (adc_enc3),
