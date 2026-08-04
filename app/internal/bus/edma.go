@@ -41,7 +41,17 @@ type edmaDrainer struct {
 	cc       []byte   // /dev/mem map of the EDMA3CC register block
 	pm       *os.File // /proc/self/pagemap, kept open for per-drain phys resolution
 	maxWords int
+	// COHERENCY: the EDMA writes DRAM as a bus master (not through the CPU cache), so a
+	// reused buffer reads back stale. Two ways to stay coherent, picked at init:
+	//   dcfd >= 0: /dev/dcinv kernel module -> reuse `buf`, invalidate its D-cache lines
+	//             before readback (fast, no per-drain alloc).
+	//   dcfd <  0: no module -> allocPinned a FRESH cache-cold buffer every drain.
+	dcfd   int
+	buf    []byte   // persistent pinned buffer (dcinv path only)
+	physes []uint32 // persistent page phys addrs (dcinv path only)
 }
+
+const dcinvIOC = 0x40084401 // _IOW('D', 1, struct{unsigned long addr,len})
 
 func (e *edmaDrainer) ew(off, v uint32) { *(*uint32)(unsafe.Pointer(&e.cc[off])) = v }
 func (e *edmaDrainer) er(off uint32) uint32 {
@@ -91,7 +101,18 @@ func newEDMADrainer(maxWords int) (*edmaDrainer, error) {
 		return nil, err
 	}
 	syscall.Munmap(probe)
-	return &edmaDrainer{cc: cc, pm: pm, maxWords: maxWords}, nil
+	d := &edmaDrainer{cc: cc, pm: pm, maxWords: maxWords, dcfd: -1}
+	// Prefer the /dev/dcinv invalidate path (persistent buffer, no per-drain alloc) when
+	// the kernel module is loaded; otherwise fall back to a fresh buffer per drain.
+	if fd, err := syscall.Open("/dev/dcinv", syscall.O_RDWR, 0); err == nil {
+		if buf, physes, err := allocPinned(pm, maxWords*2); err == nil {
+			d.dcfd, d.buf, d.physes = fd, buf, physes
+			fmt.Printf("[app] EDMA coherency via /dev/dcinv (persistent buffer)\n")
+		} else {
+			syscall.Close(fd)
+		}
+	}
+	return d, nil
 }
 
 // allocPinned mmaps, faults, and mlocks a fresh anonymous buffer of nbytes and
@@ -171,13 +192,20 @@ func (e *edmaDrainer) drain(c1, c2 []uint8, n int) bool {
 	if n > e.maxWords {
 		return false
 	}
-	// Fresh cache-cold buffer per drain (see allocPinned): the EDMA is not cache-coherent,
-	// so reusing a buffer reads stale cached data from the previous record.
-	buf, physes, err := allocPinned(e.pm, n*2)
-	if err != nil {
-		return false
+	var buf []byte
+	var physes []uint32
+	if e.dcfd >= 0 {
+		buf, physes = e.buf, e.physes // reuse the persistent buffer; invalidate cache below
+	} else {
+		// no /dev/dcinv: fresh cache-cold buffer per drain (EDMA isn't cache-coherent, so a
+		// reused buffer would read stale cached data from the previous record).
+		var err error
+		buf, physes, err = allocPinned(e.pm, n*2)
+		if err != nil {
+			return false
+		}
+		defer syscall.Munmap(buf)
 	}
-	defer syscall.Munmap(buf)
 	for base := 0; base < n; base += wordsPage {
 		w := wordsPage
 		if base+w > n {
@@ -186,6 +214,10 @@ func (e *edmaDrainer) drain(c1, c2 []uint8, n int) bool {
 		if !e.runParam(burstPortPhys, physes[base/wordsPage], uint32(w)) {
 			return false
 		}
+	}
+	if e.dcfd >= 0 { // invalidate the drained range so the CPU reads fresh DMA data, not cache
+		arg := [2]uint32{uint32(uintptr(unsafe.Pointer(&buf[0]))), uint32(n * 2)}
+		syscall.Syscall(syscall.SYS_IOCTL, uintptr(e.dcfd), dcinvIOC, uintptr(unsafe.Pointer(&arg[0])))
 	}
 	for i := 0; i < n; i++ {
 		c1[i] = buf[i*2+1] // hi byte = C1
