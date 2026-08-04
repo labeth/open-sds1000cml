@@ -267,6 +267,8 @@ module acq (
         .clk        (clk),
         .enc_div_sel(xform_reg[13:12]),   // ENCODE rate: 0=10MHz(default) 1=20MHz 2=40MHz
         .enc_split  (xform_reg[14]),      // interleave probe: balls 4-7 half-period late
+        .enc_off_en (xform_reg[15]),      // ball->core map probe: hold one ENCODE ball static
+        .enc_off_ball(xform_reg[10:8]),
         .adc_lane   (adc_lane[32:0]),
         .adc_enc    (adc_enc),
         .adc_enc2   (adc_enc2),
