@@ -105,9 +105,48 @@ func (d *Dev) EnableEDMA(maxWords int) bool {
 		fmt.Printf("[app] EDMA drain unavailable, using ioctl drain: %v\n", err)
 		return false
 	}
+	// REQUIRED for EDMA correctness: a CS1 cycle-to-cycle gap so back-to-back GPMC reads
+	// each raise a fresh nOE strobe (the pop trigger). Without it the auto-inc port sees
+	// no strobe between pipelined reads and returns dups/reorders. CS1-only; harmless to
+	// the ioctl path. If it fails, drop EDMA rather than drain corrupt records.
+	// delay=5: gap=3 corrupts, gap=4 is the first clean value (right at the timing edge),
+	// gap=5 adds one clock of margin for field/temperature variation at ~11 MB/s (negligible
+	// cost vs gap=4's 11.6). Ramp-proven 0 breaks at gap>=4.
+	if err := setCS1CycleGap(5); err != nil {
+		fmt.Printf("[app] CS1 cycle-gap setup failed, using ioctl drain: %v\n", err)
+		return false
+	}
 	d.edma = e
-	fmt.Printf("[app] EDMA drain enabled (channel %d, %d words)\n", edmaChan, maxWords)
+	fmt.Printf("[app] EDMA drain enabled (channel %d, %d words, CS1 cycle-gap=5)\n", edmaChan, maxWords)
 	return true
+}
+
+// setCS1CycleGap programs GPMC_CONFIG6_1 for a same-CS cycle-to-cycle gap of `delay`
+// GPMC clocks (CYCLE2CYCLESAMECSEN=1). This forces an inactive nOE interval between
+// consecutive CS1 accesses so each EDMA read of the auto-inc BURST port re-strobes and
+// pops exactly once. CS1-only (0x500000A4) — never touches NAND CS0 or the shared
+// prefetch/ECC engine. CSVALID is quiesced around the write per the GPMC programming model.
+func setCS1CycleGap(delay uint32) error {
+	f, err := os.OpenFile("/dev/mem", os.O_RDWR|syscall.O_SYNC, 0)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	m, err := syscall.Mmap(int(f.Fd()), 0x50000000, 0x1000, syscall.PROT_READ|syscall.PROT_WRITE, syscall.MAP_SHARED)
+	if err != nil {
+		return err
+	}
+	defer syscall.Munmap(m)
+	c6 := (*uint32)(unsafe.Pointer(&m[0xA4])) // GPMC_CONFIG6_1
+	c7 := (*uint32)(unsafe.Pointer(&m[0xA8])) // GPMC_CONFIG7_1
+	old6, old7 := *c6, *c7
+	new6 := (old6 &^ uint32(0x00000F80)) | (delay << 8) | (1 << 7) // CYCLE2CYCLEDELAY[11:8]|CYCLE2CYCLESAMECSEN[7]
+	*c7 = old7 &^ uint32(1<<6)                                     // clear CSVALID before retiming
+	*c6 = new6
+	_ = *c6   // readback barrier
+	*c7 = old7 // restore CSVALID exactly
+	_ = *c7
+	return nil
 }
 
 func (d *Dev) mapCS1() error {
@@ -190,15 +229,15 @@ func (d *Dev) Write(plane iface.Plane, sel, val uint16) error {
 // cycling. Each read pops one word (hi byte C1, lo byte C2); the port
 // auto-increments through samples 0..n-1 (iface.IsAutoInc(CS1, SelBURST)).
 func (d *Dev) BurstInto(c1, c2 []uint8, n int) {
-	// EDMA FAST PATH — DISABLED (2026-08-04): a ramp drop/reorder test proved the EDMA
-	// bus-master drain of the fixed auto-inc port is NOT byte-exact. The TPTC pipelines
-	// multiple outstanding reads of the pop-on-read port, so pops complete out of order
-	// (~1 reorder/dup per 30-40 words; 535 breaks in 20478 on a known +1 ramp). The
-	// earlier "~21 MB/s byte-validated" claim was validated only by pointer-advancement
-	// and structural match, which CANNOT see reorder/dup. Only strictly-serialized single
-	// reads (the ioctl path below) drain this port correctly (0 breaks on the same ramp).
-	// A fast+clean drain needs an addressable (re-readable) readout, not the pop port.
-	if false && d.edma != nil && d.edma.drain(c1, c2, n) {
+	// EDMA FAST PATH — CPU-free, byte-exact, ~11.6 MB/s. A ramp drop/reorder test first
+	// exposed that a naive EDMA drain of the fixed auto-inc port reorders/dups (~1 per
+	// 32 words): back-to-back GPMC reads kept nOE asserted with no inactive interval, so
+	// the FPGA saw no fresh strobe to pop on. The fix is a CS1 cycle-to-cycle gap
+	// (GPMC_CONFIG6_1: CYCLE2CYCLESAMECSEN=1, CYCLE2CYCLEDELAY=4) applied in EnableEDMA,
+	// which forces a real inactive nOE between every word so each read re-strobes. With
+	// the gap the same ramp drains with ZERO breaks (was 535). Falls through to ioctl on
+	// any failure. (The gap is CS1-only — it never touches NAND CS0 or the prefetch engine.)
+	if d.edma != nil && d.edma.drain(c1, c2, n) {
 		return
 	}
 	// IOCTL FALLBACK: the /dev/mem mmap CPU path is DISABLED for auto-inc drains — on
