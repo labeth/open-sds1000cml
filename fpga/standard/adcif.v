@@ -32,10 +32,11 @@ module adcif #(
     // INTERLEAVE probe/step (XFORM_CTRL[14]): drive ENCODE balls 4-7 a HALF-period late so
     // the cores they clock sample interleaved with balls 0-3 → 2x if they land on other lanes.
     input  wire        enc_split,
-    // BALL->CORE map probe (XFORM_CTRL[15]=en, [10:8]=ball): hold ONE ENCODE ball static so
-    // the converter it clocks FREEZES → the lanes that stop toggling are that ball's converter.
+    // CORE map probe (XFORM_CTRL[15]=en, [11:8]=idx): hold ONE ENCODE output static so the
+    // converter it clocks FREEZES. idx 0-7 = the 8 single-ended balls; 8 = differential
+    // C14/D14; 9 = A11. Maps the converters on the differential ENCODE too.
     input  wire        enc_off_en,
-    input  wire [2:0]  enc_off_ball,
+    input  wire [3:0]  enc_off_ball,
     input  wire [32:0] adc_lane,               // ADC data lanes (27 live + headroom)
 
     output wire [7:0]  adc_enc,                // 8 ENCODE clock outputs (common clock)
@@ -61,14 +62,16 @@ module adcif #(
     always @(posedge clk) enc_sr <= {enc_sr[2:0], enc_clk};
     wire enc_clk_b = (enc_div == 16'd4) ? enc_sr[3]
                    : (enc_div == 16'd2) ? enc_sr[1] : enc_sr[0];
-    // ENCODE per-ball: common, OR one ball held static (map probe), OR split (interleave).
-    wire [7:0] off_sel = enc_off_en ? (8'd1 << enc_off_ball) : 8'd0;
+    // ENCODE per-output: common, OR one output held static (map probe), OR split (interleave).
+    wire [7:0] off_sel = (enc_off_en && enc_off_ball < 4'd8) ? (8'd1 << enc_off_ball[2:0]) : 8'd0;
+    wire       off2    = enc_off_en && (enc_off_ball == 4'd8); // gate differential C14/D14
+    wire       off3    = enc_off_en && (enc_off_ball == 4'd9); // gate A11
     assign adc_enc    = enc_off_en ? (~off_sel & {8{enc_clk}})       // selected ball static
                       : enc_split  ? {enc_clk_b, enc_clk_b, enc_clk_b, enc_clk_b,
                                       enc_clk,   enc_clk,   enc_clk,   enc_clk}
                                    : {8{enc_clk}};
-    assign adc_enc2   = {~enc_clk, enc_clk};   // D14=~enc, C14=enc — differential ADC sample clock
-    assign adc_enc3   = enc_clk;               // A11 — 3rd ENCODE candidate (match factory toggling)
+    assign adc_enc2   = off2 ? 2'b00 : {~enc_clk, enc_clk};   // D14=~enc, C14=enc (gateable)
+    assign adc_enc3   = off3 ? 1'b0  : enc_clk;               // A11 (gateable)
     assign adc_ctl_hi = 4'b1111;
     assign adc_ctl_lo = 3'b000;
 

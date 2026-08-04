@@ -62,6 +62,10 @@ module acq (
     // HW trigger comparator output (MAX V level-DAC-fed, ball A12): "a crossing occurred".
     input  wire        trig_sense,
 
+    // PLL-input scan (INPUTS ONLY): 6 dedicated clock balls, DDR-sampled to detect which one
+    // carries the 80 MHz reference — the pin a 200 MHz PLL must be fed from. Purely additive.
+    input  wire [5:0]  pllscan,
+
     // GPMC bus — the Cyclone is a CS1-ONLY slave (CS3 is decoded by the MAX V CPLD;
     // nCS3 does not reach this device, bench-proven).
     input  wire        nCS1,        // CS1 acquisition/read plane, active-low
@@ -238,13 +242,23 @@ module acq (
     always @(posedge clk) adc_lane_q <= adc_lane;
     wire        raw_mode = xform_reg[4];
     wire [1:0]  raw_sel  = xform_reg[6:5];
+    // PLL-input scan (XFORM_CTRL[7]): DDR-sample the 6 candidate clock balls. A ball carrying the
+    // phase-locked 80 MHz reads complementary on the two clk edges => cs_xor=1 STABLE; a static
+    // ball => cs_xor=0; an unrelated/async signal => cs_xor toggles. Captured word = {cs_rise,cs_xor}
+    // so the analyzer reads, per pin, the raw level AND the "is-a-clock" flag.
+    reg  [5:0]  cs_rise = 6'd0, cs_fall = 6'd0;
+    always @(posedge clk) cs_rise <= pllscan;
+    always @(negedge clk) cs_fall <= pllscan;
+    wire [5:0]  cs_xor  = cs_rise ^ cs_fall;
+    wire        clkscan_en = xform_reg[7];
     // raw_sel=3 = CURATED 16 CH2-active lanes (across the original + new wide-bus balls), so all
     // of CH2's bits are captured in ONE time-aligned record for the de-interleave order search.
     wire [15:0] raw_curated = {adc_lane_q[46], adc_lane_q[45], adc_lane_q[44], adc_lane_q[43],
                                adc_lane_q[42], adc_lane_q[41], adc_lane_q[39], adc_lane_q[32],
                                adc_lane_q[31], adc_lane_q[27], adc_lane_q[26], adc_lane_q[24],
                                adc_lane_q[23], adc_lane_q[22], adc_lane_q[20], adc_lane_q[18]};
-    wire [15:0] raw_word = (raw_sel == 2'd0) ? adc_lane_q[15:0]
+    wire [15:0] raw_word = clkscan_en      ? {4'd0, cs_rise, cs_xor}    // PLL-input scan slice
+                         : (raw_sel == 2'd0) ? adc_lane_q[15:0]
                          : (raw_sel == 2'd1) ? adc_lane_q[31:16]
                          : (raw_sel == 2'd2) ? adc_lane_q[47:32]        // lane32 + new 33..47
                                              : raw_curated;             // curated CH2 lanes
@@ -267,8 +281,8 @@ module acq (
         .clk        (clk),
         .enc_div_sel(xform_reg[13:12]),   // ENCODE rate: 0=10MHz(default) 1=20MHz 2=40MHz
         .enc_split  (xform_reg[14]),      // interleave probe: balls 4-7 half-period late
-        .enc_off_en (xform_reg[15]),      // ball->core map probe: hold one ENCODE ball static
-        .enc_off_ball(xform_reg[10:8]),
+        .enc_off_en (xform_reg[15]),      // core map probe: hold one ENCODE output static
+        .enc_off_ball(xform_reg[11:8]),   // 0-7=balls, 8=differential C14/D14, 9=A11
         .adc_lane   (adc_lane[32:0]),
         .adc_enc    (adc_enc),
         .adc_enc2   (adc_enc2),
