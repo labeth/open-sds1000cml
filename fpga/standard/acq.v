@@ -259,7 +259,7 @@ module acq (
     // are UNTOUCHED => IFACE_BUILD_ID stays 0xc2f6eb5f. With dec_cfg=0 at reset =>
     // dec_proto=0 (UART) and dec_en=0, so I2C/SPI engines are gated fully inert and
     // every existing mode (incl. UART decode) is byte-for-byte unchanged.
-    wire [1:0]  dec_proto   = dec_cfg[11:10];      // 0=UART 1=I2C 2=SPI  ([15:12] free)
+    wire [1:0]  dec_proto   = dec_cfg[11:10];      // 0=UART 1=I2C 2=SPI 3=ETH  ([15:12] free)
     wire        dec_chswap  = dec_cfg[1];          // I2C/SPI: 0=>a=CH1,b=CH2; 1=>swapped
     wire        spi_cpol    = dec_cfg[2];          // SPI clock polarity
     wire        spi_cpha    = dec_cfg[3];          // SPI clock phase
@@ -270,6 +270,7 @@ module acq (
     wire        sel_uart    = (dec_proto == 2'd0);
     wire        sel_i2c     = (dec_proto == 2'd1);
     wire        sel_spi     = (dec_proto == 2'd2);
+    wire        sel_eth     = (dec_proto == 2'd3);   // 100BASE-TX line-rate PHY decode
 
     // ---- OPCODE decode -> single-cycle engine pulses ----
     // Full 16-bit compare against the generated payload macros (d_q2 is the
@@ -605,6 +606,7 @@ module acq (
     wire uart_en = dec_en & sel_uart;
     wire i2c_en  = dec_en & sel_i2c;
     wire spi_en  = dec_en & sel_spi;
+    wire eth_en  = dec_en & sel_eth;   // 100BASE-TX line-rate PHY decode gate
 
     // ---- per-engine emit interfaces (uniform across the three front-ends) ----
     wire        uart_emit_stb;   wire [7:0] uart_emit_byte;  wire [23:0] uart_emit_idx;
@@ -697,14 +699,68 @@ module acq (
         .matched_byte (spi_matched_byte)
     );
 
+    // ---- IN-FABRIC 100BASE-TX PHY DECODE (ADDITIVE, gated eth_en=dec_en&&proto==ETH) ----
+    // Line-rate top eth100_decode_lr: gearbox(200->80 CDC) -> slicer/CDR -> 2b/clk
+    // descramble2 -> 2b/clk 4b5b2 -> framer(+CRC-32 FCS) -> byte_fifo-compatible emit.
+    // WRITE side taps the interleave's per-core phase captures c1a_p/c1b_p/c1c_p
+    // (600 MSa/s, 3 samples per 200 MHz tick); READ side runs at the 80 MHz fabric clk.
+    // en=0 (proto!=ETH or dec_en=0) => the WHOLE module (both clock domains) is inert.
+    //
+    // c1*_p are unsigned 8-bit ADC codes (midscale ~128). Re-center to signed and
+    // scale x8 -> ~+/-1024 to match the CDR/golden +/-1000 ternary codes. The exact
+    // per-core skew + this scaling/threshold trim are BENCH-CAL (same status as the
+    // interleave taps themselves — see the c1a_p/c1b_p/c1c_p capture note above).
+    wire signed [11:0] eth_s0 = ($signed({4'd0, c1a_p}) - 12'sd128) <<< 3; // phase0 earliest
+    wire signed [11:0] eth_s1 = ($signed({4'd0, c1b_p}) - 12'sd128) <<< 3; // phase120
+    wire signed [11:0] eth_s2 = ($signed({4'd0, c1c_p}) - 12'sd128) <<< 3; // phase240
+    wire [35:0] eth_wr_samp = {eth_s2, eth_s1, eth_s0};   // s0=[11:0] earliest
+    // slicer thresholds = DEC_THR low byte scaled x8 -> +/-(dec_thr_a*8) (bench trim).
+    wire signed [11:0] eth_thr_hi = $signed({1'b0, dec_thr_a, 3'b000}); // dec_thr_a<<3, >=0
+    wire signed [11:0] eth_thr_lo = -eth_thr_hi;
+
+    wire        eth_emit_stb;   wire [7:0] eth_emit_byte;  wire [23:0] eth_emit_idx;
+    wire [7:0]  eth_emit_flags;
+    wire        eth_sfd_seen, eth_frame_done, eth_fcs_ok;
+    wire        eth_descr_locked, eth_cg_locked, eth_gb_ovf, eth_cdr_ovf, eth_fb_ovf;
+
+    eth100_decode_lr #(.SAMPLE_W(12), .LANES(8), .WR_SAMP(3), .DEPTHW(4)) u_eth_decode (
+        .clk       (clk),                  // 80 MHz fabric (read/chain domain)
+        .rst       (op_reset),
+        .en        (eth_en),
+        .thr_hi    (eth_thr_hi),
+        .thr_lo    (eth_thr_lo),
+        .wr_clk    (pll200_out[0]),        // 200 MHz interleave write clock
+        .wr_rst    (op_reset),
+        .wr_valid  (1'b1),                 // interleave taps present fresh samples every tick
+        .wr_samp   (eth_wr_samp),
+        .flush     (1'b0),                 // frames self-terminate on ESD; no tail flush needed live
+        .emit_stb  (eth_emit_stb),
+        .emit_byte (eth_emit_byte),
+        .emit_idx  (eth_emit_idx),
+        .emit_flags(eth_emit_flags),
+        .sfd_seen  (eth_sfd_seen),
+        .frame_done(eth_frame_done),
+        .fcs_ok_o  (eth_fcs_ok),
+        .descr_locked(eth_descr_locked),
+        .cg_locked (eth_cg_locked),
+        .gb_overflow(eth_gb_ovf),
+        .cdr_overflow(eth_cdr_ovf),
+        .fb_ovf    (eth_fb_ovf)
+    );
+    // SFD (frame start) is the ETH decode trigger source (gated by dec_trigen).
+    wire eth_trig = dec_trigen ? eth_sfd_seen : 1'b0;
+
     // ---- PROTOCOL DISPATCH: mux the active engine into the SHARED sinks ----
     // Each engine is inert unless its own en is hot, so the losing engines drive
     // emit_stb=0/decode_trig=0; the mux simply selects the active one's outputs.
-    wire        dec_emit_stb   = sel_i2c ? i2c_emit_stb   : sel_spi ? spi_emit_stb   : uart_emit_stb;
-    wire [7:0]  dec_emit_byte  = sel_i2c ? i2c_emit_byte  : sel_spi ? spi_emit_byte  : uart_emit_byte;
-    wire [23:0] dec_emit_idx   = sel_i2c ? i2c_emit_idx   : sel_spi ? spi_emit_idx   : uart_emit_idx;
+    wire        dec_emit_stb   = sel_eth ? eth_emit_stb   : sel_i2c ? i2c_emit_stb   : sel_spi ? spi_emit_stb   : uart_emit_stb;
+    wire [7:0]  dec_emit_byte  = sel_eth ? eth_emit_byte  : sel_i2c ? i2c_emit_byte  : sel_spi ? spi_emit_byte  : uart_emit_byte;
+    wire [23:0] dec_emit_idx   = sel_eth ? eth_emit_idx   : sel_i2c ? i2c_emit_idx   : sel_spi ? spi_emit_idx   : uart_emit_idx;
     wire [1:0]  dec_emit_flags = sel_i2c ? i2c_emit_flags : sel_spi ? spi_emit_flags : uart_emit_flags;
-    wire        dec_trig_pulse = sel_i2c ? i2c_trig       : sel_spi ? spi_trig       : uart_trig;
+    // ETH carries the framer's full 8-bit flags (start/end/fcs/ok/err); the UART/I2C/SPI
+    // 2-bit flags zero-extend, so the shared 8-bit sink is byte-identical for them.
+    wire [7:0]  dec_emit_flags8 = sel_eth ? eth_emit_flags : {6'd0, dec_emit_flags};
+    wire        dec_trig_pulse = sel_eth ? eth_trig        : sel_i2c ? i2c_trig       : sel_spi ? spi_trig       : uart_trig;
     wire        dec_matched_sticky = sel_i2c ? i2c_matched      : sel_spi ? spi_matched      : uart_matched;
     wire [7:0]  dec_matched_byte   = sel_i2c ? i2c_matched_byte : sel_spi ? spi_matched_byte : uart_matched_byte;
 
@@ -721,7 +777,7 @@ module acq (
         .push        (dec_emit_stb & dec_en),
         .in_byte     (dec_emit_byte),
         .in_idx      (dec_emit_idx),
-        .in_flags    ({6'd0, dec_emit_flags}),
+        .in_flags    (dec_emit_flags8),
         .pop         (dec_rd_done),
         .head_byte   (dfifo_head_byte),
         .head_idx    (dfifo_head_idx),
@@ -737,7 +793,11 @@ module acq (
     wire [15:0] dec_status  = {dfifo_overflow, dec_matched_sticky, ~dfifo_empty,
                                2'b0, {5'd0, dfifo_fill}};       // {ovf,matched,busy,-,fill[10:0]}
     wire [15:0] dec_matched = {6'd0, 2'b00, dec_matched_byte};  // matched is data-only => flags 0
-    wire [15:0] dec_byte_hd = {6'd0, dfifo_head_flags[1], dfifo_head_flags[0], dfifo_head_byte};
+    // 0x7c drain word. UART/I2C/SPI: unchanged {--,flags[1:0],byte}. ETH exposes the
+    // framer's full 8 flag bits (start[7]/end[6]/fcs[5]/ok[4]/err[3]) in the spare upper
+    // byte — additive, and byte-identical to the legacy layout for every non-ETH proto.
+    wire [15:0] dec_byte_hd = sel_eth ? {dfifo_head_flags[7:0], dfifo_head_byte}
+                                      : {6'd0, dfifo_head_flags[1], dfifo_head_flags[0], dfifo_head_byte};
 
     envelope u_envelope (
         .clk            (clk),
