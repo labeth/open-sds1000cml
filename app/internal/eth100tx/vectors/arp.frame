@@ -1,0 +1,29 @@
+# MAC frame bytes (dst..payload), one hex octet per line
+FF
+FF
+FF
+FF
+FF
+FF
+00
+1A
+2B
+3C
+4D
+5E
+08
+06
+00
+01
+08
+00
+06
+04
+00
+01
+# FCS (IEEE 802.3, on-wire little-endian octets):
+FCS A5
+FCS DD
+FCS 43
+FCS B1
+FCS_VALUE 0xB143DDA5
