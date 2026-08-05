@@ -296,21 +296,30 @@ module acq (
                          : (raw_sel == 2'd1) ? adc_lane_q[31:16]
                          : (raw_sel == 2'd2) ? adc_lane_q[47:32]        // lane32 + new 33..47
                                              : raw_curated;             // curated CH2 lanes
-    // ===== M2: source-synchronous 160 single-channel fast capture ======================
-    // ENCODE = M2 160@0deg (cores sample at 160). Capture the PROVEN CH1 de-interleave with TWO
-    // registers clocked by cap_clk (a phase of 160): ss0=newest, ss1=previous — genuinely one 160-cycle
-    // (6.25 ns) apart, both in the fast domain (no 80 MHz capture-edge metastability). The stable pair
-    // {ss1,ss0} is then sampled into the 80 MHz record => a real 160 MSa/s stream (app unpacks 2/word).
-    // cap_phase (xform[9:8]) tunes cap_clk to land in the ADC data-valid window.
+    // ===== M2: dual-clock fast-capture ring ============================================
+    // ENCODE = M2 160@0deg. Pack two consecutive CH1 samples into one 16-bit word ENTIRELY in the
+    // cap_clk (160) domain (clean pairing), store in a dual-clock RAM ring. Read at clk (80) a fixed
+    // half-ring (512) behind the write pointer. cap_clk = 2 x clk, phase-locked (job6: rock-stable 2:1),
+    // so read/write pointers advance in LOCKSTEP -> consecutive reads are consecutive pairs, and the
+    // half-ring offset guarantees the read never catches the write (no tear, no metastable resampling).
+    // cap_phase (xform[9:8]) tunes cap_clk into the ADC data-valid window. app unpacks 2 samples/word.
     wire [7:0] ch1_comb = { adc_lane[3], adc_lane[0], adc_lane[1], adc_lane[11],
                             adc_lane[9], adc_lane[12], adc_lane[6], adc_lane[5] }; // proven CH1 order
-    reg  [7:0] ss0 = 8'd0, ss1 = 8'd0;
-    always @(posedge cap_clk) begin ss1 <= ss0; ss0 <= ch1_comb; end   // fast-domain consecutive pair
-    reg  [15:0] pair_q = 16'd0;
-    always @(posedge clk) pair_q <= {ss1, ss0};                        // stable pair -> 80 MHz record
-    wire        fast_capmode = (xform_reg[13:12] == 2'd3);   // enc_div_sel==3 => fast ENCODE + capture
-    wire        ddr_pack     = xform_reg[7];                  // pack the 160 sample pair into the word
-    wire [15:0] samp_eff = (fast_capmode && ddr_pack) ? pair_q       // source-sync 160 pair
+    reg  [15:0] cbuf [0:1023];
+    reg  [9:0]  wa = 10'd0;
+    reg         pk = 1'b0;
+    reg  [7:0]  ev = 8'd0;
+    always @(posedge cap_clk) begin                 // FILL: pair in the fast domain, 1 word / 2 cycles
+        if (~pk) ev <= ch1_comb;
+        else begin cbuf[wa] <= {ev, ch1_comb}; wa <= wa + 1'b1; end
+        pk <= ~pk;
+    end
+    reg  [9:0]  ra = 10'd0;
+    reg  [15:0] cbuf_rd = 16'd0;
+    always @(posedge clk) begin ra <= ra + 1'b1; cbuf_rd <= cbuf[ra + 10'd512]; end  // READ: lockstep, half-ring behind
+    wire        fast_capmode = (xform_reg[13:12] == 2'd3);
+    wire        ddr_pack     = xform_reg[7];
+    wire [15:0] samp_eff = (fast_capmode && ddr_pack) ? cbuf_rd     // dual-clock 160 pair
                          : raw_mode                   ? raw_word
                                                       : samp;
     wire [15:0]        cap_word;
