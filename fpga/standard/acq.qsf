@@ -24,6 +24,7 @@ set_global_assignment -name VERILOG_FILE uart_decode.v
 set_global_assignment -name VERILOG_FILE i2c_decode.v
 set_global_assignment -name VERILOG_FILE spi_decode.v
 set_global_assignment -name VERILOG_FILE byte_fifo.v
+set_global_assignment -name VERILOG_FILE dec_trigger.v
 set_global_assignment -name VERILOG_FILE eth100_decode_lr.v
 set_global_assignment -name VERILOG_FILE eth_gearbox.v
 set_global_assignment -name VERILOG_FILE eth_slicer_cdr.v

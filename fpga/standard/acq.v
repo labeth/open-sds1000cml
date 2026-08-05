@@ -558,6 +558,12 @@ module acq (
         .il_busy  (il_busy)
     );
 
+    // dec_trigger outputs (driven by u_dec_trigger below, after the protocol mux).
+    // Declared here so the capture feed at .decode_trig can reference them.
+    wire        dec_trig_final;       // mode-selected decode_trig into capture.v
+    wire        dec_matched_out;      // mode-selected sticky STATUS bit14 source
+    wire [7:0]  dec_matched_byte_out; // mode-selected 0x6c matched-byte source
+
     capture u_capture (
         .clk         (clk),
         .arm         (op_go),
@@ -571,7 +577,7 @@ module acq (
         .mode_norm   (mode_norm),
         .trig_rise   (trig_rise),
         .trig_level  (trig_level),
-        .decode_trig (dec_en ? dec_trig_pulse : 1'b0),   // 0 when decode off => identical
+        .decode_trig (dec_trig_final),   // dec_trigger: mode0==(dec_en?dec_trig_pulse:0), byte-identical
         .rd_addr     (burst_addr),
         .rd_data     (rec_rd_data),
         .filling     (filling),
@@ -764,6 +770,51 @@ module acq (
     wire        dec_matched_sticky = sel_i2c ? i2c_matched      : sel_spi ? spi_matched      : uart_matched;
     wire [7:0]  dec_matched_byte   = sel_i2c ? i2c_matched_byte : sel_spi ? spi_matched_byte : uart_matched_byte;
 
+    // ---- EXTENDED DECODE TRIGGER (dec_trigger.v) --------------------------------
+    // Drop-in over the inline byte-match trigger. In trig_mode==0 (reset/default)
+    // it routes the UNTOUCHED per-module pulse (dec_trig_pulse) and per-module
+    // sticky/byte verbatim => decode_trig into capture.v is byte-for-byte identical
+    // to `dec_en ? dec_trig_pulse : 1'b0` and 0x4c[14]/0x6c are unchanged. Modes
+    // 1 (error) / 2 (sequence) / 3 (addr) are additive, gated by trig_mode. Only
+    // previously-FREE dec_cfg[15:12] + mode-reinterpreted 0x48/0x68 fields are used
+    // => no selector added, IFACE_BUILD_ID stays 0xc2f6eb5f.
+    //
+    // mode-2 adjacency window (COLUMN units): ~64x the integer samples-per-bit, a
+    // generous single-expression threshold (contiguous data-byte start-idx gaps <=
+    // this pass; cross-transmission idle gaps are far larger and reject). This is
+    // the documented bench-trim knob (SPEC risk #5) — testgen-exact vs bench-exact
+    // are tracked separately. For I2C/SPI dec_spb is the reused gap/idle register,
+    // so the window is even more generous there (accepts contiguous, rejects gaps).
+    wire [15:0] adj_win = {dec_spb[17:8], 6'b0};   // integer-SPB << 6 (~64x), 16-bit
+
+    dec_trigger u_dec_trigger (
+        .clk            (clk),
+        .rst            (op_reset),
+        .en             (dec_en),
+        .emit_stb       (dec_emit_stb),
+        .emit_byte      (dec_emit_byte),
+        .emit_idx       (dec_emit_idx),
+        .emit_flags     (dec_emit_flags8),
+        .sel_i2c        (sel_i2c),
+        .sel_spi        (sel_spi),
+        .sel_eth        (sel_eth),
+        .eth_sfd        (eth_sfd_seen),
+        .trig_en        (dec_trigen),
+        .trig_mode      (dec_cfg[13:12]),          // 0=byte 1=err 2=seq 3=addr (was FREE)
+        .seqlen_cfg     (dec_cfg[15:14]),          // N = seqlen_cfg+1 (was FREE)
+        .match_pattern  (dec_match[7:0]),          // mode0/2 seq[0], mode3 addr_field
+        .match_mask     (dec_match[15:8]),         // mode0 mask, mode1 err_mask, mode2 seq[3], mode3 addr_mask
+        .seq_b1         (dec_tg[7:0]),             // mode2 seq[1] (reuses TESTGEN 0x68)
+        .seq_b2         (dec_tg[15:8]),            // mode2 seq[2]
+        .adj_win        (adj_win),
+        .legacy_trig    (dec_trig_pulse),          // UNTOUCHED per-module mode-0 pulse
+        .legacy_matched (dec_matched_sticky),
+        .legacy_matched_byte(dec_matched_byte),
+        .decode_trig    (dec_trig_final),
+        .matched        (dec_matched_out),
+        .matched_byte   (dec_matched_byte_out)
+    );
+
     // Lossless byte FIFO (logic registers, ramstyle=logic => 0 M9K). Entry =
     // {flags[7:0], idx[23:0], byte[7:0]}. Drain word packs {flags,data} only.
     wire [7:0]  dfifo_head_byte;
@@ -790,9 +841,9 @@ module acq (
     );
 
     // DEC readback words (final-driver override at the tri-state, section 6).
-    wire [15:0] dec_status  = {dfifo_overflow, dec_matched_sticky, ~dfifo_empty,
+    wire [15:0] dec_status  = {dfifo_overflow, dec_matched_out, ~dfifo_empty,
                                2'b0, {5'd0, dfifo_fill}};       // {ovf,matched,busy,-,fill[10:0]}
-    wire [15:0] dec_matched = {6'd0, 2'b00, dec_matched_byte};  // matched is data-only => flags 0
+    wire [15:0] dec_matched = {6'd0, 2'b00, dec_matched_byte_out}; // matched is data-only => flags 0
     // 0x7c drain word. UART/I2C/SPI: unchanged {--,flags[1:0],byte}. ETH exposes the
     // framer's full 8 flag bits (start[7]/end[6]/fcs[5]/ok[4]/err[3]) in the spare upper
     // byte — additive, and byte-identical to the legacy layout for every non-ETH proto.
