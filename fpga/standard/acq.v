@@ -301,7 +301,11 @@ module acq (
     // [3]=chan_sel (0=C1-600 3-wide, 1=C2-400 2-wide). With [2]=0 the whole
     // interleave path is dead: PLL runs but drives nothing, il_capture never
     // arms, and the cap_word/cap_tick mux below selects the spine as before.
-    wire       il_en    = xform_reg[2];
+    wire       interleave_en = xform_reg[2];                 // drives the phased 200 MHz ENCODE
+    // il_en gates the MERGE capture only; raw_mode (XFORM[4]) with interleave_en=1 lets us capture the
+    // RAW lanes UNDER the phased ENCODE — under staggered phases the redundant pin-aliases break, so
+    // only the real connected cores drive their lanes (diagnostic for the ball->core map / empty core).
+    wire       il_en    = xform_reg[2] & ~raw_mode;
     wire       chan_sel = xform_reg[3];
     wire [4:0] pll200_out;   // {90,180,240,120,0}
     wire       pll200_locked;
@@ -336,6 +340,17 @@ module acq (
     wire [7:0] c1c = { adc_lane[7],  adc_lane[17], adc_lane[8],  adc_lane[47], 4'b0000 }; // C1 ball3 (4)
     wire [7:0] c2a = { adc_lane[20], adc_lane[28], adc_lane[27], 5'b00000 };             // C2 ball0 (3)
     wire [7:0] c2b = { adc_lane[21], adc_lane[29], adc_lane[31], adc_lane[46], 4'b0000 }; // C2 ball6 (4)
+    // Per-core PHASE-MATCHED capture: each core is ENCODEd at a distinct PLL phase (ball2/ball0 @0,
+    // ball5 @120, ball3 @240, ball6 @180). Registering each in a PLL phase offset into its data-valid
+    // window lets ALL 5 sample in-window (a single capture clock misses the mis-phased cores -> reads 0,
+    // and WHICH core reads 0 wanders — the artifact we saw). pll200_out = {[4]90,[3]180,[2]240,[1]120,[0]0}.
+    // Snapped to available phases (~ENCODE+180); exact per-core skew is a bench trim of these 5 picks.
+    reg [7:0] c1a_p = 8'd0, c1b_p = 8'd0, c1c_p = 8'd0, c2a_p = 8'd0, c2b_p = 8'd0;
+    always @(posedge pll200_out[3]) c1a_p <= c1a;   // ball2 @0   -> capture @180
+    always @(posedge pll200_out[2]) c1b_p <= c1b;   // ball5 @120 -> capture @240 (best avail; ideal ~300 not in the 5 PLL phases -> bench trim)
+    always @(posedge pll200_out[4]) c1c_p <= c1c;   // ball3 @240 -> capture @90
+    always @(posedge pll200_out[3]) c2a_p <= c2a;   // ball0 @0   -> capture @180
+    always @(posedge pll200_out[0]) c2b_p <= c2b;   // ball6 @180 -> capture @0
     // raw_sel=3 = CURATED 16 CH2-active lanes (across the original + new wide-bus balls), so all
     // of CH2's bits are captured in ONE time-aligned record for the de-interleave order search.
     wire [15:0] raw_curated = {adc_lane_q[46], adc_lane_q[45], adc_lane_q[44], adc_lane_q[43],
@@ -411,7 +426,7 @@ module acq (
         .enc_off_en (xform_reg[15]),      // core map probe: hold one ENCODE output static
         .enc_off_ball(xform_reg[11:8]),   // 0-7=balls, 8=differential C14/D14, 9=A11
         .fast_enc   (mclk_in),            // ENCODE = M2 160@0deg when enc_div_sel==3 (capture clock is phased separately)
-        .interleave_en(il_en),            // XFORM_CTRL[2]: drive phased 200 MHz ENCODE
+        .interleave_en(interleave_en),    // XFORM_CTRL[2]: drive phased 200 MHz ENCODE
         .ph0        (ph0),                // 200 MHz @   0 deg
         .ph120      (ph120),              // 200 MHz @ 120 deg
         .ph240      (ph240),              // 200 MHz @ 240 deg
@@ -455,13 +470,13 @@ module acq (
         .arm      (op_go),
         .il_en    (il_en),
         .chan_sel (chan_sel),
-        .trig     (c1a[7]),            // DATA trigger: core-A MSB rising = signal crosses mid-scale
+        .trig     (c1a_p[7]),          // DATA trigger: core-A MSB rising = signal crosses mid-scale
         .trig_en  (xform_reg[9]),      // 1 = wait for that crossing before filling (cap_phase[1], free)
-        .c1a      (c1a),
-        .c1b      (c1b),
-        .c1c      (c1c),
-        .c2a      (c2a),
-        .c2b      (c2b),
+        .c1a      (c1a_p),             // phase-matched per-core captures (all 5 sampled in-window)
+        .c1b      (c1b_p),
+        .c1c      (c1c_p),
+        .c2a      (c2a_p),
+        .c2b      (c2b_p),
         .il_word  (il_word),
         .il_tick  (il_tick),
         .il_busy  (il_busy)
