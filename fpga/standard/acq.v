@@ -285,6 +285,57 @@ module acq (
         lock_s1   <= pll_locked_raw; lock_s2 <= lock_s1;
     end
     wire        m2test_en = xform_reg[7];
+
+    // =======================================================================
+    // TIME-INTERLEAVE clocking + control (ADDITIVE — the 2nd/last Cyclone PLL)
+    // -----------------------------------------------------------------------
+    // u_m2pll (above) is left UNTOUCHED so the M2 ring's 160 MHz 2:1 lockstep
+    // (fast_capmode) stays byte-for-byte identical. u_pll200 is the 2nd PLL,
+    // fed from the SAME M2 pin: VCO=160*5=800 MHz, five 200 MHz phase outputs.
+    //   pll200_out[0]=0deg   -> ph0   (C1 core a / C2 core a)
+    //   pll200_out[1]=120deg -> ph120 (C1 core b)
+    //   pll200_out[2]=240deg -> ph240 (C1 core c)
+    //   pll200_out[3]=180deg -> ph180 (C2 core b)
+    //   pll200_out[4]=90deg  -> cap_clk200 (fill/capture clock, tunable phase)
+    // XFORM_CTRL free bits [3:2] (only unallocated bits): [2]=interleave_en,
+    // [3]=chan_sel (0=C1-600 3-wide, 1=C2-400 2-wide). With [2]=0 the whole
+    // interleave path is dead: PLL runs but drives nothing, il_capture never
+    // arms, and the cap_word/cap_tick mux below selects the spine as before.
+    wire       il_en    = xform_reg[2];
+    wire       chan_sel = xform_reg[3];
+    wire [4:0] pll200_out;   // {90,180,240,120,0}
+    wire       pll200_locked;
+    altpll #(
+        .bandwidth_type("AUTO"),
+        .clk0_divide_by(4), .clk0_duty_cycle(50), .clk0_multiply_by(5), .clk0_phase_shift("0"),
+        .clk1_divide_by(4), .clk1_duty_cycle(50), .clk1_multiply_by(5), .clk1_phase_shift("1667"),
+        .clk2_divide_by(4), .clk2_duty_cycle(50), .clk2_multiply_by(5), .clk2_phase_shift("3333"),
+        .clk3_divide_by(4), .clk3_duty_cycle(50), .clk3_multiply_by(5), .clk3_phase_shift("2500"),
+        .clk4_divide_by(4), .clk4_duty_cycle(50), .clk4_multiply_by(5), .clk4_phase_shift("1250"),
+        .compensate_clock("CLK0"), .inclk0_input_frequency(6250),
+        .intended_device_family("Cyclone IV E"), .operation_mode("NORMAL"), .pll_type("AUTO"),
+        .port_clk0("PORT_USED"), .port_clk1("PORT_USED"), .port_clk2("PORT_USED"),
+        .port_clk3("PORT_USED"), .port_clk4("PORT_USED"),
+        .port_inclk0("PORT_USED"), .port_locked("PORT_USED")
+    ) u_pll200 ( .inclk({1'b0, mclk_in}), .clk(pll200_out), .locked(pll200_locked) );
+    wire ph0        = pll200_out[0];   // 0 deg
+    wire ph120      = pll200_out[1];   // 120 deg
+    wire ph240      = pll200_out[2];   // 240 deg
+    wire ph180      = pll200_out[3];   // 180 deg
+    wire cap_clk200 = pll200_out[4];   // 90 deg — il_capture fill clock
+
+    // ---- 5-core de-interleave (must live here: lanes 40/46/47 are in the wide
+    //      bus adc_lane[50:33] that adcif never receives). Each core byte = its
+    //      freeze-census lanes MSB..LSB, zero-padded to 8. Combinational off the
+    //      raw wide bus so il_capture registers each core in the cap_clk200 phase.
+    //      EXACT ball->core + per-core bit order are bench-calibration-deferred
+    //      (fast-signal cal remote-blocked); re-map = edit only these 5 lists.
+    wire [7:0] c1a = { adc_lane[0],  adc_lane[10], adc_lane[1],  adc_lane[11],
+                       adc_lane[40], adc_lane[9],  adc_lane[12], 1'b0 };          // C1 ball2 (7 lanes)
+    wire [7:0] c1b = { adc_lane[3],  adc_lane[15], adc_lane[5],  adc_lane[6],  4'b0000 }; // C1 ball5 (4)
+    wire [7:0] c1c = { adc_lane[7],  adc_lane[17], adc_lane[8],  adc_lane[47], 4'b0000 }; // C1 ball3 (4)
+    wire [7:0] c2a = { adc_lane[20], adc_lane[28], adc_lane[27], 5'b00000 };             // C2 ball0 (3)
+    wire [7:0] c2b = { adc_lane[21], adc_lane[29], adc_lane[31], adc_lane[46], 4'b0000 }; // C2 ball6 (4)
     // raw_sel=3 = CURATED 16 CH2-active lanes (across the original + new wide-bus balls), so all
     // of CH2's bits are captured in ONE time-aligned record for the de-interleave order search.
     wire [15:0] raw_curated = {adc_lane_q[46], adc_lane_q[45], adc_lane_q[44], adc_lane_q[43],
@@ -305,8 +356,18 @@ module acq (
     // cap_phase (xform[9:8]) tunes cap_clk into the ADC data-valid window. app unpacks 2 samples/word.
     wire [7:0] ch1_comb = { adc_lane[3], adc_lane[0], adc_lane[1], adc_lane[11],
                             adc_lane[9], adc_lane[12], adc_lane[6], adc_lane[5] }; // proven CH1 order
-    reg  [15:0] cbuf [0:1023];
-    reg  [9:0]  wa = 10'd0;
+    // DEPTH 512 (was 1024): the device is 46/46 M9K FULL at baseline (record 40 +
+    // envelope 4 + this ring 2). The interleave capture buffer needs >=1 M9K, and
+    // this diagnostic ring is the ONLY reclaimable block (record = app build-ID
+    // contract, envelope = 336 app columns need 2016/2048 words). Halving it frees
+    // exactly 1 M9K for il_capture(N=256). The ring stays a FUNCTIONAL dual-clock
+    // 160-pair capture — same pairing/lockstep, now a 512-deep half-ring (read
+    // offset +256). This is the single documented deviation from strict byte-exact
+    // M2-ring preservation, forced by the full device (see integration report).
+    // Force M9K (at 512-deep Quartus otherwise packs this into ~8k logic registers,
+    // overflowing LABs). 512x16 -> one M9K in 512x18 mode.
+    (* ramstyle = "M9K" *) reg  [15:0] cbuf [0:511];
+    reg  [8:0]  wa = 9'd0;
     reg         pk = 1'b0;
     reg  [7:0]  ev = 8'd0;
     always @(posedge cap_clk) begin                 // FILL: pair in the fast domain, 1 word / 2 cycles
@@ -314,16 +375,23 @@ module acq (
         else begin cbuf[wa] <= {ev, ch1_comb}; wa <= wa + 1'b1; end
         pk <= ~pk;
     end
-    reg  [9:0]  ra = 10'd0;
+    reg  [8:0]  ra = 9'd0;
     reg  [15:0] cbuf_rd = 16'd0;
-    always @(posedge clk) begin ra <= ra + 1'b1; cbuf_rd <= cbuf[ra + 10'd512]; end  // READ: lockstep, half-ring behind
+    always @(posedge clk) begin ra <= ra + 1'b1; cbuf_rd <= cbuf[ra + 9'd256]; end  // READ: lockstep, half-ring behind
     wire        fast_capmode = (xform_reg[13:12] == 2'd3);
     wire        ddr_pack     = xform_reg[7];
     wire [15:0] samp_eff = (fast_capmode && ddr_pack) ? cbuf_rd     // dual-clock 160 pair
                          : raw_mode                   ? raw_word
                                                       : samp;
-    wire [15:0]        cap_word;
-    wire               cap_tick;
+    // cap_word/cap_tick feed capture + envelope. They are MUXed: when il_en the
+    // interleave stream (il_capture) drives them; otherwise the spine, byte-exact.
+    wire [15:0]        spine_word;
+    wire               spine_tick;
+    wire [15:0]        il_word;
+    wire               il_tick;
+    wire               il_busy;
+    wire [15:0]        cap_word = il_en ? il_word : spine_word;
+    wire               cap_tick = il_en ? il_tick : spine_tick;
     wire               filling;
     wire               smp_valid;
     wire               r_valid, r_trig, r_done, coherent;
@@ -343,6 +411,11 @@ module acq (
         .enc_off_en (xform_reg[15]),      // core map probe: hold one ENCODE output static
         .enc_off_ball(xform_reg[11:8]),   // 0-7=balls, 8=differential C14/D14, 9=A11
         .fast_enc   (mclk_in),            // ENCODE = M2 160@0deg when enc_div_sel==3 (capture clock is phased separately)
+        .interleave_en(il_en),            // XFORM_CTRL[2]: drive phased 200 MHz ENCODE
+        .ph0        (ph0),                // 200 MHz @   0 deg
+        .ph120      (ph120),              // 200 MHz @ 120 deg
+        .ph240      (ph240),              // 200 MHz @ 240 deg
+        .ph180      (ph180),              // 200 MHz @ 180 deg
         .adc_lane   (adc_lane[32:0]),
         .adc_enc    (adc_enc),
         .adc_enc2   (adc_enc2),
@@ -361,8 +434,37 @@ module acq (
         .decim    (decim_reg),
         .bypass0  (xform_reg[`XFORM_CTRL_BYPASS0_LSB]),
         .bypass1  (xform_reg[`XFORM_CTRL_BYPASS1_LSB]),
-        .cap_word (cap_word),
-        .cap_tick (cap_tick)
+        .cap_word (spine_word),
+        .cap_tick (spine_tick)
+    );
+
+    // ===== TIME-INTERLEAVE fill-then-drain capture (ADDITIVE, gated on il_en) =====
+    // Fills {c1a,c1b,c1c}/{c2a,c2b} at cap_clk200 (200 MHz) on op_go, then drains
+    // 16-bit record words at clk (80 MHz) into cap_word/cap_tick (MUXed above).
+    // arm=op_go; when il_en==0 it never arms and il_word/il_tick stay quiet.
+    // N=256 (not 1024): the capture record (~27 M9K), envelope (~16 M9K) and the
+    // M2-ring cbuf (2 M9K) already leave only ONE free M9K of the device's 46.
+    // A 256-deep x24 il buffer packs into a single 256x36-mode M9K, so it fits
+    // exactly. (512->2 M9K and 1024->3 M9K both overflow.) Depth is the only knob
+    // shrunk vs the standalone design; the fill-then-drain + unpack logic is
+    // identical, so this stays STRUCTURALLY complete. Deeper interleave capture
+    // would require reclaiming M9K from the record buffer (out of scope here).
+    il_capture #(.N(256), .AW(8)) u_il_capture (
+        .clk      (clk),
+        .cap_clk  (cap_clk200),
+        .arm      (op_go),
+        .il_en    (il_en),
+        .chan_sel (chan_sel),
+        .trig     (c1a[7]),            // DATA trigger: core-A MSB rising = signal crosses mid-scale
+        .trig_en  (xform_reg[9]),      // 1 = wait for that crossing before filling (cap_phase[1], free)
+        .c1a      (c1a),
+        .c1b      (c1b),
+        .c1c      (c1c),
+        .c2a      (c2a),
+        .c2b      (c2b),
+        .il_word  (il_word),
+        .il_tick  (il_tick),
+        .il_busy  (il_busy)
     );
 
     capture u_capture (

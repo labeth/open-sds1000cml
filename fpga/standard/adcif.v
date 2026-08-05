@@ -38,6 +38,15 @@ module adcif #(
     input  wire        enc_off_en,
     input  wire [3:0]  enc_off_ball,
     input  wire        fast_enc,               // M2's ~160 MHz clock: forwarded to ENCODE when enc_div_sel==3
+    // TIME-INTERLEAVE phased-ENCODE (XFORM_CTRL[2]=interleave_en). When high, each ENCODE
+    // ball is driven by a distinct 200 MHz PLL phase (from acq.v u_pll200): C1's 3 cores
+    // (ball2/ball5/ball3) @ 0/120/240, C2's 2 cores (ball0/ball6) @ 0/180, others @ 0.
+    // Purely ADDITIVE: highest-priority mux branch, dead unless interleave_en==1.
+    input  wire        interleave_en,          // XFORM_CTRL[2]
+    input  wire        ph0,                    // 200 MHz ENCODE phase   0 deg
+    input  wire        ph120,                  // 200 MHz ENCODE phase 120 deg
+    input  wire        ph240,                  // 200 MHz ENCODE phase 240 deg
+    input  wire        ph180,                  // 200 MHz ENCODE phase 180 deg
     input  wire [32:0] adc_lane,               // ADC data lanes (27 live + headroom)
 
     output wire [7:0]  adc_enc,                // 8 ENCODE clock outputs (common clock)
@@ -70,7 +79,13 @@ module adcif #(
     // enc_div_sel==3 => FAST: forward M2's ~160 MHz straight to the ENCODE balls to test whether the
     // ADC cores actually convert at that rate (the gating unknown for 200 MHz/core → 600/400).
     wire       fast_mode = (enc_div_sel == 2'd3);
-    assign adc_enc    = enc_off_en ? (~off_sel & {8{enc_clk}})       // selected ball static
+    // Phased 200 MHz ENCODE per ball (bit i -> adc_enc[i] -> ball i):
+    //   [0]=ph0 (C2 core a, ball0)  [1]=ph0  [2]=ph0 (C1 core a, ball2)
+    //   [3]=ph240 (C1 core c, ball3) [4]=ph0 [5]=ph120 (C1 core b, ball5)
+    //   [6]=ph180 (C2 core b, ball6) [7]=ph0
+    wire [7:0] enc_interleave = { ph0, ph180, ph120, ph0, ph240, ph0, ph0, ph0 };
+    assign adc_enc    = interleave_en ? enc_interleave                // NEW: phased 200 MHz
+                      : enc_off_en ? (~off_sel & {8{enc_clk}})       // selected ball static
                       : fast_mode  ? {8{fast_enc}}                   // M2 ~160 MHz forwarded
                       : enc_split  ? {enc_clk_b, enc_clk_b, enc_clk_b, enc_clk_b,
                                       enc_clk,   enc_clk,   enc_clk,   enc_clk}
