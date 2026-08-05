@@ -254,12 +254,22 @@ module acq (
     always @(posedge clk) begin m2_ctr_s1 <= m2_ctr; m2_ctr_s2 <= m2_ctr_s1; end
     wire [4:0] pll_out;
     wire       pll_locked_raw;
+    // VCO = M2(160) x5 = 800 MHz. c0 = 800/2 = 400 (heartbeat). c1 = 800/4 = 200 (ENCODE target).
+    // c2 = 800/3 = 266 (ceiling probe). Feeds the ADC ENCODE to pin the real max core rate for 600/400.
     altpll #(
         .bandwidth_type("AUTO"), .clk0_divide_by(2), .clk0_duty_cycle(50), .clk0_multiply_by(5),
-        .clk0_phase_shift("0"), .compensate_clock("CLK0"), .inclk0_input_frequency(12500),
+        .clk1_divide_by(4), .clk1_duty_cycle(50), .clk1_multiply_by(5),
+        .clk2_divide_by(3), .clk2_duty_cycle(50), .clk2_multiply_by(5),
+        .clk0_phase_shift("0"), .clk1_phase_shift("0"), .clk2_phase_shift("0"),
+        .compensate_clock("CLK0"), .inclk0_input_frequency(6250),
         .intended_device_family("Cyclone IV E"), .operation_mode("NORMAL"), .pll_type("AUTO"),
-        .port_clk0("PORT_USED"), .port_inclk0("PORT_USED"), .port_locked("PORT_USED")
+        .port_clk0("PORT_USED"), .port_clk1("PORT_USED"), .port_clk2("PORT_USED"),
+        .port_inclk0("PORT_USED"), .port_locked("PORT_USED")
     ) u_m2pll ( .inclk({1'b0, mclk_in}), .clk(pll_out), .locked(pll_locked_raw) );
+    // fast-ENCODE source select (enc_off_ball[1:0] when in fast mode): 0=M2 160, 1=PLL 200, 2=PLL 266
+    wire [1:0] fast_rate = xform_reg[9:8];
+    wire       fast_clk  = (fast_rate == 2'd1) ? pll_out[1]
+                         : (fast_rate == 2'd2) ? pll_out[2] : mclk_in;
     wire       pll_c0 = pll_out[0];
     reg  [7:0] pll_hb = 8'd0;
     always @(posedge pll_c0) pll_hb <= pll_hb + 1'b1;
@@ -302,7 +312,7 @@ module acq (
         .enc_split  (xform_reg[14]),      // interleave probe: balls 4-7 half-period late
         .enc_off_en (xform_reg[15]),      // core map probe: hold one ENCODE output static
         .enc_off_ball(xform_reg[11:8]),   // 0-7=balls, 8=differential C14/D14, 9=A11
-        .fast_enc   (mclk_in),            // M2 ~160 MHz -> ENCODE when enc_div_sel==3 (fast-rate test)
+        .fast_enc   (fast_clk),           // 160/200/266 MHz -> ENCODE when enc_div_sel==3 (rate = xform[9:8])
         .adc_lane   (adc_lane[32:0]),
         .adc_enc    (adc_enc),
         .adc_enc2   (adc_enc2),
