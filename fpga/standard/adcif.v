@@ -37,6 +37,7 @@ module adcif #(
     // C14/D14; 9 = A11. Maps the converters on the differential ENCODE too.
     input  wire        enc_off_en,
     input  wire [3:0]  enc_off_ball,
+    input  wire        fast_enc,               // M2's ~160 MHz clock: forwarded to ENCODE when enc_div_sel==3
     input  wire [32:0] adc_lane,               // ADC data lanes (27 live + headroom)
 
     output wire [7:0]  adc_enc,                // 8 ENCODE clock outputs (common clock)
@@ -66,7 +67,11 @@ module adcif #(
     wire [7:0] off_sel = (enc_off_en && enc_off_ball < 4'd8) ? (8'd1 << enc_off_ball[2:0]) : 8'd0;
     wire       off2    = enc_off_en && (enc_off_ball == 4'd8); // gate differential C14/D14
     wire       off3    = enc_off_en && (enc_off_ball == 4'd9); // gate A11
+    // enc_div_sel==3 => FAST: forward M2's ~160 MHz straight to the ENCODE balls to test whether the
+    // ADC cores actually convert at that rate (the gating unknown for 200 MHz/core → 600/400).
+    wire       fast_mode = (enc_div_sel == 2'd3);
     assign adc_enc    = enc_off_en ? (~off_sel & {8{enc_clk}})       // selected ball static
+                      : fast_mode  ? {8{fast_enc}}                   // M2 ~160 MHz forwarded
                       : enc_split  ? {enc_clk_b, enc_clk_b, enc_clk_b, enc_clk_b,
                                       enc_clk,   enc_clk,   enc_clk,   enc_clk}
                                    : {8{enc_clk}};

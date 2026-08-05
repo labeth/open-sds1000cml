@@ -302,6 +302,7 @@ module acq (
         .enc_split  (xform_reg[14]),      // interleave probe: balls 4-7 half-period late
         .enc_off_en (xform_reg[15]),      // core map probe: hold one ENCODE output static
         .enc_off_ball(xform_reg[11:8]),   // 0-7=balls, 8=differential C14/D14, 9=A11
+        .fast_enc   (mclk_in),            // M2 ~160 MHz -> ENCODE when enc_div_sel==3 (fast-rate test)
         .adc_lane   (adc_lane[32:0]),
         .adc_enc    (adc_enc),
         .adc_enc2   (adc_enc2),
