@@ -64,6 +64,12 @@ module capture (
     input  wire                 trig_rise,     // synchronized comparator rising edge
     input  wire [7:0]           trig_level,    // level in CH1 sample units (bench-tunable)
 
+    // ADDITIVE in-fabric UART/byte decode trigger. acq.v drives this 0 whenever the
+    // decoder is disabled, so dec_pending never sets and trig_cond/trig_fire are
+    // bit-identical to the pre-decode design (every existing mode byte-for-byte
+    // unchanged). A 1-cycle pulse from uart_decode on a clean matching byte.
+    input  wire                 decode_trig,
+
     // record read port (address driven by the drain; data consumed by acq.v).
     input  wire [`ADDR_W-1:0]   rd_addr,
     output reg  [15:0]          rd_data,
@@ -98,6 +104,7 @@ module capture (
     reg [15:0]        posttrig_work= 16'd0;   // latched @ arm
     reg               triggered    = 1'b0;
     reg               comp_pending = 1'b0;    // sticky comparator edge (NORM), cleared on accept
+    reg               dec_pending  = 1'b0;    // sticky decode-byte match (NORM), cleared on accept
     reg               fill_frozen  = 1'b0;
     reg [10:0]        fill_frozen_val = 11'd0;
     reg [`ADDR_W-1:0] trig_idx_r   = {`ADDR_W{1'b0}};
@@ -123,7 +130,11 @@ module capture (
     // truth, and the CPU does final content-centring.)
     wire [15:0] norm_bound = REC_DEPTH16 - posttrig_work;
     wire        norm_full  = mode_norm && (wrote_count >= norm_bound);
-    wire trig_cond  = (!mode_norm) ? 1'b1 : (trig_rise | comp_pending | norm_full);
+    // dec_pending is OR'd into the NORM branch only (mirrors comp_pending exactly).
+    // In AUTO trig_cond is already 1, so byte-anchoring is a NORM/SINGLE feature (as
+    // with serialtrig's typical use); decode_trig==0 when the decoder is off => this
+    // reduces to the original expression bit-for-bit.
+    wire trig_cond  = (!mode_norm) ? 1'b1 : (trig_rise | comp_pending | norm_full | dec_pending);
     wire trig_fire  = filling && cap_tick && !triggered && pretrig_ok && trig_cond;
 
     // ---- exact post-count finalize -------------------------------------------
@@ -196,11 +207,13 @@ module capture (
             end
 
             if (trig_rise && !triggered) comp_pending <= 1'b1;   // sticky NORM edge
+            if (decode_trig && !triggered) dec_pending <= 1'b1;  // sticky decode-byte match
 
             if (trig_fire) begin
                 triggered  <= 1'b1;
                 r_trig     <= 1'b1;
                 comp_pending <= 1'b0;
+                dec_pending  <= 1'b0;
                 trig_idx_r <= waddr;          // SAME waddr that writes the trigger sample
                 post_count <= 16'd1;          // trigger sample counts as post write #1
                 // kick / resolve the interpolation fraction.
@@ -233,7 +246,7 @@ module capture (
             state <= ST_IDLE;
             waddr <= {`ADDR_W{1'b0}};
             wrote_count <= 16'd0; post_count <= 16'd0;
-            triggered <= 1'b0; comp_pending <= 1'b0;
+            triggered <= 1'b0; comp_pending <= 1'b0; dec_pending <= 1'b0;
             coherent <= 1'b0; r_valid <= 1'b0; r_trig <= 1'b0; r_done <= 1'b0;
             fill_frozen <= 1'b0; trig_frac <= 16'h0000; trig_idx_r <= {`ADDR_W{1'b0}};
             prev_trig_ch <= 8'd0; div_busy <= 1'b0; rec_len_r <= 16'd0;
@@ -241,7 +254,7 @@ module capture (
             state <= ST_FILL;
             waddr <= {`ADDR_W{1'b0}};
             wrote_count <= 16'd0; post_count <= 16'd0;
-            triggered <= 1'b0; comp_pending <= 1'b0;
+            triggered <= 1'b0; comp_pending <= 1'b0; dec_pending <= 1'b0;
             coherent <= 1'b0; r_valid <= 1'b0; r_trig <= 1'b0; r_done <= 1'b0;
             fill_frozen <= 1'b0; trig_frac <= 16'h0000; trig_idx_r <= {`ADDR_W{1'b0}};
             prev_trig_ch <= 8'd0; div_busy <= 1'b0; rec_len_r <= 16'd0;

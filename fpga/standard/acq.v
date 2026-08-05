@@ -143,6 +143,11 @@ module acq (
     wire sel_is_env      = (sel_q2_masked == `SEL_ENV_DATA);
     wire env_rd_active   = cs1_low && (oe_q[2] == 1'b0) && sel_is_env;
     wire env_rd_done     = cs1_low && (oe_q[2] == 1'b0) && (oe_q[1] == 1'b1) && sel_is_env;
+    // DEC_BYTE (0x7c) auto-inc drain: one FIFO pop per nOE-rising, exactly like
+    // SEL_BURST. ALIAS: 0x7d-0x7f mask to 0x7c and would also pop; the app never
+    // issues those (it touches only 0x00/0x40/0x70) so it is unaffected.
+    wire sel_is_decbyte  = (sel_q2_masked == 8'h7c);
+    wire dec_rd_done     = cs1_low && (oe_q[2] == 1'b0) && (oe_q[1] == 1'b1) && sel_is_decbyte;
 
     // =======================================================================
     // 2) Control / configuration register file (written via the generated
@@ -195,6 +200,57 @@ module acq (
         // strobes never fire here (wr_plane is CS1-only) and are intentionally unused.
         // we_ENV_RESET is consumed by envelope.v; no-op here.
     end
+
+    // =======================================================================
+    // 2b) IN-FABRIC UART DECODE — hand-decoded SPARE selectors (ADDITIVE)
+    //     schema/regs.vh/regmux.vh are UNTOUCHED => IFACE_BUILD_ID (c2f6eb5f)
+    //     invariant. These selectors have NO generated we_*/read-mux case, so
+    //     hand-decoding them against hardwired literals is purely additive,
+    //     exactly like the SEL_BURST 0x00 alias and the OPCODE payload compares.
+    //     wr_sel/rd_sel are {1'b0, sel[6:2], 2'b00} (mult-of-4, A1/A2/A8 masked).
+    //     All decode is GATED by dec_cfg[0] (=dec_en); dec_cfg resets to 0 so
+    //     decode is fully inert at power-up (every existing mode byte-for-byte
+    //     unchanged: decode_trig into capture is forced 0, no FIFO activity, and
+    //     the DEC read selectors are never issued by the app/prefetch/sDMA).
+    //
+    //   WRITES:  0x04 CFG {tg_en[9],trig_en[8],parity[7:6],bits[5:2],srcch[1],en[0]}
+    //            0x08 THR  threshold[7:0]=ceil(Thr)
+    //            0x0c SPB_LO SPB[15:0] (Q16.8)
+    //            0x1c SPB_HI SPB[23:16]
+    //            0x48 MATCH {mask[15:8], pattern[7:0]}
+    //            0x68 TESTGEN tg_byte[7:0]
+    //   READS :  0x4c STATUS  {overflow[15],matched[14],busy[13],2'b0,fill[10:0]}
+    //            0x6c MATCHED {frame_err[9],parity_err[8],matched_byte[7:0]}
+    //            0x7c BYTE    auto-inc pop {frame_err[9],parity_err[8],data[7:0]}
+    wire we_DEC_CFG     = we_commit & (wr_plane == `PLANE_CS1) & (wr_sel == 8'h04);
+    wire we_DEC_THR     = we_commit & (wr_plane == `PLANE_CS1) & (wr_sel == 8'h08);
+    wire we_DEC_SPB_LO  = we_commit & (wr_plane == `PLANE_CS1) & (wr_sel == 8'h0c);
+    wire we_DEC_SPB_HI  = we_commit & (wr_plane == `PLANE_CS1) & (wr_sel == 8'h1c);
+    wire we_DEC_MATCH   = we_commit & (wr_plane == `PLANE_CS1) & (wr_sel == 8'h48);
+    wire we_DEC_TESTGEN = we_commit & (wr_plane == `PLANE_CS1) & (wr_sel == 8'h68);
+
+    reg [15:0] dec_cfg    = 16'h0000;   // reset disabled => decode inert
+    reg [15:0] dec_thr    = 16'h0080;
+    reg [15:0] dec_spb_lo = 16'h0000;
+    reg [7:0]  dec_spb_hi = 8'h00;
+    reg [15:0] dec_match  = 16'h0000;
+    reg [15:0] dec_tg     = 16'h0000;
+    always @(posedge clk) begin
+        if (we_DEC_CFG)     dec_cfg    <= d_q2;
+        if (we_DEC_THR)     dec_thr    <= d_q2;
+        if (we_DEC_SPB_LO)  dec_spb_lo <= d_q2;
+        if (we_DEC_SPB_HI)  dec_spb_hi <= d_q2[7:0];
+        if (we_DEC_MATCH)   dec_match  <= d_q2;
+        if (we_DEC_TESTGEN) dec_tg     <= d_q2;
+    end
+    wire        dec_en     = dec_cfg[0];
+    wire        dec_srcch  = dec_cfg[1];
+    wire [3:0]  dec_bits   = dec_cfg[5:2];              // 0 => 8 inside uart_decode
+    wire [1:0]  dec_par    = dec_cfg[7:6];
+    wire        dec_trigen = dec_cfg[8];
+    wire        dec_tgen   = dec_cfg[9];
+    wire [7:0]  dec_thr8   = dec_thr[7:0];
+    wire [23:0] dec_spb    = {dec_spb_hi, dec_spb_lo};  // Q16.8
 
     // ---- OPCODE decode -> single-cycle engine pulses ----
     // Full 16-bit compare against the generated payload macros (d_q2 is the
@@ -495,6 +551,7 @@ module acq (
         .mode_norm   (mode_norm),
         .trig_rise   (trig_rise),
         .trig_level  (trig_level),
+        .decode_trig (dec_en ? dec_trig_pulse : 1'b0),   // 0 when decode off => identical
         .rd_addr     (burst_addr),
         .rd_data     (rec_rd_data),
         .filling     (filling),
@@ -510,6 +567,78 @@ module acq (
         .frame_done  (frame_done),
         .wr_ptr      (wr_ptr)
     );
+
+    // ===== IN-FABRIC UART DECODE engine + lossless byte FIFO (ADDITIVE) =====
+    // Taps cap_word/cap_tick (the SAME decimated column stream capture/envelope
+    // consume — NOT raw 80 MHz samp), so SPB is in host colTimeS units and the
+    // decoded bytes match app decode.DecodeUART().Bytes. The engine emits on a
+    // strobe (no block-RAM); byte_fifo is logic-register only (M9K is 46/46 full).
+    // Everything is held inert while dec_en=0.
+    wire [7:0]  dec_sample_code = dec_srcch ? cap_word[7:0] : cap_word[15:8];
+    wire        dec_emit_stb;
+    wire [7:0]  dec_emit_byte;
+    wire [23:0] dec_emit_idx;
+    wire [1:0]  dec_emit_flags;   // {frame_err, parity_err}
+    wire        dec_trig_pulse;
+    wire        dec_matched_sticky;
+    wire [7:0]  dec_matched_byte;
+
+    uart_decode u_uart_decode (
+        .clk          (clk),
+        .rst_n        (1'b1),                 // no async reset; en=0 holds it IDLE
+        .cap_tick     (cap_tick),
+        .sample_code  (dec_sample_code),
+        .en           (dec_en),
+        .thr8         (dec_thr8),
+        .spb          (dec_spb),
+        .bits_cfg     (dec_bits),
+        .parity_cfg   (dec_par),
+        .hyst_en      (1'b0),                 // oracle-exact: pure-threshold slicer
+        .hyst_band    (8'd0),
+        .tg_en        (dec_tgen),
+        .tg_byte      (dec_tg[7:0]),
+        .trig_en      (dec_trigen),
+        .match_pattern(dec_match[7:0]),
+        .match_mask   (dec_match[15:8]),
+        .emit_stb     (dec_emit_stb),
+        .emit_byte    (dec_emit_byte),
+        .emit_idx     (dec_emit_idx),
+        .emit_flags   (dec_emit_flags),
+        .decode_trig  (dec_trig_pulse),
+        .matched      (dec_matched_sticky),
+        .matched_byte (dec_matched_byte)
+    );
+
+    // Lossless byte FIFO (logic registers, ramstyle=logic => 0 M9K). Entry =
+    // {flags[7:0], idx[23:0], byte[7:0]}. Drain word packs {flags,data} only.
+    wire [7:0]  dfifo_head_byte;
+    wire [23:0] dfifo_head_idx;
+    wire [7:0]  dfifo_head_flags;
+    wire [5:0]  dfifo_fill;       // AW+1 = 6 bits, 0..32
+    wire        dfifo_empty, dfifo_full, dfifo_overflow;
+    byte_fifo #(.DEPTH(32), .AW(5)) u_dec_fifo (
+        .clk         (clk),
+        .rst         (op_reset),
+        .push        (dec_emit_stb & dec_en),
+        .in_byte     (dec_emit_byte),
+        .in_idx      (dec_emit_idx),
+        .in_flags    ({6'd0, dec_emit_flags}),
+        .pop         (dec_rd_done),
+        .head_byte   (dfifo_head_byte),
+        .head_idx    (dfifo_head_idx),
+        .head_flags  (dfifo_head_flags),
+        .fill_count  (dfifo_fill),
+        .empty       (dfifo_empty),
+        .full        (dfifo_full),
+        .overflow    (dfifo_overflow),
+        .clr_overflow(op_reset | we_DEC_CFG)   // host clears overflow by rewriting CFG
+    );
+
+    // DEC readback words (final-driver override at the tri-state, section 6).
+    wire [15:0] dec_status  = {dfifo_overflow, dec_matched_sticky, ~dfifo_empty,
+                               2'b0, {5'd0, dfifo_fill}};       // {ovf,matched,busy,-,fill[10:0]}
+    wire [15:0] dec_matched = {6'd0, 2'b00, dec_matched_byte};  // matched is data-only => flags 0
+    wire [15:0] dec_byte_hd = {6'd0, dfifo_head_flags[1], dfifo_head_flags[0], dfifo_head_byte};
 
     envelope u_envelope (
         .clk            (clk),
@@ -570,7 +699,16 @@ module acq (
     // 6) Single tri-state driver on gpmc_d + WAIT held ready
     // =======================================================================
     wire read_active = (~nCS1) & (~nOE);            // CS1 reads only
-    assign gpmc_d    = read_active ? rmux_rdata : 16'hzzzz;   // SINGLE tri-state driver
+    // DEC read override: the generated read-mux returns default 0x0000 for the
+    // hand-decoded DEC selectors 0x4c/0x6c/0x7c, so intercept them at the SINGLE
+    // tri-state driver. dec_read is FALSE for every schema selector (rd_sel uses
+    // the same masked sel[6:2] as the generated mux), so all schema reads pass
+    // through rmux_rdata untouched. Uses rd_sel (unregistered), like the gen mux.
+    wire        dec_read  = (~nCS1) & ((rd_sel == 8'h4c) | (rd_sel == 8'h6c) | (rd_sel == 8'h7c));
+    wire [15:0] dec_rdata = (rd_sel == 8'h4c) ? dec_status
+                          : (rd_sel == 8'h6c) ? dec_matched
+                          :                     dec_byte_hd;   // 0x7c
+    assign gpmc_d    = read_active ? (dec_read ? dec_rdata : rmux_rdata) : 16'hzzzz;   // SINGLE tri-state driver
     assign gpmc_wait = 1'b1;                          // held ready (never wedge the bus)
 
 endmodule
