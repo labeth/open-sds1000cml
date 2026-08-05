@@ -412,6 +412,13 @@ module acq (
     // only the real connected cores drive their lanes (diagnostic for the ball->core map / empty core).
     wire       il_en    = xform_reg[2] & ~raw_mode;
     wire       chan_sel = xform_reg[3];
+
+    // ===== COMBINE (in-fabric ETS super-res accumulate) enable =====================
+    // ADDITIVE previously-FREE bit: run_word[5]. run_word[3]=stream_on and [4]=test_ramp
+    // are the same free-bit precedent; [5] is unused and resets 0, and no existing path
+    // writes it -> combine_en==0 in every flow today (byte-for-byte identical). Requires
+    // interleave_en (XFORM[2]) so the phased 200 MHz fast ENCODE + cap_clk200 are up.
+    wire       combine_en = run_word[5] & interleave_en;
     wire [4:0] pll200_out;   // {90,180,240,120,0}
     wire       pll200_locked;
     altpll #(
@@ -486,8 +493,15 @@ module acq (
     wire [15:0]        il_word;
     wire               il_tick;
     wire               il_busy;
-    wire [15:0]        cap_word = il_en ? il_word : spine_word;
-    wire               cap_tick = il_en ? il_tick : spine_tick;
+    // sr_accum COMBINE engine outputs (driven by u_sr_accum below; idle when combine_en=0).
+    wire [15:0]        bin_word;
+    wire               bin_tick;
+    wire               sr_busy, sr_coherent;
+    // COMBINE staging: when combine_en the frozen bin grid streams (bin_word/bin_tick)
+    // into the SAME record path il_capture uses; capture.v records it and the SOLVED
+    // gapless BURST/EDMA drain ships it. combine_en=0 => byte-for-byte today's expression.
+    wire [15:0]        cap_word = combine_en ? bin_word : (il_en ? il_word : spine_word);
+    wire               cap_tick = combine_en ? bin_tick : (il_en ? il_tick : spine_tick);
     wire               filling;
     wire               smp_valid;
     wire               r_valid, r_trig, r_done, coherent;
@@ -548,7 +562,7 @@ module acq (
         .clk      (clk),
         .cap_clk  (cap_clk200),
         .arm      (op_go),
-        .il_en    (il_en),
+        .il_en    (il_en & ~combine_en),   // idle the il ring while combining (mutually exclusive fast path)
         .chan_sel (chan_sel),
         .trig     (c1a_p[7]),          // DATA trigger: core-A MSB rising = signal crosses mid-scale
         .trig_en  (xform_reg[9]),      // 1 = wait for that crossing before filling (cap_phase[1], free)
@@ -562,6 +576,43 @@ module acq (
         .il_busy  (il_busy)
     );
 
+    // ===== sr_accum: full-rate in-fabric ETS super-res COMBINE engine (ADDITIVE) =====
+    // Gated by combine_en (run_word[5] & interleave_en). SHIPPING config FULLSTATS=0
+    // (24-bit {sum,cnt} cell = 256x24 = 1 M9K) + WITH_OTHER=0 (bmem pruned): this fits
+    // the ONE free block on the 45/46-full owned device -> 40+4+1(il)+1(sr) = 46/46 EXACT.
+    // Full-stats (72-bit, 2 M9K, byte-exact BitsGained) provably overflows this device
+    // (would be 47/46) so it is the SRAM-era config (FULLSTATS=1, TB-proven). Mean-only
+    // now: the host sets ASum2/ASumA/ACntA=nil (Result -> Mean trace, BitsGained=0), which
+    // matches the user's "limit superres to smaller sample sizes until sram" acceptance.
+    //   arm=op_go clears+opens the accumulate window; halt=op_halt freezes the grid and
+    //   pulses coherent; sr_drain_req then streams 256*12 bin words into cap_word/cap_tick
+    //   (capture.halt is gated off while combining, below, so capture stays in FILL and
+    //   finalizes on the post-count of the pushed bins -> coherent record -> BURST drain).
+    //   True-600 (3-lane c1a/b/c) is BENCH-OWED (per-core skew uncal, 200 MHz SDC slack);
+    //   provable-now = single-lane fast ENCODE (smp_valid=1, smp_a=c1a_p). combine_en=0 =>
+    //   engine never arms (busy/coherent low, bin_tick never pulses) -> cap_word mux above
+    //   is byte-for-byte today's expression.
+    reg  sr_coh_d = 1'b0;
+    always @(posedge clk) sr_coh_d <= sr_coherent;
+    wire sr_drain_req = sr_coherent & ~sr_coh_d;    // one-shot: drain the frozen grid on freeze
+    sr_accum #(.NBINS(256), .AW(8), .DMAX(255), .WITH_OTHER(0), .FULLSTATS(0)) u_sr_accum (
+        .cap_clk   (cap_clk200),        // phased 200 MHz fast fill (same clock as il_capture)
+        .combine_en(combine_en),
+        .smp_valid (1'b1),              // one fast sample per cap tick (single-lane, provable-now)
+        .smp_a     (c1a_p),             // align channel (C1 core-a) 8-bit code
+        .smp_b     (c2a_p),             // other channel (unused: WITH_OTHER=0)
+        .trig      (c1a_p[7]),          // DATA trigger: core-A MSB rising = mid-scale crossing
+        .trig_en   (xform_reg[9]),      // reuse il trig_en: 1 = trigger-referenced pass anchor
+        .clk       (clk),               // 80 MHz drain / control
+        .arm       (op_go),             // clear-sweep + open accumulate window
+        .halt      (op_halt),           // freeze the grid
+        .drain_req (sr_drain_req),      // auto-stream bins into the record on freeze
+        .bin_word  (bin_word),
+        .bin_tick  (bin_tick),
+        .busy      (sr_busy),
+        .coherent  (sr_coherent)
+    );
+
     // dec_trigger outputs (driven by u_dec_trigger below, after the protocol mux).
     // Declared here so the capture feed at .decode_trig can reference them.
     wire        dec_trig_final;       // mode-selected decode_trig into capture.v
@@ -571,7 +622,10 @@ module acq (
     capture u_capture (
         .clk         (clk),
         .arm         (op_go),
-        .halt        (op_halt),
+        // COMBINE: gate op_halt off so capture stays in FILL and records the post-freeze
+        // bin stream, finalizing on its post-count (op_halt freezes sr_accum instead).
+        // combine_en=0 => this is byte-for-byte op_halt (today's behavior).
+        .halt        (combine_en ? 1'b0 : op_halt),
         .rst         (op_reset),
         .stream_on   (stream_on),
         .pre_work_w  (pre_work_w),
