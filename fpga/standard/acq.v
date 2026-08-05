@@ -254,22 +254,27 @@ module acq (
     always @(posedge clk) begin m2_ctr_s1 <= m2_ctr; m2_ctr_s2 <= m2_ctr_s1; end
     wire [4:0] pll_out;
     wire       pll_locked_raw;
-    // VCO = M2(160) x5 = 800 MHz. c0 = 800/2 = 400 (heartbeat). c1 = 800/4 = 200 (ENCODE target).
-    // c2 = 800/3 = 266 (ceiling probe). Feeds the ADC ENCODE to pin the real max core rate for 600/400.
+    // VCO = M2(160) x5 = 800 MHz. c0 = 800/2 = 400 (lock heartbeat). c1/c2/c3 = 800/5 = 160 MHz at
+    // phase 90/180/270 deg (period 6250 ps): phase-shifted ENCODE so the ADC data-valid window lands
+    // clear of the 80 MHz DDR capture edges. fast phase select (xform[9:8]): 0=M2 160@0, 1/2/3=90/180/270.
     altpll #(
-        .bandwidth_type("AUTO"), .clk0_divide_by(2), .clk0_duty_cycle(50), .clk0_multiply_by(5),
-        .clk1_divide_by(4), .clk1_duty_cycle(50), .clk1_multiply_by(5),
-        .clk2_divide_by(3), .clk2_duty_cycle(50), .clk2_multiply_by(5),
-        .clk0_phase_shift("0"), .clk1_phase_shift("0"), .clk2_phase_shift("0"),
+        .bandwidth_type("AUTO"),
+        .clk0_divide_by(2), .clk0_duty_cycle(50), .clk0_multiply_by(5), .clk0_phase_shift("0"),
+        .clk1_divide_by(5), .clk1_duty_cycle(50), .clk1_multiply_by(5), .clk1_phase_shift("1562"),
+        .clk2_divide_by(5), .clk2_duty_cycle(50), .clk2_multiply_by(5), .clk2_phase_shift("3125"),
+        .clk3_divide_by(5), .clk3_duty_cycle(50), .clk3_multiply_by(5), .clk3_phase_shift("4687"),
         .compensate_clock("CLK0"), .inclk0_input_frequency(6250),
         .intended_device_family("Cyclone IV E"), .operation_mode("NORMAL"), .pll_type("AUTO"),
-        .port_clk0("PORT_USED"), .port_clk1("PORT_USED"), .port_clk2("PORT_USED"),
+        .port_clk0("PORT_USED"), .port_clk1("PORT_USED"), .port_clk2("PORT_USED"), .port_clk3("PORT_USED"),
         .port_inclk0("PORT_USED"), .port_locked("PORT_USED")
     ) u_m2pll ( .inclk({1'b0, mclk_in}), .clk(pll_out), .locked(pll_locked_raw) );
-    // fast-ENCODE source select (enc_off_ball[1:0] when in fast mode): 0=M2 160, 1=PLL 200, 2=PLL 266
-    wire [1:0] fast_rate = xform_reg[9:8];
-    wire       fast_clk  = (fast_rate == 2'd1) ? pll_out[1]
-                         : (fast_rate == 2'd2) ? pll_out[2] : mclk_in;
+    // CAPTURE-clock phase select (xform[9:8]): the 160 MHz clock that latches the source-synchronous
+    // sample pair. 0 = M2 160@0deg (= ENCODE phase), 1/2/3 = PLL 160@90/180/270deg. Pick the phase that
+    // lands mid ADC-data-valid-window (offset from the ENCODE) so consecutive samples are clean.
+    wire [1:0] cap_phase = xform_reg[9:8];
+    wire       cap_clk   = (cap_phase == 2'd1) ? pll_out[1]
+                         : (cap_phase == 2'd2) ? pll_out[2]
+                         : (cap_phase == 2'd3) ? pll_out[3] : mclk_in;
     wire       pll_c0 = pll_out[0];
     reg  [7:0] pll_hb = 8'd0;
     always @(posedge pll_c0) pll_hb <= pll_hb + 1'b1;
@@ -291,7 +296,23 @@ module acq (
                          : (raw_sel == 2'd1) ? adc_lane_q[31:16]
                          : (raw_sel == 2'd2) ? adc_lane_q[47:32]        // lane32 + new 33..47
                                              : raw_curated;             // curated CH2 lanes
-    wire [15:0] samp_eff = raw_mode ? raw_word : samp;
+    // ===== M2: source-synchronous 160 single-channel fast capture ======================
+    // ENCODE = M2 160@0deg (cores sample at 160). Capture the PROVEN CH1 de-interleave with TWO
+    // registers clocked by cap_clk (a phase of 160): ss0=newest, ss1=previous — genuinely one 160-cycle
+    // (6.25 ns) apart, both in the fast domain (no 80 MHz capture-edge metastability). The stable pair
+    // {ss1,ss0} is then sampled into the 80 MHz record => a real 160 MSa/s stream (app unpacks 2/word).
+    // cap_phase (xform[9:8]) tunes cap_clk to land in the ADC data-valid window.
+    wire [7:0] ch1_comb = { adc_lane[3], adc_lane[0], adc_lane[1], adc_lane[11],
+                            adc_lane[9], adc_lane[12], adc_lane[6], adc_lane[5] }; // proven CH1 order
+    reg  [7:0] ss0 = 8'd0, ss1 = 8'd0;
+    always @(posedge cap_clk) begin ss1 <= ss0; ss0 <= ch1_comb; end   // fast-domain consecutive pair
+    reg  [15:0] pair_q = 16'd0;
+    always @(posedge clk) pair_q <= {ss1, ss0};                        // stable pair -> 80 MHz record
+    wire        fast_capmode = (xform_reg[13:12] == 2'd3);   // enc_div_sel==3 => fast ENCODE + capture
+    wire        ddr_pack     = xform_reg[7];                  // pack the 160 sample pair into the word
+    wire [15:0] samp_eff = (fast_capmode && ddr_pack) ? pair_q       // source-sync 160 pair
+                         : raw_mode                   ? raw_word
+                                                      : samp;
     wire [15:0]        cap_word;
     wire               cap_tick;
     wire               filling;
@@ -312,7 +333,7 @@ module acq (
         .enc_split  (xform_reg[14]),      // interleave probe: balls 4-7 half-period late
         .enc_off_en (xform_reg[15]),      // core map probe: hold one ENCODE output static
         .enc_off_ball(xform_reg[11:8]),   // 0-7=balls, 8=differential C14/D14, 9=A11
-        .fast_enc   (fast_clk),           // 160/200/266 MHz -> ENCODE when enc_div_sel==3 (rate = xform[9:8])
+        .fast_enc   (mclk_in),            // ENCODE = M2 160@0deg when enc_div_sel==3 (capture clock is phased separately)
         .adc_lane   (adc_lane[32:0]),
         .adc_enc    (adc_enc),
         .adc_enc2   (adc_enc2),
