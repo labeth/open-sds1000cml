@@ -109,7 +109,14 @@ module i2c_decode (
     output reg  [1:0]  emit_flags, // {KIND(1=addr), ACK(1=NAK)}
     output reg         decode_trig,// 1-clk pulse into capture.v (data-only match)
     output reg         matched,    // sticky: a data match has occurred
-    output reg  [7:0]  matched_byte// latched matching byte
+    output reg  [7:0]  matched_byte,// latched matching byte
+
+    // ---- transaction markers (bound a txn for dec_trigger mode-3 addr+data) ----
+    // 1-clk pulses aligned to the emit stream: i2c_start_stb / i2c_stop_stb ride
+    // the SAME column as any flush-emit that a START/STOP forces, so a consumer
+    // sees the flushed (last) data byte AND the boundary in the same cycle.
+    output reg         i2c_start_stb, // 1-clk: I2C START detected (txn begin)
+    output reg         i2c_stop_stb   // 1-clk: I2C STOP  detected (txn end)
 );
 
     // =====================================================================
@@ -230,10 +237,13 @@ module i2c_decode (
             emit_stb <= 1'b0; emit_byte <= 8'd0; emit_idx <= 24'd0;
             emit_flags <= 2'd0; decode_trig <= 1'b0;
             matched <= 1'b0; matched_byte <= 8'd0;
+            i2c_start_stb <= 1'b0; i2c_stop_stb <= 1'b0;
         end else begin
             // default 1-clk pulses
-            emit_stb    <= 1'b0;
-            decode_trig <= 1'b0;
+            emit_stb      <= 1'b0;
+            decode_trig   <= 1'b0;
+            i2c_start_stb <= 1'b0;
+            i2c_stop_stb  <= 1'b0;
 
             if (!en) begin
                 // fully inert: hold decode state clear, drop sticky
@@ -250,6 +260,7 @@ module i2c_decode (
                     prev_sda <= da;
                 end else begin
                     if (start_ev) begin
+                        i2c_start_stb <= 1'b1;   // txn boundary marker (repeated START too)
                         // faithful flush of a completed-but-un-ACKed byte
                         if (pend) begin
                             emit_stb   <= 1'b1;
@@ -268,6 +279,7 @@ module i2c_decode (
                         val        <= 8'd0;
                         pend       <= 1'b0;
                     end else if (stop_ev) begin
+                        i2c_stop_stb <= 1'b1;    // txn boundary marker
                         if (pend) begin
                             emit_stb   <= 1'b1;
                             emit_byte  <= pendVal;

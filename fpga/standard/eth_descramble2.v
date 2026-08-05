@@ -50,7 +50,8 @@ module eth_descramble2 #(
     output reg        out_valid,  // 1 = out_bits valid
     output reg [1:0]  out_nbits,  // 0..2 descrambled bits out
     output reg [1:0]  out_bits,   // bit0 = earliest descrambled (plain) NRZ bit
-    output reg        locked      // 1 once idle-lock verified; sticky until rst/!en
+    output reg        locked,     // 1 once idle-lock verified; sticky until rst/!en
+    output reg        lock_lost   // 1-clk pulse: a VERIFY->HUNT (idle-lock lost) step
 );
     // FSM states (identical encoding to eth_descramble.v).
     localparam [1:0] S_HUNT   = 2'd0,
@@ -135,7 +136,9 @@ module eth_descramble2 #(
             out_nbits <= 2'd0;
             out_bits  <= 2'd0;
             locked    <= 1'b0;
+            lock_lost <= 1'b0;
         end else begin
+            lock_lost <= 1'b0;   // 1-clk pulse; default low each cycle
             proc = in_valid && (in_nbits != 2'd0);
             if (!proc) begin
                 out_valid <= 1'b0;
@@ -145,10 +148,14 @@ module eth_descramble2 #(
                 // step bit 0 (earliest)
                 r0        = dstep(state, lfsr, cnt, locked, in_bits[0]);
                 b0out     = r0[0];
+                // lock-lost = a VERIFY(pre)->HUNT(post) transition in this step.
+                if ((state == S_VERIFY) && (r0[20:19] == S_HUNT)) lock_lost <= 1'b1;
                 if (in_nbits >= 2'd2) begin
                     // step bit 1 from the post-bit-0 state
                     r1       = dstep(r0[20:19], r0[18:8], r0[7:2], r0[1], in_bits[1]);
                     b1out    = r1[0];
+                    // lock-lost in the second unrolled step (r0-state -> r1-state).
+                    if ((r0[20:19] == S_VERIFY) && (r1[20:19] == S_HUNT)) lock_lost <= 1'b1;
                     fs_state  = r1[20:19];
                     fs_lfsr   = r1[18:8];
                     fs_cnt    = r1[7:2];

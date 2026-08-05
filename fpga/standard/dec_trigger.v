@@ -77,6 +77,8 @@ module dec_trigger (
     input  wire        sel_spi,
     input  wire        sel_eth,
     input  wire        eth_sfd,      // eth_sfd_seen raw pulse (ETH frame start)
+    input  wire        i2c_start,    // i2c_decode START pulse (transaction begin)
+    input  wire        i2c_stop,     // i2c_decode STOP  pulse (transaction end)
 
     // ---- configuration ----
     input  wire        trig_en,      // dec_trigen (dec_cfg[8])
@@ -178,14 +180,67 @@ module dec_trigger (
     end
 
     // =====================================================================
-    // MODE 3 — ADDR/FIELD
-    //   I2C : compare {addr7,rw} on the ADDRESS symbol (flags[1]==1).
+    // MODE 3 — ADDR/FIELD  (+ optional I2C in-transaction DATA sequence)
+    //   I2C addr-only (i2c_seq_n==0): compare {addr7,rw} on the ADDRESS symbol
+    //     (flags[1]==1) — byte-for-byte identical to the legacy mode-3 path.
+    //   I2C addr+SEQUENCE (i2c_seq_n>0): the address symbol only ARMS (it does
+    //     NOT fire); the trigger then requires a CONTIGUOUS data-byte sequence of
+    //     length i2c_seq_n ({seq_b1[,seq_b2]}) WITHIN THE SAME transaction —
+    //     bounded by i2c_start / i2c_stop / the next address — mirroring
+    //     serialtrig.matchI2C (addr+RW recovery via addr_mask bit0, data-only
+    //     counting, adjacency = consecutive data bytes in the transaction).
     //   ETH : fire on SFD (== the current ETH trigger; strict superset).
+    //
+    //   i2c_seq_n REUSES the mode-3-FREE seqlen_cfg field (dec_cfg[15:14]; only
+    //   mode 2 used it): 0 => addr-only, 1 => addr + 1 data byte (== seq_b1),
+    //   2/3 => addr + 2 contiguous data bytes {seq_b1,seq_b2}.  seqlen_cfg==0
+    //   keeps the addr-only path byte-identical to today.  NO new selector:
+    //   TESTGEN 0x68 supplies the data bytes, MATCH 0x48 stays addr_field/
+    //   addr_mask.  APP CONTRACT: when arming addr-only, write seqlen_cfg=0.
     // =====================================================================
-    wire mode3_i2c = m_addr & sel_i2c & emit_stb & emit_flags[1] & trig_en &
-                     ((emit_byte & match_mask) == (match_pattern & match_mask));
-    wire mode3_eth = m_addr & sel_eth & trig_en & eth_sfd;
+    wire [1:0] i2c_seq_n = seqlen_cfg;                 // 0 => addr-only (legacy)
+    wire addr_hit = ((emit_byte & match_mask) == (match_pattern & match_mask));
+    wire i2c_addr_ev = m_addr & sel_i2c & emit_stb &  emit_flags[1]; // ADDRESS symbol
+    wire i2c_data_ev = m_addr & sel_i2c & emit_stb & ~emit_flags[1]; // DATA symbol
+
+    // per-transaction arm + 1-deep data history (window reset on start/stop/addr)
+    reg        addr_matched;   // this transaction's address matched (armed)
+    reg [7:0]  sd_prev;        // most-recent data byte in this transaction
+    reg [1:0]  dcount;         // # data bytes seen since arm (saturates at 2)
+
+    // contiguous data-sequence hit evaluated AT the current data byte
+    wire seq_n1_hit = (emit_byte == seq_b1);
+    wire seq_n2_hit = (dcount >= 2'd1) & (sd_prev == seq_b1) & (emit_byte == seq_b2);
+    wire i2c_seq_hit = (i2c_seq_n == 2'd1) ? seq_n1_hit : seq_n2_hit; // n>=2 -> 2-byte
+
+    wire mode3_i2c_addronly = i2c_addr_ev & trig_en & (i2c_seq_n == 2'd0) & addr_hit;
+    wire mode3_i2c_seq      = i2c_data_ev & trig_en & (i2c_seq_n != 2'd0)
+                              & addr_matched & i2c_seq_hit;
+    wire mode3_i2c  = mode3_i2c_addronly | mode3_i2c_seq;
+    wire mode3_eth  = m_addr & sel_eth & trig_en & eth_sfd;
     wire mode3_trig = mode3_i2c | mode3_eth;
+
+    // transaction tracker.  START/STOP (and each new address) reset the data
+    // window; the address symbol (re)arms on a match.  A coincident STOP/START
+    // flush-emit still fires COMBINATIONALLY off the pre-reset state (the flushed
+    // byte belongs to the ending txn), then the boundary reset wins in the
+    // register so a stale byte can never bridge two transactions.
+    always @(posedge clk) begin
+        if (rst | ~en) begin
+            addr_matched <= 1'b0; sd_prev <= 8'd0; dcount <= 2'd0;
+        end else if (sel_i2c) begin
+            if (i2c_start | i2c_stop) begin
+                addr_matched <= 1'b0;
+                dcount       <= 2'd0;
+            end else if (i2c_addr_ev) begin
+                addr_matched <= addr_hit;   // arm/disarm on this address
+                dcount       <= 2'd0;       // fresh data window
+            end else if (i2c_data_ev) begin
+                sd_prev <= emit_byte;
+                if (dcount < 2'd2) dcount <= dcount + 2'd1;
+            end
+        end
+    end
 
     // =====================================================================
     // combine the active mode + sticky latch

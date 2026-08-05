@@ -37,6 +37,17 @@ const (
 // (SEL_BURST << 1). EDMA reads a fixed source, so no fabric alias is needed.
 var burstPortPhys = uint32(cs1PhysBase + int(iface.SelBURST)<<1)
 
+// decPortPhys is the physical address of the in-fabric decode-FIFO drain port
+// (DEC_BYTE, 0x7c): CS1 base + (0x7c << 1). A hand-decoded spare selector (not in
+// the schema iface table, so IFACE_BUILD_ID stays fixed). In wide-frame mode each
+// FIFO entry is popped as three consecutive 16-bit reads {w0={flags,byte},
+// w1=idx[15:0], w2={0,idx[23:16]}}; each read is one real CS1 GPMC cycle that
+// advances the fabric's phase and pops on the terminal sub-word — the SAME
+// single-CS1-transaction / cycle-gap discipline as the BURST drain.
+const selDecBytePort uint16 = 0x7c
+
+var decPortPhys = uint32(cs1PhysBase + int(selDecBytePort)<<1)
+
 type edmaDrainer struct {
 	cc       []byte   // /dev/mem map of the EDMA3CC register block
 	pm       *os.File // /proc/self/pagemap, kept open for per-drain phys resolution
@@ -222,6 +233,48 @@ func (e *edmaDrainer) drain(c1, c2 []uint8, n int) bool {
 	for i := 0; i < n; i++ {
 		c1[i] = buf[i*2+1] // hi byte = C1
 		c2[i] = buf[i*2]   // lo byte = C2
+	}
+	return true
+}
+
+// drainWords drains n 16-bit words from a FIXED auto-inc port (src physical addr)
+// into dst via EDMA — the same fixed-source / one-transfer-per-physical-page /
+// coherency (dcinv or fresh cache-cold buffer) discipline as drain(), but returning
+// raw little-endian words instead of the C1/C2 byte split. Used by the decode-FIFO
+// wide-frame drain (src = decPortPhys). Returns false on any EDMA failure so the
+// caller can fall back to the ioctl-per-word path. dst must have len >= n.
+func (e *edmaDrainer) drainWords(src uint32, dst []uint16, n int) bool {
+	if n <= 0 || n > e.maxWords {
+		return false
+	}
+	var buf []byte
+	var physes []uint32
+	if e.dcfd >= 0 {
+		buf, physes = e.buf, e.physes // reuse the persistent buffer; invalidate cache below
+	} else {
+		// no /dev/dcinv: fresh cache-cold buffer per drain (EDMA isn't cache-coherent).
+		var err error
+		buf, physes, err = allocPinned(e.pm, n*2)
+		if err != nil {
+			return false
+		}
+		defer syscall.Munmap(buf)
+	}
+	for base := 0; base < n; base += wordsPage {
+		w := wordsPage
+		if base+w > n {
+			w = n - base
+		}
+		if !e.runParam(src, physes[base/wordsPage], uint32(w)) {
+			return false
+		}
+	}
+	if e.dcfd >= 0 { // invalidate the drained range so the CPU reads fresh DMA data, not cache
+		arg := [2]uint32{uint32(uintptr(unsafe.Pointer(&buf[0]))), uint32(n * 2)}
+		syscall.Syscall(syscall.SYS_IOCTL, uintptr(e.dcfd), dcinvIOC, uintptr(unsafe.Pointer(&arg[0])))
+	}
+	for i := 0; i < n; i++ {
+		dst[i] = uint16(buf[i*2]) | uint16(buf[i*2+1])<<8 // little-endian: lo then hi
 	}
 	return true
 }

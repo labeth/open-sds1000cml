@@ -42,6 +42,7 @@ module tb_dec_trigger;
         .emit_stb(emit_stb), .emit_byte(emit_byte), .emit_idx(emit_idx),
         .emit_flags(emit_flags),
         .sel_i2c(sel_i2c), .sel_spi(sel_spi), .sel_eth(sel_eth), .eth_sfd(eth_sfd),
+        .i2c_start(1'b0), .i2c_stop(1'b0),
         .trig_en(trig_en), .trig_mode(trig_mode), .seqlen_cfg(seqlen_cfg),
         .match_pattern(match_pattern), .match_mask(match_mask),
         .seq_b1(seq_b1), .seq_b2(seq_b2), .adj_win(adj_win),
@@ -211,7 +212,7 @@ module tb_dec_trigger;
         // MODE 3 — ADDR/FIELD.
         //   I2C address symbol emit_byte={addr7,rw}; flags[1]=1 (KIND=addr).
         // ------------------------------------------------------------------
-        trig_mode = 2'd3; sel_i2c = 1;
+        trig_mode = 2'd3; sel_i2c = 1; seqlen_cfg = 2'd0; // addr-only => empty seq
         // addr 0x24 W => byte 0x48 ; exact match, mask 0xFF
         match_pattern = 8'h48; match_mask = 8'hFF;
         do_reset;

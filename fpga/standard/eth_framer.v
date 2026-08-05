@@ -44,6 +44,15 @@ module eth_framer #(
     input  wire        nib_end,    // 1-cycle: ESD (/T/R/) reached => frame complete
                                    //          (asserted the cycle AFTER the last nibble)
 
+    // ---- upstream error markers (per-frame sticky -> emit_flags[2:0] on frame_done)
+    // Both are 1-clk pulses; accumulated since the previous frame_done and reported
+    // on this frame's terminal (last FCS) octet. Tie 1'b0 if unused (align-error still
+    // works — it is derived internally). code_err = eth_4b5b(2) cg_err; lock_lost =
+    // eth_descramble(2) lock_lost. They only ever set bits [2:0] of the terminal FCS
+    // octet (which already has F_FCS=1 => data-only=0), so no DATA emit is affected.
+    input  wire        code_err,   // invalid 4B/5B code group seen (flags8[2])
+    input  wire        lock_lost,  // descrambler idle-lock lost      (flags8[0])
+
     // ---- emit to byte_fifo {flags,idx,byte} ----
     output reg         emit_stb,   // 1-cycle push strobe
     output reg  [7:0]  emit_byte,  // body octet (frame data, then FCS)
@@ -62,7 +71,11 @@ module eth_framer #(
     localparam integer F_FCS   = 5; // this octet is one of the 4 FCS octets
     localparam integer F_OK    = 4; // FCS verified good  (valid when F_END)
     localparam integer F_ERR   = 3; // FCS verified bad   (valid when F_END)
-    // bits [2:0] reserved (0) — spare for lock_lost/code_err from upstream.
+    // bits [2:0]: upstream decode error/marker flags, valid on the terminal (F_END)
+    // FCS octet. Data octets keep [2:0]=0 so the data-only predicate is preserved.
+    localparam integer F_CODE  = 2; // invalid 4B/5B code group seen in this frame
+    localparam integer F_ALIGN = 1; // frame misalignment: body ended on a half octet
+    localparam integer F_LOST  = 0; // descrambler idle-lock lost around this frame
 
     // IEEE 802.3 FCS running-register residue for a good frame||FCS (reflected,
     // pre-final-XOR). == 0x2144DF1C ^ 0xFFFFFFFF.
@@ -101,6 +114,12 @@ module eth_framer #(
     reg [2:0]  pcnt;      // occupancy 0..4
     reg [2:0]  flush_i;   // flush position
 
+    // per-frame error accumulators (set during the frame, reported on the terminal
+    // FCS octet, then cleared for the next frame). code/lost are OR'd from the 1-clk
+    // upstream pulses since the previous frame_done; align is set at ESD if the body
+    // ended on a half octet (odd nibble count => framer misalignment).
+    reg fe_code, fe_align, fe_lost;
+
     wire [7:0] asm_byte = {nib, lo_nib};        // low-nibble-first assembly
     wire       fcs_good = (crc == CRC_RESIDUE); // verdict once all body octets fed
 
@@ -122,7 +141,16 @@ module eth_framer #(
             emit_byte  <= 8'd0;
             emit_idx   <= 24'd0;
             fcs_ok_o   <= 1'b0;
+            fe_code  <= 1'b0;
+            fe_align <= 1'b0;
+            fe_lost  <= 1'b0;
         end else begin
+            // Accumulate upstream code/lock pulses since the last frame_done. The
+            // terminal-octet clear in S_FLUSH is procedurally later, so it dominates
+            // on the (clean-traffic-impossible) same-cycle collision.
+            fe_code <= fe_code | code_err;
+            fe_lost <= fe_lost | lock_lost;
+
             case (state)
             // -------------------------------------------------------------
             S_HUNT: begin
@@ -174,6 +202,11 @@ module eth_framer #(
                 if (nib_end) begin
                     // ESD: p0..p(pcnt-1) hold the trailing FCS octets; drain them.
                     // (pcnt==0 only on a body with no octets — nothing to flush.)
+                    // MISALIGNMENT: a well-formed body is an integral number of
+                    // octets => an even nibble count => phase==0 at ESD. phase==1
+                    // means the body ended on a dangling half octet (odd nibbles) =>
+                    // framer misalignment. Flag it for this frame (emit_flags[1]).
+                    if (phase) fe_align <= 1'b1;
                     flush_i <= 3'd0;
                     state   <= (pcnt == 3'd0) ? S_HUNT : S_FLUSH;
                     if (pcnt == 3'd0) pre_cnt <= 6'd0;
@@ -188,13 +221,22 @@ module eth_framer #(
                 byte_idx  <= byte_idx + 24'd1;
                 p0 <= p1; p1 <= p2; p2 <= p3;
                 if (flush_i == (pcnt - 3'd1)) begin
-                    // last FCS octet: attach frame_end + verdict
+                    // last FCS octet: attach frame_end + verdict + upstream error
+                    // summary in the spare bits [2:0]. This octet already carries
+                    // F_FCS=1 (data-only=0), so adding [2:0] leaves the data-only
+                    // predicate and every DATA octet byte-identical.
                     emit_flags <= (8'd1 << F_END) | (8'd1 << F_FCS) |
-                                  (fcs_good ? (8'd1 << F_OK) : (8'd1 << F_ERR));
+                                  (fcs_good ? (8'd1 << F_OK) : (8'd1 << F_ERR)) |
+                                  (fe_code  ? (8'd1 << F_CODE)  : 8'd0) |
+                                  (fe_align ? (8'd1 << F_ALIGN) : 8'd0) |
+                                  (fe_lost  ? (8'd1 << F_LOST)  : 8'd0);
                     frame_done <= 1'b1;
                     fcs_ok_o   <= fcs_good;
                     state      <= S_HUNT;
                     pre_cnt    <= 6'd0;
+                    // clear per-frame accumulators for the next frame (dominates the
+                    // blanket accumulate above on a same-cycle pulse).
+                    fe_code <= 1'b0; fe_align <= 1'b0; fe_lost <= 1'b0;
                 end else begin
                     emit_flags <= (8'd1 << F_FCS);
                     flush_i    <= flush_i + 3'd1;

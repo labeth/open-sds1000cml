@@ -209,6 +209,18 @@ type Stats struct {
 	SerialMatches int64 `json:"serial_matches,omitempty"` // frames that matched the pattern
 	SerialSet     bool  `json:"serial_set,omitempty"`     // a match pattern is configured
 
+	// In-fabric decode+trigger status mirror (fabrictrig.go). Populated only
+	// while the fabric path is armed; the FPGA does the decode+trigger.
+	SerialFabric      bool  `json:"serial_fabric,omitempty"`       // fabric path requested
+	SerialFabArmed    bool  `json:"serial_fab_armed,omitempty"`    // decode+trigger registers are armed
+	SerialFabProtoOK  bool  `json:"serial_fab_proto_ok,omitempty"` // proto is fabric-decodable (else software fallback)
+	SerialFabMode     int   `json:"serial_fab_mode,omitempty"`     // resolved trig_mode 0 byte/1 err/2 seq/3 addr
+	SerialFabMatched  bool  `json:"serial_fab_matched,omitempty"`  // sticky: pattern fired since arm
+	SerialFabByte     int   `json:"serial_fab_byte,omitempty"`     // anchoring byte at the match
+	SerialFabFill     int   `json:"serial_fab_fill,omitempty"`     // decoded bytes queued at last poll
+	SerialFabOverflow bool  `json:"serial_fab_overflow,omitempty"` // FIFO dropped bytes since arm
+	SerialFabBytes    []int `json:"serial_fab_bytes,omitempty"`    // most-recent drained decoded bytes
+
 	// FRA / Bode plot (bode.go)
 	BodeMode     int     `json:"bode_mode,omitempty"`      // 0 off, 1 armed
 	BodePoints   int     `json:"bode_points,omitempty"`    // accumulated curve size
@@ -314,8 +326,12 @@ type Engine struct {
 	serialMatches atomic.Int64
 	serialHeld    int // engine goroutine only: AUTO liveness fallback counter
 	ser           serialState
-	bodeMode      atomic.Int32 // FRA (Bode) accumulation armed (bode.go)
-	bode          bodeState
+	// in-fabric decode+trigger (fabrictrig.go): when set, the FPGA decodes and
+	// triggers; the engine arms it + mirrors its status instead of software-decoding.
+	serialFabric atomic.Bool
+	fabTrig      *FabricTrig
+	bodeMode     atomic.Int32 // FRA (Bode) accumulation armed (bode.go)
+	bode         bodeState
 
 	// mu guards the command shadows and the stats mirror. Setters record and
 	// return; only the owner touches the bus (spec 09 §1). Bus writes happen
@@ -388,6 +404,17 @@ type Engine struct {
 	rollPos                    int
 	rollSnaps1, rollSnaps2     [][]uint8
 
+	// In-fabric decode+trigger, owner-goroutine only (fabrictrig.go). Tracks the
+	// last-armed register image so re-arm happens only on a config/band change
+	// (a bare re-arm would wipe the sticky match + FIFO), plus the match-edge
+	// detector and the drain scratch.
+	fabArmed       bool
+	fabRegs        fabricRegs
+	fabSPBLo       uint16
+	fabSPBHi       uint16
+	fabPrevMatched bool
+	fabBytes       []DecodedByte
+
 	// ETS state (spec 04 §3): persistent phase-interleave accumulator.
 	etsOn                    bool
 	etsSum1, etsSum2         []float64
@@ -442,6 +469,7 @@ func New(cfg Config) *Engine {
 		done:      make(chan struct{}),
 		matrixReq: make(chan chan [5]uint16, 4),
 	}
+	e.fabTrig = NewFabricTrig(cfg.Bus) // in-fabric decode+trigger driver (owner-goroutine only)
 	// Tuning defaults. The owned FSM is a clean program → arm → wait-on-real-DONE →
 	// halt → burst-drain → re-arm cycle: with a trustworthy HW trigger and a
 	// static-freeze M9K there is no half-record to work around, so the vendor
@@ -585,6 +613,7 @@ func (e *Engine) Snapshot() Stats {
 	e.zm.mu.Unlock()
 	s.SerialMode = int(e.serialMode.Load())
 	s.SerialMatches = e.serialMatches.Load()
+	s.SerialFabric = e.serialFabric.Load() // reflect the flag even before the loop services it
 	e.ser.mu.Lock()
 	s.SerialSet = !e.ser.params.empty()
 	e.ser.mu.Unlock()

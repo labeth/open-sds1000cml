@@ -63,6 +63,12 @@ type SerialParams struct {
 	Addr  int   `json:"addr"`  // i2c 7-bit address; <0 = any
 	RW    int   `json:"rw"`    // i2c: 0=write 1=read 2=any
 	Bytes []int `json:"bytes"` // data byte sequence to find (empty = any transaction/byte)
+
+	// In-fabric decode+trigger (fabrictrig.go). Additive; all default-zero, so an
+	// unset SerialParams behaves EXACTLY as before (software path).
+	Fabric  bool `json:"fabric"`  // arm the FPGA decode+trigger instead of decoding in software
+	ErrTrig bool `json:"errTrig"` // fabric mode 1: trigger on a frame/parity/NAK/FCS error
+	ErrMask int  `json:"errMask"` // fabric mode 1: which error flags fire (0 => 0xFF = any)
 }
 
 func (p SerialParams) empty() bool { return p.Proto == 0 }
@@ -74,13 +80,23 @@ type serialState struct {
 	params SerialParams
 }
 
-// SetSerialParams installs the match config (copies Bytes).
+// SetSerialParams installs the match config (copies Bytes). The Fabric flag on
+// the params is the single source of truth for the implementation selector, so
+// it also drives the serialFabric atomic the loop reads.
 func (e *Engine) SetSerialParams(p SerialParams) {
 	p.Bytes = append([]int(nil), p.Bytes...)
 	e.ser.mu.Lock()
 	e.ser.params = p
 	e.ser.mu.Unlock()
+	e.serialFabric.Store(p.Fabric)
 }
+
+// SetSerialFabric selects the trigger IMPLEMENTATION: true routes decode+trigger
+// into the FPGA fabric (fabrictrig.go), false keeps the software publish-gate
+// (serialQualify). It only takes effect while the serial trigger is armed and
+// the protocol is fabric-decodable (UART/I2C/SPI); otherwise the engine
+// transparently falls back to software so nothing silently stops triggering.
+func (e *Engine) SetSerialFabric(on bool) { e.serialFabric.Store(on) }
 
 // SetSerialMode arms/disarms the serial trigger (SerialOff/SerialTrigger).
 func (e *Engine) SetSerialMode(m int) {

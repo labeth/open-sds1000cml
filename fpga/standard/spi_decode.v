@@ -58,8 +58,14 @@
 //   where the reset is a no-op, so any large gapreset is Bytes-exact there; the
 //   two mid-word cases need the correct loaded value.
 //
-//  * SYMBOL ENCODING. emit_flags[1:0]=00 for every SPI word. One FIFO entry per
-//    completed 8-bit word; Result.Bytes ≡ every drained entry in order.
+//  * SYMBOL ENCODING. emit_flags[1:0]=00 for every completed 8-bit DATA word.
+//    One FIFO entry per completed word; on CLEAN traffic Result.Bytes ≡ every
+//    drained entry in order. A NON-DATA framing-fault MARKER (emit_flags[0]=1,
+//    byte=discarded partial) is emitted ONLY when a mid-word idle gap discards a
+//    1..7-bit partial word (incomplete-word / CS-deassert-mid-word); it never
+//    occurs on clean streams (bc==0 at every gap), keeps flags[1:0]!=00 so the
+//    data-only predicate excludes it, and lets mode-1 ERROR trigger on SPI
+//    framing faults. DATA words keep flags==00 (data-only predicate preserved).
 //  * TRIGGER fires on EVERY completed word (data-only has no meaning for SPI):
 //    (word & match_mask) == (match_pattern & match_mask).
 //
@@ -100,7 +106,7 @@ module spi_decode (
     output reg         emit_stb,    // 1-clk pulse: a completed word
     output reg  [7:0]  emit_byte,   // decoded word value
     output reg  [23:0] emit_idx,    // column index of the word's first bit
-    output reg  [1:0]  emit_flags,  // always 00 for SPI
+    output reg  [1:0]  emit_flags,  // 00 for DATA words; [0]=1 framing-fault marker
     output reg         decode_trig, // 1-clk pulse into capture.v (word match)
     output reg         matched,     // sticky: a match has occurred since reset
     output reg  [7:0]  matched_byte // latched matching word
@@ -236,8 +242,24 @@ module spi_decode (
                 end else if (samp_edge) begin
                     bc = bitCount;
                     vv = val;
-                    // 1. gap reframe (discard partial word)
+                    // 1. gap reframe (discard partial word) -> FRAMING-FAULT MARKER.
+                    //    A sampling edge after a > gapreset idle while 1..7 bits are
+                    //    still pending means the previous word never completed
+                    //    (incomplete-word / CS-deassert-mid-word). Emit a NON-DATA
+                    //    marker for it (emit_flags[0]=1) so mode-1 ERROR can fire on
+                    //    SPI framing faults. DATA words are untouched (they still emit
+                    //    flags==2'b00), so the data-only predicate holds and the clean-
+                    //    traffic byte stream is byte-identical: on clean traffic bc==0
+                    //    at every gap boundary, so this marker branch never fires. The
+                    //    marker is a NEW emit where the old code silently dropped the
+                    //    partial word — no completed word can occur on this same edge
+                    //    (after the discard bc restarts at 0, so bc reaches 1 here,
+                    //    never 8), so emit_stb is driven exactly once this column.
                     if (gap_over && (bc != 4'd0)) begin
+                        emit_stb   <= 1'b1;
+                        emit_byte  <= vv;        // discarded partial bits (info only)
+                        emit_idx   <= wordStart; // first-bit column of the lost word
+                        emit_flags <= 2'b01;     // [0] = framing/bit-count fault marker
                         bc = 4'd0;
                         vv = 8'd0;
                     end

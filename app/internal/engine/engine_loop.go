@@ -66,7 +66,8 @@ func (e *Engine) Run() {
 
 	for !e.stopReq.Load() {
 		e.serviceCommands()
-		e.bumpFrames() // heartbeat advances every iteration, stopped or not
+		e.serviceFabricDecode() // keep the in-fabric decode+trigger armed to the current config
+		e.bumpFrames()          // heartbeat advances every iteration, stopped or not
 		if e.armBusy {
 			if gcCtl := e.tuneGcCtl.Load(); gcCtl != lastGcCtl {
 				lastGcCtl = gcCtl
@@ -350,22 +351,32 @@ func (e *Engine) oneFrame(norm bool) {
 	// unmatched LIVENESS frame every serialFallback holds (displayed, not observed).
 	serialMatched := true // true when serial is not armed → everything observes normally
 	if e.serialMode.Load() == SerialTrigger {
-		serialMatched = false
-		if publish { // only test frames that would otherwise publish
-			if matched, anchor := e.serialQualify(f, cols, f.SampleS); matched {
-				serialMatched = true
-				e.serialHeld = 0
-				e.serialMatches.Add(1)
-				if anchor >= 0 && anchor < cols {
-					edgeX = float64(anchor) // centre the matched byte
-					f.Trigd = true
-				}
-			} else {
-				e.serialHeld++
-				if norm || e.serialHeld < serialFallback {
-					publish = false
+		if e.fabArmed {
+			// FABRIC PATH: the FPGA already decoded+triggered this record in
+			// hardware (dec_trigger.v → capture.v), so every drained frame is a
+			// hardware match. Don't re-decode in software; pass it through. The
+			// match status/bytes are mirrored by serviceFabricDecode. (fabArmed is
+			// owner-goroutine-private and set only when serialFabric is on and the
+			// protocol is fabric-decodable; otherwise we fall through to software.)
+			serialMatched = true
+		} else {
+			serialMatched = false
+			if publish { // only test frames that would otherwise publish
+				if matched, anchor := e.serialQualify(f, cols, f.SampleS); matched {
+					serialMatched = true
+					e.serialHeld = 0
+					e.serialMatches.Add(1)
+					if anchor >= 0 && anchor < cols {
+						edgeX = float64(anchor) // centre the matched byte
+						f.Trigd = true
+					}
 				} else {
-					e.serialHeld = 0 // AUTO liveness: display it, but do not observe it
+					e.serialHeld++
+					if norm || e.serialHeld < serialFallback {
+						publish = false
+					} else {
+						e.serialHeld = 0 // AUTO liveness: display it, but do not observe it
+					}
 				}
 			}
 		}

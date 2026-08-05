@@ -27,6 +27,13 @@ type Bus interface {
 	// Write writes one 16-bit register. Schema-read-only selectors are refused
 	// by iface.Writable (CONF_DONE, every status/drain port, unknown sels).
 	Write(plane iface.Plane, sel, val uint16) error
+	// WriteSpare writes one of the hand-decoded, NON-schema decode-block
+	// selectors on CS1 (CFG/THR/SPB/MATCH/TESTGEN — see spareWritable). It is a
+	// deliberately narrow escape hatch: those selectors are additive in acq.v and
+	// intentionally absent from regs.vh (so IFACE_BUILD_ID stays fixed), which is
+	// exactly why the schema-guarded Write refuses them. Every other selector
+	// still goes through Write.
+	WriteSpare(sel, val uint16) error
 	// BurstInto drains n frozen record words from the single fixed auto-inc
 	// BURST port in one tight pass (hi byte = C1, lo byte = C2). Post-halt only;
 	// the port pops one word per read. c1,c2 must each have len >= n.
@@ -143,7 +150,7 @@ func setCS1CycleGap(delay uint32) error {
 	new6 := (old6 &^ uint32(0x00000F80)) | (delay << 8) | (1 << 7) // CYCLE2CYCLEDELAY[11:8]|CYCLE2CYCLESAMECSEN[7]
 	*c7 = old7 &^ uint32(1<<6)                                     // clear CSVALID before retiming
 	*c6 = new6
-	_ = *c6   // readback barrier
+	_ = *c6    // readback barrier
 	*c7 = old7 // restore CSVALID exactly
 	_ = *c7
 	return nil
@@ -224,6 +231,33 @@ func (d *Dev) Write(plane iface.Plane, sel, val uint16) error {
 	return nil
 }
 
+// spareWritable is the exact allowlist of hand-decoded, non-schema decode-block
+// write selectors WriteSpare permits: CFG(0x04) THR(0x08) SPB_LO(0x0c)
+// SPB_HI(0x1c) MATCH(0x48) TESTGEN(0x68), all CS1. Keeping it a closed set means
+// WriteSpare can never reach a schema read-only register, a CS3 selector, or an
+// undecoded address — it is strictly the additive decode block, nothing else.
+func spareWritable(sel uint16) bool {
+	switch sel {
+	case 0x04, 0x08, 0x0c, 0x1c, 0x48, 0x68:
+		return true
+	}
+	return false
+}
+
+// WriteSpare writes a hand-decoded decode-block selector on CS1, bypassing the
+// schema guard (which necessarily rejects these additive, non-schema selectors)
+// but only for the closed spareWritable allowlist.
+func (d *Dev) WriteSpare(sel, val uint16) error {
+	if !spareWritable(sel) {
+		return fmt.Errorf("bus: WriteSpare to non-spare selector cs1 sel %#04x", sel)
+	}
+	b := encode(uint8(iface.CS1), sel, val)
+	if err := d.ioctl(reqWrite, &b); err != nil {
+		return fmt.Errorf("bus: writespare cs1 sel %#04x: %w", sel, err)
+	}
+	return nil
+}
+
 // BurstInto drains the frozen record in one tight pass from the single fixed
 // auto-inc BURST port — no per-sample interface dispatch, no modulo, no port
 // cycling. Each read pops one word (hi byte C1, lo byte C2); the port
@@ -250,6 +284,29 @@ func (d *Dev) BurstInto(c1, c2 []uint8, n int) {
 		v, _ := d.Read(iface.CS1, iface.SelBURST)
 		c1[i] = uint8(v >> 8)
 		c2[i] = uint8(v)
+	}
+}
+
+// DrainDecodeWords drains n 16-bit words from the in-fabric decode-FIFO wide-frame
+// port (DEC_BYTE 0x7c) into dst, CPU-free via EDMA when available (falling back to
+// ioctl-per-word). Each read is ONE real CS1 GPMC transaction that advances the
+// fabric's wide-frame phase and pops the FIFO on the terminal sub-word — the SAME
+// single-CS1-transaction / cycle-gap discipline that makes the BURST drain byte-exact
+// (each read re-strobes nOE so exactly one pop happens; no GPMC-prefetch replay).
+//
+// The port must already be in wide-frame mode (decodestream.EnableWide sets the
+// additive SPB_HI[8] bit) and the caller must have re-anchored the phase to 0 with a
+// STATUS(0x4c) read immediately before this call, sizing n as 3*entries. dst len>=n.
+func (d *Dev) DrainDecodeWords(dst []uint16, n int) {
+	if d.edma != nil && d.edma.drainWords(decPortPhys, dst[:n], n) {
+		return
+	}
+	// IOCTL FALLBACK: one real GPMC transaction per read (same pop discipline; ~0.8
+	// MB/s). The mmap CPU path is never used for auto-inc ports (GPMC prefetch serves
+	// repeated reads of the fixed address without re-strobing, so it would not pop).
+	for i := 0; i < n; i++ {
+		v, _ := d.Read(iface.CS1, selDecBytePort)
+		dst[i] = v
 	}
 }
 

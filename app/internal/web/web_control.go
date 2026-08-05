@@ -46,8 +46,11 @@ func (s *Server) hZones(w http.ResponseWriter, r *http.Request) {
 }
 
 // hSerial installs the serial/protocol-trigger config (POST JSON = SerialParams:
-// {proto,chA,chB,baud,cpol,cpha,msb,addr,rw,bytes}). Arm/disarm is separate, via
-// /api/set {control:"serialmode"}. The byte pattern is clamped to 0..255.
+// {proto,chA,chB,baud,cpol,cpha,msb,addr,rw,bytes, fabric,errTrig,errMask}).
+// Arm/disarm is separate, via /api/set {control:"serialmode"}. The byte pattern
+// is clamped to 0..255. fabric=true routes decode+trigger into the FPGA fabric
+// (fabrictrig.go) for UART/I2C/SPI; it transparently falls back to the software
+// path for any other protocol.
 func (s *Server) hSerial(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "POST only", http.StatusMethodNotAllowed)
@@ -76,6 +79,7 @@ func (s *Server) hSerial(w http.ResponseWriter, r *http.Request) {
 	for i := range p.Bytes {
 		p.Bytes[i] = clampI(p.Bytes[i], 0, 255)
 	}
+	p.ErrMask = clampI(p.ErrMask, 0, 255) // fabric mode-1 error-flag mask
 	s.sc.SetSerialParams(p)
 	writeJSON(w, map[string]any{"ok": true})
 }

@@ -148,6 +148,11 @@ module acq (
     // issues those (it touches only 0x00/0x40/0x70) so it is unaffected.
     wire sel_is_decbyte  = (sel_q2_masked == 8'h7c);
     wire dec_rd_done     = cs1_low && (oe_q[2] == 1'b0) && (oe_q[1] == 1'b1) && sel_is_decbyte;
+    // STATUS (0x4c) read strobe. The host reads STATUS for `fill` immediately before
+    // each wide-frame drain, so this is the natural per-drain sync point: it re-anchors
+    // the wide-frame sub-word phase to 0. Non-popping (0x4c never pops the FIFO).
+    wire sel_is_decstat  = (sel_q2_masked == 8'h4c);
+    wire dec_status_rd_done = cs1_low && (oe_q[2] == 1'b0) && (oe_q[1] == 1'b1) && sel_is_decstat;
 
     // =======================================================================
     // 2) Control / configuration register file (written via the generated
@@ -235,11 +240,13 @@ module acq (
     reg [7:0]  dec_spb_hi = 8'h00;
     reg [15:0] dec_match  = 16'h0000;
     reg [15:0] dec_tg     = 16'h0000;
+    reg [7:0]  dec_canx   = 8'h00;   // CAN proto-extend byte: prev-free SPB_HI(0x1c)[15:8]
     always @(posedge clk) begin
         if (we_DEC_CFG)     dec_cfg    <= d_q2;
         if (we_DEC_THR)     dec_thr    <= d_q2;
         if (we_DEC_SPB_LO)  dec_spb_lo <= d_q2;
         if (we_DEC_SPB_HI)  dec_spb_hi <= d_q2[7:0];
+        if (we_DEC_SPB_HI)  dec_canx   <= d_q2[15:8];   // ADDITIVE: 0x1c[15:8] was discarded
         if (we_DEC_MATCH)   dec_match  <= d_q2;
         if (we_DEC_TESTGEN) dec_tg     <= d_q2;
     end
@@ -271,6 +278,12 @@ module acq (
     wire        sel_i2c     = (dec_proto == 2'd1);
     wire        sel_spi     = (dec_proto == 2'd2);
     wire        sel_eth     = (dec_proto == 2'd3);   // 100BASE-TX line-rate PHY decode
+    // CAN/CAN-FD proto-extend (ADDITIVE): SEL_DEC_SPB_HI(0x1c)[8] reinterprets the
+    // previously-DISCARDED upper byte of SPB_HI. dec_canx resets 0 and existing app
+    // code (fabricSPB) always writes 0x1c[15:8]=0, so can_ext==0 for every existing
+    // config => the 4 protos above are byte-for-byte identical. can_ext==1 selects CAN.
+    wire        can_ext     = dec_canx[0];             // 1 => CAN/CAN-FD decoder
+    wire        can_domlow  = dec_canx[1];             // dominantLow (standard CAN = 1)
 
     // ---- OPCODE decode -> single-cycle engine pulses ----
     // Full 16-bit compare against the generated payload macros (d_q2 is the
@@ -278,6 +291,22 @@ module acq (
     wire op_reset = we_OPCODE && (d_q2 == `OP_RESET);
     wire op_go    = we_OPCODE && (d_q2 == `OP_GO) && run_en;    // honored only while RUN
     wire op_halt  = we_OPCODE && (d_q2 == `OP_HALT);
+
+    // ---- WIDE-FRAME DRAIN ENABLE (ADDITIVE; previously-FREE SPB_HI[10]) -----------
+    // 0x1c (DEC_SPB_HI) latches dec_spb_hi<=d_q2[7:0] only; bits [15:8] were DISCARDED.
+    // Reuse d_q2[10] as the wide-frame drain enable. 0 => 0x7c is the legacy one-word
+    // pop {flags,byte} (byte-identical to today). 1 => 0x7c presents a 3-word frame per
+    // FIFO entry so the host reconstructs {flags,idx,byte}. INTEGRATION NOTE: relocated
+    // from bit8 to bit10 because item-7 CAN claims 0x1c[8]=can_ext and 0x1c[9]=can_domlow;
+    // bit10 keeps wide-frame and CAN proto-extend independent (dec_canx[2] is ignored by
+    // can_decode). The app writes SPB_HI[15:8]=0 on every trigger Arm (fabricSPB hi byte),
+    // so the live-trigger path always stays legacy; the streaming host sets bit10=1
+    // explicitly. Cleared on op_reset.
+    reg dec_wide = 1'b0;
+    always @(posedge clk) begin
+        if (op_reset)           dec_wide <= 1'b0;
+        else if (we_DEC_SPB_HI) dec_wide <= d_q2[10];
+    end
 
     // =======================================================================
     // 3) Arm-time joint pre/post clamp (C2): field-clamp each, then trim the
@@ -438,42 +467,18 @@ module acq (
                          : (raw_sel == 2'd1) ? adc_lane_q[31:16]
                          : (raw_sel == 2'd2) ? adc_lane_q[47:32]        // lane32 + new 33..47
                                              : raw_curated;             // curated CH2 lanes
-    // ===== M2: dual-clock fast-capture ring ============================================
-    // ENCODE = M2 160@0deg. Pack two consecutive CH1 samples into one 16-bit word ENTIRELY in the
-    // cap_clk (160) domain (clean pairing), store in a dual-clock RAM ring. Read at clk (80) a fixed
-    // half-ring (512) behind the write pointer. cap_clk = 2 x clk, phase-locked (job6: rock-stable 2:1),
-    // so read/write pointers advance in LOCKSTEP -> consecutive reads are consecutive pairs, and the
-    // half-ring offset guarantees the read never catches the write (no tear, no metastable resampling).
-    // cap_phase (xform[9:8]) tunes cap_clk into the ADC data-valid window. app unpacks 2 samples/word.
-    wire [7:0] ch1_comb = { adc_lane[3], adc_lane[0], adc_lane[1], adc_lane[11],
-                            adc_lane[9], adc_lane[12], adc_lane[6], adc_lane[5] }; // proven CH1 order
-    // DEPTH 512 (was 1024): the device is 46/46 M9K FULL at baseline (record 40 +
-    // envelope 4 + this ring 2). The interleave capture buffer needs >=1 M9K, and
-    // this diagnostic ring is the ONLY reclaimable block (record = app build-ID
-    // contract, envelope = 336 app columns need 2016/2048 words). Halving it frees
-    // exactly 1 M9K for il_capture(N=256). The ring stays a FUNCTIONAL dual-clock
-    // 160-pair capture — same pairing/lockstep, now a 512-deep half-ring (read
-    // offset +256). This is the single documented deviation from strict byte-exact
-    // M2-ring preservation, forced by the full device (see integration report).
-    // Force M9K (at 512-deep Quartus otherwise packs this into ~8k logic registers,
-    // overflowing LABs). 512x16 -> one M9K in 512x18 mode.
-    (* ramstyle = "M9K" *) reg  [15:0] cbuf [0:511];
-    reg  [8:0]  wa = 9'd0;
-    reg         pk = 1'b0;
-    reg  [7:0]  ev = 8'd0;
-    always @(posedge cap_clk) begin                 // FILL: pair in the fast domain, 1 word / 2 cycles
-        if (~pk) ev <= ch1_comb;
-        else begin cbuf[wa] <= {ev, ch1_comb}; wa <= wa + 1'b1; end
-        pk <= ~pk;
-    end
-    reg  [8:0]  ra = 9'd0;
-    reg  [15:0] cbuf_rd = 16'd0;
-    always @(posedge clk) begin ra <= ra + 1'b1; cbuf_rd <= cbuf[ra + 9'd256]; end  // READ: lockstep, half-ring behind
-    wire        fast_capmode = (xform_reg[13:12] == 2'd3);
-    wire        ddr_pack     = xform_reg[7];
-    wire [15:0] samp_eff = (fast_capmode && ddr_pack) ? cbuf_rd     // dual-clock 160 pair
-                         : raw_mode                   ? raw_word
-                                                      : samp;
+    // ===== M2 fast-capture ring RETIRED (ITEM 6: M9K reclaim) ==========================
+    // The dual-clock 160-pair diagnostic ring (cbuf, 512x16 = 1 M9K) was the ONLY
+    // reclaimable block on the 46/46-full device (record 40 = app build-ID contract;
+    // envelope 4 = 336 app columns need 2016/2048 words). Its block is reallocated to
+    // il_capture below, doubling the interleave record depth (N 256 -> 512).
+    //
+    // The retired path was reachable ONLY via XFORM_CTRL[13:12]==3 && XFORM_CTRL[7]==1
+    // (fast_capmode && ddr_pack) — a manual-poke diagnostic the app never programs (it
+    // leaves XFORM_CTRL at its 0x0003 reset). So for EVERY app-reachable state samp_eff
+    // is byte-identical before and after this edit; and whenever the interleave record
+    // is active (il_en=1) cap_word=il_word bypasses samp_eff entirely.
+    wire [15:0] samp_eff = raw_mode ? raw_word : samp;
     // cap_word/cap_tick feed capture + envelope. They are MUXed: when il_en the
     // interleave stream (il_capture) drives them; otherwise the spine, byte-exact.
     wire [15:0]        spine_word;
@@ -533,14 +538,13 @@ module acq (
     // Fills {c1a,c1b,c1c}/{c2a,c2b} at cap_clk200 (200 MHz) on op_go, then drains
     // 16-bit record words at clk (80 MHz) into cap_word/cap_tick (MUXed above).
     // arm=op_go; when il_en==0 it never arms and il_word/il_tick stay quiet.
-    // N=256 (not 1024): the capture record (~27 M9K), envelope (~16 M9K) and the
-    // M2-ring cbuf (2 M9K) already leave only ONE free M9K of the device's 46.
-    // A 256-deep x24 il buffer packs into a single 256x36-mode M9K, so it fits
-    // exactly. (512->2 M9K and 1024->3 M9K both overflow.) Depth is the only knob
-    // shrunk vs the standalone design; the fill-then-drain + unpack logic is
-    // identical, so this stays STRUCTURALLY complete. Deeper interleave capture
-    // would require reclaiming M9K from the record buffer (out of scope here).
-    il_capture #(.N(256), .AW(8)) u_il_capture (
+    // N=512 (ITEM 6): the M2 fast-capture ring (cbuf, 1 M9K) was retired above and its
+    // block reallocated here, so the interleave ring is now 512-deep = 2 M9K
+    // (512x32 -> two M9K in 512x18 mode; deterministic — 512-deep caps at x18/block,
+    // so 32-bit entries force exactly 2 blocks regardless of de-interleave bit-fill).
+    // Budget after reclaim: record 40 + envelope 4 + il_capture 2 = 46/46 (exact fit).
+    // POST=384/PRE=128 keeps today's 1:3 pre/post window shape at 2x depth.
+    il_capture #(.N(512), .AW(9), .POST(384)) u_il_capture (
         .clk      (clk),
         .cap_clk  (cap_clk200),
         .arm      (op_go),
@@ -603,16 +607,38 @@ module acq (
     // UART taps its single source channel (unchanged). I2C/SPI slice TWO channels:
     //   dec_a = SCL / CLK   (CH1 by default, or CH2 when dec_chswap)
     //   dec_b = SDA / DATA  (CH2 by default, or CH1 when dec_chswap)
-    wire [7:0]  dec_sample_code = dec_srcch  ? cap_word[7:0]  : cap_word[15:8];
-    wire [7:0]  dec_a           = dec_chswap ? cap_word[7:0]  : cap_word[15:8];
-    wire [7:0]  dec_b           = dec_chswap ? cap_word[15:8] : cap_word[7:0];
+    // ---- FABRIC PATTERN-GEN (dec_patterngen.v) : fault-injection stimulus ----
+    // Master enable = the EXISTING tg_en (dec_cfg[9]); when armed it REPLACES the
+    // per-decoder internal test-gens (their .tg_en is tied 0 below) and drives the
+    // slicer code lines with clean+faulty patterns. pg_en=0 => today's wiring
+    // verbatim (gen-off == today). No schema/selector change.
+    wire        pg_en = dec_tgen;
+    wire [7:0]  pg_uart_code, pg_a_code, pg_b_code;
+    dec_patterngen u_dec_patterngen (
+        .clk           (clk),
+        .cap_tick      (cap_tick),
+        .en            (pg_en),
+        .proto         (dec_proto),      // dec_cfg[11:10]: 0=UART 1=I2C 2=SPI 3=ETH
+        .spb           (dec_spb),        // Q16.8; UART bit width = spb[15:8]
+        .gen_uart_code (pg_uart_code),
+        .gen_a_code    (pg_a_code),
+        .gen_b_code    (pg_b_code)
+    );
+
+    wire [7:0]  dec_sample_code = pg_en ? pg_uart_code
+                                : dec_srcch  ? cap_word[7:0]  : cap_word[15:8];
+    wire [7:0]  dec_a           = pg_en ? pg_a_code
+                                : dec_chswap ? cap_word[7:0]  : cap_word[15:8];
+    wire [7:0]  dec_b           = pg_en ? pg_b_code
+                                : dec_chswap ? cap_word[15:8] : cap_word[7:0];
 
     // per-engine enables: exactly one is ever hot (dec_proto is 2 bits, sel_spi
     // covers proto==2, proto==3 leaves all three off). dec_en=0 => all off.
-    wire uart_en = dec_en & sel_uart;
-    wire i2c_en  = dec_en & sel_i2c;
-    wire spi_en  = dec_en & sel_spi;
-    wire eth_en  = dec_en & sel_eth;   // 100BASE-TX line-rate PHY decode gate
+    wire uart_en = dec_en & sel_uart & ~can_ext;   // ~can_ext: byte-identical when can_ext==0
+    wire i2c_en  = dec_en & sel_i2c  & ~can_ext;
+    wire spi_en  = dec_en & sel_spi  & ~can_ext;
+    wire eth_en  = dec_en & sel_eth  & ~can_ext;   // 100BASE-TX line-rate PHY decode gate
+    wire can_en  = dec_en & can_ext;               // CAN/CAN-FD (proto-extend, additive)
 
     // ---- per-engine emit interfaces (uniform across the three front-ends) ----
     wire        uart_emit_stb;   wire [7:0] uart_emit_byte;  wire [23:0] uart_emit_idx;
@@ -621,9 +647,13 @@ module acq (
     wire        i2c_emit_stb;    wire [7:0] i2c_emit_byte;   wire [23:0] i2c_emit_idx;
     wire [1:0]  i2c_emit_flags;  wire i2c_trig;              wire i2c_matched;
     wire [7:0]  i2c_matched_byte;
+    wire        i2c_start_stb, i2c_stop_stb;  // I2C txn markers -> dec_trigger mode-3
     wire        spi_emit_stb;    wire [7:0] spi_emit_byte;   wire [23:0] spi_emit_idx;
     wire [1:0]  spi_emit_flags;  wire spi_trig;              wire spi_matched;
     wire [7:0]  spi_matched_byte;
+    wire        can_emit_stb;    wire [7:0] can_emit_byte;   wire [23:0] can_emit_idx;
+    wire [7:0]  can_emit_flags;  wire can_trig;              wire can_matched;
+    wire [7:0]  can_matched_byte;
 
     uart_decode u_uart_decode (
         .clk          (clk),
@@ -637,7 +667,7 @@ module acq (
         .parity_cfg   (dec_par),
         .hyst_en      (1'b0),                 // oracle-exact: pure-threshold slicer
         .hyst_band    (8'd0),
-        .tg_en        (dec_tgen),
+        .tg_en        (1'b0),            // superseded by dec_patterngen (muxed on sample_code)
         .tg_byte      (dec_tg[7:0]),
         .trig_en      (dec_trigen),
         .match_pattern(dec_match[7:0]),
@@ -663,7 +693,7 @@ module acq (
         .en           (i2c_en),
         .scl_thr      (dec_thr_a),
         .sda_thr      (dec_thr_b),
-        .tg_en        (dec_tgen),
+        .tg_en        (1'b0),            // superseded by dec_patterngen (muxed on scl/sda)
         .trig_en      (dec_trigen),
         .match_pattern(dec_match[7:0]),
         .match_mask   (dec_match[15:8]),
@@ -673,7 +703,9 @@ module acq (
         .emit_flags   (i2c_emit_flags),
         .decode_trig  (i2c_trig),
         .matched      (i2c_matched),
-        .matched_byte (i2c_matched_byte)
+        .matched_byte (i2c_matched_byte),
+        .i2c_start_stb(i2c_start_stb),
+        .i2c_stop_stb (i2c_stop_stb)
     );
 
     // ---- IN-FABRIC SPI DECODE (ADDITIVE, gated spi_en=dec_en&&proto==SPI) ----
@@ -691,7 +723,7 @@ module acq (
         .cpha         (spi_cpha),
         .msb          (spi_msb),
         .gapreset     (dec_gapreset),
-        .tg_en        (dec_tgen),
+        .tg_en        (1'b0),            // superseded by dec_patterngen (muxed on clk/data)
         .tg_word      (dec_tg[7:0]),
         .trig_en      (dec_trigen),
         .match_pattern(dec_match[7:0]),
@@ -703,6 +735,31 @@ module acq (
         .decode_trig  (spi_trig),
         .matched      (spi_matched),
         .matched_byte (spi_matched_byte)
+    );
+
+    // ---- IN-FABRIC CAN / CAN-FD DECODE (ADDITIVE, gated can_en=dec_en&&can_ext) ----
+    // Proto-extend can_ext = SEL_DEC_SPB_HI(0x1c)[8]. Single sliced line =
+    // dec_sample_code (the UART source-channel tap). dom_low = 0x1c[9]. Same emit
+    // shape as the others; 8-bit emit_flags carry the CAN error/FD bits (like ETH).
+    can_decode u_can_decode (
+        .clk          (clk),
+        .rst_n        (1'b1),
+        .cap_tick     (cap_tick),
+        .sample_code  (dec_sample_code),
+        .en           (can_en),
+        .thr8         (dec_thr8),
+        .spb          (dec_spb),
+        .dom_low      (can_domlow),
+        .trig_en      (dec_trigen),
+        .match_pattern(dec_match[7:0]),
+        .match_mask   (dec_match[15:8]),
+        .emit_stb     (can_emit_stb),
+        .emit_byte    (can_emit_byte),
+        .emit_idx     (can_emit_idx),
+        .emit_flags   (can_emit_flags),
+        .decode_trig  (can_trig),
+        .matched      (can_matched),
+        .matched_byte (can_matched_byte)
     );
 
     // ---- IN-FABRIC 100BASE-TX PHY DECODE (ADDITIVE, gated eth_en=dec_en&&proto==ETH) ----
@@ -759,16 +816,16 @@ module acq (
     // ---- PROTOCOL DISPATCH: mux the active engine into the SHARED sinks ----
     // Each engine is inert unless its own en is hot, so the losing engines drive
     // emit_stb=0/decode_trig=0; the mux simply selects the active one's outputs.
-    wire        dec_emit_stb   = sel_eth ? eth_emit_stb   : sel_i2c ? i2c_emit_stb   : sel_spi ? spi_emit_stb   : uart_emit_stb;
-    wire [7:0]  dec_emit_byte  = sel_eth ? eth_emit_byte  : sel_i2c ? i2c_emit_byte  : sel_spi ? spi_emit_byte  : uart_emit_byte;
-    wire [23:0] dec_emit_idx   = sel_eth ? eth_emit_idx   : sel_i2c ? i2c_emit_idx   : sel_spi ? spi_emit_idx   : uart_emit_idx;
+    wire        dec_emit_stb   = can_ext ? can_emit_stb  : sel_eth ? eth_emit_stb   : sel_i2c ? i2c_emit_stb   : sel_spi ? spi_emit_stb   : uart_emit_stb;
+    wire [7:0]  dec_emit_byte  = can_ext ? can_emit_byte : sel_eth ? eth_emit_byte  : sel_i2c ? i2c_emit_byte  : sel_spi ? spi_emit_byte  : uart_emit_byte;
+    wire [23:0] dec_emit_idx   = can_ext ? can_emit_idx  : sel_eth ? eth_emit_idx   : sel_i2c ? i2c_emit_idx   : sel_spi ? spi_emit_idx   : uart_emit_idx;
     wire [1:0]  dec_emit_flags = sel_i2c ? i2c_emit_flags : sel_spi ? spi_emit_flags : uart_emit_flags;
     // ETH carries the framer's full 8-bit flags (start/end/fcs/ok/err); the UART/I2C/SPI
     // 2-bit flags zero-extend, so the shared 8-bit sink is byte-identical for them.
-    wire [7:0]  dec_emit_flags8 = sel_eth ? eth_emit_flags : {6'd0, dec_emit_flags};
-    wire        dec_trig_pulse = sel_eth ? eth_trig        : sel_i2c ? i2c_trig       : sel_spi ? spi_trig       : uart_trig;
-    wire        dec_matched_sticky = sel_i2c ? i2c_matched      : sel_spi ? spi_matched      : uart_matched;
-    wire [7:0]  dec_matched_byte   = sel_i2c ? i2c_matched_byte : sel_spi ? spi_matched_byte : uart_matched_byte;
+    wire [7:0]  dec_emit_flags8 = can_ext ? can_emit_flags : sel_eth ? eth_emit_flags : {6'd0, dec_emit_flags};
+    wire        dec_trig_pulse = can_ext ? can_trig : sel_eth ? eth_trig        : sel_i2c ? i2c_trig       : sel_spi ? spi_trig       : uart_trig;
+    wire        dec_matched_sticky = can_ext ? can_matched      : sel_i2c ? i2c_matched      : sel_spi ? spi_matched      : uart_matched;
+    wire [7:0]  dec_matched_byte   = can_ext ? can_matched_byte : sel_i2c ? i2c_matched_byte : sel_spi ? spi_matched_byte : uart_matched_byte;
 
     // ---- EXTENDED DECODE TRIGGER (dec_trigger.v) --------------------------------
     // Drop-in over the inline byte-match trigger. In trig_mode==0 (reset/default)
@@ -795,10 +852,12 @@ module acq (
         .emit_byte      (dec_emit_byte),
         .emit_idx       (dec_emit_idx),
         .emit_flags     (dec_emit_flags8),
-        .sel_i2c        (sel_i2c),
-        .sel_spi        (sel_spi),
-        .sel_eth        (sel_eth),
+        .sel_i2c        (sel_i2c & ~can_ext),
+        .sel_spi        (sel_spi & ~can_ext),
+        .sel_eth        (sel_eth & ~can_ext),
         .eth_sfd        (eth_sfd_seen),
+        .i2c_start      (i2c_start_stb),
+        .i2c_stop       (i2c_stop_stb),
         .trig_en        (dec_trigen),
         .trig_mode      (dec_cfg[13:12]),          // 0=byte 1=err 2=seq 3=addr (was FREE)
         .seqlen_cfg     (dec_cfg[15:14]),          // N = seqlen_cfg+1 (was FREE)
@@ -815,6 +874,20 @@ module acq (
         .matched_byte   (dec_matched_byte_out)
     );
 
+    // ---- WIDE-FRAME DRAIN SEQUENCER (ADDITIVE; inert unless dec_wide) ------------
+    // In wide mode each FIFO entry is read as 3 consecutive 0x7c words; dec_phase
+    // (0,1,2) selects which sub-word the head presents, and the FIFO is popped ONLY on
+    // the phase-2 read (dec_pop) — exactly one entry retires per 3 GPMC reads. Phase
+    // re-anchors to 0 on op_reset and on every STATUS(0x4c) read (the per-drain sync
+    // point). In legacy mode dec_wide=0: dec_phase never advances and dec_pop==dec_rd_done,
+    // so 0x7c is byte-for-byte the one-word-per-read pop of today.
+    reg [1:0] dec_phase = 2'd0;
+    always @(posedge clk) begin
+        if (op_reset || dec_status_rd_done) dec_phase <= 2'd0;
+        else if (dec_rd_done && dec_wide)   dec_phase <= (dec_phase == 2'd2) ? 2'd0 : (dec_phase + 2'd1);
+    end
+    wire dec_pop = dec_rd_done & (dec_wide ? (dec_phase == 2'd2) : 1'b1);
+
     // Lossless byte FIFO (logic registers, ramstyle=logic => 0 M9K). Entry =
     // {flags[7:0], idx[23:0], byte[7:0]}. Drain word packs {flags,data} only.
     wire [7:0]  dfifo_head_byte;
@@ -829,7 +902,7 @@ module acq (
         .in_byte     (dec_emit_byte),
         .in_idx      (dec_emit_idx),
         .in_flags    (dec_emit_flags8),
-        .pop         (dec_rd_done),
+        .pop         (dec_pop),
         .head_byte   (dfifo_head_byte),
         .head_idx    (dfifo_head_idx),
         .head_flags  (dfifo_head_flags),
@@ -847,8 +920,15 @@ module acq (
     // 0x7c drain word. UART/I2C/SPI: unchanged {--,flags[1:0],byte}. ETH exposes the
     // framer's full 8 flag bits (start[7]/end[6]/fcs[5]/ok[4]/err[3]) in the spare upper
     // byte — additive, and byte-identical to the legacy layout for every non-ETH proto.
-    wire [15:0] dec_byte_hd = sel_eth ? {dfifo_head_flags[7:0], dfifo_head_byte}
-                                      : {6'd0, dfifo_head_flags[1], dfifo_head_flags[0], dfifo_head_byte};
+    wire [15:0] dec_byte_hd = (sel_eth | can_ext) ? {dfifo_head_flags[7:0], dfifo_head_byte}
+                                                   : {6'd0, dfifo_head_flags[1], dfifo_head_flags[0], dfifo_head_byte};
+    // Wide-frame sub-words (phase-selected). w0 carries the FULL 8-bit flags (matching
+    // the ETH form) so the host gets uniform flags regardless of proto; idx is the
+    // byte's start-column span anchor. Legacy path (dec_wide=0) is unchanged below.
+    wire [15:0] dec_byte_wide = (dec_phase == 2'd0) ? {dfifo_head_flags[7:0], dfifo_head_byte}
+                              : (dec_phase == 2'd1) ? dfifo_head_idx[15:0]
+                              :                       {8'h00, dfifo_head_idx[23:16]};
+    wire [15:0] dec_byte_out  = dec_wide ? dec_byte_wide : dec_byte_hd;
 
     envelope u_envelope (
         .clk            (clk),
@@ -917,7 +997,7 @@ module acq (
     wire        dec_read  = (~nCS1) & ((rd_sel == 8'h4c) | (rd_sel == 8'h6c) | (rd_sel == 8'h7c));
     wire [15:0] dec_rdata = (rd_sel == 8'h4c) ? dec_status
                           : (rd_sel == 8'h6c) ? dec_matched
-                          :                     dec_byte_hd;   // 0x7c
+                          :                     dec_byte_out;  // 0x7c (wide or legacy)
     assign gpmc_d    = read_active ? (dec_read ? dec_rdata : rmux_rdata) : 16'hzzzz;   // SINGLE tri-state driver
     assign gpmc_wait = 1'b1;                          // held ready (never wedge the bus)
 

@@ -205,6 +205,15 @@ func (f *fakeBus) Write(plane iface.Plane, sel, val uint16) error {
 	return nil
 }
 
+// WriteSpare records a hand-decoded decode-block write (always CS1) so tests can
+// assert the fabric arm/disarm sequence, mirroring *Dev.WriteSpare.
+func (f *fakeBus) WriteSpare(sel, val uint16) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.writes = append(f.writes, wr{iface.CS1, sel, val})
+	return nil
+}
+
 // BurstInto is the single auto-inc BURST drain: sequential samples from the
 // current pointer (hi byte C1, lo byte C2), each read popping one word.
 func (f *fakeBus) BurstInto(c1, c2 []uint8, n int) {

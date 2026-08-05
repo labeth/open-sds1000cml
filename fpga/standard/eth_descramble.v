@@ -61,7 +61,8 @@ module eth_descramble #(
     // ---- descrambled bit stream out ----
     output reg  out_valid,  // 1 = out_bit valid (registered, 1-beat latency)
     output reg  out_bit,    // descrambled (plain) NRZ bit
-    output reg  locked      // 1 once idle-lock is verified; sticky until rst/!en
+    output reg  locked,     // 1 once idle-lock is verified; sticky until rst/!en
+    output reg  lock_lost   // 1-clk pulse: idle-lock verification failed (VERIFY->HUNT)
 );
 
     // FSM states.
@@ -91,9 +92,11 @@ module eth_descramble #(
             out_valid <= 1'b0;
             out_bit   <= 1'b0;
             locked    <= 1'b0;
+            lock_lost <= 1'b0;
         end else begin
             // out_valid tracks in_valid with one cycle of pipeline latency.
             out_valid <= in_valid;
+            lock_lost <= 1'b0;   // 1-clk pulse; default low each cycle
 
             if (in_valid) begin
                 case (state)
@@ -120,9 +123,12 @@ module eth_descramble #(
                         out_bit   <= plain_bit;
                         lfsr      <= {lfsr[9:0], key_bit};
                         if (plain_bit != 1'b1) begin
-                            // Bad phase guess: re-hunt from the next bit.
-                            state <= S_HUNT;
-                            cnt   <= 6'd0;
+                            // Bad phase guess: idle-lock could not be verified/held.
+                            // Re-hunt from the next bit and pulse lock_lost so the
+                            // framer can mark the affected frame (flags8[0]).
+                            state     <= S_HUNT;
+                            cnt       <= 6'd0;
+                            lock_lost <= 1'b1;
                         end else if (cnt == VERIFY_LEN[5:0] - 6'd1) begin
                             state  <= S_LOCKED;
                             locked <= 1'b1;

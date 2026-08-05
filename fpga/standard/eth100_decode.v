@@ -148,11 +148,13 @@ module eth100_decode #(
     // STAGE E : descramble (idle-lock LFSR x^11+x^9+1)  1 bit/clk
     // ==================================================================
     wire descr_valid, descr_bit;
+    wire descr_lost;   // ITEM-4: descrambler idle-lock lost pulse
 
     eth_descramble u_descramble (
         .clk(clk), .rst(rst), .en(en),
         .in_valid(ser_valid), .in_bit(ser_bit),
-        .out_valid(descr_valid), .out_bit(descr_bit), .locked(descr_locked)
+        .out_valid(descr_valid), .out_bit(descr_bit), .locked(descr_locked),
+        .lock_lost(descr_lost)
     );
 
     // ==================================================================
@@ -180,6 +182,7 @@ module eth100_decode #(
     eth_framer #(.PRE_MIN(PRE_MIN)) u_framer (
         .clk(clk), .rst(rst), .en(en),
         .nib_valid(nibble_stb), .nib(nibble), .nib_end(eof),
+        .code_err(cg_err), .lock_lost(descr_lost),   // ITEM-4: flags8[2]/flags8[0]
         .emit_stb(emit_stb), .emit_byte(emit_byte),
         .emit_idx(emit_idx), .emit_flags(emit_flags),
         .sfd_seen(sfd_seen), .frame_done(frame_done), .fcs_ok_o(fcs_ok_o)
