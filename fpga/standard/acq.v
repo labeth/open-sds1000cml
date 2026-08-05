@@ -62,9 +62,10 @@ module acq (
     // HW trigger comparator output (MAX V level-DAC-fed, ball A12): "a crossing occurred".
     input  wire        trig_sense,
 
-    // PLL-input scan (INPUTS ONLY): 6 dedicated clock balls, DDR-sampled to detect which one
-    // carries the 80 MHz reference — the pin a 200 MHz PLL must be fed from. Purely additive.
-    input  wire [5:0]  pllscan,
+    // M2 clock test: M2 is HW-verified to carry a ~50% clock AT REST (acq.v sel-decode comment) AND
+    // is a dedicated PLL-INCLK ball. sel[0] (=M2, ignored by the decode) is freed to E1 and M2 is
+    // brought in here as a candidate PLL reference — measured (frequency counter) + fed to a real PLL.
+    input  wire        mclk_in,
 
     // GPMC bus — the Cyclone is a CS1-ONLY slave (CS3 is decoded by the MAX V CPLD;
     // nCS3 does not reach this device, bench-proven).
@@ -242,22 +243,40 @@ module acq (
     always @(posedge clk) adc_lane_q <= adc_lane;
     wire        raw_mode = xform_reg[4];
     wire [1:0]  raw_sel  = xform_reg[6:5];
-    // PLL-input scan (XFORM_CTRL[7]): DDR-sample the 6 candidate clock balls. A ball carrying the
-    // phase-locked 80 MHz reads complementary on the two clk edges => cs_xor=1 STABLE; a static
-    // ball => cs_xor=0; an unrelated/async signal => cs_xor toggles. Captured word = {cs_rise,cs_xor}
-    // so the analyzer reads, per pin, the raw level AND the "is-a-clock" flag.
-    reg  [5:0]  cs_rise = 6'd0, cs_fall = 6'd0;
-    always @(posedge clk) cs_rise <= pllscan;
-    always @(negedge clk) cs_fall <= pllscan;
-    wire [5:0]  cs_xor  = cs_rise ^ cs_fall;
-    wire        clkscan_en = xform_reg[7];
+    // M2 CLOCK TEST (XFORM_CTRL[7]): is M2's ~50%-at-rest clock a PLL-usable reference?
+    //   m2_ctr counts M2 (mclk_in) edges; synced to clk, its advance rate across the record gives M2's
+    //   frequency. A LIVE altpll (x5/2) takes mclk_in as inclk0: lock_s2 says M2 is a usable reference,
+    //   and pll_hb (a counter on the multiplied clock, synced) proves the fast clock actually runs.
+    //   Captured word = {locked, 0, m2_ctr[7:0], pll_hb[5:0]}. The main datapath still runs on clk(C2).
+    reg  [15:0] m2_ctr = 16'd0;
+    always @(posedge mclk_in) m2_ctr <= m2_ctr + 1'b1;
+    reg  [15:0] m2_ctr_s1 = 16'd0, m2_ctr_s2 = 16'd0;
+    always @(posedge clk) begin m2_ctr_s1 <= m2_ctr; m2_ctr_s2 <= m2_ctr_s1; end
+    wire [4:0] pll_out;
+    wire       pll_locked_raw;
+    altpll #(
+        .bandwidth_type("AUTO"), .clk0_divide_by(2), .clk0_duty_cycle(50), .clk0_multiply_by(5),
+        .clk0_phase_shift("0"), .compensate_clock("CLK0"), .inclk0_input_frequency(12500),
+        .intended_device_family("Cyclone IV E"), .operation_mode("NORMAL"), .pll_type("AUTO"),
+        .port_clk0("PORT_USED"), .port_inclk0("PORT_USED"), .port_locked("PORT_USED")
+    ) u_m2pll ( .inclk({1'b0, mclk_in}), .clk(pll_out), .locked(pll_locked_raw) );
+    wire       pll_c0 = pll_out[0];
+    reg  [7:0] pll_hb = 8'd0;
+    always @(posedge pll_c0) pll_hb <= pll_hb + 1'b1;
+    reg  [7:0] pll_hb_s1 = 0, pll_hb_s2 = 0;
+    reg        lock_s1 = 0, lock_s2 = 0;
+    always @(posedge clk) begin
+        pll_hb_s1 <= pll_hb; pll_hb_s2 <= pll_hb_s1;
+        lock_s1   <= pll_locked_raw; lock_s2 <= lock_s1;
+    end
+    wire        m2test_en = xform_reg[7];
     // raw_sel=3 = CURATED 16 CH2-active lanes (across the original + new wide-bus balls), so all
     // of CH2's bits are captured in ONE time-aligned record for the de-interleave order search.
     wire [15:0] raw_curated = {adc_lane_q[46], adc_lane_q[45], adc_lane_q[44], adc_lane_q[43],
                                adc_lane_q[42], adc_lane_q[41], adc_lane_q[39], adc_lane_q[32],
                                adc_lane_q[31], adc_lane_q[27], adc_lane_q[26], adc_lane_q[24],
                                adc_lane_q[23], adc_lane_q[22], adc_lane_q[20], adc_lane_q[18]};
-    wire [15:0] raw_word = clkscan_en      ? {4'd0, cs_rise, cs_xor}    // PLL-input scan slice
+    wire [15:0] raw_word = m2test_en       ? {lock_s2, 1'b0, m2_ctr_s2[7:0], pll_hb_s2[5:0]} // M2 clock test
                          : (raw_sel == 2'd0) ? adc_lane_q[15:0]
                          : (raw_sel == 2'd1) ? adc_lane_q[31:16]
                          : (raw_sel == 2'd2) ? adc_lane_q[47:32]        // lane32 + new 33..47

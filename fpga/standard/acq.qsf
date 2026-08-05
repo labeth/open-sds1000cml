@@ -47,17 +47,11 @@ set_location_assignment PIN_B10 -to nWE
 set_location_assignment PIN_L6 -to gpmc_wait
 set_location_assignment PIN_C2 -to clk
 set_location_assignment PIN_A12 -to trig_sense
-# PLL-input scan (INPUTS ONLY): the 6 dedicated PLL-capable clock balls (M2 excluded — sel[0]).
-# DDR-sampled to find which carries the 80 MHz reference. Weak pull-down so a floating/unconnected
-# ball reads a stable static 0 (cs_xor=0), not noise.
-set_location_assignment PIN_E1  -to pllscan[0]
-set_location_assignment PIN_M1  -to pllscan[1]
-set_location_assignment PIN_E15 -to pllscan[2]
-set_location_assignment PIN_E16 -to pllscan[3]
-set_location_assignment PIN_M15 -to pllscan[4]
-set_location_assignment PIN_M16 -to pllscan[5]
-set_instance_assignment -name WEAK_PULL_UP_RESISTOR OFF -to pllscan
-set_location_assignment PIN_M2 -to sel[0]
+# M2 CLOCK TEST: M2 carries a ~50% clock at rest AND is a dedicated PLL-INCLK ball. The register
+# decode ignores sel[0] (uses only sel[6:2]), so sel[0] is moved off M2 to E1 (harmless, static) and
+# M2 is brought in as mclk_in — measured + fed to a live PLL to see if it is a usable 200 MHz source.
+set_location_assignment PIN_M2 -to mclk_in
+set_location_assignment PIN_E1 -to sel[0]
 set_location_assignment PIN_D1 -to sel[1]
 set_location_assignment PIN_C3 -to sel[2]
 set_location_assignment PIN_D4 -to sel[3]
