@@ -252,6 +252,25 @@ module acq (
     wire [7:0]  dec_thr8   = dec_thr[7:0];
     wire [23:0] dec_spb    = {dec_spb_hi, dec_spb_lo};  // Q16.8
 
+    // ---- PROTOCOL-DISPATCH reinterpretation (ADDITIVE, previously-FREE bits) --
+    // The UART decode above used only dec_cfg[9:0]; dec_cfg[15:10] were FREE.
+    // Add a 2-bit protocol selector in [11:10] (0=UART,1=I2C,2=SPI) and reinterpret
+    // the already-hand-decoded spare selectors per protocol. regs.vh/regmux.vh/schema
+    // are UNTOUCHED => IFACE_BUILD_ID stays 0xc2f6eb5f. With dec_cfg=0 at reset =>
+    // dec_proto=0 (UART) and dec_en=0, so I2C/SPI engines are gated fully inert and
+    // every existing mode (incl. UART decode) is byte-for-byte unchanged.
+    wire [1:0]  dec_proto   = dec_cfg[11:10];      // 0=UART 1=I2C 2=SPI  ([15:12] free)
+    wire        dec_chswap  = dec_cfg[1];          // I2C/SPI: 0=>a=CH1,b=CH2; 1=>swapped
+    wire        spi_cpol    = dec_cfg[2];          // SPI clock polarity
+    wire        spi_cpha    = dec_cfg[3];          // SPI clock phase
+    wire        spi_msb     = dec_cfg[4];          // SPI 1=MSB-first
+    wire [7:0]  dec_thr_a   = dec_thr[7:0];        // SCL / CLK threshold (== UART thr8)
+    wire [7:0]  dec_thr_b   = dec_thr[15:8];       // SDA / DATA threshold
+    wire [23:0] dec_gapreset= dec_spb;             // SPI gapReset in INTEGER columns (reuses SPB regs)
+    wire        sel_uart    = (dec_proto == 2'd0);
+    wire        sel_i2c     = (dec_proto == 2'd1);
+    wire        sel_spi     = (dec_proto == 2'd2);
+
     // ---- OPCODE decode -> single-cycle engine pulses ----
     // Full 16-bit compare against the generated payload macros (d_q2 is the
     // registered 16-bit write word); the app writes the identical iface.OP_* value.
@@ -574,21 +593,36 @@ module acq (
     // decoded bytes match app decode.DecodeUART().Bytes. The engine emits on a
     // strobe (no block-RAM); byte_fifo is logic-register only (M9K is 46/46 full).
     // Everything is held inert while dec_en=0.
-    wire [7:0]  dec_sample_code = dec_srcch ? cap_word[7:0] : cap_word[15:8];
-    wire        dec_emit_stb;
-    wire [7:0]  dec_emit_byte;
-    wire [23:0] dec_emit_idx;
-    wire [1:0]  dec_emit_flags;   // {frame_err, parity_err}
-    wire        dec_trig_pulse;
-    wire        dec_matched_sticky;
-    wire [7:0]  dec_matched_byte;
+    // UART taps its single source channel (unchanged). I2C/SPI slice TWO channels:
+    //   dec_a = SCL / CLK   (CH1 by default, or CH2 when dec_chswap)
+    //   dec_b = SDA / DATA  (CH2 by default, or CH1 when dec_chswap)
+    wire [7:0]  dec_sample_code = dec_srcch  ? cap_word[7:0]  : cap_word[15:8];
+    wire [7:0]  dec_a           = dec_chswap ? cap_word[7:0]  : cap_word[15:8];
+    wire [7:0]  dec_b           = dec_chswap ? cap_word[15:8] : cap_word[7:0];
+
+    // per-engine enables: exactly one is ever hot (dec_proto is 2 bits, sel_spi
+    // covers proto==2, proto==3 leaves all three off). dec_en=0 => all off.
+    wire uart_en = dec_en & sel_uart;
+    wire i2c_en  = dec_en & sel_i2c;
+    wire spi_en  = dec_en & sel_spi;
+
+    // ---- per-engine emit interfaces (uniform across the three front-ends) ----
+    wire        uart_emit_stb;   wire [7:0] uart_emit_byte;  wire [23:0] uart_emit_idx;
+    wire [1:0]  uart_emit_flags; wire uart_trig;             wire uart_matched;
+    wire [7:0]  uart_matched_byte;
+    wire        i2c_emit_stb;    wire [7:0] i2c_emit_byte;   wire [23:0] i2c_emit_idx;
+    wire [1:0]  i2c_emit_flags;  wire i2c_trig;              wire i2c_matched;
+    wire [7:0]  i2c_matched_byte;
+    wire        spi_emit_stb;    wire [7:0] spi_emit_byte;   wire [23:0] spi_emit_idx;
+    wire [1:0]  spi_emit_flags;  wire spi_trig;              wire spi_matched;
+    wire [7:0]  spi_matched_byte;
 
     uart_decode u_uart_decode (
         .clk          (clk),
         .rst_n        (1'b1),                 // no async reset; en=0 holds it IDLE
         .cap_tick     (cap_tick),
         .sample_code  (dec_sample_code),
-        .en           (dec_en),
+        .en           (uart_en),
         .thr8         (dec_thr8),
         .spb          (dec_spb),
         .bits_cfg     (dec_bits),
@@ -600,14 +634,79 @@ module acq (
         .trig_en      (dec_trigen),
         .match_pattern(dec_match[7:0]),
         .match_mask   (dec_match[15:8]),
-        .emit_stb     (dec_emit_stb),
-        .emit_byte    (dec_emit_byte),
-        .emit_idx     (dec_emit_idx),
-        .emit_flags   (dec_emit_flags),
-        .decode_trig  (dec_trig_pulse),
-        .matched      (dec_matched_sticky),
-        .matched_byte (dec_matched_byte)
+        .emit_stb     (uart_emit_stb),
+        .emit_byte    (uart_emit_byte),
+        .emit_idx     (uart_emit_idx),
+        .emit_flags   (uart_emit_flags),
+        .decode_trig  (uart_trig),
+        .matched      (uart_matched),
+        .matched_byte (uart_matched_byte)
     );
+
+    // ---- IN-FABRIC I2C DECODE (ADDITIVE, gated i2c_en=dec_en&&proto==I2C) ----
+    // Same emit interface as uart_decode; taps the two sliced channels dec_a/dec_b.
+    // en=0 (proto!=I2C or dec_en=0) => fully inert (no strobes, sticky cleared).
+    i2c_decode u_i2c_decode (
+        .clk          (clk),
+        .rst_n        (1'b1),
+        .cap_tick     (cap_tick),
+        .scl_code     (dec_a),
+        .sda_code     (dec_b),
+        .en           (i2c_en),
+        .scl_thr      (dec_thr_a),
+        .sda_thr      (dec_thr_b),
+        .tg_en        (dec_tgen),
+        .trig_en      (dec_trigen),
+        .match_pattern(dec_match[7:0]),
+        .match_mask   (dec_match[15:8]),
+        .emit_stb     (i2c_emit_stb),
+        .emit_byte    (i2c_emit_byte),
+        .emit_idx     (i2c_emit_idx),
+        .emit_flags   (i2c_emit_flags),
+        .decode_trig  (i2c_trig),
+        .matched      (i2c_matched),
+        .matched_byte (i2c_matched_byte)
+    );
+
+    // ---- IN-FABRIC SPI DECODE (ADDITIVE, gated spi_en=dec_en&&proto==SPI) ----
+    // CPOL/CPHA/MSB from reinterpreted CFG bits; gapReset from reinterpreted SPB regs.
+    spi_decode u_spi_decode (
+        .clk          (clk),
+        .rst_n        (1'b1),
+        .cap_tick     (cap_tick),
+        .clk_code     (dec_a),
+        .data_code    (dec_b),
+        .en           (spi_en),
+        .clk_thr      (dec_thr_a),
+        .data_thr     (dec_thr_b),
+        .cpol         (spi_cpol),
+        .cpha         (spi_cpha),
+        .msb          (spi_msb),
+        .gapreset     (dec_gapreset),
+        .tg_en        (dec_tgen),
+        .tg_word      (dec_tg[7:0]),
+        .trig_en      (dec_trigen),
+        .match_pattern(dec_match[7:0]),
+        .match_mask   (dec_match[15:8]),
+        .emit_stb     (spi_emit_stb),
+        .emit_byte    (spi_emit_byte),
+        .emit_idx     (spi_emit_idx),
+        .emit_flags   (spi_emit_flags),
+        .decode_trig  (spi_trig),
+        .matched      (spi_matched),
+        .matched_byte (spi_matched_byte)
+    );
+
+    // ---- PROTOCOL DISPATCH: mux the active engine into the SHARED sinks ----
+    // Each engine is inert unless its own en is hot, so the losing engines drive
+    // emit_stb=0/decode_trig=0; the mux simply selects the active one's outputs.
+    wire        dec_emit_stb   = sel_i2c ? i2c_emit_stb   : sel_spi ? spi_emit_stb   : uart_emit_stb;
+    wire [7:0]  dec_emit_byte  = sel_i2c ? i2c_emit_byte  : sel_spi ? spi_emit_byte  : uart_emit_byte;
+    wire [23:0] dec_emit_idx   = sel_i2c ? i2c_emit_idx   : sel_spi ? spi_emit_idx   : uart_emit_idx;
+    wire [1:0]  dec_emit_flags = sel_i2c ? i2c_emit_flags : sel_spi ? spi_emit_flags : uart_emit_flags;
+    wire        dec_trig_pulse = sel_i2c ? i2c_trig       : sel_spi ? spi_trig       : uart_trig;
+    wire        dec_matched_sticky = sel_i2c ? i2c_matched      : sel_spi ? spi_matched      : uart_matched;
+    wire [7:0]  dec_matched_byte   = sel_i2c ? i2c_matched_byte : sel_spi ? spi_matched_byte : uart_matched_byte;
 
     // Lossless byte FIFO (logic registers, ramstyle=logic => 0 M9K). Entry =
     // {flags[7:0], idx[23:0], byte[7:0]}. Drain word packs {flags,data} only.

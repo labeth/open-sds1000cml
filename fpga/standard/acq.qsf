@@ -21,6 +21,8 @@ set_global_assignment -name VERILOG_FILE envelope.v
 set_global_assignment -name VERILOG_FILE drain.v
 set_global_assignment -name VERILOG_FILE il_capture.v
 set_global_assignment -name VERILOG_FILE uart_decode.v
+set_global_assignment -name VERILOG_FILE i2c_decode.v
+set_global_assignment -name VERILOG_FILE spi_decode.v
 set_global_assignment -name VERILOG_FILE byte_fifo.v
 set_global_assignment -name STRATIX_DEVICE_IO_STANDARD "3.3-V LVTTL"
 set_global_assignment -name RESERVE_ALL_UNUSED_PINS "AS INPUT TRI-STATED"
