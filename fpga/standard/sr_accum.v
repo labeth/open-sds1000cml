@@ -138,6 +138,19 @@ module sr_accum #(
     //   behind the combinational multiply. Add + M9K write commit in stage-2.
     //   Read->write latency is now 2 cap cycles (was 1); still << NBINS so the
     //   monotonic-pos RMW stays hazard-free (revisit gap = NBINS >= 4 > 2).
+    // ---- q_a is the M9K OUTPUT REGISTER (200 MHz read-arc closure) -----------
+    //   The 2-register read `q_a <= amem[addr]; q_a2 <= q_a` is exactly Quartus's
+    //   registered-OUTPUT M9K template: q_a packs INTO the M9K's own output
+    //   register IFF it feeds ONLY registers. That splits the one fabric-timed arc
+    //   [addr-reg -> array access -> read-port route -> q_a2 setup] (the residual
+    //   ~-0.688 ns "read-addr -> q_a2" tap) into two: an INTERNAL M9K arc
+    //   [addr-reg -> array -> out-reg], which the M9K meets far above 200 MHz, and
+    //   a plain reg->reg hop [out-reg(q_a) -> q_a2]. For the pack to happen q_a
+    //   must have NO combinational/second fanout, so the frozen-grid DRAIN snapshot
+    //   below reads q_a2 (a cap cycle later, drd_cnt bumped 2->3) instead of q_a.
+    //   Simulation latency is UNCHANGED (still 2 read registers -> 2 cycles); the
+    //   pack is a physical placement of the SAME behaviour, so the grid stays
+    //   bit-identical (proven orig-vs-retimed in tb, drain snapshot aside).
     reg        p1_val;
     reg [AW-1:0] p1_pos;
     reg [7:0]  p1_va, p1_vb;
@@ -223,12 +236,12 @@ module sr_accum #(
         dr_req_m <= dr_req_tgl; dr_req_s2 <= dr_req_m; dr_req_s3 <= dr_req_s2;
         if ((dr_req_s2 ^ dr_req_s3) && (fstate == FI_FROZEN)) begin
             draddr_cs <= dr_addr;      // sample the (stable) clk read address
-            drd_cnt   <= 2'd2;         // wait 2 cap cycles for q_a to reflect draddr_cs
+            drd_cnt   <= 2'd3;         // wait 3 cap cycles for q_a2 to reflect draddr_cs
         end else if (drd_cnt != 2'd0) begin
             drd_cnt <= drd_cnt - 2'd1;
             if (drd_cnt == 2'd1) begin
-                rd_hold_a  <= q_a;     // q_a now = amem[draddr_cs]
-                rd_hold_b  <= q_b;
+                rd_hold_a  <= q_a2;    // q_a2 now = amem[draddr_cs] (drain snapshot from
+                rd_hold_b  <= q_b2;    // the RE-REGISTERED stage-2, NOT q_a — see below)
                 dr_ack_tgl <= ~dr_ack_tgl;
             end
         end
