@@ -132,11 +132,31 @@ func (c *Controller) menuButton(code int) bool {
 		return true
 	case btnCh1:
 		c.mu.Lock()
+		active := c.srActive
+		c.mu.Unlock()
+		if active { // super-res active: CH1 selects the align channel (Src is on the softkey)
+			c.mu.Lock()
+			c.srCh = 0
+			c.mu.Unlock()
+			c.srRearm() // rebuild aligned on C1
+			return true
+		}
+		c.mu.Lock()
 		c.chDisp[0] = !c.chDisp[0]
 		c.mu.Unlock()
 		c.pushLEDs() // CH1 lamp follows the toggle immediately
 		return true
 	case btnCh2:
+		c.mu.Lock()
+		active := c.srActive
+		c.mu.Unlock()
+		if active {
+			c.mu.Lock()
+			c.srCh = 1
+			c.mu.Unlock()
+			c.srRearm() // rebuild aligned on C2
+			return true
+		}
 		c.mu.Lock()
 		c.chDisp[1] = !c.chDisp[1]
 		c.mu.Unlock()

@@ -45,7 +45,8 @@ func (c *Controller) MenuView() MenuView {
 	zoom, zoomOff, persist := c.zoom, c.zoomOff, c.persist
 	decProto, decBaud, decChA, decChB := c.decProto, c.decBaud, c.decChA, c.decChB
 	decCPOL, decCPHA, decFormat := c.decCPOL, c.decCPHA, c.decFormat
-	srMode, srVal, srCh, srK := c.srStopMode, c.srStopVal, c.srCh, c.srK
+	srMode, srVal, srK := c.srStopMode, c.srStopVal, c.srK
+	srDevice := c.srDevice
 	maskN, maskTol, maskBusy := c.maskN, c.maskTol, c.maskBuilding
 	c.mu.Unlock()
 	v := MenuView{Open: pg != pgNone, Sel: sel, ShowC1: c1, ShowC2: c2, ShowMeas: meas,
@@ -271,7 +272,7 @@ func (c *Controller) MenuView() MenuView {
 		}
 		v.Title = "SUPER-RES"
 		v.Items = []MenuItem{
-			{"Channel", ternary(srCh == 1, "C2", "C1")},
+			{"Src", ternary(srDevice, "Dev", "Host")},
 			{"Grid", fmt.Sprintf("x%d", srK)},
 			{"Stop on", modes[srMode%3]},
 			{"Target", tgt},

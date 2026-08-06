@@ -66,6 +66,7 @@ func (e *Engine) Run() {
 
 	for !e.stopReq.Load() {
 		e.serviceCommands()
+		e.serviceCombine()      // device super-res COMBINE drain (no-op unless a request is queued)
 		e.serviceFabricDecode() // keep the in-fabric decode+trigger armed to the current config
 		e.bumpFrames()          // heartbeat advances every iteration, stopped or not
 		if e.armBusy {

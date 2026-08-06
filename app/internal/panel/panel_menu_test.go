@@ -160,8 +160,8 @@ func TestSuperresUX(t *testing.T) {
 		t.Errorf("UTILITY lamp not lit while active: %#x", w)
 	}
 
-	// Default menu: Channel C1 / Grid x32 / Stop on bits / Target +4.0b / Reset.
-	want := []MenuItem{{"Channel", "C1"}, {"Grid", "x32"}, {"Stop on", "bits"}, {"Target", "+4.0b"}, {"Reset", ""}}
+	// Default menu: Src Host / Grid x32 / Stop on bits / Target +4.0b / Reset.
+	want := []MenuItem{{"Src", "Host"}, {"Grid", "x32"}, {"Stop on", "bits"}, {"Target", "+4.0b"}, {"Reset", ""}}
 	v := c.MenuView()
 	if v.Title != "SUPER-RES" || len(v.Items) != 5 {
 		t.Fatalf("SUPER-RES menu wrong: title=%q items=%d", v.Title, len(v.Items))
@@ -178,10 +178,25 @@ func TestSuperresUX(t *testing.T) {
 		t.Errorf("stop-mode cycle: %+v / %+v", v.Items[2], v.Items[3])
 	}
 
-	// F1 (slot 0) toggles the aligned channel C1→C2 (rebuilds the stack).
+	// F1 (slot 0) toggles the super-res source Host→Dev→Host; the rest of the flow
+	// runs on the (default) host-drizzle path.
 	c.menuButton(btnF1)
-	if v = c.MenuView(); v.Items[0].Value != "C2" {
-		t.Errorf("channel toggle: %+v", v.Items[0])
+	if v = c.MenuView(); v.Items[0].Value != "Dev" {
+		t.Errorf("source toggle Host→Dev: %+v", v.Items[0])
+	}
+	c.menuButton(btnF1)
+	if v = c.MenuView(); v.Items[0].Value != "Host" {
+		t.Errorf("source toggle Dev→Host: %+v", v.Items[0])
+	}
+
+	// CH2 / CH1 select the aligned channel while super-res is active (rebuild the stack).
+	c.button(btnCh2)
+	if a := c.SuperresView().Align; a != 1 {
+		t.Errorf("CH2 did not align on C2: Align=%d", a)
+	}
+	c.button(btnCh1)
+	if a := c.SuperresView().Align; a != 0 {
+		t.Errorf("CH1 did not align on C1: Align=%d", a)
 	}
 
 	// ADJUST/intensity push cycles focus: watch → gate-start → gate-end → review → watch.

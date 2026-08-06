@@ -27,11 +27,11 @@ func (c *Controller) menuCycle(slot, dir int) {
 		return
 	case pgSuperres:
 		switch slot {
-		case 0: // Channel C1/C2 — rebuild the stack aligned on the chosen channel
+		case 0: // Src: Host drizzle ⇄ device-combine; re-seed so the switch takes effect
 			c.mu.Lock()
-			c.srCh = 1 - c.srCh
+			dev := !c.srDevice
 			c.mu.Unlock()
-			c.srRearm()
+			c.srSetDevice(dev)
 		case 1: // Grid ×K — finer/coarser fine grid; the stack size changes → rebuild
 			c.mu.Lock()
 			c.srK = nextOpt([]int{8, 16, 32, 64}, c.srK, dir)

@@ -366,19 +366,24 @@ type Engine struct {
 	// drains every pending request at the frame boundary with one snapshot.
 	matrixReq chan chan [5]uint16
 
+	// combineReq is the panel's device-super-res request/reply channel: the owner
+	// services one COMBINE arm+dwell+halt+drain per loop boundary (serviceCombine).
+	combineReq chan combineReqMsg
+
 	// Owner-private state (no locking needed).
-	band        Band
-	prevKind    Kind
-	lastNorm    bool
-	lastCapCols int // effDrainCols() the last bringUp programmed into PRE/POSTTRIG
-	seq         uint64
-	flatHeld    int
-	lastPubAt   time.Time // engine goroutine only: instant of the last oneFrame publish
-	lastEdgeX   float64   // engine goroutine only: previous frame's edge (phase-continuity hint); <0 = none
-	deadRuns    int
-	streamSeq   uint64    // stitch-mode window counter
-	lastHalt    time.Time // wall-clock of the previous window's halt (for GapNs)
-	done        chan struct{}
+	band          Band
+	prevKind      Kind
+	lastNorm      bool
+	lastCapCols   int // effDrainCols() the last bringUp programmed into PRE/POSTTRIG
+	seq           uint64
+	combineDrains int // monotonic device-combine drain ordinal (CombineOut.Frames)
+	flatHeld      int
+	lastPubAt     time.Time // engine goroutine only: instant of the last oneFrame publish
+	lastEdgeX     float64   // engine goroutine only: previous frame's edge (phase-continuity hint); <0 = none
+	deadRuns      int
+	streamSeq     uint64    // stitch-mode window counter
+	lastHalt      time.Time // wall-clock of the previous window's halt (for GapNs)
+	done          chan struct{}
 
 	// Realtime acquisition checker (instrumentation only, spec: diagnose HALF
 	// records). acqRing/cmdRing are guarded by e.mu (the status handler reads
@@ -457,17 +462,18 @@ func New(cfg Config) *Engine {
 	}
 	start, _ := PlanTdiv(500e-6) // decimated start detent: shows the cal edge fast
 	e := &Engine{
-		b:         cfg.Bus,
-		clk:       cfg.Clock,
-		logf:      cfg.Logf,
-		arena:     newArena(deepRecord),
-		armSettle: cfg.ArmSettle,
-		armBusy:   realTime,
-		pollEvery: cfg.PollEvery,
-		band:      start,
-		prevKind:  start.Kind(),
-		done:      make(chan struct{}),
-		matrixReq: make(chan chan [5]uint16, 4),
+		b:          cfg.Bus,
+		clk:        cfg.Clock,
+		logf:       cfg.Logf,
+		arena:      newArena(deepRecord),
+		armSettle:  cfg.ArmSettle,
+		armBusy:    realTime,
+		pollEvery:  cfg.PollEvery,
+		band:       start,
+		prevKind:   start.Kind(),
+		done:       make(chan struct{}),
+		matrixReq:  make(chan chan [5]uint16, 4),
+		combineReq: make(chan combineReqMsg, 1),
 	}
 	e.fabTrig = NewFabricTrig(cfg.Bus) // in-fabric decode+trigger driver (owner-goroutine only)
 	// Tuning defaults. The owned FSM is a clean program → arm → wait-on-real-DONE →

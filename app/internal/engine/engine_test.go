@@ -73,6 +73,14 @@ type fakeBus struct {
 	// envelope FIFO). Reading ENV_DATA after a re-arm returns coherent-gated
 	// zeros — the exact failure the envelope-ordering bug produces.
 	envCoherent bool
+
+	// device-combine drain: when combineWords is set, BURST_REMAIN reports
+	// READY|combineRemain and BurstWordsInto returns the scripted grid verbatim
+	// (bin-major LSW-first) — no prime read is modelled, so a spurious throwaway
+	// read in the drain would surface as a misframed grid.
+	combineWords  []uint16
+	combineRemain uint16
+	wordReads     int // total BurstWordsInto pops (proves no prime read = exactly n)
 }
 
 func newFakeBus() *fakeBus {
@@ -155,6 +163,9 @@ func (f *fakeBus) Read(plane iface.Plane, sel uint16) (uint16, error) {
 		f.burstReads++
 		return uint16(c1)<<8 | uint16(c2), nil
 	case iface.SelBURST_REMAIN:
+		if f.combineRemain != 0 { // device-combine: report the drained word count too
+			return iface.Mask_BURST_REMAIN_READY | (f.combineRemain & iface.Mask_BURST_REMAIN_REMAIN), nil
+		}
 		return iface.Mask_BURST_REMAIN_READY, nil // DMA-ready, count elided
 	case iface.SelENV_COUNT:
 		w := uint16(f.envCount) & iface.Mask_ENV_COUNT_COUNT
@@ -229,6 +240,25 @@ func (f *fakeBus) BurstInto(c1, c2 []uint8, n int) {
 		c1[i] = cc1
 		c2[i] = cc2
 	}
+}
+
+// BurstWordsInto returns the scripted combine grid verbatim, starting at word 0 —
+// it models the auto-inc port with NO prime read, so any spurious throwaway read
+// in the drain would shift the grid and misframe it.
+func (f *fakeBus) BurstWordsInto(dst []uint16, n int) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if !f.halted {
+		f.earlyDrain = true
+	}
+	for i := 0; i < n; i++ {
+		if i < len(f.combineWords) {
+			dst[i] = f.combineWords[i]
+		} else {
+			dst[i] = 0
+		}
+	}
+	f.wordReads += n
 }
 
 // ChannelInto pops packed result-channel words (ENV_DATA).

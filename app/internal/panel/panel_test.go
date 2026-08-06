@@ -13,14 +13,20 @@ type call struct {
 }
 
 type fakeEng struct {
-	matrix [5]uint16
-	calls  []call
-	leds   []uint16
-	stats  engine.Stats
-	acqLog []engine.AcqSample
+	matrix     [5]uint16
+	calls      []call
+	leds       []uint16
+	stats      engine.Stats
+	acqLog     []engine.AcqSample
+	combineOut engine.CombineOut // scripted device-combine drain result
+	combineOK  bool              // false (default) → srDeviceTick skips the tick
 }
 
-func (f *fakeEng) ReadMatrix() ([5]uint16, bool)              { return f.matrix, true }
+func (f *fakeEng) ReadMatrix() ([5]uint16, bool) { return f.matrix, true }
+func (f *fakeEng) CombineDrain(engine.CombineReq) (engine.CombineOut, bool) {
+	f.calls = append(f.calls, call{"combinedrain", 0, 0})
+	return f.combineOut, f.combineOK
+}
 func (f *fakeEng) SetLEDs(w uint16)                           { f.leds = append(f.leds, w) }
 func (f *fakeEng) Snapshot() engine.Stats                     { return f.stats }
 func (f *fakeEng) AcqLog(n int) ([]engine.AcqSample, float64) { return f.acqLog, 0 }

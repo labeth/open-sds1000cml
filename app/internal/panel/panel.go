@@ -18,6 +18,7 @@ import (
 // Engine is the command surface the controller drives (spec 08 §4).
 type Engine interface {
 	ReadMatrix() ([5]uint16, bool)
+	CombineDrain(engine.CombineReq) (engine.CombineOut, bool)
 	SetLEDs(word uint16)
 	SetOffsetDAC(ch int, code uint16)
 	SetTrigLevelCode(code uint16) uint16
@@ -206,6 +207,7 @@ type Controller struct {
 	// 1=edit gate START, 2=edit gate END (ADJUST knob moves the edge), 3=review
 	// the stacked trace. srManLo/srManHi are the manual gate (-1 = auto).
 	srActive   bool
+	srDevice   bool // false: host drizzle (Feed); true: in-fabric device-combine (CombineDrain+InjectBins). Guarded by mu.
 	srFocus    int
 	srManLo    int
 	srManHi    int

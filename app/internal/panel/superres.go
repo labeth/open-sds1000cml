@@ -4,9 +4,14 @@ import (
 	"fmt"
 	"time"
 
+	"open-sds/app/internal/combine"
 	"open-sds/app/internal/engine"
 	"open-sds/app/internal/superres"
 )
+
+// The finalize rbf (HEAD 41ebc84) hardwires the COMBINE grid to 64*4 = 256 bins
+// (3072 = combine.DrainWords(64,4) words). Device mode requests exactly this, NOT srK.
+const srDevGridL, srDevK = 64, 4
 
 // Device super-res (spec: reference-locked stack-and-crunch). UTILITY toggles it
 // like SINGLE: press to arm (lock the current frozen frame as the match reference
@@ -145,6 +150,7 @@ func (c *Controller) srSeedAndStart() bool {
 	}
 	c.mu.Lock()
 	k, ch, mlo, mhi := c.srK, c.srCh, c.srManLo, c.srManHi
+	device := c.srDevice
 	c.mu.Unlock()
 	// Default gate = the ON-SCREEN window (super-res exactly what's displayed —
 	// winCols samples centred on the trigger edge), so you never stack a random
@@ -180,6 +186,14 @@ func (c *Controller) srSeedAndStart() bool {
 	st := superres.New(cols, k)
 	st.Align = ch
 	st.SampleS = sampleS
+	if device {
+		// The finalize rbf fixes the fabric grid at srDevGridL*srDevK bins; device
+		// mode requests exactly that, NOT the host srK. Keep the reference seed (it
+		// fixes Align + SampleS + gives a usable frame gate) on the device geometry.
+		k = srDevK
+		st = superres.New(cols, k)
+		st.Align, st.SampleS = ch, sampleS
+	}
 	if !st.SeedRefGate(c1, c2, edgeX, stackLo, stackHi) { // lo<0 → auto gate; else manual
 		c.srSetStatus("ref unusable (flat/clipped) - freeze a cleaner frame")
 		return false
@@ -191,12 +205,16 @@ func (c *Controller) srSeedAndStart() bool {
 	}
 	c.srStack, c.srActive, c.srStop = st, true, stop // srFocus preserved (gate-edit)
 	c.srT0, c.srStatus, c.srMean, c.srMean2, c.srBits, c.srResetReq = time.Now(), "stacking...", nil, nil, 0, false
-	c.srFrames, c.srRejected = st.Hits, 0               // fresh counts (not stale from a prior arm)
-	c.srWinLo, c.srWinHi, c.srPeriod = mlo, mhi, period // review span + tile period
+	c.srFrames, c.srRejected = st.Hits, 0 // fresh counts (not stale from a prior arm)
+	if device {
+		c.srWinLo, c.srWinHi, c.srPeriod = 0, srDevGridL, 0 // render the crunched grid directly
+	} else {
+		c.srWinLo, c.srWinHi, c.srPeriod = mlo, mhi, period // review span + tile period
+	}
 	c.running, c.single = true, false
 	c.mu.Unlock()
-	c.eng.SetRunning(true) // resume so matching frames flow in
-	go c.srLoop(stop, st)  // pass the Stack in — the loop is its sole owner, no shared read
+	c.eng.SetRunning(!device)     // host: resume normal frames; device: STOP (combine drains own the FSM)
+	go c.srLoop(stop, st, device) // pass the Stack in — the loop is its sole owner, no shared read
 	return true
 }
 
@@ -305,7 +323,7 @@ func (c *Controller) SuperresStatus() (active, review bool, bits float64, frames
 // target, and keep the review mean fresh when review is on. Only THIS goroutine
 // touches srStack, so there is no data race with the renderer (which reads the
 // guarded srMean/srStatus/srBits snapshot).
-func (c *Controller) srLoop(stop chan struct{}, st *superres.Stack) {
+func (c *Controller) srLoop(stop chan struct{}, st *superres.Stack, device bool) {
 	var lastSeq uint64
 	var lastMean time.Time
 	reached := false // stop target hit (or geometry changed): stack is final, idle
@@ -336,6 +354,11 @@ func (c *Controller) srLoop(stop chan struct{}, st *superres.Stack) {
 		if idle {
 			continue // stacked result is final; wait for Reset or UTILITY-cancel
 		}
+		if device {
+			c.srDeviceTick(st, &reached)
+			continue
+		}
+		// ---- host drizzle path below: UNCHANGED (Feed) ----
 		var c1, c2 []uint8
 		var edgeX float64
 		var seq uint64
@@ -413,6 +436,118 @@ func (c *Controller) srLoop(stop chan struct{}, st *superres.Stack) {
 			c.srReachReview(st, fmt.Sprintf("done: %d stacked", st.Hits))
 			reached = true
 		}
+	}
+}
+
+// srDeviceTick pulls one in-fabric COMBINE grid, injects it, and runs the SAME
+// status/stop/review logic as the host Feed path (keyed off st.Hits / res.BitsGained).
+// It is the device analogue of one srLoop host iteration. Only this goroutine touches st.
+func (c *Controller) srDeviceTick(st *superres.Stack, reached *bool) {
+	out, ok := c.eng.CombineDrain(engine.CombineReq{GridL: srDevGridL, K: srDevK, DwellMs: 20})
+	if !ok {
+		return // timeout / overflow / queue-full → skip this tick, never crunch a partial grid
+	}
+	// A real band/tdiv change rescales the record — freeze the stack for review, like host.
+	if st.SampleS != 0 && out.SampleS != 0 && out.SampleS != st.SampleS {
+		c.srReachReview(st, "scale changed - stack kept")
+		*reached = true
+		return
+	}
+	c.mu.Lock()
+	align := c.srCh
+	c.mu.Unlock()
+	grid, err := combine.Unpack(out.Words, srDevGridL, srDevK, align, false, out.SampleS, 0, out.Frames)
+	if err != nil {
+		return
+	}
+	grid.Hits = combineHits(grid) // reps integrated this dwell (max align bin count)
+	if err := st.InjectBins(grid); err != nil {
+		return
+	}
+	res := st.Result(true, 0) // stats-only for status + stop
+	c.mu.Lock()
+	mode, val, t0, review := c.srStopMode, c.srStopVal, c.srT0, c.srFocus == 3
+	c.srBits, c.srFrames, c.srRejected = res.BitsGained, st.Hits, 0
+	c.srStatus = fmt.Sprintf("%d reps / %d drn  +%.1fb", st.Hits, out.Frames, res.BitsGained)
+	c.mu.Unlock()
+	if review {
+		full := st.Result(false, 1)
+		mean, mean2 := srCompMeans(st, full) // falloff comp, exactly like the web review
+		c.mu.Lock()
+		c.srMean, c.srMean2 = mean, mean2
+		c.mu.Unlock()
+	}
+	done := false
+	switch mode {
+	case 0: // bits — mean-only ships BitsGained=0, so this never completes (stated ceiling)
+		done = val > 0 && res.SigmaStack > 0 && res.BitsGained >= val
+	case 1: // stacks = reps (st.Hits)
+		done = val > 0 && float64(st.Hits) >= val
+	case 2: // time (wall clock)
+		done = val > 0 && time.Since(t0).Seconds() >= val
+	}
+	if done {
+		c.srReachReview(st, fmt.Sprintf("done: %d reps", st.Hits))
+		*reached = true
+	}
+}
+
+// combineHits reports the accumulation depth of a drained grid = the max align bin
+// count (reps integrated this dwell; the fabric self-caps at 255/bin).
+func combineHits(g superres.BinGrid) int {
+	m := uint64(0)
+	for _, cnt := range g.ACnt {
+		if cnt > m {
+			m = cnt
+		}
+	}
+	return int(m)
+}
+
+// srSetDevice flips the host⇄device super-res source (runs on the panel goroutine).
+// If super-res is active it re-seeds so the switch takes effect immediately.
+func (c *Controller) srSetDevice(on bool) {
+	c.mu.Lock()
+	if c.srDevice == on {
+		c.mu.Unlock()
+		return
+	}
+	c.srDevice = on
+	active := c.srActive
+	c.mu.Unlock()
+	if active {
+		c.srSeedAndStart() // rebuild the stack for the new source (stops the old srLoop)
+	}
+}
+
+// SetSuperresDevice / SuperresSetArmed are the REMOTE (web/SCPI) control surface. They
+// marshal onto the panel goroutine via c.inject (like InjectButton) so they never race
+// the panel's own menu ops. Return false if the inject queue is full.
+func (c *Controller) SetSuperresDevice(on bool) bool {
+	select {
+	case c.inject <- func() { c.srSetDevice(on) }:
+		return true
+	default:
+		return false
+	}
+}
+
+// SuperresSetArmed arms or cancels device super-res remotely (idempotent).
+func (c *Controller) SuperresSetArmed(on bool) bool {
+	select {
+	case c.inject <- func() {
+		c.mu.Lock()
+		active := c.srActive
+		c.mu.Unlock()
+		if on && !active {
+			c.srArm()
+		} else if !on && active {
+			c.srCancel("remote")
+		}
+	}:
+		return true
+	default:
+		return false
 	}
 }
 

@@ -20,6 +20,7 @@ func (nullBus) Read(plane iface.Plane, sel uint16) (uint16, error) { return 0, n
 func (nullBus) Write(plane iface.Plane, sel, val uint16) error     { return nil }
 func (nullBus) WriteSpare(sel, val uint16) error                   { return nil }
 func (nullBus) BurstInto(c1, c2 []uint8, n int)                    {}
+func (nullBus) BurstWordsInto(dst []uint16, n int)                 {}
 func (nullBus) ChannelInto(sel uint16, dst []uint16, n int)        {}
 func (nullBus) MmapDrain() bool                                    { return true }
 

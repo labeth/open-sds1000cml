@@ -107,6 +107,14 @@ type superresReporter interface {
 	SuperresStatus() (active, review bool, bits float64, frames, rejected int, status string)
 }
 
+// superresControl is the optional device super-res control surface (panel Controller):
+// select the host⇄device source and arm/cancel it headlessly (the bench uses the
+// Src softkey / UTILITY). Handlers type-assert so test doubles can omit it.
+type superresControl interface {
+	SetSuperresDevice(on bool) bool
+	SuperresSetArmed(on bool) bool
+}
+
 // frameWaiter is the optional long-poll surface: implemented by main's
 // scopeSource (delegating to frames.Fanout.WaitNext). Handlers type-assert
 // for it so test doubles without it degrade to a short seq poll.

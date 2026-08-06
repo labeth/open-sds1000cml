@@ -361,6 +361,19 @@ func (s *Server) hSet(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 		applied = req.Value
+	case "srdevice":
+		// pre-arm source select: host drizzle (0) ⇄ in-fabric device-combine (1)
+		if p, pok := s.panel.(superresControl); pok && p.SetSuperresDevice(req.Value != 0) {
+			// applied = req.Value (host=0 / dev=1)
+		} else {
+			ok, errStr = false, "superres control unavailable"
+		}
+	case "superres":
+		// arm (1) / cancel (0) device super-res
+		if p, pok := s.panel.(superresControl); pok && p.SuperresSetArmed(req.Value != 0) {
+		} else {
+			ok, errStr = false, "superres control unavailable"
+		}
 	default:
 		ok, errStr = false, "unknown control"
 	}

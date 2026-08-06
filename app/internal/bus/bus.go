@@ -38,6 +38,12 @@ type Bus interface {
 	// BURST port in one tight pass (hi byte = C1, lo byte = C2). Post-halt only;
 	// the port pops one word per read. c1,c2 must each have len >= n.
 	BurstInto(c1, c2 []uint8, n int)
+	// BurstWordsInto drains n raw little-endian words from the fixed auto-inc BURST
+	// port (0x40) into dst with NO leading prime read — the combine grid is bin-major,
+	// so a throwaway read would consume bin0.align.cnt and misframe the whole grid.
+	// Same EDMA / CS1-cycle-gap / fresh-cache-cold discipline as BurstInto; post-halt
+	// only. dst must have len >= n.
+	BurstWordsInto(dst []uint16, n int)
 	// ChannelInto reads n words from a result-channel auto-inc DATA port
 	// (e.g. ENV_DATA) into dst. Post-halt only; the port pops one word per read.
 	ChannelInto(sel uint16, dst []uint16, n int)
@@ -284,6 +290,21 @@ func (d *Dev) BurstInto(c1, c2 []uint8, n int) {
 		v, _ := d.Read(iface.CS1, iface.SelBURST)
 		c1[i] = uint8(v >> 8)
 		c2[i] = uint8(v)
+	}
+}
+
+// BurstWordsInto drains n raw words from the auto-inc BURST port (0x40) via the EDMA
+// fast path (byte-exact, CPU-free), starting at word 0 — no prime read. This is the
+// in-fabric super-res COMBINE drain: the grid is bin-major (word 0 = bin0.align.cnt),
+// so a throwaway prime read would misframe the whole grid by one word. Falls back to
+// ioctl-per-word (each read = one real CS1 transaction that pops the port).
+func (d *Dev) BurstWordsInto(dst []uint16, n int) {
+	if d.edma != nil && d.edma.drainWords(burstPortPhys, dst[:n], n) {
+		return
+	}
+	for i := 0; i < n; i++ {
+		v, _ := d.Read(iface.CS1, iface.SelBURST)
+		dst[i] = v
 	}
 }
 
