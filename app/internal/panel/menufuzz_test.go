@@ -187,6 +187,8 @@ func (f *fuzzEng) SetETS(on bool) {
 	f.stats.ETS = on
 }
 
+func (f *fuzzEng) SetSiggen(on, ramp bool) {} // proving-only hook; no fuzz invariant
+
 func (f *fuzzEng) SetTrigPosFrac(fr float64) {
 	f.mu.Lock()
 	defer f.mu.Unlock()

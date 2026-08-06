@@ -32,6 +32,66 @@ func combineTestGrid(gridL, k int) (words []uint16, codeA []int) {
 	return
 }
 
+// TestCombineArmCarriesSiggen proves the ARM CHAIN: with the fabric FAST-SIGNAL
+// GENERATOR enabled (SetSiggen), doCombineDrain's SEL_RUN arm write carries RUN[6]/[7]
+// (siggen enable/shape) IN ADDITION to combine_en (RUN[5]) — so the device-combine
+// accumulate integrates the SAME triangle the host reference-lock engages on. With
+// siggen OFF the arm word is byte-for-byte the combine-only word (no siggen leak).
+func TestCombineArmCarriesSiggen(t *testing.T) {
+	const gridL, k = 64, 4
+	words, _ := combineTestGrid(gridL, k)
+	n := combine.DrainWords(gridL, k)
+
+	armRunVal := func(fb *fakeBus) (uint16, bool) {
+		// The arm write is the SEL_RUN write with combine_en (bit 5) set; the restore
+		// write clears it. Take the last SEL_RUN write that has bit 5 set = the arm.
+		var val uint16
+		var found bool
+		for _, w := range fb.snapWrites() {
+			if w.sel == selRun && w.val&(1<<combine.RunCombineEnBit) != 0 {
+				val, found = w.val, true
+			}
+		}
+		return val, found
+	}
+
+	// siggen OFF (default): arm word = combine_en only, no siggen bits.
+	fbOff := newFakeBus()
+	fbOff.combineWords, fbOff.combineRemain = words, uint16(n)
+	eOff, _ := newTestEngine(t, fbOff)
+	if _, ok := eOff.doCombineDrain(CombineReq{GridL: gridL, K: k, DwellMs: 20}); !ok {
+		t.Fatalf("siggen-off drain ok=false")
+	}
+	offArm, ok := armRunVal(fbOff)
+	if !ok {
+		t.Fatalf("no combine arm write seen (siggen off)")
+	}
+	if offArm&(1<<combine.RunSiggenEnBit) != 0 || offArm&(1<<combine.RunSiggenShapeBit) != 0 {
+		t.Fatalf("siggen-off combine arm %#04x leaked a siggen bit", offArm)
+	}
+
+	// siggen ON (ramp): arm word carries combine_en AND RUN[6] AND RUN[7].
+	fbOn := newFakeBus()
+	fbOn.combineWords, fbOn.combineRemain = words, uint16(n)
+	eOn, _ := newTestEngine(t, fbOn)
+	eOn.SetSiggen(true, true) // enable + ramp shape
+	if _, ok := eOn.doCombineDrain(CombineReq{GridL: gridL, K: k, DwellMs: 20}); !ok {
+		t.Fatalf("siggen-on drain ok=false")
+	}
+	onArm, ok := armRunVal(fbOn)
+	if !ok {
+		t.Fatalf("no combine arm write seen (siggen on)")
+	}
+	wantMask := uint16((1 << combine.RunCombineEnBit) | (1 << combine.RunSiggenEnBit) | (1 << combine.RunSiggenShapeBit))
+	if onArm&wantMask != wantMask {
+		t.Fatalf("siggen-on combine arm %#04x missing bits (want mask %#04x set: combine_en|siggen_en|shape)", onArm, wantMask)
+	}
+	// The ONLY difference vs the off arm must be the two siggen bits (additive).
+	if onArm != offArm|(1<<combine.RunSiggenEnBit)|(1<<combine.RunSiggenShapeBit) {
+		t.Fatalf("siggen-on arm %#04x is not off-arm %#04x + siggen bits (non-additive)", onArm, offArm)
+	}
+}
+
 // TestCombineDrainNoPrimeRead drives the engine's owner-goroutine COMBINE primitive
 // against a fake bus that ships a known bin-major grid, and proves the drain does NOT
 // issue a leading prime read: the returned words equal the scripted grid verbatim

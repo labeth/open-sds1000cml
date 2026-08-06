@@ -33,6 +33,10 @@ type Engine interface {
 	SetAvgCount(n int)
 	SetEresLen(l int)
 	SetETS(on bool)
+	// SetSiggen toggles the in-fabric FAST-SIGNAL GENERATOR (fast_siggen.v,
+	// RUN[6] enable / RUN[7] shape). Off by default => byte-identical fabric;
+	// the enable is carried by the next RUN write (per-frame arm or combine arm).
+	SetSiggen(on, ramp bool)
 	SetTrigPosFrac(frac float64)
 	SetHoldoff(sec float64) float64
 	SetMemDepth(samples int) int

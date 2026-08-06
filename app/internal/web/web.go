@@ -115,6 +115,15 @@ type superresControl interface {
 	SuperresSetArmed(on bool) bool
 }
 
+// siggenControl is the optional in-fabric FAST-SIGNAL GENERATOR control surface (the
+// panel Controller implements it): enable/disable the synthetic triangle/ramp that
+// drives BOTH the capture record (host reference-lock) AND the sr_accum align input
+// (device-combine). Handlers type-assert so test doubles can omit it. Kept separate
+// from superresControl so a panel that only does host drizzle still compiles.
+type siggenControl interface {
+	SetSiggen(on, ramp bool) bool
+}
+
 // frameWaiter is the optional long-poll surface: implemented by main's
 // scopeSource (delegating to frames.Fanout.WaitNext). Handlers type-assert
 // for it so test doubles without it degrade to a short seq poll.

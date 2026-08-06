@@ -185,6 +185,8 @@ type setReq struct {
 	Std  int     `json:"std"`  // video: 0=PAL 1=NTSC
 	Line int     `json:"line"` // video: 0=any, else line N
 	Neg  bool    `json:"neg"`  // video: negative sync
+	// siggen: shape select — false=triangle (default), true=ramp (RUN[7]).
+	Shape bool `json:"shape"`
 }
 
 func (s *Server) hSet(w http.ResponseWriter, r *http.Request) {
@@ -373,6 +375,16 @@ func (s *Server) hSet(w http.ResponseWriter, r *http.Request) {
 		if p, pok := s.panel.(superresControl); pok && p.SuperresSetArmed(req.Value != 0) {
 		} else {
 			ok, errStr = false, "superres control unavailable"
+		}
+	case "siggen":
+		// fabric FAST-SIGNAL GENERATOR: enable (value!=0) + shape (shape=true → ramp,
+		// else triangle). Delegates to engine.SetSiggen via the panel, which persists
+		// RUN[6]/[7] into the composed run word — carried by BOTH the per-frame arm (so
+		// the host reference-lock engages on the fabric triangle in the record) AND the
+		// combine baseRun (so the device-combine accumulate stacks the SAME triangle).
+		if p, pok := s.panel.(siggenControl); pok && p.SetSiggen(req.Value != 0, req.Shape) {
+		} else {
+			ok, errStr = false, "siggen control unavailable"
 		}
 	default:
 		ok, errStr = false, "unknown control"
