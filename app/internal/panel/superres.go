@@ -183,20 +183,32 @@ func (c *Controller) srSeedAndStart() bool {
 			period, stackHi = p, mlo+p
 		}
 	}
-	st := superres.New(cols, k)
-	st.Align = ch
-	st.SampleS = sampleS
+	var st *superres.Stack
 	if device {
-		// The finalize rbf fixes the fabric grid at srDevGridL*srDevK bins; device
-		// mode requests exactly that, NOT the host srK. Keep the reference seed (it
-		// fixes Align + SampleS + gives a usable frame gate) on the device geometry.
-		k = srDevK
-		st = superres.New(cols, k)
+		// DEVICE self-seed: the in-fabric COMBINE grid is already trigger-aligned and
+		// crunched at the FIXED fabric geometry (srDevGridL*srDevK bins), so the host
+		// reference-lock is neither needed NOR usable here. In the native-fast band the
+		// app drain collapses the fabric triangle to a FLAT display Frame; SeedRefGate
+		// would reject it ("ref unusable / flat") and device super-res could never arm —
+		// even though the fabric grid is perfectly good. So SKIP SeedRefGate and seed the
+		// stack straight on the fabric geometry: Align+SampleS from the current band, the
+		// gate spanning the whole crunched grid. srDeviceTick -> InjectBins (re)sets
+		// N/K/GridL/Nbins/StatLo-Hi/Gated + the accumulators from every drained grid, so
+		// this seed only has to make the pre-first-drain render + status valid.
+		st = superres.New(srDevGridL, srDevK)
 		st.Align, st.SampleS = ch, sampleS
-	}
-	if !st.SeedRefGate(c1, c2, edgeX, stackLo, stackHi) { // lo<0 → auto gate; else manual
-		c.srSetStatus("ref unusable (flat/clipped) - freeze a cleaner frame")
-		return false
+		st.GridL, st.Gated = srDevGridL, true
+		st.GateLo, st.GateHi = 0, srDevGridL // whole-grid overlay until the first drain lands
+	} else {
+		// HOST drizzle: UNCHANGED — lock the frozen frame as the match reference and
+		// install the gate; rejects a flat/clipped/featureless frame (Feed needs the ref).
+		st = superres.New(cols, k)
+		st.Align = ch
+		st.SampleS = sampleS
+		if !st.SeedRefGate(c1, c2, edgeX, stackLo, stackHi) { // lo<0 → auto gate; else manual
+			c.srSetStatus("ref unusable (flat/clipped) - freeze a cleaner frame")
+			return false
+		}
 	}
 	stop := make(chan struct{})
 	c.mu.Lock()
@@ -465,7 +477,13 @@ func (c *Controller) srLoop(stop chan struct{}, st *superres.Stack, device bool)
 func (c *Controller) srDeviceTick(st *superres.Stack, reached *bool) {
 	out, ok := c.eng.CombineDrain(engine.CombineReq{GridL: srDevGridL, K: srDevK, DwellMs: 20})
 	if !ok {
-		return // timeout / overflow / queue-full → skip this tick, never crunch a partial grid
+		// timeout / overflow / queue-full → skip this tick, never crunch a partial grid.
+		// Surface a clear waiting state ONLY before the first grid lands, so an occasional
+		// queue-full mid-stack doesn't stomp the live "N reps" status. Never crashes.
+		if st.Hits == 0 {
+			c.srSetStatus("waiting for device grid...")
+		}
+		return
 	}
 	// A real band/tdiv change rescales the record — freeze the stack for review, like host.
 	if st.SampleS != 0 && out.SampleS != 0 && out.SampleS != st.SampleS {
