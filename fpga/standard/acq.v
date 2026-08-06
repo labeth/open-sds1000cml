@@ -628,6 +628,9 @@ module acq (
         .halt        (combine_en ? 1'b0 : op_halt),
         .rst         (op_reset),
         .stream_on   (stream_on),
+        // COMBINE finalize: pre-trigger + target the bin-drain length so post_full fires
+        // once the frozen grid is staged. combine_en=0 => capture is byte-for-byte today.
+        .combine_en  (combine_en),
         .pre_work_w  (pre_work_w),
         .post_work_w (post_work_w),
         .cap_word    (cap_word),

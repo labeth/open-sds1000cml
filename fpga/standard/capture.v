@@ -51,6 +51,13 @@ module capture (
     // reads live behind wr_ptr. Additive: stream_on=0 => the triggered path is unchanged.
     input  wire                 stream_on,
 
+    // COMBINE finalize (ADDITIVE, gated). When combine_en, the arm pulse pre-loads
+    // triggered=1 and posttrig_work = NBINS*WPB (the sr_accum bin-drain length), so
+    // the exact post-count finalize (post_full) fires after the post-freeze bin stream
+    // is staged -> coherent record + rec_len = drain length. combine_en=0 collapses
+    // every touched expression to today's, so the datapath is byte-for-byte identical.
+    input  wire                 combine_en,
+
     // arm-time working depths (already field- and joint-clamped in acq.v).
     input  wire [15:0]          pre_work_w,
     input  wire [15:0]          post_work_w,
@@ -92,6 +99,11 @@ module capture (
     // ---- sized geometry constants (never part-select an int macro) -----------
     localparam [`ADDR_W-1:0] REC_LAST    = `REC_DEPTH - 1;   // 20479
     localparam [15:0]        REC_DEPTH16 = `REC_DEPTH;        // 20480
+    // COMBINE: the sr_accum drain always presents NBINS(256) * WPB(12) = 3072 words
+    // (mean-only stores a 24-bit cell but the drain FSM still emits 12 words/bin, words
+    // 3..8 reading 0 — see sr_accum.v localparam WPB and combine.go WordsPerBin). This
+    // is the exact post-count target that makes capture finalize on the staged grid.
+    localparam [15:0]        COMBINE_WORDS = 16'd3072;
 
     // ---- FSM ------------------------------------------------------------------
     localparam [1:0] ST_IDLE = 2'd0, ST_FILL = 2'd1, ST_HALT = 2'd2;
@@ -254,12 +266,17 @@ module capture (
             state <= ST_FILL;
             waddr <= {`ADDR_W{1'b0}};
             wrote_count <= 16'd0; post_count <= 16'd0;
-            triggered <= 1'b0; comp_pending <= 1'b0; dec_pending <= 1'b0;
+            // COMBINE: pre-trigger the frame (triggered=1) so every post-freeze bin the
+            // sr_accum drain streams is a POST sample (trig machinery inert: trig_fire needs
+            // !triggered). combine_en=0 => `combine_en`==1'b0, i.e. today's `triggered<=1'b0`.
+            triggered <= combine_en; comp_pending <= 1'b0; dec_pending <= 1'b0;
             coherent <= 1'b0; r_valid <= 1'b0; r_trig <= 1'b0; r_done <= 1'b0;
             fill_frozen <= 1'b0; trig_frac <= 16'h0000; trig_idx_r <= {`ADDR_W{1'b0}};
             prev_trig_ch <= 8'd0; div_busy <= 1'b0; rec_len_r <= 16'd0;
             pretrig_work  <= pre_work_w;    // latch the clamped working depths
-            posttrig_work <= post_work_w;
+            // COMBINE: target the exact bin-drain length so post_full fires when the grid
+            // is fully staged. combine_en=0 => `post_work_w`, today's expression verbatim.
+            posttrig_work <= combine_en ? COMBINE_WORDS : post_work_w;
         end else if (halt) begin
             if (triggered) begin
                 // finalize a triggered frame (partial post window) -> freeze + flush.
