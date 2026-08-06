@@ -303,6 +303,7 @@ type Engine struct {
 	streamMode  atomic.Bool      // stitched high-bandwidth streaming decode mode
 	siggenEn    atomic.Bool      // fabric fast-siggen enable (RUN[6]); proving-only, default off
 	siggenRamp  atomic.Bool      // fast-siggen shape (RUN[7]): true=ramp, false=triangle
+	siggenDirty atomic.Bool      // a SetSiggen toggle needs a one-shot selRun re-assert (owner services at the boundary)
 	chVdivBits  [2]atomic.Uint64 // per-channel V/div (float64 bits) for the
 	//                              trigger-level → display-code mapping
 	trigZero    [2]atomic.Uint64 // per-channel active trig-cal Zero (float64 bits)

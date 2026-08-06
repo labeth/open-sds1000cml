@@ -92,12 +92,19 @@ func (e *Engine) SetEresLen(l int) {
 // (ramp=true) in the 200 MHz interleave domain that drives BOTH the normal capture
 // record (so the host reference-lock engages) AND the sr_accum align input (so the
 // device COMBINE grid is coherent). It proves the whole super-res chain LIVE with NO
-// bench signal. Off by default => byte-for-byte identical fabric. Only stores state; the
-// next RUN write (per-frame arm, or a combine arm) carries the bits — same safe pattern
-// as SetStreamMode/SetRunning (the bus owner goroutine does the actual write).
+// bench signal. Off by default => byte-for-byte identical fabric.
+//
+// The per-frame arm (armEngineQuiet) writes ONLY OP_GO — it carries NO RUN write — so
+// storing siggenEn alone would never reach selRun during normal free-run acquisition
+// (the capture record would stay flat and the host reference-lock could never seed).
+// selRun is a persistent fabric register and every runWord() write already ORs the
+// current siggen state, so ONE re-assert on the toggle is sufficient: raise siggenDirty
+// and let the bus-owner boundary (serviceCommands) write selRun=runWord() once. Off =>
+// runWord() is byte-identical, so the re-write is a no-op change to the fabric.
 func (e *Engine) SetSiggen(on, ramp bool) {
 	e.siggenEn.Store(on)
 	e.siggenRamp.Store(ramp)
+	e.siggenDirty.Store(true)
 }
 
 func (e *Engine) SetRunning(on bool) {

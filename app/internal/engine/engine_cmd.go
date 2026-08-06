@@ -27,6 +27,17 @@ drain:
 		}
 	}
 
+	// FAST-SIGGEN toggle (RUN[6]/[7]): re-assert the composed run word so a mid-run
+	// SetSiggen actually reaches selRun on the NORMAL capture path. The per-frame arm
+	// writes only OP_GO (no RUN write), and bringUp only re-writes selRun on a
+	// band/mode change — so without this a toggle would never take effect until the
+	// next band change. selRun is persistent and runWord() always carries the current
+	// siggen state, so one re-assert is enough; siggen off => runWord() is byte-
+	// identical, making this a no-op change to the fabric.
+	if e.siggenDirty.Swap(false) {
+		e.w(selRun, e.runWord())
+	}
+
 	e.mu.Lock()
 	trigDirty, code := e.trigDirty, e.trigCode
 	offDirty, offCode := e.offDirty, e.offCode

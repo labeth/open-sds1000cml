@@ -555,11 +555,13 @@ func (c *Controller) SetSuperresDevice(on bool) bool {
 // SetSiggen enables/disables the in-fabric FAST-SIGNAL GENERATOR remotely
 // (web/SCPI): enable (on) + shape (ramp=false triangle / ramp=true ramp). Marshals
 // onto the panel goroutine via c.inject (like SetSuperresDevice) so it never races
-// the panel's own menu ops, then delegates to the engine, which stores RUN[6]/[7].
-// The bits are carried by the next RUN write — a per-frame arm (so the host
-// reference-lock sees the fabric triangle in the record) AND the combine baseRun in
-// doCombineDrain (so the SAME triangle is what the device-combine accumulate stacks).
-// Off => byte-for-byte identical fabric. Returns false if the inject queue is full.
+// the panel's own menu ops, then delegates to the engine, which stores RUN[6]/[7] and
+// re-asserts selRun at the next boundary (SetSiggen raises siggenDirty; serviceCommands
+// writes runWord()). That re-assert is what makes the fabric triangle appear in the
+// NORMAL capture record (so the host reference-lock can seed) — the per-frame arm alone
+// writes only OP_GO. The same run word feeds the combine baseRun in doCombineDrain, so
+// the SAME triangle is what the device-combine accumulate stacks. Off => byte-for-byte
+// identical fabric. Returns false if the inject queue is full.
 func (c *Controller) SetSiggen(on, ramp bool) bool {
 	select {
 	case c.inject <- func() { c.eng.SetSiggen(on, ramp) }:
