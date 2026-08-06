@@ -118,9 +118,35 @@ set_output_delay -clock gpmc_vclk -max 5.0 $output_ports
 set_output_delay -clock gpmc_vclk -min 1.0 $output_ports
 
 # =============================================================================
-# NO multicycle constraints are added: every intra-Group-B transfer is a REAL,
-# design-intended (sub-)cycle phase relationship (phase-matched interleave
-# capture) that must be analyzed as-is, and every cross-domain transfer is an
-# async CDC already cut in section 3. Relaxing either with a multicycle would
-# either hide a genuine 200 MHz timing risk or misstate the design intent.
+# 8) 200 MHz TAP CLOSURE — BY RTL RETIMING, NOT BY SDC RELAXATION
+# -----------------------------------------------------------------------------
+# The three 200 MHz taps this file first surfaced as negative-setup are closed by
+# PIPELINING the RTL so each is a genuine single-cycle transfer that MEETS the
+# real (sub-)cycle phase requirement. NO multicycle is added — a multicycle on any
+# of these would MISSTATE the design (these are true 1-cycle transfers) and hide a
+# real risk. The cuts/groups above remain exactly correct for the retimed netlist:
+#
+#   * eth_gearbox wr (was clk[0] ~ -1.49 ns): the c1b_p @240deg -> 0deg gearbox
+#     write left only ~1.67 ns of a 5 ns period, and a 12-bit sub+shift sat inside
+#     it. FIX (acq.v): re-register the RAW c1*_p bytes into the 0deg wr_clk domain
+#     (c1a_e/c1b_e/c1c_e) — a plain reg->reg hop that FITS 1.67 ns — then do the
+#     sub+shift SAME-PHASE (full 5 ns). FIX (eth_gearbox.v): an input register
+#     (wr_samp_i) splits that sub+shift from the bank route-mux. c1a_p@180deg and
+#     c1c_p@90deg have looser 2.5 / 3.75 ns windows. These c1*_p->c1*_e hops are
+#     REAL Group-B synchronous phase paths (both from mclk_in via u_pll200), timed
+#     as-is by TimeQuest — they are NOT CDC and MUST stay single-cycle.
+#   * il_capture fill (was clk[4] ~ -0.53 ns): the phased-capture -> M9K write
+#     data setup. FIX (il_capture.v): register {wdata,wa,we} one cap_clk before the
+#     M9K (endpoint moves from the M9K write port to an adjacent fabric FF; data
+#     and address delayed together => bit-identical ring).
+#   * sr_accum RMW (fitter/bench risk): read->add->write at 200 MHz. FIX
+#     (sr_accum.v): re-register the M9K read into a fabric FF (q_a2) and register
+#     the 8x8 square (vv_q), so the accumulate adder launches from LE FFs, not from
+#     the M9K output register / behind the multiply. 2-deep, still hazard-free
+#     (monotonic pos, revisit gap = NBINS >> 2).
+#
+# Every intra-Group-B transfer therefore remains a REAL (sub-)cycle phase
+# relationship analyzed as-is; every cross-domain transfer is an async CDC already
+# cut in section 3. derive_clock_uncertainty (section 4) applies the PLL/jitter
+# uncertainty to the tight 200 MHz phase edges above.
 # =============================================================================

@@ -301,6 +301,8 @@ type Engine struct {
 	singleArmed atomic.Bool      // SINGLE: stop after the next triggered frame
 	memDepth    atomic.Int32     // decimated drain depth (samples): fps↔data tradeoff
 	streamMode  atomic.Bool      // stitched high-bandwidth streaming decode mode
+	siggenEn    atomic.Bool      // fabric fast-siggen enable (RUN[6]); proving-only, default off
+	siggenRamp  atomic.Bool      // fast-siggen shape (RUN[7]): true=ramp, false=triangle
 	chVdivBits  [2]atomic.Uint64 // per-channel V/div (float64 bits) for the
 	//                              trigger-level → display-code mapping
 	trigZero    [2]atomic.Uint64 // per-channel active trig-cal Zero (float64 bits)

@@ -238,6 +238,26 @@ func (c *Controller) srCancel(why string) {
 	c.pushLEDs()
 }
 
+// srCancelForAcq cancels DEVICE super-res when the user takes manual acquisition
+// control (RUN or SINGLE). Device super-res STOPS the engine FSM (srSeedAndStart
+// does SetRunning(false)) and lets the CombineDrain owner-goroutine drive the
+// arm→dwell→halt→drain→restore recipe; a concurrent RUN/SINGLE would re-drive the
+// SAME core (normal capture / single-shot) and the two paths would contend on the
+// FSM + GPMC. Cancelling drops srActive + stops srLoop before the acquisition call
+// proceeds, so the two owners can never run at once. HOST-drizzle super-res only
+// reads finished frames (frameFn) and never owns the FSM, so it is left untouched —
+// its behaviour under RUN/SINGLE is unchanged. Returns true iff it cancelled.
+func (c *Controller) srCancelForAcq() bool {
+	c.mu.Lock()
+	contend := c.srActive && c.srDevice
+	c.mu.Unlock()
+	if !contend {
+		return false
+	}
+	c.srCancel("cancelled - acquisition")
+	return true
+}
+
 // srFocusCycle (ADJUST/intensity push) advances the super-res focus:
 // watch → gate-start → gate-end → review → watch. In the gate-edit foci the
 // ADJUST knob moves that edge; review shows the stacked trace.

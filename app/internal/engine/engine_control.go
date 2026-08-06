@@ -87,6 +87,19 @@ func (e *Engine) SetEresLen(l int) {
 	e.mu.Unlock()
 }
 
+// SetSiggen enables/disables the in-fabric FAST-SIGNAL GENERATOR (fast_siggen.v,
+// RUN[6] enable / RUN[7] shape) — a synthetic repetitive triangle (ramp=false) or ramp
+// (ramp=true) in the 200 MHz interleave domain that drives BOTH the normal capture
+// record (so the host reference-lock engages) AND the sr_accum align input (so the
+// device COMBINE grid is coherent). It proves the whole super-res chain LIVE with NO
+// bench signal. Off by default => byte-for-byte identical fabric. Only stores state; the
+// next RUN write (per-frame arm, or a combine arm) carries the bits — same safe pattern
+// as SetStreamMode/SetRunning (the bus owner goroutine does the actual write).
+func (e *Engine) SetSiggen(on, ramp bool) {
+	e.siggenEn.Store(on)
+	e.siggenRamp.Store(ramp)
+}
+
 func (e *Engine) SetRunning(on bool) {
 	e.running.Store(on)
 	e.singleArmed.Store(false) // an explicit RUN or STOP both cancel a pending single-shot

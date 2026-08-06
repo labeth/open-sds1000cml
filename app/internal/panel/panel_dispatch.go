@@ -127,6 +127,19 @@ func (c *Controller) button(code int) {
 	}
 	switch code {
 	case btnRunStop:
+		// Taking manual acquisition control cancels DEVICE super-res first so its
+		// CombineDrain owner path can't contend the FSM with normal capture (host
+		// drizzle is untouched — see srCancelForAcq). When it did cancel, the device
+		// path had stopped the engine and left the running shadow desynced, so RESUME
+		// (force run) rather than toggle from that stale shadow.
+		if c.srCancelForAcq() {
+			c.mu.Lock()
+			c.running, c.single = true, false
+			c.mu.Unlock()
+			c.eng.SetRunning(true)
+			c.pushLEDs()
+			return
+		}
 		// Toggle RUN/STOP and leave SINGLE mode (SyncLEDs keeps the shadow in step
 		// with a single that self-stopped, so this toggles from the right state).
 		c.mu.Lock()
@@ -136,6 +149,7 @@ func (c *Controller) button(code int) {
 		c.mu.Unlock()
 		c.eng.SetRunning(r)
 	case btnSingle:
+		c.srCancelForAcq() // device SR would contend the FSM with the single-shot drive
 		c.mu.Lock()
 		c.norm, c.running, c.single = true, true, true
 		c.mu.Unlock()

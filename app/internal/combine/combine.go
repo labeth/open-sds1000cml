@@ -38,6 +38,14 @@ const (
 	RunCombineEnBit    = 5 // SEL_RUN bit 5: combine_en (resets 0; free-bit precedent = stream_on[3]/test_ramp[4])
 	XformInterleaveBit = 2 // SEL_XFORM_CTRL bit 2: interleave_en (phased fast ENCODE; required for combine)
 	XformTrigEnBit     = 9 // SEL_XFORM_CTRL bit 9: trigger-referenced pass anchor (il trig_en, reused)
+
+	// Fabric FAST-SIGNAL GENERATOR (fast_siggen.v) — previously-FREE RUN bits,
+	// proving-only: a synthetic repetitive triangle/ramp in the 200 MHz interleave
+	// domain that drives BOTH the normal capture record AND the sr_accum align input,
+	// so the super-res chain (host reference-lock → device COMBINE → crunch + noise-
+	// reduction) can be proven LIVE with NO bench signal. Reset 0 => OFF => byte-identical.
+	RunSiggenEnBit    = 6 // SEL_RUN bit 6: fast_siggen enable
+	RunSiggenShapeBit = 7 // SEL_RUN bit 7: fast_siggen shape (0=triangle, 1=ramp)
 )
 
 // DrainWords is the number of uint16 words one combine drain yields for a gridL*K grid.

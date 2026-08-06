@@ -120,7 +120,21 @@ module eth_gearbox #(
         en_wr1 <= en; en_wr2 <= en_wr1;
     end
     wire en_wr = en_wr2;
-    wire wr_go = en_wr & wr_valid;
+
+    // ---- RETIMED input register (200 MHz timing margin) ---------------------
+    // Register the incoming samples ONE wr_clk before the round-robin routing.
+    // This splits the upstream integration-site sub+shift (c1*_e -> +/-scale, in
+    // acq.v) from the in-gearbox route-mux: the sub+shift now ends at THIS FF and
+    // the route-mux starts from it, so neither shares a 5 ns edge. wbank advances
+    // on the SAME delayed valid, so the (wbank,sample) pairing is unchanged ->
+    // identical bank contents, +1 wr_clk latency (invisible to the elastic FIFO).
+    reg  [WR_SAMP*SAMPLE_W-1:0] wr_samp_i;
+    reg                         wr_valid_i;
+    always @(posedge wr_clk) begin
+        if (wr_rst | ~en_wr) begin wr_samp_i <= {WR_SAMP*SAMPLE_W{1'b0}}; wr_valid_i <= 1'b0; end
+        else                 begin wr_samp_i <= wr_samp;                  wr_valid_i <= wr_valid; end
+    end
+    wire wr_go = en_wr & wr_valid_i;      // routing/cursor track the REGISTERED valid
 
     always @(posedge wr_clk) begin
         if (wr_rst | ~en_wr) wbank <= {LW{1'b0}};
@@ -136,7 +150,7 @@ module eth_gearbox #(
             for (p = 0; p < WR_SAMP; p = p + 1) begin
                 tb         = (wbank + p) % LANES;
                 bwe[tb]    = 1'b1;
-                bwd[tb]    = wr_samp[p*SAMPLE_W +: SAMPLE_W];
+                bwd[tb]    = wr_samp_i[p*SAMPLE_W +: SAMPLE_W];
             end
         end
     end

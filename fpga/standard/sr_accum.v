@@ -129,13 +129,29 @@ module sr_accum #(
     reg [AW-1:0] cur_pos;           // current bin position
     reg [31:0] pass_idx;            // pass counter (odd/even parity source)
     reg        fdone_tgl;
-    // 1-deep RMW pipeline
+    // ---- RETIMED 2-deep RMW pipeline (200 MHz timing closure) ----------------
+    // Stage-1 (p1 / q_a): M9K registered read output + sample.
+    // Stage-2 (p2 / q_a2): the M9K read is re-registered into FABRIC FFs (q_a2)
+    //   so the accumulate ADDER launches from a fast LE FF, NOT from the M9K
+    //   output-register (whose ~2 ns Tco was eating the 5 ns budget). The 8x8
+    //   square is likewise registered (vv_q) so the sum2 add no longer sits
+    //   behind the combinational multiply. Add + M9K write commit in stage-2.
+    //   Read->write latency is now 2 cap cycles (was 1); still << NBINS so the
+    //   monotonic-pos RMW stays hazard-free (revisit gap = NBINS >= 4 > 2).
     reg        p1_val;
     reg [AW-1:0] p1_pos;
     reg [7:0]  p1_va, p1_vb;
     reg        p1_odd;
     reg [71:0] q_a;
     reg [23:0] q_b;
+    // stage-2 registers
+    reg        p2_val;
+    reg [AW-1:0] p2_pos;
+    reg [7:0]  p2_va, p2_vb;
+    reg        p2_odd;
+    reg [71:0] q_a2;
+    reg [23:0] q_b2;
+    reg [15:0] vv_q;                 // registered p1_va*p1_va (square) for sum2
 
     localparam [1:0] FI_IDLE=2'd0, FI_CLEAR=2'd1, FI_ACCUM=2'd2, FI_FROZEN=2'd3;
 
@@ -156,34 +172,37 @@ module sr_accum #(
         fdone_tgl=1'b0;
         p1_val=1'b0; p1_pos={AW{1'b0}}; p1_va=8'd0; p1_vb=8'd0; p1_odd=1'b0;
         q_a=72'd0; q_b=24'd0;
+        p2_val=1'b0; p2_pos={AW{1'b0}}; p2_va=8'd0; p2_vb=8'd0; p2_odd=1'b0;
+        q_a2=72'd0; q_b2=24'd0; vv_q=16'd0;
         for (i=0;i<NBINS;i=i+1) begin amem[i]={CW{1'b0}}; bmem[i]=24'd0; end
     end
 
     assign busy     = (fstate == FI_CLEAR) || (fstate == FI_ACCUM);
     assign coherent = coh_r;
 
-    // ---- unpack old align cell ----
-    wire [7:0]  old_cnt  = q_a[7:0];
-    wire [15:0] old_sum  = q_a[23:8];
-    wire [23:0] old_sum2 = q_a[47:24];
-    wire [7:0]  old_cntA = q_a[55:48];
-    wire [15:0] old_sumA = q_a[71:56];
+    // ---- unpack old align cell (from the RE-REGISTERED stage-2 read q_a2) ----
+    wire [7:0]  old_cnt  = q_a2[7:0];
+    wire [15:0] old_sum  = q_a2[23:8];
+    wire [23:0] old_sum2 = q_a2[47:24];
+    wire [7:0]  old_cntA = q_a2[55:48];
+    wire [15:0] old_sumA = q_a2[71:56];
     wire        frozen_a = (old_cnt == DMAX[7:0]);
-    wire [15:0] vv       = p1_va * p1_va;      // 8x8 -> 16b (<=65025), free DSP
+    // vv is now the REGISTERED square vv_q (= p2_va*p2_va); computed one cycle
+    // earlier so the sum2 adder no longer waits on the combinational multiply.
     wire [7:0]  new_cnt  = frozen_a ? old_cnt  : old_cnt  + 8'd1;
-    wire [15:0] new_sum  = frozen_a ? old_sum  : old_sum  + {8'd0, p1_va};
-    wire [23:0] new_sum2 = frozen_a ? old_sum2 : old_sum2 + {8'd0, vv};
-    wire        addA     = ~frozen_a & p1_odd;
+    wire [15:0] new_sum  = frozen_a ? old_sum  : old_sum  + {8'd0, p2_va};
+    wire [23:0] new_sum2 = frozen_a ? old_sum2 : old_sum2 + {8'd0, vv_q};
+    wire        addA     = ~frozen_a & p2_odd;
     wire [7:0]  new_cntA = addA ? old_cntA + 8'd1 : old_cntA;
-    wire [15:0] new_sumA = addA ? old_sumA + {8'd0, p1_va} : old_sumA;
+    wire [15:0] new_sumA = addA ? old_sumA + {8'd0, p2_va} : old_sumA;
     wire [71:0] new_a    = {new_sumA, new_cntA, new_sum2, new_sum, new_cnt};
 
-    // ---- unpack old other cell ----
-    wire [7:0]  old_bcnt = q_b[7:0];
-    wire [15:0] old_bsum = q_b[23:8];
+    // ---- unpack old other cell (from stage-2 read q_b2) ----
+    wire [7:0]  old_bcnt = q_b2[7:0];
+    wire [15:0] old_bsum = q_b2[23:8];
     wire        frozen_b = (old_bcnt == DMAX[7:0]);
     wire [7:0]  new_bcnt = frozen_b ? old_bcnt : old_bcnt + 8'd1;
-    wire [15:0] new_bsum = frozen_b ? old_bsum : old_bsum + {8'd0, p1_vb};
+    wire [15:0] new_bsum = frozen_b ? old_bsum : old_bsum + {8'd0, p2_vb};
     wire [23:0] new_b    = {new_bsum, new_bcnt};
 
     wire        do_accum  = (fstate == FI_ACCUM) & smp_valid & combine_en;
@@ -222,6 +241,15 @@ module sr_accum #(
         p1_va  <= smp_a;
         p1_vb  <= smp_b;
         p1_odd <= cur_odd;
+        // ---- stage-2: re-register read into fabric + square, align sample ----
+        q_a2   <= q_a;
+        q_b2   <= q_b;
+        vv_q   <= p1_va * p1_va;      // 8x8 -> 16b (<=65025); aligned with p2_va
+        p2_val <= p1_val;
+        p2_pos <= p1_pos;
+        p2_va  <= p1_va;
+        p2_vb  <= p1_vb;
+        p2_odd <= p1_odd;
 
         case (fstate)
             FI_IDLE: begin
@@ -239,10 +267,10 @@ module sr_accum #(
                 end else csweep <= csweep + 1'b1;
             end
             FI_ACCUM: begin
-                // commit the pipelined RMW (1-cycle latency; hazard-free)
-                if (p1_val) begin
-                    amem[p1_pos] <= new_a[CW-1:0];
-                    if (WITH_OTHER != 0) bmem[p1_pos] <= new_b;
+                // commit the pipelined RMW (2-cycle latency; hazard-free)
+                if (p2_val) begin
+                    amem[p2_pos] <= new_a[CW-1:0];
+                    if (WITH_OTHER != 0) bmem[p2_pos] <= new_b;
                 end
                 // advance position / pass parity for NEXT cycle
                 if (trig_en & trig_rise) begin
@@ -260,11 +288,15 @@ module sr_accum #(
                 end
             end
             FI_FROZEN: begin
-                // flush any last p1 (from the halt cycle) then hold frozen
-                if (p1_val) begin
-                    amem[p1_pos] <= new_a[CW-1:0];
-                    if (WITH_OTHER != 0) bmem[p1_pos] <= new_b;
-                    p1_val <= 1'b0;
+                // flush the last in-flight cell: at halt p1(B) shifted into p2,
+                // so commit it here (the halt-cycle new sample was dropped via
+                // p1_val<=0). The freeze CDC latency to the clk drain (2-FF sync
+                // + 80 MHz) is many cap cycles, so the grid is fully committed
+                // long before coherent asserts and the drain reads it.
+                if (p2_val) begin
+                    amem[p2_pos] <= new_a[CW-1:0];
+                    if (WITH_OTHER != 0) bmem[p2_pos] <= new_b;
+                    // p2_val self-clears next cycle via the shift (p1_val=0)
                 end
                 if (combine_en && (arm_s2 ^ arm_s3)) begin
                     fstate <= FI_CLEAR; csweep <= {AW{1'b0}};
@@ -276,6 +308,7 @@ module sr_accum #(
         if (!combine_en) begin
             fstate <= FI_IDLE;
             p1_val <= 1'b0;
+            p2_val <= 1'b0;
             drd_cnt <= 2'd0;
         end
     end

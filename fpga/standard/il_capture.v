@@ -68,6 +68,20 @@ module il_capture #(
     reg  [AW-1:0] postcnt, trig_addr;
     reg  [23:0] tocnt;
     reg         fdone_tgl;
+    // ---- RETIMED fill tap (200 MHz timing closure) --------------------------
+    // The ring write data (the c1a/c1b/c1c phased captures) reaches this M9K
+    // from PLL phases that leave only a fraction of a 5 ns period of setup to the
+    // cap_clk200 write edge (a real sub-cycle Group-B phase transfer). Registering
+    // the write DATA and ADDRESS TOGETHER one cap cycle moves the tight endpoint
+    // from the M9K write port (large synchronous setup) to a fabric FF (small
+    // setup, placed adjacent), closing the path. Data and address are delayed by
+    // the SAME one cycle, so entry[A] still holds wdata sampled when wa==A -> the
+    // frozen window is BIT-IDENTICAL; only the physical write lands 1 cap cycle
+    // later, hidden by the freeze->drain CDC latency. wr_en_q flushes the final
+    // entry on the ring->held transition.
+    reg  [31:0]   wdata_q;
+    reg  [AW-1:0] wa_q;
+    reg           wr_en_q;
 
     initial begin
         active=1'b0; arm_tgl=1'b0; chan_sel_l=1'b0;
@@ -78,6 +92,7 @@ module il_capture #(
         trig_meta=1'b0; trig_s2=1'b0; trig_s3=1'b0;
         wa={AW{1'b0}}; armed=1'b0; posting=1'b0; held=1'b0;
         postcnt={AW{1'b0}}; trig_addr={AW{1'b0}}; tocnt=24'd0; fdone_tgl=1'b0;
+        wdata_q=32'd0; wa_q={AW{1'b0}}; wr_en_q=1'b0;
     end
 
     assign il_busy = active;
@@ -88,10 +103,17 @@ module il_capture #(
     always @(posedge cap_clk) begin
         arm_meta  <= arm_tgl;  arm_s2  <= arm_meta;  arm_s3  <= arm_s2;
         trig_meta <= trig;     trig_s2 <= trig_meta; trig_s3 <= trig_s2;
+        // ---- retimed fill tap: register {data,addr,we} then write M9K ----
+        // Data + address delayed together => entry[A] == wdata@(wa==A), identical
+        // ring content; wr_en_q = (previous cycle was writing) flushes the last
+        // pre-history entry on the ring->held transition.
+        wdata_q <= wdata;
+        wa_q    <= wa;
+        wr_en_q <= ~held;
+        if (wr_en_q) mem[wa_q] <= wdata_q;    // continuous ring write (pipelined 1 cap cycle)
         if (held) begin
             if (arm_s2 ^ arm_s3) begin held <= 1'b0; armed <= 1'b1; tocnt <= 24'd0; end // re-arm resumes ring
         end else begin
-            mem[wa] <= wdata;                 // continuous ring write (pre-history)
             wa      <= wa + 1'b1;
             if (!armed && !posting) begin
                 if (arm_s2 ^ arm_s3) begin armed <= 1'b1; tocnt <= 24'd0; end

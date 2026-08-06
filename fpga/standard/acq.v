@@ -440,6 +440,36 @@ module acq (
     wire ph180      = pll200_out[3];   // 180 deg
     wire cap_clk200 = pll200_out[4];   // 90 deg — il_capture fill clock
 
+    // ===== FABRIC FAST-SIGNAL GENERATOR (ADDITIVE, LOGIC-ONLY, gated RUN[6]) =========
+    // Synthetic repetitive triangle/ramp in the FAST interleave domain (cap_clk200), to
+    // prove the whole super-res chain LIVE and REMOTELY with NO bench signal: it drives
+    // BOTH (a) the NORMAL capture record (samp_eff mux below) so the host reference-lock
+    // (superres.SeedRefGate: hi-lo>=12, not clipped, detectable period) ENGAGES, and
+    // (b) sr_accum's align input (smp_a/trig mux at the u_sr_accum instance) so the
+    // device COMBINE grid stacks the SAME signal and is coherent.
+    //   ENABLE = run_word[6] (siggen_en): a previously-FREE RUN bit — resets 0 and NO
+    //     existing path writes it, so siggen_en==0 in every flow today and the muxes
+    //     below collapse to today's expressions (byte-for-byte identical drain/fabric).
+    //     Free-bit precedent: stream_on[3], test_ramp[4], combine_en[5].
+    //   SHAPE  = run_word[7] (siggen_shape): 0=triangle (default, period 256 == NBINS),
+    //     1=ramp. Also a previously-FREE RUN bit.
+    // NO schema/regs.vh/regmux.vh edit => IFACE_BUILD_ID stays 0xc2f6eb5f. LOGIC-ONLY
+    // (one 8-bit up/down counter) => 0 M9K; the 46/46-full device stays 46/46.
+    wire       siggen_en    = run_word[6];
+    wire       siggen_shape = run_word[7];
+    wire [7:0] sg_a;
+    fast_siggen #(.AMIN(64), .AMAX(192), .STEP(1)) u_fast_siggen (
+        .cap_clk (cap_clk200),   // triangle period 2*(192-64)=256 == sr_accum NBINS
+        .en      (siggen_en),
+        .shape   (siggen_shape),
+        .samp    (sg_a)          // 8-bit synthetic ADC code, cap_clk200 domain
+    );
+    // Normal-capture path runs at 80 MHz clk: 2-FF sync the smooth counter into clk
+    // (same idiom as m2_ctr_s2). Selected only when siggen_en, so it is dead otherwise.
+    reg [7:0] sg_a_s1 = 8'd0, sg_a_s2 = 8'd0;
+    always @(posedge clk) begin sg_a_s1 <= sg_a; sg_a_s2 <= sg_a_s1; end
+    wire [15:0] sg_word = {sg_a_s2, sg_a_s2};   // CH1 (hi byte) = triangle => align=C1
+
     // ---- 5-core de-interleave (must live here: lanes 40/46/47 are in the wide
     //      bus adc_lane[50:33] that adcif never receives). Each core byte = its
     //      freeze-census lanes MSB..LSB, zero-padded to 8. Combinational off the
@@ -485,7 +515,9 @@ module acq (
     // leaves XFORM_CTRL at its 0x0003 reset). So for EVERY app-reachable state samp_eff
     // is byte-identical before and after this edit; and whenever the interleave record
     // is active (il_en=1) cap_word=il_word bypasses samp_eff entirely.
-    wire [15:0] samp_eff = raw_mode ? raw_word : samp;
+    // FAST-SIGGEN (RUN[6]): inject the synthetic triangle into the NORMAL capture
+    // record so the host reference-lock engages. siggen_en=0 => today's expr verbatim.
+    wire [15:0] samp_eff = siggen_en ? sg_word : (raw_mode ? raw_word : samp);
     // cap_word/cap_tick feed capture + envelope. They are MUXed: when il_en the
     // interleave stream (il_capture) drives them; otherwise the spine, byte-exact.
     wire [15:0]        spine_word;
@@ -599,9 +631,12 @@ module acq (
         .cap_clk   (cap_clk200),        // phased 200 MHz fast fill (same clock as il_capture)
         .combine_en(combine_en),
         .smp_valid (1'b1),              // one fast sample per cap tick (single-lane, provable-now)
-        .smp_a     (c1a_p),             // align channel (C1 core-a) 8-bit code
+        // FAST-SIGGEN (RUN[6]): stack the SAME synthetic triangle the normal record
+        // shows so the device COMBINE grid is coherent. sg_a is already in the cap_clk200
+        // domain (= sr_accum cap_clk), no CDC needed. siggen_en=0 => c1a_p verbatim.
+        .smp_a     (siggen_en ? sg_a : c1a_p),       // align channel (C1 core-a) 8-bit code
         .smp_b     (c2a_p),             // other channel (unused: WITH_OTHER=0)
-        .trig      (c1a_p[7]),          // DATA trigger: core-A MSB rising = mid-scale crossing
+        .trig      (siggen_en ? sg_a[7] : c1a_p[7]), // DATA trigger: MSB rising = mid-scale crossing
         .trig_en   (xform_reg[9]),      // reuse il trig_en: 1 = trigger-referenced pass anchor
         .clk       (clk),               // 80 MHz drain / control
         .arm       (op_go),             // clear-sweep + open accumulate window
@@ -830,9 +865,25 @@ module acq (
     // scale x8 -> ~+/-1024 to match the CDR/golden +/-1000 ternary codes. The exact
     // per-core skew + this scaling/threshold trim are BENCH-CAL (same status as the
     // interleave taps themselves — see the c1a_p/c1b_p/c1c_p capture note above).
-    wire signed [11:0] eth_s0 = ($signed({4'd0, c1a_p}) - 12'sd128) <<< 3; // phase0 earliest
-    wire signed [11:0] eth_s1 = ($signed({4'd0, c1b_p}) - 12'sd128) <<< 3; // phase120
-    wire signed [11:0] eth_s2 = ($signed({4'd0, c1c_p}) - 12'sd128) <<< 3; // phase240
+    // RETIMED (clk[0] setup closure): re-clock the phased captures onto the eth
+    // wr_clk (pll200_out[0], 0deg) BEFORE the signed re-center/scale. c1*_p launch
+    // from PLL phases 180/240/90; the transfer to the 0deg gearbox-write domain is
+    // a REAL sub-cycle Group-B phase path (c1b_p @240 -> 0deg = only ~1.67 ns).
+    // Doing the 12-bit sub+shift inside that window overran it (STA clk[0] setup
+    // ~ -1.49 ns). Re-registering the RAW bytes into the 0deg domain first (a plain
+    // reg->reg hop that fits 1.67 ns), then doing the sub+shift SAME-PHASE (full
+    // 5 ns), closes clk[0]. This is a uniform +1 wr_clk delay on the eth sample
+    // stream -> transparent to the self-synchronising slicer/CDR + descrambler
+    // (bit-exact recovered frames; the gearbox already samples c1*_p at 0deg via
+    // bwd_q, so the packed sample VALUES are unchanged, only captured 1 cycle
+    // earlier). c1a_p@180 and c1c_p@90 have looser windows (2.5/3.75 ns).
+    reg [7:0] c1a_e = 8'd0, c1b_e = 8'd0, c1c_e = 8'd0;
+    always @(posedge pll200_out[0]) begin
+        c1a_e <= c1a_p; c1b_e <= c1b_p; c1c_e <= c1c_p;
+    end
+    wire signed [11:0] eth_s0 = ($signed({4'd0, c1a_e}) - 12'sd128) <<< 3; // phase0 earliest
+    wire signed [11:0] eth_s1 = ($signed({4'd0, c1b_e}) - 12'sd128) <<< 3; // phase120
+    wire signed [11:0] eth_s2 = ($signed({4'd0, c1c_e}) - 12'sd128) <<< 3; // phase240
     wire [35:0] eth_wr_samp = {eth_s2, eth_s1, eth_s0};   // s0=[11:0] earliest
     // slicer thresholds = DEC_THR low byte scaled x8 -> +/-(dec_thr_a*8) (bench trim).
     wire signed [11:0] eth_thr_hi = $signed({1'b0, dec_thr_a, 3'b000}); // dec_thr_a<<3, >=0

@@ -3,6 +3,7 @@ package engine
 import (
 	"time"
 
+	"open-sds/app/internal/combine"
 	"open-sds/app/internal/iface"
 )
 
@@ -71,7 +72,17 @@ func (e *Engine) runWord() uint16 {
 	if k := e.band.Kind(); e.normNow() && k != KindEnvelope && k != KindRoll {
 		mode = modeNorm
 	}
-	return iface.RunWithMode(mode) | iface.RunWithRun(true)
+	w := iface.RunWithMode(mode) | iface.RunWithRun(true)
+	// Fabric FAST-SIGNAL GENERATOR (proving-only, default off): OR the previously-FREE
+	// RUN[6]/RUN[7] so BOTH the per-frame normal arm AND the combine baseRun (which is
+	// this runWord()) carry the enable. Off => this is byte-for-byte the RUN word above.
+	if e.siggenEn.Load() {
+		w |= 1 << combine.RunSiggenEnBit
+		if e.siggenRamp.Load() {
+			w |= 1 << combine.RunSiggenShapeBit
+		}
+	}
+	return w
 }
 
 func (e *Engine) w(sel, val uint16) {
