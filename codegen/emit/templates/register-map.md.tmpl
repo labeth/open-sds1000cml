@@ -38,6 +38,23 @@ _Reserved — range claimed, no registers yet._
 {{- range .Fields}}
 | `{{.Name}}` | `[{{.Hi}}:{{.Lo}}]` | {{md .Note}} |
 {{- end}}
+{{end}}{{if .Aliases}}
+## selector aliases
+
+Extra selectors the fabric's read decode maps onto an existing register's read
+port. They are **not** registers — no name, no fields, no write strobe, no Go
+binding — and they exist for bus masters that cannot choose their selector. They
+are part of the contract and are generated from the schema, so regeneration
+preserves them.
+
+⚠ Reading an alias of an **auto-inc** port POPS that port, exactly as reading the
+register itself does. A bench probe must treat these selectors as destructive.
+
+| plane | alias sel | aliases | why |
+|---|---|---|---|
+{{- range .Aliases}}
+| {{.Plane}} | `0x{{.SelHex}}` | `{{.Reg}}` | {{md .Desc}} |
+{{- end}}
 {{end}}
 ## DMA descriptor `{{.Descriptor.Name}}` — {{.Descriptor.Bits}}-bit, {{.Descriptor.Words}} words
 

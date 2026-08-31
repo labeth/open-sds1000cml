@@ -36,13 +36,17 @@ func base() schema.Interface {
 		BuildIDLo: "BID_LO", BuildIDHi: "BID_HI",
 		Stream:  schema.Stream{SampleLaneBits: 18, TransformStages: 1},
 		Capture: schema.Capture{RecordDepth: 100, AddrBits: 7, Margin: 2, PreTrigProgrammable: true, TrigMark: true},
+		// CS1 selectors are multiples of 4 below 0x80: the fabric forces selector
+		// bits 0/1/7 to zero (A1 is a clock, A2 floats, A8 is unwired), so any
+		// other value is undecodable. The fixture obeys the same rule the real
+		// map does, or every negative test below would drown in that one error.
 		Blocks: []schema.Block{{
-			Name: "meta", Plane: schema.CS1, Base: 0x10, Span: 0x08,
+			Name: "meta", Plane: schema.CS1, Base: 0x10, Span: 0x20,
 			Regs: []schema.Register{
 				{Name: "BID_LO", Sel: 0x10, Plane: schema.CS1, Access: schema.R, Sem: schema.SemNormal},
-				{Name: "BID_HI", Sel: 0x11, Plane: schema.CS1, Access: schema.R, Sem: schema.SemNormal},
-				{Name: "DATA", Sel: 0x12, Plane: schema.CS1, Access: schema.R, Sem: schema.SemAutoIncPort},
-				{Name: "CNT", Sel: 0x13, Plane: schema.CS1, Access: schema.R, Sem: schema.SemLevelStatus},
+				{Name: "BID_HI", Sel: 0x14, Plane: schema.CS1, Access: schema.R, Sem: schema.SemNormal},
+				{Name: "DATA", Sel: 0x18, Plane: schema.CS1, Access: schema.R, Sem: schema.SemAutoIncPort},
+				{Name: "CNT", Sel: 0x1C, Plane: schema.CS1, Access: schema.R, Sem: schema.SemLevelStatus},
 			},
 		}},
 		Channels: []schema.Channel{{
@@ -157,15 +161,15 @@ func TestSelectorCollision(t *testing.T) {
 
 func TestReservedContainment(t *testing.T) {
 	i := base()
-	i.Blocks[0].Regs[0].Sel = 0x99 // outside meta [0x10,0x18)
+	i.Blocks[0].Regs[0].Sel = 0x40 // decodable, but outside meta [0x10,0x30)
 	mustErr(t, i, "outside block")
 }
 
 func TestBlockOverlap(t *testing.T) {
 	i := base()
 	i.Blocks = append(i.Blocks, schema.Block{
-		Name: "over", Plane: schema.CS1, Base: 0x14, Span: 0x08,
-		Regs: []schema.Register{{Name: "X", Sel: 0x16, Plane: schema.CS1, Access: schema.R, Sem: schema.SemNormal}},
+		Name: "over", Plane: schema.CS1, Base: 0x20, Span: 0x08,
+		Regs: []schema.Register{{Name: "X", Sel: 0x20, Plane: schema.CS1, Access: schema.R, Sem: schema.SemNormal}},
 	})
 	mustErr(t, i, "block overlap")
 }
@@ -191,14 +195,14 @@ func TestEmptyDescriptor(t *testing.T) {
 func TestDuplicateRegName(t *testing.T) {
 	i := base()
 	i.Blocks[0].Regs = append(i.Blocks[0].Regs,
-		schema.Register{Name: "BID_LO", Sel: 0x15, Plane: schema.CS1, Access: schema.R, Sem: schema.SemNormal})
+		schema.Register{Name: "BID_LO", Sel: 0x20, Plane: schema.CS1, Access: schema.R, Sem: schema.SemNormal})
 	mustErr(t, i, "duplicate register")
 }
 
 func TestExpectNonReadable(t *testing.T) {
 	i := base()
 	i.Blocks[0].Regs = append(i.Blocks[0].Regs,
-		schema.Register{Name: "WO", Sel: 0x16, Plane: schema.CS1, Access: schema.W, Sem: schema.SemStrobe, Expect: p16(0x1)})
+		schema.Register{Name: "WO", Sel: 0x20, Plane: schema.CS1, Access: schema.W, Sem: schema.SemStrobe, Expect: p16(0x1)})
 	mustErr(t, i, "not readable")
 }
 
@@ -211,7 +215,7 @@ func TestBuildIDRegMissing(t *testing.T) {
 func TestBuildIDMovesOnChange(t *testing.T) {
 	a := base()
 	b := base()
-	b.Blocks[0].Regs[0].Sel = 0x17 // still valid, but a different schema
+	b.Blocks[0].Regs[0].Sel = 0x24 // still valid, but a different schema
 	if a.BuildID() == b.BuildID() {
 		t.Fatal("BuildID must change when the schema changes")
 	}
@@ -257,7 +261,7 @@ func TestDescriptorDuplicateField(t *testing.T) {
 func withOpcodeReg() schema.Interface {
 	i := base()
 	i.Blocks[0].Regs = append(i.Blocks[0].Regs, schema.Register{
-		Name: "OPCODE", Sel: 0x14, Plane: schema.CS1, Access: schema.W, Sem: schema.SemStrobe,
+		Name: "OPCODE", Sel: 0x20, Plane: schema.CS1, Access: schema.W, Sem: schema.SemStrobe,
 	})
 	return i
 }
@@ -293,4 +297,94 @@ func TestOpcodeValueCollision(t *testing.T) {
 		{Name: "OP_DUP", Reg: "OPCODE", Value: 0x0001},
 	}
 	mustErr(t, i, "value collision")
+}
+
+// ---- CS1 decodability + read aliases -------------------------------------
+
+// A CS1 selector with bit 0, 1 or 7 set can never be decoded by the fabric: the
+// RTL forces those bits low because A1 carries a clock, A2 floats high, and A8 is
+// not wired. Such a register silently aliases onto sel&0x7c and answers with a
+// neighbour's data — the exact failure that once collapsed a drained record to
+// mem[0] replicated. Validate must reject it at schema-edit time.
+func TestCS1SelectorMustBeDecodable(t *testing.T) {
+	for _, sel := range []uint16{0x11, 0x12, 0x13, 0x82} {
+		i := base()
+		i.Blocks[0].Span = 0x80 // widen so containment is not what fails
+		i.Blocks[0].Regs[1].Sel = sel
+		mustErr(t, i, "not decodable on CS1")
+	}
+}
+
+// The same rule must NOT apply to CS3: that plane is decoded by the MAX V, not by
+// our fabric, and its vendor selectors are not multiples of 4.
+func TestCS3SelectorsAreNotConstrained(t *testing.T) {
+	i := base()
+	i.Blocks = append(i.Blocks, schema.Block{
+		Name: "vendor", Plane: schema.CS3, Base: 0x00, Span: 0x10,
+		Regs: []schema.Register{
+			{Name: "V7", Sel: 0x07, Plane: schema.CS3, Access: schema.W, Sem: schema.SemNormal},
+			{Name: "V9", Sel: 0x09, Plane: schema.CS3, Access: schema.W, Sem: schema.SemNormal},
+		},
+	})
+	if errs := i.Validate(); len(errs) > 0 {
+		t.Fatalf("CS3 selectors must not be constrained by the CS1 decode rule, got %v", errs)
+	}
+}
+
+// withAlias puts a read alias on DATA in unreserved CS1 space.
+func withAlias(sel uint16) schema.Interface {
+	i := base()
+	i.Blocks[0].Regs[2].ReadAliases = []schema.Alias{{Sel: sel, Desc: "why"}}
+	return i
+}
+
+// A well-formed alias in unreserved, decodable space must validate.
+func TestReadAliasValid(t *testing.T) {
+	if errs := withAlias(0x00).Validate(); len(errs) > 0 {
+		t.Fatalf("a valid read alias should pass, got %v", errs)
+	}
+}
+
+// An alias must never shadow a real register: the register would become
+// unreachable-by-name and the mux would carry two cases for one selector.
+func TestReadAliasShadowsRegister(t *testing.T) {
+	mustErr(t, withAlias(0x10), "shadows register")
+}
+
+// Two registers must not claim the same alias selector.
+func TestReadAliasDuplicate(t *testing.T) {
+	i := withAlias(0x00)
+	i.Blocks[0].Regs[3].ReadAliases = []schema.Alias{{Sel: 0x00, Desc: "dup"}}
+	mustErr(t, i, "both alias")
+}
+
+// An alias inside a reserved block range is a landmine: the block promises that
+// space to a future register, which would then collide with the alias.
+func TestReadAliasInsideReservedBlock(t *testing.T) {
+	mustErr(t, withAlias(0x28), "reserved block")
+}
+
+// An alias is a read doorway; a write-only register cannot have one.
+func TestReadAliasOnNonReadable(t *testing.T) {
+	i := base()
+	i.Blocks[0].Regs = append(i.Blocks[0].Regs, schema.Register{
+		Name: "WONLY", Sel: 0x20, Plane: schema.CS1, Access: schema.W, Sem: schema.SemStrobe,
+		ReadAliases: []schema.Alias{{Sel: 0x00, Desc: "no"}},
+	})
+	mustErr(t, i, "is not readable")
+}
+
+// An alias must obey the same CS1 decodability rule as a register.
+func TestReadAliasMustBeDecodable(t *testing.T) {
+	mustErr(t, withAlias(0x04|0x01), "not decodable on CS1")
+}
+
+// Aliases are deliberately OUTSIDE the build-ID: an alias cannot change how any
+// declared register behaves, so it cannot mispair a fabric with an app, and
+// writing down an alias the deployed fabric already implements must not move the
+// fingerprint the app checks against it.
+func TestReadAliasDoesNotMoveBuildID(t *testing.T) {
+	if base().BuildID() != withAlias(0x00).BuildID() {
+		t.Fatal("adding a read alias must NOT change the BuildID")
+	}
 }

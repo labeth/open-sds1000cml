@@ -242,15 +242,40 @@ choice (this is our fabric); they deliberately do not echo the vendor map.
 
 **CS1 (acquisition / read plane):**
 
+> ⚠ **Selector VALUES are not repeated here.** They were, and the copy went stale the day the
+> map was respaced to multiples of 4 (A3–A7-only decode): this table still said `BURST 0x30`
+> long after `0x30` had become `PRETRIG_LO`. A hand-maintained second copy of a generated map
+> is the exact drift this tool exists to abolish, so the values live in **one** place — the
+> generated [`REGISTER-MAP.md`](../../fpga/standard/docs/REGISTER-MAP.md), from
+> `ifacedef.Standard()`. What follows is the *design*: which block holds what, and why.
+
 | block | range | registers |
 |---|---|---|
-| `meta` | `0x10–0x17` | `BUILDID_LO 0x10` R · `BUILDID_HI 0x11` R · `VERSION 0x12` R (Expect `0x0052`, a cheap addressing self-check) |
-| `capture` | `0x20–0x2f` | `OPCODE 0x20` W strobe (GO/HALT/RESET) · `RUN 0x21` RW {MODE[1:0]=auto/norm/single, RUN[2]} · `DECIM_LO 0x22`/`DECIM_HI 0x23` RW (stream decimation) · `PRETRIG_LO/HI 0x24/0x25` RW · `POSTTRIG_LO/HI 0x26/0x27` RW |
-| `drain` | `0x30–0x3f` | `BURST 0x30` R auto-inc+read-after-halt (the **single** raw-record port) · `BURST_REMAIN 0x3e` R level+read-after-halt {READY[15], REMAIN[14:0]} |
-| `status` | `0x40–0x4f` | `STATUS_A 0x41` R level {VALID[0],TRIG[1],DONE[2]} · `TRIGPOS_LO/HI 0x42/0x43` R level+read-after-halt · `FILL 0x44` R level {COUNT[10:0]} |
-| `spine` | `0x50–0x5f` | `XFORM_CTRL 0x50` RW {BYPASS0,BYPASS1} · `ENV_COLS 0x51` RW (envelope column count) |
-| `channels` | `0x60–0x7f` | `ENV_DATA 0x60` R auto-inc+read-after-halt · `ENV_COUNT 0x61` R level {COUNT[14:0],OVERFLOW[15]} · `ENV_RESET 0x62` W strobe |
-| reserved | `0x80–0xdf` | `trigger` (v1), `measure` (v1), `decode` (v2) blocks — ranges reserved now, no registers yet |
+| `meta` | `0x10–0x1f` | `BUILDID_LO` R · `BUILDID_HI` R · `VERSION` R (Expect `0x0052`, a cheap addressing self-check) |
+| `capture` | `0x20–0x3f` | `OPCODE` W strobe (GO/HALT/RESET) · `RUN` RW {MODE[1:0]=auto/norm/single, RUN[2]} · `DECIM_LO`/`DECIM_HI` RW (stream decimation) · `PRETRIG_LO/HI` RW · `POSTTRIG_LO/HI` RW |
+| `drain` | `0x40–0x4f` | `BURST` R auto-inc+read-after-halt (the **single** raw-record port) · `BURST_REMAIN` R level+read-after-halt {READY[15], REMAIN[14:0]} |
+| `status` | `0x50–0x5f` | `STATUS_A` R level {VALID[0],TRIG[1],DONE[2]} · `TRIGPOS_LO/HI` R level+read-after-halt · `FILL` R level {COUNT[10:0]} |
+| `spine` | `0x60–0x6f` | `XFORM_CTRL` RW {BYPASS0,BYPASS1} · `ENV_COLS` RW (envelope column count) |
+| `channels` | `0x70–0x7f` | `ENV_DATA` R auto-inc+read-after-halt · `ENV_COUNT` R level {COUNT[14:0],OVERFLOW[15]} · `ENV_RESET` W strobe |
+| reserved | `0x80–0xdf` | `trigger` (v1), `measure` (v1), `decode` (v2) — ranges reserved, **no registers yet, and NOT reachable as drawn** (see below) |
+
+**Only 32 CS1 selectors are addressable at all, and all 32 are taken.** Hardware readback of a
+flashed fabric showed that of the GPMC address lines reaching the Cyclone, `A1` (ball `M2`)
+carries a clock and `A2` (ball `D1`) floats high, while `A8` is not wired; `acq.v` therefore
+decodes `{1'b0, sel[6:2], 2'b00}`. Decodable CS1 selectors are exactly the multiples of 4 below
+`0x80`. `schema.Validate` now rejects any CS1 selector outside that set — including anything in
+the reserved `0x80–0xdf` ranges above, which must be re-based before they can hold a register.
+Of the 32: **22** are schema registers, **9** are hand-decoded in `acq.v` and appear in no
+schema (the serial-decode config/result ports and the panel read window), and **1** is the
+`0x00` read alias. `ifacedef`'s `TestCS1SelectorCensus` prints this census on every test run.
+
+**Read aliases.** A register may declare `ReadAliases`: extra selectors that decode to its read
+data. They exist for bus masters that cannot choose their selector — the GPMC prefetch/sDMA
+engine reads the chip-select BASE, so `CS1 0x00` is aliased onto `BURST`. An alias is read-side
+only (never a write strobe), must not shadow a register or sit in a reserved block, and is
+deliberately **outside** the build-ID: it cannot change how any declared register behaves, so it
+cannot mispair a fabric with an app. That alias used to be a hand edit inside the generated
+`regmux.vh`, where `make generate` stood ready to delete it and silently change bus behaviour.
 
 **The single `BURST` port replaces the five-port round-robin entirely.** One fixed auto-inc
 address is what the GPMC prefetch engine / self-paced EDMA want (1-D, not 3-D) and what an mmap
@@ -260,8 +285,8 @@ loop reads fastest; it removes the round-robin modulo from both sides.
 
 | block | range | registers |
 |---|---|---|
-| `config` | `0x00–0x0f` | `CONF_DONE 0x07` R only {DONE[7]} — nCONFIG port; app never writes it |
-| `frontend` | `0x10–0x3f` | offset DAC C1 `OFF_C1_LO 0x10`/`OFF_C1_HI 0x30`, C2 `0x11`/`0x31`; LED latch `LED_LO 0x09`/`LED_HI 0x0a`/`LED_STROBE 0x0b`; level DAC `LVL_A_LO 0x14`/`LVL_B_LO 0x15`/`LVL_A_HI 0x34` strobe/`LVL_B_HI 0x35` strobe |
+| `config` | `0x00–0x08` | `CONF_DONE 0x07` R only {DONE[7]} — nCONFIG port; app never writes it |
+| `frontend` | `0x09–0x3f` | offset DAC C1 `OFF_C1_LO 0x10`/`OFF_C1_HI 0x30`, C2 `0x11`/`0x31`; LED latch `LED_LO 0x09`/`LED_HI 0x0a`/`LED_STROBE 0x0b`; level DAC `LVL_A_LO 0x14`/`LVL_B_LO 0x15`/`LVL_A_HI 0x34` strobe/`LVL_B_HI 0x35` strobe |
 
 ### 3.3 What is generated, and from which template
 

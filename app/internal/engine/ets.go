@@ -17,7 +17,16 @@ const (
 	etsFrameBudgetMs  = 650
 	etsEdgeMinPtp     = 40
 	etsMaxAccFrames   = 8
-	etsTs             = 2.0 // ns per real sample (class 0x20)
+	// etsTs is the interval between two adjacent REAL samples of an ETS sub-
+	// acquisition, in ns — the quantity the phase-interleave in etsFrame maps
+	// sample index onto time with. ETS is gated to tdiv <= 50 ns (ETSEligible),
+	// i.e. class 0x20, where Decim() is 1, so that interval IS the base tick.
+	// DERIVED from it deliberately: a hand-written 2.0 here was a second copy of
+	// the reference-frequency assumption that fRefHz exists to hold alone
+	// (takeover step 0.8 / 18 C0.4). Caveat: this identity relies on DECIM
+	// clamping to 1 at class 0x20, which holds for every fRefHz <= 1 GHz — if a
+	// measurement ever puts fRefHz above that, take Decim()*baseTickNs instead.
+	etsTs = baseTickNs // ns per real sample (class 0x20, DECIM = 1)
 )
 
 // etsPlan picks the phase-bin factor for a tdiv (nearest row; default the

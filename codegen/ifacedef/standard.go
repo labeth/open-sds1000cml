@@ -52,7 +52,7 @@ func Standard() schema.Interface {
 			// (bit0 == bit1 == 0), the fabric masks bits 0/1/7 to 0, and the decode uses ONLY
 			// A3..A7. That is 32 slots for the ~22 CS1 registers. CS3 (MAX V) is unchanged.
 
-			// ---- meta 0x10-0x17 -----------------------------------------
+			// ---- meta 0x10-0x1f -----------------------------------------
 			{Name: "meta", Plane: schema.CS1, Base: 0x10, Span: 0x10,
 				Desc: "identity / build-ID handshake",
 				Regs: []schema.Register{
@@ -64,7 +64,7 @@ func Standard() schema.Interface {
 						Desc: "fabric self-check magic (a cheap addressing sanity check the app already performs)"},
 				}},
 
-			// ---- capture 0x20-0x2f --------------------------------------
+			// ---- capture 0x20-0x3f --------------------------------------
 			{Name: "capture", Plane: schema.CS1, Base: 0x20, Span: 0x20,
 				Desc: "arm / halt / re-arm + stream decimation + programmable pre/post-trigger depth",
 				Regs: []schema.Register{
@@ -86,11 +86,24 @@ func Standard() schema.Interface {
 					{Name: "POSTTRIG_HI", Sel: 0x3C, Plane: schema.CS1, Access: schema.RW, Sem: S, Desc: "post-trigger depth, high word"},
 				}},
 
-			// ---- drain 0x30-0x3f ----------------------------------------
+			// ---- drain 0x40-0x4f ----------------------------------------
 			{Name: "drain", Plane: schema.CS1, Base: 0x40, Span: 0x10,
 				Desc: "frozen-record readout: a single fixed auto-inc BURST port (1-D DMA source) + remaining",
 				Regs: []schema.Register{
 					{Name: "BURST", Sel: 0x40, Plane: schema.CS1, Access: schema.R, Sem: schema.SemAutoIncPort | schema.SemReadAfterHalt,
+						// Selector 0x00 is a SECOND doorway onto this same read port, and
+						// it is load-bearing: the GPMC prefetch/sDMA engine reads the
+						// chip-select BASE address and cannot be pointed at 0x40, so
+						// without this alias that whole drain path reads a dead selector.
+						// It lives in unreserved CS1 space (the first block starts at
+						// 0x10) and shadows nothing. It used to be a hand edit inside the
+						// generated regmux.vh, so `make generate` silently deleted it and
+						// changed bus behaviour; it is declared here so regeneration
+						// cannot. The fabric's auto-inc POP side decodes the same alias in
+						// hand RTL (acq.v sel_is_burst).
+						ReadAliases: []schema.Alias{
+							{Sel: 0x00, Desc: "prefetch/sDMA drain port at CS base"},
+						},
 						Desc: "single fixed-address auto-inc raw-record port (reads 0..N-1 in order; hi byte C1, lo byte C2)"},
 					{Name: "BURST_REMAIN", Sel: 0x44, Plane: schema.CS1, Access: schema.R, Sem: schema.SemLevelStatus | schema.SemReadAfterHalt,
 						Fields: []schema.Field{
@@ -100,7 +113,7 @@ func Standard() schema.Interface {
 						Desc: "words-remaining / DMA-ready for the single BURST port (live count)"},
 				}},
 
-			// ---- status 0x40-0x4f ---------------------------------------
+			// ---- status 0x50-0x5f ---------------------------------------
 			{Name: "status", Plane: schema.CS1, Base: 0x50, Span: 0x10,
 				Desc: "clean level acquisition status + interpolating trigger position + fill",
 				Regs: []schema.Register{
@@ -123,10 +136,10 @@ func Standard() schema.Interface {
 						Desc: "interpolating trigger position, physical-index word (§4.3)"},
 					{Name: "FILL", Sel: 0x5C, Plane: schema.CS1, Access: schema.R, Sem: schema.SemLevelStatus,
 						Fields: []schema.Field{{Name: "COUNT", Hi: 10, Lo: 0, Desc: "fill counter (11-bit); frozen after halt (coherence telemetry)"}},
-						Desc: "fill progress"},
+						Desc:   "fill progress"},
 				}},
 
-			// ---- spine 0x50-0x5f ----------------------------------------
+			// ---- spine 0x60-0x6f ----------------------------------------
 			{Name: "spine", Plane: schema.CS1, Base: 0x60, Span: 0x10,
 				Desc: "streaming-spine control: transform-stage bypass + envelope config",
 				Regs: []schema.Register{
@@ -140,7 +153,7 @@ func Standard() schema.Interface {
 						Desc: "envelope reducer column count (min/max folded on the live stream, §4.5)"},
 				}},
 
-			// ---- channels 0x60-0x7f -------------------------------------
+			// ---- channels 0x70-0x7f -------------------------------------
 			{Name: "channels", Plane: schema.CS1, Base: 0x70, Span: 0x10,
 				Desc: "result/event channel ports (the uniform DATA/COUNT/RESET triad); envelope is the first instance of the reusable result_fifo contract",
 				Regs: []schema.Register{
@@ -157,6 +170,17 @@ func Standard() schema.Interface {
 				}},
 
 			// ---- reserved v1/v2 blocks (ranges claimed now, no registers yet) ----
+			//
+			// ⚠ THESE THREE RANGES ARE NOT REACHABLE BY THE FABRIC AS DRAWN. CS1
+			// selector bit 7 is address line A8, which is not wired to the Cyclone;
+			// acq.v builds its selector as {1'b0, sel[6:2], 2'b00}, so ANY selector
+			// >= 0x80 decodes as sel-0x80 and answers with a low-map register. The
+			// first register placed here will fail Validate ("not decodable on CS1")
+			// — which is the point: it fails at schema-edit time, on the desk, not as
+			// a wrong number on the bench. Decodable CS1 space is the 32 multiples of
+			// 4 below 0x80; 22 are registers today, 1 is the BURST alias at 0x00, so
+			// 9 slots remain. When these blocks are populated they must be RE-BASED
+			// into that space (or the map must move to a wider decode).
 			{Name: "trigger", Plane: schema.CS1, Base: 0x80, Span: 0x20,
 				Desc: "RESERVED (v1): HW trigger-discrimination taps — no registers yet"},
 			{Name: "measure", Plane: schema.CS1, Base: 0xA0, Span: 0x20,
@@ -177,7 +201,7 @@ func Standard() schema.Interface {
 				Regs: []schema.Register{
 					{Name: "CONF_DONE", Sel: 0x07, Plane: schema.CS3, Access: schema.R, Sem: schema.SemLevelStatus,
 						Fields: []schema.Field{{Name: "DONE", Hi: 7, Lo: 7, Desc: "1=FPGA configured"}},
-						Desc: "config-status / nCONFIG port; read-only here (a write collapses the engine)"},
+						Desc:   "config-status / nCONFIG port; read-only here (a write collapses the engine)"},
 				}},
 
 			// ---- frontend 0x09-0x3f -------------------------------------

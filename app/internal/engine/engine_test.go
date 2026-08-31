@@ -348,12 +348,17 @@ func TestBringUpWriteOrder(t *testing.T) {
 	e, _ := newTestEngine(t, fb)
 	e.bringUp()
 	// Spec 03 §5.1 — idle, RUN{mode+run}, then DECIM / PRE / POST (lo,hi each).
-	// Default band 500 µs/div: decim 0x0190, capDepth() = decimDrain = 6144 → pre/post
-	// 0x0C00 each; RUN = mode AUTO (0) + run bit = 0x0004.
+	// Default band 500 µs/div: decim 0x0190 at the inherited reference frequency,
+	// capDepth() = decimDrain = 6144 → pre/post 0x0C00 each; RUN = mode AUTO (0) +
+	// run bit = 0x0004. The DECIM WORD is taken from the band, not restated: this
+	// test owns the write ORDER, while its value is pinned against a named
+	// reference by timebase_fref_test.go, so measuring f_C2 stays a one-line edit
+	// to fRefHz and does not ripple into unrelated tests.
+	decim := e.band.Decim()
 	wantWrites(t, fb.snapWrites(), []wr{
 		{1, selOpcode, opReset},
 		{1, selRun, iface.RunWithMode(modeAuto) | iface.RunWithRun(true)},
-		{1, selDecimLo, 0x0190}, {1, selDecimHi, 0x0000},
+		{1, selDecimLo, uint16(decim)}, {1, selDecimHi, uint16(decim >> 16)},
 		{1, selPreLo, 0x0c00}, {1, selPreHi, 0x0000},
 		{1, selPostLo, 0x0c00}, {1, selPostHi, 0x0000},
 	})

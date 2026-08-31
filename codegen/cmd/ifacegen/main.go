@@ -25,10 +25,54 @@ import (
 	"open-sds/codegen/schema"
 )
 
+// The default output dirs, relative to the codegen module root. They are named
+// constants (not just flag defaults) because the drift TEST renders the same
+// target list from its own working directory — one source of truth for WHICH
+// files are generated, so a new artifact cannot be added to the tool and forgotten
+// by the gate.
+const (
+	DefaultGoDir  = "../app/internal/iface"
+	DefaultVhDir  = "../fpga/standard"
+	DefaultDocDir = "../fpga/standard/docs"
+)
+
+// target is one checked-in generated file and the content it must have.
+type target struct {
+	path    string
+	content string
+}
+
+// targets renders every generated artifact in a deterministic order. Both the
+// generator, the -check drift gate and the drift test go through here.
+func targets(iface schema.Interface, goDir, vhDir, docDir string) ([]target, error) {
+	regs, err := emit.Verilog(iface)
+	if err != nil {
+		return nil, err
+	}
+	regmux, err := emit.Regmux(iface)
+	if err != nil {
+		return nil, err
+	}
+	bindings, err := emit.GoBindings(iface)
+	if err != nil {
+		return nil, err
+	}
+	doc, err := emit.Doc(iface)
+	if err != nil {
+		return nil, err
+	}
+	return []target{
+		{filepath.Join(goDir, "iface.go"), bindings},
+		{filepath.Join(vhDir, "regs.vh"), regs},
+		{filepath.Join(vhDir, "regmux.vh"), regmux},
+		{filepath.Join(docDir, "REGISTER-MAP.md"), doc},
+	}, nil
+}
+
 func main() {
-	goDir := flag.String("go", "../app/internal/iface", "output dir for the Go bindings (iface.go)")
-	vhDir := flag.String("vh", "../fpga/standard", "output dir for regs.vh + regmux.vh")
-	docDir := flag.String("doc", "../fpga/standard/docs", "output dir for REGISTER-MAP.md")
+	goDir := flag.String("go", DefaultGoDir, "output dir for the Go bindings (iface.go)")
+	vhDir := flag.String("vh", DefaultVhDir, "output dir for regs.vh + regmux.vh")
+	docDir := flag.String("doc", DefaultDocDir, "output dir for REGISTER-MAP.md")
 	check := flag.Bool("check", false, "verify checked-in files match (drift gate); no writes")
 	flag.Parse()
 
@@ -41,26 +85,12 @@ func main() {
 		os.Exit(2)
 	}
 
-	regs, err := emit.Verilog(iface)
+	tgts, err := targets(iface, *goDir, *vhDir, *docDir)
 	must(err)
-	regmux, err := emit.Regmux(iface)
-	must(err)
-	bindings, err := emit.GoBindings(iface)
-	must(err)
-	doc, err := emit.Doc(iface)
-	must(err)
-
-	// Ordered so output is deterministic.
-	targets := []struct{ path, content string }{
-		{filepath.Join(*goDir, "iface.go"), bindings},
-		{filepath.Join(*vhDir, "regs.vh"), regs},
-		{filepath.Join(*vhDir, "regmux.vh"), regmux},
-		{filepath.Join(*docDir, "REGISTER-MAP.md"), doc},
-	}
 
 	if *check {
 		stale := false
-		for _, t := range targets {
+		for _, t := range tgts {
 			got, err := os.ReadFile(t.path)
 			if err != nil || string(got) != t.content {
 				fmt.Fprintf(os.Stderr, "DRIFT: %s is stale or missing — run `make generate`\n", t.path)
@@ -74,7 +104,7 @@ func main() {
 		return
 	}
 
-	for _, t := range targets {
+	for _, t := range tgts {
 		if err := os.MkdirAll(filepath.Dir(t.path), 0o755); err != nil {
 			fatal(err)
 		}
@@ -84,7 +114,6 @@ func main() {
 		fmt.Printf("wrote %s\n", t.path)
 	}
 	fmt.Printf("build-ID 0x%08x, %d registers, %d channels\n", iface.BuildID(), len(iface.AllRegs()), len(iface.Channels))
-	_ = schema.CS1
 }
 
 func must(err error) {

@@ -121,6 +121,28 @@ type Field struct {
 	Desc string
 }
 
+// Alias is an EXTRA selector that the fabric's read decode maps onto an existing
+// register's read data. It is not a register: it has no name, no fields, no write
+// strobe and no Go binding — it is a second doorway onto one register's read port.
+//
+// It exists because a bus master can be unable to choose its selector. The GPMC
+// prefetch/sDMA engine reads the chip-select BASE address (selector 0x00), so the
+// only way to let that engine drain the auto-inc BURST port is to make 0x00 decode
+// to BURST as well. That line was previously a HAND EDIT in the generated
+// regmux.vh, which made `make generate` silently delete a line that changes bus
+// behaviour; declaring it here is what makes regeneration preserve it.
+//
+// Aliases are deliberately NOT folded into BuildID (see canonical): an alias is
+// purely additive to the read decode — Validate forbids it from shadowing any
+// register selector — so it can never make a fabric/app pair disagree about a
+// register, which is the only thing the build-ID handshake exists to catch. It
+// also means the deployed fabric's build-ID does not move when an alias that was
+// already present in it is finally written down.
+type Alias struct {
+	Sel  uint16 // the extra selector, in the aliased register's plane
+	Desc string // why it exists — rendered into the generated decode as a comment
+}
+
 // Register is one 16-bit addressable word in a plane.
 type Register struct {
 	Name   string
@@ -130,7 +152,11 @@ type Register struct {
 	Sem    Sem
 	Fields []Field
 	Expect *uint16 // for identity/magic regs: the value a correct fabric returns
-	Desc   string
+	// ReadAliases are extra selectors in THIS register's plane that return THIS
+	// register's read data (and, for an auto-inc port, pop it). Read side only:
+	// an alias never generates a write strobe. Readable registers only.
+	ReadAliases []Alias
+	Desc        string
 }
 
 // Block is a reserved selector range for one feature-class. Registers grow
@@ -404,6 +430,20 @@ func (i Interface) Validate() []error {
 		if r.Sel > 0xFF {
 			add("register %q sel %#04x exceeds the 8-bit selector space (the RTL decodes 8-bit selectors)", r.Name, r.Sel)
 		}
+		// CS1 selectors must be DECODABLE by the fabric. Hardware ground truth
+		// (flashed-fabric readback, commit "A3-A7-only CS1 map"): of the GPMC
+		// address lines reaching the Cyclone, A1 (ball M2) carries a clock and A2
+		// (ball D1) floats high, so the RTL forces selector bits 0, 1 and 7 to
+		// zero (acq.v: sel = {1'b0, sel[6:2], 2'b00}). A CS1 selector with any of
+		// those bits set therefore never matches its own decode case — it silently
+		// aliases onto sel&0x7c instead. This is not style: it is the exact bug
+		// that made the burst port stop auto-incrementing and collapsed a drained
+		// record to mem[0] replicated. CS3 is decoded by the MAX V, not by us, so
+		// the rule applies to CS1 only.
+		if r.Plane == CS1 && r.Sel&cs1SelUndecodable != 0 {
+			add("register %q sel %#04x is not decodable on CS1: bits 0/1/7 are the unusable A1/A2/A8 lines and the fabric forces them to 0, so this selector aliases onto %#04x",
+				r.Name, r.Sel, r.Sel&^uint16(cs1SelUndecodable))
+		}
 		// Expect only on readable regs.
 		if r.Expect != nil && !r.Access.CanRead() {
 			add("register %q has Expect but is not readable", r.Name)
@@ -420,6 +460,41 @@ func (i Interface) Validate() []error {
 				add("register %q field %q: overlaps another field", r.Name, f.Name)
 			}
 			used |= mask
+		}
+	}
+
+	// Read aliases — an extra doorway onto one register's read data. It must not
+	// shadow anything, must be decodable, and must live in selector space nobody
+	// has reserved, so a later register can never land on top of it.
+	aliasSeen := map[key]string{}
+	for _, r := range i.AllRegs() {
+		for _, al := range r.ReadAliases {
+			if !r.Access.CanRead() {
+				add("register %q declares read alias %#04x but is not readable", r.Name, al.Sel)
+			}
+			if al.Sel > 0xFF {
+				add("register %q alias %#04x exceeds the 8-bit selector space", r.Name, al.Sel)
+			}
+			if r.Plane == CS1 && al.Sel&cs1SelUndecodable != 0 {
+				add("register %q alias %#04x is not decodable on CS1 (bits 0/1/7 are forced to 0 by the fabric; it would alias onto %#04x)",
+					r.Name, al.Sel, al.Sel&^uint16(cs1SelUndecodable))
+			}
+			k := key{r.Plane, al.Sel}
+			if prev, ok := seen[k]; ok {
+				add("alias collision: %s alias %#04x shadows register %s on %s", r.Name, al.Sel, prev, r.Plane)
+			}
+			if prev, ok := aliasSeen[k]; ok {
+				add("alias collision: %s and %s both alias %s sel %#04x", prev, r.Name, r.Plane, al.Sel)
+			}
+			aliasSeen[k] = r.Name
+			// An alias inside a reserved block range is a landmine: the block
+			// promises that space to a future register, which would then collide.
+			for _, b := range i.Blocks {
+				if b.Plane == r.Plane && al.Sel >= b.Base && al.Sel < b.Base+b.Span {
+					add("register %q alias %#04x lies inside reserved block %q [%#04x,%#04x) — aliases must use unreserved selector space",
+						r.Name, al.Sel, b.Name, b.Base, b.Base+b.Span)
+				}
+			}
 		}
 	}
 
@@ -515,6 +590,12 @@ func (i Interface) Validate() []error {
 	return errs
 }
 
+// cs1SelUndecodable is the mask of CS1 selector bits the fabric cannot see. A1
+// (bit 0) carries a clock on ball M2 and A2 (bit 1) floats high on ball D1, so
+// the RTL forces bits 0/1 low; bit 7 (A8) is not wired at all. Every decodable
+// CS1 selector is therefore a multiple of 4 below 0x80.
+const cs1SelUndecodable uint16 = 0x83
+
 func fieldMask(hi, lo uint) uint16 {
 	var m uint16
 	for b := lo; b <= hi; b++ {
@@ -529,6 +610,11 @@ func (f Field) Mask() uint16 { return fieldMask(f.Hi, f.Lo) }
 // canonical writes a deterministic, order-stable dump of the interface. It is the
 // basis of the build-ID hash: any semantically meaningful change moves the hash,
 // so a mismatched fabric/app pair is caught by the build-ID handshake.
+//
+// Register ReadAliases are deliberately NOT dumped here — see the Alias doc for
+// why. An alias cannot change how any declared register behaves, so it cannot
+// mispair a fabric with an app; folding it in would only move the deployed
+// fabric's fingerprint for a decode that fabric already implements.
 func (i Interface) canonical() string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "iface %s v%s\n", i.Name, i.Version)

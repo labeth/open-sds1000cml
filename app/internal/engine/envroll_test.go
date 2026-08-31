@@ -11,7 +11,13 @@ import (
 func TestEnvelopeDecim(t *testing.T) {
 	// Spec 04 §5 verification constants: the phase-scatter divisor comes from the
 	// formula (EnvPlan), never the nominal table row; the programmed DECIM is that
-	// divisor × 5 (CaptureIntervalNs = divisor·10 ns, baseTickNs = 2 ns).
+	// divisor × 5 (CaptureIntervalNs = divisor·10 ns, base tick = 2 ns).
+	//
+	// The × 5 is a statement about the INHERITED reference frequency, so the DECIM
+	// side is evaluated at inheritedFRefHz rather than at the live fRefHz — see
+	// timebase_fref_test.go. Measuring f_C2 must stay a one-line edit to fRefHz;
+	// it must not drag this golden with it. EnvPlan itself carries no fRefHz
+	// dependence (C0.4 scopes that to a later step), so its goldens are absolute.
 	cases := []struct {
 		tdiv    float64
 		winCols int
@@ -31,8 +37,8 @@ func TestEnvelopeDecim(t *testing.T) {
 		if w != c.winCols || d != c.divisor {
 			t.Errorf("EnvPlan(%g) = %d/%d, want %d/%d", c.tdiv, w, d, c.winCols, c.divisor)
 		}
-		if got, want := b.Decim(), c.divisor*5; got != want {
-			t.Errorf("Decim(%g) = %d, want %d", c.tdiv, got, want)
+		if got, want := b.decimFor(inheritedFRefHz), c.divisor*5; got != want {
+			t.Errorf("decimFor(%g) = %d, want %d", c.tdiv, got, want)
 		}
 	}
 }
@@ -43,8 +49,10 @@ func TestRollDecim(t *testing.T) {
 		if !ok || b.Kind() != KindRoll {
 			t.Fatalf("PlanTdiv(%g): ok=%v kind=%v", tdiv, ok, b.Kind())
 		}
-		if got, want := b.Decim(), uint32(rollDivisor*5); got != want { // rollDivisor 37000
-			t.Errorf("roll Decim(%g) = %d, want %d", tdiv, got, want)
+		// Pinned at the inherited reference (see TestEnvelopeDecim): rollDivisor is
+		// fRefHz-independent by construction, the × 5 is not.
+		if got, want := b.decimFor(inheritedFRefHz), uint32(rollDivisor*5); got != want { // rollDivisor 37000
+			t.Errorf("roll decimFor(%g) = %d, want %d", tdiv, got, want)
 		}
 	}
 	if got := RollPaceNs(); got != 370000 {
@@ -181,8 +189,11 @@ func TestRollBand(t *testing.T) {
 	fb.clearWrites()
 	e.transition(false, false)
 
-	// Bring-up programs the roll decimation (rollDivisor × 5) into DECIM_LO/HI.
-	decim := uint32(rollDivisor * 5)
+	// Bring-up programs the band's own decimation into DECIM_LO/HI. Take it from
+	// the band rather than restating rollDivisor × 5: what this test is for is the
+	// register write, and the VALUE is pinned by timebase_fref_test.go against the
+	// reference it was measured at — so replacing fRefHz stays a one-line edit.
+	decim := b.Decim()
 	sawDecim := false
 	for _, w := range fb.snapWrites() {
 		if w.plane == iface.CS1 && w.sel == selDecimLo && w.val == uint16(decim&0xffff) {

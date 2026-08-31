@@ -55,16 +55,42 @@ Plus: no selector collisions within a plane, block containment + no overlap,
 well-formed non-overlapping fields, readable build-ID registers, and well-formed
 result-channel ports.
 
+## Selector aliases — why a generated file may name a bare selector
+
+A register may declare `ReadAliases`: **extra selectors that decode to its read data**. They
+exist for bus masters that cannot choose their selector — the GPMC prefetch/sDMA engine reads
+the chip-select BASE address, so `CS1 0x00` is aliased onto the auto-inc `BURST` port. An alias
+is read-side only (never a write strobe), may not shadow a register or sit inside a reserved
+block, and is deliberately kept **out of the build-ID** (it cannot change how any declared
+register behaves, so it cannot mispair a fabric with an app).
+
+That alias was previously a **hand edit inside the generated `regmux.vh`**, which meant
+`make generate` was one command away from deleting a line that changes bus behaviour. It is
+declared in the schema now, so regeneration preserves it.
+
+⚠ Reading an alias of an auto-inc port **pops** it, exactly as reading the register does.
+
+## CS1 selector space is fully allocated
+
+Only 32 CS1 selectors are decodable at all — the multiples of 4 below `0x80` — because `A1`
+carries a clock, `A2` floats high and `A8` is unwired, so the fabric decodes
+`{1'b0, sel[6:2], 2'b00}`. `Validate` rejects anything else on CS1. All 32 are claimed today:
+22 schema registers, 9 hand-decoded in `acq.v`, 1 read alias. `go test ./ifacedef` prints the
+census; adding a register needs a wider decode or a reclaimed selector.
+
 ## Usage
 
 ```
 make generate   # (re)generate all four artifacts from the schema
 make drift      # fail if any checked-in generated file is stale (CI gate)
-make test       # schema validation, emitter determinism, codec round-trips
+make test       # schema validation, emitter determinism, codec round-trips,
+                # the drift gate (TestGenNotStale) and the acq.v cross-checks
 make vet
 ```
 
-`make drift` MUST be clean immediately after `make generate`.
+`make drift` MUST be clean immediately after `make generate`. The same comparison also runs as
+`TestGenNotStale` inside `go test ./...`, so a plain test run cannot be blind to a stale
+artifact — that blindness is what let a hand edit live inside a generated file.
 
 ## What the generated bindings expose (behavioral, not layout-only)
 

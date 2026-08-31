@@ -51,12 +51,17 @@ type SerialLoader interface {
 
 // Options tunes the reload; the zero value is filled with the defaults below.
 type Options struct {
-	// BitReverse bit-reverses each byte before it goes on the wire. Cyclone IV
-	// passive serial shifts configuration data in LSB-first while the SoC SPI
-	// master is MSB-first, so the raw .rbf is reversed by default. This is the
-	// single highest-risk bench assumption; set false if the controller or the
-	// .rbf already presents LSB-first.
-	BitReverse bool
+	// BitOrder selects the wire bit order. The zero value, BitOrderAuto, reads
+	// it out of the container's device header (container.go): a native Quartus
+	// image is bit-reversed, the pre-reversed factory image ships raw, and
+	// anything unrecognised is REFUSED before the fabric is touched. Set it
+	// explicitly only to assert an expectation — an explicit value that
+	// contradicts the container is an error unless ForceBitOrder is also set.
+	BitOrder BitOrder
+	// ForceBitOrder loads an image whose container disagrees with BitOrder, or
+	// whose container cannot be read at all. Last resort: the wrong order clocks
+	// in cleanly and leaves CONF_DONE low, which looks like dead silicon.
+	ForceBitOrder bool
 	// ChunkSize caps each SPI transfer (the spidev bufsiz bounce buffer;
 	// default 4096). A single transfer above bufsiz returns EMSGSIZE.
 	ChunkSize int
@@ -109,7 +114,8 @@ func (o *Options) withDefaults() {
 }
 
 // bitrevTable maps each byte to its bit-reversed value (LSB-first passive serial
-// vs. MSB-first SoC SPI master).
+// vs. MSB-first SoC SPI master). WHETHER a given image needs it comes from the
+// container, not from a default — see DetectOrder in container.go.
 var bitrevTable [256]byte
 
 func init() {
@@ -133,6 +139,15 @@ func Reload(cfg ConfigPort, ser SerialLoader, rbf []byte, o Options) error {
 		return fmt.Errorf("fpgaload: bitstream is %d bytes (< %d) — empty or truncated, refusing to configure", len(rbf), minRBFLen)
 	}
 
+	// Decide the wire bit order from the container BEFORE anything is opened or
+	// driven. An image we cannot read is refused here, with the live fabric
+	// untouched, instead of being clocked in the wrong order.
+	bitrev, why, err := resolveBitOrder(rbf, o.BitOrder, o.ForceBitOrder)
+	if err != nil {
+		return fmt.Errorf("fpgaload: %w", err)
+	}
+	o.Logf("fpgaload: bit order %v (%s)", bitrev, why)
+
 	// Configure the loader bus FIRST: a bad SPI node fails here, before nCONFIG
 	// drops the live fabric.
 	if err := ser.Configure(); err != nil {
@@ -146,13 +161,13 @@ func Reload(cfg ConfigPort, ser SerialLoader, rbf []byte, o Options) error {
 
 	// Build the wire image once (bit-reversed if required), then stream it.
 	img := rbf
-	if o.BitReverse {
+	if bitrev {
 		img = make([]byte, len(rbf))
 		for i, v := range rbf {
 			img[i] = bitrevTable[v]
 		}
 	}
-	o.Logf("fpgaload: streaming %d bytes in %d-byte chunks (bitrev=%v)", len(img), o.ChunkSize, o.BitReverse)
+	o.Logf("fpgaload: streaming %d bytes in %d-byte chunks (bitrev=%v)", len(img), o.ChunkSize, bitrev)
 	for off := 0; off < len(img); off += o.ChunkSize {
 		end := off + o.ChunkSize
 		if end > len(img) {

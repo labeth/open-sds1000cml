@@ -55,28 +55,86 @@ func AnalogVdiv(idx int) float64 {
 	return d.VdivV * float64(d.Zoom)
 }
 
-// Coupling modes. On this clone coupling is modelled in SOFTWARE (the display
-// path), not driven on the relay — deliberately, because the relay buys nothing
-// here: its coupling bit selects a different offset-cal baseline (~36 codes), NOT
-// a coupling cap, so there is no hardware high-pass to gain (spec 06 §6); GND
-// grounds only with a companion CS3 config-plane write. Both are reproducible
-// with the usual disciplines (emit the relay carrying BOTH channels' seeded bytes
-// — a gain collapse only happens re-emitting from the un-seeded boot state; stage
-// the CS3 companion single-owner), but pointless without a real DC block. So the
-// relay stays DC; AC = software DC-removal, GND = a flat ground trace. See
-// CoupleDisplay. A physical series cap is the route to a true hardware high-pass.
+// Coupling modes. They name a state, not a transport: the SAME three constants
+// drive two DELIBERATELY INDEPENDENT controls.
+//
+//   - SetCoupling / CoupleDisplay — the shipped SOFTWARE path. It never touches
+//     the relay: AC = software DC-removal (mean → mid-scale), GND = a flat
+//     ground trace. The reason is spec 06 §6's reading that the relay's coupling
+//     bit selects a different offset-cal baseline (~36 codes) rather than a
+//     series capacitor, so there would be no hardware high-pass to gain.
+//   - SetCouplingHW — the real relay bits (relay.go). That reading is UNTESTED:
+//     no measurement stands behind "there is no hardware high-pass", and the
+//     trigger path's AC/LFREJ relays on this same board DO behave like one, so
+//     DC-blocking parts exist on this front end (src: fpga-specs/takeover/
+//     13-analog-frontend.md §3.3 AFE-3; fpga-specs/26-trigger.md §2.4).
+//     AF-2.2/AF-2.3 measure it; SetCouplingHW is what lets them.
+//
+// Relay encoding, per-channel byte — all three are CAPTURED vendor words, not
+// decompile inference (src: fpga-specs/takeover/13-analog-frontend.md §2.3;
+// fpga-specs/40-level-dac-and-analog-control.md §6.5):
+//
+//	DC  = bit3 set, bit1 clear  (CH1 byte 0x2d, word 0x70ad2d)  ← C1:CPL D1M
+//	AC  = bit3 clear, bit1 clear (CH1 byte 0x25, word 0x70ad25) ← C1:CPL A1M
+//	GND = bit1 set, bit3 clear  (CH1 byte 0x27, word 0x70ad27)  ← C1:CPL GND
+//
+// GND looks inert only under a read-modify-write that leaves bit3 set — which is
+// exactly what applyLocked's absolute-word discipline makes impossible here
+// (src: fpga-specs/40-… §8.2, "the GND relay is inert/unpopulated" retracted).
 const (
 	CplDC  = 0
 	CplAC  = 1
 	CplGND = 2
 )
 
-// channelByte builds a relay channel byte (spec 06 §4.2): bit0 BWL(1=off,
-// full bandwidth), bit2 coarse range, bit3 DC, bit5 always 1, bit7 CH2 address
-// bit. Coupling is software-only (see the Coupling constants), so the relay is
-// always DC — never the GND (bit1) path, which is unsafe/ineffective here.
-func channelByte(idx int, ch2 bool) uint8 {
-	b := uint8(0x20 | 0x01 | 0x08) // bit5 | BWL off | bit3 DC
+// Trigger-path coupling — relay byte 2's HIGH nibble (spec 06 §3;
+// fpga-specs/40-level-dac-and-analog-control.md §6.5). All four nibble values
+// are captured vendor words in the reglog corpus, each sitting under its own
+// `TRCP` command marker (src: fpga-specs/takeover/13-analog-frontend.md §2.3):
+// byte2 = 0x70 DC, 0x50 AC, 0xf0 HFREJ, 0x40 LFREJ. Our stack has hardcoded
+// 0x70 since it was written; SetTrigCoupling (relay.go) is AF-2.4's actuator.
+const (
+	TrigCplDC    = 0
+	TrigCplAC    = 1
+	TrigCplHFREJ = 2
+	TrigCplLFREJ = 3
+)
+
+// trigCplNibble maps a TrigCpl* mode to relay byte 2's high nibble.
+var trigCplNibble = [4]uint8{TrigCplDC: 0x7, TrigCplAC: 0x5, TrigCplHFREJ: 0xf, TrigCplLFREJ: 0x4}
+
+// channelByte builds one channel's relay byte (spec 06 §3;
+// fpga-specs/40-level-dac-and-analog-control.md §6.5):
+//
+//	bit0  bandwidth limit — 1 = BWL OFF (full bandwidth), 0 = 20 MHz limit ENGAGED
+//	bit1  GND coupling select (GND = bit1 set WITH bit3 clear)
+//	bit2  coarse range — 1 = attenuated (500 mV…10 V), 0 = sensitive (2…200 mV)
+//	bit3  DC coupling select
+//	bit5  constant enable, always 1
+//	bit7  CH2 channel-address bit (CH1 base 0x20, CH2 base 0xa0) — it addresses
+//	      the byte to a latch; it is NOT a coupling-polarity bit
+//
+// bwlOn means the 20 MHz limit is ENGAGED, which CLEARS bit0: the bit's sense is
+// inverted on the wire, and which bit it even is has been wrong in the corpus
+// before (fpga-specs/40-… §8.2 retires both "BWL is bit1 or bit3" and
+// "CS1 0x2c is the bandwidth limit"). bit0 is the SPI-capture answer.
+//
+// bits 4 and 6 are UNASSIGNED and are set in NO captured vendor word
+// (src: fpga-specs/takeover/13-analog-frontend.md §2.3), so nothing here ever
+// sets them — SetRelayRaw is the escape hatch that walks them (AF-2.5).
+func channelByte(idx int, ch2, bwlOn bool, cpl int) uint8 {
+	b := uint8(0x20) // bit5, constant enable
+	if !bwlOn {
+		b |= 0x01 // bit0 set = limit OFF = full bandwidth
+	}
+	switch cpl {
+	case CplAC:
+		// bit1 and bit3 both clear
+	case CplGND:
+		b |= 0x02 // bit1, with bit3 clear
+	default: // CplDC
+		b |= 0x08 // bit3
+	}
 	if Detents[idx].Atten {
 		b |= 0x04
 	}
@@ -96,7 +154,7 @@ type FrontEnd struct {
 	sleep   func(time.Duration)
 	tab     *cal.Table
 	idx     [2]int
-	trigSrc int  // relay byte2 source nibble: 0=C1, 1=C2, 2=EXT
+	trigSrc int  // relay byte2 bits[3:2]; HW-REFUTED as a source selector — see relayWord
 	emitted bool // seed-don't-emit: leave the inherited analog range alone
 
 	stage   func(ch int, code uint16)              // offset-DAC stager (engine.SetOffsetDAC)
@@ -105,8 +163,16 @@ type FrontEnd struct {
 	offReqV [2]float64                             // requested input-referred offset volts
 	offSet  [2]bool                                // whether the user has set an offset
 	probe   [2]float64                             // per-channel probe attenuation (display multiplier)
-	cpl     [2]int                                 // per-channel coupling (CplDC/CplAC/CplGND)
+	cpl     [2]int                                 // per-channel SOFTWARE coupling (CplDC/CplAC/CplGND)
 	trigCal [2][numDetents]TrigCal                 // per-channel, per-detent trigger DAC cal
+
+	// Relay-word shadows for the actuators driven from relay.go. Their zero
+	// values reproduce the shipped word exactly (BWL off, DC, trigger DC), so
+	// the V/div path is byte-identical to before these controls existed.
+	bwl     [2]bool // 20 MHz bandwidth limit ENGAGED (relay bit0 CLEARED)
+	cplHW   [2]int  // per-channel HARDWARE coupling relay (CplDC/CplAC/CplGND)
+	trigCpl int     // trigger-path coupling, relay byte 2 high nibble (TrigCpl*)
+	rawDbg  bool    // raw escape hatches armed (RawDebugEnv / SetRawDebug)
 }
 
 // New seeds both channels' shadows to the boot detent WITHOUT emitting —
@@ -120,7 +186,8 @@ func New(tr Transport, sleep func(time.Duration), tab *cal.Table) *FrontEnd {
 	if tab == nil {
 		tab = cal.Defaults()
 	}
-	return &FrontEnd{tr: tr, sleep: sleep, tab: tab, idx: [2]int{BootDetent, BootDetent}, probe: [2]float64{1, 1}}
+	return &FrontEnd{tr: tr, sleep: sleep, tab: tab, idx: [2]int{BootDetent, BootDetent},
+		probe: [2]float64{1, 1}, rawDbg: rawDebugFromEnv()}
 }
 
 // SetProbe sets a channel's probe attenuation factor (1, 10 or 100). It is a
@@ -146,10 +213,11 @@ func (f *FrontEnd) ProbeFactor(ch int) float64 {
 	return 1
 }
 
-// SetCoupling records a channel's input coupling (CplDC/CplAC/CplGND). It never
-// touches the relay — coupling is a pure display transform on this clone (see
-// the Coupling constants and CoupleDisplay), so it is always safe and takes
-// effect on the next served/rendered frame.
+// SetCoupling records a channel's input coupling (CplDC/CplAC/CplGND) for the
+// SOFTWARE display transform. It never touches the relay (see the Coupling
+// constants and CoupleDisplay), so it is always safe and takes effect on the
+// next served/rendered frame. SetCouplingHW is the hardware-relay counterpart;
+// the two are independent by design and neither reads the other.
 func (f *FrontEnd) SetCoupling(ch, mode int) error {
 	if mode < CplDC || mode > CplGND {
 		return fmt.Errorf("analog: bad coupling ch=%d mode=%d", ch, mode)
@@ -337,21 +405,41 @@ func (f *FrontEnd) DCVolts(ch int, meanCode float64) float64 {
 	return f.tab.DCVolts(ch&1, vd, meanCode)
 }
 
+// relayWord composes the FULL absolute 24-bit relay word from the shadows.
+// It is a pure function of state — it never reads a previous word back, so
+// there is no read-modify-write path to leave a stale bit set. Caller holds
+// f.mu.
 func (f *FrontEnd) relayWord() uint32 {
-	b0 := channelByte(f.idx[0], false)
-	b1 := channelByte(f.idx[1], true)
-	b2 := uint8(0x70 | (f.trigSrc&3)<<2) // DC trigger-coupling nibble
+	b0 := channelByte(f.idx[0], false, f.bwl[0], f.cplHW[0])
+	b1 := channelByte(f.idx[1], true, f.bwl[1], f.cplHW[1])
+	// byte2 = (trigger-coupling nibble << 4) | (trigSrc << 2). trigSrc is kept
+	// only because it is part of the absolute word: it is HW-REFUTED as a source
+	// selector on #716 (the boot word carries the C1 nibble while the inherited
+	// source was C2), and the runtime source mux is CS1 0x22 in software
+	// (src: fpga-specs/40-… §8.2; takeover/13-analog-frontend.md §1.1 A9 note).
+	// So there is deliberately no named setter for it.
+	b2 := trigCplNibble[f.trigCpl&3]<<4 | uint8(f.trigSrc&3)<<2
 	return uint32(b0) | uint32(b1)<<8 | uint32(b2)<<16
 }
 
-// apply emits the exact spec 06 §4.4 sequence: the FULL absolute relay word
-// (never read-modify-write), a ~400 µs relay settle, then BOTH gain bytes,
-// CH2 first. Caller holds f.mu.
-func (f *FrontEnd) applyLocked() error {
-	if err := f.tr.WriteRelay(f.relayWord()); err != nil {
+// applyLocked emits the current shadows as one absolute word. Caller holds f.mu.
+func (f *FrontEnd) applyLocked() error { return f.emitLocked(f.relayWord()) }
+
+// emitLocked emits the exact spec 06 §4.4 sequence for ONE absolute relay word:
+// the full word (never read-modify-write), a ~400 µs coarse-relay settle, then
+// BOTH gain bytes, CH2 first. word is always a complete 24-bit word supplied by
+// the caller, so nothing in this package can emit a partial update — that is the
+// discipline that stops the 2026-07-24 failure mode where an emit from an
+// unseeded shadow collapsed BOTH channels' gain. Every actuator here, named or
+// raw, funnels through this one function. Caller holds f.mu.
+func (f *FrontEnd) emitLocked(word uint32) error {
+	if err := f.tr.WriteRelay(word); err != nil {
 		return err
 	}
 	f.sleep(400 * time.Microsecond)
+	// Both gain bytes, always: a relay change can re-trim the V/div gain (spec
+	// 06 §6, the BWL path does exactly this), and the untouched channel's byte
+	// must be re-asserted from its seeded shadow, never left to the latch.
 	if err := f.tr.WriteGain(f.gainFor(1, f.idx[1]), f.gainFor(0, f.idx[0])); err != nil {
 		return err
 	}

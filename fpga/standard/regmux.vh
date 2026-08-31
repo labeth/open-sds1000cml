@@ -20,6 +20,12 @@
 // This include produces:
 //     we_<REG>           1-cycle write strobe, one per writable register
 //     rmux_rdata [15:0]  the muxed read value for {rd_plane, rd_sel}
+//
+// Lines marked ALIAS are extra selectors declared in the schema (Register
+// .ReadAliases) that decode to another register's read data. They are part of the
+// contract, not a hand edit: they exist for bus masters that cannot choose their
+// selector (the GPMC prefetch/sDMA engine reads the chip-select BASE). Regenerating
+// preserves them; deleting one changes bus behaviour.
 
 // ---- write-strobe decode -------------------------------------------------
 wire we_OPCODE = we_commit & (wr_plane == `PLANE_CS1) & (wr_sel == `SEL_OPCODE);

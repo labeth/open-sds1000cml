@@ -172,13 +172,39 @@ func (s *Server) hMaskFail(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// analogHW is the OPTIONAL hardware-relay surface of the vertical front end
+// (*analog.FrontEnd implements it). It carries the four actuators our stack
+// never drove — the per-channel bandwidth-limit relay, the per-channel hardware
+// coupling relay and the trigger-path coupling nibble — plus the two debug
+// escape hatches (fpga-specs/takeover/13-analog-frontend.md AF-0.4).
+//
+// It is asserted at the call site rather than folded into web.Analog on purpose:
+// Analog is implemented by test doubles in this package, and widening it would
+// force every double to grow five methods that have nothing to do with what they
+// exercise. This is the same optional-interface shape superresControl and
+// siggenControl already use.
+type analogHW interface {
+	SetBWL(ch int, on bool) error
+	SetCouplingHW(ch, mode int) error
+	SetTrigCoupling(mode int) error
+	SetRelayRaw(word uint32) error
+	SetGainRaw(ch2, ch1 uint8) error
+}
+
+// feHW returns the front end's hardware-relay surface. A nil front end (no SPI
+// nodes) and a front end without the surface both report false.
+func (s *Server) feHW() (analogHW, bool) {
+	hw, ok := s.fe.(analogHW)
+	return hw, ok
+}
+
 type setReq struct {
 	Control string  `json:"control"`
 	Value   float64 `json:"value"`
 	// Qualifier parameter fields (pulseparams/slopeparams/videoparams).
 	Lvl  float64 `json:"lvl"`  // pulse level fraction 0..1
-	Lo   float64 `json:"lo"`   // slope low fraction
-	Hi   float64 `json:"hi"`   // slope high fraction
+	Lo   float64 `json:"lo"`   // slope low fraction; gainraw: CH1 gain byte
+	Hi   float64 `json:"hi"`   // slope high fraction; gainraw: CH2 gain byte
 	Min  float64 `json:"min"`  // width/time window min, ns
 	Max  float64 `json:"max"`  // width/time window max, ns
 	Cond int     `json:"cond"` // 0=any 1=less 2=greater 3=inside
@@ -363,6 +389,105 @@ func (s *Server) hSet(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 		applied = req.Value
+	case "bwl1", "bwl2":
+		// A6: the 20 MHz bandwidth-limit relay, per channel. value!=0 ENGAGES the
+		// limit (which clears relay bit0 — the wire sense is inverted). Never
+		// driven by this stack before; AF-2.1 is the measurement it unblocks.
+		hw, hwOK := s.feHW()
+		if !hwOK {
+			ok, errStr = false, "vertical front end unavailable"
+			break
+		}
+		ch := 0
+		if req.Control == "bwl2" {
+			ch = 1
+		}
+		if err := hw.SetBWL(ch, req.Value != 0); err != nil {
+			ok, errStr = false, err.Error()
+			break
+		}
+	case "couplinghw1", "couplinghw2":
+		// A4/A5: the REAL coupling relay, per channel — distinct from
+		// "coupling1"/"coupling2", which are the software display transform and
+		// touch no relay bit. Values match: 0=DC, 1=AC, 2=GND. Setting both to AC
+		// would double-apply it (hardware high-pass then software mean-removal),
+		// so drive one or the other.
+		hw, hwOK := s.feHW()
+		if !hwOK {
+			ok, errStr = false, "vertical front end unavailable"
+			break
+		}
+		mode := int(req.Value)
+		if mode < analog.CplDC || mode > analog.CplGND {
+			ok, errStr = false, "couplinghw must be 0 (DC), 1 (AC) or 2 (GND)"
+			break
+		}
+		ch := 0
+		if req.Control == "couplinghw2" {
+			ch = 1
+		}
+		if err := hw.SetCouplingHW(ch, mode); err != nil {
+			ok, errStr = false, err.Error()
+			break
+		}
+	case "trigcpl":
+		// A8: the trigger-path coupling nibble (relay byte 2, bits [7:4]).
+		// 0=DC, 1=AC, 2=HFREJ, 3=LFREJ — all four are captured vendor words.
+		hw, hwOK := s.feHW()
+		if !hwOK {
+			ok, errStr = false, "vertical front end unavailable"
+			break
+		}
+		mode := int(req.Value)
+		if mode < analog.TrigCplDC || mode > analog.TrigCplLFREJ {
+			ok, errStr = false, "trigcpl must be 0 (DC), 1 (AC), 2 (HFREJ) or 3 (LFREJ)"
+			break
+		}
+		if err := hw.SetTrigCoupling(mode); err != nil {
+			ok, errStr = false, err.Error()
+			break
+		}
+	case "relayraw":
+		// Debug escape hatch: value = the ABSOLUTE 24-bit relay word. It rides
+		// the same emit discipline as every named control (full word, 400 µs
+		// settle, both gain bytes re-emitted from the seeded shadows), so it
+		// cannot collapse the untouched channel's gain. It exists for the bits
+		// the evidence does not name — channel-byte 4/6 and byte-2 [1:0], which
+		// appear in no captured vendor word (AF-2.5). Refused unless the front
+		// end's raw hatches are armed (analog.RawDebugEnv).
+		hw, hwOK := s.feHW()
+		if !hwOK {
+			ok, errStr = false, "vertical front end unavailable"
+			break
+		}
+		if req.Value < 0 || req.Value > 0xffffff {
+			ok, errStr = false, "relayraw out of range (24-bit word)"
+			break
+		}
+		word := uint32(req.Value)
+		if err := hw.SetRelayRaw(word); err != nil {
+			ok, errStr = false, err.Error()
+			break
+		}
+		applied = float64(word)
+	case "gainraw":
+		// Debug escape hatch: lo = CH1 gain byte, hi = CH2 gain byte. BOTH always
+		// go out (CH2 first, the vendor's order) — a single-byte emit is the shape
+		// that collapsed the gain on 2026-07-24. Shadows are untouched, so the
+		// next V/div change restores the calibrated ladder codes.
+		hw, hwOK := s.feHW()
+		if !hwOK {
+			ok, errStr = false, "vertical front end unavailable"
+			break
+		}
+		if req.Lo < 0 || req.Lo > 255 || req.Hi < 0 || req.Hi > 255 {
+			ok, errStr = false, "gainraw bytes out of range (lo=CH1, hi=CH2, 0..255)"
+			break
+		}
+		if err := hw.SetGainRaw(uint8(req.Hi), uint8(req.Lo)); err != nil {
+			ok, errStr = false, err.Error()
+			break
+		}
 	case "srdevice":
 		// pre-arm source select: host drizzle (0) ⇄ in-fabric device-combine (1)
 		if p, pok := s.panel.(superresControl); pok && p.SetSuperresDevice(req.Value != 0) {

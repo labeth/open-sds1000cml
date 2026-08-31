@@ -1,0 +1,125 @@
+{
+  "_meta": {
+    "deliverable": "[1-INTEG] swap acq M9K capture buffer for external SRAM, drop-in preserving build-ID 0xc2f6eb5f / VERSION 0x0052 / 368011-byte rbf",
+    "date": "2026-08-01",
+    "workdir": "/home/labeth/ws/open-sds1000cml/fpga/sramcap",
+    "strategy": "capsram.v replaces capture.v with byte-identical ports. SRAM is the capture medium (ADC->shared DQ->SRAM, MAX-V sequences strobes; our write-controller drives 27 addr/ctrl/clk balls + D2 during ST_FILL, never DQ). On freeze, proven sramdump D14 read slurps rec_len words SRAM->on-chip mem[], then the existing registered rd_addr->rd_data port serves the drain unchanged. coherent deferred until slurp done.",
+    "files_untouched": ["acq.v (except 1-line debug read tap)", "spine.v", "drain.v", "adcif.v", "envelope.v", "regmux.vh", "regs.vh", "regmux/regs schema"],
+    "files_new": ["capsram.v (replaces capture.v in the qsf)", "sramcap.qsf (acq.qsf + SRAM balls)"]
+  },
+
+  "capture_port_contract": {
+    "note": "capsram.v MUST expose exactly these ports/widths/semantics; acq.v instantiation is copied verbatim.",
+    "geometry": {"REC_DEPTH": 20480, "ADDR_W": 15, "REC_LAST": 20479, "PRETRIG_MAX": 20478, "MARGIN": 2},
+    "inputs": [
+      {"port": "clk",         "width": 1,  "sem": "fabric ref C2 ~80MHz"},
+      {"port": "arm",         "width": 1,  "sem": "op_go -> ST_FILL, latch pre/post"},
+      {"port": "halt",        "width": 1,  "sem": "op_halt manual freeze"},
+      {"port": "rst",         "width": 1,  "sem": "op_reset -> idle/clear"},
+      {"port": "pre_work_w",  "width": 16, "sem": "arm-time clamped pre depth"},
+      {"port": "post_work_w", "width": 16, "sem": "arm-time clamped post depth"},
+      {"port": "cap_word",    "width": 16, "sem": "decimated sample hi=CH1 lo=CH2 (spine)"},
+      {"port": "cap_tick",    "width": 1,  "sem": "spine valid = commit strobe"},
+      {"port": "mode_norm",   "width": 1,  "sem": "0=AUTO 1=NORM"},
+      {"port": "trig_rise",   "width": 1,  "sem": "sync comparator rising edge"},
+      {"port": "trig_level",  "width": 8,  "sem": "CH1 level in sample units"},
+      {"port": "rd_addr",     "width": 15, "sem": "drain-driven record read address"}
+    ],
+    "outputs": [
+      {"port": "rd_data",    "width": 16, "sem": "REGISTERED read data at rd_addr, 2-cycle latency -> rdata_BURST"},
+      {"port": "filling",    "width": 1,  "sem": "ST_FILL, gates spine decimator"},
+      {"port": "smp_valid",  "width": 1,  "sem": "committed-sample strobe, envelope fold enable"},
+      {"port": "r_valid",    "width": 1,  "sem": "STATUS_A.VALID"},
+      {"port": "r_trig",     "width": 1,  "sem": "STATUS_A.TRIG"},
+      {"port": "r_done",     "width": 1,  "sem": "STATUS_A.DONE"},
+      {"port": "coherent",   "width": 1,  "sem": "frozen coherent record present, gates drain; DEFER until SRAM->mem slurp done"},
+      {"port": "fill_out",   "width": 11, "sem": "FILL.COUNT, freezes at halt"},
+      {"port": "trig_idx",   "width": 15, "sem": "TRIGPOS.IDX physical index of trigger sample"},
+      {"port": "trig_frac",  "width": 16, "sem": "TRIGPOS.FRAC Q16 sub-sample"},
+      {"port": "rec_len",    "width": 16, "sem": "frozen captured length -> BURST_REMAIN"},
+      {"port": "frame_done", "width": 1,  "sem": "1-cycle finalize pulse, envelope flush (may fire at post_full, before slurp)"}
+    ],
+    "internal_behavior_to_keep": {
+      "commit_predicate": "wr_commit = filling && cap_tick && !post_full",
+      "post_full": "triggered && (post_count == posttrig_work)  (exact equality finalize)",
+      "circular_ptr": "waddr wraps at REC_LAST; reused as SRAM->mem slurp load pointer in ST_DRAIN_SRAM",
+      "live_bookkeeping": "wrote_count/post_count/trig_fire/interpolation divider run off cap_word/cap_tick UNCHANGED (trig_idx/trig_frac/fill still correct)",
+      "read_port": "rd_data <= mem[rd_addr] single registered read, one clocked block (unchanged)"
+    },
+    "fsm_change": {
+      "old_states": ["ST_IDLE", "ST_FILL", "ST_HALT"],
+      "new_state": "ST_DRAIN_SRAM (post_full/halt -> slurp SRAM->mem via D14 -> then ST_HALT+coherent)",
+      "mem_source": "during ST_FILL mem[] is NOT written (SRAM is the medium); during ST_DRAIN_SRAM mem[waddr]<=dq-word per D14 edge"
+    }
+  },
+
+  "drain_contract_preserved": {
+    "burst_addr": "drain drives capture.rd_addr, 0..rec_len-1 saturating",
+    "rdata_BURST": "acq.v: coherent ? capture.rd_data : 0  (unchanged)",
+    "rdata_BURST_REMAIN": "drain: coherent ? {1'b1, remain[14:0]} : 0  (unchanged)",
+    "pop": "burst_rd_done one per nOE-rise while coherent (unchanged)",
+    "why_safe": "coherent deferred to slurp-done so 2-cycle registered read always sees settled mem[]"
+  },
+
+  "free_debug_selectors": {
+    "reachability_rule": "wr_sel = {1'b0, sel[6:2], 2'b00} -> only multiples of 4 in 0x00..0x7c are addressable; 0x80/0xa0/0xc0 reserved blocks UNREACHABLE",
+    "used_cs1": ["0x10","0x14","0x18","0x20","0x24","0x28","0x2c","0x30","0x34","0x38","0x3c","0x40","0x44","0x50","0x54","0x58","0x5c","0x60","0x64","0x70","0x74","0x78"],
+    "free_reachable": ["0x00","0x04","0x08","0x0c","0x1c","0x48","0x4c","0x68","0x6c","0x7c"],
+    "suggested_allocation": [
+      {"sel": "0x48", "name": "DBG_WDIV",    "dir": "W", "purpose": "write-strobe clock divider (sramdump clkdiv analog)"},
+      {"sel": "0x4c", "name": "DBG_WPHASE",  "dir": "W", "purpose": "CS/WE assert phase + addr-advance edge select"},
+      {"sel": "0x68", "name": "DBG_WSTROBE", "dir": "W", "purpose": "load-strobe ball selection among 6 CONTROL balls + polarity"},
+      {"sel": "0x6c", "name": "DBG_WMISC",   "dir": "W", "purpose": "D2 level override + controller enable + manual-write test kick"},
+      {"sel": "0x7c", "name": "DBG_STATUS",  "dir": "R", "purpose": "write-ctlr state + SRAM-slurp progress + DQ peek + P6 status"}
+    ],
+    "decode_location": "capsram.v decodes these directly from we_commit/wr_sel/sel; NOT added to regmux.vh (schema/build-ID untouched)",
+    "acq_v_edit": "single line: assign gpmc_d = read_active ? (dbg_rd_hit ? dbg_rdata : rmux_rdata) : 16'hzzzz;  (dbg_rd_hit/dbg_rdata exported by capsram)",
+    "field_packing": "DEFERRED to task [2/3]; not frozen here"
+  },
+
+  "build_id_plumbing": {
+    "preserve_verbatim": true,
+    "regs_vh": {"IFACE_BUILD_ID": "0xc2f6eb5f", "LO": "0xeb5f", "HI": "0xc2f6"},
+    "regmux_vh_read_cases": {"SEL_BUILDID_LO": "IFACE_BUILD_ID_LO", "SEL_BUILDID_HI": "IFACE_BUILD_ID_HI", "SEL_VERSION": "16'h0052"},
+    "app_validation": "reads BUILDID_LO=0xeb5f, BUILDID_HI=0xc2f6, VERSION=0x0052; all bit-identical since regs.vh/regmux.vh unchanged and debug tap only overrides unused selectors",
+    "rbf_size": {"bytes": 368011, "guarantee": "bitstream_compression=off + device EP4CE10F17C8 -> fixed uncompressed frame count, independent of added logic"}
+  },
+
+  "pin_list": {
+    "conflict_check": "scripted: SRAM27 vs acq = 0 conflicts; DQ vs non-adc acq = 0 conflicts; D14/D2/P6 all free; sram27 & dq disjoint",
+    "existing_acq_unchanged": {
+      "gpmc_d[0..15]": ["A10","B9","A9","B8","A8","B7","A7","B6","A6","D6","C6","B5","A5","F6","D5","E5"],
+      "nCS1": "B4", "nOE": "E6", "nWE": "B10", "gpmc_wait": "L6", "clk": "C2", "trig_sense": "A12",
+      "sel[0..6]": ["M2","D1","C3","D4","A3","B3","A4"],
+      "adc_enc[0..7]": ["K8","K9","K10","L8","L9","L10","M7","M8"],
+      "adc_ctl_hi[0..3]": ["F1","L4","T2","T7"],
+      "adc_ctl_lo[0..2]": ["G1","G2","K1"],
+      "adc_lane[0..32]": ["F8","D8","B12","K15","L13","N15","P15","T11","T9","E8","C8","C9","C11","A11","A13","L16","L14","R10","F9","K16","L12","P11","R11","E11","D12","G15","G16","N14","M12","M10","T13","P9","R12"]
+    },
+    "new_sram_write_path": {
+      "note": "tri-stateable OUTPUTS: driven in ST_FILL, Hi-Z in ST_DRAIN_SRAM; MAXIMUM CURRENT; from merged_sram_roles.json (RE decode-proven, zero conflicts)",
+      "clock": {"balls": ["F2","J2","K2"], "count": 3},
+      "control": {"balls": ["L2","M6","N1","N5","R6","T5"], "count": 6, "strobe_identity": "OPEN (which is OE#/ADSC#/CE#/ADV#/WE#/BWS#) -> DBG_WSTROBE sweep"},
+      "address": {"balls": ["L1","N2","P1","P2","R1","J6","K5","L3","N3","N6","P3","R7","R3","R4","R5","T3","T4","T6"], "count": 18, "order": "OPEN A0..A18 within 4 bands -> EXTEST/sweep"}
+    },
+    "new_levers": {
+      "D2": {"ball": "D2", "dir": "OUTPUT", "state": "static-LOW throughout", "role": "nCSO MAX-V mode lever", "current": "MINIMUM"},
+      "P6": {"ball": "P6", "dir": "INPUT (optional)", "role": "MAX-V status mirror, feeds DBG_STATUS"}
+    },
+    "new_read_path": {
+      "sck": {"ball": "D14", "dir": "OUTPUT", "role": "SRAM read clock (proven sramdump), driven ONLY during ST_DRAIN_SRAM slurp", "current": "MINIMUM"},
+      "dq": {
+        "note": "proven sramdump dq[21:0]; word hi=CH1=dq[15:8] lo=CH2=dq[7:0]; 22 INPUT balls",
+        "shared_with_adc_lane": {"balls": ["A13","B12","G15","G16"], "resolution": "SAME balls, same INPUT direction (Path A shared bus) -> NO conflict; read ADC codes in capture, SRAM output in drain"},
+        "new_free_inputs": ["A14","A15","B13","B14","B16","C15","C16","D9","D11","D15","D16","F15","J16","L7","P8","R8","R16","T8"]
+      }
+    },
+    "totals": {"new_outputs": "27 (write) + D2 + D14 = 29", "new_inputs": "18 new DQ + optional P6 (4 DQ balls already declared as adc_lane)"}
+  },
+
+  "open_items_for_task_2_3": [
+    "exact per-cycle CS/WE/CLK/D2 WRITE timing MAX-V expects: DBG_WDIV/DBG_WPHASE/DBG_WSTROBE/DBG_WMISC runtime-settable, brute-force on HW (sramrw/sramgold2 role-sweep pattern)",
+    "A0..A18 order within 4 address bands + CONTROL strobe identity: sweep, never freeze",
+    "reconcile D14 (proven read clock) vs F2/J2/K2 (RE acquisition-region CLK) role during write bring-up"
+  ]
+}

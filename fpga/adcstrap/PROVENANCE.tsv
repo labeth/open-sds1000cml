@@ -1,0 +1,6 @@
+# PROVENANCE.tsv — adcstrap kit. Same columns as standard/BITSTREAM-PROVENANCE.tsv:
+# rbf_sha256\trbf_path\tsource\tsof_path\tsof_sha256\tnote
+# Regenerate check:  quartus_cpf -c -o bitstream_compression=off <sof> <tmp.rbf> && sha256sum <tmp.rbf>
+8e6b2ee159245e94b801e0ad733f8866b2b9fbe281b25714fc11e39e7db74192	adcstrap/adcstrap.rbf	adcstrap/adcstrap.v + adcstrap/adcstrap.qsf	adcstrap/output_files/adcstrap.sof	78c14e1da412a5e2a564e6c0a5df5542a3de879cb1a8859b38f239d4d2f2eae9	straps DRIVEN; ID 0x57A0; built with adcstrap.sdc (100 MHz clk)
+f508ad5519ff1c76cb2478d66b93b1dc94b5764a53c8936fc7c91528f7c25b8a	adcstrap/adcstrap_pu1.rbf	adcstrap/adcstrap.v + adcstrap/adcstrap_pu1.qsf	adcstrap/output_files/adcstrap_pu1.sof	bb85226cdf38941fbcf4f2243dc00f3ae6f8d40abe6705852ae6fbae18724e5d	L4/T2/T7 tri-stated inputs, WEAK_PULL_UP ON; ID 0x57A1
+9b60d14fbfd50baa7697886a6d2f354be58708a76ec9fed95608d01d402d5e3e	adcstrap/adcstrap_pu0.rbf	adcstrap/adcstrap.v + adcstrap/adcstrap_pu0.qsf	adcstrap/output_files/adcstrap_pu0.sof	281a6c1907740bcf322d01c4dcac2558392284a7427c66bdbd212da9a294dde2	L4/T2/T7 tri-stated inputs, WEAK_PULL_UP OFF; ID 0x57A2

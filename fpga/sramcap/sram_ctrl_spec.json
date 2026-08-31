@@ -1,0 +1,162 @@
+{
+  "_meta": {
+    "deliverable": "[1-CTRL] external-SRAM capture+drain controller spec (machine-readable)",
+    "companion_doc": "/home/labeth/ws/open-sds1000cml/fpga/sramcap/1_ctrl.md",
+    "target_device": "EP4CE10F17C8 (Cyclone IV E)",
+    "sram": "S7A163630M 512Kx36 SPB, sequenced by fixed MAX-V 5M240ZT100C4N",
+    "datapath": "PATH A shared bus: ADC is the wide write-data master onto SRAM DQ; our fabric drives addr/ctrl/clk/D2 and READS DQ on drain, never drives DQ on write",
+    "dropin": {
+      "replaces": "/home/labeth/ws/open-sds1000cml/fpga/standard/acq.rbf",
+      "iface_build_id": "0xc2f6eb5f",
+      "version": "0x0052",
+      "rbf_bytes": 368011,
+      "bitstream_compression": "off",
+      "changed": "only capture.v M9K record store -> external SRAM via new sramx.v; all other modules + register schema unchanged",
+      "kept": ["acq.v","adcif.v","spine.v","envelope.v","drain.v","regmux.vh","regs.vh"]
+    },
+    "sources": [
+      "sramdump.v/.qsf (PROVEN read: D14-only, capture DQ on sck-high)",
+      "sramrw.v / sramgold2.v (write + brute-forceable role pattern: low_mask/load_sel/we_sel/addr_mask/clkdiv)",
+      "merged_sram_roles.json (18 ADDRESS + 6 CONTROL + 3 CLOCK; D2 lever; P6 status)",
+      "ACQPATH_MODEL.md (SPB write/read truth; D2/P6 handshake; PATH A)",
+      "regs.vh (CS1 register schema + build-ID)"
+    ],
+    "commit_policy": "nothing committed"
+  },
+
+  "balls": {
+    "note": "all ball names from the RE map; none invented. ADDRESS/CONTROL/CLOCK from merged_sram_roles.json; READ_CLOCK + DQ from sramdump.qsf.",
+    "ADDRESS": {
+      "count": 18,
+      "dir": "FPGA->SRAM output, bidir/fabric-OE (tri-stateable)",
+      "driven_capture": true,
+      "driven_drain": false,
+      "balls": ["L1","N2","P1","P2","R1","J6","K5","L3","N3","N6","P3","R7","R3","R4","R5","T3","T4","T6"],
+      "flip_bands": {
+        "band0_lsb": ["L1","N2","P1","P2","R1"],
+        "band1": ["J6","K5"],
+        "band2": ["L3","N3","N6","P3","R7"],
+        "band3_msb": ["R3","R4","R5","T3","T4","T6"]
+      },
+      "bit_order": "coarse significance = band; within-band A0..A17 order RE-OPEN -> runtime addr_mask spread, resolved by oracle ramp match",
+      "role": "write pointer = capture.v waddr (circular up-counter, wraps at REC_DEPTH-1). A18 MSB is the D1 board strap, off-FPGA, not driven."
+    },
+    "CONTROL": {
+      "count": 6,
+      "dir": "FPGA->SRAM output, bidir/fabric-OE (tri-stateable), idle-HIGH",
+      "driven_capture": true,
+      "driven_drain": false,
+      "array_ctrl_index": {"0":"L2","1":"N1","2":"M6","3":"N5","4":"R6","5":"T5"},
+      "known_roles": "L2,N1 = CS1#/CS2# (held LOW/selected); M6,N5,R6,T5 = WEa#-WEd# (pulsed LOW to write)",
+      "role_id_status": "per-ball CS#/WE#/load identity RE-OPEN -> runtime low_mask/load_sel/we_sel (sramrw/sramgold2 pattern)"
+    },
+    "CLOCK": {
+      "count": 3,
+      "dir": "SRAM CLK; configured fabric-OE bidir in OUR bitstream so it can tri-state during drain",
+      "driven_capture": true,
+      "driven_drain": false,
+      "balls": ["F2","J2","K2"],
+      "role": "write sample clock, all three off one PLL tap; which is primary-vs-derived RE-OPEN -> drive together, disambiguate on bench",
+      "synthesis_note": "vendor decodes these STATIC-OE (pure out); we set fabric-OE so DRAIN can release them for the proven non-contention read"
+    },
+    "READ_CLOCK": {
+      "count": 1,
+      "ball": "D14",
+      "dir": "pure output, MINIMUM CURRENT",
+      "driven_capture": false,
+      "driven_drain": true,
+      "role": "the ONLY SRAM net driven during drain; toggling advances the MAX-V-held read address (proven sramdump)"
+    },
+    "MODE_LEVER_D2": {
+      "ball": "D2",
+      "dir": "output; level, MAX-V latches through >=2-clk synchronizer",
+      "default": "static-LOW (SAMPLE-confirmed) in BOTH phases",
+      "role": "nCSO mode lever: selects MAX-V write-sequencing vs read-sequencing; write/read polarity RE-OPEN -> runtime d2_wr_level/d2_rd_level, default 0"
+    },
+    "STATUS_P6": {
+      "ball": "P6",
+      "dir": "INPUT only (never driven)",
+      "role": "MAX-V->Cyclone grant/busy mirror; used for the assert-D2 -> wait-P6 handshake"
+    },
+    "DQ_READ_CANDIDATES": {
+      "note": "SRAM drives during drain; Cyclone latches per D14 sck-high edge. word = 16 of these, hi=CH1 / lo=CH2, 8-bit unsigned. PATH A: several coincide with adc_lane[*] already read by adcif.v.",
+      "proven_sramdump_22": ["A13","A14","A15","B12","B13","B14","B16","C15","C16","D9","D11","D15","D16","F15","G15","G16","J16","L7","P8","R8","R16","T8"],
+      "fpga_owned_bidir_5": ["D3","F3","F5","F7","G5"],
+      "candidate_count": 27,
+      "real_lane_confirmation": "oracle: vendor captures a known ramp -> freeze -> our fabric drains with DBG_RAW exposing the full candidate vector -> the 8 lanes tracking the ramp = CH1, program lane_sel to {hi=CH1,lo=CH2}, gate byte-identical vs vendor record"
+    }
+  },
+
+  "write_cycle": {
+    "engine": "CAPTURE (one sample lands per capture.v cap_tick; ADC drives DQ, we don't)",
+    "spb_write_truth": "store on rising SRAM-CLK when CS#=L & OE#=H & BW#=L & WEx#=L (OE#/BW#/ADSC# MAX-V-owned; we emulate initiation via CLK+CS+WE+load+D2)",
+    "clock": "divide-by-clkdiv of ~80 MHz fabric clk (sramrw idiom)",
+    "sequence": [
+      "cc=0: present A = spread(waddr) via addr_mask on the 18 ADDRESS balls",
+      "cc=0: assert CS# LOW on low_mask control balls (held selected)",
+      "cc=0: assert load strobe LOW on ctrl[load_sel] (ADSC#-like cycle init)",
+      "cc=0: drive D2 = d2_wr_level (default 0)",
+      "cc=0..we_phase: assert WE# LOW on ctrl[we_sel] (write byte-enable window)",
+      "edge@cc==addr_adv_edge: rising SRAM-CLK latches the ADC sample at A (MAX-V advances its shadow addr)",
+      "cc=end: release load/WE# to idle-HIGH; waddr <= (waddr==REC_LAST)?0:(waddr+1)"
+    ],
+    "commit": "gated by capture.v wr_commit (single-cycle, no registered-wren tail) -> exact pre/post window invariant preserved",
+    "addr_bit_to_ball": "runtime addr_mask spread (sramgold2 spread()); within-band order RE-OPEN"
+  },
+
+  "read_cycle": {
+    "engine": "DRAIN — REUSE proven sramdump verbatim (FIXED timing)",
+    "rule": "drive ONLY D14; tri-state all 18 addr + 6 ctrl + 3 clk balls so MAX-V holds/advances address (zero contention); capture DQ vector on sck-HIGH edge",
+    "word_format": "{hi=CH1, lo=CH2}, 8-bit unsigned",
+    "integration": [
+      "on OP_GO/arm: rd pointer=0; enter DRAIN phase; tri-state addr/ctrl/clk; D2=d2_rd_level(0)",
+      "per burst_rd_done (one app SEL_BURST read): issue rd_clkdiv-paced D14 pulse(s) to advance read addr by one word",
+      "latch DQ candidate vector on sck-high; map selected 16 lanes via lane_sel -> rd_data",
+      "honour capture.v 2-cycle registered-read latency: prime word0 at drain-open, present word k on pop k",
+      "acq.v gates rdata_BURST on coherent; drain.v owns burst_ptr/rec_len/BURST_REMAIN unchanged"
+    ],
+    "fixed": true,
+    "tunable_only": ["rd_clkdiv","lane_sel"]
+  },
+
+  "runtime_params": {
+    "decode": "hand-decoded in acq.v top from wr_sel/rd_sel (sramrw pattern), OUTSIDE generated regmux.vh, in RESERVED CS1 blocks 0x80/0xA0/0xC0. NOT in codegen schema => IFACE_BUILD_ID 0xc2f6eb5f and VERSION 0x0052 unchanged; app never touches these selectors.",
+    "selector_rule": "multiples of 4 (bits 0/1 forced 0 by wr_sel={1'b0,sel[6:2],2'b00})",
+    "writes": [
+      {"sel":"0x80","name":"DBG_CLKDIV","field":"[15:0]","default":25,"purpose":"write SRAM-CLK divider"},
+      {"sel":"0x84","name":"DBG_CTRL_SEL","field":"{we_sel[3:0],load_sel[3:0]}","default":"load=0(L2),we=2(M6)","purpose":"index into ctrl[0..5]={L2,N1,M6,N5,R6,T5}"},
+      {"sel":"0x88","name":"DBG_LOWMASK","field":"[5:0] over ctrl[]","default":"CS# pair (idx0,1)","purpose":"control balls held static-LOW"},
+      {"sel":"0x8C","name":"DBG_PHASE","field":"{addr_adv_edge[1:0],cs_phase[3:0],we_phase[3:0],load_phase[3:0]}","default":"tuned","purpose":"assert phases + addr-advance edge within cycle"},
+      {"sel":"0x90","name":"DBG_D2","field":"{d2_rd_level,d2_wr_level,d2_idle_level}","default":"0,0,0","purpose":"D2 mode-lever levels (default static-LOW)"},
+      {"sel":"0x94","name":"DBG_ADDR_MASK_LO","field":"mask[15:0]","default":"tuned","purpose":"18-bit addr spread mask lo"},
+      {"sel":"0x98","name":"DBG_ADDR_MASK_HI","field":"mask[17:16]","default":"tuned","purpose":"addr spread mask hi"},
+      {"sel":"0xA0","name":"DBG_RD_CLKDIV","field":"[15:0]","default":25,"purpose":"drain D14 pulse pacing (sramdump default)"},
+      {"sel":"0xA4","name":"DBG_LANE_IDX","field":"[3:0] word-bit 0..15","default":"-","purpose":"target word bit to program"},
+      {"sel":"0xA8","name":"DBG_LANE_SRC","field":"[4:0] candidate 0..26","default":"-","purpose":"source DQ candidate for LANE_IDX"},
+      {"sel":"0xAC","name":"DBG_LANE_WE","field":"strobe","default":"-","purpose":"latch {LANE_IDX<-LANE_SRC} into lane_sel"},
+      {"sel":"0xC0","name":"DBG_MODE","field":"{drain_phase,capture_phase,raw_en}","default":"run","purpose":"force phase / enable DBG_RAW capture"}
+    ],
+    "reads": [
+      {"sel":"0x82","name":"DBG_ID","returns":"0x5CAP identity tag"},
+      {"sel":"0x86","name":"DBG_STATE","returns":"{phase,running,coherent,waddr}"},
+      {"sel":"0x8A","name":"DBG_RAW_LO","returns":"full latched DQ candidate vector [15:0] (lane confirm)"},
+      {"sel":"0x8E","name":"DBG_RAW_HI","returns":"full latched DQ candidate vector [26:16]"},
+      {"sel":"0x96","name":"DBG_P6","returns":"P6 status-mirror + D2 readback"}
+    ]
+  },
+
+  "fixed_vs_runtime": {
+    "FIXED": ["drain: D14-only + tri-state-all-else + capture-on-sck-high (proven sramdump)","that one sample lands per cap_tick (write topology)","record geometry REC_DEPTH=20480/ADDR_W=15","word hi=CH1/lo=CH2"],
+    "RUNTIME": ["clkdiv","cs_phase","we_phase","load_phase","addr_adv_edge","low_mask","load_sel","we_sel","addr_mask (A0..A17 order)","d2_wr_level","d2_rd_level","rd_clkdiv","lane_sel"],
+    "validation": "every runtime knob swept on hardware and gated BYTE-IDENTICAL against the vendor oracle's ground-truth 20480-word record (oracle_drain_recipe.md); never fuzzed blind"
+  },
+
+  "open_items_resolved_on_hardware": [
+    "A0..A17 exact ball order (addr_mask)",
+    "CS#/WE#/ADSC#-load identity among the 6 control balls (low_mask/load_sel/we_sel)",
+    "which of F2/J2/K2 is the primary SRAM CLK (drive together, bench-disambiguate)",
+    "D2 write-vs-read polarity (default static-0)",
+    "SRAM write micro-cadence clkdiv/phases the MAX-V expects",
+    "which 16 DQ candidates carry the {CH1,CH2} word (lane_sel)"
+  ]
+}

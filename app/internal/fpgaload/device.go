@@ -263,6 +263,11 @@ func Bringup(gpmcFD int, spidevPath string, read func(iface.Plane, uint16) (uint
 	_ = spidevPath
 	cfg := &gpmcConfigPort{fd: gpmcFD, sleep: time.Sleep}
 	ser := &bitbangLoader{fd: gpmcFD}
-	opts := Options{BitReverse: true, Logf: logf}
+	// BitOrder is left at BitOrderAuto: the embedded container states its own
+	// order (native Quartus acq.rbf ⇒ bit-reversed; a pre-reversed image ⇒ raw),
+	// and an image stating neither is refused before nCONFIG is pulsed. Do not
+	// hardcode this again — the wrong order loads cleanly and looks like dead
+	// silicon.
+	opts := Options{Logf: logf}
 	return EnsureStandard(read, cfg, ser, opts)
 }

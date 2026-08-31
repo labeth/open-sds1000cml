@@ -79,10 +79,26 @@ func dataStreamed(f *fakeSer) []byte {
 	return out
 }
 
-func rbf(n int) []byte {
+// rbf builds an n-byte container in NATIVE Quartus order — the shape of every
+// image this app embeds, and the one the loader must bit-reverse. Reload now
+// auto-detects the order, so a test payload has to be a real container: a blob
+// of arbitrary bytes is (correctly) refused.
+func rbf(n int) []byte { return container(hdrNative, n) }
+
+// rbfRaw builds an n-byte container in PRE-REVERSED vendor order — the shape of
+// the on-NAND factory image, which the loader must ship raw.
+func rbfRaw(n int) []byte { return container(hdrPreReversed, n) }
+
+func container(hdr []byte, n int) []byte {
 	b := make([]byte, n)
 	for i := range b {
 		b[i] = byte(i*7 + 1)
+	}
+	for i := 0; i < rbfPreambleLen && i < n; i++ {
+		b[i] = 0xFF
+	}
+	if n > rbfHeaderOff {
+		copy(b[rbfHeaderOff:], hdr)
 	}
 	return b
 }
@@ -118,11 +134,12 @@ func TestReloadStreamsExactBytesAndInitClocks(t *testing.T) {
 	o.InitClocks = 16
 	cfg := &fakeConfig{order: order, doneAfter: 2}
 	ser := &fakeSer{order: order}
-	in := rbf(70000) // not a multiple of the chunk size
+	// A pre-reversed (factory-order) container: auto-detection must ship it RAW.
+	in := rbfRaw(70000) // not a multiple of the chunk size
 	if err := Reload(cfg, ser, in, o); err != nil {
 		t.Fatalf("Reload: %v", err)
 	}
-	// No bitrev: the data stream must equal the input exactly.
+	// Pre-reversed container ⇒ no bitrev ⇒ the stream equals the input exactly.
 	if got := dataStreamed(ser); !bytes.Equal(got, in) {
 		t.Fatalf("streamed %d data bytes, want %d (mismatch)", len(got), len(in))
 	}
@@ -138,12 +155,14 @@ func TestReloadStreamsExactBytesAndInitClocks(t *testing.T) {
 	}
 }
 
+// TestReloadBitReverses pins the auto path: a NATIVE-order container is
+// bit-reversed onto the wire with nothing set in Options.
 func TestReloadBitReverses(t *testing.T) {
 	o, order := fastOpts()
-	o.BitReverse = true
 	cfg := &fakeConfig{order: order, doneAfter: 1}
 	ser := &fakeSer{order: order}
 	in := rbf(70000)
+	orig := append([]byte(nil), in...)
 	if err := Reload(cfg, ser, in, o); err != nil {
 		t.Fatalf("Reload: %v", err)
 	}
@@ -155,7 +174,7 @@ func TestReloadBitReverses(t *testing.T) {
 		t.Fatal("bit-reversed stream does not match bitrev(input)")
 	}
 	// The input slice must be untouched (bitrev works on a copy).
-	if in[1] != byte(1*7+1) {
+	if !bytes.Equal(in, orig) {
 		t.Fatal("Reload mutated the caller's bitstream")
 	}
 }

@@ -76,3 +76,28 @@ Regenerate with `make -C ../../codegen generate`.
 compile to `acq.rbf` via `cmd/buildacq` (memory-gated, headless Quartus). Pins are
 bench-supplied; the shipped `.rbf` is exactly **368011** bytes with M9K preserved.
 Not built in CI.
+
+## `acq.rbf` is a deploy slot, not this design's output
+
+`acq.rbf` is gitignored, and **two different projects write it**: `cmd/buildacq`
+(this design) and `../sramcap/RUN.sh deploy`, which copies the external-SRAM
+capture fabric over it as a documented drop-in. Last writer wins, and the file
+records nothing about which one it was — an `.rbf` carries no design name, both
+designs fit the same 368011 bytes, and `sramcap` deliberately reuses this
+design's `IFACE_BUILD_ID` (`0xc2f6eb5f`), so the build-ID register cannot
+separate them either. Checked-in reference builds of this design live under their
+own names (`acq_stream.rbf`, `acq_rc2b.rbf`, …).
+
+**Before comparing anything against `acq.rbf`, find out what is in it:**
+
+```sh
+go test -v ./standard/          # from the fpga module root
+```
+
+[`BITSTREAM-PROVENANCE.tsv`](BITSTREAM-PROVENANCE.tsv) records, per image
+sha256, the design it holds and the `.sof` that regenerates it;
+`provenance_test.go` re-hashes the checked-in images, names the design currently
+in the slot, and — where Quartus is installed — re-runs `quartus_cpf` and demands
+a byte-identical result. It fails when an image in the tree has no recorded,
+reproducible source. Add a row after any build or deploy that puts a new image in
+the slot.

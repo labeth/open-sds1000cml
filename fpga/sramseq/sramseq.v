@@ -28,10 +28,12 @@ module sramseq (
     reg [15:0] clkdiv=16'd25;             // sck half-period in internal-clk cycles
     reg [4:0] ncyc=5'd16, ridx=5'd0;
     reg [21:0] wdata=0; reg drive_dq=0;
+    reg [34:0] pat_alt=35'd0;             // bits here TOGGLE every sck cycle (Phase-E address alternation)
     wire go = we_commit && cs1_low && (wr_sel==8'h50);
     always @(posedge clk) if (we_commit&&cs1_low) case(wr_sel)
         8'h20: pat_load[15:0]<=d_q2;   8'h24: pat_load[31:16]<=d_q2;  8'h28: pat_load[34:32]<=d_q2[2:0];
         8'h40: pat_hold[15:0]<=d_q2;   8'h44: pat_hold[31:16]<=d_q2;  8'h48: pat_hold[34:32]<=d_q2[2:0];
+        8'h60: pat_alt[15:0]<=d_q2;    8'h64: pat_alt[31:16]<=d_q2;   8'h68: pat_alt[34:32]<=d_q2[2:0];
         8'h2C: clk_sel<=d_q2[7:0];     8'h30: clkdiv<=d_q2;           8'h34: ncyc<=d_q2[4:0];
         8'h4C: ridx<=d_q2[4:0];        8'h54: wdata[15:0]<=d_q2;      8'h58: wdata[21:16]<=d_q2[5:0];
         8'h5C: drive_dq<=d_q2[0];      default:;
@@ -54,7 +56,8 @@ module sramseq (
         end
     end
 
-    wire [34:0] pnow = (running && cyc==5'd0) ? pat_load : pat_hold;
+    wire [34:0] pbase = (running && cyc==5'd0) ? pat_load : pat_hold;
+    wire [34:0] pnow  = pbase ^ (cyc[0] ? pat_alt : 35'd0);   // toggle alt bits on odd cycles
     genvar i;
     generate for (i=0;i<35;i=i+1) begin: drv
         assign sram_ac[i] = (clk_sel==i) ? sck : pnow[i];

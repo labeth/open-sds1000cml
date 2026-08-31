@@ -35,6 +35,7 @@ type View struct {
 	AutoInc    []regView // auto-inc ports (plane-qualified)
 	Channels   []channelView
 	ChanPorts  []chanPortsView
+	Aliases    []aliasView // every read alias, flat, in declaration order (doc)
 	Descriptor descriptorView
 	Verify     verifyView
 	Opcodes    []opcodeView
@@ -45,6 +46,21 @@ type opcodeView struct {
 	ValHex string // 4 hex digits
 	Reg    string
 	Desc   string
+}
+
+// aliasView is one extra read-decode doorway onto a register. Everything the
+// templates need is precomputed here — the plane macro, the literal selector and
+// the read expression all come from the aliased register, so the emitted case is
+// a copy of that register's case under a different selector.
+type aliasView struct {
+	Reg        string // the aliased register's name
+	PlaneMacro string // `PLANE_CS1 / `PLANE_CS3
+	Plane      string // "CS1"/"CS3"
+	Sel        uint16
+	SelHex     string // 2 hex digits
+	SelLit     string // Verilog literal, e.g. 8'h00
+	ReadExpr   string // the aliased register's read expression
+	Desc       string
 }
 
 type nameVal struct {
@@ -105,6 +121,9 @@ type regView struct {
 	//   "behavior"                — driven by a hand-RTL rdata_<REG> wire
 	ReadKind string
 	ReadExpr string
+	// Aliases are extra selectors that decode to this register's read data. The
+	// regmux template emits them immediately before the register's own case.
+	Aliases []aliasView
 }
 
 type fieldView struct {
@@ -220,6 +239,7 @@ func newView(i schema.Interface) View {
 			if r.Sem&schema.SemAutoIncPort != 0 {
 				v.AutoInc = append(v.AutoInc, rv)
 			}
+			v.Aliases = append(v.Aliases, rv.Aliases...)
 		}
 		v.Blocks = append(v.Blocks, bv)
 	}
@@ -338,6 +358,17 @@ func regViewOf(i schema.Interface, r schema.Register) regView {
 		rv.ReadKind, rv.ReadExpr = "const", fmt.Sprintf("16'h%04x", *r.Expect)
 	case r.Access.CanRead():
 		rv.ReadKind, rv.ReadExpr = "behavior", "rdata_"+r.Name
+	}
+	// Read aliases reuse this register's plane and read expression verbatim: an
+	// alias is the same read port reached through a second selector. Emitted as a
+	// bare literal (not a `SEL_ macro) because an alias has no name of its own.
+	for _, al := range r.ReadAliases {
+		rv.Aliases = append(rv.Aliases, aliasView{
+			Reg: r.Name, PlaneMacro: rv.PlaneMacro, Plane: rv.Plane,
+			Sel: al.Sel, SelHex: fmt.Sprintf("%02x", al.Sel),
+			SelLit:   fmt.Sprintf("8'h%02x", al.Sel),
+			ReadExpr: rv.ReadExpr, Desc: al.Desc,
+		})
 	}
 	return rv
 }

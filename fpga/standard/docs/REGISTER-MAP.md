@@ -175,6 +175,21 @@ RESERVED (v2): serial-decode result ring — per-transaction spans
 | `start_idx` | `[47:16]` | sample index of transaction start (retroactive anchor) |
 | `data` | `[63:48]` | decoded word |
 
+## selector aliases
+
+Extra selectors the fabric's read decode maps onto an existing register's read
+port. They are **not** registers — no name, no fields, no write strobe, no Go
+binding — and they exist for bus masters that cannot choose their selector. They
+are part of the contract and are generated from the schema, so regeneration
+preserves them.
+
+⚠ Reading an alias of an **auto-inc** port POPS that port, exactly as reading the
+register itself does. A bench probe must treat these selectors as destructive.
+
+| plane | alias sel | aliases | why |
+|---|---|---|---|
+| CS1 | `0x00` | `BURST` | prefetch/sDMA drain port at CS base |
+
 ## DMA descriptor `burst_drain` — 64-bit, 4 words
 
 | field | bits | notes |

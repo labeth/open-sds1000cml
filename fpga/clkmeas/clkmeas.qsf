@@ -1,0 +1,115 @@
+# =============================================================================
+# clkmeas.qsf -- Quartus settings for the absolute clock-measurement fabric.
+# Device: Altera Cyclone IV E  EP4CE10F17C8  (SDS1000CML acquisition FPGA)
+# Top:    clkmeas          Build: go run ./cmd/buildacq -design clkmeas -name clkmeas
+#
+# Pin sources: every ball name below is copied from standard/acq.qsf (the
+# HW-verified GPMC cluster, clk=C2, mclk_in=M2, trig_sense=A12) or from
+# sramla/sramla.qsf (K2/R4/F2/J2, which appear there as sram_ac[2]/[18]/[31]/[0]).
+# E1/M1/E15/E16/M15/M16 are the six PLL-INCLK balls the DDR scan called static;
+# acq.qsf parks sel[0] on E1, which this design does not need (the CS1 decode
+# uses only sel[6:2], so sel[0] and sel[1] are dropped and D1 is left reserved).
+#
+# EVERYTHING except gpmc_d and gpmc_wait is an INPUT. Nothing else is driven.
+# =============================================================================
+set_global_assignment -name FAMILY "Cyclone IV E"
+set_global_assignment -name DEVICE EP4CE10F17C8
+set_global_assignment -name TOP_LEVEL_ENTITY clkmeas
+set_global_assignment -name PROJECT_OUTPUT_DIRECTORY output_files
+set_global_assignment -name SEARCH_PATH .
+set_global_assignment -name VERILOG_FILE clkmeas.v
+set_global_assignment -name SDC_FILE clkmeas.sdc
+set_global_assignment -name STRATIX_DEVICE_IO_STANDARD "3.3-V LVTTL"
+set_global_assignment -name RESERVE_ALL_UNUSED_PINS "AS INPUT TRI-STATED"
+set_global_assignment -name RESERVE_ALL_UNUSED_PINS_NO_OUTPUT_GND "AS INPUT TRI-STATED"
+set_global_assignment -name LAST_QUARTUS_VERSION "21.1.0 Lite Edition"
+
+# ===== GPMC CS1 slave (HW-verified cluster, identical to acq.qsf) =============
+set_location_assignment PIN_A10 -to gpmc_d[0]
+set_location_assignment PIN_B9  -to gpmc_d[1]
+set_location_assignment PIN_A9  -to gpmc_d[2]
+set_location_assignment PIN_B8  -to gpmc_d[3]
+set_location_assignment PIN_A8  -to gpmc_d[4]
+set_location_assignment PIN_B7  -to gpmc_d[5]
+set_location_assignment PIN_A7  -to gpmc_d[6]
+set_location_assignment PIN_B6  -to gpmc_d[7]
+set_location_assignment PIN_A6  -to gpmc_d[8]
+set_location_assignment PIN_D6  -to gpmc_d[9]
+set_location_assignment PIN_C6  -to gpmc_d[10]
+set_location_assignment PIN_B5  -to gpmc_d[11]
+set_location_assignment PIN_A5  -to gpmc_d[12]
+set_location_assignment PIN_F6  -to gpmc_d[13]
+set_location_assignment PIN_D5  -to gpmc_d[14]
+set_location_assignment PIN_E5  -to gpmc_d[15]
+set_location_assignment PIN_B4  -to nCS1
+set_location_assignment PIN_E6  -to nOE
+set_location_assignment PIN_B10 -to nWE
+set_location_assignment PIN_L6  -to gpmc_wait
+# selector bits [6:2] (acq.qsf sel[2]..sel[6]); sel[0]/sel[1] are not decoded
+set_location_assignment PIN_C3  -to sel_hi[0]
+set_location_assignment PIN_D4  -to sel_hi[1]
+set_location_assignment PIN_A3  -to sel_hi[2]
+set_location_assignment PIN_B3  -to sel_hi[3]
+set_location_assignment PIN_A4  -to sel_hi[4]
+
+# ===== the two references under test =========================================
+set_location_assignment PIN_C2  -to clk
+set_location_assignment PIN_M2  -to mclk_in
+
+# ===== the trigger comparator (also the A12 gate source) =====================
+set_location_assignment PIN_A12 -to trig_sense
+
+# ===== the six "dead" PLL-INCLK balls ========================================
+set_location_assignment PIN_E1  -to ball_e1
+set_location_assignment PIN_M1  -to ball_m1
+set_location_assignment PIN_E15 -to ball_e15
+set_location_assignment PIN_E16 -to ball_e16
+set_location_assignment PIN_M15 -to ball_m15
+set_location_assignment PIN_M16 -to ball_m16
+
+# ===== the four SRAM-family balls ============================================
+set_location_assignment PIN_K2  -to ball_k2
+set_location_assignment PIN_R4  -to ball_r4
+set_location_assignment PIN_F2  -to ball_f2
+set_location_assignment PIN_J2  -to ball_j2
+
+# ===== SAFETY ================================================================
+# Only two nets leave this device. Minimum drive on both.
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MINIMUM CURRENT" -to gpmc_d
+set_instance_assignment -name CURRENT_STRENGTH_NEW "MINIMUM CURRENT" -to gpmc_wait
+
+# WEAK PULL-UPS ON THE TEN UNKNOWN BALLS -- this is a measurement decision, not
+# a habit. A floating CMOS input clocking a 32-bit counter will accumulate noise
+# edges and report a *live clock on a dead ball*: a false positive that looks
+# exactly like the campaign-level win we are hunting for (a second PLL-capable
+# reference). Holding an undriven ball high turns that failure mode into a clean
+# zero. Any real driver overrides a ~25 kOhm pull-up without noticing it.
+# Consequence to record with the result: a zero count on these balls means
+# "not driven OR driven static high", not "not connected".
+#
+# ⚠ MEASURED DEVICE LIMIT, NOT A CHOICE: the six dedicated PLL-INCLK pads
+# E1/M1/E15/E16/M15/M16 CANNOT take a programmable pull-up on this device. The
+# fitter rejects it outright:
+#     Error (169057): Can't place I/O pin ball_m15 at pin location M15 --
+#     I/O pin uses weak pullup, which is not supported by this pin location
+# So exactly the six balls where a false positive would be a campaign-level
+# claim ("a second PLL-capable reference!") are the six that cannot be held
+# against floating in hardware. That control has to move to the host: a real
+# clock's count scales LINEARLY with gate length, floating-input noise does not,
+# so C1.2's 0.1 / 1 / 10 s three-gate sweep IS the discriminator for these six.
+# Do not report a non-zero count on E1/M1/E15/E16/M15/M16 from a single gate.
+set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to ball_k2
+set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to ball_r4
+set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to ball_f2
+set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to ball_j2
+
+# NO GLOBAL_SIGNAL FORCING. The first build pinned clk and mclk_in to global
+# clock networks explicitly; the fitter then reported BOTH PLLs as
+#     Warning (15055): PLL ... input clock inclk[0] is not fully compensated ...
+#     because it is fed by a non-dedicated input
+# i.e. forcing mclk_in onto a global network took u_m2pll OFF the dedicated
+# PLL-INCLK path that the shipped acq.v fabric uses. Since the whole point of
+# carrying both PLLs here is that their `locked` bits be comparable with acq.v's,
+# the assignment is removed and Auto Global Clock is left to place them --
+# which restores one dedicated-input PLL and one global-fed PLL, exactly the
+# arrangement acq.v fits (04 section 5.2 / 5.3).

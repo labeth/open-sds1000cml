@@ -28,8 +28,12 @@
 //   generated read mux, straight from the schema).
 //
 // HARDWARE-SAFETY ENVELOPE (NON-NEGOTIABLE, DESIGN.md sec.1)
-//   * ONE tri-state driver on gpmc_d, enabled ONLY on read_active = ~nCS1 & ~nOE
-//     (CS1 reads only); every other cycle Hi-Z. There is no CS3 decode in this device.
+//   * ONE tri-state driver on gpmc_d, enabled ONLY on
+//     read_active = ~nCS1 & ~nOE & ~panel_window (CS1 reads, front-panel matrix
+//     window EXCLUDED); every other cycle Hi-Z. There is no CS3 decode in this
+//     device. The panel-window exclusion is mandatory: which device answers CS1
+//     0x64-0x69 is an OPEN question, and if it is not this one, driving there is
+//     a bus fight on every panel read (see the panel_window block in section 6).
 //   * gpmc_wait held ready at all times (never wedge the bus; WAIT-monitoring is off).
 //   * clk is the fabric reference (ball C2, ~80 MHz free-running). The ADC lanes are
 //     captured in this domain (source-synchronous to the ENCODE we drive); the async
@@ -1096,7 +1100,59 @@ module acq (
     // =======================================================================
     // 6) Single tri-state driver on gpmc_d + WAIT held ready
     // =======================================================================
-    wire read_active = (~nCS1) & (~nOE);            // CS1 reads only
+    // ---- FP-B5 / P4-0a: the front-panel-window tri-state qualifier ---------
+    // Nobody has established which device answers CS1 0x64-0x69 (the front-panel
+    // key matrix + magnitude counter). Under the "MAX V co-decodes a CS1 sub-
+    // window" resolution, any read we drive there is a Cyclone-vs-CPLD drive
+    // fight, mitigated today only by gpmc_d being capped to MINIMUM CURRENT in
+    // acq.qsf. Staying silent in that window is correct under EVERY resolution:
+    //   - another device answers  -> we must not fight it;
+    //   - nothing answers         -> we have no panel scanner to answer with, and
+    //                                the value we drive today (env_cols_reg, i.e.
+    //                                a word the HOST itself wrote) is not panel
+    //                                data. A float is the honest answer, and it is
+    //                                what P4-0b's predicate is written against.
+    // If a scanner is ever built in this fabric (resolution R1), replace the
+    // Hi-Z here with its read data - do not simply delete the qualifier.
+    //
+    // The window is an EXACT masked-selector set, never a block range. rd_sel
+    // forces bits 0/1/7 low, so the five host panel addresses fold onto exactly
+    // two masked selectors:
+    //     host 0x64,0x65,0x66,0x67 (matrix rows 7/8..1/2) -> masked 0x64
+    //     host 0x69                (shared magnitude cnt) -> masked 0x68
+    // (src: fpga-specs/takeover/15-front-panel.md sec.2/sec.6.2;
+    //  open-sds1000cml/app/internal/engine/engine_cmd.go:19 issues exactly
+    //  {0x64,0x65,0x66,0x67,0x69}.)
+    // A nibble/range decode over 0x6* would ALSO silence masked 0x6c, which is
+    // dec_matched - a live readback of a different subsystem, intercepted below
+    // by dec_read. That would be a silent cross-subsystem regression, so the two
+    // selectors are spelled out and the overlap is checked at elaboration time.
+    //
+    // COST, stated openly: masked 0x64 is `SEL_ENV_COLS in the generated read mux
+    // (regmux.vh), so the ENV_COLS *readback* goes Hi-Z. The ENV_COLS *write* path
+    // (we_ENV_COLS / envelope column count) is untouched and still works, and no
+    // host code reads ENV_COLS back (the app only writes it, engine_capture.go:51).
+    // Masked 0x68 has no read case at all (it is the DEC_TESTGEN write port), so
+    // it only ever returned the read-mux default 0x0000. Restoring an ENV_COLS
+    // readback needs the schema relocation (15 FP-B3), which is a codegen change
+    // and is deliberately NOT done here.
+    localparam [7:0] PANEL_SEL0 = 8'h64;   // host 0x64-0x67 -> the four matrix words
+    localparam [7:0] PANEL_SEL1 = 8'h68;   // host 0x68-0x6b -> carries 0x69 magnitude
+    wire panel_window = (rd_sel == PANEL_SEL0) | (rd_sel == PANEL_SEL1);
+
+    // Elaboration-time guard: the panel window must NEVER overlap a hand-decoded
+    // DEC read selector (0x4c dec_status / 0x6c dec_matched / 0x7c dec_byte). If a
+    // future edit widens it, this generate arm instantiates a module that does not
+    // exist and the build fails loudly instead of silently killing those readbacks.
+    generate
+    if ((PANEL_SEL0 == 8'h4c) || (PANEL_SEL0 == 8'h6c) || (PANEL_SEL0 == 8'h7c) ||
+        (PANEL_SEL1 == 8'h4c) || (PANEL_SEL1 == 8'h6c) || (PANEL_SEL1 == 8'h7c))
+    begin : g_panel_window_dec_overlap
+        ERROR_panel_window_overlaps_a_DEC_read_selector u_elab_assert ();
+    end
+    endgenerate
+
+    wire read_active = (~nCS1) & (~nOE) & (~panel_window);  // CS1 reads, panel window excluded
     // DEC read override: the generated read-mux returns default 0x0000 for the
     // hand-decoded DEC selectors 0x4c/0x6c/0x7c, so intercept them at the SINGLE
     // tri-state driver. dec_read is FALSE for every schema selector (rd_sel uses

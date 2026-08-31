@@ -203,18 +203,92 @@ func (b Band) EnvFillTarget() uint16 {
 	return uint16(c)
 }
 
-// baseTickNs is the owned streaming spine's base sample interval — the interval
-// at DECIM = 1 (native-fast, the fastest bands). Every band's on-wire decimation
-// factor is CaptureIntervalNs / baseTickNs (spec 03 §4.2, §5.1).
-const baseTickNs = 2.0
+// ─────────────────────────────────────────────────────────────────────────────
+// The owned time axis, and the ONE constant it hangs from.
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// fRefHz is the rate of the streaming spine's clock — the Cyclone reference net
+// `C2` as `spine.v` sees it. `spine.v` advances the record by one sample every
+// DECIM cycles of that clock, so the base sample interval at DECIM = 1 is
+// exactly 1/fRefHz and every interval this engine can deliver is k/fRefHz.
+// This is the ONLY place in the band model where a frequency is named. Do not
+// write a second copy of it, in any unit, anywhere in the app.
+//
+// ⚠ UNMEASURED — 500e6 IS NOT A MEASUREMENT. It is exactly the value that
+// reproduces the 2.0 ns base tick this engine inherited from the vendor's
+// 500 MSa/s ladder, chosen here so that *naming* the constant changes no
+// programmed value. C2's absolute rate has never been edge-counted; the corpus
+// has three disagreeing arithmetic paths (~80 / ~100 / ~42 MHz, the last of them
+// retracted), and if the answer is 80 MHz the axis this engine reports is 6.25×
+// wrong at every decimated band.
+//
+// WHO REPLACES IT: campaign step 1.4 (`clkmeas`: 32-bit latched counters, gates
+// 0.1/1/10 s, predicate "three gate lengths agree within 0.2 %"), cross-checked
+// by step 1.5 (the alias-fold ENCODE measurement, a completely different
+// mechanism). Step C1.6 publishes one value with one uncertainty and one date —
+// and this line is one of the two places it lands. EDITING THIS ONE LINE IS THE
+// WHOLE POINT: every DECIM this engine programs rescales with it, and nothing
+// else in this file needs to change.
+//
+// WHAT THIS CONSTANT DOES *NOT* FIX — setting it right does not by itself make
+// the axis true, so do not read a corrected fRefHz as a corrected instrument:
+//   - `adcif.v` builds ENCODE by toggling a flip-flop on `clk`, so at the
+//     shipped enc_div = 4 the record carries 8 duplicate samples per real
+//     conversion. That ~8× between "record tick" and "distinct sample" is an
+//     RTL fix (gate cap_tick on the ENCODE strobe), not a constant.
+//   - CaptureIntervalNs() returns the vendor ladder's TARGET interval (2 / 4 /
+//     divisor·10 ns). Those are the intervals we aim at, not a statement about
+//     our reference, and they deliberately do NOT scale with fRefHz — DECIM is
+//     what moves so the delivered interval tracks the target.
+//   - Once fRefHz is not 500e6 the delivered interval Decim()·baseTickNs stops
+//     equalling that target exactly (the grid becomes 1/fRefHz, not 10 ns), and
+//     the reported axis must switch to the delivered value and to fabric
+//     read-back. That is a later, deliberate step — not something to smuggle in
+//     with the measurement.
+//   - The envelope/roll cadence constants (envIntervalS, rollDivisor, and the
+//     10 ns in EnvPlan) carry their own separate fRefHz dependence. They are
+//     held byte-identical here on purpose and are re-derived later.
+//
+// src: fpga-specs/takeover/18-clocks-and-timebase.md §2.4, CLK-3, C0.4, C1.1–C1.6, C4.1–C4.2.
+// src: fpga-specs/25-timebase-decimation-and-bands.md §5.4, §6.1, §8.1 items 1–2.
+// src: fpga-specs/04-clocking-and-plls.md §8.2 item 7.
+// src: fpga-specs/takeover/00-MASTER-PLAN.md §3 steps 0.8, 1.4, 1.5.
+const fRefHz = 500e6
+
+// baseTickNs is the owned streaming spine's base sample interval in ns — the
+// interval at DECIM = 1 (native-fast, the fastest bands). DERIVED from fRefHz,
+// never written down independently: at fRefHz = 500e6 it is exactly 2.0, the
+// literal that used to sit here. Every band's on-wire decimation factor is
+// CaptureIntervalNs / baseTickNs (spec 03 §4.2, §5.1).
+const baseTickNs = 1e9 / fRefHz
+
+// baseTickNsFor is baseTickNs at an arbitrary reference frequency — the runtime
+// form of the same one-line relationship, so a test can regenerate the whole
+// ladder at a hypothetical measured f_C2 without editing the constant. It is
+// also the seam a later step plumbs a runtime/user-calibrated reference through
+// (master plan §7 wants the published number settable at runtime with its
+// uncertainty): that step replaces fRefHz's single call site in Decim(), and
+// nothing else in the band model has to learn about it.
+func baseTickNsFor(fRef float64) float64 { return 1e9 / fRef }
 
 // Decim is the stream decimation factor bringUp programs into DECIM_LO/HI: the
 // number of base samples per captured sample (fpga doc §4.2). It is derived
 // from the band's real per-sample interval, so the display timing math and the
 // programmed decimation stay in lock-step. Envelope/roll fold their scatter
 // divisor in exactly the same way.
-func (b Band) Decim() uint32 {
-	d := uint32(math.Round(b.CaptureIntervalNs() / baseTickNs))
+func (b Band) Decim() uint32 { return b.decimFor(fRefHz) }
+
+// decimFor is Decim() against an explicit reference frequency. Decim() is this
+// function at fRefHz; the parameter exists so the ladder-invariance test can
+// pin the golden table to the inherited 500e6 forever (so that measuring f_C2
+// stays a ONE-line edit and breaks no test) and can separately assert the law
+// that must hold at any reference: delivered = DECIM/fRef lands within half a
+// base tick of the band's target interval.
+func (b Band) decimFor(fRef float64) uint32 {
+	if !(fRef > 0) { // 0, negative or NaN — an unusable reference
+		return 1
+	}
+	d := uint32(math.Round(b.CaptureIntervalNs() / baseTickNsFor(fRef)))
 	if d < 1 {
 		d = 1
 	}
