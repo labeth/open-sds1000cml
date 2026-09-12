@@ -46,7 +46,7 @@ One board reference enters the device and both PLLs derive from it.
 | clock | rate | role |
 |---|---|---|
 | reference | 100 MHz | board oscillator into the left PLL |
-| ADC encode | 5 differential pairs at 100 MHz | converter encode; the complementary legs are 5 ns apart, so a core clocked by both samples at ~200 MSPS (§3.2) |
+| ADC encode | 5 differential pairs at 100 MHz | converter encode; each pair's two legs clock **different** cores, 5 ns apart — one CH1 and one CH2 (§3.0) |
 | packing clock | 125 MHz | 64-bit assembly stage |
 | SRAM port clock | 250 MHz | external SRAM write |
 
@@ -79,21 +79,51 @@ cores** — one CH1 core and one CH2 core, 5 ns apart. Measured pin/core/phase m
 CH1 is therefore clocked in the order E4, E3, E2, E5, E1 and CH2 in the order E5, E1, E4, E3, E2 —
 which is what produces the frame ordering of §7. `[BENCH]`
 
-**Board configuration.** Three AD9288 packages are fitted, giving six cores, of which **five are
-connected** and one is unused. The scope's two input channels are served **3 : 2** across those
-five — **CH1 by three cores, CH2 by two**. `[OPERATOR]`
+**Board configuration — reported, and in conflict with the measurement below.** The operator
+reports **three** AD9288 packages fitted, giving six cores of which **five are connected**, the two
+inputs served **3 : 2**. `[OPERATOR]` The fabric-side measurement that follows instead finds **ten**
+live cores split **5 CH1 / 5 CH2**. Both are recorded; neither is asserted over the other, and the
+conflict is confined to the board — see the note at the end of this section.
 
 **The fabric addresses ten logical cores, not five.** Its lane map is indexed
 `c = 2k + ch` for pair `E(k+1)`, `k = 0..4`, `ch = 0` (CH1) or `1` (CH2), giving `c = 0..9` over
 80 lanes (`fpga/default/lanemap_seed.vh`). Code is written against that ten-core model; the board
 populates five of those slots.
 
-> **Not established: how five connected converters populate the ten-core model.** The two readings
-> —  ten populated slots at 100 MSPS each, or five at ~200 MSPS each — both yield the same
-> **1 GS/s aggregate**, so §6's record geometry and the 500 MS/s per-channel figure hold either
-> way and an implementer is unaffected. What they do not agree on is which lane groups carry a
-> converter and at what rate, which is exactly what per-core calibration needs. Do not infer
-> either from this document.
+**All ten logical cores carry live converter data.** `[BENCH]` Measured with the per-pair encode
+freeze (`ACQ_CTRL.PAIR_EN`, §3.2), clearing the lane ever-flags before each step and counting, per
+core, the lanes that subsequently moved:
+
+| `PAIR_EN` | c0 | c1 | c2 | c3 | c4 | c5 | c6 | c7 | c8 | c9 |
+|---|--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|
+| none (encode gated) | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| E1 only | **3** | **5** | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+| E2 only | 0 | 0 | **5** | **3** | 0 | 0 | 0 | 0 | 0 | 0 |
+| E3 only | 0 | 0 | 0 | 0 | **5** | **3** | 0 | 0 | 0 | 0 |
+| E4 only | 0 | 0 | 0 | 0 | 0 | 0 | **5** | **3** | 0 | 0 |
+| E5 only | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | **4** | **5** |
+| all five | 3 | 5 | 5 | 3 | 5 | 3 | 5 | 3 | 3 | 3 |
+
+Counts are lanes of 8 seen at both levels; the MSBs of a quiet DC input need not move. **The
+encode-gated row is what makes this sound**: with encode gated no lane moves at all, so no lane
+group is merely floating and every count above is converter-driven.
+
+Two things follow:
+
+1. Pair `E(k+1)` clocks **exactly** cores `c = 2k` (CH1) and `c = 2k+1` (CH2). The diagonal is
+   clean — no pair disturbs another pair's cores.
+2. **All ten cores are populated and live**, so the aggregate is `10 × 100 MSPS = 1 GS/s` and the
+   cores run **at their rated 100 MSPS**, not above it.
+
+> **Open, and it is a board-level question, not a fabric one.** The measurement finds ten live
+> cores, 5 CH1 and 5 CH2. Three independent reports say otherwise about the board: a photograph
+> read as **three** packages, an operator count of **three packages / five connected / 3 : 2**, and
+> an earlier encode-freeze experiment concluding "6 cores on 3 dual chips, 5 wired + 1 empty". Ten
+> live cores at two per AD9288 needs **five** packages, so either the package count is five, or the
+> fitted parts are not all dual AD9288s, or the freeze probe is observing something other than
+> distinct physical converters. **Nothing an implementer needs turns on this** — the table is what
+> the fabric drives and the aggregate rate is fixed either way — but no board-level package or
+> per-channel-core claim should be made from this document.
 
 ### 3.1 Port surface
 
@@ -107,26 +137,22 @@ The FPGA presents:
 
 ### 3.2 Encode and rate
 
-The aggregate rate is fixed and is **1 GS/s = 500 MS/s per input channel**, produced by **time
-interleaving** across the connected cores. One 10 ns frame carries ten byte slots (§7).
+The aggregate rate is **1 GS/s = 500 MS/s per input channel**, produced by **time interleaving**
+across the ten live cores (§3.0):
 
-The per-core encode rate follows from how many slots are populated, and the corpus supports two
-readings (§3.0): five connected cores at **~200 MSPS** each, or ten at **100 MSPS** each. Both
-give 1 GS/s. `fpga-specs` records the first as "~200 MHz per core, time-interleaved".
+```
+10 live cores × 100 MSPS = 1 GS/s aggregate = 500 MS/s per input channel
+```
 
-**If the five-core reading is right, the cores are run above their rating.** The AD9288 is rated
-100 MSPS; at ~200 MHz encode it still converts, at a measurable cost in linearity — DC residual
-about 0.2 codes at 50–100 MHz encode against about 0.7 codes at 200 MHz. An implementation must
-not treat the 100 MSPS figure as a ceiling it is observing, nor treat the extra residual as a
-fault.
+One 10 ns frame carries ten byte slots (§7) — one per core. The cores run **at their rated
+100 MSPS**; nothing in this datapath over-clocks a converter.
+
+`ACQ_CTRL` (selector `0x58`) gates encode. `ENC_EN` (bit 0) enables it; `PAIR_EN` (bits 14:10,
+bit 10 = E1) enables pairs individually and is ANDed with `ENC_EN`. Gating a pair freezes its two
+cores — that is the freeze probe of §3.0. **Reset is encode off.**
 
 Samples are **8-bit unsigned offset binary, centred at 128**. Code decreases as the applied offset
 voltage increases.
-
-> **Not established here: the slot → physical core assignment.** A frame's five CH1 slots are
-> served by three CH1 cores and its five CH2 slots by two CH2 cores, which does not divide evenly,
-> so the assignment is neither uniform nor derivable from the counts. Per-core calibration cannot
-> be derived from this spec alone; use `MAP_ID` (§3.4) and the artifacts named in §13.
 
 ### 3.3 Mode straps
 
@@ -152,7 +178,8 @@ The mapping from the 80 physical lanes to (core, bit) is a **build-time constant
 image and identified at runtime by `MAP_ID` (§8.1). The qualified map is **`0xe192`**. A host that
 reads a different `MAP_ID` must not assume this ordering.
 
-Per-core gain, offset and AC aperture skew are **not** corrected by the fabric.
+Per-core offset, gain and AC aperture skew are **not** corrected by the fabric; calibration is
+the host's, using `MAP_ID` (§3.4) and the artifacts named in §13.
 
 ---
 
@@ -270,8 +297,9 @@ Samples are 8-bit unsigned offset binary, centred at 128.
 
 ## 7. Interleave and core ordering
 
-Five differential encode pairs clock the five connected converter cores (§3.0 gives the measured
-pin/core/phase map; §3.2 the rate). One 10 ns frame carries ten byte slots, ordered:
+Five differential encode pairs clock ten converter cores, two per pair (§3.0 gives the measured
+pin/core/phase map and the freeze-probe evidence; §3.2 the rate). One 10 ns frame carries ten byte
+slots, ordered:
 
 ```
 E4.CH1, E5.CH2, E3.CH1, E1.CH2, E2.CH1, E4.CH2, E5.CH1, E3.CH2, E1.CH1, E2.CH2
