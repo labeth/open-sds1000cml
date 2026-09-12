@@ -36,5 +36,5 @@ app/internal/fpgaload/acq.rbf
 # scratch
 *.log
 !docs/**/*.log
-# python bytecode caches (tools/portspec unittests)
+# python bytecode caches (the acq2 analysis branch unittests)
 __pycache__/

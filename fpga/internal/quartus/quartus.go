@@ -6,7 +6,7 @@
 // exactly RBFBytes, and parses the fit report (unassigned / unused pins on the
 // QSF's balls) and the STA report (worst setup slack per clock).
 //
-// Rules it enforces (docs/acq2/05-WORKPLAN.md section 4.6, 4.9):
+// Rules it enforces (the acq2 analysis branch section 4.6, 4.9):
 //   - one flow at a time from this repo: flock on LockPath, held for the whole flow
 //   - never start below MinFreeMB of MemAvailable (a foreign quartus_map shares this host)
 //   - the QSF is generated: its VERILOG_FILE list must equal the staged .v set, and the

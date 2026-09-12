@@ -1,7 +1,7 @@
 // Package ifacedef holds the register map of the acq2 default image
 // (schema sds1000cml-default, version 3) as Go data. It is a transcription of
-// docs/acq2/05-WORKPLAN.md §2 / §2.1 (the v2 registers, which keep their
-// 4-aligned selectors) plus docs/acq2/06-TIERS.md §2 (the v3 additions in the
+// the acq2 analysis branch §2 / §2.1 (the v2 registers, which keep their
+// 4-aligned selectors) plus the acq2 analysis branch §2 (the v3 additions in the
 // slots opened by GPMC A1/A2) — edit those tables and this file together;
 // `make drift` in codegen/ then fails until every generated artifact is
 // regenerated.

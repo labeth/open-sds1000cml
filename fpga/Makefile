@@ -1,6 +1,6 @@
 # open-sds/fpga -- per-design Quartus projects for the SDS1102CML+ acquisition FPGA (Cyclone IV E EP4CE10F17C8).
 #
-#   make qsf        regenerate default/default.qsf from docs/acq2/contract-161.tsv (tools/portspec/qsfgen.py)
+#   make qsf        regenerate default/default.qsf from the acq2 analysis branch (the acq2 analysis branch)
 #   make bitstream  headless Quartus flow -> default/out/default.rbf (368011 bytes); NOT for CI:
 #                   takes flock /tmp/open-sds-quartus.lock, needs >= 3 GB free RAM and Quartus 21.1 at
 #                   $QUARTUS_ROOTDIR (or ~/intelFPGA_lite/21.1/quartus). Exits 1 on any unplaced/unused
@@ -15,8 +15,8 @@
 GO ?= go
 PYTHON ?= python3
 DESIGN ?= default
-QSFGEN := ../tools/portspec/qsfgen.py
-LANEMAPGEN := ../tools/portspec/lanemapgen.py
+QSFGEN := ../the acq2 analysis branch
+LANEMAPGEN := ../the acq2 analysis branch
 
 .PHONY: qsf bitstream test vet sim
 

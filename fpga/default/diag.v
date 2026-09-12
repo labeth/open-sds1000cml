@@ -16,7 +16,7 @@
 // owned-fpga c8ec66d), singles tri-state.
 //
 // LANEMAP (DIAG 0x10..0x5f) is READ-ONLY from v2.2: entry i reports `LANEMAP_SEED_PACKED[7i+6:7i]
-// of fpga/default/lanemap_seed.vh (GENERATED from lanecal-2026-09-05 by tools/portspec/
+// of fpga/default/lanemap_seed.vh (GENERATED from lanecal-2026-09-05 by the acq2 analysis branch/
 // lanemapgen.py); writes are ignored. map_ch1/map_ch2 (pair E1 = cores 0/1, the v2.1 dual-E1
 // datapath) are the same constants, so adc_front's runtime assembler folds to fixed wiring in
 // synthesis. A different map is a rebuild (build-ID -> app reload). The v3.0+ DIAG entries

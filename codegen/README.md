@@ -2,8 +2,8 @@
 
 `codegen/ifacedef/default.go` holds the register map of the default image
 (schema `sds1000cml-default`, version 3 — the 32 registers of
-`docs/acq2/05-WORKPLAN.md` §2 / §2.1 at their 4-aligned selectors plus the
-`docs/acq2/06-TIERS.md` §2 additions in the slots GPMC A1/A2 opened) as Go
+`the acq2 analysis branch` §2 / §2.1 at their 4-aligned selectors plus the
+`the acq2 analysis branch` §2 additions in the slots GPMC A1/A2 opened) as Go
 data. `make generate` renders it into:
 
 | artifact | consumer |

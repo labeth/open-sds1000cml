@@ -7,8 +7,8 @@
 // The idea (schema -> regs.vh/regmux.vh/iface.go/REGISTER-MAP.md, build-ID
 // folded from the schema) comes from owned-fpga codegen (commits 570af15,
 // 8938920, 2ee23a0); this is a smaller re-implementation for the one-plane
-// default image of docs/acq2/05-WORKPLAN.md §2 (32 selectors, schema v2) and
-// docs/acq2/06-TIERS.md §2 (128 selectors, schema v3).
+// default image of the acq2 analysis branch §2 (32 selectors, schema v2) and
+// the acq2 analysis branch §2 (128 selectors, schema v3).
 package schema
 
 import (

@@ -1,6 +1,6 @@
 # open-sds acq2 interface codegen — the FPGA<->app register contract tool.
 #
-# One schema (codegen/ifacedef, transcribed from docs/acq2/05-WORKPLAN.md §2)
+# One schema (codegen/ifacedef, transcribed from the acq2 analysis branch §2)
 # generates the fabric's Verilog header + decode include, the app's Go bindings
 # and the register-map reference. `make generate` moves every side in lockstep;
 # `make drift` (the CI gate) regenerates into a temp dir and fails if any

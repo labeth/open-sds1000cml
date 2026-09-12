@@ -1,5 +1,5 @@
 // Package bus is the app's GPMC register-access layer for the acq2 default
-// fabric (docs/acq2/05-WORKPLAN.md §2, fpga-specs 10/12). It owns the
+// fabric (the acq2 analysis branch §2, fpga-specs 10/12). It owns the
 // boot-inherited /dev/Gpmc fd, the 6-byte ioctl wire encoding, and the EDMA
 // fast drain of the pop-on-read BURST port. Register MEANING comes from the
 // generated iface package: which selectors exist and which are writable is

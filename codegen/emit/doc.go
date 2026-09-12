@@ -31,7 +31,7 @@ func Doc(i schema.Interface) (string, error) {
 	p := func(format string, a ...any) { fmt.Fprintf(&b, format, a...) }
 	p("<!-- %s -->\n", Banner)
 	p("# Register map — %s v%d (build-ID `0x%08x`)\n\n", i.Name, i.Version, id)
-	p("Source: `codegen/ifacedef/default.go`, transcribed from `docs/acq2/05-WORKPLAN.md` §2/§2.1 (the v%d registers) and `docs/acq2/06-TIERS.md` §2 (the v%d additions). ", i.Legacy.Version, i.Version)
+	p("Source: `codegen/ifacedef/default.go`, transcribed from `the acq2 analysis branch` §2/§2.1 (the v%d registers) and `the acq2 analysis branch` §2 (the v%d additions). ", i.Legacy.Version, i.Version)
 	p("The same schema generates `fpga/default/regs.vh`, `fpga/default/regmux.vh` and `app/internal/iface/iface.go`; `make drift` in `codegen/` fails when any of them is stale.\n\n")
 	p("**stub** = declared for the full v%d map but not implemented by the current fabric increment: reads 0, writes ignored (no `we_` strobe is generated); the Desc says from which increment it is live.\n\n", i.Version)
 	p("## Identity\n\n| item | value |\n|---|---|\n")

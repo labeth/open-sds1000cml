@@ -1,7 +1,7 @@
 # open-sds/fpga — the acq2 acquisition fabric (Cyclone IV E EP4CE10F17C8)
 
-One default image, `default/`, built from the pad contract in `docs/acq2/01-CONTRACT.md` /
-`docs/acq2/contract-161.tsv`. Layout and rules are binding in `docs/acq2/05-WORKPLAN.md`.
+One default image, `default/`, built from the pad contract in `the acq2 analysis branch` /
+`the acq2 analysis branch`. Layout and rules are binding in `the acq2 analysis branch`.
 
 ```
 fpga/
@@ -17,7 +17,7 @@ fpga/
 
 ## The QSF is generated
 
-`tools/portspec/qsfgen.py` turns `docs/acq2/contract-161.tsv` plus its own role table (ball -> port of
+`the acq2 analysis branch` turns `the acq2 analysis branch` plus its own role table (ball -> port of
 `default_top`) into `default/default.qsf`. Do not edit the QSF by hand: change the role table and run
 `make qsf`; `make test` fails when the committed file drifts from the generator.
 
@@ -106,7 +106,7 @@ capture write). Not yet built at the time this file was written.
 ## Attribution
 
 The map/fit/asm/cpf sequence, the memory gate and the 368011-byte check follow
-`open-sds1000cml:owned-fpga fpga/internal/quartus` (commit 6afff71, see docs/acq2/03-PRIOR-ART.md);
+`open-sds1000cml:owned-fpga fpga/internal/quartus` (commit 6afff71, see the acq2 analysis branch);
 the GPMC pin set and the `gpmc_d` bit order are that branch's [BENCH]-verified shape (8d3a2de, 670b873).
 Everything here is a re-implementation: lock, STA stage, report parsing, staged-directory model and the
 contract-driven QSF generator are new.
