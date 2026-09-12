@@ -46,7 +46,7 @@ One board reference enters the device and both PLLs derive from it.
 | clock | rate | role |
 |---|---|---|
 | reference | 100 MHz | board oscillator into the left PLL |
-| ADC phase clocks | 100 MHz × 5 phases | converter encode, five phases |
+| ADC encode | 5 differential pairs at 100 MHz | converter encode; the complementary legs are 5 ns apart, so a core clocked by both samples at ~200 MSPS (§3.2) |
 | packing clock | 125 MHz | 64-bit assembly stage |
 | SRAM port clock | 250 MHz | external SRAM write |
 
@@ -79,14 +79,9 @@ cores** — one CH1 core and one CH2 core, 5 ns apart. Measured pin/core/phase m
 CH1 is therefore clocked in the order E4, E3, E2, E5, E1 and CH2 in the order E5, E1, E4, E3, E2 —
 which is what produces the frame ordering of §7. `[BENCH]`
 
-> **Open: the package count.** Ten driven cores at two cores per AD9288 implies **five** packages,
-> but the board photograph was read as showing **three** ADC packages, and an earlier
-> encode-freeze experiment concluded "6 cores on 3 dual chips, 5 wired + 1 empty". The ten
-> clock/core connections in the table above were each independently confirmed by encode-stop and
-> DC tests and supersede that earlier count, but the physical package count has not been
-> re-counted against them. **An implementer does not need this resolved** — the table is what the
-> fabric drives — but a board-level claim about how many ADC packages are fitted should not be
-> made from this document.
+**Board configuration.** Three AD9288 packages are fitted, giving six cores, of which **five are
+connected** and one is unused. The scope's two input channels are served **3 : 2** across those
+five. `[OPERATOR]` for the package and connection count; `[BENCH]` for the 3 : 2 split.
 
 ### 3.1 Port surface
 
@@ -100,13 +95,28 @@ The FPGA presents:
 
 ### 3.2 Encode and rate
 
-Each pair is encoded at **100 MHz**. The five pairs are encoded on five phases of the same
-100 MHz clock, one fifth of a period apart, giving **500 MS/s per channel** and **1 GS/s
-aggregate**. Converter cores are rated 100 MSPS; the five-phase arrangement is what produces the
-aggregate rate without over-clocking a core.
+Five connected converter cores produce the full aggregate rate by **time interleaving**, each core
+encoded at **~200 MHz**:
+
+```
+5 connected cores × 200 MSPS = 1 GS/s aggregate = 500 MS/s per input channel
+```
+
+Equivalently, one 10 ns frame carries ten byte slots (§7) — two per core.
+
+**The cores are deliberately run above their rating.** The AD9288 is rated 100 MSPS; at ~200 MHz
+encode it still converts, at a measurable cost in linearity — DC linearity residual is about
+0.2 codes at 50–100 MHz encode and about 0.7 codes at 200 MHz. An implementation must not treat
+the 100 MSPS figure as a ceiling it is observing, nor treat the extra residual as a fault.
 
 Samples are **8-bit unsigned offset binary, centred at 128**. Code decreases as the applied offset
 voltage increases.
+
+> **Not established here: which frame slot belongs to which physical core.** §7 gives ten slots
+> per frame and five connected cores serve them, but this document does not state the slot → core
+> assignment, and the 3 : 2 channel split does not divide the five CH1 and five CH2 slots of a
+> frame evenly. Per-core calibration therefore cannot be derived from this spec alone; use
+> `MAP_ID` (§3.4) and the artifacts named in §13.
 
 ### 3.3 Mode straps
 
@@ -250,8 +260,8 @@ Samples are 8-bit unsigned offset binary, centred at 128.
 
 ## 7. Interleave and core ordering
 
-Five differential encode pairs drive ten converter cores (§3.0 gives the measured
-pin/core/phase map). The ten byte streams are ordered:
+Five differential encode pairs clock the five connected converter cores (§3.0 gives the measured
+pin/core/phase map; §3.2 the rate). One 10 ns frame carries ten byte slots, ordered:
 
 ```
 E4.CH1, E5.CH2, E3.CH1, E1.CH2, E2.CH1, E4.CH2, E5.CH1, E3.CH2, E1.CH1, E2.CH2
