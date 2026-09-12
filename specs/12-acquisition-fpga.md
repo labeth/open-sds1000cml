@@ -11,7 +11,9 @@ image** (`fpga/acq_sram`), which records a complete external-SRAM frame, freezes
 and serves it to the host for repeated recall.
 
 Sections 1–5 describe the device and its external interfaces and apply to **any** image built for
-this board. Sections 6–11 are specific to `fpga/acq_sram`.
+this board. Sections 6–12 are specific to `fpga/acq_sram`. **§13 states what this document is and
+is not sufficient to build**, and names the machine-readable artifacts that carry the physical
+constants prose cannot.
 
 `fpga/acq_sram` is a **separate image from `fpga/default`** and its register ABI is deliberately
 different. A host must check `FABRIC_ID` before driving either.
@@ -128,14 +130,19 @@ An implementation must mask host selectors to 7 bits rather than relying on the 
 The host reaches the bus through a single device node. The kernel driver hands the chip select to
 **exactly one opener**, and that open happens at boot:
 
-* a second `open()` of the node returns **`EPERM`**, not `EBUSY`;
+* a second `open()` returns **`EPERM`** while the boot holder's descriptor is live — and, worse,
+  **may succeed** once that holder is gone, but then lacks the boot-time chip-select
+  initialisation and the first reads **wedge the bus for seconds**. Never open it fresh
+  (`02-register-map.md` §1.2);
 * a process needing the bus must therefore **inherit** the descriptor and locate it by scanning
   `/proc/self/fd`;
 * the driver frees the chip select on the **last** close, so the descriptor must never be closed
   by the last holder.
 
 Accesses are ioctl transactions carrying a 6-byte record `{plane, 0, sel_lo, sel_hi, val_lo,
-val_hi}`: request `0x80026700` reads, `0x40026701` writes.
+val_hi}`: request `0x80026700` reads, `0x40026701` writes. The `plane` byte is **1 for CS1** and
+**3 for CS3**; no other value is legal. A read returns its 16-bit result **in the caller's own
+buffer**, as `val_lo | val_hi << 8` — not as the ioctl return value.
 
 Bus cycle timing (read/write cycle, access, OE and WE windows, cycle-to-cycle gap) is host GPMC
 controller configuration, not an FPGA property. Burst drains over DMA require the CPU cache to be
@@ -237,17 +244,17 @@ All accesses are on the CS1 plane. Selector `s` sits at byte offset `2s`.
 |---|---|---|---|
 | 0 | 16 | `FABRIC_ID` | image identity. This image answers **`0x5a52`**. A host **must** read this first and refuse to drive anything else. |
 | 1 | 16 | `STATUS` | see §8.3 |
-| 2 | 32 | `LENGTH` | record length, words |
-| 4 | 32 | `START` | record start address, words |
-| 6 | 32 | `TRIGGER_INDEX` | **word** index of the triggering word (not interpolated) |
-| 8 | 32 | `POSITION` | current SRAM read position, words |
-| 10 | 32 | `ORIGIN` | record origin, words |
+| 2 | 32 | `LENGTH` | words **actually captured** — see §10.1. Not what the host programmed. |
+| 4 | 32 | `START` | the captured record's first word, as a logical word index |
+| 6 | 32 | `TRIGGER_INDEX` | **word** index of the triggering word within the record (not interpolated, not a sample half) |
+| 8 | 32 | `POSITION` | the bus engine's **next physical transaction address**, including read-pipeline flush clocks. It is **not** a count of delivered words and **not** the next deliverable word — see §10.2. |
+| 10 | 32 | `ORIGIN` | the physical address of logical word 0; maps `START`-relative indices onto the SRAM |
 | 12 | 16 | `FILL` | words actually present in the readout buffer after a fetch |
 | 13 | 16 | `REVISION` | image revision; gates behaviour, see §12 |
 | 14 | 16 | `MAP_ID` | lane map identity; qualified value `0xe192` |
 | 15 | 16 | `RATE` | per-channel MS/s. `500` in interleave mode. Present from revision 6; a host that reads any other value **must** refuse the image. |
 | 17 | 32 | `DATA` | the readout buffer window selected by `BUFFER_INDEX` (§8.2) |
-| 19 | 16 | `FLAGS` | `b0` sticky FIFO data fault, `b1` ADC PLL lock |
+| 19 | 16 | `FLAGS` | `b0` sticky FIFO data fault, `b1` ADC PLL lock. The fault is **self-halting** — it stops the acquisition when it occurs — and is **cleared only by `ARM`**. There is no write to this selector. |
 | 20–24 | 5 × 16 | `SNAPSHOT[0..4]` | the ten-byte atomic core snapshot latched by `SNAPSHOT` (§9.2); selector `20+i` carries bytes `2i` (low half) and `2i+1` (high half) |
 
 A 32-bit read occupies the named selector and the next one; the named selector carries the **low**
@@ -287,7 +294,7 @@ Metadata counters are stable only while `READY` **and** `FROZEN` are set.
 |---|---|---|
 | 1 | `ARM` | begin acquisition with the currently written configuration |
 | 2 | `FETCH` | fill the readout buffer with `FETCH_LEN` words starting at the current read position |
-| 3 | `ADVANCE` | advance the read position by `SKIP` words (modulo the record, §10.1) |
+| 3 | `ADVANCE` | advance the read position by `SKIP` words. `SKIP` is **relative** and reduces **modulo 524,288** — the whole SRAM, not modulo `LENGTH`. |
 | 4 | `FORCE` | force a trigger |
 | 5 | `HALT` | stop the current acquisition |
 | 6 | `SNAPSHOT` | latch a ten-byte atomic core snapshot |
@@ -314,8 +321,17 @@ next step; allow **3 s**. A poll interval of 100 µs is sufficient.
 | 0 | `0x0001` | source: 1 = ADC, 0 = internal counter |
 | 1–3 | `0x000E` | pair select; **must be 0** in interleave mode (all five pairs are used) |
 | 4 | `0x0010` | normal trigger (else auto) |
-| 5 | `0x0020` | falling edge |
+| 5 | `0x0020` | falling edge **in code space** — see the warning below |
 | 6 | `0x0040` | trigger channel: 1 = CH2 |
+
+**Polarity is in code space, not volts.** The comparator tests the raw 8-bit sample against
+`TRIGGER_LEVEL`. Because code *decreases* as the applied offset voltage increases (§3.1), a
+**falling-code** edge is a **rising-voltage** edge. A host presenting a voltage-domain control to
+a user must invert this bit.
+
+The comparator examines **both sample halves of every word**, plus the boundary against the
+preceding word, so no crossing is missed. `TRIGGER_INDEX` remains **word-granular**: it names the
+word, never which half of it.
 
 ---
 
@@ -374,6 +390,15 @@ A host **must** refuse to read out unless all hold:
   must be discarded, not repaired;
 * `offset + count ≤ LENGTH`, and `LENGTH ≤ 524,288`.
 
+**`LENGTH` is what was captured, not what was asked for.** It is the post-trigger count when a
+trigger was accepted, the filled count when the acquisition was halted without one, and **0** when
+neither has happened. A host must read it rather than derive it from its own `PRE_WORDS` /
+`POST_WORDS`. `TRIGGER_INDEX` is likewise the pre-trigger count actually achieved.
+
+A request of **zero length is an empty window, not a full-depth one**: to read the whole record
+pass `count = LENGTH` (up to 524,288), never 0. The fabric rejects a request unless
+`frozen ∧ LENGTH ≤ 524,288 ∧ offset + count ≤ LENGTH`.
+
 All SRAM address arithmetic is **modulo 524,288** (mask `0x7FFFF`). The physical address of
 record word `k` is:
 
@@ -402,6 +427,14 @@ For each pass, with `copied` words already returned:
    `FETCH_CONTINUE` (7) and skip step 5. Otherwise use `FETCH` (2).
 5. `skip = (target − POSITION) mod 524288`. If `skip ≠ 0`: write `skip` to selector 8, issue
    `ADVANCE` (3), wait for `READY`.
+
+> **Why steps 4 and 5 compare against different values.** `POSITION` is the engine's next
+> *physical transaction* address, which runs ahead of the next *deliverable* word by the read
+> pipeline. A fresh `FETCH` seeks so that the next transaction lands on `target`, hence
+> `skip = target − POSITION`. `FETCH_CONTINUE` instead resumes a burst that has **already
+> prefetched** one word, and that word sits one address behind the transaction cursor, hence
+> `target = POSITION − 1`. The two conditions describe the same cursor at two different stages,
+> not two cursors. Both reduce modulo 524,288.
 6. write `n + prefix` to selector 8, issue the opcode from step 4, wait for `READY`.
 7. read `FILL` (read 12). It **must** equal `n + prefix`; a smaller value is a short read and the
    transfer has failed — do not pad it.
@@ -451,3 +484,38 @@ window.
 
 A host that does not recognise `REVISION` must refuse the image rather than assume the newest
 behaviour.
+
+---
+
+## 13. Scope — what this document is sufficient to build
+
+**Sufficient.** A host-side driver for `fpga/acq_sram`: identify the image, arm a capture, wait for
+the freeze, read out any window, and demux to per-channel chronological byte arrays. Every
+register, opcode, status bit, handshake, timeout, modulus and byte order that path needs is in
+§4 and §8–§12.
+
+**Not sufficient on its own, by design.** Two classes of information are deliberately not restated
+here, because prose is the wrong carrier and a stale copy would be worse than none:
+
+| what | where it actually lives |
+|---|---|
+| Device pin assignments — the 80 lanes, `enc_p`/`enc_n`, the strap pins, the SRAM group, the GPMC interface | `fpga/default/default.qsf`. This is **authoritative**: `fpga/acq_sram/build.py` derives its own assignments from that file rather than duplicating them. |
+| The 80-entry lane map — which physical lane carries which (core, bit) | `fpga/default/lanemap_seed.vh`, a generated file. §3.3 gives the identity (`MAP_ID`) a host checks; this file gives the contents. |
+
+An implementer building an **FPGA image** needs both of the above in addition to this spec. An
+implementer writing a **host driver** needs neither.
+
+**Not specified anywhere yet.** These are real gaps in the documentation set, not omissions with a
+pointer:
+
+* **The passive-serial configuration protocol.** §1 gives the port and its bit map, but not the
+  reset-pulse timing, the inter-signal ordering, the bit order within a configuration byte, the
+  init-clock count, or the container format. An implementer must read the loader
+  (`app/internal/fpgaload`) — and note that `01-system-architecture.md` constrains *when* it may
+  run, because the descriptor that reaches the port is inherited at boot.
+* **The SRAM read side.** §5 specifies the write-commit predicate because that is what the capture
+  path needs. It does not give a read-commit predicate, `OE` timing, or the burst length, all of
+  which the part's datasheet carries and an image that reads the SRAM directly would require.
+* **Host GPMC controller timing.** §4.2 names the six parameters and states that they are host
+  configuration; it does not give values. A fresh bus open without the boot-time initialisation
+  wedges reads (`02-register-map.md` §1.2).
