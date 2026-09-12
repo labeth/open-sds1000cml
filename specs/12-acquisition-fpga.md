@@ -81,7 +81,19 @@ which is what produces the frame ordering of §7. `[BENCH]`
 
 **Board configuration.** Three AD9288 packages are fitted, giving six cores, of which **five are
 connected** and one is unused. The scope's two input channels are served **3 : 2** across those
-five. `[OPERATOR]` for the package and connection count; `[BENCH]` for the 3 : 2 split.
+five — **CH1 by three cores, CH2 by two**. `[OPERATOR]`
+
+**The fabric addresses ten logical cores, not five.** Its lane map is indexed
+`c = 2k + ch` for pair `E(k+1)`, `k = 0..4`, `ch = 0` (CH1) or `1` (CH2), giving `c = 0..9` over
+80 lanes (`fpga/default/lanemap_seed.vh`). Code is written against that ten-core model; the board
+populates five of those slots.
+
+> **Not established: how five connected converters populate the ten-core model.** The two readings
+> —  ten populated slots at 100 MSPS each, or five at ~200 MSPS each — both yield the same
+> **1 GS/s aggregate**, so §6's record geometry and the 500 MS/s per-channel figure hold either
+> way and an implementer is unaffected. What they do not agree on is which lane groups carry a
+> converter and at what rate, which is exactly what per-core calibration needs. Do not infer
+> either from this document.
 
 ### 3.1 Port surface
 
@@ -95,28 +107,26 @@ The FPGA presents:
 
 ### 3.2 Encode and rate
 
-Five connected converter cores produce the full aggregate rate by **time interleaving**, each core
-encoded at **~200 MHz**:
+The aggregate rate is fixed and is **1 GS/s = 500 MS/s per input channel**, produced by **time
+interleaving** across the connected cores. One 10 ns frame carries ten byte slots (§7).
 
-```
-5 connected cores × 200 MSPS = 1 GS/s aggregate = 500 MS/s per input channel
-```
+The per-core encode rate follows from how many slots are populated, and the corpus supports two
+readings (§3.0): five connected cores at **~200 MSPS** each, or ten at **100 MSPS** each. Both
+give 1 GS/s. `fpga-specs` records the first as "~200 MHz per core, time-interleaved".
 
-Equivalently, one 10 ns frame carries ten byte slots (§7) — two per core.
-
-**The cores are deliberately run above their rating.** The AD9288 is rated 100 MSPS; at ~200 MHz
-encode it still converts, at a measurable cost in linearity — DC linearity residual is about
-0.2 codes at 50–100 MHz encode and about 0.7 codes at 200 MHz. An implementation must not treat
-the 100 MSPS figure as a ceiling it is observing, nor treat the extra residual as a fault.
+**If the five-core reading is right, the cores are run above their rating.** The AD9288 is rated
+100 MSPS; at ~200 MHz encode it still converts, at a measurable cost in linearity — DC residual
+about 0.2 codes at 50–100 MHz encode against about 0.7 codes at 200 MHz. An implementation must
+not treat the 100 MSPS figure as a ceiling it is observing, nor treat the extra residual as a
+fault.
 
 Samples are **8-bit unsigned offset binary, centred at 128**. Code decreases as the applied offset
 voltage increases.
 
-> **Not established here: which frame slot belongs to which physical core.** §7 gives ten slots
-> per frame and five connected cores serve them, but this document does not state the slot → core
-> assignment, and the 3 : 2 channel split does not divide the five CH1 and five CH2 slots of a
-> frame evenly. Per-core calibration therefore cannot be derived from this spec alone; use
-> `MAP_ID` (§3.4) and the artifacts named in §13.
+> **Not established here: the slot → physical core assignment.** A frame's five CH1 slots are
+> served by three CH1 cores and its five CH2 slots by two CH2 cores, which does not divide evenly,
+> so the assignment is neither uniform nor derivable from the counts. Per-core calibration cannot
+> be derived from this spec alone; use `MAP_ID` (§3.4) and the artifacts named in §13.
 
 ### 3.3 Mode straps
 
