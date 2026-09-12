@@ -57,16 +57,48 @@ assembles 64-bit words at 125 MHz, and writes **32 bits at 250 MHz** to the exte
 
 ## 3. ADC front end
 
-Ten converter cores are arranged as **five pairs**, each pair a dual 8-bit converter carrying CH1
-and CH2. The FPGA presents:
+### 3.0 The converters
+
+The converters are **Analog Devices AD9288** — a **dual 8-bit ADC**, two independent cores in one
+package sharing a single per-chip `ENCODE` input, rated **100 MSPS** per core, with a minimum
+`ENCODE` rate of **1 MHz**. Normal dual operation is the `S1 = 1 / S2 = 0` mode-pin setting
+(§3.3). The parts have **no per-cycle output enable**: an AD9288 that is out of standby drives its
+byte lanes continuously and cannot be tri-stated by the FPGA.
+
+Ten converter cores are driven, as **five differential encode pairs whose two legs clock different
+cores** — one CH1 core and one CH2 core, 5 ns apart. Measured pin/core/phase map:
+
+| pair | base | positive leg | core | rising phase | negative leg | core | rising phase |
+|---|---:|---|---|---:|---|---|---:|
+| E1 | 3 ns | K8 | CH2 | 3 ns | M8 | CH1 | 8 ns |
+| E2 | 4 ns | C14 | CH1 | 4 ns | D14 | CH2 | 9 ns |
+| E3 | 2 ns | K9 | CH2 | 7 ns | L10 | CH1 | 2 ns |
+| E4 | 0 ns | L8 | CH1 | 0 ns | M7 | CH2 | 5 ns |
+| E5 | 1 ns | K10 | CH1 | 6 ns | L9 | CH2 | 1 ns |
+
+CH1 is therefore clocked in the order E4, E3, E2, E5, E1 and CH2 in the order E5, E1, E4, E3, E2 —
+which is what produces the frame ordering of §7. `[BENCH]`
+
+> **Open: the package count.** Ten driven cores at two cores per AD9288 implies **five** packages,
+> but the board photograph was read as showing **three** ADC packages, and an earlier
+> encode-freeze experiment concluded "6 cores on 3 dual chips, 5 wired + 1 empty". The ten
+> clock/core connections in the table above were each independently confirmed by encode-stop and
+> DC tests and supersede that earlier count, but the physical package count has not been
+> re-counted against them. **An implementer does not need this resolved** — the table is what the
+> fabric drives — but a board-level claim about how many ADC packages are fitted should not be
+> made from this document.
+
+### 3.1 Port surface
+
+The FPGA presents:
 
 | port | width | direction | role |
 |---|---|---|---|
 | `lane` | 80 | in | ten cores × 8 bits, one parallel byte lane per core |
 | `enc_p` / `enc_n` | 5 + 5 | out | differential encode clock, one pair per converter pair |
-| static mode straps | — | out | converter mode pins, held at fixed levels (§3.2) |
+| static mode straps | — | out | converter mode pins, held at fixed levels (§3.3) |
 
-### 3.1 Encode and rate
+### 3.2 Encode and rate
 
 Each pair is encoded at **100 MHz**. The five pairs are encoded on five phases of the same
 100 MHz clock, one fifth of a period apart, giving **500 MS/s per channel** and **1 GS/s
@@ -76,7 +108,7 @@ aggregate rate without over-clocking a core.
 Samples are **8-bit unsigned offset binary, centred at 128**. Code decreases as the applied offset
 voltage increases.
 
-### 3.2 Mode straps
+### 3.3 Mode straps
 
 The converters have static mode pins that must be held at fixed levels for the parts to leave
 standby. An implementation **must** drive them and **must not** repurpose them:
@@ -94,7 +126,7 @@ group outside a burst, or that drives those three pins low, puts the converters 
 No pin the FPGA controls places the converters in standby by design; they drive the 80 lanes
 continuously whenever they are out of standby.
 
-### 3.3 Lane map
+### 3.4 Lane map
 
 The mapping from the 80 physical lanes to (core, bit) is a **build-time constant** baked into the
 image and identified at runtime by `MAP_ID` (§8.1). The qualified map is **`0xe192`**. A host that
@@ -218,7 +250,8 @@ Samples are 8-bit unsigned offset binary, centred at 128.
 
 ## 7. Interleave and core ordering
 
-Five encode pairs drive ten converter cores. The ten byte streams are ordered:
+Five differential encode pairs drive ten converter cores (§3.0 gives the measured
+pin/core/phase map). The ten byte streams are ordered:
 
 ```
 E4.CH1, E5.CH2, E3.CH1, E1.CH2, E2.CH1, E4.CH2, E5.CH1, E3.CH2, E1.CH1, E2.CH2
@@ -325,7 +358,7 @@ next step; allow **3 s**. A poll interval of 100 µs is sufficient.
 | 6 | `0x0040` | trigger channel: 1 = CH2 |
 
 **Polarity is in code space, not volts.** The comparator tests the raw 8-bit sample against
-`TRIGGER_LEVEL`. Because code *decreases* as the applied offset voltage increases (§3.1), a
+`TRIGGER_LEVEL`. Because code *decreases* as the applied offset voltage increases (§3.2), a
 **falling-code** edge is a **rising-voltage** edge. A host presenting a voltage-domain control to
 a user must invert this bit.
 
@@ -500,7 +533,7 @@ here, because prose is the wrong carrier and a stale copy would be worse than no
 | what | where it actually lives |
 |---|---|
 | Device pin assignments — the 80 lanes, `enc_p`/`enc_n`, the strap pins, the SRAM group, the GPMC interface | `fpga/default/default.qsf`. This is **authoritative**: `fpga/acq_sram/build.py` derives its own assignments from that file rather than duplicating them. |
-| The 80-entry lane map — which physical lane carries which (core, bit) | `fpga/default/lanemap_seed.vh`, a generated file. §3.3 gives the identity (`MAP_ID`) a host checks; this file gives the contents. |
+| The 80-entry lane map — which physical lane carries which (core, bit) | `fpga/default/lanemap_seed.vh`, a generated file. §3.4 gives the identity (`MAP_ID`) a host checks; this file gives the contents. |
 
 An implementer building an **FPGA image** needs both of the above in addition to this spec. An
 implementer writing a **host driver** needs neither.
