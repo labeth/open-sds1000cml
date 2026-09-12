@@ -1,119 +1,100 @@
-// Package bus is the clean-room app's GPMC register access layer (spec 01 §1,
-// spec 02 §0). It owns the write side of the wire protocol — the agent's
-// internal/gpmc stays read-only by design — and the /dev/mem mmap fast path
-// used to drain frozen sample ports.
+// Package bus is the app's GPMC register-access layer for the acq2 default
+// fabric (docs/acq2/05-WORKPLAN.md §2, fpga-specs 10/12). It owns the
+// boot-inherited /dev/Gpmc fd, the 6-byte ioctl wire encoding, and the EDMA
+// fast drain of the pop-on-read BURST port. Register MEANING comes from the
+// generated iface package: which selectors exist and which are writable is
+// schema-derived, never a hand-maintained range.
+//
+// Planes: CS1 is the Cyclone (our fabric, 128 selectors at CS1 base + 2N);
+// CS3 is the MAX V CPLD (front-end DACs, the LED latch and the configuration
+// port 0x07 — fpga-specs 05 §2.2: nCS3 reaches no Cyclone ball). CS3 0x07 is
+// never written here: only fpgaload's reload path may touch it (workplan §4.4).
 //
 // Every method on *Dev must be called from the single engine-owner goroutine
-// only (spec 01 §3). The package does not enforce that; the engine does.
+// only. The package does not enforce that; the engine does (Engine.Exec is the
+// door for everyone else).
 package bus
 
 import (
 	"fmt"
-	"os"
 	"syscall"
 	"unsafe"
+
+	"open-sds/app/internal/iface"
 )
 
-// Bus is the register surface the acquisition engine drives. Implementations:
-// *Dev (real hardware) and the test fake.
+// Bus is the register surface the acquisition engine (and, through
+// Engine.Exec, the diagnostic block) drives. Implementations: *Dev (real
+// hardware) and the engine's offline fake fabric.
 type Bus interface {
-	// Read reads one 16-bit register. plane is 1 (CS1) or 3 (CS3).
+	// Read reads one 16-bit register. plane is PlaneCS1 or PlaneCS3.
 	Read(plane uint8, sel uint16) (uint16, error)
-	// Write writes one 16-bit register. plane is 1 (CS1) or 3 (CS3).
+	// Write writes one 16-bit register. Refused (error, nothing sent) for any
+	// CS1 selector the schema marks read-only or does not define, and for the
+	// CS3 configuration port.
 	Write(plane uint8, sel, val uint16) error
-	// DrainRead reads one frozen CS1 sample port (0x30–0x34) post capture-halt.
-	// One bus transaction per call — the port auto-increments per transaction.
-	DrainRead(sel uint16) uint16
-	// DrainInto reads `cols` frozen samples straight into c1/c2 in ONE tight
-	// pass (hi byte C1, lo byte C2), cycling ports 0x30–0x34. No per-sample
-	// interface dispatch — the halted record un-freezes if the drain is slow, so
-	// this must finish fast (spec 03 §2). c1,c2 must each have len ≥ cols.
-	DrainInto(c1, c2 []uint8, cols int)
-	// DrainWrite writes one CS1 register via the /dev/mem fast path when
-	// available (falls back to ioctl). Used by the continuous-stream loop to
-	// pulse the roll-FIFO latch without a syscall per sample. Refuses the same
-	// forbidden registers as Write.
-	DrainWrite(sel, val uint16) error
-	// MmapDrain reports whether DrainRead uses the /dev/mem fast path.
-	MmapDrain() bool
+	// RawWrite writes a CS1 selector WITHOUT the schema guard — the diagnostic
+	// vendor-sequence path (06-TIERS §2: the vendor arm/halt words 0x21/0x57
+	// stay undecoded, so the replay is inert on our map). Never CS3.
+	RawWrite(sel, val uint16) error
+	// BurstInto pops n record words from the BURST port in one pass (hi byte =
+	// CH1, lo byte = CH2). Post-HALT only; every read pops one word.
+	BurstInto(c1, c2 []uint8, n int)
+	// PopWords pops n raw words from a pop-on-read port (BURST, SNAP_POP,
+	// ENV_DATA) into dst. One real GPMC transaction per word.
+	PopWords(sel uint16, dst []uint16, n int)
+	// FastDrain reports whether BurstInto runs CPU-free over EDMA.
+	FastDrain() bool
 }
 
 const (
-	reqRead  = 0x80026700 // ioctl request: register read (spec 01 §1.2)
+	reqRead  = 0x80026700 // ioctl request: register read (6-byte record)
 	reqWrite = 0x40026701 // ioctl request: register write
 
 	PlaneCS1 = 1
 	PlaneCS3 = 3
 
-	cs1PhysBase = 0x01000000 // CS1 /dev/mem physical base (spec 02 §0.4)
-	mmapLen     = 4096
+	// CS3ConfigPort is the MAX V configuration port (DCLK/DATA0/nCONFIG write
+	// bits, nSTATUS/CONF_DONE read bits). Reading it is always allowed; a write
+	// with bit 1 low collapses the running fabric — only fpgaload writes it.
+	CS3ConfigPort uint16 = 0x07
 
-	SelVersion   = 0x12
-	VersionMagic = 0x0052
+	cs1PhysBase = 0x01000000 // CS1 window physical base (fpga-specs 05 §2.3)
 )
 
 // Dev drives the real GPMC through the boot-inherited /dev/Gpmc fd. The fd is
 // held as a raw int and is never closed (closing frees the FPGA chip select
-// for the whole process tree, spec 01 §5).
+// for the whole process tree).
 type Dev struct {
 	fd   int
-	mem  []byte // /dev/mem mapping of the CS1 window; nil → ioctl drain
-	regs *[mmapLen / 2]uint16
+	edma *edmaDrainer // nil → ioctl drains
 }
 
-// New wraps the inherited /dev/Gpmc fd. If mmapDrain is set it tries to map
-// the CS1 window from /dev/mem and verifies it (version selector must read
-// 0x0052); on any failure it silently falls back to ioctl drains.
-func New(fd int, mmapDrain bool) (*Dev, error) {
+// New wraps the inherited /dev/Gpmc fd. It only constructs: at cold boot the
+// fabric holds the factory image (or nothing), so nothing about the register
+// map can be verified here — fpgaload.Bringup does that and reloads on
+// mismatch, and EnableEDMA runs only after the identity check passed.
+func New(fd int) (*Dev, error) {
 	if fd < 0 {
 		return nil, fmt.Errorf("bus: no inherited gpmc fd")
 	}
-	d := &Dev{fd: fd}
-	if _, err := d.Read(PlaneCS1, SelVersion); err != nil {
-		return nil, fmt.Errorf("bus: probe read: %w", err)
-	}
-	if mmapDrain {
-		if err := d.mapCS1(); err != nil {
-			fmt.Printf("[app] mmap drain unavailable, using ioctl drain: %v\n", err)
-		}
-	}
-	return d, nil
+	return &Dev{fd: fd}, nil
 }
 
-func (d *Dev) mapCS1() error {
-	f, err := os.OpenFile("/dev/mem", os.O_RDWR|syscall.O_SYNC, 0)
-	if err != nil {
-		return err
+// Writable is the write guard: CS1 selectors are writable exactly when the
+// schema says so (iface.BySel masks the selector like the fabric does); CS3
+// selectors are the MAX V front-end registers, all writable except the
+// configuration port.
+func Writable(plane uint8, sel uint16) bool {
+	switch plane {
+	case PlaneCS1:
+		r, ok := iface.BySel(sel)
+		return ok && r.Access.CanWrite()
+	case PlaneCS3:
+		return sel != CS3ConfigPort
 	}
-	// The fd may be closed after mmap; the mapping stays valid.
-	defer f.Close()
-	mem, err := syscall.Mmap(int(f.Fd()), cs1PhysBase, mmapLen,
-		syscall.PROT_READ|syscall.PROT_WRITE, syscall.MAP_SHARED)
-	if err != nil {
-		return err
-	}
-	regs := (*[mmapLen / 2]uint16)(unsafe.Pointer(&mem[0]))
-	// Verify addressing before trusting the map (double-shift trap, spec 01 §1B).
-	if v := load16(&regs[SelVersion]); v != VersionMagic {
-		syscall.Munmap(mem)
-		return fmt.Errorf("mmap verify: version reads %#04x, want %#04x", v, VersionMagic)
-	}
-	d.mem, d.regs = mem, regs
-	return nil
+	return false
 }
-
-// load16 performs exactly one aligned 16-bit load. noinline keeps the compiler
-// from splitting, hoisting, or CSE-ing the access — a sample port pops its
-// FIFO once per bus transaction (spec 02 §0.4).
-//
-//go:noinline
-func load16(p *uint16) uint16 { return *p }
-
-// store16 is the write dual of load16: noinline so the compiler can't hoist,
-// split, or drop the volatile register write.
-//
-//go:noinline
-func store16(p *uint16, v uint16) { *p = v }
 
 func encode(plane uint8, sel, val uint16) [6]byte {
 	return [6]byte{plane, 0, byte(sel), byte(sel >> 8), byte(val), byte(val >> 8)}
@@ -127,10 +108,12 @@ func (d *Dev) ioctl(req uintptr, b *[6]byte) error {
 	return nil
 }
 
+func validPlane(plane uint8) bool { return plane == PlaneCS1 || plane == PlaneCS3 }
+
 func (d *Dev) Read(plane uint8, sel uint16) (uint16, error) {
-	if plane != PlaneCS1 && plane != PlaneCS3 {
+	if !validPlane(plane) {
 		// plane 0 underflows the driver's base index and stalls the bus for
-		// seconds — reject before the syscall (spec 01 §1A).
+		// seconds — reject before the syscall.
 		return 0, fmt.Errorf("bus: invalid plane %d", plane)
 	}
 	b := encode(plane, sel, 0)
@@ -141,12 +124,21 @@ func (d *Dev) Read(plane uint8, sel uint16) (uint16, error) {
 }
 
 func (d *Dev) Write(plane uint8, sel, val uint16) error {
-	if plane != PlaneCS1 && plane != PlaneCS3 {
+	if !validPlane(plane) {
 		return fmt.Errorf("bus: invalid plane %d", plane)
 	}
-	if forbiddenWrite(plane, sel) {
-		return fmt.Errorf("bus: write to forbidden register cs%d sel %#04x", plane, sel)
+	if !Writable(plane, sel) {
+		return fmt.Errorf("bus: write to non-writable register cs%d sel %#04x", plane, sel)
 	}
+	return d.rawWrite(plane, sel, val)
+}
+
+// RawWrite bypasses the schema guard on CS1 only: the E1 vendor-word replay.
+// The fabric decodes A1..A7 (schema v3, 128 selectors) and keeps the vendor
+// arm/halt words 0x21 / 0x57 undecoded, so the replay changes nothing.
+func (d *Dev) RawWrite(sel, val uint16) error { return d.rawWrite(PlaneCS1, sel, val) }
+
+func (d *Dev) rawWrite(plane uint8, sel, val uint16) error {
 	b := encode(plane, sel, val)
 	if err := d.ioctl(reqWrite, &b); err != nil {
 		return fmt.Errorf("bus: write cs%d sel %#04x: %w", plane, sel, err)
@@ -154,66 +146,75 @@ func (d *Dev) Write(plane uint8, sel, val uint16) error {
 	return nil
 }
 
-// forbiddenWrite guards the registers the app must never write at runtime
-// (spec 02 §5): the CS3 config/nCONFIG port and the calibration banks.
-func forbiddenWrite(plane uint8, sel uint16) bool {
-	if plane == PlaneCS3 {
-		return sel == 0x07 // config-status / nCONFIG — writing collapses the engine
-	}
-	switch {
-	case sel >= 0x01 && sel <= 0x0f: // cal-coefficient bank
-		return true
-	// 0x16 is NOT a cal latch: the reference device strobes 0x16=1 as the
-	// final step of every acquisition frame (the frame-completion/re-trigger
-	// op). It must stay writable or the trigger engine starves into
-	// permanent half-records.
-	case sel >= 0x27 && sel <= 0x2a: // gain-cal words
-		return true
-	case sel >= 0x5a && sel <= 0x7f: // cal-coefficient bank
-		return true
-	}
-	return false
-}
-
-func (d *Dev) DrainRead(sel uint16) uint16 {
-	if d.regs != nil {
-		return load16(&d.regs[sel])
-	}
-	v, _ := d.Read(PlaneCS1, sel)
-	return v
-}
-
-// DrainInto drains the frozen record in one tight pass — no per-sample interface
-// call, no modulo — so the drain completes before the HW un-freezes the halt.
-func (d *Dev) DrainInto(c1, c2 []uint8, cols int) {
-	if d.regs != nil {
-		port := uint16(0x30)
-		for i := 0; i < cols; i++ {
-			w := load16(&d.regs[port])
-			c1[i] = uint8(w >> 8)
-			c2[i] = uint8(w)
-			if port++; port > 0x34 {
-				port = 0x30
-			}
-		}
+// BurstInto drains the frozen record from the pop-on-read BURST port. The
+// EDMA path is CPU-free and byte-exact once the CS1 cycle-to-cycle gap is in
+// place (edma.go); it falls through to one ioctl per word on any failure.
+// A /dev/mem CPU mmap of the port is deliberately NOT a drain path: repeated
+// CPU reads of one address are served from the GPMC read buffer without a
+// fresh nOE strobe, so the port never pops (fpga-specs 12 §5.5, owned-fpga
+// 4770a81).
+func (d *Dev) BurstInto(c1, c2 []uint8, n int) {
+	if n <= 0 {
 		return
 	}
-	for i := 0; i < cols; i++ {
-		v, _ := d.Read(PlaneCS1, uint16(0x30+i%5))
+	if d.edma != nil && d.edma.drain(c1, c2, n) {
+		return
+	}
+	for i := 0; i < n; i++ {
+		v, _ := d.Read(PlaneCS1, iface.SelBurst)
 		c1[i] = uint8(v >> 8)
 		c2[i] = uint8(v)
 	}
 }
 
-func (d *Dev) DrainWrite(sel, val uint16) error {
-	if forbiddenWrite(PlaneCS1, sel) {
-		return fmt.Errorf("bus: write to forbidden register cs1 sel %#04x", sel)
+// PopWords pops n words from any pop-on-read port; the BURST port (and its
+// alias) takes the EDMA path when available.
+func (d *Dev) PopWords(sel uint16, dst []uint16, n int) {
+	if n <= 0 {
+		return
 	}
-	if d.regs != nil && int(sel) < len(d.regs) {
-		store16(&d.regs[sel], val)
-		return nil
+	if d.edma != nil && (iface.MaskSel(sel) == iface.SelBurst || iface.MaskSel(sel) == iface.SelBurstAlias) &&
+		d.edma.drainWords(burstPortPhys, dst, n) {
+		return
 	}
-	return d.Write(PlaneCS1, sel, val)
+	for i := 0; i < n; i++ {
+		v, _ := d.Read(PlaneCS1, sel)
+		dst[i] = v
+	}
 }
 
-func (d *Dev) MmapDrain() bool { return d.regs != nil }
+// FastDrain reports whether the EDMA drain is active.
+func (d *Dev) FastDrain() bool { return d.edma != nil }
+
+// EnableEDMA sets up the EDMA fast drain sized for maxWords record words and
+// programs the CS1 cycle-to-cycle gap it depends on. MUST be called only after
+// the fabric identity is verified (the BURST port exists only on our image).
+// Any failure keeps the ioctl drain (logged through logf, non-fatal). Returns
+// whether EDMA is active; idempotent.
+func (d *Dev) EnableEDMA(maxWords int, logf func(string, ...any)) bool {
+	if logf == nil {
+		logf = func(string, ...any) {}
+	}
+	if d.edma != nil {
+		return true
+	}
+	e, err := newEDMADrainer(maxWords, logf)
+	if err != nil {
+		logf("bus: EDMA drain unavailable, using ioctl drain: %v", err)
+		return false
+	}
+	// REQUIRED for correctness: without an inactive nOE interval between
+	// back-to-back GPMC reads the pop port sees no fresh strobe (dups/reorders,
+	// fpga-specs 12 §5.5). Gap 5 is the shipped value (4 is the first clean
+	// one; 5 adds one clock of margin). If the gap cannot be programmed, drop
+	// EDMA rather than drain corrupt records.
+	if err := programCS1CycleGap(cs1CycleGap); err != nil {
+		e.close()
+		logf("bus: CS1 cycle-gap setup failed, using ioctl drain: %v", err)
+		return false
+	}
+	d.edma = e
+	logf("bus: EDMA drain enabled (channel %d, %d words, CS1 cycle-gap=%d, coherency=%s)",
+		edmaChan, maxWords, cs1CycleGap, e.coherency())
+	return true
+}

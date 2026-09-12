@@ -1,6 +1,10 @@
 package engine
 
-import "testing"
+import (
+	"testing"
+
+	"open-sds/app/internal/iface"
+)
 
 func TestDecimatedAutoPublishes(t *testing.T) {
 	fb := newFakeBus()
@@ -32,13 +36,32 @@ func TestDecimatedAutoPublishes(t *testing.T) {
 	if f.IsEnv || f.EnvCols != 0 {
 		t.Fatal("envelope metadata not cleared")
 	}
-	// Round-robin drain port order 0x30..0x34 repeating.
+	// Every pop was covered by BURST_REMAIN (no read past the record).
+	if fb.popNoRemain {
+		t.Fatal("BURST popped beyond what BURST_REMAIN reported")
+	}
+	if s.ShortDrains != 0 {
+		t.Fatalf("short drains = %d, want 0", s.ShortDrains)
+	}
+}
+
+func TestShortRecordIsNotCoherent(t *testing.T) {
+	// The fabric finalized fewer words than the frame asked for: the drain
+	// pops only what BURST_REMAIN holds, pads the slot with the last real word,
+	// counts the shortfall, and the frame is not coherent.
+	fb := newFakeBus()
+	e, _ := newTestEngine(t, fb)
+	e.bringUp()
 	fb.mu.Lock()
-	defer fb.mu.Unlock()
-	for i, sel := range fb.drainSels[:10] {
-		if want := uint16(0x30 + i%5); sel != want {
-			t.Fatalf("drain[%d] port %#04x, want %#04x", i, sel, want)
-		}
+	fb.post = 1000 // record = 3072 + 1000 < decimDrain
+	fb.mu.Unlock()
+	e.oneFrame(false)
+	s := e.Snapshot()
+	if s.ShortDrains != 1 || s.Coherent != 0 {
+		t.Fatalf("short record: short_drains=%d coherent=%d, want 1/0", s.ShortDrains, s.Coherent)
+	}
+	if fb.popNoRemain {
+		t.Fatal("popped past the record")
 	}
 }
 
@@ -55,7 +78,7 @@ func TestDecimatedNormHoldsWithoutDone(t *testing.T) {
 	}
 	// The engine must not have halted a half-empty record.
 	for _, w := range fb.snapWrites() {
-		if w.plane == 1 && w.sel == selArm && w.val == opHalt {
+		if w.plane == 1 && w.sel == iface.SelOpcode && w.val == iface.OpHalt {
 			t.Fatal("capture-halt issued on an unanchored decimated frame")
 		}
 	}
@@ -423,27 +446,37 @@ func TestNativeFastContentGate(t *testing.T) {
 	// from the full deep record (spec 04 §11 trigger-hold path).
 	e.oneFrame(false)
 	f, fresh := e.Consume()
-	if !fresh || f.Valid != deepRecord || !f.Interp {
+	if !fresh || f.Valid != maxRecordCols || !f.Interp {
 		t.Fatalf("native-fast edge frame: fresh=%v valid=%d interp=%v", fresh, f.Valid, f.Interp)
 	}
 	if f.EdgeX < 0 {
 		t.Fatalf("native-fast edge frame not centred: EdgeX=%v", f.EdgeX)
 	}
 
-	// Comparator fires but the content is a flat rail (an inconsistent/rare case): no lock,
-	// so it HOLDS with the honest 60-frame flat fallback rather than centring noise.
+	// Comparator fires but the content is a flat rail (the common DC-input case: a mid-scale
+	// level inside the noise fires the comparator every record): no lock, so AUTO native-fast
+	// FREE-RUNS an honest unlocked refresh (EdgeX = -1) every frame — never a 60-frame hold
+	// (HW-verified 0 fps with the calibrated default image before this rule).
 	fb.mu.Lock()
 	fb.wave = func(int) (uint8, uint8) { return 128, 128 }
 	fb.mu.Unlock()
-	for i := 0; i < nativeFlatFallbck-1; i++ {
+	for i := 0; i < 3; i++ {
 		e.oneFrame(false)
+		f, fresh = e.Consume()
+		if !fresh || f.EdgeX != -1 || f.Trigd {
+			t.Fatalf("flat AUTO native-fast frame %d: fresh=%v EdgeX=%v trigd=%v, want a fresh unlocked refresh", i, fresh, f.EdgeX, f.Trigd)
+		}
+	}
+	// NORM keeps the trigger-hold with the honest 60-frame flat fallback.
+	for i := 0; i < nativeFlatFallbck-1; i++ {
+		e.oneFrame(true)
 	}
 	if _, fresh := e.Consume(); fresh {
-		t.Fatal("flat frame published before the fallback threshold")
+		t.Fatal("NORM flat frame published before the fallback threshold")
 	}
-	e.oneFrame(false)
+	e.oneFrame(true)
 	f, fresh = e.Consume()
 	if !fresh || f.EdgeX != -1 {
-		t.Fatalf("flat fallback: fresh=%v EdgeX=%v, want fresh EdgeX=-1", fresh, f.EdgeX)
+		t.Fatalf("NORM flat fallback: fresh=%v EdgeX=%v, want fresh EdgeX=-1", fresh, f.EdgeX)
 	}
 }

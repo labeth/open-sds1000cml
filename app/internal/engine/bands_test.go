@@ -14,13 +14,16 @@ func TestPlanTdivLadder(t *testing.T) {
 		drain      int
 		winCols    int
 	}{
-		{1e-9, 0x20, 0x0000, true, deepRecord, 10},
-		{25e-9, 0x20, 0x0000, true, deepRecord, 250},
-		{200e-9, 0x20, 0x0000, true, deepRecord, 2000},
-		{500e-9, 0x01, 0x0000, true, deepRecord, 1250},
-		{1e-6, 0x01, 0x0000, true, deepRecord, 2500},
-		{2e-6, 0x80, 0x0001, true, deepRecord, 2000},
-		{20e-6, 0x80, 0x0004, true, deepRecord, 5000},
+		// The acq2 default image delivers 5 ns/sample (200 MHz, one core per
+		// channel) on every row nominally faster than that: the screen holds
+		// 10·tdiv/5 ns samples until interleave lands (WP4).
+		{1e-9, 0x20, 0x0000, true, maxRecordCols, 2},
+		{25e-9, 0x20, 0x0000, true, maxRecordCols, 50},
+		{200e-9, 0x20, 0x0000, true, maxRecordCols, 400},
+		{500e-9, 0x01, 0x0000, true, maxRecordCols, 1000},
+		{1e-6, 0x01, 0x0000, true, maxRecordCols, 2000},
+		{2e-6, 0x80, 0x0001, true, maxRecordCols, 2000},
+		{20e-6, 0x80, 0x0004, true, maxRecordCols, 5000},
 		{50e-6, 0x80, 0x0008, false, decimDrain, 2048},
 		{500e-6, 0x80, 0x0050, false, decimDrain, 2048},
 		{2e-3, 0x80, 0x0190, false, decimDrain, 2048},

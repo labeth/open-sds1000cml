@@ -3,19 +3,13 @@ package engine
 import (
 	"time"
 
-	"open-sds/app/internal/bus"
+	"open-sds/app/internal/iface"
 )
 
 // Slow-envelope and roll band paths (spec 04). Both display a per-column
 // (min,max) band whose every value is a real ADC sample; solidity comes from
 // PHASE SCATTER — the per-sample interval is a good fraction of the signal
 // period, accumulated over a ring of frames/snapshots.
-
-const (
-	selRollC1 = 0x41 // roll FIFO C1: each ioctl read pops one live sample
-	selRollC2 = 0x59 // roll FIFO C2 (same mux-selected source, byte-replicated)
-	opLatch   = 0x00cb
-)
 
 // interrupted reports whether the owner must bail out of a long capture loop
 // NOW: shutdown, STOP, or a staged band/mode/ETS change (spec 09 §3.1 —
@@ -44,15 +38,10 @@ func (e *Engine) clearCrossFrame() {
 }
 
 // transition applies a staged band/mode/ETS change at the frame boundary.
+// bringUp starts with OPCODE=RESET, which drops any latched stream/roll state
+// before the record is re-programmed (the roll ring is re-armed after).
 func (e *Engine) transition(norm, etsWant bool) {
 	newKind := e.band.Kind()
-	// Leaving envelope/roll for a real-time band: drop the latched free-run
-	// state FIRST, or the next armed arm mis-inits (spec 04 §4.2 step 1).
-	if (e.prevKind == KindEnvelope || e.prevKind == KindRoll) &&
-		newKind != KindEnvelope && newKind != KindRoll {
-		e.w(selArm, opResetHead)
-		e.w(selArm, opResetHead)
-	}
 	e.rollArmed = false
 	e.etsOn = etsWant
 	e.lastNorm = norm
@@ -85,13 +74,13 @@ func (e *Engine) envFrame(norm bool) {
 	if grow := start.Add(time.Duration(capNs * envFillSlack)); grow.After(deadline) {
 		deadline = grow
 	}
-	fill0 := e.r(selFill) & fillMask
+	fill0 := e.r(iface.SelFill) & fillMask
 	fillMoved := false
 	for i := 0; ; i++ {
 		if e.interrupted() {
 			return // bail unpublished; the boundary applies the change
 		}
-		fill := e.r(selFill) & fillMask
+		fill := e.r(iface.SelFill) & fillMask
 		if fill != fill0 {
 			fillMoved = true
 		}
@@ -259,29 +248,22 @@ func (e *Engine) envReduce(f *Frame) {
 
 // ---- roll (≥100 ms/div) ----
 
-// rollBringUp arms the free-running roll engine ONCE (spec 04 §2.3): single
-// reset-head, write-pointer pulse, go — then a first latched pop pre-fills
-// the whole ring with a real sample so unpopulated columns never draw a
-// false 0-rail bar. The divisor (fixed 7400) was programmed by bringUp().
+// rollBringUp arms the gapless STREAM ring ONCE: bringUp() programmed RUN with
+// STREAM and the roll decimation, GO starts the ring, and the first popped
+// sample pre-fills the whole display ring so unpopulated columns never draw a
+// false 0-rail bar.
 func (e *Engine) rollBringUp() {
 	if e.rollRing1 == nil {
 		e.rollRing1 = make([]uint8, rollWin)
 		e.rollRing2 = make([]uint8, rollWin)
+		e.rollBuf1 = make([]uint8, rollBatch)
+		e.rollBuf2 = make([]uint8, rollBatch)
 	}
-	e.w(selArm, opResetHead)
-	e.w(selWrPtr, 0x0001)
-	e.w(selWrPtr, 0x0000)
-	e.w(selArm, opGo)
+	e.w(iface.SelOpcode, iface.OpGo)
 	e.clk.Sleep(3 * time.Millisecond)
-	e.w(selArm, opLatch)
-	w1, err1 := e.b.Read(bus.PlaneCS1, selRollC1)
-	w2, err2 := e.b.Read(bus.PlaneCS1, selRollC2)
-	s1, s2 := uint8(w1>>8), uint8(w2>>8)
-	if err1 != nil {
-		s1 = 128
-	}
-	if err2 != nil {
-		s2 = 128
+	s1, s2 := uint8(128), uint8(128)
+	if e.rollPop(1) == 1 {
+		s1, s2 = e.rollBuf1[0], e.rollBuf2[0]
 	}
 	for i := range e.rollRing1 {
 		e.rollRing1[i] = s1
@@ -291,65 +273,60 @@ func (e *Engine) rollBringUp() {
 	e.rollArmed = true
 }
 
-// rollUpdate runs one roll update (~220 ms of paced FIFO pops), then pushes
-// a scroll snapshot and publishes the 24-snapshot min/max reduction plus the
-// raw scrolling ring. NEVER halts (0xC8 freezes the free-run) and NEVER
-// reads un-armed (GPMC WAIT wedge, power-cycle only).
+// rollPop pops up to max live words the stream ring reports available
+// (BURST_REMAIN.REMAIN) into rollBuf1/2 and returns the count. Nothing is
+// popped when the ring reports no words — a pop past the write pointer would
+// return stale samples.
+func (e *Engine) rollPop(max int) int {
+	n := int(e.r(iface.SelBurstRemain) & iface.BurstRemainRemainMask)
+	if n > max {
+		n = max
+	}
+	if n <= 0 {
+		return 0
+	}
+	e.b.BurstInto(e.rollBuf1[:n], e.rollBuf2[:n], n)
+	return n
+}
+
+// rollUpdate runs one roll update (~220 ms of stream pops), then pushes a
+// scroll snapshot and publishes the 24-snapshot min/max reduction plus the raw
+// scrolling ring. NEVER halts (HALT would finalize the ring) and pops only what
+// BURST_REMAIN reports. A ring overflow (STATUS_A.OVERFLOW: the drain fell
+// behind) is counted as telemetry — the display keeps scrolling.
 func (e *Engine) rollUpdate(norm bool) {
 	if !e.rollArmed {
 		e.rollBringUp()
 	}
 	deadline := e.clk.Now().Add(rollBudgetMs * time.Millisecond)
 	pace := time.Duration(RollPaceNs())
-	errRun := 0
-	prev := uint8(0)
-	havePrev := false
-	for i := 0; i < rollBatch; i++ {
+	got := 0
+	for polls := 0; got < rollBatch; polls++ {
 		if e.interrupted() {
-			return // bail unpublished; port stays armed (that is safe)
+			return // bail unpublished; the ring keeps streaming (that is safe)
 		}
-		e.w(selArm, opLatch) // re-snapshot so the FIFO advances
-		w1, err := e.b.Read(bus.PlaneCS1, selRollC1)
-		if err != nil {
-			e.busErr(err)
-			if errRun++; errRun >= 8 {
-				e.deadEvidence(false)
-				return
-			}
-			// A read error must still be PACED — an unpaced burst of latch+
-			// read pairs is exactly the roll-FIFO wedge hazard (spec 04 §10).
-			e.clk.Sleep(pace)
-			continue
+		n := e.rollPop(rollBatch - got)
+		for i := 0; i < n; i++ {
+			e.rollRing1[e.rollPos] = e.rollBuf1[i]
+			e.rollRing2[e.rollPos] = e.rollBuf2[i]
+			e.rollPos = (e.rollPos + 1) % rollWin
 		}
-		errRun = 0
-		s1 := uint8(w1 >> 8)
-		if havePrev && s1 == prev {
-			// Dwell: the FIFO re-latched the SAME sample (its output changes far slower than
-			// we can read it). Storing dwells stacks a long single-rail run and a thin band —
-			// skip it so the ring holds only fresh, phase-advancing samples (a solid band).
-			prev = s1
-			if !e.clk.Now().Before(deadline) {
-				break
-			}
-			e.clk.Sleep(pace)
-			continue
-		}
-		prev, havePrev = s1, true
-		e.rollRing1[e.rollPos] = s1
-		w2, err2 := e.b.Read(bus.PlaneCS1, selRollC2)
-		if err2 == nil {
-			e.rollRing2[e.rollPos] = uint8(w2 >> 8)
-		} else {
-			e.busErr(err2) // C2 errors count toward the wedge signal too
-		}
-		e.rollPos = (e.rollPos + 1) % rollWin
-		if (i+1)%16 == 0 {
+		got += n
+		if (polls+1)%16 == 0 {
 			e.serviceCommands() // safe mid-frame: free-running, no halt window
 		}
 		if !e.clk.Now().Before(deadline) {
 			break
 		}
-		e.clk.Sleep(pace)
+		if n == 0 {
+			e.beatN.Add(1)
+			e.clk.Sleep(pace) // nothing new yet: wait about one sample interval
+		}
+	}
+	if e.r(iface.SelStatusA)&iface.StatusAOverflowMask != 0 {
+		e.mu.Lock()
+		e.stats.StreamOverflows++
+		e.mu.Unlock()
 	}
 
 	// Copy the ring in scroll order (oldest first) into the frame, snapshot
@@ -375,18 +352,22 @@ func (e *Engine) rollUpdate(norm bool) {
 	f.Ptp = p
 	f.Trigd = false
 	f.TrigPos = 0
-	f.Coherent = true // paced pops succeeded; there is no halt to confirm
+	f.Coherent = got > 0 // live words arrived; there is no halt to confirm
 	f.HaltOK = true
-	f.RollCodes = true
+	f.RollCodes = false // stream samples are full-scale record words, not the factory half-scale FIFO
 	f.TdivS = e.band.TdivS
 	f.DisplayedS = e.band.DisplayedSdivS()
 	f.SampleS = e.band.CaptureIntervalNs() * 1e-9
 	f.Norm = norm
 
-	e.commitStats(true, true, p, 0, 0, 0)
+	e.commitStats(f.Coherent, true, p, 0, 0, 0)
 	e.zoneMaskUncomparable() // roll frames free-run untriggered: zone/mask can't run
 	e.commitPublish(f)
-	e.resetDeadRuns()
+	if got > 0 {
+		e.resetDeadRuns()
+	} else {
+		e.deadEvidence(false)
+	}
 }
 
 // rollSnap pushes a scroll snapshot (full ring copy) onto the deque, keeping

@@ -62,17 +62,23 @@ try {
     // two page.evaluate calls. Freeze the poll and invalidate BOTH memos here so
     // the first timed redraw truly recomputes every tone fit.
     frozen = true;
-    compMemo.src = null; compMemo.map.clear();
-    mathMemo = {};
-    const cold = once(() => redraw());              // must fit every selected tone
+    const invalidate = () => { compMemo.src = null; compMemo.map.clear(); mathMemo = {}; };
+    // Compare BEST-of-N on both sides, not one cold sample against a warm mean.  A single
+    // cold reading and a mean warm reading are both contaminated by scheduler noise, and on a
+    // loaded machine that swung the ratio across the threshold about one run in three -- the
+    // test failed while memoisation was working perfectly.  Noise only ever ADDS time, so the
+    // minimum of several runs is the stable estimator of each cost.
+    let coldBest = Infinity;
+    for (let i = 0; i < 5; i++) { invalidate(); const d = once(() => redraw()); if (d < coldBest) coldBest = d; }
     let sum = 0, best = Infinity;
     for (let i = 0; i < 6; i++) { const d = once(() => redraw()); sum += d; if (d < best) best = d; }
-    return { cold: +cold.toFixed(1), warm: +(sum / 6).toFixed(1), warmBest: +best.toFixed(1) };
+    return { cold: +coldBest.toFixed(1), warm: +(sum / 6).toFixed(1), warmBest: +best.toFixed(1) };
   });
-  console.log(`  timings: cold=${r.cold}ms warm=${r.warm}ms (best ${r.warmBest}ms)`);
+  console.log(`  timings: cold(best of 5)=${r.cold}ms warm=${r.warm}ms (best ${r.warmBest}ms)`);
 
   // Memoization must make warm redraws dramatically cheaper than the cold fit.
-  ok(r.cold / Math.max(r.warm, 0.1) > 3, `component/math memo active: cold ${r.cold}ms vs warm ${r.warm}ms (>3x faster warm)`);
+  ok(r.cold / Math.max(r.warmBest, 0.1) > 3,
+     `component/math memo active: cold ${r.cold}ms vs warm-best ${r.warmBest}ms (>3x faster warm)`);
   // Absolute backstop: a warm redraw of a viewed stack must stay interactive.
   ok(r.warm < 200, `warm stack redraw stays interactive: ${r.warm}ms < 200ms`);
 

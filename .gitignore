@@ -1,8 +1,40 @@
-# Release / build artifacts assembled at the repo root by the release flow.
+# Quartus build products and incremental databases — never tracked (the prior branch tracked them and
+# its working tree was permanently dirty as a result).
+**/db/
+**/incremental_db/
+**/output_files/
+**/simulation/
+**/greybox_tmp/
+**/.qsys_edit/
+*.qws
+*.qpf.bak
+*.rpt
+*.summary
+*.smsg
+*.jdi
+*.pin
+*.sld
+*.done
+*.sof
+*.pof
+*.jam
+*.jbc
+*.sopcinfo
+*.qdf
+# built bitstreams are release artifacts, not sources (keep them out; provenance lives in docs)
+*.rbf
+# simulation outputs
+*.vcd
+*.fst
+*.vvp
+# release / build artifacts assembled at the repo root by the release flow
 /dist/
+/ota/dist/
 *.zip
-# local HW-verification tools — the repo maintains exactly ONE app main (cmd/app);
-# workstation probes live untracked so they never add device-testing surface
-/app/cmd/decodeprobe/
-/app/cmd/bandcheck/
-/app/cmd/draintest/
+# app release embeds
+app/internal/fpgaload/acq.rbf
+# scratch
+*.log
+!docs/**/*.log
+# python bytecode caches (tools/portspec unittests)
+__pycache__/

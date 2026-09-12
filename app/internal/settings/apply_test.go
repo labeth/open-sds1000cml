@@ -17,10 +17,10 @@ type nullBus struct{}
 
 func (nullBus) Read(plane uint8, sel uint16) (uint16, error) { return 0, nil }
 func (nullBus) Write(plane uint8, sel, val uint16) error     { return nil }
-func (nullBus) DrainRead(sel uint16) uint16                  { return 0 }
-func (nullBus) DrainInto(c1, c2 []uint8, cols int)           {}
-func (nullBus) DrainWrite(sel, val uint16) error             { return nil }
-func (nullBus) MmapDrain() bool                              { return true }
+func (nullBus) RawWrite(sel, val uint16) error               { return nil }
+func (nullBus) BurstInto(c1, c2 []uint8, n int)              {}
+func (nullBus) PopWords(sel uint16, dst []uint16, n int)     {}
+func (nullBus) FastDrain() bool                              { return true }
 
 // nullSPI satisfies analog.Transport so the real FrontEnd (with its per-tier
 // offset law, ladder and emit tracking) runs against no hardware.

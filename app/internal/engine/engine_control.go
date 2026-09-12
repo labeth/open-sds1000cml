@@ -232,15 +232,15 @@ func (e *Engine) SetTdiv(tdivS float64) (Band, bool) {
 
 // SetMemDepth sets the decimated drain depth in samples — the fps↔data knob.
 // Shallow (down to one screen, decimWin) = highest frame rate; deep (up to the
-// physical deepRecord) = more captured record to scroll, at a lower frame rate
+// fabric's record, maxRecordCols) = more captured record to scroll, at a lower frame rate
 // (a deeper record spans proportionally more capture time). Clamped to a valid
 // range; native-fast/envelope/roll are unaffected.
 func (e *Engine) SetMemDepth(samples int) int {
 	if samples < decimWin {
 		samples = decimWin
 	}
-	if samples > deepRecord {
-		samples = deepRecord
+	if samples > maxRecordCols {
+		samples = maxRecordCols
 	}
 	e.memDepth.Store(int32(samples))
 	return samples
@@ -302,10 +302,10 @@ func (e *Engine) paceHold(start time.Time, triggered bool) {
 // applied state.
 func (e *Engine) SetStreamMode(on bool) bool {
 	if on {
-		e.memDepth.Store(deepRecord)
+		e.memDepth.Store(maxRecordCols)
 		e.SetFramePeriod(0)
 	} else {
-		e.SetFramePeriod(50)
+		e.SetFramePeriod(int(defaultFramePeriod / time.Millisecond))
 	}
 	e.streamMode.Store(on)
 	e.mu.Lock()
@@ -316,23 +316,24 @@ func (e *Engine) SetStreamMode(on bool) bool {
 
 // effDrainCols is how many samples oneFrame actually drains: the configured
 // memory depth on decimated bands, the band's own drain elsewhere. A SINGLE
-// capture always drains the FULL deep record so the one frame you keep carries
+// capture always drains the FULL record so the one frame you keep carries
 // everything to zoom out into — frame rate is irrelevant for a single shot.
+// Never more than maxRecordCols: that is all the fabric finalizes.
 func (e *Engine) effDrainCols() int {
+	d := e.band.DrainCols()
 	if e.band.Kind() == KindDecimated {
+		d = int(e.memDepth.Load())
 		if e.singleArmed.Load() {
-			return deepRecord
+			d = maxRecordCols
 		}
-		d := int(e.memDepth.Load())
 		if d < decimWin {
 			d = decimWin
 		}
-		if d > deepRecord {
-			d = deepRecord
-		}
-		return d
 	}
-	return e.band.DrainCols()
+	if d > maxRecordCols {
+		d = maxRecordCols
+	}
+	return d
 }
 
 // SetTrigLevelCode stages a trigger-level DAC recommit. Codes clamp to the

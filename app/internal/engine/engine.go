@@ -12,63 +12,40 @@ import (
 	"time"
 
 	"open-sds/app/internal/bus"
+	"open-sds/app/internal/iface"
 )
 
-// Register selectors (CS1 unless noted). Spec 02.
+// Register bindings: every fabric selector, opcode and field comes from the
+// generated iface package (schema sds1000cml-default v2, workplan §2). The
+// only hand-written addresses are MAX V (CS3) front-end registers, which are
+// not part of the fabric schema and keep working under any Cyclone image.
 const (
-	selPreamble = 0x00 // 0x80 ×2 only in the trigger-level recommit
-	selVersion  = 0x12
-	selClass    = 0x19
-	selDivLo    = 0x1a
-	selDivHi    = 0x1b
-	selArm      = 0x21 // 0xC0 reset-head, 0xC3 go, 0xC8 capture-halt
-	selRunWord  = 0x35 // 0x0001 AUTO, 0x0003 NORM
-	selReset2   = 0x36
-	selStatus   = 0x39 // bit1 trig, bit2 done
-	selTrigLo   = 0x3a
-	selTrigHi   = 0x3b
-	selResetHd  = 0x44
-	selFill     = 0x46
-	selWrPtr    = 0x57
-	drainBase   = 0x30 // 0x30–0x34 round-robin sample ports
-
-	// Per-frame completion tail (reference-device trace: written after every
-	// drain, before the next arm). 0x16=1 is the load-bearing re-trigger
-	// strobe — omitting it starves the trigger engine into permanent
-	// half-records (saw_trig never asserts again).
-	selTailA  = 0x3c // written 0x0002 after each drain
-	selTailB  = 0x3d // written 0x0008 after each drain
-	selTailC  = 0x3e // written 0x0000 after each drain
-	selTailD  = 0x58 // written 0x0000 after each drain
-	selRetrig = 0x16 // 0x0001 = frame-completion / re-trigger strobe
-	selForce  = 0x2c // 0→1 pulse = AUTO force-trigger (untriggered frames)
-
-	// CS3 trigger-level DAC lanes (spec 05 §1). High bytes self-latch.
+	// CS3 trigger-level comparator DAC lanes (app spec 05 §1). High bytes
+	// self-latch. They set the threshold of the A12 comparator the fabric can
+	// select with TRIG_LEVEL.HW_SEL.
 	cs3LevelALo = 0x14
 	cs3LevelAHi = 0x34
 	cs3LevelBLo = 0x15
 	cs3LevelBHi = 0x35
 
-	cs3ConfStatus = 0x07 // CS3 config-status: bit7 = CONF_DONE. READ ONLY.
+	cs3ConfStatus = bus.CS3ConfigPort // CS3 configuration port: bit7 = CONF_DONE. READ ONLY here.
 
-	// CS3 vertical-offset DAC lanes per channel (spec 06 §5.1): low byte
-	// first, high byte self-latches. These selectors ALIAS live acquisition
-	// ports on CS1 — the plane must be explicit on every write.
+	// CS3 vertical-offset DAC lanes per channel (app spec 06 §5.1): low byte
+	// first, high byte self-latches. These selectors ALIAS fabric registers on
+	// CS1 — the plane must be explicit on every write.
 	cs3OffC1Lo = 0x10
 	cs3OffC1Hi = 0x30
 	cs3OffC2Lo = 0x11
 	cs3OffC2Hi = 0x31
 
-	opResetHead = 0x00c0
-	opGo        = 0x00c3
-	opHalt      = 0x00c8
+	statValid = iface.StatusAValidMask // a coherent record is present (AUTO completion)
+	statTrig  = iface.StatusATrigMask  // a trigger was accepted this record
+	statDone  = iface.StatusADoneMask  // post-trigger record complete
 
-	runAuto = 0x0001
-	runNorm = 0x0003
-
-	statValid = 0x0001 // AUTO free-run: acquisition completed without a trigger
-	statTrig  = 0x0002
-	statDone  = 0x0004
+	// trigLevelUnset is the fabric trigger level (sample codes) while the app
+	// has no trigger code yet: mid-scale. trigHyst is ACQ_CTRL.TRIG_HYST.
+	trigLevelUnset = 128
+	trigHyst       = 2
 
 	nativeEdgeMinPtp  = 40 // codes; flat rail ≈ 5, real cal edge ≈ 150
 	nativeFlatFallbck = 60 // held frames before one honest flat publish
@@ -92,7 +69,6 @@ const (
 	// full 40-80 ms wait budget, so 60 held frames is 5-8 s of frozen screen —
 	// far past what an AUTO display may freeze (fuzz-found at 500 µs/div).
 	autoLivenessMaxWait = 1500 * time.Millisecond
-	fillFull            = 0x7f0 // fill counter near the 11-bit max = record full
 	// native-fast re-capture cap is the tunable tuneMaxRetry (default 8); see engine.New
 
 	// TrigCodeMin/Max clamp the UI trigger-level DAC range (spec 05 §1.2).
@@ -112,14 +88,47 @@ type Clock struct {
 	Sleep func(time.Duration)
 }
 
+// defaultFramePeriod is the publish pacing floor. It was 50 ms (20 fps), which
+// was well below what the hardware sustains: measured on the instrument on
+// 2026-09-05, the frame rate rises with the floor down to 10 ms and saturates
+// there at 62 fps, because a frame costs about 16 ms of real work (a 4.2 ms
+// drain, a 5.8 ms arm-to-latch, and ~6 ms of everything else). Nothing is
+// gained below 10 ms and the floor still bounds the publish rate, so 10 ms it
+// is: 3.2x the delivered samples per second, measured over a 90 s soak at
+// 62.0 fps with 0 incoherent frames, 0 bus errors, 0 held, 0 short drains and
+// the ARM at 0.00 load average. See the acq2 analysis branch
+const defaultFramePeriod = 10 * time.Millisecond
+
+// defaultArmSettle is the pause between re-programming and OPCODE = GO. It was
+// 2 ms, copied from the vendor's own arm sequence ("~2 ms settle",
+// fpga-specs/22 §4.2 step 2). Measured on the instrument on 2026-09-05, halving
+// it takes the frame rate from 62 to 72.6 fps and going further buys almost
+// nothing (73.8 at 100 us, 75.0 at 50 us), so 1 ms keeps the largest margin
+// among the settings that actually help — still half the vendor's, not a
+// quarter. 90 s soak at 1 ms: 6,540 frames at 72.7 fps, 0 incoherent, 0 bus
+// errors, 0 held, 0 dead runs, 0 short drains, and a TSRC ramp read back
+// afterwards with 0 breaks over 256 distinct codes.
+const defaultArmSettle = 1 * time.Millisecond
+
+// defaultMatureUs is the native-fast maturation floor: how long a frame must
+// run before it may halt once the record is full. It was 3000 us. The gate only
+// shortcuts AUTO and anchored frames — NORM without a trigger waits the full
+// budget either way (see engine_capture.go) — so this is a liveness knob, not a
+// trigger-sensitivity one. Measured on the instrument on 2026-09-05: 72.7 fps
+// at 3000 us, 80.0 at 1500, and 89.2 at 750 where it saturates (300 us and
+// 100 us give the same 89). 750 us it is, the knee. 90 s soak: 8,025 frames at
+// 89.2 fps, 0 incoherent, 0 bus errors, 0 held, 0 dead runs, 0 short drains,
+// TSRC ramp afterwards 0 breaks over 256 distinct codes.
+const defaultMatureUs = 750
+
 func realClock() Clock { return Clock{Now: time.Now, Sleep: time.Sleep} }
 
 // Config wires an Engine.
 type Config struct {
 	Bus         bus.Bus
 	Clock       Clock         // zero → real clock
-	FramePeriod time.Duration // publish pacing floor; default 50 ms
-	ArmSettle   time.Duration // default 2 ms
+	FramePeriod time.Duration // publish pacing floor; default defaultFramePeriod
+	ArmSettle   time.Duration // default defaultArmSettle
 	PollEvery   time.Duration // wait-gate poll pace; default 150 µs
 	Logf        func(format string, a ...any)
 }
@@ -127,51 +136,53 @@ type Config struct {
 // Stats is the exported snapshot for the health writer and the web UI.
 // Field meanings follow the spec 09 stats shape.
 type Stats struct {
-	Frames       uint64  `json:"frames"`                  // FSM heartbeat: +1 per loop iteration, publish or not
-	Coherent     uint64  `json:"coherent"`                // frames that latched+drained coherently
-	Published    uint64  `json:"published"`               // frames handed to the arena
-	Held         uint64  `json:"held"`                    // display-hold cycles
-	Degraded     bool    `json:"degraded,omitempty"`      // last native-fast capture kept a dead tail through the retries
-	DegradedRun  int     `json:"degraded_run,omitempty"`  // consecutive degraded captures
-	StuckSuspect bool    `json:"stuck_suspect,omitempty"` // the run crossed the stuck-FSM threshold: power-cycle likely needed
-	HaltConfirm  uint64  `json:"halt_confirm"`            // halts with fill frozen across the double read
-	BusErrors    uint64  `json:"bus_errors"`
-	DeadRuns     int     `json:"dead_runs"` // consecutive fill-frozen + flat-drain frames
-	Wedged       bool    `json:"wedged"`
-	FPS          float64 `json:"fps"`
-	Running      bool    `json:"running"`
-	Norm         bool    `json:"norm"`
-	Single       bool    `json:"single"`        // a single-shot is armed/waiting
-	TrigPosFrac  float64 `json:"trig_pos_frac"` // horizontal trigger position 0..1
-	TdivS        float64 `json:"tdiv_s"`
-	DisplayedS   float64 `json:"displayed_sdiv_s"`
-	TrigCode     uint16  `json:"trig_code"` // 0 = boot-inherited comparator untouched
-	OffC1        uint16  `json:"off_c1"`    // 0 = boot-inherited offset untouched
-	OffC2        uint16  `json:"off_c2"`
-	TrigRising   bool    `json:"trig_rising"`
-	TrigSource   int     `json:"trig_source"` // 0=C1, 1=C2
-	LastPtp      int     `json:"last_ptp"`
-	LastTrigPos  int     `json:"last_trigpos"`
-	ArmToLatch   float64 `json:"arm_to_latch_ms"`
-	DrainMs      float64 `json:"drain_ms"`
-	HoldoffS     float64 `json:"holdoff_s"` // trigger holdoff (0 = off)
-	Seq          uint64  `json:"seq"`
-	MmapDrain    bool    `json:"mmap_drain"`
-	ETS          bool    `json:"ets"`
-	BandKind     string  `json:"band"`      // native-fast | decimated | envelope | roll
-	HaltMode     string  `json:"halt_mode"` // capture-halt | latch-no-halt
-	TrigType     int     `json:"trig_type"` // 0=edge 1=pulse 2=slope 3=video
-	AcqMode      int     `json:"acq_mode"`  // 0=normal 1=average 2=eres 3=peak
-	AvgCount     int     `json:"avg_count"`
-	EresLen      int     `json:"eres_len"`
-	WinColStd    float64 `json:"wincol_std"`     // centred cross-frame uniformity
-	WinColRaw    float64 `json:"wincol_std_raw"` // fixed-position variant
-	WinColMax    float64 `json:"wincol_max"`     // worst centred column
-	ValidDepth   int     `json:"valid_depth"`    // real-signal samples in the drain
-	WinCols      int     `json:"win_cols"`       // display-window width in raw samples
-	MemDepth     int     `json:"mem_depth"`      // configured decimated drain depth
-	Stream       bool    `json:"stream"`         // stitched streaming decode mode on
-	GapMs        float64 `json:"gap_ms"`         // stream: blackout between windows
+	Frames          uint64  `json:"frames"`                  // FSM heartbeat: +1 per loop iteration, publish or not
+	Coherent        uint64  `json:"coherent"`                // frames that latched+drained coherently
+	Published       uint64  `json:"published"`               // frames handed to the arena
+	Held            uint64  `json:"held"`                    // display-hold cycles
+	Degraded        bool    `json:"degraded,omitempty"`      // last native-fast capture kept a dead tail through the retries
+	DegradedRun     int     `json:"degraded_run,omitempty"`  // consecutive degraded captures
+	StuckSuspect    bool    `json:"stuck_suspect,omitempty"` // the run crossed the stuck-FSM threshold: power-cycle likely needed
+	HaltConfirm     uint64  `json:"halt_confirm"`            // halts with fill frozen across the double read
+	BusErrors       uint64  `json:"bus_errors"`
+	DeadRuns        int     `json:"dead_runs"` // consecutive fill-frozen + flat-drain frames
+	Wedged          bool    `json:"wedged"`
+	FPS             float64 `json:"fps"`
+	Running         bool    `json:"running"`
+	Norm            bool    `json:"norm"`
+	Single          bool    `json:"single"`        // a single-shot is armed/waiting
+	TrigPosFrac     float64 `json:"trig_pos_frac"` // horizontal trigger position 0..1
+	TdivS           float64 `json:"tdiv_s"`
+	DisplayedS      float64 `json:"displayed_sdiv_s"`
+	TrigCode        uint16  `json:"trig_code"` // 0 = boot-inherited comparator untouched
+	OffC1           uint16  `json:"off_c1"`    // 0 = boot-inherited offset untouched
+	OffC2           uint16  `json:"off_c2"`
+	TrigRising      bool    `json:"trig_rising"`
+	TrigSource      int     `json:"trig_source"` // 0=C1, 1=C2
+	LastPtp         int     `json:"last_ptp"`
+	LastTrigPos     int     `json:"last_trigpos"`
+	ArmToLatch      float64 `json:"arm_to_latch_ms"`
+	DrainMs         float64 `json:"drain_ms"`
+	HoldoffS        float64 `json:"holdoff_s"` // trigger holdoff (0 = off)
+	Seq             uint64  `json:"seq"`
+	MmapDrain       bool    `json:"mmap_drain"` // the fast (EDMA) BURST drain is active; json name kept for the UI
+	ETS             bool    `json:"ets"`
+	BandKind        string  `json:"band"`      // native-fast | decimated | envelope | roll
+	HaltMode        string  `json:"halt_mode"` // capture-halt | latch-no-halt
+	TrigType        int     `json:"trig_type"` // 0=edge 1=pulse 2=slope 3=video
+	AcqMode         int     `json:"acq_mode"`  // 0=normal 1=average 2=eres 3=peak
+	AvgCount        int     `json:"avg_count"`
+	EresLen         int     `json:"eres_len"`
+	WinColStd       float64 `json:"wincol_std"`       // centred cross-frame uniformity
+	WinColRaw       float64 `json:"wincol_std_raw"`   // fixed-position variant
+	WinColMax       float64 `json:"wincol_max"`       // worst centred column
+	ValidDepth      int     `json:"valid_depth"`      // real-signal samples in the drain
+	WinCols         int     `json:"win_cols"`         // display-window width in raw samples
+	MemDepth        int     `json:"mem_depth"`        // configured decimated drain depth
+	Stream          bool    `json:"stream"`           // stitched streaming decode mode on
+	GapMs           float64 `json:"gap_ms"`           // stream: blackout between windows
+	ShortDrains     uint64  `json:"short_drains"`     // drains where BURST_REMAIN held fewer words than the frame asked for
+	StreamOverflows uint64  `json:"stream_overflows"` // roll: STATUS_A.OVERFLOW seen (the drain fell behind the ring)
 
 	// Zone trigger + mask testing (docs/zonemask-plan.md)
 	ZoneMode    int   `json:"zone_mode,omitempty"`  // 0 off, 1 trigger
@@ -257,12 +268,8 @@ type Engine struct {
 	tuneRenderMs     atomic.Int64 // LCD render period (ms)
 	tuneFillExtraUs  atomic.Int64 // native-fast: extra fill time after done, before halt (µs)
 	tuneHaltSettleUs atomic.Int64 // native-fast: post-halt settle before deep-port reads (µs)
-	tuneFrameTail    atomic.Bool  // per-frame completion tail + 0x16 re-trigger strobe (reference-device op)
-	tuneForceMode    atomic.Int64 // AUTO force-trigger op: 0 off, bit0 = 0x2c pulse, bit1 = 0x16 strobe
-	tuneForceAfterUs atomic.Int64 // µs after arm without a comparator edge before forcing
 	tuneMatureUs     atomic.Int64 // native-fast maturation floor before halt (µs)
-	tuneTail3c       atomic.Int64 // acq-control pair value for 0x3c (band-dependent; native-fast 0x00fd)
-	tuneTail3d       atomic.Int64 // acq-control pair value for 0x3d (band-dependent; native-fast 0x0007)
+	tuneHwTrig       atomic.Bool  // TRIG_LEVEL.HW_SEL: trigger on the A12 comparator (MAX V DAC) instead of the fabric's software compare
 	tuneSigK         atomic.Int64 // decimated small-signal gate: min ptp / noiseFloor ratio to lock
 	reinitReq        atomic.Int64 // staged FSM re-init level (debug/recovery); serviced at the loop boundary
 
@@ -335,24 +342,28 @@ type Engine struct {
 	stats     Stats
 	pubTimes  []time.Time // recent publish timestamps for the FPS window
 
-	// matrixReq is the panel's request/reply channel (spec 08 §4): the owner
-	// drains every pending request at the frame boundary with one snapshot.
-	matrixReq chan chan [5]uint16
+	// execReq carries diagnostic/owner-side work (Exec) to the owner goroutine.
+	execReq chan execReq
 
 	// Owner-private state (no locking needed).
-	band          Band
-	prevKind      Kind
-	lastNorm      bool
-	seq           uint64
-	flatHeld      int
-	lastPubAt     time.Time // engine goroutine only: instant of the last oneFrame publish
-	lastEdgeX     float64   // engine goroutine only: previous frame's edge (phase-continuity hint); <0 = none
-	degradedRun   int       // engine goroutine only: consecutive dead-tail captures
-	lastFirstHalf bool      // the last frame's FIRST drain was a half record (pre re-capture)
-	deadRuns      int
-	streamSeq     uint64    // stitch-mode window counter
-	lastHalt      time.Time // wall-clock of the previous window's halt (for GapNs)
-	done          chan struct{}
+	acqShadow, trigShadow uint16 // last ACQ_CTRL / TRIG_LEVEL words written (compare-on-change)
+	shadowInit            bool
+	lastCapCols           int // record depth programmed by the last bringUp (PRETRIG+POSTTRIG)
+	lastDrainN            int // words the last drain actually popped (≤ requested)
+	rollBuf1, rollBuf2    []uint8
+	band                  Band
+	prevKind              Kind
+	lastNorm              bool
+	seq                   uint64
+	flatHeld              int
+	lastPubAt             time.Time // engine goroutine only: instant of the last oneFrame publish
+	lastEdgeX             float64   // engine goroutine only: previous frame's edge (phase-continuity hint); <0 = none
+	degradedRun           int       // engine goroutine only: consecutive dead-tail captures
+	lastFirstHalf         bool      // the last frame's FIRST drain was a half record (pre re-capture)
+	deadRuns              int
+	streamSeq             uint64    // stitch-mode window counter
+	lastHalt              time.Time // wall-clock of the previous window's halt (for GapNs)
+	done                  chan struct{}
 
 	// Realtime acquisition checker (instrumentation only, spec: diagnose HALF
 	// records). acqRing/cmdRing are guarded by e.mu (the status handler reads
@@ -403,10 +414,10 @@ func New(cfg Config) *Engine {
 		cfg.Clock = realClock()
 	}
 	if cfg.FramePeriod == 0 {
-		cfg.FramePeriod = 50 * time.Millisecond
+		cfg.FramePeriod = defaultFramePeriod
 	}
 	if cfg.ArmSettle == 0 {
-		cfg.ArmSettle = 2 * time.Millisecond
+		cfg.ArmSettle = defaultArmSettle
 	}
 	if cfg.PollEvery == 0 {
 		cfg.PollEvery = 150 * time.Microsecond
@@ -426,7 +437,7 @@ func New(cfg Config) *Engine {
 		band:      start,
 		prevKind:  start.Kind(),
 		done:      make(chan struct{}),
-		matrixReq: make(chan chan [5]uint16, 4),
+		execReq:   make(chan execReq, 8),
 	}
 	// Tuning defaults. ROOT-CAUSE FIX for the native-fast half-record: the free-run
 	// wait returned the instant done+fill asserted and halted immediately, catching
@@ -437,7 +448,7 @@ func New(cfg Config) *Engine {
 	// tuning (no busy spins, slowed change-detected render, stock GC) this beats the
 	// original defaults on all three: CPU ~96%→~86%, fps ~13.4→~18, frame_success
 	// (real content, not valid_depth) ~5%→100%.
-	e.tuneArmSettleUs.Store(cfg.ArmSettle.Microseconds()) // spec-safe 2 ms
+	e.tuneArmSettleUs.Store(cfg.ArmSettle.Microseconds())
 	// The settle busy-spin and manual GC control were workarounds tuned against
 	// the UNTRIGGERED half-record state. With captures gated on trigger
 	// evidence, HW A/B under web-stream load shows a plain Sleep settle and
@@ -454,19 +465,13 @@ func New(cfg Config) *Engine {
 	// them) and cost 4 ms/frame. Knobs kept at 0 for experiments.
 	e.tuneFillExtraUs.Store(0)
 	e.tuneHaltSettleUs.Store(0)
-	// Reference-device experiment knobs, OFF by default: A/B on hardware showed
-	// neither the per-frame tail (0x3e/0x58/0x3c/0x3d/0x16) nor any placement
-	// of the 0x2c force pulse completes an untriggered record or affects a
-	// triggered one. Kept as live knobs for further vendor-op experiments.
-	e.tuneFrameTail.Store(false)
-	e.tuneForceMode.Store(0)
-	e.tuneForceAfterUs.Store(10000)
+	// Trigger on the fabric's software level compare by default; the A12
+	// comparator (MAX V DAC threshold) is a live knob for the bench.
+	e.tuneHwTrig.Store(false)
 	// HW sweep 40→2 ms: full records at every step once captures are gated on
 	// trigger evidence (the historical 40 ms bound was measured in the
 	// untriggered parked state). 3 ms keeps margin over the proven 2 ms.
-	e.tuneMatureUs.Store(3000)
-	e.tuneTail3c.Store(0x00fd) // reference-device native-fast acq-control pair
-	e.tuneTail3d.Store(0x0007)
+	e.tuneMatureUs.Store(defaultMatureUs)
 	// Decimated small-signal lock gate: a real signal has ptp ≥ SigK × noiseFloor
 	// (period-independent 2nd-difference noise estimate), which separates a real
 	// sub-1.6-div signal from a noisy flat rail at EVERY timebase — raw ptp alone
@@ -492,7 +497,7 @@ func New(cfg Config) *Engine {
 	e.mu.Lock()
 	e.stats.Running, e.stats.TrigRising = true, true
 	e.stats.TrigPosFrac = 0.5 // mirror the atomic's boot default (readers normalize 0, but don't lie)
-	e.stats.MmapDrain = cfg.Bus.MmapDrain()
+	e.stats.MmapDrain = cfg.Bus.FastDrain()
 	e.stats.AvgCount, e.stats.EresLen = 16, 1
 	e.syncBandStatsLocked()
 	e.mu.Unlock()
@@ -535,12 +540,8 @@ type TuneVals struct {
 	RenderMs     int64 `json:"render_ms"`
 	FillExtraUs  int64 `json:"fill_extra_us"`
 	HaltSettleUs int64 `json:"halt_settle_us"`
-	FrameTail    bool  `json:"frame_tail"`       // per-frame completion tail + 0x16 re-trigger strobe
-	ForceMode    int64 `json:"force_mode"`       // AUTO force-trigger: 0 off, bit0 0x2c pulse, bit1 0x16 strobe
-	ForceAfterUs int64 `json:"force_after_us"`   // µs after arm without a trigger before forcing
 	MatureUs     int64 `json:"mature_us"`        // native-fast maturation floor before halt (µs)
-	Tail3c       int64 `json:"tail_3c"`          // acq-control 0x3c value (band-dependent)
-	Tail3d       int64 `json:"tail_3d"`          // acq-control 0x3d value (band-dependent)
+	HwTrig       bool  `json:"hw_trig"`          // trigger on the A12 hardware comparator (TRIG_LEVEL.HW_SEL) instead of the software compare
 	SigK         int64 `json:"sig_k"`            // decimated small-signal gate: min ptp/noiseFloor ratio to lock (default 8)
 	Reinit       int64 `json:"reinit,omitempty"` // one-shot: stage an FSM re-init at this level (1=bringUp, 2=+runword/reset pulses)
 }
@@ -569,20 +570,8 @@ func (e *Engine) Tune(t TuneVals) TuneVals {
 	if t.HaltSettleUs >= 0 {
 		e.tuneHaltSettleUs.Store(t.HaltSettleUs)
 	}
-	if t.ForceMode >= 0 {
-		e.tuneForceMode.Store(t.ForceMode)
-	}
-	if t.ForceAfterUs > 0 {
-		e.tuneForceAfterUs.Store(t.ForceAfterUs)
-	}
 	if t.MatureUs > 0 {
 		e.tuneMatureUs.Store(t.MatureUs)
-	}
-	if t.Tail3c >= 0 {
-		e.tuneTail3c.Store(t.Tail3c)
-	}
-	if t.Tail3d >= 0 {
-		e.tuneTail3d.Store(t.Tail3d)
 	}
 	if t.SigK > 0 {
 		e.tuneSigK.Store(t.SigK)
@@ -592,7 +581,7 @@ func (e *Engine) Tune(t TuneVals) TuneVals {
 	}
 	e.tuneArmSpin.Store(t.ArmSpin)
 	e.tuneGcCtl.Store(t.GcCtl)
-	e.tuneFrameTail.Store(t.FrameTail)
+	e.tuneHwTrig.Store(t.HwTrig)
 	return e.TuneSnapshot()
 }
 
@@ -607,12 +596,8 @@ func (e *Engine) TuneSnapshot() TuneVals {
 		RenderMs:     e.tuneRenderMs.Load(),
 		FillExtraUs:  e.tuneFillExtraUs.Load(),
 		HaltSettleUs: e.tuneHaltSettleUs.Load(),
-		FrameTail:    e.tuneFrameTail.Load(),
-		ForceMode:    e.tuneForceMode.Load(),
-		ForceAfterUs: e.tuneForceAfterUs.Load(),
 		MatureUs:     e.tuneMatureUs.Load(),
-		Tail3c:       e.tuneTail3c.Load(),
-		Tail3d:       e.tuneTail3d.Load(),
+		HwTrig:       e.tuneHwTrig.Load(),
 		SigK:         e.tuneSigK.Load(),
 	}
 }

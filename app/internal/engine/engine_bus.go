@@ -1,30 +1,23 @@
 package engine
 
 import (
-	"open-sds/app/internal/bus"
+	"fmt"
 	"time"
+
+	"open-sds/app/internal/bus"
+	"open-sds/app/internal/iface"
 )
 
-// ReadMatrix requests a key-matrix snapshot from the bus owner (spec 08 §4):
-// non-blocking enqueue (ok=false when the queue is full), 200 ms reply
-// timeout — the panel worker simply retries on the next interrupt or tick.
-func (e *Engine) ReadMatrix() ([5]uint16, bool) {
-	reply := make(chan [5]uint16, 1)
-	select {
-	case e.matrixReq <- reply:
-	default:
-		return [5]uint16{}, false
-	}
-	select {
-	case m := <-reply:
-		return m, true
-	case <-time.After(200 * time.Millisecond):
-		return [5]uint16{}, false
-	}
-}
+// ReadMatrix is the panel's key-matrix request. The factory fabric decoded the
+// front-panel matrix behind CS1 selectors 0x64..0x69; the acq2 default image
+// has no panel block (workplan §2 puts SNOOP/DIAG there), so there is nothing
+// to read: ok=false, and the panel keeps its poll fallback. Physical buttons
+// are therefore inactive under this image — /api/panel injection and SCPI
+// remain the control paths. Logged once at engine start.
+func (e *Engine) ReadMatrix() ([5]uint16, bool) { return [5]uint16{}, false }
 
-// SetLEDs stages the panel LED latch word (spec 08 §5): compare-on-change
-// with an init flag; the owner flushes the 4-write strobe at the boundary.
+// SetLEDs stages the panel LED latch word (MAX V, CS3 0x09..0x0b): compare-on-
+// change with an init flag; the owner flushes the 4-write strobe at the boundary.
 func (e *Engine) SetLEDs(word uint16) {
 	e.mu.Lock()
 	if !e.ledInit || word != e.ledWord {
@@ -35,10 +28,8 @@ func (e *Engine) SetLEDs(word uint16) {
 
 // Beats is the liveness heartbeat for the OTA health contract: it advances on
 // every loop iteration AND inside every legitimate long wait (holdoff pacing,
-// budget polls, recovery bring-up). The health token must key on THIS, not on
-// frame count alone — a 10 s holdoff between frames is a healthy scope, but
-// with a 3 s supervisor staleness window a frame-keyed token reads as a wedge
-// and the agent kills a perfectly healthy app (found by the live storm).
+// budget polls, recovery bring-up, the parked states). The health token keys
+// on THIS, not on frame count alone.
 func (e *Engine) Beats() uint64 { return e.beatN.Load() }
 
 // sleepBeating sleeps d in ≤500 ms slices, beating each slice so long pacing
@@ -55,12 +46,76 @@ func (e *Engine) sleepBeating(d time.Duration) {
 	}
 }
 
+// ---- register words ----
+
+// runWord is the RUN register: MODE (auto/norm), RUN=1, STREAM on the roll
+// band (the gapless ring the roll display chases). Envelope and roll always
+// run auto — they are untriggered by construction.
 func (e *Engine) runWord() uint16 {
-	if e.normNow() {
-		return runNorm
+	mode := uint16(0)
+	k := e.band.Kind()
+	if e.normNow() && k != KindEnvelope && k != KindRoll {
+		mode = 1
 	}
-	return runAuto
+	w := mode<<iface.RunModeShift | iface.RunRunMask
+	if k == KindRoll {
+		w |= iface.RunStreamMask
+	}
+	return w
 }
+
+// acqCtrlWord is ACQ_CTRL: encode on at the fabric base rate, all five pairs
+// enabled, the software-trigger hysteresis, and the trigger source/slope.
+func (e *Engine) acqCtrlWord() uint16 {
+	w := iface.AcqCtrlEncEnMask |
+		uint16(encRate)<<iface.AcqCtrlEncRateShift |
+		uint16(trigHyst)<<iface.AcqCtrlTrigHystShift |
+		iface.AcqCtrlPairEnMask
+	if e.trigSrc.Load() == 1 {
+		w |= iface.AcqCtrlTrigSrcMask
+	}
+	if !e.trigRising.Load() {
+		w |= iface.AcqCtrlTrigSlopeMask
+	}
+	return w
+}
+
+// trigLevelWord is TRIG_LEVEL: the trigger level in sample codes (the same
+// display-code mapping the software anchor uses, so the fabric fires where
+// the trace crosses the marker) and HW_SEL when the A12 comparator is chosen.
+func (e *Engine) trigLevelWord() uint16 {
+	lvl := e.trigDispLevel(int(e.trigSrc.Load()))
+	if lvl < 0 {
+		lvl = trigLevelUnset
+	}
+	w := uint16(lvl) & iface.TrigLevelLevelMask
+	if e.tuneHwTrig.Load() {
+		w |= iface.TrigLevelHwSelMask
+	}
+	return w
+}
+
+// flushTrigWords writes ACQ_CTRL / TRIG_LEVEL when they differ from the last
+// words written (compare-on-change; force rewrites both). Returns whether
+// anything was written.
+func (e *Engine) flushTrigWords(force bool) bool {
+	acq, lvl := e.acqCtrlWord(), e.trigLevelWord()
+	wrote := false
+	if force || !e.shadowInit || acq != e.acqShadow {
+		e.w(iface.SelAcqCtrl, acq)
+		e.acqShadow = acq
+		wrote = true
+	}
+	if force || !e.shadowInit || lvl != e.trigShadow {
+		e.w(iface.SelTrigLevel, lvl)
+		e.trigShadow = lvl
+		wrote = true
+	}
+	e.shadowInit = true
+	return wrote
+}
+
+// ---- raw access (owner goroutine only) ----
 
 func (e *Engine) w(sel, val uint16) {
 	if err := e.b.Write(bus.PlaneCS1, sel, val); err != nil {
@@ -92,6 +147,92 @@ func (e *Engine) busErr(err error) {
 	}
 }
 
+// ---- identity ----
+
+// checkIdentity reads the four identity words and compares them with the
+// generated interface. The engine refuses to drive any other fabric.
+func (e *Engine) checkIdentity() error {
+	rd := func(sel uint16) (uint16, error) { return e.b.Read(bus.PlaneCS1, sel) }
+	lo, err := rd(iface.SelBuildidLo)
+	if err != nil {
+		return err
+	}
+	hi, err := rd(iface.SelBuildidHi)
+	if err != nil {
+		return err
+	}
+	ver, err := rd(iface.SelVersion)
+	if err != nil {
+		return err
+	}
+	fab, err := rd(iface.SelFabricId)
+	if err != nil {
+		return err
+	}
+	return iface.CheckIdentity(lo, hi, ver, fab)
+}
+
+// ---- diagnostic access through the owner ----
+
+// ErrExecTimeout is returned by Exec when the owner did not reach a service
+// point within the timeout (a long capture, or a stopped engine mid-sleep).
+var ErrExecTimeout = fmt.Errorf("engine: exec timeout (owner busy)")
+
+// ErrExecStopped is returned when the engine has exited.
+var ErrExecStopped = fmt.Errorf("engine: stopped")
+
+type execReq struct {
+	fn   func(bus.Bus) error
+	done chan error
+}
+
+// Exec runs fn on the owner goroutine with the bus — the ONE door through
+// which the diagnostic block (or anything else) reaches the fabric. It runs
+// at the next service point: the frame boundary, the mid-frame pumps of the
+// long envelope/roll loops, the STOP sleep, and the parked states (identity
+// failure), so diagnostics work on a fabric the engine refuses to drive. fn
+// must not block. The result (or ErrExecTimeout) is returned to the caller.
+func (e *Engine) Exec(fn func(bus.Bus) error, timeout time.Duration) error {
+	req := execReq{fn: fn, done: make(chan error, 1)}
+	select {
+	case e.execReq <- req:
+	case <-e.done:
+		return ErrExecStopped
+	case <-time.After(timeout):
+		return ErrExecTimeout
+	}
+	select {
+	case err := <-req.done:
+		return err
+	case <-e.done:
+		return ErrExecStopped
+	case <-time.After(timeout):
+		return ErrExecTimeout
+	}
+}
+
+// serviceExec drains every queued Exec request (owner goroutine only).
+func (e *Engine) serviceExec() {
+	for {
+		select {
+		case req := <-e.execReq:
+			func() {
+				defer func() {
+					if r := recover(); r != nil {
+						req.done <- fmt.Errorf("engine: exec panic: %v", r)
+					}
+				}()
+				req.done <- req.fn(e.b)
+			}()
+			e.beatN.Add(1)
+		default:
+			return
+		}
+	}
+}
+
+// ---- wedge ladder ----
+
 func (e *Engine) resetDeadRuns() {
 	e.deadRuns = 0
 	e.mu.Lock()
@@ -99,15 +240,14 @@ func (e *Engine) resetDeadRuns() {
 	e.mu.Unlock()
 }
 
-// deadEvidence walks the wedge-recovery ladder (spec 03 §11): re-assert
+// deadEvidence walks the wedge-recovery ladder (app spec 03 §11): re-assert
 // bring-up every 10 dead frames; at 50, mark Wedged — which stops the health
 // token so the agent relaunches us on the still-live fd. On the drain path
-// (certain=false) a healthy-but-flat input at a native-fast band is
-// indistinguishable from a wedge by fill+ptp alone (the 11-bit counter can
-// sit saturated between polls), so Wedged additionally requires a dead
-// fabric: CONF_DONE (CS3 0x07 bit7) reading clear. Otherwise we keep
-// re-asserting bring-up and surface DeadRuns instead of crash-looping a
-// healthy app.
+// (certain=false) a healthy-but-flat input is indistinguishable from a wedge
+// by fill+ptp alone, so Wedged additionally requires a dead fabric: CONF_DONE
+// (CS3 0x07 bit7, the MAX V configuration port — a read never disturbs it)
+// reading clear. Otherwise we keep re-asserting bring-up and surface DeadRuns
+// instead of crash-looping a healthy app.
 func (e *Engine) deadEvidence(certain bool) {
 	e.deadRuns++
 	e.mu.Lock()

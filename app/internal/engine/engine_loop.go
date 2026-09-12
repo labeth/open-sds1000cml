@@ -2,7 +2,7 @@ package engine
 
 import (
 	"math"
-	"open-sds/app/internal/bus"
+	"open-sds/app/internal/iface"
 	"runtime"
 	"runtime/debug"
 	"time"
@@ -28,16 +28,20 @@ func (e *Engine) Run() {
 		}
 	}()
 
-	if v, err := e.b.Read(bus.PlaneCS1, selVersion); err != nil || v != bus.VersionMagic {
-		e.logf("engine: version gate failed (v=%#04x err=%v) — refusing to drive", v, err)
+	if err := e.checkIdentity(); err != nil {
+		// Not the default image: refuse to drive, but keep servicing Exec so
+		// the diagnostic block can still read the fabric (bring-up).
+		e.logf("engine: identity gate failed (%v) — refusing to drive; diag Exec stays serviced", err)
 		e.mu.Lock()
 		e.stats.Wedged = true
 		e.mu.Unlock()
 		for !e.stopReq.Load() {
+			e.serviceExec()
 			e.clk.Sleep(100 * time.Millisecond)
 		}
 		return
 	}
+	e.logf("engine: fabric identity verified (build-ID %#08x); panel key matrix not present on this image — physical buttons inactive, /api/panel + SCPI remain", iface.BuildID)
 
 	e.bringUp()
 	e.lastNorm = e.normNow()
@@ -198,7 +202,7 @@ func (e *Engine) oneFrame(norm bool) {
 	} else {
 		e.drain(f, cols)
 	}
-	e.frameTail() // reference-device frame completion: re-trigger strobe before any re-arm
+	haltOK = haltOK && e.lastDrainN == cols // a short record is not a coherent frame
 	// Native-fast RE-CAPTURE. The HW intermittently freezes only the pre-trigger
 	// HALF of the deep record (valid_depth ~cols/2, a flat dead tail after) on ~40%
 	// of frames — proven inherent to the capture, independent of load, the bus
@@ -231,7 +235,6 @@ func (e *Engine) oneFrame(norm bool) {
 		}
 		e.haltSettle(nativeFast)
 		e.drainQuiet(f, cols)
-		e.frameTail()
 		loC1, hiC1, pC1 = ptp(f.C1[:cols])
 		rd = realDepthP(f.C1[:cols], pC1)
 	}
@@ -409,19 +412,25 @@ func (e *Engine) oneFrame(norm bool) {
 		edgeX = -1
 		f.Trigd = false
 		e.flatHeld = 0
-	case nativeFast && !norm && !qualifier && !sawTrig:
-		// AUTO native-fast, comparator did NOT fire within the budget (untriggered): FREE RUN a
-		// live refresh at the record centre (spec 04 §3 routing + §11) instead of holding. This
-		// is the different technique the ≤200 ns bands need — there the record spans ≪ one
-		// period so the edge rarely aligns and a catch-and-HOLD would freeze (the ~0 fps case);
-		// it keeps any quiet native-fast screen live at ~20 fps. Uncentred (EdgeX = -1, the
-		// record centre where a caught edge is HW-positioned): no software anchor on noise.
+	case nativeFast && !norm && !qualifier && (!sawTrig || !sigPresent):
+		// AUTO native-fast, comparator did NOT fire within the budget (untriggered), or it fired
+		// on a flat screen (a mid-scale level sitting inside the noise of a DC input fires the
+		// comparator every record while the edge finder sees nothing: HW-verified with the
+		// calibrated default image, 0 fps for a 3-code-ptp DC trace): FREE RUN a live refresh at
+		// the record centre (spec 04 §3 routing + §11) instead of holding. This is the different
+		// technique the ≤200 ns bands need — there the record spans ≪ one period so the edge
+		// rarely aligns and a catch-and-HOLD would freeze (the ~0 fps case); it keeps any quiet
+		// native-fast screen live at ~20 fps. Uncentred (EdgeX = -1, the record centre where a
+		// caught edge is HW-positioned): no software anchor on noise, and a comparator firing
+		// on noise is not a trigger (Trigd = false).
 		publish = true
 		edgeX = -1
+		f.Trigd = false
 		e.flatHeld = 0
 	case (nativeFast || !norm) && !qualifier && !sigPresent:
 		// NORM native-fast flat (trigger-hold with an honest 60-frame refresh), or AUTO
 		// decimated flat: publish one honest flat capture every nativeFlatFallbck held frames.
+		// (AUTO native-fast flat free-runs in the case above and never reaches here.)
 		e.flatHeld++
 		if e.flatHeld >= nativeFlatFallbck {
 			edgeX = -1 // one honest flat capture; never fabricate an edge

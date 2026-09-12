@@ -1,9 +1,12 @@
-// Command app is the minimal clean-room scope application (v1). It satisfies
-// the app ↔ OTA contract (ota/README.md): launched by the agent as a direct
-// child, it discovers the boot-inherited /dev/Gpmc + /dev/fpga_key fds via
-// /proc/self/fd (never fresh-opens, never closes), runs the single-owner
-// acquisition engine, reports frame-advance health at OTA_HEALTH_PATH, exits
-// cleanly on SIGTERM — and hosts the control webpage on :8080.
+// Command app is the scope application for the acq2 default fabric. It
+// satisfies the app ↔ OTA contract (ota/README.md): launched by the agent as
+// a direct child, it discovers the boot-inherited /dev/Gpmc + /dev/fpga_key
+// fds via /proc/self/fd (never fresh-opens, never closes), DEPLOYS THE FABRIC
+// (workplan §4.1: verify BUILDID/FABRIC_ID, else reload the embedded default
+// image over the CS3 configuration port and verify), runs the single-owner
+// acquisition engine, reports health at OTA_HEALTH_PATH once the fabric is
+// verified, exits cleanly on SIGTERM — and hosts the control webpage on :8080
+// with the diagnostic block under /diag and /api/diag.
 package main
 
 import (
@@ -21,8 +24,11 @@ import (
 	"open-sds/app/internal/buildinfo"
 	"open-sds/app/internal/bus"
 	"open-sds/app/internal/cal"
+	"open-sds/app/internal/diag"
 	"open-sds/app/internal/engine"
+	"open-sds/app/internal/fpgaload"
 	"open-sds/app/internal/frames"
+	"open-sds/app/internal/iface"
 	"open-sds/app/internal/lcd"
 	"open-sds/app/internal/panel"
 	"open-sds/app/internal/scpi"
@@ -333,39 +339,62 @@ func envOr(k, d string) string {
 	return d
 }
 
-// healthLoop implements the app side of the health contract: the FIRST token
-// write is gated on ≥3 genuine coherent frames; afterwards the token is
-// re-touched (unique content) whenever the heartbeat advances, throttled to
-// ~400 ms. A wedged engine stops the touches, so the agent relaunches us on
-// the still-live fd.
-func healthLoop(e *engine.Engine, path string) {
+// heartbeatMode is what the health token currently attests (read by the
+// diagnostic status line): "off" (fabric not verified — never written),
+// "diag" (fabric verified and the engine alive, no coherent frames yet: the
+// bring-up heartbeat, workplan §4.3) or "frames" (frames advance).
+var heartbeatMode atomic.Value
+
+// healthLoop implements the app side of the health contract (workplan §4.3):
+// the token is written every ~500 ms once the fabric is VERIFIED. While the
+// engine publishes coherent frames the token attests frames (keyed on the
+// beat counter so holdoff pacing and recovery bring-up stay healthy); before
+// the first coherent frames — the bring-up state where the converters may be
+// silent — it is an EXPLICIT diag heartbeat: logged as such, tagged in the
+// token, keyed on the engine's beats (the owner goroutine servicing Exec).
+// SCOPE_DIAG_HEARTBEAT=0 disables that bring-up mode (strict product
+// semantics: no frames, no health). A wedged engine stops every write, so the
+// agent relaunches us on the still-live fd.
+func healthLoop(e *engine.Engine, path string, fabricOK bool, diagBeat bool) {
+	heartbeatMode.Store("off")
+	if !fabricOK {
+		logf("health: fabric NOT verified — no health token will be written (agent rollback stays armed)")
+		return
+	}
 	var lastBeats uint64
 	var lastWrite time.Time
-	var started bool
+	mode := "off"
 	for {
 		time.Sleep(100 * time.Millisecond)
 		s := e.Snapshot()
 		if s.Wedged {
 			continue
 		}
-		if !started {
-			if s.Coherent < 3 || s.Frames < 3 {
-				continue
-			}
-			started = true
-			logf("engine healthy: %d coherent frames — starting health reports", s.Coherent)
+		want := "off"
+		switch {
+		case s.Coherent >= 3 && s.Frames >= 3:
+			want = "frames"
+		case diagBeat:
+			want = "diag"
 		}
-		// Key on the BEAT counter, not the frame counter: holdoff pacing (up
-		// to 10 s between frames) and recovery bring-up are healthy states
-		// that advance beats without advancing frames; a frame-keyed token
-		// went stale inside the agent's 3 s window and got a healthy app
-		// killed (live-storm finding).
-		beats := e.Beats()
-		if beats == lastBeats || time.Since(lastWrite) < 400*time.Millisecond {
+		if want == "off" {
 			continue
 		}
-		tok := fmt.Sprintf("frames=%d beats=%d coherent=%d published=%d ts=%d\n",
-			s.Frames, beats, s.Coherent, s.Published, time.Now().UnixNano())
+		if want != mode {
+			mode = want
+			heartbeatMode.Store(mode)
+			if mode == "frames" {
+				logf("health: %d coherent frames — health token attests FRAMES", s.Coherent)
+			} else {
+				logf("health: DIAG HEARTBEAT — fabric verified and engine alive, no coherent frames yet; token tagged mode=diag (set SCOPE_DIAG_HEARTBEAT=0 to disable)")
+			}
+		}
+		beats := e.Beats()
+		if beats == lastBeats || time.Since(lastWrite) < 450*time.Millisecond {
+			continue
+		}
+		tok := fmt.Sprintf("mode=%s frames=%d beats=%d coherent=%d published=%d ts=%d\n",
+			mode, s.Frames, beats, s.Coherent, s.Published, time.Now().UnixNano())
 		tmp := path + ".tmp"
 		if err := os.WriteFile(tmp, []byte(tok), 0o644); err == nil {
 			if os.Rename(tmp, path) == nil {
@@ -380,7 +409,8 @@ func main() {
 
 	gpmcDev := envOr("SCOPE_GPMC", "/dev/Gpmc")
 	healthPath := os.Getenv("OTA_HEALTH_PATH")
-	mmapDrain := os.Getenv("SCOPE_MMAP_DRAIN") != "0"
+	useEDMA := os.Getenv("SCOPE_EDMA") != "0"
+	diagBeat := os.Getenv("SCOPE_DIAG_HEARTBEAT") != "0"
 	listen := envOr("SCOPE_HTTP", ":8080")
 
 	gpmcFD := findInheritedFD(gpmcDev)
@@ -398,22 +428,89 @@ func main() {
 		os.Exit(0)
 	}
 
-	b, err := bus.New(gpmcFD, mmapDrain)
+	b, err := bus.New(gpmcFD)
 	if err != nil {
 		logf("FATAL: bus init: %v — refusing to drive", err)
 		<-sig
 		os.Exit(0)
 	}
-	logf("bus up, mmap drain=%v", b.MmapDrain())
+	// SRAM mode owns a different fabric ABI and must branch before the
+	// default loader/engine can issue any configuration or capture commands.
+	switch envOr("SCOPE_CAPTURE", "default") {
+	case "sram":
+		if err := runSRAMMode(b, gpmcFD, listen, healthPath, sig); err != nil {
+			logf("FATAL: SRAM mode: %v", err)
+		}
+		return
+	case "default":
+	default:
+		logf("FATAL: SCOPE_CAPTURE must be default or sram")
+		return
+	}
+
+	// Fabric deployment (workplan §4.1): verify the identity words; on any
+	// mismatch reload the embedded default image over the CS3 configuration
+	// port and verify again. Runs BEFORE the engine touches the bus. On
+	// failure the app stays up — the engine refuses to drive, no health token
+	// is written, and the diagnostic block remains reachable for bring-up.
+	fabricOK := false
+	var timingPort bus.TimingPort
+	var bootTiming bus.BootTiming
+	readCS1 := func(sel uint16) (uint16, error) { return b.Read(bus.PlaneCS1, sel) }
+	if err := fpgaload.Bringup(gpmcFD, readCS1, logf); err != nil {
+		if cp, cerr := fpgaload.ConfigStatus(gpmcFD); cerr == nil {
+			logf("FATAL: fabric bring-up failed: %v (CS3 config port reads %#04x) — engine will refuse to drive; /diag stays up", err, cp)
+		} else {
+			logf("FATAL: fabric bring-up failed: %v — engine will refuse to drive; /diag stays up", err)
+		}
+	} else {
+		fabricOK = true
+		if useEDMA {
+			// The EDMA drain is only coherent through /dev/dcinv (a fresh mlocked
+			// buffer is cache-hot too: 64-byte zero runs on hardware, 2026-09-05).
+			if err := bus.EnsureDcinv(logf); err != nil {
+				logf("bus: %v — EDMA drain will NOT be cache-coherent; records may carry stale 64-byte lines", err)
+			}
+			b.EnableEDMA(iface.RecDepth, logf)
+		} else {
+			logf("bus: SCOPE_EDMA=0 — ioctl drain")
+		}
+		// GPMC CS1 timing (06-TIERS §0 / rung R1): the swept timing persisted
+		// next to the app is applied only after a TSRC ramp check at that
+		// timing passes; otherwise the factory timing stays. Before the
+		// engine owns the bus. The port stays open for /api/diag/gpmc.
+		if tp, err := bus.OpenTimingPort(); err != nil {
+			logf("gpmc timing: /dev/mem unavailable (%v) — factory timing, no sweep possible", err)
+		} else {
+			timingPort = tp
+			bootTiming = bus.ApplyPersistedTiming(b, tp, bus.TimingPathForBoot(), buildinfo.String(), logf)
+		}
+	}
+	logf("bus up, fabric verified=%v, fast drain=%v", fabricOK, b.FastDrain())
 
 	e := engine.New(engine.Config{Bus: b, Logf: logf})
 	go e.Run()
 
 	if healthPath != "" {
-		go healthLoop(e, healthPath)
+		go healthLoop(e, healthPath, fabricOK, diagBeat)
 	} else {
 		logf("WARNING: OTA_HEALTH_PATH unset — no health reporting")
 	}
+
+	// Diagnostic block: every fabric access goes through the engine owner
+	// (Engine.Exec), so it works whether or not the engine drives.
+	dg := diag.New(e, logf)
+	dg.SetTiming(timingPort, bus.TimingPath(), buildinfo.String(), bootTiming)
+	dg.SetStatusExtra(func() map[string]any {
+		st := e.Snapshot()
+		hb, _ := heartbeatMode.Load().(string)
+		return map[string]any{
+			"fabric_verified": fabricOK, "fast_drain": b.FastDrain(), "heartbeat": hb,
+			"frames": st.Frames, "coherent": st.Coherent, "published": st.Published,
+			"wedged": st.Wedged, "beats": e.Beats(), "bus_errors": st.BusErrors,
+			"short_drains": st.ShortDrains, "band": st.BandKind,
+		}
+	})
 
 	// Per-unit calibration (spec 10): file → backup → compiled defaults.
 	calTab := cal.Load(logf)
@@ -523,6 +620,7 @@ func main() {
 	// (SetWriteDeadline). Don't "harden" this without moving that contract.
 	ws := web.New(scopeSource{e, fo}, feIface, pc, screenPNG)
 	ws.SetInvertSource(scpiH.Inverted) // display-level INVS: SCPI shadow → /api/status
+	ws.SetDiag(dg)                     // /diag + /api/diag/* (workplan §2 diagnostic block)
 	srv := &http.Server{Addr: listen, Handler: ws.Handler()}
 	go func() {
 		logf("web ui listening on %s", listen)

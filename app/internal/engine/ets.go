@@ -3,6 +3,8 @@ package engine
 import (
 	"math"
 	"time"
+
+	"open-sds/app/internal/iface"
 )
 
 // Equivalent-time sampling (spec 04 §3): OPT-IN ONLY, never auto-routed.
@@ -17,7 +19,7 @@ const (
 	etsFrameBudgetMs  = 650
 	etsEdgeMinPtp     = 40
 	etsMaxAccFrames   = 8
-	etsTs             = 2.0 // ns per real sample (class 0x20)
+	etsTs             = baseTickNs // ns per real sample (the fabric base tick, DECIM=1)
 )
 
 // etsPlan picks the phase-bin factor for a tdiv (nearest row; default the
@@ -95,11 +97,7 @@ func (e *Engine) etsFrame(norm bool) {
 			return
 		}
 		haltOK := e.halt()
-		for i := 0; i < etsDrainCols; i++ {
-			w := e.b.DrainRead(uint16(drainBase + i%5))
-			e.etsScratch1[i] = uint8(w >> 8)
-			e.etsScratch2[i] = uint8(w)
-		}
+		e.etsDrain(etsDrainCols)
 		e.armEngine()
 		if !haltOK {
 			continue
@@ -254,4 +252,23 @@ func (e *Engine) etsRebuild(f *Frame, nCols int) {
 	}
 	render(e.etsSum1, f.C1)
 	render(e.etsSum2, f.C2)
+}
+
+// etsDrain pops one sub-acquisition into the ETS scratch buffers, bounded by
+// what the fabric reports available (same rule as drainQuiet).
+func (e *Engine) etsDrain(cols int) {
+	rem := e.r(iface.SelBurstRemain)
+	n := int(rem & iface.BurstRemainRemainMask)
+	if rem&iface.BurstRemainReadyMask == 0 {
+		n = 0
+	}
+	if n > cols {
+		n = cols
+	}
+	if n > 0 {
+		e.b.BurstInto(e.etsScratch1[:n], e.etsScratch2[:n], n)
+	}
+	for i := n; i < cols; i++ {
+		e.etsScratch1[i], e.etsScratch2[i] = 128, 128
+	}
 }

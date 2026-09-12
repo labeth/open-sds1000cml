@@ -119,7 +119,18 @@ func main() {
 	case "untakeover":
 		printJSON(mustCall(c, "untakeover", nil, timeout))
 	case "restore-factory":
-		printJSON(mustCall(c, "restore-factory", nil, timeout))
+		// Optional JSON selects what console the vendor UI is launched on, e.g.
+		//   restore-factory '{"console":"/dev/console","setsid":true}'
+		// The default is unchanged.
+		var rfArgs any
+		if len(rest) > 0 && rest[0] != "" {
+			var m map[string]any
+			if err := json.Unmarshal([]byte(rest[0]), &m); err != nil {
+				fatal(fmt.Errorf("restore-factory: args must be JSON: %w", err))
+			}
+			rfArgs = m
+		}
+		printJSON(mustCall(c, "restore-factory", rfArgs, timeout))
 	case "app":
 		if len(rest) == 0 {
 			fatal(fmt.Errorf("app needs start|stop|restart"))
@@ -269,7 +280,9 @@ func runScpi(host string, args []string, timeout time.Duration) {
 		fatal(err)
 	}
 	defer cl.Close()
-	if strings.HasSuffix(strings.TrimSpace(cmd), "?") {
+	// A query is any command carrying "?" -- "C1:WF? DAT2" and "WFSU?" alike
+	// (the waveform queries put their arguments after the question mark).
+	if strings.Contains(cmd, "?") {
 		resp, err := cl.Query(cmd)
 		if err != nil {
 			fatal(err)
@@ -469,7 +482,8 @@ COMMANDS
   sh <script...>            run a /bin/sh script on the device
   takeover [--dry-run|--force]   inherit-then-kill the factory app
   untakeover                release control (clear taken_over + disarm wd)
-  restore-factory           re-launch the vendor app in place (post-test)
+  restore-factory [json]    re-launch the vendor app in place (post-test); optional
+                            {"console":"/dev/console","setsid":true,"inherit":true,"no_pgid":true}
   scpi <cmd>                raw VXI-11 SCPI to the instrument (e.g. scpi "*IDN?")
   app start|stop|restart    app lifecycle (after takeover)
   activate <A|B>            set active app slot + restart

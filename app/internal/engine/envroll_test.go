@@ -4,6 +4,8 @@ import (
 	"math"
 	"testing"
 	"time"
+
+	"open-sds/app/internal/iface"
 )
 
 func TestEnvelopeProgDivisor(t *testing.T) {
@@ -28,9 +30,12 @@ func TestEnvelopeProgDivisor(t *testing.T) {
 		if w != c.winCols || d != c.divisor {
 			t.Errorf("EnvPlan(%g) = %d/%d, want %d/%d", c.tdiv, w, d, c.winCols, c.divisor)
 		}
-		class, lo, hi := b.Prog()
-		if class != 0x80 || uint32(lo) != c.divisor&0xffff || hi != uint16(c.divisor>>16) {
-			t.Errorf("Prog(%g) = %#x/%#x/%#x", c.tdiv, class, lo, hi)
+		// The fabric DECIM is the 10 ns divisor in 5 ns base ticks.
+		if got := b.Decim(); got != 2*c.divisor {
+			t.Errorf("Decim(%g) = %d, want %d", c.tdiv, got, 2*c.divisor)
+		}
+		if got := b.CaptureIntervalNs(); got != float64(c.divisor)*10 {
+			t.Errorf("CaptureIntervalNs(%g) = %g, want %g", c.tdiv, got, float64(c.divisor)*10)
 		}
 	}
 }
@@ -41,9 +46,8 @@ func TestRollProgDivisor(t *testing.T) {
 		if !ok || b.Kind() != KindRoll {
 			t.Fatalf("PlanTdiv(%g): ok=%v kind=%v", tdiv, ok, b.Kind())
 		}
-		class, lo, hi := b.Prog()
-		if class != 0x80 || lo != 0x9088 || hi != 0 { // rollDivisor 37000
-			t.Errorf("roll Prog(%g) = %#x/%#x/%#x, want 0x80/0x9088/0", tdiv, class, lo, hi)
+		if got := b.Decim(); got != 74000 { // rollDivisor 37000 × 10 ns / 5 ns
+			t.Errorf("roll Decim(%g) = %d, want 74000", tdiv, got)
 		}
 	}
 	if got := RollPaceNs(); got != 370000 {
@@ -105,38 +109,38 @@ func TestRollBand(t *testing.T) {
 	fb.clearWrites()
 	e.transition(false, false)
 
-	// Bring-up: divisor 37000, single reset-head, wrptr pulse, arm ONCE, latch.
-	sawDiv, sawGo, sawLatch := false, 0, 0
+	// Bring-up: RUN carries STREAM, DECIM = 74000, and GO exactly once.
+	sawRun, sawDiv, sawGo := false, false, 0
 	for _, w := range fb.snapWrites() {
-		if w.plane == 1 && w.sel == selDivLo && w.val == 0x9088 {
+		if w.plane == 1 && w.sel == iface.SelRun && w.val == runAuto|iface.RunStreamMask {
+			sawRun = true
+		}
+		if w.plane == 1 && w.sel == iface.SelDecimLo && w.val == 74000&0xffff {
 			sawDiv = true
 		}
-		if w.plane == 1 && w.sel == selArm && w.val == opGo {
+		if w.plane == 1 && w.sel == iface.SelOpcode && w.val == iface.OpGo {
 			sawGo++
 		}
-		if w.plane == 1 && w.sel == selArm && w.val == opLatch {
-			sawLatch++
-		}
 	}
-	if !sawDiv || sawGo != 1 || sawLatch != 1 {
-		t.Fatalf("roll bring-up: div=%v go=%d latch=%d", sawDiv, sawGo, sawLatch)
+	if !sawRun || !sawDiv || sawGo != 1 || fb.decim != 74000 || !fb.stream {
+		t.Fatalf("roll bring-up: run=%v div=%v go=%d decim=%d stream=%v", sawRun, sawDiv, sawGo, fb.decim, fb.stream)
 	}
 
 	e.rollUpdate(false)
-	if fb.rollUnarmed {
-		t.Fatal("roll FIFO read while unarmed (WAIT-line wedge)")
-	}
-	if fb.rollNoLatch {
-		t.Fatal("roll FIFO popped without a preceding 0xCB re-latch")
+	if fb.popNoRemain {
+		t.Fatal("stream popped beyond what BURST_REMAIN reported")
 	}
 	for _, w := range fb.snapWrites() {
-		if w.plane == 1 && w.sel == selArm && w.val == opHalt {
-			t.Fatal("0xC8 written on a roll band (freezes the free-run)")
+		if w.plane == 1 && w.sel == iface.SelOpcode && w.val == iface.OpHalt {
+			t.Fatal("HALT written on a roll band (finalizes the stream ring)")
 		}
 	}
 	f, fresh := e.Consume()
-	if !fresh || !f.IsEnv || f.Valid != rollWin {
-		t.Fatalf("roll frame: fresh=%v isEnv=%v valid=%d", fresh, f.IsEnv, f.Valid)
+	if !fresh || !f.IsEnv || f.Valid != rollWin || f.RollCodes {
+		t.Fatalf("roll frame: fresh=%v isEnv=%v valid=%d rollcodes=%v", fresh, f.IsEnv, f.Valid, f.RollCodes)
+	}
+	if !f.Coherent {
+		t.Fatal("roll frame with live words must be coherent")
 	}
 }
 
@@ -148,15 +152,19 @@ func TestRollToRealTimeTransition(t *testing.T) {
 	e.transition(false, false)
 	e.rollUpdate(false)
 
-	// Leave roll for a decimated band: the FIRST writes must be the double
-	// reset-head that drops the latched free-run state.
+	// Leave roll for a decimated band: the FIRST write must be OPCODE=RESET,
+	// which drops the streaming ring before the record is re-programmed, and
+	// RUN must no longer carry STREAM.
 	b2, _ := PlanTdiv(500e-6)
 	e.band = b2
 	fb.clearWrites()
 	e.transition(false, false)
 	w := fb.snapWrites()
-	if len(w) < 2 || w[0] != (wr{1, selArm, opResetHead}) || w[1] != (wr{1, selArm, opResetHead}) {
-		t.Fatalf("roll→real-time did not start with reset-head ×2: %#v", w[:2])
+	if len(w) < 2 || w[0] != (wr{1, iface.SelOpcode, iface.OpReset}) || w[1] != (wr{1, iface.SelRun, runAuto}) {
+		t.Fatalf("roll→real-time did not start with RESET, RUN(no STREAM): %#v", w[:2])
+	}
+	if fb.stream {
+		t.Fatal("STREAM still set after leaving roll")
 	}
 
 	// The next real-time frame must clear the envelope metadata.

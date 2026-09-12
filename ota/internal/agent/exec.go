@@ -1,6 +1,8 @@
 package agent
 
 import (
+	"fmt"
+	"strings"
 	"bytes"
 	"context"
 	"crypto/sha256"
@@ -42,13 +44,69 @@ func (a *Agent) runShell(script string, timeout time.Duration) ([]byte, error) {
 // launchDetached starts a binary as a detached child that inherits the agent's
 // open fds (the boot /dev/Gpmc + /dev/fpga_key) and reparents to init, so it
 // survives the agent. Used to restore the factory app after a takeover test.
-func (a *Agent) launchDetached(path, dir string) (int, error) {
+// LaunchOpt selects what console the child gets.  hRestoreFactory's contract is to hand the
+// vendor UI "the still-open boot fds", but the default here did the opposite: Stdin nil is
+// /dev/null in Go, and Setpgid puts the child in a fresh process group with no controlling
+// terminal.  The vendor app opens the front-panel input devices on that console and fails with
+// "open keyboard interrupt: Bad address" without it, which is what closed the SRAM read port.
+// Which of the two details matters is an empirical question, so both are selectable and the
+// default is unchanged.
+type LaunchOpt struct {
+	Console string `json:"console"` // open this and give it to the child as stdin/out/err
+	Inherit bool   `json:"inherit"` // hand the child THIS agent's own stdin/out/err
+	Setsid  bool   `json:"setsid"`  // new session and make the console controlling
+	NoPgid  bool   `json:"no_pgid"` // stay in the agent's process group
+	BootEnv bool   `json:"boot_env"`// run with init's environment, not the agent's
+}
+
+// bootEnv returns PID 1's environment -- what /etc/init.d/rcS, and so the vendor app, is
+// given at boot.  exec.Command inherits the AGENT's environment instead, and the two differ
+// sharply on this unit: init has 4 variables (HOME, TERM=linux, rootwait, ip) while the agent
+// carries 21, including TERM=vt102 and the whole OTA_* takeover flag set (OTA_AUTO_TAKEOVER,
+// OTA_SLOT_ROOT, OTA_HEALTH_DIR, ...).  Handing the vendor UI our takeover flags and the wrong
+// TERM is not "the still-open boot fds" that hRestoreFactory promises.
+func bootEnv() ([]string, error) {
+	b, err := os.ReadFile("/proc/1/environ")
+	if err != nil {
+		return nil, fmt.Errorf("boot_env: read /proc/1/environ: %w", err)
+	}
+	var out []string
+	for _, s := range strings.Split(string(b), "\x00") {
+		if s != "" {
+			out = append(out, s)
+		}
+	}
+	return out, nil
+}
+
+func (a *Agent) launchDetached(path, dir string, opt LaunchOpt) (int, error) {
 	cmd := exec.Command(path)
 	cmd.Dir = dir
 	cmd.Stdin = nil
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	if opt.Inherit {
+		cmd.Stdin = os.Stdin
+	}
+	if opt.Console != "" {
+		f, err := os.OpenFile(opt.Console, os.O_RDWR, 0)
+		if err != nil {
+			return 0, fmt.Errorf("restore-factory: console %s: %w", opt.Console, err)
+		}
+		defer f.Close() // the child keeps its own dup; ours must not leak
+		cmd.Stdin, cmd.Stdout, cmd.Stderr = f, f, f
+	}
+	if opt.BootEnv {
+		env, err := bootEnv()
+		if err != nil {
+			return 0, err
+		}
+		cmd.Env = env
+	}
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: !opt.NoPgid}
+	if opt.Setsid {
+		cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true, Setctty: opt.Console != "", Ctty: 0}
+	}
 	if err := cmd.Start(); err != nil {
 		return 0, err
 	}

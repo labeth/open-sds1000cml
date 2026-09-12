@@ -8,8 +8,10 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"syscall"
 	"time"
 
+	"open-sds/ota/internal/gpmc"
 	"open-sds/ota/internal/slots"
 )
 
@@ -417,8 +419,10 @@ func hUntakeover(a *Agent, _ json.RawMessage) (any, error) {
 // vendor app does not cleanly re-drive from a mid-session restart.
 func hRestoreFactory(a *Agent, args json.RawMessage) (any, error) {
 	p, _ := decodeArgs[struct {
-		Path string `json:"path"`
-		Dir  string `json:"dir"`
+		Path       string `json:"path"`
+		Dir        string `json:"dir"`
+		ReleaseFDs bool   `json:"release_fds"`
+		LaunchOpt
 	}](args)
 	if p.Path == "" {
 		p.Path = "/usr/bin/siglent/SDS1000_arm.app"
@@ -432,12 +436,34 @@ func hRestoreFactory(a *Agent, args json.RawMessage) (any, error) {
 	if _, err := os.Stat(p.Path); err != nil {
 		return nil, fmt.Errorf("restore-factory: %s not found: %w", p.Path, err)
 	}
-	pid, err := a.launchDetached(p.Path, p.Dir)
+	// The agent inherited the boot app's /dev/Gpmc and FPGA-key fds and holds them for the
+	// life of the process -- across untakeover too, since untakeover only stops OUR app.  The
+	// vendor binary is not a script (it is ELF; the mount/upgrade chatter comes from inside
+	// it), and it claims the bus device after that setup phase.  While we hold the fd it
+	// cannot, which is consistent with what we see: it runs to the end of its setup and then
+	// exits without a word.  Release them first when asked, so the vendor gets the bus back.
+	if p.ReleaseFDs {
+		for name, fd := range map[string]*int{"gpmc": &a.gpmcFD, "fpga_key": &a.fpgaKeyFD} {
+			if *fd >= 0 {
+				if err := syscall.Close(*fd); err != nil {
+					a.log.Printf("restore-factory: close %s fd %d: %v", name, *fd, err)
+				} else {
+					a.log.Printf("restore-factory: released %s fd %d", name, *fd)
+				}
+				*fd = -1
+			}
+		}
+		a.gpmc = gpmc.NewReader(-1)
+	}
+	pid, err := a.launchDetached(p.Path, p.Dir, p.LaunchOpt)
 	if err != nil {
 		return nil, err
 	}
-	a.event("restore-factory", map[string]any{"path": p.Path, "pid": pid})
-	return map[string]any{"launched": p.Path, "pid": pid, "note": "if the display does not return, reboot"}, nil
+	a.event("restore-factory", map[string]any{"path": p.Path, "pid": pid, "console": p.Console,
+		"inherit": p.Inherit, "setsid": p.Setsid, "boot_env": p.BootEnv, "release_fds": p.ReleaseFDs})
+	return map[string]any{"launched": p.Path, "pid": pid, "console": p.Console,
+		"inherit": p.Inherit, "setsid": p.Setsid, "boot_env": p.BootEnv, "release_fds": p.ReleaseFDs,
+		"note": "if the display does not return, reboot"}, nil
 }
 
 func hProbe(a *Agent, args json.RawMessage) (any, error) {
