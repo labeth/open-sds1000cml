@@ -175,6 +175,11 @@ go through `ADSC`.**
 
 The capture image uses 32 of the 36 data bits. The four parity/DQP bits are not driven.
 
+**The port runs at the part's limit.** `tCYC ≥ 4.0 ns` is exactly 250 MHz, which is the SRAM port
+clock of §2. There is **no frequency margin**: an image that fails 250 MHz timing closure will not
+meet `tCYC`, and the 1.2 ns setup / 0.3 ns hold on every synchronous input must be met by
+constraint, not by inspection.
+
 ---
 
 ## 6. Record geometry
@@ -189,6 +194,10 @@ The capture image uses 32 of the 36 data bits. The four parity/DQP bits are not 
 | Full-depth span, per channel | 2.097152 ms |
 | On-chip memory for host readout | 512 × 32 bits |
 | FIFO + readout buffer | 18,944 logical memory bits |
+
+The readout buffer is **512 words**, which is exactly one readout pass including its warm-up
+prefix (§10.2). The three datapath stages are rate-matched at **8.0 Gbit/s**: 80 bits × 100 MHz
+= 64 bits × 125 MHz = 32 bits × 250 MHz.
 
 Each 32-bit SRAM word holds **two consecutive sample pairs**, in byte order:
 
@@ -226,18 +235,23 @@ All accesses are on the CS1 plane. Selector `s` sits at byte offset `2s`.
 
 | sel | width | name | meaning |
 |---|---|---|---|
+| 0 | 16 | `FABRIC_ID` | image identity. This image answers **`0x5a52`**. A host **must** read this first and refuse to drive anything else. |
 | 1 | 16 | `STATUS` | see §8.3 |
 | 2 | 32 | `LENGTH` | record length, words |
 | 4 | 32 | `START` | record start address, words |
 | 6 | 32 | `TRIGGER_INDEX` | **word** index of the triggering word (not interpolated) |
-| 8 | 32 | `POSITION` | current readout address, words |
+| 8 | 32 | `POSITION` | current SRAM read position, words |
 | 10 | 32 | `ORIGIN` | record origin, words |
-| 13 | 16 | `REVISION` | image revision |
+| 12 | 16 | `FILL` | words actually present in the readout buffer after a fetch |
+| 13 | 16 | `REVISION` | image revision; gates behaviour, see §12 |
 | 14 | 16 | `MAP_ID` | lane map identity; qualified value `0xe192` |
-| 15 | 16 | `RATE` | per-channel MS/s; `500` in interleave mode (revision ≥ 6) |
+| 15 | 16 | `RATE` | per-channel MS/s. `500` in interleave mode. Present from revision 6; a host that reads any other value **must** refuse the image. |
+| 17 | 32 | `DATA` | the readout buffer window selected by `BUFFER_INDEX` (§8.2) |
 | 19 | 16 | `FLAGS` | `b0` sticky FIFO data fault, `b1` ADC PLL lock |
+| 20–24 | 5 × 16 | `SNAPSHOT[0..4]` | the ten-byte atomic core snapshot latched by `SNAPSHOT` (§9.2); selector `20+i` carries bytes `2i` (low half) and `2i+1` (high half) |
 
-32-bit reads occupy the named selector and the next one.
+A 32-bit read occupies the named selector and the next one; the named selector carries the **low**
+half.
 
 ### 8.2 Writes
 
@@ -247,10 +261,9 @@ All accesses are on the CS1 plane. Selector `s` sits at byte offset `2s`.
 | 2 | 32 | `PRE_WORDS` | pre-trigger words, **excluding** the triggering word |
 | 4 | 32 | `POST_WORDS` | post-trigger words, **including** the triggering word |
 | 6 | 16 | `CONFIG` | see §8.5 |
-| 7 | 16 | `TRIGGER_LEVEL` | 8-bit level |
-| 8 | 32 | `READ_ADDRESS` | readout address, words |
-| 15 | 16 | `ENCODE_MASK` | ten-bit encode-enable diagnostic mask, **idle only**; bit `2p` is pair `p`'s positive leg, bit `2p+1` the negative leg |
-| 16 | 16 | `CHUNK` | readout chunk index |
+| 7 | 16 | `TRIGGER_LEVEL` | 8-bit level, compared against the raw sample code |
+| 8 | 32 | `SKIP` / `FETCH_LEN` | **dual purpose, by the command that follows it.** Before `ADVANCE` it is a **relative** word count to advance the read position. Before `FETCH` or `FETCH_CONTINUE` it is the **number of words to fetch** into the readout buffer. |
+| 16 | 16 | `BUFFER_INDEX` | word index **within the readout buffer**, `0 .. FILL-1`; selects what `DATA` (§8.1) returns |
 
 ### 8.3 `STATUS` (read 1)
 
@@ -273,14 +286,26 @@ Metadata counters are stable only while `READY` **and** `FROZEN` are set.
 | op | name | effect |
 |---|---|---|
 | 1 | `ARM` | begin acquisition with the currently written configuration |
-| 3 | `ADVANCE` | advance the readout window by one chunk |
+| 2 | `FETCH` | fill the readout buffer with `FETCH_LEN` words starting at the current read position |
+| 3 | `ADVANCE` | advance the read position by `SKIP` words (modulo the record, §10.1) |
 | 4 | `FORCE` | force a trigger |
 | 5 | `HALT` | stop the current acquisition |
 | 6 | `SNAPSHOT` | latch a ten-byte atomic core snapshot |
+| 7 | `FETCH_CONTINUE` | as `FETCH`, but continues the previous burst without re-addressing; legal **only** under the conditions in §10.2 |
 
-A command completes when `STATUS` bit 9 **toggles** relative to its value before the write. If
-bits 7–8 are set at that point the command was rejected. The host must not re-arm while `RUNNING`
-is set or `READY` is clear.
+**Completion protocol.** A command is not acknowledged by a level. The host **must**:
+
+1. read `STATUS` and keep bit 9;
+2. write the opcode;
+3. poll `STATUS` until bit 9 **differs** from the value kept in step 1;
+4. on that transition, check bits 7–8 — if either is set the command was **rejected**.
+
+Bit 9 toggles on every completion, so a host that tests for a fixed value will hang. A command
+that does not complete within **1 s** must be treated as failed.
+
+Separately, operations that leave the engine busy clear `READY`. After `ADVANCE`, `FETCH` and
+`FETCH_CONTINUE` the host **must** wait for `READY` (bit 2) to be set again before issuing the
+next step; allow **3 s**. A poll interval of 100 µs is sufficient.
 
 ### 8.5 `CONFIG` (write 6)
 
@@ -296,32 +321,110 @@ is set or `READY` is clear.
 
 ## 9. Capture lifecycle
 
+### 9.1 Acquire
+
 ```
-write PRE_WORDS, POST_WORDS, CONFIG, TRIGGER_LEVEL
-COMMAND = ARM (1)                     → RUNNING set
-   ... trigger, or COMMAND = FORCE (4)
-                                      → TRIGGERED, then FROZEN
-read LENGTH / START / TRIGGER_INDEX / ORIGIN   (stable while READY and FROZEN)
-readout (§10)
-COMMAND = HALT (5) before re-arming
+precondition: READY set and RUNNING clear
+              (otherwise ARM is refused — halt the current acquisition first)
+
+write PRE_WORDS (2), POST_WORDS (4), CONFIG (6), TRIGGER_LEVEL (7)
+COMMAND = ARM (1)
+        → RUNNING set
+
+   wait for the trigger, or COMMAND = FORCE (4)
+
+poll STATUS until READY *and* FROZEN are BOTH set   (mask 0x0014)
+        → the record is frozen and its metadata is stable
+
+read LENGTH (2) / START (4) / TRIGGER_INDEX (6) / ORIGIN (10)
+readout (§10) — may be repeated any number of times
+
+COMMAND = HALT (5), then wait for READY, before re-arming
 ```
 
-A frozen record may be read out **repeatedly** without re-acquiring.
+`TRIGGERED` (bit 5) reports that a trigger was seen; it is **not** the readiness condition.
+A host must gate on `READY ∧ FROZEN`, because metadata is stable only when both are set.
 
----
+A frozen record survives repeated readout. A failed or partial host-side write of the data leaves
+the record intact for another attempt.
+
+### 9.2 Snapshot
+
+`SNAPSHOT` (command 6) latches ten converter bytes atomically, for diagnostics and calibration:
+
+1. issue `SNAPSHOT` (6);
+2. poll `STATUS` until bit 11 (snapshot pending) **clears**;
+3. read selectors 20–24; selector `20+i` yields byte `2i` in its low half and byte `2i+1` in its
+   high half.
+
+Snapshot is an idle-time facility. It does not disturb a frozen record.
 
 ## 10. Readout
 
-Readout proceeds in chunks. For each chunk the host writes `READ_ADDRESS`, then reads a
-**discarded 16-word prefix** followed by the **496-word payload**. The prefix wraps physically; it
-changes neither the record nor the usable capacity.
+Readout is **windowed**: a host asks for `count` words starting at word `offset` within the frozen
+record. It does not have to read the whole record, and it may read any window repeatedly.
 
-The prefix is mandatory: a burst-start read defect corrupts the first words of a chunk without it.
+### 10.1 Preconditions and addressing
 
-Backends must reject records whose metadata is inconsistent, and must treat `FLAGS` bit 0 (sticky
-FIFO data fault) as invalidating the record.
+A host **must** refuse to read out unless all hold:
 
----
+* `FABRIC_ID` (read 0) is `0x5a52`;
+* `READY` and `FROZEN` are set and `RUNNING` is clear;
+* `FLAGS` bit 0 (sticky FIFO data fault) is **clear** — if set the record has missing samples and
+  must be discarded, not repaired;
+* `offset + count ≤ LENGTH`, and `LENGTH ≤ 524,288`.
+
+All SRAM address arithmetic is **modulo 524,288** (mask `0x7FFFF`). The physical address of
+record word `k` is:
+
+```
+addr(k) = (ORIGIN + START + k) mod 524288
+```
+
+### 10.2 The transfer loop
+
+The fabric has a **512-word readout buffer**. Each pass fills it, then the host indexes words out
+of it one at a time.
+
+From revision 7 each fetch is preceded by a **discarded warm-up prefix** of **16 words**: a
+burst-start defect corrupts the leading words of a fresh burst, and the prefix absorbs it. Earlier
+revisions use a prefix of **0**. Let `prefix` be that value; the usable payload per pass is
+therefore `512 − prefix` words (**496** from revision 7). Prefix reads wrap physically and add
+nothing to the returned window.
+
+For each pass, with `copied` words already returned:
+
+1. `n = min(count − copied, 512 − prefix)`
+2. `target = (ORIGIN + START + offset + copied − prefix) mod 524288`
+3. read `POSITION` (read 8) and `STATUS` (read 1)
+4. **choose the opcode.** If `prefix == 0` **and** `PREFETCHED` (status bit 10) is set **and**
+   `target == (POSITION − 1) mod 524288`, the previous burst can be continued: use
+   `FETCH_CONTINUE` (7) and skip step 5. Otherwise use `FETCH` (2).
+5. `skip = (target − POSITION) mod 524288`. If `skip ≠ 0`: write `skip` to selector 8, issue
+   `ADVANCE` (3), wait for `READY`.
+6. write `n + prefix` to selector 8, issue the opcode from step 4, wait for `READY`.
+7. read `FILL` (read 12). It **must** equal `n + prefix`; a smaller value is a short read and the
+   transfer has failed — do not pad it.
+8. for `i` in `0 .. n−1`: write `i + prefix` to `BUFFER_INDEX` (write 16), then read `DATA`
+   (read32 17). **Indices below `prefix` are never emitted.**
+9. emit those `n` words **little-endian**; `copied += n`
+
+### 10.3 Chunk arithmetic
+
+A full-depth read is **not** a whole number of passes. At revision 7:
+
+```
+524288 = 1057 × 496 + 16
+```
+
+so the final pass carries **16 payload words**, not 496. An implementation must take `n` from
+step 1 and must not assume a constant payload.
+
+### 10.4 Sample order
+
+Each returned 32-bit word contains two sample pairs in the byte order of §6. For returned byte
+array `b`, `b[2i]` is CH1 and `b[2i+1]` is CH2, both in chronological order across the whole
+window.
 
 ## 11. Constraints
 
@@ -333,3 +436,18 @@ FIFO data fault) as invalidating the record.
 * **Timing.** A build that fails 250 MHz timing must not be loaded.
 * **Pair selection** must be zero in interleave mode.
 * **Stacking** is not implemented in this image.
+
+---
+
+## 12. Revision gating
+
+`REVISION` (read 13) gates behaviour a host must branch on:
+
+| revision | behaviour |
+|---|---|
+| < 6 | no `RATE` register; sample rate is the 100 MHz non-interleaved rate; pair select is meaningful |
+| ≥ 6 | interleaved: `RATE` (read 15) reads `500`, `FLAGS` (read 19) is present, and `CONFIG` pair select **must be 0** |
+| ≥ 7 | readout requires the 16-word warm-up prefix (§10.2) |
+
+A host that does not recognise `REVISION` must refuse the image rather than assume the newest
+behaviour.
