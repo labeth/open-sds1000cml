@@ -15,6 +15,10 @@ module acq_sram_top(
 `endif
  localparam BUF_WORDS=(1<<BUF_AW);
  wire core,sample_clk,locked;
+`ifdef STREAM_CAPTURE
+ reg [1:0] stream_cfg=0,stream_mode=0;
+ wire streaming_fault;
+`endif
 `ifdef INTERLEAVE
  wire halfclk;bench_pll pll(mclk_in,core,sample_clk,locked,halfclk);
 `else
@@ -33,7 +37,11 @@ module acq_sram_top(
  wire [31:0] selected_word=decim_log==0 ? il_raw_word : precision_word;
  wire selected_valid=decim_log==0 ? il_raw_valid : precision_valid;
  wire [31:0] selected_trigger=decim_log==0 ? il_raw_word : {precision_word[31:24],precision_word[15:8],precision_word[31:24],precision_word[15:8]};
- wire stream_fault=il_fault || precision_fault;
+ wire stream_fault=il_fault || precision_fault
+`ifdef STREAM_CAPTURE
+ || streaming_fault
+`endif
+ ;
 `else
  wire [31:0] selected_word=il_raw_word,selected_trigger=il_raw_word;
  wire selected_valid=il_raw_valid,stream_fault=il_fault;
@@ -114,11 +122,18 @@ module acq_sram_top(
 `ifdef PRECISION
   18:decim_log<=wd[4:0];
 `endif
+`ifdef STREAM_CAPTURE
+  19:stream_cfg<=wd[1:0];
+`endif
   16:buffer_index<=wd[BUF_AW-1:0];
  endcase
  reg arm_geometry_ok=0,read_geometry_ok=0,buffer_count_ok=0;
 `ifdef PRECISION
- wire decim_legal=decim_log==0 || (decim_log>=4 && decim_log<=20);
+ wire decim_legal=(decim_log==0 || (decim_log>=4 && decim_log<=20))
+`ifdef STREAM_CAPTURE
+ && (!stream_mode[0] || decim_log>=8) && (!stream_mode[1] || stream_mode[0])
+`endif
+ ;
 `else
  wire decim_legal=1;
 `endif
@@ -195,8 +210,13 @@ module acq_sram_top(
   .command(command),.command_read(command_read),.command_discard(command_discard),.command_continue(command_continue),.command_count(command_count),
   .ready(ready),.write_data(write_data),.write_valid(write_valid),.write_stop(write_stop),.write_ready(write_ready),
   .read_data(read_data),.read_valid(read_valid),.done(transport_done),.position(position),.dq(dq),.k1(k1),.k2(k2),.g1(g1));
+`ifdef STREAM_CAPTURE
+ wire record_fire=stream_mode[1] ? force_trigger : fire;
+`else
+ wire record_fire=fire;
+`endif
  sram_record #(.CONFIG_VALIDATED(1)) record(.clk(core),.reset(1'b0),.arm(arm),.halt(halt),.pre_count(pre_cfg),.post_count(post_cfg),
-  .step(step),.trigger(fire),.running(running),.done(record_done),.triggered(triggered),.config_error(config_error),
+  .step(step),.trigger(record_fire),.running(running),.done(record_done),.triggered(triggered),.config_error(config_error),
   .write_addr(write_addr),.record_start(record_start),.record_length(record_length),.trigger_index(trigger_index),.filled(filled));
  reg [BUF_AW:0] received=0;
 `ifdef INTERLEAVE
@@ -219,7 +239,41 @@ module acq_sram_top(
    else begin packet_data<={read_data,read_first};packet_addr<=received[BUF_AW-1:1];packet_toggle<=!packet_toggle;end
   end else if(read_half)begin packet_data<={32'b0,read_first};packet_addr<=(received-1'b1)>>1;packet_toggle<=!packet_toggle;read_half<=0;end
  end
+`ifdef STREAM_CAPTURE
+ wire stream_write;wire [BUF_AW-2:0] stream_address;wire [63:0] stream_data;
+ wire packetizer_fault,stream_finished,bank_overrun,host_bank_overrun;
+ wire stream_packet_valid,stream_packet_single,stream_packet_seal;wire [63:0] stream_packet_data;
+ wire [1:0] stream_available,stream_token,stream_single;
+ wire [BUF_AW-2:0] stream_count0,stream_count1;
+ wire [63:0] stream_first0,stream_first1;
+ reg stream_was_running=0;
+ always @(posedge core)stream_was_running<=running;
+ wire stream_reset=!stream_mode[0] || priming || arm;
+ stream_packetizer stream_pack(.reset(stream_reset),.word_clk(core),.packet_clk(halfclk),
+  .word_valid(stream_mode[0] && write_valid && !dummy_write && !halt),.word_data(write_data),
+  .stop(stream_was_running && !running),.fault(packetizer_fault),.finished(stream_finished),
+  .packet_valid(stream_packet_valid),.packet_data(stream_packet_data),.packet_single(stream_packet_single),.packet_seal(stream_packet_seal));
+ stream_banks #(.BANK_AW(BUF_AW-2)) stream_queue(.reset(stream_reset),.producer_clk(halfclk),.host_clk(clk),
+  .packet_valid(stream_packet_valid),.packet_data(stream_packet_data),.packet_single(stream_packet_single),.seal(stream_packet_seal),
+  .packet_ready(),.mem_write(stream_write),.mem_address(stream_address),.mem_data(stream_data),
+  .overrun(bank_overrun),.host_overrun(host_bank_overrun),.host_release(wc && ws==20),.release_bank(wd[0]),.release_token(wd[1]),
+  .host_ready(stream_available),.host_token(stream_token),.first_word0(stream_first0),.first_word1(stream_first1),
+  .packets0(stream_count0),.packets1(stream_count1),.last_single(stream_single));
+ (* async_reg = "true" *) reg [2:0] bank_fault_s=0,packet_fault_cpu=0,stream_finished_cpu=0,stream_enabled_cpu=0;
+ always @(posedge core)if(stream_reset)bank_fault_s<=0;else bank_fault_s<={bank_fault_s[1:0],bank_overrun};
+ always @(posedge clk)begin
+  packet_fault_cpu<={packet_fault_cpu[1:0],packetizer_fault};
+  stream_finished_cpu<={stream_finished_cpu[1:0],stream_finished};stream_enabled_cpu<={stream_enabled_cpu[1:0],stream_mode[0]};
+ end
+ assign streaming_fault=stream_mode[0] && (packetizer_fault || bank_fault_s[2]);
+ always @(posedge halfclk)begin
+  packet_seen<=packet_toggle;
+  if(stream_mode[0])begin if(stream_write)buffer_mem64[stream_address]<=stream_data;end
+  else if(packet_toggle!=packet_seen)buffer_mem64[packet_addr]<=packet_data;
+ end
+`else
  always @(posedge halfclk)if(packet_toggle!=packet_seen)begin buffer_mem64[packet_addr]<=packet_data;packet_seen<=packet_toggle;end
+`endif
 `else
  reg [31:0] buffer_mem[0:511];reg [31:0] buffer_word=0;
  always @(posedge clk) buffer_word<=buffer_mem[buffer_index];
@@ -241,9 +295,17 @@ module acq_sram_top(
   command_discard<=dispatch_discard;command_continue<=dispatch_continue;
   dispatch_discard<=opcode==3;dispatch_continue<=opcode==7;
   dispatch<=0;
-  if(pending && !command && !arm && !dispatch)begin dispatch<=1;dispatch_opcode<=opcode;dispatch_arm_ok<=ready && !running && arm_geometry_ok;dispatch_read_ok<=ready && record_done && read_geometry_ok && (opcode==3 || buffer_count_ok) && (opcode!=7 || prefetch_valid);end
+  if(pending && !command && !arm && !dispatch)begin dispatch<=1;dispatch_opcode<=opcode;dispatch_arm_ok<=ready && !running && arm_geometry_ok;dispatch_read_ok<=ready && record_done
+`ifdef STREAM_CAPTURE
+ && !stream_mode[0]
+`endif
+ && read_geometry_ok && (opcode==3 || buffer_count_ok) && (opcode!=7 || prefetch_valid);end
   config_idle<=!running && !priming;
-  if(config_idle)begin cfg<=config_word;level_l<=level;end
+  if(config_idle)begin cfg<=config_word;level_l<=level;
+`ifdef STREAM_CAPTURE
+   stream_mode<=stream_cfg;
+`endif
+  end
 `ifdef INTERLEAVE
   if(!priming)prime_left<=15;
 `else
@@ -347,7 +409,11 @@ module acq_sram_top(
    `ifdef BURST_RECALL
 `ifdef PRECISION
 `ifdef HOST_READ_FIX
+`ifdef STREAM_CAPTURE
+   13:rd=16'h000b;
+`else
    13:rd=16'h000a;
+`endif
 `else
    13:rd=16'h0009;
 `endif
@@ -359,6 +425,12 @@ module acq_sram_top(
    25:rd=buffer_read64[16*burst_half+:16];
    26:rd=BUF_WORDS;
    27:rd=burst_index;
+`ifdef STREAM_CAPTURE
+   32:rd={7'b0,stream_enabled_cpu[2],stream_finished_cpu[2],(host_bank_overrun || packet_fault_cpu[2]),stream_single,stream_token,stream_available};
+   33:rd=stream_count0;34:rd=stream_count1;
+   35:rd=stream_first0[15:0];36:rd=stream_first0[31:16];37:rd=stream_first0[47:32];38:rd=stream_first0[63:48];
+   39:rd=stream_first1[15:0];40:rd=stream_first1[31:16];41:rd=stream_first1[47:32];42:rd=stream_first1[63:48];
+`endif
 `else
    13:rd=16'h0007;
 `endif

@@ -1,0 +1,56 @@
+[
+  {
+    "mode": "legacy",
+    "command": [
+      "iverilog",
+      "-g2012",
+      "-DINTERLEAVE",
+      "-DBURST_RECALL",
+      "-DHOST_READ_FIX",
+      "-s",
+      "tb",
+      "-I",
+      "fpga/default",
+      "-o",
+      "/tmp/tb_stream_integration",
+      "fpga/acq_sram/top.v",
+      "fpga/common/gpmc_slave.v",
+      "fpga/acq_sram/record.v",
+      "fpga/acq_sram/transport.v",
+      "fpga/acq_sram/sim/ddr_model.v",
+      "fpga/acq_sram/sim/tb_gpmc_burst.v"
+    ],
+    "compile_output": "",
+    "stdout": "PASS full GPMC read path: 8192 halfwords, skewed CS/OE release, pointer wrap\nfpga/acq_sram/sim/tb_gpmc_burst.v:41: $finish called at 3654246000 (1ps)\n",
+    "stderr": ""
+  },
+  {
+    "mode": "stream",
+    "command": [
+      "iverilog",
+      "-g2012",
+      "-DINTERLEAVE",
+      "-DBURST_RECALL",
+      "-DHOST_READ_FIX",
+      "-s",
+      "tb",
+      "-I",
+      "fpga/default",
+      "-o",
+      "/tmp/tb_stream_integration",
+      "-DPRECISION",
+      "-DSTREAM_CAPTURE",
+      "fpga/acq_sram/top.v",
+      "fpga/common/gpmc_slave.v",
+      "fpga/acq_sram/record.v",
+      "fpga/acq_sram/transport.v",
+      "fpga/acq_sram/sim/ddr_model.v",
+      "fpga/acq_sram/stream_packetizer.v",
+      "fpga/acq_sram/stream_banks.v",
+      "fpga/acq_sram/sim/tb_stream_top.v"
+    ],
+    "compile_output": "fpga/acq_sram/sim/tb_stream_top.v:47: vvp.tgt sorry: procedural continuous assignments are not yet fully supported. The RHS of this assignment will only be evaluated once, at the time the assignment statement is executed.\n",
+    "stdout": "PASS integrated stream tap:        8193 exact words, continuous SRAM history, stop, ownership exclusion, legacy capture\nfpga/acq_sram/sim/tb_stream_top.v:69: $finish called at 4328650000 (1ps)\n",
+    "stderr": ""
+  }
+]

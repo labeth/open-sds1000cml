@@ -327,6 +327,22 @@
     "bytes": 1056,
     "sha256": "5dd9742ccafe59847a9f3b55ba3a70f4cfe565a59549232c2c9b5ba967945391"
   },
+  "stream-path/README.md": {
+    "bytes": 1920,
+    "sha256": "c2694436b3173832478527fb16555e1b7c97e783d7154a7aed2cff418da35e5b"
+  },
+  "stream-path/integration.json": {
+    "bytes": 1777,
+    "sha256": "c0d558c8835d59aa82b82f819d9063311e5f5dc6d6b0532275b4854d111df8cd"
+  },
+  "stream-path/packetizer.json": {
+    "bytes": 1123,
+    "sha256": "49f25eeee889a50b387b004d48165585dec90fa4c89b5b3e6720f62c9fa25f8e"
+  },
+  "stream-path/unchanged-app-status.json": {
+    "bytes": 1922,
+    "sha256": "181b42446aa69e21f2c0541dc1d1f15bb53a1ec1fc983067415866c763c61a0c"
+  },
   "triangle-0.bin": {
     "bytes": 2097152,
     "sha256": "2f93353cbcfb0c5b53e96982bf4bdbbc11e4743eb14b82500fc8dd5e24fab317"

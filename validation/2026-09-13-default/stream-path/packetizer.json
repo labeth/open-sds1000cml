@@ -1,0 +1,40 @@
+[
+  {
+    "bank_aw": 3,
+    "command": [
+      "iverilog",
+      "-g2012",
+      "-Wall",
+      "-s",
+      "tb",
+      "-Ptb.BANK_AW=3",
+      "-o",
+      "/tmp/tb_stream_path",
+      "fpga/acq_sram/stream_packetizer.v",
+      "fpga/acq_sram/stream_banks.v",
+      "fpga/acq_sram/sim/tb_stream_path.v"
+    ],
+    "compile_output": "",
+    "stdout": "PASS packetizer + banks: bank=           8, odd/even/empty stop, live word+stop, sequence and overload reset\nfpga/acq_sram/sim/tb_stream_path.v:65: $finish called at 38975000 (1ps)\n",
+    "stderr": ""
+  },
+  {
+    "bank_aw": 10,
+    "command": [
+      "iverilog",
+      "-g2012",
+      "-Wall",
+      "-s",
+      "tb",
+      "-Ptb.BANK_AW=10",
+      "-o",
+      "/tmp/tb_stream_path",
+      "fpga/acq_sram/stream_packetizer.v",
+      "fpga/acq_sram/stream_banks.v",
+      "fpga/acq_sram/sim/tb_stream_path.v"
+    ],
+    "compile_output": "",
+    "stdout": "PASS packetizer + banks: bank=          1024, odd/even/empty stop, live word+stop, sequence and overload reset\nfpga/acq_sram/sim/tb_stream_path.v:65: $finish called at 4202187500 (1ps)\n",
+    "stderr": ""
+  }
+]

@@ -6,7 +6,7 @@ probe="--probe" in sys.argv
 hostfix="--hostfix" in sys.argv
 stream="--stream" in sys.argv
 if stream:
- raise SystemExit('--stream is an unqualified draft: FIFO is not connected to the top-level ABI yet; use --interleave --precision')
+ raise SystemExit('--stream top-level HDL is experimental: physical CDC constraints, timing closure and device qualification remain; use --interleave --precision --hostfix for the qualified path')
 precision="--precision" in sys.argv or stream
 burst="--burst" in sys.argv or precision
 assert not burst or interleave
