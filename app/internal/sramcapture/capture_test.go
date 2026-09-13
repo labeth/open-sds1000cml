@@ -14,7 +14,8 @@ type fakeBus struct {
 	id, mapID, revision, flags            uint16
 	length, start, origin, position, base uint32
 	staged                                map[uint16]uint16
-	buffer                                [4096]uint32
+	buffer                                [8192]uint32
+	bufferCapacity                        uint16
 	index                                 uint16
 	burstIndex                            uint16
 	received                              uint32
@@ -72,9 +73,16 @@ func (f *fakeBus) Read(plane uint8, s uint16) (uint16, error) {
 		return 8, nil
 	case 25:
 		v := uint16(f.buffer[f.burstIndex/2] >> (16 * (f.burstIndex % 2)))
-		f.burstIndex = (f.burstIndex + 1) % 8192
+		capacity := f.bufferCapacity
+		if capacity == 0 {
+			capacity = 4096
+		}
+		f.burstIndex = (f.burstIndex + 1) % (capacity * 2)
 		return v, nil
 	case 26:
+		if f.bufferCapacity != 0 {
+			return f.bufferCapacity, nil
+		}
 		return 4096, nil
 	case 27:
 		return f.burstIndex, nil
@@ -469,4 +477,23 @@ func TestForwardRecallReadFailureDeliversNothing(t *testing.T) {
 		t.Fatalf("retry: %d %v", n, e)
 	}
 	checkWords(t, dst.Bytes(), f.base, Words)
+}
+
+func TestLargeStreamFabricRecallKeepsQualifiedChunkLimit(t *testing.T) {
+	f := frozenBus()
+	f.revision = 11
+	f.bufferCapacity = 8192
+	f.staged[15] = 500
+	f.staged[19] = 2
+	f.corruptBurstHead = true
+	c := client(t, f)
+	var dst bytes.Buffer
+	n, e := c.Recall(context.Background(), 0, Words, &dst)
+	if e != nil || n != int64(Bytes) {
+		t.Fatalf("%d %v", n, e)
+	}
+	checkWords(t, dst.Bytes(), f.base, Words)
+	if f.received > 4096 {
+		t.Fatalf("oversized transfer %d", f.received)
+	}
 }

@@ -1,0 +1,8 @@
+quartus_map
+quartus_fit
+quartus_sta
+quartus_asm
+quartus_cpf
+Core timing: True worst slack: 0.005 pins verified: 160
+ADC IO input registers: 80/80; on-chip sample memory: 266752 bits
+/home/labeth/ws/open-sds1000cml-acq2/fpga/acq_sram/out/250mhz-p1000-interleave-stream-hostfix-buf8192-seed14/bench.rbf

@@ -12,14 +12,17 @@ burst="--burst" in sys.argv or precision
 assert not burst or interleave
 assert not hostfix or precision
 assert not stream or (interleave and hostfix), "experimental streaming requires --interleave --hostfix"
+stream_words=int(next((a.split("=",1)[1] for a in sys.argv if a.startswith("--stream-buffer-words=")),"4096"))
+assert stream_words in (4096,8192)
+assert stream or stream_words==4096
 seed=int(next((a.split("=",1)[1] for a in sys.argv if a.startswith("--seed=")),"1"))
 assert 1<=seed<=100
 mhz=250 if interleave and not probe else 100;phase=int(sys.argv[1]) if len(sys.argv)>1 and sys.argv[1].isdigit() else (1000 if interleave and not probe else 4000)
 assert phase in (0,1000,2000,3000,4000)
 assert 1<=mhz<=300
-out=root/'out'/(f'{mhz}mhz-p{phase}'+('-interleave' if interleave else '')+('-stream' if stream else '-precision' if precision else '-burst' if burst else '')+('-hostfix' if hostfix else '')+(f'-seed{seed}' if seed!=1 else ''));out.mkdir(parents=True,exist_ok=True)
+out=root/'out'/(f'{mhz}mhz-p{phase}'+('-interleave' if interleave else '')+('-stream' if stream else '-precision' if precision else '-burst' if burst else '')+('-hostfix' if hostfix else '')+(f'-buf{stream_words}' if stream_words!=4096 else '')+(f'-seed{seed}' if seed!=1 else ''));out.mkdir(parents=True,exist_ok=True)
 lock=open('/tmp/open-sds-quartus.lock','w');fcntl.flock(lock,fcntl.LOCK_EX)
-(out/'bench.v').write_text(('`define INTERLEAVE\n' if interleave else '')+('`define BURST_RECALL\n' if burst else '')+('`define PRECISION\n' if precision else '')+('`define STREAM_CAPTURE\n' if stream else '')+('`define HOST_READ_FIX\n' if hostfix else '')+f'`define BENCH_MHZ {mhz}\n'+(root/'top.v').read_text())
+(out/'bench.v').write_text(('`define INTERLEAVE\n' if interleave else '')+('`define BURST_RECALL\n' if burst else '')+('`define PRECISION\n' if precision else '')+('`define STREAM_CAPTURE\n' if stream else '')+(f'`define STREAM_BUFFER_AW {stream_words.bit_length()-1}\n' if stream and stream_words!=4096 else '')+('`define HOST_READ_FIX\n' if hostfix else '')+f'`define BENCH_MHZ {mhz}\n'+(root/'top.v').read_text())
 (out/'gpmc_slave.v').write_text((root.parent/'common/gpmc_slave.v').read_text())
 (out/'pll.v').write_text(f'''module bench_pll(input refclk,output c0,c1,locked{",halfclk" if interleave else ""});
 wire [4:0] clocks;

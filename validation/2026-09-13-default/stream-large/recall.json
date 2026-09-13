@@ -1,0 +1,59 @@
+[
+  {
+    "log": 0,
+    "capture": "bus: /dev/dcinv present\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\n{\n  \"buffer_words\": 0,\n  \"capture\": {\n    \"locked\": true,\n    \"ready\": true,\n    \"running\": false,\n    \"frozen\": true,\n    \"triggered\": true,\n    \"prefetched\": false,\n    \"words\": 524288,\n    \"start\": 0,\n    \"trigger_index\": 524271,\n    \"position\": 523793,\n    \"origin\": 523793,\n    \"revision\": 11,\n    \"map_id\": 57746,\n    \"sample_rate_hz\": 500000000,\n    \"decimation\": 1,\n    \"sample_bits\": 8,\n    \"fraction_bits\": 0,\n    \"samples_per_word\": 2,\n    \"interleaved\": true,\n    \"data_fault\": false\n  },\n  \"identity\": 23122,\n  \"length\": 524288,\n  \"map_id\": 57746,\n  \"origin\": 523793,\n  \"position\": 523793,\n  \"revision\": 11,\n  \"start\": 0,\n  \"status\": 628,\n  \"trigger_index\": 524271\n}\n[exit 0]\n"
+  },
+  {
+    "log": 0,
+    "repeat": 0,
+    "output": "bus: /dev/dcinv present\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\nprofile timing: rdcycle=18 rdaccess=8 oe=4..16 cs=0..18 gap=5 -> rdcycle=10 rdaccess=8 oe=4..10 cs=0..10 gap=5\n{\n  \"breaks\": null,\n  \"bytes\": 2097152,\n  \"first\": 0,\n  \"last\": 524287,\n  \"nonconsecutive_words\": 0,\n  \"profile\": {\n    \"Reads\": 1828,\n    \"Writes\": 1032,\n    \"Pops\": 129,\n    \"Halfwords\": 1048576,\n    \"SkippedWords\": 67630960,\n    \"ReadNS\": 11754360,\n    \"WriteNS\": 5380720,\n    \"PopNS\": 192642320\n  },\n  \"recall_seconds\": 0.5717146,\n  \"seconds\": 0.78323748,\n  \"sha256\": \"ae42b13d7e0af3e77723caf8357d34c7e061526ed9eefeb67b04a0aaa69f33e2\",\n  \"validation_seconds\": 0.21152288\n}\n[exit 0]\n"
+  },
+  {
+    "log": 0,
+    "repeat": 1,
+    "output": "bus: /dev/dcinv present\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\nprofile timing: rdcycle=18 rdaccess=8 oe=4..16 cs=0..18 gap=5 -> rdcycle=10 rdaccess=8 oe=4..10 cs=0..10 gap=5\n{\n  \"breaks\": null,\n  \"bytes\": 2097152,\n  \"first\": 0,\n  \"last\": 524287,\n  \"nonconsecutive_words\": 0,\n  \"profile\": {\n    \"Reads\": 1828,\n    \"Writes\": 1032,\n    \"Pops\": 129,\n    \"Halfwords\": 1048576,\n    \"SkippedWords\": 67630959,\n    \"ReadNS\": 12197720,\n    \"WriteNS\": 5465840,\n    \"PopNS\": 192056320\n  },\n  \"recall_seconds\": 0.57247948,\n  \"seconds\": 0.78475052,\n  \"sha256\": \"ae42b13d7e0af3e77723caf8357d34c7e061526ed9eefeb67b04a0aaa69f33e2\",\n  \"validation_seconds\": 0.21227104\n}\n[exit 0]\n"
+  },
+  {
+    "log": 0,
+    "repeat": 2,
+    "output": "bus: /dev/dcinv present\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\nprofile timing: rdcycle=18 rdaccess=8 oe=4..16 cs=0..18 gap=5 -> rdcycle=10 rdaccess=8 oe=4..10 cs=0..10 gap=5\n{\n  \"breaks\": null,\n  \"bytes\": 2097152,\n  \"first\": 0,\n  \"last\": 524287,\n  \"nonconsecutive_words\": 0,\n  \"profile\": {\n    \"Reads\": 1828,\n    \"Writes\": 1032,\n    \"Pops\": 129,\n    \"Halfwords\": 1048576,\n    \"SkippedWords\": 67630959,\n    \"ReadNS\": 11847440,\n    \"WriteNS\": 5225320,\n    \"PopNS\": 191221200\n  },\n  \"recall_seconds\": 0.57030732,\n  \"seconds\": 0.78319764,\n  \"sha256\": \"ae42b13d7e0af3e77723caf8357d34c7e061526ed9eefeb67b04a0aaa69f33e2\",\n  \"validation_seconds\": 0.21289032\n}\n[exit 0]\n"
+  },
+  {
+    "log": 4,
+    "capture": "bus: /dev/dcinv present\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\n{\n  \"buffer_words\": 0,\n  \"capture\": {\n    \"locked\": true,\n    \"ready\": true,\n    \"running\": false,\n    \"frozen\": true,\n    \"triggered\": true,\n    \"prefetched\": false,\n    \"words\": 524288,\n    \"start\": 0,\n    \"trigger_index\": 524271,\n    \"position\": 523948,\n    \"origin\": 523949,\n    \"revision\": 11,\n    \"map_id\": 57746,\n    \"sample_rate_hz\": 31250000,\n    \"decimation\": 16,\n    \"sample_bits\": 16,\n    \"fraction_bits\": 8,\n    \"samples_per_word\": 1,\n    \"interleaved\": true,\n    \"data_fault\": false\n  },\n  \"identity\": 23122,\n  \"length\": 524288,\n  \"map_id\": 57746,\n  \"origin\": 523949,\n  \"position\": 523948,\n  \"revision\": 11,\n  \"start\": 0,\n  \"status\": 116,\n  \"trigger_index\": 524271\n}\n[exit 0]\n"
+  },
+  {
+    "log": 4,
+    "repeat": 0,
+    "output": "bus: /dev/dcinv present\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\nprofile timing: rdcycle=18 rdaccess=8 oe=4..16 cs=0..18 gap=5 -> rdcycle=10 rdaccess=8 oe=4..10 cs=0..10 gap=5\n{\n  \"breaks\": null,\n  \"bytes\": 2097152,\n  \"first\": 0,\n  \"last\": 524287,\n  \"nonconsecutive_words\": 0,\n  \"profile\": {\n    \"Reads\": 1828,\n    \"Writes\": 1032,\n    \"Pops\": 129,\n    \"Halfwords\": 1048576,\n    \"SkippedWords\": 67630961,\n    \"ReadNS\": 11729000,\n    \"WriteNS\": 5246320,\n    \"PopNS\": 191997880\n  },\n  \"recall_seconds\": 0.56985876,\n  \"seconds\": 0.7823588,\n  \"sha256\": \"ae42b13d7e0af3e77723caf8357d34c7e061526ed9eefeb67b04a0aaa69f33e2\",\n  \"validation_seconds\": 0.21250004\n}\n[exit 0]\n"
+  },
+  {
+    "log": 4,
+    "repeat": 1,
+    "output": "bus: /dev/dcinv present\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\nprofile timing: rdcycle=18 rdaccess=8 oe=4..16 cs=0..18 gap=5 -> rdcycle=10 rdaccess=8 oe=4..10 cs=0..10 gap=5\n{\n  \"breaks\": null,\n  \"bytes\": 2097152,\n  \"first\": 0,\n  \"last\": 524287,\n  \"nonconsecutive_words\": 0,\n  \"profile\": {\n    \"Reads\": 1830,\n    \"Writes\": 1032,\n    \"Pops\": 129,\n    \"Halfwords\": 1048576,\n    \"SkippedWords\": 67630959,\n    \"ReadNS\": 11828640,\n    \"WriteNS\": 5266600,\n    \"PopNS\": 192612840\n  },\n  \"recall_seconds\": 0.57154164,\n  \"seconds\": 0.78258804,\n  \"sha256\": \"ae42b13d7e0af3e77723caf8357d34c7e061526ed9eefeb67b04a0aaa69f33e2\",\n  \"validation_seconds\": 0.2110464\n}\n[exit 0]\n"
+  },
+  {
+    "log": 4,
+    "repeat": 2,
+    "output": "bus: /dev/dcinv present\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\nprofile timing: rdcycle=18 rdaccess=8 oe=4..16 cs=0..18 gap=5 -> rdcycle=10 rdaccess=8 oe=4..10 cs=0..10 gap=5\n{\n  \"breaks\": null,\n  \"bytes\": 2097152,\n  \"first\": 0,\n  \"last\": 524287,\n  \"nonconsecutive_words\": 0,\n  \"profile\": {\n    \"Reads\": 1828,\n    \"Writes\": 1032,\n    \"Pops\": 129,\n    \"Halfwords\": 1048576,\n    \"SkippedWords\": 67630959,\n    \"ReadNS\": 11811280,\n    \"WriteNS\": 5362600,\n    \"PopNS\": 191612720\n  },\n  \"recall_seconds\": 0.57087124,\n  \"seconds\": 0.78274312,\n  \"sha256\": \"ae42b13d7e0af3e77723caf8357d34c7e061526ed9eefeb67b04a0aaa69f33e2\",\n  \"validation_seconds\": 0.21187188\n}\n[exit 0]\n"
+  },
+  {
+    "log": 8,
+    "capture": "bus: /dev/dcinv present\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\n{\n  \"buffer_words\": 0,\n  \"capture\": {\n    \"locked\": true,\n    \"ready\": true,\n    \"running\": false,\n    \"frozen\": true,\n    \"triggered\": true,\n    \"prefetched\": false,\n    \"words\": 524288,\n    \"start\": 0,\n    \"trigger_index\": 524271,\n    \"position\": 966,\n    \"origin\": 967,\n    \"revision\": 11,\n    \"map_id\": 57746,\n    \"sample_rate_hz\": 1953125,\n    \"decimation\": 256,\n    \"sample_bits\": 16,\n    \"fraction_bits\": 8,\n    \"samples_per_word\": 1,\n    \"interleaved\": true,\n    \"data_fault\": false\n  },\n  \"identity\": 23122,\n  \"length\": 524288,\n  \"map_id\": 57746,\n  \"origin\": 967,\n  \"position\": 966,\n  \"revision\": 11,\n  \"start\": 0,\n  \"status\": 628,\n  \"trigger_index\": 524271\n}\n[exit 0]\n"
+  },
+  {
+    "log": 8,
+    "repeat": 0,
+    "output": "bus: /dev/dcinv present\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\nprofile timing: rdcycle=18 rdaccess=8 oe=4..16 cs=0..18 gap=5 -> rdcycle=10 rdaccess=8 oe=4..10 cs=0..10 gap=5\n{\n  \"breaks\": null,\n  \"bytes\": 2097152,\n  \"first\": 0,\n  \"last\": 524287,\n  \"nonconsecutive_words\": 0,\n  \"profile\": {\n    \"Reads\": 1828,\n    \"Writes\": 1032,\n    \"Pops\": 129,\n    \"Halfwords\": 1048576,\n    \"SkippedWords\": 67630961,\n    \"ReadNS\": 11866520,\n    \"WriteNS\": 5245280,\n    \"PopNS\": 191243760\n  },\n  \"recall_seconds\": 0.5694496,\n  \"seconds\": 0.78235936,\n  \"sha256\": \"ae42b13d7e0af3e77723caf8357d34c7e061526ed9eefeb67b04a0aaa69f33e2\",\n  \"validation_seconds\": 0.21290976\n}\n[exit 0]\n"
+  },
+  {
+    "log": 8,
+    "repeat": 1,
+    "output": "bus: /dev/dcinv present\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\nprofile timing: rdcycle=18 rdaccess=8 oe=4..16 cs=0..18 gap=5 -> rdcycle=10 rdaccess=8 oe=4..10 cs=0..10 gap=5\n{\n  \"breaks\": null,\n  \"bytes\": 2097152,\n  \"first\": 0,\n  \"last\": 524287,\n  \"nonconsecutive_words\": 0,\n  \"profile\": {\n    \"Reads\": 1828,\n    \"Writes\": 1032,\n    \"Pops\": 129,\n    \"Halfwords\": 1048576,\n    \"SkippedWords\": 67630959,\n    \"ReadNS\": 11942440,\n    \"WriteNS\": 5279440,\n    \"PopNS\": 191486760\n  },\n  \"recall_seconds\": 0.57056768,\n  \"seconds\": 0.78303604,\n  \"sha256\": \"ae42b13d7e0af3e77723caf8357d34c7e061526ed9eefeb67b04a0aaa69f33e2\",\n  \"validation_seconds\": 0.21246836\n}\n[exit 0]\n"
+  },
+  {
+    "log": 8,
+    "repeat": 2,
+    "output": "bus: /dev/dcinv present\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\nprofile timing: rdcycle=18 rdaccess=8 oe=4..16 cs=0..18 gap=5 -> rdcycle=10 rdaccess=8 oe=4..10 cs=0..10 gap=5\n{\n  \"breaks\": null,\n  \"bytes\": 2097152,\n  \"first\": 0,\n  \"last\": 524287,\n  \"nonconsecutive_words\": 0,\n  \"profile\": {\n    \"Reads\": 1830,\n    \"Writes\": 1032,\n    \"Pops\": 129,\n    \"Halfwords\": 1048576,\n    \"SkippedWords\": 67630959,\n    \"ReadNS\": 12067240,\n    \"WriteNS\": 5283320,\n    \"PopNS\": 192070880\n  },\n  \"recall_seconds\": 0.57446692,\n  \"seconds\": 0.78754024,\n  \"sha256\": \"ae42b13d7e0af3e77723caf8357d34c7e061526ed9eefeb67b04a0aaa69f33e2\",\n  \"validation_seconds\": 0.21307332\n}\n[exit 0]\n"
+  }
+]

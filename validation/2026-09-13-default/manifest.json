@@ -347,6 +347,46 @@
     "bytes": 2931,
     "sha256": "504d51c37bd97f1ddf8250d1105ae76fd8ec327e10f7cad7a3e4bdd227b7dea7"
   },
+  "stream-large/README.md": {
+    "bytes": 1680,
+    "sha256": "9a158b90d9e1a79cf398c3b1b597607235f8e0e35223238eb27d2e63bb571f20"
+  },
+  "stream-large/recall.json": {
+    "bytes": 11014,
+    "sha256": "3e4ffbd42d91ffdbe56dfc4eea681f9957693369732da7790bbb04ce62fe5f90"
+  },
+  "stream-large/seed13-build.log": {
+    "bytes": 1671,
+    "sha256": "0e7dea63177177d474a952ce4492213ae42e5920a6f90d90c269ac2cf6136f6d"
+  },
+  "stream-large/seed13-rejected.tar.gz": {
+    "bytes": 427792,
+    "sha256": "b63127321fc46b937db7eb4fadc4dd610055b7583fb65c27f49d8b2d43e834f3"
+  },
+  "stream-large/seed14-build.log": {
+    "bytes": 301,
+    "sha256": "afb6fb29a99d591be2b231d88679ffed49e7e201ca881d21bbf7cc4cdb598298"
+  },
+  "stream-large/seed14-candidate.tar.gz": {
+    "bytes": 423694,
+    "sha256": "57c42abdae2c4bad33f703a0917efd30a229e5b7601a470ec2751fc87605a344"
+  },
+  "stream-large/sim-4096.log": {
+    "bytes": 235,
+    "sha256": "8e9b76918488164ab9850691bad914b4dc4b8866cb026a6de87d4e6f7791f23d"
+  },
+  "stream-large/sim-8192.log": {
+    "bytes": 236,
+    "sha256": "34fa4c28da8b9c21983c9781d5f286abb1def10495b989f704039afab8d20188"
+  },
+  "stream-large/stream-long.json": {
+    "bytes": 2385,
+    "sha256": "faab3d4eb1e5634f724496c4c6fae42c32476a8417979e2753f2aae8bbd28d84"
+  },
+  "stream-large/stream-rate.json": {
+    "bytes": 4134,
+    "sha256": "a08bd3d8780c7b011785e2f5e5c3e010f36fc3cbbe7bc503d12f42ee338271f1"
+  },
   "stream-latency/README.md": {
     "bytes": 745,
     "sha256": "529782e1e1da55fa3631a493aabffae8c69a98dbd0572b0eb3b2d732eec01b09"
@@ -362,6 +402,18 @@
   "stream-latency/initial-scheduling.json": {
     "bytes": 2059,
     "sha256": "f25ced7200eee9fccadcff061abfc85939633f26bbc5fb0c91188fc88cd6a8d2"
+  },
+  "stream-latency/realtime-nanosleep.json": {
+    "bytes": 3531,
+    "sha256": "79bc07f8b60ac81eff7a7135760d9bd48cefeb6cb8efe133e96126c3db7fa4d6"
+  },
+  "stream-latency/realtime-sleep.json": {
+    "bytes": 3495,
+    "sha256": "1737512161c1d6efe0060e76d03fe14e210da21f2069a6890735e15161c9a792"
+  },
+  "stream-latency/realtime.json": {
+    "bytes": 3353,
+    "sha256": "fbea23b598f24b9eeec3dbf2708f37ac17f1f76e90840b206ef0c278d9f8c45c"
   },
   "stream-path/README.md": {
     "bytes": 1920,

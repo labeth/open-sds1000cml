@@ -34,6 +34,7 @@ type Bus interface {
 type Capture struct {
 	recallScratch []byte
 	streamHalves  []uint16
+	streamWords   uint16
 	streamBytes   []byte
 	mu            sync.Mutex
 	bus           Bus
@@ -441,15 +442,19 @@ func (c *Capture) recall(ctx context.Context, offset, count uint32, dst io.Write
 		prefix = 16
 	}
 	bufferWords := uint32(512)
+	physicalBufferWords := bufferWords
 	if m.Revision >= 8 {
 		size, e := c.read(26)
 		if e != nil {
 			return written, e
 		}
 		bufferWords = uint32(size)
-		if bufferWords != 4096 {
+		physicalBufferWords = bufferWords
+		if bufferWords != 4096 && !(m.Revision == 11 && bufferWords == 8192) {
 			return written, fmt.Errorf("sramcapture: unknown read buffer %d", bufferWords)
 		}
+		// Keep frozen recall transfers within the existing 8192-halfword DMA limit.
+		bufferWords = min(bufferWords, 4096)
 	}
 	if forward && m.Revision != 10 {
 		return 0, fmt.Errorf("sramcapture: forward recall requires revision 10")
@@ -544,7 +549,7 @@ func (c *Capture) recall(ctx context.Context, offset, count uint32, dst io.Write
 			if err != nil {
 				return written, err
 			}
-			if uint32(index) != ((n+prefix)*2)%(bufferWords*2) {
+			if uint32(index) != ((n+prefix)*2)%(physicalBufferWords*2) {
 				return written, fmt.Errorf("sramcapture: burst pointer %d after %d words", index, n)
 			}
 			for i := uint32(0); i < n*2; i++ {

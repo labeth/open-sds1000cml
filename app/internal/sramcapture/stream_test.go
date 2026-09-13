@@ -201,3 +201,31 @@ func TestStreamBytePathPreservesFractionAndRetainsFaultedBank(t *testing.T) {
 		}
 	}
 }
+
+func TestStreamLargeBanksUseAdvertisedCapacity(t *testing.T) {
+	b := streamBus()
+	b.bufferCapacity = 8192
+	b.first = [2]uint64{4096, 0}
+	b.counts = [2]uint16{2, 2048}
+	for i := 0; i < 4096; i++ {
+		b.buffer[4096+i] = uint32(i)
+		b.buffer[i] = uint32(i + 4096)
+	}
+	c, e := New(&streamByteFake{&streamDMAFake{b}})
+	if e != nil {
+		t.Fatal(e)
+	}
+	if e = c.PrepareStream(); e != nil {
+		t.Fatal(e)
+	}
+	var out bytes.Buffer
+	for _, first := range []uint64{0, 4096} {
+		if _, e = c.DrainStream(context.Background(), first, &out); e != nil {
+			t.Fatal(e)
+		}
+	}
+	checkWords(t, out.Bytes(), 0, 4099)
+	if len(b.releases) != 2 || b.releases[0] != 3 || b.releases[1] != 0 {
+		t.Fatal(b.releases)
+	}
+}

@@ -49,22 +49,29 @@ func (c *Capture) PrepareStream() error {
 	if rev != 11 {
 		return fmt.Errorf("sramcapture: stream requires experimental revision 11")
 	}
-	c.prepareStreamBuffers()
-	return nil
+	return c.prepareStreamBuffers()
 }
 
-func (c *Capture) prepareStreamBuffers() {
-	if cap(c.streamHalves) < 4096 {
-		c.streamHalves = make([]uint16, 4096)
-		c.streamBytes = make([]byte, 8192)
+func (c *Capture) prepareStreamBuffers() error {
+	words, err := c.read(26)
+	if err != nil {
+		return err
 	}
-	// Touch each page, including already allocated buffers, before arm.
+	if words != 4096 && words != 8192 {
+		return fmt.Errorf("sramcapture: unknown stream buffer %d", words)
+	}
+	c.streamWords = words
+	if cap(c.streamHalves) < int(words) {
+		c.streamHalves = make([]uint16, words)
+		c.streamBytes = make([]byte, int(words)*2)
+	}
 	for i := 0; i < len(c.streamHalves); i += 1024 {
 		c.streamHalves[i] = 0
 	}
 	for i := 0; i < len(c.streamBytes); i += 2048 {
 		c.streamBytes[i] = 0
 	}
+	return nil
 }
 
 type StreamBlock struct {
@@ -129,15 +136,20 @@ func (c *Capture) DrainStream(ctx context.Context, expected uint64, dst io.Write
 	if !found {
 		return block, fmt.Errorf("sramcapture: missing stream word %d", expected)
 	}
+	if c.streamWords == 0 {
+		if e = c.prepareStreamBuffers(); e != nil {
+			return block, e
+		}
+	}
 	count, e := c.read(33 + uint16(block.Bank))
 	if e != nil {
 		return block, e
 	}
-	if count == 0 || count > 1024 {
+	if count == 0 || count > c.streamWords/4 {
 		return block, fmt.Errorf("sramcapture: invalid stream packet count %d", count)
 	}
 	block.Words = uint32(count)*2 - uint32((s.LastSingle>>block.Bank)&1)
-	base := uint16(block.Bank) * 2048
+	base := uint16(block.Bank) * (c.streamWords / 2)
 	// Prime the non-burst output to the same first word before DMA starts.
 	if e = c.write(16, base); e != nil {
 		return block, e
@@ -147,9 +159,6 @@ func (c *Capture) DrainStream(ctx context.Context, expected uint64, dst io.Write
 	}
 	if e = c.write(17, base*2); e != nil {
 		return block, e
-	}
-	if cap(c.streamHalves) < 4096 {
-		c.prepareStreamBuffers()
 	}
 	bytes := c.streamBytes[:block.Words*4]
 	halves := c.streamHalves[:block.Words*2]
@@ -175,7 +184,7 @@ func (c *Capture) DrainStream(ctx context.Context, expected uint64, dst io.Write
 	if e != nil {
 		return block, e
 	}
-	if uint32(index) != (uint32(base)*2+block.Words*2)%8192 {
+	if uint32(index) != (uint32(base)*2+block.Words*2)%(uint32(c.streamWords)*2) {
 		return block, fmt.Errorf("sramcapture: stream burst pointer %d", index)
 	}
 	raw, e = c.read(32)

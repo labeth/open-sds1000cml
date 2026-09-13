@@ -11,6 +11,8 @@ used=int(re.search(r'Total memory bits\s*:\s*([\d,]+)',summary)[1].replace(',','
 interleave='`define INTERLEAVE' in (out/'bench.v').read_text()
 expected=(133632 if "`define BURST_RECALL" in (out/"bench.v").read_text() else 18944) if interleave else 16384
 if '`define PRECISION' in (out/'bench.v').read_text():expected+=2048
+buf_aw=re.search(r'`define STREAM_BUFFER_AW (\d+)', (out/'bench.v').read_text())
+if buf_aw: expected+=((1<<int(buf_aw[1]))-4096)*32
 assert used==expected,f'Expected {expected} buffer bits, got {used}'
 a=json.loads((out/'audit.json').read_text());a.update(adc_input_registers=80,on_chip_memory_bits=used,interleaved=interleave)
 (out/'audit.json').write_text(json.dumps(a,indent=2)+'\n')

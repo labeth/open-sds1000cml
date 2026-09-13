@@ -1,0 +1,25 @@
+[
+  {
+    "log": 8,
+    "env": [],
+    "output": "bus: /dev/dcinv present\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\nprofile timing: rdcycle=18 rdaccess=8 oe=4..16 cs=0..18 gap=5 -> rdcycle=10 rdaccess=8 oe=4..10 cs=0..10 gap=5\n{\n  \"blocks\": 1025,\n  \"bytes\": 16790296,\n  \"first\": 0,\n  \"last\": 4197573,\n  \"nonconsecutive_words\": 0,\n  \"profile\": {\n    \"Reads\": 56745,\n    \"Writes\": 3084,\n    \"Pops\": 1025,\n    \"Halfwords\": 8395148,\n    \"SkippedWords\": 0,\n    \"ReadNS\": 294887120,\n    \"WriteNS\": 15582520,\n    \"PopNS\": 1365496040\n  },\n  \"seconds\": 2.15074728,\n  \"stream\": {\n    \"ready\": 0,\n    \"tokens\": 1,\n    \"last_single\": 0,\n    \"fault\": false,\n    \"finished\": true,\n    \"enabled\": true\n  },\n  \"words\": 4197574,\n  \"words_per_second\": 1951681.6499240207\n}\n[exit 0]\n"
+  },
+  {
+    "log": 8,
+    "env": [],
+    "output": "bus: /dev/dcinv present\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\nprofile timing: rdcycle=18 rdaccess=8 oe=4..16 cs=0..18 gap=5 -> rdcycle=10 rdaccess=8 oe=4..10 cs=0..10 gap=5\n{\n  \"blocks\": 1025,\n  \"bytes\": 16790128,\n  \"first\": 0,\n  \"last\": 4197531,\n  \"nonconsecutive_words\": 0,\n  \"profile\": {\n    \"Reads\": 56627,\n    \"Writes\": 3084,\n    \"Pops\": 1025,\n    \"Halfwords\": 8395064,\n    \"SkippedWords\": 0,\n    \"ReadNS\": 294841000,\n    \"WriteNS\": 15644120,\n    \"PopNS\": 1365817240\n  },\n  \"seconds\": 2.15066548,\n  \"stream\": {\n    \"ready\": 0,\n    \"tokens\": 1,\n    \"last_single\": 0,\n    \"fault\": false,\n    \"finished\": true,\n    \"enabled\": true\n  },\n  \"words\": 4197532,\n  \"words_per_second\": 1951736.3527869524\n}\n[exit 0]\n"
+  },
+  {
+    "log": 8,
+    "env": [
+      "SCOPE_STREAM_RT=1",
+      "SCOPE_STREAM_POLL_US=50"
+    ],
+    "output": "{\n  \"exit\": 2,\n  \"output\": \"bus: /dev/dcinv present\\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\\nprofile timing: rdcycle=18 rdaccess=8 oe=4..16 cs=0..18 gap=5 -\\u003e rdcycle=10 rdaccess=8 oe=4..10 cs=0..10 gap=5\\n{\\n  \\\"block\\\": {\\n    \\\"first_word\\\": 0,\\n    \\\"words\\\": 0,\\n    \\\"bank\\\": 0\\n  },\\n  \\\"error\\\": \\\"sramcapture: stream overrun or packetizer fault\\\",\\n  \\\"next_word\\\": 4120576,\\n  \\\"profile\\\": {\\n    \\\"Reads\\\": 20450,\\n    \\\"Writes\\\": 3026,\\n    \\\"Pops\\\": 1006,\\n    \\\"Halfwords\\\": 8241152,\\n    \\\"SkippedWords\\\": 0,\\n    \\\"ReadNS\\\": 113743600,\\n    \\\"WriteNS\\\": 15319800,\\n    \\\"PopNS\\\": 1338394360\\n  },\\n  \\\"seconds\\\": 2.11489632\\n}\\npanic: sramcapture: stream overrun or packetizer fault\\n\\ngoroutine 1 [running]:\\nmain.main.func4(...)\\n\\t/home/labeth/ws/open-sds1000cml-acq2/app/cmd/acqsram/main.go:116\\nmain.main()\\n\\t/home/labeth/ws/open-sds1000cml-acq2/app/cmd/acqsram/main.go:250 +0x628c\\n\"\n}\n"
+  },
+  {
+    "log": 9,
+    "env": [],
+    "output": "bus: /dev/dcinv present\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\nprofile timing: rdcycle=18 rdaccess=8 oe=4..16 cs=0..18 gap=5 -> rdcycle=10 rdaccess=8 oe=4..10 cs=0..10 gap=5\n{\n  \"blocks\": 1025,\n  \"bytes\": 16783692,\n  \"first\": 0,\n  \"last\": 4195922,\n  \"nonconsecutive_words\": 0,\n  \"profile\": {\n    \"Reads\": 272575,\n    \"Writes\": 3084,\n    \"Pops\": 1025,\n    \"Halfwords\": 8391846,\n    \"SkippedWords\": 0,\n    \"ReadNS\": 1403592440,\n    \"WriteNS\": 15537520,\n    \"PopNS\": 1365110560\n  },\n  \"seconds\": 4.2976790000000005,\n  \"stream\": {\n    \"ready\": 0,\n    \"tokens\": 1,\n    \"last_single\": 1,\n    \"fault\": false,\n    \"finished\": true,\n    \"enabled\": true\n  },\n  \"words\": 4195923,\n  \"words_per_second\": 976323.0338980644\n}\n[exit 0]\n"
+  }
+]

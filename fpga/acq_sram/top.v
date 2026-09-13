@@ -8,10 +8,14 @@ module acq_sram_top(
  inout [15:0] gpmc_d,inout [31:0] dq,input [79:0] lane,
  output k1,k2,g1,g2,d1,d2,f1,f2,j2,a11,output [4:0] enc_p,enc_n
 );
+`ifdef STREAM_BUFFER_AW
+ localparam BUF_AW=`STREAM_BUFFER_AW;
+`else
 `ifdef BURST_RECALL
  localparam BUF_AW=12;
 `else
  localparam BUF_AW=9;
+`endif
 `endif
  localparam BUF_WORDS=(1<<BUF_AW);
  wire core,sample_clk,locked;

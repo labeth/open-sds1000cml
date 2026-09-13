@@ -1,0 +1,2 @@
+PASS integrated stream tap:        8193 exact words, continuous SRAM history, stop, ownership exclusion, legacy capture, overrun/rearm, exhaustive trigger decode
+fpga/acq_sram/sim/tb_stream_top.v:87: $finish called at 7579794000 (1ps)

@@ -42,7 +42,7 @@ module tb;
   n=b ? dut.stream_count1 : dut.stream_count0;tok=dut.stream_token[b];
   words=2*n-dut.stream_single[b];
   for(j=0;j<words;j=j+1)begin
-   if((j%2 ? dut.buffer_mem64[b*1024+j/2][63:32] : dut.buffer_mem64[b*1024+j/2][31:0])!==32'(expected))$fatal(1,"top word %d",expected);
+   if((j%2 ? dut.buffer_mem64[b*(dut.BUF_WORDS/4)+j/2][63:32] : dut.buffer_mem64[b*(dut.BUF_WORDS/4)+j/2][31:0])!==32'(expected))$fatal(1,"top word %d",expected);
    expected=expected+1;
   end
   @(negedge clk);force dut.wc=1;force dut.ws=20;force dut.wd={14'b0,tok,1'(b)};
@@ -63,9 +63,9 @@ module tb;
   #100;command(1);
   repeat(4)drain();
   if(!dut.running || dut.record_done || dut.il_failed)$fatal(1,"continuous mode stopped early");
-  wait(dut.ramp==8193);command(5);wait(dut.ready && dut.stream_finished_cpu[2]);#100;
+  wait(dut.ramp==(2*dut.BUF_WORDS+1));command(5);wait(dut.ready && dut.stream_finished_cpu[2]);#100;
   while(dut.stream_available!=0)drain();
-  if(expected!=dut.record_length || expected!=8193)$fatal(1,"tail loss %d length %d",expected,dut.record_length);
+  if(expected!=dut.record_length || expected!=(2*dut.BUF_WORDS+1))$fatal(1,"tail loss %d length %d",expected,dut.record_length);
   for(i=0;i<expected;i=i+1)if(mem[(dut.origin-1+i)%524288]!==i)$fatal(1,"SRAM history changed %d",i);
   verified=expected;
   // A frozen SRAM read may not overwrite banks while stream mode owns RAM.
@@ -86,5 +86,5 @@ module tb;
   command(5);wait(dut.ready);
   $display("PASS integrated stream tap: %d exact words, continuous SRAM history, stop, ownership exclusion, legacy capture, overrun/rearm, exhaustive trigger decode",verified);$finish;
  end
- initial begin #10000000;$fatal(1,"timeout");end
+ initial begin #25000000;$fatal(1,"timeout");end
 endmodule

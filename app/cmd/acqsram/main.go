@@ -191,8 +191,21 @@ func main() {
 		if !st.Ready || st.Running {
 			panic("halt acquisition before stream-profile")
 		}
-		streamCopy := bytes.NewBuffer(make([]byte, 0, 8192))
+		pollSleep := time.Duration(0)
+		if v := os.Getenv("SCOPE_STREAM_POLL_US"); v != "" {
+			us := num(v)
+			if us > 1000 {
+				panic("stream poll sleep exceeds 1000 us")
+			}
+			pollSleep = time.Duration(us) * time.Microsecond
+		}
+		streamCopy := bytes.NewBuffer(make([]byte, 0, 16384))
 		must(capture.PrepareStream())
+		if os.Getenv("SCOPE_STREAM_RT") == "1" {
+			restore, e := realtimeDrain()
+			must(e)
+			defer func() { must(restore()) }()
+		}
 		wr(19, 3)
 		for {
 			ss, e := capture.StreamStatus()
@@ -210,6 +223,9 @@ func main() {
 		blocks := 0
 		stopped := false
 		for {
+			if time.Since(began) > 25*time.Second {
+				panic("stream wall deadline exceeded")
+			}
 			streamCopy.Reset()
 			block, e := capture.DrainStream(ctx, next, streamCopy)
 			if errors.Is(e, sramcapture.ErrNoStreamBlock) {
@@ -224,6 +240,9 @@ func main() {
 					}
 				}
 				must(ctx.Err())
+				if pollSleep != 0 {
+					must(sleepDrain(pollSleep.Nanoseconds()))
+				}
 				continue
 			}
 			if e != nil {

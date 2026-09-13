@@ -119,3 +119,38 @@ kernel-managed drain need evaluation to tolerate host service latency before
 building continuous ARM history on this transport. Error output now records
 the last checked ordinal and transport timings. All tests used the same seed13
 FPGA image and only RAM helper updates, with temporary CS1 timings restored.
+
+## Larger-buffer experiment (not yet qualified)
+
+`--stream-buffer-words=8192` doubles the shared RAM to 8192 32-bit words,
+with two 4096-word (16 KiB) banks. The default remains 4096 words. Read selector
+26 advertises total capacity; revision 11 hosts now accept 4096 or 8192 and
+compute packet limits, bank base and burst-pointer wrap from that capacity.
+For total capacity C, each bank has C/4 packets, bank b starts at b*C/2 words,
+and the halfword burst pointer wraps at 2*C. All other stream descriptors retain
+their meaning. Older hosts reject oversized banks rather than reading them.
+Frozen recall still uses at most 4096 words per transfer, keeping its existing
+DMA transfer limit and priming protocol.
+
+RAM use rises from 135680 to 266752 bits (63% of available RAM). Seed 13
+missed internal timing by 0.040 ns and was not loaded. Seed 14 passed with
+0.005 ns worst internal slack; CDC bounds and both buffer-size simulations
+passed. Seed 14 was loaded after a cold mains cycle, with no permanent internal
+storage writes. It remains experimental and must not be promoted. Increasing capacity cannot guarantee
+arbitrarily long host stalls are tolerated.
+
+Scheduling diagnostics use `SCOPE_STREAM_RT=1` for a locked SCHED_FIFO priority-1
+thread, restored on exit, and optional `SCOPE_STREAM_POLL_US` for bounded native
+nanosleep between empty polls. A wall-clock deadline bounds the diagnostic even
+if Go's timer goroutine is delayed. Global kernel RT throttling is unchanged.
+A short /256 real-time run passed 4.2 MB, but longer runs failed. Neither busy
+real-time polling nor short sleeps qualified the original 8 KiB banks. These
+switches are diagnostics, not default application scheduling policy.
+
+Larger-bank device results: nine full counter recalls passed exact hashes at
+raw, /16 and /256. Two consecutive /256 streams each passed 16.79 MB using
+normal scheduling. Longer /256 tests failed after 19,759,104 and 29,204,480
+checked words (~10.1 and 15.0 seconds). A /512 16.78 MB run passed. These tests
+show improved latency tolerance, not reliable unlimited streaming. A
+kernel-managed drain remains the next investigation. See `stream-large/`
+under the validation directory for all outcomes and the archived candidate.
