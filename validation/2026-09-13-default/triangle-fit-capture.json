@@ -1,0 +1,121 @@
+[
+  {
+    "args": [
+      "exec",
+      "/dev/acqsram",
+      "range-both",
+      "8"
+    ],
+    "stdout": "cal: loaded /usr/bin/siglent/firmdata0/calibration.dat\n{\n  \"buffer_words\": 32,\n  \"capture\": {\n    \"locked\": true,\n    \"ready\": true,\n    \"running\": false,\n    \"frozen\": true,\n    \"triggered\": true,\n    \"prefetched\": true,\n    \"words\": 524288,\n    \"start\": 0,\n    \"trigger_index\": 262144,\n    \"position\": 171,\n    \"origin\": 170,\n    \"revision\": 7,\n    \"map_id\": 57746,\n    \"sample_rate_hz\": 500000000,\n    \"interleaved\": true,\n    \"data_fault\": false\n  },\n  \"identity\": 23122,\n  \"length\": 524288,\n  \"map_id\": 57746,\n  \"origin\": 170,\n  \"position\": 171,\n  \"revision\": 7,\n  \"start\": 0,\n  \"status\": 1140,\n  \"trigger_index\": 262144\n}\n[exit 0]\n",
+    "stderr": "",
+    "exit": 0
+  },
+  {
+    "args": [
+      "exec",
+      "/dev/acqsram",
+      "capture",
+      "1",
+      "262144",
+      "262144"
+    ],
+    "stdout": "{\n  \"buffer_words\": 0,\n  \"capture\": {\n    \"locked\": true,\n    \"ready\": true,\n    \"running\": false,\n    \"frozen\": true,\n    \"triggered\": true,\n    \"prefetched\": false,\n    \"words\": 524288,\n    \"start\": 0,\n    \"trigger_index\": 262144,\n    \"position\": 197,\n    \"origin\": 197,\n    \"revision\": 7,\n    \"map_id\": 57746,\n    \"sample_rate_hz\": 500000000,\n    \"interleaved\": true,\n    \"data_fault\": false\n  },\n  \"identity\": 23122,\n  \"length\": 524288,\n  \"map_id\": 57746,\n  \"origin\": 197,\n  \"position\": 197,\n  \"revision\": 7,\n  \"start\": 0,\n  \"status\": 628,\n  \"trigger_index\": 262144\n}\n[exit 0]\n",
+    "stderr": "",
+    "exit": 0
+  },
+  {
+    "args": [
+      "exec",
+      "/dev/acqsram",
+      "recall",
+      "/dev/acq-triangle.bin",
+      "0",
+      "524288"
+    ],
+    "stdout": "{\n  \"bytes\": 2097152,\n  \"first\": 2088074623,\n  \"last\": 791950903,\n  \"nonconsecutive_words\": 524287,\n  \"path\": \"/dev/acq-triangle.bin\",\n  \"seconds\": 6.71233164,\n  \"sha256\": \"6bc150ba817fe1116f742bf38746d6f33560650c8ad533d9b1271ae96fac20eb\",\n  \"words\": 524288\n}\n[exit 0]\n",
+    "stderr": "",
+    "exit": 0
+  },
+  {
+    "args": [
+      "get",
+      "/dev/acq-triangle.bin",
+      "validation/2026-09-13-default/triangle-fit-0.bin"
+    ],
+    "stdout": "\ndownload: 12% (262144/2097152)\ndownload: 25% (524288/2097152)\ndownload: 37% (786432/2097152)\ndownload: 50% (1048576/2097152)\ndownload: 62% (1310720/2097152)\ndownload: 75% (1572864/2097152)\ndownload: 87% (1835008/2097152)\ndownload: 100% (2097152/2097152)\nok: /dev/acq-triangle.bin -> validation/2026-09-13-default/triangle-fit-0.bin\n",
+    "stderr": "",
+    "exit": 0
+  },
+  {
+    "args": [
+      "exec",
+      "/dev/acqsram",
+      "capture",
+      "1",
+      "262144",
+      "262144"
+    ],
+    "stdout": "{\n  \"buffer_words\": 0,\n  \"capture\": {\n    \"locked\": true,\n    \"ready\": true,\n    \"running\": false,\n    \"frozen\": true,\n    \"triggered\": true,\n    \"prefetched\": false,\n    \"words\": 524288,\n    \"start\": 0,\n    \"trigger_index\": 262144,\n    \"position\": 225,\n    \"origin\": 225,\n    \"revision\": 7,\n    \"map_id\": 57746,\n    \"sample_rate_hz\": 500000000,\n    \"interleaved\": true,\n    \"data_fault\": false\n  },\n  \"identity\": 23122,\n  \"length\": 524288,\n  \"map_id\": 57746,\n  \"origin\": 225,\n  \"position\": 225,\n  \"revision\": 7,\n  \"start\": 0,\n  \"status\": 116,\n  \"trigger_index\": 262144\n}\n[exit 0]\n",
+    "stderr": "",
+    "exit": 0
+  },
+  {
+    "args": [
+      "exec",
+      "/dev/acqsram",
+      "recall",
+      "/dev/acq-triangle.bin",
+      "0",
+      "524288"
+    ],
+    "stdout": "{\n  \"bytes\": 2097152,\n  \"first\": 1633378661,\n  \"last\": 808793142,\n  \"nonconsecutive_words\": 524287,\n  \"path\": \"/dev/acq-triangle.bin\",\n  \"seconds\": 6.6742182,\n  \"sha256\": \"5d586a939a76ff7af207dec7852ca33bf39c92e6942f1783c13bf256e1314a9a\",\n  \"words\": 524288\n}\n[exit 0]\n",
+    "stderr": "",
+    "exit": 0
+  },
+  {
+    "args": [
+      "get",
+      "/dev/acq-triangle.bin",
+      "validation/2026-09-13-default/triangle-fit-1.bin"
+    ],
+    "stdout": "\ndownload: 12% (262144/2097152)\ndownload: 25% (524288/2097152)\ndownload: 37% (786432/2097152)\ndownload: 50% (1048576/2097152)\ndownload: 62% (1310720/2097152)\ndownload: 75% (1572864/2097152)\ndownload: 87% (1835008/2097152)\ndownload: 100% (2097152/2097152)\nok: /dev/acq-triangle.bin -> validation/2026-09-13-default/triangle-fit-1.bin\n",
+    "stderr": "",
+    "exit": 0
+  },
+  {
+    "args": [
+      "exec",
+      "/dev/acqsram",
+      "capture",
+      "1",
+      "262144",
+      "262144"
+    ],
+    "stdout": "{\n  \"buffer_words\": 0,\n  \"capture\": {\n    \"locked\": true,\n    \"ready\": true,\n    \"running\": false,\n    \"frozen\": true,\n    \"triggered\": true,\n    \"prefetched\": false,\n    \"words\": 524288,\n    \"start\": 0,\n    \"trigger_index\": 262144,\n    \"position\": 255,\n    \"origin\": 255,\n    \"revision\": 7,\n    \"map_id\": 57746,\n    \"sample_rate_hz\": 500000000,\n    \"interleaved\": true,\n    \"data_fault\": false\n  },\n  \"identity\": 23122,\n  \"length\": 524288,\n  \"map_id\": 57746,\n  \"origin\": 255,\n  \"position\": 255,\n  \"revision\": 7,\n  \"start\": 0,\n  \"status\": 628,\n  \"trigger_index\": 262144\n}\n[exit 0]\n",
+    "stderr": "",
+    "exit": 0
+  },
+  {
+    "args": [
+      "exec",
+      "/dev/acqsram",
+      "recall",
+      "/dev/acq-triangle.bin",
+      "0",
+      "524288"
+    ],
+    "stdout": "{\n  \"bytes\": 2097152,\n  \"first\": 2963779760,\n  \"last\": 1667655784,\n  \"nonconsecutive_words\": 524287,\n  \"path\": \"/dev/acq-triangle.bin\",\n  \"seconds\": 6.7309586,\n  \"sha256\": \"1d74921798ad55e860e06376c00723566eb215cc6a5e95668733efa4d02c60ee\",\n  \"words\": 524288\n}\n[exit 0]\n",
+    "stderr": "",
+    "exit": 0
+  },
+  {
+    "args": [
+      "get",
+      "/dev/acq-triangle.bin",
+      "validation/2026-09-13-default/triangle-fit-2.bin"
+    ],
+    "stdout": "\ndownload: 12% (262144/2097152)\ndownload: 25% (524288/2097152)\ndownload: 37% (786432/2097152)\ndownload: 50% (1048576/2097152)\ndownload: 62% (1310720/2097152)\ndownload: 75% (1572864/2097152)\ndownload: 87% (1835008/2097152)\ndownload: 100% (2097152/2097152)\nok: /dev/acq-triangle.bin -> validation/2026-09-13-default/triangle-fit-2.bin\n",
+    "stderr": "",
+    "exit": 0
+  }
+]

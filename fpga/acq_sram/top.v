@@ -8,6 +8,12 @@ module acq_sram_top(
  inout [15:0] gpmc_d,inout [31:0] dq,input [79:0] lane,
  output k1,k2,g1,g2,d1,d2,f1,f2,j2,a11,output [4:0] enc_p,enc_n
 );
+`ifdef BURST_RECALL
+ localparam BUF_AW=12;
+`else
+ localparam BUF_AW=9;
+`endif
+ localparam BUF_WORDS=(1<<BUF_AW);
  wire core,sample_clk,locked;
 `ifdef INTERLEAVE
  wire halfclk;bench_pll pll(mclk_in,core,sample_clk,locked,halfclk);
@@ -18,13 +24,27 @@ module acq_sram_top(
  wire [79:0] cores;
 `ifdef INTERLEAVE
  wire adc_locked,il_raw_valid,il_fault;reg il_failed=0,frontend_run=0;wire [31:0] il_raw_word;
+`ifdef PRECISION
+ reg [4:0] decim_log=0;
+ wire [31:0] precision_word;wire precision_valid,precision_fault;
+ (* preserve, dont_merge *) reg precision_enable=0;
+ always @(posedge core)precision_enable<=frontend_run && decim_log!=0;
+ adc_precision precision(core,halfclk,mclk_in,precision_enable,decim_log,il_raw_word,il_raw_valid,precision_word,precision_valid,precision_fault);
+ wire [31:0] source_word=decim_log==0 ? il_raw_word : precision_word;
+ wire source_word_valid=decim_log==0 ? il_raw_valid : precision_valid;
+ wire [31:0] trigger_word=decim_log==0 ? il_raw_word : {precision_word[31:24],precision_word[15:8],precision_word[31:24],precision_word[15:8]};
+ wire stream_fault=il_fault || precision_fault;
+`else
+ wire [31:0] source_word=il_raw_word,trigger_word=il_raw_word;
+ wire source_word_valid=il_raw_valid,stream_fault=il_fault;
+`endif
  reg [31:0] il_word1=0,il_word=0,il_word_stage=0;reg write_offer=0,il_fire_stage=0;reg il_valid1=0,il_valid=0,source_valid=0;reg [1:0] prev_low=0,prev_high=0,rise_ch=0,fall_ch=0;
  reg [1:0] first_low_ch=0,first_high_ch=0,second_low_ch=0,second_high_ch=0;
  wire il_crossing=!cfg[4] || force_trigger || (cfg[5]?fall_ch[cfg[6]]:rise_ch[cfg[6]]);
  genvar tc;generate for(tc=0;tc<2;tc=tc+1)begin:trigger_compare
   always @(posedge core)begin
-   first_low_ch[tc]<=il_raw_word[8*tc+:8]<level_l;first_high_ch[tc]<=il_raw_word[8*tc+:8]>level_l;
-   second_low_ch[tc]<=il_raw_word[16+8*tc+:8]<level_l;second_high_ch[tc]<=il_raw_word[16+8*tc+:8]>level_l;
+   first_low_ch[tc]<=trigger_word[8*tc+:8]<level_l;first_high_ch[tc]<=trigger_word[8*tc+:8]>level_l;
+   second_low_ch[tc]<=trigger_word[16+8*tc+:8]<level_l;second_high_ch[tc]<=trigger_word[16+8*tc+:8]>level_l;
    if(il_valid1)begin
     prev_low[tc]<=second_low_ch[tc];prev_high[tc]<=second_high_ch[tc];
     rise_ch[tc]<=(prev_low[tc] && !first_low_ch[tc]) || (first_low_ch[tc] && !second_low_ch[tc]);
@@ -34,8 +54,12 @@ module acq_sram_top(
   end
  end endgenerate
  always @(posedge core)begin
-  il_valid1<=il_raw_valid;il_valid<=il_valid1;source_valid<=cfg[0] ? il_valid1 : 1'b1;
-  il_word1<=il_raw_word;il_word<=il_word1;il_word_stage<=il_word;
+  il_valid1<=source_word_valid;il_valid<=il_valid1;`ifdef PRECISION
+  source_valid<=(cfg[0] || decim_log!=0) ? il_valid1 : 1'b1;
+`else
+  source_valid<=cfg[0] ? il_valid1 : 1'b1;
+`endif
+  il_word1<=source_word;il_word<=il_word1;il_word_stage<=il_word;
   write_offer<=source_valid && write_ready;
   il_fire_stage<=cfg[0] ? il_crossing : (!cfg[4] || force_trigger);
   if(!frontend_run)begin il_valid1<=0;il_valid<=0;end
@@ -59,7 +83,14 @@ module acq_sram_top(
  gpmc_slave busif(clk,nCS1,nOE,nWE,{sel,gpmc_a2,gpmc_b1},gpmc_d,wc,ws,wd,aux,rp,rs,rd,drive);
  reg request=0;reg [3:0] opcode=0;
  reg [19:0] pre_cfg=524271,post_cfg=17,count_cfg=512;
- reg [15:0] config_word=0;reg [7:0] level=128;reg [8:0] buffer_index=0;
+ reg [15:0] config_word=0;reg [7:0] level=128;reg [BUF_AW-1:0] buffer_index=0;
+`ifdef BURST_RECALL
+ reg [BUF_AW:0] burst_index=0;
+ always @(posedge clk)begin
+  if(wc && ws==17)burst_index<=wd[BUF_AW:0];
+  else if(rp && rs==25)burst_index<=burst_index+1'b1;
+ end
+`endif
  always @(posedge clk) if(wc) case(ws)
   1:begin opcode<=wd[3:0];request<=~request;end
   2:pre_cfg[15:0]<=wd;3:pre_cfg[19:16]<=wd[3:0];
@@ -69,13 +100,21 @@ module acq_sram_top(
 `ifdef INTERLEAVE
   15:encode_enable<=wd[9:0];
 `endif
-  16:buffer_index<=wd[8:0];
+`ifdef PRECISION
+  18:decim_log<=wd[4:0];
+`endif
+  16:buffer_index<=wd[BUF_AW-1:0];
  endcase
  reg arm_geometry_ok=0,read_geometry_ok=0,buffer_count_ok=0;
+`ifdef PRECISION
+ wire decim_legal=decim_log==0 || (decim_log>=4 && decim_log<=20);
+`else
+ wire decim_legal=1;
+`endif
  always @(posedge core)begin
-  arm_geometry_ok<=post_cfg!=0 && ({1'b0,pre_cfg}+{1'b0,post_cfg})<=21'd524288 && config_word[3:1]<5;
+  arm_geometry_ok<=decim_legal && post_cfg!=0 && ({1'b0,pre_cfg}+{1'b0,post_cfg})<=21'd524288 && config_word[3:1]<5;
   read_geometry_ok<=count_cfg!=0 && count_cfg<=524288;
-  buffer_count_ok<=count_cfg<=512;
+  buffer_count_ok<=count_cfg<=BUF_WORDS;
  end
  reg [2:0] req_s=0;reg ack=0;
  wire pending=req_s[2]!=ack;
@@ -92,6 +131,7 @@ module acq_sram_top(
  reg arm=0,halt=0,force_trigger=0,command_error=0;
  reg dispatch=0,dispatch_arm_ok=0,dispatch_read_ok=0,config_idle=0;reg [3:0] dispatch_opcode=0;
  reg priming=0;
+ reg prime_ready=0;always @(posedge core)prime_ready<=priming && write_ready;
 `ifdef INTERLEAVE
  reg [3:0] prime_left=0;
 `else
@@ -146,17 +186,25 @@ module acq_sram_top(
  sram_record #(.CONFIG_VALIDATED(1)) record(.clk(core),.reset(1'b0),.arm(arm),.halt(halt),.pre_count(pre_cfg),.post_count(post_cfg),
   .step(step),.trigger(fire),.running(running),.done(record_done),.triggered(triggered),.config_error(config_error),
   .write_addr(write_addr),.record_start(record_start),.record_length(record_length),.trigger_index(trigger_index),.filled(filled));
- reg [9:0] received=0;
+ reg [BUF_AW:0] received=0;
 `ifdef INTERLEAVE
- reg [63:0] buffer_mem64[0:255];reg [63:0] buffer_read64=0;reg buffer_half=0;
+ reg [63:0] buffer_mem64[0:BUF_WORDS/2-1];reg [63:0] buffer_read64=0;reg buffer_half=0;
  wire [31:0] buffer_word=buffer_half ? buffer_read64[63:32] : buffer_read64[31:0];
- reg [31:0] read_first=0;reg read_half=0,packet_toggle=0,packet_seen=0;reg [63:0] packet_data=0;reg [7:0] packet_addr=0;
- always @(posedge clk)begin buffer_read64<=buffer_mem64[buffer_index[8:1]];buffer_half<=buffer_index[0];end
+ reg [31:0] read_first=0;reg read_half=0,packet_toggle=0,packet_seen=0;reg [63:0] packet_data=0;reg [BUF_AW-2:0] packet_addr=0;
+ `ifdef BURST_RECALL
+ reg [1:0] burst_half=0;
+ always @(posedge clk)begin
+  buffer_read64<=buffer_mem64[rs==25 ? burst_index[BUF_AW:2] : buffer_index[BUF_AW-1:1]];
+  burst_half<=burst_index[1:0];buffer_half<=buffer_index[0];
+ end
+`else
+ always @(posedge clk)begin buffer_read64<=buffer_mem64[buffer_index[BUF_AW-1:1]];buffer_half<=buffer_index[0];end
+`endif
  always @(posedge core)begin
   if(read_valid)begin
    read_half<=!read_half;
    if(!read_half)read_first<=read_data;
-   else begin packet_data<={read_data,read_first};packet_addr<=received[8:1];packet_toggle<=!packet_toggle;end
+   else begin packet_data<={read_data,read_first};packet_addr<=received[BUF_AW-1:1];packet_toggle<=!packet_toggle;end
   end else if(read_half)begin packet_data<={32'b0,read_first};packet_addr<=(received-1'b1)>>1;packet_toggle<=!packet_toggle;read_half<=0;end
  end
  always @(posedge halfclk)if(packet_toggle!=packet_seen)begin buffer_mem64[packet_addr]<=packet_data;packet_seen<=packet_toggle;end
@@ -166,11 +214,13 @@ module acq_sram_top(
 `endif
  reg [79:0] snapshot=0;
 `ifdef INTERLEAVE
+`ifndef BURST_RECALL
  reg trace_first=0,trace_second=0,trace_third=0;reg [31:0] trace_data=0;
  always @(posedge core)begin
   trace_first<=read_valid && received==0;trace_second<=read_valid && received==1;trace_third<=read_valid && received==2;
   trace_data<=read_data;
  end
+`endif
 `endif
  always @(posedge core) begin
   command<=0;arm<=0;halt<=0;command_count<=count_cfg;
@@ -188,14 +238,14 @@ module acq_sram_top(
 `ifdef INTERLEAVE
   if(record_done && !priming && !arm)frontend_run<=0;
   if(command && !command_read)frontend_run<=1;
-  if(frontend_run && il_fault)begin halt<=1;il_failed<=1;priming<=0;frontend_run<=0;end
+  if(frontend_run && stream_fault)begin halt<=1;il_failed<=1;priming<=0;frontend_run<=0;end
   if(arm)il_failed<=0;
   if(snap_busy && snap_ack==snap_request)begin snapshot<=cores;snap_busy<=0;end
 `endif
   // Prime the write path before establishing the record origin, following
   // the successful benchmark. This alone did NOT resolve revision 1
   // hardware mismatches; read/write timing still needs qualification.
-  if(priming && write_ready) begin
+  if(priming && prime_ready) begin
    if(prime_left!=1)prime_left<=prime_left-1'b1;
 `ifdef INTERLEAVE
    if(prime_left==1 && source_valid)begin priming<=0;arm<=1;end
@@ -205,15 +255,23 @@ module acq_sram_top(
   end
   if(command)received<=0;
 `ifdef INTERLEAVE
+  `ifdef PRECISION
+  // Board-qualified sparse-clock origin: counter-referenced write addressing
+  // differs by one word from the continuous-clock path (origin probe, 2026-09-13).
+  if(arm)origin<=position+(decim_log!=0 ? 2'd3 : 2'd2);
+`else
   if(arm)origin<=position+2'd2;
+`endif
 `else
   if(arm)origin<=position+1'b1;
 `endif
   `ifdef INTERLEAVE
   // Read-pipeline trace: an explicit snapshot command replaces these values.
+`ifndef BURST_RECALL
   if(trace_first)snapshot[31:0]<=trace_data;
   if(trace_second)snapshot[63:32]<=trace_data;
   if(trace_third)snapshot[79:64]<=trace_data[15:0];
+`endif
   `endif
   if(read_valid) begin
    `ifndef INTERLEAVE
@@ -268,9 +326,22 @@ module acq_sram_top(
    6:rd=trigger_index[15:0];7:rd={12'b0,trigger_index[19:16]};
    8:rd=position[15:0];9:rd={13'b0,position[18:16]};
    10:rd=origin[15:0];11:rd={13'b0,origin[18:16]};
-   12:rd={6'b0,received};
+   12:rd=received;
 `ifdef INTERLEAVE
+   `ifdef BURST_RECALL
+`ifdef PRECISION
+   13:rd=16'h0009;
+   28:rd={11'b0,decim_log};
+   29:rd=decim_log!=0 ? 16'd16 : 16'd8;
+`else
+   13:rd=16'h0008;
+`endif
+   25:rd=buffer_read64[16*burst_half+:16];
+   26:rd=BUF_WORDS;
+   27:rd=burst_index;
+`else
    13:rd=16'h0007;
+`endif
 `else
    13:rd=16'h0005;
 `endif

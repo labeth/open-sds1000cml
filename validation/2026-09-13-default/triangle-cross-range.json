@@ -1,0 +1,399 @@
+{
+  "sample_rate_hz": 500000000,
+  "fit_record": "validation/2026-09-13-default/triangle-fit-0.bin",
+  "records": [
+    {
+      "file": "validation/2026-09-13-default/triangle-fit-0.bin",
+      "sha256": "6bc150ba817fe1116f742bf38746d6f33560650c8ad533d9b1271ae96fac20eb",
+      "channels": [
+        {
+          "frequency_hz": 1000038.4540708242,
+          "period_samples": 499.98077370391724,
+          "min_code": 35,
+          "max_code": 196,
+          "rail_fraction": 0.0,
+          "raw_segment_residual_rms_codes": 5.0888352260163785,
+          "per_core_fit_residual_rms_codes": 0.6158050810052894,
+          "cores": [
+            {
+              "slot": 0,
+              "rising_slope": 324.3769106101483,
+              "falling_slope": -324.0307114752235,
+              "rising_midpoint": 119.4763223866802,
+              "falling_midpoint": 118.30677556311527,
+              "gain": 1.0013644351184912,
+              "offset_codes": -3.3486418052200264,
+              "relative_skew_ns": -0.0070309134232812934
+            },
+            {
+              "slot": 1,
+              "rising_slope": 328.0395359330539,
+              "falling_slope": -327.1621257588357,
+              "rising_midpoint": 110.46200458780389,
+              "falling_midpoint": 109.14076654994079,
+              "gain": 0.9909808997422442,
+              "offset_codes": 6.894051110404675,
+              "relative_skew_ns": 0.20577577627949042
+            },
+            {
+              "slot": 2,
+              "rising_slope": 325.1890158373109,
+              "falling_slope": -324.33487868161313,
+              "rising_midpoint": 109.86751628231163,
+              "falling_midpoint": 108.75841743166772,
+              "gain": 0.9996434891697815,
+              "offset_codes": 6.4311313739690235,
+              "relative_skew_ns": -0.10319214217460347
+            },
+            {
+              "slot": 3,
+              "rising_slope": 322.1081525761106,
+              "falling_slope": -321.5320279686589,
+              "rising_midpoint": 120.96432663137142,
+              "falling_midpoint": 119.82063608426446,
+              "gain": 1.0087815395031567,
+              "offset_codes": -5.744585714353818,
+              "relative_skew_ns": -0.0338416629504423
+            },
+            {
+              "slot": 4,
+              "rising_slope": 325.0118749775913,
+              "falling_slope": -324.6764272616645,
+              "rising_midpoint": 120.69473470390048,
+              "falling_midpoint": 119.55976952285278,
+              "gain": 0.999390523083379,
+              "offset_codes": -4.348910351765539,
+              "relative_skew_ns": -0.06381231805635039
+            }
+          ]
+        },
+        {
+          "frequency_hz": 1000038.4392497132,
+          "period_samples": 499.98078111390294,
+          "min_code": 40,
+          "max_code": 198,
+          "rail_fraction": 0.0,
+          "raw_segment_residual_rms_codes": 1.5787823943702295,
+          "per_core_fit_residual_rms_codes": 0.6436936079792822,
+          "cores": [
+            {
+              "slot": 0,
+              "rising_slope": 336.75587852186896,
+              "falling_slope": -336.17177603282965,
+              "rising_midpoint": 117.17035943594774,
+              "falling_midpoint": 116.07589224033696,
+              "gain": 0.9886012680915354,
+              "offset_codes": 2.792934640320084,
+              "relative_skew_ns": 0.14803623072134828
+            },
+            {
+              "slot": 1,
+              "rising_slope": 335.189831598205,
+              "falling_slope": -334.6668980391155,
+              "rising_midpoint": 118.01253612334052,
+              "falling_midpoint": 116.9459351550319,
+              "gain": 0.993133461519192,
+              "offset_codes": 1.4141447857324891,
+              "relative_skew_ns": 0.11389353380183435
+            },
+            {
+              "slot": 2,
+              "rising_slope": 334.2332740202097,
+              "falling_slope": -333.724027737271,
+              "rising_midpoint": 117.94668774787901,
+              "falling_midpoint": 116.91195656928876,
+              "gain": 0.9959575722523901,
+              "offset_codes": 1.132082124399318,
+              "relative_skew_ns": 0.07071075007047055
+            },
+            {
+              "slot": 3,
+              "rising_slope": 328.78251697900055,
+              "falling_slope": -328.81973949377755,
+              "rising_midpoint": 118.62373782001565,
+              "falling_midpoint": 117.75902640601525,
+              "gain": 1.011640586811424,
+              "offset_codes": -1.4804944241578681,
+              "relative_skew_ns": -0.16343210258586532
+            },
+            {
+              "slot": 4,
+              "rising_slope": 328.98151825416124,
+              "falling_slope": -328.96020245674913,
+              "rising_midpoint": 121.13896682012512,
+              "falling_midpoint": 120.28194900908224,
+              "gain": 1.0111186320694527,
+              "offset_codes": -3.9658883503850006,
+              "relative_skew_ns": -0.1758035132117703
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "validation/2026-09-13-default/triangle-range-0.bin",
+      "sha256": "682106cde663643feb3f21787a4721402d315b5a1dcd71ab039848925c17c684",
+      "channels": [
+        {
+          "frequency_hz": 1000037.5644003202,
+          "period_samples": 499.9812185053555,
+          "min_code": 81,
+          "max_code": 167,
+          "rail_fraction": 0.0,
+          "raw_segment_residual_rms_codes": 5.159769405306148,
+          "per_core_fit_residual_rms_codes": 0.5186436552861249,
+          "cores": [
+            {
+              "slot": 0,
+              "rising_slope": 157.69660029435812,
+              "falling_slope": -157.3628954576739,
+              "rising_midpoint": 128.01242558013914,
+              "falling_midpoint": 127.57964079336202,
+              "gain": 1.0140917986562976,
+              "offset_codes": -5.08033772743255,
+              "relative_skew_ns": -0.01740468049820966
+            },
+            {
+              "slot": 1,
+              "rising_slope": 162.71885258730512,
+              "falling_slope": -162.42159876520185,
+              "rising_midpoint": 118.75002803062405,
+              "falling_midpoint": 118.23337890669526,
+              "gain": 0.9826499575856633,
+              "offset_codes": 8.08070404032783,
+              "relative_skew_ns": 0.19792963501302432
+            },
+            {
+              "slot": 2,
+              "rising_slope": 160.57285435529536,
+              "falling_slope": -160.15436995740222,
+              "rising_midpoint": 118.25496769241556,
+              "falling_midpoint": 117.82503919879026,
+              "gain": 0.9961712836058595,
+              "offset_codes": 6.9285096788129295,
+              "relative_skew_ns": -0.0505837420071433
+            },
+            {
+              "slot": 3,
+              "rising_slope": 157.043833111984,
+              "falling_slope": -157.2783624022064,
+              "rising_midpoint": 129.41439830298117,
+              "falling_midpoint": 128.9827434250884,
+              "gain": 1.0164705365724014,
+              "offset_codes": -6.809969222493578,
+              "relative_skew_ns": -0.017777241737222546
+            },
+            {
+              "slot": 4,
+              "rising_slope": 161.15441373514835,
+              "falling_slope": -161.09247298804655,
+              "rising_midpoint": 129.26214876943558,
+              "falling_midpoint": 128.850943581061,
+              "gain": 0.9914735064775638,
+              "offset_codes": -3.439574942197794,
+              "relative_skew_ns": -0.11500516438591131
+            }
+          ],
+          "held_out_corrected_segment_residual_rms_codes": 0.5515395989060106
+        },
+        {
+          "frequency_hz": 1000037.5968856763,
+          "period_samples": 499.9812022638982,
+          "min_code": 85,
+          "max_code": 167,
+          "rail_fraction": 0.0,
+          "raw_segment_residual_rms_codes": 1.5087678754205636,
+          "per_core_fit_residual_rms_codes": 0.5398322888537092,
+          "cores": [
+            {
+              "slot": 0,
+              "rising_slope": 170.73045159525074,
+              "falling_slope": -170.7957368526201,
+              "rising_midpoint": 124.97882701171334,
+              "falling_midpoint": 124.43731552962662,
+              "gain": 0.9756606502147934,
+              "offset_codes": 4.538954534379201,
+              "relative_skew_ns": 0.15684336086036452
+            },
+            {
+              "slot": 1,
+              "rising_slope": 168.4354061715842,
+              "falling_slope": -168.60659380050836,
+              "rising_midpoint": 125.94215767086312,
+              "falling_midpoint": 125.40614467347622,
+              "gain": 0.9886413655094031,
+              "offset_codes": 1.9650480132648909,
+              "relative_skew_ns": 0.16162442849389685
+            },
+            {
+              "slot": 2,
+              "rising_slope": 164.3093260764414,
+              "falling_slope": -164.42642294554258,
+              "rising_midpoint": 125.83712219683851,
+              "falling_midpoint": 125.31439388012049,
+              "gain": 1.0136216218581882,
+              "offset_codes": -1.0745910916811425,
+              "relative_skew_ns": 0.16139666283039758
+            },
+            {
+              "slot": 3,
+              "rising_slope": 164.0633806689998,
+              "falling_slope": -164.8498488357626,
+              "rising_midpoint": 126.52051797510701,
+              "falling_midpoint": 126.1231036173458,
+              "gain": 1.013074675008185,
+              "offset_codes": -1.7617149814786188,
+              "relative_skew_ns": -0.2204409787831004
+            },
+            {
+              "slot": 4,
+              "rising_slope": 164.91885599524915,
+              "falling_slope": -164.93229249018964,
+              "rising_midpoint": 128.97010515476444,
+              "falling_midpoint": 128.58743666368323,
+              "gain": 1.010194036359826,
+              "offset_codes": -3.8798339448923116,
+              "relative_skew_ns": -0.2685794330174331
+            }
+          ],
+          "held_out_corrected_segment_residual_rms_codes": 0.5718951598689114
+        }
+      ]
+    },
+    {
+      "file": "validation/2026-09-13-default/triangle-range-1.bin",
+      "sha256": "41dcd35ef13dc4ed37b6ed75506536b30865329f94cee05fde48cde4b14dfc2f",
+      "channels": [
+        {
+          "frequency_hz": 1000037.994754505,
+          "period_samples": 499.9810033445208,
+          "min_code": 80,
+          "max_code": 167,
+          "rail_fraction": 0.0,
+          "raw_segment_residual_rms_codes": 5.1453636888884855,
+          "per_core_fit_residual_rms_codes": 0.5185789566815721,
+          "cores": [
+            {
+              "slot": 0,
+              "rising_slope": 157.82090305210312,
+              "falling_slope": -157.4676048354052,
+              "rising_midpoint": 127.79160641727277,
+              "falling_midpoint": 127.68436921343528,
+              "gain": 1.0139712604478073,
+              "offset_codes": -5.022740037719387,
+              "relative_skew_ns": -0.030229901477173932
+            },
+            {
+              "slot": 1,
+              "rising_slope": 162.8518574344584,
+              "falling_slope": -162.44327857767868,
+              "rising_midpoint": 118.59377240188947,
+              "falling_midpoint": 118.40980807821731,
+              "gain": 0.9827797908895791,
+              "offset_codes": 8.038743842321324,
+              "relative_skew_ns": 0.19516799427317072
+            },
+            {
+              "slot": 2,
+              "rising_slope": 160.64370288798594,
+              "falling_slope": -160.23202503301434,
+              "rising_midpoint": 118.09445617712188,
+              "falling_midpoint": 117.97810944815205,
+              "gain": 0.9963155761850393,
+              "offset_codes": 6.898521353269118,
+              "relative_skew_ns": -0.007763561067780824
+            },
+            {
+              "slot": 3,
+              "rising_slope": 157.26512261671743,
+              "falling_slope": -157.20358723766705,
+              "rising_midpoint": 129.24452332839107,
+              "falling_midpoint": 129.1391092971621,
+              "gain": 1.016614612930616,
+              "offset_codes": -6.838379860134836,
+              "relative_skew_ns": -0.035140663213867114
+            },
+            {
+              "slot": 4,
+              "rising_slope": 161.34489949777478,
+              "falling_slope": -161.194447564221,
+              "rising_midpoint": 129.07118432901322,
+              "falling_midpoint": 128.99214605416236,
+              "gain": 0.9911767003297011,
+              "offset_codes": -3.393271668162967,
+              "relative_skew_ns": -0.12530031373495548
+            }
+          ],
+          "held_out_corrected_segment_residual_rms_codes": 0.5479883492514669
+        },
+        {
+          "frequency_hz": 1000038.049310818,
+          "period_samples": 499.9809760684385,
+          "min_code": 85,
+          "max_code": 167,
+          "rail_fraction": 0.0,
+          "raw_segment_residual_rms_codes": 1.518997427752936,
+          "per_core_fit_residual_rms_codes": 0.5393999106506153,
+          "cores": [
+            {
+              "slot": 0,
+              "rising_slope": 171.12575463655975,
+              "falling_slope": -170.85884126958072,
+              "rising_midpoint": 124.81941342501413,
+              "falling_midpoint": 124.57885853757548,
+              "gain": 0.9747465178251183,
+              "offset_codes": 4.670870862770897,
+              "relative_skew_ns": 0.20039741826912577
+            },
+            {
+              "slot": 1,
+              "rising_slope": 168.51821463425256,
+              "falling_slope": -168.59968695394574,
+              "rising_midpoint": 125.77657370254455,
+              "falling_midpoint": 125.5502367983803,
+              "gain": 0.9888181328814087,
+              "offset_codes": 1.962665685056848,
+              "relative_skew_ns": 0.1683780620355549
+            },
+            {
+              "slot": 2,
+              "rising_slope": 164.3665250445861,
+              "falling_slope": -164.38992097804723,
+              "rising_midpoint": 125.67870700690302,
+              "falling_midpoint": 125.46490525726695,
+              "gain": 1.013967324571915,
+              "offset_codes": -1.1047888690744685,
+              "relative_skew_ns": 0.1473256672430772
+            },
+            {
+              "slot": 3,
+              "rising_slope": 164.24410663386584,
+              "falling_slope": -164.82302355368356,
+              "rising_midpoint": 126.42135756416145,
+              "falling_midpoint": 126.33041874359792,
+              "gain": 1.013010001391969,
+              "offset_codes": -1.79911919833404,
+              "relative_skew_ns": -0.22664147848711258
+            },
+            {
+              "slot": 4,
+              "rising_slope": 164.9302778900537,
+              "falling_slope": -164.8851184521282,
+              "rising_midpoint": 128.82773388206527,
+              "falling_midpoint": 128.76098944588037,
+              "gain": 1.0107117427092258,
+              "offset_codes": -3.95305429217737,
+              "relative_skew_ns": -0.3006229909740788
+            }
+          ],
+          "held_out_corrected_segment_residual_rms_codes": 0.5764051776699175
+        }
+      ]
+    }
+  ],
+  "limits": [
+    "Relative calibration at this analog range and temperature only.",
+    "1 MHz triangle slope fit does not qualify high-frequency aperture correction or sine-wave ENOB.",
+    "Apply coefficients only with known record-start core phase."
+  ]
+}

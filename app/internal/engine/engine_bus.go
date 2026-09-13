@@ -30,7 +30,12 @@ func (e *Engine) SetLEDs(word uint16) {
 // every loop iteration AND inside every legitimate long wait (holdoff pacing,
 // budget polls, recovery bring-up, the parked states). The health token keys
 // on THIS, not on frame count alone.
-func (e *Engine) Beats() uint64 { return e.beatN.Load() }
+func (e *Engine) Beats() uint64 {
+	if e.sram != nil {
+		return e.beatN.Load() + e.sram.Beats()
+	}
+	return e.beatN.Load()
+}
 
 // sleepBeating sleeps d in ≤500 ms slices, beating each slice so long pacing
 // stays visibly alive to the supervisor; aborts early on a stop request.
@@ -193,6 +198,9 @@ type execReq struct {
 // failure), so diagnostics work on a fabric the engine refuses to drive. fn
 // must not block. The result (or ErrExecTimeout) is returned to the caller.
 func (e *Engine) Exec(fn func(bus.Bus) error, timeout time.Duration) error {
+	if e.sram != nil {
+		return fmt.Errorf("legacy fabric diagnostics unavailable on SRAM ABI")
+	}
 	req := execReq{fn: fn, done: make(chan error, 1)}
 	select {
 	case e.execReq <- req:

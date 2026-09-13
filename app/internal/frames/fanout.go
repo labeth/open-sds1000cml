@@ -90,8 +90,11 @@ func (fo *Fanout) WithFrame(fn func(*engine.Frame)) {
 
 func copyFrame(dst, src *engine.Frame) {
 	c1, c2 := dst.C1, dst.C2
+	q1, q2 := dst.Q1, dst.Q2
 	e1n, e1x, e2n, e2x := dst.EnvMin, dst.EnvMax, dst.EnvMin2, dst.EnvMax2
 	*dst = *src
+	dst.Q1 = append(q1[:0], src.Q1...)
+	dst.Q2 = append(q2[:0], src.Q2...)
 	dst.C1 = append(c1[:0], src.C1[:src.Valid]...)
 	dst.C2 = append(c2[:0], src.C2[:src.Valid]...)
 	dst.EnvMin = append(e1n[:0], src.EnvMin...)

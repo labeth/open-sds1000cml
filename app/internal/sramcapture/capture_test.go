@@ -14,8 +14,9 @@ type fakeBus struct {
 	id, mapID, revision, flags            uint16
 	length, start, origin, position, base uint32
 	staged                                map[uint16]uint16
-	buffer                                [512]uint32
+	buffer                                [4096]uint32
 	index                                 uint16
+	burstIndex                            uint16
 	received                              uint32
 	writes, readWords, failRead           int
 	commands                              []uint16
@@ -62,6 +63,21 @@ func (f *fakeBus) Read(plane uint8, s uint16) (uint16, error) {
 		return f.mapID, nil
 	case 15:
 		return f.staged[15], nil
+	case 28:
+		return f.staged[18], nil
+	case 29:
+		if f.staged[18] != 0 {
+			return 16, nil
+		}
+		return 8, nil
+	case 25:
+		v := uint16(f.buffer[f.burstIndex/2] >> (16 * (f.burstIndex % 2)))
+		f.burstIndex = (f.burstIndex + 1) % 8192
+		return v, nil
+	case 26:
+		return 4096, nil
+	case 27:
+		return f.burstIndex, nil
 	case 19:
 		return f.staged[19], nil
 	case 17:
@@ -81,6 +97,10 @@ func (f *fakeBus) Read(plane uint8, s uint16) (uint16, error) {
 func (f *fakeBus) RawWrite(s, v uint16) error {
 	f.writes++
 	f.staged[s] = v
+	if s == 17 {
+		f.burstIndex = v
+		return nil
+	}
 	if s == 16 {
 		f.index = v
 		return nil
@@ -113,7 +133,7 @@ func (f *fakeBus) RawWrite(s, v uint16) error {
 			}
 			first = (first - 1) & addressMask
 		}
-		if n > 512 {
+		if n > 4096 || (f.revision < 8 && n > 512) {
 			return errors.New("buffer overflow")
 		}
 		for i := uint32(0); i < n; i++ {
@@ -344,5 +364,51 @@ func TestInterleaveWarmRecallPreservesFullCapacity(t *testing.T) {
 		if op == 1 || op == 7 {
 			t.Fatalf("warm recall used unsafe operation %d", op)
 		}
+	}
+}
+
+func TestBurstRecallFullRecordAndTail(t *testing.T) {
+	f := frozenBus()
+	f.revision = 8
+	f.staged[15] = 500
+	f.staged[19] = 2
+	f.corruptBurstHead = true
+	c := client(t, f)
+	for _, w := range [][2]uint32{{0, Words}, {Words - 1, 1}, {4079, 17}, {0, Words}} {
+		var dst bytes.Buffer
+		n, e := c.Recall(context.Background(), w[0], w[1], &dst)
+		if e != nil || n != int64(w[1])*4 {
+			t.Fatalf("%v: %d %v", w, n, e)
+		}
+		checkWords(t, dst.Bytes(), f.base+w[0], w[1])
+	}
+}
+
+func TestPrecisionMetadataAndConfig(t *testing.T) {
+	f := frozenBus()
+	f.revision = 9
+	f.staged[15] = 500
+	f.staged[19] = 2
+	f.staged[18] = 10
+	c, err := New(f)
+	if err != nil {
+		t.Fatal(err)
+	}
+	m, err := c.Status()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if m.SampleRateHz != 488281.25 || m.Decimation != 1024 || m.SamplesPerWord != 1 || m.SampleBits != 16 || m.FractionBits != 8 {
+		t.Fatalf("wrong precision metadata: %+v", m)
+	}
+	for _, log := range []uint8{1, 3, 29, 255} {
+		if err := c.Arm(context.Background(), Config{PostWords: 1, DecimationLog2: log}); err == nil {
+			t.Fatalf("accepted invalid decimation %d", log)
+		}
+	}
+	f.staged[18] = 0
+	m, err = c.Status()
+	if err != nil || m.SampleBits != 8 || m.FractionBits != 0 || m.SamplesPerWord != 2 {
+		t.Fatalf("raw format not restored: %+v %v", m, err)
 	}
 }

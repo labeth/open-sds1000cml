@@ -291,3 +291,34 @@ func TestIndexSeqUnit(t *testing.T) {
 		t.Fatal("needle longer than hay → -1")
 	}
 }
+
+func TestSerialRegistryUnknownFailsClosed(t *testing.T) {
+	e := New(Config{Bus: newFakeBus()})
+	w := uartWave([]int{0x55}, 16)
+	f := &Frame{C1: w, C2: w, Valid: len(w), SampleS: 1e-6}
+	e.SetSerialParams(SerialParams{Proto: 987654})
+	if ok, _ := e.serialQualify(f, f.Valid, f.SampleS); ok {
+		t.Fatal("unknown protocol qualified a trigger")
+	}
+}
+
+func TestSerialRegistryCapabilities(t *testing.T) {
+	ds := SerialDecoderList()
+	if len(ds) < 10 {
+		t.Fatalf("lost existing decoders: %d", len(ds))
+	}
+	for i, d := range ds {
+		if i > 0 && d.ID <= ds[i-1].ID {
+			t.Fatal("capabilities not sorted")
+		}
+		if d.Decode == nil || d.Match == nil || d.Name == "" {
+			t.Fatal("incomplete decoder")
+		}
+	}
+	if err := RegisterSerialDecoder(ds[0]); err == nil {
+		t.Fatal("replaced saved protocol ID")
+	}
+	if err := RegisterSerialDecoder(SerialDecoder{}); err == nil {
+		t.Fatal("accepted invalid decoder")
+	}
+}

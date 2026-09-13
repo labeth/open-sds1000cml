@@ -1,0 +1,142 @@
+[
+  {
+    "args": [
+      "put",
+      "/tmp/acqsram-next.arm",
+      "/dev/acqsram"
+    ],
+    "stdout": "\nupload: 3% (131072/3640899)\nupload: 7% (262144/3640899)\nupload: 10% (393216/3640899)\nupload: 14% (524288/3640899)\nupload: 17% (655360/3640899)\nupload: 21% (786432/3640899)\nupload: 25% (917504/3640899)\nupload: 28% (1048576/3640899)\nupload: 32% (1179648/3640899)\nupload: 35% (1310720/3640899)\nupload: 39% (1441792/3640899)\nupload: 43% (1572864/3640899)\nupload: 46% (1703936/3640899)\nupload: 50% (1835008/3640899)\nupload: 53% (1966080/3640899)\nupload: 57% (2097152/3640899)\nupload: 61% (2228224/3640899)\nupload: 64% (2359296/3640899)\nupload: 68% (2490368/3640899)\nupload: 71% (2621440/3640899)\nupload: 75% (2752512/3640899)\nupload: 79% (2883584/3640899)\nupload: 82% (3014656/3640899)\nupload: 86% (3145728/3640899)\nupload: 89% (3276800/3640899)\nupload: 93% (3407872/3640899)\nupload: 97% (3538944/3640899)\nupload: 100% (3640899/3640899)\nok: /tmp/acqsram-next.arm -> /dev/acqsram sha256=1b38187456a68a29d3a442591e8634a1a85f720e9c435f66410f9e85b3d18f13\n",
+    "stderr": "",
+    "exit": 0
+  },
+  {
+    "args": [
+      "exec",
+      "chmod",
+      "755",
+      "/dev/acqsram"
+    ],
+    "stdout": "\n[exit 0]\n",
+    "stderr": "",
+    "exit": 0
+  },
+  {
+    "args": [
+      "exec",
+      "/dev/acqsram",
+      "range-both",
+      "9"
+    ],
+    "stdout": "cal: loaded /usr/bin/siglent/firmdata0/calibration.dat\n{\n  \"buffer_words\": 32,\n  \"capture\": {\n    \"locked\": true,\n    \"ready\": true,\n    \"running\": false,\n    \"frozen\": true,\n    \"triggered\": true,\n    \"prefetched\": true,\n    \"words\": 524288,\n    \"start\": 0,\n    \"trigger_index\": 262144,\n    \"position\": 86,\n    \"origin\": 85,\n    \"revision\": 7,\n    \"map_id\": 57746,\n    \"sample_rate_hz\": 500000000,\n    \"interleaved\": true,\n    \"data_fault\": false\n  },\n  \"identity\": 23122,\n  \"length\": 524288,\n  \"map_id\": 57746,\n  \"origin\": 85,\n  \"position\": 86,\n  \"revision\": 7,\n  \"start\": 0,\n  \"status\": 1652,\n  \"trigger_index\": 262144\n}\n[exit 0]\n",
+    "stderr": "",
+    "exit": 0
+  },
+  {
+    "args": [
+      "exec",
+      "/dev/acqsram",
+      "capture",
+      "1",
+      "262144",
+      "262144"
+    ],
+    "stdout": "{\n  \"buffer_words\": 0,\n  \"capture\": {\n    \"locked\": true,\n    \"ready\": true,\n    \"running\": false,\n    \"frozen\": true,\n    \"triggered\": true,\n    \"prefetched\": false,\n    \"words\": 524288,\n    \"start\": 0,\n    \"trigger_index\": 262144,\n    \"position\": 112,\n    \"origin\": 112,\n    \"revision\": 7,\n    \"map_id\": 57746,\n    \"sample_rate_hz\": 500000000,\n    \"interleaved\": true,\n    \"data_fault\": false\n  },\n  \"identity\": 23122,\n  \"length\": 524288,\n  \"map_id\": 57746,\n  \"origin\": 112,\n  \"position\": 112,\n  \"revision\": 7,\n  \"start\": 0,\n  \"status\": 116,\n  \"trigger_index\": 262144\n}\n[exit 0]\n",
+    "stderr": "",
+    "exit": 0
+  },
+  {
+    "args": [
+      "exec",
+      "/dev/acqsram",
+      "recall",
+      "/dev/acq-triangle.bin",
+      "0",
+      "524288"
+    ],
+    "stdout": "{\n  \"bytes\": 2097152,\n  \"first\": 1667130216,\n  \"last\": 1752001901,\n  \"nonconsecutive_words\": 524287,\n  \"path\": \"/dev/acq-triangle.bin\",\n  \"seconds\": 6.74775056,\n  \"sha256\": \"682106cde663643feb3f21787a4721402d315b5a1dcd71ab039848925c17c684\",\n  \"words\": 524288\n}\n[exit 0]\n",
+    "stderr": "",
+    "exit": 0
+  },
+  {
+    "args": [
+      "get",
+      "/dev/acq-triangle.bin",
+      "validation/2026-09-13-default/triangle-range-0.bin"
+    ],
+    "stdout": "\ndownload: 12% (262144/2097152)\ndownload: 25% (524288/2097152)\ndownload: 37% (786432/2097152)\ndownload: 50% (1048576/2097152)\ndownload: 62% (1310720/2097152)\ndownload: 75% (1572864/2097152)\ndownload: 87% (1835008/2097152)\ndownload: 100% (2097152/2097152)\nok: /dev/acq-triangle.bin -> validation/2026-09-13-default/triangle-range-0.bin\n",
+    "stderr": "",
+    "exit": 0
+  },
+  {
+    "args": [
+      "exec",
+      "/dev/acqsram",
+      "capture",
+      "1",
+      "262144",
+      "262144"
+    ],
+    "stdout": "{\n  \"buffer_words\": 0,\n  \"capture\": {\n    \"locked\": true,\n    \"ready\": true,\n    \"running\": false,\n    \"frozen\": true,\n    \"triggered\": true,\n    \"prefetched\": false,\n    \"words\": 524288,\n    \"start\": 0,\n    \"trigger_index\": 262144,\n    \"position\": 141,\n    \"origin\": 141,\n    \"revision\": 7,\n    \"map_id\": 57746,\n    \"sample_rate_hz\": 500000000,\n    \"interleaved\": true,\n    \"data_fault\": false\n  },\n  \"identity\": 23122,\n  \"length\": 524288,\n  \"map_id\": 57746,\n  \"origin\": 141,\n  \"position\": 141,\n  \"revision\": 7,\n  \"start\": 0,\n  \"status\": 628,\n  \"trigger_index\": 262144\n}\n[exit 0]\n",
+    "stderr": "",
+    "exit": 0
+  },
+  {
+    "args": [
+      "exec",
+      "/dev/acqsram",
+      "recall",
+      "/dev/acq-triangle.bin",
+      "0",
+      "524288"
+    ],
+    "stdout": "{\n  \"bytes\": 2097152,\n  \"first\": 2273281928,\n  \"last\": 2694947746,\n  \"nonconsecutive_words\": 524287,\n  \"path\": \"/dev/acq-triangle.bin\",\n  \"seconds\": 6.70343204,\n  \"sha256\": \"41dcd35ef13dc4ed37b6ed75506536b30865329f94cee05fde48cde4b14dfc2f\",\n  \"words\": 524288\n}\n[exit 0]\n",
+    "stderr": "",
+    "exit": 0
+  },
+  {
+    "args": [
+      "get",
+      "/dev/acq-triangle.bin",
+      "validation/2026-09-13-default/triangle-range-1.bin"
+    ],
+    "stdout": "\ndownload: 12% (262144/2097152)\ndownload: 25% (524288/2097152)\ndownload: 37% (786432/2097152)\ndownload: 50% (1048576/2097152)\ndownload: 62% (1310720/2097152)\ndownload: 75% (1572864/2097152)\ndownload: 87% (1835008/2097152)\ndownload: 100% (2097152/2097152)\nok: /dev/acq-triangle.bin -> validation/2026-09-13-default/triangle-range-1.bin\n",
+    "stderr": "",
+    "exit": 0
+  },
+  {
+    "args": [
+      "exec",
+      "/dev/acqsram",
+      "capture",
+      "1",
+      "262144",
+      "262144"
+    ],
+    "stdout": "{\n  \"buffer_words\": 0,\n  \"capture\": {\n    \"locked\": true,\n    \"ready\": true,\n    \"running\": false,\n    \"frozen\": true,\n    \"triggered\": true,\n    \"prefetched\": false,\n    \"words\": 524288,\n    \"start\": 0,\n    \"trigger_index\": 262144,\n    \"position\": 170,\n    \"origin\": 170,\n    \"revision\": 7,\n    \"map_id\": 57746,\n    \"sample_rate_hz\": 500000000,\n    \"interleaved\": true,\n    \"data_fault\": false\n  },\n  \"identity\": 23122,\n  \"length\": 524288,\n  \"map_id\": 57746,\n  \"origin\": 170,\n  \"position\": 170,\n  \"revision\": 7,\n  \"start\": 0,\n  \"status\": 116,\n  \"trigger_index\": 262144\n}\n[exit 0]\n",
+    "stderr": "",
+    "exit": 0
+  },
+  {
+    "args": [
+      "exec",
+      "/dev/acqsram",
+      "recall",
+      "/dev/acq-triangle.bin",
+      "0",
+      "524288"
+    ],
+    "stdout": "{\n  \"bytes\": 2097152,\n  \"first\": 2711199906,\n  \"last\": 2088665216,\n  \"nonconsecutive_words\": 524287,\n  \"path\": \"/dev/acq-triangle.bin\",\n  \"seconds\": 6.72277928,\n  \"sha256\": \"ecf80a5c9360ae3e8df30d7e640fa49068ad895e6534c6bc5b984dbd06410a66\",\n  \"words\": 524288\n}\n[exit 0]\n",
+    "stderr": "",
+    "exit": 0
+  },
+  {
+    "args": [
+      "get",
+      "/dev/acq-triangle.bin",
+      "validation/2026-09-13-default/triangle-range-2.bin"
+    ],
+    "stdout": "\ndownload: 12% (262144/2097152)\ndownload: 25% (524288/2097152)\ndownload: 37% (786432/2097152)\ndownload: 50% (1048576/2097152)\ndownload: 62% (1310720/2097152)\ndownload: 75% (1572864/2097152)\ndownload: 87% (1835008/2097152)\ndownload: 100% (2097152/2097152)\nok: /dev/acq-triangle.bin -> validation/2026-09-13-default/triangle-range-2.bin\n",
+    "stderr": "",
+    "exit": 0
+  }
+]

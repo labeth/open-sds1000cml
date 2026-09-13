@@ -1,0 +1,170 @@
+[
+  {
+    "args": [
+      "app",
+      "stop"
+    ],
+    "stdout": "{\n  \"ok\": true\n}\n",
+    "stderr": "",
+    "exit": 0
+  },
+  {
+    "args": [
+      "exec",
+      "ps"
+    ],
+    "stdout": "  PID USER       VSZ STAT COMMAND\n    1 root      2668 S    init       \n    2 root         0 SW   [kthreadd]\n    3 root         0 SW   [ksoftirqd/0]\n    4 root         0 SW   [kworker/0:0]\n    5 root         0 SW   [kworker/u:0]\n    6 root         0 SW<  [khelper]\n    7 root         0 SW<  [netns]\n    8 root         0 SW   [kworker/u:1]\n  154 root         0 SW   [sync_supers]\n  156 root         0 SW   [bdi-default]\n  158 root         0 SW<  [kblockd]\n  170 root         0 SW<  [omap2_mcspi]\n  181 root         0 SW   [khubd]\n  293 root         0 SW<  [rpciod]\n  295 root         0 SW   [kworker/0:1]\n  305 root         0 SW   [kswapd0]\n  306 root         0 SW   [fsnotify_mark]\n  307 root         0 SW<  [nfsiod]\n  308 root         0 SW<  [crypto]\n  321 root         0 SW<  [OMAP UART0]\n  323 root         0 SW<  [OMAP UART1]\n  325 root         0 SW<  [OMAP UART2]\n  327 root         0 SW<  [OMAP UART3]\n  329 root         0 SW<  [OMAP UART4]\n  331 root         0 SW<  [OMAP UART5]\n  415 root         0 SW   [mtdblock0]\n  420 root         0 SW   [mtdblock1]\n  425 root         0 SW   [mtdblock2]\n  430 root         0 SW   [mtdblock3]\n  435 root         0 SW   [mtdblock4]\n  440 root         0 SW   [mtdblock5]\n  445 root         0 SW   [mtdblock6]\n  450 root         0 SW   [mtdblock7]\n  455 root         0 SW   [mtdblock8]\n  460 root         0 SW   [mtdblock9]\n  465 root         0 SW   [mtdblock10]\n  470 root         0 SW   [mtdblock11]\n  479 root         0 SW   [ubi_bgt0d]\n  531 root         0 SW   [kworker/0:2]\n  536 root      2844 S    -/bin/sh \n  537 1         1788 S    portmap \n  561 root         0 SW   [ubi_bgt1d]\n  567 root         0 SW   [ubifs_bgt1_0]\n  586 root         0 SW   [ubi_bgt2d]\n  597 root         0 SW   [flush-ubifs_1_0]\n  645 root         0 SW<  [musb-hdrc.0]\n  651 root         0 SW<  [musb-hdrc.1]\n  671 root         0 SW   [kworker/u:2]\n  675 root         0 SW   [scsi_eh_0]\n  676 root         0 SW   [usb-storage]\n  707 root         0 SW   [kworker/u:3]\n  739 root         0 SW   [flush-8:0]\n  928 root      2684 S    /bin/sh /usr/bin/siglent/usr/media/U-disk0/startup.sh\n  943 root      558m S    /usr/bin/siglent/usr/media/U-disk0/ota/agent.A \n  979 root      2844 R    ps \n[exit 0]\n",
+    "stderr": "",
+    "exit": 0
+  },
+  {
+    "args": [
+      "put",
+      "/tmp/acqsram-il.arm",
+      "/dev/acqsram"
+    ],
+    "stdout": "\nupload: 4% (131072/3143310)\nupload: 8% (262144/3143310)\nupload: 12% (393216/3143310)\nupload: 16% (524288/3143310)\nupload: 20% (655360/3143310)\nupload: 25% (786432/3143310)\nupload: 29% (917504/3143310)\nupload: 33% (1048576/3143310)\nupload: 37% (1179648/3143310)\nupload: 41% (1310720/3143310)\nupload: 45% (1441792/3143310)\nupload: 50% (1572864/3143310)\nupload: 54% (1703936/3143310)\nupload: 58% (1835008/3143310)\nupload: 62% (1966080/3143310)\nupload: 66% (2097152/3143310)\nupload: 70% (2228224/3143310)\nupload: 75% (2359296/3143310)\nupload: 79% (2490368/3143310)\nupload: 83% (2621440/3143310)\nupload: 87% (2752512/3143310)\nupload: 91% (2883584/3143310)\nupload: 95% (3014656/3143310)\nupload: 100% (3143310/3143310)\nok: /tmp/acqsram-il.arm -> /dev/acqsram sha256=5e8002513ae97a0eab6caa4fba1989c12a0034c51efb3c0c2f659d55b264fd3c\n",
+    "stderr": "",
+    "exit": 0
+  },
+  {
+    "args": [
+      "exec",
+      "chmod",
+      "755",
+      "/dev/acqsram"
+    ],
+    "stdout": "\n[exit 0]\n",
+    "stderr": "",
+    "exit": 0
+  },
+  {
+    "args": [
+      "put",
+      "fpga/acq_sram/out/250mhz-p1000-interleave-seed2/bench.rbf",
+      "/dev/acq-capture.rbf"
+    ],
+    "stdout": "\nupload: 35% (131072/368011)\nupload: 71% (262144/368011)\nupload: 100% (368011/368011)\nok: fpga/acq_sram/out/250mhz-p1000-interleave-seed2/bench.rbf -> /dev/acq-capture.rbf sha256=8d23e8fbf2b96534e3f37c93dc674b7e4f4c470f7b6aff9650723a5f038f2e88\n",
+    "stderr": "",
+    "exit": 0
+  },
+  {
+    "args": [
+      "exec",
+      "/dev/acqsram",
+      "load",
+      "/dev/acq-capture.rbf"
+    ],
+    "stdout": "fpgaload: bit order: explicit reverse, agrees with the container (native Quartus order (6a f7 \u2026))\nfpgaload: CONF_DONE after 0s (port 0x00c0)\nloaded 368011 bytes, CONF_DONE=00c0, identity=5a52\n[exit 0]\n",
+    "stderr": "",
+    "exit": 0
+  },
+  {
+    "args": [
+      "exec",
+      "/dev/acqsram",
+      "capture",
+      "1",
+      "262144",
+      "262144"
+    ],
+    "stdout": "{\n  \"buffer_words\": 0,\n  \"capture\": {\n    \"locked\": true,\n    \"ready\": true,\n    \"running\": false,\n    \"frozen\": true,\n    \"triggered\": true,\n    \"prefetched\": false,\n    \"words\": 524288,\n    \"start\": 0,\n    \"trigger_index\": 262144,\n    \"position\": 28,\n    \"origin\": 28,\n    \"revision\": 7,\n    \"map_id\": 57746,\n    \"sample_rate_hz\": 500000000,\n    \"interleaved\": true,\n    \"data_fault\": false\n  },\n  \"identity\": 23122,\n  \"length\": 524288,\n  \"map_id\": 57746,\n  \"origin\": 28,\n  \"position\": 28,\n  \"revision\": 7,\n  \"start\": 0,\n  \"status\": 628,\n  \"trigger_index\": 262144\n}\n[exit 0]\n",
+    "stderr": "",
+    "exit": 0
+  },
+  {
+    "args": [
+      "exec",
+      "/dev/acqsram",
+      "recall",
+      "/dev/acq-triangle.bin",
+      "0",
+      "524288"
+    ],
+    "stdout": "{\n  \"bytes\": 2097152,\n  \"first\": 3654474203,\n  \"last\": 1095125064,\n  \"nonconsecutive_words\": 522662,\n  \"path\": \"/dev/acq-triangle.bin\",\n  \"seconds\": 6.77987212,\n  \"sha256\": \"2f93353cbcfb0c5b53e96982bf4bdbbc11e4743eb14b82500fc8dd5e24fab317\",\n  \"words\": 524288\n}\n[exit 0]\n",
+    "stderr": "",
+    "exit": 0
+  },
+  {
+    "args": [
+      "get",
+      "/dev/acq-triangle.bin",
+      "validation/2026-09-13-default/triangle-0.bin"
+    ],
+    "stdout": "\ndownload: 12% (262144/2097152)\ndownload: 25% (524288/2097152)\ndownload: 37% (786432/2097152)\ndownload: 50% (1048576/2097152)\ndownload: 62% (1310720/2097152)\ndownload: 75% (1572864/2097152)\ndownload: 87% (1835008/2097152)\ndownload: 100% (2097152/2097152)\nok: /dev/acq-triangle.bin -> validation/2026-09-13-default/triangle-0.bin\n",
+    "stderr": "",
+    "exit": 0
+  },
+  {
+    "args": [
+      "exec",
+      "/dev/acqsram",
+      "capture",
+      "1",
+      "262144",
+      "262144"
+    ],
+    "stdout": "{\n  \"buffer_words\": 0,\n  \"capture\": {\n    \"locked\": true,\n    \"ready\": true,\n    \"running\": false,\n    \"frozen\": true,\n    \"triggered\": true,\n    \"prefetched\": false,\n    \"words\": 524288,\n    \"start\": 0,\n    \"trigger_index\": 262144,\n    \"position\": 56,\n    \"origin\": 56,\n    \"revision\": 7,\n    \"map_id\": 57746,\n    \"sample_rate_hz\": 500000000,\n    \"interleaved\": true,\n    \"data_fault\": false\n  },\n  \"identity\": 23122,\n  \"length\": 524288,\n  \"map_id\": 57746,\n  \"origin\": 56,\n  \"position\": 56,\n  \"revision\": 7,\n  \"start\": 0,\n  \"status\": 116,\n  \"trigger_index\": 262144\n}\n[exit 0]\n",
+    "stderr": "",
+    "exit": 0
+  },
+  {
+    "args": [
+      "exec",
+      "/dev/acqsram",
+      "recall",
+      "/dev/acq-triangle.bin",
+      "0",
+      "524288"
+    ],
+    "stdout": "{\n  \"bytes\": 2097152,\n  \"first\": 1,\n  \"last\": 893139003,\n  \"nonconsecutive_words\": 522704,\n  \"path\": \"/dev/acq-triangle.bin\",\n  \"seconds\": 6.7951968,\n  \"sha256\": \"a298e3b220381f13f9e65b5af6ab3245ace4daac91409b578bc6b200a54e5129\",\n  \"words\": 524288\n}\n[exit 0]\n",
+    "stderr": "",
+    "exit": 0
+  },
+  {
+    "args": [
+      "get",
+      "/dev/acq-triangle.bin",
+      "validation/2026-09-13-default/triangle-1.bin"
+    ],
+    "stdout": "\ndownload: 12% (262144/2097152)\ndownload: 25% (524288/2097152)\ndownload: 37% (786432/2097152)\ndownload: 50% (1048576/2097152)\ndownload: 62% (1310720/2097152)\ndownload: 75% (1572864/2097152)\ndownload: 87% (1835008/2097152)\ndownload: 100% (2097152/2097152)\nok: /dev/acq-triangle.bin -> validation/2026-09-13-default/triangle-1.bin\n",
+    "stderr": "",
+    "exit": 0
+  },
+  {
+    "args": [
+      "exec",
+      "/dev/acqsram",
+      "capture",
+      "1",
+      "262144",
+      "262144"
+    ],
+    "stdout": "{\n  \"buffer_words\": 0,\n  \"capture\": {\n    \"locked\": true,\n    \"ready\": true,\n    \"running\": false,\n    \"frozen\": true,\n    \"triggered\": true,\n    \"prefetched\": false,\n    \"words\": 524288,\n    \"start\": 0,\n    \"trigger_index\": 262144,\n    \"position\": 85,\n    \"origin\": 85,\n    \"revision\": 7,\n    \"map_id\": 57746,\n    \"sample_rate_hz\": 500000000,\n    \"interleaved\": true,\n    \"data_fault\": false\n  },\n  \"identity\": 23122,\n  \"length\": 524288,\n  \"map_id\": 57746,\n  \"origin\": 85,\n  \"position\": 85,\n  \"revision\": 7,\n  \"start\": 0,\n  \"status\": 628,\n  \"trigger_index\": 262144\n}\n[exit 0]\n",
+    "stderr": "",
+    "exit": 0
+  },
+  {
+    "args": [
+      "exec",
+      "/dev/acqsram",
+      "recall",
+      "/dev/acq-triangle.bin",
+      "0",
+      "524288"
+    ],
+    "stdout": "{\n  \"bytes\": 2097152,\n  \"first\": 2829100455,\n  \"last\": 3453014483,\n  \"nonconsecutive_words\": 522754,\n  \"path\": \"/dev/acq-triangle.bin\",\n  \"seconds\": 6.74874936,\n  \"sha256\": \"85a669c25b818a04eeab2f11fee5b07e36018a967b9575830bef355287b2b267\",\n  \"words\": 524288\n}\n[exit 0]\n",
+    "stderr": "",
+    "exit": 0
+  },
+  {
+    "args": [
+      "get",
+      "/dev/acq-triangle.bin",
+      "validation/2026-09-13-default/triangle-2.bin"
+    ],
+    "stdout": "\ndownload: 12% (262144/2097152)\ndownload: 25% (524288/2097152)\ndownload: 37% (786432/2097152)\ndownload: 50% (1048576/2097152)\ndownload: 62% (1310720/2097152)\ndownload: 75% (1572864/2097152)\ndownload: 87% (1835008/2097152)\ndownload: 100% (2097152/2097152)\nok: /dev/acq-triangle.bin -> validation/2026-09-13-default/triangle-2.bin\n",
+    "stderr": "",
+    "exit": 0
+  }
+]

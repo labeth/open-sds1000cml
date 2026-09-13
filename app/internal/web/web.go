@@ -184,6 +184,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/api/panel", s.hPanel)
 	mux.HandleFunc("/api/zones", s.hZones)
 	mux.HandleFunc("/api/serial", s.hSerial)
+	mux.HandleFunc("GET /api/serial/protocols", func(w http.ResponseWriter, r *http.Request) { writeJSON(w, engine.SerialDecoderList()) })
 	mux.HandleFunc("/api/mask", s.hMask)
 	mux.HandleFunc("/api/maskfail", s.hMaskFail)
 	mux.HandleFunc("/api/bode", s.hBode)

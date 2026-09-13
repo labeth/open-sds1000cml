@@ -47,7 +47,15 @@ func SRAMHandler(source SRAMSource) http.Handler {
 			fail(w, 503, e)
 			return
 		}
-		reply(w, map[string]any{"capture": m, "capacity_words": sramcapture.Words, "capacity_samples_per_channel": sramcapture.SamplesPerChannel, "sample_rate_hz": m.SampleRateHz, "channels": 2, "format": "uint8 CH1, CH2 pairs; two pairs per word"})
+		format := "uint8 CH1, CH2 pairs; two pairs per word"
+		spw := m.SamplesPerWord
+		if spw == 0 {
+			spw = 2
+		}
+		if m.FractionBits == 8 {
+			format = "uint16 little-endian Q8.8 CH1, CH2; one pair per word"
+		}
+		reply(w, map[string]any{"capture": m, "capacity_words": sramcapture.Words, "capacity_samples_per_channel": sramcapture.Words * uint32(spw), "sample_rate_hz": m.SampleRateHz, "channels": 2, "format": format})
 	}
 	mux.HandleFunc("GET /api/sram/status", status)
 	mux.HandleFunc("POST /api/sram/arm", func(w http.ResponseWriter, r *http.Request) {

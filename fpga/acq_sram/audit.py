@@ -9,7 +9,8 @@ for i in range(80):
 summary=(out/'output_files/bench.fit.summary').read_text()
 used=int(re.search(r'Total memory bits\s*:\s*([\d,]+)',summary)[1].replace(',',''))
 interleave='`define INTERLEAVE' in (out/'bench.v').read_text()
-expected=18944 if interleave else 16384
+expected=(133632 if "`define BURST_RECALL" in (out/"bench.v").read_text() else 18944) if interleave else 16384
+if '`define PRECISION' in (out/'bench.v').read_text():expected+=2048
 assert used==expected,f'Expected {expected} buffer bits, got {used}'
 a=json.loads((out/'audit.json').read_text());a.update(adc_input_registers=80,on_chip_memory_bits=used,interleaved=interleave)
 (out/'audit.json').write_text(json.dumps(a,indent=2)+'\n')

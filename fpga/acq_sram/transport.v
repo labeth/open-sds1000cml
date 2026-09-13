@@ -32,7 +32,12 @@ module sram_transport #(parameter AW=19,CONTINUOUS_ONLY=0,READ_DELAY=0)(
  reg [2+READ_DELAY:0] read_tags=0;
  wire write_step=state[WRITE] && !stop_requested && write_valid;
  wire read_step=state[READ] && !discard;
- wire pulse=write_queued || state[READ] || state[FLUSH];
+ // Dedicated pulse register removes the high-fanout state decode from the
+ // external clock output path. This is the same next-cycle pulse sequence.
+ (* preserve *) reg pulse=0;
+ wire next_read_pulse=(state[SETUP] && wait_last && reading) ||
+   (state[READ] && (!remaining_last || (!discard && !continuing)));
+
  assign ready=state[IDLE] && locked && !reset;
  assign write_ready=state[WRITE] && !stop_requested && !reset;
  assign k1=reading;
@@ -46,6 +51,7 @@ module sram_transport #(parameter AW=19,CONTINUOUS_ONLY=0,READ_DELAY=0)(
  always @(posedge sample_clk) captured<=dq;
  always @(posedge clk) begin
   write_queued<=write_step;
+  pulse<=write_step || next_read_pulse;
   queued_data<=write_data; // Validity travels separately in write_queued.
   drive_data<=queued_data;
   read_data<=captured;
@@ -55,7 +61,7 @@ module sram_transport #(parameter AW=19,CONTINUOUS_ONLY=0,READ_DELAY=0)(
   if(CONTINUOUS_ONLY)stop_requested<=write_stop;
   wait_last<=wait_count==14;drain_last<=wait_count==6;
   if(reset || !locked) begin
-   state<=8'b1;reading<=1;position<=0;write_queued<=0;stop_requested<=0;read_tags<=0;read_valid<=0;
+   state<=8'b1;reading<=1;position<=0;write_queued<=0;pulse<=0;stop_requested<=0;read_tags<=0;read_valid<=0;
   end else begin
    if(pulse)position<=position+1'b1;
    state[IDLE]<=(state[IDLE] && !command) || (state[VALIDATE] && !legal_command) || (state[HOLD] && wait_last) || (state[DRAIN] && drain_last);

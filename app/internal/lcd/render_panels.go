@@ -34,9 +34,9 @@ var (
 	}
 )
 
-func measFor(ch int, sig []uint8, seq uint64, vpc, off, ss float64, cpl int) *measure.Result {
+func measFor(ch int, sig []uint8, q []uint16, guard int, seq uint64, vpc, off, ss float64, cpl int) *measure.Result {
 	if seq == 0 || ch < 0 || ch > 1 {
-		return measure.Compute(sig, vpc, off, ss)
+		return measure.ComputeAcquisition(sig, q, vpc, off, ss, cpl, guard)
 	}
 	measMu.Lock()
 	defer measMu.Unlock()
@@ -46,7 +46,7 @@ func measFor(ch int, sig []uint8, seq uint64, vpc, off, ss float64, cpl int) *me
 			return c.m
 		}
 	}
-	m := measure.Compute(sig, vpc, off, ss)
+	m := measure.ComputeAcquisition(sig, q, vpc, off, ss, cpl, guard)
 	c.seq, c.at, c.vpc, c.off, c.ss, c.cpl, c.m = seq, time.Now(), vpc, off, ss, cpl, m
 	return m
 }
@@ -92,7 +92,7 @@ func measBox(sf Surface, f *engine.Frame, hud HUD, ch, x int) {
 		sig = analog.CoupleDisplay(sig, cpl)
 		off = 0
 	}
-	m := measFor(ch, sig, f.Seq, vdiv/25*probe, off*probe, hud.SampleS, cpl)
+	m := measFor(ch, sig, frameQ(f, ch), f.FilterGuard, f.Seq, vdiv/25*probe, off*probe, hud.SampleS, cpl)
 	if m == nil {
 		return
 	}
@@ -428,7 +428,7 @@ func drawHUD(sf Surface, f *engine.Frame, hud HUD) {
 			sig = analog.CoupleDisplay(sig, cpl)
 			off = 0
 		}
-		m := measFor(ch, sig, f.Seq, vdiv/25*probe, off*probe, hud.SampleS, cpl)
+		m := measFor(ch, sig, frameQ(f, ch), f.FilterGuard, f.Seq, vdiv/25*probe, off*probe, hud.SampleS, cpl)
 		if m == nil {
 			return
 		}
@@ -442,4 +442,11 @@ func drawHUD(sf Surface, f *engine.Frame, hud HUD) {
 	if hud.TwoChan && len(f.C2) >= valid {
 		line(1, 410, f.C2[:valid], hud.C2VdivV, hud.Probe2, hud.OffC2V, hud.Cpl2, colC2, "C2")
 	}
+}
+
+func frameQ(f *engine.Frame, ch int) []uint16 {
+	if ch == 1 {
+		return f.Q2
+	}
+	return f.Q1
 }

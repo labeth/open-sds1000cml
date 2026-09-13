@@ -1,0 +1,107 @@
+[
+  {
+    "args": [
+      "power",
+      "cycle"
+    ],
+    "stdout": "power off, waiting 5s, on ...\npower cycled\n",
+    "stderr": "",
+    "exit": 0
+  },
+  {
+    "args": [
+      "ping"
+    ],
+    "stdout": "",
+    "stderr": "error: dial 192.168.1.209:5900: dial tcp 192.168.1.209:5900: i/o timeout\n",
+    "exit": 1
+  },
+  {
+    "args": [
+      "ping"
+    ],
+    "stdout": "",
+    "stderr": "error: dial 192.168.1.209:5900: dial tcp 192.168.1.209:5900: i/o timeout\n",
+    "exit": 1
+  },
+  {
+    "args": [
+      "ping"
+    ],
+    "stdout": "",
+    "stderr": "error: dial 192.168.1.209:5900: dial tcp 192.168.1.209:5900: connect: no route to host\n",
+    "exit": 1
+  },
+  {
+    "args": [
+      "ping"
+    ],
+    "stdout": "",
+    "stderr": "error: dial 192.168.1.209:5900: dial tcp 192.168.1.209:5900: connect: no route to host\n",
+    "exit": 1
+  },
+  {
+    "args": [
+      "ping"
+    ],
+    "stdout": "",
+    "stderr": "error: dial 192.168.1.209:5900: dial tcp 192.168.1.209:5900: connect: no route to host\n",
+    "exit": 1
+  },
+  {
+    "args": [
+      "ping"
+    ],
+    "stdout": "",
+    "stderr": "error: dial 192.168.1.209:5900: dial tcp 192.168.1.209:5900: connect: connection refused\n",
+    "exit": 1
+  },
+  {
+    "args": [
+      "ping"
+    ],
+    "stdout": "",
+    "stderr": "error: dial 192.168.1.209:5900: dial tcp 192.168.1.209:5900: connect: connection refused\n",
+    "exit": 1
+  },
+  {
+    "args": [
+      "ping"
+    ],
+    "stdout": "",
+    "stderr": "error: dial 192.168.1.209:5900: dial tcp 192.168.1.209:5900: connect: connection refused\n",
+    "exit": 1
+  },
+  {
+    "args": [
+      "ping"
+    ],
+    "stdout": "",
+    "stderr": "error: dial 192.168.1.209:5900: dial tcp 192.168.1.209:5900: connect: connection refused\n",
+    "exit": 1
+  },
+  {
+    "args": [
+      "ping"
+    ],
+    "stdout": "",
+    "stderr": "error: dial 192.168.1.209:5900: dial tcp 192.168.1.209:5900: connect: connection refused\n",
+    "exit": 1
+  },
+  {
+    "args": [
+      "ping"
+    ],
+    "stdout": "",
+    "stderr": "error: dial 192.168.1.209:5900: dial tcp 192.168.1.209:5900: connect: connection refused\n",
+    "exit": 1
+  },
+  {
+    "args": [
+      "ping"
+    ],
+    "stdout": "{\n  \"agent_slot\": \"A\",\n  \"device\": \"sds1102\",\n  \"time_unix\": 20\n}\n",
+    "stderr": "",
+    "exit": 0
+  }
+]

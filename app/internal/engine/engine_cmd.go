@@ -50,6 +50,9 @@ func (e *Engine) serviceCommands() {
 		e.w3(cs3LevelBLo, lo)
 		e.w3(cs3LevelBHi, hi)
 	}
+	if e.sram != nil {
+		return
+	}
 	if e.flushTrigWords(false) && e.running.Load() {
 		e.armEngine()
 		if trigDirty {

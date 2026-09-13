@@ -118,38 +118,15 @@ func (e *Engine) serialQualify(f *Frame, valid int, sampleS float64) (bool, int)
 	if len(chA) < valid || len(chB) < valid {
 		return false, -1
 	}
-	var res decode.Result
-	switch p.Proto {
-	case serUART:
-		res = decode.DecodeUART(chA[:valid], sampleS, decode.UARTCfg{Baud: p.Baud, Bits: p.Bits, Parity: p.Parity, Threshold: p.Threshold, HaveThr: p.HaveThr})
-	case serI2C:
-		res = decode.DecodeI2C(chA[:valid], chB[:valid], sampleS, decode.I2CCfg{Threshold: p.Threshold, HaveThr: p.HaveThr})
-	case serSPI:
-		res = decode.DecodeSPI(chA[:valid], chB[:valid], sampleS, decode.SPICfg{CPOL: p.CPOL, CPHA: p.CPHA, MSB: p.MSB, Threshold: p.Threshold, HaveThr: p.HaveThr})
-	case serManchester:
-		res = decode.DecodeManchester(chA[:valid], sampleS, decode.ManchesterCfg{Bitrate: p.Baud, IEEE: p.IEEE, MSB: p.MSB, Bits: p.Bits, Threshold: p.Threshold, HaveThr: p.HaveThr})
-	case serSENT:
-		res = decode.DecodeSENT(chA[:valid], sampleS, decode.SENTCfg{TickNs: p.TickNs, Nibbles: p.Nibbles, Threshold: p.Threshold, HaveThr: p.HaveThr})
-	case serCAN:
-		res = decode.DecodeCANFD(chA[:valid], sampleS, decode.CANFDCfg{NominalBaud: p.Baud, DataBaud: p.DataBaud, DominantLow: true, Threshold: p.Threshold, HaveThr: p.HaveThr})
-	case serMIL1553:
-		res = decode.DecodeMIL1553(chA[:valid], sampleS, decode.MIL1553Cfg{Bitrate: p.Baud, Threshold: p.Threshold, HaveThr: p.HaveThr})
-	case serARINC:
-		res = decode.DecodeARINC429(chA[:valid], sampleS, decode.ARINC429Cfg{Bitrate: p.Baud, Threshold: p.Threshold, HaveThr: p.HaveThr})
-	case serUSB:
-		res = decode.DecodeUSBLS(chA[:valid], sampleS, decode.USBLSCfg{Bitrate: p.Baud, Threshold: p.Threshold, HaveThr: p.HaveThr})
-	case serFlexRay:
-		res = decode.DecodeFlexRay(chA[:valid], sampleS, decode.FlexRayCfg{Bitrate: p.Baud, Threshold: p.Threshold, HaveThr: p.HaveThr})
-	default:
-		return true, -1
-	}
+	d, ok := serialDecoder(p.Proto)
+	if !ok {
+		return false, -1
+	} // Unsupported protocols must never qualify a trigger.
+	res := d.Decode(chA[:valid], chB[:valid], sampleS, p)
 	if !res.OK {
 		return false, -1
 	}
-	if p.Proto == serI2C {
-		return matchI2C(res.Spans, p)
-	}
-	return matchBytes(res.Spans, p.Bytes) // UART / SPI
+	return d.Match(res.Spans, p)
 }
 
 // matchI2C finds a transaction addressing p.Addr (or any if <0) with the wanted

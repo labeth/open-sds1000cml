@@ -101,3 +101,20 @@ func TestWaitNextConcurrentWithReaders(t *testing.T) {
 	}
 	<-done
 }
+
+func TestPrecisionCopyOwnsStorage(t *testing.T) {
+	src := &engine.Frame{Valid: 1, C1: []byte{100}, C2: []byte{101}, Q1: []uint16{25601}, Q2: []uint16{25855}}
+	var dst engine.Frame
+	copyFrame(&dst, src)
+	src.Q1[0] = 0
+	src.Q2[0] = 0
+	if dst.Q1[0] != 25601 || dst.Q2[0] != 25855 {
+		t.Fatal("precision frame alias")
+	}
+	src.Q1 = nil
+	src.Q2 = nil
+	copyFrame(&dst, src)
+	if len(dst.Q1) != 0 || len(dst.Q2) != 0 {
+		t.Fatal("stale precision after raw frame")
+	}
+}

@@ -1,0 +1,121 @@
+[
+  {
+    "log2": 4,
+    "passband_fraction": 0.075,
+    "max_passband_error_db": 0.001101544047009257,
+    "stopband_from_fraction": 0.25,
+    "stopband_max_db": -117.21034139777275
+  },
+  {
+    "log2": 5,
+    "passband_fraction": 0.075,
+    "max_passband_error_db": 0.0016946899923879985,
+    "stopband_from_fraction": 0.25,
+    "stopband_max_db": -117.21034139777275
+  },
+  {
+    "log2": 6,
+    "passband_fraction": 0.075,
+    "max_passband_error_db": 0.0018710512545421641,
+    "stopband_from_fraction": 0.25,
+    "stopband_max_db": -117.21034139777275
+  },
+  {
+    "log2": 7,
+    "passband_fraction": 0.075,
+    "max_passband_error_db": 0.0019151414954746255,
+    "stopband_from_fraction": 0.25,
+    "stopband_max_db": -117.21034139777275
+  },
+  {
+    "log2": 8,
+    "passband_fraction": 0.075,
+    "max_passband_error_db": 0.0019261640510465962,
+    "stopband_from_fraction": 0.25,
+    "stopband_max_db": -117.21034139777275
+  },
+  {
+    "log2": 9,
+    "passband_fraction": 0.075,
+    "max_passband_error_db": 0.0019289196896446284,
+    "stopband_from_fraction": 0.25,
+    "stopband_max_db": -117.21034139777275
+  },
+  {
+    "log2": 10,
+    "passband_fraction": 0.075,
+    "max_passband_error_db": 0.0019296085992780974,
+    "stopband_from_fraction": 0.25,
+    "stopband_max_db": -117.21034139777275
+  },
+  {
+    "log2": 11,
+    "passband_fraction": 0.075,
+    "max_passband_error_db": 0.00192978082668608,
+    "stopband_from_fraction": 0.25,
+    "stopband_max_db": -117.21034139777275
+  },
+  {
+    "log2": 12,
+    "passband_fraction": 0.075,
+    "max_passband_error_db": 0.001929823883537163,
+    "stopband_from_fraction": 0.25,
+    "stopband_max_db": -117.21034139777275
+  },
+  {
+    "log2": 13,
+    "passband_fraction": 0.075,
+    "max_passband_error_db": 0.0019298346477506902,
+    "stopband_from_fraction": 0.25,
+    "stopband_max_db": -117.21034139777275
+  },
+  {
+    "log2": 14,
+    "passband_fraction": 0.075,
+    "max_passband_error_db": 0.0019298373388028684,
+    "stopband_from_fraction": 0.25,
+    "stopband_max_db": -117.21034139777275
+  },
+  {
+    "log2": 15,
+    "passband_fraction": 0.075,
+    "max_passband_error_db": 0.0019298380115688068,
+    "stopband_from_fraction": 0.25,
+    "stopband_max_db": -117.21034139777275
+  },
+  {
+    "log2": 16,
+    "passband_fraction": 0.075,
+    "max_passband_error_db": 0.0019298381797569152,
+    "stopband_from_fraction": 0.25,
+    "stopband_max_db": -117.21034139777275
+  },
+  {
+    "log2": 17,
+    "passband_fraction": 0.075,
+    "max_passband_error_db": 0.0019298382218070772,
+    "stopband_from_fraction": 0.25,
+    "stopband_max_db": -117.21034139777275
+  },
+  {
+    "log2": 18,
+    "passband_fraction": 0.075,
+    "max_passband_error_db": 0.0019298382323176887,
+    "stopband_from_fraction": 0.25,
+    "stopband_max_db": -117.21034139777275
+  },
+  {
+    "log2": 19,
+    "passband_fraction": 0.075,
+    "max_passband_error_db": 0.001929838234946065,
+    "stopband_from_fraction": 0.25,
+    "stopband_max_db": -117.21034139777275
+  },
+  {
+    "log2": 20,
+    "passband_fraction": 0.075,
+    "max_passband_error_db": 0.0019298382356058115,
+    "stopband_from_fraction": 0.25,
+    "stopband_max_db": -117.21034139777275
+  }
+]

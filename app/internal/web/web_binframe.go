@@ -13,6 +13,7 @@ import (
 // after WithFrame returns — rep owns its data, so no lock is held here.
 func encodeBinFrame(rep frameReply) []byte {
 	var flags byte
+	precision := rep.FractionBits == 8 && len(rep.Q1) == len(rep.C1) && len(rep.Q2) == len(rep.C2) && len(rep.Q1) > 0
 	var segs [][]int16
 	head, tail := 0, 0
 	switch {
@@ -38,6 +39,9 @@ func encodeBinFrame(rep frameReply) []byte {
 			segs = [][]int16{rep.C1, rep.C2}
 		}
 	}
+	if precision {
+		flags |= 0x20
+	}
 	hdr := rep
 	hdr.C1, hdr.C2 = nil, nil
 	hdr.E1Min, hdr.E1Max, hdr.E2Min, hdr.E2Max = nil, nil, nil, nil
@@ -57,6 +61,14 @@ func encodeBinFrame(rep frameReply) []byte {
 	buf[1] = flags
 	binary.LittleEndian.PutUint32(buf[4:8], uint32(len(hj)))
 	buf = append(buf, hj...)
+	if precision {
+		for _, seg := range [][]uint16{rep.Q1, rep.Q2} {
+			for _, v := range seg {
+				buf = append(buf, byte(v), byte(v>>8))
+			}
+		}
+		return buf
+	}
 	for _, seg := range segs {
 		for _, v := range seg[head : head+segLen] {
 			buf = append(buf, uint8(v))
@@ -204,6 +216,19 @@ func (s *Server) rawBinMsg(since uint64) []byte {
 			Vpc1: vpc[0], Vpc2: vpc[1], Off1V: off[0], Off2V: off[1],
 		}
 		hdr.StreamSeq, hdr.WindowNs, hdr.GapNs = f.StreamSeq, f.WindowNs, f.GapNs
+		hdr.BandwidthHz, hdr.FilterGuard, hdr.Filter = f.BandwidthHz, f.FilterGuard, f.Filter
+		hdr.Decimation, hdr.CaptureDepth, hdr.TriggerKind = f.Decimation, f.CaptureDepth, f.TriggerKind
+		if len(f.Q1) == n && len(f.Q2) == n {
+			flags |= 0x20
+			hdr.FractionBits = 8
+			payload = make([]byte, 4*n)
+			for ch, q := range [][]uint16{f.Q1, f.Q2} {
+				for i, v := range q {
+					binary.LittleEndian.PutUint16(payload[2*(ch*n+i):], v)
+				}
+			}
+			return
+		}
 		payload = make([]byte, 2*n)
 		copy(payload[:n], f.C1[:n])
 		copy(payload[n:], f.C2[:n])

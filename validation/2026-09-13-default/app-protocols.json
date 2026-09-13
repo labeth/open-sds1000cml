@@ -1,0 +1,1 @@
+[{"id":1,"name":"UART"},{"id":2,"name":"I²C"},{"id":3,"name":"SPI"},{"id":4,"name":"Manchester"},{"id":5,"name":"SENT"},{"id":6,"name":"CAN FD"},{"id":7,"name":"MIL-STD-1553"},{"id":8,"name":"ARINC 429"},{"id":9,"name":"USB LS"},{"id":10,"name":"FlexRay"}]

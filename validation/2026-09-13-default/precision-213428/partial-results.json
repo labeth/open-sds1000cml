@@ -1,0 +1,50 @@
+[
+  {
+    "kind": "counter",
+    "log": 0,
+    "status": {
+      "buffer_words": 0,
+      "capture": {
+        "locked": true,
+        "ready": true,
+        "running": false,
+        "frozen": true,
+        "triggered": true,
+        "prefetched": false,
+        "words": 524288,
+        "start": 0,
+        "trigger_index": 524271,
+        "position": 17,
+        "origin": 17,
+        "revision": 9,
+        "map_id": 57746,
+        "sample_rate_hz": 500000000,
+        "decimation": 1,
+        "sample_bits": 8,
+        "fraction_bits": 0,
+        "samples_per_word": 2,
+        "interleaved": true,
+        "data_fault": false
+      },
+      "identity": 23122,
+      "length": 524288,
+      "map_id": 57746,
+      "origin": 17,
+      "position": 17,
+      "revision": 9,
+      "start": 0,
+      "status": 628,
+      "trigger_index": 524271
+    },
+    "recall": {
+      "bytes": 2097152,
+      "first": 0,
+      "last": 524287,
+      "nonconsecutive_words": 0,
+      "path": "/dev/acq-precision.bin",
+      "seconds": 0.95408324,
+      "sha256": "ae42b13d7e0af3e77723caf8357d34c7e061526ed9eefeb67b04a0aaa69f33e2",
+      "words": 524288
+    }
+  }
+]

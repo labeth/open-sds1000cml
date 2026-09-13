@@ -218,3 +218,28 @@ func (d *Dev) EnableEDMA(maxWords int, logf func(string, ...any)) bool {
 		edmaChan, maxWords, cs1CycleGap, e.coherency())
 	return true
 }
+
+// PopWordsChecked reads an explicitly selected pop port. A partially completed
+// DMA must be rewound by its owner; falling back here would silently skip data.
+func (d *Dev) PopWordsChecked(sel uint16, dst []uint16) error {
+	if len(dst) == 0 {
+		return nil
+	}
+	if sel > 127 {
+		return fmt.Errorf("bus: invalid pop selector %d", sel)
+	}
+	if d.edma != nil {
+		if !d.edma.drainWords(uint32(cs1PhysBase)+uint32(sel)*2, dst, len(dst)) {
+			return fmt.Errorf("bus: DMA pop failed; pointer may have advanced")
+		}
+		return nil
+	}
+	for i := range dst {
+		v, err := d.Read(PlaneCS1, sel)
+		if err != nil {
+			return err
+		}
+		dst[i] = v
+	}
+	return nil
+}

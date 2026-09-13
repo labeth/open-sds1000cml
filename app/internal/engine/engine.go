@@ -13,6 +13,7 @@ import (
 
 	"open-sds/app/internal/bus"
 	"open-sds/app/internal/iface"
+	"open-sds/app/internal/sramcapture"
 )
 
 // Register bindings: every fabric selector, opcode and field comes from the
@@ -125,6 +126,7 @@ func realClock() Clock { return Clock{Now: time.Now, Sleep: time.Sleep} }
 
 // Config wires an Engine.
 type Config struct {
+	SRAM        *sramcapture.Capture // non-nil selects the external SRAM ABI
 	Bus         bus.Bus
 	Clock       Clock         // zero → real clock
 	FramePeriod time.Duration // publish pacing floor; default defaultFramePeriod
@@ -249,6 +251,7 @@ type Engine struct {
 	clk   Clock
 	logf  func(string, ...any)
 	arena *arena
+	sram  *sramcapture.Capture
 
 	framePeriodNs atomic.Int64 // publish pacing floor (ns); 0 = back-to-back (stream)
 	holdoffNs     atomic.Int64 // minimum time after a triggered frame before re-arm; 0 = off
@@ -425,12 +428,17 @@ func New(cfg Config) *Engine {
 	if cfg.Logf == nil {
 		cfg.Logf = func(string, ...any) {}
 	}
+	capacity := deepRecord
+	if cfg.SRAM != nil {
+		capacity = int(sramcapture.SamplesPerChannel)
+	}
 	start, _ := PlanTdiv(500e-6) // decimated start detent: shows the cal edge fast
 	e := &Engine{
 		b:         cfg.Bus,
 		clk:       cfg.Clock,
 		logf:      cfg.Logf,
-		arena:     newArena(deepRecord),
+		arena:     newArena(capacity),
+		sram:      cfg.SRAM,
 		armSettle: cfg.ArmSettle,
 		armBusy:   realTime,
 		pollEvery: cfg.PollEvery,
@@ -617,7 +625,9 @@ func (e *Engine) Snapshot() Stats {
 	defer e.mu.Unlock()
 	s := e.stats
 	// zone/mask live state (atomics + ring size)
-	s.WinCols = e.band.WinCols()
+	if e.sram == nil {
+		s.WinCols = e.band.WinCols()
+	}
 	s.ZoneMode = int(e.zoneMode.Load())
 	s.ZoneSkip = e.zoneSkip.Load()
 	s.MaskMode = int(e.maskMode.Load())

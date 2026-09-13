@@ -1,0 +1,170 @@
+{
+  "app-frame-v5.bin": {
+    "bytes": 2098534,
+    "sha256": "81ef964376426913c0120d644ecec8adf568f7daf41dc7f370151511dadc6f16"
+  },
+  "app-frame-v5.json": {
+    "bytes": 1729,
+    "sha256": "bb90c043c02c78068ea17730422aa77afad17951c8b122c2d7f147bb3700f5d5"
+  },
+  "app-protocols.json": {
+    "bytes": 258,
+    "sha256": "13b29ff49ffe7029c33a6e4ffa06f473b58289fdd1e6d4acdfe37bca98ef3234"
+  },
+  "app-start.json": {
+    "bytes": 3754,
+    "sha256": "2778065e5ad482becff027160d8b27edc9fd5bd5729f6351a035bbc56d447d18"
+  },
+  "app-status.json": {
+    "bytes": 1343,
+    "sha256": "020e38bdf8267b055213e3673f0c10656fad5a4a75e9c123235c73f2ec96d233"
+  },
+  "app-v7-start.json": {
+    "bytes": 4253,
+    "sha256": "96035bbdf51e977e7ea7d1ec514e2445dbee62434f0ae30b89d935d2f14de5ff"
+  },
+  "app-v7-status.json": {
+    "bytes": 1349,
+    "sha256": "c18c652d7fafbf57e115fd2ac873b221799bf5cb9d4994d3f3ff9704aeb60ae2"
+  },
+  "burst-device.json": {
+    "bytes": 9759,
+    "sha256": "cbbcec46c15985d7b480a88656884e27a36dbe9298edebccb003f96c7bfced54"
+  },
+  "burst-repeat.json": {
+    "bytes": 3141,
+    "sha256": "6d5dce26242465258323c618f590ddc6653bd8492cbec51c49aeca136e8cfd40"
+  },
+  "precision-213333/partial-results.json": {
+    "bytes": 3,
+    "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+  },
+  "precision-213428/commands.json": {
+    "bytes": 6100,
+    "sha256": "31f2653d61ce3998de7e0e81c94a9a78adffd53d1c0064fdb8af0ba188c5b243"
+  },
+  "precision-213428/partial-results.json": {
+    "bytes": 1152,
+    "sha256": "7a1f9a3b23cee88f1e877c99f65ff4ae5ac4549963cc48138452d6579c24040a"
+  },
+  "precision-213910/commands.json": {
+    "bytes": 22298,
+    "sha256": "73b21d9e96955987f4c2937d5dfcf58ca68787c433857da3c98249b7e79c0b94"
+  },
+  "precision-213910/origin-results.json": {
+    "bytes": 20717,
+    "sha256": "96b5dff861dd51bc483272a13aeb94af105bd391f6313e55911cce7b16017872"
+  },
+  "precision-214557/adc-d0-6.bin": {
+    "bytes": 2097152,
+    "sha256": "e107333bba18df31dd71a0696e7455867a37d6938c819053d5e626ada2edbfcc"
+  },
+  "precision-214557/adc-d4-7.bin": {
+    "bytes": 2097152,
+    "sha256": "9b81a732d0e5d615a1db7db231b2a1b409a36ff1ce686c196dd8e635b1a90754"
+  },
+  "precision-214557/adc-d4-9.bin": {
+    "bytes": 2097152,
+    "sha256": "05951598bdd222d52533fe7858a1a50979c7ec801f1a73110fc3b1c34b9209ed"
+  },
+  "precision-214557/adc-d8-8.bin": {
+    "bytes": 2097152,
+    "sha256": "b8db907df395afb774d12bd07307617b9e97d09722c6450395949b91d60c0b13"
+  },
+  "precision-214557/build.json": {
+    "bytes": 16639,
+    "sha256": "149a6731cd5bb962ac218fb2d3f54c4f5f7cad2d3c77372915f39b586848c9cc"
+  },
+  "precision-214557/commands.json": {
+    "bytes": 38045,
+    "sha256": "d38fe1c216a57f3842e647fabbbac83f1e0f564d1511113036606e6f91d3e0c3"
+  },
+  "precision-214557/edge-113.bin": {
+    "bytes": 64,
+    "sha256": "a26b11ceb6b5bc2f977977e4f02d16deb32b65e753786a374addaee5cdd7182a"
+  },
+  "precision-214557/edge-17.bin": {
+    "bytes": 64,
+    "sha256": "d2672be478a2373f2f4d5b6e5dc37374bbb43d16ac8eeec91d2c7a27a6c19b1d"
+  },
+  "precision-214557/edge-49.bin": {
+    "bytes": 64,
+    "sha256": "b5865d5f3d42a7131a9d426c9945dcf43be006aeaaafcc30616511a42bffd561"
+  },
+  "precision-214557/edge-81.bin": {
+    "bytes": 64,
+    "sha256": "53ec5314f8d19effab023c03d87648dc13b20ddd2b18b8b28b123a7d4a0c60fd"
+  },
+  "precision-214557/results.json": {
+    "bytes": 16331,
+    "sha256": "8be4788a4d14b9d647325e1580e5b429cf81bbffe1701201a512eace8dab40ad"
+  },
+  "rev9-origin-candidate.tar.gz": {
+    "bytes": 192815,
+    "sha256": "9602ab357cf47e2e6680c8d25c017f74bca11930319f9f9fd1dc483bc6a54396"
+  },
+  "rev9-qualified.tar.gz": {
+    "bytes": 195404,
+    "sha256": "518d666d42b766dd554972e31c954c858e61ed7f5f6e065ad470ae67c95cfe3d"
+  },
+  "triangle-0.bin": {
+    "bytes": 2097152,
+    "sha256": "2f93353cbcfb0c5b53e96982bf4bdbbc11e4743eb14b82500fc8dd5e24fab317"
+  },
+  "triangle-1.bin": {
+    "bytes": 2097152,
+    "sha256": "a298e3b220381f13f9e65b5af6ab3245ace4daac91409b578bc6b200a54e5129"
+  },
+  "triangle-2.bin": {
+    "bytes": 2097152,
+    "sha256": "85a669c25b818a04eeab2f11fee5b07e36018a967b9575830bef355287b2b267"
+  },
+  "triangle-calibration.json": {
+    "bytes": 15646,
+    "sha256": "b96d08918e5a28614014e82b7b2214472cbffe5729d6f4133e9caad5aecb24c7"
+  },
+  "triangle-capture-live.json": {
+    "bytes": 9990,
+    "sha256": "a15a8fb267194d71f9c9fc5ab356d2800135323adbf2f7fad467ed5d9023126f"
+  },
+  "triangle-capture.json": {
+    "bytes": 2306,
+    "sha256": "1ae59a7ddb41c9aef48ecd62ae834b92fca3f78250c3c945c2d2711e94a87e83"
+  },
+  "triangle-cross-range.json": {
+    "bytes": 15661,
+    "sha256": "a0472daa81a0a27c984ff4849212adc508e48a94e39949f6f47c2a7bf9e18944"
+  },
+  "triangle-fit-0.bin": {
+    "bytes": 2097152,
+    "sha256": "6bc150ba817fe1116f742bf38746d6f33560650c8ad533d9b1271ae96fac20eb"
+  },
+  "triangle-fit-1.bin": {
+    "bytes": 2097152,
+    "sha256": "5d586a939a76ff7af207dec7852ca33bf39c92e6942f1783c13bf256e1314a9a"
+  },
+  "triangle-fit-2.bin": {
+    "bytes": 2097152,
+    "sha256": "1d74921798ad55e860e06376c00723566eb215cc6a5e95668733efa4d02c60ee"
+  },
+  "triangle-fit-capture.json": {
+    "bytes": 6433,
+    "sha256": "efffaabdf1be693e8ccfef2c9f6803707fae62ec7ca851aaaf0a7e823b2762b7"
+  },
+  "triangle-range-0.bin": {
+    "bytes": 2097152,
+    "sha256": "682106cde663643feb3f21787a4721402d315b5a1dcd71ab039848925c17c684"
+  },
+  "triangle-range-1.bin": {
+    "bytes": 2097152,
+    "sha256": "41dcd35ef13dc4ed37b6ed75506536b30865329f94cee05fde48cde4b14dfc2f"
+  },
+  "triangle-range-2.bin": {
+    "bytes": 2097152,
+    "sha256": "ecf80a5c9360ae3e8df30d7e640fa49068ad895e6534c6bc5b984dbd06410a66"
+  },
+  "triangle-range.json": {
+    "bytes": 7722,
+    "sha256": "15b0c1b482ffcb3a8714e3ac5e10b4b20993be450e9948f1026d3c093d220f1e"
+  }
+}

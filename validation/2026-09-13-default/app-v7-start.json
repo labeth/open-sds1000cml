@@ -1,0 +1,67 @@
+[
+  {
+    "args": [
+      "put",
+      "/tmp/app-default-sram-v7.arm",
+      "/dev/acq-app-v7"
+    ],
+    "code": 0,
+    "stdout": "\nupload: 1% (131072/12044012)\nupload: 2% (262144/12044012)\nupload: 3% (393216/12044012)\nupload: 4% (524288/12044012)\nupload: 5% (655360/12044012)\nupload: 6% (786432/12044012)\nupload: 7% (917504/12044012)\nupload: 8% (1048576/12044012)\nupload: 9% (1179648/12044012)\nupload: 10% (1310720/12044012)\nupload: 11% (1441792/12044012)\nupload: 13% (1572864/12044012)\nupload: 14% (1703936/12044012)\nupload: 15% (1835008/12044012)\nupload: 16% (1966080/12044012)\nupload: 17% (2097152/12044012)\nupload: 18% (2228224/12044012)\nupload: 19% (2359296/12044012)\nupload: 20% (2490368/12044012)\nupload: 21% (2621440/12044012)\nupload: 22% (2752512/12044012)\nupload: 23% (2883584/12044012)\nupload: 25% (3014656/12044012)\nupload: 26% (3145728/12044012)\nupload: 27% (3276800/12044012)\nupload: 28% (3407872/12044012)\nupload: 29% (3538944/12044012)\nupload: 30% (3670016/12044012)\nupload: 31% (3801088/12044012)\nupload: 32% (3932160/12044012)\nupload: 33% (4063232/12044012)\nupload: 34% (4194304/12044012)\nupload: 35% (4325376/12044012)\nupload: 37% (4456448/12044012)\nupload: 38% (4587520/12044012)\nupload: 39% (4718592/12044012)\nupload: 40% (4849664/12044012)\nupload: 41% (4980736/12044012)\nupload: 42% (5111808/12044012)\nupload: 43% (5242880/12044012)\nupload: 44% (5373952/12044012)\nupload: 45% (5505024/12044012)\nupload: 46% (5636096/12044012)\nupload: 47% (5767168/12044012)\nupload: 48% (5898240/12044012)\nupload: 50% (6029312/12044012)\nupload: 51% (6160384/12044012)\nupload: 52% (6291456/12044012)\nupload: 53% (6422528/12044012)\nupload: 54% (6553600/12044012)\nupload: 55% (6684672/12044012)\nupload: 56% (6815744/12044012)\nupload: 57% (6946816/12044012)\nupload: 58% (7077888/12044012)\nupload: 59% (7208960/12044012)\nupload: 60% (7340032/12044012)\nupload: 62% (7471104/12044012)\nupload: 63% (7602176/12044012)\nupload: 64% (7733248/12044012)\nupload: 65% (7864320/12044012)\nupload: 66% (7995392/12044012)\nupload: 67% (8126464/12044012)\nupload: 68% (8257536/12044012)\nupload: 69% (8388608/12044012)\nupload: 70% (8519680/12044012)\nupload: 71% (8650752/12044012)\nupload: 72% (8781824/12044012)\nupload: 74% (8912896/12044012)\nupload: 75% (9043968/12044012)\nupload: 76% (9175040/12044012)\nupload: 77% (9306112/12044012)\nupload: 78% (9437184/12044012)\nupload: 79% (9568256/12044012)\nupload: 80% (9699328/12044012)\nupload: 81% (9830400/12044012)\nupload: 82% (9961472/12044012)\nupload: 83% (10092544/12044012)\nupload: 84% (10223616/12044012)\nupload: 85% (10354688/12044012)\nupload: 87% (10485760/12044012)\nupload: 88% (10616832/12044012)\nupload: 89% (10747904/12044012)\nupload: 90% (10878976/12044012)\nupload: 91% (11010048/12044012)\nupload: 92% (11141120/12044012)\nupload: 93% (11272192/12044012)\nupload: 94% (11403264/12044012)\nupload: 95% (11534336/12044012)\nupload: 96% (11665408/12044012)\nupload: 97% (11796480/12044012)\nupload: 99% (11927552/12044012)\nupload: 100% (12044012/12044012)\nok: /tmp/app-default-sram-v7.arm -> /dev/acq-app-v7 sha256=e9dd4ae3e2a3fa5c16909476a798f55eb76370dcbf6f813f28237c26decc37fe\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "exec",
+      "chmod",
+      "755",
+      "/dev/acq-app-v7"
+    ],
+    "code": 0,
+    "stdout": "\n[exit 0]\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "exec",
+      "kill",
+      "-TERM",
+      "1097"
+    ],
+    "code": 0,
+    "stdout": "\n[exit 0]\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "exec",
+      "sh",
+      "-c",
+      "test ! -e /proc/1097 && echo stopped || echo waiting"
+    ],
+    "code": 0,
+    "stdout": "waiting\n[exit 0]\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "exec",
+      "sh",
+      "-c",
+      "test ! -e /proc/1097 && echo stopped || echo waiting"
+    ],
+    "code": 0,
+    "stdout": "stopped\n[exit 0]\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "exec",
+      "sh",
+      "-c",
+      "SCOPE_CAPTURE=default-sram SCOPE_HTTP=:8080 SCOPE_SETTINGS=/dev/acq-settings.json OTA_HEALTH_PATH=/dev/acq-health SCOPE_EDMA=1 /dev/acq-app-v7 >/dev/acq-app-v7.log 2>&1 & echo $!"
+    ],
+    "code": 0,
+    "stdout": "1118\n[exit 0]\n",
+    "stderr": ""
+  }
+]

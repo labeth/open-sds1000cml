@@ -33,6 +33,7 @@ import (
 	"open-sds/app/internal/panel"
 	"open-sds/app/internal/scpi"
 	"open-sds/app/internal/settings"
+	"open-sds/app/internal/sramcapture"
 	"open-sds/app/internal/vxi11srv"
 	"open-sds/app/internal/web"
 )
@@ -436,15 +437,16 @@ func main() {
 	}
 	// SRAM mode owns a different fabric ABI and must branch before the
 	// default loader/engine can issue any configuration or capture commands.
+	sramDefault := os.Getenv("SCOPE_CAPTURE") == "default-sram"
 	switch envOr("SCOPE_CAPTURE", "default") {
 	case "sram":
 		if err := runSRAMMode(b, gpmcFD, listen, healthPath, sig); err != nil {
 			logf("FATAL: SRAM mode: %v", err)
 		}
 		return
-	case "default":
+	case "default", "default-sram":
 	default:
-		logf("FATAL: SCOPE_CAPTURE must be default or sram")
+		logf("FATAL: SCOPE_CAPTURE must be default, default-sram or sram")
 		return
 	}
 
@@ -457,7 +459,28 @@ func main() {
 	var timingPort bus.TimingPort
 	var bootTiming bus.BootTiming
 	readCS1 := func(sel uint16) (uint16, error) { return b.Read(bus.PlaneCS1, sel) }
-	if err := fpgaload.Bringup(gpmcFD, readCS1, logf); err != nil {
+	var sramBackend *sramcapture.Capture
+	if sramDefault {
+		var err error
+		sramBackend, err = sramcapture.New(b)
+		if err != nil {
+			logf("FATAL: preload a qualified SRAM image: %v", err)
+			return
+		}
+		m, err := sramBackend.Status()
+		if err != nil || m.Revision != 9 || !m.Locked {
+			logf("FATAL: default-sram requires revision 9, status=%+v error=%v", m, err)
+			return
+		}
+		fabricOK = true
+		if useEDMA {
+			if err := bus.EnsureDcinv(logf); err != nil {
+				logf("SRAM: coherent DMA unavailable: %v", err)
+			} else {
+				b.EnableEDMA(8192, logf)
+			}
+		}
+	} else if err := fpgaload.Bringup(gpmcFD, readCS1, logf); err != nil {
 		if cp, cerr := fpgaload.ConfigStatus(gpmcFD); cerr == nil {
 			logf("FATAL: fabric bring-up failed: %v (CS3 config port reads %#04x) — engine will refuse to drive; /diag stays up", err, cp)
 		} else {
@@ -488,8 +511,10 @@ func main() {
 	}
 	logf("bus up, fabric verified=%v, fast drain=%v", fabricOK, b.FastDrain())
 
-	e := engine.New(engine.Config{Bus: b, Logf: logf})
-	go e.Run()
+	e := engine.New(engine.Config{Bus: b, Logf: logf, SRAM: sramBackend})
+	if !sramDefault {
+		go e.Run()
+	}
 
 	if healthPath != "" {
 		go healthLoop(e, healthPath, fabricOK, diagBeat)
@@ -532,6 +557,17 @@ func main() {
 		logf("SPI front end up (seeded to boot detent, not emitted)")
 	}
 
+	if sramDefault {
+		if fe != nil {
+			for ch := 0; ch < 2; ch++ {
+				if err := fe.SetVdiv(ch, 8); err != nil {
+					logf("SRAM: initial range: %v", err)
+					return
+				}
+			}
+		}
+		go e.Run()
+	}
 	// The fan-out is the arena's single consumer; the web UI and the LCD
 	// renderer read its snapshot under the fan-out lock.
 	fo := frames.New()
@@ -620,7 +656,9 @@ func main() {
 	// (SetWriteDeadline). Don't "harden" this without moving that contract.
 	ws := web.New(scopeSource{e, fo}, feIface, pc, screenPNG)
 	ws.SetInvertSource(scpiH.Inverted) // display-level INVS: SCPI shadow → /api/status
-	ws.SetDiag(dg)                     // /diag + /api/diag/* (workplan §2 diagnostic block)
+	if !sramDefault {
+		ws.SetDiag(dg)
+	} // /diag + /api/diag/* (workplan §2 diagnostic block)
 	srv := &http.Server{Addr: listen, Handler: ws.Handler()}
 	go func() {
 		logf("web ui listening on %s", listen)

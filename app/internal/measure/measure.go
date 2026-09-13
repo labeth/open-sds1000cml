@@ -87,13 +87,47 @@ func Clipped(sig []uint8) bool {
 // (v = (code-128)·voltsPerCode − offV); sampleS is per-sample seconds. Returns
 // nil for an empty record.
 func Compute(sig []uint8, voltsPerCode, offV, sampleS float64) *Result {
+	return compute(sig, voltsPerCode, offV, sampleS, 1)
+}
+
+// ComputeQ8 preserves fractional acquisition codes in every measurement.
+func ComputeQ8(sig []uint16, voltsPerCode, offV, sampleS float64) *Result {
+	return compute(sig, voltsPerCode/256, offV, sampleS, 256)
+}
+
+// ComputeAcquisition chooses the precision record when available. Coupling
+// 1 removes its mean in the measurement domain, without quantizing samples;
+// coupling 2 grounds the displayed input. The legacy path is already coupled.
+func ComputeAcquisition(raw []uint8, q []uint16, voltsPerCode, offV, sampleS float64, coupling int, guard ...int) *Result {
+	if len(q) != len(raw) || len(q) == 0 {
+		return Compute(raw, voltsPerCode, offV, sampleS)
+	}
+	if len(guard) > 0 && guard[0] > 0 && 2*guard[0] < len(raw) {
+		q = q[guard[0] : len(q)-guard[0]]
+	}
+	if coupling == 2 {
+		return &Result{}
+	}
+	r := ComputeQ8(q, voltsPerCode, offV, sampleS)
+	if coupling == 1 {
+		mean := r.Vmean
+		r.Vmin -= mean
+		r.Vmax -= mean
+		r.Vtop -= mean
+		r.Vbase -= mean
+		r.Vmean = 0
+	}
+	return r
+}
+
+func compute[T ~uint8 | ~uint16](sig []T, voltsPerCode, offV, sampleS, scale float64) *Result {
 	n := len(sig)
 	if n == 0 {
 		return nil
 	}
 	cmin, cmax := int(sig[0]), int(sig[0])
 	var sum, sum2 float64
-	var hist [256]int
+	hist := make([]int, int(256*scale))
 	for _, v := range sig {
 		iv := int(v)
 		if iv < cmin {
@@ -111,7 +145,7 @@ func Compute(sig []uint8, voltsPerCode, offV, sampleS float64) *Result {
 	if variance < 0 {
 		variance = 0
 	}
-	toV := func(code float64) float64 { return (code-128)*voltsPerCode - offV }
+	toV := func(code float64) float64 { return (code-128*scale)*voltsPerCode - offV }
 
 	// Top/base via histogram modes either side of the midpoint — robust against
 	// overshoot ringing (which max/min would capture). Falls back to max/min for
@@ -144,7 +178,7 @@ func Compute(sig []uint8, voltsPerCode, offV, sampleS float64) *Result {
 	}
 
 	// Timing needs a resolvable two-level edge.
-	if topCode-baseCode < minAmplCodes || sampleS <= 0 {
+	if float64(topCode-baseCode) < minAmplCodes*scale || sampleS <= 0 {
 		return r
 	}
 	base, top := float64(baseCode), float64(topCode)
@@ -249,7 +283,7 @@ func avgWidth(from, to []float64) float64 {
 // without reversing between them, returning both interpolated crossing indices.
 // rising=true looks for an upward edge (first=lo10, second=hi90); rising=false
 // a downward edge (first=hi90, second=lo10).
-func firstEdge(sig []uint8, first, second float64, rising bool) (float64, float64, bool) {
+func firstEdge[T ~uint8 | ~uint16](sig []T, first, second float64, rising bool) (float64, float64, bool) {
 	n := len(sig)
 	for i := 1; i < n; i++ {
 		a, b := float64(sig[i-1]), float64(sig[i])

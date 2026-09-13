@@ -28,6 +28,10 @@ func (e *Engine) Run() {
 		}
 	}()
 
+	if e.sram != nil {
+		e.runSRAM()
+		return
+	}
 	if err := e.checkIdentity(); err != nil {
 		// Not the default image: refuse to drive, but keep servicing Exec so
 		// the diagnostic block can still read the fabric (bring-up).

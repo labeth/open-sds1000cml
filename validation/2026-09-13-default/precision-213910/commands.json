@@ -1,0 +1,461 @@
+[
+  {
+    "args": [
+      "app",
+      "stop"
+    ],
+    "code": 0,
+    "stdout": "{\n  \"ok\": true\n}\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "put",
+      "/tmp/acqsram-precision.arm",
+      "/dev/acqsram"
+    ],
+    "code": 0,
+    "stdout": "\nupload: 3% (131072/3713416)\nupload: 7% (262144/3713416)\nupload: 10% (393216/3713416)\nupload: 14% (524288/3713416)\nupload: 17% (655360/3713416)\nupload: 21% (786432/3713416)\nupload: 24% (917504/3713416)\nupload: 28% (1048576/3713416)\nupload: 31% (1179648/3713416)\nupload: 35% (1310720/3713416)\nupload: 38% (1441792/3713416)\nupload: 42% (1572864/3713416)\nupload: 45% (1703936/3713416)\nupload: 49% (1835008/3713416)\nupload: 52% (1966080/3713416)\nupload: 56% (2097152/3713416)\nupload: 60% (2228224/3713416)\nupload: 63% (2359296/3713416)\nupload: 67% (2490368/3713416)\nupload: 70% (2621440/3713416)\nupload: 74% (2752512/3713416)\nupload: 77% (2883584/3713416)\nupload: 81% (3014656/3713416)\nupload: 84% (3145728/3713416)\nupload: 88% (3276800/3713416)\nupload: 91% (3407872/3713416)\nupload: 95% (3538944/3713416)\nupload: 98% (3670016/3713416)\nupload: 100% (3713416/3713416)\nok: /tmp/acqsram-precision.arm -> /dev/acqsram sha256=62784be5d5b6ca51bd5126c2b3f3ef281688a4cfc56c33ded2beabceae5a4bfe\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "exec",
+      "chmod",
+      "755",
+      "/dev/acqsram"
+    ],
+    "code": 0,
+    "stdout": "\n[exit 0]\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "put",
+      "/home/labeth/ws/open-sds1000cml-acq2/fpga/acq_sram/out/250mhz-p1000-interleave-precision-seed4/bench.rbf",
+      "/dev/acq-precision.rbf"
+    ],
+    "code": 0,
+    "stdout": "\nupload: 35% (131072/368011)\nupload: 71% (262144/368011)\nupload: 100% (368011/368011)\nok: /home/labeth/ws/open-sds1000cml-acq2/fpga/acq_sram/out/250mhz-p1000-interleave-precision-seed4/bench.rbf -> /dev/acq-precision.rbf sha256=3a34d68a97b5df8e83e1214b7ed66d6d5db6fc81262ee24c53aaa600aeda856b\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "exec",
+      "/dev/acqsram",
+      "load",
+      "/dev/acq-precision.rbf"
+    ],
+    "code": 0,
+    "stdout": "fpgaload: bit order: explicit reverse, agrees with the container (native Quartus order (6a f7 \u2026))\nfpgaload: CONF_DONE after 0s (port 0x00c0)\nloaded 368011 bytes, CONF_DONE=00c0, identity=5a52\n[exit 0]\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "exec",
+      "env",
+      "SCOPE_EDMA=1",
+      "/dev/acqsram",
+      "capture",
+      "0",
+      "239",
+      "17",
+      "128",
+      "0"
+    ],
+    "code": 0,
+    "stdout": "bus: dcinv module loaded from /dev/dcinv.ko\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\n{\n  \"buffer_words\": 0,\n  \"capture\": {\n    \"locked\": true,\n    \"ready\": true,\n    \"running\": false,\n    \"frozen\": true,\n    \"triggered\": true,\n    \"prefetched\": false,\n    \"words\": 256,\n    \"start\": 0,\n    \"trigger_index\": 239,\n    \"position\": 273,\n    \"origin\": 17,\n    \"revision\": 9,\n    \"map_id\": 57746,\n    \"sample_rate_hz\": 500000000,\n    \"decimation\": 1,\n    \"sample_bits\": 8,\n    \"fraction_bits\": 0,\n    \"samples_per_word\": 2,\n    \"interleaved\": true,\n    \"data_fault\": false\n  },\n  \"identity\": 23122,\n  \"length\": 256,\n  \"map_id\": 57746,\n  \"origin\": 17,\n  \"position\": 273,\n  \"revision\": 9,\n  \"start\": 0,\n  \"status\": 628,\n  \"trigger_index\": 239\n}\n[exit 0]\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "exec",
+      "env",
+      "SCOPE_EDMA=1",
+      "/dev/acqsram",
+      "recall-warm",
+      "/dev/acq-origin.bin",
+      "0",
+      "256",
+      "16",
+      "0"
+    ],
+    "code": 0,
+    "stdout": "bus: /dev/dcinv present\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\n{\n  \"bytes\": 1024,\n  \"first\": 0,\n  \"last\": 255,\n  \"nonconsecutive_words\": 0,\n  \"path\": \"/dev/acq-origin.bin\",\n  \"prefix\": 16,\n  \"seconds\": 0.00658828,\n  \"sha256\": \"8808405eec6fbe306fe3369f88daed79dd5613ddbb5e801f632b01d6218c5f08\",\n  \"words\": 256\n}\n[exit 0]\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "exec",
+      "env",
+      "SCOPE_EDMA=1",
+      "/dev/acqsram",
+      "recall-warm",
+      "/dev/acq-origin.bin",
+      "0",
+      "256",
+      "16",
+      "1"
+    ],
+    "code": 0,
+    "stdout": "bus: /dev/dcinv present\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\n{\n  \"bytes\": 1024,\n  \"first\": 1,\n  \"last\": 2718305434,\n  \"nonconsecutive_words\": 1,\n  \"path\": \"/dev/acq-origin.bin\",\n  \"prefix\": 16,\n  \"seconds\": 0.00666664,\n  \"sha256\": \"f1984c6900fbaa89738ebabed3f30b03f58abd3ac353056644ff8fd52567f16c\",\n  \"words\": 256\n}\n[exit 0]\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "exec",
+      "env",
+      "SCOPE_EDMA=1",
+      "/dev/acqsram",
+      "recall-warm",
+      "/dev/acq-origin.bin",
+      "0",
+      "256",
+      "16",
+      "2"
+    ],
+    "code": 0,
+    "stdout": "bus: /dev/dcinv present\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\n{\n  \"bytes\": 1024,\n  \"first\": 2,\n  \"last\": 4241791313,\n  \"nonconsecutive_words\": 2,\n  \"path\": \"/dev/acq-origin.bin\",\n  \"prefix\": 16,\n  \"seconds\": 0.00667784,\n  \"sha256\": \"1c2f70257ef3a95dd2a0f68d28ece9833abfb8565bcd0e4ef238243896435a05\",\n  \"words\": 256\n}\n[exit 0]\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "exec",
+      "env",
+      "SCOPE_EDMA=1",
+      "/dev/acqsram",
+      "capture",
+      "0",
+      "239",
+      "17",
+      "128",
+      "4"
+    ],
+    "code": 0,
+    "stdout": "bus: /dev/dcinv present\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\n{\n  \"buffer_words\": 0,\n  \"capture\": {\n    \"locked\": true,\n    \"ready\": true,\n    \"running\": false,\n    \"frozen\": true,\n    \"triggered\": true,\n    \"prefetched\": false,\n    \"words\": 256,\n    \"start\": 0,\n    \"trigger_index\": 239,\n    \"position\": 682,\n    \"origin\": 426,\n    \"revision\": 9,\n    \"map_id\": 57746,\n    \"sample_rate_hz\": 31250000,\n    \"decimation\": 16,\n    \"sample_bits\": 16,\n    \"fraction_bits\": 8,\n    \"samples_per_word\": 1,\n    \"interleaved\": true,\n    \"data_fault\": false\n  },\n  \"identity\": 23122,\n  \"length\": 256,\n  \"map_id\": 57746,\n  \"origin\": 426,\n  \"position\": 682,\n  \"revision\": 9,\n  \"start\": 0,\n  \"status\": 116,\n  \"trigger_index\": 239\n}\n[exit 0]\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "exec",
+      "env",
+      "SCOPE_EDMA=1",
+      "/dev/acqsram",
+      "recall-warm",
+      "/dev/acq-origin.bin",
+      "0",
+      "256",
+      "16",
+      "0"
+    ],
+    "code": 0,
+    "stdout": "bus: /dev/dcinv present\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\n{\n  \"bytes\": 1024,\n  \"first\": 4294508541,\n  \"last\": 254,\n  \"nonconsecutive_words\": 1,\n  \"path\": \"/dev/acq-origin.bin\",\n  \"prefix\": 16,\n  \"seconds\": 0.0062252,\n  \"sha256\": \"ea1334c5cf569c8dd003523e3d99fa5f58f40adb8995cb2c07ae247a31effc0f\",\n  \"words\": 256\n}\n[exit 0]\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "exec",
+      "env",
+      "SCOPE_EDMA=1",
+      "/dev/acqsram",
+      "recall-warm",
+      "/dev/acq-origin.bin",
+      "0",
+      "256",
+      "16",
+      "1"
+    ],
+    "code": 0,
+    "stdout": "bus: /dev/dcinv present\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\n{\n  \"bytes\": 1024,\n  \"first\": 0,\n  \"last\": 255,\n  \"nonconsecutive_words\": 0,\n  \"path\": \"/dev/acq-origin.bin\",\n  \"prefix\": 16,\n  \"seconds\": 0.00618652,\n  \"sha256\": \"8808405eec6fbe306fe3369f88daed79dd5613ddbb5e801f632b01d6218c5f08\",\n  \"words\": 256\n}\n[exit 0]\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "exec",
+      "env",
+      "SCOPE_EDMA=1",
+      "/dev/acqsram",
+      "recall-warm",
+      "/dev/acq-origin.bin",
+      "0",
+      "256",
+      "16",
+      "2"
+    ],
+    "code": 0,
+    "stdout": "bus: /dev/dcinv present\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\n{\n  \"bytes\": 1024,\n  \"first\": 1,\n  \"last\": 2136270764,\n  \"nonconsecutive_words\": 1,\n  \"path\": \"/dev/acq-origin.bin\",\n  \"prefix\": 16,\n  \"seconds\": 0.00658828,\n  \"sha256\": \"08a8b90afc705290f9a0d058f6b83dc3694d27328cb0e2da751611ae5183ec16\",\n  \"words\": 256\n}\n[exit 0]\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "exec",
+      "env",
+      "SCOPE_EDMA=1",
+      "/dev/acqsram",
+      "capture",
+      "0",
+      "239",
+      "17",
+      "128",
+      "5"
+    ],
+    "code": 0,
+    "stdout": "bus: /dev/dcinv present\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\n{\n  \"buffer_words\": 0,\n  \"capture\": {\n    \"locked\": true,\n    \"ready\": true,\n    \"running\": false,\n    \"frozen\": true,\n    \"triggered\": true,\n    \"prefetched\": false,\n    \"words\": 256,\n    \"start\": 0,\n    \"trigger_index\": 239,\n    \"position\": 1232,\n    \"origin\": 976,\n    \"revision\": 9,\n    \"map_id\": 57746,\n    \"sample_rate_hz\": 15625000,\n    \"decimation\": 32,\n    \"sample_bits\": 16,\n    \"fraction_bits\": 8,\n    \"samples_per_word\": 1,\n    \"interleaved\": true,\n    \"data_fault\": false\n  },\n  \"identity\": 23122,\n  \"length\": 256,\n  \"map_id\": 57746,\n  \"origin\": 976,\n  \"position\": 1232,\n  \"revision\": 9,\n  \"start\": 0,\n  \"status\": 628,\n  \"trigger_index\": 239\n}\n[exit 0]\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "exec",
+      "env",
+      "SCOPE_EDMA=1",
+      "/dev/acqsram",
+      "recall-warm",
+      "/dev/acq-origin.bin",
+      "0",
+      "256",
+      "16",
+      "0"
+    ],
+    "code": 0,
+    "stdout": "bus: /dev/dcinv present\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\n{\n  \"bytes\": 1024,\n  \"first\": 2147287039,\n  \"last\": 254,\n  \"nonconsecutive_words\": 1,\n  \"path\": \"/dev/acq-origin.bin\",\n  \"prefix\": 16,\n  \"seconds\": 0.00651564,\n  \"sha256\": \"f0012094edd9bfb0f0b0dc1a2aadf9bd7efe7031adddcd7131ab86350c0666d2\",\n  \"words\": 256\n}\n[exit 0]\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "exec",
+      "env",
+      "SCOPE_EDMA=1",
+      "/dev/acqsram",
+      "recall-warm",
+      "/dev/acq-origin.bin",
+      "0",
+      "256",
+      "16",
+      "1"
+    ],
+    "code": 0,
+    "stdout": "bus: /dev/dcinv present\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\n{\n  \"bytes\": 1024,\n  \"first\": 0,\n  \"last\": 255,\n  \"nonconsecutive_words\": 0,\n  \"path\": \"/dev/acq-origin.bin\",\n  \"prefix\": 16,\n  \"seconds\": 0.00657784,\n  \"sha256\": \"8808405eec6fbe306fe3369f88daed79dd5613ddbb5e801f632b01d6218c5f08\",\n  \"words\": 256\n}\n[exit 0]\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "exec",
+      "env",
+      "SCOPE_EDMA=1",
+      "/dev/acqsram",
+      "recall-warm",
+      "/dev/acq-origin.bin",
+      "0",
+      "256",
+      "16",
+      "2"
+    ],
+    "code": 0,
+    "stdout": "bus: /dev/dcinv present\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\n{\n  \"bytes\": 1024,\n  \"first\": 1,\n  \"last\": 2140759976,\n  \"nonconsecutive_words\": 1,\n  \"path\": \"/dev/acq-origin.bin\",\n  \"prefix\": 16,\n  \"seconds\": 0.00685932,\n  \"sha256\": \"1bda873da127e57244922b36d2b278bdbc4d8f28a4992bb732547489fdbbcab5\",\n  \"words\": 256\n}\n[exit 0]\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "exec",
+      "env",
+      "SCOPE_EDMA=1",
+      "/dev/acqsram",
+      "capture",
+      "0",
+      "239",
+      "17",
+      "128",
+      "8"
+    ],
+    "code": 0,
+    "stdout": "bus: /dev/dcinv present\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\n{\n  \"buffer_words\": 0,\n  \"capture\": {\n    \"locked\": true,\n    \"ready\": true,\n    \"running\": false,\n    \"frozen\": true,\n    \"triggered\": true,\n    \"prefetched\": false,\n    \"words\": 256,\n    \"start\": 0,\n    \"trigger_index\": 239,\n    \"position\": 2788,\n    \"origin\": 2532,\n    \"revision\": 9,\n    \"map_id\": 57746,\n    \"sample_rate_hz\": 1953125,\n    \"decimation\": 256,\n    \"sample_bits\": 16,\n    \"fraction_bits\": 8,\n    \"samples_per_word\": 1,\n    \"interleaved\": true,\n    \"data_fault\": false\n  },\n  \"identity\": 23122,\n  \"length\": 256,\n  \"map_id\": 57746,\n  \"origin\": 2532,\n  \"position\": 2788,\n  \"revision\": 9,\n  \"start\": 0,\n  \"status\": 116,\n  \"trigger_index\": 239\n}\n[exit 0]\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "exec",
+      "env",
+      "SCOPE_EDMA=1",
+      "/dev/acqsram",
+      "recall-warm",
+      "/dev/acq-origin.bin",
+      "0",
+      "256",
+      "16",
+      "0"
+    ],
+    "code": 0,
+    "stdout": "bus: /dev/dcinv present\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\n{\n  \"bytes\": 1024,\n  \"first\": 4294770687,\n  \"last\": 254,\n  \"nonconsecutive_words\": 1,\n  \"path\": \"/dev/acq-origin.bin\",\n  \"prefix\": 16,\n  \"seconds\": 0.00659824,\n  \"sha256\": \"95f24c953e01b30d34b72d6741f01e0d6e14b9c0a53c0978f16c025e4e668600\",\n  \"words\": 256\n}\n[exit 0]\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "exec",
+      "env",
+      "SCOPE_EDMA=1",
+      "/dev/acqsram",
+      "recall-warm",
+      "/dev/acq-origin.bin",
+      "0",
+      "256",
+      "16",
+      "1"
+    ],
+    "code": 0,
+    "stdout": "bus: /dev/dcinv present\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\n{\n  \"bytes\": 1024,\n  \"first\": 0,\n  \"last\": 255,\n  \"nonconsecutive_words\": 0,\n  \"path\": \"/dev/acq-origin.bin\",\n  \"prefix\": 16,\n  \"seconds\": 0.0066574,\n  \"sha256\": \"8808405eec6fbe306fe3369f88daed79dd5613ddbb5e801f632b01d6218c5f08\",\n  \"words\": 256\n}\n[exit 0]\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "exec",
+      "env",
+      "SCOPE_EDMA=1",
+      "/dev/acqsram",
+      "recall-warm",
+      "/dev/acq-origin.bin",
+      "0",
+      "256",
+      "16",
+      "2"
+    ],
+    "code": 0,
+    "stdout": "bus: /dev/dcinv present\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\n{\n  \"bytes\": 1024,\n  \"first\": 1,\n  \"last\": 4254896093,\n  \"nonconsecutive_words\": 1,\n  \"path\": \"/dev/acq-origin.bin\",\n  \"prefix\": 16,\n  \"seconds\": 0.0067424,\n  \"sha256\": \"3ac2fbb4cf0a4013634860d7b73df83663e8df536abf9915e50b49a6e7a15b30\",\n  \"words\": 256\n}\n[exit 0]\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "exec",
+      "env",
+      "SCOPE_EDMA=1",
+      "/dev/acqsram",
+      "capture",
+      "0",
+      "239",
+      "17",
+      "128",
+      "12"
+    ],
+    "code": 0,
+    "stdout": "bus: /dev/dcinv present\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\n{\n  \"buffer_words\": 0,\n  \"capture\": {\n    \"locked\": true,\n    \"ready\": true,\n    \"running\": false,\n    \"frozen\": true,\n    \"triggered\": true,\n    \"prefetched\": false,\n    \"words\": 256,\n    \"start\": 0,\n    \"trigger_index\": 239,\n    \"position\": 22653,\n    \"origin\": 22397,\n    \"revision\": 9,\n    \"map_id\": 57746,\n    \"sample_rate_hz\": 122070.3125,\n    \"decimation\": 4096,\n    \"sample_bits\": 16,\n    \"fraction_bits\": 8,\n    \"samples_per_word\": 1,\n    \"interleaved\": true,\n    \"data_fault\": false\n  },\n  \"identity\": 23122,\n  \"length\": 256,\n  \"map_id\": 57746,\n  \"origin\": 22397,\n  \"position\": 22653,\n  \"revision\": 9,\n  \"start\": 0,\n  \"status\": 628,\n  \"trigger_index\": 239\n}\n[exit 0]\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "exec",
+      "env",
+      "SCOPE_EDMA=1",
+      "/dev/acqsram",
+      "recall-warm",
+      "/dev/acq-origin.bin",
+      "0",
+      "256",
+      "16",
+      "0"
+    ],
+    "code": 0,
+    "stdout": "bus: /dev/dcinv present\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\n{\n  \"bytes\": 1024,\n  \"first\": 3185044235,\n  \"last\": 254,\n  \"nonconsecutive_words\": 1,\n  \"path\": \"/dev/acq-origin.bin\",\n  \"prefix\": 16,\n  \"seconds\": 0.00613916,\n  \"sha256\": \"f29ec8db919394e075a009bcbea92a822006e51d7355de882cd560c0afde787d\",\n  \"words\": 256\n}\n[exit 0]\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "exec",
+      "env",
+      "SCOPE_EDMA=1",
+      "/dev/acqsram",
+      "recall-warm",
+      "/dev/acq-origin.bin",
+      "0",
+      "256",
+      "16",
+      "1"
+    ],
+    "code": 0,
+    "stdout": "bus: /dev/dcinv present\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\n{\n  \"bytes\": 1024,\n  \"first\": 0,\n  \"last\": 255,\n  \"nonconsecutive_words\": 0,\n  \"path\": \"/dev/acq-origin.bin\",\n  \"prefix\": 16,\n  \"seconds\": 0.0065882,\n  \"sha256\": \"8808405eec6fbe306fe3369f88daed79dd5613ddbb5e801f632b01d6218c5f08\",\n  \"words\": 256\n}\n[exit 0]\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "exec",
+      "env",
+      "SCOPE_EDMA=1",
+      "/dev/acqsram",
+      "recall-warm",
+      "/dev/acq-origin.bin",
+      "0",
+      "256",
+      "16",
+      "2"
+    ],
+    "code": 0,
+    "stdout": "bus: /dev/dcinv present\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\n{\n  \"bytes\": 1024,\n  \"first\": 1,\n  \"last\": 1371377813,\n  \"nonconsecutive_words\": 1,\n  \"path\": \"/dev/acq-origin.bin\",\n  \"prefix\": 16,\n  \"seconds\": 0.0067188,\n  \"sha256\": \"24e2edf3d6dcf5dda43fbcd05b8fe6a40b2f15be9e62ee8636f12f192f37569b\",\n  \"words\": 256\n}\n[exit 0]\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "exec",
+      "env",
+      "SCOPE_EDMA=1",
+      "/dev/acqsram",
+      "capture",
+      "0",
+      "239",
+      "17",
+      "128",
+      "0"
+    ],
+    "code": 0,
+    "stdout": "bus: /dev/dcinv present\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\n{\n  \"buffer_words\": 0,\n  \"capture\": {\n    \"locked\": true,\n    \"ready\": true,\n    \"running\": false,\n    \"frozen\": true,\n    \"triggered\": true,\n    \"prefetched\": false,\n    \"words\": 256,\n    \"start\": 0,\n    \"trigger_index\": 239,\n    \"position\": 22929,\n    \"origin\": 22673,\n    \"revision\": 9,\n    \"map_id\": 57746,\n    \"sample_rate_hz\": 500000000,\n    \"decimation\": 1,\n    \"sample_bits\": 8,\n    \"fraction_bits\": 0,\n    \"samples_per_word\": 2,\n    \"interleaved\": true,\n    \"data_fault\": false\n  },\n  \"identity\": 23122,\n  \"length\": 256,\n  \"map_id\": 57746,\n  \"origin\": 22673,\n  \"position\": 22929,\n  \"revision\": 9,\n  \"start\": 0,\n  \"status\": 116,\n  \"trigger_index\": 239\n}\n[exit 0]\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "exec",
+      "env",
+      "SCOPE_EDMA=1",
+      "/dev/acqsram",
+      "recall-warm",
+      "/dev/acq-origin.bin",
+      "0",
+      "256",
+      "16",
+      "0"
+    ],
+    "code": 0,
+    "stdout": "bus: /dev/dcinv present\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\n{\n  \"bytes\": 1024,\n  \"first\": 0,\n  \"last\": 255,\n  \"nonconsecutive_words\": 0,\n  \"path\": \"/dev/acq-origin.bin\",\n  \"prefix\": 16,\n  \"seconds\": 0.0067844,\n  \"sha256\": \"8808405eec6fbe306fe3369f88daed79dd5613ddbb5e801f632b01d6218c5f08\",\n  \"words\": 256\n}\n[exit 0]\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "exec",
+      "env",
+      "SCOPE_EDMA=1",
+      "/dev/acqsram",
+      "recall-warm",
+      "/dev/acq-origin.bin",
+      "0",
+      "256",
+      "16",
+      "1"
+    ],
+    "code": 0,
+    "stdout": "bus: /dev/dcinv present\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\n{\n  \"bytes\": 1024,\n  \"first\": 1,\n  \"last\": 1362333845,\n  \"nonconsecutive_words\": 1,\n  \"path\": \"/dev/acq-origin.bin\",\n  \"prefix\": 16,\n  \"seconds\": 0.00669592,\n  \"sha256\": \"36dc33c71688468bd8d46825fe1261250735620806ed3a63bdf9d9949dba9254\",\n  \"words\": 256\n}\n[exit 0]\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "exec",
+      "env",
+      "SCOPE_EDMA=1",
+      "/dev/acqsram",
+      "recall-warm",
+      "/dev/acq-origin.bin",
+      "0",
+      "256",
+      "16",
+      "2"
+    ],
+    "code": 0,
+    "stdout": "bus: /dev/dcinv present\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\n{\n  \"bytes\": 1024,\n  \"first\": 2,\n  \"last\": 1647133701,\n  \"nonconsecutive_words\": 2,\n  \"path\": \"/dev/acq-origin.bin\",\n  \"prefix\": 16,\n  \"seconds\": 0.00659328,\n  \"sha256\": \"dc4b8462fb931608f2f6830dcd9471e6993db7afaa249049d0a97a6c93d28088\",\n  \"words\": 256\n}\n[exit 0]\n",
+    "stderr": ""
+  }
+]

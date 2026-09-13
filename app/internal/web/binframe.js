@@ -46,6 +46,17 @@ function decodeBinFrame(buf) {
     return f;
   }
   const body = cols - head - tail;
+  if (flags & 0x20) {
+    if (f.fraction_bits !== 8 || pay.length !== 4 * body || f.is_env) return null;
+    const view = new DataView(pay.buffer, pay.byteOffset, pay.byteLength);
+    const chan = (ch) => {
+      const out = new Float32Array(cols);
+      if (head || tail) out.fill(-1);
+      for (let i=0;i<body;i++) out[head+i]=view.getUint16(2*(ch*body+i),true)/256;
+      return out;
+    };
+    f.c1=chan(0); f.c2=chan(1); return f;
+  }
   if (pay.length !== 2 * body) return null;
   const chan = (off) => {
     const out = new Int16Array(cols);

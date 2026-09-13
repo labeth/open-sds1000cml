@@ -1,0 +1,556 @@
+{
+  "rbf_sha256": "ff92efe2d3daa96325079802b2aac5b730410dbe1ca525a238be6d8ca892d82c",
+  "source_sha256": "652a68f9e8a443b4d6dedc9baac946a303feeee4de9199cdda9ff386dc1a05ef",
+  "assigned_pins": 160,
+  "dq_drive": {
+    "dq[0]": "8mA",
+    "dq[1]": "8mA",
+    "dq[2]": "8mA",
+    "dq[3]": "8mA",
+    "dq[4]": "8mA",
+    "dq[5]": "8mA",
+    "dq[6]": "8mA",
+    "dq[7]": "8mA",
+    "dq[8]": "8mA",
+    "dq[9]": "8mA",
+    "dq[10]": "8mA",
+    "dq[11]": "8mA",
+    "dq[12]": "8mA",
+    "dq[13]": "8mA",
+    "dq[14]": "8mA",
+    "dq[15]": "8mA",
+    "dq[16]": "8mA",
+    "dq[17]": "8mA",
+    "dq[18]": "8mA",
+    "dq[19]": "8mA",
+    "dq[20]": "8mA",
+    "dq[21]": "8mA",
+    "dq[22]": "8mA",
+    "dq[23]": "8mA",
+    "dq[24]": "8mA",
+    "dq[25]": "8mA",
+    "dq[26]": "8mA",
+    "dq[27]": "8mA",
+    "dq[28]": "8mA",
+    "dq[29]": "8mA",
+    "dq[30]": "8mA",
+    "dq[31]": "8mA"
+  },
+  "timing": [
+    {
+      "corner_check": "Slow 1200mV 85C Model Setup Summary",
+      "clock": "pll|pll|auto_generated|pll1|clk[0]",
+      "slack_ns": 0.08
+    },
+    {
+      "corner_check": "Slow 1200mV 85C Model Setup Summary",
+      "clock": "pll|pll|auto_generated|pll1|clk[2]",
+      "slack_ns": 0.701
+    },
+    {
+      "corner_check": "Slow 1200mV 85C Model Setup Summary",
+      "clock": "mref",
+      "slack_ns": 1.591
+    },
+    {
+      "corner_check": "Slow 1200mV 85C Model Setup Summary",
+      "clock": "frontend|clocks|p|auto_generated|pll1|clk[2]",
+      "slack_ns": 2.019
+    },
+    {
+      "corner_check": "Slow 1200mV 85C Model Setup Summary",
+      "clock": "cpu",
+      "slack_ns": 4.447
+    },
+    {
+      "corner_check": "Slow 1200mV 85C Model Setup Summary",
+      "clock": "frontend|clocks|p|auto_generated|pll1|clk[3]",
+      "slack_ns": 7.288
+    },
+    {
+      "corner_check": "Slow 1200mV 85C Model Setup Summary",
+      "clock": "frontend|clocks|p|auto_generated|pll1|clk[1]",
+      "slack_ns": 7.494
+    },
+    {
+      "corner_check": "Slow 1200mV 85C Model Setup Summary",
+      "clock": "frontend|clocks|p|auto_generated|pll1|clk[4]",
+      "slack_ns": 7.549
+    },
+    {
+      "corner_check": "Slow 1200mV 85C Model Setup Summary",
+      "clock": "frontend|clocks|p|auto_generated|pll1|clk[0]",
+      "slack_ns": 7.565
+    },
+    {
+      "corner_check": "Slow 1200mV 85C Model Hold Summary",
+      "clock": "mref",
+      "slack_ns": 0.423
+    },
+    {
+      "corner_check": "Slow 1200mV 85C Model Hold Summary",
+      "clock": "frontend|clocks|p|auto_generated|pll1|clk[2]",
+      "slack_ns": 0.428
+    },
+    {
+      "corner_check": "Slow 1200mV 85C Model Hold Summary",
+      "clock": "pll|pll|auto_generated|pll1|clk[2]",
+      "slack_ns": 0.433
+    },
+    {
+      "corner_check": "Slow 1200mV 85C Model Hold Summary",
+      "clock": "pll|pll|auto_generated|pll1|clk[0]",
+      "slack_ns": 0.451
+    },
+    {
+      "corner_check": "Slow 1200mV 85C Model Hold Summary",
+      "clock": "cpu",
+      "slack_ns": 0.485
+    },
+    {
+      "corner_check": "Slow 1200mV 85C Model Hold Summary",
+      "clock": "frontend|clocks|p|auto_generated|pll1|clk[4]",
+      "slack_ns": 0.753
+    },
+    {
+      "corner_check": "Slow 1200mV 85C Model Hold Summary",
+      "clock": "frontend|clocks|p|auto_generated|pll1|clk[0]",
+      "slack_ns": 0.772
+    },
+    {
+      "corner_check": "Slow 1200mV 85C Model Hold Summary",
+      "clock": "frontend|clocks|p|auto_generated|pll1|clk[3]",
+      "slack_ns": 1.053
+    },
+    {
+      "corner_check": "Slow 1200mV 85C Model Hold Summary",
+      "clock": "frontend|clocks|p|auto_generated|pll1|clk[1]",
+      "slack_ns": 1.082
+    },
+    {
+      "corner_check": "Slow 1200mV 85C Model Recovery Summary",
+      "clock": "pll|pll|auto_generated|pll1|clk[2]",
+      "slack_ns": 4.53
+    },
+    {
+      "corner_check": "Slow 1200mV 85C Model Recovery Summary",
+      "clock": "mref",
+      "slack_ns": 6.989
+    },
+    {
+      "corner_check": "Slow 1200mV 85C Model Recovery Summary",
+      "clock": "frontend|clocks|p|auto_generated|pll1|clk[2]",
+      "slack_ns": 7.004
+    },
+    {
+      "corner_check": "Slow 1200mV 85C Model Removal Summary",
+      "clock": "mref",
+      "slack_ns": 1.106
+    },
+    {
+      "corner_check": "Slow 1200mV 85C Model Removal Summary",
+      "clock": "frontend|clocks|p|auto_generated|pll1|clk[2]",
+      "slack_ns": 1.148
+    },
+    {
+      "corner_check": "Slow 1200mV 85C Model Removal Summary",
+      "clock": "pll|pll|auto_generated|pll1|clk[2]",
+      "slack_ns": 1.191
+    },
+    {
+      "corner_check": "Slow 1200mV 85C Model Minimum Pulse Width Summary",
+      "clock": "pll|pll|auto_generated|pll1|clk[0]",
+      "slack_ns": 1.513
+    },
+    {
+      "corner_check": "Slow 1200mV 85C Model Minimum Pulse Width Summary",
+      "clock": "pll|pll|auto_generated|pll1|clk[1]",
+      "slack_ns": 1.513
+    },
+    {
+      "corner_check": "Slow 1200mV 85C Model Minimum Pulse Width Summary",
+      "clock": "pll|pll|auto_generated|pll1|clk[2]",
+      "slack_ns": 3.691
+    },
+    {
+      "corner_check": "Slow 1200mV 85C Model Minimum Pulse Width Summary",
+      "clock": "mref",
+      "slack_ns": 4.599
+    },
+    {
+      "corner_check": "Slow 1200mV 85C Model Minimum Pulse Width Summary",
+      "clock": "frontend|clocks|p|auto_generated|pll1|clk[2]",
+      "slack_ns": 4.69
+    },
+    {
+      "corner_check": "Slow 1200mV 85C Model Minimum Pulse Width Summary",
+      "clock": "frontend|clocks|p|auto_generated|pll1|clk[1]",
+      "slack_ns": 4.719
+    },
+    {
+      "corner_check": "Slow 1200mV 85C Model Minimum Pulse Width Summary",
+      "clock": "frontend|clocks|p|auto_generated|pll1|clk[0]",
+      "slack_ns": 4.759
+    },
+    {
+      "corner_check": "Slow 1200mV 85C Model Minimum Pulse Width Summary",
+      "clock": "frontend|clocks|p|auto_generated|pll1|clk[3]",
+      "slack_ns": 4.759
+    },
+    {
+      "corner_check": "Slow 1200mV 85C Model Minimum Pulse Width Summary",
+      "clock": "frontend|clocks|p|auto_generated|pll1|clk[4]",
+      "slack_ns": 4.76
+    },
+    {
+      "corner_check": "Slow 1200mV 85C Model Minimum Pulse Width Summary",
+      "clock": "cpu",
+      "slack_ns": 5.756
+    },
+    {
+      "corner_check": "Slow 1200mV 0C Model Setup Summary",
+      "clock": "pll|pll|auto_generated|pll1|clk[0]",
+      "slack_ns": 0.325
+    },
+    {
+      "corner_check": "Slow 1200mV 0C Model Setup Summary",
+      "clock": "pll|pll|auto_generated|pll1|clk[2]",
+      "slack_ns": 0.914
+    },
+    {
+      "corner_check": "Slow 1200mV 0C Model Setup Summary",
+      "clock": "frontend|clocks|p|auto_generated|pll1|clk[2]",
+      "slack_ns": 2.133
+    },
+    {
+      "corner_check": "Slow 1200mV 0C Model Setup Summary",
+      "clock": "mref",
+      "slack_ns": 2.382
+    },
+    {
+      "corner_check": "Slow 1200mV 0C Model Setup Summary",
+      "clock": "cpu",
+      "slack_ns": 4.907
+    },
+    {
+      "corner_check": "Slow 1200mV 0C Model Setup Summary",
+      "clock": "frontend|clocks|p|auto_generated|pll1|clk[3]",
+      "slack_ns": 7.443
+    },
+    {
+      "corner_check": "Slow 1200mV 0C Model Setup Summary",
+      "clock": "frontend|clocks|p|auto_generated|pll1|clk[1]",
+      "slack_ns": 7.634
+    },
+    {
+      "corner_check": "Slow 1200mV 0C Model Setup Summary",
+      "clock": "frontend|clocks|p|auto_generated|pll1|clk[4]",
+      "slack_ns": 7.675
+    },
+    {
+      "corner_check": "Slow 1200mV 0C Model Setup Summary",
+      "clock": "frontend|clocks|p|auto_generated|pll1|clk[0]",
+      "slack_ns": 7.695
+    },
+    {
+      "corner_check": "Slow 1200mV 0C Model Hold Summary",
+      "clock": "pll|pll|auto_generated|pll1|clk[2]",
+      "slack_ns": 0.382
+    },
+    {
+      "corner_check": "Slow 1200mV 0C Model Hold Summary",
+      "clock": "mref",
+      "slack_ns": 0.383
+    },
+    {
+      "corner_check": "Slow 1200mV 0C Model Hold Summary",
+      "clock": "pll|pll|auto_generated|pll1|clk[0]",
+      "slack_ns": 0.4
+    },
+    {
+      "corner_check": "Slow 1200mV 0C Model Hold Summary",
+      "clock": "frontend|clocks|p|auto_generated|pll1|clk[2]",
+      "slack_ns": 0.402
+    },
+    {
+      "corner_check": "Slow 1200mV 0C Model Hold Summary",
+      "clock": "cpu",
+      "slack_ns": 0.43
+    },
+    {
+      "corner_check": "Slow 1200mV 0C Model Hold Summary",
+      "clock": "frontend|clocks|p|auto_generated|pll1|clk[4]",
+      "slack_ns": 0.667
+    },
+    {
+      "corner_check": "Slow 1200mV 0C Model Hold Summary",
+      "clock": "frontend|clocks|p|auto_generated|pll1|clk[0]",
+      "slack_ns": 0.683
+    },
+    {
+      "corner_check": "Slow 1200mV 0C Model Hold Summary",
+      "clock": "frontend|clocks|p|auto_generated|pll1|clk[3]",
+      "slack_ns": 0.932
+    },
+    {
+      "corner_check": "Slow 1200mV 0C Model Hold Summary",
+      "clock": "frontend|clocks|p|auto_generated|pll1|clk[1]",
+      "slack_ns": 0.946
+    },
+    {
+      "corner_check": "Slow 1200mV 0C Model Recovery Summary",
+      "clock": "pll|pll|auto_generated|pll1|clk[2]",
+      "slack_ns": 4.746
+    },
+    {
+      "corner_check": "Slow 1200mV 0C Model Recovery Summary",
+      "clock": "frontend|clocks|p|auto_generated|pll1|clk[2]",
+      "slack_ns": 7.167
+    },
+    {
+      "corner_check": "Slow 1200mV 0C Model Recovery Summary",
+      "clock": "mref",
+      "slack_ns": 7.179
+    },
+    {
+      "corner_check": "Slow 1200mV 0C Model Removal Summary",
+      "clock": "mref",
+      "slack_ns": 0.965
+    },
+    {
+      "corner_check": "Slow 1200mV 0C Model Removal Summary",
+      "clock": "frontend|clocks|p|auto_generated|pll1|clk[2]",
+      "slack_ns": 1.053
+    },
+    {
+      "corner_check": "Slow 1200mV 0C Model Removal Summary",
+      "clock": "pll|pll|auto_generated|pll1|clk[2]",
+      "slack_ns": 1.097
+    },
+    {
+      "corner_check": "Slow 1200mV 0C Model Minimum Pulse Width Summary",
+      "clock": "pll|pll|auto_generated|pll1|clk[0]",
+      "slack_ns": 1.513
+    },
+    {
+      "corner_check": "Slow 1200mV 0C Model Minimum Pulse Width Summary",
+      "clock": "pll|pll|auto_generated|pll1|clk[1]",
+      "slack_ns": 1.513
+    },
+    {
+      "corner_check": "Slow 1200mV 0C Model Minimum Pulse Width Summary",
+      "clock": "pll|pll|auto_generated|pll1|clk[2]",
+      "slack_ns": 3.67
+    },
+    {
+      "corner_check": "Slow 1200mV 0C Model Minimum Pulse Width Summary",
+      "clock": "mref",
+      "slack_ns": 4.597
+    },
+    {
+      "corner_check": "Slow 1200mV 0C Model Minimum Pulse Width Summary",
+      "clock": "frontend|clocks|p|auto_generated|pll1|clk[2]",
+      "slack_ns": 4.666
+    },
+    {
+      "corner_check": "Slow 1200mV 0C Model Minimum Pulse Width Summary",
+      "clock": "frontend|clocks|p|auto_generated|pll1|clk[1]",
+      "slack_ns": 4.72
+    },
+    {
+      "corner_check": "Slow 1200mV 0C Model Minimum Pulse Width Summary",
+      "clock": "frontend|clocks|p|auto_generated|pll1|clk[0]",
+      "slack_ns": 4.764
+    },
+    {
+      "corner_check": "Slow 1200mV 0C Model Minimum Pulse Width Summary",
+      "clock": "frontend|clocks|p|auto_generated|pll1|clk[3]",
+      "slack_ns": 4.764
+    },
+    {
+      "corner_check": "Slow 1200mV 0C Model Minimum Pulse Width Summary",
+      "clock": "frontend|clocks|p|auto_generated|pll1|clk[4]",
+      "slack_ns": 4.766
+    },
+    {
+      "corner_check": "Slow 1200mV 0C Model Minimum Pulse Width Summary",
+      "clock": "cpu",
+      "slack_ns": 5.532
+    },
+    {
+      "corner_check": "Fast 1200mV 0C Model Setup Summary",
+      "clock": "pll|pll|auto_generated|pll1|clk[0]",
+      "slack_ns": 2.07
+    },
+    {
+      "corner_check": "Fast 1200mV 0C Model Setup Summary",
+      "clock": "pll|pll|auto_generated|pll1|clk[2]",
+      "slack_ns": 2.501
+    },
+    {
+      "corner_check": "Fast 1200mV 0C Model Setup Summary",
+      "clock": "frontend|clocks|p|auto_generated|pll1|clk[2]",
+      "slack_ns": 3.031
+    },
+    {
+      "corner_check": "Fast 1200mV 0C Model Setup Summary",
+      "clock": "mref",
+      "slack_ns": 6.589
+    },
+    {
+      "corner_check": "Fast 1200mV 0C Model Setup Summary",
+      "clock": "frontend|clocks|p|auto_generated|pll1|clk[3]",
+      "slack_ns": 8.815
+    },
+    {
+      "corner_check": "Fast 1200mV 0C Model Setup Summary",
+      "clock": "cpu",
+      "slack_ns": 8.855
+    },
+    {
+      "corner_check": "Fast 1200mV 0C Model Setup Summary",
+      "clock": "frontend|clocks|p|auto_generated|pll1|clk[1]",
+      "slack_ns": 8.9
+    },
+    {
+      "corner_check": "Fast 1200mV 0C Model Setup Summary",
+      "clock": "frontend|clocks|p|auto_generated|pll1|clk[4]",
+      "slack_ns": 8.904
+    },
+    {
+      "corner_check": "Fast 1200mV 0C Model Setup Summary",
+      "clock": "frontend|clocks|p|auto_generated|pll1|clk[0]",
+      "slack_ns": 8.913
+    },
+    {
+      "corner_check": "Fast 1200mV 0C Model Hold Summary",
+      "clock": "frontend|clocks|p|auto_generated|pll1|clk[2]",
+      "slack_ns": 0.147
+    },
+    {
+      "corner_check": "Fast 1200mV 0C Model Hold Summary",
+      "clock": "mref",
+      "slack_ns": 0.148
+    },
+    {
+      "corner_check": "Fast 1200mV 0C Model Hold Summary",
+      "clock": "pll|pll|auto_generated|pll1|clk[2]",
+      "slack_ns": 0.161
+    },
+    {
+      "corner_check": "Fast 1200mV 0C Model Hold Summary",
+      "clock": "pll|pll|auto_generated|pll1|clk[0]",
+      "slack_ns": 0.186
+    },
+    {
+      "corner_check": "Fast 1200mV 0C Model Hold Summary",
+      "clock": "cpu",
+      "slack_ns": 0.201
+    },
+    {
+      "corner_check": "Fast 1200mV 0C Model Hold Summary",
+      "clock": "frontend|clocks|p|auto_generated|pll1|clk[4]",
+      "slack_ns": 0.329
+    },
+    {
+      "corner_check": "Fast 1200mV 0C Model Hold Summary",
+      "clock": "frontend|clocks|p|auto_generated|pll1|clk[0]",
+      "slack_ns": 0.338
+    },
+    {
+      "corner_check": "Fast 1200mV 0C Model Hold Summary",
+      "clock": "frontend|clocks|p|auto_generated|pll1|clk[3]",
+      "slack_ns": 0.477
+    },
+    {
+      "corner_check": "Fast 1200mV 0C Model Hold Summary",
+      "clock": "frontend|clocks|p|auto_generated|pll1|clk[1]",
+      "slack_ns": 0.516
+    },
+    {
+      "corner_check": "Fast 1200mV 0C Model Recovery Summary",
+      "clock": "pll|pll|auto_generated|pll1|clk[2]",
+      "slack_ns": 6.44
+    },
+    {
+      "corner_check": "Fast 1200mV 0C Model Recovery Summary",
+      "clock": "frontend|clocks|p|auto_generated|pll1|clk[2]",
+      "slack_ns": 8.619
+    },
+    {
+      "corner_check": "Fast 1200mV 0C Model Recovery Summary",
+      "clock": "mref",
+      "slack_ns": 8.648
+    },
+    {
+      "corner_check": "Fast 1200mV 0C Model Removal Summary",
+      "clock": "mref",
+      "slack_ns": 0.473
+    },
+    {
+      "corner_check": "Fast 1200mV 0C Model Removal Summary",
+      "clock": "frontend|clocks|p|auto_generated|pll1|clk[2]",
+      "slack_ns": 0.488
+    },
+    {
+      "corner_check": "Fast 1200mV 0C Model Removal Summary",
+      "clock": "pll|pll|auto_generated|pll1|clk[2]",
+      "slack_ns": 0.505
+    },
+    {
+      "corner_check": "Fast 1200mV 0C Model Minimum Pulse Width Summary",
+      "clock": "pll|pll|auto_generated|pll1|clk[1]",
+      "slack_ns": 1.772
+    },
+    {
+      "corner_check": "Fast 1200mV 0C Model Minimum Pulse Width Summary",
+      "clock": "pll|pll|auto_generated|pll1|clk[0]",
+      "slack_ns": 1.795
+    },
+    {
+      "corner_check": "Fast 1200mV 0C Model Minimum Pulse Width Summary",
+      "clock": "pll|pll|auto_generated|pll1|clk[2]",
+      "slack_ns": 3.732
+    },
+    {
+      "corner_check": "Fast 1200mV 0C Model Minimum Pulse Width Summary",
+      "clock": "mref",
+      "slack_ns": 4.199
+    },
+    {
+      "corner_check": "Fast 1200mV 0C Model Minimum Pulse Width Summary",
+      "clock": "frontend|clocks|p|auto_generated|pll1|clk[2]",
+      "slack_ns": 4.735
+    },
+    {
+      "corner_check": "Fast 1200mV 0C Model Minimum Pulse Width Summary",
+      "clock": "frontend|clocks|p|auto_generated|pll1|clk[0]",
+      "slack_ns": 4.756
+    },
+    {
+      "corner_check": "Fast 1200mV 0C Model Minimum Pulse Width Summary",
+      "clock": "frontend|clocks|p|auto_generated|pll1|clk[3]",
+      "slack_ns": 4.756
+    },
+    {
+      "corner_check": "Fast 1200mV 0C Model Minimum Pulse Width Summary",
+      "clock": "frontend|clocks|p|auto_generated|pll1|clk[4]",
+      "slack_ns": 4.756
+    },
+    {
+      "corner_check": "Fast 1200mV 0C Model Minimum Pulse Width Summary",
+      "clock": "frontend|clocks|p|auto_generated|pll1|clk[1]",
+      "slack_ns": 4.777
+    },
+    {
+      "corner_check": "Fast 1200mV 0C Model Minimum Pulse Width Summary",
+      "clock": "cpu",
+      "slack_ns": 5.375
+    }
+  ],
+  "core_timing_pass": true,
+  "external_timing": "Not statically constrained; requires measured board validation.",
+  "adc_input_registers": 80,
+  "on_chip_memory_bits": 135680,
+  "interleaved": true
+}

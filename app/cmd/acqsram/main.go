@@ -8,7 +8,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"open-sds/app/internal/analog"
 	"open-sds/app/internal/bus"
+	"open-sds/app/internal/cal"
 	"open-sds/app/internal/fpgaload"
 	"open-sds/app/internal/sramcapture"
 	"os"
@@ -92,6 +94,14 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	if rd(13) >= 8 && os.Getenv("SCOPE_EDMA") == "1" {
+		if err := bus.EnsureDcinv(func(f string, a ...any) { fmt.Fprintf(os.Stderr, f+"\n", a...) }); err != nil {
+			panic(err)
+		}
+		if !dev.EnableEDMA(8192, func(f string, a ...any) { fmt.Fprintf(os.Stderr, f+"\n", a...) }) {
+			panic("EDMA unavailable")
+		}
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	must := func(err error) {
@@ -116,7 +126,14 @@ func main() {
 		check := &counterCheck{}
 		dst := io.MultiWriter(f, hash, check)
 		began := time.Now()
-		base := (r32(10) + r32(4)) & 524287
+		bias := uint32(0)
+		if len(os.Args) > 6 {
+			bias = num(os.Args[6])
+			if bias > 3 {
+				panic("origin diagnostic bias 0..3")
+			}
+		}
+		base := (r32(10) + r32(4) + bias) & 524287
 		for done := uint32(0); done < n; {
 			chunk := n - done
 			if chunk > 512-prefix {
@@ -183,6 +200,18 @@ func main() {
 		}
 		emit(map[string]any{"offset": off, "values": values})
 		return
+	case "range-both":
+		idx := int(num(os.Args[2]))
+		if idx < 0 || idx >= len(analog.Detents) {
+			panic("invalid range")
+		}
+		tr, err := analog.NewDev()
+		must(err)
+		fe := analog.New(tr, nil, cal.Load(func(f string, a ...any) { fmt.Fprintf(os.Stderr, f+"\n", a...) }))
+		for ch := 0; ch < 2; ch++ {
+			must(fe.SetVdiv(ch, idx))
+		}
+		time.Sleep(20 * time.Millisecond)
 	case "offset":
 		ch, code := num(os.Args[2]), num(os.Args[3])
 		if ch > 1 || code < 10000 || code > 11000 {
@@ -209,7 +238,14 @@ func main() {
 		if cfg&1 != 0 {
 			source = sramcapture.ADC
 		}
-		must(capture.Arm(ctx, sramcapture.Config{Source: source, Pair: uint8(cfg>>1) & 7, PreWords: pre, PostWords: post, Normal: cfg&16 != 0, Falling: cfg&32 != 0, TriggerChannel: uint8(cfg>>6) & 1, TriggerLevel: uint8(threshold)}))
+		decim := uint32(0)
+		if len(os.Args) > 6 {
+			decim = num(os.Args[6])
+		}
+		if decim > 20 {
+			panic("decimation out of range")
+		}
+		must(capture.Arm(ctx, sramcapture.Config{DecimationLog2: uint8(decim), Source: source, Pair: uint8(cfg>>1) & 7, PreWords: pre, PostWords: post, Normal: cfg&16 != 0, Falling: cfg&32 != 0, TriggerChannel: uint8(cfg>>6) & 1, TriggerLevel: uint8(threshold)}))
 		if cfg&16 == 0 {
 			must(capture.WaitFrozen(ctx))
 		}

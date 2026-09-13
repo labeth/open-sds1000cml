@@ -9,24 +9,32 @@ import (
 )
 
 type frameReply struct {
-	Seq        uint64  `json:"seq"`
-	Unchanged  bool    `json:"unchanged,omitempty"`
-	C1         []int16 `json:"c1,omitempty"`
-	C2         []int16 `json:"c2,omitempty"`
-	IsEnv      bool    `json:"is_env,omitempty"`
-	E1Min      []int16 `json:"e1min,omitempty"`
-	E1Max      []int16 `json:"e1max,omitempty"`
-	E2Min      []int16 `json:"e2min,omitempty"`
-	E2Max      []int16 `json:"e2max,omitempty"`
-	EdgeX      float64 `json:"edge_x"`
-	Ptp        int     `json:"ptp"`
-	TdivS      float64 `json:"tdiv_s"`
-	DisplayedS float64 `json:"displayed_sdiv_s"`
-	Interp     bool    `json:"interp"`
-	Norm       bool    `json:"norm"`
-	Trigd      bool    `json:"trigd"`
-	Coherent   bool    `json:"coherent"`
-	Degraded   bool    `json:"degraded,omitempty"` // native-fast dead tail survived retries: half-capture
+	Q1, Q2       []uint16 `json:"-"`
+	FractionBits uint8    `json:"fraction_bits,omitempty"`
+	Decimation   uint32   `json:"decimation,omitempty"`
+	BandwidthHz  float64  `json:"bandwidth_hz,omitempty"`
+	FilterGuard  int      `json:"filter_guard,omitempty"`
+	Filter       string   `json:"filter,omitempty"`
+	CaptureDepth int      `json:"capture_depth,omitempty"`
+	TriggerKind  string   `json:"trigger_kind,omitempty"`
+	Seq          uint64   `json:"seq"`
+	Unchanged    bool     `json:"unchanged,omitempty"`
+	C1           []int16  `json:"c1,omitempty"`
+	C2           []int16  `json:"c2,omitempty"`
+	IsEnv        bool     `json:"is_env,omitempty"`
+	E1Min        []int16  `json:"e1min,omitempty"`
+	E1Max        []int16  `json:"e1max,omitempty"`
+	E2Min        []int16  `json:"e2min,omitempty"`
+	E2Max        []int16  `json:"e2max,omitempty"`
+	EdgeX        float64  `json:"edge_x"`
+	Ptp          int      `json:"ptp"`
+	TdivS        float64  `json:"tdiv_s"`
+	DisplayedS   float64  `json:"displayed_sdiv_s"`
+	Interp       bool     `json:"interp"`
+	Norm         bool     `json:"norm"`
+	Trigd        bool     `json:"trigd"`
+	Coherent     bool     `json:"coherent"`
+	Degraded     bool     `json:"degraded,omitempty"` // native-fast dead tail survived retries: half-capture
 
 	// Scale factors the client uses for cursors/FFT/XY/measurements.
 	Cols     int     `json:"cols"`       // number of columns returned per trace
@@ -235,7 +243,8 @@ func (s *Server) buildReply(f *engine.Frame, cols int, full bool, since uint64, 
 		}
 	}
 	rep := frameReply{
-		Seq:        f.Seq,
+		Seq:         f.Seq,
+		BandwidthHz: f.BandwidthHz, FilterGuard: f.FilterGuard, Filter: f.Filter, Decimation: f.Decimation, CaptureDepth: f.CaptureDepth, TriggerKind: f.TriggerKind,
 		EdgeX:      f.EdgeX,
 		Ptp:        f.Ptp,
 		TdivS:      f.TdivS,
@@ -260,7 +269,7 @@ func (s *Server) buildReply(f *engine.Frame, cols int, full bool, since uint64, 
 		rep.E2Min = resampleEnv(f.EnvMin2, f.EnvCols, cols)
 		rep.E2Max = resampleEnv(f.EnvMax2, f.EnvCols, cols)
 		rep.EdgeFrac, rep.WinFrac = -1, 1
-	case full && !f.Interp && f.Valid > f.WinCols:
+	case full && (f.CaptureDepth > 0 || (!f.Interp && f.Valid > f.WinCols)):
 		// DECIMATED deep memory: serve the full drained record VERBATIM (NOT
 		// re-centered) and report the trigger's REAL position (edge_frac =
 		// EdgeX/n). The web centers/windows it client-side, so the display, the
@@ -273,6 +282,11 @@ func (s *Server) buildReply(f *engine.Frame, cols int, full bool, since uint64, 
 		// the whole-record time so client Nyquist/Δt/decode/CSV stay consistent.
 		n := f.Valid
 		rep.C1, rep.C2 = rawInt16(c1[:n]), rawInt16(c2[:n])
+		if len(f.Q1) == n && len(f.Q2) == n {
+			rep.Q1 = coupleQ8(f.Q1, cpl[0])
+			rep.Q2 = coupleQ8(f.Q2, cpl[1])
+			rep.FractionBits = 8
+		}
 		if f.EdgeX >= 0 {
 			rep.EdgeFrac = f.EdgeX / float64(n)
 		} else {
@@ -322,8 +336,8 @@ func (s *Server) buildReply(f *engine.Frame, cols int, full bool, since uint64, 
 			s.measKey = key
 			s.measAt = time.Now()
 			s.meas = measVal{
-				m1:    measure.Compute(c1[:f.Valid], vpc[0], moff[0], f.SampleS),
-				m2:    measure.Compute(c2[:f.Valid], vpc[1], moff[1], f.SampleS),
+				m1:    measure.ComputeAcquisition(c1[:f.Valid], f.Q1, vpc[0], moff[0], f.SampleS, cpl[0], f.FilterGuard),
+				m2:    measure.ComputeAcquisition(c2[:f.Valid], f.Q2, vpc[1], moff[1], f.SampleS, cpl[1], f.FilterGuard),
 				clip1: measure.Clipped(f.C1[:f.Valid]), // RAW rail state (pre-coupling)
 				clip2: measure.Clipped(f.C2[:f.Valid]),
 			}
@@ -332,4 +346,28 @@ func (s *Server) buildReply(f *engine.Frame, cols int, full bool, since uint64, 
 	rep.M1, rep.M2, rep.Clip1, rep.Clip2 = s.meas.m1, s.meas.m2, s.meas.clip1, s.meas.clip2
 	s.measMu.Unlock()
 	return rep
+}
+
+// Copy the precision payload while holding the frame lock. AC centering uses
+// its fractional mean; exported raw records bypass this display operation.
+func coupleQ8(src []uint16, cpl int) []uint16 {
+	out := append([]uint16(nil), src...)
+	if cpl == analog.CplDC {
+		return out
+	}
+	if cpl == analog.CplGND {
+		for i := range out {
+			out[i] = 32768
+		}
+		return out
+	}
+	var sum uint64
+	for _, v := range src {
+		sum += uint64(v)
+	}
+	mean := float64(sum) / float64(len(src))
+	for i, v := range src {
+		out[i] = uint16(math.Max(0, math.Min(65535, math.Round(float64(v)-mean+32768))))
+	}
+	return out
 }

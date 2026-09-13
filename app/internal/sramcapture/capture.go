@@ -45,11 +45,14 @@ const (
 )
 
 // Config counts 32-bit SRAM words. Each ADC word contains two consecutive
-// sample pairs, byte order CH1[n], CH2[n], CH1[n+1], CH2[n+1]. PreWords excludes
+// sample pairs, byte order CH1[n], CH2[n], CH1[n+1], CH2[n+1].
+// With DecimationLog2 nonzero, each word instead contains one little-endian
+// uint16 Q8.8 CH1/CH2 pair. PreWords excludes
 // the triggering word; PostWords includes it. Pair and TriggerChannel are
 // zero based. Cross-core analog timing is not implied by this API.
 type Config struct {
 	Source         Source `json:"source"`
+	DecimationLog2 uint8  `json:"decimation_log2"`
 	Pair           uint8  `json:"pair"`
 	PreWords       uint32 `json:"pre_words"`
 	PostWords      uint32 `json:"post_words"`
@@ -62,22 +65,26 @@ type Config struct {
 // Metadata counters are stable for recall only when Ready and Frozen are true.
 // TriggerIndex is a WORD index, not a sample-half or interpolated timestamp.
 type Metadata struct {
-	Locked       bool   `json:"locked"`
-	Ready        bool   `json:"ready"`
-	Running      bool   `json:"running"`
-	Frozen       bool   `json:"frozen"`
-	Triggered    bool   `json:"triggered"`
-	Prefetched   bool   `json:"prefetched"`
-	Length       uint32 `json:"words"`
-	Start        uint32 `json:"start"`
-	TriggerIndex uint32 `json:"trigger_index"`
-	Position     uint32 `json:"position"`
-	Origin       uint32 `json:"origin"`
-	Revision     uint16 `json:"revision"`
-	MapID        uint16 `json:"map_id"`
-	SampleRateHz uint32 `json:"sample_rate_hz"`
-	Interleaved  bool   `json:"interleaved"`
-	DataFault    bool   `json:"data_fault"`
+	Locked         bool    `json:"locked"`
+	Ready          bool    `json:"ready"`
+	Running        bool    `json:"running"`
+	Frozen         bool    `json:"frozen"`
+	Triggered      bool    `json:"triggered"`
+	Prefetched     bool    `json:"prefetched"`
+	Length         uint32  `json:"words"`
+	Start          uint32  `json:"start"`
+	TriggerIndex   uint32  `json:"trigger_index"`
+	Position       uint32  `json:"position"`
+	Origin         uint32  `json:"origin"`
+	Revision       uint16  `json:"revision"`
+	MapID          uint16  `json:"map_id"`
+	SampleRateHz   float64 `json:"sample_rate_hz"`
+	Decimation     uint32  `json:"decimation"`
+	SampleBits     uint8   `json:"sample_bits"`
+	FractionBits   uint8   `json:"fraction_bits"`
+	SamplesPerWord uint8   `json:"samples_per_word"`
+	Interleaved    bool    `json:"interleaved"`
+	DataFault      bool    `json:"data_fault"`
 }
 
 func New(b Bus) (*Capture, error) {
@@ -162,6 +169,9 @@ func (c *Capture) status() (m Metadata, err error) {
 		return m, err
 	}
 	m.SampleRateHz = 100000000
+	m.Decimation = 1
+	m.SampleBits = 8
+	m.SamplesPerWord = 2
 	if m.Revision >= 6 {
 		rate, e := c.read(15)
 		if e != nil {
@@ -174,10 +184,33 @@ func (c *Capture) status() (m Metadata, err error) {
 		if e != nil {
 			return m, e
 		}
-		m.SampleRateHz = uint32(rate) * 1000000
+		m.SampleRateHz = float64(rate) * 1000000
 		m.Interleaved = true
 		m.DataFault = flags&1 != 0
 		m.Locked = m.Locked && flags&2 != 0
+	}
+	if m.Revision >= 9 {
+		log, e := c.read(28)
+		if e != nil {
+			return m, e
+		}
+		bits, e := c.read(29)
+		if e != nil {
+			return m, e
+		}
+		if log != 0 && (log < 4 || log > 20) {
+			return m, fmt.Errorf("sramcapture: invalid decimation %d", log)
+		}
+		m.Decimation = uint32(1) << log
+		m.SampleRateHz /= float64(m.Decimation)
+		if log != 0 {
+			m.SampleBits = 16
+			m.FractionBits = 8
+			m.SamplesPerWord = 1
+		}
+		if bits != uint16(m.SampleBits) {
+			return m, fmt.Errorf("sramcapture: format mismatch %d", bits)
+		}
 	}
 	return m, nil
 }
@@ -240,7 +273,7 @@ func (c *Capture) ready(ctx context.Context) error {
 }
 
 func (c *Capture) Arm(ctx context.Context, cfg Config) error {
-	if cfg.Source > Counter || cfg.Pair > 4 || cfg.TriggerChannel > 1 || cfg.PostWords == 0 || uint64(cfg.PreWords)+uint64(cfg.PostWords) > uint64(Words) {
+	if (cfg.DecimationLog2 != 0 && (cfg.DecimationLog2 < 4 || cfg.DecimationLog2 > 20)) || cfg.Source > Counter || cfg.Pair > 4 || cfg.TriggerChannel > 1 || cfg.PostWords == 0 || uint64(cfg.PreWords)+uint64(cfg.PostWords) > uint64(Words) {
 		return fmt.Errorf("sramcapture: invalid source, channel, or record geometry")
 	}
 	if e := ctx.Err(); e != nil {
@@ -261,6 +294,14 @@ func (c *Capture) Arm(ctx context.Context, cfg Config) error {
 	}
 	if revision >= 6 && cfg.Pair != 0 {
 		return fmt.Errorf("sramcapture: interleaved image uses all five pairs; pair must be zero")
+	}
+	if revision < 9 && cfg.DecimationLog2 != 0 {
+		return fmt.Errorf("sramcapture: fabric lacks precision decimation")
+	}
+	if revision >= 9 {
+		if e = c.write(18, uint16(cfg.DecimationLog2)); e != nil {
+			return e
+		}
 	}
 	word := uint16(cfg.Pair) << 1
 	if cfg.Source == ADC {
@@ -385,14 +426,26 @@ func (c *Capture) Recall(ctx context.Context, offset, count uint32, dst io.Write
 	if m.Revision >= 7 {
 		prefix = 16
 	}
-	var data [512 * 4]byte
+	bufferWords := uint32(512)
+	if m.Revision >= 8 {
+		size, e := c.read(26)
+		if e != nil {
+			return written, e
+		}
+		bufferWords = uint32(size)
+		if bufferWords != 4096 {
+			return written, fmt.Errorf("sramcapture: unknown read buffer %d", bufferWords)
+		}
+	}
+	data := make([]byte, bufferWords*4)
+	halves := make([]uint16, bufferWords*2)
 	for copied := uint32(0); copied < count; {
 		if err = ctx.Err(); err != nil {
 			return written, err
 		}
 		n := count - copied
-		if n > 512-prefix {
-			n = 512 - prefix
+		if n > bufferWords-prefix {
+			n = bufferWords - prefix
 		}
 		target := (m.Origin + m.Start + offset + copied - prefix) & addressMask
 		position, e := c.read32(8)
@@ -436,15 +489,44 @@ func (c *Capture) Recall(ctx context.Context, offset, count uint32, dst io.Write
 		if uint32(got) != n+prefix {
 			return written, fmt.Errorf("sramcapture: short read buffer: got %d want %d", got, n+prefix)
 		}
-		for i := uint32(0); i < n; i++ {
-			if e = c.write(16, uint16(i+prefix)); e != nil {
+		if m.Revision >= 8 {
+			if e = c.write(17, uint16(prefix*2)); e != nil {
 				return written, e
 			}
-			v, e := c.read32(17)
-			if e != nil {
-				return written, e
+			if pop, ok := c.bus.(interface{ PopWordsChecked(uint16, []uint16) error }); ok {
+				if e = pop.PopWordsChecked(25, halves[:n*2]); e != nil {
+					return written, e
+				}
+			} else {
+				for i := uint32(0); i < n*2; i++ {
+					v, err := c.read(25)
+					if err != nil {
+						return written, err
+					}
+					halves[i] = v
+				}
 			}
-			binary.LittleEndian.PutUint32(data[4*i:], v)
+			index, err := c.read(27)
+			if err != nil {
+				return written, err
+			}
+			if uint32(index) != ((n+prefix)*2)%(bufferWords*2) {
+				return written, fmt.Errorf("sramcapture: burst pointer %d after %d words", index, n)
+			}
+			for i := uint32(0); i < n*2; i++ {
+				binary.LittleEndian.PutUint16(data[2*i:], halves[i])
+			}
+		} else {
+			for i := uint32(0); i < n; i++ {
+				if e = c.write(16, uint16(i+prefix)); e != nil {
+					return written, e
+				}
+				v, e := c.read32(17)
+				if e != nil {
+					return written, e
+				}
+				binary.LittleEndian.PutUint32(data[4*i:], v)
+			}
 		}
 		nn, e := dst.Write(data[:4*n])
 		written += int64(nn)

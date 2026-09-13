@@ -1,0 +1,58 @@
+[
+  {
+    "offset": 0,
+    "result": {
+      "bytes": 2097152,
+      "first": 0,
+      "last": 524287,
+      "nonconsecutive_words": 0,
+      "path": "/dev/acq-counter.bin",
+      "seconds": 0.94379552,
+      "sha256": "ae42b13d7e0af3e77723caf8357d34c7e061526ed9eefeb67b04a0aaa69f33e2",
+      "words": 524288
+    },
+    "log": "bus: /dev/dcinv present\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\n{\n  \"bytes\": 2097152,\n  \"first\": 0,\n  \"last\": 524287,\n  \"nonconsecutive_words\": 0,\n  \"path\": \"/dev/acq-counter.bin\",\n  \"seconds\": 0.94379552,\n  \"sha256\": \"ae42b13d7e0af3e77723caf8357d34c7e061526ed9eefeb67b04a0aaa69f33e2\",\n  \"words\": 524288\n}\n[exit 0]\n"
+  },
+  {
+    "offset": 4079,
+    "result": {
+      "bytes": 132,
+      "first": 4079,
+      "last": 4111,
+      "nonconsecutive_words": 0,
+      "path": "/dev/acq-counter.bin",
+      "seconds": 0.00139888,
+      "sha256": "9e710fcc5163febe2e8c5f80b7ccc05ad5249452bc9c15b10af2c9c1fdb2ded4",
+      "words": 33
+    },
+    "log": "bus: /dev/dcinv present\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\n{\n  \"bytes\": 132,\n  \"first\": 4079,\n  \"last\": 4111,\n  \"nonconsecutive_words\": 0,\n  \"path\": \"/dev/acq-counter.bin\",\n  \"seconds\": 0.00139888,\n  \"sha256\": \"9e710fcc5163febe2e8c5f80b7ccc05ad5249452bc9c15b10af2c9c1fdb2ded4\",\n  \"words\": 33\n}\n[exit 0]\n"
+  },
+  {
+    "offset": 524287,
+    "result": {
+      "bytes": 4,
+      "first": 524287,
+      "last": 524287,
+      "nonconsecutive_words": 0,
+      "path": "/dev/acq-counter.bin",
+      "seconds": 0.00389608,
+      "sha256": "5341298afd21f5e76cac512809a468048bf5475e24b7e0105dd97be2c99d8b7f",
+      "words": 1
+    },
+    "log": "bus: /dev/dcinv present\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\n{\n  \"bytes\": 4,\n  \"first\": 524287,\n  \"last\": 524287,\n  \"nonconsecutive_words\": 0,\n  \"path\": \"/dev/acq-counter.bin\",\n  \"seconds\": 0.00389608,\n  \"sha256\": \"5341298afd21f5e76cac512809a468048bf5475e24b7e0105dd97be2c99d8b7f\",\n  \"words\": 1\n}\n[exit 0]\n"
+  },
+  {
+    "offset": 0,
+    "result": {
+      "bytes": 2097152,
+      "first": 0,
+      "last": 524287,
+      "nonconsecutive_words": 0,
+      "path": "/dev/acq-counter.bin",
+      "seconds": 0.943659,
+      "sha256": "ae42b13d7e0af3e77723caf8357d34c7e061526ed9eefeb67b04a0aaa69f33e2",
+      "words": 524288
+    },
+    "log": "bus: /dev/dcinv present\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\n{\n  \"bytes\": 2097152,\n  \"first\": 0,\n  \"last\": 524287,\n  \"nonconsecutive_words\": 0,\n  \"path\": \"/dev/acq-counter.bin\",\n  \"seconds\": 0.943659,\n  \"sha256\": \"ae42b13d7e0af3e77723caf8357d34c7e061526ed9eefeb67b04a0aaa69f33e2\",\n  \"words\": 524288\n}\n[exit 0]\n"
+  }
+]

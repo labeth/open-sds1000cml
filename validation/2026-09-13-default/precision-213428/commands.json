@@ -1,0 +1,117 @@
+[
+  {
+    "args": [
+      "app",
+      "stop"
+    ],
+    "code": 0,
+    "stdout": "{\n  \"ok\": true\n}\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "put",
+      "/tmp/acqsram-precision.arm",
+      "/dev/acqsram"
+    ],
+    "code": 0,
+    "stdout": "\nupload: 3% (131072/3713344)\nupload: 7% (262144/3713344)\nupload: 10% (393216/3713344)\nupload: 14% (524288/3713344)\nupload: 17% (655360/3713344)\nupload: 21% (786432/3713344)\nupload: 24% (917504/3713344)\nupload: 28% (1048576/3713344)\nupload: 31% (1179648/3713344)\nupload: 35% (1310720/3713344)\nupload: 38% (1441792/3713344)\nupload: 42% (1572864/3713344)\nupload: 45% (1703936/3713344)\nupload: 49% (1835008/3713344)\nupload: 52% (1966080/3713344)\nupload: 56% (2097152/3713344)\nupload: 60% (2228224/3713344)\nupload: 63% (2359296/3713344)\nupload: 67% (2490368/3713344)\nupload: 70% (2621440/3713344)\nupload: 74% (2752512/3713344)\nupload: 77% (2883584/3713344)\nupload: 81% (3014656/3713344)\nupload: 84% (3145728/3713344)\nupload: 88% (3276800/3713344)\nupload: 91% (3407872/3713344)\nupload: 95% (3538944/3713344)\nupload: 98% (3670016/3713344)\nupload: 100% (3713344/3713344)\nok: /tmp/acqsram-precision.arm -> /dev/acqsram sha256=54d3f804400c6d017abb2f82309c8dc1bb3f93246c2d745e2665e1ed537db2dc\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "exec",
+      "chmod",
+      "755",
+      "/dev/acqsram"
+    ],
+    "code": 0,
+    "stdout": "\n[exit 0]\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "put",
+      "/home/labeth/ws/open-sds1000cml-acq2/fpga/acq_sram/out/250mhz-p1000-interleave-precision-seed4/bench.rbf",
+      "/dev/acq-precision.rbf"
+    ],
+    "code": 0,
+    "stdout": "\nupload: 35% (131072/368011)\nupload: 71% (262144/368011)\nupload: 100% (368011/368011)\nok: /home/labeth/ws/open-sds1000cml-acq2/fpga/acq_sram/out/250mhz-p1000-interleave-precision-seed4/bench.rbf -> /dev/acq-precision.rbf sha256=3a34d68a97b5df8e83e1214b7ed66d6d5db6fc81262ee24c53aaa600aeda856b\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "exec",
+      "/dev/acqsram",
+      "load",
+      "/dev/acq-precision.rbf"
+    ],
+    "code": 0,
+    "stdout": "fpgaload: bit order: explicit reverse, agrees with the container (native Quartus order (6a f7 \u2026))\nfpgaload: CONF_DONE after 0s (port 0x00c0)\nloaded 368011 bytes, CONF_DONE=00c0, identity=5a52\n[exit 0]\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "exec",
+      "env",
+      "SCOPE_EDMA=1",
+      "/dev/acqsram",
+      "capture",
+      "0",
+      "524271",
+      "17",
+      "128",
+      "0"
+    ],
+    "code": 0,
+    "stdout": "bus: dcinv module loaded from /dev/dcinv.ko\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\n{\n  \"buffer_words\": 0,\n  \"capture\": {\n    \"locked\": true,\n    \"ready\": true,\n    \"running\": false,\n    \"frozen\": true,\n    \"triggered\": true,\n    \"prefetched\": false,\n    \"words\": 524288,\n    \"start\": 0,\n    \"trigger_index\": 524271,\n    \"position\": 17,\n    \"origin\": 17,\n    \"revision\": 9,\n    \"map_id\": 57746,\n    \"sample_rate_hz\": 500000000,\n    \"decimation\": 1,\n    \"sample_bits\": 8,\n    \"fraction_bits\": 0,\n    \"samples_per_word\": 2,\n    \"interleaved\": true,\n    \"data_fault\": false\n  },\n  \"identity\": 23122,\n  \"length\": 524288,\n  \"map_id\": 57746,\n  \"origin\": 17,\n  \"position\": 17,\n  \"revision\": 9,\n  \"start\": 0,\n  \"status\": 628,\n  \"trigger_index\": 524271\n}\n[exit 0]\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "exec",
+      "env",
+      "SCOPE_EDMA=1",
+      "/dev/acqsram",
+      "recall",
+      "/dev/acq-precision.bin",
+      "0",
+      "524288"
+    ],
+    "code": 0,
+    "stdout": "bus: /dev/dcinv present\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\n{\n  \"bytes\": 2097152,\n  \"first\": 0,\n  \"last\": 524287,\n  \"nonconsecutive_words\": 0,\n  \"path\": \"/dev/acq-precision.bin\",\n  \"seconds\": 0.95408324,\n  \"sha256\": \"ae42b13d7e0af3e77723caf8357d34c7e061526ed9eefeb67b04a0aaa69f33e2\",\n  \"words\": 524288\n}\n[exit 0]\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "exec",
+      "env",
+      "SCOPE_EDMA=1",
+      "/dev/acqsram",
+      "capture",
+      "0",
+      "524271",
+      "17",
+      "128",
+      "4"
+    ],
+    "code": 0,
+    "stdout": "bus: /dev/dcinv present\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\n{\n  \"buffer_words\": 0,\n  \"capture\": {\n    \"locked\": true,\n    \"ready\": true,\n    \"running\": false,\n    \"frozen\": true,\n    \"triggered\": true,\n    \"prefetched\": false,\n    \"words\": 524288,\n    \"start\": 0,\n    \"trigger_index\": 524271,\n    \"position\": 166,\n    \"origin\": 166,\n    \"revision\": 9,\n    \"map_id\": 57746,\n    \"sample_rate_hz\": 31250000,\n    \"decimation\": 16,\n    \"sample_bits\": 16,\n    \"fraction_bits\": 8,\n    \"samples_per_word\": 1,\n    \"interleaved\": true,\n    \"data_fault\": false\n  },\n  \"identity\": 23122,\n  \"length\": 524288,\n  \"map_id\": 57746,\n  \"origin\": 166,\n  \"position\": 166,\n  \"revision\": 9,\n  \"start\": 0,\n  \"status\": 116,\n  \"trigger_index\": 524271\n}\n[exit 0]\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "exec",
+      "env",
+      "SCOPE_EDMA=1",
+      "/dev/acqsram",
+      "recall",
+      "/dev/acq-precision.bin",
+      "0",
+      "524288"
+    ],
+    "code": 0,
+    "stdout": "bus: /dev/dcinv present\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\n{\n  \"bytes\": 2097152,\n  \"first\": 524287,\n  \"last\": 524286,\n  \"nonconsecutive_words\": 1,\n  \"path\": \"/dev/acq-precision.bin\",\n  \"seconds\": 0.95868068,\n  \"sha256\": \"f4f52690c67519248c3454659eb6e8e071ee7f33a5a53af4e7368ed348c9f5b9\",\n  \"words\": 524288\n}\n[exit 0]\n",
+    "stderr": ""
+  }
+]

@@ -249,3 +249,15 @@ func TestAvgWidthMergeParity(t *testing.T) {
 		t.Fatalf("no-pair case = %v, want 0", got)
 	}
 }
+
+func TestFractionalAcquisitionMeasurements(t *testing.T) {
+	q := []uint16{25600, 25728, 25600, 25728}
+	r := ComputeQ8(q, 1, 0, 1)
+	if r.Vmean != -27.75 || r.Vpp != .5 || r.Vrms != .25 {
+		t.Fatalf("fractional mean/range/AC RMS lost: %+v", r)
+	}
+	r = ComputeAcquisition([]byte{100, 101, 100, 101}, q, 1, 0, 1, 1)
+	if r.Vmean != 0 || r.Vmin != -.25 || r.Vmax != .25 {
+		t.Fatalf("AC coupling quantized: %+v", r)
+	}
+}
