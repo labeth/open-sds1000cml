@@ -1,0 +1,50 @@
+{
+  "Module.symvers": {
+    "bytes": 223362,
+    "sha256": "f823b2128a099068846f70204afa94568f309da3257ad23823525fc1c11014e7"
+  },
+  "abi-crcs.txt": {
+    "bytes": 445,
+    "sha256": "1bcf444065b9e95c96354809498e15c0dbeae0251b466ef44f7cfb2048eee420"
+  },
+  "abiprobe.c": {
+    "bytes": 675,
+    "sha256": "d4650d7c2d6f3b0f3ba1faf58f6b6df8cbe27d085266c26e3555d76ca3c40189"
+  },
+  "crc-addresses.txt": {
+    "bytes": 170808,
+    "sha256": "21184be2515a919e12da57be48edca68a2cc0ce279be1ec1d63f2a400e27a812"
+  },
+  "crc-ram.bin": {
+    "bytes": 20480,
+    "sha256": "31ec10c739fed651d4ec8dfacfa32d6c8655264b747de5e7eaf3307e68d5fa7b"
+  },
+  "kernel.config": {
+    "bytes": 63513,
+    "sha256": "1b387793c20521c39f312e52827cc98ee95b9bb1e7570864ec4fcef5671db6aa"
+  },
+  "module-build.log": {
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "post-test-recall.json": {
+    "bytes": 2550,
+    "sha256": "7a32dc8567705fa331504f684efd46407d018dd2a57e2c2af7e22aea37354f72"
+  },
+  "readcrc.go": {
+    "bytes": 320,
+    "sha256": "9f322125434be8eafe3a99469bbe87d2665837a6833096f1608c7e471028cf03"
+  },
+  "selftest.json": {
+    "bytes": 828,
+    "sha256": "7a10bee65dfb14e50cea36d24975f133c67bae27956edb805f61244452ef71af"
+  },
+  "vendor.symvers": {
+    "bytes": 9228,
+    "sha256": "c937f85e8d4c766d0e306e0277071c992715dfad54d949c6410dd07567692a69"
+  },
+  "verify.py": {
+    "bytes": 1712,
+    "sha256": "d80173cff818311d56c8912552807bb75db7cf72ce42f42d77d042598cd7cbab"
+  }
+}

@@ -1,0 +1,34 @@
+[
+  {
+    "command": [
+      "cat",
+      "/proc/modules"
+    ],
+    "output": "dcinv 981 0 [permanent], Live 0xbf03d000 (O)\nda8xx_fb 9304 2 - Live 0xbf036000\ncfbimgblt 1782 1 da8xx_fb, Live 0xbf032000\ncfbfillrect 2788 1 da8xx_fb, Live 0xbf02e000\ncfbcopyarea 2677 1 da8xx_fb, Live 0xbf02a000\ng_usbtmc 11225 2 - Live 0xbf022000\nti81xx 6419 0 - Live 0xbf01c000\nmusb_hdrc 49169 1 ti81xx, Live 0xbf009000\ngpib 5155 0 - Live 0xbf004000\nudc_core 3621 2 g_usbtmc,musb_hdrc, Live 0xbf000000\n[exit 0]\n"
+  },
+  {
+    "command": [
+      "env",
+      "SCOPE_EDMA=1",
+      "/dev/acqsram-large",
+      "capture",
+      "0",
+      "524271",
+      "17",
+      "128",
+      "8"
+    ],
+    "output": "bus: /dev/dcinv present\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\n{\n  \"buffer_words\": 0,\n  \"capture\": {\n    \"locked\": true,\n    \"ready\": true,\n    \"running\": false,\n    \"frozen\": true,\n    \"triggered\": true,\n    \"prefetched\": false,\n    \"words\": 524288,\n    \"start\": 0,\n    \"trigger_index\": 524271,\n    \"position\": 200079,\n    \"origin\": 200080,\n    \"revision\": 11,\n    \"map_id\": 57746,\n    \"sample_rate_hz\": 1953125,\n    \"decimation\": 256,\n    \"sample_bits\": 16,\n    \"fraction_bits\": 8,\n    \"samples_per_word\": 1,\n    \"interleaved\": true,\n    \"data_fault\": false\n  },\n  \"identity\": 23122,\n  \"length\": 524288,\n  \"map_id\": 57746,\n  \"origin\": 200080,\n  \"position\": 200079,\n  \"revision\": 11,\n  \"start\": 0,\n  \"status\": 116,\n  \"trigger_index\": 524271\n}\n[exit 0]\n"
+  },
+  {
+    "command": [
+      "env",
+      "SCOPE_EDMA=1",
+      "/dev/acqsram-large",
+      "profile-recall",
+      "0",
+      "524288"
+    ],
+    "output": "bus: /dev/dcinv present\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\n{\n  \"breaks\": null,\n  \"bytes\": 2097152,\n  \"first\": 0,\n  \"last\": 524287,\n  \"nonconsecutive_words\": 0,\n  \"profile\": {\n    \"Reads\": 1828,\n    \"Writes\": 1032,\n    \"Pops\": 129,\n    \"Halfwords\": 1048576,\n    \"SkippedWords\": 67630961,\n    \"ReadNS\": 11400280,\n    \"WriteNS\": 5065200,\n    \"PopNS\": 275051360\n  },\n  \"recall_seconds\": 0.65389576,\n  \"seconds\": 0.86724528,\n  \"sha256\": \"ae42b13d7e0af3e77723caf8357d34c7e061526ed9eefeb67b04a0aaa69f33e2\",\n  \"validation_seconds\": 0.21334952\n}\n[exit 0]\n"
+  }
+]

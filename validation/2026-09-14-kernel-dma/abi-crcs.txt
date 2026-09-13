@@ -1,0 +1,14 @@
+f6288e02 A __crc___init_waitqueue_head
+dc798d37 A __crc___mutex_init
+60f71cfa A __crc_complete
+2c450a37 A __crc_dma_alloc_coherent
+7b2e59a7 A __crc_dma_free_coherent
+fefb6077 A __crc_edma_alloc_channel
+a31e44ba A __crc_edma_free_channel
+83d70683 A __crc_edma_start
+03635439 A __crc_edma_stop
+61e1850a A __crc_edma_write_slot
+39a6a9ea A __crc_fget
+36e2534b A __crc_fput
+5d2498d9 A __crc_misc_register
+80d817ab A __crc_wait_for_completion_timeout

@@ -1,0 +1,56 @@
+[
+  {
+    "iteration": 0,
+    "command": [
+      "rmmod",
+      "acq_dma_test"
+    ],
+    "exit": 0,
+    "output": "\n[exit 0]\n"
+  },
+  {
+    "iteration": 0,
+    "command": [
+      "insmod",
+      "/dev/acq_dma_test.ko"
+    ],
+    "exit": 0,
+    "output": "\n[exit 0]\n"
+  },
+  {
+    "iteration": 1,
+    "command": [
+      "rmmod",
+      "acq_dma_test"
+    ],
+    "exit": 0,
+    "output": "\n[exit 0]\n"
+  },
+  {
+    "iteration": 1,
+    "command": [
+      "insmod",
+      "/dev/acq_dma_test.ko"
+    ],
+    "exit": 0,
+    "output": "\n[exit 0]\n"
+  },
+  {
+    "iteration": 2,
+    "command": [
+      "rmmod",
+      "acq_dma_test"
+    ],
+    "exit": 0,
+    "output": "\n[exit 0]\n"
+  },
+  {
+    "iteration": 2,
+    "command": [
+      "insmod",
+      "/dev/acq_dma_test.ko"
+    ],
+    "exit": 0,
+    "output": "\n[exit 0]\n"
+  }
+]
