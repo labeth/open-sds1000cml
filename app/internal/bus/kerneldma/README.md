@@ -1,9 +1,10 @@
 # Experimental kernel EDMA foundation
 
-This is not installed or used by the normal application. Only `acq_dma_test.ko`
-has been loaded on the scope. `acq_dma.c` is a draft fixed-port drain; do not load
-it yet. Its file/device ABI assumptions still need inspection, and it does not
-yet implement the background stream/ring needed for reliable continuous capture.
+This is experimental and is not used by the normal application. The full
+`acq_dma` module has now been exercised through the inherited GPMC descriptor,
+including synchronous SRAM recall and a background coherent-RAM stream queue.
+Long /256 and /512 streams still overrun the FPGA transfer banks; this is not
+a qualified continuous capture path. See `validation/2026-09-14-kernel-stream/`.
 
 ## Verified foundation
 
@@ -36,7 +37,7 @@ Use the archived `kernel.config` and `Module.symvers` in
 Build host tools with `HOSTCFLAGS="-fcommon -Wno-error"`.
 Build modules using the normal kernel `make -C KDIR M=THIS_DIRECTORY ARCH=arm
 CROSS_COMPILE=... modules` command. Default builds only the RAM self-test.
-`EXPERIMENTAL_GPMC_DMA=1` additionally builds the unqualified draft.
+`EXPERIMENTAL_GPMC_DMA=1` additionally builds the experimental stream driver.
 
 `-fno-pic -fno-pie` is essential: the Android compiler otherwise emits
 R_ARM_REL32, which Linux 3.2's ARM loader does not handle. The initial test
@@ -57,5 +58,9 @@ Fresh genksyms probes match the kernel's completion, mutex and five used EDMA
 API signatures. The device/file-related probes differ, so a matching imported
 CRC alone must not be taken as proof of those structure layouts. The loaded
 self-test uses a null device pointer and no file/device structures. Its used
-synchronization and EDMA structures have matching probe CRCs. The full drain
-has not been qualified or loaded.
+synchronization and EDMA structures have matching probe CRCs. For the full drain, subsequent runtime/vendor disassembly checked the used
+file and misc-device offsets, now enforced by BUILD_BUG_ON. Disable
+CONFIG_SECURITY to match file.private_data at offset 104; the newer config is
+archived in `validation/2026-09-14-kernel-stream/kernel.config`. The old config
+and self-test binary remain historical evidence. Matching these used offsets
+and successful tests do not establish every possible kernel ABI interaction.

@@ -66,8 +66,9 @@ const (
 // held as a raw int and is never closed (closing frees the FPGA chip select
 // for the whole process tree).
 type Dev struct {
-	fd   int
-	edma *edmaDrainer // nil → ioctl drains
+	fd        int
+	kernelDMA *kernelDMADrainer
+	edma      *edmaDrainer // nil → ioctl drains
 }
 
 // New wraps the inherited /dev/Gpmc fd. It only constructs: at cold boot the
@@ -101,6 +102,9 @@ func encode(plane uint8, sel, val uint16) [6]byte {
 }
 
 func (d *Dev) ioctl(req uintptr, b *[6]byte) error {
+	if d.kernelDMA != nil && d.kernelDMA.streaming {
+		return fmt.Errorf("bus: kernel stream owns GPMC until CloseKernelDMA")
+	}
 	_, _, errno := syscall.Syscall(syscall.SYS_IOCTL, uintptr(d.fd), req, uintptr(unsafe.Pointer(&b[0])))
 	if errno != 0 {
 		return errno
@@ -195,6 +199,10 @@ func (d *Dev) EnableEDMA(maxWords int, logf func(string, ...any)) bool {
 	if logf == nil {
 		logf = func(string, ...any) {}
 	}
+	if d.kernelDMA != nil {
+		logf("bus: kernel DMA already owns EDMA")
+		return false
+	}
 	if d.edma != nil {
 		return true
 	}
@@ -228,6 +236,19 @@ func (d *Dev) PopWordsChecked(sel uint16, dst []uint16) error {
 	if sel > 127 {
 		return fmt.Errorf("bus: invalid pop selector %d", sel)
 	}
+	if d.kernelDMA != nil {
+		if len(dst)*2 > len(d.kernelDMA.bytes) {
+			return fmt.Errorf("bus: kernel DMA size exceeds buffer")
+		}
+		b := d.kernelDMA.bytes[:len(dst)*2]
+		if err := d.kernelDMA.pop(sel, b); err != nil {
+			return err
+		}
+		for i := range dst {
+			dst[i] = uint16(b[i*2]) | uint16(b[i*2+1])<<8
+		}
+		return nil
+	}
 	if d.edma != nil {
 		if !d.edma.drainWords(uint32(cs1PhysBase)+uint32(sel)*2, dst, len(dst)) {
 			return fmt.Errorf("bus: DMA pop failed; pointer may have advanced")
@@ -252,6 +273,9 @@ func (d *Dev) PopBytesChecked(sel uint16, dst []byte) error {
 	}
 	if len(dst) == 0 {
 		return nil
+	}
+	if d.kernelDMA != nil {
+		return d.kernelDMA.pop(sel, dst)
 	}
 	if d.edma != nil {
 		if !d.edma.drainBytes(uint32(cs1PhysBase)+uint32(sel)*2, dst) {

@@ -1,0 +1,17 @@
+[
+  {
+    "log": 8,
+    "target": 4194304,
+    "output": "kernel IRQ-driven DMA enabled\nprofile timing: rdcycle=18 rdaccess=8 oe=4..16 cs=0..18 gap=5 -> rdcycle=10 rdaccess=8 oe=4..10 cs=0..10 gap=5\n{\n  \"blocks\": 1025,\n  \"bytes\": 16787536,\n  \"first\": 0,\n  \"last\": 4196883,\n  \"nonconsecutive_words\": 0,\n  \"seconds\": 2.15027376,\n  \"words\": 4196884,\n  \"words_per_second\": 1951790.5478230827\n}\n[exit 0]\n"
+  },
+  {
+    "log": 8,
+    "target": 33554432,
+    "output": "{\n  \"exit\": 2,\n  \"output\": \"kernel IRQ-driven DMA enabled\\nprofile timing: rdcycle=18 rdaccess=8 oe=4..16 cs=0..18 gap=5 -\\u003e rdcycle=10 rdaccess=8 oe=4..10 cs=0..10 gap=5\\n{\\n  \\\"blocks\\\": 279,\\n  \\\"error\\\": \\\"read /dev/acq_dma: value too large for defined data type\\\",\\n  \\\"seconds\\\": 0.5946662,\\n  \\\"words\\\": 1142784\\n}\\npanic: read /dev/acq_dma: value too large for defined data type\\n\\ngoroutine 1 [running]:\\nmain.main.func4(...)\\n\\t/home/labeth/ws/open-sds1000cml-acq2/app/cmd/acqsram/main.go:126\\nmain.main()\\n\\t/home/labeth/ws/open-sds1000cml-acq2/app/cmd/acqsram/main.go:206 +0x9e1c\\n\"\n}\n"
+  },
+  {
+    "log": 8,
+    "target": 33554432,
+    "output": "{\n  \"exit\": 2,\n  \"output\": \"kernel IRQ-driven DMA enabled\\nprofile timing: rdcycle=18 rdaccess=8 oe=4..16 cs=0..18 gap=5 -\\u003e rdcycle=10 rdaccess=8 oe=4..10 cs=0..10 gap=5\\n{\\n  \\\"blocks\\\": 7123,\\n  \\\"error\\\": \\\"read /dev/acq_dma: value too large for defined data type\\\",\\n  \\\"seconds\\\": 14.94825244,\\n  \\\"words\\\": 29175808\\n}\\npanic: read /dev/acq_dma: value too large for defined data type\\n\\ngoroutine 1 [running]:\\nmain.main.func4(...)\\n\\t/home/labeth/ws/open-sds1000cml-acq2/app/cmd/acqsram/main.go:126\\nmain.main()\\n\\t/home/labeth/ws/open-sds1000cml-acq2/app/cmd/acqsram/main.go:206 +0x9e1c\\n\"\n}\n"
+  }
+]

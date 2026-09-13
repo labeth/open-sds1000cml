@@ -1,0 +1,10 @@
+5918e4188249e38f33e847f3340acc0a797af2fe768020689f268740dde88b15  validation/2026-09-14-kernel-stream/README.md
+65b90a98045a537ef22126501548f5ca2a14e1d3cab63008bc3392df2ec3a3cf  validation/2026-09-14-kernel-stream/ioctl-layout.txt
+0b4b8cd5ff65346f8cd3e15d75372bb4de814c5d36d756528cd21f6913b61c8e  validation/2026-09-14-kernel-stream/kernel.config
+78ba7bc5886f0113ff581dca2508e32e72e09b4f349ad90be2bc8efb2da5e41d  validation/2026-09-14-kernel-stream/misc-layout.txt
+0f8cd1cb95507bceb72f9db67be03ed49ead19a7b87dfefc465ea0b43ae5bdac  validation/2026-09-14-kernel-stream/pop-only.ko
+f1020dac7df6d62c337bea49c42dda1cf1f024ad10a8fabb2dc4fe70ccf19442  validation/2026-09-14-kernel-stream/stream-initial.json
+07bef83d24e4992c07c3a8bd6f0d4a915d5326df21d628b8b5489cc6788bdca6  validation/2026-09-14-kernel-stream/worker-stream.json
+fada22e69f51e41cbd1c34950baa2d7ffd1a20644dfe74bd6a656d2b44aff1da  validation/2026-09-14-kernel-stream/worker-timing.json
+6d0d30f0fe3537cfd7e080d3c24741c7a415de4bbb78c9d9193b38a2ffb1ae20  validation/2026-09-14-kernel-stream/worker-timing.ko
+669e5fc3eeaa5936fb68cebb4003b65d11a52bed55d6f8b09abfe9be9acc3f3b  app/internal/bus/kerneldma/acq_dma.c

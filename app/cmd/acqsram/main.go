@@ -94,12 +94,22 @@ func main() {
 	}
 	profile := &profileBus{dev: dev}
 	var captureBus sramcapture.Bus = dev
-	if os.Args[1] == "profile-recall" || os.Args[1] == "stream-profile" {
+	if os.Args[1] == "profile-recall" || os.Args[1] == "stream-profile" || os.Args[1] == "kernel-stream-profile" {
 		captureBus = profile
 	}
 	capture, err := sramcapture.New(captureBus)
 	if err != nil {
 		panic(err)
+	}
+	if os.Getenv("SCOPE_KERNEL_DMA") == "1" {
+		if os.Getenv("SCOPE_EDMA") == "1" {
+			panic("kernel and userspace DMA are mutually exclusive")
+		}
+		if err := dev.EnableKernelDMA(); err != nil {
+			panic(err)
+		}
+		defer dev.CloseKernelDMA()
+		fmt.Fprintln(os.Stderr, "kernel IRQ-driven DMA enabled")
 	}
 	if rd(13) >= 8 && os.Getenv("SCOPE_EDMA") == "1" {
 		if err := bus.EnsureDcinv(func(f string, a ...any) { fmt.Fprintf(os.Stderr, f+"\n", a...) }); err != nil {
@@ -116,7 +126,7 @@ func main() {
 			panic(err)
 		}
 	}
-	if os.Args[1] == "profile-recall" || os.Args[1] == "stream-profile" {
+	if os.Args[1] == "profile-recall" || os.Args[1] == "stream-profile" || os.Args[1] == "kernel-stream-profile" {
 		// Scope timing changes to this diagnostic process, restoring on exit.
 		if os.Getenv("SCOPE_PROFILE_RD_CYCLE") != "" {
 			port, err := bus.OpenTimingPort()
@@ -124,7 +134,7 @@ func main() {
 			defer port.Close()
 			old, err := port.Read()
 			must(err)
-			defer func() { must(port.Restore(old)) }()
+			defer func() { must(dev.CloseKernelDMA()); must(port.Restore(old)) }()
 			cycle := num(os.Getenv("SCOPE_PROFILE_RD_CYCLE"))
 			access := num(os.Getenv("SCOPE_PROFILE_RD_ACCESS"))
 			next := old.WithRdAccess(access).WithRdCycle(cycle).WithOEOff(min(old.OEOff(), cycle)).WithCSRdOff(min(old.CSRdOff(), cycle))
@@ -147,7 +157,7 @@ func main() {
 			defer port.Close()
 			old, err := port.Read()
 			must(err)
-			defer func() { must(port.Restore(old)) }()
+			defer func() { must(dev.CloseKernelDMA()); must(port.Restore(old)) }()
 			must(port.Apply(old.WithRdCycle(31).WithRdAccess(13).WithOEOff(16).WithCSRdOff(20)))
 		}
 		op, n := num(os.Args[2]), num(os.Args[3])
@@ -177,6 +187,47 @@ func main() {
 			popped[i] = uint32(halves[2*i]) | uint32(halves[2*i+1])<<16
 		}
 		emit(map[string]any{"operation": op, "before": before, "after": r32(8), "origin": r32(10), "start": r32(4), "indexed": indexed, "popped": popped})
+		return
+	case "kernel-stream-profile":
+		log, n := num(os.Args[2]), num(os.Args[3])
+		data := make([]byte, 16400)
+		check := &counterCheck{}
+		must(dev.StartKernelStream(log, 1, n, 25))
+		began := time.Now()
+		var next uint64
+		blocks := 0
+		for {
+			got, err := dev.ReadKernelStream(data)
+			if err == io.EOF {
+				break
+			}
+			if err != nil {
+				stats, _ := dev.KernelStreamStats()
+				emit(map[string]any{"error": err.Error(), "words": next, "blocks": blocks, "seconds": time.Since(began).Seconds(), "kernel_stats": stats})
+				must(err)
+			}
+			if got < 20 {
+				panic("short kernel stream frame")
+			}
+			first := binary.LittleEndian.Uint64(data[:8])
+			words := binary.LittleEndian.Uint32(data[8:12])
+			if first != next || words == 0 || int(words)*4+16 != got || binary.LittleEndian.Uint32(data[12:16]) != 0 {
+				panic("kernel stream header mismatch")
+			}
+			_, err = check.Write(data[16:got])
+			must(err)
+			if check.first != 0 || check.bad != 0 {
+				panic(fmt.Sprintf("kernel counter mismatch: %+v", check))
+			}
+			next += uint64(words)
+			blocks++
+		}
+		if next < uint64(n) {
+			panic(fmt.Sprintf("kernel stream ended before target: got %d words, want at least %d", next, n))
+		}
+		elapsed := time.Since(began).Seconds()
+		stats, _ := dev.KernelStreamStats()
+		emit(map[string]any{"kernel_stats": stats, "words": next, "bytes": next * 4, "blocks": blocks, "seconds": elapsed, "words_per_second": float64(next) / elapsed, "first": check.first, "last": check.last, "nonconsecutive_words": check.bad})
 		return
 	case "stream-profile":
 		if rd(13) != 11 {
