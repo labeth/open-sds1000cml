@@ -319,6 +319,14 @@
     "bytes": 3610,
     "sha256": "a14fbb1bb8b27f6651b76c2e05e85a1d84f1f19d48695fd1329b78d2c0d68df0"
   },
+  "stream-banks/README.md": {
+    "bytes": 4097,
+    "sha256": "eaed581d0976be784874f462a2da5daed1db1d3dfd271e7f1daf9c612730bef8"
+  },
+  "stream-banks/simulation.json": {
+    "bytes": 1056,
+    "sha256": "5dd9742ccafe59847a9f3b55ba3a70f4cfe565a59549232c2c9b5ba967945391"
+  },
   "triangle-0.bin": {
     "bytes": 2097152,
     "sha256": "2f93353cbcfb0c5b53e96982bf4bdbbc11e4743eb14b82500fc8dd5e24fab317"

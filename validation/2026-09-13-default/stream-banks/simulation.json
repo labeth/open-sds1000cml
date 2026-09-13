@@ -1,0 +1,36 @@
+[
+  {
+    "bank_aw": 3,
+    "command": [
+      "iverilog",
+      "-g2012",
+      "-Wall",
+      "-s",
+      "tb",
+      "-Ptb.BANK_AW=3",
+      "-o",
+      "/tmp/tb_stream_banks",
+      "fpga/acq_sram/stream_banks.v",
+      "fpga/acq_sram/sim/tb_stream_banks.v"
+    ],
+    "stdout": "PASS stream banks: bank=8 packets, 1003 input packets, asynchronous releases, partial/empty seal, stale release, overrun retention and reset\nfpga/acq_sram/sim/tb_stream_banks.v:81: $finish called at 83288000 (1ps)\n",
+    "stderr": ""
+  },
+  {
+    "bank_aw": 10,
+    "command": [
+      "iverilog",
+      "-g2012",
+      "-Wall",
+      "-s",
+      "tb",
+      "-Ptb.BANK_AW=10",
+      "-o",
+      "/tmp/tb_stream_banks",
+      "fpga/acq_sram/stream_banks.v",
+      "fpga/acq_sram/sim/tb_stream_banks.v"
+    ],
+    "stdout": "PASS stream banks: bank=1024 packets, 10243 input packets, asynchronous releases, partial/empty seal, stale release, overrun retention and reset\nfpga/acq_sram/sim/tb_stream_banks.v:81: $finish called at 925962000 (1ps)\n",
+    "stderr": ""
+  }
+]
