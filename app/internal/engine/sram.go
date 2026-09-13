@@ -203,7 +203,9 @@ func (e *Engine) runSRAM() {
 		if m.Revision == 10 {
 			recall = e.sram.RecallForward
 		}
+		recallAt := e.clk.Now()
 		_, err = recall(ctx, 0, m.Length, &writer)
+		recalledAt := e.clk.Now()
 		cancel()
 		if err != nil || writer.n != f.Valid {
 			if err == nil {
@@ -224,6 +226,7 @@ func (e *Engine) runSRAM() {
 				f.C2[i] = roundQ8(f.Q2[i])
 			}
 		}
+		conditionedAt := e.clk.Now()
 		f.WindowNs = int64(float64(f.Valid) * f.SampleS * 1e9)
 		if !previousFrozen.IsZero() {
 			f.GapNs = int64(armAt.Sub(previousFrozen))
@@ -270,6 +273,8 @@ func (e *Engine) runSRAM() {
 		e.stats.ValidDepth = f.Valid
 		e.stats.MemDepth = f.Valid
 		e.stats.LastPtp = f.Ptp
+		e.stats.SRAMRecallMs = float64(recalledAt.Sub(recallAt)) / float64(time.Millisecond)
+		e.stats.ConditionMs = float64(conditionedAt.Sub(recalledAt)) / float64(time.Millisecond)
 		e.stats.DrainMs = float64(e.clk.Now().Sub(frozenAt)) / float64(time.Millisecond)
 		e.mu.Unlock()
 		publish := qualified || !norm

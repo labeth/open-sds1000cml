@@ -1,0 +1,63 @@
+File: acq-app-stages.arm
+Build ID: 25b394fa80cb6e2340996a76c59a756e49ff8cc8
+Type: cpu
+Time: 1970-01-01 01:40:13 CET
+Duration: 15.13s, Total samples = 14.64s (96.78%)
+Showing nodes accounting for 14.11s, 96.38% of 14.64s total
+Dropped 146 nodes (cum <= 0.07s)
+      flat  flat%   sum%        cum   cum%
+     4.59s 31.35% 31.35%      4.59s 31.35%  open-sds/app/internal/dsp.precisionWindow
+     2.77s 18.92% 50.27%      3.16s 21.58%  open-sds/app/internal/measure.compute[go.shape.uint16]
+     1.59s 10.86% 61.13%      1.69s 11.54%  open-sds/app/internal/bus.(*edmaDrainer).runParam
+     0.93s  6.35% 67.49%      5.66s 38.66%  open-sds/app/internal/dsp.ConditionQ8
+     0.63s  4.30% 71.79%      0.63s  4.30%  runtime.memmove
+     0.45s  3.07% 74.86%      0.71s  4.85%  open-sds/app/internal/engine.(*sramFrameWriter).Write
+     0.44s  3.01% 77.87%      0.44s  3.01%  open-sds/app/internal/measure.Clipped
+     0.38s  2.60% 80.46%      2.09s 14.28%  open-sds/app/internal/bus.(*edmaDrainer).drainWords
+     0.33s  2.25% 82.72%      0.33s  2.25%  open-sds/app/internal/lcd.(*MemSurface).SetPixel
+     0.25s  1.71% 84.43%      9.86s 67.35%  open-sds/app/internal/engine.(*Engine).runSRAM
+     0.24s  1.64% 86.07%      0.24s  1.64%  open-sds/app/internal/engine.roundQ8 (inline)
+     0.23s  1.57% 87.64%      0.56s  3.83%  open-sds/app/internal/lcd.drawLine
+     0.21s  1.43% 89.07%      0.22s  1.50%  encoding/binary.littleEndian.Uint16 (inline)
+     0.21s  1.43% 90.51%      3.66s 25.00%  open-sds/app/internal/sramcapture.(*Capture).recall
+     0.16s  1.09% 91.60%      0.16s  1.09%  internal/runtime/syscall/linux.Syscall6
+     0.15s  1.02% 92.62%      0.16s  1.09%  open-sds/app/internal/measure.avgWidth (inline)
+     0.11s  0.75% 93.37%      0.11s  0.75%  runtime._LostSIGPROFDuringAtomic64
+     0.10s  0.68% 94.06%      0.10s  0.68%  open-sds/app/internal/bus.memRegs.R
+     0.09s  0.61% 94.67%      0.09s  0.61%  open-sds/app/internal/engine.ptp (inline)
+     0.08s  0.55% 95.22%      0.09s  0.61%  encoding/binary.littleEndian.PutUint16 (inline)
+     0.08s  0.55% 95.77%      0.08s  0.55%  runtime.asyncPreempt
+     0.03s   0.2% 95.97%      0.24s  1.64%  syscall.Syscall
+     0.02s  0.14% 96.11%      0.58s  3.96%  open-sds/app/internal/lcd.drawTrace
+     0.01s 0.068% 96.17%      0.12s  0.82%  open-sds/app/internal/bus.(*Dev).RawWrite
+     0.01s 0.068% 96.24%      0.11s  0.75%  open-sds/app/internal/bus.(*Dev).Read
+     0.01s 0.068% 96.31%      0.15s  1.02%  open-sds/app/internal/sramcapture.(*Capture).ready
+     0.01s 0.068% 96.38%      0.12s  0.82%  runtime.mallocgc
+         0     0% 96.38%      0.18s  1.23%  context.WithDeadline (inline)
+         0     0% 96.38%      0.18s  1.23%  context.WithDeadlineCause
+         0     0% 96.38%      0.21s  1.43%  context.WithTimeout
+         0     0% 96.38%      4.34s 29.64%  main.runLCD
+         0     0% 96.38%      4.24s 28.96%  main.runLCD.func1
+         0     0% 96.38%      2.09s 14.28%  open-sds/app/internal/bus.(*Dev).PopWordsChecked
+         0     0% 96.38%      0.21s  1.43%  open-sds/app/internal/bus.(*Dev).ioctl
+         0     0% 96.38%      0.11s  0.75%  open-sds/app/internal/bus.(*Dev).rawWrite
+         0     0% 96.38%      9.86s 67.35%  open-sds/app/internal/engine.(*Engine).Run
+         0     0% 96.38%      0.21s  1.43%  open-sds/app/internal/frames.(*Fanout).Run
+         0     0% 96.38%      4.24s 28.96%  open-sds/app/internal/frames.(*Fanout).WithFrame
+         0     0% 96.38%      0.21s  1.43%  open-sds/app/internal/frames.copyFrame
+         0     0% 96.38%      0.10s  0.68%  open-sds/app/internal/lcd.(*FB).Present
+         0     0% 96.38%      4.24s 28.96%  open-sds/app/internal/lcd.Render
+         0     0% 96.38%      3.61s 24.66%  open-sds/app/internal/lcd.drawHUD
+         0     0% 96.38%      3.17s 21.65%  open-sds/app/internal/lcd.drawHUD.func1
+         0     0% 96.38%      3.16s 21.58%  open-sds/app/internal/lcd.measFor
+         0     0% 96.38%      3.16s 21.58%  open-sds/app/internal/measure.ComputeAcquisition
+         0     0% 96.38%      3.16s 21.58%  open-sds/app/internal/measure.ComputeQ8 (inline)
+         0     0% 96.38%      3.66s 25.00%  open-sds/app/internal/sramcapture.(*Capture).RecallForward
+         0     0% 96.38%      0.23s  1.57%  open-sds/app/internal/sramcapture.(*Capture).command
+         0     0% 96.38%      0.11s  0.75%  open-sds/app/internal/sramcapture.(*Capture).read
+         0     0% 96.38%      0.12s  0.82%  open-sds/app/internal/sramcapture.(*Capture).write (inline)
+         0     0% 96.38%      0.09s  0.61%  open-sds/app/internal/sramcapture.(*Capture).write32
+         0     0% 96.38%      0.11s  0.75%  runtime._System
+         0     0% 96.38%      0.15s  1.02%  runtime.growslice
+         0     0% 96.38%      0.09s  0.61%  runtime.newobject
+         0     0% 96.38%      0.16s  1.09%  syscall.RawSyscall6

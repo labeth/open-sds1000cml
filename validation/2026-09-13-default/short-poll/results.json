@@ -1,0 +1,446 @@
+[
+  {
+    "log": 0,
+    "capture": "bus: /dev/dcinv present\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\n{\n  \"buffer_words\": 0,\n  \"capture\": {\n    \"locked\": true,\n    \"ready\": true,\n    \"running\": false,\n    \"frozen\": true,\n    \"triggered\": true,\n    \"prefetched\": false,\n    \"words\": 524288,\n    \"start\": 0,\n    \"trigger_index\": 524271,\n    \"position\": 524126,\n    \"origin\": 524126,\n    \"revision\": 10,\n    \"map_id\": 57746,\n    \"sample_rate_hz\": 500000000,\n    \"decimation\": 1,\n    \"sample_bits\": 8,\n    \"fraction_bits\": 0,\n    \"samples_per_word\": 2,\n    \"interleaved\": true,\n    \"data_fault\": false\n  },\n  \"identity\": 23122,\n  \"length\": 524288,\n  \"map_id\": 57746,\n  \"origin\": 524126,\n  \"position\": 524126,\n  \"revision\": 10,\n  \"start\": 0,\n  \"status\": 628,\n  \"trigger_index\": 524271\n}\n[exit 0]\n"
+  },
+  {
+    "log": 0,
+    "helper": "/dev/acqsram-forward",
+    "repeat": 0,
+    "result": {
+      "breaks": null,
+      "bytes": 2097152,
+      "first": 0,
+      "last": 524287,
+      "nonconsecutive_words": 0,
+      "profile": {
+        "Reads": 3081,
+        "Writes": 2040,
+        "Pops": 255,
+        "Halfwords": 1048576,
+        "SkippedWords": 1040400,
+        "ReadNS": 18159600,
+        "WriteNS": 9882280,
+        "PopNS": 193285240
+      },
+      "seconds": 0.54171504,
+      "sha256": "ae42b13d7e0af3e77723caf8357d34c7e061526ed9eefeb67b04a0aaa69f33e2"
+    }
+  },
+  {
+    "log": 0,
+    "helper": "/dev/acqsram-forward",
+    "repeat": 1,
+    "result": {
+      "breaks": null,
+      "bytes": 2097152,
+      "first": 0,
+      "last": 524287,
+      "nonconsecutive_words": 0,
+      "profile": {
+        "Reads": 3078,
+        "Writes": 2040,
+        "Pops": 255,
+        "Halfwords": 1048576,
+        "SkippedWords": 519953,
+        "ReadNS": 18364360,
+        "WriteNS": 10135480,
+        "PopNS": 193646600
+      },
+      "seconds": 0.54168932,
+      "sha256": "ae42b13d7e0af3e77723caf8357d34c7e061526ed9eefeb67b04a0aaa69f33e2"
+    }
+  },
+  {
+    "log": 0,
+    "helper": "/dev/acqsram-forward",
+    "repeat": 2,
+    "result": {
+      "breaks": null,
+      "bytes": 2097152,
+      "first": 0,
+      "last": 524287,
+      "nonconsecutive_words": 0,
+      "profile": {
+        "Reads": 3078,
+        "Writes": 2040,
+        "Pops": 255,
+        "Halfwords": 1048576,
+        "SkippedWords": 519953,
+        "ReadNS": 17979960,
+        "WriteNS": 10008800,
+        "PopNS": 193272080
+      },
+      "seconds": 0.54038732,
+      "sha256": "ae42b13d7e0af3e77723caf8357d34c7e061526ed9eefeb67b04a0aaa69f33e2"
+    }
+  },
+  {
+    "log": 0,
+    "helper": "/dev/acqsram-poll",
+    "repeat": 0,
+    "result": {
+      "breaks": null,
+      "bytes": 2097152,
+      "first": 0,
+      "last": 524287,
+      "nonconsecutive_words": 0,
+      "profile": {
+        "Reads": 3078,
+        "Writes": 2040,
+        "Pops": 255,
+        "Halfwords": 1048576,
+        "SkippedWords": 519953,
+        "ReadNS": 18351840,
+        "WriteNS": 9859760,
+        "PopNS": 193251400
+      },
+      "seconds": 0.540528,
+      "sha256": "ae42b13d7e0af3e77723caf8357d34c7e061526ed9eefeb67b04a0aaa69f33e2"
+    }
+  },
+  {
+    "log": 0,
+    "helper": "/dev/acqsram-poll",
+    "repeat": 1,
+    "result": {
+      "breaks": null,
+      "bytes": 2097152,
+      "first": 0,
+      "last": 524287,
+      "nonconsecutive_words": 0,
+      "profile": {
+        "Reads": 3078,
+        "Writes": 2040,
+        "Pops": 255,
+        "Halfwords": 1048576,
+        "SkippedWords": 519953,
+        "ReadNS": 18222360,
+        "WriteNS": 10006240,
+        "PopNS": 193186400
+      },
+      "seconds": 0.53911344,
+      "sha256": "ae42b13d7e0af3e77723caf8357d34c7e061526ed9eefeb67b04a0aaa69f33e2"
+    }
+  },
+  {
+    "log": 0,
+    "helper": "/dev/acqsram-poll",
+    "repeat": 2,
+    "result": {
+      "breaks": null,
+      "bytes": 2097152,
+      "first": 0,
+      "last": 524287,
+      "nonconsecutive_words": 0,
+      "profile": {
+        "Reads": 3078,
+        "Writes": 2040,
+        "Pops": 255,
+        "Halfwords": 1048576,
+        "SkippedWords": 519953,
+        "ReadNS": 18338400,
+        "WriteNS": 10428840,
+        "PopNS": 193600560
+      },
+      "seconds": 0.54238028,
+      "sha256": "ae42b13d7e0af3e77723caf8357d34c7e061526ed9eefeb67b04a0aaa69f33e2"
+    }
+  },
+  {
+    "log": 4,
+    "capture": "bus: /dev/dcinv present\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\n{\n  \"buffer_words\": 0,\n  \"capture\": {\n    \"locked\": true,\n    \"ready\": true,\n    \"running\": false,\n    \"frozen\": true,\n    \"triggered\": true,\n    \"prefetched\": false,\n    \"words\": 524288,\n    \"start\": 0,\n    \"trigger_index\": 524271,\n    \"position\": 520442,\n    \"origin\": 520443,\n    \"revision\": 10,\n    \"map_id\": 57746,\n    \"sample_rate_hz\": 31250000,\n    \"decimation\": 16,\n    \"sample_bits\": 16,\n    \"fraction_bits\": 8,\n    \"samples_per_word\": 1,\n    \"interleaved\": true,\n    \"data_fault\": false\n  },\n  \"identity\": 23122,\n  \"length\": 524288,\n  \"map_id\": 57746,\n  \"origin\": 520443,\n  \"position\": 520442,\n  \"revision\": 10,\n  \"start\": 0,\n  \"status\": 116,\n  \"trigger_index\": 524271\n}\n[exit 0]\n"
+  },
+  {
+    "log": 4,
+    "helper": "/dev/acqsram-forward",
+    "repeat": 0,
+    "result": {
+      "breaks": null,
+      "bytes": 2097152,
+      "first": 0,
+      "last": 524287,
+      "nonconsecutive_words": 0,
+      "profile": {
+        "Reads": 3081,
+        "Writes": 2040,
+        "Pops": 255,
+        "Halfwords": 1048576,
+        "SkippedWords": 1040401,
+        "ReadNS": 18371840,
+        "WriteNS": 9864960,
+        "PopNS": 193541840
+      },
+      "seconds": 0.54269184,
+      "sha256": "ae42b13d7e0af3e77723caf8357d34c7e061526ed9eefeb67b04a0aaa69f33e2"
+    }
+  },
+  {
+    "log": 4,
+    "helper": "/dev/acqsram-forward",
+    "repeat": 1,
+    "result": {
+      "breaks": null,
+      "bytes": 2097152,
+      "first": 0,
+      "last": 524287,
+      "nonconsecutive_words": 0,
+      "profile": {
+        "Reads": 3078,
+        "Writes": 2040,
+        "Pops": 255,
+        "Halfwords": 1048576,
+        "SkippedWords": 519953,
+        "ReadNS": 18367760,
+        "WriteNS": 9881680,
+        "PopNS": 193538120
+      },
+      "seconds": 0.53953032,
+      "sha256": "ae42b13d7e0af3e77723caf8357d34c7e061526ed9eefeb67b04a0aaa69f33e2"
+    }
+  },
+  {
+    "log": 4,
+    "helper": "/dev/acqsram-forward",
+    "repeat": 2,
+    "result": {
+      "breaks": null,
+      "bytes": 2097152,
+      "first": 0,
+      "last": 524287,
+      "nonconsecutive_words": 0,
+      "profile": {
+        "Reads": 3078,
+        "Writes": 2040,
+        "Pops": 255,
+        "Halfwords": 1048576,
+        "SkippedWords": 519953,
+        "ReadNS": 18105760,
+        "WriteNS": 9939560,
+        "PopNS": 192932400
+      },
+      "seconds": 0.54092748,
+      "sha256": "ae42b13d7e0af3e77723caf8357d34c7e061526ed9eefeb67b04a0aaa69f33e2"
+    }
+  },
+  {
+    "log": 4,
+    "helper": "/dev/acqsram-poll",
+    "repeat": 0,
+    "result": {
+      "breaks": null,
+      "bytes": 2097152,
+      "first": 0,
+      "last": 524287,
+      "nonconsecutive_words": 0,
+      "profile": {
+        "Reads": 3078,
+        "Writes": 2040,
+        "Pops": 255,
+        "Halfwords": 1048576,
+        "SkippedWords": 519953,
+        "ReadNS": 19065960,
+        "WriteNS": 9960320,
+        "PopNS": 193391920
+      },
+      "seconds": 0.54153204,
+      "sha256": "ae42b13d7e0af3e77723caf8357d34c7e061526ed9eefeb67b04a0aaa69f33e2"
+    }
+  },
+  {
+    "log": 4,
+    "helper": "/dev/acqsram-poll",
+    "repeat": 1,
+    "result": {
+      "breaks": null,
+      "bytes": 2097152,
+      "first": 0,
+      "last": 524287,
+      "nonconsecutive_words": 0,
+      "profile": {
+        "Reads": 3078,
+        "Writes": 2040,
+        "Pops": 255,
+        "Halfwords": 1048576,
+        "SkippedWords": 519953,
+        "ReadNS": 18429720,
+        "WriteNS": 9971120,
+        "PopNS": 193294080
+      },
+      "seconds": 0.541386,
+      "sha256": "ae42b13d7e0af3e77723caf8357d34c7e061526ed9eefeb67b04a0aaa69f33e2"
+    }
+  },
+  {
+    "log": 4,
+    "helper": "/dev/acqsram-poll",
+    "repeat": 2,
+    "result": {
+      "breaks": null,
+      "bytes": 2097152,
+      "first": 0,
+      "last": 524287,
+      "nonconsecutive_words": 0,
+      "profile": {
+        "Reads": 3078,
+        "Writes": 2040,
+        "Pops": 255,
+        "Halfwords": 1048576,
+        "SkippedWords": 519953,
+        "ReadNS": 18091840,
+        "WriteNS": 9887120,
+        "PopNS": 192703760
+      },
+      "seconds": 0.54036308,
+      "sha256": "ae42b13d7e0af3e77723caf8357d34c7e061526ed9eefeb67b04a0aaa69f33e2"
+    }
+  },
+  {
+    "log": 8,
+    "capture": "bus: /dev/dcinv present\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\n{\n  \"buffer_words\": 0,\n  \"capture\": {\n    \"locked\": true,\n    \"ready\": true,\n    \"running\": false,\n    \"frozen\": true,\n    \"triggered\": true,\n    \"prefetched\": false,\n    \"words\": 524288,\n    \"start\": 0,\n    \"trigger_index\": 524271,\n    \"position\": 517905,\n    \"origin\": 517906,\n    \"revision\": 10,\n    \"map_id\": 57746,\n    \"sample_rate_hz\": 1953125,\n    \"decimation\": 256,\n    \"sample_bits\": 16,\n    \"fraction_bits\": 8,\n    \"samples_per_word\": 1,\n    \"interleaved\": true,\n    \"data_fault\": false\n  },\n  \"identity\": 23122,\n  \"length\": 524288,\n  \"map_id\": 57746,\n  \"origin\": 517906,\n  \"position\": 517905,\n  \"revision\": 10,\n  \"start\": 0,\n  \"status\": 628,\n  \"trigger_index\": 524271\n}\n[exit 0]\n"
+  },
+  {
+    "log": 8,
+    "helper": "/dev/acqsram-forward",
+    "repeat": 0,
+    "result": {
+      "breaks": null,
+      "bytes": 2097152,
+      "first": 0,
+      "last": 524287,
+      "nonconsecutive_words": 0,
+      "profile": {
+        "Reads": 3081,
+        "Writes": 2040,
+        "Pops": 255,
+        "Halfwords": 1048576,
+        "SkippedWords": 1040401,
+        "ReadNS": 18409120,
+        "WriteNS": 9905320,
+        "PopNS": 193307480
+      },
+      "seconds": 0.54267784,
+      "sha256": "ae42b13d7e0af3e77723caf8357d34c7e061526ed9eefeb67b04a0aaa69f33e2"
+    }
+  },
+  {
+    "log": 8,
+    "helper": "/dev/acqsram-forward",
+    "repeat": 1,
+    "result": {
+      "breaks": null,
+      "bytes": 2097152,
+      "first": 0,
+      "last": 524287,
+      "nonconsecutive_words": 0,
+      "profile": {
+        "Reads": 3078,
+        "Writes": 2040,
+        "Pops": 255,
+        "Halfwords": 1048576,
+        "SkippedWords": 519953,
+        "ReadNS": 18044800,
+        "WriteNS": 9928320,
+        "PopNS": 193095000
+      },
+      "seconds": 0.54077156,
+      "sha256": "ae42b13d7e0af3e77723caf8357d34c7e061526ed9eefeb67b04a0aaa69f33e2"
+    }
+  },
+  {
+    "log": 8,
+    "helper": "/dev/acqsram-forward",
+    "repeat": 2,
+    "result": {
+      "breaks": null,
+      "bytes": 2097152,
+      "first": 0,
+      "last": 524287,
+      "nonconsecutive_words": 0,
+      "profile": {
+        "Reads": 3078,
+        "Writes": 2040,
+        "Pops": 255,
+        "Halfwords": 1048576,
+        "SkippedWords": 519953,
+        "ReadNS": 17953360,
+        "WriteNS": 9885280,
+        "PopNS": 193055200
+      },
+      "seconds": 0.53933232,
+      "sha256": "ae42b13d7e0af3e77723caf8357d34c7e061526ed9eefeb67b04a0aaa69f33e2"
+    }
+  },
+  {
+    "log": 8,
+    "helper": "/dev/acqsram-poll",
+    "repeat": 0,
+    "result": {
+      "breaks": null,
+      "bytes": 2097152,
+      "first": 0,
+      "last": 524287,
+      "nonconsecutive_words": 0,
+      "profile": {
+        "Reads": 3078,
+        "Writes": 2040,
+        "Pops": 255,
+        "Halfwords": 1048576,
+        "SkippedWords": 519953,
+        "ReadNS": 18276400,
+        "WriteNS": 10011800,
+        "PopNS": 193206360
+      },
+      "seconds": 0.54052904,
+      "sha256": "ae42b13d7e0af3e77723caf8357d34c7e061526ed9eefeb67b04a0aaa69f33e2"
+    }
+  },
+  {
+    "log": 8,
+    "helper": "/dev/acqsram-poll",
+    "repeat": 1,
+    "result": {
+      "breaks": null,
+      "bytes": 2097152,
+      "first": 0,
+      "last": 524287,
+      "nonconsecutive_words": 0,
+      "profile": {
+        "Reads": 3078,
+        "Writes": 2040,
+        "Pops": 255,
+        "Halfwords": 1048576,
+        "SkippedWords": 519953,
+        "ReadNS": 18667920,
+        "WriteNS": 10117080,
+        "PopNS": 192806840
+      },
+      "seconds": 0.5409412,
+      "sha256": "ae42b13d7e0af3e77723caf8357d34c7e061526ed9eefeb67b04a0aaa69f33e2"
+    }
+  },
+  {
+    "log": 8,
+    "helper": "/dev/acqsram-poll",
+    "repeat": 2,
+    "result": {
+      "breaks": null,
+      "bytes": 2097152,
+      "first": 0,
+      "last": 524287,
+      "nonconsecutive_words": 0,
+      "profile": {
+        "Reads": 3078,
+        "Writes": 2040,
+        "Pops": 255,
+        "Halfwords": 1048576,
+        "SkippedWords": 519953,
+        "ReadNS": 18504600,
+        "WriteNS": 10448560,
+        "PopNS": 192860480
+      },
+      "seconds": 0.5403062,
+      "sha256": "ae42b13d7e0af3e77723caf8357d34c7e061526ed9eefeb67b04a0aaa69f33e2"
+    }
+  }
+]

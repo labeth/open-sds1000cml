@@ -165,6 +165,8 @@ type Stats struct {
 	LastTrigPos     int     `json:"last_trigpos"`
 	ArmToLatch      float64 `json:"arm_to_latch_ms"`
 	DrainMs         float64 `json:"drain_ms"`
+	SRAMRecallMs    float64 `json:"sram_recall_ms"`
+	ConditionMs     float64 `json:"condition_ms"`
 	HoldoffS        float64 `json:"holdoff_s"` // trigger holdoff (0 = off)
 	Seq             uint64  `json:"seq"`
 	MmapDrain       bool    `json:"mmap_drain"` // the fast (EDMA) BURST drain is active; json name kept for the UI

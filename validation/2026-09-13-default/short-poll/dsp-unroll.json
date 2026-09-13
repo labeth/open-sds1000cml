@@ -1,0 +1,12 @@
+[
+  {
+    "variant": "loop",
+    "stdout": "=== RUN   TestPrecisionMatchesDirectConvolution\n--- PASS: TestPrecisionMatchesDirectConvolution (0.01s)\n=== RUN   TestPrecisionDCAndFraction\n--- PASS: TestPrecisionDCAndFraction (0.00s)\n=== RUN   TestPrecisionRejectsAlternatingAndKeepsBoundary\n--- PASS: TestPrecisionRejectsAlternatingAndKeepsBoundary (0.00s)\n=== RUN   TestPrecisionFilterCenteredPassband\n--- PASS: TestPrecisionFilterCenteredPassband (0.01s)\n=== RUN   TestPrecisionMatchesDirectConvolution\n--- PASS: TestPrecisionMatchesDirectConvolution (0.01s)\n=== RUN   TestPrecisionDCAndFraction\n--- PASS: TestPrecisionDCAndFraction (0.00s)\n=== RUN   TestPrecisionRejectsAlternatingAndKeepsBoundary\n--- PASS: TestPrecisionRejectsAlternatingAndKeepsBoundary (0.00s)\n=== RUN   TestPrecisionFilterCenteredPassband\n--- PASS: TestPrecisionFilterCenteredPassband (0.01s)\ngoos: linux\ngoarch: arm\npkg: open-sds/app/internal/dsp\nBenchmarkPrecisionFullRecord\nBenchmarkPrecisionFullRecord \t       3\t 253386920 ns/op\t   4.14 MB/s\nBenchmarkPrecisionFullRecord \t       3\t 250594227 ns/op\t   4.18 MB/s\nPASS\n[exit 0]\n",
+    "stderr": ""
+  },
+  {
+    "variant": "unrolled",
+    "stdout": "=== RUN   TestPrecisionMatchesDirectConvolution\n--- PASS: TestPrecisionMatchesDirectConvolution (0.01s)\n=== RUN   TestPrecisionDCAndFraction\n--- PASS: TestPrecisionDCAndFraction (0.00s)\n=== RUN   TestPrecisionRejectsAlternatingAndKeepsBoundary\n--- PASS: TestPrecisionRejectsAlternatingAndKeepsBoundary (0.00s)\n=== RUN   TestPrecisionFilterCenteredPassband\n--- PASS: TestPrecisionFilterCenteredPassband (0.01s)\n=== RUN   TestPrecisionMatchesDirectConvolution\n--- PASS: TestPrecisionMatchesDirectConvolution (0.01s)\n=== RUN   TestPrecisionDCAndFraction\n--- PASS: TestPrecisionDCAndFraction (0.00s)\n=== RUN   TestPrecisionRejectsAlternatingAndKeepsBoundary\n--- PASS: TestPrecisionRejectsAlternatingAndKeepsBoundary (0.00s)\n=== RUN   TestPrecisionFilterCenteredPassband\n--- PASS: TestPrecisionFilterCenteredPassband (0.01s)\ngoos: linux\ngoarch: arm\npkg: open-sds/app/internal/dsp\nBenchmarkPrecisionFullRecord\nBenchmarkPrecisionFullRecord \t       3\t 214970627 ns/op\t   4.88 MB/s\nBenchmarkPrecisionFullRecord \t       3\t 214763347 ns/op\t   4.88 MB/s\nPASS\n[exit 0]\n",
+    "stderr": ""
+  }
+]

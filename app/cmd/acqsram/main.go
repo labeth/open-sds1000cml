@@ -183,9 +183,11 @@ func main() {
 		if os.Getenv("SCOPE_RECALL_FORWARD") == "1" {
 			recall = capture.RecallForward
 		}
-		written, err := recall(ctx, off, n, io.MultiWriter(hash, check))
+		sink := &timedWriter{dst: io.MultiWriter(hash, check)}
+		written, err := recall(ctx, off, n, sink)
 		must(err)
-		emit(map[string]any{"bytes": written, "seconds": time.Since(began).Seconds(), "profile": profile,
+		elapsed := time.Since(began)
+		emit(map[string]any{"bytes": written, "seconds": elapsed.Seconds(), "validation_seconds": sink.elapsed.Seconds(), "recall_seconds": (elapsed - sink.elapsed).Seconds(), "profile": profile,
 			"sha256": fmt.Sprintf("%x", hash.Sum(nil)), "first": check.first, "last": check.last, "nonconsecutive_words": check.bad, "breaks": check.breaks})
 		return
 	case "recall-warm":
@@ -442,4 +444,17 @@ func (c *counterCheck) Write(data []byte) (int, error) {
 		c.words++
 	}
 	return len(data), nil
+}
+
+// timedWriter separates diagnostic hashing/verification CPU from transport time.
+type timedWriter struct {
+	dst     io.Writer
+	elapsed time.Duration
+}
+
+func (w *timedWriter) Write(p []byte) (int, error) {
+	start := time.Now()
+	n, e := w.dst.Write(p)
+	w.elapsed += time.Since(start)
+	return n, e
 }
