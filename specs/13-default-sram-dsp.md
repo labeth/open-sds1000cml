@@ -40,6 +40,8 @@ The ARM conditioner is a 63-tap symmetric integer FIR with CIC3 passband compens
 
 The ARMv7 app running from `/dev` reads and conditions a full precision record in about 2.4 s (initial ARMv5 test: 5.1 s). DMA alone is about 0.95 s. Both inputs measure approximately 1.000039 MHz. Source amplitude and absolute voltage accuracy have not been independently calibrated.
 
+The subsequent exact ARM multiply-accumulate implementation reduces the isolated 524,288-sample, single-channel FIR from 618 ms to 250 ms. Coefficients, 64-bit sums, rounding, clipping and boundary behavior are unchanged. Device tests include a direct 63-tap convolution oracle on full-range pseudorandom input. In the normal app, full-depth recall plus conditioning now takes about 1.70 s with zero bus errors in the initial run. Evidence is `validation/2026-09-13-default/dsp-window`. The simpler fixed-window Go prototype was slower (663–666 ms) and was superseded by the assembly dot product. This remains a frozen-record pipeline, not qualified continuous streaming.
+
 Relative five-slot gain/offset/skew fitting used one triangle record, with separate validation records. CH1 straight-segment residual falls from about 5.1 codes to 0.62 code; CH2 from about 1.58 to 0.64. The same coefficients validate at the wider 2 V/div range at about 0.55/0.58 code RMS. They are **not yet applied automatically**: reliable record-start phase metadata is required, especially after ring wrap. This 1 MHz test does not qualify high-frequency aperture correction.
 
 ## Still required before promotion
@@ -47,6 +49,8 @@ Relative five-slot gain/offset/skew fitting used one triangle record, with separ
 ### Streaming throughput budget
 
 Two Q8.8 channels cost four bytes per sample pair, including all eight fractional bits. Measured frozen-record recall moves 2,097,152 bytes in about 0.944 s: 2.22 MB/s, or 555,000 pairs/s. This is a measured readout rate, not a proven simultaneous capture/transfer rate. The present ARMv7 read-plus-condition path takes about 2.42 s per 524,288 pairs, approximately 216,000 pairs/s before allowing margin for other work.
+
+Updated processing checkpoint: the exact ARM FIR improves the combined app path to about 1.70 s, approximately 309,000 pairs/s. The preceding paragraph records the initial measurement. Neither rate is the GPMC ceiling: the older owned-fpga implementation documented about 11.6 MB/s for coherent EDMA. The current SRAM profiler measures approximately 5.83 MB/s inside EDMA calls; repeated counter wraps and command waits reduce complete recall to 2.22 MB/s. Faster timing attempts on revision 9 failed pointer checks and were restored; see `recall-profile/README.md`.
 
 | Reduction | Stored rate per channel | Both channels, Q8.8 payload |
 | --- | ---: | ---: |

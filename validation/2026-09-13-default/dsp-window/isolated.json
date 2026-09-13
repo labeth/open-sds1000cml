@@ -1,0 +1,62 @@
+[
+  {
+    "args": [
+      "exec",
+      "env",
+      "GOMAXPROCS=1",
+      "/dev/dsp-baseline",
+      "-test.run=TestPrecision",
+      "-test.bench=BenchmarkPrecisionFullRecord",
+      "-test.benchtime=3x",
+      "-test.count=1"
+    ],
+    "code": 0,
+    "stdout": "goos: linux\ngoarch: arm\npkg: open-sds/app/internal/dsp\nBenchmarkPrecisionFullRecord \t       3\t 617931787 ns/op\t   1.70 MB/s\nPASS\n[exit 0]\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "exec",
+      "env",
+      "GOMAXPROCS=1",
+      "/dev/dsp-window",
+      "-test.run=TestPrecision",
+      "-test.bench=BenchmarkPrecisionFullRecord",
+      "-test.benchtime=3x",
+      "-test.count=1"
+    ],
+    "code": 0,
+    "stdout": "goos: linux\ngoarch: arm\npkg: open-sds/app/internal/dsp\nBenchmarkPrecisionFullRecord \t       3\t 665770520 ns/op\t   1.57 MB/s\nPASS\n[exit 0]\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "exec",
+      "env",
+      "GOMAXPROCS=1",
+      "/dev/dsp-baseline",
+      "-test.run=TestPrecision",
+      "-test.bench=BenchmarkPrecisionFullRecord",
+      "-test.benchtime=3x",
+      "-test.count=1"
+    ],
+    "code": 0,
+    "stdout": "goos: linux\ngoarch: arm\npkg: open-sds/app/internal/dsp\nBenchmarkPrecisionFullRecord \t       3\t 617765707 ns/op\t   1.70 MB/s\nPASS\n[exit 0]\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "exec",
+      "env",
+      "GOMAXPROCS=1",
+      "/dev/dsp-window",
+      "-test.run=TestPrecision",
+      "-test.bench=BenchmarkPrecisionFullRecord",
+      "-test.benchtime=3x",
+      "-test.count=1"
+    ],
+    "code": 0,
+    "stdout": "goos: linux\ngoarch: arm\npkg: open-sds/app/internal/dsp\nBenchmarkPrecisionFullRecord \t       3\t 663249653 ns/op\t   1.58 MB/s\nPASS\n[exit 0]\n",
+    "stderr": ""
+  }
+]

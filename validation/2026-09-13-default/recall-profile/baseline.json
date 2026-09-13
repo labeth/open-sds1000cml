@@ -1,0 +1,70 @@
+[
+  {
+    "args": [
+      "exec",
+      "chmod",
+      "755",
+      "/dev/acqsram-profile"
+    ],
+    "stdout": "\n[exit 0]\n",
+    "stderr": "",
+    "code": 0
+  },
+  {
+    "args": [
+      "exec",
+      "/dev/acqsram-profile",
+      "capture",
+      "0",
+      "524271",
+      "17",
+      "128",
+      "4"
+    ],
+    "stdout": "{\n  \"buffer_words\": 0,\n  \"capture\": {\n    \"locked\": true,\n    \"ready\": true,\n    \"running\": false,\n    \"frozen\": true,\n    \"triggered\": true,\n    \"prefetched\": false,\n    \"words\": 524288,\n    \"start\": 0,\n    \"trigger_index\": 524271,\n    \"position\": 492423,\n    \"origin\": 492424,\n    \"revision\": 9,\n    \"map_id\": 57746,\n    \"sample_rate_hz\": 31250000,\n    \"decimation\": 16,\n    \"sample_bits\": 16,\n    \"fraction_bits\": 8,\n    \"samples_per_word\": 1,\n    \"interleaved\": true,\n    \"data_fault\": false\n  },\n  \"identity\": 23122,\n  \"length\": 524288,\n  \"map_id\": 57746,\n  \"origin\": 492424,\n  \"position\": 492423,\n  \"revision\": 9,\n  \"start\": 0,\n  \"status\": 116,\n  \"trigger_index\": 524271\n}\n[exit 0]\n",
+    "stderr": "",
+    "code": 0
+  },
+  {
+    "args": [
+      "exec",
+      "env",
+      "SCOPE_EDMA=1",
+      "/dev/acqsram-profile",
+      "profile-recall",
+      "0",
+      "524288"
+    ],
+    "stdout": "bus: /dev/dcinv present\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\n{\n  \"bytes\": 2097152,\n  \"first\": 0,\n  \"last\": 524287,\n  \"nonconsecutive_words\": 0,\n  \"profile\": {\n    \"Reads\": 1699,\n    \"Writes\": 903,\n    \"Pops\": 129,\n    \"Halfwords\": 1048576,\n    \"SkippedWords\": 67630961,\n    \"ReadNS\": 10888800,\n    \"WriteNS\": 4374680,\n    \"PopNS\": 359675560\n  },\n  \"seconds\": 0.94588948,\n  \"sha256\": \"ae42b13d7e0af3e77723caf8357d34c7e061526ed9eefeb67b04a0aaa69f33e2\"\n}\n[exit 0]\n",
+    "stderr": "",
+    "code": 0
+  },
+  {
+    "args": [
+      "exec",
+      "env",
+      "SCOPE_EDMA=1",
+      "/dev/acqsram-profile",
+      "profile-recall",
+      "0",
+      "524288"
+    ],
+    "stdout": "bus: /dev/dcinv present\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\n{\n  \"bytes\": 2097152,\n  \"first\": 0,\n  \"last\": 524287,\n  \"nonconsecutive_words\": 0,\n  \"profile\": {\n    \"Reads\": 1699,\n    \"Writes\": 903,\n    \"Pops\": 129,\n    \"Halfwords\": 1048576,\n    \"SkippedWords\": 67630959,\n    \"ReadNS\": 11017560,\n    \"WriteNS\": 4385080,\n    \"PopNS\": 360146080\n  },\n  \"seconds\": 0.9537646,\n  \"sha256\": \"ae42b13d7e0af3e77723caf8357d34c7e061526ed9eefeb67b04a0aaa69f33e2\"\n}\n[exit 0]\n",
+    "stderr": "",
+    "code": 0
+  },
+  {
+    "args": [
+      "exec",
+      "env",
+      "SCOPE_EDMA=1",
+      "/dev/acqsram-profile",
+      "profile-recall",
+      "0",
+      "524288"
+    ],
+    "stdout": "bus: /dev/dcinv present\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\n{\n  \"bytes\": 2097152,\n  \"first\": 0,\n  \"last\": 524287,\n  \"nonconsecutive_words\": 0,\n  \"profile\": {\n    \"Reads\": 1699,\n    \"Writes\": 903,\n    \"Pops\": 129,\n    \"Halfwords\": 1048576,\n    \"SkippedWords\": 67630959,\n    \"ReadNS\": 10956040,\n    \"WriteNS\": 4360480,\n    \"PopNS\": 359574120\n  },\n  \"seconds\": 0.94628584,\n  \"sha256\": \"ae42b13d7e0af3e77723caf8357d34c7e061526ed9eefeb67b04a0aaa69f33e2\"\n}\n[exit 0]\n",
+    "stderr": "",
+    "code": 0
+  }
+]

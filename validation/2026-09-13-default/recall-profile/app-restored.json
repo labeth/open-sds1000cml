@@ -1,0 +1,11 @@
+{
+  "args": [
+    "exec",
+    "sh",
+    "-c",
+    "SCOPE_CAPTURE=default-sram SCOPE_HTTP=:8080 SCOPE_SETTINGS=/dev/acq-settings.json OTA_HEALTH_PATH=/dev/acq-health SCOPE_EDMA=1 /dev/acq-app-v7 >/dev/acq-app-v7.log 2>&1 & echo $!"
+  ],
+  "code": 0,
+  "stdout": "1205\n[exit 0]\n",
+  "stderr": ""
+}

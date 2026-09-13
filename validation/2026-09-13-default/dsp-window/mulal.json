@@ -1,0 +1,53 @@
+[
+  {
+    "args": [
+      "put",
+      "/tmp/dsp-mulal.arm",
+      "/dev/dsp-mulal"
+    ],
+    "code": 0,
+    "stdout": "\nupload: 3% (131072/4130491)\nupload: 6% (262144/4130491)\nupload: 9% (393216/4130491)\nupload: 12% (524288/4130491)\nupload: 15% (655360/4130491)\nupload: 19% (786432/4130491)\nupload: 22% (917504/4130491)\nupload: 25% (1048576/4130491)\nupload: 28% (1179648/4130491)\nupload: 31% (1310720/4130491)\nupload: 34% (1441792/4130491)\nupload: 38% (1572864/4130491)\nupload: 41% (1703936/4130491)\nupload: 44% (1835008/4130491)\nupload: 47% (1966080/4130491)\nupload: 50% (2097152/4130491)\nupload: 53% (2228224/4130491)\nupload: 57% (2359296/4130491)\nupload: 60% (2490368/4130491)\nupload: 63% (2621440/4130491)\nupload: 66% (2752512/4130491)\nupload: 69% (2883584/4130491)\nupload: 72% (3014656/4130491)\nupload: 76% (3145728/4130491)\nupload: 79% (3276800/4130491)\nupload: 82% (3407872/4130491)\nupload: 85% (3538944/4130491)\nupload: 88% (3670016/4130491)\nupload: 92% (3801088/4130491)\nupload: 95% (3932160/4130491)\nupload: 98% (4063232/4130491)\nupload: 100% (4130491/4130491)\nok: /tmp/dsp-mulal.arm -> /dev/dsp-mulal sha256=6eb9fbe66cc3c07d853dfcfab32733131ae8d815d5dcde09af3ef69697a6a9cd\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "exec",
+      "chmod",
+      "755",
+      "/dev/dsp-mulal"
+    ],
+    "code": 0,
+    "stdout": "\n[exit 0]\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "exec",
+      "env",
+      "GOMAXPROCS=1",
+      "/dev/dsp-mulal",
+      "-test.run=TestPrecision",
+      "-test.bench=BenchmarkPrecisionFullRecord",
+      "-test.benchtime=3x",
+      "-test.count=1"
+    ],
+    "code": 0,
+    "stdout": "goos: linux\ngoarch: arm\npkg: open-sds/app/internal/dsp\nBenchmarkPrecisionFullRecord \t       3\t 250607880 ns/op\t   4.18 MB/s\nPASS\n[exit 0]\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "exec",
+      "env",
+      "GOMAXPROCS=1",
+      "/dev/dsp-mulal",
+      "-test.run=TestPrecision",
+      "-test.bench=BenchmarkPrecisionFullRecord",
+      "-test.benchtime=3x",
+      "-test.count=1"
+    ],
+    "code": 0,
+    "stdout": "goos: linux\ngoarch: arm\npkg: open-sds/app/internal/dsp\nBenchmarkPrecisionFullRecord \t       3\t 250401493 ns/op\t   4.19 MB/s\nPASS\n[exit 0]\n",
+    "stderr": ""
+  }
+]

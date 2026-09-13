@@ -90,7 +90,12 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	capture, err := sramcapture.New(dev)
+	profile := &profileBus{dev: dev}
+	var captureBus sramcapture.Bus = dev
+	if os.Args[1] == "profile-recall" {
+		captureBus = profile
+	}
+	capture, err := sramcapture.New(captureBus)
 	if err != nil {
 		panic(err)
 	}
@@ -110,6 +115,34 @@ func main() {
 		}
 	}
 	switch os.Args[1] {
+	case "profile-recall":
+		off, n := num(os.Args[2]), num(os.Args[3])
+		// Scope timing changes to this diagnostic process, restoring on exit.
+		if os.Getenv("SCOPE_PROFILE_RD_CYCLE") != "" {
+			port, err := bus.OpenTimingPort()
+			must(err)
+			defer port.Close()
+			old, err := port.Read()
+			must(err)
+			defer func() { must(port.Restore(old)) }()
+			cycle := num(os.Getenv("SCOPE_PROFILE_RD_CYCLE"))
+			access := num(os.Getenv("SCOPE_PROFILE_RD_ACCESS"))
+			next := old.WithRdAccess(access).WithRdCycle(cycle).WithOEOff(min(old.OEOff(), cycle)).WithCSRdOff(min(old.CSRdOff(), cycle))
+			if os.Getenv("SCOPE_PROFILE_GAP") != "" {
+				next = next.WithGap(num(os.Getenv("SCOPE_PROFILE_GAP")))
+			}
+			must(port.Apply(next))
+			fmt.Fprintf(os.Stderr, "profile timing: %s -> %s\n", old.String(), next.String())
+		}
+		*profile = profileBus{dev: dev}
+		check := &counterCheck{}
+		hash := sha256.New()
+		began := time.Now()
+		written, err := capture.Recall(ctx, off, n, io.MultiWriter(hash, check))
+		must(err)
+		emit(map[string]any{"bytes": written, "seconds": time.Since(began).Seconds(), "profile": profile,
+			"sha256": fmt.Sprintf("%x", hash.Sum(nil)), "first": check.first, "last": check.last, "nonconsecutive_words": check.bad})
+		return
 	case "recall-warm":
 		path := os.Args[2]
 		if !strings.HasPrefix(path, "/dev/acq-") || strings.Contains(path[5:], "/") {

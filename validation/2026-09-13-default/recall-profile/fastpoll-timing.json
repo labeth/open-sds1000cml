@@ -1,0 +1,53 @@
+[
+  {
+    "args": [
+      "put",
+      "/tmp/acqsram-fastpoll.arm",
+      "/dev/acqsram-fastpoll"
+    ],
+    "stdout": "\nupload: 3% (131072/3649460)\nupload: 7% (262144/3649460)\nupload: 10% (393216/3649460)\nupload: 14% (524288/3649460)\nupload: 17% (655360/3649460)\nupload: 21% (786432/3649460)\nupload: 25% (917504/3649460)\nupload: 28% (1048576/3649460)\nupload: 32% (1179648/3649460)\nupload: 35% (1310720/3649460)\nupload: 39% (1441792/3649460)\nupload: 43% (1572864/3649460)\nupload: 46% (1703936/3649460)\nupload: 50% (1835008/3649460)\nupload: 53% (1966080/3649460)\nupload: 57% (2097152/3649460)\nupload: 61% (2228224/3649460)\nupload: 64% (2359296/3649460)\nupload: 68% (2490368/3649460)\nupload: 71% (2621440/3649460)\nupload: 75% (2752512/3649460)\nupload: 79% (2883584/3649460)\nupload: 82% (3014656/3649460)\nupload: 86% (3145728/3649460)\nupload: 89% (3276800/3649460)\nupload: 93% (3407872/3649460)\nupload: 96% (3538944/3649460)\nupload: 100% (3649460/3649460)\nok: /tmp/acqsram-fastpoll.arm -> /dev/acqsram-fastpoll sha256=5ce59ceb8c2d3f871c7597d3590a89ff892c10e4b2c7c067f44834b42ad7664f\n",
+    "stderr": "",
+    "code": 0
+  },
+  {
+    "args": [
+      "exec",
+      "chmod",
+      "755",
+      "/dev/acqsram-fastpoll"
+    ],
+    "stdout": "\n[exit 0]\n",
+    "stderr": "",
+    "code": 0
+  },
+  {
+    "args": [
+      "exec",
+      "env",
+      "SCOPE_EDMA=1",
+      "/dev/acqsram-fastpoll",
+      "profile-recall",
+      "0",
+      "524288"
+    ],
+    "stdout": "bus: /dev/dcinv present\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\n{\n  \"bytes\": 2097152,\n  \"first\": 0,\n  \"last\": 524287,\n  \"nonconsecutive_words\": 0,\n  \"profile\": {\n    \"Reads\": 2083,\n    \"Writes\": 903,\n    \"Pops\": 129,\n    \"Halfwords\": 1048576,\n    \"SkippedWords\": 67630959,\n    \"ReadNS\": 13317800,\n    \"WriteNS\": 4443480,\n    \"PopNS\": 359375040\n  },\n  \"seconds\": 0.95239628,\n  \"sha256\": \"ae42b13d7e0af3e77723caf8357d34c7e061526ed9eefeb67b04a0aaa69f33e2\"\n}\n[exit 0]\n",
+    "stderr": "",
+    "code": 0
+  },
+  {
+    "args": [
+      "exec",
+      "env",
+      "SCOPE_EDMA=1",
+      "SCOPE_PROFILE_RD_CYCLE=16",
+      "SCOPE_PROFILE_RD_ACCESS=13",
+      "/dev/acqsram-fastpoll",
+      "profile-recall",
+      "0",
+      "524288"
+    ],
+    "stdout": "{\n  \"exit\": 2,\n  \"output\": \"bus: /dev/dcinv present\\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\\nprofile timing: rdcycle=31 rdaccess=13 oe=4..16 cs=0..20 gap=5 -\\u003e rdcycle=16 rdaccess=13 oe=4..15 cs=0..15 gap=5\\npanic: sramcapture: burst pointer 8079 after 4080 words\\n\\ngoroutine 1 [running]:\\nmain.main.func4(...)\\n\\t/home/labeth/ws/open-sds1000cml-acq2/app/cmd/acqsram/main.go:114\\nmain.main()\\n\\t/home/labeth/ws/open-sds1000cml-acq2/app/cmd/acqsram/main.go:143 +0x474c\\n\"\n}\n",
+    "stderr": "error: device error: exit status 2\n",
+    "code": 1
+  }
+]

@@ -1,0 +1,59 @@
+[
+  {
+    "args": [
+      "put",
+      "/tmp/dsp-baseline.arm",
+      "/dev/dsp-baseline"
+    ],
+    "code": 0,
+    "stdout": "\nupload: 3% (131072/4129845)\nupload: 6% (262144/4129845)\nupload: 9% (393216/4129845)\nupload: 12% (524288/4129845)\nupload: 15% (655360/4129845)\nupload: 19% (786432/4129845)\nupload: 22% (917504/4129845)\nupload: 25% (1048576/4129845)\nupload: 28% (1179648/4129845)\nupload: 31% (1310720/4129845)\nupload: 34% (1441792/4129845)\nupload: 38% (1572864/4129845)\nupload: 41% (1703936/4129845)\nupload: 44% (1835008/4129845)\nupload: 47% (1966080/4129845)\nupload: 50% (2097152/4129845)\nupload: 53% (2228224/4129845)\nupload: 57% (2359296/4129845)\nupload: 60% (2490368/4129845)\nupload: 63% (2621440/4129845)\nupload: 66% (2752512/4129845)\nupload: 69% (2883584/4129845)\nupload: 72% (3014656/4129845)\nupload: 76% (3145728/4129845)\nupload: 79% (3276800/4129845)\nupload: 82% (3407872/4129845)\nupload: 85% (3538944/4129845)\nupload: 88% (3670016/4129845)\nupload: 92% (3801088/4129845)\nupload: 95% (3932160/4129845)\nupload: 98% (4063232/4129845)\nupload: 100% (4129845/4129845)\nok: /tmp/dsp-baseline.arm -> /dev/dsp-baseline sha256=3305acf3f4cba34dbf05c641161cda67f3baa92200cbe18841d73b946874b44b\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "exec",
+      "chmod",
+      "755",
+      "/dev/dsp-baseline"
+    ],
+    "code": 0,
+    "stdout": "\n[exit 0]\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "put",
+      "/tmp/dsp-window.arm",
+      "/dev/dsp-window"
+    ],
+    "code": 0,
+    "stdout": "\nupload: 3% (131072/4129833)\nupload: 6% (262144/4129833)\nupload: 9% (393216/4129833)\nupload: 12% (524288/4129833)\nupload: 15% (655360/4129833)\nupload: 19% (786432/4129833)\nupload: 22% (917504/4129833)\nupload: 25% (1048576/4129833)\nupload: 28% (1179648/4129833)\nupload: 31% (1310720/4129833)\nupload: 34% (1441792/4129833)\nupload: 38% (1572864/4129833)\nupload: 41% (1703936/4129833)\nupload: 44% (1835008/4129833)\nupload: 47% (1966080/4129833)\nupload: 50% (2097152/4129833)\nupload: 53% (2228224/4129833)\nupload: 57% (2359296/4129833)\nupload: 60% (2490368/4129833)\nupload: 63% (2621440/4129833)\nupload: 66% (2752512/4129833)\nupload: 69% (2883584/4129833)\nupload: 72% (3014656/4129833)\nupload: 76% (3145728/4129833)\nupload: 79% (3276800/4129833)\nupload: 82% (3407872/4129833)\nupload: 85% (3538944/4129833)\nupload: 88% (3670016/4129833)\nupload: 92% (3801088/4129833)\nupload: 95% (3932160/4129833)\nupload: 98% (4063232/4129833)\nupload: 100% (4129833/4129833)\nok: /tmp/dsp-window.arm -> /dev/dsp-window sha256=523cb1cefb70da3329dfbc6db56c2e0f7f66040f005aa0b46ff7b9dbcf2f4a98\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "exec",
+      "chmod",
+      "755",
+      "/dev/dsp-window"
+    ],
+    "code": 0,
+    "stdout": "\n[exit 0]\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "exec",
+      "env",
+      "GOMAXPROCS=1",
+      "/dev/dsp-baseline",
+      "-test.run=TestPrecision",
+      "-test.bench=BenchmarkPrecisionFullRecord",
+      "-test.benchtime=3x",
+      "-test.count=1"
+    ],
+    "code": 1,
+    "stdout": "{\n  \"exit\": -1,\n  \"output\": \"\"\n}\n",
+    "stderr": "error: device error: signal: killed\n"
+  }
+]

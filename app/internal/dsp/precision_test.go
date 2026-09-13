@@ -2,8 +2,52 @@ package dsp
 
 import (
 	"math"
+	"math/rand"
 	"testing"
 )
+
+func TestPrecisionMatchesDirectConvolution(t *testing.T) {
+	rng := rand.New(rand.NewSource(903))
+	s := make([]uint16, 4096)
+	for i := range s {
+		s[i] = uint16(rng.Uint32())
+	}
+	original := append([]uint16(nil), s...)
+	ConditionQ8(s, make([]uint16, len(s)))
+	for i := range s {
+		want := original[i]
+		if i >= PrecisionGuard && i < len(s)-PrecisionGuard {
+			var sum int64
+			for j, tap := range precisionTaps {
+				sum += int64(tap) * int64(original[i-PrecisionGuard+j])
+			}
+			v := (sum + (1 << 21)) >> 22
+			if v < 0 {
+				v = 0
+			}
+			if v > 65535 {
+				v = 65535
+			}
+			want = uint16(v)
+		}
+		if s[i] != want {
+			t.Fatalf("sample %d got %d want %d", i, s[i], want)
+		}
+	}
+}
+
+func BenchmarkPrecisionFullRecord(b *testing.B) {
+	s := make([]uint16, 524288)
+	scratch := make([]uint16, len(s))
+	for i := range s {
+		s[i] = uint16(i * 101)
+	}
+	b.SetBytes(int64(len(s) * 2))
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		ConditionQ8(s, scratch)
+	}
+}
 
 func TestPrecisionDCAndFraction(t *testing.T) {
 	s := make([]uint16, 1000)

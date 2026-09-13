@@ -16,10 +16,8 @@ func ConditionQ8(samples, scratch []uint16) {
 	}
 	copy(scratch[:len(samples)], samples)
 	for i := PrecisionGuard; i < len(samples)-PrecisionGuard; i++ {
-		sum := int64(precisionTaps[31]) * int64(scratch[i])
-		for j := 0; j < 31; j++ {
-			sum += int64(precisionTaps[j]) * int64(uint32(scratch[i-31+j])+uint32(scratch[i+31-j]))
-		}
+		window := (*[63]uint16)(scratch[i-31 : i+32])
+		sum := precisionWindow(window)
 		v := (sum + (1 << 21)) >> 22
 		if v < 0 {
 			v = 0

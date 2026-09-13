@@ -1,0 +1,68 @@
+[
+  {
+    "args": [
+      "put",
+      "/tmp/acqsram-sequential.arm",
+      "/dev/acqsram-sequential"
+    ],
+    "stdout": "\nupload: 3% (131072/3644776)\nupload: 7% (262144/3644776)\nupload: 10% (393216/3644776)\nupload: 14% (524288/3644776)\nupload: 17% (655360/3644776)\nupload: 21% (786432/3644776)\nupload: 25% (917504/3644776)\nupload: 28% (1048576/3644776)\nupload: 32% (1179648/3644776)\nupload: 35% (1310720/3644776)\nupload: 39% (1441792/3644776)\nupload: 43% (1572864/3644776)\nupload: 46% (1703936/3644776)\nupload: 50% (1835008/3644776)\nupload: 53% (1966080/3644776)\nupload: 57% (2097152/3644776)\nupload: 61% (2228224/3644776)\nupload: 64% (2359296/3644776)\nupload: 68% (2490368/3644776)\nupload: 71% (2621440/3644776)\nupload: 75% (2752512/3644776)\nupload: 79% (2883584/3644776)\nupload: 82% (3014656/3644776)\nupload: 86% (3145728/3644776)\nupload: 89% (3276800/3644776)\nupload: 93% (3407872/3644776)\nupload: 97% (3538944/3644776)\nupload: 100% (3644776/3644776)\nok: /tmp/acqsram-sequential.arm -> /dev/acqsram-sequential sha256=32ea52a2aada42d65ae6db7678e1681f67ea84b0f33bffd3cd66f72ffc99e386\n",
+    "stderr": "",
+    "code": 0
+  },
+  {
+    "args": [
+      "exec",
+      "chmod",
+      "755",
+      "/dev/acqsram-sequential"
+    ],
+    "stdout": "\n[exit 0]\n",
+    "stderr": "",
+    "code": 0
+  },
+  {
+    "args": [
+      "exec",
+      "env",
+      "SCOPE_EDMA=1",
+      "SCOPE_RECALL_CONTIGUOUS=1",
+      "/dev/acqsram-sequential",
+      "profile-recall",
+      "0",
+      "524288"
+    ],
+    "stdout": "bus: /dev/dcinv present\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\n{\n  \"bytes\": 2097152,\n  \"first\": 0,\n  \"last\": 524287,\n  \"nonconsecutive_words\": 256,\n  \"profile\": {\n    \"Reads\": 1056,\n    \"Writes\": 519,\n    \"Pops\": 129,\n    \"Halfwords\": 1048576,\n    \"SkippedWords\": 524271,\n    \"ReadNS\": 6310240,\n    \"WriteNS\": 2466480,\n    \"PopNS\": 359625560\n  },\n  \"seconds\": 0.62329724,\n  \"sha256\": \"8e805b4f2b526092165676f9c55a6b17e7199bf6b4ae14e4d91bae1d41c26cc5\"\n}\n[exit 0]\n",
+    "stderr": "",
+    "code": 0
+  },
+  {
+    "args": [
+      "exec",
+      "env",
+      "SCOPE_EDMA=1",
+      "SCOPE_RECALL_CONTIGUOUS=1",
+      "/dev/acqsram-sequential",
+      "profile-recall",
+      "0",
+      "524288"
+    ],
+    "stdout": "bus: /dev/dcinv present\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\n{\n  \"bytes\": 2097152,\n  \"first\": 0,\n  \"last\": 524287,\n  \"nonconsecutive_words\": 256,\n  \"profile\": {\n    \"Reads\": 1056,\n    \"Writes\": 519,\n    \"Pops\": 129,\n    \"Halfwords\": 1048576,\n    \"SkippedWords\": 524271,\n    \"ReadNS\": 6283920,\n    \"WriteNS\": 2543520,\n    \"PopNS\": 359427360\n  },\n  \"seconds\": 0.62269976,\n  \"sha256\": \"8e805b4f2b526092165676f9c55a6b17e7199bf6b4ae14e4d91bae1d41c26cc5\"\n}\n[exit 0]\n",
+    "stderr": "",
+    "code": 0
+  },
+  {
+    "args": [
+      "exec",
+      "env",
+      "SCOPE_EDMA=1",
+      "SCOPE_RECALL_CONTIGUOUS=1",
+      "/dev/acqsram-sequential",
+      "profile-recall",
+      "0",
+      "524288"
+    ],
+    "stdout": "bus: /dev/dcinv present\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\n{\n  \"bytes\": 2097152,\n  \"first\": 0,\n  \"last\": 524287,\n  \"nonconsecutive_words\": 256,\n  \"profile\": {\n    \"Reads\": 1056,\n    \"Writes\": 519,\n    \"Pops\": 129,\n    \"Halfwords\": 1048576,\n    \"SkippedWords\": 524271,\n    \"ReadNS\": 6710840,\n    \"WriteNS\": 2504120,\n    \"PopNS\": 359730760\n  },\n  \"seconds\": 0.62609292,\n  \"sha256\": \"8e805b4f2b526092165676f9c55a6b17e7199bf6b4ae14e4d91bae1d41c26cc5\"\n}\n[exit 0]\n",
+    "stderr": "",
+    "code": 0
+  }
+]

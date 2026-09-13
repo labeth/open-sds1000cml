@@ -1,0 +1,125 @@
+[
+  {
+    "args": [
+      "put",
+      "/tmp/acqsram-timing.arm",
+      "/dev/acqsram-timing"
+    ],
+    "stdout": "\nupload: 3% (131072/3649768)\nupload: 7% (262144/3649768)\nupload: 10% (393216/3649768)\nupload: 14% (524288/3649768)\nupload: 17% (655360/3649768)\nupload: 21% (786432/3649768)\nupload: 25% (917504/3649768)\nupload: 28% (1048576/3649768)\nupload: 32% (1179648/3649768)\nupload: 35% (1310720/3649768)\nupload: 39% (1441792/3649768)\nupload: 43% (1572864/3649768)\nupload: 46% (1703936/3649768)\nupload: 50% (1835008/3649768)\nupload: 53% (1966080/3649768)\nupload: 57% (2097152/3649768)\nupload: 61% (2228224/3649768)\nupload: 64% (2359296/3649768)\nupload: 68% (2490368/3649768)\nupload: 71% (2621440/3649768)\nupload: 75% (2752512/3649768)\nupload: 79% (2883584/3649768)\nupload: 82% (3014656/3649768)\nupload: 86% (3145728/3649768)\nupload: 89% (3276800/3649768)\nupload: 93% (3407872/3649768)\nupload: 96% (3538944/3649768)\nupload: 100% (3649768/3649768)\nok: /tmp/acqsram-timing.arm -> /dev/acqsram-timing sha256=2a8f9be1a5e66c110a55c9c62e5b02349e72eab28133ffa139798bfa0800c607\n",
+    "stderr": "",
+    "code": 0
+  },
+  {
+    "args": [
+      "exec",
+      "chmod",
+      "755",
+      "/dev/acqsram-timing"
+    ],
+    "stdout": "\n[exit 0]\n",
+    "stderr": "",
+    "code": 0
+  },
+  {
+    "args": [
+      "exec",
+      "env",
+      "SCOPE_EDMA=1",
+      "SCOPE_PROFILE_RD_CYCLE=16",
+      "SCOPE_PROFILE_RD_ACCESS=13",
+      "SCOPE_PROFILE_GAP=5",
+      "/dev/acqsram-timing",
+      "profile-recall",
+      "0",
+      "524288"
+    ],
+    "stdout": "{\n  \"exit\": 2,\n  \"output\": \"bus: /dev/dcinv present\\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\\nprofile timing: rdcycle=31 rdaccess=13 oe=4..16 cs=0..20 gap=5 -\\u003e rdcycle=16 rdaccess=13 oe=4..16 cs=0..16 gap=5\\npanic: sramcapture: burst pointer 8127 after 4080 words\\n\\ngoroutine 1 [running]:\\nmain.main.func4(...)\\n\\t/home/labeth/ws/open-sds1000cml-acq2/app/cmd/acqsram/main.go:114\\nmain.main()\\n\\t/home/labeth/ws/open-sds1000cml-acq2/app/cmd/acqsram/main.go:146 +0x4860\\n\"\n}\n",
+    "stderr": "error: device error: exit status 2\n",
+    "code": 1
+  },
+  {
+    "args": [
+      "exec",
+      "env",
+      "SCOPE_EDMA=1",
+      "SCOPE_PROFILE_RD_CYCLE=16",
+      "SCOPE_PROFILE_RD_ACCESS=13",
+      "SCOPE_PROFILE_GAP=8",
+      "/dev/acqsram-timing",
+      "profile-recall",
+      "0",
+      "524288"
+    ],
+    "stdout": "{\n  \"exit\": 2,\n  \"output\": \"bus: /dev/dcinv present\\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\\nprofile timing: rdcycle=31 rdaccess=13 oe=4..16 cs=0..20 gap=5 -\\u003e rdcycle=16 rdaccess=13 oe=4..16 cs=0..16 gap=8\\npanic: sramcapture: burst pointer 7878 after 4080 words\\n\\ngoroutine 1 [running]:\\nmain.main.func4(...)\\n\\t/home/labeth/ws/open-sds1000cml-acq2/app/cmd/acqsram/main.go:114\\nmain.main()\\n\\t/home/labeth/ws/open-sds1000cml-acq2/app/cmd/acqsram/main.go:146 +0x4860\\n\"\n}\n",
+    "stderr": "error: device error: exit status 2\n",
+    "code": 1
+  },
+  {
+    "args": [
+      "exec",
+      "env",
+      "SCOPE_EDMA=1",
+      "SCOPE_PROFILE_RD_CYCLE=12",
+      "SCOPE_PROFILE_RD_ACCESS=10",
+      "SCOPE_PROFILE_GAP=8",
+      "/dev/acqsram-timing",
+      "profile-recall",
+      "0",
+      "524288"
+    ],
+    "stdout": "{\n  \"exit\": 2,\n  \"output\": \"bus: /dev/dcinv present\\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\\nprofile timing: rdcycle=31 rdaccess=13 oe=4..16 cs=0..20 gap=5 -\\u003e rdcycle=12 rdaccess=10 oe=4..12 cs=0..12 gap=8\\npanic: sramcapture: burst pointer 8137 after 4080 words\\n\\ngoroutine 1 [running]:\\nmain.main.func4(...)\\n\\t/home/labeth/ws/open-sds1000cml-acq2/app/cmd/acqsram/main.go:114\\nmain.main()\\n\\t/home/labeth/ws/open-sds1000cml-acq2/app/cmd/acqsram/main.go:146 +0x4860\\n\"\n}\n",
+    "stderr": "error: device error: exit status 2\n",
+    "code": 1
+  },
+  {
+    "args": [
+      "exec",
+      "env",
+      "SCOPE_EDMA=1",
+      "SCOPE_PROFILE_RD_CYCLE=10",
+      "SCOPE_PROFILE_RD_ACCESS=8",
+      "SCOPE_PROFILE_GAP=8",
+      "/dev/acqsram-timing",
+      "profile-recall",
+      "0",
+      "524288"
+    ],
+    "stdout": "{\n  \"exit\": 2,\n  \"output\": \"bus: /dev/dcinv present\\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\\nprofile timing: rdcycle=31 rdaccess=13 oe=4..16 cs=0..20 gap=5 -\\u003e rdcycle=10 rdaccess=8 oe=4..10 cs=0..10 gap=8\\npanic: sramcapture: burst pointer 8176 after 4080 words\\n\\ngoroutine 1 [running]:\\nmain.main.func4(...)\\n\\t/home/labeth/ws/open-sds1000cml-acq2/app/cmd/acqsram/main.go:114\\nmain.main()\\n\\t/home/labeth/ws/open-sds1000cml-acq2/app/cmd/acqsram/main.go:146 +0x4860\\n\"\n}\n",
+    "stderr": "error: device error: exit status 2\n",
+    "code": 1
+  },
+  {
+    "args": [
+      "exec",
+      "env",
+      "SCOPE_EDMA=1",
+      "SCOPE_PROFILE_RD_CYCLE=10",
+      "SCOPE_PROFILE_RD_ACCESS=8",
+      "SCOPE_PROFILE_GAP=10",
+      "/dev/acqsram-timing",
+      "profile-recall",
+      "0",
+      "524288"
+    ],
+    "stdout": "{\n  \"exit\": 2,\n  \"output\": \"bus: /dev/dcinv present\\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\\nprofile timing: rdcycle=31 rdaccess=13 oe=4..16 cs=0..20 gap=5 -\\u003e rdcycle=10 rdaccess=8 oe=4..10 cs=0..10 gap=10\\npanic: sramcapture: burst pointer 8152 after 4080 words\\n\\ngoroutine 1 [running]:\\nmain.main.func4(...)\\n\\t/home/labeth/ws/open-sds1000cml-acq2/app/cmd/acqsram/main.go:114\\nmain.main()\\n\\t/home/labeth/ws/open-sds1000cml-acq2/app/cmd/acqsram/main.go:146 +0x4860\\n\"\n}\n",
+    "stderr": "error: device error: exit status 2\n",
+    "code": 1
+  },
+  {
+    "args": [
+      "exec",
+      "env",
+      "SCOPE_EDMA=1",
+      "SCOPE_PROFILE_RD_CYCLE=31",
+      "SCOPE_PROFILE_RD_ACCESS=13",
+      "SCOPE_PROFILE_GAP=5",
+      "/dev/acqsram-timing",
+      "profile-recall",
+      "0",
+      "524288"
+    ],
+    "stdout": "bus: /dev/dcinv present\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\nprofile timing: rdcycle=31 rdaccess=13 oe=4..16 cs=0..20 gap=5 -> rdcycle=31 rdaccess=13 oe=4..16 cs=0..20 gap=5\n{\n  \"bytes\": 2097152,\n  \"first\": 0,\n  \"last\": 524287,\n  \"nonconsecutive_words\": 0,\n  \"profile\": {\n    \"Reads\": 2082,\n    \"Writes\": 903,\n    \"Pops\": 129,\n    \"Halfwords\": 1048576,\n    \"SkippedWords\": 67626879,\n    \"ReadNS\": 12999360,\n    \"WriteNS\": 4440720,\n    \"PopNS\": 359548000\n  },\n  \"seconds\": 0.95077948,\n  \"sha256\": \"ae42b13d7e0af3e77723caf8357d34c7e061526ed9eefeb67b04a0aaa69f33e2\"\n}\n[exit 0]\n",
+    "stderr": "",
+    "code": 0
+  }
+]
