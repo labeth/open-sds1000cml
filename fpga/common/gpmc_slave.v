@@ -22,7 +22,7 @@
 
 `timescale 1ns/1ps
 
-module gpmc_slave (
+module gpmc_slave #(parameter QUALIFIED_READ=0) (
     input  wire        clk,
     input  wire        nCS1,
     input  wire        nOE,
@@ -43,8 +43,10 @@ module gpmc_slave (
     reg [6:0]  sel_q1 = 7'h00, sel_q2 = 7'h00;
     reg [15:0] d_q1   = 16'h0000, d_q2 = 16'h0000;
     reg [6:0]  sel_hold = 7'h00;
+    reg [2:0] read_q = 0;
 
     always @(posedge clk) begin
+        read_q <= {read_q[1:0], !nCS1 && !nOE};
         cs1_q  <= {cs1_q[1:0], nCS1};
         oe_q   <= {oe_q[1:0],  nOE};
         we_q   <= {we_q[1:0],  nWE};
@@ -58,7 +60,8 @@ module gpmc_slave (
     assign wr_sel    = {1'b0, sel_q2};
     assign wr_data   = d_q2;
     assign wr_aux    = {sel_q2[0], sel_q2[1]};                              // {B1, A2}
-    assign rd_pop    = cs1_low && (oe_q[2] == 1'b0) && (oe_q[1] == 1'b1);   // nOE rising
+    // Count the end of a selected read even if CS releases before OE.
+    assign rd_pop    = QUALIFIED_READ ? (read_q[2] && !read_q[1]) : cs1_low && (oe_q[2] == 1'b0) && (oe_q[1] == 1'b1);   // nOE rising
 
     wire read_now = (~nCS1) & (~nOE);
     assign rd_sel       = read_now ? {1'b0, sel} : {1'b0, sel_hold};

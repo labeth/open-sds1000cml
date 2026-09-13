@@ -30,14 +30,21 @@ module acq_sram_top(
  (* preserve, dont_merge *) reg precision_enable=0;
  always @(posedge core)precision_enable<=frontend_run && decim_log!=0;
  adc_precision precision(core,halfclk,mclk_in,precision_enable,decim_log,il_raw_word,il_raw_valid,precision_word,precision_valid,precision_fault);
- wire [31:0] source_word=decim_log==0 ? il_raw_word : precision_word;
- wire source_word_valid=decim_log==0 ? il_raw_valid : precision_valid;
- wire [31:0] trigger_word=decim_log==0 ? il_raw_word : {precision_word[31:24],precision_word[15:8],precision_word[31:24],precision_word[15:8]};
+ wire [31:0] selected_word=decim_log==0 ? il_raw_word : precision_word;
+ wire selected_valid=decim_log==0 ? il_raw_valid : precision_valid;
+ wire [31:0] selected_trigger=decim_log==0 ? il_raw_word : {precision_word[31:24],precision_word[15:8],precision_word[31:24],precision_word[15:8]};
  wire stream_fault=il_fault || precision_fault;
 `else
- wire [31:0] source_word=il_raw_word,trigger_word=il_raw_word;
- wire source_word_valid=il_raw_valid,stream_fault=il_fault;
+ wire [31:0] selected_word=il_raw_word,selected_trigger=il_raw_word;
+ wire selected_valid=il_raw_valid,stream_fault=il_fault;
 `endif
+ // Keep source selection out of the threshold-comparator path. Data and
+ // validity receive the same stage, preserving trigger/sample alignment.
+ reg [31:0] source_word=0,trigger_word=0;reg source_word_valid=0;
+ always @(posedge core)begin
+  source_word<=selected_word;trigger_word<=selected_trigger;
+  source_word_valid<=frontend_run && selected_valid;
+ end
  reg [31:0] il_word1=0,il_word=0,il_word_stage=0;reg write_offer=0,il_fire_stage=0;reg il_valid1=0,il_valid=0,source_valid=0;reg [1:0] prev_low=0,prev_high=0,rise_ch=0,fall_ch=0;
  reg [1:0] first_low_ch=0,first_high_ch=0,second_low_ch=0,second_high_ch=0;
  wire il_crossing=!cfg[4] || force_trigger || (cfg[5]?fall_ch[cfg[6]]:rise_ch[cfg[6]]);
@@ -80,7 +87,11 @@ module acq_sram_top(
  adc_unpack unpack(lane_q,cores);
 `endif
  wire wc,rp,drive;wire [7:0] ws,rs;wire [15:0] wd;wire [1:0] aux;reg [15:0] rd;
+`ifdef HOST_READ_FIX
+ gpmc_slave #(.QUALIFIED_READ(1)) busif(clk,nCS1,nOE,nWE,{sel,gpmc_a2,gpmc_b1},gpmc_d,wc,ws,wd,aux,rp,rs,rd,drive);
+`else
  gpmc_slave busif(clk,nCS1,nOE,nWE,{sel,gpmc_a2,gpmc_b1},gpmc_d,wc,ws,wd,aux,rp,rs,rd,drive);
+`endif
  reg request=0;reg [3:0] opcode=0;
  reg [19:0] pre_cfg=524271,post_cfg=17,count_cfg=512;
  reg [15:0] config_word=0;reg [7:0] level=128;reg [BUF_AW-1:0] buffer_index=0;
@@ -130,6 +141,7 @@ module acq_sram_top(
  reg [19:0] command_count=0;
  reg arm=0,halt=0,force_trigger=0,command_error=0;
  reg dispatch=0,dispatch_arm_ok=0,dispatch_read_ok=0,config_idle=0;reg [3:0] dispatch_opcode=0;
+ reg dispatch_discard=0,dispatch_continue=0;
  reg priming=0;
  reg prime_ready=0;always @(posedge core)prime_ready<=priming && write_ready;
 `ifdef INTERLEAVE
@@ -224,6 +236,10 @@ module acq_sram_top(
 `endif
  always @(posedge core) begin
   command<=0;arm<=0;halt<=0;command_count<=count_cfg;
+  // These flags are consumed only with command. Predecode them before the
+  // acceptance mux instead of placing opcode comparison in its feedback path.
+  command_discard<=dispatch_discard;command_continue<=dispatch_continue;
+  dispatch_discard<=opcode==3;dispatch_continue<=opcode==7;
   dispatch<=0;
   if(pending && !command && !arm && !dispatch)begin dispatch<=1;dispatch_opcode<=opcode;dispatch_arm_ok<=ready && !running && arm_geometry_ok;dispatch_read_ok<=ready && record_done && read_geometry_ok && (opcode==3 || buffer_count_ok) && (opcode!=7 || prefetch_valid);end
   config_idle<=!running && !priming;
@@ -296,7 +312,7 @@ module acq_sram_top(
      command<=1;command_read<=0;command_discard<=0;command_continue<=0;prefetch_valid<=0;
     end else command_error<=1;
     2,3,7:if(dispatch_read_ok) begin
-     command<=1;command_read<=1;command_discard<=dispatch_opcode==3;command_continue<=dispatch_opcode==7;
+     command<=1;command_read<=1;
      prefetch_valid<=dispatch_opcode!=3;
     end else command_error<=1;
     4:force_trigger<=1;
@@ -330,7 +346,11 @@ module acq_sram_top(
 `ifdef INTERLEAVE
    `ifdef BURST_RECALL
 `ifdef PRECISION
+`ifdef HOST_READ_FIX
+   13:rd=16'h000a;
+`else
    13:rd=16'h0009;
+`endif
    28:rd={11'b0,decim_log};
    29:rd=decim_log!=0 ? 16'd16 : 16'd8;
 `else

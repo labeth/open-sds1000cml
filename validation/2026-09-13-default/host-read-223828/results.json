@@ -1,0 +1,1166 @@
+[
+  {
+    "offset": 0,
+    "words": 524288,
+    "timing": null,
+    "result": {
+      "bytes": 2097152,
+      "first": 0,
+      "last": 524287,
+      "nonconsecutive_words": 0,
+      "profile": {
+        "Reads": 1699,
+        "Writes": 903,
+        "Pops": 129,
+        "Halfwords": 1048576,
+        "SkippedWords": 67630960,
+        "ReadNS": 10753480,
+        "WriteNS": 4394120,
+        "PopNS": 359249840
+      },
+      "seconds": 0.94545488,
+      "sha256": "ae42b13d7e0af3e77723caf8357d34c7e061526ed9eefeb67b04a0aaa69f33e2"
+    }
+  },
+  {
+    "offset": 0,
+    "words": 524288,
+    "timing": [
+      16,
+      13,
+      5
+    ],
+    "result": {
+      "bytes": 2097152,
+      "first": 0,
+      "last": 524287,
+      "nonconsecutive_words": 0,
+      "profile": {
+        "Reads": 1699,
+        "Writes": 903,
+        "Pops": 129,
+        "Halfwords": 1048576,
+        "SkippedWords": 67630959,
+        "ReadNS": 10827040,
+        "WriteNS": 4401320,
+        "PopNS": 254578960
+      },
+      "seconds": 0.84157132,
+      "sha256": "ae42b13d7e0af3e77723caf8357d34c7e061526ed9eefeb67b04a0aaa69f33e2"
+    }
+  },
+  {
+    "offset": 0,
+    "words": 524288,
+    "timing": [
+      12,
+      10,
+      5
+    ],
+    "result": {
+      "bytes": 2097152,
+      "first": 0,
+      "last": 524287,
+      "nonconsecutive_words": 0,
+      "profile": {
+        "Reads": 1699,
+        "Writes": 903,
+        "Pops": 129,
+        "Halfwords": 1048576,
+        "SkippedWords": 67630959,
+        "ReadNS": 10617400,
+        "WriteNS": 4364720,
+        "PopNS": 212713960
+      },
+      "seconds": 0.79928852,
+      "sha256": "ae42b13d7e0af3e77723caf8357d34c7e061526ed9eefeb67b04a0aaa69f33e2"
+    }
+  },
+  {
+    "offset": 0,
+    "words": 524288,
+    "timing": [
+      10,
+      8,
+      5
+    ],
+    "result": {
+      "bytes": 2097152,
+      "first": 0,
+      "last": 524287,
+      "nonconsecutive_words": 0,
+      "profile": {
+        "Reads": 1701,
+        "Writes": 903,
+        "Pops": 129,
+        "Halfwords": 1048576,
+        "SkippedWords": 67630959,
+        "ReadNS": 10844080,
+        "WriteNS": 4520160,
+        "PopNS": 191946400
+      },
+      "seconds": 0.77787788,
+      "sha256": "ae42b13d7e0af3e77723caf8357d34c7e061526ed9eefeb67b04a0aaa69f33e2"
+    }
+  },
+  {
+    "offset": 4079,
+    "words": 33,
+    "timing": [
+      10,
+      8,
+      5
+    ],
+    "result": {
+      "bytes": 132,
+      "first": 4079,
+      "last": 4111,
+      "nonconsecutive_words": 0,
+      "profile": {
+        "Reads": 29,
+        "Writes": 7,
+        "Pops": 1,
+        "Halfwords": 66,
+        "SkippedWords": 4062,
+        "ReadNS": 181720,
+        "WriteNS": 43120,
+        "PopNS": 76680
+      },
+      "seconds": 0.0013532,
+      "sha256": "9e710fcc5163febe2e8c5f80b7ccc05ad5249452bc9c15b10af2c9c1fdb2ded4"
+    }
+  },
+  {
+    "offset": 524287,
+    "words": 1,
+    "timing": [
+      10,
+      8,
+      5
+    ],
+    "result": {
+      "bytes": 4,
+      "first": 524287,
+      "last": 524287,
+      "nonconsecutive_words": 0,
+      "profile": {
+        "Reads": 32,
+        "Writes": 7,
+        "Pops": 1,
+        "Halfwords": 2,
+        "SkippedWords": 520158,
+        "ReadNS": 264600,
+        "WriteNS": 35560,
+        "PopNS": 39280
+      },
+      "seconds": 0.00401112,
+      "sha256": "5341298afd21f5e76cac512809a468048bf5475e24b7e0105dd97be2c99d8b7f"
+    }
+  },
+  {
+    "offset": 0,
+    "words": 524288,
+    "timing": [
+      10,
+      8,
+      5
+    ],
+    "result": {
+      "bytes": 2097152,
+      "first": 0,
+      "last": 524287,
+      "nonconsecutive_words": 0,
+      "profile": {
+        "Reads": 1699,
+        "Writes": 903,
+        "Pops": 129,
+        "Halfwords": 1048576,
+        "SkippedWords": 67630959,
+        "ReadNS": 11067240,
+        "WriteNS": 4379240,
+        "PopNS": 191154520
+      },
+      "seconds": 0.78183824,
+      "sha256": "ae42b13d7e0af3e77723caf8357d34c7e061526ed9eefeb67b04a0aaa69f33e2"
+    }
+  },
+  {
+    "offset": 0,
+    "words": 524288,
+    "timing": null,
+    "result": {
+      "bytes": 2097152,
+      "first": 0,
+      "last": 524287,
+      "nonconsecutive_words": 0,
+      "profile": {
+        "Reads": 1699,
+        "Writes": 903,
+        "Pops": 129,
+        "Halfwords": 1048576,
+        "SkippedWords": 67630961,
+        "ReadNS": 10699960,
+        "WriteNS": 4325200,
+        "PopNS": 359498680
+      },
+      "seconds": 0.9451758,
+      "sha256": "ae42b13d7e0af3e77723caf8357d34c7e061526ed9eefeb67b04a0aaa69f33e2"
+    }
+  },
+  {
+    "offset": 0,
+    "words": 524288,
+    "timing": [
+      16,
+      13,
+      5
+    ],
+    "result": {
+      "bytes": 2097152,
+      "first": 0,
+      "last": 524287,
+      "nonconsecutive_words": 0,
+      "profile": {
+        "Reads": 1699,
+        "Writes": 903,
+        "Pops": 129,
+        "Halfwords": 1048576,
+        "SkippedWords": 67630959,
+        "ReadNS": 10717600,
+        "WriteNS": 4334160,
+        "PopNS": 279155120
+      },
+      "seconds": 0.86819756,
+      "sha256": "ae42b13d7e0af3e77723caf8357d34c7e061526ed9eefeb67b04a0aaa69f33e2"
+    }
+  },
+  {
+    "offset": 0,
+    "words": 524288,
+    "timing": [
+      12,
+      10,
+      5
+    ],
+    "result": {
+      "bytes": 2097152,
+      "first": 0,
+      "last": 524287,
+      "nonconsecutive_words": 0,
+      "profile": {
+        "Reads": 1699,
+        "Writes": 903,
+        "Pops": 129,
+        "Halfwords": 1048576,
+        "SkippedWords": 67630959,
+        "ReadNS": 10628040,
+        "WriteNS": 4338000,
+        "PopNS": 212613200
+      },
+      "seconds": 0.79943888,
+      "sha256": "ae42b13d7e0af3e77723caf8357d34c7e061526ed9eefeb67b04a0aaa69f33e2"
+    }
+  },
+  {
+    "offset": 0,
+    "words": 524288,
+    "timing": [
+      10,
+      8,
+      5
+    ],
+    "result": {
+      "bytes": 2097152,
+      "first": 0,
+      "last": 524287,
+      "nonconsecutive_words": 0,
+      "profile": {
+        "Reads": 1700,
+        "Writes": 903,
+        "Pops": 129,
+        "Halfwords": 1048576,
+        "SkippedWords": 67630959,
+        "ReadNS": 10741000,
+        "WriteNS": 4695560,
+        "PopNS": 191694600
+      },
+      "seconds": 0.77891812,
+      "sha256": "ae42b13d7e0af3e77723caf8357d34c7e061526ed9eefeb67b04a0aaa69f33e2"
+    }
+  },
+  {
+    "offset": 4079,
+    "words": 33,
+    "timing": [
+      10,
+      8,
+      5
+    ],
+    "result": {
+      "bytes": 132,
+      "first": 4079,
+      "last": 4111,
+      "nonconsecutive_words": 0,
+      "profile": {
+        "Reads": 29,
+        "Writes": 7,
+        "Pops": 1,
+        "Halfwords": 66,
+        "SkippedWords": 4062,
+        "ReadNS": 294400,
+        "WriteNS": 35560,
+        "PopNS": 50480
+      },
+      "seconds": 0.00140324,
+      "sha256": "9e710fcc5163febe2e8c5f80b7ccc05ad5249452bc9c15b10af2c9c1fdb2ded4"
+    }
+  },
+  {
+    "offset": 524287,
+    "words": 1,
+    "timing": [
+      10,
+      8,
+      5
+    ],
+    "result": {
+      "bytes": 4,
+      "first": 524287,
+      "last": 524287,
+      "nonconsecutive_words": 0,
+      "profile": {
+        "Reads": 32,
+        "Writes": 7,
+        "Pops": 1,
+        "Halfwords": 2,
+        "SkippedWords": 520158,
+        "ReadNS": 270640,
+        "WriteNS": 35200,
+        "PopNS": 37640
+      },
+      "seconds": 0.003905,
+      "sha256": "5341298afd21f5e76cac512809a468048bf5475e24b7e0105dd97be2c99d8b7f"
+    }
+  },
+  {
+    "offset": 0,
+    "words": 524288,
+    "timing": [
+      10,
+      8,
+      5
+    ],
+    "result": {
+      "bytes": 2097152,
+      "first": 0,
+      "last": 524287,
+      "nonconsecutive_words": 0,
+      "profile": {
+        "Reads": 1699,
+        "Writes": 903,
+        "Pops": 129,
+        "Halfwords": 1048576,
+        "SkippedWords": 67630959,
+        "ReadNS": 10940400,
+        "WriteNS": 4421360,
+        "PopNS": 192275840
+      },
+      "seconds": 0.77986548,
+      "sha256": "ae42b13d7e0af3e77723caf8357d34c7e061526ed9eefeb67b04a0aaa69f33e2"
+    }
+  },
+  {
+    "offset": 0,
+    "words": 524288,
+    "timing": null,
+    "result": {
+      "bytes": 2097152,
+      "first": 0,
+      "last": 524287,
+      "nonconsecutive_words": 0,
+      "profile": {
+        "Reads": 1699,
+        "Writes": 903,
+        "Pops": 129,
+        "Halfwords": 1048576,
+        "SkippedWords": 67630961,
+        "ReadNS": 10905200,
+        "WriteNS": 4372240,
+        "PopNS": 359423520
+      },
+      "seconds": 0.94707724,
+      "sha256": "ae42b13d7e0af3e77723caf8357d34c7e061526ed9eefeb67b04a0aaa69f33e2"
+    }
+  },
+  {
+    "offset": 0,
+    "words": 524288,
+    "timing": [
+      16,
+      13,
+      5
+    ],
+    "result": {
+      "bytes": 2097152,
+      "first": 0,
+      "last": 524287,
+      "nonconsecutive_words": 0,
+      "profile": {
+        "Reads": 1699,
+        "Writes": 903,
+        "Pops": 129,
+        "Halfwords": 1048576,
+        "SkippedWords": 67630959,
+        "ReadNS": 10870200,
+        "WriteNS": 4466320,
+        "PopNS": 254712680
+      },
+      "seconds": 0.84071232,
+      "sha256": "ae42b13d7e0af3e77723caf8357d34c7e061526ed9eefeb67b04a0aaa69f33e2"
+    }
+  },
+  {
+    "offset": 0,
+    "words": 524288,
+    "timing": [
+      12,
+      10,
+      5
+    ],
+    "result": {
+      "bytes": 2097152,
+      "first": 0,
+      "last": 524287,
+      "nonconsecutive_words": 0,
+      "profile": {
+        "Reads": 1699,
+        "Writes": 903,
+        "Pops": 129,
+        "Halfwords": 1048576,
+        "SkippedWords": 67630959,
+        "ReadNS": 10900080,
+        "WriteNS": 4461000,
+        "PopNS": 213057120
+      },
+      "seconds": 0.8002016,
+      "sha256": "ae42b13d7e0af3e77723caf8357d34c7e061526ed9eefeb67b04a0aaa69f33e2"
+    }
+  },
+  {
+    "offset": 0,
+    "words": 524288,
+    "timing": [
+      10,
+      8,
+      5
+    ],
+    "result": {
+      "bytes": 2097152,
+      "first": 0,
+      "last": 524287,
+      "nonconsecutive_words": 0,
+      "profile": {
+        "Reads": 1699,
+        "Writes": 903,
+        "Pops": 129,
+        "Halfwords": 1048576,
+        "SkippedWords": 67630959,
+        "ReadNS": 10798000,
+        "WriteNS": 4414720,
+        "PopNS": 191853280
+      },
+      "seconds": 0.77937312,
+      "sha256": "ae42b13d7e0af3e77723caf8357d34c7e061526ed9eefeb67b04a0aaa69f33e2"
+    }
+  },
+  {
+    "offset": 4079,
+    "words": 33,
+    "timing": [
+      10,
+      8,
+      5
+    ],
+    "result": {
+      "bytes": 132,
+      "first": 4079,
+      "last": 4111,
+      "nonconsecutive_words": 0,
+      "profile": {
+        "Reads": 29,
+        "Writes": 7,
+        "Pops": 1,
+        "Halfwords": 66,
+        "SkippedWords": 4062,
+        "ReadNS": 254560,
+        "WriteNS": 67240,
+        "PopNS": 50520
+      },
+      "seconds": 0.0013562,
+      "sha256": "9e710fcc5163febe2e8c5f80b7ccc05ad5249452bc9c15b10af2c9c1fdb2ded4"
+    }
+  },
+  {
+    "offset": 524287,
+    "words": 1,
+    "timing": [
+      10,
+      8,
+      5
+    ],
+    "result": {
+      "bytes": 4,
+      "first": 524287,
+      "last": 524287,
+      "nonconsecutive_words": 0,
+      "profile": {
+        "Reads": 32,
+        "Writes": 7,
+        "Pops": 1,
+        "Halfwords": 2,
+        "SkippedWords": 520158,
+        "ReadNS": 233800,
+        "WriteNS": 34600,
+        "PopNS": 39000
+      },
+      "seconds": 0.003904,
+      "sha256": "5341298afd21f5e76cac512809a468048bf5475e24b7e0105dd97be2c99d8b7f"
+    }
+  },
+  {
+    "offset": 0,
+    "words": 524288,
+    "timing": [
+      10,
+      8,
+      5
+    ],
+    "result": {
+      "bytes": 2097152,
+      "first": 0,
+      "last": 524287,
+      "nonconsecutive_words": 0,
+      "profile": {
+        "Reads": 1699,
+        "Writes": 903,
+        "Pops": 129,
+        "Halfwords": 1048576,
+        "SkippedWords": 67630959,
+        "ReadNS": 10886000,
+        "WriteNS": 4575520,
+        "PopNS": 198658480
+      },
+      "seconds": 0.78539576,
+      "sha256": "ae42b13d7e0af3e77723caf8357d34c7e061526ed9eefeb67b04a0aaa69f33e2"
+    }
+  },
+  {
+    "offset": 0,
+    "words": 524288,
+    "timing": null,
+    "result": {
+      "bytes": 2097152,
+      "first": 0,
+      "last": 524287,
+      "nonconsecutive_words": 0,
+      "profile": {
+        "Reads": 1701,
+        "Writes": 903,
+        "Pops": 129,
+        "Halfwords": 1048576,
+        "SkippedWords": 67630960,
+        "ReadNS": 10943320,
+        "WriteNS": 4333480,
+        "PopNS": 359993880
+      },
+      "seconds": 0.94708612,
+      "sha256": "ae42b13d7e0af3e77723caf8357d34c7e061526ed9eefeb67b04a0aaa69f33e2"
+    }
+  },
+  {
+    "offset": 0,
+    "words": 524288,
+    "timing": [
+      16,
+      13,
+      5
+    ],
+    "result": {
+      "bytes": 2097152,
+      "first": 0,
+      "last": 524287,
+      "nonconsecutive_words": 0,
+      "profile": {
+        "Reads": 1700,
+        "Writes": 903,
+        "Pops": 129,
+        "Halfwords": 1048576,
+        "SkippedWords": 67630959,
+        "ReadNS": 10786720,
+        "WriteNS": 4427760,
+        "PopNS": 255164720
+      },
+      "seconds": 0.84325416,
+      "sha256": "ae42b13d7e0af3e77723caf8357d34c7e061526ed9eefeb67b04a0aaa69f33e2"
+    }
+  },
+  {
+    "offset": 0,
+    "words": 524288,
+    "timing": [
+      12,
+      10,
+      5
+    ],
+    "result": {
+      "bytes": 2097152,
+      "first": 0,
+      "last": 524287,
+      "nonconsecutive_words": 0,
+      "profile": {
+        "Reads": 1699,
+        "Writes": 903,
+        "Pops": 129,
+        "Halfwords": 1048576,
+        "SkippedWords": 67630959,
+        "ReadNS": 10908560,
+        "WriteNS": 4395560,
+        "PopNS": 212538920
+      },
+      "seconds": 0.8008912,
+      "sha256": "ae42b13d7e0af3e77723caf8357d34c7e061526ed9eefeb67b04a0aaa69f33e2"
+    }
+  },
+  {
+    "offset": 0,
+    "words": 524288,
+    "timing": [
+      10,
+      8,
+      5
+    ],
+    "result": {
+      "bytes": 2097152,
+      "first": 0,
+      "last": 524287,
+      "nonconsecutive_words": 0,
+      "profile": {
+        "Reads": 1699,
+        "Writes": 903,
+        "Pops": 129,
+        "Halfwords": 1048576,
+        "SkippedWords": 67630959,
+        "ReadNS": 10783080,
+        "WriteNS": 4537160,
+        "PopNS": 191628320
+      },
+      "seconds": 0.78063444,
+      "sha256": "ae42b13d7e0af3e77723caf8357d34c7e061526ed9eefeb67b04a0aaa69f33e2"
+    }
+  },
+  {
+    "offset": 4079,
+    "words": 33,
+    "timing": [
+      10,
+      8,
+      5
+    ],
+    "result": {
+      "bytes": 132,
+      "first": 4079,
+      "last": 4111,
+      "nonconsecutive_words": 0,
+      "profile": {
+        "Reads": 29,
+        "Writes": 7,
+        "Pops": 1,
+        "Halfwords": 66,
+        "SkippedWords": 4062,
+        "ReadNS": 210360,
+        "WriteNS": 62880,
+        "PopNS": 56280
+      },
+      "seconds": 0.0013812,
+      "sha256": "9e710fcc5163febe2e8c5f80b7ccc05ad5249452bc9c15b10af2c9c1fdb2ded4"
+    }
+  },
+  {
+    "offset": 524287,
+    "words": 1,
+    "timing": [
+      10,
+      8,
+      5
+    ],
+    "result": {
+      "bytes": 4,
+      "first": 524287,
+      "last": 524287,
+      "nonconsecutive_words": 0,
+      "profile": {
+        "Reads": 32,
+        "Writes": 7,
+        "Pops": 1,
+        "Halfwords": 2,
+        "SkippedWords": 520158,
+        "ReadNS": 268880,
+        "WriteNS": 37040,
+        "PopNS": 42840
+      },
+      "seconds": 0.00396692,
+      "sha256": "5341298afd21f5e76cac512809a468048bf5475e24b7e0105dd97be2c99d8b7f"
+    }
+  },
+  {
+    "offset": 0,
+    "words": 524288,
+    "timing": [
+      10,
+      8,
+      5
+    ],
+    "result": {
+      "bytes": 2097152,
+      "first": 0,
+      "last": 524287,
+      "nonconsecutive_words": 0,
+      "profile": {
+        "Reads": 1700,
+        "Writes": 903,
+        "Pops": 129,
+        "Halfwords": 1048576,
+        "SkippedWords": 67630959,
+        "ReadNS": 10821040,
+        "WriteNS": 4421600,
+        "PopNS": 192842440
+      },
+      "seconds": 0.77947512,
+      "sha256": "ae42b13d7e0af3e77723caf8357d34c7e061526ed9eefeb67b04a0aaa69f33e2"
+    }
+  },
+  {
+    "kind": "edge",
+    "log": 0,
+    "config": 17,
+    "status": {
+      "locked": true,
+      "ready": true,
+      "running": false,
+      "frozen": true,
+      "triggered": true,
+      "prefetched": false,
+      "words": 524288,
+      "start": 72,
+      "trigger_index": 262144,
+      "position": 1599,
+      "origin": 1527,
+      "revision": 10,
+      "map_id": 57746,
+      "sample_rate_hz": 500000000,
+      "decimation": 1,
+      "sample_bits": 8,
+      "fraction_bits": 0,
+      "samples_per_word": 2,
+      "interleaved": true,
+      "data_fault": false
+    },
+    "samples": [
+      123,
+      123,
+      116,
+      115,
+      127,
+      127,
+      126,
+      119,
+      118,
+      130,
+      131,
+      129,
+      122,
+      121,
+      133,
+      134,
+      133,
+      125,
+      125,
+      136,
+      137,
+      136,
+      128,
+      128,
+      140,
+      141,
+      139,
+      132,
+      131,
+      143,
+      143,
+      144
+    ]
+  },
+  {
+    "kind": "edge",
+    "log": 0,
+    "config": 49,
+    "status": {
+      "locked": true,
+      "ready": true,
+      "running": false,
+      "frozen": true,
+      "triggered": true,
+      "prefetched": false,
+      "words": 524288,
+      "start": 14,
+      "trigger_index": 262144,
+      "position": 263798,
+      "origin": 263784,
+      "revision": 10,
+      "map_id": 57746,
+      "sample_rate_hz": 500000000,
+      "decimation": 1,
+      "sample_bits": 8,
+      "fraction_bits": 0,
+      "samples_per_word": 2,
+      "interleaved": true,
+      "data_fault": false
+    },
+    "samples": [
+      142,
+      142,
+      139,
+      129,
+      129,
+      138,
+      138,
+      136,
+      127,
+      125,
+      136,
+      135,
+      133,
+      123,
+      122,
+      132,
+      132,
+      130,
+      120,
+      119,
+      129,
+      128,
+      126,
+      117,
+      116,
+      126,
+      125,
+      123,
+      114,
+      113,
+      122,
+      123
+    ]
+  },
+  {
+    "kind": "edge",
+    "log": 0,
+    "config": 81,
+    "status": {
+      "locked": true,
+      "ready": true,
+      "running": false,
+      "frozen": true,
+      "triggered": true,
+      "prefetched": false,
+      "words": 524288,
+      "start": 73,
+      "trigger_index": 262144,
+      "position": 1770,
+      "origin": 1697,
+      "revision": 10,
+      "map_id": 57746,
+      "sample_rate_hz": 500000000,
+      "decimation": 1,
+      "sample_bits": 8,
+      "fraction_bits": 0,
+      "samples_per_word": 2,
+      "interleaved": true,
+      "data_fault": false
+    },
+    "samples": [
+      131,
+      131,
+      131,
+      133,
+      128,
+      128,
+      127,
+      127,
+      129,
+      125,
+      125,
+      125,
+      125,
+      126,
+      121,
+      122,
+      121,
+      121,
+      123,
+      118,
+      119,
+      118,
+      118,
+      119,
+      115,
+      115,
+      114,
+      115,
+      116,
+      110,
+      111,
+      110
+    ]
+  },
+  {
+    "kind": "edge",
+    "log": 0,
+    "config": 113,
+    "status": {
+      "locked": true,
+      "ready": true,
+      "running": false,
+      "frozen": true,
+      "triggered": true,
+      "prefetched": false,
+      "words": 524288,
+      "start": 140,
+      "trigger_index": 262144,
+      "position": 264096,
+      "origin": 263956,
+      "revision": 10,
+      "map_id": 57746,
+      "sample_rate_hz": 500000000,
+      "decimation": 1,
+      "sample_bits": 8,
+      "fraction_bits": 0,
+      "samples_per_word": 2,
+      "interleaved": true,
+      "data_fault": false
+    },
+    "samples": [
+      133,
+      132,
+      131,
+      132,
+      135,
+      129,
+      129,
+      129,
+      128,
+      130,
+      127,
+      126,
+      125,
+      125,
+      127,
+      123,
+      122,
+      122,
+      123,
+      124,
+      120,
+      119,
+      118,
+      119,
+      121,
+      117,
+      116,
+      115,
+      115,
+      117,
+      112,
+      113
+    ]
+  },
+  {
+    "kind": "edge",
+    "log": 4,
+    "config": 17,
+    "status": {
+      "locked": true,
+      "ready": true,
+      "running": false,
+      "frozen": true,
+      "triggered": true,
+      "prefetched": false,
+      "words": 524288,
+      "start": 27,
+      "trigger_index": 262144,
+      "position": 2147,
+      "origin": 2121,
+      "revision": 10,
+      "map_id": 57746,
+      "sample_rate_hz": 31250000,
+      "decimation": 16,
+      "sample_bits": 16,
+      "fraction_bits": 8,
+      "samples_per_word": 1,
+      "interleaved": true,
+      "data_fault": false
+    },
+    "samples": [
+      91,
+      102,
+      112,
+      123,
+      133,
+      143,
+      154,
+      164,
+      174,
+      179,
+      178,
+      171,
+      162,
+      152,
+      142,
+      132
+    ]
+  },
+  {
+    "kind": "edge",
+    "log": 4,
+    "config": 49,
+    "status": {
+      "locked": true,
+      "ready": true,
+      "running": false,
+      "frozen": true,
+      "triggered": true,
+      "prefetched": false,
+      "words": 524288,
+      "start": 26,
+      "trigger_index": 262144,
+      "position": 264488,
+      "origin": 264463,
+      "revision": 10,
+      "map_id": 57746,
+      "sample_rate_hz": 31250000,
+      "decimation": 16,
+      "sample_bits": 16,
+      "fraction_bits": 8,
+      "samples_per_word": 1,
+      "interleaved": true,
+      "data_fault": false
+    },
+    "samples": [
+      163,
+      153,
+      143,
+      133,
+      123,
+      112,
+      102,
+      91,
+      81,
+      71,
+      61,
+      51,
+      42,
+      39,
+      41,
+      49
+    ]
+  },
+  {
+    "kind": "edge",
+    "log": 4,
+    "config": 81,
+    "status": {
+      "locked": true,
+      "ready": true,
+      "running": false,
+      "frozen": true,
+      "triggered": true,
+      "prefetched": false,
+      "words": 524288,
+      "start": 25,
+      "trigger_index": 262144,
+      "position": 2538,
+      "origin": 2514,
+      "revision": 10,
+      "map_id": 57746,
+      "sample_rate_hz": 31250000,
+      "decimation": 16,
+      "sample_bits": 16,
+      "fraction_bits": 8,
+      "samples_per_word": 1,
+      "interleaved": true,
+      "data_fault": false
+    },
+    "samples": [
+      90,
+      98,
+      108,
+      118,
+      128,
+      139,
+      149,
+      160,
+      170,
+      181,
+      192,
+      202,
+      213,
+      223,
+      231,
+      232
+    ]
+  },
+  {
+    "kind": "edge",
+    "log": 4,
+    "config": 113,
+    "status": {
+      "locked": true,
+      "ready": true,
+      "running": false,
+      "frozen": true,
+      "triggered": true,
+      "prefetched": false,
+      "words": 524288,
+      "start": 26,
+      "trigger_index": 262144,
+      "position": 264876,
+      "origin": 264851,
+      "revision": 10,
+      "map_id": 57746,
+      "sample_rate_hz": 31250000,
+      "decimation": 16,
+      "sample_bits": 16,
+      "fraction_bits": 8,
+      "samples_per_word": 1,
+      "interleaved": true,
+      "data_fault": false
+    },
+    "samples": [
+      162,
+      151,
+      140,
+      129,
+      119,
+      108,
+      97,
+      89,
+      87,
+      92,
+      101,
+      110,
+      121,
+      131,
+      141,
+      152
+    ]
+  }
+]

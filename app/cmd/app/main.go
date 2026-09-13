@@ -10,6 +10,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"os"
@@ -468,8 +469,8 @@ func main() {
 			return
 		}
 		m, err := sramBackend.Status()
-		if err != nil || m.Revision != 9 || !m.Locked {
-			logf("FATAL: default-sram requires revision 9, status=%+v error=%v", m, err)
+		if err != nil || (m.Revision != 9 && m.Revision != 10) || !m.Locked {
+			logf("FATAL: default-sram requires revision 9 or 10, status=%+v error=%v", m, err)
 			return
 		}
 		fabricOK = true
@@ -479,6 +480,24 @@ func main() {
 			} else {
 				b.EnableEDMA(8192, logf)
 			}
+		}
+		if m.Revision == 10 && b.FastDrain() {
+			tp, err := bus.OpenTimingPort()
+			if err != nil {
+				logf("FATAL: SRAM timing port: %v", err)
+				return
+			}
+			fast, err := applySRAMReadTiming(tp, func() error {
+				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+				defer cancel()
+				return sramBackend.VerifyCounter(ctx)
+			})
+			tp.Close()
+			if err != nil {
+				logf("FATAL: SRAM startup transport check: %v", err)
+				return
+			}
+			logf("SRAM: full counter verified, fast GPMC timing=%v", fast)
 		}
 	} else if err := fpgaload.Bringup(gpmcFD, readCS1, logf); err != nil {
 		if cp, cerr := fpgaload.ConfigStatus(gpmcFD); cerr == nil {

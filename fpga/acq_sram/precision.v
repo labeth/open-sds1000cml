@@ -5,12 +5,37 @@ module cic_pair_integrator #(parameter W=28)(input clk,enable,valid,input signed
  output reg out_valid=0,output reg signed [W-1:0] lo=0,hi=0);
  (* preserve, dont_merge *) reg local_enable=0;
  always @(posedge clk)local_enable<=enable;
- reg pending=0;reg signed [W-1:0] first=0,sum=0,state=0;
+ localparam L=W/2,H=W-L;
+ reg pending=0,pending_hi=0;
+ reg signed [W-1:0] first=0,sum=0;
+ reg [L-1:0] state_lo=0,lo_first=0,lo_sum=0;
+ reg [H-1:0] state_hi=0,hi_first=0,hi_sum=0;
+ reg carry_first=0,carry_sum=0;
+ wire [L:0] next_first={1'b0,state_lo}+{1'b0,first[L-1:0]};
+ wire [L:0] next_sum={1'b0,state_lo}+{1'b0,sum[L-1:0]};
+ wire [H-1:0] next_hi_first=state_hi+hi_first+carry_first;
+ wire [H-1:0] next_hi_sum=state_hi+hi_sum+carry_sum;
+ // The high accumulator trails the low accumulator by one accepted token.
+ // Pipeline its operand and low carry together; stalls preserve alignment.
  always @(posedge clk)begin
-  pending<=local_enable && valid;out_valid<=local_enable && pending;
+  pending<=local_enable && valid;
+  pending_hi<=local_enable && pending;
+  out_valid<=local_enable && pending_hi;
   if(valid)begin first<=a;sum<=a+b;end
-  if(pending)begin lo<=state+first;hi<=state+sum;state<=state+sum;end
-  if(!local_enable)begin pending<=0;out_valid<=0;state<=0;lo<=0;hi<=0;end
+  if(pending)begin
+   state_lo<=next_sum[L-1:0];
+   lo_first<=next_first[L-1:0];lo_sum<=next_sum[L-1:0];
+   carry_first<=next_first[L];carry_sum<=next_sum[L];
+   hi_first<=first[W-1:L];hi_sum<=sum[W-1:L];
+  end
+  if(pending_hi)begin
+   state_hi<=next_hi_sum;
+   lo<={next_hi_first,lo_first};hi<={next_hi_sum,lo_sum};
+  end
+  if(!local_enable)begin
+   pending<=0;pending_hi<=0;out_valid<=0;
+   state_lo<=0;state_hi<=0;lo<=0;hi<=0;
+  end
  end
 endmodule
 
@@ -67,7 +92,12 @@ module adc_precision(input core,packclk,clk100,enable,input [4:0] decim_log,inpu
  cic16_pair first_ch1(core,enable,raw_valid,raw[7:0],raw[23:16],fv0,first0);
  cic16_pair first_ch2(core,enable,raw_valid,raw[15:8],raw[31:24],fv1,first1);
  reg [31:0] in_mail=0;reg in_toggle=0;
- always @(posedge core)if(fv0)begin in_mail<={first1,first0};in_toggle<=!in_toggle;end
+ // Register the CIC valid decode before the mailbox's wide write enable.
+ reg [31:0] first_pair=0;reg first_valid=0;
+ always @(posedge core)begin
+  first_pair<={first1,first0};first_valid<=enable && fv0;
+  if(first_valid)begin in_mail<=first_pair;in_toggle<=!in_toggle;end
+ end
  reg in_toggle_s=0,in_seen=0;reg [2:0] pack_enable=0;
  always @(posedge packclk)begin in_toggle_s<=in_toggle;in_seen<=in_toggle_s;pack_enable<={pack_enable[1:0],enable};end
  wire in_push=in_toggle_s!=in_seen && pack_enable[2];
