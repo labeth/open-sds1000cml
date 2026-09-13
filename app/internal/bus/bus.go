@@ -243,3 +243,28 @@ func (d *Dev) PopWordsChecked(sel uint16, dst []uint16) error {
 	}
 	return nil
 }
+
+// PopBytesChecked preserves the little-endian DMA bytes without a word roundtrip.
+// As with PopWordsChecked, a partial failure must not fall back or retry blindly.
+func (d *Dev) PopBytesChecked(sel uint16, dst []byte) error {
+	if sel > 127 || len(dst)%2 != 0 {
+		return fmt.Errorf("bus: invalid byte pop selector/length")
+	}
+	if len(dst) == 0 {
+		return nil
+	}
+	if d.edma != nil {
+		if !d.edma.drainBytes(uint32(cs1PhysBase)+uint32(sel)*2, dst) {
+			return fmt.Errorf("bus: DMA pop failed; pointer may have advanced")
+		}
+		return nil
+	}
+	for i := 0; i < len(dst); i += 2 {
+		v, err := d.Read(PlaneCS1, sel)
+		if err != nil {
+			return err
+		}
+		dst[i], dst[i+1] = byte(v), byte(v>>8)
+	}
+	return nil
+}

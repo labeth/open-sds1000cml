@@ -2,6 +2,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/binary"
@@ -190,6 +191,8 @@ func main() {
 		if !st.Ready || st.Running {
 			panic("halt acquisition before stream-profile")
 		}
+		streamCopy := bytes.NewBuffer(make([]byte, 0, 8192))
+		must(capture.PrepareStream())
 		wr(19, 3)
 		for {
 			ss, e := capture.StreamStatus()
@@ -207,7 +210,8 @@ func main() {
 		blocks := 0
 		stopped := false
 		for {
-			block, e := capture.DrainStream(ctx, next, check)
+			streamCopy.Reset()
+			block, e := capture.DrainStream(ctx, next, streamCopy)
 			if errors.Is(e, sramcapture.ErrNoStreamBlock) {
 				if stopped {
 					ss, e := capture.StreamStatus()
@@ -222,6 +226,11 @@ func main() {
 				must(ctx.Err())
 				continue
 			}
+			if e != nil {
+				emit(map[string]any{"error": e.Error(), "next_word": next, "block": block, "seconds": time.Since(began).Seconds(), "profile": profile})
+				must(e)
+			}
+			_, e = check.Write(streamCopy.Bytes())
 			must(e)
 			next += uint64(block.Words)
 			blocks++

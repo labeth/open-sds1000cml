@@ -1,0 +1,19 @@
+[
+  {
+    "env": [],
+    "output": "{\n  \"exit\": 2,\n  \"output\": \"bus: /dev/dcinv present\\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\\nprofile timing: rdcycle=18 rdaccess=8 oe=4..16 cs=0..18 gap=5 -\\u003e rdcycle=10 rdaccess=8 oe=4..10 cs=0..10 gap=5\\npanic: sramcapture: stream changed or faulted during DMA\\n\\ngoroutine 1 [running]:\\nmain.main.func4(...)\\n\\t/home/labeth/ws/open-sds1000cml-acq2/app/cmd/acqsram/main.go:115\\nmain.main()\\n\\t/home/labeth/ws/open-sds1000cml-acq2/app/cmd/acqsram/main.go:225 +0x5cc4\\n\"\n}\n"
+  },
+  {
+    "env": [
+      "GODEBUG=asyncpreemptoff=1"
+    ],
+    "output": "{\n  \"exit\": 2,\n  \"output\": \"bus: /dev/dcinv present\\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\\nprofile timing: rdcycle=18 rdaccess=8 oe=4..16 cs=0..18 gap=5 -\\u003e rdcycle=10 rdaccess=8 oe=4..10 cs=0..10 gap=5\\npanic: sramcapture: stream changed or faulted during DMA\\n\\ngoroutine 1 [running]:\\nmain.main.func4(...)\\n\\t/home/labeth/ws/open-sds1000cml-acq2/app/cmd/acqsram/main.go:115\\nmain.main()\\n\\t/home/labeth/ws/open-sds1000cml-acq2/app/cmd/acqsram/main.go:225 +0x5cc4\\n\"\n}\n"
+  },
+  {
+    "env": [
+      "GOMAXPROCS=1",
+      "GODEBUG=asyncpreemptoff=1"
+    ],
+    "output": "{\n  \"exit\": 2,\n  \"output\": \"bus: /dev/dcinv present\\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\\nprofile timing: rdcycle=18 rdaccess=8 oe=4..16 cs=0..18 gap=5 -\\u003e rdcycle=10 rdaccess=8 oe=4..10 cs=0..10 gap=5\\npanic: sramcapture: stream changed or faulted during DMA\\n\\ngoroutine 1 [running]:\\nmain.main.func4(...)\\n\\t/home/labeth/ws/open-sds1000cml-acq2/app/cmd/acqsram/main.go:115\\nmain.main()\\n\\t/home/labeth/ws/open-sds1000cml-acq2/app/cmd/acqsram/main.go:225 +0x5cc4\\n\"\n}\n"
+  }
+]

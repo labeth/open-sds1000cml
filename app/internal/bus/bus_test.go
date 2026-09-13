@@ -325,3 +325,47 @@ func TestCS1CycleGapSequence(t *testing.T) {
 		t.Errorf("CONFIG6_1 = %#08x, want 0x060004c1", got)
 	}
 }
+
+func TestPopBytesPreservesPagesAndReusedCoherentBuffer(t *testing.T) {
+	e, cc, pg := newFakeDrainer(5000)
+	e.persistent, _ = pg.alloc(10000)
+	invalidations := 0
+	e.inv = func(b []byte) { invalidations++; b[0], b[1] = 0xab, 0x80 }
+	d := &Dev{edma: e}
+	for pass := 0; pass < 2; pass++ {
+		dst := make([]byte, 10000)
+		start := cc.srcWord
+		if err := d.PopBytesChecked(25, dst); err != nil {
+			t.Fatal(err)
+		}
+		for i := 0; i < 5000; i++ {
+			want := start + uint16(i)
+			if i == 0 {
+				want = 0x80ab
+			}
+			if uint16(dst[2*i])|uint16(dst[2*i+1])<<8 != want {
+				t.Fatalf("pass %d word %d", pass, i)
+			}
+		}
+	}
+	if invalidations != 2 || pg.allocs != 1 || len(cc.transfers) != 6 {
+		t.Fatalf("inv=%d alloc=%d transfers=%d", invalidations, pg.allocs, len(cc.transfers))
+	}
+	for _, x := range cc.transfers {
+		if x.src != uint32(cs1PhysBase)+50 {
+			t.Fatal(x)
+		}
+	}
+	cc.noComplete = true
+	if d.PopBytesChecked(25, make([]byte, 2)) == nil {
+		t.Fatal("timeout accepted")
+	}
+	for _, c := range []struct {
+		s uint16
+		n int
+	}{{128, 2}, {25, 3}, {25, 10002}} {
+		if d.PopBytesChecked(c.s, make([]byte, c.n)) == nil {
+			t.Fatal("invalid byte pop accepted")
+		}
+	}
+}

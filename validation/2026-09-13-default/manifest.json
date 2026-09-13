@@ -347,6 +347,22 @@
     "bytes": 2931,
     "sha256": "504d51c37bd97f1ddf8250d1105ae76fd8ec327e10f7cad7a3e4bdd227b7dea7"
   },
+  "stream-latency/README.md": {
+    "bytes": 745,
+    "sha256": "529782e1e1da55fa3631a493aabffae8c69a98dbd0572b0eb3b2d732eec01b09"
+  },
+  "stream-latency/byte-copy-div512.json": {
+    "bytes": 3054,
+    "sha256": "308064750061e468f9bba77b829d3daf8ffa972230bd9ff4c351d55d019ba40c"
+  },
+  "stream-latency/byte-copy-scheduling.json": {
+    "bytes": 3595,
+    "sha256": "c7584fc81373757d5b4f3b23532b7c6743d74cd6aae7218de59913ef4b04dd78"
+  },
+  "stream-latency/initial-scheduling.json": {
+    "bytes": 2059,
+    "sha256": "f25ced7200eee9fccadcff061abfc85939633f26bbc5fb0c91188fc88cd6a8d2"
+  },
   "stream-path/README.md": {
     "bytes": 1920,
     "sha256": "c2694436b3173832478527fb16555e1b7c97e783d7154a7aed2cff418da35e5b"

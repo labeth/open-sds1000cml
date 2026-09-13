@@ -1,0 +1,19 @@
+[
+  {
+    "env": [],
+    "output": "{\n  \"exit\": 2,\n  \"output\": \"bus: /dev/dcinv present\\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\\nprofile timing: rdcycle=18 rdaccess=8 oe=4..16 cs=0..18 gap=5 -\\u003e rdcycle=10 rdaccess=8 oe=4..10 cs=0..10 gap=5\\n{\\n  \\\"block\\\": {\\n    \\\"first_word\\\": 0,\\n    \\\"words\\\": 0,\\n    \\\"bank\\\": 0\\n  },\\n  \\\"error\\\": \\\"sramcapture: stream overrun or packetizer fault\\\",\\n  \\\"next_word\\\": 2048,\\n  \\\"profile\\\": {\\n    \\\"Reads\\\": 103,\\n    \\\"Writes\\\": 11,\\n    \\\"Pops\\\": 1,\\n    \\\"Halfwords\\\": 4096,\\n    \\\"SkippedWords\\\": 0,\\n    \\\"ReadNS\\\": 649200,\\n    \\\"WriteNS\\\": 53480,\\n    \\\"PopNS\\\": 726040\\n  },\\n  \\\"seconds\\\": 0.00221028\\n}\\npanic: sramcapture: stream overrun or packetizer fault\\n\\ngoroutine 1 [running]:\\nmain.main.func4(...)\\n\\t/home/labeth/ws/open-sds1000cml-acq2/app/cmd/acqsram/main.go:116\\nmain.main()\\n\\t/home/labeth/ws/open-sds1000cml-acq2/app/cmd/acqsram/main.go:231 +0x607c\\n\"\n}\n"
+  },
+  {
+    "env": [
+      "GODEBUG=asyncpreemptoff=1"
+    ],
+    "output": "{\n  \"exit\": 2,\n  \"output\": \"bus: /dev/dcinv present\\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\\nprofile timing: rdcycle=18 rdaccess=8 oe=4..16 cs=0..18 gap=5 -\\u003e rdcycle=10 rdaccess=8 oe=4..10 cs=0..10 gap=5\\n{\\n  \\\"block\\\": {\\n    \\\"first_word\\\": 0,\\n    \\\"words\\\": 0,\\n    \\\"bank\\\": 0\\n  },\\n  \\\"error\\\": \\\"sramcapture: stream overrun or packetizer fault\\\",\\n  \\\"next_word\\\": 2048,\\n  \\\"profile\\\": {\\n    \\\"Reads\\\": 103,\\n    \\\"Writes\\\": 11,\\n    \\\"Pops\\\": 1,\\n    \\\"Halfwords\\\": 4096,\\n    \\\"SkippedWords\\\": 0,\\n    \\\"ReadNS\\\": 684440,\\n    \\\"WriteNS\\\": 111960,\\n    \\\"PopNS\\\": 723720\\n  },\\n  \\\"seconds\\\": 0.0021986\\n}\\npanic: sramcapture: stream overrun or packetizer fault\\n\\ngoroutine 1 [running]:\\nmain.main.func4(...)\\n\\t/home/labeth/ws/open-sds1000cml-acq2/app/cmd/acqsram/main.go:116\\nmain.main()\\n\\t/home/labeth/ws/open-sds1000cml-acq2/app/cmd/acqsram/main.go:231 +0x607c\\n\"\n}\n"
+  },
+  {
+    "env": [
+      "GOMAXPROCS=1",
+      "GODEBUG=asyncpreemptoff=1"
+    ],
+    "output": "{\n  \"exit\": 2,\n  \"output\": \"bus: /dev/dcinv present\\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\\nprofile timing: rdcycle=18 rdaccess=8 oe=4..16 cs=0..18 gap=5 -\\u003e rdcycle=10 rdaccess=8 oe=4..10 cs=0..10 gap=5\\n{\\n  \\\"block\\\": {\\n    \\\"first_word\\\": 1462272,\\n    \\\"words\\\": 2048,\\n    \\\"bank\\\": 0\\n  },\\n  \\\"error\\\": \\\"sramcapture: stream changed or faulted during DMA\\\",\\n  \\\"next_word\\\": 1462272,\\n  \\\"profile\\\": {\\n    \\\"Reads\\\": 21687,\\n    \\\"Writes\\\": 2152,\\n    \\\"Pops\\\": 715,\\n    \\\"Halfwords\\\": 2928640,\\n    \\\"SkippedWords\\\": 0,\\n    \\\"ReadNS\\\": 103899240,\\n    \\\"WriteNS\\\": 9875040,\\n    \\\"PopNS\\\": 478526520\\n  },\\n  \\\"seconds\\\": 0.75078604\\n}\\npanic: sramcapture: stream changed or faulted during DMA\\n\\ngoroutine 1 [running]:\\nmain.main.func4(...)\\n\\t/home/labeth/ws/open-sds1000cml-acq2/app/cmd/acqsram/main.go:116\\nmain.main()\\n\\t/home/labeth/ws/open-sds1000cml-acq2/app/cmd/acqsram/main.go:231 +0x607c\\n\"\n}\n"
+  }
+]

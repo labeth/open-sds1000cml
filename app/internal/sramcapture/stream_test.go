@@ -162,3 +162,42 @@ func TestStreamDrainFailuresRetainOwnership(t *testing.T) {
 		})
 	}
 }
+
+type streamByteFake struct{ *streamDMAFake }
+
+func (s *streamByteFake) PopBytesChecked(port uint16, dst []byte) error {
+	for i := 0; i < len(dst); i += 2 {
+		v, e := s.Read(1, port)
+		if e != nil {
+			return e
+		}
+		binary.LittleEndian.PutUint16(dst[i:], v)
+	}
+	return nil
+}
+func TestStreamBytePathPreservesFractionAndRetainsFaultedBank(t *testing.T) {
+	for _, fault := range []bool{false, true} {
+		b := streamBus()
+		b.flags = 256 | 1 | 16
+		b.first[0] = 0
+		b.counts[0] = 1
+		b.buffer[0] = 0x12ff80ab
+		b.faultOnPop = fault
+		c, e := New(&streamByteFake{&streamDMAFake{b}})
+		if e != nil {
+			t.Fatal(e)
+		}
+		if e = c.PrepareStream(); e != nil {
+			t.Fatal(e)
+		}
+		var out bytes.Buffer
+		_, e = c.DrainStream(context.Background(), 0, &out)
+		if fault {
+			if e == nil || len(b.releases) != 0 || out.Len() != 0 {
+				t.Fatalf("fault accepted: %v", e)
+			}
+		} else if e != nil || out.Len() != 4 || binary.LittleEndian.Uint32(out.Bytes()) != 0x12ff80ab || len(b.releases) != 1 {
+			t.Fatalf("data mismatch: %x %v", out.Bytes(), e)
+		}
+	}
+}

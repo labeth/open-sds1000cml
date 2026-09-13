@@ -82,7 +82,11 @@ two incorrect block-start words. The original failure is retained.
 With temporary CS1 timing cycle=10, access=8, gap=5, counter streams at /1024
 and /512 each passed more than 4,194,304 consecutive words (16 MiB), exceeding
 SRAM capacity eight times. /256 failed with a streaming overrun during DMA.
-The DMA portion alone measures about 10.9 MB/s; this is not a sustainable
+Later repeat testing in `stream-latency/` caught an occasional /512 overrun
+after two further 16 MiB passes. Neither /512 nor /256 is qualified for reliable
+continuous application use.
+
+The original DMA portion alone measured about 10.9 MB/s; this is not a sustainable
 end-to-end rate guarantee. The two 8 KiB banks leave only about 1.05 ms to
 consume and release a full bank at /256, including scheduling and copying.
 
@@ -97,3 +101,21 @@ Remaining work includes /256 overrun diagnosis, longer loaded-system tests,
 physical ADC stream mapping and trigger checks, ARM history and conditioning,
 and integration with every timebase. Counter tests do not prove analog ENOB
 or correct application behavior. Do not promote this candidate to default yet.
+
+## Host latency checkpoint
+
+The ARM byte-pop path copies coherent DMA bytes directly, avoiding the uint16
+conversion roundtrip. `PrepareStream` preallocates/touches buffers before arm.
+The counter diagnostic copies to ARM memory and releases the FPGA bank before
+validating those copied words. It still checks every word and never releases a
+bank before its bytes are safely copied. Two /512 runs each transferred 16.78 MB
+with zero counter breaks; DMA/copy time fell from about 1.54 s to 1.37 s for that
+payload. A third repeat overran, so this is an optimization, not qualification.
+
+/256 progressed as far as 1,462,272 checked words in one scheduling diagnostic,
+but repeats still failed, sometimes at startup. Disabling asynchronous Go
+preemption did not provide a reliable cure. Larger FPGA buffers and/or a
+kernel-managed drain need evaluation to tolerate host service latency before
+building continuous ARM history on this transport. Error output now records
+the last checked ordinal and transport timings. All tests used the same seed13
+FPGA image and only RAM helper updates, with temporary CS1 timings restored.

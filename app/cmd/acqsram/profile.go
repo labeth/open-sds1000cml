@@ -49,3 +49,12 @@ func (p *profileBus) PopWordsChecked(selector uint16, dst []uint16) error {
 	p.Halfwords += uint64(len(dst))
 	return err
 }
+
+func (p *profileBus) PopBytesChecked(selector uint16, dst []byte) error {
+	t := time.Now()
+	err := p.dev.PopBytesChecked(selector, dst)
+	p.PopNS += time.Since(t).Nanoseconds()
+	p.Pops++
+	p.Halfwords += uint64(len(dst) / 2)
+	return err
+}

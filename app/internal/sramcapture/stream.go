@@ -37,6 +37,36 @@ func (c *Capture) StreamStatus() (StreamStatus, error) {
 	return decodeStreamStatus(v), e
 }
 
+// PrepareStream allocates and touches the host buffers before acquisition starts.
+// Call while idle so first-block allocation cannot consume the bank deadline.
+func (c *Capture) PrepareStream() error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	rev, err := c.read(13)
+	if err != nil {
+		return err
+	}
+	if rev != 11 {
+		return fmt.Errorf("sramcapture: stream requires experimental revision 11")
+	}
+	c.prepareStreamBuffers()
+	return nil
+}
+
+func (c *Capture) prepareStreamBuffers() {
+	if cap(c.streamHalves) < 4096 {
+		c.streamHalves = make([]uint16, 4096)
+		c.streamBytes = make([]byte, 8192)
+	}
+	// Touch each page, including already allocated buffers, before arm.
+	for i := 0; i < len(c.streamHalves); i += 1024 {
+		c.streamHalves[i] = 0
+	}
+	for i := 0; i < len(c.streamBytes); i += 2048 {
+		c.streamBytes[i] = 0
+	}
+}
+
 type StreamBlock struct {
 	FirstWord uint64 `json:"first_word"`
 	Words     uint32 `json:"words"`
@@ -119,11 +149,16 @@ func (c *Capture) DrainStream(ctx context.Context, expected uint64, dst io.Write
 		return block, e
 	}
 	if cap(c.streamHalves) < 4096 {
-		c.streamHalves = make([]uint16, 4096)
-		c.streamBytes = make([]byte, 8192)
+		c.prepareStreamBuffers()
 	}
+	bytes := c.streamBytes[:block.Words*4]
 	halves := c.streamHalves[:block.Words*2]
-	if pop, ok := c.bus.(interface{ PopWordsChecked(uint16, []uint16) error }); ok {
+	bytePop, direct := c.bus.(interface{ PopBytesChecked(uint16, []byte) error })
+	if direct {
+		if e = bytePop.PopBytesChecked(25, bytes); e != nil {
+			return block, e
+		}
+	} else if pop, ok := c.bus.(interface{ PopWordsChecked(uint16, []uint16) error }); ok {
 		if e = pop.PopWordsChecked(25, halves); e != nil {
 			return block, e
 		}
@@ -155,9 +190,10 @@ func (c *Capture) DrainStream(ctx context.Context, expected uint64, dst io.Write
 	if e = ctx.Err(); e != nil {
 		return block, e
 	}
-	bytes := c.streamBytes[:block.Words*4]
-	for i, v := range halves {
-		binary.LittleEndian.PutUint16(bytes[2*i:], v)
+	if !direct {
+		for i, v := range halves {
+			binary.LittleEndian.PutUint16(bytes[2*i:], v)
+		}
 	}
 	n, e := dst.Write(bytes)
 	if e != nil {

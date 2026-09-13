@@ -280,6 +280,35 @@ func (e *edmaDrainer) drainWords(src uint32, dst []uint16, n int) bool {
 	return true
 }
 
+func (e *edmaDrainer) drainBytes(src uint32, dst []byte) bool {
+	n := len(dst) / 2
+	if len(dst)%2 != 0 || n <= 0 || n > e.maxWords {
+		return false
+	}
+	b := e.persistent
+	if b == nil {
+		var err error
+		if b, err = e.pg.alloc(n * 2); err != nil {
+			return false
+		}
+		defer b.release()
+	}
+	for base := 0; base < n; base += wordsPage {
+		w := wordsPage
+		if base+w > n {
+			w = n - base
+		}
+		if !e.runParam(src, b.phys[base/wordsPage], uint32(w)) {
+			return false
+		}
+	}
+	if e.inv != nil {
+		e.inv(b.buf[:n*2])
+	}
+	copy(dst, b.buf[:n*2])
+	return true
+}
+
 // drain drains n BURST words and splits them (hi byte = CH1, lo byte = CH2).
 func (e *edmaDrainer) drain(c1, c2 []uint8, n int) bool {
 	if n <= 0 || n > e.maxWords || len(c1) < n || len(c2) < n {
