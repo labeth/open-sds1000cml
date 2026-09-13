@@ -1,0 +1,20 @@
+[
+  {
+    "log": 12,
+    "stdout": "bus: /dev/dcinv present\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\n{\n  \"blocks\": 257,\n  \"bytes\": 2097816,\n  \"first\": 0,\n  \"last\": 524453,\n  \"nonconsecutive_words\": 0,\n  \"profile\": {\n    \"Reads\": 484287,\n    \"Writes\": 780,\n    \"Pops\": 257,\n    \"Halfwords\": 1048908,\n    \"SkippedWords\": 0,\n    \"ReadNS\": 2156027200,\n    \"WriteNS\": 3332480,\n    \"PopNS\": 276459520\n  },\n  \"seconds\": 4.29696196,\n  \"stream\": {\n    \"ready\": 0,\n    \"tokens\": 1,\n    \"last_single\": 0,\n    \"fault\": false,\n    \"finished\": true,\n    \"enabled\": true\n  },\n  \"words\": 524454,\n  \"words_per_second\": 122052.27900132493\n}\n[exit 0]\n",
+    "stderr": "",
+    "exit": 0
+  },
+  {
+    "log": 11,
+    "stdout": "bus: /dev/dcinv present\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\n{\n  \"blocks\": 257,\n  \"bytes\": 2098488,\n  \"first\": 0,\n  \"last\": 524621,\n  \"nonconsecutive_words\": 0,\n  \"profile\": {\n    \"Reads\": 222343,\n    \"Writes\": 780,\n    \"Pops\": 257,\n    \"Halfwords\": 1049244,\n    \"SkippedWords\": 0,\n    \"ReadNS\": 991137040,\n    \"WriteNS\": 3330680,\n    \"PopNS\": 276452080\n  },\n  \"seconds\": 2.14944752,\n  \"stream\": {\n    \"ready\": 0,\n    \"tokens\": 1,\n    \"last_single\": 0,\n    \"fault\": false,\n    \"finished\": true,\n    \"enabled\": true\n  },\n  \"words\": 524622,\n  \"words_per_second\": 244072.9513600779\n}\n[exit 0]\n",
+    "stderr": "",
+    "exit": 0
+  },
+  {
+    "log": 10,
+    "stdout": "{\n  \"exit\": 2,\n  \"output\": \"bus: /dev/dcinv present\\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\\npanic: sramcapture: stream overrun or packetizer fault\\n\\ngoroutine 1 [running]:\\nmain.main.func4(...)\\n\\t/home/labeth/ws/open-sds1000cml-acq2/app/cmd/acqsram/main.go:115\\nmain.main()\\n\\t/home/labeth/ws/open-sds1000cml-acq2/app/cmd/acqsram/main.go:202 +0x5c18\\n\"\n}\n",
+    "stderr": "error: device error: exit status 2\n",
+    "exit": 1
+  }
+]

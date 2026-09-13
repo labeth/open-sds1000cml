@@ -327,6 +327,26 @@
     "bytes": 1056,
     "sha256": "5dd9742ccafe59847a9f3b55ba3a70f4cfe565a59549232c2c9b5ba967945391"
   },
+  "stream-device/recall-primed.json": {
+    "bytes": 8531,
+    "sha256": "584b93d3cc658e927f462851d1e1415c2308078ab03144d17942df5b2b0b0c7c"
+  },
+  "stream-device/recall.json": {
+    "bytes": 1883,
+    "sha256": "8f092206d618f51a5b3f9bd2e9e863e17f3e3bd8d06450582f266794baccb41d"
+  },
+  "stream-device/stream-rate-fast.json": {
+    "bytes": 2661,
+    "sha256": "e6c16f5c48a4ecdefb8a5b798d28e7bd3dfdf5f4484616745185f23c77b908e4"
+  },
+  "stream-device/stream-rate-initial.json": {
+    "bytes": 2315,
+    "sha256": "448df1a2e42acb9ee0531b4c515733c437906755ea24a03a47d4fd1198ae8e4e"
+  },
+  "stream-device/stream-rate-long.json": {
+    "bytes": 2931,
+    "sha256": "504d51c37bd97f1ddf8250d1105ae76fd8ec327e10f7cad7a3e4bdd227b7dea7"
+  },
   "stream-path/README.md": {
     "bytes": 1920,
     "sha256": "c2694436b3173832478527fb16555e1b7c97e783d7154a7aed2cff418da35e5b"
@@ -342,6 +362,74 @@
   "stream-path/unchanged-app-status.json": {
     "bytes": 1922,
     "sha256": "181b42446aa69e21f2c0541dc1d1f15bb53a1ec1fc983067415866c763c61a0c"
+  },
+  "stream-timing/control-build.log": {
+    "bytes": 1654,
+    "sha256": "38001fc1f4c1242246207eb4209b650cbb18d29d3aeaa1de8674e9036920068e"
+  },
+  "stream-timing/fault-build.log": {
+    "bytes": 1656,
+    "sha256": "fcdb0dea02ed73a72af634471815792fe71f4d77aa51dc8862d741498aaa1360"
+  },
+  "stream-timing/initial-build.log": {
+    "bytes": 1653,
+    "sha256": "0d2b9c99100dc328527740893551f14a5c6400c647fda020121869eb370dcfa8"
+  },
+  "stream-timing/initial-critical.rpt": {
+    "bytes": 97059,
+    "sha256": "2b24f9e326403b415d523b2a77c78409d36d1445d0527950f89db66b8352bcb2"
+  },
+  "stream-timing/initial-descriptors.rpt": {
+    "bytes": 29388,
+    "sha256": "16d2f7aa4ec0424abeaad53b25c87230ef65609cfe3dedfc6fef09861c50b508"
+  },
+  "stream-timing/negative-audit.json": {
+    "bytes": 7498,
+    "sha256": "2b468d0289ca7c05f58c9e71ae075747cf850932d1d18413d90234d45b9a7d9e"
+  },
+  "stream-timing/restored-audit.log": {
+    "bytes": 6228,
+    "sha256": "ce18cfab37f60040ee0e80c46a09714540621c0e454b119511c3ab9f3c4e75a1"
+  },
+  "stream-timing/seed10-retimed-build.log": {
+    "bytes": 1656,
+    "sha256": "99d8269baf23257a59689f27e52f85dd2e1f7675e48618d1e1c011c1c200361f"
+  },
+  "stream-timing/seed10-tap-retimed-rejected.tar.gz": {
+    "bytes": 184676,
+    "sha256": "dcf51ee613abb2b8ef3164e58b4e315655c1203d5e4d16151b83bde787105864"
+  },
+  "stream-timing/seed11-build.log": {
+    "bytes": 1656,
+    "sha256": "1c25b813dccaada33d3baf3b9952d56e568d7ceed19472488ee7454cf7b1ceff"
+  },
+  "stream-timing/seed11-control-retimed-rejected.tar.gz": {
+    "bytes": 185563,
+    "sha256": "6d24b48c3fd721b69c977d4a2fa9c52f76cc7c1359e28223cfaac0b442d83c05"
+  },
+  "stream-timing/seed11-fault-retimed-rejected.tar.gz": {
+    "bytes": 184936,
+    "sha256": "5185798fdd623ee8cdce2ca3669de322d7c81d8dfc92dcfd49bfc506710b33ab"
+  },
+  "stream-timing/seed13-device-candidate.tar.gz": {
+    "bytes": 421694,
+    "sha256": "043d25a546e3eb4703741e8362179efd7f384ec87798a71835bb9731c58c8485"
+  },
+  "stream-timing/seed9-control-retimed-rejected.tar.gz": {
+    "bytes": 185113,
+    "sha256": "9936b7539142b2efa1e3c015462b5e628d2cd7b1b11b88693ec89bd2f1b01e71"
+  },
+  "stream-timing/seed9-initial-rejected.tar.gz": {
+    "bytes": 182999,
+    "sha256": "8b75b7f6b93f1a60b058a10d964fb4708375ff6cfb3309e07b971575ac923b7d"
+  },
+  "stream-timing/seed9-retimed-build.log": {
+    "bytes": 1661,
+    "sha256": "b0d82b1b2b7065978b25138d188fdf06a913fa82ef215b85452a48075393dcb8"
+  },
+  "stream-timing/seed9-tap-retimed-rejected.tar.gz": {
+    "bytes": 184265,
+    "sha256": "09b10fc0f90bd3171d6eaa192b26aea3a3b31ff630766c9b887a5eedf97c45b5"
   },
   "triangle-0.bin": {
     "bytes": 2097152,

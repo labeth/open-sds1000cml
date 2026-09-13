@@ -31,7 +31,8 @@ module tb;
   if(dut.command_error)$fatal(1,"command rejected %0d",code);
  end endtask
 
- integer expected=0,b,n,j,words;reg tok;
+ integer expected=0,b,n,j,words,verified;
+ integer cc,cm,ff,edges,cv,rr,fl,want;reg tok;
  task drain;
  begin
   wait(dut.stream_available!=0);#30;
@@ -48,7 +49,17 @@ module tb;
   @(negedge clk);release dut.wc;release dut.ws;release dut.wd;#100;
  end endtask
  initial begin
-  #100;dut.decim_log=8;dut.pre_cfg=16;dut.post_cfg=8;dut.stream_cfg=3;
+  #100;
+  for(cc=0;cc<16;cc=cc+1)for(cm=0;cm<2;cm=cm+1)for(ff=0;ff<2;ff=ff+1)for(edges=0;edges<16;edges=edges+1)begin
+   cv=(cc&1)|((cc&2)<<3)|((cc&4)<<3)|((cc&8)<<3);
+   dut.config_word=cv;dut.stream_cfg=cm ? 3 : 0;rr=edges&3;fl=(edges>>2)&3;
+   force dut.rise_ch=rr;force dut.fall_ch=fl;force dut.force_trigger=ff;
+   #100;
+   want=cm ? ff : (!(cv&16) || ff || ((cv&1) && (((cv&32) ? fl : rr) & ((cv&64) ? 2 : 1))));
+   if(dut.il_fire_stage!==1'(want))$fatal(1,"trigger decode cfg=%d mode=%d force=%d edges=%d",cv,cm,ff,edges);
+  end
+  release dut.rise_ch;release dut.fall_ch;release dut.force_trigger;
+  dut.config_word=0;#100;dut.decim_log=8;dut.pre_cfg=16;dut.post_cfg=8;dut.stream_cfg=3;
   #100;command(1);
   repeat(4)drain();
   if(!dut.running || dut.record_done || dut.il_failed)$fatal(1,"continuous mode stopped early");
@@ -56,6 +67,7 @@ module tb;
   while(dut.stream_available!=0)drain();
   if(expected!=dut.record_length || expected!=8193)$fatal(1,"tail loss %d length %d",expected,dut.record_length);
   for(i=0;i<expected;i=i+1)if(mem[(dut.origin-1+i)%524288]!==i)$fatal(1,"SRAM history changed %d",i);
+  verified=expected;
   // A frozen SRAM read may not overwrite banks while stream mode owns RAM.
   dut.count_cfg=64;
   @(negedge clk);dut.opcode=2;dut.request=~dut.request;
@@ -66,7 +78,13 @@ module tb;
   // The old capture mode still freezes with the requested record length.
   dut.pre_cfg=239;dut.post_cfg=17;#100;command(1);wait(dut.record_done && dut.ready);#100;
   if(dut.record_length!=256 || dut.il_failed)$fatal(1,"legacy capture regressed");
-  $display("PASS integrated stream tap: %d exact words, continuous SRAM history, stop, ownership exclusion, legacy capture",expected);$finish;
+  dut.stream_cfg=3;dut.pre_cfg=16;dut.post_cfg=8;#100;command(1);
+  wait(dut.il_failed && dut.ready);#200;
+  if(!dut.host_bank_overrun || dut.stream_available!=3)$fatal(1,"overrun did not preserve banks and fault");
+  expected=0;command(1);drain();
+  if(dut.il_failed || !dut.running)$fatal(1,"stale fault poisoned rearm");
+  command(5);wait(dut.ready);
+  $display("PASS integrated stream tap: %d exact words, continuous SRAM history, stop, ownership exclusion, legacy capture, overrun/rearm, exhaustive trigger decode",verified);$finish;
  end
  initial begin #10000000;$fatal(1,"timeout");end
 endmodule

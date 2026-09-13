@@ -5,12 +5,13 @@ interleave="--interleave" in sys.argv
 probe="--probe" in sys.argv
 hostfix="--hostfix" in sys.argv
 stream="--stream" in sys.argv
-if stream:
+if stream and "--experimental" not in sys.argv:
  raise SystemExit('--stream top-level HDL is experimental: physical CDC constraints, timing closure and device qualification remain; use --interleave --precision --hostfix for the qualified path')
 precision="--precision" in sys.argv or stream
 burst="--burst" in sys.argv or precision
 assert not burst or interleave
 assert not hostfix or precision
+assert not stream or (interleave and hostfix), "experimental streaming requires --interleave --hostfix"
 seed=int(next((a.split("=",1)[1] for a in sys.argv if a.startswith("--seed=")),"1"))
 assert 1<=seed<=100
 mhz=250 if interleave and not probe else 100;phase=int(sys.argv[1]) if len(sys.argv)>1 and sys.argv[1].isdigit() else (1000 if interleave and not probe else 4000)
@@ -39,7 +40,7 @@ if interleave:
  shifts=[3000,4000,2000,0,1000]
  params=','.join(f'.clk{i}_multiply_by(1),.clk{i}_divide_by(1),.clk{i}_duty_cycle(50),.clk{i}_phase_shift("{p}")' for i,p in enumerate(shifts))
  (out/'adc_pll.v').write_text('module adc_phase_pll(input refclk,output [4:0] phase,output locked);\naltpll #(.inclk0_input_frequency(10000),.intended_device_family("Cyclone IV E"),'+params+',.compensate_clock("CLK3"),.operation_mode("NORMAL"),.width_clock(5)) p(.inclk({1\'b0,refclk}),.clk(phase),.locked(locked),.areset(1\'b0));endmodule\n')
-for v in ('record.v','transport.v','adc_unpack.v')+ (('precision.v',) if precision else ())+(('stream.v',) if stream else ()):
+for v in ('record.v','transport.v','adc_unpack.v')+ (('precision.v',) if precision else ())+(('stream_packetizer.v','stream_banks.v') if stream else ()):
  (out/v).write_text((root/v).read_text())
 (out/'ddio_pair.v').write_text((root.parent/'common/ddio_pair.v').read_text())
 (out/'lane_in.v').write_text((root.parent/'common/lane_in.v').read_text())
@@ -56,7 +57,7 @@ q += ['set_global_assignment -name CYCLONEII_RESERVE_NCEO_AFTER_CONFIGURATION "U
 q += [f'set_global_assignment -name VERILOG_FILE {v}' for v in ('bench.v','gpmc_slave.v','pll.v','record.v','transport.v','adc_unpack.v','ddio_pair.v','lane_in.v')]
 if interleave:q += ['set_global_assignment -name OPTIMIZATION_TECHNIQUE SPEED','set_global_assignment -name PHYSICAL_SYNTHESIS_COMBO_LOGIC ON','set_global_assignment -name PHYSICAL_SYNTHESIS_REGISTER_DUPLICATION ON','set_global_assignment -name VERILOG_FILE interleave.v','set_global_assignment -name VERILOG_FILE adc_pll.v']
 if precision:q += ['set_global_assignment -name VERILOG_FILE precision.v']
-if stream:q += ['set_global_assignment -name VERILOG_FILE stream.v']
+if stream:q += ['set_global_assignment -name VERILOG_FILE '+v for v in ('stream_packetizer.v','stream_banks.v')]
 for port,ball in ports.items():
  q += [f'set_location_assignment PIN_{ball} -to {port}',f'set_instance_assignment -name IO_STANDARD "3.3-V LVTTL" -to {port}']
  if port.startswith(('dq[','enc_')) or port in ('k1','g1','g2','d1','f1','f2','j2','a11'):q += [f'set_instance_assignment -name CURRENT_STRENGTH_NEW "MINIMUM CURRENT" -to {port}']
@@ -71,6 +72,9 @@ derive_clock_uncertainty
 set_clock_groups -asynchronous -group [get_clocks cpu] -group [get_clocks {*pll* mref}]
 # External SRAM timing is measured separately; do not interpret core slack as board closure.
 ''')
+if stream:
+ sdc=out/'bench.sdc'
+ sdc.write_text(sdc.read_text().replace('set_clock_groups -asynchronous -group [get_clocks cpu] -group [get_clocks {*pll* mref}]\n','')+(root/'stream.sdc').read_text())
 if interleave:
  with (out/'bench.sdc').open('a') as f:
   f.write("# Synchronizer first-stage paths only; data clocks remain timed.\nset_false_path -to [get_registers {*enable_s[0] *overflow_s[0] *snap_req_s[0] *snap_ack_s[0]}]\n")
@@ -83,14 +87,17 @@ if interleave:
 if precision:
  with (out/'bench.sdc').open('a') as f:
   f.write("# Precision pipeline FIFO reset assertion, releases are internally synchronized.\nset_false_path -from [get_registers {precision_enable}] -to [get_registers {*precision*wraclr* *precision*rdaclr*}]\n")
-if stream:
- with (out/'bench.sdc').open('a') as f:
-  f.write('set_false_path -from [get_registers {cfg[8]}] -to [get_registers {*stream*wraclr* *stream*rdaclr*}]\n')
 quartus=pathlib.Path('/home/labeth/intelFPGA_lite/21.1/quartus/bin')
 for tool,args in [('quartus_map',['bench']),('quartus_fit',['bench']),('quartus_sta',['bench']),('quartus_asm',['bench']),('quartus_cpf',['-c','-o','bitstream_compression=off','output_files/bench.sof','bench.rbf'])]:
  print(tool,flush=True)
  with (out/(tool+'.log')).open('w') as f:r=subprocess.run([str(quartus/tool)]+args,cwd=out,stdout=f,stderr=subprocess.STDOUT)
  if r.returncode:print((out/(tool+'.log')).read_text()[-7000:]);sys.exit(r.returncode)
+if stream:
+ (out/'stream_cdc_audit.tcl').write_text((root/'stream_cdc_audit.tcl').read_text())
+ with (out/'stream_cdc.log').open('w') as f:
+  r=subprocess.run([str(quartus/'quartus_sta'),'-t','stream_cdc_audit.tcl'],cwd=out,stdout=f,stderr=subprocess.STDOUT)
+ if r.returncode:
+  print((out/'stream_cdc.log').read_text()[-7000:]);sys.exit(r.returncode)
 assert (out/'bench.rbf').stat().st_size==368011
 subprocess.run([sys.executable,str(root/'audit.py'),str(out)],check=True)
 print(out/'bench.rbf',flush=True)

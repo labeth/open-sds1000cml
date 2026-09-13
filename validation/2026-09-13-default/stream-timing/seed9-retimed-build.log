@@ -1,0 +1,22 @@
+quartus_map
+quartus_fit
+quartus_sta
+quartus_asm
+quartus_cpf
+Core timing: False worst slack: -0.166 pins verified: 160
+Traceback (most recent call last):
+  File "/home/labeth/ws/open-sds1000cml-acq2/fpga/acq_sram/audit.py", line 5, in <module>
+    subprocess.run([sys.executable,str(pathlib.Path(__file__).resolve().parents[1]/'sram_bench/audit.py'),str(out)],check=True)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib64/python3.14/subprocess.py", line 578, in run
+    raise CalledProcessError(retcode, process.args,
+                             output=stdout, stderr=stderr)
+subprocess.CalledProcessError: Command '['/usr/bin/python3', '/home/labeth/ws/open-sds1000cml-acq2/fpga/sram_bench/audit.py', '/home/labeth/ws/open-sds1000cml-acq2/fpga/acq_sram/out/250mhz-p1000-interleave-stream-hostfix-seed9']' returned non-zero exit status 2.
+Traceback (most recent call last):
+  File "/home/labeth/ws/open-sds1000cml-acq2/fpga/acq_sram/build.py", line 96, in <module>
+    (out/'stream_cdc_audit.tcl').write_text((root/'stream_cdc_audit.tcl').read_text())
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib64/python3.14/subprocess.py", line 578, in run
+    raise CalledProcessError(retcode, process.args,
+                             output=stdout, stderr=stderr)
+subprocess.CalledProcessError: Command '['/usr/bin/python3', '/home/labeth/ws/open-sds1000cml-acq2/fpga/acq_sram/audit.py', '/home/labeth/ws/open-sds1000cml-acq2/fpga/acq_sram/out/250mhz-p1000-interleave-stream-hostfix-seed9']' returned non-zero exit status 1.

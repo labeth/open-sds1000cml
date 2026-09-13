@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/binary"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"open-sds/app/internal/analog"
@@ -92,7 +93,7 @@ func main() {
 	}
 	profile := &profileBus{dev: dev}
 	var captureBus sramcapture.Bus = dev
-	if os.Args[1] == "profile-recall" {
+	if os.Args[1] == "profile-recall" || os.Args[1] == "stream-profile" {
 		captureBus = profile
 	}
 	capture, err := sramcapture.New(captureBus)
@@ -114,6 +115,29 @@ func main() {
 			panic(err)
 		}
 	}
+	if os.Args[1] == "profile-recall" || os.Args[1] == "stream-profile" {
+		// Scope timing changes to this diagnostic process, restoring on exit.
+		if os.Getenv("SCOPE_PROFILE_RD_CYCLE") != "" {
+			port, err := bus.OpenTimingPort()
+			must(err)
+			defer port.Close()
+			old, err := port.Read()
+			must(err)
+			defer func() { must(port.Restore(old)) }()
+			cycle := num(os.Getenv("SCOPE_PROFILE_RD_CYCLE"))
+			access := num(os.Getenv("SCOPE_PROFILE_RD_ACCESS"))
+			next := old.WithRdAccess(access).WithRdCycle(cycle).WithOEOff(min(old.OEOff(), cycle)).WithCSRdOff(min(old.CSRdOff(), cycle))
+			if os.Getenv("SCOPE_PROFILE_GAP") != "" {
+				next = next.WithGap(num(os.Getenv("SCOPE_PROFILE_GAP")))
+			}
+			if os.Getenv("SCOPE_PROFILE_RD_CYCLE") == "31" {
+				next = next.WithOEOff(16).WithCSRdOff(20)
+			}
+			must(port.Apply(next))
+			fmt.Fprintf(os.Stderr, "profile timing: %s -> %s\n", old.String(), next.String())
+		}
+	}
+
 	switch os.Args[1] {
 	case "burst-probe":
 		if os.Getenv("SCOPE_PROBE_SLOW") == "1" {
@@ -153,28 +177,71 @@ func main() {
 		}
 		emit(map[string]any{"operation": op, "before": before, "after": r32(8), "origin": r32(10), "start": r32(4), "indexed": indexed, "popped": popped})
 		return
+	case "stream-profile":
+		if rd(13) != 11 {
+			panic("stream-profile requires experimental revision 11")
+		}
+		log, n := num(os.Args[2]), num(os.Args[3])
+		if log < 8 || log > 20 || n == 0 {
+			panic("stream-profile LOG(8..20) WORDS(>0)")
+		}
+		st, e := capture.Status()
+		must(e)
+		if !st.Ready || st.Running {
+			panic("halt acquisition before stream-profile")
+		}
+		wr(19, 3)
+		for {
+			ss, e := capture.StreamStatus()
+			must(e)
+			if ss.Enabled {
+				break
+			}
+			must(ctx.Err())
+		}
+		must(capture.Arm(ctx, sramcapture.Config{Source: sramcapture.Counter, PreWords: sramcapture.Words - 17, PostWords: 17, DecimationLog2: uint8(log)}))
+		defer func() { h, c := context.WithTimeout(context.Background(), time.Second); defer c(); _ = capture.Halt(h) }()
+		check := &counterCheck{}
+		began := time.Now()
+		var next uint64
+		blocks := 0
+		stopped := false
+		for {
+			block, e := capture.DrainStream(ctx, next, check)
+			if errors.Is(e, sramcapture.ErrNoStreamBlock) {
+				if stopped {
+					ss, e := capture.StreamStatus()
+					must(e)
+					if ss.Fault {
+						panic("stream fault while stopping")
+					}
+					if ss.Finished && ss.Ready == 0 {
+						break
+					}
+				}
+				must(ctx.Err())
+				continue
+			}
+			must(e)
+			next += uint64(block.Words)
+			blocks++
+			if check.bad != 0 || check.first != 0 {
+				panic(fmt.Sprintf("counter stream mismatch: %+v", check))
+			}
+			if !stopped && next >= uint64(n) {
+				must(capture.Halt(ctx))
+				stopped = true
+			}
+		}
+		ss, e := capture.StreamStatus()
+		must(e)
+		elapsed := time.Since(began)
+		emit(map[string]any{"words": next, "bytes": next * 4, "blocks": blocks, "seconds": elapsed.Seconds(), "words_per_second": float64(next) / elapsed.Seconds(), "first": check.first, "last": check.last, "nonconsecutive_words": check.bad, "stream": ss, "profile": profile})
+		wr(19, 0)
+		return
 	case "profile-recall":
 		off, n := num(os.Args[2]), num(os.Args[3])
-		// Scope timing changes to this diagnostic process, restoring on exit.
-		if os.Getenv("SCOPE_PROFILE_RD_CYCLE") != "" {
-			port, err := bus.OpenTimingPort()
-			must(err)
-			defer port.Close()
-			old, err := port.Read()
-			must(err)
-			defer func() { must(port.Restore(old)) }()
-			cycle := num(os.Getenv("SCOPE_PROFILE_RD_CYCLE"))
-			access := num(os.Getenv("SCOPE_PROFILE_RD_ACCESS"))
-			next := old.WithRdAccess(access).WithRdCycle(cycle).WithOEOff(min(old.OEOff(), cycle)).WithCSRdOff(min(old.CSRdOff(), cycle))
-			if os.Getenv("SCOPE_PROFILE_GAP") != "" {
-				next = next.WithGap(num(os.Getenv("SCOPE_PROFILE_GAP")))
-			}
-			if os.Getenv("SCOPE_PROFILE_RD_CYCLE") == "31" {
-				next = next.WithOEOff(16).WithCSRdOff(20)
-			}
-			must(port.Apply(next))
-			fmt.Fprintf(os.Stderr, "profile timing: %s -> %s\n", old.String(), next.String())
-		}
+
 		*profile = profileBus{dev: dev}
 		check := &counterCheck{}
 		hash := sha256.New()

@@ -1,0 +1,20 @@
+[
+  {
+    "log": 9,
+    "stdout": "bus: /dev/dcinv present\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\nprofile timing: rdcycle=18 rdaccess=8 oe=4..16 cs=0..18 gap=5 -> rdcycle=10 rdaccess=8 oe=4..10 cs=0..10 gap=5\n{\n  \"blocks\": 2049,\n  \"bytes\": 16781288,\n  \"first\": 0,\n  \"last\": 4195321,\n  \"nonconsecutive_words\": 0,\n  \"profile\": {\n    \"Reads\": 284211,\n    \"Writes\": 6156,\n    \"Pops\": 2049,\n    \"Halfwords\": 8390644,\n    \"SkippedWords\": 0,\n    \"ReadNS\": 1293744680,\n    \"WriteNS\": 26368880,\n    \"PopNS\": 1539541480\n  },\n  \"seconds\": 4.2969192,\n  \"stream\": {\n    \"ready\": 0,\n    \"tokens\": 1,\n    \"last_single\": 0,\n    \"fault\": false,\n    \"finished\": true,\n    \"enabled\": true\n  },\n  \"words\": 4195322,\n  \"words_per_second\": 976355.8039443702\n}\n[exit 0]\n",
+    "stderr": "",
+    "exit": 0
+  },
+  {
+    "log": 10,
+    "stdout": "bus: /dev/dcinv present\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\nprofile timing: rdcycle=18 rdaccess=8 oe=4..16 cs=0..18 gap=5 -> rdcycle=10 rdaccess=8 oe=4..10 cs=0..10 gap=5\n{\n  \"blocks\": 2049,\n  \"bytes\": 16779260,\n  \"first\": 0,\n  \"last\": 4194814,\n  \"nonconsecutive_words\": 0,\n  \"profile\": {\n    \"Reads\": 800871,\n    \"Writes\": 6156,\n    \"Pops\": 2049,\n    \"Halfwords\": 8389630,\n    \"SkippedWords\": 0,\n    \"ReadNS\": 3634383400,\n    \"WriteNS\": 26622760,\n    \"PopNS\": 1540553080\n  },\n  \"seconds\": 8.5918712,\n  \"stream\": {\n    \"ready\": 0,\n    \"tokens\": 1,\n    \"last_single\": 1,\n    \"fault\": false,\n    \"finished\": true,\n    \"enabled\": true\n  },\n  \"words\": 4194815,\n  \"words_per_second\": 488230.66621389764\n}\n[exit 0]\n",
+    "stderr": "",
+    "exit": 0
+  },
+  {
+    "log": 11,
+    "stdout": "bus: /dev/dcinv present\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\nprofile timing: rdcycle=18 rdaccess=8 oe=4..16 cs=0..18 gap=5 -> rdcycle=10 rdaccess=8 oe=4..10 cs=0..10 gap=5\n{\n  \"blocks\": 2049,\n  \"bytes\": 16778252,\n  \"first\": 0,\n  \"last\": 4194562,\n  \"nonconsecutive_words\": 0,\n  \"profile\": {\n    \"Reads\": 1818205,\n    \"Writes\": 6156,\n    \"Pops\": 2049,\n    \"Halfwords\": 8389126,\n    \"SkippedWords\": 0,\n    \"ReadNS\": 8305549040,\n    \"WriteNS\": 27765320,\n    \"PopNS\": 1542971480\n  },\n  \"seconds\": 17.18211752,\n  \"stream\": {\n    \"ready\": 0,\n    \"tokens\": 1,\n    \"last_single\": 1,\n    \"fault\": false,\n    \"finished\": true,\n    \"enabled\": true\n  },\n  \"words\": 4194563,\n  \"words_per_second\": 244123.7522160773\n}\n[exit 0]\n",
+    "stderr": "",
+    "exit": 0
+  }
+]

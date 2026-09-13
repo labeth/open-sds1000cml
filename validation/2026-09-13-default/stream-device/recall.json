@@ -1,0 +1,51 @@
+[
+  {
+    "log": 0,
+    "capture": "bus: /dev/dcinv present\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\n{\n  \"buffer_words\": 0,\n  \"capture\": {\n    \"locked\": true,\n    \"ready\": true,\n    \"running\": false,\n    \"frozen\": true,\n    \"triggered\": true,\n    \"prefetched\": false,\n    \"words\": 524288,\n    \"start\": 0,\n    \"trigger_index\": 524271,\n    \"position\": 17,\n    \"origin\": 17,\n    \"revision\": 11,\n    \"map_id\": 57746,\n    \"sample_rate_hz\": 500000000,\n    \"decimation\": 1,\n    \"sample_bits\": 8,\n    \"fraction_bits\": 0,\n    \"samples_per_word\": 2,\n    \"interleaved\": true,\n    \"data_fault\": false\n  },\n  \"identity\": 23122,\n  \"length\": 524288,\n  \"map_id\": 57746,\n  \"origin\": 17,\n  \"position\": 17,\n  \"revision\": 11,\n  \"start\": 0,\n  \"status\": 628,\n  \"trigger_index\": 524271\n}\n[exit 0]\n"
+  },
+  {
+    "log": 0,
+    "result": {
+      "breaks": [
+        [
+          183600,
+          183600,
+          183584
+        ],
+        [
+          183601,
+          183585,
+          183601
+        ],
+        [
+          518160,
+          518160,
+          518144
+        ],
+        [
+          518161,
+          518145,
+          518161
+        ]
+      ],
+      "bytes": 2097152,
+      "first": 0,
+      "last": 524287,
+      "nonconsecutive_words": 4,
+      "profile": {
+        "Reads": 1699,
+        "Writes": 903,
+        "Pops": 129,
+        "Halfwords": 1048576,
+        "SkippedWords": 67630960,
+        "ReadNS": 10651800,
+        "WriteNS": 4359880,
+        "PopNS": 275201200
+      },
+      "recall_seconds": 0.65007928,
+      "seconds": 0.86271832,
+      "sha256": "9a021d89d0f11e93601020c3c17eee534b3450894f8d40fb55d9bc8927520044",
+      "validation_seconds": 0.21263904
+    }
+  }
+]

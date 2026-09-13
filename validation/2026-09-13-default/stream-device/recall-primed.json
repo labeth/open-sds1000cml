@@ -1,0 +1,242 @@
+[
+  {
+    "log": 0,
+    "capture": "bus: /dev/dcinv present\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\n{\n  \"buffer_words\": 0,\n  \"capture\": {\n    \"locked\": true,\n    \"ready\": true,\n    \"running\": false,\n    \"frozen\": true,\n    \"triggered\": true,\n    \"prefetched\": false,\n    \"words\": 524288,\n    \"start\": 0,\n    \"trigger_index\": 524271,\n    \"position\": 35,\n    \"origin\": 35,\n    \"revision\": 11,\n    \"map_id\": 57746,\n    \"sample_rate_hz\": 500000000,\n    \"decimation\": 1,\n    \"sample_bits\": 8,\n    \"fraction_bits\": 0,\n    \"samples_per_word\": 2,\n    \"interleaved\": true,\n    \"data_fault\": false\n  },\n  \"identity\": 23122,\n  \"length\": 524288,\n  \"map_id\": 57746,\n  \"origin\": 35,\n  \"position\": 35,\n  \"revision\": 11,\n  \"start\": 0,\n  \"status\": 116,\n  \"trigger_index\": 524271\n}\n[exit 0]\n",
+    "stderr": ""
+  },
+  {
+    "log": 0,
+    "repeat": 0,
+    "result": {
+      "breaks": null,
+      "bytes": 2097152,
+      "first": 0,
+      "last": 524287,
+      "nonconsecutive_words": 0,
+      "profile": {
+        "Reads": 1828,
+        "Writes": 1032,
+        "Pops": 129,
+        "Halfwords": 1048576,
+        "SkippedWords": 67630960,
+        "ReadNS": 11330520,
+        "WriteNS": 4643840,
+        "PopNS": 275230160
+      },
+      "recall_seconds": 0.65489776,
+      "seconds": 0.86758192,
+      "sha256": "ae42b13d7e0af3e77723caf8357d34c7e061526ed9eefeb67b04a0aaa69f33e2",
+      "validation_seconds": 0.21268416
+    }
+  },
+  {
+    "log": 0,
+    "repeat": 1,
+    "result": {
+      "breaks": null,
+      "bytes": 2097152,
+      "first": 0,
+      "last": 524287,
+      "nonconsecutive_words": 0,
+      "profile": {
+        "Reads": 1828,
+        "Writes": 1032,
+        "Pops": 129,
+        "Halfwords": 1048576,
+        "SkippedWords": 67630959,
+        "ReadNS": 11031520,
+        "WriteNS": 4412600,
+        "PopNS": 275672880
+      },
+      "recall_seconds": 0.6522016,
+      "seconds": 0.86439032,
+      "sha256": "ae42b13d7e0af3e77723caf8357d34c7e061526ed9eefeb67b04a0aaa69f33e2",
+      "validation_seconds": 0.21218872
+    }
+  },
+  {
+    "log": 0,
+    "repeat": 2,
+    "result": {
+      "breaks": null,
+      "bytes": 2097152,
+      "first": 0,
+      "last": 524287,
+      "nonconsecutive_words": 0,
+      "profile": {
+        "Reads": 1828,
+        "Writes": 1032,
+        "Pops": 129,
+        "Halfwords": 1048576,
+        "SkippedWords": 67630959,
+        "ReadNS": 17778280,
+        "WriteNS": 4423760,
+        "PopNS": 301168000
+      },
+      "recall_seconds": 0.68485948,
+      "seconds": 0.8958716,
+      "sha256": "ae42b13d7e0af3e77723caf8357d34c7e061526ed9eefeb67b04a0aaa69f33e2",
+      "validation_seconds": 0.21101212
+    }
+  },
+  {
+    "log": 4,
+    "capture": "bus: /dev/dcinv present\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\n{\n  \"buffer_words\": 0,\n  \"capture\": {\n    \"locked\": true,\n    \"ready\": true,\n    \"running\": false,\n    \"frozen\": true,\n    \"triggered\": true,\n    \"prefetched\": false,\n    \"words\": 524288,\n    \"start\": 0,\n    \"trigger_index\": 524271,\n    \"position\": 189,\n    \"origin\": 190,\n    \"revision\": 11,\n    \"map_id\": 57746,\n    \"sample_rate_hz\": 31250000,\n    \"decimation\": 16,\n    \"sample_bits\": 16,\n    \"fraction_bits\": 8,\n    \"samples_per_word\": 1,\n    \"interleaved\": true,\n    \"data_fault\": false\n  },\n  \"identity\": 23122,\n  \"length\": 524288,\n  \"map_id\": 57746,\n  \"origin\": 190,\n  \"position\": 189,\n  \"revision\": 11,\n  \"start\": 0,\n  \"status\": 628,\n  \"trigger_index\": 524271\n}\n[exit 0]\n",
+    "stderr": ""
+  },
+  {
+    "log": 4,
+    "repeat": 0,
+    "result": {
+      "breaks": null,
+      "bytes": 2097152,
+      "first": 0,
+      "last": 524287,
+      "nonconsecutive_words": 0,
+      "profile": {
+        "Reads": 1828,
+        "Writes": 1032,
+        "Pops": 129,
+        "Halfwords": 1048576,
+        "SkippedWords": 67630961,
+        "ReadNS": 11059000,
+        "WriteNS": 4446600,
+        "PopNS": 275240960
+      },
+      "recall_seconds": 0.65200508,
+      "seconds": 0.86390472,
+      "sha256": "ae42b13d7e0af3e77723caf8357d34c7e061526ed9eefeb67b04a0aaa69f33e2",
+      "validation_seconds": 0.21189964
+    }
+  },
+  {
+    "log": 4,
+    "repeat": 1,
+    "result": {
+      "breaks": null,
+      "bytes": 2097152,
+      "first": 0,
+      "last": 524287,
+      "nonconsecutive_words": 0,
+      "profile": {
+        "Reads": 1830,
+        "Writes": 1032,
+        "Pops": 129,
+        "Halfwords": 1048576,
+        "SkippedWords": 67630959,
+        "ReadNS": 11017280,
+        "WriteNS": 4503880,
+        "PopNS": 275663200
+      },
+      "recall_seconds": 0.652346,
+      "seconds": 0.86381336,
+      "sha256": "ae42b13d7e0af3e77723caf8357d34c7e061526ed9eefeb67b04a0aaa69f33e2",
+      "validation_seconds": 0.21146736
+    }
+  },
+  {
+    "log": 4,
+    "repeat": 2,
+    "result": {
+      "breaks": null,
+      "bytes": 2097152,
+      "first": 0,
+      "last": 524287,
+      "nonconsecutive_words": 0,
+      "profile": {
+        "Reads": 1828,
+        "Writes": 1032,
+        "Pops": 129,
+        "Halfwords": 1048576,
+        "SkippedWords": 67630959,
+        "ReadNS": 11033520,
+        "WriteNS": 4424600,
+        "PopNS": 275597240
+      },
+      "recall_seconds": 0.65224588,
+      "seconds": 0.86299068,
+      "sha256": "ae42b13d7e0af3e77723caf8357d34c7e061526ed9eefeb67b04a0aaa69f33e2",
+      "validation_seconds": 0.2107448
+    }
+  },
+  {
+    "log": 8,
+    "capture": "bus: /dev/dcinv present\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\n{\n  \"buffer_words\": 0,\n  \"capture\": {\n    \"locked\": true,\n    \"ready\": true,\n    \"running\": false,\n    \"frozen\": true,\n    \"triggered\": true,\n    \"prefetched\": false,\n    \"words\": 524288,\n    \"start\": 0,\n    \"trigger_index\": 524271,\n    \"position\": 1494,\n    \"origin\": 1495,\n    \"revision\": 11,\n    \"map_id\": 57746,\n    \"sample_rate_hz\": 1953125,\n    \"decimation\": 256,\n    \"sample_bits\": 16,\n    \"fraction_bits\": 8,\n    \"samples_per_word\": 1,\n    \"interleaved\": true,\n    \"data_fault\": false\n  },\n  \"identity\": 23122,\n  \"length\": 524288,\n  \"map_id\": 57746,\n  \"origin\": 1495,\n  \"position\": 1494,\n  \"revision\": 11,\n  \"start\": 0,\n  \"status\": 116,\n  \"trigger_index\": 524271\n}\n[exit 0]\n",
+    "stderr": ""
+  },
+  {
+    "log": 8,
+    "repeat": 0,
+    "result": {
+      "breaks": null,
+      "bytes": 2097152,
+      "first": 0,
+      "last": 524287,
+      "nonconsecutive_words": 0,
+      "profile": {
+        "Reads": 1828,
+        "Writes": 1032,
+        "Pops": 129,
+        "Halfwords": 1048576,
+        "SkippedWords": 67630961,
+        "ReadNS": 10953520,
+        "WriteNS": 4402520,
+        "PopNS": 275281640
+      },
+      "recall_seconds": 0.65177868,
+      "seconds": 0.86364248,
+      "sha256": "ae42b13d7e0af3e77723caf8357d34c7e061526ed9eefeb67b04a0aaa69f33e2",
+      "validation_seconds": 0.2118638
+    }
+  },
+  {
+    "log": 8,
+    "repeat": 1,
+    "result": {
+      "breaks": null,
+      "bytes": 2097152,
+      "first": 0,
+      "last": 524287,
+      "nonconsecutive_words": 0,
+      "profile": {
+        "Reads": 1828,
+        "Writes": 1032,
+        "Pops": 129,
+        "Halfwords": 1048576,
+        "SkippedWords": 67630959,
+        "ReadNS": 10887000,
+        "WriteNS": 4519600,
+        "PopNS": 275730480
+      },
+      "recall_seconds": 0.65118348,
+      "seconds": 0.86214424,
+      "sha256": "ae42b13d7e0af3e77723caf8357d34c7e061526ed9eefeb67b04a0aaa69f33e2",
+      "validation_seconds": 0.21096076
+    }
+  },
+  {
+    "log": 8,
+    "repeat": 2,
+    "result": {
+      "breaks": null,
+      "bytes": 2097152,
+      "first": 0,
+      "last": 524287,
+      "nonconsecutive_words": 0,
+      "profile": {
+        "Reads": 1828,
+        "Writes": 1032,
+        "Pops": 129,
+        "Halfwords": 1048576,
+        "SkippedWords": 67630959,
+        "ReadNS": 11212240,
+        "WriteNS": 4445920,
+        "PopNS": 275314840
+      },
+      "recall_seconds": 0.65117976,
+      "seconds": 0.86369632,
+      "sha256": "ae42b13d7e0af3e77723caf8357d34c7e061526ed9eefeb67b04a0aaa69f33e2",
+      "validation_seconds": 0.21251656
+    }
+  }
+]

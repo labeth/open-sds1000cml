@@ -17,7 +17,8 @@ module acq_sram_top(
  wire core,sample_clk,locked;
 `ifdef STREAM_CAPTURE
  reg [1:0] stream_cfg=0,stream_mode=0;
- wire streaming_fault;
+ reg [1:0] stream_rise_enable=0,stream_fall_enable=0;reg stream_auto=0;
+ reg streaming_fault=0;
 `endif
 `ifdef INTERLEAVE
  wire halfclk;bench_pll pll(mclk_in,core,sample_clk,locked,halfclk);
@@ -37,11 +38,14 @@ module acq_sram_top(
  wire [31:0] selected_word=decim_log==0 ? il_raw_word : precision_word;
  wire selected_valid=decim_log==0 ? il_raw_valid : precision_valid;
  wire [31:0] selected_trigger=decim_log==0 ? il_raw_word : {precision_word[31:24],precision_word[15:8],precision_word[31:24],precision_word[15:8]};
- wire stream_fault=il_fault || precision_fault
 `ifdef STREAM_CAPTURE
- || streaming_fault
+ // Faults invalidate the whole record. One extra detection clock does not
+ // turn an overflow into valid data and isolates the shutdown fanout.
+ reg stream_fault=0;
+ always @(posedge core)if(!frontend_run)stream_fault<=0;else stream_fault<=il_fault || precision_fault || streaming_fault;
+`else
+ wire stream_fault=il_fault || precision_fault;
 `endif
- ;
 `else
  wire [31:0] selected_word=il_raw_word,selected_trigger=il_raw_word;
  wire selected_valid=il_raw_valid,stream_fault=il_fault;
@@ -76,7 +80,11 @@ module acq_sram_top(
 `endif
   il_word1<=source_word;il_word<=il_word1;il_word_stage<=il_word;
   write_offer<=source_valid && write_ready;
+`ifdef STREAM_CAPTURE
+  il_fire_stage<=force_trigger || stream_auto || (|(rise_ch & stream_rise_enable)) || (|(fall_ch & stream_fall_enable));
+`else
   il_fire_stage<=cfg[0] ? il_crossing : (!cfg[4] || force_trigger);
+`endif
   if(!frontend_run)begin il_valid1<=0;il_valid<=0;end
  end
  reg snap_request=0,snap_busy=0;wire snap_ack;
@@ -210,11 +218,7 @@ module acq_sram_top(
   .command(command),.command_read(command_read),.command_discard(command_discard),.command_continue(command_continue),.command_count(command_count),
   .ready(ready),.write_data(write_data),.write_valid(write_valid),.write_stop(write_stop),.write_ready(write_ready),
   .read_data(read_data),.read_valid(read_valid),.done(transport_done),.position(position),.dq(dq),.k1(k1),.k2(k2),.g1(g1));
-`ifdef STREAM_CAPTURE
- wire record_fire=stream_mode[1] ? force_trigger : fire;
-`else
  wire record_fire=fire;
-`endif
  sram_record #(.CONFIG_VALIDATED(1)) record(.clk(core),.reset(1'b0),.arm(arm),.halt(halt),.pre_count(pre_cfg),.post_count(post_cfg),
   .step(step),.trigger(record_fire),.running(running),.done(record_done),.triggered(triggered),.config_error(config_error),
   .write_addr(write_addr),.record_start(record_start),.record_length(record_length),.trigger_index(trigger_index),.filled(filled));
@@ -249,9 +253,18 @@ module acq_sram_top(
  reg stream_was_running=0;
  always @(posedge core)stream_was_running<=running;
  wire stream_reset=!stream_mode[0] || priming || arm;
+ // Isolate the live-stream tap from SRAM arm/priming decode fanout. Stop and
+ // data validity take the same extra clock, retaining the last accepted word.
+ (* preserve, dont_merge *) reg [31:0] stream_tap_data=0;
+ (* preserve *) reg stream_tap_valid=0,stream_tap_stop=0;
+ always @(posedge core)begin
+  stream_tap_data<=cfg[0] ? capture_word : ramp; // priming data is invalid and need not select zero
+  stream_tap_valid<=stream_mode[0] && write_valid && !dummy_write && !halt;
+  stream_tap_stop<=stream_was_running && !running;
+ end
  stream_packetizer stream_pack(.reset(stream_reset),.word_clk(core),.packet_clk(halfclk),
-  .word_valid(stream_mode[0] && write_valid && !dummy_write && !halt),.word_data(write_data),
-  .stop(stream_was_running && !running),.fault(packetizer_fault),.finished(stream_finished),
+  .word_valid(stream_tap_valid),.word_data(stream_tap_data),
+  .stop(stream_tap_stop),.fault(packetizer_fault),.finished(stream_finished),
   .packet_valid(stream_packet_valid),.packet_data(stream_packet_data),.packet_single(stream_packet_single),.packet_seal(stream_packet_seal));
  stream_banks #(.BANK_AW(BUF_AW-2)) stream_queue(.reset(stream_reset),.producer_clk(halfclk),.host_clk(clk),
   .packet_valid(stream_packet_valid),.packet_data(stream_packet_data),.packet_single(stream_packet_single),.seal(stream_packet_seal),
@@ -265,7 +278,7 @@ module acq_sram_top(
   packet_fault_cpu<={packet_fault_cpu[1:0],packetizer_fault};
   stream_finished_cpu<={stream_finished_cpu[1:0],stream_finished};stream_enabled_cpu<={stream_enabled_cpu[1:0],stream_mode[0]};
  end
- assign streaming_fault=stream_mode[0] && (packetizer_fault || bank_fault_s[2]);
+ always @(posedge core)if(stream_reset)streaming_fault<=0;else streaming_fault<=stream_mode[0] && (packetizer_fault || bank_fault_s[2]);
  always @(posedge halfclk)begin
   packet_seen<=packet_toggle;
   if(stream_mode[0])begin if(stream_write)buffer_mem64[stream_address]<=stream_data;end
@@ -304,6 +317,11 @@ module acq_sram_top(
   if(config_idle)begin cfg<=config_word;level_l<=level;
 `ifdef STREAM_CAPTURE
    stream_mode<=stream_cfg;
+   stream_auto<=!stream_cfg[1] && !config_word[4];
+   stream_rise_enable[0]<=!stream_cfg[1] && config_word[0] && config_word[4] && !config_word[5] && !config_word[6];
+   stream_rise_enable[1]<=!stream_cfg[1] && config_word[0] && config_word[4] && !config_word[5] && config_word[6];
+   stream_fall_enable[0]<=!stream_cfg[1] && config_word[0] && config_word[4] && config_word[5] && !config_word[6];
+   stream_fall_enable[1]<=!stream_cfg[1] && config_word[0] && config_word[4] && config_word[5] && config_word[6];
 `endif
   end
 `ifdef INTERLEAVE

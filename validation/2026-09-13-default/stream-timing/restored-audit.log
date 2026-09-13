@@ -1,0 +1,59 @@
+Info: *******************************************************************
+Info: Running Quartus Prime Timing Analyzer
+    Info: Version 21.1.0 Build 842 10/21/2021 SJ Lite Edition
+    Info: Copyright (C) 2021  Intel Corporation. All rights reserved.
+    Info: Your use of Intel Corporation's design tools, logic functions 
+    Info: and other software and tools, and any partner logic 
+    Info: functions, and any output files from any of the foregoing 
+    Info: (including device programming or simulation files), and any 
+    Info: associated documentation or information are expressly subject 
+    Info: to the terms and conditions of the Intel Program License 
+    Info: Subscription Agreement, the Intel Quartus Prime License Agreement,
+    Info: the Intel FPGA IP License Agreement, or other applicable license
+    Info: agreement, including, without limitation, that your use is for
+    Info: the sole purpose of programming logic devices manufactured by
+    Info: Intel and sold by Intel or its authorized distributors.  Please
+    Info: refer to the applicable agreement for further details, at
+    Info: https://fpgasoftware.intel.com/eula.
+    Info: Processing started: Mon Sep 14 00:03:00 2026
+Info: Command: quartus_sta -t /home/labeth/ws/open-sds1000cml-acq2/fpga/acq_sram/stream_cdc_audit.tcl
+Info (20032): Parallel compilation is enabled and will use up to 2 processors
+Info (21076): High junction temperature operating condition is not set. Assuming a default value of '85'.
+Info (21076): Low junction temperature operating condition is not set. Assuming a default value of '0'.
+Info (332164): Evaluating HDL-embedded SDC commands
+    Info (332165): Entity altpll_nim1
+        Info (332166): set_false_path -from ** -to *phasedone_state* 
+        Info (332166): set_false_path -from ** -to *internal_phasestep* 
+    Info (332165): Entity dcfifo_t9i1
+        Info (332166): set_false_path -from *rdptr_g* -to *ws_dgrp|dffpipe_fd9:dffpipe17|dffe18a* 
+        Info (332166): set_false_path -from *delayed_wrptr_g* -to *rs_dgwp|dffpipe_ed9:dffpipe14|dffe15a* 
+    Info (332165): Entity dcfifo_ten1
+        Info (332166): set_false_path -from *rdptr_g* -to *ws_dgrp|dffpipe_hd9:dffpipe10|dffe11a* 
+        Info (332166): set_false_path -from *delayed_wrptr_g* -to *rs_dgwp|dffpipe_gd9:dffpipe7|dffe8a* 
+Warning (332174): Ignored filter at stream_cdc_audit.tcl(5): *phasedone_state* could not be matched with a clock or keeper or register or port or pin or cell or partition File: /home/labeth/ws/open-sds1000cml-acq2/fpga/acq_sram/stream_cdc_audit.tcl Line: 5
+Warning (332049): Ignored set_false_path at stream_cdc_audit.tcl(5): Argument <to> is not an object ID File: /home/labeth/ws/open-sds1000cml-acq2/fpga/acq_sram/stream_cdc_audit.tcl Line: 5
+    Info (332050): read_sdc File: /home/labeth/ws/open-sds1000cml-acq2/fpga/acq_sram/stream_cdc_audit.tcl Line: 5
+Warning (332174): Ignored filter at stream_cdc_audit.tcl(5): *internal_phasestep* could not be matched with a clock or keeper or register or port or pin or cell or partition File: /home/labeth/ws/open-sds1000cml-acq2/fpga/acq_sram/stream_cdc_audit.tcl Line: 5
+Warning (332049): Ignored set_false_path at stream_cdc_audit.tcl(5): Argument <to> is not an object ID File: /home/labeth/ws/open-sds1000cml-acq2/fpga/acq_sram/stream_cdc_audit.tcl Line: 5
+    Info (332050): read_sdc File: /home/labeth/ws/open-sds1000cml-acq2/fpga/acq_sram/stream_cdc_audit.tcl Line: 5
+Info (332104): Reading SDC File: 'bench.sdc'
+Info (332110): Deriving PLL clocks
+    Info (332110): create_generated_clock -source {pll|pll|auto_generated|pll1|inclk[0]} -divide_by 2 -multiply_by 5 -duty_cycle 50.00 -name {pll|pll|auto_generated|pll1|clk[0]} {pll|pll|auto_generated|pll1|clk[0]}
+    Info (332110): create_generated_clock -source {pll|pll|auto_generated|pll1|inclk[0]} -divide_by 2 -multiply_by 5 -phase 90.00 -duty_cycle 50.00 -name {pll|pll|auto_generated|pll1|clk[1]} {pll|pll|auto_generated|pll1|clk[1]}
+    Info (332110): create_generated_clock -source {pll|pll|auto_generated|pll1|inclk[0]} -divide_by 4 -multiply_by 5 -duty_cycle 50.00 -name {pll|pll|auto_generated|pll1|clk[2]} {pll|pll|auto_generated|pll1|clk[2]}
+    Info (332110): create_generated_clock -source {frontend|clocks|p|auto_generated|pll1|inclk[0]} -phase 108.00 -duty_cycle 50.00 -name {frontend|clocks|p|auto_generated|pll1|clk[0]} {frontend|clocks|p|auto_generated|pll1|clk[0]}
+    Info (332110): create_generated_clock -source {frontend|clocks|p|auto_generated|pll1|inclk[0]} -phase 144.00 -duty_cycle 50.00 -name {frontend|clocks|p|auto_generated|pll1|clk[1]} {frontend|clocks|p|auto_generated|pll1|clk[1]}
+    Info (332110): create_generated_clock -source {frontend|clocks|p|auto_generated|pll1|inclk[0]} -phase 72.00 -duty_cycle 50.00 -name {frontend|clocks|p|auto_generated|pll1|clk[2]} {frontend|clocks|p|auto_generated|pll1|clk[2]}
+    Info (332110): create_generated_clock -source {frontend|clocks|p|auto_generated|pll1|inclk[0]} -duty_cycle 50.00 -name {frontend|clocks|p|auto_generated|pll1|clk[3]} {frontend|clocks|p|auto_generated|pll1|clk[3]}
+    Info (332110): create_generated_clock -source {frontend|clocks|p|auto_generated|pll1|inclk[0]} -phase 36.00 -duty_cycle 50.00 -name {frontend|clocks|p|auto_generated|pll1|clk[4]} {frontend|clocks|p|auto_generated|pll1|clk[4]}
+Info (332151): Clock uncertainty is not calculated until you update the timing netlist.
+Info (332123): Deriving Clock Uncertainty. Please refer to report_sdc in the Timing Analyzer to see clock uncertainties.
+Info (332123): Deriving Clock Uncertainty. Please refer to report_sdc in the Timing Analyzer to see clock uncertainties.
+Info (332123): Deriving Clock Uncertainty. Please refer to report_sdc in the Timing Analyzer to see clock uncertainties.
+STREAM_CDC_PASS: every bundled-data endpoint timed, physical delay <= 8 ns
+Info (23030): Evaluation of Tcl script /home/labeth/ws/open-sds1000cml-acq2/fpga/acq_sram/stream_cdc_audit.tcl was successful
+Info: Quartus Prime Timing Analyzer was successful. 0 errors, 4 warnings
+    Info: Peak virtual memory: 479 megabytes
+    Info: Processing ended: Mon Sep 14 00:03:04 2026
+    Info: Elapsed time: 00:00:04
+    Info: Total CPU time (on all processors): 00:00:04

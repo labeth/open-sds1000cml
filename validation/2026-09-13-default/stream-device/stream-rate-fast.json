@@ -1,0 +1,20 @@
+[
+  {
+    "log": 10,
+    "stdout": "bus: /dev/dcinv present\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\nprofile timing: rdcycle=18 rdaccess=8 oe=4..16 cs=0..18 gap=5 -> rdcycle=10 rdaccess=8 oe=4..10 cs=0..10 gap=5\n{\n  \"blocks\": 513,\n  \"bytes\": 4196708,\n  \"first\": 0,\n  \"last\": 1049176,\n  \"nonconsecutive_words\": 0,\n  \"profile\": {\n    \"Reads\": 198107,\n    \"Writes\": 1548,\n    \"Pops\": 513,\n    \"Halfwords\": 2098354,\n    \"SkippedWords\": 0,\n    \"ReadNS\": 913597160,\n    \"WriteNS\": 6703320,\n    \"PopNS\": 385926200\n  },\n  \"seconds\": 2.14957568,\n  \"stream\": {\n    \"ready\": 0,\n    \"tokens\": 1,\n    \"last_single\": 1,\n    \"fault\": false,\n    \"finished\": true,\n    \"enabled\": true\n  },\n  \"words\": 1049177,\n  \"words_per_second\": 488085.62999745144\n}\n[exit 0]\n",
+    "stderr": "",
+    "exit": 0
+  },
+  {
+    "log": 9,
+    "stdout": "bus: /dev/dcinv present\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\nprofile timing: rdcycle=18 rdaccess=8 oe=4..16 cs=0..18 gap=5 -> rdcycle=10 rdaccess=8 oe=4..10 cs=0..10 gap=5\n{\n  \"blocks\": 513,\n  \"bytes\": 4198452,\n  \"first\": 0,\n  \"last\": 1049612,\n  \"nonconsecutive_words\": 0,\n  \"profile\": {\n    \"Reads\": 67697,\n    \"Writes\": 1548,\n    \"Pops\": 513,\n    \"Halfwords\": 2099226,\n    \"SkippedWords\": 0,\n    \"ReadNS\": 327596240,\n    \"WriteNS\": 7185560,\n    \"PopNS\": 385707800\n  },\n  \"seconds\": 1.07558688,\n  \"stream\": {\n    \"ready\": 0,\n    \"tokens\": 1,\n    \"last_single\": 1,\n    \"fault\": false,\n    \"finished\": true,\n    \"enabled\": true\n  },\n  \"words\": 1049613,\n  \"words_per_second\": 975851.434706976\n}\n[exit 0]\n",
+    "stderr": "",
+    "exit": 0
+  },
+  {
+    "log": 8,
+    "stdout": "{\n  \"exit\": 2,\n  \"output\": \"bus: /dev/dcinv present\\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\\nprofile timing: rdcycle=18 rdaccess=8 oe=4..16 cs=0..18 gap=5 -\\u003e rdcycle=10 rdaccess=8 oe=4..10 cs=0..10 gap=5\\npanic: sramcapture: stream changed or faulted during DMA\\n\\ngoroutine 1 [running]:\\nmain.main.func4(...)\\n\\t/home/labeth/ws/open-sds1000cml-acq2/app/cmd/acqsram/main.go:115\\nmain.main()\\n\\t/home/labeth/ws/open-sds1000cml-acq2/app/cmd/acqsram/main.go:225 +0x5cc4\\n\"\n}\n",
+    "stderr": "error: device error: exit status 2\n",
+    "exit": 1
+  }
+]

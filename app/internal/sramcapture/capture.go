@@ -33,6 +33,8 @@ type Bus interface {
 
 type Capture struct {
 	recallScratch []byte
+	streamHalves  []uint16
+	streamBytes   []byte
 	mu            sync.Mutex
 	bus           Bus
 	beats         atomic.Uint64
@@ -512,7 +514,7 @@ func (c *Capture) recall(ctx context.Context, offset, count uint32, dst io.Write
 			return written, fmt.Errorf("sramcapture: short read buffer: got %d want %d", got, n+prefix)
 		}
 		if m.Revision >= 8 {
-			if forward {
+			if forward || m.Revision >= 10 {
 				// Prime the non-burst RAM address to the same first word before
 				// switching the host read mux to the DMA burst selector.
 				if e = c.write(16, uint16(prefix)); e != nil {

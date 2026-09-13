@@ -1,9 +1,11 @@
 # Experimental revision 11 streaming ABI
 
-This is integrated simulation HDL behind `STREAM_CAPTURE`, not a qualified FPGA
-image. `build.py --stream` remains disabled until physical CDC constraints and
-qualification are in place. The production revision 10 path is unchanged when
-this define is absent. Do not infer a sustainable rate from the digital tests.
+This is experimental revision 11 HDL behind `STREAM_CAPTURE`. Build with
+`build.py --interleave --precision --hostfix --stream --experimental --seed=13`.
+The seed 13 candidate closes internal timing and passes the explicit bundled
+CDC audit. It has been loaded on the device after a cold power cycle and tested
+with counter streams. It is not yet the qualified default application image.
+The production revision 10 path is unchanged when this define is absent.
 
 ## Capture and ownership
 
@@ -60,16 +62,38 @@ edge trigger while recording continuously; command 4 can still force a trigger
 and command 5 halts. This keeps SRAM history alongside the ARM stream. Software
 trigger/ring-buffer policy and host integration are not implemented yet.
 
-## Remaining physical work
+## Physical constraints and current device evidence
 
-The shared-RAM mux, acknowledgement synchronizers, reset paths and bundled
-payload/descriptor buses need explicit implementation constraints and inspection.
-The current broad asynchronous clock-group cut hides CPU-domain descriptor
-paths; it cannot be treated as proof of their maximum physical delay. Replace
-that cut with appropriate specific exceptions/bounds for the new crossings
-before accepting a timing report. Quartus 21.1's set_clock_groups does not offer
-an allow_paths option (checked against the installed tool help).
+`stream.sdc` replaces the broad CPU/PLL cut for descriptor endpoints with
+explicit 8 ns maximum and 0 ns minimum delay constraints. Packet mailbox
+payloads have the same bounds. `stream_cdc_audit.tcl` checks every surviving
+endpoint in all three timing corners, including physical data delay. A negative
+control reintroducing the broad cut fails the audit as an untimed endpoint.
 
-After timing closes, device tests must verify full-rate counter continuity,
-stalls/overrun, reset/rearm, stop boundaries, preserved SRAM recall, ADC mapping
-and every supported streaming rate. No stream image has been loaded yet.
+Seed 13 RBF SHA256:
+`2ff6184c66bdd4b3531569ee872835de24d8548bd3fea7344d5c5add429c6535`.
+Evidence is in `validation/2026-09-13-default/stream-device/` and
+`stream-timing/` relative to the repository root.
+
+Nine full 2 MiB counter recalls passed after applying indexed-output priming to
+legacy revision >=10 recall too. Without it, the initial revision 11 test had
+two incorrect block-start words. The original failure is retained.
+
+With temporary CS1 timing cycle=10, access=8, gap=5, counter streams at /1024
+and /512 each passed more than 4,194,304 consecutive words (16 MiB), exceeding
+SRAM capacity eight times. /256 failed with a streaming overrun during DMA.
+The DMA portion alone measures about 10.9 MB/s; this is not a sustainable
+end-to-end rate guarantee. The two 8 KiB banks leave only about 1.05 ms to
+consume and release a full bank at /256, including scheduling and copying.
+
+`acqsram stream-profile LOG WORDS` checks full counter continuity, drains the
+partial final bank, and releases banks only after copying. The optional
+`SCOPE_PROFILE_RD_CYCLE`, `SCOPE_PROFILE_RD_ACCESS`, and `SCOPE_PROFILE_GAP`
+settings apply temporarily to both recall and stream diagnostics and restore
+on exit. Failure halts capture and retains the failed epoch for inspection;
+a new arm starts a new epoch.
+
+Remaining work includes /256 overrun diagnosis, longer loaded-system tests,
+physical ADC stream mapping and trigger checks, ARM history and conditioning,
+and integration with every timebase. Counter tests do not prove analog ENOB
+or correct application behavior. Do not promote this candidate to default yet.
