@@ -1,0 +1,19 @@
+[app] start pid=1687 version=dev (unknown, unknown)
+[app] inherited /dev/Gpmc fd=5  /dev/fpga_key fd=6
+[app] bus: /dev/dcinv present
+[app] bus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)
+[app] bus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)
+[app] SRAM: full counter verified, fast GPMC timing=true
+[app] bus up, fabric verified=true, fast drain=true
+[app] cal: loaded /usr/bin/siglent/firmdata0/calibration.dat
+[app] cal source: file (C1@1V zero=10445 gainDAC=57)
+[app] SPI front end up (seeded to boot detent, not emitted)
+[app] panel controller up (fpga_key fd=6)
+[app] settings: no saved setup at /dev/acq-settings.json — defaults
+[app] engine: full-depth SRAM capture; software protocol qualification has capture dead time
+[app] lcd: renderer up on /dev/fb0
+[app] vxi11: DEVICE_CORE registered on tcp/58742
+[app] scpi: VXI-11 DEVICE_CORE on tcp/58742
+[app] web ui listening on :8080
+[app] health: DIAG HEARTBEAT — fabric verified and engine alive, no coherent frames yet; token tagged mode=diag (set SCOPE_DIAG_HEARTBEAT=0 to disable)
+[app] health: 3 coherent frames — health token attests FRAMES

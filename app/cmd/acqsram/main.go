@@ -115,6 +115,44 @@ func main() {
 		}
 	}
 	switch os.Args[1] {
+	case "burst-probe":
+		if os.Getenv("SCOPE_PROBE_SLOW") == "1" {
+			port, err := bus.OpenTimingPort()
+			must(err)
+			defer port.Close()
+			old, err := port.Read()
+			must(err)
+			defer func() { must(port.Restore(old)) }()
+			must(port.Apply(old.WithRdCycle(31).WithRdAccess(13).WithOEOff(16).WithCSRdOff(20)))
+		}
+		op, n := num(os.Args[2]), num(os.Args[3])
+		if (op != 2 && op != 7) || n == 0 || n > 4096 || rd(13) < 8 || rd(1)&20 != 20 {
+			panic("burst-probe needs a frozen revision >=8, operation 2/7 and 1..4096 words")
+		}
+		before := r32(8)
+		setCount(n)
+		command(uint16(op))
+		waitReady()
+		if uint32(rd(12)) != n {
+			panic("short probe buffer")
+		}
+		indexed := make([]uint32, n)
+		for i := range indexed {
+			wr(16, uint16(i))
+			for j := 0; j < 4; j++ {
+				rd(0)
+			}
+			indexed[i] = r32(17)
+		}
+		wr(17, 0)
+		halves := make([]uint16, 2*n)
+		must(dev.PopWordsChecked(25, halves))
+		popped := make([]uint32, n)
+		for i := range popped {
+			popped[i] = uint32(halves[2*i]) | uint32(halves[2*i+1])<<16
+		}
+		emit(map[string]any{"operation": op, "before": before, "after": r32(8), "origin": r32(10), "start": r32(4), "indexed": indexed, "popped": popped})
+		return
 	case "profile-recall":
 		off, n := num(os.Args[2]), num(os.Args[3])
 		// Scope timing changes to this diagnostic process, restoring on exit.
@@ -131,6 +169,9 @@ func main() {
 			if os.Getenv("SCOPE_PROFILE_GAP") != "" {
 				next = next.WithGap(num(os.Getenv("SCOPE_PROFILE_GAP")))
 			}
+			if os.Getenv("SCOPE_PROFILE_RD_CYCLE") == "31" {
+				next = next.WithOEOff(16).WithCSRdOff(20)
+			}
 			must(port.Apply(next))
 			fmt.Fprintf(os.Stderr, "profile timing: %s -> %s\n", old.String(), next.String())
 		}
@@ -138,10 +179,14 @@ func main() {
 		check := &counterCheck{}
 		hash := sha256.New()
 		began := time.Now()
-		written, err := capture.Recall(ctx, off, n, io.MultiWriter(hash, check))
+		recall := capture.Recall
+		if os.Getenv("SCOPE_RECALL_FORWARD") == "1" {
+			recall = capture.RecallForward
+		}
+		written, err := recall(ctx, off, n, io.MultiWriter(hash, check))
 		must(err)
 		emit(map[string]any{"bytes": written, "seconds": time.Since(began).Seconds(), "profile": profile,
-			"sha256": fmt.Sprintf("%x", hash.Sum(nil)), "first": check.first, "last": check.last, "nonconsecutive_words": check.bad})
+			"sha256": fmt.Sprintf("%x", hash.Sum(nil)), "first": check.first, "last": check.last, "nonconsecutive_words": check.bad, "breaks": check.breaks})
 		return
 	case "recall-warm":
 		path := os.Args[2]
@@ -195,7 +240,7 @@ func main() {
 			done += chunk
 		}
 		must(f.Close())
-		emit(map[string]any{"words": n, "bytes": n * 4, "prefix": prefix, "sha256": fmt.Sprintf("%x", hash.Sum(nil)), "seconds": time.Since(began).Seconds(), "first": check.first, "last": check.last, "nonconsecutive_words": check.bad, "path": path})
+		emit(map[string]any{"words": n, "bytes": n * 4, "prefix": prefix, "sha256": fmt.Sprintf("%x", hash.Sum(nil)), "seconds": time.Since(began).Seconds(), "first": check.first, "last": check.last, "nonconsecutive_words": check.bad, "breaks": check.breaks, "path": path})
 		return
 	case "readtrace":
 		emit(map[string]any{"first": r32(20), "second": r32(22), "third_low": rd(24)})
@@ -331,7 +376,7 @@ func main() {
 		if e = f.Close(); e != nil {
 			panic(e)
 		}
-		emit(map[string]any{"words": n, "bytes": 4 * n, "sha256": fmt.Sprintf("%x", hash.Sum(nil)), "seconds": time.Since(began).Seconds(), "first": check.first, "last": check.last, "nonconsecutive_words": check.bad, "path": path})
+		emit(map[string]any{"words": n, "bytes": 4 * n, "sha256": fmt.Sprintf("%x", hash.Sum(nil)), "seconds": time.Since(began).Seconds(), "first": check.first, "last": check.last, "nonconsecutive_words": check.bad, "breaks": check.breaks, "path": path})
 		return
 	case "status":
 	default:
@@ -374,7 +419,10 @@ func setCount(n uint32) { wr(8, uint16(n)); wr(9, uint16(n>>16)) }
 
 // Counter diagnostics are independent of the capture backend; ADC records
 // naturally have nonconsecutive values and are verified by repeat hashes.
-type counterCheck struct{ words, first, last, bad uint32 }
+type counterCheck struct {
+	words, first, last, bad uint32
+	breaks                  [][3]uint32
+}
 
 func (c *counterCheck) Write(data []byte) (int, error) {
 	if len(data)%4 != 0 {
@@ -386,6 +434,9 @@ func (c *counterCheck) Write(data []byte) (int, error) {
 			c.first = v
 		} else if v != c.last+1 {
 			c.bad++
+			if len(c.breaks) < 32 {
+				c.breaks = append(c.breaks, [3]uint32{c.words, c.last + 1, v})
+			}
 		}
 		c.last = v
 		c.words++

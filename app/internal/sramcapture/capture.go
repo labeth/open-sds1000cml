@@ -32,9 +32,10 @@ type Bus interface {
 }
 
 type Capture struct {
-	mu    sync.Mutex
-	bus   Bus
-	beats atomic.Uint64
+	recallScratch []byte
+	mu            sync.Mutex
+	bus           Bus
+	beats         atomic.Uint64
 }
 
 type Source uint8
@@ -402,6 +403,17 @@ func (c *Capture) Snapshot(ctx context.Context) (out [10]uint8, err error) {
 // Zero count means an empty window, not full depth. Byte layout is documented
 // on Config; the caller can use 2*i and 2*i+1 to split channels.
 func (c *Capture) Recall(ctx context.Context, offset, count uint32, dst io.Writer) (written int64, err error) {
+	return c.recall(ctx, offset, count, dst, false)
+}
+
+// RecallForward stages a frozen window in two forward passes. Fresh reads retain
+// their warm-up prefix; a second pass fills the gaps left between bulk reads.
+// No data reaches dst until all SRAM reads have succeeded.
+func (c *Capture) RecallForward(ctx context.Context, offset, count uint32, dst io.Writer) (int64, error) {
+	return c.recall(ctx, offset, count, dst, true)
+}
+
+func (c *Capture) recall(ctx context.Context, offset, count uint32, dst io.Writer, forward bool) (written int64, err error) {
 	if err = ctx.Err(); err != nil {
 		return 0, err
 	}
@@ -437,17 +449,27 @@ func (c *Capture) Recall(ctx context.Context, offset, count uint32, dst io.Write
 			return written, fmt.Errorf("sramcapture: unknown read buffer %d", bufferWords)
 		}
 	}
+	if forward && m.Revision != 10 {
+		return 0, fmt.Errorf("sramcapture: forward recall requires revision 10")
+	}
+	if forward {
+		if cap(c.recallScratch) < int(count*4) {
+			c.recallScratch = make([]byte, count*4)
+		}
+		c.recallScratch = c.recallScratch[:count*4]
+	}
+	spans := recallSpans(count, bufferWords-prefix, 0)
+	if forward {
+		spans = recallSpans(count, bufferWords-prefix, prefix+2)
+	}
 	data := make([]byte, bufferWords*4)
 	halves := make([]uint16, bufferWords*2)
-	for copied := uint32(0); copied < count; {
+	for _, span := range spans {
 		if err = ctx.Err(); err != nil {
 			return written, err
 		}
-		n := count - copied
-		if n > bufferWords-prefix {
-			n = bufferWords - prefix
-		}
-		target := (m.Origin + m.Start + offset + copied - prefix) & addressMask
+		n := span.count
+		target := (m.Origin + m.Start + offset + span.offset - prefix) & addressMask
 		position, e := c.read32(8)
 		if e != nil {
 			return written, e
@@ -490,6 +512,16 @@ func (c *Capture) Recall(ctx context.Context, offset, count uint32, dst io.Write
 			return written, fmt.Errorf("sramcapture: short read buffer: got %d want %d", got, n+prefix)
 		}
 		if m.Revision >= 8 {
+			if forward {
+				// Prime the non-burst RAM address to the same first word before
+				// switching the host read mux to the DMA burst selector.
+				if e = c.write(16, uint16(prefix)); e != nil {
+					return written, e
+				}
+				if _, e = c.read(17); e != nil {
+					return written, e
+				}
+			}
 			if e = c.write(17, uint16(prefix*2)); e != nil {
 				return written, e
 			}
@@ -528,6 +560,10 @@ func (c *Capture) Recall(ctx context.Context, offset, count uint32, dst io.Write
 				binary.LittleEndian.PutUint32(data[4*i:], v)
 			}
 		}
+		if forward {
+			copy(c.recallScratch[span.offset*4:], data[:4*n])
+			continue
+		}
 		nn, e := dst.Write(data[:4*n])
 		written += int64(nn)
 		if e != nil {
@@ -536,7 +572,38 @@ func (c *Capture) Recall(ctx context.Context, offset, count uint32, dst io.Write
 		if nn != int(4*n) {
 			return written, io.ErrShortWrite
 		}
-		copied += n
+	}
+	if forward && count != 0 {
+		nn, e := dst.Write(c.recallScratch)
+		if e == nil && nn != len(c.recallScratch) {
+			e = io.ErrShortWrite
+		}
+		return int64(nn), e
 	}
 	return written, nil
+}
+
+type recallSpan struct{ offset, count uint32 }
+
+// gap accounts for the discarded prefix, fresh-read flush clock, and any
+// explicit advance between bulk bursts.
+func recallSpans(count, payload, gap uint32) []recallSpan {
+	var bulk, holes []recallSpan
+	for at := uint32(0); at < count; {
+		n := count - at
+		if n > payload {
+			n = payload
+		}
+		bulk = append(bulk, recallSpan{at, n})
+		at += n
+		n = count - at
+		if n > gap {
+			n = gap
+		}
+		if n != 0 {
+			holes = append(holes, recallSpan{at, n})
+			at += n
+		}
+	}
+	return append(bulk, holes...)
 }

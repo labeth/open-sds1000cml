@@ -412,3 +412,61 @@ func TestPrecisionMetadataAndConfig(t *testing.T) {
 		t.Fatalf("raw format not restored: %+v %v", m, err)
 	}
 }
+
+func TestForwardRecallCoverage(t *testing.T) {
+	for _, count := range []uint32{0, 1, 4080, 4081, 4097, Words} {
+		seen := make([]byte, count)
+		for _, span := range recallSpans(count, 4080, 18) {
+			for i := span.offset; i < span.offset+span.count; i++ {
+				seen[i]++
+			}
+		}
+		for i, n := range seen {
+			if n != 1 {
+				t.Fatalf("count=%d index=%d visits=%d", count, i, n)
+			}
+		}
+	}
+}
+
+func TestForwardRecallFullRecordAndTail(t *testing.T) {
+	f := frozenBus()
+	f.revision = 10
+	f.staged[15] = 500
+	f.staged[19] = 2
+	f.corruptBurstHead = true
+	c := client(t, f)
+	for _, w := range [][2]uint32{{0, Words}, {Words - 1, 1}, {4079, 33}, {0, 0}, {0, Words}} {
+		var dst bytes.Buffer
+		n, e := c.RecallForward(context.Background(), w[0], w[1], &dst)
+		if e != nil || n != int64(w[1])*4 {
+			t.Fatalf("%v: %d %v", w, n, e)
+		}
+		checkWords(t, dst.Bytes(), f.base+w[0], w[1])
+	}
+	for _, op := range f.commands {
+		if op == 7 {
+			t.Fatal("unsafe continuation used")
+		}
+	}
+}
+
+func TestForwardRecallReadFailureDeliversNothing(t *testing.T) {
+	f := frozenBus()
+	f.revision = 10
+	f.staged[15] = 500
+	f.staged[19] = 2
+	f.failRead = 3 // fail priming after two complete bulk transfers
+	c := client(t, f)
+	var dst bytes.Buffer
+	n, e := c.RecallForward(context.Background(), 0, Words, &dst)
+	if e == nil || n != 0 || dst.Len() != 0 {
+		t.Fatalf("n=%d bytes=%d error=%v", n, dst.Len(), e)
+	}
+	f.failRead = 0
+	n, e = c.RecallForward(context.Background(), 0, Words, &dst)
+	if e != nil || n != int64(Bytes) {
+		t.Fatalf("retry: %d %v", n, e)
+	}
+	checkWords(t, dst.Bytes(), f.base, Words)
+}

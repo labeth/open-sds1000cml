@@ -1,0 +1,121 @@
+[
+  {
+    "capture_log": 0,
+    "output": "bus: /dev/dcinv present\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\n{\n  \"buffer_words\": 0,\n  \"capture\": {\n    \"locked\": true,\n    \"ready\": true,\n    \"running\": false,\n    \"frozen\": true,\n    \"triggered\": true,\n    \"prefetched\": false,\n    \"words\": 524288,\n    \"start\": 0,\n    \"trigger_index\": 524271,\n    \"position\": 313365,\n    \"origin\": 313365,\n    \"revision\": 10,\n    \"map_id\": 57746,\n    \"sample_rate_hz\": 500000000,\n    \"decimation\": 1,\n    \"sample_bits\": 8,\n    \"fraction_bits\": 0,\n    \"samples_per_word\": 2,\n    \"interleaved\": true,\n    \"data_fault\": false\n  },\n  \"identity\": 23122,\n  \"length\": 524288,\n  \"map_id\": 57746,\n  \"origin\": 313365,\n  \"position\": 313365,\n  \"revision\": 10,\n  \"start\": 0,\n  \"status\": 116,\n  \"trigger_index\": 524271\n}\n[exit 0]\n"
+  },
+  {
+    "log": 0,
+    "offset": 0,
+    "count": 524288,
+    "result": {
+      "bytes": 2097152,
+      "first": 0,
+      "last": 524287,
+      "nonconsecutive_words": 0,
+      "profile": {
+        "Reads": 2826,
+        "Writes": 1785,
+        "Pops": 255,
+        "Halfwords": 1048576,
+        "SkippedWords": 1040400,
+        "ReadNS": 17044400,
+        "WriteNS": 9571080,
+        "PopNS": 193638640
+      },
+      "seconds": 0.54026872,
+      "sha256": "ae42b13d7e0af3e77723caf8357d34c7e061526ed9eefeb67b04a0aaa69f33e2"
+    }
+  },
+  {
+    "log": 0,
+    "offset": 4079,
+    "count": 33,
+    "result": {
+      "bytes": 132,
+      "first": 4079,
+      "last": 4111,
+      "nonconsecutive_words": 0,
+      "profile": {
+        "Reads": 29,
+        "Writes": 7,
+        "Pops": 1,
+        "Halfwords": 66,
+        "SkippedWords": 7904,
+        "ReadNS": 271280,
+        "WriteNS": 38640,
+        "PopNS": 80560
+      },
+      "seconds": 0.00142088,
+      "sha256": "9e710fcc5163febe2e8c5f80b7ccc05ad5249452bc9c15b10af2c9c1fdb2ded4"
+    }
+  },
+  {
+    "log": 0,
+    "offset": 524287,
+    "count": 1,
+    "result": {
+      "bytes": 4,
+      "first": 524287,
+      "last": 524287,
+      "nonconsecutive_words": 0,
+      "profile": {
+        "Reads": 32,
+        "Writes": 7,
+        "Pops": 1,
+        "Halfwords": 2,
+        "SkippedWords": 520158,
+        "ReadNS": 323560,
+        "WriteNS": 34440,
+        "PopNS": 38560
+      },
+      "seconds": 0.00400076,
+      "sha256": "5341298afd21f5e76cac512809a468048bf5475e24b7e0105dd97be2c99d8b7f"
+    }
+  },
+  {
+    "log": 0,
+    "offset": 0,
+    "count": 524288,
+    "result": {
+      "bytes": 2097152,
+      "first": 0,
+      "last": 524287,
+      "nonconsecutive_words": 0,
+      "profile": {
+        "Reads": 2826,
+        "Writes": 1785,
+        "Pops": 255,
+        "Halfwords": 1048576,
+        "SkippedWords": 1040399,
+        "ReadNS": 17111840,
+        "WriteNS": 8739120,
+        "PopNS": 193805040
+      },
+      "seconds": 0.5394882,
+      "sha256": "ae42b13d7e0af3e77723caf8357d34c7e061526ed9eefeb67b04a0aaa69f33e2"
+    }
+  },
+  {
+    "log": 0,
+    "offset": 0,
+    "count": 524288,
+    "result": {
+      "bytes": 2097152,
+      "first": 0,
+      "last": 524287,
+      "nonconsecutive_words": 2,
+      "profile": {
+        "Reads": 2823,
+        "Writes": 1785,
+        "Pops": 255,
+        "Halfwords": 1048576,
+        "SkippedWords": 519953,
+        "ReadNS": 16766880,
+        "WriteNS": 8879880,
+        "PopNS": 192925920
+      },
+      "seconds": 0.53451792,
+      "sha256": "17ee6cbaced4a30a8ed8c5d9881a025682732248929bf9699751249f6891a640"
+    }
+  }
+]

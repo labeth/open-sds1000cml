@@ -1,0 +1,338 @@
+[
+  {
+    "args": [
+      "put",
+      "/tmp/acqsram-boundary2.arm",
+      "/dev/acqsram-boundary2"
+    ],
+    "code": 0,
+    "stdout": "\nupload: 3% (131072/3650833)\nupload: 7% (262144/3650833)\nupload: 10% (393216/3650833)\nupload: 14% (524288/3650833)\nupload: 17% (655360/3650833)\nupload: 21% (786432/3650833)\nupload: 25% (917504/3650833)\nupload: 28% (1048576/3650833)\nupload: 32% (1179648/3650833)\nupload: 35% (1310720/3650833)\nupload: 39% (1441792/3650833)\nupload: 43% (1572864/3650833)\nupload: 46% (1703936/3650833)\nupload: 50% (1835008/3650833)\nupload: 53% (1966080/3650833)\nupload: 57% (2097152/3650833)\nupload: 61% (2228224/3650833)\nupload: 64% (2359296/3650833)\nupload: 68% (2490368/3650833)\nupload: 71% (2621440/3650833)\nupload: 75% (2752512/3650833)\nupload: 78% (2883584/3650833)\nupload: 82% (3014656/3650833)\nupload: 86% (3145728/3650833)\nupload: 89% (3276800/3650833)\nupload: 93% (3407872/3650833)\nupload: 96% (3538944/3650833)\nupload: 100% (3650833/3650833)\nok: /tmp/acqsram-boundary2.arm -> /dev/acqsram-boundary2 sha256=2149dbdbaf4ae68888aa8fb2994cb418dd87c06df59d84b14b9a7bd1b8f8dc27\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "exec",
+      "chmod",
+      "755",
+      "/dev/acqsram-boundary2"
+    ],
+    "code": 0,
+    "stdout": "\n[exit 0]\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "exec",
+      "env",
+      "SCOPE_EDMA=1",
+      "SCOPE_PROBE_SLOW=0",
+      "/dev/acqsram-boundary2",
+      "profile-recall",
+      "0",
+      "32"
+    ],
+    "code": 0,
+    "stdout": "bus: /dev/dcinv present\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\n{\n  \"bytes\": 128,\n  \"first\": 0,\n  \"last\": 31,\n  \"nonconsecutive_words\": 0,\n  \"profile\": {\n    \"Reads\": 32,\n    \"Writes\": 7,\n    \"Pops\": 1,\n    \"Halfwords\": 64,\n    \"SkippedWords\": 520155,\n    \"ReadNS\": 228240,\n    \"WriteNS\": 36000,\n    \"PopNS\": 49400\n  },\n  \"seconds\": 0.00387388,\n  \"sha256\": \"afbc67011b6f94a508935ad8edcbdd3c9b56c4db336f8d3847a8a1815183828f\"\n}\n[exit 0]\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "exec",
+      "env",
+      "SCOPE_EDMA=1",
+      "SCOPE_PROBE_SLOW=1",
+      "/dev/acqsram-boundary2",
+      "burst-probe",
+      "7",
+      "1"
+    ],
+    "code": 0,
+    "stdout": "bus: /dev/dcinv present\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\n{\n  \"after\": 321301,\n  \"before\": 321300,\n  \"indexed\": [\n    32\n  ],\n  \"operation\": 7,\n  \"origin\": 321267,\n  \"popped\": [\n    32\n  ],\n  \"start\": 0\n}\n[exit 0]\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "exec",
+      "env",
+      "SCOPE_EDMA=1",
+      "SCOPE_PROBE_SLOW=1",
+      "/dev/acqsram-boundary2",
+      "burst-probe",
+      "7",
+      "1"
+    ],
+    "code": 0,
+    "stdout": "bus: /dev/dcinv present\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\n{\n  \"after\": 321302,\n  \"before\": 321301,\n  \"indexed\": [\n    34\n  ],\n  \"operation\": 7,\n  \"origin\": 321267,\n  \"popped\": [\n    34\n  ],\n  \"start\": 0\n}\n[exit 0]\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "exec",
+      "env",
+      "SCOPE_EDMA=1",
+      "SCOPE_PROBE_SLOW=1",
+      "/dev/acqsram-boundary2",
+      "burst-probe",
+      "7",
+      "1"
+    ],
+    "code": 0,
+    "stdout": "bus: /dev/dcinv present\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\n{\n  \"after\": 321303,\n  \"before\": 321302,\n  \"indexed\": [\n    35\n  ],\n  \"operation\": 7,\n  \"origin\": 321267,\n  \"popped\": [\n    35\n  ],\n  \"start\": 0\n}\n[exit 0]\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "exec",
+      "env",
+      "SCOPE_EDMA=1",
+      "SCOPE_PROBE_SLOW=1",
+      "/dev/acqsram-boundary2",
+      "burst-probe",
+      "7",
+      "1"
+    ],
+    "code": 0,
+    "stdout": "bus: /dev/dcinv present\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\n{\n  \"after\": 321304,\n  \"before\": 321303,\n  \"indexed\": [\n    36\n  ],\n  \"operation\": 7,\n  \"origin\": 321267,\n  \"popped\": [\n    36\n  ],\n  \"start\": 0\n}\n[exit 0]\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "exec",
+      "env",
+      "SCOPE_EDMA=1",
+      "SCOPE_PROBE_SLOW=1",
+      "/dev/acqsram-boundary2",
+      "burst-probe",
+      "7",
+      "16"
+    ],
+    "code": 0,
+    "stdout": "bus: /dev/dcinv present\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\n{\n  \"after\": 321320,\n  \"before\": 321304,\n  \"indexed\": [\n    37,\n    38,\n    38,\n    39,\n    40,\n    41,\n    42,\n    43,\n    44,\n    45,\n    46,\n    47,\n    48,\n    49,\n    50,\n    51\n  ],\n  \"operation\": 7,\n  \"origin\": 321267,\n  \"popped\": [\n    37,\n    38,\n    38,\n    39,\n    40,\n    41,\n    42,\n    43,\n    44,\n    45,\n    46,\n    47,\n    48,\n    49,\n    50,\n    51\n  ],\n  \"start\": 0\n}\n[exit 0]\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "exec",
+      "env",
+      "SCOPE_EDMA=1",
+      "SCOPE_PROBE_SLOW=1",
+      "/dev/acqsram-boundary2",
+      "burst-probe",
+      "7",
+      "16"
+    ],
+    "code": 0,
+    "stdout": "bus: /dev/dcinv present\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\n{\n  \"after\": 321336,\n  \"before\": 321320,\n  \"indexed\": [\n    52,\n    54,\n    54,\n    55,\n    56,\n    57,\n    58,\n    59,\n    60,\n    61,\n    62,\n    63,\n    64,\n    65,\n    66,\n    67\n  ],\n  \"operation\": 7,\n  \"origin\": 321267,\n  \"popped\": [\n    52,\n    54,\n    54,\n    55,\n    56,\n    57,\n    58,\n    59,\n    60,\n    61,\n    62,\n    63,\n    64,\n    65,\n    66,\n    67\n  ],\n  \"start\": 0\n}\n[exit 0]\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "exec",
+      "env",
+      "SCOPE_EDMA=1",
+      "SCOPE_PROBE_SLOW=0",
+      "/dev/acqsram-boundary2",
+      "profile-recall",
+      "0",
+      "32"
+    ],
+    "code": 0,
+    "stdout": "bus: /dev/dcinv present\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\n{\n  \"bytes\": 128,\n  \"first\": 0,\n  \"last\": 31,\n  \"nonconsecutive_words\": 0,\n  \"profile\": {\n    \"Reads\": 32,\n    \"Writes\": 7,\n    \"Pops\": 1,\n    \"Halfwords\": 64,\n    \"SkippedWords\": 524203,\n    \"ReadNS\": 298920,\n    \"WriteNS\": 37240,\n    \"PopNS\": 50080\n  },\n  \"seconds\": 0.003902,\n  \"sha256\": \"afbc67011b6f94a508935ad8edcbdd3c9b56c4db336f8d3847a8a1815183828f\"\n}\n[exit 0]\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "exec",
+      "env",
+      "SCOPE_EDMA=1",
+      "SCOPE_PROBE_SLOW=0",
+      "/dev/acqsram-boundary2",
+      "burst-probe",
+      "7",
+      "1"
+    ],
+    "code": 0,
+    "stdout": "bus: /dev/dcinv present\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\n{\n  \"after\": 321301,\n  \"before\": 321300,\n  \"indexed\": [\n    32\n  ],\n  \"operation\": 7,\n  \"origin\": 321267,\n  \"popped\": [\n    32\n  ],\n  \"start\": 0\n}\n[exit 0]\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "exec",
+      "env",
+      "SCOPE_EDMA=1",
+      "SCOPE_PROBE_SLOW=0",
+      "/dev/acqsram-boundary2",
+      "burst-probe",
+      "7",
+      "1"
+    ],
+    "code": 0,
+    "stdout": "bus: /dev/dcinv present\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\n{\n  \"after\": 321302,\n  \"before\": 321301,\n  \"indexed\": [\n    34\n  ],\n  \"operation\": 7,\n  \"origin\": 321267,\n  \"popped\": [\n    34\n  ],\n  \"start\": 0\n}\n[exit 0]\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "exec",
+      "env",
+      "SCOPE_EDMA=1",
+      "SCOPE_PROBE_SLOW=0",
+      "/dev/acqsram-boundary2",
+      "burst-probe",
+      "7",
+      "1"
+    ],
+    "code": 0,
+    "stdout": "bus: /dev/dcinv present\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\n{\n  \"after\": 321303,\n  \"before\": 321302,\n  \"indexed\": [\n    35\n  ],\n  \"operation\": 7,\n  \"origin\": 321267,\n  \"popped\": [\n    35\n  ],\n  \"start\": 0\n}\n[exit 0]\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "exec",
+      "env",
+      "SCOPE_EDMA=1",
+      "SCOPE_PROBE_SLOW=0",
+      "/dev/acqsram-boundary2",
+      "burst-probe",
+      "7",
+      "1"
+    ],
+    "code": 0,
+    "stdout": "bus: /dev/dcinv present\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\n{\n  \"after\": 321304,\n  \"before\": 321303,\n  \"indexed\": [\n    36\n  ],\n  \"operation\": 7,\n  \"origin\": 321267,\n  \"popped\": [\n    36\n  ],\n  \"start\": 0\n}\n[exit 0]\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "exec",
+      "env",
+      "SCOPE_EDMA=1",
+      "SCOPE_PROBE_SLOW=0",
+      "/dev/acqsram-boundary2",
+      "burst-probe",
+      "7",
+      "16"
+    ],
+    "code": 0,
+    "stdout": "bus: /dev/dcinv present\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\n{\n  \"after\": 321320,\n  \"before\": 321304,\n  \"indexed\": [\n    37,\n    38,\n    38,\n    39,\n    40,\n    41,\n    42,\n    43,\n    44,\n    45,\n    46,\n    47,\n    48,\n    49,\n    50,\n    51\n  ],\n  \"operation\": 7,\n  \"origin\": 321267,\n  \"popped\": [\n    37,\n    38,\n    38,\n    39,\n    40,\n    41,\n    42,\n    43,\n    44,\n    45,\n    46,\n    47,\n    48,\n    49,\n    50,\n    51\n  ],\n  \"start\": 0\n}\n[exit 0]\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "exec",
+      "env",
+      "SCOPE_EDMA=1",
+      "SCOPE_PROBE_SLOW=0",
+      "/dev/acqsram-boundary2",
+      "burst-probe",
+      "7",
+      "16"
+    ],
+    "code": 0,
+    "stdout": "bus: /dev/dcinv present\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\n{\n  \"after\": 321336,\n  \"before\": 321320,\n  \"indexed\": [\n    52,\n    54,\n    54,\n    55,\n    56,\n    57,\n    58,\n    59,\n    60,\n    61,\n    62,\n    63,\n    64,\n    65,\n    66,\n    67\n  ],\n  \"operation\": 7,\n  \"origin\": 321267,\n  \"popped\": [\n    52,\n    54,\n    54,\n    55,\n    56,\n    57,\n    58,\n    59,\n    60,\n    61,\n    62,\n    63,\n    64,\n    65,\n    66,\n    67\n  ],\n  \"start\": 0\n}\n[exit 0]\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "exec",
+      "env",
+      "SCOPE_EDMA=1",
+      "SCOPE_PROBE_SLOW=0",
+      "/dev/acqsram-boundary2",
+      "profile-recall",
+      "0",
+      "32"
+    ],
+    "code": 0,
+    "stdout": "bus: /dev/dcinv present\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\n{\n  \"bytes\": 128,\n  \"first\": 0,\n  \"last\": 31,\n  \"nonconsecutive_words\": 0,\n  \"profile\": {\n    \"Reads\": 32,\n    \"Writes\": 7,\n    \"Pops\": 1,\n    \"Halfwords\": 64,\n    \"SkippedWords\": 524203,\n    \"ReadNS\": 293440,\n    \"WriteNS\": 34720,\n    \"PopNS\": 49840\n  },\n  \"seconds\": 0.00391964,\n  \"sha256\": \"afbc67011b6f94a508935ad8edcbdd3c9b56c4db336f8d3847a8a1815183828f\"\n}\n[exit 0]\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "exec",
+      "env",
+      "SCOPE_EDMA=1",
+      "SCOPE_PROBE_SLOW=1",
+      "/dev/acqsram-boundary2",
+      "burst-probe",
+      "7",
+      "1"
+    ],
+    "code": 0,
+    "stdout": "bus: /dev/dcinv present\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\n{\n  \"after\": 321301,\n  \"before\": 321300,\n  \"indexed\": [\n    32\n  ],\n  \"operation\": 7,\n  \"origin\": 321267,\n  \"popped\": [\n    32\n  ],\n  \"start\": 0\n}\n[exit 0]\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "exec",
+      "env",
+      "SCOPE_EDMA=1",
+      "SCOPE_PROBE_SLOW=1",
+      "/dev/acqsram-boundary2",
+      "burst-probe",
+      "7",
+      "1"
+    ],
+    "code": 0,
+    "stdout": "bus: /dev/dcinv present\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\n{\n  \"after\": 321302,\n  \"before\": 321301,\n  \"indexed\": [\n    34\n  ],\n  \"operation\": 7,\n  \"origin\": 321267,\n  \"popped\": [\n    34\n  ],\n  \"start\": 0\n}\n[exit 0]\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "exec",
+      "env",
+      "SCOPE_EDMA=1",
+      "SCOPE_PROBE_SLOW=1",
+      "/dev/acqsram-boundary2",
+      "burst-probe",
+      "7",
+      "1"
+    ],
+    "code": 0,
+    "stdout": "bus: /dev/dcinv present\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\n{\n  \"after\": 321303,\n  \"before\": 321302,\n  \"indexed\": [\n    35\n  ],\n  \"operation\": 7,\n  \"origin\": 321267,\n  \"popped\": [\n    35\n  ],\n  \"start\": 0\n}\n[exit 0]\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "exec",
+      "env",
+      "SCOPE_EDMA=1",
+      "SCOPE_PROBE_SLOW=1",
+      "/dev/acqsram-boundary2",
+      "burst-probe",
+      "7",
+      "1"
+    ],
+    "code": 0,
+    "stdout": "bus: /dev/dcinv present\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\n{\n  \"after\": 321304,\n  \"before\": 321303,\n  \"indexed\": [\n    36\n  ],\n  \"operation\": 7,\n  \"origin\": 321267,\n  \"popped\": [\n    36\n  ],\n  \"start\": 0\n}\n[exit 0]\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "exec",
+      "env",
+      "SCOPE_EDMA=1",
+      "SCOPE_PROBE_SLOW=1",
+      "/dev/acqsram-boundary2",
+      "burst-probe",
+      "7",
+      "16"
+    ],
+    "code": 0,
+    "stdout": "bus: /dev/dcinv present\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\n{\n  \"after\": 321320,\n  \"before\": 321304,\n  \"indexed\": [\n    37,\n    38,\n    38,\n    39,\n    40,\n    41,\n    42,\n    43,\n    44,\n    45,\n    46,\n    47,\n    48,\n    49,\n    50,\n    51\n  ],\n  \"operation\": 7,\n  \"origin\": 321267,\n  \"popped\": [\n    37,\n    38,\n    38,\n    39,\n    40,\n    41,\n    42,\n    43,\n    44,\n    45,\n    46,\n    47,\n    48,\n    49,\n    50,\n    51\n  ],\n  \"start\": 0\n}\n[exit 0]\n",
+    "stderr": ""
+  },
+  {
+    "args": [
+      "exec",
+      "env",
+      "SCOPE_EDMA=1",
+      "SCOPE_PROBE_SLOW=1",
+      "/dev/acqsram-boundary2",
+      "burst-probe",
+      "7",
+      "16"
+    ],
+    "code": 0,
+    "stdout": "bus: /dev/dcinv present\nbus: EDMA coherency via /dev/dcinv (persistent 8192-word buffer)\nbus: EDMA drain enabled (channel 40, 8192 words, CS1 cycle-gap=5, coherency=dcinv)\n{\n  \"after\": 321336,\n  \"before\": 321320,\n  \"indexed\": [\n    52,\n    54,\n    54,\n    55,\n    56,\n    57,\n    58,\n    59,\n    60,\n    61,\n    62,\n    63,\n    64,\n    65,\n    66,\n    67\n  ],\n  \"operation\": 7,\n  \"origin\": 321267,\n  \"popped\": [\n    52,\n    54,\n    54,\n    55,\n    56,\n    57,\n    58,\n    59,\n    60,\n    61,\n    62,\n    63,\n    64,\n    65,\n    66,\n    67\n  ],\n  \"start\": 0\n}\n[exit 0]\n",
+    "stderr": ""
+  }
+]

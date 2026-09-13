@@ -17,7 +17,15 @@ func (c *Capture) VerifyCounter(ctx context.Context) error {
 		return err
 	}
 	sink := &counterVerifier{}
-	n, err := c.Recall(ctx, 0, Words, sink)
+	m, err := c.Status()
+	if err != nil {
+		return err
+	}
+	recall := c.Recall
+	if m.Revision == 10 {
+		recall = c.RecallForward
+	}
+	n, err := recall(ctx, 0, Words, sink)
 	if err != nil {
 		return err
 	}

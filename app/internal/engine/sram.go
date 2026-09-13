@@ -199,7 +199,11 @@ func (e *Engine) runSRAM() {
 		}
 		writer := sramFrameWriter{f: f, m: m}
 		ctx, cancel = context.WithTimeout(context.Background(), 10*time.Second)
-		_, err = e.sram.Recall(ctx, 0, m.Length, &writer)
+		recall := e.sram.Recall
+		if m.Revision == 10 {
+			recall = e.sram.RecallForward
+		}
+		_, err = recall(ctx, 0, m.Length, &writer)
 		cancel()
 		if err != nil || writer.n != f.Valid {
 			if err == nil {

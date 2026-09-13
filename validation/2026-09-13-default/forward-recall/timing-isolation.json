@@ -1,0 +1,666 @@
+[
+  {
+    "slow": false,
+    "forward": false,
+    "repeat": 0,
+    "result": {
+      "breaks": null,
+      "bytes": 2097152,
+      "first": 0,
+      "last": 524287,
+      "nonconsecutive_words": 0,
+      "profile": {
+        "Reads": 1699,
+        "Writes": 903,
+        "Pops": 129,
+        "Halfwords": 1048576,
+        "SkippedWords": 67110513,
+        "ReadNS": 10848240,
+        "WriteNS": 4455600,
+        "PopNS": 191858320
+      },
+      "seconds": 0.7766438,
+      "sha256": "ae42b13d7e0af3e77723caf8357d34c7e061526ed9eefeb67b04a0aaa69f33e2"
+    },
+    "stderr": ""
+  },
+  {
+    "slow": false,
+    "forward": false,
+    "repeat": 1,
+    "result": {
+      "breaks": null,
+      "bytes": 2097152,
+      "first": 0,
+      "last": 524287,
+      "nonconsecutive_words": 0,
+      "profile": {
+        "Reads": 1702,
+        "Writes": 903,
+        "Pops": 129,
+        "Halfwords": 1048576,
+        "SkippedWords": 67630959,
+        "ReadNS": 11166480,
+        "WriteNS": 4534640,
+        "PopNS": 192872120
+      },
+      "seconds": 0.7840612,
+      "sha256": "ae42b13d7e0af3e77723caf8357d34c7e061526ed9eefeb67b04a0aaa69f33e2"
+    },
+    "stderr": ""
+  },
+  {
+    "slow": false,
+    "forward": false,
+    "repeat": 2,
+    "result": {
+      "breaks": null,
+      "bytes": 2097152,
+      "first": 0,
+      "last": 524287,
+      "nonconsecutive_words": 0,
+      "profile": {
+        "Reads": 1703,
+        "Writes": 903,
+        "Pops": 129,
+        "Halfwords": 1048576,
+        "SkippedWords": 67630959,
+        "ReadNS": 11364480,
+        "WriteNS": 4393800,
+        "PopNS": 192407960
+      },
+      "seconds": 0.7835896,
+      "sha256": "ae42b13d7e0af3e77723caf8357d34c7e061526ed9eefeb67b04a0aaa69f33e2"
+    },
+    "stderr": ""
+  },
+  {
+    "slow": false,
+    "forward": false,
+    "repeat": 3,
+    "result": {
+      "breaks": null,
+      "bytes": 2097152,
+      "first": 0,
+      "last": 524287,
+      "nonconsecutive_words": 0,
+      "profile": {
+        "Reads": 1699,
+        "Writes": 903,
+        "Pops": 129,
+        "Halfwords": 1048576,
+        "SkippedWords": 67630959,
+        "ReadNS": 10822920,
+        "WriteNS": 4556440,
+        "PopNS": 193066360
+      },
+      "seconds": 0.78057004,
+      "sha256": "ae42b13d7e0af3e77723caf8357d34c7e061526ed9eefeb67b04a0aaa69f33e2"
+    },
+    "stderr": ""
+  },
+  {
+    "slow": false,
+    "forward": false,
+    "repeat": 4,
+    "result": {
+      "breaks": null,
+      "bytes": 2097152,
+      "first": 0,
+      "last": 524287,
+      "nonconsecutive_words": 0,
+      "profile": {
+        "Reads": 1701,
+        "Writes": 903,
+        "Pops": 129,
+        "Halfwords": 1048576,
+        "SkippedWords": 67630959,
+        "ReadNS": 10975960,
+        "WriteNS": 4603720,
+        "PopNS": 192207560
+      },
+      "seconds": 0.78066968,
+      "sha256": "ae42b13d7e0af3e77723caf8357d34c7e061526ed9eefeb67b04a0aaa69f33e2"
+    },
+    "stderr": ""
+  },
+  {
+    "slow": false,
+    "forward": false,
+    "repeat": 5,
+    "result": {
+      "breaks": null,
+      "bytes": 2097152,
+      "first": 0,
+      "last": 524287,
+      "nonconsecutive_words": 0,
+      "profile": {
+        "Reads": 1699,
+        "Writes": 903,
+        "Pops": 129,
+        "Halfwords": 1048576,
+        "SkippedWords": 67630959,
+        "ReadNS": 11051920,
+        "WriteNS": 4429360,
+        "PopNS": 191865920
+      },
+      "seconds": 0.78326752,
+      "sha256": "ae42b13d7e0af3e77723caf8357d34c7e061526ed9eefeb67b04a0aaa69f33e2"
+    },
+    "stderr": ""
+  },
+  {
+    "slow": false,
+    "forward": true,
+    "repeat": 0,
+    "result": {
+      "breaks": null,
+      "bytes": 2097152,
+      "first": 0,
+      "last": 524287,
+      "nonconsecutive_words": 0,
+      "profile": {
+        "Reads": 2826,
+        "Writes": 1785,
+        "Pops": 255,
+        "Halfwords": 1048576,
+        "SkippedWords": 1040399,
+        "ReadNS": 16860600,
+        "WriteNS": 8620320,
+        "PopNS": 193147640
+      },
+      "seconds": 0.53840964,
+      "sha256": "ae42b13d7e0af3e77723caf8357d34c7e061526ed9eefeb67b04a0aaa69f33e2"
+    },
+    "stderr": ""
+  },
+  {
+    "slow": false,
+    "forward": true,
+    "repeat": 1,
+    "result": {
+      "breaks": [
+        [
+          340116,
+          340116,
+          340112
+        ],
+        [
+          340117,
+          340113,
+          340117
+        ]
+      ],
+      "bytes": 2097152,
+      "first": 0,
+      "last": 524287,
+      "nonconsecutive_words": 2,
+      "profile": {
+        "Reads": 2823,
+        "Writes": 1785,
+        "Pops": 255,
+        "Halfwords": 1048576,
+        "SkippedWords": 519953,
+        "ReadNS": 16816480,
+        "WriteNS": 8744040,
+        "PopNS": 194028600
+      },
+      "seconds": 0.53779196,
+      "sha256": "eff391ec59ce44948707e0940e23dfc2804c67a4c08d2ebad31faa4145a8a6b4"
+    },
+    "stderr": ""
+  },
+  {
+    "slow": false,
+    "forward": true,
+    "repeat": 2,
+    "result": {
+      "breaks": null,
+      "bytes": 2097152,
+      "first": 0,
+      "last": 524287,
+      "nonconsecutive_words": 0,
+      "profile": {
+        "Reads": 2823,
+        "Writes": 1785,
+        "Pops": 255,
+        "Halfwords": 1048576,
+        "SkippedWords": 519953,
+        "ReadNS": 16661640,
+        "WriteNS": 8842760,
+        "PopNS": 193425880
+      },
+      "seconds": 0.53768676,
+      "sha256": "ae42b13d7e0af3e77723caf8357d34c7e061526ed9eefeb67b04a0aaa69f33e2"
+    },
+    "stderr": ""
+  },
+  {
+    "slow": false,
+    "forward": true,
+    "repeat": 3,
+    "result": {
+      "breaks": [
+        [
+          61452,
+          61452,
+          61448
+        ],
+        [
+          61453,
+          61449,
+          61453
+        ],
+        [
+          340116,
+          340116,
+          340112
+        ],
+        [
+          340117,
+          340113,
+          340117
+        ],
+        [
+          499956,
+          499956,
+          499952
+        ],
+        [
+          499957,
+          499953,
+          499957
+        ]
+      ],
+      "bytes": 2097152,
+      "first": 0,
+      "last": 524287,
+      "nonconsecutive_words": 6,
+      "profile": {
+        "Reads": 2823,
+        "Writes": 1785,
+        "Pops": 255,
+        "Halfwords": 1048576,
+        "SkippedWords": 519953,
+        "ReadNS": 16831600,
+        "WriteNS": 8770280,
+        "PopNS": 193492800
+      },
+      "seconds": 0.53744916,
+      "sha256": "fb7518473e2a3210f529b852d3a3262d3ba0ae26686d362bbb4c299dc0e2ff59"
+    },
+    "stderr": ""
+  },
+  {
+    "slow": false,
+    "forward": true,
+    "repeat": 4,
+    "result": {
+      "breaks": [
+        [
+          241764,
+          241764,
+          241760
+        ],
+        [
+          241765,
+          241761,
+          241765
+        ]
+      ],
+      "bytes": 2097152,
+      "first": 0,
+      "last": 524287,
+      "nonconsecutive_words": 2,
+      "profile": {
+        "Reads": 2823,
+        "Writes": 1785,
+        "Pops": 255,
+        "Halfwords": 1048576,
+        "SkippedWords": 519953,
+        "ReadNS": 16591200,
+        "WriteNS": 8629200,
+        "PopNS": 193022000
+      },
+      "seconds": 0.5359898,
+      "sha256": "debbba2c21b0c1228dacaae9f501649314b27386783b06923b53d57f1251c562"
+    },
+    "stderr": ""
+  },
+  {
+    "slow": false,
+    "forward": true,
+    "repeat": 5,
+    "result": {
+      "breaks": [
+        [
+          417996,
+          417996,
+          417992
+        ],
+        [
+          417997,
+          417993,
+          417997
+        ]
+      ],
+      "bytes": 2097152,
+      "first": 0,
+      "last": 524287,
+      "nonconsecutive_words": 2,
+      "profile": {
+        "Reads": 2823,
+        "Writes": 1785,
+        "Pops": 255,
+        "Halfwords": 1048576,
+        "SkippedWords": 519953,
+        "ReadNS": 16864440,
+        "WriteNS": 9497880,
+        "PopNS": 193063120
+      },
+      "seconds": 0.54013876,
+      "sha256": "c0878dc0bcbd4590d0d7b7f4cccc5ed1a38fda90c89a4867591db76baca2181a"
+    },
+    "stderr": ""
+  },
+  {
+    "slow": true,
+    "forward": false,
+    "repeat": 0,
+    "result": {
+      "breaks": null,
+      "bytes": 2097152,
+      "first": 0,
+      "last": 524287,
+      "nonconsecutive_words": 0,
+      "profile": {
+        "Reads": 1699,
+        "Writes": 903,
+        "Pops": 129,
+        "Halfwords": 1048576,
+        "SkippedWords": 67110513,
+        "ReadNS": 11210800,
+        "WriteNS": 4533000,
+        "PopNS": 359540800
+      },
+      "seconds": 0.94681336,
+      "sha256": "ae42b13d7e0af3e77723caf8357d34c7e061526ed9eefeb67b04a0aaa69f33e2"
+    },
+    "stderr": ""
+  },
+  {
+    "slow": true,
+    "forward": false,
+    "repeat": 1,
+    "result": {
+      "breaks": null,
+      "bytes": 2097152,
+      "first": 0,
+      "last": 524287,
+      "nonconsecutive_words": 0,
+      "profile": {
+        "Reads": 1699,
+        "Writes": 903,
+        "Pops": 129,
+        "Halfwords": 1048576,
+        "SkippedWords": 67630959,
+        "ReadNS": 10846640,
+        "WriteNS": 4585400,
+        "PopNS": 384315520
+      },
+      "seconds": 0.97596656,
+      "sha256": "ae42b13d7e0af3e77723caf8357d34c7e061526ed9eefeb67b04a0aaa69f33e2"
+    },
+    "stderr": ""
+  },
+  {
+    "slow": true,
+    "forward": false,
+    "repeat": 2,
+    "result": {
+      "breaks": null,
+      "bytes": 2097152,
+      "first": 0,
+      "last": 524287,
+      "nonconsecutive_words": 0,
+      "profile": {
+        "Reads": 1699,
+        "Writes": 903,
+        "Pops": 129,
+        "Halfwords": 1048576,
+        "SkippedWords": 67630959,
+        "ReadNS": 11027400,
+        "WriteNS": 4579200,
+        "PopNS": 359741560
+      },
+      "seconds": 0.9496644,
+      "sha256": "ae42b13d7e0af3e77723caf8357d34c7e061526ed9eefeb67b04a0aaa69f33e2"
+    },
+    "stderr": ""
+  },
+  {
+    "slow": true,
+    "forward": false,
+    "repeat": 3,
+    "result": {
+      "breaks": null,
+      "bytes": 2097152,
+      "first": 0,
+      "last": 524287,
+      "nonconsecutive_words": 0,
+      "profile": {
+        "Reads": 1699,
+        "Writes": 903,
+        "Pops": 129,
+        "Halfwords": 1048576,
+        "SkippedWords": 67630959,
+        "ReadNS": 11016880,
+        "WriteNS": 4434200,
+        "PopNS": 359724160
+      },
+      "seconds": 0.95237412,
+      "sha256": "ae42b13d7e0af3e77723caf8357d34c7e061526ed9eefeb67b04a0aaa69f33e2"
+    },
+    "stderr": ""
+  },
+  {
+    "slow": true,
+    "forward": false,
+    "repeat": 4,
+    "result": {
+      "breaks": null,
+      "bytes": 2097152,
+      "first": 0,
+      "last": 524287,
+      "nonconsecutive_words": 0,
+      "profile": {
+        "Reads": 1699,
+        "Writes": 903,
+        "Pops": 129,
+        "Halfwords": 1048576,
+        "SkippedWords": 67630959,
+        "ReadNS": 11003720,
+        "WriteNS": 4394760,
+        "PopNS": 360396520
+      },
+      "seconds": 0.95486316,
+      "sha256": "ae42b13d7e0af3e77723caf8357d34c7e061526ed9eefeb67b04a0aaa69f33e2"
+    },
+    "stderr": ""
+  },
+  {
+    "slow": true,
+    "forward": false,
+    "repeat": 5,
+    "result": {
+      "breaks": null,
+      "bytes": 2097152,
+      "first": 0,
+      "last": 524287,
+      "nonconsecutive_words": 0,
+      "profile": {
+        "Reads": 1699,
+        "Writes": 903,
+        "Pops": 129,
+        "Halfwords": 1048576,
+        "SkippedWords": 67630959,
+        "ReadNS": 10946320,
+        "WriteNS": 4479880,
+        "PopNS": 360616080
+      },
+      "seconds": 0.95389288,
+      "sha256": "ae42b13d7e0af3e77723caf8357d34c7e061526ed9eefeb67b04a0aaa69f33e2"
+    },
+    "stderr": ""
+  },
+  {
+    "slow": true,
+    "forward": true,
+    "repeat": 0,
+    "result": {
+      "breaks": null,
+      "bytes": 2097152,
+      "first": 0,
+      "last": 524287,
+      "nonconsecutive_words": 0,
+      "profile": {
+        "Reads": 2826,
+        "Writes": 1785,
+        "Pops": 255,
+        "Halfwords": 1048576,
+        "SkippedWords": 1040399,
+        "ReadNS": 16710640,
+        "WriteNS": 8852920,
+        "PopNS": 360766960
+      },
+      "seconds": 0.7058666,
+      "sha256": "ae42b13d7e0af3e77723caf8357d34c7e061526ed9eefeb67b04a0aaa69f33e2"
+    },
+    "stderr": ""
+  },
+  {
+    "slow": true,
+    "forward": true,
+    "repeat": 1,
+    "result": {
+      "breaks": null,
+      "bytes": 2097152,
+      "first": 0,
+      "last": 524287,
+      "nonconsecutive_words": 0,
+      "profile": {
+        "Reads": 2823,
+        "Writes": 1785,
+        "Pops": 255,
+        "Halfwords": 1048576,
+        "SkippedWords": 519953,
+        "ReadNS": 16678000,
+        "WriteNS": 8708840,
+        "PopNS": 360429280
+      },
+      "seconds": 0.70268076,
+      "sha256": "ae42b13d7e0af3e77723caf8357d34c7e061526ed9eefeb67b04a0aaa69f33e2"
+    },
+    "stderr": ""
+  },
+  {
+    "slow": true,
+    "forward": true,
+    "repeat": 2,
+    "result": {
+      "breaks": null,
+      "bytes": 2097152,
+      "first": 0,
+      "last": 524287,
+      "nonconsecutive_words": 0,
+      "profile": {
+        "Reads": 2823,
+        "Writes": 1785,
+        "Pops": 255,
+        "Halfwords": 1048576,
+        "SkippedWords": 519953,
+        "ReadNS": 16819800,
+        "WriteNS": 8629320,
+        "PopNS": 360607360
+      },
+      "seconds": 0.70270456,
+      "sha256": "ae42b13d7e0af3e77723caf8357d34c7e061526ed9eefeb67b04a0aaa69f33e2"
+    },
+    "stderr": ""
+  },
+  {
+    "slow": true,
+    "forward": true,
+    "repeat": 3,
+    "result": {
+      "breaks": null,
+      "bytes": 2097152,
+      "first": 0,
+      "last": 524287,
+      "nonconsecutive_words": 0,
+      "profile": {
+        "Reads": 2823,
+        "Writes": 1785,
+        "Pops": 255,
+        "Halfwords": 1048576,
+        "SkippedWords": 519953,
+        "ReadNS": 16534720,
+        "WriteNS": 8679800,
+        "PopNS": 361123360
+      },
+      "seconds": 0.7029264,
+      "sha256": "ae42b13d7e0af3e77723caf8357d34c7e061526ed9eefeb67b04a0aaa69f33e2"
+    },
+    "stderr": ""
+  },
+  {
+    "slow": true,
+    "forward": true,
+    "repeat": 4,
+    "result": {
+      "breaks": null,
+      "bytes": 2097152,
+      "first": 0,
+      "last": 524287,
+      "nonconsecutive_words": 0,
+      "profile": {
+        "Reads": 2823,
+        "Writes": 1785,
+        "Pops": 255,
+        "Halfwords": 1048576,
+        "SkippedWords": 519953,
+        "ReadNS": 16681560,
+        "WriteNS": 8661160,
+        "PopNS": 360999560
+      },
+      "seconds": 0.70282272,
+      "sha256": "ae42b13d7e0af3e77723caf8357d34c7e061526ed9eefeb67b04a0aaa69f33e2"
+    },
+    "stderr": ""
+  },
+  {
+    "slow": true,
+    "forward": true,
+    "repeat": 5,
+    "result": {
+      "breaks": null,
+      "bytes": 2097152,
+      "first": 0,
+      "last": 524287,
+      "nonconsecutive_words": 0,
+      "profile": {
+        "Reads": 2823,
+        "Writes": 1785,
+        "Pops": 255,
+        "Halfwords": 1048576,
+        "SkippedWords": 519953,
+        "ReadNS": 17214400,
+        "WriteNS": 8751320,
+        "PopNS": 361002920
+      },
+      "seconds": 0.70351056,
+      "sha256": "ae42b13d7e0af3e77723caf8357d34c7e061526ed9eefeb67b04a0aaa69f33e2"
+    },
+    "stderr": ""
+  }
+]
