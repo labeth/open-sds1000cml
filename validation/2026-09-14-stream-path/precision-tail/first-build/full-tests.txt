@@ -1,0 +1,19 @@
+{"precision.v": "dc03fe4fd3d2daf0d0f757f1f0f9c942793f650f8ab709aba881b95860598b33", "precision_tail.v": "9b36bef4ac7fc7bb52f4e5e48ffc45a08db2504fda2d2459c76bef6a8ea640bf", "sim/tb_precision_tail.v": "2170aca776487f193942f51da08378e0488af37646c89d36db1783f82a5208b1"}
+PASS precision tail log=0 burst=0 inputs=48 outputs=48 max_queue=0
+PASS precision tail log=1 burst=0 inputs=96 outputs=40 max_queue=2
+PASS precision tail log=2 burst=0 inputs=192 outputs=40 max_queue=2
+PASS precision tail log=3 burst=0 inputs=384 outputs=40 max_queue=2
+PASS precision tail log=4 burst=0 inputs=768 outputs=40 max_queue=2
+PASS precision tail log=5 burst=0 inputs=1536 outputs=36 max_queue=2
+PASS precision tail log=6 burst=0 inputs=3072 outputs=38 max_queue=2
+PASS precision tail log=7 burst=0 inputs=6144 outputs=39 max_queue=2
+PASS precision tail log=8 burst=0 inputs=12288 outputs=39 max_queue=2
+PASS precision tail log=9 burst=0 inputs=24576 outputs=35 max_queue=2
+PASS precision tail log=10 burst=0 inputs=49152 outputs=37 max_queue=2
+PASS precision tail log=11 burst=0 inputs=98304 outputs=38 max_queue=2
+PASS precision tail log=12 burst=0 inputs=196608 outputs=39 max_queue=2
+PASS precision tail log=1 burst=1 inputs=512 outputs=248 max_queue=4
+PASS precision tail log=9 burst=1 inputs=24576 outputs=35 max_queue=4
+PASS precision tail log=2 burst=0 inputs=192 outputs=40 max_queue=2
+PASS scheduled precision tail: 16 equivalent epochs, overflow/illegal configuration and reset
+/tmp/acq-precision-tail-aey33yo9/tb_precision_tail.v:76: $finish called at 217667360100 (1ps)

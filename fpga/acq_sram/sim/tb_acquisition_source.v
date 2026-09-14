@@ -9,7 +9,7 @@ module adc_interleave(input refclk,memclk,packclk,enable,input [79:0] lane,input
  assign enc_p=encode_enable[4:0];assign enc_n=encode_enable[9:5];assign locked=!lane[34];
  always @(posedge memclk)if(enable && !consume)$fatal(1,"ADC consumption paused");
 endmodule
-module adc_precision(input core,packclk,clk100,enable,input [4:0] decim_log,input [31:0] raw,input raw_valid,
+module adc_precision #(parameter SHARED_TAIL=0)(input core,packclk,clk100,enable,input [4:0] decim_log,input [31:0] raw,input raw_valid,
  output [31:0] data,output valid,fault);
  assign data=raw^32'h965a87c3;assign valid=enable && raw_valid && raw[0];
  assign fault=enable && raw[31];

@@ -17,7 +17,7 @@ with open('/tmp/open-sds-quartus.lock','w') as lock:
  if capture:names=('capture_path.v','capture_engine.v','finite_recall.v')+names[1:]
  if acquisition:
   names=('acquisition_path.v','acquisition_source.v','acquisition_adc_pll.v','board_capture_path.v',
-         'finite_writer.v','record.v','interleave.v','precision.v','ddio_pair.v','lane_in.v')+names
+         'finite_writer.v','record.v','interleave.v','precision.v','precision_tail.v','ddio_pair.v','lane_in.v')+names
  bounded="--cdc" in sys.argv
  seed=int(sys.argv[sys.argv.index("--seed")+1]) if "--seed" in sys.argv else 1
  if seed<1:raise ValueError("seed must be positive")

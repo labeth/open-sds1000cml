@@ -1,0 +1,3 @@
+{"acquisition_source.v": "ddfa476d39bd31ca3e485d2a9bb6a7a119a7a68125a55a963fedb9e89e560c92", "sim/tb_acquisition_source.v": "8467c6ea136edd88d8e85f2660fa5fc52301ff1ce47a4a826682fc0a7bf3b31e"}
+PASS acquisition source: uninterrupted consumption, latched raw/all precision formats, word alignment, sticky faults, ADC lock loss and invalid modes
+/tmp/acq-source-control-bv5_uger/tb_acquisition_source.v:61: $finish called at 1136000 (1ps)

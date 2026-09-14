@@ -86,7 +86,7 @@ module cic_stage(input clk,enable,valid,input [3:0] factor_log,input [15:0] data
  end
 endmodule
 
-module adc_precision #(parameter SHARED_TAIL=0)(input core,packclk,clk100,enable,input [4:0] decim_log,input [31:0] raw,input raw_valid,
+module adc_precision(input core,packclk,clk100,enable,input [4:0] decim_log,input [31:0] raw,input raw_valid,
  output reg [31:0] data=0,output reg valid=0,output reg fault=0);
  wire [15:0] first0,first1;wire fv0,fv1;
  cic16_pair first_ch1(core,enable,raw_valid,raw[7:0],raw[23:16],fv0,first0);
@@ -109,24 +109,15 @@ module adc_precision #(parameter SHARED_TAIL=0)(input core,packclk,clk100,enable
  .rdclk(clk100),.rdreq(!in_empty && enable_s[2]),.q(in_q),.rdempty(in_empty));
  wire [31:0] stage_data[0:4];wire [4:0] stage_valid;
  assign stage_data[0]=in_q;assign stage_valid[0]=!in_empty && enable_s[2];
- genvar s;generate for(s=0;s<(SHARED_TAIL ? 1 : 4);s=s+1)begin:stage
+ genvar s;generate for(s=0;s<4;s=s+1)begin:stage
   wire [4:0] remain=decim_log>4+4*s ? decim_log-(4+4*s) : 5'd0;
   wire [3:0] log=remain>4 ? 4'd4 : remain[3:0];wire unused_valid;
   cic_stage c1(clk100,enable_s[2],stage_valid[s],log,stage_data[s][15:0],stage_valid[s+1],stage_data[s+1][15:0]);
   cic_stage c2(clk100,enable_s[2],stage_valid[s],log,stage_data[s][31:16],unused_valid,stage_data[s+1][31:16]);
  end endgenerate
- wire tail_fault;
- generate if(SHARED_TAIL)begin:shared_tail
-  wire [3:0] remaining_log=decim_log>8 ? decim_log-8 : 0;
-  cic_precision_tail tail(.clk(clk100),.enable(enable_s[2]),.valid(stage_valid[1]),
-   .remaining_log(remaining_log),.data(stage_data[1]),.ready(),
-   .out_valid(stage_valid[4]),.q(stage_data[4]),.fault(tail_fault));
- end else begin:parallel_tail
-  assign tail_fault=1'b0;
- end endgenerate
  wire out_empty,out_full;wire [31:0] out_q;reg overflow=0,in_overflow=0;reg [2:0] overflow_s=0,in_overflow_s=0;
  always @(posedge packclk)if(!pack_enable[2])in_overflow<=0;else if(in_push && in_full)in_overflow<=1;
- always @(posedge clk100)if(!enable_s[2])overflow<=0;else if((stage_valid[4] && out_full) || tail_fault)overflow<=1;
+ always @(posedge clk100)if(!enable_s[2])overflow<=0;else if(stage_valid[4] && out_full)overflow<=1;
  dcfifo #(.lpm_width(32),.lpm_numwords(32),.lpm_widthu(5),.lpm_showahead("ON"),.add_ram_output_register("ON"),
  .rdsync_delaypipe(4),.wrsync_delaypipe(4),.read_aclr_synch("ON"),.write_aclr_synch("ON"),.use_eab("ON"),.intended_device_family("Cyclone IV E")) output_queue(
  .aclr(!enable),.wrclk(clk100),.data(stage_data[4]),.wrreq(stage_valid[4] && !out_full),.wrfull(out_full),

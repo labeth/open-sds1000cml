@@ -8,7 +8,7 @@ module adc_interleave(input refclk,memclk,packclk,enable,input [79:0] lane,input
  assign snapshot=lane;assign snapshot_ack=snapshot_request;assign enc_p=0;assign enc_n=0;assign locked=1;
  always @(posedge memclk)if(enable && !consume)$fatal(1,"ADC paused during SRAM access");
 endmodule
-module adc_precision(input core,packclk,clk100,enable,input [4:0] decim_log,input [31:0] raw,input raw_valid,
+module adc_precision #(parameter SHARED_TAIL=0)(input core,packclk,clk100,enable,input [4:0] decim_log,input [31:0] raw,input raw_valid,
  output [31:0] data,output valid,fault);
  reg [19:0] count=0;
  always @(posedge core)if(!enable)count<=0;else count<=count+1'b1;

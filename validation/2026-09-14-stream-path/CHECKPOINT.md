@@ -1,48 +1,49 @@
-# Integrated acquisition core — not a deployable image
+# Integrated acquisition core — fits, not timing-qualified
 
-Current `acquisition_path.v` connects the ADC/precision source, finite trigger
-writer, continuous SRAM engine and frozen recall to one physical transport and
-one 5120-word host buffer. It arbitrates capture/stream/recall starts, latches
-configuration, invalidates stale finite records on stream start, handles raw
-first/second-sample edges and full Q8.8 thresholds, and propagates ADC faults to
-both acquisition modes. It exposes an external aligned trigger-match hook.
-The real board PLL/pin top and GPMC/kernel/app ABI are still separate.
+Current `acquisition_path.v` combines the real ADC/precision source, finite
+trigger writer, continuous SRAM engine and frozen recall over one transport and
+one 5120-word host buffer. The board PLL/pin top, GPMC/kernel/app ABI and protocol
+trigger integration remain outside this core. No image has been deployed.
 
-Current simulation evidence:
-- `integrated-acquisition/tests.txt`: real downstream RTL with ADC/CIC mocks;
-  3017-word raw capture/recall (3000-word prehistory, second-sample trigger),
-  48-word precision capture/recall, 6001-word stream. Every host halfword is
-  checked against independently collected source words. Busy start/config
-  changes, held final banks, stale recall and streaming ADC fault pass.
-- `integrated-acquisition/stream-tests.txt`: updated standalone stream wrapper
-  passes 10003 words with physical SRAM wrap and actual host-buffer readback.
-- `integrated-acquisition/start-tests.txt`: accepted-start settings and epoch
-  reset pass after the new source-fault input was propagated through wrappers.
-- Earlier `finite-capture/full-tests.txt` proves the previous checkpoint's
-  complete 524288-word / 2 MiB trigger capture and 205-bank recall. Its source
-  manifest predates the new streaming fault input and integrated wrapper.
+The slow precision tail now shares one 28-bit arithmetic path and one 64x32
+state RAM across six channel/stage contexts. Four input queue entries occupy
+unused addresses in the same RAM. The first /16 CIC and first configurable
+stage remain parallel. The integrated source selects SHARED_TAIL=1; the existing
+qualified board top retains its parallel default pending migration.
 
-The first combined real-ADC/CIC build FAILED TO FIT:
-- `integrated-acquisition/result.json` and exact source/report snapshots.
-- Synthesis: 12782 logic elements, 9285 registers, 315904 memory bits.
-- Fitter: 750 LABs required; EP4CE10 has 645 LABs. No STA or CDC audit ran.
-- Precision hierarchy: 4172 combinational ALUTs, 3430 logic registers. These
-  hierarchy counts are not interchangeable with the whole-design LE count.
-- GPMC register logic is not included, so more headroom is still required.
-- Prior shared-backend-only timing/CDC reports do not qualify this integrated
-  core. No bitstream was assembled or deployed.
+Current arithmetic evidence in `precision-tail`:
+- `full-tests.txt`: remaining decimation logs 0..12 match the frozen parallel
+  CIC oracle, including random full-range/fractional data, rails, gaps, startup
+  discards, bursts, overload and reset. Sixteen epochs pass.
+- `queue-tests.txt`: full simultaneous push/pop in shared RAM and reset during
+  an update with queued input pass against the same oracle.
+- `shared-tests.txt`: the complete precision composition, including the fixed
+  first CIC, stage selection and ideal FIFO interfaces, matches /16 through
+  /8192 word-for-word. This is not a vendor FIFO CDC test.
+- `source-tests.txt`: updated source parameter selection/control test passes.
+- Previous `integrated-acquisition/tests.txt` checks downstream capture/recall
+  and streaming with ADC/CIC mocks. It predates the shared-tail selection.
+  Earlier full-depth capture evidence remains source-versioned in finite-capture.
 
-Next architectural change: share the arithmetic of the slow precision stages.
-Keep the first /16 CIC and the first configurable stage at their required rate;
-after /256, only 1.953125 million dual-channel words/s reach the remaining
-stages, leaving about 51 clocks/word at 100 MHz. A scheduled state-memory
-implementation can replace six parallel channel/stage datapaths while retaining
-the existing CIC arithmetic, fractional precision and startup-discard behavior.
-It must be compared word-for-word against the current parallel filter across
-all decimation settings, bursts/stalls and epoch resets before integration.
+Current real-ADC/CIC build in `precision-tail/integrated-build`:
+- FIT PASSES: 9500/10320 logic elements, 7655 registers, 44/46 M9Ks.
+- All 645 LABs are partially/completely used; GPMC logic is not included, so
+  remaining individual LEs do not guarantee enough usable integration headroom.
+- All 120 existing backend CDC audit rows pass at three corners.
+- Timing FAILS: setup -7.496 ns; recovery -5.028 ns. Hold +0.142 ns,
+  removal +0.490 ns, minimum pulse +1.485 ns. Added ADC CDC and IO are unqualified.
+- Worst setup is the held decimation setting from source|decim_l[3] (core)
+  into the 100 MHz shared filter's q register. This is not proof of a maximum
+  sustainable sample frequency; configuration transfer/constraints need work.
+- Exact source snapshots, settings, reports and audit results accompany the build.
 
-Remaining full-goal work includes fitting/closing timing with physical ADC/IO
-constraints, actual default top and 5120-word GPMC ABI integration, kernel/app
-streaming and long retained history, additional decoder triggers, and hardware
-qualification of ADC order, phase/read bias, continuation, capture depth and
-sustained transfer under ARM stalls. Internal scope storage remains untouched.
+The fully parallel integrated build required 750 LABs. The first scheduled tail
+with a register queue required 647; `precision-tail/first-build` records that
+intermediate failure. Packing the queue into state RAM lets the core fit.
+
+Next: address the core-to-100 MHz configuration transfer with an explicit stable
+capture contract, review the added ADC reset/CDC paths, and close real data-path
+and IO timing. Then integrate/version the default GPMC interface and kernel/app
+streaming, retained precision and long history. The full goal still includes
+protocol triggers, all-timebase behavior and hardware qualification of ADC order,
+read bias/continuation, full depth and sustained transfer under ARM stalls.

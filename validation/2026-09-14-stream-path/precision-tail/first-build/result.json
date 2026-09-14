@@ -1,0 +1,12 @@
+{
+  "status": "fit_failed",
+  "required_labs": 647,
+  "available_labs": 645,
+  "map_logic_elements": 11143,
+  "map_registers": 7814,
+  "memory_bits": 317696,
+  "tail_aluts": 585,
+  "tail_registers": 272,
+  "tail_memory_bits": 1792,
+  "tail_sha256": "9b36bef4ac7fc7bb52f4e5e48ffc45a08db2504fda2d2459c76bef6a8ea640bf"
+}
