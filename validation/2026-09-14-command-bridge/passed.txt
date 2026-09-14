@@ -1,0 +1,9 @@
+{"command_bridge.v": "e5bd19f51b569bc61102304aa2b22b8e6eb3052aae97a582238950d5f8dd2cbf", "sim/tb_command_bridge.v": "ca7eefb8d6d03d587761c48342927ec86514e722de531e82c45a393321fe06a1"}
+PASS command bridge phase=0: coherent randomized payloads, busy rejection, reset aborts, epochs=5
+/tmp/acq-command-bridge-p2wbml28/tb_command_bridge.v:65: $finish called at 41040000 (1ps)
+PASS command bridge phase=1: coherent randomized payloads, busy rejection, reset aborts, epochs=5
+/tmp/acq-command-bridge-p2wbml28/tb_command_bridge.v:65: $finish called at 41040000 (1ps)
+PASS command bridge phase=2: coherent randomized payloads, busy rejection, reset aborts, epochs=5
+/tmp/acq-command-bridge-p2wbml28/tb_command_bridge.v:65: $finish called at 41040000 (1ps)
+PASS command bridge phase=3: coherent randomized payloads, busy rejection, reset aborts, epochs=5
+/tmp/acq-command-bridge-p2wbml28/tb_command_bridge.v:65: $finish called at 41040000 (1ps)
