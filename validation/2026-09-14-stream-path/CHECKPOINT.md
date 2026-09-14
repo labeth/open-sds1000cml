@@ -1,5 +1,14 @@
 # Integrated acquisition core — fits, timing still fails
 
+Latest writer-reservation checkpoint: `writer-reservation/build` uses 9182 LEs,
+7724 registers, 44 M9Ks and 644/645 LABs. A dedicated reservation register
+matches the original pending/state active definition every simulation cycle.
+Capture, fault and composed integration tests pass. Setup -2.816 ns, recovery
+-5.065 ns still fail; existing 135-row CDC audit passes. This saves 36 LEs
+but costs two LABs relative to retained-events, and is not a timing win. Worst
+setup is host fault aggregation into finite-writer frozen. Not hardware qualified.
+
+
 Latest retained-events checkpoint: `retained-events/build` uses 9218 LEs,
 7723 registers, 44 M9Ks and 642/645 LABs. Transport event gates use the
 retained owner; public mode and source faults retain immediate selection.
