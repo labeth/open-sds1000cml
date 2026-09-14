@@ -13,7 +13,7 @@ module tb_stream_path;
  reg [13:0] raddr=0;wire rv,re;wire [15:0] rdata;
  wire [31:0] dq;wire k1,k2,g1;
  sram_stream_path #(.AW(AW)) dut(reset,1'b1,c,sample,m,h,start,stop,finished,{AW{1'b0}},
-  valid,data,source_ready,start_ready,enable,active,done,captured,fault,error,committed,recalled,unread,busy,
+  valid,1'b0,data,source_ready,start_ready,enable,active,done,captured,fault,error,committed,recalled,unread,busy,
   release_en,release_bank,release_token,hfault,ready,token,first0,first1,count0,count1,ren,raddr,rv,re,rdata,dq,k1,k2,g1);
  reg [31:0] memory[0:N-1],stage1=0,stage2=0;
  reg [AW-1:0] address=0;

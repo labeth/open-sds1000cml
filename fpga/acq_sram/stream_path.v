@@ -6,7 +6,7 @@
 module sram_stream_path #(parameter AW=19)(
  input wire reset,locked,core_clk,sample_clk,ram_clk,host_clk,
  input wire start,stop,source_finished,input wire [AW-1:0] read_bias,
- input wire source_valid,input wire [35:0] source_data,
+ input wire source_valid,source_fault,input wire [35:0] source_data,
  output wire source_ready,start_ready,source_enable,
  output wire active,done,capture_done,fault,output wire [3:0] error_code,
  output wire [63:0] committed,read_ordinal,output wire [AW:0] unread,
@@ -35,7 +35,7 @@ module sram_stream_path #(parameter AW=19)(
   .stop(stop),
   .source_finished(source_finished),
   .read_bias(read_bias),
-  .source_valid(source_valid),
+  .source_valid(source_valid),.source_fault(source_fault),
   .source_data(source_data),
   .source_ready(source_ready),
   .start_ready(start_ready),

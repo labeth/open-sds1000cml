@@ -3,9 +3,10 @@
 from pathlib import Path
 import fcntl, hashlib, json, re, shutil, subprocess, sys
 root=Path(__file__).resolve().parents[2]
-capture='--capture' in sys.argv
-top='sram_capture_path' if capture else 'sram_stream_path'
-out=root/'fpga/acq_sram/out'/('capture-path-probe' if capture else 'stream-path-probe')
+acquisition='--acquisition' in sys.argv
+capture='--capture' in sys.argv or acquisition
+top='sram_acquisition_path' if acquisition else 'sram_capture_path' if capture else 'sram_stream_path'
+out=root/'fpga/acq_sram/out'/('acquisition-path-probe' if acquisition else 'capture-path-probe' if capture else 'stream-path-probe')
 with open('/tmp/open-sds-quartus.lock','w') as lock:
  fcntl.flock(lock,fcntl.LOCK_EX)
  out.mkdir(parents=True,exist_ok=True)
@@ -14,14 +15,20 @@ with open('/tmp/open-sds-quartus.lock','w') as lock:
  (out/'result.json').unlink(missing_ok=True)
  names=('stream_path.v','stream_engine.v','ingress_path.v','ingress_fifo.v','ingress_stream.v','word_bridge.v','timeslice_controller.v','ordinal_counter.v','transport.v','host_path.v','host_packer.v','host_fifo.v','host_sink.v','host_ram.v','host_ownership.v')
  if capture:names=('capture_path.v','capture_engine.v','finite_recall.v')+names[1:]
+ if acquisition:
+  names=('acquisition_path.v','acquisition_source.v','acquisition_adc_pll.v','board_capture_path.v',
+         'finite_writer.v','record.v','interleave.v','precision.v','ddio_pair.v','lane_in.v')+names
  bounded="--cdc" in sys.argv
  seed=int(sys.argv[sys.argv.index("--seed")+1]) if "--seed" in sys.argv else 1
  if seed<1:raise ValueError("seed must be positive")
  hashes={}
  for name in names:
-  data=(root/'fpga/acq_sram'/name).read_bytes()
+  data=(root/'fpga'/('common' if name in ('ddio_pair.v','lane_in.v') else 'acq_sram')/name).read_bytes()
   (out/name).write_bytes(data)
   hashes[name]=hashlib.sha256(data).hexdigest()
+ if acquisition:
+  data=(root/'fpga/default/lanemap_seed.vh').read_bytes()
+  (out/'lanemap_seed.vh').write_bytes(data);hashes['lanemap_seed.vh']=hashlib.sha256(data).hexdigest()
  (out/'probe.qpf').write_text('PROJECT_REVISION = "probe"\n')
  (out/'probe.qsf').write_text('''set_global_assignment -name FAMILY "Cyclone IV E"
 set_global_assignment -name DEVICE EP4CE10F17C8
@@ -42,6 +49,10 @@ create_clock -name host -period 10.0 [get_ports host_clk]
 derive_clock_uncertainty
 set_false_path -from [get_ports reset]
 ''')
+ if acquisition:
+  sdc=out/'probe.sdc'
+  sdc.write_text(sdc.read_text().replace('derive_clock_uncertainty',
+    'create_clock -name adc_ref -period 10.0 [get_ports clk100]\nderive_pll_clocks\nderive_clock_uncertainty'))
  if bounded:
   data=(root/'fpga/acq_sram/stream_path_cdc.sdc').read_bytes()
   (out/'stream_path_cdc.sdc').write_bytes(data)
@@ -51,9 +62,9 @@ set_false_path -from [get_ports reset]
  # mistakes before spending time on a placed netlist; this elaboration uses
  # the same frozen RTL plus the DDR primitive simulation declaration.
  (out/'ddr_model.v').write_bytes((root/'fpga/acq_sram/sim/ddr_model.v').read_bytes())
- subprocess.run(['iverilog','-g2012','-s',top,'-o',str(out/'preflight.vvp'),
+ subprocess.run(['iverilog','-g2012']+(['-DSIM','-i','-I',str(out)] if acquisition else [])+['-s',top,'-o',str(out/'preflight.vvp'),
                  *[str(out/name) for name in names],str(out/'ddr_model.v')],check=True)
- print('interface preflight passed',flush=True)
+ print('interface preflight passed'+(' (ADC PLL/FIFO vendor primitives unresolved)' if acquisition else ''),flush=True)
  q=Path('/home/labeth/intelFPGA_lite/21.1/quartus/bin')
  for tool in ('quartus_map','quartus_fit','quartus_sta'):
   print(tool,flush=True)
@@ -77,7 +88,7 @@ set_false_path -from [get_ports reset]
   with (out/'audit.log').open('w') as log:
    checked=subprocess.run([str(q/'quartus_sta'),'-t','audit_cdc.tcl'],cwd=out,stdout=log,stderr=subprocess.STDOUT)
   result['cdc_audit']='passed' if checked.returncode==0 else 'failed'
-  result['qualification']='IO unconstrained; combined CDC audit '+result['cdc_audit']+'; inspect timing separately'
+  result['qualification']=('IO and added ADC CDC unqualified; backend CDC audit ' if acquisition else 'IO unconstrained; combined CDC audit ')+result['cdc_audit']+'; inspect timing separately'
   (out/'result.json').write_text(json.dumps(result,indent=2)+'\n')
   print((out/'audit.log').read_text()[-1500:],flush=True)
   if checked.returncode:raise SystemExit(checked.returncode)

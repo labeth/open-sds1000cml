@@ -7,7 +7,7 @@ module tb_board_capture;
  wire sample_clk;assign #0.4 sample_clk=core_clk;
  reg reset=1,start=0,finite_mode=0,stop=0,source_finished=0,frozen=1;
  reg [AW-1:0] record_start=N-73,read_bias=0;reg [AW:0] record_words=N,offset=19,length=5121;
- reg source_valid=0;reg [35:0] source_data=0;
+ reg source_valid=0,source_fault=0;reg [35:0] source_data=0;
  wire source_ready,start_ready,source_enable,active,done,capture_done,fault,request_error,start_rejected,selected_finite;
  wire [3:0] error_code;wire [63:0] committed,read_ordinal;wire [AW:0] unread;
  wire [1:0] bank_busy,host_ready,host_token;

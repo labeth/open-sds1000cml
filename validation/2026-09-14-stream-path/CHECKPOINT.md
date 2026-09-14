@@ -1,96 +1,48 @@
-# Shared SRAM acquisition backend — not a deployable image
+# Integrated acquisition core — not a deployable image
 
-Current RTL connects continuous acquisition and frozen-record recall to one
-5120-word host buffer and one SRAM transport. `capture_engine.v` exposes the
-transport interface for board integration; `capture_path.v` includes it for
-simulation and placement. Mode selection is held until transfers and host bank
-ownership finish. Accepted settings pass through a launch stage, and finite
-range validation uses separate arithmetic/comparison stages.
+Current `acquisition_path.v` connects the ADC/precision source, finite trigger
+writer, continuous SRAM engine and frozen recall to one physical transport and
+one 5120-word host buffer. It arbitrates capture/stream/recall starts, latches
+configuration, invalidates stale finite records on stream start, handles raw
+first/second-sample edges and full Q8.8 thresholds, and propagates ADC faults to
+both acquisition modes. It exposes an external aligned trigger-match hook.
+The real board PLL/pin top and GPMC/kernel/app ABI are still separate.
 
-The continuous path retains both Q8.8 channels in each 32-bit word and targets
-/256 and slower. The finite reader preserves opaque raw or precision words,
-including the complete 524288-word / 2 MiB SRAM range. No new bitstream has been
-deployed. The existing default image/app is not yet connected to this backend.
+Current simulation evidence:
+- `integrated-acquisition/tests.txt`: real downstream RTL with ADC/CIC mocks;
+  3017-word raw capture/recall (3000-word prehistory, second-sample trigger),
+  48-word precision capture/recall, 6001-word stream. Every host halfword is
+  checked against independently collected source words. Busy start/config
+  changes, held final banks, stale recall and streaming ADC fault pass.
+- `integrated-acquisition/stream-tests.txt`: updated standalone stream wrapper
+  passes 10003 words with physical SRAM wrap and actual host-buffer readback.
+- `integrated-acquisition/start-tests.txt`: accepted-start settings and epoch
+  reset pass after the new source-fault input was propagated through wrappers.
+- Earlier `finite-capture/full-tests.txt` proves the previous checkpoint's
+  complete 524288-word / 2 MiB trigger capture and 205-bank recall. Its source
+  manifest predates the new streaming fault input and integrated wrapper.
 
-`board_capture_path.v` additionally connects an external finite capture writer
-and the shared backend to the same physical transport. A core-clock reservation
-blocks new backend starts, waits for existing transfers and host bank ownership,
-and stays granted until the writer's physical transport drains. The exposed
-position counter retains its origin across handoffs. This is the integration
-boundary for the existing board writer; top.v has not yet been migrated.
+The first combined real-ADC/CIC build FAILED TO FIT:
+- `integrated-acquisition/result.json` and exact source/report snapshots.
+- Synthesis: 12782 logic elements, 9285 registers, 315904 memory bits.
+- Fitter: 750 LABs required; EP4CE10 has 645 LABs. No STA or CDC audit ran.
+- Precision hierarchy: 4172 combinational ALUTs, 3430 logic registers. These
+  hierarchy counts are not interchangeable with the whole-design LE count.
+- GPMC register logic is not included, so more headroom is still required.
+- Prior shared-backend-only timing/CDC reports do not qualify this integrated
+  core. No bitstream was assembled or deployed.
 
-`finite_writer.v` now supplies pre/post-trigger record bookkeeping on that
-external writer interface. It drains priming writes before establishing the
-physical origin, preserves opaque 32-bit raw/precision data, and publishes the
-frozen record only after final drain. The existing ADC/GPMC top still needs to
-instantiate it and arbitrate its start against the shared backend. Its changed
-origin convention is simulation-checked only, not board-qualified.
+Next architectural change: share the arithmetic of the slow precision stages.
+Keep the first /16 CIC and the first configurable stage at their required rate;
+after /256, only 1.953125 million dual-channel words/s reach the remaining
+stages, leaving about 51 clocks/word at 100 MHz. A scheduled state-memory
+implementation can replace six parallel channel/stage datapaths while retaining
+the existing CIC arithmetic, fractional precision and startup-discard behavior.
+It must be compared word-for-word against the current parallel filter across
+all decimation settings, bursts/stalls and epoch resets before integration.
 
-The finite writer now accepts synchronous frontend faults through startup,
-triggered data, final drain and frozen recall. Faults suppress new writes and
-invalidate the epoch. `acquisition_source.v` extracts the ADC/precision source
-with uninterrupted consumption, per-epoch configuration, aligned output words
-and sticky ADC/precision/clock-lock faults. It is not yet instantiated in top.v.
-The continuous engine still needs frontend-fault propagation when integrated.
-
-Current evidence:
-- `finite-capture/source-tests.txt`: ADC/CIC interface-mock tests pass all legal
-  decimation settings, illegal-mode rejection, stable per-epoch configuration,
-  aligned data/valid output, uninterrupted consumption and ADC lock-loss faults.
-  These do not test converter ordering or actual CIC arithmetic.
-- `finite-capture/full-tests.txt`: all 524288 words / 2 MiB captured through the
-  real transport RTL at one word per simulated 250 MHz cycle, with SRAM wrap
-  before trigger; trigger index 524271, 17 post words. Every recalled halfword
-  passes through 205 actual host banks. Simulated SRAM and host timing are ideal.
-- `finite-capture/tests.txt`: eight operations without reset, including a full
-  8192-word ring trigger, sparse early-trigger handling, wrapped untriggered
-  halt, rejected invalid rearm, and subsequent stream/recall switching. The
-  same frozen source set passes startup/idle halt, lost-readiness fault,
-  rejected faulted rearm and coordinated reset recovery. Added frontend fault
-  injection covers startup, triggering word, final drain, frozen record and
-  rejection of an idle start with an asserted source fault.
-- `board-capture/tests.txt`: external 97-word finite write followed by exact
-  recall, plus the five shared-backend operations below, all without reset.
-  Checks writer exclusion while transfers/banks are owned, backend exclusion
-  during writer grant, early request release through physical drain, and the
-  preserved physical counter origin. No placement/IO qualification of this
-  new board wrapper has been performed.
-- `shared-capture/tests.txt`: engine and complete wrapper each pass five
-  operations without reset: 5121-word finite read, 10003-word streaming capture
-  with SRAM wrap, recall of its last 8192 words, 257-word second stream, and
-  recall of its last word. Every host halfword is checked. Each run rejects ten
-  busy starts and incorrect release tokens, including a held final bank.
-- `shared-capture/start-tests.txt`: accepted address/length settings survive
-  immediate input changes; a pending second start is rejected; reset and later
-  stream launch pass.
-- `finite-recall/full-passed.txt`: all 524288 words recalled through 205 actual
-  host-buffer banks with an ideal SRAM model; frozen contents remain unchanged.
-- `finite-recall/passed.txt`: continuation and fresh-seek modes, offsets, empty
-  and invalid ranges, odd tails, repeated requests, host stalls and readback.
-  Fault tests cover host errors, lost freeze, short/extra read responses,
-  epoch recovery and waiting for the final host release.
-- `shared-capture/result.json`: 6109/10320 logic elements, 4813 registers and
-  38/46 M9Ks. All 120 CDC audit rows pass across three corners. Setup FAILS at
-  -1.096 ns; hold +0.145, recovery +0.559, removal +0.299, minimum pulse +1.513.
-  IO is unconstrained. ADC/precision and GPMC logic are excluded from this fit.
-  Worst setup path: mode selection into the stream ingress payload enable.
-
-Earlier physical-geometry streaming component evidence (65539 words, a 10 ms
-ARM pause, four skipped busy-bank scans and 16 overlaps) remains in the host-path
-validation directory. It is not a hardware qualification of the new shared top.
-
-Work still required for the full goal:
-- Connect the real 100 MHz ADC encode/five-phase 2x500 MS/s frontend, precision
-  processing, finite capture writer and frozen-record metadata to the shared
-  transport/host path; close the complete image's timing and physical IO limits.
-- Implement/version the GPMC ABI and kernel/app handling for 5120 host words,
-  continuous transfer, retained precision, timebase policy and ARM processing.
-- Integrate pre/post-trigger record geometry and extensible edge/UART/I2C/SPI
-  triggering with the shared acquisition modes.
-- Qualify ADC ordering, phase/read bias, continuation, complete capture depth,
-  sustained transfer and behavior under host stalls on the device. Simulation
-  readback and unconstrained placement do not prove these electrical properties.
-
-The original packetizer bench remains sim/tb_stream_path.v; the streaming
-wrapper bench is sim/tb_sram_stream_path.v. Historical experiments retain their
-own sources/results and must not be mistaken for current qualification.
+Remaining full-goal work includes fitting/closing timing with physical ADC/IO
+constraints, actual default top and 5120-word GPMC ABI integration, kernel/app
+streaming and long retained history, additional decoder triggers, and hardware
+qualification of ADC order, phase/read bias, continuation, capture depth and
+sustained transfer under ARM stalls. Internal scope storage remains untouched.
