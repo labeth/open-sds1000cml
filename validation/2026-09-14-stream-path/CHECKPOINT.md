@@ -1,5 +1,14 @@
 # Integrated acquisition core — fits, timing still fails
 
+Latest retained-events checkpoint: `retained-events/build` uses 9218 LEs,
+7723 registers, 44 M9Ks and 642/645 LABs. Transport event gates use the
+retained owner; public mode and source faults retain immediate selection.
+Both five-operation backend configurations, composed acquisition and mode
+oracle pass. Setup -2.773 ns and recovery -5.352 ns still fail; existing
+135-row CDC audit passes. Worst setup is finite-writer IDLE through start
+arbitration into backend launch registers. Physical qualification is incomplete.
+
+
 Latest transport checkpoint: `transport-latched-validation/build` uses 9212 LEs,
 7723 registers, 44 M9Ks and 643/645 LABs. Validation uses the command already
 latched before VALIDATE, preserving latency and full count checks. 400000
