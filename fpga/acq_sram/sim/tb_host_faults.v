@@ -8,7 +8,8 @@ module tb_host_faults;
  wire cf,hf;wire [1:0] rel,ready,token;wire [63:0] f0,f1;wire [11:0] w0,w1;
  reg ren=0;reg [13:0] ra=0;wire rv,re;wire [15:0] rd;
  integer writes=0,before_writes;
- sram_host_path dut(reset,c,m,h,valid,1'b0,data,index,done,64'd123,64'd0,20'd2,20'd0,
+ reg [19:0] descriptor_words=2;
+ sram_host_path dut(reset,c,m,h,valid,1'b0,data,index,done,64'd123,64'd0,descriptor_words,20'd0,
   cf,hf,rel,1'b0,1'b0,1'b0,ready,token,f0,f1,w0,w1,ren,ra,rv,re,rd);
  always @(posedge m)if(dut.ram_write)writes=writes+1;
  task clear_epoch;
@@ -35,7 +36,20 @@ module tb_host_faults;
    if(!rv || re || rd!==value)$fatal(1,"owned memory corrupted");
   end
  endtask
+ task reject_descriptor(input [19:0] count);
+  begin
+   clear_epoch;descriptor_words=count;
+   word(0,32'h12345678);word(1,32'habcd9876);
+   @(negedge c);done=1;@(negedge c);done=0;
+   expect_fault;
+   if(ready || rel)$fatal(1,"invalid descriptor published");
+   descriptor_words=2;
+  end
+ endtask
  initial begin
+  reject_descriptor(0);
+  reject_descriptor(1);
+  reject_descriptor(20'h1002);
   clear_epoch;
   word(1,32'hbad);expect_fault;
   if(writes || ready)$fatal(1,"malformed first word published");
