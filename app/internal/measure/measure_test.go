@@ -261,3 +261,22 @@ func TestFractionalAcquisitionMeasurements(t *testing.T) {
 		t.Fatalf("AC coupling quantized: %+v", r)
 	}
 }
+
+func TestQ8SmallRippleOnLargeDC(t *testing.T) {
+	// Full precision depth excluding the 31-sample filter guard at each end.
+	const n = 524288 - 62
+	want := math.Sqrt(float64(n-1)) / float64(n) / 256
+	for _, dc := range []uint16{0, 32768, 60000} {
+		for _, outlier := range []int{0, n - 1} {
+			sig := make([]uint16, n)
+			for i := range sig {
+				sig[i] = dc
+			}
+			sig[outlier]++
+			r := ComputeQ8(sig, 1, 0, 1e-6)
+			if math.Abs(r.Vrms-want) > want*1e-9 {
+				t.Fatalf("DC %d outlier %d: RMS %.12g, want %.12g", dc, outlier, r.Vrms, want)
+			}
+		}
+	}
+}

@@ -126,6 +126,9 @@ func compute[T ~uint8 | ~uint16](sig []T, voltsPerCode, offV, sampleS, scale flo
 		return nil
 	}
 	cmin, cmax := int(sig[0]), int(sig[0])
+	// Center moments on an exact sample code. Subtracting DC-sized moments
+	// otherwise loses small Q8.8 ripple when the record is nearly constant.
+	reference := int(sig[0])
 	var sum, sum2 float64
 	hist := make([]int, int(256*scale))
 	for _, v := range sig {
@@ -136,12 +139,14 @@ func compute[T ~uint8 | ~uint16](sig []T, voltsPerCode, offV, sampleS, scale flo
 		if iv > cmax {
 			cmax = iv
 		}
-		sum += float64(iv)
-		sum2 += float64(iv) * float64(iv)
+		delta := float64(iv - reference)
+		sum += delta
+		sum2 += delta * delta
 		hist[iv]++
 	}
-	mean := sum / float64(n)
-	variance := sum2/float64(n) - mean*mean
+	meanDelta := sum / float64(n)
+	mean := float64(reference) + meanDelta
+	variance := sum2/float64(n) - meanDelta*meanDelta
 	if variance < 0 {
 		variance = 0
 	}
