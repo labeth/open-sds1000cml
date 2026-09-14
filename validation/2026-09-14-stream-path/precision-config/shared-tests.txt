@@ -1,0 +1,13 @@
+{"precision.v": "a773edf444d2b4a0c37e2d1504612cd5091e57bad1dc1c41bc10fb09c968d6c5", "precision_tail.v": "dd4dfd694d649b84e2c798911d1f7cb5df3384211761cdf871714eae97505d72", "reference_precision.v": "dc03fe4fd3d2daf0d0f757f1f0f9c942793f650f8ab709aba881b95860598b33", "sim/tb_precision_shared.v": "24f3cc5a6e6f3115595069f2a33ee30f000d18245361eb329ed8440efff761c8"}
+PASS complete precision /16: 47 identical dual-channel Q8.8 words
+PASS complete precision /32: 43 identical dual-channel Q8.8 words
+PASS complete precision /64: 45 identical dual-channel Q8.8 words
+PASS complete precision /128: 46 identical dual-channel Q8.8 words
+PASS complete precision /256: 47 identical dual-channel Q8.8 words
+PASS complete precision /512: 43 identical dual-channel Q8.8 words
+PASS complete precision /1024: 45 identical dual-channel Q8.8 words
+PASS complete precision /2048: 46 identical dual-channel Q8.8 words
+PASS complete precision /4096: 47 identical dual-channel Q8.8 words
+PASS complete precision /8192: 43 identical dual-channel Q8.8 words
+PASS complete shared precision path, fixed first CIC, FIFOs and stage selection against frozen parallel reference
+/tmp/acq-precision-shared-enla0rvo/tb_precision_shared.v:47: $finish called at 1917216100 (1ps)

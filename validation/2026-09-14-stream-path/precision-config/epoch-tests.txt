@@ -1,0 +1,7 @@
+{"precision.v": "a773edf444d2b4a0c37e2d1504612cd5091e57bad1dc1c41bc10fb09c968d6c5", "precision_tail.v": "dd4dfd694d649b84e2c798911d1f7cb5df3384211761cdf871714eae97505d72", "reference_precision.v": "dc03fe4fd3d2daf0d0f757f1f0f9c942793f650f8ab709aba881b95860598b33", "sim/tb_precision_config.v": "dcfef26df8f2748583ca965f66ebfd7b3c8f603b358e903cad2bf77a16ef5198"}
+PASS short precision epoch /256: 47 words match clean reference
+PASS short precision epoch /512: 43 words match clean reference
+PASS short precision epoch /16: 47 words match clean reference
+PASS short precision epoch /4096: 47 words match clean reference
+PASS precision settings/rearm after one-core-cycle disable
+/tmp/acq-precision-shared-e1zblc8j/tb_precision_config.v:55: $finish called at 580192100 (1ps)

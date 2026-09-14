@@ -1,0 +1,12 @@
+{"precision.v": "e8075bde6611ab0818ae2f41fd35823b59c99bf964b829cff5b743fb84e3a768", "precision_tail.v": "94bfc920b6d8e4929da254d70ccf1182e76d73289739e323dae914c843128dc8", "reference_precision.v": "dc03fe4fd3d2daf0d0f757f1f0f9c942793f650f8ab709aba881b95860598b33", "sim/tb_precision_config.v": "2bd4739db7cdbef2866aac71b518af330dc3e0399eb048da621c2b3c94da8899"}
+PASS short precision epoch /256: 47 words match clean reference
+FATAL: /tmp/acq-precision-shared-ubpbtdys/tb_precision_config.v:29: precision log=9 output=0 expected=7a9d7d47 got=7d307d1e
+       Time: 51272000  Scope: tb_precision_config
+Traceback (most recent call last):
+  File "/home/labeth/ws/open-sds1000cml-acq2/validation/2026-09-14-stream-path/test_precision_config.py", line 23, in <module>
+    subprocess.run(['vvp',str(binary)],check=True,timeout=900)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib64/python3.14/subprocess.py", line 578, in run
+    raise CalledProcessError(retcode, process.args,
+                             output=stdout, stderr=stderr)
+subprocess.CalledProcessError: Command '['vvp', '/tmp/acq-precision-shared-ubpbtdys/test']' returned non-zero exit status 1.

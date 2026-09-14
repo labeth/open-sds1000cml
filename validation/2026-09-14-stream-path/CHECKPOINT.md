@@ -11,7 +11,7 @@ unused addresses in the same RAM. The first /16 CIC and first configurable
 stage remain parallel. The integrated source selects SHARED_TAIL=1; the existing
 qualified board top retains its parallel default pending migration.
 
-Current arithmetic evidence in `precision-tail`:
+Earlier arithmetic evidence in `precision-tail`:
 - `full-tests.txt`: remaining decimation logs 0..12 match the frozen parallel
   CIC oracle, including random full-range/fractional data, rails, gaps, startup
   discards, bursts, overload and reset. Sixteen epochs pass.
@@ -25,7 +25,7 @@ Current arithmetic evidence in `precision-tail`:
   and streaming with ADC/CIC mocks. It predates the shared-tail selection.
   Earlier full-depth capture evidence remains source-versioned in finite-capture.
 
-Current real-ADC/CIC build in `precision-tail/integrated-build`:
+Earlier real-ADC/CIC build in `precision-tail/integrated-build`:
 - FIT PASSES: 9500/10320 logic elements, 7655 registers, 44/46 M9Ks.
 - All 645 LABs are partially/completely used; GPMC logic is not included, so
   remaining individual LEs do not guarantee enough usable integration headroom.
@@ -41,9 +41,21 @@ The fully parallel integrated build required 750 LABs. The first scheduled tail
 with a register queue required 647; `precision-tail/first-build` records that
 intermediate failure. Packing the queue into state RAM lets the core fit.
 
-Next: address the core-to-100 MHz configuration transfer with an explicit stable
-capture contract, review the added ADC reset/CDC paths, and close real data-path
-and IO timing. Then integrate/version the default GPMC interface and kernel/app
-streaming, retained precision and long history. The full goal still includes
-protocol triggers, all-timebase behavior and hardware qualification of ADC order,
-read bias/continuation, full depth and sustained transfer under ARM stalls.
+Latest checkpoint: `precision-config/integrated-build` includes a held local
+100 MHz configuration register and asynchronous assertion / three-clock release
+for shared precision enable chains. A reproduced one-core-cycle disable bug is
+fixed: filter history now resets even when disable misses slower clock edges.
+Four short-reset epochs and complete /16../8192 oracle comparisons pass.
+Fixed normalization slices preserve valid results while keeping the core fitted.
+
+Latest fit: 9495 LEs, 7653 registers, 44 M9Ks, 645 LABs. All 126 backend and
+configuration CDC audit rows pass. Setup -6.894 ns and recovery -5.229 ns still
+fail. Worst setup is edge-trigger detection, including source data paths.
+No image deployed; ADC CDC/reset and physical IO remain unqualified.
+
+Next: pipeline trigger comparisons with aligned sample data and trigger position,
+review ADC reset/CDC paths, and close timing. Then integrate/version the default
+GPMC interface and kernel/app streaming, retained precision and long history.
+The full goal still includes protocol triggers, all-timebase behavior and hardware
+qualification of ADC order, read bias/continuation, full depth and sustained
+transfer under ARM stalls.

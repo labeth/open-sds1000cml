@@ -1,0 +1,125 @@
+Flow report for probe
+Mon Sep 14 09:08:41 2026
+Quartus Prime Version 21.1.0 Build 842 10/21/2021 SJ Lite Edition
+
+
+---------------------
+; Table of Contents ;
+---------------------
+  1. Legal Notice
+  2. Flow Summary
+  3. Flow Settings
+  4. Flow Non-Default Global Settings
+  5. Flow Elapsed Time
+  6. Flow OS Summary
+  7. Flow Log
+  8. Flow Messages
+  9. Flow Suppressed Messages
+
+
+
+----------------
+; Legal Notice ;
+----------------
+Copyright (C) 2021  Intel Corporation. All rights reserved.
+Your use of Intel Corporation's design tools, logic functions 
+and other software and tools, and any partner logic 
+functions, and any output files from any of the foregoing 
+(including device programming or simulation files), and any 
+associated documentation or information are expressly subject 
+to the terms and conditions of the Intel Program License 
+Subscription Agreement, the Intel Quartus Prime License Agreement,
+the Intel FPGA IP License Agreement, or other applicable license
+agreement, including, without limitation, that your use is for
+the sole purpose of programming logic devices manufactured by
+Intel and sold by Intel or its authorized distributors.  Please
+refer to the applicable agreement for further details, at
+https://fpgasoftware.intel.com/eula.
+
+
+
++----------------------------------------------------------------------------------+
+; Flow Summary                                                                     ;
++------------------------------------+---------------------------------------------+
+; Flow Status                        ; Successful - Mon Sep 14 09:08:31 2026       ;
+; Quartus Prime Version              ; 21.1.0 Build 842 10/21/2021 SJ Lite Edition ;
+; Revision Name                      ; probe                                       ;
+; Top-level Entity Name              ; sram_acquisition_path                       ;
+; Family                             ; Cyclone IV E                                ;
+; Device                             ; EP4CE10F17C8                                ;
+; Timing Models                      ; Final                                       ;
+; Total logic elements               ; 9,495 / 10,320 ( 92 % )                     ;
+;     Total combinational functions  ; 7,609 / 10,320 ( 74 % )                     ;
+;     Dedicated logic registers      ; 7,653 / 10,320 ( 74 % )                     ;
+; Total registers                    ; 7675                                        ;
+; Total pins                         ; 44 / 180 ( 24 % )                           ;
+; Total virtual pins                 ; 755                                         ;
+; Total memory bits                  ; 317,952 / 423,936 ( 75 % )                  ;
+; Embedded Multiplier 9-bit elements ; 0 / 46 ( 0 % )                              ;
+; Total PLLs                         ; 1 / 2 ( 50 % )                              ;
++------------------------------------+---------------------------------------------+
+
+
++-----------------------------------------+
+; Flow Settings                           ;
++-------------------+---------------------+
+; Option            ; Setting             ;
++-------------------+---------------------+
+; Start date & time ; 09/14/2026 09:04:17 ;
+; Main task         ; Compilation         ;
+; Revision Name     ; probe               ;
++-------------------+---------------------+
+
+
++-------------------------------------------------------------------------------------------------------------------+
+; Flow Non-Default Global Settings                                                                                  ;
++--------------------------------------+---------------------------------+---------------+-------------+------------+
+; Assignment Name                      ; Value                           ; Default Value ; Entity Name ; Section Id ;
++--------------------------------------+---------------------------------+---------------+-------------+------------+
+; COMPILER_SIGNATURE_ID                ; 228800471304300.178936945736431 ; --            ; --          ; --         ;
+; FITTER_EFFORT                        ; Standard Fit                    ; Auto Fit      ; --          ; --         ;
+; MUX_RESTRUCTURE                      ; Off                             ; Auto          ; --          ; --         ;
+; NUM_PARALLEL_PROCESSORS              ; 2                               ; --            ; --          ; --         ;
+; OPTIMIZATION_MODE                    ; Aggressive Performance          ; Balanced      ; --          ; --         ;
+; PHYSICAL_SYNTHESIS_COMBO_LOGIC       ; On                              ; Off           ; --          ; --         ;
+; PHYSICAL_SYNTHESIS_REGISTER_RETIMING ; On                              ; Off           ; --          ; --         ;
+; PLACEMENT_EFFORT_MULTIPLIER          ; 4.0                             ; 1.0           ; --          ; --         ;
+; PROJECT_OUTPUT_DIRECTORY             ; output_files                    ; --            ; --          ; --         ;
+; ROUTER_TIMING_OPTIMIZATION_LEVEL     ; MAXIMUM                         ; Normal        ; --          ; --         ;
+; SEED                                 ; 2                               ; 1             ; --          ; --         ;
+; TOP_LEVEL_ENTITY                     ; sram_acquisition_path           ; probe         ; --          ; --         ;
++--------------------------------------+---------------------------------+---------------+-------------+------------+
+
+
++--------------------------------------------------------------------------------------------------------------------------+
+; Flow Elapsed Time                                                                                                        ;
++----------------------+--------------+-------------------------+---------------------+------------------------------------+
+; Module Name          ; Elapsed Time ; Average Processors Used ; Peak Virtual Memory ; Total CPU Time (on all processors) ;
++----------------------+--------------+-------------------------+---------------------+------------------------------------+
+; Analysis & Synthesis ; 00:02:17     ; 1.0                     ; 1870 MB             ; 00:02:27                           ;
+; Fitter               ; 00:01:53     ; 1.0                     ; 912 MB              ; 00:02:38                           ;
+; Timing Analyzer      ; 00:00:08     ; 1.2                     ; 571 MB              ; 00:00:10                           ;
+; Total                ; 00:04:18     ; --                      ; --                  ; 00:05:15                           ;
++----------------------+--------------+-------------------------+---------------------+------------------------------------+
+
+
++--------------------------------------------------------------------------------------+
+; Flow OS Summary                                                                      ;
++----------------------+------------------+-------------+-------------+----------------+
+; Module Name          ; Machine Hostname ; OS Name     ; OS Version  ; Processor type ;
++----------------------+------------------+-------------+-------------+----------------+
+; Analysis & Synthesis ; fedora           ; Fedora Core ; Fedora Core ; x86_64         ;
+; Fitter               ; fedora           ; Fedora Core ; Fedora Core ; x86_64         ;
+; Timing Analyzer      ; fedora           ; Fedora Core ; Fedora Core ; x86_64         ;
++----------------------+------------------+-------------+-------------+----------------+
+
+
+------------
+; Flow Log ;
+------------
+quartus_map probe
+quartus_fit probe
+quartus_sta probe
+
+
+

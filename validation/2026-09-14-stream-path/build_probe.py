@@ -58,6 +58,11 @@ set_false_path -from [get_ports reset]
   (out/'stream_path_cdc.sdc').write_bytes(data)
   hashes['stream_path_cdc.sdc']=hashlib.sha256(data).hexdigest()
   with (out/'probe.sdc').open('a') as f:f.write('source stream_path_cdc.sdc\n')
+  if acquisition:
+   data=(root/'fpga/acq_sram/acquisition_config_cdc.sdc').read_bytes()
+   (out/'acquisition_config_cdc.sdc').write_bytes(data)
+   hashes['acquisition_config_cdc.sdc']=hashlib.sha256(data).hexdigest()
+   with (out/'probe.sdc').open('a') as f:f.write('source acquisition_config_cdc.sdc\n')
  # Quartus permits omitted trailing positional ports. Reject interface
  # mistakes before spending time on a placed netlist; this elaboration uses
  # the same frozen RTL plus the DDR primitive simulation declaration.

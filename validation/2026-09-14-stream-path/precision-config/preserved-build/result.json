@@ -1,0 +1,9 @@
+{
+  "status": "fit_failed",
+  "required_labs": 646,
+  "available_labs": 645,
+  "map_logic_elements": 11119,
+  "map_registers": 7692,
+  "tail_aluts": 658,
+  "tail_registers": 145
+}

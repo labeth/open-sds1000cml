@@ -1,0 +1,10 @@
+{
+  "status": "fit_failed",
+  "required_labs": 654,
+  "available_labs": 645,
+  "map_logic_elements": 11198,
+  "map_registers": 7824,
+  "tail_aluts": 706,
+  "tail_registers": 277,
+  "observation": "Map register statistics show ShiftRight0 retimed/duplicated registers; previous tail used 145 registers."
+}

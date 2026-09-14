@@ -1,0 +1,47 @@
+Info: *******************************************************************
+Info: Running Quartus Prime Timing Analyzer
+    Info: Version 21.1.0 Build 842 10/21/2021 SJ Lite Edition
+    Info: Copyright (C) 2021  Intel Corporation. All rights reserved.
+    Info: Your use of Intel Corporation's design tools, logic functions 
+    Info: and other software and tools, and any partner logic 
+    Info: functions, and any output files from any of the foregoing 
+    Info: (including device programming or simulation files), and any 
+    Info: associated documentation or information are expressly subject 
+    Info: to the terms and conditions of the Intel Program License 
+    Info: Subscription Agreement, the Intel Quartus Prime License Agreement,
+    Info: the Intel FPGA IP License Agreement, or other applicable license
+    Info: agreement, including, without limitation, that your use is for
+    Info: the sole purpose of programming logic devices manufactured by
+    Info: Intel and sold by Intel or its authorized distributors.  Please
+    Info: refer to the applicable agreement for further details, at
+    Info: https://fpgasoftware.intel.com/eula.
+    Info: Processing started: Mon Sep 14 09:08:42 2026
+Info: Command: quartus_sta -t audit_cdc.tcl
+Info (20032): Parallel compilation is enabled and will use up to 2 processors
+Info (21076): High junction temperature operating condition is not set. Assuming a default value of '85'.
+Info (21076): Low junction temperature operating condition is not set. Assuming a default value of '0'.
+Info (332164): Evaluating HDL-embedded SDC commands
+    Info (332165): Entity dcfifo_t9i1
+        Info (332166): set_false_path -from *rdptr_g* -to *ws_dgrp|dffpipe_hd9:dffpipe9|dffe10a* 
+        Info (332166): set_false_path -from *delayed_wrptr_g* -to *rs_dgwp|dffpipe_gd9:dffpipe6|dffe7a* 
+    Info (332165): Entity dcfifo_ten1
+        Info (332166): set_false_path -from *rdptr_g* -to *ws_dgrp|dffpipe_fd9:dffpipe18|dffe19a* 
+        Info (332166): set_false_path -from *delayed_wrptr_g* -to *rs_dgwp|dffpipe_ed9:dffpipe15|dffe16a* 
+Info (332104): Reading SDC File: 'probe.sdc'
+Info (332110): Deriving PLL clocks
+    Info (332110): create_generated_clock -source {source|frontend|clocks|p|auto_generated|pll1|inclk[0]} -phase 108.00 -duty_cycle 50.00 -name {source|frontend|clocks|p|auto_generated|pll1|clk[0]} {source|frontend|clocks|p|auto_generated|pll1|clk[0]}
+    Info (332110): create_generated_clock -source {source|frontend|clocks|p|auto_generated|pll1|inclk[0]} -phase 144.00 -duty_cycle 50.00 -name {source|frontend|clocks|p|auto_generated|pll1|clk[1]} {source|frontend|clocks|p|auto_generated|pll1|clk[1]}
+    Info (332110): create_generated_clock -source {source|frontend|clocks|p|auto_generated|pll1|inclk[0]} -phase 72.00 -duty_cycle 50.00 -name {source|frontend|clocks|p|auto_generated|pll1|clk[2]} {source|frontend|clocks|p|auto_generated|pll1|clk[2]}
+    Info (332110): create_generated_clock -source {source|frontend|clocks|p|auto_generated|pll1|inclk[0]} -duty_cycle 50.00 -name {source|frontend|clocks|p|auto_generated|pll1|clk[3]} {source|frontend|clocks|p|auto_generated|pll1|clk[3]}
+    Info (332110): create_generated_clock -source {source|frontend|clocks|p|auto_generated|pll1|inclk[0]} -phase 36.00 -duty_cycle 50.00 -name {source|frontend|clocks|p|auto_generated|pll1|clk[4]} {source|frontend|clocks|p|auto_generated|pll1|clk[4]}
+Info (332151): Clock uncertainty is not calculated until you update the timing netlist.
+Info (332123): Deriving Clock Uncertainty. Please refer to report_sdc in the Timing Analyzer to see clock uncertainties.
+Info (332123): Deriving Clock Uncertainty. Please refer to report_sdc in the Timing Analyzer to see clock uncertainties.
+Info (332123): Deriving Clock Uncertainty. Please refer to report_sdc in the Timing Analyzer to see clock uncertainties.
+PASS combined host and ingress CDC routes at all corners
+Info (23030): Evaluation of Tcl script audit_cdc.tcl was successful
+Info: Quartus Prime Timing Analyzer was successful. 0 errors, 0 warnings
+    Info: Peak virtual memory: 503 megabytes
+    Info: Processing ended: Mon Sep 14 09:09:03 2026
+    Info: Elapsed time: 00:00:21
+    Info: Total CPU time (on all processors): 00:00:21

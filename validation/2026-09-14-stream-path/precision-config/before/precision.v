@@ -99,30 +99,10 @@ module adc_precision #(parameter SHARED_TAIL=0)(input core,packclk,clk100,enable
   if(first_valid)begin in_mail<=first_pair;in_toggle<=!in_toggle;end
  end
  reg in_toggle_s=0,in_seen=0;reg [2:0] pack_enable=0;
- always @(posedge packclk)begin in_toggle_s<=in_toggle;in_seen<=in_toggle_s;end
+ always @(posedge packclk)begin in_toggle_s<=in_toggle;in_seen<=in_toggle_s;pack_enable<={pack_enable[1:0],enable};end
  wire in_push=in_toggle_s!=in_seen && pack_enable[2];
  wire in_empty,in_full;wire [31:0] in_q;
- reg [2:0] enable_s=0;
- wire [4:0] filter_decim;
- generate if(SHARED_TAIL)begin:config_domain
-  // Disable may be shorter than a slower clock period. Assert reset
-  // immediately, then hold it through three destination-clock release stages.
-  always @(posedge clk100 or negedge enable)
-   if(!enable)enable_s<=0;else enable_s<={enable_s[1:0],1'b1};
-  always @(posedge packclk or negedge enable)
-   if(!enable)pack_enable<=0;else pack_enable<={pack_enable[1:0],1'b1};
-  // The caller holds decim_log before enable and throughout the epoch.
-  // Refresh during reset; the final capture precedes the first enabled
-  // filter edge by one full clk100 cycle. The first two release clocks
-  // provide settling time for the bounded core-to-clk100 configuration bus.
-  (* preserve, dont_merge *) reg [4:0] decim_100=0;
-  always @(posedge clk100)if(!enable_s[2])decim_100<=decim_log;
-  assign filter_decim=decim_100;
- end else begin:legacy_enable
-  always @(posedge clk100)enable_s<={enable_s[1:0],enable};
-  always @(posedge packclk)pack_enable<={pack_enable[1:0],enable};
-  assign filter_decim=decim_log;
- end endgenerate
+ reg [2:0] enable_s=0;always @(posedge clk100)enable_s<={enable_s[1:0],enable};
  dcfifo #(.lpm_width(32),.lpm_numwords(32),.lpm_widthu(5),.lpm_showahead("ON"),.add_ram_output_register("ON"),
  .rdsync_delaypipe(4),.wrsync_delaypipe(4),.read_aclr_synch("ON"),.write_aclr_synch("ON"),.use_eab("ON"),.intended_device_family("Cyclone IV E")) input_queue(
  .aclr(!enable),.wrclk(packclk),.data(in_mail),.wrreq(in_push && !in_full),.wrfull(in_full),
@@ -130,14 +110,14 @@ module adc_precision #(parameter SHARED_TAIL=0)(input core,packclk,clk100,enable
  wire [31:0] stage_data[0:4];wire [4:0] stage_valid;
  assign stage_data[0]=in_q;assign stage_valid[0]=!in_empty && enable_s[2];
  genvar s;generate for(s=0;s<(SHARED_TAIL ? 1 : 4);s=s+1)begin:stage
-  wire [4:0] remain=filter_decim>4+4*s ? filter_decim-(4+4*s) : 5'd0;
+  wire [4:0] remain=decim_log>4+4*s ? decim_log-(4+4*s) : 5'd0;
   wire [3:0] log=remain>4 ? 4'd4 : remain[3:0];wire unused_valid;
   cic_stage c1(clk100,enable_s[2],stage_valid[s],log,stage_data[s][15:0],stage_valid[s+1],stage_data[s+1][15:0]);
   cic_stage c2(clk100,enable_s[2],stage_valid[s],log,stage_data[s][31:16],unused_valid,stage_data[s+1][31:16]);
  end endgenerate
  wire tail_fault;
  generate if(SHARED_TAIL)begin:shared_tail
-  wire [3:0] remaining_log=filter_decim>8 ? filter_decim-8 : 0;
+  wire [3:0] remaining_log=decim_log>8 ? decim_log-8 : 0;
   cic_precision_tail tail(.clk(clk100),.enable(enable_s[2]),.valid(stage_valid[1]),
    .remaining_log(remaining_log),.data(stage_data[1]),.ready(),
    .out_valid(stage_valid[4]),.q(stage_data[4]),.fault(tail_fault));

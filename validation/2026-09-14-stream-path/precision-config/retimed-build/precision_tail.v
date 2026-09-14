@@ -9,8 +9,7 @@
 module cic_precision_tail(
  input wire clk,enable,valid,input wire [3:0] remaining_log,
  input wire [31:0] data,
- output wire ready,out_valid,
- (* preserve *) output reg [31:0] q=0,output reg fault=0
+ output wire ready,out_valid,output reg [31:0] q=0,output reg fault=0
 );
  localparam CLEAR=0,IDLE=1,BEGIN_STAGE=2,FETCH=3,APPLY=4;
  reg [2:0] state=CLEAR;
@@ -19,9 +18,7 @@ module cic_precision_tail(
  reg channel=0;reg [2:0] op=0;
  reg [3:0] count[0:2],warm[0:2];
  reg emit_comb=0,deliver=0,valid_q=0;
- // Keep the scheduled normalizer shared. Retiming these destination
- // registers duplicated the shifter register bank and exceeded device area.
- (* preserve *) reg [31:0] pair_data=0;
+ reg [31:0] pair_data=0;
  reg [27:0] accumulator=0;
  (* ramstyle="M9K" *) reg [31:0] state_mem[0:63];
  reg [31:0] state_q=0;
@@ -51,17 +48,9 @@ module cic_precision_tail(
   endcase
  end
  wire [3:0] last=(5'd1<<log)-1'b1;
- // An arithmetic stage only runs for log=1..4. Normalization selects
- // the low 16 bits after a signed shift by 3*log; all selected bits are
- // within the 28-bit result, so no sign-extension logic is needed.
- reg [15:0] normalized;
- always @*case(log)
-  1:normalized=result[18:3];
-  2:normalized=result[21:6];
-  3:normalized=result[24:9];
-  default:normalized=result[27:12];
- endcase
- wire [15:0] result_word=normalized^16'h8000;
+ wire [3:0] shift=log+(log<<1);
+ wire signed [27:0] normalized=$signed(result) >>> shift;
+ wire [15:0] result_word=normalized[15:0]^16'h8000;
  wire signed [15:0] input_low=pair_data[15:0]^16'h8000;
  wire signed [15:0] input_high=pair_data[31:16]^16'h8000;
  reg [1:0] read_pointer=0,write_pointer=0;
