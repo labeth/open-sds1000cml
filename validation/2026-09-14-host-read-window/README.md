@@ -28,6 +28,10 @@ are 160 ns (12.5 MB/s equivalent bus cadence), not a hardware benchmark.
 
 Run `python3 validation/2026-09-14-host-read-window/test_window.py`.
 Optional `--vendor-library /path/to/altera_mf.v` uses the Intel M9K model.
-Source hashes accompany results. This window has not yet been connected to the
-profile board register map, acquisition status or kernel driver, and it does
-not qualify an FPGA image or end-to-end streaming throughput.
+Source hashes accompany results. `--port` tests the `acq_host_read_port`
+register mapping through real GPMC writes and reads: selection, descriptors,
+data pop, final RAM address, release identity, reserved-bit rejection, and
+unclaimed-register routing. Its map is in `docs/fpga-profile-command-abi.md`.
+The profile board top, acquisition status and kernel driver still need
+integration. These tests do not qualify an FPGA image or end-to-end streaming
+throughput.

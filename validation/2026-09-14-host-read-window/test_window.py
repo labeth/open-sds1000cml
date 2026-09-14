@@ -9,10 +9,13 @@ import tempfile
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--vendor-library", type=Path)
+parser.add_argument("--port", action="store_true", help="test the GPMC register mapping")
 args = parser.parse_args()
 root = Path(__file__).resolve().parents[2]
 names = ("fpga/common/gpmc_slave.v", "fpga/acq_sram/host_ram.v",
          "fpga/acq_sram/host_read_window.v", "fpga/acq_sram/sim/tb_host_read_window.v")
+if args.port:
+    names = names[:-1] + ("fpga/acq_sram/host_read_port.v", "fpga/acq_sram/sim/tb_host_read_port.v")
 with tempfile.TemporaryDirectory(prefix="acq-host-read-window-") as directory:
     directory = Path(directory)
     sources = []
@@ -29,6 +32,7 @@ with tempfile.TemporaryDirectory(prefix="acq-host-read-window-") as directory:
         extra = ["-DALTERA_RESERVED_QIS", str(args.vendor_library.resolve())]
     print(json.dumps(hashes, sort_keys=True), flush=True)
     binary = directory / "test"
-    subprocess.run(["iverilog", "-g2012", "-s", "tb_host_read_window", "-o",
+    top = "tb_host_read_port" if args.port else "tb_host_read_window"
+    subprocess.run(["iverilog", "-g2012", "-s", top, "-o",
                     str(binary), *extra, *sources], check=True)
     subprocess.run(["vvp", str(binary)], check=True, timeout=60)
