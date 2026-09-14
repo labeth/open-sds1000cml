@@ -119,10 +119,20 @@ module tb_acquisition_path;
  end endtask
  initial begin
   repeat(10)tick;reset=0;repeat(10)tick;
+  // Reject each mode's illegal settings before any operation can start.
+  pre_count=N;post_count=1;reject_start(0);
+  pre_count=0;post_count=0;reject_start(0);post_count=1;
+  decim_log=3;reject_start(0);decim_log=0;
+  trigger_mode=3;reject_start(0);trigger_mode=0;
+  decim_log=7;reject_start(1);decim_log=0;
+  reject_start(2);reject_start(3);
+  if(active || record_frozen || triggered)$fatal(1,"invalid request changed acquisition state");
   pre_count=3000;post_count=17;trigger_mode=1;decim_log=0;collect=1;
   launch(0);decim_log=3;trigger_level=16'hffff;trigger_mode=3;
   reject_start(1);wait(record_frozen && !active);collect=0;
   if(sent!=3017 || trigger_index!=3000 || !trigger_second || !triggered)$fatal(1,"raw trigger geometry/phase");
+  offset=record_words;length=1;reject_start(2);
+  if(!record_frozen || record_words!=3017 || trigger_index!=3000)$fatal(1,"invalid recall damaged frozen record");
   recall;
   // Fractional precision words share the same record and host path.
   sent=0;pre_count=31;post_count=17;trigger_mode=0;decim_log=8;collect=1;

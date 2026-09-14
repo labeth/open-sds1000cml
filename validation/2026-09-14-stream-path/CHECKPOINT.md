@@ -76,3 +76,11 @@ busy-start rejection and atomic settings. Address ADC CDC/reset and physical
 IO timing, then finish default GPMC/kernel/app integration and hardware tests
 for the full original goal. Earlier failed trigger builds are source-versioned
 in trigger-pipeline/first-build and shared-sink-build.
+
+Latest mode-specific start checkpoint: `mode-start/integrated-build` fits at
+9522 LEs, 7738 registers, 44 M9Ks, 645 LABs. Existing 126 CDC rows pass.
+Expanded invalid-start/frozen-recall integrity tests pass. Setup -3.836 ns
+(ADC encode setting crossing), core setup -3.814 ns (FIFO overflow through
+start readiness into finite writer configuration). Recovery -5.725 ns.
+Start acceptance behavior is unchanged; further readiness/launch pipelining
+and ADC clock/reset qualification remain needed. No deployment.
