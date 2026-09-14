@@ -1,0 +1,13 @@
+source-sha256: {"fpga/acq_sram/ingress_fifo.v": "051a05212941de9d224cf9dcea66c29297a2c85b03c86012db0b1977ca463f35", "fpga/acq_sram/ingress_path.v": "c1aea8492b0641f504337c70a97373ceb51002cc7a0913c945d616a62591af31", "fpga/acq_sram/ingress_stream.v": "048e2faad3c03d5e966bfdd04de79eee8642e7efc0d09aecaad4a4d00f8a99e4", "fpga/acq_sram/ordinal_counter.v": "664eeb14d13d0f8b8fae17409d6bab6f246701c3892925d4f8b23d781be0d062", "fpga/acq_sram/sim/ddr_model.v": "ace57d159f0b1b9edd4e9c82b1496fab3b79b7c056b9aaa2da66698e65d164f2", "fpga/acq_sram/sim/tb_ordinal_counter.v": "de7377c5acd0cac983750b6d7f43a007162bc76841d41c6ab0645302af11d557", "fpga/acq_sram/sim/tb_timeslice_controller.v": "99282174010a561c3f5214ca503296c96906daebfd69ab91f9130f763c4454ec", "fpga/acq_sram/timeslice_controller.v": "403ccb985e6eea91500f31b0938461614e2759a89e1e862e9a635ee39f36b785", "fpga/acq_sram/transport.v": "f24d6fd8d9878b0e4eb722b293cab5a06c380ef42c58e6becccc0156eec1bfae", "fpga/acq_sram/word_bridge.v": "6b8b345cbbb1f839be615535d3bdf5da4c080749121bbd6c4e881f992115e863"}
+ordinals: PASS 64-bit ordinals across all carry boundaries and stalled steps
+/tmp/acq-controller-swq13u_y/sim/tb_ordinal_counter.v:23: $finish called at 432000 (1ps)
+
+wrap-tail-stall: PASS RTL controller: words=6003 blocks=376 max_pending=13 max_unread=125 skipped=11 overlap=207
+/tmp/acq-controller-swq13u_y/sim/tb_timeslice_controller.v:123: $finish called at 3103132000 (1ps)
+
+steady-bandwidth: PASS RTL controller: words=6003 blocks=376 max_pending=9 max_unread=64 skipped=0 overlap=185
+/tmp/acq-controller-swq13u_y/sim/tb_timeslice_controller.v:123: $finish called at 3101344000 (1ps)
+
+unread-protection: PASS controller unread protection: writes=1056 read=32
+/tmp/acq-controller-swq13u_y/sim/tb_timeslice_controller.v:123: $finish called at 545480000 (1ps)
+

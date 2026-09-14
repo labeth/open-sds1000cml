@@ -1,0 +1,5 @@
+quartus_map
+quartus_fit
+quartus_sta
+{'setup': -0.275, 'hold': 0.179, 'recovery': None, 'removal': None, 'minimum_pulse': 1.513}
+FAILED timing

@@ -1,0 +1,19 @@
+{
+  "qualification": "diagnostic only; IO unconstrained; CDC audit pending",
+  "timing": {
+    "setup": -0.326,
+    "hold": 0.138,
+    "recovery": 0.851,
+    "removal": 0.487,
+    "minimum_pulse": 1.513
+  },
+  "m9k_blocks": 20,
+  "sources": {
+    "host_path.v": "ceeb9654df6095607688b173076572bbfe779ab3e403d067a9fc5b2312b9ce81",
+    "host_packer.v": "fed53aef24d3f2b9cd005e22232a63c1f09352bf68e7955162f3b520bc76657a",
+    "host_fifo.v": "bf1eff02e237a882434398cc595e3c9d2054eb853ad9f70b80a4861539948e8e",
+    "host_sink.v": "5a64f47e67b70368a17bc370528a547b08df1597bbc98a8ef72048a137477c2d",
+    "host_ram.v": "9779d0040513cc724688b0c83a2fb73fb260e271d656e3d882dd1848f024bcad",
+    "host_ownership.v": "52e9c9131279598595c1c3905643c362ea2dc74c98b572f39cdd1f85371a83e9"
+  }
+}

@@ -1,0 +1,2 @@
+FATAL: fpga/acq_sram/sim/tb_host_ownership.v:13: core release before RAM acknowledgment
+       Time: 274000  Scope: tb_host_ownership

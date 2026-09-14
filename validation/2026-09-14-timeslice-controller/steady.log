@@ -1,0 +1,2 @@
+PASS RTL controller: words=65539 blocks=26 max_pending=4097 max_unread=5152 skipped=0 overlap=11
+fpga/acq_sram/sim/tb_timeslice_controller.v:123: $finish called at 38315664000 (1ps)

@@ -1,0 +1,75 @@
+# Combined stream wrapper functional test
+
+Run `python3 validation/2026-09-14-stream-path/test_stream.py` from repository
+root. The runner snapshots/hashes all RTL before compilation and execution.
+The bench instantiates only sram_stream_path and observes public interfaces:
+source ready/enable, SRAM DQ/control pins, descriptors, RAM reads and status.
+It does not rely on hierarchical controller signals.
+
+Passed 10003 words through an AW=13 SRAM model, including address wrap,
+2560-word host-bank reuse, odd final length, every 16-bit read response and
+final committed/recalled/unread accounting. Source cadence is one word per
+128 core cycles; ARM uses a separate 100 MHz clock and approximately 10 MB/s
+read cadence. The SRAM pipeline is an ideal behavioral model, not hardware
+qualification. This run has no injected ARM stall. Full-image timing, physical
+AW=19 scan behavior, trigger geometry and GPMC ABI remain separate work.
+
+Combined diagnostic placement (`build_probe.py --seed 2`) fits in EP4CE10:
+5263/10320 LEs, 4198 registers, 38/46 M9Ks. Setup -0.611 ns, hold +0.132 ns.
+The top includes ingress, scheduler, SRAM transport and host path; ADC front
+end, precision processing, trigger engines and GPMC ABI are not included.
+No IO delays or integrated CDC constraints are applied in this diagnostic.
+It does not qualify the 250 MHz production image. Fitter/STA and source hashes
+are preserved in `initial-probe/`. Synthesis warnings include unsupported
+async_reg attributes (CDC must rely on actual register/route audits), deliberate
+width truncations requiring review, and undefined dual-clock same-address RAM
+read/write behavior (ownership must prevent collisions).
+
+`stream_path_cdc.sdc` now scopes host faults under host and includes both
+ingress mailboxes and their request/ack/fault synchronizers. It loads against
+the combined placed netlist with all checked endpoint counts matching.
+Integrated synthesis eliminates ingress marker bits 35:32 because the controller
+consumes sample data 31:0 only. Explicit register-name inspection verifies that
+both incoming/outgoing payload and destination registers contain exactly bits
+0..31; constraints require 32 endpoints in each, not the standalone 36.
+Logs and inspection script are in `cdc-endpoints/`. This is endpoint/syntax
+evidence only; placement with constraints and all-corner route auditing remain.
+
+Combined constrained build (`--cdc --seed 2`) completes with 38 M9Ks and
+120 CDC audit rows passing (40 groups, 3 corners). This includes all host
+crossings, both retained 32-bit ingress mailboxes, request/ack synchronizers,
+and all three ingress fault-sync stages. Setup remains -0.418 ns; hold +0.107,
+recovery +0.290, removal +0.389, min pulse +1.513 ns. Leading failures include
+transport stop_requested -> ingress pending[12], transport remaining decrement,
+and controller next_count -> state. These core-to-core failures are real
+integration paths, not CDC exceptions. Board IO remains unconstrained. Exact
+sources/settings and fit/STA/audit evidence: `bounded-cdc-probe/`.
+
+Rejected parallel pending arithmetic experiment: both ingress phase suites
+pass and all 120 combined CDC checks pass, but overall setup worsens from
+-0.418 to -0.486 ns. Worst path moves to host packer count_legal_q -> first
+metadata; ingress pending still has a -0.310 ns path. Restored exact prior
+ingress source. Evidence: `parallel-pending-probe/`. Existing full-geometry
+simulation evidence continues to match the restored ingress implementation.
+
+Test naming correction: the new wrapper bench is now
+`sim/tb_sram_stream_path.v`. The original tracked `sim/tb_stream_path.v`
+packetizer/banks regression was restored byte-for-byte from HEAD and passes
+its odd/even/empty-stop, live stop, sequence and overload-reset cases. The
+new bench bytes are unchanged (SHA256
+08f13338ecdf14365e7284ee432c502de22a0104f83b2e001ad9698bf17dfd73);
+its earlier result names the former filename, and the runner now uses the
+new one. Both coverage sets are retained.
+
+Seed 3 with unchanged RTL/constraints passes the combined CDC audit but has
+setup -0.433 ns, slightly worse than seed 2 (-0.418). Worst paths are host
+packer fault -> held first-ordinal metadata. Resource use remains 38 M9Ks.
+Evidence: `seed3-probe/`. Seed 2 remains the better combined placement;
+neither is timing-qualified.
+
+Rejected registered metadata-enable experiment: eight host tests and all
+120 CDC checks pass, but combined setup worsens to -0.765 ns; leading paths
+are controller unread_full -> ingress pending and sampled_free -> controller
+state. Exact baseline packer restored. Reports, experimental source and tests
+retained in `metadata-enable-probe/`. This does not alter prior qualified
+component or full-geometry functional source versions.

@@ -1,0 +1,18 @@
+ordinals: PASS 64-bit ordinals across all carry boundaries and stalled steps
+/home/labeth/ws/open-sds1000cml-acq2/fpga/acq_sram/sim/tb_ordinal_counter.v:23: $finish called at 432000 (1ps)
+
+wrap-tail-stall: PASS RTL controller: words=6003 blocks=376 max_pending=13 max_unread=125 skipped=11 overlap=207
+/home/labeth/ws/open-sds1000cml-acq2/fpga/acq_sram/sim/tb_timeslice_controller.v:123: $finish called at 3103132000 (1ps)
+
+steady-bandwidth: PASS RTL controller: words=6003 blocks=376 max_pending=9 max_unread=64 skipped=0 overlap=185
+/home/labeth/ws/open-sds1000cml-acq2/fpga/acq_sram/sim/tb_timeslice_controller.v:123: $finish called at 3101344000 (1ps)
+
+unread-protection: PASS controller unread protection: writes=1056 read=32
+/home/labeth/ws/open-sds1000cml-acq2/fpga/acq_sram/sim/tb_timeslice_controller.v:123: $finish called at 545480000 (1ps)
+
+physical-steady: PASS RTL controller: words=65539 blocks=26 max_pending=4097 max_unread=5152 skipped=0 overlap=11
+/home/labeth/ws/open-sds1000cml-acq2/fpga/acq_sram/sim/tb_timeslice_controller.v:123: $finish called at 38315688000 (1ps)
+
+physical-geometry: PASS RTL controller: words=65539 blocks=26 max_pending=4101 max_unread=24437 skipped=4 overlap=16
+/home/labeth/ws/open-sds1000cml-acq2/fpga/acq_sram/sim/tb_timeslice_controller.v:123: $finish called at 45029972000 (1ps)
+

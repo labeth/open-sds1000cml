@@ -1,0 +1,2 @@
+PASS ownership: metadata, dual banks, 20 reuses, stale/duplicate releases, overwrite fault, reset
+fpga/acq_sram/sim/tb_host_ownership.v:57: $finish called at 5640000 (1ps)

@@ -1,0 +1,2 @@
+52e9c9131279598595c1c3905643c362ea2dc74c98b572f39cdd1f85371a83e9  fpga/acq_sram/host_ownership.v
+e20aaccc319acce3d1eef6fafe2c354c2414d5798f1a12560e3f0f8cf68278f6  fpga/acq_sram/sim/tb_host_ownership.v
