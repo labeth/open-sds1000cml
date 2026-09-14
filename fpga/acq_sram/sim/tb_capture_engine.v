@@ -1,6 +1,6 @@
 `timescale 1ns/1ps
 module tb_capture_engine;
- parameter WRAPPED=0;
+ parameter WRAPPED=0,ENABLE_STREAM=1;
  localparam AW=13,N=1<<AW;
  reg core_clk=0,ram_clk=0,host_clk=0;
  always #2 core_clk=~core_clk;always #4 ram_clk=~ram_clk;always #5 host_clk=~host_clk;
@@ -20,9 +20,9 @@ module tb_capture_engine;
  wire [AW:0] command_count;wire [31:0] write_data;
  wire [31:0] dq;wire k1,k2,g1;
  generate if(WRAPPED)begin: wrapped
-  sram_capture_path #(.AW(AW)) dut(.locked(1'b1),.sample_clk(sample_clk),.*);
+  sram_capture_path #(.AW(AW),.ENABLE_STREAM(ENABLE_STREAM)) dut(.locked(1'b1),.sample_clk(sample_clk),.*);
  end else begin: external_transport
- sram_capture_engine #(.AW(AW)) dut(.record_words_sampled(),.*);
+ sram_capture_engine #(.AW(AW),.ENABLE_STREAM(ENABLE_STREAM)) dut(.record_words_sampled(),.*);
  sram_transport #(.AW(AW),.CONTINUOUS_ONLY(1)) transport(
   .clk(core_clk),.sample_clk(sample_clk),.reset(reset),.locked(1'b1),
   .command(command),.command_read(command_read),.command_discard(command_discard),.command_continue(command_continue),
@@ -99,7 +99,7 @@ module tb_capture_engine;
  end endtask
  task run_case(input bit fin,input integer n,input integer base,input bit wrapped);
  begin
-  wait(start_ready);tick;
+  finite_mode=fin;wait(start_ready);tick;
   expected_selection=fin;expected_count=n;expected_base=base;expected_wrapped=wrapped;
   received=0;blocks=0;allow_final_release=0;finite_mode=fin;start=1;
   tick;start=0;
@@ -119,6 +119,19 @@ module tb_capture_engine;
   for(j=0;j<N;j=j+1)memory[j]=pattern(j);
   repeat(10)tick;reset=0;repeat(4)tick;
   run_case(1,5121,N-54,1);
+  if(!ENABLE_STREAM)begin
+   // Unsupported idle requests must neither acquire a bank nor drive SRAM.
+   tick;finite_mode=0;start=1;tick;
+   if(!start_rejected || active || command || source_enable || bank_busy!=0)
+    $fatal(1,"deep profile accepted unsupported stream");
+   start=0;repeat(4)tick;
+   record_start=0;record_words=N;offset=0;length=N;
+   run_case(1,N,0,0);
+   offset=N-1;length=1;run_case(1,1,N-1,0);
+   if(rejections!=6)$fatal(1,"deep busy rejection coverage");
+   $display("PASS deep capture backend: wrapped=%0d, wrap/full-depth/single-word recall, stream rejection, ownership",WRAPPED);
+   $finish;
+  end
   frozen=0;stream_target=10003;produced=0;written=0;sample_base=65536;
   run_case(0,10003,sample_base,0);
   frozen=1;record_start=(write_origin+10003-N)%N;record_words=N;offset=0;length=N;

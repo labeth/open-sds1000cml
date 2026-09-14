@@ -3,7 +3,9 @@
 from pathlib import Path
 import argparse,hashlib,json,subprocess,tempfile
 parser=argparse.ArgumentParser()
+parser.add_argument("--deep-only",action="store_true")
 parser.add_argument("--ready-only",action="store_true")
+parser.add_argument("--host-fault-only",action="store_true")
 parser.add_argument("--vendor-library",type=Path,help="Intel altera_mf.v for the host RAM primitive")
 args=parser.parse_args()
 root=Path(__file__).resolve().parents[2]
@@ -24,5 +26,5 @@ with tempfile.TemporaryDirectory(prefix='acq-shared-engine-') as directory:
  print(json.dumps(hashes,sort_keys=True),flush=True)
  binary=p/'test'
  extra=["-DALTERA_RESERVED_QIS",str(args.vendor_library.resolve())] if args.vendor_library else []
- subprocess.run(['iverilog','-g2012','-s','tb_acquisition_path',f'-Ptb_acquisition_path.READY_ONLY={int(args.ready_only)}','-o',str(binary),*extra,*files],check=True)
+ subprocess.run(['iverilog','-g2012','-s','tb_acquisition_path',f'-Ptb_acquisition_path.ENABLE_STREAM={int(not args.deep_only)}',f'-Ptb_acquisition_path.READY_ONLY={int(args.ready_only)}',f'-Ptb_acquisition_path.HOST_FAULT_ONLY={int(args.host_fault_only)}','-o',str(binary),*extra,*files],check=True)
  subprocess.run(['vvp',str(binary)],check=True,timeout=900)

@@ -13,7 +13,7 @@ with tempfile.TemporaryDirectory(prefix='acq-shared-engine-') as directory:
   data=(root/'fpga/acq_sram'/name).read_bytes();dest=p/Path(name).name;dest.write_bytes(data)
   files.append(str(dest));hashes[name]=hashlib.sha256(data).hexdigest()
  print(json.dumps(hashes,sort_keys=True),flush=True)
- for wrapped in (0,1):
-  binary=p/f'test{wrapped}'
-  subprocess.run(['iverilog','-g2012','-s','tb_capture_engine',f'-Ptb_capture_engine.WRAPPED={wrapped}','-o',str(binary),*files],check=True)
+ for enabled,wrapped in ((1,0),(1,1),(0,0),(0,1)):
+  binary=p/f'test{enabled}-{wrapped}'
+  subprocess.run(['iverilog','-g2012','-s','tb_capture_engine',f'-Ptb_capture_engine.WRAPPED={wrapped}',f'-Ptb_capture_engine.ENABLE_STREAM={enabled}','-o',str(binary),*files],check=True)
   subprocess.run(['vvp',str(binary)],check=True,timeout=900)

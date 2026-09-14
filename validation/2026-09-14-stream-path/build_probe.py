@@ -3,10 +3,11 @@
 from pathlib import Path
 import fcntl, hashlib, json, re, shutil, subprocess, sys
 root=Path(__file__).resolve().parents[2]
-acquisition='--acquisition' in sys.argv
+deep_only='--deep-only' in sys.argv
+acquisition='--acquisition' in sys.argv or deep_only
 capture='--capture' in sys.argv or acquisition
 top='sram_acquisition_path' if acquisition else 'sram_capture_path' if capture else 'sram_stream_path'
-out=root/'fpga/acq_sram/out'/('acquisition-path-probe' if acquisition else 'capture-path-probe' if capture else 'stream-path-probe')
+out=root/'fpga/acq_sram/out'/('deep-acquisition-path-probe' if deep_only else 'acquisition-path-probe' if acquisition else 'capture-path-probe' if capture else 'stream-path-probe')
 with open('/tmp/open-sds-quartus.lock','w') as lock:
  fcntl.flock(lock,fcntl.LOCK_EX)
  out.mkdir(parents=True,exist_ok=True)
@@ -41,6 +42,8 @@ set_instance_assignment -name VIRTUAL_PIN ON -to *
 set_global_assignment -name SDC_FILE probe.sdc
 '''.replace('sram_stream_path',top).replace('AGGRESSIVE PERFORMANCE',optimization)+''.join(f'set_global_assignment -name VERILOG_FILE {name}\n' for name in names))
  with (out/'probe.qsf').open('a') as f:f.write(f'set_global_assignment -name SEED {seed}\n')
+ if deep_only:
+  with (out/'probe.qsf').open('a') as f:f.write('set_parameter -name ENABLE_STREAM 0\n')
  # No broad asynchronous cuts: cross-domain failures are expected until the
  # specific bundled-data/token constraints and endpoint audit are supplied.
  (out/'probe.sdc').write_text('''create_clock -name core -period 4.0 [get_ports core_clk]
@@ -58,7 +61,7 @@ set_false_path -from [get_ports reset]
   data=(root/'fpga/acq_sram/stream_path_cdc.sdc').read_bytes()
   (out/'stream_path_cdc.sdc').write_bytes(data)
   hashes['stream_path_cdc.sdc']=hashlib.sha256(data).hexdigest()
-  with (out/'probe.sdc').open('a') as f:f.write('source stream_path_cdc.sdc\n')
+  with (out/'probe.sdc').open('a') as f:f.write(f'set enable_stream {int(not deep_only)}\nsource stream_path_cdc.sdc\n')
   if acquisition:
    data=(root/'fpga/acq_sram/acquisition_config_cdc.sdc').read_bytes()
    (out/'acquisition_config_cdc.sdc').write_bytes(data)
@@ -68,7 +71,7 @@ set_false_path -from [get_ports reset]
  # mistakes before spending time on a placed netlist; this elaboration uses
  # the same frozen RTL plus the DDR primitive simulation declaration.
  (out/'ddr_model.v').write_bytes((root/'fpga/acq_sram/sim/ddr_model.v').read_bytes())
- subprocess.run(['iverilog','-g2012']+(['-DSIM','-i','-I',str(out)] if acquisition else [])+['-s',top,'-o',str(out/'preflight.vvp'),
+ subprocess.run(['iverilog','-g2012']+(['-DSIM','-i','-I',str(out)] if acquisition else [])+(['-P'+top+'.ENABLE_STREAM=0'] if deep_only else [])+['-s',top,'-o',str(out/'preflight.vvp'),
                  *[str(out/name) for name in names],str(out/'ddr_model.v')],check=True)
  print('interface preflight passed'+(' (ADC PLL/FIFO vendor primitives unresolved)' if acquisition else ''),flush=True)
  q=Path('/home/labeth/intelFPGA_lite/21.1/quartus/bin')
@@ -85,7 +88,7 @@ set_false_path -from [get_ports reset]
  fit=(out/'output_files/probe.fit.rpt').read_text(encoding='latin-1')
  blocks=re.search(r'; M9K(?:s| blocks)\s*;\s*(\d+)',fit)
  result={'qualification':'diagnostic only; IO unconstrained; CDC audit pending',
-         'top':top,'seed':seed,'timing':timing,'m9k_blocks':int(blocks.group(1)) if blocks else None,'sources':hashes}
+         'top':top,'enable_stream':not deep_only,'seed':seed,'timing':timing,'m9k_blocks':int(blocks.group(1)) if blocks else None,'sources':hashes}
  (out/'result.json').write_text(json.dumps(result,indent=2)+'\n')
  print(json.dumps(result,indent=2),flush=True)
  if bounded:

@@ -16,7 +16,7 @@ module adc_precision #(parameter SHARED_TAIL=0)(input core,packclk,clk100,enable
  assign valid=enable && raw_valid && (count & ((1<<(decim_log-1))-1))==0;
  assign fault=0;
 endmodule
-module tb_acquisition_path #(parameter READY_ONLY=0);
+module tb_acquisition_path #(parameter ENABLE_STREAM=1,READY_ONLY=0,HOST_FAULT_ONLY=0);
  localparam AW=13,N=1<<AW;
  reg reset=1,locked=1,core_clk=0,ram_clk=0,host_clk=0,clk100=0;
  always #2 core_clk=~core_clk;always #4 ram_clk=~ram_clk;
@@ -37,7 +37,7 @@ module tb_acquisition_path #(parameter READY_ONLY=0);
  wire [63:0] host_first0,host_first1;wire [11:0] host_words0,host_words1;
  wire read_valid,read_error;wire [15:0] read_data;
  wire [31:0] dq;wire k1,k2,g1;
- sram_acquisition_path #(.AW(AW)) dut(.*);
+ sram_acquisition_path #(.ENABLE_STREAM(ENABLE_STREAM),.AW(AW)) dut(.*);
  reg [31:0] memory[0:N-1],expected[0:16383],s1=0,s2=0;
  reg [AW-1:0] address=0;
  assign dq=k1 && g1 ? s2 : 32'bz;
@@ -115,7 +115,17 @@ module tb_acquisition_path #(parameter READY_ONLY=0);
  task recall;
  begin
   received=0;blocks=0;expected_count=sent;allow_final_release=0;
-  offset=0;length=record_words;launch(2);complete_read;
+  offset=0;length=record_words;launch(2);
+  if(HOST_FAULT_ONLY)begin
+   wait(dut.backend.engine.finite.state==10);tick;expect_fault=1;
+   force dut.backend.engine.host_core_fault=1'b1;#0.1;
+   if(record_frozen)$fatal(1,"host fault left public frozen status valid");
+   tick;if(!fault || !dut.backend.engine.ff)$fatal(1,"recall did not handle host fault locally");
+   wait(!active);tick;
+   $display("PASS recall host fault: immediate public invalidation, local failure and transport drain");
+   $finish;
+  end
+  complete_read;
  end endtask
  initial begin
   repeat(10)tick;reset=0;repeat(10)tick;
@@ -161,6 +171,14 @@ module tb_acquisition_path #(parameter READY_ONLY=0);
   launch(0);decim_log=0;wait(record_frozen && !active);collect=0;
   if(sent!=48 || record_words!=48 || trigger_index!=31 || !precision_mode)$fatal(1,"precision capture");
   recall;
+  if(!ENABLE_STREAM)begin
+   decim_log=8;reject_start(1);
+   if(!record_frozen || record_words!=48 || active || bank_busy!=0)
+    $fatal(1,"unsupported stream changed deep record");
+   recall;
+   $display("PASS deep acquisition: raw edge, fractional precision, recall preserved across rejected stream request");
+   $finish;
+  end
   sent=0;received=0;blocks=0;expected_count=6001;allow_final_release=0;
   decim_log=8;collect=1;launch(1);
   if(record_frozen)$fatal(1,"stream kept stale finite record valid");
