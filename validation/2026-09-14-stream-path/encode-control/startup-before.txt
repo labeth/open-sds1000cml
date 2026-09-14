@@ -1,0 +1,11 @@
+{"fpga/acq_sram/interleave.v": "2be7223e4649f1ff2bf2540b77525281e14530d5a0b18aeafa52241fdb69155f", "fpga/common/ddio_pair.v": "0f32c77bac09fb1fb4a8069f7480743e8b0dd05669da22aa68e171798d33435c", "fpga/common/lane_in.v": "1777785598b0670d0ec92cc5402bd27b78d939aafdab443796892deecad8a719", "fpga/default/lanemap_seed.vh": "bb6034a2616bb897cdb114aabf77d7c0870d30016dc96fc95c6bb2451d49362a", "generated_bench": "db2506c657b7661d62f746dd413ed60659dc9011b71066704f67533c8aae14c2"}
+FATAL: /tmp/acq-encode-start-3ukl0b4j/tb.v:38: ADC chronology word           0 byte           1 got   0 after           0
+       Time: 326000  Scope: tb
+Traceback (most recent call last):
+  File "/home/labeth/ws/open-sds1000cml-acq2/validation/2026-09-14-stream-path/test_encode_startup.py", line 26, in <module>
+    subprocess.run(['vvp',str(p/'test')],check=True,timeout=30)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib64/python3.14/subprocess.py", line 578, in run
+    raise CalledProcessError(retcode, process.args,
+                             output=stdout, stderr=stderr)
+subprocess.CalledProcessError: Command '['vvp', '/tmp/acq-encode-start-3ukl0b4j/test']' returned non-zero exit status 1.

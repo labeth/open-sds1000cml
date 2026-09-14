@@ -49,17 +49,8 @@ module adc_interleave #(parameter SYNC_ENCODE=0)(
  end
  always @(posedge packclk)snap_ack_s<={snap_ack_s[1:0],snap_ack};
  assign snapshot_ack=snap_ack_s[2];assign snapshot=snap_payload;
- // With synchronized encode settings, allow seven phase clocks for the
- // enables, DDR output, converter propagation and two-stage lane/frame gather
- // before retaining frames. Disable immediately abandons this warm-up epoch.
- localparam ENABLE_STAGES=SYNC_ENCODE ? 7 : 3;
- (* async_reg = "true" *) reg [ENABLE_STAGES-1:0] enable_s=0;
- generate if(SYNC_ENCODE)begin:encode_warmup
-  always @(posedge phase[2] or negedge enable)
-   if(!enable)enable_s<=0;else enable_s<={enable_s[ENABLE_STAGES-2:0],1'b1};
- end else begin:legacy_warmup
-  always @(posedge phase[2])enable_s<={enable_s[1:0],enable};
- end endgenerate
+ (* async_reg = "true" *) reg [2:0] enable_s=0;
+ always @(posedge phase[2])enable_s<={enable_s[1:0],enable};
  wire [79:0] chronological={frame[31:24],frame[7:0],frame[47:40],frame[71:64],frame[63:56],frame[23:16],frame[15:8],frame[39:32],frame[79:72],frame[55:48]};
  wire empty,full;wire [4:0] used;wire [79:0] q;wire pop;
  // One shallow FIFO separates ADC phase alignment from the 250 MHz SRAM.
@@ -67,10 +58,10 @@ module adc_interleave #(parameter SYNC_ENCODE=0)(
  .add_ram_output_register("ON"),.overflow_checking("ON"),.underflow_checking("ON"),.use_eab("ON"),
  .rdsync_delaypipe(4),.wrsync_delaypipe(4),.read_aclr_synch("ON"),.write_aclr_synch("ON"),
  .intended_device_family("Cyclone IV E")) queue(
- .aclr(!enable || !locked),.wrclk(phase[2]),.data(chronological),.wrreq(enable_s[ENABLE_STAGES-1] && !full),.wrfull(full),
+ .aclr(!enable || !locked),.wrclk(phase[2]),.data(chronological),.wrreq(enable_s[2] && !full),.wrfull(full),
  .rdclk(packclk),.rdreq(pop),.q(q),.rdempty(empty),.rdusedw(used));
  reg overflow=0;reg [2:0] overflow_s=0;
- always @(posedge phase[2]) if(!enable_s[ENABLE_STAGES-1])overflow<=0;else if(full)overflow<=1;
+ always @(posedge phase[2]) if(!enable_s[2])overflow<=0;else if(full)overflow<=1;
  reg consume_q=0;
  always @(posedge packclk)consume_q<=enable && consume;
  wire [63:0] wide_raw;wire wide_raw_valid,pack_fault;

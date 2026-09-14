@@ -1,7 +1,7 @@
 `timescale 1ns/1ps
 // Mocks isolate epoch/configuration/word alignment. ADC pin ordering and CIC
 // arithmetic are covered by their own benches and still need board validation.
-module adc_interleave(input refclk,memclk,packclk,enable,input [79:0] lane,input [9:0] encode_enable,
+module adc_interleave #(parameter SYNC_ENCODE=0)(input refclk,memclk,packclk,enable,input [79:0] lane,input [9:0] encode_enable,
  input snapshot_request,output snapshot_ack,input consume,output [31:0] word_data,output valid,fault,
  output [79:0] snapshot,output [4:0] enc_p,enc_n,output locked);
  assign word_data=lane[31:0];assign valid=enable && lane[32];assign fault=enable && lane[33];
