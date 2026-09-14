@@ -43,3 +43,12 @@ interface. One external host_path in stream_path.v provides the RAM. Current
 source/evidence is external-host-probe/: full wrapper readback and 120 CDC groups
 pass, unchanged 38 M9Ks and -0.429 ns setup. Finite recall/mode arbitration and
 all subsequent default-image/hardware requirements above remain unfinished.
+
+Finite recall producer added in finite_recall.v. It reads a frozen requested
+range through the same host interface, supports continuation or fresh seeks,
+retains faulted epochs until reset, and completes only after final host release.
+Finite-recall/full-passed.txt verifies all 524288 words / 2 MiB through 205 host
+banks using the actual host-buffer RTL and an ideal SRAM model. Both read modes,
+offsets, odd tails, empty/invalid requests and fault recovery have tests. This
+new producer has no placed timing qualification and is not yet selected by the
+default image's producer/transport arbitration. The full objective remains open.
