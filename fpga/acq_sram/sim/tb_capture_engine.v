@@ -22,7 +22,7 @@ module tb_capture_engine;
  generate if(WRAPPED)begin: wrapped
   sram_capture_path #(.AW(AW)) dut(.locked(1'b1),.sample_clk(sample_clk),.*);
  end else begin: external_transport
- sram_capture_engine #(.AW(AW)) dut(.*);
+ sram_capture_engine #(.AW(AW)) dut(.record_words_sampled(),.*);
  sram_transport #(.AW(AW),.CONTINUOUS_ONLY(1)) transport(
   .clk(core_clk),.sample_clk(sample_clk),.reset(reset),.locked(1'b1),
   .command(command),.command_read(command_read),.command_discard(command_discard),.command_continue(command_continue),

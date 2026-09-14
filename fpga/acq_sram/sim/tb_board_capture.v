@@ -22,7 +22,7 @@ module tb_board_capture;
  reg writer_request=0,writer_command=0,writer_valid=0,writer_stop=1;
  reg [31:0] writer_data=0;
  wire writer_granted,writer_ready,writer_write_ready,writer_done;
- sram_board_capture_path #(.AW(AW)) dut(.locked(1'b1),.sample_clk(sample_clk),.*);
+ sram_board_capture_path #(.AW(AW)) dut(.locked(1'b1),.sample_clk(sample_clk),.record_words_sampled(),.*);
  reg [31:0] memory[0:N-1],stage1=0,stage2=0;reg [AW-1:0] address=0;
  integer cycles=0,produced=0,written=0,stream_target=0,sample_base=0,write_origin=0;
  integer received=0,expected_count=0,expected_base=0,blocks=0,cases=0,rejections=0;

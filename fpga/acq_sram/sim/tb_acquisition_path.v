@@ -16,7 +16,7 @@ module adc_precision #(parameter SHARED_TAIL=0)(input core,packclk,clk100,enable
  assign valid=enable && raw_valid && (count & ((1<<(decim_log-1))-1))==0;
  assign fault=0;
 endmodule
-module tb_acquisition_path;
+module tb_acquisition_path #(parameter READY_ONLY=0);
  localparam AW=13,N=1<<AW;
  reg reset=1,locked=1,core_clk=0,ram_clk=0,host_clk=0,clk100=0;
  always #2 core_clk=~core_clk;always #4 ram_clk=~ram_clk;
@@ -119,6 +119,28 @@ module tb_acquisition_path;
  end endtask
  initial begin
   repeat(10)tick;reset=0;repeat(10)tick;
+  // Mask cached readiness immediately when an external invalidation arrives.
+  wait(start_ready);tick;locked=0;start=1;#0.1;
+  if(start_ready)$fatal(1,"lock loss left stale readiness");
+  tick;start=0;if(!request_error || active)$fatal(1,"accepted start on lock loss");
+  locked=1;wait(start_ready);tick;
+  force dut.source_fault=1'b1;start=1;#0.1;
+  if(start_ready)$fatal(1,"source fault left stale readiness");
+  tick;start=0;if(!request_error || active)$fatal(1,"accepted faulted start");
+  release dut.source_fault;wait(start_ready);tick;
+  reset=1;start=1;#0.1;if(start_ready)$fatal(1,"reset left stale readiness");
+  tick;start=0;if(active)$fatal(1,"accepted start during reset");
+  reset=0;wait(start_ready);tick;
+  expect_fault=1;force dut.bf=1'b1;start=1;#0.1;
+  if(start_ready)$fatal(1,"backend fault left stale readiness");
+  tick;start=0;if(!request_error || active)$fatal(1,"accepted backend-faulted start");
+  release dut.bf;expect_fault=0;wait(start_ready);tick;
+  force dut.bank_busy=2'b01;start=1;#0.1;
+  if(start_ready)$fatal(1,"owned bank left stale readiness");
+  tick;start=0;if(!request_error || active)$fatal(1,"accepted start with owned bank");
+  release dut.bank_busy;wait(start_ready);tick;
+  $display("PASS cached readiness: lock loss, source/backend faults, reset and bank ownership reject starts immediately");
+  if(READY_ONLY)$finish;
   // Reject each mode's illegal settings before any operation can start.
   pre_count=N;post_count=1;reject_start(0);
   pre_count=0;post_count=0;reject_start(0);post_count=1;

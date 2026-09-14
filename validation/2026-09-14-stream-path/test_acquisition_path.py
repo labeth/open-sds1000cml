@@ -14,5 +14,5 @@ with tempfile.TemporaryDirectory(prefix='acq-shared-engine-') as directory:
   files.append(str(dest));hashes[name]=hashlib.sha256(data).hexdigest()
  print(json.dumps(hashes,sort_keys=True),flush=True)
  binary=p/'test'
- subprocess.run(['iverilog','-g2012','-s','tb_acquisition_path','-o',str(binary),*files],check=True)
+ subprocess.run(['iverilog','-g2012','-s','tb_acquisition_path',f'-Ptb_acquisition_path.READY_ONLY={int("--ready-only" in sys.argv)}','-o',str(binary),*files],check=True)
  subprocess.run(['vvp',str(binary)],check=True,timeout=900)

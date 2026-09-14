@@ -17,7 +17,7 @@ module tb_capture_start;
  reg [31:0] transport_read_data=0;reg [AW-1:0] position=17;
  wire command,command_read,command_discard,command_continue,write_valid,write_stop;
  wire [AW:0] command_count;wire [31:0] write_data;
- sram_capture_engine #(.AW(AW)) dut(.*);
+ sram_capture_engine #(.AW(AW)) dut(.record_words_sampled(),.*);
  task tick;begin @(negedge core_clk);#0.1;end endtask
  initial begin
   repeat(10)tick;reset=0;repeat(5)tick;

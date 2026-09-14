@@ -1,5 +1,15 @@
 # Integrated acquisition core — fits, timing still fails
 
+Latest candidate: `mode-launch/balanced-build`: 9338 LEs, 7721 registers,
+44 M9Ks, 640/645 LABs. Setup -3.281 ns, recovery -6.769 ns; CDC audit fails.
+Integration and 10000-cycle mode comparison pass. Readiness is registered with
+immediate invalidation, recall uses existing sampled record length, and backend
+mode selection uses registered launch pulses. Worst setup now crosses from
+acquisition control into frontend overflow_s[0] in the pack-clock domain.
+This is not timing-qualified; frontend CDC/reset, physical top/GPMC integration
+and full hardware qualification remain required.
+
+
 Previous passing CDC evidence: `idle-settings/balanced-build` (source hashes, snapshots,
 Quartus fit/STA and CDC audit). The real ADC/CIC acquisition core fits with
 9328/10320 LEs, 7697 registers, 44/46 M9Ks, and 643/645 LABs used. GPMC board
@@ -22,6 +32,30 @@ Capture, integration and added pending-launch fault simulations pass.
 The encode diagnostic confirms 1.493 ns data delay but -0.307 ns setup slack
 with clock skew. A net-only replacement query matched no nets and was rejected.
 Constraints remain unchanged. See `writer-launch/README.md` for evidence scope.
+
+## Rejected control experiments
+
+`halt-idle` and `mode-flags` preserve source-versioned failed experiments.
+Idle halt tracking passed simulation but used 644 LABs with -4.029 ns setup.
+Explicit retained operation flags also passed integration but worsened setup
+to -4.916 ns at 644 LABs; acceptance still feeds multiple worst endpoints.
+Both RTL experiments were reverted to the committed writer-launch baseline.
+`validated-start` also passed integration/contract checks but regressed to
+645 LABs and -3.853 ns setup. Its four RTL edits were likewise reverted; the
+archived contract runner tests its frozen build sources. These three experiments have no remaining active RTL edits.
+Next work must structurally shorten acceptance while preserving same-epoch
+fault rejection, settings capture and immediate ownership reservation.
+
+## Current readiness-cache candidate (uncommitted)
+
+`ready-cache/balanced-build` fits at 9361 LEs, 7721 registers, 44 M9Ks and
+645/645 LABs, but setup -3.471 ns and recovery -5.226 ns fail. CDC audit fails.
+Integration and immediate lock/fault/reset/bank invalidation simulations pass.
+Readiness can return one clock later after idle or a rejected request.
+Worst path is now record-length/trigger state through recall acceptance into
+backend selected_finite. Geometry validation/dispatch separation remains needed.
+This intermediate RTL is not an improvement over the committed launch baseline
+and is not a qualified default FPGA image.
 
 ## Current architecture
 - `acquisition_path.v`: real ADC/precision source, finite trigger writer,

@@ -1,0 +1,232 @@
+Info: *******************************************************************
+Info: Running Quartus Prime Timing Analyzer
+    Info: Version 21.1.0 Build 842 10/21/2021 SJ Lite Edition
+    Info: Copyright (C) 2021  Intel Corporation. All rights reserved.
+    Info: Your use of Intel Corporation's design tools, logic functions 
+    Info: and other software and tools, and any partner logic 
+    Info: functions, and any output files from any of the foregoing 
+    Info: (including device programming or simulation files), and any 
+    Info: associated documentation or information are expressly subject 
+    Info: to the terms and conditions of the Intel Program License 
+    Info: Subscription Agreement, the Intel Quartus Prime License Agreement,
+    Info: the Intel FPGA IP License Agreement, or other applicable license
+    Info: agreement, including, without limitation, that your use is for
+    Info: the sole purpose of programming logic devices manufactured by
+    Info: Intel and sold by Intel or its authorized distributors.  Please
+    Info: refer to the applicable agreement for further details, at
+    Info: https://fpgasoftware.intel.com/eula.
+    Info: Processing started: Mon Sep 14 11:14:44 2026
+Info: Command: quartus_sta probe
+Info: qsta_default_script.tcl version: #1
+Info (20032): Parallel compilation is enabled and will use up to 2 processors
+Info (21076): High junction temperature operating condition is not set. Assuming a default value of '85'.
+Info (21076): Low junction temperature operating condition is not set. Assuming a default value of '0'.
+Info (332164): Evaluating HDL-embedded SDC commands
+    Info (332165): Entity dcfifo_t9i1
+        Info (332166): set_false_path -from *rdptr_g* -to *ws_dgrp|dffpipe_hd9:dffpipe9|dffe10a* 
+        Info (332166): set_false_path -from *delayed_wrptr_g* -to *rs_dgwp|dffpipe_gd9:dffpipe6|dffe7a* 
+    Info (332165): Entity dcfifo_ten1
+        Info (332166): set_false_path -from *rdptr_g* -to *ws_dgrp|dffpipe_fd9:dffpipe18|dffe19a* 
+        Info (332166): set_false_path -from *delayed_wrptr_g* -to *rs_dgwp|dffpipe_ed9:dffpipe15|dffe16a* 
+Info (332104): Reading SDC File: 'probe.sdc'
+Info (332110): Deriving PLL clocks
+    Info (332110): create_generated_clock -source {source|frontend|clocks|p|auto_generated|pll1|inclk[0]} -phase 108.00 -duty_cycle 50.00 -name {source|frontend|clocks|p|auto_generated|pll1|clk[0]} {source|frontend|clocks|p|auto_generated|pll1|clk[0]}
+    Info (332110): create_generated_clock -source {source|frontend|clocks|p|auto_generated|pll1|inclk[0]} -phase 144.00 -duty_cycle 50.00 -name {source|frontend|clocks|p|auto_generated|pll1|clk[1]} {source|frontend|clocks|p|auto_generated|pll1|clk[1]}
+    Info (332110): create_generated_clock -source {source|frontend|clocks|p|auto_generated|pll1|inclk[0]} -phase 72.00 -duty_cycle 50.00 -name {source|frontend|clocks|p|auto_generated|pll1|clk[2]} {source|frontend|clocks|p|auto_generated|pll1|clk[2]}
+    Info (332110): create_generated_clock -source {source|frontend|clocks|p|auto_generated|pll1|inclk[0]} -duty_cycle 50.00 -name {source|frontend|clocks|p|auto_generated|pll1|clk[3]} {source|frontend|clocks|p|auto_generated|pll1|clk[3]}
+    Info (332110): create_generated_clock -source {source|frontend|clocks|p|auto_generated|pll1|inclk[0]} -phase 36.00 -duty_cycle 50.00 -name {source|frontend|clocks|p|auto_generated|pll1|clk[4]} {source|frontend|clocks|p|auto_generated|pll1|clk[4]}
+Info (332151): Clock uncertainty is not calculated until you update the timing netlist.
+Info (332123): Deriving Clock Uncertainty. Please refer to report_sdc in the Timing Analyzer to see clock uncertainties.
+Info: Found TIMING_ANALYZER_REPORT_SCRIPT_INCLUDE_DEFAULT_ANALYSIS = ON
+Info: Analyzing Slow 1200mV 85C Model
+Critical Warning (332148): Timing requirements not met
+    Info (11105): For recommendations on closing timing, run Report Timing Closure Recommendations in the Timing Analyzer.
+Info (332146): Worst-case setup slack is -3.853
+    Info (332119):     Slack       End Point TNS Clock 
+    Info (332119): ========= =================== =====================
+    Info (332119):    -3.853           -2696.542 core 
+    Info (332119):    -1.978             -35.997 ram 
+    Info (332119):    -0.791              -5.914 adc_ref 
+    Info (332119):    -0.275              -0.545 source|frontend|clocks|p|auto_generated|pll1|clk[3] 
+    Info (332119):    -0.254              -0.495 source|frontend|clocks|p|auto_generated|pll1|clk[4] 
+    Info (332119):     0.499               0.000 source|frontend|clocks|p|auto_generated|pll1|clk[1] 
+    Info (332119):     0.516               0.000 source|frontend|clocks|p|auto_generated|pll1|clk[2] 
+    Info (332119):     0.520               0.000 host 
+    Info (332119):     0.668               0.000 source|frontend|clocks|p|auto_generated|pll1|clk[0] 
+Info (332146): Worst-case hold slack is 0.413
+    Info (332119):     Slack       End Point TNS Clock 
+    Info (332119): ========= =================== =====================
+    Info (332119):     0.413               0.000 ram 
+    Info (332119):     0.425               0.000 source|frontend|clocks|p|auto_generated|pll1|clk[2] 
+    Info (332119):     0.431               0.000 core 
+    Info (332119):     0.447               0.000 adc_ref 
+    Info (332119):     0.499               0.000 host 
+    Info (332119):     0.500               0.000 source|frontend|clocks|p|auto_generated|pll1|clk[1] 
+    Info (332119):     0.502               0.000 source|frontend|clocks|p|auto_generated|pll1|clk[0] 
+    Info (332119):     0.502               0.000 source|frontend|clocks|p|auto_generated|pll1|clk[3] 
+    Info (332119):     0.502               0.000 source|frontend|clocks|p|auto_generated|pll1|clk[4] 
+Info (332146): Worst-case recovery slack is -4.481
+    Info (332119):     Slack       End Point TNS Clock 
+    Info (332119): ========= =================== =====================
+    Info (332119):    -4.481             -39.874 source|frontend|clocks|p|auto_generated|pll1|clk[2] 
+    Info (332119):    -3.501             -24.005 adc_ref 
+    Info (332119):    -1.905             -11.537 ram 
+    Info (332119):     0.314               0.000 host 
+    Info (332119):     0.990               0.000 core 
+Info (332146): Worst-case removal slack is 1.150
+    Info (332119):     Slack       End Point TNS Clock 
+    Info (332119): ========= =================== =====================
+    Info (332119):     1.150               0.000 ram 
+    Info (332119):     1.170               0.000 adc_ref 
+    Info (332119):     1.173               0.000 core 
+    Info (332119):     1.551               0.000 host 
+    Info (332119):     1.659               0.000 source|frontend|clocks|p|auto_generated|pll1|clk[2] 
+Info (332146): Worst-case minimum pulse width slack is 1.513
+    Info (332119):     Slack       End Point TNS Clock 
+    Info (332119): ========= =================== =====================
+    Info (332119):     1.513               0.000 core 
+    Info (332119):     1.513               0.000 sample 
+    Info (332119):     3.704               0.000 ram 
+    Info (332119):     4.532               0.000 adc_ref 
+    Info (332119):     4.692               0.000 source|frontend|clocks|p|auto_generated|pll1|clk[2] 
+    Info (332119):     4.711               0.000 host 
+    Info (332119):     4.720               0.000 source|frontend|clocks|p|auto_generated|pll1|clk[0] 
+    Info (332119):     4.720               0.000 source|frontend|clocks|p|auto_generated|pll1|clk[1] 
+    Info (332119):     4.721               0.000 source|frontend|clocks|p|auto_generated|pll1|clk[3] 
+    Info (332119):     4.721               0.000 source|frontend|clocks|p|auto_generated|pll1|clk[4] 
+Info (332114): Report Metastability: Found 351 synchronizer chains.
+    Info (332114): Design MTBF is not calculated because the design doesn't meet its timing requirements.
+Info: Analyzing Slow 1200mV 0C Model
+Info (334003): Started post-fitting delay annotation
+Info (334004): Delay annotation completed successfully
+Info (332123): Deriving Clock Uncertainty. Please refer to report_sdc in the Timing Analyzer to see clock uncertainties.
+Critical Warning (332148): Timing requirements not met
+    Info (11105): For recommendations on closing timing, run Report Timing Closure Recommendations in the Timing Analyzer.
+Info (332146): Worst-case setup slack is -3.340
+    Info (332119):     Slack       End Point TNS Clock 
+    Info (332119): ========= =================== =====================
+    Info (332119):    -3.340           -2120.088 core 
+    Info (332119):    -1.857              -8.761 ram 
+    Info (332119):     0.000               0.000 adc_ref 
+    Info (332119):     0.157               0.000 source|frontend|clocks|p|auto_generated|pll1|clk[3] 
+    Info (332119):     0.185               0.000 source|frontend|clocks|p|auto_generated|pll1|clk[4] 
+    Info (332119):     0.691               0.000 host 
+    Info (332119):     0.916               0.000 source|frontend|clocks|p|auto_generated|pll1|clk[1] 
+    Info (332119):     0.949               0.000 source|frontend|clocks|p|auto_generated|pll1|clk[2] 
+    Info (332119):     1.093               0.000 source|frontend|clocks|p|auto_generated|pll1|clk[0] 
+Info (332146): Worst-case hold slack is 0.380
+    Info (332119):     Slack       End Point TNS Clock 
+    Info (332119): ========= =================== =====================
+    Info (332119):     0.380               0.000 core 
+    Info (332119):     0.396               0.000 ram 
+    Info (332119):     0.397               0.000 adc_ref 
+    Info (332119):     0.402               0.000 source|frontend|clocks|p|auto_generated|pll1|clk[2] 
+    Info (332119):     0.468               0.000 host 
+    Info (332119):     0.470               0.000 source|frontend|clocks|p|auto_generated|pll1|clk[1] 
+    Info (332119):     0.473               0.000 source|frontend|clocks|p|auto_generated|pll1|clk[4] 
+    Info (332119):     0.474               0.000 source|frontend|clocks|p|auto_generated|pll1|clk[0] 
+    Info (332119):     0.474               0.000 source|frontend|clocks|p|auto_generated|pll1|clk[3] 
+Info (332146): Worst-case recovery slack is -3.860
+    Info (332119):     Slack       End Point TNS Clock 
+    Info (332119): ========= =================== =====================
+    Info (332119):    -3.860             -34.397 source|frontend|clocks|p|auto_generated|pll1|clk[2] 
+    Info (332119):    -3.086             -21.160 adc_ref 
+    Info (332119):    -1.510              -8.548 ram 
+    Info (332119):     0.610               0.000 host 
+    Info (332119):     1.169               0.000 core 
+Info (332146): Worst-case removal slack is 1.054
+    Info (332119):     Slack       End Point TNS Clock 
+    Info (332119): ========= =================== =====================
+    Info (332119):     1.054               0.000 ram 
+    Info (332119):     1.072               0.000 adc_ref 
+    Info (332119):     1.082               0.000 core 
+    Info (332119):     1.383               0.000 host 
+    Info (332119):     1.485               0.000 source|frontend|clocks|p|auto_generated|pll1|clk[2] 
+Info (332146): Worst-case minimum pulse width slack is 1.513
+    Info (332119):     Slack       End Point TNS Clock 
+    Info (332119): ========= =================== =====================
+    Info (332119):     1.513               0.000 core 
+    Info (332119):     1.513               0.000 sample 
+    Info (332119):     3.671               0.000 ram 
+    Info (332119):     4.457               0.000 adc_ref 
+    Info (332119):     4.665               0.000 host 
+    Info (332119):     4.674               0.000 source|frontend|clocks|p|auto_generated|pll1|clk[2] 
+    Info (332119):     4.719               0.000 source|frontend|clocks|p|auto_generated|pll1|clk[0] 
+    Info (332119):     4.719               0.000 source|frontend|clocks|p|auto_generated|pll1|clk[3] 
+    Info (332119):     4.719               0.000 source|frontend|clocks|p|auto_generated|pll1|clk[4] 
+    Info (332119):     4.720               0.000 source|frontend|clocks|p|auto_generated|pll1|clk[1] 
+Info (332114): Report Metastability: Found 351 synchronizer chains.
+    Info (332114): Design MTBF is not calculated because the design doesn't meet its timing requirements.
+Info: Analyzing Fast 1200mV 0C Model
+Info (332123): Deriving Clock Uncertainty. Please refer to report_sdc in the Timing Analyzer to see clock uncertainties.
+Info (332146): Worst-case setup slack is 0.330
+    Info (332119):     Slack       End Point TNS Clock 
+    Info (332119): ========= =================== =====================
+    Info (332119):     0.330               0.000 ram 
+    Info (332119):     0.628               0.000 core 
+    Info (332119):     1.897               0.000 source|frontend|clocks|p|auto_generated|pll1|clk[3] 
+    Info (332119):     1.913               0.000 source|frontend|clocks|p|auto_generated|pll1|clk[4] 
+    Info (332119):     2.293               0.000 source|frontend|clocks|p|auto_generated|pll1|clk[1] 
+    Info (332119):     2.300               0.000 source|frontend|clocks|p|auto_generated|pll1|clk[2] 
+    Info (332119):     2.373               0.000 source|frontend|clocks|p|auto_generated|pll1|clk[0] 
+    Info (332119):     2.412               0.000 host 
+    Info (332119):     4.570               0.000 adc_ref 
+Info (332146): Worst-case hold slack is 0.125
+    Info (332119):     Slack       End Point TNS Clock 
+    Info (332119): ========= =================== =====================
+    Info (332119):     0.125               0.000 adc_ref 
+    Info (332119):     0.142               0.000 ram 
+    Info (332119):     0.154               0.000 source|frontend|clocks|p|auto_generated|pll1|clk[2] 
+    Info (332119):     0.177               0.000 core 
+    Info (332119):     0.192               0.000 host 
+    Info (332119):     0.192               0.000 source|frontend|clocks|p|auto_generated|pll1|clk[0] 
+    Info (332119):     0.192               0.000 source|frontend|clocks|p|auto_generated|pll1|clk[3] 
+    Info (332119):     0.192               0.000 source|frontend|clocks|p|auto_generated|pll1|clk[4] 
+    Info (332119):     0.193               0.000 source|frontend|clocks|p|auto_generated|pll1|clk[1] 
+Critical Warning (332148): Timing requirements not met
+    Info (11105): For recommendations on closing timing, run Report Timing Closure Recommendations in the Timing Analyzer.
+Info (332146): Worst-case recovery slack is -1.030
+    Info (332119):     Slack       End Point TNS Clock 
+    Info (332119): ========= =================== =====================
+    Info (332119):    -1.030              -9.011 source|frontend|clocks|p|auto_generated|pll1|clk[2] 
+    Info (332119):    -0.378              -2.363 adc_ref 
+    Info (332119):     1.426               0.000 ram 
+    Info (332119):     2.286               0.000 host 
+    Info (332119):     2.613               0.000 core 
+Info (332146): Worst-case removal slack is 0.491
+    Info (332119):     Slack       End Point TNS Clock 
+    Info (332119): ========= =================== =====================
+    Info (332119):     0.491               0.000 ram 
+    Info (332119):     0.499               0.000 adc_ref 
+    Info (332119):     0.501               0.000 core 
+    Info (332119):     0.653               0.000 host 
+    Info (332119):     0.694               0.000 source|frontend|clocks|p|auto_generated|pll1|clk[2] 
+Info (332146): Worst-case minimum pulse width slack is 1.757
+    Info (332119):     Slack       End Point TNS Clock 
+    Info (332119): ========= =================== =====================
+    Info (332119):     1.757               0.000 core 
+    Info (332119):     1.787               0.000 sample 
+    Info (332119):     3.719               0.000 ram 
+    Info (332119):     4.401               0.000 adc_ref 
+    Info (332119):     4.723               0.000 host 
+    Info (332119):     4.734               0.000 source|frontend|clocks|p|auto_generated|pll1|clk[2] 
+    Info (332119):     4.755               0.000 source|frontend|clocks|p|auto_generated|pll1|clk[0] 
+    Info (332119):     4.756               0.000 source|frontend|clocks|p|auto_generated|pll1|clk[3] 
+    Info (332119):     4.756               0.000 source|frontend|clocks|p|auto_generated|pll1|clk[4] 
+    Info (332119):     4.797               0.000 source|frontend|clocks|p|auto_generated|pll1|clk[1] 
+Info (332114): Report Metastability: Found 351 synchronizer chains.
+    Info (332114): Typical MTBF of Design is 1e+09 years or 3.15e+16 seconds.
+
+    Info (332114): Number of Synchronizer Chains Found: 351
+    Info (332114): Shortest Synchronizer Chain: 2 Registers
+    Info (332114): Fraction of Chains for which MTBFs Could Not be Calculated: 0.897
+    Info (332114): Worst Case Available Settling Time: 2.699 ns
+    Info (332114): Typical MTBF values are calculated based on the nominal silicon characteristics, at nominal operating conditions.
+    Info (332114):   - Under typical conditions, an increase of 100ps in available settling time will increase MTBF values by a factor of 10.8
+Info (332102): Design is not fully constrained for setup requirements
+Info (332102): Design is not fully constrained for hold requirements
+Info: Quartus Prime Timing Analyzer was successful. 0 errors, 3 warnings
+    Info: Peak virtual memory: 569 megabytes
+    Info: Processing ended: Mon Sep 14 11:14:51 2026
+    Info: Elapsed time: 00:00:07
+    Info: Total CPU time (on all processors): 00:00:08

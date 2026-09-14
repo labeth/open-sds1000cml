@@ -1,0 +1,5 @@
+{
+  "fpga/acq_sram/acquisition_path.v": "699b73dc194b23b8df589debcbca970e0337c4c6c95edf6e8702b0a5a81f1650",
+  "fpga/acq_sram/sim/tb_acquisition_path.v": "63fd4ba8ba1b6999f9fa4c2023f17897aef07627bc94aed71ebab6c586b45f74",
+  "validation/2026-09-14-stream-path/test_acquisition_path.py": "8b1960d556aa0becd6560d6d222b89d6cf3786aa017f3377cac156d93c5c33ce"
+}

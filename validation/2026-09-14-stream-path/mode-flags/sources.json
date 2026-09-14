@@ -1,0 +1,4 @@
+{
+  "fpga/acq_sram/acquisition_path.v": "f570fd7f20d06c722b3736cb38eba91f168affa6f278c7eb9e267f1bc37c12f9",
+  "fpga/acq_sram/finite_writer.v": "be1bfcdc35b94bd04f08f00d46122254e7929b7a6b98ecc8fde0c61f0a853455"
+}
