@@ -13,11 +13,12 @@ with tempfile.TemporaryDirectory(prefix='acq-shared-engine-') as directory:
   data=(root/'fpga/acq_sram'/name).read_bytes();dest=p/Path(name).name;dest.write_bytes(data)
   files.append(str(dest));hashes[name]=hashlib.sha256(data).hexdigest()
  print(json.dumps(hashes,sort_keys=True),flush=True)
- for wrapped in (1,):
+ for wrapped in (() if "--faults-only" in sys.argv else (1,)):
   binary=p/f'test{wrapped}'
   subprocess.run(['iverilog','-g2012','-s','tb_finite_capture',f'-Ptb_finite_capture.WRAPPED={wrapped}',f'-Ptb_finite_capture.AW={19 if "--full" in sys.argv else 13}','-o',str(binary),*files],check=True)
   subprocess.run(['vvp',str(binary)],check=True,timeout=900)
 
+ binary=p/'faults'
  # Same frozen sources exercise explicit transport fault injection and reset.
  subprocess.run(['iverilog','-g2012','-s','tb_finite_writer_faults','-o',str(binary),*files],check=True)
  subprocess.run(['vvp',str(binary)],check=True,timeout=30)

@@ -67,6 +67,22 @@ module tb_finite_writer_faults;
   // An asserted source fault also rejects a start from a clean idle epoch.
   new_epoch;source_fault=1;start=1;tick;start=0;
   if(!request_error || active || writer_request)$fatal(1,"faulted source start accepted");
+  // The new launch stage owns the writer immediately and rejects a second start.
+  new_epoch;launch;
+  if(!active || start_ready || !dut.launch_pending)$fatal(1,"pending launch did not reserve writer");
+  start=1;post_count=2;tick;start=0;post_count=1;
+  if(!request_error)$fatal(1,"second start during pending launch accepted");
+  wait(source_enable);tick;source_valid=1;trigger=1;tick;source_valid=0;trigger=0;
+  wait(!active);tick;
+  if(!frozen || fault || record_words!=1)$fatal(1,"pending launch lost accepted geometry");
+  // Reset must cancel a pending start without issuing a command or data write.
+  new_epoch;launch;reset=1;tick;reset=0;repeat(3)tick;
+  if(active || writer_request || writes!=0 || frozen || fault)$fatal(1,"reset failed to cancel launch");
+  // A halt coincident with acceptance is retained through startup.
+  new_epoch;wait(start_ready);tick;start=1;halt=1;tick;start=0;halt=0;source_valid=1;
+  wait(!active);tick;source_valid=0;
+  if(!frozen || fault || record_words!=0 || writes!=2)$fatal(1,"coincident start/halt captured data");
+  $display("PASS pending launch: immediate reservation, repeated-start rejection, held geometry, reset and coincident halt");
   $display("PASS frontend fault: startup, trigger word, final drain, frozen record, idle start rejection");
   $display("PASS finite writer: pending/idle halt, lost readiness invalidates epoch, rearm rejected, reset recovery");
   $finish;

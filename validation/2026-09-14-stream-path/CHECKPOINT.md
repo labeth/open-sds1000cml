@@ -1,6 +1,6 @@
 # Integrated acquisition core — fits, timing still fails
 
-Latest evidence: `idle-settings/balanced-build` (source hashes, snapshots,
+Previous passing CDC evidence: `idle-settings/balanced-build` (source hashes, snapshots,
 Quartus fit/STA and CDC audit). The real ADC/CIC acquisition core fits with
 9328/10320 LEs, 7697 registers, 44/46 M9Ks, and 643/645 LABs used. GPMC board
 top is not included; nominal spare LEs do not establish integration headroom.
@@ -10,6 +10,18 @@ pass. Setup remains -3.969 ns; recovery -4.297 ns. Hold +0.136 ns, removal
 +0.367 ns, minimum pulse +1.513 ns. Worst setup is backend control/fault
 through launch logic into finite writer state.PRIME_DRAIN. Other ADC CDC/reset paths
 and physical IO are unqualified. No image generated or deployed.
+
+## Latest launch-pipeline checkpoint
+
+`writer-launch/balanced-build` fits at 9333 LEs, 7698 registers, 44 M9Ks and
+642/645 LABs. Setup -3.284 ns; recovery -6.091 ns. Two of 135 CDC rows fail;
+this supersedes the previous build as current RTL evidence, not as qualification.
+The finite writer reserves immediately and launches one cycle later, preserves
+accepted geometry and coincident halt, and cancels pending launch on reset.
+Capture, integration and added pending-launch fault simulations pass.
+The encode diagnostic confirms 1.493 ns data delay but -0.307 ns setup slack
+with clock skew. A net-only replacement query matched no nets and was rejected.
+Constraints remain unchanged. See `writer-launch/README.md` for evidence scope.
 
 ## Current architecture
 - `acquisition_path.v`: real ADC/precision source, finite trigger writer,
