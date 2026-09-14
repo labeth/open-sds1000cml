@@ -92,3 +92,14 @@ Setup is -4.159 ns (worse), recovery -4.193 ns. Worst path is writer_granted
 through backend control into host packer count; readiness still reaches top
 configuration at about -4.005 ns. This is a resource/control simplification,
 not overall timing closure. No deployment; full goal remains incomplete.
+
+Latest packer-count checkpoint: delayed count checks, 12-bit checked
+descriptor payload and shared pair/tail packet stage pass 79463 cycle-equivalence
+checks and integrated capture/recall/streaming. `packer-count/integrated-build`
+FITS: 9468 LEs, 7682 registers, 44 M9Ks, 645 LABs; 126 CDC audit rows pass.
+Overall setup -4.228 ns (ADC encode crossing), core setup -3.601 ns (packer
+fault through readiness into mode selection), recovery -5.296 ns.
+Saves 31 LEs and 57 registers versus d509c72. Timing remains unqualified.
+Next: qualify ADC encode/reset crossings and shorten start readiness into
+mode/configuration selection, then continue default image/kernel/app integration
+and full hardware qualification. No image generated or deployed.

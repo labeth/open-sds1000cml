@@ -59,18 +59,22 @@ module sram_host_packer(
   end
  end endgenerate
  reg offer=0;
- reg [79:0] data_candidate=0,meta_candidate=0;
- reg packet_metadata=0;
+ reg [79:0] pair_candidate=0,tail_candidate=0,meta_candidate=0;
+ reg [1:0] packet_kind=0;
  // Separate construction from selection; offer follows the same pipeline.
  always @(posedge clk)begin
-  data_candidate<=complete_pair ? {1'b0,bank_q,pair_address[bank_q],data_q,half[bank_q]} :
-                                 {1'b0,selected,pair_address[selected],32'b0,half[selected]};
+  pair_candidate<={1'b0,bank_q,pair_address[bank_q],data_q,half[bank_q]};
+  tail_candidate<={1'b0,selected,pair_address[selected],32'b0,half[selected]};
   meta_candidate<={1'b1,selected,words[selected],first[selected]};
-  packet_metadata<=!complete_pair && !half_valid[selected];
+  packet_kind<=complete_pair ? 2'd0 : half_valid[selected] ? 2'd1 : 2'd2;
   if(reset)begin push<=0;packet<=0;end
   else begin
    push<=offer;
-   packet<=packet_metadata ? meta_candidate : data_candidate;
+   case(packet_kind)
+    0:packet<=pair_candidate;
+    1:packet<=tail_candidate;
+    default:packet<=meta_candidate;
+   endcase
   end
  end
  integer b;
