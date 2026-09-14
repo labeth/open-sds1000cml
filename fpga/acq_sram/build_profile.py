@@ -89,6 +89,13 @@ derive_clock_uncertainty
 set enable_stream 0
 source stream_path_cdc.sdc
 source acquisition_config_cdc.sdc
+# Common reset enters only asynchronous-assert/synchronous-release chains.
+# Exempt its asynchronous entry, not local release or synchronizer data paths.
+set board_reset [get_registers {reset_hold[7]}]
+if {[get_collection_size $board_reset]!=1} {error "Missing board reset stretcher output"}
+set reset_stages [get_registers {*profile|core_reset_sync* *profile|host_reset_sync* *commands|core_reset_sync* *commands|host_reset_sync* *commands|bridge|core_reset* *commands|bridge|host_reset* *commands|response|core_reset* *commands|response|host_reset*}]
+if {[get_collection_size $reset_stages]!=16} {error "Expected 16 profile reset synchronizer registers"}
+set_false_path -from $board_reset -to $reset_stages
 # Existing board GPMC combinational access budget; pad delays remain unqualified.
 set_max_delay 30.0 -from [get_ports {nCS1 nOE sel[*] gpmc_a2 gpmc_b1}] -to [get_ports {gpmc_d[*]}]
 # Held command/status bundles cross behind synchronized request tokens.

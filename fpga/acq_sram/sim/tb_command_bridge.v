@@ -1,12 +1,13 @@
 `timescale 1ns/1ps
 module tb_command_bridge;
- parameter PHASE=0;
+ parameter PHASE=0,SHORT_RESET=0;
  reg host_clk=0,core_clk=0,reset=1,host_send=0;
  reg [191:0] host_payload=0;
  wire host_busy,host_rejected,core_valid;
  wire [191:0] core_payload;
  always #5 host_clk=~host_clk;
- initial begin #(PHASE*0.3);forever #2 core_clk=~core_clk;end
+ reg core_run=1;
+ initial begin #(PHASE*0.3);forever begin #2;if(core_run)core_clk=~core_clk;end end
  acq_command_bridge dut(.*);
  reg [191:0] expected[0:8191];
  integer sent=0,received=0,rejected=0,epochs=0,j,k;
@@ -37,7 +38,7 @@ module tb_command_bridge;
  endtask
  task clear_epoch;
   begin
-   reset=1;host_send=0;#40;
+   reset=1;host_send=0;#(SHORT_RESET ? 1 : 40);
    sent=0;received=0;
    @(negedge host_clk);reset=0;
    wait(!host_busy);epochs=epochs+1;
@@ -61,7 +62,14 @@ module tb_command_bridge;
    if(core_valid || host_busy || received!=0)$fatal(1,"stale command after reset");
   end
   if(rejected<100)$fatal(1,"busy rejection not exercised");
-  $display("PASS command bridge phase=%0d: coherent randomized payloads, busy rejection, reset aborts, epochs=%0d",PHASE,epochs);
+  @(negedge core_clk);core_run=0;clear_epoch;
+  if(!dut.core_reset[1] || core_valid)$fatal(1,"stopped core did not hold reset");
+  @(negedge host_clk);host_send=1;host_payload=192'h87654321;
+  @(negedge host_clk);host_send=0;repeat(8)@(negedge host_clk);
+  if(!host_busy || received!=0)$fatal(1,"stopped core acknowledged command");
+  core_run=1;drain;
+  if(received!=1)$fatal(1,"resumed core lost command");
+  $display("PASS command bridge phase=%0d short_reset=%0d: coherent payloads, busy rejection, reset aborts, stopped-clock recovery, epochs=%0d",PHASE,SHORT_RESET,epochs);
   $finish;
  end
  initial begin #1000000;$fatal(1,"command bridge timeout");end

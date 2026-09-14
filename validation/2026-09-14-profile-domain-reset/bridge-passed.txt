@@ -1,0 +1,17 @@
+{"command_bridge.v": "72d25555954ae35663156676c9246f5e0d833828ad3e2f5919a4cb801d088d97", "sim/tb_command_bridge.v": "b6f4891dd5cfb6034dce67597d6eddbe37ed19ea12d8f0ad41efccfcf1853b72"}
+PASS command bridge phase=0 short_reset=0: coherent payloads, busy rejection, reset aborts, stopped-clock recovery, epochs=6
+/tmp/acq-command-bridge-_jdhdwy_/tb_command_bridge.v:73: $finish called at 41310000 (1ps)
+PASS command bridge phase=1 short_reset=0: coherent payloads, busy rejection, reset aborts, stopped-clock recovery, epochs=6
+/tmp/acq-command-bridge-_jdhdwy_/tb_command_bridge.v:73: $finish called at 41310000 (1ps)
+PASS command bridge phase=2 short_reset=0: coherent payloads, busy rejection, reset aborts, stopped-clock recovery, epochs=6
+/tmp/acq-command-bridge-_jdhdwy_/tb_command_bridge.v:73: $finish called at 41310000 (1ps)
+PASS command bridge phase=3 short_reset=0: coherent payloads, busy rejection, reset aborts, stopped-clock recovery, epochs=6
+/tmp/acq-command-bridge-_jdhdwy_/tb_command_bridge.v:73: $finish called at 41310000 (1ps)
+PASS command bridge phase=0 short_reset=1: coherent payloads, busy rejection, reset aborts, stopped-clock recovery, epochs=6
+/tmp/acq-command-bridge-_jdhdwy_/tb_command_bridge.v:73: $finish called at 41070000 (1ps)
+PASS command bridge phase=1 short_reset=1: coherent payloads, busy rejection, reset aborts, stopped-clock recovery, epochs=6
+/tmp/acq-command-bridge-_jdhdwy_/tb_command_bridge.v:73: $finish called at 41070000 (1ps)
+PASS command bridge phase=2 short_reset=1: coherent payloads, busy rejection, reset aborts, stopped-clock recovery, epochs=6
+/tmp/acq-command-bridge-_jdhdwy_/tb_command_bridge.v:73: $finish called at 41070000 (1ps)
+PASS command bridge phase=3 short_reset=1: coherent payloads, busy rejection, reset aborts, stopped-clock recovery, epochs=6
+/tmp/acq-command-bridge-_jdhdwy_/tb_command_bridge.v:73: $finish called at 41070000 (1ps)

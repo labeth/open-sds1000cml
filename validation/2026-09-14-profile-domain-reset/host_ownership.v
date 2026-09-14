@@ -29,13 +29,11 @@ module sram_host_ownership(
  reg [1:0] rel_seen=0;
  reg [75:0] meta0=0,meta1=0,settled0=0,settled1=0;
  assign producer_busy=published^ack2;
- // Local resets assert asynchronously and release on their destination clock.
- // Do not bypass them with the source-domain reset on functional outputs.
- assign host_ready=hr[1] ? 2'b0 : pub3^released;
+ assign host_ready=(reset || hr[1]) ? 2'b0 : pub3^released;
  assign host_token=pub3;
  assign {host_words0,host_first0}=settled0;
  assign {host_words1,host_first1}=settled1;
- assign core_release=cr[1] ? 2'b0 : rel2^rel_seen;
+ assign core_release=(reset || cr[1]) ? 2'b0 : rel2^rel_seen;
  always @(posedge producer_clk or posedge pr[1])begin
   if(pr[1])begin published<=0;ack1<=0;ack2<=0;held0<=0;held1<=0;fault<=0;end
   else begin

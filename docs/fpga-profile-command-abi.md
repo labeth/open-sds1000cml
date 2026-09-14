@@ -66,9 +66,14 @@ accepted command and its eventual result intact. No acquisition completion or
 successful trigger/capture is implied by result 0: it acknowledges the request,
 and later acquisition faults must be reported through the board status path.
 
-Both domains share reset; hold it across clock edges in both domains. Reset
-aborts command/result delivery, clears result-valid and sequence, and restores
-zero configuration except post-count=1 and encode mask=0x3ff.
+Both domains share an epoch reset, asserted asynchronously into two-stage
+local reset chains and released synchronously in each destination domain.
+Mailbox validity is cleared even while a clock is stopped; command-port state
+clears when its clock resumes, before the local reset releases. Reset aborts
+command/result delivery, clears result-valid and sequence, and restores zero
+configuration except post-count=1 and encode mask=0x3ff. Simulation covers a
+1 ns pulse and stopped clocks; this does not qualify a hardware minimum reset
+pulse width. The board reset stretcher remains required.
 
 The 208-bit forward mailbox payload is `{opcode, cfg11, ..., cfg0}`. A separate
 130-bit reverse mailbox carries the result and a 128-bit status snapshot. `core_start` and control pulses align
