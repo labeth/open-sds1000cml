@@ -1,0 +1,25 @@
+source-sha256: {"fpga/acq_sram/host_fifo.v": "0af9908f0c7ff386c37750ac0f1cf7e6544e32b3793cdc0ee0db60ae0322c907", "fpga/acq_sram/sim/tb_host_fifo.v": "c1ce4a79f8258c1bf9b93a619d8265159ccc75f4c40eee6a8f88b9a75ea359cb"}
+packed burst phase=0 words=2562 max_pending=6
+PASS host FIFO phase=0 sync_stall=0: packed throughput, wraps, stalls, overflow, common reset
+/tmp/host-fifo-test-v_ab7fe2/tb_host_fifo.v:118: $finish called at 62040000 (1ps)
+packed burst phase=1 words=2562 max_pending=6
+PASS host FIFO phase=1 sync_stall=0: packed throughput, wraps, stalls, overflow, common reset
+/tmp/host-fifo-test-v_ab7fe2/tb_host_fifo.v:118: $finish called at 62033000 (1ps)
+packed burst phase=2 words=2562 max_pending=6
+PASS host FIFO phase=2 sync_stall=0: packed throughput, wraps, stalls, overflow, common reset
+/tmp/host-fifo-test-v_ab7fe2/tb_host_fifo.v:118: $finish called at 62034000 (1ps)
+packed burst phase=3 words=2562 max_pending=7
+PASS host FIFO phase=3 sync_stall=0: packed throughput, wraps, stalls, overflow, common reset
+/tmp/host-fifo-test-v_ab7fe2/tb_host_fifo.v:118: $finish called at 62027000 (1ps)
+packed burst phase=0 words=2562 max_pending=7
+PASS host FIFO phase=0 sync_stall=1: packed throughput, wraps, stalls, overflow, common reset
+/tmp/host-fifo-test-v_ab7fe2/tb_host_fifo.v:118: $finish called at 62064000 (1ps)
+packed burst phase=1 words=2562 max_pending=7
+PASS host FIFO phase=1 sync_stall=1: packed throughput, wraps, stalls, overflow, common reset
+/tmp/host-fifo-test-v_ab7fe2/tb_host_fifo.v:118: $finish called at 62049000 (1ps)
+packed burst phase=2 words=2562 max_pending=7
+PASS host FIFO phase=2 sync_stall=1: packed throughput, wraps, stalls, overflow, common reset
+/tmp/host-fifo-test-v_ab7fe2/tb_host_fifo.v:118: $finish called at 62042000 (1ps)
+packed burst phase=3 words=2562 max_pending=8
+PASS host FIFO phase=3 sync_stall=1: packed throughput, wraps, stalls, overflow, common reset
+/tmp/host-fifo-test-v_ab7fe2/tb_host_fifo.v:118: $finish called at 62035000 (1ps)

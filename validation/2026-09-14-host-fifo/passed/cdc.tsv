@@ -1,0 +1,19 @@
+group	corner	endpoints	minimum_slack_ns	maximum_data_delay_ns
+slots	Slow 1200mV 85C Model	640	1.056	4.296
+output	Slow 1200mV 85C Model	80	1.056	4.296
+wgray_first	Slow 1200mV 85C Model	4	2.005	1.837
+wgray_second	Slow 1200mV 85C Model	4	6.826	1.094
+rgray_first	Slow 1200mV 85C Model	4	2.344	1.552
+rgray_second	Slow 1200mV 85C Model	4	1.934	2.023
+slots	Slow 1200mV 0C Model	640	1.307	4.084
+output	Slow 1200mV 0C Model	80	1.307	4.084
+wgray_first	Slow 1200mV 0C Model	4	2.105	1.75
+wgray_second	Slow 1200mV 0C Model	4	6.925	1.005
+rgray_first	Slow 1200mV 0C Model	4	2.442	1.469
+rgray_second	Slow 1200mV 0C Model	4	2.04	1.91
+slots	Fast 1200mV 0C Model	640	3.774	1.947
+output	Fast 1200mV 0C Model	80	3.774	1.947
+wgray_first	Fast 1200mV 0C Model	4	3.087	0.828
+wgray_second	Fast 1200mV 0C Model	4	7.509	0.442
+rgray_first	Fast 1200mV 0C Model	4	3.243	0.693
+rgray_second	Fast 1200mV 0C Model	4	3.074	0.903

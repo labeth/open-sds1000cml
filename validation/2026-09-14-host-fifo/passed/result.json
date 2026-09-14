@@ -1,0 +1,15 @@
+{
+  "timing": {
+    "setup": 0.118,
+    "hold": 0.186,
+    "recovery": 1.251,
+    "removal": 0.505,
+    "minimum_pulse": 1.513
+  },
+  "m9k_blocks": 0,
+  "sources": {
+    "host_fifo.v": "0af9908f0c7ff386c37750ac0f1cf7e6544e32b3793cdc0ee0db60ae0322c907",
+    "host_fifo_cdc.sdc": "31c2226f5be988846189fdc5966f44e9aba9fe7cabbd6e67e3556299e1f425f5"
+  },
+  "cdc_audit": "passed"
+}
