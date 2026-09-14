@@ -1,8 +1,9 @@
 `timescale 1ns/1ps
-// Executable scheduling experiment, not a synthesizable FIFO/controller.
+// Executable scheduling experiment using synthesizable ingress storage.
+// The command scheduler remains a testbench, not a hardware controller.
 // Exercises the actual transport and a two-stage synchronous SRAM model.
 module tb;
- parameter AW=19,BATCH=5120,FIFO=4608,HOST_DELAY=2500000,ROUNDS=16,READ_RESERVE=32;
+ parameter AW=19,BATCH=5120,FIFO=4608,HOST_DELAY=2500000,ROUNDS=16,READ_RESERVE=32,WRITE_DIV=1;
  localparam N=1<<AW;
  reg clk=0;always #2 clk=~clk;
  wire sample_clk;assign #0.4 sample_clk=clk;
@@ -12,8 +13,16 @@ module tb;
  wire [31:0] read_data,dq;wire [AW-1:0] position;
  integer cycles=0,produced=0,consumed=0,max_fifo=0;
  reg source_on=0,allow_write=0;
- wire write_valid=allow_write && produced>consumed;
- wire [31:0] write_data=N+consumed;
+ wire ingress_valid,ingress_overflow,ingress_underflow;
+ wire [$clog2(FIFO+9)-1:0] ingress_count;
+ wire write_slot=cycles%WRITE_DIV==0;
+ wire write_valid=allow_write && ingress_valid && write_slot;
+ wire [31:0] write_data;
+ localparam FIFO_ROWS=FIFO>=512 ? 512 : 2;
+ sram_ingress_stream #(.BANKS(FIFO/FIFO_ROWS),.ROWS(FIFO_ROWS)) ingress(
+  .clk(clk),.reset(reset),.push(source_on && cycles%128==0),.data_in(32'(N+produced)),
+  .ready(allow_write && write_ready && write_slot),.valid(ingress_valid),.data_out(write_data),
+  .count(ingress_count),.overflow(ingress_overflow),.underflow(ingress_underflow));
  sram_transport #(.AW(AW),.CONTINUOUS_ONLY(1)) dut(.*);
  reg [31:0] mem[0:N-1];reg [AW-1:0] address=0;
  reg [31:0] stage1=0,stage2=0;
@@ -24,6 +33,7 @@ module tb;
   if(source_on && cycles%128==0)produced<=produced+1;
   if(write_valid && write_ready)consumed<=consumed+1;
   if(produced-consumed>max_fifo)max_fifo<=produced-consumed;
+  if(ingress_overflow || ingress_underflow)$fatal(1,"ingress FIFO fault");
   if(produced-consumed>FIFO)$fatal(1,"ingress overflow %0d",produced-consumed);
  end
  assign dq=k1 && g1 ? stage2 : 32'bz;

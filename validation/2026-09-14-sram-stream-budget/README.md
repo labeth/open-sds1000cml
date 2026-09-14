@@ -37,8 +37,9 @@ establish this proposed mode. No scope configuration was changed for this work.
 `fpga/acq_sram/sim/tb_sram_timeslice.v` exercises the actual
 CONTINUOUS_ONLY transport, two-stage SRAM output model and a deterministic
 source producing one pair every 128 core clocks. The testbench tracks ingress
-occupancy and payload order; its scheduler and ingress counters are not a
-synthesizable FIFO/controller. Physical writes and returned words are checked
+occupancy and payload order; the original checkpoint modeled ingress with counters. The current test
+uses synthesizable ingress FIFO/adapter modules; its command scheduler is still
+a testbench, not a synthesizable controller. Physical writes and returned words are checked
 against independent sequence counters.
 
 A reduced-address run completed 144 excursions, 2304 returned words and 2296
@@ -61,3 +62,12 @@ case above additionally exercises repeated write pointer wrap. Logs are
 `transport-full.log` and `transport-checks.log`. This proves the scheduling
 experiment under its stated model, not SRAM board timing, RAM resource fit,
 trigger handling, or sustainable ARM transfer.
+
+
+Later ingress synthesis found a 4.201 ns M9K minimum-period restriction; the
+ingress and paired-word host RAM must use a slower clock. The planned RAM clock
+is 125 MHz while SRAM addressing remains 250 MHz. `budget.py` now also checks
+125, 31.25 and 25 Mword/s write-service rates. Even at 25 Mword/s, 5120-word
+reads have sufficient ideal average throughput. See the ingress-fifo validation
+directory for timing reports and the remaining clock-crossing work. The original
+full-speed scheduling log is retained as historical model evidence.

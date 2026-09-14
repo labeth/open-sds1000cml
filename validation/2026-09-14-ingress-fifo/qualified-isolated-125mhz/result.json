@@ -1,0 +1,6 @@
+{
+  "clock_mhz": 125,
+  "setup_slack_ns": 3.016,
+  "hold_slack_ns": 0.144,
+  "min_pulse_slack_ns": 3.663
+}

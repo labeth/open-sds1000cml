@@ -1,0 +1,6 @@
+PASS ingress banks=9 rows=512 accepted=112959 returned=112959
+PASS ingress banks=3 rows=10 accepted=744 returned=744
+PASS ingress banks=1 rows=8 accepted=199 returned=199
+PASS ingress stream depth=4608 words=52813 full-rate and stalled output
+PASS ingress stream depth=30 words=343 full-rate and stalled output
+PASS ingress stream depth=8 words=77 full-rate and stalled output

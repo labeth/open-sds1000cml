@@ -1,0 +1,10 @@
+round=0 excursion_clocks=524369 pending=4096 backlog=10240
+round=1 excursion_clocks=524369 pending=4101 backlog=9559
+round=2 excursion_clocks=524369 pending=4101 backlog=8883
+round=3 excursion_clocks=524369 pending=4101 backlog=8207
+round=4 excursion_clocks=524369 pending=4100 backlog=7532
+round=5 excursion_clocks=524369 pending=4097 backlog=26044
+round=6 excursion_clocks=524369 pending=4101 backlog=25363
+round=7 excursion_clocks=524369 pending=4100 backlog=24688
+PASS timeslice: read=40960 written=54389 max_ingress=4101/4608
+fpga/acq_sram/sim/tb_sram_timeslice.v:91: $finish called at 28011280800 (1ps)
