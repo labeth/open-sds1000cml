@@ -26,7 +26,18 @@ frozen record only after final drain. The existing ADC/GPMC top still needs to
 instantiate it and arbitrate its start against the shared backend. Its changed
 origin convention is simulation-checked only, not board-qualified.
 
+The finite writer now accepts synchronous frontend faults through startup,
+triggered data, final drain and frozen recall. Faults suppress new writes and
+invalidate the epoch. `acquisition_source.v` extracts the ADC/precision source
+with uninterrupted consumption, per-epoch configuration, aligned output words
+and sticky ADC/precision/clock-lock faults. It is not yet instantiated in top.v.
+The continuous engine still needs frontend-fault propagation when integrated.
+
 Current evidence:
+- `finite-capture/source-tests.txt`: ADC/CIC interface-mock tests pass all legal
+  decimation settings, illegal-mode rejection, stable per-epoch configuration,
+  aligned data/valid output, uninterrupted consumption and ADC lock-loss faults.
+  These do not test converter ordering or actual CIC arithmetic.
 - `finite-capture/full-tests.txt`: all 524288 words / 2 MiB captured through the
   real transport RTL at one word per simulated 250 MHz cycle, with SRAM wrap
   before trigger; trigger index 524271, 17 post words. Every recalled halfword
@@ -35,7 +46,9 @@ Current evidence:
   8192-word ring trigger, sparse early-trigger handling, wrapped untriggered
   halt, rejected invalid rearm, and subsequent stream/recall switching. The
   same frozen source set passes startup/idle halt, lost-readiness fault,
-  rejected faulted rearm and coordinated reset recovery.
+  rejected faulted rearm and coordinated reset recovery. Added frontend fault
+  injection covers startup, triggering word, final drain, frozen record and
+  rejection of an idle start with an asserted source fault.
 - `board-capture/tests.txt`: external 97-word finite write followed by exact
   recall, plus the five shared-backend operations below, all without reset.
   Checks writer exclusion while transfers/banks are owned, backend exclusion

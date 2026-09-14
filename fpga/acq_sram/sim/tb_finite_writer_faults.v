@@ -2,7 +2,7 @@
 module tb_finite_writer_faults;
  localparam AW=13;
  reg clk=0;always #2 clk=~clk;
- reg reset=1,start=0,capture_allowed=1,halt=0,source_valid=0,trigger=0;
+ reg reset=1,start=0,capture_allowed=1,halt=0,source_valid=0,source_fault=0,trigger=0;
  reg [AW:0] pre_count=0,post_count=1;
  reg [31:0] source_data=32'h53ad2e71;
  wire start_ready,active,source_enable,source_ready,frozen,fault,request_error,triggered;
@@ -24,6 +24,12 @@ module tb_finite_writer_faults;
   end
  end
  task tick;begin @(negedge clk);#0.1;end endtask
+ task new_epoch;
+ begin reset=1;source_valid=0;source_fault=0;trigger=0;halt=0;drop_ready=0;tick;reset=0;end endtask
+ task require_invalid;
+ begin wait(!active);tick;
+  if(!fault || frozen || start_ready)$fatal(1,"frontend fault left a valid epoch: fault=%b frozen=%b ready=%b writes=%0d",fault,frozen,start_ready,writes);
+ end endtask
  task launch;
  begin wait(start_ready);tick;start=1;tick;start=0;end endtask
  initial begin
@@ -44,6 +50,24 @@ module tb_finite_writer_faults;
   wait(!active);tick;
   if(fault || !frozen || record_words!=1 || !triggered || writes!=3)
    $fatal(1,"reset recovery or single-word trigger");
+  // A late frontend report must invalidate even an already frozen capture.
+  source_fault=1;tick;source_fault=0;require_invalid;
+  // Failed startup: no ADC or priming word may be accepted on the fault edge.
+  new_epoch;launch;source_fault=1;source_valid=1;tick;source_fault=0;source_valid=0;
+  require_invalid;if(writes!=0)$fatal(1,"startup fault wrote SRAM");
+  // Fault on a candidate trigger word suppresses its write and trigger.
+  new_epoch;launch;wait(source_enable);tick;
+  source_valid=1;trigger=1;source_fault=1;tick;
+  source_valid=0;trigger=0;source_fault=0;require_invalid;
+  if(writes!=2 || triggered)$fatal(1,"faulted trigger word accepted");
+  // Coincident final-ready and fault must not publish a valid frozen record.
+  new_epoch;launch;wait(source_enable);tick;
+  source_valid=1;trigger=1;tick;source_valid=0;trigger=0;
+  wait(dut.state==9 && writer_ready);source_fault=1;@(posedge clk);tick;source_fault=0;require_invalid;
+  // An asserted source fault also rejects a start from a clean idle epoch.
+  new_epoch;source_fault=1;start=1;tick;start=0;
+  if(!request_error || active || writer_request)$fatal(1,"faulted source start accepted");
+  $display("PASS frontend fault: startup, trigger word, final drain, frozen record, idle start rejection");
   $display("PASS finite writer: pending/idle halt, lost readiness invalidates epoch, rearm rejected, reset recovery");
   $finish;
  end

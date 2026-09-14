@@ -23,8 +23,10 @@ qualification, including the reader's delay and bias, before deployment.
 must find `source_ready`; loss of transport readiness invalidates the epoch.
 A trigger must accompany its source word. Halt excludes the word on that edge;
 a halt during startup is remembered and produces an empty frozen record.
-A fault requires coordinated reset of writer, backend and transport. The board
-must also propagate ADC/precision faults into that epoch policy when integrated.
+A fault requires coordinated reset of writer, backend and transport. `source_fault` accepts the synchronous ADC/precision fault. It rejects a new
+start while asserted, suppresses writes on the fault edge, drains an active
+transport, and invalidates even a frozen record when a late error arrives.
+The board must connect that input and propagate the failed epoch to the host.
 
 Run `python3 validation/2026-09-14-stream-path/test_finite_capture.py` for the
 8192-word integration geometry, switching between trigger capture, frozen recall
@@ -43,3 +45,20 @@ fault suite. `full-tests.txt` passes the entire 2 MiB capture/recall, with trigg
 index 524271 and 17 post words, through 205 banks. Full-run simulation elapsed
 16.9326881 ms including the preceding read, capture, seek, host stalls and recall;
 this is not an instrument transfer-rate measurement.
+
+`adc_acquisition_source` extracts the ADC/precision selection from the old top.
+It has no downstream-ready input: `adc_interleave.consume` stays asserted for
+its run interval, so SRAM reads cannot pause the ADC timeline. Decimation and
+encode mask latch at enable rise. The output is registered with its valid bit;
+ADC errors, selected precision errors and loss of established ADC clock lock
+remain sticky until enable goes low. No output is valid before ADC lock.
+The source-control test uses explicit ADC/CIC mocks, checks raw and all legal
+precision settings, rejects illegal settings, and checks fault/word alignment.
+It does not exercise analog pin ordering or CIC arithmetic. The real frontend
+and precision RTL separately elaborate with vendor primitives left unresolved;
+that is an interface check only. This source is not wired into `top.v` yet.
+
+For finite capture, the board should keep the frontend epoch enabled through
+priming and final writer drain, discarding startup words outside the writer's
+source interval. This allows late frontend errors to invalidate the capture.
+Both paths still need the actual top-level connection and physical timing checks.

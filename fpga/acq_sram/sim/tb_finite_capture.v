@@ -29,7 +29,7 @@ module tb_finite_capture;
  wire [AW-1:0] capture_origin;wire [AW:0] capture_words,capture_trigger_index;
  sram_finite_writer #(.AW(AW)) writer(
   .clk(core_clk),.reset(reset),.start(capture_start),.capture_allowed(start_ready && !start),.halt(capture_halt),
-  .pre_count(capture_pre),.post_count(capture_post),.source_valid(capture_valid),.trigger(capture_trigger),.source_data(capture_data),
+  .pre_count(capture_pre),.post_count(capture_post),.source_valid(capture_valid),.source_fault(1'b0),.trigger(capture_trigger),.source_data(capture_data),
   .start_ready(capture_start_ready),.active(capture_active),.source_enable(capture_enable),.source_ready(capture_ready),
   .frozen(capture_frozen),.fault(capture_fault),.request_error(capture_error),.triggered(capture_triggered),
   .record_start(capture_origin),.record_words(capture_words),.trigger_index(capture_trigger_index),

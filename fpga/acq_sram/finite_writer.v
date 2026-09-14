@@ -2,13 +2,15 @@
 // All signals are core-clock synchronous. capture_allowed must exclude an
 // active backend, outstanding host banks and another accepted start.
 // source_enable marks the acquisition interval; trigger accompanies its word.
+// source_fault is a synchronous frontend error; it invalidates the capture
+// through startup, final drain and frozen recall. Reset is the epoch boundary.
 // Data is opaque (raw packed pairs or both Q8.8 channels). No sample RAM here.
 // Prime writes are fully drained before recording the physical origin. The
 // resulting origin convention needs board qualification before deployment.
 module sram_finite_writer #(parameter AW=19,PRIME_WORDS=16)(
  input wire clk,reset,start,capture_allowed,halt,
  input wire [AW:0] pre_count,post_count,
- input wire source_valid,trigger,input wire [31:0] source_data,
+ input wire source_valid,source_fault,trigger,input wire [31:0] source_data,
  output wire start_ready,active,source_enable,source_ready,
  output reg frozen=0,fault=0,request_error=0,
  output wire triggered,output wire [AW-1:0] record_start,
@@ -32,14 +34,14 @@ module sram_finite_writer #(parameter AW=19,PRIME_WORDS=16)(
  wire [AW-1:0] logical_start,write_addr;
  wire [AW:0] filled;
  assign active=state!=IDLE;
- assign start_ready=!reset && !active && !fault && capture_allowed;
+ assign start_ready=!reset && !active && !fault && !source_fault && capture_allowed;
  assign writer_request=active;
- assign writer_command=writer_ready && (state==PRIME_START || state==CAPTURE_START);
- assign source_enable=state==RUN && running && !fault && !halt_pending && !reset;
+ assign writer_command=!source_fault && writer_ready && (state==PRIME_START || state==CAPTURE_START);
+ assign source_enable=state==RUN && running && !fault && !halt_pending && !source_fault && !reset;
  assign source_ready=source_enable && writer_write_ready && !halt;
  wire lost_word=source_enable && source_valid && !writer_write_ready;
- wire abort_capture=halt || halt_pending || fault || lost_word;
- assign writer_valid=!reset && ((state==PRIME && writer_write_ready) ||
+ wire abort_capture=halt || halt_pending || fault || source_fault || lost_word;
+ assign writer_valid=!reset && !source_fault && ((state==PRIME && writer_write_ready) ||
                      (source_valid && source_ready));
  assign writer_data=state==PRIME ? 32'b0 : source_data;
  assign writer_stop=!(state==PRIME_START || state==PRIME ||
@@ -59,7 +61,7 @@ module sram_finite_writer #(parameter AW=19,PRIME_WORDS=16)(
   else begin
    if(start && (!start_ready || !geometry_ok))request_error<=1;
    if(active && halt)halt_pending<=1;
-   if(lost_word || config_error)begin fault<=1;frozen<=0;end
+   if(lost_word || config_error || (source_fault && (active || frozen)))begin fault<=1;frozen<=0;end
    case(state)
     IDLE:if(start && start_ready && geometry_ok)begin
      pre_l<=pre_count;post_l<=post_count;frozen<=0;halt_pending<=0;state<=CLAIM;
@@ -76,9 +78,12 @@ module sram_finite_writer #(parameter AW=19,PRIME_WORDS=16)(
     SETUP:if(writer_write_ready)state<=ARM;
     ARM:state<=RUN;
     RUN:if(record_done || abort_capture)state<=DRAIN;
-    DRAIN:if(writer_ready)begin frozen<=!fault;state<=IDLE;end
+    DRAIN:if(writer_ready)begin frozen<=!fault && !source_fault;state<=IDLE;end
     default:begin state<=IDLE;fault<=1;frozen<=0;end
    endcase
+   // Do not issue further priming/data writes after an upstream failure.
+   // Retain the transport reservation until any in-flight operation drains.
+   if(source_fault && active && state!=DRAIN)state<=DRAIN;
   end
  end
 endmodule
