@@ -73,3 +73,26 @@ are controller unread_full -> ingress pending and sampled_free -> controller
 state. Exact baseline packer restored. Reports, experimental source and tests
 retained in `metadata-enable-probe/`. This does not alter prior qualified
 component or full-geometry functional source versions.
+
+Seed 4 baseline also misses setup (-0.685 ns), with leading paths through
+controller read-valid/index and ingress mailbox reset-to-payload enables.
+All 120 CDC checks pass. Evidence: `seed4-probe/`.
+
+Mailbox payload experiment removes reset and reset-release qualification from
+payload storage while retaining the original request/acknowledgement control.
+No request is published during reset; outstanding payload remains held until
+acknowledgement. Valid held high during reset is now exercised by the bridge
+bench. Eight bridge phase/ratio cases, both complete ingress stress suites and
+the direct 10003-word wrapper run pass. Seed 2 has setup -0.429 ns and core
+TNS -8.434 ns (baseline -0.418 / -10.926), 38 M9Ks and 120 CDC checks passing.
+The leading failure moves to controller fault -> unread. This is a structural
+simplification, not a timing-qualified image; `mailbox-payload-probe/` preserves
+its source, reports and functional evidence. The old standalone ingress
+qualification is historical and does not qualify this changed bridge source.
+
+Rejected unread-counter toggle-mask experiment: nine controller functional
+cases and all 120 CDC checks pass, but setup worsens to -0.643 ns and core
+TNS to -37.769 ns. Controller restored byte-for-byte to its checkpoint source;
+mailbox simplification remains. Experimental RTL, source hashes and results
+are in `count-mask-probe/`. Active RTL therefore matches the mailbox experiment
+above, whose direct wrapper and ingress tests passed.

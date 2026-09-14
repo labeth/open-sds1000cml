@@ -29,7 +29,9 @@ module tb;
  end
  task new_epoch;
  begin
-  reset=1;source_valid=0;dest_ready=0;#100;
+  // Exercise unpublished payload capture with valid high during reset.
+  // Drop valid before release; no old word may appear in the next epoch.
+  reset=1;source_valid=1;dest_ready=0;#100;source_valid=0;
   sent=0;received=0;epoch=epoch+1;reset=0;#100;
  end endtask
  initial begin

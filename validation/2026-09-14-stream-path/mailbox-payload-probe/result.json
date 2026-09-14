@@ -1,0 +1,30 @@
+{
+  "qualification": "IO unconstrained; combined CDC audit passed; inspect timing separately",
+  "seed": 2,
+  "timing": {
+    "setup": -0.429,
+    "hold": 0.143,
+    "recovery": 0.135,
+    "removal": 0.492,
+    "minimum_pulse": 1.513
+  },
+  "m9k_blocks": 38,
+  "sources": {
+    "stream_path.v": "a8f94c953d048f0858f66a01a59b722591d64245a9d766b50cf33dba60d2e74e",
+    "ingress_path.v": "c1aea8492b0641f504337c70a97373ceb51002cc7a0913c945d616a62591af31",
+    "ingress_fifo.v": "051a05212941de9d224cf9dcea66c29297a2c85b03c86012db0b1977ca463f35",
+    "ingress_stream.v": "048e2faad3c03d5e966bfdd04de79eee8642e7efc0d09aecaad4a4d00f8a99e4",
+    "word_bridge.v": "30a23c116f37008bc906114c22298336d409c9bca405919e815a226f4223caa7",
+    "timeslice_controller.v": "d513b2b950a8e1917c76881aaf1ea43c3e3d5e21d73177a79c79b6450aea4d75",
+    "ordinal_counter.v": "0289b0528f2202dc1f436cbb107226290d825b66fa6ffed46ce3bf957bdd9690",
+    "transport.v": "f24d6fd8d9878b0e4eb722b293cab5a06c380ef42c58e6becccc0156eec1bfae",
+    "host_path.v": "ceeb9654df6095607688b173076572bbfe779ab3e403d067a9fc5b2312b9ce81",
+    "host_packer.v": "1b50bb8cdc04ab693353f8311c034742a1109e16ea8f66471bb0dede850cd883",
+    "host_fifo.v": "bf1eff02e237a882434398cc595e3c9d2054eb853ad9f70b80a4861539948e8e",
+    "host_sink.v": "8334e289686c3c9bd328137e302947676981d7b66bbf5e08df1d0e8993972e55",
+    "host_ram.v": "9779d0040513cc724688b0c83a2fb73fb260e271d656e3d882dd1848f024bcad",
+    "host_ownership.v": "52e9c9131279598595c1c3905643c362ea2dc74c98b572f39cdd1f85371a83e9",
+    "stream_path_cdc.sdc": "958dc23076a75db105c8e48cc6ccde2d7651c03db458913f674089578293aa84"
+  },
+  "cdc_audit": "passed"
+}

@@ -8,7 +8,9 @@ for /256 and slower continuous transfer; faster finite capture remains separate.
 Evidence:
 - Host component seed 2: setup +0.009 ns, 20 M9Ks, 75 CDC audit groups pass.
 - Combined module: 38 M9Ks, about 51% of available logic; 120 CDC groups pass.
-- Combined seed 2 setup -0.418 ns: timing closure remains required, IO unconstrained.
+- Original combined seed 2 setup -0.418 ns; active mailbox simplification -0.429 ns
+  with lower core TNS (-8.434 vs -10.926 ns). Timing closure remains required,
+  IO unconstrained. Current source hashes and tests: mailbox-payload-probe/.
 - Direct wrapper: 10003 words, four banks, SRAM wrap and actual RAM reads pass.
 - Physical AW=19 model: 65539 words, 26 banks, 10 ms ARM pause, four busy-bank
   skips and 16 scan/drain overlaps pass. Peak ingress 4101/4608; unread 24437.
@@ -24,3 +26,8 @@ behavior. Rejected experiments are retained as evidence, not active RTL.
 
 The old packetizer test remains at sim/tb_stream_path.v. The new combined
 wrapper test is sim/tb_sram_stream_path.v; its recorded earlier hash is unchanged.
+
+The mailbox payload reset was removed independently of token reset. Eight
+clock ratio/phase cases, reset with valid high, both ingress stress suites and
+the direct wrapper pass. The unread counter toggle-mask experiment worsened
+timing and was reverted exactly; its reports remain in count-mask-probe/.

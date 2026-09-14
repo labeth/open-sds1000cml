@@ -1,0 +1,25 @@
+{"fpga/acq_sram/sim/tb_word_bridge.v": "a8bb1e0c548011b15c6ad961f2de78df7976091920ad158a6d8b4144129d4205", "fpga/acq_sram/word_bridge.v": "30a23c116f37008bc906114c22298336d409c9bca405919e815a226f4223caa7"}
+throughput source_half=4 dest_half=2 phase=0 ns_per_word=31.993000
+PASS word bridge delivered=2161 reset/stall epochs checked
+/home/labeth/ws/open-sds1000cml-acq2/fpga/acq_sram/sim/tb_word_bridge.v:53: $finish called at 73840000 (1ps)
+throughput source_half=4 dest_half=2 phase=1 ns_per_word=31.993500
+PASS word bridge delivered=2161 reset/stall epochs checked
+/home/labeth/ws/open-sds1000cml-acq2/fpga/acq_sram/sim/tb_word_bridge.v:53: $finish called at 73840000 (1ps)
+throughput source_half=4 dest_half=2 phase=2 ns_per_word=39.990000
+PASS word bridge delivered=2161 reset/stall epochs checked
+/home/labeth/ws/open-sds1000cml-acq2/fpga/acq_sram/sim/tb_word_bridge.v:53: $finish called at 91048000 (1ps)
+throughput source_half=4 dest_half=2 phase=3 ns_per_word=31.992500
+PASS word bridge delivered=2161 reset/stall epochs checked
+/home/labeth/ws/open-sds1000cml-acq2/fpga/acq_sram/sim/tb_word_bridge.v:53: $finish called at 73840000 (1ps)
+throughput source_half=2 dest_half=4 phase=0 ns_per_word=39.994000
+PASS word bridge delivered=2161 reset/stall epochs checked
+/home/labeth/ws/open-sds1000cml-acq2/fpga/acq_sram/sim/tb_word_bridge.v:53: $finish called at 91136000 (1ps)
+throughput source_half=2 dest_half=4 phase=1 ns_per_word=39.994500
+PASS word bridge delivered=2161 reset/stall epochs checked
+/home/labeth/ws/open-sds1000cml-acq2/fpga/acq_sram/sim/tb_word_bridge.v:53: $finish called at 91136000 (1ps)
+throughput source_half=2 dest_half=4 phase=2 ns_per_word=39.995000
+PASS word bridge delivered=2161 reset/stall epochs checked
+/home/labeth/ws/open-sds1000cml-acq2/fpga/acq_sram/sim/tb_word_bridge.v:53: $finish called at 91144000 (1ps)
+throughput source_half=2 dest_half=4 phase=3 ns_per_word=39.995500
+PASS word bridge delivered=2161 reset/stall epochs checked
+/home/labeth/ws/open-sds1000cml-acq2/fpga/acq_sram/sim/tb_word_bridge.v:53: $finish called at 91104000 (1ps)
