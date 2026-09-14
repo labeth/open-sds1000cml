@@ -37,6 +37,7 @@ module tb_finite_recall;
   32'b0,1'b0,1'b1,,tdata,tv,td,position,dq,k1,k2,g1);
  reg [31:0] memory[0:N-1],stage1=0,stage2=0;reg [AW-1:0] address=0;
  integer pulses=0,received=0,blocks=0,total_words=0,cases=0,hold_cycles=0;
+ integer seeks=0,before_seeks;
  integer bank,count,i,block_first,expected_address;reg [31:0] expected;
  function [31:0] pattern(input integer a);pattern=32'h615eb27d ^ (32'(a)*32'h9e3779b9);endfunction
  assign dq=k1 && g1 ? stage2 : 32'bz;
@@ -45,6 +46,10 @@ module tb_finite_recall;
   stage1<=memory[address];stage2<=stage1;address<=address+1'b1;pulses=pulses+1;
  end
  always @(posedge c)if(!reset)begin
+  if(command)begin
+   if(command_count==0 || command_count>N)$fatal(1,"invalid recall command length");
+   if(command_discard)seeks=seeks+1;
+  end
   if(fault || host_fault || core_fault)$fatal(1,"recall/host fault %0d",error_code);
   if(done && bank_busy!=0)$fatal(1,"done before final bank release");
  end
@@ -98,6 +103,11 @@ module tb_finite_recall;
    if(pulses!=before_pulses || fault || bank_busy!=0)$fatal(1,"unfrozen read accepted");
    run_case(N,0,0);run_case(19,N-19,2000);
    read_bias=7;run_case(0,1,0);read_bias=0;
+   // Target already equals the transport cursor: skip seek, but still read
+   // the warmup plus the requested data using the correct command operand.
+   record_start=position+16;before_seeks=seeks;
+   run_case(0,17,0);
+   if(seeks!=before_seeks)$fatal(1,"zero-distance recall issued a seek");
   end
   run_case(0,N,2000);
   for(j=0;j<N;j=j+1)if(memory[j]!==pattern(j))$fatal(1,"frozen memory changed");

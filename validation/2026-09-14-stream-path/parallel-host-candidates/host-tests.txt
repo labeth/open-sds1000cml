@@ -1,0 +1,28 @@
+{
+  "source_sha256": {
+    "fpga/acq_sram/host_path.v": "ceeb9654df6095607688b173076572bbfe779ab3e403d067a9fc5b2312b9ce81",
+    "fpga/acq_sram/host_packer.v": "9cb3614f1599e7c1de5ebebd151892535300d66f0a439f825166a4ed054741b1",
+    "fpga/acq_sram/host_fifo.v": "bf1eff02e237a882434398cc595e3c9d2054eb853ad9f70b80a4861539948e8e",
+    "fpga/acq_sram/host_sink.v": "5a9c8ff3301b3d9ffe20d5a38a099685f48fa1d4590bb044621356831ef95589",
+    "fpga/acq_sram/host_ram.v": "87f667e602d77fa0e398e337d60ce5a8f61f9f666e130fb9c70d7c08028b4be7",
+    "fpga/acq_sram/host_ownership.v": "52e9c9131279598595c1c3905643c362ea2dc74c98b572f39cdd1f85371a83e9",
+    "fpga/acq_sram/sim/tb_host_path.v": "f43bc772b828f87571cce60020cefa1ac0813120e1fe79edaac7982ad330d7f2",
+    "fpga/acq_sram/sim/tb_host_faults.v": "4d3f25b42705ffa1646ca350c9995f5a2fb59e789162f31e9c0267e0c743e7e1"
+  }
+}
+PASS host path phase=0 full banks, odd tails, exact RAM, metadata, ownership and reuse
+/tmp/acq-host-path-839fu4s2/tb_host_path.v:100: $finish called at 564320000 (1ps)
+PASS host path phase=1 full banks, odd tails, exact RAM, metadata, ownership and reuse
+/tmp/acq-host-path-839fu4s2/tb_host_path.v:100: $finish called at 564320000 (1ps)
+PASS host path phase=2 full banks, odd tails, exact RAM, metadata, ownership and reuse
+/tmp/acq-host-path-839fu4s2/tb_host_path.v:100: $finish called at 564320000 (1ps)
+PASS host path phase=3 full banks, odd tails, exact RAM, metadata, ownership and reuse
+/tmp/acq-host-path-839fu4s2/tb_host_path.v:100: $finish called at 564320000 (1ps)
+PASS host faults phase=0 malformed input, owned-bank protection, fault CDC and reset recovery
+/tmp/acq-host-path-839fu4s2/tb_host_faults.v:74: $finish called at 3656000 (1ps)
+PASS host faults phase=1 malformed input, owned-bank protection, fault CDC and reset recovery
+/tmp/acq-host-path-839fu4s2/tb_host_faults.v:74: $finish called at 3656000 (1ps)
+PASS host faults phase=2 malformed input, owned-bank protection, fault CDC and reset recovery
+/tmp/acq-host-path-839fu4s2/tb_host_faults.v:74: $finish called at 3656000 (1ps)
+PASS host faults phase=3 malformed input, owned-bank protection, fault CDC and reset recovery
+/tmp/acq-host-path-839fu4s2/tb_host_faults.v:74: $finish called at 3656000 (1ps)

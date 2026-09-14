@@ -1,0 +1,17 @@
+{"finite_recall.v": "061e01eaa28fc574d0903b607a344e43639a181450040b6eed2b3fa86af79d76", "host_fifo.v": "bf1eff02e237a882434398cc595e3c9d2054eb853ad9f70b80a4861539948e8e", "host_ownership.v": "52e9c9131279598595c1c3905643c362ea2dc74c98b572f39cdd1f85371a83e9", "host_packer.v": "d9d852060e4bf1f8278feb0b6cd0cbf5097d6fd45e985859b07bdc0ded0333ab", "host_path.v": "ceeb9654df6095607688b173076572bbfe779ab3e403d067a9fc5b2312b9ce81", "host_ram.v": "87f667e602d77fa0e398e337d60ce5a8f61f9f666e130fb9c70d7c08028b4be7", "host_sink.v": "5a9c8ff3301b3d9ffe20d5a38a099685f48fa1d4590bb044621356831ef95589", "ordinal_counter.v": "0289b0528f2202dc1f436cbb107226290d825b66fa6ffed46ce3bf957bdd9690", "sim/ddr_model.v": "ace57d159f0b1b9edd4e9c82b1496fab3b79b7c056b9aaa2da66698e65d164f2", "sim/tb_finite_recall.v": "f64b71e7ddb7f99797341f28b7a354fe4418aa64e1f10a8e343fe69fa23e4f2a", "sim/tb_finite_recall_faults.v": "56c2074834f1d16718aa940ab614e9462d6577aba67b3993268e58b140a266f9", "transport.v": "32cb44b81218eaff818bf9f3338d54111cc4cfde05fea540538b4bd049cd4a67"}
+PASS finite case: AW=13 continuation=1 offset=8192 words=0 banks=0
+PASS finite case: AW=13 continuation=1 offset=19 words=8173 banks=4
+PASS finite case: AW=13 continuation=1 offset=0 words=1 banks=1
+PASS finite case: AW=13 continuation=1 offset=0 words=17 banks=1
+PASS finite case: AW=13 continuation=1 offset=0 words=8192 banks=4
+PASS finite recall suite: cases=5 total_words=16383 SRAM_pulses=40913
+/tmp/acq-finite-recall-2rmform3/tb_finite_recall.v:114: $finish called at 488392000 (1ps)
+PASS finite case: AW=13 continuation=0 offset=8192 words=0 banks=0
+PASS finite case: AW=13 continuation=0 offset=19 words=8173 banks=4
+PASS finite case: AW=13 continuation=0 offset=0 words=1 banks=1
+PASS finite case: AW=13 continuation=0 offset=0 words=17 banks=1
+PASS finite case: AW=13 continuation=0 offset=0 words=8192 banks=4
+PASS finite recall suite: cases=5 total_words=16383 SRAM_pulses=90065
+/tmp/acq-finite-recall-2rmform3/tb_finite_recall.v:114: $finish called at 488392000 (1ps)
+PASS finite recall faults: host error, lost freeze, short/extra read, reset recovery, final release
+/tmp/acq-finite-recall-2rmform3/tb_finite_recall_faults.v:62: $finish called at 534100 (1ps)
