@@ -1,0 +1,83 @@
+/home/labeth/intelFPGA_lite/21.1/quartus/eda/sim_lib/altera_mf.v:47806: warning: input port wren_a is coerced to inout.
+/home/labeth/intelFPGA_lite/21.1/quartus/eda/sim_lib/altera_mf.v:47807: warning: input port wren_b is coerced to inout.
+/home/labeth/intelFPGA_lite/21.1/quartus/eda/sim_lib/altera_mf.v:47808: warning: input port rden_a is coerced to inout.
+/home/labeth/intelFPGA_lite/21.1/quartus/eda/sim_lib/altera_mf.v:47809: warning: input port rden_b is coerced to inout.
+/home/labeth/intelFPGA_lite/21.1/quartus/eda/sim_lib/altera_mf.v:47814: warning: input port clock0 is coerced to inout.
+/home/labeth/intelFPGA_lite/21.1/quartus/eda/sim_lib/altera_mf.v:47816: warning: input port clocken0 is coerced to inout.
+/home/labeth/intelFPGA_lite/21.1/quartus/eda/sim_lib/altera_mf.v:47817: warning: input port clocken1 is coerced to inout.
+/home/labeth/intelFPGA_lite/21.1/quartus/eda/sim_lib/altera_mf.v:47818: warning: input port clocken2 is coerced to inout.
+/home/labeth/intelFPGA_lite/21.1/quartus/eda/sim_lib/altera_mf.v:47819: warning: input port clocken3 is coerced to inout.
+/home/labeth/intelFPGA_lite/21.1/quartus/eda/sim_lib/altera_mf.v:47820: warning: input port aclr0 is coerced to inout.
+/home/labeth/intelFPGA_lite/21.1/quartus/eda/sim_lib/altera_mf.v:47821: warning: input port aclr1 is coerced to inout.
+/home/labeth/intelFPGA_lite/21.1/quartus/eda/sim_lib/altera_mf.v:47824: warning: input port addressstall_a is coerced to inout.
+/home/labeth/intelFPGA_lite/21.1/quartus/eda/sim_lib/altera_mf.v:47825: warning: input port addressstall_b is coerced to inout.
+/tmp/host-ram-test-rit9jlal/host_ram.v:41: warning: input port clock0 is coerced to inout.
+/home/labeth/intelFPGA_lite/21.1/quartus/eda/sim_lib/altera_mf.v:47806: warning: input port wren_a is coerced to inout.
+/home/labeth/intelFPGA_lite/21.1/quartus/eda/sim_lib/altera_mf.v:47807: warning: input port wren_b is coerced to inout.
+/home/labeth/intelFPGA_lite/21.1/quartus/eda/sim_lib/altera_mf.v:47808: warning: input port rden_a is coerced to inout.
+/home/labeth/intelFPGA_lite/21.1/quartus/eda/sim_lib/altera_mf.v:47809: warning: input port rden_b is coerced to inout.
+/home/labeth/intelFPGA_lite/21.1/quartus/eda/sim_lib/altera_mf.v:47814: warning: input port clock0 is coerced to inout.
+/home/labeth/intelFPGA_lite/21.1/quartus/eda/sim_lib/altera_mf.v:47816: warning: input port clocken0 is coerced to inout.
+/home/labeth/intelFPGA_lite/21.1/quartus/eda/sim_lib/altera_mf.v:47817: warning: input port clocken1 is coerced to inout.
+/home/labeth/intelFPGA_lite/21.1/quartus/eda/sim_lib/altera_mf.v:47818: warning: input port clocken2 is coerced to inout.
+/home/labeth/intelFPGA_lite/21.1/quartus/eda/sim_lib/altera_mf.v:47819: warning: input port clocken3 is coerced to inout.
+/home/labeth/intelFPGA_lite/21.1/quartus/eda/sim_lib/altera_mf.v:47820: warning: input port aclr0 is coerced to inout.
+/home/labeth/intelFPGA_lite/21.1/quartus/eda/sim_lib/altera_mf.v:47821: warning: input port aclr1 is coerced to inout.
+/home/labeth/intelFPGA_lite/21.1/quartus/eda/sim_lib/altera_mf.v:47824: warning: input port addressstall_a is coerced to inout.
+/home/labeth/intelFPGA_lite/21.1/quartus/eda/sim_lib/altera_mf.v:47825: warning: input port addressstall_b is coerced to inout.
+/tmp/host-ram-test-rit9jlal/host_ram.v:41: warning: input port clock0 is coerced to inout.
+/home/labeth/intelFPGA_lite/21.1/quartus/eda/sim_lib/altera_mf.v:47806: warning: input port wren_a is coerced to inout.
+/home/labeth/intelFPGA_lite/21.1/quartus/eda/sim_lib/altera_mf.v:47807: warning: input port wren_b is coerced to inout.
+/home/labeth/intelFPGA_lite/21.1/quartus/eda/sim_lib/altera_mf.v:47808: warning: input port rden_a is coerced to inout.
+/home/labeth/intelFPGA_lite/21.1/quartus/eda/sim_lib/altera_mf.v:47809: warning: input port rden_b is coerced to inout.
+/home/labeth/intelFPGA_lite/21.1/quartus/eda/sim_lib/altera_mf.v:47814: warning: input port clock0 is coerced to inout.
+/home/labeth/intelFPGA_lite/21.1/quartus/eda/sim_lib/altera_mf.v:47816: warning: input port clocken0 is coerced to inout.
+/home/labeth/intelFPGA_lite/21.1/quartus/eda/sim_lib/altera_mf.v:47817: warning: input port clocken1 is coerced to inout.
+/home/labeth/intelFPGA_lite/21.1/quartus/eda/sim_lib/altera_mf.v:47818: warning: input port clocken2 is coerced to inout.
+/home/labeth/intelFPGA_lite/21.1/quartus/eda/sim_lib/altera_mf.v:47819: warning: input port clocken3 is coerced to inout.
+/home/labeth/intelFPGA_lite/21.1/quartus/eda/sim_lib/altera_mf.v:47820: warning: input port aclr0 is coerced to inout.
+/home/labeth/intelFPGA_lite/21.1/quartus/eda/sim_lib/altera_mf.v:47821: warning: input port aclr1 is coerced to inout.
+/home/labeth/intelFPGA_lite/21.1/quartus/eda/sim_lib/altera_mf.v:47824: warning: input port addressstall_a is coerced to inout.
+/home/labeth/intelFPGA_lite/21.1/quartus/eda/sim_lib/altera_mf.v:47825: warning: input port addressstall_b is coerced to inout.
+/tmp/host-ram-test-rit9jlal/host_ram.v:41: warning: input port clock0 is coerced to inout.
+/home/labeth/intelFPGA_lite/21.1/quartus/eda/sim_lib/altera_mf.v:47806: warning: input port wren_a is coerced to inout.
+/home/labeth/intelFPGA_lite/21.1/quartus/eda/sim_lib/altera_mf.v:47807: warning: input port wren_b is coerced to inout.
+/home/labeth/intelFPGA_lite/21.1/quartus/eda/sim_lib/altera_mf.v:47808: warning: input port rden_a is coerced to inout.
+/home/labeth/intelFPGA_lite/21.1/quartus/eda/sim_lib/altera_mf.v:47809: warning: input port rden_b is coerced to inout.
+/home/labeth/intelFPGA_lite/21.1/quartus/eda/sim_lib/altera_mf.v:47814: warning: input port clock0 is coerced to inout.
+/home/labeth/intelFPGA_lite/21.1/quartus/eda/sim_lib/altera_mf.v:47816: warning: input port clocken0 is coerced to inout.
+/home/labeth/intelFPGA_lite/21.1/quartus/eda/sim_lib/altera_mf.v:47817: warning: input port clocken1 is coerced to inout.
+/home/labeth/intelFPGA_lite/21.1/quartus/eda/sim_lib/altera_mf.v:47818: warning: input port clocken2 is coerced to inout.
+/home/labeth/intelFPGA_lite/21.1/quartus/eda/sim_lib/altera_mf.v:47819: warning: input port clocken3 is coerced to inout.
+/home/labeth/intelFPGA_lite/21.1/quartus/eda/sim_lib/altera_mf.v:47820: warning: input port aclr0 is coerced to inout.
+/home/labeth/intelFPGA_lite/21.1/quartus/eda/sim_lib/altera_mf.v:47821: warning: input port aclr1 is coerced to inout.
+/home/labeth/intelFPGA_lite/21.1/quartus/eda/sim_lib/altera_mf.v:47824: warning: input port addressstall_a is coerced to inout.
+/home/labeth/intelFPGA_lite/21.1/quartus/eda/sim_lib/altera_mf.v:47825: warning: input port addressstall_b is coerced to inout.
+/tmp/host-ram-test-rit9jlal/host_ram.v:41: warning: input port clock0 is coerced to inout.
+/home/labeth/intelFPGA_lite/21.1/quartus/eda/sim_lib/altera_mf.v:47806: warning: input port wren_a is coerced to inout.
+/home/labeth/intelFPGA_lite/21.1/quartus/eda/sim_lib/altera_mf.v:47807: warning: input port wren_b is coerced to inout.
+/home/labeth/intelFPGA_lite/21.1/quartus/eda/sim_lib/altera_mf.v:47808: warning: input port rden_a is coerced to inout.
+/home/labeth/intelFPGA_lite/21.1/quartus/eda/sim_lib/altera_mf.v:47809: warning: input port rden_b is coerced to inout.
+/home/labeth/intelFPGA_lite/21.1/quartus/eda/sim_lib/altera_mf.v:47814: warning: input port clock0 is coerced to inout.
+/home/labeth/intelFPGA_lite/21.1/quartus/eda/sim_lib/altera_mf.v:47816: warning: input port clocken0 is coerced to inout.
+/home/labeth/intelFPGA_lite/21.1/quartus/eda/sim_lib/altera_mf.v:47817: warning: input port clocken1 is coerced to inout.
+/home/labeth/intelFPGA_lite/21.1/quartus/eda/sim_lib/altera_mf.v:47818: warning: input port clocken2 is coerced to inout.
+/home/labeth/intelFPGA_lite/21.1/quartus/eda/sim_lib/altera_mf.v:47819: warning: input port clocken3 is coerced to inout.
+/home/labeth/intelFPGA_lite/21.1/quartus/eda/sim_lib/altera_mf.v:47820: warning: input port aclr0 is coerced to inout.
+/home/labeth/intelFPGA_lite/21.1/quartus/eda/sim_lib/altera_mf.v:47821: warning: input port aclr1 is coerced to inout.
+/home/labeth/intelFPGA_lite/21.1/quartus/eda/sim_lib/altera_mf.v:47824: warning: input port addressstall_a is coerced to inout.
+/home/labeth/intelFPGA_lite/21.1/quartus/eda/sim_lib/altera_mf.v:47825: warning: input port addressstall_b is coerced to inout.
+/tmp/host-ram-test-rit9jlal/host_ram.v:41: warning: input port clock0 is coerced to inout.
+source-sha256: {"fpga/acq_sram/host_ram.v": "87f667e602d77fa0e398e337d60ce5a8f61f9f666e130fb9c70d7c08028b4be7", "fpga/acq_sram/sim/tb_host_ram.v": "ed88f308847965bfc3ed1f3f3a2f0721ec7c0aa168f9748134d7fe6526bd46e0", "vendor:altera_mf.v": "be331b380f51ef762ac9e7e172f61f367dd902839ad380f157a77b4eb465e242"}
+Warning: read_during_write_mode_mixed_ports is assumed as               OLD_DATA
+Time: 0  Instance: tb.dut.sections[0].memory.m_default.altsyncram_inst
+Warning: read_during_write_mode_mixed_ports is assumed as               OLD_DATA
+Time: 0  Instance: tb.dut.sections[1].memory.m_default.altsyncram_inst
+Warning: read_during_write_mode_mixed_ports is assumed as               OLD_DATA
+Time: 0  Instance: tb.dut.sections[2].memory.m_default.altsyncram_inst
+Warning: read_during_write_mode_mixed_ports is assumed as               OLD_DATA
+Time: 0  Instance: tb.dut.sections[3].memory.m_default.altsyncram_inst
+Warning: read_during_write_mode_mixed_ports is assumed as               OLD_DATA
+Time: 0  Instance: tb.dut.sections[4].memory.m_default.altsyncram_inst
+PASS host RAM: 30757 halfword responses, full range, disjoint concurrency, invalid addresses, resets
+/tmp/host-ram-test-rit9jlal/tb_host_ram.v:73: $finish called at 328470000 (1ps)

@@ -1,5 +1,14 @@
 # Integrated acquisition core — fits, timing still fails
 
+Latest host-RAM checkpoint: `host-narrow-read/explicit-build` uses 9222 LEs,
+7724 registers, 44 M9Ks and 643/645 LABs. Explicit mixed-width RAM saves
+118 LEs without reducing capacity. Standalone portable/vendor RAM tests and
+composed portable/vendor-host-RAM acquisition tests pass. Setup -4.720 ns,
+recovery -6.220 ns; CDC audit fails. Worst setup crosses backend mode selection
+into transport legal_command. No physical top/GPMC integration or deployment
+is implied. This supersedes the resource/timing figures below for current RTL.
+
+
 Latest frontend checkpoint: `pack-control/mailbox-fixed-build` uses 9340 LEs,
 7726 registers, 44 M9Ks and 643/645 LABs. Setup -3.531 ns, recovery -5.398 ns;
 CDC audit fails. Local pack controls use immediate disable and synchronous

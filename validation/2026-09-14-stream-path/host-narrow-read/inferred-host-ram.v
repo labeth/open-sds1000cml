@@ -18,37 +18,13 @@ module sram_host_ram(
  wire [15:0] section_data[0:4];
  genvar section;
  generate for(section=0;section<5;section=section+1)begin: sections
-  // Keep the asymmetric read in the RAM primitive. A variable part-select
-  // on an inferred 64-bit memory prevents RAM inference in Quartus 21.1.
-`ifndef ALTERA_RESERVED_QIS
-  reg [63:0] memory[0:511];
+  (* ramstyle = "M9K, no_rw_check" *) reg [63:0] memory[0:511];
   reg [15:0] fetched=0;
   always @(posedge write_clk)
    if(!write_reset && write_enable && write_legal && write_pair[11:9]==section)
     memory[write_pair[8:0]]<=write_data;
   always @(posedge read_clk)fetched<=memory[read_halfword[10:2]][16*read_halfword[1:0]+:16];
   assign section_data[section]=fetched;
-`else
-  altsyncram #(
-   .intended_device_family("Cyclone IV E"), .ram_block_type("M9K"),
-   .operation_mode("DUAL_PORT"),
-   .width_a(64), .widthad_a(9), .numwords_a(512), .width_byteena_a(1),
-   .width_b(16), .widthad_b(11), .numwords_b(2048),
-   .address_reg_b("CLOCK1"), .outdata_reg_b("UNREGISTERED"),
-   .read_during_write_mode_mixed_ports("DONT_CARE"),
-   .power_up_uninitialized("TRUE")
-  ) memory(
-   .clock0(write_clk), .clock1(read_clk),
-   .clocken0(1'b1), .clocken1(1'b1), .clocken2(1'b1), .clocken3(1'b1),
-   .aclr0(1'b0), .aclr1(1'b0),
-   .address_a(write_pair[8:0]), .data_a(write_data),
-   .wren_a(!write_reset && write_enable && write_legal && write_pair[11:9]==section),
-   .byteena_a(1'b1), .rden_a(1'b1),
-   .address_b(read_halfword[10:0]), .q_b(section_data[section]),
-   .wren_b(1'b0), .data_b(16'b0), .byteena_b(1'b1), .rden_b(1'b1),
-   .addressstall_a(1'b0), .addressstall_b(1'b0)
-  );
-`endif
  end endgenerate
  reg pending=0,illegal=0;
  reg [2:0] selected=0;
