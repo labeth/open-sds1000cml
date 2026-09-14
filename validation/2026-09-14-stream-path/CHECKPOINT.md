@@ -37,3 +37,9 @@ stream_path.v connects the existing transport without changing its public ports.
 External-engine-probe verifies the current source hashes, 10003-word wrapper
 readback, 38 M9Ks and all 120 CDC groups. Setup remains -0.429 ns. Default-image
 arbitration with finite capture and sharing the host write path remain to do.
+
+Latest structure: stream_engine.v also exposes its host write/metadata/release
+interface. One external host_path in stream_path.v provides the RAM. Current
+source/evidence is external-host-probe/: full wrapper readback and 120 CDC groups
+pass, unchanged 38 M9Ks and -0.429 ns setup. Finite recall/mode arbitration and
+all subsequent default-image/hardware requirements above remain unfinished.

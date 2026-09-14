@@ -118,3 +118,20 @@ SRAM wrap and actual halfword host reads. Seed 2 remains exactly -0.429 ns setup
 +0.143 hold, +0.135 recovery, +0.492 removal, +1.513 minimum pulse, 38 M9Ks;
 120 CDC audit groups pass across the changed hierarchy. Timing and IO remain
 unqualified. Source snapshots, hashes and evidence: `external-engine-probe/`.
+
+The host buffer is now external to stream_engine.v as well. The engine exposes
+32-bit word/index/bank outputs, bank completion metadata, and accepts validated
+core-domain release pulses and host faults. stream_path.v connects one host_path
+and one transport, retaining the same public interface. Finite recall can now
+be connected to those same shared endpoints without instantiating duplicate
+host RAM. The finite producer and mode arbitration are still to be integrated.
+Never switch producers with active transfers or banks reserved, awaiting
+publication, or host-owned. Abort requires coordinated ingress/host epoch reset.
+
+Current external-host-probe: 10003 words, four host banks, exact readback, odd
+tail and SRAM wrap pass; 120 CDC checks pass. Memory remains 38 M9Ks and setup
+-0.429 ns, hold +0.143, recovery +0.135, removal +0.492, minimum pulse +1.513.
+This remains IO-unconstrained diagnostic evidence, not a deployable image.
+An initial missing positional clock connection was caught by Icarus and fixed;
+the pre-fix Quartus run was explicitly terminated. build_probe.py now performs
+Icarus interface elaboration before Quartus, using its frozen source copies.

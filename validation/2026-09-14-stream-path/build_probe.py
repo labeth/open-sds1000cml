@@ -44,6 +44,13 @@ set_false_path -from [get_ports reset]
   (out/'stream_path_cdc.sdc').write_bytes(data)
   hashes['stream_path_cdc.sdc']=hashlib.sha256(data).hexdigest()
   with (out/'probe.sdc').open('a') as f:f.write('source stream_path_cdc.sdc\n')
+ # Quartus permits omitted trailing positional ports. Reject interface
+ # mistakes before spending time on a placed netlist; this elaboration uses
+ # the same frozen RTL plus the DDR primitive simulation declaration.
+ (out/'ddr_model.v').write_bytes((root/'fpga/acq_sram/sim/ddr_model.v').read_bytes())
+ subprocess.run(['iverilog','-g2012','-s','sram_stream_path','-o',str(out/'preflight.vvp'),
+                 *[str(out/name) for name in names],str(out/'ddr_model.v')],check=True)
+ print('interface preflight passed',flush=True)
  q=Path('/home/labeth/intelFPGA_lite/21.1/quartus/bin')
  for tool in ('quartus_map','quartus_fit','quartus_sta'):
   print(tool,flush=True)
