@@ -34,7 +34,9 @@ busy-rejected commands do not overwrite the accepted command. The command
 window is documented in `docs/fpga-profile-command-abi.md`.
 These tests do not yet instantiate the acquisition core behind the decoder.
 
-Next: connect acquisition status snapshots and host RAM readout, instantiate
-the deep acquisition core and real PLLs, then fit with board pin and interface
+Status now returns atomically with each result. Tests change all status fields
+every core clock and read the returned words slowly to verify a stable snapshot.
+The combined profile simulation is in `validation/2026-09-14-profile-core`.
+Next: wrap the combined core with real PLLs and fit board pin/interface/CDC
 constraints. These modules alone do not provide an ARM-compatible or deployable
 FPGA image.

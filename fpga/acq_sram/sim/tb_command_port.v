@@ -4,6 +4,13 @@ module tb_command_port;
  reg reset=1,host_clk=0,core_clk=0,host_write=0;
  reg [7:0] write_sel=0,read_sel=0;reg [15:0] write_data=0;
  wire read_hit;wire [15:0] read_data;
+ reg [15:0] status_counter=0;
+ always @(posedge core_clk)status_counter<=status_counter+1'b1;
+ wire [127:0] acquisition_status={status_counter,~status_counter,status_counter,~status_counter,
+                                 status_counter,~status_counter,status_counter,~status_counter};
+ reg [127:0] expected_status=0;
+ always @(posedge core_clk)if(!reset && dut.reply_send && !dut.reply_busy)
+  expected_status=acquisition_status;
  reg acquisition_request_error=0,reject_next=0;
  always @(posedge core_clk)acquisition_request_error<=!reset && core_start && reject_next;
  wire host_busy,host_rejected,core_start,core_halt,core_force,core_snapshot,core_error;
@@ -39,6 +46,16 @@ module tb_command_port;
    settle;write_reg(8'h10,code);settle;
    check_read(8'h11,{13'b0,1'b1,host_rejected,1'b0});
    check_read(8'h13,code);
+   check_status;
+  end
+ endtask
+ task check_status;
+  integer word;
+  begin
+   for(word=0;word<8;word=word+1)begin
+    check_read(8'h40+word,expected_status[16*word+:16]);
+    repeat(2)@(negedge host_clk);
+   end
   end
  endtask
  task check_read(input [7:0] address,input [15:0] value);
@@ -56,6 +73,7 @@ module tb_command_port;
   settle;write_reg(8'h10,1);
   // A second command must reject while the first is in flight.
   if(!host_busy)$fatal(1,"missing busy");
+  check_read(8'h40,0);
   write_reg(8'h10,2);
   write_reg(8'h20,16'hffff);settle;
   if(starts!=2 || last_pre!=20'h45678 || last_post!=20'h21234 || !host_rejected)
@@ -67,6 +85,9 @@ module tb_command_port;
   previous=errors;write_reg(8'h21,16'h10);command(1);
   if(errors!=previous+1)$fatal(1,"geometry truncation");
   check_read(8'h12,1);
+  previous=starts;command(7);
+  if(starts!=previous)$fatal(1,"status query started acquisition");
+  check_read(8'h12,0);repeat(10)@(negedge host_clk);check_status;
   // Control actions do not consume malformed shadow geometry.
   command(4);command(5);command(6);
   if(halts!=1 || forces!=1 || snapshots!=1)$fatal(1,"control decode");
@@ -78,7 +99,7 @@ module tb_command_port;
   write_reg(8'h29,0);previous=errors;command(3);
   if(ENABLE_STREAM)begin if(last_operation!=1 || errors!=previous)$fatal(1,"stream support");end
   else if(errors!=previous+1)$fatal(1,"unsupported stream accepted");
-  previous=errors;command(16'h101);command(0);command(7);
+  previous=errors;command(16'h101);command(0);command(8);
   if(errors!=previous+3)$fatal(1,"unknown opcode accepted");
   check_read(8'h12,1);
   reject_next=1;command(1);check_read(8'h12,2);reject_next=0;
@@ -87,6 +108,7 @@ module tb_command_port;
   @(negedge host_clk);reset=1;repeat(8)@(negedge host_clk);reset=0;settle;
   check_read(8'h20,0);check_read(8'h22,1);check_read(8'h2b,16'h3ff);
   check_read(8'h11,0);check_read(8'h14,0);
+  check_read(8'h40,0);
   for(abort_phase=0;abort_phase<4;abort_phase=abort_phase+1)begin
    write_reg(8'h10,1);#(0.2+abort_phase*10);
    reset=1;repeat(8)@(negedge host_clk);reset=0;settle;

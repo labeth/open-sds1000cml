@@ -1,10 +1,11 @@
 # Profile command window (draft ABI)
 
-Implemented by `acq_command_port`, currently tested independently of the board
-top. These selectors are a new profile interface, not legacy rev11 register
-compatibility. Command results are implemented; board identity/capability
-discovery, acquisition status snapshots and host SRAM readout still need
-integration. Do not use this as a device API yet.
+Implemented by `acq_command_port` and `acq_host_read_port`, now combined with
+GPMC and acquisition RTL in `acq_profile_core`. This is a new profile interface,
+not legacy rev11 compatibility. The combined simulation covers commands,
+results, status, capture and recall; the real board PLL/pin wrapper, physical
+constraints, driver support and device qualification remain unfinished.
+Do not use this as a device API yet.
 
 Selectors are the existing GPMC slave's logical 8-bit selectors. All transfers
 are 16 bits. Configuration registers are host-domain shadows, readable and
@@ -42,7 +43,8 @@ an empty request, not an abbreviation for the full record.
 | 3 | Start streaming (operation 1); rejected when ENABLE_STREAM=0 |
 | 4 | Halt pulse |
 | 5 | Force-trigger pulse |
-| 6 | Snapshot pulse; board adapter must implement the frontend toggle protocol |
+| 6 | Raw ADC snapshot service; rejected in the base profile, which has no snapshot adapter |
+| 7 | Query acquisition status without starting or stopping acquisition |
 
 Zero, unknown opcodes and nonzero upper opcode bits reject. Halt, force and
 snapshot do not consume shadow geometry, so malformed geometry does not block
@@ -69,7 +71,7 @@ aborts command/result delivery, clears result-valid and sequence, and restores
 zero configuration except post-count=1 and encode mask=0x3ff.
 
 The 208-bit forward mailbox payload is `{opcode, cfg11, ..., cfg0}`. A separate
-2-bit reverse mailbox carries the result. `core_start` and control pulses align
+130-bit reverse mailbox carries the result and a 128-bit status snapshot. `core_start` and control pulses align
 with the captured settings. The board must keep this clock-domain contract and
 add physical timing/CDC constraints for both directions before deployment.
 
@@ -109,3 +111,49 @@ host path is faulted. Descriptor coherence depends on the ownership protocol:
 read metadata while its bank is ready and do not release it during those reads.
 These registers are functionally simulated; the complete board image, physical
 bus timing and kernel support remain unqualified.
+
+
+## Acquisition status and discovery
+
+Each command response includes a coherent 128-bit snapshot sampled when the
+core offers the response. Opcode 7 queries it without changing acquisition.
+Read selectors 0x40..0x47, low 16 bits first, only while result-valid is set.
+They return zero while a new result is pending. Status stays fixed until the
+next response, even if the acquisition changes during a multiword host read.
+The command sequence/opcode identifies which query produced it.
+
+The base `acq_profile_core` packs four 32-bit words:
+
+| Word | Contents |
+| --- | --- |
+| 0 (0x40/0x41) | Flags below; other bits zero |
+| 1 (0x42/0x43) | Record word count, low 20 bits |
+| 2 (0x44/0x45) | Trigger word index, low 20 bits |
+| 3 (0x46/0x47) | Physical record start, low 19 bits |
+
+Flags: 0 start-ready, 1 active, 2 done, 3 acquisition fault, 4 record frozen,
+5 triggered, 6 trigger in second raw sample, 7 precision format, 8 ADC PLL
+locked, 9 host-path fault, 10 transport PLL locked. Interpret geometry only for
+a frozen, non-faulted record. Query after completion; the result accompanying
+a start acknowledges acceptance, not a completed record. The readout path also
+receives acquisition fault through a host-domain synchronizer to invalidate
+buffered data and hide published descriptors after an acquisition fault.
+
+Discovery selectors in `acq_profile_core`:
+
+| Selector | Value |
+| --- | --- |
+| 0x00 | Magic 0xacd2 |
+| 0x01 | ABI 1 (draft, not legacy rev11) |
+| 0x02 | Profile 1 deep, 0 unified experimental |
+| 0x03 | Capability bits: 0 finite, 1 precision, 2 stream, 3 edge trigger |
+| 0x04 / 0x05 | Total host words 5120 / bank words 2560 |
+| 0x06 / 0x07 | SRAM depth 0x00080000 words, low half first |
+| 0x08 | Sample-format bitmap 3: raw and Q8.8 |
+| 0x09 | ADC encode clock 100 MHz |
+| 0x0a | Hardware-qualified flag 0; this image is experimental |
+| 0x0b / 0x0c | Build ID, low half first |
+
+The base profile rejects external-match capture mode and raw ADC snapshot
+opcode 6 rather than accepting requests whose hardware adapters are absent.
+Protocol-specific compositions must connect and advertise their own adapters.

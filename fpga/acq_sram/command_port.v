@@ -1,7 +1,7 @@
 // Host-domain register window and coherent acquisition command decoder.
 // Connect to gpmc_slave's committed writes; full board status/RAM readout is
 // outside this module. See docs/fpga-profile-command-abi.md.
-module acq_command_port #(parameter ENABLE_STREAM=0)(
+module acq_command_port #(parameter ENABLE_STREAM=0,ENABLE_SNAPSHOT=1,ENABLE_MATCH=1)(
  input wire reset,host_clk,core_clk,host_write,
  input wire [7:0] write_sel,read_sel,input wire [15:0] write_data,
  output reg read_hit,output reg [15:0] read_data,
@@ -12,7 +12,7 @@ module acq_command_port #(parameter ENABLE_STREAM=0)(
  output wire [18:0] read_bias,output wire [4:0] decim_log,
  output wire [9:0] encode_enable,output wire [1:0] trigger_mode,
  output wire trigger_channel,trigger_falling,output wire [15:0] trigger_level,
- input wire acquisition_request_error
+ input wire acquisition_request_error,input wire [127:0] acquisition_status
 );
  reg [191:0] config_shadow=192'h03ff_0000_0000_0000_0000_0000_0000_0000_0000_0001_0000_0000;
  localparam [191:0] DEFAULT_CONFIG=192'h03ff_0000_0000_0000_0000_0000_0000_0000_0000_0001_0000_0000;
@@ -34,7 +34,8 @@ module acq_command_port #(parameter ENABLE_STREAM=0)(
  reg reply_pending=0,decode_error_q=0,start_q=0,reply_send=0;
  reg [1:0] reply_code=0;
  wire reply_busy,reply_rejected,returned;
- wire [1:0] returned_code;
+ wire [129:0] returned_payload;
+ wire [1:0] returned_code=returned_payload[1:0];
  always @(posedge core_clk)begin
   if(reset)begin reply_pending<=0;reply_send<=0;decode_error_q<=0;start_q<=0;end
   else begin
@@ -44,10 +45,10 @@ module acq_command_port #(parameter ENABLE_STREAM=0)(
     start_q && acquisition_request_error ? 2'd2 : 2'd0;
   end
  end
- acq_command_bridge #(.WIDTH(2)) response(
+ acq_command_bridge #(.WIDTH(130)) response(
   .reset(reset),.host_clk(core_clk),.core_clk(host_clk),
-  .host_send(reply_send),.host_payload(reply_code),.host_busy(reply_busy),
-  .host_rejected(reply_rejected),.core_valid(returned),.core_payload(returned_code));
+  .host_send(reply_send),.host_payload({acquisition_status,reply_code}),.host_busy(reply_busy),
+  .host_rejected(reply_rejected),.core_valid(returned),.core_payload(returned_payload));
  // synthesis translate_off
  always @(posedge core_clk)if(!reset && reply_send && reply_busy)
   $fatal(1,"command response mailbox overrun");
@@ -77,21 +78,25 @@ module acq_command_port #(parameter ENABLE_STREAM=0)(
   else if(read_sel==8'h14)read_data=sequence_number;
   else if(read_sel>=8'h20 && read_sel<=8'h2b)
    read_data=config_shadow[16*(read_sel-8'h20)+:16];
+  else if(read_sel>=8'h40 && read_sel<=8'h47)
+   read_data=result_valid ? returned_payload[2+16*read_sel[2:0]+:16] : 16'b0;
   else read_hit=0;
  end
  wire [15:0] opcode=payload[207:192];
  wire starting=opcode==1 || opcode==2 || opcode==3;
- wire supported=opcode>=1 && opcode<=6 && (ENABLE_STREAM || opcode!=3);
+ wire supported=opcode>=1 && opcode<=7 && (ENABLE_STREAM || opcode!=3) &&
+  (ENABLE_SNAPSHOT || opcode!=6);
  // Reject reserved bits before slicing operands; never silently truncate
  // malformed geometry, encode masks, or packed trigger configuration.
  wire config_legal=payload[31:20]==0 && payload[63:52]==0 &&
   payload[95:84]==0 && payload[127:116]==0 && !payload[147] &&
-  payload[159:157]==0 && payload[191:186]==0;
+  payload[159:157]==0 && payload[191:186]==0 &&
+  (ENABLE_MATCH || opcode!=1 || payload[154:153]!=2);
  assign core_error=valid && (!supported || (starting && !config_legal));
  assign core_start=valid && supported && starting && config_legal;
  assign core_halt=valid && opcode==4;
  assign core_force=valid && opcode==5;
- assign core_snapshot=valid && opcode==6;
+ assign core_snapshot=valid && ENABLE_SNAPSHOT && opcode==6;
  assign operation=opcode==2 ? 2'd2 : opcode==3 ? 2'd1 : 2'd0;
  assign pre_count=payload[19:0];assign post_count=payload[51:32];
  assign offset=payload[83:64];assign length=payload[115:96];
