@@ -1,0 +1,122 @@
+----------------
+; Command Info ;
+----------------
+Report Timing: Found 1 setup paths (1 violated).  Worst case slack is -3.531 
+
+Tcl Command:
+    report_timing -setup -file /tmp/acq-recall-launch-path.rpt -from [get_registers {*engine|launch_finite}] -to [get_registers {*finite|command_count*}] -npaths 1 -detail full_path
+
+Options:
+    -from [get_registers {*engine|launch_finite}] 
+    -to [get_registers {*finite|command_count*}] 
+    -setup 
+    -npaths 1 
+    -detail full_path 
+    -file {/tmp/acq-recall-launch-path.rpt} 
+
+Delay Model:
+    Slow 1200mV 85C Model
+
++-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+; Summary of Paths                                                                                                                                                                                                                                                ;
++--------+--------------------------------------------------------------------------+-------------------------------------------------------------------------------------------------------+--------------+-------------+--------------+------------+------------+
+; Slack  ; From Node                                                                ; To Node                                                                                               ; Launch Clock ; Latch Clock ; Relationship ; Clock Skew ; Data Delay ;
++--------+--------------------------------------------------------------------------+-------------------------------------------------------------------------------------------------------+--------------+-------------+--------------+------------+------------+
+; -3.531 ; sram_board_capture_path:backend|sram_capture_engine:engine|launch_finite ; sram_board_capture_path:backend|sram_capture_engine:engine|sram_finite_recall:finite|command_count[0] ; core         ; core        ; 4.000        ; -0.089     ; 7.443      ;
++--------+--------------------------------------------------------------------------+-------------------------------------------------------------------------------------------------------+--------------+-------------+--------------+------------+------------+
+
+Path #1: Setup slack is -3.531 (VIOLATED)
+===============================================================================
++----------------------------------------------------------------------------------------------------------------------------+
+; Path Summary                                                                                                               ;
++--------------------+-------------------------------------------------------------------------------------------------------+
+; Property           ; Value                                                                                                 ;
++--------------------+-------------------------------------------------------------------------------------------------------+
+; From Node          ; sram_board_capture_path:backend|sram_capture_engine:engine|launch_finite                              ;
+; To Node            ; sram_board_capture_path:backend|sram_capture_engine:engine|sram_finite_recall:finite|command_count[0] ;
+; Launch Clock       ; core                                                                                                  ;
+; Latch Clock        ; core                                                                                                  ;
+; Data Arrival Time  ; 10.206                                                                                                ;
+; Data Required Time ; 6.675                                                                                                 ;
+; Slack              ; -3.531 (VIOLATED)                                                                                     ;
++--------------------+-------------------------------------------------------------------------------------------------------+
+
++------------------------------------------------------------------------------------+
+; Statistics                                                                         ;
++------------------------+--------+-------+-------------+------------+-------+-------+
+; Property               ; Value  ; Count ; Total Delay ; % of Total ; Min   ; Max   ;
++------------------------+--------+-------+-------------+------------+-------+-------+
+; Setup Relationship     ; 4.000  ;       ;             ;            ;       ;       ;
+; Clock Skew             ; -0.089 ;       ;             ;            ;       ;       ;
+; Data Delay             ; 7.443  ;       ;             ;            ;       ;       ;
+; Number of Logic Levels ;        ; 5     ;             ;            ;       ;       ;
+; Physical Delays        ;        ;       ;             ;            ;       ;       ;
+;  Arrival Path          ;        ;       ;             ;            ;       ;       ;
+;   Clock                ;        ;       ;             ;            ;       ;       ;
+;    IC                  ;        ; 2     ; 2.096       ; 76         ; 0.956 ; 1.140 ;
+;    Cell                ;        ; 2     ; 0.667       ; 24         ; 0.000 ; 0.667 ;
+;   Data                 ;        ;       ;             ;            ;       ;       ;
+;    IC                  ;        ; 6     ; 4.458       ; 60         ; 0.254 ; 1.186 ;
+;    Cell                ;        ; 7     ; 2.724       ; 37         ; 0.000 ; 0.795 ;
+;    uTco                ;        ; 1     ; 0.261       ; 4          ; 0.261 ; 0.261 ;
+;  Required Path         ;        ;       ;             ;            ;       ;       ;
+;   Clock                ;        ;       ;             ;            ;       ;       ;
+;    IC                  ;        ; 2     ; 2.005       ; 76         ; 0.910 ; 1.095 ;
+;    Cell                ;        ; 2     ; 0.618       ; 24         ; 0.000 ; 0.618 ;
++------------------------+--------+-------+-------------+------------+-------+-------+
+Note: Negative delays are omitted from totals when calculating percentages
+
++----------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+; Data Arrival Path                                                                                                                                                    ;
++----------+---------+----+------+--------+--------------------+-------------------------------------------------------------------------------------------------------+
+; Total    ; Incr    ; RF ; Type ; Fanout ; Location           ; Element                                                                                               ;
++----------+---------+----+------+--------+--------------------+-------------------------------------------------------------------------------------------------------+
+; 0.000    ; 0.000   ;    ;      ;        ;                    ; launch edge time                                                                                      ;
+; 2.763    ; 2.763   ;    ;      ;        ;                    ; clock path                                                                                            ;
+;   0.000  ;   0.000 ;    ;      ;        ;                    ; source latency                                                                                        ;
+;   0.000  ;   0.000 ;    ;      ; 1      ; LCCOMB_X33_Y8_N16  ; core_clk                                                                                              ;
+;   1.140  ;   1.140 ; RR ; IC   ; 1      ; CLKCTRL_G8         ; core_clk~clkctrl|inclk[0]                                                                             ;
+;   1.140  ;   0.000 ; RR ; CELL ; 4543   ; CLKCTRL_G8         ; core_clk~clkctrl|outclk                                                                               ;
+;   2.096  ;   0.956 ; RR ; IC   ; 1      ; FF_X21_Y9_N21      ; backend|engine|launch_finite|clk                                                                      ;
+;   2.763  ;   0.667 ; RR ; CELL ; 1      ; FF_X21_Y9_N21      ; sram_board_capture_path:backend|sram_capture_engine:engine|launch_finite                              ;
+; 10.206   ; 7.443   ;    ;      ;        ;                    ; data path                                                                                             ;
+;   3.024  ;   0.261 ;    ; uTco ; 1      ; FF_X21_Y9_N21      ; sram_board_capture_path:backend|sram_capture_engine:engine|launch_finite                              ;
+;   3.024  ;   0.000 ; RR ; CELL ; 10     ; FF_X21_Y9_N21      ; backend|engine|launch_finite|q                                                                        ;
+;   3.937  ;   0.913 ; RR ; IC   ; 1      ; LCCOMB_X18_Y9_N8   ; backend|engine|selected_finite|dataa                                                                  ;
+;   4.408  ;   0.471 ; RR ; CELL ; 266    ; LCCOMB_X18_Y9_N8   ; backend|engine|selected_finite|combout                                                                ;
+;   5.319  ;   0.911 ; RR ; IC   ; 1      ; LCCOMB_X19_Y12_N6  ; backend|engine|comb~6|datac                                                                           ;
+;   5.646  ;   0.327 ; RR ; CELL ; 8      ; LCCOMB_X19_Y12_N6  ; backend|engine|comb~6|combout                                                                         ;
+;   6.832  ;   1.186 ; RR ; IC   ; 1      ; LCCOMB_X28_Y12_N12 ; backend|engine|finite|command_count[8]~10|dataa                                                       ;
+;   7.323  ;   0.491 ; RF ; CELL ; 1      ; LCCOMB_X28_Y12_N12 ; backend|engine|finite|command_count[8]~10|combout                                                     ;
+;   7.634  ;   0.311 ; FF ; IC   ; 1      ; LCCOMB_X28_Y12_N2  ; backend|engine|finite|command_count[8]~11|dataa                                                       ;
+;   8.106  ;   0.472 ; FF ; CELL ; 1      ; LCCOMB_X28_Y12_N2  ; backend|engine|finite|command_count[8]~11|combout                                                     ;
+;   8.360  ;   0.254 ; FF ; IC   ; 1      ; LCCOMB_X28_Y12_N8  ; backend|engine|finite|command_count[8]~12|datad                                                       ;
+;   8.528  ;   0.168 ; FR ; CELL ; 19     ; LCCOMB_X28_Y12_N8  ; backend|engine|finite|command_count[8]~12|combout                                                     ;
+;   9.411  ;   0.883 ; RR ; IC   ; 1      ; FF_X28_Y11_N27     ; backend|engine|finite|command_count[0]|ena                                                            ;
+;   10.206 ;   0.795 ; RR ; CELL ; 1      ; FF_X28_Y11_N27     ; sram_board_capture_path:backend|sram_capture_engine:engine|sram_finite_recall:finite|command_count[0] ;
++----------+---------+----+------+--------+--------------------+-------------------------------------------------------------------------------------------------------+
+
++--------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+; Data Required Path                                                                                                                                                 ;
++---------+---------+----+------+--------+-------------------+-------------------------------------------------------------------------------------------------------+
+; Total   ; Incr    ; RF ; Type ; Fanout ; Location          ; Element                                                                                               ;
++---------+---------+----+------+--------+-------------------+-------------------------------------------------------------------------------------------------------+
+; 4.000   ; 4.000   ;    ;      ;        ;                   ; latch edge time                                                                                       ;
+; 6.674   ; 2.674   ;    ;      ;        ;                   ; clock path                                                                                            ;
+;   4.000 ;   0.000 ;    ;      ;        ;                   ; source latency                                                                                        ;
+;   4.000 ;   0.000 ;    ;      ; 1      ; LCCOMB_X33_Y8_N16 ; core_clk                                                                                              ;
+;   5.095 ;   1.095 ; RR ; IC   ; 1      ; CLKCTRL_G8        ; core_clk~clkctrl|inclk[0]                                                                             ;
+;   5.095 ;   0.000 ; RR ; CELL ; 4543   ; CLKCTRL_G8        ; core_clk~clkctrl|outclk                                                                               ;
+;   6.005 ;   0.910 ; RR ; IC   ; 1      ; FF_X28_Y11_N27    ; backend|engine|finite|command_count[0]|clk                                                            ;
+;   6.623 ;   0.618 ; RR ; CELL ; 1      ; FF_X28_Y11_N27    ; sram_board_capture_path:backend|sram_capture_engine:engine|sram_finite_recall:finite|command_count[0] ;
+;   6.674 ;   0.051 ;    ;      ;        ;                   ; clock pessimism removed                                                                               ;
+; 6.654   ; -0.020  ;    ;      ;        ;                   ; clock uncertainty                                                                                     ;
+; 6.675   ; 0.021   ;    ; uTsu ; 1      ; FF_X28_Y11_N27    ; sram_board_capture_path:backend|sram_capture_engine:engine|sram_finite_recall:finite|command_count[0] ;
++---------+---------+----+------+--------+-------------------+-------------------------------------------------------------------------------------------------------+
+
+----------------------------
+; Extra Fitter Information ;
+----------------------------
+HTML report is unavailable in plain text report export.
+
+

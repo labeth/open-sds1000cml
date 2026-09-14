@@ -1,6 +1,14 @@
 # Integrated acquisition core — fits, timing still fails
 
-Latest candidate: `mode-launch/balanced-build`: 9338 LEs, 7721 registers,
+Latest frontend checkpoint: `pack-control/mailbox-fixed-build` uses 9340 LEs,
+7726 registers, 44 M9Ks and 643/645 LABs. Setup -3.531 ns, recovery -5.398 ns;
+CDC audit fails. Local pack controls use immediate disable and synchronous
+release. Mailbox validity clears on disable, fixing stale data on short rearm.
+Modeled chronology passes initial capture and all eight pack-clock disable
+phases. This is not physical timing qualification. `event-broadcast` passed
+functional tests but regressed timing/fit and was reverted.
+
+Previous control checkpoint:  `mode-launch/balanced-build`: 9338 LEs, 7721 registers,
 44 M9Ks, 640/645 LABs. Setup -3.281 ns, recovery -6.769 ns; CDC audit fails.
 Integration and 10000-cycle mode comparison pass. Readiness is registered with
 immediate invalidation, recall uses existing sampled record length, and backend

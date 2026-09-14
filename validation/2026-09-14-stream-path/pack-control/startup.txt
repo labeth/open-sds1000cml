@@ -1,0 +1,4 @@
+{"fpga/acq_sram/interleave.v": "96da12f8ddaaa4468f83776cbd4d6b68780bd9436bd84c2d609d0e61c7203698", "fpga/common/ddio_pair.v": "0f32c77bac09fb1fb4a8069f7480743e8b0dd05669da22aa68e171798d33435c", "fpga/common/lane_in.v": "1777785598b0670d0ec92cc5402bd27b78d939aafdab443796892deecad8a719", "fpga/default/lanemap_seed.vh": "bb6034a2616bb897cdb114aabf77d7c0870d30016dc96fc95c6bb2451d49362a", "generated_bench": "67979beee3ac5b4632e3fede7dd841026a59f80f68b0f0bdb049e0b27e104da0"}
+PASS all ten independent encode enables and phase polarities
+PASS factory-phase ADC model: continuous chronological 1 GB/s over propagation delay 4.5..6 ns
+/tmp/acq-encode-start-7rfwycd7/tb.v:59: $finish called at 41020130 (1ps)

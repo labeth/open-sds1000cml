@@ -89,16 +89,8 @@ module adc_interleave #(parameter SYNC_ENCODE=0)(
  wire [63:0] wide_raw;wire wide_raw_valid,pack_fault;
  interleave_gearbox64 pack(.clk(packclk),.enable(pack_enable),.q(q),.empty(empty),.used(used),.consume(consume_q),.word_data(wide_raw),.valid(wide_raw_valid),.pop(pop),.fault(pack_fault));
  reg [63:0] wide_word=0;reg wide_valid=0,wide_toggle=0;
- generate if(SYNC_ENCODE)begin:mailbox_epoch
-  // A disable shorter than one pack period must invalidate the held mailbox
-  // before core consumption resumes. Payload itself needs no reset.
-  always @(posedge packclk or negedge enable)
-   if(!enable)wide_valid<=0;else wide_valid<=pack_enable && wide_raw_valid && consume_q;
- end else begin:legacy_mailbox_epoch
-  always @(posedge packclk)wide_valid<=pack_enable && wide_raw_valid && consume_q;
- end endgenerate
  always @(posedge packclk)begin
-  wide_word<=wide_raw;wide_toggle<=!wide_toggle;
+  wide_word<=wide_raw;wide_valid<=pack_enable && wide_raw_valid && consume_q;wide_toggle<=!wide_toggle;
   overflow_s<={overflow_s[1:0],overflow};
   if(!pack_enable)begin fault<=0;overflow_s<=0;end
   else if(overflow_s[2] || pack_fault)fault<=1;

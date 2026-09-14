@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """ADC startup chronology with newly enabled encode clocks and an ideal FIFO."""
 from pathlib import Path
-import hashlib,json,subprocess,tempfile
+import hashlib,json,subprocess,tempfile,sys
 root=Path(__file__).resolve().parents[2]
 fifo='''
 module dcfifo #(parameter lpm_width=80,lpm_numwords=32,lpm_widthu=5,
@@ -21,7 +21,7 @@ with tempfile.TemporaryDirectory(prefix='acq-encode-start-') as directory:
   data=(root/name).read_bytes();dest=p/Path(name).name;dest.write_bytes(data);hashes[name]=hashlib.sha256(data).hexdigest()
   if name.endswith('.v'):files.append(str(dest))
  bench=(root/'fpga/acq_sram/sim/tb_adc_interleave.v').read_text().replace('adc_interleave dut(', 'adc_interleave #(.SYNC_ENCODE(1)) dut(').replace("lane,10'h3ff,",'lane,mask,').replace(' wire [79:0] lane;', ' reg [9:0] mask=0;\n wire [79:0] lane;').replace('#200;enable=1;',"#200;mask=10'h3ff;enable=1;")
- bench=bench.replace(' integer count=0,last=-1,i;', ' integer count=0,last=-1,i,bit_index,sample_index,pair_index;reg expected_p,expected_n;')
+ bench=bench.replace(' integer count=0,last=-1,i;', ' integer count=0,last=-1,i,bit_index,sample_index,pair_index,epoch_index;reg expected_p,expected_n;')
  bench=bench.replace("#200;mask=10'h3ff;enable=1;", """#100;
   for(bit_index=0;bit_index<10;bit_index=bit_index+1)begin
    mask=10'b1<<bit_index;#50.013; // Observe away from DDR edge delta cycles.
@@ -36,6 +36,13 @@ with tempfile.TemporaryDirectory(prefix='acq-encode-start-') as directory:
   end
   $display("PASS all ten independent encode enables and phase polarities");
   mask=0;#200;mask=10'h3ff;enable=1;""")
+ if '--short-epoch' in sys.argv:
+  bench=bench.replace('$finish;', """for(epoch_index=0;epoch_index<8;epoch_index=epoch_index+1)begin
+  @(posedge packclk);#(0.7+epoch_index);enable=0;#4;enable=1;last=-1;count=0;
+  #40000;if(fault || count<9900)$fatal(1,"short epoch packing phase=%0d fault=%b count=%d",epoch_index,fault,count);
+  $display("PASS short disable phase %0d: fresh chronological ADC epoch",epoch_index);$fflush();
+  end
+  $finish;""")
  (p/'tb.v').write_text(fifo+bench);hashes['generated_bench']=hashlib.sha256((fifo+bench).encode()).hexdigest();print(json.dumps(hashes),flush=True)
  subprocess.run(['iverilog','-g2012','-DSIM','-I',str(p),'-s','tb','-o',str(p/'test'),*files,str(p/'tb.v')],check=True)
- subprocess.run(['vvp',str(p/'test')],check=True,timeout=30)
+ subprocess.run(['vvp',str(p/'test')],check=True,timeout=180 if '--short-epoch' in sys.argv else 30)
