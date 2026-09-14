@@ -1,0 +1,7 @@
+{
+  "setup": 0.111,
+  "hold": 0.14,
+  "recovery": 1.291,
+  "removal": 0.489,
+  "minimum_pulse": 1.513
+}

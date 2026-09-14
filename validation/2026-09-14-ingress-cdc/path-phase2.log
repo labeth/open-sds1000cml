@@ -1,0 +1,5 @@
+PASS ingress path phase=2 words=8192 max_pending=4100
+PASS ingress path reset with buffered data
+PASS ingress path source overload detected
+PASS ingress path RAM overflow detected pending=4618
+fpga/acq_sram/sim/tb_ingress_path.v:57: $finish called at 6613038000 (1ps)

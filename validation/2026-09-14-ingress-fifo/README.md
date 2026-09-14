@@ -97,3 +97,8 @@ Run `python3 verify.py` from any directory to check the archived hashes, timing
 categories, RAM count, and presence of successful simulation records. This
 checks evidence consistency; use `test_fifo.py`, the transport tests and
 `build_probe.py` to rerun the underlying validation.
+
+Subsequent checkpoint: acknowledged 250/125 MHz bridges and the combined ingress
+path are implemented and pass isolated timing and scheduling simulation. See
+[ingress CDC validation](../2026-09-14-ingress-cdc/README.md). The controller,
+full acquisition integration and physical SRAM transitions remain unqualified.

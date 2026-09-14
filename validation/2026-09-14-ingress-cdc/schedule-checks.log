@@ -1,0 +1,3 @@
+multiple-wraps: PASS timeslice: read=2304 written=2297 max_ingress=9/32
+insufficient-fifo: FATAL: /home/labeth/ws/open-sds1000cml-acq2/fpga/acq_sram/sim/tb_sram_timeslice.v:43: ingress overflow 5
+missing-read-reserve: FATAL: /home/labeth/ws/open-sds1000cml-acq2/fpga/acq_sram/sim/tb_sram_timeslice.v:91: extra counter circuit

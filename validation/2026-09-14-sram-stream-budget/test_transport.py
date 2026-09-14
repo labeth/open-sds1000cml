@@ -7,7 +7,7 @@ import sys
 
 root = Path(__file__).resolve().parents[2]
 sources = [root / 'fpga/acq_sram' / p for p in
-           ('sim/ddr_model.v', 'transport.v', 'ingress_fifo.v', 'ingress_stream.v', 'sim/tb_sram_timeslice.v')]
+           ('sim/ddr_model.v', 'transport.v', 'ingress_fifo.v', 'ingress_stream.v', 'word_bridge.v', 'ingress_path.v', 'sim/tb_sram_timeslice.v')]
 
 def run(name, params, expected, directory):
     binary = Path(directory) / (name + '.vvp')

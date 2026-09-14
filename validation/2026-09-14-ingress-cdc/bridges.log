@@ -1,0 +1,8 @@
+throughput source_half=4 dest_half=2 phase=0 ns_per_word=31.993000
+throughput source_half=4 dest_half=2 phase=1 ns_per_word=31.993500
+throughput source_half=4 dest_half=2 phase=2 ns_per_word=39.990000
+throughput source_half=4 dest_half=2 phase=3 ns_per_word=31.992500
+throughput source_half=2 dest_half=4 phase=0 ns_per_word=39.994000
+throughput source_half=2 dest_half=4 phase=1 ns_per_word=39.994500
+throughput source_half=2 dest_half=4 phase=2 ns_per_word=39.995000
+throughput source_half=2 dest_half=4 phase=3 ns_per_word=39.995500

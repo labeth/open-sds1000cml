@@ -71,3 +71,8 @@ is 125 MHz while SRAM addressing remains 250 MHz. `budget.py` now also checks
 reads have sufficient ideal average throughput. See the ingress-fifo validation
 directory for timing reports and the remaining clock-crossing work. The original
 full-speed scheduling log is retained as historical model evidence.
+
+The current scheduling test now uses the actual 250/125 MHz ingress bridges,
+including four marker bits. Its later passing run is archived in
+`../2026-09-14-ingress-cdc/transport.log`; this directory's original logs remain
+historical. The command scheduler itself is still a testbench.

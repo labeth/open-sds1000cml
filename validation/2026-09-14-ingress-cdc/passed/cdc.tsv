@@ -1,0 +1,7 @@
+bridge	corner	endpoints	minimum_slack_ns	maximum_data_delay_ns
+incoming	Slow 1200mV 85C Model	36	3.966	1.916
+outgoing	Slow 1200mV 85C Model	36	4.021	1.866
+incoming	Slow 1200mV 0C Model	36	4.13	1.764
+outgoing	Slow 1200mV 0C Model	36	4.111	1.788
+incoming	Fast 1200mV 0C Model	36	4.969	0.963
+outgoing	Fast 1200mV 0C Model	36	5.093	0.837
