@@ -84,3 +84,11 @@ Expanded invalid-start/frozen-recall integrity tests pass. Setup -3.836 ns
 start readiness into finite writer configuration). Recovery -5.725 ns.
 Start acceptance behavior is unchanged; further readiness/launch pipelining
 and ADC clock/reset qualification remain needed. No deployment.
+
+Latest writer-settings checkpoint: speculative idle pre/post capture passes
+integration, finite capture and fault tests. `writer-settings/integrated-build`
+fits with 9499 LEs, 7739 registers, 44 M9Ks, 645 LABs; 126 CDC rows pass.
+Setup is -4.159 ns (worse), recovery -4.193 ns. Worst path is writer_granted
+through backend control into host packer count; readiness still reaches top
+configuration at about -4.005 ns. This is a resource/control simplification,
+not overall timing closure. No deployment; full goal remains incomplete.
