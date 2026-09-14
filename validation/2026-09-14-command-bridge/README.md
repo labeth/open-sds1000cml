@@ -26,12 +26,15 @@ at four points in a handoff. Tests cover four relative clock offsets with
 100 MHz host and 250 MHz core. Simulation cannot prove metastability behavior.
 
 `test_port.py` now covers `acq_command_port` configuration shadows and command
-decoding for both profiles at four offsets, plus a simulation through the real
+decoding and coherent command results for both profiles at four offsets, plus a simulation through the real
 `gpmc_slave`: bus writes, readback, malformed request rejection and tri-state
-release. The command window is documented in `docs/fpga-profile-command-abi.md`.
+release. Result tests distinguish decoder errors from registered acquisition
+rejection, verify busy/result-valid, opcode and sequence semantics, and ensure
+busy-rejected commands do not overwrite the accepted command. The command
+window is documented in `docs/fpga-profile-command-abi.md`.
 These tests do not yet instantiate the acquisition core behind the decoder.
 
-Next: connect coherent result/status snapshots and host RAM readout, instantiate
+Next: connect acquisition status snapshots and host RAM readout, instantiate
 the deep acquisition core and real PLLs, then fit with board pin and interface
 constraints. These modules alone do not provide an ARM-compatible or deployable
 FPGA image.

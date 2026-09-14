@@ -2,8 +2,9 @@
 
 Implemented by `acq_command_port`, currently tested independently of the board
 top. These selectors are a new profile interface, not legacy rev11 register
-compatibility. Board identity/capability discovery, result/status snapshots and
-host SRAM readout still need integration. Do not use this as a device API yet.
+compatibility. Command results are implemented; board identity/capability
+discovery, acquisition status snapshots and host SRAM readout still need
+integration. Do not use this as a device API yet.
 
 Selectors are the existing GPMC slave's logical 8-bit selectors. All transfers
 are 16 bits. Configuration registers are host-domain shadows, readable and
@@ -13,8 +14,11 @@ acquisition clock domain. Later edits apply only to later commands.
 | Selector | Meaning |
 | --- | --- |
 | 0x10 write | Command opcode below; not a bit mask |
-| 0x11 read | Bit 0: delivery busy. Bit 1: sticky busy-command rejection |
+| 0x11 read | Bit 0: command/result pending. Bit 1: sticky busy-command rejection. Bit 2: result valid |
 | 0x11 write | Write bit 1 to clear sticky rejection; a new rejection wins |
+| 0x12 read | Result: 0 accepted, 1 decoder/configuration error, 2 acquisition request rejected |
+| 0x13 read | Last accepted opcode (busy-rejected writes do not replace it) |
+| 0x14 read | Accepted-command sequence, modulo 65536; reset to zero on epoch reset |
 | 0x20 / 0x21 | Pre-trigger word count, low 16 / high 4 bits |
 | 0x22 / 0x23 | Post-trigger word count, low 16 / high 4 bits |
 | 0x24 / 0x25 | Recall offset, low 16 / high 4 bits |
@@ -46,12 +50,25 @@ these controls. Mailbox busy still applies to every opcode. Software must wait
 for an available slot before submitting one; a busy submission is discarded
 and sets sticky rejection.
 
-Delivery acknowledgment is not acquisition acceptance or completion. The board
-shell must latch `core_error` and the acquisition core's `request_error` into a
-coherent response visible to ARM. Reading busy=0 alone must never be treated as
-successful acquisition. Both domains share reset; reset aborts delivery and
-restores zero configuration except post-count=1 and encode mask=0x3ff.
+The command slot remains busy until a coherent result has returned to the host.
+The decoder captures the acquisition core's registered `request_error` on the
+clock after `core_start` is consumed. Wire that signal directly to
+`acquisition_request_error`; a differently delayed response violates this
+interface. Decoder errors take priority. Halt/force/snapshot do not consume the
+start-request error signal.
 
-The 208-bit mailbox payload is `{opcode, cfg11, ..., cfg0}`. `core_start` and
-control pulses align with the captured settings. The board must keep this
-clock-domain contract and add physical timing/CDC constraints before deployment.
+Software waits for busy=0 and result-valid=1, then reads the result and accepted
+sequence/opcode. A new accepted command clears result-valid; the previous
+result code is stale until valid reasserts. Busy-rejected writes leave the
+accepted command and its eventual result intact. No acquisition completion or
+successful trigger/capture is implied by result 0: it acknowledges the request,
+and later acquisition faults must be reported through the board status path.
+
+Both domains share reset; hold it across clock edges in both domains. Reset
+aborts command/result delivery, clears result-valid and sequence, and restores
+zero configuration except post-count=1 and encode mask=0x3ff.
+
+The 208-bit forward mailbox payload is `{opcode, cfg11, ..., cfg0}`. A separate
+2-bit reverse mailbox carries the result. `core_start` and control pulses align
+with the captured settings. The board must keep this clock-domain contract and
+add physical timing/CDC constraints for both directions before deployment.

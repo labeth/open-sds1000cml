@@ -12,6 +12,7 @@ module tb_command_gpmc;
   .clk(host_clk),.nCS1(ncs),.nOE(noe),.nWE(nwe),.sel(selector),.gpmc_d(bus_data),
   .we_commit(host_write),.wr_sel(write_sel),.wr_data(write_data),.wr_aux(wr_aux),
   .rd_pop(rd_pop),.rd_sel(read_sel),.rdata(read_hit ? port_data : 16'hffff),.drive_active(drive_active));
+ wire acquisition_request_error=0;
  wire core_start,core_halt,core_force,core_snapshot,core_error;
  wire [1:0] operation,trigger_mode;wire [19:0] pre_count,post_count,offset,length;
  wire [18:0] read_bias;wire [4:0] decim_log;wire [9:0] encode_enable;
@@ -49,9 +50,10 @@ module tb_command_gpmc;
   read_bus(7'h22,1);write_bus(7'h20,16'h5678);write_bus(7'h21,4);
   read_bus(7'h20,16'h5678);read_bus(7'h21,4);write_bus(7'h10,1);
   if(starts!=1 || errors!=0)$fatal(1,"GPMC command delivery");
+  read_bus(7'h11,4);read_bus(7'h12,0);read_bus(7'h13,1);read_bus(7'h14,1);
   write_bus(7'h21,16'h10);write_bus(7'h10,1);
   if(starts!=1 || errors!=1 || writes!=5)$fatal(1,"GPMC invalid request");
-  read_bus(7'h11,0);read_bus(7'h70,16'hffff);
+  read_bus(7'h11,4);read_bus(7'h12,1);read_bus(7'h14,2);read_bus(7'h70,16'hffff);
   $display("PASS real GPMC slave -> command port: coherent write commits, readback, core decode, shared-bus release");
   $finish;
  end

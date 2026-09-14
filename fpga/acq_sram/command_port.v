@@ -11,30 +11,70 @@ module acq_command_port #(parameter ENABLE_STREAM=0)(
  output wire [19:0] pre_count,post_count,offset,length,
  output wire [18:0] read_bias,output wire [4:0] decim_log,
  output wire [9:0] encode_enable,output wire [1:0] trigger_mode,
- output wire trigger_channel,trigger_falling,output wire [15:0] trigger_level
+ output wire trigger_channel,trigger_falling,output wire [15:0] trigger_level,
+ input wire acquisition_request_error
 );
  reg [191:0] config_shadow=192'h03ff_0000_0000_0000_0000_0000_0000_0000_0000_0001_0000_0000;
  localparam [191:0] DEFAULT_CONFIG=192'h03ff_0000_0000_0000_0000_0000_0000_0000_0000_0001_0000_0000;
  wire send=host_write && write_sel==8'h10;
- wire bridge_rejected,valid;
+ wire bridge_rejected,valid,request_busy;
+ reg pending_result=0,result_valid=0;
+ reg [1:0] result_code=0;
+ reg [15:0] accepted_opcode=0,sequence_number=0;
+ wire accepted=send && !host_busy;
+ assign host_busy=request_busy || pending_result;
  wire [207:0] payload;
  acq_command_bridge #(.WIDTH(208)) bridge(
   .reset(reset),.host_clk(host_clk),.core_clk(core_clk),
-  .host_send(send),.host_payload({write_data,config_shadow}),
-  .host_busy(host_busy),.host_rejected(bridge_rejected),
+  .host_send(accepted),.host_payload({write_data,config_shadow}),
+  .host_busy(request_busy),.host_rejected(bridge_rejected),
   .core_valid(valid),.core_payload(payload));
- always @(posedge host_clk)begin
-  if(reset)begin config_shadow<=DEFAULT_CONFIG;host_rejected<=0;end
+ // Acquisition request_error is registered on the edge consuming core_start.
+ // Capture it on the next edge, then send one coherent result back to host.
+ reg reply_pending=0,decode_error_q=0,start_q=0,reply_send=0;
+ reg [1:0] reply_code=0;
+ wire reply_busy,reply_rejected,returned;
+ wire [1:0] returned_code;
+ always @(posedge core_clk)begin
+  if(reset)begin reply_pending<=0;reply_send<=0;decode_error_q<=0;start_q<=0;end
   else begin
+   reply_pending<=valid;decode_error_q<=core_error;start_q<=core_start;
+   reply_send<=reply_pending;
+   if(reply_pending)reply_code<=decode_error_q ? 2'd1 :
+    start_q && acquisition_request_error ? 2'd2 : 2'd0;
+  end
+ end
+ acq_command_bridge #(.WIDTH(2)) response(
+  .reset(reset),.host_clk(core_clk),.core_clk(host_clk),
+  .host_send(reply_send),.host_payload(reply_code),.host_busy(reply_busy),
+  .host_rejected(reply_rejected),.core_valid(returned),.core_payload(returned_code));
+ // synthesis translate_off
+ always @(posedge core_clk)if(!reset && reply_send && reply_busy)
+  $fatal(1,"command response mailbox overrun");
+ // synthesis translate_on
+ always @(posedge host_clk)begin
+  if(reset)begin
+   config_shadow<=DEFAULT_CONFIG;host_rejected<=0;pending_result<=0;
+   result_valid<=0;result_code<=0;accepted_opcode<=0;sequence_number<=0;
+  end
+  else begin
+   if(accepted)begin
+    pending_result<=1;result_valid<=0;accepted_opcode<=write_data;
+    sequence_number<=sequence_number+1'b1;
+   end
+   if(returned)begin pending_result<=0;result_valid<=1;result_code<=returned_code;end
    if(host_write && write_sel>=8'h20 && write_sel<=8'h2b)
     config_shadow[16*(write_sel-8'h20)+:16]<=write_data;
    if(host_write && write_sel==8'h11 && write_data[1])host_rejected<=0;
-   if(bridge_rejected)host_rejected<=1;
+   if(send && host_busy)host_rejected<=1;
   end
  end
  always @* begin
   read_hit=1;read_data=0;
-  if(read_sel==8'h11)read_data={14'b0,host_rejected,host_busy};
+  if(read_sel==8'h11)read_data={13'b0,result_valid,host_rejected,host_busy};
+  else if(read_sel==8'h12)read_data={14'b0,result_code};
+  else if(read_sel==8'h13)read_data=accepted_opcode;
+  else if(read_sel==8'h14)read_data=sequence_number;
   else if(read_sel>=8'h20 && read_sel<=8'h2b)
    read_data=config_shadow[16*(read_sel-8'h20)+:16];
   else read_hit=0;
