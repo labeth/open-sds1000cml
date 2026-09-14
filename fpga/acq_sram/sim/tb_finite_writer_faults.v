@@ -82,6 +82,18 @@ module tb_finite_writer_faults;
   new_epoch;wait(start_ready);tick;start=1;halt=1;tick;start=0;halt=0;source_valid=1;
   wait(!active);tick;source_valid=0;
   if(!frozen || fault || record_words!=0 || writes!=2)$fatal(1,"coincident start/halt captured data");
+  // Rearming a frozen epoch: rejection preserves it; acceptance masks it on
+  // the first edge even when transport cannot yet grant the new operation.
+  capture_allowed=0;start=1;tick;start=0;
+  if(!request_error || !frozen || active || writer_request)
+   $fatal(1,"rejected rearm changed frozen ownership");
+  capture_allowed=1;tick;force writer_ready=1'b0;
+  start=1;tick;start=0;
+  if(frozen || !active || !writer_request || request_error)
+   $fatal(1,"accepted rearm did not invalidate frozen record immediately");
+  repeat(3)begin tick;if(frozen || !active)$fatal(1,"frozen record resurfaced during delayed grant");end
+  release writer_ready;new_epoch;tick;
+  $display("PASS frozen rearm: rejected start preserves record; accepted start invalidates immediately across delayed grant");
   $display("PASS pending launch: immediate reservation, repeated-start rejection, held geometry, reset and coincident halt");
   $display("PASS frontend fault: startup, trigger word, final drain, frozen record, idle start rejection");
   $display("PASS finite writer: pending/idle halt, lost readiness invalidates epoch, rearm rejected, reset recovery");

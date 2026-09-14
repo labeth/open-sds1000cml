@@ -1,0 +1,15 @@
+{"board_capture_path.v": "21326d372ed51f8dff4b9758d4de6e94f81e9aa1f0941a9720e91131216d71a3", "capture_engine.v": "eed3b68adfed6be1348afc5a1cda3c8105e3f400218833c32536a694fb361d9b", "capture_path.v": "3384336306f830621eb70479e26e9c54401bf5d0813010c20da2f7bf6056e4e8", "finite_recall.v": "f3b9d6cbedaeb4d9843c5a7b84c068f8c5e99703ae155117c68a08d264c1ba47", "finite_writer.v": "9ec1a46edce06fa324aa128f5d1d8aaed2ddc2fb91e2c71a49dc74427b727447", "host_fifo.v": "bf1eff02e237a882434398cc595e3c9d2054eb853ad9f70b80a4861539948e8e", "host_ownership.v": "52e9c9131279598595c1c3905643c362ea2dc74c98b572f39cdd1f85371a83e9", "host_packer.v": "1c22dee98f30dd170537ee99913fcb4c076c9bfae74b890fdbd49a432ff18f76", "host_path.v": "ceeb9654df6095607688b173076572bbfe779ab3e403d067a9fc5b2312b9ce81", "host_ram.v": "87f667e602d77fa0e398e337d60ce5a8f61f9f666e130fb9c70d7c08028b4be7", "host_sink.v": "5a9c8ff3301b3d9ffe20d5a38a099685f48fa1d4590bb044621356831ef95589", "ingress_fifo.v": "051a05212941de9d224cf9dcea66c29297a2c85b03c86012db0b1977ca463f35", "ingress_path.v": "c1aea8492b0641f504337c70a97373ceb51002cc7a0913c945d616a62591af31", "ingress_stream.v": "048e2faad3c03d5e966bfdd04de79eee8642e7efc0d09aecaad4a4d00f8a99e4", "ordinal_counter.v": "0289b0528f2202dc1f436cbb107226290d825b66fa6ffed46ce3bf957bdd9690", "record.v": "a1d2ca4bd04d63d4af8d47840a385f12a0feb856e387e71571ec97dbbcdf939c", "sim/ddr_model.v": "ace57d159f0b1b9edd4e9c82b1496fab3b79b7c056b9aaa2da66698e65d164f2", "sim/tb_finite_capture.v": "5843e39c1c8e45ab2479650c30e8cffebb0f062a227ac2d60d230d0280cab741", "sim/tb_finite_writer_faults.v": "67cf779e5f8f4817c8227933163baf1de04bc74017960336a7af0e5fbb102ef6", "stream_engine.v": "8b2a5dc216fb29de59ca0b5a2615c47a8a8a099e6273338fe790f606a3b5c046", "timeslice_controller.v": "d513b2b950a8e1917c76881aaf1ea43c3e3d5e21d73177a79c79b6450aea4d75", "transport.v": "32cb44b81218eaff818bf9f3338d54111cc4cfde05fea540538b4bd049cd4a67", "word_bridge.v": "30a23c116f37008bc906114c22298336d409c9bca405919e815a226f4223caa7"}
+PASS shared case 1: finite=1 words=5121 banks=3
+PASS shared case 2: finite=1 words=8192 banks=4
+PASS shared case 3: finite=1 words=4 banks=1
+PASS shared case 4: finite=1 words=8192 banks=4
+PASS shared case 5: finite=0 words=10003 banks=4
+PASS shared case 6: finite=1 words=8192 banks=4
+PASS shared case 7: finite=0 words=257 banks=1
+PASS shared case 8: finite=1 words=1 banks=1
+PASS finite capture: wrapped=1, full ring trigger/recall, sparse early trigger, wrapped halt, invalid rearm, shared streaming and ownership
+/tmp/acq-shared-engine-0ryto7ed/tb_finite_capture.v:191: $finish called at 6387944100 (1ps)
+PASS pending launch: immediate reservation, repeated-start rejection, held geometry, reset and coincident halt
+PASS frontend fault: startup, trigger word, final drain, frozen record, idle start rejection
+PASS finite writer: pending/idle halt, lost readiness invalidates epoch, rearm rejected, reset recovery
+/tmp/acq-shared-engine-0ryto7ed/tb_finite_writer_faults.v:88: $finish called at 524100 (1ps)
