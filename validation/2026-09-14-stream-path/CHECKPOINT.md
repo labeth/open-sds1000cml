@@ -31,3 +31,9 @@ The mailbox payload reset was removed independently of token reset. Eight
 clock ratio/phase cases, reset with valid high, both ingress stress suites and
 the direct wrapper pass. The unread counter toggle-mask experiment worsened
 timing and was reverted exactly; its reports remain in count-mask-probe/.
+
+Current structure: stream_engine.v exposes an external transport interface;
+stream_path.v connects the existing transport without changing its public ports.
+External-engine-probe verifies the current source hashes, 10003-word wrapper
+readback, 38 M9Ks and all 120 CDC groups. Setup remains -0.429 ns. Default-image
+arbitration with finite capture and sharing the host write path remain to do.

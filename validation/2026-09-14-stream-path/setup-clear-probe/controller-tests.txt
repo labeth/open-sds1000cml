@@ -1,0 +1,28 @@
+source-sha256: {"fpga/acq_sram/host_fifo.v": "bf1eff02e237a882434398cc595e3c9d2054eb853ad9f70b80a4861539948e8e", "fpga/acq_sram/host_ownership.v": "52e9c9131279598595c1c3905643c362ea2dc74c98b572f39cdd1f85371a83e9", "fpga/acq_sram/host_packer.v": "1b50bb8cdc04ab693353f8311c034742a1109e16ea8f66471bb0dede850cd883", "fpga/acq_sram/host_path.v": "ceeb9654df6095607688b173076572bbfe779ab3e403d067a9fc5b2312b9ce81", "fpga/acq_sram/host_ram.v": "9779d0040513cc724688b0c83a2fb73fb260e271d656e3d882dd1848f024bcad", "fpga/acq_sram/host_sink.v": "8334e289686c3c9bd328137e302947676981d7b66bbf5e08df1d0e8993972e55", "fpga/acq_sram/ingress_fifo.v": "051a05212941de9d224cf9dcea66c29297a2c85b03c86012db0b1977ca463f35", "fpga/acq_sram/ingress_path.v": "c1aea8492b0641f504337c70a97373ceb51002cc7a0913c945d616a62591af31", "fpga/acq_sram/ingress_stream.v": "048e2faad3c03d5e966bfdd04de79eee8642e7efc0d09aecaad4a4d00f8a99e4", "fpga/acq_sram/ordinal_counter.v": "0289b0528f2202dc1f436cbb107226290d825b66fa6ffed46ce3bf957bdd9690", "fpga/acq_sram/sim/ddr_model.v": "ace57d159f0b1b9edd4e9c82b1496fab3b79b7c056b9aaa2da66698e65d164f2", "fpga/acq_sram/sim/tb_ordinal_counter.v": "00993c34e42aafb1b3a7f0931f75d882889cdb38f0f5cdd9104e3b83c6ccfa4b", "fpga/acq_sram/sim/tb_timeslice_controller.v": "f930eeb39110f4fbd99b215e5ca034dbed6fd4877db0760a4ee13568e41508e9", "fpga/acq_sram/timeslice_controller.v": "7651b2fa4ec177f12d7d1c83b3e3b38caebd2cd6298b7a3c5c8883b055f2ccbe", "fpga/acq_sram/transport.v": "0eb3aa586d04da9eb2faf80dae973fb6fe732acc554629d6d1e08e9c519a39d9", "fpga/acq_sram/word_bridge.v": "30a23c116f37008bc906114c22298336d409c9bca405919e815a226f4223caa7"}
+ordinals: PASS 64-bit ordinals across all carry boundaries and stalled steps
+/tmp/acq-controller-i9i1rcr5/sim/tb_ordinal_counter.v:25: $finish called at 864000 (1ps)
+
+reset-writing: PASS active reset phase=1
+/tmp/acq-controller-i9i1rcr5/sim/tb_timeslice_controller.v:220: $finish called at 4194100 (1ps)
+
+reset-reading: PASS active reset phase=2
+/tmp/acq-controller-i9i1rcr5/sim/tb_timeslice_controller.v:220: $finish called at 37014100 (1ps)
+
+consecutive-captures: PASS RTL controller: words=402 blocks=202 max_pending=3 max_unread=36 skipped=0 overlap=82 stalls=0
+/tmp/acq-controller-i9i1rcr5/sim/tb_timeslice_controller.v:210: $finish called at 245008000 (1ps)
+
+wrap-tail-stall: PASS RTL controller: words=6003 blocks=376 max_pending=13 max_unread=125 skipped=11 overlap=207 stalls=1
+/tmp/acq-controller-i9i1rcr5/sim/tb_timeslice_controller.v:210: $finish called at 3103156000 (1ps)
+
+steady-bandwidth: PASS RTL controller: words=6003 blocks=376 max_pending=9 max_unread=64 skipped=0 overlap=185 stalls=0
+/tmp/acq-controller-i9i1rcr5/sim/tb_timeslice_controller.v:210: $finish called at 3101368000 (1ps)
+
+counter-lanes: PASS RTL controller: words=10003 blocks=16 max_pending=33 max_unread=1312 skipped=0 overlap=0 stalls=0
+/tmp/acq-controller-i9i1rcr5/sim/tb_timeslice_controller.v:210: $finish called at 5553948000 (1ps)
+
+one-word-tail: PASS RTL controller: words=201 blocks=101 max_pending=3 max_unread=36 skipped=0 overlap=41 stalls=0
+/tmp/acq-controller-i9i1rcr5/sim/tb_timeslice_controller.v:210: $finish called at 122640000 (1ps)
+
+unread-protection: PASS controller unread protection: writes=1056 read=32
+/tmp/acq-controller-i9i1rcr5/sim/tb_timeslice_controller.v:210: $finish called at 546320000 (1ps)
+

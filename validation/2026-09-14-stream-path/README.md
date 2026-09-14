@@ -96,3 +96,25 @@ TNS to -37.769 ns. Controller restored byte-for-byte to its checkpoint source;
 mailbox simplification remains. Experimental RTL, source hashes and results
 are in `count-mask-probe/`. Active RTL therefore matches the mailbox experiment
 above, whose direct wrapper and ingress tests passed.
+
+Registered continuous-mode transport write readiness was behaviorally identical
+to the frozen transport over 100000 randomized cycles in each of finite and
+continuous modes; nine controller cases and all 120 CDC groups passed. Combined
+setup was -0.619 ns (`write-open-probe/`). Moving wide accounting clear to the
+ORIGIN_CALC setup state passed nine cases and CDC, but setup remained -0.529 ns
+(`setup-clear-probe/`). Both RTL changes were reverted to the mailbox checkpoint.
+The reusable `test_transport_equivalence.py` compares against a hash-checked
+frozen reference. These randomized checks are not exhaustive formal proof.
+
+The acquisition engine is now separate from the physical SRAM transport:
+`stream_engine.v` contains ingress, scheduling and host buffering, with explicit
+transport commands, write offers, read responses and position. `stream_path.v`
+connects it to the existing transport and retains the old public interface.
+This lets board integration arbitrate one bus owner with finite capture/recall;
+that arbitration and sharing the host write path are not implemented yet.
+
+The refactored wrapper passes 10003-word readback with four banks, odd tail,
+SRAM wrap and actual halfword host reads. Seed 2 remains exactly -0.429 ns setup,
++0.143 hold, +0.135 recovery, +0.492 removal, +1.513 minimum pulse, 38 M9Ks;
+120 CDC audit groups pass across the changed hierarchy. Timing and IO remain
+unqualified. Source snapshots, hashes and evidence: `external-engine-probe/`.

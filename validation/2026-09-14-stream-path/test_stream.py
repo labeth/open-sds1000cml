@@ -2,7 +2,7 @@
 from pathlib import Path
 import hashlib,json,subprocess,tempfile
 root=Path(__file__).resolve().parents[2]
-names=('stream_path.v','ingress_path.v','ingress_fifo.v','ingress_stream.v','word_bridge.v',
+names=('stream_path.v','stream_engine.v','ingress_path.v','ingress_fifo.v','ingress_stream.v','word_bridge.v',
        'timeslice_controller.v','ordinal_counter.v','transport.v','sim/ddr_model.v',
        'host_path.v','host_packer.v','host_fifo.v','host_sink.v','host_ram.v','host_ownership.v','sim/tb_sram_stream_path.v')
 with tempfile.TemporaryDirectory(prefix='acq-stream-wrapper-') as directory:

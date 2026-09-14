@@ -10,7 +10,7 @@ with open('/tmp/open-sds-quartus.lock','w') as lock:
  for name in ('db','incremental_db','output_files'):
   shutil.rmtree(out/name,ignore_errors=True)
  (out/'result.json').unlink(missing_ok=True)
- names=('stream_path.v','ingress_path.v','ingress_fifo.v','ingress_stream.v','word_bridge.v','timeslice_controller.v','ordinal_counter.v','transport.v','host_path.v','host_packer.v','host_fifo.v','host_sink.v','host_ram.v','host_ownership.v')
+ names=('stream_path.v','stream_engine.v','ingress_path.v','ingress_fifo.v','ingress_stream.v','word_bridge.v','timeslice_controller.v','ordinal_counter.v','transport.v','host_path.v','host_packer.v','host_fifo.v','host_sink.v','host_ram.v','host_ownership.v')
  bounded="--cdc" in sys.argv
  seed=int(sys.argv[sys.argv.index("--seed")+1]) if "--seed" in sys.argv else 1
  if seed<1:raise ValueError("seed must be positive")
