@@ -59,3 +59,20 @@ GPMC interface and kernel/app streaming, retained precision and long history.
 The full goal still includes protocol triggers, all-timebase behavior and hardware
 qualification of ADC order, read bias/continuation, full depth and sustained
 transfer under ARM stalls.
+
+Latest follow-on: the two-stage finite trigger pipeline keeps data and trigger
+decisions aligned. 71520 oracle words across 96 configurations and integrated
+capture/stream/recall pass. Host sink acceptance controls are explicitly shared;
+54124 equivalence cycles pass including malformed packets and faults.
+
+`trigger-pipeline/integrated-build` FITS: 9504 LEs, 7733 registers, 44 M9Ks,
+645 LABs. All 126 backend/configuration CDC rows pass. Setup improves to
+-4.416 ns, but recovery is -5.553 ns. Worst setup is now record halted through
+start acceptance into captured configuration. IO and added ADC CDC remain
+unqualified. No GPMC top integrated, FPGA image generated or deployment done.
+
+Next: break the long capture-start readiness/acceptance path while preserving
+busy-start rejection and atomic settings. Address ADC CDC/reset and physical
+IO timing, then finish default GPMC/kernel/app integration and hardware tests
+for the full original goal. Earlier failed trigger builds are source-versioned
+in trigger-pipeline/first-build and shared-sink-build.

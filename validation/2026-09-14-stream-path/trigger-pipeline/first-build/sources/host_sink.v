@@ -25,12 +25,6 @@ module sram_host_sink(
                        (({1'b0,field}+1'b1)>>1)==count;
  wire legal=descriptor ? legal_descriptor : legal_data;
  assign ready=!reset && !fault && !upstream_fault && !ram_fault;
- // Share validation before the wide metadata banks. Keep these control
- // boundaries so synthesis cannot replicate packet checks into each data bit.
- (* keep *) wire metadata0=valid && ready && legal_descriptor && descriptor && !bank;
- (* keep *) wire metadata1=valid && ready && legal_descriptor && descriptor && bank;
- (* keep *) wire advance0=valid && ready && legal_data && !descriptor && !bank;
- (* keep *) wire advance1=valid && ready && legal_data && !descriptor && bank;
  // DATA is validated at edge N and physically written at edge N+1.
  // A following META publishes after edge N+1, once that write has occurred.
  always @(posedge clk)begin
@@ -43,10 +37,13 @@ module sram_host_sink(
    fault<=0;pairs0<=0;pairs1<=0;first0<=0;first1<=0;words0<=0;words1<=0;
   end else begin
    if(upstream_fault || ram_fault || (valid && ready && !legal))fault<=1;
-   if(metadata0)begin publish[0]<=1;first0<=data[63:0];words0<=field[11:0];pairs0<=0;end
-   else if(advance0)pairs0<=pairs0+1'b1;
-   if(metadata1)begin publish[1]<=1;first1<=data[63:0];words1<=field[11:0];pairs1<=0;end
-   else if(advance1)pairs1<=pairs1+1'b1;
+   if(valid && ready && legal)begin
+    if(descriptor)begin
+     publish[bank]<=1;
+     if(bank)begin first1<=data[63:0];words1<=field[11:0];pairs1<=0;end
+     else begin first0<=data[63:0];words0<=field[11:0];pairs0<=0;end
+    end else if(bank)pairs1<=pairs1+1'b1;else pairs0<=pairs0+1'b1;
+   end
   end
  end
 endmodule

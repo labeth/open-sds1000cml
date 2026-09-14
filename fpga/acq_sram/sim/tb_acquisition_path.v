@@ -53,10 +53,18 @@ module tb_acquisition_path;
   // independently; precision mock preserves varying fractional bits.
   lane[31:0]={8'(cycles*7),8'd20,8'(cycles*13),8'd10};
  end
+ // Independent two-cycle data delay for the finite trigger pipeline.
+ reg [31:0] expected_d0=0,expected_d1=0;
+ reg expected_v0=0,expected_v1=0;
  always @(posedge core_clk)begin
-  if(collect && source_valid && ((dut.ca && dut.cr) || (!dut.ca && dut.ben)))begin
+  if(!dut.frontend_enable)begin expected_v0<=0;expected_v1<=0;end
+  else begin
+   expected_d0<=source_word;expected_d1<=expected_d0;
+   expected_v0<=source_valid;expected_v1<=expected_v0;
+  end
+  if(collect && ((dut.ca && dut.cr && expected_v1) || (!dut.ca && dut.ben && source_valid)))begin
    if(sent>=16384)$fatal(1,"scoreboard capacity");
-   expected[sent]=source_word;sent=sent+1;
+   expected[sent]=dut.ca ? expected_d1 : source_word;sent=sent+1;
   end
   if(!reset && !expect_fault && fault)$fatal(1,"unexpected acquisition fault");
  end

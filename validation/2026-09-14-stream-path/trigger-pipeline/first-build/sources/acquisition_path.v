@@ -136,12 +136,12 @@ module acquisition_trigger_pipeline(
   if(!enable)begin valid_s<=0;out_valid<=0;previous_valid<=0;end
   else begin
    valid_s<=valid;out_valid<=valid_s;
-   begin // Payload may advance through bubbles; validity carries ownership.
+   if(valid)begin
     data_s<=data;precision_s<=precision_mode;force_s<=force_trigger;match_s<=match_trigger;
     first_s<=precision_mode ? (channel ? data[31:16] : data[15:0]) : {channel ? data[15:8] : data[7:0],8'b0};
     second_s<=channel ? data[31:24] : data[23:16];
    end
-   begin
+   if(valid_s)begin
     out_data<=data_s;precision_q<=precision_s;force_q<=force_s;match_q<=match_s;
     first_above<=first_s>level;first_below<=first_s<level;
     second_above<={second_s,8'b0}>level;second_below<={second_s,8'b0}<level;

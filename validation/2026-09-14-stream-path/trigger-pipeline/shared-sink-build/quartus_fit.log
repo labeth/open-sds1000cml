@@ -1,0 +1,133 @@
+Info: *******************************************************************
+Info: Running Quartus Prime Fitter
+    Info: Version 21.1.0 Build 842 10/21/2021 SJ Lite Edition
+    Info: Copyright (C) 2021  Intel Corporation. All rights reserved.
+    Info: Your use of Intel Corporation's design tools, logic functions 
+    Info: and other software and tools, and any partner logic 
+    Info: functions, and any output files from any of the foregoing 
+    Info: (including device programming or simulation files), and any 
+    Info: associated documentation or information are expressly subject 
+    Info: to the terms and conditions of the Intel Program License 
+    Info: Subscription Agreement, the Intel Quartus Prime License Agreement,
+    Info: the Intel FPGA IP License Agreement, or other applicable license
+    Info: agreement, including, without limitation, that your use is for
+    Info: the sole purpose of programming logic devices manufactured by
+    Info: Intel and sold by Intel or its authorized distributors.  Please
+    Info: refer to the applicable agreement for further details, at
+    Info: https://fpgasoftware.intel.com/eula.
+    Info: Processing started: Mon Sep 14 09:20:35 2026
+Info: Command: quartus_fit probe
+Info: qfit2_default_script.tcl version: #1
+Info: Project  = probe
+Info: Revision = probe
+Info (16303): Aggressive Performance optimization mode selected -- timing performance will be prioritized at the potential cost of increased logic area and compilation time
+Info (20032): Parallel compilation is enabled and will use up to 2 processors
+Info (119006): Selected device EP4CE10F17C8 for design "probe"
+Info (21076): High junction temperature operating condition is not set. Assuming a default value of '85'.
+Info (21076): Low junction temperature operating condition is not set. Assuming a default value of '0'.
+Info (15535): Implemented PLL "adc_acquisition_source:source|adc_interleave:frontend|adc_phase_pll:clocks|altpll:p|altpll_efq1:auto_generated|pll1" as Cyclone IV E PLL type File: /home/labeth/ws/open-sds1000cml-acq2/fpga/acq_sram/out/acquisition-path-probe/db/altpll_efq1.tdf Line: 28
+    Info (15099): Implementing clock multiplication of 1, clock division of 1, and phase shift of 108 degrees (3000 ps) for adc_acquisition_source:source|adc_interleave:frontend|adc_phase_pll:clocks|altpll:p|altpll_efq1:auto_generated|clk[0] port File: /home/labeth/ws/open-sds1000cml-acq2/fpga/acq_sram/out/acquisition-path-probe/db/altpll_efq1.tdf Line: 28
+    Info (15099): Implementing clock multiplication of 1, clock division of 1, and phase shift of 144 degrees (4000 ps) for adc_acquisition_source:source|adc_interleave:frontend|adc_phase_pll:clocks|altpll:p|altpll_efq1:auto_generated|clk[1] port File: /home/labeth/ws/open-sds1000cml-acq2/fpga/acq_sram/out/acquisition-path-probe/db/altpll_efq1.tdf Line: 28
+    Info (15099): Implementing clock multiplication of 1, clock division of 1, and phase shift of 72 degrees (2000 ps) for adc_acquisition_source:source|adc_interleave:frontend|adc_phase_pll:clocks|altpll:p|altpll_efq1:auto_generated|clk[2] port File: /home/labeth/ws/open-sds1000cml-acq2/fpga/acq_sram/out/acquisition-path-probe/db/altpll_efq1.tdf Line: 28
+    Info (15099): Implementing clock multiplication of 1, clock division of 1, and phase shift of 0 degrees (0 ps) for adc_acquisition_source:source|adc_interleave:frontend|adc_phase_pll:clocks|altpll:p|altpll_efq1:auto_generated|clk[3] port File: /home/labeth/ws/open-sds1000cml-acq2/fpga/acq_sram/out/acquisition-path-probe/db/altpll_efq1.tdf Line: 28
+    Info (15099): Implementing clock multiplication of 1, clock division of 1, and phase shift of 36 degrees (1000 ps) for adc_acquisition_source:source|adc_interleave:frontend|adc_phase_pll:clocks|altpll:p|altpll_efq1:auto_generated|clk[4] port File: /home/labeth/ws/open-sds1000cml-acq2/fpga/acq_sram/out/acquisition-path-probe/db/altpll_efq1.tdf Line: 28
+Info (171004): Fitter is performing a Standard Fit compilation using maximum Fitter effort to optimize design performance
+Warning (292013): Feature LogicLock is only available with a valid subscription license. You can purchase a software subscription to gain full access to this feature.
+Info (176444): Device migration not selected. If you intend to use device migration later, you may need to change the pin assignments as they may be incompatible with other devices
+    Info (176445): Device EP4CE6F17C8 is compatible
+    Info (176445): Device EP4CE15F17C8 is compatible
+    Info (176445): Device EP4CE22F17C8 is compatible
+Info (169124): Fitter converted 5 user pins into dedicated programming pins
+    Info (169125): Pin ~ALTERA_ASDO_DATA1~ is reserved at location C1
+    Info (169125): Pin ~ALTERA_FLASH_nCE_nCSO~ is reserved at location D2
+    Info (169125): Pin ~ALTERA_DCLK~ is reserved at location H1
+    Info (169125): Pin ~ALTERA_DATA0~ is reserved at location H2
+    Info (169125): Pin ~ALTERA_nCEO~ is reserved at location F16
+Warning (15714): Some pins have incomplete I/O assignments. Refer to the I/O Assignment Warnings report for details
+Info (176045): Design uses memory blocks. Violating setup or hold times of memory block address registers for either read or write operations could cause memory contents to be corrupted. Make sure that all memory block address registers meet the setup and hold time requirements.
+Critical Warning (169085): No exact pin location assignment(s) for 44 pins of 44 total pins. For the list of pins please refer to the I/O Assignment Warnings table in the fitter report.
+Info (332164): Evaluating HDL-embedded SDC commands
+    Info (332165): Entity dcfifo_t9i1
+        Info (332166): set_false_path -from *rdptr_g* -to *ws_dgrp|dffpipe_hd9:dffpipe9|dffe10a* 
+        Info (332166): set_false_path -from *delayed_wrptr_g* -to *rs_dgwp|dffpipe_gd9:dffpipe6|dffe7a* 
+    Info (332165): Entity dcfifo_ten1
+        Info (332166): set_false_path -from *rdptr_g* -to *ws_dgrp|dffpipe_fd9:dffpipe18|dffe19a* 
+        Info (332166): set_false_path -from *delayed_wrptr_g* -to *rs_dgwp|dffpipe_ed9:dffpipe15|dffe16a* 
+Info (332104): Reading SDC File: 'probe.sdc'
+Info (332110): Deriving PLL clocks
+    Info (332110): create_generated_clock -source {source|frontend|clocks|p|auto_generated|pll1|inclk[0]} -phase 108.00 -duty_cycle 50.00 -name {source|frontend|clocks|p|auto_generated|pll1|clk[0]} {source|frontend|clocks|p|auto_generated|pll1|clk[0]}
+    Info (332110): create_generated_clock -source {source|frontend|clocks|p|auto_generated|pll1|inclk[0]} -phase 144.00 -duty_cycle 50.00 -name {source|frontend|clocks|p|auto_generated|pll1|clk[1]} {source|frontend|clocks|p|auto_generated|pll1|clk[1]}
+    Info (332110): create_generated_clock -source {source|frontend|clocks|p|auto_generated|pll1|inclk[0]} -phase 72.00 -duty_cycle 50.00 -name {source|frontend|clocks|p|auto_generated|pll1|clk[2]} {source|frontend|clocks|p|auto_generated|pll1|clk[2]}
+    Info (332110): create_generated_clock -source {source|frontend|clocks|p|auto_generated|pll1|inclk[0]} -duty_cycle 50.00 -name {source|frontend|clocks|p|auto_generated|pll1|clk[3]} {source|frontend|clocks|p|auto_generated|pll1|clk[3]}
+    Info (332110): create_generated_clock -source {source|frontend|clocks|p|auto_generated|pll1|inclk[0]} -phase 36.00 -duty_cycle 50.00 -name {source|frontend|clocks|p|auto_generated|pll1|clk[4]} {source|frontend|clocks|p|auto_generated|pll1|clk[4]}
+Info (332151): Clock uncertainty is not calculated until you update the timing netlist.
+Info (332123): Deriving Clock Uncertainty. Please refer to report_sdc in the Timing Analyzer to see clock uncertainties.
+Info (332129): Detected timing requirements -- optimizing circuit to achieve only the specified requirements
+Info (332111): Found 10 clocks
+    Info (332111):   Period   Clock Name
+    Info (332111): ======== ============
+    Info (332111):   10.000      adc_ref
+    Info (332111):    4.000         core
+    Info (332111):   10.000         host
+    Info (332111):    8.000          ram
+    Info (332111):    4.000       sample
+    Info (332111):   10.000 source|frontend|clocks|p|auto_generated|pll1|clk[0]
+    Info (332111):   10.000 source|frontend|clocks|p|auto_generated|pll1|clk[1]
+    Info (332111):   10.000 source|frontend|clocks|p|auto_generated|pll1|clk[2]
+    Info (332111):   10.000 source|frontend|clocks|p|auto_generated|pll1|clk[3]
+    Info (332111):   10.000 source|frontend|clocks|p|auto_generated|pll1|clk[4]
+Info (176353): Automatically promoted node adc_acquisition_source:source|adc_interleave:frontend|adc_phase_pll:clocks|altpll:p|altpll_efq1:auto_generated|clk[0] (placed in counter C3 of PLL_1) File: /home/labeth/ws/open-sds1000cml-acq2/fpga/acq_sram/out/acquisition-path-probe/db/altpll_efq1.tdf Line: 33
+    Info (176355): Automatically promoted destinations to use location or clock signal Global Clock CLKCTRL_G3
+Info (176353): Automatically promoted node adc_acquisition_source:source|adc_interleave:frontend|adc_phase_pll:clocks|altpll:p|altpll_efq1:auto_generated|clk[1] (placed in counter C2 of PLL_1) File: /home/labeth/ws/open-sds1000cml-acq2/fpga/acq_sram/out/acquisition-path-probe/db/altpll_efq1.tdf Line: 33
+    Info (176355): Automatically promoted destinations to use location or clock signal Global Clock CLKCTRL_G2
+Info (176353): Automatically promoted node adc_acquisition_source:source|adc_interleave:frontend|adc_phase_pll:clocks|altpll:p|altpll_efq1:auto_generated|clk[2] (placed in counter C4 of PLL_1) File: /home/labeth/ws/open-sds1000cml-acq2/fpga/acq_sram/out/acquisition-path-probe/db/altpll_efq1.tdf Line: 33
+    Info (176355): Automatically promoted destinations to use location or clock signal Global Clock CLKCTRL_G4
+Info (176353): Automatically promoted node adc_acquisition_source:source|adc_interleave:frontend|adc_phase_pll:clocks|altpll:p|altpll_efq1:auto_generated|clk[3] (placed in counter C0 of PLL_1) File: /home/labeth/ws/open-sds1000cml-acq2/fpga/acq_sram/out/acquisition-path-probe/db/altpll_efq1.tdf Line: 33
+    Info (176355): Automatically promoted destinations to use location or clock signal Global Clock CLKCTRL_G0
+Info (176353): Automatically promoted node adc_acquisition_source:source|adc_interleave:frontend|adc_phase_pll:clocks|altpll:p|altpll_efq1:auto_generated|clk[4] (placed in counter C1 of PLL_1) File: /home/labeth/ws/open-sds1000cml-acq2/fpga/acq_sram/out/acquisition-path-probe/db/altpll_efq1.tdf Line: 33
+    Info (176355): Automatically promoted destinations to use location or clock signal Global Clock CLKCTRL_G1
+Info (176353): Automatically promoted node core_clk  File: /home/labeth/ws/open-sds1000cml-acq2/fpga/acq_sram/out/acquisition-path-probe/acquisition_path.v Line: 7
+    Info (176355): Automatically promoted destinations to use location or clock signal Global Clock
+Info (176353): Automatically promoted node ram_clk  File: /home/labeth/ws/open-sds1000cml-acq2/fpga/acq_sram/out/acquisition-path-probe/acquisition_path.v Line: 7
+    Info (176355): Automatically promoted destinations to use location or clock signal Global Clock
+Info (176353): Automatically promoted node host_clk  File: /home/labeth/ws/open-sds1000cml-acq2/fpga/acq_sram/out/acquisition-path-probe/acquisition_path.v Line: 7
+    Info (176355): Automatically promoted destinations to use location or clock signal Global Clock
+Info (176353): Automatically promoted node sample_clk  File: /home/labeth/ws/open-sds1000cml-acq2/fpga/acq_sram/out/acquisition-path-probe/acquisition_path.v Line: 7
+    Info (176355): Automatically promoted destinations to use location or clock signal Global Clock
+Info (176353): Automatically promoted node sram_board_capture_path:backend|sram_capture_engine:engine|sram_host_path:host|sram_host_ownership:ownership|hr[1]  File: /home/labeth/ws/open-sds1000cml-acq2/fpga/acq_sram/out/acquisition-path-probe/host_ownership.v Line: 22
+    Info (176355): Automatically promoted destinations to use location or clock signal Global Clock
+    Info (176356): Following destination nodes may be non-global or may not use global or regional clocks
+        Info (176357): Destination node sram_board_capture_path:backend|sram_capture_engine:engine|sram_host_path:host|sram_host_ownership:ownership|host_ready[0]~0 File: /home/labeth/ws/open-sds1000cml-acq2/fpga/acq_sram/out/acquisition-path-probe/host_ownership.v Line: 15
+        Info (176357): Destination node sram_board_capture_path:backend|sram_capture_engine:engine|sram_host_path:host|sram_host_ownership:ownership|host_ready[1]~1 File: /home/labeth/ws/open-sds1000cml-acq2/fpga/acq_sram/out/acquisition-path-probe/host_ownership.v Line: 15
+        Info (176357): Destination node sram_board_capture_path:backend|sram_capture_engine:engine|sram_host_path:host|sram_host_ownership:ownership|always4~2
+Info (176233): Starting register packing
+Info (176235): Finished register packing
+    Extra Info (176218): Packed 32 registers into blocks of type Block RAM
+Info (176214): Statistics of I/O pins that need to be placed that use the same VCCIO and VREF, before I/O pin placement
+    Info (176211): Number of I/O pins in group: 43 (unused VREF, 2.5V VCCIO, 0 input, 11 output, 32 bidirectional)
+        Info (176212): I/O standards used: 2.5 V.
+Info (176215): I/O bank details before I/O pin placement
+    Info (176214): Statistics of I/O banks
+        Info (176213): I/O bank number 1 does not use VREF pins and has undetermined VCCIO pins. 5 total pin(s) used --  12 pins available
+        Info (176213): I/O bank number 2 does not use VREF pins and has undetermined VCCIO pins. 0 total pin(s) used --  19 pins available
+        Info (176213): I/O bank number 3 does not use VREF pins and has undetermined VCCIO pins. 0 total pin(s) used --  26 pins available
+        Info (176213): I/O bank number 4 does not use VREF pins and has undetermined VCCIO pins. 0 total pin(s) used --  27 pins available
+        Info (176213): I/O bank number 5 does not use VREF pins and has undetermined VCCIO pins. 0 total pin(s) used --  25 pins available
+        Info (176213): I/O bank number 6 does not use VREF pins and has undetermined VCCIO pins. 1 total pin(s) used --  13 pins available
+        Info (176213): I/O bank number 7 does not use VREF pins and has undetermined VCCIO pins. 0 total pin(s) used --  26 pins available
+        Info (176213): I/O bank number 8 does not use VREF pins and has undetermined VCCIO pins. 0 total pin(s) used --  26 pins available
+Info (128000): Starting physical synthesis optimizations for speed
+Info (128001): Physical synthesis optimizations for speed complete: elapsed time is 00:00:03
+Info (171121): Fitter preparation operations ending: elapsed time is 00:00:13
+Info (14896): Fitter has disabled Advanced Physical Optimization because it is not supported for the current family.
+Info (170189): Fitter placement preparation operations beginning
+Error (170012): Fitter requires 646 LABs to implement the design, but the device contains only 645 LABs
+Info (170190): Fitter placement preparation operations ending: elapsed time is 00:00:08
+Info (11888): Total time spent on timing analysis during the Fitter is 0.20 seconds.
+Error (171000): Can't fit design in device
+Info (144001): Generated suppressed messages file /home/labeth/ws/open-sds1000cml-acq2/fpga/acq_sram/out/acquisition-path-probe/output_files/probe.fit.smsg
+Error: Quartus Prime Fitter was unsuccessful. 2 errors, 3 warnings
+    Error: Peak virtual memory: 711 megabytes
+    Error: Processing ended: Mon Sep 14 09:21:12 2026
+    Error: Elapsed time: 00:00:37
+    Error: Total CPU time (on all processors): 00:00:38
