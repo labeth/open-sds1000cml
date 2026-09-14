@@ -12,7 +12,20 @@ The continuous path retains both Q8.8 channels in each 32-bit word and targets
 including the complete 524288-word / 2 MiB SRAM range. No new bitstream has been
 deployed. The existing default image/app is not yet connected to this backend.
 
+`board_capture_path.v` additionally connects an external finite capture writer
+and the shared backend to the same physical transport. A core-clock reservation
+blocks new backend starts, waits for existing transfers and host bank ownership,
+and stays granted until the writer's physical transport drains. The exposed
+position counter retains its origin across handoffs. This is the integration
+boundary for the existing board writer; top.v has not yet been migrated.
+
 Current evidence:
+- `board-capture/tests.txt`: external 97-word finite write followed by exact
+  recall, plus the five shared-backend operations below, all without reset.
+  Checks writer exclusion while transfers/banks are owned, backend exclusion
+  during writer grant, early request release through physical drain, and the
+  preserved physical counter origin. No placement/IO qualification of this
+  new board wrapper has been performed.
 - `shared-capture/tests.txt`: engine and complete wrapper each pass five
   operations without reset: 5121-word finite read, 10003-word streaming capture
   with SRAM wrap, recall of its last 8192 words, 257-word second stream, and
