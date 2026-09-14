@@ -55,3 +55,9 @@ fault suite. Both result files hash the current RTL and testbench inputs.
 The ARM-side model issues one halfword per 100 MHz clock; these runs verify
 buffer/data correctness and are not GPMC throughput measurements. SRAM timing
 uses an ideal two-stage memory model. No new FPGA image has been deployed.
+
+Range validation is now pipelined: offset+length and the associated record
+operands are captured together before comparison. SNAPSHOT aligns validation
+with the accepted request. The result files above were refreshed on this RTL;
+their full-depth and fault coverage still passes. The shared-capture placed
+report now includes this producer, but timing remains failing.

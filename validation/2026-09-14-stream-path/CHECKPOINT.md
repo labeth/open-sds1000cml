@@ -1,54 +1,54 @@
-# SRAM streaming checkpoint — not a deployable image
+# Shared SRAM acquisition backend — not a deployable image
 
-The combined path joins nine-bank 125 MHz ingress RAM, a 250 MHz forward-address
-SRAM scheduler/transport, paired host buffering, and a 100 MHz host read port.
-The 32-bit word format preserves both channels' Q8.8 samples. It is intended
-for /256 and slower continuous transfer; faster finite capture remains separate.
+Current RTL connects continuous acquisition and frozen-record recall to one
+5120-word host buffer and one SRAM transport. `capture_engine.v` exposes the
+transport interface for board integration; `capture_path.v` includes it for
+simulation and placement. Mode selection is held until transfers and host bank
+ownership finish. Accepted settings pass through a launch stage, and finite
+range validation uses separate arithmetic/comparison stages.
 
-Evidence:
-- Host component seed 2: setup +0.009 ns, 20 M9Ks, 75 CDC audit groups pass.
-- Combined module: 38 M9Ks, about 51% of available logic; 120 CDC groups pass.
-- Original combined seed 2 setup -0.418 ns; active mailbox simplification -0.429 ns
-  with lower core TNS (-8.434 vs -10.926 ns). Timing closure remains required,
-  IO unconstrained. Current source hashes and tests: mailbox-payload-probe/.
-- Direct wrapper: 10003 words, four banks, SRAM wrap and actual RAM reads pass.
-- Physical AW=19 model: 65539 words, 26 banks, 10 ms ARM pause, four busy-bank
-  skips and 16 scan/drain overlaps pass. Peak ingress 4101/4608; unread 24437.
-- Odd tails, ownership reuse, fault propagation, overwrite rejection and reset
-  have component coverage; reports state the precise scope of each run.
+The continuous path retains both Q8.8 channels in each 32-bit word and targets
+/256 and slower. The finite reader preserves opaque raw or precision words,
+including the complete 524288-word / 2 MiB SRAM range. No new bitstream has been
+deployed. The existing default image/app is not yet connected to this backend.
 
-No new image has been deployed. Production work remaining includes integrated
-IO/CDC/timing closure, GPMC ABI and kernel support for 5120 host words, ARM/app
-continuous streaming, ADC/precision/trigger integration, trigger record geometry,
-and on-device electrical and sustained-throughput validation. The physical
-model run does not prove an entire SRAM-depth retained capture or hardware
-behavior. Rejected experiments are retained as evidence, not active RTL.
+Current evidence:
+- `shared-capture/tests.txt`: engine and complete wrapper each pass five
+  operations without reset: 5121-word finite read, 10003-word streaming capture
+  with SRAM wrap, recall of its last 8192 words, 257-word second stream, and
+  recall of its last word. Every host halfword is checked. Each run rejects ten
+  busy starts and incorrect release tokens, including a held final bank.
+- `shared-capture/start-tests.txt`: accepted address/length settings survive
+  immediate input changes; a pending second start is rejected; reset and later
+  stream launch pass.
+- `finite-recall/full-passed.txt`: all 524288 words recalled through 205 actual
+  host-buffer banks with an ideal SRAM model; frozen contents remain unchanged.
+- `finite-recall/passed.txt`: continuation and fresh-seek modes, offsets, empty
+  and invalid ranges, odd tails, repeated requests, host stalls and readback.
+  Fault tests cover host errors, lost freeze, short/extra read responses,
+  epoch recovery and waiting for the final host release.
+- `shared-capture/result.json`: 6109/10320 logic elements, 4813 registers and
+  38/46 M9Ks. All 120 CDC audit rows pass across three corners. Setup FAILS at
+  -1.096 ns; hold +0.145, recovery +0.559, removal +0.299, minimum pulse +1.513.
+  IO is unconstrained. ADC/precision and GPMC logic are excluded from this fit.
+  Worst setup path: mode selection into the stream ingress payload enable.
 
-The old packetizer test remains at sim/tb_stream_path.v. The new combined
-wrapper test is sim/tb_sram_stream_path.v; its recorded earlier hash is unchanged.
+Earlier physical-geometry streaming component evidence (65539 words, a 10 ms
+ARM pause, four skipped busy-bank scans and 16 overlaps) remains in the host-path
+validation directory. It is not a hardware qualification of the new shared top.
 
-The mailbox payload reset was removed independently of token reset. Eight
-clock ratio/phase cases, reset with valid high, both ingress stress suites and
-the direct wrapper pass. The unread counter toggle-mask experiment worsened
-timing and was reverted exactly; its reports remain in count-mask-probe/.
+Work still required for the full goal:
+- Connect the real 100 MHz ADC encode/five-phase 2x500 MS/s frontend, precision
+  processing, finite capture writer and frozen-record metadata to the shared
+  transport/host path; close the complete image's timing and physical IO limits.
+- Implement/version the GPMC ABI and kernel/app handling for 5120 host words,
+  continuous transfer, retained precision, timebase policy and ARM processing.
+- Integrate pre/post-trigger record geometry and extensible edge/UART/I2C/SPI
+  triggering with the shared acquisition modes.
+- Qualify ADC ordering, phase/read bias, continuation, complete capture depth,
+  sustained transfer and behavior under host stalls on the device. Simulation
+  readback and unconstrained placement do not prove these electrical properties.
 
-Current structure: stream_engine.v exposes an external transport interface;
-stream_path.v connects the existing transport without changing its public ports.
-External-engine-probe verifies the current source hashes, 10003-word wrapper
-readback, 38 M9Ks and all 120 CDC groups. Setup remains -0.429 ns. Default-image
-arbitration with finite capture and sharing the host write path remain to do.
-
-Latest structure: stream_engine.v also exposes its host write/metadata/release
-interface. One external host_path in stream_path.v provides the RAM. Current
-source/evidence is external-host-probe/: full wrapper readback and 120 CDC groups
-pass, unchanged 38 M9Ks and -0.429 ns setup. Finite recall/mode arbitration and
-all subsequent default-image/hardware requirements above remain unfinished.
-
-Finite recall producer added in finite_recall.v. It reads a frozen requested
-range through the same host interface, supports continuation or fresh seeks,
-retains faulted epochs until reset, and completes only after final host release.
-Finite-recall/full-passed.txt verifies all 524288 words / 2 MiB through 205 host
-banks using the actual host-buffer RTL and an ideal SRAM model. Both read modes,
-offsets, odd tails, empty/invalid requests and fault recovery have tests. This
-new producer has no placed timing qualification and is not yet selected by the
-default image's producer/transport arbitration. The full objective remains open.
+The original packetizer bench remains sim/tb_stream_path.v; the streaming
+wrapper bench is sim/tb_sram_stream_path.v. Historical experiments retain their
+own sources/results and must not be mistaken for current qualification.

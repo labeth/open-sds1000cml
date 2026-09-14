@@ -3,7 +3,9 @@
 from pathlib import Path
 import fcntl, hashlib, json, re, shutil, subprocess, sys
 root=Path(__file__).resolve().parents[2]
-out=root/'fpga/acq_sram/out/stream-path-probe'
+capture='--capture' in sys.argv
+top='sram_capture_path' if capture else 'sram_stream_path'
+out=root/'fpga/acq_sram/out'/('capture-path-probe' if capture else 'stream-path-probe')
 with open('/tmp/open-sds-quartus.lock','w') as lock:
  fcntl.flock(lock,fcntl.LOCK_EX)
  out.mkdir(parents=True,exist_ok=True)
@@ -11,6 +13,7 @@ with open('/tmp/open-sds-quartus.lock','w') as lock:
   shutil.rmtree(out/name,ignore_errors=True)
  (out/'result.json').unlink(missing_ok=True)
  names=('stream_path.v','stream_engine.v','ingress_path.v','ingress_fifo.v','ingress_stream.v','word_bridge.v','timeslice_controller.v','ordinal_counter.v','transport.v','host_path.v','host_packer.v','host_fifo.v','host_sink.v','host_ram.v','host_ownership.v')
+ if capture:names=('capture_path.v','capture_engine.v','finite_recall.v')+names[1:]
  bounded="--cdc" in sys.argv
  seed=int(sys.argv[sys.argv.index("--seed")+1]) if "--seed" in sys.argv else 1
  if seed<1:raise ValueError("seed must be positive")
@@ -28,7 +31,7 @@ set_global_assignment -name OPTIMIZATION_MODE "AGGRESSIVE PERFORMANCE"
 set_global_assignment -name PROJECT_OUTPUT_DIRECTORY output_files
 set_instance_assignment -name VIRTUAL_PIN ON -to *
 set_global_assignment -name SDC_FILE probe.sdc
-'''+''.join(f'set_global_assignment -name VERILOG_FILE {name}\n' for name in names))
+'''.replace('sram_stream_path',top)+''.join(f'set_global_assignment -name VERILOG_FILE {name}\n' for name in names))
  with (out/'probe.qsf').open('a') as f:f.write(f'set_global_assignment -name SEED {seed}\n')
  # No broad asynchronous cuts: cross-domain failures are expected until the
  # specific bundled-data/token constraints and endpoint audit are supplied.
@@ -48,7 +51,7 @@ set_false_path -from [get_ports reset]
  # mistakes before spending time on a placed netlist; this elaboration uses
  # the same frozen RTL plus the DDR primitive simulation declaration.
  (out/'ddr_model.v').write_bytes((root/'fpga/acq_sram/sim/ddr_model.v').read_bytes())
- subprocess.run(['iverilog','-g2012','-s','sram_stream_path','-o',str(out/'preflight.vvp'),
+ subprocess.run(['iverilog','-g2012','-s',top,'-o',str(out/'preflight.vvp'),
                  *[str(out/name) for name in names],str(out/'ddr_model.v')],check=True)
  print('interface preflight passed',flush=True)
  q=Path('/home/labeth/intelFPGA_lite/21.1/quartus/bin')
@@ -65,7 +68,7 @@ set_false_path -from [get_ports reset]
  fit=(out/'output_files/probe.fit.rpt').read_text(encoding='latin-1')
  blocks=re.search(r'; M9K(?:s| blocks)\s*;\s*(\d+)',fit)
  result={'qualification':'diagnostic only; IO unconstrained; CDC audit pending',
-         'seed':seed,'timing':timing,'m9k_blocks':int(blocks.group(1)) if blocks else None,'sources':hashes}
+         'top':top,'seed':seed,'timing':timing,'m9k_blocks':int(blocks.group(1)) if blocks else None,'sources':hashes}
  (out/'result.json').write_text(json.dumps(result,indent=2)+'\n')
  print(json.dumps(result,indent=2),flush=True)
  if bounded:
