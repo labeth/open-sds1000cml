@@ -1,5 +1,14 @@
 # Integrated acquisition core — fits, timing still fails
 
+Latest transport checkpoint: `transport-latched-validation/build` uses 9212 LEs,
+7723 registers, 44 M9Ks and 643/645 LABs. Validation uses the command already
+latched before VALIDATE, preserving latency and full count checks. 400000
+cycle oracle comparisons and composed acquisition pass. Setup -3.452 ns and
+recovery -5.689 ns still fail; the existing 135-row CDC audit passes. Worst
+setup is backend launch selection into finite-recall state.DRAIN. This
+supersedes the resource/timing figures below; physical qualification is pending.
+
+
 Latest host-RAM checkpoint: `host-narrow-read/explicit-build` uses 9222 LEs,
 7724 registers, 44 M9Ks and 643/645 LABs. Explicit mixed-width RAM saves
 118 LEs without reducing capacity. Standalone portable/vendor RAM tests and

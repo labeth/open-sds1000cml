@@ -1,0 +1,9 @@
+{"candidate": "32cb44b81218eaff818bf9f3338d54111cc4cfde05fea540538b4bd049cd4a67", "reference": "f24d6fd8d9878b0e4eb722b293cab5a06c380ef42c58e6becccc0156eec1bfae"}
+PASS transport equivalence: mode=0 AW=8, 100000 cycles, commands=810 offers=1091, stop/reset/lock transitions
+/tmp/acq-ready-equiv-17qjs6_a/tb.v:46: $finish called at 400000100 (1ps)
+PASS transport equivalence: mode=1 AW=8, 100000 cycles, commands=755 offers=1290, stop/reset/lock transitions
+/tmp/acq-ready-equiv-17qjs6_a/tb.v:46: $finish called at 400000100 (1ps)
+PASS transport equivalence: mode=0 AW=19, 100000 cycles, commands=699 offers=638, stop/reset/lock transitions
+/tmp/acq-ready-equiv-17qjs6_a/tb.v:46: $finish called at 400000100 (1ps)
+PASS transport equivalence: mode=1 AW=19, 100000 cycles, commands=619 offers=1089, stop/reset/lock transitions
+/tmp/acq-ready-equiv-17qjs6_a/tb.v:46: $finish called at 400000100 (1ps)
