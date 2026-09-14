@@ -1,0 +1,8 @@
+/home/labeth/ws/open-sds1000cml-acq2/fpga/acq_sram/out/profile-board-seed2/acquisition_source.v:28: warning: output port locked is coerced to inout.
+/home/labeth/ws/open-sds1000cml-acq2/fpga/acq_sram/out/profile-board-seed2/acquisition_path.v:101: warning: output port adc_locked is coerced to inout.
+/home/labeth/ws/open-sds1000cml-acq2/fpga/acq_sram/out/profile-board-seed2/profile_core.v:72: warning: output port adc_locked is coerced to inout.
+Interface/pin preflight passed: 160 unique pins; vendor primitives unresolved
+quartus_map
+quartus_fit
+quartus_sta
+Physical fit complete; inspect reports. No deployable image generated.

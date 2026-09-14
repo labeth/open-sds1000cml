@@ -1,0 +1,16 @@
+{
+  "qualification": "physical-pin diagnostic; ADC/SRAM/GPMC pad timing, reset and full CDC audit incomplete; no assembly",
+  "build_id": "ac166a68",
+  "timing": {
+    "setup": -6.775,
+    "hold": 0.134,
+    "recovery": -6.222,
+    "removal": 0.487,
+    "minimum_pulse": 1.513
+  },
+  "logic_elements": 8409,
+  "registers": 6988,
+  "labs": 627,
+  "m9k": 26,
+  "derived_clocks_checked": 8
+}
