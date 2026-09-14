@@ -19,7 +19,23 @@ and stays granted until the writer's physical transport drains. The exposed
 position counter retains its origin across handoffs. This is the integration
 boundary for the existing board writer; top.v has not yet been migrated.
 
+`finite_writer.v` now supplies pre/post-trigger record bookkeeping on that
+external writer interface. It drains priming writes before establishing the
+physical origin, preserves opaque 32-bit raw/precision data, and publishes the
+frozen record only after final drain. The existing ADC/GPMC top still needs to
+instantiate it and arbitrate its start against the shared backend. Its changed
+origin convention is simulation-checked only, not board-qualified.
+
 Current evidence:
+- `finite-capture/full-tests.txt`: all 524288 words / 2 MiB captured through the
+  real transport RTL at one word per simulated 250 MHz cycle, with SRAM wrap
+  before trigger; trigger index 524271, 17 post words. Every recalled halfword
+  passes through 205 actual host banks. Simulated SRAM and host timing are ideal.
+- `finite-capture/tests.txt`: eight operations without reset, including a full
+  8192-word ring trigger, sparse early-trigger handling, wrapped untriggered
+  halt, rejected invalid rearm, and subsequent stream/recall switching. The
+  same frozen source set passes startup/idle halt, lost-readiness fault,
+  rejected faulted rearm and coordinated reset recovery.
 - `board-capture/tests.txt`: external 97-word finite write followed by exact
   recall, plus the five shared-backend operations below, all without reset.
   Checks writer exclusion while transfers/banks are owned, backend exclusion
