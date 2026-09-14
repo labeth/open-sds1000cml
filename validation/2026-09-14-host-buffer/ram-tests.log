@@ -1,0 +1,3 @@
+source-sha256: {"fpga/acq_sram/host_ram.v": "9779d0040513cc724688b0c83a2fb73fb260e271d656e3d882dd1848f024bcad", "fpga/acq_sram/sim/tb_host_ram.v": "ed88f308847965bfc3ed1f3f3a2f0721ec7c0aa168f9748134d7fe6526bd46e0"}
+PASS host RAM: 30757 halfword responses, full range, disjoint concurrency, invalid addresses, resets
+/tmp/host-ram-test-q70nxnar/tb_host_ram.v:73: $finish called at 328470000 (1ps)

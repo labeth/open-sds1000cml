@@ -1,0 +1,11 @@
+{
+  "timing": {
+    "setup": 1.403,
+    "hold": 0.143,
+    "recovery": null,
+    "removal": null,
+    "minimum_pulse": 3.674
+  },
+  "m9k_blocks": 20,
+  "source_sha256": "9779d0040513cc724688b0c83a2fb73fb260e271d656e3d882dd1848f024bcad"
+}
