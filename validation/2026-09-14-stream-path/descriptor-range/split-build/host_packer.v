@@ -37,12 +37,8 @@ module sram_host_packer(
   bank_q<=word_bank;data_q<=word_data;index_q<=word_index;
   first0_q<=first0;first1_q<=first1;words0_q<=words0[11:0];words1_q<=words1[11:0];
  end
- // While fault is clear, count is at most 2560: it is reset to zero or
- // comes from a valid index (<2560) plus one. An invalid index faults on
- // the same edge that commits its count. Equality therefore enforces the
- // descriptor upper bound without a second magnitude comparator.
- wire [1:0] descriptor_legal={count_legal_q[1] && words1_q!=0 && words1_q==count[1],
-                              count_legal_q[0] && words0_q!=0 && words0_q==count[0]};
+ wire [1:0] descriptor_legal={count_legal_q[1] && words1_q!=0 && words1_q<=2560 && words1_q==count[1],
+                              count_legal_q[0] && words0_q!=0 && words0_q<=2560 && words0_q==count[0]};
  wire legal_word=index_legal_q && index_q==count[bank_q] && !pending[bank_q] && !done_q[bank_q];
  wire complete_pair=valid_q && legal_word && index_q[0];
  wire selected=pending[0] ? 1'b0 : 1'b1;

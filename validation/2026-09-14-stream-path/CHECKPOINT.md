@@ -1,14 +1,14 @@
 # Integrated acquisition core — fits, timing still fails
 
-Latest evidence: `encode-control/integrated-build` (source hashes, snapshots,
+Latest evidence: `idle-settings/balanced-build` (source hashes, snapshots,
 Quartus fit/STA and CDC audit). The real ADC/CIC acquisition core fits with
-9505/10320 LEs, 7706 registers, 44/46 M9Ks, and all 645 LABs used. GPMC board
+9328/10320 LEs, 7697 registers, 44/46 M9Ks, and 643/645 LABs used. GPMC board
 top is not included; nominal spare LEs do not establish integration headroom.
 
 All 135 existing backend, precision-config and new encode-control CDC rows
-pass. Setup remains -3.094 ns; recovery -5.569 ns. Hold +0.123 ns, removal
-+0.485 ns, minimum pulse +1.513 ns. Worst setup is selected_finite through
-host count selection into packer count_legal_q. Other ADC CDC/reset paths
+pass. Setup remains -3.969 ns; recovery -4.297 ns. Hold +0.136 ns, removal
++0.367 ns, minimum pulse +1.513 ns. Worst setup is backend control/fault
+through launch logic into finite writer state.PRIME_DRAIN. Other ADC CDC/reset paths
 and physical IO are unqualified. No image generated or deployed.
 
 ## Current architecture
@@ -54,3 +54,17 @@ precision, ARM processing/history and all-timebase behavior. Finish extensible
 protocol triggers, and hardware qualification of ADC order/aperture, SRAM
 read bias/continuation and full depth. No internal permanent scope writes.
 The current core and simulations do not complete those requirements.
+
+Latest descriptor-range and idle-settings follow-on: descriptor checks use
+nonzero/equality with a bounded expected count; idle data settings capture
+without acceptance/fault fan-in. Count invariant, 79463 packet-equivalence
+cycles and integration pass. Aggressive build exceeds capacity at 646 LABs.
+
+`idle-settings/balanced-build` FITS: 9328 LEs, 7697 registers, 44 M9Ks and
+643/645 LABs. All 135 CDC checks pass. Setup -3.969 ns, recovery -4.297 ns;
+worst path is backend control/fault into finite writer state.PRIME_DRAIN.
+Reproduce with build_probe.py --acquisition --cdc --balanced --seed 2.
+The default build optimization remains aggressive performance. This gives
+resource headroom but is not a qualified 250 MHz core. No deployment.
+Next: break launch/control paths into the finite writer and address ADC
+reset/CDC plus remaining data/control timing before board/GPMC integration.

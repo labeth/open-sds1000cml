@@ -19,6 +19,7 @@ integer checks=0,epoch,i,b,n;reg [31:0] rng=32'h8265bac7;
 always @(posedge clk)begin
  #0.1;
  if(push!==ref_push || fault!==ref_fault || (push && packet!==ref_packet))$fatal(1,"packer mismatch cycle=%0d",checks);
+ if(!reset && !fault && (dut.count[0]>2560 || dut.count[1]>2560))$fatal(1,"unfaulted count exceeds capacity");
  checks=checks+1;
 end
  task tick;begin @(negedge clk);rng=rng^(rng<<13);rng=rng^(rng>>17);rng=rng^(rng<<5);end endtask

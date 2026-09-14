@@ -1,0 +1,3 @@
+{"current": "1c22dee98f30dd170537ee99913fcb4c076c9bfae74b890fdbd49a432ff18f76", "reference": "1b50bb8cdc04ab693353f8311c034742a1109e16ea8f66471bb0dede850cd883", "bench": "ebdfb9f9e49bfc6e8e82bd6b3aef73996091a1ca989653775c6e4c30bde630c8"}
+PASS packer count forwarding: 79463 cycle comparisons, back-to-back banks, full/odd counts, bubbles, invalid offers and reset
+/tmp/acq-packer-count-ytln4f4a/tb.v:40: $finish called at 317852000 (1ps)

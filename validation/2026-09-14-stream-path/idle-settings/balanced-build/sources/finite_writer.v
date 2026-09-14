@@ -1,0 +1,93 @@
+// Finite pre/post-trigger capture client for sram_board_capture_path.
+// All signals are core-clock synchronous. capture_allowed must exclude an
+// active backend, outstanding host banks and another accepted start.
+// source_enable marks the acquisition interval; trigger accompanies its word.
+// source_fault is a synchronous frontend error; it invalidates the capture
+// through startup, final drain and frozen recall. Reset is the epoch boundary.
+// Data is opaque (raw packed pairs or both Q8.8 channels). No sample RAM here.
+// Prime writes are fully drained before recording the physical origin. The
+// resulting origin convention needs board qualification before deployment.
+module sram_finite_writer #(parameter AW=19,PRIME_WORDS=16)(
+ input wire clk,reset,start,capture_allowed,halt,
+ input wire [AW:0] pre_count,post_count,
+ input wire source_valid,source_fault,trigger,input wire [31:0] source_data,
+ output wire start_ready,active,source_enable,source_ready,
+ output reg frozen=0,fault=0,request_error=0,
+ output wire triggered,output wire [AW-1:0] record_start,
+ output wire [AW:0] record_words,trigger_index,
+ output wire writer_request,writer_command,writer_valid,writer_stop,
+ output wire [31:0] writer_data,
+ input wire writer_ready,writer_write_ready,
+ input wire [AW-1:0] position
+);
+ localparam IDLE=0,CLAIM=1,PRIME_START=2,PRIME=3,PRIME_DRAIN=4,
+            CAPTURE_START=5,SETUP=6,ARM=7,RUN=8,DRAIN=9;
+ reg [3:0] state=IDLE;
+ reg [AW:0] pre_l=0,post_l=1;
+ // Speculative idle capture: the accepted-start edge captures these inputs,
+ // and leaving IDLE holds them until ARM. Rejected starts may change these
+ // private registers, but cannot change the separate frozen record state.
+ always @(posedge clk)if(state==IDLE)begin pre_l<=pre_count;post_l<=post_count;end
+ reg halt_pending=0;
+ localparam PW=PRIME_WORDS>1 ? $clog2(PRIME_WORDS+1) : 1;
+ reg [PW-1:0] prime_left=0;
+ reg [AW-1:0] origin=0;
+ wire [AW+1:0] requested={1'b0,pre_count}+{1'b0,post_count};
+ wire geometry_ok=post_count!=0 && requested<=(1<<AW);
+ wire running,record_done,config_error;
+ wire [AW-1:0] logical_start,write_addr;
+ wire [AW:0] filled;
+ assign active=state!=IDLE;
+ assign start_ready=!reset && !active && !fault && !source_fault && capture_allowed;
+ assign writer_request=active;
+ assign writer_command=!source_fault && writer_ready && (state==PRIME_START || state==CAPTURE_START);
+ assign source_enable=state==RUN && running && !fault && !halt_pending && !source_fault && !reset;
+ assign source_ready=source_enable && writer_write_ready && !halt;
+ wire lost_word=source_enable && source_valid && !writer_write_ready;
+ wire abort_capture=halt || halt_pending || fault || source_fault || lost_word;
+ assign writer_valid=!reset && !source_fault && ((state==PRIME && writer_write_ready) ||
+                     (source_valid && source_ready));
+ assign writer_data=state==PRIME ? 32'b0 : source_data;
+ assign writer_stop=!(state==PRIME_START || state==PRIME ||
+                      state==CAPTURE_START || state==SETUP || state==ARM ||
+                      (state==RUN && running && !abort_capture));
+ assign record_start=origin+logical_start;
+ sram_record #(.AW(AW),.CONFIG_VALIDATED(1)) record(
+  .clk(clk),.reset(reset),.arm(state==ARM),.halt(state==RUN && abort_capture),
+  .pre_count(pre_l),.post_count(post_l),
+  .step(source_valid && source_ready),.trigger(trigger),
+  .running(running),.done(record_done),.triggered(triggered),.config_error(config_error),
+  .write_addr(write_addr),.record_start(logical_start),.record_length(record_words),
+  .trigger_index(trigger_index),.filled(filled));
+ always @(posedge clk)begin
+  request_error<=0;
+  if(reset)begin state<=IDLE;frozen<=0;fault<=0;request_error<=0;end
+  else begin
+   if(start && (!start_ready || !geometry_ok))request_error<=1;
+   if(active && halt)halt_pending<=1;
+   if(lost_word || config_error || (source_fault && (active || frozen)))begin fault<=1;frozen<=0;end
+   case(state)
+    IDLE:if(start && start_ready && geometry_ok)begin
+     frozen<=0;halt_pending<=0;state<=CLAIM;
+    end
+    CLAIM:if(writer_ready)begin
+     prime_left<=PRIME_WORDS;state<=PRIME_WORDS==0 ? CAPTURE_START : PRIME_START;
+    end
+    PRIME_START:if(writer_ready)state<=PRIME;
+    PRIME:if(writer_write_ready)begin
+     prime_left<=prime_left-1'b1;if(prime_left==1)state<=PRIME_DRAIN;
+    end
+    PRIME_DRAIN:if(writer_ready)state<=CAPTURE_START;
+    CAPTURE_START:if(writer_ready)begin origin<=position;state<=SETUP;end
+    SETUP:if(writer_write_ready)state<=ARM;
+    ARM:state<=RUN;
+    RUN:if(record_done || abort_capture)state<=DRAIN;
+    DRAIN:if(writer_ready)begin frozen<=!fault && !source_fault;state<=IDLE;end
+    default:begin state<=IDLE;fault<=1;frozen<=0;end
+   endcase
+   // Do not issue further priming/data writes after an upstream failure.
+   // Retain the transport reservation until any in-flight operation drains.
+   if(source_fault && active && state!=DRAIN)state<=DRAIN;
+  end
+ end
+endmodule

@@ -19,6 +19,7 @@ with open('/tmp/open-sds-quartus.lock','w') as lock:
   names=('acquisition_path.v','acquisition_source.v','acquisition_adc_pll.v','board_capture_path.v',
          'finite_writer.v','record.v','interleave.v','precision.v','precision_tail.v','ddio_pair.v','lane_in.v')+names
  bounded="--cdc" in sys.argv
+ optimization="BALANCED" if "--balanced" in sys.argv else "AGGRESSIVE PERFORMANCE"
  seed=int(sys.argv[sys.argv.index("--seed")+1]) if "--seed" in sys.argv else 1
  if seed<1:raise ValueError("seed must be positive")
  hashes={}
@@ -38,7 +39,7 @@ set_global_assignment -name OPTIMIZATION_MODE "AGGRESSIVE PERFORMANCE"
 set_global_assignment -name PROJECT_OUTPUT_DIRECTORY output_files
 set_instance_assignment -name VIRTUAL_PIN ON -to *
 set_global_assignment -name SDC_FILE probe.sdc
-'''.replace('sram_stream_path',top)+''.join(f'set_global_assignment -name VERILOG_FILE {name}\n' for name in names))
+'''.replace('sram_stream_path',top).replace('AGGRESSIVE PERFORMANCE',optimization)+''.join(f'set_global_assignment -name VERILOG_FILE {name}\n' for name in names))
  with (out/'probe.qsf').open('a') as f:f.write(f'set_global_assignment -name SEED {seed}\n')
  # No broad asynchronous cuts: cross-domain failures are expected until the
  # specific bundled-data/token constraints and endpoint audit are supplied.

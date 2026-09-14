@@ -56,14 +56,6 @@ module sram_acquisition_path #(parameter AW=19,READ_DELAY=0,CONTINUE_READS=1)(
  wire backend_start=stream_start || recall_start;
  assign record_frozen=finite_record && cfr && !fault;
  assign done=selected_operation==0 ? (record_frozen && !active) : bd;
- // Capture data settings speculatively while no producer/transport owner is
- // active. The accepted-start edge captures its inputs; active then holds
- // them. Idle updates cannot change the independently frozen record metadata.
- always @(posedge core_clk)if(!active)begin
-  decim_l<=decim_log;encode_l<=encode_enable;
-  trigger_mode_l<=trigger_mode;trigger_channel_l<=trigger_channel;
-  trigger_falling_l<=trigger_falling;trigger_level_l<=trigger_level;
- end
  always @(posedge core_clk)begin
   request_error<=start && !accept;
   if(reset)begin finite_record<=0;request_error<=0;selected_operation<=0;trigger_second<=0;end
@@ -72,7 +64,9 @@ module sram_acquisition_path #(parameter AW=19,READ_DELAY=0,CONTINUE_READS=1)(
    else if(stream_start)selected_operation<=1;
    else if(recall_start)selected_operation<=2;
    if(capture_start || stream_start)begin
-    finite_record<=capture_start;trigger_second<=0;
+    finite_record<=capture_start;decim_l<=decim_log;encode_l<=encode_enable;
+    trigger_mode_l<=trigger_mode;trigger_channel_l<=trigger_channel;
+    trigger_falling_l<=trigger_falling;trigger_level_l<=trigger_level;trigger_second<=0;
    end else if(ce && cr && capture_valid && trigger_event && !triggered)
     trigger_second<=capture_second;
   end
