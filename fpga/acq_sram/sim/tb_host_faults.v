@@ -71,6 +71,18 @@ module tb_host_faults;
   @(negedge c);done=1;@(negedge c);done=0;repeat(20)@(negedge h);
   if(cf || hf || ready!=1 || writes!=1)$fatal(1,"post-reset capture");
   read_check(0,16'hbabe);read_check(1,16'hcafe);
+  // A rejected descriptor may update the sink's private speculative payload,
+  // but must not replace the published ownership copy or generate a token.
+  @(negedge m);
+  force dut.fifo_valid=1'b1;
+  force dut.fifo_data={1'b1,1'b0,14'd2,64'hdeadbeef01234567};
+  @(posedge m);#1;
+  if(dut.sink.first0!==64'hdeadbeef01234567 || dut.publish)
+   $fatal(1,"speculative descriptor/publication boundary");
+  @(negedge m);release dut.fifo_valid;release dut.fifo_data;
+  expect_fault;
+  if(ready!=1 || f0!=123 || w0!=2 || rel || writes!=1)
+   $fatal(1,"rejected descriptor replaced owned metadata");
   $display("PASS host faults phase=%0d malformed input, owned-bank protection, fault CDC and reset recovery",PHASE);$finish;
  end
  initial begin #100000;$fatal(1,"timeout");end

@@ -1,0 +1,24 @@
+/home/labeth/ws/open-sds1000cml-acq2/fpga/acq_sram/out/profile-board-seed2/acquisition_source.v:28: warning: output port locked is coerced to inout.
+/home/labeth/ws/open-sds1000cml-acq2/fpga/acq_sram/out/profile-board-seed2/acquisition_path.v:101: warning: output port adc_locked is coerced to inout.
+/home/labeth/ws/open-sds1000cml-acq2/fpga/acq_sram/out/profile-board-seed2/profile_core.v:77: warning: output port adc_locked is coerced to inout.
+Interface/pin preflight passed: 160 unique pins; vendor primitives unresolved
+quartus_map
+quartus_fit
+quartus_sta
+{
+  "qualification": "physical-pin diagnostic; ADC/SRAM/GPMC pad timing, reset and full CDC audit incomplete; no assembly",
+  "build_id": "25f04128",
+  "derived_clocks_checked": 8,
+  "timing": {
+    "setup": -4.278,
+    "hold": 0.143,
+    "recovery": -4.605,
+    "removal": 0.489,
+    "minimum_pulse": 1.513
+  },
+  "logic_elements": 8404,
+  "registers": 7000,
+  "labs": 628,
+  "m9k": 26
+}
+Physical fit complete; inspect reports. No deployable image generated.

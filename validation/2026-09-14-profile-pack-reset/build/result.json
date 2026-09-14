@@ -1,0 +1,16 @@
+{
+  "qualification": "physical-pin diagnostic; ADC/SRAM/GPMC pad timing, reset and full CDC audit incomplete; no assembly",
+  "build_id": "e4100786",
+  "derived_clocks_checked": 8,
+  "timing": {
+    "setup": -4.812,
+    "hold": 0.131,
+    "recovery": -1.934,
+    "removal": 0.374,
+    "minimum_pulse": 1.513
+  },
+  "logic_elements": 8404,
+  "registers": 7000,
+  "labs": 630,
+  "m9k": 26
+}

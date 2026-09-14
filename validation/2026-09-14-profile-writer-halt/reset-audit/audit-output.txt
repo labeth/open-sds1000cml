@@ -1,0 +1,64 @@
+Info: *******************************************************************
+Info: Running Quartus Prime Timing Analyzer
+    Info: Version 21.1.0 Build 842 10/21/2021 SJ Lite Edition
+    Info: Copyright (C) 2021  Intel Corporation. All rights reserved.
+    Info: Your use of Intel Corporation's design tools, logic functions 
+    Info: and other software and tools, and any partner logic 
+    Info: functions, and any output files from any of the foregoing 
+    Info: (including device programming or simulation files), and any 
+    Info: associated documentation or information are expressly subject 
+    Info: to the terms and conditions of the Intel Program License 
+    Info: Subscription Agreement, the Intel Quartus Prime License Agreement,
+    Info: the Intel FPGA IP License Agreement, or other applicable license
+    Info: agreement, including, without limitation, that your use is for
+    Info: the sole purpose of programming logic devices manufactured by
+    Info: Intel and sold by Intel or its authorized distributors.  Please
+    Info: refer to the applicable agreement for further details, at
+    Info: https://fpgasoftware.intel.com/eula.
+    Info: Processing started: Mon Sep 14 14:36:56 2026
+Info: Command: quartus_sta -t /tmp/acq-front-reset.tcl
+Info (20032): Parallel compilation is enabled and will use up to 2 processors
+Info (21076): High junction temperature operating condition is not set. Assuming a default value of '85'.
+Info (21076): Low junction temperature operating condition is not set. Assuming a default value of '0'.
+Info (332164): Evaluating HDL-embedded SDC commands
+    Info (332165): Entity altpll_nmn1
+        Info (332166): set_false_path -from ** -to *phasedone_state* 
+        Info (332166): set_false_path -from ** -to *internal_phasestep* 
+    Info (332165): Entity dcfifo_t9i1
+        Info (332166): set_false_path -from *rdptr_g* -to *ws_dgrp|dffpipe_hd9:dffpipe9|dffe10a* 
+        Info (332166): set_false_path -from *delayed_wrptr_g* -to *rs_dgwp|dffpipe_gd9:dffpipe6|dffe7a* 
+    Info (332165): Entity dcfifo_ten1
+        Info (332166): set_false_path -from *rdptr_g* -to *ws_dgrp|dffpipe_fd9:dffpipe18|dffe19a* 
+        Info (332166): set_false_path -from *delayed_wrptr_g* -to *rs_dgwp|dffpipe_ed9:dffpipe15|dffe16a* 
+Warning (332174): Ignored filter at acq-front-reset.tcl(3): *phasedone_state* could not be matched with a clock or keeper or register or port or pin or cell or partition File: /tmp/acq-front-reset.tcl Line: 3
+Warning (332049): Ignored set_false_path at acq-front-reset.tcl(3): Argument <to> is not an object ID File: /tmp/acq-front-reset.tcl Line: 3
+    Info (332050): read_sdc File: /tmp/acq-front-reset.tcl Line: 3
+Warning (332174): Ignored filter at acq-front-reset.tcl(3): *internal_phasestep* could not be matched with a clock or keeper or register or port or pin or cell or partition File: /tmp/acq-front-reset.tcl Line: 3
+Warning (332049): Ignored set_false_path at acq-front-reset.tcl(3): Argument <to> is not an object ID File: /tmp/acq-front-reset.tcl Line: 3
+    Info (332050): read_sdc File: /tmp/acq-front-reset.tcl Line: 3
+Info (332104): Reading SDC File: 'profile.sdc'
+Info (332110): Deriving PLL clocks
+    Info (332110): create_generated_clock -source {clocks|pll|auto_generated|pll1|inclk[0]} -divide_by 2 -multiply_by 5 -duty_cycle 50.00 -name {clocks|pll|auto_generated|pll1|clk[0]} {clocks|pll|auto_generated|pll1|clk[0]}
+    Info (332110): create_generated_clock -source {clocks|pll|auto_generated|pll1|inclk[0]} -divide_by 2 -multiply_by 5 -phase 90.00 -duty_cycle 50.00 -name {clocks|pll|auto_generated|pll1|clk[1]} {clocks|pll|auto_generated|pll1|clk[1]}
+    Info (332110): create_generated_clock -source {clocks|pll|auto_generated|pll1|inclk[0]} -divide_by 4 -multiply_by 5 -duty_cycle 50.00 -name {clocks|pll|auto_generated|pll1|clk[2]} {clocks|pll|auto_generated|pll1|clk[2]}
+    Info (332110): create_generated_clock -source {profile|acquisition|source|frontend|clocks|p|auto_generated|pll1|inclk[0]} -phase 108.00 -duty_cycle 50.00 -name {profile|acquisition|source|frontend|clocks|p|auto_generated|pll1|clk[0]} {profile|acquisition|source|frontend|clocks|p|auto_generated|pll1|clk[0]}
+    Info (332110): create_generated_clock -source {profile|acquisition|source|frontend|clocks|p|auto_generated|pll1|inclk[0]} -phase 144.00 -duty_cycle 50.00 -name {profile|acquisition|source|frontend|clocks|p|auto_generated|pll1|clk[1]} {profile|acquisition|source|frontend|clocks|p|auto_generated|pll1|clk[1]}
+    Info (332110): create_generated_clock -source {profile|acquisition|source|frontend|clocks|p|auto_generated|pll1|inclk[0]} -phase 72.00 -duty_cycle 50.00 -name {profile|acquisition|source|frontend|clocks|p|auto_generated|pll1|clk[2]} {profile|acquisition|source|frontend|clocks|p|auto_generated|pll1|clk[2]}
+    Info (332110): create_generated_clock -source {profile|acquisition|source|frontend|clocks|p|auto_generated|pll1|inclk[0]} -duty_cycle 50.00 -name {profile|acquisition|source|frontend|clocks|p|auto_generated|pll1|clk[3]} {profile|acquisition|source|frontend|clocks|p|auto_generated|pll1|clk[3]}
+    Info (332110): create_generated_clock -source {profile|acquisition|source|frontend|clocks|p|auto_generated|pll1|inclk[0]} -phase 36.00 -duty_cycle 50.00 -name {profile|acquisition|source|frontend|clocks|p|auto_generated|pll1|clk[4]} {profile|acquisition|source|frontend|clocks|p|auto_generated|pll1|clk[4]}
+Info (332151): Clock uncertainty is not calculated until you update the timing netlist.
+Warning (332174): Ignored filter at stream_path_cdc.sdc(5): *incoming|* could not be matched with a register File: /home/labeth/ws/open-sds1000cml-acq2/fpga/acq_sram/out/profile-board-seed2/stream_path_cdc.sdc Line: 5
+Warning (332174): Ignored filter at stream_path_cdc.sdc(5): *outgoing|* could not be matched with a register File: /home/labeth/ws/open-sds1000cml-acq2/fpga/acq_sram/out/profile-board-seed2/stream_path_cdc.sdc Line: 5
+Warning (332174): Ignored filter at stream_path_cdc.sdc(5): *ingress|* could not be matched with a register File: /home/labeth/ws/open-sds1000cml-acq2/fpga/acq_sram/out/profile-board-seed2/stream_path_cdc.sdc Line: 5
+Info (332123): Deriving Clock Uncertainty. Please refer to report_sdc in the Timing Analyzer to see clock uncertainties.
+Info (332115): Report Timing: Found 4 recovery paths (4 violated).  Worst case slack is -1.903
+    Info (332115): -recovery
+    Info (332115): -npaths 4
+    Info (332115): -detail full_path
+    Info (332115): -file {/tmp/acq-front-recovery.rpt}
+Info (23030): Evaluation of Tcl script /tmp/acq-front-reset.tcl was successful
+Info: Quartus Prime Timing Analyzer was successful. 0 errors, 7 warnings
+    Info: Peak virtual memory: 491 megabytes
+    Info: Processing ended: Mon Sep 14 14:36:57 2026
+    Info: Elapsed time: 00:00:01
+    Info: Total CPU time (on all processors): 00:00:01

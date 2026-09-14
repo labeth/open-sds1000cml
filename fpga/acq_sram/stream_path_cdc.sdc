@@ -27,8 +27,12 @@ foreach bank {0 1} {
 }
 foreach name {ack1 pub1 rel1} {
  set points [host_checked_registers "*ownership|${name}*" 2]
- set_max_delay 4.0 -to $points
- set_min_delay 0.0 -to $points
+ # Bound the asynchronous token's D input, not the local reset input.
+ # Whole-register exceptions also change recovery requirements on clrn.
+ set data_pins [get_pins -compatibility_mode "*|ownership|${name}*|d"]
+ if {[get_collection_size $data_pins]!=2} {error "Ownership token data pins $name"}
+ set_max_delay 4.0 -to $data_pins
+ set_min_delay 0.0 -to $data_pins
 }
 # Sticky fault crossings: only first synchronizer stage gets an override.
 foreach name {source_bad_ram ram_bad_core bad_host} {

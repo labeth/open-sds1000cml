@@ -96,6 +96,34 @@ if {[get_collection_size $board_reset]!=1} {error "Missing board reset stretcher
 set reset_stages [get_registers {*profile|core_reset_sync* *profile|host_reset_sync* *commands|core_reset_sync* *commands|host_reset_sync* *commands|bridge|core_reset* *commands|bridge|host_reset* *commands|response|core_reset* *commands|response|host_reset*}]
 if {[get_collection_size $reset_stages]!=16} {error "Expected 16 profile reset synchronizer registers"}
 set_false_path -from $board_reset -to $reset_stages
+# Precision disable asserts asynchronously; three destination-clock stages
+# control release. Cut only their clear pins, never their D inputs or outputs.
+set precision_clear [get_pins -compatibility_mode {*|precision|enable_s*|clrn *|precision|pack_enable*|clrn}]
+if {[get_collection_size $precision_clear]!=6} {error "Expected six precision reset-release clear pins"}
+set_false_path -to $precision_clear
+# Fixed SYNC_ENCODE=1 frontend: seven warm-up stages and three pack stages.
+foreach {pattern expected} {
+ {*|frontend|enable_s*|clrn} 7
+ {*|frontend|pack_control.enable_s*|clrn} 3
+} {
+ set clear [get_pins -compatibility_mode $pattern]
+ if {[get_collection_size $clear]!=$expected} {error "Frontend reset-release pin count $pattern"}
+ set_false_path -to $clear
+}
+# Generated DCFIFO rdaclr/wraclr each contain two release registers. Their
+# outputs reset working FIFO state; those downstream paths stay timed.
+foreach fifo {frontend|queue precision|input_queue precision|output_queue} {
+ foreach domain {rdaclr wraclr} {
+  foreach stage {dffe12a dffe13a} {
+   set pattern [format {*|source|%s|auto_generated|%s|%s[0]|clrn} $fifo $domain $stage]
+   # Escape the bit index for Tcl string matching in compatibility mode.
+   set pattern [string map {[ \\[ ] \\]} $pattern]
+   set clear [get_pins -compatibility_mode $pattern]
+   if {[get_collection_size $clear]!=1} {error "Missing FIFO reset-release pin $pattern"}
+   set_false_path -to $clear
+  }
+ }
+}
 # Existing board GPMC combinational access budget; pad delays remain unqualified.
 set_max_delay 30.0 -from [get_ports {nCS1 nOE sel[*] gpmc_a2 gpmc_b1}] -to [get_ports {gpmc_d[*]}]
 # Held command/status bundles cross behind synchronized request tokens.
