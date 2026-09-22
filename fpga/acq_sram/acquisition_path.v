@@ -38,10 +38,23 @@ module sram_acquisition_path #(parameter ENABLE_STREAM=1,AW=19,READ_DELAY=0,CONT
  reg trigger_channel_l=0,trigger_falling_l=0,finite_record=0;
  reg [15:0] trigger_level_l=0;
  reg [4:0] decim_l=0;reg [9:0] encode_l=10'h3ff;
- wire [AW+1:0] requested={1'b0,pre_count}+{1'b0,post_count};
+ // Independent upper/lower sums keep the low carry off the upper adder.
+ wire capture_geometry;
+ generate if(AW>8)begin:geometry_split
+  wire [8:0] low_sum={1'b0,pre_count[7:0]}+{1'b0,post_count[7:0]};
+  wire [AW-7:0] high_sum={1'b0,pre_count[AW:8]}+{1'b0,post_count[AW:8]};
+  localparam [AW-7:0] LIMIT=1<<(AW-8);
+  wire low_zero=low_sum[7:0]==0;
+  wire fits_no_carry=high_sum<LIMIT || (high_sum==LIMIT && low_zero);
+  wire fits_carry=high_sum<LIMIT-1'b1 || (high_sum==LIMIT-1'b1 && low_zero);
+  assign capture_geometry=post_count!=0 && (low_sum[8] ? fits_carry : fits_no_carry);
+ end else begin:geometry_small
+  wire [AW+1:0] total={1'b0,pre_count}+{1'b0,post_count};
+  assign capture_geometry=post_count!=0 && total<=(1<<AW);
+ end endgenerate
  wire [AW+1:0] read_end={1'b0,offset}+{1'b0,length};
  wire decim_legal=decim_log==0 || (decim_log>=4 && decim_log<=20);
- wire capture_legal=decim_legal && trigger_mode!=3 && post_count!=0 && requested<=(1<<AW);
+ wire capture_legal=decim_legal && trigger_mode!=3 && capture_geometry;
  wire stream_legal=ENABLE_STREAM && decim_log>=8 && decim_log<=20;
  wire [AW:0] record_words_sampled;
  wire recall_legal=record_frozen && read_end<={1'b0,record_words_sampled};

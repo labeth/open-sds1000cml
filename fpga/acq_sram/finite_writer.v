@@ -33,8 +33,21 @@ module sram_finite_writer #(parameter AW=19,PRIME_WORDS=16)(
  localparam PW=PRIME_WORDS>1 ? $clog2(PRIME_WORDS+1) : 1;
  reg [PW-1:0] prime_left=0;
  reg [AW-1:0] origin=0;
- wire [AW+1:0] requested={1'b0,pre_count}+{1'b0,post_count};
- wire geometry_ok=post_count!=0 && requested<=(1<<AW);
+ // Independent upper/lower sums keep the low carry off the upper adder.
+ wire capture_geometry;
+ generate if(AW>8)begin:geometry_split
+  wire [8:0] low_sum={1'b0,pre_count[7:0]}+{1'b0,post_count[7:0]};
+  wire [AW-7:0] high_sum={1'b0,pre_count[AW:8]}+{1'b0,post_count[AW:8]};
+  localparam [AW-7:0] LIMIT=1<<(AW-8);
+  wire low_zero=low_sum[7:0]==0;
+  wire fits_no_carry=high_sum<LIMIT || (high_sum==LIMIT && low_zero);
+  wire fits_carry=high_sum<LIMIT-1'b1 || (high_sum==LIMIT-1'b1 && low_zero);
+  assign capture_geometry=post_count!=0 && (low_sum[8] ? fits_carry : fits_no_carry);
+ end else begin:geometry_small
+  wire [AW+1:0] total={1'b0,pre_count}+{1'b0,post_count};
+  assign capture_geometry=post_count!=0 && total<=(1<<AW);
+ end endgenerate
+ wire geometry_ok=capture_geometry;
  wire running,record_done,config_error;
  wire [AW-1:0] logical_start,write_addr;
  wire [AW:0] filled;
