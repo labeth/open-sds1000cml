@@ -70,13 +70,12 @@ function homeSpan(f) {
 }
 
 // The "home" window: the trigger-centered HARDWARE-timebase screen (grid =
-// tdiv_s/div), EXCEPT for a single/stopped capture where we show the WHOLE record
-// so you see the full shot and can zoom in.
+// tdiv_s/div), including stopped captures. Full SRAM recall must not silently
+// zoom out; the rest of the record remains accessible through navigation.
 function homeWindow(f) {
   if (!f) return { a: 0, b: 1 };
-  const stopped = st && !st.running;         // single shot / stopped: show it all
   let wf = homeSpan(f);
-  if (stopped || f.is_env) wf = 1;
+  if (f.is_env) wf = 1;
   const pf = (st && st.trig_pos_frac > 0 && st.trig_pos_frac < 1) ? st.trig_pos_frac : 0.5;
   const c = (f.edge_frac >= 0) ? f.edge_frac : 0.5; // matches server window() when EdgeX<0
   let a = c - wf * pf, b = c + wf * (1 - pf);

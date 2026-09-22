@@ -129,7 +129,7 @@ func compute[T ~uint8 | ~uint16](sig []T, voltsPerCode, offV, sampleS, scale flo
 	// Center moments on an exact sample code. Subtracting DC-sized moments
 	// otherwise loses small Q8.8 ripple when the record is nearly constant.
 	reference := int(sig[0])
-	var sum, sum2 float64
+	var sum, sum2 int64
 	hist := make([]int, int(256*scale))
 	for _, v := range sig {
 		iv := int(v)
@@ -139,14 +139,14 @@ func compute[T ~uint8 | ~uint16](sig []T, voltsPerCode, offV, sampleS, scale flo
 		if iv > cmax {
 			cmax = iv
 		}
-		delta := float64(iv - reference)
+		delta := int64(iv - reference)
 		sum += delta
 		sum2 += delta * delta
 		hist[iv]++
 	}
-	meanDelta := sum / float64(n)
+	meanDelta := float64(sum) / float64(n)
 	mean := float64(reference) + meanDelta
-	variance := sum2/float64(n) - meanDelta*meanDelta
+	variance := float64(sum2)/float64(n) - meanDelta*meanDelta
 	if variance < 0 {
 		variance = 0
 	}
@@ -193,14 +193,52 @@ func compute[T ~uint8 | ~uint16](sig []T, voltsPerCode, offV, sampleS, scale flo
 
 	// 50% crossings drive period/duty (interpolated for sub-sample accuracy).
 	var riseIdx, fallIdx []float64
+	// Confirm a complete transition through a Schmitt band; small midpoint
+	// recrossings must not turn a single noisy edge into multiple periods.
+	hyst := math.Max(scale, .05*(top-base))
+	midCode := int(math.Ceil(mid50))
+	lowCode := int(math.Floor(mid50 - hyst))
+	highCode := int(math.Ceil(mid50 + hyst))
+	state := 0
+	candidate := -1.0
+	if int(sig[0]) <= lowCode {
+		state = -1
+	}
+	if int(sig[0]) >= highCode {
+		state = 1
+	}
 	for i := 1; i < n; i++ {
-		a, b := float64(sig[i-1]), float64(sig[i])
-		if a < mid50 && b >= mid50 {
-			riseIdx = append(riseIdx, interp(a, b, i, mid50))
-		} else if a >= mid50 && b < mid50 {
-			fallIdx = append(fallIdx, interp(a, b, i, mid50))
+		a, b := int(sig[i-1]), int(sig[i])
+		if state == 0 {
+			if b <= lowCode {
+				state = -1
+			}
+			if b >= highCode {
+				state = 1
+			}
+			continue
+		}
+		if state < 0 {
+			if a < midCode && b >= midCode {
+				candidate = interp(float64(a), float64(b), i, mid50)
+			}
+			if b >= highCode && candidate >= 0 {
+				riseIdx = append(riseIdx, candidate)
+				state = 1
+				candidate = -1
+			}
+		} else {
+			if a >= midCode && b < midCode {
+				candidate = interp(float64(a), float64(b), i, mid50)
+			}
+			if b <= lowCode && candidate >= 0 {
+				fallIdx = append(fallIdx, candidate)
+				state = -1
+				candidate = -1
+			}
 		}
 	}
+
 	if len(riseIdx) >= 2 {
 		period := (riseIdx[len(riseIdx)-1] - riseIdx[0]) / float64(len(riseIdx)-1) * sampleS
 		if period > 0 {
@@ -290,27 +328,29 @@ func avgWidth(from, to []float64) float64 {
 // a downward edge (first=hi90, second=lo10).
 func firstEdge[T ~uint8 | ~uint16](sig []T, first, second float64, rising bool) (float64, float64, bool) {
 	n := len(sig)
+	firstUp, firstDown := int(math.Ceil(first)), int(math.Floor(first))
+	secondUp, secondDown := int(math.Ceil(second)), int(math.Floor(second))
 	for i := 1; i < n; i++ {
-		a, b := float64(sig[i-1]), float64(sig[i])
-		crossedFirst := (rising && a < first && b >= first) || (!rising && a > first && b <= first)
+		a, b := int(sig[i-1]), int(sig[i])
+		crossedFirst := (rising && a < firstUp && b >= firstUp) || (!rising && a > firstDown && b <= firstDown)
 		if !crossedFirst {
 			continue
 		}
-		t1 := interp(a, b, i, first)
+		t1 := interp(float64(a), float64(b), i, first)
 		// Start at j=i so an edge faster than one sample (both thresholds crossed
 		// in the same interval) still yields an interpolated, sub-sample rise/fall.
 		for j := i; j < n; j++ {
-			c, d := float64(sig[j-1]), float64(sig[j])
+			c, d := int(sig[j-1]), int(sig[j])
 			// Abort this candidate if the edge reverses before reaching second.
-			if rising && d < first {
+			if rising && d < firstUp {
 				break
 			}
-			if !rising && d > first {
+			if !rising && d > firstDown {
 				break
 			}
-			crossedSecond := (rising && c < second && d >= second) || (!rising && c > second && d <= second)
+			crossedSecond := (rising && c < secondUp && d >= secondUp) || (!rising && c > secondDown && d <= secondDown)
 			if crossedSecond {
-				return t1, interp(c, d, j, second), true
+				return t1, interp(float64(c), float64(d), j, second), true
 			}
 		}
 	}

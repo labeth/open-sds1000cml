@@ -9,32 +9,34 @@ import (
 )
 
 type frameReply struct {
-	Q1, Q2       []uint16 `json:"-"`
-	FractionBits uint8    `json:"fraction_bits,omitempty"`
-	Decimation   uint32   `json:"decimation,omitempty"`
-	BandwidthHz  float64  `json:"bandwidth_hz,omitempty"`
-	FilterGuard  int      `json:"filter_guard,omitempty"`
-	Filter       string   `json:"filter,omitempty"`
-	CaptureDepth int      `json:"capture_depth,omitempty"`
-	TriggerKind  string   `json:"trigger_kind,omitempty"`
-	Seq          uint64   `json:"seq"`
-	Unchanged    bool     `json:"unchanged,omitempty"`
-	C1           []int16  `json:"c1,omitempty"`
-	C2           []int16  `json:"c2,omitempty"`
-	IsEnv        bool     `json:"is_env,omitempty"`
-	E1Min        []int16  `json:"e1min,omitempty"`
-	E1Max        []int16  `json:"e1max,omitempty"`
-	E2Min        []int16  `json:"e2min,omitempty"`
-	E2Max        []int16  `json:"e2max,omitempty"`
-	EdgeX        float64  `json:"edge_x"`
-	Ptp          int      `json:"ptp"`
-	TdivS        float64  `json:"tdiv_s"`
-	DisplayedS   float64  `json:"displayed_sdiv_s"`
-	Interp       bool     `json:"interp"`
-	Norm         bool     `json:"norm"`
-	Trigd        bool     `json:"trigd"`
-	Coherent     bool     `json:"coherent"`
-	Degraded     bool     `json:"degraded,omitempty"` // native-fast dead tail survived retries: half-capture
+	NoiseGainIdeal float64  `json:"noise_gain_ideal,omitempty"`
+	PassbandHz     float64  `json:"passband_hz,omitempty"`
+	Q1, Q2         []uint16 `json:"-"`
+	FractionBits   uint8    `json:"fraction_bits,omitempty"`
+	Decimation     uint32   `json:"decimation,omitempty"`
+	BandwidthHz    float64  `json:"bandwidth_hz,omitempty"`
+	FilterGuard    int      `json:"filter_guard,omitempty"`
+	Filter         string   `json:"filter,omitempty"`
+	CaptureDepth   int      `json:"capture_depth,omitempty"`
+	TriggerKind    string   `json:"trigger_kind,omitempty"`
+	Seq            uint64   `json:"seq"`
+	Unchanged      bool     `json:"unchanged,omitempty"`
+	C1             []int16  `json:"c1,omitempty"`
+	C2             []int16  `json:"c2,omitempty"`
+	IsEnv          bool     `json:"is_env,omitempty"`
+	E1Min          []int16  `json:"e1min,omitempty"`
+	E1Max          []int16  `json:"e1max,omitempty"`
+	E2Min          []int16  `json:"e2min,omitempty"`
+	E2Max          []int16  `json:"e2max,omitempty"`
+	EdgeX          float64  `json:"edge_x"`
+	Ptp            int      `json:"ptp"`
+	TdivS          float64  `json:"tdiv_s"`
+	DisplayedS     float64  `json:"displayed_sdiv_s"`
+	Interp         bool     `json:"interp"`
+	Norm           bool     `json:"norm"`
+	Trigd          bool     `json:"trigd"`
+	Coherent       bool     `json:"coherent"`
+	Degraded       bool     `json:"degraded,omitempty"` // native-fast dead tail survived retries: half-capture
 
 	// Scale factors the client uses for cursors/FFT/XY/measurements.
 	Cols     int     `json:"cols"`       // number of columns returned per trace
@@ -243,8 +245,9 @@ func (s *Server) buildReply(f *engine.Frame, cols int, full bool, since uint64, 
 		}
 	}
 	rep := frameReply{
-		Seq:         f.Seq,
-		BandwidthHz: f.BandwidthHz, FilterGuard: f.FilterGuard, Filter: f.Filter, Decimation: f.Decimation, CaptureDepth: f.CaptureDepth, TriggerKind: f.TriggerKind,
+		Seq:            f.Seq,
+		SampleS:        f.SampleS,
+		NoiseGainIdeal: f.NoiseGainIdeal, PassbandHz: f.PassbandHz, BandwidthHz: f.BandwidthHz, FilterGuard: f.FilterGuard, Filter: f.Filter, Decimation: f.Decimation, CaptureDepth: f.CaptureDepth, TriggerKind: f.TriggerKind,
 		EdgeX:      f.EdgeX,
 		Ptp:        f.Ptp,
 		TdivS:      f.TdivS,

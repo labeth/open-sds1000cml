@@ -1,0 +1,1724 @@
+[
+  {
+    "name": "raw",
+    "header": {
+      "fraction_bits": 8,
+      "decimation": 1,
+      "filter": "interleave offset calibration (phase checked)",
+      "capture_depth": 1048576,
+      "trigger_kind": "hardware-edge",
+      "seq": 4055,
+      "edge_x": 1506,
+      "ptp": 74,
+      "tdiv_s": 5e-07,
+      "displayed_sdiv_s": 5e-07,
+      "interp": false,
+      "norm": true,
+      "trigd": true,
+      "coherent": true,
+      "cols": 3012,
+      "col_span_s": 6.024e-06,
+      "edge_frac": -1,
+      "win_frac": 1,
+      "window_ns": 6024,
+      "gap_ns": 12748760,
+      "vpc1": 0.08,
+      "vpc2": 0.08,
+      "off1_v": 0,
+      "off2_v": 0,
+      "sample_s": 2e-09
+    },
+    "samples": [
+      {
+        "seq": 3653,
+        "rms_codes": [
+          0.5489418666305652,
+          0.6093715121681031
+        ],
+        "ptp_codes": [
+          73.578125,
+          77.0
+        ],
+        "frequency": 1000000.8470982871,
+        "n": 2948
+      },
+      {
+        "seq": 3686,
+        "rms_codes": [
+          0.5580605567817939,
+          0.6051924132568753
+        ],
+        "ptp_codes": [
+          73.578125,
+          77.8515625
+        ],
+        "frequency": 1000030.040939018,
+        "n": 2948
+      },
+      {
+        "seq": 3719,
+        "rms_codes": [
+          0.5709590900042874,
+          0.604772725360515
+        ],
+        "ptp_codes": [
+          73.4375,
+          78.0
+        ],
+        "frequency": 1000056.7867478287,
+        "n": 2948
+      },
+      {
+        "seq": 3753,
+        "rms_codes": [
+          0.5377747149622122,
+          0.6055072638719802
+        ],
+        "ptp_codes": [
+          74.20703125,
+          77.7890625
+        ],
+        "frequency": 1000086.065766075,
+        "n": 2948
+      },
+      {
+        "seq": 3787,
+        "rms_codes": [
+          0.5421843095714663,
+          0.5992968485165924
+        ],
+        "ptp_codes": [
+          74.20703125,
+          77.7890625
+        ],
+        "frequency": 999988.9150242902,
+        "n": 2948
+      },
+      {
+        "seq": 3826,
+        "rms_codes": [
+          0.5528749800206161,
+          0.6076431088102286
+        ],
+        "ptp_codes": [
+          74.4375,
+          78.0
+        ],
+        "frequency": 1000085.4502102912,
+        "n": 2948
+      },
+      {
+        "seq": 3858,
+        "rms_codes": [
+          0.5433463495284837,
+          0.6080332981606982
+        ],
+        "ptp_codes": [
+          74.20703125,
+          77.359375
+        ],
+        "frequency": 1000013.4901606636,
+        "n": 2948
+      },
+      {
+        "seq": 3890,
+        "rms_codes": [
+          0.5643464019868106,
+          0.6055625517481222
+        ],
+        "ptp_codes": [
+          74.20703125,
+          77.0
+        ],
+        "frequency": 1000039.8362392534,
+        "n": 2948
+      },
+      {
+        "seq": 3923,
+        "rms_codes": [
+          0.5617678248529495,
+          0.6075496990239926
+        ],
+        "ptp_codes": [
+          74.20703125,
+          77.0
+        ],
+        "frequency": 1000049.2121629686,
+        "n": 2948
+      },
+      {
+        "seq": 3960,
+        "rms_codes": [
+          0.5397802113687313,
+          0.5901031564020144
+        ],
+        "ptp_codes": [
+          74.20703125,
+          77.0
+        ],
+        "frequency": 1000091.1977773068,
+        "n": 2948
+      },
+      {
+        "seq": 3996,
+        "rms_codes": [
+          0.5596606786968182,
+          0.605905843836674
+        ],
+        "ptp_codes": [
+          74.20703125,
+          78.0
+        ],
+        "frequency": 1000040.5247624059,
+        "n": 2948
+      },
+      {
+        "seq": 4055,
+        "rms_codes": [
+          0.5404256164585884,
+          0.6091319850114846
+        ],
+        "ptp_codes": [
+          73.578125,
+          78.0
+        ],
+        "frequency": 1000054.4937384163,
+        "n": 2948
+      }
+    ],
+    "median_rms_codes": [
+      0.5509084233255906,
+      0.6057341977923981
+    ],
+    "input_in_passband": true,
+    "note": "Harmonic fit residual includes noise and distortion; slow /256 suppresses the 1 MHz input, so noise floor only."
+  },
+  {
+    "name": "r16",
+    "header": {
+      "fraction_bits": 8,
+      "decimation": 16,
+      "bandwidth_hz": 4206033.409536725,
+      "filter_guard": 31,
+      "filter": "CIC3 + compensated FIR; block average 1/1 (waveform aligned)",
+      "capture_depth": 524288,
+      "trigger_kind": "hardware-edge",
+      "seq": 4157,
+      "edge_x": 140,
+      "ptp": 70,
+      "tdiv_s": 5e-07,
+      "displayed_sdiv_s": 5e-07,
+      "interp": true,
+      "norm": true,
+      "trigd": true,
+      "coherent": true,
+      "cols": 284,
+      "col_span_s": 9.088e-06,
+      "edge_frac": -1,
+      "win_frac": 1,
+      "window_ns": 9088,
+      "gap_ns": 17582120,
+      "vpc1": 0.08,
+      "vpc2": 0.08,
+      "off1_v": 0,
+      "off2_v": 0,
+      "sample_s": 3.2e-08
+    },
+    "samples": [
+      {
+        "seq": 4145,
+        "rms_codes": [
+          0.059177388625377254,
+          0.04570525129525377
+        ],
+        "ptp_codes": [
+          69.61328125,
+          72.84375
+        ],
+        "frequency": 1000085.1193577778,
+        "n": 220
+      },
+      {
+        "seq": 4146,
+        "rms_codes": [
+          0.0562639708189567,
+          0.04419120815385382
+        ],
+        "ptp_codes": [
+          69.44921875,
+          72.66796875
+        ],
+        "frequency": 999989.864492319,
+        "n": 220
+      },
+      {
+        "seq": 4147,
+        "rms_codes": [
+          0.06658304952946174,
+          0.07361481588950557
+        ],
+        "ptp_codes": [
+          69.734375,
+          72.84765625
+        ],
+        "frequency": 1000084.3979939702,
+        "n": 220
+      },
+      {
+        "seq": 4148,
+        "rms_codes": [
+          0.05974785967870559,
+          0.07040810383541939
+        ],
+        "ptp_codes": [
+          69.5078125,
+          72.6640625
+        ],
+        "frequency": 1000023.7483055018,
+        "n": 220
+      },
+      {
+        "seq": 4149,
+        "rms_codes": [
+          0.0676069845530216,
+          0.08248190232144711
+        ],
+        "ptp_codes": [
+          69.51953125,
+          72.6328125
+        ],
+        "frequency": 1000047.2722575122,
+        "n": 220
+      },
+      {
+        "seq": 4150,
+        "rms_codes": [
+          0.05116317767046215,
+          0.060308941600615895
+        ],
+        "ptp_codes": [
+          69.6171875,
+          72.90234375
+        ],
+        "frequency": 1000032.6370798433,
+        "n": 220
+      },
+      {
+        "seq": 4151,
+        "rms_codes": [
+          0.057854914255206724,
+          0.04228659089761883
+        ],
+        "ptp_codes": [
+          69.52734375,
+          72.69140625
+        ],
+        "frequency": 1000030.5045370098,
+        "n": 220
+      },
+      {
+        "seq": 4152,
+        "rms_codes": [
+          0.051955438255346396,
+          0.04683313942929345
+        ],
+        "ptp_codes": [
+          69.4453125,
+          72.57421875
+        ],
+        "frequency": 1000018.8858003849,
+        "n": 220
+      },
+      {
+        "seq": 4154,
+        "rms_codes": [
+          0.05952242364932623,
+          0.058830935330161906
+        ],
+        "ptp_codes": [
+          69.58203125,
+          72.56640625
+        ],
+        "frequency": 999993.3556362548,
+        "n": 220
+      },
+      {
+        "seq": 4155,
+        "rms_codes": [
+          0.06366131194747779,
+          0.052361227988089634
+        ],
+        "ptp_codes": [
+          69.5078125,
+          72.64453125
+        ],
+        "frequency": 1000083.2038920246,
+        "n": 220
+      },
+      {
+        "seq": 4156,
+        "rms_codes": [
+          0.06718601355613607,
+          0.05421133087689806
+        ],
+        "ptp_codes": [
+          69.55859375,
+          72.71875
+        ],
+        "frequency": 1000008.4564692748,
+        "n": 220
+      },
+      {
+        "seq": 4157,
+        "rms_codes": [
+          0.06565074535176163,
+          0.07547579085629548
+        ],
+        "ptp_codes": [
+          69.52734375,
+          72.65234375
+        ],
+        "frequency": 1000080.0971641326,
+        "n": 220
+      }
+    ],
+    "median_rms_codes": [
+      0.059635141664015914,
+      0.056521133103529984
+    ],
+    "input_in_passband": true,
+    "note": "Harmonic fit residual includes noise and distortion; slow /256 suppresses the 1 MHz input, so noise floor only."
+  },
+  {
+    "name": "r16avg4",
+    "header": {
+      "fraction_bits": 8,
+      "decimation": 16,
+      "bandwidth_hz": 4206033.409536725,
+      "filter_guard": 31,
+      "filter": "CIC3 + compensated FIR; block average 4/4 (waveform aligned)",
+      "capture_depth": 524288,
+      "trigger_kind": "hardware-edge",
+      "seq": 4250,
+      "edge_x": 139.6,
+      "ptp": 70,
+      "tdiv_s": 5e-07,
+      "displayed_sdiv_s": 5e-07,
+      "interp": true,
+      "norm": true,
+      "trigd": true,
+      "coherent": true,
+      "cols": 283,
+      "col_span_s": 9.056000000000001e-06,
+      "edge_frac": -1,
+      "win_frac": 1,
+      "window_ns": 9088,
+      "gap_ns": 8450120,
+      "vpc1": 0.08,
+      "vpc2": 0.08,
+      "off1_v": 0,
+      "off2_v": 0,
+      "sample_s": 3.2e-08
+    },
+    "samples": [
+      {
+        "seq": 4194,
+        "rms_codes": [
+          0.03403154818912968,
+          0.035081126095495775
+        ],
+        "ptp_codes": [
+          69.44140625,
+          72.57421875
+        ],
+        "frequency": 1000058.4888339816,
+        "n": 219
+      },
+      {
+        "seq": 4198,
+        "rms_codes": [
+          0.02819919902951367,
+          0.02852950069500965
+        ],
+        "ptp_codes": [
+          69.4140625,
+          72.58203125
+        ],
+        "frequency": 1000036.3570296781,
+        "n": 220
+      },
+      {
+        "seq": 4202,
+        "rms_codes": [
+          0.0230435392346555,
+          0.026960213167801176
+        ],
+        "ptp_codes": [
+          69.48828125,
+          72.640625
+        ],
+        "frequency": 1000061.5455479384,
+        "n": 219
+      },
+      {
+        "seq": 4206,
+        "rms_codes": [
+          0.028892310922611585,
+          0.024013541850482906
+        ],
+        "ptp_codes": [
+          69.265625,
+          72.37109375
+        ],
+        "frequency": 1000030.1526379593,
+        "n": 219
+      },
+      {
+        "seq": 4210,
+        "rms_codes": [
+          0.02955467232258405,
+          0.03195357733754138
+        ],
+        "ptp_codes": [
+          69.3984375,
+          72.6328125
+        ],
+        "frequency": 1000053.6698838742,
+        "n": 219
+      },
+      {
+        "seq": 4218,
+        "rms_codes": [
+          0.03149082417017171,
+          0.029128383552283078
+        ],
+        "ptp_codes": [
+          69.390625,
+          72.60546875
+        ],
+        "frequency": 1000032.0723618481,
+        "n": 219
+      },
+      {
+        "seq": 4222,
+        "rms_codes": [
+          0.026308518496439344,
+          0.02607191022191089
+        ],
+        "ptp_codes": [
+          69.29296875,
+          72.375
+        ],
+        "frequency": 1000055.372652402,
+        "n": 219
+      },
+      {
+        "seq": 4230,
+        "rms_codes": [
+          0.026210218602840216,
+          0.03278907561130067
+        ],
+        "ptp_codes": [
+          69.5,
+          72.6328125
+        ],
+        "frequency": 1000037.5842994935,
+        "n": 219
+      },
+      {
+        "seq": 4234,
+        "rms_codes": [
+          0.03108473742304963,
+          0.028993305416100443
+        ],
+        "ptp_codes": [
+          69.44140625,
+          72.65625
+        ],
+        "frequency": 1000049.6929040229,
+        "n": 220
+      },
+      {
+        "seq": 4242,
+        "rms_codes": [
+          0.034713617135043125,
+          0.027467604612860966
+        ],
+        "ptp_codes": [
+          69.39453125,
+          72.55859375
+        ],
+        "frequency": 1000034.3808652818,
+        "n": 219
+      },
+      {
+        "seq": 4246,
+        "rms_codes": [
+          0.03037456005831947,
+          0.034360398274969665
+        ],
+        "ptp_codes": [
+          69.47265625,
+          72.61328125
+        ],
+        "frequency": 1000040.9886755825,
+        "n": 219
+      },
+      {
+        "seq": 4250,
+        "rms_codes": [
+          0.032595403213330515,
+          0.03178269120076306
+        ],
+        "ptp_codes": [
+          69.34765625,
+          72.4765625
+        ],
+        "frequency": 1000023.1685793267,
+        "n": 219
+      }
+    ],
+    "median_rms_codes": [
+      0.029964616190451758,
+      0.02906084448419176
+    ],
+    "input_in_passband": true,
+    "note": "Harmonic fit residual includes noise and distortion; slow /256 suppresses the 1 MHz input, so noise floor only."
+  },
+  {
+    "name": "r32",
+    "header": {
+      "fraction_bits": 8,
+      "decimation": 32,
+      "bandwidth_hz": 2102788.435157315,
+      "filter_guard": 31,
+      "filter": "CIC3 + compensated FIR; block average 1/1 (waveform aligned)",
+      "capture_depth": 524288,
+      "trigger_kind": "hardware-edge",
+      "seq": 4353,
+      "edge_x": 844.1666666666666,
+      "ptp": 68,
+      "tdiv_s": 1e-05,
+      "displayed_sdiv_s": 1e-05,
+      "interp": false,
+      "norm": true,
+      "trigd": true,
+      "coherent": true,
+      "cols": 1691,
+      "col_span_s": 0.00010822400000000001,
+      "edge_frac": -1,
+      "win_frac": 1,
+      "window_ns": 108224,
+      "gap_ns": 17870040,
+      "vpc1": 0.08,
+      "vpc2": 0.08,
+      "off1_v": 0,
+      "off2_v": 0,
+      "sample_s": 6.4e-08
+    },
+    "samples": [
+      {
+        "seq": 4278,
+        "rms_codes": [
+          0.06042354970787854,
+          0.060231477226587095
+        ],
+        "ptp_codes": [
+          63.59765625,
+          66.40234375
+        ],
+        "frequency": 1000040.9343141746,
+        "n": 1627
+      },
+      {
+        "seq": 4284,
+        "rms_codes": [
+          0.06411115227843085,
+          0.07354153105622578
+        ],
+        "ptp_codes": [
+          63.5625,
+          66.453125
+        ],
+        "frequency": 1000039.5859610009,
+        "n": 1627
+      },
+      {
+        "seq": 4291,
+        "rms_codes": [
+          0.06640370086788781,
+          0.057608553098541314
+        ],
+        "ptp_codes": [
+          63.65234375,
+          66.46875
+        ],
+        "frequency": 1000041.9991710382,
+        "n": 1627
+      },
+      {
+        "seq": 4298,
+        "rms_codes": [
+          0.061261413775993916,
+          0.0676488090016752
+        ],
+        "ptp_codes": [
+          63.6171875,
+          66.5390625
+        ],
+        "frequency": 1000040.9637523943,
+        "n": 1627
+      },
+      {
+        "seq": 4304,
+        "rms_codes": [
+          0.060676261338379466,
+          0.06665149209447513
+        ],
+        "ptp_codes": [
+          63.59375,
+          66.390625
+        ],
+        "frequency": 1000040.5900183084,
+        "n": 1627
+      },
+      {
+        "seq": 4309,
+        "rms_codes": [
+          0.060615419038962386,
+          0.06098407678451886
+        ],
+        "ptp_codes": [
+          63.62890625,
+          66.50390625
+        ],
+        "frequency": 1000040.8352121424,
+        "n": 1627
+      },
+      {
+        "seq": 4314,
+        "rms_codes": [
+          0.05901548172241557,
+          0.06669737851160776
+        ],
+        "ptp_codes": [
+          63.59375,
+          66.390625
+        ],
+        "frequency": 1000039.6802679212,
+        "n": 1627
+      },
+      {
+        "seq": 4323,
+        "rms_codes": [
+          0.057668476177725886,
+          0.06203969897040582
+        ],
+        "ptp_codes": [
+          63.5234375,
+          66.35546875
+        ],
+        "frequency": 1000040.5763488933,
+        "n": 1627
+      },
+      {
+        "seq": 4330,
+        "rms_codes": [
+          0.06483918186973012,
+          0.06669277966998764
+        ],
+        "ptp_codes": [
+          63.59765625,
+          66.4921875
+        ],
+        "frequency": 1000039.6011039424,
+        "n": 1627
+      },
+      {
+        "seq": 4338,
+        "rms_codes": [
+          0.06958484986752488,
+          0.06318688060375267
+        ],
+        "ptp_codes": [
+          63.546875,
+          66.390625
+        ],
+        "frequency": 1000038.958455105,
+        "n": 1627
+      },
+      {
+        "seq": 4345,
+        "rms_codes": [
+          0.06106533580095769,
+          0.05671405230038319
+        ],
+        "ptp_codes": [
+          63.58203125,
+          66.30859375
+        ],
+        "frequency": 1000039.3677725877,
+        "n": 1627
+      },
+      {
+        "seq": 4353,
+        "rms_codes": [
+          0.059500294713083754,
+          0.05585659818812455
+        ],
+        "ptp_codes": [
+          63.53515625,
+          66.3671875
+        ],
+        "frequency": 1000039.536193318,
+        "n": 1627
+      }
+    ],
+    "median_rms_codes": [
+      0.06087079856966858,
+      0.06261328978707925
+    ],
+    "input_in_passband": true,
+    "note": "Harmonic fit residual includes noise and distortion; slow /256 suppresses the 1 MHz input, so noise floor only."
+  },
+  {
+    "name": "r256",
+    "header": {
+      "fraction_bits": 8,
+      "decimation": 256,
+      "bandwidth_hz": 262839.1916018247,
+      "filter_guard": 31,
+      "filter": "CIC3 + compensated FIR; block average 1/1 (waveform aligned)",
+      "capture_depth": 524288,
+      "trigger_kind": "hardware-edge",
+      "seq": 4384,
+      "edge_x": 29.5,
+      "ptp": 15,
+      "tdiv_s": 0.0001,
+      "displayed_sdiv_s": 0.0001,
+      "interp": false,
+      "norm": true,
+      "trigd": true,
+      "coherent": true,
+      "cols": 2081,
+      "col_span_s": 0.001065472,
+      "edge_frac": -1,
+      "win_frac": 1,
+      "window_ns": 1065472,
+      "gap_ns": 35568760,
+      "vpc1": 0.08,
+      "vpc2": 0.08,
+      "off1_v": 0,
+      "off2_v": 0,
+      "sample_s": 5.12e-07
+    },
+    "samples": [
+      {
+        "seq": 4373,
+        "rms_codes": [
+          0.056541330320774984,
+          0.058704674768332736
+        ],
+        "ptp_codes": [
+          0.3359375,
+          0.33984375
+        ],
+        "frequency": null,
+        "n": 2017
+      },
+      {
+        "seq": 4374,
+        "rms_codes": [
+          0.04799779746011571,
+          0.05363543967162719
+        ],
+        "ptp_codes": [
+          0.28125,
+          0.3359375
+        ],
+        "frequency": null,
+        "n": 2017
+      },
+      {
+        "seq": 4375,
+        "rms_codes": [
+          0.051001160047689585,
+          0.05169322899930541
+        ],
+        "ptp_codes": [
+          0.3125,
+          0.2890625
+        ],
+        "frequency": null,
+        "n": 2017
+      },
+      {
+        "seq": 4376,
+        "rms_codes": [
+          0.05157694652479198,
+          0.05977338185597073
+        ],
+        "ptp_codes": [
+          0.30859375,
+          0.3359375
+        ],
+        "frequency": null,
+        "n": 2017
+      },
+      {
+        "seq": 4377,
+        "rms_codes": [
+          0.04657620762759552,
+          0.056262793578938694
+        ],
+        "ptp_codes": [
+          0.3125,
+          0.32421875
+        ],
+        "frequency": null,
+        "n": 2017
+      },
+      {
+        "seq": 4378,
+        "rms_codes": [
+          0.06008994059537941,
+          0.060536208233912835
+        ],
+        "ptp_codes": [
+          0.34765625,
+          0.359375
+        ],
+        "frequency": null,
+        "n": 2017
+      },
+      {
+        "seq": 4379,
+        "rms_codes": [
+          0.04853563217910534,
+          0.05610161109789302
+        ],
+        "ptp_codes": [
+          0.28125,
+          0.36328125
+        ],
+        "frequency": null,
+        "n": 2017
+      },
+      {
+        "seq": 4380,
+        "rms_codes": [
+          0.04309307885110129,
+          0.049929216490242664
+        ],
+        "ptp_codes": [
+          0.2734375,
+          0.32421875
+        ],
+        "frequency": null,
+        "n": 2017
+      },
+      {
+        "seq": 4381,
+        "rms_codes": [
+          0.04631459460511025,
+          0.05982383254822231
+        ],
+        "ptp_codes": [
+          0.30078125,
+          0.328125
+        ],
+        "frequency": null,
+        "n": 2017
+      },
+      {
+        "seq": 4382,
+        "rms_codes": [
+          0.0531732645622127,
+          0.05200086441677974
+        ],
+        "ptp_codes": [
+          0.3203125,
+          0.34765625
+        ],
+        "frequency": null,
+        "n": 2017
+      },
+      {
+        "seq": 4383,
+        "rms_codes": [
+          0.05490801424667409,
+          0.056379588827171014
+        ],
+        "ptp_codes": [
+          0.32421875,
+          0.296875
+        ],
+        "frequency": null,
+        "n": 2017
+      },
+      {
+        "seq": 4384,
+        "rms_codes": [
+          0.04721686047307253,
+          0.05193255295402829
+        ],
+        "ptp_codes": [
+          0.30078125,
+          0.2890625
+        ],
+        "frequency": null,
+        "n": 2017
+      }
+    ],
+    "median_rms_codes": [
+      0.049768396113397464,
+      0.05618220233841586
+    ],
+    "input_in_passband": false,
+    "note": "Harmonic fit residual includes noise and distortion; slow /256 suppresses the 1 MHz input, so noise floor only."
+  },
+  {
+    "name": "r256avg4",
+    "header": {
+      "fraction_bits": 8,
+      "decimation": 256,
+      "bandwidth_hz": 262839.1916018247,
+      "filter_guard": 31,
+      "filter": "CIC3 + compensated FIR; block average 4/4 (waveform aligned)",
+      "capture_depth": 524288,
+      "trigger_kind": "hardware-edge",
+      "seq": 4465,
+      "edge_x": 29.4,
+      "ptp": 15,
+      "tdiv_s": 0.0001,
+      "displayed_sdiv_s": 0.0001,
+      "interp": false,
+      "norm": true,
+      "trigd": true,
+      "coherent": true,
+      "cols": 2081,
+      "col_span_s": 0.001065472,
+      "edge_frac": -1,
+      "win_frac": 1,
+      "window_ns": 1065472,
+      "gap_ns": 17355840,
+      "vpc1": 0.08,
+      "vpc2": 0.08,
+      "off1_v": 0,
+      "off2_v": 0,
+      "sample_s": 5.12e-07
+    },
+    "samples": [
+      {
+        "seq": 4389,
+        "rms_codes": [
+          0.018779547705015505,
+          0.022389250754790105
+        ],
+        "ptp_codes": [
+          0.125,
+          0.15234375
+        ],
+        "frequency": null,
+        "n": 2017
+      },
+      {
+        "seq": 4397,
+        "rms_codes": [
+          0.022785484368413825,
+          0.030586829631546904
+        ],
+        "ptp_codes": [
+          0.16015625,
+          0.1875
+        ],
+        "frequency": null,
+        "n": 2017
+      },
+      {
+        "seq": 4409,
+        "rms_codes": [
+          0.023403104507916155,
+          0.032428325244155114
+        ],
+        "ptp_codes": [
+          0.1328125,
+          0.19140625
+        ],
+        "frequency": null,
+        "n": 2017
+      },
+      {
+        "seq": 4413,
+        "rms_codes": [
+          0.01930206627255611,
+          0.02316594116316124
+        ],
+        "ptp_codes": [
+          0.1171875,
+          0.15234375
+        ],
+        "frequency": null,
+        "n": 2017
+      },
+      {
+        "seq": 4421,
+        "rms_codes": [
+          0.02269761626999452,
+          0.02343314714412029
+        ],
+        "ptp_codes": [
+          0.15234375,
+          0.15625
+        ],
+        "frequency": null,
+        "n": 2017
+      },
+      {
+        "seq": 4425,
+        "rms_codes": [
+          0.01946912641218458,
+          0.02273806209096643
+        ],
+        "ptp_codes": [
+          0.1328125,
+          0.1484375
+        ],
+        "frequency": null,
+        "n": 2017
+      },
+      {
+        "seq": 4429,
+        "rms_codes": [
+          0.02226401576307299,
+          0.025521329937037873
+        ],
+        "ptp_codes": [
+          0.14453125,
+          0.1640625
+        ],
+        "frequency": null,
+        "n": 2017
+      },
+      {
+        "seq": 4441,
+        "rms_codes": [
+          0.021997531434187083,
+          0.025925270513449263
+        ],
+        "ptp_codes": [
+          0.13671875,
+          0.16796875
+        ],
+        "frequency": null,
+        "n": 2017
+      },
+      {
+        "seq": 4449,
+        "rms_codes": [
+          0.020887856266639585,
+          0.0252876446940557
+        ],
+        "ptp_codes": [
+          0.125,
+          0.14453125
+        ],
+        "frequency": null,
+        "n": 2017
+      },
+      {
+        "seq": 4453,
+        "rms_codes": [
+          0.021752767022331594,
+          0.025591356037432105
+        ],
+        "ptp_codes": [
+          0.12890625,
+          0.15625
+        ],
+        "frequency": null,
+        "n": 2017
+      },
+      {
+        "seq": 4457,
+        "rms_codes": [
+          0.0215386607588123,
+          0.023659910257850254
+        ],
+        "ptp_codes": [
+          0.12890625,
+          0.14453125
+        ],
+        "frequency": null,
+        "n": 2017
+      },
+      {
+        "seq": 4465,
+        "rms_codes": [
+          0.0244385550597407,
+          0.027754171480304776
+        ],
+        "ptp_codes": [
+          0.1328125,
+          0.16796875
+        ],
+        "frequency": null,
+        "n": 2017
+      }
+    ],
+    "median_rms_codes": [
+      0.02187514922825934,
+      0.025404487315546787
+    ],
+    "input_in_passband": false,
+    "note": "Harmonic fit residual includes noise and distortion; slow /256 suppresses the 1 MHz input, so noise floor only."
+  },
+  {
+    "name": "r16avg16",
+    "header": {
+      "fraction_bits": 8,
+      "decimation": 16,
+      "bandwidth_hz": 4206033.409536725,
+      "filter_guard": 31,
+      "filter": "CIC3 + compensated FIR; block average 16/16 (waveform aligned)",
+      "capture_depth": 524288,
+      "trigger_kind": "hardware-edge",
+      "seq": 5285,
+      "edge_x": 139.4,
+      "ptp": 70,
+      "tdiv_s": 5e-07,
+      "displayed_sdiv_s": 5e-07,
+      "interp": true,
+      "norm": true,
+      "trigd": true,
+      "coherent": true,
+      "cols": 283,
+      "col_span_s": 9.056000000000001e-06,
+      "edge_frac": -1,
+      "win_frac": 1,
+      "window_ns": 9088,
+      "gap_ns": 6874960,
+      "vpc1": 0.08,
+      "vpc2": 0.08,
+      "off1_v": 0,
+      "off2_v": 0,
+      "sample_s": 3.2e-08
+    },
+    "samples": [
+      {
+        "seq": 5061,
+        "rms_codes": [
+          0.013353141593001692,
+          0.014773118290215324
+        ],
+        "ptp_codes": [
+          69.3046875,
+          72.4453125
+        ],
+        "frequency": 1000036.2620805859,
+        "n": 219
+      },
+      {
+        "seq": 5093,
+        "rms_codes": [
+          0.01450955809691289,
+          0.014067876870089528
+        ],
+        "ptp_codes": [
+          69.3515625,
+          72.484375
+        ],
+        "frequency": 1000046.7356813791,
+        "n": 219
+      },
+      {
+        "seq": 5109,
+        "rms_codes": [
+          0.01604866371196609,
+          0.012681529254087047
+        ],
+        "ptp_codes": [
+          69.15234375,
+          72.2421875
+        ],
+        "frequency": 1000050.1210409875,
+        "n": 219
+      },
+      {
+        "seq": 5125,
+        "rms_codes": [
+          0.012475683552063783,
+          0.013574528714929332
+        ],
+        "ptp_codes": [
+          69.19921875,
+          72.30078125
+        ],
+        "frequency": 1000045.6257120386,
+        "n": 219
+      },
+      {
+        "seq": 5141,
+        "rms_codes": [
+          0.015032336485954742,
+          0.014514506351400527
+        ],
+        "ptp_codes": [
+          69.28125,
+          72.3984375
+        ],
+        "frequency": 1000035.6635064259,
+        "n": 220
+      },
+      {
+        "seq": 5157,
+        "rms_codes": [
+          0.019123075669720362,
+          0.01665825567445871
+        ],
+        "ptp_codes": [
+          69.20703125,
+          72.3203125
+        ],
+        "frequency": 1000031.7497247976,
+        "n": 219
+      },
+      {
+        "seq": 5173,
+        "rms_codes": [
+          0.014686067443055015,
+          0.015146622953076996
+        ],
+        "ptp_codes": [
+          69.24609375,
+          72.43359375
+        ],
+        "frequency": 1000036.6293141961,
+        "n": 219
+      },
+      {
+        "seq": 5189,
+        "rms_codes": [
+          0.01669237553568519,
+          0.01501893613092319
+        ],
+        "ptp_codes": [
+          69.3671875,
+          72.5234375
+        ],
+        "frequency": 1000054.4118399307,
+        "n": 219
+      },
+      {
+        "seq": 5205,
+        "rms_codes": [
+          0.012099051066672547,
+          0.014491163587108054
+        ],
+        "ptp_codes": [
+          69.31640625,
+          72.46484375
+        ],
+        "frequency": 1000032.2704082017,
+        "n": 220
+      },
+      {
+        "seq": 5221,
+        "rms_codes": [
+          0.01654079271694604,
+          0.015767812133031425
+        ],
+        "ptp_codes": [
+          69.3125,
+          72.4453125
+        ],
+        "frequency": 1000036.4316328326,
+        "n": 219
+      },
+      {
+        "seq": 5237,
+        "rms_codes": [
+          0.01332486105056656,
+          0.014695629693039348
+        ],
+        "ptp_codes": [
+          69.31640625,
+          72.45703125
+        ],
+        "frequency": 1000039.5657774251,
+        "n": 219
+      },
+      {
+        "seq": 5285,
+        "rms_codes": [
+          0.017677091107528978,
+          0.016126401897807948
+        ],
+        "ptp_codes": [
+          69.33203125,
+          72.4609375
+        ],
+        "frequency": 1000034.9271156283,
+        "n": 219
+      }
+    ],
+    "median_rms_codes": [
+      0.014859201964504878,
+      0.014734373991627336
+    ],
+    "input_in_passband": true,
+    "note": "Harmonic fit residual includes noise and distortion; slow /256 suppresses the 1 MHz input, so noise floor only."
+  },
+  {
+    "name": "r32avg16",
+    "header": {
+      "fraction_bits": 8,
+      "decimation": 32,
+      "bandwidth_hz": 2102788.435157315,
+      "filter_guard": 31,
+      "filter": "CIC3 + compensated FIR; block average 16/16 (waveform aligned)",
+      "capture_depth": 524288,
+      "trigger_kind": "hardware-edge",
+      "seq": 5488,
+      "edge_x": 843.25,
+      "ptp": 68,
+      "tdiv_s": 1e-05,
+      "displayed_sdiv_s": 1e-05,
+      "interp": false,
+      "norm": true,
+      "trigd": true,
+      "coherent": true,
+      "cols": 1690,
+      "col_span_s": 0.00010816000000000001,
+      "edge_frac": -1,
+      "win_frac": 1,
+      "window_ns": 108224,
+      "gap_ns": 36500560,
+      "vpc1": 0.08,
+      "vpc2": 0.08,
+      "off1_v": 0,
+      "off2_v": 0,
+      "sample_s": 6.4e-08
+    },
+    "samples": [
+      {
+        "seq": 5312,
+        "rms_codes": [
+          0.014903566113177405,
+          0.01616678901634587
+        ],
+        "ptp_codes": [
+          62.90625,
+          65.6796875
+        ],
+        "frequency": 1000039.9155481475,
+        "n": 1626
+      },
+      {
+        "seq": 5328,
+        "rms_codes": [
+          0.015621384429101626,
+          0.017702196764861945
+        ],
+        "ptp_codes": [
+          63.0234375,
+          65.86328125
+        ],
+        "frequency": 1000039.9170141454,
+        "n": 1626
+      },
+      {
+        "seq": 5344,
+        "rms_codes": [
+          0.01486130242319956,
+          0.01523826008669962
+        ],
+        "ptp_codes": [
+          63.234375,
+          66.046875
+        ],
+        "frequency": 1000040.0307564719,
+        "n": 1626
+      },
+      {
+        "seq": 5360,
+        "rms_codes": [
+          0.01782238705430485,
+          0.01866730962360847
+        ],
+        "ptp_codes": [
+          63.10546875,
+          65.89453125
+        ],
+        "frequency": 1000039.923950675,
+        "n": 1626
+      },
+      {
+        "seq": 5376,
+        "rms_codes": [
+          0.016831076679023366,
+          0.016622537488930608
+        ],
+        "ptp_codes": [
+          62.87109375,
+          65.66796875
+        ],
+        "frequency": 1000040.151856865,
+        "n": 1626
+      },
+      {
+        "seq": 5392,
+        "rms_codes": [
+          0.013753341038138042,
+          0.01591868995205574
+        ],
+        "ptp_codes": [
+          63.046875,
+          65.85546875
+        ],
+        "frequency": 1000039.9593593888,
+        "n": 1626
+      },
+      {
+        "seq": 5408,
+        "rms_codes": [
+          0.015602413250910805,
+          0.016280014107371482
+        ],
+        "ptp_codes": [
+          63.015625,
+          65.828125
+        ],
+        "frequency": 1000040.0179664374,
+        "n": 1626
+      },
+      {
+        "seq": 5424,
+        "rms_codes": [
+          0.014693225381548151,
+          0.0172749987038198
+        ],
+        "ptp_codes": [
+          62.98828125,
+          65.82421875
+        ],
+        "frequency": 1000040.2649706014,
+        "n": 1626
+      },
+      {
+        "seq": 5440,
+        "rms_codes": [
+          0.015198517773874987,
+          0.015992276470393058
+        ],
+        "ptp_codes": [
+          63.0078125,
+          65.8125
+        ],
+        "frequency": 1000040.473803232,
+        "n": 1626
+      },
+      {
+        "seq": 5456,
+        "rms_codes": [
+          0.014474086077332604,
+          0.0159835676385603
+        ],
+        "ptp_codes": [
+          62.99609375,
+          65.796875
+        ],
+        "frequency": 1000040.0575710309,
+        "n": 1627
+      },
+      {
+        "seq": 5472,
+        "rms_codes": [
+          0.014593842832897868,
+          0.015298579942663062
+        ],
+        "ptp_codes": [
+          62.98828125,
+          65.796875
+        ],
+        "frequency": 1000039.7907595364,
+        "n": 1626
+      },
+      {
+        "seq": 5488,
+        "rms_codes": [
+          0.01519995422793569,
+          0.01589861291333044
+        ],
+        "ptp_codes": [
+          63.0546875,
+          65.86328125
+        ],
+        "frequency": 1000040.0139260115,
+        "n": 1626
+      }
+    ],
+    "median_rms_codes": [
+      0.015051041943526196,
+      0.016079532743369464
+    ],
+    "input_in_passband": true,
+    "note": "Harmonic fit residual includes noise and distortion; slow /256 suppresses the 1 MHz input, so noise floor only."
+  },
+  {
+    "name": "r256avg16",
+    "header": {
+      "fraction_bits": 8,
+      "decimation": 256,
+      "bandwidth_hz": 262839.1916018247,
+      "filter_guard": 31,
+      "filter": "CIC3 + compensated FIR; block average 6/16 (waveform aligned)",
+      "capture_depth": 524288,
+      "trigger_kind": "hardware-edge",
+      "seq": 5621,
+      "edge_x": 29.428571428571427,
+      "ptp": 15,
+      "tdiv_s": 0.0001,
+      "displayed_sdiv_s": 0.0001,
+      "interp": false,
+      "norm": true,
+      "trigd": true,
+      "coherent": true,
+      "cols": 2081,
+      "col_span_s": 0.001065472,
+      "edge_frac": -1,
+      "win_frac": 1,
+      "window_ns": 1065472,
+      "gap_ns": 19672320,
+      "vpc1": 0.08,
+      "vpc2": 0.08,
+      "off1_v": 0,
+      "off2_v": 0,
+      "sample_s": 5.12e-07
+    },
+    "samples": [],
+    "median_rms_codes": null,
+    "input_in_passband": false,
+    "note": "No complete 16-capture block observed within 35 seconds; out-of-band 1 MHz input does not provide reliable triggering."
+  },
+  {
+    "name": "r16avg64",
+    "header": {
+      "noise_gain_ideal": 61.57660312086614,
+      "passband_hz": 2343750,
+      "fraction_bits": 8,
+      "decimation": 16,
+      "bandwidth_hz": 4206033.409536725,
+      "filter_guard": 31,
+      "filter": "CIC3 + compensated FIR; block average 64/64 (waveform aligned)",
+      "capture_depth": 524288,
+      "trigger_kind": "hardware-edge",
+      "seq": 3912,
+      "edge_x": 139.6,
+      "ptp": 70,
+      "tdiv_s": 5e-07,
+      "displayed_sdiv_s": 5e-07,
+      "interp": true,
+      "norm": true,
+      "trigd": true,
+      "coherent": true,
+      "cols": 283,
+      "col_span_s": 9.056000000000001e-06,
+      "edge_frac": -1,
+      "win_frac": 1,
+      "window_ns": 9088,
+      "gap_ns": 17924920,
+      "vpc1": 0.08,
+      "vpc2": 0.08,
+      "off1_v": 0,
+      "off2_v": 0,
+      "sample_s": 3.2e-08
+    },
+    "samples": [
+      {
+        "seq": 3592,
+        "rms_codes": [
+          0.007192536495405443,
+          0.007748371655253969
+        ],
+        "ptp_codes": [
+          69.296875,
+          72.4375
+        ],
+        "frequency": 1000040.7824734976,
+        "n": 219
+      },
+      {
+        "seq": 3656,
+        "rms_codes": [
+          0.007151901336011605,
+          0.007152884754637341
+        ],
+        "ptp_codes": [
+          69.28515625,
+          72.40234375
+        ],
+        "frequency": 1000037.312296065,
+        "n": 219
+      },
+      {
+        "seq": 3720,
+        "rms_codes": [
+          0.008327053962591086,
+          0.006722946265671407
+        ],
+        "ptp_codes": [
+          69.32421875,
+          72.46484375
+        ],
+        "frequency": 1000037.5861636067,
+        "n": 219
+      },
+      {
+        "seq": 3784,
+        "rms_codes": [
+          0.006818306077480873,
+          0.007643264533455998
+        ],
+        "ptp_codes": [
+          69.328125,
+          72.47265625
+        ],
+        "frequency": 1000045.0165537184,
+        "n": 219
+      },
+      {
+        "seq": 3848,
+        "rms_codes": [
+          0.0076935398211347384,
+          0.006579797906868483
+        ],
+        "ptp_codes": [
+          69.2734375,
+          72.4140625
+        ],
+        "frequency": 1000041.5345127874,
+        "n": 219
+      },
+      {
+        "seq": 3912,
+        "rms_codes": [
+          0.007018318833615073,
+          0.007368011882058761
+        ],
+        "ptp_codes": [
+          69.2890625,
+          72.421875
+        ],
+        "frequency": 1000041.4456041933,
+        "n": 219
+      }
+    ],
+    "median_rms_codes": [
+      0.007172218915708524,
+      0.007260448318348051
+    ],
+    "input_in_passband": true,
+    "note": "Harmonic fit residual includes noise and distortion; slow /256 suppresses the 1 MHz input, so noise floor only."
+  }
+]

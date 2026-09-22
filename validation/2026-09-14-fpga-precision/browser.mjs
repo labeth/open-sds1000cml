@@ -1,0 +1,22 @@
+import {openScope,run} from '../../app/internal/web/scope_po.mjs';
+run(async t=>{
+ const {browser,page,pageErrors}=await openScope(process.argv[2]);t.browser=browser;
+ await page.waitForFunction(()=>frame.decimation===16);
+ t.ok(await page.locator('#precisionCard').isVisible(),'Precision controls visible');
+ await page.locator('#acq').selectOption('4');
+ await page.locator('#acqn').selectOption('16');
+ await page.locator('#precisionModel').selectOption('periodic');
+ await page.waitForFunction(()=>frame.filter && frame.filter.includes('16/16'));
+ await page.evaluate(()=>document.getElementById('precisionFit').click());
+ const result=await page.locator('#precisionFitResult').textContent();
+ console.log(result);
+ t.ok(result.includes('residual RMS'),'Hardware waveform fit completes');
+ const limits=await page.locator('#precisionLimits').textContent();
+ t.ok(limits.includes('Qualified passband') && !limits.includes('— Hz'),'Passband and Nyquist shown');
+ t.ok(await page.locator('#memdepth').isDisabled(),'Full SRAM depth accurately fixed');
+ t.ok((await page.locator('#memdepth').inputValue())==='524288','Precision SRAM depth shown');
+ t.ok(result.includes('not SINAD ENOB'),'Diagnostic limitation shown');
+ await page.locator('#precisionFitResult').screenshot({path:'validation/2026-09-14-fpga-precision/web-fit.png'});
+ await page.screenshot({path:'validation/2026-09-14-fpga-precision/web.png',fullPage:true});
+ t.ok(pageErrors.length===0,'No page errors: '+pageErrors.join(';'));
+});

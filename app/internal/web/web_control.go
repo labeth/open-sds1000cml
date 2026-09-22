@@ -271,6 +271,13 @@ func (s *Server) hSet(w http.ResponseWriter, r *http.Request) {
 		s.sc.SetVideoParams(req.Std, req.Line, req.Neg)
 	case "acqmode":
 		s.sc.SetAcqMode(int(req.Value))
+	case "precisionrate":
+		if sc, supported := s.sc.(interface{ SetPrecisionRate(float64) float64 }); supported {
+			applied = sc.SetPrecisionRate(req.Value)
+		} else {
+			ok = false
+			errStr = "precision sample rate unavailable"
+		}
 	case "avgcount":
 		s.sc.SetAvgCount(int(req.Value))
 	case "eres":

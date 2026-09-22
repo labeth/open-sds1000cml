@@ -8,10 +8,11 @@ import "math"
 // telemetry. All pure CPU on the owner goroutine, zero bus access.
 
 const (
-	AcqNormal  = 0
-	AcqAverage = 1
-	AcqEres    = 2
-	AcqPeak    = 3 // accepted/stored; behaves as NORMAL at real-time bands
+	AcqPrecision = 4 // cascaded low-pass plus aligned block averaging
+	AcqNormal    = 0
+	AcqAverage   = 1
+	AcqEres      = 2
+	AcqPeak      = 3 // accepted/stored; behaves as NORMAL at real-time bands
 )
 
 // EresLenForBits maps enhancement bits to a boxcar length: L = round(4^b),

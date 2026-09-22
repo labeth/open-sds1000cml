@@ -253,11 +253,12 @@ func runLCD(e *engine.Engine, fe *analog.FrontEnd, fo *frames.Fanout) {
 	persistLayer := lcd.NewMemSurface() // afterglow trace layer, owned by this loop
 	var sgSeq uint64                    // last frame pushed into the shared spectrogram (lcdSpect)
 	var lastSeq uint64
+	var lastPresented uint64
 	var lastFresh time.Time
 	var lastSig renderSig
 	haveSig := false
 	for {
-		time.Sleep(e.RenderPeriod()) // tunable display cadence (default 50ms, spec 07 §8 floor)
+		time.Sleep(e.RenderPeriod()) // tunable display cadence
 		// Render only OUTSIDE the engine's load-sensitive windows (arm-settle +
 		// drain): a concurrent render burst there corrupts the HW capture on this
 		// single core. This pauses ~19ms/frame; the wait+pace (~90ms) is free.
@@ -306,6 +307,10 @@ func runLCD(e *engine.Engine, fe *analog.FrontEnd, fo *frames.Fanout) {
 		})
 		if present {
 			fb.Present(back)
+			if lastSeq != lastPresented {
+				e.NoteLCDFrame()
+				lastPresented = lastSeq
+			}
 		}
 		e.QuietRUnlock()
 	}
@@ -469,8 +474,8 @@ func main() {
 			return
 		}
 		m, err := sramBackend.Status()
-		if err != nil || (m.Revision != 9 && m.Revision != 10) || !m.Locked {
-			logf("FATAL: default-sram requires revision 9 or 10, status=%+v error=%v", m, err)
+		if err != nil || (m.Revision != 9 && m.Revision != 10 && m.Revision != 11) || !m.Locked {
+			logf("FATAL: default-sram requires revision 9, 10 or 11, status=%+v error=%v", m, err)
 			return
 		}
 		fabricOK = true
@@ -530,7 +535,16 @@ func main() {
 	}
 	logf("bus up, fabric verified=%v, fast drain=%v", fabricOK, b.FastDrain())
 
-	e := engine.New(engine.Config{Bus: b, Logf: logf, SRAM: sramBackend})
+	var interleaveCal *engine.InterleaveCalibration
+	if path := os.Getenv("SCOPE_INTERLEAVE_CAL"); path != "" {
+		var err error
+		interleaveCal, err = engine.LoadInterleaveCalibration(path)
+		if err != nil {
+			logf("FATAL: interleave calibration: %v", err)
+			return
+		}
+	}
+	e := engine.New(engine.Config{Bus: b, Logf: logf, SRAM: sramBackend, InterleaveCalibration: interleaveCal})
 	if !sramDefault {
 		go e.Run()
 	}

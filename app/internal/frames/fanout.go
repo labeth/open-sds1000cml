@@ -25,10 +25,10 @@ type Fanout struct {
 
 func New() *Fanout { return &Fanout{wake: make(chan struct{})} }
 
-// Run polls the source at the display cadence (spec 07 §8: 50 ms hard
-// minimum) and snapshots fresh frames. Blocks; run as a goroutine.
+// Run snapshots fresh frames at up to 100 Hz so the live preview is not
+// limited by the former 20 Hz display cadence. Blocks; run as a goroutine.
 func (fo *Fanout) Run(src Source, stop <-chan struct{}) {
-	t := time.NewTicker(50 * time.Millisecond)
+	t := time.NewTicker(10 * time.Millisecond)
 	defer t.Stop()
 	for {
 		select {

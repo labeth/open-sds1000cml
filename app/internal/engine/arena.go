@@ -7,14 +7,16 @@ import "sync"
 // clear ALL metadata every frame (spec 01 §2 — a stale flag renders wrong
 // output from correct data).
 type Frame struct {
-	Q1, Q2       []uint16 // optional unsigned Q8.8 codes, same valid prefix
-	Decimation   uint32   // physical pre-storage reduction; 1 in raw mode
-	FilterGuard  int      // boundary samples excluded from conditioned measurements
-	BandwidthHz  float64  // qualified flat passband; 0 means no digital bandwidth limit
-	Filter       string
-	CaptureDepth int     // full record samples per channel
-	TriggerKind  string  // hardware-edge, software-window, or forced
-	C1, C2       []uint8 // full-capacity backing arrays; valid prefix is [:Valid]
+	Q1, Q2         []uint16 // optional unsigned Q8.8 codes, same valid prefix
+	Decimation     uint32   // physical pre-storage reduction; 1 in raw mode
+	FilterGuard    int      // boundary samples excluded from conditioned measurements
+	BandwidthHz    float64  // qualified flat passband; 0 means no digital bandwidth limit
+	Filter         string
+	NoiseGainIdeal float64
+	PassbandHz     float64
+	CaptureDepth   int     // full record samples per channel
+	TriggerKind    string  // hardware-edge, software-window, or forced
+	C1, C2         []uint8 // full-capacity backing arrays; valid prefix is [:Valid]
 
 	Seq      uint64  // advances only on a real publish
 	Valid    int     // drained sample count; the tail beyond it is stale

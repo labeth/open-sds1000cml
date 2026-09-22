@@ -49,7 +49,7 @@ for (const id of ["s-lo", "s-hi", "s-min", "s-max", "s-cond"]) $(id).onchange = 
 for (const id of ["v-std", "v-line", "v-neg"]) $(id).onchange = sendVideo;
 
 $("acq").onchange = () => { send("acqmode", +$("acq").value); if (st) st.acq_mode = +$("acq").value; updateAcqN(); };
-$("acqn").onchange = () => send(+$("acq").value === 1 ? "avgcount" : "eres", +$("acqn").value);
+$("acqn").onchange = () => send([1,4].includes(+$("acq").value) ? "avgcount" : "eres", +$("acqn").value);
 $("memdepth").onchange = () => { send("memdepth", +$("memdepth").value); userZoomed = false; }; // deeper = more to scroll, fewer fps
 
 $("mYT").onclick = () => setMode("YT");
@@ -146,3 +146,5 @@ $("dock").addEventListener("click", ev => {
   const h3 = ev.target.closest("h3");
   if (h3 && h3.parentElement.classList.contains("card")) h3.parentElement.classList.toggle("collapsed");
 });
+
+$("precisionRate").onchange = () => send("precisionrate", +$("precisionRate").value);

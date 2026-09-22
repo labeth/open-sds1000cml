@@ -109,6 +109,7 @@ function applyFrame(f) {
     $("srShow").classList.remove("on");
   }
   frame = f; lastSeq = f.seq;
+ if (typeof updatePrecisionLimits === "function") updatePrecisionLimits(f);
   const sig = acqSig(f);
   if (sig !== lastSig) { userZoomed = false; lastSig = sig; } // band/depth/run change → re-home
   // Keep the display TRIGGER-LOCKED every frame: the raw record is NOT phase-stable
@@ -168,6 +169,8 @@ function applyStatus() {
   if (document.activeElement !== $("acq")) $("acq").value = st.acq_mode || 0;
   updateAcqN();
   if (document.activeElement !== $("memdepth") && st.mem_depth) $("memdepth").value = st.mem_depth;
+  $("memdepth").disabled = st.band === "sram";
+  $("memdepth").title = st.band === "sram" ? "Full SRAM retained; RUN transfers a preview, STOP recalls the complete record" : "Memory depth";
   if (document.activeElement !== $("holdoff")) $("holdoff").value = st.holdoff_s || 0;
   if (!lvlDragging && st.trig_code) { $("lvl").value = st.trig_volts.toFixed(2); $("lvlv").textContent = st.trig_volts.toFixed(2) + " V"; }
   if ($("tdiv").options.length === 0 && st.tdivs)
@@ -266,8 +269,15 @@ function updateQualRow() {
 }
 
 function updateAcqN() {
+  const rate=$("precisionRate");
+  if (!rate.options.length) for(let log=4;log<=20;log++) {
+    const hz=500e6/2**log,o=document.createElement("option");o.value=hz;o.textContent=hz.toLocaleString(undefined,{maximumFractionDigits:6})+" S/s";rate.appendChild(o);
+  }
+  $("precisionRateLabel").style.display = +$("acq").value===4 ? "" : "none";
+  if(document.activeElement!==rate) rate.value=(st && st.precision_rate_hz)||31250000;
+
   const m = +$("acq").value, n = $("acqn");
-  if (m === 1) { fillAcqN([4, 16, 32, 64, 128, 256], st ? st.avg_count : 16); n.style.display = ""; }
+  if (m === 1 || m === 4) { fillAcqN([1, 4, 16, 32, 64, 128, 256], st ? st.avg_count : 16); n.style.display = ""; }
   else if (m === 2) { fillAcqN([3, 7, 15, 31, 63], st ? st.eres_len : 1); n.style.display = ""; }
   else n.style.display = "none";
 }

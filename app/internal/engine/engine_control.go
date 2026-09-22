@@ -55,9 +55,10 @@ func clampFrac(f float64) float64 {
 }
 
 func (e *Engine) SetAcqMode(m int) {
-	if m < AcqNormal || m > AcqPeak {
+	if m < AcqNormal || m > AcqPrecision {
 		m = AcqNormal
 	}
+
 	e.acqMode.Store(int32(m))
 	e.avgGen.Add(1) // mode change clears the average ring (spec 09 §2.2)
 	e.mu.Lock()
@@ -239,8 +240,12 @@ func (e *Engine) SetMemDepth(samples int) int {
 	if samples < decimWin {
 		samples = decimWin
 	}
-	if samples > maxRecordCols {
-		samples = maxRecordCols
+	limit := maxRecordCols
+	if e.sram != nil {
+		limit = 1048576
+	}
+	if samples > limit {
+		samples = limit
 	}
 	e.memDepth.Store(int32(samples))
 	return samples
@@ -408,4 +413,26 @@ func (e *Engine) SetTrigSource(ch int) {
 	e.stats.TrigSource = ch
 	e.mu.Unlock()
 	e.hintReset.Store(true)
+}
+
+// SetPrecisionRate selects the nearest hardware output sample rate per channel.
+// This setting is independent of the viewing timebase.
+func (e *Engine) SetPrecisionRate(hz float64) float64 {
+	log := 4
+	if hz > 0 && !math.IsNaN(hz) && !math.IsInf(hz, 0) {
+		log = int(math.Round(math.Log2(500e6 / hz)))
+	}
+	if log < 4 {
+		log = 4
+	}
+	if log > 20 {
+		log = 20
+	}
+	actual := 500e6 / float64(uint64(1)<<uint(log))
+	e.precisionLog.Store(int32(log))
+	e.avgGen.Add(1)
+	e.mu.Lock()
+	e.stats.PrecisionRateHz = actual
+	e.mu.Unlock()
+	return actual
 }

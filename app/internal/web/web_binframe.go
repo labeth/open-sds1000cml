@@ -56,7 +56,11 @@ func encodeBinFrame(rep frameReply) []byte {
 	if len(segs) > 0 {
 		segLen = len(segs[0]) - head - tail
 	}
-	buf := make([]byte, 8, 8+len(hj)+segLen*len(segs))
+	payloadBytes := segLen * len(segs)
+	if precision {
+		payloadBytes = 2 * (len(rep.Q1) + len(rep.Q2))
+	}
+	buf := make([]byte, 8, 8+len(hj)+payloadBytes)
 	buf[0] = binMagic
 	buf[1] = flags
 	binary.LittleEndian.PutUint32(buf[4:8], uint32(len(hj)))
@@ -217,6 +221,7 @@ func (s *Server) rawBinMsg(since uint64) []byte {
 		}
 		hdr.StreamSeq, hdr.WindowNs, hdr.GapNs = f.StreamSeq, f.WindowNs, f.GapNs
 		hdr.BandwidthHz, hdr.FilterGuard, hdr.Filter = f.BandwidthHz, f.FilterGuard, f.Filter
+		hdr.NoiseGainIdeal, hdr.PassbandHz = f.NoiseGainIdeal, f.PassbandHz
 		hdr.Decimation, hdr.CaptureDepth, hdr.TriggerKind = f.Decimation, f.CaptureDepth, f.TriggerKind
 		if len(f.Q1) == n && len(f.Q2) == n {
 			flags |= 0x20

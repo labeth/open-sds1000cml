@@ -325,17 +325,32 @@
     <span class="fcap">Acquire</span>
     <select id="acq" aria-label="acquisition mode">
       <option value="0">NORMAL</option><option value="1">AVERAGE</option>
-      <option value="2">ERES</option><option value="3">PEAK</option>
+      <option value="2">ERES</option><option value="3">PEAK</option><option value="4">PRECISION</option>
     </select>
     <select id="acqn" style="display:none"></select>
+    <span id="acquisitionWarning" style="color:#f3b35b"></span>
+    <span id="actualSampleRate" aria-live="polite">Sample rate: —</span>
+    <label id="precisionRateLabel" style="display:none">Samples/s per channel <select id="precisionRate" aria-label="Precision samples per second"></select></label>
     <label class="hint">mem</label>
     <select id="memdepth" aria-label="memory depth">
+      <option value="1048576">1M (SRAM deep)</option>
+      <option value="524288">512k (precision SRAM)</option>
       <option value="2048">2k (fast)</option><option value="6144" selected>6k</option>
       <option value="14336">14k</option><option value="20480">20k (deep)</option>
     </select>
   </div>
 
-  <div id="qualrow" class="panel2">
+  <section class="panel2" id="precisionCard" style="display:flex">
+ <strong>Precision &amp; fit</strong>
+ <span id="precisionLimits">No precision filter selected.</span>
+
+ <label>Fit <select id="precisionModel"><option value="triangle">Triangle</option><option value="sine">Sine</option><option value="periodic">Periodic harmonics (noise diagnostic)</option></select></label>
+ <label>Channel <select id="precisionChannel"><option value="0">C1</option><option value="1">C2</option></select></label>
+ <button id="precisionFit">Fit current view</button>
+ <div id="precisionFitResult">Fits estimate model parameters; they do not increase ADC accuracy. Residual includes noise and model mismatch.</div>
+ <canvas id="precisionFitCanvas" width="700" height="200" style="width:100%;max-width:700px;height:200px;display:none"></canvas>
+</section>
+<div id="qualrow" class="panel2">
     <div class="grp" id="qp-pulse" style="display:none">
       <label>pulse</label>
       lvl <input type="number" id="p-lvl" min="0" max="100" step="5" value="50" class="w-sm">%
@@ -417,6 +432,7 @@
 <script src="app_views.js"></script>      <!-- Bode + spectrogram + wiring -->
 <script src="app_controls.js"></script>   <!-- acquisition/trigger/timebase/vertical/view controls -->
 <script src="app_canvas.js"></script>     <!-- scope + navigator pointer/wheel interactions -->
+<script src="app_precision.js"></script>
 <script src="app_init.js"></script>       <!-- first paint + first poll (must be last) -->
 </body>
 </html>

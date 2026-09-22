@@ -280,3 +280,19 @@ func TestQ8SmallRippleOnLargeDC(t *testing.T) {
 		}
 	}
 }
+
+func TestNoisyTriangleTiming(t *testing.T) {
+	q := make([]uint16, 500*40)
+	for i := range q {
+		phase := i % 500
+		if phase > 250 {
+			phase = 500 - phase
+		}
+		// Large oversampling makes even modest code noise recross mid-level.
+		q[i] = uint16(80*256 + phase*80*256/250 + ((i*17)%7-3)*128)
+	}
+	r := ComputeQ8(q, 1, 0, 2e-9)
+	if !r.HasTiming || math.Abs(r.Freq/1e6-1) > .005 {
+		t.Fatalf("noisy triangle frequency: %+v", r)
+	}
+}

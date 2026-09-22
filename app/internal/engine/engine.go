@@ -126,13 +126,14 @@ func realClock() Clock { return Clock{Now: time.Now, Sleep: time.Sleep} }
 
 // Config wires an Engine.
 type Config struct {
-	SRAM        *sramcapture.Capture // non-nil selects the external SRAM ABI
-	Bus         bus.Bus
-	Clock       Clock         // zero → real clock
-	FramePeriod time.Duration // publish pacing floor; default defaultFramePeriod
-	ArmSettle   time.Duration // default defaultArmSettle
-	PollEvery   time.Duration // wait-gate poll pace; default 150 µs
-	Logf        func(format string, a ...any)
+	InterleaveCalibration *InterleaveCalibration
+	SRAM                  *sramcapture.Capture // non-nil selects the external SRAM ABI
+	Bus                   bus.Bus
+	Clock                 Clock         // zero → real clock
+	FramePeriod           time.Duration // publish pacing floor; default defaultFramePeriod
+	ArmSettle             time.Duration // default defaultArmSettle
+	PollEvery             time.Duration // wait-gate poll pace; default 150 µs
+	Logf                  func(format string, a ...any)
 }
 
 // Stats is the exported snapshot for the health writer and the web UI.
@@ -165,6 +166,7 @@ type Stats struct {
 	LastTrigPos     int     `json:"last_trigpos"`
 	ArmToLatch      float64 `json:"arm_to_latch_ms"`
 	DrainMs         float64 `json:"drain_ms"`
+	LCDFrames       uint64  `json:"lcd_frames"`
 	SRAMRecallMs    float64 `json:"sram_recall_ms"`
 	ConditionMs     float64 `json:"condition_ms"`
 	HoldoffS        float64 `json:"holdoff_s"` // trigger holdoff (0 = off)
@@ -176,6 +178,7 @@ type Stats struct {
 	TrigType        int     `json:"trig_type"` // 0=edge 1=pulse 2=slope 3=video
 	AcqMode         int     `json:"acq_mode"`  // 0=normal 1=average 2=eres 3=peak
 	AvgCount        int     `json:"avg_count"`
+	PrecisionRateHz float64 `json:"precision_rate_hz"`
 	EresLen         int     `json:"eres_len"`
 	WinColStd       float64 `json:"wincol_std"`       // centred cross-frame uniformity
 	WinColRaw       float64 `json:"wincol_std_raw"`   // fixed-position variant
@@ -249,11 +252,12 @@ type CmdNote struct {
 }
 
 type Engine struct {
-	b     bus.Bus
-	clk   Clock
-	logf  func(string, ...any)
-	arena *arena
-	sram  *sramcapture.Capture
+	interleaveCalibration *InterleaveCalibration
+	b                     bus.Bus
+	clk                   Clock
+	logf                  func(string, ...any)
+	arena                 *arena
+	sram                  *sramcapture.Capture
 
 	framePeriodNs atomic.Int64 // publish pacing floor (ns); 0 = back-to-back (stream)
 	holdoffNs     atomic.Int64 // minimum time after a triggered frame before re-arm; 0 = off
@@ -279,18 +283,19 @@ type Engine struct {
 	reinitReq        atomic.Int64 // staged FSM re-init level (debug/recovery); serviced at the loop boundary
 
 	// Lock-free control reads by the owner.
-	running     atomic.Bool
-	trigRising  atomic.Bool
-	trigSrc     atomic.Int32
-	stopReq     atomic.Bool
-	acqMode     atomic.Int32
-	avgCount    atomic.Int32
-	eresLen     atomic.Int32
-	avgGen      atomic.Uint32    // bumped on acq-mode/depth changes → ring clear
-	singleArmed atomic.Bool      // SINGLE: stop after the next triggered frame
-	memDepth    atomic.Int32     // decimated drain depth (samples): fps↔data tradeoff
-	streamMode  atomic.Bool      // stitched high-bandwidth streaming decode mode
-	chVdivBits  [2]atomic.Uint64 // per-channel V/div (float64 bits) for the
+	running      atomic.Bool
+	trigRising   atomic.Bool
+	trigSrc      atomic.Int32
+	stopReq      atomic.Bool
+	acqMode      atomic.Int32
+	avgCount     atomic.Int32
+	precisionLog atomic.Int32
+	eresLen      atomic.Int32
+	avgGen       atomic.Uint32    // bumped on acq-mode/depth changes → ring clear
+	singleArmed  atomic.Bool      // SINGLE: stop after the next triggered frame
+	memDepth     atomic.Int32     // decimated drain depth (samples): fps↔data tradeoff
+	streamMode   atomic.Bool      // stitched high-bandwidth streaming decode mode
+	chVdivBits   [2]atomic.Uint64 // per-channel V/div (float64 bits) for the
 	//                              trigger-level → display-code mapping
 	trigZero    [2]atomic.Uint64 // per-channel active trig-cal Zero (float64 bits)
 	trigCPV     [2]atomic.Uint64 // per-channel active trig-cal CPV (float64 bits)
@@ -436,18 +441,19 @@ func New(cfg Config) *Engine {
 	}
 	start, _ := PlanTdiv(500e-6) // decimated start detent: shows the cal edge fast
 	e := &Engine{
-		b:         cfg.Bus,
-		clk:       cfg.Clock,
-		logf:      cfg.Logf,
-		arena:     newArena(capacity),
-		sram:      cfg.SRAM,
-		armSettle: cfg.ArmSettle,
-		armBusy:   realTime,
-		pollEvery: cfg.PollEvery,
-		band:      start,
-		prevKind:  start.Kind(),
-		done:      make(chan struct{}),
-		execReq:   make(chan execReq, 8),
+		b:                     cfg.Bus,
+		clk:                   cfg.Clock,
+		logf:                  cfg.Logf,
+		arena:                 newArena(capacity),
+		sram:                  cfg.SRAM,
+		interleaveCalibration: cfg.InterleaveCalibration,
+		armSettle:             cfg.ArmSettle,
+		armBusy:               realTime,
+		pollEvery:             cfg.PollEvery,
+		band:                  start,
+		prevKind:              start.Kind(),
+		done:                  make(chan struct{}),
+		execReq:               make(chan execReq, 8),
 	}
 	// Tuning defaults. ROOT-CAUSE FIX for the native-fast half-record: the free-run
 	// wait returned the instant done+fill asserted and halted immediately, catching
@@ -468,7 +474,10 @@ func New(cfg Config) *Engine {
 	e.tuneBusyFillUs.Store(0) // no fill busy-poll (pure CPU cost)
 	e.tuneGcCtl.Store(false)
 	e.tuneMaxRetry.Store(2)   // light backstop; full records are now the norm
-	e.tuneRenderMs.Store(120) // ~8 Hz LCD: big CPU win, still smooth enough
+	e.tuneRenderMs.Store(120) // legacy capture cadence
+	if cfg.SRAM != nil {
+		e.tuneRenderMs.Store(2)
+	}
 	// fill-extra and halt-settle were workarounds tuned against what turned out
 	// to be the UNTRIGGERED half-record state (level outside the signal band);
 	// with triggered captures they buy nothing (HW A/B: 15/15 full without
@@ -490,6 +499,8 @@ func New(cfg Config) *Engine {
 	e.tuneSigK.Store(8)
 	e.running.Store(true)
 	e.trigRising.Store(true)
+	e.precisionLog.Store(4)
+	e.stats.PrecisionRateHz = 31.25e6
 	e.avgCount.Store(16) // boot-firmware default; menu {4,16,32,64,128,256}
 	e.eresLen.Store(1)
 	e.chVdivBits[0].Store(math.Float64bits(1))
@@ -615,8 +626,8 @@ func (e *Engine) TuneSnapshot() TuneVals {
 // RenderPeriod is the LCD loop's tunable tick (read each render tick).
 func (e *Engine) RenderPeriod() time.Duration {
 	ms := e.tuneRenderMs.Load()
-	if ms < 10 {
-		ms = 10
+	if ms < 1 {
+		ms = 1
 	}
 	return time.Duration(ms) * time.Millisecond
 }
@@ -767,3 +778,6 @@ func (e *Engine) NoteCmd(name string, val float64) {
 // TrigLevelVolts converts a DAC code to approximate volts using the measured
 // global fit (docs/trigcal-notes.md): code = 31437 − 911·V.
 func TrigLevelVolts(code uint16) float64 { return (31437 - float64(code)) / 911 }
+
+// NoteLCDFrame counts distinct acquisition frames actually presented to the LCD.
+func (e *Engine) NoteLCDFrame() { e.mu.Lock(); e.stats.LCDFrames++; e.mu.Unlock() }

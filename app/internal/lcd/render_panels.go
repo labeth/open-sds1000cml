@@ -341,6 +341,13 @@ func drawMarkers(sf Surface, hud HUD) {
 }
 
 func drawHUD(sf Surface, f *engine.Frame, hud HUD) {
+	if f != nil && f.NoiseGainIdeal > 1 {
+		label := fmt.Sprintf("Ideal +%.2f bits (not ENOB)", math.Log2(f.NoiseGainIdeal))
+		if f.PassbandHz > 0 {
+			label += "  pass " + fmtFreq(f.PassbandHz) + fmt.Sprintf("  FPGA /%d", f.Decimation)
+		}
+		DrawText(sf, 200, 14, label, colInfo, 1)
+	}
 	DrawText(sf, 4, 2, "C1 "+vdivLabel(hud.C1VdivV, hud.Probe1)+cplTag(hud.Cpl1), colC1, 1)
 	if hud.TwoChan {
 		DrawText(sf, 96, 2, "C2 "+vdivLabel(hud.C2VdivV, hud.Probe2)+cplTag(hud.Cpl2), colC2, 1)
