@@ -1,0 +1,52 @@
+{
+  "result": "reviewed-and-characterized-native-trace-pending",
+  "sourceSHA256": {
+    "app/internal/lcd/render_superres.go": "0f4c12e71ad77a194ef6bd9ef9fc13a7e99001398ae3e73ab430c61906e8efac",
+    "app/internal/lcd/superres_view_test.go": "583e75799f6c243a27b301244f715c23ca3c05959ef751627c4300ed9e15a845"
+  },
+  "completeReads": [
+    "app/internal/lcd/render_superres.go",
+    "app/internal/lcd/superres_view_test.go"
+  ],
+  "findings": [
+    "drawSuperresTrace uses the selected window with optional period tiling; negative mean bins are gaps, and per-column min/max includes bin endpoints. Nonfinite values and extreme geometry need separate bounded characterization.",
+    "srFilled interpolates negative gap bins and holds endpoints; all-negative input becomes flat code 128. NaN compares false to the gap predicate and can make the later interpolation loop index outside its neighbors. This is a source finding, not an executed test.",
+    "srResampleArray samples the fine-grid array at output sample centers; its comment names an older window-resampling helper, but the body does not use display-window or period fields.",
+    "srFFTPlan chooses the smallest power of two at least as large as the mean length, capped at 8192, and scales effective Nyquist for resampling. Large inputs are resampled without explicit anti-alias filtering.",
+    "srFFTPlan tests SRSampleS <= 0 but does not reject NaN or positive infinity; its ok result can coexist with zero effective Nyquist.",
+    "FFT fills gaps and ignores the validity mask; XY honors validity masks and lifts the pen. Physical channel mapping swaps by SRAlign; differently sized means are independently resampled to a common output length.",
+    "Six original tests use preconstructed synthetic fine-grid means; above-raw-Nyquist peaks are checked within 3 percent for two selected tones, not acquisition/reconstruction accuracy.",
+    "The float-floor test comment calls its statistic a median, but the body computes arithmetic mean of normalized magnitudes including signal bins. It does not measure a calibrated spectral noise floor.",
+    "Resample test checks monotonicity, nonnegative gap filling and at least one invalid flag, without exact interpolation values. View routing tests use color presence/absence.",
+    "XY missing-channel test sets TwoChan false; it does not independently test an all-gap second channel while TwoChan is true."
+  ],
+  "nextAction": "Add scoped native renderer/test links and original outcomes while preserving these limits; golden references remain unchanged and physical reconstruction remains unqualified.",
+  "tests": {
+    "TestSuperresFFTAboveRawNyquist": "pass",
+    "TestSuperresFFTTiledWindowKeepsFineNyquist": "pass",
+    "TestSuperresFFTFloatFloorBeatsQuantised": "pass",
+    "TestSuperresResampleArray": "pass",
+    "TestSuperresReviewRoutesByViewMode": "pass",
+    "TestSuperresXYNeedsCH2": "pass"
+  },
+  "command": [
+    "go",
+    "test",
+    "-race",
+    "-json",
+    "-count=1",
+    "./internal/lcd",
+    "-run",
+    "^(TestSuperresFFTAboveRawNyquist|TestSuperresFFTTiledWindowKeepsFineNyquist|TestSuperresFFTFloatFloorBeatsQuantised|TestSuperresResampleArray|TestSuperresReviewRoutesByViewMode|TestSuperresXYNeedsCH2)$"
+  ],
+  "log": "test-runs/lcd-superres-exploratory.jsonl",
+  "logSHA256": "3b37dd5aec3ed0207ccc1edfb0758b2326406783dcb4a1d4d77ba7df83b331b9",
+  "boundaryEvidence": "evidence/lcd-superres-boundary-review.json",
+  "testedFindings": [
+    "Exact negative-gap interpolation and all-gap validity behavior reproduced.",
+    "Leading/trailing NaN means panic during gap interpolation; nonfinite sample intervals can return an accepted FFT plan with zero Nyquist.",
+    "Equal-size resampling averages at half-bin positions and holds the final sample.",
+    "A 16384-bin alternating 0/255 grid becomes constant 255 at the capped 8192-sample FFT input, demonstrating unfiltered undersampling for this case.",
+    "All-gap second channel lifts the XY pen with TwoChan true; review modes 3/4 fall back to the super-resolution time trace."
+  ]
+}

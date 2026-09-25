@@ -1,0 +1,12 @@
+ARGS ["exec", "/dev/acqsram", "recall", "/dev/acq-window.bin", "17", "1024"]
+{
+  "bytes": 4096,
+  "first": 3451402,
+  "last": 3452425,
+  "nonconsecutive_words": 0,
+  "path": "/dev/acq-window.bin",
+  "seconds": 0.0097066,
+  "sha256": "1acea28e10072f0302c772e8675aab223dbc485638fb69b6dfa6d39a2b73b4c3",
+  "words": 1024
+}
+[exit 0]

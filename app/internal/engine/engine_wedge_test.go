@@ -1,7 +1,9 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
 package engine
 
 import "testing"
 
+// TRLC-LINKS: REQ-SDS-128
 func TestWedgeLadderNativeFast(t *testing.T) {
 	fb := newFakeBus()
 	fb.fillAdvance = false // 0x46 frozen: the wedge signature
@@ -39,6 +41,7 @@ func TestWedgeLadderNativeFast(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-128
 func TestWedgeLadderDecimated(t *testing.T) {
 	// A real decimated wedge: fill frozen, drain flat, and the FPGA fabric
 	// dead (CONF_DONE clear). AUTO now drains every frame, so the wedge is
@@ -61,6 +64,7 @@ func TestWedgeLadderDecimated(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-128
 func TestWedgeLadderResetsOnActivity(t *testing.T) {
 	fb := newFakeBus()
 	fb.fillAdvance = false

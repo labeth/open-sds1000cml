@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-WEB
 // breaker.cjs — adversarial harness for the super-res gated stacker.
 // 50 seeded waveform families: each = a REPEATING feature + IRREGULAR
 // non-repeating filler + noise. Each family is stacked through several gates.
@@ -17,6 +18,7 @@
 const SR = require("./superres.js");
 
 // ---------- deterministic PRNG ----------
+// TRLC-LINKS: REQ-SDS-019, REQ-SDS-181
 function makeRng(seed) {
   let s = seed >>> 0 || 1;
   return () => {
@@ -27,32 +29,46 @@ function makeRng(seed) {
 
 // ---------- feature shapes (the repeating thing), length L, values ±amp around 0 ----------
 const SHAPES = {
+  // TRLC-LINKS: REQ-SDS-019, REQ-SDS-181
   square:   (L, r) => { const d = 0.3 + 0.4 * r(); return i => (i / L) % 1 < d ? 1 : -1; },
+  // TRLC-LINKS: REQ-SDS-019, REQ-SDS-181
   sine:     (L, r) => { const ph = r() * 6.283; return i => Math.sin(6.283 * i / L + ph); },
+  // TRLC-LINKS: REQ-SDS-019, REQ-SDS-181
   gauss:    (L, r) => { const c = L * (0.35 + 0.3 * r()), w = L * 0.08; return i => 2 * Math.exp(-((i - c) ** 2) / (2 * w * w)) - 0.3; },
+  // TRLC-LINKS: REQ-SDS-019, REQ-SDS-181
   dblpulse: (L, r) => { const g = L * (0.2 + 0.2 * r()); return i => (i > L * 0.1 && i < L * 0.2) || (i > L * 0.1 + g && i < L * 0.2 + g) ? 1 : -0.4; },
+  // TRLC-LINKS: REQ-SDS-019, REQ-SDS-181
   ringing:  (L, r) => { const f = 6 + 6 * r(); return i => i < L * 0.15 ? -0.8 : Math.exp(-(i - L * 0.15) / (L * 0.3)) * Math.cos(6.283 * f * (i - L * 0.15) / L) * 1.2; },
+  // TRLC-LINKS: REQ-SDS-019, REQ-SDS-181
   saw:      ()     => { return (i, L) => 2 * ((i / L) % 1) - 1; },
+  // TRLC-LINKS: REQ-SDS-019, REQ-SDS-181
   uart:     (L, r) => { const bits = Array.from({ length: 8 }, () => r() > 0.5 ? 1 : 0); return i => { const b = Math.floor(10 * i / L); return b === 0 ? -1 : b > 8 ? 1 : (bits[b - 1] ? 1 : -1); }; },
+  // TRLC-LINKS: REQ-SDS-019, REQ-SDS-181
   triangle: ()     => { return (i, L) => { const p = (i / L) % 1; return p < 0.5 ? 4 * p - 1 : 3 - 4 * p; }; },
+  // TRLC-LINKS: REQ-SDS-019, REQ-SDS-181
   stair:    (L, r) => { const k = 3 + Math.floor(3 * r()); return i => 2 * (Math.floor(k * i / L) / (k - 1)) - 1; },
+  // TRLC-LINKS: REQ-SDS-019, REQ-SDS-181
   pwmpair:  (L, r) => { const d1 = 0.15 + 0.15 * r(); return i => { const p = (i / L) % 1; return (p < d1) || (p > 0.5 && p < 0.5 + 2 * d1) ? 1 : -1; }; },
 };
 const SHAPE_NAMES = Object.keys(SHAPES);
 
 // ---------- non-repeating fillers (regenerated every frame — must NOT stack) ----------
+// TRLC-LINKS: REQ-SDS-019, REQ-SDS-181
 function fillerChirp(out, lo, hi, r, amp) {
   const f0 = 2 + 30 * r(), k = 40 * r(), ph = 6.283 * r();
   for (let i = lo; i < hi; i++) { const t = (i - lo) / (hi - lo); out[i] += amp * Math.sin(ph + 6.283 * (f0 * t + k * t * t)); }
 }
+// TRLC-LINKS: REQ-SDS-019, REQ-SDS-181
 function fillerWalk(out, lo, hi, r, amp) {
   let v = 0;
   for (let i = lo; i < hi; i++) { v += (r() - 0.5) * 0.35; v *= 0.985; out[i] += amp * Math.max(-1.4, Math.min(1.4, v)); }
 }
+// TRLC-LINKS: REQ-SDS-019, REQ-SDS-181
 function fillerTelegraph(out, lo, hi, r, amp) {
   let v = r() > 0.5 ? 1 : -1;
   for (let i = lo; i < hi; i++) { if (r() < 0.02) v = -v; out[i] += amp * v * 0.8; }
 }
+// TRLC-LINKS: REQ-SDS-019, REQ-SDS-181
 function fillerGlitches(out, lo, hi, r, amp) {
   const n = 1 + Math.floor(4 * r());
   for (let g = 0; g < n; g++) { const p = lo + Math.floor((hi - lo) * r()), w = 3 + Math.floor(12 * r()), s = r() > 0.5 ? 1 : -1;
@@ -69,6 +85,7 @@ const FILLERS = [fillerChirp, fillerWalk, fillerTelegraph, fillerGlitches];
 //  flaky: feature present in only ~60% of frames; other frames get a DECOY
 const COMPS = ["train", "burst", "sparse", "buried", "flaky"];
 
+// TRLC-LINKS: REQ-SDS-019, REQ-SDS-181
 function buildFamily(fi) {
   const shape = SHAPE_NAMES[fi % SHAPE_NAMES.length];
   const comp = COMPS[Math.floor(fi / SHAPE_NAMES.length) % COMPS.length];
@@ -90,6 +107,7 @@ function buildFamily(fi) {
 }
 
 // occurrences (ground truth feature-start positions) for one frame
+// TRLC-LINKS: REQ-SDS-019, REQ-SDS-181
 function occurrencesFor(fam, frameIdx, r) {
   const { comp, N, L } = fam;
   const occ = [];
@@ -120,6 +138,7 @@ function occurrencesFor(fam, frameIdx, r) {
 }
 
 // genFrame builds one frame + its noiseless truth. Returns {sig, clean, occ, hasDecoy}.
+// TRLC-LINKS: REQ-SDS-019, REQ-SDS-181
 function genFrame(fam, frameIdx) {
   const r = makeRng(fam.fi * 100003 + frameIdx * 613 + 17);
   const { N, L, amp, noise, fillAmp, filler, feat, decoy } = fam;
@@ -148,6 +167,7 @@ function genFrame(fam, frameIdx) {
 }
 
 // zero-mean NCC of two equal-length float arrays (truth-side referee)
+// TRLC-LINKS: REQ-SDS-019, REQ-SDS-181
 function ncc(a, b) {
   const n = Math.min(a.length, b.length);
   let ma = 0, mb = 0;
@@ -160,6 +180,7 @@ function ncc(a, b) {
 }
 
 // ---------- one run = family × gate ----------
+// TRLC-LINKS: REQ-SDS-019, REQ-SDS-181
 function runGate(fam, gateName, gate, frames, refFrame) {
   const res = { fam: fam.fi, shape: fam.shape, comp: fam.comp, gate: gateName, fails: [], stats: {} };
   const st = SR.srNew(fam.N, 16);
@@ -231,6 +252,7 @@ function runGate(fam, gateName, gate, frames, refFrame) {
   // specific random filler would punish correct behaviour.
   let rms = -1;
   if (st.hits > 2 && r.mean) {
+    // TRLC-LINKS: REQ-SDS-019, REQ-SDS-181
     const inFeature = s => refFrame.occ.some(p => s >= p && s < p + fam.L);
     let se = 0, cnt = 0;
     for (let b = 0; b < r.mean.length; b++) {
@@ -277,6 +299,7 @@ function runGate(fam, gateName, gate, frames, refFrame) {
   return res;
 }
 
+// TRLC-LINKS: REQ-SDS-019, REQ-SDS-181
 function runFamily(fam, verbose) {
   const refFrame = genFrame(fam, 0);
   if (refFrame.occ.length === 0) { // flaky family may roll a decoy ref; force feature

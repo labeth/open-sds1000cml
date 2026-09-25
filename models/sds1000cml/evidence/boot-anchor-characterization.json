@@ -1,0 +1,63 @@
+{
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "sourceSHA256": {
+    "ota/boot/startup.sh": "b363e1a0e67f0605eb8f8e538719a63ee1e78e49704476c15ca67055dddb24b2"
+  },
+  "helperSHA256": "d83cfd9f772184f2592a0bf026b0b28a8b09f60bc7a61d9c7d5c6b14cbfcb146",
+  "command": [
+    "bwrap",
+    "--unshare-all",
+    "--die-with-parent",
+    "--new-session",
+    "--ro-bind",
+    "/",
+    "/",
+    "--tmpfs",
+    "/tmp",
+    "--dev",
+    "/dev",
+    "--proc",
+    "/proc",
+    "/usr/bin/python3",
+    "/home/labeth/ws/open-sds1000cml-acq2/models/sds1000cml/scripts/helpers/boot-boundaries.py",
+    "/home/labeth/ws/open-sds1000cml-acq2/ota/boot/startup.sh"
+  ],
+  "exitCode": 0,
+  "stderr": "",
+  "cases": [
+    {
+      "case": "nonzero-confirmation",
+      "exitCode": 0,
+      "bootLog": "1790128995 boot-done\n1790128995 agent-start slot=B\n1790128997 agent-confirmed slot=B\n1790128997 agent-loop-stop\n",
+      "stderr": "",
+      "confirmed": "B",
+      "active": "B"
+    },
+    {
+      "case": "arbitrary-intent",
+      "exitCode": 0,
+      "bootLog": "1790128997 boot-done\n1790128997 agent-start slot=B\n1790128997 agent-intent arbitrary-unrecognized-value slot=B\n1790128997 agent-loop-stop\n",
+      "stderr": "",
+      "confirmed": "A",
+      "active": "B"
+    },
+    {
+      "case": "failed-confirm-write",
+      "exitCode": 0,
+      "bootLog": "1790128997 boot-done\n1790128997 agent-start slot=B\n1790128999 agent-confirmed slot=B\n1790128999 agent-loop-stop\n",
+      "stderr": "/home/labeth/ws/open-sds1000cml-acq2/ota/boot/startup.sh: line 194: /tmp/boot-case-iflbryav/ota/agent.confirmed: Is a directory\n",
+      "confirmed": "directory",
+      "active": "B"
+    },
+    {
+      "case": "failed-commands",
+      "exitCode": 0,
+      "bootLog": "1790128999 commands-run\n1790128999 commands-done\n1790128999 boot-done\n1790128999 agent-start slot=B\n1790128999 agent-fastexit slot=B 1/1\n1790128999 agent-revert B -> A\n1790128999 agent-loop-stop\n",
+      "stderr": "",
+      "confirmed": "A",
+      "active": "A"
+    }
+  ],
+  "result": "known-limitations-reproduced",
+  "scope": "Unchanged startup.sh; private user/PID/mount/network namespaces, read-only root, private /tmp, synthetic /dev. Only temporary shell stubs execute; no vendor remount, real agent, device, factory or network operation. Reproduces limits, not successful recovery qualification."
+}

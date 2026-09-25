@@ -1,0 +1,56 @@
+{
+  "status": "Isolated ARINC 429 candidate; not integrated, advertised, deployed or physically qualified",
+  "sourceHashes": {
+    "fpga/acq_sram/arinc429_trigger.v": "b0ff274b570e1fb618f89519a7ec54a81fcbe7c5a3a8c05dac91848d2f7ba333",
+    "fpga/acq_sram/sim/tb_arinc429_trigger.v": "6433396ec4efd53c3fb015f1cdb8e843ea4a31641013a95cdc8f9397ff61e347",
+    "app/internal/decode/decode_arinc429_rtl_test.go": "2b2b27065bd15b813ba8233378c6c18da78022af935f79e1650d710e08700554"
+  },
+  "tests": {
+    "command": "go test ./internal/decode -run '^TestARINC429TriggerRTL$' -count=1 -v",
+    "exitCode": 0,
+    "cases": 60,
+    "oracle": "DecodeARINC429; digital component comparison"
+  },
+  "synthesis": {
+    "build": "build-saV85J",
+    "device": "EP4CE10F17C8",
+    "clockMHz": 125,
+    "logicElements": 869,
+    "combinationalFunctions": 743,
+    "registers": 524,
+    "memoryBits": 0,
+    "dsp9BitElements": 0,
+    "virtualDataPins": 301,
+    "physicalClockPins": 1,
+    "minimumReportedSetupSlackNs": 0.592,
+    "minimumReportedHoldSlackNs": 0.201,
+    "limitations": "Only internal register timing; virtual input and output paths are unconstrained. Excludes acquisition, configuration, shared event transport and physical input integration."
+  },
+  "discardedProbes": [
+    {
+      "build": "build-i7Tuqo",
+      "reason": "Virtual clock; resource-only preliminary result"
+    },
+    {
+      "build": "build-NMxABz",
+      "reason": "Generated QSF missing newline after tool-added assignment; failed map"
+    },
+    {
+      "build": "build-U86gP8",
+      "reason": "QSF literal braces invalidated virtual pin assignments; failed fit"
+    }
+  ],
+  "deployment": "unchanged; general/current is build-v5T40o",
+  "remaining": [
+    "Host configuration and capability advertisement",
+    "Integration of chronological ADC codes and sample ordinals",
+    "Full-width word event transport resource and loss checks",
+    "Integrated fitting and all clock-domain timing",
+    "Physical source fixture, live stream, trigger and matching retained raw qualification"
+  ],
+  "strictModel": {
+    "exitCode": 0,
+    "warnings": 604,
+    "errors": 0
+  }
+}

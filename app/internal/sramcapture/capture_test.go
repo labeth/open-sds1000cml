@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-SRAMCAPTURE
 package sramcapture
 
 import (
@@ -10,6 +11,7 @@ import (
 	"time"
 )
 
+// TRLC-LINKS: REQ-SDS-032, REQ-SDS-033, REQ-SDS-040, REQ-SDS-082, REQ-SDS-083
 type fakeBus struct {
 	id, mapID, revision, flags            uint16
 	length, start, origin, position, base uint32
@@ -25,11 +27,14 @@ type fakeBus struct {
 	observed                              chan struct{}
 }
 
+// TRLC-LINKS: REQ-SDS-033
 func frozenBus() *fakeBus {
 	f := &fakeBus{id: FabricID, mapID: QualifiedMapID, revision: 5, flags: 4 | 16 | 32 | 64, length: Words, start: Words - 17, origin: 71, base: 0xfffff123, staged: make(map[uint16]uint16)}
 	f.position = (f.origin + f.start) & addressMask
 	return f
 }
+
+// TRLC-LINKS: REQ-SDS-033
 func (f *fakeBus) Read(plane uint8, s uint16) (uint16, error) {
 	if plane != 1 {
 		return 0, errors.New("backend accessed a plane other than CS1")
@@ -102,6 +107,8 @@ func (f *fakeBus) Read(plane uint8, s uint16) (uint16, error) {
 	}
 	return uint16(value), nil
 }
+
+// TRLC-LINKS: REQ-SDS-033
 func (f *fakeBus) RawWrite(s, v uint16) error {
 	f.writes++
 	f.staged[s] = v
@@ -160,6 +167,8 @@ func (f *fakeBus) RawWrite(s, v uint16) error {
 	}
 	return nil
 }
+
+// TRLC-LINKS: REQ-SDS-032
 func client(t *testing.T, f *fakeBus) *Capture {
 	t.Helper()
 	c, e := New(f)
@@ -168,6 +177,8 @@ func client(t *testing.T, f *fakeBus) *Capture {
 	}
 	return c
 }
+
+// TRLC-LINKS: REQ-SDS-033
 func checkWords(t *testing.T, data []byte, base uint32, n uint32) {
 	t.Helper()
 	if len(data) != int(n)*4 {
@@ -179,6 +190,8 @@ func checkWords(t *testing.T, data []byte, base uint32, n uint32) {
 		}
 	}
 }
+
+// TRLC-LINKS: REQ-SDS-033
 func TestFullCapacityWrappedAndRepeatedRecall(t *testing.T) {
 	f := frozenBus()
 	c := client(t, f)
@@ -210,6 +223,8 @@ func TestFullCapacityWrappedAndRepeatedRecall(t *testing.T) {
 	}
 	checkWords(t, dst.Bytes(), f.base+Words-513, 513)
 }
+
+// TRLC-LINKS: REQ-SDS-033
 func TestLegacyReadFallback(t *testing.T) {
 	f := frozenBus()
 	f.revision = 4
@@ -230,8 +245,10 @@ func TestLegacyReadFallback(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-033
 type noPrefetch struct{ *fakeBus }
 
+// TRLC-LINKS: REQ-SDS-033
 func (f noPrefetch) Read(p uint8, s uint16) (uint16, error) {
 	v, e := f.fakeBus.Read(p, s)
 	if s == 1 {
@@ -239,6 +256,8 @@ func (f noPrefetch) Read(p uint8, s uint16) (uint16, error) {
 	}
 	return v, e
 }
+
+// TRLC-LINKS: REQ-SDS-032
 func TestBoundsAndIdentityRejectBeforeWrites(t *testing.T) {
 	for _, change := range []func(*fakeBus){func(f *fakeBus) { f.id = 0xa2f1 }, func(f *fakeBus) { f.mapID = 0x2611 }, func(f *fakeBus) { f.revision = 3 }} {
 		f := frozenBus()
@@ -272,6 +291,8 @@ func TestBoundsAndIdentityRejectBeforeWrites(t *testing.T) {
 		t.Fatal("read live record")
 	}
 }
+
+// TRLC-LINKS: REQ-SDS-033
 func TestErrorsLeaveRecordRecallable(t *testing.T) {
 	f := frozenBus()
 	c := client(t, f)
@@ -294,9 +315,13 @@ func TestErrorsLeaveRecordRecallable(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-033
 type shortWriter struct{}
 
+// TRLC-LINKS: REQ-SDS-033
 func (shortWriter) Write(b []byte) (int, error) { return len(b) - 1, nil }
+
+// TRLC-LINKS: REQ-SDS-082
 func TestWaitAllowsForce(t *testing.T) {
 	f := frozenBus()
 	c := client(t, f)
@@ -320,6 +345,7 @@ func TestWaitAllowsForce(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-083, REQ-SDS-032
 func TestInterleaveRateAndFault(t *testing.T) {
 	b := frozenBus()
 	b.revision = 6
@@ -347,6 +373,7 @@ func TestInterleaveRateAndFault(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-033
 func TestInterleaveWarmRecallPreservesFullCapacity(t *testing.T) {
 	f := frozenBus()
 	f.revision = 7
@@ -375,6 +402,7 @@ func TestInterleaveWarmRecallPreservesFullCapacity(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-033
 func TestBurstRecallFullRecordAndTail(t *testing.T) {
 	f := frozenBus()
 	f.revision = 8
@@ -392,6 +420,7 @@ func TestBurstRecallFullRecordAndTail(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-040, REQ-SDS-032, REQ-SDS-083
 func TestPrecisionMetadataAndConfig(t *testing.T) {
 	f := frozenBus()
 	f.revision = 9
@@ -421,6 +450,7 @@ func TestPrecisionMetadataAndConfig(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-033
 func TestForwardRecallCoverage(t *testing.T) {
 	for _, count := range []uint32{0, 1, 4080, 4081, 4097, Words} {
 		seen := make([]byte, count)
@@ -437,6 +467,7 @@ func TestForwardRecallCoverage(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-033
 func TestForwardRecallFullRecordAndTail(t *testing.T) {
 	f := frozenBus()
 	f.revision = 10
@@ -459,6 +490,7 @@ func TestForwardRecallFullRecordAndTail(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-033
 func TestForwardRecallReadFailureDeliversNothing(t *testing.T) {
 	f := frozenBus()
 	f.revision = 10
@@ -479,6 +511,7 @@ func TestForwardRecallReadFailureDeliversNothing(t *testing.T) {
 	checkWords(t, dst.Bytes(), f.base, Words)
 }
 
+// TRLC-LINKS: REQ-SDS-033
 func TestLargeStreamFabricRecallKeepsQualifiedChunkLimit(t *testing.T) {
 	f := frozenBus()
 	f.revision = 11
@@ -495,5 +528,17 @@ func TestLargeStreamFabricRecallKeepsQualifiedChunkLimit(t *testing.T) {
 	checkWords(t, dst.Bytes(), f.base, Words)
 	if f.received > 4096 {
 		t.Fatalf("oversized transfer %d", f.received)
+	}
+}
+
+// TRLC-LINKS: REQ-SDS-033, REQ-SDS-042
+func TestArmProgramsTriggerLevelAndHysteresisTogether(t *testing.T) {
+	f := frozenBus()
+	c := client(t, f)
+	if err := c.Arm(context.Background(), Config{PostWords: 16, TriggerLevel: 127, TriggerHysteresis: 14}); err != nil {
+		t.Fatal(err)
+	}
+	if got := f.staged[7]; got != 0x0e7f {
+		t.Fatalf("trigger register=%04x", got)
 	}
 }

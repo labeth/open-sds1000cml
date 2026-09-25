@@ -1,0 +1,14 @@
+{
+  "source": "fpga/acq_sram/sim/tb_ordinal_counter.v",
+  "scope": "Offline Icarus simulations with ideal digital clocks and behavioral RAM (ALTERA_RESERVED_QIS is not defined). No fitted primitive simulation, metastability analysis, physical timing or board qualification.",
+  "runs": [
+    "ordinal-counter"
+  ],
+  "results": [
+    {
+      "requirement": "REQ-SDS-047",
+      "status": "partial",
+      "notes": "Reviewed digital simulations pass. Full requirement-clause coverage and physical qualification remain unestablished. See evidence/test-runs/rtl-reviewed.json for exact commands, source hashes and output."
+    }
+  ]
+}

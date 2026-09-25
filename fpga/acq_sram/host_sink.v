@@ -1,9 +1,11 @@
+// ENGMODEL-OWNER-UNIT: FU-RTL-ACQ-SRAM-HOST-SINK
 // Ordered 125 MHz consumer of the host FIFO's 80-bit packets.
 // [79]=descriptor, [78]=bank, [77:64]=pair address or valid word count,
 // [63:0]=paired samples or first-word ordinal. DATA writes RAM on the
 // next edge after acceptance; a subsequent descriptor publishes after that write.
 // Caller supplies common epoch reset, prevents writes to owned banks, and
 // crosses publication/metadata to ARM with an ownership handshake.
+// TRLC-LINKS: REQ-SDS-094
 module sram_host_sink(
  input wire clk,reset,upstream_fault,
  input wire valid,input wire [79:0] data,output wire ready,

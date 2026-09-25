@@ -1,0 +1,72 @@
+{
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "result": "pass",
+  "cases": [
+    {
+      "source": "app/internal/web/superres_comp.test.cjs",
+      "command": [
+        "node",
+        "superres_comp.test.cjs"
+      ],
+      "exitCode": 0,
+      "result": "pass",
+      "log": "evidence/test-runs/reviewed-superres_comp.test.cjs.log",
+      "logSHA256": "4162f87b1b9b2faf3b2ebccca9d74441a23091c0c1b8815ef98c833a9f1c4d44"
+    },
+    {
+      "source": "app/internal/web/superres_ets.test.cjs",
+      "command": [
+        "node",
+        "superres_ets.test.cjs"
+      ],
+      "exitCode": 0,
+      "result": "pass",
+      "log": "evidence/test-runs/reviewed-superres_ets.test.cjs.log",
+      "logSHA256": "79789fb92e129135f5fe5f73888f29456b2236f9c564fa9c42119f3723182a1f"
+    }
+  ],
+  "boundaryCharacterization": {
+    "result": "pass",
+    "cases": [
+      {
+        "name": "target magnitude is minus 6.02 dB at fbw, despite minus 3 dB comment",
+        "result": "pass"
+      },
+      {
+        "name": "zero-bit auto budget selects 40 MHz despite 10 MHz raw Nyquist",
+        "result": "pass"
+      },
+      {
+        "name": "invalid sample period and all-gap inputs return original array",
+        "result": "pass"
+      },
+      {
+        "name": "linear trend is restored without compensation changes",
+        "result": "pass"
+      },
+      {
+        "name": "ETS rejects companion shorter than alignment channel",
+        "result": "pass"
+      },
+      {
+        "name": "ETS folds all samples of a longer companion",
+        "result": "pass"
+      },
+      {
+        "name": "ETS does not mask negative companion gap codes",
+        "result": "pass"
+      }
+    ],
+    "scope": "Bounded characterizations of original compensation/ETS functions, including documented mismatches and input assumptions; no physical calibration or timing qualification."
+  },
+  "sourceSHA256": {
+    "app/internal/web/superres_comp.js": "3d551ee3ceca857a1ed1728f6b236bcf864801a3af483f8284714379ad3d6b33",
+    "app/internal/web/superres_ets.js": "11e2f6ffcb27d934a67cb516665c015edc184b2b69c9797a41346381ffaa347b",
+    "app/internal/web/superres_comp.test.cjs": "73a5343168f618d8618fc323a9357ef58f4100dc77f99314490eb749a757420c",
+    "app/internal/web/superres_ets.test.cjs": "baf77ee2b69ccbffbf976e9b926f26742b5a7d86422ee6e61979951dfcfe5ddc"
+  },
+  "helperSHA256": "bcd60669d5c0f43c531021dddbfb70a77c16bfc1e8a37d29894c428bb21d6361",
+  "runnerSHA256": "efae48f99071b365843f57e31d15623d00d7396885bf53f2b4b1355716ee86f4",
+  "nodeVersion": "v22.20.0",
+  "scope": "Original synthetic Node suites and seven bounded characterizations. Compensation fixtures use the same response function as the inverse, so this is not independent measured calibration. ETS noise statistics are not SINAD ENOB. No device operations."
+}

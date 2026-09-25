@@ -1,0 +1,1670 @@
+{
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "status": "integrated",
+  "scope": "Complete review of all 74 previously unlinked top-level Go type declarations in 31 already function-reviewed files. Field/interface semantics are mapped explicitly to existing contracts; declaration links are not behavioral or physical qualification. Only reviewed type-link comments were added; every transition preserves Go tokens and exact recoverability of the pinned baseline.",
+  "files": [
+    {
+      "path": "app/internal/analog/frontend.go",
+      "owner": "FU-APP-ANALOG",
+      "types": {
+        "Detent": [
+          "REQ-SDS-015"
+        ],
+        "FrontEnd": [
+          "REQ-SDS-015",
+          "REQ-SDS-095",
+          "REQ-SDS-096",
+          "REQ-SDS-097",
+          "REQ-SDS-098"
+        ]
+      },
+      "review": "Detent separates displayed volts/div and zoom from emitted analog gain/relay state. FrontEnd owns serialized SPI shadows and injected staging hooks; probe and coupling fields represent display state rather than independent analog gain programming. TrigCal is Zero minus CPV times input-referred volts. spiTransfer is an ABI-shaped structure, not evidence that actual ioctl layout or hardware electrical timing is qualified. Test operations record writes and sleeps without exercising physical SPI.",
+      "declarations": [
+        {
+          "body": "// Detent is one V/div step of the vertical ladder (spec 06 \u00a74.3). The 2 mV\n// and 5 mV detents run the 10 mV analog range with \u00d75/\u00d72 display zoom \u2014 the\n// code\u2192volts mapping stays on the analog range; the zoom is display-only.\ntype Detent struct {\n\tVdivV\tfloat64\t// requested (displayed) volts/div\n\tGain\tuint8\t// fine-gain DAC code\n\tAtten\tbool\t// relay bit2: coarse range (true = attenuated 500 mV\u201310 V)\n\tZoom\tint\t// display magnification (1, 2 or 5)\n}",
+          "line": 16,
+          "path": "app/internal/analog/frontend.go"
+        },
+        {
+          "body": "// FrontEnd owns the SPI shadows. It is producer-direct (off the GPMC bus)\n// and serializes itself; it never touches the acquisition engine \u2014 it stages\n// the offset DAC through the injected hook so the code re-anchors to each\n// detent's calibrated zero when V/div changes.\ntype FrontEnd struct {\n\tmu\tsync.Mutex\n\ttr\tTransport\n\tsleep\tfunc(time.Duration)\n\ttab\t*cal.Table\n\tidx\t[2]int\n\ttrigSrc\tint\t// relay byte2 source nibble: 0=C1, 1=C2, 2=EXT\n\temitted\tbool\t// seed-don't-emit: leave the inherited analog range alone\n\n\tstage\tfunc(ch int, code uint16)\t\t// offset-DAC stager (engine.SetOffsetDAC)\n\tonOffV\tfunc(ch int, offV float64)\t\t// applied-offset-volts hook (engine trigger reference)\n\tonVdiv\tfunc(ch int, vdivV, zero, cpv float64)\t// V/div change hook (engine trigger map + per-detent cal)\n\toffReqV\t[2]float64\t\t\t\t// requested input-referred offset volts\n\toffSet\t[2]bool\t\t\t\t\t// whether the user has set an offset\n\tprobe\t[2]float64\t\t\t\t// per-channel probe attenuation (display multiplier)\n\tcpl\t[2]int\t\t\t\t\t// per-channel coupling (CplDC/CplAC/CplGND)\n\ttrigCal\t[2][numDetents]TrigCal\t\t\t// per-channel, per-detent trigger DAC cal\n}",
+          "line": 97,
+          "path": "app/internal/analog/frontend.go"
+        }
+      ]
+    },
+    {
+      "path": "app/internal/analog/frontend_test.go",
+      "owner": "FU-APP-ANALOG",
+      "types": {
+        "op": [
+          "REQ-SDS-015"
+        ],
+        "fakeTr": [
+          "REQ-SDS-015",
+          "REQ-SDS-095",
+          "REQ-SDS-096"
+        ]
+      },
+      "review": "Detent separates displayed volts/div and zoom from emitted analog gain/relay state. FrontEnd owns serialized SPI shadows and injected staging hooks; probe and coupling fields represent display state rather than independent analog gain programming. TrigCal is Zero minus CPV times input-referred volts. spiTransfer is an ABI-shaped structure, not evidence that actual ioctl layout or hardware electrical timing is qualified. Test operations record writes and sleeps without exercising physical SPI.",
+      "declarations": [
+        {
+          "body": "type op struct {\n\tkind\tstring\t// \"relay\" | \"gain\"\n\tword\tuint32\n\tch2\tuint8\n\tch1\tuint8\n}",
+          "line": 11,
+          "path": "app/internal/analog/frontend_test.go"
+        },
+        {
+          "body": "type fakeTr struct {\n\tops\t[]op\n\tsleeps\t[]time.Duration\n}",
+          "line": 18,
+          "path": "app/internal/analog/frontend_test.go"
+        }
+      ]
+    },
+    {
+      "path": "app/internal/analog/spi.go",
+      "owner": "FU-APP-ANALOG",
+      "types": {
+        "spiTransfer": [
+          "REQ-SDS-015"
+        ],
+        "Transport": [
+          "REQ-SDS-015"
+        ],
+        "Dev": [
+          "REQ-SDS-015"
+        ]
+      },
+      "review": "Detent separates displayed volts/div and zoom from emitted analog gain/relay state. FrontEnd owns serialized SPI shadows and injected staging hooks; probe and coupling fields represent display state rather than independent analog gain programming. TrigCal is Zero minus CPV times input-referred volts. spiTransfer is an ABI-shaped structure, not evidence that actual ioctl layout or hardware electrical timing is qualified. Test operations record writes and sleeps without exercising physical SPI.",
+      "declarations": [
+        {
+          "body": "// spiTransfer mirrors struct spi_ioc_transfer (32 bytes).\ntype spiTransfer struct {\n\ttxBuf\t\tuint64\n\trxBuf\t\tuint64\n\tlen\t\tuint32\n\tspeedHz\t\tuint32\n\tdelayUsecs\tuint16\n\tbitsPerWord\tuint8\n\tcsChange\tuint8\n\ttxNbits\t\tuint8\n\trxNbits\t\tuint8\n\twordDelay\tuint8\n\tpad\t\tuint8\n}",
+          "line": 30,
+          "path": "app/internal/analog/spi.go"
+        },
+        {
+          "body": "// Transport is the SPI surface the front end drives; faked in tests.\ntype Transport interface {\n\t// WriteRelay emits one 24-bit relay word on spidev1.0 (MSB-first).\n\tWriteRelay(word uint32) error\n\t// WriteGain emits the two gain-DAC bytes on spidev1.1 as two separate\n\t// CS-framed single-byte transfers, CH2 FIRST then CH1 (spec 06 \u00a74.1).\n\tWriteGain(ch2, ch1 uint8) error\n}",
+          "line": 45,
+          "path": "app/internal/analog/spi.go"
+        },
+        {
+          "body": "// Dev is the real SPI transport. Both fds are opened once and never closed.\ntype Dev struct {\n\trelayFD\tint\t// /dev/spidev1.0: mode 3, 24 bits/word, 300 kHz\n\tgainFD\tint\t// /dev/spidev1.1: mode 3, 8 bits/word, 300 kHz\n}",
+          "line": 54,
+          "path": "app/internal/analog/spi.go"
+        }
+      ]
+    },
+    {
+      "path": "app/internal/analog/trigcal.go",
+      "owner": "FU-APP-ANALOG",
+      "types": {
+        "TrigCal": [
+          "REQ-SDS-098"
+        ]
+      },
+      "review": "Detent separates displayed volts/div and zoom from emitted analog gain/relay state. FrontEnd owns serialized SPI shadows and injected staging hooks; probe and coupling fields represent display state rather than independent analog gain programming. TrigCal is Zero minus CPV times input-referred volts. spiTransfer is an ABI-shaped structure, not evidence that actual ioctl layout or hardware electrical timing is qualified. Test operations record writes and sleeps without exercising physical SPI.",
+      "declarations": [
+        {
+          "body": "// TrigCal is one detent's trigger-DAC calibration: code = Zero \u2212 CPV\u00b7V, where V\n// is input-referred volts at the BNC (before the probe multiplier). Zero is the\n// DAC code for 0 V; CPV is DAC codes per input-volt.\ntype TrigCal struct {\n\tZero\tfloat64\t`json:\"zero\"`\n\tCPV\tfloat64\t`json:\"cpv\"`\n}",
+          "line": 29,
+          "path": "app/internal/analog/trigcal.go"
+        }
+      ]
+    },
+    {
+      "path": "app/internal/cal/cal.go",
+      "owner": "FU-APP-CAL",
+      "types": {
+        "Rec": [
+          "REQ-SDS-016",
+          "REQ-SDS-091"
+        ],
+        "Table": [
+          "REQ-SDS-016",
+          "REQ-SDS-091"
+        ]
+      },
+      "review": "Rec keeps signed DAC/zero values and the diagnostic gain coefficient; Table includes two channels of range records and a source label. These shapes support fallback/calibration conversion contracts without proving accuracy of physical calibration or using diagnostic gain for every display conversion.",
+      "declarations": [
+        {
+          "body": "// Rec is one per-(channel, V/div) calibration record (Block A).\ntype Rec struct {\n\tGainDAC\tint16\t// fine analog gain code (spidev1.1)\n\tZero\tint16\t// offset-DAC zero (live-zero; file +2 copies to both)\n\tGain\tfloat32\t// per-decade coefficient \u2014 DC-volts diagnostic ONLY,\n\n}",
+          "line": 23,
+          "path": "app/internal/cal/cal.go"
+        },
+        {
+          "body": "// Table is the in-process calibration table.\ntype Table struct {\n\tRec\t[2][numVdiv]Rec\n\tSource\tstring\t// \"file\" | \"backup\" | \"defaults\"\n}",
+          "line": 31,
+          "path": "app/internal/cal/cal.go"
+        }
+      ]
+    },
+    {
+      "path": "app/internal/fpgaload/container.go",
+      "owner": "FU-APP-FPGALOAD",
+      "types": {
+        "Order": [
+          "REQ-SDS-092"
+        ],
+        "BitOrder": [
+          "REQ-SDS-092"
+        ]
+      },
+      "review": "Stored container Order and requested BitOrder are separate enums. Port exposes CS3 configuration word I/O; ioctlPort and memPort select access mechanisms. Options holds length/order overrides, retries, poll timing and injectable sleep. Identity is four fabric words read through Reader. Field defaults and historical timing comments are not current device qualification. fakePort and fakeFabric are bounded configuration/identity test fixtures.",
+      "declarations": [
+        {
+          "body": "// Order is the container's stored bit order.\ntype Order int",
+          "line": 26,
+          "path": "app/internal/fpgaload/container.go"
+        },
+        {
+          "body": "// BitOrder is the caller's request (Options.BitOrder). Zero = auto-detect.\ntype BitOrder int",
+          "line": 50,
+          "path": "app/internal/fpgaload/container.go"
+        }
+      ]
+    },
+    {
+      "path": "app/internal/fpgaload/device.go",
+      "owner": "FU-APP-FPGALOAD",
+      "types": {
+        "ioctlPort": [
+          "REQ-SDS-005"
+        ],
+        "memPort": [
+          "REQ-SDS-005"
+        ]
+      },
+      "review": "Stored container Order and requested BitOrder are separate enums. Port exposes CS3 configuration word I/O; ioctlPort and memPort select access mechanisms. Options holds length/order overrides, retries, poll timing and injectable sleep. Identity is four fabric words read through Reader. Field defaults and historical timing comments are not current device qualification. fakePort and fakeFabric are bounded configuration/identity test fixtures.",
+      "declarations": [
+        {
+          "body": "// ioctlPort drives CS3 0x07 through the inherited /dev/Gpmc fd \u2014 the path\n// every other register access uses; ~5.9 M writes per load, \u224816 s.\ntype ioctlPort struct{ fd int }",
+          "line": 26,
+          "path": "app/internal/fpgaload/device.go"
+        },
+        {
+          "body": "// memPort drives the same port through a /dev/mem O_SYNC mapping of the CS3\n// window: one 16-bit store per DCLK edge, \u22482.5 s per load (tools/fpga_reload\n// measured 1.18 Mbit/s). Reads go through the mapping as well (the port is a\n// plain register in the MAX V; the double-shift trap is checked at open by\n// comparing a mmap read against an ioctl read).\ntype memPort struct {\n\tm\t[]byte\n\tword\t*uint16\n}",
+          "line": 59,
+          "path": "app/internal/fpgaload/device.go"
+        }
+      ]
+    },
+    {
+      "path": "app/internal/fpgaload/fpgaload.go",
+      "owner": "FU-APP-FPGALOAD",
+      "types": {
+        "Port": [
+          "REQ-SDS-005"
+        ],
+        "Options": [
+          "REQ-SDS-005",
+          "REQ-SDS-092"
+        ],
+        "Reader": [
+          "REQ-SDS-004"
+        ],
+        "Identity": [
+          "REQ-SDS-004"
+        ]
+      },
+      "review": "Stored container Order and requested BitOrder are separate enums. Port exposes CS3 configuration word I/O; ioctlPort and memPort select access mechanisms. Options holds length/order overrides, retries, poll timing and injectable sleep. Identity is four fabric words read through Reader. Field defaults and historical timing comments are not current device qualification. fakePort and fakeFabric are bounded configuration/identity test fixtures.",
+      "declarations": [
+        {
+          "body": "// Port is the GPMC CS3 configuration port. Implementations: the ioctl port and\n// the /dev/mem fast port (device.go) and the test fake.\ntype Port interface {\n\t// WriteCfg writes the 16-bit configuration-port word.\n\tWriteCfg(v uint16) error\n\t// ReadCfg reads it back (nSTATUS = bit 6, CONF_DONE = bit 7).\n\tReadCfg() (uint16, error)\n}",
+          "line": 32,
+          "path": "app/internal/fpgaload/fpgaload.go"
+        },
+        {
+          "body": "// Options tunes the reload; zero values take the defaults below.\ntype Options struct {\n\t// BitOrder is the caller's request; the default reads the order out of the\n\t// container header (container.go). An explicit value that contradicts the\n\t// container is refused unless Force is set.\n\tBitOrder\tBitOrder\n\tForce\t\tbool\n\t// InitClocks is the number of DCLK cycles clocked after the last data bit\n\t// so the device leaves the initialization phase. The bench-proven loader\n\t// (owned-fpga 680e441) clocks 16 zero bytes = 128 DCLK; the workplan says\n\t// \"16 init clocks\". Extra clocks in user mode are harmless, too few can\n\t// leave the device short of user mode, so the default is the proven 128.\n\tInitClocks\tint\n\t// NConfigLow is the nCONFIG low hold (default 2 ms, tools/fpga_reload).\n\tNConfigLow\ttime.Duration\n\t// StatusPoll / StatusPolls bound the nSTATUS wait after the release\n\t// (defaults 10 ms \u00d7 21, the factory loader's bound).\n\tStatusPoll\ttime.Duration\n\tStatusPolls\tint\n\t// Timeout / PollEvery bound the CONF_DONE poll (defaults 5 s / 1 ms).\n\tTimeout\t\ttime.Duration\n\tPollEvery\ttime.Duration\n\t// Attempts is the number of full cycles tried before giving up (default 3,\n\t// the vendor loader's count).\n\tAttempts\tint\n\t// RequireLen refuses an image that is not exactly RBFLen bytes (default\n\t// true). Tests use short containers.\n\tAllowAnyLen\tbool\n\t// Sleep is injectable so tests do not wait (default time.Sleep).\n\tSleep\tfunc(time.Duration)\n\tLogf\tfunc(string, ...any)\n}",
+          "line": 57,
+          "path": "app/internal/fpgaload/fpgaload.go"
+        },
+        {
+          "body": "// Reader reads a CS1 register (bus.Dev.Read with plane 1 bound).\ntype Reader func(sel uint16) (uint16, error)",
+          "line": 236,
+          "path": "app/internal/fpgaload/fpgaload.go"
+        },
+        {
+          "body": "// Identity is the four identity words of a fabric.\ntype Identity struct {\n\tBuildLo, BuildHi, Version, Fabric uint16\n}",
+          "line": 239,
+          "path": "app/internal/fpgaload/fpgaload.go"
+        }
+      ]
+    },
+    {
+      "path": "app/internal/fpgaload/fpgaload_test.go",
+      "owner": "FU-APP-FPGALOAD",
+      "types": {
+        "fakePort": [
+          "REQ-SDS-005",
+          "REQ-SDS-092"
+        ],
+        "fakeFabric": [
+          "REQ-SDS-004"
+        ]
+      },
+      "review": "Stored container Order and requested BitOrder are separate enums. Port exposes CS3 configuration word I/O; ioctlPort and memPort select access mechanisms. Options holds length/order overrides, retries, poll timing and injectable sleep. Identity is four fabric words read through Reader. Field defaults and historical timing comments are not current device qualification. fakePort and fakeFabric are bounded configuration/identity test fixtures.",
+      "declarations": [
+        {
+          "body": "// fakePort models the MAX V configuration port: every write is recorded;\n// nSTATUS drops on an nCONFIG-low write and rises statusAfter reads later;\n// CONF_DONE asserts doneAfter reads after the port is parked following a\n// complete shift (never when doneNever).\ntype fakePort struct {\n\twrites\t\t[]uint16\n\treads\t\tint\n\tstatusAfter\tint\t// reads after the release before nSTATUS rises\n\tdoneAfter\tint\t// reads after the park before CONF_DONE rises\n\tdoneNever\tbool\n\twriteErrAt\tint\t// fail the Nth write (1-based); 0 = never\n\twriteErr\terror\n\n\tnconfigLow\tbool\n\treleaseRead\tint\t// reads counted since the release\n\tparked\t\tbool\n\tparkRead\tint\n\tclocks\t\tint\t// DCLK rising edges since the last nCONFIG low\n\tpulses\t\tint\n\tconfDone\tbool\n}",
+          "line": 17,
+          "path": "app/internal/fpgaload/fpgaload_test.go"
+        },
+        {
+          "body": "type fakeFabric struct {\n\tgood\tbool\n\tport\t*fakePort\n\treads\tint\n}",
+          "line": 295,
+          "path": "app/internal/fpgaload/fpgaload_test.go"
+        }
+      ]
+    },
+    {
+      "path": "app/internal/frames/fanout.go",
+      "owner": "FU-APP-FRAMES",
+      "types": {
+        "Source": [
+          "REQ-SDS-020"
+        ],
+        "Fanout": [
+          "REQ-SDS-020"
+        ]
+      },
+      "review": "Source is a single-consumer frame interface; Fanout protects a copied latest frame and notification channel under a mutex. The shape documents the sharing boundary, not zero-copy immutability or physical producer timing. tickSource is a controlled atomic-sequence test producer.",
+      "declarations": [
+        {
+          "body": "// Source is the single-consumer frame producer (the engine).\ntype Source interface {\n\tConsume() (*engine.Frame, bool)\n}",
+          "line": 16,
+          "path": "app/internal/frames/fanout.go"
+        },
+        {
+          "body": "type Fanout struct {\n\tmu\tsync.RWMutex\n\tlatest\tengine.Frame\n\thas\tbool\n\twake\tchan struct{}\t// closed+replaced under mu on every fresh snapshot\n}",
+          "line": 20,
+          "path": "app/internal/frames/fanout.go"
+        }
+      ]
+    },
+    {
+      "path": "app/internal/frames/fanout_test.go",
+      "owner": "FU-APP-FRAMES",
+      "types": {
+        "tickSource": [
+          "REQ-SDS-020"
+        ]
+      },
+      "review": "Source is a single-consumer frame interface; Fanout protects a copied latest frame and notification channel under a mutex. The shape documents the sharing boundary, not zero-copy immutability or physical producer timing. tickSource is a controlled atomic-sequence test producer.",
+      "declarations": [
+        {
+          "body": "// tickSource publishes a fresh frame with an advancing Seq each time `fresh`\n// is armed; otherwise it re-presents the last frame as stale.\ntype tickSource struct {\n\tseq\tatomic.Uint64\n\tfresh\tatomic.Bool\n\tf\tengine.Frame\n}",
+          "line": 14,
+          "path": "app/internal/frames/fanout_test.go"
+        }
+      ]
+    },
+    {
+      "path": "app/internal/measure/measure.go",
+      "owner": "FU-APP-MEASURE",
+      "types": {
+        "Result": [
+          "REQ-SDS-017"
+        ]
+      },
+      "review": "Result carries voltage, percentage and timing values with HasTiming distinguishing unavailable timing from numerical zero. It is a derived data representation, not a calibration or measurement-accuracy certificate.",
+      "declarations": [
+        {
+          "body": "// Result is the full auto-measurement set: volts, seconds and Hz. HasTiming is\n// false when the record has no resolvable edge (flat/DC or sub-noise), in which\n// case the timing fields are zero and callers should show them as \"\u2014\".\ntype Result struct {\n\tVpp\tfloat64\t`json:\"vpp\"`\n\tVmax\tfloat64\t`json:\"vmax\"`\n\tVmin\tfloat64\t`json:\"vmin\"`\n\tVmean\tfloat64\t`json:\"vmean\"`\n\tVrms\tfloat64\t`json:\"vrms\"`\n\tVtop\tfloat64\t`json:\"vtop\"`\n\tVbase\tfloat64\t`json:\"vbase\"`\n\tVampl\tfloat64\t`json:\"vampl\"`\t// top \u2212 base (settled amplitude)\n\n\tOvershoot\tfloat64\t`json:\"overshoot\"`\t// percent of amplitude above top\n\tPreshoot\tfloat64\t`json:\"preshoot\"`\t// percent of amplitude below base\n\n\tFreq\t\tfloat64\t`json:\"freq\"`\n\tPeriod\t\tfloat64\t`json:\"period\"`\n\tDuty\t\tfloat64\t`json:\"duty\"`\t// percent high\n\tRiseS\t\tfloat64\t`json:\"rise_s\"`\n\tFallS\t\tfloat64\t`json:\"fall_s\"`\n\tPosWidthS\tfloat64\t`json:\"pos_width_s\"`\n\tNegWidthS\tfloat64\t`json:\"neg_width_s\"`\n\n\tHasTiming\tbool\t`json:\"has_timing\"`\n}",
+          "line": 18,
+          "path": "app/internal/measure/measure.go"
+        }
+      ]
+    },
+    {
+      "path": "app/internal/scpi/scpi.go",
+      "owner": "FU-APP-SCPI",
+      "types": {
+        "Scope": [
+          "REQ-SDS-024"
+        ],
+        "Analog": [
+          "REQ-SDS-024"
+        ],
+        "Display": [
+          "REQ-SDS-024"
+        ],
+        "Screenshot": [
+          "REQ-SDS-024"
+        ],
+        "Handler": [
+          "REQ-SDS-024"
+        ]
+      },
+      "review": "Scope and Analog delimit delegated acquisition/vertical controls; optional Display and Screenshot represent panel state and hardcopy. Handler combines delegates, locking, waveform selection and explicit echo-back shadows. A shadow field is not proof the hardware supports the represented operation. Test fakeScope/fakeFE/fakeDisplay retain synthetic state only.",
+      "declarations": [
+        {
+          "body": "// Scope is the instrument surface (engine + fan-out frames).\ntype Scope interface {\n\tSnapshot() engine.Stats\n\tWithFrame(fn func(*engine.Frame))\n\tSetRunning(on bool)\n\tSetNorm(on bool)\n\tSetSingle()\n\tSetTdiv(tdivS float64) (engine.Band, bool)\n\tSetTrigLevelCode(code uint16) uint16\n\tSetTrigSlope(rising bool)\n\tSetTrigSource(ch int)\n\tSetOffsetDAC(ch int, code uint16)\n\tSetAcqMode(m int)\n\tSetAvgCount(n int)\n}",
+          "line": 20,
+          "path": "app/internal/scpi/scpi.go"
+        },
+        {
+          "body": "// Analog is the vertical front end; may be nil.\ntype Analog interface {\n\tSetVdiv(ch, idx int) error\n\tSnapshot() (idx [2]int, emitted bool)\n\tSetOffset(ch int, volts float64) uint16\n\tOffsetVolts(ch int, code uint16) float64\n\tSetProbe(ch int, x float64)\n\tSetCoupling(ch, mode int) error\n\tTrigVolts(code uint16, srcCh int) float64\n\tTrigCode(volts float64, srcCh int) float64\n}",
+          "line": 36,
+          "path": "app/internal/scpi/scpi.go"
+        },
+        {
+          "body": "// Display is the device display/panel surface (implemented by\n// *panel.Controller); may be nil. It backs the SCPI display commands whose\n// state genuinely lives in the panel \u2014 X-Y view (XYDS), persistence (PESU),\n// the softkey menu (MENU) \u2014 so their set\u2192query round-trips reflect the REAL\n// on-screen state, never a private shadow that could drift from the LCD.\ntype Display interface {\n\tViewXY() bool\n\tSetViewXY(on bool)\n\tPersistOn() bool\n\tSetPersist(on bool)\n\tMenuOpen() bool\n\tSetMenuOpen(on bool)\n}",
+          "line": 52,
+          "path": "app/internal/scpi/scpi.go"
+        },
+        {
+          "body": "// Screenshot returns the SCDP hardcopy payload (BMP). Wired by main to a\n// headless render of the current frame; may be nil.\ntype Screenshot func() []byte",
+          "line": 63,
+          "path": "app/internal/scpi/scpi.go"
+        },
+        {
+          "body": "type Handler struct {\n\tsc\tScope\n\tfe\tAnalog\n\tdisp\tDisplay\n\tshot\tScreenshot\n\tlogf\tfunc(string, ...any)\n\n\t// mu serializes HandleLine against the cross-goroutine snapshot readers\n\t// (Inverted() feeds the web status snapshot and the LCD HUD builder).\n\tmu\tsync.Mutex\n\n\tchdr\tstring\t// \"SHORT\" | \"OFF\" (power-on default SHORT)\n\twfSP\tint\n\twfNP\tint\n\twfFP\tint\n\twfSN\tint\n\n\t// Instrument-state shadows for echo-back of controls with no engine\n\t// representation yet. Every shadowed set MUST round-trip through its\n\t// query (spec 11 \u00a73.3): a silent success that the query then\n\t// contradicts corrupts automation. BWL has no shadow on purpose \u2014 this\n\t// build cannot engage the 20 MHz limit (spec 06 \u00a76), so a BWL ON set\n\t// errors and the query reports the fixed OFF state.\n\ttra\t[2]bool\n\tcpl\t[2]string\n\tattn\t[2]float64\n\tinvs\t[2]bool\n\tunit\t[2]string\n\tskew\t[2]float64\n\ttrmd\tstring\n\ttrlvV\tfloat64\n\ttrdlS\tfloat64\n\tserial\tstring\n}",
+          "line": 73,
+          "path": "app/internal/scpi/scpi.go"
+        }
+      ]
+    },
+    {
+      "path": "app/internal/scpi/scpi_test.go",
+      "owner": "FU-APP-SCPI",
+      "types": {
+        "fakeScope": [
+          "REQ-SDS-024"
+        ],
+        "fakeFE": [
+          "REQ-SDS-024"
+        ],
+        "fakeDisplay": [
+          "REQ-SDS-024"
+        ]
+      },
+      "review": "Scope and Analog delimit delegated acquisition/vertical controls; optional Display and Screenshot represent panel state and hardcopy. Handler combines delegates, locking, waveform selection and explicit echo-back shadows. A shadow field is not proof the hardware supports the represented operation. Test fakeScope/fakeFE/fakeDisplay retain synthetic state only.",
+      "declarations": [
+        {
+          "body": "// fakeScope is a truthful mini-instrument: every setter updates the stats\n// snapshot the way the real engine eventually would, so set\u2192query\n// round-trips can be asserted exactly.\ntype fakeScope struct {\n\tstats\tengine.Stats\n\tframe\t*engine.Frame\n\tcalls\t[]string\n}",
+          "line": 18,
+          "path": "app/internal/scpi/scpi_test.go"
+        },
+        {
+          "body": "// fakeFE is a truthful vertical front end: SetVdiv tracks the detent index\n// and SetOffset stages the DAC code into the scope stats exactly like the\n// real analog front end does through the engine.\ntype fakeFE struct {\n\tfs\t*fakeScope\n\tidx\t[2]int\n\tcpl\t[2]int\n\tprobe\t[2]float64\n}",
+          "line": 96,
+          "path": "app/internal/scpi/scpi_test.go"
+        },
+        {
+          "body": "// fakeDisplay is a truthful device-display double (the panel controller's\n// scpi.Display surface): plain state the XYDS/PESU/MENU handlers read+write.\ntype fakeDisplay struct {\n\txy, persist, menu bool\n}",
+          "line": 124,
+          "path": "app/internal/scpi/scpi_test.go"
+        }
+      ]
+    },
+    {
+      "path": "app/internal/settings/apply_test.go",
+      "owner": "FU-APP-SETTINGS",
+      "types": {
+        "nullBus": [
+          "REQ-SDS-072"
+        ],
+        "nullSPI": [
+          "REQ-SDS-072"
+        ]
+      },
+      "review": "Persisted Channel records offset intent separately from offset value; Settings keeps front-end emission intent, version and comparable nested values. Trigger level zero carries inherited-state meaning. Wire interfaces route collection/restoration to existing owners, with optional analog/panel dependencies. Saver separates observed, settled and believed-saved values. Null bus/SPI fixtures do not run acquisition or physical writes.",
+      "declarations": [
+        {
+          "body": "// nullBus satisfies bus.Bus without any hardware: the engine is constructed\n// (never Run) purely so Apply exercises the REAL staging setters and their\n// clamps, and Snapshot reports what they stored.\ntype nullBus struct{}",
+          "line": 17,
+          "path": "app/internal/settings/apply_test.go"
+        },
+        {
+          "body": "// nullSPI satisfies analog.Transport so the real FrontEnd (with its per-tier\n// offset law, ladder and emit tracking) runs against no hardware.\ntype nullSPI struct{ relays, gains int }",
+          "line": 34,
+          "path": "app/internal/settings/apply_test.go"
+        }
+      ]
+    },
+    {
+      "path": "app/internal/settings/saver.go",
+      "owner": "FU-APP-SETTINGS",
+      "types": {
+        "Saver": [
+          "REQ-SDS-090"
+        ]
+      },
+      "review": "Persisted Channel records offset intent separately from offset value; Settings keeps front-end emission intent, version and comparable nested values. Trigger level zero carries inherited-state meaning. Wire interfaces route collection/restoration to existing owners, with optional analog/panel dependencies. Saver separates observed, settled and believed-saved values. Null bus/SPI fixtures do not run acquisition or physical writes.",
+      "declarations": [
+        {
+          "body": "// Saver watches the live setup and persists it, debounced. It is the ONE\n// observation point for every mutation path \u2014 panel knobs/menus, web\n// /api/set, /api/panel injection and SCPI all end in the same authoritative\n// state (engine stats + front-end shadows + controller view), so polling that\n// state catches them all without sprinkling save hooks through the setters.\n//\n// Policy: poll once a second (cheap snapshot copies, never on the acquisition\n// hot path), and write only after the setup has been STABLE for the settle\n// window (default 2 s) and actually differs from what is on disk. A knob\n// sweep therefore costs one write, ~2\u20133 s after the last detent.\ntype Saver struct {\n\tpath\tstring\n\tsnap\tfunc() Settings\n\tlogf\tfunc(string, ...any)\n\tpoll\ttime.Duration\n\tsettle\ttime.Duration\n\n\tnow\tfunc() time.Time\t\t// injectable clock (tests)\n\tsave\tfunc(string, Settings) error\t// injectable sink (tests)\n\n\tmu\t\tsync.Mutex\n\tprimed\t\tbool\n\tlast\t\tSettings\t// latest observed state\n\tlastChange\ttime.Time\t// when `last` last changed\n\tsaved\t\tSettings\t// what we believe is on disk\n\tfails\t\tint\t\t// consecutive save failures (log throttle)\n}",
+          "line": 19,
+          "path": "app/internal/settings/saver.go"
+        }
+      ]
+    },
+    {
+      "path": "app/internal/settings/settings.go",
+      "owner": "FU-APP-SETTINGS",
+      "types": {
+        "Channel": [
+          "REQ-SDS-072",
+          "REQ-SDS-089"
+        ],
+        "Trigger": [
+          "REQ-SDS-072",
+          "REQ-SDS-089"
+        ],
+        "Acq": [
+          "REQ-SDS-072",
+          "REQ-SDS-089"
+        ],
+        "Decode": [
+          "REQ-SDS-072",
+          "REQ-SDS-089"
+        ],
+        "Settings": [
+          "REQ-SDS-072",
+          "REQ-SDS-089"
+        ]
+      },
+      "review": "Persisted Channel records offset intent separately from offset value; Settings keeps front-end emission intent, version and comparable nested values. Trigger level zero carries inherited-state meaning. Wire interfaces route collection/restoration to existing owners, with optional analog/panel dependencies. Saver separates observed, settled and believed-saved values. Null bus/SPI fixtures do not run acquisition or physical writes.",
+      "declarations": [
+        {
+          "body": "// Channel is one vertical channel's persisted setup.\ntype Channel struct {\n\tVdivV\t\tfloat64\t`json:\"vdiv_v\"`\t\t// volts/div (must be a ladder detent to restore)\n\tOffsetV\t\tfloat64\t`json:\"offset_v\"`\t// input-referred offset volts\n\tOffsetSet\tbool\t`json:\"offset_set\"`\t// false = boot-inherited offset untouched (never restore 0 V over it)\n\tCoupling\tint\t`json:\"coupling\"`\t// 0=DC 1=AC 2=GND (analog.Cpl*)\n\tProbe\t\tfloat64\t`json:\"probe\"`\t\t// probe attenuation: 1, 10 or 100\n}",
+          "line": 36,
+          "path": "app/internal/settings/settings.go"
+        },
+        {
+          "body": "// Trigger is the persisted trigger setup.\ntype Trigger struct {\n\tLevelCode\tint\t`json:\"level_code\"`\t// trigger-level DAC code; 0 = boot comparator untouched\n\tRising\t\tbool\t`json:\"rising\"`\t\t// edge slope\n\tSource\t\tint\t`json:\"source\"`\t\t// 0=C1 1=C2\n\tType\t\tint\t`json:\"type\"`\t\t// 0=edge 1=pulse 2=slope 3=video\n\tNorm\t\tbool\t`json:\"norm\"`\t\t// trigger mode: true=NORM false=AUTO\n\tHoldoffS\tfloat64\t`json:\"holdoff_s\"`\t// 0 = off\n}",
+          "line": 45,
+          "path": "app/internal/settings/settings.go"
+        },
+        {
+          "body": "// Acq is the persisted acquisition mode.\ntype Acq struct {\n\tMode\t\tint\t`json:\"mode\"`\t// 0=normal 1=average 2=eres 3=peak\n\tAvgCount\tint\t`json:\"avg_count\"`\n\tEresLen\t\tint\t`json:\"eres_len\"`\n}",
+          "line": 55,
+          "path": "app/internal/settings/settings.go"
+        },
+        {
+          "body": "// Decode is the device protocol-decode setup (controller-owned; historically\n// reset to Off on every app restart).\ntype Decode struct {\n\tProto\tint\t`json:\"proto\"`\t// 0=off 1=auto 2=uart 3=i2c 4=spi\n\tBaud\tint\t`json:\"baud\"`\n\tChA\tint\t`json:\"cha\"`\t// UART source; I2C SCL; SPI CLK (0=C1 1=C2)\n\tChB\tint\t`json:\"chb\"`\t// I2C SDA; SPI DATA\n\tCPOL\tbool\t`json:\"cpol\"`\n\tCPHA\tbool\t`json:\"cpha\"`\n\tFormat\tint\t`json:\"format\"`\t// 0=hex 1=ascii 2=both\n}",
+          "line": 63,
+          "path": "app/internal/settings/settings.go"
+        },
+        {
+          "body": "// Settings is the whole persisted setup. Every field is comparable, so the\n// saver detects change with plain ==.\ntype Settings struct {\n\tVersion\t\tint\t\t`json:\"version\"`\n\tTdivS\t\tfloat64\t\t`json:\"tdiv_s\"`\n\tCh\t\t[2]Channel\t`json:\"ch\"`\n\tVertSet\t\tbool\t\t`json:\"vert_set\"`\t// vertical front end was driven; false = keep the seed-don't-emit boot rule\n\tTrigger\t\tTrigger\t\t`json:\"trigger\"`\n\tAcq\t\tAcq\t\t`json:\"acq\"`\n\tDecode\t\tDecode\t\t`json:\"decode\"`\n\tViewMode\tint\t\t`json:\"view_mode\"`\t// 0=Y-T 1=X-Y 2=FFT 3=Bode 4=Spgm\n}",
+          "line": 75,
+          "path": "app/internal/settings/settings.go"
+        }
+      ]
+    },
+    {
+      "path": "app/internal/settings/wire.go",
+      "owner": "FU-APP-SETTINGS",
+      "types": {
+        "Engine": [
+          "REQ-SDS-072",
+          "REQ-SDS-089"
+        ],
+        "Analog": [
+          "REQ-SDS-072",
+          "REQ-SDS-089"
+        ],
+        "ViewState": [
+          "REQ-SDS-072",
+          "REQ-SDS-089"
+        ],
+        "Panel": [
+          "REQ-SDS-072",
+          "REQ-SDS-089"
+        ]
+      },
+      "review": "Persisted Channel records offset intent separately from offset value; Settings keeps front-end emission intent, version and comparable nested values. Trigger level zero carries inherited-state meaning. Wire interfaces route collection/restoration to existing owners, with optional analog/panel dependencies. Saver separates observed, settled and believed-saved values. Null bus/SPI fixtures do not run acquisition or physical writes.",
+      "declarations": [
+        {
+          "body": "// Engine is the slice of the engine's staging-setter surface the persisted\n// setup flows through (the same calls web /api/set and the panel make; every\n// setter clamps and stages \u2014 nothing here touches the bus).\ntype Engine interface {\n\tSnapshot() engine.Stats\n\tSetTdiv(tdivS float64) (engine.Band, bool)\n\tSetNorm(on bool)\n\tSetTrigSlope(rising bool)\n\tSetTrigSource(ch int)\n\tSetTrigType(t int)\n\tSetTrigLevelCode(code uint16) uint16\n\tSetHoldoff(sec float64) float64\n\tSetAcqMode(m int)\n\tSetAvgCount(n int)\n\tSetEresLen(l int)\n}",
+          "line": 14,
+          "path": "app/internal/settings/wire.go"
+        },
+        {
+          "body": "// Analog is the vertical front-end surface (implemented by *analog.FrontEnd,\n// producer-direct off the GPMC bus). May be nil when SPI is unavailable \u2014\n// vertical setup is then neither collected nor restored.\ntype Analog interface {\n\tSnapshot() (idx [2]int, emitted bool)\n\tSetVdiv(ch, idx int) error\n\tSetOffset(ch int, volts float64) uint16\n\tOffsetReqV(ch int) float64\n\tSetCoupling(ch, mode int) error\n\tCoupling(ch int) int\n\tSetProbe(ch int, x float64)\n\tProbeFactor(ch int) float64\n}",
+          "line": 31,
+          "path": "app/internal/settings/wire.go"
+        },
+        {
+          "body": "// ViewState is the controller-owned slice of the setup: the device decode\n// config and the display view mode.\ntype ViewState struct {\n\tViewMode\tint\n\tDecode\t\tDecode\n}",
+          "line": 44,
+          "path": "app/internal/settings/wire.go"
+        },
+        {
+          "body": "// Panel is the front-panel controller surface (implemented by\n// *panel.Controller). ApplySettingsView must enforce the same domains the\n// DECODE/DISPLAY menus keep. May be nil.\ntype Panel interface {\n\tSettingsView() ViewState\n\tApplySettingsView(v ViewState)\n}",
+          "line": 52,
+          "path": "app/internal/settings/wire.go"
+        }
+      ]
+    },
+    {
+      "path": "app/internal/sramcapture/capture.go",
+      "owner": "FU-APP-SRAMCAPTURE",
+      "types": {
+        "Bus": [
+          "REQ-SDS-082"
+        ],
+        "Capture": [
+          "REQ-SDS-033",
+          "REQ-SDS-082",
+          "REQ-SDS-083"
+        ],
+        "Source": [
+          "REQ-SDS-032",
+          "REQ-SDS-040"
+        ],
+        "Config": [
+          "REQ-SDS-032",
+          "REQ-SDS-040"
+        ],
+        "Metadata": [
+          "REQ-SDS-083"
+        ],
+        "recallSpan": [
+          "REQ-SDS-033"
+        ]
+      },
+      "review": "Bus is the CS1 subset with raw selector writes; Capture owns recall/stream scratch and serialization. Config counts 32-bit words, with raw two-pair layout versus Q8.8 single-pair layout under decimation. Metadata trigger index is a word coordinate; coherent recall assumes Ready and Frozen. StreamBlock keeps a 64-bit first-word ordinal, word count and bank identity. Status flags and fake DMA/pop buffers do not establish physical throughput, clock alignment or cross-core analog timing. counterVerifier tracks expected sample-counter progression.",
+      "declarations": [
+        {
+          "body": "// Bus is the subset of bus.Dev used here. RawWrite bypasses the OLD default\n// fabric's selector schema, never the plane guard: all accesses here are CS1.\ntype Bus interface {\n\tRead(plane uint8, selector uint16) (uint16, error)\n\tRawWrite(selector, value uint16) error\n}",
+          "line": 30,
+          "path": "app/internal/sramcapture/capture.go"
+        },
+        {
+          "body": "type Capture struct {\n\trecallScratch\t[]byte\n\tstreamHalves\t[]uint16\n\tstreamWords\tuint16\n\tstreamBytes\t[]byte\n\tmu\t\tsync.Mutex\n\tbus\t\tBus\n\tbeats\t\tatomic.Uint64\n}",
+          "line": 35,
+          "path": "app/internal/sramcapture/capture.go"
+        },
+        {
+          "body": "type Source uint8",
+          "line": 45,
+          "path": "app/internal/sramcapture/capture.go"
+        },
+        {
+          "body": "// Config counts 32-bit SRAM words. Each ADC word contains two consecutive\n// sample pairs, byte order CH1[n], CH2[n], CH1[n+1], CH2[n+1].\n// With DecimationLog2 nonzero, each word instead contains one little-endian\n// uint16 Q8.8 CH1/CH2 pair. PreWords excludes\n// the triggering word; PostWords includes it. Pair and TriggerChannel are\n// zero based. Cross-core analog timing is not implied by this API.\ntype Config struct {\n\tSource\t\tSource\t`json:\"source\"`\n\tDecimationLog2\tuint8\t`json:\"decimation_log2\"`\n\tPair\t\tuint8\t`json:\"pair\"`\n\tPreWords\tuint32\t`json:\"pre_words\"`\n\tPostWords\tuint32\t`json:\"post_words\"`\n\tNormal\t\tbool\t`json:\"normal\"`\n\tFalling\t\tbool\t`json:\"falling\"`\n\tTriggerChannel\tuint8\t`json:\"trigger_channel\"`\n\tTriggerLevel\tuint8\t`json:\"trigger_level\"`\n}",
+          "line": 58,
+          "path": "app/internal/sramcapture/capture.go"
+        },
+        {
+          "body": "// Metadata counters are stable for recall only when Ready and Frozen are true.\n// TriggerIndex is a WORD index, not a sample-half or interpolated timestamp.\ntype Metadata struct {\n\tLocked\t\tbool\t`json:\"locked\"`\n\tReady\t\tbool\t`json:\"ready\"`\n\tRunning\t\tbool\t`json:\"running\"`\n\tFrozen\t\tbool\t`json:\"frozen\"`\n\tTriggered\tbool\t`json:\"triggered\"`\n\tPrefetched\tbool\t`json:\"prefetched\"`\n\tLength\t\tuint32\t`json:\"words\"`\n\tStart\t\tuint32\t`json:\"start\"`\n\tTriggerIndex\tuint32\t`json:\"trigger_index\"`\n\tPosition\tuint32\t`json:\"position\"`\n\tOrigin\t\tuint32\t`json:\"origin\"`\n\tRevision\tuint16\t`json:\"revision\"`\n\tMapID\t\tuint16\t`json:\"map_id\"`\n\tSampleRateHz\tfloat64\t`json:\"sample_rate_hz\"`\n\tDecimation\tuint32\t`json:\"decimation\"`\n\tSampleBits\tuint8\t`json:\"sample_bits\"`\n\tFractionBits\tuint8\t`json:\"fraction_bits\"`\n\tSamplesPerWord\tuint8\t`json:\"samples_per_word\"`\n\tInterleaved\tbool\t`json:\"interleaved\"`\n\tDataFault\tbool\t`json:\"data_fault\"`\n}",
+          "line": 72,
+          "path": "app/internal/sramcapture/capture.go"
+        },
+        {
+          "body": "type recallSpan struct{ offset, count uint32 }",
+          "line": 613,
+          "path": "app/internal/sramcapture/capture.go"
+        }
+      ]
+    },
+    {
+      "path": "app/internal/sramcapture/capture_test.go",
+      "owner": "FU-APP-SRAMCAPTURE",
+      "types": {
+        "fakeBus": [
+          "REQ-SDS-032",
+          "REQ-SDS-033",
+          "REQ-SDS-040",
+          "REQ-SDS-082",
+          "REQ-SDS-083"
+        ],
+        "noPrefetch": [
+          "REQ-SDS-033"
+        ],
+        "shortWriter": [
+          "REQ-SDS-033"
+        ]
+      },
+      "review": "Bus is the CS1 subset with raw selector writes; Capture owns recall/stream scratch and serialization. Config counts 32-bit words, with raw two-pair layout versus Q8.8 single-pair layout under decimation. Metadata trigger index is a word coordinate; coherent recall assumes Ready and Frozen. StreamBlock keeps a 64-bit first-word ordinal, word count and bank identity. Status flags and fake DMA/pop buffers do not establish physical throughput, clock alignment or cross-core analog timing. counterVerifier tracks expected sample-counter progression.",
+      "declarations": [
+        {
+          "body": "type fakeBus struct {\n\tid, mapID, revision, flags\t\tuint16\n\tlength, start, origin, position, base\tuint32\n\tstaged\t\t\t\t\tmap[uint16]uint16\n\tbuffer\t\t\t\t\t[8192]uint32\n\tbufferCapacity\t\t\t\tuint16\n\tindex\t\t\t\t\tuint16\n\tburstIndex\t\t\t\tuint16\n\treceived\t\t\t\tuint32\n\twrites, readWords, failRead\t\tint\n\tcommands\t\t\t\t[]uint16\n\tcorruptBurstHead\t\t\tbool\n\tobserved\t\t\t\tchan struct{}\n}",
+          "line": 14,
+          "path": "app/internal/sramcapture/capture_test.go"
+        },
+        {
+          "body": "type noPrefetch struct{ *fakeBus }",
+          "line": 241,
+          "path": "app/internal/sramcapture/capture_test.go"
+        },
+        {
+          "body": "type shortWriter struct{}",
+          "line": 308,
+          "path": "app/internal/sramcapture/capture_test.go"
+        }
+      ]
+    },
+    {
+      "path": "app/internal/sramcapture/stream.go",
+      "owner": "FU-APP-SRAMCAPTURE",
+      "types": {
+        "StreamStatus": [
+          "REQ-SDS-035"
+        ],
+        "StreamBlock": [
+          "REQ-SDS-035"
+        ]
+      },
+      "review": "Bus is the CS1 subset with raw selector writes; Capture owns recall/stream scratch and serialization. Config counts 32-bit words, with raw two-pair layout versus Q8.8 single-pair layout under decimation. Metadata trigger index is a word coordinate; coherent recall assumes Ready and Frozen. StreamBlock keeps a 64-bit first-word ordinal, word count and bank identity. Status flags and fake DMA/pop buffers do not establish physical throughput, clock alignment or cross-core analog timing. counterVerifier tracks expected sample-counter progression.",
+      "declarations": [
+        {
+          "body": "type StreamStatus struct {\n\tReady\t\tuint8\t`json:\"ready\"`\n\tTokens\t\tuint8\t`json:\"tokens\"`\n\tLastSingle\tuint8\t`json:\"last_single\"`\n\tFault\t\tbool\t`json:\"fault\"`\n\tFinished\tbool\t`json:\"finished\"`\n\tEnabled\t\tbool\t`json:\"enabled\"`\n}",
+          "line": 15,
+          "path": "app/internal/sramcapture/stream.go"
+        },
+        {
+          "body": "type StreamBlock struct {\n\tFirstWord\tuint64\t`json:\"first_word\"`\n\tWords\t\tuint32\t`json:\"words\"`\n\tBank\t\tuint8\t`json:\"bank\"`\n}",
+          "line": 82,
+          "path": "app/internal/sramcapture/stream.go"
+        }
+      ]
+    },
+    {
+      "path": "app/internal/sramcapture/stream_test.go",
+      "owner": "FU-APP-SRAMCAPTURE",
+      "types": {
+        "streamFake": [
+          "REQ-SDS-035"
+        ],
+        "streamDMAFake": [
+          "REQ-SDS-035"
+        ],
+        "streamWriter": [
+          "REQ-SDS-035"
+        ],
+        "streamByteFake": [
+          "REQ-SDS-035"
+        ]
+      },
+      "review": "Bus is the CS1 subset with raw selector writes; Capture owns recall/stream scratch and serialization. Config counts 32-bit words, with raw two-pair layout versus Q8.8 single-pair layout under decimation. Metadata trigger index is a word coordinate; coherent recall assumes Ready and Frozen. StreamBlock keeps a 64-bit first-word ordinal, word count and bank identity. Status flags and fake DMA/pop buffers do not establish physical throughput, clock alignment or cross-core analog timing. counterVerifier tracks expected sample-counter progression.",
+      "declarations": [
+        {
+          "body": "type streamFake struct {\n\t*fakeBus\n\tflags\t\t\t\t\tuint16\n\tfirst\t\t\t\t\t[2]uint64\n\tcounts\t\t\t\t\t[2]uint16\n\treleases\t\t\t\t[]uint16\n\tbadPointer, faultOnPop, tokenOnPop\tbool\n}",
+          "line": 13,
+          "path": "app/internal/sramcapture/stream_test.go"
+        },
+        {
+          "body": "type streamDMAFake struct{ *streamFake }",
+          "line": 22,
+          "path": "app/internal/sramcapture/stream_test.go"
+        },
+        {
+          "body": "type streamWriter func([]byte) (int, error)",
+          "line": 76,
+          "path": "app/internal/sramcapture/stream_test.go"
+        },
+        {
+          "body": "type streamByteFake struct{ *streamDMAFake }",
+          "line": 175,
+          "path": "app/internal/sramcapture/stream_test.go"
+        }
+      ]
+    },
+    {
+      "path": "app/internal/sramcapture/verify.go",
+      "owner": "FU-APP-SRAMCAPTURE",
+      "types": {
+        "counterVerifier": [
+          "REQ-SDS-034"
+        ]
+      },
+      "review": "Bus is the CS1 subset with raw selector writes; Capture owns recall/stream scratch and serialization. Config counts 32-bit words, with raw two-pair layout versus Q8.8 single-pair layout under decimation. Metadata trigger index is a word coordinate; coherent recall assumes Ready and Frozen. StreamBlock keeps a 64-bit first-word ordinal, word count and bank identity. Status flags and fake DMA/pop buffers do not establish physical throughput, clock alignment or cross-core analog timing. counterVerifier tracks expected sample-counter progression.",
+      "declarations": [
+        {
+          "body": "type counterVerifier struct{ next uint32 }",
+          "line": 40,
+          "path": "app/internal/sramcapture/verify.go"
+        }
+      ]
+    },
+    {
+      "path": "app/internal/vxi11srv/server.go",
+      "owner": "FU-APP-VXI11SRV",
+      "types": {
+        "Handler": [
+          "REQ-SDS-024"
+        ],
+        "Server": [
+          "REQ-SDS-024"
+        ],
+        "conn": [
+          "REQ-SDS-024"
+        ],
+        "xdr": [
+          "REQ-SDS-024"
+        ]
+      },
+      "review": "Server owns a listener, handler and serialized link-owner identity; conn retains per-connection line and pending response buffers. xdr holds decoder state including an error bit. These data structures support a specific server protocol subset, not complete VXI-11 conformance. testClient is the original compatibility fixture.",
+      "declarations": [
+        {
+          "body": "// Handler executes one complete SCPI line and returns the reply bytes.\ntype Handler func(line []byte) []byte",
+          "line": 49,
+          "path": "app/internal/vxi11srv/server.go"
+        },
+        {
+          "body": "type Server struct {\n\th\tHandler\n\tlogf\tfunc(string, ...any)\n\tln\tnet.Listener\n\n\tmu\t\tsync.Mutex\n\tlinkOwner\t*conn\n\tnextLID\t\tuint32\n}",
+          "line": 51,
+          "path": "app/internal/vxi11srv/server.go"
+        },
+        {
+          "body": "type conn struct {\n\tc\tnet.Conn\n\tsrv\t*Server\n\tlid\tuint32\n\tlineBuf\t[]byte\n\tpending\t[]byte\n}",
+          "line": 61,
+          "path": "app/internal/vxi11srv/server.go"
+        },
+        {
+          "body": "type xdr struct {\n\tb\t[]byte\n\toff\tint\n\terr\tbool\n}",
+          "line": 143,
+          "path": "app/internal/vxi11srv/server.go"
+        }
+      ]
+    },
+    {
+      "path": "app/internal/vxi11srv/server_test.go",
+      "owner": "FU-APP-VXI11SRV",
+      "types": {
+        "testClient": [
+          "REQ-SDS-024"
+        ]
+      },
+      "review": "Server owns a listener, handler and serialized link-owner identity; conn retains per-connection line and pending response buffers. xdr holds decoder state including an error bit. These data structures support a specific server protocol subset, not complete VXI-11 conformance. testClient is the original compatibility fixture.",
+      "declarations": [
+        {
+          "body": "// testClient speaks the same framing as ota/internal/vxi11 (the first\n// compatibility target).\ntype testClient struct {\n\tc\tnet.Conn\n\txid\tuint32\n}",
+          "line": 14,
+          "path": "app/internal/vxi11srv/server_test.go"
+        }
+      ]
+    },
+    {
+      "path": "ota/internal/config/config.go",
+      "owner": "FU-OTA-CONFIG",
+      "types": {
+        "Config": [
+          "REQ-SDS-088"
+        ]
+      },
+      "review": "OTA Config exposes identity, transports, slot paths, device nodes and supervision/watchdog timing. Field comments/default intent do not independently enforce safe timing relationships; validation behavior remains in the previously reviewed constructor/helpers.",
+      "declarations": [
+        {
+          "body": "type Config struct {\n\t// Identity + transport.\n\tNATSURL\t\tstring\t\t// OTA_NATS \u2014 empty disables the NATS link\n\tDeviceID\tstring\t\t// OTA_DEVICE_ID \u2014 defaults to sds-<mac tail> or hostname\n\tNKeyFile\tstring\t\t// OTA_NKEY\n\tCredsFile\tstring\t\t// OTA_CREDS\n\tCAFile\t\tstring\t\t// OTA_CA\n\tHBInterval\ttime.Duration\t// OTA_HB_INTERVAL seconds\n\tTCPListen\tstring\t\t// OTA_LISTEN \u2014 local JSON-RPC fallback, empty disables\n\n\t// Layout on the USB stick.\n\tOTADir\t\tstring\t// OTA_DIR \u2014 logs/, state.json, agent.{A,B,active,confirmed}\n\tSlotRoot\tstring\t// OTA_SLOT_ROOT \u2014 app A/B slots + staging\n\n\t// Agent A/B self-update contract (paths from startup.sh).\n\tAgentA\t\tstring\n\tAgentB\t\tstring\n\tAgentActive\tstring\t// pointer file\n\tAgentConfirmed\tstring\t// pointer file\n\n\t// Devices.\n\tGpmcDev\t\tstring\t// OTA_GPMC\n\tFpgaKeyDev\tstring\t// OTA_FPGA_KEY\n\tWatchdogDev\tstring\t// OTA_WD_DEV\n\n\t// Health / supervision contract.\n\tHealthDir\tstring\t\t// OTA_HEALTH_DIR \u2014 RAM-backed (default /dev)\n\tHealthTimeout\ttime.Duration\t// OTA_HEALTH_TIMEOUT \u2014 staleness window\n\tAppGrace\ttime.Duration\t// OTA_APP_GRACE \u2014 first health report deadline\n\tStableSecs\ttime.Duration\t// OTA_STABLE \u2014 healthy runtime that confirms a slot\n\tMaxFails\tint\t\t// OTA_MAXFAILS \u2014 failures before rollback\n\tWdPet\t\ttime.Duration\t// OTA_WD_PET \u2014 watchdog pet interval (<60s!)\n\n\t// Takeover.\n\tFactoryNames\t[]string\t// OTA_FACTORY_NAMES \u2014 extra exe/comm hints, comma-sep\n\tTakeoverDelay\ttime.Duration\t// OTA_TAKEOVER_DELAY \u2014 settle before auto-takeover (default 0: instant; the factory app is already up when startup.sh runs)\n\tAutoTakeover\tbool\t\t// OTA_AUTO_TAKEOVER \u2014 arm auto-takeover after boot (default: coexist)\n}",
+          "line": 18,
+          "path": "ota/internal/config/config.go"
+        }
+      ]
+    },
+    {
+      "path": "ota/internal/fdinherit/fdinherit.go",
+      "owner": "FU-OTA-FDINHERIT",
+      "types": {
+        "Holder": [
+          "REQ-SDS-085"
+        ]
+      },
+      "review": "Holder is read-only process identity data; Exe can be unreadable. Its existence does not prove device ownership is exclusive or authorize opening/closing the inherited descriptor.",
+      "declarations": [
+        {
+          "body": "// Holder describes a process holding an open descriptor to a device node.\ntype Holder struct {\n\tPID\tint\t`json:\"pid\"`\n\tComm\tstring\t`json:\"comm\"`\n\tExe\tstring\t`json:\"exe\"`\t// may be empty if unreadable\n}",
+          "line": 42,
+          "path": "ota/internal/fdinherit/fdinherit.go"
+        }
+      ]
+    },
+    {
+      "path": "ota/internal/slots/slots.go",
+      "owner": "FU-OTA-SLOTS",
+      "types": {
+        "Store": [
+          "REQ-SDS-087"
+        ],
+        "Status": [
+          "REQ-SDS-087"
+        ]
+      },
+      "review": "Store is rooted filesystem state; Status reports active/confirmed pointers, binary digests and emergency availability. Digests and pointer strings do not themselves establish atomic update, healthy execution or validated provenance.",
+      "declarations": [
+        {
+          "body": "type Store struct{ root string }",
+          "line": 33,
+          "path": "ota/internal/slots/slots.go"
+        },
+        {
+          "body": "type Status struct {\n\tActive\t\tstring\t\t\t`json:\"active\"`\n\tConfirmed\tstring\t\t\t`json:\"confirmed\"`\n\tBinaries\tmap[string]string\t`json:\"binaries\"`\t// slot -> sha256 (\"\" if missing)\n\tRoot\t\tstring\t\t\t`json:\"root\"`\n\tHasEmerg\tbool\t\t\t`json:\"has_emergency\"`\n}",
+          "line": 178,
+          "path": "ota/internal/slots/slots.go"
+        }
+      ]
+    },
+    {
+      "path": "ota/internal/vxi11/vxi11.go",
+      "owner": "FU-OTA-VXI11",
+      "types": {
+        "xdrBuf": [
+          "REQ-SDS-100"
+        ],
+        "Client": [
+          "REQ-SDS-100"
+        ]
+      },
+      "review": "Client holds one DEVICE_CORE connection/link and a timeout; xdrBuf encodes request data. fakeInstrument uses local portmapper/core listeners and recorded SCPI messages. This is host protocol evidence, not qualification against every factory firmware.",
+      "declarations": [
+        {
+          "body": "type xdrBuf struct{ b []byte }",
+          "line": 39,
+          "path": "ota/internal/vxi11/vxi11.go"
+        },
+        {
+          "body": "// Client is one open DEVICE_CORE link.\ntype Client struct {\n\tconn\tnet.Conn\n\tlid\tuint32\n\ttimeout\ttime.Duration\n}",
+          "line": 118,
+          "path": "ota/internal/vxi11/vxi11.go"
+        }
+      ]
+    },
+    {
+      "path": "ota/internal/vxi11/vxi11_test.go",
+      "owner": "FU-OTA-VXI11",
+      "types": {
+        "fakeInstrument": [
+          "REQ-SDS-100"
+        ]
+      },
+      "review": "Client holds one DEVICE_CORE connection/link and a timeout; xdrBuf encodes request data. fakeInstrument uses local portmapper/core listeners and recorded SCPI messages. This is host protocol evidence, not qualification against every factory firmware.",
+      "declarations": [
+        {
+          "body": "// fakeInstrument is a minimal VXI-11 server: a portmapper on the listener that\n// GETPORTs to a second core listener, which answers create_link / device_write\n// / device_read / destroy_link. It records the SCPI commands it receives.\ntype fakeInstrument struct {\n\tpmLn, coreLn\tnet.Listener\n\tcorePort\tuint32\n\treceived\tchan string\n\treadReply\tstring\n}",
+          "line": 15,
+          "path": "ota/internal/vxi11/vxi11_test.go"
+        }
+      ]
+    },
+    {
+      "path": "ota/internal/watchdog/watchdog.go",
+      "owner": "FU-OTA-WATCHDOG",
+      "types": {
+        "Watchdog": [
+          "REQ-SDS-026",
+          "REQ-SDS-086"
+        ],
+        "Status": [
+          "REQ-SDS-086"
+        ]
+      },
+      "review": "Watchdog protects descriptor, stop signal and latest pet observation; Status reports armed state, last pet and error text. These fields do not establish that the hardware watchdog actually expired or that application health controls service.",
+      "declarations": [
+        {
+          "body": "type Watchdog struct {\n\tdev\tstring\n\n\tmu\tsync.Mutex\n\tfd\tint\n\tstop\tchan struct{}\n\tlastPet\ttime.Time\n\tpetErr\terror\n}",
+          "line": 24,
+          "path": "ota/internal/watchdog/watchdog.go"
+        },
+        {
+          "body": "type Status struct {\n\tArmed\tbool\t\t`json:\"armed\"`\n\tLastPet\ttime.Time\t`json:\"last_pet,omitzero\"`\n\tPetErr\tstring\t\t`json:\"pet_err,omitempty\"`\n}",
+          "line": 124,
+          "path": "ota/internal/watchdog/watchdog.go"
+        }
+      ]
+    }
+  ],
+  "types": 74,
+  "sourceSHA256": {
+    "app/internal/analog/frontend.go": "89dea9dfb37525dc9dd79a07efa6032b814f71cb4035495a682aa6f388034d51",
+    "app/internal/analog/frontend_test.go": "598127072b69306f70b1cfcf7706050450773c1e0a08b28a8497a71c111fd6bd",
+    "app/internal/analog/spi.go": "78a678c19b2bb2c4b9f4aecd54e3894d027f56078461739eef2fe678a060277c",
+    "app/internal/analog/trigcal.go": "7173d3a9ee0ee7bdf98bd1b03d69cc807b85dcae4beecea95bc5515068eb5312",
+    "app/internal/cal/cal.go": "9d7520742fc28637a534ea9559315eeb1d1d8a5d4cd3586f4d41bb6df81342ed",
+    "app/internal/fpgaload/container.go": "4855979465d56683d69b1c2ac8103acacaad7dcd00c6db92a21c8bd161caa5b6",
+    "app/internal/fpgaload/device.go": "ebe6936e1005c2b1eefac72fc9dc2792639aa1fe9be5668521a7478edb3119a9",
+    "app/internal/fpgaload/fpgaload.go": "98cbcc70859ac44d8d91cbcafe79d98b81527b5b4e28cb6abdaeca1d6caf9163",
+    "app/internal/fpgaload/fpgaload_test.go": "b34162a660cdc9c4561b41ab3d35727d3f36bbbb17fab28af9bfe7c1dbc23c9f",
+    "app/internal/frames/fanout.go": "e8e321b2560173d00c3eadb09a4e1a65ee0ae3e778f1c5a816976a4a76621815",
+    "app/internal/frames/fanout_test.go": "4f198ab91bcd72c8563bf60f6f7fe13366357ede3c5aae23b05301438d6de09e",
+    "app/internal/measure/measure.go": "f94cb59de1fca9fca4e38a07e0a4fcb85aa15b13c95e3fcd7bb48b343d0d2b1d",
+    "app/internal/scpi/scpi.go": "433abe45fca14807e4994cf72a3a856d8327f277bbe6d4477ee207d98e915ecf",
+    "app/internal/scpi/scpi_test.go": "312f53b0a205513912d44ab806478d1198c9a2267d41a03bca215dfc96738d41",
+    "app/internal/settings/apply_test.go": "4ac8a69f0e6c3ecc1e31f57a5f177b4ae84e32e92a01631ad17ee00c849825f9",
+    "app/internal/settings/saver.go": "4f81ee5b92a72589375c742d846018667b8ec635f35a7bdb7aaada127a67da26",
+    "app/internal/settings/settings.go": "e5065925dc347e30288dc245c46016808cb0c1ca1bdb8fbc27e42b822d9d258b",
+    "app/internal/settings/wire.go": "6a7d5bb3d8c7917e8d5cb0644b5d160d7c61eeb6a1e2430d81edef964ab81ea7",
+    "app/internal/sramcapture/capture.go": "9a85d7e322ab1a29c95e7acaed65801895cf74e406b13e5ed10c39eb2304e439",
+    "app/internal/sramcapture/capture_test.go": "6dd6fa6ea7641cf5d978b2af9df0566431586e6e1832e7113937fa36d32c8fd3",
+    "app/internal/sramcapture/stream.go": "d16b8617e4fc5afb9ba3de518b2c359413d05afded7c6c2be5025811c408cab9",
+    "app/internal/sramcapture/stream_test.go": "911746cb3ee869ee67c6eae444528480ffe1f013b498b46da475cf911e9f47bb",
+    "app/internal/sramcapture/verify.go": "d82c8c8c906615561480302d2e9c86afe5705cd5bc92a676e723d9304a183d58",
+    "app/internal/vxi11srv/server.go": "7e9f76981015a22a030f80f95af08e0274694d9a67f7424131b1c3de90fd634d",
+    "app/internal/vxi11srv/server_test.go": "8907293b68f333667ce376efab22a0dd8c3927baa10cc10d582b9a1b76525763",
+    "ota/internal/config/config.go": "b373f1f8b0aa4d5b408f32b0adb88ab1264f1347905c90275f1d4d1d14ee36b8",
+    "ota/internal/fdinherit/fdinherit.go": "c055d9793963761cf21d119127f09569edf460533736a049110d34513eda98af",
+    "ota/internal/slots/slots.go": "90afcb25deff398975a38901b958283eb6be24940f85f3e124a2b7fe2f3a632d",
+    "ota/internal/vxi11/vxi11.go": "ce0617e2f40a8723d49c7eb27ad3fafb39fb96e80005296eec93c1a42d4f6d41",
+    "ota/internal/vxi11/vxi11_test.go": "f5a06d769b38df56101bdcf9bd615276ff9c4c0748373fb0a3ad378cb985cd1b",
+    "ota/internal/watchdog/watchdog.go": "9766420cb3e8f5c5863201fe5d9b9a36c16f10fd0b02de911d3c51cfb39d390a"
+  },
+  "mcpContext": {
+    "REQ-SDS-002": {
+      "owner": [
+        "FU-APP-APP",
+        "FU-OTA-FDINHERIT",
+        "FU-APP-BUS"
+      ],
+      "text": "The instrument shall reuse boot GPMC and key descriptors without freshly opening or closing them.",
+      "sources": [
+        "REF-SOURCE-APP-CMD-APP-MAIN-GO",
+        "REF-SOURCE-OTA-INTERNAL-FDINHERIT-FDINHERIT-GO",
+        "REF-SOURCE-APP-INTERNAL-BUS-BUS-GO",
+        "REF-SOURCE-APP-INTERNAL-BUS-BUS-TEST-GO",
+        "REF-SOURCE-APP-INTERNAL-BUS-KERNEL-DMA-LINUX-GO"
+      ]
+    },
+    "REQ-SDS-004": {
+      "owner": [
+        "FU-APP-APP",
+        "FU-APP-ENGINE",
+        "FU-APP-FPGALOAD"
+      ],
+      "text": "The instrument shall verify the loaded image identity before starting its acquisition engine.",
+      "sources": [
+        "REF-SOURCE-APP-CMD-APP-MAIN-GO",
+        "REF-SOURCE-APP-INTERNAL-ENGINE-ENGINE-LOOP-GO",
+        "REF-SOURCE-APP-INTERNAL-FPGALOAD-FPGALOAD-GO",
+        "REF-SOURCE-APP-INTERNAL-FPGALOAD-DEVICE-GO",
+        "REF-SOURCE-APP-INTERNAL-ENGINE-ENGINE-BUS-GO"
+      ]
+    },
+    "REQ-SDS-005": {
+      "owner": [
+        "FU-SPECIFICATIONS",
+        "FU-APP-FPGALOAD"
+      ],
+      "text": "The instrument shall configure the Cyclone through CS3 selector 7 during controlled bring-up.",
+      "sources": [
+        "REF-SOURCE-SPECS-12-ACQUISITION-FPGA-MD",
+        "REF-SOURCE-APP-INTERNAL-FPGALOAD-FPGALOAD-GO",
+        "REF-SOURCE-APP-INTERNAL-FPGALOAD-DEVICE-GO"
+      ]
+    },
+    "REQ-SDS-015": {
+      "owner": [
+        "FU-APP-ANALOG",
+        "FU-APP-ENGINE"
+      ],
+      "text": "The instrument shall emit seeded absolute analog range and gain settings through SPI.",
+      "sources": [
+        "REF-SOURCE-APP-INTERNAL-ANALOG-FRONTEND-GO",
+        "REF-SOURCE-APP-INTERNAL-ANALOG-SPI-GO",
+        "REF-SOURCE-APP-INTERNAL-ENGINE-ENGINE-CONTROL-GO",
+        "REF-SOURCE-APP-INTERNAL-ENGINE-ENGINE-TRIGLEVEL-TEST-GO"
+      ]
+    },
+    "REQ-SDS-016": {
+      "owner": [
+        "FU-APP-CAL",
+        "FU-APP-ENGINE"
+      ],
+      "text": "The instrument shall decode and validate per-unit calibration data with a fallback path.",
+      "sources": [
+        "REF-SOURCE-APP-INTERNAL-ENGINE-INTERLEAVE-CAL-TEST-GO",
+        "REF-SOURCE-APP-INTERNAL-ENGINE-INTERLEAVE-CAL-GO",
+        "REF-SOURCE-APP-INTERNAL-CAL-CAL-GO",
+        "REF-SOURCE-APP-INTERNAL-ENGINE-ENGINE-GO",
+        "REF-SOURCE-APP-INTERNAL-ENGINE-ENGINE-CONTROL-GO"
+      ]
+    },
+    "REQ-SDS-017": {
+      "owner": [
+        "FU-APP-MEASURE"
+      ],
+      "text": "The instrument shall compute voltage and timing measurements from the shared measurement core.",
+      "sources": [
+        "REF-SOURCE-APP-INTERNAL-MEASURE-MEASURE-GO"
+      ]
+    },
+    "REQ-SDS-020": {
+      "owner": [
+        "FU-APP-FRAMES"
+      ],
+      "text": "The instrument shall share one engine frame stream with display and remote consumers.",
+      "sources": [
+        "REF-SOURCE-APP-INTERNAL-FRAMES-FANOUT-GO"
+      ]
+    },
+    "REQ-SDS-024": {
+      "owner": [
+        "FU-APP-SCPI",
+        "FU-APP-VXI11SRV"
+      ],
+      "text": "The instrument shall serve implemented SCPI commands and waveform transfers through VXI-11.",
+      "sources": [
+        "REF-SOURCE-APP-INTERNAL-SCPI-SCPI-GO",
+        "REF-SOURCE-APP-INTERNAL-VXI11SRV-SERVER-GO",
+        "REF-SOURCE-APP-INTERNAL-SCPI-SCPI-EXEC-GO",
+        "REF-SOURCE-APP-INTERNAL-SCPI-WAVEFORM-GO"
+      ]
+    },
+    "REQ-SDS-025": {
+      "owner": [
+        "FU-APP-APP",
+        "FU-OTA-AGENT",
+        "FU-APP-ENGINE"
+      ],
+      "text": "The instrument shall gate initial health on coherent capture and refresh health on advancing engine progress.",
+      "sources": [
+        "REF-SOURCE-APP-CMD-APP-MAIN-GO",
+        "REF-SOURCE-OTA-INTERNAL-AGENT-HEALTH-GO",
+        "REF-SOURCE-APP-INTERNAL-ENGINE-ENGINE-BUS-GO",
+        "REF-SOURCE-APP-INTERNAL-ENGINE-ENGINE-LOOP-GO",
+        "REF-SOURCE-APP-INTERNAL-ENGINE-ENGINE-TEST-GO",
+        "REF-SOURCE-APP-INTERNAL-ENGINE-HEALTH-BEAT-TEST-GO"
+      ]
+    },
+    "REQ-SDS-026": {
+      "owner": [
+        "FU-OTA-WATCHDOG"
+      ],
+      "text": "The instrument shall service the hardware watchdog independently of application health.",
+      "sources": [
+        "REF-SOURCE-OTA-INTERNAL-WATCHDOG-WATCHDOG-GO"
+      ]
+    },
+    "REQ-SDS-032": {
+      "owner": [
+        "FU-APP-SRAMCAPTURE"
+      ],
+      "text": "The instrument shall reject unsupported SRAM identities and invalid capture geometry before writes.",
+      "sources": [
+        "REF-SOURCE-APP-INTERNAL-SRAMCAPTURE-CAPTURE-GO"
+      ]
+    },
+    "REQ-SDS-033": {
+      "owner": [
+        "FU-APP-SRAMCAPTURE",
+        "FU-RTL-ACQ-SRAM-RECALL"
+      ],
+      "text": "The instrument shall preserve a frozen record across repeated and partial host recalls.",
+      "sources": [
+        "REF-SOURCE-APP-INTERNAL-SRAMCAPTURE-CAPTURE-GO",
+        "REF-SOURCE-FPGA-ACQ-SRAM-RECALL-V"
+      ]
+    },
+    "REQ-SDS-034": {
+      "owner": [
+        "FU-APP-APP",
+        "FU-APP-SRAMCAPTURE"
+      ],
+      "text": "The instrument shall verify complete counter recall when selecting faster revision-10 GPMC timing.",
+      "sources": [
+        "REF-SOURCE-APP-CMD-APP-SRAM-TIMING-GO",
+        "REF-SOURCE-APP-INTERNAL-SRAMCAPTURE-VERIFY-GO",
+        "REF-SOURCE-APP-CMD-APP-SRAM-TIMING-TEST-GO"
+      ]
+    },
+    "REQ-SDS-035": {
+      "owner": [
+        "FU-APP-SRAMCAPTURE"
+      ],
+      "text": "The instrument shall validate bank ordinals and retain ownership until copied samples are safe.",
+      "sources": [
+        "REF-SOURCE-APP-INTERNAL-SRAMCAPTURE-STREAM-GO"
+      ]
+    },
+    "REQ-SDS-040": {
+      "owner": [
+        "FU-RTL-ACQ-SRAM-PRECISION",
+        "FU-RTL-ACQ-SRAM-PRECISION-TAIL"
+      ],
+      "text": "The instrument shall support raw storage and legal power-of-two precision reductions without truncating Q8.8 fractions.",
+      "sources": [
+        "REF-SOURCE-APP-INTERNAL-ENGINE-SRAM-TEST-GO",
+        "REF-SOURCE-APP-INTERNAL-ENGINE-SRAM-GO",
+        "REF-SOURCE-FPGA-ACQ-SRAM-PRECISION-V",
+        "REF-SOURCE-FPGA-ACQ-SRAM-PRECISION-TAIL-V"
+      ]
+    },
+    "REQ-SDS-072": {
+      "owner": [
+        "FU-APP-SETTINGS"
+      ],
+      "text": "The instrument shall normalize persisted instrument settings before applying hardware-facing values.",
+      "sources": [
+        "REF-SOURCE-APP-INTERNAL-SETTINGS-SETTINGS-GO",
+        "REF-SOURCE-APP-INTERNAL-SETTINGS-WIRE-GO"
+      ]
+    },
+    "REQ-SDS-082": {
+      "owner": [
+        "FU-APP-SRAMCAPTURE"
+      ],
+      "text": "The instrument shall serialize legacy SRAM control commands through the CS1 register protocol with acknowledgement and cancellable waits.",
+      "sources": [
+        "REF-SOURCE-APP-INTERNAL-SRAMCAPTURE-CAPTURE-GO"
+      ]
+    },
+    "REQ-SDS-083": {
+      "owner": [
+        "FU-APP-SRAMCAPTURE"
+      ],
+      "text": "The instrument shall expose legacy SRAM acquisition state, record geometry, sample format, sample rate and data-fault metadata.",
+      "sources": [
+        "REF-SOURCE-APP-INTERNAL-SRAMCAPTURE-CAPTURE-GO"
+      ]
+    },
+    "REQ-SDS-084": {
+      "owner": [
+        "FU-APP-SRAMCAPTURE"
+      ],
+      "text": "The instrument shall return ten logical ADC bytes after the legacy snapshot command completes.",
+      "sources": [
+        "REF-SOURCE-APP-INTERNAL-SRAMCAPTURE-CAPTURE-GO"
+      ]
+    },
+    "REQ-SDS-085": {
+      "owner": [
+        "FU-OTA-FDINHERIT"
+      ],
+      "text": "The instrument shall expose device-holder identities, process ancestry and process liveness through read-only process inspection.",
+      "sources": [
+        "REF-SOURCE-OTA-INTERNAL-FDINHERIT-FDINHERIT-GO"
+      ]
+    },
+    "REQ-SDS-086": {
+      "owner": [
+        "FU-OTA-WATCHDOG"
+      ],
+      "text": "The instrument shall support retrying watchdog acquisition, reporting keepalive status and disarming the watchdog on a clean agent stop.",
+      "sources": [
+        "REF-SOURCE-OTA-INTERNAL-WATCHDOG-WATCHDOG-GO"
+      ]
+    },
+    "REQ-SDS-087": {
+      "owner": [
+        "FU-OTA-SLOTS"
+      ],
+      "text": "The instrument shall maintain A/B application binaries, an optional emergency binary, and active and confirmed slot pointers.",
+      "sources": [
+        "REF-SOURCE-OTA-INTERNAL-SLOTS-SLOTS-GO"
+      ]
+    },
+    "REQ-SDS-088": {
+      "owner": [
+        "FU-OTA-CONFIG"
+      ],
+      "text": "The instrument shall resolve agent identity, transport, storage paths and supervision settings using device defaults and environment overrides.",
+      "sources": [
+        "REF-SOURCE-OTA-INTERNAL-CONFIG-CONFIG-GO"
+      ]
+    },
+    "REQ-SDS-089": {
+      "owner": [
+        "FU-APP-SETTINGS"
+      ],
+      "text": "The instrument shall persist versioned setup snapshots and fall back to defaults when a snapshot cannot be loaded.",
+      "sources": [
+        "REF-SOURCE-APP-INTERNAL-SETTINGS-SETTINGS-GO",
+        "REF-SOURCE-APP-INTERNAL-SETTINGS-WIRE-GO"
+      ]
+    },
+    "REQ-SDS-090": {
+      "owner": [
+        "FU-APP-SETTINGS"
+      ],
+      "text": "The instrument shall save changed settings after the settling interval and flush pending changes when the saver stops.",
+      "sources": [
+        "REF-SOURCE-APP-INTERNAL-SETTINGS-SAVER-GO"
+      ]
+    },
+    "REQ-SDS-091": {
+      "owner": [
+        "FU-APP-CAL",
+        "FU-APP-ANALOG"
+      ],
+      "text": "The instrument shall compute DC diagnostic volts using (mean ADC code - 128) * calibration gain / 110 for the selected channel and range.",
+      "sources": [
+        "REF-SOURCE-APP-INTERNAL-CAL-CAL-GO"
+      ]
+    },
+    "REQ-SDS-092": {
+      "owner": [
+        "FU-APP-FPGALOAD"
+      ],
+      "text": "The instrument shall validate passive-serial container length and bit order before configuration writes unless the corresponding explicit override is selected.",
+      "sources": [
+        "REF-SOURCE-APP-INTERNAL-FPGALOAD-FPGALOAD-GO",
+        "REF-SOURCE-APP-INTERNAL-FPGALOAD-CONTAINER-GO"
+      ]
+    },
+    "REQ-SDS-095": {
+      "owner": [
+        "FU-APP-ANALOG"
+      ],
+      "text": "The instrument shall convert requested offset volts to a calibrated DAC code with the implemented fixed slope and range clamps.",
+      "sources": [
+        "REF-SOURCE-APP-INTERNAL-ANALOG-FRONTEND-GO"
+      ]
+    },
+    "REQ-SDS-096": {
+      "owner": [
+        "FU-APP-ANALOG"
+      ],
+      "text": "The instrument shall apply the selected DC, AC or ground display transform without issuing a coupling relay write.",
+      "sources": [
+        "REF-SOURCE-APP-INTERNAL-ANALOG-FRONTEND-GO"
+      ]
+    },
+    "REQ-SDS-097": {
+      "owner": [
+        "FU-APP-ANALOG"
+      ],
+      "text": "The instrument shall retain each channel probe multiplier independently of analog gain programming.",
+      "sources": [
+        "REF-SOURCE-APP-INTERNAL-ANALOG-FRONTEND-GO"
+      ]
+    },
+    "REQ-SDS-098": {
+      "owner": [
+        "FU-APP-ANALOG"
+      ],
+      "text": "The instrument shall select the channel and detent trigger calibration for probe-referred trigger voltage conversion.",
+      "sources": [
+        "REF-SOURCE-APP-INTERNAL-ANALOG-TRIGCAL-GO",
+        "REF-SOURCE-APP-INTERNAL-ANALOG-FRONTEND-GO"
+      ]
+    },
+    "REQ-SDS-100": {
+      "owner": [
+        "FU-OTA-VXI11"
+      ],
+      "text": "The instrument shall provide a VXI-11 client for factory command writes and query replies used during takeover.",
+      "sources": [
+        "REF-SOURCE-OTA-INTERNAL-VXI11-VXI11-GO"
+      ]
+    }
+  },
+  "nextSteps": [
+    "Complete other-language source review and declaration tracing.",
+    "Close explicit requirement implementation/verification evidence gaps.",
+    "Refresh and inspect the PDF at a later major milestone."
+  ],
+  "annotationTransitions": [
+    {
+      "path": "app/internal/analog/frontend.go",
+      "beforeSHA256": "89dea9dfb37525dc9dd79a07efa6032b814f71cb4035495a682aa6f388034d51",
+      "afterSHA256": "6c3442cd15d77b3114045125436a83049fda1c26bb00467ddadd63b7156e843b",
+      "baselineSHA256": "1b6ae5e8c22a78c24157d6dd6f864ef695b11135b5a2b1691e73f3b2fb9b06de",
+      "tokenSHA256": "9ff1f40fbd079aaee855b1316dd70344d4ca7f29c8f7a57a32fe2dc7781b453a",
+      "addedTypes": [
+        "Detent",
+        "FrontEnd"
+      ],
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "app/internal/analog/frontend_test.go",
+      "beforeSHA256": "598127072b69306f70b1cfcf7706050450773c1e0a08b28a8497a71c111fd6bd",
+      "afterSHA256": "85884b53241df23ff822e68d0b2561faac79353308bc633a8a045f6c1d999cdf",
+      "baselineSHA256": "fe371b1774b7cd12b55ca6d0c5ef77bc99f4d431cc6d6a1ea34ad0b294635971",
+      "tokenSHA256": "f1ace859d004077e3673146c134c8baae3477332cbf35fa15a263fd0542f803b",
+      "addedTypes": [
+        "op",
+        "fakeTr"
+      ],
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "app/internal/analog/spi.go",
+      "beforeSHA256": "78a678c19b2bb2c4b9f4aecd54e3894d027f56078461739eef2fe678a060277c",
+      "afterSHA256": "200ce839472af294f3f5b00aff8031383bccc91f9455e82270ebb135b101a1ea",
+      "baselineSHA256": "a247285fa6d64853de8281208910b67878b1bd5007e955589b09f3e03a5262eb",
+      "tokenSHA256": "bc4083546303c54c5b6bb7a63b377b704adb73e45e29887e7d64e7fdd0d9f16f",
+      "addedTypes": [
+        "spiTransfer",
+        "Transport",
+        "Dev"
+      ],
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "app/internal/analog/trigcal.go",
+      "beforeSHA256": "7173d3a9ee0ee7bdf98bd1b03d69cc807b85dcae4beecea95bc5515068eb5312",
+      "afterSHA256": "56a42b038b8ceb65bb8760e0784b1825b8a7e8d3ceb8aeab1e4e2fb2e1d706a4",
+      "baselineSHA256": "2bda4bd626fab8b6ace02c791371cfacbc660d28082ab49aa89e2670bb87c336",
+      "tokenSHA256": "5dc76961e4ed0ec45562b06953b3b70fc1d6acb5547e4785ef1d247bedfb31e9",
+      "addedTypes": [
+        "TrigCal"
+      ],
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "app/internal/cal/cal.go",
+      "beforeSHA256": "9d7520742fc28637a534ea9559315eeb1d1d8a5d4cd3586f4d41bb6df81342ed",
+      "afterSHA256": "67fd5bb9b54a86bf915411cfb441270582e8994d9b419a152999e6e8585ca916",
+      "baselineSHA256": "4a25808baf4e955e4e164dec14b6c4076fd96a099ae6c042cf1de73902b6a138",
+      "tokenSHA256": "14153019f0bb6cb66c58216cbde6dea7ea1aac9552ea64b2569b3412adb4fd25",
+      "addedTypes": [
+        "Rec",
+        "Table"
+      ],
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "app/internal/fpgaload/container.go",
+      "beforeSHA256": "4855979465d56683d69b1c2ac8103acacaad7dcd00c6db92a21c8bd161caa5b6",
+      "afterSHA256": "376a45697fdff93f0fbba4236f807afe1d652efd2b11d82070ab7457e251e20f",
+      "baselineSHA256": "492fa049cc8bc7a5be41d0e9ba8bc0996b7e85db16c81397972a9e1e283c58c6",
+      "tokenSHA256": "05aed2ea32d1bfa5d345172c933c0c4e88059fdc34bd5bb3afab885fe28173b3",
+      "addedTypes": [
+        "Order",
+        "BitOrder"
+      ],
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "app/internal/fpgaload/device.go",
+      "beforeSHA256": "ebe6936e1005c2b1eefac72fc9dc2792639aa1fe9be5668521a7478edb3119a9",
+      "afterSHA256": "d2b2cc9a83364c4b1a79c482d82acbd847b2037735c66edf33e161f4376d7a93",
+      "baselineSHA256": "cfe3cb5fe5e233da8bbde1b632901a61c5ecbee8d0825d57da382c4b7361868b",
+      "tokenSHA256": "ccb0be8d64cd8bbbb16f06db66954bee212d26bc209c105bc52b85ced163dcd0",
+      "addedTypes": [
+        "ioctlPort",
+        "memPort"
+      ],
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "app/internal/fpgaload/fpgaload.go",
+      "beforeSHA256": "98cbcc70859ac44d8d91cbcafe79d98b81527b5b4e28cb6abdaeca1d6caf9163",
+      "afterSHA256": "c0532dceeb85aa9786956e7236d844d45ce5d200638caddd51ebe9d8632de025",
+      "baselineSHA256": "285dbcdb8d2636bdd5db560ed6415d1f5b308b0e11067e77f59f51ccfd78c869",
+      "tokenSHA256": "53f90fee6942c2929b924a5f41236482bf32fc627a98ac77a86280c5f10d8bd6",
+      "addedTypes": [
+        "Port",
+        "Options",
+        "Reader",
+        "Identity"
+      ],
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "app/internal/fpgaload/fpgaload_test.go",
+      "beforeSHA256": "b34162a660cdc9c4561b41ab3d35727d3f36bbbb17fab28af9bfe7c1dbc23c9f",
+      "afterSHA256": "a0cc18b40f053aee15bda052d3ba01be00c2583a433f2230e9937bf0b4b754bc",
+      "baselineSHA256": "2c4e17c89102f19116bed6879c448ee3e8ca5cf9ce8213988b21c3e227acee02",
+      "tokenSHA256": "d1541a33247e587bbfe290f8dff4629149c7833845eca551d3e55c1dfcc85849",
+      "addedTypes": [
+        "fakePort",
+        "fakeFabric"
+      ],
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "app/internal/frames/fanout.go",
+      "beforeSHA256": "e8e321b2560173d00c3eadb09a4e1a65ee0ae3e778f1c5a816976a4a76621815",
+      "afterSHA256": "01305a2b047fe7c3aa257efcbf586001af96a6169394517ed0de45b54a8ad620",
+      "baselineSHA256": "5f190a25c6847aab818b139fb06f2ab262d7cce4487473fd933055a607274edf",
+      "tokenSHA256": "fc5a502bf23adb4f95757cbf6cba0b0c59c73ef2b49f2adaf5bf1bb9070a40cd",
+      "addedTypes": [
+        "Source",
+        "Fanout"
+      ],
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "app/internal/frames/fanout_test.go",
+      "beforeSHA256": "4f198ab91bcd72c8563bf60f6f7fe13366357ede3c5aae23b05301438d6de09e",
+      "afterSHA256": "7ed73ba65f3c7257d0e4bbaf43a3fb5ee9dd011451508d77c9b4659370ae5473",
+      "baselineSHA256": "c30834fd81cfcc48eac135c408deab9d258d3181fecbde34f0e1cf51fc9587a3",
+      "tokenSHA256": "e12270c1e0e118b94538ec2dcbf5514ab873a919e4d8dd538877652122536227",
+      "addedTypes": [
+        "tickSource"
+      ],
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "app/internal/measure/measure.go",
+      "beforeSHA256": "f94cb59de1fca9fca4e38a07e0a4fcb85aa15b13c95e3fcd7bb48b343d0d2b1d",
+      "afterSHA256": "8238886cfd08033296314cd8fabf37eac4754d3fb13211a3d1c83ffe3b5b226d",
+      "baselineSHA256": "a8484749aa7551a08978753fe591e6cdd8ca37e3dc063260e0f3b183c288eaba",
+      "tokenSHA256": "db7fa0bd05e515d0fbd79d417c0ede66ae8a20bb57d319a44e538f577dbfd03f",
+      "addedTypes": [
+        "Result"
+      ],
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "app/internal/scpi/scpi.go",
+      "beforeSHA256": "433abe45fca14807e4994cf72a3a856d8327f277bbe6d4477ee207d98e915ecf",
+      "afterSHA256": "e17f1b95ae046bd9652eda6a6ed670d0af570274e86b63eca9de368cc667c9e0",
+      "baselineSHA256": "6018ff4cb5f317b228252431e36cf91a2619bdffe88d9eae8b99b36641bd7047",
+      "tokenSHA256": "25217c47e4b7ec2d55d3270fb3a220333860b0967c220ebcfe5c588d1647cb90",
+      "addedTypes": [
+        "Scope",
+        "Analog",
+        "Display",
+        "Screenshot",
+        "Handler"
+      ],
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "app/internal/scpi/scpi_test.go",
+      "beforeSHA256": "312f53b0a205513912d44ab806478d1198c9a2267d41a03bca215dfc96738d41",
+      "afterSHA256": "39c95649788f26a6954e3fae4f8e25c721c44799a4fc5164f330ef7d35a81734",
+      "baselineSHA256": "c9119a4c37495ac20109f5cd604a105387b6ae9329fa24eb3f5204e7e04809a7",
+      "tokenSHA256": "f5acb258728630ac2fad22f2df37c46906a7b1bb8cbe7a2c01cdb347fb2026f0",
+      "addedTypes": [
+        "fakeScope",
+        "fakeFE",
+        "fakeDisplay"
+      ],
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "app/internal/settings/apply_test.go",
+      "beforeSHA256": "4ac8a69f0e6c3ecc1e31f57a5f177b4ae84e32e92a01631ad17ee00c849825f9",
+      "afterSHA256": "191ac606407babad6efe6edf380f1ce517be4d8c1104bffa18e6967108904b03",
+      "baselineSHA256": "7e1c2c75203dadd41b34b6fa4dfe87eb88e37dfbe0e89f239ab057bf1d6635e7",
+      "tokenSHA256": "7526a750eeddeff604a35cbe73604f9d28a568db4335c993a750c2f20c9751e4",
+      "addedTypes": [
+        "nullBus",
+        "nullSPI"
+      ],
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "app/internal/settings/saver.go",
+      "beforeSHA256": "4f81ee5b92a72589375c742d846018667b8ec635f35a7bdb7aaada127a67da26",
+      "afterSHA256": "61913b96ca47b0d1dbd0e9e387b92d078a43a357e8f33483f2f47462ceb2bcd6",
+      "baselineSHA256": "fa77b1fc50424466b1d5ab1c263424ac88dc7436e947f2e7635adc57546fccc5",
+      "tokenSHA256": "dc3cf9727436ffa863a00172cf7d0bfe0772280553ccb05e998ca78d26e97540",
+      "addedTypes": [
+        "Saver"
+      ],
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "app/internal/settings/settings.go",
+      "beforeSHA256": "e5065925dc347e30288dc245c46016808cb0c1ca1bdb8fbc27e42b822d9d258b",
+      "afterSHA256": "ffba2e1beeb7d5107e5c8feb4eca6e420f3e7db61fd2a5cb9a62a6504ce6e557",
+      "baselineSHA256": "a076278584622d8d0bc8b10163814fc9b90b164a1097357dd53a31c85850a043",
+      "tokenSHA256": "80f7475891b7d757ce80b7c0dc039c7c79378f0cc4a9d5160f6e4628f48cc064",
+      "addedTypes": [
+        "Channel",
+        "Trigger",
+        "Acq",
+        "Decode",
+        "Settings"
+      ],
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "app/internal/settings/wire.go",
+      "beforeSHA256": "6a7d5bb3d8c7917e8d5cb0644b5d160d7c61eeb6a1e2430d81edef964ab81ea7",
+      "afterSHA256": "73cfe1d8771db8f53842d4dd76d8a949ce1a21cc48781fa2861f0f1270f063a2",
+      "baselineSHA256": "7b768e56ed9a886488fbc88875c01487372d270d4484fa0bc4cae55e9fddf648",
+      "tokenSHA256": "cee4b8ef65d258527828a39e5c2c0d641f65c42752caf7b90d89144bb6b039d1",
+      "addedTypes": [
+        "Engine",
+        "Analog",
+        "ViewState",
+        "Panel"
+      ],
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "app/internal/sramcapture/capture.go",
+      "beforeSHA256": "9a85d7e322ab1a29c95e7acaed65801895cf74e406b13e5ed10c39eb2304e439",
+      "afterSHA256": "bdc1953e6e55be7ab227e77c48d0ef213ef64c5194f9eaa980743da4fb18e54e",
+      "baselineSHA256": "14cba705c748d91713e2dda434de5ce2d67c8beab2c5e8656c82070ec831e5a5",
+      "tokenSHA256": "7fd215a84b0f803e4e89f30feb1f647c3d0de00de8744ad1455962a38ce71d4d",
+      "addedTypes": [
+        "Bus",
+        "Capture",
+        "Source",
+        "Config",
+        "Metadata",
+        "recallSpan"
+      ],
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "app/internal/sramcapture/capture_test.go",
+      "beforeSHA256": "6dd6fa6ea7641cf5d978b2af9df0566431586e6e1832e7113937fa36d32c8fd3",
+      "afterSHA256": "ab4637ebd44d4510c5a4cf8a5bec08031af35e4313ac8788ef2a9f49047fa9bb",
+      "baselineSHA256": "9897cab611ef5e0a1fa85a82dc580b49bf12ad69f4f6a724f8674064acf9f046",
+      "tokenSHA256": "002da0b02ebb4d1df82070896e14047313d9060271b0048eabe4724c8e5fb06b",
+      "addedTypes": [
+        "fakeBus",
+        "noPrefetch",
+        "shortWriter"
+      ],
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "app/internal/sramcapture/stream.go",
+      "beforeSHA256": "d16b8617e4fc5afb9ba3de518b2c359413d05afded7c6c2be5025811c408cab9",
+      "afterSHA256": "78eec68668d867b7fe70f3354d1e2da6b59c209b591e177e7e837ee5667959f0",
+      "baselineSHA256": "95993af2804251554e9db0b3948b26101feeb1489be2a0c65b6f36ba16fa0714",
+      "tokenSHA256": "cb24ed449f7d2b6121a7d0d46fda59b480714c9618a5bb9d271c8f3015b2c53e",
+      "addedTypes": [
+        "StreamStatus",
+        "StreamBlock"
+      ],
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "app/internal/sramcapture/stream_test.go",
+      "beforeSHA256": "911746cb3ee869ee67c6eae444528480ffe1f013b498b46da475cf911e9f47bb",
+      "afterSHA256": "01f64411ad3e41ff7556ce19f61f390985d4e8fba172dcb0056964987d875104",
+      "baselineSHA256": "d2b0ad08d39a93deadaa3b9343218cd1235a27c42f8a4c751db7707e62113443",
+      "tokenSHA256": "de647b68743b2b2cf572e0a11bf2ff77db2693781df628a36838a4a01c1f6f95",
+      "addedTypes": [
+        "streamFake",
+        "streamDMAFake",
+        "streamWriter",
+        "streamByteFake"
+      ],
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "app/internal/sramcapture/verify.go",
+      "beforeSHA256": "d82c8c8c906615561480302d2e9c86afe5705cd5bc92a676e723d9304a183d58",
+      "afterSHA256": "0a3d6c35563fec3917aa0a7d150097669a54f8b6cc0d8fadcf1cfeb1863f1e72",
+      "baselineSHA256": "5ead33b968867e9660a52a7a7461520399df8a8737be381024cf6d3e2e41e413",
+      "tokenSHA256": "5c521a55174c458a5306e3deb0d16a0e656e18d54c4e2cd87fdfbe9b7b750abf",
+      "addedTypes": [
+        "counterVerifier"
+      ],
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "app/internal/vxi11srv/server.go",
+      "beforeSHA256": "7e9f76981015a22a030f80f95af08e0274694d9a67f7424131b1c3de90fd634d",
+      "afterSHA256": "4c35c651e952c93889836913e598d762e546474c43c1e0c7e38025083d1b6198",
+      "baselineSHA256": "2813bb7ea68f6d5a53e85de37d18f4469571fbe8a96d4dd05938b04471776bdd",
+      "tokenSHA256": "3fbc9991fce2f9448db0285a1ea6c326332257f02fc3e224e9fa342d57976c8d",
+      "addedTypes": [
+        "Handler",
+        "Server",
+        "conn",
+        "xdr"
+      ],
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "app/internal/vxi11srv/server_test.go",
+      "beforeSHA256": "8907293b68f333667ce376efab22a0dd8c3927baa10cc10d582b9a1b76525763",
+      "afterSHA256": "c4af5863fb8937364d3d8817baf194f1acfa3fd2bf2a5b236bdcba8297e005b0",
+      "baselineSHA256": "f908c1f6c81a1d829e78a43050a1e3b86f2c7a1401d9d4e0ff69a417aa46a8b4",
+      "tokenSHA256": "c82b8e42763e59695d9a155d739c50a39f559df478124b1e9aaf34456e5bf926",
+      "addedTypes": [
+        "testClient"
+      ],
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "ota/internal/config/config.go",
+      "beforeSHA256": "b373f1f8b0aa4d5b408f32b0adb88ab1264f1347905c90275f1d4d1d14ee36b8",
+      "afterSHA256": "d7942a887b7a0dd8835342706e5936faa1ca7b1e94d5de58cd43cae8111559f6",
+      "baselineSHA256": "04c2e72a34742e43489df3019d44e77427c142c20697934d3b8b1ced546d8463",
+      "tokenSHA256": "b9d5b9e1f13314eeb8332b87d297ef6ae0b811e8ee7b162e6a212af6a9d51802",
+      "addedTypes": [
+        "Config"
+      ],
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "ota/internal/fdinherit/fdinherit.go",
+      "beforeSHA256": "c055d9793963761cf21d119127f09569edf460533736a049110d34513eda98af",
+      "afterSHA256": "693c23717ec1f61fa7edf6021c1fdb0af1d50412c1ac15f9c18a2d1fd1bb4ea4",
+      "baselineSHA256": "9227ba962ffc2c1cf2192dd7d57e12155d12b9c0231846f0949c917af6a0a7da",
+      "tokenSHA256": "e7a196a69a67bcc1c226141468a6c9a5ac1d31e5fd64ff68bcb0ff2b89ab894b",
+      "addedTypes": [
+        "Holder"
+      ],
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "ota/internal/slots/slots.go",
+      "beforeSHA256": "90afcb25deff398975a38901b958283eb6be24940f85f3e124a2b7fe2f3a632d",
+      "afterSHA256": "0db6cd405cba3b38bc3b1b96d5861aa7002b1f8b0031dd29b78871bb8f31513c",
+      "baselineSHA256": "afe1df3510bd23cbbfacf0d76a94ff66f89698e42ebe0f3549ff86ead62d65f8",
+      "tokenSHA256": "62d79e444c70d29b952ad0023673e5aa4f904b390dfd86519d23138bf0c0c03e",
+      "addedTypes": [
+        "Store",
+        "Status"
+      ],
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "ota/internal/vxi11/vxi11.go",
+      "beforeSHA256": "ce0617e2f40a8723d49c7eb27ad3fafb39fb96e80005296eec93c1a42d4f6d41",
+      "afterSHA256": "c49bd9822ffab6b820edccd29828d02236f2e96311b40eff2aabc5ee94f68e48",
+      "baselineSHA256": "bd4bdef8e60361b60805740c8b6888ca1bc161ed20ea011107eb9a74141b0c7a",
+      "tokenSHA256": "df13df63ce7c18de0d190ad8c26fa3cefd81cebb36d561f4995b7b7184ca2610",
+      "addedTypes": [
+        "xdrBuf",
+        "Client"
+      ],
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "ota/internal/vxi11/vxi11_test.go",
+      "beforeSHA256": "f5a06d769b38df56101bdcf9bd615276ff9c4c0748373fb0a3ad378cb985cd1b",
+      "afterSHA256": "fea433236af02ad097e1feb5bb415af10abebe68d19a5a36600be365c2bda4c6",
+      "baselineSHA256": "278bce0f27a860604180cd42859d0391c72f922891e06bbac2f6cd3bf6a42145",
+      "tokenSHA256": "c68697dfd84a0033c6c4d1eb3e77ac31c63b1d044dc331ba86821e01dbb4ffd8",
+      "addedTypes": [
+        "fakeInstrument"
+      ],
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "ota/internal/watchdog/watchdog.go",
+      "beforeSHA256": "9766420cb3e8f5c5863201fe5d9b9a36c16f10fd0b02de911d3c51cfb39d390a",
+      "afterSHA256": "ca31b9a8af87796dd6e5ee30804a8e10ce0fb984c2e8bfbb85d8cedc63dcbc14",
+      "baselineSHA256": "681130e27ef7737d7e10ec864d8ff85d588eebb758458990fe95db5fa7a69a21",
+      "tokenSHA256": "3691f041102a794475202b7ac49c4a51b593c4bc4d3b07932ff6548c5f1ca897",
+      "addedTypes": [
+        "Watchdog",
+        "Status"
+      ],
+      "exactBaselineRecovery": true
+    }
+  ]
+}

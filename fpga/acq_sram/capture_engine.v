@@ -1,9 +1,11 @@
+// ENGMODEL-OWNER-UNIT: FU-RTL-ACQ-SRAM-CAPTURE-ENGINE
 // Select continuous acquisition or frozen recall over ONE host buffer and
 // external SRAM transport. A mode is latched only on an accepted start and
 // cannot change while active or while any producer still owns a host bank.
 // Reset aborts the complete producer/host epoch; the board must coordinate
 // transport quiescence. Finite capture itself remains the board's write client.
 // committed/unread report the streaming producer; read_ordinal is mode-selected.
+// TRLC-LINKS: REQ-SDS-043, REQ-SDS-045, REQ-SDS-052, REQ-SDS-056, REQ-SDS-058
 module sram_capture_engine #(parameter ENABLE_STREAM=1,AW=19,CONTINUE_READS=1)(
  input wire reset,core_clk,ram_clk,host_clk,
  input wire start,finite_mode,stop,source_finished,

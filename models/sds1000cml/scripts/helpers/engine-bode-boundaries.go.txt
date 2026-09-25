@@ -1,0 +1,48 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
+// TRLC-LINKS: REQ-SDS-066
+func TestModelReviewBodeBoundaries(t *testing.T) {
+ const n = 4096
+ const dt = 2e-9
+ frame := func() *Frame { return &Frame{C1:synthSine(n,5e6,dt,90,128,0),C2:synthSine(n,5e6,dt,45,128,0),Valid:n,SampleS:dt,Seq:900} }
+ seed := func() *Engine { e:=&Engine{};e.SetBodeMode(true,0,1);e.bodeEval(frame(),n,dt);if !e.bode.liveValid || len(e.bode.bins)!=1 { t.Fatal("synthetic seed did not lock") };return e }
+ t.Run("early_rejections_preserve_live_point",func(t *testing.T){
+  e:=seed();before:=e.bode.live
+  e.bodeEval(frame(),7,dt);e.bodeEval(frame(),n,0);e.bodeEval(&Frame{C1:[]uint8{1},C2:[]uint8{1}},n,dt)
+  if !e.bode.liveValid || e.bode.live!=before {t.Fatal("early guard changed live state")}
+ })
+ t.Run("flat_reference_invalidates_live_but_keeps_curve",func(t *testing.T){
+  e:=seed();f:=frame();for i:=range f.C1 {f.C1[i]=128};e.bodeEval(f,n,dt)
+  if e.bode.liveValid || len(e.bode.bins)!=1 {t.Fatal("flat rejection did not preserve curve only")}
+ })
+ t.Run("channel_mask_and_change_preserve_curve",func(t *testing.T){
+  e:=seed();before:=e.bode.live;e.SetBodeMode(true,-1,2)
+  if e.bode.refCh!=1 || e.bode.dutCh!=0 || len(e.bode.bins)!=1 || e.bode.live!=before || !e.bode.liveValid {t.Fatal("mode transition differs")}
+ })
+ t.Run("clear_keeps_accepted_evaluation_sequence",func(t *testing.T){
+  e:=seed();seq:=e.bode.cap;e.ClearBode();if e.bode.liveValid || len(e.bode.bins)!=0 || e.bode.cap!=seq {t.Fatal("clear state differs")}
+  e.bodeEval(frame(),n,dt);if e.bode.live.Seq!=seq+1 {t.Fatal("sequence reset on clear")}
+ })
+ t.Run("direct_evaluator_accepts_while_disarmed",func(t *testing.T){
+  e:=&Engine{};e.SetBodeMode(false,0,1);e.bodeEval(frame(),n,dt)
+  if e.bodeMode.Load()!=BodeOff || !e.bode.liveValid {t.Fatal("caller arm gate changed")}
+ })
+ t.Run("point_sequence_is_not_frame_sequence",func(t *testing.T){
+  e:=seed();if e.bode.live.Seq!=1 {t.Fatal("expected first evaluation ordinal")};f:=frame();f.Seq=900;e.bodeEval(f,n,dt)
+  if e.bode.live.Seq!=2 {t.Fatal("repeated frame was not counted as second evaluation")}
+ })
+ t.Run("capacity_updates_live_and_existing_bins_only",func(t *testing.T){
+  e:=&Engine{};e.SetBodeMode(true,0,1);for i:=0;i<bodeMaxPoints;i++ {e.bode.bins[-10000-i]=BodePoint{FreqHz:float64(i+1)}}
+  e.bodeEval(frame(),n,dt);if len(e.bode.bins)!=bodeMaxPoints || !e.bode.liveValid || e.bode.cap!=1 {t.Fatal("full curve did not retain live point")}
+  bin:=int(math.Round(math.Log10(e.bode.live.FreqHz)*bodeBinsPerDecade));if _,ok:=e.bode.bins[bin];ok {t.Fatal("new bin admitted beyond cap")}
+  delete(e.bode.bins,-10000);e.bode.bins[bin]=BodePoint{};e.bodeEval(frame(),n,dt)
+  if len(e.bode.bins)!=bodeMaxPoints || e.bode.bins[bin].Seq!=2 {t.Fatal("existing bin update denied at cap")}
+ })
+ t.Run("returned_curve_is_detached_copy",func(t *testing.T){
+  e:=seed();p:=e.BodePoints();before:=p[0];p[0].GainDB=900
+  if e.BodePoints()[0]!=before {t.Fatal("caller mutated stored curve")}
+ })
+ t.Run("channel_vertical_scales_do_not_change_code_ratio",func(t *testing.T){
+  e:=seed();before:=e.bode.live.GainDB;e.chVdivBits[0].Store(math.Float64bits(1));e.chVdivBits[1].Store(math.Float64bits(10));e.bodeEval(frame(),n,dt)
+  if e.bode.live.GainDB!=before || math.Abs(before+6.02)>0.5 {t.Fatal("gain is not the expected raw-code ratio")}
+ })
+}

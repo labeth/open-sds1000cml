@@ -1,0 +1,78 @@
+{"Time":"2026-09-23T11:17:35.67811098+02:00","Action":"start","Package":"open-sds/app/internal/decode"}
+{"Time":"2026-09-23T11:17:35.689393144+02:00","Action":"run","Package":"open-sds/app/internal/decode","Test":"TestJSDecoderParity"}
+{"Time":"2026-09-23T11:17:35.689425926+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestJSDecoderParity","Output":"=== RUN   TestJSDecoderParity\n"}
+{"Time":"2026-09-23T11:17:36.268811035+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestJSDecoderParity","Output":"    decode_jsparity_test.go:399: parity (286 vectors):\n"}
+{"Time":"2026-09-23T11:17:36.268827885+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestJSDecoderParity","Output":"        ALL PARITY OK: 286/286 vectors matched Go byte-for-byte\n"}
+{"Time":"2026-09-23T11:17:36.26910735+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestJSDecoderParity","Output":"--- PASS: TestJSDecoderParity (0.58s)\n"}
+{"Time":"2026-09-23T11:17:36.26912551+02:00","Action":"pass","Package":"open-sds/app/internal/decode","Test":"TestJSDecoderParity","Elapsed":0.58}
+{"Time":"2026-09-23T11:17:36.26926616+02:00","Action":"run","Package":"open-sds/app/internal/decode","Test":"TestDecodeFuzzNoPanic"}
+{"Time":"2026-09-23T11:17:36.269273576+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestDecodeFuzzNoPanic","Output":"=== RUN   TestDecodeFuzzNoPanic\n"}
+{"Time":"2026-09-23T11:17:37.629702887+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestDecodeFuzzNoPanic","Output":"--- PASS: TestDecodeFuzzNoPanic (1.36s)\n"}
+{"Time":"2026-09-23T11:17:37.629735062+02:00","Action":"pass","Package":"open-sds/app/internal/decode","Test":"TestDecodeFuzzNoPanic","Elapsed":1.36}
+{"Time":"2026-09-23T11:17:37.62974986+02:00","Action":"run","Package":"open-sds/app/internal/decode","Test":"TestDecodeFuzzNewProtos"}
+{"Time":"2026-09-23T11:17:37.629758673+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestDecodeFuzzNewProtos","Output":"=== RUN   TestDecodeFuzzNewProtos\n"}
+{"Time":"2026-09-23T11:17:38.093209697+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestDecodeFuzzNewProtos","Output":"--- PASS: TestDecodeFuzzNewProtos (0.46s)\n"}
+{"Time":"2026-09-23T11:17:38.093238245+02:00","Action":"pass","Package":"open-sds/app/internal/decode","Test":"TestDecodeFuzzNewProtos","Elapsed":0.46}
+{"Time":"2026-09-23T11:17:38.093245962+02:00","Action":"run","Package":"open-sds/app/internal/decode","Test":"TestTruthSENT"}
+{"Time":"2026-09-23T11:17:38.093248545+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestTruthSENT","Output":"=== RUN   TestTruthSENT\n"}
+{"Time":"2026-09-23T11:17:38.093372615+02:00","Action":"run","Package":"open-sds/app/internal/decode","Test":"TestTruthSENT/allegro-[5_3_E_5_3_E]-crc-F"}
+{"Time":"2026-09-23T11:17:38.093379748+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestTruthSENT/allegro-[5_3_E_5_3_E]-crc-F","Output":"=== RUN   TestTruthSENT/allegro-[5_3_E_5_3_E]-crc-F\n"}
+{"Time":"2026-09-23T11:17:38.093919382+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestTruthSENT/allegro-[5_3_E_5_3_E]-crc-F","Output":"--- PASS: TestTruthSENT/allegro-[5_3_E_5_3_E]-crc-F (0.00s)\n"}
+{"Time":"2026-09-23T11:17:38.093936944+02:00","Action":"pass","Package":"open-sds/app/internal/decode","Test":"TestTruthSENT/allegro-[5_3_E_5_3_E]-crc-F","Elapsed":0}
+{"Time":"2026-09-23T11:17:38.093945125+02:00","Action":"run","Package":"open-sds/app/internal/decode","Test":"TestTruthSENT/allegro-[7_4_8_7_4_8]-crc-3"}
+{"Time":"2026-09-23T11:17:38.093948969+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestTruthSENT/allegro-[7_4_8_7_4_8]-crc-3","Output":"=== RUN   TestTruthSENT/allegro-[7_4_8_7_4_8]-crc-3\n"}
+{"Time":"2026-09-23T11:17:38.09461838+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestTruthSENT/allegro-[7_4_8_7_4_8]-crc-3","Output":"--- PASS: TestTruthSENT/allegro-[7_4_8_7_4_8]-crc-3 (0.00s)\n"}
+{"Time":"2026-09-23T11:17:38.094626585+02:00","Action":"pass","Package":"open-sds/app/internal/decode","Test":"TestTruthSENT/allegro-[7_4_8_7_4_8]-crc-3","Elapsed":0}
+{"Time":"2026-09-23T11:17:38.094655964+02:00","Action":"run","Package":"open-sds/app/internal/decode","Test":"TestTruthSENT/allegro-[4_A_C_4_A_C]-crc-A"}
+{"Time":"2026-09-23T11:17:38.094659914+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestTruthSENT/allegro-[4_A_C_4_A_C]-crc-A","Output":"=== RUN   TestTruthSENT/allegro-[4_A_C_4_A_C]-crc-A\n"}
+{"Time":"2026-09-23T11:17:38.095338415+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestTruthSENT/allegro-[4_A_C_4_A_C]-crc-A","Output":"--- PASS: TestTruthSENT/allegro-[4_A_C_4_A_C]-crc-A (0.00s)\n"}
+{"Time":"2026-09-23T11:17:38.095346385+02:00","Action":"pass","Package":"open-sds/app/internal/decode","Test":"TestTruthSENT/allegro-[4_A_C_4_A_C]-crc-A","Elapsed":0}
+{"Time":"2026-09-23T11:17:38.095351579+02:00","Action":"run","Package":"open-sds/app/internal/decode","Test":"TestTruthSENT/allegro-[7_8_F_7_8_F]-crc-5"}
+{"Time":"2026-09-23T11:17:38.095356081+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestTruthSENT/allegro-[7_8_F_7_8_F]-crc-5","Output":"=== RUN   TestTruthSENT/allegro-[7_8_F_7_8_F]-crc-5\n"}
+{"Time":"2026-09-23T11:17:38.096062205+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestTruthSENT/allegro-[7_8_F_7_8_F]-crc-5","Output":"--- PASS: TestTruthSENT/allegro-[7_8_F_7_8_F]-crc-5 (0.00s)\n"}
+{"Time":"2026-09-23T11:17:38.096078612+02:00","Action":"pass","Package":"open-sds/app/internal/decode","Test":"TestTruthSENT/allegro-[7_8_F_7_8_F]-crc-5","Elapsed":0}
+{"Time":"2026-09-23T11:17:38.096126758+02:00","Action":"run","Package":"open-sds/app/internal/decode","Test":"TestTruthSENT/allegro-[9_1_D_9_1_D]-crc-6"}
+{"Time":"2026-09-23T11:17:38.096134949+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestTruthSENT/allegro-[9_1_D_9_1_D]-crc-6","Output":"=== RUN   TestTruthSENT/allegro-[9_1_D_9_1_D]-crc-6\n"}
+{"Time":"2026-09-23T11:17:38.096877964+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestTruthSENT/allegro-[9_1_D_9_1_D]-crc-6","Output":"--- PASS: TestTruthSENT/allegro-[9_1_D_9_1_D]-crc-6 (0.00s)\n"}
+{"Time":"2026-09-23T11:17:38.096895455+02:00","Action":"pass","Package":"open-sds/app/internal/decode","Test":"TestTruthSENT/allegro-[9_1_D_9_1_D]-crc-6","Elapsed":0}
+{"Time":"2026-09-23T11:17:38.096948371+02:00","Action":"run","Package":"open-sds/app/internal/decode","Test":"TestTruthSENT/allegro-[0_0_0_0_0_0]-crc-5"}
+{"Time":"2026-09-23T11:17:38.096956078+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestTruthSENT/allegro-[0_0_0_0_0_0]-crc-5","Output":"=== RUN   TestTruthSENT/allegro-[0_0_0_0_0_0]-crc-5\n"}
+{"Time":"2026-09-23T11:17:38.097397323+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestTruthSENT/allegro-[0_0_0_0_0_0]-crc-5","Output":"--- PASS: TestTruthSENT/allegro-[0_0_0_0_0_0]-crc-5 (0.00s)\n"}
+{"Time":"2026-09-23T11:17:38.097415396+02:00","Action":"pass","Package":"open-sds/app/internal/decode","Test":"TestTruthSENT/allegro-[0_0_0_0_0_0]-crc-5","Elapsed":0}
+{"Time":"2026-09-23T11:17:38.097456657+02:00","Action":"run","Package":"open-sds/app/internal/decode","Test":"TestTruthSENT/melexis-simulator-frame"}
+{"Time":"2026-09-23T11:17:38.097463866+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestTruthSENT/melexis-simulator-frame","Output":"=== RUN   TestTruthSENT/melexis-simulator-frame\n"}
+{"Time":"2026-09-23T11:17:38.097935758+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestTruthSENT/melexis-simulator-frame","Output":"--- PASS: TestTruthSENT/melexis-simulator-frame (0.00s)\n"}
+{"Time":"2026-09-23T11:17:38.09794611+02:00","Action":"pass","Package":"open-sds/app/internal/decode","Test":"TestTruthSENT/melexis-simulator-frame","Elapsed":0}
+{"Time":"2026-09-23T11:17:38.097986453+02:00","Action":"run","Package":"open-sds/app/internal/decode","Test":"TestTruthSENT/allegro-prefix-vectors"}
+{"Time":"2026-09-23T11:17:38.097992892+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestTruthSENT/allegro-prefix-vectors","Output":"=== RUN   TestTruthSENT/allegro-prefix-vectors\n"}
+{"Time":"2026-09-23T11:17:38.099119283+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestTruthSENT/allegro-prefix-vectors","Output":"--- PASS: TestTruthSENT/allegro-prefix-vectors (0.00s)\n"}
+{"Time":"2026-09-23T11:17:38.099135239+02:00","Action":"pass","Package":"open-sds/app/internal/decode","Test":"TestTruthSENT/allegro-prefix-vectors","Elapsed":0}
+{"Time":"2026-09-23T11:17:38.099172473+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestTruthSENT","Output":"--- PASS: TestTruthSENT (0.01s)\n"}
+{"Time":"2026-09-23T11:17:38.099195382+02:00","Action":"pass","Package":"open-sds/app/internal/decode","Test":"TestTruthSENT","Elapsed":0.01}
+{"Time":"2026-09-23T11:17:38.099232617+02:00","Action":"run","Package":"open-sds/app/internal/decode","Test":"TestTruthMIL1553"}
+{"Time":"2026-09-23T11:17:38.099239363+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestTruthMIL1553","Output":"=== RUN   TestTruthMIL1553\n"}
+{"Time":"2026-09-23T11:17:38.099900488+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestTruthMIL1553","Output":"--- PASS: TestTruthMIL1553 (0.00s)\n"}
+{"Time":"2026-09-23T11:17:38.099910869+02:00","Action":"pass","Package":"open-sds/app/internal/decode","Test":"TestTruthMIL1553","Elapsed":0}
+{"Time":"2026-09-23T11:17:38.099946607+02:00","Action":"run","Package":"open-sds/app/internal/decode","Test":"TestTruthARINC429"}
+{"Time":"2026-09-23T11:17:38.099952129+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestTruthARINC429","Output":"=== RUN   TestTruthARINC429\n"}
+{"Time":"2026-09-23T11:17:38.099998419+02:00","Action":"run","Package":"open-sds/app/internal/decode","Test":"TestTruthARINC429/wikipedia-label-260-date-word"}
+{"Time":"2026-09-23T11:17:38.100005628+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestTruthARINC429/wikipedia-label-260-date-word","Output":"=== RUN   TestTruthARINC429/wikipedia-label-260-date-word\n"}
+{"Time":"2026-09-23T11:17:38.100162263+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestTruthARINC429/wikipedia-label-260-date-word","Output":"--- PASS: TestTruthARINC429/wikipedia-label-260-date-word (0.00s)\n"}
+{"Time":"2026-09-23T11:17:38.100172049+02:00","Action":"pass","Package":"open-sds/app/internal/decode","Test":"TestTruthARINC429/wikipedia-label-260-date-word","Elapsed":0}
+{"Time":"2026-09-23T11:17:38.100218197+02:00","Action":"run","Package":"open-sds/app/internal/decode","Test":"TestTruthARINC429/ge-tutorial-fig7-parity-misprint"}
+{"Time":"2026-09-23T11:17:38.100224576+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestTruthARINC429/ge-tutorial-fig7-parity-misprint","Output":"=== RUN   TestTruthARINC429/ge-tutorial-fig7-parity-misprint\n"}
+{"Time":"2026-09-23T11:17:38.100484848+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestTruthARINC429/ge-tutorial-fig7-parity-misprint","Output":"--- PASS: TestTruthARINC429/ge-tutorial-fig7-parity-misprint (0.00s)\n"}
+{"Time":"2026-09-23T11:17:38.100500827+02:00","Action":"pass","Package":"open-sds/app/internal/decode","Test":"TestTruthARINC429/ge-tutorial-fig7-parity-misprint","Elapsed":0}
+{"Time":"2026-09-23T11:17:38.100541334+02:00","Action":"run","Package":"open-sds/app/internal/decode","Test":"TestTruthARINC429/ge-tutorial-fig7-corrected"}
+{"Time":"2026-09-23T11:17:38.100546967+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestTruthARINC429/ge-tutorial-fig7-corrected","Output":"=== RUN   TestTruthARINC429/ge-tutorial-fig7-corrected\n"}
+{"Time":"2026-09-23T11:17:38.100742879+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestTruthARINC429/ge-tutorial-fig7-corrected","Output":"--- PASS: TestTruthARINC429/ge-tutorial-fig7-corrected (0.00s)\n"}
+{"Time":"2026-09-23T11:17:38.100752162+02:00","Action":"pass","Package":"open-sds/app/internal/decode","Test":"TestTruthARINC429/ge-tutorial-fig7-corrected","Elapsed":0}
+{"Time":"2026-09-23T11:17:38.100802688+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestTruthARINC429","Output":"--- PASS: TestTruthARINC429 (0.00s)\n"}
+{"Time":"2026-09-23T11:17:38.10081157+02:00","Action":"pass","Package":"open-sds/app/internal/decode","Test":"TestTruthARINC429","Elapsed":0}
+{"Time":"2026-09-23T11:17:38.100855184+02:00","Action":"run","Package":"open-sds/app/internal/decode","Test":"TestTruthManchester"}
+{"Time":"2026-09-23T11:17:38.100861005+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestTruthManchester","Output":"=== RUN   TestTruthManchester\n"}
+{"Time":"2026-09-23T11:17:38.101026411+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestTruthManchester","Output":"--- PASS: TestTruthManchester (0.00s)\n"}
+{"Time":"2026-09-23T11:17:38.101035545+02:00","Action":"pass","Package":"open-sds/app/internal/decode","Test":"TestTruthManchester","Elapsed":0}
+{"Time":"2026-09-23T11:17:38.101105821+02:00","Action":"output","Package":"open-sds/app/internal/decode","Output":"PASS\n"}
+{"Time":"2026-09-23T11:17:39.105317622+02:00","Action":"output","Package":"open-sds/app/internal/decode","Output":"ok  \topen-sds/app/internal/decode\t3.427s\n"}
+{"Time":"2026-09-23T11:17:39.105335448+02:00","Action":"pass","Package":"open-sds/app/internal/decode","Elapsed":3.427}

@@ -1,0 +1,80 @@
+{
+  "result": "reviewed-and-native-traced",
+  "sourceSHA256": {
+    "app/internal/web/bode.js": "0619533bedf59bffdbb187fe2c805a1b630ae70d1636aa12f68d335f733ba31b",
+    "app/internal/web/bode_node_test.go": "5eacd1ef28e019108e7957a0fc62186d6a84efb2e2964ee374789311e755bdbd"
+  },
+  "scope": "Complete renderer and two original Go-to-Node tests reviewed; seven named declaration links. Drawing-context evidence, no measured-transfer-function or physical qualification.",
+  "findings": [
+    "bodeFmtHz(100), bodeFmtHz(100000), bodeFmtHz(100000000) return 1, 1k, 1M respectively; significant integer zeros are removed.",
+    "bodeNiceRange([NaN],-20,20,10) returns positive and negative Infinity.",
+    "The breaker comment promises finite coordinates for any input, but its assertions check coordinate finiteness only for selected clean cases; hostile NaN/Infinity gain and phase and nonpositive frequency cases are only checked for throwing.",
+    "Clean three-point data gives exact logarithmic x positions 42, 231, 420 in both panels at 460x300; no raster/pixel accuracy is claimed.",
+    "Nonempty data without magnitude/phase arrays throws TypeError; unsorted frequencies can produce points outside the plot.",
+    "bodeLogTicks(1, Infinity) exceeds a two-second child-process deadline; source loop bound is infinite.",
+    "Hostile NaN/Infinity gain, NaN phase and zero/negative frequencies generate nonfinite coordinates in the recording context."
+  ],
+  "requirements": [
+    "REQ-SDS-125"
+  ],
+  "owners": [
+    "FU-WEB-BODE"
+  ],
+  "testEvidence": "bode-renderer-test-run.json",
+  "declarations": [
+    {
+      "line": 8,
+      "sourceLine": "function bodeNiceRange(vals, fallbackLo, fallbackHi, step) {",
+      "requirements": [
+        "REQ-SDS-125"
+      ]
+    },
+    {
+      "line": 20,
+      "sourceLine": "function bodeLogTicks(f0, f1) {",
+      "requirements": [
+        "REQ-SDS-125"
+      ]
+    },
+    {
+      "line": 33,
+      "sourceLine": "function bodeFmtHz(f) {",
+      "requirements": [
+        "REQ-SDS-125"
+      ]
+    },
+    {
+      "line": 42,
+      "sourceLine": "function bodeDraw(g, w, h, pts, colors) {",
+      "requirements": [
+        "REQ-SDS-125"
+      ]
+    },
+    {
+      "line": 66,
+      "sourceLine": "const xOf = (f) => plotL + (Math.log10(f) - lf0) / span * plotW;",
+      "requirements": [
+        "REQ-SDS-125"
+      ]
+    },
+    {
+      "line": 70,
+      "sourceLine": "const magYOf = (db) => padT + (gHi - db) / (gHi - gLo || 1) * magH;",
+      "requirements": [
+        "REQ-SDS-125"
+      ]
+    },
+    {
+      "line": 71,
+      "sourceLine": "const phYOf = (d) => phY0 + (pHi - d) / (pHi - pLo || 1) * phH;",
+      "requirements": [
+        "REQ-SDS-125"
+      ]
+    }
+  ],
+  "limits": [
+    "Passing characterizations reproduce existing defects; they do not mean malformed-input requirements are satisfied.",
+    "Existing Chromium Bode test checks returned point count, not renderer pixels.",
+    "Input sorting, finite array validation, graphics backend handling and physical Bode accuracy are not established."
+  ]
+}

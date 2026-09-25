@@ -1,0 +1,15 @@
+{"capture_engine.v": "06f7d5567aad78c0a9127505ac7e506280e2a0f7b6580e734acee6c091c5f6c5", "capture_path.v": "3384336306f830621eb70479e26e9c54401bf5d0813010c20da2f7bf6056e4e8", "finite_recall.v": "b52638a8fc4a5c8254f856aa04d6dcbe47f04508fb87d5ce30816b165d9e8560", "host_fifo.v": "bf1eff02e237a882434398cc595e3c9d2054eb853ad9f70b80a4861539948e8e", "host_ownership.v": "52e9c9131279598595c1c3905643c362ea2dc74c98b572f39cdd1f85371a83e9", "host_packer.v": "1c22dee98f30dd170537ee99913fcb4c076c9bfae74b890fdbd49a432ff18f76", "host_path.v": "ceeb9654df6095607688b173076572bbfe779ab3e403d067a9fc5b2312b9ce81", "host_ram.v": "9779d0040513cc724688b0c83a2fb73fb260e271d656e3d882dd1848f024bcad", "host_sink.v": "5a9c8ff3301b3d9ffe20d5a38a099685f48fa1d4590bb044621356831ef95589", "ingress_fifo.v": "051a05212941de9d224cf9dcea66c29297a2c85b03c86012db0b1977ca463f35", "ingress_path.v": "c1aea8492b0641f504337c70a97373ceb51002cc7a0913c945d616a62591af31", "ingress_stream.v": "048e2faad3c03d5e966bfdd04de79eee8642e7efc0d09aecaad4a4d00f8a99e4", "ordinal_counter.v": "0289b0528f2202dc1f436cbb107226290d825b66fa6ffed46ce3bf957bdd9690", "sim/ddr_model.v": "ace57d159f0b1b9edd4e9c82b1496fab3b79b7c056b9aaa2da66698e65d164f2", "sim/tb_capture_engine.v": "acc6a8e5cca6dc0e5640393d3422f49222da3d3c9a0a21e80883e50cbf93c9dc", "stream_engine.v": "8b2a5dc216fb29de59ca0b5a2615c47a8a8a099e6273338fe790f606a3b5c046", "timeslice_controller.v": "d513b2b950a8e1917c76881aaf1ea43c3e3d5e21d73177a79c79b6450aea4d75", "transport.v": "f24d6fd8d9878b0e4eb722b293cab5a06c380ef42c58e6becccc0156eec1bfae", "word_bridge.v": "30a23c116f37008bc906114c22298336d409c9bca405919e815a226f4223caa7"}
+PASS shared case 1: finite=1 words=5121 banks=3
+PASS shared case 2: finite=0 words=10003 banks=4
+PASS shared case 3: finite=1 words=8192 banks=4
+PASS shared case 4: finite=0 words=257 banks=1
+PASS shared case 5: finite=1 words=1 banks=1
+PASS shared capture engine: wrapped=0, five operations without reset, one host RAM/transport, ten rejected busy starts, wrong-token rejection
+/tmp/acq-shared-engine-d7vj1inz/tb_capture_engine.v:131: $finish called at 5839584100 (1ps)
+PASS shared case 1: finite=1 words=5121 banks=3
+PASS shared case 2: finite=0 words=10003 banks=4
+PASS shared case 3: finite=1 words=8192 banks=4
+PASS shared case 4: finite=0 words=257 banks=1
+PASS shared case 5: finite=1 words=1 banks=1
+PASS shared capture engine: wrapped=1, five operations without reset, one host RAM/transport, ten rejected busy starts, wrong-token rejection
+/tmp/acq-shared-engine-d7vj1inz/tb_capture_engine.v:131: $finish called at 5839584100 (1ps)

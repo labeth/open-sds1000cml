@@ -13,6 +13,7 @@
 // written -- 05-WORKPLAN section 4.9 makes them build failures.
 //
 // NOT run in CI; needs Quartus on this host. Never starts a second flow.
+// ENGMODEL-OWNER-UNIT: FU-FPGA-BUILDFPGA
 package main
 
 import (
@@ -30,6 +31,7 @@ import (
 	"open-sds/fpga/internal/quartus"
 )
 
+// TRLC-LINKS: REQ-SDS-172
 func main() {
 	design := flag.String("design", "default", "design folder under fpga/ (project, revision and rbf name)")
 	fpgaDir := flag.String("fpga-dir", "", "the fpga module root (default: found from the working directory)")
@@ -89,6 +91,7 @@ func main() {
 	fmt.Printf("\nOK: %s (%d bytes) in %s\n", res.RBF, res.RBFSize, time.Since(t0).Round(time.Second))
 }
 
+// TRLC-LINKS: REQ-SDS-172
 func printSummary(res *quartus.Result) {
 	fmt.Println()
 	fmt.Println("stages:")
@@ -136,6 +139,7 @@ func printSummary(res *quartus.Result) {
 // findModuleRoot walks up from the working directory to the directory holding
 // the fpga module's go.mod (so `go run ./cmd/buildfpga` works from fpga/ and
 // from any folder beneath it).
+// TRLC-LINKS: REQ-SDS-172
 func findModuleRoot() (string, error) {
 	dir, err := os.Getwd()
 	if err != nil {
@@ -154,6 +158,7 @@ func findModuleRoot() (string, error) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-172
 func orDefault(v, d string) string {
 	if v == "" {
 		return d

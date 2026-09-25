@@ -1,10 +1,14 @@
+// ENGMODEL-OWNER-UNIT: FU-WEB-APP-FFT
 // app_fft.js — FFT/peak detection + FFT view rendering (classic script; shares app.js globals).
 
 "use strict";
+// TRLC-LINKS: REQ-SDS-070
 function peaksVisible() { return view.mode === "FFT" || view.mode === "YT"; }
 
+// TRLC-LINKS: REQ-SDS-070
 function chOn(ch) { return ch === 1 ? view.c1 : view.c2; }
 
+// TRLC-LINKS: REQ-SDS-070
 function chHas(ch) { return !!(frame && (ch === 1 ? frame.c1 : frame.c2)); }
 
 // In FFT mode over a LIVE band the frequency source is the full-record RAW feed
@@ -13,12 +17,15 @@ function chHas(ch) { return !!(frame && (ch === 1 ? frame.c1 : frame.c2)); }
 // raw record is the un-interpolated capture (e.g. 20480 samples @ its real rate
 // → true Nyquist + fine resolution). Frozen/single and the super-res review keep
 // their own shown frame.
+// TRLC-LINKS: REQ-SDS-070
 function fftUseRaw() { return view.mode === "FFT" && fftRaw && fftRaw.c1 && !frozen && !(typeof sr !== "undefined" && sr.showing); }
+// TRLC-LINKS: REQ-SDS-070
 function peakSrcCh(ch) {
   if (fftUseRaw()) { const s = ch === 2 ? fftRaw.c2 : fftRaw.c1; if (s) return s; }
   return frame ? (ch === 2 ? frame.c2 : frame.c1) : null;
 }
 
+// TRLC-LINKS: REQ-SDS-070
 function peakNyq() {
   if (fftUseRaw() && fftRaw.sample_s > 0) return 1 / (2 * fftRaw.sample_s); // real Nyquist from the raw rate
   // A frame may carry NO per-sample array for a channel (channel disabled, or an
@@ -34,6 +41,7 @@ function peakNyq() {
 // sample_s x its length — NOT the display frame's col_span_s (a different
 // record AND a nominal scale); the fitted-tone overlay was 2x off in
 // frequency on 1-200 ns/div because of exactly that mix.
+// TRLC-LINKS: REQ-SDS-070
 function peakSpanS(src) {
   if (fftUseRaw() && fftRaw.sample_s > 0) return fftRaw.sample_s * src.length;
   return frame ? frameSpanS(frame, src.length) : 0;
@@ -41,6 +49,7 @@ function peakSpanS(src) {
 
 // The palette slot a peak index occupies among a channel's (sorted) selection —
 // keeps a peak's colour stable across the FFT markers, its list, and the overlay.
+// TRLC-LINKS: REQ-SDS-070
 function selColorCh(ch, i) {
   const S = fftCh[ch], order = [...S.selIdx].sort((a, b) => a - b), k = order.indexOf(i);
   return k < 0 ? null : COMPCOLS[ch][k % COMPCOLS[ch].length];
@@ -52,6 +61,7 @@ function selColorCh(ch, i) {
 // factor — badly wrong on a partially-filled superres stack, subtly wrong on
 // a deep record's margins. Trimming doesn't change the sample interval, so
 // peakNyq() (= 1/(2·dt)) stays correct.
+// TRLC-LINKS: REQ-SDS-070
 function gapFill(src) {
   if (!src) return null; // defensive: a missing channel array is "nothing to fill"
   let a = 0, b = src.length - 1;
@@ -72,6 +82,7 @@ function gapFill(src) {
   return out;
 }
 
+// TRLC-LINKS: REQ-SDS-070
 function fftStride() {
   // Match peakNyq(): a channel array can be absent (channel off / env frame),
   // so size the stride from whichever channel array exists — otherwise a
@@ -82,8 +93,10 @@ function fftStride() {
 
 // displayNyq is the effective FFT Nyquist after the decimation cap — used by
 // every FFT frequency mapping so the axis stays self-consistent.
+// TRLC-LINKS: REQ-SDS-070
 function displayNyq() { return peakNyq() / fftStride(); }
 
+// TRLC-LINKS: REQ-SDS-070
 function spectrumFor(ch) {
   const src = peakSrcCh(ch), m = specMemo[ch];
   if (!src) { m.src = null; m.spec = null; return null; } // channel off / env frame: no source
@@ -105,6 +118,7 @@ function spectrumFor(ch) {
   return m.spec;
 }
 
+// TRLC-LINKS: REQ-SDS-070
 function computePeaksCh(ch) {
   const S = fftCh[ch]; S.peaks = []; S.selIdx = new Set();
   if (!chOn(ch) || !chHas(ch)) return null;
@@ -121,6 +135,7 @@ function computePeaksCh(ch) {
   return spec;
 }
 
+// TRLC-LINKS: REQ-SDS-070
 function togglePeakCh(ch, pf) {
   const S = fftCh[ch], i = nearestPeak(S.peaks, pf);
   if (i < 0) return;
@@ -131,8 +146,10 @@ function togglePeakCh(ch, pf) {
   redraw();
 }
 
+// TRLC-LINKS: REQ-SDS-070
 function clearPeaksCh(ch) { fftCh[ch].sel = []; peakListLastT = 0; redraw(); }
 
+// TRLC-LINKS: REQ-SDS-070
 function drawFFTHover() {
   if (!fftHover.on || boxZoom.moved) return;
   const nyq = displayNyq();
@@ -172,18 +189,22 @@ function drawFFTHover() {
   ctx.restore();
 }
 
+// TRLC-LINKS: REQ-SDS-070
 function drawFFT() {
   drawGrid(ctx);
   const nyq = displayNyq();
   const fw = view.fwin, fspan = fw.b - fw.a;
+  // TRLC-LINKS: REQ-SDS-070
   const yAt = db => CH * Math.min(1, -db / 80); // 80 dB span
   for (const ch of [1, 2]) {
     const spec = computePeaksCh(ch);
     updateFFTListCh(ch);
     if (!spec) continue;
     const { mags, half, peak } = spec;
+    // TRLC-LINKS: REQ-SDS-070
     const dbAt = k => 20 * Math.log10(mags[k] / peak + 1e-12);
     // bin (fractional) → screen x through the frequency window
+    // TRLC-LINKS: REQ-SDS-070
     const xAt = frac => (frac / (half - 1) - fw.a) / fspan * (CW - 1);
     const base = ch === 1 ? C1COL : C2COL;
     const kLo = Math.max(0, Math.floor(fw.a * (half - 1)) - 1);
@@ -255,6 +276,7 @@ function drawFFT() {
   drawFFTHover();
 }
 
+// TRLC-LINKS: REQ-SDS-070
 function drawYTPeaks(g) {
   if (view.mode !== "YT" || !frame || frame.is_env) return;
   // Nothing selected and no residual math → the spectra only feed the pick
@@ -298,6 +320,7 @@ function drawYTPeaks(g) {
 // sine of amplitude A through a Hann window is A·N·cg/2 with coherent gain
 // cg = 0.5, so A = 4·|X|/N codes; ×vpc for volts. Parabolic-refined peaks
 // under-read by up to ~15% (scalloping) — labelled ≈ for that reason.
+// TRLC-LINKS: REQ-SDS-070
 function peakVolts(ch, p) {
   const spec = specMemo[ch].spec;
   if (!spec || !frame) return 0;
@@ -312,6 +335,7 @@ function peakVolts(ch, p) {
 // median). Memoized on the spectrum object, so the sort runs once per new
 // spectrum, not per redraw. Lets each selected peak report its SNR above the
 // floor — on a stack that's the improved (crunched) per-frequency figure.
+// TRLC-LINKS: REQ-SDS-070
 function specFloor(ch) {
   const spec = specMemo[ch] && specMemo[ch].spec;
   if (!spec) return 0;
@@ -325,6 +349,7 @@ function specFloor(ch) {
 // Selected-peak measurement lines under each FFT list: exact frequency,
 // level re the channel's strongest line, absolute amplitude, and the tone's SNR
 // above the noise floor (with the equivalent bits of resolution, 6.02 dB/bit).
+// TRLC-LINKS: REQ-SDS-070
 function updateFFTSel(ch) {
   const el = $("fftSel" + ch);
   const S = fftCh[ch];
@@ -350,6 +375,7 @@ function updateFFTSel(ch) {
   el.style.whiteSpace = "pre-line";
 }
 
+// TRLC-LINKS: REQ-SDS-070
 function updateFFTListCh(ch) {
   const card = $("fftCardC" + ch);
   if (!(peaksVisible() && chOn(ch) && chHas(ch))) { card.style.display = "none"; return; }
@@ -376,6 +402,7 @@ function updateFFTListCh(ch) {
   updateFFTSel(ch);
 }
 
+// TRLC-LINKS: REQ-SDS-070
 function updateFFTLists() { updateFFTListCh(1); updateFFTListCh(2); }
 
 // ==== wiring ====
@@ -393,7 +420,9 @@ for (const ch of [1, 2]) {
     if (!tr || tr.dataset.freq == null) return;
     togglePeakCh(ch, +tr.dataset.freq);
   });
+  // TRLC-LINKS: REQ-SDS-070
   $("fftClear" + ch).onclick = () => clearPeaksCh(ch);
+  // TRLC-LINKS: REQ-SDS-070
   $("fftN" + ch).oninput = () => {
     const v = Math.round(+$("fftN" + ch).value);
     maxPeaks = Number.isFinite(v) && v >= 1 ? Math.min(64, v) : 8;

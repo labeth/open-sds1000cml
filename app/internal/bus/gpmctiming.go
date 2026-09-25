@@ -20,6 +20,7 @@
 // The write-side fields, CONFIG1 (WAIT monitoring, device size) and CONFIG7
 // (the CS1 base address) are never touched. Only CS1 is ever written — never
 // NAND CS0 and never the shared prefetch engine (fpga-specs 10 §2.4).
+// ENGMODEL-OWNER-UNIT: FU-APP-BUS
 package bus
 
 import (
@@ -48,6 +49,7 @@ const (
 
 // CS1Timing is the CS1 timing configuration: the four words the sweep may
 // change (CONFIG2/4/5/6) plus CONFIG1/3/7 as read, for the report.
+// TRLC-LINKS: REQ-SDS-131
 type CS1Timing struct {
 	Config1 uint32 `json:"config1"`
 	Config2 uint32 `json:"config2"`
@@ -64,34 +66,56 @@ type CS1Timing struct {
 var FactoryCS1Timing = CS1Timing{Config1: 0x00001001, Config2: 0x00141400, Config3: 0x00020201,
 	Config4: 0x10041004, Config5: 0x010d141f, Config6: 0x060005c1, Config7: 0x00000F41}
 
+// TRLC-LINKS: REQ-SDS-131
 func bits(w uint32, shift, width uint) uint32 { return (w >> shift) & (1<<width - 1) }
+// TRLC-LINKS: REQ-SDS-131
 func setBits(w *uint32, shift, width uint, v uint32) {
 	m := uint32(1<<width-1) << shift
 	*w = (*w &^ m) | (v << shift & m)
 }
 
 // Read-side fields (getters).
+// TRLC-LINKS: REQ-SDS-131
 func (t CS1Timing) CSOn() uint32       { return bits(t.Config2, 0, 4) }
+// TRLC-LINKS: REQ-SDS-131
 func (t CS1Timing) CSRdOff() uint32    { return bits(t.Config2, 8, 5) }
+// TRLC-LINKS: REQ-SDS-131
 func (t CS1Timing) CSWrOff() uint32    { return bits(t.Config2, 16, 5) }
+// TRLC-LINKS: REQ-SDS-131
 func (t CS1Timing) OEOn() uint32       { return bits(t.Config4, 0, 4) }
+// TRLC-LINKS: REQ-SDS-131
 func (t CS1Timing) OEOff() uint32      { return bits(t.Config4, 8, 5) }
+// TRLC-LINKS: REQ-SDS-131
 func (t CS1Timing) WEOn() uint32       { return bits(t.Config4, 16, 4) }
+// TRLC-LINKS: REQ-SDS-131
 func (t CS1Timing) WEOff() uint32      { return bits(t.Config4, 24, 5) }
+// TRLC-LINKS: REQ-SDS-131
 func (t CS1Timing) RdCycle() uint32    { return bits(t.Config5, 0, 5) }
+// TRLC-LINKS: REQ-SDS-131
 func (t CS1Timing) WrCycle() uint32    { return bits(t.Config5, 8, 5) }
+// TRLC-LINKS: REQ-SDS-131
 func (t CS1Timing) RdAccess() uint32   { return bits(t.Config5, 16, 5) }
+// TRLC-LINKS: REQ-SDS-131
 func (t CS1Timing) Gap() uint32        { return bits(t.Config6, 8, 4) } // CYCLE2CYCLEDELAY
+// TRLC-LINKS: REQ-SDS-131
 func (t CS1Timing) SameCSEn() bool     { return bits(t.Config6, 7, 1) == 1 }
+// TRLC-LINKS: REQ-SDS-131
 func (t CS1Timing) WrAccess() uint32   { return bits(t.Config6, 24, 5) }
+// TRLC-LINKS: REQ-SDS-131
 func (t CS1Timing) Turnaround() uint32 { return bits(t.Config6, 0, 4) }
 
 // Setters return a copy with one field replaced (values masked to the field).
+// TRLC-LINKS: REQ-SDS-131
 func (t CS1Timing) WithRdAccess(v uint32) CS1Timing { setBits(&t.Config5, 16, 5, v); return t }
+// TRLC-LINKS: REQ-SDS-131
 func (t CS1Timing) WithRdCycle(v uint32) CS1Timing  { setBits(&t.Config5, 0, 5, v); return t }
+// TRLC-LINKS: REQ-SDS-131
 func (t CS1Timing) WithOEOn(v uint32) CS1Timing     { setBits(&t.Config4, 0, 4, v); return t }
+// TRLC-LINKS: REQ-SDS-131
 func (t CS1Timing) WithOEOff(v uint32) CS1Timing    { setBits(&t.Config4, 8, 5, v); return t }
+// TRLC-LINKS: REQ-SDS-131
 func (t CS1Timing) WithCSRdOff(v uint32) CS1Timing  { setBits(&t.Config2, 8, 5, v); return t }
+// TRLC-LINKS: REQ-SDS-131
 func (t CS1Timing) WithGap(v uint32) CS1Timing {
 	setBits(&t.Config6, 8, 4, v)
 	setBits(&t.Config6, 7, 1, 1) // the same-CS gap is what makes the pop port see a fresh nOE
@@ -99,6 +123,7 @@ func (t CS1Timing) WithGap(v uint32) CS1Timing {
 }
 
 // TimingFields is the decoded read-side view (JSON / logs).
+// TRLC-LINKS: REQ-SDS-131
 type TimingFields struct {
 	RdCycle  uint32 `json:"rd_cycle"`
 	RdAccess uint32 `json:"rd_access"`
@@ -116,6 +141,7 @@ type TimingFields struct {
 }
 
 // Fields decodes the timing.
+// TRLC-LINKS: REQ-SDS-131
 func (t CS1Timing) Fields() TimingFields {
 	return TimingFields{RdCycle: t.RdCycle(), RdAccess: t.RdAccess(), OEOn: t.OEOn(), OEOff: t.OEOff(),
 		CSOn: t.CSOn(), CSRdOff: t.CSRdOff(), Gap: t.Gap(), SameCSEn: t.SameCSEn(),
@@ -123,6 +149,7 @@ func (t CS1Timing) Fields() TimingFields {
 }
 
 // String is the compact read-side summary used in logs.
+// TRLC-LINKS: REQ-SDS-131
 func (t CS1Timing) String() string {
 	return fmt.Sprintf("rdcycle=%d rdaccess=%d oe=%d..%d cs=%d..%d gap=%d", t.RdCycle(), t.RdAccess(),
 		t.OEOn(), t.OEOff(), t.CSOn(), t.CSRdOff(), t.Gap())
@@ -130,11 +157,13 @@ func (t CS1Timing) String() string {
 
 // ReadTicks is the nominal FCLK ticks per read cycle including the gap (the
 // quantity the ns/word measurement scales with).
+// TRLC-LINKS: REQ-SDS-131
 func (t CS1Timing) ReadTicks() uint32 { return t.RdCycle() + t.Gap() }
 
 // Validate checks the read-side relations the controller and the fabric need
 // (TRM 7.1.3.3 read timing; default.sdc's through-path budget). The write
 // side is not checked: the sweep never changes it.
+// TRLC-LINKS: REQ-SDS-131
 func (t CS1Timing) Validate() error {
 	c, a, oeOn, oeOff, csOn, csOff := t.RdCycle(), t.RdAccess(), t.OEOn(), t.OEOff(), t.CSOn(), t.CSRdOff()
 	switch {
@@ -163,6 +192,7 @@ func (t CS1Timing) Validate() error {
 // forCycle derives the candidate for a shorter read cycle: OEOFFTIME and
 // CSRDOFFTIME never extend past the cycle end (they keep their factory
 // offsets otherwise).
+// TRLC-LINKS: REQ-SDS-131
 func (t CS1Timing) forCycle(c uint32) CS1Timing {
 	n := t.WithRdCycle(c)
 	if n.OEOff() > c {
@@ -176,6 +206,7 @@ func (t CS1Timing) forCycle(c uint32) CS1Timing {
 
 // TimingPort reads and writes the CS1 timing: the /dev/mem mapping on the
 // device, a fake in tests.
+// TRLC-LINKS: REQ-SDS-131
 type TimingPort interface {
 	Read() (CS1Timing, error)
 	// Apply validates (CS1Timing.Validate) and writes CONFIG2/4/5/6.
@@ -186,6 +217,7 @@ type TimingPort interface {
 }
 
 // readTiming / applyTiming operate on a mapped register block.
+// TRLC-LINKS: REQ-SDS-131
 func readTiming(r regs32) CS1Timing {
 	return CS1Timing{Config1: r.R(gpmcConfig1), Config2: r.R(gpmcConfig2), Config3: r.R(gpmcConfig3),
 		Config4: r.R(gpmcConfig4), Config5: r.R(gpmcConfig5), Config6: r.R(gpmcConfig6), Config7: r.R(gpmcConfig7)}
@@ -194,6 +226,7 @@ func readTiming(r regs32) CS1Timing {
 // applyTiming writes CONFIG2/4/5/6 with CSVALID quiesced around the retiming
 // and restored exactly (the sequence proven for the cycle gap). CONFIG1/3/7
 // are left as they are. Every written word is read back.
+// TRLC-LINKS: REQ-SDS-131
 func applyTiming(r regs32, t CS1Timing, validate bool) error {
 	if validate {
 		if err := t.Validate(); err != nil {
@@ -223,9 +256,11 @@ func applyTiming(r regs32, t CS1Timing, validate bool) error {
 
 // MemTimingPort is the /dev/mem mapping of the GPMC block (the way fpgaload
 // maps the CS3 port and programCS1CycleGap the gap).
+// TRLC-LINKS: REQ-SDS-131
 type MemTimingPort struct{ m []byte }
 
 // OpenTimingPort maps the GPMC controller registers. Close when done.
+// TRLC-LINKS: REQ-SDS-131
 func OpenTimingPort() (*MemTimingPort, error) {
 	f, err := os.OpenFile("/dev/mem", os.O_RDWR|syscall.O_SYNC, 0)
 	if err != nil {
@@ -239,14 +274,19 @@ func OpenTimingPort() (*MemTimingPort, error) {
 	return &MemTimingPort{m: m}, nil
 }
 
+// TRLC-LINKS: REQ-SDS-131
 func (p *MemTimingPort) Read() (CS1Timing, error)  { return readTiming(memRegs{p.m}), nil }
+// TRLC-LINKS: REQ-SDS-131
 func (p *MemTimingPort) Apply(t CS1Timing) error   { return applyTiming(memRegs{p.m}, t, true) }
+// TRLC-LINKS: REQ-SDS-131
 func (p *MemTimingPort) Restore(t CS1Timing) error { return applyTiming(memRegs{p.m}, t, false) }
+// TRLC-LINKS: REQ-SDS-131
 func (p *MemTimingPort) Close()                    { syscall.Munmap(p.m) }
 
 // ---- the sweep ----
 
 // SweepOptions tunes the R1 sweep.
+// TRLC-LINKS: REQ-SDS-131
 type SweepOptions struct {
 	Words       int    `json:"words"`        // record words per drain (default iface.PretrigMax)
 	Drains      int    `json:"drains"`       // drains per block and setting (default 7)
@@ -259,6 +299,7 @@ type SweepOptions struct {
 	Tsrc        uint16 `json:"tsrc"`         // the pattern (default RAMP)
 }
 
+// TRLC-LINKS: REQ-SDS-131
 func (o *SweepOptions) defaults(start CS1Timing) {
 	if o.Words <= 0 || o.Words > iface.PretrigMax {
 		o.Words = iface.PretrigMax
@@ -284,6 +325,7 @@ func (o *SweepOptions) defaults(start CS1Timing) {
 }
 
 // SettingResult is one setting's block-alternated score.
+// TRLC-LINKS: REQ-SDS-131
 type SettingResult struct {
 	Timing     TimingFields `json:"timing"`
 	Drains     int          `json:"drains"`
@@ -304,6 +346,7 @@ type SettingResult struct {
 }
 
 // SweepResult is the R1 report.
+// TRLC-LINKS: REQ-SDS-131
 type SweepResult struct {
 	Options     SweepOptions    `json:"options"`
 	Start       TimingFields    `json:"start"` // the timing the sweep began from (restored after every step)
@@ -362,6 +405,7 @@ var phaseNames = [...]string{"access", "cycle", "gap", "verify", "done"}
 // controller at a candidate timing. Run is Step in a loop (tests, bench).
 //
 // Sleep and now are hooks for tests (default time.Sleep / time.Now).
+// TRLC-LINKS: REQ-SDS-131
 type Sweeper struct {
 	Port  TimingPort
 	Sleep func(time.Duration)
@@ -393,12 +437,14 @@ type Sweeper struct {
 
 // NewSweeper prepares a sweep over port. Nothing touches the controller or
 // the fabric until the first Step.
+// TRLC-LINKS: REQ-SDS-131
 func NewSweeper(port TimingPort, o SweepOptions, logf func(string, ...any)) *Sweeper {
 	s := &Sweeper{Port: port, o: o, Logf: logf}
 	s.init()
 	return s
 }
 
+// TRLC-LINKS: REQ-SDS-131
 func (s *Sweeper) init() {
 	if s.Sleep == nil {
 		s.Sleep = time.Sleep
@@ -414,15 +460,19 @@ func (s *Sweeper) init() {
 // Result is the report so far (complete once Done). It is the caller's
 // responsibility not to read it while a Step is in flight on another
 // goroutine.
+// TRLC-LINKS: REQ-SDS-131
 func (s *Sweeper) Result() *SweepResult { return s.res }
 
 // Done reports whether the sweep has finished (passed, failed or aborted).
+// TRLC-LINKS: REQ-SDS-131
 func (s *Sweeper) Done() bool { return s.phase == phaseDone }
 
 // Phase names the current phase for progress reports.
+// TRLC-LINKS: REQ-SDS-131
 func (s *Sweeper) Phase() string { return phaseNames[s.phase] }
 
 // Setting is the candidate under test, "" between settings.
+// TRLC-LINKS: REQ-SDS-131
 func (s *Sweeper) Setting() string {
 	if s.setting == nil {
 		return ""
@@ -431,6 +481,7 @@ func (s *Sweeper) Setting() string {
 }
 
 // nsPerWord is the drain cost assumed for the step budget and timeout.
+// TRLC-LINKS: REQ-SDS-131
 func (s *Sweeper) nsPerWord() time.Duration {
 	if s.inited && s.fast {
 		return nsPerWordEDMA * time.Nanosecond
@@ -440,6 +491,7 @@ func (s *Sweeper) nsPerWord() time.Duration {
 
 // drainsPerStep is how many scored drains fit the step budget at this drain
 // mode (at least 1, at most one half-block).
+// TRLC-LINKS: REQ-SDS-131
 func (s *Sweeper) drainsPerStep(words int) int {
 	per := time.Duration(words) * s.nsPerWord()
 	n := int(stepDrainBudget / per)
@@ -454,6 +506,7 @@ func (s *Sweeper) drainsPerStep(words int) int {
 // a 4× margin and a second for the capture and the register traffic. It
 // scales with the drain mode (EDMA vs ioctl) instead of bounding the whole
 // sweep.
+// TRLC-LINKS: REQ-SDS-131
 func (s *Sweeper) StepTimeout() time.Duration {
 	words := s.o.Words
 	if words <= 0 || words > iface.PretrigMax {
@@ -466,6 +519,7 @@ func (s *Sweeper) StepTimeout() time.Duration {
 // Step runs one bounded step on the bus-owner goroutine. It returns done
 // when the sweep is over; the error (also in Result().Err) ends the sweep.
 // The start timing is restored before Step returns, always.
+// TRLC-LINKS: REQ-SDS-131
 func (s *Sweeper) Step(b Bus) (done bool, err error) {
 	s.init()
 	if s.phase == phaseDone {
@@ -489,6 +543,7 @@ func (s *Sweeper) Step(b Bus) (done bool, err error) {
 }
 
 // begin reads the start timing and sizes the steps.
+// TRLC-LINKS: REQ-SDS-131
 func (s *Sweeper) begin(b Bus) error {
 	start, err := s.Port.Read()
 	if err != nil {
@@ -506,6 +561,7 @@ func (s *Sweeper) begin(b Bus) error {
 
 // finish closes the sweep: a last restore of the start timing (every step
 // restored already; this covers a failed restore), the verdict, the log.
+// TRLC-LINKS: REQ-SDS-131
 func (s *Sweeper) finish(err error) error {
 	s.phase = phaseDone
 	s.setting = nil
@@ -539,6 +595,7 @@ func (s *Sweeper) finish(err error) error {
 
 // nextSetting picks the next candidate of the current phase (advancing the
 // phase when its floor is found), or returns false when the sweep is over.
+// TRLC-LINKS: REQ-SDS-131
 func (s *Sweeper) nextSetting() bool {
 	for s.phase != phaseDone {
 		var cand CS1Timing
@@ -565,6 +622,7 @@ func (s *Sweeper) nextSetting() bool {
 }
 
 // lastOf is the most recent setting of a phase (nil when none).
+// TRLC-LINKS: REQ-SDS-131
 func lastOf(ph []SettingResult) *SettingResult {
 	if len(ph) == 0 {
 		return nil
@@ -572,6 +630,7 @@ func lastOf(ph []SettingResult) *SettingResult {
 	return &ph[len(ph)-1]
 }
 
+// TRLC-LINKS: REQ-SDS-131
 func (s *Sweeper) nextAccess() (CS1Timing, bool) {
 	if l := lastOf(s.res.Access); l != nil && !l.Pass {
 		return CS1Timing{}, false
@@ -591,6 +650,7 @@ func (s *Sweeper) nextAccess() (CS1Timing, bool) {
 	return cand, true
 }
 
+// TRLC-LINKS: REQ-SDS-131
 func (s *Sweeper) nextCycle() (CS1Timing, bool) {
 	if l := lastOf(s.res.Cycle); l != nil && !l.Pass {
 		return CS1Timing{}, false
@@ -614,6 +674,7 @@ func (s *Sweeper) nextCycle() (CS1Timing, bool) {
 	return cand, true
 }
 
+// TRLC-LINKS: REQ-SDS-131
 func (s *Sweeper) nextGap() (CS1Timing, bool) {
 	if !s.o.SweepGap {
 		return CS1Timing{}, false
@@ -631,6 +692,7 @@ func (s *Sweeper) nextGap() (CS1Timing, bool) {
 	return s.cur.WithGap(g), true
 }
 
+// TRLC-LINKS: REQ-SDS-131
 func (s *Sweeper) nextVerify() (CS1Timing, bool) {
 	if s.verifying {
 		return CS1Timing{}, false
@@ -640,6 +702,7 @@ func (s *Sweeper) nextVerify() (CS1Timing, bool) {
 }
 
 // closePhase folds a finished phase into the chosen timing and moves on.
+// TRLC-LINKS: REQ-SDS-131
 func (s *Sweeper) closePhase() {
 	switch s.phase {
 	case phaseAccess:
@@ -664,6 +727,7 @@ func (s *Sweeper) closePhase() {
 // drainsPerHalf is the drains per half-block of the current setting: the
 // option, or for the verify setting enough to cover VerifyWords over the
 // candidate halves.
+// TRLC-LINKS: REQ-SDS-131
 func (s *Sweeper) drainsPerHalf() int {
 	if s.phase != phaseVerify {
 		return s.o.Drains
@@ -683,6 +747,7 @@ func (s *Sweeper) drainsPerHalf() int {
 // timing, then up to perStep scored drains at the candidate (candidate half)
 // or at the start timing (baseline half); the start timing is restored on
 // every exit path.
+// TRLC-LINKS: REQ-SDS-131
 func (s *Sweeper) chunk(b Bus) (err error) {
 	c, err := newRampChecker(b, TsrcOptions{Words: s.o.Words, Tsrc: s.o.Tsrc}, s.Sleep, s.now)
 	if err != nil {
@@ -757,6 +822,7 @@ func (s *Sweeper) chunk(b Bus) (err error) {
 
 // closeSetting scores the finished setting, records it in its phase and
 // updates the floor.
+// TRLC-LINKS: REQ-SDS-131
 func (s *Sweeper) closeSetting() error {
 	res := s.setting
 	s.setting = nil
@@ -806,6 +872,7 @@ func (s *Sweeper) closeSetting() error {
 // goroutine (tests and bench tools; the app steps through Engine.Exec). The
 // fabric program is left in the test-source state for the caller to restore
 // (diag.saveRegs); the timing is back at the start one.
+// TRLC-LINKS: REQ-SDS-131
 func (s *Sweeper) Run(b Bus) (*SweepResult, error) {
 	for {
 		done, err := s.Step(b)
@@ -817,6 +884,7 @@ func (s *Sweeper) Run(b Bus) (*SweepResult, error) {
 
 // fclkEstimate fits ns/word against the read ticks (RDCYCLETIME + gap) over
 // the passing cycle points by least squares; the slope is the FCLK period.
+// TRLC-LINKS: REQ-SDS-131
 func fclkEstimate(pts []SettingResult, gap uint32) float64 {
 	var n, sx, sy, sxx, sxy float64
 	for _, p := range pts {

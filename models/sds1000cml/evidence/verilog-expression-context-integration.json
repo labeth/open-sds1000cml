@@ -1,0 +1,19 @@
+{
+  "status": "pass",
+  "toolSourceSHA256": {
+    "codemap/verilog.go": "07e4af03f2d72d3760c3021ddb1e4ae0a4eeed6d0656482cd1c156dc822e23ad",
+    "codemap/verilog_test.go": "509b2670a6795570167fb9d52adb879dbd7669500e98de0904df39d1b6986bcf",
+    "inferred_verification.go": "b8d6fdf68c83a8943249b62f514f066eacd5ffc6c36ad08a4568e622d0532565",
+    "inferred_verification_test.go": "08b6944fa0a35aeca4437e13c9f2edf894a0465f3791193171c9d75b4fc54fea"
+  },
+  "testCommand": "GOPROXY=off go test ./...",
+  "testLogSHA256": "c842f6a68a127dec861ef203519d357b8681e51573294c080f738861748ef903",
+  "publicationLogSHA256": "bd0bc082f725f127358dde92faf748e0f111469990f3c60f95d8e3f7429803b2",
+  "rtlAudit": {
+    "parseErrors": 0,
+    "expressionWarnings": 392,
+    "missingLinkFiles": 2
+  },
+  "nativeRTLAttachments": 63,
+  "scope": "Lexical module extraction preserves boundaries around unexpanded expression macros; it does not elaborate or validate macro values. Declaration macros remain errors. Exact tb.v is recognized as a verification source. Offline simulation evidence remains separately bounded; no physical qualification or complete-model claim."
+}

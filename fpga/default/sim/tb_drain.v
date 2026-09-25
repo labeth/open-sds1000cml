@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-RTL-DEFAULT-TESTS
 // tb_drain.v -- pop + remain semantics on the drain window: the full record as in v2.1 (wrapped,
 // end clamp, READY gating, READY and REMAIN rising on the same edge after DONE -- cycle-exact),
 // DRAIN_START/DRAIN_LEN windows latched at DONE and at REWIND (inside
@@ -5,6 +6,7 @@
 // pops, POP_MON min gap / underruns, arm / reset clearing.
 `timescale 1ns/1ps
 `include "regs.vh"
+// TRLC-LINKS: REQ-SDS-196
 module tb_drain;
     reg clk = 0; always #6.25 clk = ~clk;
     reg arm = 0, rst = 0, rewind = 0, valid = 0, stream_on = 0, pop = 0;

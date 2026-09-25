@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-RTL-ACQ-SRAM-STREAM-PACKETIZER
 `timescale 1ns/1ps
 // Pack the reduced 32-bit word stream into the 64-bit host RAM clock domain.
 // The mailbox is acknowledged: it is never overwritten while in flight.
@@ -9,6 +10,7 @@
 // closes the bank. finished means this seal was acknowledged in packet_clk.
 // Payload is held until acknowledgement; bundled CDC paths need physical bounds
 // when integrated. Reset is an epoch boundary in both clock domains.
+// TRLC-LINKS: REQ-SDS-049, REQ-SDS-058, REQ-SDS-186
 module stream_packetizer(
  input wire reset,word_clk,packet_clk,
  input wire word_valid,input wire [31:0] word_data,input wire stop,

@@ -1,0 +1,17 @@
+{
+  "channels": [
+    {
+      "channel": 1,
+      "gainSpreadAt1MHzPercent": 1.8112632652673155,
+      "maxGainChangePercent": 0.4416644666361269,
+      "sineFitRMS": 0.6903622079456387
+    },
+    {
+      "channel": 2,
+      "gainSpreadAt1MHzPercent": 1.1755329061114095,
+      "maxGainChangePercent": 1.0507501561967558,
+      "sineFitRMS": 0.6704038747088118
+    }
+  ],
+  "decision": "Do not deploy frequency-independent gain calibration yet: differences exceed repeatability. Acquire slower triangle to distinguish static gain/nonlinearity from frequency-dependent response."
+}

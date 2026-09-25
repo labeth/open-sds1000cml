@@ -1,0 +1,15 @@
+{
+  "result": "source-reviewed-native-trace-pending",
+  "sourceSHA256": {
+    "app/internal/web/bode.js": "c038b248eb659d80d94a937118d706e369932dd165d2dca2773fbd9131ddd019",
+    "app/internal/web/bode_node_test.go": "60884c0caa3efc007688036e68874efd8ba859d50d40f5906e8168321f83289e"
+  },
+  "scope": "Complete source read during browser view publication; no new native links or verification credit assigned.",
+  "findings": [
+    "bodeFmtHz(100), bodeFmtHz(100000), bodeFmtHz(100000000) return 1, 1k, 1M respectively; significant integer zeros are removed.",
+    "bodeNiceRange([NaN],-20,20,10) returns positive and negative Infinity.",
+    "The breaker comment promises finite coordinates for any input, but its assertions check coordinate finiteness only for selected clean cases; hostile NaN/Infinity gain and phase and nonpositive frequency cases are only checked for throwing."
+  ],
+  "nextAction": "Add bounded renderer requirement links and indexed tests, characterize invalid coordinate behavior without changing instrument code. Rendering is distinct from REQ-SDS-066 measurement computation.",
+  "supersededBy": "bode-renderer-review.json"
+}

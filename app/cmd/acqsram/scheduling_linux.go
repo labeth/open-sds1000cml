@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-ACQSRAM
 package main
 
 import (
@@ -10,6 +11,7 @@ import (
 // Diagnostic only: keep scheduler changes on one locked OS thread and restore
 // its original policy before letting the Go runtime reuse it. Kernel RT
 // throttling is deliberately left unchanged.
+// TRLC-LINKS: REQ-SDS-170
 func realtimeDrain() (func() error, error) {
 	runtime.LockOSThread()
 	policy, _, err := syscall.RawSyscall(syscall.SYS_SCHED_GETSCHEDULER, 0, 0, 0)
@@ -41,6 +43,7 @@ func realtimeDrain() (func() error, error) {
 
 // Sleep directly on the locked diagnostic thread rather than waiting for a Go
 // timer goroutine to be scheduled on this single-core device.
+// TRLC-LINKS: REQ-SDS-170
 func sleepDrain(ns int64) error {
 	ts := syscall.NsecToTimespec(ns)
 	for {

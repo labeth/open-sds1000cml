@@ -1,5 +1,6 @@
 //go:build withbitstream
 
+// ENGMODEL-OWNER-UNIT: FU-APP-FPGALOAD
 package fpgaload
 
 import _ "embed"
@@ -12,4 +13,5 @@ import _ "embed"
 var defaultRBF []byte
 
 // Default returns the embedded default image.
+// TRLC-LINKS: REQ-SDS-005
 func Default() []byte { return defaultRBF }

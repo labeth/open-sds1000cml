@@ -17,31 +17,30 @@ LDFLAGS := -s -w \
   -X open-sds/app/internal/buildinfo.Built=$(BUILT)
 
 DIST := dist
-# The default acq2 fabric image, built by `cd ../fpga && go run ./cmd/buildfpga -design default`.
-RBF ?= ../fpga/default/out/default.rbf
-EMBED := internal/fpgaload/default.rbf
+# The general SRAM/triggering image, built by `cd ../fpga && make bitstream`.
+RBF ?= ../fpga/acq_sram/out/general/current/bench.rbf
+EMBED := internal/fpgaload/general.rbf
 
 .PHONY: all app app-release test vet clean
 
 all: app
 
 # app: the ARMv7 static binary WITHOUT the bitstream. It verifies the fabric
-# identity and runs only against a fabric already carrying the default image.
+# identity and runs only against a preloaded general SRAM image.
 app:
 	CGO_ENABLED=0 GOOS=linux GOARCH=arm GOARM=7 \
 	  go build -trimpath -ldflags "$(LDFLAGS)" -o $(DIST)/app-arm ./cmd/app
 
-# app-release: the deployable binary WITH the default image embedded
-# (workplan §4.1): at boot it reloads the Cyclone over the CS3 configuration
-# port whenever BUILDID/FABRIC_ID differ, then verifies. Refuses to build
+# app-release: embeds the canonical general image and loads it at startup with
+# visible LCD progress, then verifies SRAM transport before acquiring. Refuses to build
 # without the .rbf (an empty embed would be a silent verify-only binary) or
 # with an .rbf of the wrong size (368011 bytes = uncompressed EP4CE10).
 app-release:
-	@test -f "$(RBF)" || { echo "app-release: missing $(RBF) — build the fabric first (cd ../fpga && go run ./cmd/buildfpga -design default)"; exit 1; }
+	@test -f "$(RBF)" || { echo "app-release: missing $(RBF) — build the fabric first (cd ../fpga && make bitstream)"; exit 1; }
 	@test "$$(stat -c %s "$(RBF)")" = 368011 || { echo "app-release: $(RBF) is $$(stat -c %s "$(RBF)") bytes, want 368011 (uncompressed EP4CE10 .rbf)"; exit 1; }
 	cp "$(RBF)" $(EMBED)
 	CGO_ENABLED=0 GOOS=linux GOARCH=arm GOARM=7 \
-	  go build -trimpath -tags withbitstream -ldflags "$(LDFLAGS)" -o $(DIST)/app-arm ./cmd/app
+	  go build -trimpath -tags withgeneralbitstream -ldflags "$(LDFLAGS)" -o $(DIST)/app-arm ./cmd/app
 	@echo "app-release: $(DIST)/app-arm embeds $(RBF) ($$(sha256sum "$(RBF)" | cut -c1-16)…)"
 
 test:

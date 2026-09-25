@@ -2,6 +2,7 @@
 // It does not load a fabric, open/close a device, or access CS3. The caller
 // supplies the already inherited bus and must give this backend exclusive
 // ownership while it is in use; its register ABI differs from default.v.
+// ENGMODEL-OWNER-UNIT: FU-APP-SRAMCAPTURE
 package sramcapture
 
 import (
@@ -26,21 +27,27 @@ const (
 
 // Bus is the subset of bus.Dev used here. RawWrite bypasses the OLD default
 // fabric's selector schema, never the plane guard: all accesses here are CS1.
+// TRLC-LINKS: REQ-SDS-082
 type Bus interface {
 	Read(plane uint8, selector uint16) (uint16, error)
 	RawWrite(selector, value uint16) error
 }
 
+// TRLC-LINKS: REQ-SDS-033, REQ-SDS-082, REQ-SDS-083
 type Capture struct {
-	recallScratch []byte
-	streamHalves  []uint16
-	streamWords   uint16
-	streamBytes   []byte
-	mu            sync.Mutex
-	bus           Bus
-	beats         atomic.Uint64
+	decodedScratch []byte
+	recallScratch  []byte
+	recallData     []byte
+	recallHalves   []uint16
+	streamHalves   []uint16
+	streamWords    uint16
+	streamBytes    []byte
+	mu             sync.Mutex
+	bus            Bus
+	beats          atomic.Uint64
 }
 
+// TRLC-LINKS: REQ-SDS-032, REQ-SDS-040
 type Source uint8
 
 const (
@@ -54,43 +61,72 @@ const (
 // uint16 Q8.8 CH1/CH2 pair. PreWords excludes
 // the triggering word; PostWords includes it. Pair and TriggerChannel are
 // zero based. Cross-core analog timing is not implied by this API.
+// TRLC-LINKS: REQ-SDS-032, REQ-SDS-040
 type Config struct {
-	Source         Source `json:"source"`
-	DecimationLog2 uint8  `json:"decimation_log2"`
-	Pair           uint8  `json:"pair"`
-	PreWords       uint32 `json:"pre_words"`
-	PostWords      uint32 `json:"post_words"`
-	Normal         bool   `json:"normal"`
-	Falling        bool   `json:"falling"`
-	TriggerChannel uint8  `json:"trigger_channel"`
-	TriggerLevel   uint8  `json:"trigger_level"`
+	USBLS             USBLSTriggerConfig   `json:"usbls"`
+	MIL1553           MIL1553TriggerConfig `json:"mil1553"`
+	SENT              SENTTriggerConfig    `json:"sent"`
+	DecodedEvents     bool                 `json:"decoded_events"`
+	SPI               SPITriggerConfig     `json:"spi"`
+	I2C               I2CTriggerConfig     `json:"i2c"`
+	UART              UARTTriggerConfig    `json:"uart"`
+	Source            Source               `json:"source"`
+	DecimationLog2    uint8                `json:"decimation_log2"`
+	Pair              uint8                `json:"pair"`
+	PreWords          uint32               `json:"pre_words"`
+	PostWords         uint32               `json:"post_words"`
+	Normal            bool                 `json:"normal"`
+	Falling           bool                 `json:"falling"`
+	TriggerChannel    uint8                `json:"trigger_channel"`
+	TriggerLevel      uint8                `json:"trigger_level"`
+	TriggerHysteresis uint8                `json:"trigger_hysteresis,omitempty"`
+}
+
+// UARTTriggerConfig describes the optional 125 MHz, 8N1 hardware matcher.
+// Pattern is packed chronologically, e.g. length 2 and pattern 0x4869.
+// TRLC-LINKS: REQ-SDS-013
+type UARTTriggerConfig struct {
+	Enabled  bool   `json:"enabled"`
+	Channel  uint8  `json:"channel"`
+	Inverted bool   `json:"inverted"`
+	BitTicks uint32 `json:"bit_ticks"`
+	Pattern  uint32 `json:"pattern"`
+	Length   uint8  `json:"length"`
 }
 
 // Metadata counters are stable for recall only when Ready and Frozen are true.
 // TriggerIndex is a WORD index, not a sample-half or interpolated timestamp.
+// TRLC-LINKS: REQ-SDS-083
 type Metadata struct {
-	Locked         bool    `json:"locked"`
-	Ready          bool    `json:"ready"`
-	Running        bool    `json:"running"`
-	Frozen         bool    `json:"frozen"`
-	Triggered      bool    `json:"triggered"`
-	Prefetched     bool    `json:"prefetched"`
-	Length         uint32  `json:"words"`
-	Start          uint32  `json:"start"`
-	TriggerIndex   uint32  `json:"trigger_index"`
-	Position       uint32  `json:"position"`
-	Origin         uint32  `json:"origin"`
-	Revision       uint16  `json:"revision"`
-	MapID          uint16  `json:"map_id"`
-	SampleRateHz   float64 `json:"sample_rate_hz"`
-	Decimation     uint32  `json:"decimation"`
-	SampleBits     uint8   `json:"sample_bits"`
-	FractionBits   uint8   `json:"fraction_bits"`
-	SamplesPerWord uint8   `json:"samples_per_word"`
-	Interleaved    bool    `json:"interleaved"`
-	DataFault      bool    `json:"data_fault"`
+	HasSampleTimeline bool    `json:"has_sample_timeline"`
+	SampleFirst       uint64  `json:"sample_first"`
+	SampleLast        uint64  `json:"sample_last"`
+	RecordID          uint32  `json:"record_id"`
+	EventEpoch        uint32  `json:"event_epoch"`
+	HasRecordIdentity bool    `json:"has_record_identity"`
+	Locked            bool    `json:"locked"`
+	Ready             bool    `json:"ready"`
+	Running           bool    `json:"running"`
+	Frozen            bool    `json:"frozen"`
+	Triggered         bool    `json:"triggered"`
+	Prefetched        bool    `json:"prefetched"`
+	Length            uint32  `json:"words"`
+	Start             uint32  `json:"start"`
+	TriggerIndex      uint32  `json:"trigger_index"`
+	Position          uint32  `json:"position"`
+	Origin            uint32  `json:"origin"`
+	Revision          uint16  `json:"revision"`
+	MapID             uint16  `json:"map_id"`
+	SampleRateHz      float64 `json:"sample_rate_hz"`
+	Decimation        uint32  `json:"decimation"`
+	SampleBits        uint8   `json:"sample_bits"`
+	FractionBits      uint8   `json:"fraction_bits"`
+	SamplesPerWord    uint8   `json:"samples_per_word"`
+	Interleaved       bool    `json:"interleaved"`
+	DataFault         bool    `json:"data_fault"`
 }
 
+// TRLC-LINKS: REQ-SDS-032
 func New(b Bus) (*Capture, error) {
 	c := &Capture{bus: b}
 	id, err := c.read(0)
@@ -116,6 +152,8 @@ func New(b Bus) (*Capture, error) {
 	}
 	return c, nil
 }
+
+// TRLC-LINKS: REQ-SDS-082, REQ-SDS-025
 func (c *Capture) read(s uint16) (uint16, error) {
 	v, err := c.bus.Read(1, s)
 	if err == nil {
@@ -126,8 +164,13 @@ func (c *Capture) read(s uint16) (uint16, error) {
 
 // Beats advances on successful bus activity, including a long record recall.
 // A supervisor can observe progress without taking ownership from a transfer.
-func (c *Capture) Beats() uint64           { return c.beats.Load() }
+// TRLC-LINKS: REQ-SDS-025
+func (c *Capture) Beats() uint64 { return c.beats.Load() }
+
+// TRLC-LINKS: REQ-SDS-082
 func (c *Capture) write(s, v uint16) error { return c.bus.RawWrite(s, v) }
+
+// TRLC-LINKS: REQ-SDS-082
 func (c *Capture) read32(s uint16) (uint32, error) {
 	lo, e := c.read(s)
 	if e != nil {
@@ -136,6 +179,8 @@ func (c *Capture) read32(s uint16) (uint32, error) {
 	hi, e := c.read(s + 1)
 	return uint32(lo) | uint32(hi)<<16, e
 }
+
+// TRLC-LINKS: REQ-SDS-082
 func (c *Capture) write32(s uint16, v uint32) error {
 	if e := c.write(s, uint16(v)); e != nil {
 		return e
@@ -143,7 +188,22 @@ func (c *Capture) write32(s uint16, v uint32) error {
 	return c.write(s+1, uint16(v>>16))
 }
 
+// TRLC-LINKS: REQ-SDS-040, REQ-SDS-083
 func (c *Capture) Status() (Metadata, error) { c.mu.Lock(); defer c.mu.Unlock(); return c.status() }
+
+// TRLC-LINKS: REQ-SDS-013
+func (c *Capture) SupportsUART() (bool, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	revision, err := c.read(13)
+	if err != nil || revision < 10 {
+		return false, err
+	}
+	capability, err := c.read(48)
+	return capability == 0x5502 && err == nil, err
+}
+
+// TRLC-LINKS: REQ-SDS-040, REQ-SDS-083
 func (c *Capture) status() (m Metadata, err error) {
 	s, err := c.read(1)
 	if err != nil {
@@ -171,6 +231,23 @@ func (c *Capture) status() (m Metadata, err error) {
 	m.MapID, err = c.read(14)
 	if err != nil {
 		return m, err
+	}
+	if m.Revision >= 10 {
+		capability, e := c.read(73)
+		if e != nil {
+			return m, e
+		}
+		if capability == 0x5201 {
+			m.RecordID, e = c.read32(69)
+			if e != nil {
+				return m, e
+			}
+			m.EventEpoch, e = c.read32(71)
+			if e != nil {
+				return m, e
+			}
+			m.HasRecordIdentity = true
+		}
 	}
 	m.SampleRateHz = 100000000
 	m.Decimation = 1
@@ -216,9 +293,54 @@ func (c *Capture) status() (m Metadata, err error) {
 			return m, fmt.Errorf("sramcapture: format mismatch %d", bits)
 		}
 	}
-	return m, nil
+	if m.Revision >= 10 && m.Ready && m.Frozen && m.HasRecordIdentity && m.Interleaved && m.SamplesPerWord == 2 && m.Length != 0 {
+		err = c.sampleTimeline(&m)
+	}
+	return m, err
 }
 
+// sampleTimeline publishes only a frozen raw record's ADC ordinals. Precision
+// records require their filter's sample mapping and cannot use this linear map.
+// TRLC-LINKS: REQ-SDS-039, REQ-SDS-041, REQ-SDS-083
+func (c *Capture) sampleTimeline(m *Metadata) error {
+	capability, err := c.read(83)
+	if err != nil || capability != 0x5401 {
+		return err
+	}
+	valid, err := c.read(84)
+	if err != nil || valid&1 == 0 {
+		return err
+	}
+	low, err := c.read32(85)
+	if err != nil {
+		return err
+	}
+	high, err := c.read32(87)
+	if err != nil {
+		return err
+	}
+	id, err := c.read32(89)
+	if err != nil {
+		return err
+	}
+	epoch, err := c.read32(91)
+	if err != nil {
+		return err
+	}
+	if id != m.RecordID || epoch != m.EventEpoch {
+		return fmt.Errorf("sramcapture: sample timeline identity changed")
+	}
+	lastWord := uint64(high)<<32 | uint64(low)
+	span := 2 * uint64(m.Length-1)
+	if m.Length > Words || lastWord < span || lastWord&1 != 0 {
+		return fmt.Errorf("sramcapture: invalid raw sample timeline")
+	}
+	m.SampleFirst, m.SampleLast = lastWord-span, lastWord+1
+	m.HasSampleTimeline = true
+	return nil
+}
+
+// TRLC-LINKS: REQ-SDS-082
 func (c *Capture) command(ctx context.Context, op uint16) error {
 	if e := ctx.Err(); e != nil {
 		return e
@@ -249,6 +371,8 @@ func (c *Capture) command(ctx context.Context, op uint16) error {
 		}
 	}
 }
+
+// TRLC-LINKS: REQ-SDS-082
 func (c *Capture) wait(ctx context.Context, mask uint16) error {
 	for {
 		if e := ctx.Err(); e != nil {
@@ -270,13 +394,46 @@ func (c *Capture) wait(ctx context.Context, mask uint16) error {
 		}
 	}
 }
+
+// TRLC-LINKS: REQ-SDS-082
 func (c *Capture) ready(ctx context.Context) error {
 	ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
 	return c.wait(ctx, 4)
 }
 
+// TRLC-LINKS: REQ-SDS-032, REQ-SDS-040, REQ-SDS-082
 func (c *Capture) Arm(ctx context.Context, cfg Config) error {
+	if err := cfg.USBLS.validate(); err != nil {
+		return err
+	}
+	if cfg.USBLS.Enabled && (cfg.UART.Enabled || cfg.I2C.Enabled || cfg.SPI.Enabled || cfg.SENT.Enabled || cfg.MIL1553.Enabled || cfg.Source != ADC || !cfg.Normal) {
+		return fmt.Errorf("sramcapture: USB requires exclusive ADC normal triggering")
+	}
+	if err := cfg.MIL1553.validate(); err != nil {
+		return err
+	}
+	if cfg.MIL1553.Enabled && (cfg.UART.Enabled || cfg.I2C.Enabled || cfg.SPI.Enabled || cfg.SENT.Enabled || cfg.Source != ADC || !cfg.Normal) {
+		return fmt.Errorf("sramcapture: MIL-STD-1553 requires exclusive ADC normal triggering")
+	}
+	if err := cfg.SENT.validate(); err != nil {
+		return err
+	}
+	if cfg.SENT.Enabled && (cfg.UART.Enabled || cfg.I2C.Enabled || cfg.SPI.Enabled || cfg.Source != ADC || !cfg.Normal) {
+		return fmt.Errorf("sramcapture: SENT requires exclusive ADC normal triggering")
+	}
+	if cfg.DecodedEvents && !(cfg.USBLS.Enabled || cfg.UART.Enabled || cfg.I2C.Enabled || cfg.SPI.Enabled || cfg.SENT.Enabled || cfg.MIL1553.Enabled) {
+		return fmt.Errorf("sramcapture: decoded streaming requires a configured hardware decoder")
+	}
+	if cfg.SPI.Enabled && (cfg.UART.Enabled || cfg.I2C.Enabled || cfg.Source != ADC || !cfg.Normal || cfg.SPI.ClockChannel > 1 || cfg.SPI.Length > 4 || cfg.SPI.GapTicks < 3 || cfg.SPI.GapTicks > 0xffffff) {
+		return fmt.Errorf("sramcapture: invalid hardware SPI configuration")
+	}
+	if cfg.I2C.Enabled && (cfg.UART.Enabled || cfg.Source != ADC || !cfg.Normal || cfg.I2C.ClockChannel > 1 || cfg.I2C.Address < -1 || cfg.I2C.Address > 127 || cfg.I2C.Direction > 2 || cfg.I2C.Length > 4) {
+		return fmt.Errorf("sramcapture: invalid hardware I2C configuration")
+	}
+	if cfg.UART.Enabled && (cfg.Source != ADC || !cfg.Normal || cfg.UART.Channel > 1 || cfg.UART.Length > 4 || cfg.UART.BitTicks < 4 || cfg.UART.BitTicks > 0xffffff) {
+		return fmt.Errorf("sramcapture: invalid hardware UART configuration")
+	}
 	if (cfg.DecimationLog2 != 0 && (cfg.DecimationLog2 < 4 || cfg.DecimationLog2 > 20)) || cfg.Source > Counter || cfg.Pair > 4 || cfg.TriggerChannel > 1 || cfg.PostWords == 0 || uint64(cfg.PreWords)+uint64(cfg.PostWords) > uint64(Words) {
 		return fmt.Errorf("sramcapture: invalid source, channel, or record geometry")
 	}
@@ -301,6 +458,71 @@ func (c *Capture) Arm(ctx context.Context, cfg Config) error {
 	}
 	if revision < 9 && cfg.DecimationLog2 != 0 {
 		return fmt.Errorf("sramcapture: fabric lacks precision decimation")
+	}
+	// Unknown registers read zero on the owned fabric. Discover the optional
+	streamCapability := uint16(0)
+	if revision >= 10 {
+		streamCapability, e = c.read(63)
+		if e != nil {
+			return e
+		}
+	}
+	if cfg.DecodedEvents && streamCapability != 0x4501 {
+		return fmt.Errorf("sramcapture: fabric lacks decoded event transport")
+	}
+	// Each arm is a new capture configuration. Stop the previous stream before
+	// changing receiver registers; its epoch is invalidated on the next enable.
+	if streamCapability == 0x4501 {
+		if e = c.write(57, 0); e != nil {
+			return e
+		}
+	}
+	if err := c.configureSENT(revision, cfg.SENT); err != nil {
+		return err
+	}
+	if err := c.configureUSBLS(revision, cfg.USBLS); err != nil {
+		return err
+	}
+	if err := c.configureMIL1553(revision, cfg.MIL1553); err != nil {
+		return err
+	}
+	if err := c.configureSPI(revision, cfg.SPI); err != nil {
+		return err
+	}
+	if err := c.configureI2C(revision, cfg.I2C); err != nil {
+		return err
+	}
+	// Unknown registers read zero on the owned fabric. Discover the optional
+	// block before writing it, and explicitly disable it when returning to edges.
+	if revision >= 10 {
+		capability, err := c.read(48)
+		if err != nil {
+			return err
+		}
+		if capability == 0x5502 {
+			control := uint16(0)
+			if cfg.UART.Enabled {
+				control = 1 | uint16(cfg.UART.Channel)<<1 | uint16(cfg.UART.Length)<<3
+				if cfg.UART.Inverted {
+					control |= 4
+				}
+				for _, r := range []struct{ sel, value uint16 }{
+					{49, uint16(cfg.UART.BitTicks)}, {50, uint16(cfg.UART.BitTicks >> 16)},
+					{51, uint16(cfg.UART.Pattern)}, {52, uint16(cfg.UART.Pattern >> 16)},
+				} {
+					if err := c.write(r.sel, r.value); err != nil {
+						return err
+					}
+				}
+			}
+			if err := c.write(48, control); err != nil {
+				return err
+			}
+		} else if cfg.UART.Enabled {
+			return fmt.Errorf("sramcapture: fabric lacks hardware UART trigger")
+		}
+	} else if cfg.UART.Enabled {
+		return fmt.Errorf("sramcapture: fabric lacks hardware UART trigger")
 	}
 	if revision >= 9 {
 		if e = c.write(18, uint16(cfg.DecimationLog2)); e != nil {
@@ -329,16 +551,29 @@ func (c *Capture) Arm(ctx context.Context, cfg Config) error {
 	if e = c.write(6, word); e != nil {
 		return e
 	}
-	if e = c.write(7, uint16(cfg.TriggerLevel)); e != nil {
+	if e = c.write(7, uint16(cfg.TriggerLevel)|uint16(cfg.TriggerHysteresis)<<8); e != nil {
 		return e
 	}
-	return c.command(ctx, 1)
+	if cfg.DecodedEvents {
+		if _, e = c.enableDecodedEvents(true); e != nil {
+			return e
+		}
+	}
+	e = c.command(ctx, 1)
+	if e != nil && cfg.DecodedEvents {
+		_ = c.write(57, 0)
+	}
+	return e
 }
+
+// TRLC-LINKS: REQ-SDS-082
 func (c *Capture) Force(ctx context.Context) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	return c.command(ctx, 4)
 }
+
+// TRLC-LINKS: REQ-SDS-082
 func (c *Capture) Halt(ctx context.Context) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -347,6 +582,8 @@ func (c *Capture) Halt(ctx context.Context) error {
 	}
 	return c.ready(ctx)
 }
+
+// TRLC-LINKS: REQ-SDS-082
 func (c *Capture) WaitFrozen(ctx context.Context) error {
 	// Do not hold ownership while waiting for an external trigger: another
 	// caller must remain able to Force or Halt this acquisition.
@@ -372,6 +609,8 @@ func (c *Capture) WaitFrozen(ctx context.Context) error {
 		}
 	}
 }
+
+// TRLC-LINKS: REQ-SDS-084
 func (c *Capture) Snapshot(ctx context.Context) (out [10]uint8, err error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -405,6 +644,7 @@ func (c *Capture) Snapshot(ctx context.Context) (out [10]uint8, err error) {
 // A failed/partial host write leaves the record intact for another recall.
 // Zero count means an empty window, not full depth. Byte layout is documented
 // on Config; the caller can use 2*i and 2*i+1 to split channels.
+// TRLC-LINKS: REQ-SDS-033
 func (c *Capture) Recall(ctx context.Context, offset, count uint32, dst io.Writer) (written int64, err error) {
 	return c.recall(ctx, offset, count, dst, false)
 }
@@ -412,11 +652,18 @@ func (c *Capture) Recall(ctx context.Context, offset, count uint32, dst io.Write
 // RecallForward stages a frozen window in two forward passes. Fresh reads retain
 // their warm-up prefix; a second pass fills the gaps left between bulk reads.
 // No data reaches dst until all SRAM reads have succeeded.
+// TRLC-LINKS: REQ-SDS-033
 func (c *Capture) RecallForward(ctx context.Context, offset, count uint32, dst io.Writer) (int64, error) {
 	return c.recall(ctx, offset, count, dst, true)
 }
 
+// TRLC-LINKS: REQ-SDS-033
 func (c *Capture) recall(ctx context.Context, offset, count uint32, dst io.Writer, forward bool) (written int64, err error) {
+	return c.recallChecked(ctx, offset, count, dst, forward, nil)
+}
+
+// TRLC-LINKS: REQ-SDS-033, REQ-SDS-013
+func (c *Capture) recallChecked(ctx context.Context, offset, count uint32, dst io.Writer, forward bool, expected *RecordIdentity) (written int64, err error) {
 	if err = ctx.Err(); err != nil {
 		return 0, err
 	}
@@ -425,6 +672,9 @@ func (c *Capture) recall(ctx context.Context, offset, count uint32, dst io.Write
 	m, err := c.status()
 	if err != nil {
 		return 0, err
+	}
+	if expected != nil && (!m.HasRecordIdentity || m.RecordID != expected.Record || m.EventEpoch != expected.Epoch) {
+		return 0, fmt.Errorf("sramcapture: retained record identity changed")
 	}
 	if m.DataFault {
 		return 0, fmt.Errorf("sramcapture: interleave FIFO fault; record has missing samples")
@@ -469,8 +719,12 @@ func (c *Capture) recall(ctx context.Context, offset, count uint32, dst io.Write
 	if forward {
 		spans = recallSpans(count, bufferWords-prefix, prefix+2)
 	}
-	data := make([]byte, bufferWords*4)
-	halves := make([]uint16, bufferWords*2)
+	if cap(c.recallData) < int(bufferWords*4) {
+		c.recallData = make([]byte, bufferWords*4)
+		c.recallHalves = make([]uint16, bufferWords*2)
+	}
+	data := c.recallData[:bufferWords*4]
+	halves := c.recallHalves[:bufferWords*2]
 	for _, span := range spans {
 		if err = ctx.Err(); err != nil {
 			return written, err
@@ -590,10 +844,12 @@ func (c *Capture) recall(ctx context.Context, offset, count uint32, dst io.Write
 	return written, nil
 }
 
+// TRLC-LINKS: REQ-SDS-033
 type recallSpan struct{ offset, count uint32 }
 
 // gap accounts for the discarded prefix, fresh-read flush clock, and any
 // explicit advance between bulk bursts.
+// TRLC-LINKS: REQ-SDS-033
 func recallSpans(count, payload, gap uint32) []recallSpan {
 	var bulk, holes []recallSpan
 	for at := uint32(0); at < count; {

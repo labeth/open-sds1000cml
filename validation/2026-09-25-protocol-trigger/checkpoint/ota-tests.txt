@@ -1,0 +1,15 @@
+ok  	open-sds/ota/boot	3.530s
+?   	open-sds/ota/cmd/agent	[no test files]
+?   	open-sds/ota/cmd/otactl	[no test files]
+?   	open-sds/ota/cmd/stubapp	[no test files]
+ok  	open-sds/ota/internal/agent	13.559s
+?   	open-sds/ota/internal/buildinfo	[no test files]
+ok  	open-sds/ota/internal/config	0.022s
+ok  	open-sds/ota/internal/fdinherit	0.088s
+ok  	open-sds/ota/internal/gpmc	0.008s
+ok  	open-sds/ota/internal/otactl	1.157s
+ok  	open-sds/ota/internal/rpcproto	0.010s
+ok  	open-sds/ota/internal/slots	0.013s
+?   	open-sds/ota/internal/sysinfo	[no test files]
+ok  	open-sds/ota/internal/vxi11	0.014s
+ok  	open-sds/ota/internal/watchdog	1.215s

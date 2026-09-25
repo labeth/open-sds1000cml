@@ -1,0 +1,253 @@
+{
+  "status": "integrated",
+  "files": [
+    {
+      "path": "app/internal/engine/bands.go",
+      "owner": "FU-APP-ENGINE",
+      "functions": {
+        "PlanTdiv": [
+          "REQ-SDS-010"
+        ],
+        "SupportedTdivs": [
+          "REQ-SDS-010"
+        ],
+        "Band.Kind": [
+          "REQ-SDS-010"
+        ],
+        "Band.EnvPlan": [
+          "REQ-SDS-010"
+        ],
+        "Band.EnvCaptureCols": [
+          "REQ-SDS-010"
+        ],
+        "Band.EnvFillTarget": [
+          "REQ-SDS-010"
+        ],
+        "Band.nominalIntervalNs": [
+          "REQ-SDS-010"
+        ],
+        "Band.Decim": [
+          "REQ-SDS-010"
+        ],
+        "Band.Divisor": [
+          "REQ-SDS-010"
+        ],
+        "Band.NativeFast": [
+          "REQ-SDS-010"
+        ],
+        "Band.CaptureIntervalNs": [
+          "REQ-SDS-010"
+        ],
+        "Band.displayIntervalNs": [
+          "REQ-SDS-010"
+        ],
+        "Band.DrainCols": [
+          "REQ-SDS-010"
+        ],
+        "Band.WinCols": [
+          "REQ-SDS-010"
+        ],
+        "Band.DisplayedSdivS": [
+          "REQ-SDS-010"
+        ],
+        "Band.WaitBudgetNs": [
+          "REQ-SDS-008",
+          "REQ-SDS-010"
+        ],
+        "RollPaceNs": [
+          "REQ-SDS-010"
+        ]
+      },
+      "types": {
+        "Band": [
+          "REQ-SDS-010"
+        ],
+        "Kind": [
+          "REQ-SDS-010"
+        ]
+      }
+    },
+    {
+      "path": "app/internal/engine/bands_test.go",
+      "owner": "FU-APP-ENGINE",
+      "functions": {
+        "TestPlanTdivLadder": [
+          "REQ-SDS-010"
+        ],
+        "TestPlanTdivRejectsOffLadder": [
+          "REQ-SDS-010"
+        ],
+        "TestPlanTdivTolerance": [
+          "REQ-SDS-010"
+        ],
+        "TestDisplayedSdiv": [
+          "REQ-SDS-010"
+        ],
+        "TestWaitBudgetClamp": [
+          "REQ-SDS-008",
+          "REQ-SDS-010"
+        ],
+        "TestSupportedTdivsAscending": [
+          "REQ-SDS-010"
+        ]
+      },
+      "types": {}
+    },
+    {
+      "path": "app/internal/engine/envroll.go",
+      "owner": "FU-APP-ENGINE",
+      "functions": {
+        "Engine.interrupted": [
+          "REQ-SDS-008"
+        ],
+        "Engine.clearCrossFrame": [
+          "REQ-SDS-010",
+          "REQ-SDS-012",
+          "REQ-SDS-019",
+          "REQ-SDS-126"
+        ],
+        "Engine.transition": [
+          "REQ-SDS-010"
+        ],
+        "Engine.envFrame": [
+          "REQ-SDS-008",
+          "REQ-SDS-009",
+          "REQ-SDS-010",
+          "REQ-SDS-012"
+        ],
+        "Engine.envPush": [
+          "REQ-SDS-012"
+        ],
+        "Engine.envReduce": [
+          "REQ-SDS-012"
+        ],
+        "Engine.rollBringUp": [
+          "REQ-SDS-010"
+        ],
+        "Engine.rollPop": [
+          "REQ-SDS-010"
+        ],
+        "Engine.rollUpdate": [
+          "REQ-SDS-008",
+          "REQ-SDS-009",
+          "REQ-SDS-010",
+          "REQ-SDS-012"
+        ],
+        "Engine.rollSnap": [
+          "REQ-SDS-012"
+        ],
+        "Engine.rollReduce": [
+          "REQ-SDS-012"
+        ],
+        "Engine.commitStats": [
+          "REQ-SDS-009"
+        ],
+        "Engine.commitPublish": [
+          "REQ-SDS-007",
+          "REQ-SDS-009"
+        ]
+      },
+      "types": {}
+    },
+    {
+      "path": "app/internal/engine/envroll_test.go",
+      "owner": "FU-APP-ENGINE",
+      "functions": {
+        "TestEnvelopeProgDivisor": [
+          "REQ-SDS-010"
+        ],
+        "TestRollProgDivisor": [
+          "REQ-SDS-010"
+        ],
+        "TestEnvelopeFrame": [
+          "REQ-SDS-010",
+          "REQ-SDS-012"
+        ],
+        "TestRollBand": [
+          "REQ-SDS-010",
+          "REQ-SDS-012"
+        ],
+        "TestRollToRealTimeTransition": [
+          "REQ-SDS-010"
+        ],
+        "TestETSFrame": [
+          "REQ-SDS-019"
+        ],
+        "TestETSFallbackOnFlat": [
+          "REQ-SDS-019"
+        ],
+        "TestEnvelopeBailsOnBandChange": [
+          "REQ-SDS-008"
+        ]
+      },
+      "types": {}
+    },
+    {
+      "path": "app/internal/engine/ets.go",
+      "owner": "FU-APP-ENGINE",
+      "functions": {
+        "etsPlan": [
+          "REQ-SDS-019"
+        ],
+        "Band.ETSEligible": [
+          "REQ-SDS-019"
+        ],
+        "Engine.etsReset": [
+          "REQ-SDS-019"
+        ],
+        "Engine.etsFrame": [
+          "REQ-SDS-019"
+        ],
+        "Engine.etsRebuild": [
+          "REQ-SDS-019"
+        ],
+        "Engine.etsDrain": [
+          "REQ-SDS-019"
+        ]
+      },
+      "types": {}
+    }
+  ],
+  "functions": 50,
+  "types": 2,
+  "uniqueReviewedTests": [
+    "TestDisplayedSdiv",
+    "TestETSFallbackOnFlat",
+    "TestETSFrame",
+    "TestEnvelopeBailsOnBandChange",
+    "TestEnvelopeFrame",
+    "TestEnvelopeProgDivisor",
+    "TestPlanTdivLadder",
+    "TestPlanTdivRejectsOffLadder",
+    "TestPlanTdivTolerance",
+    "TestRollBand",
+    "TestRollProgDivisor",
+    "TestRollToRealTimeTransition",
+    "TestSupportedTdivsAscending",
+    "TestWaitBudgetClamp"
+  ],
+  "nativeEligibleTests": [
+    "TestDisplayedSdiv",
+    "TestETSFallbackOnFlat",
+    "TestETSFrame",
+    "TestEnvelopeBailsOnBandChange",
+    "TestEnvelopeFrame",
+    "TestEnvelopeProgDivisor",
+    "TestPlanTdivLadder",
+    "TestPlanTdivRejectsOffLadder",
+    "TestPlanTdivTolerance",
+    "TestRollBand",
+    "TestRollProgDivisor",
+    "TestRollToRealTimeTransition",
+    "TestSupportedTdivsAscending",
+    "TestWaitBudgetClamp"
+  ],
+  "sourceSHA256": {
+    "app/internal/engine/bands.go": "403c739d18e883ad2521489f5b63c1062738b39b10bfad1f7e79c2877c0e5851",
+    "app/internal/engine/bands_test.go": "8ca6f588a609897b7b94796dedae46a69fceb90ca88ab31895471c3bedbba368",
+    "app/internal/engine/envroll.go": "5c0bf71b5364d4ca56edf528f3a1b19d75ecd7128f83f61fdf8429f7cc3099f1",
+    "app/internal/engine/envroll_test.go": "0b771bad9f8bbded3969516d5fbcc24bd49e857c4a95a8e955cb680985dd7abe",
+    "app/internal/engine/ets.go": "a3698c13114a70d838c3ac33fb21bac5361d44b94e8768a4753a69bc2c710b59"
+  },
+  "scope": "Source-reviewed timebase/envelope/roll/ETS behavior; test limits retained in the two source review reports."
+}

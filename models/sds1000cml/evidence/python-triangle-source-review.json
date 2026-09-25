@@ -1,0 +1,33 @@
+{
+  "requirement": "REQ-SDS-209",
+  "source": "tools/hw/adc_sram/triangle_calibrate.py",
+  "sourceSHA256": "1e701547aea2b5bc437f697573167238ccb9d57fe82065f00d7484641a2d2b6d",
+  "functions": [
+    "fit",
+    "validate",
+    "main"
+  ],
+  "classification": "offline numerical analysis; no device calls",
+  "findings": [
+    "fit uses 15-sample smoothing, 2nd/98th percentile midpoint, rising crossings more than 30 samples from either end, and linear regression of cycle count to crossing positions.",
+    "Five modulo-sample phases are fitted separately on central rising/falling segments. Gain, offset and relative skew refer to channel-average line coefficients, not an independently calibrated timing reference.",
+    "validate refits the target/common shape on each held-out record but uses the first calibration coefficients by the same modulo-five phase. It does not rotate to improve the result.",
+    "main consumes interleaved uint8 two-channel bytes at 500 MHz, preserves input SHA256, uses the first record for calibration, and writes JSON plus a console summary.",
+    "Odd records assert before output. Constant records have no crossings and raise IndexError; other insufficient/degenerate fits are not guarded.",
+    "The source itself limits application to measured analog range/temperature and known record-start core phase. It does not verify those preconditions."
+  ],
+  "syntheticChecks": {
+    "idealFrequencyHz": 1000000,
+    "heldOutRawResidualApprox": 3.44565,
+    "heldOutCorrectedResidualApprox": 0.1,
+    "shiftedCorrectedResidualApprox": 6.07426,
+    "scope": "Deterministic synthetic fixture; these approximate observations are not physical instrument measurements."
+  },
+  "testRun": "python-triangle-test-run.json",
+  "testSourceSHA256": "c54906fd9f321adc8bcde8ebd641dc700d17fbc9c8784b1075eb023635ed3141",
+  "limits": [
+    "No physical analog, aperture-skew, bandwidth or ENOB qualification.",
+    "Held-out common target is refitted, so the residual is not an independent external timebase error.",
+    "Parser coverage and source comments alone do not cover the other Python scripts or their top-level effects."
+  ]
+}

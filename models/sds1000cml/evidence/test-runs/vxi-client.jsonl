@@ -1,0 +1,8 @@
+{"Time":"2026-09-23T01:19:55.968374477+02:00","Action":"start","Package":"open-sds/ota/internal/vxi11"}
+{"Time":"2026-09-23T01:19:55.978557221+02:00","Action":"run","Package":"open-sds/ota/internal/vxi11","Test":"TestDialSendQuery"}
+{"Time":"2026-09-23T01:19:55.978578213+02:00","Action":"output","Package":"open-sds/ota/internal/vxi11","Test":"TestDialSendQuery","Output":"=== RUN   TestDialSendQuery\n"}
+{"Time":"2026-09-23T01:19:55.98031435+02:00","Action":"output","Package":"open-sds/ota/internal/vxi11","Test":"TestDialSendQuery","Output":"--- PASS: TestDialSendQuery (0.00s)\n"}
+{"Time":"2026-09-23T01:19:55.980332965+02:00","Action":"pass","Package":"open-sds/ota/internal/vxi11","Test":"TestDialSendQuery","Elapsed":0}
+{"Time":"2026-09-23T01:19:55.980371036+02:00","Action":"output","Package":"open-sds/ota/internal/vxi11","Output":"PASS\n"}
+{"Time":"2026-09-23T01:19:56.982286277+02:00","Action":"output","Package":"open-sds/ota/internal/vxi11","Output":"ok  \topen-sds/ota/internal/vxi11\t1.014s\n"}
+{"Time":"2026-09-23T01:19:56.982307319+02:00","Action":"pass","Package":"open-sds/ota/internal/vxi11","Elapsed":1.014}

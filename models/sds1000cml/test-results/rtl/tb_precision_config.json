@@ -1,0 +1,16 @@
+{
+  "source": "fpga/acq_sram/sim/tb_precision_config.v",
+  "scope": "Seven original self-checking precision benches. Full remaining tail logs0..12; full shared wrapper logs4..13; ideal dcfifo model explicitly supplied to legacy DC bench. Frozen parallel reference shares unchanged fast CIC modules. No physical CDC, vendor FIFO timing, fitted timing or hardware qualification.",
+  "sourceSHA256": "effd711d852c39a7236ce1fcb5bbd684a2876f1c0745049627badb6622465c23",
+  "reportSHA256": "f18b377dd82dca24fb9936dd296cff00234ca3ca570a96d6195fde9661413fea",
+  "runs": [
+    "precision_config"
+  ],
+  "results": [
+    {
+      "requirement": "REQ-SDS-040",
+      "status": "partial",
+      "notes": "1 original precision cases pass; 0 executed cases fail; 0 could not execute because compilation failed. Passing cases provide partial assertion evidence only. Frozen pre-annotation source inputs remain auditable through exact approved comment overlays; no physical qualification is established. See evidence/precision-rtl-review-test-run.json."
+    }
+  ]
+}

@@ -1,0 +1,157 @@
+{
+  "status": "incomplete",
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "files": 25,
+  "sourceSHA256": {
+    "fpga/acq_sram/audit.py": "645253dc9729ee365c1c1b57996b20ca4a7fa0b80e95850b6b7e38bb79b22a78",
+    "fpga/acq_sram/build.py": "bacbc4823aace1ade27c0531db69155edeffd8dfb03ef72afe5786b1ff04dcbe",
+    "fpga/acq_sram/build_profile.py": "baae1528a690695e37059f6d655e2003b067499260613a3a34f610b0dbc72468",
+    "fpga/sram_bench/audit.py": "6599f5562540bd9942e2ddc6e159996ace8074a19a7c6a5a6a55c39b1d200a0c",
+    "fpga/sram_bench/build.py": "69faefd64c601c9c75479784b6921b11f27a32e5948756af3d787c857b5883a8",
+    "tools/dsp/precision_filter.py": "e77ea6026829c05acd9d2f500f3224c664ff0bd96f752585db89d04f46522ca4",
+    "tools/hw/adc_sram/analyze_interleave.py": "d311f2926b9c39daecf6c79d1299da6faf48d9d7848e7e2102e5ab161b1083d8",
+    "tools/hw/adc_sram/followup.py": "0740a923e2858f73c021ee28f20ee90acbb2e14af1564144d03f73b5611dee3b",
+    "tools/hw/adc_sram/host_read_qualify.py": "3216aec6c177fec03cd8e1d45d3f9545d1ce57992394d42e681d37684f5894ba",
+    "tools/hw/adc_sram/interleave_probe.py": "0560b9eab76982eaf3ce9647e041ff785ad770253cadc26183475350d12e1295",
+    "tools/hw/adc_sram/interleave_qualify.py": "45343ca89b53925bacda435f627c698b056c89ef3960be16d5760a38aabf5d31",
+    "tools/hw/adc_sram/precision_qualify.py": "5db602a782153c06ddbac71376d85979efc509b1dec9da38261a14795023d95c",
+    "tools/hw/adc_sram/run.py": "7c702f22f783235d0b9fcea00f41706961d4b8cdad7eb1ffd73e0ef7796ba841",
+    "tools/hw/adc_sram/triangle_calibrate.py": "1e701547aea2b5bc437f697573167238ccb9d57fe82065f00d7484641a2d2b6d",
+    "tools/hw/sram_boundary/boundary.py": "8cdea0cdcbfcdbda1bf120798c4d3c8bd0f4160788826bff8bea4b7d4cce7f7b",
+    "tools/hw/sram_boundary/control_links.py": "d93ed1d894c66818aca084fd775f29a6cbc1ad264479941e988af14d81a7e62d",
+    "tools/hw/sram_boundary/counter_controls.py": "6e27eb94525dadff3a574af1944719f3d1f6c294d4de14637c53efc518a44e4c",
+    "tools/hw/sram_boundary/counter_read.py": "d2b2f31b610a1525740dc0937388915f4782aa91285d00a43dbb824c2c94b1b1",
+    "tools/hw/sram_boundary/k2_counter.py": "1f763d130964970019e8198187bbd54e6be4f3c6fb5695bef18fd352cb708f07",
+    "tools/hw/sram_boundary/maxv_read_screen.py": "eb9562eacc59052f47d26b2dc7f3b3fdecd42178cdf201e20d7df74ac6bd8b68",
+    "tools/hw/sram_boundary/read_screen.py": "6481a576b76d64941a5e92cbc0d802f7c8c6b996b3dbf6e5b9265d6ac142aedb",
+    "tools/hw/sram_boundary/repeat_read.py": "d567365b2639dd0f95c81b80985aa894a9f89d22f5b9e83b37f953340b995ae5",
+    "tools/hw/sram_boundary/write_read.py": "965d7e234d234c9480afa06b4e0ffc00cccd305dcf18da5f37a8ce186aa5e530",
+    "tools/hw/sram_speed/run.py": "cfb126cb2eebbd8d9a148d335d01548fe64d8cc309442e65226326ca898b9c08",
+    "tools/hw/sramburst/pulse_sweep.py": "e0417272c08c6d5c73cde37b66423f432235dab97b4fcc1555c96e883dcf6ea5"
+  },
+  "linkedDeclarations": 3,
+  "inventoriedFunctions": 50,
+  "inventoriedClasses": 1,
+  "symbols": [
+    {
+      "TraceID": "CODE-FIT",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-209"
+      ],
+      "ModelLinks": null,
+      "Path": "tools/hw/adc_sram/triangle_calibrate.py",
+      "Line": 12,
+      "Signature": "def fit(x, fs=500e6):"
+    },
+    {
+      "TraceID": "CODE-VALIDATE",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-209"
+      ],
+      "ModelLinks": null,
+      "Path": "tools/hw/adc_sram/triangle_calibrate.py",
+      "Line": 40,
+      "Signature": "def validate(x, calibration):"
+    },
+    {
+      "TraceID": "CODE-MAIN",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-209"
+      ],
+      "ModelLinks": null,
+      "Path": "tools/hw/adc_sram/triangle_calibrate.py",
+      "Line": 55,
+      "Signature": "def main():"
+    }
+  ],
+  "diagnostics": [
+    {
+      "code": "code.missing_trlc_link",
+      "severity": "error",
+      "message": "functions missing TRLC-LINKS at lines 8, 15",
+      "path": "tools/hw/adc_sram/followup.py:8,15"
+    },
+    {
+      "code": "code.missing_trlc_link",
+      "severity": "error",
+      "message": "functions missing TRLC-LINKS at lines 17, 25, 28, 31, 41, 47, 92",
+      "path": "tools/hw/adc_sram/host_read_qualify.py:17,25,28,31,41,47,92"
+    },
+    {
+      "code": "code.missing_trlc_link",
+      "severity": "error",
+      "message": "functions missing TRLC-LINKS at lines 10, 23, 24",
+      "path": "tools/hw/adc_sram/interleave_probe.py:10,23,24"
+    },
+    {
+      "code": "code.missing_trlc_link",
+      "severity": "error",
+      "message": "functions missing TRLC-LINKS at lines 16, 23, 39, 40",
+      "path": "tools/hw/adc_sram/interleave_qualify.py:16,23,39,40"
+    },
+    {
+      "code": "code.missing_trlc_link",
+      "severity": "error",
+      "message": "functions missing TRLC-LINKS at lines 9, 16, 20, 23",
+      "path": "tools/hw/adc_sram/precision_qualify.py:9,16,20,23"
+    },
+    {
+      "code": "code.missing_trlc_link",
+      "severity": "error",
+      "message": "functions missing TRLC-LINKS at lines 15, 22",
+      "path": "tools/hw/adc_sram/run.py:15,22"
+    },
+    {
+      "code": "code.missing_trlc_link",
+      "severity": "error",
+      "message": "functions missing TRLC-LINKS at lines 28, 32, 48, 52, 57, 62, 66, 79, 87, 91",
+      "path": "tools/hw/sram_boundary/boundary.py:28,32,48,52,57,62,66,79,87,91"
+    },
+    {
+      "code": "code.missing_trlc_link",
+      "severity": "error",
+      "message": "functions missing TRLC-LINKS at lines 7, 11",
+      "path": "tools/hw/sram_boundary/counter_controls.py:7,11"
+    },
+    {
+      "code": "code.missing_trlc_link",
+      "severity": "error",
+      "message": "functions missing TRLC-LINKS at lines 7, 8",
+      "path": "tools/hw/sram_boundary/counter_read.py:7,8"
+    },
+    {
+      "code": "code.missing_trlc_link",
+      "severity": "error",
+      "message": "functions missing TRLC-LINKS at lines 8, 9",
+      "path": "tools/hw/sram_boundary/k2_counter.py:8,9"
+    },
+    {
+      "code": "code.missing_trlc_link",
+      "severity": "error",
+      "message": "functions missing TRLC-LINKS at lines 7, 8",
+      "path": "tools/hw/sram_boundary/repeat_read.py:7,8"
+    },
+    {
+      "code": "code.missing_trlc_link",
+      "severity": "error",
+      "message": "functions missing TRLC-LINKS at lines 7, 8, 11, 18",
+      "path": "tools/hw/sram_boundary/write_read.py:7,8,11,18"
+    },
+    {
+      "code": "code.missing_trlc_link",
+      "severity": "error",
+      "message": "functions missing TRLC-LINKS at lines 14, 21",
+      "path": "tools/hw/sram_speed/run.py:14,21"
+    },
+    {
+      "code": "code.missing_trlc_link",
+      "severity": "error",
+      "message": "functions missing TRLC-LINKS at lines 15",
+      "path": "tools/hw/sramburst/pulse_sweep.py:15"
+    }
+  ],
+  "scope": "Actual authored comments in current approved source overlays. Missing links remain explicit across the whole nonhistorical Python inventory. No synthetic parser-test markers, script execution or top-level behavior coverage are credited."
+}

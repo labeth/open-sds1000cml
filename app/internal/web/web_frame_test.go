@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-WEB
 package web
 
 import (
@@ -6,6 +7,7 @@ import (
 	"testing"
 )
 
+// TRLC-LINKS: REQ-SDS-163
 func TestFrameEndpoint(t *testing.T) {
 	f := &engine.Frame{
 		C1: make([]uint8, 2048), C2: make([]uint8, 2048),
@@ -46,6 +48,7 @@ func TestFrameEndpoint(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-163
 func TestDeepFrameServesRawRecord(t *testing.T) {
 	// full=1 on a deep decimated frame (Valid>WinCols) serves the record VERBATIM
 	// — NOT re-centered — reporting the trigger's REAL position (edge_frac =
@@ -89,6 +92,7 @@ func TestDeepFrameServesRawRecord(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-163
 func TestWindowMapping(t *testing.T) {
 	sig := make([]uint8, 100)
 	for i := range sig {
@@ -123,6 +127,7 @@ func TestWindowMapping(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-163
 func TestWindowNoEndGaps(t *testing.T) {
 	// The record IS the window (WinCols == Valid) with the edge off-centre:
 	// the window must clamp into the record and fill every column with real
@@ -145,6 +150,7 @@ func TestWindowNoEndGaps(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-163
 func TestWindowRailExtendCentres(t *testing.T) {
 	// Repeat-rail: an edge near a record END (no crossing near the middle, the
 	// sub-period case) must still land at posFrac. With WinCols==Valid the old
@@ -180,6 +186,7 @@ func TestWindowRailExtendCentres(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-163
 func TestDtSTrueCapturePitch(t *testing.T) {
 	// dt_s must report the TRUE capture time per served point. On the
 	// 1–200 ns/div bands col_span_s is a display nominal (the window is sized

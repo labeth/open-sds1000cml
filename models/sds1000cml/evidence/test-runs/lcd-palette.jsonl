@@ -1,0 +1,9 @@
+{"Time":"2026-09-23T07:44:32.866645544+02:00","Action":"start","Package":"open-sds/app/internal/web"}
+{"Time":"2026-09-23T07:44:32.878331364+02:00","Action":"run","Package":"open-sds/app/internal/web","Test":"TestPaletteParity"}
+{"Time":"2026-09-23T07:44:32.878356791+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestPaletteParity","Output":"=== RUN   TestPaletteParity\n"}
+{"Time":"2026-09-23T07:44:32.880295737+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestPaletteParity","Output":"    palette_parity_test.go:90: palette parity OK: 24 web tokens, 11 shared LCD colors, single source tokens.json\n"}
+{"Time":"2026-09-23T07:44:32.880340714+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestPaletteParity","Output":"--- PASS: TestPaletteParity (0.00s)\n"}
+{"Time":"2026-09-23T07:44:32.880360026+02:00","Action":"pass","Package":"open-sds/app/internal/web","Test":"TestPaletteParity","Elapsed":0}
+{"Time":"2026-09-23T07:44:32.880586991+02:00","Action":"output","Package":"open-sds/app/internal/web","Output":"PASS\n"}
+{"Time":"2026-09-23T07:44:33.882127569+02:00","Action":"output","Package":"open-sds/app/internal/web","Output":"ok  \topen-sds/app/internal/web\t1.015s\n"}
+{"Time":"2026-09-23T07:44:33.882151712+02:00","Action":"pass","Package":"open-sds/app/internal/web","Elapsed":1.016}

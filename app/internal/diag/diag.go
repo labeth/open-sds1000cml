@@ -10,6 +10,7 @@
 // Every fabric access goes through a Runner — the engine's Exec — so the bus
 // keeps its single owner. The package holds no bus state of its own: each call
 // reads what it needs, and every experiment restores the registers it touched.
+// ENGMODEL-OWNER-UNIT: FU-APP-DIAG
 package diag
 
 import (
@@ -25,16 +26,20 @@ import (
 )
 
 // Runner executes fn with the bus on the goroutine that owns it.
+// TRLC-LINKS: REQ-SDS-143
 type Runner interface {
 	Exec(fn func(bus.Bus) error, timeout time.Duration) error
 }
 
 // RunnerFunc adapts a function to Runner.
+// TRLC-LINKS: REQ-SDS-143
 type RunnerFunc func(fn func(bus.Bus) error, timeout time.Duration) error
 
+// TRLC-LINKS: REQ-SDS-143
 func (f RunnerFunc) Exec(fn func(bus.Bus) error, timeout time.Duration) error { return f(fn, timeout) }
 
 // Diag drives the diagnostic block.
+// TRLC-LINKS: REQ-SDS-143
 type Diag struct {
 	run     Runner
 	logf    func(string, ...any)
@@ -56,6 +61,7 @@ const (
 	busSettle     = 1 * time.Millisecond
 )
 
+// TRLC-LINKS: REQ-SDS-143
 func New(run Runner, logf func(string, ...any)) *Diag {
 	if logf == nil {
 		logf = func(string, ...any) {}
@@ -65,6 +71,7 @@ func New(run Runner, logf func(string, ...any)) *Diag {
 
 // SetStatusExtra installs a provider of host-side status fields merged into
 // Status() (engine frames, health heartbeat mode, EDMA state).
+// TRLC-LINKS: REQ-SDS-143
 func (d *Diag) SetStatusExtra(fn func() map[string]any) {
 	d.mu.Lock()
 	d.extra = fn
@@ -88,6 +95,7 @@ var SingleBalls = []string{"F3", "F5", "G5", "D3", "F7"}
 var adcHoldBalls = map[string]uint16{"L4": iface.DiagAdcHoldL4Mask, "T2": iface.DiagAdcHoldT2Mask, "T7": iface.DiagAdcHoldT7Mask}
 
 // BusBallIndex returns the DIAG bit index of a bus ball.
+// TRLC-LINKS: REQ-SDS-144, REQ-SDS-145
 func BusBallIndex(ball string) (int, bool) {
 	for i, b := range BusBalls {
 		if strings.EqualFold(b, ball) {
@@ -98,6 +106,7 @@ func BusBallIndex(ball string) (int, bool) {
 }
 
 // LaneName names a LANE_IDX value (DIAG LANE_IDX field doc).
+// TRLC-LINKS: REQ-SDS-144
 func LaneName(idx int) string {
 	switch {
 	case idx >= 0 && idx < 80:
@@ -123,6 +132,7 @@ func LaneName(idx int) string {
 }
 
 // laneIndices lists every valid LANE_IDX value in order.
+// TRLC-LINKS: REQ-SDS-144
 func laneIndices() []int {
 	var out []int
 	for i := 0; i < 0x7e; i++ {
@@ -136,6 +146,7 @@ func laneIndices() []int {
 // ---- register access by name ----
 
 // ResolveSel maps a register name or a hex/decimal selector to a selector.
+// TRLC-LINKS: REQ-SDS-143
 func ResolveSel(name string) (uint16, iface.Register, error) {
 	if r, ok := iface.ByName(strings.ToUpper(name)); ok {
 		return r.Sel, r, nil
@@ -152,6 +163,7 @@ func ResolveSel(name string) (uint16, iface.Register, error) {
 }
 
 // ResolveDiagIdx maps a DIAG window name (LANEMAP[i] as "LANEMAP.12") or index.
+// TRLC-LINKS: REQ-SDS-143
 func ResolveDiagIdx(name string) (uint16, iface.DiagEntry, error) {
 	up := strings.ToUpper(name)
 	for _, e := range iface.DiagWindow() {
@@ -171,6 +183,7 @@ func ResolveDiagIdx(name string) (uint16, iface.DiagEntry, error) {
 	return 0, iface.DiagEntry{}, fmt.Errorf("diag: unknown DIAG window %q", name)
 }
 
+// TRLC-LINKS: REQ-SDS-143
 func diagEntryAt(idx uint16) iface.DiagEntry {
 	for _, e := range iface.DiagWindow() {
 		if idx >= e.Idx && int(idx) < int(e.Idx)+e.Count {
@@ -181,6 +194,7 @@ func diagEntryAt(idx uint16) iface.DiagEntry {
 }
 
 // RegVal is one register read with its decoded fields.
+// TRLC-LINKS: REQ-SDS-143
 type RegVal struct {
 	Name   string            `json:"name"`
 	Sel    uint16            `json:"sel"`
@@ -190,6 +204,7 @@ type RegVal struct {
 	Access string            `json:"access,omitempty"`
 }
 
+// TRLC-LINKS: REQ-SDS-143
 func decode(r iface.Register, v uint16) RegVal {
 	rv := RegVal{Name: r.Name, Sel: r.Sel, Value: v, Hex: fmt.Sprintf("0x%04x", v), Access: r.Access.String()}
 	if len(r.Fields) > 0 {
@@ -206,6 +221,7 @@ func decode(r iface.Register, v uint16) RegVal {
 
 // RegRead reads one CS1 register by name or selector. A pop-on-read port pops
 // one word (the caller asked for it).
+// TRLC-LINKS: REQ-SDS-143
 func (d *Diag) RegRead(name string) (RegVal, error) {
 	sel, r, err := ResolveSel(name)
 	if err != nil {
@@ -230,6 +246,7 @@ func (d *Diag) RegRead(name string) (RegVal, error) {
 
 // RegWrite writes one CS1 register. raw bypasses the schema guard (the
 // vendor-word path); otherwise a read-only register is refused.
+// TRLC-LINKS: REQ-SDS-143
 func (d *Diag) RegWrite(name string, val uint16, raw bool) error {
 	_, err := d.RegWriteSnoop(name, val, raw)
 	return err
@@ -238,6 +255,7 @@ func (d *Diag) RegWrite(name string, val uint16, raw bool) error {
 // SnoopVal is what the fabric's GPMC snoop registers recorded for the last
 // CS1 write: the raw selector, the A2/B1 pad levels sampled at that write and
 // the data word (05-WORKPLAN §2 SNOOP_SEL/SNOOP_DATA).
+// TRLC-LINKS: REQ-SDS-143
 type SnoopVal struct {
 	Sel   uint16 `json:"sel"`
 	A2    uint8  `json:"a2"`
@@ -250,6 +268,7 @@ type SnoopVal struct {
 // engine transaction, so the engine's own per-frame writes cannot land in
 // between (they did on hardware, 2026-09-05: SNOOP_SEL always showed the
 // engine's OPCODE write). This is the primitive of the GPMC A1/A2 ball test.
+// TRLC-LINKS: REQ-SDS-143
 func (d *Diag) RegWriteSnoop(name string, val uint16, raw bool) (SnoopVal, error) {
 	sel, _, err := ResolveSel(name)
 	if err != nil {
@@ -282,6 +301,7 @@ func (d *Diag) RegWriteSnoop(name string, val uint16, raw bool) (SnoopVal, error
 
 // ---- DIAG window ----
 
+// TRLC-LINKS: REQ-SDS-143
 func winRead(b bus.Bus, idx uint16) (uint16, error) {
 	if err := b.Write(bus.PlaneCS1, iface.SelDiagIdx, idx); err != nil {
 		return 0, err
@@ -289,6 +309,7 @@ func winRead(b bus.Bus, idx uint16) (uint16, error) {
 	return b.Read(bus.PlaneCS1, iface.SelDiagData)
 }
 
+// TRLC-LINKS: REQ-SDS-143
 func winWrite(b bus.Bus, idx, val uint16) error {
 	if err := b.Write(bus.PlaneCS1, iface.SelDiagIdx, idx); err != nil {
 		return err
@@ -297,6 +318,7 @@ func winWrite(b bus.Bus, idx, val uint16) error {
 }
 
 // WindowVal is one DIAG window read.
+// TRLC-LINKS: REQ-SDS-143
 type WindowVal struct {
 	Name   string            `json:"name"`
 	Idx    uint16            `json:"idx"`
@@ -306,6 +328,7 @@ type WindowVal struct {
 }
 
 // WindowRead reads a DIAG window entry by name or index.
+// TRLC-LINKS: REQ-SDS-143
 func (d *Diag) WindowRead(name string) (WindowVal, error) {
 	idx, e, err := ResolveDiagIdx(name)
 	if err != nil {
@@ -336,6 +359,7 @@ func (d *Diag) WindowRead(name string) (WindowVal, error) {
 // WindowWrite writes a DIAG window entry; read-only entries are refused —
 // including LANEMAP, which reports the baked ten-core map from v2.2 on (a
 // different map is a rebuild, 06-TIERS §1.7).
+// TRLC-LINKS: REQ-SDS-143
 func (d *Diag) WindowWrite(name string, val uint16) error {
 	idx, e, err := ResolveDiagIdx(name)
 	if err != nil {
@@ -356,6 +380,7 @@ func (d *Diag) WindowWrite(name string, val uint16) error {
 // ---- identity / status ----
 
 // Identity is the fabric identity plus the configuration port.
+// TRLC-LINKS: REQ-SDS-143
 type Identity struct {
 	BuildID  string `json:"build_id"`
 	Version  string `json:"version"`
@@ -367,6 +392,7 @@ type Identity struct {
 	ConfDone bool   `json:"conf_done"`
 }
 
+// TRLC-LINKS: REQ-SDS-143
 func readIdentity(b bus.Bus) (Identity, error) {
 	lo, err := b.Read(bus.PlaneCS1, iface.SelBuildidLo)
 	if err != nil {
@@ -393,6 +419,7 @@ func readIdentity(b bus.Bus) (Identity, error) {
 }
 
 // Identity reads the identity words and the configuration port.
+// TRLC-LINKS: REQ-SDS-143
 func (d *Diag) Identity() (Identity, error) {
 	var id Identity
 	err := d.run.Exec(func(b bus.Bus) error {
@@ -405,6 +432,7 @@ func (d *Diag) Identity() (Identity, error) {
 
 // Status is the one-line health view: identity, clocks, the last census
 // summary and the host-side extras.
+// TRLC-LINKS: REQ-SDS-143
 func (d *Diag) Status() map[string]any {
 	out := map[string]any{}
 	var id Identity
@@ -446,6 +474,7 @@ func (d *Diag) Status() map[string]any {
 	return out
 }
 
+// TRLC-LINKS: REQ-SDS-143
 func boolWord(b bool, t, f string) string {
 	if b {
 		return t
@@ -456,6 +485,7 @@ func boolWord(b bool, t, f string) string {
 // ---- census ----
 
 // Lane is one input lane's counters.
+// TRLC-LINKS: REQ-SDS-144
 type Lane struct {
 	Idx   int    `json:"idx"`
 	Name  string `json:"name"`
@@ -466,6 +496,7 @@ type Lane struct {
 }
 
 // Census is the lane/bus census.
+// TRLC-LINKS: REQ-SDS-144
 type Census struct {
 	At            string            `json:"at"`
 	ClkStat       RegVal            `json:"clk_stat"`
@@ -483,6 +514,7 @@ type Census struct {
 	Summary       map[string]string `json:"summary"`
 }
 
+// TRLC-LINKS: REQ-SDS-144
 func reg(b bus.Bus, sel uint16) RegVal {
 	v, _ := b.Read(bus.PlaneCS1, sel)
 	r, _ := iface.BySel(sel)
@@ -492,6 +524,7 @@ func reg(b bus.Bus, sel uint16) RegVal {
 // Census reads every toggle counter and level (all lanes, bus balls, singles,
 // P6/A2/B1/K2), the bus readback, the clock status and the snoop registers.
 // It leaves LANE_IDX where it found it.
+// TRLC-LINKS: REQ-SDS-144
 func (d *Diag) Census() (*Census, error) {
 	c := &Census{BusLevels: map[string]uint8{}, Summary: map[string]string{}}
 	err := d.run.Exec(func(b bus.Bus) error {
@@ -555,6 +588,7 @@ func (d *Diag) Census() (*Census, error) {
 	return c, nil
 }
 
+// TRLC-LINKS: REQ-SDS-144, REQ-SDS-145
 func busBit(lo, hi uint16, i int) uint16 {
 	if i < 16 {
 		return (lo >> uint(i)) & 1
@@ -562,6 +596,7 @@ func busBit(lo, hi uint16, i int) uint16 {
 	return (hi >> uint(i-16)) & 1
 }
 
+// TRLC-LINKS: REQ-SDS-144, REQ-SDS-145
 func setBusBit(lo, hi uint16, i int, v bool) (uint16, uint16) {
 	if i < 16 {
 		if v {
@@ -580,6 +615,7 @@ func setBusBit(lo, hi uint16, i int, v bool) (uint16, uint16) {
 // Snapshot arms the snapshot RAM on the selected slice and clock, waits for it
 // to complete and pops every word. mode is DIAG SNAP_MODE.SLICE (0..7), clk is
 // DIAG_CTRL.SNAP_CLK (0..3).
+// TRLC-LINKS: REQ-SDS-144
 func (d *Diag) Snapshot(mode, clk int) ([]uint16, error) {
 	if mode < 0 || mode > 7 || clk < 0 || clk > 3 {
 		return nil, fmt.Errorf("diag: snapshot mode %d / clk %d out of range", mode, clk)
@@ -626,6 +662,7 @@ func (d *Diag) Snapshot(mode, clk int) ([]uint16, error) {
 // ---- bus drive ----
 
 // BusState is the drive state and readback of the 27-ball bus and the singles.
+// TRLC-LINKS: REQ-SDS-145
 type BusState struct {
 	Master   bool             `json:"master"` // DIAG_CTRL.BUS_DRV_EN
 	OeLo     uint16           `json:"oe_lo"`
@@ -644,12 +681,14 @@ type BusState struct {
 }
 
 // Ball is one bus ball's state.
+// TRLC-LINKS: REQ-SDS-145
 type Ball struct {
 	OE    bool  `json:"oe"`
 	Drive uint8 `json:"drive"`
 	Read  uint8 `json:"read"`
 }
 
+// TRLC-LINKS: REQ-SDS-145
 func readBus(b bus.Bus) (BusState, error) {
 	var s BusState
 	var err error
@@ -680,6 +719,7 @@ func readBus(b bus.Bus) (BusState, error) {
 }
 
 // BusRead returns the bus drive state and readback.
+// TRLC-LINKS: REQ-SDS-145
 func (d *Diag) BusRead() (BusState, error) {
 	var s BusState
 	err := d.run.Exec(func(b bus.Bus) error {
@@ -692,6 +732,7 @@ func (d *Diag) BusRead() (BusState, error) {
 
 // BusDrive sets one bus ball: oe=false tri-states it; oe=true drives level.
 // The master enable (DIAG_CTRL.BUS_DRV_EN) is left as it is — see BusMaster.
+// TRLC-LINKS: REQ-SDS-145
 func (d *Diag) BusDrive(ball string, oe bool, level uint8) error {
 	i, ok := BusBallIndex(ball)
 	if !ok {
@@ -700,6 +741,7 @@ func (d *Diag) BusDrive(ball string, oe bool, level uint8) error {
 	return d.run.Exec(func(b bus.Bus) error { return driveBall(b, i, oe, level == 1) }, d.timeout)
 }
 
+// TRLC-LINKS: REQ-SDS-145
 func driveBall(b bus.Bus, i int, oe, level bool) error {
 	oeLo, err := winRead(b, iface.DiagBusOeLo)
 	if err != nil {
@@ -724,11 +766,13 @@ func driveBall(b bus.Bus, i int, oe, level bool) error {
 }
 
 // BusMaster sets DIAG_CTRL.BUS_DRV_EN, the master enable of every per-ball OE.
+// TRLC-LINKS: REQ-SDS-145
 func (d *Diag) BusMaster(on bool) error {
 	return d.run.Exec(func(b bus.Bus) error { return setCtrlBits(b, iface.DiagCtrlBusDrvEnMask, on) }, d.timeout)
 }
 
 // BusReleaseAll tri-states every bus ball and clears the master enable.
+// TRLC-LINKS: REQ-SDS-145
 func (d *Diag) BusReleaseAll() error {
 	return d.run.Exec(func(b bus.Bus) error {
 		if err := setCtrlBits(b, iface.DiagCtrlBusDrvEnMask, false); err != nil {
@@ -742,10 +786,12 @@ func (d *Diag) BusReleaseAll() error {
 }
 
 // SetCtrl sets/clears DIAG_CTRL bits by mask (D2, K2_EN, A11, F1, G1, G2, K1 …).
+// TRLC-LINKS: REQ-SDS-145
 func (d *Diag) SetCtrl(mask uint16, on bool) error {
 	return d.run.Exec(func(b bus.Bus) error { return setCtrlBits(b, mask, on) }, d.timeout)
 }
 
+// TRLC-LINKS: REQ-SDS-145
 func setCtrlBits(b bus.Bus, mask uint16, on bool) error {
 	v, err := b.Read(bus.PlaneCS1, iface.SelDiagCtrl)
 	if err != nil {
@@ -771,11 +817,13 @@ var savedRegs = []uint16{
 	iface.SelIlCtrl, iface.SelDrainStart, iface.SelDrainLen,
 }
 
+// TRLC-LINKS: REQ-SDS-145, REQ-SDS-146, REQ-SDS-147, REQ-SDS-148
 type regSnapshot struct {
 	regs map[uint16]uint16
 	win  map[uint16]uint16
 }
 
+// TRLC-LINKS: REQ-SDS-145, REQ-SDS-146, REQ-SDS-147, REQ-SDS-148
 func saveRegs(b bus.Bus, win ...uint16) (regSnapshot, error) {
 	s := regSnapshot{regs: map[uint16]uint16{}, win: map[uint16]uint16{}}
 	for _, sel := range savedRegs {
@@ -798,6 +846,7 @@ func saveRegs(b bus.Bus, win ...uint16) (regSnapshot, error) {
 // restore puts every saved word back (DIAG_IDX last, strobes masked) and
 // re-arms the capture when RUN.RUN was set, so the engine's frame in flight
 // resumes on its own program.
+// TRLC-LINKS: REQ-SDS-145, REQ-SDS-146, REQ-SDS-147, REQ-SDS-148
 func (s regSnapshot) restore(b bus.Bus) error {
 	var first error
 	keep := func(err error) {
@@ -834,6 +883,7 @@ func (s regSnapshot) restore(b bus.Bus) error {
 // ---- E1: the vendor CS1 word sequence ----
 
 // VendorStep is one raw write and what the fabric showed right after it.
+// TRLC-LINKS: REQ-SDS-145
 type VendorStep struct {
 	Sel     uint16 `json:"sel"`
 	Val     uint16 `json:"val"`
@@ -846,6 +896,7 @@ type VendorStep struct {
 }
 
 // VendorResult is the E1 observation.
+// TRLC-LINKS: REQ-SDS-145
 type VendorResult struct {
 	Before   VendorStep   `json:"before"`
 	Steps    []VendorStep `json:"steps"`
@@ -863,6 +914,7 @@ var vendorWords = []struct{ sel, val uint16 }{
 	{0x21, 0x00c8},
 }
 
+// TRLC-LINKS: REQ-SDS-145
 func observe(b bus.Bus, sel, val uint16) VendorStep {
 	st := VendorStep{Sel: sel, Val: val}
 	st.Snoop = reg(b, iface.SelSnoopSel)
@@ -877,6 +929,7 @@ func observe(b bus.Bus, sel, val uint16) VendorStep {
 // VendorSequence issues the vendor words as raw selector writes with a dwell
 // after the GO word, observing P6 / the bus readback / the snoop registers
 // after every write, then restores our registers.
+// TRLC-LINKS: REQ-SDS-145
 func (d *Diag) VendorSequence(dwell time.Duration) (*VendorResult, error) {
 	res := &VendorResult{}
 	err := d.run.Exec(func(b bus.Bus) error {
@@ -916,6 +969,7 @@ func (d *Diag) VendorSequence(dwell time.Duration) (*VendorResult, error) {
 // ---- E2: bus ownership ----
 
 // E2Options tunes the ownership experiment.
+// TRLC-LINKS: REQ-SDS-145
 type E2Options struct {
 	Blocks         int  `json:"blocks"`           // alternating blocks per condition (default 3, min 3)
 	Repeats        int  `json:"repeats"`          // drive/read repeats per ball per block (default 4)
@@ -923,6 +977,7 @@ type E2Options struct {
 }
 
 // BallScore is one ball's follow rates under one D2 condition.
+// TRLC-LINKS: REQ-SDS-145
 type BallScore struct {
 	Ball      string    `json:"ball"`
 	Follow0   float64   `json:"follow0"`   // drove 0, read 0
@@ -935,6 +990,7 @@ type BallScore struct {
 }
 
 // E2Condition is one D2 state.
+// TRLC-LINKS: REQ-SDS-145
 type E2Condition struct {
 	D2     uint8       `json:"d2"`
 	Scores []BallScore `json:"scores"`
@@ -942,6 +998,7 @@ type E2Condition struct {
 }
 
 // E2Result is the ownership experiment output.
+// TRLC-LINKS: REQ-SDS-145
 type E2Result struct {
 	Options    E2Options     `json:"options"`
 	Conditions []E2Condition `json:"conditions"`
@@ -950,6 +1007,7 @@ type E2Result struct {
 	Summary    []string      `json:"summary"`
 }
 
+// TRLC-LINKS: REQ-SDS-145
 type tally struct {
 	f0, f1, rest []int // per block: counts
 	n            []int
@@ -959,6 +1017,7 @@ type tally struct {
 // each bus ball, drive the ball alone at 0 and at 1 (master enable on) and
 // read the registered pad back; release it and read the rest level. Follow
 // rates are reported per ball per condition with the per-block spread.
+// TRLC-LINKS: REQ-SDS-145
 func (d *Diag) E2(o E2Options) (*E2Result, error) {
 	if o.Blocks < 3 {
 		o.Blocks = 3
@@ -1103,6 +1162,7 @@ func (d *Diag) E2(o E2Options) (*E2Result, error) {
 // ---- diag capture (acceptance: ramp/drain check) ----
 
 // CaptureOptions tunes a diagnostic capture.
+// TRLC-LINKS: REQ-SDS-148
 type CaptureOptions struct {
 	Words   int    `json:"words"`    // record words (default and maximum iface.PretrigMax = 20478: the fabric finalizes pre+post <= PRETRIG_MAX)
 	Decim   uint32 `json:"decim"`    // default 1
@@ -1115,6 +1175,7 @@ type CaptureOptions struct {
 }
 
 // CaptureResult scores a drained record.
+// TRLC-LINKS: REQ-SDS-148
 type CaptureResult struct {
 	Words       int      `json:"words"`           // words drained
 	Requested   int      `json:"requested_words"` // words programmed (pre+post); != Words is a fabric shortfall
@@ -1149,6 +1210,7 @@ type CaptureResult struct {
 // ACQ_CTRL, GO), waits for DONE/VALID, halts, drains BURST and scores the
 // record: ramp breaks per channel (the bench Au ramp / an in-fabric ramp),
 // non-zero payload count, per-channel range. Restores the engine's program.
+// TRLC-LINKS: REQ-SDS-148
 func (d *Diag) Capture(o CaptureOptions) (*CaptureResult, error) {
 	// The fabric clamps POSTTRIG to PRETRIG_MAX - PRETRIG (default.v), so a
 	// record is at most PRETRIG_MAX words; asking for REC_DEPTH would finalize
@@ -1253,6 +1315,7 @@ func (d *Diag) Capture(o CaptureOptions) (*CaptureResult, error) {
 	return res, nil
 }
 
+// TRLC-LINKS: REQ-SDS-148
 func score(r *CaptureResult) {
 	n := len(r.C1)
 	if n == 0 {

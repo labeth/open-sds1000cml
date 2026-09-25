@@ -1,0 +1,348 @@
+{
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "status": "integrated-go-traces-javascript-driver-traces-pending",
+  "completeReads": [
+    "app/internal/testenv/testenv.go",
+    "app/internal/web/acceptance_browser_test.go",
+    "app/internal/web/chaos_browser_test.go",
+    "app/internal/web/decode_browser_test.go",
+    "app/internal/web/decode_node_test.go",
+    "app/internal/web/deepmem_browser_test.go",
+    "app/internal/web/eyejitter_node_test.go",
+    "app/internal/web/fft_browser_test.go",
+    "app/internal/web/fuzz_browser_test.go",
+    "app/internal/web/invs_browser_test.go",
+    "app/internal/web/perf_browser_test.go",
+    "app/internal/web/perfserve_test.go",
+    "app/internal/web/serialtrig_browser_test.go",
+    "app/internal/web/sigrok_export_e2e_test.go",
+    "app/internal/web/superres_browser_test.go",
+    "app/internal/web/superres_comp_node_test.go",
+    "app/internal/web/superres_ets_node_test.go",
+    "app/internal/web/superres_node_test.go",
+    "app/internal/web/transport_browser_test.go",
+    "app/internal/web/ui_lint_test.go",
+    "app/internal/web/zonemask_browser_test.go",
+    "app/internal/web/acceptance_browser.mjs",
+    "app/internal/web/chaos_browser.mjs",
+    "app/internal/web/decode_browser.mjs",
+    "app/internal/web/deepmem_browser.mjs",
+    "app/internal/web/fft_browser.mjs",
+    "app/internal/web/invs_browser.mjs",
+    "app/internal/web/stackperf_browser.mjs",
+    "app/internal/web/serialtrig_browser.mjs",
+    "app/internal/web/superres_browser.mjs",
+    "app/internal/web/transport_browser.mjs",
+    "app/internal/web/zonemask_browser.mjs",
+    "app/internal/web/scope_po.mjs",
+    "app/internal/web/e2e/fuzz.mjs",
+    "app/internal/web/e2e/operator.mjs",
+    "app/internal/web/decode.test.cjs",
+    "app/internal/web/eyejitter.test.cjs",
+    "app/internal/web/superres.test.cjs",
+    "app/internal/web/superres_comp.test.cjs",
+    "app/internal/web/superres_ets.test.cjs"
+  ],
+  "reviewedGoLines": 1434,
+  "sourceSHA256": {
+    "app/internal/testenv/testenv.go": "2ebac898a9adb3afb4c8481fc81b34acd7fe1b806abec4973081e6cfb927d715",
+    "app/internal/web/acceptance_browser_test.go": "83adca54ee0346825cde4511219f8f4d3168b0404ce197a772ab79b540190e47",
+    "app/internal/web/chaos_browser_test.go": "f09d3da055c25bacfd23d216efbdb8744fcb6ffe36fef5b0ccf20357e6340cdd",
+    "app/internal/web/decode_browser_test.go": "c8d6d30f476a57a88e3125244a4818bda304f4c8209f3a900fbce8c89cc9c84a",
+    "app/internal/web/decode_node_test.go": "257139420b5d1ec56d5e4d86406fd7a2e88eb6b3f8775ba8df85d93c332b1072",
+    "app/internal/web/deepmem_browser_test.go": "5d8ab1e2169dcb2bdf2081729b922e9b8c80090a1e09cd07c2002f48f7e7ce1d",
+    "app/internal/web/eyejitter_node_test.go": "85b9cccc1be9e44b9c7ea740998f71764a6ec1a1f6bca650b62435b849d55b53",
+    "app/internal/web/fft_browser_test.go": "84b84a22979063c728eacdedd76d0f6e2c87eb917faee5c5f99c3e6ca434abbf",
+    "app/internal/web/fuzz_browser_test.go": "4521a990b110398365be73ebd047ba4d577ac9edb3fffd796db94fa0eeee1e67",
+    "app/internal/web/invs_browser_test.go": "b72cd151df6a259d5626fcbdd4b1b9328557b830fd6f6f67b10980e09007199b",
+    "app/internal/web/perf_browser_test.go": "7453d77c0877f5f3f0633a51ce14a9abc49b541fa7bf9dac2c9c4dc155281a07",
+    "app/internal/web/perfserve_test.go": "12a030adbd859443959741715acd97d710d590a2f18ff9306d2fc4ad168cfc37",
+    "app/internal/web/serialtrig_browser_test.go": "87d9e6539457147096ee867883364b7f10614815354ecf87cc19555e9f084b7a",
+    "app/internal/web/sigrok_export_e2e_test.go": "6e33119baf863876fca3ee4b4f68fa936488a1768d86c823ba14b74099f46446",
+    "app/internal/web/superres_browser_test.go": "22dc5efd234942b19cea75fc3a9e3559eda50fbe14b6fd4573b6a00eca3e886f",
+    "app/internal/web/superres_comp_node_test.go": "8d7fd446743edb0c1456f847d43fafa76b224064a99f6086923cd8a3bc22850d",
+    "app/internal/web/superres_ets_node_test.go": "768e89d1651689b9e4b182cdf7f2ab8e1696882134eb78c1cb68b89968f086a5",
+    "app/internal/web/superres_node_test.go": "7c997758d1e6383a0514cf5f5f3733faff83fb65a50dd0b8415ab1cd9b00e234",
+    "app/internal/web/transport_browser_test.go": "6f7c391117fb1d9e7ba13646ec0bcafcff86bff02d9f88363e833be735113657",
+    "app/internal/web/ui_lint_test.go": "a624b0c6b3694a5a3c08a365de1e4c723ec5085c823e11b2da10fb47f9a1c42f",
+    "app/internal/web/zonemask_browser_test.go": "4a27d272537c4ee54c3ad929197caa37c1a151911e3b5535834fd1d543b1aa60",
+    "app/internal/web/acceptance_browser.mjs": "3b9235b0f5bf9c6b7f8d2237fb461094b5bf43da41537a151f4406141f2498d2",
+    "app/internal/web/chaos_browser.mjs": "9e6b5570cb7c31ede92a0aa01a11ac9df95b1fe03672c9226466afd0ef40bb65",
+    "app/internal/web/decode_browser.mjs": "84d87ec7b337f62c4c382d5b4f72152f191921ef158b054a9e095de964f645f0",
+    "app/internal/web/deepmem_browser.mjs": "8b9213a5c324d8cad71726c0e9d578a8deacff413536e2952a0891a4bd3861a1",
+    "app/internal/web/fft_browser.mjs": "ac13b5737914a7b9690e880592f436bcb0e653219e8f59c51fc45534e2811955",
+    "app/internal/web/invs_browser.mjs": "f8510a83df5affc3e3ab055702ffe3b8871980403caef1374eae06c9f283e417",
+    "app/internal/web/stackperf_browser.mjs": "938f39d55e9f35e32f01c253510c3060ce46a147c0b12df40638ba712a076a6e",
+    "app/internal/web/serialtrig_browser.mjs": "cdf58ae712450b9a9aa0a24a69bfc561b55fb6512f5ff6da085daa167032164b",
+    "app/internal/web/superres_browser.mjs": "77e38a4c480d7127cf102df20d6e0c88624432d0f7d45dc8aaf4aaf24643c663",
+    "app/internal/web/transport_browser.mjs": "86c0115e3c4e7ed858245366580e86dd53b31127b43d575c2d55f880d1a88bd4",
+    "app/internal/web/zonemask_browser.mjs": "6da0bb34743ba76055104dca7f2638449022c681baad5383a92d12d7cc3d96fc",
+    "app/internal/web/scope_po.mjs": "7f8b00905986ed6c45cb03e118561dcc1e5bbf03e5d3fab7d51818f7bc70922b",
+    "app/internal/web/e2e/fuzz.mjs": "51135a2bb59c6d720fdab839ba0662a841074c52051c2a6c8456796a2db09954",
+    "app/internal/web/e2e/operator.mjs": "376de9a31e0eae2b3bb33bd58d1410ead48eacc71a18d17b696238fb04d1e068",
+    "app/internal/web/decode.test.cjs": "7aa1ad98a71295b45f99137d447c4ccba5fb4d27e29e00c68fc6b4b18503e180",
+    "app/internal/web/eyejitter.test.cjs": "395cc277830857d04c354d0557976bffd1c28f41b8e7e3a0d053ca88c822ca23",
+    "app/internal/web/superres.test.cjs": "05ddcf1b683b13b17dc8b86f01a95cd99da0237a0101b25634066cb47d9ec3a4",
+    "app/internal/web/superres_comp.test.cjs": "73a5343168f618d8618fc323a9357ef58f4100dc77f99314490eb749a757420c",
+    "app/internal/web/superres_ets.test.cjs": "baf77ee2b69ccbffbf976e9b926f26742b5a7d86422ee6e61979951dfcfe5ddc"
+  },
+  "pendingReads": [],
+  "testsByFile": {
+    "app/internal/web/acceptance_browser_test.go": [
+      "TestAcceptanceBrowser"
+    ],
+    "app/internal/web/chaos_browser_test.go": [
+      "TestChaosBrowser"
+    ],
+    "app/internal/web/decode_browser_test.go": [
+      "TestDecodeBrowser"
+    ],
+    "app/internal/web/decode_node_test.go": [
+      "TestDecodeJS"
+    ],
+    "app/internal/web/deepmem_browser_test.go": [
+      "TestDeepMemBrowser"
+    ],
+    "app/internal/web/eyejitter_node_test.go": [
+      "TestEyejitterJS"
+    ],
+    "app/internal/web/fft_browser_test.go": [
+      "TestFFTBrowser"
+    ],
+    "app/internal/web/fuzz_browser_test.go": [
+      "TestFuzzBrowserSynthetic"
+    ],
+    "app/internal/web/invs_browser_test.go": [
+      "TestINVSBrowser"
+    ],
+    "app/internal/web/perf_browser_test.go": [
+      "TestStackPerfBrowser"
+    ],
+    "app/internal/web/perfserve_test.go": [
+      "TestPerfServe"
+    ],
+    "app/internal/web/serialtrig_browser_test.go": [
+      "TestSerialTrigBrowser"
+    ],
+    "app/internal/web/sigrok_export_e2e_test.go": [
+      "TestSigrokExportLogicE2E"
+    ],
+    "app/internal/web/superres_browser_test.go": [
+      "TestSuperresBrowser"
+    ],
+    "app/internal/web/superres_comp_node_test.go": [
+      "TestSuperresCompJS"
+    ],
+    "app/internal/web/superres_ets_node_test.go": [
+      "TestSuperresEtsJS"
+    ],
+    "app/internal/web/superres_node_test.go": [
+      "TestSuperresJS"
+    ],
+    "app/internal/web/transport_browser_test.go": [
+      "TestTransportBrowser"
+    ],
+    "app/internal/web/ui_lint_test.go": [
+      "TestInlineStyleBudget",
+      "TestInlineScriptBudget",
+      "TestContentSecurityPolicy"
+    ],
+    "app/internal/web/zonemask_browser_test.go": [
+      "TestZoneMaskBrowser"
+    ]
+  },
+  "uniqueReviewedTests": [
+    "TestAcceptanceBrowser",
+    "TestChaosBrowser",
+    "TestContentSecurityPolicy",
+    "TestDecodeBrowser",
+    "TestDecodeJS",
+    "TestDeepMemBrowser",
+    "TestEyejitterJS",
+    "TestFFTBrowser",
+    "TestFuzzBrowserSynthetic",
+    "TestINVSBrowser",
+    "TestInlineScriptBudget",
+    "TestInlineStyleBudget",
+    "TestPerfServe",
+    "TestSerialTrigBrowser",
+    "TestSigrokExportLogicE2E",
+    "TestStackPerfBrowser",
+    "TestSuperresBrowser",
+    "TestSuperresCompJS",
+    "TestSuperresEtsJS",
+    "TestSuperresJS",
+    "TestTransportBrowser",
+    "TestZoneMaskBrowser"
+  ],
+  "scope": "Complete source review of 21 Go harness/support files and 19 JavaScript drivers/support files; 22 original localhost browser/Node tests executed with race detection. Synthetic fixtures do not qualify physical acquisition, calibration, timing, or complete production JavaScript behavior. Native trace integration remains pending.",
+  "reviewedLines": 4929,
+  "findings": [
+    {
+      "id": "BROWSER-HARNESS-01",
+      "topic": "environment",
+      "owner": "FU-APP-TESTENV",
+      "finding": "Node availability and CI_REQUIRE_BROWSER control skip versus fatal behavior; executable availability alone does not prove browser launch. The captured run pins Playwright and records the launched Chromium executable."
+    },
+    {
+      "id": "BROWSER-HARNESS-02",
+      "topic": "page-object",
+      "owner": "FU-APP-WEB",
+      "finding": "Page-object visibility checks display only, not ancestors, opacity or on-screen placement. Several controls are exercised through direct browser-state mutation or DOM event dispatch. Browser allocation before navigation can outlive an unsuccessful open until subprocess exit."
+    },
+    {
+      "id": "BROWSER-HARNESS-03",
+      "topic": "acceptance",
+      "owner": "FU-APP-WEB",
+      "finding": "Static synthetic scope and nil analog/panel exercise UI plumbing. Autoset checks request dispatch; export clicks do not verify completed file contents; selected accessibility attributes are not a complete accessibility audit. Browser ALL PASS does not override Go race failure."
+    },
+    {
+      "id": "BROWSER-HARNESS-04",
+      "topic": "chaos",
+      "owner": "FU-APP-WEB",
+      "finding": "Three fixed seeds with 400 actions each catch and ignore per-action errors/timeouts. Page-error and resumed-sequence checks do not prove each control was successfully exercised. Shared fixture state and frame generators are raced by concurrent requests."
+    },
+    {
+      "id": "BROWSER-HARNESS-05",
+      "topic": "fuzz-fixture",
+      "owner": "FU-APP-WEB",
+      "finding": "The mutex-backed fuzz scope simulates controls; quiet locks are no-ops and several setters ignore fields. Frames always indicate triggered/coherent; record depth is metadata, NORM does not gate capture, and Single progression follows frame access. This is not production acquisition or qualifier verification."
+    },
+    {
+      "id": "BROWSER-HARNESS-06",
+      "topic": "fuzz-campaign",
+      "owner": "FU-APP-WEB",
+      "finding": "The Go wrapper forces localhost, 60 actions and seed 1. The weighted action palette can skip hidden controls and does not prove exhaustive successful control coverage. PRNG determinism does not make asynchronous scheduling deterministic."
+    },
+    {
+      "id": "BROWSER-HARNESS-07",
+      "topic": "fuzz-invariants",
+      "owner": "FU-APP-WEB",
+      "finding": "The driver checks selected page errors, status progress, layout and post-launch HTTP 5xx responses. It allows 4xx responses and excludes several stopped modes from progress checks. Findings continue through reset; screenshot failures are ignored and temporary artifacts are removed after the Go test."
+    },
+    {
+      "id": "BROWSER-HARNESS-08",
+      "topic": "operator",
+      "owner": "FU-APP-WEB",
+      "finding": "Reset omits some state described in comments; selected helpers suppress timeout or retry exhaustion, fill does not universally verify response state, measurement polling can return its last value on timeout, and LCD PNG checks size rather than image pixels or HTTP status."
+    },
+    {
+      "id": "BROWSER-HARNESS-09",
+      "topic": "transport",
+      "owner": "FU-APP-WEB",
+      "finding": "Int16/header measurements, advancing sequence, route failure and recovery are checked with a fake source lacking WaitNext. This exercises fallback polling, not production owner cancellation or physical network-loss behavior."
+    },
+    {
+      "id": "BROWSER-HARNESS-10",
+      "topic": "deep-memory",
+      "owner": "FU-APP-WEB",
+      "finding": "The driver checks a 6144-sample synthetic record, viewport centering, wheel, home and pan. It does not exercise decoding or FFT despite the Go wrapper comment."
+    },
+    {
+      "id": "BROWSER-HARNESS-11",
+      "topic": "decode-browser",
+      "owner": "FU-APP-WEB",
+      "finding": "An ideal I2C transcript checks two bytes. Clipboard copying accepts an empty unreadable clipboard; label placement uses injected decode results and canvas text interception, not complete rendered decoding verification."
+    },
+    {
+      "id": "BROWSER-HARNESS-12",
+      "topic": "fft-browser",
+      "owner": "FU-APP-WEB",
+      "finding": "Selected synthetic tones use bounded frequency tolerances. Sixteen timed observations need not represent distinct frames; overlay length checks do not establish overlay accuracy."
+    },
+    {
+      "id": "BROWSER-HARNESS-13",
+      "topic": "invert-browser",
+      "owner": "FU-APP-WEB",
+      "finding": "Invert flags are changed directly in browser state and redraw pixel centroids are compared for two flat levels. This does not exercise a production SCPI round trip or the physical invert source."
+    },
+    {
+      "id": "BROWSER-HARNESS-14",
+      "topic": "serial-trigger",
+      "owner": "FU-APP-WEB",
+      "finding": "Ordering uses millisecond request timestamps and config <= arm, not completed configuration responses or hardware acceptance. The fixture covers selected protocol/address/form and disarm behavior."
+    },
+    {
+      "id": "BROWSER-HARNESS-15",
+      "topic": "zone-mask",
+      "owner": "FU-APP-WEB",
+      "finding": "Synthetic drag extents, direct coupling-state mutation, raw frames, voltage rescaling and a prefilled failure gallery are bounded UI tests. They do not prove calibrated or gated physical capture."
+    },
+    {
+      "id": "BROWSER-HARNESS-16",
+      "topic": "performance",
+      "owner": "FU-APP-WEB",
+      "finding": "Stack performance injects a large synthetic frame and compares five cold against six warm redraws. The >3x ratio is sensitive to host/JIT/GPU/scheduling; the separate warm <200ms assertion is not device throughput qualification. The optional PerfServe developer harness is deliberately disabled."
+    },
+    {
+      "id": "BROWSER-HARNESS-17",
+      "topic": "superres-browser",
+      "owner": "FU-APP-WEB",
+      "finding": "Jittered noisy sine fixtures check stack arrays, selected positive measurements and UI navigation. Algorithm-reported noise is not independent hardware truth; optional peak clicking can be skipped when no peak exists."
+    },
+    {
+      "id": "BROWSER-HARNESS-18",
+      "topic": "decode-node",
+      "owner": "FU-APP-WEB",
+      "finding": "Ideal UART/I2C/SPI cases cover selected modes and timing heuristics. The named framing/parity case faults the stop bit; random fuzz is not an exact parity oracle. The 2000-case fixed fuzz campaign checks no throw, with a global time budget checked between calls."
+    },
+    {
+      "id": "BROWSER-HARNESS-19",
+      "topic": "eye-node",
+      "owner": "FU-APP-WEB",
+      "finding": "Quantized synthetic PRBS/sigmoid edges use seeded uniform noise despite sigma terminology. Selected DCD/PJ and sparse/bursty cases with broad tolerances do not qualify physical jitter accuracy."
+    },
+    {
+      "id": "BROWSER-HARNESS-20",
+      "topic": "superres-node",
+      "owner": "FU-APP-WEB",
+      "finding": "Known shifts, noise and selected analytic cases provide bounded numerical checks. The weighted-drizzle comparison locally reimplements deposition instead of exercising the production accumulator; some kernel comparisons use different PRNG sequences. Actual numerical thresholds govern evidence, not tighter header prose."
+    },
+    {
+      "id": "BROWSER-HARNESS-21",
+      "topic": "compensation-node",
+      "owner": "FU-APP-WEB",
+      "finding": "Synthetic attenuation and restoration share production calH, establishing selected self-consistency rather than independently measured hardware calibration. DC, gaps, resampling and ringing fixtures are not full-band qualification."
+    },
+    {
+      "id": "BROWSER-HARNESS-22",
+      "topic": "ets-node",
+      "owner": "FU-APP-WEB",
+      "finding": "Seeded floating-point near-Nyquist sine/harmonic fixtures rely on supplied sample interval and guessed frequency. One signal family cannot establish general alias-free acquisition or hardware clock accuracy."
+    },
+    {
+      "id": "BROWSER-HARNESS-23",
+      "topic": "race-outcomes",
+      "owner": "FU-APP-WEB",
+      "finding": "Acceptance, Chaos, Superres and ZoneMask tests fail race detection involving shared fakeScope state or synthetic frame-generator closure state. Production HTTP stack frames appear as callers; these reports alone do not establish the same race in the production engine."
+    },
+    {
+      "id": "BROWSER-HARNESS-24",
+      "topic": "assertion-outcomes",
+      "owner": "FU-APP-WEB",
+      "finding": "Stack performance failed its >3x memoization speed ratio: cold best 2.9ms versus warm best 2.6ms; warm mean 2.8ms passed the 200ms bound. Inline style budget failed with 18 attributes against budget 14."
+    },
+    {
+      "id": "BROWSER-HARNESS-25",
+      "topic": "optional-outcomes",
+      "owner": "FU-APP-WEB",
+      "finding": "PerfServe skips as a disabled developer harness; SigrokExportLogicE2E skips because sigrok-cli is unavailable. Neither skip is evidence of passing external export interoperability."
+    }
+  ],
+  "executionEvidence": "browser-harness-review-test-run.json",
+  "outcomes": {
+    "fail": 6,
+    "pass": 14,
+    "skip": 2
+  },
+  "integrationPending": [
+    "JavaScript driver declaration trace annotations and complete production JavaScript review."
+  ],
+  "requirements": [
+    "REQ-SDS-179",
+    "REQ-SDS-180",
+    "REQ-SDS-181",
+    "REQ-SDS-182"
+  ],
+  "executionSupersededBy": "browser-harness-integrated-test-run.json"
+}

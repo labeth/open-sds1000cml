@@ -1,0 +1,14 @@
+Analysis & Synthesis Status : Successful - Fri Sep 25 20:27:52 2026
+Quartus Prime Version : 21.1.0 Build 842 10/21/2021 SJ Lite Edition
+Revision Name : bench
+Top-level Entity Name : acq_sram_top
+Family : Cyclone IV E
+Total logic elements : 13,626
+    Total combinational functions : 9,816
+    Dedicated logic registers : 8,881
+Total registers : 8903
+Total pins : 160
+Total virtual pins : 0
+Total memory bits : 352,256
+Embedded Multiplier 9-bit elements : 4
+Total PLLs : 2

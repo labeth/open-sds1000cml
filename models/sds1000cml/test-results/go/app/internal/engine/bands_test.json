@@ -1,0 +1,66 @@
+{
+  "source": "app/internal/engine/bands_test.go",
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "scope": "Reviewed Go test outcomes; passing assertions contribute partial requirement evidence.",
+  "sourceSHA256": "a09cb84732c61f15663f8c21f172de3da202224b0b8a2e2862629f00c4a1b543",
+  "logs": {
+    "test-runs/engine-timebase-reviewed.jsonl": "3d0406ec2981077fe10af4be5902178aae33d0a43af7062346d1a59313a01a99"
+  },
+  "tests": [
+    {
+      "name": "TestPlanTdivLadder",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-010"
+      ]
+    },
+    {
+      "name": "TestPlanTdivRejectsOffLadder",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-010"
+      ]
+    },
+    {
+      "name": "TestPlanTdivTolerance",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-010"
+      ]
+    },
+    {
+      "name": "TestDisplayedSdiv",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-010"
+      ]
+    },
+    {
+      "name": "TestWaitBudgetClamp",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-008",
+        "REQ-SDS-010"
+      ]
+    },
+    {
+      "name": "TestSupportedTdivsAscending",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-010"
+      ]
+    }
+  ],
+  "results": [
+    {
+      "requirement": "REQ-SDS-008",
+      "status": "partial",
+      "notes": "1 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    },
+    {
+      "requirement": "REQ-SDS-010",
+      "status": "partial",
+      "notes": "6 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    }
+  ]
+}

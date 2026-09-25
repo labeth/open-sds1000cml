@@ -1,0 +1,46 @@
+{
+  "source": "app/internal/bus/drainwin_test.go",
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "scope": "Reviewed Go test outcomes; passing assertions contribute partial requirement evidence.",
+  "sourceSHA256": "57e3d6b3eafa15be675d335d7c6988808ed52c79a0e183cc2b632c30efbc2616",
+  "logs": {
+    "test-runs/bus-reviewed.jsonl": "4b0399dd8ebd1f48836af0a7d43ecaf39de4f8c22be48f7cdb92f87dd7e9b734"
+  },
+  "tests": [
+    {
+      "name": "TestCaptureTsrcAndWindowedDrain",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-130"
+      ]
+    },
+    {
+      "name": "TestCheckExactVerdicts",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-130"
+      ]
+    },
+    {
+      "name": "TestRampCheckPassesAndDetectsCorruption",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-130"
+      ]
+    },
+    {
+      "name": "TestRampCheckNeedsARecord",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-130"
+      ]
+    }
+  ],
+  "results": [
+    {
+      "requirement": "REQ-SDS-130",
+      "status": "partial",
+      "notes": "4 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    }
+  ]
+}

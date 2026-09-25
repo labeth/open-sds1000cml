@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-CODEGEN-IFACEDEF
 package ifacedef
 
 import (
@@ -7,6 +8,7 @@ import (
 	"open-sds/codegen/schema"
 )
 
+// TRLC-LINKS: REQ-SDS-156, REQ-SDS-031
 func TestDefaultValidates(t *testing.T) {
 	if errs := Default().Validate(); len(errs) > 0 {
 		for _, e := range errs {
@@ -17,6 +19,7 @@ func TestDefaultValidates(t *testing.T) {
 
 // The 32 registers of 05-WORKPLAN §2 keep their 4-aligned selectors (06-TIERS
 // §2: "every v2 register keeps its selector").
+// TRLC-LINKS: REQ-SDS-156
 func TestV2RegistersKeepTheirSelectors(t *testing.T) {
 	want := map[uint8]string{
 		0x00: "BURST_ALIAS", 0x04: "CLK_STAT", 0x08: "DIAG_IDX", 0x0c: "DIAG_DATA",
@@ -57,6 +60,7 @@ func TestV2RegistersKeepTheirSelectors(t *testing.T) {
 }
 
 // 06-TIERS §2: the v3 identity, selector space, additions and their v2.2 state.
+// TRLC-LINKS: REQ-SDS-156
 func TestDefaultMatchesTiers(t *testing.T) {
 	i := Default()
 	if i.Name != "sds1000cml-default" || i.Version != 3 || i.VersionMagic != 0x00A3 || i.FabricID != 0xA2F1 {
@@ -196,6 +200,7 @@ func TestDefaultMatchesTiers(t *testing.T) {
 }
 
 // The DIAG window of 05-WORKPLAN §2.1 with the 06-TIERS §2 changes.
+// TRLC-LINKS: REQ-SDS-156
 func TestDefaultDiagWindow(t *testing.T) {
 	type entry struct {
 		idx   uint8

@@ -1,0 +1,86 @@
+{
+  "before": [
+    {
+      "channel": 2,
+      "rising": true,
+      "captures": 300,
+      "wrongSlope": 18
+    },
+    {
+      "channel": 2,
+      "rising": false,
+      "captures": 300,
+      "wrongSlope": 38
+    },
+    {
+      "channel": 1,
+      "rising": true,
+      "captures": 300,
+      "wrongSlope": 137
+    },
+    {
+      "channel": 1,
+      "rising": false,
+      "captures": 300,
+      "wrongSlope": 128
+    }
+  ],
+  "after": [
+    {
+      "channel": 2,
+      "rising": true,
+      "captures": 300,
+      "wrongSlope": 0
+    },
+    {
+      "channel": 2,
+      "rising": false,
+      "captures": 300,
+      "wrongSlope": 0
+    },
+    {
+      "channel": 1,
+      "rising": true,
+      "captures": 300,
+      "wrongSlope": 0
+    },
+    {
+      "channel": 1,
+      "rising": false,
+      "captures": 300,
+      "wrongSlope": 0
+    }
+  ],
+  "adc": {
+    "frames": 80,
+    "samplesPerChannel": 163840,
+    "outliers": [
+      0,
+      0
+    ]
+  },
+  "timing": {
+    "passed": true,
+    "worstSlackNs": 0.049,
+    "pinsVerified": 160,
+    "adcInputRegisters": 80
+  },
+  "final": {
+    "source": 1,
+    "rising": true,
+    "running": true,
+    "norm": true,
+    "busErrors": 0,
+    "wedged": false
+  },
+  "artifacts": [
+    {
+      "path": "app/dist/app-arm",
+      "sha256": "84400ea82db7724aaf2b32b5c65b048021108c0ac941dba223cd40702cfca73d"
+    },
+    {
+      "path": "fpga/acq_sram/out/250mhz-p1000-interleave-precision-hostfix-seed2/bench.rbf",
+      "sha256": "3c8c107980446350a4cc7287b28819660db6127e58bb6d5dbb10c65246e1dd55"
+    }
+  ]
+}

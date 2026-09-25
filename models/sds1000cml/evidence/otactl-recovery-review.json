@@ -1,0 +1,16 @@
+{
+  "scope": "Reviewed source integrated with REQ-SDS-109 through REQ-SDS-112. Verification is limited to identified tests and inspection; no physical operations or qualification.",
+  "sourceSHA256": {
+    "ota/internal/otactl/server.go": "e6d1a39a498823ef942ecf3eeb9f9119c6181fb553ffeaccef650d7ef1e354e0",
+    "ota/internal/otactl/shelly.go": "04a7d6e86d04324b84938e8fc852eb5c75246ca1ed8a9f93b9cf4a1a9cfd795e"
+  },
+  "findings": [
+    "RunServer constructs a broker with caller host/port, JetStream disabled, NoSigs true and Logtime true. It waits up to ten seconds for readiness, optionally prints ClientURL, then blocks in WaitForShutdown.",
+    "RunServer configures neither authentication nor TLS here, exposes no cancellation or server handle, and does not call Shutdown if readiness fails. The embedded broker end-to-end test constructs its own server and does not exercise this wrapper.",
+    "Shelly uses plain HTTP with a default eight-second client timeout. Host is interpolated into the URL. On/Off issue GET to /relay/0?turn=on/off; do reads at most 4096 body bytes and ignores body read errors, treating HTTP 200 as success.",
+    "Cycle stops if Off returns error; otherwise sleeps the supplied duration and sends On. It does not poll relay state, verify voltage, retry On, or guarantee recovery if the second request fails. Nonpositive durations do not impose a useful off interval.",
+    "State decodes ison without checking HTTP status. Missing ison defaults false. A syntactically valid error response can therefore be reported as off with no error. State body has no explicit byte cap.",
+    "Comments describe physical recovery intent, not evidence that a particular plug, firmware or power cycle successfully recovers the instrument. No real plug was contacted."
+  ],
+  "integration": "Host controller declarations integrated with REQ-SDS-109 through REQ-SDS-112; broker test also retains REQ-SDS-108. Inspection-only recovery and broker startup remain unqualified."
+}

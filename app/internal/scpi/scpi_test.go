@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-SCPI
 package scpi
 
 import (
@@ -14,23 +15,30 @@ import (
 // fakeScope is a truthful mini-instrument: every setter updates the stats
 // snapshot the way the real engine eventually would, so set→query
 // round-trips can be asserted exactly.
+// TRLC-LINKS: REQ-SDS-024
 type fakeScope struct {
 	stats engine.Stats
 	frame *engine.Frame
 	calls []string
 }
 
+// TRLC-LINKS: REQ-SDS-024
 func (f *fakeScope) Snapshot() engine.Stats           { return f.stats }
+// TRLC-LINKS: REQ-SDS-024
 func (f *fakeScope) WithFrame(fn func(*engine.Frame)) { fn(f.frame) }
+// TRLC-LINKS: REQ-SDS-024
 func (f *fakeScope) SetRunning(on bool) {
 	f.calls = append(f.calls, "run")
 	f.stats.Running = on
 }
+// TRLC-LINKS: REQ-SDS-024
 func (f *fakeScope) SetNorm(on bool) {
 	f.calls = append(f.calls, "norm")
 	f.stats.Norm = on
 }
+// TRLC-LINKS: REQ-SDS-024
 func (f *fakeScope) SetSingle() { f.calls = append(f.calls, "single") }
+// TRLC-LINKS: REQ-SDS-024
 func (f *fakeScope) SetTdiv(t float64) (engine.Band, bool) {
 	f.calls = append(f.calls, "tdiv")
 	b, ok := engine.PlanTdiv(t)
@@ -39,6 +47,7 @@ func (f *fakeScope) SetTdiv(t float64) (engine.Band, bool) {
 	}
 	return b, ok
 }
+// TRLC-LINKS: REQ-SDS-024
 func (f *fakeScope) SetTrigLevelCode(c uint16) uint16 {
 	f.calls = append(f.calls, "trlv")
 	// Mirror the real engine: codes clamp to the operational window and the
@@ -52,14 +61,17 @@ func (f *fakeScope) SetTrigLevelCode(c uint16) uint16 {
 	f.stats.TrigCode = c
 	return c
 }
+// TRLC-LINKS: REQ-SDS-024
 func (f *fakeScope) SetTrigSlope(r bool) {
 	f.calls = append(f.calls, "slope")
 	f.stats.TrigRising = r
 }
+// TRLC-LINKS: REQ-SDS-024
 func (f *fakeScope) SetTrigSource(ch int) {
 	f.calls = append(f.calls, "src")
 	f.stats.TrigSource = ch
 }
+// TRLC-LINKS: REQ-SDS-024
 func (f *fakeScope) SetOffsetDAC(ch int, c uint16) {
 	f.calls = append(f.calls, "ofst")
 	if ch == 0 {
@@ -68,10 +80,12 @@ func (f *fakeScope) SetOffsetDAC(ch int, c uint16) {
 		f.stats.OffC2 = c
 	}
 }
+// TRLC-LINKS: REQ-SDS-024
 func (f *fakeScope) SetAcqMode(m int) {
 	f.calls = append(f.calls, "acq")
 	f.stats.AcqMode = m
 }
+// TRLC-LINKS: REQ-SDS-024
 func (f *fakeScope) SetAvgCount(n int) {
 	f.calls = append(f.calls, "avg")
 	f.stats.AvgCount = n
@@ -80,6 +94,7 @@ func (f *fakeScope) SetAvgCount(n int) {
 // fakeFE is a truthful vertical front end: SetVdiv tracks the detent index
 // and SetOffset stages the DAC code into the scope stats exactly like the
 // real analog front end does through the engine.
+// TRLC-LINKS: REQ-SDS-024
 type fakeFE struct {
 	fs    *fakeScope
 	idx   [2]int
@@ -87,13 +102,19 @@ type fakeFE struct {
 	probe [2]float64
 }
 
+// TRLC-LINKS: REQ-SDS-024
 func (f *fakeFE) SetVdiv(ch, idx int) error      { f.idx[ch] = idx; return nil }
+// TRLC-LINKS: REQ-SDS-024
 func (f *fakeFE) Snapshot() ([2]int, bool)       { return f.idx, true }
+// TRLC-LINKS: REQ-SDS-024
 func (f *fakeFE) SetProbe(ch int, x float64)     { f.probe[ch] = x }
+// TRLC-LINKS: REQ-SDS-024
 func (f *fakeFE) SetCoupling(ch, mode int) error { f.cpl[ch] = mode; return nil }
+// TRLC-LINKS: REQ-SDS-024
 func (f *fakeFE) OffsetVolts(ch int, code uint16) float64 {
 	return analog.OffsetVolts(ch, code)
 }
+// TRLC-LINKS: REQ-SDS-024
 func (f *fakeFE) SetOffset(ch int, volts float64) uint16 {
 	code := analog.OffsetCode(ch, volts)
 	f.fs.SetOffsetDAC(ch, code)
@@ -102,17 +123,25 @@ func (f *fakeFE) SetOffset(ch int, volts float64) uint16 {
 
 // fakeDisplay is a truthful device-display double (the panel controller's
 // scpi.Display surface): plain state the XYDS/PESU/MENU handlers read+write.
+// TRLC-LINKS: REQ-SDS-024
 type fakeDisplay struct {
 	xy, persist, menu bool
 }
 
+// TRLC-LINKS: REQ-SDS-024
 func (d *fakeDisplay) ViewXY() bool        { return d.xy }
+// TRLC-LINKS: REQ-SDS-024
 func (d *fakeDisplay) SetViewXY(on bool)   { d.xy = on }
+// TRLC-LINKS: REQ-SDS-024
 func (d *fakeDisplay) PersistOn() bool     { return d.persist }
+// TRLC-LINKS: REQ-SDS-024
 func (d *fakeDisplay) SetPersist(on bool)  { d.persist = on }
+// TRLC-LINKS: REQ-SDS-024
 func (d *fakeDisplay) MenuOpen() bool      { return d.menu }
+// TRLC-LINKS: REQ-SDS-024
 func (d *fakeDisplay) SetMenuOpen(on bool) { d.menu = on }
 
+// TRLC-LINKS: REQ-SDS-024
 func newH(t *testing.T) (*Handler, *fakeScope) {
 	t.Helper()
 	f := &engine.Frame{
@@ -131,6 +160,7 @@ func newH(t *testing.T) (*Handler, *fakeScope) {
 
 // newHFE is newH plus a truthful fake front end (VDIV/OFST round-trips) and a
 // fake display (XYDS/PESU/MENU round-trips).
+// TRLC-LINKS: REQ-SDS-024
 func newHFE(t *testing.T) (*Handler, *fakeScope, *fakeFE) {
 	t.Helper()
 	h, fs := newH(t)
@@ -140,11 +170,13 @@ func newHFE(t *testing.T) (*Handler, *fakeScope, *fakeFE) {
 	return h, fs, fe
 }
 
+// TRLC-LINKS: REQ-SDS-024
 func do(t *testing.T, h *Handler, cmd string) string {
 	t.Helper()
 	return string(h.HandleLine([]byte(cmd + "\n")))
 }
 
+// TRLC-LINKS: REQ-SDS-024
 func TestIDN(t *testing.T) {
 	h, _ := newH(t)
 	got := do(t, h, "*IDN?")
@@ -154,6 +186,7 @@ func TestIDN(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-024
 func TestReplyFormats(t *testing.T) {
 	h, _ := newH(t)
 	// TDIV: %.2E + LOWER-case s, header echoed.
@@ -174,6 +207,7 @@ func TestReplyFormats(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-024
 func TestErrorTokens(t *testing.T) {
 	h, _ := newH(t)
 	if got := do(t, h, "BOGUS?"); got != "Undefined header\n" {
@@ -187,6 +221,7 @@ func TestErrorTokens(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-024
 func TestSettersSilent(t *testing.T) {
 	h, fs := newH(t)
 	if got := do(t, h, "TDIV 1E-3"); got != "" {
@@ -204,6 +239,7 @@ func TestSettersSilent(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-024
 func TestCompoundLine(t *testing.T) {
 	h, _ := newH(t)
 	got := do(t, h, "CHDR?;TDIV?")
@@ -212,6 +248,7 @@ func TestCompoundLine(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-024
 func TestWFSUAndDAT2(t *testing.T) {
 	h, _ := newH(t)
 	do(t, h, "WFSU SP,4,NP,100,FP,8")
@@ -241,6 +278,7 @@ func TestWFSUAndDAT2(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-024
 func TestWavedesc(t *testing.T) {
 	h, _ := newH(t)
 	out := h.HandleLine([]byte("C1:WF? DESC\n"))
@@ -274,6 +312,7 @@ func TestWavedesc(t *testing.T) {
 
 // ofstRoundTrip is the expected OFST? value after OFST <v>: the set stages
 // the DAC code, the query inverts it — same quantizer both ways.
+// TRLC-LINKS: REQ-SDS-024
 func ofstRoundTrip(ch int, v float64) string {
 	code := analog.OffsetCode(ch, v)
 	w := 0.0
@@ -287,6 +326,7 @@ func ofstRoundTrip(ch int, v float64) string {
 // command surface (spec 11 §3.3/§3.4): every set either round-trips through
 // its query, or returns an explicit §3.4 error token — NEVER a silent
 // success that the query then contradicts.
+// TRLC-LINKS: REQ-SDS-024
 func TestSetNeverLies(t *testing.T) {
 	cases := []struct {
 		set     string
@@ -381,6 +421,7 @@ func TestSetNeverLies(t *testing.T) {
 }
 
 // Per-channel shadows must not leak across channels.
+// TRLC-LINKS: REQ-SDS-024
 func TestChannelShadowIndependence(t *testing.T) {
 	h, _, _ := newHFE(t)
 	do(t, h, "C1:INVS ON;C1:UNIT A;C1:SKEW 5NS")
@@ -391,6 +432,7 @@ func TestChannelShadowIndependence(t *testing.T) {
 }
 
 // *RST is Default Setup: the new channel shadows return to power-on state.
+// TRLC-LINKS: REQ-SDS-024
 func TestRSTResetsChannelShadows(t *testing.T) {
 	h, _ := newH(t)
 	do(t, h, "C1:INVS ON;C1:UNIT A;C1:SKEW 5NS")
@@ -405,6 +447,7 @@ func TestRSTResetsChannelShadows(t *testing.T) {
 // state (TRA ON, D1M, ×1 — the New() defaults), pushes the coupling/probe
 // reset through the front end, and returns the display to Y-T/persist-off —
 // so the post-reset queries describe the real instrument.
+// TRLC-LINKS: REQ-SDS-024
 func TestRSTResetsTraCplAttn(t *testing.T) {
 	h, _, fe := newHFE(t)
 	do(t, h, "C1:TRA OFF;C2:TRA OFF;C1:CPL A1M;C2:CPL GND;C1:ATTN 100;C2:ATTN 10")
@@ -426,6 +469,7 @@ func TestRSTResetsTraCplAttn(t *testing.T) {
 
 // Without a panel (disp == nil) the display commands degrade to the BWL rule:
 // the fixed state round-trips, anything else errors — never a silent no-op.
+// TRLC-LINKS: REQ-SDS-024
 func TestDisplayStubsWithoutPanel(t *testing.T) {
 	h, _ := newH(t)
 	for _, c := range []struct{ cmd, want string }{
@@ -447,6 +491,7 @@ func TestDisplayStubsWithoutPanel(t *testing.T) {
 
 // Inverted() is the render surface's view of the INVS shadow (the web status
 // snapshot and the LCD HUD read it) — it must track sets and *RST exactly.
+// TRLC-LINKS: REQ-SDS-024
 func TestInvertedSnapshot(t *testing.T) {
 	h, _ := newH(t)
 	if h.Inverted() != [2]bool{} {
@@ -466,6 +511,7 @@ func TestInvertedSnapshot(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-024
 func TestRollRescale(t *testing.T) {
 	h, fs := newH(t)
 	fs.frame.RollCodes = true
@@ -490,5 +536,7 @@ func TestRollRescale(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-024
 func (f *fakeFE) TrigCode(volts float64, srcCh int) float64 { return 31437 - 911*volts }
+// TRLC-LINKS: REQ-SDS-024
 func (f *fakeFE) TrigVolts(code uint16, srcCh int) float64  { return (31437 - float64(code)) / 911 }

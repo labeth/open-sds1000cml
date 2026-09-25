@@ -1,0 +1,91 @@
+{
+  "source": "app/internal/engine/envroll_test.go",
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "scope": "Reviewed Go test outcomes; passing assertions contribute partial requirement evidence.",
+  "sourceSHA256": "9e7f31dc4d2ef874d90eaef4cefe8fe8bc6da7c6fbdfaeb44b8390bb7d33154b",
+  "logs": {
+    "test-runs/engine-timebase-reviewed.jsonl": "3d0406ec2981077fe10af4be5902178aae33d0a43af7062346d1a59313a01a99"
+  },
+  "tests": [
+    {
+      "name": "TestEnvelopeProgDivisor",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-010"
+      ]
+    },
+    {
+      "name": "TestRollProgDivisor",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-010"
+      ]
+    },
+    {
+      "name": "TestEnvelopeFrame",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-010",
+        "REQ-SDS-012"
+      ]
+    },
+    {
+      "name": "TestRollBand",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-010",
+        "REQ-SDS-012"
+      ]
+    },
+    {
+      "name": "TestRollToRealTimeTransition",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-010"
+      ]
+    },
+    {
+      "name": "TestETSFrame",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-019"
+      ]
+    },
+    {
+      "name": "TestETSFallbackOnFlat",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-019"
+      ]
+    },
+    {
+      "name": "TestEnvelopeBailsOnBandChange",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-008"
+      ]
+    }
+  ],
+  "results": [
+    {
+      "requirement": "REQ-SDS-008",
+      "status": "partial",
+      "notes": "1 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    },
+    {
+      "requirement": "REQ-SDS-010",
+      "status": "partial",
+      "notes": "5 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    },
+    {
+      "requirement": "REQ-SDS-012",
+      "status": "partial",
+      "notes": "2 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    },
+    {
+      "requirement": "REQ-SDS-019",
+      "status": "partial",
+      "notes": "2 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    }
+  ]
+}

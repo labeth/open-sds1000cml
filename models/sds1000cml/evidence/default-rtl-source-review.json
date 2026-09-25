@@ -1,0 +1,82 @@
+{
+  "status": "integrated-with-explicit-verification-limits",
+  "completeReads": [
+    "fpga/default/adc_front.v",
+    "fpga/default/drain.v",
+    "fpga/default/sim/tb_adc_front.v",
+    "fpga/default/sim/tb_drain.v",
+    "fpga/default/capture.v",
+    "fpga/default/sim/tb_capture.v",
+    "fpga/default/default.v",
+    "fpga/default/sim/tb_top.v",
+    "fpga/default/diag.v",
+    "fpga/default/sim/tb_diag.v"
+  ],
+  "sourceSHA256": {
+    "fpga/default/adc_front.v": "1c601a42b2aaf5d5052c4b26bcebeb762134841a9fa12c500bbaf0fa9439b335",
+    "fpga/default/drain.v": "666c141e0f25195e363a7b08bd711113be13e13a45291f8428a675c6ffd72e1b",
+    "fpga/default/sim/tb_adc_front.v": "eb1889560e74867df5f4a396c7c53cb0b9fd5bb7d024a3daf4bcb9283c62bf21",
+    "fpga/default/sim/tb_drain.v": "fc04526a01b80ac453cc1ba6921dab4a2f0cb73f6e562522eed15d303518f824",
+    "fpga/default/capture.v": "b08676bd94b5963be6d7f9233d382d04f0db5c2627a7d7d1964e9b07a23df781",
+    "fpga/default/sim/tb_capture.v": "fea39685f6c8cb4c617c8a0d7c6fa7944e971dc116f555d613b754381b32a66b",
+    "fpga/default/default.v": "081fbf5e64df17b89a6057e385a5cdfcb910fe79cb90db6608ad8a78acc5e4d3",
+    "fpga/default/sim/tb_top.v": "344ee62ed6ac70790449bcb1ebc9e3b3afcbb3a28fe57597130a044255de947f",
+    "fpga/default/diag.v": "e75b0595437380b3410399042e88fb4bfa4a5bfecffb8a1fcf47a47db4fa7a01",
+    "fpga/default/sim/tb_diag.v": "443b937d5b6208ac65d71f850f74fe45d8f0b7c98f0d7807a9208429b9026948"
+  },
+  "modulesByFile": {
+    "fpga/default/adc_front.v": [
+      "adc_front"
+    ],
+    "fpga/default/drain.v": [
+      "drain"
+    ],
+    "fpga/default/sim/tb_adc_front.v": [
+      "tb_adc_front"
+    ],
+    "fpga/default/sim/tb_drain.v": [
+      "tb_drain"
+    ],
+    "fpga/default/capture.v": [
+      "capture"
+    ],
+    "fpga/default/sim/tb_capture.v": [
+      "tb_capture"
+    ],
+    "fpga/default/default.v": [
+      "default_top"
+    ],
+    "fpga/default/sim/tb_top.v": [
+      "tb_top"
+    ],
+    "fpga/default/diag.v": [
+      "diag"
+    ],
+    "fpga/default/sim/tb_diag.v": [
+      "tb_diag"
+    ]
+  },
+  "reviewedLines": 2872,
+  "findings": [
+    "ADC frontend samples all80 lanes with one capture clock and drives all5 encode pairs from ph0. Rates divide by16,4,2,1; assembly pipelines per-cluster selection and returns zero for invalid cluster5..7. Actual top uses baked maps, while the standalone bench exercises runtime remap.",
+    "ADC bench uses identical capture/encode clocks. It checks four rates, pair disable, complementarity, common phase and selected static lane patterns/remap. It does not prove analog sample chronology, all80 lane mappings, invalid maps, inter-clock skew or fitted timing.",
+    "Drain latches windows on valid rising edge and rewind, clips endpoint, clamps drained read address, and publishes READY with the latched window. Stream pops advance unconditionally including underrun. Source clamps out-of-range stream rewind to REC_LAST, despite header describing modulo; do not model modulo behavior.",
+    "Drain statistics count every pop, saturate underrun/min-gap measurement, and clear pops on rewind but retain monitor state. Original bench checks window clipping/empty, coherent READY, actual20480-pointer wrap, underrun saturation and cadence; it does not test out-of-range stream rewind or full16-bit pop-counter wrap.",
+    "Capture is a20480x16 dual-clock internal RAM ring, not the acquisition profile external SRAM recorder. Configuration latched at arm includes depth, decimation, channel selection and mode; thresholds/slope and TSRC remain quasi-static live inputs. Trigger fraction uses pipelined16-step division; hardware-trigger fraction is zero.",
+    "Capture HALT is delayed; triggered HALT length uses a post count up to two writes behind. Stream HALT sets DONE without frozen VALID. RAM writes remain pipelined after logical commit. Original bench covers untriggered HALT, not the triggered-HALT length discrepancy, all divider degenerate cases, high16-bit decimation borrow or all minimal-post configurations.",
+    "Original capture bench checks AUTO150-word record, NORM20400-word wrapped ramp, half-scale Q16 fraction, divide-by4, CH1 packed trigger-half, stream wrap/overflow, hardware and falling triggers, reset,1600-word pattern sources, row wrap, rearm while filling and ADC restoration. Passing output credits these assertions only.",
+    "Default top uses generated v3 selectors while retaining v2.2 live fields. RUN masks STACK/REDUCE; IL_CTRL retains TSRC only; CAP_STEP is constant zero and lane maps come from diag. Opcode toggles cross to capture, independent status bits cross back and frozen metadata is sampled quasi-statically after valid. No arbitrary-rate pulse or physical CDC proof follows.",
+    "Top pre/post geometry converts single-channel samples to words and clamps pre to PRETRIG_MAX. At pre==PRETRIG_MAX the available post room is zero, then post is forced to1; therefore header claim pre+post<=depth-2 has an edge exception. Original top bench does not exercise that extreme pre setting.",
+    "Top original BFM bench checks identity, independent selectors, unclaimed/stub writes, read-only80-lane map, clock ratio, ADC-model30-word capture, flat drain tail/rewind windows, full20478-word TSRC ramp and478-word redrain, column tags, reset and RUN-disabled GO. B11/J1 are omitted from the bench ports, so no top-level behavior for those inputs is tested. Lane stimulus has fixed1ns delay and only E1 drives the record.",
+    "Diagnostics retains ADC hold overrides, programmable27-bit bus patterns and per-phase/per-ball output enables. Bus and snapshot clocks use LUT selection requiring idle configuration. Multi-bit configuration synchronizers require quasi-static host behavior; they are not atomic transactions.",
+    "Counted emitter accepts a same-word A5 key and enforces one crank ball, rest posture, guard readiness, nonzero budget, D1 divider minimum, width/period bounds and cumulative4096-edge ceiling. Clear does not clear lifetime. G2 crank is refused and SNAP_ON_ARM is not wired. Counters are digital emitter/pad witnesses, not proof of external device behavior.",
+    "Guard samples ever-high/ever-low changes in clk50 and returns departure through synchronization to clk100; abort therefore has latency. P6 is masked from guard departure for D1 crank only. Live output source selections and guard selections still require host stability; source review does not prove protection under arbitrary configuration writes.",
+    "Snapshot contains2048 words, mode7 serializes five slices of a held lane vector and thus ends in a partial five-word group. BUSCAP packs coherent low/high halves at one sample per two snapshot clocks, despite a comment suggesting every bus tick is recorded. Departure confirmation lengths are1,2,4,8 sampled detections with additional registered latency. Slice6 drops the fifth single pin F7.",
+    "Original diag bench covers posture/hold, map constants/stubs, bus readback, selected F2/D1 crank counts, width refusal, lane toggle window, snapshots and three-phase bus capture plus simple departure. It omits B11/J1 connections, guard-abort latency, lifetime exhaustion, all keyed-refusal combinations, guard-off limits, all confirm depths, prescaler/oneshot cases and arbitrary changing-lane coherence.",
+    "Diagnostic snapshot mode5 check has an apparent first-iteration issue: after do_pop it stores v=r_spop, then immediately compares unchanged r_spop to v+1 before the next pop. Preserve the original outcome; do not silently repair the bench or credit its claimed2048-word sequence on a failing run. Mode7 uses static lanes and checks2045 words, not coherence under arbitrary transitions.",
+    "The original diagnostic bench printed PASS. This does not resolve the apparent mode5 first-iteration inconsistency: Verilog comparisons against unknown values can skip if-body failure increments. Retain partial status and do not treat PASS as proof of known-valued snapshot sequence correctness. A separate non-invasive observation is still needed to establish that specific data quality."
+  ],
+  "scope": "All ten default RTL implementation/test files reviewed;2872 lines. Original suite execution pending result capture; no native annotations yet. Source-derived behavior, test omissions and apparent bench defects remain explicit.",
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "executionEvidence": "default-rtl-review-test-run.json"
+}

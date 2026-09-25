@@ -1,0 +1,1405 @@
+{
+  "scope": "Reviewed literal RTL modules and simulation testbenches; links alone do not assert successful verification.",
+  "files": [
+    {
+      "path": "fpga/acq_sram/ordinal_counter.v",
+      "owner": "FU-RTL-ACQ-SRAM-ORDINAL-COUNTER",
+      "modules": {
+        "sram_ordinal_counter": [
+          "REQ-SDS-047"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/host_packer.v",
+      "owner": "FU-RTL-ACQ-SRAM-HOST-PACKER",
+      "modules": {
+        "sram_host_packer": [
+          "REQ-SDS-049"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/host_ram.v",
+      "owner": "FU-RTL-ACQ-SRAM-HOST-RAM",
+      "modules": {
+        "sram_host_ram": [
+          "REQ-SDS-051"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/host_read_window.v",
+      "owner": "FU-RTL-ACQ-SRAM-HOST-READ-WINDOW",
+      "modules": {
+        "acq_host_read_window": [
+          "REQ-SDS-053",
+          "REQ-SDS-079"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/host_read_port.v",
+      "owner": "FU-RTL-ACQ-SRAM-HOST-READ-PORT",
+      "modules": {
+        "acq_host_read_port": [
+          "REQ-SDS-053"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/word_bridge.v",
+      "owner": "FU-RTL-ACQ-SRAM-WORD-BRIDGE",
+      "modules": {
+        "sram_word_bridge": [
+          "REQ-SDS-093"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_ordinal_counter.v",
+      "owner": "FU-RTL-ACQ-TESTS",
+      "modules": {
+        "tb": [
+          "REQ-SDS-047"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_host_ram.v",
+      "owner": "FU-RTL-ACQ-TESTS",
+      "modules": {
+        "tb": [
+          "REQ-SDS-051"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_host_read_window.v",
+      "owner": "FU-RTL-ACQ-TESTS",
+      "modules": {
+        "tb_host_read_window": [
+          "REQ-SDS-053",
+          "REQ-SDS-079"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_host_read_port.v",
+      "owner": "FU-RTL-ACQ-TESTS",
+      "modules": {
+        "tb_host_read_port": [
+          "REQ-SDS-053"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_word_bridge.v",
+      "owner": "FU-RTL-ACQ-TESTS",
+      "modules": {
+        "tb": [
+          "REQ-SDS-093"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/host_fifo.v",
+      "owner": "FU-RTL-ACQ-SRAM-HOST-FIFO",
+      "modules": {
+        "sram_host_fifo": [
+          "REQ-SDS-050",
+          "REQ-SDS-078"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/host_ownership.v",
+      "owner": "FU-RTL-ACQ-SRAM-HOST-OWNERSHIP",
+      "modules": {
+        "sram_host_ownership": [
+          "REQ-SDS-052"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/host_sink.v",
+      "owner": "FU-RTL-ACQ-SRAM-HOST-SINK",
+      "modules": {
+        "sram_host_sink": [
+          "REQ-SDS-094"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/host_path.v",
+      "owner": "FU-RTL-ACQ-SRAM-HOST-PATH",
+      "modules": {
+        "sram_host_path": [
+          "REQ-SDS-049",
+          "REQ-SDS-050",
+          "REQ-SDS-051",
+          "REQ-SDS-052",
+          "REQ-SDS-078",
+          "REQ-SDS-094"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_host_fifo.v",
+      "owner": "FU-RTL-ACQ-TESTS",
+      "modules": {
+        "tb": [
+          "REQ-SDS-050",
+          "REQ-SDS-078"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_host_ownership.v",
+      "owner": "FU-RTL-ACQ-TESTS",
+      "modules": {
+        "tb_host_ownership": [
+          "REQ-SDS-052"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_host_sink.v",
+      "owner": "FU-RTL-ACQ-TESTS",
+      "modules": {
+        "tb_host_sink": [
+          "REQ-SDS-094"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_host_path.v",
+      "owner": "FU-RTL-ACQ-TESTS",
+      "modules": {
+        "tb_host_path": [
+          "REQ-SDS-049",
+          "REQ-SDS-050",
+          "REQ-SDS-051",
+          "REQ-SDS-052",
+          "REQ-SDS-094"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_host_faults.v",
+      "owner": "FU-RTL-ACQ-TESTS",
+      "modules": {
+        "tb_host_faults": [
+          "REQ-SDS-094"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/ingress_fifo.v",
+      "owner": "FU-RTL-ACQ-SRAM-INGRESS-FIFO",
+      "modules": {
+        "sram_ingress_fifo": [
+          "REQ-SDS-046"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_ingress_fifo.v",
+      "owner": "FU-RTL-ACQ-TESTS",
+      "modules": {
+        "tb": [
+          "REQ-SDS-046"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/ingress_stream.v",
+      "owner": "FU-RTL-ACQ-SRAM-INGRESS-STREAM",
+      "modules": {
+        "sram_ingress_stream": [
+          "REQ-SDS-046"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_ingress_stream.v",
+      "owner": "FU-RTL-ACQ-TESTS",
+      "modules": {
+        "tb": [
+          "REQ-SDS-046"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/ingress_path.v",
+      "owner": "FU-RTL-ACQ-SRAM-INGRESS-PATH",
+      "modules": {
+        "sram_ingress_path": [
+          "REQ-SDS-046"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_ingress_path.v",
+      "owner": "FU-RTL-ACQ-TESTS",
+      "modules": {
+        "tb": [
+          "REQ-SDS-046"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/transport.v",
+      "owner": "FU-RTL-ACQ-SRAM-TRANSPORT",
+      "modules": {
+        "sram_transport": [
+          "REQ-SDS-044"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_transport.v",
+      "owner": "FU-RTL-ACQ-TESTS",
+      "modules": {
+        "tb": [
+          "REQ-SDS-044"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/timeslice_controller.v",
+      "owner": "FU-RTL-ACQ-SRAM-TIMESLICE-CONTROLLER",
+      "modules": {
+        "sram_timeslice_controller": [
+          "REQ-SDS-048"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_timeslice_controller.v",
+      "owner": "FU-RTL-ACQ-TESTS",
+      "modules": {
+        "tb": [
+          "REQ-SDS-048"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/adc_unpack.v",
+      "owner": "FU-RTL-ACQ-SRAM-ADC-UNPACK",
+      "modules": {
+        "adc_unpack": [
+          "REQ-SDS-038"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/interleave.v",
+      "owner": "FU-RTL-ACQ-SRAM-INTERLEAVE",
+      "modules": {
+        "adc_interleave": [
+          "REQ-SDS-039",
+          "REQ-SDS-058"
+        ],
+        "interleave_gearbox": [
+          "REQ-SDS-039"
+        ],
+        "interleave_gearbox64": [
+          "REQ-SDS-039"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/acquisition_source.v",
+      "owner": "FU-RTL-ACQ-SRAM-ACQUISITION-SOURCE",
+      "modules": {
+        "adc_acquisition_source": [
+          "REQ-SDS-040",
+          "REQ-SDS-058",
+          "REQ-SDS-183"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/acquisition_path.v",
+      "owner": "FU-RTL-ACQ-SRAM-ACQUISITION-PATH",
+      "modules": {
+        "sram_acquisition_path": [
+          "REQ-SDS-041",
+          "REQ-SDS-042",
+          "REQ-SDS-043",
+          "REQ-SDS-045",
+          "REQ-SDS-056",
+          "REQ-SDS-057",
+          "REQ-SDS-058",
+          "REQ-SDS-183",
+          "REQ-SDS-184"
+        ],
+        "acquisition_trigger_pipeline": [
+          "REQ-SDS-184"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/board_capture_path.v",
+      "owner": "FU-RTL-ACQ-SRAM-BOARD-CAPTURE-PATH",
+      "modules": {
+        "sram_board_capture_path": [
+          "REQ-SDS-045"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/capture_engine.v",
+      "owner": "FU-RTL-ACQ-SRAM-CAPTURE-ENGINE",
+      "modules": {
+        "sram_capture_engine": [
+          "REQ-SDS-043",
+          "REQ-SDS-045",
+          "REQ-SDS-052",
+          "REQ-SDS-056",
+          "REQ-SDS-058"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/capture_path.v",
+      "owner": "FU-RTL-ACQ-SRAM-CAPTURE-PATH",
+      "modules": {
+        "sram_capture_path": [
+          "REQ-SDS-043",
+          "REQ-SDS-045"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/finite_writer.v",
+      "owner": "FU-RTL-ACQ-SRAM-FINITE-WRITER",
+      "modules": {
+        "sram_finite_writer": [
+          "REQ-SDS-041",
+          "REQ-SDS-042",
+          "REQ-SDS-057",
+          "REQ-SDS-058"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/finite_recall.v",
+      "owner": "FU-RTL-ACQ-SRAM-FINITE-RECALL",
+      "modules": {
+        "sram_finite_recall": [
+          "REQ-SDS-043",
+          "REQ-SDS-052",
+          "REQ-SDS-058"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/record.v",
+      "owner": "FU-RTL-ACQ-SRAM-RECORD",
+      "modules": {
+        "sram_record": [
+          "REQ-SDS-041",
+          "REQ-SDS-042",
+          "REQ-SDS-057"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/recall.v",
+      "owner": "FU-RTL-ACQ-SRAM-RECALL",
+      "modules": {
+        "sram_recall": [
+          "REQ-SDS-043"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/command_bridge.v",
+      "owner": "FU-RTL-ACQ-SRAM-COMMAND-BRIDGE",
+      "modules": {
+        "acq_command_bridge": [
+          "REQ-SDS-054",
+          "REQ-SDS-055",
+          "REQ-SDS-058",
+          "REQ-SDS-077"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/command_port.v",
+      "owner": "FU-RTL-ACQ-SRAM-COMMAND-PORT",
+      "modules": {
+        "acq_command_port": [
+          "REQ-SDS-054",
+          "REQ-SDS-055",
+          "REQ-SDS-056",
+          "REQ-SDS-058",
+          "REQ-SDS-185",
+          "REQ-SDS-077",
+          "REQ-SDS-080"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_unpack.v",
+      "owner": "FU-RTL-ACQ-TESTS",
+      "modules": {
+        "tb": [
+          "REQ-SDS-038"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_interleave.v",
+      "owner": "FU-RTL-ACQ-TESTS",
+      "modules": {
+        "tb": [
+          "REQ-SDS-039"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_adc_interleave.v",
+      "owner": "FU-RTL-ACQ-TESTS",
+      "modules": {
+        "adc_phase_pll": [
+          "REQ-SDS-039"
+        ],
+        "tb": [
+          "REQ-SDS-039"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_acquisition_source.v",
+      "owner": "FU-RTL-ACQ-TESTS",
+      "modules": {
+        "adc_interleave": [
+          "REQ-SDS-040",
+          "REQ-SDS-058",
+          "REQ-SDS-183"
+        ],
+        "adc_precision": [
+          "REQ-SDS-040",
+          "REQ-SDS-058",
+          "REQ-SDS-183"
+        ],
+        "tb_acquisition_source": [
+          "REQ-SDS-040",
+          "REQ-SDS-058",
+          "REQ-SDS-183"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_trigger_pipeline.v",
+      "owner": "FU-RTL-ACQ-TESTS",
+      "modules": {
+        "tb_trigger_pipeline": [
+          "REQ-SDS-184"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_command_bridge.v",
+      "owner": "FU-RTL-ACQ-TESTS",
+      "modules": {
+        "tb_command_bridge": [
+          "REQ-SDS-054",
+          "REQ-SDS-055",
+          "REQ-SDS-058"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_command_port.v",
+      "owner": "FU-RTL-ACQ-TESTS",
+      "modules": {
+        "tb_command_port": [
+          "REQ-SDS-054",
+          "REQ-SDS-055",
+          "REQ-SDS-056",
+          "REQ-SDS-058",
+          "REQ-SDS-185",
+          "REQ-SDS-077",
+          "REQ-SDS-080"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_command_gpmc.v",
+      "owner": "FU-RTL-ACQ-TESTS",
+      "modules": {
+        "tb_command_gpmc": [
+          "REQ-SDS-054",
+          "REQ-SDS-185"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_record.v",
+      "owner": "FU-RTL-ACQ-TESTS",
+      "modules": {
+        "tb": [
+          "REQ-SDS-041",
+          "REQ-SDS-042",
+          "REQ-SDS-043",
+          "REQ-SDS-057"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_finite_capture.v",
+      "owner": "FU-RTL-ACQ-TESTS",
+      "modules": {
+        "tb_finite_capture": [
+          "REQ-SDS-041",
+          "REQ-SDS-042",
+          "REQ-SDS-043",
+          "REQ-SDS-045",
+          "REQ-SDS-052",
+          "REQ-SDS-057"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_finite_writer_faults.v",
+      "owner": "FU-RTL-ACQ-TESTS",
+      "modules": {
+        "tb_finite_writer_faults": [
+          "REQ-SDS-041",
+          "REQ-SDS-042",
+          "REQ-SDS-057",
+          "REQ-SDS-058"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_finite_recall.v",
+      "owner": "FU-RTL-ACQ-TESTS",
+      "modules": {
+        "tb_finite_recall": [
+          "REQ-SDS-043",
+          "REQ-SDS-052"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_finite_recall_faults.v",
+      "owner": "FU-RTL-ACQ-TESTS",
+      "modules": {
+        "tb_finite_recall_faults": [
+          "REQ-SDS-043",
+          "REQ-SDS-052",
+          "REQ-SDS-058"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_acquisition_path.v",
+      "owner": "FU-RTL-ACQ-TESTS",
+      "modules": {
+        "adc_interleave": [
+          "REQ-SDS-041",
+          "REQ-SDS-042",
+          "REQ-SDS-043",
+          "REQ-SDS-045",
+          "REQ-SDS-056",
+          "REQ-SDS-057",
+          "REQ-SDS-058",
+          "REQ-SDS-183",
+          "REQ-SDS-184"
+        ],
+        "adc_precision": [
+          "REQ-SDS-041",
+          "REQ-SDS-042",
+          "REQ-SDS-043",
+          "REQ-SDS-045",
+          "REQ-SDS-056",
+          "REQ-SDS-057",
+          "REQ-SDS-058",
+          "REQ-SDS-183",
+          "REQ-SDS-184"
+        ],
+        "tb_acquisition_path": [
+          "REQ-SDS-041",
+          "REQ-SDS-042",
+          "REQ-SDS-043",
+          "REQ-SDS-045",
+          "REQ-SDS-056",
+          "REQ-SDS-057",
+          "REQ-SDS-058",
+          "REQ-SDS-183",
+          "REQ-SDS-184"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_board_capture.v",
+      "owner": "FU-RTL-ACQ-TESTS",
+      "modules": {
+        "tb_board_capture": [
+          "REQ-SDS-043",
+          "REQ-SDS-045",
+          "REQ-SDS-052"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_capture_engine.v",
+      "owner": "FU-RTL-ACQ-TESTS",
+      "modules": {
+        "tb_capture_engine": [
+          "REQ-SDS-043",
+          "REQ-SDS-045",
+          "REQ-SDS-052",
+          "REQ-SDS-056"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_capture_start.v",
+      "owner": "FU-RTL-ACQ-TESTS",
+      "modules": {
+        "tb_capture_start": [
+          "REQ-SDS-043",
+          "REQ-SDS-045",
+          "REQ-SDS-058"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/precision.v",
+      "owner": "FU-RTL-ACQ-SRAM-PRECISION",
+      "modules": {
+        "cic_pair_integrator": [
+          "REQ-SDS-040"
+        ],
+        "cic16_pair": [
+          "REQ-SDS-040"
+        ],
+        "cic_stage": [
+          "REQ-SDS-040"
+        ],
+        "adc_precision": [
+          "REQ-SDS-040"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/precision_tail.v",
+      "owner": "FU-RTL-ACQ-SRAM-PRECISION-TAIL",
+      "modules": {
+        "cic_precision_tail": [
+          "REQ-SDS-040"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_integrator.v",
+      "owner": "FU-RTL-ACQ-TESTS",
+      "modules": {
+        "tb": [
+          "REQ-SDS-040"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_precision.v",
+      "owner": "FU-RTL-ACQ-TESTS",
+      "modules": {
+        "tb": [
+          "REQ-SDS-040"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_precision_config.v",
+      "owner": "FU-RTL-ACQ-TESTS",
+      "modules": {
+        "dcfifo": [
+          "REQ-SDS-040"
+        ],
+        "tb_precision_config": [
+          "REQ-SDS-040"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_precision_fir.v",
+      "owner": "FU-RTL-ACQ-TESTS",
+      "modules": {
+        "tb": [
+          "REQ-SDS-040"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_precision_shared.v",
+      "owner": "FU-RTL-ACQ-TESTS",
+      "modules": {
+        "dcfifo": [
+          "REQ-SDS-040"
+        ],
+        "tb_precision_shared": [
+          "REQ-SDS-040"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_precision_tail.v",
+      "owner": "FU-RTL-ACQ-TESTS",
+      "modules": {
+        "tb_precision_tail": [
+          "REQ-SDS-040"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_precision_tail_queue.v",
+      "owner": "FU-RTL-ACQ-TESTS",
+      "modules": {
+        "tb_precision_tail_queue": [
+          "REQ-SDS-040"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/stream.v",
+      "owner": "FU-RTL-ACQ-SRAM-STREAM",
+      "modules": {
+        "adc_stream": [
+          "REQ-SDS-187"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/stream_packetizer.v",
+      "owner": "FU-RTL-ACQ-SRAM-STREAM-PACKETIZER",
+      "modules": {
+        "stream_packetizer": [
+          "REQ-SDS-049",
+          "REQ-SDS-058",
+          "REQ-SDS-186"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/stream_banks.v",
+      "owner": "FU-RTL-ACQ-SRAM-STREAM-BANKS",
+      "modules": {
+        "stream_banks": [
+          "REQ-SDS-047",
+          "REQ-SDS-049",
+          "REQ-SDS-052",
+          "REQ-SDS-058"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/stream_engine.v",
+      "owner": "FU-RTL-ACQ-SRAM-STREAM-ENGINE",
+      "modules": {
+        "sram_stream_engine": [
+          "REQ-SDS-045",
+          "REQ-SDS-046",
+          "REQ-SDS-047",
+          "REQ-SDS-048",
+          "REQ-SDS-052",
+          "REQ-SDS-058"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/stream_path.v",
+      "owner": "FU-RTL-ACQ-SRAM-STREAM-PATH",
+      "modules": {
+        "sram_stream_path": [
+          "REQ-SDS-044",
+          "REQ-SDS-045",
+          "REQ-SDS-046",
+          "REQ-SDS-047",
+          "REQ-SDS-048",
+          "REQ-SDS-051",
+          "REQ-SDS-052",
+          "REQ-SDS-053"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_stream_banks.v",
+      "owner": "FU-RTL-ACQ-TESTS",
+      "modules": {
+        "tb": [
+          "REQ-SDS-047",
+          "REQ-SDS-049",
+          "REQ-SDS-052",
+          "REQ-SDS-058"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_stream_path.v",
+      "owner": "FU-RTL-ACQ-TESTS",
+      "modules": {
+        "tb": [
+          "REQ-SDS-049",
+          "REQ-SDS-052",
+          "REQ-SDS-058",
+          "REQ-SDS-186"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_sram_stream_path.v",
+      "owner": "FU-RTL-ACQ-TESTS",
+      "modules": {
+        "tb_stream_path": [
+          "REQ-SDS-044",
+          "REQ-SDS-047",
+          "REQ-SDS-048",
+          "REQ-SDS-051",
+          "REQ-SDS-052",
+          "REQ-SDS-053"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/profile_core.v",
+      "owner": "FU-RTL-ACQ-SRAM-PROFILE-CORE",
+      "modules": {
+        "acq_profile_core": [
+          "REQ-SDS-053",
+          "REQ-SDS-054",
+          "REQ-SDS-055",
+          "REQ-SDS-056",
+          "REQ-SDS-058",
+          "REQ-SDS-075",
+          "REQ-SDS-076",
+          "REQ-SDS-185"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/profile_top.v",
+      "owner": "FU-RTL-ACQ-SRAM-PROFILE-TOP",
+      "modules": {
+        "acq_profile_top": [
+          "REQ-SDS-058",
+          "REQ-SDS-059"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/profile_pll.v",
+      "owner": "FU-RTL-ACQ-SRAM-PROFILE-PLL",
+      "modules": {
+        "acq_profile_pll": [
+          "REQ-SDS-059"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/acquisition_adc_pll.v",
+      "owner": "FU-RTL-ACQ-SRAM-ACQUISITION-ADC-PLL",
+      "modules": {
+        "adc_phase_pll": [
+          "REQ-SDS-039",
+          "REQ-SDS-059"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/top.v",
+      "owner": "FU-RTL-ACQ-SRAM-TOP",
+      "modules": {
+        "acq_sram_top": [
+          "REQ-SDS-039",
+          "REQ-SDS-040",
+          "REQ-SDS-041",
+          "REQ-SDS-042",
+          "REQ-SDS-043",
+          "REQ-SDS-044",
+          "REQ-SDS-049",
+          "REQ-SDS-052",
+          "REQ-SDS-082",
+          "REQ-SDS-083",
+          "REQ-SDS-084",
+          "REQ-SDS-186"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_profile_core.v",
+      "owner": "FU-RTL-ACQ-TESTS",
+      "modules": {
+        "tb_profile_core": [
+          "REQ-SDS-041",
+          "REQ-SDS-043",
+          "REQ-SDS-053",
+          "REQ-SDS-054",
+          "REQ-SDS-056",
+          "REQ-SDS-075",
+          "REQ-SDS-076",
+          "REQ-SDS-185",
+          "REQ-SDS-188"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_top.v",
+      "owner": "FU-RTL-ACQ-TESTS",
+      "modules": {
+        "bench_pll": [
+          "REQ-SDS-041",
+          "REQ-SDS-043",
+          "REQ-SDS-044",
+          "REQ-SDS-083"
+        ],
+        "tb": [
+          "REQ-SDS-041",
+          "REQ-SDS-043",
+          "REQ-SDS-044",
+          "REQ-SDS-083"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_top_interleave.v",
+      "owner": "FU-RTL-ACQ-TESTS",
+      "modules": {
+        "bench_pll": [
+          "REQ-SDS-041",
+          "REQ-SDS-043",
+          "REQ-SDS-044",
+          "REQ-SDS-083"
+        ],
+        "adc_interleave": [
+          "REQ-SDS-041",
+          "REQ-SDS-043",
+          "REQ-SDS-044",
+          "REQ-SDS-083"
+        ],
+        "tb": [
+          "REQ-SDS-041",
+          "REQ-SDS-043",
+          "REQ-SDS-044",
+          "REQ-SDS-083"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_top_adc.v",
+      "owner": "FU-RTL-ACQ-TESTS",
+      "modules": {
+        "bench_pll": [
+          "REQ-SDS-039",
+          "REQ-SDS-041",
+          "REQ-SDS-042",
+          "REQ-SDS-043",
+          "REQ-SDS-083"
+        ],
+        "adc_phase_pll": [
+          "REQ-SDS-039",
+          "REQ-SDS-041",
+          "REQ-SDS-042",
+          "REQ-SDS-043",
+          "REQ-SDS-083"
+        ],
+        "tb": [
+          "REQ-SDS-039",
+          "REQ-SDS-041",
+          "REQ-SDS-042",
+          "REQ-SDS-043",
+          "REQ-SDS-083"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_precision_top.v",
+      "owner": "FU-RTL-ACQ-TESTS",
+      "modules": {
+        "bench_pll": [
+          "REQ-SDS-040",
+          "REQ-SDS-041",
+          "REQ-SDS-044"
+        ],
+        "adc_interleave": [
+          "REQ-SDS-040",
+          "REQ-SDS-041",
+          "REQ-SDS-044"
+        ],
+        "tb": [
+          "REQ-SDS-040",
+          "REQ-SDS-041",
+          "REQ-SDS-044"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_stream_top.v",
+      "owner": "FU-RTL-ACQ-TESTS",
+      "modules": {
+        "bench_pll": [
+          "REQ-SDS-041",
+          "REQ-SDS-042",
+          "REQ-SDS-043",
+          "REQ-SDS-049",
+          "REQ-SDS-052",
+          "REQ-SDS-083",
+          "REQ-SDS-186"
+        ],
+        "adc_interleave": [
+          "REQ-SDS-041",
+          "REQ-SDS-042",
+          "REQ-SDS-043",
+          "REQ-SDS-049",
+          "REQ-SDS-052",
+          "REQ-SDS-083",
+          "REQ-SDS-186"
+        ],
+        "adc_precision": [
+          "REQ-SDS-041",
+          "REQ-SDS-042",
+          "REQ-SDS-043",
+          "REQ-SDS-049",
+          "REQ-SDS-052",
+          "REQ-SDS-083",
+          "REQ-SDS-186"
+        ],
+        "tb": [
+          "REQ-SDS-041",
+          "REQ-SDS-042",
+          "REQ-SDS-043",
+          "REQ-SDS-049",
+          "REQ-SDS-052",
+          "REQ-SDS-083",
+          "REQ-SDS-186"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_burst.v",
+      "owner": "FU-RTL-ACQ-TESTS",
+      "modules": {
+        "bench_pll": [
+          "REQ-SDS-043",
+          "REQ-SDS-083"
+        ],
+        "adc_interleave": [
+          "REQ-SDS-043",
+          "REQ-SDS-083"
+        ],
+        "tb": [
+          "REQ-SDS-043",
+          "REQ-SDS-083"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_continuation.v",
+      "owner": "FU-RTL-ACQ-TESTS",
+      "modules": {
+        "bench_pll": [
+          "REQ-SDS-043"
+        ],
+        "adc_interleave": [
+          "REQ-SDS-043"
+        ],
+        "tb": [
+          "REQ-SDS-043"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_gpmc_burst.v",
+      "owner": "FU-RTL-ACQ-TESTS",
+      "modules": {
+        "bench_pll": [
+          "REQ-SDS-043",
+          "REQ-SDS-188"
+        ],
+        "adc_interleave": [
+          "REQ-SDS-043",
+          "REQ-SDS-188"
+        ],
+        "tb": [
+          "REQ-SDS-043",
+          "REQ-SDS-188"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_gpmc_read.v",
+      "owner": "FU-RTL-ACQ-TESTS",
+      "modules": {
+        "tb": [
+          "REQ-SDS-188"
+        ]
+      }
+    },
+    {
+      "path": "fpga/common/gpmc_slave.v",
+      "owner": "FU-RTL-COMMON-GPMC-SLAVE",
+      "modules": {
+        "gpmc_slave": [
+          "REQ-SDS-188"
+        ]
+      }
+    },
+    {
+      "path": "fpga/common/ddio_pair.v",
+      "owner": "FU-RTL-COMMON-DDIO-PAIR",
+      "modules": {
+        "ddio_out1": [
+          "REQ-SDS-189"
+        ],
+        "ddio_pair": [
+          "REQ-SDS-189"
+        ]
+      }
+    },
+    {
+      "path": "fpga/common/lane_in.v",
+      "owner": "FU-RTL-COMMON-LANE-IN",
+      "modules": {
+        "lane_in": [
+          "REQ-SDS-190"
+        ],
+        "lane_mon": [
+          "REQ-SDS-190"
+        ],
+        "toggle_ctr": [
+          "REQ-SDS-190"
+        ]
+      }
+    },
+    {
+      "path": "fpga/common/pll_m2.v",
+      "owner": "FU-RTL-COMMON-PLL-M2",
+      "modules": {
+        "pll_m2": [
+          "REQ-SDS-191"
+        ]
+      }
+    },
+    {
+      "path": "fpga/common/sync.v",
+      "owner": "FU-RTL-COMMON-SYNC",
+      "modules": {
+        "sync_bit": [
+          "REQ-SDS-192"
+        ],
+        "sync_pulse": [
+          "REQ-SDS-192"
+        ],
+        "sync_word": [
+          "REQ-SDS-192"
+        ],
+        "stretch3": [
+          "REQ-SDS-192"
+        ]
+      }
+    },
+    {
+      "path": "fpga/common/sim/gpmc_bfm.v",
+      "owner": "FU-RTL-COMMON-TESTS",
+      "modules": {
+        "gpmc_bfm": [
+          "REQ-SDS-188"
+        ]
+      }
+    },
+    {
+      "path": "fpga/common/sim/tb_ddio.v",
+      "owner": "FU-RTL-COMMON-TESTS",
+      "modules": {
+        "tb_ddio": [
+          "REQ-SDS-189"
+        ]
+      }
+    },
+    {
+      "path": "fpga/common/sim/tb_gpmc_slave.v",
+      "owner": "FU-RTL-COMMON-TESTS",
+      "modules": {
+        "tb_gpmc_slave": [
+          "REQ-SDS-188"
+        ]
+      }
+    },
+    {
+      "path": "fpga/common/sim/tb_lane_in.v",
+      "owner": "FU-RTL-COMMON-TESTS",
+      "modules": {
+        "tb_lane_in": [
+          "REQ-SDS-190"
+        ]
+      }
+    },
+    {
+      "path": "fpga/common/sim/tb_pll.v",
+      "owner": "FU-RTL-COMMON-TESTS",
+      "modules": {
+        "tb_pll": [
+          "REQ-SDS-191"
+        ]
+      }
+    },
+    {
+      "path": "fpga/common/sim/tb_sync.v",
+      "owner": "FU-RTL-COMMON-TESTS",
+      "modules": {
+        "tb_sync": [
+          "REQ-SDS-192"
+        ]
+      }
+    },
+    {
+      "path": "fpga/sram_bench/bench.v",
+      "owner": "FU-RTL-SRAM-BENCH-BENCH",
+      "modules": {
+        "sram_bench_top": [
+          "REQ-SDS-193"
+        ]
+      }
+    },
+    {
+      "path": "fpga/sram_bench/sim/tb.v",
+      "owner": "FU-RTL-BENCH-TESTS",
+      "modules": {
+        "bench_pll": [
+          "REQ-SDS-193"
+        ],
+        "altddio_out": [
+          "REQ-SDS-193"
+        ],
+        "tb": [
+          "REQ-SDS-193"
+        ]
+      }
+    },
+    {
+      "path": "fpga/default/adc_front.v",
+      "owner": "FU-RTL-DEFAULT-ADC-FRONT",
+      "modules": {
+        "adc_front": [
+          "REQ-SDS-194"
+        ]
+      }
+    },
+    {
+      "path": "fpga/default/drain.v",
+      "owner": "FU-RTL-DEFAULT-DRAIN",
+      "modules": {
+        "drain": [
+          "REQ-SDS-196"
+        ]
+      }
+    },
+    {
+      "path": "fpga/default/sim/tb_adc_front.v",
+      "owner": "FU-RTL-DEFAULT-TESTS",
+      "modules": {
+        "tb_adc_front": [
+          "REQ-SDS-194"
+        ]
+      }
+    },
+    {
+      "path": "fpga/default/sim/tb_drain.v",
+      "owner": "FU-RTL-DEFAULT-TESTS",
+      "modules": {
+        "tb_drain": [
+          "REQ-SDS-196"
+        ]
+      }
+    },
+    {
+      "path": "fpga/default/capture.v",
+      "owner": "FU-RTL-DEFAULT-CAPTURE",
+      "modules": {
+        "capture": [
+          "REQ-SDS-195"
+        ]
+      }
+    },
+    {
+      "path": "fpga/default/sim/tb_capture.v",
+      "owner": "FU-RTL-DEFAULT-TESTS",
+      "modules": {
+        "tb_capture": [
+          "REQ-SDS-195"
+        ]
+      }
+    },
+    {
+      "path": "fpga/default/default.v",
+      "owner": "FU-RTL-DEFAULT-DEFAULT",
+      "modules": {
+        "default_top": [
+          "REQ-SDS-060",
+          "REQ-SDS-194",
+          "REQ-SDS-195",
+          "REQ-SDS-196",
+          "REQ-SDS-197"
+        ]
+      }
+    },
+    {
+      "path": "fpga/default/sim/tb_top.v",
+      "owner": "FU-RTL-DEFAULT-TESTS",
+      "modules": {
+        "tb_top": [
+          "REQ-SDS-060",
+          "REQ-SDS-194",
+          "REQ-SDS-195",
+          "REQ-SDS-196",
+          "REQ-SDS-197"
+        ]
+      }
+    },
+    {
+      "path": "fpga/default/diag.v",
+      "owner": "FU-RTL-DEFAULT-DIAG",
+      "modules": {
+        "diag": [
+          "REQ-SDS-060",
+          "REQ-SDS-197",
+          "REQ-SDS-198"
+        ]
+      }
+    },
+    {
+      "path": "fpga/default/sim/tb_diag.v",
+      "owner": "FU-RTL-DEFAULT-TESTS",
+      "modules": {
+        "tb_diag": [
+          "REQ-SDS-060",
+          "REQ-SDS-197",
+          "REQ-SDS-198"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/sim/ddr_model.v",
+      "owner": "FU-RTL-ACQ-TESTS",
+      "modules": {
+        "altddio_out": [
+          "REQ-SDS-189"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_sram_timeslice.v",
+      "owner": "FU-RTL-ACQ-TESTS",
+      "modules": {
+        "tb": [
+          "REQ-SDS-048"
+        ]
+      }
+    }
+  ]
+}

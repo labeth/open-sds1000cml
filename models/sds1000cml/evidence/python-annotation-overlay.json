@@ -1,0 +1,18 @@
+{
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "result": "pass",
+  "files": [
+    {
+      "path": "tools/hw/adc_sram/triangle_calibrate.py",
+      "baselineSHA256": "e7b5ac94b55c0a8ab84939b14928c10bb11ff1ff24f9188e67d3c6a960e5f61e",
+      "annotatedSHA256": "1e701547aea2b5bc437f697573167238ccb9d57fe82065f00d7484641a2d2b6d",
+      "functions": 3,
+      "classes": 0,
+      "exactBaselineRecovery": true,
+      "tokenIdentity": true,
+      "astIdentity": true
+    }
+  ],
+  "linkedFunctions": 3,
+  "scope": "Only reviewed comments added; exact baseline bytes recover and both tokens and AST remain unchanged. No device script is executed."
+}

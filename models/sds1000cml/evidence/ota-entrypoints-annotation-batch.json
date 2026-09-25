@@ -1,0 +1,180 @@
+{
+  "status": "integrated",
+  "files": [
+    {
+      "path": "ota/cmd/otactl/main.go",
+      "owner": "FU-OTA-OTACTL",
+      "functions": {
+        "main": [
+          "REQ-SDS-109",
+          "REQ-SDS-110",
+          "REQ-SDS-111",
+          "REQ-SDS-112",
+          "REQ-SDS-175"
+        ],
+        "dial": [
+          "REQ-SDS-109",
+          "REQ-SDS-175"
+        ],
+        "runServe": [
+          "REQ-SDS-111",
+          "REQ-SDS-175"
+        ],
+        "runPower": [
+          "REQ-SDS-112",
+          "REQ-SDS-175"
+        ],
+        "runScpi": [
+          "REQ-SDS-175"
+        ],
+        "hostOf": [
+          "REQ-SDS-175"
+        ],
+        "runDiscover": [
+          "REQ-SDS-175"
+        ],
+        "runWatch": [
+          "REQ-SDS-175"
+        ],
+        "mustCall": [
+          "REQ-SDS-109",
+          "REQ-SDS-175"
+        ],
+        "mustRaw": [
+          "REQ-SDS-175"
+        ],
+        "printExec": [
+          "REQ-SDS-175"
+        ],
+        "printJSON": [
+          "REQ-SDS-175"
+        ],
+        "compact": [
+          "REQ-SDS-175"
+        ],
+        "progressBar": [
+          "REQ-SDS-175"
+        ],
+        "report": [
+          "REQ-SDS-175"
+        ],
+        "has": [
+          "REQ-SDS-175"
+        ],
+        "envOr": [
+          "REQ-SDS-175"
+        ],
+        "fatal": [
+          "REQ-SDS-175"
+        ],
+        "usage": [
+          "REQ-SDS-175"
+        ]
+      },
+      "types": {}
+    },
+    {
+      "path": "ota/cmd/stubapp/main.go",
+      "owner": "FU-OTA-STUBAPP",
+      "functions": {
+        "findInheritedFD": [
+          "REQ-SDS-177"
+        ],
+        "main": [
+          "REQ-SDS-177"
+        ],
+        "envOr": [
+          "REQ-SDS-177"
+        ]
+      },
+      "types": {}
+    },
+    {
+      "path": "ota/internal/buildinfo/buildinfo.go",
+      "owner": "FU-OTA-BUILDINFO",
+      "functions": {
+        "String": [
+          "REQ-SDS-178"
+        ]
+      },
+      "types": {}
+    },
+    {
+      "path": "ota/boot/doc.go",
+      "owner": "FU-OTA-BOOT",
+      "functions": {},
+      "types": {}
+    },
+    {
+      "path": "ota/boot/boot_test.go",
+      "owner": "FU-OTA-BOOT",
+      "functions": {
+        "scriptPath": [
+          "REQ-SDS-030",
+          "REQ-SDS-176"
+        ],
+        "run": [
+          "REQ-SDS-030",
+          "REQ-SDS-176"
+        ],
+        "writeStub": [
+          "REQ-SDS-030",
+          "REQ-SDS-176"
+        ],
+        "TestRespawnLoopBounded": [
+          "REQ-SDS-030",
+          "REQ-SDS-176"
+        ],
+        "TestConfirmStableSlot": [
+          "REQ-SDS-030",
+          "REQ-SDS-176"
+        ],
+        "TestAgentSelfUpdateActivatesNewSlot": [
+          "REQ-SDS-030",
+          "REQ-SDS-176"
+        ],
+        "TestCrashLoopRevertsToConfirmed": [
+          "REQ-SDS-030",
+          "REQ-SDS-176"
+        ],
+        "TestIntentMarkerIsNeutralNoRevert": [
+          "REQ-SDS-030",
+          "REQ-SDS-176"
+        ],
+        "TestCommandsFileRuns": [
+          "REQ-SDS-030"
+        ]
+      },
+      "types": {}
+    }
+  ],
+  "functions": 32,
+  "types": 0,
+  "uniqueReviewedTests": [
+    "TestRespawnLoopBounded",
+    "TestConfirmStableSlot",
+    "TestAgentSelfUpdateActivatesNewSlot",
+    "TestCrashLoopRevertsToConfirmed",
+    "TestIntentMarkerIsNeutralNoRevert",
+    "TestCommandsFileRuns"
+  ],
+  "nativeEligibleTests": [
+    "TestRespawnLoopBounded",
+    "TestConfirmStableSlot",
+    "TestAgentSelfUpdateActivatesNewSlot",
+    "TestCrashLoopRevertsToConfirmed",
+    "TestIntentMarkerIsNeutralNoRevert",
+    "TestCommandsFileRuns"
+  ],
+  "sourceSHA256": {
+    "ota/cmd/otactl/main.go": "afc591743c7da1f84e986d8ff1f09b09c6d6f84c2d4414957266e38a32595a6f",
+    "ota/cmd/stubapp/main.go": "5d4ab1310fddeb1354af790abe64babcd7c56bcb87c4f049648677e55d3514c2",
+    "ota/internal/buildinfo/buildinfo.go": "ba1537d8bdf49d88d405cf7c9fd2e23bb7a899107a3d39c8ae07b2bc5127db5e",
+    "ota/boot/doc.go": "64a3a4073614b8b5689cf41fe864af0517bc984b5b8fe0171b69f8e84dbd7c68",
+    "ota/boot/boot_test.go": "bf677f8169f479205d0f8d1c79fcbc1348e5824bfd3c17685635e6ff3816afa5",
+    "ota/boot/startup.sh": "b363e1a0e67f0605eb8f8e538719a63ee1e78e49704476c15ca67055dddb24b2",
+    "ota/boot/commands": "3aa37387d705f897a9c0fcd795020153e27cd133db6d7aa4cfeba1a663a1b097",
+    "ota/boot/agent.env.example": "dab91495665c173f7400fb1050188928b8db7c6a34d1cfc9ad28006197de76eb"
+  },
+  "scope": "OTA command and boot-anchor source review. Original bounded host boot harness plus command-package compilation; no device commands, power control, broker start, boot remount or actual fingerprint script execution. Shell sources are reviewed artifacts pending native shell inference support."
+}

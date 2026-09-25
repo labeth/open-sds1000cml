@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
 package engine
 
 import (
@@ -5,6 +6,7 @@ import (
 	"testing"
 )
 
+// TRLC-LINKS: REQ-SDS-010
 func TestPlanTdivLadder(t *testing.T) {
 	cases := []struct {
 		tdiv       float64
@@ -49,6 +51,7 @@ func TestPlanTdivLadder(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-010
 func TestPlanTdivRejectsOffLadder(t *testing.T) {
 	for _, v := range []float64{20e-9, 0, 3.3e-6, 7e-3, 100} {
 		if _, ok := PlanTdiv(v); ok {
@@ -57,6 +60,7 @@ func TestPlanTdivRejectsOffLadder(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-010
 func TestPlanTdivTolerance(t *testing.T) {
 	// Float round-trips through JSON must still hit rows.
 	if _, ok := PlanTdiv(500e-6 * (1 + 5e-7)); !ok {
@@ -64,6 +68,7 @@ func TestPlanTdivTolerance(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-010
 func TestDisplayedSdiv(t *testing.T) {
 	// Class 0x20: displayed equals the label (the 1 ns nominal sizing).
 	b, _ := PlanTdiv(5e-9)
@@ -81,6 +86,7 @@ func TestDisplayedSdiv(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-008, REQ-SDS-010
 func TestWaitBudgetClamp(t *testing.T) {
 	b, _ := PlanTdiv(1e-6) // native-fast → floors at 40 ms
 	if got := b.WaitBudgetNs(); got != 40e6 {
@@ -92,6 +98,7 @@ func TestWaitBudgetClamp(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-010
 func TestSupportedTdivsAscending(t *testing.T) {
 	td := SupportedTdivs()
 	if len(td) != 33 {

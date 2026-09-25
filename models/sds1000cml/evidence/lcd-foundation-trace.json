@@ -1,0 +1,11 @@
+{
+  "result": "pass",
+  "requirement": "REQ-SDS-021",
+  "codeEntries": 29,
+  "verification": [
+    "VER-INF-TEST-ENGFMT_TEST-3D2205"
+  ],
+  "verificationStatus": "partial",
+  "matrixSHA256": "68450ca6ccf573eed7710e92167cc18b035c4e95f2b575f8c93741a8e1bc8d15",
+  "scope": "Native trace attachment only; see lcd-foundation-review.json for bounded behavior evidence."
+}

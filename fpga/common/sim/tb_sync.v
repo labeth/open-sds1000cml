@@ -1,6 +1,8 @@
+// ENGMODEL-OWNER-UNIT: FU-RTL-COMMON-TESTS
 // tb_sync.v -- sync_pulse delivers one pulse per input pulse both ways; sync_word only ever
 // shows coherent, recent samples (counter mod 20480 -- a non-power-of-two wrap); stretch3 edges.
 `timescale 1ns/1ps
+// TRLC-LINKS: REQ-SDS-192
 module tb_sync;
     reg clk_a = 0; always #18.5 clk_a = ~clk_a;   // 27 MHz-ish
     reg clk_b = 0; always #2.5  clk_b = ~clk_b;   // 200 MHz

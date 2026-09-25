@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-WEB
 package web
 
 import (
@@ -11,6 +12,7 @@ import (
 
 // encodeBinFrame serializes a built reply to the binary wire format. It runs
 // after WithFrame returns — rep owns its data, so no lock is held here.
+// TRLC-LINKS: REQ-SDS-163
 func encodeBinFrame(rep frameReply) []byte {
 	var flags byte
 	precision := rep.FractionBits == 8 && len(rep.Q1) == len(rep.C1) && len(rep.Q2) == len(rep.C2) && len(rep.Q1) > 0
@@ -89,6 +91,7 @@ func encodeBinFrame(rep frameReply) []byte {
 // snapshots a newer frame, so delivery latency is one response write and the
 // client needs no poll timer: request-when-ready IS the backpressure, and a
 // slow client simply skips to the newest frame.
+// TRLC-LINKS: REQ-SDS-163
 func (s *Server) hFrameBin(w http.ResponseWriter, r *http.Request) {
 	if s.superseded(r) {
 		w.WriteHeader(http.StatusConflict) // 409 — a newer browser claimed the device
@@ -180,6 +183,7 @@ func (s *Server) hFrameBin(w http.ResponseWriter, r *http.Request) {
 // tick); header carries sample_s and the engine's sub-sample edge_x. No
 // measurements — the stacker computes its own statistics, and skipping the
 // meas pass keeps the raw feed cheap next to the display path.
+// TRLC-LINKS: REQ-SDS-163
 func (s *Server) rawBinMsg(since uint64) []byte {
 	off, vpc := s.vertScales()
 	var hdr frameReply

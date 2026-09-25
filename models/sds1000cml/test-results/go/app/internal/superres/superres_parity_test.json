@@ -1,0 +1,32 @@
+{
+  "source": "app/internal/superres/superres_parity_test.go",
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "scope": "Reviewed Go test outcomes; passing assertions contribute partial requirement evidence.",
+  "sourceSHA256": "1c2d720bee84bc52d9214b4288fb2f7acbfc3296c068385cafbf8576a78f4d69",
+  "logs": {
+    "test-runs/superres-reviewed.jsonl": "41e836838baf830c6c7372cad49f2b9c60a203a08470acb1dbb759cb39de09e3"
+  },
+  "tests": [
+    {
+      "name": "TestParityJS",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-141"
+      ]
+    },
+    {
+      "name": "TestParityManualGate",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-141"
+      ]
+    }
+  ],
+  "results": [
+    {
+      "requirement": "REQ-SDS-141",
+      "status": "partial",
+      "notes": "2 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    }
+  ]
+}

@@ -1,0 +1,49 @@
+{
+  "result": "pass",
+  "cases": [
+    {
+      "name": "narrow pulse leaves both midpoint quantiles at baseline",
+      "result": "pass"
+    },
+    {
+      "name": "empty mean and midpoint remain NaN",
+      "result": "pass"
+    },
+    {
+      "name": "flat manual gate failure leaves mutated locked state",
+      "result": "pass"
+    },
+    {
+      "name": "companion appearing after automatic seed remains absent",
+      "result": "pass"
+    },
+    {
+      "name": "initial clipped companion is accumulated before subsequent clip exclusion",
+      "result": "pass"
+    },
+    {
+      "name": "duplicate decoded centers count one physical occurrence twice",
+      "result": "pass"
+    },
+    {
+      "name": "zero shift interpolation leaves final raw sample unfilled",
+      "result": "pass"
+    },
+    {
+      "name": "measurement accepts two valid values across a 16-sample span",
+      "result": "pass"
+    }
+  ],
+  "scope": "Characterization of eight original-source boundary behaviors, including known input/state limitations; passing assertions do not mean these limitations are corrected.",
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "sourceSHA256": {
+    "app/internal/web/superres.js": "a9229bfb0c6cf75370005b5c68b911ee4224ba517d9d20dd824577314e94f82a",
+    "app/internal/web/superres_math.js": "14a8add8638efac2259039e5e22299b9a410a704c7c8846a662f61ca9b2308fb",
+    "app/internal/web/superres_template.js": "a5e0a12681a9f48f9284648ad13f250f1977232a9fec7d6b433eabacbd75072d",
+    "app/internal/web/superres_gate.js": "19730b6f161c9df4dbdd7881a06de7f6746df06837923e3c726e1b7d1bfb4a38",
+    "app/internal/web/superres_measure.js": "0c71d9a4a38e2aa12ea4345c894e5b63878b7b9e4ad687e4fc7a2c7ea8da40e5"
+  },
+  "helperSHA256": "4f7ab9fe39c58309c0a71950b606f1de4af8e0df7c1c9f4c10b1d96f17cada5c",
+  "runnerSHA256": "1fd13ef76e19feaf9e2adb8b7245fd0cac01ecf19fff0911bfb69dc295bbb67d",
+  "nodeVersion": "v22.20.0"
+}

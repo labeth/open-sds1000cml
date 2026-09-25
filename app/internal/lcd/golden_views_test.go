@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-LCD
 package lcd
 
 import (
@@ -16,6 +17,7 @@ import (
 // that could be environment-dependent (the device URL) is pinned in the HUD.
 
 // goldenClamp converts a generator value to an ADC code.
+// TRLC-LINKS: REQ-SDS-021
 func goldenClamp(v float64) uint8 {
 	if v < 0 {
 		v = 0
@@ -28,6 +30,7 @@ func goldenClamp(v float64) uint8 {
 
 // goldenFrame builds a render-ready dual-channel frame from two per-sample
 // generators, windowed across the whole record and centred on its middle.
+// TRLC-LINKS: REQ-SDS-021
 func goldenFrame(n int, g1, g2 func(i int) float64) *engine.Frame {
 	f := &engine.Frame{
 		C1: make([]uint8, n), C2: make([]uint8, n),
@@ -43,6 +46,7 @@ func goldenFrame(n int, g1, g2 func(i int) float64) *engine.Frame {
 
 // goldenYTFrame is the bread-and-butter Y-T fixture: a square wave on C1 with
 // a rising edge exactly at EdgeX (=n/2), and a sine on C2.
+// TRLC-LINKS: REQ-SDS-021
 func goldenYTFrame() *engine.Frame {
 	const n = 2048
 	return goldenFrame(n,
@@ -58,6 +62,7 @@ func goldenYTFrame() *engine.Frame {
 // goldenYTHUD is the matching HUD: both channels shown, distinct V/div, real
 // offsets (ground arrows off-centre), trigger level + position markers, and
 // the fixed device URL on the top bar.
+// TRLC-LINKS: REQ-SDS-021
 func goldenYTHUD() HUD {
 	h := defaultHUD()
 	h.ShowC1, h.ShowC2 = true, true
@@ -74,6 +79,7 @@ func goldenYTHUD() HUD {
 // traces, trigger level line + position pointer, per-channel ground arrows,
 // top-bar readouts (V/div, t/div, trigger state, URL) and the bottom
 // Vpp/frequency line.
+// TRLC-LINKS: REQ-SDS-021
 func TestGoldenYTDual(t *testing.T) {
 	sf := NewMemSurface()
 	Render(sf, goldenYTFrame(), goldenYTHUD(), true)
@@ -83,6 +89,7 @@ func TestGoldenYTDual(t *testing.T) {
 // goldenUARTWave synthesizes an 8N1 LSB-first UART record (idle-high, codes
 // 40/210, spb samples per bit), padded with trailing idle to length n — the
 // same shape the decode package's own tests use.
+// TRLC-LINKS: REQ-SDS-021
 func goldenUARTWave(bytes []int, spb, n int) []uint8 {
 	w := make([]uint8, 0, n)
 	push := func(bit, k int) {
@@ -113,6 +120,7 @@ func goldenUARTWave(bytes []int, spb, n int) []uint8 {
 // drawDecode runs the real internal/decode UART decoder on the fixture wave
 // ("OK!" at an explicit baud), so the golden pins the span bars, byte text and
 // the "UART  3 bytes" label produced by real decode spans.
+// TRLC-LINKS: REQ-SDS-021, REQ-SDS-018
 func TestGoldenYTDecodeUART(t *testing.T) {
 	const n, spb = 1024, 16
 	const sampleS = 1e-6
@@ -143,6 +151,7 @@ func TestGoldenYTDecodeUART(t *testing.T) {
 // on exact FFT bins (205/614/1024 cycles over the 4096-sample record) so the
 // spectrum has clean local maxima above the -40 dBc mark floor, plus the
 // per-channel peak-frequency labels and the band label.
+// TRLC-LINKS: REQ-SDS-021, REQ-SDS-070
 func TestGoldenFFTPeaks(t *testing.T) {
 	const n = 4096
 	const sampleS = 50e-9 // Nyquist 10 MHz: tones land at ~1/3/5 MHz
@@ -164,6 +173,7 @@ func TestGoldenFFTPeaks(t *testing.T) {
 // TestGoldenXY pins the X-Y (Lissajous) view: C1 and C2 at a 1:2 frequency
 // ratio trace a figure-eight, plus the "X:C1  Y:C2" hint and the X-Y top-bar
 // label.
+// TRLC-LINKS: REQ-SDS-021
 func TestGoldenXY(t *testing.T) {
 	const n = 2048
 	f := goldenFrame(n,
@@ -179,6 +189,7 @@ func TestGoldenXY(t *testing.T) {
 // TestGoldenMeasurePanel pins the MEASURE overlay with BOTH channel boxes: the
 // square/sine fixture gives every voltage row plus the timing rows (freq,
 // period, duty) deterministic values. Seq=0 keeps measFor cache-free.
+// TRLC-LINKS: REQ-SDS-021
 func TestGoldenMeasurePanel(t *testing.T) {
 	h := goldenYTHUD()
 	h.ShowMeas = true
@@ -190,6 +201,7 @@ func TestGoldenMeasurePanel(t *testing.T) {
 // TestGoldenEnvelope pins the envelope-band rendering (IsEnv + Env arrays):
 // an amplitude-modulated C1 band around centre and a thin C2 band near the
 // bottom rail, so both fills and their shapes are pinned.
+// TRLC-LINKS: REQ-SDS-021
 func TestGoldenEnvelope(t *testing.T) {
 	const cols = 800
 	f := &engine.Frame{
@@ -220,6 +232,7 @@ func TestGoldenEnvelope(t *testing.T) {
 // (fc = 30 kHz) sampled at 25 log-spaced points over 1 kHz..1 MHz — decade
 // gridlines, dB/phase axes, both traces with point dots, and the point count.
 // drawBode renders purely from the HUD arrays; no frame is needed.
+// TRLC-LINKS: REQ-SDS-021
 func TestGoldenBode(t *testing.T) {
 	h := defaultHUD()
 	h.ViewMode = 3
@@ -240,6 +253,7 @@ func TestGoldenBode(t *testing.T) {
 // the real Push path, then blitted with the frequency axis, dB key and
 // new/old arrows. The waterfall content depends only on the pushed frames;
 // the untouched region below the staircase pins the scroll behaviour too.
+// TRLC-LINKS: REQ-SDS-021, REQ-SDS-068
 func TestGoldenSpectrogram(t *testing.T) {
 	const n = 4096
 	const dt = 2e-9 // raw Nyquist 250 MHz; stride 2 → axis Nyquist 125 MHz
@@ -261,6 +275,7 @@ func TestGoldenSpectrogram(t *testing.T) {
 // TestGoldenCursorsTime pins the time-cursor overlay: two dashed vertical
 // cursors (active A highlighted) over the Y-T trace plus the dt / 1/dt
 // readout box.
+// TRLC-LINKS: REQ-SDS-021
 func TestGoldenCursorsTime(t *testing.T) {
 	h := goldenYTHUD()
 	h.CurOn, h.CurType, h.CurSel = true, 0, 0
@@ -272,6 +287,7 @@ func TestGoldenCursorsTime(t *testing.T) {
 
 // TestGoldenCursorsVolts pins the volts-cursor variant: two dashed horizontal
 // cursors (active B highlighted) and the per-channel ΔV readout.
+// TRLC-LINKS: REQ-SDS-021
 func TestGoldenCursorsVolts(t *testing.T) {
 	h := goldenYTHUD()
 	h.CurOn, h.CurType, h.CurSel = true, 1, 1
@@ -284,6 +300,7 @@ func TestGoldenCursorsVolts(t *testing.T) {
 // TestGoldenMenu pins the softkey menu overlay over a live trace: the title
 // band, five slots aligned to the physical F1..F5 buttons, and the filled
 // inverted highlight on the selected slot.
+// TRLC-LINKS: REQ-SDS-021
 func TestGoldenMenu(t *testing.T) {
 	h := goldenYTHUD()
 	h.MenuOpen = true

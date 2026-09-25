@@ -1,0 +1,344 @@
+{
+  "status": "integrated",
+  "files": [
+    {
+      "path": "app/internal/engine/serial_registry.go",
+      "owner": "FU-APP-ENGINE",
+      "functions": {
+        "RegisterSerialDecoder": [
+          "REQ-SDS-013"
+        ],
+        "SerialDecoderList": [
+          "REQ-SDS-013"
+        ],
+        "serialDecoder": [
+          "REQ-SDS-013"
+        ],
+        "init": [
+          "REQ-SDS-013"
+        ]
+      },
+      "types": {
+        "SerialDecoder": [
+          "REQ-SDS-013"
+        ]
+      }
+    },
+    {
+      "path": "app/internal/engine/serialtrig.go",
+      "owner": "FU-APP-ENGINE",
+      "functions": {
+        "SerialParams.empty": [
+          "REQ-SDS-013"
+        ],
+        "Engine.SetSerialParams": [
+          "REQ-SDS-013"
+        ],
+        "Engine.SetSerialMode": [
+          "REQ-SDS-013"
+        ],
+        "Engine.serialQualify": [
+          "REQ-SDS-013"
+        ],
+        "matchI2C": [
+          "REQ-SDS-013"
+        ],
+        "matchBytes": [
+          "REQ-SDS-013"
+        ],
+        "indexSeq": [
+          "REQ-SDS-013"
+        ]
+      },
+      "types": {
+        "SerialParams": [
+          "REQ-SDS-013"
+        ],
+        "serialState": [
+          "REQ-SDS-013"
+        ]
+      }
+    },
+    {
+      "path": "app/internal/engine/serialtrig_test.go",
+      "owner": "FU-APP-ENGINE",
+      "functions": {
+        "uartWave": [
+          "REQ-SDS-013"
+        ],
+        "spiWave": [
+          "REQ-SDS-013"
+        ],
+        "i2cWave": [
+          "REQ-SDS-013"
+        ],
+        "TestSerialQualifyUART": [
+          "REQ-SDS-013"
+        ],
+        "TestSerialQualifySPI": [
+          "REQ-SDS-013"
+        ],
+        "TestSerialQualifyI2C": [
+          "REQ-SDS-013"
+        ],
+        "TestSerialQualifyPassAndReject": [
+          "REQ-SDS-013"
+        ],
+        "TestSetSerialModeResetsCount": [
+          "REQ-SDS-013"
+        ],
+        "TestMatchBytesUnit": [
+          "REQ-SDS-013"
+        ],
+        "TestIndexSeqUnit": [
+          "REQ-SDS-013"
+        ],
+        "TestSerialRegistryUnknownFailsClosed": [
+          "REQ-SDS-013"
+        ],
+        "TestSerialRegistryCapabilities": [
+          "REQ-SDS-013"
+        ]
+      },
+      "types": {}
+    },
+    {
+      "path": "app/internal/engine/serialtrig_edge_test.go",
+      "owner": "FU-APP-ENGINE",
+      "functions": {
+        "TestMatchI2CEdges": [
+          "REQ-SDS-013"
+        ],
+        "TestSerialTriggerComposesWithMask": [
+          "REQ-SDS-013",
+          "REQ-SDS-014"
+        ]
+      },
+      "types": {}
+    },
+    {
+      "path": "app/internal/engine/serialtrig_fuzz_test.go",
+      "owner": "FU-APP-ENGINE",
+      "functions": {
+        "TestSerialQualifyFuzz": [
+          "REQ-SDS-013"
+        ]
+      },
+      "types": {}
+    },
+    {
+      "path": "app/internal/engine/zonemask.go",
+      "owner": "FU-APP-ENGINE",
+      "functions": {
+        "Engine.SetZones": [
+          "REQ-SDS-014"
+        ],
+        "Engine.SetZoneMode": [
+          "REQ-SDS-014"
+        ],
+        "Engine.SetMask": [
+          "REQ-SDS-014"
+        ],
+        "Engine.SetMaskMode": [
+          "REQ-SDS-014"
+        ],
+        "Engine.ClearMaskFails": [
+          "REQ-SDS-014"
+        ],
+        "Engine.MaskFails": [
+          "REQ-SDS-014"
+        ],
+        "Engine.Zones": [
+          "REQ-SDS-014"
+        ],
+        "Engine.MaskEnvelope": [
+          "REQ-SDS-014"
+        ],
+        "Engine.zoneMaskUncomparable": [
+          "REQ-SDS-014"
+        ],
+        "Engine.zonesQualify": [
+          "REQ-SDS-014"
+        ],
+        "Engine.maskEval": [
+          "REQ-SDS-014"
+        ],
+        "BuildMaskFromEnvelope": [
+          "REQ-SDS-014"
+        ]
+      },
+      "types": {
+        "Zone": [
+          "REQ-SDS-014"
+        ],
+        "Mask": [
+          "REQ-SDS-014"
+        ],
+        "MaskFail": [
+          "REQ-SDS-014"
+        ],
+        "zoneMaskState": [
+          "REQ-SDS-014"
+        ]
+      }
+    },
+    {
+      "path": "app/internal/engine/zonemask_test.go",
+      "owner": "FU-APP-ENGINE",
+      "functions": {
+        "zmFrame": [
+          "REQ-SDS-014"
+        ],
+        "TestZonesQualify": [
+          "REQ-SDS-014"
+        ],
+        "TestMaskEvalAndRing": [
+          "REQ-SDS-014"
+        ],
+        "TestBuildMaskFromEnvelope": [
+          "REQ-SDS-014"
+        ]
+      },
+      "types": {}
+    },
+    {
+      "path": "app/internal/engine/zonemask_policy_test.go",
+      "owner": "FU-APP-ENGINE",
+      "functions": {
+        "TestZoneMaskPublishPolicy": [
+          "REQ-SDS-014"
+        ],
+        "TestMaskGeometryFuzz": [
+          "REQ-SDS-014"
+        ],
+        "TestZoneMaskEnvRollCounted": [
+          "REQ-SDS-014"
+        ],
+        "TestMaskZeroTestableColumnsSkips": [
+          "REQ-SDS-014"
+        ],
+        "TestTrigPosFracNaNGuard": [
+          "REQ-SDS-014"
+        ],
+        "TestSingleShotWaitsForZoneQualify": [
+          "REQ-SDS-014"
+        ]
+      },
+      "types": {}
+    },
+    {
+      "path": "app/internal/engine/zonemask_breaker_test.go",
+      "owner": "FU-APP-ENGINE",
+      "functions": {
+        "zmShapes": [
+          "REQ-SDS-014"
+        ],
+        "zmFamilies": [
+          "REQ-SDS-014"
+        ],
+        "zmGen": [
+          "REQ-SDS-014"
+        ],
+        "sign": [
+          "REQ-SDS-014"
+        ],
+        "TestZoneMaskBreaker": [
+          "REQ-SDS-014"
+        ]
+      },
+      "types": {
+        "zmFamily": [
+          "REQ-SDS-014"
+        ]
+      }
+    },
+    {
+      "path": "app/internal/engine/zonemask_breaker2_test.go",
+      "owner": "FU-APP-ENGINE",
+      "functions": {
+        "zb2Families": [
+          "REQ-SDS-014"
+        ],
+        "zb2Frame": [
+          "REQ-SDS-014"
+        ],
+        "zoneRefState": [
+          "REQ-SDS-014"
+        ],
+        "TestZoneBreakerDifferential": [
+          "REQ-SDS-014"
+        ]
+      },
+      "types": {
+        "zb2Family": [
+          "REQ-SDS-014"
+        ]
+      }
+    }
+  ],
+  "functions": 57,
+  "types": 9,
+  "uniqueReviewedTests": [
+    "TestBuildMaskFromEnvelope",
+    "TestIndexSeqUnit",
+    "TestMaskEvalAndRing",
+    "TestMaskGeometryFuzz",
+    "TestMaskZeroTestableColumnsSkips",
+    "TestMatchBytesUnit",
+    "TestMatchI2CEdges",
+    "TestSerialQualifyFuzz",
+    "TestSerialQualifyI2C",
+    "TestSerialQualifyPassAndReject",
+    "TestSerialQualifySPI",
+    "TestSerialQualifyUART",
+    "TestSerialRegistryCapabilities",
+    "TestSerialRegistryUnknownFailsClosed",
+    "TestSerialTriggerComposesWithMask",
+    "TestSetSerialModeResetsCount",
+    "TestSingleShotWaitsForZoneQualify",
+    "TestTrigPosFracNaNGuard",
+    "TestZoneBreakerDifferential",
+    "TestZoneMaskBreaker",
+    "TestZoneMaskEnvRollCounted",
+    "TestZoneMaskPublishPolicy",
+    "TestZonesQualify"
+  ],
+  "nativeEligibleTests": [
+    "TestBuildMaskFromEnvelope",
+    "TestIndexSeqUnit",
+    "TestMaskEvalAndRing",
+    "TestMaskGeometryFuzz",
+    "TestMaskZeroTestableColumnsSkips",
+    "TestMatchBytesUnit",
+    "TestMatchI2CEdges",
+    "TestSerialQualifyFuzz",
+    "TestSerialQualifyI2C",
+    "TestSerialQualifyPassAndReject",
+    "TestSerialQualifySPI",
+    "TestSerialQualifyUART",
+    "TestSerialRegistryCapabilities",
+    "TestSerialRegistryUnknownFailsClosed",
+    "TestSerialTriggerComposesWithMask",
+    "TestSetSerialModeResetsCount",
+    "TestSingleShotWaitsForZoneQualify",
+    "TestTrigPosFracNaNGuard",
+    "TestZoneBreakerDifferential",
+    "TestZoneMaskBreaker",
+    "TestZoneMaskEnvRollCounted",
+    "TestZoneMaskPublishPolicy",
+    "TestZonesQualify"
+  ],
+  "sourceSHA256": {
+    "app/internal/engine/serial_registry.go": "0f10170c89532b630724a96e8749b5914f37e222e48a1bcd05627820f7cf8010",
+    "app/internal/engine/serialtrig.go": "9b08b17194fe866dfb99a6036ba9fb63c6aa545d12e63c1708b528871f7d3b3b",
+    "app/internal/engine/serialtrig_test.go": "0563ab59f6199523d9665bef53fd2fe769cd2518d4b1ed861dad4b3484f8d1d5",
+    "app/internal/engine/serialtrig_edge_test.go": "bf31fd427815730a3794c45e6448154bca9801c1b9735dd8bf7a963a96b0c228",
+    "app/internal/engine/serialtrig_fuzz_test.go": "d5e5591ef3a3afd2bf20e1ace6f165fcdb33e9db705c9d9288cd97d026bcfad5",
+    "app/internal/engine/zonemask.go": "dbb8003d52fee119eb1e9c1595ea0d2b1c628376c53f7e0f22a4b4c69e1183a1",
+    "app/internal/engine/zonemask_test.go": "733953b9348d8b768458f1441465335c83cde740a0ec979e05a9d78afdbc3162",
+    "app/internal/engine/zonemask_policy_test.go": "bddeaedcab95f1bd5f1882cf2e7e9495f2aeb1e8a69fe8b50bb3c7ef89de1d0b",
+    "app/internal/engine/zonemask_breaker_test.go": "3f6cd7ca7da52d4438635b78451d2f306ccebc096da08f1aeed769e7d8cd61e9",
+    "app/internal/engine/zonemask_breaker2_test.go": "bb9046e85345a3b283bc0908e4c9f1349640a3d603aa6fbdf7e36ddf9adbf744"
+  },
+  "scope": "Reviewed serial registry/matching and zone/mask implementation plus original tests. Host evidence only; source-review limitations remain applicable."
+}

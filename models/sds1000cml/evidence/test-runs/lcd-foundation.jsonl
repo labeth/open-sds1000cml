@@ -1,0 +1,8 @@
+{"Time":"2026-09-23T07:43:59.538217787+02:00","Action":"start","Package":"open-sds/app/internal/lcd"}
+{"Time":"2026-09-23T07:43:59.549373849+02:00","Action":"run","Package":"open-sds/app/internal/lcd","Test":"TestSiScaleNoScientific"}
+{"Time":"2026-09-23T07:43:59.549421731+02:00","Action":"output","Package":"open-sds/app/internal/lcd","Test":"TestSiScaleNoScientific","Output":"=== RUN   TestSiScaleNoScientific\n"}
+{"Time":"2026-09-23T07:43:59.549487819+02:00","Action":"output","Package":"open-sds/app/internal/lcd","Test":"TestSiScaleNoScientific","Output":"--- PASS: TestSiScaleNoScientific (0.00s)\n"}
+{"Time":"2026-09-23T07:43:59.549519947+02:00","Action":"pass","Package":"open-sds/app/internal/lcd","Test":"TestSiScaleNoScientific","Elapsed":0}
+{"Time":"2026-09-23T07:43:59.549763607+02:00","Action":"output","Package":"open-sds/app/internal/lcd","Output":"PASS\n"}
+{"Time":"2026-09-23T07:44:00.551363956+02:00","Action":"output","Package":"open-sds/app/internal/lcd","Output":"ok  \topen-sds/app/internal/lcd\t1.013s\n"}
+{"Time":"2026-09-23T07:44:00.551383947+02:00","Action":"pass","Package":"open-sds/app/internal/lcd","Elapsed":1.013}

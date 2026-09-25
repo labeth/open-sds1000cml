@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-WEB-BODE
 // Bode / Frequency-Response-Analysis plot renderer. The engine accumulates the
 // (frequency, gain_dB, phase_deg) points as an external source sweeps; this
 // draws them as a classic Bode plot — magnitude (dB) on top, phase (deg) below,
@@ -5,6 +6,7 @@
 // points come from /api/bode. Shared helpers are exported for node tests.
 
 // bodeNiceRange returns [lo, hi] padded to round numbers that bracket the data.
+// TRLC-LINKS: REQ-SDS-125
 function bodeNiceRange(vals, fallbackLo, fallbackHi, step) {
   if (!vals.length) return [fallbackLo, fallbackHi];
   let lo = Infinity, hi = -Infinity;
@@ -17,6 +19,7 @@ function bodeNiceRange(vals, fallbackLo, fallbackHi, step) {
 }
 
 // bodeLogTicks returns the decade + 1-2-5 minor tick frequencies within [f0,f1].
+// TRLC-LINKS: REQ-SDS-125
 function bodeLogTicks(f0, f1) {
   const ticks = [];
   if (!(f0 > 0) || !(f1 > f0)) return ticks;
@@ -30,6 +33,7 @@ function bodeLogTicks(f0, f1) {
   return ticks;
 }
 
+// TRLC-LINKS: REQ-SDS-125
 function bodeFmtHz(f) {
   if (f >= 1e6) return (f / 1e6).toPrecision(3).replace(/\.?0+$/, "") + "M";
   if (f >= 1e3) return (f / 1e3).toPrecision(3).replace(/\.?0+$/, "") + "k";
@@ -39,6 +43,7 @@ function bodeFmtHz(f) {
 // bodeDraw renders the plot onto a 2D context sized w×h. `pts` = {freq, gain_db,
 // phase_deg} parallel arrays (ascending freq). colors: {grid, axis, mag, phase,
 // text}. Splits the height: top ~55% magnitude, bottom ~45% phase.
+// TRLC-LINKS: REQ-SDS-125
 function bodeDraw(g, w, h, pts, colors) {
   const C = colors || {};
   const cGrid = C.grid || "#243", cAxis = C.axis || "#456", cMag = C.mag || "#f5d90a", cPh = C.phase || "#35c8e8", cText = C.text || "#9ab";
@@ -63,11 +68,14 @@ function bodeDraw(g, w, h, pts, colors) {
   const f0 = pts.freq[0], f1 = pts.freq[n - 1];
   const lf0 = Math.log10(f0 <= 0 ? 1 : f0), lf1 = Math.log10(f1 <= f0 ? f0 * 10 : f1);
   const span = lf1 - lf0 || 1;
+  // TRLC-LINKS: REQ-SDS-125
   const xOf = (f) => plotL + (Math.log10(f) - lf0) / span * plotW;
 
   const [gLo, gHi] = bodeNiceRange(Array.from(pts.gain_db), -20, 20, 10);
   const [pLo, pHi] = bodeNiceRange(Array.from(pts.phase_deg), -180, 180, 45);
+  // TRLC-LINKS: REQ-SDS-125
   const magYOf = (db) => padT + (gHi - db) / (gHi - gLo || 1) * magH;
+  // TRLC-LINKS: REQ-SDS-125
   const phYOf = (d) => phY0 + (pHi - d) / (pHi - pLo || 1) * phH;
 
   // frequency gridlines (shared by both panels)

@@ -1,0 +1,29 @@
+// Temporary-file characterization of failed-commit retention and lazy eviction.
+func TestModelReviewAgentUploadBoundaries(t *testing.T) {
+	a := testAgent(t)
+	root := t.TempDir()
+	for i := 0; i < 8; i++ {
+		id, err := a.newUpload(root+"/out.bin", 1, "", 0o600)
+		if err != nil { t.Fatal(err) }
+		if _, err := a.writeUpload(id, 0, []byte("x")); err != nil { t.Fatal(err) }
+		if _, _, err := a.commitUpload(id); err == nil || !strings.Contains(err.Error(), "sha256 required") {
+			t.Fatalf("expected missing-hash refusal: %v", err)
+		}
+		s, err := a.getUpload(id)
+		if err != nil || s.f != nil { t.Fatalf("failed session not retained closed: %v", err) }
+	}
+	if len(a.ups) != 8 { t.Fatalf("retained sessions: %d", len(a.ups)) }
+	if _, err := a.newUpload(root+"/created-before-cap/out.bin", 0, "", 0o600); err == nil || !strings.Contains(err.Error(), "too many") {
+		t.Fatalf("expected capacity rejection: %v", err)
+	}
+	if info, err := os.Stat(root+"/created-before-cap"); err != nil || !info.IsDir() {
+		t.Fatalf("expected directory creation before capacity check: %v", err)
+	}
+	// Advance each session's observed age without waiting or changing the clock.
+	for _, s := range a.ups { s.created = s.created.Add(-11 * 60 * 1000000000) }
+	id, err := a.newUpload(root+"/recovered.bin", 0, "", 0o600)
+	if err != nil { t.Fatal(err) }
+	defer a.ups[id].abort()
+	if len(a.ups) != 1 { t.Fatalf("expected lazy eviction: %d sessions", len(a.ups)) }
+	t.Log("eight failed commits exhaust capacity; rejected start creates directory; next start evicts sessions older than ten minutes")
+}

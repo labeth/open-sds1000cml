@@ -1,0 +1,28 @@
+{
+  "status": "integrated-with-explicit-verification-limits",
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "completeReads": [
+    "fpga/acq_sram/sim/ddr_model.v",
+    "fpga/acq_sram/sim/tb_sram_timeslice.v"
+  ],
+  "reviewedLines": 110,
+  "sourceSHA256": {
+    "fpga/acq_sram/sim/ddr_model.v": "ace57d159f0b1b9edd4e9c82b1496fab3b79b7c056b9aaa2da66698e65d164f2",
+    "fpga/acq_sram/sim/tb_sram_timeslice.v": "fa5b774dd5d3b720a4f7b72c68844326d9835c7db124756606187f86f9f072a7"
+  },
+  "modulesByFile": {
+    "fpga/acq_sram/sim/ddr_model.v": [
+      "altddio_out"
+    ],
+    "fpga/acq_sram/sim/tb_sram_timeslice.v": [
+      "tb"
+    ]
+  },
+  "findings": [
+    "DDR support is a scalar altddio_out behavioral stand-in: samples both halves at positive edge, emits saved low half at negative edge, honors asynchronous clear/clock enable/output enable. Width parameter does not widen ports; aset/sclr/sset/power_up_high are not modeled. Do not describe it as a complete vendor primitive implementation.",
+    "Scheduling experiment drives synthesizable ingress storage and actual transport but uses a testbench command scheduler and ideal pipelined SRAM. AW19,BATCH5120,FIFO4608,16rounds,sourceevery128cycles and round5 host stall are defaults. Checks queued markers, every write address/value, recall sequence, excursion clocks and final source drain. It does not validate the production hardware scheduler.",
+    "Scheduling bench name tb collides with other source files; native result attachment must be checked against the exact source path and requirement links. No new execution credit is recorded in this review."
+  ],
+  "scope": "Both final RTL sources have reviewed module links. Original full-geometry scheduling experiment passes; scalar DDR stand-in remains bounded simulation support. Complete RTL link coverage is not full HDL elaboration, physical qualification or overall model completion.",
+  "executionEvidence": "timeslice-experiment-test-run.json"
+}

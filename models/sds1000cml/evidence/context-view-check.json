@@ -1,0 +1,15 @@
+{
+  "result": "pass",
+  "security": {
+    "nodes": 14,
+    "memberships": 13,
+    "sha256": "421dfcb8de10030ac274dc65d48867eae14b80bda07a568246ca9909ad57a88e"
+  },
+  "browser": {
+    "nodes": 220,
+    "relationships": 481,
+    "reviewedCalls": 5,
+    "sha256": "951ff665e37db3dffc2f50b892ef11bf1731411377857e1728946d068dc02c7d"
+  },
+  "scope": "Source-checked graph projection and membership consistency only; no browser execution, authentication, enforcement, complete threat assessment or device qualification."
+}

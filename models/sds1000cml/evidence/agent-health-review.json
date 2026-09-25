@@ -1,0 +1,17 @@
+{
+  "scope": "Complete source/test review with REQ-SDS-105 annotations and selected-source integration.",
+  "sourceSHA256": {
+    "ota/internal/agent/health.go": "653c559345cdd6f107dc384806d781249afd0a787f08bac2c31b71ad8349fb14",
+    "ota/internal/agent/health_test.go": "644f9d188fb45d5bb21522daa37a38194fad808fd3fb2d466ff6411f3a1d1d80"
+  },
+  "findings": [
+    "Six production functions and two types track file mtime/size and up to 256 bytes of content under a mutex.",
+    "HealthyOnce records observed file change, not parsing or validating coherent frame count.",
+    "Token removal/read errors are ignored; an existing token that cannot be removed or a stat-success/read-failure path can still affect the signature.",
+    "Monotonic observation time drives grace and staleness; changes beyond the sampled prefix can be missed when size/mtime do not change.",
+    "Confirmed wire unit mismatch: SinceChange is time.Duration; one millisecond serializes as 1000000 under since_change_ms (nanoseconds). The status method rounds the duration to millisecond precision but does not change its JSON unit.",
+    "Three existing tests use temporary files and do not test all I/O errors or device liveness."
+  ],
+  "testLog": "test-runs/agent-health.jsonl",
+  "characterization": "agent-health-characterization.json"
+}

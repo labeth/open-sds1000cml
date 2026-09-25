@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-FRAMES
 package frames
 
 import (
@@ -10,12 +11,14 @@ import (
 
 // tickSource publishes a fresh frame with an advancing Seq each time `fresh`
 // is armed; otherwise it re-presents the last frame as stale.
+// TRLC-LINKS: REQ-SDS-020
 type tickSource struct {
 	seq   atomic.Uint64
 	fresh atomic.Bool
 	f     engine.Frame
 }
 
+// TRLC-LINKS: REQ-SDS-020
 func (s *tickSource) Consume() (*engine.Frame, bool) {
 	if !s.fresh.Swap(false) {
 		return &s.f, false
@@ -27,6 +30,7 @@ func (s *tickSource) Consume() (*engine.Frame, bool) {
 	return &s.f, true
 }
 
+// TRLC-LINKS: REQ-SDS-020
 func TestWaitNextWakesOnPublish(t *testing.T) {
 	src := &tickSource{}
 	fo := New()
@@ -53,6 +57,7 @@ func TestWaitNextWakesOnPublish(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-020
 func TestWaitNextTimesOutIdle(t *testing.T) {
 	src := &tickSource{}
 	fo := New()
@@ -74,6 +79,7 @@ func TestWaitNextTimesOutIdle(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-020
 func TestWaitNextConcurrentWithReaders(t *testing.T) {
 	src := &tickSource{}
 	fo := New()
@@ -102,6 +108,7 @@ func TestWaitNextConcurrentWithReaders(t *testing.T) {
 	<-done
 }
 
+// TRLC-LINKS: REQ-SDS-020
 func TestPrecisionCopyOwnsStorage(t *testing.T) {
 	src := &engine.Frame{Valid: 1, C1: []byte{100}, C2: []byte{101}, Q1: []uint16{25601}, Q2: []uint16{25855}}
 	var dst engine.Frame

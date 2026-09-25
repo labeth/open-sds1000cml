@@ -1,0 +1,22 @@
+{
+  "result": "pass",
+  "requirement": "REQ-SDS-018",
+  "nativeSummaries": 10,
+  "tests": [
+    "TestBreakArinc429",
+    "TestBreakCanfd",
+    "TestBreakFlexray",
+    "TestBreakI2c",
+    "TestBreakManchester",
+    "TestBreakMil1553",
+    "TestBreakSent",
+    "TestBreakSpi",
+    "TestBreakSpiSamplingCadence",
+    "TestBreakUartRingyEdges",
+    "TestBreakUart",
+    "TestBreakUsbls"
+  ],
+  "status": "partial",
+  "publicationSHA256": "a1fe2dc41e3aa6f89044fcbba84957059973b24129e36b99dbe1d60e92dc8e99",
+  "scope": "Twelve original breaker outcomes published as partial verification; test source excluded from implementation trace. Two disabled USB assertion failures remain separate characterization evidence."
+}

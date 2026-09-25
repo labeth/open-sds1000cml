@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-DIAG
 package diag
 
 import (
@@ -16,6 +17,7 @@ import (
 // a pipelined SyncBurst part with no clock can never present a new word. The
 // emitter is hardware-budgeted: an edge exists only because a keyed arm loaded a
 // finite count, and the whole configuration has a ceiling no register write raises.
+// TRLC-LINKS: REQ-SDS-151
 type CrankOptions struct {
 	Ball  string `json:"ball"`  // "f2" | "j2" | "d1" | "none" (none = the sham arm)
 	NEdge int    `json:"nedge"` // 0..1023
@@ -57,6 +59,7 @@ type CrankOptions struct {
 const cs3Wedge uint16 = 0x08
 
 // CrankLane is one monitored signal's sticky state over the arm window.
+// TRLC-LINKS: REQ-SDS-151
 type CrankLane struct {
 	Idx   int  `json:"idx"`
 	Level int  `json:"level"`
@@ -66,6 +69,7 @@ type CrankLane struct {
 }
 
 // CrankResult is one rung.
+// TRLC-LINKS: REQ-SDS-151
 type CrankResult struct {
 	Options   CrankOptions `json:"options"`
 	Preflight []string     `json:"preflight"` // gate name = readback, in order
@@ -108,6 +112,7 @@ const srclkKey = 0x00a5
 // SramCrank runs one rung. It never calls the register restore on an abort: the
 // restore re-arms the acquisition engine, and after an abort the world is rebuilt
 // by tools/hw/coldstart.sh, not by a register replay.
+// TRLC-LINKS: REQ-SDS-151
 func (d *Diag) SramCrank(o CrankOptions) (*CrankResult, error) {
 	const crank = 2 // SRCLK_CTRL.*_SRC: 0 LEGACY, 1 ZERO, 2 CRANK
 	src := 0

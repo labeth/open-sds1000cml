@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-PANEL
 package panel
 
 import (
@@ -12,6 +13,7 @@ import (
 // Run is the panel event loop: SIGIO (knobs + buttons, rate-capped ~150 Hz)
 // plus the MANDATORY 40 ms re-sync tick (buttons only — a timer-driven read
 // lands mid-detent and misreads quadrature). Blocks; run as a goroutine.
+// TRLC-LINKS: REQ-SDS-135
 func (c *Controller) Run(stop <-chan struct{}) {
 	// Push the qualifier shadows to the engine once so the pgTrigQ page and the
 	// engine agree from boot (inert until a non-Edge trigger type is selected).
@@ -81,6 +83,7 @@ func (c *Controller) Run(stop <-chan struct{}) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-135
 func armSIGIO(fd int) error {
 	if _, _, errno := syscall.Syscall(syscall.SYS_FCNTL, uintptr(fd), syscall.F_SETOWN, uintptr(syscall.Getpid())); errno != 0 {
 		return errno
@@ -97,6 +100,7 @@ func armSIGIO(fd int) error {
 
 // decode processes one matrix snapshot: button 1→0 edges always; knob
 // quadrature only on interrupt-aligned reads (spec 08 §1/§3).
+// TRLC-LINKS: REQ-SDS-135
 func (c *Controller) decode(m [5]uint16, knobsOn bool) {
 	if !c.havePrev {
 		c.prev, c.havePrev = m, true
@@ -116,6 +120,7 @@ func (c *Controller) decode(m [5]uint16, knobsOn bool) {
 	c.prev = m
 }
 
+// TRLC-LINKS: REQ-SDS-135
 func (c *Controller) button(code int) {
 	// While an autoset sweep runs, ignore everything except AUTO (which cancels)
 	// — this both gives a clean "busy" UX and avoids racing its scale changes.
@@ -170,6 +175,7 @@ func (c *Controller) button(code int) {
 // resync refreshes the knob shadows from authoritative state before a step,
 // so a step lands relative to whatever the web UI / SCPI last set — not a
 // stale panel-local value (which would snap the setting on the first click).
+// TRLC-LINKS: REQ-SDS-135
 func (c *Controller) resync() {
 	// Autoset owns the shadows while it sweeps (it writes them under mu on its own
 	// goroutine). Skip here so the injected-knob path can't race it either.
@@ -198,6 +204,7 @@ func (c *Controller) resync() {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-135
 func absf(x float64) float64 {
 	if x < 0 {
 		return -x
@@ -207,6 +214,7 @@ func absf(x float64) float64 {
 
 // knob services AT MOST ONE knob per event, walking the fixed priority order
 // (the cross-coupling fix). Gate: 0x69 == 0 means a plain button interrupt.
+// TRLC-LINKS: REQ-SDS-135
 func (c *Controller) knob(m [5]uint16) {
 	raw := m[4]
 	if raw == 0 {
@@ -242,6 +250,7 @@ func (c *Controller) knob(m [5]uint16) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-135
 func (c *Controller) dispatch(name string, dir, steps int) {
 	c.mu.Lock()
 	busy := c.autosetBusy
@@ -274,10 +283,9 @@ func (c *Controller) dispatch(name string, dir, steps int) {
 		if c.fe == nil {
 			return // no analog front end: offset knob claim-and-ignore
 		}
-		// Offset step is 20 DAC codes/accel-step. K = 50/VDIV is codes/V for the
-		// current detent (spec 06 §5.2), so stepping the input-referred volts by
-		// 20/K moves a constant 20 DAC codes (0.4 division) on every range —
-		// re-derived to a code by the front end's per-tier offset law.
+		// Offset step is 20 DAC codes/accel-step. The fixed 100 codes/V
+		// slope makes each step 0.2 input-referred volts; displayed divisions
+		// depend on the active V/div. Positive steps raise the trace.
 		v := c.fe.OffsetReqV(ch) + float64(dir*steps)*20.0/c.fe.OffsetK(ch)
 		c.fe.SetOffset(ch, v)
 	case "triglevel":

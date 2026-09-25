@@ -1,0 +1,46 @@
+{
+  "result": "pass",
+  "files": 10,
+  "reviewedNodeDrivers": 2,
+  "functions": 46,
+  "types": 15,
+  "originalTests": 7,
+  "nativeSummaries": 4,
+  "requirements": [
+    "REQ-SDS-141",
+    "REQ-SDS-142"
+  ],
+  "packageAudit": {
+    "functions": 46,
+    "types": 15,
+    "unlinkedFunctions": 0,
+    "unlinkedTypes": 0
+  },
+  "scope": "Complete Go processing package plus two Node harnesses; synthetic host behavior only. Browser production source and physical calibration are not fully reviewed or qualified by this batch.",
+  "publicationAttachment": [
+    {
+      "source": "app/internal/superres/comp_jsparity_test.go",
+      "resultArtifact": "test-results/go/app/internal/superres/comp_jsparity_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_COMP_JSPARITY_TEST_2734AC"
+    },
+    {
+      "source": "app/internal/superres/comp_test.go",
+      "resultArtifact": "test-results/go/app/internal/superres/comp_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_COMP_TEST_1C5881"
+    },
+    {
+      "source": "app/internal/superres/srfuzz_test.go",
+      "resultArtifact": "test-results/go/app/internal/superres/srfuzz_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_SRFUZZ_TEST_656AAF"
+    },
+    {
+      "source": "app/internal/superres/superres_parity_test.go",
+      "resultArtifact": "test-results/go/app/internal/superres/superres_parity_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_SUPERRES_PARITY_TEST_B9F512"
+    }
+  ]
+}

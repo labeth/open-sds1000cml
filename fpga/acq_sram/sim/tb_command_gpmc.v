@@ -1,4 +1,6 @@
+// ENGMODEL-OWNER-UNIT: FU-RTL-ACQ-TESTS
 `timescale 1ns/1ps
+// TRLC-LINKS: REQ-SDS-054, REQ-SDS-185
 module tb_command_gpmc;
  reg host_clk=0,core_clk=0,reset=1;
  always #5 host_clk=~host_clk;always #2 core_clk=~core_clk;

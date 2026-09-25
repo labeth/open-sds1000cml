@@ -1,7 +1,9 @@
+// ENGMODEL-OWNER-UNIT: FU-WEB-APP-EYE
 // app_eye.js — eye-diagram + jitter view (classic script; shares app.js globals).
 
 "use strict";
 let ejOptBusy = false; // eye "optimize" search in progress (ejIngest guards re-learn instead of stopping)
+// TRLC-LINKS: REQ-SDS-067
 function ejStop(why) {
   ej.armed = false;
   $("ejArm").textContent = "ARM";
@@ -9,6 +11,7 @@ function ejStop(why) {
   if (why) ejStatus(($("ejStats").textContent || "") + " · " + why);
 }
 
+// TRLC-LINKS: REQ-SDS-067
 function ejIngest(f) {
   const ch = +$("ejCh").value === 2 ? 2 : 1;
   if (ej.ch && ch !== ej.ch) { ejStop("channel changed — re-ARM to analyze the other channel"); return; }
@@ -37,6 +40,7 @@ function ejIngest(f) {
   ejRender(false);
 }
 
+// TRLC-LINKS: REQ-SDS-200
 function ejRender(force) {
   const now = performance.now();
   if (!force && now - ejLastUi < 500) return;
@@ -63,6 +67,7 @@ function ejRender(force) {
 }
 
 // log-density heatmap: dark well -> blue -> cyan -> yellow -> white
+// TRLC-LINKS: REQ-SDS-200
 function ejHeatColor(t) {
   const r = Math.min(255, Math.max(0, Math.round(t < 0.5 ? 0 : (t - 0.5) * 2 * 255)));
   const g = Math.min(255, Math.max(0, Math.round(t < 0.25 ? t * 4 * 130 : 130 + (t - 0.25) * 167)));
@@ -70,6 +75,7 @@ function ejHeatColor(t) {
   return [r, g, b];
 }
 
+// TRLC-LINKS: REQ-SDS-200
 function ejDrawEye(st2) {
   const W = st2.eyeW, H = st2.eyeH;
   // Build the RGBA density buffer once (kept in ejEyeCv for the enlarge view to
@@ -97,6 +103,7 @@ function ejDrawEye(st2) {
   glCardEnd(cv);
 }
 
+// TRLC-LINKS: REQ-SDS-200
 function ejDrawHist(st2, res) {
   const cv = $("ejHist"), g = glCardCtx(cv, "#05080c");
   if (!g) return;
@@ -104,6 +111,7 @@ function ejDrawHist(st2, res) {
   glCardEnd(cv);
 }
 
+// TRLC-LINKS: REQ-SDS-200
 function ejDrawHistTo(g, cv, st2, res, detailed) {
   const tie = st2.tie;
   if (tie.length < 50) return;
@@ -143,6 +151,7 @@ function ejDrawHistTo(g, cv, st2, res, detailed) {
   }
 }
 
+// TRLC-LINKS: REQ-SDS-200
 function ejDrawSpec(res) {
   const cv = $("ejSpec"), g = glCardCtx(cv, "#05080c");
   if (!g) return;
@@ -150,6 +159,7 @@ function ejDrawSpec(res) {
   glCardEnd(cv);
 }
 
+// TRLC-LINKS: REQ-SDS-200
 function ejDrawSpecTo(g, cv, res, detailed) {
   const sp = res.spectrum;
   if (!sp || !res.specDf) return;
@@ -194,8 +204,10 @@ function ejDrawSpecTo(g, cv, res, detailed) {
   }
 }
 
+// TRLC-LINKS: REQ-SDS-200
 function ejMetricsTable(res) {
   const rows = [];
+  // TRLC-LINKS: REQ-SDS-200
   const push = (k, v) => rows.push("<tr><th>" + k + "</th><td>" + v + "</td></tr>");
   if (res.bitRate) push("bit rate", eng(res.bitRate, "b/s", 5) + " (UI " + eng(res.uiSeconds, "s", 4) + ")");
   if (res.tieRms !== undefined) {
@@ -220,6 +232,7 @@ function ejMetricsTable(res) {
   $("ejBody").innerHTML = rows.join("");
 }
 
+// TRLC-LINKS: REQ-SDS-200
 function ejOpenBig(kind) {
   if (!ej.st || ej.st.records === 0) return;
   ejBigKind = kind;
@@ -227,8 +240,10 @@ function ejOpenBig(kind) {
   ejDrawBig();
 }
 
+// TRLC-LINKS: REQ-SDS-200
 function ejBigVisible() { return !$("ejBigWrap").classList.contains("hidden"); }
 
+// TRLC-LINKS: REQ-SDS-200
 function ejDrawBig() {
   const st2 = ej.st;
   if (!st2) return;
@@ -256,6 +271,7 @@ function ejDrawBig() {
     " · " + res.records + " records — click to close";
 }
 
+// TRLC-LINKS: REQ-SDS-200
 function ejDrawEyeTo(g, cv, st2, detailed) {
   if (!ejEyeCv) return;
   // upload the density buffer as a texture, scaled to the canvas (detailed =
@@ -278,16 +294,20 @@ function ejDrawEyeTo(g, cv, st2, detailed) {
 // So: fit the vertical (autoset), then step the timebase to drive samples/UI
 // (ej.st.ui, measured) into a sweet spot — for a fast signal that means the
 // FASTEST band that still LOCKS, which is exactly the rate limit.
+// TRLC-LINKS: REQ-SDS-201
 const ejSleep = ms => new Promise(r => setTimeout(r, ms));
 // fresh accumulation for a NEW band during the search: also clear the guard
 // state (vpc0/incons) so the intentional V/div + timebase changes we make don't
 // trip the "vertical/timebase changed — re-ARM" guards mid-optimize.
+// TRLC-LINKS: REQ-SDS-201, REQ-SDS-067
 function ejFreshState() { ej.st = ejNew({}); ej.lastUi = 0; ej.vpc0 = 0; ej.incons = 0; }
 
 // wait for the eye to lock at the current band; resolve to samples/UI or null.
+// TRLC-LINKS: REQ-SDS-201
 function ejWaitLock(timeoutMs) {
   return new Promise(resolve => {
     const t0 = Date.now();
+    // TRLC-LINKS: REQ-SDS-201
     const poll = () => {
       if (ej.st && ej.st.uiN >= 3 && ej.st.records >= 2) return resolve(ej.st.ui);
       if (Date.now() - t0 > timeoutMs) return resolve(ej.st && ej.st.uiN > 0 ? ej.st.ui : null);
@@ -298,6 +318,7 @@ function ejWaitLock(timeoutMs) {
 }
 // step the timebase one detent (dir<0 faster / more samples/UI, dir>0 slower),
 // staying on an eye-usable band (native-fast/decimated, tdiv < 5 ms). false at edge.
+// TRLC-LINKS: REQ-SDS-201
 function ejStepTdiv(dir) {
   if (!st || !st.tdivs || !st.tdiv_s) return false;
   const tds = st.tdivs.filter(t => t < 5e-3).sort((a, b) => a - b);
@@ -309,6 +330,7 @@ function ejStepTdiv(dir) {
   return true;
 }
 // set the timebase to the nearest eye-usable detent to `want`.
+// TRLC-LINKS: REQ-SDS-201
 function ejStepToNearest(want) {
   if (!st || !st.tdivs) return;
   const tds = st.tdivs.filter(t => t < 5e-3);
@@ -317,9 +339,11 @@ function ejStepToNearest(want) {
   if (best) send("tdiv", best);
 }
 // wait for the band change to land in the status poll, then settle.
+// TRLC-LINKS: REQ-SDS-201
 function ejSettleBand(prevTdiv) {
   return new Promise(resolve => {
     const t0 = Date.now();
+    // TRLC-LINKS: REQ-SDS-201
     const poll = () => {
       if (st && st.tdiv_s && Math.abs(st.tdiv_s - prevTdiv) > prevTdiv * 1e-6) return setTimeout(resolve, 450);
       if (Date.now() - t0 > 3500) return resolve();
@@ -329,6 +353,7 @@ function ejSettleBand(prevTdiv) {
   });
 }
 
+// TRLC-LINKS: REQ-SDS-201
 async function ejOptimize() {
   if (ejOptBusy) return;
   ejOptBusy = true;
@@ -385,6 +410,7 @@ async function ejOptimize() {
 // ---- eye / jitter wiring ----
 
 $("ejOpt").onclick = ejOptimize;
+// TRLC-LINKS: REQ-SDS-201
 $("ejArm").onclick = () => {
   if (ej.armed) { ejStop("stopped"); return; }
   if (!st || (st.band !== "native-fast" && st.band !== "decimated")) {
@@ -402,8 +428,10 @@ $("ejArm").onclick = () => {
   ejStatus("locking…");
   ejLoop(ej.gen);
 };
+// TRLC-LINKS: REQ-SDS-201
 $("ejReset").onclick = () => { ej.st = ejNew({}); ej.lastUi = 0; ejRender(true); ejStatus(ej.armed ? "reset — locking…" : "idle"); };
 
+// TRLC-LINKS: REQ-SDS-201
 async function ejLoop(gen) {
   if (!ej.armed || gen !== ej.gen) return;
   try {
@@ -423,7 +451,11 @@ async function ejLoop(gen) {
     setTimeout(() => ejLoop(gen), Math.min(2000, 250 * ej.fails) + 250 * Math.random());
   }
 }
+// TRLC-LINKS: REQ-SDS-200
 $("ejEye").onclick = () => ejOpenBig("eye");
+// TRLC-LINKS: REQ-SDS-200
 $("ejHist").onclick = () => ejOpenBig("hist");
+// TRLC-LINKS: REQ-SDS-200
 $("ejSpec").onclick = () => ejOpenBig("spec");
+// TRLC-LINKS: REQ-SDS-200
 $("ejBigWrap").onclick = () => $("ejBigWrap").classList.add("hidden");

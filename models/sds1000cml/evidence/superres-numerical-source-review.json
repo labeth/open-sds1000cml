@@ -1,0 +1,65 @@
+{
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "status": "source-model-integrated",
+  "requirements": [
+    "REQ-SDS-019",
+    "REQ-SDS-142",
+    "REQ-SDS-181"
+  ],
+  "files": [
+    {
+      "path": "app/internal/web/superres_comp.js",
+      "baselineSHA256": "3d551ee3ceca857a1ed1728f6b236bcf864801a3af483f8284714379ad3d6b33",
+      "lines": 239,
+      "linkedDeclarations": 11,
+      "annotatedSHA256": "6ca0a53843a03c54b7f1fc586bdfa0c3bd616f042fd9c2a40fcf7b57db769e77"
+    },
+    {
+      "path": "app/internal/web/superres_ets.js",
+      "baselineSHA256": "11e2f6ffcb27d934a67cb516665c015edc184b2b69c9797a41346381ffaa347b",
+      "lines": 144,
+      "linkedDeclarations": 8,
+      "annotatedSHA256": "cdab3cb46568e8b1e7bb1161bdedf3d46a0975fcf877dbed360a030c98434a0b"
+    },
+    {
+      "path": "app/internal/web/superres_comp.test.cjs",
+      "baselineSHA256": "73a5343168f618d8618fc323a9357ef58f4100dc77f99314490eb749a757420c",
+      "lines": 162,
+      "linkedDeclarations": 2,
+      "annotatedSHA256": "51683258b41f20d8d3ce772ffb0ec7e90417ea6ec745bdbd45ca59eefa864944"
+    },
+    {
+      "path": "app/internal/web/superres_ets.test.cjs",
+      "baselineSHA256": "baf77ee2b69ccbffbf976e9b926f26742b5a7d86422ee6e61979951dfcfe5ddc",
+      "lines": 83,
+      "linkedDeclarations": 5,
+      "annotatedSHA256": "0ea1050a62e5236c9013d47a11a35e448a4b31c91f5ed6f828812633124e428e"
+    }
+  ],
+  "testEvidence": "evidence/superres-numerical-test-run.json",
+  "scope": "Complete read of two JavaScript numerical engines and their two original Node suites; original suites executed unchanged in a frozen pinned snapshot.",
+  "findings": [
+    "Compensation response table is a stored bench-specific curve, not current per-instrument calibration. Frequencies beyond 92 MHz use an extrapolated two-pole tail with a floor of 1e-4.",
+    "Target magnitude is exp(-ln(2)*(f/fbw)^(2*order)), giving 0.5 (-6.02 dB) at fbw; the -3 dB target comment is inconsistent.",
+    "Auto compensation minimum 4 dB budget and 40 MHz floor can exceed its raw-Nyquist ceiling when that ceiling lies below the floor. A zero-bit/10-MHz-Nyquist case returns 40 MHz.",
+    "Compensation fills interior gaps linearly and holds leading/trailing values, contrary to the circular-gap interpolation wording. Endpoint detrending is restored unfiltered after frequency-domain processing.",
+    "Nearest-power-of-two linear resampling and reverse resampling are not anti-alias filters. Filled outputs are floored at zero without an upper 255 clamp; gap locations are restored to -1.",
+    "Invalid dt, short arrays and all-gap arrays return the original mean array rather than a copy. FFT helper assumes power-of-two length and compatible input arrays.",
+    "Original compensation tests cover round-trip FFT, bounded response figures, selected tones, gap preservation, one non-power-of-two record, adaptive targets and one edge-gate ringing case. Synthetic attenuation shares srCompCalH with compensation; this is not an independent physical oracle.",
+    "ETS uses a direct single-bin DFT without mean removal, and two off-tone frequencies for its weak-tone gate. The minMag wording does not correspond to an implemented absolute gate.",
+    "ETS frequency refinement searches a finite band with a parabolic step. Feed uses fixed st.f supplied by caller; fSum and fN are allocated but not updated here.",
+    "ETS skips companions shorter than the alignment channel, folds all samples of longer companions, and does not mask negative or nonfinite samples. Raw valid-sample assumptions matter.",
+    "ETS result requires bin weight >=0.5 for a mean and >=4 for single-sample noise; odd/even half-stack estimates require each half weight >=2. effBits is 8 plus a noise-reduction ratio, not SINAD ENOB.",
+    "Original ETS tests use seeded 150 MHz synthetic sine/square records at 500 MSa/s, 60 frames and a 240-bin reconstruction, plus one weak-noise rejection. They do not establish arbitrary signal, jitter or hardware performance."
+  ],
+  "validation": {
+    "originalSuites": 2,
+    "boundaryCases": 7,
+    "linkedDeclarations": 26,
+    "strictConsistency": "pass",
+    "nativeMCP": "pass",
+    "nonPDFPublication": "pass",
+    "reproducibleArtifacts": 36,
+    "pdf": "deferred"
+  }
+}

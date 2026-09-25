@@ -1,0 +1,28 @@
+{"Time":"2026-09-23T08:45:03.471235761+02:00","Action":"start","Package":"open-sds/app/internal/engine"}
+{"Time":"2026-09-23T08:45:03.483448763+02:00","Action":"run","Package":"open-sds/app/internal/engine","Test":"TestEresBoxcar"}
+{"Time":"2026-09-23T08:45:03.483552477+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestEresBoxcar","Output":"=== RUN   TestEresBoxcar\n"}
+{"Time":"2026-09-23T08:45:03.483592022+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestEresBoxcar","Output":"--- PASS: TestEresBoxcar (0.00s)\n"}
+{"Time":"2026-09-23T08:45:03.48363867+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Test":"TestEresBoxcar","Elapsed":0}
+{"Time":"2026-09-23T08:45:03.483698203+02:00","Action":"run","Package":"open-sds/app/internal/engine","Test":"TestEresLenForBits"}
+{"Time":"2026-09-23T08:45:03.483730076+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestEresLenForBits","Output":"=== RUN   TestEresLenForBits\n"}
+{"Time":"2026-09-23T08:45:03.483787546+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestEresLenForBits","Output":"--- PASS: TestEresLenForBits (0.00s)\n"}
+{"Time":"2026-09-23T08:45:03.483817306+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Test":"TestEresLenForBits","Elapsed":0}
+{"Time":"2026-09-23T08:45:03.483858812+02:00","Action":"run","Package":"open-sds/app/internal/engine","Test":"TestAverageRing"}
+{"Time":"2026-09-23T08:45:03.483867006+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestAverageRing","Output":"=== RUN   TestAverageRing\n"}
+{"Time":"2026-09-23T08:45:03.484554168+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestAverageRing","Output":"--- PASS: TestAverageRing (0.00s)\n"}
+{"Time":"2026-09-23T08:45:03.484561491+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Test":"TestAverageRing","Elapsed":0}
+{"Time":"2026-09-23T08:45:03.484568181+02:00","Action":"run","Package":"open-sds/app/internal/engine","Test":"TestAverageRingNoOffRecordBias"}
+{"Time":"2026-09-23T08:45:03.484574749+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestAverageRingNoOffRecordBias","Output":"=== RUN   TestAverageRingNoOffRecordBias\n"}
+{"Time":"2026-09-23T08:45:03.48493716+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestAverageRingNoOffRecordBias","Output":"--- PASS: TestAverageRingNoOffRecordBias (0.00s)\n"}
+{"Time":"2026-09-23T08:45:03.484943345+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Test":"TestAverageRingNoOffRecordBias","Elapsed":0}
+{"Time":"2026-09-23T08:45:03.484949763+02:00","Action":"run","Package":"open-sds/app/internal/engine","Test":"TestAverageModeInEngine"}
+{"Time":"2026-09-23T08:45:03.484953019+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestAverageModeInEngine","Output":"=== RUN   TestAverageModeInEngine\n"}
+{"Time":"2026-09-23T08:45:03.491740121+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestAverageModeInEngine","Output":"--- PASS: TestAverageModeInEngine (0.01s)\n"}
+{"Time":"2026-09-23T08:45:03.491747994+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Test":"TestAverageModeInEngine","Elapsed":0.01}
+{"Time":"2026-09-23T08:45:03.491760632+02:00","Action":"run","Package":"open-sds/app/internal/engine","Test":"TestUniformityStats"}
+{"Time":"2026-09-23T08:45:03.491763048+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestUniformityStats","Output":"=== RUN   TestUniformityStats\n"}
+{"Time":"2026-09-23T08:45:03.498377693+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestUniformityStats","Output":"--- PASS: TestUniformityStats (0.01s)\n"}
+{"Time":"2026-09-23T08:45:03.498394334+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Test":"TestUniformityStats","Elapsed":0.01}
+{"Time":"2026-09-23T08:45:03.498556933+02:00","Action":"output","Package":"open-sds/app/internal/engine","Output":"PASS\n"}
+{"Time":"2026-09-23T08:45:04.499970639+02:00","Action":"output","Package":"open-sds/app/internal/engine","Output":"ok  \topen-sds/app/internal/engine\t1.029s\n"}
+{"Time":"2026-09-23T08:45:04.499996337+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Elapsed":1.029}

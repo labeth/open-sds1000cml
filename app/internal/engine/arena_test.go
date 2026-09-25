@@ -1,7 +1,9 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
 package engine
 
 import "testing"
 
+// TRLC-LINKS: REQ-SDS-007
 func TestArenaPublishConsume(t *testing.T) {
 	a := newArena(16)
 

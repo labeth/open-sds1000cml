@@ -1,9 +1,11 @@
+// ENGMODEL-OWNER-UNIT: FU-RTL-ACQ-SRAM-HOST-FIFO
 // Small register-backed asynchronous FIFO for the 250 MHz host pair packer.
 // RAM slots must stay in logic: M9K cannot meet the 250 MHz source period.
 // A COMMON reset discards both sides; assertion is asynchronous and each side
 // releases synchronously. Independent reset of only one side is unsupported.
 // push is a non-retry offer: push while full outside reset latches overflow
 // and drops that offer. Offers during reset/release are discarded. Destination uses ordinary valid/ready, with a registered output.
+// TRLC-LINKS: REQ-SDS-050, REQ-SDS-078
 module sram_host_fifo #(parameter WIDTH=80,ADDR_BITS=3)(
  input wire reset,source_clk,dest_clk,
  input wire push,input wire [WIDTH-1:0] source_data,

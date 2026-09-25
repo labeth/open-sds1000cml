@@ -1,0 +1,115 @@
+{
+  "result": "reviewed-and-native-traced",
+  "requirements": [
+    "REQ-SDS-023",
+    "REQ-SDS-070"
+  ],
+  "owners": [
+    "FU-WEB-BINFRAME",
+    "FU-WEB-PEAKS"
+  ],
+  "scope": "All lines of binframe.js and peaks.js, their original Node suites and Go runners were read. Complete named declaration/direct binding coverage in these two implementation files only. Anonymous callbacks, top-level effects, browser integration and physical accuracy remain separate.",
+  "sourceSHA256": {
+    "app/internal/web/binframe.js": "ee6b19ce469fee3a6c3c383eb050429ccc17189da560ee2851a27fbf4282ca04",
+    "app/internal/web/binframe.test.cjs": "ed9e6b3565545f904a4e76d0127cce545ce43459e88dcefd0d4573c15d31ced7",
+    "app/internal/web/binframe_node_test.go": "2ec79de60ffc5f4e613302472083ecaf1dd8ef97eef0e77a0d6a1edbf7c0fdd7",
+    "app/internal/web/peaks.js": "bcd3946ff1eac3a9ec7a993983c21a93947678a13e4f184bed09fc5cef645dcc",
+    "app/internal/web/peaks.test.cjs": "6da89d87e61a091fcb48813fecc6615732beb0cc00807903676f0b724c1dc3e9",
+    "app/internal/web/peaks_node_test.go": "3be3107f5102b264fe3c7bb6d9ed133c5a3a351729bd7e2285b4d4023c8afee9"
+  },
+  "declarations": [
+    {
+      "path": "app/internal/web/binframe.js",
+      "owner": "FU-WEB-BINFRAME",
+      "declarations": [
+        {
+          "line": 18,
+          "sourceLine": "function decodeBinFrame(buf) {",
+          "requirements": [
+            "REQ-SDS-023"
+          ]
+        },
+        {
+          "line": 40,
+          "sourceLine": "const seg = (i) => {",
+          "requirements": [
+            "REQ-SDS-023"
+          ]
+        },
+        {
+          "line": 52,
+          "sourceLine": "const chan = (ch) => {",
+          "requirements": [
+            "REQ-SDS-023"
+          ]
+        },
+        {
+          "line": 61,
+          "sourceLine": "const chan = (off) => {",
+          "requirements": [
+            "REQ-SDS-023"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "app/internal/web/peaks.js",
+      "owner": "FU-WEB-PEAKS",
+      "declarations": [
+        {
+          "line": 6,
+          "sourceLine": "function fftInPlace(re, im) {",
+          "requirements": [
+            "REQ-SDS-070"
+          ]
+        },
+        {
+          "line": 33,
+          "sourceLine": "function spectrum(samples, nyq) {",
+          "requirements": [
+            "REQ-SDS-070"
+          ]
+        },
+        {
+          "line": 54,
+          "sourceLine": "function detectPeaks(spec, opts) {",
+          "requirements": [
+            "REQ-SDS-070"
+          ]
+        },
+        {
+          "line": 59,
+          "sourceLine": "const dbAt = k => 20 * Math.log10(mags[k] / peak + 1e-12);",
+          "requirements": [
+            "REQ-SDS-070"
+          ]
+        },
+        {
+          "line": 79,
+          "sourceLine": "function nearestPeak(peaks, freq) {",
+          "requirements": [
+            "REQ-SDS-070"
+          ]
+        },
+        {
+          "line": 96,
+          "sourceLine": "function component(samples, cyclesPerLen) {",
+          "requirements": [
+            "REQ-SDS-070"
+          ]
+        }
+      ]
+    }
+  ],
+  "testEvidence": "browser-pure-test-run.json",
+  "findings": [
+    "Binary decoder allocates fresh arrays per frame, validates lengths and magic, reconstructs native/Q8 margins and preserves raw envelope metadata. Header dimensions undergo signed 32-bit coercion; unknown flag bits are accepted; envelope dispatch precedes Q8 checks.",
+    "FFT mutates radix-2 arrays in place; spectrum selects the largest power-of-two prefix and uses mean subtraction and a Hann window. DetectPeaks selects maxima above a relative floor, interpolates logarithmic magnitudes, limits by strength and returns frequency order.",
+    "Nearest-frequency selection chooses the first equal-distance match. Component fitting skips negative samples but synthesizes across gaps; fit uses floor(M/65536) stride, so the comment does not represent a strict 65536-sample cap. A near-singular fit returns the mean rather than rejecting the result."
+  ],
+  "limits": [
+    "No live browser, HTTP endpoint, WebGL, device or physical spectral calibration run.",
+    "Original tests and nine boundary cases are partial evidence, not exhaustive malformed-input validation or full requirement coverage.",
+    "FFT callers must supply suitable dimensions/options. Anonymous comparator callbacks are executed by Node tests but are not separate native declaration links."
+  ]
+}

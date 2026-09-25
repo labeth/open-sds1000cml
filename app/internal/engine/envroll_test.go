@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
 package engine
 
 import (
@@ -8,6 +9,7 @@ import (
 	"open-sds/app/internal/iface"
 )
 
+// TRLC-LINKS: REQ-SDS-010
 func TestEnvelopeProgDivisor(t *testing.T) {
 	// Spec 04 §5 verification constants: the PROGRAMMED divisor comes from
 	// the phase-scatter formula, never the nominal table row.
@@ -40,6 +42,7 @@ func TestEnvelopeProgDivisor(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-010
 func TestRollProgDivisor(t *testing.T) {
 	for _, tdiv := range []float64{100e-3, 1, 50} {
 		b, ok := PlanTdiv(tdiv)
@@ -55,6 +58,7 @@ func TestRollProgDivisor(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-010, REQ-SDS-012
 func TestEnvelopeFrame(t *testing.T) {
 	fb := newFakeBus()
 	// Phase-shift the wave per capture: the real hardware phase-scatters;
@@ -101,6 +105,7 @@ func TestEnvelopeFrame(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-010, REQ-SDS-012
 func TestRollBand(t *testing.T) {
 	fb := newFakeBus()
 	e, _ := newTestEngine(t, fb)
@@ -144,6 +149,7 @@ func TestRollBand(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-010
 func TestRollToRealTimeTransition(t *testing.T) {
 	fb := newFakeBus()
 	e, _ := newTestEngine(t, fb)
@@ -175,6 +181,7 @@ func TestRollToRealTimeTransition(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-019
 func TestETSFrame(t *testing.T) {
 	fb := newFakeBus()
 	// Sine with a FRACTIONAL per-capture phase shift: the sub-sample frac of
@@ -220,6 +227,7 @@ func TestETSFrame(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-019
 func TestETSFallbackOnFlat(t *testing.T) {
 	fb := newFakeBus()
 	fb.mu.Lock()
@@ -240,6 +248,7 @@ func TestETSFallbackOnFlat(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-008
 func TestEnvelopeBailsOnBandChange(t *testing.T) {
 	fb := newFakeBus()
 	fb.fillAdvance = true

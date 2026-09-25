@@ -1,6 +1,8 @@
+// ENGMODEL-OWNER-UNIT: FU-RTL-ACQ-TESTS
 `timescale 1ns/1ps
 // Ideal FIFO interface model: this bench checks the complete precision
 // arithmetic/selection path, not vendor FIFO CDC or memory timing.
+// TRLC-LINKS: REQ-SDS-040
 module dcfifo #(parameter lpm_width=32,lpm_numwords=32,lpm_widthu=5,
  lpm_showahead="ON",add_ram_output_register="ON",rdsync_delaypipe=4,wrsync_delaypipe=4,
  read_aclr_synch="ON",write_aclr_synch="ON",use_eab="ON",intended_device_family="Cyclone IV E")(
@@ -11,6 +13,7 @@ module dcfifo #(parameter lpm_width=32,lpm_numwords=32,lpm_widthu=5,
  always @(posedge wrclk or posedge aclr)if(aclr)wp<=0;else if(wrreq && !wrfull)begin mem[wp%lpm_numwords]<=data;wp<=wp+1;end
  always @(posedge rdclk or posedge aclr)if(aclr)rp<=0;else if(rdreq && !rdempty)rp<=rp+1;
 endmodule
+// TRLC-LINKS: REQ-SDS-040
 module tb_precision_shared;
  reg core=0,packclk=0,clk100=0;always #2 core=~core;
  initial begin #2;forever #4 packclk=~packclk;end

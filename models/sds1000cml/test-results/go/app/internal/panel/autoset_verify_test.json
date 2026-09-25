@@ -1,0 +1,32 @@
+{
+  "source": "app/internal/panel/autoset_verify_test.go",
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "scope": "Reviewed Go test outcomes; passing assertions contribute partial requirement evidence.",
+  "sourceSHA256": "78fc2b4960cd7ef5f2894b4ee976bf171862e5816b47ae28cc71fe660dc1dd42",
+  "logs": {
+    "test-runs/panel-integrated.jsonl": "2fbcb88c41a0275721d1edc08e3847581a7054b52e3eee8bbfd8abb17853f635"
+  },
+  "tests": [
+    {
+      "name": "TestAutosetVerifyTrigLevelScansIntoBand",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-137"
+      ]
+    },
+    {
+      "name": "TestAutosetVerifyTrigLevelKeepsComputedWhenNothingFires",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-137"
+      ]
+    }
+  ],
+  "results": [
+    {
+      "requirement": "REQ-SDS-137",
+      "status": "partial",
+      "notes": "2 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    }
+  ]
+}

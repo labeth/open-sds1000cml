@@ -1,4 +1,6 @@
+// ENGMODEL-OWNER-UNIT: FU-RTL-ACQ-TESTS
 `timescale 1ns/1ps
+// TRLC-LINKS: REQ-SDS-041, REQ-SDS-042, REQ-SDS-057, REQ-SDS-058
 module tb_finite_writer_faults;
  localparam AW=13;
  reg clk=0;always #2 clk=~clk;

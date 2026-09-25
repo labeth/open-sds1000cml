@@ -1,5 +1,7 @@
+// ENGMODEL-OWNER-UNIT: FU-RTL-COMMON-TESTS
 // tb_pll.v -- pll_m2 SIM stand-in: lock, periods, phase offsets, and the dynamic phase-step engine.
 `timescale 1ns/1ps
+// TRLC-LINKS: REQ-SDS-191
 module tb_pll;
     reg mclk = 0; always #3.125 mclk = ~mclk;
     reg scan = 0; always #6.25 scan = ~scan;

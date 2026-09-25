@@ -1,0 +1,29 @@
+{
+  "result": "trace-integration-pass",
+  "files": 3,
+  "functions": 53,
+  "types": 7,
+  "originalTests": 22,
+  "passingTests": 22,
+  "nativeSummaries": 1,
+  "requirements": [
+    "REQ-SDS-152",
+    "REQ-SDS-153",
+    "REQ-SDS-154"
+  ],
+  "packageAudit": {
+    "functions": 53,
+    "types": 7,
+    "unlinkedFunctions": 0,
+    "unlinkedTypes": 0
+  },
+  "scope": "Three-file complete package review and original race-enabled host tests; optional report inputs hashed. No real Quartus invocation, hardware programming or qualification.",
+  "publicationAttachments": [
+    {
+      "source": "fpga/internal/quartus/quartus_test.go",
+      "resultArtifact": "test-results/go/fpga/internal/quartus/quartus_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_QUARTUS_TEST_30AD09"
+    }
+  ]
+}

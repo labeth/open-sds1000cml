@@ -1,6 +1,8 @@
+// ENGMODEL-OWNER-UNIT: FU-RTL-ACQ-SRAM-HOST-READ-WINDOW
 // Host-clock prefetch window over an explicitly owned published bank.
 // pop is the GPMC slave's completed-read pulse, not its active read level.
 // Common reset must also reset host RAM's response pipeline.
+// TRLC-LINKS: REQ-SDS-053, REQ-SDS-079
 module acq_host_read_window(
  input wire clk,reset,select,select_bank,select_token,
  input wire [12:0] select_offset,input wire pop,release_request,clear_error,

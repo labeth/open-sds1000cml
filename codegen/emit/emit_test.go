@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-CODEGEN-EMIT
 package emit
 
 import (
@@ -14,6 +15,7 @@ import (
 	"open-sds/codegen/schema"
 )
 
+// TRLC-LINKS: REQ-SDS-157, REQ-SDS-158
 func mustContain(t *testing.T, what, out string, snippets ...string) {
 	t.Helper()
 	for _, s := range snippets {
@@ -23,6 +25,7 @@ func mustContain(t *testing.T, what, out string, snippets ...string) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-157, REQ-SDS-158
 func mustNotContain(t *testing.T, what, out string, snippets ...string) {
 	t.Helper()
 	for _, s := range snippets {
@@ -32,11 +35,13 @@ func mustNotContain(t *testing.T, what, out string, snippets ...string) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-157, REQ-SDS-158
 func idHex(i schema.Interface) (string, string, string) {
 	id := i.BuildID()
 	return fmt.Sprintf("%08x", id), fmt.Sprintf("%04x", id&0xffff), fmt.Sprintf("%04x", id>>16)
 }
 
+// TRLC-LINKS: REQ-SDS-157
 func TestRegsGolden(t *testing.T) {
 	i := ifacedef.Default()
 	out, err := Regs(i)
@@ -87,6 +92,7 @@ func TestRegsGolden(t *testing.T) {
 	mustNotContain(t, "regs.vh", out, "TODO", "DIAG_PHASE_SEL")
 }
 
+// TRLC-LINKS: REQ-SDS-158
 func TestRegmuxGolden(t *testing.T) {
 	i := ifacedef.Default()
 	out, err := Regmux(i)
@@ -139,6 +145,7 @@ func TestRegmuxGolden(t *testing.T) {
 	)
 }
 
+// TRLC-LINKS: REQ-SDS-157, REQ-SDS-159
 func TestGoBindingsGolden(t *testing.T) {
 	i := ifacedef.Default()
 	out, err := GoBindings(i)
@@ -187,6 +194,7 @@ func TestGoBindingsGolden(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-157
 func TestDocGolden(t *testing.T) {
 	i := ifacedef.Default()
 	out, err := Doc(i)
@@ -222,6 +230,7 @@ func TestDocGolden(t *testing.T) {
 }
 
 // Every artifact carries the same build-ID string.
+// TRLC-LINKS: REQ-SDS-157, REQ-SDS-158
 func TestBuildIDConsistent(t *testing.T) {
 	i := ifacedef.Default()
 	full, _, _ := idHex(i)
@@ -236,6 +245,7 @@ func TestBuildIDConsistent(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-157, REQ-SDS-158
 func TestEmittersRejectInvalid(t *testing.T) {
 	i := ifacedef.Default()
 	i.Regs[1].Sel = 0x40 // collides with BURST
@@ -246,6 +256,7 @@ func TestEmittersRejectInvalid(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-157
 func TestCamel(t *testing.T) {
 	for in, want := range map[string]string{"RUN": "Run", "BURST_REMAIN": "BurstRemain", "E1E2": "E1e2", "STATUS_A": "StatusA", "TRIGPOS_LO": "TrigposLo", "IL5_200": "Il5200"} {
 		if got := camel(in); got != want {
@@ -254,6 +265,7 @@ func TestCamel(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-157
 func TestSelMaskDoc(t *testing.T) {
 	if got := selMaskDoc(0x7c); got != "decodes GPMC A3,A4,A5,A6,A7; selector bit(s) 0,1,7 ignored" {
 		t.Errorf("0x7c: %q", got)
@@ -263,6 +275,7 @@ func TestSelMaskDoc(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-157, REQ-SDS-159
 func TestSpliceGoSource(t *testing.T) {
 	body, err := spliceGoSource("// doc\npackage x\n\nimport \"fmt\"\n\nfunc F() { fmt.Println() }\n")
 	if err != nil || body != "func F() { fmt.Println() }\n" {
@@ -288,6 +301,7 @@ func TestSpliceGoSource(t *testing.T) {
 
 // The constants wordfmt/geom.go duplicates for its own tests must equal the
 // schema's (iface.go gets them from the schema, the spliced models use them).
+// TRLC-LINKS: REQ-SDS-156, REQ-SDS-157, REQ-SDS-159
 func TestWordfmtConstantsMatchSchema(t *testing.T) {
 	i := ifacedef.Default()
 	g := i.Geometry
@@ -333,6 +347,7 @@ func TestWordfmtConstantsMatchSchema(t *testing.T) {
 
 // The generated Go bindings must compile and behave: build a throwaway module
 // around iface.go and run a small program against its tables and models.
+// TRLC-LINKS: REQ-SDS-157, REQ-SDS-159
 func TestGoBindingsCompile(t *testing.T) {
 	gobin, err := exec.LookPath("go")
 	if err != nil {

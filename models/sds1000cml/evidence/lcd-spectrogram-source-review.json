@@ -1,0 +1,64 @@
+{
+  "result": "reviewed-and-characterized-native-partial-evidence",
+  "sourceSHA256": {
+    "app/internal/lcd/spectrogram.go": "e3df8944116d061e94acbd382ccd7e777989d0bb4cd7dc51146a3d832eae9e22",
+    "app/internal/lcd/spectrogram_test.go": "83474b3ae44f9514c58da92c7fd995cb5a3da3bd3621e4cd4806e706dc322d8d",
+    "app/internal/lcd/spectrogram_breaker_test.go": "a760f3163389db28182e6e13657effa9ab20dd02c31807ffe84c912bc80fadfd",
+    "app/cmd/app/main.go": "6cc21b84f7b00909e510b5760c80922b6db128b2da55e75577cbe398cd15944d"
+  },
+  "completeReads": [
+    "app/internal/lcd/spectrogram.go",
+    "app/internal/lcd/spectrogram_test.go",
+    "app/internal/lcd/spectrogram_breaker_test.go"
+  ],
+  "reviewedRanges": {
+    "app/cmd/app/main.go": "250\u2013305: fresh-frame Push gate and render dispatch only"
+  },
+  "tests": {
+    "TestHeatNeverPanics": "pass",
+    "TestSpectrogramBreaker50": "pass",
+    "TestSpectrogramFloorEdges": "pass",
+    "TestSpectrogramPushGuards": "pass",
+    "TestSpectrumMagsDegenerate": "pass",
+    "TestHeatMonotone": "pass",
+    "TestSpectrogramPeakColumn": "pass",
+    "TestSpectrogramTracksSteppedFrequency": "pass",
+    "TestRenderSpectrogramView": "pass",
+    "TestHeatStops": "pass"
+  },
+  "command": [
+    "go",
+    "test",
+    "-race",
+    "-json",
+    "-count=1",
+    "./internal/lcd",
+    "-run",
+    "^(TestDeviceURLCaching|TestHeatMonotone|TestHeatNeverPanics|TestHeatStops|TestPickDeviceURL|TestRenderDeviceURL|TestRenderSpectrogramView|TestSpectrogramBreaker50|TestSpectrogramFloorEdges|TestSpectrogramPeakColumn|TestSpectrogramPushGuards|TestSpectrogramTracksSteppedFrequency|TestSpectrumMagsDegenerate)$"
+  ],
+  "log": "test-runs/lcd-spectrogram-netaddr.jsonl",
+  "logSHA256": "1f17f9d410806ae33e736d47765fa079cf7b8495f10a2c5c8da3bf5c16c4f177",
+  "findings": [
+    "LCD loop pushes only active view 4, non-envelope, new-sequence nonempty-C1 frames, always channel 0; helper itself does not enforce those gates.",
+    "Push clamps Valid to selected channel length and ignores records below 32 samples; spectrumMags uses a power-of-two strided prefix and peak floor 1e-9, so flat records can advance rows.",
+    "Clear blanks image/row count but retains effective Nyquist and floor; channel/rate changes do not reset prior rows inside Push.",
+    "NaN/nonnegative floor falls back to -60 for paint, while the label uses original floorDB; negative infinity passes the negative-floor check. Hostile Nyquist is stored without finite validation.",
+    "TestSpectrogramBreaker50 checks no panic and nonnegative finite Nyquist for 50 generated families; despite its comment it does not assert row advancement or strictly positive Nyquist.",
+    "FloorEdges and PushGuards assert no panic only; they do not prove sane pixels/axis values.",
+    "SpectrumMagsDegenerate leaves the len-17-sine case empty and skips it.",
+    "PeakColumn permits 5 percent error for one tone; stepped-frequency test checks order and newest frequency within 6 percent. Render test checks at least 500 painted pixels and empty/nil no-panic behavior.",
+    "Heat tests sample brightness with tolerances and compare seven quantized stops; they do not prove continuous perceptual monotonicity."
+  ],
+  "nextAction": "Retain explicit limitations; device qualification and remaining LCD source coverage are separate work.",
+  "boundaryEvidence": "evidence/lcd-spectrogram-boundary-review.json",
+  "testedFindings": [
+    "NaN/nonnegative floors paint identically to -60 without changing floorDB; negative-infinite floor paints a white top row.",
+    "Clear resets pixels and row count while retaining floor and effective Nyquist.",
+    "Helper pushes repeated sequences and envelope-tagged flat frames; the production caller gates sequence/envelope separately.",
+    "Rate/channel changes retain old rows, and nonfinite supplied Nyquist is retained.",
+    "For 63 samples, changing the last 31 leaves spectrumMags unchanged; changing the used prefix changes the spectrum.",
+    "Row count saturates when initialized one below its limit; a zero-value Spectrogram panics on Push without constructor allocation."
+  ],
+  "preannotationReview": "evidence/lcd-spectrogram-preannotation.json",
+  "nativeEvidence": "evidence/lcd-spectrogram-netaddr-test-run.json"
+}

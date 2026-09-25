@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-LCD
 package lcd
 
 import (
@@ -30,6 +31,7 @@ var updateGolden = flag.Bool("update-golden", false, "rewrite testdata/golden/*.
 // flips hundreds to thousands.
 const goldenMaxDiffPixels = 64
 
+// TRLC-LINKS: REQ-SDS-021
 func goldenAssert(t *testing.T, name string, sf *MemSurface) {
 	t.Helper()
 	got := EncodePNG(sf)
@@ -91,6 +93,7 @@ func goldenAssert(t *testing.T, name string, sf *MemSurface) {
 // golden: a harmonic-rich C1 stack (square-ish: 5 MHz + 3rd/5th harmonics) on
 // a ×16 fine grid with a gap band, a C2 tone, review focus, and the Task-2
 // device URL on the top bar — all deterministic.
+// TRLC-LINKS: REQ-SDS-021
 func goldenSuperresHUD() HUD {
 	const K, nb = 16, 4096
 	const sampleS = 2e-9
@@ -117,6 +120,7 @@ func goldenSuperresHUD() HUD {
 // TestGoldenSuperresReview pins the whole super-res review Y-T screen —
 // graticule, stacked trace with its gap, SR status line, top-bar HUD with the
 // device URL — against testdata/golden/superres_review_yt.png.
+// TRLC-LINKS: REQ-SDS-021
 func TestGoldenSuperresReview(t *testing.T) {
 	h := goldenSuperresHUD()
 	h.ViewMode = 0
@@ -128,6 +132,7 @@ func TestGoldenSuperresReview(t *testing.T) {
 // TestGoldenSuperresReviewFFT pins the review's stacked-FFT screen (both
 // channels + the fine-Nyquist axis label) — a second consumer proving the
 // harness generalises across views.
+// TRLC-LINKS: REQ-SDS-021, REQ-SDS-070
 func TestGoldenSuperresReviewFFT(t *testing.T) {
 	h := goldenSuperresHUD()
 	h.ViewMode = 2

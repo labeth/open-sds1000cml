@@ -1,0 +1,16 @@
+{
+  "result": "pass",
+  "checks": [
+    {
+      "requirement": "REQ-SDS-068",
+      "declarations": 10,
+      "exactPublicationLabel": "app_views.js:79,82,85,98,110,192,200,202,204,206"
+    },
+    {
+      "requirement": "REQ-SDS-125",
+      "declarations": 14,
+      "exactPublicationLabel": "app_views.js:6,8,16,19,25,35,59,64,67,125,142,153,160,168"
+    }
+  ],
+  "inputSHA256": "2ed7c528ed032e148a5db04c1e80581c31fb54a1a84b94947af0bea00f0006d3"
+}

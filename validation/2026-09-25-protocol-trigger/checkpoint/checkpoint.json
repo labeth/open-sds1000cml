@@ -1,0 +1,30 @@
+{
+  "purpose": "User-requested commit, push and first successful deployment, then stop for review",
+  "branch": "cyclone-spec-sram-capture",
+  "deployment": {
+    "fpgaSHA256": "7c8e9c81bd5dc54531f383c332532e0c23c662fac22fbb8a1963f679be2f1896",
+    "fpgaSource": "qualified-fpga/",
+    "appBuild": "make -C app app-release RBF=../validation/2026-09-25-protocol-trigger/checkpoint/qualified-fpga/bench.rbf",
+    "wrapper": "tools/deploy/general-app.sh",
+    "protocols": [
+      "UART",
+      "I2C",
+      "SPI",
+      "SENT",
+      "MIL-STD-1553",
+      "USB LS"
+    ]
+  },
+  "unfinished": [
+    "Physical multi-image manifest and switching",
+    "Manchester and ARINC full-image integration/qualification",
+    "CAN FD and FlexRay hardware",
+    "FPGA stacking segment checks, drift fitting, accumulation and physical memory integration"
+  ],
+  "model": {
+    "strict": true,
+    "errors": 0,
+    "warnings": 604
+  },
+  "note": "Current RTL includes isolated prototypes. Use the frozen qualified image for this checkpoint; rebuilding current RTL is not a qualified deployment."
+}

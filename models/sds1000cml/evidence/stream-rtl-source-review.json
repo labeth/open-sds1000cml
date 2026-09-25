@@ -1,0 +1,569 @@
+{
+  "status": "integrated-with-explicit-verification-limits",
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "completeReads": [
+    "fpga/acq_sram/stream.v",
+    "fpga/acq_sram/stream_banks.v",
+    "fpga/acq_sram/stream_engine.v",
+    "fpga/acq_sram/stream_packetizer.v",
+    "fpga/acq_sram/stream_path.v",
+    "fpga/acq_sram/sim/tb_stream_banks.v",
+    "fpga/acq_sram/sim/tb_stream_path.v",
+    "fpga/acq_sram/sim/tb_sram_stream_path.v",
+    "fpga/acq_sram/sim/tb_stream_top.v"
+  ],
+  "reviewedLines": 649,
+  "sourceSHA256": {
+    "fpga/acq_sram/stream.v": "af94be32991b32f706580b252eb9d955765f98b64ff58fb3da6f401b9b3c18d8",
+    "fpga/acq_sram/stream_banks.v": "852a2036f829e4cd3d0127929e854db0052648da4e815136c4ef73cf5dc9bc3b",
+    "fpga/acq_sram/stream_engine.v": "8b2a5dc216fb29de59ca0b5a2615c47a8a8a099e6273338fe790f606a3b5c046",
+    "fpga/acq_sram/stream_packetizer.v": "3fde05e9d732e03115666f036316d273407447402e928871244f171bae0591e0",
+    "fpga/acq_sram/stream_path.v": "13976af491d5364d32a67db10abeee491d0aa161ed20ae3f3a564bae77f641eb",
+    "fpga/acq_sram/sim/tb_stream_banks.v": "2cbb89cd1939f665175b4ba3f748befc8b816c51888a30a8a6fc3d41f6b30251",
+    "fpga/acq_sram/sim/tb_stream_path.v": "c38ab1f37765b77088e786ee67f309ae04b22f067cc911d7edf46af0f615b15c",
+    "fpga/acq_sram/sim/tb_sram_stream_path.v": "783a6ac5fd0a33522a8b18084cb6d276501743719e629a312cbad03febcc56a7",
+    "fpga/acq_sram/sim/tb_stream_top.v": "6d92d3d1e516e8f598604e79ff03467a1462c57fa1ea5b76a554aae65f751c21"
+  },
+  "mcpContext": [
+    {
+      "exists": true,
+      "generatedAt": "2026-09-23T09:54:19Z",
+      "ok": true,
+      "requirement": {
+        "ID": "REQ-SDS-044",
+        "Title": "SRAM address accounting",
+        "Text": "The instrument shall count every transport clock advance including pipeline flush pulses.",
+        "Notes": "Fresh reads add one flush clock; continued reads consume the prefetched word and add no flush. Discard reads advance the counter without payload publication. Position is modulo 2^AW and resets to zero with reset or lost lock; this does not physically reset the external SRAM address counter. The behavioral DDR model does not establish board timing.",
+        "Category": "functional",
+        "Rationale": "",
+        "SourceRefs": [
+          "REF-SOURCE-FPGA-ACQ-SRAM-TRANSPORT-V"
+        ],
+        "VerificationMethods": [
+          "inspection",
+          "test"
+        ],
+        "VerificationCriteria": "Compare the tracked position against an independent SRAM model after full-capacity writes, stalled writes, repeated reads, a discard seek and continued reads. Check exact payload and enabled-clock counts across wrapping addresses.",
+        "Priority": "",
+        "Criticality": "",
+        "Status": "draft",
+        "Derived": false,
+        "DerivedRationale": "",
+        "Tags": null,
+        "AppliesTo": [
+          "FU-RTL-ACQ-SRAM-TRANSPORT"
+        ]
+      },
+      "schemaVersion": "mcp.tool-response.v1",
+      "tool": "requirements.get"
+    },
+    {
+      "exists": true,
+      "generatedAt": "2026-09-23T09:54:19Z",
+      "ok": true,
+      "requirement": {
+        "ID": "REQ-SDS-045",
+        "Title": "Transport ownership",
+        "Text": "The instrument shall arbitrate finite writing and streaming or recall through one SRAM transport owner.",
+        "Notes": "Source-derived contract; source presence is not evidence of a passing hardware qualification.",
+        "Category": "functional",
+        "Rationale": "",
+        "SourceRefs": [
+          "REF-SOURCE-FPGA-ACQ-SRAM-BOARD-CAPTURE-PATH-V",
+          "REF-SOURCE-FPGA-ACQ-SRAM-CAPTURE-ENGINE-V",
+          "REF-SOURCE-FPGA-ACQ-SRAM-ACQUISITION-PATH-V",
+          "REF-SOURCE-FPGA-ACQ-SRAM-CAPTURE-PATH-V",
+          "REF-SOURCE-FPGA-ACQ-SRAM-SIM-TB-FINITE-CAPTURE-V",
+          "REF-SOURCE-FPGA-ACQ-SRAM-SIM-TB-ACQUISITION-PATH-V",
+          "REF-SOURCE-FPGA-ACQ-SRAM-SIM-TB-BOARD-CAPTURE-V",
+          "REF-SOURCE-FPGA-ACQ-SRAM-SIM-TB-CAPTURE-ENGINE-V",
+          "REF-SOURCE-FPGA-ACQ-SRAM-SIM-TB-CAPTURE-START-V"
+        ],
+        "VerificationMethods": [
+          "inspection",
+          "test"
+        ],
+        "VerificationCriteria": "Inspect the linked implementation and run the corresponding offline tests; hardware claims require independently identified device evidence.",
+        "Priority": "",
+        "Criticality": "",
+        "Status": "draft",
+        "Derived": false,
+        "DerivedRationale": "",
+        "Tags": null,
+        "AppliesTo": [
+          "FU-RTL-ACQ-SRAM-BOARD-CAPTURE-PATH",
+          "FU-RTL-ACQ-SRAM-CAPTURE-ENGINE"
+        ]
+      },
+      "schemaVersion": "mcp.tool-response.v1",
+      "tool": "requirements.get"
+    },
+    {
+      "exists": true,
+      "generatedAt": "2026-09-23T09:54:19Z",
+      "ok": true,
+      "requirement": {
+        "ID": "REQ-SDS-046",
+        "Title": "Ingress loss detection",
+        "Text": "The instrument shall flag ingress loss instead of silently dropping committed stream words.",
+        "Notes": "The FIFO rejects a full push even with a simultaneous pop, and rejects an empty pop even with a simultaneous push. Overflow and underflow persist until reset. The stream adapter reserves eight response slots across the synchronous read pipeline; its count includes reserved words. The path also reports source_valid without source_ready and synchronizes queue faults into the core domain. Intended reduced-rate ingress is not a claim of raw ADC throughput, metastability safety or fitted RAM timing.",
+        "Category": "functional",
+        "Rationale": "",
+        "SourceRefs": [
+          "REF-SOURCE-FPGA-ACQ-SRAM-INGRESS-FIFO-V",
+          "REF-SOURCE-FPGA-ACQ-SRAM-INGRESS-PATH-V",
+          "REF-SOURCE-FPGA-ACQ-SRAM-INGRESS-STREAM-V"
+        ],
+        "VerificationMethods": [
+          "inspection",
+          "test"
+        ],
+        "VerificationCriteria": "Check ordered payloads, occupancy, sticky overflow/underflow, full and empty collisions, bank wrapping, response latency, stable stalled output, and reset during buffered reads. Exercise path overload and RAM overflow across clock phases with pending-count checks. Physical CDC and timing qualification require independently identified board evidence.",
+        "Priority": "",
+        "Criticality": "",
+        "Status": "draft",
+        "Derived": false,
+        "DerivedRationale": "",
+        "Tags": null,
+        "AppliesTo": [
+          "FU-RTL-ACQ-SRAM-INGRESS-FIFO",
+          "FU-RTL-ACQ-SRAM-INGRESS-PATH",
+          "FU-RTL-ACQ-SRAM-INGRESS-STREAM"
+        ]
+      },
+      "schemaVersion": "mcp.tool-response.v1",
+      "tool": "requirements.get"
+    },
+    {
+      "exists": true,
+      "generatedAt": "2026-09-23T09:54:19Z",
+      "ok": true,
+      "requirement": {
+        "ID": "REQ-SDS-047",
+        "Title": "Stream ordinals",
+        "Text": "The instrument shall track stream word progress independently of wrapping physical SRAM addresses.",
+        "Notes": "Source-derived contract; source presence is not evidence of a passing hardware qualification.",
+        "Category": "functional",
+        "Rationale": "",
+        "SourceRefs": [
+          "REF-SOURCE-FPGA-ACQ-SRAM-ORDINAL-COUNTER-V"
+        ],
+        "VerificationMethods": [
+          "inspection",
+          "test"
+        ],
+        "VerificationCriteria": "Inspect the linked implementation and run the corresponding offline tests; hardware claims require independently identified device evidence.",
+        "Priority": "",
+        "Criticality": "",
+        "Status": "draft",
+        "Derived": false,
+        "DerivedRationale": "",
+        "Tags": null,
+        "AppliesTo": [
+          "FU-RTL-ACQ-SRAM-ORDINAL-COUNTER"
+        ]
+      },
+      "schemaVersion": "mcp.tool-response.v1",
+      "tool": "requirements.get"
+    },
+    {
+      "exists": true,
+      "generatedAt": "2026-09-23T09:54:19Z",
+      "ok": true,
+      "requirement": {
+        "ID": "REQ-SDS-048",
+        "Title": "Capture and read scheduling",
+        "Text": "The instrument shall schedule bounded SRAM writer and reader service using occupancy and progress.",
+        "Notes": "The scheduler starts only when transport is ready and both host banks are free. It seeks and samples available banks before reservation, retries busy banks by returning to writing, and drains final buffered ingress only after source_finished. Bank_done marks emission completion; RAM publication belongs to the host path. A full unread ring faults before overwrite. Host writes cannot be backpressured during a read burst. Trigger-driven record geometry is outside this scheduler.",
+        "Category": "functional",
+        "Rationale": "",
+        "SourceRefs": [
+          "REF-SOURCE-FPGA-ACQ-SRAM-TIMESLICE-CONTROLLER-V"
+        ],
+        "VerificationMethods": [
+          "inspection",
+          "test"
+        ],
+        "VerificationCriteria": "Check ordinal and physical-write ordering, unread bounds, bank ownership, stop and final drain, odd tails, repeated captures, active reset, stalled host service, and a no-release unread-overflow case. Exercise default SRAM address geometry and the production host RAM/descriptor/release path with separately recorded simulation configurations. Physical timing and sustainable device throughput remain separate qualifications.",
+        "Priority": "",
+        "Criticality": "",
+        "Status": "draft",
+        "Derived": false,
+        "DerivedRationale": "",
+        "Tags": null,
+        "AppliesTo": [
+          "FU-RTL-ACQ-SRAM-TIMESLICE-CONTROLLER"
+        ]
+      },
+      "schemaVersion": "mcp.tool-response.v1",
+      "tool": "requirements.get"
+    },
+    {
+      "exists": true,
+      "generatedAt": "2026-09-23T09:54:19Z",
+      "ok": true,
+      "requirement": {
+        "ID": "REQ-SDS-049",
+        "Title": "Host packet packing",
+        "Text": "The instrument shall pack valid source words while preserving an odd final word.",
+        "Notes": "Source-derived contract; source presence is not evidence of a passing hardware qualification.",
+        "Category": "functional",
+        "Rationale": "",
+        "SourceRefs": [
+          "REF-SOURCE-FPGA-ACQ-SRAM-HOST-PACKER-V"
+        ],
+        "VerificationMethods": [
+          "inspection",
+          "test"
+        ],
+        "VerificationCriteria": "Inspect the linked implementation and run the corresponding offline tests; hardware claims require independently identified device evidence.",
+        "Priority": "",
+        "Criticality": "",
+        "Status": "draft",
+        "Derived": false,
+        "DerivedRationale": "",
+        "Tags": null,
+        "AppliesTo": [
+          "FU-RTL-ACQ-SRAM-HOST-PACKER"
+        ]
+      },
+      "schemaVersion": "mcp.tool-response.v1",
+      "tool": "requirements.get"
+    },
+    {
+      "exists": true,
+      "generatedAt": "2026-09-23T09:54:19Z",
+      "ok": true,
+      "requirement": {
+        "ID": "REQ-SDS-050",
+        "Title": "Host packet CDC",
+        "Text": "The instrument shall transfer host packets across clock domains using the eight-slot queue.",
+        "Notes": "The instantiated default ADDR_BITS=3 supplies eight storage slots plus a registered destination output; tests allow nine outstanding packets. Other parameterizations are not this profile contract. Physical CDC timing remains separate evidence.",
+        "Category": "functional",
+        "Rationale": "",
+        "SourceRefs": [
+          "REF-SOURCE-FPGA-ACQ-SRAM-HOST-FIFO-V"
+        ],
+        "VerificationMethods": [
+          "inspection",
+          "test"
+        ],
+        "VerificationCriteria": "Inspect the linked implementation and run the corresponding offline tests; hardware claims require independently identified device evidence.",
+        "Priority": "",
+        "Criticality": "",
+        "Status": "draft",
+        "Derived": false,
+        "DerivedRationale": "",
+        "Tags": null,
+        "AppliesTo": [
+          "FU-RTL-ACQ-SRAM-HOST-FIFO"
+        ]
+      },
+      "schemaVersion": "mcp.tool-response.v1",
+      "tool": "requirements.get"
+    },
+    {
+      "exists": true,
+      "generatedAt": "2026-09-23T09:54:19Z",
+      "ok": true,
+      "requirement": {
+        "ID": "REQ-SDS-051",
+        "Title": "Host memory geometry",
+        "Text": "The instrument shall address 5120 host words through two logical 2560-word banks in the new profile path.",
+        "Notes": "Source-derived contract; source presence is not evidence of a passing hardware qualification.",
+        "Category": "functional",
+        "Rationale": "",
+        "SourceRefs": [
+          "REF-SOURCE-FPGA-ACQ-SRAM-HOST-RAM-V",
+          "REF-SOURCE-FPGA-ACQ-SRAM-HOST-OWNERSHIP-V"
+        ],
+        "VerificationMethods": [
+          "inspection",
+          "test"
+        ],
+        "VerificationCriteria": "Inspect the linked implementation and run the corresponding offline tests; hardware claims require independently identified device evidence.",
+        "Priority": "",
+        "Criticality": "",
+        "Status": "draft",
+        "Derived": false,
+        "DerivedRationale": "",
+        "Tags": null,
+        "AppliesTo": [
+          "FU-RTL-ACQ-SRAM-HOST-OWNERSHIP",
+          "FU-RTL-ACQ-SRAM-HOST-RAM"
+        ]
+      },
+      "schemaVersion": "mcp.tool-response.v1",
+      "tool": "requirements.get"
+    },
+    {
+      "exists": true,
+      "generatedAt": "2026-09-23T09:54:19Z",
+      "ok": true,
+      "requirement": {
+        "ID": "REQ-SDS-052",
+        "Title": "Host publication ownership",
+        "Text": "The instrument shall release a published bank only with its matching current token.",
+        "Notes": "The one-bit publication token rejects immediate stale or duplicate releases. A token retained across two bank reuses can match again; callers must not treat it as an unbounded generation identifier. Core reuse waits for the producer-domain acknowledgement, including when its clock pauses.",
+        "Category": "functional",
+        "Rationale": "",
+        "SourceRefs": [
+          "REF-SOURCE-FPGA-ACQ-SRAM-HOST-OWNERSHIP-V",
+          "REF-SOURCE-FPGA-ACQ-SRAM-CAPTURE-ENGINE-V",
+          "REF-SOURCE-FPGA-ACQ-SRAM-FINITE-RECALL-V",
+          "REF-SOURCE-FPGA-ACQ-SRAM-SIM-TB-FINITE-CAPTURE-V",
+          "REF-SOURCE-FPGA-ACQ-SRAM-SIM-TB-FINITE-RECALL-V",
+          "REF-SOURCE-FPGA-ACQ-SRAM-SIM-TB-FINITE-RECALL-FAULTS-V",
+          "REF-SOURCE-FPGA-ACQ-SRAM-SIM-TB-BOARD-CAPTURE-V",
+          "REF-SOURCE-FPGA-ACQ-SRAM-SIM-TB-CAPTURE-ENGINE-V"
+        ],
+        "VerificationMethods": [
+          "inspection",
+          "test"
+        ],
+        "VerificationCriteria": "Inspect the linked implementation and run the corresponding offline tests; hardware claims require independently identified device evidence.",
+        "Priority": "",
+        "Criticality": "",
+        "Status": "draft",
+        "Derived": false,
+        "DerivedRationale": "",
+        "Tags": null,
+        "AppliesTo": [
+          "FU-RTL-ACQ-SRAM-HOST-OWNERSHIP"
+        ]
+      },
+      "schemaVersion": "mcp.tool-response.v1",
+      "tool": "requirements.get"
+    },
+    {
+      "exists": true,
+      "generatedAt": "2026-09-23T09:54:19Z",
+      "ok": true,
+      "requirement": {
+        "ID": "REQ-SDS-053",
+        "Title": "Profile host reads",
+        "Text": "The instrument shall reject invalid host read windows and report completion coherently.",
+        "Notes": "Source-derived contract; source presence is not evidence of a passing hardware qualification.",
+        "Category": "functional",
+        "Rationale": "",
+        "SourceRefs": [
+          "REF-SOURCE-FPGA-ACQ-SRAM-HOST-READ-PORT-V",
+          "REF-SOURCE-FPGA-ACQ-SRAM-HOST-READ-WINDOW-V"
+        ],
+        "VerificationMethods": [
+          "inspection",
+          "test"
+        ],
+        "VerificationCriteria": "Inspect the linked implementation and run the corresponding offline tests; hardware claims require independently identified device evidence.",
+        "Priority": "",
+        "Criticality": "",
+        "Status": "draft",
+        "Derived": false,
+        "DerivedRationale": "",
+        "Tags": null,
+        "AppliesTo": [
+          "FU-RTL-ACQ-SRAM-HOST-READ-PORT",
+          "FU-RTL-ACQ-SRAM-HOST-READ-WINDOW"
+        ]
+      },
+      "schemaVersion": "mcp.tool-response.v1",
+      "tool": "requirements.get"
+    },
+    {
+      "exists": true,
+      "generatedAt": "2026-09-23T09:54:19Z",
+      "ok": true,
+      "requirement": {
+        "ID": "REQ-SDS-058",
+        "Title": "Epoch reset",
+        "Text": "The instrument shall invalidate in-flight ownership and command state across reset or loss of clock lock.",
+        "Notes": "Source-derived contract; source presence is not evidence of a passing hardware qualification.",
+        "Category": "functional",
+        "Rationale": "",
+        "SourceRefs": [
+          "REF-SOURCE-FPGA-ACQ-SRAM-PROFILE-CORE-V",
+          "REF-SOURCE-FPGA-ACQ-SRAM-PROFILE-TOP-V",
+          "REF-SOURCE-FPGA-ACQ-SRAM-INTERLEAVE-V",
+          "REF-SOURCE-FPGA-ACQ-SRAM-ACQUISITION-SOURCE-V",
+          "REF-SOURCE-FPGA-ACQ-SRAM-ACQUISITION-PATH-V",
+          "REF-SOURCE-FPGA-ACQ-SRAM-CAPTURE-ENGINE-V",
+          "REF-SOURCE-FPGA-ACQ-SRAM-FINITE-WRITER-V",
+          "REF-SOURCE-FPGA-ACQ-SRAM-FINITE-RECALL-V",
+          "REF-SOURCE-FPGA-ACQ-SRAM-COMMAND-BRIDGE-V",
+          "REF-SOURCE-FPGA-ACQ-SRAM-COMMAND-PORT-V",
+          "REF-SOURCE-FPGA-ACQ-SRAM-SIM-TB-ACQUISITION-SOURCE-V",
+          "REF-SOURCE-FPGA-ACQ-SRAM-SIM-TB-COMMAND-BRIDGE-V",
+          "REF-SOURCE-FPGA-ACQ-SRAM-SIM-TB-COMMAND-PORT-V",
+          "REF-SOURCE-FPGA-ACQ-SRAM-SIM-TB-FINITE-WRITER-FAULTS-V",
+          "REF-SOURCE-FPGA-ACQ-SRAM-SIM-TB-FINITE-RECALL-FAULTS-V",
+          "REF-SOURCE-FPGA-ACQ-SRAM-SIM-TB-ACQUISITION-PATH-V",
+          "REF-SOURCE-FPGA-ACQ-SRAM-SIM-TB-CAPTURE-START-V"
+        ],
+        "VerificationMethods": [
+          "inspection",
+          "test"
+        ],
+        "VerificationCriteria": "Inspect the linked implementation and run the corresponding offline tests; hardware claims require independently identified device evidence.",
+        "Priority": "",
+        "Criticality": "",
+        "Status": "draft",
+        "Derived": false,
+        "DerivedRationale": "",
+        "Tags": null,
+        "AppliesTo": [
+          "FU-RTL-ACQ-SRAM-PROFILE-CORE",
+          "FU-RTL-ACQ-SRAM-PROFILE-TOP"
+        ]
+      },
+      "schemaVersion": "mcp.tool-response.v1",
+      "tool": "requirements.get"
+    }
+  ],
+  "findings": [
+    {
+      "path": "fpga/acq_sram/stream.v",
+      "candidateRequirements": [
+        "REQ-SDS-046",
+        "REQ-SDS-050"
+      ],
+      "finding": "Legacy adc_stream caller must enforce decimation log>=13; the module itself does not validate it. Unacknowledged core-to-pack toggle feeds a vendor 4096-word FIFO. CPU reads low then high halfwords and increments consumed only on the second nonempty pop; empty reads latch underflow. Overflow and underflow synchronize back to core; this is a distinct interface from bank publication."
+    },
+    {
+      "path": "fpga/acq_sram/stream_packetizer.v",
+      "candidateRequirements": [
+        "REQ-SDS-049",
+        "REQ-SDS-050",
+        "REQ-SDS-058"
+      ],
+      "finding": "Reduced-rate packetizer holds one acknowledged bundled payload and one half-word. A second word while the mailbox is busy latches fault rather than backpressuring input. Stop includes a same-edge word, waits for acknowledgement, then sends a single-word or empty seal. Finished means seal acknowledged, not host bank released. Bundled physical paths still need timing bounds."
+    },
+    {
+      "path": "fpga/acq_sram/stream_banks.v",
+      "candidateRequirements": [
+        "REQ-SDS-047",
+        "REQ-SDS-051",
+        "REQ-SDS-052",
+        "REQ-SDS-058"
+      ],
+      "finding": "Two default1024-packet banks count source words, not packets. Single final packet contributes one word; seal may publish existing partial data without a new packet. Published RAM/descriptors are held until matching bank token release. Alternating tokens protect only the documented one-outstanding-release protocol, not arbitrary long-lived stale transaction IDs. Overrun stops new writes but preserves readable published banks."
+    },
+    {
+      "path": "fpga/acq_sram/stream_engine.v",
+      "candidateRequirements": [
+        "REQ-SDS-045",
+        "REQ-SDS-046",
+        "REQ-SDS-048"
+      ],
+      "finding": "External-transport engine composes nine-bank ingress and 2560-word scheduler banks. It latches source_fault until reset, masks start_ready/source_enable immediately, and forwards failure to the scheduler. Exclusive transport ownership must persist through drain, and producer selection must not change while any host bank is reserved/pending/owned."
+    },
+    {
+      "path": "fpga/acq_sram/stream_path.v",
+      "candidateRequirements": [
+        "REQ-SDS-044",
+        "REQ-SDS-048",
+        "REQ-SDS-052",
+        "REQ-SDS-053"
+      ],
+      "finding": "Path composes stream engine, CONTINUOUS_ONLY transport and host path. Caller supplies qualified clocks/read_bias and source-finished after final offer. It exposes readout and counters but implements neither trigger geometry nor the GPMC register ABI; physical qualification cannot be inferred from this composition."
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_stream_banks.v",
+      "candidateRequirements": [
+        "REQ-SDS-047",
+        "REQ-SDS-049",
+        "REQ-SDS-052",
+        "REQ-SDS-058"
+      ],
+      "finding": "Bench checks asynchronous consumer ordering, partial/empty/single seals, stale token rejection, overrun retaining exactly two banks and no post-fault writes, and reset epochs. Parameter BANK_AW will cover reduced3 and both1024/2048-packet banks. It does not prove arbitrary delayed token replay safety."
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_stream_path.v",
+      "candidateRequirements": [
+        "REQ-SDS-049",
+        "REQ-SDS-052",
+        "REQ-SDS-058",
+        "REQ-SDS-186"
+      ],
+      "finding": "Packetizer plus bank tests check zero/one/odd/even/bank-boundary lengths, simultaneous valid+stop, sequence, and a producer exceeding handshake capacity. The overload case requires the first pair to survive unchanged; digital clock ratios are fixed and do not establish physical bundled-data timing."
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_sram_stream_path.v",
+      "candidateRequirements": [
+        "REQ-SDS-044",
+        "REQ-SDS-045",
+        "REQ-SDS-046",
+        "REQ-SDS-047",
+        "REQ-SDS-048",
+        "REQ-SDS-051",
+        "REQ-SDS-052",
+        "REQ-SDS-053"
+      ],
+      "finding": "Public-interface wrapper test uses ideal SRAM pins/host reads, source cadence every128 core cycles and no injected host stall. AW13/TARGET10003 wraps physical addressing; AW19/TARGET65539 exercises production address width and crosses16-bit word accounting but not the full19-bit address wrap. Source_fault is tied low; this bench does not inject source failure."
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_stream_top.v",
+      "candidateRequirements": [
+        "REQ-SDS-049",
+        "REQ-SDS-052",
+        "REQ-SDS-058"
+      ],
+      "finding": "Legacy top integration bench supplies fake PLL, ADC and precision sources, forces register-side write strobes and trigger flags, and reads internal host RAM. It checks stream tap, legacy capture, ownership exclusion, overrun/rearm and trigger-decode combinations. Source-reviewed only; execution is deferred until the top implementation is reviewed."
+    },
+    {
+      "path": "fpga/acq_sram/stream.v",
+      "candidateRequirements": [
+        "REQ-SDS-187"
+      ],
+      "finding": "Repository-wide current fpga .v/.qsf search finds adc_stream declaration but no instantiation. The eight-slot host CDC contract REQ-SDS-050 and profile5120-word geometry REQ-SDS-051 do not describe this4096-word legacy FIFO. No current direct bench supplies behavioral evidence."
+    }
+  ],
+  "scope": "Nine complete source/test files reviewed,649 lines. Eight original digital cases pass: packetizer/banks at BANK_AW3/10/11 and SRAM wrapper AW13/TARGET10003 plus AW19/TARGET65539. Eight files trace-integrated; legacy top remains review-only. Legacy adc_stream has no direct behavioral test or current FPGA instantiation. Ideal clocks and memory do not establish physical qualification.",
+  "supportCompleteReads": [
+    "validation/2026-09-14-stream-path/test_stream.py"
+  ],
+  "supportPartialReads": [
+    {
+      "path": "validation/2026-09-14-stream-path/README.md",
+      "lines": "1..100",
+      "scope": "Historical claims are background, not current execution evidence."
+    }
+  ],
+  "mappingDecisions": [
+    "Do not map packetizer or legacy adc_stream to REQ-SDS-050: that contract specifically requires the profile eight-slot queue.",
+    "Do not map stream_banks to REQ-SDS-051: its parameterized1024/2048-packet banks differ from profile2560-word banks.",
+    "REQ-SDS-186 describes the reduced-rate acknowledged packet mailbox; REQ-SDS-187 separately describes the unused legacy CPU halfword FIFO."
+  ],
+  "modulesByFile": {
+    "fpga/acq_sram/stream.v": [
+      "adc_stream"
+    ],
+    "fpga/acq_sram/stream_banks.v": [
+      "stream_banks"
+    ],
+    "fpga/acq_sram/stream_engine.v": [
+      "sram_stream_engine"
+    ],
+    "fpga/acq_sram/stream_packetizer.v": [
+      "stream_packetizer"
+    ],
+    "fpga/acq_sram/stream_path.v": [
+      "sram_stream_path"
+    ],
+    "fpga/acq_sram/sim/tb_stream_banks.v": [
+      "tb"
+    ],
+    "fpga/acq_sram/sim/tb_stream_path.v": [
+      "tb"
+    ],
+    "fpga/acq_sram/sim/tb_sram_stream_path.v": [
+      "tb_stream_path"
+    ],
+    "fpga/acq_sram/sim/tb_stream_top.v": [
+      "bench_pll",
+      "adc_interleave",
+      "adc_precision",
+      "tb"
+    ]
+  },
+  "executionEvidence": "stream-rtl-review-test-run.json"
+}

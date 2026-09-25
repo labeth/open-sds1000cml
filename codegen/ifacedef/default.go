@@ -13,11 +13,13 @@
 // write strobe. Fields inside a partly implemented register carry the same
 // mark in their Desc (the fabric masks them). Flip Stub in the increment that
 // implements the register — the build-ID moves and the app reloads the fabric.
+// ENGMODEL-OWNER-UNIT: FU-CODEGEN-IFACEDEF
 package ifacedef
 
 import "open-sds/codegen/schema"
 
 // Default returns the sds1000cml-default v3 interface.
+// TRLC-LINKS: REQ-SDS-156, REQ-SDS-031
 func Default() schema.Interface {
 	const (
 		R  = schema.R

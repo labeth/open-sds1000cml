@@ -1,0 +1,50 @@
+{
+  "requirement": "REQ-SDS-027",
+  "scope": "Complete takeover.go and both takeover test files reviewed. The untakeover test is linked to REQ-SDS-104 for flag clearing/reload; handler and supervisor support were inspected only for that exercised path.",
+  "sourceSHA256": {
+    "ota/internal/agent/takeover.go": "500a01c036802ca756610c2bba9f21559f9a445d1430fc5d1469a44cd0ccde0e",
+    "ota/internal/agent/takeover_test.go": "152cdb528e5bae4908724a6057aa587ca212afdac209e7a65919e26876b05810",
+    "ota/internal/agent/takeover_vxi11_test.go": "2134faedc1c9968cb76a6e1860bd6b8334552c6302e972b5fc910d1000298505"
+  },
+  "supportInputsSHA256": {
+    "ota/internal/agent/agent.go": "cae42ede46281a27f9bf51682abe4776db3a11edfb6766799c5bab01853c007d",
+    "ota/internal/agent/rpc_test.go": "b2f70fbfdcccb9bbe3b05e9fa95380b58239fd7b6fc4f59f58614c923d9e0275",
+    "ota/internal/agent/handlers.go": "68214688693fafccdd0a748978673ee00d9f57f5d01fcd05e182cc4b8a84f6f9",
+    "ota/internal/agent/supervise.go": "d46b4a0da8508b4005e589cd8439a9141b518cef4b50ce0c88c3f3ddecbf63ba",
+    "ota/internal/agent/supervise_test.go": "88d6ebc0bf882a158560ba3360c9db059c12bb7a9874993bb4b2cdb25e1cc9fa",
+    "ota/internal/agent/state.go": "e1144cbd26ae4c784bba6307ac1654b2d9c04df91fbb0aec80d486fc11684042"
+  },
+  "tests": [
+    "TestSplitCIDR",
+    "TestMatchesFactoryName",
+    "TestFactoryCandidatesEmptyWhenNobodyHoldsDevice",
+    "TestTakeoverResultSteps",
+    "TestTakeoverIdempotentWhenAlreadyTakenOver",
+    "TestTakeoverHappyPathOrderOfOperations",
+    "TestTakeoverRefusesWhenFactoryWontIdle",
+    "TestTakeoverRefusesWhenFactoryStopUnreachable",
+    "TestTakeoverForcePartialFailureStillReassertsNetwork",
+    "TestUntakeoverReleasesControl"
+  ],
+  "testLog": "test-runs/takeover-state.jsonl",
+  "implementation": [
+    "Serializes Takeover and reclaimBus with tkMu; idempotent already-taken-over path rearms watchdog acquisition.",
+    "Dry-run returns after inherited-fd gate and holder discovery.",
+    "Ordinary takeover sends STOP when candidates exist, performs factory-version/masked-fill checks, persists state, kills holders, acquires/retries watchdog and schedules network restoration.",
+    "Holder discovery excludes self, pid 1, descendants, another agent executable and shell-like infrastructure unless configured factory names match. Other GPMC holders are candidates without requiring a configured name match.",
+    "factoryStop requires STOP write success; TRMD STOP and SAST query failures are ignored.",
+    "killFactory tries four rounds and records surviving holders without failing takeover.",
+    "Network waits are sequential: 2, then 10, then 30 seconds, approximately 2/12/42 seconds after scheduling plus work time."
+  ],
+  "limits": [
+    "Force attempts STOP/idle checks and ignores their errors; it does not bypass the inherited-descriptor gate.",
+    "reclaimBus kills even when the descriptor is missing or STOP/idle checks fail. It is a distinct already-taken-over recovery path.",
+    "Successful return may coexist with surviving/respawned holders, a pending watchdog retry and uncompleted network restoration.",
+    "confirmIdle with nonpositive timeout returns nil without polling; normal production call sites use positive durations.",
+    "Deadline polling does not interrupt a blocking ioctl, and masked equal samples can alias counter wraps.",
+    "splitCIDR checks the numeric prefix range but does not validate the IP string or require complete prefix-string consumption.",
+    "Tests use fake GPMC values, temporary watchdog/GPMC files, loopback VXI endpoints and test-created holder processes. They do not prove physical idle, device recovery or actual network restoration.",
+    "The shared testAgent fixture is read as support only; agent.go and rpc_test.go are not otherwise fully reviewed/annotated in this pass.",
+    "stateFile.update changes memory before file persistence; failed persistence can leave TakenOver=true so a subsequent Takeover call enters its already-taken-over branch. The state-only probe reproduces the memory/disk divergence without calling Takeover."
+  ]
+}

@@ -1,0 +1,67 @@
+{
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "sourceSHA256": {
+    "app/internal/web/app_precision.js": "4474686cd683b848d08ae1ca0a55a89eedf6183fa365ecabf249d7e7b4d682c2",
+    "app/internal/web/app_serialtrig.js": "b79d865dfc14ea1186a8f5978bc8fba93073f283b90ad7b03d28b0cff2e28001",
+    "app/internal/web/app_decode.js": "135a916cef066acdbcf9fd5c88787ab3ff908cf12da95a073cc0a77ae14c7e83"
+  },
+  "helperSHA256": "b051d251f87bfd107e8713d4181bab3ce0b846777b1bf7265488087c7bf3c8ec",
+  "runnerSHA256": "3544b8c2410f206530de4e5eee72b0d2961b92b0fd5adc238e2ac48a40f46d5c",
+  "nodeVersion": "v22.20.0",
+  "result": "pass",
+  "cases": [
+    {
+      "name": "sine fit recovers synthetic frequency, amplitude and offset",
+      "result": "pass"
+    },
+    {
+      "name": "periodic fit removes supplied harmonic distortion",
+      "result": "pass"
+    },
+    {
+      "name": "fit rejects short record, invalid dt and insufficient cycles",
+      "result": "pass"
+    },
+    {
+      "name": "byte parsing rejects malformed tokens without dropping them",
+      "result": "pass"
+    },
+    {
+      "name": "byte parsing truncates valid long patterns but validates their tail",
+      "result": "pass"
+    },
+    {
+      "name": "address parser permits wildcard and only seven-bit addresses",
+      "result": "pass"
+    },
+    {
+      "name": "rejected configuration does not arm serial triggering",
+      "result": "pass"
+    },
+    {
+      "name": "failed serial push retains signature and suppresses timer retry",
+      "result": "pass"
+    },
+    {
+      "name": "unsupported decode protocol disarms serial triggering",
+      "result": "pass"
+    },
+    {
+      "name": "C2-only frame is not dispatched by decode UI",
+      "result": "pass"
+    },
+    {
+      "name": "watch reports error plus case-insensitive transcript match",
+      "result": "pass"
+    },
+    {
+      "name": "watch dedup persists across a nonmatching frame",
+      "result": "pass"
+    },
+    {
+      "name": "history and capture buffers cap at 200 and 80 entries",
+      "result": "pass"
+    }
+  ],
+  "scope": "Original precision fits on synthetic arrays and decode/serial UI control flow with isolated DOM, decoder, network and timer stubs. No browser pixels, physical metrology, protocol truth or device commands."
+}

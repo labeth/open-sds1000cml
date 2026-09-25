@@ -1,0 +1,28 @@
+{"Time":"2026-09-23T08:37:30.925087548+02:00","Action":"start","Package":"open-sds/app/internal/decode"}
+{"Time":"2026-09-23T08:37:30.9452162+02:00","Action":"run","Package":"open-sds/app/internal/decode","Test":"TestBreakArinc429"}
+{"Time":"2026-09-23T08:37:30.945233559+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestBreakArinc429","Output":"=== RUN   TestBreakArinc429\n"}
+{"Time":"2026-09-23T08:37:30.945263098+02:00","Action":"run","Package":"open-sds/app/internal/decode","Test":"TestBreakArinc429/false_negatives"}
+{"Time":"2026-09-23T08:37:30.945267246+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestBreakArinc429/false_negatives","Output":"=== RUN   TestBreakArinc429/false_negatives\n"}
+{"Time":"2026-09-23T08:37:30.990295985+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestBreakArinc429/false_negatives","Output":"--- PASS: TestBreakArinc429/false_negatives (0.05s)\n"}
+{"Time":"2026-09-23T08:37:30.990320034+02:00","Action":"pass","Package":"open-sds/app/internal/decode","Test":"TestBreakArinc429/false_negatives","Elapsed":0.05}
+{"Time":"2026-09-23T08:37:30.990396244+02:00","Action":"run","Package":"open-sds/app/internal/decode","Test":"TestBreakArinc429/false_positives"}
+{"Time":"2026-09-23T08:37:30.990402753+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestBreakArinc429/false_positives","Output":"=== RUN   TestBreakArinc429/false_positives\n"}
+{"Time":"2026-09-23T08:37:31.15389722+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestBreakArinc429/false_positives","Output":"--- PASS: TestBreakArinc429/false_positives (0.16s)\n"}
+{"Time":"2026-09-23T08:37:31.153925403+02:00","Action":"pass","Package":"open-sds/app/internal/decode","Test":"TestBreakArinc429/false_positives","Elapsed":0.16}
+{"Time":"2026-09-23T08:37:31.154002306+02:00","Action":"run","Package":"open-sds/app/internal/decode","Test":"TestBreakArinc429/edge"}
+{"Time":"2026-09-23T08:37:31.154009698+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestBreakArinc429/edge","Output":"=== RUN   TestBreakArinc429/edge\n"}
+{"Time":"2026-09-23T08:37:31.165841855+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestBreakArinc429/edge","Output":"--- PASS: TestBreakArinc429/edge (0.01s)\n"}
+{"Time":"2026-09-23T08:37:31.165866187+02:00","Action":"pass","Package":"open-sds/app/internal/decode","Test":"TestBreakArinc429/edge","Elapsed":0.01}
+{"Time":"2026-09-23T08:37:31.165881408+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestBreakArinc429","Output":"--- PASS: TestBreakArinc429 (0.22s)\n"}
+{"Time":"2026-09-23T08:37:31.165886052+02:00","Action":"pass","Package":"open-sds/app/internal/decode","Test":"TestBreakArinc429","Elapsed":0.22}
+{"Time":"2026-09-23T08:37:31.165964338+02:00","Action":"run","Package":"open-sds/app/internal/decode","Test":"TestBreakMil1553"}
+{"Time":"2026-09-23T08:37:31.165972525+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestBreakMil1553","Output":"=== RUN   TestBreakMil1553\n"}
+{"Time":"2026-09-23T08:37:31.255235568+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestBreakMil1553","Output":"--- PASS: TestBreakMil1553 (0.09s)\n"}
+{"Time":"2026-09-23T08:37:31.255257302+02:00","Action":"pass","Package":"open-sds/app/internal/decode","Test":"TestBreakMil1553","Elapsed":0.09}
+{"Time":"2026-09-23T08:37:31.255306215+02:00","Action":"run","Package":"open-sds/app/internal/decode","Test":"TestBreakSent"}
+{"Time":"2026-09-23T08:37:31.255312191+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestBreakSent","Output":"=== RUN   TestBreakSent\n"}
+{"Time":"2026-09-23T08:37:31.554509252+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestBreakSent","Output":"--- PASS: TestBreakSent (0.30s)\n"}
+{"Time":"2026-09-23T08:37:31.554530562+02:00","Action":"pass","Package":"open-sds/app/internal/decode","Test":"TestBreakSent","Elapsed":0.3}
+{"Time":"2026-09-23T08:37:31.554741096+02:00","Action":"output","Package":"open-sds/app/internal/decode","Output":"PASS\n"}
+{"Time":"2026-09-23T08:37:32.556902653+02:00","Action":"output","Package":"open-sds/app/internal/decode","Output":"ok  \topen-sds/app/internal/decode\t1.631s\n"}
+{"Time":"2026-09-23T08:37:32.556920445+02:00","Action":"pass","Package":"open-sds/app/internal/decode","Elapsed":1.6320000000000001}

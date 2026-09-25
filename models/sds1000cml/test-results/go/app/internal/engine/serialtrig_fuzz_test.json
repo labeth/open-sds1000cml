@@ -1,0 +1,25 @@
+{
+  "source": "app/internal/engine/serialtrig_fuzz_test.go",
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "scope": "Reviewed Go test outcomes; passing assertions contribute partial requirement evidence.",
+  "sourceSHA256": "c2ef82333faf52f1dd094d19ec171000384121cdc9d5e23e1a138a9ab556d229",
+  "logs": {
+    "test-runs/engine-serial-zonemask-reviewed.jsonl": "7764e6feeed08a5d9d3974339936e798d2e4673861d54d3feaaa23eccb223491"
+  },
+  "tests": [
+    {
+      "name": "TestSerialQualifyFuzz",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-013"
+      ]
+    }
+  ],
+  "results": [
+    {
+      "requirement": "REQ-SDS-013",
+      "status": "partial",
+      "notes": "1 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    }
+  ]
+}

@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-LCD
 package lcd
 
 import (
@@ -27,6 +28,7 @@ const (
 // Spectrogram is the scrolling image plus the last effective Nyquist (for the
 // frequency axis). Not safe for concurrent Push; the LCD loop is the only
 // writer.
+// TRLC-LINKS: REQ-SDS-068
 type Spectrogram struct {
 	img     *MemSurface
 	effNyq  float64 // Hz at the right edge of the heatmap
@@ -35,12 +37,14 @@ type Spectrogram struct {
 }
 
 // NewSpectrogram allocates the waterfall image.
+// TRLC-LINKS: REQ-SDS-068
 func NewSpectrogram() *Spectrogram {
 	return &Spectrogram{img: NewMemSurface(), floorDB: -60}
 }
 
 // heat maps t∈[0,1] to a perceptual black→blue→cyan→green→yellow→red→white
 // ramp (RGB565). Monotone in brightness so higher dB always reads "hotter".
+// TRLC-LINKS: REQ-SDS-068
 func heat(t float64) uint16 {
 	// Total in t: a NaN (from a degenerate 0·Inf in the paint math) must not
 	// reach int(NaN) → a garbage stops[] index. NaN and the low tail → black.
@@ -72,6 +76,7 @@ func heat(t float64) uint16 {
 
 // Push computes the frame's magnitude spectrum, scrolls the image down one row,
 // and paints the new spectrum as the top row. Ch selects the source channel.
+// TRLC-LINKS: REQ-SDS-068
 func (sg *Spectrogram) Push(f *engine.Frame, ch int, effNyq float64) {
 	if f == nil {
 		return
@@ -125,9 +130,11 @@ func (sg *Spectrogram) Push(f *engine.Frame, ch int, effNyq float64) {
 }
 
 // Rows reports how many waterfall rows have been painted (debug/status).
+// TRLC-LINKS: REQ-SDS-068
 func (sg *Spectrogram) Rows() int { return sg.rows }
 
 // Clear blanks the waterfall.
+// TRLC-LINKS: REQ-SDS-068
 func (sg *Spectrogram) Clear() {
 	for i := range sg.img.Pix {
 		sg.img.Pix[i] = 0
@@ -138,6 +145,7 @@ func (sg *Spectrogram) Clear() {
 // spectrumMags returns the Hann-windowed half-spectrum magnitudes of a real
 // record (largest power-of-two ≤ len) and the peak. Mirrors the FFT view and
 // the web spectrum().
+// TRLC-LINKS: REQ-SDS-068
 func spectrumMags(src []uint8, stride int) ([]float64, float64) {
 	if stride < 1 {
 		stride = 1
@@ -176,6 +184,7 @@ func spectrumMags(src []uint8, stride int) ([]float64, float64) {
 
 // drawSpectrogram blits the waterfall image and draws the frequency axis + a dB
 // colour key. `sg` is the accumulated image passed via the HUD.
+// TRLC-LINKS: REQ-SDS-021, REQ-SDS-068
 func drawSpectrogram(sf Surface, sg *Spectrogram) {
 	if sg == nil || sg.rows == 0 {
 		DrawText(sf, W/2-170, H/2, "SPECTROGRAM — FFT over time; needs a triggered signal", colDim, 1)

@@ -1,4 +1,6 @@
+// ENGMODEL-OWNER-UNIT: FU-RTL-ACQ-TESTS
 `timescale 1ns/1ps
+// TRLC-LINKS: REQ-SDS-040
 module tb;
  reg core=0,packclk=0,clk100=0,enable=0;initial begin #2;forever #4 packclk=~packclk;end
  always #2 core=~core;always #5 clk100=~clk100;

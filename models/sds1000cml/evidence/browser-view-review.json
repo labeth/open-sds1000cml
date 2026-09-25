@@ -1,0 +1,202 @@
+{
+  "result": "reviewed-and-native-traced",
+  "requirements": [
+    "REQ-SDS-068",
+    "REQ-SDS-125"
+  ],
+  "owners": [
+    "FU-WEB-APP-VIEWS"
+  ],
+  "sourceSHA256": {
+    "app/internal/web/app_views.js": "aae095a63d1efe8931038cce2e94fd38278e7746ba41ba30e74f2177de32f04a",
+    "app/internal/web/bode_browser_test.go": "cc401452f991dba37a00b5ed2eb7357502d9632aabd7da0d83e487c1efba6aba",
+    "app/internal/web/bode_browser.mjs": "a8ed094cf53d8e5d8c218e09ec75d9cb0d51c265618623d65b98c2393f2eae48",
+    "app/internal/web/spectrogram_browser_test.go": "8aae6491f9c56b78977613bdb33a5a255a90b485e6b37fee86a8bf9d67ac4202",
+    "app/internal/web/spectrogram_browser.mjs": "e48240b644976b1055392d6cee76989fab5d2364ba86e974366ed9172d9b369d",
+    "app/internal/web/scope_po.mjs": "7f8b00905986ed6c45cb03e118561dcc1e5bbf03e5d3fab7d51818f7bc70922b"
+  },
+  "declarations": [
+    {
+      "line": 4,
+      "sourceLine": "function fmtTdiv(s) {",
+      "requirements": [
+        "REQ-SDS-125"
+      ]
+    },
+    {
+      "line": 5,
+      "sourceLine": "const strip = x => x.replace(/(\\.\\d*?)0+$/, \"$1\").replace(/\\.$/, \"\");",
+      "requirements": [
+        "REQ-SDS-125"
+      ]
+    },
+    {
+      "line": 12,
+      "sourceLine": "function fmtVdiv(v) { return v >= 1 ? v + \" V\" : Math.round(v * 1e3) + \" mV\"; }",
+      "requirements": [
+        "REQ-SDS-125"
+      ]
+    },
+    {
+      "line": 14,
+      "sourceLine": "function hexA(hex, a) {",
+      "requirements": [
+        "REQ-SDS-125"
+      ]
+    },
+    {
+      "line": 19,
+      "sourceLine": "function fitLabel(g, text, maxW) {",
+      "requirements": [
+        "REQ-SDS-125"
+      ]
+    },
+    {
+      "line": 28,
+      "sourceLine": "function fmtMeas(key, m) {",
+      "requirements": [
+        "REQ-SDS-125"
+      ]
+    },
+    {
+      "line": 51,
+      "sourceLine": "function bodeColors() {",
+      "requirements": [
+        "REQ-SDS-125"
+      ]
+    },
+    {
+      "line": 55,
+      "sourceLine": "function bodeStatus(m) { if (m !== undefined) $(\"bodeStats\").textContent = m; }",
+      "requirements": [
+        "REQ-SDS-125"
+      ]
+    },
+    {
+      "line": 57,
+      "sourceLine": "function bodeDrawBig() {",
+      "requirements": [
+        "REQ-SDS-125"
+      ]
+    },
+    {
+      "line": 68,
+      "sourceLine": "function spgStatus(m) { if (m !== undefined) $(\"spgStats\").textContent = m; }",
+      "requirements": [
+        "REQ-SDS-068"
+      ]
+    },
+    {
+      "line": 70,
+      "sourceLine": "function spgEnsure() { if (!spg.sg) spg.sg = sgNew(400, 200); return spg.sg; }",
+      "requirements": [
+        "REQ-SDS-068"
+      ]
+    },
+    {
+      "line": 72,
+      "sourceLine": "function spgPushCurrent() {",
+      "requirements": [
+        "REQ-SDS-068"
+      ]
+    },
+    {
+      "line": 84,
+      "sourceLine": "function spgRender(cv) {",
+      "requirements": [
+        "REQ-SDS-068"
+      ]
+    },
+    {
+      "line": 95,
+      "sourceLine": "function spgDrawBig() {",
+      "requirements": [
+        "REQ-SDS-068"
+      ]
+    },
+    {
+      "line": 109,
+      "sourceLine": "async function bodeRenderNow() {",
+      "requirements": [
+        "REQ-SDS-125"
+      ]
+    },
+    {
+      "line": 125,
+      "sourceLine": "$(\"bodeArm\").onclick = () => {",
+      "requirements": [
+        "REQ-SDS-125"
+      ]
+    },
+    {
+      "line": 135,
+      "sourceLine": "$(\"bodeClear\").onclick = () => {",
+      "requirements": [
+        "REQ-SDS-125"
+      ]
+    },
+    {
+      "line": 141,
+      "sourceLine": "for (const id of [\"bodeRef\", \"bodeDut\"]) $(id).onchange = () => {",
+      "requirements": [
+        "REQ-SDS-125"
+      ]
+    },
+    {
+      "line": 148,
+      "sourceLine": "$(\"bodeCv\").onclick = () => {",
+      "requirements": [
+        "REQ-SDS-125"
+      ]
+    },
+    {
+      "line": 171,
+      "sourceLine": "$(\"spgArm\").onclick = () => {",
+      "requirements": [
+        "REQ-SDS-068"
+      ]
+    },
+    {
+      "line": 178,
+      "sourceLine": "$(\"spgClear\").onclick = () => { if (spg.sg) sgClear(spg.sg); spgRender(); spgStatus(spg.armed ? \"cleared \u2014 building\" : \"cleared\"); };",
+      "requirements": [
+        "REQ-SDS-068"
+      ]
+    },
+    {
+      "line": 179,
+      "sourceLine": "$(\"spgCh\").onchange = () => { spg.ch = +$(\"spgCh\").value === 2 ? 2 : 1; };",
+      "requirements": [
+        "REQ-SDS-068"
+      ]
+    },
+    {
+      "line": 180,
+      "sourceLine": "$(\"spgFloor\").onchange = () => { if (spg.sg) spg.sg.floorDb = +$(\"spgFloor\").value || -60; };",
+      "requirements": [
+        "REQ-SDS-068"
+      ]
+    },
+    {
+      "line": 181,
+      "sourceLine": "$(\"spgCv\").onclick = () => {",
+      "requirements": [
+        "REQ-SDS-068"
+      ]
+    }
+  ],
+  "testEvidence": "browser-view-test-run.json",
+  "scope": "Complete app_views.js source review, including top-level DOM handlers and timer callbacks; 24 named declarations linked. Original Chromium fixtures plus eight recording-global cases.",
+  "findings": [
+    "Changing spectrogram channel retains earlier rows and last sequence. Clear retains last sequence, so the same frame cannot repopulate immediately.",
+    "A floor change before spectrogram allocation is discarded.",
+    "Equal Bode reference and DUT channels still send an arm command despite the warning.",
+    "Bode fetch errors are swallowed; full-screen backing-store height updates only when width changes."
+  ],
+  "limits": [
+    "Bode browser test asserts returned synthetic point count, not pixel content or gain/phase computation (REQ-SDS-066).",
+    "Spectrogram browser pixel count establishes drawing, not expected colors, spectral accuracy or frequency-label correctness.",
+    "Top-level anonymous callbacks are source-reviewed but not independent native declaration links.",
+    "No physical instrument or LCD qualification."
+  ]
+}

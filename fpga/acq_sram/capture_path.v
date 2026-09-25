@@ -1,5 +1,7 @@
+// ENGMODEL-OWNER-UNIT: FU-RTL-ACQ-SRAM-CAPTURE-PATH
 // Shared acquisition/recall backend, with one physical transport and host RAM.
 // Board top still supplies ADC/precision, frozen-capture geometry and GPMC ABI.
+// TRLC-LINKS: REQ-SDS-043, REQ-SDS-045
 module sram_capture_path #(parameter ENABLE_STREAM=1,AW=19,CONTINUE_READS=1,READ_DELAY=0)(
  input wire reset,locked,core_clk,sample_clk,ram_clk,host_clk,
  input wire start,finite_mode,stop,source_finished,

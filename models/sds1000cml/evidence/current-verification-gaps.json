@@ -1,0 +1,484 @@
+{
+  "status": "review-required",
+  "matrixSHA256": "db2acd2de08f0f122e2c2b4578eaa84f82530d16f973bf436d845dd74193ed7f",
+  "count": 48,
+  "requirements": [
+    {
+      "id": "REQ-SDS-003",
+      "title": "Capture mode isolation",
+      "methods": [
+        "inspection",
+        "test"
+      ],
+      "criteria": "Inspect the linked implementation and run the corresponding offline tests; hardware claims require independently identified device evidence.",
+      "implementationLinks": 3
+    },
+    {
+      "id": "REQ-SDS-006",
+      "title": "Owner panic containment",
+      "methods": [
+        "inspection",
+        "test"
+      ],
+      "criteria": "Inspect the linked implementation and run the corresponding offline tests; hardware claims require independently identified device evidence.",
+      "implementationLinks": 1
+    },
+    {
+      "id": "REQ-SDS-059",
+      "title": "Profile board wrapper",
+      "methods": [
+        "inspection",
+        "test"
+      ],
+      "criteria": "Inspect the linked implementation and run the corresponding offline tests; hardware claims require independently identified device evidence.",
+      "implementationLinks": 3
+    },
+    {
+      "id": "REQ-SDS-061",
+      "title": "Clock-crossing audit",
+      "methods": [
+        "inspection",
+        "test"
+      ],
+      "criteria": "Inspect the linked implementation and run the corresponding offline tests; hardware claims require independently identified device evidence.",
+      "implementationLinks": 0
+    },
+    {
+      "id": "REQ-SDS-062",
+      "title": "Qualified profile selection",
+      "methods": [
+        "inspection",
+        "test"
+      ],
+      "criteria": "Inspect the linked implementation and run the corresponding offline tests; hardware claims require independently identified device evidence.",
+      "implementationLinks": 0
+    },
+    {
+      "id": "REQ-SDS-063",
+      "title": "Warm profile switch",
+      "methods": [
+        "inspection",
+        "test"
+      ],
+      "criteria": "Inspect the linked implementation and run the corresponding offline tests; hardware claims require independently identified device evidence.",
+      "implementationLinks": 0
+    },
+    {
+      "id": "REQ-SDS-064",
+      "title": "Honest continuous operation",
+      "methods": [
+        "inspection",
+        "test"
+      ],
+      "criteria": "Inspect the linked implementation and run the corresponding offline tests; hardware claims require independently identified device evidence.",
+      "implementationLinks": 0
+    },
+    {
+      "id": "REQ-SDS-065",
+      "title": "Hardware protocol events",
+      "methods": [
+        "inspection",
+        "test"
+      ],
+      "criteria": "Inspect the linked implementation and run the corresponding offline tests; hardware claims require independently identified device evidence.",
+      "implementationLinks": 0
+    },
+    {
+      "id": "REQ-SDS-067",
+      "title": "Eye and jitter analysis",
+      "methods": [
+        "inspection",
+        "test"
+      ],
+      "criteria": "Check channel, scale, sample-period and clock-lock guards plus jitter-analysis vectors.",
+      "implementationLinks": 3
+    },
+    {
+      "id": "REQ-SDS-071",
+      "title": "WebGL rendering",
+      "methods": [
+        "inspection",
+        "test"
+      ],
+      "criteria": "Run browser rendering tests when a browser is available; verify data transport separately.",
+      "implementationLinks": 92
+    },
+    {
+      "id": "REQ-SDS-073",
+      "title": "Go and browser parity",
+      "methods": [
+        "inspection",
+        "test"
+      ],
+      "criteria": "Run the Go-to-JavaScript parity vector tests; inspect skips for missing Node.",
+      "implementationLinks": 0
+    },
+    {
+      "id": "REQ-SDS-074",
+      "title": "Interleave calibration phase",
+      "methods": [
+        "inspection",
+        "test"
+      ],
+      "criteria": "Demonstrate acceptance only with valid record-phase metadata and rejection or bypass when that metadata is absent or invalid. Existing fingerprint-rotation tests do not establish this condition; physical aperture qualification is separate.",
+      "implementationLinks": 0
+    },
+    {
+      "id": "REQ-SDS-084",
+      "title": "Legacy ADC snapshot",
+      "methods": [
+        "inspection"
+      ],
+      "criteria": "Inspect command 6, completion polling and selectors 20 through 24 in Capture.Snapshot; no dedicated offline snapshot test is present in the pinned package.",
+      "implementationLinks": 2
+    },
+    {
+      "id": "REQ-SDS-097",
+      "title": "Probe display multiplier",
+      "methods": [
+        "inspection",
+        "test"
+      ],
+      "criteria": "Inspect per-channel storage and callers. No dedicated probe multiplier test is present in the reviewed analog package; readout integration and nonfinite input behavior remain unverified.",
+      "implementationLinks": 3
+    },
+    {
+      "id": "REQ-SDS-098",
+      "title": "Trigger calibration selection",
+      "methods": [
+        "inspection",
+        "test"
+      ],
+      "criteria": "Inspect override precedence, conversion inverses, channel/probe handling, table snapshots and hook propagation. No dedicated trigger-calibration tests are present in the reviewed analog package; physical accuracy remains unqualified.",
+      "implementationLinks": 10
+    },
+    {
+      "id": "REQ-SDS-102",
+      "title": "Platform status collection",
+      "methods": [
+        "inspection"
+      ],
+      "criteria": "Inspect all seven functions, JSON field tags and error defaults against pinned source. No dedicated sysinfo tests exist; source inspection does not establish device values, refresh timing or accuracy.",
+      "implementationLinks": 8
+    },
+    {
+      "id": "REQ-SDS-111",
+      "title": "Host embedded broker startup",
+      "methods": [
+        "inspection"
+      ],
+      "criteria": "Inspect startup, readiness, banner and shutdown paths. No dedicated wrapper test or deployed broker qualification is available.",
+      "implementationLinks": 3
+    },
+    {
+      "id": "REQ-SDS-112",
+      "title": "Host relay recovery control",
+      "methods": [
+        "inspection"
+      ],
+      "criteria": "Inspect request URLs, response handling and cycle ordering. No physical plug operation or device-recovery qualification was performed; no dedicated relay test is linked.",
+      "implementationLinks": 9
+    },
+    {
+      "id": "REQ-SDS-122",
+      "title": "Agent runtime initialization and shutdown",
+      "methods": [
+        "inspection",
+        "test"
+      ],
+      "criteria": "Inspect all lifecycle paths and use only the isolated coexist-mode NATS test for its selected Run/Stop path. No takeover, watchdog acquisition, factory or physical device behavior is exercised.",
+      "implementationLinks": 7
+    },
+    {
+      "id": "REQ-SDS-123",
+      "title": "Agent event callback delivery",
+      "methods": [
+        "inspection",
+        "test"
+      ],
+      "criteria": "Inspect callback locking, replacement and call order. The isolated NATS test covers selected initial event delivery only; callback races, panic recovery and broker delivery guarantees are not established.",
+      "implementationLinks": 2
+    },
+    {
+      "id": "REQ-SDS-124",
+      "title": "Agent command-line dispatch",
+      "methods": [
+        "inspection",
+        "test"
+      ],
+      "criteria": "Run the eight isolated version/help/status/unknown CLI cases. Inspect probe and no-argument supervisor paths without running device diagnostics or the supervisor.",
+      "implementationLinks": 2
+    },
+    {
+      "id": "REQ-SDS-127",
+      "title": "Engine diagnostics and tuning",
+      "methods": [
+        "inspection",
+        "test"
+      ],
+      "criteria": "Inspect snapshot/ring bounds, tuning predicates and diagnostic queue/timeout behavior. Direct ring, tuning, callback panic and timeout tests remain absent from this reviewed batch.",
+      "implementationLinks": 15
+    },
+    {
+      "id": "REQ-SDS-138",
+      "title": "Panel reference snapshots",
+      "methods": [
+        "inspection",
+        "test"
+      ],
+      "criteria": "Inspect evidence/panel-source-review.json and run the linked original host tests. Source presence and fake controls do not establish full clause coverage or physical qualification.",
+      "implementationLinks": 6
+    },
+    {
+      "id": "REQ-SDS-139",
+      "title": "Panel mask acquisition workflow",
+      "methods": [
+        "inspection",
+        "test"
+      ],
+      "criteria": "Inspect evidence/panel-source-review.json and run the linked original host tests. Source presence and fake controls do not establish full clause coverage or physical qualification.",
+      "implementationLinks": 6
+    },
+    {
+      "id": "REQ-SDS-149",
+      "title": "Diagnostic generator and CS3 probes",
+      "methods": [
+        "inspection",
+        "test"
+      ],
+      "criteria": "Inspect evidence/diag-source-review.json and retain exact original host-test outcomes including the sweep race failure. No physical probe or hardware qualification is established.",
+      "implementationLinks": 9
+    },
+    {
+      "id": "REQ-SDS-150",
+      "title": "Diagnostic quiet listening",
+      "methods": [
+        "inspection",
+        "test"
+      ],
+      "criteria": "Inspect evidence/diag-source-review.json and retain exact original host-test outcomes including the sweep race failure. No physical probe or hardware qualification is established.",
+      "implementationLinks": 5
+    },
+    {
+      "id": "REQ-SDS-151",
+      "title": "Diagnostic finite clock crank",
+      "methods": [
+        "inspection",
+        "test"
+      ],
+      "criteria": "Inspect evidence/diag-source-review.json and retain exact original host-test outcomes including the sweep race failure. No physical probe or hardware qualification is established.",
+      "implementationLinks": 4
+    },
+    {
+      "id": "REQ-SDS-167",
+      "title": "Application service composition",
+      "methods": [
+        "inspection",
+        "test"
+      ],
+      "criteria": "Inspect evidence/entrypoints-source-review.json and exact original test outcomes with unchanged input hashes. Inspect all reviewed command sources and compile six packages without invoking command mains. Run both original host helper tests and all five timing subtests. Most entrypoint behavior remains inspection-only. No current hardware qualification is established.",
+      "implementationLinks": 7
+    },
+    {
+      "id": "REQ-SDS-168",
+      "title": "Device display and screenshot composition",
+      "methods": [
+        "inspection",
+        "test"
+      ],
+      "criteria": "Inspect evidence/entrypoints-source-review.json and exact original test outcomes with unchanged input hashes. Inspect all reviewed command sources and compile six packages without invoking command mains. Run both original host helper tests and all five timing subtests. Most entrypoint behavior remains inspection-only. No current hardware qualification is established.",
+      "implementationLinks": 4
+    },
+    {
+      "id": "REQ-SDS-170",
+      "title": "SRAM capture diagnostic command",
+      "methods": [
+        "inspection",
+        "test"
+      ],
+      "criteria": "Inspect evidence/entrypoints-source-review.json and exact original test outcomes with unchanged input hashes. Inspect all reviewed command sources and compile six packages without invoking command mains. Run both original host helper tests and all five timing subtests. Most entrypoint behavior remains inspection-only. No current hardware qualification is established.",
+      "implementationLinks": 24
+    },
+    {
+      "id": "REQ-SDS-171",
+      "title": "SRAM memory bench command",
+      "methods": [
+        "inspection",
+        "test"
+      ],
+      "criteria": "Inspect evidence/entrypoints-source-review.json and exact original test outcomes with unchanged input hashes. Inspect all reviewed command sources and compile six packages without invoking command mains. Run both original host helper tests and all five timing subtests. Most entrypoint behavior remains inspection-only. No current hardware qualification is established.",
+      "implementationLinks": 9
+    },
+    {
+      "id": "REQ-SDS-172",
+      "title": "FPGA build command policy",
+      "methods": [
+        "inspection",
+        "test"
+      ],
+      "criteria": "Inspect evidence/entrypoints-source-review.json and exact original test outcomes with unchanged input hashes. Inspect all reviewed command sources and compile six packages without invoking command mains. Run both original host helper tests and all five timing subtests. Most entrypoint behavior remains inspection-only. No current hardware qualification is established.",
+      "implementationLinks": 4
+    },
+    {
+      "id": "REQ-SDS-173",
+      "title": "Factory-image burst diagnostic command",
+      "methods": [
+        "inspection",
+        "test"
+      ],
+      "criteria": "Inspect evidence/entrypoints-source-review.json and exact original test outcomes with unchanged input hashes. Inspect all reviewed command sources and compile six packages without invoking command mains. Run both original host helper tests and all five timing subtests. Most entrypoint behavior remains inspection-only. No current hardware qualification is established.",
+      "implementationLinks": 6
+    },
+    {
+      "id": "REQ-SDS-174",
+      "title": "Application version label",
+      "methods": [
+        "inspection",
+        "test"
+      ],
+      "criteria": "Inspect evidence/entrypoints-source-review.json and exact original test outcomes with unchanged input hashes. Inspect all reviewed command sources and compile six packages without invoking command mains. Run both original host helper tests and all five timing subtests. Most entrypoint behavior remains inspection-only. No current hardware qualification is established.",
+      "implementationLinks": 1
+    },
+    {
+      "id": "REQ-SDS-175",
+      "title": "Host operations command dispatch",
+      "methods": [
+        "inspection",
+        "test"
+      ],
+      "criteria": "Inspect evidence/ota-entrypoints-source-review.json and exact original test outcomes with unchanged input hashes. Inspect the reviewed source and compile four packages. Run the six original boot tests with bounded temporary stub agents and without device, broker, power or remount operations. Command mains and the actual fingerprint script remain inspection-only. No current hardware qualification is established.",
+      "implementationLinks": 19
+    },
+    {
+      "id": "REQ-SDS-177",
+      "title": "Reference application health simulation",
+      "methods": [
+        "inspection",
+        "test"
+      ],
+      "criteria": "Inspect evidence/ota-entrypoints-source-review.json and exact original test outcomes with unchanged input hashes. Inspect the reviewed source and compile four packages. Run the six original boot tests with bounded temporary stub agents and without device, broker, power or remount operations. Command mains and the actual fingerprint script remain inspection-only. No current hardware qualification is established.",
+      "implementationLinks": 3
+    },
+    {
+      "id": "REQ-SDS-178",
+      "title": "OTA version label",
+      "methods": [
+        "inspection",
+        "test"
+      ],
+      "criteria": "Inspect evidence/ota-entrypoints-source-review.json and exact original test outcomes with unchanged input hashes. Inspect the reviewed source and compile four packages. Run the six original boot tests with bounded temporary stub agents and without device, broker, power or remount operations. Command mains and the actual fingerprint script remain inspection-only. No current hardware qualification is established.",
+      "implementationLinks": 1
+    },
+    {
+      "id": "REQ-SDS-179",
+      "title": "Required browser test dependencies",
+      "methods": [
+        "inspection",
+        "test"
+      ],
+      "criteria": "Inspect the complete reviewed harness sources and their explicit limitations in evidence/browser-harness-source-review.json. Preserve all 22 original test outcomes and executable provenance; a Go race failure remains a failure even when browser assertions pass. Optional skipped tests provide no positive verification. Verify source comment integration preserves exact baseline and Go tokens.",
+      "implementationLinks": 3
+    },
+    {
+      "id": "REQ-SDS-187",
+      "title": "Legacy CPU FIFO halfword accounting",
+      "methods": [
+        "inspection",
+        "test"
+      ],
+      "criteria": "Inspect stream-rtl-source-review.json and the eight frozen original-bench cases. Credit only assertions actually executed: packetizer/banks at reduced and production geometry, and SRAM wrapper at AW13/AW19. REQ-SDS-187 has source inspection only and no behavioral test; do not count other stream benches as verification of the unused legacy CPU FIFO. Verify comments preserve the pinned baseline and lexical tokens; ideal clocks and memory do not establish physical qualification.",
+      "implementationLinks": 1
+    },
+    {
+      "id": "REQ-SDS-200",
+      "title": "Eye and jitter display",
+      "methods": [
+        "inspection",
+        "test"
+      ],
+      "criteria": "Review evidence/eye-jitter-source-review.json and eye-jitter-review-test-run.json. Preserve the original suite, all 50 breaker outcomes and 11 isolated guard cases with exact source provenance. Credit only the executed scopes; rendering and physical operation remain unverified.",
+      "implementationLinks": 18
+    },
+    {
+      "id": "REQ-SDS-201",
+      "title": "Eye acquisition and optimization control",
+      "methods": [
+        "inspection",
+        "test"
+      ],
+      "criteria": "Review evidence/eye-jitter-source-review.json and eye-jitter-review-test-run.json. Preserve the original suite, all 50 breaker outcomes and 11 isolated guard cases with exact source provenance. Credit only the executed scopes; rendering and physical operation remain unverified.",
+      "implementationLinks": 12
+    },
+    {
+      "id": "REQ-SDS-202",
+      "title": "Browser viewport and pointer interaction",
+      "methods": [
+        "inspection",
+        "test"
+      ],
+      "criteria": "Review browser-graphics-source-review.json and the isolated geometry cases in browser-graphics-test-run.json. Live deep records may extend the home viewport beyond record bounds; stopped and envelope cases clamp. Pointer event and real browser rendering behavior require separate verification.",
+      "implementationLinks": 31
+    },
+    {
+      "id": "REQ-SDS-203",
+      "title": "Browser math traces and stored references",
+      "methods": [
+        "inspection",
+        "test"
+      ],
+      "criteria": "Inspect browser-traces-source-review.json and the arithmetic, gap, inversion and copied-reference cases in browser-traces-test-run.json. The helper stubs spectrum transforms and graphics; numerical tone fitting, browser pixels and physical calibration require separate evidence.",
+      "implementationLinks": 16
+    },
+    {
+      "id": "REQ-SDS-204",
+      "title": "Browser shared state and operator controls",
+      "methods": [
+        "inspection",
+        "test"
+      ],
+      "criteria": "Inspect browser-control-source-review.json and the 13 isolated client/control cases in browser-control-test-run.json. Mocks exercise original JavaScript control flow without issuing network requests, device commands or downloads. Browser layout and device autoset convergence remain unverified.",
+      "implementationLinks": 72
+    },
+    {
+      "id": "REQ-SDS-205",
+      "title": "Precision snapshot model fitting",
+      "methods": [
+        "inspection",
+        "test"
+      ],
+      "criteria": "Review browser-features-source-review.json and 13 isolated cases in browser-features-test-run.json. Synthetic fitting checks and mocked controller checks support only their exercised scope; no rendered pixels, physical accuracy, protocol qualification or real device commands.",
+      "implementationLinks": 7
+    },
+    {
+      "id": "REQ-SDS-206",
+      "title": "Browser serial trigger configuration",
+      "methods": [
+        "inspection",
+        "test"
+      ],
+      "criteria": "Review browser-features-source-review.json and 13 isolated cases in browser-features-test-run.json. Synthetic fitting checks and mocked controller checks support only their exercised scope; no rendered pixels, physical accuracy, protocol qualification or real device commands.",
+      "implementationLinks": 14
+    },
+    {
+      "id": "REQ-SDS-207",
+      "title": "Browser decoder selection and capture review",
+      "methods": [
+        "inspection",
+        "test"
+      ],
+      "criteria": "Review browser-features-source-review.json and 13 isolated cases in browser-features-test-run.json. Synthetic fitting checks and mocked controller checks support only their exercised scope; no rendered pixels, physical accuracy, protocol qualification or real device commands.",
+      "implementationLinks": 38
+    },
+    {
+      "id": "REQ-SDS-208",
+      "title": "Device-facing operator workflow harnesses",
+      "methods": [
+        "inspection",
+        "test"
+      ],
+      "criteria": "Inspect the complete reviewed source and retain the oracle limits in remaining-harness-source-review.json. Device-facing workflows are not executed or credited as passing by this review. Runtime claims require the correct source fixture, confirmed actions and preserved per-case outcomes.",
+      "implementationLinks": 108
+    }
+  ],
+  "scope": "Current native verification-link gaps. Absence of a link is not proof of missing implementation; inspection evidence and known unavailable tests must be reconciled individually. No passing result is inferred."
+}

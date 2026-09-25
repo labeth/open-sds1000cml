@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-WEB
 // Real-browser e2e for the protocol-decode UI + navigator, driven by headless
 // Chromium against a local server serving a synthetic I2C frame (argv[2]=URL).
 // Asserts the on-screen decode transcript, byte count, Copy button, and the
@@ -20,6 +21,7 @@ try { browser = await chromium.launch({ headless: true, args: ["--no-sandbox"] }
 catch (e) { console.log("SKIP: cannot launch chromium:", e.message); process.exit(0); }
 
 let fails = 0;
+// TRLC-LINKS: REQ-SDS-180
 const ok = (c, m) => { console.log((c ? "ok  - " : "FAIL- ") + m); if (!c) fails++; };
 const EXPECT = "START 50 W ACK 00 ACK FF NAK STOP";
 
@@ -71,6 +73,7 @@ try {
       spans: [{ i0: Math.round(n * 0.20), i1: Math.round(n * 0.205), text: "00", kind: "data", val: 0 },
               { i0: Math.round(n * 0.60), i1: Math.round(n * 0.605), text: "FF", kind: "data", val: 255 }] };
     const seen = [], orig = ctx.fillText;
+    // TRLC-LINKS: REQ-SDS-180
     ctx.fillText = function (t, x, y) { seen.push(String(t)); return orig.call(this, t, x, y); };
     try { redraw(); } finally { ctx.fillText = orig; }
     return seen.filter(t => t === "00" || t === "FF");

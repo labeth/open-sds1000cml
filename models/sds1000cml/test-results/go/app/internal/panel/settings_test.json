@@ -1,0 +1,39 @@
+{
+  "source": "app/internal/panel/settings_test.go",
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "scope": "Reviewed Go test outcomes; passing assertions contribute partial requirement evidence.",
+  "sourceSHA256": "f0b200ddf02007d43488b6098932417ba023ac9e34caa4e75975ef487fda340c",
+  "logs": {
+    "test-runs/panel-integrated.jsonl": "2fbcb88c41a0275721d1edc08e3847581a7054b52e3eee8bbfd8abb17853f635"
+  },
+  "tests": [
+    {
+      "name": "TestSettingsViewRoundTrip",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-136"
+      ]
+    },
+    {
+      "name": "TestApplySettingsViewClamps",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-136"
+      ]
+    },
+    {
+      "name": "TestApplySettingsViewKeepsTwoSignalRolesOpposite",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-136"
+      ]
+    }
+  ],
+  "results": [
+    {
+      "requirement": "REQ-SDS-136",
+      "status": "partial",
+      "notes": "3 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    }
+  ]
+}

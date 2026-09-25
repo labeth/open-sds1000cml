@@ -1,0 +1,70 @@
+{
+  "result": "pass",
+  "requirements": [
+    {
+      "code": [
+        "takeover.go:264",
+        "takeover.go:86",
+        "takeover.go:243",
+        "takeover.go:297",
+        "takeover.go:112",
+        "takeover.go:325",
+        "takeover.go:219",
+        "takeover.go:354",
+        "takeover.go:57",
+        "takeover.go:62",
+        "takeover.go:122",
+        "takeover.go:40",
+        "takeover.go:49"
+      ],
+      "id": "REQ-SDS-027",
+      "status": "implemented",
+      "units": [
+        "FU-OTA-AGENT",
+        "FU-OTA-GPMC"
+      ],
+      "verifications": [
+        "VER-INF-TEST-TAKEOVER_TEST-6A3079",
+        "VER-INF-TEST-TAKEOVER_VXI11_TEST-E471E9"
+      ]
+    },
+    {
+      "code": [
+        "gpmc.go:59",
+        "gpmc.go:53",
+        "gpmc.go:91",
+        "gpmc.go:43",
+        "gpmc.go:46",
+        "gpmc.go:65",
+        "gpmc.go:36",
+        "gpmc.go:82"
+      ],
+      "id": "REQ-SDS-103",
+      "status": "implemented",
+      "units": [
+        "FU-OTA-GPMC"
+      ],
+      "verifications": [
+        "VER-INF-TEST-GPMC_TEST-5C566C"
+      ]
+    },
+    {
+      "code": [
+        "state.go:38",
+        "state.go:29",
+        "state.go:16",
+        "state.go:22",
+        "state.go:45"
+      ],
+      "id": "REQ-SDS-104",
+      "status": "implemented",
+      "units": [
+        "FU-OTA-AGENT"
+      ],
+      "verifications": [
+        "VER-INF-TEST-TAKEOVER_TEST-6A3079"
+      ]
+    }
+  ],
+  "scope": "Native implementation and bounded verification links; no physical qualification."
+}

@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-PANEL
 package panel
 
 import (
@@ -5,6 +6,7 @@ import (
 	"testing"
 )
 
+// TRLC-LINKS: REQ-SDS-136
 func TestCursorMenu(t *testing.T) {
 	c, _, _ := newC(t)
 	// HORIZONTAL once → timebase page; twice → cursor page.
@@ -40,6 +42,7 @@ func TestCursorMenu(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-136
 func TestDecodeMenu(t *testing.T) {
 	c, _, _ := newC(t)
 	c.menuButton(btnMenuOnOff) // MAIN menu
@@ -109,6 +112,7 @@ func TestDecodeMenu(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-136
 func TestTriggerHoldoffSoftkey(t *testing.T) {
 	c, eng, _ := newC(t)
 	c.menuButton(btnTrigMenu) // open TRIGGER page
@@ -133,6 +137,7 @@ func TestTriggerHoldoffSoftkey(t *testing.T) {
 // the review view. Constant-Seq frame source → the stacker seeds once and idles
 // on dedup, so the test sees only the synchronous transitions (the stacking
 // numerics are covered by the golden-vector parity test).
+// TRLC-LINKS: REQ-SDS-140
 func TestSuperresUX(t *testing.T) {
 	c, eng, _ := newC(t)
 	page := func() int { c.mu.Lock(); defer c.mu.Unlock(); return c.menuPage }

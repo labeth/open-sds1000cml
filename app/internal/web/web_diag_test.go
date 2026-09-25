@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-WEB
 package web
 
 import (
@@ -18,6 +19,7 @@ import (
 
 // diagBus is a minimal fabric model for the handler tests: identity words,
 // a register file, the DIAG window RAM, a snapshot RAM of 16 words.
+// TRLC-LINKS: REQ-SDS-165
 type diagBus struct {
 	mu   sync.Mutex
 	regs map[uint16]uint16
@@ -26,6 +28,7 @@ type diagBus struct {
 	snap int
 }
 
+// TRLC-LINKS: REQ-SDS-165
 func newDiagBus() *diagBus {
 	b := &diagBus{regs: map[uint16]uint16{}, win: map[uint16]uint16{}}
 	b.regs[iface.SelBuildidLo] = iface.BuildIDLo
@@ -37,6 +40,7 @@ func newDiagBus() *diagBus {
 	return b
 }
 
+// TRLC-LINKS: REQ-SDS-165
 func (b *diagBus) Read(plane uint8, sel uint16) (uint16, error) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
@@ -60,6 +64,7 @@ func (b *diagBus) Read(plane uint8, sel uint16) (uint16, error) {
 	return b.regs[iface.MaskSel(sel)], nil
 }
 
+// TRLC-LINKS: REQ-SDS-165
 func (b *diagBus) Write(plane uint8, sel, val uint16) error {
 	if !bus.Writable(plane, sel) {
 		return fmt.Errorf("not writable")
@@ -80,24 +85,29 @@ func (b *diagBus) Write(plane uint8, sel, val uint16) error {
 	return nil
 }
 
+// TRLC-LINKS: REQ-SDS-165
 func (b *diagBus) RawWrite(sel, val uint16) error {
 	b.mu.Lock()
 	b.raw = append(b.raw, fmt.Sprintf("%02x=%04x", sel, val))
 	b.mu.Unlock()
 	return nil
 }
+// TRLC-LINKS: REQ-SDS-165
 func (b *diagBus) BurstInto(c1, c2 []uint8, n int) {
 	for i := 0; i < n; i++ {
 		c1[i], c2[i] = uint8(i), 7
 	}
 }
+// TRLC-LINKS: REQ-SDS-165
 func (b *diagBus) PopWords(sel uint16, dst []uint16, n int) {
 	for i := 0; i < n; i++ {
 		dst[i], _ = b.Read(bus.PlaneCS1, sel)
 	}
 }
+// TRLC-LINKS: REQ-SDS-165
 func (b *diagBus) FastDrain() bool { return false }
 
+// TRLC-LINKS: REQ-SDS-165
 func diagServer(t *testing.T) (*Server, *diagBus) {
 	t.Helper()
 	fb := newDiagBus()
@@ -108,6 +118,7 @@ func diagServer(t *testing.T) (*Server, *diagBus) {
 	return s, fb
 }
 
+// TRLC-LINKS: REQ-SDS-165
 func call(t *testing.T, h http.Handler, method, url, body string) (*httptest.ResponseRecorder, map[string]any) {
 	t.Helper()
 	var req *http.Request
@@ -126,6 +137,7 @@ func call(t *testing.T, h http.Handler, method, url, body string) (*httptest.Res
 	return rec, m
 }
 
+// TRLC-LINKS: REQ-SDS-165
 func TestDiagRoutesUnwiredAre503(t *testing.T) {
 	s := New(&fakeScope{}, nil, nil, nil)
 	h := s.Handler()
@@ -146,6 +158,7 @@ func TestDiagRoutesUnwiredAre503(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-165
 func TestDiagStatusRegWindow(t *testing.T) {
 	s, fb := diagServer(t)
 	h := s.Handler()
@@ -198,6 +211,7 @@ func TestDiagStatusRegWindow(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-165
 func TestDiagSnapshotBusExperiments(t *testing.T) {
 	s, fb := diagServer(t)
 	h := s.Handler()

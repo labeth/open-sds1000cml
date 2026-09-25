@@ -1,0 +1,9 @@
+{
+  "result": "rendered-awaiting-review",
+  "command": "bash models/sds1000cml/scripts/publish_pdf.sh",
+  "sha256": {
+    "generated/ARCHITECTURE.adoc": "23f7eddf9e3db9a2c404b2088e60047392d57b58e830163ec19360e78fc0954b",
+    "output/pdf/architecture.draft.pdf": "1c6b7186fae5e34777424c5ffc511ddc9db7c586a8feae718f934f98772a5505"
+  },
+  "scope": "PDF export only; page bounds, font sizes and visual layout still require review. PDF byte reproducibility is not asserted."
+}

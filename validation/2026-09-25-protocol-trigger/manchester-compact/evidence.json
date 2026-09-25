@@ -1,0 +1,15 @@
+{
+  "candidate": "build-Lhg9V6",
+  "status": "Tests and top simulation passed; integrated fit failed; not deployed",
+  "mapExitCode": 0,
+  "fitExitCode": 3,
+  "synthesisLogicElements": 13577,
+  "fitterLogicElements": 11203,
+  "deviceLogicElements": 10320,
+  "memoryBits": 351232,
+  "removedSynthesisRegisters": 96,
+  "removedCombinationalCells": 97,
+  "topSimulationExitCode": 0,
+  "strictModelExitCode": 0,
+  "modelValidationNote": "Strict validation after RTL and test changes; final area-probe prose addition passed model loading afterward"
+}

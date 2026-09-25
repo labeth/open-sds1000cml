@@ -1,0 +1,6 @@
+{
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "unlinkedTypes": 0,
+  "files": {},
+  "scope": "All audited top-level Go type declarations have reviewed links. Other-language and requirement evidence gaps remain."
+}

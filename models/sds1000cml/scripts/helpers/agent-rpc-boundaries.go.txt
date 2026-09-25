@@ -1,0 +1,38 @@
+// Characterize dispatcher boundaries with an isolated fixture and temporary handler.
+func TestModelReviewAgentRPCBoundaries(t *testing.T) {
+	a := testAgent(t)
+	const command = "_model_review_unmarshalable"
+	if _, exists := handlers[command]; exists { t.Fatal("probe handler collision") }
+	handlers[command] = func(*Agent, json.RawMessage) (any, error) { return make(chan int), nil }
+	defer delete(handlers, command)
+	raw := []byte(`{"cmd":"_model_review_unmarshalable"}`)
+	direct := a.Dispatch(raw)
+	if !direct.OK { t.Fatalf("direct dispatch failed: %+v", direct) }
+	if _, err := json.Marshal(direct); err == nil { t.Fatal("expected unmarshalable direct response") }
+	var wire Response
+	if err := json.Unmarshal(a.DispatchJSON(raw), &wire); err != nil { t.Fatal(err) }
+	if wire.OK || !strings.HasPrefix(wire.Err, "marshal response:") || wire.Data != nil {
+		t.Fatalf("unexpected fallback response: %+v", wire)
+	}
+	file := t.TempDir() + "/read.bin"
+	if err := os.WriteFile(file, []byte("abc"), 0o600); err != nil { t.Fatal(err) }
+	getRequest, err := json.Marshal(map[string]any{"cmd": "get", "args": map[string]any{"path": file, "offset": -1, "len": 1}})
+	if err != nil { t.Fatal(err) }
+	getResponse := a.Dispatch(getRequest)
+	data, ok := getResponse.Data.(map[string]any)
+	if !getResponse.OK || !ok || data["eof"] != true || data["data"] != "" {
+		t.Fatalf("negative offset baseline changed: %+v", getResponse)
+	}
+	t.Log("get with offset=-1 returns OK and eof=true, masking the ReadAt error")
+	sum, err := fileSHA(t.TempDir())
+	if err != nil || sum != "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855" {
+		t.Fatalf("directory-read baseline changed: sum=%s err=%v", sum, err)
+	}
+	t.Log("fileSHA on a directory returns the empty-content digest with nil error")
+	type args struct { A bool `json:"a"`; B int `json:"b"` }
+	zero, err := decodeArgs[args](nil)
+	if err != nil || zero != (args{}) { t.Fatalf("empty args: %+v, %v", zero, err) }
+	partial, err := decodeArgs[args](json.RawMessage(`{"a":true,"b":"invalid"}`))
+	if err == nil || !partial.A || partial.B != 0 { t.Fatalf("partial decode: %+v, %v", partial, err) }
+	t.Log("Dispatch can return unmarshalable data; DispatchJSON supplies error fallback; decodeArgs returns partial value with type error")
+}

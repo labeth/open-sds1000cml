@@ -1,4 +1,6 @@
+// ENGMODEL-OWNER-UNIT: FU-RTL-ACQ-TESTS
 `timescale 1ns/1ps
+// TRLC-LINKS: REQ-SDS-053, REQ-SDS-079
 module tb_host_read_window;
  reg clk=0,ram_clk=0,reset=1;
  always #5 clk=~clk;always #4 ram_clk=~ram_clk;

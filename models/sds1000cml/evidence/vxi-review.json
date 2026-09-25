@@ -1,0 +1,34 @@
+{
+  "scope": "All three VXI-11 server Go files reviewed and linked to REQ-SDS-024. Tests establish partial local transport behavior only.",
+  "sourceSHA256": {
+    "app/internal/vxi11srv/server.go": "7e9f76981015a22a030f80f95af08e0274694d9a67f7424131b1c3de90fd634d",
+    "app/internal/vxi11srv/server_test.go": "8907293b68f333667ce376efab22a0dd8c3927baa10cc10d582b9a1b76525763",
+    "app/internal/vxi11srv/xdrfuzz_test.go": "fe64a169b696f0cd294a4bd34417615b35c173541e0a2c7c533663a18730914e"
+  },
+  "tests": [
+    "TestLinkWriteRead",
+    "TestChunkedRead",
+    "TestSingleLinkAndRelease",
+    "TestReadTimeout",
+    "TestXDRParseFuzz"
+  ],
+  "testLog": "test-runs/vxi-server.jsonl",
+  "characterization": "vxi-read-size-characterization.json",
+  "implementation": [
+    "Start listens on an ephemeral TCP port with optional localhost portmapper registration; tests disable registration.",
+    "One link owner is serialized under a mutex. Disconnect releases the owner; destroy validates the link ID.",
+    "Record marking reassembles fragments; XDR handles uint32 and padded opaque payloads. Complete newline-delimited commands append handler replies to a pending queue.",
+    "Reads return chunks and END on exhaustion; empty reads wait at most a clamped 10-second request timeout.",
+    "Trigger/remote/local/lock/unlock/SRQ procedures are success stubs; asynchronous device support is absent."
+  ],
+  "limits": [
+    "The direct owned-connection probe reproduces a slice panic when uint32 read size 0xffffffff converts to negative int in a 386 test. amd64 does not panic. This observes 32-bit Go behavior, not ARM execution.",
+    "readRecord uses len(msg)+n for its bound. On 32-bit integers that addition can overflow for a small existing fragment plus a near-MaxInt length; this is a source-inspection concern, not an allocation experiment.",
+    "The per-record limit does not bound cumulative lineBuf or pending replies across records.",
+    "CreateLink does not reject x.err after parsing its body. RPC version fields are read but not checked; authorization data is skipped rather than authenticated.",
+    "Portmapper registration reads a reply without checking its acceptance/result payload. The register path is not covered by the existing tests.",
+    "The seeded XDR test checks panic/offset bounds but does not exercise all owned-connection read sizes or record-fragment arithmetic."
+  ],
+  "annotationSupersededBy": "remaining-go-types-source-review.json",
+  "annotationNote": "Historical reviewed source hashes are retained. The later type-comment transition has identical Go tokens; current exact source recovery is recorded in annotation-overlay.json."
+}

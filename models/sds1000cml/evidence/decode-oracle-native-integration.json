@@ -1,0 +1,17 @@
+{
+  "requirement": "REQ-SDS-018",
+  "files": 7,
+  "functions": 66,
+  "types": 8,
+  "nativeSummaries": [
+    "test-results/go/app/internal/decode/oracle_can_test.json",
+    "test-results/go/app/internal/decode/oracle_flexray_test.json",
+    "test-results/go/app/internal/decode/oracle_i2c_test.json",
+    "test-results/go/app/internal/decode/oracle_spi_test.json",
+    "test-results/go/app/internal/decode/oracle_uart_test.json",
+    "test-results/go/app/internal/decode/oracle_usbls_test.json"
+  ],
+  "nativeStatus": "not-run",
+  "passingOracleTests": 0,
+  "scope": "Six top-level dependency skips. Shared harness helpers do not become independent verification tests. Source comment insertion preserves baseline tokens and exact recovery."
+}

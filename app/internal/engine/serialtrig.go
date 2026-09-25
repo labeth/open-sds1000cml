@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
 package engine
 
 // Serial / protocol trigger: publish only frames whose decoded UART/I2C/SPI
@@ -40,7 +41,10 @@ const (
 // channel roles + decode params to use, and the byte/address pattern to match.
 // Copied by value into the engine under ser.mu; Bytes is replaced wholesale by
 // the setter (never mutated in place).
+// TRLC-LINKS: REQ-SDS-013
 type SerialParams struct {
+	SPIClockHz int  `json:"spiClockHz"` // explicit clock for acquisition-time SPI gap framing; zero uses software inference
+	Inverted   bool `json:"inverted"`   // UART/I2C/SPI/SENT input polarity; independent of display inversion
 	// Decode settings — mirrored from the operator's live decode config so the
 	// trigger decodes IDENTICALLY to the decode strip (the UI does not re-enter
 	// these; it sends whatever decode is set to).
@@ -65,8 +69,10 @@ type SerialParams struct {
 	Bytes []int `json:"bytes"` // data byte sequence to find (empty = any transaction/byte)
 }
 
+// TRLC-LINKS: REQ-SDS-013
 func (p SerialParams) empty() bool { return p.Proto == 0 }
 
+// TRLC-LINKS: REQ-SDS-013
 type serialState struct {
 	// LOCK ORDER: e.mu is acquired BEFORE ser.mu (Snapshot nests that way), same
 	// rule as zoneMaskState — never take e.mu while holding ser.mu.
@@ -75,6 +81,7 @@ type serialState struct {
 }
 
 // SetSerialParams installs the match config (copies Bytes).
+// TRLC-LINKS: REQ-SDS-013
 func (e *Engine) SetSerialParams(p SerialParams) {
 	p.Bytes = append([]int(nil), p.Bytes...)
 	e.ser.mu.Lock()
@@ -83,6 +90,7 @@ func (e *Engine) SetSerialParams(p SerialParams) {
 }
 
 // SetSerialMode arms/disarms the serial trigger (SerialOff/SerialTrigger).
+// TRLC-LINKS: REQ-SDS-013
 func (e *Engine) SetSerialMode(m int) {
 	if m != SerialOff && m != SerialTrigger {
 		m = SerialOff
@@ -98,6 +106,7 @@ func (e *Engine) SetSerialMode(m int) {
 // anchor the display on (-1 = don't re-anchor). Engine goroutine; f is the
 // producer slot. It runs on EVERY publish candidate while armed — async UART in
 // AUTO never edge-locks, so (unlike the zone gate) it must NOT be gated on lock.
+// TRLC-LINKS: REQ-SDS-013
 func (e *Engine) serialQualify(f *Frame, valid int, sampleS float64) (bool, int) {
 	e.ser.mu.Lock()
 	p := e.ser.params
@@ -132,6 +141,7 @@ func (e *Engine) serialQualify(f *Frame, valid int, sampleS float64) (bool, int)
 // matchI2C finds a transaction addressing p.Addr (or any if <0) with the wanted
 // R/W direction; when p.Bytes is set, the transaction's data bytes must also
 // contain that sequence. Anchors on the address span (the transaction start).
+// TRLC-LINKS: REQ-SDS-013
 func matchI2C(sp []decode.Span, p SerialParams) (bool, int) {
 	for i := 0; i < len(sp); i++ {
 		if sp[i].Kind != "addr" {
@@ -180,12 +190,19 @@ func matchI2C(sp []decode.Span, p SerialParams) (bool, int) {
 // pattern must be CONTIGUOUS on the wire — consecutive matched bytes must abut
 // (no large idle gap / burst boundary between them), so "AB" cannot be forged
 // from an 'A' and a 'B' emitted far apart in separate transmissions.
+// TRLC-LINKS: REQ-SDS-013
 func matchBytes(sp []decode.Span, want []int) (bool, int) {
-	type db struct{ val, i0, i1 int }
+	type db struct{ val, i0, i1, segment int }
 	var seq []db
+	segment := 0
 	for _, s := range sp {
-		if s.Kind == "data" {
-			seq = append(seq, db{s.Val, s.I0, s.I1})
+		switch s.Kind {
+		case "data":
+			seq = append(seq, db{s.Val, s.I0, s.I1, segment})
+		case "gap", "frame-error", "parity-error":
+			// Never manufacture a sequence by dropping a corrupt byte or an
+			// explicit decoder gap, even when the sample indices are close.
+			segment++
 		}
 	}
 	if len(want) == 0 {
@@ -197,7 +214,7 @@ func matchBytes(sp []decode.Span, want []int) (bool, int) {
 	for start := 0; start+len(want) <= len(seq); start++ {
 		ok := true
 		for k := 0; k < len(want); k++ {
-			if seq[start+k].val != want[k] {
+			if seq[start+k].val != want[k] || seq[start+k].segment != seq[start].segment {
 				ok = false
 				break
 			}
@@ -221,6 +238,7 @@ func matchBytes(sp []decode.Span, want []int) (bool, int) {
 
 // indexSeq returns the start index of the first occurrence of needle in hay, or
 // -1. Empty needle matches at 0.
+// TRLC-LINKS: REQ-SDS-013
 func indexSeq(hay, needle []int) int {
 	if len(needle) == 0 {
 		return 0

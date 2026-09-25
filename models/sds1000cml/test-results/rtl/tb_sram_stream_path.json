@@ -1,0 +1,42 @@
+{
+  "source": "fpga/acq_sram/sim/tb_sram_stream_path.v",
+  "scope": "Eight original stream cases: packetizer/banks at BANK_AW3,10,11 and SRAM wrapper AW13/TARGET10003,AW19/TARGET65539. Fixed ideal clocks and behavioral SRAM/RAM; no physical CDC, vendor FIFO timing, fitted timing or hardware qualification. Legacy adc_stream and top-level bench are not executed.",
+  "sourceSHA256": "8f9e544c04d83c06794c79bd0dbc851547171e50a7def45ec914ceaf1b41fd83",
+  "reportSHA256": "9d675d4183ab6ca02a3c1d6de383f56059b284be5ebd5434d150339a784521ad",
+  "runs": [
+    "sram-stream-13",
+    "sram-stream-19"
+  ],
+  "results": [
+    {
+      "requirement": "REQ-SDS-044",
+      "status": "partial",
+      "notes": "2 original stream cases pass; 0 executed cases fail; 0 could not execute because compilation failed. Passing cases provide partial assertion evidence only. Frozen pre-annotation source inputs remain auditable through exact approved comment overlays; no physical qualification is established. See evidence/stream-rtl-review-test-run.json."
+    },
+    {
+      "requirement": "REQ-SDS-047",
+      "status": "partial",
+      "notes": "2 original stream cases pass; 0 executed cases fail; 0 could not execute because compilation failed. Passing cases provide partial assertion evidence only. Frozen pre-annotation source inputs remain auditable through exact approved comment overlays; no physical qualification is established. See evidence/stream-rtl-review-test-run.json."
+    },
+    {
+      "requirement": "REQ-SDS-048",
+      "status": "partial",
+      "notes": "2 original stream cases pass; 0 executed cases fail; 0 could not execute because compilation failed. Passing cases provide partial assertion evidence only. Frozen pre-annotation source inputs remain auditable through exact approved comment overlays; no physical qualification is established. See evidence/stream-rtl-review-test-run.json."
+    },
+    {
+      "requirement": "REQ-SDS-051",
+      "status": "partial",
+      "notes": "2 original stream cases pass; 0 executed cases fail; 0 could not execute because compilation failed. Passing cases provide partial assertion evidence only. Frozen pre-annotation source inputs remain auditable through exact approved comment overlays; no physical qualification is established. See evidence/stream-rtl-review-test-run.json."
+    },
+    {
+      "requirement": "REQ-SDS-052",
+      "status": "partial",
+      "notes": "2 original stream cases pass; 0 executed cases fail; 0 could not execute because compilation failed. Passing cases provide partial assertion evidence only. Frozen pre-annotation source inputs remain auditable through exact approved comment overlays; no physical qualification is established. See evidence/stream-rtl-review-test-run.json."
+    },
+    {
+      "requirement": "REQ-SDS-053",
+      "status": "partial",
+      "notes": "2 original stream cases pass; 0 executed cases fail; 0 could not execute because compilation failed. Passing cases provide partial assertion evidence only. Frozen pre-annotation source inputs remain auditable through exact approved comment overlays; no physical qualification is established. See evidence/stream-rtl-review-test-run.json."
+    }
+  ]
+}

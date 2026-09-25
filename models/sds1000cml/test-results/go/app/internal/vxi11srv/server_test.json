@@ -1,0 +1,46 @@
+{
+  "source": "app/internal/vxi11srv/server_test.go",
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "scope": "Reviewed Go test outcomes; passing assertions contribute partial requirement evidence.",
+  "sourceSHA256": "c4af5863fb8937364d3d8817baf194f1acfa3fd2bf2a5b236bdcba8297e005b0",
+  "logs": {
+    "test-runs/vxi-server.jsonl": "142722e60329e7ba87b0635fc95b4a0c2d8ff900ed73efe61f4a83f01569bcd2"
+  },
+  "tests": [
+    {
+      "name": "TestLinkWriteRead",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-024"
+      ]
+    },
+    {
+      "name": "TestChunkedRead",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-024"
+      ]
+    },
+    {
+      "name": "TestSingleLinkAndRelease",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-024"
+      ]
+    },
+    {
+      "name": "TestReadTimeout",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-024"
+      ]
+    }
+  ],
+  "results": [
+    {
+      "requirement": "REQ-SDS-024",
+      "status": "partial",
+      "notes": "4 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+{"Time":"2026-09-23T07:46:52.110550405+02:00","Action":"start","Package":"open-sds/app/internal/decode"}
+{"Time":"2026-09-23T07:46:52.122713486+02:00","Action":"run","Package":"open-sds/app/internal/decode","Test":"TestDecodeUARTRoundTrip"}
+{"Time":"2026-09-23T07:46:52.122759928+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestDecodeUARTRoundTrip","Output":"=== RUN   TestDecodeUARTRoundTrip\n"}
+{"Time":"2026-09-23T07:46:52.124727728+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestDecodeUARTRoundTrip","Output":"--- PASS: TestDecodeUARTRoundTrip (0.00s)\n"}
+{"Time":"2026-09-23T07:46:52.124753533+02:00","Action":"pass","Package":"open-sds/app/internal/decode","Test":"TestDecodeUARTRoundTrip","Elapsed":0}
+{"Time":"2026-09-23T07:46:52.124799205+02:00","Action":"run","Package":"open-sds/app/internal/decode","Test":"TestDecodeSPIRoundTrip"}
+{"Time":"2026-09-23T07:46:52.124804508+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestDecodeSPIRoundTrip","Output":"=== RUN   TestDecodeSPIRoundTrip\n"}
+{"Time":"2026-09-23T07:46:52.126162782+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestDecodeSPIRoundTrip","Output":"--- PASS: TestDecodeSPIRoundTrip (0.00s)\n"}
+{"Time":"2026-09-23T07:46:52.126186018+02:00","Action":"pass","Package":"open-sds/app/internal/decode","Test":"TestDecodeSPIRoundTrip","Elapsed":0}
+{"Time":"2026-09-23T07:46:52.126232286+02:00","Action":"run","Package":"open-sds/app/internal/decode","Test":"TestDecodeI2CRoundTrip"}
+{"Time":"2026-09-23T07:46:52.126237611+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestDecodeI2CRoundTrip","Output":"=== RUN   TestDecodeI2CRoundTrip\n"}
+{"Time":"2026-09-23T07:46:52.126919133+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestDecodeI2CRoundTrip","Output":"--- PASS: TestDecodeI2CRoundTrip (0.00s)\n"}
+{"Time":"2026-09-23T07:46:52.126945652+02:00","Action":"pass","Package":"open-sds/app/internal/decode","Test":"TestDecodeI2CRoundTrip","Elapsed":0}
+{"Time":"2026-09-23T07:46:52.126992334+02:00","Action":"run","Package":"open-sds/app/internal/decode","Test":"TestAutodetect"}
+{"Time":"2026-09-23T07:46:52.126998114+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestAutodetect","Output":"=== RUN   TestAutodetect\n"}
+{"Time":"2026-09-23T07:46:52.144960964+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestAutodetect","Output":"--- PASS: TestAutodetect (0.02s)\n"}
+{"Time":"2026-09-23T07:46:52.144981127+02:00","Action":"pass","Package":"open-sds/app/internal/decode","Test":"TestAutodetect","Elapsed":0.02}
+{"Time":"2026-09-23T07:46:52.145003732+02:00","Action":"run","Package":"open-sds/app/internal/decode","Test":"TestAutodetectAllProtocols"}
+{"Time":"2026-09-23T07:46:52.145008456+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestAutodetectAllProtocols","Output":"=== RUN   TestAutodetectAllProtocols\n"}
+{"Time":"2026-09-23T07:46:52.16788274+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestAutodetectAllProtocols","Output":"--- PASS: TestAutodetectAllProtocols (0.02s)\n"}
+{"Time":"2026-09-23T07:46:52.167902475+02:00","Action":"pass","Package":"open-sds/app/internal/decode","Test":"TestAutodetectAllProtocols","Elapsed":0.02}
+{"Time":"2026-09-23T07:46:52.167923122+02:00","Action":"run","Package":"open-sds/app/internal/decode","Test":"TestFmtByte"}
+{"Time":"2026-09-23T07:46:52.167928162+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestFmtByte","Output":"=== RUN   TestFmtByte\n"}
+{"Time":"2026-09-23T07:46:52.168008403+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestFmtByte","Output":"--- PASS: TestFmtByte (0.00s)\n"}
+{"Time":"2026-09-23T07:46:52.168015931+02:00","Action":"pass","Package":"open-sds/app/internal/decode","Test":"TestFmtByte","Elapsed":0}
+{"Time":"2026-09-23T07:46:52.168061427+02:00","Action":"run","Package":"open-sds/app/internal/decode","Test":"TestDecodeUARTFrameError"}
+{"Time":"2026-09-23T07:46:52.168066569+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestDecodeUARTFrameError","Output":"=== RUN   TestDecodeUARTFrameError\n"}
+{"Time":"2026-09-23T07:46:52.168183706+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestDecodeUARTFrameError","Output":"--- PASS: TestDecodeUARTFrameError (0.00s)\n"}
+{"Time":"2026-09-23T07:46:52.168192464+02:00","Action":"pass","Package":"open-sds/app/internal/decode","Test":"TestDecodeUARTFrameError","Elapsed":0}
+{"Time":"2026-09-23T07:46:52.168306891+02:00","Action":"output","Package":"open-sds/app/internal/decode","Output":"PASS\n"}
+{"Time":"2026-09-23T07:46:53.170148608+02:00","Action":"output","Package":"open-sds/app/internal/decode","Output":"ok  \topen-sds/app/internal/decode\t1.059s\n"}
+{"Time":"2026-09-23T07:46:53.170166293+02:00","Action":"pass","Package":"open-sds/app/internal/decode","Elapsed":1.06}

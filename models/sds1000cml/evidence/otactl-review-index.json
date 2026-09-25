@@ -1,0 +1,25 @@
+{
+  "scope": "All six package Go files source-reviewed and declaration-linked. Partial tests and inspection-only boundaries remain explicit.",
+  "files": {
+    "ota/internal/otactl/client.go": [
+      "otactl-client-review.json"
+    ],
+    "ota/internal/otactl/client_test.go": [
+      "otactl-client-review.json"
+    ],
+    "ota/internal/otactl/transport.go": [
+      "otactl-client-review.json",
+      "otactl-transport-review.json"
+    ],
+    "ota/internal/otactl/server.go": [
+      "otactl-recovery-review.json"
+    ],
+    "ota/internal/otactl/shelly.go": [
+      "otactl-recovery-review.json"
+    ],
+    "ota/internal/otactl/nats_e2e_test.go": [
+      "agent-nats-e2e-review.json"
+    ]
+  },
+  "pending": "Complete clause and physical qualification remain unestablished; source trace integration complete."
+}

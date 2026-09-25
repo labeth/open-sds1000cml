@@ -1,0 +1,39 @@
+{
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "requirement": "REQ-SDS-018",
+  "owner": "FU-APP-DECODE",
+  "result": "source-reviewed-external-comparison-not-run",
+  "completeReads": [
+    "app/internal/decode/oracle_i2c_test.go",
+    "app/internal/decode/oracle_can_test.go"
+  ],
+  "reviewedLines": 1172,
+  "sourceSHA256": {
+    "app/internal/decode/oracle_i2c_test.go": "e24036912490d538712373af214c825985a96a968761489b157bd75db3766ba2",
+    "app/internal/decode/oracle_can_test.go": "2680fa72694a9866769cb29d46e491c88157a2e4241d9c978d56a00d9cd441db"
+  },
+  "executable": null,
+  "findings": {
+    "I2C": [
+      "Eight subtests cover selected reads/writes, repeated start, NAK address, address extremes, fractional asymmetric clock, stretching and a one-sample SDA glitch. All follow needSigrok and are unexecuted when that dependency is absent.",
+      "The generator models aligned binary SDA/SCL timelines and seven-bit addresses. NAK address suppresses payload generation. No ten-bit addressing, arbitration, multi-master or electrical qualification is established.",
+      "Comparison merges external start and repeat-start counts to match repository start spans. Selected payloads are checked against generated values, but some address comparisons only compare the two decoders. Direction-specific streams are concatenated for one write-then-read fixture.",
+      "Selected span comparisons allow two samples at the start and 22 samples at the end for a 20-sample clock, or 30 at the end for a 27.03-sample clock. ACK/NAK counts and selected coordinates are checked; these are not exact endpoint identities.",
+      "Clock stretching inserts five periods mid-byte and seven before ACK; explicit span-width and ACK-distance assertions guard against accidentally omitting the stretches.",
+      "The glitch case intentionally expects repository two starts/two stops and no payload, versus external one start/one repeat/no stops and an extra address. These are inspected expectations, not observed external behavior on this host.",
+      "The annotation parser ignores texts without the selected prefix. Repository address pairing treats any non-R direction as write and does not explicitly reject a dangling final address."
+    ],
+    "CAN": [
+      "Twelve subtests cover selected classic DLC values, extended ID, remote frames, stuffing, corrupt CRC, fractional back-to-back frames, recessive ACK, two auto-baud fixtures, classic DLC12 divergence and one base FD case. All are gated before protocol execution by needSigrok.",
+      "Classic wire generation reuses production canCRC15 and repository stuffing helpers. Agreement with generated CRC values alone is not independent validation of the CRC implementation.",
+      "Standard DLC0..8 sweeps compare IDs, DLCs, payload, CRC values and ACK counts. Selected coordinate checks permit about one bit period. Stuffing stress requires at least twenty inserted bits and compares external stuffing count to the generator; repository has no stuffing spans.",
+      "RTR DLC3 deliberately expects three phantom external data bytes and no repository data. Classic DLC12 deliberately expects repository eight-byte payload and valid CRC while external output stops after ID/DLC and a warning. Version-specific deficiency claims in comments are not independently verified here.",
+      "The CRC-corrupt fixture XORs one bit before stuffing. It expects one repository error and no clean CRC, but explicitly expects no external warning. Thus the external decoder is not an independent CRC-verdict oracle in this test.",
+      "Auto-baud checks two constructed fixtures against the true 20 samples/bit within 0.5 samples and supplies the external decoder with an explicit baud. This does not qualify general inference accuracy.",
+      "FD comparison covers only base format, BRS0 and DLC9 with twelve payload bytes. The reused fixture ends in a synthetic recessive tail without a valid FD CRC/trailer. BRS1 is excluded by a documented timing-contract difference; extended FD is unsupported. No FD CRC, trailer or electrical qualification follows.",
+      "Annotation parsing depends on numeric text following a colon; some flag checks require exact external strings. External-version changes can invalidate these contracts. Recessive ACK checks annotation behavior, not physical bus acknowledgment policy."
+    ]
+  },
+  "scope": "Source inspection only. No external protocol execution, passing native verification, standards conformance or hardware qualification is claimed.",
+  "nextAction": "Complete USB and FlexRay oracle review, then batch all oracle annotations and explicit not-run verification records."
+}

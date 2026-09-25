@@ -7,6 +7,7 @@
 // acquisition engine, reports health at OTA_HEALTH_PATH once the fabric is
 // verified, exits cleanly on SIGTERM — and hosts the control webpage on :8080
 // with the diagnostic block under /diag and /api/diag.
+// ENGMODEL-OWNER-UNIT: FU-APP-APP
 package main
 
 import (
@@ -41,22 +42,26 @@ import (
 
 // scopeSource wires the web layer: setters/stats from the engine, frames
 // from the fan-out (the arena's read slot belongs to the fan-out alone).
+// TRLC-LINKS: REQ-SDS-167
 type scopeSource struct {
 	*engine.Engine
 	fo *frames.Fanout
 }
 
+// TRLC-LINKS: REQ-SDS-167
 func (s scopeSource) WithFrame(fn func(*engine.Frame)) { s.fo.WithFrame(fn) }
 
 // WaitNextFrame lets the web layer park a long-poll until the fan-out
 // snapshots a frame newer than last (web.go type-asserts for this method, so
 // test doubles without it degrade to a short poll).
+// TRLC-LINKS: REQ-SDS-167
 func (s scopeSource) WaitNextFrame(last uint64, timeout time.Duration) uint64 {
 	return s.fo.WaitNext(last, timeout)
 }
 
 // buildHUD assembles the LCD/SCDP heads-up state from the engine + front end.
 // The trigger-level readout is scaled by the SOURCE channel's V/div.
+// TRLC-LINKS: REQ-SDS-168
 func buildHUD(e *engine.Engine, fe *analog.FrontEnd) lcd.HUD {
 	st := e.Snapshot()
 	hud := lcd.HUD{
@@ -191,6 +196,7 @@ var scpiCtrl atomic.Pointer[scpi.Handler]
 // otherwise ran 20×/s even on a held frame. Time-evolving views (persistence,
 // Bode, spectrogram, super-res review, an active mask/zone test) bypass this and
 // always repaint. All fields are comparable so `==` decides.
+// TRLC-LINKS: REQ-SDS-168
 type renderSig struct {
 	seq                   uint64
 	view, math, dec, zoom int
@@ -212,6 +218,7 @@ type renderSig struct {
 	ref0, ref1            bool
 }
 
+// TRLC-LINKS: REQ-SDS-168
 func renderSigOf(f *engine.Frame, hud lcd.HUD, live bool) renderSig {
 	var seq uint64
 	if f != nil {
@@ -238,6 +245,7 @@ func renderSigOf(f *engine.Frame, hud lcd.HUD, live bool) renderSig {
 // runLCD drives the device panel at the 50 ms display cadence (spec 07 §8 —
 // a hard minimum; faster starves the acquisition owner). Fully optional: on
 // any bring-up failure the scope keeps running headless.
+// TRLC-LINKS: REQ-SDS-168
 func runLCD(e *engine.Engine, fe *analog.FrontEnd, fo *frames.Fanout) {
 	if err := lcd.Bringup(logf); err != nil {
 		logf("lcd: disabled: %v", err)
@@ -316,12 +324,14 @@ func runLCD(e *engine.Engine, fe *analog.FrontEnd, fo *frames.Fanout) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-167
 func logf(format string, a ...any) {
 	fmt.Printf("[app] "+format+"\n", a...)
 }
 
 // findInheritedFD scans /proc/self/fd for the descriptor whose link target is
 // path. Same technique as the reference stubapp; fds < 3 are skipped.
+// TRLC-LINKS: REQ-SDS-002
 func findInheritedFD(path string) int {
 	entries, err := os.ReadDir("/proc/self/fd")
 	if err != nil {
@@ -339,6 +349,7 @@ func findInheritedFD(path string) int {
 	return -1
 }
 
+// TRLC-LINKS: REQ-SDS-167
 func envOr(k, d string) string {
 	if v := os.Getenv(k); v != "" {
 		return v
@@ -362,6 +373,7 @@ var heartbeatMode atomic.Value
 // SCOPE_DIAG_HEARTBEAT=0 disables that bring-up mode (strict product
 // semantics: no frames, no health). A wedged engine stops every write, so the
 // agent relaunches us on the still-live fd.
+// TRLC-LINKS: REQ-SDS-025, REQ-SDS-169
 func healthLoop(e *engine.Engine, path string, fabricOK bool, diagBeat bool) {
 	heartbeatMode.Store("off")
 	if !fabricOK {
@@ -411,7 +423,15 @@ func healthLoop(e *engine.Engine, path string, fabricOK bool, diagBeat bool) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-002, REQ-SDS-003, REQ-SDS-004, REQ-SDS-167, REQ-SDS-169
 func main() {
+	if len(os.Args) == 2 && os.Args[1] == "--acquisition-worker" {
+		if err := bus.RunAcquisitionWorker(3, 4, logf); err != nil {
+			logf("acquisition worker: %v", err)
+			os.Exit(1)
+		}
+		return
+	}
 	logf("start pid=%d version=%s", os.Getpid(), buildinfo.String())
 
 	gpmcDev := envOr("SCOPE_GPMC", "/dev/Gpmc")
@@ -443,8 +463,9 @@ func main() {
 	}
 	// SRAM mode owns a different fabric ABI and must branch before the
 	// default loader/engine can issue any configuration or capture commands.
-	sramDefault := os.Getenv("SCOPE_CAPTURE") == "default-sram"
-	switch envOr("SCOPE_CAPTURE", "default") {
+	captureMode := envOr("SCOPE_CAPTURE", "default-sram")
+	sramDefault := captureMode == "default-sram"
+	switch captureMode {
 	case "sram":
 		if err := runSRAMMode(b, gpmcFD, listen, healthPath, sig); err != nil {
 			logf("FATAL: SRAM mode: %v", err)
@@ -467,6 +488,10 @@ func main() {
 	readCS1 := func(sel uint16) (uint16, error) { return b.Read(bus.PlaneCS1, sel) }
 	var sramBackend *sramcapture.Capture
 	if sramDefault {
+		if err := loadGeneralImage(gpmcFD); err != nil {
+			logf("FATAL: general image load: %v", err)
+			return
+		}
 		var err error
 		sramBackend, err = sramcapture.New(b)
 		if err != nil {
@@ -534,6 +559,16 @@ func main() {
 		}
 	}
 	logf("bus up, fabric verified=%v, fast drain=%v", fabricOK, b.FastDrain())
+	if sramDefault && fabricOK {
+		executable, err := os.Executable()
+		if err == nil {
+			err = b.StartWorker(executable, logf)
+		}
+		if err != nil {
+			logf("FATAL: acquisition worker: %v", err)
+			return
+		}
+	}
 
 	var interleaveCal *engine.InterleaveCalibration
 	if path := os.Getenv("SCOPE_INTERLEAVE_CAL"); path != "" {
@@ -705,6 +740,9 @@ func main() {
 	saver.Flush() // a change still inside the debounce window survives the restart
 	if !e.Stop(2 * time.Second) {
 		logf("WARNING: engine did not stop in time")
+	}
+	if err := b.CloseWorker(); err != nil {
+		logf("acquisition worker shutdown: %v", err)
 	}
 	os.Exit(0)
 }

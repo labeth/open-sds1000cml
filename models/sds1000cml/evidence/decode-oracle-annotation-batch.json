@@ -1,0 +1,295 @@
+{
+  "requirement": "REQ-SDS-018",
+  "status": "integrated",
+  "files": [
+    {
+      "path": "app/internal/decode/oracle_can_test.go",
+      "owner": "FU-APP-DECODE",
+      "functions": {
+        "canOracleWire": [
+          "REQ-SDS-018"
+        ],
+        "canOracleBits": [
+          "REQ-SDS-018"
+        ],
+        "canAnnVals": [
+          "REQ-SDS-018"
+        ],
+        "canWantTexts": [
+          "REQ-SDS-018"
+        ],
+        "TestOracleCAN": [
+          "REQ-SDS-018"
+        ]
+      },
+      "types": {
+        "canOFrame": [
+          "REQ-SDS-018"
+        ]
+      }
+    },
+    {
+      "path": "app/internal/decode/oracle_flexray_test.go",
+      "owner": "FU-APP-DECODE",
+      "functions": {
+        "orFlexCRC24": [
+          "REQ-SDS-018"
+        ],
+        "orFlexFrameFlags": [
+          "REQ-SDS-018"
+        ],
+        "orFlexFrame": [
+          "REQ-SDS-018"
+        ],
+        "orFlexCorruptHeaderCRC": [
+          "REQ-SDS-018"
+        ],
+        "orFlexBits": [
+          "REQ-SDS-018"
+        ],
+        "orFlexBitsDTS": [
+          "REQ-SDS-018"
+        ],
+        "orFlexAnnInts": [
+          "REQ-SDS-018"
+        ],
+        "orFlexAnnHex": [
+          "REQ-SDS-018"
+        ],
+        "orFlexAnnCRCs": [
+          "REQ-SDS-018"
+        ],
+        "orFlexNotes": [
+          "REQ-SDS-018"
+        ],
+        "orFlexDataSpans": [
+          "REQ-SDS-018"
+        ],
+        "TestOracleFlexRay": [
+          "REQ-SDS-018"
+        ]
+      },
+      "types": {}
+    },
+    {
+      "path": "app/internal/decode/oracle_i2c_test.go",
+      "owner": "FU-APP-DECODE",
+      "functions": {
+        "newI2CGen": [
+          "REQ-SDS-018"
+        ],
+        "i2cGen.seg": [
+          "REQ-SDS-018"
+        ],
+        "i2cGen.idle": [
+          "REQ-SDS-018"
+        ],
+        "i2cGen.start": [
+          "REQ-SDS-018"
+        ],
+        "i2cGen.byteACK": [
+          "REQ-SDS-018"
+        ],
+        "i2cGen.stretch": [
+          "REQ-SDS-018"
+        ],
+        "i2cGen.byteACKStretched": [
+          "REQ-SDS-018"
+        ],
+        "i2cGen.byteACKGlitched": [
+          "REQ-SDS-018"
+        ],
+        "i2cGen.stop": [
+          "REQ-SDS-018"
+        ],
+        "oracleI2CWaves": [
+          "REQ-SDS-018"
+        ],
+        "i2cAnnVals": [
+          "REQ-SDS-018"
+        ],
+        "i2cRepoAddrs": [
+          "REQ-SDS-018"
+        ],
+        "TestOracleI2C": [
+          "REQ-SDS-018"
+        ]
+      },
+      "types": {
+        "i2cTxn": [
+          "REQ-SDS-018"
+        ],
+        "i2cGen": [
+          "REQ-SDS-018"
+        ]
+      }
+    },
+    {
+      "path": "app/internal/decode/oracle_spi_test.go",
+      "owner": "FU-APP-DECODE",
+      "functions": {
+        "oracleSPIBits": [
+          "REQ-SDS-018"
+        ],
+        "spiOWords": [
+          "REQ-SDS-018"
+        ],
+        "TestOracleSPI": [
+          "REQ-SDS-018"
+        ],
+        "b2i": [
+          "REQ-SDS-018"
+        ]
+      },
+      "types": {
+        "spiOWord": [
+          "REQ-SDS-018"
+        ]
+      }
+    },
+    {
+      "path": "app/internal/decode/oracle_test.go",
+      "owner": "FU-APP-DECODE",
+      "functions": {
+        "needSigrok": [
+          "REQ-SDS-018"
+        ],
+        "bitsToCodes": [
+          "REQ-SDS-018"
+        ],
+        "newTimeline": [
+          "REQ-SDS-018"
+        ],
+        "timeline.add": [
+          "REQ-SDS-018"
+        ],
+        "sigrokDecode": [
+          "REQ-SDS-018"
+        ],
+        "annBytes": [
+          "REQ-SDS-018"
+        ],
+        "spanBytes": [
+          "REQ-SDS-018"
+        ],
+        "countSpans": [
+          "REQ-SDS-018"
+        ],
+        "eqBytes": [
+          "REQ-SDS-018"
+        ],
+        "eqAligned": [
+          "REQ-SDS-018"
+        ]
+      },
+      "types": {
+        "timeline": [
+          "REQ-SDS-018"
+        ],
+        "ann": [
+          "REQ-SDS-018"
+        ]
+      }
+    },
+    {
+      "path": "app/internal/decode/oracle_uart_test.go",
+      "owner": "FU-APP-DECODE",
+      "functions": {
+        "oracleUARTBits": [
+          "REQ-SDS-018"
+        ],
+        "frames": [
+          "REQ-SDS-018"
+        ],
+        "TestOracleUART": [
+          "REQ-SDS-018"
+        ]
+      },
+      "types": {
+        "uframe": [
+          "REQ-SDS-018"
+        ]
+      }
+    },
+    {
+      "path": "app/internal/decode/oracle_usbls_test.go",
+      "owner": "FU-APP-DECODE",
+      "functions": {
+        "usblsLSB": [
+          "REQ-SDS-018"
+        ],
+        "usblsRev": [
+          "REQ-SDS-018"
+        ],
+        "usblsCRC5": [
+          "REQ-SDS-018"
+        ],
+        "usblsCRC16": [
+          "REQ-SDS-018"
+        ],
+        "usblsByteBits": [
+          "REQ-SDS-018"
+        ],
+        "usblsTokenBits": [
+          "REQ-SDS-018"
+        ],
+        "usblsDataBits": [
+          "REQ-SDS-018"
+        ],
+        "usblsPacketBits": [
+          "REQ-SDS-018"
+        ],
+        "usblsPacketBitsRawPID": [
+          "REQ-SDS-018"
+        ],
+        "oracleUSBLSWave": [
+          "REQ-SDS-018"
+        ],
+        "oracleUSBLSWaveKA": [
+          "REQ-SDS-018"
+        ],
+        "usblsSigrok": [
+          "REQ-SDS-018"
+        ],
+        "usblsSignalling": [
+          "REQ-SDS-018"
+        ],
+        "usblsAnnNum": [
+          "REQ-SDS-018"
+        ],
+        "usblsPIDs": [
+          "REQ-SDS-018"
+        ],
+        "usblsRepoPackets": [
+          "REQ-SDS-018"
+        ],
+        "usblsTokenFields": [
+          "REQ-SDS-018"
+        ],
+        "usblsRepoCRC16": [
+          "REQ-SDS-018"
+        ],
+        "TestOracleUSBLS": [
+          "REQ-SDS-018"
+        ]
+      },
+      "types": {
+        "usblsRepoPkt": [
+          "REQ-SDS-018"
+        ]
+      }
+    }
+  ],
+  "functions": 66,
+  "types": 8,
+  "verificationPolicy": "Only six optional-mode top-level skips may be indexed as native not-run. Helpers are not independent tests. Required dependency failures remain outside native decoder outcomes.",
+  "sourceSHA256": {
+    "app/internal/decode/oracle_can_test.go": "2680fa72694a9866769cb29d46e491c88157a2e4241d9c978d56a00d9cd441db",
+    "app/internal/decode/oracle_flexray_test.go": "8a222d4468921bf21a233c0ac47691d0205203898767dcf2cbe440e4c17cbf0f",
+    "app/internal/decode/oracle_i2c_test.go": "e24036912490d538712373af214c825985a96a968761489b157bd75db3766ba2",
+    "app/internal/decode/oracle_spi_test.go": "d81f38b001c3de90d8bbb23df1948a6ea2943144a41757eeb4ca6dab8ef6a870",
+    "app/internal/decode/oracle_test.go": "796dc98e76c399a59f8fe8fdc2113bda95cd0005bbb296857e9d1f9c76572cd5",
+    "app/internal/decode/oracle_uart_test.go": "82a0ac58db0c9e417807fae3085c79bd2a1b743970bffaf7f0106cdc323bd44c",
+    "app/internal/decode/oracle_usbls_test.go": "e7376c4ddf092928499c0ddd0fd7855bd345b0959e06eeda68c910517929898b"
+  }
+}

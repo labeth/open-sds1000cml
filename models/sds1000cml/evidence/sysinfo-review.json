@@ -1,0 +1,12 @@
+{
+  "scope": "Complete source read integrated into REQ-SDS-102; approved comments only. Dedicated test coverage remains bounded as described.",
+  "sourceSHA256": {
+    "ota/internal/sysinfo/sysinfo.go": "e0e072680c4c38ba489d9017fdf4ade0eba56336f8cd8c2a7511ea8018e047c2"
+  },
+  "findings": [
+    "Seven functions read uname, non-loopback IPv4 addresses, /proc data and filesystem available bytes.",
+    "MemFree uses MemFree rather than MemAvailable. Missing proc reads become empty strings; statfs errors become -1.",
+    "No package tests exist. No host facts were collected or persisted in this review."
+  ],
+  "buildLog": "test-runs/ota-contracts.jsonl"
+}

@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-WEB-SUPERRES-COMP
 // superres_comp.js — analog-falloff compensation (DSP bandwidth enhancement)
 // for the super-res stack. De-embeds the MEASURED channel magnitude response
 // (scope front-end + interconnect) by reshaping the crunched spectrum toward a
@@ -42,11 +43,13 @@ const SRCOMP_DEFAULT = { fbw: 70e6, order: 3, eps: 0.06, gmax: 6 };
 // the measured table, continue the fitted 2-pole tail (matched at the boundary)
 // — a physical extrapolation for the auto target when the stack's headroom
 // reaches past where the odd harmonics were still above the noise (~85 MHz).
+// TRLC-LINKS: REQ-SDS-142
 function srCompCalH(f) {
   f = Math.abs(f);
   const df = SRCOMP_DF, tab = SRCOMP_HCAL, last = (tab.length - 1) * df;
   if (f <= 0) return 1;
   if (f >= last) {
+    // TRLC-LINKS: REQ-SDS-142
     const tp = ff => 1 / Math.sqrt((1 + (ff / SRCOMP_FCA) ** 2) * (1 + (ff / SRCOMP_FCB) ** 2));
     const k = tab[tab.length - 1] / tp(last); // match the table at the boundary
     return Math.max(1e-4, k * tp(f));
@@ -58,6 +61,7 @@ function srCompCalH(f) {
 // srCompTargetH(f): flat-top target response, −3 dB at fbw, order-`order`
 // super-Gaussian (flat through ~0.75·fbw then a clean roll that bounds the
 // high-frequency noise gain).
+// TRLC-LINKS: REQ-SDS-142
 function srCompTargetH(f, fbw, order) {
   return Math.exp(-0.6931471805599453 * Math.pow(Math.abs(f) / fbw, 2 * order));
 }
@@ -67,6 +71,7 @@ function srCompTargetH(f, fbw, order) {
 // gmax. Zero-phase (real, even) — corrects magnitude only, so edges sharpen
 // symmetrically with no added group delay (the front end is ~minimum-phase, so
 // magnitude correction recovers most of the edge).
+// TRLC-LINKS: REQ-SDS-142
 function srCompGain(f, o) {
   const hc = srCompCalH(f), ht = srCompTargetH(f, o.fbw, o.order);
   const g = (ht * hc) / (hc * hc + o.eps * o.eps);
@@ -75,6 +80,7 @@ function srCompGain(f, o) {
 
 // srCompInfo(o): filter figures independent of the data — peak boost (dB) and
 // the recovered −3 dB of the compensated response (Hc·G). Cheap scan.
+// TRLC-LINKS: REQ-SDS-142
 function srCompInfo(opts) {
   const o = Object.assign({}, SRCOMP_DEFAULT, opts || {});
   let peak = 0, f3 = 0, prevDb = 0, prevF = 0;
@@ -100,6 +106,7 @@ function srCompInfo(opts) {
 // recovers a higher −3 dB. Ceilings: the raw ADC Nyquist (hard — no real signal
 // beyond) and a cal-trust cap; near those, super-res alignment jitter (not
 // noise) is the real limit, so pushing further buys little.
+// TRLC-LINKS: REQ-SDS-142
 function srCompAuto(bitsGained, rawNyqHz, spend) {
   const s = spend > 0 ? spend : 0.8;
   const budgetDb = Math.max(4, (bitsGained || 0) * 6.0206 * s);
@@ -114,7 +121,9 @@ function srCompAuto(bitsGained, rawNyqHz, spend) {
   // (srCompensate) is what keeps that from RINGING; the honest caveat stands.
   const ceil = Math.min(200e6, 0.8 * (rawNyqHz > 0 ? rawNyqHz : 250e6));
   const floor = 40e6;
+  // TRLC-LINKS: REQ-SDS-142
   const peak = fbw => srCompInfo({ fbw, eps, gmax, order }).peakBoostDb;
+  // TRLC-LINKS: REQ-SDS-142
   const mk = fbw => ({ fbw, eps, gmax, order, budgetDb, bitsGained: bitsGained || 0, auto: true });
   if (peak(floor) >= budgetDb) return mk(floor);
   if (peak(ceil) <= budgetDb) return mk(ceil);
@@ -125,6 +134,7 @@ function srCompAuto(bitsGained, rawNyqHz, spend) {
 
 // ---- radix-2 iterative FFT (in place). n MUST be a power of two. inverse:
 // conjugate-FFT-conjugate with 1/n scaling. re/im are Float64Array(n). ----
+// TRLC-LINKS: REQ-SDS-142
 function srCompFFT(re, im, inverse) {
   const n = re.length;
   for (let i = 1, j = 0; i < n; i++) {
@@ -152,6 +162,7 @@ function srCompFFT(re, im, inverse) {
 
 // srCompResample: circular linear resample src[0..M-1] → length Ndst over the
 // SAME time span (so frequency bin k always maps to k/T, independent of N).
+// TRLC-LINKS: REQ-SDS-142
 function srCompResample(src, M, Ndst) {
   const dst = new Float64Array(Ndst);
   const ratio = M / Ndst;
@@ -168,6 +179,7 @@ function srCompResample(src, M, Ndst) {
 //   dtFine : seconds per fine bin (sampleS / K).
 // Returns { comp: Float32Array (same length; gaps preserved as −1, filled
 //           samples floored at 0), peakBoostDb, recoveredF3, fbw, measF3 }.
+// TRLC-LINKS: REQ-SDS-142
 function srCompensate(mean, dtFine, opts) {
   const o = Object.assign({}, SRCOMP_DEFAULT, opts || {});
   const M = mean.length;

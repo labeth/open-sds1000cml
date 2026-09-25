@@ -1,9 +1,12 @@
+// ENGMODEL-OWNER-UNIT: FU-WEB-APP-CONTROLS
 // app_controls.js — control wiring: acquisition/trigger/timebase/vertical + view/channel/export (classic script; loaded after app.js state).
 
 // ---- acquisition, trigger, timebase, vertical + view/channel/export controls ----
 "use strict";
 $("autoset").onclick = autoset;
+// TRLC-LINKS: REQ-SDS-204
 $("run").onclick = () => { const on = !(st && st.running); send("run", on ? 1 : 0); if (st) { st.running = on; applyStatus(); } };
+// TRLC-LINKS: REQ-SDS-204
 $("single").onclick = () => {
   send("single", 1);
   if (st) { st.norm = st.running = st.single = true; applyStatus(); }
@@ -12,35 +15,57 @@ $("single").onclick = () => {
   // post-capture RUN click reads a stale "running" and sends STOP (scope would
   // not resume). Bounded; the steady 1 s poll takes over after.
   let n = 0;
+  // TRLC-LINKS: REQ-SDS-204
   const chk = async () => {
     try { st = await (await fetch("/api/status")).json(); applyStatus(); } catch (e) {}
     if (st && st.running && st.single && n++ < 50) setTimeout(chk, 200);
   };
   setTimeout(chk, 200);
 };
+// TRLC-LINKS: REQ-SDS-204
 $("tpos").oninput = () => send("trigpos", +$("tpos").value);
+// TRLC-LINKS: REQ-SDS-204
 $("mode").onclick = () => { const on = !(st && st.norm); send("norm", on ? 1 : 0); if (st) { st.norm = on; applyStatus(); } };
+// TRLC-LINKS: REQ-SDS-204
 $("slope").onclick = () => { const r = !(st && st.trig_rising); send("trigslope", r ? 1 : 0); if (st) { st.trig_rising = r; applyStatus(); } };
+// TRLC-LINKS: REQ-SDS-204
 $("source").onclick = () => { const c = st && st.trig_source === 1 ? 0 : 1; send("trigsource", c); if (st) { st.trig_source = c; applyStatus(); } };
+// TRLC-LINKS: REQ-SDS-204
 $("ets").onclick = () => { const on = !(st && st.ets); send("ets", on ? 1 : 0); if (st) { st.ets = on; applyStatus(); } };
+// TRLC-LINKS: REQ-SDS-204
 $("tdiv").onchange = () => send("tdiv", +$("tdiv").value);
+// TRLC-LINKS: REQ-SDS-204
 $("vdiv1").onchange = () => send("vdiv1", +$("vdiv1").value);
+// TRLC-LINKS: REQ-SDS-204
 $("vdiv2").onchange = () => send("vdiv2", +$("vdiv2").value);
+// TRLC-LINKS: REQ-SDS-204
 $("probe1").onchange = () => send("probe1", +$("probe1").value);
+// TRLC-LINKS: REQ-SDS-204
 $("probe2").onchange = () => send("probe2", +$("probe2").value);
+// TRLC-LINKS: REQ-SDS-204
 $("cpl1").onchange = () => send("coupling1", +$("cpl1").value);
+// TRLC-LINKS: REQ-SDS-204
 $("cpl2").onchange = () => send("coupling2", +$("cpl2").value);
+// TRLC-LINKS: REQ-SDS-203
 $("refSaveA").onclick = () => saveRef("A");
+// TRLC-LINKS: REQ-SDS-203
 $("refSaveB").onclick = () => saveRef("B");
+// TRLC-LINKS: REQ-SDS-204
 $("holdoff").onchange = () => send("holdoff", +$("holdoff").value);
 for (const [rng, lbl, ctl, ch] of [["off1", "off1v", "offset1", 1], ["off2", "off2v", "offset2", 2]]) {
+  // TRLC-LINKS: REQ-SDS-204
   $(rng).oninput = () => { offDragging = true; $(lbl).textContent = (+$(rng).value).toFixed(2) + " V"; };
+  // TRLC-LINKS: REQ-SDS-204
   $(rng).onchange = () => { offDragging = false; send(ctl, +$(rng).value / probeOf(ch)); };
 }
+// TRLC-LINKS: REQ-SDS-204
 $("lvl").oninput = () => { lvlDragging = true; $("lvlv").textContent = (+$("lvl").value).toFixed(2) + " V"; };
+// TRLC-LINKS: REQ-SDS-204
 $("lvl").onchange = () => { lvlDragging = false; send("triglevelcode", trigCodeFor(+$("lvl").value)); };
 
+// TRLC-LINKS: REQ-SDS-204
 $("ttype").onchange = () => { send("trigtype", +$("ttype").value); if (st) st.trig_type = +$("ttype").value; updateQualRow(); };
+// TRLC-LINKS: REQ-SDS-023
 async function sendParams(control, extra) {
   try { await fetch("/api/set", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(Object.assign({ control, value: 0 }, extra)) }); } catch (e) {}
 }
@@ -48,19 +73,31 @@ for (const id of ["p-lvl", "p-min", "p-max", "p-cond"]) $(id).onchange = sendPul
 for (const id of ["s-lo", "s-hi", "s-min", "s-max", "s-cond"]) $(id).onchange = sendSlope;
 for (const id of ["v-std", "v-line", "v-neg"]) $(id).onchange = sendVideo;
 
+// TRLC-LINKS: REQ-SDS-204
 $("acq").onchange = () => { send("acqmode", +$("acq").value); if (st) st.acq_mode = +$("acq").value; updateAcqN(); };
+// TRLC-LINKS: REQ-SDS-204
 $("acqn").onchange = () => send([1,4].includes(+$("acq").value) ? "avgcount" : "eres", +$("acqn").value);
+// TRLC-LINKS: REQ-SDS-204
 $("memdepth").onchange = () => { send("memdepth", +$("memdepth").value); userZoomed = false; }; // deeper = more to scroll, fewer fps
 
+// TRLC-LINKS: REQ-SDS-204
 $("mYT").onclick = () => setMode("YT");
+// TRLC-LINKS: REQ-SDS-204
 $("mXY").onclick = () => setMode("XY");
+// TRLC-LINKS: REQ-SDS-204
 $("mFFT").onclick = () => setMode("FFT");
+// TRLC-LINKS: REQ-SDS-204
 $("tPersist").onclick = () => { view.persist = !view.persist; $("tPersist").classList.toggle("on", view.persist); clearPersist(); redraw(); };
+// TRLC-LINKS: REQ-SDS-204
 $("tCursors").onclick = () => { view.cursors = !view.cursors; $("tCursors").classList.toggle("on", view.cursors); updateCursors(); redraw(); };
+// TRLC-LINKS: REQ-SDS-204
 $("tC1").onclick = () => { view.c1 = !view.c1; $("tC1").classList.toggle("on", view.c1); redraw(); };
+// TRLC-LINKS: REQ-SDS-204
 $("tC2").onclick = () => { view.c2 = !view.c2; $("tC2").classList.toggle("on", view.c2); redraw(); };
+// TRLC-LINKS: REQ-SDS-204
 $("freeze").onclick = () => { frozen = !frozen; $("freeze").classList.toggle("on", frozen); };
 
+// TRLC-LINKS: REQ-SDS-069
 $("ePNG").onclick = () => {
   // The scope is a WebGL canvas without preserveDrawingBuffer, so its buffer is
   // cleared after compositing — repaint synchronously in THIS tick so toDataURL
@@ -70,6 +107,7 @@ $("ePNG").onclick = () => {
   a.download = "scope-" + (frame ? frame.seq : 0) + ".png";
   a.href = scope.toDataURL("image/png"); a.click();
 };
+// TRLC-LINKS: REQ-SDS-069
 $("eCSV").onclick = () => {
   if (!frame || !frame.c1) return;
   // dt_s is the true capture pitch; col_span_s is a display nominal on the
@@ -78,6 +116,7 @@ $("eCSV").onclick = () => {
   const dt = frame.dt_s > 0 ? frame.dt_s : (frame.col_span_s || 0) / frame.c1.length;
   const vpc1 = frame.vpc1 || (1 / 25), vpc2 = frame.vpc2 || (1 / 25);
   const o1 = frame.off1_v || 0, o2 = frame.off2_v || 0;
+  // TRLC-LINKS: REQ-SDS-069
   const toV = (code, vpc, off) => (code === undefined || code < 0 ? "" : ((code - 128) * vpc - off).toExponential(6));
   const c2 = frame.c2;
   // Decimate huge arrays: a superres stack's K× fine grid is interpolation,
@@ -105,9 +144,11 @@ $("eCSV").onclick = () => {
 // exportName — superres view frames REUSE the live frame's seq (they have no
 // publish seq), so their files get a "-superres" marker instead of silently
 // overwriting the live frame's export of the same seq.
+// TRLC-LINKS: REQ-SDS-069
 function exportName(seq, ext) {
   return "scope-" + seq + (frame && frame.sr_view ? "-superres" : "") + "." + ext;
 }
+// TRLC-LINKS: REQ-SDS-069
 function exportFile(name, type, data) {
   const a = document.createElement("a");
   a.download = name;
@@ -116,14 +157,17 @@ function exportFile(name, type, data) {
   // blob (10 MB for a superres .sr) stays pinned until the page unloads.
   setTimeout(() => URL.revokeObjectURL(a.href), 60000);
 }
+// TRLC-LINKS: REQ-SDS-069
 $("eSR").onclick = () => {
   const s = sigrokSeries(frame);
   if (s) exportFile(exportName(s.seq, "sr"), "application/zip", sigrokSR(s));
 };
+// TRLC-LINKS: REQ-SDS-069
 $("eVCD").onclick = () => {
   const s = sigrokSeries(frame);
   if (s) exportFile(exportName(s.seq, "vcd"), "text/plain", sigrokVCD(s));
 };
+// TRLC-LINKS: REQ-SDS-069
 $("eWAV").onclick = () => {
   const s = sigrokSeries(frame);
   const wav = s && sigrokWAV(s); // null when the rate exceeds WAV's uint32 Hz
@@ -136,8 +180,11 @@ window.addEventListener("keydown", (e) => {
   const m = KEYMAP.find(x => x.key === k || x.key === e.key);
   if (m) { e.preventDefault(); m.run(); }
 });
+// TRLC-LINKS: REQ-SDS-204
 $("help").onclick = (e) => { if (e.target.id === "help") $("help").classList.remove("show"); }; // click backdrop closes
+// TRLC-LINKS: REQ-SDS-203
 $("mathFn").onchange = () => { mathFn = $("mathFn").value; updateMathHint(); redraw(); };
+// TRLC-LINKS: REQ-SDS-204
 $("panelToggle").onclick = () => { document.body.classList.toggle("dock-toggled"); resize(); }; // collapse/expand dock
 // Minimise/expand an individual card by clicking its title (ignore header controls).
 $("dock").addEventListener("click", ev => {
@@ -147,4 +194,5 @@ $("dock").addEventListener("click", ev => {
   if (h3 && h3.parentElement.classList.contains("card")) h3.parentElement.classList.toggle("collapsed");
 });
 
+// TRLC-LINKS: REQ-SDS-204
 $("precisionRate").onchange = () => send("precisionrate", +$("precisionRate").value);

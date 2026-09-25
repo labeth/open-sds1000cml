@@ -1,0 +1,931 @@
+{
+  "status": "integrated",
+  "files": [
+    {
+      "path": "app/internal/bus/bus.go",
+      "owner": "FU-APP-BUS",
+      "functions": {
+        "New": [
+          "REQ-SDS-002",
+          "REQ-SDS-129"
+        ],
+        "Writable": [
+          "REQ-SDS-129"
+        ],
+        "encode": [
+          "REQ-SDS-129"
+        ],
+        "Dev.ioctl": [
+          "REQ-SDS-129",
+          "REQ-SDS-134"
+        ],
+        "validPlane": [
+          "REQ-SDS-129"
+        ],
+        "Dev.Read": [
+          "REQ-SDS-129"
+        ],
+        "Dev.Write": [
+          "REQ-SDS-129"
+        ],
+        "Dev.RawWrite": [
+          "REQ-SDS-129"
+        ],
+        "Dev.rawWrite": [
+          "REQ-SDS-129"
+        ],
+        "Dev.BurstInto": [
+          "REQ-SDS-081",
+          "REQ-SDS-129"
+        ],
+        "Dev.PopWords": [
+          "REQ-SDS-081",
+          "REQ-SDS-129"
+        ],
+        "Dev.FastDrain": [
+          "REQ-SDS-081"
+        ],
+        "Dev.EnableEDMA": [
+          "REQ-SDS-081",
+          "REQ-SDS-131",
+          "REQ-SDS-134"
+        ],
+        "Dev.PopWordsChecked": [
+          "REQ-SDS-081",
+          "REQ-SDS-129",
+          "REQ-SDS-134"
+        ],
+        "Dev.PopBytesChecked": [
+          "REQ-SDS-081",
+          "REQ-SDS-129",
+          "REQ-SDS-134"
+        ]
+      },
+      "types": {
+        "Bus": [
+          "REQ-SDS-129"
+        ],
+        "Dev": [
+          "REQ-SDS-129"
+        ]
+      }
+    },
+    {
+      "path": "app/internal/bus/bus_test.go",
+      "owner": "FU-APP-BUS",
+      "functions": {
+        "TestEncode": [
+          "REQ-SDS-129"
+        ],
+        "TestWritableIsSchemaDerived": [
+          "REQ-SDS-129"
+        ],
+        "TestNewDoesNotProbe": [
+          "REQ-SDS-002",
+          "REQ-SDS-129"
+        ],
+        "newFakeCC": [
+          "REQ-SDS-081"
+        ],
+        "fakeCC.R": [
+          "REQ-SDS-081"
+        ],
+        "fakeCC.W": [
+          "REQ-SDS-081"
+        ],
+        "fakePager.alloc": [
+          "REQ-SDS-081"
+        ],
+        "newFakeDrainer": [
+          "REQ-SDS-081"
+        ],
+        "TestRunParamProgramsChannel40": [
+          "REQ-SDS-081"
+        ],
+        "TestRunParamTimeout": [
+          "REQ-SDS-081"
+        ],
+        "TestDrainSplitsPagesAndBytes": [
+          "REQ-SDS-081"
+        ],
+        "TestDrainWordsPersistentWithInvalidate": [
+          "REQ-SDS-081"
+        ],
+        "fakeGPMC.R": [
+          "REQ-SDS-131"
+        ],
+        "fakeGPMC.W": [
+          "REQ-SDS-131"
+        ],
+        "TestCS1CycleGapSequence": [
+          "REQ-SDS-131"
+        ],
+        "TestPopBytesPreservesPagesAndReusedCoherentBuffer": [
+          "REQ-SDS-081"
+        ]
+      },
+      "types": {
+        "fakeCC": [
+          "REQ-SDS-081"
+        ],
+        "fakePager": [
+          "REQ-SDS-081"
+        ],
+        "fakeGPMC": [
+          "REQ-SDS-131"
+        ]
+      }
+    },
+    {
+      "path": "app/internal/bus/dcinv.go",
+      "owner": "FU-APP-BUS",
+      "functions": {
+        "realDcinvEnv": [
+          "REQ-SDS-081"
+        ],
+        "EnsureDcinv": [
+          "REQ-SDS-081"
+        ],
+        "ensureDcinv": [
+          "REQ-SDS-081"
+        ],
+        "dcinvMajor": [
+          "REQ-SDS-081"
+        ]
+      },
+      "types": {
+        "dcinvEnv": [
+          "REQ-SDS-081"
+        ]
+      }
+    },
+    {
+      "path": "app/internal/bus/dcinv_test.go",
+      "owner": "FU-APP-BUS",
+      "functions": {
+        "TestDcinvEmbedded": [
+          "REQ-SDS-081"
+        ],
+        "fakeEnv": [
+          "REQ-SDS-081"
+        ],
+        "TestEnsureDcinvAlreadyPresent": [
+          "REQ-SDS-081"
+        ],
+        "TestEnsureDcinvLoadsAndDevtmpfsCreatesNode": [
+          "REQ-SDS-081"
+        ],
+        "TestEnsureDcinvMknodFromProcDevices": [
+          "REQ-SDS-081"
+        ],
+        "TestEnsureDcinvInsmodFails": [
+          "REQ-SDS-081"
+        ]
+      },
+      "types": {}
+    },
+    {
+      "path": "app/internal/bus/drainwin.go",
+      "owner": "FU-APP-BUS",
+      "functions": {
+        "ReadDrainStat": [
+          "REQ-SDS-130"
+        ],
+        "SetWindow": [
+          "REQ-SDS-130"
+        ],
+        "Rewind": [
+          "REQ-SDS-130"
+        ],
+        "DrainResult.NsPerWord": [
+          "REQ-SDS-130"
+        ],
+        "DrainWindow": [
+          "REQ-SDS-130"
+        ],
+        "drainWindow": [
+          "REQ-SDS-130"
+        ],
+        "DrainWindowInto": [
+          "REQ-SDS-130"
+        ],
+        "CheckExact": [
+          "REQ-SDS-130"
+        ],
+        "TsrcOptions.defaults": [
+          "REQ-SDS-130"
+        ],
+        "CaptureTsrc": [
+          "REQ-SDS-130"
+        ],
+        "ResetTsrc": [
+          "REQ-SDS-130"
+        ],
+        "newRampChecker": [
+          "REQ-SDS-130"
+        ],
+        "rampChecker.drain": [
+          "REQ-SDS-130"
+        ],
+        "rampChecker.run": [
+          "REQ-SDS-130"
+        ],
+        "RampCheck": [
+          "REQ-SDS-130"
+        ]
+      },
+      "types": {
+        "DrainStat": [
+          "REQ-SDS-130"
+        ],
+        "Window": [
+          "REQ-SDS-130"
+        ],
+        "DrainResult": [
+          "REQ-SDS-130"
+        ],
+        "Exactness": [
+          "REQ-SDS-130"
+        ],
+        "TsrcOptions": [
+          "REQ-SDS-130"
+        ],
+        "RampReport": [
+          "REQ-SDS-130"
+        ],
+        "rampChecker": [
+          "REQ-SDS-130"
+        ]
+      }
+    },
+    {
+      "path": "app/internal/bus/drainwin_test.go",
+      "owner": "FU-APP-BUS",
+      "functions": {
+        "newFakeFab": [
+          "REQ-SDS-130"
+        ],
+        "fakeFab.window": [
+          "REQ-SDS-130"
+        ],
+        "fakeFab.latch": [
+          "REQ-SDS-130"
+        ],
+        "fakeFab.word": [
+          "REQ-SDS-130"
+        ],
+        "fakeFab.pop": [
+          "REQ-SDS-130"
+        ],
+        "fakeFab.Read": [
+          "REQ-SDS-130"
+        ],
+        "fakeFab.Write": [
+          "REQ-SDS-130"
+        ],
+        "fakeFab.RawWrite": [
+          "REQ-SDS-130"
+        ],
+        "fakeFab.BurstInto": [
+          "REQ-SDS-130"
+        ],
+        "fakeFab.PopWords": [
+          "REQ-SDS-130"
+        ],
+        "fakeFab.FastDrain": [
+          "REQ-SDS-130"
+        ],
+        "noSleep": [
+          "REQ-SDS-130"
+        ],
+        "TestCaptureTsrcAndWindowedDrain": [
+          "REQ-SDS-130"
+        ],
+        "TestCheckExactVerdicts": [
+          "REQ-SDS-130"
+        ],
+        "TestRampCheckPassesAndDetectsCorruption": [
+          "REQ-SDS-130"
+        ],
+        "TestRampCheckNeedsARecord": [
+          "REQ-SDS-130"
+        ]
+      },
+      "types": {
+        "fakeFab": [
+          "REQ-SDS-130"
+        ]
+      }
+    },
+    {
+      "path": "app/internal/bus/edma.go",
+      "owner": "FU-APP-BUS",
+      "functions": {
+        "memRegs.R": [
+          "REQ-SDS-081"
+        ],
+        "memRegs.W": [
+          "REQ-SDS-081"
+        ],
+        "memRegs.close": [
+          "REQ-SDS-081"
+        ],
+        "newEDMADrainer": [
+          "REQ-SDS-081"
+        ],
+        "edmaDrainer.close": [
+          "REQ-SDS-081"
+        ],
+        "edmaDrainer.coherency": [
+          "REQ-SDS-081"
+        ],
+        "pagemapPager.alloc": [
+          "REQ-SDS-081"
+        ],
+        "physOf": [
+          "REQ-SDS-081"
+        ],
+        "edmaDrainer.runParam": [
+          "REQ-SDS-081"
+        ],
+        "edmaDrainer.drainWords": [
+          "REQ-SDS-081"
+        ],
+        "edmaDrainer.drainBytes": [
+          "REQ-SDS-081"
+        ],
+        "edmaDrainer.drain": [
+          "REQ-SDS-081"
+        ]
+      },
+      "types": {
+        "regs32": [
+          "REQ-SDS-081"
+        ],
+        "memRegs": [
+          "REQ-SDS-081"
+        ],
+        "dmaBuf": [
+          "REQ-SDS-081"
+        ],
+        "pager": [
+          "REQ-SDS-081"
+        ],
+        "edmaDrainer": [
+          "REQ-SDS-081"
+        ],
+        "pagemapPager": [
+          "REQ-SDS-081"
+        ]
+      }
+    },
+    {
+      "path": "app/internal/bus/gpmccfg.go",
+      "owner": "FU-APP-BUS",
+      "functions": {
+        "cycleGapWords": [
+          "REQ-SDS-131"
+        ],
+        "applyCS1CycleGap": [
+          "REQ-SDS-131"
+        ],
+        "programCS1CycleGap": [
+          "REQ-SDS-131"
+        ],
+        "gpmcCSConfig": [
+          "REQ-SDS-133"
+        ],
+        "maskToMB": [
+          "REQ-SDS-133"
+        ],
+        "surveyRegions": [
+          "REQ-SDS-133"
+        ],
+        "SurveyCSRegions": [
+          "REQ-SDS-133"
+        ],
+        "PeekCS": [
+          "REQ-SDS-133"
+        ]
+      },
+      "types": {
+        "CSRegion": [
+          "REQ-SDS-133"
+        ]
+      }
+    },
+    {
+      "path": "app/internal/bus/gpmccfg_test.go",
+      "owner": "FU-APP-BUS",
+      "functions": {
+        "recRegs.R": [
+          "REQ-SDS-133"
+        ],
+        "recRegs.W": [
+          "REQ-SDS-133"
+        ],
+        "TestSurveyRegions": [
+          "REQ-SDS-133"
+        ]
+      },
+      "types": {
+        "recRegs": [
+          "REQ-SDS-133"
+        ]
+      }
+    },
+    {
+      "path": "app/internal/bus/gpmcpersist.go",
+      "owner": "FU-APP-BUS",
+      "functions": {
+        "TimingPath": [
+          "REQ-SDS-132"
+        ],
+        "TimingPathForBoot": [
+          "REQ-SDS-132"
+        ],
+        "FactoryPathFor": [
+          "REQ-SDS-132"
+        ],
+        "FileFromSweep": [
+          "REQ-SDS-132"
+        ],
+        "writeJSONAtomic": [
+          "REQ-SDS-132"
+        ],
+        "readJSON": [
+          "REQ-SDS-132"
+        ],
+        "SaveTiming": [
+          "REQ-SDS-132"
+        ],
+        "LoadTiming": [
+          "REQ-SDS-132"
+        ],
+        "SaveFactory": [
+          "REQ-SDS-132"
+        ],
+        "LoadFactory": [
+          "REQ-SDS-132"
+        ],
+        "sameReadSide": [
+          "REQ-SDS-132"
+        ],
+        "ApplyPersistedTiming": [
+          "REQ-SDS-132"
+        ],
+        "applyPersisted": [
+          "REQ-SDS-132"
+        ],
+        "RestoreFactoryTiming": [
+          "REQ-SDS-132"
+        ],
+        "ForgetTiming": [
+          "REQ-SDS-132"
+        ]
+      },
+      "types": {
+        "TimingFile": [
+          "REQ-SDS-132"
+        ],
+        "FactoryFile": [
+          "REQ-SDS-132"
+        ],
+        "BootTiming": [
+          "REQ-SDS-132"
+        ]
+      }
+    },
+    {
+      "path": "app/internal/bus/gpmcpersist_test.go",
+      "owner": "FU-APP-BUS",
+      "functions": {
+        "TestTimingFileRoundTrip": [
+          "REQ-SDS-132"
+        ],
+        "hex8": [
+          "REQ-SDS-132"
+        ],
+        "bootFile": [
+          "REQ-SDS-132"
+        ],
+        "factoryFile": [
+          "REQ-SDS-132"
+        ],
+        "TestBootApplyPersistedPasses": [
+          "REQ-SDS-132"
+        ],
+        "TestBootApplyPersistedFallsBack": [
+          "REQ-SDS-132"
+        ],
+        "TestFactoryRecordRules": [
+          "REQ-SDS-132"
+        ],
+        "TestTimingPathForBootFallsBackToSibling": [
+          "REQ-SDS-132"
+        ]
+      },
+      "types": {}
+    },
+    {
+      "path": "app/internal/bus/gpmctiming.go",
+      "owner": "FU-APP-BUS",
+      "functions": {
+        "bits": [
+          "REQ-SDS-131"
+        ],
+        "setBits": [
+          "REQ-SDS-131"
+        ],
+        "CS1Timing.CSOn": [
+          "REQ-SDS-131"
+        ],
+        "CS1Timing.CSRdOff": [
+          "REQ-SDS-131"
+        ],
+        "CS1Timing.CSWrOff": [
+          "REQ-SDS-131"
+        ],
+        "CS1Timing.OEOn": [
+          "REQ-SDS-131"
+        ],
+        "CS1Timing.OEOff": [
+          "REQ-SDS-131"
+        ],
+        "CS1Timing.WEOn": [
+          "REQ-SDS-131"
+        ],
+        "CS1Timing.WEOff": [
+          "REQ-SDS-131"
+        ],
+        "CS1Timing.RdCycle": [
+          "REQ-SDS-131"
+        ],
+        "CS1Timing.WrCycle": [
+          "REQ-SDS-131"
+        ],
+        "CS1Timing.RdAccess": [
+          "REQ-SDS-131"
+        ],
+        "CS1Timing.Gap": [
+          "REQ-SDS-131"
+        ],
+        "CS1Timing.SameCSEn": [
+          "REQ-SDS-131"
+        ],
+        "CS1Timing.WrAccess": [
+          "REQ-SDS-131"
+        ],
+        "CS1Timing.Turnaround": [
+          "REQ-SDS-131"
+        ],
+        "CS1Timing.WithRdAccess": [
+          "REQ-SDS-131"
+        ],
+        "CS1Timing.WithRdCycle": [
+          "REQ-SDS-131"
+        ],
+        "CS1Timing.WithOEOn": [
+          "REQ-SDS-131"
+        ],
+        "CS1Timing.WithOEOff": [
+          "REQ-SDS-131"
+        ],
+        "CS1Timing.WithCSRdOff": [
+          "REQ-SDS-131"
+        ],
+        "CS1Timing.WithGap": [
+          "REQ-SDS-131"
+        ],
+        "CS1Timing.Fields": [
+          "REQ-SDS-131"
+        ],
+        "CS1Timing.String": [
+          "REQ-SDS-131"
+        ],
+        "CS1Timing.ReadTicks": [
+          "REQ-SDS-131"
+        ],
+        "CS1Timing.Validate": [
+          "REQ-SDS-131"
+        ],
+        "CS1Timing.forCycle": [
+          "REQ-SDS-131"
+        ],
+        "readTiming": [
+          "REQ-SDS-131"
+        ],
+        "applyTiming": [
+          "REQ-SDS-131"
+        ],
+        "OpenTimingPort": [
+          "REQ-SDS-131"
+        ],
+        "MemTimingPort.Read": [
+          "REQ-SDS-131"
+        ],
+        "MemTimingPort.Apply": [
+          "REQ-SDS-131"
+        ],
+        "MemTimingPort.Restore": [
+          "REQ-SDS-131"
+        ],
+        "MemTimingPort.Close": [
+          "REQ-SDS-131"
+        ],
+        "SweepOptions.defaults": [
+          "REQ-SDS-131"
+        ],
+        "NewSweeper": [
+          "REQ-SDS-131"
+        ],
+        "Sweeper.init": [
+          "REQ-SDS-131"
+        ],
+        "Sweeper.Result": [
+          "REQ-SDS-131"
+        ],
+        "Sweeper.Done": [
+          "REQ-SDS-131"
+        ],
+        "Sweeper.Phase": [
+          "REQ-SDS-131"
+        ],
+        "Sweeper.Setting": [
+          "REQ-SDS-131"
+        ],
+        "Sweeper.nsPerWord": [
+          "REQ-SDS-131"
+        ],
+        "Sweeper.drainsPerStep": [
+          "REQ-SDS-131"
+        ],
+        "Sweeper.StepTimeout": [
+          "REQ-SDS-131"
+        ],
+        "Sweeper.Step": [
+          "REQ-SDS-131"
+        ],
+        "Sweeper.begin": [
+          "REQ-SDS-131"
+        ],
+        "Sweeper.finish": [
+          "REQ-SDS-131"
+        ],
+        "Sweeper.nextSetting": [
+          "REQ-SDS-131"
+        ],
+        "lastOf": [
+          "REQ-SDS-131"
+        ],
+        "Sweeper.nextAccess": [
+          "REQ-SDS-131"
+        ],
+        "Sweeper.nextCycle": [
+          "REQ-SDS-131"
+        ],
+        "Sweeper.nextGap": [
+          "REQ-SDS-131"
+        ],
+        "Sweeper.nextVerify": [
+          "REQ-SDS-131"
+        ],
+        "Sweeper.closePhase": [
+          "REQ-SDS-131"
+        ],
+        "Sweeper.drainsPerHalf": [
+          "REQ-SDS-131"
+        ],
+        "Sweeper.chunk": [
+          "REQ-SDS-131"
+        ],
+        "Sweeper.closeSetting": [
+          "REQ-SDS-131"
+        ],
+        "Sweeper.Run": [
+          "REQ-SDS-131"
+        ],
+        "fclkEstimate": [
+          "REQ-SDS-131"
+        ]
+      },
+      "types": {
+        "CS1Timing": [
+          "REQ-SDS-131"
+        ],
+        "TimingFields": [
+          "REQ-SDS-131"
+        ],
+        "TimingPort": [
+          "REQ-SDS-131"
+        ],
+        "MemTimingPort": [
+          "REQ-SDS-131"
+        ],
+        "SweepOptions": [
+          "REQ-SDS-131"
+        ],
+        "SettingResult": [
+          "REQ-SDS-131"
+        ],
+        "SweepResult": [
+          "REQ-SDS-131"
+        ],
+        "Sweeper": [
+          "REQ-SDS-131"
+        ]
+      }
+    },
+    {
+      "path": "app/internal/bus/gpmctiming_test.go",
+      "owner": "FU-APP-BUS",
+      "functions": {
+        "TestCS1TimingFieldCodec": [
+          "REQ-SDS-131"
+        ],
+        "TestCS1TimingValidate": [
+          "REQ-SDS-131"
+        ],
+        "TestApplyTimingSequence": [
+          "REQ-SDS-131"
+        ],
+        "fakePort.Read": [
+          "REQ-SDS-131"
+        ],
+        "fakePort.set": [
+          "REQ-SDS-131"
+        ],
+        "fakePort.Apply": [
+          "REQ-SDS-131"
+        ],
+        "fakePort.Restore": [
+          "REQ-SDS-131"
+        ],
+        "tickClock.now": [
+          "REQ-SDS-131"
+        ],
+        "TestSweepFindsFloorsAndRestores": [
+          "REQ-SDS-131"
+        ],
+        "TestSweepNothingGained": [
+          "REQ-SDS-131"
+        ],
+        "TestSweepAbortsOnBrokenBaseline": [
+          "REQ-SDS-131"
+        ],
+        "slowFab.FastDrain": [
+          "REQ-SDS-131"
+        ],
+        "TestSweepStepsRestoreEveryStep": [
+          "REQ-SDS-131"
+        ]
+      },
+      "types": {
+        "fakePort": [
+          "REQ-SDS-131"
+        ],
+        "tickClock": [
+          "REQ-SDS-131"
+        ],
+        "slowFab": [
+          "REQ-SDS-131"
+        ]
+      }
+    },
+    {
+      "path": "app/internal/bus/kernel_dma_linux.go",
+      "owner": "FU-APP-BUS",
+      "functions": {
+        "Dev.EnableKernelDMA": [
+          "REQ-SDS-002",
+          "REQ-SDS-081",
+          "REQ-SDS-134"
+        ],
+        "Dev.CloseKernelDMA": [
+          "REQ-SDS-002",
+          "REQ-SDS-134"
+        ],
+        "kernelDMADrainer.pop": [
+          "REQ-SDS-134"
+        ],
+        "Dev.StartKernelStream": [
+          "REQ-SDS-134"
+        ],
+        "Dev.ReadKernelStream": [
+          "REQ-SDS-134"
+        ],
+        "Dev.KernelStreamStats": [
+          "REQ-SDS-134"
+        ]
+      },
+      "types": {
+        "kernelDMADrainer": [
+          "REQ-SDS-134"
+        ]
+      }
+    },
+    {
+      "path": "app/internal/bus/kernel_dma_linux_test.go",
+      "owner": "FU-APP-BUS",
+      "functions": {
+        "TestKernelStreamOwnsGPMC": [
+          "REQ-SDS-134"
+        ],
+        "TestKernelStreamReadRequiresStart": [
+          "REQ-SDS-134"
+        ]
+      },
+      "types": {}
+    }
+  ],
+  "functions": 198,
+  "types": 37,
+  "uniqueReviewedTests": [
+    "TestApplyTimingSequence",
+    "TestBootApplyPersistedFallsBack",
+    "TestBootApplyPersistedPasses",
+    "TestCS1CycleGapSequence",
+    "TestCS1TimingFieldCodec",
+    "TestCS1TimingValidate",
+    "TestCaptureTsrcAndWindowedDrain",
+    "TestCheckExactVerdicts",
+    "TestDcinvEmbedded",
+    "TestDrainSplitsPagesAndBytes",
+    "TestDrainWordsPersistentWithInvalidate",
+    "TestEncode",
+    "TestEnsureDcinvAlreadyPresent",
+    "TestEnsureDcinvInsmodFails",
+    "TestEnsureDcinvLoadsAndDevtmpfsCreatesNode",
+    "TestEnsureDcinvMknodFromProcDevices",
+    "TestFactoryRecordRules",
+    "TestKernelStreamOwnsGPMC",
+    "TestKernelStreamReadRequiresStart",
+    "TestNewDoesNotProbe",
+    "TestPopBytesPreservesPagesAndReusedCoherentBuffer",
+    "TestRampCheckNeedsARecord",
+    "TestRampCheckPassesAndDetectsCorruption",
+    "TestRunParamProgramsChannel40",
+    "TestRunParamTimeout",
+    "TestSurveyRegions",
+    "TestSweepAbortsOnBrokenBaseline",
+    "TestSweepFindsFloorsAndRestores",
+    "TestSweepNothingGained",
+    "TestSweepStepsRestoreEveryStep",
+    "TestTimingFileRoundTrip",
+    "TestTimingPathForBootFallsBackToSibling",
+    "TestWritableIsSchemaDerived"
+  ],
+  "nativeEligibleTests": [
+    "TestApplyTimingSequence",
+    "TestBootApplyPersistedFallsBack",
+    "TestBootApplyPersistedPasses",
+    "TestCS1CycleGapSequence",
+    "TestCS1TimingFieldCodec",
+    "TestCS1TimingValidate",
+    "TestCaptureTsrcAndWindowedDrain",
+    "TestCheckExactVerdicts",
+    "TestDcinvEmbedded",
+    "TestDrainSplitsPagesAndBytes",
+    "TestDrainWordsPersistentWithInvalidate",
+    "TestEncode",
+    "TestEnsureDcinvAlreadyPresent",
+    "TestEnsureDcinvInsmodFails",
+    "TestEnsureDcinvLoadsAndDevtmpfsCreatesNode",
+    "TestEnsureDcinvMknodFromProcDevices",
+    "TestFactoryRecordRules",
+    "TestKernelStreamOwnsGPMC",
+    "TestKernelStreamReadRequiresStart",
+    "TestNewDoesNotProbe",
+    "TestPopBytesPreservesPagesAndReusedCoherentBuffer",
+    "TestRampCheckNeedsARecord",
+    "TestRampCheckPassesAndDetectsCorruption",
+    "TestRunParamProgramsChannel40",
+    "TestRunParamTimeout",
+    "TestSurveyRegions",
+    "TestSweepAbortsOnBrokenBaseline",
+    "TestSweepFindsFloorsAndRestores",
+    "TestSweepNothingGained",
+    "TestSweepStepsRestoreEveryStep",
+    "TestTimingFileRoundTrip",
+    "TestTimingPathForBootFallsBackToSibling",
+    "TestWritableIsSchemaDerived"
+  ],
+  "sourceSHA256": {
+    "app/internal/bus/bus.go": "6e4d1712c0efbf46d5b637e8ea6566cfb3bede94060562ce83833b1e6e13c555",
+    "app/internal/bus/bus_test.go": "68419707e8bf99c8ffb2f8527c887715d69fd7cb2f4e00cccb34d39184e3ce5a",
+    "app/internal/bus/dcinv.go": "649ccf13aa8796206beef522a05eeb56ee2634f5fd3da45dbe394dc7ded3833f",
+    "app/internal/bus/dcinv_test.go": "a5414c2f337b742e2bcfc8c0c0dc8009414a80a03266b08bf8832b73c00175fb",
+    "app/internal/bus/drainwin.go": "3f223bf7d13c60e48e9a9d55cd04baac033bc5eac45aac00e6f85038d1efabe6",
+    "app/internal/bus/drainwin_test.go": "4d9d7c0e21cfa84845d0668f4467655a48a2dddb1566cc99d84f455fc904af9c",
+    "app/internal/bus/edma.go": "99182b941115c5ea178c5ed49e2f3420bcb934d0b007426954f97b21b6573d0c",
+    "app/internal/bus/gpmccfg.go": "ccc02ed9ed7635e1694104c121e55629899e8f7c31e31c1dd07215c880e2a586",
+    "app/internal/bus/gpmccfg_test.go": "1efc19746731e04e8445cbc9b4742ae3e5617e09490671814e4c991d873ac37c",
+    "app/internal/bus/gpmcpersist.go": "2b3fd5d0b36470d729fcc495fada56fd31e54ba058b8cab71335498cdcaee8cd",
+    "app/internal/bus/gpmcpersist_test.go": "da02a030257f507ba3efa2a5e54f8135d0254a6fffe88202e4e6b608280577ac",
+    "app/internal/bus/gpmctiming.go": "c142d18addc46754166897e72ef60fdb8bd9f40a0154975fd8479ef029ed9c38",
+    "app/internal/bus/gpmctiming_test.go": "2653b977111e29107eb6901681d8c0b1a8ee2ac4fb26a95454a7b5cfe9a66248",
+    "app/internal/bus/kernel_dma_linux.go": "f51338070450e7a69eb105cb1735120f00d536d9119f8e324e82eaa3f6ae79bc",
+    "app/internal/bus/kernel_dma_linux_test.go": "8a9c57e144fcbcb43fa895ab7c8cfacf508cb94fc0ebbc56e67d283ea2f75117"
+  },
+  "scope": "33 original bus host tests with fake registers, DMA memory, fabric and temporary files. No device opens, module loading, physical GPMC/EDMA/cache qualification or kernel stream execution."
+}

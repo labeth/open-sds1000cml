@@ -1,0 +1,58 @@
+{
+  "status": "incomplete",
+  "sourceGapReportSHA256": "890fcc560344b9d7fa10fa8407455c917d4f7b30d82bd0e0e9e569c4a810036c",
+  "scope": "active-source-scope.json",
+  "requirements": [
+    {
+      "id": "REQ-SDS-030",
+      "classification": "excluded-support-script",
+      "reason": "USB startup shell chain; retained requirement, no further shell annotations."
+    },
+    {
+      "id": "REQ-SDS-176",
+      "classification": "excluded-support-script",
+      "reason": "USB anchor slot recovery shell implementation; retained requirement, no further shell annotations."
+    },
+    {
+      "id": "REQ-SDS-061",
+      "classification": "hardware-context",
+      "reason": "Timing constraints and CDC audit remain hardware context; Python audit implementation is excluded."
+    },
+    {
+      "id": "REQ-SDS-062",
+      "classification": "in-scope-unmet-obligation",
+      "reason": "Qualified acquisition profile selection."
+    },
+    {
+      "id": "REQ-SDS-063",
+      "classification": "in-scope-unmet-obligation",
+      "reason": "Profile switch export and epoch semantics."
+    },
+    {
+      "id": "REQ-SDS-064",
+      "classification": "in-scope-unmet-obligation",
+      "reason": "Gapless rate rejection and discontinuity reporting."
+    },
+    {
+      "id": "REQ-SDS-065",
+      "classification": "in-scope-unmet-obligation",
+      "reason": "Hardware protocol event ordinal alignment."
+    },
+    {
+      "id": "REQ-SDS-073",
+      "classification": "retained-cross-language-contract",
+      "reason": "Go/browser decoder parity; verification contract rather than a standalone implementation function."
+    },
+    {
+      "id": "REQ-SDS-074",
+      "classification": "in-scope-unmet-obligation",
+      "reason": "Valid record-phase metadata is not supplied by the legacy correction heuristic."
+    },
+    {
+      "id": "REQ-SDS-182",
+      "classification": "retained-verification-contract",
+      "reason": "Browser inline-content policy, with known original test failure retained."
+    }
+  ],
+  "limits": "This classification changes work scope only. It does not alter requirement status, count absent implementations as implemented, or establish passing verification. Declaration links are already complete for audited Go and Verilog; behavioral and hardware evidence is a separate obligation."
+}

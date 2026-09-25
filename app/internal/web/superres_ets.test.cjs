@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-WEB
 // Node tests for superres_ets.js: synthetic FREE-RUN frames of a near-Nyquist
 // clock at RANDOM phase + noise (3.3 samples/cycle, like a 150 MHz clock at
 // 500 MSa/s) must reconstruct to a clean period with recovered frequency,
@@ -6,16 +7,20 @@
 const E = require("./superres_ets.js");
 
 let fails = 0;
+// TRLC-LINKS: REQ-SDS-019, REQ-SDS-181
 function check(name, ok, detail) { console.log((ok ? "ok   " : "FAIL ") + name + (detail ? "  [" + detail + "]" : "")); if (!ok) fails++; }
 
+// TRLC-LINKS: REQ-SDS-019, REQ-SDS-181
 function rng(seed) { let a = seed >>> 0; return () => { a |= 0; a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
 const rnd = rng(0xC10C0);
+// TRLC-LINKS: REQ-SDS-019, REQ-SDS-181
 function gauss() { const u = Math.max(rnd(), 1e-12), v = rnd(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); }
 
 const dt = 2e-9, F = 150.0e6, N = 8192, NF = 60;
 const DC = 184, A = 2.2, NOISE = 2.7; // ~4.4-code sine buried in 2.7-code noise (like the real bench)
 
 // make a free-run frame at a random phase (shape: 'sine' or 'square')
+// TRLC-LINKS: REQ-SDS-019, REQ-SDS-181
 function frame(shape) {
   const phi = 2 * Math.PI * rnd();
   const x = new Float64Array(N);
@@ -28,6 +33,7 @@ function frame(shape) {
 }
 
 // single-period DFT amplitude at harmonic h (cycles per record = h)
+// TRLC-LINKS: REQ-SDS-019, REQ-SDS-181
 function harmAmp(mean, h) {
   const nb = mean.length; let re = 0, im = 0, c = 0;
   for (let i = 0; i < nb; i++) { if (mean[i] < 0) continue; const p = 2 * Math.PI * h * i / nb; re += mean[i] * Math.cos(p); im += mean[i] * Math.sin(p); c++; }

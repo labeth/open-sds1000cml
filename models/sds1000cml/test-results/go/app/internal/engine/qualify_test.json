@@ -1,0 +1,119 @@
+{
+  "source": "app/internal/engine/qualify_test.go",
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "scope": "Reviewed Go test outcomes; passing assertions contribute partial requirement evidence.",
+  "sourceSHA256": "55eb90ade9c51309171ed6acef5d824bac52748c4b53f8a86ff833a3a619f167",
+  "logs": {
+    "test-runs/engine-processing-reviewed.jsonl": "e9d2dedf48e1c9db4a8f9d2b20153dde76fa9d2f3f9079d541916f6d455cd056"
+  },
+  "tests": [
+    {
+      "name": "TestQualifyPulseWidthWindow",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-011"
+      ]
+    },
+    {
+      "name": "TestQualifyPulseLowPolarity",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-011"
+      ]
+    },
+    {
+      "name": "TestQualifyPulseFlatReject",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-011"
+      ]
+    },
+    {
+      "name": "TestQualifySlope",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-011"
+      ]
+    },
+    {
+      "name": "TestQualifySlopeSingleStepEdge",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-011"
+      ]
+    },
+    {
+      "name": "TestQualifyVideo",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-011"
+      ]
+    },
+    {
+      "name": "TestEresBoxcar",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-012"
+      ]
+    },
+    {
+      "name": "TestEresLenForBits",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-012"
+      ]
+    },
+    {
+      "name": "TestAverageRing",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-012"
+      ]
+    },
+    {
+      "name": "TestAverageRingNoOffRecordBias",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-012"
+      ]
+    },
+    {
+      "name": "TestQualifierPublishPolicy",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-011"
+      ]
+    },
+    {
+      "name": "TestAverageModeInEngine",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-012"
+      ]
+    },
+    {
+      "name": "TestUniformityStats",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-126"
+      ]
+    }
+  ],
+  "results": [
+    {
+      "requirement": "REQ-SDS-011",
+      "status": "partial",
+      "notes": "7 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    },
+    {
+      "requirement": "REQ-SDS-012",
+      "status": "partial",
+      "notes": "5 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    },
+    {
+      "requirement": "REQ-SDS-126",
+      "status": "partial",
+      "notes": "1 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    }
+  ]
+}

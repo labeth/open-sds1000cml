@@ -1,0 +1,59 @@
+{
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "sourceSHA256": {
+    "ota/boot/startup.sh": "b363e1a0e67f0605eb8f8e538719a63ee1e78e49704476c15ca67055dddb24b2",
+    "ota/boot/boot_test.go": "bf677f8169f479205d0f8d1c79fcbc1348e5824bfd3c17685635e6ff3816afa5",
+    "ota/boot/doc.go": "64a3a4073614b8b5689cf41fe864af0517bc984b5b8fe0171b69f8e84dbd7c68"
+  },
+  "command": [
+    "go",
+    "tool",
+    "test2json",
+    "-p",
+    "open-sds/ota/boot",
+    "bwrap",
+    "--unshare-all",
+    "--die-with-parent",
+    "--new-session",
+    "--ro-bind",
+    "/",
+    "/",
+    "--tmpfs",
+    "/tmp",
+    "--dev",
+    "/dev",
+    "--proc",
+    "/proc",
+    "--ro-bind",
+    "/tmp/sds-boot-review-01925vjz/boot.test",
+    "/tmp/boot.test",
+    "--chdir",
+    "/home/labeth/ws/open-sds1000cml-acq2/ota/boot",
+    "/tmp/boot.test",
+    "-test.v",
+    "-test.timeout=45s",
+    "-test.run=^(TestRespawnLoopBounded|TestConfirmStableSlot|TestAgentSelfUpdateActivatesNewSlot|TestCrashLoopRevertsToConfirmed|TestIntentMarkerIsNeutralNoRevert|TestCommandsFileRuns)$"
+  ],
+  "exitCode": 0,
+  "stderr": "",
+  "log": "test-runs/boot-anchor.jsonl",
+  "logSHA256": "9eb9dcdc951795916add0e3bdc997a447a1c6f61f551918203f9de42d8f9d72c",
+  "reviewedTests": [
+    "TestRespawnLoopBounded",
+    "TestConfirmStableSlot",
+    "TestAgentSelfUpdateActivatesNewSlot",
+    "TestCrashLoopRevertsToConfirmed",
+    "TestIntentMarkerIsNeutralNoRevert",
+    "TestCommandsFileRuns"
+  ],
+  "passedTests": [
+    "TestRespawnLoopBounded",
+    "TestConfirmStableSlot",
+    "TestAgentSelfUpdateActivatesNewSlot",
+    "TestCrashLoopRevertsToConfirmed",
+    "TestIntentMarkerIsNeutralNoRevert",
+    "TestCommandsFileRuns"
+  ],
+  "scope": "Unchanged source and six original tests, compiled locally then executed in bubblewrap private user/PID/mount/network namespaces. Root read-only, /tmp private tmpfs, /dev synthetic, inherited OTA_* removed. Stub agents and commands only; fixed /tmp marker is isolated. No vendor mount, device, real agent, factory process or network access. Linux /bin/sh results do not establish BusyBox/device parity.",
+  "result": "pass"
+}

@@ -1,7 +1,9 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
 package engine
 
 import "testing"
 
+// TRLC-LINKS: REQ-SDS-012
 func TestERESQ8(t *testing.T) {
 	for _, n := range []int{1, 2, 9, 100} {
 		src := make([]uint16, n)
@@ -31,6 +33,7 @@ func TestERESQ8(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-012
 func TestSRAMBlockAverageFractionsAndReset(t *testing.T) {
 	var a sramAverage
 	for i, want := range []uint16{25600, 25728, 25856, 26368} {
@@ -56,6 +59,7 @@ func TestSRAMBlockAverageFractionsAndReset(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-012
 func TestSRAMAverageAlignsShiftedRecordWithoutWrapping(t *testing.T) {
 	var a sramAverage
 	for k, shift := range []int{0, 3, -2} {

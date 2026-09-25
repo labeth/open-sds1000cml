@@ -1,0 +1,12 @@
+{
+  "candidate": "build-BUOVQe",
+  "status": "Arithmetic equivalent but larger; rejected and source restored",
+  "comparedCycleExactOutputs": 93684,
+  "fullPrecisionComparisons": "/16 through /8192 plus short reset cases",
+  "topSimulationExitCode": 0,
+  "mapExitCode": 0,
+  "fitExitCode": 3,
+  "fitterLogicElements": 11277,
+  "baselineFitterLogicElements": 11203,
+  "conclusion": "Narrowing the first CIC does not save integrated resources with this pipeline and toolchain"
+}

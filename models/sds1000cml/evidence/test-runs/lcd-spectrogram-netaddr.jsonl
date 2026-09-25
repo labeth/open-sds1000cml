@@ -1,0 +1,56 @@
+{"Time":"2026-09-23T07:44:06.984767504+02:00","Action":"start","Package":"open-sds/app/internal/lcd"}
+{"Time":"2026-09-23T07:44:06.997392777+02:00","Action":"run","Package":"open-sds/app/internal/lcd","Test":"TestPickDeviceURL"}
+{"Time":"2026-09-23T07:44:06.99740964+02:00","Action":"output","Package":"open-sds/app/internal/lcd","Test":"TestPickDeviceURL","Output":"=== RUN   TestPickDeviceURL\n"}
+{"Time":"2026-09-23T07:44:06.997559749+02:00","Action":"output","Package":"open-sds/app/internal/lcd","Test":"TestPickDeviceURL","Output":"--- PASS: TestPickDeviceURL (0.00s)\n"}
+{"Time":"2026-09-23T07:44:06.997567898+02:00","Action":"pass","Package":"open-sds/app/internal/lcd","Test":"TestPickDeviceURL","Elapsed":0}
+{"Time":"2026-09-23T07:44:06.997604784+02:00","Action":"run","Package":"open-sds/app/internal/lcd","Test":"TestDeviceURLCaching"}
+{"Time":"2026-09-23T07:44:06.997609619+02:00","Action":"output","Package":"open-sds/app/internal/lcd","Test":"TestDeviceURLCaching","Output":"=== RUN   TestDeviceURLCaching\n"}
+{"Time":"2026-09-23T07:44:06.997794265+02:00","Action":"output","Package":"open-sds/app/internal/lcd","Test":"TestDeviceURLCaching","Output":"--- PASS: TestDeviceURLCaching (0.00s)\n"}
+{"Time":"2026-09-23T07:44:06.997801996+02:00","Action":"pass","Package":"open-sds/app/internal/lcd","Test":"TestDeviceURLCaching","Elapsed":0}
+{"Time":"2026-09-23T07:44:06.997871975+02:00","Action":"run","Package":"open-sds/app/internal/lcd","Test":"TestRenderDeviceURL"}
+{"Time":"2026-09-23T07:44:06.997878864+02:00","Action":"output","Package":"open-sds/app/internal/lcd","Test":"TestRenderDeviceURL","Output":"=== RUN   TestRenderDeviceURL\n"}
+{"Time":"2026-09-23T07:44:07.010066239+02:00","Action":"output","Package":"open-sds/app/internal/lcd","Test":"TestRenderDeviceURL","Output":"--- PASS: TestRenderDeviceURL (0.01s)\n"}
+{"Time":"2026-09-23T07:44:07.010084214+02:00","Action":"pass","Package":"open-sds/app/internal/lcd","Test":"TestRenderDeviceURL","Elapsed":0.01}
+{"Time":"2026-09-23T07:44:07.010198543+02:00","Action":"run","Package":"open-sds/app/internal/lcd","Test":"TestHeatNeverPanics"}
+{"Time":"2026-09-23T07:44:07.010205797+02:00","Action":"output","Package":"open-sds/app/internal/lcd","Test":"TestHeatNeverPanics","Output":"=== RUN   TestHeatNeverPanics\n"}
+{"Time":"2026-09-23T07:44:07.010260407+02:00","Action":"output","Package":"open-sds/app/internal/lcd","Test":"TestHeatNeverPanics","Output":"--- PASS: TestHeatNeverPanics (0.00s)\n"}
+{"Time":"2026-09-23T07:44:07.010269496+02:00","Action":"pass","Package":"open-sds/app/internal/lcd","Test":"TestHeatNeverPanics","Elapsed":0}
+{"Time":"2026-09-23T07:44:07.010312372+02:00","Action":"run","Package":"open-sds/app/internal/lcd","Test":"TestSpectrogramBreaker50"}
+{"Time":"2026-09-23T07:44:07.010318347+02:00","Action":"output","Package":"open-sds/app/internal/lcd","Test":"TestSpectrogramBreaker50","Output":"=== RUN   TestSpectrogramBreaker50\n"}
+{"Time":"2026-09-23T07:44:07.416179038+02:00","Action":"output","Package":"open-sds/app/internal/lcd","Test":"TestSpectrogramBreaker50","Output":"--- PASS: TestSpectrogramBreaker50 (0.41s)\n"}
+{"Time":"2026-09-23T07:44:07.416220413+02:00","Action":"pass","Package":"open-sds/app/internal/lcd","Test":"TestSpectrogramBreaker50","Elapsed":0.41}
+{"Time":"2026-09-23T07:44:07.416331883+02:00","Action":"run","Package":"open-sds/app/internal/lcd","Test":"TestSpectrogramFloorEdges"}
+{"Time":"2026-09-23T07:44:07.41634135+02:00","Action":"output","Package":"open-sds/app/internal/lcd","Test":"TestSpectrogramFloorEdges","Output":"=== RUN   TestSpectrogramFloorEdges\n"}
+{"Time":"2026-09-23T07:44:07.441268268+02:00","Action":"output","Package":"open-sds/app/internal/lcd","Test":"TestSpectrogramFloorEdges","Output":"--- PASS: TestSpectrogramFloorEdges (0.02s)\n"}
+{"Time":"2026-09-23T07:44:07.441297384+02:00","Action":"pass","Package":"open-sds/app/internal/lcd","Test":"TestSpectrogramFloorEdges","Elapsed":0.02}
+{"Time":"2026-09-23T07:44:07.441333223+02:00","Action":"run","Package":"open-sds/app/internal/lcd","Test":"TestSpectrogramPushGuards"}
+{"Time":"2026-09-23T07:44:07.441339482+02:00","Action":"output","Package":"open-sds/app/internal/lcd","Test":"TestSpectrogramPushGuards","Output":"=== RUN   TestSpectrogramPushGuards\n"}
+{"Time":"2026-09-23T07:44:07.449546503+02:00","Action":"output","Package":"open-sds/app/internal/lcd","Test":"TestSpectrogramPushGuards","Output":"--- PASS: TestSpectrogramPushGuards (0.01s)\n"}
+{"Time":"2026-09-23T07:44:07.449574778+02:00","Action":"pass","Package":"open-sds/app/internal/lcd","Test":"TestSpectrogramPushGuards","Elapsed":0.01}
+{"Time":"2026-09-23T07:44:07.449602573+02:00","Action":"run","Package":"open-sds/app/internal/lcd","Test":"TestSpectrumMagsDegenerate"}
+{"Time":"2026-09-23T07:44:07.449608342+02:00","Action":"output","Package":"open-sds/app/internal/lcd","Test":"TestSpectrumMagsDegenerate","Output":"=== RUN   TestSpectrumMagsDegenerate\n"}
+{"Time":"2026-09-23T07:44:07.462122294+02:00","Action":"output","Package":"open-sds/app/internal/lcd","Test":"TestSpectrumMagsDegenerate","Output":"--- PASS: TestSpectrumMagsDegenerate (0.01s)\n"}
+{"Time":"2026-09-23T07:44:07.462139076+02:00","Action":"pass","Package":"open-sds/app/internal/lcd","Test":"TestSpectrumMagsDegenerate","Elapsed":0.01}
+{"Time":"2026-09-23T07:44:07.462145921+02:00","Action":"run","Package":"open-sds/app/internal/lcd","Test":"TestHeatMonotone"}
+{"Time":"2026-09-23T07:44:07.462148405+02:00","Action":"output","Package":"open-sds/app/internal/lcd","Test":"TestHeatMonotone","Output":"=== RUN   TestHeatMonotone\n"}
+{"Time":"2026-09-23T07:44:07.462217938+02:00","Action":"output","Package":"open-sds/app/internal/lcd","Test":"TestHeatMonotone","Output":"--- PASS: TestHeatMonotone (0.00s)\n"}
+{"Time":"2026-09-23T07:44:07.46222618+02:00","Action":"pass","Package":"open-sds/app/internal/lcd","Test":"TestHeatMonotone","Elapsed":0}
+{"Time":"2026-09-23T07:44:07.46224383+02:00","Action":"run","Package":"open-sds/app/internal/lcd","Test":"TestSpectrogramPeakColumn"}
+{"Time":"2026-09-23T07:44:07.46224704+02:00","Action":"output","Package":"open-sds/app/internal/lcd","Test":"TestSpectrogramPeakColumn","Output":"=== RUN   TestSpectrogramPeakColumn\n"}
+{"Time":"2026-09-23T07:44:07.465332924+02:00","Action":"output","Package":"open-sds/app/internal/lcd","Test":"TestSpectrogramPeakColumn","Output":"--- PASS: TestSpectrogramPeakColumn (0.00s)\n"}
+{"Time":"2026-09-23T07:44:07.465340333+02:00","Action":"pass","Package":"open-sds/app/internal/lcd","Test":"TestSpectrogramPeakColumn","Elapsed":0}
+{"Time":"2026-09-23T07:44:07.465345261+02:00","Action":"run","Package":"open-sds/app/internal/lcd","Test":"TestSpectrogramTracksSteppedFrequency"}
+{"Time":"2026-09-23T07:44:07.465347683+02:00","Action":"output","Package":"open-sds/app/internal/lcd","Test":"TestSpectrogramTracksSteppedFrequency","Output":"=== RUN   TestSpectrogramTracksSteppedFrequency\n"}
+{"Time":"2026-09-23T07:44:07.471961465+02:00","Action":"output","Package":"open-sds/app/internal/lcd","Test":"TestSpectrogramTracksSteppedFrequency","Output":"--- PASS: TestSpectrogramTracksSteppedFrequency (0.01s)\n"}
+{"Time":"2026-09-23T07:44:07.471978421+02:00","Action":"pass","Package":"open-sds/app/internal/lcd","Test":"TestSpectrogramTracksSteppedFrequency","Elapsed":0.01}
+{"Time":"2026-09-23T07:44:07.471985507+02:00","Action":"run","Package":"open-sds/app/internal/lcd","Test":"TestRenderSpectrogramView"}
+{"Time":"2026-09-23T07:44:07.471988164+02:00","Action":"output","Package":"open-sds/app/internal/lcd","Test":"TestRenderSpectrogramView","Output":"=== RUN   TestRenderSpectrogramView\n"}
+{"Time":"2026-09-23T07:44:07.555356941+02:00","Action":"output","Package":"open-sds/app/internal/lcd","Test":"TestRenderSpectrogramView","Output":"--- PASS: TestRenderSpectrogramView (0.08s)\n"}
+{"Time":"2026-09-23T07:44:07.555373792+02:00","Action":"pass","Package":"open-sds/app/internal/lcd","Test":"TestRenderSpectrogramView","Elapsed":0.08}
+{"Time":"2026-09-23T07:44:07.555380468+02:00","Action":"run","Package":"open-sds/app/internal/lcd","Test":"TestHeatStops"}
+{"Time":"2026-09-23T07:44:07.55538295+02:00","Action":"output","Package":"open-sds/app/internal/lcd","Test":"TestHeatStops","Output":"=== RUN   TestHeatStops\n"}
+{"Time":"2026-09-23T07:44:07.55546091+02:00","Action":"output","Package":"open-sds/app/internal/lcd","Test":"TestHeatStops","Output":"--- PASS: TestHeatStops (0.00s)\n"}
+{"Time":"2026-09-23T07:44:07.55546855+02:00","Action":"pass","Package":"open-sds/app/internal/lcd","Test":"TestHeatStops","Elapsed":0}
+{"Time":"2026-09-23T07:44:07.555545238+02:00","Action":"output","Package":"open-sds/app/internal/lcd","Output":"PASS\n"}
+{"Time":"2026-09-23T07:44:08.558002841+02:00","Action":"output","Package":"open-sds/app/internal/lcd","Output":"ok  \topen-sds/app/internal/lcd\t1.573s\n"}
+{"Time":"2026-09-23T07:44:08.558025332+02:00","Action":"pass","Package":"open-sds/app/internal/lcd","Elapsed":1.573}

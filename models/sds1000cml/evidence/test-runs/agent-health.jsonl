@@ -1,0 +1,16 @@
+{"Time":"2026-09-23T01:59:58.639290959+02:00","Action":"start","Package":"open-sds/ota/internal/agent"}
+{"Time":"2026-09-23T01:59:58.651023846+02:00","Action":"run","Package":"open-sds/ota/internal/agent","Test":"TestHealthWatcherFirstReportGate"}
+{"Time":"2026-09-23T01:59:58.651078604+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestHealthWatcherFirstReportGate","Output":"=== RUN   TestHealthWatcherFirstReportGate\n"}
+{"Time":"2026-09-23T01:59:58.651276549+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestHealthWatcherFirstReportGate","Output":"--- PASS: TestHealthWatcherFirstReportGate (0.00s)\n"}
+{"Time":"2026-09-23T01:59:58.651291987+02:00","Action":"pass","Package":"open-sds/ota/internal/agent","Test":"TestHealthWatcherFirstReportGate","Elapsed":0}
+{"Time":"2026-09-23T01:59:58.651319209+02:00","Action":"run","Package":"open-sds/ota/internal/agent","Test":"TestHealthWatcherLivenessAndStaleness"}
+{"Time":"2026-09-23T01:59:58.651326986+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestHealthWatcherLivenessAndStaleness","Output":"=== RUN   TestHealthWatcherLivenessAndStaleness\n"}
+{"Time":"2026-09-23T01:59:58.651768239+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestHealthWatcherLivenessAndStaleness","Output":"--- PASS: TestHealthWatcherLivenessAndStaleness (0.00s)\n"}
+{"Time":"2026-09-23T01:59:58.651782212+02:00","Action":"pass","Package":"open-sds/ota/internal/agent","Test":"TestHealthWatcherLivenessAndStaleness","Elapsed":0}
+{"Time":"2026-09-23T01:59:58.65179321+02:00","Action":"run","Package":"open-sds/ota/internal/agent","Test":"TestHealthWatcherIgnoresPreexistingToken"}
+{"Time":"2026-09-23T01:59:58.651799928+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestHealthWatcherIgnoresPreexistingToken","Output":"=== RUN   TestHealthWatcherIgnoresPreexistingToken\n"}
+{"Time":"2026-09-23T01:59:58.651995694+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestHealthWatcherIgnoresPreexistingToken","Output":"--- PASS: TestHealthWatcherIgnoresPreexistingToken (0.00s)\n"}
+{"Time":"2026-09-23T01:59:58.652008226+02:00","Action":"pass","Package":"open-sds/ota/internal/agent","Test":"TestHealthWatcherIgnoresPreexistingToken","Elapsed":0}
+{"Time":"2026-09-23T01:59:58.652117388+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Output":"PASS\n"}
+{"Time":"2026-09-23T01:59:59.653597832+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Output":"ok  \topen-sds/ota/internal/agent\t1.014s\n"}
+{"Time":"2026-09-23T01:59:59.653630332+02:00","Action":"pass","Package":"open-sds/ota/internal/agent","Elapsed":1.014}

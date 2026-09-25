@@ -1,0 +1,54 @@
+{
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "sourceSHA256": {
+    "app/internal/web/app_superres.js": "ce579da6cd38c559cc359a0c6be252b2421c8b3a9f7e4ad3e66e7f0d6f14fbb8",
+    "app/internal/web/app_zonemask.js": "a8bec7198c569011e01c172fc6d3f6d75fb2aa1b009d5875c3842e4186ff9d42"
+  },
+  "helperSHA256": "c49b139d5d53be4840304d241ad7ec1c0414dececc5b037e11d37031ae6e1117",
+  "runnerSHA256": "c5311449963d05b3f04ba90e08993e2709693560df754f17015b7356c2954170",
+  "nodeVersion": "v22.20.0",
+  "result": "pass",
+  "cases": [
+    {
+      "name": "event byte parser falls back to first character on malformed input",
+      "result": "pass"
+    },
+    {
+      "name": "manual zero UART threshold becomes null",
+      "result": "pass"
+    },
+    {
+      "name": "normal stack stops on changed volts per code before feed",
+      "result": "pass"
+    },
+    {
+      "name": "ETS ignores changed record length and volts per code at same sample interval",
+      "result": "pass"
+    },
+    {
+      "name": "late successful raw response cannot ingest after stop",
+      "result": "pass"
+    },
+    {
+      "name": "C2 zone uses C1 drawing codes with C2 voltage metadata",
+      "result": "pass"
+    },
+    {
+      "name": "C2 vertical context accepts zero C2 scale when C1 is positive",
+      "result": "pass"
+    },
+    {
+      "name": "failed zone rescale upload advances local context and suppresses retry",
+      "result": "pass"
+    },
+    {
+      "name": "mask build can claim success after upload rejection",
+      "result": "pass"
+    },
+    {
+      "name": "fractional mask time tolerance produces inverted interior bounds",
+      "result": "pass"
+    }
+  ],
+  "scope": "Ten isolated controller characterizations against pinned scripts with mocked DOM, timers, network and commands. Includes limitations, not browser rendering or device qualification."
+}

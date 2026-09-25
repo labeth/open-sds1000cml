@@ -17,6 +17,7 @@
 // Configuration is volatile: a bad or partial load only black-screens
 // acquisition, and a power-cycle restores the factory image from NAND. Nothing
 // here writes any flash, by construction.
+// ENGMODEL-OWNER-UNIT: FU-APP-FPGALOAD
 package fpgaload
 
 import (
@@ -28,6 +29,7 @@ import (
 
 // Port is the GPMC CS3 configuration port. Implementations: the ioctl port and
 // the /dev/mem fast port (device.go) and the test fake.
+// TRLC-LINKS: REQ-SDS-005
 type Port interface {
 	// WriteCfg writes the 16-bit configuration-port word.
 	WriteCfg(v uint16) error
@@ -53,6 +55,7 @@ const (
 )
 
 // Options tunes the reload; zero values take the defaults below.
+// TRLC-LINKS: REQ-SDS-005, REQ-SDS-092
 type Options struct {
 	// BitOrder is the caller's request; the default reads the order out of the
 	// container header (container.go). An explicit value that contradicts the
@@ -83,8 +86,11 @@ type Options struct {
 	// Sleep is injectable so tests do not wait (default time.Sleep).
 	Sleep func(time.Duration)
 	Logf  func(string, ...any)
+	// Progress reports bytes actually shifted; completion still requires CONF_DONE.
+	Progress func(sent, total int)
 }
 
+// TRLC-LINKS: REQ-SDS-005
 func (o *Options) withDefaults() {
 	if o.InitClocks <= 0 {
 		o.InitClocks = 128
@@ -117,6 +123,7 @@ func (o *Options) withDefaults() {
 
 // bitrev reverses the bits of one byte (Cyclone IV PS shifts LSB-first; the
 // loader presents MSB-first, so a native Quartus .rbf is reversed per byte).
+// TRLC-LINKS: REQ-SDS-092
 func bitrev(b byte) byte {
 	b = b&0xF0>>4 | b&0x0F<<4
 	b = b&0xCC>>2 | b&0x33<<2
@@ -127,6 +134,7 @@ func bitrev(b byte) byte {
 // Reload runs one or more full passive-serial cycles until CONF_DONE asserts.
 // It does NOT verify the build-ID — the caller does that over CS1 once the
 // fabric is up (EnsureDefault).
+// TRLC-LINKS: REQ-SDS-005, REQ-SDS-092
 func Reload(p Port, rbf []byte, o Options) error {
 	o.withDefaults()
 	if !o.AllowAnyLen && len(rbf) != RBFLen {
@@ -152,6 +160,7 @@ func Reload(p Port, rbf []byte, o Options) error {
 }
 
 // configureOnce is one passive-serial cycle (fpga-specs 05 §3.1 steps 1–7).
+// TRLC-LINKS: REQ-SDS-005
 func configureOnce(p Port, rbf []byte, rev bool, o *Options) error {
 	// 1. assert nCONFIG (all low) and hold.
 	if err := p.WriteCfg(wordReset); err != nil {
@@ -180,6 +189,9 @@ func configureOnce(p Port, rbf []byte, rev bool, o *Options) error {
 	}
 	// 4. shift every bit MSB-first of the (bit-reversed) byte: present DATA0
 	//    with DCLK low, then raise DCLK to latch. nCONFIG stays high.
+	if o.Progress != nil {
+		o.Progress(0, len(rbf))
+	}
 	for i, by := range rbf {
 		if rev {
 			by = bitrev(by)
@@ -195,6 +207,9 @@ func configureOnce(p Port, rbf []byte, rev bool, o *Options) error {
 			if err := p.WriteCfg(w | BitDCLK); err != nil {
 				return fmt.Errorf("byte %d bit %d clock: %w", i, bit, err)
 			}
+		}
+		if o.Progress != nil && ((i+1)%16384 == 0 || i+1 == len(rbf)) {
+			o.Progress(i+1, len(rbf))
 		}
 	}
 	// 5. init clocks (DATA0 low).
@@ -228,16 +243,20 @@ func configureOnce(p Port, rbf []byte, rev bool, o *Options) error {
 }
 
 // Reader reads a CS1 register (bus.Dev.Read with plane 1 bound).
+// TRLC-LINKS: REQ-SDS-004
 type Reader func(sel uint16) (uint16, error)
 
 // Identity is the four identity words of a fabric.
+// TRLC-LINKS: REQ-SDS-004
 type Identity struct {
 	BuildLo, BuildHi, Version, Fabric uint16
 }
 
+// TRLC-LINKS: REQ-SDS-004
 func (id Identity) BuildID() uint32 { return uint32(id.BuildHi)<<16 | uint32(id.BuildLo) }
 
 // ReadIdentity reads BUILDID_LO/HI, VERSION and FABRIC_ID.
+// TRLC-LINKS: REQ-SDS-004
 func ReadIdentity(read Reader) (Identity, error) {
 	var id Identity
 	var err error
@@ -257,6 +276,7 @@ func ReadIdentity(read Reader) (Identity, error) {
 }
 
 // Verify reads the identity and checks it against the generated interface.
+// TRLC-LINKS: REQ-SDS-004
 func Verify(read Reader) error {
 	id, err := ReadIdentity(read)
 	if err != nil {
@@ -270,6 +290,7 @@ func Verify(read Reader) error {
 // an error only when the fabric ends up NOT the default image; the caller must
 // then refuse to drive. A nil/empty rbf (a build without the bitstream) can only
 // succeed if the fabric already matches.
+// TRLC-LINKS: REQ-SDS-004, REQ-SDS-005
 func EnsureDefault(read Reader, p Port, rbf []byte, o Options) error {
 	o.withDefaults()
 	if err := Verify(read); err == nil {

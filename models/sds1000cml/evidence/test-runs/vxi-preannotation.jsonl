@@ -1,0 +1,24 @@
+{"Time":"2026-09-23T01:01:27.716333297+02:00","Action":"start","Package":"open-sds/app/internal/vxi11srv"}
+{"Time":"2026-09-23T01:01:27.726516837+02:00","Action":"run","Package":"open-sds/app/internal/vxi11srv","Test":"TestLinkWriteRead"}
+{"Time":"2026-09-23T01:01:27.726576752+02:00","Action":"output","Package":"open-sds/app/internal/vxi11srv","Test":"TestLinkWriteRead","Output":"=== RUN   TestLinkWriteRead\n"}
+{"Time":"2026-09-23T01:01:27.727762749+02:00","Action":"output","Package":"open-sds/app/internal/vxi11srv","Test":"TestLinkWriteRead","Output":"--- PASS: TestLinkWriteRead (0.00s)\n"}
+{"Time":"2026-09-23T01:01:27.727786183+02:00","Action":"pass","Package":"open-sds/app/internal/vxi11srv","Test":"TestLinkWriteRead","Elapsed":0}
+{"Time":"2026-09-23T01:01:27.727841883+02:00","Action":"run","Package":"open-sds/app/internal/vxi11srv","Test":"TestChunkedRead"}
+{"Time":"2026-09-23T01:01:27.727846918+02:00","Action":"output","Package":"open-sds/app/internal/vxi11srv","Test":"TestChunkedRead","Output":"=== RUN   TestChunkedRead\n"}
+{"Time":"2026-09-23T01:01:27.728936059+02:00","Action":"output","Package":"open-sds/app/internal/vxi11srv","Test":"TestChunkedRead","Output":"--- PASS: TestChunkedRead (0.00s)\n"}
+{"Time":"2026-09-23T01:01:27.728951381+02:00","Action":"pass","Package":"open-sds/app/internal/vxi11srv","Test":"TestChunkedRead","Elapsed":0}
+{"Time":"2026-09-23T01:01:27.728978369+02:00","Action":"run","Package":"open-sds/app/internal/vxi11srv","Test":"TestSingleLinkAndRelease"}
+{"Time":"2026-09-23T01:01:27.728984106+02:00","Action":"output","Package":"open-sds/app/internal/vxi11srv","Test":"TestSingleLinkAndRelease","Output":"=== RUN   TestSingleLinkAndRelease\n"}
+{"Time":"2026-09-23T01:01:27.729916699+02:00","Action":"output","Package":"open-sds/app/internal/vxi11srv","Test":"TestSingleLinkAndRelease","Output":"--- PASS: TestSingleLinkAndRelease (0.00s)\n"}
+{"Time":"2026-09-23T01:01:27.729930235+02:00","Action":"pass","Package":"open-sds/app/internal/vxi11srv","Test":"TestSingleLinkAndRelease","Elapsed":0}
+{"Time":"2026-09-23T01:01:27.729958094+02:00","Action":"run","Package":"open-sds/app/internal/vxi11srv","Test":"TestReadTimeout"}
+{"Time":"2026-09-23T01:01:27.729962479+02:00","Action":"output","Package":"open-sds/app/internal/vxi11srv","Test":"TestReadTimeout","Output":"=== RUN   TestReadTimeout\n"}
+{"Time":"2026-09-23T01:01:29.739560334+02:00","Action":"output","Package":"open-sds/app/internal/vxi11srv","Test":"TestReadTimeout","Output":"--- PASS: TestReadTimeout (2.01s)\n"}
+{"Time":"2026-09-23T01:01:29.739583545+02:00","Action":"pass","Package":"open-sds/app/internal/vxi11srv","Test":"TestReadTimeout","Elapsed":2.01}
+{"Time":"2026-09-23T01:01:29.73959389+02:00","Action":"run","Package":"open-sds/app/internal/vxi11srv","Test":"TestXDRParseFuzz"}
+{"Time":"2026-09-23T01:01:29.739598695+02:00","Action":"output","Package":"open-sds/app/internal/vxi11srv","Test":"TestXDRParseFuzz","Output":"=== RUN   TestXDRParseFuzz\n"}
+{"Time":"2026-09-23T01:01:29.875896356+02:00","Action":"output","Package":"open-sds/app/internal/vxi11srv","Test":"TestXDRParseFuzz","Output":"--- PASS: TestXDRParseFuzz (0.14s)\n"}
+{"Time":"2026-09-23T01:01:29.875915575+02:00","Action":"pass","Package":"open-sds/app/internal/vxi11srv","Test":"TestXDRParseFuzz","Elapsed":0.14}
+{"Time":"2026-09-23T01:01:29.875921933+02:00","Action":"output","Package":"open-sds/app/internal/vxi11srv","Output":"PASS\n"}
+{"Time":"2026-09-23T01:01:30.878133603+02:00","Action":"output","Package":"open-sds/app/internal/vxi11srv","Output":"ok  \topen-sds/app/internal/vxi11srv\t3.162s\n"}
+{"Time":"2026-09-23T01:01:30.878163878+02:00","Action":"pass","Package":"open-sds/app/internal/vxi11srv","Elapsed":3.162}

@@ -1,0 +1,71 @@
+{
+  "result": "implemented-and-full-pdf-sampled",
+  "requirements": [
+    {
+      "requirement": "REQ-SDS-021",
+      "panels": [
+        "1\u20133 of 8",
+        "4\u20136 of 8",
+        "7\u20138 of 8"
+      ]
+    }
+  ],
+  "canonicalSHA256": {
+    "generated/TRACE-MATRIX.json": "33e13ca7c94da94c7e265e0526610cc51a193475330935e4dfa38779b831d106",
+    "model/requirements.yml": "c9d0a2b550c6ddb57dfe6e36be9172f70b96507ab63f00add7b66041d9ec0042",
+    "model/architecture.yml": "cfee56a87772af1a52690156878d23fe47caffa725fcbd0f2b680102494dfc9d"
+  },
+  "prototype": "evidence/coverage-panel-prototype.json",
+  "regression": "TestRequirementCoveragePanelsPreserveGraph",
+  "toolFiles": {
+    "asciidoc.go": "ca5e331a0ee44379d1048820e34f39210da00fa1c5fb1ca9c36344d2eef3c45c",
+    "asciidoc_template.go": "acc8e93b912c067c4dd89259629f60f6f22e6c3859895e3e90fd203d24ecfe72",
+    "asciidoc_diagrams_core.go": "cb32d139de2b1638299782b92550cb5e5dbbdef0fb84ba0d97e0dcaf746a5b76",
+    "asciidoc_diagrams_core_test.go": "ae17c1dfdaceb1f3df2a4c800f92d2ef47a89e248a8d30d4715c8bf0db5ff531",
+    "templates/asciidoc.tmpl": "602e939edf26b4b3ac160258a35ad41472e742bf5cd325b5bde423b3fe164e86"
+  },
+  "scope": "Display-only production fan-out partition: more than four implementation files are shown in groups of three; ownership, verification and delegation context repeats. High verification fan-out and other layout issues are not solved by this change.",
+  "pagination": "Continuation panels explicitly begin on a new page.",
+  "pdfSHA256": "545f96e3de9b9fbe43864928e1f07f956e745e82e463c85c2e90a323e5da5996",
+  "sampledPages": [
+    {
+      "page": 286,
+      "chars": 1453,
+      "outside": 0,
+      "tinyChars": 0,
+      "minFont": 8.64459650380843,
+      "hostView": false,
+      "hardwareView": false,
+      "decomposition": false,
+      "publicationRequirement": false
+    },
+    {
+      "page": 287,
+      "chars": 581,
+      "outside": 0,
+      "tinyChars": 0,
+      "minFont": 8.35152157201992,
+      "hostView": false,
+      "hardwareView": false,
+      "decomposition": false,
+      "publicationRequirement": false
+    },
+    {
+      "page": 288,
+      "chars": 946,
+      "outside": 0,
+      "tinyChars": 0,
+      "minFont": 9.395543032519015,
+      "hostView": false,
+      "hardwareView": false,
+      "decomposition": false,
+      "publicationRequirement": false
+    }
+  ],
+  "images": {
+    "tmp/pdfs/coverage-panels/full/final-page-286.png": "1d0758bf1170fddd9e1ee205d577e48c29080f1e2c023fd54b709fbec2dfee2b",
+    "tmp/pdfs/coverage-panels/full/final-page-287.png": "ea297c7308762fe03f4bf6eebf89428bc8a5372580c167f3da375be511f228e7",
+    "tmp/pdfs/coverage-panels/full/final-page-288.png": "38931d335580bef561c825c77acdcf5c98f7de269bb9643d3b656630466f08dd"
+  },
+  "finding": "LCD diagram readability and orphaned continuation heading repaired. Other dense diagrams and exhaustive publication review remain unfinished."
+}

@@ -1,0 +1,26 @@
+{
+  "result": "pass",
+  "mcpSHA256": "82db5a6d6f538256fd99a5bd7c3a33318a4de77f94cee4d469a5d44b39968d59",
+  "client": {
+    "code": [
+      "vxi11.go:248",
+      "vxi11.go:128",
+      "vxi11.go:136",
+      "vxi11.go:142",
+      "vxi11.go:50",
+      "vxi11.go:213",
+      "vxi11.go:62",
+      "vxi11.go:192",
+      "vxi11.go:42"
+    ],
+    "id": "REQ-SDS-100",
+    "status": "implemented",
+    "units": [
+      "FU-OTA-VXI11"
+    ],
+    "verifications": [
+      "VER-INF-TEST-VXI11_TEST-7689EC"
+    ]
+  },
+  "scope": "Native trace lookup shows implementation and verification links; it does not establish complete runtime coverage."
+}

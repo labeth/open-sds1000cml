@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-SRAMCAPTURE
 package sramcapture
 
 import (
@@ -5,6 +6,7 @@ import (
 	"testing"
 )
 
+// TRLC-LINKS: REQ-SDS-034
 func TestStartupCounterChecksFullRecord(t *testing.T) {
 	for _, wrong := range []bool{false, true} {
 		f := frozenBus()

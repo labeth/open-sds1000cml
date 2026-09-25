@@ -1,0 +1,49 @@
+{
+  "files": 15,
+  "functions": 198,
+  "types": 37,
+  "additionalArenaTypeLinks": 2,
+  "nativeSummaries": [
+    {
+      "path": "test-results/go/app/internal/bus/bus_test.json",
+      "tests": 9
+    },
+    {
+      "path": "test-results/go/app/internal/bus/dcinv_test.json",
+      "tests": 5
+    },
+    {
+      "path": "test-results/go/app/internal/bus/drainwin_test.json",
+      "tests": 4
+    },
+    {
+      "path": "test-results/go/app/internal/bus/gpmccfg_test.json",
+      "tests": 1
+    },
+    {
+      "path": "test-results/go/app/internal/bus/gpmcpersist_test.json",
+      "tests": 5
+    },
+    {
+      "path": "test-results/go/app/internal/bus/gpmctiming_test.json",
+      "tests": 7
+    },
+    {
+      "path": "test-results/go/app/internal/bus/kernel_dma_linux_test.json",
+      "tests": 2
+    }
+  ],
+  "packageDeclarations": {
+    "app/internal/bus/": {
+      "functions": 198,
+      "types": 37,
+      "unlinked": 0
+    },
+    "app/internal/engine/": {
+      "functions": 350,
+      "types": 36,
+      "unlinked": 0
+    }
+  },
+  "scope": "33 original bus host tests with fake registers, DMA memory, fabric and temporary files. No device opens, module loading, physical GPMC/EDMA/cache qualification or kernel stream execution."
+}

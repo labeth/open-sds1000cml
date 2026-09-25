@@ -1,0 +1,28 @@
+{"Time":"2026-09-23T05:44:15.875258796+02:00","Action":"start","Package":"open-sds/app/internal/engine"}
+{"Time":"2026-09-23T05:44:15.877003523+02:00","Action":"run","Package":"open-sds/app/internal/engine","Test":"TestBodeBreaker50"}
+{"Time":"2026-09-23T05:44:15.877015449+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestBodeBreaker50","Output":"=== RUN   TestBodeBreaker50\n"}
+{"Time":"2026-09-23T05:44:15.90127635+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestBodeBreaker50","Output":"--- PASS: TestBodeBreaker50 (0.02s)\n"}
+{"Time":"2026-09-23T05:44:15.901299726+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Test":"TestBodeBreaker50","Elapsed":0.02}
+{"Time":"2026-09-23T05:44:15.90131434+02:00","Action":"run","Package":"open-sds/app/internal/engine","Test":"TestFundamentalHz"}
+{"Time":"2026-09-23T05:44:15.90131799+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestFundamentalHz","Output":"=== RUN   TestFundamentalHz\n"}
+{"Time":"2026-09-23T05:44:15.901648238+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestFundamentalHz","Output":"--- PASS: TestFundamentalHz (0.00s)\n"}
+{"Time":"2026-09-23T05:44:15.901655919+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Test":"TestFundamentalHz","Elapsed":0}
+{"Time":"2026-09-23T05:44:15.901662388+02:00","Action":"run","Package":"open-sds/app/internal/engine","Test":"TestBodePointGainPhase"}
+{"Time":"2026-09-23T05:44:15.901665714+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestBodePointGainPhase","Output":"=== RUN   TestBodePointGainPhase\n"}
+{"Time":"2026-09-23T05:44:15.902874236+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestBodePointGainPhase","Output":"--- PASS: TestBodePointGainPhase (0.00s)\n"}
+{"Time":"2026-09-23T05:44:15.902884211+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Test":"TestBodePointGainPhase","Elapsed":0}
+{"Time":"2026-09-23T05:44:15.902889242+02:00","Action":"run","Package":"open-sds/app/internal/engine","Test":"TestBodePureDelay"}
+{"Time":"2026-09-23T05:44:15.902892666+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestBodePureDelay","Output":"=== RUN   TestBodePureDelay\n"}
+{"Time":"2026-09-23T05:44:15.904010646+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestBodePureDelay","Output":"--- PASS: TestBodePureDelay (0.00s)\n"}
+{"Time":"2026-09-23T05:44:15.904020667+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Test":"TestBodePureDelay","Elapsed":0}
+{"Time":"2026-09-23T05:44:15.904025467+02:00","Action":"run","Package":"open-sds/app/internal/engine","Test":"TestBodeRejectsFloorAndSubCycle"}
+{"Time":"2026-09-23T05:44:15.904028832+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestBodeRejectsFloorAndSubCycle","Output":"=== RUN   TestBodeRejectsFloorAndSubCycle\n"}
+{"Time":"2026-09-23T05:44:15.904287431+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestBodeRejectsFloorAndSubCycle","Output":"--- PASS: TestBodeRejectsFloorAndSubCycle (0.00s)\n"}
+{"Time":"2026-09-23T05:44:15.904298741+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Test":"TestBodeRejectsFloorAndSubCycle","Elapsed":0}
+{"Time":"2026-09-23T05:44:15.904303965+02:00","Action":"run","Package":"open-sds/app/internal/engine","Test":"TestBodeAccumulationBinsByFrequency"}
+{"Time":"2026-09-23T05:44:15.904307349+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestBodeAccumulationBinsByFrequency","Output":"=== RUN   TestBodeAccumulationBinsByFrequency\n"}
+{"Time":"2026-09-23T05:44:15.905498904+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestBodeAccumulationBinsByFrequency","Output":"--- PASS: TestBodeAccumulationBinsByFrequency (0.00s)\n"}
+{"Time":"2026-09-23T05:44:15.905510626+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Test":"TestBodeAccumulationBinsByFrequency","Elapsed":0}
+{"Time":"2026-09-23T05:44:15.905526383+02:00","Action":"output","Package":"open-sds/app/internal/engine","Output":"PASS\n"}
+{"Time":"2026-09-23T05:44:15.906161031+02:00","Action":"output","Package":"open-sds/app/internal/engine","Output":"ok  \topen-sds/app/internal/engine\t0.031s\n"}
+{"Time":"2026-09-23T05:44:15.90617345+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Elapsed":0.031}

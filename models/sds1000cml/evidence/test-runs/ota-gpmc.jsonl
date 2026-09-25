@@ -1,0 +1,20 @@
+{"Time":"2026-09-23T01:40:14.667558556+02:00","Action":"start","Package":"open-sds/ota/internal/gpmc"}
+{"Time":"2026-09-23T01:40:14.701690982+02:00","Action":"run","Package":"open-sds/ota/internal/gpmc","Test":"TestEncodeAccess"}
+{"Time":"2026-09-23T01:40:14.701712203+02:00","Action":"output","Package":"open-sds/ota/internal/gpmc","Test":"TestEncodeAccess","Output":"=== RUN   TestEncodeAccess\n"}
+{"Time":"2026-09-23T01:40:14.701748673+02:00","Action":"output","Package":"open-sds/ota/internal/gpmc","Test":"TestEncodeAccess","Output":"--- PASS: TestEncodeAccess (0.00s)\n"}
+{"Time":"2026-09-23T01:40:14.701754052+02:00","Action":"pass","Package":"open-sds/ota/internal/gpmc","Test":"TestEncodeAccess","Elapsed":0}
+{"Time":"2026-09-23T01:40:14.701759179+02:00","Action":"run","Package":"open-sds/ota/internal/gpmc","Test":"TestDecodeValue"}
+{"Time":"2026-09-23T01:40:14.701762569+02:00","Action":"output","Package":"open-sds/ota/internal/gpmc","Test":"TestDecodeValue","Output":"=== RUN   TestDecodeValue\n"}
+{"Time":"2026-09-23T01:40:14.701767094+02:00","Action":"output","Package":"open-sds/ota/internal/gpmc","Test":"TestDecodeValue","Output":"--- PASS: TestDecodeValue (0.00s)\n"}
+{"Time":"2026-09-23T01:40:14.701771009+02:00","Action":"pass","Package":"open-sds/ota/internal/gpmc","Test":"TestDecodeValue","Elapsed":0}
+{"Time":"2026-09-23T01:40:14.701774697+02:00","Action":"run","Package":"open-sds/ota/internal/gpmc","Test":"TestReaderNoFDIsSafe"}
+{"Time":"2026-09-23T01:40:14.701777861+02:00","Action":"output","Package":"open-sds/ota/internal/gpmc","Test":"TestReaderNoFDIsSafe","Output":"=== RUN   TestReaderNoFDIsSafe\n"}
+{"Time":"2026-09-23T01:40:14.701782005+02:00","Action":"output","Package":"open-sds/ota/internal/gpmc","Test":"TestReaderNoFDIsSafe","Output":"--- PASS: TestReaderNoFDIsSafe (0.00s)\n"}
+{"Time":"2026-09-23T01:40:14.701785688+02:00","Action":"pass","Package":"open-sds/ota/internal/gpmc","Test":"TestReaderNoFDIsSafe","Elapsed":0}
+{"Time":"2026-09-23T01:40:14.701789239+02:00","Action":"run","Package":"open-sds/ota/internal/gpmc","Test":"TestInvalidPlaneRejected"}
+{"Time":"2026-09-23T01:40:14.701792972+02:00","Action":"output","Package":"open-sds/ota/internal/gpmc","Test":"TestInvalidPlaneRejected","Output":"=== RUN   TestInvalidPlaneRejected\n"}
+{"Time":"2026-09-23T01:40:14.701798927+02:00","Action":"output","Package":"open-sds/ota/internal/gpmc","Test":"TestInvalidPlaneRejected","Output":"--- PASS: TestInvalidPlaneRejected (0.00s)\n"}
+{"Time":"2026-09-23T01:40:14.701803634+02:00","Action":"pass","Package":"open-sds/ota/internal/gpmc","Test":"TestInvalidPlaneRejected","Elapsed":0}
+{"Time":"2026-09-23T01:40:14.701808633+02:00","Action":"output","Package":"open-sds/ota/internal/gpmc","Output":"PASS\n"}
+{"Time":"2026-09-23T01:40:15.703137543+02:00","Action":"output","Package":"open-sds/ota/internal/gpmc","Output":"ok  \topen-sds/ota/internal/gpmc\t1.035s\n"}
+{"Time":"2026-09-23T01:40:15.703173205+02:00","Action":"pass","Package":"open-sds/ota/internal/gpmc","Elapsed":1.036}

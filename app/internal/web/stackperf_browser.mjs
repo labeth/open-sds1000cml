@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-WEB
 // Perf regression guard for the superres-view hot path (argv[2]=server URL).
 // Synthesizes a large multi-tone frame (a stand-in for a viewed stack), selects
 // many FFT peaks and turns on the residual, then times a COLD redraw (which must
@@ -22,6 +23,7 @@ try { browser = await chromium.launch({ headless: true, args: ["--no-sandbox"] }
 catch (e) { console.log("SKIP: cannot launch chromium:", e.message); process.exit(0); }
 
 let fails = 0;
+// TRLC-LINKS: REQ-SDS-180
 const ok = (c, m) => { console.log((c ? "ok  - " : "FAIL- ") + m); if (!c) fails++; };
 
 try {
@@ -33,6 +35,9 @@ try {
   // Install a large synthetic "stack" frame: a 12-harmonic comb so detectPeaks
   // finds plenty of real lines, at a fine-grid length like a real K× stack.
   const setup = await page.evaluate(() => {
+    // Freeze before installing the fixture: a pending frame reply must not
+    // replace the large synthetic stack between evaluate calls.
+    frozen = true;
     const M = 655360, TONES = 12;
     const c1 = new Array(M);
     for (let i = 0; i < M; i++) {
@@ -56,12 +61,15 @@ try {
   ok(setup.selected >= 8, `synthetic stack ready: ${setup.selected} tones selected of ${setup.peaks} peaks`);
 
   const r = await page.evaluate(() => {
+    if (frame.c1.length !== 655360 || fftCh[1].sel.length < 8) throw new Error("large selected-tone fixture was replaced before timing");
+    // TRLC-LINKS: REQ-SDS-180
     const once = fn => { const a = performance.now(); fn(); return performance.now() - a; };
     // Force a genuinely COLD state atomically: rendering is now coalesced onto a
     // background rAF (poll-driven), which may have warmed the memos between the
     // two page.evaluate calls. Freeze the poll and invalidate BOTH memos here so
     // the first timed redraw truly recomputes every tone fit.
     frozen = true;
+    // TRLC-LINKS: REQ-SDS-180
     const invalidate = () => { compMemo.src = null; compMemo.map.clear(); mathMemo = {}; };
     // Compare BEST-of-N on both sides, not one cold sample against a warm mean.  A single
     // cold reading and a mean warm reading are both contaminated by scheduler noise, and on a

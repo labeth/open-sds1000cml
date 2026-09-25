@@ -1,0 +1,38 @@
+{
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "result": "pass",
+  "cases": [
+    {
+      "source": "app/internal/web/binframe.test.cjs",
+      "exitCode": 0,
+      "result": "pass",
+      "log": "evidence/test-runs/reviewed-binframe.test.cjs.log",
+      "logSHA256": "1e5015c00041baf220c9b5af3eee7002efeab74fc31a567f88c7de1e8dc27ece"
+    },
+    {
+      "source": "app/internal/web/peaks.test.cjs",
+      "exitCode": 0,
+      "result": "pass",
+      "log": "evidence/test-runs/reviewed-peaks.test.cjs.log",
+      "logSHA256": "6dcff4cbb7a0052561f1f869290230d74ef3c4fba5c73cf5259ec329252afd54"
+    },
+    {
+      "source": "app/internal/web/sigrok_export.test.cjs",
+      "exitCode": 0,
+      "result": "pass",
+      "log": "evidence/test-runs/reviewed-sigrok_export.test.cjs.log",
+      "logSHA256": "2967f38ae924a6724305e0439136bdb919ffb77a00c84a9a3b4431d5aea269b2"
+    }
+  ],
+  "sourceSHA256": {
+    "app/internal/web/binframe.js": "d4bb826d1f3e7bad5a1ea4b655c5dafa7a5234143b85cadf22a224e6a6347f03",
+    "app/internal/web/binframe.test.cjs": "ed9e6b3565545f904a4e76d0127cce545ce43459e88dcefd0d4573c15d31ced7",
+    "app/internal/web/peaks.js": "843c38c78941a8bd4930b20a3e78f180c6e30b9f075f2335160640b2d75444e3",
+    "app/internal/web/peaks.test.cjs": "6da89d87e61a091fcb48813fecc6615732beb0cc00807903676f0b724c1dc3e9",
+    "app/internal/web/sigrok_export.js": "4505ff5d035f00c83292bc081571cd3b547f9bcf40048c054be8ed8a083d416f",
+    "app/internal/web/sigrok_export.test.cjs": "a96c99257fb236b69b44947c4b66261d75e65306906aec6dd103973bfed1fdda"
+  },
+  "runnerSHA256": "50c177bd4e224e5d8216556ef75aa4548c6efaeab365b58952563948f65185e6",
+  "nodeVersion": "v22.20.0",
+  "scope": "Three original synthetic Node suites. No real browser interaction, external libsigrok reader, physical calibration or complete malformed-input proof."
+}

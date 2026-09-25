@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-OTA-AGENT
 package agent
 
 import (
@@ -15,6 +16,7 @@ import (
 
 // mustData re-marshals a handler's Data so tests can decode it into the shape
 // the otactl side would see on the wire.
+// TRLC-LINKS: REQ-SDS-029, REQ-SDS-106, REQ-SDS-113, REQ-SDS-114, REQ-SDS-115, REQ-SDS-116, REQ-SDS-117, REQ-SDS-118, REQ-SDS-119, REQ-SDS-120, REQ-SDS-121
 func mustData[T any](t *testing.T, resp Response) T {
 	t.Helper()
 	b, err := json.Marshal(resp.Data)
@@ -28,6 +30,7 @@ func mustData[T any](t *testing.T, resp Response) T {
 	return v
 }
 
+// TRLC-LINKS: REQ-SDS-113
 func TestHelpListsEveryRegisteredCommand(t *testing.T) {
 	a := testAgent(t)
 	resp := a.Dispatch([]byte(`{"cmd":"help"}`))
@@ -53,6 +56,7 @@ func TestHelpListsEveryRegisteredCommand(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-114
 func TestStatusHandlerShape(t *testing.T) {
 	a := testAgent(t)
 	// Round-trip through DispatchJSON: the exact bytes otactl would parse.
@@ -85,6 +89,7 @@ func TestStatusHandlerShape(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-115
 func TestLogsHandler(t *testing.T) {
 	a := testAgent(t)
 	logDir := a.cfg.LogDir()
@@ -121,6 +126,7 @@ func TestLogsHandler(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-115
 func TestExecHandler(t *testing.T) {
 	a := testAgent(t)
 
@@ -155,6 +161,7 @@ func TestExecHandler(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-115
 func TestShHandler(t *testing.T) {
 	a := testAgent(t)
 	resp := a.Dispatch([]byte(`{"cmd":"sh","args":{"script":"printf abc"}}`))
@@ -173,6 +180,7 @@ func TestShHandler(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-116
 func TestGetHandler(t *testing.T) {
 	a := testAgent(t)
 	path := filepath.Join(t.TempDir(), "payload")
@@ -209,6 +217,7 @@ func TestGetHandler(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-106
 func TestPutHandlersRejectBadInput(t *testing.T) {
 	a := testAgent(t)
 
@@ -244,6 +253,7 @@ func TestPutHandlersRejectBadInput(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-118, REQ-SDS-029
 func TestAppUpdateInstallsIntoInactiveSlot(t *testing.T) {
 	a := testAgent(t)
 	_ = a.store.Init()
@@ -287,6 +297,7 @@ func TestAppUpdateInstallsIntoInactiveSlot(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-118
 func TestAppActivate(t *testing.T) {
 	a := testAgent(t)
 	_ = a.store.Init()
@@ -307,6 +318,7 @@ func TestAppActivate(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-118
 func TestAppInstallEmergency(t *testing.T) {
 	a := testAgent(t)
 	_ = a.store.Init()
@@ -327,6 +339,7 @@ func TestAppInstallEmergency(t *testing.T) {
 
 // agent.update's happy path exits the process by design (startup.sh respawns
 // the new slot) — only its refusal gates are testable in-process.
+// TRLC-LINKS: REQ-SDS-119, REQ-SDS-029
 func TestAgentUpdateRefusalGates(t *testing.T) {
 	a := testAgent(t)
 	resp := a.Dispatch([]byte(`{"cmd":"agent.update","args":{}}`))
@@ -345,6 +358,7 @@ func TestAgentUpdateRefusalGates(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-121
 func TestRebootRequiresConfirm(t *testing.T) {
 	a := testAgent(t)
 	resp := a.Dispatch([]byte(`{"cmd":"reboot"}`))
@@ -353,6 +367,7 @@ func TestRebootRequiresConfirm(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-120
 func TestRestoreFactoryGates(t *testing.T) {
 	a := testAgent(t)
 	if err := a.st.update(func(s *State) { s.TakenOver = true }); err != nil {
@@ -372,6 +387,7 @@ func TestRestoreFactoryGates(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-117
 func TestAppLifecycleHandlersDriveSupervisor(t *testing.T) {
 	a := testAgent(t)
 	_ = a.store.Init() // no slot binaries: the supervisor only idles

@@ -1,0 +1,17 @@
+{
+  "result": "pass",
+  "requirements": [
+    "REQ-SDS-021",
+    "REQ-SDS-070"
+  ],
+  "lcdCodeEntries": 63,
+  "lcdVerifications": [
+    "VER-INF-TEST-ENGFMT_TEST-3D2205",
+    "VER-INF-TEST-RENDER_TEST-478AD7"
+  ],
+  "fftCodeEntries": 4,
+  "nativeTestOutcomes": 14,
+  "verificationStatus": "partial",
+  "matrixSHA256": "33e13ca7c94da94c7e265e0526610cc51a193475330935e4dfa38779b831d106",
+  "scope": "Native source/test attachment only; bounded behavior and caveats are in lcd-render-test-run.json."
+}

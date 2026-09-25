@@ -1,0 +1,43 @@
+// ENGMODEL-OWNER-UNIT: FU-OTA-AGENT
+// TRLC-LINKS: REQ-SDS-028
+// Characterization only: these assertions capture limitations, not desired qualification.
+func TestModelReviewSupervisorConfirmationLimits(t *testing.T) {
+ for _, tc := range []struct { name, script, reason string; timeout time.Duration }{
+  {"stale", "echo alive > \"$OTA_HEALTH_PATH\"\nsleep 5", "health token stale", 300*time.Millisecond},
+  {"nonzero", "echo alive > \"$OTA_HEALTH_PATH\"\nsleep 1.2\nexit 7", "exited", 10*time.Second},
+ } {
+  t.Run(tc.name, func(t *testing.T) {
+   a := testAgent(t)
+   a.cfg.StableSecs = 300*time.Millisecond
+   a.cfg.AppGrace = 10*time.Second
+   a.cfg.HealthTimeout = tc.timeout
+   if err := a.store.Init(); err != nil { t.Fatal(err) }
+   writeSlotBinary(t, a, slots.SlotB, tc.script)
+   if err := a.store.SetActive(slots.SlotB); err != nil { t.Fatal(err) }
+   if err := a.store.SetConfirmed(slots.SlotA); err != nil { t.Fatal(err) }
+   a.runAppOnce(slots.SlotB, false)
+   st := appOf(a)
+   if a.store.Confirmed() != slots.SlotB || st.Fails != 0 || !strings.Contains(st.LastExit, tc.reason) {
+    t.Fatalf("expected confirmation despite %s: confirmed=%s state=%+v", tc.name, a.store.Confirmed(), st)
+   }
+   t.Logf("slot B confirmed despite %s; failures=%d reason=%s", tc.name, st.Fails, st.LastExit)
+  })
+ }
+}
+
+// TRLC-LINKS: REQ-SDS-028
+func TestModelReviewSupervisorStartFailureNoRollback(t *testing.T) {
+ a := testAgent(t)
+ a.cfg.MaxFails = 1
+ if err := a.store.Init(); err != nil { t.Fatal(err) }
+ writeSlotBinary(t, a, slots.SlotA, "exit 0")
+ if err := a.store.SetActive(slots.SlotB); err != nil { t.Fatal(err) }
+ if err := a.store.SetConfirmed(slots.SlotA); err != nil { t.Fatal(err) }
+ // Slot B has no executable: no child is started on this path.
+ a.runAppOnce(slots.SlotB, false)
+ st := appOf(a)
+ if st.Fails != 1 || a.store.Active() != slots.SlotB || !strings.HasPrefix(st.LastExit,"start:") {
+  t.Fatalf("expected failed start without rollback: active=%s state=%+v",a.store.Active(),st)
+ }
+ t.Log("failed start reached MaxFails, but active pointer remained B")
+}

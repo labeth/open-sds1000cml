@@ -1,4 +1,6 @@
+// ENGMODEL-OWNER-UNIT: FU-RTL-ACQ-TESTS
 `timescale 1ns/1ps
+// TRLC-LINKS: REQ-SDS-043, REQ-SDS-045, REQ-SDS-052, REQ-SDS-056
 module tb_capture_engine;
  parameter WRAPPED=0,ENABLE_STREAM=1;
  localparam AW=13,N=1<<AW;

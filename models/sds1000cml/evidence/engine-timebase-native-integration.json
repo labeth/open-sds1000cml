@@ -1,0 +1,16 @@
+{
+  "files": 5,
+  "functions": 50,
+  "types": 2,
+  "nativeSummaries": [
+    {
+      "path": "test-results/go/app/internal/engine/bands_test.json",
+      "tests": 6
+    },
+    {
+      "path": "test-results/go/app/internal/engine/envroll_test.json",
+      "tests": 8
+    }
+  ],
+  "scope": "Fourteen original fake-bus/planner tests with partial requirement evidence. Source review limits apply; no hardware qualification."
+}

@@ -3,6 +3,7 @@
 // VXI-11 feeds it today; a USB-TMC pump can feed the same HandleLine later.
 // The parser is a pure producer/consumer: setters stage, queries snapshot;
 // it NEVER touches the GPMC bus.
+// ENGMODEL-OWNER-UNIT: FU-APP-SCPI
 package scpi
 
 import (
@@ -16,6 +17,7 @@ import (
 )
 
 // Scope is the instrument surface (engine + fan-out frames).
+// TRLC-LINKS: REQ-SDS-024
 type Scope interface {
 	Snapshot() engine.Stats
 	WithFrame(fn func(*engine.Frame))
@@ -32,6 +34,7 @@ type Scope interface {
 }
 
 // Analog is the vertical front end; may be nil.
+// TRLC-LINKS: REQ-SDS-024
 type Analog interface {
 	SetVdiv(ch, idx int) error
 	Snapshot() (idx [2]int, emitted bool)
@@ -48,6 +51,7 @@ type Analog interface {
 // state genuinely lives in the panel — X-Y view (XYDS), persistence (PESU),
 // the softkey menu (MENU) — so their set→query round-trips reflect the REAL
 // on-screen state, never a private shadow that could drift from the LCD.
+// TRLC-LINKS: REQ-SDS-024
 type Display interface {
 	ViewXY() bool
 	SetViewXY(on bool)
@@ -59,6 +63,7 @@ type Display interface {
 
 // Screenshot returns the SCDP hardcopy payload (BMP). Wired by main to a
 // headless render of the current frame; may be nil.
+// TRLC-LINKS: REQ-SDS-024
 type Screenshot func() []byte
 
 // Error tokens (spec 11 §3.4) — emitted exactly, \n-terminated.
@@ -69,6 +74,7 @@ const (
 	errOutOfRange = "Data out of range"
 )
 
+// TRLC-LINKS: REQ-SDS-024
 type Handler struct {
 	sc   Scope
 	fe   Analog
@@ -104,6 +110,7 @@ type Handler struct {
 	serial string
 }
 
+// TRLC-LINKS: REQ-SDS-024
 func New(sc Scope, fe Analog, disp Display, shot Screenshot, logf func(string, ...any)) *Handler {
 	return &Handler{
 		sc: sc, fe: fe, disp: disp, shot: shot, logf: logf,
@@ -120,12 +127,14 @@ func New(sc Scope, fe Analog, disp Display, shot Screenshot, logf func(string, .
 // Inverted reports the per-channel INVS (display invert) state. The SCPI
 // shadow is the single source of truth for display-level inversion: the web
 // status snapshot and the LCD HUD both read it here.
+// TRLC-LINKS: REQ-SDS-024
 func (h *Handler) Inverted() [2]bool {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	return h.invs
 }
 
+// TRLC-LINKS: REQ-SDS-024
 func loadSerial() string {
 	// Best-effort: the serial lives in usr/system/system_info.dat as
 	// printable ASCII (exact offset unpinned by spec 11).
@@ -148,6 +157,7 @@ func loadSerial() string {
 // HandleLine executes one \n-terminated line (possibly ';'-separated
 // compound commands) and returns the concatenated reply bytes. Pure setters
 // are silent (spec 11: no OK acknowledgements).
+// TRLC-LINKS: REQ-SDS-024
 func (h *Handler) HandleLine(line []byte) []byte {
 	h.mu.Lock()
 	defer h.mu.Unlock()
@@ -163,6 +173,7 @@ func (h *Handler) HandleLine(line []byte) []byte {
 }
 
 // reply formats a query answer honoring the CHDR state.
+// TRLC-LINKS: REQ-SDS-024
 func (h *Handler) reply(header, value string) []byte {
 	if h.chdr == "OFF" {
 		return []byte(value + "\n")
@@ -170,15 +181,19 @@ func (h *Handler) reply(header, value string) []byte {
 	return []byte(header + " " + value + "\n")
 }
 
+// TRLC-LINKS: REQ-SDS-024
 func errTok(tok string) []byte { return []byte(tok + "\n") }
 
 // sciV formats volts per the reply grammar: %.2E + upper-case V.
+// TRLC-LINKS: REQ-SDS-024
 func sciV(v float64) string { return fmt.Sprintf("%.2EV", v) }
 
 // sciS formats seconds: %.2E + LOWER-case s.
+// TRLC-LINKS: REQ-SDS-024
 func sciS(v float64) string { return fmt.Sprintf("%.2Es", v) }
 
 // saraStr is the SI-prefix exception: e.g. 12500 → "12.50KSa".
+// TRLC-LINKS: REQ-SDS-024
 func saraStr(rate float64) string {
 	switch {
 	case rate >= 1e9:
@@ -193,6 +208,7 @@ func saraStr(rate float64) string {
 }
 
 // exec runs one command (no ';').
+// TRLC-LINKS: REQ-SDS-024
 func (h *Handler) exec(cmd string) []byte {
 	up := strings.ToUpper(cmd)
 
@@ -222,6 +238,7 @@ func (h *Handler) exec(cmd string) []byte {
 	return h.execGlobal(head, arg)
 }
 
+// TRLC-LINKS: REQ-SDS-024
 func parseNum(s string) (float64, error) {
 	s = strings.TrimSpace(s)
 	// Strip a trailing SI unit (V, S, US, MS, NS...) if present.

@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-OTA-SLOTS
 package slots
 
 import (
@@ -6,6 +7,7 @@ import (
 	"testing"
 )
 
+// TRLC-LINKS: REQ-SDS-087
 func mkbin(t *testing.T, path, content string) {
 	t.Helper()
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
@@ -16,6 +18,7 @@ func mkbin(t *testing.T, path, content string) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-087
 func TestPointerDefaultsAndValidation(t *testing.T) {
 	s := New(t.TempDir())
 	if err := s.Init(); err != nil {
@@ -43,12 +46,14 @@ func TestPointerDefaultsAndValidation(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-087
 func TestOther(t *testing.T) {
 	if Other(SlotA) != SlotB || Other(SlotB) != SlotA {
 		t.Fatal("Other() wrong")
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-087
 func TestInstallAndStatus(t *testing.T) {
 	s := New(t.TempDir())
 	if err := s.Init(); err != nil {
@@ -81,6 +86,7 @@ func TestInstallAndStatus(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-087
 func TestHasBinaryRejectsEmpty(t *testing.T) {
 	s := New(t.TempDir())
 	_ = s.Init()

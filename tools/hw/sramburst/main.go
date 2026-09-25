@@ -37,6 +37,7 @@
 //     the RUN and HALT ioctl overhead; use the external counter as a second witness.
 //   --run: reset/fire and LEAVE RUN ASSERTED; follow with --halt when finished.
 //   --refine: issue the factory 0x21=C4 opcode before reading selected ports.
+// ENGMODEL-OWNER-UNIT: FU-TOOLS-HW-SRAMBURST
 package main
 
 import (
@@ -69,6 +70,7 @@ var vendor = []struct{ sel, val uint16 }{
 }
 
 // findInheritedFD returns the descriptor already open on path, or -1.  fds < 3 are skipped.
+// TRLC-LINKS: REQ-SDS-173
 func findInheritedFD(path string) int {
 	ents, err := os.ReadDir("/proc/self/fd")
 	if err != nil {
@@ -86,6 +88,7 @@ func findInheritedFD(path string) int {
 	return -1
 }
 
+// TRLC-LINKS: REQ-SDS-173
 func ioctl(fd int, req uintptr, b *[6]byte) error {
 	_, _, e := syscall.Syscall(syscall.SYS_IOCTL, uintptr(fd), req, uintptr(unsafe.Pointer(&b[0])))
 	if e != 0 {
@@ -94,6 +97,7 @@ func ioctl(fd int, req uintptr, b *[6]byte) error {
 	return nil
 }
 
+// TRLC-LINKS: REQ-SDS-173
 func rd(fd int, sel uint16) (uint16, error) {
 	b := [6]byte{planeCS1, 0, byte(sel), byte(sel >> 8), 0, 0}
 	if err := ioctl(fd, reqRead, &b); err != nil {
@@ -102,6 +106,7 @@ func rd(fd int, sel uint16) (uint16, error) {
 	return uint16(b[4]) | uint16(b[5])<<8, nil
 }
 
+// TRLC-LINKS: REQ-SDS-173
 func wr(fd int, sel, val uint16) error {
 	b := [6]byte{planeCS1, 0, byte(sel), byte(sel >> 8), byte(val), byte(val >> 8)}
 	return ioctl(fd, reqWrite, &b)
@@ -109,6 +114,7 @@ func wr(fd int, sel, val uint16) error {
 
 // sweep reads every port n times, so a pop-on-read port shows as a moving sequence and a static
 // register as a repeated one.
+// TRLC-LINKS: REQ-SDS-173
 func sweep(fd int, n int) map[string][]uint16 {
 	out := map[string][]uint16{}
 	for _, s := range ports {
@@ -125,6 +131,7 @@ func sweep(fd int, n int) map[string][]uint16 {
 	return out
 }
 
+// TRLC-LINKS: REQ-SDS-173
 func main() {
 	fire := false
 	halt := false

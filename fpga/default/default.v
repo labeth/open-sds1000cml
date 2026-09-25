@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-RTL-DEFAULT-DEFAULT
 // default.v -- default_top: THE default acq2 image for the SDS1102CML+ acquisition FPGA
 // (Cyclone IV E EP4CE10F17C8). Pins per fpga/default/default.qsf (GENERATED from the contract);
 // register map per fpga/default/regs.vh + regmux.vh (GENERATED from the codegen schema
@@ -40,6 +41,7 @@
 `timescale 1ns/1ps
 `include "regs.vh"
 
+// TRLC-LINKS: REQ-SDS-060, REQ-SDS-194, REQ-SDS-195, REQ-SDS-196, REQ-SDS-197
 module default_top (
     input  wire        clk,            // C2, GPMC domain (~80 MHz)
     input  wire        mclk_in,        // M2, PLL reference (~160 MHz)

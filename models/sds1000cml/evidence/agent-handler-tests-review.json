@@ -1,0 +1,43 @@
+{
+  "result": "pass",
+  "tests": [
+    "TestHelpListsEveryRegisteredCommand",
+    "TestStatusHandlerShape",
+    "TestLogsHandler",
+    "TestExecHandler",
+    "TestShHandler",
+    "TestGetHandler",
+    "TestPutHandlersRejectBadInput",
+    "TestAppUpdateInstallsIntoInactiveSlot",
+    "TestAppActivate",
+    "TestAppInstallEmergency",
+    "TestAgentUpdateRefusalGates",
+    "TestRebootRequiresConfirm",
+    "TestRestoreFactoryGates",
+    "TestAppLifecycleHandlersDriveSupervisor",
+    "TestAgentUpdateInstallsFlipsAndExitsClean",
+    "TestAgentUpdateRefusesShaMismatchWithoutExiting",
+    "TestAgentRestartExitsCleanWithIntent"
+  ],
+  "command": [
+    "go",
+    "test",
+    "-race",
+    "-json",
+    "-run",
+    "^(TestDispatchUnknownCmd|TestDispatchBadJSON|TestDispatchPing|TestDispatchPanicContained|TestAppStartRequiresTakeover|TestTakeoverRefusedWithoutInheritedFD|TestTakeoverDryRunReportsCandidates|TestHelpListsEveryRegisteredCommand|TestStatusHandlerShape|TestLogsHandler|TestExecHandler|TestShHandler|TestGetHandler|TestPutHandlersRejectBadInput|TestAppUpdateInstallsIntoInactiveSlot|TestAppActivate|TestAppInstallEmergency|TestAgentUpdateRefusalGates|TestRebootRequiresConfirm|TestRestoreFactoryGates|TestAppLifecycleHandlersDriveSupervisor|TestAgentUpdateInstallsFlipsAndExitsClean|TestAgentUpdateRefusesShaMismatchWithoutExiting|TestAgentRestartExitsCleanWithIntent)$",
+    "-count=1",
+    "./internal/agent"
+  ],
+  "environment": "All inherited OTA_* variables removed; testAgent uses temporary device, state and slot paths.",
+  "sources": {
+    "handlers.go": "9cf4b8ebb61d0249b115df3e5e978744e33870847004baf88aafa9a5db0d6044",
+    "handlers_test.go": "883571208d084a482175f5d1233f528f0141c79742844c9dfbaa3f08f5dec3c4",
+    "selfupdate_test.go": "36673ae5c3c363ee90dc0c23eac5b746a7c1436dfc30d503533055f8818a05ef",
+    "rpc_test.go": "cc0c245f07d8a1e83c29f81ebfb529317451795ca30583a9e71b4ddde7f16bb5",
+    "agent.go": "cae42ede46281a27f9bf51682abe4776db3a11edfb6766799c5bab01853c007d"
+  },
+  "log": "evidence/test-runs/agent-handlers.jsonl",
+  "logSHA256": "a3e27117e24fa422b9668d6960cfa8a2d0088ad3e97835e0e81d2051407fd23e",
+  "scope": "Seventeen reviewed handler/self-update tests pass in a twenty-four-test run including seven companion RPC tests. Temporary files, harmless shell commands and captured exit only; native evidence remains partial."
+}

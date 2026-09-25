@@ -1,0 +1,39 @@
+{
+  "source": "app/internal/web/web_diag_test.go",
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "scope": "Reviewed Go test outcomes; passing assertions contribute partial requirement evidence.",
+  "sourceSHA256": "b350b14f641c7c6d7688cb2775fbbd9facab6f615846fee238f1902d84f1035b",
+  "logs": {
+    "test-runs/webapi-integrated.jsonl": "05e8d0213a8bb57533614fd3f9295676c3e8b93d44f2f32031b53e3cd0db3308"
+  },
+  "tests": [
+    {
+      "name": "TestDiagRoutesUnwiredAre503",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-165"
+      ]
+    },
+    {
+      "name": "TestDiagStatusRegWindow",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-165"
+      ]
+    },
+    {
+      "name": "TestDiagSnapshotBusExperiments",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-165"
+      ]
+    }
+  ],
+  "results": [
+    {
+      "requirement": "REQ-SDS-165",
+      "status": "partial",
+      "notes": "3 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    }
+  ]
+}

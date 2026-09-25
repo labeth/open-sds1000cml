@@ -1,0 +1,32 @@
+{
+  "status": "complete decoder component; not integrated, fitted or deployed",
+  "receiverCases": 160,
+  "frameCases": 48,
+  "rawSamplesPerReceiverTick": 4,
+  "maxCandidatesPerPhasePerBank": 128,
+  "overflow": "one unknown-count loss; sticky until epoch reset",
+  "synthesis": {
+    "build": "build-w5C4DT",
+    "logicElements": 2198,
+    "registers": 1100,
+    "memoryBits": 16896,
+    "multiplier9BitElements": 4
+  },
+  "remaining": [
+    "general-image integration and resource sharing",
+    "timing closure",
+    "host configuration and capability discovery",
+    "live trigger/event/retained-sample coverage including decision latency"
+  ],
+  "inputs": {
+    "fpga/acq_sram/manchester_receive.v": "cc112aa8cce80e3c13e83cb138b356f202649b3c69c82f25f0f11072a44862b9",
+    "fpga/acq_sram/manchester_trigger.v": "a70861dcd13c9a72d15da722fafd69cfff341eb27bd3a7600c3c9416c8c59e03",
+    "fpga/acq_sram/sim/tb_manchester_trigger.v": "a8d8cd3c32ac7852a36896f28bcdbfae256e23c6db7d4a66b15e62eae942a6c7",
+    "fpga/acq_sram/sim/tb_manchester_frame_bounds.v": "d6033f5c68a98fa8af3aa1524dd4900982be76f8f4e4d5f0510db11039c77274",
+    "app/internal/decode/decode_manchester_trigger_rtl_test.go": "50fee617fa1cd22667f6f44eebc976287e4cc3d69e5628e8ec17bd2bdd8cb598"
+  },
+  "strictModelValidation": {
+    "exitCode": 0,
+    "log": "model-validation.log"
+  }
+}

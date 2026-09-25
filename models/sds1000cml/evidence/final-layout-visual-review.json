@@ -1,0 +1,37 @@
+{
+  "pdf": "/home/labeth/ws/open-sds1000cml-acq2/models/sds1000cml/output/pdf/architecture.draft.pdf",
+  "sha256": "bc33e9e44a7f88fddc4d5c506a0fec2b496abaaf92d5bdb0f98ca7aa78829282",
+  "status": "targeted-layout-issue-found",
+  "reviewedPages": [
+    11,
+    53,
+    306
+  ],
+  "finding": "Complete hardware diagram fits on page 53. Numbered relationship labels separate previously colliding long descriptions. Description table starts below diagram and continues on page 54 with repeated column headings (page 54 text checked).",
+  "limitations": [
+    "Full geometry audit: 1013 pages, zero out-of-page text; 46 pages have text below six points.",
+    "Dense graphs retained complete by user preference; small font alone is not classified as a defect.",
+    "REQ-SDS-008 remaining edge-label crowding requires correction before final layout signoff."
+  ],
+  "pageFindings": [
+    {
+      "page": 11,
+      "finding": "Browser authored diagram is complete, labels readable when enlarged; contains/calls labels close but distinct."
+    },
+    {
+      "page": 53,
+      "finding": "Complete hardware diagram uses numbered relationships with descriptions below; former long-label collision resolved."
+    },
+    {
+      "page": 306,
+      "finding": "REQ-SDS-007 implementation labels separated. REQ-SDS-008 adjacent implemented_by labels at lower left remain crowded and need a targeted layout correction."
+    }
+  ],
+  "requirementLayoutCandidate": {
+    "method": "Use an extra Mermaid routing rank for implemented_by arrows only.",
+    "preview": "tmp/pdfs/complete-diagrams/requirement-extra-rank-preview.png",
+    "sha256": "84190d62aa543b49982b7a22b01b2b09d820988135001ebc6ec80102a18ce193",
+    "result": "Standalone preview separates adjacent implementation labels; not yet applied to generator or final PDF.",
+    "rejected": "Increasing nodeSpacing from 70 to 160 did not resolve crowding."
+  }
+}

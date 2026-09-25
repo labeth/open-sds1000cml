@@ -1,0 +1,46 @@
+{
+  "source": "ota/internal/agent/takeover_vxi11_test.go",
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "scope": "Reviewed Go test outcomes; passing assertions contribute partial requirement evidence.",
+  "sourceSHA256": "2134faedc1c9968cb76a6e1860bd6b8334552c6302e972b5fc910d1000298505",
+  "logs": {
+    "test-runs/takeover-state.jsonl": "f4cd4185430952aec202db9140c01c9820938b6fe6620183db28706a602bb51c"
+  },
+  "tests": [
+    {
+      "name": "TestTakeoverHappyPathOrderOfOperations",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-027"
+      ]
+    },
+    {
+      "name": "TestTakeoverRefusesWhenFactoryWontIdle",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-027"
+      ]
+    },
+    {
+      "name": "TestTakeoverRefusesWhenFactoryStopUnreachable",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-027"
+      ]
+    },
+    {
+      "name": "TestTakeoverForcePartialFailureStillReassertsNetwork",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-027"
+      ]
+    }
+  ],
+  "results": [
+    {
+      "requirement": "REQ-SDS-027",
+      "status": "partial",
+      "notes": "4 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    }
+  ]
+}

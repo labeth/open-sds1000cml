@@ -1,0 +1,29 @@
+{
+  "result": "source-reviewed-and-executed",
+  "requirement": "REQ-SDS-068",
+  "sourceSHA256": {
+    "app/internal/web/spectrogram_browser_test.go": "8aae6491f9c56b78977613bdb33a5a255a90b485e6b37fee86a8bf9d67ac4202",
+    "app/internal/web/spectrogram_browser.mjs": "e48240b644976b1055392d6cee76989fab5d2364ba86e974366ed9172d9b369d",
+    "app/internal/web/scope_po.mjs": "7f8b00905986ed6c45cb03e118561dcc1e5bbf03e5d3fab7d51818f7bc70922b",
+    "app/internal/testenv/testenv.go": "2ebac898a9adb3afb4c8481fc81b34acd7fe1b806abec4973081e6cfb927d715"
+  },
+  "scope": "Complete browser wrapper, driver, shared page object and environment gate review; bounded shared fixture review followed by original Chromium test execution.",
+  "assertions": [
+    "Arm button active/STOP state",
+    "More than two accumulated rows from synthetic triggered frames",
+    "More than fifty non-background WebGL pixels",
+    "Enlarge view opens with spg target",
+    "Stop disarms and clear resets row count",
+    "No captured page errors"
+  ],
+  "testSetup": "Go wrapper serves a synthetic 2048-sample sine frame through httptest and fakeScope. Driver navigates the supplied local URL; shared harness discovers installed Playwright and Chromium.",
+  "limits": [
+    "The test does not inspect frequency-label text, so it cannot detect the 100M-to-1M formatting defect.",
+    "Pixel count proves drawing occurred, not numerical accuracy or expected pixels."
+  ],
+  "reviewedFixtureRanges": {
+    "app/internal/web/web_test.go": "1\u2013205",
+    "app/internal/web/web.go": "165\u2013245"
+  },
+  "testEvidence": "browser-view-test-run.json"
+}

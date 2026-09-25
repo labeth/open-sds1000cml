@@ -1,0 +1,24 @@
+{
+  "result": "pass",
+  "requirement": "REQ-SDS-018",
+  "productionFiles": [
+    "decode.go",
+    "decode_arinc429.go",
+    "decode_autodetect.go",
+    "decode_canfd.go",
+    "decode_flexray.go",
+    "decode_i2c_spi.go",
+    "decode_manchester.go",
+    "decode_mil1553.go",
+    "decode_sent.go",
+    "decode_uart.go",
+    "decode_usbls.go"
+  ],
+  "newLinkedFunctions": 95,
+  "newLinkedTypes": 19,
+  "originalTestOutcomes": 33,
+  "nativeTestFiles": 8,
+  "verificationStatus": "partial",
+  "matrixSHA256": "9d7fdc8aeabdc0b1e94ceb060cc420abb4f6012f35214c8c6b3da4d176bfa516",
+  "scope": "All eleven production Go decoder files plus eight ordinary test files integrated. Breaker/oracle/parity source and qualification coverage remain incomplete."
+}

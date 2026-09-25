@@ -1,0 +1,172 @@
+{
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "requirement": "REQ-SDS-018",
+  "completeReads": [
+    "app/internal/decode/decode_break_manchester_test.go",
+    "app/internal/decode/decode_break_canfd_test.go",
+    "app/internal/decode/decode_break_usbls_test.go",
+    "app/internal/decode/decode_break_flexray_test.go"
+  ],
+  "reviewedLines": 2329,
+  "sourceSHA256": {
+    "app/internal/decode/decode_break_manchester_test.go": "9e3eeb7b89fcb10d48e7a339cb5718e4fc9ba9156068d0ee619e7eb27630b760",
+    "app/internal/decode/decode_break_canfd_test.go": "f6f508ba2e03bc1e7db08ae1cf0d96006519e685e4881f59cc6b93ab06dc5e66",
+    "app/internal/decode/decode_break_usbls_test.go": "398b1939a0ba76f52de1d8a1ab4a04bfb1b46dbabb141145641e1a6483fe9189",
+    "app/internal/decode/decode_break_flexray_test.go": "dcfcbf16110dcbe78031c046fa95bce36293957b1eeed2cf7b839b16bd29c1c5"
+  },
+  "runtimeInputSHA256": {
+    "app/internal/decode/decode.go": "57f15b7365008238b8bbb0d56d2edcd64b8612823a0948200c6b18f5c1125cf6",
+    "app/internal/decode/decode_arinc429.go": "8366952aa4b7dd1cfa576620ce6e3c9f8241d95cda1575f477886c40cbc62760",
+    "app/internal/decode/decode_arinc429_test.go": "ab9c8b17418d8a5a614ac12b926bde901f3bb29f88ae163e67308e3d964c1cf4",
+    "app/internal/decode/decode_autodetect.go": "32b8e1e38ee2e60ade32d56d255dcdfe342fbf42e5e9f8255a486941f1dcd1b3",
+    "app/internal/decode/decode_break_arinc429_test.go": "0549eb904dd68cff3ef3db7f94af91731d54e8db9a13ef69bd585645fd729e96",
+    "app/internal/decode/decode_break_canfd_test.go": "f6f508ba2e03bc1e7db08ae1cf0d96006519e685e4881f59cc6b93ab06dc5e66",
+    "app/internal/decode/decode_break_flexray_test.go": "dcfcbf16110dcbe78031c046fa95bce36293957b1eeed2cf7b839b16bd29c1c5",
+    "app/internal/decode/decode_break_i2c_test.go": "5c6395c5dbef3da14bf91677ef4d7d6b85daf7b2f49c16cce2199a0acb67c2c0",
+    "app/internal/decode/decode_break_manchester_test.go": "9e3eeb7b89fcb10d48e7a339cb5718e4fc9ba9156068d0ee619e7eb27630b760",
+    "app/internal/decode/decode_break_mil1553_test.go": "77db706948112d578c279f80539280f5e740540cf7d528ef35b1bc75a9f1ae5e",
+    "app/internal/decode/decode_break_sent_test.go": "1240ed9ac825dc381254d8ca64ca0b208c6885d96f9d3e45ab0b423358d2b28e",
+    "app/internal/decode/decode_break_spi_test.go": "5d2fc40603d9e5bc6614b34d8a3e122109e09849c0989e9fdccb436ae207c0c7",
+    "app/internal/decode/decode_break_uart_test.go": "7f8d629670761469c8297f6e9b0bc20878e1ff3397bbfcc35bddf542d1845edb",
+    "app/internal/decode/decode_break_usbls_test.go": "398b1939a0ba76f52de1d8a1ab4a04bfb1b46dbabb141145641e1a6483fe9189",
+    "app/internal/decode/decode_canfd.go": "71429319962fc7367cc15d13080d31f09fb52149a23587460da754df79b7b701",
+    "app/internal/decode/decode_canfd_test.go": "a5784ee117a7c320b0c86854a477a84cdfdd559d266d3d815840ee8a7ea8fe52",
+    "app/internal/decode/decode_flexray.go": "8cd0529d71f0da18253008b5e08e67b20c52fa6ef0e058574caea1a9cee9de5f",
+    "app/internal/decode/decode_flexray_test.go": "8096be646143d8fdf4ba92b19381a48453804dde84347beaf97e8623f2048c6b",
+    "app/internal/decode/decode_i2c_spi.go": "ba710babeff6f2b4b246f4c3e03aa3e2afd485d1fb3708ea642d2a3144adf8e2",
+    "app/internal/decode/decode_jsparity_test.go": "d0ced1285b60b94a2750e3ea38d59dbcf1e45bb0469663f0e3eb9ce109119ca2",
+    "app/internal/decode/decode_manchester.go": "f876eaad41e1d9cecb4f8ed18e9edb16b61394c8c933e0b0329d508e0bf9dffa",
+    "app/internal/decode/decode_manchester_test.go": "fc415de5ec98c816caf4b04e1677546e16e8e7319c708c4d5ab81c8ef736f4bb",
+    "app/internal/decode/decode_mil1553.go": "c7336ca786ab68b675439fd7ce13297a2d6a83c4b34d13c39dad48de3c15c604",
+    "app/internal/decode/decode_mil1553_test.go": "5f397c788ec63c4fae471fde94a51b797c786fd69263ea3b87a885fb38389b50",
+    "app/internal/decode/decode_sent.go": "741ee242d05052ae5d5ee4c79479f857b714fd74d72a1d4125ceb96383b3d600",
+    "app/internal/decode/decode_sent_test.go": "48372c0922f1860956b6d1ae2a0106ece6bd2b1c6181912942b543fa2a640130",
+    "app/internal/decode/decode_test.go": "7be0433a390ff1b0e161343489f988dd26dd4163b467941b3c4fa291ebabe7f3",
+    "app/internal/decode/decode_uart.go": "1b2518f10114e3c2aa0a390048adc64f3c10357617b139c2daf325152720850d",
+    "app/internal/decode/decode_usbls.go": "79504ffe9c747def8ba99433fb69044eb0875b0f03e5e12199f4b3c157951681",
+    "app/internal/decode/decode_usbls_test.go": "55e8b103aba2789c7dd283ff54992b2e7e05041af2ef37e1eb8856e09100d8a6",
+    "app/internal/decode/decodefuzz_test.go": "b681b6bd2fe77d4f91e130a682e7d6a61afb8cf37484e09242fd2087caf5df8e",
+    "app/internal/decode/oracle_can_test.go": "18abc879b5c46cbc1d2982eae59cfb019805b92a5d063280d33a2e637dc1fbef",
+    "app/internal/decode/oracle_flexray_test.go": "a9489c7a731728ab5d433af30bab68aad688bf9710edb22934eafffcec2325b9",
+    "app/internal/decode/oracle_i2c_test.go": "85fb4d3c99822e7e8d2d068c749e96e88aec320cc096351af63ea7ecfad01589",
+    "app/internal/decode/oracle_spi_test.go": "85a6d1ac294497f09226300a5035a7f9871ce8486b039736c95eb019e5fda716",
+    "app/internal/decode/oracle_test.go": "c8bb2e8c725336578f7456e5aacf17f03ddbf894ad1806d3aef1bfe33360442f",
+    "app/internal/decode/oracle_uart_test.go": "b9b67d1f793c876b1d9429c49ea7c658e07f4c856313b5a5a96ebefe0fa51c4f",
+    "app/internal/decode/oracle_usbls_test.go": "7478afd67d8096f7b5f3e523e0bcb5021dc19c536a50a38b1542dc1c1842f478",
+    "app/internal/decode/truth_vectors_test.go": "835a05250545cba7348f092f0f9a44f478d8f22adb26caa2faed1f6d2b0481ab"
+  },
+  "command": [
+    "go",
+    "test",
+    "-race",
+    "-json",
+    "-count=1",
+    "-timeout=180s",
+    "./internal/decode",
+    "-run",
+    "^(TestBreakManchester|TestBreakCanfd|TestBreakUsbls|TestBreakFlexray)$"
+  ],
+  "environment": {
+    "GOPROXY": "off"
+  },
+  "exitCode": 0,
+  "stderr": "",
+  "tests": {
+    "TestBreakCanfd/false_negative": "pass",
+    "TestBreakCanfd/false_positive": "pass",
+    "TestBreakCanfd/edge": "pass",
+    "TestBreakCanfd": "pass",
+    "TestBreakFlexray/false_negatives": "pass",
+    "TestBreakFlexray/false_positives": "pass",
+    "TestBreakFlexray/edge_cases": "pass",
+    "TestBreakFlexray/integrity_no_crc": "pass",
+    "TestBreakFlexray": "pass",
+    "TestBreakManchester/FalseNegatives_explicit": "pass",
+    "TestBreakManchester/FalseNegatives_auto": "pass",
+    "TestBreakManchester/BUG3_auto_spb5": "pass",
+    "TestBreakManchester/FP_flat_dc": "pass",
+    "TestBreakManchester/FP_shapes": "pass",
+    "TestBreakManchester/FP_noise": "pass",
+    "TestBreakManchester/FP_corrupted_frame": "pass",
+    "TestBreakManchester/FP_truncated": "pass",
+    "TestBreakManchester/Edge_rates_and_payloads": "pass",
+    "TestBreakManchester/BUG1_constant_bit_inversion": "pass",
+    "TestBreakManchester/Edge_no_panic": "pass",
+    "TestBreakManchester/Edge_long_record": "pass",
+    "TestBreakManchester/HW_half_period_false_positive": "pass",
+    "TestBreakManchester": "pass",
+    "TestBreakUsbls/false_negatives": "pass",
+    "TestBreakUsbls/false_positives": "pass",
+    "TestBreakUsbls/edge_cases": "pass",
+    "TestBreakUsbls/known_bug_tight_interpacket_gap": "pass",
+    "TestBreakUsbls/known_bug_crc_not_validated": "pass",
+    "TestBreakUsbls": "pass"
+  },
+  "log": "test-runs/decode-framed-breakers-reviewed.jsonl",
+  "logSHA256": "36f62eb8a841564d9b3f4bdf97054f418446c2809f5c04e4d48d9069ef622ae9",
+  "findings": {
+    "Manchester": [
+      "80 explicit-bitrate cases vary one through sixteen bits, conventions, bit order and preambled payloads; 60 automatic cases restrict widths to eight bits and periods to eight through sixty-four samples. Separate five-sample and constant-bit regression assertions are enabled.",
+      "60 noise inputs only require a nonempty error when not OK; acceptance is allowed. The square-wave loop repeats the identical period 80 three times and only checks equal output bytes if accepted.",
+      "60 flattened-cell cases require a frame-error for accepted corruption. The 50 truncation cuts occur only 1..5 whole cells plus a fraction after the six-cell idle, within the first eight-bit preamble word, despite the comment describing data-region cuts. This is not broad payload-tail truncation coverage.",
+      "The 201-word long-record case asserts exact bytes but has no scaling comparison or local time bound, so it does not prove linear complexity. Sixty degraded synthetic cases reject successful sampling periods below 0.75 of the clean value; this is not a replay of physical FPGA capture data.",
+      "Historical bug labels are retained in comments. Passing named regressions establishes only their particular generated shapes; it does not establish all phase ambiguities resolved."
+    ],
+    "CAN/CAN-FD": [
+      "60 seeded clean cases select classic base/extended or base FD with/without rate switching. Fifteen automatic-baud cases and twelve concatenated-classic cases check payloads. FD fixtures stop after data and add recessive padding, without a valid FD CRC/stuff-count trailer.",
+      "Classic fixtures use production canCRC15 and fdDataLen helpers. A shared mistake can pass. The confidence predicate searches for any clean classic CRC span and does not qualify FD frames or every frame of a mixed result.",
+      "60 corrupted-CRC and 60 truncated inputs fail only if a clean CRC coexists with bytes identical to the entire original payload. This permits other output shapes and does not require every malformed frame be rejected.",
+      "Garbage and seven Nyquist cases reject confident classic CRC acceptance. Comments saying stuffing polarity is never checked are stale: current code records stuffErr and marks classic CRC spans as errors. Fixed delimiters/EOF and FD integrity remain outside that gate.",
+      "Degenerate timing/rate combinations check no panic on selected finite values. The forty-frame long record checks exact payload, not resource scaling or physical bus performance."
+    ],
+    "USB": [
+      "60 synthetic cases test explicit and automatic decoding with gaps of 12..59 bit times, random PID names and arbitrary zero through six byte payloads. These are extractor fixtures, not necessarily legal packets for every PID, and do not construct valid USB CRCs.",
+      "60 negative shapes are checked at two time intervals and two rate settings. Selected SYNC corruption and mid-PID truncation require rejection; corrupt PID complement requires a frame-error but need not clear OK.",
+      "pinKnownBugs is false in the committed source. The tight-gap and CRC-named subtests only log results during the original green run; neither enforces its desired behavior.",
+      "A temporary overlay enables those two assertions only. Both fail, separately recorded as expected characterization failures, not passing qualification. The CRC fixture uses arbitrary trailing bytes rather than a computed valid CRC and single-bit corruption, so its observation is acceptance without error of that byte sequence; production inspection separately establishes the absence of CRC validation.",
+      "Hostile scalar tests allow OK and only require error text when not OK. Single-line synthetic EOP cannot establish differential SE0, physical low/full-speed signaling, or standards compliance."
+    ],
+    "FlexRay": [
+      "80 nominal round trips rewrite header CRC in random 5..24-byte arrays, without enforcing header-implied payload length or supplying frame CRC. They test the current header-only acceptance path rather than complete valid FlexRay frames.",
+      "Short-TSS, BSS corruption and truncation fixtures have random headers without a clean accepted control; rejection may follow invalid CRC independently of the targeted framing defect. Their assertions only forbid accepted output identical to the full input.",
+      "20 noise inputs are logged, with no rejection requirement. Minimum-period automatic decoding and constant-fill automatic decoding allow complete failure and check bytes only if OK.",
+      "The enabled 24-case integrity block checks corrupted header CRC against header-plus-payload controls that omit the three-byte frame CRC. It proves these header checks, not full frame CRC validation. Comments claiming no CRC validation are stale.",
+      "The forty-frame long-record assertion requires exact bytes but does not establish asymptotic resource bounds. Prior acceptance characterizations already document frame CRC being conditional on exact header-implied length."
+    ]
+  },
+  "result": "reviewed-original-tests-pass-disabled-usb-assertions-fail",
+  "disabledUSBAssertions": {
+    "result": "two-expected-assertion-failures",
+    "edit": {
+      "path": "app/internal/decode/decode_break_usbls_test.go",
+      "before": "const pinKnownBugs = false",
+      "after": "const pinKnownBugs = true"
+    },
+    "replacementSHA256": "c7d0c87e717767eb60e0229757ae82d3149321bd8f598af54b15a6df4f4ade2d",
+    "command": [
+      "go",
+      "test",
+      "-race",
+      "-json",
+      "-count=1",
+      "-timeout=120s",
+      "-overlay",
+      "/tmp/sds-usb-disabled-assertions-y243cv3h/overlay.json",
+      "./internal/decode",
+      "-run",
+      "^TestBreakUsbls$/^known_bug_"
+    ],
+    "exitCode": 1,
+    "tests": {
+      "TestBreakUsbls/known_bug_tight_interpacket_gap": "fail",
+      "TestBreakUsbls/known_bug_crc_not_validated": "fail",
+      "TestBreakUsbls": "fail"
+    },
+    "log": "test-runs/decode-usb-enabled-assertions.jsonl",
+    "logSHA256": "5fe7ce62009d0d5aa2b79e5bec19874c5b4d3a8540513e60c4caaf2049fff256",
+    "stderr": ""
+  },
+  "scope": "Four original deterministic tests under race detector, plus isolated activation of two disabled USB assertions. Original source unchanged. All ten reviewed breaker files contribute partial native evidence; no browser/hardware/standards qualification.",
+  "nextAction": "Review remaining oracle test sources and separate external-runner availability from model completeness.",
+  "nativeIntegration": "Original top-level tests indexed; source-linked test summaries generated by sync_test_evidence.py and go_evidence.py. Disabled USB assertions excluded."
+}

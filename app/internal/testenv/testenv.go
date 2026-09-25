@@ -4,6 +4,7 @@
 // (CI_REQUIRE_BROWSER=1) the same condition is a hard FAILURE, so the
 // browser/node/parity suites can never be silently skipped where they are
 // the whole point of the job.
+// ENGMODEL-OWNER-UNIT: FU-APP-TESTENV
 package testenv
 
 import (
@@ -14,10 +15,12 @@ import (
 
 // required reports whether environment skips must be treated as failures
 // (set CI_REQUIRE_BROWSER=1 on the lane that installs node + Chromium).
+// TRLC-LINKS: REQ-SDS-179
 func required() bool { return os.Getenv("CI_REQUIRE_BROWSER") == "1" }
 
 // NeedNode skips t when node is not on PATH — or fails it under
 // CI_REQUIRE_BROWSER=1.
+// TRLC-LINKS: REQ-SDS-179
 func NeedNode(t testing.TB) {
 	t.Helper()
 	if _, err := exec.LookPath("node"); err == nil {
@@ -32,6 +35,7 @@ func NeedNode(t testing.TB) {
 // SkipBrowser records a browser-environment skip (Playwright/Chromium not
 // installed, or the browser failed to launch) — or fails the test under
 // CI_REQUIRE_BROWSER=1.
+// TRLC-LINKS: REQ-SDS-179
 func SkipBrowser(t testing.TB, format string, args ...any) {
 	t.Helper()
 	if required() {

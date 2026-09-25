@@ -1,0 +1,85 @@
+package main
+
+import (
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"fmt"
+	"go/ast"
+	"go/parser"
+	"go/scanner"
+	"go/token"
+	"os"
+	"strings"
+)
+
+type Decl struct {
+	Key    string `json:"key"`
+	Name   string `json:"name"`
+	Line   int    `json:"line"`
+	Offset int    `json:"offset"`
+	Doc    string `json:"doc"`
+}
+type File struct {
+	Path          string `json:"path"`
+	PackageOffset int    `json:"packageOffset"`
+	TokenHash     string `json:"tokenHash"`
+	Functions     []Decl `json:"functions"`
+	Types         []Decl `json:"types"`
+}
+
+func main() {
+	var paths []string
+	if err := json.NewDecoder(os.Stdin).Decode(&paths); err != nil {
+		panic(err)
+	}
+	out := []File{}
+	for _, p := range paths {
+		b, e := os.ReadFile(p)
+		if e != nil {
+			panic(e)
+		}
+		fs := token.NewFileSet()
+		f, e := parser.ParseFile(fs, p, b, parser.ParseComments)
+		if e != nil {
+			panic(e)
+		}
+		x := File{Path: p, PackageOffset: fs.Position(f.Package).Offset}
+		for _, d := range f.Decls {
+			if group, ok := d.(*ast.GenDecl); ok && group.Tok == token.TYPE {
+				names := []string{}
+				for _, spec := range group.Specs {
+					names = append(names, spec.(*ast.TypeSpec).Name.Name)
+				}
+				name := strings.Join(names, ",")
+				x.Types = append(x.Types, Decl{"type." + name, name, fs.Position(group.Pos()).Line, fs.Position(group.Pos()).Offset, group.Doc.Text()})
+			}
+			if fn, ok := d.(*ast.FuncDecl); ok {
+				key := fn.Name.Name
+				if fn.Recv != nil {
+					r := fn.Recv.List[0].Type
+					if star, ok := r.(*ast.StarExpr); ok {
+						r = star.X
+					}
+					if id, ok := r.(*ast.Ident); ok {
+						key = id.Name + "." + key
+					}
+				}
+				x.Functions = append(x.Functions, Decl{key, fn.Name.Name, fs.Position(fn.Pos()).Line, fs.Position(fn.Pos()).Offset, fn.Doc.Text()})
+			}
+		}
+		var s scanner.Scanner
+		s.Init(token.NewFileSet().AddFile(p, -1, len(b)), b, nil, 0)
+		h := sha256.New()
+		for {
+			_, t, l := s.Scan()
+			if t == token.EOF {
+				break
+			}
+			fmt.Fprintf(h, "%d:%s\x00", t, l)
+		}
+		x.TokenHash = hex.EncodeToString(h.Sum(nil))
+		out = append(out, x)
+	}
+	json.NewEncoder(os.Stdout).Encode(out)
+}

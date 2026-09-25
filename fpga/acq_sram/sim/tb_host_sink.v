@@ -1,4 +1,6 @@
+// ENGMODEL-OWNER-UNIT: FU-RTL-ACQ-TESTS
 `timescale 1ns/1ps
+// TRLC-LINKS: REQ-SDS-094
 module tb_host_sink;
  reg clk=0,rclk=0,reset=1,valid=0,upstream_fault=0;
  always #4 clk=~clk;

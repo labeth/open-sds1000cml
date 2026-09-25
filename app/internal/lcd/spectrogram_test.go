@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-LCD
 package lcd
 
 import (
@@ -7,6 +8,7 @@ import (
 	"open-sds/app/internal/engine"
 )
 
+// TRLC-LINKS: REQ-SDS-068
 func sgSine(n int, freqHz, sampleS float64) *engine.Frame {
 	c := make([]uint8, n)
 	for i := 0; i < n; i++ {
@@ -23,6 +25,7 @@ func sgSine(n int, freqHz, sampleS float64) *engine.Frame {
 }
 
 // The colormap must be monotone in brightness (higher dB reads hotter).
+// TRLC-LINKS: REQ-SDS-068
 func TestHeatMonotone(t *testing.T) {
 	lum := func(c uint16) int {
 		r := int((c >> 11) & 0x1f)
@@ -41,6 +44,7 @@ func TestHeatMonotone(t *testing.T) {
 }
 
 // A single-tone frame's spectrogram row must peak at the frequency's column.
+// TRLC-LINKS: REQ-SDS-068
 func TestSpectrogramPeakColumn(t *testing.T) {
 	const n = 4096
 	const dt = 2e-9 // Nyquist 250 MHz
@@ -65,6 +69,7 @@ func TestSpectrogramPeakColumn(t *testing.T) {
 
 // "FFT over time": a frequency that STEPS across successive frames must move
 // the bright column DOWN the rows (older rows keep the earlier frequency).
+// TRLC-LINKS: REQ-SDS-068
 func TestSpectrogramTracksSteppedFrequency(t *testing.T) {
 	const n = 4096
 	const dt = 2e-9
@@ -101,6 +106,7 @@ func TestSpectrogramTracksSteppedFrequency(t *testing.T) {
 
 // The spectrogram VIEW render path (Render → ViewMode 4 → drawSpectrogram) had
 // no coverage: dispatch + the heatmap blit, and the empty-Spect hint.
+// TRLC-LINKS: REQ-SDS-021, REQ-SDS-068
 func TestRenderSpectrogramView(t *testing.T) {
 	const n = 4096
 	const dt = 2e-9
@@ -156,6 +162,7 @@ var heatStops = [7][3]uint8{
 	{0, 0, 0}, {40, 0, 90}, {130, 20, 90}, {200, 50, 20}, {240, 150, 10}, {250, 220, 80}, {255, 255, 255},
 }
 
+// TRLC-LINKS: REQ-SDS-068
 func TestHeatStops(t *testing.T) {
 	for i := 0; i < 7; i++ {
 		r, g, b := unrgb(heat(float64(i) / 6)) // t=i/6 lands exactly on stop i
@@ -167,6 +174,7 @@ func TestHeatStops(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-068
 func absU8(a, b uint8) int {
 	if a > b {
 		return int(a - b)

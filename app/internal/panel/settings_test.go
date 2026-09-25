@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-PANEL
 package panel
 
 import (
@@ -6,6 +7,7 @@ import (
 	"open-sds/app/internal/settings"
 )
 
+// TRLC-LINKS: REQ-SDS-136
 func TestSettingsViewRoundTrip(t *testing.T) {
 	c, _, _ := newC(t)
 	want := settings.ViewState{
@@ -27,6 +29,7 @@ func TestSettingsViewRoundTrip(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-136
 func TestApplySettingsViewClamps(t *testing.T) {
 	c, _, _ := newC(t)
 	c.ApplySettingsView(settings.ViewState{
@@ -53,6 +56,7 @@ func TestApplySettingsViewClamps(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-136
 func TestApplySettingsViewKeepsTwoSignalRolesOpposite(t *testing.T) {
 	c, _, _ := newC(t)
 	// A (hostile or hand-edited) file putting SPI CLK and DATA on the same

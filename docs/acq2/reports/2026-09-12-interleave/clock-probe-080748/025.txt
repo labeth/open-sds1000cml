@@ -1,0 +1,17 @@
+["exec", "/dev/acqsram", "encode-mask", "1022"]
+{
+  "encode_mask": 1022
+}
+{
+  "buffer_words": 0,
+  "identity": 23122,
+  "length": 0,
+  "map_id": 57746,
+  "origin": 0,
+  "position": 0,
+  "revision": 6,
+  "start": 0,
+  "status": 68,
+  "trigger_index": 0
+}
+[exit 0]

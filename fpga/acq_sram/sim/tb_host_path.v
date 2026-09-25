@@ -1,4 +1,6 @@
+// ENGMODEL-OWNER-UNIT: FU-RTL-ACQ-TESTS
 `timescale 1ns/1ps
+// TRLC-LINKS: REQ-SDS-049, REQ-SDS-050, REQ-SDS-051, REQ-SDS-052, REQ-SDS-094
 module tb_host_path;
  parameter PHASE=0;
  reg clk=0,mclk=0,rclk=0,reset=1;

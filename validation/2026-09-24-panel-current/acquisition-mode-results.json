@@ -1,0 +1,47 @@
+[
+  {
+    "mode": 1,
+    "reported": 1,
+    "seqBefore": 8916,
+    "seqAfter": 8928,
+    "coherent": 8933,
+    "busErrors": 0,
+    "label": "Average"
+  },
+  {
+    "mode": 2,
+    "reported": 2,
+    "seqBefore": 8929,
+    "seqAfter": 8941,
+    "coherent": 8946,
+    "busErrors": 0,
+    "label": "ERes"
+  },
+  {
+    "mode": 3,
+    "reported": 3,
+    "seqBefore": 8941,
+    "seqAfter": 8953,
+    "coherent": 8958,
+    "busErrors": 0,
+    "label": "Peak"
+  },
+  {
+    "mode": 4,
+    "reported": 4,
+    "seqBefore": 8953,
+    "seqAfter": 8962,
+    "coherent": 8967,
+    "busErrors": 0,
+    "label": "Precision"
+  },
+  {
+    "mode": 0,
+    "reported": 0,
+    "seqBefore": 8962,
+    "seqAfter": 8973,
+    "coherent": 8978,
+    "busErrors": 0,
+    "label": "Normal"
+  }
+]

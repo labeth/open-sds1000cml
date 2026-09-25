@@ -1,4 +1,6 @@
+// ENGMODEL-OWNER-UNIT: FU-RTL-ACQ-TESTS
 `timescale 1ns/1ps
+// TRLC-LINKS: REQ-SDS-052
 module tb_host_ownership;
  reg reset=1,pclk=0,hclk=0,cclk=0,pause_producer=0,pause_host=0,pause_core=0;
  always #4 if(!pause_producer)pclk=~pclk;

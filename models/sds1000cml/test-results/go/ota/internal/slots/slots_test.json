@@ -1,0 +1,46 @@
+{
+  "source": "ota/internal/slots/slots_test.go",
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "scope": "Reviewed Go test outcomes; passing assertions contribute partial requirement evidence.",
+  "sourceSHA256": "25be22375b618a35cea4406230eb824eab0f95d9df4f8dd7db4684a54d08c9bf",
+  "logs": {
+    "test-runs/ota-foundations.jsonl": "a7b46957bbd6ac0ac0933ae862be9598f0c39cdbcb5d0c1a8422a573ecf3b90a"
+  },
+  "tests": [
+    {
+      "name": "TestPointerDefaultsAndValidation",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-087"
+      ]
+    },
+    {
+      "name": "TestOther",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-087"
+      ]
+    },
+    {
+      "name": "TestInstallAndStatus",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-087"
+      ]
+    },
+    {
+      "name": "TestHasBinaryRejectsEmpty",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-087"
+      ]
+    }
+  ],
+  "results": [
+    {
+      "requirement": "REQ-SDS-087",
+      "status": "partial",
+      "notes": "4 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    }
+  ]
+}

@@ -1,0 +1,68 @@
+{
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "runtimeInputSHA256": {
+    "fpga/common/ddio_pair.v": "0f32c77bac09fb1fb4a8069f7480743e8b0dd05669da22aa68e171798d33435c",
+    "fpga/common/gpmc_slave.v": "9290fbbc5641cd09029c119fceefe7c3d9c9b6ee52f9bb5d8a8141fc5772b1b0",
+    "fpga/common/lane_in.v": "1777785598b0670d0ec92cc5402bd27b78d939aafdab443796892deecad8a719",
+    "fpga/common/pll_m2.v": "305800c87dce134eafffa0890fa3bd07f7ec42091aa4acce23490ebbcb71f203",
+    "fpga/common/sim/gpmc_bfm.v": "8e9fadbaf9b67bed2d7eddc4ad1e92203123b5e5b5f4fb21b150c12ae454a623",
+    "fpga/common/sim/run.sh": "c2cd800d4205c35202dcb86b5c1b4e5167ff1c1550ba9d54c203820ecdc81eb2",
+    "fpga/common/sim/tb_ddio.v": "3f3efc2134267672f24438fb3de7b90904c84eb8fbe05b6eada6549a8b585404",
+    "fpga/common/sim/tb_gpmc_slave.v": "7c143cc32a6fde6b16ced05e7bdd9124e99502cf94e068a18b5c174e9002cdd8",
+    "fpga/common/sim/tb_lane_in.v": "6e96b495d36f5f186235d93d5157dea34b744395c386007ead4030f961ffeed3",
+    "fpga/common/sim/tb_pll.v": "ee5c6927b8ad6717dca6c4895bcc05eadb21c21c21241505bf116454aa8070a4",
+    "fpga/common/sim/tb_sync.v": "4f12012d3e0358707af838fba67b5889500aca13b5591605005f81a6d9eb2832",
+    "fpga/common/sync.v": "e68447098f4ecfb40fedc3de07ade451fb79e06c87ce15c14d493055f8ac512b"
+  },
+  "scope": "Original five common RTL benches, SIM behavioral clocks and ideal bus stimulus. No physical CDC, fitted timing, IO placement or hardware qualification.",
+  "runtime": {
+    "iverilog": "Icarus Verilog version 12.0 (stable) ()",
+    "vvp": "Icarus Verilog runtime version 12.0 (stable) ()"
+  },
+  "cases": [
+    {
+      "id": "tb_sync",
+      "source": "fpga/common/sim/tb_sync.v",
+      "result": "pass",
+      "output": "PASS tb_sync\n/tmp/sds-common-review-nqff4d79/sources/fpga/common/sim/tb_sync.v:49: $finish called at 11990500 (1ps)\n",
+      "sourceSnapshot": true
+    },
+    {
+      "id": "tb_ddio",
+      "source": "fpga/common/sim/tb_ddio.v",
+      "result": "pass",
+      "output": "PASS tb_ddio\n/tmp/sds-common-review-nqff4d79/sources/fpga/common/sim/tb_ddio.v:24: $finish called at 340300 (1ps)\n",
+      "sourceSnapshot": true
+    },
+    {
+      "id": "tb_pll",
+      "source": "fpga/common/sim/tb_pll.v",
+      "result": "pass",
+      "output": "PASS tb_pll\n/tmp/sds-common-review-nqff4d79/sources/fpga/common/sim/tb_pll.v:43: $finish called at 3312916 (1ps)\n",
+      "sourceSnapshot": true
+    },
+    {
+      "id": "tb_lane_in",
+      "source": "fpga/common/sim/tb_lane_in.v",
+      "result": "pass",
+      "output": "PASS tb_lane_in\n/tmp/sds-common-review-nqff4d79/sources/fpga/common/sim/tb_lane_in.v:47: $finish called at 9175051000 (1ps)\n",
+      "sourceSnapshot": true
+    },
+    {
+      "id": "tb_gpmc_slave",
+      "source": "fpga/common/sim/tb_gpmc_slave.v",
+      "result": "pass",
+      "output": "PASS tb_gpmc_slave\n/tmp/sds-common-review-nqff4d79/sources/fpga/common/sim/tb_gpmc_slave.v:65: $finish called at 22920000 (1ps)\n",
+      "sourceSnapshot": true
+    }
+  ],
+  "command": [
+    "bash",
+    "fpga/common/sim/run.sh"
+  ],
+  "exitCode": 0,
+  "stdout": "[PASS] tb_sync\n[PASS] tb_ddio\n[PASS] tb_pll\n[PASS] tb_lane_in\n[PASS] tb_gpmc_slave\n",
+  "stderr": "",
+  "status": "complete",
+  "result": "pass"
+}

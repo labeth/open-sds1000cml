@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-RTL-DEFAULT-CAPTURE
 // capture.v -- decimator + circular pre/post-trigger record (20480 x 16 in 40 M9K) + trigger,
 // entirely in the 200 MHz capture domain; the drain reads the same M9K on the C2 clock.
 //
@@ -66,6 +67,7 @@
 `timescale 1ns/1ps
 `include "regs.vh"
 
+// TRLC-LINKS: REQ-SDS-195
 module capture (
     input  wire              cap_clk,
     input  wire [15:0]       samp,

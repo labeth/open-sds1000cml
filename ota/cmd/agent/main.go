@@ -9,6 +9,7 @@
 //	agent probe            read-only device fingerprint (JSON)
 //	agent status           local status via the running agent's TCP port
 //	agent version
+// ENGMODEL-OWNER-UNIT: FU-OTA-AGENT
 package main
 
 import (
@@ -23,6 +24,7 @@ import (
 	"open-sds/ota/internal/config"
 )
 
+// TRLC-LINKS: REQ-SDS-124
 func main() {
 	if len(os.Args) > 1 {
 		switch os.Args[1] {
@@ -62,6 +64,7 @@ func main() {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-124
 func hasFlag(f string) bool {
 	for _, a := range os.Args[2:] {
 		if a == f {

@@ -1,0 +1,101 @@
+{"Time":"2026-09-22T22:12:01.230362326+02:00","Action":"start","Package":"open-sds/app/internal/settings"}
+{"Time":"2026-09-22T22:12:01.232080289+02:00","Action":"run","Package":"open-sds/app/internal/settings","Test":"TestRoundTrip"}
+{"Time":"2026-09-22T22:12:01.232092458+02:00","Action":"output","Package":"open-sds/app/internal/settings","Test":"TestRoundTrip","Output":"=== RUN   TestRoundTrip\n"}
+{"Time":"2026-09-22T22:12:01.232497056+02:00","Action":"output","Package":"open-sds/app/internal/settings","Test":"TestRoundTrip","Output":"--- PASS: TestRoundTrip (0.00s)\n"}
+{"Time":"2026-09-22T22:12:01.232506238+02:00","Action":"pass","Package":"open-sds/app/internal/settings","Test":"TestRoundTrip","Elapsed":0}
+{"Time":"2026-09-22T22:12:01.232514542+02:00","Action":"run","Package":"open-sds/app/internal/settings","Test":"TestSaveAtomicNoTmpLeft"}
+{"Time":"2026-09-22T22:12:01.232519351+02:00","Action":"output","Package":"open-sds/app/internal/settings","Test":"TestSaveAtomicNoTmpLeft","Output":"=== RUN   TestSaveAtomicNoTmpLeft\n"}
+{"Time":"2026-09-22T22:12:01.232661952+02:00","Action":"output","Package":"open-sds/app/internal/settings","Test":"TestSaveAtomicNoTmpLeft","Output":"--- PASS: TestSaveAtomicNoTmpLeft (0.00s)\n"}
+{"Time":"2026-09-22T22:12:01.232669662+02:00","Action":"pass","Package":"open-sds/app/internal/settings","Test":"TestSaveAtomicNoTmpLeft","Elapsed":0}
+{"Time":"2026-09-22T22:12:01.232677147+02:00","Action":"run","Package":"open-sds/app/internal/settings","Test":"TestLoadMissing"}
+{"Time":"2026-09-22T22:12:01.232680964+02:00","Action":"output","Package":"open-sds/app/internal/settings","Test":"TestLoadMissing","Output":"=== RUN   TestLoadMissing\n"}
+{"Time":"2026-09-22T22:12:01.232762274+02:00","Action":"output","Package":"open-sds/app/internal/settings","Test":"TestLoadMissing","Output":"--- PASS: TestLoadMissing (0.00s)\n"}
+{"Time":"2026-09-22T22:12:01.232768986+02:00","Action":"pass","Package":"open-sds/app/internal/settings","Test":"TestLoadMissing","Elapsed":0}
+{"Time":"2026-09-22T22:12:01.232775047+02:00","Action":"run","Package":"open-sds/app/internal/settings","Test":"TestLoadCorruptFallsBack"}
+{"Time":"2026-09-22T22:12:01.232781356+02:00","Action":"output","Package":"open-sds/app/internal/settings","Test":"TestLoadCorruptFallsBack","Output":"=== RUN   TestLoadCorruptFallsBack\n"}
+{"Time":"2026-09-22T22:12:01.232921612+02:00","Action":"output","Package":"open-sds/app/internal/settings","Test":"TestLoadCorruptFallsBack","Output":"    settings.go:152: settings: /tmp/TestLoadCorruptFallsBack1587584634/001/garbage.json: settings: invalid character '\\x00' looking for beginning of value — using defaults\n"}
+{"Time":"2026-09-22T22:12:01.232986539+02:00","Action":"output","Package":"open-sds/app/internal/settings","Test":"TestLoadCorruptFallsBack","Output":"    settings.go:152: settings: /tmp/TestLoadCorruptFallsBack1587584634/002/empty.json: settings: unexpected end of JSON input — using defaults\n"}
+{"Time":"2026-09-22T22:12:01.233046619+02:00","Action":"output","Package":"open-sds/app/internal/settings","Test":"TestLoadCorruptFallsBack","Output":"    settings.go:152: settings: /tmp/TestLoadCorruptFallsBack1587584634/003/null.json: settings: unsupported schema version 0 — using defaults\n"}
+{"Time":"2026-09-22T22:12:01.233108798+02:00","Action":"output","Package":"open-sds/app/internal/settings","Test":"TestLoadCorruptFallsBack","Output":"    settings.go:152: settings: /tmp/TestLoadCorruptFallsBack1587584634/004/wrong-type.json: settings: json: cannot unmarshal string into Go struct field Settings.tdiv_s of type float64 — using defaults\n"}
+{"Time":"2026-09-22T22:12:01.233181131+02:00","Action":"output","Package":"open-sds/app/internal/settings","Test":"TestLoadCorruptFallsBack","Output":"    settings.go:152: settings: /tmp/TestLoadCorruptFallsBack1587584634/005/wrong-version.json: settings: unsupported schema version 99 — using defaults\n"}
+{"Time":"2026-09-22T22:12:01.23325075+02:00","Action":"output","Package":"open-sds/app/internal/settings","Test":"TestLoadCorruptFallsBack","Output":"    settings.go:152: settings: /tmp/TestLoadCorruptFallsBack1587584634/006/array.json: settings: json: cannot unmarshal array into Go value of type settings.Settings — using defaults\n"}
+{"Time":"2026-09-22T22:12:01.233316915+02:00","Action":"output","Package":"open-sds/app/internal/settings","Test":"TestLoadCorruptFallsBack","Output":"    settings.go:152: settings: /tmp/TestLoadCorruptFallsBack1587584634/007/truncated.json: settings: unexpected end of JSON input — using defaults\n"}
+{"Time":"2026-09-22T22:12:01.233385974+02:00","Action":"output","Package":"open-sds/app/internal/settings","Test":"TestLoadCorruptFallsBack","Output":"    settings.go:152: settings: /tmp/TestLoadCorruptFallsBack1587584634/008/zero-version.json: settings: unsupported schema version 0 — using defaults\n"}
+{"Time":"2026-09-22T22:12:01.233496029+02:00","Action":"output","Package":"open-sds/app/internal/settings","Test":"TestLoadCorruptFallsBack","Output":"    settings.go:152: settings: /tmp/TestLoadCorruptFallsBack1587584634/009/huge-number.json: settings: json: cannot unmarshal number 1e999 into Go struct field Trigger.trigger.level_code of type int — using defaults\n"}
+{"Time":"2026-09-22T22:12:01.233778543+02:00","Action":"output","Package":"open-sds/app/internal/settings","Test":"TestLoadCorruptFallsBack","Output":"--- PASS: TestLoadCorruptFallsBack (0.00s)\n"}
+{"Time":"2026-09-22T22:12:01.233786889+02:00","Action":"pass","Package":"open-sds/app/internal/settings","Test":"TestLoadCorruptFallsBack","Elapsed":0}
+{"Time":"2026-09-22T22:12:01.233792598+02:00","Action":"run","Package":"open-sds/app/internal/settings","Test":"TestLoadOversizeRejected"}
+{"Time":"2026-09-22T22:12:01.233796498+02:00","Action":"output","Package":"open-sds/app/internal/settings","Test":"TestLoadOversizeRejected","Output":"=== RUN   TestLoadOversizeRejected\n"}
+{"Time":"2026-09-22T22:12:01.234069052+02:00","Action":"output","Package":"open-sds/app/internal/settings","Test":"TestLoadOversizeRejected","Output":"    settings.go:152: settings: /tmp/TestLoadOversizeRejected966773118/001/big.json: settings: file too large (65558 bytes) — using defaults\n"}
+{"Time":"2026-09-22T22:12:01.234154498+02:00","Action":"output","Package":"open-sds/app/internal/settings","Test":"TestLoadOversizeRejected","Output":"--- PASS: TestLoadOversizeRejected (0.00s)\n"}
+{"Time":"2026-09-22T22:12:01.234161496+02:00","Action":"pass","Package":"open-sds/app/internal/settings","Test":"TestLoadOversizeRejected","Elapsed":0}
+{"Time":"2026-09-22T22:12:01.234172579+02:00","Action":"run","Package":"open-sds/app/internal/settings","Test":"TestSaverDebounce"}
+{"Time":"2026-09-22T22:12:01.234176503+02:00","Action":"output","Package":"open-sds/app/internal/settings","Test":"TestSaverDebounce","Output":"=== RUN   TestSaverDebounce\n"}
+{"Time":"2026-09-22T22:12:01.234202862+02:00","Action":"output","Package":"open-sds/app/internal/settings","Test":"TestSaverDebounce","Output":"--- PASS: TestSaverDebounce (0.00s)\n"}
+{"Time":"2026-09-22T22:12:01.234210519+02:00","Action":"pass","Package":"open-sds/app/internal/settings","Test":"TestSaverDebounce","Elapsed":0}
+{"Time":"2026-09-22T22:12:01.234216089+02:00","Action":"run","Package":"open-sds/app/internal/settings","Test":"TestSaverFlush"}
+{"Time":"2026-09-22T22:12:01.234221019+02:00","Action":"output","Package":"open-sds/app/internal/settings","Test":"TestSaverFlush","Output":"=== RUN   TestSaverFlush\n"}
+{"Time":"2026-09-22T22:12:01.234228897+02:00","Action":"output","Package":"open-sds/app/internal/settings","Test":"TestSaverFlush","Output":"--- PASS: TestSaverFlush (0.00s)\n"}
+{"Time":"2026-09-22T22:12:01.234234287+02:00","Action":"pass","Package":"open-sds/app/internal/settings","Test":"TestSaverFlush","Elapsed":0}
+{"Time":"2026-09-22T22:12:01.234239146+02:00","Action":"run","Package":"open-sds/app/internal/settings","Test":"TestSaverRetriesAfterFailure"}
+{"Time":"2026-09-22T22:12:01.234243411+02:00","Action":"output","Package":"open-sds/app/internal/settings","Test":"TestSaverRetriesAfterFailure","Output":"=== RUN   TestSaverRetriesAfterFailure\n"}
+{"Time":"2026-09-22T22:12:01.234251069+02:00","Action":"output","Package":"open-sds/app/internal/settings","Test":"TestSaverRetriesAfterFailure","Output":"--- PASS: TestSaverRetriesAfterFailure (0.00s)\n"}
+{"Time":"2026-09-22T22:12:01.234259806+02:00","Action":"pass","Package":"open-sds/app/internal/settings","Test":"TestSaverRetriesAfterFailure","Elapsed":0}
+{"Time":"2026-09-22T22:12:01.234265158+02:00","Action":"run","Package":"open-sds/app/internal/settings","Test":"TestApplyRestoreCollectFidelity"}
+{"Time":"2026-09-22T22:12:01.234268711+02:00","Action":"output","Package":"open-sds/app/internal/settings","Test":"TestApplyRestoreCollectFidelity","Output":"=== RUN   TestApplyRestoreCollectFidelity\n"}
+{"Time":"2026-09-22T22:12:01.234305805+02:00","Action":"output","Package":"open-sds/app/internal/settings","Test":"TestApplyRestoreCollectFidelity","Output":"--- PASS: TestApplyRestoreCollectFidelity (0.00s)\n"}
+{"Time":"2026-09-22T22:12:01.234312805+02:00","Action":"pass","Package":"open-sds/app/internal/settings","Test":"TestApplyRestoreCollectFidelity","Elapsed":0}
+{"Time":"2026-09-22T22:12:01.234320222+02:00","Action":"run","Package":"open-sds/app/internal/settings","Test":"TestApplyHostileValuesClampThroughSetters"}
+{"Time":"2026-09-22T22:12:01.234323987+02:00","Action":"output","Package":"open-sds/app/internal/settings","Test":"TestApplyHostileValuesClampThroughSetters","Output":"=== RUN   TestApplyHostileValuesClampThroughSetters\n"}
+{"Time":"2026-09-22T22:12:01.234364674+02:00","Action":"output","Package":"open-sds/app/internal/settings","Test":"TestApplyHostileValuesClampThroughSetters","Output":"    wire.go:115: settings: tdiv 123.456 not in ladder — skipped\n"}
+{"Time":"2026-09-22T22:12:01.234373985+02:00","Action":"output","Package":"open-sds/app/internal/settings","Test":"TestApplyHostileValuesClampThroughSetters","Output":"    wire.go:152: settings: C1 vdiv 0.33 not in ladder — skipped\n"}
+{"Time":"2026-09-22T22:12:01.234381349+02:00","Action":"output","Package":"open-sds/app/internal/settings","Test":"TestApplyHostileValuesClampThroughSetters","Output":"    wire.go:152: settings: C2 vdiv -2 not in ladder — skipped\n"}
+{"Time":"2026-09-22T22:12:01.234387845+02:00","Action":"output","Package":"open-sds/app/internal/settings","Test":"TestApplyHostileValuesClampThroughSetters","Output":"--- PASS: TestApplyHostileValuesClampThroughSetters (0.00s)\n"}
+{"Time":"2026-09-22T22:12:01.234394384+02:00","Action":"pass","Package":"open-sds/app/internal/settings","Test":"TestApplyHostileValuesClampThroughSetters","Elapsed":0}
+{"Time":"2026-09-22T22:12:01.234412943+02:00","Action":"run","Package":"open-sds/app/internal/settings","Test":"TestApplyVirginVerticalStaysUntouched"}
+{"Time":"2026-09-22T22:12:01.234418514+02:00","Action":"output","Package":"open-sds/app/internal/settings","Test":"TestApplyVirginVerticalStaysUntouched","Output":"=== RUN   TestApplyVirginVerticalStaysUntouched\n"}
+{"Time":"2026-09-22T22:12:01.2344624+02:00","Action":"output","Package":"open-sds/app/internal/settings","Test":"TestApplyVirginVerticalStaysUntouched","Output":"--- PASS: TestApplyVirginVerticalStaysUntouched (0.00s)\n"}
+{"Time":"2026-09-22T22:12:01.234470774+02:00","Action":"pass","Package":"open-sds/app/internal/settings","Test":"TestApplyVirginVerticalStaysUntouched","Elapsed":0}
+{"Time":"2026-09-22T22:12:01.234476767+02:00","Action":"run","Package":"open-sds/app/internal/settings","Test":"TestApplyNilOwners"}
+{"Time":"2026-09-22T22:12:01.234481036+02:00","Action":"output","Package":"open-sds/app/internal/settings","Test":"TestApplyNilOwners","Output":"=== RUN   TestApplyNilOwners\n"}
+{"Time":"2026-09-22T22:12:01.234542425+02:00","Action":"output","Package":"open-sds/app/internal/settings","Test":"TestApplyNilOwners","Output":"--- PASS: TestApplyNilOwners (0.00s)\n"}
+{"Time":"2026-09-22T22:12:01.234558466+02:00","Action":"pass","Package":"open-sds/app/internal/settings","Test":"TestApplyNilOwners","Elapsed":0}
+{"Time":"2026-09-22T22:12:01.234565935+02:00","Action":"run","Package":"open-sds/app/internal/settings","Test":"FuzzParseAndApply"}
+{"Time":"2026-09-22T22:12:01.234577179+02:00","Action":"output","Package":"open-sds/app/internal/settings","Test":"FuzzParseAndApply","Output":"=== RUN   FuzzParseAndApply\n"}
+{"Time":"2026-09-22T22:12:01.23465039+02:00","Action":"run","Package":"open-sds/app/internal/settings","Test":"FuzzParseAndApply/seed#0"}
+{"Time":"2026-09-22T22:12:01.234657626+02:00","Action":"output","Package":"open-sds/app/internal/settings","Test":"FuzzParseAndApply/seed#0","Output":"=== RUN   FuzzParseAndApply/seed#0\n"}
+{"Time":"2026-09-22T22:12:01.234755737+02:00","Action":"output","Package":"open-sds/app/internal/settings","Test":"FuzzParseAndApply/seed#0","Output":"--- PASS: FuzzParseAndApply/seed#0 (0.00s)\n"}
+{"Time":"2026-09-22T22:12:01.234765066+02:00","Action":"pass","Package":"open-sds/app/internal/settings","Test":"FuzzParseAndApply/seed#0","Elapsed":0}
+{"Time":"2026-09-22T22:12:01.234769462+02:00","Action":"run","Package":"open-sds/app/internal/settings","Test":"FuzzParseAndApply/seed#1"}
+{"Time":"2026-09-22T22:12:01.234773298+02:00","Action":"output","Package":"open-sds/app/internal/settings","Test":"FuzzParseAndApply/seed#1","Output":"=== RUN   FuzzParseAndApply/seed#1\n"}
+{"Time":"2026-09-22T22:12:01.234781039+02:00","Action":"output","Package":"open-sds/app/internal/settings","Test":"FuzzParseAndApply/seed#1","Output":"--- PASS: FuzzParseAndApply/seed#1 (0.00s)\n"}
+{"Time":"2026-09-22T22:12:01.23478633+02:00","Action":"pass","Package":"open-sds/app/internal/settings","Test":"FuzzParseAndApply/seed#1","Elapsed":0}
+{"Time":"2026-09-22T22:12:01.234792238+02:00","Action":"run","Package":"open-sds/app/internal/settings","Test":"FuzzParseAndApply/seed#2"}
+{"Time":"2026-09-22T22:12:01.234797022+02:00","Action":"output","Package":"open-sds/app/internal/settings","Test":"FuzzParseAndApply/seed#2","Output":"=== RUN   FuzzParseAndApply/seed#2\n"}
+{"Time":"2026-09-22T22:12:01.235067529+02:00","Action":"output","Package":"open-sds/app/internal/settings","Test":"FuzzParseAndApply/seed#2","Output":"--- PASS: FuzzParseAndApply/seed#2 (0.00s)\n"}
+{"Time":"2026-09-22T22:12:01.235085561+02:00","Action":"pass","Package":"open-sds/app/internal/settings","Test":"FuzzParseAndApply/seed#2","Elapsed":0}
+{"Time":"2026-09-22T22:12:01.235168617+02:00","Action":"run","Package":"open-sds/app/internal/settings","Test":"FuzzParseAndApply/seed#3"}
+{"Time":"2026-09-22T22:12:01.235174996+02:00","Action":"output","Package":"open-sds/app/internal/settings","Test":"FuzzParseAndApply/seed#3","Output":"=== RUN   FuzzParseAndApply/seed#3\n"}
+{"Time":"2026-09-22T22:12:01.235276976+02:00","Action":"output","Package":"open-sds/app/internal/settings","Test":"FuzzParseAndApply/seed#3","Output":"--- PASS: FuzzParseAndApply/seed#3 (0.00s)\n"}
+{"Time":"2026-09-22T22:12:01.235285985+02:00","Action":"pass","Package":"open-sds/app/internal/settings","Test":"FuzzParseAndApply/seed#3","Elapsed":0}
+{"Time":"2026-09-22T22:12:01.23530912+02:00","Action":"run","Package":"open-sds/app/internal/settings","Test":"FuzzParseAndApply/seed#4"}
+{"Time":"2026-09-22T22:12:01.235314308+02:00","Action":"output","Package":"open-sds/app/internal/settings","Test":"FuzzParseAndApply/seed#4","Output":"=== RUN   FuzzParseAndApply/seed#4\n"}
+{"Time":"2026-09-22T22:12:01.235327649+02:00","Action":"output","Package":"open-sds/app/internal/settings","Test":"FuzzParseAndApply/seed#4","Output":"--- PASS: FuzzParseAndApply/seed#4 (0.00s)\n"}
+{"Time":"2026-09-22T22:12:01.235333892+02:00","Action":"pass","Package":"open-sds/app/internal/settings","Test":"FuzzParseAndApply/seed#4","Elapsed":0}
+{"Time":"2026-09-22T22:12:01.235339889+02:00","Action":"run","Package":"open-sds/app/internal/settings","Test":"FuzzParseAndApply/seed#5"}
+{"Time":"2026-09-22T22:12:01.23534433+02:00","Action":"output","Package":"open-sds/app/internal/settings","Test":"FuzzParseAndApply/seed#5","Output":"=== RUN   FuzzParseAndApply/seed#5\n"}
+{"Time":"2026-09-22T22:12:01.235360706+02:00","Action":"output","Package":"open-sds/app/internal/settings","Test":"FuzzParseAndApply/seed#5","Output":"--- PASS: FuzzParseAndApply/seed#5 (0.00s)\n"}
+{"Time":"2026-09-22T22:12:01.235374406+02:00","Action":"pass","Package":"open-sds/app/internal/settings","Test":"FuzzParseAndApply/seed#5","Elapsed":0}
+{"Time":"2026-09-22T22:12:01.235379918+02:00","Action":"run","Package":"open-sds/app/internal/settings","Test":"FuzzParseAndApply/seed#6"}
+{"Time":"2026-09-22T22:12:01.235384517+02:00","Action":"output","Package":"open-sds/app/internal/settings","Test":"FuzzParseAndApply/seed#6","Output":"=== RUN   FuzzParseAndApply/seed#6\n"}
+{"Time":"2026-09-22T22:12:01.235412649+02:00","Action":"output","Package":"open-sds/app/internal/settings","Test":"FuzzParseAndApply/seed#6","Output":"--- PASS: FuzzParseAndApply/seed#6 (0.00s)\n"}
+{"Time":"2026-09-22T22:12:01.235423584+02:00","Action":"pass","Package":"open-sds/app/internal/settings","Test":"FuzzParseAndApply/seed#6","Elapsed":0}
+{"Time":"2026-09-22T22:12:01.235430003+02:00","Action":"run","Package":"open-sds/app/internal/settings","Test":"FuzzParseAndApply/seed#7"}
+{"Time":"2026-09-22T22:12:01.235433812+02:00","Action":"output","Package":"open-sds/app/internal/settings","Test":"FuzzParseAndApply/seed#7","Output":"=== RUN   FuzzParseAndApply/seed#7\n"}
+{"Time":"2026-09-22T22:12:01.235496531+02:00","Action":"output","Package":"open-sds/app/internal/settings","Test":"FuzzParseAndApply/seed#7","Output":"--- PASS: FuzzParseAndApply/seed#7 (0.00s)\n"}
+{"Time":"2026-09-22T22:12:01.235504886+02:00","Action":"pass","Package":"open-sds/app/internal/settings","Test":"FuzzParseAndApply/seed#7","Elapsed":0}
+{"Time":"2026-09-22T22:12:01.235510369+02:00","Action":"output","Package":"open-sds/app/internal/settings","Test":"FuzzParseAndApply","Output":"--- PASS: FuzzParseAndApply (0.00s)\n"}
+{"Time":"2026-09-22T22:12:01.235515034+02:00","Action":"pass","Package":"open-sds/app/internal/settings","Test":"FuzzParseAndApply","Elapsed":0}
+{"Time":"2026-09-22T22:12:01.235522005+02:00","Action":"output","Package":"open-sds/app/internal/settings","Output":"PASS\n"}
+{"Time":"2026-09-22T22:12:01.237769668+02:00","Action":"output","Package":"open-sds/app/internal/settings","Output":"ok  \topen-sds/app/internal/settings\t0.007s\n"}
+{"Time":"2026-09-22T22:12:01.237798606+02:00","Action":"pass","Package":"open-sds/app/internal/settings","Elapsed":0.007}

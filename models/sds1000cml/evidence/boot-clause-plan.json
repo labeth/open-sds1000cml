@@ -1,0 +1,69 @@
+{
+  "result": "reviewed-partition-integration-pending",
+  "sources": {
+    "ota/boot/startup.sh": "b363e1a0e67f0605eb8f8e538719a63ee1e78e49704476c15ca67055dddb24b2",
+    "ota/boot/boot_test.go": "bf677f8169f479205d0f8d1c79fcbc1348e5824bfd3c17685635e6ff3816afa5"
+  },
+  "scope": "Complete boot-anchor responsibility partition and exact offline evidence; proposed contracts have no assigned IDs or native coverage credit yet.",
+  "contracts": [
+    {
+      "name": "Boot payload and command initialization",
+      "shellFunctions": [
+        "find_usb"
+      ],
+      "topLevelBlocks": [
+        "USB discovery and conditional vendor remount",
+        "OTA paths, execution markers and agent.env sourcing",
+        "environment export and optional commands execution"
+      ],
+      "reviewedTests": [
+        "TestCommandsFileRuns"
+      ],
+      "limits": "Environment-configurable paths are not confined by the script. agent.env executes shell code after local path capture. Commands run synchronously with no timeout or error propagation. No descriptor inheritance or BusyBox/device parity qualification."
+    },
+    {
+      "name": "Agent respawn and conditional slot recovery",
+      "shellFunctions": [
+        "agent_slot_path",
+        "read_slot",
+        "agent_loop"
+      ],
+      "topLevelBlocks": [
+        "background loop launch"
+      ],
+      "reviewedTests": [
+        "TestRespawnLoopBounded",
+        "TestConfirmStableSlot",
+        "TestAgentSelfUpdateActivatesNewSlot",
+        "TestCrashLoopRevertsToConfirmed",
+        "TestIntentMarkerIsNeutralNoRevert"
+      ],
+      "limits": "Confirmed pointer loaded once; active reread each run. Any nonempty intent clears failure count. Stable duration plus executable bit can confirm despite nonzero exit. Pointer write failures ignored. No separate emergency-agent fallback; no health/image/readiness qualification."
+    },
+    {
+      "name": "Boot and agent log handling",
+      "shellFunctions": [
+        "log",
+        "rotate_log"
+      ],
+      "topLevelBlocks": [
+        "log-path initialization and boot-done event"
+      ],
+      "reviewedTests": [
+        "TestRespawnLoopBounded"
+      ],
+      "limits": "Log errors ignored; agent log rotates before launch and can exceed limit during a run; boot log is not rotated. Existing tests inspect messages but do not assert rotation, persistence or power-loss behavior."
+    }
+  ],
+  "testHelpers": [
+    "scriptPath",
+    "run",
+    "writeStub"
+  ],
+  "evidence": [
+    "boot-anchor-test-run.json",
+    "boot-anchor-characterization.json"
+  ],
+  "existingRequirement": "REQ-SDS-030",
+  "integrationNote": "Refine existing Boot anchor contract REQ-SDS-030 against this partition; add distinct contracts only where needed. Avoid duplicating the existing requirement."
+}

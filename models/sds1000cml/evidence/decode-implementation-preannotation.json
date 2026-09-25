@@ -1,0 +1,112 @@
+{
+  "result": "source-reviewed-native-integration-pending",
+  "completeReads": [
+    "app/internal/decode/decode.go",
+    "app/internal/decode/decode_arinc429.go",
+    "app/internal/decode/decode_autodetect.go",
+    "app/internal/decode/decode_canfd.go",
+    "app/internal/decode/decode_flexray.go",
+    "app/internal/decode/decode_i2c_spi.go",
+    "app/internal/decode/decode_manchester.go",
+    "app/internal/decode/decode_mil1553.go",
+    "app/internal/decode/decode_sent.go",
+    "app/internal/decode/decode_uart.go",
+    "app/internal/decode/decode_usbls.go",
+    "app/internal/decode/decode_test.go",
+    "app/internal/decode/decode_sent_test.go",
+    "app/internal/decode/decode_mil1553_test.go",
+    "app/internal/decode/decode_arinc429_test.go",
+    "app/internal/decode/decode_manchester_test.go",
+    "app/internal/decode/decode_canfd_test.go",
+    "app/internal/decode/decode_usbls_test.go",
+    "app/internal/decode/decode_flexray_test.go"
+  ],
+  "sourceSHA256": {
+    "app/internal/decode/decode.go": "6a251058499c8374bac7869ed4f556ec9f0422740fe3813d845135fdd1be0d95",
+    "app/internal/decode/decode_arinc429.go": "37c1e362a9d9c35f926b9ccf964edc44db520ebca47f674f13fe7d09e8f42d9d",
+    "app/internal/decode/decode_autodetect.go": "59ca413d4eb462d1898cd688116a8e6ea6e9ee6ca580855d94badc241e54cbba",
+    "app/internal/decode/decode_canfd.go": "d31b8d4502b04b95250bc282ec2b3003f814877d62ed5190fa65abe50a5d1a77",
+    "app/internal/decode/decode_flexray.go": "9ef7b649ce1446f6d9f977e9c0bb4621bdd56c4712106f9f84dd08704e167dc5",
+    "app/internal/decode/decode_i2c_spi.go": "1777b298d9c3d89b9d7436f5132a9ecae523b00d29c0b882c95decd511bca367",
+    "app/internal/decode/decode_manchester.go": "c300241374acb4e576a5fdc305edb8be2dd1521adce56a8b6c9fca03525fc27f",
+    "app/internal/decode/decode_mil1553.go": "06b5edbdf31ce18556966a38e3273507618baa36a7e6d73168d66f1bf9fe6958",
+    "app/internal/decode/decode_sent.go": "d6b55ffc311fe28cd95da0279253fa53ef29116fe7a075ca4934778f614e3dd0",
+    "app/internal/decode/decode_uart.go": "7d63b5748aa093e50ec07ac80f8423cf0c0f5ef8f6f1cc50f4d9ba82b7a4e41f",
+    "app/internal/decode/decode_usbls.go": "4a5ce39e1ea3742c01cc70eb164edf2eb80a657a6b4fa4185127ea30fc95dedb",
+    "app/internal/decode/decode_test.go": "95413f7585bee5e963ff69f363562b3047cdbd575cbd298152331a695468f6c6",
+    "app/internal/decode/decode_sent_test.go": "7e25ffb9e8e863789df716c72fc6a7cacdf685dd4564002e117d139588f851f5",
+    "app/internal/decode/decode_mil1553_test.go": "036c9aa7d19a3394f16953bc10df0c16395e75f98810840f6f19ebf871ac2358",
+    "app/internal/decode/decode_arinc429_test.go": "ad04b04a8960962571a70e026dc1d3ae3c3917c1ec01b67c6c490feb8cd9aae9",
+    "app/internal/decode/decode_manchester_test.go": "a395354f19328e48abf32380ca0d828352865492360ecb6bd82b2b02c42a3bb1",
+    "app/internal/decode/decode_canfd_test.go": "6908430cd9bcef8568bba40503ceec2e8b60c63b38a5549ba937924d3c5163d5",
+    "app/internal/decode/decode_usbls_test.go": "7117f1a4d6f2d3417286aad6269ba7b80b65f6511531c87c4d210d4f07d88c1f",
+    "app/internal/decode/decode_flexray_test.go": "2ffdf113c886c34d4dbbb812597424a5d1509066b722804e6dafdcc253f8c9e8"
+  },
+  "supportReads": [
+    {
+      "path": "app/internal/decode/decode_break_flexray_test.go",
+      "lines": [
+        1,
+        197
+      ],
+      "scope": "Frame/header/CRC builders and ctForExact; breaker tests not reviewed."
+    },
+    {
+      "path": "app/internal/decode/decode_break_manchester_test.go",
+      "lines": [
+        1,
+        84
+      ],
+      "scope": "bkBuild and padding dependencies; breaker tests not reviewed."
+    }
+  ],
+  "tests": {
+    "TestDecodeUARTRoundTrip": "pending",
+    "TestDecodeSPIRoundTrip": "pending",
+    "TestDecodeI2CRoundTrip": "pending",
+    "TestAutodetect": "pending",
+    "TestAutodetectAllProtocols": "pending",
+    "TestFmtByte": "pending",
+    "TestDecodeUARTFrameError": "pending",
+    "TestDecodeSENTRoundTrip": "pending",
+    "TestDecodeSENTTickOverride": "pending",
+    "TestDecodeSENTJitter": "pending",
+    "TestDecodeSENTMultiFramePause": "pending",
+    "TestDecodeSENTNoPanic": "pending",
+    "TestDecodeMIL1553RoundTrip": "pending",
+    "TestDecodeMIL1553ParityError": "pending",
+    "TestDecodeMIL1553NoPanic": "pending",
+    "TestDecodeARINC429RoundTrip": "pending",
+    "TestDecodeARINC429ParityError": "pending",
+    "TestDecodeARINC429NoPanic": "pending",
+    "TestDecodeManchesterRoundTrip": "pending",
+    "TestDecodeManchesterThomas": "pending",
+    "TestDecodeManchesterLSB": "pending",
+    "TestDecodeManchesterNoPanic": "pending",
+    "TestDecodeCANFDStandardRoundTrip": "pending",
+    "TestDecodeCANFDExtendedRoundTrip": "pending",
+    "TestDecodeCANFDInvertedPolarity": "pending",
+    "TestDecodeCANFDFDBestEffort": "pending",
+    "TestDecodeCANFDNoPanic": "pending",
+    "TestDecodeUSBLSRoundTrip": "pending",
+    "TestDecodeUSBLSNoPanic": "pending",
+    "TestDecodeFlexRayRoundTrip": "pending",
+    "TestDecodeFlexRayMultiFrame": "pending",
+    "TestDecodeFlexRayPartialAtStart": "pending",
+    "TestDecodeFlexRayNoPanic": "pending"
+  },
+  "findings": [
+    "Common slicer uses histogram-derived rails, a 20-code amplitude floor, and hysteresis for edges; logicAt uses raw threshold comparisons at rounded indices. Explicit threshold/timing validation differs between protocols.",
+    "UART and Manchester support 1..16-bit words; FmtByte masks hex/decimal/binary text to eight bits. SPI has no chip select and always packs eight-bit words. Zero-value SPI configuration is LSB-first. I2C implements first-byte seven-bit address extraction and uses neither colTimeS nor ten-bit addressing state.",
+    "Manchester splits at 2.5 periods, tries two phases with good-minus-four-times-violations scoring and idle-symmetry ties, and flags partial packed words. MIL1553 shares its cell sampler and exposes 16-bit words; parity-failed words can retain OK true.",
+    "ARINC uses a separate tri-level slicer and pulse-density gate. It exposes label/data/SSM plus raw bytes; SDI has no named span. Complete parity-failed words retain OK true.",
+    "SENT requires at least one matching CRC-4 but clamps out-of-range intermediate nibbles before later CRC calculation. A coding-error span may coexist with OK; bounded reproduction is pending.",
+    "Classic CAN records CRC/stuff errors as spans while retaining frame success. Delimiter values, ACK delimiter and EOF are not comprehensively validated; body-only frames can be retained. CAN-FD supports base-format data extraction only, returns before trailer validation and before the classic stuffErr rejection path. Extended CAN-FD is not implemented as a separate format.",
+    "USB uses one sampled line and heuristically segments at gaps above ten bit periods. It checks SYNC and PID complement but does not validate payload/token CRCs or differential SE0. Bad PID packets can retain OK true with error spans; data output includes uninterpreted CRC bytes.",
+    "FlexRay uses channel-A CRC initialization, header checks and byte-start phase resynchronization. Frame CRC defaults accepted and is checked only at exact header-implied byte length; shorter/longer data can retain OK based only on header CRC. Source comments overstate unconditional dual-CRC verification.",
+    "Auto-detection uses structural weighted scores and clock suppression, with first hypothesis retained on score ties. Its false-positive probability is not established by comments or these fixtures.",
+    "33 original ordinary tests cover selected synthetic round trips, formatting, protocol-name selection, parity flags and bounded seeded no-panic cases. CAN synthesis calls production CRC code; ARINC/header expected-field helpers mirror extraction. FlexRay fixtures repair only header CRC and can have mismatched payload lengths. No independent standards/electrical qualification is claimed.",
+    "Breaker, truth-vector, oracle, fuzz and JavaScript parity test files remain separate pending reviews; only support builders needed by these 33 tests have been read in two breaker files."
+  ],
+  "nextAction": "Attach scoped native evidence and characterize acceptance limits; continue remaining decoder test/parity/oracle review as the same subsystem batch."
+}

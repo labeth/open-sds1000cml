@@ -1,0 +1,71 @@
+Name:	general-release
+State:	S (sleeping)
+Tgid:	1728
+Pid:	1728
+PPid:	939
+TracerPid:	0
+Uid:	0	0	0	0
+Gid:	0	0	0	0
+FDSize:	32
+Groups:	
+VmPeak:	  576976 kB
+VmSize:	  575440 kB
+VmLck:	      16 kB
+VmPin:	       0 kB
+VmHWM:	   34428 kB
+VmRSS:	   30756 kB
+VmData:	  566308 kB
+VmStk:	     136 kB
+VmExe:	    4176 kB
+VmLib:	       0 kB
+VmPTE:	      56 kB
+VmSwap:	       0 kB
+Threads:	12
+SigQ:	0/981
+SigPnd:	0000000000000000
+ShdPnd:	0000000000000000
+SigBlk:	fffffffc2bba3a00
+SigIgn:	0000000000000000
+SigCgt:	fffffffd7fc1feff
+CapInh:	0000000000000000
+CapPrm:	ffffffffffffffff
+CapEff:	ffffffffffffffff
+CapBnd:	ffffffffffffffff
+Cpus_allowed:	1
+Cpus_allowed_list:	0
+voluntary_ctxt_switches:	5
+nonvoluntary_ctxt_switches:	32
+MemTotal:         125768 kB
+MemFree:           12496 kB
+Buffers:             356 kB
+Cached:            64780 kB
+SwapCached:            0 kB
+Active:            68488 kB
+Inactive:          28484 kB
+Active(anon):      31836 kB
+Inactive(anon):       76 kB
+Active(file):      36652 kB
+Inactive(file):    28408 kB
+Unevictable:          16 kB
+Mlocked:              16 kB
+SwapTotal:             0 kB
+SwapFree:              0 kB
+Dirty:                 0 kB
+Writeback:             0 kB
+AnonPages:         31880 kB
+Mapped:             7844 kB
+Shmem:                76 kB
+Slab:              11588 kB
+SReclaimable:       8732 kB
+SUnreclaim:         2856 kB
+KernelStack:         576 kB
+PageTables:          276 kB
+NFS_Unstable:          0 kB
+Bounce:                0 kB
+WritebackTmp:          0 kB
+CommitLimit:       62884 kB
+Committed_AS:     123164 kB
+VmallocTotal:     892928 kB
+VmallocUsed:       59744 kB
+VmallocChunk:     716796 kB
+[exit 0]

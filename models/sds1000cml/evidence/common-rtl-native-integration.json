@@ -1,0 +1,27 @@
+{
+  "status": "integrated-with-explicit-verification-limits",
+  "files": 10,
+  "moduleLinks": 16,
+  "newRequirements": [
+    "REQ-SDS-189",
+    "REQ-SDS-190",
+    "REQ-SDS-191",
+    "REQ-SDS-192"
+  ],
+  "cases": 5,
+  "passed": 5,
+  "nativeSummaries": 5,
+  "totalRTLCases": 121,
+  "totalNativeRTLSummaries": 57,
+  "checks": {
+    "exactBaselineAndTokens": "pass",
+    "strictConsistency": "pass",
+    "nativeAttachments": "pass",
+    "mcp": "pass",
+    "nonPDFPublication": "pass",
+    "pdf": "deferred by user",
+    "reproducibility": "not repeated for this batch; previous report predates common integration"
+  },
+  "remainingMissingRTLFiles": 14,
+  "scope": "Common digital simulation assertions only; retained source-derived draft contracts and explicit untested branches. Overall model completion remains unproven."
+}

@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-DECODE
 package decode
 
 import (
@@ -8,7 +9,9 @@ import (
 )
 
 // UARTCfg configures the UART decode. Baud=0 auto-infers; Bits default 8.
+// TRLC-LINKS: REQ-SDS-018
 type UARTCfg struct {
+	Inverted  bool // electrical low represents logical one (idle low)
 	Baud      int
 	Bits      int
 	Parity    string // none|even|odd
@@ -33,6 +36,7 @@ type UARTCfg struct {
 // so does the true bit — and the true bit is the wide one. If nothing
 // validates the input is genuinely ambiguous and the caller must set the baud
 // — that honesty is preserved. Mirrors decode.js inferUARTspb step for step.
+// TRLC-LINKS: REQ-SDS-018
 func inferUARTspb(S sliced) (float64, string) {
 	var gaps []float64
 	for k := 1; k < len(S.edges); k++ {
@@ -122,7 +126,18 @@ func inferUARTspb(S sliced) (float64, string) {
 }
 
 // DecodeUART decodes 8N1-style UART on one channel's codes (decode.js decodeUART).
+// TRLC-LINKS: REQ-SDS-018
 func DecodeUART(codes []uint8, colTimeS float64, cfg UARTCfg) Result {
+	if cfg.Inverted {
+		logical := make([]uint8, len(codes))
+		for i, code := range codes {
+			logical[i] = 255 - code
+		}
+		codes = logical
+		if cfg.HaveThr {
+			cfg.Threshold = 255 - cfg.Threshold
+		}
+	}
 	bits := cfg.Bits
 	if bits == 0 {
 		bits = 8

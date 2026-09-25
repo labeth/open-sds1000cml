@@ -1,0 +1,58 @@
+{"Time":"2026-09-23T04:43:42.78800369+02:00","Action":"start","Package":"open-sds/app/internal/web"}
+{"Time":"2026-09-23T04:43:42.790821868+02:00","Action":"run","Package":"open-sds/app/internal/web","Test":"TestBinframeJS"}
+{"Time":"2026-09-23T04:43:42.790842015+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestBinframeJS","Output":"=== RUN   TestBinframeJS\n"}
+{"Time":"2026-09-23T04:43:42.89579063+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestBinframeJS","Output":"    binframe_node_test.go:21: binframe.test.cjs output:\n"}
+{"Time":"2026-09-23T04:43:42.895806882+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestBinframeJS","Output":"        ok   native decodes\n"}
+{"Time":"2026-09-23T04:43:42.895809943+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestBinframeJS","Output":"        ok   native c1\n"}
+{"Time":"2026-09-23T04:43:42.895813648+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestBinframeJS","Output":"        ok   native c2\n"}
+{"Time":"2026-09-23T04:43:42.895815821+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestBinframeJS","Output":"        ok   deep decodes\n"}
+{"Time":"2026-09-23T04:43:42.895818099+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestBinframeJS","Output":"        ok   deep c1 margins\n"}
+{"Time":"2026-09-23T04:43:42.895820369+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestBinframeJS","Output":"        ok   deep c2 margins\n"}
+{"Time":"2026-09-23T04:43:42.895822501+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestBinframeJS","Output":"        ok   empty all -1\n"}
+{"Time":"2026-09-23T04:43:42.895827578+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestBinframeJS","Output":"        ok   env decodes\n"}
+{"Time":"2026-09-23T04:43:42.895829733+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestBinframeJS","Output":"        ok   env typed\n"}
+{"Time":"2026-09-23T04:43:42.895831911+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestBinframeJS","Output":"        ok   unchanged passes through\n"}
+{"Time":"2026-09-23T04:43:42.895834353+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestBinframeJS","Output":"        ok   unchanged rejects stray payload\n"}
+{"Time":"2026-09-23T04:43:42.895839213+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestBinframeJS","Output":"        ok   bad magic\n"}
+{"Time":"2026-09-23T04:43:42.895841637+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestBinframeJS","Output":"        ok   truncated\n"}
+{"Time":"2026-09-23T04:43:42.895843763+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestBinframeJS","Output":"        ok   short payload\n"}
+{"Time":"2026-09-23T04:43:42.895846013+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestBinframeJS","Output":"        ok   margins exceed cols\n"}
+{"Time":"2026-09-23T04:43:42.895848229+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestBinframeJS","Output":"        ok   env payload mismatch\n"}
+{"Time":"2026-09-23T04:43:42.895850411+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestBinframeJS","Output":"        ok   header overrun\n"}
+{"Time":"2026-09-23T04:43:42.895856575+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestBinframeJS","Output":"        ok   bad header json\n"}
+{"Time":"2026-09-23T04:43:42.895858717+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestBinframeJS","Output":"        ok   missing seq\n"}
+{"Time":"2026-09-23T04:43:42.89586096+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestBinframeJS","Output":"        ok   no shared buffers\n"}
+{"Time":"2026-09-23T04:43:42.895863164+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestBinframeJS","Output":"        ok   raw env decodes as c1/c2\n"}
+{"Time":"2026-09-23T04:43:42.89586539+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestBinframeJS","Output":"        ok   Q8 fractions and channel order\n"}
+{"Time":"2026-09-23T04:43:42.895867667+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestBinframeJS","Output":"        ok   Q8 truncated rejected\n"}
+{"Time":"2026-09-23T04:43:42.895869833+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestBinframeJS","Output":"        ok   Q8 format mismatch rejected\n"}
+{"Time":"2026-09-23T04:43:42.895871973+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestBinframeJS","Output":"        ALL PASS\n"}
+{"Time":"2026-09-23T04:43:42.89588002+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestBinframeJS","Output":"--- PASS: TestBinframeJS (0.11s)\n"}
+{"Time":"2026-09-23T04:43:42.895883045+02:00","Action":"pass","Package":"open-sds/app/internal/web","Test":"TestBinframeJS","Elapsed":0.11}
+{"Time":"2026-09-23T04:43:42.895887476+02:00","Action":"run","Package":"open-sds/app/internal/web","Test":"TestPeaksJS"}
+{"Time":"2026-09-23T04:43:42.895892451+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestPeaksJS","Output":"=== RUN   TestPeaksJS\n"}
+{"Time":"2026-09-23T04:43:43.021335809+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestPeaksJS","Output":"    peaks_node_test.go:21: peaks.test.cjs output:\n"}
+{"Time":"2026-09-23T04:43:43.02135685+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestPeaksJS","Output":"        ok  - found 4 peaks (\u003e=2)\n"}
+{"Time":"2026-09-23T04:43:43.021363067+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestPeaksJS","Output":"        ok  - peak list is frequency-ordered\n"}
+{"Time":"2026-09-23T04:43:43.021367367+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestPeaksJS","Output":"        ok  - strongest-two low tone ~= F1 (got 50781.13007361692, want 50781.25±2000)\n"}
+{"Time":"2026-09-23T04:43:43.021377601+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestPeaksJS","Output":"        ok  - strongest-two high tone ~= F2 (got 120118.82200236166, want 120117.1875±2000)\n"}
+{"Time":"2026-09-23T04:43:43.021384384+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestPeaksJS","Output":"        ok  - stable order across frames: 52,123 vs 52,123\n"}
+{"Time":"2026-09-23T04:43:43.021388281+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestPeaksJS","Output":"        ok  - selection stays on high tone after magnitude flip (got 120117.71038850684, want 120117.1875±2000)\n"}
+{"Time":"2026-09-23T04:43:43.021392591+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestPeaksJS","Output":"        ok  - selection did NOT jump to the low tone\n"}
+{"Time":"2026-09-23T04:43:43.021397278+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestPeaksJS","Output":"        ok  - picked a different peak (idx 1 -\u003e 0)\n"}
+{"Time":"2026-09-23T04:43:43.021401058+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestPeaksJS","Output":"        ok  - second pick landed on the low tone (got 50781.79657354432, want 50781.25±2000)\n"}
+{"Time":"2026-09-23T04:43:43.021404753+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestPeaksJS","Output":"        ok  - selFreq\u003c0 -\u003e no selection\n"}
+{"Time":"2026-09-23T04:43:43.021412153+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestPeaksJS","Output":"        ok  - empty peak list -\u003e no selection\n"}
+{"Time":"2026-09-23T04:43:43.02141691+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestPeaksJS","Output":"        ok  - flat signal -\u003e 0 peaks (0)\n"}
+{"Time":"2026-09-23T04:43:43.021420363+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestPeaksJS","Output":"        ok  - component() recovers the tone amplitude (ptp) (got 80.00000000000045, want 80±2)\n"}
+{"Time":"2026-09-23T04:43:43.021425424+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestPeaksJS","Output":"        ok  - component() isolates the tone, other frequency removed (max err 0.00)\n"}
+{"Time":"2026-09-23T04:43:43.021429165+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestPeaksJS","Output":"        ok  - component() tolerates gaps (-1)\n"}
+{"Time":"2026-09-23T04:43:43.021432793+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestPeaksJS","Output":"        ok  - component() fits a non-integer (9.8) cycle count (max err 0.50)\n"}
+{"Time":"2026-09-23T04:43:43.021436638+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestPeaksJS","Output":"        ok  - removing a sine carrier reveals the ~12ptp minor wave underneath (got 11.999999999999844, want 12±3)\n"}
+{"Time":"2026-09-23T04:43:43.021440088+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestPeaksJS","Output":"        \n"}
+{"Time":"2026-09-23T04:43:43.021443536+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestPeaksJS","Output":"        ALL PASS\n"}
+{"Time":"2026-09-23T04:43:43.021451161+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestPeaksJS","Output":"--- PASS: TestPeaksJS (0.13s)\n"}
+{"Time":"2026-09-23T04:43:43.021455827+02:00","Action":"pass","Package":"open-sds/app/internal/web","Test":"TestPeaksJS","Elapsed":0.13}
+{"Time":"2026-09-23T04:43:43.021466053+02:00","Action":"output","Package":"open-sds/app/internal/web","Output":"PASS\n"}
+{"Time":"2026-09-23T04:43:43.022229007+02:00","Action":"output","Package":"open-sds/app/internal/web","Output":"ok  \topen-sds/app/internal/web\t0.234s\n"}
+{"Time":"2026-09-23T04:43:43.022249739+02:00","Action":"pass","Package":"open-sds/app/internal/web","Elapsed":0.234}

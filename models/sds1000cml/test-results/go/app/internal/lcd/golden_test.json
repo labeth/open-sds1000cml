@@ -1,0 +1,38 @@
+{
+  "source": "app/internal/lcd/golden_test.go",
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "scope": "Reviewed Go test outcomes; passing assertions contribute partial requirement evidence.",
+  "sourceSHA256": "414ed523e7d9ce62d6dc52d297cd45801dded85a37e95add50091d273e2b34bc",
+  "logs": {
+    "test-runs/lcd-remaining.jsonl": "d6ce2cb6bce156d62f466c55519c6631ebc7cd08c7a1d79df877ce034480901e"
+  },
+  "tests": [
+    {
+      "name": "TestGoldenSuperresReview",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-021"
+      ]
+    },
+    {
+      "name": "TestGoldenSuperresReviewFFT",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-021",
+        "REQ-SDS-070"
+      ]
+    }
+  ],
+  "results": [
+    {
+      "requirement": "REQ-SDS-021",
+      "status": "partial",
+      "notes": "2 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    },
+    {
+      "requirement": "REQ-SDS-070",
+      "status": "partial",
+      "notes": "1 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    }
+  ]
+}

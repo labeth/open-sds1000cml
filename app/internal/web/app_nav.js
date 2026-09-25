@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-WEB-APP-NAV
 // app_nav.js — navigator strip drawing (classic script; shares app.js globals).
 
 // drawSrGate overlays the super-res gate markers (magenta, matching the device)
@@ -5,9 +6,11 @@
 // this frame's record fraction (srGateRF) then into the view, so they stay pinned
 // to the trigger-locked signal through zoom/pan and the edge's frame-to-frame wander.
 "use strict";
+// TRLC-LINKS: REQ-SDS-071
 function drawSrGate() {
   if (!srGate.on || view.mode !== "YT") return;
   const g = ctx, span = view.win.b - view.win.a || 1;
+  // TRLC-LINKS: REQ-SDS-071
   const xf = f => (f - view.win.a) / span * CW;
   const xa = xf(srGateRF(Math.min(srGate.a, srGate.b))), xb = xf(srGateRF(Math.max(srGate.a, srGate.b)));
   g.save();
@@ -22,6 +25,7 @@ function drawSrGate() {
 }
 
 // ---- navigator overview strip ----
+// TRLC-LINKS: REQ-SDS-071
 function drawNavTrace(cols, color) {
   if (!cols || !cols.length) return;
   const n = cols.length;
@@ -40,6 +44,7 @@ function drawNavTrace(cols, color) {
 // The navigator overview redraws fully each frame on the GPU (no offscreen-canvas
 // cache: a full-record downsample is a few hundred batched fillRects — cheap on
 // WebGL, and a GL canvas can't be blit-cached the way a 2D one was).
+// TRLC-LINKS: REQ-SDS-071
 function drawNavFFT() {
   for (const ch of [1, 2]) {
     if (!(ch === 1 ? view.c1 : view.c2)) continue;
@@ -67,6 +72,7 @@ function drawNavFFT() {
   navCtx.fillRect(x0 - 1, 0, 2, NH); navCtx.fillRect(x1 - 1, 0, 2, NH);
 }
 
+// TRLC-LINKS: REQ-SDS-071
 function drawNavYT() {
   navCtx.strokeStyle = "#182430"; navCtx.lineWidth = 1;
   navCtx.beginPath(); navCtx.moveTo(0, NH / 2 + .5); navCtx.lineTo(NW, NH / 2 + .5); navCtx.stroke();
@@ -84,6 +90,7 @@ function drawNavYT() {
   navCtx.fillRect(x0 - 1, 0, 2, NH); navCtx.fillRect(x1 - 1, 0, 2, NH);
 }
 
+// TRLC-LINKS: REQ-SDS-071
 function drawNav() {
   if (nav.style.display === "none" || !NAVR || NAVR.lost()) return;
   NAVR.begin("#05080c");            // clears to the navigator background
@@ -96,6 +103,7 @@ function drawNav() {
 // what goes where in the small window; the main window shows the detail. Uses
 // full-record nav coords (not the zoom window), colour-coded by kind, with the
 // byte text drawn wherever a token is wide enough.
+// TRLC-LINKS: REQ-SDS-071
 function drawNavDecode() {
   if (dcfg.proto === "off" || !frame || frame.is_env || !frame.c1) return;
   const r = dcfg.result;
@@ -103,6 +111,7 @@ function drawNavDecode() {
   const n = frame.c1.length, laneH = 13 * dpr, laneY = NH - laneH;
   navCtx.fillStyle = "rgba(5,8,12,0.66)"; navCtx.fillRect(0, laneY, NW, laneH);
   navCtx.textBaseline = "middle"; navCtx.textAlign = "center"; navCtx.font = "bold " + (9 * dpr) + "px system-ui";
+  // TRLC-LINKS: REQ-SDS-071
   const nx = i => i / (n - 1) * NW, spans = r.spans, cy = laneY + laneH / 2;
   for (let k = 0; k < spans.length; k++) {
     const s = spans[k], col = DECCOL[s.kind] || "#7c8894";

@@ -1,0 +1,3 @@
+capture_engine.v SHA256 b5c8510c2c5e9579c3197d1544a6cfce248bdc48f87ccb64d335f31019525544
+PASS backend mode: 10000 accepted/rejected/reset cycles preserve immediate selection
+/tmp/acq-mode-zg858y26/tb.v:19: $finish called at 40002100 (1ps)

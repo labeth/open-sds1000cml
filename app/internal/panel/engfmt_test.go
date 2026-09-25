@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-PANEL
 package panel
 
 import (
@@ -8,6 +9,7 @@ import (
 // Menu labels (holdoff, pulse width, etc.) must not print scientific notation
 // at a prefix boundary — the same 999.9->"1e+03" rounding trap fmtEng shares
 // with the web/LCD formatters.
+// TRLC-LINKS: REQ-SDS-136
 func TestFmtEngNoScientific(t *testing.T) {
 	for _, v := range []float64{999.9e-9, 1e-6, 999.6e-6, 0.9999, 999.9e-3, 100e-9, 2e-3, 1.0} {
 		s := fmtEng(v, "s")

@@ -1,0 +1,8 @@
+#!/bin/sh
+set -eu
+bundle=/usr/bin/siglent/usr/media/U-disk0/agent-slots/staging
+"$bundle/panel-loader" load "$bundle/panel-sram-current.rbf"
+export SCOPE_CAPTURE=default-sram
+export SCOPE_EDMA=1
+export SCOPE_INTERLEAVE_CAL="$bundle/panel-interleave-cal.json"
+exec "$bundle/panel-sram-app"

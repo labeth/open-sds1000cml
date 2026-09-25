@@ -1,0 +1,46 @@
+{"Time":"2026-09-23T01:40:22.825947564+02:00","Action":"start","Package":"open-sds/ota/internal/agent"}
+{"Time":"2026-09-23T01:40:22.838533885+02:00","Action":"run","Package":"open-sds/ota/internal/agent","Test":"TestSplitCIDR"}
+{"Time":"2026-09-23T01:40:22.838560717+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestSplitCIDR","Output":"=== RUN   TestSplitCIDR\n"}
+{"Time":"2026-09-23T01:40:22.838756512+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestSplitCIDR","Output":"--- PASS: TestSplitCIDR (0.00s)\n"}
+{"Time":"2026-09-23T01:40:22.838768764+02:00","Action":"pass","Package":"open-sds/ota/internal/agent","Test":"TestSplitCIDR","Elapsed":0}
+{"Time":"2026-09-23T01:40:22.838808936+02:00","Action":"run","Package":"open-sds/ota/internal/agent","Test":"TestMatchesFactoryName"}
+{"Time":"2026-09-23T01:40:22.838815368+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestMatchesFactoryName","Output":"=== RUN   TestMatchesFactoryName\n"}
+{"Time":"2026-09-23T01:40:22.839595182+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestMatchesFactoryName","Output":"--- PASS: TestMatchesFactoryName (0.00s)\n"}
+{"Time":"2026-09-23T01:40:22.839605246+02:00","Action":"pass","Package":"open-sds/ota/internal/agent","Test":"TestMatchesFactoryName","Elapsed":0}
+{"Time":"2026-09-23T01:40:22.839652246+02:00","Action":"run","Package":"open-sds/ota/internal/agent","Test":"TestFactoryCandidatesEmptyWhenNobodyHoldsDevice"}
+{"Time":"2026-09-23T01:40:22.839659285+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestFactoryCandidatesEmptyWhenNobodyHoldsDevice","Output":"=== RUN   TestFactoryCandidatesEmptyWhenNobodyHoldsDevice\n"}
+{"Time":"2026-09-23T01:40:22.963268514+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestFactoryCandidatesEmptyWhenNobodyHoldsDevice","Output":"--- PASS: TestFactoryCandidatesEmptyWhenNobodyHoldsDevice (0.12s)\n"}
+{"Time":"2026-09-23T01:40:22.963302234+02:00","Action":"pass","Package":"open-sds/ota/internal/agent","Test":"TestFactoryCandidatesEmptyWhenNobodyHoldsDevice","Elapsed":0.12}
+{"Time":"2026-09-23T01:40:22.963315546+02:00","Action":"run","Package":"open-sds/ota/internal/agent","Test":"TestTakeoverResultSteps"}
+{"Time":"2026-09-23T01:40:22.963321013+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestTakeoverResultSteps","Output":"=== RUN   TestTakeoverResultSteps\n"}
+{"Time":"2026-09-23T01:40:22.963379343+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestTakeoverResultSteps","Output":"--- PASS: TestTakeoverResultSteps (0.00s)\n"}
+{"Time":"2026-09-23T01:40:22.963389417+02:00","Action":"pass","Package":"open-sds/ota/internal/agent","Test":"TestTakeoverResultSteps","Elapsed":0}
+{"Time":"2026-09-23T01:40:22.963415435+02:00","Action":"run","Package":"open-sds/ota/internal/agent","Test":"TestTakeoverIdempotentWhenAlreadyTakenOver"}
+{"Time":"2026-09-23T01:40:22.963420804+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestTakeoverIdempotentWhenAlreadyTakenOver","Output":"=== RUN   TestTakeoverIdempotentWhenAlreadyTakenOver\n"}
+{"Time":"2026-09-23T01:40:22.964239085+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestTakeoverIdempotentWhenAlreadyTakenOver","Output":"[agent] 2026/09/23 01:40:22 watchdog acquired (/tmp/TestTakeoverIdempotentWhenAlreadyTakenOver2889936529/001/watchdog), petting every 15s\n"}
+{"Time":"2026-09-23T01:40:23.064597888+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestTakeoverIdempotentWhenAlreadyTakenOver","Output":"--- PASS: TestTakeoverIdempotentWhenAlreadyTakenOver (0.10s)\n"}
+{"Time":"2026-09-23T01:40:23.06462708+02:00","Action":"pass","Package":"open-sds/ota/internal/agent","Test":"TestTakeoverIdempotentWhenAlreadyTakenOver","Elapsed":0.1}
+{"Time":"2026-09-23T01:40:23.064695065+02:00","Action":"run","Package":"open-sds/ota/internal/agent","Test":"TestTakeoverHappyPathOrderOfOperations"}
+{"Time":"2026-09-23T01:40:23.064703656+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestTakeoverHappyPathOrderOfOperations","Output":"=== RUN   TestTakeoverHappyPathOrderOfOperations\n"}
+{"Time":"2026-09-23T01:40:23.302600076+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestTakeoverHappyPathOrderOfOperations","Output":"[agent] 2026/09/23 01:40:23 factory SAST? -\u003e \"SAST STOP\"\n"}
+{"Time":"2026-09-23T01:40:23.93343404+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestTakeoverHappyPathOrderOfOperations","Output":"[agent] 2026/09/23 01:40:23 event takeover.done: map[killed:1]\n"}
+{"Time":"2026-09-23T01:40:23.933552992+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestTakeoverHappyPathOrderOfOperations","Output":"[agent] 2026/09/23 01:40:23 watchdog acquired (/tmp/TestTakeoverHappyPathOrderOfOperations4058574405/001/watchdog.dev), petting every 15s\n"}
+{"Time":"2026-09-23T01:40:23.933820924+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestTakeoverHappyPathOrderOfOperations","Output":"--- PASS: TestTakeoverHappyPathOrderOfOperations (0.87s)\n"}
+{"Time":"2026-09-23T01:40:23.933832185+02:00","Action":"pass","Package":"open-sds/ota/internal/agent","Test":"TestTakeoverHappyPathOrderOfOperations","Elapsed":0.87}
+{"Time":"2026-09-23T01:40:23.933906472+02:00","Action":"run","Package":"open-sds/ota/internal/agent","Test":"TestTakeoverRefusesWhenFactoryWontIdle"}
+{"Time":"2026-09-23T01:40:23.933913019+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestTakeoverRefusesWhenFactoryWontIdle","Output":"=== RUN   TestTakeoverRefusesWhenFactoryWontIdle\n"}
+{"Time":"2026-09-23T01:40:24.162463292+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestTakeoverRefusesWhenFactoryWontIdle","Output":"[agent] 2026/09/23 01:40:24 factory SAST? -\u003e \"SAST TRIG\"\n"}
+{"Time":"2026-09-23T01:40:24.763819572+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestTakeoverRefusesWhenFactoryWontIdle","Output":"--- PASS: TestTakeoverRefusesWhenFactoryWontIdle (0.83s)\n"}
+{"Time":"2026-09-23T01:40:24.763851125+02:00","Action":"pass","Package":"open-sds/ota/internal/agent","Test":"TestTakeoverRefusesWhenFactoryWontIdle","Elapsed":0.83}
+{"Time":"2026-09-23T01:40:24.763894718+02:00","Action":"run","Package":"open-sds/ota/internal/agent","Test":"TestTakeoverRefusesWhenFactoryStopUnreachable"}
+{"Time":"2026-09-23T01:40:24.763901653+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestTakeoverRefusesWhenFactoryStopUnreachable","Output":"=== RUN   TestTakeoverRefusesWhenFactoryStopUnreachable\n"}
+{"Time":"2026-09-23T01:40:25.009027307+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestTakeoverRefusesWhenFactoryStopUnreachable","Output":"--- PASS: TestTakeoverRefusesWhenFactoryStopUnreachable (0.25s)\n"}
+{"Time":"2026-09-23T01:40:25.009051501+02:00","Action":"pass","Package":"open-sds/ota/internal/agent","Test":"TestTakeoverRefusesWhenFactoryStopUnreachable","Elapsed":0.25}
+{"Time":"2026-09-23T01:40:25.009096789+02:00","Action":"run","Package":"open-sds/ota/internal/agent","Test":"TestTakeoverForcePartialFailureStillReassertsNetwork"}
+{"Time":"2026-09-23T01:40:25.009104537+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestTakeoverForcePartialFailureStillReassertsNetwork","Output":"=== RUN   TestTakeoverForcePartialFailureStillReassertsNetwork\n"}
+{"Time":"2026-09-23T01:40:26.144369832+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestTakeoverForcePartialFailureStillReassertsNetwork","Output":"[agent] 2026/09/23 01:40:26 event takeover.done: map[killed:1]\n"}
+{"Time":"2026-09-23T01:40:26.144688613+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestTakeoverForcePartialFailureStillReassertsNetwork","Output":"--- PASS: TestTakeoverForcePartialFailureStillReassertsNetwork (1.14s)\n"}
+{"Time":"2026-09-23T01:40:26.144709995+02:00","Action":"pass","Package":"open-sds/ota/internal/agent","Test":"TestTakeoverForcePartialFailureStillReassertsNetwork","Elapsed":1.14}
+{"Time":"2026-09-23T01:40:26.144830392+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Output":"PASS\n"}
+{"Time":"2026-09-23T01:40:27.148340325+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Output":"ok  \topen-sds/ota/internal/agent\t4.322s\n"}
+{"Time":"2026-09-23T01:40:27.148358792+02:00","Action":"pass","Package":"open-sds/ota/internal/agent","Elapsed":4.322}

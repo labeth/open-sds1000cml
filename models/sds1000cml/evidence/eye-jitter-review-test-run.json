@@ -1,0 +1,915 @@
+{
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "status": "executed-integration-pending",
+  "result": "pass",
+  "sourceSHA256": {
+    "app/internal/web/app_eye.js": "7b89ccacc0bdf6fd0305b2e4002b9d8e650ac639a2bba219f67a7ef20ff6f090",
+    "app/internal/web/eyejitter.js": "8c6a41fec7ffb9c2dc2d4b87f03c8030aea39ec073855eb4f20284bcdbee09c8",
+    "app/internal/web/eyejitter_analysis.js": "b87f7a1bf044ba509cd72710fe6f945510336c66602de79f4804398c4406b570",
+    "app/internal/web/eyejitter.test.cjs": "395cc277830857d04c354d0557976bffd1c28f41b8e7e3a0d053ca88c822ca23",
+    "app/internal/web/eyejitter_breaker.cjs": "3e6997d5dfaaeb1fbdb5dfb38d3d0bb62a8dcfc127dde5147f2242b573073fa9"
+  },
+  "runnerSHA256": "d1edd8d37610008c6a863b5482ddbea7fb7f829a9304fe67480d80696a85504d",
+  "nodeVersion": "v22.20.0",
+  "cases": [
+    {
+      "id": "original-suite",
+      "command": [
+        "node",
+        "eyejitter.test.cjs"
+      ],
+      "exitCode": 0,
+      "elapsedSeconds": 0.462,
+      "log": "evidence/test-runs/eye-jitter-original-suite.log",
+      "logSHA256": "733e94392e7daedd50e34d7ee91bdcedf08bc47b5dbdddc440e1b19ca48d4fba",
+      "result": "pass"
+    },
+    {
+      "id": "breaker-50",
+      "command": [
+        "node",
+        "eyejitter_breaker.cjs",
+        "0",
+        "50",
+        "--json",
+        "families.json"
+      ],
+      "exitCode": 0,
+      "elapsedSeconds": 2.107,
+      "log": "evidence/test-runs/eye-jitter-breaker-50.log",
+      "logSHA256": "002ab946e783b230b61c8d02280f1ea4e0d998c81a8f52c60debf55b2e22c151",
+      "result": "pass"
+    }
+  ],
+  "families": [
+    {
+      "fam": 0,
+      "name": "prbs7-clean",
+      "fails": [],
+      "stats": {
+        "locked": 20,
+        "rejected": 0,
+        "ms": 72,
+        "ui": 100,
+        "tieRmsNs": 0.083,
+        "djNs": 0,
+        "rjNs": 0.099,
+        "pkHz": 292969,
+        "pkNs": 0.02,
+        "eyeH": 224
+      }
+    },
+    {
+      "fam": 1,
+      "name": "prbs15-clean",
+      "fails": [],
+      "stats": {
+        "locked": 20,
+        "rejected": 0,
+        "ms": 54,
+        "ui": 100,
+        "tieRmsNs": 0.092,
+        "djNs": 0,
+        "rjNs": 0.101,
+        "pkHz": 185547,
+        "pkNs": 0.03,
+        "eyeH": 224
+      }
+    },
+    {
+      "fam": 2,
+      "name": "uart-framed",
+      "fails": [],
+      "stats": {
+        "locked": 20,
+        "rejected": 0,
+        "ms": 31,
+        "ui": 100,
+        "tieRmsNs": 0.088,
+        "djNs": 0,
+        "rjNs": 0.098,
+        "pkHz": 205078,
+        "pkNs": 0.03,
+        "eyeH": 224
+      }
+    },
+    {
+      "fam": 3,
+      "name": "burst-idle",
+      "fails": [],
+      "stats": {
+        "locked": 20,
+        "rejected": 0,
+        "ms": 26,
+        "ui": 100,
+        "tieRmsNs": 0.089,
+        "djNs": 0,
+        "rjNs": 0.11,
+        "pkHz": 0,
+        "pkNs": 0,
+        "eyeH": 224
+      }
+    },
+    {
+      "fam": 4,
+      "name": "clock-50",
+      "fails": [],
+      "stats": {
+        "locked": 20,
+        "rejected": 0,
+        "ms": 40,
+        "ui": 100,
+        "tieRmsNs": 0.091,
+        "djNs": 0,
+        "rjNs": 0.099,
+        "pkHz": 615234,
+        "pkNs": 0.02,
+        "eyeH": 224
+      }
+    },
+    {
+      "fam": 5,
+      "name": "sparse-pulses",
+      "fails": [],
+      "stats": {
+        "locked": 20,
+        "rejected": 0,
+        "ms": 23,
+        "ui": 100,
+        "tieRmsNs": 0.081,
+        "djNs": 0,
+        "rjNs": 0.086,
+        "pkHz": 0,
+        "pkNs": 0,
+        "eyeH": 224
+      }
+    },
+    {
+      "fam": 6,
+      "name": "ui-frac-73.4",
+      "fails": [],
+      "stats": {
+        "locked": 20,
+        "rejected": 0,
+        "ms": 33,
+        "ui": 73.4,
+        "tieRmsNs": 0.088,
+        "djNs": 0,
+        "rjNs": 0.098,
+        "pkHz": 106437,
+        "pkNs": 0.02,
+        "eyeH": 224
+      }
+    },
+    {
+      "fam": 7,
+      "name": "ui-frac-131.7",
+      "fails": [],
+      "stats": {
+        "locked": 20,
+        "rejected": 0,
+        "ms": 28,
+        "ui": 131.7,
+        "tieRmsNs": 0.084,
+        "djNs": 0,
+        "rjNs": 0.091,
+        "pkHz": 74151,
+        "pkNs": 0.03,
+        "eyeH": 224
+      }
+    },
+    {
+      "fam": 8,
+      "name": "ui-tiny-6",
+      "fails": [],
+      "stats": {
+        "locked": 20,
+        "rejected": 0,
+        "ms": 71,
+        "ui": 6,
+        "tieRmsNs": 0.019,
+        "djNs": 0,
+        "rjNs": 0.02,
+        "pkHz": 3092448,
+        "pkNs": 0,
+        "eyeH": null
+      }
+    },
+    {
+      "fam": 9,
+      "name": "ui-tiny-4",
+      "fails": [],
+      "stats": {
+        "locked": 20,
+        "rejected": 0,
+        "ms": 70,
+        "ui": 4,
+        "tieRmsNs": 0.012,
+        "djNs": 0,
+        "rjNs": 0.013,
+        "pkHz": 2685547,
+        "pkNs": 0,
+        "eyeH": null
+      }
+    },
+    {
+      "fam": 10,
+      "name": "ui-small-10",
+      "fails": [],
+      "stats": {
+        "locked": 20,
+        "rejected": 0,
+        "ms": 55,
+        "ui": 10,
+        "tieRmsNs": 0.037,
+        "djNs": 0,
+        "rjNs": 0.041,
+        "pkHz": 390625,
+        "pkNs": 0.01,
+        "eyeH": 216
+      }
+    },
+    {
+      "fam": 11,
+      "name": "ui-small-25",
+      "fails": [],
+      "stats": {
+        "locked": 20,
+        "rejected": 0,
+        "ms": 37,
+        "ui": 25,
+        "tieRmsNs": 0.061,
+        "djNs": 0,
+        "rjNs": 0.073,
+        "pkHz": 312500,
+        "pkNs": 0.01,
+        "eyeH": 220
+      }
+    },
+    {
+      "fam": 12,
+      "name": "ui-huge-2000",
+      "fails": [],
+      "stats": {
+        "locked": 16,
+        "rejected": 4,
+        "ms": 26,
+        "ui": 2000,
+        "tieRmsNs": 0.068,
+        "djNs": 0,
+        "rjNs": 0,
+        "pkHz": 0,
+        "pkNs": 0,
+        "eyeH": 224
+      }
+    },
+    {
+      "fam": 13,
+      "name": "ui-odd-997",
+      "fails": [],
+      "stats": {
+        "locked": 19,
+        "rejected": 1,
+        "ms": 20,
+        "ui": 997,
+        "tieRmsNs": 0.079,
+        "djNs": 0,
+        "rjNs": 0,
+        "pkHz": 0,
+        "pkNs": 0,
+        "eyeH": 224
+      }
+    },
+    {
+      "fam": 14,
+      "name": "sq-5samp",
+      "fails": [],
+      "stats": {
+        "locked": 20,
+        "rejected": 0,
+        "ms": 40,
+        "ui": 100,
+        "tieRmsNs": 9.932,
+        "djNs": 19.62,
+        "rjNs": 1.233,
+        "pkHz": 156241,
+        "pkNs": 12.33,
+        "eyeH": 224
+      }
+    },
+    {
+      "fam": 15,
+      "name": "sq-1samp",
+      "fails": [],
+      "stats": {
+        "locked": 20,
+        "rejected": 0,
+        "ms": 28,
+        "ui": 100,
+        "tieRmsNs": 1.99,
+        "djNs": 3.94,
+        "rjNs": 0.255,
+        "pkHz": 156248,
+        "pkNs": 2.47,
+        "eyeH": 224
+      }
+    },
+    {
+      "fam": 16,
+      "name": "sq-subsample",
+      "fails": [],
+      "stats": {
+        "locked": 20,
+        "rejected": 0,
+        "ms": 27,
+        "ui": 100,
+        "tieRmsNs": 0.799,
+        "djNs": 1.58,
+        "rjNs": 0.133,
+        "pkHz": 156249,
+        "pkNs": 0.99,
+        "eyeH": 224
+      }
+    },
+    {
+      "fam": 17,
+      "name": "sq-fast-jp8",
+      "fails": [],
+      "stats": {
+        "locked": 20,
+        "rejected": 0,
+        "ms": 29,
+        "ui": 100,
+        "tieRmsNs": 5.974,
+        "djNs": 11.87,
+        "rjNs": 0.635,
+        "pkHz": 625026,
+        "pkNs": 5.2,
+        "eyeH": 224
+      }
+    },
+    {
+      "fam": 18,
+      "name": "sq-slow-jp256",
+      "fails": [],
+      "stats": {
+        "locked": 20,
+        "rejected": 0,
+        "ms": 29,
+        "ui": 100.04,
+        "tieRmsNs": 3.159,
+        "djNs": 0,
+        "rjNs": 3.456,
+        "pkHz": 39046,
+        "pkNs": 4.22,
+        "eyeH": 224
+      }
+    },
+    {
+      "fam": 19,
+      "name": "sq-frac-ui",
+      "fails": [],
+      "stats": {
+        "locked": 20,
+        "rejected": 0,
+        "ms": 31,
+        "ui": 73.4,
+        "tieRmsNs": 5.97,
+        "djNs": 11.82,
+        "rjNs": 0.697,
+        "pkHz": 212865,
+        "pkNs": 7.4,
+        "eyeH": 224
+      }
+    },
+    {
+      "fam": 20,
+      "name": "sin-5samp",
+      "fails": [],
+      "stats": {
+        "locked": 20,
+        "rejected": 0,
+        "ms": 29,
+        "ui": 100,
+        "tieRmsNs": 7.077,
+        "djNs": 0,
+        "rjNs": 10.341,
+        "pkHz": 156255,
+        "pkNs": 9.63,
+        "eyeH": 224
+      }
+    },
+    {
+      "fam": 21,
+      "name": "sin-1samp",
+      "fails": [],
+      "stats": {
+        "locked": 20,
+        "rejected": 0,
+        "ms": 29,
+        "ui": 100,
+        "tieRmsNs": 1.421,
+        "djNs": 0,
+        "rjNs": 2.06,
+        "pkHz": 156252,
+        "pkNs": 1.93,
+        "eyeH": 224
+      }
+    },
+    {
+      "fam": 22,
+      "name": "sin-fast-jp8",
+      "fails": [],
+      "stats": {
+        "locked": 20,
+        "rejected": 0,
+        "ms": 27,
+        "ui": 100,
+        "tieRmsNs": 4.223,
+        "djNs": 0,
+        "rjNs": 6.214,
+        "pkHz": 624986,
+        "pkNs": 3.99,
+        "eyeH": 224
+      }
+    },
+    {
+      "fam": 23,
+      "name": "sin-slow-jp512",
+      "fails": [],
+      "stats": {
+        "locked": 20,
+        "rejected": 0,
+        "ms": 28,
+        "ui": 100.01,
+        "tieRmsNs": 1.176,
+        "djNs": 0,
+        "rjNs": 1.335,
+        "pkHz": 29294,
+        "pkNs": 1.31,
+        "eyeH": 224
+      }
+    },
+    {
+      "fam": 24,
+      "name": "rj-0.5samp",
+      "fails": [],
+      "stats": {
+        "locked": 20,
+        "rejected": 0,
+        "ms": 32,
+        "ui": 100,
+        "tieRmsNs": 1.016,
+        "djNs": 0,
+        "rjNs": 1.03,
+        "pkHz": 117188,
+        "pkNs": 0.34,
+        "eyeH": 224
+      }
+    },
+    {
+      "fam": 25,
+      "name": "rj-2samp",
+      "fails": [],
+      "stats": {
+        "locked": 20,
+        "rejected": 0,
+        "ms": 32,
+        "ui": 100,
+        "tieRmsNs": 3.904,
+        "djNs": 0,
+        "rjNs": 3.993,
+        "pkHz": 185551,
+        "pkNs": 1.02,
+        "eyeH": 224
+      }
+    },
+    {
+      "fam": 26,
+      "name": "rj-8samp-heavy",
+      "fails": [],
+      "stats": {
+        "locked": 19,
+        "rejected": 1,
+        "ms": 37,
+        "ui": 99.96,
+        "tieRmsNs": 19.082,
+        "djNs": 0,
+        "rjNs": 16.409,
+        "pkHz": 39062,
+        "pkNs": 6.87,
+        "eyeH": 196
+      }
+    },
+    {
+      "fam": 27,
+      "name": "dcd-2samp",
+      "fails": [],
+      "stats": {
+        "locked": 20,
+        "rejected": 0,
+        "ms": 33,
+        "ui": 100,
+        "tieRmsNs": 3.998,
+        "djNs": 7.99,
+        "rjNs": 0.1,
+        "pkHz": 1181634,
+        "pkNs": 0.81,
+        "eyeH": 224
+      }
+    },
+    {
+      "fam": 28,
+      "name": "dcd-6samp",
+      "fails": [],
+      "stats": {
+        "locked": 20,
+        "rejected": 0,
+        "ms": 33,
+        "ui": 100,
+        "tieRmsNs": 12,
+        "djNs": 24,
+        "rjNs": 0.143,
+        "pkHz": 1181640,
+        "pkNs": 2.42,
+        "eyeH": 224
+      }
+    },
+    {
+      "fam": 29,
+      "name": "isi-4samp",
+      "fails": [],
+      "stats": {
+        "locked": 20,
+        "rejected": 0,
+        "ms": 29,
+        "ui": 100,
+        "tieRmsNs": 2.1,
+        "djNs": 2.4,
+        "rjNs": 1.006,
+        "pkHz": 39062,
+        "pkNs": 0.77,
+        "eyeH": 224
+      }
+    },
+    {
+      "fam": 30,
+      "name": "push-jitter-0.3ui",
+      "fails": [],
+      "stats": {
+        "locked": 0,
+        "rejected": 20,
+        "ms": 27
+      }
+    },
+    {
+      "fam": 31,
+      "name": "push-slowrise-half-ui",
+      "fails": [],
+      "stats": {
+        "locked": 20,
+        "rejected": 0,
+        "ms": 51,
+        "ui": 100,
+        "tieRmsNs": 0.495,
+        "djNs": 0,
+        "rjNs": 0.595,
+        "pkHz": 107423,
+        "pkNs": 0.13,
+        "eyeH": 208
+      }
+    },
+    {
+      "fam": 32,
+      "name": "push-noise-quarter-swing",
+      "fails": [],
+      "stats": {
+        "locked": 18,
+        "rejected": 2,
+        "ms": 48,
+        "ui": 100,
+        "tieRmsNs": 1.241,
+        "djNs": 0,
+        "rjNs": 1.246,
+        "pkHz": 78126,
+        "pkNs": 0.27,
+        "eyeH": 169
+      }
+    },
+    {
+      "fam": 33,
+      "name": "push-small-swing",
+      "fails": [],
+      "stats": {
+        "locked": 20,
+        "rejected": 0,
+        "ms": 31,
+        "ui": 100,
+        "tieRmsNs": 0.519,
+        "djNs": 0,
+        "rjNs": 0.612,
+        "pkHz": 166016,
+        "pkNs": 0.14,
+        "eyeH": 34
+      }
+    },
+    {
+      "fam": 34,
+      "name": "push-tiny-ui-jitter",
+      "fails": [],
+      "stats": {
+        "locked": 20,
+        "rejected": 0,
+        "ms": 64,
+        "ui": 6,
+        "tieRmsNs": 1.998,
+        "djNs": 3.99,
+        "rjNs": 0.111,
+        "pkHz": 2604200,
+        "pkNs": 2.47,
+        "eyeH": 179
+      }
+    },
+    {
+      "fam": 35,
+      "name": "wander-baseline",
+      "fails": [],
+      "stats": {
+        "locked": 20,
+        "rejected": 0,
+        "ms": 41,
+        "ui": 100,
+        "tieRmsNs": 4.028,
+        "djNs": 0,
+        "rjNs": 2.918,
+        "pkHz": 1875003,
+        "pkNs": 0.44,
+        "eyeH": 152
+      }
+    },
+    {
+      "fam": 36,
+      "name": "am-20pct",
+      "fails": [],
+      "stats": {
+        "locked": 18,
+        "rejected": 2,
+        "ms": 54,
+        "ui": 99.86,
+        "tieRmsNs": 13.143,
+        "djNs": 0,
+        "rjNs": 2.283,
+        "pkHz": 1181642,
+        "pkNs": 0.29,
+        "eyeH": 91
+      }
+    },
+    {
+      "fam": 37,
+      "name": "clip-rails",
+      "fails": [],
+      "stats": {
+        "locked": 20,
+        "rejected": 0,
+        "ms": 32,
+        "ui": 100,
+        "tieRmsNs": 0.088,
+        "djNs": 0,
+        "rjNs": 0.098,
+        "pkHz": 126953,
+        "pkNs": 0.03,
+        "eyeH": 205
+      }
+    },
+    {
+      "fam": 38,
+      "name": "dropout-idle",
+      "fails": [],
+      "stats": {
+        "locked": 20,
+        "rejected": 0,
+        "ms": 36,
+        "ui": 100,
+        "tieRmsNs": 4.752,
+        "djNs": 0,
+        "rjNs": 0.22,
+        "pkHz": 39062,
+        "pkNs": 3.17,
+        "eyeH": 224
+      }
+    },
+    {
+      "fam": 39,
+      "name": "uart-jitter",
+      "fails": [],
+      "stats": {
+        "locked": 20,
+        "rejected": 0,
+        "ms": 33,
+        "ui": 100,
+        "tieRmsNs": 5.962,
+        "djNs": 11.92,
+        "rjNs": 0.478,
+        "pkHz": 156246,
+        "pkNs": 7.32,
+        "eyeH": 224
+      }
+    },
+    {
+      "fam": 40,
+      "name": "burst-jitter",
+      "fails": [],
+      "stats": {
+        "locked": 20,
+        "rejected": 0,
+        "ms": 26,
+        "ui": 100,
+        "tieRmsNs": 5.874,
+        "djNs": 11.49,
+        "rjNs": 1.194,
+        "pkHz": 0,
+        "pkNs": 0,
+        "eyeH": 224
+      }
+    },
+    {
+      "fam": 41,
+      "name": "sparse-rj",
+      "fails": [],
+      "stats": {
+        "locked": 19,
+        "rejected": 1,
+        "ms": 25,
+        "ui": 100,
+        "tieRmsNs": 1.816,
+        "djNs": 0,
+        "rjNs": 1.776,
+        "pkHz": 0,
+        "pkNs": 0,
+        "eyeH": 224
+      }
+    },
+    {
+      "fam": 42,
+      "name": "clock-dcd",
+      "fails": [],
+      "stats": {
+        "locked": 20,
+        "rejected": 0,
+        "ms": 37,
+        "ui": 100,
+        "tieRmsNs": 6,
+        "djNs": 12,
+        "rjNs": 0.11,
+        "pkHz": 2490224,
+        "pkNs": 10.78,
+        "eyeH": 224
+      }
+    },
+    {
+      "fam": 43,
+      "name": "sine-analog",
+      "fails": [],
+      "stats": {
+        "locked": 20,
+        "rejected": 0,
+        "ms": 33,
+        "ui": 200,
+        "tieRmsNs": 1.14,
+        "djNs": 0,
+        "rjNs": 1.243,
+        "pkHz": 917984,
+        "pkNs": 0.3,
+        "eyeH": 227
+      }
+    },
+    {
+      "fam": 44,
+      "name": "noise-only",
+      "fails": [],
+      "stats": {
+        "locked": 0,
+        "rejected": 20,
+        "ms": 85
+      }
+    },
+    {
+      "fam": 45,
+      "name": "flat",
+      "fails": [],
+      "stats": {
+        "locked": 0,
+        "rejected": 20,
+        "ms": 14
+      }
+    },
+    {
+      "fam": 46,
+      "name": "chirp",
+      "fails": [],
+      "stats": {
+        "locked": 0,
+        "rejected": 20,
+        "ms": 44
+      }
+    },
+    {
+      "fam": 47,
+      "name": "two-tone",
+      "fails": [],
+      "stats": {
+        "locked": 0,
+        "rejected": 20,
+        "ms": 47
+      }
+    },
+    {
+      "fam": 48,
+      "name": "staircase",
+      "fails": [],
+      "stats": {
+        "locked": 0,
+        "rejected": 20,
+        "ms": 16
+      }
+    },
+    {
+      "fam": 49,
+      "name": "prbs-plus-glitches",
+      "fails": [],
+      "stats": {
+        "locked": 20,
+        "rejected": 0,
+        "ms": 43,
+        "ui": 100,
+        "tieRmsNs": 0.087,
+        "djNs": 0,
+        "rjNs": 0.101,
+        "pkHz": 48828,
+        "pkNs": 0.02,
+        "eyeH": 224
+      }
+    }
+  ],
+  "failedFamilies": 0,
+  "guardCharacterization": {
+    "result": "pass",
+    "cases": [
+      {
+        "name": "channel change stops before feeding and preserves accumulated state",
+        "result": "pass"
+      },
+      {
+        "name": "missing selected signal stops before feed",
+        "result": "pass"
+      },
+      {
+        "name": "envelope frame stops before feed",
+        "result": "pass"
+      },
+      {
+        "name": "nonpositive sample period ignores record without stopping",
+        "result": "pass"
+      },
+      {
+        "name": "3 percent calibration change stops and retains accumulated state",
+        "result": "pass"
+      },
+      {
+        "name": "1 percent calibration change remains accepted",
+        "result": "pass"
+      },
+      {
+        "name": "missing calibration uses fallback and marks units uncalibrated",
+        "result": "pass"
+      },
+      {
+        "name": "tenth inconsistent UI stops; first nine stay armed",
+        "result": "pass"
+      },
+      {
+        "name": "successful lock clears inconsistency streak",
+        "result": "pass"
+      },
+      {
+        "name": "optimize calibration transition resets instead of stopping",
+        "result": "pass"
+      },
+      {
+        "name": "optimize inconsistent UI resets instead of accumulating a streak",
+        "result": "pass"
+      }
+    ],
+    "scope": "Original ejIngest/ejStop/ejFreshState control flow with feed and rendering stubbed; no DOM layout, real calibration, clock recovery, network, timers or device commands."
+  },
+  "helperSHA256": "98034ec35d494ece24c189cda5985a880157f36c416cdf62747a94f3f8b58fed",
+  "scope": "Unmodified pinned Node suite and all 50 seeded adversarial families; frozen local files, no browser or device operations.",
+  "limitations": [
+    "Guard characterization stubs the numerical feed and rendering; does not exercise browser rendering, fetch loop or autoset.",
+    "Synthetic fixtures do not establish calibrated instrument accuracy or BER extrapolation.",
+    "Breaker eye height is reported but not asserted; original clean height check is only a lower bound.",
+    "Breaker tone checks are conditional on a reported spectral peak; absent spectra may escape them.",
+    "Breaker includes a host-dependent 4000 ms per-family runtime threshold.",
+    "Source links and native publication integration remain pending; passing these suites does not close REQ-SDS-067."
+  ]
+}

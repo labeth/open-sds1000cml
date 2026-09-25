@@ -1,4 +1,6 @@
+// ENGMODEL-OWNER-UNIT: FU-RTL-ACQ-TESTS
 `timescale 1ns/1ps
+// TRLC-LINKS: REQ-SDS-043, REQ-SDS-045, REQ-SDS-052
 module tb_board_capture;
  parameter WRAPPED=1;
  localparam AW=13,N=1<<AW;

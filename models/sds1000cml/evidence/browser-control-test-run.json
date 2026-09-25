@@ -1,0 +1,67 @@
+{
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "sourceSHA256": {
+    "app/internal/web/app.js": "99e4ac1c2f384bec50ee02e029404e375a4f681b47509a8928e3d8238dd50463",
+    "app/internal/web/app_core.js": "b4d36f22c7b914fccda46f95d0c33f17b7ad3f74adeb42086233ebb0bf7e2fdd",
+    "app/internal/web/app_controls.js": "359d1754004bec1e425893b0a6a26186be4da3dc24cb853c129d493f8ba91abd"
+  },
+  "helperSHA256": "15a45bce91423a86ab469fb24bb5766304ae1a8f86b3b265626b0364f31693cd",
+  "runnerSHA256": "32ad27a6ecc4d6fa38915323811a38b475494e9a8071618cd11593bc0c0c3d72",
+  "nodeVersion": "v22.20.0",
+  "result": "pass",
+  "cases": [
+    {
+      "name": "frozen display skips network and schedules an idle retry",
+      "result": "pass"
+    },
+    {
+      "name": "superseded display stops without another timer",
+      "result": "pass"
+    },
+    {
+      "name": "409 response supersedes display and stops polling",
+      "result": "pass"
+    },
+    {
+      "name": "freeze during display request prevents applying late reply",
+      "result": "pass"
+    },
+    {
+      "name": "invalid decoded frame increments failures and backs off",
+      "result": "pass"
+    },
+    {
+      "name": "successful display request includes claim epoch and resets failures",
+      "result": "pass"
+    },
+    {
+      "name": "raw FFT late reply is stored even after freeze",
+      "result": "pass"
+    },
+    {
+      "name": "raw FFT busy flag prevents overlapping request",
+      "result": "pass"
+    },
+    {
+      "name": "send parses JSON even on failed HTTP status",
+      "result": "pass"
+    },
+    {
+      "name": "run click updates status optimistically despite rejected control",
+      "result": "pass"
+    },
+    {
+      "name": "probe-scaled trigger conversion uses selected-channel calibration",
+      "result": "pass"
+    },
+    {
+      "name": "CSV export uses sample pitch, calibration and blank gaps",
+      "result": "pass"
+    },
+    {
+      "name": "C2-only CSV export is a no-op",
+      "result": "pass"
+    }
+  ],
+  "scope": "Original client/control scripts with isolated DOM, network and timer stubs. No real browser, download, device command, asynchronous event scheduling or hardware qualification."
+}

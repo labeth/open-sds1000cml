@@ -1,0 +1,14 @@
+ARGS ["exec", "/dev/acqsram", "capture", "1", "524271", "17"]
+{
+  "buffer_words": 512,
+  "identity": 23122,
+  "length": 524288,
+  "map_id": 57746,
+  "origin": 3724,
+  "position": 3724,
+  "revision": 5,
+  "start": 0,
+  "status": 116,
+  "trigger_index": 524271
+}
+[exit 0]

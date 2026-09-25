@@ -1,0 +1,161 @@
+{
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "status": "source-trace-and-publication-integrated",
+  "files": [
+    {
+      "path": "app/internal/superres/comp_parity_driver.cjs",
+      "baselineSHA256": "5b593b8fe36dbd9b44a9bb54010ab68ea740c0e115d9723c6165248e5b80ccdd",
+      "lines": 43,
+      "completeRead": true,
+      "requirement": "REQ-SDS-142",
+      "linkedDeclarations": 1,
+      "annotatedSHA256": "96ecd2ad1503b992973add7cc27da0087111f3dd02c029ddc5df8ad2aed34222"
+    },
+    {
+      "path": "app/internal/superres/parity_driver.cjs",
+      "baselineSHA256": "830a8da515b248f2f2dadd120774c5a55eec92efde608ad5b7ecb8a1756963cd",
+      "lines": 32,
+      "completeRead": true,
+      "requirement": "REQ-SDS-019",
+      "linkedDeclarations": 1,
+      "annotatedSHA256": "6f2fc542a73f1f0650b485dd5ae87fab399bddc8649011a1ce2df87f78ff5f8a"
+    },
+    {
+      "path": "app/internal/web/decparity_check.mjs",
+      "baselineSHA256": "f2ac071bf71d417567a9cbe7754b5e74da83568ae1b57ede9b3074f2c1c609c4",
+      "lines": 115,
+      "completeRead": true,
+      "requirement": "REQ-SDS-181",
+      "linkedDeclarations": 13,
+      "annotatedSHA256": "bf23b034b60b4a078acc4e2aed49a1496ab640a88f95f193dc525103d2af8d1e"
+    },
+    {
+      "path": "app/internal/web/e2e/workflow_assert.mjs",
+      "baselineSHA256": "78916f001c423bb62463d402d51d67c084f585b1db3e5954dc39bf3a3745d54d",
+      "lines": 5,
+      "completeRead": true,
+      "requirement": "REQ-SDS-208",
+      "linkedDeclarations": 2,
+      "annotatedSHA256": "6f086fa9926cfc9bbb637b18eaa2f50c059a8d1cd457b0287b79fae8e3696439"
+    },
+    {
+      "path": "app/internal/web/e2e/workflow_mask.mjs",
+      "baselineSHA256": "0f062994f0cf2a340818618e509b43b6643099d0df2ec4432ef15a43df22bb93",
+      "lines": 134,
+      "completeRead": true,
+      "requirement": "REQ-SDS-208",
+      "linkedDeclarations": 12,
+      "annotatedSHA256": "e54c864234bf41cb1894c70831dbe0d878de460ed3371a90fdb1450787d0579b"
+    },
+    {
+      "path": "app/internal/web/e2e/regress_missing_channel.mjs",
+      "baselineSHA256": "8ec1a894db62856963a636ff3d9b2ba926e4e7f18bbeb5142e9efc6b1672dea4",
+      "lines": 63,
+      "completeRead": true,
+      "requirement": "REQ-SDS-208",
+      "linkedDeclarations": 3,
+      "annotatedSHA256": "91b07e721b61a0a2a38e55099682118f8b463b48db9911f54c46da8ea207394a"
+    },
+    {
+      "path": "app/internal/web/e2e/workflow_analog.mjs",
+      "baselineSHA256": "50d731e101cf6ca2c8347c577d33e585ae40c98672a481cc23db00658060267c",
+      "lines": 401,
+      "completeRead": true,
+      "requirement": "REQ-SDS-208",
+      "linkedDeclarations": 46,
+      "annotatedSHA256": "8ba4449d333c1e80cc5ce360399e0dad04b10e1721b906b81a9ac5c05f6fcfc1"
+    },
+    {
+      "path": "app/internal/web/e2e/workflow_serial.mjs",
+      "baselineSHA256": "a79553b603667b2d7534da9d8eabd947f3baf5a3a2e9774d8cbf8c234adea43b",
+      "lines": 388,
+      "completeRead": true,
+      "requirement": "REQ-SDS-208",
+      "linkedDeclarations": 45,
+      "annotatedSHA256": "b00e4cbbf17418c1238ce915f3dd4f0cecca37dc6b95ff2797c36e8fe8a85248"
+    }
+  ],
+  "findings": [
+    {
+      "path": "app/internal/superres/comp_parity_driver.cjs",
+      "finding": "Compensation driver merges supplied options with default options for curve gain, delegates target/calibration/info to the production JavaScript reference, and converts input mean arrays to Float32. It prints vectors without asserting correctness; Go owns the comparisons. Shared response curves are not independent calibration truth."
+    },
+    {
+      "path": "app/internal/superres/parity_driver.cjs",
+      "finding": "Stack parity converts both channels to Int16 and assumes frames[0] and channel arrays exist. It continues feeding after a failed seed. Reported means are sums and filled counts rather than complete per-bin arrays, so equal aggregates need not prove equal waveforms. Noise statistics and dispositions are also returned for Go comparison."
+    },
+    {
+      "path": "app/internal/web/decparity_check.mjs",
+      "finding": "Decoder parity concatenates eight original scripts into one VM context and dispatches eleven named protocol/autodetect paths. It compares ok, text and integer-coerced byte arrays; (value | 0) can equate fractions, NaN or wrapping integers. Absent arrays equal empty arrays. No independent protocol truth is established by agreement with Go."
+    },
+    {
+      "path": "app/internal/web/decparity_check.mjs",
+      "finding": "Autodetect protocol mismatch is represented as an unsuccessful result with mismatch text before ordinary comparison. Empty vector sets report ALL PARITY OK with zero vectors; there is no required case-count or protocol-coverage assertion in this driver. A missing input path exits 2."
+    },
+    {
+      "path": "app/internal/web/e2e/workflow_assert.mjs",
+      "finding": "near rejects null/undefined and nonfinite values, but global isFinite and subtraction coerce numeric strings and booleans. Tolerances are relative plus absolute; assert only tests JavaScript truthiness."
+    },
+    {
+      "path": "app/internal/web/e2e/workflow_mask.mjs",
+      "finding": "Twelve mask/pulse workflows assume a 400-us train with periodic width violations and rely on the operator helper. M6 explicitly continues from M5 mask state; independence is not guaranteed. Building from an already violated signal can teach the anomaly as normal, so stop-on-fail mode checks are not evidence of catching the known anomaly."
+    },
+    {
+      "path": "app/internal/web/e2e/workflow_mask.mjs",
+      "finding": "M5/M6 accept text matching pass followed by a digit, including pass 0, and do not assert count advancement. M7 checks zone creation, enabled button and running status, not qualifying published frames or zone truth. M9 similarly checks source labels and running state."
+    },
+    {
+      "path": "app/internal/web/e2e/workflow_mask.mjs",
+      "finding": "M11 checks LCD PNG byte size via op.lcdPng, not the zoomed browser canvas pixels. M12 selects maximum depth before autosetStable and does not independently verify retained depth afterward. Measurement tolerances are finite fixture-specific checks, not a hardware calibration campaign."
+    },
+    {
+      "path": "app/internal/web/e2e/regress_missing_channel.mjs",
+      "finding": "Missing-channel regression defaults to a private instrument URL unless SCOPE_URL is supplied. It invokes interactive channel/mode/trigger controls and was not executed during this review. launch returning no operator prints SKIP and exits zero."
+    },
+    {
+      "path": "app/internal/web/e2e/regress_missing_channel.mjs",
+      "finding": "Six fixed scenarios accumulate pageerror events after launch and use fixed waits. Click helper silently skips missing/hidden controls; select helper silently skips missing elements, so clean pageerror output does not prove each scenario ran. It does not assert network status, frame progression or correct pixels. Cleanup is only at the successful end, not a finally block."
+    },
+    {
+      "path": "app/internal/web/e2e/workflow_analog.mjs",
+      "finding": "46 tone/PRBS workflow cases use fixture-specific loose numerical tolerances and UI predicates. Several rendering checks inspect device LCD PNG byte size rather than browser canvas pixels. Single checks stopped state without asserting newly captured frame identity or trigger truth; Freeze checks a boolean without asserting frame stability."
+    },
+    {
+      "path": "app/internal/web/e2e/workflow_analog.mjs",
+      "finding": "T18/P19 accept status containing bit, stack or a digit and not idle, so stacking status can satisfy them before a result. P19 suppresses channel-selection failure. P13 suppresses eye-progress timeout; P17 only checks two means exist despite its title saying they differ. P23 checks PNG size rather than a clock measurement; P24 only checks a status string exists after reset."
+    },
+    {
+      "path": "app/internal/web/e2e/workflow_serial.mjs",
+      "finding": "42 UART/SPI/burst cases depend on selected FPGA source fixtures and stateful operator controls. Transcript tests often require nonempty text or unanchored substrings 55/AA rather than complete expected byte sequences. C2 selection silently skips absent controls. Format changes can be ignored after caught errors. Copy tests click the control without reading clipboard content."
+    },
+    {
+      "path": "app/internal/web/e2e/workflow_serial.mjs",
+      "finding": "Wrong-UART-baud test only excludes contiguous Hi, whereas the positive ASCII oracle accepts whitespace-separated H i. SPI bit-order comparison accepts any changed transcript including empty text; its comment incorrectly calls 0x55 symmetric under reversal (it reverses to 0xAA). Neither is a complete negative decode oracle."
+    },
+    {
+      "path": "app/internal/web/e2e/workflow_serial.mjs",
+      "finding": "B5 creates and clears a zone without enabling zone triggering or checking publication. B11 only toggles persistence, never arming Single despite its title. B2 only requires a peak above 1 MHz, not the advertised 50/150/250 MHz components. S11 checks cursor frequency text exists without asserting a 200-kHz value. These fixtures do not independently prove the named physical behaviors."
+    }
+  ],
+  "scope": "Complete static review of eight parity and device-facing workflow/support files. No device operations; oracle weaknesses retained.",
+  "pending": [
+    "Connect applicable existing runtime evidence and characterize oracle boundaries; device-facing workflows remain unexecuted"
+  ],
+  "requirements": [
+    "REQ-SDS-019",
+    "REQ-SDS-142",
+    "REQ-SDS-181",
+    "REQ-SDS-208"
+  ],
+  "validation": {
+    "linkedDeclarations": 123,
+    "exactBaselineRecovery": "pass",
+    "unchangedParserTokens": "pass",
+    "strictConsistency": "pass",
+    "pdf": "deferred",
+    "nonPDFPublication": "pass",
+    "reproducibility": "pass",
+    "reproducibleArtifacts": 36,
+    "nativeMCP": "pass"
+  }
+}

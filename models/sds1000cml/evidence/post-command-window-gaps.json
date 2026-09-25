@@ -1,0 +1,127 @@
+{
+  "status": "incomplete",
+  "matrixSHA256": "4893534f94789325db094c94ec3a683b3757e14feaa27c5f241249f70b5534cd",
+  "summary": {
+    "requirements": 208,
+    "implemented": 197,
+    "verified": 159,
+    "delegated": 0,
+    "orphan": 8,
+    "danglingLinks": 0
+  },
+  "closedNativeLinks": [
+    "REQ-SDS-077",
+    "REQ-SDS-079",
+    "REQ-SDS-080"
+  ],
+  "requirementsWithoutNativeImplementation": [
+    {
+      "requirement": "REQ-SDS-030",
+      "title": "Boot anchor",
+      "classification": "reviewed-shell-source-without-native-inference"
+    },
+    {
+      "requirement": "REQ-SDS-031",
+      "title": "Shared default ABI",
+      "classification": "declarative-schema-source-and-known-generated-drift"
+    },
+    {
+      "requirement": "REQ-SDS-061",
+      "title": "Clock-crossing audit",
+      "classification": "constraint-and-builder-sources-without-native-inference"
+    },
+    {
+      "requirement": "REQ-SDS-062",
+      "title": "Qualified profile selection",
+      "classification": "proposed-design-and-hardware-qualification-gap"
+    },
+    {
+      "requirement": "REQ-SDS-063",
+      "title": "Warm profile switch",
+      "classification": "proposed-design-and-hardware-qualification-gap"
+    },
+    {
+      "requirement": "REQ-SDS-064",
+      "title": "Honest continuous operation",
+      "classification": "proposed-design-and-hardware-qualification-gap"
+    },
+    {
+      "requirement": "REQ-SDS-065",
+      "title": "Hardware protocol events",
+      "classification": "proposed-design-and-hardware-qualification-gap"
+    },
+    {
+      "requirement": "REQ-SDS-073",
+      "title": "Go and browser parity",
+      "classification": "cross-implementation-contract-currently-linked-through-parity-tests"
+    },
+    {
+      "requirement": "REQ-SDS-074",
+      "title": "Interleave calibration phase",
+      "classification": "unmet-record-phase-metadata-obligation"
+    },
+    {
+      "requirement": "REQ-SDS-176",
+      "title": "USB anchor agent-slot recovery",
+      "classification": "reviewed-shell-source-without-native-inference"
+    },
+    {
+      "requirement": "REQ-SDS-182",
+      "title": "Web inline-content regression policy",
+      "classification": "test-only-regression-policy-with-known-failure"
+    }
+  ],
+  "requirementsWithoutNativeVerification": [
+    "REQ-SDS-003",
+    "REQ-SDS-006",
+    "REQ-SDS-031",
+    "REQ-SDS-059",
+    "REQ-SDS-061",
+    "REQ-SDS-062",
+    "REQ-SDS-063",
+    "REQ-SDS-064",
+    "REQ-SDS-065",
+    "REQ-SDS-067",
+    "REQ-SDS-071",
+    "REQ-SDS-073",
+    "REQ-SDS-074",
+    "REQ-SDS-084",
+    "REQ-SDS-097",
+    "REQ-SDS-098",
+    "REQ-SDS-102",
+    "REQ-SDS-111",
+    "REQ-SDS-112",
+    "REQ-SDS-122",
+    "REQ-SDS-123",
+    "REQ-SDS-124",
+    "REQ-SDS-127",
+    "REQ-SDS-138",
+    "REQ-SDS-139",
+    "REQ-SDS-149",
+    "REQ-SDS-150",
+    "REQ-SDS-151",
+    "REQ-SDS-167",
+    "REQ-SDS-168",
+    "REQ-SDS-170",
+    "REQ-SDS-171",
+    "REQ-SDS-172",
+    "REQ-SDS-173",
+    "REQ-SDS-174",
+    "REQ-SDS-175",
+    "REQ-SDS-177",
+    "REQ-SDS-178",
+    "REQ-SDS-179",
+    "REQ-SDS-187",
+    "REQ-SDS-200",
+    "REQ-SDS-201",
+    "REQ-SDS-202",
+    "REQ-SDS-203",
+    "REQ-SDS-204",
+    "REQ-SDS-205",
+    "REQ-SDS-206",
+    "REQ-SDS-207",
+    "REQ-SDS-208"
+  ],
+  "evidence": "command-window-trace-review.json",
+  "scope": "Coverage classification distinguishes missing native extraction, planned or unmet behavior, and test-only policy. No absence is converted into a passing implementation or physical qualification."
+}

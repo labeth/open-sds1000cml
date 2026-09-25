@@ -1,0 +1,70 @@
+{
+  "source": "ota/boot/boot_test.go",
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "scope": "Reviewed Go test outcomes; passing assertions contribute partial requirement evidence.",
+  "sourceSHA256": "cb42495d6bfff93c9af86d1ab5fc73c9a685617a9b5fbf4a58df9e302969abbb",
+  "logs": {
+    "test-runs/ota-entrypoints-integrated.jsonl": "c429ca55d7a0eb542a6244ea621074280c094c288b075af16b1ccb7d73b86a84"
+  },
+  "tests": [
+    {
+      "name": "TestRespawnLoopBounded",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-030",
+        "REQ-SDS-176"
+      ]
+    },
+    {
+      "name": "TestConfirmStableSlot",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-030",
+        "REQ-SDS-176"
+      ]
+    },
+    {
+      "name": "TestAgentSelfUpdateActivatesNewSlot",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-030",
+        "REQ-SDS-176"
+      ]
+    },
+    {
+      "name": "TestCrashLoopRevertsToConfirmed",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-030",
+        "REQ-SDS-176"
+      ]
+    },
+    {
+      "name": "TestIntentMarkerIsNeutralNoRevert",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-030",
+        "REQ-SDS-176"
+      ]
+    },
+    {
+      "name": "TestCommandsFileRuns",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-030"
+      ]
+    }
+  ],
+  "results": [
+    {
+      "requirement": "REQ-SDS-030",
+      "status": "partial",
+      "notes": "6 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    },
+    {
+      "requirement": "REQ-SDS-176",
+      "status": "partial",
+      "notes": "5 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    }
+  ]
+}

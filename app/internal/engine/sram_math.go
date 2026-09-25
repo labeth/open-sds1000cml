@@ -1,9 +1,11 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
 package engine
 
 import "math"
 
 // eresQ8 keeps fractional codes through a centred moving average. The
 // shrinking end windows never wrap or introduce fabricated samples.
+// TRLC-LINKS: REQ-SDS-012
 func eresQ8(src, scratch []uint16, length int) {
 	length = clampEresLen(length)
 	if length <= 1 || len(src) == 0 {
@@ -36,6 +38,7 @@ func eresQ8(src, scratch []uint16, length int) {
 
 // sramAverage accumulates disjoint blocks, retaining Q8 fractions with memory
 // independent of the requested count. Callers admit only matching captures.
+// TRLC-LINKS: REQ-SDS-012
 type sramAverage struct {
 	sum1, sum2 []uint32
 	count      int
@@ -43,7 +46,9 @@ type sramAverage struct {
 	lo, hi     int
 }
 
+// TRLC-LINKS: REQ-SDS-012
 func (a *sramAverage) reset() { a.count = 0 }
+// TRLC-LINKS: REQ-SDS-012
 func (a *sramAverage) push(f *Frame, target int) int {
 	n := f.Valid
 	if len(a.sum1) != n {

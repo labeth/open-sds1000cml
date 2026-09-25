@@ -1,0 +1,66 @@
+{
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "status": "reviewed",
+  "sourceSHA256": {
+    "fpga/acq_sram/command_port.v": "603de36f1612ccb12b7f2ad46e88756383b46d43efe8587bde40e6869ba6734f",
+    "fpga/acq_sram/command_bridge.v": "698dc6fa9a0e43516f68f838c16e0a4581db4a4b58ee895f3a599d894dce3f0b",
+    "fpga/acq_sram/host_read_window.v": "4eecc90a6f592d648239b89645e95798e8e4f1dfbbbe9e0d19fdef0065210633",
+    "fpga/acq_sram/sim/tb_command_port.v": "a21f7ea7e2ebcb613099ae43fa1b7953a3fd19ed8c22e4f7922b79e5db8612cf",
+    "fpga/acq_sram/sim/tb_host_read_window.v": "9bb8899de6b2b9a2d0c858c914ff0f0bdc52665616f236f170fa945917abb48d"
+  },
+  "requirements": [
+    {
+      "id": "REQ-SDS-077",
+      "correction": "Replaced retain-until-next-response with validity-gated returned status; next accepted command or reset invalidates status.",
+      "implementation": [
+        "command_port.v: accepted clears result_valid and increments sequence_number",
+        "command_port.v: returned sets result_valid and read_sel 0x40..0x47 gate all eight status words",
+        "command_bridge.v: held payload crosses the request/acknowledgment handshake"
+      ],
+      "verification": [
+        "tb_command_port.check_status reads all eight returned words against the sampled acquisition_status",
+        "pending command reads 0x40 as zero",
+        "status query retains returned words after ten host cycles",
+        "reset clears valid/status and sequence"
+      ],
+      "limitations": [
+        "Pending/reset zero read checks use the first status word; all eight share one source gate.",
+        "No physical CDC/metastability qualification."
+      ]
+    },
+    {
+      "id": "REQ-SDS-079",
+      "implementation": [
+        "host_read_window.v: cursor reaching limit inhibits prefetch and asserts exhausted without host_release",
+        "host_release pulses only for explicit release_request with selected owned bank and no pending read, pop or selection"
+      ],
+      "verification": [
+        "Full and short bank reads exhaust before explicit release_owned verifies bank/token identity",
+        "Overread preserves cursor and asserts no host_release",
+        "Wrong token, out-of-range selection and in-flight token reuse reject data"
+      ],
+      "limitations": [
+        "No direct release_request-while-pending assertion in original bench; that guard is inspection-only.",
+        "Ideal clocks and behavioral RAM do not qualify the board."
+      ]
+    },
+    {
+      "id": "REQ-SDS-080",
+      "implementation": [
+        "command_port.v: config_legal gates only starting opcodes 1/2/3",
+        "valid opcodes 4/5 produce core_halt/core_force independent of malformed shadow geometry",
+        "accepted is gated by host_busy"
+      ],
+      "verification": [
+        "tb_command_port leaves malformed geometry in shadow, then commands 4/5/6 and checks halt/force/snapshot counters",
+        "Busy duplicate command rejection is exercised separately"
+      ],
+      "limitations": [
+        "No combined busy-plus-malformed force/halt adversarial assertion."
+      ]
+    }
+  ],
+  "evidencePolicy": "Original command-port simulation inputs reconstruct exactly from the pinned baseline under the approved comment overlay. Host-read-window and dependent host-read-port were reexecuted after links changed. All successful simulation evidence remains partial; prior failures and unavailable cases are preserved.",
+  "historicalOverlayEvidence": "rtl-annotation-history.json",
+  "historyValidation": "Recorded historical input SHA256 must equal an exact annotation of pinned Git bytes; current bytes must independently equal the current approved annotation. Negative tests reject missing history, wrong owner and executable edits."
+}

@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-BUS
 package bus
 
 import (
@@ -24,6 +25,7 @@ const DcinvPath = "/dev/dcinv"
 
 // dcinvEnv is a runner hook so the boot sequence can be unit-tested without
 // insmod/mknod on the host.
+// TRLC-LINKS: REQ-SDS-081
 type dcinvEnv struct {
 	exists   func(string) bool
 	writeKO  func(dir string) (string, error)
@@ -34,6 +36,7 @@ type dcinvEnv struct {
 	deadline time.Duration
 }
 
+// TRLC-LINKS: REQ-SDS-081
 func realDcinvEnv() dcinvEnv {
 	return dcinvEnv{
 		exists: func(p string) bool { _, err := os.Stat(p); return err == nil },
@@ -66,6 +69,7 @@ func realDcinvEnv() dcinvEnv {
 // Failure is reported, not fatal: the EDMA drainer then falls back to a fresh
 // buffer per drain (which hardware showed is NOT coherent on this unit — the
 // caller logs the consequence).
+// TRLC-LINKS: REQ-SDS-081
 func EnsureDcinv(logf func(string, ...any)) error {
 	exe, err := os.Executable()
 	if err != nil {
@@ -74,6 +78,7 @@ func EnsureDcinv(logf func(string, ...any)) error {
 	return ensureDcinv(realDcinvEnv(), filepath.Dir(exe), logf)
 }
 
+// TRLC-LINKS: REQ-SDS-081
 func ensureDcinv(e dcinvEnv, dir string, logf func(string, ...any)) error {
 	if logf == nil {
 		logf = func(string, ...any) {}
@@ -113,6 +118,7 @@ func ensureDcinv(e dcinvEnv, dir string, logf func(string, ...any)) error {
 }
 
 // dcinvMajor parses /proc/devices for the dcinv character device.
+// TRLC-LINKS: REQ-SDS-081
 func dcinvMajor(e dcinvEnv) (int, bool) {
 	s, err := e.devices()
 	if err != nil {

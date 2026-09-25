@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-APP
 package main
 
 import (
@@ -6,20 +7,25 @@ import (
 	"testing"
 )
 
+// TRLC-LINKS: REQ-SDS-034
 type timingProbe struct {
 	current              bus.CS1Timing
 	applyErr, restoreErr error
 	restored             bool
 }
 
+// TRLC-LINKS: REQ-SDS-034
 func (p *timingProbe) Read() (bus.CS1Timing, error) { return p.current, nil }
+// TRLC-LINKS: REQ-SDS-034
 func (p *timingProbe) Apply(v bus.CS1Timing) error  { p.current = v; return p.applyErr }
+// TRLC-LINKS: REQ-SDS-034
 func (p *timingProbe) Restore(v bus.CS1Timing) error {
 	p.restored = true
 	p.current = v
 	return p.restoreErr
 }
 
+// TRLC-LINKS: REQ-SDS-034
 func TestSRAMTimingQualificationAndRollback(t *testing.T) {
 	for _, mode := range []string{"fast", "counter-fails", "apply-fails", "restore-fails", "both-fail"} {
 		t.Run(mode, func(t *testing.T) {

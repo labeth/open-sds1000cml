@@ -1,5 +1,7 @@
+// ENGMODEL-OWNER-UNIT: FU-RTL-ACQ-SRAM-ORDINAL-COUNTER
 // Four word lanes; carry is a prefix of registered per-lane fullness.
 // Full flags track the current value and hold when their lane does not advance.
+// TRLC-LINKS: REQ-SDS-047
 module sram_ordinal_counter(input clk,clear,step,output reg [63:0] value=0);
  reg [3:0] full=0;
  wire [3:0] advance;

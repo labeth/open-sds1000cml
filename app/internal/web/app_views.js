@@ -1,7 +1,10 @@
+// ENGMODEL-OWNER-UNIT: FU-WEB-APP-VIEWS
 // app_views.js — Bode + spectrogram view glue + small formatters (classic script; shares app.js globals).
 
 "use strict";
+// TRLC-LINKS: REQ-SDS-125
 function fmtTdiv(s) {
+  // TRLC-LINKS: REQ-SDS-125
   const strip = x => x.replace(/(\.\d*?)0+$/, "$1").replace(/\.$/, "");
   if (s >= 1) return strip(s.toPrecision(3)) + " s";
   if (s >= 1e-3) return strip((s * 1e3).toPrecision(3)) + " ms";
@@ -9,13 +12,16 @@ function fmtTdiv(s) {
   return Math.round(s * 1e9) + " ns";
 }
 
+// TRLC-LINKS: REQ-SDS-125
 function fmtVdiv(v) { return v >= 1 ? v + " V" : Math.round(v * 1e3) + " mV"; }
 
+// TRLC-LINKS: REQ-SDS-125
 function hexA(hex, a) {
   const h = hex.replace("#", "");
   return `rgba(${parseInt(h.substr(0, 2), 16)},${parseInt(h.substr(2, 2), 16)},${parseInt(h.substr(4, 2), 16)},${a})`;
 }
 
+// TRLC-LINKS: REQ-SDS-125
 function fitLabel(g, text, maxW) {
   if (maxW <= 6 * dpr) return "";
   if (g.measureText(text).width <= maxW) return text;
@@ -25,6 +31,7 @@ function fitLabel(g, text, maxW) {
 }
 
 // ---- measurements ----
+// TRLC-LINKS: REQ-SDS-125
 function fmtMeas(key, m) {
   if (!m) return "—";
   switch (key) {
@@ -48,12 +55,15 @@ function fmtMeas(key, m) {
   return "—";
 }
 
+// TRLC-LINKS: REQ-SDS-125
 function bodeColors() {
   return { grid: GRIDCOL, axis: AXISCOL, mag: C1COL, phase: C2COL, text: DIMCOL };
 }
 
+// TRLC-LINKS: REQ-SDS-125
 function bodeStatus(m) { if (m !== undefined) $("bodeStats").textContent = m; }
 
+// TRLC-LINKS: REQ-SDS-125
 function bodeDrawBig() {
   const cv = $("ejBig"); if (!cv) return;
   const r = cv.getBoundingClientRect(), dpr2 = window.devicePixelRatio || 1;
@@ -65,10 +75,13 @@ function bodeDrawBig() {
   }).catch(() => { });
 }
 
+// TRLC-LINKS: REQ-SDS-068
 function spgStatus(m) { if (m !== undefined) $("spgStats").textContent = m; }
 
+// TRLC-LINKS: REQ-SDS-068
 function spgEnsure() { if (!spg.sg) spg.sg = sgNew(400, 200); return spg.sg; }
 
+// TRLC-LINKS: REQ-SDS-068
 function spgPushCurrent() {
   if (!spg.armed || !frame || typeof spectrum !== "function") return;
   if (frame.seq === spg.lastSeq || frame.is_env) return;
@@ -81,6 +94,7 @@ function spgPushCurrent() {
   sgPushRow(sg, s.mags, s.half, s.peak, s.nyq || peakNyq());
 }
 
+// TRLC-LINKS: REQ-SDS-068
 function spgRender(cv) {
   cv = cv || $("spgCv");
   const rect = cv.getBoundingClientRect();
@@ -92,6 +106,7 @@ function spgRender(cv) {
   glCardEnd(cv);
 }
 
+// TRLC-LINKS: REQ-SDS-068
 function spgDrawBig() {
   const cv = $("ejBig"); if (!cv) return;
   const r = cv.getBoundingClientRect(), dpr2 = window.devicePixelRatio || 1;
@@ -106,6 +121,7 @@ function spgDrawBig() {
 // ---- Bode + spectrogram wiring ----
 
 
+// TRLC-LINKS: REQ-SDS-125
 async function bodeRenderNow() {
   if (typeof bodeDraw !== "function") return;
   const cv = $("bodeCv"); if (!cv) return;
@@ -122,6 +138,7 @@ async function bodeRenderNow() {
   return pts.n || 0;
 }
 
+// TRLC-LINKS: REQ-SDS-125
 $("bodeArm").onclick = () => {
   bode.armed = !bode.armed;
   $("bodeArm").classList.toggle("on", bode.armed);
@@ -132,12 +149,14 @@ $("bodeArm").onclick = () => {
   fetch("/api/set", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ control: "bodemode", value: bode.armed ? 1 : 0, lo: ref, hi: dut }) }).catch(() => {});
   bodeStatus(bode.armed ? "armed — sweep the source frequency to add points" : "stopped");
 };
+// TRLC-LINKS: REQ-SDS-125
 $("bodeClear").onclick = () => {
   send("bodeclear", 0);
   bode.lastN = -1;
   bodeRenderNow();
   bodeStatus(bode.armed ? "cleared — sweeping" : "cleared");
 };
+// TRLC-LINKS: REQ-SDS-125
 for (const id of ["bodeRef", "bodeDut"]) $(id).onchange = () => {
   if (bode.armed) {
     const ref = +$("bodeRef").value || 0, dut = +$("bodeDut").value || 0;
@@ -145,6 +164,7 @@ for (const id of ["bodeRef", "bodeDut"]) $(id).onchange = () => {
   }
 };
 // full-screen enlarge on click, reusing the eye big-view dialog shell
+// TRLC-LINKS: REQ-SDS-125
 $("bodeCv").onclick = () => {
   if (typeof ejBigVisible !== "function") return;
   ejBigKind = "bode";
@@ -168,6 +188,7 @@ setInterval(async () => {
   bodeStatus(line);
 }, 1000);
 
+// TRLC-LINKS: REQ-SDS-068
 $("spgArm").onclick = () => {
   spg.armed = !spg.armed;
   $("spgArm").classList.toggle("on", spg.armed);
@@ -175,9 +196,13 @@ $("spgArm").onclick = () => {
   if (spg.armed) spgEnsure();
   spgStatus(spg.armed ? "armed — building the waterfall from each capture" : "stopped");
 };
+// TRLC-LINKS: REQ-SDS-068
 $("spgClear").onclick = () => { if (spg.sg) sgClear(spg.sg); spgRender(); spgStatus(spg.armed ? "cleared — building" : "cleared"); };
+// TRLC-LINKS: REQ-SDS-068
 $("spgCh").onchange = () => { spg.ch = +$("spgCh").value === 2 ? 2 : 1; };
+// TRLC-LINKS: REQ-SDS-068
 $("spgFloor").onchange = () => { if (spg.sg) spg.sg.floorDb = +$("spgFloor").value || -60; };
+// TRLC-LINKS: REQ-SDS-068
 $("spgCv").onclick = () => {
   if (typeof ejBigVisible !== "function") return;
   ejBigKind = "spg"; $("ejBigWrap").classList.remove("hidden"); spgDrawBig();

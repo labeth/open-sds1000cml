@@ -7,6 +7,7 @@
 // derived from interpolated threshold crossings so it is accurate to a fraction
 // of a sample. Timing is reported only when the record has a real, resolvable
 // edge (a minimum amplitude and at least one full cycle).
+// ENGMODEL-OWNER-UNIT: FU-APP-MEASURE
 package measure
 
 import "math"
@@ -14,6 +15,7 @@ import "math"
 // Result is the full auto-measurement set: volts, seconds and Hz. HasTiming is
 // false when the record has no resolvable edge (flat/DC or sub-noise), in which
 // case the timing fields are zero and callers should show them as "—".
+// TRLC-LINKS: REQ-SDS-017
 type Result struct {
 	Vpp   float64 `json:"vpp"`
 	Vmax  float64 `json:"vmax"`
@@ -51,6 +53,7 @@ const minAmplCodes = 8
 // low excursion is nowhere near it, and this symmetric front end rails BOTH ends
 // on overdrive, so low-rail pileup catches it; the high side only flags at the
 // hard clamp (>=253). >0.5 % of samples piled within 2 codes of the rail ⇒ clipped.
+// TRLC-LINKS: REQ-SDS-017
 func Clipped(sig []uint8) bool {
 	n := len(sig)
 	if n == 0 {
@@ -86,11 +89,13 @@ func Clipped(sig []uint8) bool {
 // code step to volts (already probe-scaled); offV is the input-referred offset
 // (v = (code-128)·voltsPerCode − offV); sampleS is per-sample seconds. Returns
 // nil for an empty record.
+// TRLC-LINKS: REQ-SDS-017
 func Compute(sig []uint8, voltsPerCode, offV, sampleS float64) *Result {
 	return compute(sig, voltsPerCode, offV, sampleS, 1)
 }
 
 // ComputeQ8 preserves fractional acquisition codes in every measurement.
+// TRLC-LINKS: REQ-SDS-017
 func ComputeQ8(sig []uint16, voltsPerCode, offV, sampleS float64) *Result {
 	return compute(sig, voltsPerCode/256, offV, sampleS, 256)
 }
@@ -98,6 +103,7 @@ func ComputeQ8(sig []uint16, voltsPerCode, offV, sampleS float64) *Result {
 // ComputeAcquisition chooses the precision record when available. Coupling
 // 1 removes its mean in the measurement domain, without quantizing samples;
 // coupling 2 grounds the displayed input. The legacy path is already coupled.
+// TRLC-LINKS: REQ-SDS-017
 func ComputeAcquisition(raw []uint8, q []uint16, voltsPerCode, offV, sampleS float64, coupling int, guard ...int) *Result {
 	if len(q) != len(raw) || len(q) == 0 {
 		return Compute(raw, voltsPerCode, offV, sampleS)
@@ -120,6 +126,7 @@ func ComputeAcquisition(raw []uint8, q []uint16, voltsPerCode, offV, sampleS flo
 	return r
 }
 
+// TRLC-LINKS: REQ-SDS-017
 func compute[T ~uint8 | ~uint16](sig []T, voltsPerCode, offV, sampleS, scale float64) *Result {
 	n := len(sig)
 	if n == 0 {
@@ -268,6 +275,7 @@ func compute[T ~uint8 | ~uint16](sig []T, voltsPerCode, offV, sampleS, scale flo
 
 // interp returns the fractional sample index where a segment [a,b] straddling
 // samples (i-1,i) crosses level. a and b are the sample values.
+// TRLC-LINKS: REQ-SDS-017
 func interp(a, b float64, i int, level float64) float64 {
 	if b == a {
 		return float64(i)
@@ -277,6 +285,7 @@ func interp(a, b float64, i int, level float64) float64 {
 
 // modeInRange returns the most-populated code in [lo,hi] (inclusive), or -1 if
 // the range is empty.
+// TRLC-LINKS: REQ-SDS-017
 func modeInRange(hist []int, lo, hi int) int {
 	if lo < 0 {
 		lo = 0
@@ -299,6 +308,7 @@ func modeInRange(hist []int, lo, hi int) int {
 // forward), which makes the matching `to` index non-decreasing across `from` —
 // a single merge pass instead of a rescan per crossing (a deep 20480-sample
 // record with many cycles made the rescan quadratic).
+// TRLC-LINKS: REQ-SDS-017
 func avgWidth(from, to []float64) float64 {
 	if len(from) == 0 || len(to) == 0 {
 		return 0
@@ -326,6 +336,7 @@ func avgWidth(from, to []float64) float64 {
 // without reversing between them, returning both interpolated crossing indices.
 // rising=true looks for an upward edge (first=lo10, second=hi90); rising=false
 // a downward edge (first=hi90, second=lo10).
+// TRLC-LINKS: REQ-SDS-017
 func firstEdge[T ~uint8 | ~uint16](sig []T, first, second float64, rising bool) (float64, float64, bool) {
 	n := len(sig)
 	firstUp, firstDown := int(math.Ceil(first)), int(math.Floor(first))

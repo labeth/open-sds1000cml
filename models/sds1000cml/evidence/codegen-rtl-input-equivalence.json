@@ -1,0 +1,4 @@
+{
+  "files": [],
+  "scope": "Only approved Verilog comment changes may differ from the frozen codegen input snapshot; other inputs remain byte-exact."
+}

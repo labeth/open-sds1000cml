@@ -1,0 +1,25 @@
+{
+  "source": "app/internal/web/binframe.test.cjs",
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "sourceSHA256": "c39bbb11ce1b2125677ffa8cfd48772085f7dd361f7a23e3e29c388898603411",
+  "scope": "Original frozen Node suite, connected to current source by exact approved comment provenance. Bounded synthetic evidence only.",
+  "logs": {
+    "evidence/test-runs/reviewed-binframe.test.cjs.log": "1e5015c00041baf220c9b5af3eee7002efeab74fc31a567f88c7de1e8dc27ece"
+  },
+  "tests": [
+    {
+      "name": "binframe.test.cjs",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-163"
+      ]
+    }
+  ],
+  "results": [
+    {
+      "requirement": "REQ-SDS-163",
+      "status": "partial",
+      "notes": "Original suite passes. See final-node-suites-source-review.json for oracle limits; no physical metrology, browser interaction or external libsigrok import qualification."
+    }
+  ]
+}

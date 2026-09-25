@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
 package engine
 
 import (
@@ -6,6 +7,7 @@ import (
 	"open-sds/app/internal/iface"
 )
 
+// TRLC-LINKS: REQ-SDS-007, REQ-SDS-009, REQ-SDS-011
 func TestDecimatedAutoPublishes(t *testing.T) {
 	fb := newFakeBus()
 	e, _ := newTestEngine(t, fb)
@@ -45,6 +47,7 @@ func TestDecimatedAutoPublishes(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-009
 func TestShortRecordIsNotCoherent(t *testing.T) {
 	// The fabric finalized fewer words than the frame asked for: the drain
 	// pops only what BURST_REMAIN holds, pads the slot with the last real word,
@@ -65,6 +68,7 @@ func TestShortRecordIsNotCoherent(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-011
 func TestDecimatedNormHoldsWithoutDone(t *testing.T) {
 	fb := newFakeBus()
 	fb.doneOnGo = false // comparator never fires
@@ -87,6 +91,7 @@ func TestDecimatedNormHoldsWithoutDone(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-011
 func TestDecimatedAutoPublishesOnFreeRun(t *testing.T) {
 	// AUTO with NO trigger at all (neither DONE nor VALID, and 0x46 the
 	// post-trigger counter would stay low): the frame must still PUBLISH the
@@ -115,6 +120,7 @@ func TestDecimatedAutoPublishesOnFreeRun(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-011
 func TestDecimatedAutoHoldsWrongSlopeFrame(t *testing.T) {
 	// Sub-period AUTO backstop: a free-run frame whose only edge is the WRONG
 	// slope (falling when we want rising → edgeX=-1) but which is NOT flat
@@ -150,6 +156,7 @@ func TestDecimatedAutoHoldsWrongSlopeFrame(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-011
 func TestDecimatedAutoWrongSlopeLiveness(t *testing.T) {
 	// AUTO LIVENESS on a persistently un-lockable signal (fuzz-found, HW-verified):
 	// a live signal whose record NEVER contains the requested slope (e.g. a fast
@@ -201,6 +208,7 @@ func TestDecimatedAutoWrongSlopeLiveness(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-011
 func TestDecimatedAutoLivenessTimeBound(t *testing.T) {
 	// The AUTO liveness fallback must be bounded by WALL CLOCK, not only by the
 	// 60-frame count: at slow bands one hold cycle costs the full wait budget, so
@@ -233,6 +241,7 @@ func TestDecimatedAutoLivenessTimeBound(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-011
 func TestSingleShotNotConsumedByFlatFallback(t *testing.T) {
 	// SINGLE on a QUIET screen must never fire (a real scope's single-shot waits
 	// forever without a trigger). On native-fast NORM the flat fallback publishes
@@ -282,6 +291,7 @@ func TestSingleShotNotConsumedByFlatFallback(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-011
 func TestEdgeLevelOffSignalDoesNotLock(t *testing.T) {
 	// A trigger level set OFF the signal band cannot be crossed, so no trigger is
 	// possible. Regression: the EDGE path used to fall back to the signal's own
@@ -333,6 +343,7 @@ func TestEdgeLevelOffSignalDoesNotLock(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-011
 func TestDecimatedFlatFallback(t *testing.T) {
 	// A genuinely flat/DC decimated screen (ptp < threshold) has no lock to be had. AUTO
 	// HOLDs (re-presenting the last edge) and publishes ONE honest flat capture (EdgeX=-1)
@@ -360,6 +371,7 @@ func TestDecimatedFlatFallback(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-011
 func TestLevelAnchoredCentering(t *testing.T) {
 	// With a trigger level set, the display should anchor on the crossing of
 	// THAT level, not the mid-level.
@@ -390,6 +402,7 @@ func TestLevelAnchoredCentering(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-011
 func TestNativeFastAutoFreeRunUntriggered(t *testing.T) {
 	// Native-fast "free run + trigger hold" (spec 04 §11): when the HW comparator does NOT fire
 	// within the budget (untriggered), AUTO FREE-RUNS a live refresh frame (EdgeX=-1, record
@@ -431,6 +444,7 @@ func TestNativeFastAutoFreeRunUntriggered(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-011
 func TestNativeFastContentGate(t *testing.T) {
 	fb := newFakeBus()
 	fb.trigOnGo = true // HW comparator fires → native-fast waits for it and catches the edge

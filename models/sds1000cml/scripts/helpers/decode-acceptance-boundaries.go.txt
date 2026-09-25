@@ -1,0 +1,33 @@
+package decode
+
+import "testing"
+
+func TestModelDecoderAcceptanceBoundaries(t *testing.T) {
+ t.Run("flexray_length_controls_frame_crc_check",func(t *testing.T){
+  header:=brFlexHeaderBytes(0,0,1,1,brFlexHeaderCRC11(0,0,1,1),0) // exact expected size = 10
+  for _,n:=range []int{5,7,11}{
+   frame:=append([]int{},header...);for len(frame)<n {frame=append(frame,0)}
+   r:=DecodeFlexRay(flexrayWave([][]int{frame},20,8),5e-9,FlexRayCfg{Bitrate:10_000_000})
+   if !r.OK || len(r.Bytes)!=n || findSpan(r,"frame-error")!=nil {t.Fatalf("length %d: expected header-only acceptance, got %+v",n,r)}
+  }
+  bad:=append(append([]int{},header...),0,0,0,0,0)
+  if flexFrameCRC24(bad[:7])==0 {t.Fatal("negative control unexpectedly has valid CRC")}
+  r:=DecodeFlexRay(flexrayWave([][]int{bad},20,8),5e-9,FlexRayCfg{Bitrate:10_000_000})
+  if r.OK || findSpan(r,"frame-error")==nil {t.Fatalf("exact-length wrong CRC not rejected: %+v",r)}
+ })
+ t.Run("sent_clamped_coding_error_can_retain_ok",func(t *testing.T){
+  nibs:=[]int{1,17,2,3,4,5,6,sentCRC4([]int{15,2,3,4,5,6})}
+  r:=DecodeSENT(sentWave([][]int{nibs},6,0,0),1e-6,SENTCfg{Nibbles:8})
+  if !r.OK || findSpan(r,"frame-error")==nil || findSpan(r,"crc")==nil {t.Fatalf("expected coding error and accepted CRC together: %+v",r)}
+ })
+ t.Run("classic_can_without_delimiter_or_ack_is_retained",func(t *testing.T){
+  _,wire:=canStdFrame(0x123,3,[]int{0xDE,0xAD,0xBE});wire=wire[:len(wire)-13]
+  r:=DecodeCANFD(canRender(wire,40,true,8,0),1e-6,CANFDCfg{NominalBaud:25000,DominantLow:true})
+  if !r.OK || len(r.Bytes)!=3 || findSpan(r,"crc")==nil || findSpan(r,"ack")!=nil || findSpan(r,"nak")!=nil {t.Fatalf("expected retained body without delimiter/ACK: %+v",r)}
+ })
+ t.Run("canfd_accepts_data_without_validated_trailer",func(t *testing.T){
+  data:=[]int{0,1,2,3,4,5,6,7,8,9,10,11};wire:=canFDStdFrame(0x123,9,data);wire=wire[:len(wire)-24]
+  r:=DecodeCANFD(canRender(wire,40,true,8,0),1e-6,CANFDCfg{NominalBaud:25000,DominantLow:true})
+  if !r.OK || len(r.Bytes)!=12 || findSpan(r,"fd")==nil || findSpan(r,"crc")!=nil {t.Fatalf("expected FD data-only acceptance: %+v",r)}
+ })
+}

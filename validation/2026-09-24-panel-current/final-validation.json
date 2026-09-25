@@ -1,0 +1,98 @@
+{
+  "result": "pass",
+  "branch": "cyclone-spec-sram-capture",
+  "application": "v0.0.5-73-gf436963-dirty (f436963, 2026-09-24T19:52:08Z)",
+  "backend": "default-sram",
+  "fpga_revision": 10,
+  "adc_capture_phase_ns": 5,
+  "internal_timing_worst_slack_ns": 0.141,
+  "panel_checks_passed": 52,
+  "distinct_panel_inputs": 42,
+  "physical_electrical_switches_tested": false,
+  "unassigned_key_names": [
+    "print",
+    "saverecall",
+    "set50",
+    "defaultsetup",
+    "force",
+    "help",
+    "ch1pospush",
+    "ch2pospush",
+    "tdivpush",
+    "horizpospush"
+  ],
+  "raw_record": {
+    "seq": 6847,
+    "sample_s": 2e-09,
+    "channels": [
+      {
+        "samples": 1048576,
+        "min": 67,
+        "max": 185,
+        "positiveSpikes": 0,
+        "negativeSpikes": 0
+      },
+      {
+        "samples": 1048576,
+        "min": 72,
+        "max": 183,
+        "positiveSpikes": 0,
+        "negativeSpikes": 0
+      }
+    ]
+  },
+  "waveform": {
+    "sample_s": 2e-09,
+    "filter": "interleave offset calibration (phase checked)",
+    "coherent": true,
+    "triggered": true,
+    "m1": {
+      "vpp": 4.2771875,
+      "vmax": 1.4550000000000003,
+      "vmin": -2.8221875,
+      "vmean": -0.7020246887207031,
+      "vrms": 1.4447735780160245,
+      "vtop": 1.4550000000000003,
+      "vbase": -2.8221875,
+      "vampl": 4.2771875,
+      "overshoot": 0,
+      "preshoot": 0,
+      "freq": 5000642.341982426,
+      "period": 1.9997430962110472e-07,
+      "duty": 49.753654116917296,
+      "rise_s": 6.249365838538197e-08,
+      "fall_s": 6.5432698085082e-08,
+      "pos_width_s": 9.949452633157771e-08,
+      "neg_width_s": 1.0047978328952702e-07,
+      "has_timing": true
+    },
+    "m2": {
+      "vpp": 4.48,
+      "vmax": 1.5596875,
+      "vmin": -2.9203125,
+      "vmean": -0.7071722412109375,
+      "vrms": 1.4843089752148537,
+      "vtop": 1.5596875,
+      "vbase": -2.9203125,
+      "vampl": 4.48,
+      "overshoot": 0,
+      "preshoot": 0,
+      "freq": 5000000,
+      "period": 2.0000000000000002e-07,
+      "duty": 49.90878602350647,
+      "rise_s": 6.252565348137868e-08,
+      "fall_s": 6.774372439983725e-08,
+      "pos_width_s": 9.981757204701296e-08,
+      "neg_width_s": 1.0018242795298705e-07,
+      "has_timing": true
+    }
+  },
+  "interleave_calibration_verified_vdiv": [
+    2,
+    2
+  ],
+  "all_slots_current": true,
+  "old_binary_rollback_used": false,
+  "bus_errors": 0,
+  "superresolution_review_cancelled": true
+}

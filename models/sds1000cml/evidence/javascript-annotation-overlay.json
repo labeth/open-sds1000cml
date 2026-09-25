@@ -1,0 +1,620 @@
+{
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "files": [
+    {
+      "path": "app/internal/web/binframe.js",
+      "baselineSHA256": "d4bb826d1f3e7bad5a1ea4b655c5dafa7a5234143b85cadf22a224e6a6347f03",
+      "annotatedSHA256": "ee6b19ce469fee3a6c3c383eb050429ccc17189da560ee2851a27fbf4282ca04",
+      "tokenSHA256": "35c916bde6983cb01270fc955c7622f0aa46bda73156724212eaf77c743902d2",
+      "tokens": 608,
+      "declarations": 4,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "app/internal/web/peaks.js",
+      "baselineSHA256": "843c38c78941a8bd4930b20a3e78f180c6e30b9f075f2335160640b2d75444e3",
+      "annotatedSHA256": "bcd3946ff1eac3a9ec7a993983c21a93947678a13e4f184bed09fc5cef645dcc",
+      "tokenSHA256": "47e792e529c2f73ae5632439e8571d9ae0d94d5280834dbcf69f4a4b1e998980",
+      "tokens": 1598,
+      "declarations": 6,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "app/internal/web/sigrok_export.js",
+      "baselineSHA256": "4505ff5d035f00c83292bc081571cd3b547f9bcf40048c054be8ed8a083d416f",
+      "annotatedSHA256": "7e19755f5d61103a066889924a830500197e46063ef91bfefa898ee514d573c1",
+      "tokenSHA256": "6c4bf3d1c6365d321703c597e1024d11ea669ecb7d0bf6226ce5fd0809d367ed",
+      "tokens": 2609,
+      "declarations": 12,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "app/internal/web/spectrogram.js",
+      "baselineSHA256": "3bf588fb573c776901dd07edbd4b804d1b70cff53135ddc1aec6cefa5b31d1d8",
+      "annotatedSHA256": "6e685acc429caacb62d32ad8e2e22df005ab13d954ae277770ed54648d955a71",
+      "tokenSHA256": "6dce21ec753e83c93bb8362457f47464e764650b695f29a0d78914410e1d7950",
+      "tokens": 828,
+      "declarations": 5,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "app/internal/web/app_views.js",
+      "baselineSHA256": "cd25663d5adb59794e68051d70b7935fe6a5f13fe2b1e4d8d67a8f2efdc88492",
+      "annotatedSHA256": "aae095a63d1efe8931038cce2e94fd38278e7746ba41ba30e74f2177de32f04a",
+      "tokenSHA256": "968a9e33194bb12ea77e7443f20fae8172e904f0b5987c7ba8febc807751a375",
+      "tokens": 2552,
+      "declarations": 24,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "app/internal/web/bode.js",
+      "baselineSHA256": "c038b248eb659d80d94a937118d706e369932dd165d2dca2773fbd9131ddd019",
+      "annotatedSHA256": "0619533bedf59bffdbb187fe2c805a1b630ae70d1636aa12f68d335f733ba31b",
+      "tokenSHA256": "b5854e941cbfcc26cd546577a94221809b11a37ef3abf8bd79def85429768020",
+      "tokens": 1534,
+      "declarations": 7,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "app/internal/web/decode.js",
+      "baselineSHA256": "51f03480063e099bb6f1ff8dadc3f652151b65f83c179b24754801440d396ba0",
+      "annotatedSHA256": "553dfc13ae624093048b585c447c68130c1201b38dccf53fa84e21c75add7123",
+      "tokenSHA256": "c42ed1c0b520068fb46712a1f495db55d28b371190bc21c5bcbd042c1eb2786c",
+      "tokens": 6563,
+      "declarations": 24,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "app/internal/web/decode_arinc429.js",
+      "baselineSHA256": "8e1ec8d14e4795707668e3a510d488920a1851ab176a4d6f07daf4ac9aafaf93",
+      "annotatedSHA256": "f93b415e6c84b884075a0a0ee0a46a96b68a6ccd068823d53b474343c16b5799",
+      "tokenSHA256": "80001d427c3097d380b1523b3d3432036223d717496b989da610b8003c53757e",
+      "tokens": 1763,
+      "declarations": 6,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "app/internal/web/decode_canfd.js",
+      "baselineSHA256": "aaf986a310cfdef553c9b2cc6331824329a6fce7bd67a97e615f73d328181a78",
+      "annotatedSHA256": "25c7d61715a2a646f905347372560841db5defd847dd91ab2a78269343786a0f",
+      "tokenSHA256": "014c10ce35a719115a361387b3657e087d239ffc13bffd0633ce1d1984faab06",
+      "tokens": 2726,
+      "declarations": 9,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "app/internal/web/decode_flexray.js",
+      "baselineSHA256": "aa5833d52b438b37baa861ee531b74f2bcf1a337a5ea5aa76df350279e642c7a",
+      "annotatedSHA256": "5283463497426c5b99084d10a64ac5fedc0ded6ad9950f2a5fdd2f0732094a8b",
+      "tokenSHA256": "4c8d8d04568d30cb670367612e504c8a6c3d35fce32dabf9efc668d8c275f11f",
+      "tokens": 1891,
+      "declarations": 6,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "app/internal/web/decode_manchester.js",
+      "baselineSHA256": "a9cc93e7a9cdf0f10670fa08bd193d751899fbe964a2e85bfc1729d7f40eccd2",
+      "annotatedSHA256": "2338850a8491f85c5d3a0cb0272f0f8007789af6bdc713c894ff2a5382f0a697",
+      "tokenSHA256": "548a9bb3ebbef9cda8dadf75ecb56634ddd4618275829ffeda5c64cbf0eb113c",
+      "tokens": 1819,
+      "declarations": 3,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "app/internal/web/decode_mil1553.js",
+      "baselineSHA256": "05ddda065736f285337ebe1dc07e4743082e34cef0197fe26dd84275ef902f5a",
+      "annotatedSHA256": "a01da097f2033b02d3ff715608dd294e7fc13e5791db99fcf3469fa6f40d5084",
+      "tokenSHA256": "e314daf2213a723728bf0efe004d8c31612f9d5c68499f9aa26deb8ab313cf14",
+      "tokens": 1110,
+      "declarations": 3,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "app/internal/web/decode_sent.js",
+      "baselineSHA256": "3ed8ba69582b903ddeda1fc37169508d88f594343177a2d70850fd163c2043ee",
+      "annotatedSHA256": "1a651ae56aebb0fae683f3d64c963f56f73cec59d6984d7797faa4baed6ac482",
+      "tokenSHA256": "bdf56cf04484a0b89844f2413789f346b497cc9324862c8a23ab7f06694cdaf8",
+      "tokens": 1420,
+      "declarations": 5,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "app/internal/web/decode_usbls.js",
+      "baselineSHA256": "e58228eb41a2440c02a0499eb5145d490bb1ce57b18feb43aab6458dd372ac2f",
+      "annotatedSHA256": "f2fb56c667ad011dd947852d0949ced77239579fe4d7b5566c1d69781649497f",
+      "tokenSHA256": "755a0c7e88ace81fdbccaaa6bc33e61e93c22c6b826f85fb3e1bc272af75e11a",
+      "tokens": 1832,
+      "declarations": 4,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "app/internal/web/app_eye.js",
+      "baselineSHA256": "7b89ccacc0bdf6fd0305b2e4002b9d8e650ac639a2bba219f67a7ef20ff6f090",
+      "annotatedSHA256": "de5028e22f3b5f96cf39ca74a2ccf4b626d93fa508d918d521b1a304029e7142",
+      "tokenSHA256": "cf74fd307352775c1a1790cfef035ac186b3cf9555c3c8479987c2e737dfc97b",
+      "tokens": 4916,
+      "declarations": 31,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "app/internal/web/eyejitter.js",
+      "baselineSHA256": "8c6a41fec7ffb9c2dc2d4b87f03c8030aea39ec073855eb4f20284bcdbee09c8",
+      "annotatedSHA256": "cc70eb3a38f134ab897c7aee1331e19e379fd9a3f7381ad75909693c33e91052",
+      "tokenSHA256": "ba6e54e64280185f272488d932b9044dd8e3b18994a5afd898ec02cf64bc9ef8",
+      "tokens": 2160,
+      "declarations": 3,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "app/internal/web/eyejitter_analysis.js",
+      "baselineSHA256": "b87f7a1bf044ba509cd72710fe6f945510336c66602de79f4804398c4406b570",
+      "annotatedSHA256": "a1da317b458f68cacc848f05c61771a013b49ccca23f0230374ea44b0b99efb7",
+      "tokenSHA256": "1b5ca656a01eddd67c5826f109c03bea937012972d65f2e3981f79c8f5bcc2af",
+      "tokens": 2568,
+      "declarations": 12,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "app/internal/web/eyejitter.test.cjs",
+      "baselineSHA256": "395cc277830857d04c354d0557976bffd1c28f41b8e7e3a0d053ca88c822ca23",
+      "annotatedSHA256": "022b99fa32e8fd4574068dea96128175978ad951b63bc0fd23982596b2008eda",
+      "tokenSHA256": "986c5286f4480224aea386df859ad6d18bee19aaaa951daf6690487f646b21f7",
+      "tokens": 3533,
+      "declarations": 8,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "app/internal/web/eyejitter_breaker.cjs",
+      "baselineSHA256": "3e6997d5dfaaeb1fbdb5dfb38d3d0bb62a8dcfc127dde5147f2242b573073fa9",
+      "annotatedSHA256": "de5f0775b51cee645e56a759f07eb2cfd6b9251540256ec790a8f518716852e7",
+      "tokenSHA256": "ca4fbf27baeca55e5bb43478d840efc7e01a692aab833cc2d9bf000c745db9f1",
+      "tokens": 4730,
+      "declarations": 23,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "app/internal/web/app_gl.js",
+      "baselineSHA256": "adb4a70ba80855c1abe506cc1cdfb1a84486284fa74649f5ccc54261eece1ad0",
+      "annotatedSHA256": "e0b830806444b1e97b5046f782441906e20835a63fbf16be451cc4b7456232fb",
+      "tokenSHA256": "88029b44935fdbf1ddc3b3f34f0b5726401cb30a45f8da5cd34d27a256ffc0a9",
+      "tokens": 6269,
+      "declarations": 70,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "app/internal/web/app_geom.js",
+      "baselineSHA256": "b4dc43513ada665b830720d204e530aafa4df7d9f05b703128b8341cf8dad86c",
+      "annotatedSHA256": "45c9599bd82c0181e5902eae44a34edb269ee586f98c93395fee5909ca55b5e0",
+      "tokenSHA256": "ad7e717877d0b72239e39aee6c94b1ce7bcbe0aa91b62e7b6de709aa59262156",
+      "tokens": 2548,
+      "declarations": 25,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "app/internal/web/app_canvas.js",
+      "baselineSHA256": "069b4eccc2ce210cf16781ab9d281e68dcbd3cf35ff48bebf131bd7484f1db36",
+      "annotatedSHA256": "0a430cf0d675ea3db56b2633d0d937fde4c8017ca1299df23262bd429229470e",
+      "tokenSHA256": "d810ae883720300c516bb210fe7c0eada07ec31edf2a76c486bbd84fdc29ec80",
+      "tokens": 2167,
+      "declarations": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "app/internal/web/app_nav.js",
+      "baselineSHA256": "0d8bf6c679c282d4b1a8b060adca12da73567674cd20fb22a4004ac9822822a9",
+      "annotatedSHA256": "eff14aa50cf2ba1de5b67a0a7fd9fafb7a7e8a1ea5626bc4e1d4e253b374147d",
+      "tokenSHA256": "722f2ecefd0f29e9e5ff1b9437e46c0aae1c2307dc4efe5307c7fb6b9d280a44",
+      "tokens": 1630,
+      "declarations": 8,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "app/internal/web/app_draw.js",
+      "baselineSHA256": "ed8727761e47b50072d4c75cb215dd820b8057f9bf30d371bf4d24c8f0c6455a",
+      "annotatedSHA256": "c38114946f8e117aad8af84e55eda8a2294b4e49691d45ecc26d59d42af0a750",
+      "tokenSHA256": "34a1de436999a3341b8e652c3975bc5f0242943511d5adb1550e4ec2234166af",
+      "tokens": 4404,
+      "declarations": 25,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "app/internal/web/app_fft.js",
+      "baselineSHA256": "747110e373a824e5ca0ef8438aa49a1a8d643ca923e91875862f06400cd78f9e",
+      "annotatedSHA256": "cb540b3e0617b32c7e183404bacf362062d2165215aed3d0109555badf497156",
+      "tokenSHA256": "78af2efc592deb7653ed77933a7af46c2dea7ca8f8afd4cdc01f252565c2bb03",
+      "tokens": 4488,
+      "declarations": 28,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "app/internal/web/app.js",
+      "baselineSHA256": "99e4ac1c2f384bec50ee02e029404e375a4f681b47509a8928e3d8238dd50463",
+      "annotatedSHA256": "e5dccfb276a63fea7efd05e5514c0eebc9bbafb5921d6820cce071c11b9eb493",
+      "tokenSHA256": "5676d0287caae40e294fb22e1de937e94fd851eaee1b0c28515cbb3ead1c91dd",
+      "tokens": 2855,
+      "declarations": 27,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "app/internal/web/app_core.js",
+      "baselineSHA256": "b4d36f22c7b914fccda46f95d0c33f17b7ad3f74adeb42086233ebb0bf7e2fdd",
+      "annotatedSHA256": "a81234adce9cf2679cb7b3db76cd5c72dc994898c273f6fbd4a5b70cdb3943b3",
+      "tokenSHA256": "5cb9df1ce4c3cc42d7af1c6d784b2edb3dae390f5fe857d093c4d35734412f30",
+      "tokens": 4605,
+      "declarations": 28,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "app/internal/web/app_controls.js",
+      "baselineSHA256": "359d1754004bec1e425893b0a6a26186be4da3dc24cb853c129d493f8ba91abd",
+      "annotatedSHA256": "ee5c751b046276e56d032c224436f89e28319aab2e59134fbe1b8b1a9624e227",
+      "tokenSHA256": "a756d2443e27433ccd646c1708ee61e2ef39c45a13cf29be764f74ec0f45ab73",
+      "tokens": 2666,
+      "declarations": 47,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "app/internal/web/app_precision.js",
+      "baselineSHA256": "4474686cd683b848d08ae1ca0a55a89eedf6183fa365ecabf249d7e7b4d682c2",
+      "annotatedSHA256": "ef168e926e4aa2ccf9228e807fd49deb010191dcee162db4d261d017ac125943",
+      "tokenSHA256": "3e1558c5d80466fe09dd9d189030d2df2c2d8cefd036f2de2598dc76838f4751",
+      "tokens": 2760,
+      "declarations": 8,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "app/internal/web/app_serialtrig.js",
+      "baselineSHA256": "b79d865dfc14ea1186a8f5978bc8fba93073f283b90ad7b03d28b0cff2e28001",
+      "annotatedSHA256": "419e81011c6caec26a6d7a51234a46997c6f33d4579e11e0bcf552763efa9f28",
+      "tokenSHA256": "878f66bbb0175212e1f39dfc7d42a3de44f3709d2794a298851c90e5536d0e68",
+      "tokens": 1182,
+      "declarations": 14,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "app/internal/web/app_decode.js",
+      "baselineSHA256": "135a916cef066acdbcf9fd5c88787ab3ff908cf12da95a073cc0a77ae14c7e83",
+      "annotatedSHA256": "12b2d60f143478b368c6e2a62bc9d88bc2e489d3303b3968d8dd1f7c95badcaf",
+      "tokenSHA256": "f0cf211aba9dbc02a0992c78079d063be3407ece8bb80b69d470ac63f652fa9e",
+      "tokens": 5033,
+      "declarations": 38,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "app/internal/web/superres_comp.js",
+      "baselineSHA256": "3d551ee3ceca857a1ed1728f6b236bcf864801a3af483f8284714379ad3d6b33",
+      "annotatedSHA256": "6ca0a53843a03c54b7f1fc586bdfa0c3bd616f042fd9c2a40fcf7b57db769e77",
+      "tokenSHA256": "b8435ff7ca219474458d188ac853a1f157e2725e8fecd81bfb0ec50d356e869a",
+      "tokens": 1962,
+      "declarations": 11,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "app/internal/web/superres_ets.js",
+      "baselineSHA256": "11e2f6ffcb27d934a67cb516665c015edc184b2b69c9797a41346381ffaa347b",
+      "annotatedSHA256": "cdab3cb46568e8b1e7bb1161bdedf3d46a0975fcf877dbed360a030c98434a0b",
+      "tokenSHA256": "88b4c6d8e8241c1e5acdbd14987f3a62422232cf0f7e71ea4832a72c8a4b7a4d",
+      "tokens": 1592,
+      "declarations": 8,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "app/internal/web/superres_comp.test.cjs",
+      "baselineSHA256": "73a5343168f618d8618fc323a9357ef58f4100dc77f99314490eb749a757420c",
+      "annotatedSHA256": "51683258b41f20d8d3ce772ffb0ec7e90417ea6ec745bdbd45ca59eefa864944",
+      "tokenSHA256": "817cd7a92d51afdfc84157b027dfbbaed00d0a74667b4e9d3d1a2973ed42bdeb",
+      "tokens": 1935,
+      "declarations": 2,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "app/internal/web/superres_ets.test.cjs",
+      "baselineSHA256": "baf77ee2b69ccbffbf976e9b926f26742b5a7d86422ee6e61979951dfcfe5ddc",
+      "annotatedSHA256": "0ea1050a62e5236c9013d47a11a35e448a4b31c91f5ed6f828812633124e428e",
+      "tokenSHA256": "e55c7c29e9b0273b9347f4feed90f54057a4b6a0c2d9818cec9e12e78a9a3023",
+      "tokens": 1203,
+      "declarations": 5,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "app/internal/web/superres.js",
+      "baselineSHA256": "a9229bfb0c6cf75370005b5c68b911ee4224ba517d9d20dd824577314e94f82a",
+      "annotatedSHA256": "bbdf2cf74c5abedb5e808ece983316595fecd0aa0cbc9b8d8d0a4a28cbae4bc0",
+      "tokenSHA256": "4886e492cc761cfbb9e976f135325d66bd3dcecb9f965052d62856aec9775205",
+      "tokens": 3020,
+      "declarations": 6,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "app/internal/web/superres_math.js",
+      "baselineSHA256": "14a8add8638efac2259039e5e22299b9a410a704c7c8846a662f61ca9b2308fb",
+      "annotatedSHA256": "0bb3cc8ad55fb5f96cec323534111a2f2ec87ced0e8c00d1c41f5c7bed5e1e4b",
+      "tokenSHA256": "0a5fb7dd6a9e2e1812305705f86c9a5eaa5265676f3ad00c48855e476c2f42f1",
+      "tokens": 1785,
+      "declarations": 8,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "app/internal/web/superres_template.js",
+      "baselineSHA256": "a5e0a12681a9f48f9284648ad13f250f1977232a9fec7d6b433eabacbd75072d",
+      "annotatedSHA256": "a37804eed77d05d696137a8a81d7d06a31f08f77df1b238612d10279f013478b",
+      "tokenSHA256": "b7f5d9bef9a9b389cde2c11082ec590284452e9331b0467d744380a122b90596",
+      "tokens": 1899,
+      "declarations": 5,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "app/internal/web/superres_gate.js",
+      "baselineSHA256": "19730b6f161c9df4dbdd7881a06de7f6746df06837923e3c726e1b7d1bfb4a38",
+      "annotatedSHA256": "c49d8ce1ec920537434b3481885f677cc32ed5a52bb8fa650182c9601ae81529",
+      "tokenSHA256": "7fd3e73524b68313fbd1cf082576f67504586c542bc9a27483435a182c10c8ef",
+      "tokens": 2525,
+      "declarations": 5,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "app/internal/web/superres_measure.js",
+      "baselineSHA256": "0c71d9a4a38e2aa12ea4345c894e5b63878b7b9e4ad687e4fc7a2c7ea8da40e5",
+      "annotatedSHA256": "32097ff8eb3667c7ef3795bfe6a757f5287e75448a43dd287c81a39f7dcbca5f",
+      "tokenSHA256": "b4aeb2d520ccaaf4fcad0e2bda4b4811ac049092772cb2bd15472edd1756bb27",
+      "tokens": 2389,
+      "declarations": 7,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "app/internal/web/superres.test.cjs",
+      "baselineSHA256": "05ddcf1b683b13b17dc8b86f01a95cd99da0237a0101b25634066cb47d9ec3a4",
+      "annotatedSHA256": "5c65876a8e3137cabe742bce45232d5bc2fe5a0cc75d1e3c0f468c8b8c41ff05",
+      "tokenSHA256": "2f12f645c454a0d8bb1223f06cf7be9df6ccf8c3a448ac82f036ca53d080836c",
+      "tokens": 7965,
+      "declarations": 35,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "app/internal/web/superres_breaker.cjs",
+      "baselineSHA256": "4e2c7bab5d3ccb256166dec7519bed87ed8581940742f67d5d4953efb2dfc97b",
+      "annotatedSHA256": "402e0616ddcd114ba15c5b778f2855b87374fb8c2c8057af3cf03a85cee3d01e",
+      "tokenSHA256": "289a59fa5438ec763dbf527bf08d3c4b7df48aff4f15a1d7c660128f2a806789",
+      "tokens": 4226,
+      "declarations": 22,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "app/internal/web/app_superres.js",
+      "baselineSHA256": "ce579da6cd38c559cc359a0c6be252b2421c8b3a9f7e4ad3e66e7f0d6f14fbb8",
+      "annotatedSHA256": "416310aa3931c5c3939104627bdd89e1948f64fb18c6d9b66494a75487e4fb5a",
+      "tokenSHA256": "94e99132c648d831ba28984646f6f9744eda135768113ea92d435a2f0db30e7f",
+      "tokens": 6883,
+      "declarations": 30,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "app/internal/web/app_zonemask.js",
+      "baselineSHA256": "a8bec7198c569011e01c172fc6d3f6d75fb2aa1b009d5875c3842e4186ff9d42",
+      "annotatedSHA256": "3bd1ffabb81be3417cb1d4a5d0c8569aef405df59b39626543d6ceb7299e6b4b",
+      "tokenSHA256": "180ad929b1d56d6799219d572f31cf7151e7e7d7a5b9a013e0ea7717cc009547",
+      "tokens": 4123,
+      "declarations": 25,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "app/internal/web/chaos_browser.mjs",
+      "baselineSHA256": "9e6b5570cb7c31ede92a0aa01a11ac9df95b1fe03672c9226466afd0ef40bb65",
+      "annotatedSHA256": "f93c00b36af5e488fbba8a11987cd78f45ee15d38ef74c77d29285a0f8300979",
+      "tokenSHA256": "05f5c67073dae19395b85f6abd44868a631a058a9f2a021624e66ed87c1e16bb",
+      "tokens": 1268,
+      "declarations": 3,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "app/internal/web/decode.test.cjs",
+      "baselineSHA256": "7aa1ad98a71295b45f99137d447c4ccba5fb4d27e29e00c68fc6b4b18503e180",
+      "annotatedSHA256": "39b3f2821021116ccedbed8c2b6d01541f15284c3172d672ae2d9510c49286a1",
+      "tokenSHA256": "52a54c376bd29a4b51a5cad57a06491872c22f3a5d07ce0af249dbfe3f37cccf",
+      "tokens": 4346,
+      "declarations": 15,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "app/internal/web/decode_browser.mjs",
+      "baselineSHA256": "84d87ec7b337f62c4c382d5b4f72152f191921ef158b054a9e095de964f645f0",
+      "annotatedSHA256": "4f5bbbf9caffd67d4ac4e9db7ba8c3c1bd87511043b52eb67b5f562847e90837",
+      "tokenSHA256": "8bab90a0e38a5db6bfe4e42661d2ebaef0f8f370eb8a0b5ea857a862698e1471",
+      "tokens": 1223,
+      "declarations": 2,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "app/internal/web/deepmem_browser.mjs",
+      "baselineSHA256": "8b9213a5c324d8cad71726c0e9d578a8deacff413536e2952a0891a4bd3861a1",
+      "annotatedSHA256": "1b613b4ce9a7e851358fa50a124371eb67586dbc0bd120a3005e44ddfd1aad04",
+      "tokenSHA256": "5c57f0a1df979264557ce8078acbf23bcee67809178114ac78f38ee1d63d281d",
+      "tokens": 1136,
+      "declarations": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "app/internal/web/e2e/fuzz.mjs",
+      "baselineSHA256": "51135a2bb59c6d720fdab839ba0662a841074c52051c2a6c8456796a2db09954",
+      "annotatedSHA256": "c1768f32a352800a2e561e7a85bb55242638e8235d70fc767031b860e3fadce0",
+      "tokenSHA256": "0326bc81b23dfcfa6fc718dda7e183dd5bafe16424ff6f6f7ad047fe03aad460",
+      "tokens": 5280,
+      "declarations": 54,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "app/internal/web/e2e/operator.mjs",
+      "baselineSHA256": "376de9a31e0eae2b3bb33bd58d1410ead48eacc71a18d17b696238fb04d1e068",
+      "annotatedSHA256": "9a57ea07199b22b1e48904c9ee66c5ee99060e8d51559818b273c8a85c0f7142",
+      "tokenSHA256": "dc41c666070fa61ba7e76766ec4191c139aae484239149b57b5d19c978090084",
+      "tokens": 2593,
+      "declarations": 28,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "app/internal/web/fft_browser.mjs",
+      "baselineSHA256": "ac13b5737914a7b9690e880592f436bcb0e653219e8f59c51fc45534e2811955",
+      "annotatedSHA256": "fda37d43fbd64d61ebe5475b84c8606b84c96c1ed681c249a52ab853635887cb",
+      "tokenSHA256": "26bcdc5c877df851c1288c57e143a3ff7980f35b735eb0ecb7b81b96ab618156",
+      "tokens": 2229,
+      "declarations": 4,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "app/internal/web/invs_browser.mjs",
+      "baselineSHA256": "f8510a83df5affc3e3ab055702ffe3b8871980403caef1374eae06c9f283e417",
+      "annotatedSHA256": "ecd1369f6312e520248d3513476e030dd2a0f027facb1d96a63765f094f72c2a",
+      "tokenSHA256": "c5ba319df1e2dc2456f209a00dbc76df7cf8e5de34cfa7b3b372ce317e040ebc",
+      "tokens": 919,
+      "declarations": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "app/internal/web/scope_po.mjs",
+      "baselineSHA256": "7f8b00905986ed6c45cb03e118561dcc1e5bbf03e5d3fab7d51818f7bc70922b",
+      "annotatedSHA256": "2b68badf59af3046bc05bc1b52673e26e19130c21db3a77255e0dcca974b43f2",
+      "tokenSHA256": "1ebcd4ed8248e7d84c6d18a843b5b97e072dd7a57d7faa6807916c440ebfadd7",
+      "tokens": 1361,
+      "declarations": 25,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "app/internal/web/stackperf_browser.mjs",
+      "baselineSHA256": "938f39d55e9f35e32f01c253510c3060ce46a147c0b12df40638ba712a076a6e",
+      "annotatedSHA256": "c8e775d2b362be698df5066c4b8e3cd789cae4ba515af45e88b30092c574b412",
+      "tokenSHA256": "a80a8f319eabe79d49acddf325664b29e205a99e54681b7ff418ab36649aa002",
+      "tokens": 1056,
+      "declarations": 3,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "app/internal/web/superres_browser.mjs",
+      "baselineSHA256": "77e38a4c480d7127cf102df20d6e0c88624432d0f7d45dc8aaf4aaf24643c663",
+      "annotatedSHA256": "6d568aa232c45bf70205591f444fd23439cf7cfe5da48145ba2c02634ff24265",
+      "tokenSHA256": "88700d0f9a6e91eb7cb6902aedfb331f1c1194cfe86cfbf6b4d5f6b6033a5ab7",
+      "tokens": 2885,
+      "declarations": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "app/internal/web/transport_browser.mjs",
+      "baselineSHA256": "86c0115e3c4e7ed858245366580e86dd53b31127b43d575c2d55f880d1a88bd4",
+      "annotatedSHA256": "c6199416a0bd2600ffa7ebc27e3a842362c735e9cb86e1fb037bfb129f73ef0e",
+      "tokenSHA256": "84dff84e317f6a3b769b1872effbb273683bd8843b6578df60c2514356b3799a",
+      "tokens": 813,
+      "declarations": 2,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "app/internal/web/zonemask_browser.mjs",
+      "baselineSHA256": "6da0bb34743ba76055104dca7f2638449022c681baad5383a92d12d7cc3d96fc",
+      "annotatedSHA256": "f808be28e97a99a44ffa5d93e62fc2c6e55220e82e1e386f7903038ff4b6f756",
+      "tokenSHA256": "c6de241d1f7934142e81a23aff14a7838ae79c145b094d10f3d917b4f495481d",
+      "tokens": 1322,
+      "declarations": 2,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "app/internal/superres/comp_parity_driver.cjs",
+      "baselineSHA256": "5b593b8fe36dbd9b44a9bb54010ab68ea740c0e115d9723c6165248e5b80ccdd",
+      "annotatedSHA256": "96ecd2ad1503b992973add7cc27da0087111f3dd02c029ddc5df8ad2aed34222",
+      "tokenSHA256": "e2d26bf8bc5ed260537de551b7d036ced58060675e61033a312f70eac4c09b62",
+      "tokens": 436,
+      "declarations": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "app/internal/superres/parity_driver.cjs",
+      "baselineSHA256": "830a8da515b248f2f2dadd120774c5a55eec92efde608ad5b7ecb8a1756963cd",
+      "annotatedSHA256": "6f2fc542a73f1f0650b485dd5ae87fab399bddc8649011a1ce2df87f78ff5f8a",
+      "tokenSHA256": "ea8ee2e611355df4bbf1944d8a10d3f40c4e062a4d220512a995d5a015f2fb49",
+      "tokens": 446,
+      "declarations": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "app/internal/web/decparity_check.mjs",
+      "baselineSHA256": "f2ac071bf71d417567a9cbe7754b5e74da83568ae1b57ede9b3074f2c1c609c4",
+      "annotatedSHA256": "bf23b034b60b4a078acc4e2aed49a1496ab640a88f95f193dc525103d2af8d1e",
+      "tokenSHA256": "ef9f84ed6010ebc2818698399963e4be060673112a611ed7adf151e4e57cbfc2",
+      "tokens": 1042,
+      "declarations": 13,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "app/internal/web/e2e/workflow_assert.mjs",
+      "baselineSHA256": "78916f001c423bb62463d402d51d67c084f585b1db3e5954dc39bf3a3745d54d",
+      "annotatedSHA256": "6f086fa9926cfc9bbb637b18eaa2f50c059a8d1cd457b0287b79fae8e3696439",
+      "tokenSHA256": "7aad341854fe7c803c25680bbab9e67773e2985c8d5af3d3a4d76d96c58492df",
+      "tokens": 68,
+      "declarations": 2,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "app/internal/web/e2e/workflow_mask.mjs",
+      "baselineSHA256": "0f062994f0cf2a340818618e509b43b6643099d0df2ec4432ef15a43df22bb93",
+      "annotatedSHA256": "e54c864234bf41cb1894c70831dbe0d878de460ed3371a90fdb1450787d0579b",
+      "tokenSHA256": "e20b67cfc92387264da49074467df10df6e5cd4971708b1be4e5b45cfd1701f5",
+      "tokens": 1986,
+      "declarations": 12,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "app/internal/web/e2e/regress_missing_channel.mjs",
+      "baselineSHA256": "8ec1a894db62856963a636ff3d9b2ba926e4e7f18bbeb5142e9efc6b1672dea4",
+      "annotatedSHA256": "91b07e721b61a0a2a38e55099682118f8b463b48db9911f54c46da8ea207394a",
+      "tokenSHA256": "d8d11c87252819f10dd4d7df399a1ead9a467fdf83b3f774c6c63ba133982005",
+      "tokens": 745,
+      "declarations": 3,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "app/internal/web/e2e/workflow_analog.mjs",
+      "baselineSHA256": "50d731e101cf6ca2c8347c577d33e585ae40c98672a481cc23db00658060267c",
+      "annotatedSHA256": "8ba4449d333c1e80cc5ce360399e0dad04b10e1721b906b81a9ac5c05f6fcfc1",
+      "tokenSHA256": "db5b15f5b2b2152bcb766e2a34d9394ac4b57447718e310eee00e4e6a982131f",
+      "tokens": 6625,
+      "declarations": 46,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "app/internal/web/e2e/workflow_serial.mjs",
+      "baselineSHA256": "a79553b603667b2d7534da9d8eabd947f3baf5a3a2e9774d8cbf8c234adea43b",
+      "annotatedSHA256": "b00e4cbbf17418c1238ce915f3dd4f0cecca37dc6b95ff2797c36e8fe8a85248",
+      "tokenSHA256": "bd998cb548d65cf883b59c36576fc8a425fb73d9b5eac642bf606547da222441",
+      "tokens": 6766,
+      "declarations": 45,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "app/internal/web/binframe.test.cjs",
+      "baselineSHA256": "ed9e6b3565545f904a4e76d0127cce545ce43459e88dcefd0d4573c15d31ced7",
+      "annotatedSHA256": "c39bbb11ce1b2125677ffa8cfd48772085f7dd361f7a23e3e29c388898603411",
+      "tokenSHA256": "5371984bb40d3984ca0bea6b376840f67ac785615b7c09712efc69bb1efb12a7",
+      "tokens": 1388,
+      "declarations": 2,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "app/internal/web/peaks.test.cjs",
+      "baselineSHA256": "6da89d87e61a091fcb48813fecc6615732beb0cc00807903676f0b724c1dc3e9",
+      "annotatedSHA256": "2fbfd01abb6a282613d6d5a257a8a90aa03fbcf1bd8b740bbc417dd2d224fd78",
+      "tokenSHA256": "87b007d8a13e80b54178e052744ce5a818890a5e491f6e9bacab73b21553403a",
+      "tokens": 1535,
+      "declarations": 4,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "app/internal/web/sigrok_export.test.cjs",
+      "baselineSHA256": "a96c99257fb236b69b44947c4b66261d75e65306906aec6dd103973bfed1fdda",
+      "annotatedSHA256": "2830461fce684cdde044f636bf02db35e8923bd86f7c3644298a31967a6eb544",
+      "tokenSHA256": "d18c266bc88da927618ed82fcc056e31b17c2126018187d61cd15e0b2b207420",
+      "tokens": 3007,
+      "declarations": 5,
+      "exactBaselineRecovery": true
+    }
+  ],
+  "linkedDeclarations": 958,
+  "result": "pass",
+  "scope": "Reviewed declaration comments only; exact insertion removal recovers the pinned bytes and tree-sitter non-comment terminal tokens are identical. No browser or hardware qualification."
+}

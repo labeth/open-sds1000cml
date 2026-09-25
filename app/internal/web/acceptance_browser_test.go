@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-WEB
 package web
 
 import (
@@ -16,6 +17,7 @@ import (
 // covering the paths not owned by the decode/fft/deepmem drivers: boot/liveness,
 // acquire, trigger, vertical/horizontal, cursors, view modes + panel visibility,
 // and export. Skips (via the driver) without node/Playwright (fails under CI_REQUIRE_BROWSER=1).
+// TRLC-LINKS: REQ-SDS-180
 func TestAcceptanceBrowser(t *testing.T) {
 	testenv.NeedNode(t)
 	const N = 2048

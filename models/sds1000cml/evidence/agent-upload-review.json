@@ -1,0 +1,25 @@
+{
+  "scope": "Complete implementation/test read with REQ-SDS-106 annotations and native selected-source integration.",
+  "sourceSHA256": {
+    "ota/internal/agent/upload.go": "a672262f08a59d9e7729ea1e5d9bbab8ac9e91bf8f1a172f914bbe6988e01fa4",
+    "ota/internal/agent/upload_test.go": "ccfc32ec1f2ac8eca899878f57202debaa6d26f9cf2e562b3f671136ff1304d2"
+  },
+  "findings": [
+    "Six production functions and one session type implement per-session chunk writes and commit. Two tests exercise missing-hash gap rejection and complete out-of-order transfer.",
+    "Destination must be absolute after cleaning; its directory is created before session-cap rejection. Temporary file is in destination directory. Default mode is 0755; initial temporary mode is 0644.",
+    "Eight sessions maximum; expiration older than ten minutes is checked only when starting another upload, not by periodic cleanup. Failed commits remain registered until later eviction.",
+    "Write tracks highest written offset, not coverage. Size bounds apply only when size>0; offset+length arithmetic lacks an overflow guard. os.File.WriteAt handles negative offsets.",
+    "Commit syncs/closes before validating size and optional hash. Positive declared size requires a hash; zero/negative declared size does not enforce length or require one. Matching content hash does not prove every byte was explicitly written if sparse zero regions match the intended file.",
+    "fileSHA stops on any read error and returns a digest with nil error; it does not distinguish EOF from read failures.",
+    "Success chmods and renames the temporary file, then removes session from registry. Directory sync is absent. Failures after close can leave a closed registered session and temporary file.",
+    "Eviction calls abort under registry mutex without acquiring session mutex, while writes/commit use session mutex. Concurrent eviction interactions require a dedicated race review; passing the two sequential tests does not establish safety.",
+    "No hardware, process execution or network transport exercised.",
+    "Test-only overlay on this Linux host confirms fileSHA of a temporary directory returns the SHA-256 empty-content digest with nil error, reproducing ignored read failure.",
+    "Sequential temporary-file probe confirms eight missing-hash commit failures retain eight closed sessions and reject the ninth start. The rejected start creates the destination directory before checking capacity. Artificially aging retained sessions by eleven minutes allows the next start to evict them; there is no autonomous timeout cleanup in this path."
+  ],
+  "testLog": "test-runs/agent-upload.jsonl",
+  "characterizations": [
+    "agent-rpc-characterization.json",
+    "agent-upload-characterization.json"
+  ]
+}

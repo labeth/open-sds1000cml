@@ -1,0 +1,16 @@
+{
+  "source": "fpga/common/sim/tb_pll.v",
+  "scope": "Original five common RTL benches, SIM behavioral clocks and ideal bus stimulus. No physical CDC, fitted timing, IO placement or hardware qualification.",
+  "sourceSHA256": "ca2cd71bb39bc6be8c0225a25a4560f139c88b2fa33211076ea65c3e27bd1f05",
+  "reportSHA256": "f4932c3f638b8136cd9f37dc2cdd8c773b37db76838efa148f6e981f0f7b0608",
+  "runs": [
+    "tb_pll"
+  ],
+  "results": [
+    {
+      "requirement": "REQ-SDS-191",
+      "status": "partial",
+      "notes": "Checks SIM lock delay, periods, selected phase offsets, and up/down capture steps. It has a printed timeout but no nonzero failure exit; the real altpll branch and failure handshake are not exercised. See evidence/common-rtl-review-test-run.json. Exact original-source or approved comment-overlay equivalence is checked."
+    }
+  ]
+}

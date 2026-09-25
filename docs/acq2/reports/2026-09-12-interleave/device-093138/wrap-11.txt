@@ -1,0 +1,11 @@
+{
+  "bytes": 2097152,
+  "first": 7328594,
+  "last": 7852881,
+  "nonconsecutive_words": 0,
+  "path": "/dev/acq-window.bin",
+  "seconds": 6.82410444,
+  "sha256": "703ae8c5eaf933944fe6eccc3c1fc34806a74cb72b43aead50300874495515d9",
+  "words": 524288
+}
+[exit 0]

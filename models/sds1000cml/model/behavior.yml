@@ -1,0 +1,3495 @@
+schemaVersion: 2
+behavior:
+  states:
+  - id: STATE-IDLE
+    name: Idle
+    description: No active producer or transport owner; requests still require readiness and released banks.
+  - id: STATE-CAPTURING
+    name: Capturing
+    description: Accepted finite capture owns the transport and advances record history.
+  - id: STATE-FROZEN
+    name: Frozen
+    description: Finite record metadata and samples are retained for recall.
+  - id: STATE-RECALL
+    name: Recall
+    description: Frozen record window is being transferred to host banks.
+  - id: STATE-STREAMING
+    name: Streaming
+    description: Continuous producer and SRAM reader operate within bounded queues.
+  - id: STATE-FAULT
+    name: Fault
+    description: Loss, invalid transport state or clock failure makes the epoch unusable.
+  - id: STATE-RESET
+    name: Reset
+    description: Epoch invalidation clears control/ownership state; RAM contents alone are not valid records.
+  - id: STATE-DECODED-CAPTURING
+    name: Decoded stream with live raw history
+    description: One acquisition owner drains timestamped decoder events while the FPGA records raw prehistory and
+      waits for a qualifying protocol trigger. Live-qualified hardware decoders are UART, I2C, SPI, SENT,
+      MIL-STD-1553 and USB LS. Manchester remains a simulated candidate; the other three hardware decoders are pending.
+  - id: STATE-DECODED-RETAINED
+    name: Decoded stream with retained raw record
+    description: The trigger freezes raw SRAM and its epoch/record identity. Decoders continue observing ADC input;
+      retrieving the retained record neither rearms SRAM nor stops decoded delivery.
+  - id: STATE-DECODED-INCOMPLETE
+    name: Incomplete decoded transcript
+    description: A framing, sequence or host-buffer error terminates the transcript explicitly. Hardware health probes
+      continue without consuming events; independently valid retained SRAM remains retrievable until session end.
+  events:
+  - id: EVT-START
+    name: Start
+    description: Accepted capture or stream start
+  - id: EVT-TRIGGER
+    name: Trigger
+    description: Qualified edge, force or match event
+  - id: EVT-RECALL
+    name: Recall
+    description: Accepted recall request
+  - id: EVT-COMPLETE
+    name: Complete
+    description: Requested operation has completed
+  - id: EVT-OVERRUN
+    name: Overrun
+    description: Storage or host service cannot accept data
+  - id: EVT-RESET
+    name: Reset
+    description: Clock loss or explicit epoch reset
+  - id: EVT-PANEL-BTNRUNSTOP
+    name: RUN/STOP press
+    description: 'Panel input at matrix 0x65:2. Toggle acquisition running/stopped; clear single-shot selection. Source:
+      app/internal/panel/panel_dispatch.go; REQ-SDS-135.'
+  - id: EVT-PANEL-BTNSINGLE
+    name: SINGLE press
+    description: 'Panel input at matrix 0x65:10. Arm one triggered acquisition and then stop. Source: app/internal/panel/panel_dispatch.go;
+      REQ-SDS-135.'
+  - id: EVT-PANEL-BTNAUTO
+    name: AUTO press
+    description: 'Panel input at matrix 0x67:10. Start a background autoset sweep to fit scales, offsets and trigger
+      to the live signal; press again to cancel. Without a frame source, select AUTO trigger and run. Source: app/internal/panel/autoset.go;
+      REQ-SDS-137.'
+  - id: EVT-PANEL-BTNCH1VDIVPUSH
+    name: CH1 V/DIV push
+    description: 'Panel input at matrix 0x65:9. Select channel 1 as trigger source. Source: app/internal/panel/panel_dispatch.go;
+      REQ-SDS-135.'
+  - id: EVT-PANEL-BTNCH2VDIVPUSH
+    name: CH2 V/DIV push
+    description: 'Panel input at matrix 0x66:1. Select channel 2 as trigger source. Source: app/internal/panel/panel_dispatch.go;
+      REQ-SDS-135.'
+  - id: EVT-PANEL-BTNTRIGLVLPUSH
+    name: TRIGGER LEVEL push
+    description: 'Panel input at matrix 0x64:9. Toggle rising/falling trigger edge. Source: app/internal/panel/panel_dispatch.go;
+      REQ-SDS-135.'
+  - id: EVT-PANEL-BTNUTILITY
+    name: UTILITY press
+    description: 'Panel input at matrix 0x66:3. Arm reference-locked super-resolution stacking from the current frame
+      and open its menu if seeding succeeds; press while active to cancel. Source: app/internal/panel/superres.go;
+      REQ-SDS-140.'
+  - id: EVT-PANEL-BTNADJUSTPSH
+    name: ADJUST / intensity push
+    description: 'Panel input at matrix 0x65:1. While super-resolution is active, cycle watch → gate start → gate
+      end → stacked-trace review → watch. Otherwise no effect. Source: app/internal/panel/superres.go; REQ-SDS-140.'
+  - id: EVT-PANEL-BTNTRIGMENU
+    name: TRIGGER MENU press
+    description: 'Panel input at matrix 0x64:10. Open trigger menu; re-press from trigger page to open qualifier parameters;
+      otherwise return to trigger page. Source: app/internal/panel/menu.go; REQ-SDS-136.'
+  - id: EVT-PANEL-BTNACQUIRE
+    name: ACQUIRE press
+    description: 'Panel input at matrix 0x64:11. Open acquisition menu; repeated presses cycle acquisition → references
+      → mask → acquisition. Source: app/internal/panel/menu.go; REQ-SDS-136.'
+  - id: EVT-PANEL-BTNDISPLAY
+    name: DISPLAY press
+    description: 'Panel input at matrix 0x65:3. Open display menu; re-press from display page to open channel/probe
+      settings. Source: app/internal/panel/menu.go; REQ-SDS-136.'
+  - id: EVT-PANEL-BTNHORIZMENU
+    name: HORIZONTAL MENU press
+    description: 'Panel input at matrix 0x65:12. Open horizontal menu; re-press from horizontal page to open cursors.
+      Source: app/internal/panel/menu.go; REQ-SDS-136.'
+  - id: EVT-PANEL-BTNMENUONOFF
+    name: MENU on/off press
+    description: 'Panel input at matrix 0x64:13. Open main menu if closed; otherwise close the overlay. Source: app/internal/panel/menu.go;
+      REQ-SDS-136.'
+  - id: EVT-PANEL-BTNMEASURE
+    name: MEASURE press
+    description: 'Panel input at matrix 0x65:4. Toggle measurement panel visibility. Source: app/internal/panel/menu.go;
+      REQ-SDS-136.'
+  - id: EVT-PANEL-BTNCURSORS
+    name: CURSORS press
+    description: 'Panel input at matrix 0x64:12. Open cursor menu. Source: app/internal/panel/menu.go; REQ-SDS-136.'
+  - id: EVT-PANEL-BTNMATH
+    name: MATH press
+    description: 'Panel input at matrix 0x66:12. Cycle math off → C1+C2 → C1−C2 → C2−C1 → C1×C2. Source: app/internal/panel/menu.go;
+      REQ-SDS-136.'
+  - id: EVT-PANEL-BTNREF
+    name: REF press
+    description: 'Panel input at matrix 0x67:12. Open reference-waveform menu. Source: app/internal/panel/menu.go;
+      REQ-SDS-136.'
+  - id: EVT-PANEL-BTNCH1
+    name: CH1 press
+    description: 'Panel input at matrix 0x66:4. Toggle channel 1 trace visibility and its lamp; this is not analog
+      input disable. Source: app/internal/panel/menu.go; REQ-SDS-136.'
+  - id: EVT-PANEL-BTNCH2
+    name: CH2 press
+    description: 'Panel input at matrix 0x67:4. Toggle channel 2 trace visibility and its lamp; this is not analog
+      input disable. Source: app/internal/panel/menu.go; REQ-SDS-136.'
+  - id: EVT-PANEL-BTNF1
+    name: F1 press
+    description: 'Panel input at matrix 0x65:5. Activate/cycle softkey slot 1 on the open menu and select it for ADJUST.
+      Closed menu or unused slot: no effect. Source: app/internal/panel/menu_cycle.go; REQ-SDS-136.'
+  - id: EVT-PANEL-BTNF2
+    name: F2 press
+    description: 'Panel input at matrix 0x65:13. Activate/cycle softkey slot 2 on the open menu and select it for
+      ADJUST. Closed menu or unused slot: no effect. Source: app/internal/panel/menu_cycle.go; REQ-SDS-136.'
+  - id: EVT-PANEL-BTNF3
+    name: F3 press
+    description: 'Panel input at matrix 0x66:5. Activate/cycle softkey slot 3 on the open menu and select it for ADJUST.
+      Closed menu or unused slot: no effect. Source: app/internal/panel/menu_cycle.go; REQ-SDS-136.'
+  - id: EVT-PANEL-BTNF4
+    name: F4 press
+    description: 'Panel input at matrix 0x66:13. Activate/cycle softkey slot 4 on the open menu and select it for
+      ADJUST. Closed menu or unused slot: no effect. Source: app/internal/panel/menu_cycle.go; REQ-SDS-136.'
+  - id: EVT-PANEL-BTNF5
+    name: F5 press
+    description: 'Panel input at matrix 0x67:5. Activate/cycle softkey slot 5 on the open menu and select it for ADJUST.
+      Closed menu or unused slot: no effect. Source: app/internal/panel/menu_cycle.go; REQ-SDS-136.'
+  - id: EVT-PANEL-UNASSIGNED-1
+    name: PRINT / Hardcopy press
+    description: 'Panel input at matrix 0x67:13. No action assigned in the current panel dispatcher. Intended behavior
+      remains for review. Source: app/internal/panel/panel_dispatch.go; REQ-SDS-135.'
+  - id: EVT-PANEL-UNASSIGNED-2
+    name: SAVE/RECALL press
+    description: 'Panel input at matrix 0x65:11. No action assigned in the current panel dispatcher. Intended behavior
+      remains for review. Source: app/internal/panel/panel_dispatch.go; REQ-SDS-135.'
+  - id: EVT-PANEL-UNASSIGNED-3
+    name: SET TO 50% press
+    description: 'Panel input at matrix 0x66:2. No action assigned in the current panel dispatcher. Intended behavior
+      remains for review. Source: app/internal/panel/panel_dispatch.go; REQ-SDS-135.'
+  - id: EVT-PANEL-UNASSIGNED-4
+    name: DEFAULT SETUP press
+    description: 'Panel input at matrix 0x66:10. No action assigned in the current panel dispatcher. Intended behavior
+      remains for review. Source: app/internal/panel/panel_dispatch.go; REQ-SDS-135.'
+  - id: EVT-PANEL-UNASSIGNED-5
+    name: FORCE press
+    description: 'Panel input at matrix 0x67:2. No action assigned in the current panel dispatcher. Intended behavior
+      remains for review. Source: app/internal/panel/panel_dispatch.go; REQ-SDS-135.'
+  - id: EVT-PANEL-UNASSIGNED-6
+    name: HELP press
+    description: 'Panel input at matrix 0x67:11. No action assigned in the current panel dispatcher. Intended behavior
+      remains for review. Source: app/internal/panel/panel_dispatch.go; REQ-SDS-135.'
+  - id: EVT-PANEL-UNASSIGNED-7
+    name: CH1 POSITION push
+    description: 'Panel input at matrix 0x64:1. No action assigned in the current panel dispatcher. Intended behavior
+      remains for review. Source: app/internal/panel/panel_dispatch.go; REQ-SDS-135.'
+  - id: EVT-PANEL-UNASSIGNED-8
+    name: CH2 POSITION push
+    description: 'Panel input at matrix 0x67:1. No action assigned in the current panel dispatcher. Intended behavior
+      remains for review. Source: app/internal/panel/panel_dispatch.go; REQ-SDS-135.'
+  - id: EVT-PANEL-UNASSIGNED-9
+    name: TIME/DIV push
+    description: 'Panel input at matrix 0x66:9. No action assigned in the current panel dispatcher. Intended behavior
+      remains for review. Source: app/internal/panel/panel_dispatch.go; REQ-SDS-135.'
+  - id: EVT-PANEL-UNASSIGNED-10
+    name: HORIZ POSITION push
+    description: 'Panel input at matrix 0x67:9. No action assigned in the current panel dispatcher. Intended behavior
+      remains for review. Source: app/internal/panel/panel_dispatch.go; REQ-SDS-135.'
+  - id: EVT-PANEL-HORIZPOS
+    name: HORIZ POSITION rotation
+    description: 'Panel input at matrix 0x67:14/15. At zoom greater than 1, pan the displayed zoom window; otherwise
+      move trigger position within the acquisition window. Source: app/internal/panel/panel_dispatch.go; REQ-SDS-135.'
+  - id: EVT-PANEL-CH2POS
+    name: CH2 POSITION rotation
+    description: 'Panel input at matrix 0x67:6/7. Adjust channel 2 analog input offset; requires the analog frontend.
+      Source: app/internal/panel/panel_dispatch.go; REQ-SDS-135.'
+  - id: EVT-PANEL-TDIV
+    name: TIME/DIV rotation
+    description: 'Panel input at matrix 0x66:14/15. Step the acquisition timebase ladder, clamped at its ends; clockwise
+      increases seconds/division. Source: app/internal/panel/panel_dispatch.go; REQ-SDS-135.'
+  - id: EVT-PANEL-CH2VDIV
+    name: CH2 V/DIV rotation
+    description: 'Panel input at matrix 0x66:6/7. Step channel 2 analog range detents; requires the analog frontend.
+      Source: app/internal/panel/panel_dispatch.go; REQ-SDS-135.'
+  - id: EVT-PANEL-CH1VDIV
+    name: CH1 V/DIV rotation
+    description: 'Panel input at matrix 0x65:14/15. Step channel 1 analog range detents; requires the analog frontend.
+      Source: app/internal/panel/panel_dispatch.go; REQ-SDS-135.'
+  - id: EVT-PANEL-ADJUST
+    name: ADJUST rotation
+    description: 'Panel input at matrix 0x65:6/7. Priority: edit focused super-resolution gate edge and rebuild stack;
+      otherwise move active cursor when cursor page is open and enabled; otherwise cycle selected menu setting. Closed
+      menu: no effect. Source: app/internal/panel/panel_dispatch.go; REQ-SDS-135.'
+  - id: EVT-PANEL-TRIGLEVEL
+    name: TRIGGER LEVEL rotation
+    description: 'Panel input at matrix 0x64:14/15. Adjust trigger threshold within hardware limits; clockwise raises
+      physical level. Source: app/internal/panel/panel_dispatch.go; REQ-SDS-135.'
+  - id: EVT-PANEL-CH1POS
+    name: CH1 POSITION rotation
+    description: 'Panel input at matrix 0x64:6/7. Adjust channel 1 analog input offset; requires the analog frontend.
+      Source: app/internal/panel/panel_dispatch.go; REQ-SDS-135.'
+  flows:
+  - id: FLOW-GENERAL-DECODED
+    title: General image decoded streaming and retained raw capture
+    description: One image and one bus owner serve concurrent decoder-event delivery and raw record retention.
+      The branches after ARM are concurrent activities, not additional bus owners. UART, I2C, SPI, SENT and
+      MIL-STD-1553 have passed live end-to-end qualification. USB passes the deployed 1.5 Mbit/s
+      fixture through hardware triggering, continuous events, raw correspondence and browser downloads.
+      Manchester, CAN FD, ARINC 429, FlexRay and FPGA stacking remain target behavior. An isolated
+      acquisition worker inherits the existing GPMC open file after startup checks and becomes its
+      sole owner. The GUI process uses bounded IPC for controls, events and retained reads; the
+      worker drains independently into a bounded queue and reports exhaustion explicitly.
+      The general FPGA image is unchanged. Precision filter sample mapping remains unavailable.
+    entry:
+    - STEP-DECODED-ARM
+    exits:
+    - STEP-DECODED-END
+    steps:
+    - id: STEP-DECODED-ARM
+      ref: FU-APP-SRAMCAPTURE
+      action: Halt normal rearming, configure the protocol, enable a new event epoch and arm SRAM. Return only the
+        newly acknowledged record identity. Receiver startup waits for valid synchronized sliced ADC levels.
+      next:
+      - STEP-DECODED-EVENTS
+      - STEP-DECODED-HISTORY
+    - id: STEP-DECODED-EVENTS
+      ref: FU-APP-ENGINE
+      action: The isolated bus worker reserves a stable complete-event count, drains bounded DMA batches and
+        validates the epoch into its circular queue. The engine consumes complete versioned records over bounded
+        IPC and delivers them over HTTP independently of raw capture state; ordered loss records make source loss explicit.
+        Continue until session end, or enter INCOMPLETE on a transcript error.
+      next:
+      - STEP-DECODED-INCOMPLETE
+      - STEP-DECODED-END
+    - id: STEP-DECODED-HISTORY
+      ref: FU-RTL-ACQ-SRAM-RECORD
+      action: Maintain raw prehistory. Ignore protocol matches before history readiness; accept a fresh qualified
+        match and complete the configured post-trigger record.
+      next:
+      - STEP-DECODED-FROZEN
+    - id: STEP-DECODED-FROZEN
+      ref: STATE-DECODED-RETAINED
+      action: Hold raw samples and identity stable while event decoding continues. Latch the last stored ADC ordinal
+        and expose a linear sample range only for contiguous raw records whose timeline and retained identity match.
+        Await recall or explicit session end.
+      next:
+      - STEP-DECODED-RECALL
+      - STEP-DECODED-END
+    - id: STEP-DECODED-RECALL
+      ref: FU-APP-ENGINE
+      action: Stage the requested raw window through bounded acquisition-owner requests. Check record identity for
+        each chunk and service events between chunks. Return bytes only after the complete transfer succeeds.
+      next:
+      - STEP-DECODED-FROZEN
+    - id: STEP-DECODED-INCOMPLETE
+      ref: STATE-DECODED-INCOMPLETE
+      action: Preserve the original transcript error and stop event consumption. Probe FPGA health without rearming;
+        allow independent raw recall when its identity and acquisition status remain valid, or end the session.
+      next:
+      - STEP-DECODED-RECALL
+      - STEP-DECODED-END
+    - id: STEP-DECODED-END
+      ref: FU-APP-ENGINE
+      action: Halt acquisition and disable event transport. End the session explicitly; normal waveform acquisition
+        resumes only when the operator requests Run.
+  - id: FLOW-ACQUISITION-IMAGE-SWITCH
+    title: Planned acquisition image selection and safe reconfiguration
+    description: Target behavior for the multiple-image architecture; not implemented or live-qualified.
+      Switching creates an explicit acquisition gap. It is never an implicit step of active decoded streaming
+      or retained raw recall. The existing qualified general image remains the only deployed selection.
+    entry:
+    - STEP-IMAGE-SELECT
+    exits:
+    - STEP-IMAGE-READY
+    - STEP-IMAGE-FAULT
+    steps:
+    - id: STEP-IMAGE-SELECT
+      ref: FU-APP-ENGINE
+      action: Resolve the requested workflow against qualified image capabilities. Reference-then-stack selects
+        protocol capture followed by numerical acquisition; it does not require a protocol decoder in the stacking
+        image. Require concurrent capabilities only for an explicitly requested simultaneous mode. Reject combinations
+        without coverage before disturbing acquisition.
+      next:
+      - STEP-IMAGE-QUIESCE
+      - STEP-IMAGE-FAULT
+    - id: STEP-IMAGE-QUIESCE
+      ref: FU-APP-SRAMCAPTURE
+      action: Through the sole acquisition bus owner stop arming and end event delivery with an explicit epoch
+        boundary. Preserve a requested retained record and metadata in host storage before loading another image;
+        do not infer record validity from external SRAM contents surviving configuration. For reference-then-stack,
+        preserve the seed samples, both channel calibrations, sample interval, gate, trigger position and original
+        record identity. Abort on preservation failure.
+      next:
+      - STEP-IMAGE-LOAD
+      - STEP-IMAGE-FAULT
+    - id: STEP-IMAGE-LOAD
+      ref: FU-APP-FPGALOAD
+      action: Load the selected qualified bitstream, verify identity, capability ABI, clocks and acquisition readiness.
+        On failure keep acquisition stopped and permit recovery using the last qualified image. Never silently rearm.
+      next:
+      - STEP-IMAGE-READY
+      - STEP-IMAGE-FAULT
+    - id: STEP-IMAGE-READY
+      ref: FU-APP-ENGINE
+      action: Restore only compatible configuration, establish a fresh acquisition epoch and acknowledge readiness.
+        For reference-then-stack, seed the numerical matcher from the preserved waveform and metadata, keeping
+        reference provenance separate from the fresh acquisition epoch. Begin new waveform matching, alignment and
+        accumulation only after readiness checks; the decoder that qualified the seed need not remain active.
+        Honor the requested run state only after all checks pass. Keep archived old records attributed to their old epochs.
+    - id: STEP-IMAGE-FAULT
+      ref: STATE-FAULT
+      action: Report the selection, preservation or loading failure explicitly. Keep preserved records downloadable
+        and controls responsive; expose recovery without claiming that the requested workflow ran successfully.
+  - id: FLOW-PANEL-CONTROLS
+    title: Complete front-panel behavior
+    kind: interaction
+    description: First-pass source model for cyclone-spec-sram-capture at f43696305a7957b9956e3b1ac425cdf323edde84.
+      Covers all 34 press inputs and eight rotary inputs documented in specs/08-front-panel.md. These are application
+      semantics, not hardware qualification. The owned default FPGA has no physical key matrix; input availability
+      depends on the FPGA image. API-injected controls use the same handlers. During autoset, all knobs and all buttons
+      except AUTO are ignored. Analog controls require a frontend; missing hardware is not evidence of a working physical
+      control. The graph is one input-dispatch flow with mutually exclusive alternatives. Conditions are explicit
+      in decision/action text because this model schema has no separate guard field. It is a high-level source reconstruction,
+      not an executable state machine. Ten unassigned presses are explicit no-action branches. All twelve softkey
+      pages belong to this flow.
+    entry:
+    - STEP-PANEL-INPUT
+    exits:
+    - STEP-PANEL-DONE
+    steps:
+    - id: STEP-PANEL-INPUT
+      ref: FU-APP-PANEL
+      kind: user_action
+      action: Decode physical press edges/knob steps when the FPGA image supplies the matrix, or accept an API-injected
+        panel event. Physical decoding services at most one knob in fixed priority order; TIME/DIV and V/DIV use single
+        detents.
+      next:
+      - STEP-PANEL-GATE
+    - id: STEP-PANEL-GATE
+      ref: FU-APP-PANEL
+      kind: decision
+      action: 'Choose exactly one branch: AUTO always goes to BTNAUTO; any other input while autoset is busy goes
+        to IGNORED; otherwise READY.'
+      next:
+      - STEP-PANEL-BTNAUTO
+      - STEP-PANEL-IGNORED
+      - STEP-PANEL-READY
+    - id: STEP-PANEL-IGNORED
+      ref: FU-APP-PANEL
+      kind: control_action
+      action: 'Autoset owns the controls: ignore this non-AUTO event without changing settings.'
+      next:
+      - STEP-PANEL-DONE
+    - id: STEP-PANEL-READY
+      ref: FU-APP-PANEL
+      kind: decision
+      action: Synchronize rotary shadows with current engine/frontend state; choose only the branch matching the input
+        event. Each branch is an alternative, not a sequence.
+      next:
+      - STEP-PANEL-BTNRUNSTOP
+      - STEP-PANEL-BTNSINGLE
+      - STEP-PANEL-BTNCH1VDIVPUSH
+      - STEP-PANEL-BTNCH2VDIVPUSH
+      - STEP-PANEL-BTNTRIGLVLPUSH
+      - STEP-PANEL-BTNUTILITY
+      - STEP-PANEL-BTNADJUSTPSH
+      - STEP-PANEL-BTNTRIGMENU
+      - STEP-PANEL-BTNACQUIRE
+      - STEP-PANEL-BTNDISPLAY
+      - STEP-PANEL-BTNHORIZMENU
+      - STEP-PANEL-BTNMENUONOFF
+      - STEP-PANEL-BTNMEASURE
+      - STEP-PANEL-BTNCURSORS
+      - STEP-PANEL-BTNMATH
+      - STEP-PANEL-BTNREF
+      - STEP-PANEL-BTNCH1
+      - STEP-PANEL-BTNCH2
+      - STEP-PANEL-BTNF1
+      - STEP-PANEL-BTNF2
+      - STEP-PANEL-BTNF3
+      - STEP-PANEL-BTNF4
+      - STEP-PANEL-BTNF5
+      - STEP-PANEL-UNASSIGNED_1
+      - STEP-PANEL-UNASSIGNED_2
+      - STEP-PANEL-UNASSIGNED_3
+      - STEP-PANEL-UNASSIGNED_4
+      - STEP-PANEL-UNASSIGNED_5
+      - STEP-PANEL-UNASSIGNED_6
+      - STEP-PANEL-UNASSIGNED_7
+      - STEP-PANEL-UNASSIGNED_8
+      - STEP-PANEL-UNASSIGNED_9
+      - STEP-PANEL-UNASSIGNED_10
+      - STEP-PANEL-HORIZPOS
+      - STEP-PANEL-CH2POS
+      - STEP-PANEL-TDIV
+      - STEP-PANEL-CH2VDIV
+      - STEP-PANEL-CH1VDIV
+      - STEP-PANEL-ADJUST
+      - STEP-PANEL-TRIGLEVEL
+      - STEP-PANEL-CH1POS
+    - id: STEP-PANEL-BTNRUNSTOP
+      ref: EVT-PANEL-BTNRUNSTOP
+      kind: control_action
+      action: Toggle acquisition running/stopped; clear single-shot selection.
+      sourceRef: FU-APP-PANEL
+      destinationRef: FU-APP-ENGINE
+      next:
+      - STEP-PANEL-DONE
+    - id: STEP-PANEL-BTNSINGLE
+      ref: EVT-PANEL-BTNSINGLE
+      kind: control_action
+      action: Arm one triggered acquisition and then stop.
+      sourceRef: FU-APP-PANEL
+      destinationRef: FU-APP-ENGINE
+      next:
+      - STEP-PANEL-DONE
+    - id: STEP-PANEL-BTNAUTO
+      ref: EVT-PANEL-BTNAUTO
+      kind: control_action
+      action: Start a background autoset sweep to fit scales, offsets and trigger to the live signal; press again
+        to cancel. Without a frame source, select AUTO trigger and run. While busy, cancel instead of starting a second
+        sweep.
+      sourceRef: FU-APP-PANEL
+      destinationRef: FU-APP-PANEL
+      next:
+      - STEP-PANEL-DONE
+    - id: STEP-PANEL-BTNCH1VDIVPUSH
+      ref: EVT-PANEL-BTNCH1VDIVPUSH
+      kind: control_action
+      action: Select channel 1 as trigger source.
+      sourceRef: FU-APP-PANEL
+      destinationRef: FU-APP-ENGINE
+      next:
+      - STEP-PANEL-DONE
+    - id: STEP-PANEL-BTNCH2VDIVPUSH
+      ref: EVT-PANEL-BTNCH2VDIVPUSH
+      kind: control_action
+      action: Select channel 2 as trigger source.
+      sourceRef: FU-APP-PANEL
+      destinationRef: FU-APP-ENGINE
+      next:
+      - STEP-PANEL-DONE
+    - id: STEP-PANEL-BTNTRIGLVLPUSH
+      ref: EVT-PANEL-BTNTRIGLVLPUSH
+      kind: control_action
+      action: Toggle rising/falling trigger edge.
+      sourceRef: FU-APP-PANEL
+      destinationRef: FU-APP-ENGINE
+      next:
+      - STEP-PANEL-DONE
+    - id: STEP-PANEL-BTNUTILITY
+      ref: EVT-PANEL-BTNUTILITY
+      kind: control_action
+      action: Arm reference-locked super-resolution stacking from the current frame and open its menu if seeding succeeds;
+        press while active to cancel.
+      sourceRef: FU-APP-PANEL
+      destinationRef: FU-APP-PANEL
+      next:
+      - STEP-PANEL-DONE
+    - id: STEP-PANEL-BTNADJUSTPSH
+      ref: EVT-PANEL-BTNADJUSTPSH
+      kind: control_action
+      action: While super-resolution is active, cycle watch → gate start → gate end → stacked-trace review → watch.
+        Otherwise no effect.
+      sourceRef: FU-APP-PANEL
+      destinationRef: FU-APP-PANEL
+      next:
+      - STEP-PANEL-DONE
+    - id: STEP-PANEL-BTNTRIGMENU
+      ref: EVT-PANEL-BTNTRIGMENU
+      kind: control_action
+      action: Open trigger menu; re-press from trigger page to open qualifier parameters; otherwise return to trigger
+        page.
+      sourceRef: FU-APP-PANEL
+      destinationRef: FU-APP-PANEL
+      next:
+      - STEP-PANEL-DONE
+    - id: STEP-PANEL-BTNACQUIRE
+      ref: EVT-PANEL-BTNACQUIRE
+      kind: control_action
+      action: Open acquisition menu; repeated presses cycle acquisition → references → mask → acquisition.
+      sourceRef: FU-APP-PANEL
+      destinationRef: FU-APP-PANEL
+      next:
+      - STEP-PANEL-DONE
+    - id: STEP-PANEL-BTNDISPLAY
+      ref: EVT-PANEL-BTNDISPLAY
+      kind: control_action
+      action: Open display menu; re-press from display page to open channel/probe settings.
+      sourceRef: FU-APP-PANEL
+      destinationRef: FU-APP-PANEL
+      next:
+      - STEP-PANEL-DONE
+    - id: STEP-PANEL-BTNHORIZMENU
+      ref: EVT-PANEL-BTNHORIZMENU
+      kind: control_action
+      action: Open horizontal menu; re-press from horizontal page to open cursors.
+      sourceRef: FU-APP-PANEL
+      destinationRef: FU-APP-PANEL
+      next:
+      - STEP-PANEL-DONE
+    - id: STEP-PANEL-BTNMENUONOFF
+      ref: EVT-PANEL-BTNMENUONOFF
+      kind: control_action
+      action: Open main menu if closed; otherwise close the overlay.
+      sourceRef: FU-APP-PANEL
+      destinationRef: FU-APP-PANEL
+      next:
+      - STEP-PANEL-DONE
+    - id: STEP-PANEL-BTNMEASURE
+      ref: EVT-PANEL-BTNMEASURE
+      kind: control_action
+      action: Toggle measurement panel visibility.
+      sourceRef: FU-APP-PANEL
+      destinationRef: FU-APP-PANEL
+      next:
+      - STEP-PANEL-DONE
+    - id: STEP-PANEL-BTNCURSORS
+      ref: EVT-PANEL-BTNCURSORS
+      kind: control_action
+      action: Open cursor menu.
+      sourceRef: FU-APP-PANEL
+      destinationRef: FU-APP-PANEL
+      next:
+      - STEP-PANEL-DONE
+    - id: STEP-PANEL-BTNMATH
+      ref: EVT-PANEL-BTNMATH
+      kind: control_action
+      action: Cycle math off → C1+C2 → C1−C2 → C2−C1 → C1×C2.
+      sourceRef: FU-APP-PANEL
+      destinationRef: FU-APP-PANEL
+      next:
+      - STEP-PANEL-DONE
+    - id: STEP-PANEL-BTNREF
+      ref: EVT-PANEL-BTNREF
+      kind: control_action
+      action: Open reference-waveform menu.
+      sourceRef: FU-APP-PANEL
+      destinationRef: FU-APP-PANEL
+      next:
+      - STEP-PANEL-DONE
+    - id: STEP-PANEL-BTNCH1
+      ref: EVT-PANEL-BTNCH1
+      kind: control_action
+      action: Toggle channel 1 trace visibility and its lamp; this is not analog input disable.
+      sourceRef: FU-APP-PANEL
+      destinationRef: FU-APP-PANEL
+      next:
+      - STEP-PANEL-DONE
+    - id: STEP-PANEL-BTNCH2
+      ref: EVT-PANEL-BTNCH2
+      kind: control_action
+      action: Toggle channel 2 trace visibility and its lamp; this is not analog input disable.
+      sourceRef: FU-APP-PANEL
+      destinationRef: FU-APP-PANEL
+      next:
+      - STEP-PANEL-DONE
+    - id: STEP-PANEL-BTNF1
+      ref: EVT-PANEL-BTNF1
+      kind: control_action
+      action: Select slot 1 and use forward direction, then dispatch by the current menu; empty slots do not change
+        selection.
+      sourceRef: FU-APP-PANEL
+      destinationRef: FU-APP-PANEL
+      next:
+      - STEP-PANEL-MENU-GATE
+    - id: STEP-PANEL-BTNF2
+      ref: EVT-PANEL-BTNF2
+      kind: control_action
+      action: Select slot 2 and use forward direction, then dispatch by the current menu; empty slots do not change
+        selection.
+      sourceRef: FU-APP-PANEL
+      destinationRef: FU-APP-PANEL
+      next:
+      - STEP-PANEL-MENU-GATE
+    - id: STEP-PANEL-BTNF3
+      ref: EVT-PANEL-BTNF3
+      kind: control_action
+      action: Select slot 3 and use forward direction, then dispatch by the current menu; empty slots do not change
+        selection.
+      sourceRef: FU-APP-PANEL
+      destinationRef: FU-APP-PANEL
+      next:
+      - STEP-PANEL-MENU-GATE
+    - id: STEP-PANEL-BTNF4
+      ref: EVT-PANEL-BTNF4
+      kind: control_action
+      action: Select slot 4 and use forward direction, then dispatch by the current menu; empty slots do not change
+        selection.
+      sourceRef: FU-APP-PANEL
+      destinationRef: FU-APP-PANEL
+      next:
+      - STEP-PANEL-MENU-GATE
+    - id: STEP-PANEL-BTNF5
+      ref: EVT-PANEL-BTNF5
+      kind: control_action
+      action: Select slot 5 and use forward direction, then dispatch by the current menu; empty slots do not change
+        selection.
+      sourceRef: FU-APP-PANEL
+      destinationRef: FU-APP-PANEL
+      next:
+      - STEP-PANEL-MENU-GATE
+    - id: STEP-PANEL-UNASSIGNED_1
+      ref: EVT-PANEL-UNASSIGNED-1
+      kind: control_action
+      action: No action assigned in the current panel dispatcher. Intended behavior remains for review. This branch
+        deliberately terminates without any instrument command.
+      sourceRef: FU-APP-PANEL
+      destinationRef: FU-APP-PANEL
+      next:
+      - STEP-PANEL-DONE
+    - id: STEP-PANEL-UNASSIGNED_2
+      ref: EVT-PANEL-UNASSIGNED-2
+      kind: control_action
+      action: No action assigned in the current panel dispatcher. Intended behavior remains for review. This branch
+        deliberately terminates without any instrument command.
+      sourceRef: FU-APP-PANEL
+      destinationRef: FU-APP-PANEL
+      next:
+      - STEP-PANEL-DONE
+    - id: STEP-PANEL-UNASSIGNED_3
+      ref: EVT-PANEL-UNASSIGNED-3
+      kind: control_action
+      action: No action assigned in the current panel dispatcher. Intended behavior remains for review. This branch
+        deliberately terminates without any instrument command.
+      sourceRef: FU-APP-PANEL
+      destinationRef: FU-APP-PANEL
+      next:
+      - STEP-PANEL-DONE
+    - id: STEP-PANEL-UNASSIGNED_4
+      ref: EVT-PANEL-UNASSIGNED-4
+      kind: control_action
+      action: No action assigned in the current panel dispatcher. Intended behavior remains for review. This branch
+        deliberately terminates without any instrument command.
+      sourceRef: FU-APP-PANEL
+      destinationRef: FU-APP-PANEL
+      next:
+      - STEP-PANEL-DONE
+    - id: STEP-PANEL-UNASSIGNED_5
+      ref: EVT-PANEL-UNASSIGNED-5
+      kind: control_action
+      action: No action assigned in the current panel dispatcher. Intended behavior remains for review. This branch
+        deliberately terminates without any instrument command.
+      sourceRef: FU-APP-PANEL
+      destinationRef: FU-APP-PANEL
+      next:
+      - STEP-PANEL-DONE
+    - id: STEP-PANEL-UNASSIGNED_6
+      ref: EVT-PANEL-UNASSIGNED-6
+      kind: control_action
+      action: No action assigned in the current panel dispatcher. Intended behavior remains for review. This branch
+        deliberately terminates without any instrument command.
+      sourceRef: FU-APP-PANEL
+      destinationRef: FU-APP-PANEL
+      next:
+      - STEP-PANEL-DONE
+    - id: STEP-PANEL-UNASSIGNED_7
+      ref: EVT-PANEL-UNASSIGNED-7
+      kind: control_action
+      action: No action assigned in the current panel dispatcher. Intended behavior remains for review. This branch
+        deliberately terminates without any instrument command.
+      sourceRef: FU-APP-PANEL
+      destinationRef: FU-APP-PANEL
+      next:
+      - STEP-PANEL-DONE
+    - id: STEP-PANEL-UNASSIGNED_8
+      ref: EVT-PANEL-UNASSIGNED-8
+      kind: control_action
+      action: No action assigned in the current panel dispatcher. Intended behavior remains for review. This branch
+        deliberately terminates without any instrument command.
+      sourceRef: FU-APP-PANEL
+      destinationRef: FU-APP-PANEL
+      next:
+      - STEP-PANEL-DONE
+    - id: STEP-PANEL-UNASSIGNED_9
+      ref: EVT-PANEL-UNASSIGNED-9
+      kind: control_action
+      action: No action assigned in the current panel dispatcher. Intended behavior remains for review. This branch
+        deliberately terminates without any instrument command.
+      sourceRef: FU-APP-PANEL
+      destinationRef: FU-APP-PANEL
+      next:
+      - STEP-PANEL-DONE
+    - id: STEP-PANEL-UNASSIGNED_10
+      ref: EVT-PANEL-UNASSIGNED-10
+      kind: control_action
+      action: No action assigned in the current panel dispatcher. Intended behavior remains for review. This branch
+        deliberately terminates without any instrument command.
+      sourceRef: FU-APP-PANEL
+      destinationRef: FU-APP-PANEL
+      next:
+      - STEP-PANEL-DONE
+    - id: STEP-PANEL-HORIZPOS
+      ref: EVT-PANEL-HORIZPOS
+      kind: control_action
+      action: At zoom greater than 1, pan the displayed zoom window; otherwise move trigger position within the acquisition
+        window. Zoomed panning is display-only; unzoomed position is sent to the acquisition engine.
+      sourceRef: FU-APP-PANEL
+      destinationRef: FU-APP-PANEL
+      next:
+      - STEP-PANEL-DONE
+    - id: STEP-PANEL-CH2POS
+      ref: EVT-PANEL-CH2POS
+      kind: control_action
+      action: Adjust channel 2 analog input offset; requires the analog frontend. If the frontend is absent, leave
+        settings unchanged.
+      sourceRef: FU-APP-PANEL
+      destinationRef: FU-APP-ANALOG
+      next:
+      - STEP-PANEL-DONE
+    - id: STEP-PANEL-TDIV
+      ref: EVT-PANEL-TDIV
+      kind: control_action
+      action: Step the acquisition timebase ladder, clamped at its ends; clockwise increases seconds/division.
+      sourceRef: FU-APP-PANEL
+      destinationRef: FU-APP-ENGINE
+      next:
+      - STEP-PANEL-DONE
+    - id: STEP-PANEL-CH2VDIV
+      ref: EVT-PANEL-CH2VDIV
+      kind: control_action
+      action: Step channel 2 analog range detents; requires the analog frontend. If the frontend is absent, leave
+        settings unchanged.
+      sourceRef: FU-APP-PANEL
+      destinationRef: FU-APP-ANALOG
+      next:
+      - STEP-PANEL-DONE
+    - id: STEP-PANEL-CH1VDIV
+      ref: EVT-PANEL-CH1VDIV
+      kind: control_action
+      action: Step channel 1 analog range detents; requires the analog frontend. If the frontend is absent, leave
+        settings unchanged.
+      sourceRef: FU-APP-PANEL
+      destinationRef: FU-APP-ANALOG
+      next:
+      - STEP-PANEL-DONE
+    - id: STEP-PANEL-ADJUST
+      ref: EVT-PANEL-ADJUST
+      kind: decision
+      action: 'Choose in priority order: active super-resolution with a stack and focused gate edge → SR-GATE; otherwise
+        enabled cursors on cursor page → CURSOR-MOVE; otherwise open menu → MENU-GATE; otherwise NO-MENU.'
+      sourceRef: FU-APP-PANEL
+      destinationRef: FU-APP-PANEL
+      next:
+      - STEP-PANEL-SR-GATE
+      - STEP-PANEL-CURSOR-MOVE
+      - STEP-PANEL-MENU-GATE
+      - STEP-PANEL-NO-MENU
+    - id: STEP-PANEL-TRIGLEVEL
+      ref: EVT-PANEL-TRIGLEVEL
+      kind: control_action
+      action: Adjust trigger threshold within hardware limits; clockwise raises physical level.
+      sourceRef: FU-APP-PANEL
+      destinationRef: FU-APP-ENGINE
+      next:
+      - STEP-PANEL-DONE
+    - id: STEP-PANEL-CH1POS
+      ref: EVT-PANEL-CH1POS
+      kind: control_action
+      action: Adjust channel 1 analog input offset; requires the analog frontend. If the frontend is absent, leave
+        settings unchanged.
+      sourceRef: FU-APP-PANEL
+      destinationRef: FU-APP-ANALOG
+      next:
+      - STEP-PANEL-DONE
+    - id: STEP-PANEL-SR-GATE
+      ref: FU-APP-SUPERRES
+      kind: control_action
+      action: Move the focused gate edge using accelerated steps, constrain the gate, and rebuild the stack with that
+        gate.
+      next:
+      - STEP-PANEL-DONE
+    - id: STEP-PANEL-CURSOR-MOVE
+      ref: FU-APP-PANEL
+      kind: control_action
+      action: Move the active time/voltage cursor in the rotation direction by about one percent of the screen, clamped
+        to the display. Menu cursor movement does not use rotary acceleration.
+      next:
+      - STEP-PANEL-DONE
+    - id: STEP-PANEL-NO-MENU
+      ref: FU-APP-PANEL
+      kind: control_action
+      action: 'No open menu and no higher-priority rotary context: leave settings unchanged.'
+      next:
+      - STEP-PANEL-DONE
+    - id: STEP-PANEL-MENU-GATE
+      ref: FU-APP-PANEL
+      kind: decision
+      action: If no menu is open, take NO-MENU. Otherwise use only the current page branch. F1–F5 activate their numbered
+        slot in the forward direction; ADJUST edits the selected slot in its rotation direction. Unused slots have
+        no effect.
+      next:
+      - STEP-PANEL-NO-MENU
+      - STEP-PANEL-MENU-MAIN
+      - STEP-PANEL-MENU-TRIGGER
+      - STEP-PANEL-MENU-TRIGGER-QUALIFIERS
+      - STEP-PANEL-MENU-ACQUISITION
+      - STEP-PANEL-MENU-DISPLAY
+      - STEP-PANEL-MENU-HORIZONTAL
+      - STEP-PANEL-MENU-CHANNEL
+      - STEP-PANEL-MENU-CURSORS
+      - STEP-PANEL-MENU-REFERENCES
+      - STEP-PANEL-MENU-DECODE
+      - STEP-PANEL-MENU-SUPER-RESOLUTION
+      - STEP-PANEL-MENU-MASK
+    - id: STEP-PANEL-MENU-MAIN
+      ref: FU-APP-PANEL
+      kind: control_action
+      action: 'When the current page is Main: F1–F5 actions in order (or protocol/type-dependent as stated): Trigger;
+        Acquisition; Display; Horizontal; Decode.'
+      next:
+      - STEP-PANEL-DONE
+    - id: STEP-PANEL-MENU-TRIGGER
+      ref: FU-APP-ENGINE
+      kind: control_action
+      action: 'When the current page is Trigger: F1–F5 actions in order (or protocol/type-dependent as stated): AUTO/NORM;
+        edge slope; source channel; trigger type; holdoff.'
+      next:
+      - STEP-PANEL-DONE
+    - id: STEP-PANEL-MENU-TRIGGER-QUALIFIERS
+      ref: FU-APP-ENGINE
+      kind: control_action
+      action: 'When the current page is Trigger qualifiers: F1–F5 actions in order (or protocol/type-dependent as
+        stated): Pulse: level, min/max width, condition. Slope: low/high levels, min/max time, condition. Video: standard,
+        line, polarity. Edge: no qualifier action..'
+      next:
+      - STEP-PANEL-DONE
+    - id: STEP-PANEL-MENU-ACQUISITION
+      ref: FU-APP-ENGINE
+      kind: control_action
+      action: 'When the current page is Acquisition: F1–F5 actions in order (or protocol/type-dependent as stated):
+        Mode; averaging/ERes count; ETS toggle; memory depth; unused.'
+      next:
+      - STEP-PANEL-DONE
+    - id: STEP-PANEL-MENU-DISPLAY
+      ref: FU-APP-PANEL
+      kind: control_action
+      action: 'When the current page is Display: F1–F5 actions in order (or protocol/type-dependent as stated): CH1
+        visibility; CH2 visibility; measurements; Y-T/X-Y/FFT/Bode/Spectrogram view; math.'
+      next:
+      - STEP-PANEL-DONE
+    - id: STEP-PANEL-MENU-HORIZONTAL
+      ref: FU-APP-PANEL
+      kind: control_action
+      action: 'When the current page is Horizontal: F1–F5 actions in order (or protocol/type-dependent as stated):
+        Time/div; trigger position; zoom; unused; unused. Returning to 1x zoom resets display pan.'
+      next:
+      - STEP-PANEL-DONE
+    - id: STEP-PANEL-MENU-CHANNEL
+      ref: FU-APP-ANALOG
+      kind: control_action
+      action: 'When the current page is Channel: F1–F5 actions in order (or protocol/type-dependent as stated): CH1
+        coupling; CH2 coupling; CH1 probe factor; CH2 probe factor; persistence. Coupling/probe changes require the
+        frontend; persistence remains usable without it.'
+      next:
+      - STEP-PANEL-DONE
+    - id: STEP-PANEL-MENU-CURSORS
+      ref: FU-APP-PANEL
+      kind: control_action
+      action: 'When the current page is Cursors: F1–F5 actions in order (or protocol/type-dependent as stated): Enable;
+        time/voltage type; active cursor; nudge negative; nudge positive.'
+      next:
+      - STEP-PANEL-DONE
+    - id: STEP-PANEL-MENU-REFERENCES
+      ref: FU-APP-PANEL
+      kind: control_action
+      action: 'When the current page is References: F1–F5 actions in order (or protocol/type-dependent as stated):
+        Capture A; capture B; show/hide A if saved; show/hide B if saved; clear both. Capture requires an available
+        frame; showing an empty reference has no effect.'
+      next:
+      - STEP-PANEL-DONE
+    - id: STEP-PANEL-MENU-DECODE
+      ref: FU-APP-PANEL
+      kind: control_action
+      action: 'When the current page is Decode: F1–F5 actions in order (or protocol/type-dependent as stated): Protocol
+        Off/Auto/UART/I2C/SPI determines slots: Auto has format; UART has baud/channel/format; I2C has clock/data
+        channels/format; SPI adds CPOL/CPHA mode. Unused slots are inert..'
+      next:
+      - STEP-PANEL-DONE
+    - id: STEP-PANEL-MENU-SUPER-RESOLUTION
+      ref: FU-APP-SUPERRES
+      kind: control_action
+      action: 'When the current page is Super-resolution: F1–F5 actions in order (or protocol/type-dependent as stated):
+        Channel; grid multiplier; stop criterion; target; reset accumulation. Channel/grid changes rebuild an active
+        stack..'
+      next:
+      - STEP-PANEL-DONE
+    - id: STEP-PANEL-MENU-MASK
+      ref: FU-APP-ENGINE
+      kind: control_action
+      action: 'When the current page is Mask: F1–F5 actions in order (or protocol/type-dependent as stated): Off/Test/Stop-on-fail;
+        build mask; build frame count; tolerance; clear failure history.'
+      next:
+      - STEP-PANEL-DONE
+    - id: STEP-PANEL-DONE
+      ref: FU-APP-PANEL
+      kind: control_action
+      action: Finish this input dispatch. Applicable commands change engine/frontend state; panel-local changes are
+        consumed by the display. Asynchronous autoset and super-resolution work may continue after dispatch.
+    properties:
+      sourceBaseline: f43696305a7957b9956e3b1ac425cdf323edde84
+      requirements: REQ-SDS-135, REQ-SDS-136, REQ-SDS-137, REQ-SDS-138, REQ-SDS-139, REQ-SDS-140
+      reviewNext: Review ten unassigned presses, V/DIV push trigger shortcuts, and UTILITY/ADJUST super-resolution
+        behavior. Physical key availability depends on the loaded FPGA image.
+      sourceFiles: app/internal/panel/panel.go, app/internal/panel/panel_dispatch.go, app/internal/panel/menu.go,
+        app/internal/panel/menu_cycle.go, app/internal/panel/menu_inject.go, app/internal/panel/autoset.go, app/internal/panel/superres.go,
+        specs/08-front-panel.md
+      sourceSHA256: '{"app/internal/panel/autoset.go": "076fcadbf51fa3f760e95eb2157b3505209a734c97e84363da858d5a003ccea7",
+        "app/internal/panel/menu.go": "57b2469ea75a4f3a3538b9f9bef766ea6212355960f0721a51eace13ba53b0cc", "app/internal/panel/menu_cycle.go":
+        "ab60b2bbc54354f742247d3ad8e6e507f480166a669d76fa6d4347cf4fa629d9", "app/internal/panel/menu_inject.go": "8532f770690a6c5c820733d23f1db97873e1e016f45b90a4db01af833e4de546",
+        "app/internal/panel/panel.go": "094415cbdba66080ef2c5269f452aa1a192c8c22c59440d2184dd24c5d9ad4bc", "app/internal/panel/panel_dispatch.go":
+        "7a9e08444e0da52ef48b1d655847a17ad9925918c327affa2c3fa5c5d576a080", "app/internal/panel/superres.go": "11f2f688965ded72cc300da9cf4eae03a44d272c14ae419105b59b42be02d0cb",
+        "specs/08-front-panel.md": "4897c2c78427988beccc3ef974a0a10998ddd31a5c5e12a4426dde38f385591d"}'
+  - id: FLOW-BOOT
+    title: USB boot and supervised application
+    description: Overview of boot dependencies, not an unconditional success path. Ordinary takeover uses the factory
+      STOP/idle gates; force and already-taken-over reclaim have explicit exceptions in REQ-SDS-027. Watchdog retry
+      and network restoration may continue asynchronously after takeover returns. Owned image acquisition uses its
+      own identity.
+    entry:
+    - STEP-BOOT-S1
+    exits:
+    - STEP-BOOT-S7
+    steps:
+    - id: STEP-BOOT-S1
+      ref: FU-OTA-BOOT
+      action: Start agent with boot descriptors
+      next:
+      - STEP-BOOT-S2
+    - id: STEP-BOOT-S2
+      ref: FU-OTA-AGENT
+      action: Retain descriptors and apply takeover policy with force/reclaim exceptions
+      next:
+      - STEP-BOOT-S3
+    - id: STEP-BOOT-S3
+      ref: FU-OTA-WATCHDOG
+      action: Acquire watchdog after takeover or arm background retry
+      next:
+      - STEP-BOOT-S4
+    - id: STEP-BOOT-S4
+      ref: FU-APP-APP
+      action: Select fabric mode and initialize application
+      next:
+      - STEP-BOOT-S5
+    - id: STEP-BOOT-S5
+      ref: FU-APP-ENGINE
+      action: Acquire coherent frames
+      next:
+      - STEP-BOOT-S6
+    - id: STEP-BOOT-S6
+      ref: IF-HEALTH
+      action: Report advancing capture health
+      next:
+      - STEP-BOOT-S7
+    - id: STEP-BOOT-S7
+      ref: FU-OTA-AGENT
+      action: Monitor liveness and roll back failed app slots
+  - id: FLOW-DEFAULT
+    title: Default acquisition and presentation
+    description: LCD and web are concurrent consumers; listed steps express dependency, not serial rendering or
+      extra bus owners.
+    entry:
+    - STEP-DEFAULT-S1
+    exits:
+    - STEP-DEFAULT-S6
+    steps:
+    - id: STEP-DEFAULT-S1
+      ref: FU-APP-ENGINE
+      action: Check identity and apply pending settings
+      next:
+      - STEP-DEFAULT-S2
+    - id: STEP-DEFAULT-S2
+      ref: FU-APP-BUS
+      action: Arm, wait, freeze and drain using the default ABI
+      next:
+      - STEP-DEFAULT-S3
+    - id: STEP-DEFAULT-S3
+      ref: FU-APP-ENGINE
+      action: Rearm and qualify the frame
+      next:
+      - STEP-DEFAULT-S4
+    - id: STEP-DEFAULT-S4
+      ref: FU-APP-FRAMES
+      action: Fan out stable frame ownership
+      next:
+      - STEP-DEFAULT-S5
+    - id: STEP-DEFAULT-S5
+      ref: FU-APP-LCD
+      action: Render instrument display
+      next:
+      - STEP-DEFAULT-S6
+    - id: STEP-DEFAULT-S6
+      ref: FU-APP-WEB
+      action: Serve remote frame transport
+  - id: FLOW-FINITE
+    title: New profile finite capture and recall
+    description: Experimental new-profile RTL. No current ARM profile client is implied; legacy sramcapture uses
+      a different ABI.
+    entry:
+    - STEP-FINITE-S1
+    exits:
+    - STEP-FINITE-S7
+    steps:
+    - id: STEP-FINITE-S1
+      ref: FU-RTL-ACQ-SRAM-COMMAND-PORT
+      action: Accept coherent host command
+      next:
+      - STEP-FINITE-S2
+    - id: STEP-FINITE-S2
+      ref: FU-RTL-ACQ-SRAM-COMMAND-BRIDGE
+      action: Cross snapshot to acquisition clock
+      next:
+      - STEP-FINITE-S3
+    - id: STEP-FINITE-S3
+      ref: FU-RTL-ACQ-SRAM-ACQUISITION-PATH
+      action: Validate operation and geometry
+      next:
+      - STEP-FINITE-S4
+    - id: STEP-FINITE-S4
+      ref: FU-RTL-ACQ-SRAM-FINITE-WRITER
+      action: Reserve transport, prime and record pre/post history
+      next:
+      - STEP-FINITE-S5
+    - id: STEP-FINITE-S5
+      ref: FU-RTL-ACQ-SRAM-FINITE-RECALL
+      action: Seek and read requested frozen window
+      next:
+      - STEP-FINITE-S6
+    - id: STEP-FINITE-S6
+      ref: FU-RTL-ACQ-SRAM-HOST-PATH
+      action: Pack and publish host banks
+      next:
+      - STEP-FINITE-S7
+    - id: STEP-FINITE-S7
+      ref: FU-RTL-ACQ-SRAM-HOST-READ-PORT
+      action: Read bank and release matching token
+  - id: FLOW-STREAM
+    title: New profile continuous transfer
+    description: Requires ENABLE_STREAM=1 and supported decimation. Streaming eligibility is not a sustainable-rate
+      guarantee.
+    entry:
+    - STEP-STREAM-S1
+    exits:
+    - STEP-STREAM-S5
+    steps:
+    - id: STEP-STREAM-S1
+      ref: FU-RTL-ACQ-SRAM-ACQUISITION-SOURCE
+      action: Map and reduce ADC words
+      next:
+      - STEP-STREAM-S2
+    - id: STEP-STREAM-S2
+      ref: FU-RTL-ACQ-SRAM-INGRESS-PATH
+      action: Cross producer words with fault tracking
+      next:
+      - STEP-STREAM-S3
+    - id: STEP-STREAM-S3
+      ref: FU-RTL-ACQ-SRAM-STREAM-ENGINE
+      action: Schedule write and read progress through external SRAM
+      next:
+      - STEP-STREAM-S4
+    - id: STEP-STREAM-S4
+      ref: FU-RTL-ACQ-SRAM-HOST-PATH
+      action: Pack words and publish bounded banks
+      next:
+      - STEP-STREAM-S5
+    - id: STEP-STREAM-S5
+      ref: FU-RTL-ACQ-SRAM-HOST-OWNERSHIP
+      action: Retain ownership until release
+  - id: FLOW-LEGACY-SRAM
+    title: Revision 9–11 application capture
+    description: Frozen-record path has acquisition gaps. The standard loader is not automatically promoted to this
+      image.
+    entry:
+    - STEP-LEGACY-SRAM-S1
+    exits:
+    - STEP-LEGACY-SRAM-S5
+    steps:
+    - id: STEP-LEGACY-SRAM-S1
+      ref: FU-APP-SRAMCAPTURE
+      action: Check identity and arm finite capture
+      next:
+      - STEP-LEGACY-SRAM-S2
+    - id: STEP-LEGACY-SRAM-S2
+      ref: FU-APP-SRAMCAPTURE
+      action: Freeze and recall complete raw or precision record
+      next:
+      - STEP-LEGACY-SRAM-S3
+    - id: STEP-LEGACY-SRAM-S3
+      ref: FU-APP-DSP
+      action: Condition precision samples and expose guards
+      next:
+      - STEP-LEGACY-SRAM-S4
+    - id: STEP-LEGACY-SRAM-S4
+      ref: FU-APP-ENGINE
+      action: Apply supported acquisition and trigger policies
+      next:
+      - STEP-LEGACY-SRAM-S5
+    - id: STEP-LEGACY-SRAM-S5
+      ref: FU-APP-FRAMES
+      action: Publish full record to consumers
+  - id: FLOW-UPDATE
+    title: Application update and rollback
+    description: Remote execution/update endpoint is a trust boundary. Integrity checksum is not firmware authenticity.
+    entry:
+    - STEP-UPDATE-S1
+    exits:
+    - STEP-UPDATE-S6
+    steps:
+    - id: STEP-UPDATE-S1
+      ref: FU-OTA-OTACTL
+      action: Transfer staged update
+      next:
+      - STEP-UPDATE-S2
+    - id: STEP-UPDATE-S2
+      ref: FU-OTA-AGENT
+      action: Validate upload integrity
+      next:
+      - STEP-UPDATE-S3
+    - id: STEP-UPDATE-S3
+      ref: FU-OTA-SLOTS
+      action: Activate inactive slot
+      next:
+      - STEP-UPDATE-S4
+    - id: STEP-UPDATE-S4
+      ref: FU-OTA-AGENT
+      action: Launch candidate with inherited descriptors
+      next:
+      - STEP-UPDATE-S5
+    - id: STEP-UPDATE-S5
+      ref: IF-HEALTH
+      action: Observe coherent capture and continued heartbeat
+      next:
+      - STEP-UPDATE-S6
+    - id: STEP-UPDATE-S6
+      ref: FU-OTA-SLOTS
+      action: Confirm stable slot or revert unhealthy candidate
+  relationships:
+  - type: contains
+    from: FG-APP
+    to: FU-APP-ACQSRAM
+  - type: depends_on
+    from: FU-APP-ACQSRAM
+    to: REF-SOURCE-APP-CMD-ACQSRAM-MAIN-GO
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-APP
+    to: FU-APP-ANALOG
+  - type: depends_on
+    from: FU-APP-ANALOG
+    to: REF-SOURCE-APP-INTERNAL-ANALOG-FRONTEND-GO
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-APP
+    to: FU-APP-APP
+  - type: depends_on
+    from: FU-APP-APP
+    to: REF-SOURCE-APP-CMD-APP-MAIN-GO
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-BUILD
+    to: FU-APP-BUILD
+  - type: depends_on
+    from: FU-APP-BUILD
+    to: REF-SOURCE-APP-README-MD
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-APP
+    to: FU-APP-BUILDINFO
+  - type: depends_on
+    from: FU-APP-BUILDINFO
+    to: REF-SOURCE-APP-INTERNAL-BUILDINFO-BUILDINFO-GO
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-APP
+    to: FU-APP-BUS
+  - type: depends_on
+    from: FU-APP-BUS
+    to: REF-SOURCE-APP-INTERNAL-BUS-BUS-GO
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-APP
+    to: FU-APP-CAL
+  - type: depends_on
+    from: FU-APP-CAL
+    to: REF-SOURCE-APP-INTERNAL-CAL-CAL-GO
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-APP
+    to: FU-APP-DECODE
+  - type: depends_on
+    from: FU-APP-DECODE
+    to: REF-SOURCE-APP-INTERNAL-DECODE-DECODE-GO
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-APP
+    to: FU-APP-DIAG
+  - type: depends_on
+    from: FU-APP-DIAG
+    to: REF-SOURCE-APP-INTERNAL-DIAG-BUSPROBE-GO
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-APP
+    to: FU-APP-DSP
+  - type: depends_on
+    from: FU-APP-DSP
+    to: REF-SOURCE-APP-INTERNAL-DSP-PRECISION-GO
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-APP
+    to: FU-APP-ENGINE
+  - type: depends_on
+    from: FU-APP-ENGINE
+    to: REF-SOURCE-APP-INTERNAL-ENGINE-ARENA-GO
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-APP
+    to: FU-APP-FPGALOAD
+  - type: depends_on
+    from: FU-APP-FPGALOAD
+    to: REF-SOURCE-APP-INTERNAL-FPGALOAD-BITSTREAM-EMBED-GO
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-APP
+    to: FU-APP-FRAMES
+  - type: depends_on
+    from: FU-APP-FRAMES
+    to: REF-SOURCE-APP-INTERNAL-FRAMES-FANOUT-GO
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-APP
+    to: FU-APP-IFACE
+  - type: depends_on
+    from: FU-APP-IFACE
+    to: REF-SOURCE-APP-INTERNAL-IFACE-IFACE-GO
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-APP
+    to: FU-APP-LCD
+  - type: depends_on
+    from: FU-APP-LCD
+    to: REF-SOURCE-APP-INTERNAL-LCD-FONT-GO
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-APP
+    to: FU-APP-MEASURE
+  - type: depends_on
+    from: FU-APP-MEASURE
+    to: REF-SOURCE-APP-INTERNAL-MEASURE-MEASURE-GO
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-APP
+    to: FU-APP-PANEL
+  - type: depends_on
+    from: FU-APP-PANEL
+    to: REF-SOURCE-APP-INTERNAL-PANEL-AUTOSET-GO
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-APP
+    to: FU-APP-SCPI
+  - type: depends_on
+    from: FU-APP-SCPI
+    to: REF-SOURCE-APP-INTERNAL-SCPI-SCPI-GO
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-APP
+    to: FU-APP-SETTINGS
+  - type: depends_on
+    from: FU-APP-SETTINGS
+    to: REF-SOURCE-APP-INTERNAL-SETTINGS-SAVER-GO
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-APP
+    to: FU-APP-SRAMBENCH
+  - type: depends_on
+    from: FU-APP-SRAMBENCH
+    to: REF-SOURCE-APP-CMD-SRAMBENCH-MAIN-GO
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-APP
+    to: FU-APP-SRAMCAPTURE
+  - type: depends_on
+    from: FU-APP-SRAMCAPTURE
+    to: REF-SOURCE-APP-INTERNAL-SRAMCAPTURE-CAPTURE-GO
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-APP
+    to: FU-APP-SUPERRES
+  - type: depends_on
+    from: FU-APP-SUPERRES
+    to: REF-SOURCE-APP-INTERNAL-SUPERRES-COMP-GO
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-APP
+    to: FU-APP-TESTENV
+  - type: depends_on
+    from: FU-APP-TESTENV
+    to: REF-SOURCE-APP-INTERNAL-TESTENV-TESTENV-GO
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-APP
+    to: FU-APP-VXI11SRV
+  - type: depends_on
+    from: FU-APP-VXI11SRV
+    to: REF-SOURCE-APP-INTERNAL-VXI11SRV-SERVER-GO
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-APP
+    to: FU-APP-WEB
+  - type: depends_on
+    from: FU-APP-WEB
+    to: REF-SOURCE-APP-INTERNAL-WEB-ASSETS-GO
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-BUILD
+    to: FU-CODEGEN-BUILD
+  - type: depends_on
+    from: FU-CODEGEN-BUILD
+    to: REF-SOURCE-CODEGEN-MAKEFILE
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-BUILD
+    to: FU-CODEGEN-EMIT
+  - type: depends_on
+    from: FU-CODEGEN-EMIT
+    to: REF-SOURCE-CODEGEN-EMIT-DOC-GO
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-BUILD
+    to: FU-CODEGEN-IFACEDEF
+  - type: depends_on
+    from: FU-CODEGEN-IFACEDEF
+    to: REF-SOURCE-CODEGEN-IFACEDEF-DEFAULT-GO
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-BUILD
+    to: FU-CODEGEN-IFACEGEN
+  - type: depends_on
+    from: FU-CODEGEN-IFACEGEN
+    to: REF-SOURCE-CODEGEN-CMD-IFACEGEN-MAIN-GO
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-BUILD
+    to: FU-CODEGEN-SCHEMA
+  - type: depends_on
+    from: FU-CODEGEN-SCHEMA
+    to: REF-SOURCE-CODEGEN-SCHEMA-SCHEMA-GO
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-EVIDENCE
+    to: FU-DOCUMENTATION
+  - type: depends_on
+    from: FU-DOCUMENTATION
+    to: REF-SOURCE-DOCS-DEVICE-PARITY-MD
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-BUILD
+    to: FU-FPGA-ACQ-BUILD
+  - type: depends_on
+    from: FU-FPGA-ACQ-BUILD
+    to: REF-SOURCE-FPGA-ACQ-SRAM-README-MD
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-BUILD
+    to: FU-FPGA-BENCH-BUILD
+  - type: depends_on
+    from: FU-FPGA-BENCH-BUILD
+    to: REF-SOURCE-FPGA-SRAM-BENCH-README-MD
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-BUILD
+    to: FU-FPGA-BUILD
+  - type: depends_on
+    from: FU-FPGA-BUILD
+    to: REF-SOURCE-FPGA-MAKEFILE
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-BUILD
+    to: FU-FPGA-BUILDFPGA
+  - type: depends_on
+    from: FU-FPGA-BUILDFPGA
+    to: REF-SOURCE-FPGA-CMD-BUILDFPGA-MAIN-GO
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-BUILD
+    to: FU-FPGA-DEFAULT-BUILD
+  - type: depends_on
+    from: FU-FPGA-DEFAULT-BUILD
+    to: REF-SOURCE-FPGA-DEFAULT-LANEMAP-SEED-VH
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-BUILD
+    to: FU-FPGA-QUARTUS
+  - type: depends_on
+    from: FU-FPGA-QUARTUS
+    to: REF-SOURCE-FPGA-INTERNAL-QUARTUS-QUARTUS-GO
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-OTA
+    to: FU-OTA-AGENT
+  - type: depends_on
+    from: FU-OTA-AGENT
+    to: REF-SOURCE-OTA-CMD-AGENT-MAIN-GO
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-OTA
+    to: FU-OTA-BOOT
+  - type: depends_on
+    from: FU-OTA-BOOT
+    to: REF-SOURCE-OTA-BOOT-DOC-GO
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-BUILD
+    to: FU-OTA-BUILD
+  - type: depends_on
+    from: FU-OTA-BUILD
+    to: REF-SOURCE-OTA-README-MD
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-OTA
+    to: FU-OTA-BUILDINFO
+  - type: depends_on
+    from: FU-OTA-BUILDINFO
+    to: REF-SOURCE-OTA-INTERNAL-BUILDINFO-BUILDINFO-GO
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-OTA
+    to: FU-OTA-CONFIG
+  - type: depends_on
+    from: FU-OTA-CONFIG
+    to: REF-SOURCE-OTA-INTERNAL-CONFIG-CONFIG-GO
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-OTA
+    to: FU-OTA-FDINHERIT
+  - type: depends_on
+    from: FU-OTA-FDINHERIT
+    to: REF-SOURCE-OTA-INTERNAL-FDINHERIT-FDINHERIT-GO
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-OTA
+    to: FU-OTA-GPMC
+  - type: depends_on
+    from: FU-OTA-GPMC
+    to: REF-SOURCE-OTA-INTERNAL-GPMC-GPMC-GO
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-OTA
+    to: FU-OTA-OTACTL
+  - type: depends_on
+    from: FU-OTA-OTACTL
+    to: REF-SOURCE-OTA-CMD-OTACTL-MAIN-GO
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-OTA
+    to: FU-OTA-RPCPROTO
+  - type: depends_on
+    from: FU-OTA-RPCPROTO
+    to: REF-SOURCE-OTA-INTERNAL-RPCPROTO-RPCPROTO-GO
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-OTA
+    to: FU-OTA-SLOTS
+  - type: depends_on
+    from: FU-OTA-SLOTS
+    to: REF-SOURCE-OTA-INTERNAL-SLOTS-SLOTS-GO
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-OTA
+    to: FU-OTA-STUBAPP
+  - type: depends_on
+    from: FU-OTA-STUBAPP
+    to: REF-SOURCE-OTA-CMD-STUBAPP-MAIN-GO
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-OTA
+    to: FU-OTA-SYSINFO
+  - type: depends_on
+    from: FU-OTA-SYSINFO
+    to: REF-SOURCE-OTA-INTERNAL-SYSINFO-SYSINFO-GO
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-OTA
+    to: FU-OTA-VXI11
+  - type: depends_on
+    from: FU-OTA-VXI11
+    to: REF-SOURCE-OTA-INTERNAL-VXI11-VXI11-GO
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-OTA
+    to: FU-OTA-WATCHDOG
+  - type: depends_on
+    from: FU-OTA-WATCHDOG
+    to: REF-SOURCE-OTA-INTERNAL-WATCHDOG-WATCHDOG-GO
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-BUILD
+    to: FU-REPOSITORY
+  - type: depends_on
+    from: FU-REPOSITORY
+    to: REF-SOURCE-GITATTRIBUTES
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-RTL
+    to: FU-RTL-ACQ-SRAM-ACQUISITION-ADC-PLL
+  - type: depends_on
+    from: FU-RTL-ACQ-SRAM-ACQUISITION-ADC-PLL
+    to: REF-SOURCE-FPGA-ACQ-SRAM-ACQUISITION-ADC-PLL-V
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-RTL
+    to: FU-RTL-ACQ-SRAM-ACQUISITION-PATH
+  - type: depends_on
+    from: FU-RTL-ACQ-SRAM-ACQUISITION-PATH
+    to: REF-SOURCE-FPGA-ACQ-SRAM-ACQUISITION-PATH-V
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-RTL
+    to: FU-RTL-ACQ-SRAM-ACQUISITION-SOURCE
+  - type: depends_on
+    from: FU-RTL-ACQ-SRAM-ACQUISITION-SOURCE
+    to: REF-SOURCE-FPGA-ACQ-SRAM-ACQUISITION-SOURCE-V
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-RTL
+    to: FU-RTL-ACQ-SRAM-ADC-UNPACK
+  - type: depends_on
+    from: FU-RTL-ACQ-SRAM-ADC-UNPACK
+    to: REF-SOURCE-FPGA-ACQ-SRAM-ADC-UNPACK-V
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-RTL
+    to: FU-RTL-ACQ-SRAM-BOARD-CAPTURE-PATH
+  - type: depends_on
+    from: FU-RTL-ACQ-SRAM-BOARD-CAPTURE-PATH
+    to: REF-SOURCE-FPGA-ACQ-SRAM-BOARD-CAPTURE-PATH-V
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-RTL
+    to: FU-RTL-ACQ-SRAM-CAPTURE-ENGINE
+  - type: depends_on
+    from: FU-RTL-ACQ-SRAM-CAPTURE-ENGINE
+    to: REF-SOURCE-FPGA-ACQ-SRAM-CAPTURE-ENGINE-V
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-RTL
+    to: FU-RTL-ACQ-SRAM-CAPTURE-PATH
+  - type: depends_on
+    from: FU-RTL-ACQ-SRAM-CAPTURE-PATH
+    to: REF-SOURCE-FPGA-ACQ-SRAM-CAPTURE-PATH-V
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-RTL
+    to: FU-RTL-ACQ-SRAM-COMMAND-BRIDGE
+  - type: depends_on
+    from: FU-RTL-ACQ-SRAM-COMMAND-BRIDGE
+    to: REF-SOURCE-FPGA-ACQ-SRAM-COMMAND-BRIDGE-V
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-RTL
+    to: FU-RTL-ACQ-SRAM-COMMAND-PORT
+  - type: depends_on
+    from: FU-RTL-ACQ-SRAM-COMMAND-PORT
+    to: REF-SOURCE-FPGA-ACQ-SRAM-COMMAND-PORT-V
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-RTL
+    to: FU-RTL-ACQ-SRAM-FINITE-RECALL
+  - type: depends_on
+    from: FU-RTL-ACQ-SRAM-FINITE-RECALL
+    to: REF-SOURCE-FPGA-ACQ-SRAM-FINITE-RECALL-V
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-RTL
+    to: FU-RTL-ACQ-SRAM-FINITE-WRITER
+  - type: depends_on
+    from: FU-RTL-ACQ-SRAM-FINITE-WRITER
+    to: REF-SOURCE-FPGA-ACQ-SRAM-FINITE-WRITER-V
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-RTL
+    to: FU-RTL-ACQ-SRAM-HOST-FIFO
+  - type: depends_on
+    from: FU-RTL-ACQ-SRAM-HOST-FIFO
+    to: REF-SOURCE-FPGA-ACQ-SRAM-HOST-FIFO-V
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-RTL
+    to: FU-RTL-ACQ-SRAM-HOST-OWNERSHIP
+  - type: depends_on
+    from: FU-RTL-ACQ-SRAM-HOST-OWNERSHIP
+    to: REF-SOURCE-FPGA-ACQ-SRAM-HOST-OWNERSHIP-V
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-RTL
+    to: FU-RTL-ACQ-SRAM-HOST-PACKER
+  - type: depends_on
+    from: FU-RTL-ACQ-SRAM-HOST-PACKER
+    to: REF-SOURCE-FPGA-ACQ-SRAM-HOST-PACKER-V
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-RTL
+    to: FU-RTL-ACQ-SRAM-HOST-PATH
+  - type: depends_on
+    from: FU-RTL-ACQ-SRAM-HOST-PATH
+    to: REF-SOURCE-FPGA-ACQ-SRAM-HOST-PATH-V
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-RTL
+    to: FU-RTL-ACQ-SRAM-HOST-RAM
+  - type: depends_on
+    from: FU-RTL-ACQ-SRAM-HOST-RAM
+    to: REF-SOURCE-FPGA-ACQ-SRAM-HOST-RAM-V
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-RTL
+    to: FU-RTL-ACQ-SRAM-HOST-READ-PORT
+  - type: depends_on
+    from: FU-RTL-ACQ-SRAM-HOST-READ-PORT
+    to: REF-SOURCE-FPGA-ACQ-SRAM-HOST-READ-PORT-V
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-RTL
+    to: FU-RTL-ACQ-SRAM-HOST-READ-WINDOW
+  - type: depends_on
+    from: FU-RTL-ACQ-SRAM-HOST-READ-WINDOW
+    to: REF-SOURCE-FPGA-ACQ-SRAM-HOST-READ-WINDOW-V
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-RTL
+    to: FU-RTL-ACQ-SRAM-HOST-SINK
+  - type: depends_on
+    from: FU-RTL-ACQ-SRAM-HOST-SINK
+    to: REF-SOURCE-FPGA-ACQ-SRAM-HOST-SINK-V
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-RTL
+    to: FU-RTL-ACQ-SRAM-INGRESS-FIFO
+  - type: depends_on
+    from: FU-RTL-ACQ-SRAM-INGRESS-FIFO
+    to: REF-SOURCE-FPGA-ACQ-SRAM-INGRESS-FIFO-V
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-RTL
+    to: FU-RTL-ACQ-SRAM-INGRESS-PATH
+  - type: depends_on
+    from: FU-RTL-ACQ-SRAM-INGRESS-PATH
+    to: REF-SOURCE-FPGA-ACQ-SRAM-INGRESS-PATH-V
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-RTL
+    to: FU-RTL-ACQ-SRAM-INGRESS-STREAM
+  - type: depends_on
+    from: FU-RTL-ACQ-SRAM-INGRESS-STREAM
+    to: REF-SOURCE-FPGA-ACQ-SRAM-INGRESS-STREAM-V
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-RTL
+    to: FU-RTL-ACQ-SRAM-INTERLEAVE
+  - type: depends_on
+    from: FU-RTL-ACQ-SRAM-INTERLEAVE
+    to: REF-SOURCE-FPGA-ACQ-SRAM-INTERLEAVE-V
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-RTL
+    to: FU-RTL-ACQ-SRAM-ORDINAL-COUNTER
+  - type: depends_on
+    from: FU-RTL-ACQ-SRAM-ORDINAL-COUNTER
+    to: REF-SOURCE-FPGA-ACQ-SRAM-ORDINAL-COUNTER-V
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-RTL
+    to: FU-RTL-ACQ-SRAM-PRECISION
+  - type: depends_on
+    from: FU-RTL-ACQ-SRAM-PRECISION
+    to: REF-SOURCE-FPGA-ACQ-SRAM-PRECISION-V
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-RTL
+    to: FU-RTL-ACQ-SRAM-PRECISION-TAIL
+  - type: depends_on
+    from: FU-RTL-ACQ-SRAM-PRECISION-TAIL
+    to: REF-SOURCE-FPGA-ACQ-SRAM-PRECISION-TAIL-V
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-RTL
+    to: FU-RTL-ACQ-SRAM-PROFILE-CORE
+  - type: depends_on
+    from: FU-RTL-ACQ-SRAM-PROFILE-CORE
+    to: REF-SOURCE-FPGA-ACQ-SRAM-PROFILE-CORE-V
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-RTL
+    to: FU-RTL-ACQ-SRAM-PROFILE-PLL
+  - type: depends_on
+    from: FU-RTL-ACQ-SRAM-PROFILE-PLL
+    to: REF-SOURCE-FPGA-ACQ-SRAM-PROFILE-PLL-V
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-RTL
+    to: FU-RTL-ACQ-SRAM-PROFILE-TOP
+  - type: depends_on
+    from: FU-RTL-ACQ-SRAM-PROFILE-TOP
+    to: REF-SOURCE-FPGA-ACQ-SRAM-PROFILE-TOP-V
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-RTL
+    to: FU-RTL-ACQ-SRAM-RECALL
+  - type: depends_on
+    from: FU-RTL-ACQ-SRAM-RECALL
+    to: REF-SOURCE-FPGA-ACQ-SRAM-RECALL-V
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-RTL
+    to: FU-RTL-ACQ-SRAM-RECORD
+  - type: depends_on
+    from: FU-RTL-ACQ-SRAM-RECORD
+    to: REF-SOURCE-FPGA-ACQ-SRAM-RECORD-V
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-RTL
+    to: FU-RTL-ACQ-SRAM-STREAM
+  - type: depends_on
+    from: FU-RTL-ACQ-SRAM-STREAM
+    to: REF-SOURCE-FPGA-ACQ-SRAM-STREAM-V
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-RTL
+    to: FU-RTL-ACQ-SRAM-STREAM-BANKS
+  - type: depends_on
+    from: FU-RTL-ACQ-SRAM-STREAM-BANKS
+    to: REF-SOURCE-FPGA-ACQ-SRAM-STREAM-BANKS-V
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-RTL
+    to: FU-RTL-ACQ-SRAM-STREAM-ENGINE
+  - type: depends_on
+    from: FU-RTL-ACQ-SRAM-STREAM-ENGINE
+    to: REF-SOURCE-FPGA-ACQ-SRAM-STREAM-ENGINE-V
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-RTL
+    to: FU-RTL-ACQ-SRAM-STREAM-PACKETIZER
+  - type: depends_on
+    from: FU-RTL-ACQ-SRAM-STREAM-PACKETIZER
+    to: REF-SOURCE-FPGA-ACQ-SRAM-STREAM-PACKETIZER-V
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-RTL
+    to: FU-RTL-ACQ-SRAM-STREAM-PATH
+  - type: depends_on
+    from: FU-RTL-ACQ-SRAM-STREAM-PATH
+    to: REF-SOURCE-FPGA-ACQ-SRAM-STREAM-PATH-V
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-RTL
+    to: FU-RTL-ACQ-SRAM-TIMESLICE-CONTROLLER
+  - type: depends_on
+    from: FU-RTL-ACQ-SRAM-TIMESLICE-CONTROLLER
+    to: REF-SOURCE-FPGA-ACQ-SRAM-TIMESLICE-CONTROLLER-V
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-RTL
+    to: FU-RTL-ACQ-SRAM-TOP
+  - type: depends_on
+    from: FU-RTL-ACQ-SRAM-TOP
+    to: REF-SOURCE-FPGA-ACQ-SRAM-TOP-V
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-RTL
+    to: FU-RTL-ACQ-SRAM-TRANSPORT
+  - type: depends_on
+    from: FU-RTL-ACQ-SRAM-TRANSPORT
+    to: REF-SOURCE-FPGA-ACQ-SRAM-TRANSPORT-V
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-RTL
+    to: FU-RTL-ACQ-SRAM-WORD-BRIDGE
+  - type: depends_on
+    from: FU-RTL-ACQ-SRAM-WORD-BRIDGE
+    to: REF-SOURCE-FPGA-ACQ-SRAM-WORD-BRIDGE-V
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-BUILD
+    to: FU-RTL-ACQ-TESTS
+  - type: depends_on
+    from: FU-RTL-ACQ-TESTS
+    to: REF-SOURCE-FPGA-ACQ-SRAM-SIM-DDR-MODEL-V
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-BUILD
+    to: FU-RTL-BENCH-TESTS
+  - type: depends_on
+    from: FU-RTL-BENCH-TESTS
+    to: REF-SOURCE-FPGA-SRAM-BENCH-SIM-TB-V
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-RTL
+    to: FU-RTL-COMMON-DDIO-PAIR
+  - type: depends_on
+    from: FU-RTL-COMMON-DDIO-PAIR
+    to: REF-SOURCE-FPGA-COMMON-DDIO-PAIR-V
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-RTL
+    to: FU-RTL-COMMON-GPMC-SLAVE
+  - type: depends_on
+    from: FU-RTL-COMMON-GPMC-SLAVE
+    to: REF-SOURCE-FPGA-COMMON-GPMC-SLAVE-V
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-RTL
+    to: FU-RTL-COMMON-LANE-IN
+  - type: depends_on
+    from: FU-RTL-COMMON-LANE-IN
+    to: REF-SOURCE-FPGA-COMMON-LANE-IN-V
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-RTL
+    to: FU-RTL-COMMON-PLL-M2
+  - type: depends_on
+    from: FU-RTL-COMMON-PLL-M2
+    to: REF-SOURCE-FPGA-COMMON-PLL-M2-V
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-RTL
+    to: FU-RTL-COMMON-SYNC
+  - type: depends_on
+    from: FU-RTL-COMMON-SYNC
+    to: REF-SOURCE-FPGA-COMMON-SYNC-V
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-BUILD
+    to: FU-RTL-COMMON-TESTS
+  - type: depends_on
+    from: FU-RTL-COMMON-TESTS
+    to: REF-SOURCE-FPGA-COMMON-SIM-GPMC-BFM-V
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-RTL
+    to: FU-RTL-DEFAULT-ADC-FRONT
+  - type: depends_on
+    from: FU-RTL-DEFAULT-ADC-FRONT
+    to: REF-SOURCE-FPGA-DEFAULT-ADC-FRONT-V
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-RTL
+    to: FU-RTL-DEFAULT-CAPTURE
+  - type: depends_on
+    from: FU-RTL-DEFAULT-CAPTURE
+    to: REF-SOURCE-FPGA-DEFAULT-CAPTURE-V
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-RTL
+    to: FU-RTL-DEFAULT-DEFAULT
+  - type: depends_on
+    from: FU-RTL-DEFAULT-DEFAULT
+    to: REF-SOURCE-FPGA-DEFAULT-DEFAULT-V
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-RTL
+    to: FU-RTL-DEFAULT-DIAG
+  - type: depends_on
+    from: FU-RTL-DEFAULT-DIAG
+    to: REF-SOURCE-FPGA-DEFAULT-DIAG-V
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-RTL
+    to: FU-RTL-DEFAULT-DRAIN
+  - type: depends_on
+    from: FU-RTL-DEFAULT-DRAIN
+    to: REF-SOURCE-FPGA-DEFAULT-DRAIN-V
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-BUILD
+    to: FU-RTL-DEFAULT-TESTS
+  - type: depends_on
+    from: FU-RTL-DEFAULT-TESTS
+    to: REF-SOURCE-FPGA-DEFAULT-SIM-RUN-SH
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-RTL
+    to: FU-RTL-SRAM-BENCH-BENCH
+  - type: depends_on
+    from: FU-RTL-SRAM-BENCH-BENCH
+    to: REF-SOURCE-FPGA-SRAM-BENCH-BENCH-V
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-EVIDENCE
+    to: FU-SPECIFICATIONS
+  - type: depends_on
+    from: FU-SPECIFICATIONS
+    to: REF-SOURCE-SPECS-00-OVERVIEW-MD
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-BUILD
+    to: FU-TOOLS
+  - type: depends_on
+    from: FU-TOOLS
+    to: REF-SOURCE-TOOLS-DSP-PRECISION-FILTER-PY
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-BUILD
+    to: FU-TOOLS-HW-ADC-SRAM
+  - type: depends_on
+    from: FU-TOOLS-HW-ADC-SRAM
+    to: REF-SOURCE-TOOLS-HW-ADC-SRAM-ANALYZE-INTERLEAVE-PY
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-BUILD
+    to: FU-TOOLS-HW-SRAM-BOUNDARY
+  - type: depends_on
+    from: FU-TOOLS-HW-SRAM-BOUNDARY
+    to: REF-SOURCE-TOOLS-HW-SRAM-BOUNDARY-BOUNDARY-PY
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-BUILD
+    to: FU-TOOLS-HW-SRAM-SPEED
+  - type: depends_on
+    from: FU-TOOLS-HW-SRAM-SPEED
+    to: REF-SOURCE-TOOLS-HW-SRAM-SPEED-RUN-PY
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-BUILD
+    to: FU-TOOLS-HW-SRAMBURST
+  - type: depends_on
+    from: FU-TOOLS-HW-SRAMBURST
+    to: REF-SOURCE-TOOLS-HW-SRAMBURST-MAIN-GO
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-EVIDENCE
+    to: FU-VALIDATION-EVIDENCE
+  - type: depends_on
+    from: FU-VALIDATION-EVIDENCE
+    to: REF-SOURCE-VALIDATION-2026-09-13-DEFAULT-APP-FRAME-V5-BIN
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-WEB
+    to: FU-WEB-APP
+  - type: depends_on
+    from: FU-WEB-APP
+    to: REF-SOURCE-APP-INTERNAL-WEB-APP-JS
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-WEB
+    to: FU-WEB-APP-CANVAS
+  - type: depends_on
+    from: FU-WEB-APP-CANVAS
+    to: REF-SOURCE-APP-INTERNAL-WEB-APP-CANVAS-JS
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-WEB
+    to: FU-WEB-APP-CONTROLS
+  - type: depends_on
+    from: FU-WEB-APP-CONTROLS
+    to: REF-SOURCE-APP-INTERNAL-WEB-APP-CONTROLS-JS
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-WEB
+    to: FU-WEB-APP-CORE
+  - type: depends_on
+    from: FU-WEB-APP-CORE
+    to: REF-SOURCE-APP-INTERNAL-WEB-APP-CORE-JS
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-WEB
+    to: FU-WEB-APP-DECODE
+  - type: depends_on
+    from: FU-WEB-APP-DECODE
+    to: REF-SOURCE-APP-INTERNAL-WEB-APP-DECODE-JS
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-WEB
+    to: FU-WEB-APP-DRAW
+  - type: depends_on
+    from: FU-WEB-APP-DRAW
+    to: REF-SOURCE-APP-INTERNAL-WEB-APP-DRAW-JS
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-WEB
+    to: FU-WEB-APP-EYE
+  - type: depends_on
+    from: FU-WEB-APP-EYE
+    to: REF-SOURCE-APP-INTERNAL-WEB-APP-EYE-JS
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-WEB
+    to: FU-WEB-APP-FFT
+  - type: depends_on
+    from: FU-WEB-APP-FFT
+    to: REF-SOURCE-APP-INTERNAL-WEB-APP-FFT-JS
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-WEB
+    to: FU-WEB-APP-GEOM
+  - type: depends_on
+    from: FU-WEB-APP-GEOM
+    to: REF-SOURCE-APP-INTERNAL-WEB-APP-GEOM-JS
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-WEB
+    to: FU-WEB-APP-GL
+  - type: depends_on
+    from: FU-WEB-APP-GL
+    to: REF-SOURCE-APP-INTERNAL-WEB-APP-GL-JS
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-WEB
+    to: FU-WEB-APP-INIT
+  - type: depends_on
+    from: FU-WEB-APP-INIT
+    to: REF-SOURCE-APP-INTERNAL-WEB-APP-INIT-JS
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-WEB
+    to: FU-WEB-APP-NAV
+  - type: depends_on
+    from: FU-WEB-APP-NAV
+    to: REF-SOURCE-APP-INTERNAL-WEB-APP-NAV-JS
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-WEB
+    to: FU-WEB-APP-PRECISION
+  - type: depends_on
+    from: FU-WEB-APP-PRECISION
+    to: REF-SOURCE-APP-INTERNAL-WEB-APP-PRECISION-JS
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-WEB
+    to: FU-WEB-APP-SERIALTRIG
+  - type: depends_on
+    from: FU-WEB-APP-SERIALTRIG
+    to: REF-SOURCE-APP-INTERNAL-WEB-APP-SERIALTRIG-JS
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-WEB
+    to: FU-WEB-APP-SUPERRES
+  - type: depends_on
+    from: FU-WEB-APP-SUPERRES
+    to: REF-SOURCE-APP-INTERNAL-WEB-APP-SUPERRES-JS
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-WEB
+    to: FU-WEB-APP-VIEWS
+  - type: depends_on
+    from: FU-WEB-APP-VIEWS
+    to: REF-SOURCE-APP-INTERNAL-WEB-APP-VIEWS-JS
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-WEB
+    to: FU-WEB-APP-ZONEMASK
+  - type: depends_on
+    from: FU-WEB-APP-ZONEMASK
+    to: REF-SOURCE-APP-INTERNAL-WEB-APP-ZONEMASK-JS
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-WEB
+    to: FU-WEB-BINFRAME
+  - type: depends_on
+    from: FU-WEB-BINFRAME
+    to: REF-SOURCE-APP-INTERNAL-WEB-BINFRAME-JS
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-WEB
+    to: FU-WEB-BODE
+  - type: depends_on
+    from: FU-WEB-BODE
+    to: REF-SOURCE-APP-INTERNAL-WEB-BODE-JS
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-WEB
+    to: FU-WEB-DECODE
+  - type: depends_on
+    from: FU-WEB-DECODE
+    to: REF-SOURCE-APP-INTERNAL-WEB-DECODE-JS
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-WEB
+    to: FU-WEB-DECODE-ARINC429
+  - type: depends_on
+    from: FU-WEB-DECODE-ARINC429
+    to: REF-SOURCE-APP-INTERNAL-WEB-DECODE-ARINC429-JS
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-WEB
+    to: FU-WEB-DECODE-CANFD
+  - type: depends_on
+    from: FU-WEB-DECODE-CANFD
+    to: REF-SOURCE-APP-INTERNAL-WEB-DECODE-CANFD-JS
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-WEB
+    to: FU-WEB-DECODE-FLEXRAY
+  - type: depends_on
+    from: FU-WEB-DECODE-FLEXRAY
+    to: REF-SOURCE-APP-INTERNAL-WEB-DECODE-FLEXRAY-JS
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-WEB
+    to: FU-WEB-DECODE-MANCHESTER
+  - type: depends_on
+    from: FU-WEB-DECODE-MANCHESTER
+    to: REF-SOURCE-APP-INTERNAL-WEB-DECODE-MANCHESTER-JS
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-WEB
+    to: FU-WEB-DECODE-MIL1553
+  - type: depends_on
+    from: FU-WEB-DECODE-MIL1553
+    to: REF-SOURCE-APP-INTERNAL-WEB-DECODE-MIL1553-JS
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-WEB
+    to: FU-WEB-DECODE-SENT
+  - type: depends_on
+    from: FU-WEB-DECODE-SENT
+    to: REF-SOURCE-APP-INTERNAL-WEB-DECODE-SENT-JS
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-WEB
+    to: FU-WEB-DECODE-USBLS
+  - type: depends_on
+    from: FU-WEB-DECODE-USBLS
+    to: REF-SOURCE-APP-INTERNAL-WEB-DECODE-USBLS-JS
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-WEB
+    to: FU-WEB-EYEJITTER
+  - type: depends_on
+    from: FU-WEB-EYEJITTER
+    to: REF-SOURCE-APP-INTERNAL-WEB-EYEJITTER-JS
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-WEB
+    to: FU-WEB-EYEJITTER-ANALYSIS
+  - type: depends_on
+    from: FU-WEB-EYEJITTER-ANALYSIS
+    to: REF-SOURCE-APP-INTERNAL-WEB-EYEJITTER-ANALYSIS-JS
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-WEB
+    to: FU-WEB-PEAKS
+  - type: depends_on
+    from: FU-WEB-PEAKS
+    to: REF-SOURCE-APP-INTERNAL-WEB-PEAKS-JS
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-WEB
+    to: FU-WEB-SIGROK-EXPORT
+  - type: depends_on
+    from: FU-WEB-SIGROK-EXPORT
+    to: REF-SOURCE-APP-INTERNAL-WEB-SIGROK-EXPORT-JS
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-WEB
+    to: FU-WEB-SPECTROGRAM
+  - type: depends_on
+    from: FU-WEB-SPECTROGRAM
+    to: REF-SOURCE-APP-INTERNAL-WEB-SPECTROGRAM-JS
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-WEB
+    to: FU-WEB-SUPERRES
+  - type: depends_on
+    from: FU-WEB-SUPERRES
+    to: REF-SOURCE-APP-INTERNAL-WEB-SUPERRES-JS
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-WEB
+    to: FU-WEB-SUPERRES-COMP
+  - type: depends_on
+    from: FU-WEB-SUPERRES-COMP
+    to: REF-SOURCE-APP-INTERNAL-WEB-SUPERRES-COMP-JS
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-WEB
+    to: FU-WEB-SUPERRES-ETS
+  - type: depends_on
+    from: FU-WEB-SUPERRES-ETS
+    to: REF-SOURCE-APP-INTERNAL-WEB-SUPERRES-ETS-JS
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-WEB
+    to: FU-WEB-SUPERRES-GATE
+  - type: depends_on
+    from: FU-WEB-SUPERRES-GATE
+    to: REF-SOURCE-APP-INTERNAL-WEB-SUPERRES-GATE-JS
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-WEB
+    to: FU-WEB-SUPERRES-MATH
+  - type: depends_on
+    from: FU-WEB-SUPERRES-MATH
+    to: REF-SOURCE-APP-INTERNAL-WEB-SUPERRES-MATH-JS
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-WEB
+    to: FU-WEB-SUPERRES-MEASURE
+  - type: depends_on
+    from: FU-WEB-SUPERRES-MEASURE
+    to: REF-SOURCE-APP-INTERNAL-WEB-SUPERRES-MEASURE-JS
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: contains
+    from: FG-WEB
+    to: FU-WEB-SUPERRES-TEMPLATE
+  - type: depends_on
+    from: FU-WEB-SUPERRES-TEMPLATE
+    to: REF-SOURCE-APP-INTERNAL-WEB-SUPERRES-TEMPLATE-JS
+    description: Primary implementation or support artifact; does not imply hardware qualification.
+  - type: deployed_to
+    from: FU-APP-ACQSRAM
+    to: DEP-DEVICE
+  - type: deployed_to
+    from: FU-APP-ANALOG
+    to: DEP-DEVICE
+  - type: deployed_to
+    from: FU-APP-APP
+    to: DEP-DEVICE
+  - type: deployed_to
+    from: FU-APP-BUILDINFO
+    to: DEP-DEVICE
+  - type: deployed_to
+    from: FU-APP-BUS
+    to: DEP-DEVICE
+  - type: deployed_to
+    from: FU-APP-CAL
+    to: DEP-DEVICE
+  - type: deployed_to
+    from: FU-APP-DECODE
+    to: DEP-DEVICE
+  - type: deployed_to
+    from: FU-APP-DIAG
+    to: DEP-DEVICE
+  - type: deployed_to
+    from: FU-APP-DSP
+    to: DEP-DEVICE
+  - type: deployed_to
+    from: FU-APP-ENGINE
+    to: DEP-DEVICE
+  - type: deployed_to
+    from: FU-APP-FPGALOAD
+    to: DEP-DEVICE
+  - type: deployed_to
+    from: FU-APP-FRAMES
+    to: DEP-DEVICE
+  - type: deployed_to
+    from: FU-APP-IFACE
+    to: DEP-DEVICE
+  - type: deployed_to
+    from: FU-APP-LCD
+    to: DEP-DEVICE
+  - type: deployed_to
+    from: FU-APP-MEASURE
+    to: DEP-DEVICE
+  - type: deployed_to
+    from: FU-APP-PANEL
+    to: DEP-DEVICE
+  - type: deployed_to
+    from: FU-APP-SCPI
+    to: DEP-DEVICE
+  - type: deployed_to
+    from: FU-APP-SETTINGS
+    to: DEP-DEVICE
+  - type: deployed_to
+    from: FU-APP-SRAMBENCH
+    to: DEP-DEVICE
+  - type: deployed_to
+    from: FU-APP-SRAMCAPTURE
+    to: DEP-DEVICE
+  - type: deployed_to
+    from: FU-APP-SUPERRES
+    to: DEP-DEVICE
+  - type: deployed_to
+    from: FU-APP-TESTENV
+    to: DEP-DEVICE
+  - type: deployed_to
+    from: FU-APP-VXI11SRV
+    to: DEP-DEVICE
+  - type: deployed_to
+    from: FU-APP-WEB
+    to: DEP-DEVICE
+  - type: deployed_to
+    from: FU-OTA-AGENT
+    to: DEP-DEVICE
+  - type: deployed_to
+    from: FU-OTA-BOOT
+    to: DEP-DEVICE
+  - type: deployed_to
+    from: FU-OTA-BUILDINFO
+    to: DEP-DEVICE
+  - type: deployed_to
+    from: FU-OTA-CONFIG
+    to: DEP-DEVICE
+  - type: deployed_to
+    from: FU-OTA-FDINHERIT
+    to: DEP-DEVICE
+  - type: deployed_to
+    from: FU-OTA-GPMC
+    to: DEP-DEVICE
+  - type: deployed_to
+    from: FU-OTA-OTACTL
+    to: DEP-HOST
+  - type: deployed_to
+    from: FU-OTA-RPCPROTO
+    to: DEP-DEVICE
+  - type: deployed_to
+    from: FU-OTA-SLOTS
+    to: DEP-DEVICE
+  - type: deployed_to
+    from: FU-OTA-STUBAPP
+    to: DEP-DEVICE
+  - type: deployed_to
+    from: FU-OTA-SYSINFO
+    to: DEP-DEVICE
+  - type: deployed_to
+    from: FU-OTA-VXI11
+    to: DEP-DEVICE
+  - type: deployed_to
+    from: FU-OTA-WATCHDOG
+    to: DEP-DEVICE
+  - type: deployed_to
+    from: FU-RTL-ACQ-SRAM-ACQUISITION-ADC-PLL
+    to: DEP-FPGA
+  - type: deployed_to
+    from: FU-RTL-ACQ-SRAM-ACQUISITION-PATH
+    to: DEP-FPGA
+  - type: deployed_to
+    from: FU-RTL-ACQ-SRAM-ACQUISITION-SOURCE
+    to: DEP-FPGA
+  - type: deployed_to
+    from: FU-RTL-ACQ-SRAM-ADC-UNPACK
+    to: DEP-FPGA
+  - type: deployed_to
+    from: FU-RTL-ACQ-SRAM-BOARD-CAPTURE-PATH
+    to: DEP-FPGA
+  - type: deployed_to
+    from: FU-RTL-ACQ-SRAM-CAPTURE-ENGINE
+    to: DEP-FPGA
+  - type: deployed_to
+    from: FU-RTL-ACQ-SRAM-CAPTURE-PATH
+    to: DEP-FPGA
+  - type: deployed_to
+    from: FU-RTL-ACQ-SRAM-COMMAND-BRIDGE
+    to: DEP-FPGA
+  - type: deployed_to
+    from: FU-RTL-ACQ-SRAM-COMMAND-PORT
+    to: DEP-FPGA
+  - type: deployed_to
+    from: FU-RTL-ACQ-SRAM-FINITE-RECALL
+    to: DEP-FPGA
+  - type: deployed_to
+    from: FU-RTL-ACQ-SRAM-FINITE-WRITER
+    to: DEP-FPGA
+  - type: deployed_to
+    from: FU-RTL-ACQ-SRAM-HOST-FIFO
+    to: DEP-FPGA
+  - type: deployed_to
+    from: FU-RTL-ACQ-SRAM-HOST-OWNERSHIP
+    to: DEP-FPGA
+  - type: deployed_to
+    from: FU-RTL-ACQ-SRAM-HOST-PACKER
+    to: DEP-FPGA
+  - type: deployed_to
+    from: FU-RTL-ACQ-SRAM-HOST-PATH
+    to: DEP-FPGA
+  - type: deployed_to
+    from: FU-RTL-ACQ-SRAM-HOST-RAM
+    to: DEP-FPGA
+  - type: deployed_to
+    from: FU-RTL-ACQ-SRAM-HOST-READ-PORT
+    to: DEP-FPGA
+  - type: deployed_to
+    from: FU-RTL-ACQ-SRAM-HOST-READ-WINDOW
+    to: DEP-FPGA
+  - type: deployed_to
+    from: FU-RTL-ACQ-SRAM-HOST-SINK
+    to: DEP-FPGA
+  - type: deployed_to
+    from: FU-RTL-ACQ-SRAM-INGRESS-FIFO
+    to: DEP-FPGA
+  - type: deployed_to
+    from: FU-RTL-ACQ-SRAM-INGRESS-PATH
+    to: DEP-FPGA
+  - type: deployed_to
+    from: FU-RTL-ACQ-SRAM-INGRESS-STREAM
+    to: DEP-FPGA
+  - type: deployed_to
+    from: FU-RTL-ACQ-SRAM-INTERLEAVE
+    to: DEP-FPGA
+  - type: deployed_to
+    from: FU-RTL-ACQ-SRAM-ORDINAL-COUNTER
+    to: DEP-FPGA
+  - type: deployed_to
+    from: FU-RTL-ACQ-SRAM-PRECISION
+    to: DEP-FPGA
+  - type: deployed_to
+    from: FU-RTL-ACQ-SRAM-PRECISION-TAIL
+    to: DEP-FPGA
+  - type: deployed_to
+    from: FU-RTL-ACQ-SRAM-PROFILE-CORE
+    to: DEP-FPGA
+  - type: deployed_to
+    from: FU-RTL-ACQ-SRAM-PROFILE-PLL
+    to: DEP-FPGA
+  - type: deployed_to
+    from: FU-RTL-ACQ-SRAM-PROFILE-TOP
+    to: DEP-FPGA
+  - type: deployed_to
+    from: FU-RTL-ACQ-SRAM-RECALL
+    to: DEP-FPGA
+  - type: deployed_to
+    from: FU-RTL-ACQ-SRAM-RECORD
+    to: DEP-FPGA
+  - type: deployed_to
+    from: FU-RTL-ACQ-SRAM-STREAM
+    to: DEP-FPGA
+  - type: deployed_to
+    from: FU-RTL-ACQ-SRAM-STREAM-BANKS
+    to: DEP-FPGA
+  - type: deployed_to
+    from: FU-RTL-ACQ-SRAM-STREAM-ENGINE
+    to: DEP-FPGA
+  - type: deployed_to
+    from: FU-RTL-ACQ-SRAM-STREAM-PACKETIZER
+    to: DEP-FPGA
+  - type: deployed_to
+    from: FU-RTL-ACQ-SRAM-STREAM-PATH
+    to: DEP-FPGA
+  - type: deployed_to
+    from: FU-RTL-ACQ-SRAM-TIMESLICE-CONTROLLER
+    to: DEP-FPGA
+  - type: deployed_to
+    from: FU-RTL-ACQ-SRAM-TOP
+    to: DEP-FPGA
+  - type: deployed_to
+    from: FU-RTL-ACQ-SRAM-TRANSPORT
+    to: DEP-FPGA
+  - type: deployed_to
+    from: FU-RTL-ACQ-SRAM-WORD-BRIDGE
+    to: DEP-FPGA
+  - type: deployed_to
+    from: FU-RTL-COMMON-DDIO-PAIR
+    to: DEP-FPGA
+  - type: deployed_to
+    from: FU-RTL-COMMON-GPMC-SLAVE
+    to: DEP-FPGA
+  - type: deployed_to
+    from: FU-RTL-COMMON-LANE-IN
+    to: DEP-FPGA
+  - type: deployed_to
+    from: FU-RTL-COMMON-PLL-M2
+    to: DEP-FPGA
+  - type: deployed_to
+    from: FU-RTL-COMMON-SYNC
+    to: DEP-FPGA
+  - type: deployed_to
+    from: FU-RTL-DEFAULT-ADC-FRONT
+    to: DEP-FPGA
+  - type: deployed_to
+    from: FU-RTL-DEFAULT-CAPTURE
+    to: DEP-FPGA
+  - type: deployed_to
+    from: FU-RTL-DEFAULT-DEFAULT
+    to: DEP-FPGA
+  - type: deployed_to
+    from: FU-RTL-DEFAULT-DIAG
+    to: DEP-FPGA
+  - type: deployed_to
+    from: FU-RTL-DEFAULT-DRAIN
+    to: DEP-FPGA
+  - type: deployed_to
+    from: FU-RTL-SRAM-BENCH-BENCH
+    to: DEP-FPGA
+  - type: deployed_to
+    from: FU-WEB-APP
+    to: DEP-BROWSER
+  - type: deployed_to
+    from: FU-WEB-APP-CANVAS
+    to: DEP-BROWSER
+  - type: deployed_to
+    from: FU-WEB-APP-CONTROLS
+    to: DEP-BROWSER
+  - type: deployed_to
+    from: FU-WEB-APP-CORE
+    to: DEP-BROWSER
+  - type: deployed_to
+    from: FU-WEB-APP-DECODE
+    to: DEP-BROWSER
+  - type: deployed_to
+    from: FU-WEB-APP-DRAW
+    to: DEP-BROWSER
+  - type: deployed_to
+    from: FU-WEB-APP-EYE
+    to: DEP-BROWSER
+  - type: deployed_to
+    from: FU-WEB-APP-FFT
+    to: DEP-BROWSER
+  - type: deployed_to
+    from: FU-WEB-APP-GEOM
+    to: DEP-BROWSER
+  - type: deployed_to
+    from: FU-WEB-APP-GL
+    to: DEP-BROWSER
+  - type: deployed_to
+    from: FU-WEB-APP-INIT
+    to: DEP-BROWSER
+  - type: deployed_to
+    from: FU-WEB-APP-NAV
+    to: DEP-BROWSER
+  - type: deployed_to
+    from: FU-WEB-APP-PRECISION
+    to: DEP-BROWSER
+  - type: deployed_to
+    from: FU-WEB-APP-SERIALTRIG
+    to: DEP-BROWSER
+  - type: deployed_to
+    from: FU-WEB-APP-SUPERRES
+    to: DEP-BROWSER
+  - type: deployed_to
+    from: FU-WEB-APP-VIEWS
+    to: DEP-BROWSER
+  - type: deployed_to
+    from: FU-WEB-APP-ZONEMASK
+    to: DEP-BROWSER
+  - type: deployed_to
+    from: FU-WEB-BINFRAME
+    to: DEP-BROWSER
+  - type: deployed_to
+    from: FU-WEB-BODE
+    to: DEP-BROWSER
+  - type: deployed_to
+    from: FU-WEB-DECODE
+    to: DEP-BROWSER
+  - type: deployed_to
+    from: FU-WEB-DECODE-ARINC429
+    to: DEP-BROWSER
+  - type: deployed_to
+    from: FU-WEB-DECODE-CANFD
+    to: DEP-BROWSER
+  - type: deployed_to
+    from: FU-WEB-DECODE-FLEXRAY
+    to: DEP-BROWSER
+  - type: deployed_to
+    from: FU-WEB-DECODE-MANCHESTER
+    to: DEP-BROWSER
+  - type: deployed_to
+    from: FU-WEB-DECODE-MIL1553
+    to: DEP-BROWSER
+  - type: deployed_to
+    from: FU-WEB-DECODE-SENT
+    to: DEP-BROWSER
+  - type: deployed_to
+    from: FU-WEB-DECODE-USBLS
+    to: DEP-BROWSER
+  - type: deployed_to
+    from: FU-WEB-EYEJITTER
+    to: DEP-BROWSER
+  - type: deployed_to
+    from: FU-WEB-EYEJITTER-ANALYSIS
+    to: DEP-BROWSER
+  - type: deployed_to
+    from: FU-WEB-PEAKS
+    to: DEP-BROWSER
+  - type: deployed_to
+    from: FU-WEB-SIGROK-EXPORT
+    to: DEP-BROWSER
+  - type: deployed_to
+    from: FU-WEB-SPECTROGRAM
+    to: DEP-BROWSER
+  - type: deployed_to
+    from: FU-WEB-SUPERRES
+    to: DEP-BROWSER
+  - type: deployed_to
+    from: FU-WEB-SUPERRES-COMP
+    to: DEP-BROWSER
+  - type: deployed_to
+    from: FU-WEB-SUPERRES-ETS
+    to: DEP-BROWSER
+  - type: deployed_to
+    from: FU-WEB-SUPERRES-GATE
+    to: DEP-BROWSER
+  - type: deployed_to
+    from: FU-WEB-SUPERRES-MATH
+    to: DEP-BROWSER
+  - type: deployed_to
+    from: FU-WEB-SUPERRES-MEASURE
+    to: DEP-BROWSER
+  - type: deployed_to
+    from: FU-WEB-SUPERRES-TEMPLATE
+    to: DEP-BROWSER
+  - type: contains
+    from: HW-INSTRUMENT
+    to: HW-SOC
+  - type: contains
+    from: HW-INSTRUMENT
+    to: HW-FPGA
+  - type: contains
+    from: HW-INSTRUMENT
+    to: HW-MAXV
+  - type: contains
+    from: HW-INSTRUMENT
+    to: HW-SRAM
+  - type: contains
+    from: HW-INSTRUMENT
+    to: HW-ADC
+  - type: contains
+    from: HW-INSTRUMENT
+    to: HW-AFE
+  - type: contains
+    from: HW-INSTRUMENT
+    to: HW-OSC
+  - type: contains
+    from: HW-INSTRUMENT
+    to: HW-LCD
+  - type: contains
+    from: HW-INSTRUMENT
+    to: HW-PANEL
+  - type: contains
+    from: HW-INSTRUMENT
+    to: HW-WATCHDOG
+  - type: contains
+    from: HW-INSTRUMENT
+    to: HW-USB
+  - type: contains
+    from: HW-INSTRUMENT
+    to: HW-NETWORK
+  - type: allocated_to
+    from: DEP-DEVICE
+    to: HW-SOC
+  - type: allocated_to
+    from: DEP-FPGA
+    to: HW-FPGA
+  - type: allocated_to
+    from: DEP-USB
+    to: HW-USB
+  - type: allocated_to
+    from: DEP-HOST
+    to: HW-HOST
+  - type: allocated_to
+    from: DEP-BROWSER
+    to: HW-HOST
+  - type: contains
+    from: FU-APP-BUS
+    to: IF-GPMC
+  - type: contains
+    from: FU-APP-BUS
+    to: IF-DMA
+  - type: contains
+    from: FU-APP-ANALOG
+    to: IF-SPI
+  - type: contains
+    from: FU-APP-FPGALOAD
+    to: IF-CONFIG
+  - type: contains
+    from: FU-APP-IFACE
+    to: IF-DEFAULT
+  - type: contains
+    from: FU-APP-SRAMCAPTURE
+    to: IF-SRAM
+  - type: contains
+    from: FU-RTL-ACQ-SRAM-PROFILE-CORE
+    to: IF-PROFILE
+  - type: contains
+    from: FU-APP-WEB
+    to: IF-FRAME
+  - type: contains
+    from: FU-APP-WEB
+    to: IF-HTTP
+  - type: contains
+    from: FU-APP-VXI11SRV
+    to: IF-SCPI
+  - type: contains
+    from: FU-OTA-AGENT
+    to: IF-OTA
+  - type: contains
+    from: FU-APP-APP
+    to: IF-HEALTH
+  - type: contains
+    from: FU-APP-LCD
+    to: IF-LCD
+  - type: contains
+    from: FU-APP-PANEL
+    to: IF-KEY
+  - type: contains
+    from: FU-OTA-WATCHDOG
+    to: IF-WATCHDOG
+  - type: interacts_with
+    from: HW-SOC
+    to: HW-FPGA
+    description: 16-bit data, byte address 2*selector; CS1 ABI differs by image. CS3 is a separate control/configuration
+      plane.
+  - type: interacts_with
+    from: HW-FPGA
+    to: HW-SRAM
+    description: 32-bit DQ, synchronous burst transport at image-specific clocks, read pipeline and wrap accounting.
+  - type: interacts_with
+    from: HW-FPGA
+    to: HW-MAXV
+    description: K2 counter clock, G1 enable, K1 direction. Relative address tracking; MAX V propagation is empirically
+      constrained.
+  - type: interacts_with
+    from: HW-ADC
+    to: HW-FPGA
+    description: 80 input lanes, registered and reordered into ten logical bytes.
+  - type: interacts_with
+    from: HW-FPGA
+    to: HW-ADC
+    description: Five 100 MHz encode pairs; two legs clock different logical cores. Full interleave targets 500
+      MS/s/channel.
+  - type: interacts_with
+    from: HW-AFE
+    to: HW-ADC
+    description: Two conditioned analog channels with range, gain, offset and trigger paths.
+  - type: interacts_with
+    from: HW-SOC
+    to: HW-AFE
+    description: Relay and gain DAC devices are off the GPMC bus.
+  - type: interacts_with
+    from: HW-OSC
+    to: HW-FPGA
+    description: 100 MHz board reference to image-specific PLLs.
+  - type: interacts_with
+    from: HW-SOC
+    to: HW-LCD
+    description: RGB565 800 x 480 pixel display.
+  - type: interacts_with
+    from: HW-PANEL
+    to: HW-FPGA
+    description: Key/encoder and LED connectivity; no claim current default image implements the matrix.
+  - type: interacts_with
+    from: HW-SOC
+    to: HW-USB
+    description: Boot storage, A/B slots and artifacts.
+  - type: interacts_with
+    from: HW-SOC
+    to: HW-NETWORK
+    description: Remote control and data.
+  - type: interacts_with
+    from: ACT-OPERATOR
+    to: FU-APP-WEB
+  - type: interacts_with
+    from: ACT-HOST
+    to: FU-APP-VXI11SRV
+  - type: interacts_with
+    from: ACT-MAINTAINER
+    to: FU-OTA-AGENT
+  - type: calls
+    from: FU-APP-ENGINE
+    to: IF-GPMC
+  - type: calls
+    from: FU-APP-SRAMCAPTURE
+    to: IF-SRAM
+  - type: writes
+    from: FU-APP-ENGINE
+    to: DO-FRAME
+  - type: reads
+    from: FU-APP-FRAMES
+    to: DO-FRAME
+  - type: reads
+    from: FU-APP-LCD
+    to: DO-FRAME
+  - type: reads
+    from: FU-APP-WEB
+    to: DO-FRAME
+  - type: writes
+    from: FU-APP-SETTINGS
+    to: DO-SETTINGS
+  - type: reads
+    from: FU-APP-ENGINE
+    to: DO-SETTINGS
+  - type: writes
+    from: FU-APP-APP
+    to: DO-HEALTH
+  - type: reads
+    from: FU-OTA-AGENT
+    to: DO-HEALTH
+  - type: writes
+    from: FU-APP-FPGALOAD
+    to: DO-BITSTREAM
+  - type: reads
+    from: FU-APP-CAL
+    to: DO-CAL
+  - type: reads
+    from: FU-APP-DSP
+    to: DO-PRECISION
+  - type: writes
+    from: FU-RTL-ACQ-SRAM-HOST-OWNERSHIP
+    to: DO-DESCRIPTOR
+  - type: transitions_to
+    from: STATE-IDLE
+    to: STATE-CAPTURING
+    description: Architectural lifecycle; guards are detailed in RTL and requirements.
+  - type: transitions_to
+    from: STATE-CAPTURING
+    to: STATE-FROZEN
+    description: Architectural lifecycle; guards are detailed in RTL and requirements.
+  - type: transitions_to
+    from: STATE-FROZEN
+    to: STATE-RECALL
+    description: Architectural lifecycle; guards are detailed in RTL and requirements.
+  - type: transitions_to
+    from: STATE-RECALL
+    to: STATE-FROZEN
+    description: Architectural lifecycle; guards are detailed in RTL and requirements.
+  - type: transitions_to
+    from: STATE-IDLE
+    to: STATE-STREAMING
+    description: Architectural lifecycle; guards are detailed in RTL and requirements.
+  - type: transitions_to
+    from: STATE-STREAMING
+    to: STATE-FAULT
+    description: Architectural lifecycle; guards are detailed in RTL and requirements.
+  - type: transitions_to
+    from: STATE-CAPTURING
+    to: STATE-FAULT
+    description: Architectural lifecycle; guards are detailed in RTL and requirements.
+  - type: transitions_to
+    from: STATE-FAULT
+    to: STATE-RESET
+    description: Architectural lifecycle; guards are detailed in RTL and requirements.
+  - type: transitions_to
+    from: STATE-RESET
+    to: STATE-IDLE
+    description: Architectural lifecycle; guards are detailed in RTL and requirements.
+  - type: triggered_by
+    from: STATE-CAPTURING
+    to: EVT-START
+  - type: triggered_by
+    from: STATE-FROZEN
+    to: EVT-COMPLETE
+  - type: triggered_by
+    from: STATE-RECALL
+    to: EVT-RECALL
+  - type: triggered_by
+    from: STATE-FAULT
+    to: EVT-OVERRUN
+  - type: triggered_by
+    from: STATE-RESET
+    to: EVT-RESET
+  - type: satisfies
+    from: FU-APP-ENGINE
+    to: CTRL-BUS
+  - type: satisfies
+    from: FU-APP-SRAMCAPTURE
+    to: CTRL-IDENTITY
+  - type: satisfies
+    from: FU-RTL-ACQ-SRAM-HOST-OWNERSHIP
+    to: CTRL-EPOCH
+  - type: satisfies
+    from: FU-OTA-AGENT
+    to: CTRL-HEALTH
+  - type: satisfies
+    from: FU-FPGA-ACQ-BUILD
+    to: CTRL-TIMING
+  - type: depends_on
+    from: FU-APP-ACQSRAM
+    to: FU-APP-ANALOG
+    description: Resolved non-test Go import.
+  - type: depends_on
+    from: FU-APP-ACQSRAM
+    to: FU-APP-BUS
+    description: Resolved non-test Go import.
+  - type: depends_on
+    from: FU-APP-ACQSRAM
+    to: FU-APP-CAL
+    description: Resolved non-test Go import.
+  - type: depends_on
+    from: FU-APP-ACQSRAM
+    to: FU-APP-FPGALOAD
+    description: Resolved non-test Go import.
+  - type: depends_on
+    from: FU-APP-ACQSRAM
+    to: FU-APP-SRAMCAPTURE
+    description: Resolved non-test Go import.
+  - type: depends_on
+    from: FU-APP-APP
+    to: FU-APP-ANALOG
+    description: Resolved non-test Go import.
+  - type: depends_on
+    from: FU-APP-APP
+    to: FU-APP-BUILDINFO
+    description: Resolved non-test Go import.
+  - type: depends_on
+    from: FU-APP-APP
+    to: FU-APP-BUS
+    description: Resolved non-test Go import.
+  - type: depends_on
+    from: FU-APP-APP
+    to: FU-APP-CAL
+    description: Resolved non-test Go import.
+  - type: depends_on
+    from: FU-APP-APP
+    to: FU-APP-DIAG
+    description: Resolved non-test Go import.
+  - type: depends_on
+    from: FU-APP-APP
+    to: FU-APP-ENGINE
+    description: Resolved non-test Go import.
+  - type: depends_on
+    from: FU-APP-APP
+    to: FU-APP-FPGALOAD
+    description: Resolved non-test Go import.
+  - type: depends_on
+    from: FU-APP-APP
+    to: FU-APP-FRAMES
+    description: Resolved non-test Go import.
+  - type: depends_on
+    from: FU-APP-APP
+    to: FU-APP-IFACE
+    description: Resolved non-test Go import.
+  - type: depends_on
+    from: FU-APP-APP
+    to: FU-APP-LCD
+    description: Resolved non-test Go import.
+  - type: depends_on
+    from: FU-APP-APP
+    to: FU-APP-PANEL
+    description: Resolved non-test Go import.
+  - type: depends_on
+    from: FU-APP-APP
+    to: FU-APP-SCPI
+    description: Resolved non-test Go import.
+  - type: depends_on
+    from: FU-APP-APP
+    to: FU-APP-SETTINGS
+    description: Resolved non-test Go import.
+  - type: depends_on
+    from: FU-APP-APP
+    to: FU-APP-SRAMCAPTURE
+    description: Resolved non-test Go import.
+  - type: depends_on
+    from: FU-APP-APP
+    to: FU-APP-VXI11SRV
+    description: Resolved non-test Go import.
+  - type: depends_on
+    from: FU-APP-APP
+    to: FU-APP-WEB
+    description: Resolved non-test Go import.
+  - type: depends_on
+    from: FU-APP-SRAMBENCH
+    to: FU-APP-FPGALOAD
+    description: Resolved non-test Go import.
+  - type: depends_on
+    from: FU-APP-ANALOG
+    to: FU-APP-CAL
+    description: Resolved non-test Go import.
+  - type: depends_on
+    from: FU-APP-BUS
+    to: FU-APP-IFACE
+    description: Resolved non-test Go import.
+  - type: depends_on
+    from: FU-APP-DIAG
+    to: FU-APP-BUS
+    description: Resolved non-test Go import.
+  - type: depends_on
+    from: FU-APP-DIAG
+    to: FU-APP-IFACE
+    description: Resolved non-test Go import.
+  - type: depends_on
+    from: FU-APP-ENGINE
+    to: FU-APP-BUS
+    description: Resolved non-test Go import.
+  - type: depends_on
+    from: FU-APP-ENGINE
+    to: FU-APP-IFACE
+    description: Resolved non-test Go import.
+  - type: depends_on
+    from: FU-APP-ENGINE
+    to: FU-APP-SRAMCAPTURE
+    description: Resolved non-test Go import.
+  - type: depends_on
+    from: FU-APP-ENGINE
+    to: FU-APP-DECODE
+    description: Resolved non-test Go import.
+  - type: depends_on
+    from: FU-APP-ENGINE
+    to: FU-APP-DSP
+    description: Resolved non-test Go import.
+  - type: depends_on
+    from: FU-APP-FPGALOAD
+    to: FU-APP-BUS
+    description: Resolved non-test Go import.
+  - type: depends_on
+    from: FU-APP-FPGALOAD
+    to: FU-APP-IFACE
+    description: Resolved non-test Go import.
+  - type: depends_on
+    from: FU-APP-FRAMES
+    to: FU-APP-ENGINE
+    description: Resolved non-test Go import.
+  - type: depends_on
+    from: FU-APP-LCD
+    to: FU-APP-ANALOG
+    description: Resolved non-test Go import.
+  - type: depends_on
+    from: FU-APP-LCD
+    to: FU-APP-ENGINE
+    description: Resolved non-test Go import.
+  - type: depends_on
+    from: FU-APP-LCD
+    to: FU-APP-DECODE
+    description: Resolved non-test Go import.
+  - type: depends_on
+    from: FU-APP-LCD
+    to: FU-APP-MEASURE
+    description: Resolved non-test Go import.
+  - type: depends_on
+    from: FU-APP-PANEL
+    to: FU-APP-ANALOG
+    description: Resolved non-test Go import.
+  - type: depends_on
+    from: FU-APP-PANEL
+    to: FU-APP-ENGINE
+    description: Resolved non-test Go import.
+  - type: depends_on
+    from: FU-APP-PANEL
+    to: FU-APP-MEASURE
+    description: Resolved non-test Go import.
+  - type: depends_on
+    from: FU-APP-PANEL
+    to: FU-APP-SUPERRES
+    description: Resolved non-test Go import.
+  - type: depends_on
+    from: FU-APP-PANEL
+    to: FU-APP-SETTINGS
+    description: Resolved non-test Go import.
+  - type: depends_on
+    from: FU-APP-SCPI
+    to: FU-APP-ENGINE
+    description: Resolved non-test Go import.
+  - type: depends_on
+    from: FU-APP-SCPI
+    to: FU-APP-ANALOG
+    description: Resolved non-test Go import.
+  - type: depends_on
+    from: FU-APP-SETTINGS
+    to: FU-APP-ANALOG
+    description: Resolved non-test Go import.
+  - type: depends_on
+    from: FU-APP-SETTINGS
+    to: FU-APP-ENGINE
+    description: Resolved non-test Go import.
+  - type: depends_on
+    from: FU-APP-WEB
+    to: FU-APP-BUILDINFO
+    description: Resolved non-test Go import.
+  - type: depends_on
+    from: FU-APP-WEB
+    to: FU-APP-BUS
+    description: Resolved non-test Go import.
+  - type: depends_on
+    from: FU-APP-WEB
+    to: FU-APP-DIAG
+    description: Resolved non-test Go import.
+  - type: depends_on
+    from: FU-APP-WEB
+    to: FU-APP-IFACE
+    description: Resolved non-test Go import.
+  - type: depends_on
+    from: FU-APP-WEB
+    to: FU-APP-SRAMCAPTURE
+    description: Resolved non-test Go import.
+  - type: depends_on
+    from: FU-APP-WEB
+    to: FU-APP-ENGINE
+    description: Resolved non-test Go import.
+  - type: depends_on
+    from: FU-APP-WEB
+    to: FU-APP-MEASURE
+    description: Resolved non-test Go import.
+  - type: depends_on
+    from: FU-APP-WEB
+    to: FU-APP-ANALOG
+    description: Resolved non-test Go import.
+  - type: depends_on
+    from: FU-CODEGEN-IFACEGEN
+    to: FU-CODEGEN-EMIT
+    description: Resolved non-test Go import.
+  - type: depends_on
+    from: FU-CODEGEN-IFACEGEN
+    to: FU-CODEGEN-IFACEDEF
+    description: Resolved non-test Go import.
+  - type: depends_on
+    from: FU-CODEGEN-IFACEGEN
+    to: FU-CODEGEN-SCHEMA
+    description: Resolved non-test Go import.
+  - type: depends_on
+    from: FU-CODEGEN-EMIT
+    to: FU-CODEGEN-SCHEMA
+    description: Resolved non-test Go import.
+  - type: depends_on
+    from: FU-CODEGEN-IFACEDEF
+    to: FU-CODEGEN-SCHEMA
+    description: Resolved non-test Go import.
+  - type: depends_on
+    from: FU-FPGA-BUILDFPGA
+    to: FU-FPGA-QUARTUS
+    description: Resolved non-test Go import.
+  - type: depends_on
+    from: FU-OTA-AGENT
+    to: FU-OTA-BUILDINFO
+    description: Resolved non-test Go import.
+  - type: depends_on
+    from: FU-OTA-AGENT
+    to: FU-OTA-CONFIG
+    description: Resolved non-test Go import.
+  - type: depends_on
+    from: FU-OTA-OTACTL
+    to: FU-OTA-BUILDINFO
+    description: Resolved non-test Go import.
+  - type: depends_on
+    from: FU-OTA-OTACTL
+    to: FU-OTA-VXI11
+    description: Resolved non-test Go import.
+  - type: depends_on
+    from: FU-OTA-AGENT
+    to: FU-OTA-FDINHERIT
+    description: Resolved non-test Go import.
+  - type: depends_on
+    from: FU-OTA-AGENT
+    to: FU-OTA-GPMC
+    description: Resolved non-test Go import.
+  - type: depends_on
+    from: FU-OTA-AGENT
+    to: FU-OTA-SLOTS
+    description: Resolved non-test Go import.
+  - type: depends_on
+    from: FU-OTA-AGENT
+    to: FU-OTA-SYSINFO
+    description: Resolved non-test Go import.
+  - type: depends_on
+    from: FU-OTA-AGENT
+    to: FU-OTA-WATCHDOG
+    description: Resolved non-test Go import.
+  - type: depends_on
+    from: FU-OTA-AGENT
+    to: FU-OTA-VXI11
+    description: Resolved non-test Go import.
+  - type: depends_on
+    from: FU-OTA-OTACTL
+    to: FU-OTA-RPCPROTO
+    description: Resolved non-test Go import.
+  - type: depends_on
+    from: FU-RTL-ACQ-SRAM-ACQUISITION-PATH
+    to: FU-RTL-ACQ-SRAM-ACQUISITION-SOURCE
+    description: Lexically extracted RTL instantiation; elaboration and variant selection remain separate evidence.
+  - type: depends_on
+    from: FU-RTL-ACQ-SRAM-ACQUISITION-PATH
+    to: FU-RTL-ACQ-SRAM-BOARD-CAPTURE-PATH
+    description: Lexically extracted RTL instantiation; elaboration and variant selection remain separate evidence.
+  - type: depends_on
+    from: FU-RTL-ACQ-SRAM-ACQUISITION-PATH
+    to: FU-RTL-ACQ-SRAM-FINITE-WRITER
+    description: Lexically extracted RTL instantiation; elaboration and variant selection remain separate evidence.
+  - type: depends_on
+    from: FU-RTL-ACQ-SRAM-ACQUISITION-SOURCE
+    to: FU-RTL-ACQ-SRAM-INTERLEAVE
+    description: Lexically extracted RTL instantiation; elaboration and variant selection remain separate evidence.
+  - type: depends_on
+    from: FU-RTL-ACQ-SRAM-ACQUISITION-SOURCE
+    to: FU-RTL-ACQ-SRAM-PRECISION
+    description: Lexically extracted RTL instantiation; elaboration and variant selection remain separate evidence.
+  - type: depends_on
+    from: FU-RTL-ACQ-SRAM-BOARD-CAPTURE-PATH
+    to: FU-RTL-ACQ-SRAM-CAPTURE-ENGINE
+    description: Lexically extracted RTL instantiation; elaboration and variant selection remain separate evidence.
+  - type: depends_on
+    from: FU-RTL-ACQ-SRAM-BOARD-CAPTURE-PATH
+    to: FU-RTL-ACQ-SRAM-TRANSPORT
+    description: Lexically extracted RTL instantiation; elaboration and variant selection remain separate evidence.
+  - type: depends_on
+    from: FU-RTL-ACQ-SRAM-CAPTURE-ENGINE
+    to: FU-RTL-ACQ-SRAM-FINITE-RECALL
+    description: Lexically extracted RTL instantiation; elaboration and variant selection remain separate evidence.
+  - type: depends_on
+    from: FU-RTL-ACQ-SRAM-CAPTURE-ENGINE
+    to: FU-RTL-ACQ-SRAM-HOST-PATH
+    description: Lexically extracted RTL instantiation; elaboration and variant selection remain separate evidence.
+  - type: depends_on
+    from: FU-RTL-ACQ-SRAM-CAPTURE-ENGINE
+    to: FU-RTL-ACQ-SRAM-STREAM-ENGINE
+    description: Lexically extracted RTL instantiation; elaboration and variant selection remain separate evidence.
+  - type: depends_on
+    from: FU-RTL-ACQ-SRAM-CAPTURE-PATH
+    to: FU-RTL-ACQ-SRAM-CAPTURE-ENGINE
+    description: Lexically extracted RTL instantiation; elaboration and variant selection remain separate evidence.
+  - type: depends_on
+    from: FU-RTL-ACQ-SRAM-CAPTURE-PATH
+    to: FU-RTL-ACQ-SRAM-TRANSPORT
+    description: Lexically extracted RTL instantiation; elaboration and variant selection remain separate evidence.
+  - type: depends_on
+    from: FU-RTL-ACQ-SRAM-COMMAND-PORT
+    to: FU-RTL-ACQ-SRAM-COMMAND-BRIDGE
+    description: Lexically extracted RTL instantiation; elaboration and variant selection remain separate evidence.
+  - type: depends_on
+    from: FU-RTL-ACQ-SRAM-FINITE-RECALL
+    to: FU-RTL-ACQ-SRAM-ORDINAL-COUNTER
+    description: Lexically extracted RTL instantiation; elaboration and variant selection remain separate evidence.
+  - type: depends_on
+    from: FU-RTL-ACQ-SRAM-FINITE-WRITER
+    to: FU-RTL-ACQ-SRAM-RECORD
+    description: Lexically extracted RTL instantiation; elaboration and variant selection remain separate evidence.
+  - type: depends_on
+    from: FU-RTL-ACQ-SRAM-HOST-PATH
+    to: FU-RTL-ACQ-SRAM-HOST-FIFO
+    description: Lexically extracted RTL instantiation; elaboration and variant selection remain separate evidence.
+  - type: depends_on
+    from: FU-RTL-ACQ-SRAM-HOST-PATH
+    to: FU-RTL-ACQ-SRAM-HOST-OWNERSHIP
+    description: Lexically extracted RTL instantiation; elaboration and variant selection remain separate evidence.
+  - type: depends_on
+    from: FU-RTL-ACQ-SRAM-HOST-PATH
+    to: FU-RTL-ACQ-SRAM-HOST-PACKER
+    description: Lexically extracted RTL instantiation; elaboration and variant selection remain separate evidence.
+  - type: depends_on
+    from: FU-RTL-ACQ-SRAM-HOST-PATH
+    to: FU-RTL-ACQ-SRAM-HOST-RAM
+    description: Lexically extracted RTL instantiation; elaboration and variant selection remain separate evidence.
+  - type: depends_on
+    from: FU-RTL-ACQ-SRAM-HOST-PATH
+    to: FU-RTL-ACQ-SRAM-HOST-SINK
+    description: Lexically extracted RTL instantiation; elaboration and variant selection remain separate evidence.
+  - type: depends_on
+    from: FU-RTL-ACQ-SRAM-HOST-READ-PORT
+    to: FU-RTL-ACQ-SRAM-HOST-READ-WINDOW
+    description: Lexically extracted RTL instantiation; elaboration and variant selection remain separate evidence.
+  - type: depends_on
+    from: FU-RTL-ACQ-SRAM-INGRESS-PATH
+    to: FU-RTL-ACQ-SRAM-INGRESS-STREAM
+    description: Lexically extracted RTL instantiation; elaboration and variant selection remain separate evidence.
+  - type: depends_on
+    from: FU-RTL-ACQ-SRAM-INGRESS-PATH
+    to: FU-RTL-ACQ-SRAM-WORD-BRIDGE
+    description: Lexically extracted RTL instantiation; elaboration and variant selection remain separate evidence.
+  - type: depends_on
+    from: FU-RTL-ACQ-SRAM-INGRESS-STREAM
+    to: FU-RTL-ACQ-SRAM-INGRESS-FIFO
+    description: Lexically extracted RTL instantiation; elaboration and variant selection remain separate evidence.
+  - type: depends_on
+    from: FU-RTL-ACQ-SRAM-INTERLEAVE
+    to: FU-RTL-COMMON-DDIO-PAIR
+    description: Lexically extracted RTL instantiation; elaboration and variant selection remain separate evidence.
+  - type: depends_on
+    from: FU-RTL-ACQ-SRAM-INTERLEAVE
+    to: FU-RTL-COMMON-LANE-IN
+    description: Lexically extracted RTL instantiation; elaboration and variant selection remain separate evidence.
+  - type: depends_on
+    from: FU-RTL-ACQ-SRAM-PRECISION
+    to: FU-RTL-ACQ-SRAM-PRECISION-TAIL
+    description: Lexically extracted RTL instantiation; elaboration and variant selection remain separate evidence.
+  - type: depends_on
+    from: FU-RTL-ACQ-SRAM-PROFILE-CORE
+    to: FU-RTL-ACQ-SRAM-ACQUISITION-PATH
+    description: Lexically extracted RTL instantiation; elaboration and variant selection remain separate evidence.
+  - type: depends_on
+    from: FU-RTL-ACQ-SRAM-PROFILE-CORE
+    to: FU-RTL-ACQ-SRAM-COMMAND-PORT
+    description: Lexically extracted RTL instantiation; elaboration and variant selection remain separate evidence.
+  - type: depends_on
+    from: FU-RTL-ACQ-SRAM-PROFILE-CORE
+    to: FU-RTL-ACQ-SRAM-HOST-READ-PORT
+    description: Lexically extracted RTL instantiation; elaboration and variant selection remain separate evidence.
+  - type: depends_on
+    from: FU-RTL-ACQ-SRAM-PROFILE-CORE
+    to: FU-RTL-COMMON-GPMC-SLAVE
+    description: Lexically extracted RTL instantiation; elaboration and variant selection remain separate evidence.
+  - type: depends_on
+    from: FU-RTL-ACQ-SRAM-PROFILE-TOP
+    to: FU-RTL-ACQ-SRAM-PROFILE-CORE
+    description: Lexically extracted RTL instantiation; elaboration and variant selection remain separate evidence.
+  - type: depends_on
+    from: FU-RTL-ACQ-SRAM-PROFILE-TOP
+    to: FU-RTL-ACQ-SRAM-PROFILE-PLL
+    description: Lexically extracted RTL instantiation; elaboration and variant selection remain separate evidence.
+  - type: depends_on
+    from: FU-RTL-ACQ-SRAM-STREAM-ENGINE
+    to: FU-RTL-ACQ-SRAM-INGRESS-PATH
+    description: Lexically extracted RTL instantiation; elaboration and variant selection remain separate evidence.
+  - type: depends_on
+    from: FU-RTL-ACQ-SRAM-STREAM-ENGINE
+    to: FU-RTL-ACQ-SRAM-TIMESLICE-CONTROLLER
+    description: Lexically extracted RTL instantiation; elaboration and variant selection remain separate evidence.
+  - type: depends_on
+    from: FU-RTL-ACQ-SRAM-STREAM-PATH
+    to: FU-RTL-ACQ-SRAM-HOST-PATH
+    description: Lexically extracted RTL instantiation; elaboration and variant selection remain separate evidence.
+  - type: depends_on
+    from: FU-RTL-ACQ-SRAM-STREAM-PATH
+    to: FU-RTL-ACQ-SRAM-STREAM-ENGINE
+    description: Lexically extracted RTL instantiation; elaboration and variant selection remain separate evidence.
+  - type: depends_on
+    from: FU-RTL-ACQ-SRAM-STREAM-PATH
+    to: FU-RTL-ACQ-SRAM-TRANSPORT
+    description: Lexically extracted RTL instantiation; elaboration and variant selection remain separate evidence.
+  - type: depends_on
+    from: FU-RTL-ACQ-SRAM-TIMESLICE-CONTROLLER
+    to: FU-RTL-ACQ-SRAM-ORDINAL-COUNTER
+    description: Lexically extracted RTL instantiation; elaboration and variant selection remain separate evidence.
+  - type: depends_on
+    from: FU-RTL-ACQ-SRAM-TOP
+    to: FU-RTL-ACQ-SRAM-ADC-UNPACK
+    description: Lexically extracted RTL instantiation; elaboration and variant selection remain separate evidence.
+  - type: depends_on
+    from: FU-RTL-ACQ-SRAM-TOP
+    to: FU-RTL-ACQ-SRAM-INTERLEAVE
+    description: Lexically extracted RTL instantiation; elaboration and variant selection remain separate evidence.
+  - type: depends_on
+    from: FU-RTL-ACQ-SRAM-TOP
+    to: FU-RTL-ACQ-SRAM-PRECISION
+    description: Lexically extracted RTL instantiation; elaboration and variant selection remain separate evidence.
+  - type: depends_on
+    from: FU-RTL-ACQ-SRAM-TOP
+    to: FU-RTL-ACQ-SRAM-RECORD
+    description: Lexically extracted RTL instantiation; elaboration and variant selection remain separate evidence.
+  - type: depends_on
+    from: FU-RTL-ACQ-SRAM-TOP
+    to: FU-RTL-ACQ-SRAM-STREAM-BANKS
+    description: Lexically extracted RTL instantiation; elaboration and variant selection remain separate evidence.
+  - type: depends_on
+    from: FU-RTL-ACQ-SRAM-TOP
+    to: FU-RTL-ACQ-SRAM-STREAM-PACKETIZER
+    description: Lexically extracted RTL instantiation; elaboration and variant selection remain separate evidence.
+  - type: depends_on
+    from: FU-RTL-ACQ-SRAM-TOP
+    to: FU-RTL-ACQ-SRAM-TRANSPORT
+    description: Lexically extracted RTL instantiation; elaboration and variant selection remain separate evidence.
+  - type: depends_on
+    from: FU-RTL-ACQ-SRAM-TOP
+    to: FU-RTL-COMMON-DDIO-PAIR
+    description: Lexically extracted RTL instantiation; elaboration and variant selection remain separate evidence.
+  - type: depends_on
+    from: FU-RTL-ACQ-SRAM-TOP
+    to: FU-RTL-COMMON-GPMC-SLAVE
+    description: Lexically extracted RTL instantiation; elaboration and variant selection remain separate evidence.
+  - type: depends_on
+    from: FU-RTL-ACQ-SRAM-TOP
+    to: FU-RTL-COMMON-LANE-IN
+    description: Lexically extracted RTL instantiation; elaboration and variant selection remain separate evidence.
+  - type: depends_on
+    from: FU-RTL-DEFAULT-ADC-FRONT
+    to: FU-RTL-COMMON-DDIO-PAIR
+    description: Lexically extracted RTL instantiation; elaboration and variant selection remain separate evidence.
+  - type: depends_on
+    from: FU-RTL-DEFAULT-ADC-FRONT
+    to: FU-RTL-COMMON-LANE-IN
+    description: Lexically extracted RTL instantiation; elaboration and variant selection remain separate evidence.
+  - type: depends_on
+    from: FU-RTL-DEFAULT-CAPTURE
+    to: FU-RTL-COMMON-SYNC
+    description: Lexically extracted RTL instantiation; elaboration and variant selection remain separate evidence.
+  - type: depends_on
+    from: FU-RTL-DEFAULT-DEFAULT
+    to: FU-RTL-COMMON-GPMC-SLAVE
+    description: Lexically extracted RTL instantiation; elaboration and variant selection remain separate evidence.
+  - type: depends_on
+    from: FU-RTL-DEFAULT-DEFAULT
+    to: FU-RTL-COMMON-PLL-M2
+    description: Lexically extracted RTL instantiation; elaboration and variant selection remain separate evidence.
+  - type: depends_on
+    from: FU-RTL-DEFAULT-DEFAULT
+    to: FU-RTL-COMMON-SYNC
+    description: Lexically extracted RTL instantiation; elaboration and variant selection remain separate evidence.
+  - type: depends_on
+    from: FU-RTL-DEFAULT-DEFAULT
+    to: FU-RTL-DEFAULT-ADC-FRONT
+    description: Lexically extracted RTL instantiation; elaboration and variant selection remain separate evidence.
+  - type: depends_on
+    from: FU-RTL-DEFAULT-DEFAULT
+    to: FU-RTL-DEFAULT-CAPTURE
+    description: Lexically extracted RTL instantiation; elaboration and variant selection remain separate evidence.
+  - type: depends_on
+    from: FU-RTL-DEFAULT-DEFAULT
+    to: FU-RTL-DEFAULT-DIAG
+    description: Lexically extracted RTL instantiation; elaboration and variant selection remain separate evidence.
+  - type: depends_on
+    from: FU-RTL-DEFAULT-DEFAULT
+    to: FU-RTL-DEFAULT-DRAIN
+    description: Lexically extracted RTL instantiation; elaboration and variant selection remain separate evidence.
+  - type: depends_on
+    from: FU-RTL-DEFAULT-DIAG
+    to: FU-RTL-COMMON-DDIO-PAIR
+    description: Lexically extracted RTL instantiation; elaboration and variant selection remain separate evidence.
+  - type: depends_on
+    from: FU-RTL-DEFAULT-DIAG
+    to: FU-RTL-COMMON-LANE-IN
+    description: Lexically extracted RTL instantiation; elaboration and variant selection remain separate evidence.
+  - type: depends_on
+    from: FU-RTL-DEFAULT-DIAG
+    to: FU-RTL-COMMON-SYNC
+    description: Lexically extracted RTL instantiation; elaboration and variant selection remain separate evidence.
+  - type: depends_on
+    from: FU-RTL-SRAM-BENCH-BENCH
+    to: FU-RTL-COMMON-GPMC-SLAVE
+    description: Lexically extracted RTL instantiation; elaboration and variant selection remain separate evidence.
+  - type: bounded_by
+    from: FU-APP-APP
+    to: TB-DEVICE
+    description: Authored boundary membership; does not imply authentication or enforcement.
+  - type: bounded_by
+    from: FU-OTA-AGENT
+    to: TB-DEVICE
+    description: Authored boundary membership; does not imply authentication or enforcement.
+  - type: bounded_by
+    from: IF-OTA
+    to: TB-DEVICE
+    description: Authored boundary membership; does not imply authentication or enforcement.
+  - type: bounded_by
+    from: IF-GPMC
+    to: TB-DEVICE
+    description: Authored boundary membership; does not imply authentication or enforcement.
+  - type: bounded_by
+    from: ACT-OPERATOR
+    to: TB-NETWORK
+    description: Authored boundary membership; does not imply authentication or enforcement.
+  - type: bounded_by
+    from: ACT-HOST
+    to: TB-NETWORK
+    description: Authored boundary membership; does not imply authentication or enforcement.
+  - type: bounded_by
+    from: IF-HTTP
+    to: TB-NETWORK
+    description: Authored boundary membership; does not imply authentication or enforcement.
+  - type: bounded_by
+    from: IF-SCPI
+    to: TB-NETWORK
+    description: Authored boundary membership; does not imply authentication or enforcement.
+  - type: bounded_by
+    from: IF-OTA
+    to: TB-NETWORK
+    description: Authored boundary membership; does not imply authentication or enforcement.
+  - type: bounded_by
+    from: IF-GPMC
+    to: TB-FABRIC
+    description: Authored boundary membership; does not imply authentication or enforcement.
+  - type: bounded_by
+    from: IF-PROFILE
+    to: TB-FABRIC
+    description: Authored boundary membership; does not imply authentication or enforcement.
+  - type: bounded_by
+    from: HW-FPGA
+    to: TB-FABRIC
+    description: Authored boundary membership; does not imply authentication or enforcement.
+  - type: bounded_by
+    from: DO-DESCRIPTOR
+    to: TB-FABRIC
+    description: Authored boundary membership; does not imply authentication or enforcement.
+  - type: calls
+    from: FU-WEB-APP-INIT
+    to: FU-WEB-APP-GL
+    description: app_init.js calls glInit through classic-script shared globals after HTML load ordering; source
+      inspection only.
+  - type: calls
+    from: FU-WEB-APP-INIT
+    to: FU-WEB-APP
+    description: app_init.js calls resize through classic-script shared globals after HTML load ordering; source
+      inspection only.
+  - type: calls
+    from: FU-WEB-APP-INIT
+    to: FU-WEB-APP-CORE
+    description: app_init.js calls pollFrameBin and pollStatus through classic-script shared globals after HTML
+      load ordering; source inspection only.
+  - type: calls
+    from: FU-WEB-APP-INIT
+    to: IF-HTTP
+    description: app_init.js fetches /api/claim and starts polling in finally, including after claim failure. Source
+      inspection, not browser execution.
+  - type: calls
+    from: FU-WEB-APP-CORE
+    to: IF-HTTP
+    description: app_core.js frame/status polling and control posts use the browser HTTP API. Primary frames include
+      an epoch; raw FFT requests omit it in this source. Server enforcement is not established by these client calls.

@@ -1,0 +1,76 @@
+{"Time":"2026-09-23T03:00:35.59348829+02:00","Action":"start","Package":"open-sds/ota/internal/agent"}
+{"Time":"2026-09-23T03:00:35.60687202+02:00","Action":"run","Package":"open-sds/ota/internal/agent","Test":"TestHelpListsEveryRegisteredCommand"}
+{"Time":"2026-09-23T03:00:35.606966533+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestHelpListsEveryRegisteredCommand","Output":"=== RUN   TestHelpListsEveryRegisteredCommand\n"}
+{"Time":"2026-09-23T03:00:35.608253859+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestHelpListsEveryRegisteredCommand","Output":"--- PASS: TestHelpListsEveryRegisteredCommand (0.00s)\n"}
+{"Time":"2026-09-23T03:00:35.60828429+02:00","Action":"pass","Package":"open-sds/ota/internal/agent","Test":"TestHelpListsEveryRegisteredCommand","Elapsed":0}
+{"Time":"2026-09-23T03:00:35.60830075+02:00","Action":"run","Package":"open-sds/ota/internal/agent","Test":"TestStatusHandlerShape"}
+{"Time":"2026-09-23T03:00:35.60830943+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestStatusHandlerShape","Output":"=== RUN   TestStatusHandlerShape\n"}
+{"Time":"2026-09-23T03:00:35.61088741+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestStatusHandlerShape","Output":"--- PASS: TestStatusHandlerShape (0.00s)\n"}
+{"Time":"2026-09-23T03:00:35.610911866+02:00","Action":"pass","Package":"open-sds/ota/internal/agent","Test":"TestStatusHandlerShape","Elapsed":0}
+{"Time":"2026-09-23T03:00:35.610923931+02:00","Action":"run","Package":"open-sds/ota/internal/agent","Test":"TestLogsHandler"}
+{"Time":"2026-09-23T03:00:35.610932314+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestLogsHandler","Output":"=== RUN   TestLogsHandler\n"}
+{"Time":"2026-09-23T03:00:35.612334402+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestLogsHandler","Output":"--- PASS: TestLogsHandler (0.00s)\n"}
+{"Time":"2026-09-23T03:00:35.612362249+02:00","Action":"pass","Package":"open-sds/ota/internal/agent","Test":"TestLogsHandler","Elapsed":0}
+{"Time":"2026-09-23T03:00:35.612469351+02:00","Action":"run","Package":"open-sds/ota/internal/agent","Test":"TestExecHandler"}
+{"Time":"2026-09-23T03:00:35.612481619+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestExecHandler","Output":"=== RUN   TestExecHandler\n"}
+{"Time":"2026-09-23T03:00:35.616562877+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestExecHandler","Output":"--- PASS: TestExecHandler (0.00s)\n"}
+{"Time":"2026-09-23T03:00:35.616604393+02:00","Action":"pass","Package":"open-sds/ota/internal/agent","Test":"TestExecHandler","Elapsed":0}
+{"Time":"2026-09-23T03:00:35.616701413+02:00","Action":"run","Package":"open-sds/ota/internal/agent","Test":"TestShHandler"}
+{"Time":"2026-09-23T03:00:35.616716112+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestShHandler","Output":"=== RUN   TestShHandler\n"}
+{"Time":"2026-09-23T03:00:35.619121468+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestShHandler","Output":"--- PASS: TestShHandler (0.00s)\n"}
+{"Time":"2026-09-23T03:00:35.619149921+02:00","Action":"pass","Package":"open-sds/ota/internal/agent","Test":"TestShHandler","Elapsed":0}
+{"Time":"2026-09-23T03:00:35.61916239+02:00","Action":"run","Package":"open-sds/ota/internal/agent","Test":"TestGetHandler"}
+{"Time":"2026-09-23T03:00:35.619170495+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestGetHandler","Output":"=== RUN   TestGetHandler\n"}
+{"Time":"2026-09-23T03:00:35.620344326+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestGetHandler","Output":"--- PASS: TestGetHandler (0.00s)\n"}
+{"Time":"2026-09-23T03:00:35.62036316+02:00","Action":"pass","Package":"open-sds/ota/internal/agent","Test":"TestGetHandler","Elapsed":0}
+{"Time":"2026-09-23T03:00:35.620400751+02:00","Action":"run","Package":"open-sds/ota/internal/agent","Test":"TestPutHandlersRejectBadInput"}
+{"Time":"2026-09-23T03:00:35.620413095+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestPutHandlersRejectBadInput","Output":"=== RUN   TestPutHandlersRejectBadInput\n"}
+{"Time":"2026-09-23T03:00:35.621472736+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestPutHandlersRejectBadInput","Output":"--- PASS: TestPutHandlersRejectBadInput (0.00s)\n"}
+{"Time":"2026-09-23T03:00:35.621504127+02:00","Action":"pass","Package":"open-sds/ota/internal/agent","Test":"TestPutHandlersRejectBadInput","Elapsed":0}
+{"Time":"2026-09-23T03:00:35.621524846+02:00","Action":"run","Package":"open-sds/ota/internal/agent","Test":"TestAppUpdateInstallsIntoInactiveSlot"}
+{"Time":"2026-09-23T03:00:35.621533971+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestAppUpdateInstallsIntoInactiveSlot","Output":"=== RUN   TestAppUpdateInstallsIntoInactiveSlot\n"}
+{"Time":"2026-09-23T03:00:35.622717171+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestAppUpdateInstallsIntoInactiveSlot","Output":"[agent] 2026/09/23 03:00:35 event app.update: map[sha256:306c6ca7407560340797866e077e053627ad409277d1b9da58106fce4cf717cb slot:B]\n"}
+{"Time":"2026-09-23T03:00:35.623278485+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestAppUpdateInstallsIntoInactiveSlot","Output":"--- PASS: TestAppUpdateInstallsIntoInactiveSlot (0.00s)\n"}
+{"Time":"2026-09-23T03:00:35.623299828+02:00","Action":"pass","Package":"open-sds/ota/internal/agent","Test":"TestAppUpdateInstallsIntoInactiveSlot","Elapsed":0}
+{"Time":"2026-09-23T03:00:35.623359601+02:00","Action":"run","Package":"open-sds/ota/internal/agent","Test":"TestAppActivate"}
+{"Time":"2026-09-23T03:00:35.623371477+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestAppActivate","Output":"=== RUN   TestAppActivate\n"}
+{"Time":"2026-09-23T03:00:35.62434471+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestAppActivate","Output":"--- PASS: TestAppActivate (0.00s)\n"}
+{"Time":"2026-09-23T03:00:35.624371458+02:00","Action":"pass","Package":"open-sds/ota/internal/agent","Test":"TestAppActivate","Elapsed":0}
+{"Time":"2026-09-23T03:00:35.624401279+02:00","Action":"run","Package":"open-sds/ota/internal/agent","Test":"TestAppInstallEmergency"}
+{"Time":"2026-09-23T03:00:35.624411369+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestAppInstallEmergency","Output":"=== RUN   TestAppInstallEmergency\n"}
+{"Time":"2026-09-23T03:00:35.625890766+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestAppInstallEmergency","Output":"--- PASS: TestAppInstallEmergency (0.00s)\n"}
+{"Time":"2026-09-23T03:00:35.625915661+02:00","Action":"pass","Package":"open-sds/ota/internal/agent","Test":"TestAppInstallEmergency","Elapsed":0}
+{"Time":"2026-09-23T03:00:35.625987322+02:00","Action":"run","Package":"open-sds/ota/internal/agent","Test":"TestAgentUpdateRefusalGates"}
+{"Time":"2026-09-23T03:00:35.625999299+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestAgentUpdateRefusalGates","Output":"=== RUN   TestAgentUpdateRefusalGates\n"}
+{"Time":"2026-09-23T03:00:35.626933329+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestAgentUpdateRefusalGates","Output":"--- PASS: TestAgentUpdateRefusalGates (0.00s)\n"}
+{"Time":"2026-09-23T03:00:35.626951933+02:00","Action":"pass","Package":"open-sds/ota/internal/agent","Test":"TestAgentUpdateRefusalGates","Elapsed":0}
+{"Time":"2026-09-23T03:00:35.626981897+02:00","Action":"run","Package":"open-sds/ota/internal/agent","Test":"TestRebootRequiresConfirm"}
+{"Time":"2026-09-23T03:00:35.62699151+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestRebootRequiresConfirm","Output":"=== RUN   TestRebootRequiresConfirm\n"}
+{"Time":"2026-09-23T03:00:35.627634+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestRebootRequiresConfirm","Output":"--- PASS: TestRebootRequiresConfirm (0.00s)\n"}
+{"Time":"2026-09-23T03:00:35.627684392+02:00","Action":"pass","Package":"open-sds/ota/internal/agent","Test":"TestRebootRequiresConfirm","Elapsed":0}
+{"Time":"2026-09-23T03:00:35.627793392+02:00","Action":"run","Package":"open-sds/ota/internal/agent","Test":"TestRestoreFactoryGates"}
+{"Time":"2026-09-23T03:00:35.627816716+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestRestoreFactoryGates","Output":"=== RUN   TestRestoreFactoryGates\n"}
+{"Time":"2026-09-23T03:00:35.628832638+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestRestoreFactoryGates","Output":"--- PASS: TestRestoreFactoryGates (0.00s)\n"}
+{"Time":"2026-09-23T03:00:35.628854067+02:00","Action":"pass","Package":"open-sds/ota/internal/agent","Test":"TestRestoreFactoryGates","Elapsed":0}
+{"Time":"2026-09-23T03:00:35.628863969+02:00","Action":"run","Package":"open-sds/ota/internal/agent","Test":"TestAppLifecycleHandlersDriveSupervisor"}
+{"Time":"2026-09-23T03:00:35.628869343+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestAppLifecycleHandlersDriveSupervisor","Output":"=== RUN   TestAppLifecycleHandlersDriveSupervisor\n"}
+{"Time":"2026-09-23T03:00:35.771659108+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestAppLifecycleHandlersDriveSupervisor","Output":"--- PASS: TestAppLifecycleHandlersDriveSupervisor (0.14s)\n"}
+{"Time":"2026-09-23T03:00:35.771722025+02:00","Action":"pass","Package":"open-sds/ota/internal/agent","Test":"TestAppLifecycleHandlersDriveSupervisor","Elapsed":0.14}
+{"Time":"2026-09-23T03:00:35.771892555+02:00","Action":"run","Package":"open-sds/ota/internal/agent","Test":"TestAgentUpdateInstallsFlipsAndExitsClean"}
+{"Time":"2026-09-23T03:00:35.771908072+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestAgentUpdateInstallsFlipsAndExitsClean","Output":"=== RUN   TestAgentUpdateInstallsFlipsAndExitsClean\n"}
+{"Time":"2026-09-23T03:00:35.77280296+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestAgentUpdateInstallsFlipsAndExitsClean","Output":"[agent] 2026/09/23 03:00:35 event agent.update: map[from:? path:/tmp/TestAgentUpdateInstallsFlipsAndExitsClean3181499888/001/ota/agent.B sha256:6b7f3d55a53c9a7588168eb62b13bbd2d0717af994bb4f942a73a86dac05af3f to:B]\n"}
+{"Time":"2026-09-23T03:00:36.523824979+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestAgentUpdateInstallsFlipsAndExitsClean","Output":"[agent] 2026/09/23 03:00:36 agent.update: exiting to hand off to slot B\n"}
+{"Time":"2026-09-23T03:00:36.524215501+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestAgentUpdateInstallsFlipsAndExitsClean","Output":"--- PASS: TestAgentUpdateInstallsFlipsAndExitsClean (0.75s)\n"}
+{"Time":"2026-09-23T03:00:36.524236214+02:00","Action":"pass","Package":"open-sds/ota/internal/agent","Test":"TestAgentUpdateInstallsFlipsAndExitsClean","Elapsed":0.75}
+{"Time":"2026-09-23T03:00:36.524296998+02:00","Action":"run","Package":"open-sds/ota/internal/agent","Test":"TestAgentUpdateRefusesShaMismatchWithoutExiting"}
+{"Time":"2026-09-23T03:00:36.524310088+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestAgentUpdateRefusesShaMismatchWithoutExiting","Output":"=== RUN   TestAgentUpdateRefusesShaMismatchWithoutExiting\n"}
+{"Time":"2026-09-23T03:00:37.726265579+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestAgentUpdateRefusesShaMismatchWithoutExiting","Output":"--- PASS: TestAgentUpdateRefusesShaMismatchWithoutExiting (1.20s)\n"}
+{"Time":"2026-09-23T03:00:37.726312363+02:00","Action":"pass","Package":"open-sds/ota/internal/agent","Test":"TestAgentUpdateRefusesShaMismatchWithoutExiting","Elapsed":1.2}
+{"Time":"2026-09-23T03:00:37.7263836+02:00","Action":"run","Package":"open-sds/ota/internal/agent","Test":"TestAgentRestartExitsCleanWithIntent"}
+{"Time":"2026-09-23T03:00:37.726405469+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestAgentRestartExitsCleanWithIntent","Output":"=== RUN   TestAgentRestartExitsCleanWithIntent\n"}
+{"Time":"2026-09-23T03:00:38.22779748+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestAgentRestartExitsCleanWithIntent","Output":"[agent] 2026/09/23 03:00:38 agent.restart requested\n"}
+{"Time":"2026-09-23T03:00:38.228145982+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestAgentRestartExitsCleanWithIntent","Output":"--- PASS: TestAgentRestartExitsCleanWithIntent (0.50s)\n"}
+{"Time":"2026-09-23T03:00:38.228172542+02:00","Action":"pass","Package":"open-sds/ota/internal/agent","Test":"TestAgentRestartExitsCleanWithIntent","Elapsed":0.5}
+{"Time":"2026-09-23T03:00:38.228710251+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Output":"PASS\n"}
+{"Time":"2026-09-23T03:00:39.231273479+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Output":"ok  \topen-sds/ota/internal/agent\t3.637s\n"}
+{"Time":"2026-09-23T03:00:39.231338417+02:00","Action":"pass","Package":"open-sds/ota/internal/agent","Elapsed":3.638}

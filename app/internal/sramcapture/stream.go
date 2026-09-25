@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-SRAMCAPTURE
 package sramcapture
 
 import (
@@ -11,6 +12,7 @@ import (
 // ErrNoStreamBlock is not EOF; observe Finished and drain remaining banks.
 var ErrNoStreamBlock = errors.New("sramcapture: no stream block ready")
 
+// TRLC-LINKS: REQ-SDS-035
 type StreamStatus struct {
 	Ready      uint8 `json:"ready"`
 	Tokens     uint8 `json:"tokens"`
@@ -20,9 +22,11 @@ type StreamStatus struct {
 	Enabled    bool  `json:"enabled"`
 }
 
+// TRLC-LINKS: REQ-SDS-035
 func decodeStreamStatus(v uint16) StreamStatus {
 	return StreamStatus{uint8(v & 3), uint8((v >> 2) & 3), uint8((v >> 4) & 3), v&64 != 0, v&128 != 0, v&256 != 0}
 }
+// TRLC-LINKS: REQ-SDS-035
 func (c *Capture) StreamStatus() (StreamStatus, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -39,6 +43,7 @@ func (c *Capture) StreamStatus() (StreamStatus, error) {
 
 // PrepareStream allocates and touches the host buffers before acquisition starts.
 // Call while idle so first-block allocation cannot consume the bank deadline.
+// TRLC-LINKS: REQ-SDS-035
 func (c *Capture) PrepareStream() error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -52,6 +57,7 @@ func (c *Capture) PrepareStream() error {
 	return c.prepareStreamBuffers()
 }
 
+// TRLC-LINKS: REQ-SDS-035
 func (c *Capture) prepareStreamBuffers() error {
 	words, err := c.read(26)
 	if err != nil {
@@ -74,6 +80,7 @@ func (c *Capture) prepareStreamBuffers() error {
 	return nil
 }
 
+// TRLC-LINKS: REQ-SDS-035
 type StreamBlock struct {
 	FirstWord uint64 `json:"first_word"`
 	Words     uint32 `json:"words"`
@@ -85,6 +92,7 @@ type StreamBlock struct {
 // callers must discard any partial sink write before retrying. A release-write
 // error is ambiguous and requires abort/restart, not a blind retry. Expensive FIR
 // work belongs after release. The inherited bus must have one owner.
+// TRLC-LINKS: REQ-SDS-035
 func (c *Capture) DrainStream(ctx context.Context, expected uint64, dst io.Writer) (StreamBlock, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()

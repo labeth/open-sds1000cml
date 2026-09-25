@@ -1,0 +1,31 @@
+{
+  "status": "receiver component only; not integrated or deployed",
+  "differentialCases": 160,
+  "tickStallCases": 32,
+  "boundaryCases": "reset, partial words, isolated errors, two-violation idle, invalid width, 65536-cell range, overflow and recovery",
+  "synthesis": {
+    "build": "build-lag2vr",
+    "logicElements": 627,
+    "registers": 356,
+    "memoryBits": 0
+  },
+  "remaining": [
+    "frame ownership and buffering",
+    "score/idle-symmetry phase selection",
+    "full-width sample timestamps",
+    "qualified predicate",
+    "general image fit/timing",
+    "app capability/configuration",
+    "physical fixture and end-to-end qualification"
+  ],
+  "inputs": {
+    "fpga/acq_sram/manchester_receive.v": "25c8eaa79741b505b058bb5701b8fffc4173e9dd7141fdc703ddc63e5bcca7c4",
+    "fpga/acq_sram/sim/tb_manchester_receive.v": "4673c20a57f9baaf0ea30a7f55976092a1544c9f9edbd8c65210f260edcd4a56",
+    "fpga/acq_sram/sim/tb_manchester_boundaries.v": "835cc8805d7b3e62a3bdd166da0a8d0a6c2f8e65a1279c71f8272527698f3232",
+    "app/internal/decode/decode_manchester_rtl_test.go": "0514740f3365d0a7d547a183203db5aca95642d4704762412b26692e818d97ed"
+  },
+  "strictModelValidation": {
+    "exitCode": 0,
+    "log": "model-validation.log"
+  }
+}

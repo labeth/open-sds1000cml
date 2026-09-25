@@ -1,0 +1,8 @@
+{"Time":"2026-09-23T05:57:37.172096692+02:00","Action":"start","Package":"open-sds/app/internal/lcd"}
+{"Time":"2026-09-23T05:57:37.174493708+02:00","Action":"run","Package":"open-sds/app/internal/lcd","Test":"TestGoldenBode"}
+{"Time":"2026-09-23T05:57:37.174512306+02:00","Action":"output","Package":"open-sds/app/internal/lcd","Test":"TestGoldenBode","Output":"=== RUN   TestGoldenBode\n"}
+{"Time":"2026-09-23T05:57:37.211927857+02:00","Action":"output","Package":"open-sds/app/internal/lcd","Test":"TestGoldenBode","Output":"--- PASS: TestGoldenBode (0.04s)\n"}
+{"Time":"2026-09-23T05:57:37.211960787+02:00","Action":"pass","Package":"open-sds/app/internal/lcd","Test":"TestGoldenBode","Elapsed":0.04}
+{"Time":"2026-09-23T05:57:37.211969544+02:00","Action":"output","Package":"open-sds/app/internal/lcd","Output":"PASS\n"}
+{"Time":"2026-09-23T05:57:37.212917372+02:00","Action":"output","Package":"open-sds/app/internal/lcd","Output":"ok  \topen-sds/app/internal/lcd\t0.041s\n"}
+{"Time":"2026-09-23T05:57:37.212929173+02:00","Action":"pass","Package":"open-sds/app/internal/lcd","Elapsed":0.041}

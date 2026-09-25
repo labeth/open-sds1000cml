@@ -1,0 +1,372 @@
+schemaVersion: 2
+views:
+- id: VIEW-SYSTEM
+  kind: architecture-intent
+  roots:
+  - FG-APP
+  - FG-WEB
+  - FG-OTA
+  - FG-RTL
+  - FG-BUILD
+  - FG-EVIDENCE
+  - FU-APP-ACQSRAM
+  - FU-APP-ANALOG
+  - FU-APP-APP
+  - FU-APP-BUILD
+  - FU-APP-BUILDINFO
+  - FU-APP-BUS
+  - FU-APP-CAL
+  - FU-APP-DECODE
+  - FU-APP-DIAG
+  - FU-APP-DSP
+  - FU-APP-ENGINE
+  - FU-APP-FPGALOAD
+  - FU-APP-FRAMES
+  - FU-APP-IFACE
+  - FU-APP-LCD
+  - FU-APP-MEASURE
+  - FU-APP-PANEL
+  - FU-APP-SCPI
+  - FU-APP-SETTINGS
+  - FU-APP-SRAMBENCH
+  - FU-APP-SRAMCAPTURE
+  - FU-APP-SUPERRES
+  - FU-APP-TESTENV
+  - FU-APP-VXI11SRV
+  - FU-APP-WEB
+  - FU-CODEGEN-BUILD
+  - FU-CODEGEN-EMIT
+  - FU-CODEGEN-IFACEDEF
+  - FU-CODEGEN-IFACEGEN
+  - FU-CODEGEN-SCHEMA
+  - FU-DOCUMENTATION
+  - FU-FPGA-ACQ-BUILD
+  - FU-FPGA-BENCH-BUILD
+  - FU-FPGA-BUILD
+  - FU-FPGA-BUILDFPGA
+  - FU-FPGA-DEFAULT-BUILD
+  - FU-FPGA-QUARTUS
+  - FU-OTA-AGENT
+  - FU-OTA-BOOT
+  - FU-OTA-BUILD
+  - FU-OTA-BUILDINFO
+  - FU-OTA-CONFIG
+  - FU-OTA-FDINHERIT
+  - FU-OTA-GPMC
+  - FU-OTA-OTACTL
+  - FU-OTA-RPCPROTO
+  - FU-OTA-SLOTS
+  - FU-OTA-STUBAPP
+  - FU-OTA-SYSINFO
+  - FU-OTA-VXI11
+  - FU-OTA-WATCHDOG
+  - FU-REPOSITORY
+  - FU-RTL-ACQ-SRAM-ACQUISITION-ADC-PLL
+  - FU-RTL-ACQ-SRAM-ACQUISITION-PATH
+  - FU-RTL-ACQ-SRAM-ACQUISITION-SOURCE
+  - FU-RTL-ACQ-SRAM-ADC-UNPACK
+  - FU-RTL-ACQ-SRAM-BOARD-CAPTURE-PATH
+  - FU-RTL-ACQ-SRAM-CAPTURE-ENGINE
+  - FU-RTL-ACQ-SRAM-CAPTURE-PATH
+  - FU-RTL-ACQ-SRAM-COMMAND-BRIDGE
+  - FU-RTL-ACQ-SRAM-COMMAND-PORT
+  - FU-RTL-ACQ-SRAM-FINITE-RECALL
+  - FU-RTL-ACQ-SRAM-FINITE-WRITER
+  - FU-RTL-ACQ-SRAM-HOST-FIFO
+  - FU-RTL-ACQ-SRAM-HOST-OWNERSHIP
+  - FU-RTL-ACQ-SRAM-HOST-PACKER
+  - FU-RTL-ACQ-SRAM-HOST-PATH
+  - FU-RTL-ACQ-SRAM-HOST-RAM
+  - FU-RTL-ACQ-SRAM-HOST-READ-PORT
+  - FU-RTL-ACQ-SRAM-HOST-READ-WINDOW
+  - FU-RTL-ACQ-SRAM-HOST-SINK
+  - FU-RTL-ACQ-SRAM-INGRESS-FIFO
+  - FU-RTL-ACQ-SRAM-INGRESS-PATH
+  - FU-RTL-ACQ-SRAM-INGRESS-STREAM
+  - FU-RTL-ACQ-SRAM-INTERLEAVE
+  - FU-RTL-ACQ-SRAM-ORDINAL-COUNTER
+  - FU-RTL-ACQ-SRAM-PRECISION
+  - FU-RTL-ACQ-SRAM-PRECISION-TAIL
+  - FU-RTL-ACQ-SRAM-PROFILE-CORE
+  - FU-RTL-ACQ-SRAM-PROFILE-PLL
+  - FU-RTL-ACQ-SRAM-PROFILE-TOP
+  - FU-RTL-ACQ-SRAM-RECALL
+  - FU-RTL-ACQ-SRAM-RECORD
+  - FU-RTL-ACQ-SRAM-STREAM
+  - FU-RTL-ACQ-SRAM-STREAM-BANKS
+  - FU-RTL-ACQ-SRAM-STREAM-ENGINE
+  - FU-RTL-ACQ-SRAM-STREAM-PACKETIZER
+  - FU-RTL-ACQ-SRAM-STREAM-PATH
+  - FU-RTL-ACQ-SRAM-TIMESLICE-CONTROLLER
+  - FU-RTL-ACQ-SRAM-TOP
+  - FU-RTL-ACQ-SRAM-TRANSPORT
+  - FU-RTL-ACQ-SRAM-WORD-BRIDGE
+  - FU-RTL-ACQ-TESTS
+  - FU-RTL-BENCH-TESTS
+  - FU-RTL-COMMON-DDIO-PAIR
+  - FU-RTL-COMMON-GPMC-SLAVE
+  - FU-RTL-COMMON-LANE-IN
+  - FU-RTL-COMMON-PLL-M2
+  - FU-RTL-COMMON-SYNC
+  - FU-RTL-COMMON-TESTS
+  - FU-RTL-DEFAULT-ADC-FRONT
+  - FU-RTL-DEFAULT-CAPTURE
+  - FU-RTL-DEFAULT-DEFAULT
+  - FU-RTL-DEFAULT-DIAG
+  - FU-RTL-DEFAULT-DRAIN
+  - FU-RTL-DEFAULT-TESTS
+  - FU-RTL-SRAM-BENCH-BENCH
+  - FU-SPECIFICATIONS
+  - FU-TOOLS
+  - FU-TOOLS-HW-ADC-SRAM
+  - FU-TOOLS-HW-SRAM-BOUNDARY
+  - FU-TOOLS-HW-SRAM-SPEED
+  - FU-TOOLS-HW-SRAMBURST
+  - FU-VALIDATION-EVIDENCE
+  - FU-WEB-APP
+  - FU-WEB-APP-CANVAS
+  - FU-WEB-APP-CONTROLS
+  - FU-WEB-APP-CORE
+  - FU-WEB-APP-DECODE
+  - FU-WEB-APP-DRAW
+  - FU-WEB-APP-EYE
+  - FU-WEB-APP-FFT
+  - FU-WEB-APP-GEOM
+  - FU-WEB-APP-GL
+  - FU-WEB-APP-INIT
+  - FU-WEB-APP-NAV
+  - FU-WEB-APP-PRECISION
+  - FU-WEB-APP-SERIALTRIG
+  - FU-WEB-APP-SUPERRES
+  - FU-WEB-APP-VIEWS
+  - FU-WEB-APP-ZONEMASK
+  - FU-WEB-BINFRAME
+  - FU-WEB-BODE
+  - FU-WEB-DECODE
+  - FU-WEB-DECODE-ARINC429
+  - FU-WEB-DECODE-CANFD
+  - FU-WEB-DECODE-FLEXRAY
+  - FU-WEB-DECODE-MANCHESTER
+  - FU-WEB-DECODE-MIL1553
+  - FU-WEB-DECODE-SENT
+  - FU-WEB-DECODE-USBLS
+  - FU-WEB-EYEJITTER
+  - FU-WEB-EYEJITTER-ANALYSIS
+  - FU-WEB-PEAKS
+  - FU-WEB-SIGROK-EXPORT
+  - FU-WEB-SPECTROGRAM
+  - FU-WEB-SUPERRES
+  - FU-WEB-SUPERRES-COMP
+  - FU-WEB-SUPERRES-ETS
+  - FU-WEB-SUPERRES-GATE
+  - FU-WEB-SUPERRES-MATH
+  - FU-WEB-SUPERRES-MEASURE
+  - FU-WEB-SUPERRES-TEMPLATE
+  - ACT-OPERATOR
+  - ACT-HOST
+  - ACT-MAINTAINER
+  - ACT-SIGNAL
+  - IF-GPMC
+  - IF-DMA
+  - IF-SPI
+  - IF-CONFIG
+  - IF-DEFAULT
+  - IF-SRAM
+  - IF-PROFILE
+  - IF-FRAME
+  - IF-HTTP
+  - IF-SCPI
+  - IF-OTA
+  - IF-HEALTH
+  - IF-LCD
+  - IF-KEY
+  - IF-WATCHDOG
+  - DO-RAW
+  - DO-PRECISION
+  - DO-DESCRIPTOR
+  - DO-FRAME
+  - DO-SETTINGS
+  - DO-CAL
+  - DO-BITSTREAM
+  - DO-HEALTH
+  - DO-UPDATE
+  - DO-EPOCH
+  - DEP-DEVICE
+  - DEP-BROWSER
+  - DEP-HOST
+  - DEP-FPGA
+  - DEP-USB
+  - HW-INSTRUMENT
+  - HW-SOC
+  - HW-FPGA
+  - HW-MAXV
+  - HW-SRAM
+  - HW-ADC
+  - HW-AFE
+  - HW-OSC
+  - HW-LCD
+  - HW-PANEL
+  - HW-WATCHDOG
+  - HW-USB
+  - HW-NETWORK
+  - HW-HOST
+  - HW-POWER
+  - HWIF-GPMC
+  - HWIF-SRAM
+  - HWIF-COUNTER
+  - HWIF-ADC-LANES
+  - HWIF-ADC-ENCODE
+  - HWIF-ANALOG
+  - HWIF-SPI
+  - HWIF-REFERENCE
+  - HWIF-DISPLAY
+  - HWIF-KEYS
+  - HWIF-USB
+  - HWIF-NETWORK
+  authoredStatus: in-review
+  authoredStatusExplanation: 'Complete authored system: all functional groups and units, actors, interfaces, data
+    objects, deployment targets and hardware. Source reconstruction at the pinned commit; proposed capabilities
+    and physical qualification limits remain explicit. Source-document references remain in the reference index.'
+  includeKinds:
+  - functional_group
+  - functional_unit
+  - actor
+  - interface
+  - data_object
+  - deployment_target
+  - hardware_item
+  - hardware_interface
+- id: VIEW-HARDWARE
+  kind: deployment
+  roots:
+  - HW-INSTRUMENT
+  - HW-SOC
+  - HW-FPGA
+  - HW-SRAM
+  - HW-ADC
+  authoredStatus: in-review
+  authoredStatusExplanation: Source reconstruction at the pinned commit; uncertainties and proposed capabilities
+    remain explicit.
+  includeKinds:
+  - hardware_item
+  - hardware_interface
+  - deployment_target
+  includeMappings:
+  - contains
+  - interacts_with
+  - allocated_to
+  maxDepth: 2
+- id: VIEW-COMMUNICATION
+  kind: communication
+  roots:
+  - IF-GPMC
+  - IF-HTTP
+  - IF-SCPI
+  - IF-OTA
+  - IF-PROFILE
+  authoredStatus: in-review
+  authoredStatusExplanation: System communication between components, actors, interfaces and data objects. Source-file
+    references and code declarations are omitted from this view; requirement traceability retains them. Source reconstruction
+    does not establish runtime or physical qualification.
+  excludeKinds:
+  - referenced_element
+- id: VIEW-DEPLOYMENT
+  kind: deployment
+  roots:
+  - DEP-DEVICE
+  - DEP-FPGA
+  - DEP-BROWSER
+  - DEP-HOST
+  - DEP-USB
+  authoredStatus: in-review
+  authoredStatusExplanation: Source reconstruction at the pinned commit; uncertainties and proposed capabilities
+    remain explicit.
+  maxDepth: 1
+- id: VIEW-TRACEABILITY
+  kind: traceability
+  roots:
+  - FU-APP-ENGINE
+  - FU-APP-SRAMCAPTURE
+  - FU-RTL-ACQ-SRAM-PROFILE-CORE
+  - FU-OTA-AGENT
+  - FU-CODEGEN-IFACEDEF
+  authoredStatus: in-review
+  authoredStatusExplanation: Source reconstruction at the pinned commit; uncertainties and proposed capabilities
+    remain explicit.
+  maxDepth: 1
+- id: VIEW-SECURITY
+  kind: security
+  roots:
+  - TB-DEVICE
+  - TB-NETWORK
+  - TB-FABRIC
+  authoredStatus: in-review
+  authoredStatusExplanation: Explicit authored boundary memberships. Shared interfaces connect scopes; membership
+    alone does not establish trust, authentication, enforcement or complete threat/control coverage.
+  includeKinds:
+  - trust_boundary
+  - functional_unit
+  - interface
+  - actor
+  - hardware_item
+  - data_object
+  includeMappings:
+  - bounded_by
+- id: VIEW-FLOWS
+  kind: interaction-flow
+  roots:
+  - FLOW-GENERAL-DECODED
+  - FLOW-ACQUISITION-IMAGE-SWITCH
+  - FLOW-BOOT
+  - FLOW-DEFAULT
+  - FLOW-FINITE
+  - FLOW-STREAM
+  - FLOW-LEGACY-SRAM
+  - FLOW-UPDATE
+  - FLOW-PANEL-CONTROLS
+  authoredStatus: in-review
+  authoredStatusExplanation: Source reconstruction at the pinned commit; uncertainties and proposed capabilities
+    remain explicit.
+- id: VIEW-LIFECYCLE
+  kind: state-lifecycle
+  roots:
+  - STATE-IDLE
+  - STATE-RESET
+  authoredStatus: in-review
+  authoredStatusExplanation: Source reconstruction at the pinned commit; uncertainties and proposed capabilities
+    remain explicit.
+design:
+  id: DESIGN-SDS
+  title: SDS1000CML+ Software and Hardware Architecture
+  functionalGroups:
+  - id: FG-APP
+    views:
+      architecture_intent:
+        title: Instrument application
+        narrative: ARM application, acquisition policy, conditioning, measurements and control.
+  - id: FG-WEB
+    views:
+      architecture_intent:
+        title: Browser application
+        narrative: Embedded JavaScript user interface, rendering, decode and analysis.
+  - id: FG-OTA
+    views:
+      architecture_intent:
+        title: Operations and boot
+        narrative: Boot descriptor retention, watchdog, supervision, update and host tooling.
+  - id: FG-RTL
+    views:
+      architecture_intent:
+        title: Programmable logic
+        narrative: Separate default, acquisition probe, profile and benchmark compositions; not interchangeable
+          ABIs.
+  - id: FG-BUILD
+    views:
+      architecture_intent:
+        title: Build and contracts
+        narrative: Code generation, pin constraints, timing checks, hardware diagnostic runners and build tooling.
+  - id: FG-EVIDENCE
+    views:
+      architecture_intent:
+        title: Specifications and evidence
+        narrative: Committed specifications and historical observations, with unresolved conflicts recorded explicitly.

@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-WEB
 package web
 
 import (
@@ -12,6 +13,7 @@ import (
 // against golden wire fixtures — the client half of the /api/frame.bin
 // parity story (the server half is TestBinFrameParity). Skips if node is
 // absent (a hard failure under CI_REQUIRE_BROWSER=1).
+// TRLC-LINKS: REQ-SDS-023
 func TestBinframeJS(t *testing.T) {
 	testenv.NeedNode(t)
 	node, _ := exec.LookPath("node")

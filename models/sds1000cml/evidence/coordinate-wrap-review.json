@@ -1,0 +1,27 @@
+{
+  "result": "resolved-and-full-pdf-sampled",
+  "requirement": "REQ-EMG-003",
+  "modelRequirementSamples": [
+    "REQ-SDS-066",
+    "REQ-SDS-125"
+  ],
+  "change": "Add display-only spaces after filename colon and between coordinates in requirement production/verification nodes. Canonical evidence and node IDs remain unchanged.",
+  "focusedPDF": "tmp/pdfs/coordinate-wrap/probe.pdf",
+  "sha256": {
+    "tmp/pdfs/coordinate-wrap/probe.adoc": "644cee7287663a45a13a9921c243d40e5128ad6eb1e466154c7ff7d5fa15190e",
+    "tmp/pdfs/coordinate-wrap/probe.pdf": "6b48c2585218d10b70927a354ea84228da34d34ddc57b966dcbf41daef7b74a9",
+    "tmp/pdfs/coordinate-wrap/page-1.png": "ece19ecaae789e10bf40bc96f1bc932aa3dd79cdf3ddc754fe9b91e1e2cac98e",
+    "tmp/pdfs/coordinate-wrap/page-2.png": "f0f18d3c8877322da836c6f93a2b45a095eed7f0b3ac0396f7b4d2a88b020eb2"
+  },
+  "visualReview": "Both rendered sample diagrams retain whole multi-digit coordinates. Crowded edge labels and page whitespace remain separate defects.",
+  "check": "diagram-coordinate-check.json",
+  "fullPDFSHA256": "952cf12cb43a83ca360f7cb6247a26a0176cddb60b8495fcbea593dc8d3bb220",
+  "fullInputSHA256": "818a46c29cfe67cb5d004a577354fdc45b9944302be521aad58a3519f55fc7a9",
+  "fullPDFPages": 645,
+  "fullPDFVisualPages": [
+    320,
+    322,
+    378
+  ],
+  "remainingLimits": "Internal filename/verification-ID wrapping, crowded edge labels, whitespace, eight tiny-text pages and exhaustive visual review remain."
+}

@@ -1,4 +1,6 @@
+// ENGMODEL-OWNER-UNIT: FU-RTL-ACQ-TESTS
 `timescale 1ns/1ps
+// TRLC-LINKS: REQ-SDS-041, REQ-SDS-042, REQ-SDS-043, REQ-SDS-057
 module tb;
  localparam AW=19,N=1<<AW;
  reg clk=0;always #5 clk=~clk;
@@ -7,7 +9,8 @@ module tb;
  wire running,done,triggered,config_error;
  wire [AW-1:0] write_addr,record_start;
  wire [AW:0] record_length,trigger_index,filled;
- sram_record #(.AW(AW)) dut(.*);
+ wire history_ready;
+ sram_record #(.AW(AW)) dut(.pre_start_config(),.pre_plus_one_config(),.post_minus_one_config(),.*);
  reg request=0,frozen=0;
  reg [AW-1:0] current_position=0;
  reg [AW:0] offset=0,length=0;

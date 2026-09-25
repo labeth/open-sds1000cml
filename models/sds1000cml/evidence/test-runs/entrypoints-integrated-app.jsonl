@@ -1,0 +1,41 @@
+{"Time":"2026-09-23T11:28:33.414971722+02:00","Action":"start","Package":"open-sds/app/cmd/app"}
+{"Time":"2026-09-23T11:28:33.415073276+02:00","Action":"start","Package":"open-sds/app/cmd/acqsram"}
+{"Time":"2026-09-23T11:28:33.415096768+02:00","Action":"output","Package":"open-sds/app/cmd/acqsram","Output":"?   \topen-sds/app/cmd/acqsram\t[no test files]\n"}
+{"Time":"2026-09-23T11:28:33.415108401+02:00","Action":"skip","Package":"open-sds/app/cmd/acqsram","Elapsed":0}
+{"Time":"2026-09-23T11:28:33.415116974+02:00","Action":"start","Package":"open-sds/app/cmd/srambench"}
+{"Time":"2026-09-23T11:28:33.415122234+02:00","Action":"output","Package":"open-sds/app/cmd/srambench","Output":"?   \topen-sds/app/cmd/srambench\t[no test files]\n"}
+{"Time":"2026-09-23T11:28:33.415126723+02:00","Action":"skip","Package":"open-sds/app/cmd/srambench","Elapsed":0}
+{"Time":"2026-09-23T11:28:33.415133509+02:00","Action":"start","Package":"open-sds/app/internal/buildinfo"}
+{"Time":"2026-09-23T11:28:33.415138139+02:00","Action":"output","Package":"open-sds/app/internal/buildinfo","Output":"?   \topen-sds/app/internal/buildinfo\t[no test files]\n"}
+{"Time":"2026-09-23T11:28:33.415143288+02:00","Action":"skip","Package":"open-sds/app/internal/buildinfo","Elapsed":0}
+{"Time":"2026-09-23T11:28:33.427213603+02:00","Action":"run","Package":"open-sds/app/cmd/app","Test":"TestSRAMHealthStorage"}
+{"Time":"2026-09-23T11:28:33.427231496+02:00","Action":"output","Package":"open-sds/app/cmd/app","Test":"TestSRAMHealthStorage","Output":"=== RUN   TestSRAMHealthStorage\n"}
+{"Time":"2026-09-23T11:28:33.427363154+02:00","Action":"output","Package":"open-sds/app/cmd/app","Test":"TestSRAMHealthStorage","Output":"--- PASS: TestSRAMHealthStorage (0.00s)\n"}
+{"Time":"2026-09-23T11:28:33.427399393+02:00","Action":"pass","Package":"open-sds/app/cmd/app","Test":"TestSRAMHealthStorage","Elapsed":0}
+{"Time":"2026-09-23T11:28:33.427440222+02:00","Action":"run","Package":"open-sds/app/cmd/app","Test":"TestSRAMTimingQualificationAndRollback"}
+{"Time":"2026-09-23T11:28:33.427443611+02:00","Action":"output","Package":"open-sds/app/cmd/app","Test":"TestSRAMTimingQualificationAndRollback","Output":"=== RUN   TestSRAMTimingQualificationAndRollback\n"}
+{"Time":"2026-09-23T11:28:33.427514187+02:00","Action":"run","Package":"open-sds/app/cmd/app","Test":"TestSRAMTimingQualificationAndRollback/fast"}
+{"Time":"2026-09-23T11:28:33.427518136+02:00","Action":"output","Package":"open-sds/app/cmd/app","Test":"TestSRAMTimingQualificationAndRollback/fast","Output":"=== RUN   TestSRAMTimingQualificationAndRollback/fast\n"}
+{"Time":"2026-09-23T11:28:33.427629742+02:00","Action":"output","Package":"open-sds/app/cmd/app","Test":"TestSRAMTimingQualificationAndRollback/fast","Output":"--- PASS: TestSRAMTimingQualificationAndRollback/fast (0.00s)\n"}
+{"Time":"2026-09-23T11:28:33.427703055+02:00","Action":"pass","Package":"open-sds/app/cmd/app","Test":"TestSRAMTimingQualificationAndRollback/fast","Elapsed":0}
+{"Time":"2026-09-23T11:28:33.427717554+02:00","Action":"run","Package":"open-sds/app/cmd/app","Test":"TestSRAMTimingQualificationAndRollback/counter-fails"}
+{"Time":"2026-09-23T11:28:33.427720529+02:00","Action":"output","Package":"open-sds/app/cmd/app","Test":"TestSRAMTimingQualificationAndRollback/counter-fails","Output":"=== RUN   TestSRAMTimingQualificationAndRollback/counter-fails\n"}
+{"Time":"2026-09-23T11:28:33.427811107+02:00","Action":"output","Package":"open-sds/app/cmd/app","Test":"TestSRAMTimingQualificationAndRollback/counter-fails","Output":"--- PASS: TestSRAMTimingQualificationAndRollback/counter-fails (0.00s)\n"}
+{"Time":"2026-09-23T11:28:33.427881345+02:00","Action":"pass","Package":"open-sds/app/cmd/app","Test":"TestSRAMTimingQualificationAndRollback/counter-fails","Elapsed":0}
+{"Time":"2026-09-23T11:28:33.427890716+02:00","Action":"run","Package":"open-sds/app/cmd/app","Test":"TestSRAMTimingQualificationAndRollback/apply-fails"}
+{"Time":"2026-09-23T11:28:33.427893618+02:00","Action":"output","Package":"open-sds/app/cmd/app","Test":"TestSRAMTimingQualificationAndRollback/apply-fails","Output":"=== RUN   TestSRAMTimingQualificationAndRollback/apply-fails\n"}
+{"Time":"2026-09-23T11:28:33.4279807+02:00","Action":"output","Package":"open-sds/app/cmd/app","Test":"TestSRAMTimingQualificationAndRollback/apply-fails","Output":"--- PASS: TestSRAMTimingQualificationAndRollback/apply-fails (0.00s)\n"}
+{"Time":"2026-09-23T11:28:33.428038452+02:00","Action":"pass","Package":"open-sds/app/cmd/app","Test":"TestSRAMTimingQualificationAndRollback/apply-fails","Elapsed":0}
+{"Time":"2026-09-23T11:28:33.428090927+02:00","Action":"run","Package":"open-sds/app/cmd/app","Test":"TestSRAMTimingQualificationAndRollback/restore-fails"}
+{"Time":"2026-09-23T11:28:33.428094691+02:00","Action":"output","Package":"open-sds/app/cmd/app","Test":"TestSRAMTimingQualificationAndRollback/restore-fails","Output":"=== RUN   TestSRAMTimingQualificationAndRollback/restore-fails\n"}
+{"Time":"2026-09-23T11:28:33.428171985+02:00","Action":"output","Package":"open-sds/app/cmd/app","Test":"TestSRAMTimingQualificationAndRollback/restore-fails","Output":"--- PASS: TestSRAMTimingQualificationAndRollback/restore-fails (0.00s)\n"}
+{"Time":"2026-09-23T11:28:33.428202765+02:00","Action":"pass","Package":"open-sds/app/cmd/app","Test":"TestSRAMTimingQualificationAndRollback/restore-fails","Elapsed":0}
+{"Time":"2026-09-23T11:28:33.428247176+02:00","Action":"run","Package":"open-sds/app/cmd/app","Test":"TestSRAMTimingQualificationAndRollback/both-fail"}
+{"Time":"2026-09-23T11:28:33.428250673+02:00","Action":"output","Package":"open-sds/app/cmd/app","Test":"TestSRAMTimingQualificationAndRollback/both-fail","Output":"=== RUN   TestSRAMTimingQualificationAndRollback/both-fail\n"}
+{"Time":"2026-09-23T11:28:33.4283514+02:00","Action":"output","Package":"open-sds/app/cmd/app","Test":"TestSRAMTimingQualificationAndRollback/both-fail","Output":"--- PASS: TestSRAMTimingQualificationAndRollback/both-fail (0.00s)\n"}
+{"Time":"2026-09-23T11:28:33.428389761+02:00","Action":"pass","Package":"open-sds/app/cmd/app","Test":"TestSRAMTimingQualificationAndRollback/both-fail","Elapsed":0}
+{"Time":"2026-09-23T11:28:33.428444232+02:00","Action":"output","Package":"open-sds/app/cmd/app","Test":"TestSRAMTimingQualificationAndRollback","Output":"--- PASS: TestSRAMTimingQualificationAndRollback (0.00s)\n"}
+{"Time":"2026-09-23T11:28:33.4284726+02:00","Action":"pass","Package":"open-sds/app/cmd/app","Test":"TestSRAMTimingQualificationAndRollback","Elapsed":0}
+{"Time":"2026-09-23T11:28:33.428530823+02:00","Action":"output","Package":"open-sds/app/cmd/app","Output":"PASS\n"}
+{"Time":"2026-09-23T11:28:34.430532368+02:00","Action":"output","Package":"open-sds/app/cmd/app","Output":"ok  \topen-sds/app/cmd/app\t1.015s\n"}
+{"Time":"2026-09-23T11:28:34.430551062+02:00","Action":"pass","Package":"open-sds/app/cmd/app","Elapsed":1.016}

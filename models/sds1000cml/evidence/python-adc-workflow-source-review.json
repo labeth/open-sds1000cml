@@ -1,0 +1,81 @@
+{
+  "status": "reviewed-not-integrated",
+  "files": [
+    {
+      "path": "tools/hw/adc_sram/analyze_interleave.py",
+      "sourceSHA256": "d311f2926b9c39daecf6c79d1299da6faf48d9d7848e7e2102e5ab161b1083d8",
+      "functions": [],
+      "finding": "Offline-only summary of exactly 2,097,152-byte recalls. It compares ten byte-phase means with snapshot core means using five even rotations of a fixed core order; picks minimum squared DC error, writes per-core statistics and explicitly does not qualify skew or AC bandwidth."
+    },
+    {
+      "path": "tools/hw/adc_sram/followup.py",
+      "sourceSHA256": "0740a923e2858f73c021ee28f20ee90acbb2e14af1564144d03f73b5611dee3b",
+      "functions": [
+        "call",
+        "probe"
+      ],
+      "finding": "Runs against an already loaded probe. Ramp/wrapped/ADC paths check record geometry, consecutive words and repeated hashes; DC sweeps change both offset DACs and finally restore fallback 10223. Ramp/ADC/wrapped paths do not unload the diagnostic image or resume the vendor process."
+    },
+    {
+      "path": "tools/hw/adc_sram/host_read_qualify.py",
+      "sourceSHA256": "3216aec6c177fec03cd8e1d45d3f9545d1ce57992394d42e681d37684f5894ba",
+      "functions": [
+        "call",
+        "decode",
+        "power",
+        "wait_agent",
+        "probe",
+        "recall",
+        "crossing"
+      ],
+      "finding": "Audits a selected build, power-cycles the configured relay, stops the app and uploads helper/image. Counter recalls compare full SHA256 over expected little-endian words at several timing overrides; selected ADC edges check threshold crossings. Ordinary exceptions trigger a power cycle, which can itself fail. Printed qualification explicitly excludes application qualification."
+    },
+    {
+      "path": "tools/hw/adc_sram/interleave_probe.py",
+      "sourceSHA256": "0560b9eab76982eaf3ce9647e041ff785ad770253cadc26183475350d12e1295",
+      "functions": [
+        "call",
+        "probe",
+        "means"
+      ],
+      "finding": "Cold-starts a fixed diagnostic image, suspends factory acquisition and probes a hard-coded encode-bit/core map. Frozen cores require absolute mean movement below three codes and others above 100. A finally block restores encode mask and DACs, but the custom image remains loaded."
+    },
+    {
+      "path": "tools/hw/adc_sram/interleave_qualify.py",
+      "sourceSHA256": "45343ca89b53925bacda435f627c698b056c89ef3960be16d5760a38aabf5d31",
+      "functions": [
+        "call",
+        "obj",
+        "probe",
+        "valid"
+      ],
+      "finding": "Selects one of three phase builds, cold-starts and suspends factory software, uploads helper/image, and checks revision 7/interleave lock plus fixed ramp SHA256 and repeated ADC transfers. A trace option exits through a separate diagnostic path. It leaves the diagnostic image and changed offsets in place without a general restoration finally block."
+    },
+    {
+      "path": "tools/hw/adc_sram/precision_qualify.py",
+      "sourceSHA256": "5db602a782153c06ddbac71376d85979efc509b1dec9da38261a14795023d95c",
+      "functions": [
+        "call",
+        "probe",
+        "power",
+        "wait_agent"
+      ],
+      "finding": "Audits/uploads a selected revision-9 build, tests counter hashes at multiple decimations, downloads ADC records and selected edge captures. The origin-probe path records warm-recall observations and exits. Edge downloads do not themselves assert sample-level threshold alignment. Ordinary exceptions persist partial results and attempt a power cycle; no physical result is inferred here."
+    },
+    {
+      "path": "tools/hw/adc_sram/run.py",
+      "sourceSHA256": "7c702f22f783235d0b9fcea00f41706961d4b8cdad7eb1ffd73e0ef7796ba841",
+      "functions": [
+        "call",
+        "obj"
+      ],
+      "finding": "Cold-starts one of five 100 MHz phase builds, suspends factory acquisition and uploads a helper/image. It checks full capture length but only the first 512 recalled counter words; the final print leaves the volatile probe active. It is not evidence of full-depth data verification."
+    }
+  ],
+  "scope": "Static source review only. None of the device-control workflows was executed. Most behavior is top-level script code; annotating only helper functions would not provide complete workflow traceability. File-level source trace representation is still needed before integrating these workflows.",
+  "sharedLimits": [
+    "Hard-coded device/relay addresses and helper paths are operational assumptions, not deployment discovery.",
+    "A script printing PASS or QUALIFIED is not current hardware evidence without a pinned execution record.",
+    "Several output directories depend on historical preexisting parents; exception cleanup is not uniform."
+  ]
+}

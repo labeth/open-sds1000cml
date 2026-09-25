@@ -1,6 +1,8 @@
+// ENGMODEL-OWNER-UNIT: FU-RTL-COMMON-TESTS
 // tb_gpmc_slave.v -- write/read/pop semantics of gpmc_slave against the GPMC model, with the full
 // 7-bit selector (bits 1:0 = GPMC A2/A1 on balls A2/B1, schema v3).
 `timescale 1ns/1ps
+// TRLC-LINKS: REQ-SDS-188
 module tb_gpmc_slave;
     reg clk = 0; always #6.25 clk = ~clk;          // C2 ~80 MHz
     wire nCS1, nOE, nWE; wire [6:0] sel; wire [15:0] d;

@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
 package engine
 
 import (
@@ -15,6 +16,7 @@ import (
 //     produces NO point rather than a bogus one;
 //   - an identical DUT reads ~0 dB.
 
+// TRLC-LINKS: REQ-SDS-066
 func clamp8(v float64) uint8 {
 	if v < 0 {
 		return 0
@@ -25,6 +27,7 @@ func clamp8(v float64) uint8 {
 	return uint8(math.Round(v))
 }
 
+// TRLC-LINKS: REQ-SDS-066
 func clampf(v float64) float64 {
 	if v < 0 {
 		return 0
@@ -35,11 +38,13 @@ func clampf(v float64) float64 {
 	return v
 }
 
+// TRLC-LINKS: REQ-SDS-066
 type bkFamily struct {
 	name string
 	gen  func(i, n int, rng func() float64) float64
 }
 
+// TRLC-LINKS: REQ-SDS-066
 func bodeBreakerFamilies(dt float64) []bkFamily {
 	nyq := 0.5 / dt
 	sine := func(fHz, amp, off, ph float64) func(int, int, func() float64) float64 {
@@ -184,6 +189,7 @@ func bodeBreakerFamilies(dt float64) []bkFamily {
 	return fams
 }
 
+// TRLC-LINKS: REQ-SDS-066
 func mkChan(fam bkFamily, n int, dt float64, seed int64) []uint8 {
 	s := seed
 	rng := func() float64 {
@@ -197,6 +203,7 @@ func mkChan(fam bkFamily, n int, dt float64, seed int64) []uint8 {
 	return out
 }
 
+// TRLC-LINKS: REQ-SDS-066
 func TestBodeBreaker50(t *testing.T) {
 	e, _ := newTestEngine(t, newFakeBus())
 	const n = 6000

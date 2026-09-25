@@ -1,0 +1,28 @@
+{
+  "scope": "Complete probe.go review integrated into REQ-SDS-114. No diagnostic shell command or GPMC read was executed; device facts are not qualified.",
+  "sourceSHA256": {
+    "ota/internal/agent/probe.go": "010bdab752c660de2ed093b8e9859f69c64b482a4c6dbb9d99b96cdb25813af1"
+  },
+  "supportSHA256": {
+    "ota/internal/agent/agent.go": "980e0263d6f5d811afacc17e5c6daebdc2dfaafb63bbc8b6b259c3892a8a6356"
+  },
+  "functions": [
+    "Probe",
+    "probe",
+    "hex4"
+  ],
+  "types": [
+    "ProbeReport"
+  ],
+  "findings": [
+    "Probe gathers kernel/system facts, retained descriptor numbers, device-holder lists, factory candidates and TakenOver state. These observations are not atomic and are not themselves qualification of hardware identity.",
+    "Eleven diagnostic shell scripts run sequentially in unspecified map iteration order with six-second timeouts per script. Command output buffering and descendant process timeout limits follow runShell/runArgv; there is no single whole-probe deadline.",
+    "All shell execution errors are discarded; returned Cmds values are trimmed output only. Several scripts redirect errors, so missing utilities or failed commands need not produce the error string promised by the comment.",
+    "GPMC access requires opt-in and a nonnegative retained descriptor. VerifyVersion collapses read error and wrong value into the same false result; probe renders the returned value as UNEXPECTED rather than exposing the read error. Fill read errors omit the field.",
+    "hex4 renders exactly four lowercase hexadecimal digits with 0x prefix. Probe performs no takeover or process kill, but its opt-in branch does issue GPMC reads. This branch was not executed.",
+    "Status support excerpt collects control flags, app/paused snapshot, slots, watchdog, descriptor numbers and system facts through separate reads. It is not an atomic device snapshot.",
+    "Lifecycle support excerpt shows Stop checks then closes a channel without a once guard; concurrent calls require further race review. Event callback is copied under mutex and invoked after unlock. Watchdog retry attempts acquisition before checking stopped on the failure path."
+  ],
+  "integration": "Source requirement comments integrated; runtime/device evidence remains limited to recorded checks.",
+  "result": "integrated-source-review-with-explicit-limits"
+}

@@ -12,6 +12,7 @@
 //     iface.TsrcCheck in both CHMODEs.
 //   - R3  Redrain — full drain, REWIND re-drains, then windows of the same
 //     frozen record: every window byte-identical to its slice, 0 breaks.
+// ENGMODEL-OWNER-UNIT: FU-APP-DIAG
 package diag
 
 import (
@@ -29,6 +30,7 @@ import (
 // ---- R1: GPMC timing ----
 
 // timingCtl is the GPMC timing state the app hands the diag at boot.
+// TRLC-LINKS: REQ-SDS-146
 type timingCtl struct {
 	port      bus.TimingPort
 	path      string
@@ -42,6 +44,7 @@ type timingCtl struct {
 // goroutine. Nothing about it blocks the HTTP handler: the caller starts it
 // and polls GpmcStatus. Each step restores the start timing before it returns
 // (bus.Sweeper.Step), so no step can leave the controller at a candidate.
+// TRLC-LINKS: REQ-SDS-146
 type sweepJob struct {
 	sw      *bus.Sweeper
 	started time.Time
@@ -51,12 +54,14 @@ type sweepJob struct {
 	err     error
 }
 
+// TRLC-LINKS: REQ-SDS-146
 func (j *sweepJob) finished() bool {
 	j.mu.Lock()
 	defer j.mu.Unlock()
 	return j.done
 }
 
+// TRLC-LINKS: REQ-SDS-146
 func (j *sweepJob) progress() *SweepProgress {
 	j.mu.Lock()
 	defer j.mu.Unlock()
@@ -71,12 +76,14 @@ func (j *sweepJob) progress() *SweepProgress {
 // SetTiming wires the CS1 timing port (nil when /dev/mem is unavailable: the
 // sweep and apply then refuse), the persisted-timing path and what the boot
 // hook decided.
+// TRLC-LINKS: REQ-SDS-146
 func (d *Diag) SetTiming(port bus.TimingPort, path, appVersion string, boot bus.BootTiming) {
 	d.mu.Lock()
 	d.timing = &timingCtl{port: port, path: path, appVer: appVersion, boot: boot}
 	d.mu.Unlock()
 }
 
+// TRLC-LINKS: REQ-SDS-146
 func (d *Diag) timingPort() (*timingCtl, error) {
 	d.mu.Lock()
 	tc := d.timing
@@ -89,6 +96,7 @@ func (d *Diag) timingPort() (*timingCtl, error) {
 
 // GpmcStatus is the R1 status view: the timing in force, the boot decision,
 // the persisted file (if any) and the last sweep of this process.
+// TRLC-LINKS: REQ-SDS-146
 type GpmcStatus struct {
 	Port       bool              `json:"port"` // the timing port is available
 	Path       string            `json:"path"`
@@ -107,6 +115,7 @@ type GpmcStatus struct {
 // sequence of short Exec steps (05-WORKPLAN §4.3: one bounded piece per
 // Exec, so the engine's beats advance and the agent's health token stays
 // fresh); this is what /api/diag/gpmc reports while it does.
+// TRLC-LINKS: REQ-SDS-146
 type SweepProgress struct {
 	Running  bool    `json:"running"`
 	Steps    int     `json:"steps"`
@@ -118,6 +127,7 @@ type SweepProgress struct {
 }
 
 // GpmcStatus reads the controller (no fabric traffic).
+// TRLC-LINKS: REQ-SDS-146
 func (d *Diag) GpmcStatus() GpmcStatus {
 	d.mu.Lock()
 	tc := d.timing
@@ -157,6 +167,7 @@ func (d *Diag) GpmcStatus() GpmcStatus {
 // sweepTimeout bounds the Exec: every setting costs Blocks × 2 × Drains
 // records (≤ 8 ms each at the factory timing), at most ~60 settings, plus the
 // verify run.
+// TRLC-LINKS: REQ-SDS-146
 func sweepTimeout(o bus.SweepOptions) time.Duration {
 	drains := max(o.Drains, 7)
 	blocks := max(o.Blocks, 3)
@@ -177,6 +188,7 @@ func sweepTimeout(o bus.SweepOptions) time.Duration {
 // restores the timing it started from, so an abort at any point — including a
 // SIGTERM between steps — leaves the controller at the start timing, never at
 // a candidate. Poll GpmcStatus for progress; the result lands in LastSweep.
+// TRLC-LINKS: REQ-SDS-146
 func (d *Diag) GpmcSweep(o bus.SweepOptions) (*SweepProgress, error) {
 	tc, err := d.timingPort()
 	if err != nil {
@@ -196,6 +208,7 @@ func (d *Diag) GpmcSweep(o bus.SweepOptions) (*SweepProgress, error) {
 }
 
 // runSweep is the job goroutine: Step until done, one Exec each.
+// TRLC-LINKS: REQ-SDS-146
 func (d *Diag) runSweep(tc *timingCtl, j *sweepJob) {
 	for {
 		var done bool
@@ -236,6 +249,7 @@ func (d *Diag) runSweep(tc *timingCtl, j *sweepJob) {
 // GpmcPersist writes the last passed sweep's timing to the file next to the
 // app. It does not apply it: GpmcApply("persisted") (or the next boot) runs
 // the ramp gate first.
+// TRLC-LINKS: REQ-SDS-146
 func (d *Diag) GpmcPersist(appVersion string) (bus.TimingFile, error) {
 	d.mu.Lock()
 	tc := d.timing
@@ -257,6 +271,7 @@ func (d *Diag) GpmcPersist(appVersion string) (bus.TimingFile, error) {
 // GpmcApply applies "persisted" (the file, through the boot gate: ramp check
 // at the persisted timing, factory on failure) or "factory" (the timing the
 // boot hook read). The result is the same shape the boot log carries.
+// TRLC-LINKS: REQ-SDS-146
 func (d *Diag) GpmcApply(which string) (bus.BootTiming, error) {
 	tc, err := d.timingPort()
 	if err != nil {
@@ -302,6 +317,7 @@ func (d *Diag) GpmcApply(which string) (bus.BootTiming, error) {
 // fromFields rebuilds the factory read-side timing from the decoded fields
 // the boot hook kept, on top of the controller's current words (the write
 // side and CONFIG1/3/7 are whatever is in force — they were never changed).
+// TRLC-LINKS: REQ-SDS-146
 func fromFields(f bus.TimingFields, cur bus.CS1Timing) bus.CS1Timing {
 	return cur.WithRdAccess(f.RdAccess).WithRdCycle(f.RdCycle).WithOEOn(f.OEOn).WithOEOff(f.OEOff).
 		WithCSRdOff(f.CSRdOff).WithGap(f.Gap)
@@ -310,12 +326,14 @@ func fromFields(f bus.TimingFields, cur bus.CS1Timing) bus.CS1Timing {
 // ---- R2: schema check ----
 
 // SchemaOptions tunes the register check.
+// TRLC-LINKS: REQ-SDS-147
 type SchemaOptions struct {
 	Writes int   `json:"writes"` // writes per register (default 100)
 	Seed   int64 `json:"seed"`   // PRNG seed (default 1)
 }
 
 // RegCheck is one register's verdict.
+// TRLC-LINKS: REQ-SDS-147
 type RegCheck struct {
 	Name       string `json:"name"`
 	Sel        uint16 `json:"sel"`
@@ -330,6 +348,7 @@ type RegCheck struct {
 }
 
 // SchemaResult is the R2 report.
+// TRLC-LINKS: REQ-SDS-147
 type SchemaResult struct {
 	Identity     Identity          `json:"identity"`
 	Registers    []RegCheck        `json:"registers"`   // every writable v3 register (stubs included)
@@ -349,6 +368,7 @@ type SchemaResult struct {
 // liveMask is the union of a register's fields that the v2.2 fabric stores
 // (fields whose Desc carries the "reads 0 in v2.2" mark are masked by the
 // fabric); a register without fields is fully live.
+// TRLC-LINKS: REQ-SDS-147
 func liveMask(r iface.Register) uint16 {
 	if r.Stub {
 		return 0
@@ -366,6 +386,7 @@ func liveMask(r iface.Register) uint16 {
 	return m
 }
 
+// TRLC-LINKS: REQ-SDS-147
 func fieldUnion(fs []iface.Field) uint16 {
 	if len(fs) == 0 {
 		return 0xffff
@@ -379,6 +400,7 @@ func fieldUnion(fs []iface.Field) uint16 {
 
 // SchemaCheck runs R2. Only v3 registers are written (random values masked
 // to their fields); the v2 program is saved and restored around the run.
+// TRLC-LINKS: REQ-SDS-147
 func (d *Diag) SchemaCheck(o SchemaOptions) (*SchemaResult, error) {
 	if o.Writes <= 0 {
 		o.Writes = 100
@@ -551,6 +573,7 @@ func (d *Diag) SchemaCheck(o SchemaOptions) (*SchemaResult, error) {
 // ---- R3: windowed re-drains ----
 
 // RedrainOptions tunes R3.
+// TRLC-LINKS: REQ-SDS-148
 type RedrainOptions struct {
 	Words   int    `json:"words"`   // record words (default iface.PretrigMax)
 	Tsrc    uint16 `json:"tsrc"`    // test source (default RAMP)
@@ -562,6 +585,7 @@ type RedrainOptions struct {
 }
 
 // WindowCheck is one window's verdict.
+// TRLC-LINKS: REQ-SDS-148
 type WindowCheck struct {
 	Window    bus.Window    `json:"window"`
 	Exact     bus.Exactness `json:"exact"`
@@ -569,6 +593,7 @@ type WindowCheck struct {
 }
 
 // RedrainResult is the R3 report.
+// TRLC-LINKS: REQ-SDS-148
 type RedrainResult struct {
 	Tsrc      uint16        `json:"tsrc"`
 	RecLen    int           `json:"rec_len"`
@@ -589,6 +614,7 @@ type RedrainResult struct {
 // through REWIND, then read through windows — every window must equal its
 // slice of the full drain and follow the pattern; pops and underruns must
 // account exactly.
+// TRLC-LINKS: REQ-SDS-148
 func (d *Diag) Redrain(o RedrainOptions) (*RedrainResult, error) {
 	if o.Words <= 0 || o.Words > iface.PretrigMax {
 		o.Words = iface.PretrigMax

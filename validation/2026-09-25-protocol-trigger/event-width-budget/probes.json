@@ -1,0 +1,48 @@
+{
+  "purpose": "Resource estimates for full-depth event transport; no protocol, acquisition top, or deployment",
+  "sourceQueueDepth": 1024,
+  "hostQueueDepth": 512,
+  "recordId": 0,
+  "protocolBits": 4,
+  "kindBits": 3,
+  "flagBits": 3,
+  "limitations": "Virtual I/O unconstrained. Held CDC payload paths bounded at 8 ns. Full image placement and configuration costs excluded.",
+  "probes": [
+    {
+      "name": "word16-count7",
+      "path": "/home/labeth/ws/open-sds1000cml-acq2/validation/2026-09-25-protocol-trigger/event-width-budget/word16-count7-l3tJ5G",
+      "valueBits": 16,
+      "countBits": 7,
+      "sourceHashes": {
+        "decoded_event_transport.v": "e3ed4e6d6f2a28dbc9d67774071af45343a7fde6abfd502d51ca2d9864e7a9d1",
+        "decoded_event_queue.v": "4243cfd5be87d9489ab51c10a7b3e6863c1e1c03dee8201f08b9c54c381a5689",
+        "decoded_event_bridge.v": "43d116143c3403f6a8259f1d1190cb7c27e2df9b1b5563552df44e5921206eb5",
+        "decoded_event_reader.v": "32e40a4d12310c9633f2491294c9f400ca38052ef58893fff73246ab8ee2da3a"
+      }
+    },
+    {
+      "name": "word32-count7",
+      "path": "/home/labeth/ws/open-sds1000cml-acq2/validation/2026-09-25-protocol-trigger/event-width-budget/word32-count7-OSEpqA",
+      "valueBits": 32,
+      "countBits": 7,
+      "sourceHashes": {
+        "decoded_event_transport.v": "e3ed4e6d6f2a28dbc9d67774071af45343a7fde6abfd502d51ca2d9864e7a9d1",
+        "decoded_event_queue.v": "4243cfd5be87d9489ab51c10a7b3e6863c1e1c03dee8201f08b9c54c381a5689",
+        "decoded_event_bridge.v": "43d116143c3403f6a8259f1d1190cb7c27e2df9b1b5563552df44e5921206eb5",
+        "decoded_event_reader.v": "32e40a4d12310c9633f2491294c9f400ca38052ef58893fff73246ab8ee2da3a"
+      }
+    },
+    {
+      "name": "word32-count32",
+      "path": "/home/labeth/ws/open-sds1000cml-acq2/validation/2026-09-25-protocol-trigger/event-width-budget/word32-count32-kDQc6x",
+      "valueBits": 32,
+      "countBits": 32,
+      "sourceHashes": {
+        "decoded_event_transport.v": "e3ed4e6d6f2a28dbc9d67774071af45343a7fde6abfd502d51ca2d9864e7a9d1",
+        "decoded_event_queue.v": "4243cfd5be87d9489ab51c10a7b3e6863c1e1c03dee8201f08b9c54c381a5689",
+        "decoded_event_bridge.v": "43d116143c3403f6a8259f1d1190cb7c27e2df9b1b5563552df44e5921206eb5",
+        "decoded_event_reader.v": "32e40a4d12310c9633f2491294c9f400ca38052ef58893fff73246ab8ee2da3a"
+      }
+    }
+  ]
+}

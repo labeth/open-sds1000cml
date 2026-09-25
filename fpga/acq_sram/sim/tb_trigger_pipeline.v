@@ -1,4 +1,6 @@
+// ENGMODEL-OWNER-UNIT: FU-RTL-ACQ-TESTS
 `timescale 1ns/1ps
+// TRLC-LINKS: REQ-SDS-184
 module tb_trigger_pipeline;
  reg clk=0;always #2 clk=~clk;
  reg enable=0,valid=0,precision_mode=0,channel=0,falling=0,force_trigger=0,match_trigger=0;

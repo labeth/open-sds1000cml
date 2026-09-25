@@ -1,7 +1,9 @@
+// ENGMODEL-OWNER-UNIT: FU-RTL-ACQ-SRAM-HOST-PACKER
 // 250 MHz, non-backpressurable word input. Bank completion must arrive AFTER
 // its final word, with stable first/count metadata. Ownership is external:
 // no reuse until RAM publication and ARM release. Common epoch reset required.
 // Output packets feed sram_host_fifo; FIFO overflow invalidates the epoch.
+// TRLC-LINKS: REQ-SDS-049
 module sram_host_packer(
  input wire clk,reset,input wire word_valid,word_bank,
  input wire [31:0] word_data,input wire [11:0] word_index,

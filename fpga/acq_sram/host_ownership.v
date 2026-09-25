@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-RTL-ACQ-SRAM-HOST-OWNERSHIP
 // RAM-clock publication -> ARM-clock descriptor -> core-clock release.
 // A common reset abandons the epoch; independent resets are unsupported.
 // One outstanding release per descriptor. One-bit tokens reject immediate
@@ -6,6 +7,7 @@
 // Metadata is held at producer until release, sampled through two stages,
 // and exposed only after a three-stage publication token. Requires bundled
 // metadata and token timing constraints before hardware use.
+// TRLC-LINKS: REQ-SDS-052
 module sram_host_ownership(
  input wire reset,producer_clk,host_clk,core_clk,
  input wire [1:0] publish,input wire [63:0] first0,first1,

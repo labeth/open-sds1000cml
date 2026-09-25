@@ -1,0 +1,38 @@
+[
+  {
+    "bytes": [
+      72,
+      105
+    ],
+    "seqBefore": 5,
+    "seqAfter": 6,
+    "frames": 1,
+    "held": 0,
+    "busErrors": 0,
+    "version": "v0.0.5-73-gf436963-dirty (f436963, 2026-09-25T05:08:19Z)"
+  },
+  {
+    "bytes": [
+      222,
+      173
+    ],
+    "seqBefore": 6,
+    "seqAfter": 6,
+    "frames": 1,
+    "held": 1,
+    "busErrors": 0,
+    "version": "v0.0.5-73-gf436963-dirty (f436963, 2026-09-25T05:08:19Z)"
+  },
+  {
+    "bytes": [
+      72,
+      105
+    ],
+    "seqBefore": 6,
+    "seqAfter": 7,
+    "frames": 1,
+    "held": 0,
+    "busErrors": 0,
+    "version": "v0.0.5-73-gf436963-dirty (f436963, 2026-09-25T05:08:19Z)"
+  }
+]

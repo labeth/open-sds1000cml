@@ -1,0 +1,62 @@
+{
+  "phase": "menus",
+  "base": "http://192.168.1.209:8080",
+  "results": [
+    {
+      "name": "trigger F1–F5 and reverse adjustment",
+      "result": "pass"
+    },
+    {
+      "name": "display F1–F5",
+      "result": "pass"
+    },
+    {
+      "name": "horizontal timebase, trigger position and zoom",
+      "result": "pass"
+    },
+    {
+      "name": "channel coupling/probe/persistence",
+      "result": "pass"
+    },
+    {
+      "name": "cursors enable/type/selection/nudge/ADJUST",
+      "result": "pass"
+    },
+    {
+      "name": "reference capture/show/clear",
+      "result": "pass"
+    },
+    {
+      "name": "acquisition mode/count/ETS/memory and empty F5",
+      "result": "pass"
+    },
+    {
+      "name": "main F1–F5 page navigation",
+      "result": "pass"
+    },
+    {
+      "name": "decode protocols and configuration",
+      "result": "pass"
+    },
+    {
+      "name": "five-megahertz-after-menus",
+      "result": "pass"
+    }
+  ],
+  "touched": [
+    "trigmenu",
+    "f5",
+    "adjust",
+    "f1",
+    "f2",
+    "f3",
+    "f4",
+    "menu",
+    "display",
+    "horizmenu",
+    "horizpos",
+    "cursors",
+    "ref",
+    "acquire"
+  ]
+}

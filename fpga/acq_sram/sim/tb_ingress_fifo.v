@@ -1,4 +1,6 @@
+// ENGMODEL-OWNER-UNIT: FU-RTL-ACQ-TESTS
 `timescale 1ns/1ps
+// TRLC-LINKS: REQ-SDS-046
 module tb;
  parameter BANKS=9,ROWS=512;
  localparam DEPTH=BANKS*ROWS;

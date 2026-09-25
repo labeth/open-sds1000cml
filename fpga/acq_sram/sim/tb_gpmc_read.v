@@ -1,4 +1,6 @@
+// ENGMODEL-OWNER-UNIT: FU-RTL-ACQ-TESTS
 `timescale 1ns/1ps
+// TRLC-LINKS: REQ-SDS-188
 module tb;
  reg clk=0; always #6.25 clk=~clk;
  reg cs=1,oe=1; reg [6:0] sel=25;

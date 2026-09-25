@@ -2,6 +2,7 @@
 // environment exported by the USB boot anchor (startup.sh) and applies the
 // device defaults. Every value is overridable so the off-device test harness
 // can run the agent against stubs.
+// ENGMODEL-OWNER-UNIT: FU-OTA-CONFIG
 package config
 
 import (
@@ -14,6 +15,7 @@ import (
 	"time"
 )
 
+// TRLC-LINKS: REQ-SDS-088
 type Config struct {
 	// Identity + transport.
 	NATSURL    string        // OTA_NATS — empty disables the NATS link
@@ -53,6 +55,7 @@ type Config struct {
 	AutoTakeover  bool          // OTA_AUTO_TAKEOVER — arm auto-takeover after boot (default: coexist)
 }
 
+// TRLC-LINKS: REQ-SDS-088
 func env(key, def string) string {
 	if v := os.Getenv(key); v != "" {
 		return v
@@ -60,6 +63,7 @@ func env(key, def string) string {
 	return def
 }
 
+// TRLC-LINKS: REQ-SDS-088
 func envDurSecs(key string, def time.Duration) time.Duration {
 	v := os.Getenv(key)
 	if v == "" {
@@ -72,6 +76,7 @@ func envDurSecs(key string, def time.Duration) time.Duration {
 	return time.Duration(f * float64(time.Second))
 }
 
+// TRLC-LINKS: REQ-SDS-088
 func envInt(key string, def int) int {
 	if n, err := strconv.Atoi(os.Getenv(key)); err == nil && n > 0 {
 		return n
@@ -79,6 +84,7 @@ func envInt(key string, def int) int {
 	return def
 }
 
+// TRLC-LINKS: REQ-SDS-088
 func envBool(key string) bool {
 	switch strings.ToLower(strings.TrimSpace(os.Getenv(key))) {
 	case "1", "true", "yes", "on":
@@ -89,6 +95,7 @@ func envBool(key string) bool {
 
 // exeDir returns the directory of the running binary; used to derive the
 // OTA dir when startup.sh predates the OTA_DIR export.
+// TRLC-LINKS: REQ-SDS-088
 func exeDir() string {
 	exe, err := os.Executable()
 	if err != nil {
@@ -97,6 +104,7 @@ func exeDir() string {
 	return filepath.Dir(exe)
 }
 
+// TRLC-LINKS: REQ-SDS-088
 func defaultDeviceID() string {
 	ifs, err := net.Interfaces()
 	if err == nil {
@@ -114,6 +122,7 @@ func defaultDeviceID() string {
 	return "sds-unknown"
 }
 
+// TRLC-LINKS: REQ-SDS-088
 func Load() *Config {
 	otaDir := env("OTA_DIR", exeDir())
 	usbRoot := filepath.Dir(otaDir) // OTA_DIR is <usb>/ota by convention
@@ -160,16 +169,19 @@ func Load() *Config {
 
 // HealthPath is the agent<->app health-file contract value exported to the
 // app as OTA_HEALTH_PATH (spec 01 §2.3/§4.2).
+// TRLC-LINKS: REQ-SDS-088
 func (c *Config) HealthPath() string {
 	return filepath.Join(c.HealthDir, "app.health")
 }
 
 // StatePath is the persisted agent state (taken_over etc.) on the stick.
+// TRLC-LINKS: REQ-SDS-088
 func (c *Config) StatePath() string {
 	return filepath.Join(c.OTADir, "state.json")
 }
 
 // LogDir is where startup.sh points boot.log/agent.log.
+// TRLC-LINKS: REQ-SDS-088
 func (c *Config) LogDir() string {
 	return filepath.Join(c.OTADir, "logs")
 }

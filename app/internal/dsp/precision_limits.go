@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-DSP
 package dsp
 
 import "math"
@@ -5,6 +6,7 @@ import "math"
 // PrecisionLimits returns the ideal white-noise gain and -3dB frequency
 // (normalized to OUTPUT sample rate) of CIC3 /R followed by our FIR. This
 // excludes ADC nonlinearity, correlated noise, timing error and Q8 rounding.
+// TRLC-LINKS: REQ-SDS-099
 func PrecisionLimits(reduction int) (gain, bandwidth float64) {
 	r := float64(reduction)
 	r2 := r * r

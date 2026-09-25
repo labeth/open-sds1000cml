@@ -1,0 +1,16 @@
+{
+  "source": "fpga/common/sim/tb_ddio.v",
+  "scope": "Original five common RTL benches, SIM behavioral clocks and ideal bus stimulus. No physical CDC, fitted timing, IO placement or hardware qualification.",
+  "sourceSHA256": "aa7195031e4c1dd348263717a9e9549f89aff609540088437d5bd4c26d7169c1",
+  "reportSHA256": "f4932c3f638b8136cd9f37dc2cdd8c773b37db76838efa148f6e981f0f7b0608",
+  "runs": [
+    "tb_ddio"
+  ],
+  "results": [
+    {
+      "requirement": "REQ-SDS-189",
+      "status": "partial",
+      "notes": "Checks forwarding, complementary pins, static output and SDR values against SIM behavior. Failures are printed with $finish rather than a nonzero exit; a runner must require PASS and reject FAIL text. See evidence/common-rtl-review-test-run.json. Exact original-source or approved comment-overlay equivalence is checked."
+    }
+  ]
+}

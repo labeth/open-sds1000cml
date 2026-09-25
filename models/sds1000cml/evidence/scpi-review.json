@@ -1,0 +1,49 @@
+{
+  "requirement": "REQ-SDS-024",
+  "scope": "Reviewed all six SCPI Go files. Handler implementation and fake-device tests are separate from VXI-11 transport and physical instrument operation.",
+  "sourceSHA256": {
+    "app/internal/scpi/scpi.go": "433abe45fca14807e4994cf72a3a856d8327f277bbe6d4477ee207d98e915ecf",
+    "app/internal/scpi/scpi_exec.go": "6f4e8e97ffa5cfb1956debc08ad6d437b75e1a680e0ad6b1f0c505dbe914b0a2",
+    "app/internal/scpi/scpi_test.go": "312f53b0a205513912d44ab806478d1198c9a2267d41a03bca215dfc96738d41",
+    "app/internal/scpi/scpifuzz_test.go": "77b098a5f9868299d7b24a2b5cb72cf491a9cded1a2ae48826244a28f50f4321",
+    "app/internal/scpi/waveform.go": "0614fed0a005c5045c825cea7443ac433d46c4a36d5bc21d4e1285e3e7645712",
+    "app/internal/scpi/wffuzz_test.go": "cffc85c843338470ca75fc70b332217eac95f74d2296390a9146663c77840362"
+  },
+  "tests": [
+    "TestIDN",
+    "TestReplyFormats",
+    "TestErrorTokens",
+    "TestSettersSilent",
+    "TestCompoundLine",
+    "TestWFSUAndDAT2",
+    "TestWavedesc",
+    "TestSetNeverLies",
+    "TestChannelShadowIndependence",
+    "TestRSTResetsChannelShadows",
+    "TestRSTResetsTraCplAttn",
+    "TestDisplayStubsWithoutPanel",
+    "TestInvertedSnapshot",
+    "TestRollRescale",
+    "TestSCPIFuzzNoPanic",
+    "TestSCPIFuzzSetQueryInvariant",
+    "TestWaveformReadoutFuzz"
+  ],
+  "testLog": "test-runs/scpi.jsonl",
+  "characterization": "scpi-boundary-characterization.json",
+  "implementation": [
+    "HandleLine holds a mutex over semicolon-separated commands, uppercases dispatch text, stages setter calls and concatenates query replies; it does not directly access the GPMC bus.",
+    "Channel prefixes C1/C2 are supported; query headers follow CHDR SHORT/OFF. Command-specific argument checks and fixed-state rejections are not a general standards-compliance claim.",
+    "Status/setup-memory and selected measure/cursor/panel-memory commands remain accepted stubs. *TST? and *CAL? return constant zero without executing self-test or calibration.",
+    "DAT2 exports windowed 8-bit frame channels, doubling and clamping roll deviations; ALL aliases DAT2. DESC is a 346-byte little-endian record and keeps full-frame counts/sample interval even when DAT2 is windowed. Q8 fractional channels are not exported."
+  ],
+  "limits": [
+    "WFSU updates earlier keyword/value pairs before reporting an error in a later pair.",
+    "ATTN accepts NaN/infinity and positive factors below one, while the actual front end clamps finite factors below one; handler state and display/trigger state can differ. TRDL accepts nonfinite values.",
+    "*RST does not clear trigger delay/level shadows, despite its all-shadows comment.",
+    "CPL ignores the front-end error return after changing its shadow. Tests use a successful fake front end.",
+    "Fake scope snapshots update immediately; real engine staging and network timing are not covered by these package tests.",
+    "loadSerial reads a fixed system path and uses a fallback identifier; the tests do not validate the physical serial data layout."
+  ],
+  "annotationSupersededBy": "remaining-go-types-source-review.json",
+  "annotationNote": "Historical reviewed source hashes are retained. The later type-comment transition has identical Go tokens; current exact source recovery is recorded in annotation-overlay.json."
+}

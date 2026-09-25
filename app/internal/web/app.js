@@ -1,9 +1,11 @@
+// ENGMODEL-OWNER-UNIT: FU-WEB-APP
 // app.js — the client's shared foundation: global state, config constants, the
 // palette/DOM handles, and a few small helpers. Loaded FIRST (after the JS
 // libraries) so every feature module (app_*.js) and the wiring can close over
 // these globals. Feature logic + its event wiring live in the per-feature files;
 // app_init.js runs last (first paint + poll). See ui.html for the load order.
 "use strict";
+// TRLC-LINKS: REQ-SDS-204
 const $ = id => document.getElementById(id);
 const scope = $("scope");
 let ctx = null; // the scope's 2D-facade over WebGL — set by glInit() (app_gl.js)
@@ -21,10 +23,13 @@ let frozen = false;
 // Probe attenuation is a tip-referred display multiplier: every volts the
 // client SHOWS is at the probe tip, but code/DAC math is electrical (at the
 // scope input), so divide tip volts by the probe factor before sending.
+// TRLC-LINKS: REQ-SDS-204
 const probeOf = (ch) => (st && (ch === 2 ? st.probe2 : st.probe1)) || 1;
+// TRLC-LINKS: REQ-SDS-204
 const trigProbe = () => probeOf(st && st.trig_source === 1 ? 2 : 1);
 // Per-detent trigger cal pushed by the server (code = zero − cpv·V, BNC volts).
 // Falls back to the pre-cal global fit so an old server still works.
+// TRLC-LINKS: REQ-SDS-204
 const trigCodeFor = (tipVolts) => {
   const zero = (st && st.trig_zero) || 31437, cpv = (st && st.trig_cpv) || 911;
   return Math.round(zero - cpv * tipVolts / trigProbe());
@@ -83,6 +88,7 @@ const MATHCOL = css.getPropertyValue("--math").trim();
 const TRIGCOL = css.getPropertyValue("--trigger").trim();
 
 // ---- responsive canvas ----
+// TRLC-LINKS: REQ-SDS-204
 function resize() {
   dpr = window.devicePixelRatio || 1;
   const box = $("scopebox");
@@ -109,6 +115,7 @@ function resize() {
 }
 
 // ---- formatting ----
+// TRLC-LINKS: REQ-SDS-125
 function eng(x, unit, digits) {
   digits = digits || 3;
   // a non-finite / undefined value (e.g. an eye metric not yet available)
@@ -252,6 +259,7 @@ let fftHoverRaf = 0;
 // Navigator: drag to pan the viewport (click outside it first recenters it);
 // double-click resets to the trigger-centered "home" slice. Separate from the
 // scope's own pointer handlers, so cursor-drag / FFT-pick are untouched.
+// TRLC-LINKS: REQ-SDS-202
 const navWin = () => view.mode === "FFT" ? view.fwin : view.win; // which window the strip controls
 
 // ---- frame transport: /api/frame.bin long-poll (the ONE transport) ----
@@ -279,8 +287,11 @@ let lastLineHTML = "", lastAria = "";
 // second, divergent autoset that mis-read aliased frequencies from slow/roll
 // timebases — delegating removes that whole class of bug.
 let autosetBusy = false;
+// TRLC-LINKS: REQ-SDS-023
 const sendPulse = () => sendParams("pulseparams", { lvl: +$("p-lvl").value / 100, min: +$("p-min").value * 1000, max: +$("p-max").value * 1000, cond: +$("p-cond").value });
+// TRLC-LINKS: REQ-SDS-023
 const sendSlope = () => sendParams("slopeparams", { lo: +$("s-lo").value / 100, hi: +$("s-hi").value / 100, min: +$("s-min").value * 1000, max: +$("s-max").value * 1000, cond: +$("s-cond").value });
+// TRLC-LINKS: REQ-SDS-023
 const sendVideo = () => sendParams("videoparams", { std: +$("v-std").value, line: +$("v-line").value, neg: +$("v-neg").value === 1 });
 
 // ---- superres: stack-and-crunch (align → lucky → drizzle → stack) ----
@@ -312,18 +323,31 @@ let srFails = 0;
 // One declarative registry drives the keymap AND the help sheet, so adding a
 // shortcut is a one-line change (the extensibility pattern from the ADR).
 const KEYMAP = [
+  // TRLC-LINKS: REQ-SDS-204
   { key: " ", label: "Space", desc: "Run / Stop", run: () => $("run").click() },
+  // TRLC-LINKS: REQ-SDS-204
   { key: "s", label: "S", desc: "Single shot", run: () => $("single").click() },
+  // TRLC-LINKS: REQ-SDS-204
   { key: "a", label: "A", desc: "AUTO / NORM trigger", run: () => $("mode").click() },
+  // TRLC-LINKS: REQ-SDS-204
   { key: "t", label: "T", desc: "Trigger source C1/C2", run: () => $("source").click() },
+  // TRLC-LINKS: REQ-SDS-204
   { key: "1", label: "1", desc: "Toggle channel 1", run: () => $("tC1").click() },
+  // TRLC-LINKS: REQ-SDS-204
   { key: "2", label: "2", desc: "Toggle channel 2", run: () => $("tC2").click() },
+  // TRLC-LINKS: REQ-SDS-204
   { key: "c", label: "C", desc: "Cursors", run: () => $("tCursors").click() },
+  // TRLC-LINKS: REQ-SDS-204
   { key: "p", label: "P", desc: "Persist", run: () => $("tPersist").click() },
+  // TRLC-LINKS: REQ-SDS-204
   { key: "z", label: "Z", desc: "Freeze", run: () => $("freeze").click() },
+  // TRLC-LINKS: REQ-SDS-204
   { key: "y", label: "Y", desc: "Y-T view", run: () => setMode("YT") },
+  // TRLC-LINKS: REQ-SDS-204
   { key: "x", label: "X", desc: "X-Y view", run: () => setMode("XY") },
+  // TRLC-LINKS: REQ-SDS-204
   { key: "f", label: "F", desc: "FFT view", run: () => setMode("FFT") },
+  // TRLC-LINKS: REQ-SDS-204
   { key: "?", label: "?", desc: "Show / hide this help", run: () => toggleHelp() },
 ];
 // Mouse gestures — listed in the ? overlay so they're discoverable.
@@ -337,10 +361,13 @@ const MOUSEMAP = [
   { label: "Drag ◂ arrow (left)", desc: "Move a channel's offset" },
   { label: "Shift+click", desc: "Set the trigger level where you click" },
 ];
+// TRLC-LINKS: REQ-SDS-204
 function editableFocused() { const a = document.activeElement; return a && /^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName); }
+// TRLC-LINKS: REQ-SDS-204
 function toggleHelp() {
   const el = $("help");
   if (!el.classList.contains("show")) {
+    // TRLC-LINKS: REQ-SDS-204
     const rows = arr => arr.map(x => `<tr><td><kbd>${x.label}</kbd></td><td>${x.desc}</td></tr>`).join("");
     $("helpBody").innerHTML =
       `<tr><th colspan="2" class="fcap">Keyboard</th></tr>` + rows(KEYMAP) +
@@ -355,6 +382,7 @@ function toggleHelp() {
 // TIE jitter (histogram, RJ/DJ, spectrum). One raw-feed consumer at a time —
 // arming the eye stops superres and vice versa.
 const ej = { st: null, armed: false, gen: 0, lastSeq: 0, fails: 0, lastUi: 0, vpc: 1 / 25 };
+// TRLC-LINKS: REQ-SDS-200
 const ejStatus = m => { $("ejStats").textContent = m; };
 
 

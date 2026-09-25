@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-ANALOG
 package analog
 
 // Trigger-level calibration.
@@ -25,6 +26,7 @@ const numDetents = 12
 // TrigCal is one detent's trigger-DAC calibration: code = Zero − CPV·V, where V
 // is input-referred volts at the BNC (before the probe multiplier). Zero is the
 // DAC code for 0 V; CPV is DAC codes per input-volt.
+// TRLC-LINKS: REQ-SDS-098
 type TrigCal struct {
 	Zero float64 `json:"zero"`
 	CPV  float64 `json:"cpv"`
@@ -49,6 +51,7 @@ var defaultTrigCal [numDetents]TrigCal
 // calFor returns the source channel's active cal for its current detent: a
 // per-unit override if installed, else the nominal per-detent default, else the
 // global fit. Caller holds f.mu.
+// TRLC-LINKS: REQ-SDS-098
 func (f *FrontEnd) calFor(srcCh int) TrigCal {
 	i := f.idx[srcCh&1]
 	if c := f.trigCal[srcCh&1][i]; c.CPV != 0 {
@@ -61,6 +64,7 @@ func (f *FrontEnd) calFor(srcCh int) TrigCal {
 }
 
 // DefaultTrigCal reports the nominal cal for a detent (globalFit if unset).
+// TRLC-LINKS: REQ-SDS-098
 func DefaultTrigCal(detent int) TrigCal {
 	if detent >= 0 && detent < numDetents && defaultTrigCal[detent].CPV != 0 {
 		return defaultTrigCal[detent]
@@ -71,6 +75,7 @@ func DefaultTrigCal(detent int) TrigCal {
 // TrigVolts converts a trigger DAC code to probe-tip input volts at the source
 // channel's current detent. Matches the historical `TrigLevelVolts(code)·probe`
 // when the cal is the default fit.
+// TRLC-LINKS: REQ-SDS-098
 func (f *FrontEnd) TrigVolts(code uint16, srcCh int) float64 {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -80,6 +85,7 @@ func (f *FrontEnd) TrigVolts(code uint16, srcCh int) float64 {
 
 // TrigCode converts probe-tip input volts to a trigger DAC code (unclamped —
 // the engine clamps to [TrigCodeMin,TrigCodeMax]).
+// TRLC-LINKS: REQ-SDS-098
 func (f *FrontEnd) TrigCode(volts float64, srcCh int) float64 {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -91,6 +97,7 @@ func (f *FrontEnd) TrigCode(volts float64, srcCh int) float64 {
 // probe NOT folded) — pushed to the engine's centring map and the browser so
 // both convert with the same per-detent slope. Returns the raw cal so callers
 // keep applying probe exactly as before.
+// TRLC-LINKS: REQ-SDS-098
 func (f *FrontEnd) TrigCalActive(srcCh int) (zero, cpv float64) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -100,6 +107,7 @@ func (f *FrontEnd) TrigCalActive(srcCh int) (zero, cpv float64) {
 
 // SetTrigCalDetent installs one detent's cal for a channel (from the loader /
 // characterization routine). A zero CPV clears it back to the default fit.
+// TRLC-LINKS: REQ-SDS-098
 func (f *FrontEnd) SetTrigCalDetent(ch, detent int, c TrigCal) {
 	if detent < 0 || detent >= numDetents {
 		return
@@ -111,6 +119,7 @@ func (f *FrontEnd) SetTrigCalDetent(ch, detent int, c TrigCal) {
 
 // TrigCalTable returns a copy of the full per-channel, per-detent cal (for
 // persistence).
+// TRLC-LINKS: REQ-SDS-098
 func (f *FrontEnd) TrigCalTable() [2][numDetents]TrigCal {
 	f.mu.Lock()
 	defer f.mu.Unlock()

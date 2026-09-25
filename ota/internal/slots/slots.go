@@ -10,6 +10,7 @@
 // Everything lives on the stick (never instrument NAND). Writes go through a
 // temp file + rename; FAT gives no atomicity guarantees, which is why the
 // A/B + confirmed design tolerates a torn write.
+// ENGMODEL-OWNER-UNIT: FU-OTA-SLOTS
 package slots
 
 import (
@@ -29,12 +30,16 @@ const (
 	BinName       = "app"
 )
 
+// TRLC-LINKS: REQ-SDS-087
 type Store struct{ root string }
 
+// TRLC-LINKS: REQ-SDS-087
 func New(root string) *Store { return &Store{root: root} }
 
+// TRLC-LINKS: REQ-SDS-087
 func (s *Store) Root() string { return s.root }
 
+// TRLC-LINKS: REQ-SDS-087
 func (s *Store) Init() error {
 	for _, d := range []string{s.root, s.SlotDir(SlotA), s.SlotDir(SlotB), s.StagingDir()} {
 		if err := os.MkdirAll(d, 0o755); err != nil {
@@ -44,10 +49,14 @@ func (s *Store) Init() error {
 	return nil
 }
 
+// TRLC-LINKS: REQ-SDS-087
 func (s *Store) SlotDir(slot string) string { return filepath.Join(s.root, slot) }
+// TRLC-LINKS: REQ-SDS-087
 func (s *Store) BinPath(slot string) string { return filepath.Join(s.SlotDir(slot), BinName) }
+// TRLC-LINKS: REQ-SDS-087
 func (s *Store) StagingDir() string         { return filepath.Join(s.root, "staging") }
 
+// TRLC-LINKS: REQ-SDS-087
 func readPointer(path, def string) string {
 	b, err := os.ReadFile(path)
 	if err != nil {
@@ -60,6 +69,7 @@ func readPointer(path, def string) string {
 	return v
 }
 
+// TRLC-LINKS: REQ-SDS-087
 func writePointer(path, v string) error {
 	tmp := path + ".tmp"
 	if err := os.WriteFile(tmp, []byte(v+"\n"), 0o644); err != nil {
@@ -68,11 +78,14 @@ func writePointer(path, v string) error {
 	return os.Rename(tmp, path)
 }
 
+// TRLC-LINKS: REQ-SDS-087
 func (s *Store) Active() string { return readPointer(filepath.Join(s.root, "active"), SlotA) }
+// TRLC-LINKS: REQ-SDS-087
 func (s *Store) Confirmed() string {
 	return readPointer(filepath.Join(s.root, "confirmed"), s.Active())
 }
 
+// TRLC-LINKS: REQ-SDS-087
 func (s *Store) SetActive(slot string) error {
 	if slot != SlotA && slot != SlotB {
 		return fmt.Errorf("slots: invalid slot %q", slot)
@@ -80,6 +93,7 @@ func (s *Store) SetActive(slot string) error {
 	return writePointer(filepath.Join(s.root, "active"), slot)
 }
 
+// TRLC-LINKS: REQ-SDS-087
 func (s *Store) SetConfirmed(slot string) error {
 	if slot != SlotA && slot != SlotB {
 		return fmt.Errorf("slots: invalid slot %q", slot)
@@ -88,6 +102,7 @@ func (s *Store) SetConfirmed(slot string) error {
 }
 
 // Other returns the inactive slot.
+// TRLC-LINKS: REQ-SDS-087
 func Other(slot string) string {
 	if slot == SlotA {
 		return SlotB
@@ -96,6 +111,7 @@ func Other(slot string) string {
 }
 
 // HasBinary reports whether a slot has an app binary.
+// TRLC-LINKS: REQ-SDS-087
 func (s *Store) HasBinary(slot string) bool {
 	fi, err := os.Stat(s.BinPath(slot))
 	return err == nil && fi.Mode().IsRegular() && fi.Size() > 0
@@ -103,6 +119,7 @@ func (s *Store) HasBinary(slot string) bool {
 
 // Install copies src into the given slot's binary path (tmp + rename) and
 // returns its sha256.
+// TRLC-LINKS: REQ-SDS-087
 func (s *Store) Install(slot, src string) (string, error) {
 	if slot != SlotA && slot != SlotB && slot != SlotEmergency {
 		return "", fmt.Errorf("slots: invalid slot %q", slot)
@@ -145,6 +162,7 @@ func (s *Store) Install(slot, src string) (string, error) {
 }
 
 // FileSHA256 hashes an arbitrary file.
+// TRLC-LINKS: REQ-SDS-087
 func FileSHA256(path string) (string, error) {
 	f, err := os.Open(path)
 	if err != nil {
@@ -158,6 +176,7 @@ func FileSHA256(path string) (string, error) {
 	return hex.EncodeToString(h.Sum(nil)), nil
 }
 
+// TRLC-LINKS: REQ-SDS-087
 type Status struct {
 	Active    string            `json:"active"`
 	Confirmed string            `json:"confirmed"`
@@ -166,6 +185,7 @@ type Status struct {
 	HasEmerg  bool              `json:"has_emergency"`
 }
 
+// TRLC-LINKS: REQ-SDS-087
 func (s *Store) Status() Status {
 	st := Status{Active: s.Active(), Confirmed: s.Confirmed(), Root: s.root, Binaries: map[string]string{}}
 	for _, slot := range []string{SlotA, SlotB, SlotEmergency} {

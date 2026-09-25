@@ -1,0 +1,3457 @@
+{
+  "goImports": [
+    {
+      "importPath": "open-sds/app/internal/analog",
+      "path": "app/cmd/acqsram/main.go",
+      "source": "FU-APP-ACQSRAM",
+      "target": "FU-APP-ANALOG",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/bus",
+      "path": "app/cmd/acqsram/main.go",
+      "source": "FU-APP-ACQSRAM",
+      "target": "FU-APP-BUS",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/cal",
+      "path": "app/cmd/acqsram/main.go",
+      "source": "FU-APP-ACQSRAM",
+      "target": "FU-APP-CAL",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/fpgaload",
+      "path": "app/cmd/acqsram/main.go",
+      "source": "FU-APP-ACQSRAM",
+      "target": "FU-APP-FPGALOAD",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/sramcapture",
+      "path": "app/cmd/acqsram/main.go",
+      "source": "FU-APP-ACQSRAM",
+      "target": "FU-APP-SRAMCAPTURE",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/bus",
+      "path": "app/cmd/acqsram/profile.go",
+      "source": "FU-APP-ACQSRAM",
+      "target": "FU-APP-BUS",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/analog",
+      "path": "app/cmd/app/main.go",
+      "source": "FU-APP-APP",
+      "target": "FU-APP-ANALOG",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/buildinfo",
+      "path": "app/cmd/app/main.go",
+      "source": "FU-APP-APP",
+      "target": "FU-APP-BUILDINFO",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/bus",
+      "path": "app/cmd/app/main.go",
+      "source": "FU-APP-APP",
+      "target": "FU-APP-BUS",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/cal",
+      "path": "app/cmd/app/main.go",
+      "source": "FU-APP-APP",
+      "target": "FU-APP-CAL",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/diag",
+      "path": "app/cmd/app/main.go",
+      "source": "FU-APP-APP",
+      "target": "FU-APP-DIAG",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/engine",
+      "path": "app/cmd/app/main.go",
+      "source": "FU-APP-APP",
+      "target": "FU-APP-ENGINE",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/fpgaload",
+      "path": "app/cmd/app/main.go",
+      "source": "FU-APP-APP",
+      "target": "FU-APP-FPGALOAD",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/frames",
+      "path": "app/cmd/app/main.go",
+      "source": "FU-APP-APP",
+      "target": "FU-APP-FRAMES",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/iface",
+      "path": "app/cmd/app/main.go",
+      "source": "FU-APP-APP",
+      "target": "FU-APP-IFACE",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/lcd",
+      "path": "app/cmd/app/main.go",
+      "source": "FU-APP-APP",
+      "target": "FU-APP-LCD",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/panel",
+      "path": "app/cmd/app/main.go",
+      "source": "FU-APP-APP",
+      "target": "FU-APP-PANEL",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/scpi",
+      "path": "app/cmd/app/main.go",
+      "source": "FU-APP-APP",
+      "target": "FU-APP-SCPI",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/settings",
+      "path": "app/cmd/app/main.go",
+      "source": "FU-APP-APP",
+      "target": "FU-APP-SETTINGS",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/sramcapture",
+      "path": "app/cmd/app/main.go",
+      "source": "FU-APP-APP",
+      "target": "FU-APP-SRAMCAPTURE",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/vxi11srv",
+      "path": "app/cmd/app/main.go",
+      "source": "FU-APP-APP",
+      "target": "FU-APP-VXI11SRV",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/web",
+      "path": "app/cmd/app/main.go",
+      "source": "FU-APP-APP",
+      "target": "FU-APP-WEB",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/bus",
+      "path": "app/cmd/app/sram.go",
+      "source": "FU-APP-APP",
+      "target": "FU-APP-BUS",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/fpgaload",
+      "path": "app/cmd/app/sram.go",
+      "source": "FU-APP-APP",
+      "target": "FU-APP-FPGALOAD",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/sramcapture",
+      "path": "app/cmd/app/sram.go",
+      "source": "FU-APP-APP",
+      "target": "FU-APP-SRAMCAPTURE",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/web",
+      "path": "app/cmd/app/sram.go",
+      "source": "FU-APP-APP",
+      "target": "FU-APP-WEB",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/bus",
+      "path": "app/cmd/app/sram_timing.go",
+      "source": "FU-APP-APP",
+      "target": "FU-APP-BUS",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/bus",
+      "path": "app/cmd/app/sram_timing_test.go",
+      "source": "FU-APP-APP",
+      "target": "FU-APP-BUS",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/fpgaload",
+      "path": "app/cmd/srambench/main.go",
+      "source": "FU-APP-SRAMBENCH",
+      "target": "FU-APP-FPGALOAD",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/cal",
+      "path": "app/internal/analog/frontend.go",
+      "source": "FU-APP-ANALOG",
+      "target": "FU-APP-CAL",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/cal",
+      "path": "app/internal/analog/frontend_test.go",
+      "source": "FU-APP-ANALOG",
+      "target": "FU-APP-CAL",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/iface",
+      "path": "app/internal/bus/bus.go",
+      "source": "FU-APP-BUS",
+      "target": "FU-APP-IFACE",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/iface",
+      "path": "app/internal/bus/bus_test.go",
+      "source": "FU-APP-BUS",
+      "target": "FU-APP-IFACE",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/iface",
+      "path": "app/internal/bus/drainwin.go",
+      "source": "FU-APP-BUS",
+      "target": "FU-APP-IFACE",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/iface",
+      "path": "app/internal/bus/drainwin_test.go",
+      "source": "FU-APP-BUS",
+      "target": "FU-APP-IFACE",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/iface",
+      "path": "app/internal/bus/edma.go",
+      "source": "FU-APP-BUS",
+      "target": "FU-APP-IFACE",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/iface",
+      "path": "app/internal/bus/gpmcpersist.go",
+      "source": "FU-APP-BUS",
+      "target": "FU-APP-IFACE",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/iface",
+      "path": "app/internal/bus/gpmcpersist_test.go",
+      "source": "FU-APP-BUS",
+      "target": "FU-APP-IFACE",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/iface",
+      "path": "app/internal/bus/gpmctiming.go",
+      "source": "FU-APP-BUS",
+      "target": "FU-APP-IFACE",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/iface",
+      "path": "app/internal/bus/gpmctiming_test.go",
+      "source": "FU-APP-BUS",
+      "target": "FU-APP-IFACE",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/testenv",
+      "path": "app/internal/decode/decode_jsparity_test.go",
+      "source": "FU-APP-DECODE",
+      "target": "FU-APP-TESTENV",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/bus",
+      "path": "app/internal/diag/busprobe.go",
+      "source": "FU-APP-DIAG",
+      "target": "FU-APP-BUS",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/iface",
+      "path": "app/internal/diag/busprobe.go",
+      "source": "FU-APP-DIAG",
+      "target": "FU-APP-IFACE",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/bus",
+      "path": "app/internal/diag/diag.go",
+      "source": "FU-APP-DIAG",
+      "target": "FU-APP-BUS",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/iface",
+      "path": "app/internal/diag/diag.go",
+      "source": "FU-APP-DIAG",
+      "target": "FU-APP-IFACE",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/bus",
+      "path": "app/internal/diag/diag_test.go",
+      "source": "FU-APP-DIAG",
+      "target": "FU-APP-BUS",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/iface",
+      "path": "app/internal/diag/diag_test.go",
+      "source": "FU-APP-DIAG",
+      "target": "FU-APP-IFACE",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/bus",
+      "path": "app/internal/diag/quietlisten.go",
+      "source": "FU-APP-DIAG",
+      "target": "FU-APP-BUS",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/iface",
+      "path": "app/internal/diag/quietlisten.go",
+      "source": "FU-APP-DIAG",
+      "target": "FU-APP-IFACE",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/bus",
+      "path": "app/internal/diag/sramcrank.go",
+      "source": "FU-APP-DIAG",
+      "target": "FU-APP-BUS",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/iface",
+      "path": "app/internal/diag/sramcrank.go",
+      "source": "FU-APP-DIAG",
+      "target": "FU-APP-IFACE",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/bus",
+      "path": "app/internal/diag/v3.go",
+      "source": "FU-APP-DIAG",
+      "target": "FU-APP-BUS",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/iface",
+      "path": "app/internal/diag/v3.go",
+      "source": "FU-APP-DIAG",
+      "target": "FU-APP-IFACE",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/bus",
+      "path": "app/internal/engine/engine.go",
+      "source": "FU-APP-ENGINE",
+      "target": "FU-APP-BUS",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/iface",
+      "path": "app/internal/engine/engine.go",
+      "source": "FU-APP-ENGINE",
+      "target": "FU-APP-IFACE",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/sramcapture",
+      "path": "app/internal/engine/engine.go",
+      "source": "FU-APP-ENGINE",
+      "target": "FU-APP-SRAMCAPTURE",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/bus",
+      "path": "app/internal/engine/engine_bus.go",
+      "source": "FU-APP-ENGINE",
+      "target": "FU-APP-BUS",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/iface",
+      "path": "app/internal/engine/engine_bus.go",
+      "source": "FU-APP-ENGINE",
+      "target": "FU-APP-IFACE",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/iface",
+      "path": "app/internal/engine/engine_capture.go",
+      "source": "FU-APP-ENGINE",
+      "target": "FU-APP-IFACE",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/iface",
+      "path": "app/internal/engine/engine_cmd.go",
+      "source": "FU-APP-ENGINE",
+      "target": "FU-APP-IFACE",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/iface",
+      "path": "app/internal/engine/engine_loop.go",
+      "source": "FU-APP-ENGINE",
+      "target": "FU-APP-IFACE",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/iface",
+      "path": "app/internal/engine/engine_publish_test.go",
+      "source": "FU-APP-ENGINE",
+      "target": "FU-APP-IFACE",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/bus",
+      "path": "app/internal/engine/engine_test.go",
+      "source": "FU-APP-ENGINE",
+      "target": "FU-APP-BUS",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/iface",
+      "path": "app/internal/engine/engine_test.go",
+      "source": "FU-APP-ENGINE",
+      "target": "FU-APP-IFACE",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/iface",
+      "path": "app/internal/engine/engine_triglevel_test.go",
+      "source": "FU-APP-ENGINE",
+      "target": "FU-APP-IFACE",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/iface",
+      "path": "app/internal/engine/envroll.go",
+      "source": "FU-APP-ENGINE",
+      "target": "FU-APP-IFACE",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/iface",
+      "path": "app/internal/engine/envroll_test.go",
+      "source": "FU-APP-ENGINE",
+      "target": "FU-APP-IFACE",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/iface",
+      "path": "app/internal/engine/ets.go",
+      "source": "FU-APP-ENGINE",
+      "target": "FU-APP-IFACE",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/decode",
+      "path": "app/internal/engine/serial_registry.go",
+      "source": "FU-APP-ENGINE",
+      "target": "FU-APP-DECODE",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/decode",
+      "path": "app/internal/engine/serialtrig.go",
+      "source": "FU-APP-ENGINE",
+      "target": "FU-APP-DECODE",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/decode",
+      "path": "app/internal/engine/serialtrig_edge_test.go",
+      "source": "FU-APP-ENGINE",
+      "target": "FU-APP-DECODE",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/decode",
+      "path": "app/internal/engine/serialtrig_test.go",
+      "source": "FU-APP-ENGINE",
+      "target": "FU-APP-DECODE",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/dsp",
+      "path": "app/internal/engine/sram.go",
+      "source": "FU-APP-ENGINE",
+      "target": "FU-APP-DSP",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/sramcapture",
+      "path": "app/internal/engine/sram.go",
+      "source": "FU-APP-ENGINE",
+      "target": "FU-APP-SRAMCAPTURE",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/sramcapture",
+      "path": "app/internal/engine/sram_test.go",
+      "source": "FU-APP-ENGINE",
+      "target": "FU-APP-SRAMCAPTURE",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/bus",
+      "path": "app/internal/fpgaload/device.go",
+      "source": "FU-APP-FPGALOAD",
+      "target": "FU-APP-BUS",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/iface",
+      "path": "app/internal/fpgaload/fpgaload.go",
+      "source": "FU-APP-FPGALOAD",
+      "target": "FU-APP-IFACE",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/iface",
+      "path": "app/internal/fpgaload/fpgaload_test.go",
+      "source": "FU-APP-FPGALOAD",
+      "target": "FU-APP-IFACE",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/engine",
+      "path": "app/internal/frames/fanout.go",
+      "source": "FU-APP-FRAMES",
+      "target": "FU-APP-ENGINE",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/engine",
+      "path": "app/internal/frames/fanout_test.go",
+      "source": "FU-APP-FRAMES",
+      "target": "FU-APP-ENGINE",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/engine",
+      "path": "app/internal/lcd/golden_views_test.go",
+      "source": "FU-APP-LCD",
+      "target": "FU-APP-ENGINE",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/analog",
+      "path": "app/internal/lcd/render.go",
+      "source": "FU-APP-LCD",
+      "target": "FU-APP-ANALOG",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/engine",
+      "path": "app/internal/lcd/render.go",
+      "source": "FU-APP-LCD",
+      "target": "FU-APP-ENGINE",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/engine",
+      "path": "app/internal/lcd/render_fft.go",
+      "source": "FU-APP-LCD",
+      "target": "FU-APP-ENGINE",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/analog",
+      "path": "app/internal/lcd/render_fmt.go",
+      "source": "FU-APP-LCD",
+      "target": "FU-APP-ANALOG",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/engine",
+      "path": "app/internal/lcd/render_invs_test.go",
+      "source": "FU-APP-LCD",
+      "target": "FU-APP-ENGINE",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/decode",
+      "path": "app/internal/lcd/render_overlays.go",
+      "source": "FU-APP-LCD",
+      "target": "FU-APP-DECODE",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/engine",
+      "path": "app/internal/lcd/render_overlays.go",
+      "source": "FU-APP-LCD",
+      "target": "FU-APP-ENGINE",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/analog",
+      "path": "app/internal/lcd/render_panels.go",
+      "source": "FU-APP-LCD",
+      "target": "FU-APP-ANALOG",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/engine",
+      "path": "app/internal/lcd/render_panels.go",
+      "source": "FU-APP-LCD",
+      "target": "FU-APP-ENGINE",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/measure",
+      "path": "app/internal/lcd/render_panels.go",
+      "source": "FU-APP-LCD",
+      "target": "FU-APP-MEASURE",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/engine",
+      "path": "app/internal/lcd/render_test.go",
+      "source": "FU-APP-LCD",
+      "target": "FU-APP-ENGINE",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/engine",
+      "path": "app/internal/lcd/renderfuzz_test.go",
+      "source": "FU-APP-LCD",
+      "target": "FU-APP-ENGINE",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/engine",
+      "path": "app/internal/lcd/spectrogram.go",
+      "source": "FU-APP-LCD",
+      "target": "FU-APP-ENGINE",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/engine",
+      "path": "app/internal/lcd/spectrogram_breaker_test.go",
+      "source": "FU-APP-LCD",
+      "target": "FU-APP-ENGINE",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/engine",
+      "path": "app/internal/lcd/spectrogram_test.go",
+      "source": "FU-APP-LCD",
+      "target": "FU-APP-ENGINE",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/engine",
+      "path": "app/internal/lcd/superres_view_test.go",
+      "source": "FU-APP-LCD",
+      "target": "FU-APP-ENGINE",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/analog",
+      "path": "app/internal/panel/autoset.go",
+      "source": "FU-APP-PANEL",
+      "target": "FU-APP-ANALOG",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/engine",
+      "path": "app/internal/panel/autoset.go",
+      "source": "FU-APP-PANEL",
+      "target": "FU-APP-ENGINE",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/measure",
+      "path": "app/internal/panel/autoset.go",
+      "source": "FU-APP-PANEL",
+      "target": "FU-APP-MEASURE",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/engine",
+      "path": "app/internal/panel/autoset_test.go",
+      "source": "FU-APP-PANEL",
+      "target": "FU-APP-ENGINE",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/engine",
+      "path": "app/internal/panel/autoset_verify_test.go",
+      "source": "FU-APP-PANEL",
+      "target": "FU-APP-ENGINE",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/analog",
+      "path": "app/internal/panel/mask.go",
+      "source": "FU-APP-PANEL",
+      "target": "FU-APP-ANALOG",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/engine",
+      "path": "app/internal/panel/mask.go",
+      "source": "FU-APP-PANEL",
+      "target": "FU-APP-ENGINE",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/engine",
+      "path": "app/internal/panel/menu.go",
+      "source": "FU-APP-PANEL",
+      "target": "FU-APP-ENGINE",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/analog",
+      "path": "app/internal/panel/menufuzz_test.go",
+      "source": "FU-APP-PANEL",
+      "target": "FU-APP-ANALOG",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/engine",
+      "path": "app/internal/panel/menufuzz_test.go",
+      "source": "FU-APP-PANEL",
+      "target": "FU-APP-ENGINE",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/analog",
+      "path": "app/internal/panel/panel.go",
+      "source": "FU-APP-PANEL",
+      "target": "FU-APP-ANALOG",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/engine",
+      "path": "app/internal/panel/panel.go",
+      "source": "FU-APP-PANEL",
+      "target": "FU-APP-ENGINE",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/superres",
+      "path": "app/internal/panel/panel.go",
+      "source": "FU-APP-PANEL",
+      "target": "FU-APP-SUPERRES",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/analog",
+      "path": "app/internal/panel/panel_dispatch.go",
+      "source": "FU-APP-PANEL",
+      "target": "FU-APP-ANALOG",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/engine",
+      "path": "app/internal/panel/panel_dispatch.go",
+      "source": "FU-APP-PANEL",
+      "target": "FU-APP-ENGINE",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/engine",
+      "path": "app/internal/panel/panel_menu_test.go",
+      "source": "FU-APP-PANEL",
+      "target": "FU-APP-ENGINE",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/analog",
+      "path": "app/internal/panel/panel_test.go",
+      "source": "FU-APP-PANEL",
+      "target": "FU-APP-ANALOG",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/engine",
+      "path": "app/internal/panel/panel_test.go",
+      "source": "FU-APP-PANEL",
+      "target": "FU-APP-ENGINE",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/engine",
+      "path": "app/internal/panel/refs.go",
+      "source": "FU-APP-PANEL",
+      "target": "FU-APP-ENGINE",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/settings",
+      "path": "app/internal/panel/settings.go",
+      "source": "FU-APP-PANEL",
+      "target": "FU-APP-SETTINGS",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/settings",
+      "path": "app/internal/panel/settings_test.go",
+      "source": "FU-APP-PANEL",
+      "target": "FU-APP-SETTINGS",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/engine",
+      "path": "app/internal/panel/superres.go",
+      "source": "FU-APP-PANEL",
+      "target": "FU-APP-ENGINE",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/superres",
+      "path": "app/internal/panel/superres.go",
+      "source": "FU-APP-PANEL",
+      "target": "FU-APP-SUPERRES",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/superres",
+      "path": "app/internal/panel/superres_comp_test.go",
+      "source": "FU-APP-PANEL",
+      "target": "FU-APP-SUPERRES",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/engine",
+      "path": "app/internal/scpi/scpi.go",
+      "source": "FU-APP-SCPI",
+      "target": "FU-APP-ENGINE",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/analog",
+      "path": "app/internal/scpi/scpi_exec.go",
+      "source": "FU-APP-SCPI",
+      "target": "FU-APP-ANALOG",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/engine",
+      "path": "app/internal/scpi/scpi_exec.go",
+      "source": "FU-APP-SCPI",
+      "target": "FU-APP-ENGINE",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/analog",
+      "path": "app/internal/scpi/scpi_test.go",
+      "source": "FU-APP-SCPI",
+      "target": "FU-APP-ANALOG",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/engine",
+      "path": "app/internal/scpi/scpi_test.go",
+      "source": "FU-APP-SCPI",
+      "target": "FU-APP-ENGINE",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/analog",
+      "path": "app/internal/scpi/scpifuzz_test.go",
+      "source": "FU-APP-SCPI",
+      "target": "FU-APP-ANALOG",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/engine",
+      "path": "app/internal/scpi/scpifuzz_test.go",
+      "source": "FU-APP-SCPI",
+      "target": "FU-APP-ENGINE",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/analog",
+      "path": "app/internal/scpi/waveform.go",
+      "source": "FU-APP-SCPI",
+      "target": "FU-APP-ANALOG",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/engine",
+      "path": "app/internal/scpi/waveform.go",
+      "source": "FU-APP-SCPI",
+      "target": "FU-APP-ENGINE",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/engine",
+      "path": "app/internal/scpi/wffuzz_test.go",
+      "source": "FU-APP-SCPI",
+      "target": "FU-APP-ENGINE",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/analog",
+      "path": "app/internal/settings/apply_test.go",
+      "source": "FU-APP-SETTINGS",
+      "target": "FU-APP-ANALOG",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/engine",
+      "path": "app/internal/settings/apply_test.go",
+      "source": "FU-APP-SETTINGS",
+      "target": "FU-APP-ENGINE",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/panel",
+      "path": "app/internal/settings/apply_test.go",
+      "source": "FU-APP-SETTINGS",
+      "target": "FU-APP-PANEL",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/settings",
+      "path": "app/internal/settings/apply_test.go",
+      "source": "FU-APP-SETTINGS",
+      "target": "FU-APP-SETTINGS",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/analog",
+      "path": "app/internal/settings/fuzz_test.go",
+      "source": "FU-APP-SETTINGS",
+      "target": "FU-APP-ANALOG",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/engine",
+      "path": "app/internal/settings/fuzz_test.go",
+      "source": "FU-APP-SETTINGS",
+      "target": "FU-APP-ENGINE",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/panel",
+      "path": "app/internal/settings/fuzz_test.go",
+      "source": "FU-APP-SETTINGS",
+      "target": "FU-APP-PANEL",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/settings",
+      "path": "app/internal/settings/fuzz_test.go",
+      "source": "FU-APP-SETTINGS",
+      "target": "FU-APP-SETTINGS",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/analog",
+      "path": "app/internal/settings/wire.go",
+      "source": "FU-APP-SETTINGS",
+      "target": "FU-APP-ANALOG",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/engine",
+      "path": "app/internal/settings/wire.go",
+      "source": "FU-APP-SETTINGS",
+      "target": "FU-APP-ENGINE",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/testenv",
+      "path": "app/internal/superres/comp_jsparity_test.go",
+      "source": "FU-APP-SUPERRES",
+      "target": "FU-APP-TESTENV",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/testenv",
+      "path": "app/internal/superres/superres_parity_test.go",
+      "source": "FU-APP-SUPERRES",
+      "target": "FU-APP-TESTENV",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/engine",
+      "path": "app/internal/web/acceptance_browser_test.go",
+      "source": "FU-APP-WEB",
+      "target": "FU-APP-ENGINE",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/testenv",
+      "path": "app/internal/web/acceptance_browser_test.go",
+      "source": "FU-APP-WEB",
+      "target": "FU-APP-TESTENV",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/engine",
+      "path": "app/internal/web/apifuzz_test.go",
+      "source": "FU-APP-WEB",
+      "target": "FU-APP-ENGINE",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/engine",
+      "path": "app/internal/web/bin_test.go",
+      "source": "FU-APP-WEB",
+      "target": "FU-APP-ENGINE",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/testenv",
+      "path": "app/internal/web/binframe_node_test.go",
+      "source": "FU-APP-WEB",
+      "target": "FU-APP-TESTENV",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/engine",
+      "path": "app/internal/web/bode_browser_test.go",
+      "source": "FU-APP-WEB",
+      "target": "FU-APP-ENGINE",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/testenv",
+      "path": "app/internal/web/bode_browser_test.go",
+      "source": "FU-APP-WEB",
+      "target": "FU-APP-TESTENV",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/testenv",
+      "path": "app/internal/web/bode_node_test.go",
+      "source": "FU-APP-WEB",
+      "target": "FU-APP-TESTENV",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/engine",
+      "path": "app/internal/web/chaos_browser_test.go",
+      "source": "FU-APP-WEB",
+      "target": "FU-APP-ENGINE",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/testenv",
+      "path": "app/internal/web/chaos_browser_test.go",
+      "source": "FU-APP-WEB",
+      "target": "FU-APP-TESTENV",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/engine",
+      "path": "app/internal/web/decode_browser_test.go",
+      "source": "FU-APP-WEB",
+      "target": "FU-APP-ENGINE",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/testenv",
+      "path": "app/internal/web/decode_browser_test.go",
+      "source": "FU-APP-WEB",
+      "target": "FU-APP-TESTENV",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/testenv",
+      "path": "app/internal/web/decode_node_test.go",
+      "source": "FU-APP-WEB",
+      "target": "FU-APP-TESTENV",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/engine",
+      "path": "app/internal/web/deepmem_browser_test.go",
+      "source": "FU-APP-WEB",
+      "target": "FU-APP-ENGINE",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/testenv",
+      "path": "app/internal/web/deepmem_browser_test.go",
+      "source": "FU-APP-WEB",
+      "target": "FU-APP-TESTENV",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/buildinfo",
+      "path": "app/internal/web/diag.go",
+      "source": "FU-APP-WEB",
+      "target": "FU-APP-BUILDINFO",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/bus",
+      "path": "app/internal/web/diag.go",
+      "source": "FU-APP-WEB",
+      "target": "FU-APP-BUS",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/diag",
+      "path": "app/internal/web/diag.go",
+      "source": "FU-APP-WEB",
+      "target": "FU-APP-DIAG",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/iface",
+      "path": "app/internal/web/diag.go",
+      "source": "FU-APP-WEB",
+      "target": "FU-APP-IFACE",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/testenv",
+      "path": "app/internal/web/eyejitter_node_test.go",
+      "source": "FU-APP-WEB",
+      "target": "FU-APP-TESTENV",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/engine",
+      "path": "app/internal/web/fft_browser_test.go",
+      "source": "FU-APP-WEB",
+      "target": "FU-APP-ENGINE",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/testenv",
+      "path": "app/internal/web/fft_browser_test.go",
+      "source": "FU-APP-WEB",
+      "target": "FU-APP-TESTENV",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/engine",
+      "path": "app/internal/web/framefuzz_test.go",
+      "source": "FU-APP-WEB",
+      "target": "FU-APP-ENGINE",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/analog",
+      "path": "app/internal/web/fuzz_browser_test.go",
+      "source": "FU-APP-WEB",
+      "target": "FU-APP-ANALOG",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/engine",
+      "path": "app/internal/web/fuzz_browser_test.go",
+      "source": "FU-APP-WEB",
+      "target": "FU-APP-ENGINE",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/testenv",
+      "path": "app/internal/web/fuzz_browser_test.go",
+      "source": "FU-APP-WEB",
+      "target": "FU-APP-TESTENV",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/engine",
+      "path": "app/internal/web/invs_browser_test.go",
+      "source": "FU-APP-WEB",
+      "target": "FU-APP-ENGINE",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/testenv",
+      "path": "app/internal/web/invs_browser_test.go",
+      "source": "FU-APP-WEB",
+      "target": "FU-APP-TESTENV",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/testenv",
+      "path": "app/internal/web/peaks_node_test.go",
+      "source": "FU-APP-WEB",
+      "target": "FU-APP-TESTENV",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/engine",
+      "path": "app/internal/web/perf_browser_test.go",
+      "source": "FU-APP-WEB",
+      "target": "FU-APP-ENGINE",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/testenv",
+      "path": "app/internal/web/perf_browser_test.go",
+      "source": "FU-APP-WEB",
+      "target": "FU-APP-TESTENV",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/engine",
+      "path": "app/internal/web/perfserve_test.go",
+      "source": "FU-APP-WEB",
+      "target": "FU-APP-ENGINE",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/engine",
+      "path": "app/internal/web/serialtrig_browser_test.go",
+      "source": "FU-APP-WEB",
+      "target": "FU-APP-ENGINE",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/testenv",
+      "path": "app/internal/web/serialtrig_browser_test.go",
+      "source": "FU-APP-WEB",
+      "target": "FU-APP-TESTENV",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/testenv",
+      "path": "app/internal/web/sigrok_export_e2e_test.go",
+      "source": "FU-APP-WEB",
+      "target": "FU-APP-TESTENV",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/testenv",
+      "path": "app/internal/web/sigrok_export_node_test.go",
+      "source": "FU-APP-WEB",
+      "target": "FU-APP-TESTENV",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/engine",
+      "path": "app/internal/web/spectrogram_browser_test.go",
+      "source": "FU-APP-WEB",
+      "target": "FU-APP-ENGINE",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/testenv",
+      "path": "app/internal/web/spectrogram_browser_test.go",
+      "source": "FU-APP-WEB",
+      "target": "FU-APP-TESTENV",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/testenv",
+      "path": "app/internal/web/spectrogram_node_test.go",
+      "source": "FU-APP-WEB",
+      "target": "FU-APP-TESTENV",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/sramcapture",
+      "path": "app/internal/web/sram.go",
+      "source": "FU-APP-WEB",
+      "target": "FU-APP-SRAMCAPTURE",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/sramcapture",
+      "path": "app/internal/web/sram_test.go",
+      "source": "FU-APP-WEB",
+      "target": "FU-APP-SRAMCAPTURE",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/engine",
+      "path": "app/internal/web/superres_browser_test.go",
+      "source": "FU-APP-WEB",
+      "target": "FU-APP-ENGINE",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/testenv",
+      "path": "app/internal/web/superres_browser_test.go",
+      "source": "FU-APP-WEB",
+      "target": "FU-APP-TESTENV",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/testenv",
+      "path": "app/internal/web/superres_comp_node_test.go",
+      "source": "FU-APP-WEB",
+      "target": "FU-APP-TESTENV",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/testenv",
+      "path": "app/internal/web/superres_ets_node_test.go",
+      "source": "FU-APP-WEB",
+      "target": "FU-APP-TESTENV",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/testenv",
+      "path": "app/internal/web/superres_node_test.go",
+      "source": "FU-APP-WEB",
+      "target": "FU-APP-TESTENV",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/engine",
+      "path": "app/internal/web/transport_browser_test.go",
+      "source": "FU-APP-WEB",
+      "target": "FU-APP-ENGINE",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/testenv",
+      "path": "app/internal/web/transport_browser_test.go",
+      "source": "FU-APP-WEB",
+      "target": "FU-APP-TESTENV",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/engine",
+      "path": "app/internal/web/ui_lint_test.go",
+      "source": "FU-APP-WEB",
+      "target": "FU-APP-ENGINE",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/diag",
+      "path": "app/internal/web/web.go",
+      "source": "FU-APP-WEB",
+      "target": "FU-APP-DIAG",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/engine",
+      "path": "app/internal/web/web.go",
+      "source": "FU-APP-WEB",
+      "target": "FU-APP-ENGINE",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/measure",
+      "path": "app/internal/web/web.go",
+      "source": "FU-APP-WEB",
+      "target": "FU-APP-MEASURE",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/engine",
+      "path": "app/internal/web/web_binframe.go",
+      "source": "FU-APP-WEB",
+      "target": "FU-APP-ENGINE",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/analog",
+      "path": "app/internal/web/web_control.go",
+      "source": "FU-APP-WEB",
+      "target": "FU-APP-ANALOG",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/engine",
+      "path": "app/internal/web/web_control.go",
+      "source": "FU-APP-WEB",
+      "target": "FU-APP-ENGINE",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/engine",
+      "path": "app/internal/web/web_control_test.go",
+      "source": "FU-APP-WEB",
+      "target": "FU-APP-ENGINE",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/bus",
+      "path": "app/internal/web/web_diag_test.go",
+      "source": "FU-APP-WEB",
+      "target": "FU-APP-BUS",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/diag",
+      "path": "app/internal/web/web_diag_test.go",
+      "source": "FU-APP-WEB",
+      "target": "FU-APP-DIAG",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/iface",
+      "path": "app/internal/web/web_diag_test.go",
+      "source": "FU-APP-WEB",
+      "target": "FU-APP-IFACE",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/analog",
+      "path": "app/internal/web/web_frame.go",
+      "source": "FU-APP-WEB",
+      "target": "FU-APP-ANALOG",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/engine",
+      "path": "app/internal/web/web_frame.go",
+      "source": "FU-APP-WEB",
+      "target": "FU-APP-ENGINE",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/measure",
+      "path": "app/internal/web/web_frame.go",
+      "source": "FU-APP-WEB",
+      "target": "FU-APP-MEASURE",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/engine",
+      "path": "app/internal/web/web_frame_test.go",
+      "source": "FU-APP-WEB",
+      "target": "FU-APP-ENGINE",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/engine",
+      "path": "app/internal/web/web_invs_test.go",
+      "source": "FU-APP-WEB",
+      "target": "FU-APP-ENGINE",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/analog",
+      "path": "app/internal/web/web_status.go",
+      "source": "FU-APP-WEB",
+      "target": "FU-APP-ANALOG",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/buildinfo",
+      "path": "app/internal/web/web_status.go",
+      "source": "FU-APP-WEB",
+      "target": "FU-APP-BUILDINFO",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/engine",
+      "path": "app/internal/web/web_status.go",
+      "source": "FU-APP-WEB",
+      "target": "FU-APP-ENGINE",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/app/internal/engine",
+      "path": "app/internal/web/web_test.go",
+      "source": "FU-APP-WEB",
+      "target": "FU-APP-ENGINE",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/engine",
+      "path": "app/internal/web/zonemask_api_test.go",
+      "source": "FU-APP-WEB",
+      "target": "FU-APP-ENGINE",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/engine",
+      "path": "app/internal/web/zonemask_browser_test.go",
+      "source": "FU-APP-WEB",
+      "target": "FU-APP-ENGINE",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/app/internal/testenv",
+      "path": "app/internal/web/zonemask_browser_test.go",
+      "source": "FU-APP-WEB",
+      "target": "FU-APP-TESTENV",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/codegen/ifacedef",
+      "path": "codegen/cmd/ifacegen/drift_test.go",
+      "source": "FU-CODEGEN-IFACEGEN",
+      "target": "FU-CODEGEN-IFACEDEF",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/codegen/emit",
+      "path": "codegen/cmd/ifacegen/main.go",
+      "source": "FU-CODEGEN-IFACEGEN",
+      "target": "FU-CODEGEN-EMIT",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/codegen/ifacedef",
+      "path": "codegen/cmd/ifacegen/main.go",
+      "source": "FU-CODEGEN-IFACEGEN",
+      "target": "FU-CODEGEN-IFACEDEF",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/codegen/schema",
+      "path": "codegen/cmd/ifacegen/main.go",
+      "source": "FU-CODEGEN-IFACEGEN",
+      "target": "FU-CODEGEN-SCHEMA",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/codegen/schema",
+      "path": "codegen/emit/doc.go",
+      "source": "FU-CODEGEN-EMIT",
+      "target": "FU-CODEGEN-SCHEMA",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/codegen/schema",
+      "path": "codegen/emit/emit.go",
+      "source": "FU-CODEGEN-EMIT",
+      "target": "FU-CODEGEN-SCHEMA",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/codegen/emit/wordfmt",
+      "path": "codegen/emit/emit_test.go",
+      "source": "FU-CODEGEN-EMIT",
+      "target": "FU-CODEGEN-EMIT",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/codegen/ifacedef",
+      "path": "codegen/emit/emit_test.go",
+      "source": "FU-CODEGEN-EMIT",
+      "target": "FU-CODEGEN-IFACEDEF",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/codegen/schema",
+      "path": "codegen/emit/emit_test.go",
+      "source": "FU-CODEGEN-EMIT",
+      "target": "FU-CODEGEN-SCHEMA",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/codegen/schema",
+      "path": "codegen/emit/gobind.go",
+      "source": "FU-CODEGEN-EMIT",
+      "target": "FU-CODEGEN-SCHEMA",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/codegen/schema",
+      "path": "codegen/emit/regmux.go",
+      "source": "FU-CODEGEN-EMIT",
+      "target": "FU-CODEGEN-SCHEMA",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/codegen/ifacedef",
+      "path": "codegen/emit/regmux_sim_test.go",
+      "source": "FU-CODEGEN-EMIT",
+      "target": "FU-CODEGEN-IFACEDEF",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/codegen/schema",
+      "path": "codegen/emit/regmux_sim_test.go",
+      "source": "FU-CODEGEN-EMIT",
+      "target": "FU-CODEGEN-SCHEMA",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/codegen/schema",
+      "path": "codegen/emit/regs.go",
+      "source": "FU-CODEGEN-EMIT",
+      "target": "FU-CODEGEN-SCHEMA",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/codegen/schema",
+      "path": "codegen/ifacedef/default.go",
+      "source": "FU-CODEGEN-IFACEDEF",
+      "target": "FU-CODEGEN-SCHEMA",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/codegen/schema",
+      "path": "codegen/ifacedef/default_test.go",
+      "source": "FU-CODEGEN-IFACEDEF",
+      "target": "FU-CODEGEN-SCHEMA",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/fpga/internal/quartus",
+      "path": "fpga/cmd/buildfpga/main.go",
+      "source": "FU-FPGA-BUILDFPGA",
+      "target": "FU-FPGA-QUARTUS",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/ota/internal/agent",
+      "path": "ota/cmd/agent/main.go",
+      "source": "FU-OTA-AGENT",
+      "target": "FU-OTA-AGENT",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/ota/internal/buildinfo",
+      "path": "ota/cmd/agent/main.go",
+      "source": "FU-OTA-AGENT",
+      "target": "FU-OTA-BUILDINFO",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/ota/internal/config",
+      "path": "ota/cmd/agent/main.go",
+      "source": "FU-OTA-AGENT",
+      "target": "FU-OTA-CONFIG",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/ota/internal/buildinfo",
+      "path": "ota/cmd/otactl/main.go",
+      "source": "FU-OTA-OTACTL",
+      "target": "FU-OTA-BUILDINFO",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/ota/internal/otactl",
+      "path": "ota/cmd/otactl/main.go",
+      "source": "FU-OTA-OTACTL",
+      "target": "FU-OTA-OTACTL",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/ota/internal/vxi11",
+      "path": "ota/cmd/otactl/main.go",
+      "source": "FU-OTA-OTACTL",
+      "target": "FU-OTA-VXI11",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/ota/internal/buildinfo",
+      "path": "ota/internal/agent/agent.go",
+      "source": "FU-OTA-AGENT",
+      "target": "FU-OTA-BUILDINFO",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/ota/internal/config",
+      "path": "ota/internal/agent/agent.go",
+      "source": "FU-OTA-AGENT",
+      "target": "FU-OTA-CONFIG",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/ota/internal/fdinherit",
+      "path": "ota/internal/agent/agent.go",
+      "source": "FU-OTA-AGENT",
+      "target": "FU-OTA-FDINHERIT",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/ota/internal/gpmc",
+      "path": "ota/internal/agent/agent.go",
+      "source": "FU-OTA-AGENT",
+      "target": "FU-OTA-GPMC",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/ota/internal/slots",
+      "path": "ota/internal/agent/agent.go",
+      "source": "FU-OTA-AGENT",
+      "target": "FU-OTA-SLOTS",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/ota/internal/sysinfo",
+      "path": "ota/internal/agent/agent.go",
+      "source": "FU-OTA-AGENT",
+      "target": "FU-OTA-SYSINFO",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/ota/internal/watchdog",
+      "path": "ota/internal/agent/agent.go",
+      "source": "FU-OTA-AGENT",
+      "target": "FU-OTA-WATCHDOG",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/ota/internal/gpmc",
+      "path": "ota/internal/agent/handlers.go",
+      "source": "FU-OTA-AGENT",
+      "target": "FU-OTA-GPMC",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/ota/internal/slots",
+      "path": "ota/internal/agent/handlers.go",
+      "source": "FU-OTA-AGENT",
+      "target": "FU-OTA-SLOTS",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/ota/internal/slots",
+      "path": "ota/internal/agent/handlers_test.go",
+      "source": "FU-OTA-AGENT",
+      "target": "FU-OTA-SLOTS",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/ota/internal/buildinfo",
+      "path": "ota/internal/agent/nats.go",
+      "source": "FU-OTA-AGENT",
+      "target": "FU-OTA-BUILDINFO",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/ota/internal/sysinfo",
+      "path": "ota/internal/agent/nats.go",
+      "source": "FU-OTA-AGENT",
+      "target": "FU-OTA-SYSINFO",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/ota/internal/fdinherit",
+      "path": "ota/internal/agent/probe.go",
+      "source": "FU-OTA-AGENT",
+      "target": "FU-OTA-FDINHERIT",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/ota/internal/gpmc",
+      "path": "ota/internal/agent/probe.go",
+      "source": "FU-OTA-AGENT",
+      "target": "FU-OTA-GPMC",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/ota/internal/sysinfo",
+      "path": "ota/internal/agent/probe.go",
+      "source": "FU-OTA-AGENT",
+      "target": "FU-OTA-SYSINFO",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/ota/internal/config",
+      "path": "ota/internal/agent/rpc_test.go",
+      "source": "FU-OTA-AGENT",
+      "target": "FU-OTA-CONFIG",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/ota/internal/fdinherit",
+      "path": "ota/internal/agent/supervise.go",
+      "source": "FU-OTA-AGENT",
+      "target": "FU-OTA-FDINHERIT",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/ota/internal/slots",
+      "path": "ota/internal/agent/supervise.go",
+      "source": "FU-OTA-AGENT",
+      "target": "FU-OTA-SLOTS",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/ota/internal/slots",
+      "path": "ota/internal/agent/supervise_test.go",
+      "source": "FU-OTA-AGENT",
+      "target": "FU-OTA-SLOTS",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/ota/internal/fdinherit",
+      "path": "ota/internal/agent/takeover.go",
+      "source": "FU-OTA-AGENT",
+      "target": "FU-OTA-FDINHERIT",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/ota/internal/gpmc",
+      "path": "ota/internal/agent/takeover.go",
+      "source": "FU-OTA-AGENT",
+      "target": "FU-OTA-GPMC",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/ota/internal/sysinfo",
+      "path": "ota/internal/agent/takeover.go",
+      "source": "FU-OTA-AGENT",
+      "target": "FU-OTA-SYSINFO",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/ota/internal/vxi11",
+      "path": "ota/internal/agent/takeover.go",
+      "source": "FU-OTA-AGENT",
+      "target": "FU-OTA-VXI11",
+      "test": false
+    },
+    {
+      "importPath": "open-sds/ota/internal/fdinherit",
+      "path": "ota/internal/agent/takeover_test.go",
+      "source": "FU-OTA-AGENT",
+      "target": "FU-OTA-FDINHERIT",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/ota/internal/config",
+      "path": "ota/internal/agent/takeover_vxi11_test.go",
+      "source": "FU-OTA-AGENT",
+      "target": "FU-OTA-CONFIG",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/ota/internal/fdinherit",
+      "path": "ota/internal/agent/takeover_vxi11_test.go",
+      "source": "FU-OTA-AGENT",
+      "target": "FU-OTA-FDINHERIT",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/ota/internal/gpmc",
+      "path": "ota/internal/agent/takeover_vxi11_test.go",
+      "source": "FU-OTA-AGENT",
+      "target": "FU-OTA-GPMC",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/ota/internal/vxi11",
+      "path": "ota/internal/agent/takeover_vxi11_test.go",
+      "source": "FU-OTA-AGENT",
+      "target": "FU-OTA-VXI11",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/ota/internal/rpcproto",
+      "path": "ota/internal/agent/tcp_test.go",
+      "source": "FU-OTA-AGENT",
+      "target": "FU-OTA-RPCPROTO",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/ota/internal/agent",
+      "path": "ota/internal/otactl/client_test.go",
+      "source": "FU-OTA-OTACTL",
+      "target": "FU-OTA-AGENT",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/ota/internal/config",
+      "path": "ota/internal/otactl/client_test.go",
+      "source": "FU-OTA-OTACTL",
+      "target": "FU-OTA-CONFIG",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/ota/internal/agent",
+      "path": "ota/internal/otactl/nats_e2e_test.go",
+      "source": "FU-OTA-OTACTL",
+      "target": "FU-OTA-AGENT",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/ota/internal/config",
+      "path": "ota/internal/otactl/nats_e2e_test.go",
+      "source": "FU-OTA-OTACTL",
+      "target": "FU-OTA-CONFIG",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/ota/internal/otactl",
+      "path": "ota/internal/otactl/nats_e2e_test.go",
+      "source": "FU-OTA-OTACTL",
+      "target": "FU-OTA-OTACTL",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/ota/internal/rpcproto",
+      "path": "ota/internal/otactl/nats_e2e_test.go",
+      "source": "FU-OTA-OTACTL",
+      "target": "FU-OTA-RPCPROTO",
+      "test": true
+    },
+    {
+      "importPath": "open-sds/ota/internal/rpcproto",
+      "path": "ota/internal/otactl/transport.go",
+      "source": "FU-OTA-OTACTL",
+      "target": "FU-OTA-RPCPROTO",
+      "test": false
+    }
+  ],
+  "rtlInstantiationCandidates": [
+    {
+      "internal": true,
+      "kind": "lexical-instantiation",
+      "line": 121,
+      "path": "fpga/acq_sram/acquisition_path.v",
+      "source": "FU-RTL-ACQ-SRAM-ACQUISITION-PATH",
+      "sourceModule": "sram_acquisition_path",
+      "target": "FU-RTL-ACQ-SRAM-ACQUISITION-PATH",
+      "targetModule": "acquisition_trigger_pipeline"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 112,
+      "path": "fpga/acq_sram/acquisition_path.v",
+      "source": "FU-RTL-ACQ-SRAM-ACQUISITION-PATH",
+      "sourceModule": "sram_acquisition_path",
+      "target": "FU-RTL-ACQ-SRAM-ACQUISITION-SOURCE",
+      "targetModule": "adc_acquisition_source"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 137,
+      "path": "fpga/acq_sram/acquisition_path.v",
+      "source": "FU-RTL-ACQ-SRAM-ACQUISITION-PATH",
+      "sourceModule": "sram_acquisition_path",
+      "target": "FU-RTL-ACQ-SRAM-BOARD-CAPTURE-PATH",
+      "targetModule": "sram_board_capture_path"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 126,
+      "path": "fpga/acq_sram/acquisition_path.v",
+      "source": "FU-RTL-ACQ-SRAM-ACQUISITION-PATH",
+      "sourceModule": "sram_acquisition_path",
+      "target": "FU-RTL-ACQ-SRAM-FINITE-WRITER",
+      "targetModule": "sram_finite_writer"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 23,
+      "path": "fpga/acq_sram/acquisition_source.v",
+      "source": "FU-RTL-ACQ-SRAM-ACQUISITION-SOURCE",
+      "sourceModule": "adc_acquisition_source",
+      "target": "FU-RTL-ACQ-SRAM-INTERLEAVE",
+      "targetModule": "adc_interleave"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 29,
+      "path": "fpga/acq_sram/acquisition_source.v",
+      "source": "FU-RTL-ACQ-SRAM-ACQUISITION-SOURCE",
+      "sourceModule": "adc_acquisition_source",
+      "target": "FU-RTL-ACQ-SRAM-PRECISION",
+      "targetModule": "adc_precision"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 52,
+      "path": "fpga/acq_sram/board_capture_path.v",
+      "source": "FU-RTL-ACQ-SRAM-BOARD-CAPTURE-PATH",
+      "sourceModule": "sram_board_capture_path",
+      "target": "FU-RTL-ACQ-SRAM-CAPTURE-ENGINE",
+      "targetModule": "sram_capture_engine"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 113,
+      "path": "fpga/acq_sram/board_capture_path.v",
+      "source": "FU-RTL-ACQ-SRAM-BOARD-CAPTURE-PATH",
+      "sourceModule": "sram_board_capture_path",
+      "target": "FU-RTL-ACQ-SRAM-TRANSPORT",
+      "targetModule": "sram_transport"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 106,
+      "path": "fpga/acq_sram/capture_engine.v",
+      "source": "FU-RTL-ACQ-SRAM-CAPTURE-ENGINE",
+      "sourceModule": "sram_capture_engine",
+      "target": "FU-RTL-ACQ-SRAM-FINITE-RECALL",
+      "targetModule": "sram_finite_recall"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 126,
+      "path": "fpga/acq_sram/capture_engine.v",
+      "source": "FU-RTL-ACQ-SRAM-CAPTURE-ENGINE",
+      "sourceModule": "sram_capture_engine",
+      "target": "FU-RTL-ACQ-SRAM-HOST-PATH",
+      "targetModule": "sram_host_path"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 80,
+      "path": "fpga/acq_sram/capture_engine.v",
+      "source": "FU-RTL-ACQ-SRAM-CAPTURE-ENGINE",
+      "sourceModule": "sram_capture_engine",
+      "target": "FU-RTL-ACQ-SRAM-STREAM-ENGINE",
+      "targetModule": "sram_stream_engine"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 26,
+      "path": "fpga/acq_sram/capture_path.v",
+      "source": "FU-RTL-ACQ-SRAM-CAPTURE-PATH",
+      "sourceModule": "sram_capture_path",
+      "target": "FU-RTL-ACQ-SRAM-CAPTURE-ENGINE",
+      "targetModule": "sram_capture_engine"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 87,
+      "path": "fpga/acq_sram/capture_path.v",
+      "source": "FU-RTL-ACQ-SRAM-CAPTURE-PATH",
+      "sourceModule": "sram_capture_path",
+      "target": "FU-RTL-ACQ-SRAM-TRANSPORT",
+      "targetModule": "sram_transport"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 32,
+      "path": "fpga/acq_sram/command_port.v",
+      "source": "FU-RTL-ACQ-SRAM-COMMAND-PORT",
+      "sourceModule": "acq_command_port",
+      "target": "FU-RTL-ACQ-SRAM-COMMAND-BRIDGE",
+      "targetModule": "acq_command_bridge"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 53,
+      "path": "fpga/acq_sram/command_port.v",
+      "source": "FU-RTL-ACQ-SRAM-COMMAND-PORT",
+      "sourceModule": "acq_command_port",
+      "target": "FU-RTL-ACQ-SRAM-COMMAND-BRIDGE",
+      "targetModule": "acq_command_bridge"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 62,
+      "path": "fpga/acq_sram/finite_recall.v",
+      "source": "FU-RTL-ACQ-SRAM-FINITE-RECALL",
+      "sourceModule": "sram_finite_recall",
+      "target": "FU-RTL-ACQ-SRAM-ORDINAL-COUNTER",
+      "targetModule": "sram_ordinal_counter"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 87,
+      "path": "fpga/acq_sram/finite_writer.v",
+      "source": "FU-RTL-ACQ-SRAM-FINITE-WRITER",
+      "sourceModule": "sram_finite_writer",
+      "target": "FU-RTL-ACQ-SRAM-RECORD",
+      "targetModule": "sram_record"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 50,
+      "path": "fpga/acq_sram/host_path.v",
+      "source": "FU-RTL-ACQ-SRAM-HOST-PATH",
+      "sourceModule": "sram_host_path",
+      "target": "FU-RTL-ACQ-SRAM-HOST-FIFO",
+      "targetModule": "sram_host_fifo"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 55,
+      "path": "fpga/acq_sram/host_path.v",
+      "source": "FU-RTL-ACQ-SRAM-HOST-PATH",
+      "sourceModule": "sram_host_path",
+      "target": "FU-RTL-ACQ-SRAM-HOST-OWNERSHIP",
+      "targetModule": "sram_host_ownership"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 41,
+      "path": "fpga/acq_sram/host_path.v",
+      "source": "FU-RTL-ACQ-SRAM-HOST-PATH",
+      "sourceModule": "sram_host_path",
+      "target": "FU-RTL-ACQ-SRAM-HOST-PACKER",
+      "targetModule": "sram_host_packer"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 53,
+      "path": "fpga/acq_sram/host_path.v",
+      "source": "FU-RTL-ACQ-SRAM-HOST-PATH",
+      "sourceModule": "sram_host_path",
+      "target": "FU-RTL-ACQ-SRAM-HOST-RAM",
+      "targetModule": "sram_host_ram"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 51,
+      "path": "fpga/acq_sram/host_path.v",
+      "source": "FU-RTL-ACQ-SRAM-HOST-PATH",
+      "sourceModule": "sram_host_path",
+      "target": "FU-RTL-ACQ-SRAM-HOST-SINK",
+      "targetModule": "sram_host_sink"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 19,
+      "path": "fpga/acq_sram/host_read_port.v",
+      "source": "FU-RTL-ACQ-SRAM-HOST-READ-PORT",
+      "sourceModule": "acq_host_read_port",
+      "target": "FU-RTL-ACQ-SRAM-HOST-READ-WINDOW",
+      "targetModule": "acq_host_read_window"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 28,
+      "path": "fpga/acq_sram/ingress_path.v",
+      "source": "FU-RTL-ACQ-SRAM-INGRESS-PATH",
+      "sourceModule": "sram_ingress_path",
+      "target": "FU-RTL-ACQ-SRAM-INGRESS-STREAM",
+      "targetModule": "sram_ingress_stream"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 24,
+      "path": "fpga/acq_sram/ingress_path.v",
+      "source": "FU-RTL-ACQ-SRAM-INGRESS-PATH",
+      "sourceModule": "sram_ingress_path",
+      "target": "FU-RTL-ACQ-SRAM-WORD-BRIDGE",
+      "targetModule": "sram_word_bridge"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 32,
+      "path": "fpga/acq_sram/ingress_path.v",
+      "source": "FU-RTL-ACQ-SRAM-INGRESS-PATH",
+      "sourceModule": "sram_ingress_path",
+      "target": "FU-RTL-ACQ-SRAM-WORD-BRIDGE",
+      "targetModule": "sram_word_bridge"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 29,
+      "path": "fpga/acq_sram/ingress_stream.v",
+      "source": "FU-RTL-ACQ-SRAM-INGRESS-STREAM",
+      "sourceModule": "sram_ingress_stream",
+      "target": "FU-RTL-ACQ-SRAM-INGRESS-FIFO",
+      "targetModule": "sram_ingress_fifo"
+    },
+    {
+      "internal": true,
+      "kind": "lexical-instantiation",
+      "line": 92,
+      "path": "fpga/acq_sram/interleave.v",
+      "source": "FU-RTL-ACQ-SRAM-INTERLEAVE",
+      "sourceModule": "adc_interleave",
+      "target": "FU-RTL-ACQ-SRAM-INTERLEAVE",
+      "targetModule": "interleave_gearbox64"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 32,
+      "path": "fpga/acq_sram/interleave.v",
+      "source": "FU-RTL-ACQ-SRAM-INTERLEAVE",
+      "sourceModule": "adc_interleave",
+      "target": "FU-RTL-COMMON-DDIO-PAIR",
+      "targetModule": "ddio_out1"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 33,
+      "path": "fpga/acq_sram/interleave.v",
+      "source": "FU-RTL-ACQ-SRAM-INTERLEAVE",
+      "sourceModule": "adc_interleave",
+      "target": "FU-RTL-COMMON-DDIO-PAIR",
+      "targetModule": "ddio_out1"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 38,
+      "path": "fpga/acq_sram/interleave.v",
+      "source": "FU-RTL-ACQ-SRAM-INTERLEAVE",
+      "sourceModule": "adc_interleave",
+      "target": "FU-RTL-COMMON-LANE-IN",
+      "targetModule": "lane_in"
+    },
+    {
+      "internal": true,
+      "kind": "lexical-instantiation",
+      "line": 47,
+      "path": "fpga/acq_sram/precision.v",
+      "source": "FU-RTL-ACQ-SRAM-PRECISION",
+      "sourceModule": "cic16_pair",
+      "target": "FU-RTL-ACQ-SRAM-PRECISION",
+      "targetModule": "cic_pair_integrator"
+    },
+    {
+      "internal": true,
+      "kind": "lexical-instantiation",
+      "line": 48,
+      "path": "fpga/acq_sram/precision.v",
+      "source": "FU-RTL-ACQ-SRAM-PRECISION",
+      "sourceModule": "cic16_pair",
+      "target": "FU-RTL-ACQ-SRAM-PRECISION",
+      "targetModule": "cic_pair_integrator"
+    },
+    {
+      "internal": true,
+      "kind": "lexical-instantiation",
+      "line": 49,
+      "path": "fpga/acq_sram/precision.v",
+      "source": "FU-RTL-ACQ-SRAM-PRECISION",
+      "sourceModule": "cic16_pair",
+      "target": "FU-RTL-ACQ-SRAM-PRECISION",
+      "targetModule": "cic_pair_integrator"
+    },
+    {
+      "internal": true,
+      "kind": "lexical-instantiation",
+      "line": 92,
+      "path": "fpga/acq_sram/precision.v",
+      "source": "FU-RTL-ACQ-SRAM-PRECISION",
+      "sourceModule": "adc_precision",
+      "target": "FU-RTL-ACQ-SRAM-PRECISION",
+      "targetModule": "cic16_pair"
+    },
+    {
+      "internal": true,
+      "kind": "lexical-instantiation",
+      "line": 93,
+      "path": "fpga/acq_sram/precision.v",
+      "source": "FU-RTL-ACQ-SRAM-PRECISION",
+      "sourceModule": "adc_precision",
+      "target": "FU-RTL-ACQ-SRAM-PRECISION",
+      "targetModule": "cic16_pair"
+    },
+    {
+      "internal": true,
+      "kind": "lexical-instantiation",
+      "line": 135,
+      "path": "fpga/acq_sram/precision.v",
+      "source": "FU-RTL-ACQ-SRAM-PRECISION",
+      "sourceModule": "adc_precision",
+      "target": "FU-RTL-ACQ-SRAM-PRECISION",
+      "targetModule": "cic_stage"
+    },
+    {
+      "internal": true,
+      "kind": "lexical-instantiation",
+      "line": 136,
+      "path": "fpga/acq_sram/precision.v",
+      "source": "FU-RTL-ACQ-SRAM-PRECISION",
+      "sourceModule": "adc_precision",
+      "target": "FU-RTL-ACQ-SRAM-PRECISION",
+      "targetModule": "cic_stage"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 141,
+      "path": "fpga/acq_sram/precision.v",
+      "source": "FU-RTL-ACQ-SRAM-PRECISION",
+      "sourceModule": "adc_precision",
+      "target": "FU-RTL-ACQ-SRAM-PRECISION-TAIL",
+      "targetModule": "cic_precision_tail"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 68,
+      "path": "fpga/acq_sram/profile_core.v",
+      "source": "FU-RTL-ACQ-SRAM-PROFILE-CORE",
+      "sourceModule": "acq_profile_core",
+      "target": "FU-RTL-ACQ-SRAM-ACQUISITION-PATH",
+      "targetModule": "sram_acquisition_path"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 48,
+      "path": "fpga/acq_sram/profile_core.v",
+      "source": "FU-RTL-ACQ-SRAM-PROFILE-CORE",
+      "sourceModule": "acq_profile_core",
+      "target": "FU-RTL-ACQ-SRAM-COMMAND-PORT",
+      "targetModule": "acq_command_port"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 59,
+      "path": "fpga/acq_sram/profile_core.v",
+      "source": "FU-RTL-ACQ-SRAM-PROFILE-CORE",
+      "sourceModule": "acq_profile_core",
+      "target": "FU-RTL-ACQ-SRAM-HOST-READ-PORT",
+      "targetModule": "acq_host_read_port"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 19,
+      "path": "fpga/acq_sram/profile_core.v",
+      "source": "FU-RTL-ACQ-SRAM-PROFILE-CORE",
+      "sourceModule": "acq_profile_core",
+      "target": "FU-RTL-COMMON-GPMC-SLAVE",
+      "targetModule": "gpmc_slave"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 19,
+      "path": "fpga/acq_sram/profile_top.v",
+      "source": "FU-RTL-ACQ-SRAM-PROFILE-TOP",
+      "sourceModule": "acq_profile_top",
+      "target": "FU-RTL-ACQ-SRAM-PROFILE-CORE",
+      "targetModule": "acq_profile_core"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 10,
+      "path": "fpga/acq_sram/profile_top.v",
+      "source": "FU-RTL-ACQ-SRAM-PROFILE-TOP",
+      "sourceModule": "acq_profile_top",
+      "target": "FU-RTL-ACQ-SRAM-PROFILE-PLL",
+      "targetModule": "acq_profile_pll"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 36,
+      "path": "fpga/acq_sram/stream_engine.v",
+      "source": "FU-RTL-ACQ-SRAM-STREAM-ENGINE",
+      "sourceModule": "sram_stream_engine",
+      "target": "FU-RTL-ACQ-SRAM-INGRESS-PATH",
+      "targetModule": "sram_ingress_path"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 40,
+      "path": "fpga/acq_sram/stream_engine.v",
+      "source": "FU-RTL-ACQ-SRAM-STREAM-ENGINE",
+      "sourceModule": "sram_stream_engine",
+      "target": "FU-RTL-ACQ-SRAM-TIMESLICE-CONTROLLER",
+      "targetModule": "sram_timeslice_controller"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 83,
+      "path": "fpga/acq_sram/stream_path.v",
+      "source": "FU-RTL-ACQ-SRAM-STREAM-PATH",
+      "sourceModule": "sram_stream_path",
+      "target": "FU-RTL-ACQ-SRAM-HOST-PATH",
+      "targetModule": "sram_host_path"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 30,
+      "path": "fpga/acq_sram/stream_path.v",
+      "source": "FU-RTL-ACQ-SRAM-STREAM-PATH",
+      "sourceModule": "sram_stream_path",
+      "target": "FU-RTL-ACQ-SRAM-STREAM-ENGINE",
+      "targetModule": "sram_stream_engine"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 77,
+      "path": "fpga/acq_sram/stream_path.v",
+      "source": "FU-RTL-ACQ-SRAM-STREAM-PATH",
+      "sourceModule": "sram_stream_path",
+      "target": "FU-RTL-ACQ-SRAM-TRANSPORT",
+      "targetModule": "sram_transport"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 95,
+      "path": "fpga/acq_sram/timeslice_controller.v",
+      "source": "FU-RTL-ACQ-SRAM-TIMESLICE-CONTROLLER",
+      "sourceModule": "sram_timeslice_controller",
+      "target": "FU-RTL-ACQ-SRAM-ORDINAL-COUNTER",
+      "targetModule": "sram_ordinal_counter"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 96,
+      "path": "fpga/acq_sram/timeslice_controller.v",
+      "source": "FU-RTL-ACQ-SRAM-TIMESLICE-CONTROLLER",
+      "sourceModule": "sram_timeslice_controller",
+      "target": "FU-RTL-ACQ-SRAM-ORDINAL-COUNTER",
+      "targetModule": "sram_ordinal_counter"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 107,
+      "path": "fpga/acq_sram/top.v",
+      "source": "FU-RTL-ACQ-SRAM-TOP",
+      "sourceModule": "acq_sram_top",
+      "target": "FU-RTL-ACQ-SRAM-ADC-UNPACK",
+      "targetModule": "adc_unpack"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 96,
+      "path": "fpga/acq_sram/top.v",
+      "source": "FU-RTL-ACQ-SRAM-TOP",
+      "sourceModule": "acq_sram_top",
+      "target": "FU-RTL-ACQ-SRAM-INTERLEAVE",
+      "targetModule": "adc_interleave"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 41,
+      "path": "fpga/acq_sram/top.v",
+      "source": "FU-RTL-ACQ-SRAM-TOP",
+      "sourceModule": "acq_sram_top",
+      "target": "FU-RTL-ACQ-SRAM-PRECISION",
+      "targetModule": "adc_precision"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 226,
+      "path": "fpga/acq_sram/top.v",
+      "source": "FU-RTL-ACQ-SRAM-TOP",
+      "sourceModule": "acq_sram_top",
+      "target": "FU-RTL-ACQ-SRAM-RECORD",
+      "targetModule": "sram_record"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 273,
+      "path": "fpga/acq_sram/top.v",
+      "source": "FU-RTL-ACQ-SRAM-TOP",
+      "sourceModule": "acq_sram_top",
+      "target": "FU-RTL-ACQ-SRAM-STREAM-BANKS",
+      "targetModule": "stream_banks"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 269,
+      "path": "fpga/acq_sram/top.v",
+      "source": "FU-RTL-ACQ-SRAM-TOP",
+      "sourceModule": "acq_sram_top",
+      "target": "FU-RTL-ACQ-SRAM-STREAM-PACKETIZER",
+      "targetModule": "stream_packetizer"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 221,
+      "path": "fpga/acq_sram/top.v",
+      "source": "FU-RTL-ACQ-SRAM-TOP",
+      "sourceModule": "acq_sram_top",
+      "target": "FU-RTL-ACQ-SRAM-TRANSPORT",
+      "targetModule": "sram_transport"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 100,
+      "path": "fpga/acq_sram/top.v",
+      "source": "FU-RTL-ACQ-SRAM-TOP",
+      "sourceModule": "acq_sram_top",
+      "target": "FU-RTL-COMMON-DDIO-PAIR",
+      "targetModule": "ddio_pair"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 111,
+      "path": "fpga/acq_sram/top.v",
+      "source": "FU-RTL-ACQ-SRAM-TOP",
+      "sourceModule": "acq_sram_top",
+      "target": "FU-RTL-COMMON-GPMC-SLAVE",
+      "targetModule": "gpmc_slave"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 113,
+      "path": "fpga/acq_sram/top.v",
+      "source": "FU-RTL-ACQ-SRAM-TOP",
+      "sourceModule": "acq_sram_top",
+      "target": "FU-RTL-COMMON-GPMC-SLAVE",
+      "targetModule": "gpmc_slave"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 106,
+      "path": "fpga/acq_sram/top.v",
+      "source": "FU-RTL-ACQ-SRAM-TOP",
+      "sourceModule": "acq_sram_top",
+      "target": "FU-RTL-COMMON-LANE-IN",
+      "targetModule": "lane_in"
+    },
+    {
+      "internal": true,
+      "kind": "lexical-instantiation",
+      "line": 61,
+      "path": "fpga/common/ddio_pair.v",
+      "source": "FU-RTL-COMMON-DDIO-PAIR",
+      "sourceModule": "ddio_pair",
+      "target": "FU-RTL-COMMON-DDIO-PAIR",
+      "targetModule": "ddio_out1"
+    },
+    {
+      "internal": true,
+      "kind": "lexical-instantiation",
+      "line": 62,
+      "path": "fpga/common/ddio_pair.v",
+      "source": "FU-RTL-COMMON-DDIO-PAIR",
+      "sourceModule": "ddio_pair",
+      "target": "FU-RTL-COMMON-DDIO-PAIR",
+      "targetModule": "ddio_out1"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 106,
+      "path": "fpga/default/adc_front.v",
+      "source": "FU-RTL-DEFAULT-ADC-FRONT",
+      "sourceModule": "adc_front",
+      "target": "FU-RTL-COMMON-DDIO-PAIR",
+      "targetModule": "ddio_pair"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 111,
+      "path": "fpga/default/adc_front.v",
+      "source": "FU-RTL-DEFAULT-ADC-FRONT",
+      "sourceModule": "adc_front",
+      "target": "FU-RTL-COMMON-LANE-IN",
+      "targetModule": "lane_in"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 199,
+      "path": "fpga/default/capture.v",
+      "source": "FU-RTL-DEFAULT-CAPTURE",
+      "sourceModule": "capture",
+      "target": "FU-RTL-COMMON-SYNC",
+      "targetModule": "stretch3"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 120,
+      "path": "fpga/default/default.v",
+      "source": "FU-RTL-DEFAULT-DEFAULT",
+      "sourceModule": "default_top",
+      "target": "FU-RTL-COMMON-GPMC-SLAVE",
+      "targetModule": "gpmc_slave"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 93,
+      "path": "fpga/default/default.v",
+      "source": "FU-RTL-DEFAULT-DEFAULT",
+      "sourceModule": "default_top",
+      "target": "FU-RTL-COMMON-PLL-M2",
+      "targetModule": "pll_m2"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 100,
+      "path": "fpga/default/default.v",
+      "source": "FU-RTL-DEFAULT-DEFAULT",
+      "sourceModule": "default_top",
+      "target": "FU-RTL-COMMON-SYNC",
+      "targetModule": "sync_bit"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 247,
+      "path": "fpga/default/default.v",
+      "source": "FU-RTL-DEFAULT-DEFAULT",
+      "sourceModule": "default_top",
+      "target": "FU-RTL-COMMON-SYNC",
+      "targetModule": "sync_bit"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 294,
+      "path": "fpga/default/default.v",
+      "source": "FU-RTL-DEFAULT-DEFAULT",
+      "sourceModule": "default_top",
+      "target": "FU-RTL-COMMON-SYNC",
+      "targetModule": "sync_bit"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 198,
+      "path": "fpga/default/default.v",
+      "source": "FU-RTL-DEFAULT-DEFAULT",
+      "sourceModule": "default_top",
+      "target": "FU-RTL-COMMON-SYNC",
+      "targetModule": "sync_pulse"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 199,
+      "path": "fpga/default/default.v",
+      "source": "FU-RTL-DEFAULT-DEFAULT",
+      "sourceModule": "default_top",
+      "target": "FU-RTL-COMMON-SYNC",
+      "targetModule": "sync_pulse"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 200,
+      "path": "fpga/default/default.v",
+      "source": "FU-RTL-DEFAULT-DEFAULT",
+      "sourceModule": "default_top",
+      "target": "FU-RTL-COMMON-SYNC",
+      "targetModule": "sync_pulse"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 252,
+      "path": "fpga/default/default.v",
+      "source": "FU-RTL-DEFAULT-DEFAULT",
+      "sourceModule": "default_top",
+      "target": "FU-RTL-COMMON-SYNC",
+      "targetModule": "sync_word"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 254,
+      "path": "fpga/default/default.v",
+      "source": "FU-RTL-DEFAULT-DEFAULT",
+      "sourceModule": "default_top",
+      "target": "FU-RTL-COMMON-SYNC",
+      "targetModule": "sync_word"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 304,
+      "path": "fpga/default/default.v",
+      "source": "FU-RTL-DEFAULT-DEFAULT",
+      "sourceModule": "default_top",
+      "target": "FU-RTL-COMMON-SYNC",
+      "targetModule": "sync_word"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 216,
+      "path": "fpga/default/default.v",
+      "source": "FU-RTL-DEFAULT-DEFAULT",
+      "sourceModule": "default_top",
+      "target": "FU-RTL-DEFAULT-ADC-FRONT",
+      "targetModule": "adc_front"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 229,
+      "path": "fpga/default/default.v",
+      "source": "FU-RTL-DEFAULT-DEFAULT",
+      "sourceModule": "default_top",
+      "target": "FU-RTL-DEFAULT-CAPTURE",
+      "targetModule": "capture"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 272,
+      "path": "fpga/default/default.v",
+      "source": "FU-RTL-DEFAULT-DEFAULT",
+      "sourceModule": "default_top",
+      "target": "FU-RTL-DEFAULT-DIAG",
+      "targetModule": "diag"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 259,
+      "path": "fpga/default/default.v",
+      "source": "FU-RTL-DEFAULT-DEFAULT",
+      "sourceModule": "default_top",
+      "target": "FU-RTL-DEFAULT-DRAIN",
+      "targetModule": "drain"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 351,
+      "path": "fpga/default/diag.v",
+      "source": "FU-RTL-DEFAULT-DIAG",
+      "sourceModule": "diag",
+      "target": "FU-RTL-COMMON-DDIO-PAIR",
+      "targetModule": "ddio_out1"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 359,
+      "path": "fpga/default/diag.v",
+      "source": "FU-RTL-DEFAULT-DIAG",
+      "sourceModule": "diag",
+      "target": "FU-RTL-COMMON-DDIO-PAIR",
+      "targetModule": "ddio_out1"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 360,
+      "path": "fpga/default/diag.v",
+      "source": "FU-RTL-DEFAULT-DIAG",
+      "sourceModule": "diag",
+      "target": "FU-RTL-COMMON-DDIO-PAIR",
+      "targetModule": "ddio_out1"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 361,
+      "path": "fpga/default/diag.v",
+      "source": "FU-RTL-DEFAULT-DIAG",
+      "sourceModule": "diag",
+      "target": "FU-RTL-COMMON-DDIO-PAIR",
+      "targetModule": "ddio_out1"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 559,
+      "path": "fpga/default/diag.v",
+      "source": "FU-RTL-DEFAULT-DIAG",
+      "sourceModule": "diag",
+      "target": "FU-RTL-COMMON-DDIO-PAIR",
+      "targetModule": "ddio_out1"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 560,
+      "path": "fpga/default/diag.v",
+      "source": "FU-RTL-DEFAULT-DIAG",
+      "sourceModule": "diag",
+      "target": "FU-RTL-COMMON-DDIO-PAIR",
+      "targetModule": "ddio_out1"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 686,
+      "path": "fpga/default/diag.v",
+      "source": "FU-RTL-DEFAULT-DIAG",
+      "sourceModule": "diag",
+      "target": "FU-RTL-COMMON-LANE-IN",
+      "targetModule": "lane_mon"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 691,
+      "path": "fpga/default/diag.v",
+      "source": "FU-RTL-DEFAULT-DIAG",
+      "sourceModule": "diag",
+      "target": "FU-RTL-COMMON-LANE-IN",
+      "targetModule": "toggle_ctr"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 216,
+      "path": "fpga/default/diag.v",
+      "source": "FU-RTL-DEFAULT-DIAG",
+      "sourceModule": "diag",
+      "target": "FU-RTL-COMMON-SYNC",
+      "targetModule": "sync_bit"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 217,
+      "path": "fpga/default/diag.v",
+      "source": "FU-RTL-DEFAULT-DIAG",
+      "sourceModule": "diag",
+      "target": "FU-RTL-COMMON-SYNC",
+      "targetModule": "sync_bit"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 218,
+      "path": "fpga/default/diag.v",
+      "source": "FU-RTL-DEFAULT-DIAG",
+      "sourceModule": "diag",
+      "target": "FU-RTL-COMMON-SYNC",
+      "targetModule": "sync_bit"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 219,
+      "path": "fpga/default/diag.v",
+      "source": "FU-RTL-DEFAULT-DIAG",
+      "sourceModule": "diag",
+      "target": "FU-RTL-COMMON-SYNC",
+      "targetModule": "sync_bit"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 220,
+      "path": "fpga/default/diag.v",
+      "source": "FU-RTL-DEFAULT-DIAG",
+      "sourceModule": "diag",
+      "target": "FU-RTL-COMMON-SYNC",
+      "targetModule": "sync_bit"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 221,
+      "path": "fpga/default/diag.v",
+      "source": "FU-RTL-DEFAULT-DIAG",
+      "sourceModule": "diag",
+      "target": "FU-RTL-COMMON-SYNC",
+      "targetModule": "sync_bit"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 233,
+      "path": "fpga/default/diag.v",
+      "source": "FU-RTL-DEFAULT-DIAG",
+      "sourceModule": "diag",
+      "target": "FU-RTL-COMMON-SYNC",
+      "targetModule": "sync_bit"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 266,
+      "path": "fpga/default/diag.v",
+      "source": "FU-RTL-DEFAULT-DIAG",
+      "sourceModule": "diag",
+      "target": "FU-RTL-COMMON-SYNC",
+      "targetModule": "sync_bit"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 289,
+      "path": "fpga/default/diag.v",
+      "source": "FU-RTL-DEFAULT-DIAG",
+      "sourceModule": "diag",
+      "target": "FU-RTL-COMMON-SYNC",
+      "targetModule": "sync_bit"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 310,
+      "path": "fpga/default/diag.v",
+      "source": "FU-RTL-DEFAULT-DIAG",
+      "sourceModule": "diag",
+      "target": "FU-RTL-COMMON-SYNC",
+      "targetModule": "sync_bit"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 311,
+      "path": "fpga/default/diag.v",
+      "source": "FU-RTL-DEFAULT-DIAG",
+      "sourceModule": "diag",
+      "target": "FU-RTL-COMMON-SYNC",
+      "targetModule": "sync_bit"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 312,
+      "path": "fpga/default/diag.v",
+      "source": "FU-RTL-DEFAULT-DIAG",
+      "sourceModule": "diag",
+      "target": "FU-RTL-COMMON-SYNC",
+      "targetModule": "sync_bit"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 314,
+      "path": "fpga/default/diag.v",
+      "source": "FU-RTL-DEFAULT-DIAG",
+      "sourceModule": "diag",
+      "target": "FU-RTL-COMMON-SYNC",
+      "targetModule": "sync_bit"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 316,
+      "path": "fpga/default/diag.v",
+      "source": "FU-RTL-DEFAULT-DIAG",
+      "sourceModule": "diag",
+      "target": "FU-RTL-COMMON-SYNC",
+      "targetModule": "sync_bit"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 390,
+      "path": "fpga/default/diag.v",
+      "source": "FU-RTL-DEFAULT-DIAG",
+      "sourceModule": "diag",
+      "target": "FU-RTL-COMMON-SYNC",
+      "targetModule": "sync_bit"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 399,
+      "path": "fpga/default/diag.v",
+      "source": "FU-RTL-DEFAULT-DIAG",
+      "sourceModule": "diag",
+      "target": "FU-RTL-COMMON-SYNC",
+      "targetModule": "sync_bit"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 400,
+      "path": "fpga/default/diag.v",
+      "source": "FU-RTL-DEFAULT-DIAG",
+      "sourceModule": "diag",
+      "target": "FU-RTL-COMMON-SYNC",
+      "targetModule": "sync_bit"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 405,
+      "path": "fpga/default/diag.v",
+      "source": "FU-RTL-DEFAULT-DIAG",
+      "sourceModule": "diag",
+      "target": "FU-RTL-COMMON-SYNC",
+      "targetModule": "sync_bit"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 409,
+      "path": "fpga/default/diag.v",
+      "source": "FU-RTL-DEFAULT-DIAG",
+      "sourceModule": "diag",
+      "target": "FU-RTL-COMMON-SYNC",
+      "targetModule": "sync_bit"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 410,
+      "path": "fpga/default/diag.v",
+      "source": "FU-RTL-DEFAULT-DIAG",
+      "sourceModule": "diag",
+      "target": "FU-RTL-COMMON-SYNC",
+      "targetModule": "sync_bit"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 412,
+      "path": "fpga/default/diag.v",
+      "source": "FU-RTL-DEFAULT-DIAG",
+      "sourceModule": "diag",
+      "target": "FU-RTL-COMMON-SYNC",
+      "targetModule": "sync_bit"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 420,
+      "path": "fpga/default/diag.v",
+      "source": "FU-RTL-DEFAULT-DIAG",
+      "sourceModule": "diag",
+      "target": "FU-RTL-COMMON-SYNC",
+      "targetModule": "sync_bit"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 421,
+      "path": "fpga/default/diag.v",
+      "source": "FU-RTL-DEFAULT-DIAG",
+      "sourceModule": "diag",
+      "target": "FU-RTL-COMMON-SYNC",
+      "targetModule": "sync_bit"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 422,
+      "path": "fpga/default/diag.v",
+      "source": "FU-RTL-DEFAULT-DIAG",
+      "sourceModule": "diag",
+      "target": "FU-RTL-COMMON-SYNC",
+      "targetModule": "sync_bit"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 568,
+      "path": "fpga/default/diag.v",
+      "source": "FU-RTL-DEFAULT-DIAG",
+      "sourceModule": "diag",
+      "target": "FU-RTL-COMMON-SYNC",
+      "targetModule": "sync_bit"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 587,
+      "path": "fpga/default/diag.v",
+      "source": "FU-RTL-DEFAULT-DIAG",
+      "sourceModule": "diag",
+      "target": "FU-RTL-COMMON-SYNC",
+      "targetModule": "sync_bit"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 617,
+      "path": "fpga/default/diag.v",
+      "source": "FU-RTL-DEFAULT-DIAG",
+      "sourceModule": "diag",
+      "target": "FU-RTL-COMMON-SYNC",
+      "targetModule": "sync_bit"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 618,
+      "path": "fpga/default/diag.v",
+      "source": "FU-RTL-DEFAULT-DIAG",
+      "sourceModule": "diag",
+      "target": "FU-RTL-COMMON-SYNC",
+      "targetModule": "sync_bit"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 619,
+      "path": "fpga/default/diag.v",
+      "source": "FU-RTL-DEFAULT-DIAG",
+      "sourceModule": "diag",
+      "target": "FU-RTL-COMMON-SYNC",
+      "targetModule": "sync_bit"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 620,
+      "path": "fpga/default/diag.v",
+      "source": "FU-RTL-DEFAULT-DIAG",
+      "sourceModule": "diag",
+      "target": "FU-RTL-COMMON-SYNC",
+      "targetModule": "sync_bit"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 621,
+      "path": "fpga/default/diag.v",
+      "source": "FU-RTL-DEFAULT-DIAG",
+      "sourceModule": "diag",
+      "target": "FU-RTL-COMMON-SYNC",
+      "targetModule": "sync_bit"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 623,
+      "path": "fpga/default/diag.v",
+      "source": "FU-RTL-DEFAULT-DIAG",
+      "sourceModule": "diag",
+      "target": "FU-RTL-COMMON-SYNC",
+      "targetModule": "sync_bit"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 624,
+      "path": "fpga/default/diag.v",
+      "source": "FU-RTL-DEFAULT-DIAG",
+      "sourceModule": "diag",
+      "target": "FU-RTL-COMMON-SYNC",
+      "targetModule": "sync_bit"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 625,
+      "path": "fpga/default/diag.v",
+      "source": "FU-RTL-DEFAULT-DIAG",
+      "sourceModule": "diag",
+      "target": "FU-RTL-COMMON-SYNC",
+      "targetModule": "sync_bit"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 641,
+      "path": "fpga/default/diag.v",
+      "source": "FU-RTL-DEFAULT-DIAG",
+      "sourceModule": "diag",
+      "target": "FU-RTL-COMMON-SYNC",
+      "targetModule": "sync_bit"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 642,
+      "path": "fpga/default/diag.v",
+      "source": "FU-RTL-DEFAULT-DIAG",
+      "sourceModule": "diag",
+      "target": "FU-RTL-COMMON-SYNC",
+      "targetModule": "sync_bit"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 643,
+      "path": "fpga/default/diag.v",
+      "source": "FU-RTL-DEFAULT-DIAG",
+      "sourceModule": "diag",
+      "target": "FU-RTL-COMMON-SYNC",
+      "targetModule": "sync_bit"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 644,
+      "path": "fpga/default/diag.v",
+      "source": "FU-RTL-DEFAULT-DIAG",
+      "sourceModule": "diag",
+      "target": "FU-RTL-COMMON-SYNC",
+      "targetModule": "sync_bit"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 645,
+      "path": "fpga/default/diag.v",
+      "source": "FU-RTL-DEFAULT-DIAG",
+      "sourceModule": "diag",
+      "target": "FU-RTL-COMMON-SYNC",
+      "targetModule": "sync_bit"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 663,
+      "path": "fpga/default/diag.v",
+      "source": "FU-RTL-DEFAULT-DIAG",
+      "sourceModule": "diag",
+      "target": "FU-RTL-COMMON-SYNC",
+      "targetModule": "sync_bit"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 665,
+      "path": "fpga/default/diag.v",
+      "source": "FU-RTL-DEFAULT-DIAG",
+      "sourceModule": "diag",
+      "target": "FU-RTL-COMMON-SYNC",
+      "targetModule": "sync_bit"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 697,
+      "path": "fpga/default/diag.v",
+      "source": "FU-RTL-DEFAULT-DIAG",
+      "sourceModule": "diag",
+      "target": "FU-RTL-COMMON-SYNC",
+      "targetModule": "sync_bit"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 703,
+      "path": "fpga/default/diag.v",
+      "source": "FU-RTL-DEFAULT-DIAG",
+      "sourceModule": "diag",
+      "target": "FU-RTL-COMMON-SYNC",
+      "targetModule": "sync_bit"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 767,
+      "path": "fpga/default/diag.v",
+      "source": "FU-RTL-DEFAULT-DIAG",
+      "sourceModule": "diag",
+      "target": "FU-RTL-COMMON-SYNC",
+      "targetModule": "sync_bit"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 768,
+      "path": "fpga/default/diag.v",
+      "source": "FU-RTL-DEFAULT-DIAG",
+      "sourceModule": "diag",
+      "target": "FU-RTL-COMMON-SYNC",
+      "targetModule": "sync_bit"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 769,
+      "path": "fpga/default/diag.v",
+      "source": "FU-RTL-DEFAULT-DIAG",
+      "sourceModule": "diag",
+      "target": "FU-RTL-COMMON-SYNC",
+      "targetModule": "sync_bit"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 770,
+      "path": "fpga/default/diag.v",
+      "source": "FU-RTL-DEFAULT-DIAG",
+      "sourceModule": "diag",
+      "target": "FU-RTL-COMMON-SYNC",
+      "targetModule": "sync_bit"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 771,
+      "path": "fpga/default/diag.v",
+      "source": "FU-RTL-DEFAULT-DIAG",
+      "sourceModule": "diag",
+      "target": "FU-RTL-COMMON-SYNC",
+      "targetModule": "sync_bit"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 777,
+      "path": "fpga/default/diag.v",
+      "source": "FU-RTL-DEFAULT-DIAG",
+      "sourceModule": "diag",
+      "target": "FU-RTL-COMMON-SYNC",
+      "targetModule": "sync_bit"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 778,
+      "path": "fpga/default/diag.v",
+      "source": "FU-RTL-DEFAULT-DIAG",
+      "sourceModule": "diag",
+      "target": "FU-RTL-COMMON-SYNC",
+      "targetModule": "sync_bit"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 779,
+      "path": "fpga/default/diag.v",
+      "source": "FU-RTL-DEFAULT-DIAG",
+      "sourceModule": "diag",
+      "target": "FU-RTL-COMMON-SYNC",
+      "targetModule": "sync_bit"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 800,
+      "path": "fpga/default/diag.v",
+      "source": "FU-RTL-DEFAULT-DIAG",
+      "sourceModule": "diag",
+      "target": "FU-RTL-COMMON-SYNC",
+      "targetModule": "sync_bit"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 885,
+      "path": "fpga/default/diag.v",
+      "source": "FU-RTL-DEFAULT-DIAG",
+      "sourceModule": "diag",
+      "target": "FU-RTL-COMMON-SYNC",
+      "targetModule": "sync_bit"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 886,
+      "path": "fpga/default/diag.v",
+      "source": "FU-RTL-DEFAULT-DIAG",
+      "sourceModule": "diag",
+      "target": "FU-RTL-COMMON-SYNC",
+      "targetModule": "sync_bit"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 890,
+      "path": "fpga/default/diag.v",
+      "source": "FU-RTL-DEFAULT-DIAG",
+      "sourceModule": "diag",
+      "target": "FU-RTL-COMMON-SYNC",
+      "targetModule": "sync_bit"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 417,
+      "path": "fpga/default/diag.v",
+      "source": "FU-RTL-DEFAULT-DIAG",
+      "sourceModule": "diag",
+      "target": "FU-RTL-COMMON-SYNC",
+      "targetModule": "sync_pulse"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 418,
+      "path": "fpga/default/diag.v",
+      "source": "FU-RTL-DEFAULT-DIAG",
+      "sourceModule": "diag",
+      "target": "FU-RTL-COMMON-SYNC",
+      "targetModule": "sync_pulse"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 419,
+      "path": "fpga/default/diag.v",
+      "source": "FU-RTL-DEFAULT-DIAG",
+      "sourceModule": "diag",
+      "target": "FU-RTL-COMMON-SYNC",
+      "targetModule": "sync_pulse"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 655,
+      "path": "fpga/default/diag.v",
+      "source": "FU-RTL-DEFAULT-DIAG",
+      "sourceModule": "diag",
+      "target": "FU-RTL-COMMON-SYNC",
+      "targetModule": "sync_pulse"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 760,
+      "path": "fpga/default/diag.v",
+      "source": "FU-RTL-DEFAULT-DIAG",
+      "sourceModule": "diag",
+      "target": "FU-RTL-COMMON-SYNC",
+      "targetModule": "sync_pulse"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 889,
+      "path": "fpga/default/diag.v",
+      "source": "FU-RTL-DEFAULT-DIAG",
+      "sourceModule": "diag",
+      "target": "FU-RTL-COMMON-SYNC",
+      "targetModule": "sync_pulse"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 694,
+      "path": "fpga/default/diag.v",
+      "source": "FU-RTL-DEFAULT-DIAG",
+      "sourceModule": "diag",
+      "target": "FU-RTL-COMMON-SYNC",
+      "targetModule": "sync_word"
+    },
+    {
+      "internal": false,
+      "kind": "lexical-instantiation",
+      "line": 15,
+      "path": "fpga/sram_bench/bench.v",
+      "source": "FU-RTL-SRAM-BENCH-BENCH",
+      "sourceModule": "sram_bench_top",
+      "target": "FU-RTL-COMMON-GPMC-SLAVE",
+      "targetModule": "gpmc_slave"
+    }
+  ]
+}

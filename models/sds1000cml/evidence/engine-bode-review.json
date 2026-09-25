@@ -1,0 +1,49 @@
+{
+  "result": "reviewed-and-native-traced",
+  "requirement": "REQ-SDS-066",
+  "sourceSHA256": {
+    "app/internal/engine/bode.go": "dde4a7e21d0dd2fa426bd78a8b2b892fc30aec01a69fa14777bbaa5416cd6c40",
+    "app/internal/engine/bode_test.go": "7d2994094f6b0eff08807505b0325e2a6705bd097c81abda5e0124f8aa66e6d5",
+    "app/internal/engine/bode_breaker_test.go": "731ab6c1a441292dcbc169b5e6c5ed948d344c620763dcffd527347dec3d50b7"
+  },
+  "reviewedFixtureRanges": {
+    "app/internal/engine/engine_test.go": "1\u2013125 (fake setup), 265\u2013350 (newTestEngine and helpers)",
+    "app/internal/engine/engine.go": "418\u2013528 (New), 650\u2013675 (Bode snapshot)",
+    "app/internal/engine/engine_loop.go": "1\u201348 (SRAM dispatch), 527\u2013560 (legacy Bode evaluation gate)",
+    "app/internal/engine/sram.go": "128\u2013460 (complete runSRAM body)"
+  },
+  "originalTests": {
+    "TestBodeBreaker50": "pass",
+    "TestFundamentalHz": "pass",
+    "TestBodePointGainPhase": "pass",
+    "TestBodePureDelay": "pass",
+    "TestBodeRejectsFloorAndSubCycle": "pass",
+    "TestBodeAccumulationBinsByFrequency": "pass"
+  },
+  "log": "test-runs/engine-bode.jsonl",
+  "logSHA256": "fcc3e4616f9653ff37cc8943e25de26674a0f18e9ab2d93d0afd0c7fba0ce47b",
+  "scope": "Complete Bode implementation and two original test files reviewed. Eighteen declarations and three types linked to REQ-SDS-066. Six original tests and nine overlay cases pass under race detector; no acquisition loop or hardware qualification.",
+  "findings": [
+    "SetBodeMode masks channels to one bit and retains bins on channel changes; ClearBode does not reset capture ordinal.",
+    "Too-short records, nonpositive sample interval and undersized channels return before invalidating an earlier live point. Other selected rejection paths invalidate live status.",
+    "Direct bodeEval does not enforce armed/locked state; its reviewed production caller in legacy oneFrame gates on lock, observeOK and BodeOn.",
+    "The 50-family breaker executes four DUT relationships, but does not assert the advertised no-point condition for every degenerate family; accepted points are checked for finiteness, Nyquist and phase range.",
+    "Run dispatches nonnil SRAM configurations to runSRAM and returns. SRAM Bode integration must be reviewed separately; synthetic direct-evaluator tests do not establish that path.",
+    "Complete runSRAM body has no Bode accumulation call; the source search found the sole production bodeEval invocation in legacy oneFrame. Model the missing SRAM integration explicitly, without inferring hardware measurement support from direct evaluator tests.",
+    "Gain uses raw byte DFT magnitude ratio; changing channel vertical scales does not change the computed gain. Calibrated physical transfer magnitude is not established.",
+    "Point Seq advances per accepted evaluation, including repeated frame ordinals; it is not the Frame.Seq field.",
+    "At 4096 stored bins a new frequency still updates the live point/ordinal, but not the curve; existing bins remain replaceable. Returned points are detached value copies."
+  ],
+  "reviewedRangeFileSHA256": {
+    "app/internal/engine/engine_test.go": "3a92cb8cbaa54bd4d4f4a1eefa01aaf0ec0e336702f34d47a38cf5a284fccecf",
+    "app/internal/engine/engine.go": "16908439527c0264eaa92ac9c0a3a252dbcad5b5d8bf5d2ae0723ec09bc9e6f7",
+    "app/internal/engine/engine_loop.go": "5d0e794c4174ccd89c6636244c425ff4377c62de9e39c0ddf59c5161d32604e5",
+    "app/internal/engine/sram.go": "68c8f87091ea6a2d962b4ee607f7463336082404b100f781df68601d94827a3c"
+  },
+  "testEvidence": "engine-bode-test-run.json",
+  "limitations": [
+    "Six synthetic unit tests directly call the evaluator and cannot establish legacy trigger/observe gating or SRAM runtime accumulation.",
+    "The 50-family x four-relationship breaker checks accepted-point bounds and selected gain relations; universal degenerate-reference rejection is not asserted.",
+    "Race detector covers only executed test paths; concurrent mode/evaluation lifecycle is not fully qualified."
+  ]
+}

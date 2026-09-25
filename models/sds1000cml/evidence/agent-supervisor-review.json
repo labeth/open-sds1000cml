@@ -1,0 +1,65 @@
+{
+  "scope": "Complete supervisor implementation/test review integrated into REQ-SDS-028 and 117; eighteen exact race-enabled outcomes plus separate limitation characterizations. No physical qualification.",
+  "sourceSHA256": {
+    "ota/internal/agent/supervise.go": "798e631bebd28eb8b24f75d0533311e01b3023240b4c881a4131c4d1605535ff",
+    "ota/internal/agent/supervise_test.go": "f8eb85c95aca937706e5d9ca152ed5cb08021dec9db09d349f0a343fbbd49df3"
+  },
+  "functions": [
+    "superviseLoop",
+    "idleWait",
+    "pickSlot",
+    "orphanAppPid",
+    "superviseAdopted",
+    "runAppOnce",
+    "terminate",
+    "killPid",
+    "bumpFail",
+    "rollbackIfNeeded",
+    "clearEmergency",
+    "setAppState",
+    "ctlRequest"
+  ],
+  "findings": [
+    "Supervisor acts only when TakenOver and not paused. It reclaims identified factory holders before adoption or launch. This gate depends on factoryCandidates classification and reclaimBus exceptions.",
+    "pickSlot chooses forced emergency when available, otherwise active, confirmed and emergency. Missing binaries produce an idle retry state.",
+    "orphanAppPid accepts a parsed PID greater than one if Alive reports true. It does not validate executable, process start time or ownership, so a reused or unrelated live PID can be adopted.",
+    "Adoption polls an existing health token and treats its presence as initial health, resetting observation time. It resets app state including failure count. Any control operation tears down the adopted PID; only stop sets paused. Adopted exits/staleness bump failure but do not directly invoke rollback.",
+    "runAppOnce launches the slot in a new process group, sets health/GPMC/framebuffer/drain environment and relies on existing descriptor flags for inheritance. Start failure bumps failure and waits without rollbackIfNeeded.",
+    "Agent Stop leaves a launched app running for future adoption. PID file write/removal errors are ignored. Control operations terminate the group, report success and clear failure count even if termination did not conclusively complete.",
+    "HealthyOnce plus elapsed StableSecs confirms a nonemergency slot only when that run ends; the exit reason can be stale health or a nonzero exit. Confirmation errors are ignored, yet an app.confirmed event is emitted and failures reset. This is not continuous successful health qualification.",
+    "Terminate sends group SIGTERM then SIGKILL after three seconds and waits at most another two seconds, ignoring signal errors. killPid targets only one PID, waits up to three seconds then sends SIGKILL without waiting for final death.",
+    "Rollback threshold switches active to confirmed, ignoring SetActive error while emitting rollback and resetting failures. Failing confirmed may force emergency; absence of an alternative leaves failure count intact.",
+    "ctlRequest has separate send and reply timeouts and no stopped-channel case. A timed-out queued request is not cancelled and can execute later. idleWait rejects unknown ops, but active/adopted paths treat any op as a termination request.",
+    "Eighteen tests cover slot ladder, rollback thresholds, PID parsing, adopted control/no-health teardown, idle control and timeout, healthy stable exit, immediate crash and stale-health termination below StableSecs. They do not cover stale termination after StableSecs, start-failure rollback, ignored persistence errors, process identity validation or late execution after control timeout.",
+    "Temporary-agent overlay confirms a ctlRequest reply timeout leaves the stop request queued; later idleWait executes it and sets paused despite the earlier caller error. No process or device operation is involved.",
+    "Race-enabled temporary shell fixtures dynamically reproduce confirmation after stale-health termination and exit status 7 once HealthyOnce and StableSecs hold. A missing executable at MaxFails=1 increments failures but leaves active B unchanged. These are characterization assertions, not successful qualification outcomes."
+  ],
+  "testLog": "test-runs/agent-supervisor.jsonl",
+  "reviewedTests": [
+    "TestPickSlotNothingInstalled",
+    "TestPickSlotActive",
+    "TestPickSlotFallsBackToConfirmed",
+    "TestPickSlotEmergencyBackstop",
+    "TestPickSlotForcedEmergencyWinsOverActive",
+    "TestRollbackBelowThresholdDoesNothing",
+    "TestRollbackToConfirmedAtThreshold",
+    "TestRollbackToEmergencyWhenConfirmedCrashLoops",
+    "TestRollbackExhaustedKeepsRetrying",
+    "TestRollbackWhileOnEmergencyOnlyLogs",
+    "TestOrphanAppPid",
+    "TestSuperviseAdoptedTornDownByControl",
+    "TestSuperviseAdoptedKillsWhenNoHealthEverArrives",
+    "TestIdleWaitServicesControlOps",
+    "TestCtlRequestTimesOutWithoutSupervisor",
+    "TestRunAppOnceStableRunConfirmsSlot",
+    "TestRunAppOnceCrashCountsAsFailure",
+    "TestRunAppOnceStaleHealthGetsTerminated"
+  ],
+  "characterization": "agent-control-characterization.json",
+  "characterizations": [
+    "agent-control-characterization.json",
+    "agent-supervisor-characterization.json"
+  ],
+  "integration": "Source requirement comments integrated; runtime/device evidence remains limited to recorded checks.",
+  "result": "integrated-source-review-with-explicit-limits"
+}

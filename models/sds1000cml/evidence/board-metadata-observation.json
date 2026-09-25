@@ -1,0 +1,87 @@
+{
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "scope": "Supplementary read-only observation9ns after first record_done && ready. Original bench assertions and all instrument source bytes remain unchanged. This does not replace original results or establish the source of the mismatch.",
+  "observerSource": "`timescale 1ns/1ps\nmodule board_metadata_observer;\n initial begin\n  wait(tb.dut.record_done && tb.dut.ready);\n  #9;\n  $display(\"OBSERVED metadata length=%0d origin=%0d position=%0d\",tb.dut.record_length,tb.dut.origin,tb.dut.position);\n end\nendmodule\n",
+  "observerSHA256": "561705b7c3bb36bdddf5148bea817d9404d3fb7faeec45d0f9ab5a3fa27008e7",
+  "runtimeInputSHA256": {
+    "fpga/acq_sram/adc_unpack.v": "d203e4037ed957a73458f5c8238184c7cfa2abb1ca10ca6de261be27f2f006cc",
+    "fpga/acq_sram/record.v": "0234ec19ca0551bb260c0ddab2051f0162f3c49e0716d4434b0006b5740f0c86",
+    "fpga/acq_sram/sim/ddr_model.v": "ace57d159f0b1b9edd4e9c82b1496fab3b79b7c056b9aaa2da66698e65d164f2",
+    "fpga/acq_sram/sim/tb_top.v": "dd1e47c6f51ddf2a52e3f0653b922c1a6451f464612ab8a9f9dc8d191e04455f",
+    "fpga/acq_sram/sim/tb_top_interleave.v": "daf7e9884dbaaec5725617066f1f02a65820648375707ab00f7da42352ade54f",
+    "fpga/acq_sram/top.v": "7c61f8c1628fbc48074fbd39387b4322dbefc6da72130323fe124a0738412704",
+    "fpga/acq_sram/transport.v": "814e344e31c1283a4d507e6d489179d0d1ab5b8c05404ed7d51c4047d5ca095a",
+    "fpga/common/ddio_pair.v": "0f32c77bac09fb1fb4a8069f7480743e8b0dd05669da22aa68e171798d33435c",
+    "fpga/common/gpmc_slave.v": "9d644b672324e0e5675b65e7375f60e14761219d0d70e390a00e76d63560aa0e",
+    "fpga/common/lane_in.v": "1777785598b0670d0ec92cc5402bd27b78d939aafdab443796892deecad8a719",
+    "fpga/default/lanemap_seed.vh": "bb6034a2616bb897cdb114aabf77d7c0870d30016dc96fc95c6bb2451d49362a"
+  },
+  "cases": [
+    {
+      "id": "legacy-base",
+      "compileCommand": [
+        "iverilog",
+        "-g2012",
+        "-s",
+        "tb",
+        "-s",
+        "board_metadata_observer",
+        "-I",
+        "fpga/default",
+        "-o",
+        "/tmp/sds-board-metadata-5ofwyg2m/legacy-base",
+        "-DSIM",
+        "fpga/acq_sram/sim/tb_top.v",
+        "fpga/acq_sram/top.v",
+        "fpga/acq_sram/record.v",
+        "fpga/acq_sram/transport.v",
+        "fpga/common/gpmc_slave.v",
+        "fpga/acq_sram/sim/ddr_model.v",
+        "fpga/acq_sram/adc_unpack.v",
+        "fpga/common/lane_in.v",
+        "fpga/common/ddio_pair.v",
+        "observer.v"
+      ],
+      "compileExitCode": 0,
+      "compileOutput": "",
+      "simulationCommand": [
+        "vvp",
+        "/tmp/sds-board-metadata-5ofwyg2m/legacy-base"
+      ],
+      "simulationExitCode": 1,
+      "simulationOutput": "OBSERVED metadata length=524288 origin=17 position=17\nFATAL: fpga/acq_sram/sim/tb_top.v:25: capture metadata\n       Time: 10486465000  Scope: tb\n"
+    },
+    {
+      "id": "legacy-interleave",
+      "compileCommand": [
+        "iverilog",
+        "-g2012",
+        "-s",
+        "tb",
+        "-s",
+        "board_metadata_observer",
+        "-I",
+        "fpga/default",
+        "-o",
+        "/tmp/sds-board-metadata-5ofwyg2m/legacy-interleave",
+        "-DSIM",
+        "-DINTERLEAVE",
+        "fpga/acq_sram/sim/tb_top_interleave.v",
+        "fpga/acq_sram/top.v",
+        "fpga/acq_sram/record.v",
+        "fpga/acq_sram/transport.v",
+        "fpga/common/gpmc_slave.v",
+        "fpga/acq_sram/sim/ddr_model.v",
+        "observer.v"
+      ],
+      "compileExitCode": 0,
+      "compileOutput": "",
+      "simulationCommand": [
+        "vvp",
+        "/tmp/sds-board-metadata-5ofwyg2m/legacy-interleave"
+      ],
+      "simulationExitCode": 1,
+      "simulationOutput": "OBSERVED metadata length=524288 origin=17 position=17\nFATAL: fpga/acq_sram/sim/tb_top_interleave.v:29: capture metadata\n       Time: 2097492000  Scope: tb\n"
+    }
+  ]
+}

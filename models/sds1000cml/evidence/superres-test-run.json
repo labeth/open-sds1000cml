@@ -1,0 +1,59 @@
+{
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "result": "pass",
+  "runtimeInputSHA256": {
+    "app/internal/superres/comp.go": "23f7dea5ffb519a812ef3838cb2738bdd7bf16f7dd018ecf6e8c5aedc9ebe89e",
+    "app/internal/superres/comp_jsparity_test.go": "370be8429d050c9fdf79afff81719a258d022521eefa558c6624d44284edf87f",
+    "app/internal/superres/comp_test.go": "cd8b20eb9ded7034ee593d2d0fc4eb87ebb64f273ee7539a0070431a88b62e32",
+    "app/internal/superres/srfuzz_test.go": "8bddb0e000307b4ba3c13549a403fc5c0bb081315fec6efe9379d8b4182dae24",
+    "app/internal/superres/superres.go": "629f814efea28e12c3c6b6c1fb5d22f5da852525480f82c8fbad66e718ebd2c7",
+    "app/internal/superres/superres_gate.go": "bcd3d24060e74044f13f8e3e6f77f90b973815abbc076a212a0e36e487a84f85",
+    "app/internal/superres/superres_parity_test.go": "1c2d720bee84bc52d9214b4288fb2f7acbfc3296c068385cafbf8576a78f4d69",
+    "app/internal/superres/superres_result.go": "6d79fa8fba4354afa2edfd9b51eee3f5bde05250fae89ae176226ec8a6065af9",
+    "app/internal/superres/superres_stack.go": "a0150c8d211b09d0360c332aebbc928291ad8e7f6bc4e0fb685ce3b1df32659d",
+    "app/internal/superres/superres_template.go": "4bb1899420fc6e1704bbc46fc3dc8b266ef91b4d63bc61bbac416a7e6a3b56c8",
+    "app/internal/superres/comp_parity_driver.cjs": "5b593b8fe36dbd9b44a9bb54010ab68ea740c0e115d9723c6165248e5b80ccdd",
+    "app/internal/superres/parity_driver.cjs": "830a8da515b248f2f2dadd120774c5a55eec92efde608ad5b7ecb8a1756963cd",
+    "app/internal/testenv/testenv.go": "507e0b4863d534d43b9687339c2c839f52d7ca5cc74ee2e6ce01ed76cc0acdd3",
+    "app/go.mod": "cca8237f0d08bfb15c1dcb862e4402bc7e9903a9fd94d0f1bab07290929f922a",
+    "app/internal/web/superres.js": "a9229bfb0c6cf75370005b5c68b911ee4224ba517d9d20dd824577314e94f82a",
+    "app/internal/web/superres_comp.js": "3d551ee3ceca857a1ed1728f6b236bcf864801a3af483f8284714379ad3d6b33"
+  },
+  "command": [
+    "go",
+    "test",
+    "-race",
+    "-json",
+    "-count=1",
+    "-timeout=120s",
+    "./internal/superres",
+    "-run",
+    "^(TestCompAutoCaps|TestCompCurveBasics|TestCompParityJS|TestCompensateContract|TestParityJS|TestParityManualGate|TestSuperresFuzzNoPanic)$"
+  ],
+  "environment": {
+    "GOPROXY": "off",
+    "CI_REQUIRE_BROWSER": "1"
+  },
+  "tests": {
+    "TestCompParityJS": "pass",
+    "TestCompCurveBasics": "pass",
+    "TestCompAutoCaps": "pass",
+    "TestCompensateContract": "pass",
+    "TestSuperresFuzzNoPanic": "pass",
+    "TestParityJS": "pass",
+    "TestParityManualGate": "pass"
+  },
+  "log": "test-runs/superres-reviewed.jsonl",
+  "logSHA256": "41e836838baf830c6c7372cad49f2b9c60a203a08470acb1dbb759cb39de09e3",
+  "nativeEligibleTests": [
+    "TestCompAutoCaps",
+    "TestCompCurveBasics",
+    "TestCompParityJS",
+    "TestCompensateContract",
+    "TestParityJS",
+    "TestParityManualGate",
+    "TestSuperresFuzzNoPanic"
+  ],
+  "scope": "Complete Go processing package plus two Node harnesses; synthetic host behavior only. Browser production source and physical calibration are not fully reviewed or qualified by this batch.",
+  "nodeVersion": "v22.20.0"
+}

@@ -1,0 +1,25 @@
+{
+  "source": "app/internal/scpi/wffuzz_test.go",
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "scope": "Reviewed Go test outcomes; passing assertions contribute partial requirement evidence.",
+  "sourceSHA256": "cffc85c843338470ca75fc70b332217eac95f74d2296390a9146663c77840362",
+  "logs": {
+    "test-runs/scpi.jsonl": "be724f6504b27c0a93506cfb8fbcf8a1ceb8a7188da46210eb706611640e22ab"
+  },
+  "tests": [
+    {
+      "name": "TestWaveformReadoutFuzz",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-024"
+      ]
+    }
+  ],
+  "results": [
+    {
+      "requirement": "REQ-SDS-024",
+      "status": "partial",
+      "notes": "1 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    }
+  ]
+}

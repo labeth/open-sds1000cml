@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-DECODE
 package decode
 
 import (
@@ -13,6 +14,7 @@ import (
 //	Bitrate   0 => auto-infer the bit period from the pulse spacing; else bits/s
 //	          (typically 100000 high-speed, or 12500 low-speed).
 //	Threshold /HaveThr override the auto NULL (mid) level of the tri-level slicer.
+// TRLC-LINKS: REQ-SDS-018
 type ARINC429Cfg struct {
 	Bitrate   int
 	Threshold float64
@@ -40,6 +42,7 @@ type ARINC429Cfg struct {
 // segmented on that inter-word gap and each COMPLETE 32-bit word is decoded;
 // a word truncated by the capture start/end (a partial with < 32 pulses) is
 // dropped, since a free-running scope starts at a random phase.
+// TRLC-LINKS: REQ-SDS-018
 func DecodeARINC429(codes []uint8, colTimeS float64, cfg ARINC429Cfg) Result {
 	const proto = "arinc429"
 	const minSPB = 4.0

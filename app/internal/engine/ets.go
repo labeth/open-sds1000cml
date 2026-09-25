@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
 package engine
 
 import (
@@ -24,6 +25,7 @@ const (
 
 // etsPlan picks the phase-bin factor for a tdiv (nearest row; default the
 // 2 ns row) and derives nCols = 0xA000/factor + 10.
+// TRLC-LINKS: REQ-SDS-019
 func etsPlan(tdivS float64) (factor, nCols int) {
 	rows := []struct {
 		tdiv   float64
@@ -42,8 +44,10 @@ func etsPlan(tdivS float64) (factor, nCols int) {
 }
 
 // ETSEligible reports whether ETS may run at this tdiv.
+// TRLC-LINKS: REQ-SDS-019
 func (b Band) ETSEligible() bool { return b.TdivS <= 50e-9*(1+1e-6) }
 
+// TRLC-LINKS: REQ-SDS-019
 func (e *Engine) etsReset() {
 	e.etsSum1, e.etsSum2 = nil, nil
 	e.etsCnt = nil
@@ -54,6 +58,7 @@ func (e *Engine) etsReset() {
 // etsFrame runs one equivalent-time frame: up to 40 sub-acquisitions or
 // 650 ms, each a real capture on the ordinary halt engine, phase-binned by
 // the software crossing and interleaved into the persistent accumulator.
+// TRLC-LINKS: REQ-SDS-019
 func (e *Engine) etsFrame(norm bool) {
 	factor, nCols := etsPlan(e.band.TdivS)
 	if len(e.etsCnt) != nCols || len(e.etsCov) != factor {
@@ -217,6 +222,7 @@ func (e *Engine) etsFrame(norm bool) {
 // etsRebuild renders the accumulator: filled columns are means of real
 // samples; interior gaps are linearly interpolated between filled columns;
 // the ends extend the nearest filled column.
+// TRLC-LINKS: REQ-SDS-019
 func (e *Engine) etsRebuild(f *Frame, nCols int) {
 	render := func(sum []float64, out []uint8) {
 		lastFilled := -1
@@ -256,6 +262,7 @@ func (e *Engine) etsRebuild(f *Frame, nCols int) {
 
 // etsDrain pops one sub-acquisition into the ETS scratch buffers, bounded by
 // what the fabric reports available (same rule as drainQuiet).
+// TRLC-LINKS: REQ-SDS-019
 func (e *Engine) etsDrain(cols int) {
 	rem := e.r(iface.SelBurstRemain)
 	n := int(rem & iface.BurstRemainRemainMask)

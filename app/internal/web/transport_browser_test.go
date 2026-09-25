@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-WEB
 package web
 
 import (
@@ -16,6 +17,7 @@ import (
 // measurements in a real browser, and that a dead /api/frame.bin STOPS frames
 // (no silent fallback that could fake-pass the other suites) yet self-heals on
 // retry when the endpoint returns. Skips when node/Playwright is absent (fails under CI_REQUIRE_BROWSER=1).
+// TRLC-LINKS: REQ-SDS-023, REQ-SDS-180
 func TestTransportBrowser(t *testing.T) {
 	testenv.NeedNode(t)
 	const N = 2048

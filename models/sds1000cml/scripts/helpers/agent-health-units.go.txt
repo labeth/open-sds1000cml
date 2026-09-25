@@ -1,0 +1,12 @@
+// Test-only characterization of the existing wire representation, not a requirement pass.
+func TestModelReviewAgentHealthUnits(t *testing.T) {
+	// A time.Duration value of 1,000,000 is exactly one millisecond.
+	data, err := json.Marshal(healthStatus{HealthyOnce: true, SinceChange: 1000000})
+	if err != nil { t.Fatal(err) }
+	var wire map[string]json.RawMessage
+	if err := json.Unmarshal(data, &wire); err != nil { t.Fatal(err) }
+	if got := string(wire["since_change_ms"]); got != "1000000" {
+		t.Fatalf("baseline duration representation changed: got %s; expected 1000000 nanoseconds", got)
+	}
+	t.Logf("one millisecond encoded as %s: since_change_ms carries nanoseconds", data)
+}

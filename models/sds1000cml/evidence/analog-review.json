@@ -1,0 +1,77 @@
+{
+  "scope": "Pinned analog package source and the exact existing tests; comment-only annotation overlay. Source-derived requirements remain draft.",
+  "requirements": {
+    "REQ-SDS-015": {
+      "implementation": "New seeds both channels at detent 8 without transport calls. SetVdiv emits the complete relay word, waits 400 microseconds, then gains CH2 before CH1. Non-default calibration selects per-unit gain bytes.",
+      "tests": [
+        "TestSeedDoesNotEmit",
+        "TestSetVdivSequence",
+        "TestRelayWordReference",
+        "TestPlanVdiv",
+        "TestZoomAndAnalogVdiv",
+        "TestCalibratedGainAndZero"
+      ],
+      "limits": [
+        "Fake transport does not test SPI ioctls, physical CS framing or settling accuracy.",
+        "SetVdiv changes the software detent before transport success; failures are returned without rolling back that shadow.",
+        "No dedicated transport-error tests are present."
+      ]
+    },
+    "REQ-SDS-095": {
+      "implementation": "Fixed 100 codes per input volt, rounded about calibrated zero and clamped first to the tier then uint16 rails. Successful range changes restage a requested offset only when the staging callback exists.",
+      "tests": [
+        "TestCalibratedGainAndZero",
+        "TestOffsetKPerDivision",
+        "TestOffsetTierRangeAndClamp",
+        "TestOffsetCodeMapping"
+      ],
+      "limits": [
+        "Comments naming 50/VDIV or per-division slope are stale; assertions exercise 100.",
+        "No dedicated final-rail, callback sequencing or reanchoring test is present.",
+        "Sensitive-tier physical offset authority is explicitly questioned by source comments; arithmetic tests cannot establish it."
+      ]
+    },
+    "REQ-SDS-096": {
+      "implementation": "Coupling state is independent of SPI relay settings. DC aliases input, AC shifts a copied record by its rounded mean to 128 with rail clipping, GND creates a constant-128 copy.",
+      "tests": [
+        "TestCouplingIsSoftwareOnly",
+        "TestCoupleDisplay",
+        "TestRemoveDC"
+      ],
+      "limits": [
+        "TestRemoveDC checks a uint8 value greater than 255, which can never be true; that assertion cannot prove clipping.",
+        "The test suite checks AC input preservation and simple means, not all rounding/clipping boundaries."
+      ]
+    },
+    "REQ-SDS-097": {
+      "implementation": "Per-channel probe state defaults to one; SetProbe changes no SPI state and clamps only x<1. ProbeFactor returns one when stored p>=1 is false.",
+      "tests": [],
+      "limits": [
+        "No dedicated probe tests in the analog package.",
+        "Arbitrary factors >=1, infinity and NaN are accepted by SetProbe; the 1/10/100 comment is not enforced.",
+        "TrigCode and TrigVolts read stored probe state directly, so ProbeFactor fallback is not global sanitization."
+      ]
+    },
+    "REQ-SDS-098": {
+      "implementation": "Nonzero-CPV channel/detent override, then nominal detent default, then global 31437/911. Probe conversion is reciprocal for valid nonzero finite coefficients; TrigCode returns an unclamped float.",
+      "tests": [],
+      "limits": [
+        "No dedicated trigger calibration tests in the analog package.",
+        "No finite/positive coefficient validation; zero CPV removes override and invalid detents are ignored.",
+        "Global-fit bench claims in source comments are historical claims, not fresh physical qualification."
+      ]
+    }
+  },
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "sourceSHA256": {
+    "app/internal/analog/frontend.go": "89dea9dfb37525dc9dd79a07efa6032b814f71cb4035495a682aa6f388034d51",
+    "app/internal/analog/spi.go": "78a678c19b2bb2c4b9f4aecd54e3894d027f56078461739eef2fe678a060277c",
+    "app/internal/analog/trigcal.go": "7173d3a9ee0ee7bdf98bd1b03d69cc807b85dcae4beecea95bc5515068eb5312",
+    "app/internal/analog/frontend_test.go": "598127072b69306f70b1cfcf7706050450773c1e0a08b28a8497a71c111fd6bd"
+  },
+  "testLog": "test-runs/analog.jsonl",
+  "testLogSHA256": "0e464c3b4d6d557a5d6aabc52737684f04350fe50a6b8f0721901f2d66f82bc9",
+  "testResult": "12 existing tests passed with race detector; requirement-level status remains partial or not-run.",
+  "annotationSupersededBy": "remaining-go-types-source-review.json",
+  "annotationNote": "Historical reviewed source hashes are retained. The later type-comment transition has identical Go tokens; current exact source recovery is recorded in annotation-overlay.json."
+}

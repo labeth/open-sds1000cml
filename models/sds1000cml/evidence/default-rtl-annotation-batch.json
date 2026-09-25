@@ -1,0 +1,160 @@
+{
+  "status": "integrated-with-explicit-verification-limits",
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "files": [
+    {
+      "path": "fpga/default/adc_front.v",
+      "owner": "FU-RTL-DEFAULT-ADC-FRONT",
+      "modules": {
+        "adc_front": [
+          "REQ-SDS-194"
+        ]
+      }
+    },
+    {
+      "path": "fpga/default/drain.v",
+      "owner": "FU-RTL-DEFAULT-DRAIN",
+      "modules": {
+        "drain": [
+          "REQ-SDS-196"
+        ]
+      }
+    },
+    {
+      "path": "fpga/default/sim/tb_adc_front.v",
+      "owner": "FU-RTL-DEFAULT-TESTS",
+      "modules": {
+        "tb_adc_front": [
+          "REQ-SDS-194"
+        ]
+      }
+    },
+    {
+      "path": "fpga/default/sim/tb_drain.v",
+      "owner": "FU-RTL-DEFAULT-TESTS",
+      "modules": {
+        "tb_drain": [
+          "REQ-SDS-196"
+        ]
+      }
+    },
+    {
+      "path": "fpga/default/capture.v",
+      "owner": "FU-RTL-DEFAULT-CAPTURE",
+      "modules": {
+        "capture": [
+          "REQ-SDS-195"
+        ]
+      }
+    },
+    {
+      "path": "fpga/default/sim/tb_capture.v",
+      "owner": "FU-RTL-DEFAULT-TESTS",
+      "modules": {
+        "tb_capture": [
+          "REQ-SDS-195"
+        ]
+      }
+    },
+    {
+      "path": "fpga/default/default.v",
+      "owner": "FU-RTL-DEFAULT-DEFAULT",
+      "modules": {
+        "default_top": [
+          "REQ-SDS-060",
+          "REQ-SDS-194",
+          "REQ-SDS-195",
+          "REQ-SDS-196",
+          "REQ-SDS-197"
+        ]
+      }
+    },
+    {
+      "path": "fpga/default/sim/tb_top.v",
+      "owner": "FU-RTL-DEFAULT-TESTS",
+      "modules": {
+        "tb_top": [
+          "REQ-SDS-060",
+          "REQ-SDS-194",
+          "REQ-SDS-195",
+          "REQ-SDS-196",
+          "REQ-SDS-197"
+        ]
+      }
+    },
+    {
+      "path": "fpga/default/diag.v",
+      "owner": "FU-RTL-DEFAULT-DIAG",
+      "modules": {
+        "diag": [
+          "REQ-SDS-060",
+          "REQ-SDS-197",
+          "REQ-SDS-198"
+        ]
+      }
+    },
+    {
+      "path": "fpga/default/sim/tb_diag.v",
+      "owner": "FU-RTL-DEFAULT-TESTS",
+      "modules": {
+        "tb_diag": [
+          "REQ-SDS-060",
+          "REQ-SDS-197",
+          "REQ-SDS-198"
+        ]
+      }
+    }
+  ],
+  "modules": 10,
+  "newContracts": [
+    {
+      "id": "REQ-SDS-194",
+      "title": "Default encode and E1 sample assembly",
+      "text": "The instrument shall generate the four default encode rates on enabled differential pairs and assemble the default record sample from the selected E1 channel lane maps.",
+      "owner": "FU-RTL-DEFAULT-ADC-FRONT",
+      "notes": "All pairs use ph0, with capture on cap_clk; default top fixes the lane maps. Standalone runtime remap tests do not establish arbitrary timing or ten-byte interleaved acquisition."
+    },
+    {
+      "id": "REQ-SDS-195",
+      "title": "Default internal record capture",
+      "text": "The instrument shall retain default-image samples in the internal circular record memory with configured decimation, channel packing, pretrigger history, posttrigger completion and trigger-position metadata.",
+      "owner": "FU-RTL-DEFAULT-CAPTURE",
+      "notes": "20480 words, separate from external SRAM profile. AUTO fires at filled prehistory; NORM waits for trigger. Stream runs continuously and flags reader collision. Triggered HALT length can trail committed memory by up to two words; Q16 fraction completes after a pipeline delay. TSRC substitutes writer-index patterns and resets on GO."
+    },
+    {
+      "id": "REQ-SDS-196",
+      "title": "Default drain window and pop accounting",
+      "text": "The instrument shall latch the default drain window on record completion or rewind, clip it at the record end, clamp excess frozen-record reads, and account for every pop and observed underrun.",
+      "owner": "FU-RTL-DEFAULT-DRAIN",
+      "notes": "Stream pops advance unconditionally including empty reads; out-of-range stream rewind clamps to REC_LAST rather than modulo. Rewind clears pop count while preserving monitor statistics. These behaviors differ from bounded external-SRAM recall."
+    },
+    {
+      "id": "REQ-SDS-197",
+      "title": "Default diagnostic pads and snapshot capture",
+      "text": "The instrument shall expose default diagnostic pad controls, baked lane-map readback, lane activity, programmable bus patterns and bounded snapshot records through the indexed register window.",
+      "owner": "FU-RTL-DEFAULT-DIAG",
+      "notes": "ADC hold overrides output masks. Clock mux changes require idle state and configuration stability. Snapshot is2048 words; mode7 has a partial final five-word group, slice6 omits F7, and BUSCAP captures one sample per two writer clocks. Independent-bit crossings do not establish arbitrary vector coherence."
+    },
+    {
+      "id": "REQ-SDS-198",
+      "title": "Default counted-clock admission and budget",
+      "text": "The instrument shall admit keyed default diagnostic clock bursts only when configured posture and guard conditions permit, enforce the requested finite edge budget and a cumulative 4096-edge ceiling, and report refusal, abort and edge observations.",
+      "owner": "FU-RTL-DEFAULT-DIAG",
+      "notes": "One crank output at a time; D1 requires divider>=2; G2 crank is unavailable; SNAP_ON_ARM is not wired. Clear retains lifetime count. Departure detection and abort cross clock domains with latency. Host configuration must remain stable; model does not certify electrical safety or arbitrary-write protection."
+    }
+  ],
+  "sourceSHA256": {
+    "fpga/default/adc_front.v": "1c601a42b2aaf5d5052c4b26bcebeb762134841a9fa12c500bbaf0fa9439b335",
+    "fpga/default/drain.v": "666c141e0f25195e363a7b08bd711113be13e13a45291f8428a675c6ffd72e1b",
+    "fpga/default/sim/tb_adc_front.v": "eb1889560e74867df5f4a396c7c53cb0b9fd5bb7d024a3daf4bcb9283c62bf21",
+    "fpga/default/sim/tb_drain.v": "fc04526a01b80ac453cc1ba6921dab4a2f0cb73f6e562522eed15d303518f824",
+    "fpga/default/capture.v": "b08676bd94b5963be6d7f9233d382d04f0db5c2627a7d7d1964e9b07a23df781",
+    "fpga/default/sim/tb_capture.v": "fea39685f6c8cb4c617c8a0d7c6fa7944e971dc116f555d613b754381b32a66b",
+    "fpga/default/default.v": "081fbf5e64df17b89a6057e385a5cdfcb910fe79cb90db6608ad8a78acc5e4d3",
+    "fpga/default/sim/tb_top.v": "344ee62ed6ac70790449bcb1ebc9e3b3afcbb3a28fe57597130a044255de947f",
+    "fpga/default/diag.v": "e75b0595437380b3410399042e88fb4bfa4a5bfecffb8a1fcf47a47db4fa7a01",
+    "fpga/default/sim/tb_diag.v": "443b937d5b6208ac65d71f850f74fe45d8f0b7c98f0d7807a9208429b9026948"
+  },
+  "scope": "All ten default RTL implementation/test files reviewed;2872 lines. Original suite execution pending result capture; no native annotations yet. Source-derived behavior, test omissions and apparent bench defects remain explicit.",
+  "executionEvidence": "default-rtl-review-test-run.json"
+}

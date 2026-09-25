@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-BUS
 package bus
 
 import (
@@ -24,6 +25,7 @@ const (
 // cycleGapWords computes the CONFIG6/CONFIG7 write sequence for a same-CS
 // cycle-to-cycle gap of delay GPMC clocks: (old6 &^ gap bits) | delay<<8 |
 // SAMECSEN, with CSVALID cleared around the retiming and restored exactly.
+// TRLC-LINKS: REQ-SDS-131
 func cycleGapWords(old6, old7, delay uint32) (new6, quiesced7 uint32) {
 	new6 = (old6 &^ uint32(c6GapMask)) | (delay << 8) | c6SameCSEn
 	quiesced7 = old7 &^ uint32(c7CSValid)
@@ -31,6 +33,7 @@ func cycleGapWords(old6, old7, delay uint32) (new6, quiesced7 uint32) {
 }
 
 // applyCS1CycleGap performs the sequence against a register block.
+// TRLC-LINKS: REQ-SDS-131
 func applyCS1CycleGap(r regs32, delay uint32) error {
 	if delay > cs1GapMaxDly {
 		return fmt.Errorf("gpmc: cycle gap %d exceeds the 4-bit field", delay)
@@ -49,6 +52,7 @@ func applyCS1CycleGap(r regs32, delay uint32) error {
 }
 
 // programCS1CycleGap maps the GPMC block and applies the gap.
+// TRLC-LINKS: REQ-SDS-131
 func programCS1CycleGap(delay uint32) error {
 	f, err := os.OpenFile("/dev/mem", os.O_RDWR|syscall.O_SYNC, 0)
 	if err != nil {
@@ -70,6 +74,7 @@ func programCS1CycleGap(delay uint32) error {
 // mapped and how wide they are is a fact about the running system, not about
 // our fabric, and it is the only way to find out whether anything besides the
 // Cyclone (CS1) and its configuration port (CS3) sits on this bus.
+// TRLC-LINKS: REQ-SDS-133
 type CSRegion struct {
 	CS      int       `json:"cs"`
 	Valid   bool      `json:"valid"`    // CONFIG7 CSVALID
@@ -81,10 +86,12 @@ type CSRegion struct {
 
 // gpmcCSConfig is CONFIG<n>_<cs>: the per-CS block starts at 0x60 and is
 // 0x30 long, CONFIG1 first (AM335x TRM 7.5).
+// TRLC-LINKS: REQ-SDS-133
 func gpmcCSConfig(cs, n int) uint32 { return uint32(0x60 + cs*0x30 + (n-1)*4) }
 
 // maskToMB decodes MASKADDRESS: the nibble is the run of 1s from bit 11 down,
 // 0xF = 16 MB ... 0x0 = 256 MB.
+// TRLC-LINKS: REQ-SDS-133
 func maskToMB(mask uint32) int {
 	mb := 256
 	for i := 0; i < 4; i++ {
@@ -95,6 +102,7 @@ func maskToMB(mask uint32) int {
 	return mb
 }
 
+// TRLC-LINKS: REQ-SDS-133
 func surveyRegions(r regs32) []CSRegion {
 	out := make([]CSRegion, 0, 7)
 	for cs := 0; cs < 7; cs++ {
@@ -114,6 +122,7 @@ func surveyRegions(r regs32) []CSRegion {
 
 // SurveyCSRegions maps the GPMC controller read-only and reports every chip
 // select's region. It writes nothing.
+// TRLC-LINKS: REQ-SDS-133
 func SurveyCSRegions() ([]CSRegion, error) {
 	f, err := os.OpenFile("/dev/mem", os.O_RDONLY|syscall.O_SYNC, 0)
 	if err != nil {
@@ -142,6 +151,7 @@ func SurveyCSRegions() ([]CSRegion, error) {
 // leaves nobody to drive a 19-bit address (2026-09-06-sram-interface-decoded.md).
 // An ARM-addressed region on its own chip select is the one supplier that resolves
 // that, and it costs a read to find out.
+// TRLC-LINKS: REQ-SDS-133
 func PeekCS(cs int, off uint32, n int) ([]uint16, uint32, error) {
 	if cs < 0 || cs > 6 {
 		return nil, 0, fmt.Errorf("gpmc: cs %d out of range", cs)

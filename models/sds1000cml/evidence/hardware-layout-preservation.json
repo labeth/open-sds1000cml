@@ -1,0 +1,9 @@
+{
+  "result": "pass",
+  "hardwareItems": 15,
+  "interfaces": 12,
+  "hostAllocations": 78,
+  "scope": "Hardware item table is byte-identical; all interface edges are identical and all allocated-unit references remain in that table. Graph labels now show hardware ID and name.",
+  "beforeSHA256": "c000b513a0e02244902b907eca52a2c92295d5f703e455bac6f317e9d1641ad1",
+  "afterSHA256": "bfe219f83fdebde96725425f455f09c204b9246fce2d53ed499938884a3ffac5"
+}

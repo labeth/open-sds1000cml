@@ -1,0 +1,102 @@
+{
+  "status": "integrated-with-explicit-verification-limits",
+  "newRequirement": "REQ-SDS-188",
+  "annotatedFiles": 16,
+  "moduleLinks": 32,
+  "productionFiles": 6,
+  "testbenchFiles": 10,
+  "recordedCases": 14,
+  "passingCases": 12,
+  "failingCases": 2,
+  "nativeAttachments": [
+    {
+      "source": "fpga/acq_sram/sim/tb_burst.v",
+      "resultArtifact": "test-results/rtl/tb_burst.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_TB_BURST_3D497A"
+    },
+    {
+      "source": "fpga/acq_sram/sim/tb_continuation.v",
+      "resultArtifact": "test-results/rtl/tb_continuation.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_TB_CONTINUATION_F009AF"
+    },
+    {
+      "source": "fpga/acq_sram/sim/tb_gpmc_burst.v",
+      "resultArtifact": "test-results/rtl/tb_gpmc_burst.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_TB_GPMC_BURST_53C8F0"
+    },
+    {
+      "source": "fpga/acq_sram/sim/tb_gpmc_read.v",
+      "resultArtifact": "test-results/rtl/tb_gpmc_read.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_TB_GPMC_READ_1F8CD6"
+    },
+    {
+      "source": "fpga/acq_sram/sim/tb_precision_top.v",
+      "resultArtifact": "test-results/rtl/tb_precision_top.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_TB_PRECISION_TOP_188A5D"
+    },
+    {
+      "source": "fpga/acq_sram/sim/tb_profile_core.v",
+      "resultArtifact": "test-results/rtl/tb_profile_core.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_TB_PROFILE_CORE_35AE6C"
+    },
+    {
+      "source": "fpga/acq_sram/sim/tb_stream_top.v",
+      "resultArtifact": "test-results/rtl/tb_stream_top.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_TB_STREAM_TOP_340368"
+    },
+    {
+      "source": "fpga/acq_sram/sim/tb_top.v",
+      "resultArtifact": "test-results/rtl/tb_top.json",
+      "status": "fail",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_TB_TOP_EDC76F"
+    },
+    {
+      "source": "fpga/acq_sram/sim/tb_top_adc.v",
+      "resultArtifact": "test-results/rtl/tb_top_adc.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_TB_TOP_ADC_42C002"
+    },
+    {
+      "source": "fpga/acq_sram/sim/tb_top_interleave.v",
+      "resultArtifact": "test-results/rtl/tb_top_interleave.json",
+      "status": "fail",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_TB_TOP_INTERLEAVE_5EC4C4"
+    }
+  ],
+  "totalRTLNativeSummaries": 52,
+  "metadataObservations": {
+    "legacy-base": {
+      "length": 524288,
+      "origin": 17,
+      "position": 17
+    },
+    "legacy-interleave": {
+      "length": 524288,
+      "origin": 17,
+      "position": 17
+    }
+  },
+  "checks": {
+    "strictConsistency": "pass",
+    "mcp": "pass:188 requirement contexts",
+    "nativePublication": "10 board attachments;52 total RTL summaries",
+    "provenanceMutationTests": "6 pass; exact historical input acceptance and fabricated-hash rejection also checked",
+    "codegenInputEquivalence": "Exact comment overlay validated; original codegen hashes and drift failure retained",
+    "reproducibility": "36 outputs byte-identical"
+  },
+  "scope": [
+    "Original capture-metadata failures remain failed,with later assertions uncredited. No instrument logic or test assertion changed.",
+    "Three local Quartus vendor library files are independently hash-checked for the vendor variants.",
+    "Continuation requires all37 exact values; zero exit alone is insufficient.",
+    "Clock,SRAM and ADC models do not establish physical qualification.",
+    "Common RTL review is separate and remains pending execution/trace integration.",
+    "PDF generation remains deferred."
+  ]
+}

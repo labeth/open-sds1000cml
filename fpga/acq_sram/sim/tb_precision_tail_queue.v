@@ -1,4 +1,6 @@
+// ENGMODEL-OWNER-UNIT: FU-RTL-ACQ-TESTS
 `timescale 1ns/1ps
+// TRLC-LINKS: REQ-SDS-040
 module tb_precision_tail_queue;
  parameter MAX_LOG=12;
  reg clk=0;always #5 clk=~clk;

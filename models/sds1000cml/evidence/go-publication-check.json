@@ -1,0 +1,1075 @@
+{
+  "result": "pass",
+  "sourceIdentityCheck": {
+    "requirement": "REQ-SDS-111",
+    "labels": [
+      "otactl/server.go: 16"
+    ]
+  },
+  "inputSHA256": "23f7eddf9e3db9a2c404b2088e60047392d57b58e830163ec19360e78fc0954b",
+  "checks": [
+    {
+      "source": "app/cmd/app/sram_test.go",
+      "resultArtifact": "test-results/go/app/cmd/app/sram_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_SRAM_TEST_6BB5EC"
+    },
+    {
+      "source": "app/cmd/app/sram_timing_test.go",
+      "resultArtifact": "test-results/go/app/cmd/app/sram_timing_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_SRAM_TIMING_TEST_8CAAEC"
+    },
+    {
+      "source": "app/internal/analog/frontend_test.go",
+      "resultArtifact": "test-results/go/app/internal/analog/frontend_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_FRONTEND_TEST_6B53AF"
+    },
+    {
+      "source": "app/internal/bus/bus_test.go",
+      "resultArtifact": "test-results/go/app/internal/bus/bus_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_BUS_TEST_2DF0DD"
+    },
+    {
+      "source": "app/internal/bus/dcinv_test.go",
+      "resultArtifact": "test-results/go/app/internal/bus/dcinv_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_DCINV_TEST_FD125D"
+    },
+    {
+      "source": "app/internal/bus/drainwin_test.go",
+      "resultArtifact": "test-results/go/app/internal/bus/drainwin_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_DRAINWIN_TEST_9C2665"
+    },
+    {
+      "source": "app/internal/bus/gpmccfg_test.go",
+      "resultArtifact": "test-results/go/app/internal/bus/gpmccfg_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_GPMCCFG_TEST_12097C"
+    },
+    {
+      "source": "app/internal/bus/gpmcpersist_test.go",
+      "resultArtifact": "test-results/go/app/internal/bus/gpmcpersist_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_GPMCPERSIST_TEST_D1355E"
+    },
+    {
+      "source": "app/internal/bus/gpmctiming_test.go",
+      "resultArtifact": "test-results/go/app/internal/bus/gpmctiming_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_GPMCTIMING_TEST_A3A92E"
+    },
+    {
+      "source": "app/internal/bus/kernel_dma_linux_test.go",
+      "resultArtifact": "test-results/go/app/internal/bus/kernel_dma_linux_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_KERNEL_DMA_LINUX_TEST_E23689"
+    },
+    {
+      "source": "app/internal/cal/cal_test.go",
+      "resultArtifact": "test-results/go/app/internal/cal/cal_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_CAL_TEST_4C71A9"
+    },
+    {
+      "source": "app/internal/cal/calfuzz_test.go",
+      "resultArtifact": "test-results/go/app/internal/cal/calfuzz_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_CALFUZZ_TEST_10B1BB"
+    },
+    {
+      "source": "app/internal/decode/decode_arinc429_test.go",
+      "resultArtifact": "test-results/go/app/internal/decode/decode_arinc429_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_DECODE_ARINC429_TEST_FDDF6F"
+    },
+    {
+      "source": "app/internal/decode/decode_break_arinc429_test.go",
+      "resultArtifact": "test-results/go/app/internal/decode/decode_break_arinc429_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_DECODE_BREAK_ARINC429_TEST_8997C5"
+    },
+    {
+      "source": "app/internal/decode/decode_break_canfd_test.go",
+      "resultArtifact": "test-results/go/app/internal/decode/decode_break_canfd_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_DECODE_BREAK_CANFD_TEST_323072"
+    },
+    {
+      "source": "app/internal/decode/decode_break_flexray_test.go",
+      "resultArtifact": "test-results/go/app/internal/decode/decode_break_flexray_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_DECODE_BREAK_FLEXRAY_TEST_309055"
+    },
+    {
+      "source": "app/internal/decode/decode_break_i2c_test.go",
+      "resultArtifact": "test-results/go/app/internal/decode/decode_break_i2c_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_DECODE_BREAK_I2C_TEST_F2CF48"
+    },
+    {
+      "source": "app/internal/decode/decode_break_manchester_test.go",
+      "resultArtifact": "test-results/go/app/internal/decode/decode_break_manchester_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_DECODE_BREAK_MANCHESTER_TEST_C83895"
+    },
+    {
+      "source": "app/internal/decode/decode_break_mil1553_test.go",
+      "resultArtifact": "test-results/go/app/internal/decode/decode_break_mil1553_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_DECODE_BREAK_MIL1553_TEST_E5314E"
+    },
+    {
+      "source": "app/internal/decode/decode_break_sent_test.go",
+      "resultArtifact": "test-results/go/app/internal/decode/decode_break_sent_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_DECODE_BREAK_SENT_TEST_251386"
+    },
+    {
+      "source": "app/internal/decode/decode_break_spi_test.go",
+      "resultArtifact": "test-results/go/app/internal/decode/decode_break_spi_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_DECODE_BREAK_SPI_TEST_539D52"
+    },
+    {
+      "source": "app/internal/decode/decode_break_uart_test.go",
+      "resultArtifact": "test-results/go/app/internal/decode/decode_break_uart_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_DECODE_BREAK_UART_TEST_78516D"
+    },
+    {
+      "source": "app/internal/decode/decode_break_usbls_test.go",
+      "resultArtifact": "test-results/go/app/internal/decode/decode_break_usbls_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_DECODE_BREAK_USBLS_TEST_AA53E9"
+    },
+    {
+      "source": "app/internal/decode/decode_canfd_test.go",
+      "resultArtifact": "test-results/go/app/internal/decode/decode_canfd_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_DECODE_CANFD_TEST_44FA49"
+    },
+    {
+      "source": "app/internal/decode/decode_flexray_test.go",
+      "resultArtifact": "test-results/go/app/internal/decode/decode_flexray_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_DECODE_FLEXRAY_TEST_FD2B2E"
+    },
+    {
+      "source": "app/internal/decode/decode_jsparity_test.go",
+      "resultArtifact": "test-results/go/app/internal/decode/decode_jsparity_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_DECODE_JSPARITY_TEST_2CB156"
+    },
+    {
+      "source": "app/internal/decode/decode_manchester_test.go",
+      "resultArtifact": "test-results/go/app/internal/decode/decode_manchester_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_DECODE_MANCHESTER_TEST_AF4E7A"
+    },
+    {
+      "source": "app/internal/decode/decode_mil1553_test.go",
+      "resultArtifact": "test-results/go/app/internal/decode/decode_mil1553_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_DECODE_MIL1553_TEST_6E0679"
+    },
+    {
+      "source": "app/internal/decode/decode_sent_test.go",
+      "resultArtifact": "test-results/go/app/internal/decode/decode_sent_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_DECODE_SENT_TEST_5E18F3"
+    },
+    {
+      "source": "app/internal/decode/decode_test.go",
+      "resultArtifact": "test-results/go/app/internal/decode/decode_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_DECODE_TEST_3637F8"
+    },
+    {
+      "source": "app/internal/decode/decode_usbls_test.go",
+      "resultArtifact": "test-results/go/app/internal/decode/decode_usbls_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_DECODE_USBLS_TEST_A4E042"
+    },
+    {
+      "source": "app/internal/decode/decodefuzz_test.go",
+      "resultArtifact": "test-results/go/app/internal/decode/decodefuzz_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_DECODEFUZZ_TEST_D517C8"
+    },
+    {
+      "source": "app/internal/decode/oracle_can_test.go",
+      "resultArtifact": "test-results/go/app/internal/decode/oracle_can_test.json",
+      "status": "not-run",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_ORACLE_CAN_TEST_DD68B8"
+    },
+    {
+      "source": "app/internal/decode/oracle_flexray_test.go",
+      "resultArtifact": "test-results/go/app/internal/decode/oracle_flexray_test.json",
+      "status": "not-run",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_ORACLE_FLEXRAY_TEST_E19427"
+    },
+    {
+      "source": "app/internal/decode/oracle_i2c_test.go",
+      "resultArtifact": "test-results/go/app/internal/decode/oracle_i2c_test.json",
+      "status": "not-run",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_ORACLE_I2C_TEST_7E02E7"
+    },
+    {
+      "source": "app/internal/decode/oracle_spi_test.go",
+      "resultArtifact": "test-results/go/app/internal/decode/oracle_spi_test.json",
+      "status": "not-run",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_ORACLE_SPI_TEST_E1E2E4"
+    },
+    {
+      "source": "app/internal/decode/oracle_uart_test.go",
+      "resultArtifact": "test-results/go/app/internal/decode/oracle_uart_test.json",
+      "status": "not-run",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_ORACLE_UART_TEST_9866DA"
+    },
+    {
+      "source": "app/internal/decode/oracle_usbls_test.go",
+      "resultArtifact": "test-results/go/app/internal/decode/oracle_usbls_test.json",
+      "status": "not-run",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_ORACLE_USBLS_TEST_1A1492"
+    },
+    {
+      "source": "app/internal/decode/truth_vectors_test.go",
+      "resultArtifact": "test-results/go/app/internal/decode/truth_vectors_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_TRUTH_VECTORS_TEST_C92667"
+    },
+    {
+      "source": "app/internal/diag/diag_test.go",
+      "resultArtifact": "test-results/go/app/internal/diag/diag_test.json",
+      "status": "fail",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_DIAG_TEST_DF6957"
+    },
+    {
+      "source": "app/internal/dsp/precision_limits_test.go",
+      "resultArtifact": "test-results/go/app/internal/dsp/precision_limits_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_PRECISION_LIMITS_TEST_6E4869"
+    },
+    {
+      "source": "app/internal/dsp/precision_test.go",
+      "resultArtifact": "test-results/go/app/internal/dsp/precision_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_PRECISION_TEST_FF3F06"
+    },
+    {
+      "source": "app/internal/engine/arena_test.go",
+      "resultArtifact": "test-results/go/app/internal/engine/arena_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_ARENA_TEST_860548"
+    },
+    {
+      "source": "app/internal/engine/bands_test.go",
+      "resultArtifact": "test-results/go/app/internal/engine/bands_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_BANDS_TEST_124B7F"
+    },
+    {
+      "source": "app/internal/engine/bode_breaker_test.go",
+      "resultArtifact": "test-results/go/app/internal/engine/bode_breaker_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_BODE_BREAKER_TEST_C5053B"
+    },
+    {
+      "source": "app/internal/engine/bode_test.go",
+      "resultArtifact": "test-results/go/app/internal/engine/bode_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_BODE_TEST_4C463A"
+    },
+    {
+      "source": "app/internal/engine/chaos_test.go",
+      "resultArtifact": "test-results/go/app/internal/engine/chaos_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_CHAOS_TEST_629878"
+    },
+    {
+      "source": "app/internal/engine/degraded_test.go",
+      "resultArtifact": "test-results/go/app/internal/engine/degraded_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_DEGRADED_TEST_DC84DF"
+    },
+    {
+      "source": "app/internal/engine/discern_test.go",
+      "resultArtifact": "test-results/go/app/internal/engine/discern_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_DISCERN_TEST_3E9483"
+    },
+    {
+      "source": "app/internal/engine/engine_depth_test.go",
+      "resultArtifact": "test-results/go/app/internal/engine/engine_depth_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_ENGINE_DEPTH_TEST_E65902"
+    },
+    {
+      "source": "app/internal/engine/engine_publish_test.go",
+      "resultArtifact": "test-results/go/app/internal/engine/engine_publish_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_ENGINE_PUBLISH_TEST_367C2F"
+    },
+    {
+      "source": "app/internal/engine/engine_test.go",
+      "resultArtifact": "test-results/go/app/internal/engine/engine_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_ENGINE_TEST_903449"
+    },
+    {
+      "source": "app/internal/engine/engine_triglevel_test.go",
+      "resultArtifact": "test-results/go/app/internal/engine/engine_triglevel_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_ENGINE_TRIGLEVEL_TEST_9FFF6B"
+    },
+    {
+      "source": "app/internal/engine/engine_wedge_test.go",
+      "resultArtifact": "test-results/go/app/internal/engine/engine_wedge_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_ENGINE_WEDGE_TEST_223F44"
+    },
+    {
+      "source": "app/internal/engine/envroll_test.go",
+      "resultArtifact": "test-results/go/app/internal/engine/envroll_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_ENVROLL_TEST_CF96A7"
+    },
+    {
+      "source": "app/internal/engine/health_beat_test.go",
+      "resultArtifact": "test-results/go/app/internal/engine/health_beat_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_HEALTH_BEAT_TEST_2B6B05"
+    },
+    {
+      "source": "app/internal/engine/interleave_cal_test.go",
+      "resultArtifact": "test-results/go/app/internal/engine/interleave_cal_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_INTERLEAVE_CAL_TEST_BFDF1D"
+    },
+    {
+      "source": "app/internal/engine/qualify_test.go",
+      "resultArtifact": "test-results/go/app/internal/engine/qualify_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_QUALIFY_TEST_9A998B"
+    },
+    {
+      "source": "app/internal/engine/serialtrig_edge_test.go",
+      "resultArtifact": "test-results/go/app/internal/engine/serialtrig_edge_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_SERIALTRIG_EDGE_TEST_5C1737"
+    },
+    {
+      "source": "app/internal/engine/serialtrig_fuzz_test.go",
+      "resultArtifact": "test-results/go/app/internal/engine/serialtrig_fuzz_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_SERIALTRIG_FUZZ_TEST_2679A1"
+    },
+    {
+      "source": "app/internal/engine/serialtrig_test.go",
+      "resultArtifact": "test-results/go/app/internal/engine/serialtrig_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_SERIALTRIG_TEST_1CB4AA"
+    },
+    {
+      "source": "app/internal/engine/sram_math_test.go",
+      "resultArtifact": "test-results/go/app/internal/engine/sram_math_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_SRAM_MATH_TEST_FAEDD6"
+    },
+    {
+      "source": "app/internal/engine/sram_test.go",
+      "resultArtifact": "test-results/go/app/internal/engine/sram_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_SRAM_TEST_CA8A8C"
+    },
+    {
+      "source": "app/internal/engine/zonemask_breaker2_test.go",
+      "resultArtifact": "test-results/go/app/internal/engine/zonemask_breaker2_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_ZONEMASK_BREAKER2_TEST_83AA88"
+    },
+    {
+      "source": "app/internal/engine/zonemask_breaker_test.go",
+      "resultArtifact": "test-results/go/app/internal/engine/zonemask_breaker_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_ZONEMASK_BREAKER_TEST_C7FD34"
+    },
+    {
+      "source": "app/internal/engine/zonemask_policy_test.go",
+      "resultArtifact": "test-results/go/app/internal/engine/zonemask_policy_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_ZONEMASK_POLICY_TEST_C1AD96"
+    },
+    {
+      "source": "app/internal/engine/zonemask_test.go",
+      "resultArtifact": "test-results/go/app/internal/engine/zonemask_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_ZONEMASK_TEST_C75BE0"
+    },
+    {
+      "source": "app/internal/fpgaload/fpgaload_test.go",
+      "resultArtifact": "test-results/go/app/internal/fpgaload/fpgaload_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_FPGALOAD_TEST_33DCD0"
+    },
+    {
+      "source": "app/internal/frames/fanout_test.go",
+      "resultArtifact": "test-results/go/app/internal/frames/fanout_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_FANOUT_TEST_A49B33"
+    },
+    {
+      "source": "app/internal/lcd/engfmt_test.go",
+      "resultArtifact": "test-results/go/app/internal/lcd/engfmt_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_ENGFMT_TEST_3D2205"
+    },
+    {
+      "source": "app/internal/lcd/golden_test.go",
+      "resultArtifact": "test-results/go/app/internal/lcd/golden_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_GOLDEN_TEST_A52C8B"
+    },
+    {
+      "source": "app/internal/lcd/golden_views_test.go",
+      "resultArtifact": "test-results/go/app/internal/lcd/golden_views_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_GOLDEN_VIEWS_TEST_B28624"
+    },
+    {
+      "source": "app/internal/lcd/netaddr_test.go",
+      "resultArtifact": "test-results/go/app/internal/lcd/netaddr_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_NETADDR_TEST_8ABF08"
+    },
+    {
+      "source": "app/internal/lcd/render_invs_test.go",
+      "resultArtifact": "test-results/go/app/internal/lcd/render_invs_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_RENDER_INVS_TEST_3EBB5A"
+    },
+    {
+      "source": "app/internal/lcd/render_test.go",
+      "resultArtifact": "test-results/go/app/internal/lcd/render_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_RENDER_TEST_478AD7"
+    },
+    {
+      "source": "app/internal/lcd/renderfuzz_test.go",
+      "resultArtifact": "test-results/go/app/internal/lcd/renderfuzz_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_RENDERFUZZ_TEST_7502CB"
+    },
+    {
+      "source": "app/internal/lcd/spectrogram_breaker_test.go",
+      "resultArtifact": "test-results/go/app/internal/lcd/spectrogram_breaker_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_SPECTROGRAM_BREAKER_TEST_FC1767"
+    },
+    {
+      "source": "app/internal/lcd/spectrogram_test.go",
+      "resultArtifact": "test-results/go/app/internal/lcd/spectrogram_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_SPECTROGRAM_TEST_776CA1"
+    },
+    {
+      "source": "app/internal/lcd/superres_view_test.go",
+      "resultArtifact": "test-results/go/app/internal/lcd/superres_view_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_SUPERRES_VIEW_TEST_7B874F"
+    },
+    {
+      "source": "app/internal/measure/hardware_triangle_test.go",
+      "resultArtifact": "test-results/go/app/internal/measure/hardware_triangle_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_HARDWARE_TRIANGLE_TEST_400F30"
+    },
+    {
+      "source": "app/internal/measure/measfuzz_test.go",
+      "resultArtifact": "test-results/go/app/internal/measure/measfuzz_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_MEASFUZZ_TEST_A9F0C2"
+    },
+    {
+      "source": "app/internal/measure/measure_test.go",
+      "resultArtifact": "test-results/go/app/internal/measure/measure_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_MEASURE_TEST_DA76E7"
+    },
+    {
+      "source": "app/internal/panel/autoset_test.go",
+      "resultArtifact": "test-results/go/app/internal/panel/autoset_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_AUTOSET_TEST_847FEA"
+    },
+    {
+      "source": "app/internal/panel/autoset_verify_test.go",
+      "resultArtifact": "test-results/go/app/internal/panel/autoset_verify_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_AUTOSET_VERIFY_TEST_2C4777"
+    },
+    {
+      "source": "app/internal/panel/chaos_test.go",
+      "resultArtifact": "test-results/go/app/internal/panel/chaos_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_CHAOS_TEST_AC7D55"
+    },
+    {
+      "source": "app/internal/panel/display_state_test.go",
+      "resultArtifact": "test-results/go/app/internal/panel/display_state_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_DISPLAY_STATE_TEST_3B14DC"
+    },
+    {
+      "source": "app/internal/panel/engfmt_test.go",
+      "resultArtifact": "test-results/go/app/internal/panel/engfmt_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_ENGFMT_TEST_E8F515"
+    },
+    {
+      "source": "app/internal/panel/menufuzz_test.go",
+      "resultArtifact": "test-results/go/app/internal/panel/menufuzz_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_MENUFUZZ_TEST_7D063A"
+    },
+    {
+      "source": "app/internal/panel/panel_input_test.go",
+      "resultArtifact": "test-results/go/app/internal/panel/panel_input_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_PANEL_INPUT_TEST_C1D609"
+    },
+    {
+      "source": "app/internal/panel/panel_menu_test.go",
+      "resultArtifact": "test-results/go/app/internal/panel/panel_menu_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_PANEL_MENU_TEST_5DA5A9"
+    },
+    {
+      "source": "app/internal/panel/panel_test.go",
+      "resultArtifact": "test-results/go/app/internal/panel/panel_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_PANEL_TEST_A9189C"
+    },
+    {
+      "source": "app/internal/panel/settings_test.go",
+      "resultArtifact": "test-results/go/app/internal/panel/settings_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_SETTINGS_TEST_8A63A6"
+    },
+    {
+      "source": "app/internal/panel/superres_comp_test.go",
+      "resultArtifact": "test-results/go/app/internal/panel/superres_comp_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_SUPERRES_COMP_TEST_829D9F"
+    },
+    {
+      "source": "app/internal/scpi/scpi_test.go",
+      "resultArtifact": "test-results/go/app/internal/scpi/scpi_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_SCPI_TEST_AE30D1"
+    },
+    {
+      "source": "app/internal/scpi/scpifuzz_test.go",
+      "resultArtifact": "test-results/go/app/internal/scpi/scpifuzz_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_SCPIFUZZ_TEST_C8673A"
+    },
+    {
+      "source": "app/internal/scpi/wffuzz_test.go",
+      "resultArtifact": "test-results/go/app/internal/scpi/wffuzz_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_WFFUZZ_TEST_634F4F"
+    },
+    {
+      "source": "app/internal/settings/apply_test.go",
+      "resultArtifact": "test-results/go/app/internal/settings/apply_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_APPLY_TEST_1DC1D7"
+    },
+    {
+      "source": "app/internal/settings/fuzz_test.go",
+      "resultArtifact": "test-results/go/app/internal/settings/fuzz_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_FUZZ_TEST_3D592A"
+    },
+    {
+      "source": "app/internal/settings/settings_test.go",
+      "resultArtifact": "test-results/go/app/internal/settings/settings_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_SETTINGS_TEST_9C57EB"
+    },
+    {
+      "source": "app/internal/sramcapture/capture_test.go",
+      "resultArtifact": "test-results/go/app/internal/sramcapture/capture_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_CAPTURE_TEST_18B9D1"
+    },
+    {
+      "source": "app/internal/sramcapture/stream_test.go",
+      "resultArtifact": "test-results/go/app/internal/sramcapture/stream_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_STREAM_TEST_51F41D"
+    },
+    {
+      "source": "app/internal/sramcapture/verify_test.go",
+      "resultArtifact": "test-results/go/app/internal/sramcapture/verify_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_VERIFY_TEST_C30923"
+    },
+    {
+      "source": "app/internal/superres/comp_jsparity_test.go",
+      "resultArtifact": "test-results/go/app/internal/superres/comp_jsparity_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_COMP_JSPARITY_TEST_2734AC"
+    },
+    {
+      "source": "app/internal/superres/comp_test.go",
+      "resultArtifact": "test-results/go/app/internal/superres/comp_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_COMP_TEST_1C5881"
+    },
+    {
+      "source": "app/internal/superres/srfuzz_test.go",
+      "resultArtifact": "test-results/go/app/internal/superres/srfuzz_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_SRFUZZ_TEST_656AAF"
+    },
+    {
+      "source": "app/internal/superres/superres_parity_test.go",
+      "resultArtifact": "test-results/go/app/internal/superres/superres_parity_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_SUPERRES_PARITY_TEST_B9F512"
+    },
+    {
+      "source": "app/internal/vxi11srv/server_test.go",
+      "resultArtifact": "test-results/go/app/internal/vxi11srv/server_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_SERVER_TEST_9CAF93"
+    },
+    {
+      "source": "app/internal/vxi11srv/xdrfuzz_test.go",
+      "resultArtifact": "test-results/go/app/internal/vxi11srv/xdrfuzz_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_XDRFUZZ_TEST_216EFA"
+    },
+    {
+      "source": "app/internal/web/acceptance_browser_test.go",
+      "resultArtifact": "test-results/go/app/internal/web/acceptance_browser_test.json",
+      "status": "fail",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_ACCEPTANCE_BROWSER_TEST_76F169"
+    },
+    {
+      "source": "app/internal/web/apifuzz_test.go",
+      "resultArtifact": "test-results/go/app/internal/web/apifuzz_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_APIFUZZ_TEST_2ECE82"
+    },
+    {
+      "source": "app/internal/web/bin_test.go",
+      "resultArtifact": "test-results/go/app/internal/web/bin_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_BIN_TEST_3991BF"
+    },
+    {
+      "source": "app/internal/web/binframe_node_test.go",
+      "resultArtifact": "test-results/go/app/internal/web/binframe_node_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_BINFRAME_NODE_TEST_ECB221"
+    },
+    {
+      "source": "app/internal/web/bode_browser_test.go",
+      "resultArtifact": "test-results/go/app/internal/web/bode_browser_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_BODE_BROWSER_TEST_9F53A9"
+    },
+    {
+      "source": "app/internal/web/bode_node_test.go",
+      "resultArtifact": "test-results/go/app/internal/web/bode_node_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_BODE_NODE_TEST_1A4F4A"
+    },
+    {
+      "source": "app/internal/web/chaos_browser_test.go",
+      "resultArtifact": "test-results/go/app/internal/web/chaos_browser_test.json",
+      "status": "fail",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_CHAOS_BROWSER_TEST_86BAD0"
+    },
+    {
+      "source": "app/internal/web/decode_browser_test.go",
+      "resultArtifact": "test-results/go/app/internal/web/decode_browser_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_DECODE_BROWSER_TEST_B55739"
+    },
+    {
+      "source": "app/internal/web/decode_node_test.go",
+      "resultArtifact": "test-results/go/app/internal/web/decode_node_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_DECODE_NODE_TEST_EB097A"
+    },
+    {
+      "source": "app/internal/web/deepmem_browser_test.go",
+      "resultArtifact": "test-results/go/app/internal/web/deepmem_browser_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_DEEPMEM_BROWSER_TEST_D15C9F"
+    },
+    {
+      "source": "app/internal/web/diag_v3_test.go",
+      "resultArtifact": "test-results/go/app/internal/web/diag_v3_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_DIAG_V3_TEST_F2F3FC"
+    },
+    {
+      "source": "app/internal/web/eyejitter_node_test.go",
+      "resultArtifact": "test-results/go/app/internal/web/eyejitter_node_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_EYEJITTER_NODE_TEST_D610DA"
+    },
+    {
+      "source": "app/internal/web/fft_browser_test.go",
+      "resultArtifact": "test-results/go/app/internal/web/fft_browser_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_FFT_BROWSER_TEST_99BD9C"
+    },
+    {
+      "source": "app/internal/web/framefuzz_test.go",
+      "resultArtifact": "test-results/go/app/internal/web/framefuzz_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_FRAMEFUZZ_TEST_E5DEC6"
+    },
+    {
+      "source": "app/internal/web/fuzz_browser_test.go",
+      "resultArtifact": "test-results/go/app/internal/web/fuzz_browser_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_FUZZ_BROWSER_TEST_195C9A"
+    },
+    {
+      "source": "app/internal/web/invs_browser_test.go",
+      "resultArtifact": "test-results/go/app/internal/web/invs_browser_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_INVS_BROWSER_TEST_D741C7"
+    },
+    {
+      "source": "app/internal/web/measure_test.go",
+      "resultArtifact": "test-results/go/app/internal/web/measure_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_MEASURE_TEST_87143B"
+    },
+    {
+      "source": "app/internal/web/palette_parity_test.go",
+      "resultArtifact": "test-results/go/app/internal/web/palette_parity_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_PALETTE_PARITY_TEST_55C1BE"
+    },
+    {
+      "source": "app/internal/web/peaks_node_test.go",
+      "resultArtifact": "test-results/go/app/internal/web/peaks_node_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_PEAKS_NODE_TEST_F29375"
+    },
+    {
+      "source": "app/internal/web/perf_browser_test.go",
+      "resultArtifact": "test-results/go/app/internal/web/perf_browser_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_PERF_BROWSER_TEST_2EF0A8"
+    },
+    {
+      "source": "app/internal/web/perfserve_test.go",
+      "resultArtifact": "test-results/go/app/internal/web/perfserve_test.json",
+      "status": "not-run",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_PERFSERVE_TEST_7D7786"
+    },
+    {
+      "source": "app/internal/web/precision_frame_test.go",
+      "resultArtifact": "test-results/go/app/internal/web/precision_frame_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_PRECISION_FRAME_TEST_EEB20A"
+    },
+    {
+      "source": "app/internal/web/serialtrig_browser_test.go",
+      "resultArtifact": "test-results/go/app/internal/web/serialtrig_browser_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_SERIALTRIG_BROWSER_TEST_DEBE54"
+    },
+    {
+      "source": "app/internal/web/sigrok_export_e2e_test.go",
+      "resultArtifact": "test-results/go/app/internal/web/sigrok_export_e2e_test.json",
+      "status": "not-run",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_SIGROK_EXPORT_E2E_TEST_D7C2CA"
+    },
+    {
+      "source": "app/internal/web/sigrok_export_node_test.go",
+      "resultArtifact": "test-results/go/app/internal/web/sigrok_export_node_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_SIGROK_EXPORT_NODE_TEST_DDCD70"
+    },
+    {
+      "source": "app/internal/web/spectrogram_browser_test.go",
+      "resultArtifact": "test-results/go/app/internal/web/spectrogram_browser_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_SPECTROGRAM_BROWSER_TEST_70095E"
+    },
+    {
+      "source": "app/internal/web/spectrogram_node_test.go",
+      "resultArtifact": "test-results/go/app/internal/web/spectrogram_node_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_SPECTROGRAM_NODE_TEST_3F3999"
+    },
+    {
+      "source": "app/internal/web/sram_test.go",
+      "resultArtifact": "test-results/go/app/internal/web/sram_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_SRAM_TEST_E4927C"
+    },
+    {
+      "source": "app/internal/web/superres_browser_test.go",
+      "resultArtifact": "test-results/go/app/internal/web/superres_browser_test.json",
+      "status": "fail",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_SUPERRES_BROWSER_TEST_C1A8FF"
+    },
+    {
+      "source": "app/internal/web/superres_comp_node_test.go",
+      "resultArtifact": "test-results/go/app/internal/web/superres_comp_node_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_SUPERRES_COMP_NODE_TEST_B2A97A"
+    },
+    {
+      "source": "app/internal/web/superres_ets_node_test.go",
+      "resultArtifact": "test-results/go/app/internal/web/superres_ets_node_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_SUPERRES_ETS_NODE_TEST_96763E"
+    },
+    {
+      "source": "app/internal/web/superres_node_test.go",
+      "resultArtifact": "test-results/go/app/internal/web/superres_node_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_SUPERRES_NODE_TEST_C7A89B"
+    },
+    {
+      "source": "app/internal/web/transport_browser_test.go",
+      "resultArtifact": "test-results/go/app/internal/web/transport_browser_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_TRANSPORT_BROWSER_TEST_4015CA"
+    },
+    {
+      "source": "app/internal/web/ui_lint_test.go",
+      "resultArtifact": "test-results/go/app/internal/web/ui_lint_test.json",
+      "status": "fail",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_UI_LINT_TEST_C38716"
+    },
+    {
+      "source": "app/internal/web/web_control_test.go",
+      "resultArtifact": "test-results/go/app/internal/web/web_control_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_WEB_CONTROL_TEST_4930B6"
+    },
+    {
+      "source": "app/internal/web/web_diag_test.go",
+      "resultArtifact": "test-results/go/app/internal/web/web_diag_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_WEB_DIAG_TEST_1A8B8E"
+    },
+    {
+      "source": "app/internal/web/web_frame_test.go",
+      "resultArtifact": "test-results/go/app/internal/web/web_frame_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_WEB_FRAME_TEST_B67F5E"
+    },
+    {
+      "source": "app/internal/web/web_invs_test.go",
+      "resultArtifact": "test-results/go/app/internal/web/web_invs_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_WEB_INVS_TEST_7F2D57"
+    },
+    {
+      "source": "app/internal/web/web_serialtrig_test.go",
+      "resultArtifact": "test-results/go/app/internal/web/web_serialtrig_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_WEB_SERIALTRIG_TEST_69772E"
+    },
+    {
+      "source": "app/internal/web/web_test.go",
+      "resultArtifact": "test-results/go/app/internal/web/web_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_WEB_TEST_770C8C"
+    },
+    {
+      "source": "app/internal/web/zonemask_api_test.go",
+      "resultArtifact": "test-results/go/app/internal/web/zonemask_api_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_ZONEMASK_API_TEST_9507D8"
+    },
+    {
+      "source": "app/internal/web/zonemask_browser_test.go",
+      "resultArtifact": "test-results/go/app/internal/web/zonemask_browser_test.json",
+      "status": "fail",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_ZONEMASK_BROWSER_TEST_943627"
+    },
+    {
+      "source": "codegen/cmd/ifacegen/drift_test.go",
+      "resultArtifact": "test-results/go/codegen/cmd/ifacegen/drift_test.json",
+      "status": "fail",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_DRIFT_TEST_9BD66B"
+    },
+    {
+      "source": "codegen/emit/emit_test.go",
+      "resultArtifact": "test-results/go/codegen/emit/emit_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_EMIT_TEST_50E679"
+    },
+    {
+      "source": "codegen/emit/regmux_sim_test.go",
+      "resultArtifact": "test-results/go/codegen/emit/regmux_sim_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_REGMUX_SIM_TEST_B7956E"
+    },
+    {
+      "source": "codegen/emit/wordfmt/wordfmt_test.go",
+      "resultArtifact": "test-results/go/codegen/emit/wordfmt/wordfmt_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_WORDFMT_TEST_B53AED"
+    },
+    {
+      "source": "codegen/ifacedef/default_test.go",
+      "resultArtifact": "test-results/go/codegen/ifacedef/default_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_DEFAULT_TEST_2D2309"
+    },
+    {
+      "source": "codegen/schema/schema_test.go",
+      "resultArtifact": "test-results/go/codegen/schema/schema_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_SCHEMA_TEST_B83FD0"
+    },
+    {
+      "source": "fpga/internal/quartus/quartus_test.go",
+      "resultArtifact": "test-results/go/fpga/internal/quartus/quartus_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_QUARTUS_TEST_30AD09"
+    },
+    {
+      "source": "ota/boot/boot_test.go",
+      "resultArtifact": "test-results/go/ota/boot/boot_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_BOOT_TEST_9DE2CF"
+    },
+    {
+      "source": "ota/internal/agent/handlers_test.go",
+      "resultArtifact": "test-results/go/ota/internal/agent/handlers_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_HANDLERS_TEST_8514AA"
+    },
+    {
+      "source": "ota/internal/agent/health_test.go",
+      "resultArtifact": "test-results/go/ota/internal/agent/health_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_HEALTH_TEST_275F9D"
+    },
+    {
+      "source": "ota/internal/agent/rpc_test.go",
+      "resultArtifact": "test-results/go/ota/internal/agent/rpc_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_RPC_TEST_1366AD"
+    },
+    {
+      "source": "ota/internal/agent/selfupdate_test.go",
+      "resultArtifact": "test-results/go/ota/internal/agent/selfupdate_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_SELFUPDATE_TEST_2CC6F7"
+    },
+    {
+      "source": "ota/internal/agent/supervise_test.go",
+      "resultArtifact": "test-results/go/ota/internal/agent/supervise_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_SUPERVISE_TEST_D37E65"
+    },
+    {
+      "source": "ota/internal/agent/takeover_test.go",
+      "resultArtifact": "test-results/go/ota/internal/agent/takeover_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_TAKEOVER_TEST_6A3079"
+    },
+    {
+      "source": "ota/internal/agent/takeover_vxi11_test.go",
+      "resultArtifact": "test-results/go/ota/internal/agent/takeover_vxi11_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_TAKEOVER_VXI11_TEST_E471E9"
+    },
+    {
+      "source": "ota/internal/agent/tcp_serve_test.go",
+      "resultArtifact": "test-results/go/ota/internal/agent/tcp_serve_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_TCP_SERVE_TEST_8FD983"
+    },
+    {
+      "source": "ota/internal/agent/tcp_test.go",
+      "resultArtifact": "test-results/go/ota/internal/agent/tcp_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_TCP_TEST_668D62"
+    },
+    {
+      "source": "ota/internal/agent/upload_test.go",
+      "resultArtifact": "test-results/go/ota/internal/agent/upload_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_UPLOAD_TEST_853DDA"
+    },
+    {
+      "source": "ota/internal/config/config_test.go",
+      "resultArtifact": "test-results/go/ota/internal/config/config_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_CONFIG_TEST_4D8A08"
+    },
+    {
+      "source": "ota/internal/fdinherit/fdinherit_test.go",
+      "resultArtifact": "test-results/go/ota/internal/fdinherit/fdinherit_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_FDINHERIT_TEST_D53A34"
+    },
+    {
+      "source": "ota/internal/gpmc/gpmc_test.go",
+      "resultArtifact": "test-results/go/ota/internal/gpmc/gpmc_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_GPMC_TEST_5C566C"
+    },
+    {
+      "source": "ota/internal/otactl/client_test.go",
+      "resultArtifact": "test-results/go/ota/internal/otactl/client_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_CLIENT_TEST_BD4693"
+    },
+    {
+      "source": "ota/internal/otactl/nats_e2e_test.go",
+      "resultArtifact": "test-results/go/ota/internal/otactl/nats_e2e_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_NATS_E2E_TEST_DDC4C6"
+    },
+    {
+      "source": "ota/internal/rpcproto/rpcproto_test.go",
+      "resultArtifact": "test-results/go/ota/internal/rpcproto/rpcproto_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_RPCPROTO_TEST_425F65"
+    },
+    {
+      "source": "ota/internal/slots/slots_test.go",
+      "resultArtifact": "test-results/go/ota/internal/slots/slots_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_SLOTS_TEST_DD141C"
+    },
+    {
+      "source": "ota/internal/vxi11/vxi11_test.go",
+      "resultArtifact": "test-results/go/ota/internal/vxi11/vxi11_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_VXI11_TEST_7689EC"
+    },
+    {
+      "source": "ota/internal/watchdog/watchdog_test.go",
+      "resultArtifact": "test-results/go/ota/internal/watchdog/watchdog_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_WATCHDOG_TEST_362F01"
+    }
+  ],
+  "scope": "Every native Go summary attaches once to its intended source verification entry with the expected aggregate status. This is publication consistency, not behavioral qualification."
+}

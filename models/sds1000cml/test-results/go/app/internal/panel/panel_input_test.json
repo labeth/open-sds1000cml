@@ -1,0 +1,102 @@
+{
+  "source": "app/internal/panel/panel_input_test.go",
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "scope": "Reviewed Go test outcomes; passing assertions contribute partial requirement evidence.",
+  "sourceSHA256": "fee7e6d7d3e6b5e82167d480b55e13ec02d17d390a17cd395d452fff40b19852",
+  "logs": {
+    "test-runs/panel-integrated.jsonl": "2fbcb88c41a0275721d1edc08e3847581a7054b52e3eee8bbfd8abb17853f635"
+  },
+  "tests": [
+    {
+      "name": "TestButtonEdges",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-135"
+      ]
+    },
+    {
+      "name": "TestSingleAndAuto",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-135"
+      ]
+    },
+    {
+      "name": "TestKnobPriorityOneRowPerEvent",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-135"
+      ]
+    },
+    {
+      "name": "TestTdivKnob",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-135"
+      ]
+    },
+    {
+      "name": "TestVdivKnob",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-135"
+      ]
+    },
+    {
+      "name": "TestTrigLevelSign",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-135"
+      ]
+    },
+    {
+      "name": "TestPositionKnobAccel",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-135"
+      ]
+    },
+    {
+      "name": "TestKnobResyncFromEngine",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-135"
+      ]
+    },
+    {
+      "name": "TestAccelMap",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-135"
+      ]
+    },
+    {
+      "name": "TestKnobGateOnZeroMagnitude",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-135"
+      ]
+    },
+    {
+      "name": "TestResyncButtonsOnly",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-135"
+      ]
+    },
+    {
+      "name": "TestKnobPushTrigger",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-135"
+      ]
+    }
+  ],
+  "results": [
+    {
+      "requirement": "REQ-SDS-135",
+      "status": "partial",
+      "notes": "12 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    }
+  ]
+}

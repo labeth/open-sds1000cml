@@ -1,0 +1,68 @@
+package lcd
+
+import (
+ "bytes"
+ "encoding/binary"
+ "image/png"
+ "math"
+ "strings"
+ "testing"
+)
+
+// These characterize existing behavior; they do not qualify the physical panel.
+func TestModelLCDFoundation(t *testing.T) {
+ t.Run("packing_clipping_fill", func(t *testing.T) {
+  m:=NewMemSurface(); m.Fill(rgb(255,255,255))
+  if len(m.Pix)!=800*480*2 { t.Fatal(len(m.Pix)) }
+  for i:=0;i<len(m.Pix);i++ { if m.Pix[i]!=255 { t.Fatalf("fill byte %d",i) } }
+  m.SetPixel(799,479,0x1234)
+  if !bytes.Equal(m.Pix[len(m.Pix)-2:],[]byte{0x34,0x12}) { t.Fatal("endian") }
+  for _,p:=range [][2]int{{-1,0},{0,-1},{800,0},{0,480}} { m.SetPixel(p[0],p[1],1); if m.At(p[0],p[1])!=0 { t.Fatal(p) } }
+  if m.At(0,0)!=0xffff || m.At(799,479)!=0x1234 {t.Fatal("clipping changed valid pixels")}
+ })
+ t.Run("fade_components_and_odd_tail",func(t *testing.T){
+  m:=&MemSurface{Pix:[]byte{255,255,0,0,0xab}};m.FadeToBlack()
+  want:=uint16(23<<11|47<<5|23)
+  if binary.LittleEndian.Uint16(m.Pix)!=want || m.Pix[2]!=0 || m.Pix[3]!=0 || m.Pix[4]!=0xab {t.Fatal(m.Pix)}
+ })
+ t.Run("blit_threshold_and_short_source",func(t *testing.T){
+  m:=NewMemSurface();m.Fill(0xffff)
+  s:=&MemSurface{Pix:[]byte{2,0,3,0,0xa0,0,0xc0,0,0xab}};m.BlitBright(s)
+  for x,want:=range []uint16{0xffff,3,0xffff,0xc0,0xffff} {if m.At(x,0)!=want {t.Fatalf("%d: %x",x,m.At(x,0))}}
+ })
+ t.Run("png_white_quantization",func(t *testing.T){
+  m:=NewMemSurface();m.Fill(0xffff);im,err:=png.Decode(bytes.NewReader(EncodePNG(m)));if err!=nil {t.Fatal(err)}
+  r,g,b,a:=im.At(799,479).RGBA()
+  if im.Bounds().Dx()!=800 || im.Bounds().Dy()!=480 || r!=248*257 || g!=252*257 || b!=248*257 || a!=65535 {t.Fatal(im.Bounds(),r,g,b,a)}
+ })
+ t.Run("bmp_layout_and_short_buffer_mismatch",func(t *testing.T){
+  m:=NewMemSurface();m.SetPixel(0,0,0x1234);b:=EncodeBMP(m);u:=func(i int)uint32{return binary.LittleEndian.Uint32(b[i:i+4])}
+  if string(b[:2])!="BM" || int(u(2))!=len(b) || u(10)!=66 || u(18)!=800 || int32(u(22))!=-480 || u(30)!=3 || u(54)!=0xf800 || u(58)!=0x7e0 || u(62)!=0x1f || b[66]!=0x34 || b[67]!=0x12 {t.Fatal("BMP layout")}
+  short:=EncodeBMP(&MemSurface{Pix:[]byte{1,2}})
+  if len(short)!=68 || binary.LittleEndian.Uint32(short[2:6])!=66+pageBytes {t.Fatal("expected existing unchecked-length behavior")}
+ })
+ t.Run("short_surface_panics",func(t *testing.T){
+  for _,f:=range []func(){func(){(&MemSurface{}).SetPixel(0,0,1)},func(){(&MemSurface{}).At(0,0)},func(){(&MemSurface{}).Fill(1)}} {
+   func(){defer func(){if recover()==nil {t.Error("expected missing-buffer panic")}}();f()}()
+  }
+ })
+ t.Run("present_memory_fallback_only",func(t *testing.T){
+  m:=NewMemSurface();m.Fill(0x1234)
+  fb:=&FB{fd:-1,mem:make([]byte,3*pageBytes),pages:3,panOK:false};fb.Present(m)
+  for p:=0;p<3;p++ {if !bytes.Equal(fb.mem[p*pageBytes:(p+1)*pageBytes],m.Pix) {t.Fatal(p)}}
+  fb.put32(offYoffset,0x12345678)
+  if !bytes.Equal(fb.vinfo[offYoffset:offYoffset+4],[]byte{0x78,0x56,0x34,0x12}) {t.Fatal("vinfo endian")}
+ })
+ t.Run("unknown_rune_advances_blank",func(t *testing.T){
+  m,want:=NewMemSurface(),NewMemSurface();DrawText(m,0,0,"☃A",1,2);DrawText(want,12,0,"A",1,2)
+  if TextWidth("☃A",2)!=24 || !bytes.Equal(m.Pix,want.Pix) || bytes.Equal(m.Pix,NewMemSurface().Pix) {t.Fatal("rune advance")}
+  right:=NewMemSurface();DrawTextRight(right,24,0,"☃A",1,2);if !bytes.Equal(right.Pix,m.Pix) {t.Fatal("right alignment")}
+  zero:=NewMemSurface();DrawText(zero,0,0,"A",1,0);DrawText(zero,0,0,"A",1,-1)
+  if !bytes.Equal(zero.Pix,NewMemSurface().Pix) || TextWidth("A",-1)!=-6 {t.Fatal("nonpositive scale behavior")}
+ })
+ t.Run("formatting_outside_prefix_range",func(t *testing.T){
+  if !strings.Contains(fmtFreq(1e15),"e+") || !strings.Contains(fmtTdiv(1e-20),"e-") {t.Fatal("expected scientific notation beyond prefix range")}
+  if fmtVolt(math.NaN())!="NaNmV" || fmtFreq(math.Inf(1))!="+InfMHz" {t.Fatal("nonfinite formatting")}
+  if vdivLabel(1,0)!="1V" || vdivLabel(1,10)!="10V 10x" {t.Fatal("probe labels")}
+ })
+}

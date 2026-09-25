@@ -1,0 +1,25 @@
+{
+  "source": "app/internal/web/peaks.test.cjs",
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "sourceSHA256": "2fbfd01abb6a282613d6d5a257a8a90aa03fbcf1bd8b740bbc417dd2d224fd78",
+  "scope": "Original frozen Node suite, connected to current source by exact approved comment provenance. Bounded synthetic evidence only.",
+  "logs": {
+    "evidence/test-runs/reviewed-peaks.test.cjs.log": "6dcff4cbb7a0052561f1f869290230d74ef3c4fba5c73cf5259ec329252afd54"
+  },
+  "tests": [
+    {
+      "name": "peaks.test.cjs",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-070"
+      ]
+    }
+  ],
+  "results": [
+    {
+      "requirement": "REQ-SDS-070",
+      "status": "partial",
+      "notes": "Original suite passes. See final-node-suites-source-review.json for oracle limits; no physical metrology, browser interaction or external libsigrok import qualification."
+    }
+  ]
+}

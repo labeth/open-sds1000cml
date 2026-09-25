@@ -1,0 +1,42 @@
+{
+  "result": "source-reviewed-native-trace-pending",
+  "requirement": "REQ-SDS-066",
+  "sourceSHA256": {
+    "app/internal/engine/bode.go": "ab171da4b87a72de2efd41b4df273bce177879459a2fb0eac08944312e912702",
+    "app/internal/engine/bode_test.go": "dde7faaf6ac8fa4107a4948e44b69d21a70ce1f3459d68cbcf94d88f292e0665",
+    "app/internal/engine/bode_breaker_test.go": "343a5ed6171d09772646865bf1295ab6e158bc13316658f664a6bafde53a5816"
+  },
+  "reviewedFixtureRanges": {
+    "app/internal/engine/engine_test.go": "1\u2013125 (fake setup), 265\u2013350 (newTestEngine and helpers)",
+    "app/internal/engine/engine.go": "418\u2013528 (New), 650\u2013675 (Bode snapshot)",
+    "app/internal/engine/engine_loop.go": "1\u201348 (SRAM dispatch), 527\u2013560 (legacy Bode evaluation gate)",
+    "app/internal/engine/sram.go": "128\u2013460 (complete runSRAM body)"
+  },
+  "originalTests": {
+    "TestBodeBreaker50": "pass",
+    "TestFundamentalHz": "pass",
+    "TestBodePointGainPhase": "pass",
+    "TestBodePureDelay": "pass",
+    "TestBodeRejectsFloorAndSubCycle": "pass",
+    "TestBodeAccumulationBinsByFrequency": "pass"
+  },
+  "log": "test-runs/engine-bode-exploratory.jsonl",
+  "logSHA256": "aca0c892ccb95ce0d55775aec99d31dff524dbfa3ef48b9a90f4bec375653bf2",
+  "scope": "Complete Bode implementation and two Bode test files read; six original tests pass with injected fake bus/clock and synthetic byte samples. No native trace credit yet.",
+  "findings": [
+    "SetBodeMode masks channels to one bit and retains bins on channel changes; ClearBode does not reset capture ordinal.",
+    "Too-short records, nonpositive sample interval and undersized channels return before invalidating an earlier live point. Other selected rejection paths invalidate live status.",
+    "Direct bodeEval does not enforce armed/locked state; its reviewed production caller in legacy oneFrame gates on lock, observeOK and BodeOn.",
+    "The 50-family breaker executes four DUT relationships, but does not assert the advertised no-point condition for every degenerate family; accepted points are checked for finiteness, Nyquist and phase range.",
+    "Run dispatches nonnil SRAM configurations to runSRAM and returns. SRAM Bode integration must be reviewed separately; synthetic direct-evaluator tests do not establish that path.",
+    "Complete runSRAM body has no Bode accumulation call; the source search found the sole production bodeEval invocation in legacy oneFrame. Model the missing SRAM integration explicitly, without inferring hardware measurement support from direct evaluator tests."
+  ],
+  "nextAction": "Review remaining fixture dependencies and SRAM integration boundary, annotate seven production functions/two types plus reviewed test helpers, characterize stale-live state/channel changes/capacity, and index exact native outcomes under REQ-SDS-066.",
+  "reviewedRangeFileSHA256": {
+    "app/internal/engine/engine_test.go": "3a92cb8cbaa54bd4d4f4a1eefa01aaf0ec0e336702f34d47a38cf5a284fccecf",
+    "app/internal/engine/engine.go": "16908439527c0264eaa92ac9c0a3a252dbcad5b5d8bf5d2ae0723ec09bc9e6f7",
+    "app/internal/engine/engine_loop.go": "5d0e794c4174ccd89c6636244c425ff4377c62de9e39c0ddf59c5161d32604e5",
+    "app/internal/engine/sram.go": "68c8f87091ea6a2d962b4ee607f7463336082404b100f781df68601d94827a3c"
+  },
+  "supersededBy": "engine-bode-review.json"
+}

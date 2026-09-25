@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-FPGA-QUARTUS
 package quartus
 
 import (
@@ -81,6 +82,7 @@ const ioWarnTable = `
 +--------------+-----------------------------+
 `
 
+// TRLC-LINKS: REQ-SDS-154
 func fitReport(variant string) string {
 	s := fitOK
 	switch variant {
@@ -179,6 +181,7 @@ const staPadded = `Timing Analyzer report for default
 +------------------------------------------+--------+---------------+
 `
 
+// TRLC-LINKS: REQ-SDS-154
 func staReport(variant string) string {
 	switch variant {
 	case "padded":
@@ -218,6 +221,7 @@ set_location_assignment PIN_D2 -to d2
 //	FAKE_STA         sta report variant (ok | neg | none)
 //
 // Every call appends "<tool> <args>" to <dir>/calls.log and its cwd to <dir>/cwd.log.
+// TRLC-LINKS: REQ-SDS-152
 func fakeQuartus(t *testing.T) string {
 	t.Helper()
 	dir := t.TempDir()
@@ -268,6 +272,7 @@ head -c "${FAKE_RBF_BYTES:-368011}" /dev/zero > "$rbf"
 }
 
 // fakeDesign builds <fpga>/common/sync.v, <fpga>/default/{default.v,regs.vh,default.sdc,default.qsf}.
+// TRLC-LINKS: REQ-SDS-153
 func fakeDesign(t *testing.T) string {
 	t.Helper()
 	fpga := t.TempDir()
@@ -291,6 +296,7 @@ func fakeDesign(t *testing.T) string {
 	return fpga
 }
 
+// TRLC-LINKS: REQ-SDS-152
 func meminfo(t *testing.T, availMB int) string {
 	t.Helper()
 	p := filepath.Join(t.TempDir(), "meminfo")
@@ -302,6 +308,7 @@ func meminfo(t *testing.T, availMB int) string {
 	return p
 }
 
+// TRLC-LINKS: REQ-SDS-152
 func config(t *testing.T, root, fpga string) Config {
 	t.Helper()
 	return Config{
@@ -314,6 +321,7 @@ func config(t *testing.T, root, fpga string) Config {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-152
 func calls(t *testing.T, root string) []string {
 	t.Helper()
 	data, _ := os.ReadFile(filepath.Join(root, "calls.log"))
@@ -326,6 +334,7 @@ func calls(t *testing.T, root string) []string {
 
 // --- pure parsers -----------------------------------------------------------------
 
+// TRLC-LINKS: REQ-SDS-152
 func TestParseMemAvailableMB(t *testing.T) {
 	if got := ParseMemAvailableMB("MemTotal: 10 kB\nMemAvailable:   20669440 kB\n"); got != 20185 {
 		t.Fatalf("got %d, want 20185", got)
@@ -341,6 +350,7 @@ func TestParseMemAvailableMB(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-153
 func TestQSFPinsAndGlobals(t *testing.T) {
 	pins := QSFPins(testQSF)
 	want := map[string]string{"A10": "gpmc_d[0]", "C2": "clk", "D2": "d2"}
@@ -366,6 +376,7 @@ func TestQSFPinsAndGlobals(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-154
 func TestParseFitReportOK(t *testing.T) {
 	r := ParseFitReport(fitReport("ok"), QSFPins(testQSF))
 	if len(r.Problems) != 0 {
@@ -388,6 +399,7 @@ func TestParseFitReportOK(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-154
 func TestParseFitReportUnassigned(t *testing.T) {
 	r := ParseFitReport(fitReport("unassigned"), QSFPins(testQSF))
 	var kinds []string
@@ -402,6 +414,7 @@ func TestParseFitReportUnassigned(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-154
 func TestParseFitReportUnused(t *testing.T) {
 	r := ParseFitReport(fitReport("unused"), QSFPins(testQSF))
 	if len(r.Problems) != 2 {
@@ -415,6 +428,7 @@ func TestParseFitReportUnused(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-154
 func TestParseFitReportBallMissingFromTable(t *testing.T) {
 	pins := map[string]string{"A10": "gpmc_d[0]", "T9": "lane[13]"}
 	r := ParseFitReport(fitReport("ok"), pins)
@@ -423,6 +437,7 @@ func TestParseFitReportBallMissingFromTable(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-154
 func TestParseFitReportNoPinTable(t *testing.T) {
 	r := ParseFitReport("Fitter report\nInfo: nothing here\n", QSFPins(testQSF))
 	if len(r.Problems) != 1 || r.Problems[0].Kind != "message" {
@@ -430,6 +445,7 @@ func TestParseFitReportNoPinTable(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-154
 func TestParseSTAReport(t *testing.T) {
 	tr := ParseSTAReport(staReport("ok"))
 	if tr.Tables != 3 {
@@ -469,6 +485,7 @@ func TestParseSTAReport(t *testing.T) {
 // TestRealDefaultSTAReport parses the acq2 default image's own STA report when
 // a build is present (fpga/default/out is a build product, not tracked): all
 // three corners must be found and the design must close.
+// TRLC-LINKS: REQ-SDS-154
 func TestRealDefaultSTAReport(t *testing.T) {
 	sta, err := os.ReadFile(filepath.Join("..", "..", "default", "out", "output_files", "default.sta.rpt"))
 	if err != nil {
@@ -488,6 +505,7 @@ func TestRealDefaultSTAReport(t *testing.T) {
 
 // --- the flow against the fake tools ---------------------------------------------------
 
+// TRLC-LINKS: REQ-SDS-152, REQ-SDS-153, REQ-SDS-154
 func TestRunHappyPath(t *testing.T) {
 	root := fakeQuartus(t)
 	fpga := fakeDesign(t)
@@ -559,6 +577,7 @@ func TestRunHappyPath(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-152
 func mustReal(p string) string {
 	r, err := filepath.EvalSymlinks(p)
 	if err != nil {
@@ -567,6 +586,7 @@ func mustReal(p string) string {
 	return r
 }
 
+// TRLC-LINKS: REQ-SDS-152, REQ-SDS-154
 func TestRunReportsDefects(t *testing.T) {
 	root := fakeQuartus(t)
 	fpga := fakeDesign(t)
@@ -582,6 +602,7 @@ func TestRunReportsDefects(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-152, REQ-SDS-154
 func TestRunNoSTATables(t *testing.T) {
 	root := fakeQuartus(t)
 	fpga := fakeDesign(t)
@@ -595,6 +616,7 @@ func TestRunNoSTATables(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-152
 func TestRunWrongRBFSize(t *testing.T) {
 	root := fakeQuartus(t)
 	fpga := fakeDesign(t)
@@ -605,6 +627,7 @@ func TestRunWrongRBFSize(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-152
 func TestRunToolFailure(t *testing.T) {
 	root := fakeQuartus(t)
 	fpga := fakeDesign(t)
@@ -621,6 +644,7 @@ func TestRunToolFailure(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-152
 func TestRunMemoryGate(t *testing.T) {
 	root := fakeQuartus(t)
 	fpga := fakeDesign(t)
@@ -640,6 +664,7 @@ func TestRunMemoryGate(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-152
 func TestRunLockHeld(t *testing.T) {
 	root := fakeQuartus(t)
 	fpga := fakeDesign(t)
@@ -667,6 +692,7 @@ func TestRunLockHeld(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-153
 func TestRunStaleQSF(t *testing.T) {
 	root := fakeQuartus(t)
 	fpga := fakeDesign(t)
@@ -682,6 +708,7 @@ func TestRunStaleQSF(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-153
 func TestRunMissingSDC(t *testing.T) {
 	root := fakeQuartus(t)
 	fpga := fakeDesign(t)
@@ -694,6 +721,7 @@ func TestRunMissingSDC(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-153
 func TestRunBasenameCollision(t *testing.T) {
 	root := fakeQuartus(t)
 	fpga := fakeDesign(t)
@@ -706,6 +734,7 @@ func TestRunBasenameCollision(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-153
 func TestRunMissingQSF(t *testing.T) {
 	root := fakeQuartus(t)
 	c := config(t, root, t.TempDir())
@@ -714,6 +743,7 @@ func TestRunMissingQSF(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-152
 func TestConfigRequired(t *testing.T) {
 	if _, err := Run(context.Background(), Config{}); err == nil {
 		t.Fatal("empty config must be rejected")
@@ -724,6 +754,7 @@ func TestConfigRequired(t *testing.T) {
 // reference tree when it is present on this host (skipped elsewhere). The
 // standard design's fit report has exactly one unplaced pin (adc_lane[13]) and
 // the adcstrap STA report three setup-summary corners for clock "clk".
+// TRLC-LINKS: REQ-SDS-154
 func TestRealReports(t *testing.T) {
 	const ref = "/home/labeth/ws/open-sds1000cml/fpga"
 	fit, err := os.ReadFile(filepath.Join(ref, "standard", "output_files", "acq.fit.rpt"))

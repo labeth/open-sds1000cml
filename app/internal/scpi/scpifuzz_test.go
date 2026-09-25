@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-SCPI
 package scpi
 
 import (
@@ -15,6 +16,7 @@ import (
 // SCPI parser fuzz: HandleLine must never panic, whatever arrives on the
 // wire — every panic here is a remotely-triggerable crash of the instrument
 // loop. Seeded corpus of structural edge cases plus random mutations.
+// TRLC-LINKS: REQ-SDS-024
 func TestSCPIFuzzNoPanic(t *testing.T) {
 	h, _ := newH(t)
 	corpus := []string{
@@ -94,6 +96,7 @@ func TestSCPIFuzzNoPanic(t *testing.T) {
 // value set, or (b) the set returned the expected §3.4 error token and the
 // query still reports the true state. Silent success + no effect — the bug
 // class where a stub swallows a set and the query then lies — fails here.
+// TRLC-LINKS: REQ-SDS-024
 func TestSCPIFuzzSetQueryInvariant(t *testing.T) {
 	h, _, _ := newHFE(t)
 	rng := rand.New(rand.NewSource(7))

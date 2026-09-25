@@ -1,0 +1,33 @@
+{
+  "status": "integrated",
+  "requirements": [
+    "REQ-SDS-067",
+    "REQ-SDS-181",
+    "REQ-SDS-199",
+    "REQ-SDS-200",
+    "REQ-SDS-201"
+  ],
+  "addedContracts": 3,
+  "annotatedFiles": 5,
+  "linkedDeclarations": 77,
+  "sourceBehaviorChanged": false,
+  "nativeResult": "test-results/javascript/eyejitter.test.json",
+  "checks": [
+    "Exact baseline recovery and unchanged tree-sitter terminal tokens for all five files.",
+    "All 19 reviewed JavaScript files present in native scan list.",
+    "Strict model/source consistency for 201 requirements.",
+    "Native numerical result attaches exactly once to original eyejitter.test.cjs with partial status.",
+    "All 201 requirements resolve through native MCP.",
+    "Non-PDF publications, SVG coordinate checks and all source attachment checks pass.",
+    "36 generator outputs byte-identical across unchanged complete generations."
+  ],
+  "scope": "Source-model integration and bounded synthetic evidence, not full instrument qualification. PDF deferred at user request.",
+  "traceSummary": {
+    "requirements": 201,
+    "implemented": 184,
+    "verified": 156,
+    "delegated": 0,
+    "orphan": 13,
+    "danglingLinks": 0
+  }
+}

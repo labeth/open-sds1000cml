@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-RTL-COMMON-PLL-M2
 // pll_m2.v -- the acq2 clock tree from ball M2 ([BENCH] ~160 MHz continuous, owned-fpga 670b873).
 //
 //   PLL A (M2 -> 200 MHz):  c0 = 0 deg  c1 = 90  c2 = 180  c3 = 270   (the four encode phases,
@@ -25,6 +26,7 @@
 
 `timescale 1ns/1ps
 
+// TRLC-LINKS: REQ-SDS-191
 module pll_m2 (
     input  wire       mclk_in,          // ball M2
     output wire       ph0,              // 200 MHz phases

@@ -1,0 +1,21 @@
+// Appended only in a Go test overlay; no production source is changed.
+func TestModelReviewAgentStateBoundaries(t *testing.T) {
+	missing := t.TempDir() + "/missing/state.json"
+	sf := loadState(missing)
+	if err := sf.update(func(s *State) { s.TakenOver = true }); err == nil {
+		t.Fatal("expected missing-parent persistence error")
+	}
+	if !sf.get().TakenOver || loadState(missing).get().TakenOver {
+		t.Fatal("expected live flag true but fresh load false after failed write")
+	}
+	t.Log("failed persistence leaves TakenOver=true in memory while a fresh load is false")
+	malformed := t.TempDir() + "/state.json"
+	if err := os.WriteFile(malformed, []byte(`{"taken_over":true,"auto_takeover":"invalid"}`), 0600); err != nil {
+		t.Fatal(err)
+	}
+	got := loadState(malformed).get()
+	if !got.TakenOver || got.AutoTakeover {
+		t.Fatalf("expected partially decoded flags, got %+v", got)
+	}
+	t.Log("ignored JSON type error retains successfully decoded TakenOver=true")
+}

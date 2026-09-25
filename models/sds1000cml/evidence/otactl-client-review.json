@@ -1,0 +1,22 @@
+{
+  "scope": "Reviewed source integrated with REQ-SDS-109 through REQ-SDS-112. Verification is limited to identified tests and inspection; no physical operations or qualification.",
+  "sourceSHA256": {
+    "ota/internal/otactl/client.go": "859c678c27415993d098da54120322a173a3f84ba6704e0f2e1f4fe2a8cee8e6",
+    "ota/internal/otactl/client_test.go": "d6ebb0c81892f23faf40377f2d898e48077f7792a451d966dcb4db421e7d1bef",
+    "ota/internal/otactl/transport.go": "b3f7e79d1255dc671c682224c2364cbb2ff21babe6cd3e6ed378848067d3a45d"
+  },
+  "testLog": "test-runs/otactl-client.jsonl",
+  "findings": [
+    "Client.Call converts response OK=false to a device error while retaining Data. It assumes a non-nil response on transport success.",
+    "PutFile stats and hashes the local file, rewinds, begins a session, sends base64 chunks and compares the returned final digest. A changing local file is not snapshotted. Default chunk size is 128 KiB; a positive caller chunk has no upper bound here.",
+    "PutFile ignores chunk written counts and JSON decode errors for begin/commit metadata, although it requires a nonempty session ID and exact matching digest. It does not retry, resume or abort the remote session after failure. Progress reports bytes sent, not committed.",
+    "Upload timeout is per RPC: begin 30 seconds, each chunk and commit 60 seconds. There is no overall transfer deadline.",
+    "GetFile creates/truncates local destination before contacting the device. It requests 256 KiB chunks, decodes base64, writes and stops on EOF or empty payload. It does not validate advertised total size, offset echo or digest. An early empty reply can yield successful truncation; failures leave partial output.",
+    "Download ignores deferred Close errors and does not sync or atomically rename the destination. Progress reflects reported remote size without enforcing it.",
+    "UpdateApp and UpdateAgent upload to fixed stage names with mode 0755 then invoke update with the returned digest and a 30-second RPC timeout. They do not wait for healthy activation or rollback outcome.",
+    "Six existing tests cover ping/echo, device error, local dial failure, a 300-KiB-plus-37-byte upload/download round trip with digest/mode/progress assertions, missing local source and truncation formatting. Fixtures redirect device paths and use localhost; no actual firmware update occurs.",
+    "Fake-transport probe confirms an empty non-EOF reply advertising size 100 returns success after truncating an existing local file. A first-request device error also leaves the existing destination empty."
+  ],
+  "characterization": "otactl-download-characterization.json",
+  "integration": "Host controller declarations integrated with REQ-SDS-109 through REQ-SDS-112; broker test also retains REQ-SDS-108. Inspection-only recovery and broker startup remain unqualified."
+}

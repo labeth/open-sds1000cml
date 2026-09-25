@@ -1,0 +1,286 @@
+{
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "status": "integrated-with-explicit-verification-limits",
+  "completeReads": [
+    "fpga/acq_sram/adc_unpack.v",
+    "fpga/acq_sram/interleave.v",
+    "fpga/acq_sram/acquisition_source.v",
+    "fpga/acq_sram/acquisition_path.v",
+    "fpga/acq_sram/board_capture_path.v",
+    "fpga/acq_sram/capture_engine.v",
+    "fpga/acq_sram/capture_path.v",
+    "fpga/acq_sram/finite_writer.v",
+    "fpga/acq_sram/finite_recall.v",
+    "fpga/acq_sram/record.v",
+    "fpga/acq_sram/recall.v",
+    "fpga/acq_sram/command_bridge.v",
+    "fpga/acq_sram/command_port.v",
+    "fpga/acq_sram/sim/tb_unpack.v",
+    "fpga/acq_sram/sim/tb_interleave.v",
+    "fpga/acq_sram/sim/tb_adc_interleave.v",
+    "fpga/acq_sram/sim/tb_acquisition_source.v",
+    "fpga/acq_sram/sim/tb_trigger_pipeline.v",
+    "fpga/acq_sram/sim/tb_command_bridge.v",
+    "fpga/acq_sram/sim/tb_command_port.v",
+    "fpga/acq_sram/sim/tb_command_gpmc.v",
+    "fpga/acq_sram/sim/tb_record.v",
+    "fpga/acq_sram/sim/tb_finite_capture.v",
+    "fpga/acq_sram/sim/tb_finite_writer_faults.v",
+    "fpga/acq_sram/sim/tb_finite_recall.v",
+    "fpga/acq_sram/sim/tb_finite_recall_faults.v",
+    "fpga/acq_sram/sim/tb_acquisition_path.v",
+    "fpga/acq_sram/sim/tb_board_capture.v",
+    "fpga/acq_sram/sim/tb_capture_engine.v",
+    "fpga/acq_sram/sim/tb_capture_start.v"
+  ],
+  "supportCompleteReads": [
+    "fpga/acq_sram/sim/ddr_model.v",
+    "fpga/common/lane_in.v",
+    "fpga/common/ddio_pair.v"
+  ],
+  "reviewedLines": 2847,
+  "sourceSHA256": {
+    "fpga/acq_sram/adc_unpack.v": "42dfd111d19b9776f5d061975f63f5c416b99148a908e8185e92be965f63bf2a",
+    "fpga/acq_sram/interleave.v": "71b2870b9884b22686bf39905d32ca21c1d08a99b7d010d19b0e3385bcd0fdb9",
+    "fpga/acq_sram/acquisition_source.v": "a9fbeb7d3d2b6a1f1f9165177ca533b81f588ff8663467ddb8fe8a3b4f9cc4a5",
+    "fpga/acq_sram/acquisition_path.v": "fe871387f2e9ab90350123bce737d44bbe14c72477fb1ae6eab8863378516940",
+    "fpga/acq_sram/board_capture_path.v": "53a1f9ba4c7d209d3d2b273a0bd18374839206e75ff68103b96818c9db5bf58d",
+    "fpga/acq_sram/capture_engine.v": "ca84f7e2efd44f19ca64afcb8d870f4abe8d6438f7fe7db465dc4de5761147c1",
+    "fpga/acq_sram/capture_path.v": "671a862245099ed76c1dd4db5cf80f87acc4fd6ff265ba13fac51cd556d19524",
+    "fpga/acq_sram/finite_writer.v": "ad76dd2dd475bd6d3b10839bb2dccbd9acddd596203b436e56d692ad1ac6055d",
+    "fpga/acq_sram/finite_recall.v": "061e01eaa28fc574d0903b607a344e43639a181450040b6eed2b3fa86af79d76",
+    "fpga/acq_sram/record.v": "a1d2ca4bd04d63d4af8d47840a385f12a0feb856e387e71571ec97dbbcdf939c",
+    "fpga/acq_sram/recall.v": "02ed7dee0de23b95142ee250c30be7af35e9c8f0a3f42131595516f3e132b53b",
+    "fpga/acq_sram/command_bridge.v": "72d25555954ae35663156676c9246f5e0d833828ad3e2f5919a4cb801d088d97",
+    "fpga/acq_sram/command_port.v": "3be3fcf97c279a517685a2a5ac8e7069bb25cad6308e545dd47bb44c720188e2",
+    "fpga/acq_sram/sim/tb_unpack.v": "d4fe519be348e3ff2489dd00b51f28369568162527926cfa6b6ce560c446291b",
+    "fpga/acq_sram/sim/tb_interleave.v": "6ff9a84061d3faf000d5b0e3a0dd1f0891b00d807d562a07d695e68b6e0c9c96",
+    "fpga/acq_sram/sim/tb_adc_interleave.v": "550366511f1161a96e4ed0a8c86b49550a7259f91bcf634dff0695370e811501",
+    "fpga/acq_sram/sim/tb_acquisition_source.v": "450f23e222fc115ae48377df22b6e189932c2f53b510a53319a7d4d66592a131",
+    "fpga/acq_sram/sim/tb_trigger_pipeline.v": "e1f909e907b6d9078e40ab700ce2e3a1130c76ed63d183ba1cebbbded461ae7a",
+    "fpga/acq_sram/sim/tb_command_bridge.v": "b6f4891dd5cfb6034dce67597d6eddbe37ed19ea12d8f0ad41efccfcf1853b72",
+    "fpga/acq_sram/sim/tb_command_port.v": "56a0e3048b3b1d61e2ae2b3acc723fc52f0586eeb74832e4a82f066115b09b1d",
+    "fpga/acq_sram/sim/tb_command_gpmc.v": "62d4cc77e6061b4e02d47baf725b1f0b91622d13450ebb8d11c3fcdea1939e68",
+    "fpga/acq_sram/sim/tb_record.v": "5dc8515c27dfe5249722c83d87cd55094f46021241e29cb15fc3fd86178260f3",
+    "fpga/acq_sram/sim/tb_finite_capture.v": "5843e39c1c8e45ab2479650c30e8cffebb0f062a227ac2d60d230d0280cab741",
+    "fpga/acq_sram/sim/tb_finite_writer_faults.v": "fee6ffb230823ee54b50da1823c99d6ebed74d9c034f7751b6988e2122cf2a03",
+    "fpga/acq_sram/sim/tb_finite_recall.v": "f64b71e7ddb7f99797341f28b7a354fe4418aa64e1f10a8e343fe69fa23e4f2a",
+    "fpga/acq_sram/sim/tb_finite_recall_faults.v": "56c2074834f1d16718aa940ab614e9462d6577aba67b3993268e58b140a266f9",
+    "fpga/acq_sram/sim/tb_acquisition_path.v": "aa880a846cbaf5c23c83138b4f04c4ee05efb1d11532a84bd5c1c5a5d095f225",
+    "fpga/acq_sram/sim/tb_board_capture.v": "a3153a1c0dfc684d3cbe562a841791853cf8f11f2028e88de04385c445da5e16",
+    "fpga/acq_sram/sim/tb_capture_engine.v": "9168a23466bb5f3e8e3db80ffa5e4634f357b8e0fbead8e182717c990c344fa6",
+    "fpga/acq_sram/sim/tb_capture_start.v": "5ffa466913965463681e4ff8d5d74c1e48feaabfbdf1deedd0126389ec28fd18",
+    "fpga/acq_sram/sim/ddr_model.v": "ace57d159f0b1b9edd4e9c82b1496fab3b79b7c056b9aaa2da66698e65d164f2",
+    "fpga/common/lane_in.v": "1777785598b0670d0ec92cc5402bd27b78d939aafdab443796892deecad8a719",
+    "fpga/common/ddio_pair.v": "0f32c77bac09fb1fb4a8069f7480743e8b0dd05669da22aa68e171798d33435c"
+  },
+  "modulesByFile": {
+    "fpga/acq_sram/adc_unpack.v": [
+      "adc_unpack"
+    ],
+    "fpga/acq_sram/interleave.v": [
+      "adc_interleave",
+      "interleave_gearbox",
+      "interleave_gearbox64"
+    ],
+    "fpga/acq_sram/acquisition_source.v": [
+      "adc_acquisition_source"
+    ],
+    "fpga/acq_sram/acquisition_path.v": [
+      "sram_acquisition_path",
+      "acquisition_trigger_pipeline"
+    ],
+    "fpga/acq_sram/board_capture_path.v": [
+      "sram_board_capture_path"
+    ],
+    "fpga/acq_sram/capture_engine.v": [
+      "sram_capture_engine"
+    ],
+    "fpga/acq_sram/capture_path.v": [
+      "sram_capture_path"
+    ],
+    "fpga/acq_sram/finite_writer.v": [
+      "sram_finite_writer"
+    ],
+    "fpga/acq_sram/finite_recall.v": [
+      "sram_finite_recall"
+    ],
+    "fpga/acq_sram/record.v": [
+      "sram_record"
+    ],
+    "fpga/acq_sram/recall.v": [
+      "sram_recall"
+    ],
+    "fpga/acq_sram/command_bridge.v": [
+      "acq_command_bridge"
+    ],
+    "fpga/acq_sram/command_port.v": [
+      "acq_command_port"
+    ],
+    "fpga/acq_sram/sim/tb_unpack.v": [
+      "tb"
+    ],
+    "fpga/acq_sram/sim/tb_interleave.v": [
+      "tb"
+    ],
+    "fpga/acq_sram/sim/tb_adc_interleave.v": [
+      "adc_phase_pll",
+      "tb"
+    ],
+    "fpga/acq_sram/sim/tb_acquisition_source.v": [
+      "adc_interleave",
+      "adc_precision",
+      "tb_acquisition_source"
+    ],
+    "fpga/acq_sram/sim/tb_trigger_pipeline.v": [
+      "tb_trigger_pipeline"
+    ],
+    "fpga/acq_sram/sim/tb_command_bridge.v": [
+      "tb_command_bridge"
+    ],
+    "fpga/acq_sram/sim/tb_command_port.v": [
+      "tb_command_port"
+    ],
+    "fpga/acq_sram/sim/tb_command_gpmc.v": [
+      "tb_command_gpmc"
+    ],
+    "fpga/acq_sram/sim/tb_record.v": [
+      "tb"
+    ],
+    "fpga/acq_sram/sim/tb_finite_capture.v": [
+      "tb_finite_capture"
+    ],
+    "fpga/acq_sram/sim/tb_finite_writer_faults.v": [
+      "tb_finite_writer_faults"
+    ],
+    "fpga/acq_sram/sim/tb_finite_recall.v": [
+      "tb_finite_recall"
+    ],
+    "fpga/acq_sram/sim/tb_finite_recall_faults.v": [
+      "tb_finite_recall_faults"
+    ],
+    "fpga/acq_sram/sim/tb_acquisition_path.v": [
+      "adc_interleave",
+      "adc_precision",
+      "tb_acquisition_path"
+    ],
+    "fpga/acq_sram/sim/tb_board_capture.v": [
+      "tb_board_capture"
+    ],
+    "fpga/acq_sram/sim/tb_capture_engine.v": [
+      "tb_capture_engine"
+    ],
+    "fpga/acq_sram/sim/tb_capture_start.v": [
+      "tb_capture_start"
+    ]
+  },
+  "findings": [
+    {
+      "id": "ACQ-RTL-01",
+      "topic": "lane-map",
+      "requirement": "REQ-SDS-038",
+      "finding": "adc_unpack permutes eighty bits through the shared LANEMAP_ENTRY macro. The walking-one test uses that same macro, proving implementation consistency and uniqueness for this map rather than independently measuring physical lane wiring."
+    },
+    {
+      "id": "ACQ-RTL-02",
+      "topic": "interleave",
+      "requirement": "REQ-SDS-039",
+      "finding": "Five encode phases, selected capture phases, frame gather and explicit chronological byte permutation precede 80-to-64 packing. The 32-bit gearbox is a separate legacy helper. Startup requires at least eight queued frames; underflow/overflow faults are sticky until epoch disable."
+    },
+    {
+      "id": "ACQ-RTL-03",
+      "topic": "clock-assumptions",
+      "requirement": "REQ-SDS-039",
+      "finding": "The 64-bit held word is serialized across pack and memory clocks using a toggle and two halves. Correct delivery relies on the intended related-clock ratio/phase and settled bundled payload, not a general acknowledged asynchronous queue. Physical skew, metastability and converter gain/offset matching remain unqualified."
+    },
+    {
+      "id": "ACQ-RTL-04",
+      "topic": "source-epoch",
+      "requirement": "REQ-SDS-040",
+      "finding": "ADC source latches decimation and encode configuration on enable rise, accepts raw zero or precision logs 4..20, and retains faults until disabled. Initial lack of ADC lock suppresses validity without premature fault; loss after lock has been seen becomes sticky. Consumption is not paused for downstream SRAM reads."
+    },
+    {
+      "id": "ACQ-RTL-05",
+      "topic": "mode-admission",
+      "requirement": "REQ-SDS-041",
+      "finding": "Acquisition path independently validates finite geometry, streaming logs 8..20 with ENABLE_STREAM, and frozen recall extent. A cached readiness flag is combinationally masked by reset, lock, faults and owned banks; each request consumes cached readiness even if rejected."
+    },
+    {
+      "id": "ACQ-RTL-06",
+      "topic": "trigger-pipeline",
+      "requirement": "REQ-SDS-042",
+      "finding": "Two pipeline stages align raw/precision channel selection, threshold comparisons, force and external-match flags with valid words. Raw format can trigger on either packed sample; precision has one pair. Previous threshold relations advance only with valid output; bubbles do not own data."
+    },
+    {
+      "id": "ACQ-RTL-07",
+      "topic": "finite-writer",
+      "requirement": "REQ-SDS-042",
+      "finding": "Finite writing reserves transport immediately, primes and drains before saving origin, and accepts source words only during RUN readiness. Missing write readiness on a valid word invalidates the epoch. Halt can freeze an empty or partial record; source failure invalidates even an already frozen record. Physical origin convention still needs board qualification."
+    },
+    {
+      "id": "ACQ-RTL-08",
+      "topic": "record-bookkeeping",
+      "requirement": "REQ-SDS-042",
+      "finding": "Prehistory excludes and posthistory includes the trigger word. Counters advance on accepted step; trigger eligibility waits for prehistory. CONFIG_VALIDATED bypasses local arm geometry checks and requires validation by the enclosing writer. Invalid unvalidated rearm preserves the existing record; reset and halt have explicit priorities."
+    },
+    {
+      "id": "ACQ-RTL-09",
+      "topic": "recall-geometry",
+      "requirement": "REQ-SDS-043",
+      "finding": "Legacy recall computes a modular seek from the physical cursor and preserves full-depth versus zero-length distinction. Finite recall snapshots accepted geometry, checks frozen/size/extent, seeks with warmup, and may continue successive bursts without new warmup. Host ordinals restart at zero relative to each requested range."
+    },
+    {
+      "id": "ACQ-RTL-10",
+      "topic": "recall-failure",
+      "requirement": "REQ-SDS-043",
+      "finding": "Premature transport completion, extra data, lost freeze and host-core error fault the finite recall epoch. Failed epochs retain bank ownership and cannot be reused until coordinated reset. Success waits for the final host-bank release and transport readiness; no write command is generated."
+    },
+    {
+      "id": "ACQ-RTL-11",
+      "topic": "ownership",
+      "requirement": "REQ-SDS-045",
+      "finding": "Board backend reserves one physical transport for writer or stream/recall and prevents grant while backend activity or host banks remain. Releasing writer request does not bypass physical drain. Shared engine retains selected mode across launch and outstanding ownership; deep-only builds tie streaming producer outputs inactive."
+    },
+    {
+      "id": "ACQ-RTL-12",
+      "topic": "mailbox",
+      "requirement": "REQ-SDS-054",
+      "finding": "A toggle mailbox holds payload until delivery acknowledgment crosses back. Shared asynchronous assertion and per-domain reset release define an epoch. Acknowledgment proves delivery only; command port separately returns decode/acquisition acceptance and a coherent status payload."
+    },
+    {
+      "id": "ACQ-RTL-13",
+      "topic": "command-port",
+      "requirement": "REQ-SDS-055",
+      "finding": "Host configuration may be edited while a command is pending, but accepted payload is already held. Busy combines request transport with pending result. Rejection is sticky until explicitly cleared; opcode/sequence/result/status snapshots describe the accepted request. Sequence is a wrapping 16-bit counter."
+    },
+    {
+      "id": "ACQ-RTL-14",
+      "topic": "opcode-policy",
+      "requirement": "REQ-SDS-056",
+      "finding": "Supported opcodes are 1..7 with feature-dependent streaming/snapshot enable; opcode 7 requests status without starting acquisition. Reserved configuration bits are rejected for starts, while halt/force/snapshot do not consume malformed geometry. Actual capacity and mode geometry are validated downstream."
+    },
+    {
+      "id": "ACQ-RTL-15",
+      "topic": "freeze-isolation",
+      "requirement": "REQ-SDS-057",
+      "finding": "Idle speculative settings and delayed launch registers are private to admission; frozen record metadata is separately retained. Accepted capture/stream invalidates previous finite-record availability. Public frozen status is suppressed by backend faults, including immediate host-core fault propagation."
+    },
+    {
+      "id": "ACQ-RTL-16",
+      "topic": "digital-fixtures",
+      "requirement": "REQ-SDS-059",
+      "finding": "Acquisition-source/path benches replace ADC and precision arithmetic with simple mocks. Other integration benches use ideal digital clocks, a behavioral SRAM two-stage read pipeline and selected address widths. Full 19-bit cases exercise digital geometry, not physical SRAM margins, ADC aperture timing or fitted placement."
+    },
+    {
+      "id": "ACQ-RTL-17",
+      "topic": "matrix-scope",
+      "requirement": "REQ-SDS-061",
+      "finding": "Command bridge phase/short-reset and stopped-core cases cover selected digital interleavings; they are not CDC signoff. DDR/lane support source has been read, but vendor FIFO simulation availability is unresolved for the original ADC interleave bench. Every simulation must preserve compile failures and distinguish mocked primitives."
+    }
+  ],
+  "scope": "Complete reads of 13 acquisition RTL files and 17 original benches, plus three shared DDR/lane support files. Behavior review only at this stage; no new simulation outcome or physical qualification is claimed. Precision numerical implementation and board top/PLL/timing constraints remain separate work.",
+  "executionEvidence": "acquisition-rtl-review-test-run.json",
+  "caseMatrix": "acquisition-rtl-case-matrix.json",
+  "traceMapping": "acquisition-rtl-annotation-batch.json",
+  "verificationPolicy": "check_acquisition_rtl_evidence.py classifies compile failures as behavioral not-run, assertion/timeout failures as fail, and successful assertions as partial. Exact approved RTL comment overlays can relate later annotations to frozen pre-annotation test inputs without rerunning unchanged behavior."
+}

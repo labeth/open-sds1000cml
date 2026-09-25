@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-RTL-DEFAULT-DIAG
 // diag.v -- the indexed diagnostic block of the default image (05-WORKPLAN s2.1 + DIAG_CTRL,
 // SNAP_*, MISC_RD): the 27-ball OE-gated bus, the five singles, the MAX-V-facing outputs, the
 // ADC control levels, the lane/bus monitor, the 2048 x 16 snapshot RAM, and the read-only
@@ -42,6 +43,7 @@
 `include "regs.vh"
 `include "lanemap_seed.vh"
 
+// TRLC-LINKS: REQ-SDS-060, REQ-SDS-197, REQ-SDS-198
 module diag (
     input  wire        clk,
     input  wire        clk50,

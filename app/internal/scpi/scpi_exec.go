@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-SCPI
 package scpi
 
 import (
@@ -9,6 +10,7 @@ import (
 	"strings"
 )
 
+// TRLC-LINKS: REQ-SDS-024
 func (h *Handler) execGlobal(head, arg string) []byte {
 	st := h.sc.Snapshot()
 	switch head {
@@ -387,6 +389,7 @@ func (h *Handler) execGlobal(head, arg string) []byte {
 	return errTok(errUndefined)
 }
 
+// TRLC-LINKS: REQ-SDS-024
 func (h *Handler) execChannel(ch int, head, arg string) []byte {
 	switch head {
 	case "VDIV":
@@ -571,6 +574,7 @@ func (h *Handler) execChannel(ch int, head, arg string) []byte {
 // there is no intensity control on this build). keyword,value pairs in any
 // order/subset, WFSU-style: a request for the fixed levels is a no-op success,
 // any other level is a §3.4 range error, malformed input a grammar error.
+// TRLC-LINKS: REQ-SDS-024
 func (h *Handler) setINTS(arg string) []byte {
 	parts := strings.Split(arg, ",")
 	if len(parts)%2 != 0 {
@@ -596,6 +600,7 @@ func (h *Handler) setINTS(arg string) []byte {
 	return nil
 }
 
+// TRLC-LINKS: REQ-SDS-024
 func (h *Handler) setWFSU(arg string) []byte {
 	parts := strings.Split(arg, ",")
 	if len(parts)%2 != 0 {

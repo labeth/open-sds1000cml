@@ -1,4 +1,6 @@
+// ENGMODEL-OWNER-UNIT: FU-RTL-ACQ-TESTS
 `timescale 1ns/1ps
+// TRLC-LINKS: REQ-SDS-054, REQ-SDS-055, REQ-SDS-056, REQ-SDS-058, REQ-SDS-185, REQ-SDS-077, REQ-SDS-080
 module tb_command_port;
  parameter ENABLE_STREAM=0,PHASE=0;
  reg reset=1,host_clk=0,core_clk=0,host_write=0;

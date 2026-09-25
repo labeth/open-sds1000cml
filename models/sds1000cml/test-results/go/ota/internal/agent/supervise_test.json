@@ -1,0 +1,150 @@
+{
+  "source": "ota/internal/agent/supervise_test.go",
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "scope": "Reviewed Go test outcomes; passing assertions contribute partial requirement evidence.",
+  "sourceSHA256": "f8eb85c95aca937706e5d9ca152ed5cb08021dec9db09d349f0a343fbbd49df3",
+  "logs": {
+    "test-runs/agent-supervisor.jsonl": "a77cbab5e0cf21f714fe1045e38af63c7b0228ca8b08378d3fd9234fa23366b6"
+  },
+  "tests": [
+    {
+      "name": "TestPickSlotNothingInstalled",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-028"
+      ]
+    },
+    {
+      "name": "TestPickSlotActive",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-028"
+      ]
+    },
+    {
+      "name": "TestPickSlotFallsBackToConfirmed",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-028"
+      ]
+    },
+    {
+      "name": "TestPickSlotEmergencyBackstop",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-028"
+      ]
+    },
+    {
+      "name": "TestPickSlotForcedEmergencyWinsOverActive",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-028"
+      ]
+    },
+    {
+      "name": "TestRollbackBelowThresholdDoesNothing",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-028"
+      ]
+    },
+    {
+      "name": "TestRollbackToConfirmedAtThreshold",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-028"
+      ]
+    },
+    {
+      "name": "TestRollbackToEmergencyWhenConfirmedCrashLoops",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-028"
+      ]
+    },
+    {
+      "name": "TestRollbackExhaustedKeepsRetrying",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-028"
+      ]
+    },
+    {
+      "name": "TestRollbackWhileOnEmergencyOnlyLogs",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-028"
+      ]
+    },
+    {
+      "name": "TestOrphanAppPid",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-028"
+      ]
+    },
+    {
+      "name": "TestSuperviseAdoptedTornDownByControl",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-028",
+        "REQ-SDS-117"
+      ]
+    },
+    {
+      "name": "TestSuperviseAdoptedKillsWhenNoHealthEverArrives",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-028"
+      ]
+    },
+    {
+      "name": "TestIdleWaitServicesControlOps",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-117"
+      ]
+    },
+    {
+      "name": "TestCtlRequestTimesOutWithoutSupervisor",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-117"
+      ]
+    },
+    {
+      "name": "TestRunAppOnceStableRunConfirmsSlot",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-028"
+      ]
+    },
+    {
+      "name": "TestRunAppOnceCrashCountsAsFailure",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-028"
+      ]
+    },
+    {
+      "name": "TestRunAppOnceStaleHealthGetsTerminated",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-028"
+      ]
+    }
+  ],
+  "results": [
+    {
+      "requirement": "REQ-SDS-028",
+      "status": "partial",
+      "notes": "16 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    },
+    {
+      "requirement": "REQ-SDS-117",
+      "status": "partial",
+      "notes": "3 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    }
+  ]
+}

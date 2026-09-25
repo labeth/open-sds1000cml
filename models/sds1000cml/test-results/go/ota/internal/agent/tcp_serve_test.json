@@ -1,0 +1,39 @@
+{
+  "source": "ota/internal/agent/tcp_serve_test.go",
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "scope": "Reviewed Go test outcomes; passing assertions contribute partial requirement evidence.",
+  "sourceSHA256": "31b028cad8a84ccab4c2f77da9eb997788c2621712e533b1ba9cc2a708fa3e7a",
+  "logs": {
+    "test-runs/agent-tcp.jsonl": "b1154d3933efa7be3e0025d6343603fd8b7d148d0d673234a8f91e9d01a42c36"
+  },
+  "tests": [
+    {
+      "name": "TestServeTCPDispatchesOverRealSocket",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-107"
+      ]
+    },
+    {
+      "name": "TestServeTCPConcurrentConnections",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-107"
+      ]
+    },
+    {
+      "name": "TestServeTCPListenerClosesAfterStop",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-107"
+      ]
+    }
+  ],
+  "results": [
+    {
+      "requirement": "REQ-SDS-107",
+      "status": "partial",
+      "notes": "3 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    }
+  ]
+}

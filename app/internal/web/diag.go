@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-WEB
 package web
 
 import (
@@ -22,8 +23,10 @@ import (
 
 // SetDiag wires the diagnostic block. Without it the /api/diag routes answer
 // 503 so a scripted acceptance run fails loudly instead of silently.
+// TRLC-LINKS: REQ-SDS-165
 func (s *Server) SetDiag(d *diag.Diag) { s.diag = d }
 
+// TRLC-LINKS: REQ-SDS-165
 func (s *Server) registerDiag(mux *http.ServeMux) {
 	mux.HandleFunc("/diag", s.hDiagPage)
 	mux.HandleFunc("/diag.js", s.hDiagJS)
@@ -50,6 +53,7 @@ func (s *Server) registerDiag(mux *http.ServeMux) {
 	mux.HandleFunc("/api/diag/redrain", s.withDiag(s.hDiagRedrain))
 }
 
+// TRLC-LINKS: REQ-SDS-165
 func (s *Server) withDiag(h http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if s.diag == nil {
@@ -60,16 +64,19 @@ func (s *Server) withDiag(h http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-165
 func diagErr(w http.ResponseWriter, err error) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusBadRequest)
 	json.NewEncoder(w).Encode(map[string]any{"ok": false, "err": err.Error()})
 }
 
+// TRLC-LINKS: REQ-SDS-165
 func decodeBody(r *http.Request, v any) error {
 	return json.NewDecoder(io.LimitReader(r.Body, 64<<10)).Decode(v)
 }
 
+// TRLC-LINKS: REQ-SDS-165
 func parseWord(s string) (uint16, error) {
 	v, err := strconv.ParseUint(s, 0, 16)
 	if err != nil {
@@ -78,12 +85,14 @@ func parseWord(s string) (uint16, error) {
 	return uint16(v), nil
 }
 
+// TRLC-LINKS: REQ-SDS-165
 func (s *Server) hDiagStatus(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, s.diag.Status())
 }
 
 // hDiagMap serves the register / DIAG window / opcode tables (from the
 // generated iface) so the page and scripts can address everything by name.
+// TRLC-LINKS: REQ-SDS-165
 func (s *Server) hDiagMap(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, map[string]any{
 		"name": iface.Name, "version": iface.Version, "build_id": fmt.Sprintf("0x%08x", iface.BuildID),
@@ -93,6 +102,7 @@ func (s *Server) hDiagMap(w http.ResponseWriter, r *http.Request) {
 }
 
 // hDiagReg: GET ?name=RUN (or ?sel=0x24) reads; POST {"name":..,"val":..,"raw":bool} writes.
+// TRLC-LINKS: REQ-SDS-165
 func (s *Server) hDiagReg(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost {
 		var req struct {
@@ -151,6 +161,7 @@ func (s *Server) hDiagReg(w http.ResponseWriter, r *http.Request) {
 }
 
 // hDiagWindow: GET ?name=ADC_HOLD (or ?idx=7) reads; POST {"name":..,"val":..} writes.
+// TRLC-LINKS: REQ-SDS-165
 func (s *Server) hDiagWindow(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost {
 		var req struct {
@@ -213,6 +224,7 @@ func (s *Server) hDiagWindow(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, wv)
 }
 
+// TRLC-LINKS: REQ-SDS-165
 func (s *Server) hDiagCensus(w http.ResponseWriter, r *http.Request) {
 	c, err := s.diag.Census()
 	if err != nil {
@@ -224,6 +236,7 @@ func (s *Server) hDiagCensus(w http.ResponseWriter, r *http.Request) {
 
 // hDiagSnapshot: GET ?mode=0..7&clk=0..3[&format=bin] — the snapshot RAM
 // words, as JSON or as little-endian 16-bit binary for download.
+// TRLC-LINKS: REQ-SDS-165
 func (s *Server) hDiagSnapshot(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	mode, _ := strconv.Atoi(q.Get("mode"))
@@ -249,6 +262,7 @@ func (s *Server) hDiagSnapshot(w http.ResponseWriter, r *http.Request) {
 // hDiagBus: GET reads the bus state; POST {"ball":"R3","oe":true,"level":1} drives
 // one ball, {"master":true|false} sets the master enable, {"release_all":true}
 // tri-states everything.
+// TRLC-LINKS: REQ-SDS-165
 func (s *Server) hDiagBus(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodPost {
 		var req struct {
@@ -287,6 +301,7 @@ func (s *Server) hDiagBus(w http.ResponseWriter, r *http.Request) {
 }
 
 // hDiagCtrl: POST {"field":"D2","on":true} sets a DIAG_CTRL field bit.
+// TRLC-LINKS: REQ-SDS-165
 func (s *Server) hDiagCtrl(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Field string `json:"field"`
@@ -320,6 +335,7 @@ func (s *Server) hDiagCtrl(w http.ResponseWriter, r *http.Request) {
 }
 
 // hDiagVendor: POST {"dwell_ms":50} runs the E1 vendor-word sequence.
+// TRLC-LINKS: REQ-SDS-165
 func (s *Server) hDiagVendor(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		DwellMs int `json:"dwell_ms"`
@@ -336,6 +352,7 @@ func (s *Server) hDiagVendor(w http.ResponseWriter, r *http.Request) {
 }
 
 // hDiagE2: POST diag.E2Options runs the bus-ownership experiment.
+// TRLC-LINKS: REQ-SDS-165
 func (s *Server) hDiagE2(w http.ResponseWriter, r *http.Request) {
 	var o diag.E2Options
 	if r.Method == http.MethodPost {
@@ -352,6 +369,7 @@ func (s *Server) hDiagE2(w http.ResponseWriter, r *http.Request) {
 // hDiagCapture: POST diag.CaptureOptions (or GET ?words=&decim=&samples=1
 // &tsrc=&chmode=&start=&len=) runs a diagnostic capture and scores the record
 // (with tsrc: rung R2b, the words against the iface pattern models).
+// TRLC-LINKS: REQ-SDS-165
 func (s *Server) hDiagCapture(w http.ResponseWriter, r *http.Request) {
 	var o diag.CaptureOptions
 	if r.Method == http.MethodPost {
@@ -375,6 +393,7 @@ func (s *Server) hDiagCapture(w http.ResponseWriter, r *http.Request) {
 
 // hDiagBusProbe: POST BusProbeOptions — run the 27-ball generator and record
 // what the balls read at the same rate (the acq2 analysis branch).
+// TRLC-LINKS: REQ-SDS-165
 func (s *Server) hDiagBusProbe(w http.ResponseWriter, r *http.Request) {
 	var o diag.BusProbeOptions
 	if r.Method == http.MethodPost {
@@ -400,6 +419,7 @@ func (s *Server) hDiagBusProbe(w http.ResponseWriter, r *http.Request) {
 }
 
 // hDiagCS3: GET a read-only census of the MAX V's CS3 register plane.
+// TRLC-LINKS: REQ-SDS-165
 func (s *Server) hDiagCS3(w http.ResponseWriter, r *http.Request) {
 	n, _ := strconv.Atoi(r.URL.Query().Get("n"))
 	res, err := s.diag.CS3Census(n)
@@ -412,6 +432,7 @@ func (s *Server) hDiagCS3(w http.ResponseWriter, r *http.Request) {
 
 // hDiagCS3Poke: POST CS3PokeOptions — write one MAX V CS3 register and report what moved.
 // The configuration port is refused by the bus layer, and every register here is volatile.
+// TRLC-LINKS: REQ-SDS-165
 func (s *Server) hDiagCS3Poke(w http.ResponseWriter, r *http.Request) {
 	var o diag.CS3PokeOptions
 	if err := json.NewDecoder(r.Body).Decode(&o); err != nil {
@@ -427,6 +448,7 @@ func (s *Server) hDiagCS3Poke(w http.ResponseWriter, r *http.Request) {
 }
 
 // hDiagSramCrank: POST CrankOptions — one rung of the counted-edge SRAM-clock crank.
+// TRLC-LINKS: REQ-SDS-165
 func (s *Server) hDiagSramCrank(w http.ResponseWriter, r *http.Request) {
 	var o diag.CrankOptions
 	if r.Method != http.MethodPost {
@@ -446,6 +468,7 @@ func (s *Server) hDiagSramCrank(w http.ResponseWriter, r *http.Request) {
 // select's region. Writes nothing, ever; the mapping is PROT_READ on an
 // O_RDONLY /dev/mem. Exists because CS2 is VALID on this board and has never
 // been read by any campaign.
+// TRLC-LINKS: REQ-SDS-165
 func (s *Server) hDiagPeek(w http.ResponseWriter, r *http.Request) {
 	cs, _ := strconv.Atoi(r.URL.Query().Get("cs"))
 	n, _ := strconv.Atoi(r.URL.Query().Get("n"))
@@ -461,6 +484,7 @@ func (s *Server) hDiagPeek(w http.ResponseWriter, r *http.Request) {
 // hDiagQuiet: POST QuietOptions — freeze our own converters and listen to the
 // 80 ADC lanes. The DQ bus is shared between the ADC and the SRAM, so silencing
 // the ADC is the only way to hear the SRAM.
+// TRLC-LINKS: REQ-SDS-165
 func (s *Server) hDiagQuiet(w http.ResponseWriter, r *http.Request) {
 	var o diag.QuietOptions
 	if r.Method != http.MethodPost {
@@ -481,6 +505,7 @@ func (s *Server) hDiagQuiet(w http.ResponseWriter, r *http.Request) {
 // runs rung R1, {"action":"persist"} writes the last passed sweep next to the
 // app, {"action":"apply","which":"persisted"|"factory"} applies through the
 // ramp gate (persisted) or restores the factory timing.
+// TRLC-LINKS: REQ-SDS-165
 func (s *Server) hDiagGpmc(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		writeJSON(w, s.diag.GpmcStatus())
@@ -530,6 +555,7 @@ func (s *Server) hDiagGpmc(w http.ResponseWriter, r *http.Request) {
 }
 
 // hDiagSchema: POST diag.SchemaOptions (or GET ?writes=) runs rung R2.
+// TRLC-LINKS: REQ-SDS-165
 func (s *Server) hDiagSchema(w http.ResponseWriter, r *http.Request) {
 	var o diag.SchemaOptions
 	if r.Method == http.MethodPost {
@@ -547,6 +573,7 @@ func (s *Server) hDiagSchema(w http.ResponseWriter, r *http.Request) {
 
 // hDiagRedrain: POST diag.RedrainOptions (or GET ?words=&windows=&passes=&tsrc=)
 // runs rung R3.
+// TRLC-LINKS: REQ-SDS-165
 func (s *Server) hDiagRedrain(w http.ResponseWriter, r *http.Request) {
 	var o diag.RedrainOptions
 	if r.Method == http.MethodPost {
@@ -569,6 +596,7 @@ func (s *Server) hDiagRedrain(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, res)
 }
 
+// TRLC-LINKS: REQ-SDS-165
 func (s *Server) hDiagPage(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Security-Policy", "default-src 'self'; script-src 'self'; connect-src 'self'; style-src 'self' 'unsafe-inline'; object-src 'none'; base-uri 'none'")
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -576,6 +604,7 @@ func (s *Server) hDiagPage(w http.ResponseWriter, r *http.Request) {
 	io.WriteString(w, diagHTML)
 }
 
+// TRLC-LINKS: REQ-SDS-165
 func (s *Server) hDiagJS(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/javascript; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-store")

@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-RTL-ACQ-SRAM-STREAM-BANKS
 `timescale 1ns/1ps
 // Ownership/metadata for a two-bank 64-bit host buffer. The caller supplies
 // dual-clock RAM: write at producer_clk using mem_write/address/data, read only
@@ -17,6 +18,7 @@
 // Valid words in a descriptor = 2*packets - last_single[bank].
 // Reset is an epoch boundary: abandon old descriptors/releases and restart word
 // numbering. Reset assertion is asynchronous, deassertion local-clock synchronized.
+// TRLC-LINKS: REQ-SDS-047, REQ-SDS-049, REQ-SDS-052, REQ-SDS-058
 module stream_banks #(parameter BANK_AW=10)(
  input wire reset,producer_clk,host_clk,
  input wire packet_valid,input wire [63:0] packet_data,input wire packet_single,seal,

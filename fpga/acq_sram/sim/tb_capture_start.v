@@ -1,4 +1,6 @@
+// ENGMODEL-OWNER-UNIT: FU-RTL-ACQ-TESTS
 `timescale 1ns/1ps
+// TRLC-LINKS: REQ-SDS-043, REQ-SDS-045, REQ-SDS-058
 module tb_capture_start;
  localparam AW=13,N=1<<AW;
  reg core_clk=0,ram_clk=0,host_clk=0;

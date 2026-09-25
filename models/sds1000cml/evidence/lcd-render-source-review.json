@@ -1,0 +1,50 @@
+{
+  "result": "reviewed-and-characterized-native-partial-evidence",
+  "sourceSHA256": {
+    "app/internal/lcd/render.go": "64c3bdec4a20fc2ce0fe356b97405133e730e43dfa72ea2128536c062ce0dcad",
+    "app/internal/lcd/render_test.go": "a018ce02d76961a8fb779faf0b9696fd7612dab539a4ef7e7f9cbea33cbccf6c",
+    "app/internal/lcd/render_panels.go": "195b8dcbabf00a82b29630c9225df189797f9bd6dfd13fa5ec7ecef1bc833eb0",
+    "app/internal/lcd/render_overlays.go": "f49ce92abd4e20f58adee044d7a112afc87edc763d8ba6459e2c1e213104620d",
+    "app/internal/lcd/render_fft.go": "4e919e5ef9833a7218677515e270e0392e6aeabbb3b1cfa5688f03af8a7b408e"
+  },
+  "completeReads": [
+    "app/internal/lcd/render.go",
+    "app/internal/lcd/render_test.go",
+    "app/internal/lcd/render_panels.go",
+    "app/internal/lcd/render_overlays.go",
+    "app/internal/lcd/render_fft.go"
+  ],
+  "findings": [
+    "Render dispatches super-resolution review before alternate views, and only composites a persistence layer when the destination is *MemSurface.",
+    "Both disabled channel flags mean show both; envelope and roll frames fall back from XY/FFT to time-domain rendering.",
+    "Y-T frame validity is clamped to C1 length and C2 rendering additionally checks C2 length. Alternate renderers require separate review.",
+    "drawTrace repeats nearest rails outside the record; interpolation is linear between captured samples. drawLine clips writes through Surface but does not bound off-screen iteration.",
+    "Render tests mostly assert color counts, presence in bounded regions, and selected points; they do not establish complete pixel accuracy, numerical measurement accuracy or device presentation.",
+    "TestRenderZoneMaskOverlay disables mask mode while changing geometry, so its final assertion does not independently prove geometry mismatch rejection.",
+    "TestRenderBodeView checks C1/C2 color counts and an empty-curve no-panic call; its frequency-fixture comment understates the actual upper frequency.",
+    "measFor caches by channel, sequence, voltage-per-code, offset, sample interval and coupling; signal contents, precision codes and filter guard are not cache keys. Equal sequence reuses the result indefinitely; a changed sequence can reuse it for 250 ms. Characterization is pending.",
+    "drawMeasPanel/measBox and drawHUD clamp excessive positive Valid to C1 length but do not reject negative Valid before slicing. Renderer entry points assume well-formed frame validity.",
+    "drawHUD labels Bode/spectrogram with the default timebase branch; display overlap observed in the earlier Bode golden remains a layout finding.",
+    "Menu draws at most five nonempty-label slots, without clipping label/value strings to the menu region. Cursor fractions are not validated here; Surface clips pixel writes.",
+    "drawDecode uses modulo results as array indices without rejecting negative DecFormat or DecProto. Decoder internals remain outside this LCD source review.",
+    "drawZoneMask checks matching window/array lengths for mask boundaries; zones are drawn when present with valid sample time/edge regardless of ZoneMode. A direct zero-window mask call can index empty slices. These preconditions need bounded tests.",
+    "drawRefs uses info/dim colors despite an older comment describing purple; references use the current window and do not rescale saved acquisition geometry.",
+    "drawXY uses stride valid/4000 above 4000, so this is not a strict 4000-point cap. It draws segments only after the first point; one valid sample produces no XY point.",
+    "drawFFT uses n as a capped power of two and stride=floor(valid/n); a trailing portion can be unused despite the whole-record comment.",
+    "fftCore normalizes each channel independently to its own non-DC peak and searches the visible band. Flat spectra return the lower visible-bin frequency, not a no-signal sentinel.",
+    "fftRadix2 assumes equal real/imaginary array lengths and power-of-two size. Caller safety and physical spectral accuracy are separate from primitive numerical checks."
+  ],
+  "nextAction": "Review remaining super-resolution, spectrogram, Bode and network-label source/tests for native trace integration; retain unresolved cache/input/spectral limits and physical qualification gaps.",
+  "testEvidence": "evidence/lcd-render-test-run.json",
+  "testedFindings": [
+    "Fourteen original renderer tests pass under race detector; their color-count/presence assertions remain limited.",
+    "Equal sequence reuses cached measurement despite changed signal, precision codes, filter guard and expired timestamp; sequence changes remain throttled until expiry. Voltage-scale change invalidates the cache.",
+    "Negative Valid, negative decoder selectors and direct zero-window mask input panic.",
+    "Mask geometry mismatch is rejected while MaskMode remains enabled; zones draw with ZoneMode zero when supplied.",
+    "A one-sample XY record draws no math-colored segment. Persistence composites only to the concrete *MemSurface.",
+    "FFT primitive matches direct DFT for all bins of deterministic 16- and 32-point inputs within absolute tolerance 1e-10.",
+    "A flat 64-sample spectrum with Nyquist 32 kHz reports 1 kHz as its lower visible-bin peak.",
+    "For a 31-sample record, changing only the last 15 samples leaves drawFFT output unchanged; changing the used prefix changes output."
+  ],
+  "preannotationReview": "evidence/lcd-render-preannotation.json"
+}

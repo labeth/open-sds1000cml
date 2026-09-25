@@ -1,0 +1,60 @@
+{"Time":"2026-09-23T07:44:03.209410109+02:00","Action":"start","Package":"open-sds/app/internal/lcd"}
+{"Time":"2026-09-23T07:44:03.221450527+02:00","Action":"run","Package":"open-sds/app/internal/lcd","Test":"TestRenderPersistence"}
+{"Time":"2026-09-23T07:44:03.221521509+02:00","Action":"output","Package":"open-sds/app/internal/lcd","Test":"TestRenderPersistence","Output":"=== RUN   TestRenderPersistence\n"}
+{"Time":"2026-09-23T07:44:03.259694812+02:00","Action":"output","Package":"open-sds/app/internal/lcd","Test":"TestRenderPersistence","Output":"--- PASS: TestRenderPersistence (0.04s)\n"}
+{"Time":"2026-09-23T07:44:03.259722997+02:00","Action":"pass","Package":"open-sds/app/internal/lcd","Test":"TestRenderPersistence","Elapsed":0.04}
+{"Time":"2026-09-23T07:44:03.259755493+02:00","Action":"run","Package":"open-sds/app/internal/lcd","Test":"TestRenderAltViews"}
+{"Time":"2026-09-23T07:44:03.259762689+02:00","Action":"output","Package":"open-sds/app/internal/lcd","Test":"TestRenderAltViews","Output":"=== RUN   TestRenderAltViews\n"}
+{"Time":"2026-09-23T07:44:03.357645748+02:00","Action":"output","Package":"open-sds/app/internal/lcd","Test":"TestRenderAltViews","Output":"--- PASS: TestRenderAltViews (0.10s)\n"}
+{"Time":"2026-09-23T07:44:03.357668411+02:00","Action":"pass","Package":"open-sds/app/internal/lcd","Test":"TestRenderAltViews","Elapsed":0.1}
+{"Time":"2026-09-23T07:44:03.357830179+02:00","Action":"run","Package":"open-sds/app/internal/lcd","Test":"TestRenderMenuSelectedSoftkeyFilled"}
+{"Time":"2026-09-23T07:44:03.357837602+02:00","Action":"output","Package":"open-sds/app/internal/lcd","Test":"TestRenderMenuSelectedSoftkeyFilled","Output":"=== RUN   TestRenderMenuSelectedSoftkeyFilled\n"}
+{"Time":"2026-09-23T07:44:03.362938425+02:00","Action":"output","Package":"open-sds/app/internal/lcd","Test":"TestRenderMenuSelectedSoftkeyFilled","Output":"--- PASS: TestRenderMenuSelectedSoftkeyFilled (0.01s)\n"}
+{"Time":"2026-09-23T07:44:03.362949276+02:00","Action":"pass","Package":"open-sds/app/internal/lcd","Test":"TestRenderMenuSelectedSoftkeyFilled","Elapsed":0.01}
+{"Time":"2026-09-23T07:44:03.363007493+02:00","Action":"run","Package":"open-sds/app/internal/lcd","Test":"TestRenderMeasPanel"}
+{"Time":"2026-09-23T07:44:03.363012177+02:00","Action":"output","Package":"open-sds/app/internal/lcd","Test":"TestRenderMeasPanel","Output":"=== RUN   TestRenderMeasPanel\n"}
+{"Time":"2026-09-23T07:44:03.394029586+02:00","Action":"output","Package":"open-sds/app/internal/lcd","Test":"TestRenderMeasPanel","Output":"--- PASS: TestRenderMeasPanel (0.03s)\n"}
+{"Time":"2026-09-23T07:44:03.394045293+02:00","Action":"pass","Package":"open-sds/app/internal/lcd","Test":"TestRenderMeasPanel","Elapsed":0.03}
+{"Time":"2026-09-23T07:44:03.394141444+02:00","Action":"run","Package":"open-sds/app/internal/lcd","Test":"TestRenderCursors"}
+{"Time":"2026-09-23T07:44:03.394148035+02:00","Action":"output","Package":"open-sds/app/internal/lcd","Test":"TestRenderCursors","Output":"=== RUN   TestRenderCursors\n"}
+{"Time":"2026-09-23T07:44:03.426779241+02:00","Action":"output","Package":"open-sds/app/internal/lcd","Test":"TestRenderCursors","Output":"--- PASS: TestRenderCursors (0.03s)\n"}
+{"Time":"2026-09-23T07:44:03.426797975+02:00","Action":"pass","Package":"open-sds/app/internal/lcd","Test":"TestRenderCursors","Elapsed":0.03}
+{"Time":"2026-09-23T07:44:03.426847307+02:00","Action":"run","Package":"open-sds/app/internal/lcd","Test":"TestRenderTraceFrame"}
+{"Time":"2026-09-23T07:44:03.426853342+02:00","Action":"output","Package":"open-sds/app/internal/lcd","Test":"TestRenderTraceFrame","Output":"=== RUN   TestRenderTraceFrame\n"}
+{"Time":"2026-09-23T07:44:03.453212986+02:00","Action":"output","Package":"open-sds/app/internal/lcd","Test":"TestRenderTraceFrame","Output":"--- PASS: TestRenderTraceFrame (0.03s)\n"}
+{"Time":"2026-09-23T07:44:03.453228037+02:00","Action":"pass","Package":"open-sds/app/internal/lcd","Test":"TestRenderTraceFrame","Elapsed":0.03}
+{"Time":"2026-09-23T07:44:03.453252351+02:00","Action":"run","Package":"open-sds/app/internal/lcd","Test":"TestRenderHeldFrameStripRed"}
+{"Time":"2026-09-23T07:44:03.453255747+02:00","Action":"output","Package":"open-sds/app/internal/lcd","Test":"TestRenderHeldFrameStripRed","Output":"=== RUN   TestRenderHeldFrameStripRed\n"}
+{"Time":"2026-09-23T07:44:03.468018706+02:00","Action":"output","Package":"open-sds/app/internal/lcd","Test":"TestRenderHeldFrameStripRed","Output":"--- PASS: TestRenderHeldFrameStripRed (0.01s)\n"}
+{"Time":"2026-09-23T07:44:03.468035225+02:00","Action":"pass","Package":"open-sds/app/internal/lcd","Test":"TestRenderHeldFrameStripRed","Elapsed":0.01}
+{"Time":"2026-09-23T07:44:03.468042252+02:00","Action":"run","Package":"open-sds/app/internal/lcd","Test":"TestRenderEnvelopeBranch"}
+{"Time":"2026-09-23T07:44:03.468044964+02:00","Action":"output","Package":"open-sds/app/internal/lcd","Test":"TestRenderEnvelopeBranch","Output":"=== RUN   TestRenderEnvelopeBranch\n"}
+{"Time":"2026-09-23T07:44:03.492113477+02:00","Action":"output","Package":"open-sds/app/internal/lcd","Test":"TestRenderEnvelopeBranch","Output":"--- PASS: TestRenderEnvelopeBranch (0.02s)\n"}
+{"Time":"2026-09-23T07:44:03.492131761+02:00","Action":"pass","Package":"open-sds/app/internal/lcd","Test":"TestRenderEnvelopeBranch","Elapsed":0.02}
+{"Time":"2026-09-23T07:44:03.492138639+02:00","Action":"run","Package":"open-sds/app/internal/lcd","Test":"TestRenderNilFrame"}
+{"Time":"2026-09-23T07:44:03.492141215+02:00","Action":"output","Package":"open-sds/app/internal/lcd","Test":"TestRenderNilFrame","Output":"=== RUN   TestRenderNilFrame\n"}
+{"Time":"2026-09-23T07:44:03.494478633+02:00","Action":"output","Package":"open-sds/app/internal/lcd","Test":"TestRenderNilFrame","Output":"--- PASS: TestRenderNilFrame (0.00s)\n"}
+{"Time":"2026-09-23T07:44:03.494488423+02:00","Action":"pass","Package":"open-sds/app/internal/lcd","Test":"TestRenderNilFrame","Elapsed":0}
+{"Time":"2026-09-23T07:44:03.494493566+02:00","Action":"run","Package":"open-sds/app/internal/lcd","Test":"TestRenderFlatRailNoFabrication"}
+{"Time":"2026-09-23T07:44:03.494495905+02:00","Action":"output","Package":"open-sds/app/internal/lcd","Test":"TestRenderFlatRailNoFabrication","Output":"=== RUN   TestRenderFlatRailNoFabrication\n"}
+{"Time":"2026-09-23T07:44:03.497222043+02:00","Action":"output","Package":"open-sds/app/internal/lcd","Test":"TestRenderFlatRailNoFabrication","Output":"--- PASS: TestRenderFlatRailNoFabrication (0.00s)\n"}
+{"Time":"2026-09-23T07:44:03.497235945+02:00","Action":"pass","Package":"open-sds/app/internal/lcd","Test":"TestRenderFlatRailNoFabrication","Elapsed":0}
+{"Time":"2026-09-23T07:44:03.4972453+02:00","Action":"run","Package":"open-sds/app/internal/lcd","Test":"TestFontMetrics"}
+{"Time":"2026-09-23T07:44:03.497249876+02:00","Action":"output","Package":"open-sds/app/internal/lcd","Test":"TestFontMetrics","Output":"=== RUN   TestFontMetrics\n"}
+{"Time":"2026-09-23T07:44:03.497543585+02:00","Action":"output","Package":"open-sds/app/internal/lcd","Test":"TestFontMetrics","Output":"--- PASS: TestFontMetrics (0.00s)\n"}
+{"Time":"2026-09-23T07:44:03.497559037+02:00","Action":"pass","Package":"open-sds/app/internal/lcd","Test":"TestFontMetrics","Elapsed":0}
+{"Time":"2026-09-23T07:44:03.497575236+02:00","Action":"run","Package":"open-sds/app/internal/lcd","Test":"TestFormatters"}
+{"Time":"2026-09-23T07:44:03.497579312+02:00","Action":"output","Package":"open-sds/app/internal/lcd","Test":"TestFormatters","Output":"=== RUN   TestFormatters\n"}
+{"Time":"2026-09-23T07:44:03.497655553+02:00","Action":"output","Package":"open-sds/app/internal/lcd","Test":"TestFormatters","Output":"--- PASS: TestFormatters (0.00s)\n"}
+{"Time":"2026-09-23T07:44:03.497670552+02:00","Action":"pass","Package":"open-sds/app/internal/lcd","Test":"TestFormatters","Elapsed":0}
+{"Time":"2026-09-23T07:44:03.497697714+02:00","Action":"run","Package":"open-sds/app/internal/lcd","Test":"TestRenderZoneMaskOverlay"}
+{"Time":"2026-09-23T07:44:03.497702282+02:00","Action":"output","Package":"open-sds/app/internal/lcd","Test":"TestRenderZoneMaskOverlay","Output":"=== RUN   TestRenderZoneMaskOverlay\n"}
+{"Time":"2026-09-23T07:44:03.546401262+02:00","Action":"output","Package":"open-sds/app/internal/lcd","Test":"TestRenderZoneMaskOverlay","Output":"--- PASS: TestRenderZoneMaskOverlay (0.05s)\n"}
+{"Time":"2026-09-23T07:44:03.54642877+02:00","Action":"pass","Package":"open-sds/app/internal/lcd","Test":"TestRenderZoneMaskOverlay","Elapsed":0.05}
+{"Time":"2026-09-23T07:44:03.546441335+02:00","Action":"run","Package":"open-sds/app/internal/lcd","Test":"TestRenderBodeView"}
+{"Time":"2026-09-23T07:44:03.546444898+02:00","Action":"output","Package":"open-sds/app/internal/lcd","Test":"TestRenderBodeView","Output":"=== RUN   TestRenderBodeView\n"}
+{"Time":"2026-09-23T07:44:03.574019628+02:00","Action":"output","Package":"open-sds/app/internal/lcd","Test":"TestRenderBodeView","Output":"--- PASS: TestRenderBodeView (0.03s)\n"}
+{"Time":"2026-09-23T07:44:03.574036799+02:00","Action":"pass","Package":"open-sds/app/internal/lcd","Test":"TestRenderBodeView","Elapsed":0.03}
+{"Time":"2026-09-23T07:44:03.574408181+02:00","Action":"output","Package":"open-sds/app/internal/lcd","Output":"PASS\n"}
+{"Time":"2026-09-23T07:44:04.576941477+02:00","Action":"output","Package":"open-sds/app/internal/lcd","Output":"ok  \topen-sds/app/internal/lcd\t1.367s\n"}
+{"Time":"2026-09-23T07:44:04.576958211+02:00","Action":"pass","Package":"open-sds/app/internal/lcd","Elapsed":1.3679999999999999}

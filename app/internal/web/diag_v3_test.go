@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-WEB
 package web
 
 import (
@@ -8,6 +9,7 @@ import (
 // The v3 rung endpoints answer over the handler-test fabric (which has no
 // drain monitors: the verdicts are "not exact", the routes and shapes are
 // what is checked here; the rung logic is tested in internal/diag).
+// TRLC-LINKS: REQ-SDS-165
 func TestDiagV3Routes(t *testing.T) {
 	s, _ := diagServer(t)
 	h := s.Handler()

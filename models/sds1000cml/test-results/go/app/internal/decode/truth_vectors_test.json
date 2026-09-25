@@ -1,0 +1,46 @@
+{
+  "source": "app/internal/decode/truth_vectors_test.go",
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "scope": "Reviewed Go test outcomes; passing assertions contribute partial requirement evidence.",
+  "sourceSHA256": "835a05250545cba7348f092f0f9a44f478d8f22adb26caa2faed1f6d2b0481ab",
+  "logs": {
+    "test-runs/decode-extended-exploratory.jsonl": "66a80f8ce964936a9508047ef9b9cb0fc09d50284875a57ca1f588d481dfd694"
+  },
+  "tests": [
+    {
+      "name": "TestTruthSENT",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-018"
+      ]
+    },
+    {
+      "name": "TestTruthMIL1553",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-018"
+      ]
+    },
+    {
+      "name": "TestTruthARINC429",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-018"
+      ]
+    },
+    {
+      "name": "TestTruthManchester",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-018"
+      ]
+    }
+  ],
+  "results": [
+    {
+      "requirement": "REQ-SDS-018",
+      "status": "partial",
+      "notes": "4 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    }
+  ]
+}

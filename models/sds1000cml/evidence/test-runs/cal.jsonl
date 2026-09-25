@@ -1,0 +1,32 @@
+{"Time":"2026-09-22T22:14:40.495523049+02:00","Action":"start","Package":"open-sds/app/internal/cal"}
+{"Time":"2026-09-22T22:14:40.497678657+02:00","Action":"run","Package":"open-sds/app/internal/cal","Test":"TestScrambleRoundTrip"}
+{"Time":"2026-09-22T22:14:40.49769777+02:00","Action":"output","Package":"open-sds/app/internal/cal","Test":"TestScrambleRoundTrip","Output":"=== RUN   TestScrambleRoundTrip\n"}
+{"Time":"2026-09-22T22:14:40.497721164+02:00","Action":"output","Package":"open-sds/app/internal/cal","Test":"TestScrambleRoundTrip","Output":"--- PASS: TestScrambleRoundTrip (0.00s)\n"}
+{"Time":"2026-09-22T22:14:40.497725556+02:00","Action":"pass","Package":"open-sds/app/internal/cal","Test":"TestScrambleRoundTrip","Elapsed":0}
+{"Time":"2026-09-22T22:14:40.497730236+02:00","Action":"run","Package":"open-sds/app/internal/cal","Test":"TestTriangularIndices"}
+{"Time":"2026-09-22T22:14:40.497733582+02:00","Action":"output","Package":"open-sds/app/internal/cal","Test":"TestTriangularIndices","Output":"=== RUN   TestTriangularIndices\n"}
+{"Time":"2026-09-22T22:14:40.497746734+02:00","Action":"output","Package":"open-sds/app/internal/cal","Test":"TestTriangularIndices","Output":"--- PASS: TestTriangularIndices (0.00s)\n"}
+{"Time":"2026-09-22T22:14:40.497752078+02:00","Action":"pass","Package":"open-sds/app/internal/cal","Test":"TestTriangularIndices","Elapsed":0}
+{"Time":"2026-09-22T22:14:40.497757239+02:00","Action":"run","Package":"open-sds/app/internal/cal","Test":"TestParseWorkedOffsets"}
+{"Time":"2026-09-22T22:14:40.497760729+02:00","Action":"output","Package":"open-sds/app/internal/cal","Test":"TestParseWorkedOffsets","Output":"=== RUN   TestParseWorkedOffsets\n"}
+{"Time":"2026-09-22T22:14:40.497797962+02:00","Action":"output","Package":"open-sds/app/internal/cal","Test":"TestParseWorkedOffsets","Output":"--- PASS: TestParseWorkedOffsets (0.00s)\n"}
+{"Time":"2026-09-22T22:14:40.497803881+02:00","Action":"pass","Package":"open-sds/app/internal/cal","Test":"TestParseWorkedOffsets","Elapsed":0}
+{"Time":"2026-09-22T22:14:40.497809289+02:00","Action":"run","Package":"open-sds/app/internal/cal","Test":"TestChecksumRejects"}
+{"Time":"2026-09-22T22:14:40.497812621+02:00","Action":"output","Package":"open-sds/app/internal/cal","Test":"TestChecksumRejects","Output":"=== RUN   TestChecksumRejects\n"}
+{"Time":"2026-09-22T22:14:40.497841188+02:00","Action":"output","Package":"open-sds/app/internal/cal","Test":"TestChecksumRejects","Output":"--- PASS: TestChecksumRejects (0.00s)\n"}
+{"Time":"2026-09-22T22:14:40.497846644+02:00","Action":"pass","Package":"open-sds/app/internal/cal","Test":"TestChecksumRejects","Elapsed":0}
+{"Time":"2026-09-22T22:14:40.497851941+02:00","Action":"run","Package":"open-sds/app/internal/cal","Test":"TestDefaults"}
+{"Time":"2026-09-22T22:14:40.497855222+02:00","Action":"output","Package":"open-sds/app/internal/cal","Test":"TestDefaults","Output":"=== RUN   TestDefaults\n"}
+{"Time":"2026-09-22T22:14:40.497875049+02:00","Action":"output","Package":"open-sds/app/internal/cal","Test":"TestDefaults","Output":"--- PASS: TestDefaults (0.00s)\n"}
+{"Time":"2026-09-22T22:14:40.497882755+02:00","Action":"pass","Package":"open-sds/app/internal/cal","Test":"TestDefaults","Elapsed":0}
+{"Time":"2026-09-22T22:14:40.497887021+02:00","Action":"run","Package":"open-sds/app/internal/cal","Test":"TestDCVolts"}
+{"Time":"2026-09-22T22:14:40.497890272+02:00","Action":"output","Package":"open-sds/app/internal/cal","Test":"TestDCVolts","Output":"=== RUN   TestDCVolts\n"}
+{"Time":"2026-09-22T22:14:40.497895534+02:00","Action":"output","Package":"open-sds/app/internal/cal","Test":"TestDCVolts","Output":"--- PASS: TestDCVolts (0.00s)\n"}
+{"Time":"2026-09-22T22:14:40.497903652+02:00","Action":"pass","Package":"open-sds/app/internal/cal","Test":"TestDCVolts","Elapsed":0}
+{"Time":"2026-09-22T22:14:40.497913263+02:00","Action":"run","Package":"open-sds/app/internal/cal","Test":"TestCalParseFuzz"}
+{"Time":"2026-09-22T22:14:40.497917474+02:00","Action":"output","Package":"open-sds/app/internal/cal","Test":"TestCalParseFuzz","Output":"=== RUN   TestCalParseFuzz\n"}
+{"Time":"2026-09-22T22:14:40.552051536+02:00","Action":"output","Package":"open-sds/app/internal/cal","Test":"TestCalParseFuzz","Output":"--- PASS: TestCalParseFuzz (0.05s)\n"}
+{"Time":"2026-09-22T22:14:40.552068527+02:00","Action":"pass","Package":"open-sds/app/internal/cal","Test":"TestCalParseFuzz","Elapsed":0.05}
+{"Time":"2026-09-22T22:14:40.552083366+02:00","Action":"output","Package":"open-sds/app/internal/cal","Output":"PASS\n"}
+{"Time":"2026-09-22T22:14:40.552447426+02:00","Action":"output","Package":"open-sds/app/internal/cal","Output":"ok  \topen-sds/app/internal/cal\t0.057s\n"}
+{"Time":"2026-09-22T22:14:40.552470053+02:00","Action":"pass","Package":"open-sds/app/internal/cal","Elapsed":0.057}

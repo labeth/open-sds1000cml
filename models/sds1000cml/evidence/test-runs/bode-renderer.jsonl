@@ -1,0 +1,16 @@
+{"Time":"2026-09-23T05:40:23.583498462+02:00","Action":"start","Package":"open-sds/app/internal/web"}
+{"Time":"2026-09-23T05:40:23.586270802+02:00","Action":"run","Package":"open-sds/app/internal/web","Test":"TestBodeJSHelpers"}
+{"Time":"2026-09-23T05:40:23.586283075+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestBodeJSHelpers","Output":"=== RUN   TestBodeJSHelpers\n"}
+{"Time":"2026-09-23T05:40:23.690963239+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestBodeJSHelpers","Output":"    bode_node_test.go:37: bode.js helpers:\n"}
+{"Time":"2026-09-23T05:40:23.69098381+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestBodeJSHelpers","Output":"        ALL PASS\n"}
+{"Time":"2026-09-23T05:40:23.690992918+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestBodeJSHelpers","Output":"--- PASS: TestBodeJSHelpers (0.10s)\n"}
+{"Time":"2026-09-23T05:40:23.690996789+02:00","Action":"pass","Package":"open-sds/app/internal/web","Test":"TestBodeJSHelpers","Elapsed":0.1}
+{"Time":"2026-09-23T05:40:23.691004936+02:00","Action":"run","Package":"open-sds/app/internal/web","Test":"TestBodeJSBreaker"}
+{"Time":"2026-09-23T05:40:23.691008147+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestBodeJSBreaker","Output":"=== RUN   TestBodeJSBreaker\n"}
+{"Time":"2026-09-23T05:40:23.811190227+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestBodeJSBreaker","Output":"    bode_node_test.go:112: bode.js breaker:\n"}
+{"Time":"2026-09-23T05:40:23.811208802+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestBodeJSBreaker","Output":"        ALL PASS\n"}
+{"Time":"2026-09-23T05:40:23.81122005+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestBodeJSBreaker","Output":"--- PASS: TestBodeJSBreaker (0.12s)\n"}
+{"Time":"2026-09-23T05:40:23.811226021+02:00","Action":"pass","Package":"open-sds/app/internal/web","Test":"TestBodeJSBreaker","Elapsed":0.12}
+{"Time":"2026-09-23T05:40:23.811235167+02:00","Action":"output","Package":"open-sds/app/internal/web","Output":"PASS\n"}
+{"Time":"2026-09-23T05:40:23.811776895+02:00","Action":"output","Package":"open-sds/app/internal/web","Output":"ok  \topen-sds/app/internal/web\t0.228s\n"}
+{"Time":"2026-09-23T05:40:23.811794719+02:00","Action":"pass","Package":"open-sds/app/internal/web","Elapsed":0.228}

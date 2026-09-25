@@ -1,0 +1,12 @@
+{
+  "bytes": 2097152,
+  "first": 3575998792,
+  "last": 524287,
+  "nonconsecutive_words": 1,
+  "path": "/dev/acq-warm.bin",
+  "prefix": 16,
+  "seconds": 10.8272458,
+  "sha256": "a16f07a22fd51977a956d4d55619b3de6bf36386985fa8d0dbe11f4a6f4ddc79",
+  "words": 524288
+}
+[exit 0]

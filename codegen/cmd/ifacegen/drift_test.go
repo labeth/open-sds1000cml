@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-CODEGEN-IFACEGEN
 package main
 
 import (
@@ -12,6 +13,7 @@ import (
 // The checked-in artifacts must equal a fresh render of the schema. This is the
 // same gate as `make drift`, run as a Go test so `go test ./...` catches a stale
 // artifact without make.
+// TRLC-LINKS: REQ-SDS-160, REQ-SDS-031
 func TestNoDrift(t *testing.T) {
 	root, err := filepath.Abs(filepath.Join("..", "..", ".."))
 	if err != nil {
@@ -36,6 +38,7 @@ func TestNoDrift(t *testing.T) {
 }
 
 // The RTL digest must follow the sources: a one-byte edit to a digested file moves it.
+// TRLC-LINKS: REQ-SDS-160
 func TestSourceDigestFollowsRTL(t *testing.T) {
 	root := t.TempDir()
 	os.MkdirAll(filepath.Join(root, "fpga", "default"), 0o755)
@@ -57,6 +60,7 @@ func TestSourceDigestFollowsRTL(t *testing.T) {
 }
 
 // Drift must report a modified artifact and must not touch the tree.
+// TRLC-LINKS: REQ-SDS-160, REQ-SDS-031
 func TestDriftDetectsChange(t *testing.T) {
 	i := ifacedef.Default()
 	fake := t.TempDir()

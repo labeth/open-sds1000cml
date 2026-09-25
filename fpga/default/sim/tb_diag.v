@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-RTL-DEFAULT-TESTS
 // tb_diag.v -- reset posture, bus drive + pad readback, ADC_HOLD, singles + MISC_RD, K2/D2/F2/J2,
 // the read-only LANEMAP window (all 80 entries against lanemap_seed.vh + the lanecal literals,
 // writes ignored), the v3.0+ stub indices (read 0, writes ignored), the lane monitor (toggle
@@ -5,6 +6,7 @@
 `timescale 1ns/1ps
 `include "regs.vh"
 `include "lanemap_seed.vh"
+// TRLC-LINKS: REQ-SDS-060, REQ-SDS-197, REQ-SDS-198
 module tb_diag;
     reg clk = 0;    always #6.25 clk = ~clk;
     reg clk50 = 0;  always #10   clk50 = ~clk50;

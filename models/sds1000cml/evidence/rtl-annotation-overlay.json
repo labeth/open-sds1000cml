@@ -1,0 +1,944 @@
+{
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "scope": "Reviewed literal module links. Exact insertion removal and lexical token comparison prove comment-only edits; no elaboration or hardware proof.",
+  "files": [
+    {
+      "path": "fpga/acq_sram/ordinal_counter.v",
+      "baselineSHA256": "0289b0528f2202dc1f436cbb107226290d825b66fa6ffed46ce3bf957bdd9690",
+      "annotatedSHA256": "297ad038fd29b45044b6b91262890c12cdc462baafd453e761987c52c4cbf82c",
+      "tokenSHA256": "3e87fcf09047a54db882c0d989006b98ef6e85b1d6bab218ae2c49abef350f6b",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/acq_sram/host_packer.v",
+      "baselineSHA256": "9cb3614f1599e7c1de5ebebd151892535300d66f0a439f825166a4ed054741b1",
+      "annotatedSHA256": "2b9902e2752e899f5eb4fd94e968c5d800b533b0253b1bc280835cc098aae531",
+      "tokenSHA256": "37b98d156d38e862b734549ed28d269a6a9233fad76aa56af6fa5d6df16ef369",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/acq_sram/host_ram.v",
+      "baselineSHA256": "87f667e602d77fa0e398e337d60ce5a8f61f9f666e130fb9c70d7c08028b4be7",
+      "annotatedSHA256": "bcc72b0eaf963f5f1576991e20d1bf9c8af55ba0a587d21309a06bd734487990",
+      "tokenSHA256": "c09b22e6be73bc745d4c47b76dbea4af4d4ad07dbeec992dd1c4bfe6be4da1e6",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/acq_sram/host_read_window.v",
+      "baselineSHA256": "713211d49ca003f0a64343349a3a6b272d2862d26d8350f9f95c1df36b624102",
+      "annotatedSHA256": "4eecc90a6f592d648239b89645e95798e8e4f1dfbbbe9e0d19fdef0065210633",
+      "tokenSHA256": "d2964e369046162d15349c709c598fdcacd983897fb563f64377b9bd09c1adca",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/acq_sram/host_read_port.v",
+      "baselineSHA256": "883b27555a5b54b44910e25fb7df6e85cdff9e2caa72d86b75e666667c3fedcf",
+      "annotatedSHA256": "635a4078419a6410a75c46f7c5b5aee951baad46b53fa48ff7642dc32ce4982e",
+      "tokenSHA256": "2a8f78a4ead0c757102aabc8f3f48cb4f922d39bfce254a7621cb51fba15630d",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/acq_sram/word_bridge.v",
+      "baselineSHA256": "30a23c116f37008bc906114c22298336d409c9bca405919e815a226f4223caa7",
+      "annotatedSHA256": "9769f4762e9ad0560cd3d115b028de30cb5402aede81e94239c8dde73241e50a",
+      "tokenSHA256": "752d2bcd6c0eeaf3a9672b4a3552b03385c0bac9bf6c475a990344fc670fdd10",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_ordinal_counter.v",
+      "baselineSHA256": "00993c34e42aafb1b3a7f0931f75d882889cdb38f0f5cdd9104e3b83c6ccfa4b",
+      "annotatedSHA256": "1544b9fc10a789b99c1fbe65250fec73ff5972b83d33c953bd12d2ce7f78464c",
+      "tokenSHA256": "b6d156f6ffa5389e556c30144948671b809d02321e5c303da4ac8dad4b3146bf",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_host_ram.v",
+      "baselineSHA256": "ed88f308847965bfc3ed1f3f3a2f0721ec7c0aa168f9748134d7fe6526bd46e0",
+      "annotatedSHA256": "4809af3b0503c6e0f9f8cd3d2211ba52de7218514ce799620512f64bd60fa1ac",
+      "tokenSHA256": "f165719bc3937d159546fc914f029475ce73cdd9da8631177ad70827df0db259",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_host_read_window.v",
+      "baselineSHA256": "69f1f2d30752e46c01d61fba5876f9eddd2d68f0a72543c35108bd5d69a0dc58",
+      "annotatedSHA256": "9bb8899de6b2b9a2d0c858c914ff0f0bdc52665616f236f170fa945917abb48d",
+      "tokenSHA256": "fee75c51bff9ad1c2517cab8cb29b118c8399f32edcc73294ab1c738ee461ea6",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_host_read_port.v",
+      "baselineSHA256": "89b2e24ffa067f4f1a7533a51f1781402dcaee0f14cb4ad2bfb6c89fe9261549",
+      "annotatedSHA256": "d66bbed7584cfe91de6e61c20f63ff6b4ed1548f3b500b04db83a50417ebb008",
+      "tokenSHA256": "bfe96ea5329c5629c23be3f6685fdf59492a49afa238d7cb33cd589c194f71e7",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_word_bridge.v",
+      "baselineSHA256": "a8bb1e0c548011b15c6ad961f2de78df7976091920ad158a6d8b4144129d4205",
+      "annotatedSHA256": "39d6cc09758c134eb82b09e740588f992c17fbf696365153b4eb93136711875b",
+      "tokenSHA256": "891e71429b7dae99772baa8a88bd122fec15f34c01707fa100faeb5b4732b155",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/acq_sram/host_fifo.v",
+      "baselineSHA256": "bf1eff02e237a882434398cc595e3c9d2054eb853ad9f70b80a4861539948e8e",
+      "annotatedSHA256": "04794e2bfba0c485ca5be8b8ff2de48b992d6369601815d9461d9f08032f0883",
+      "tokenSHA256": "ce1db977f0727372f7805c30f2a16f9e7509cf0270c621c41e601f6a4ddec4f2",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/acq_sram/host_ownership.v",
+      "baselineSHA256": "087985ba55637101b1b2aade5c608c4e812de387876e9c153c14379ac61e2af6",
+      "annotatedSHA256": "310b124b4c1de198a9aa6655fb492d7934c22ec5291e37d23691b45ecfa87b0b",
+      "tokenSHA256": "b11178df734f309627f106d5b2b1df457715a00f1f231d9b655a45c6f9953367",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/acq_sram/host_sink.v",
+      "baselineSHA256": "6ed841ecb3863f4f9df7483dbb0cdc7e6e928318c5681cc6bb0c94b75a849713",
+      "annotatedSHA256": "0528b33b5c95a74a6b4f37ee76fc8c80aafbfa13739af1070e4feb92e299d0bd",
+      "tokenSHA256": "ec1ebf8ce3168cb504a34907f7df16055f81774fdb5162c05cd16737c56416dc",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/acq_sram/host_path.v",
+      "baselineSHA256": "ceeb9654df6095607688b173076572bbfe779ab3e403d067a9fc5b2312b9ce81",
+      "annotatedSHA256": "2a0b52bc3c780895f3f7a283fecdcc2b9df32a3172525a50ab8584dbf9f27a7e",
+      "tokenSHA256": "8de84c47c3a6009ea879446cbb1c8ef6fdc5da10c140980b577e975c0641fbef",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_host_fifo.v",
+      "baselineSHA256": "c1ce4a79f8258c1bf9b93a619d8265159ccc75f4c40eee6a8f88b9a75ea359cb",
+      "annotatedSHA256": "0e6ebed72c2eee251521de4dfe56c5789dd231c2547ff909d824dd17aa42c8f6",
+      "tokenSHA256": "f1f03b54d7ff785a3cf8795e58b854e983c1a547133e422ae17228a8fdbb4bd3",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_host_ownership.v",
+      "baselineSHA256": "5acb724f14cd8975643de0dab23dbe057dd89cdea415240c6cbce4c68e7cf406",
+      "annotatedSHA256": "5087eaa5cf073f38c83f0eedc31ae78284978825189905be0fa3c3079cddab1c",
+      "tokenSHA256": "bcdfbb1a6f05803c19b64e7dc3ee9e32f5c94d18970206eee0c1b1a0558ddda9",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_host_sink.v",
+      "baselineSHA256": "4fd6fd2f0dc90d4423cf7fd550bd416bd98bd89c1fd155bab552f2908f7eea19",
+      "annotatedSHA256": "ac872c6048bb5fbbeba68d20a6b05693d6be49330397fa4f7bba60ad3f933b20",
+      "tokenSHA256": "3cb530fe9dc185cb343a0bc649d8910ef167fb3185d9ef66ca485a073796067e",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_host_path.v",
+      "baselineSHA256": "f43bc772b828f87571cce60020cefa1ac0813120e1fe79edaac7982ad330d7f2",
+      "annotatedSHA256": "9b7388e098b22a9fecc95313a660827d0a7c99489bb2708feae5c61431537afe",
+      "tokenSHA256": "d723bfe41159117a5e4f541664fdcd8c008b4ad3a52b2802f45701c14304e408",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_host_faults.v",
+      "baselineSHA256": "ca57b0e52f3c05876346815242586195bc52e7a8033f977d6c709044532e43dd",
+      "annotatedSHA256": "e401ae4f18a69908ad596926bc9f9965a2c7c616a67f76d51b5871da806df0de",
+      "tokenSHA256": "411a76e8eff202d717e78875444b65df3ce2d3cd3db9c282639fb8e0be2afd9c",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/acq_sram/ingress_fifo.v",
+      "baselineSHA256": "051a05212941de9d224cf9dcea66c29297a2c85b03c86012db0b1977ca463f35",
+      "annotatedSHA256": "9c8378ef57fdaa6f82c58e3da8aedeb296564cec6d6655050f50a06aa1fcbadf",
+      "tokenSHA256": "74a0002f6a2bb7d603112b70855f826fb6fbc73f4a7dd90d1ec6c2e35851c8dc",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_ingress_fifo.v",
+      "baselineSHA256": "99823bd2ff9e632170151de350d83b7a5c4de1d4ee699237a54b25f6a7905dbe",
+      "annotatedSHA256": "b864e0ce333ffd8669ed49fb95333a4d8bf6c544e047c8848ac74ac9c15a1c81",
+      "tokenSHA256": "10b2c542654a2b91bc0c0d52aa7ae056f01aff518b09414f0801881b5a111e9a",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/acq_sram/ingress_stream.v",
+      "baselineSHA256": "048e2faad3c03d5e966bfdd04de79eee8642e7efc0d09aecaad4a4d00f8a99e4",
+      "annotatedSHA256": "2409307756c49a6b30b826a719e3b38dda887ae946e933723a1d77d6c6635478",
+      "tokenSHA256": "2843f3f61dea9c6cf57e75870f08b65d2c50a36f7d88b01643cb68dc4c23fe15",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_ingress_stream.v",
+      "baselineSHA256": "5bbbded5d6adb4399361f214e9740e31314e09f2e809ff22127fe02fb6b12ddb",
+      "annotatedSHA256": "faf515444141afeed6411060f48570ac08d0f72ad11a0490db965aedd368542d",
+      "tokenSHA256": "9fe27b12df0a127fbd7a5f73ed9a5157d7a39afbc8222b676d28982575402a7f",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/acq_sram/ingress_path.v",
+      "baselineSHA256": "c1aea8492b0641f504337c70a97373ceb51002cc7a0913c945d616a62591af31",
+      "annotatedSHA256": "0701c87be770e144b96ff09f4a07143caa86d447330844cb719a960e1401b0b2",
+      "tokenSHA256": "36cd827ecdd80b74527a3c7efbe294af49cfb6da826d3650ca8d7a508519aa6f",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_ingress_path.v",
+      "baselineSHA256": "b338d767f971791da061fad6e13c3db0afe7993cfd2e2e47b1ff9b4758bfd8bb",
+      "annotatedSHA256": "25944c44c9e0e7c5b5939458968e2d54aa4f94863a5d85b5ba700cf884b9f218",
+      "tokenSHA256": "ee3c3030f297771da68d243b261678b01f42f6e1f4c01cb1debc3d95b65b341f",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/acq_sram/transport.v",
+      "baselineSHA256": "32cb44b81218eaff818bf9f3338d54111cc4cfde05fea540538b4bd049cd4a67",
+      "annotatedSHA256": "814e344e31c1283a4d507e6d489179d0d1ab5b8c05404ed7d51c4047d5ca095a",
+      "tokenSHA256": "956faa69915e612dd58c2c280a26d3e52317711edc01514153c8c394242d87a1",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_transport.v",
+      "baselineSHA256": "cac609e6149c13e41af43e36a23b36c3629c1e5d29610bdbe638216a06aad945",
+      "annotatedSHA256": "f808c0a13477fd94b998077e4fde86601539a29715aff7614fab1a2b71f06dda",
+      "tokenSHA256": "fc3bd4e0c872addcedc06effd917e29e4ebae4839f5027e787df5aeffe343114",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/acq_sram/timeslice_controller.v",
+      "baselineSHA256": "d513b2b950a8e1917c76881aaf1ea43c3e3d5e21d73177a79c79b6450aea4d75",
+      "annotatedSHA256": "5daedebf673cc8c7d2ae927615fb8d2e60b735ba363d9ad080f2cb154e5ec18d",
+      "tokenSHA256": "26bc202eeddb6d6bb546c31f64626f020b7072e3e0bf4c62e99ec7a91f04978c",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_timeslice_controller.v",
+      "baselineSHA256": "f930eeb39110f4fbd99b215e5ca034dbed6fd4877db0760a4ee13568e41508e9",
+      "annotatedSHA256": "50cec8a88ff59bac2a606ad1325e6b133fa567025fc4cf73c2ea640e883df838",
+      "tokenSHA256": "cd82d1d67673fbb92851278b68a348aed2898b3e1adac1cc80a57748f6ce1182",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/acq_sram/adc_unpack.v",
+      "baselineSHA256": "42dfd111d19b9776f5d061975f63f5c416b99148a908e8185e92be965f63bf2a",
+      "annotatedSHA256": "d203e4037ed957a73458f5c8238184c7cfa2abb1ca10ca6de261be27f2f006cc",
+      "tokenSHA256": "4bc82858bb3e1f1c08378665a1196af95b19d99459a3f4e171410c7cc7df8a9b",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/acq_sram/interleave.v",
+      "baselineSHA256": "71b2870b9884b22686bf39905d32ca21c1d08a99b7d010d19b0e3385bcd0fdb9",
+      "annotatedSHA256": "f33209417a4505ef17cb6c194de33113b660898d8629bd76207177ca88306b10",
+      "tokenSHA256": "1325ec0fd95506b41d650f9b2cce420c901d0bc7283bee174fba182bb518a6d7",
+      "modules": 3,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/acq_sram/acquisition_source.v",
+      "baselineSHA256": "a9fbeb7d3d2b6a1f1f9165177ca533b81f588ff8663467ddb8fe8a3b4f9cc4a5",
+      "annotatedSHA256": "8f9f8fbaa5587fadf7b4dc634bd58e13bcb00ee42c99f561e1339cdd13bb72ef",
+      "tokenSHA256": "02db0c2f0e78604d19d66ba22410fa35fc620be07a17d5dca38c61b74e6d98b7",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/acq_sram/acquisition_path.v",
+      "baselineSHA256": "fe871387f2e9ab90350123bce737d44bbe14c72477fb1ae6eab8863378516940",
+      "annotatedSHA256": "224328fddde54f0af9f15d31a95a5726667e27e67404c5986665acd0d76177a4",
+      "tokenSHA256": "fde8731a05969698f39faa77de31f60fbaf5bb09af0a92760c4ff1d125d4fcf2",
+      "modules": 2,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/acq_sram/board_capture_path.v",
+      "baselineSHA256": "53a1f9ba4c7d209d3d2b273a0bd18374839206e75ff68103b96818c9db5bf58d",
+      "annotatedSHA256": "0756581c4662cd0985002645c4ed03c3b094d498276d3437679c6e4717158cdb",
+      "tokenSHA256": "695e00fc4984b43b5f1877a4eff128545053f3926d828c312489050957b03d88",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/acq_sram/capture_engine.v",
+      "baselineSHA256": "ca84f7e2efd44f19ca64afcb8d870f4abe8d6438f7fe7db465dc4de5761147c1",
+      "annotatedSHA256": "ef42e5d820d59171d5102aee3d2cae349c3c96ecadba91489475be80412ad8d0",
+      "tokenSHA256": "8f779bed247fad4bf0f48009b6c3c696988b9d02b5352757b2ac0846da5e6f0a",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/acq_sram/capture_path.v",
+      "baselineSHA256": "671a862245099ed76c1dd4db5cf80f87acc4fd6ff265ba13fac51cd556d19524",
+      "annotatedSHA256": "1e4bb47d0a031b1a253996d6c0fda065937146ca790097fa0adfb4d00aff6410",
+      "tokenSHA256": "d7eac2b72d10f027884b30c1aee5ba3e39b85c41934bb294609e79136429cb3e",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/acq_sram/finite_writer.v",
+      "baselineSHA256": "ad76dd2dd475bd6d3b10839bb2dccbd9acddd596203b436e56d692ad1ac6055d",
+      "annotatedSHA256": "4c45e660f003fca43271021b38ada0874d318fae52ecad3d8513e77dd26a8882",
+      "tokenSHA256": "2a7b3123a85944999105f54779b756ae397c12aff31e77846cdd9700a9f93636",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/acq_sram/finite_recall.v",
+      "baselineSHA256": "061e01eaa28fc574d0903b607a344e43639a181450040b6eed2b3fa86af79d76",
+      "annotatedSHA256": "ce2b07e489becd00c3ce0d2e64c4598ca384da56f244f78b6bfc78924622b369",
+      "tokenSHA256": "a12efb1a5a3fea7b40aaffc41ddc57f0c4bef03ec2d85f6086e4e073d39a5e2a",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/acq_sram/record.v",
+      "baselineSHA256": "a1d2ca4bd04d63d4af8d47840a385f12a0feb856e387e71571ec97dbbcdf939c",
+      "annotatedSHA256": "0234ec19ca0551bb260c0ddab2051f0162f3c49e0716d4434b0006b5740f0c86",
+      "tokenSHA256": "9e487244af13ee713d1dd2d64c06f2b210d60bb469c65698210ce9ea6e687486",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/acq_sram/recall.v",
+      "baselineSHA256": "02ed7dee0de23b95142ee250c30be7af35e9c8f0a3f42131595516f3e132b53b",
+      "annotatedSHA256": "705ab10b03ea07d4d5d9dd79e61f5daf58ea92b4e8be1ebb699072842f1ab850",
+      "tokenSHA256": "dca00e81f2bdd67db7705f4a10b446c413083c8d58bacfef9c4ec2cbddd1f4a7",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/acq_sram/command_bridge.v",
+      "baselineSHA256": "72d25555954ae35663156676c9246f5e0d833828ad3e2f5919a4cb801d088d97",
+      "annotatedSHA256": "698dc6fa9a0e43516f68f838c16e0a4581db4a4b58ee895f3a599d894dce3f0b",
+      "tokenSHA256": "2ea5613086537500636dd26982cedbba1ddc5181f11d1bb7706527971d106703",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/acq_sram/command_port.v",
+      "baselineSHA256": "3be3fcf97c279a517685a2a5ac8e7069bb25cad6308e545dd47bb44c720188e2",
+      "annotatedSHA256": "603de36f1612ccb12b7f2ad46e88756383b46d43efe8587bde40e6869ba6734f",
+      "tokenSHA256": "feb561255169cc0150d6c04b977d5ee3ffb93c4d411afb75685023918927646d",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_unpack.v",
+      "baselineSHA256": "d4fe519be348e3ff2489dd00b51f28369568162527926cfa6b6ce560c446291b",
+      "annotatedSHA256": "83507afd7d42d07d95efbc3f8216f93860cfae27847b19e988222e78a0a0b6a0",
+      "tokenSHA256": "5c124e9a871817db4dbfeb081892fb805dbe21a8ffc87ef62c66511b3255cc75",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_interleave.v",
+      "baselineSHA256": "6ff9a84061d3faf000d5b0e3a0dd1f0891b00d807d562a07d695e68b6e0c9c96",
+      "annotatedSHA256": "391fefbffe92961f1d04345017f7dce26a2a6fc699797dd95b1c49c4eba4718a",
+      "tokenSHA256": "f8f438b3ca842f89f9f5c2021fc77cbdfa230512ca79218a834082f96c3063e4",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_adc_interleave.v",
+      "baselineSHA256": "550366511f1161a96e4ed0a8c86b49550a7259f91bcf634dff0695370e811501",
+      "annotatedSHA256": "3532b6cb76581b12eaabfa1793065a8493d87c5f5f9017018a31869e3ae9ff3e",
+      "tokenSHA256": "2c8863f27f7713c66248ad87978b47dedb1b1eeb93c896ce348af33f94f25582",
+      "modules": 2,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_acquisition_source.v",
+      "baselineSHA256": "450f23e222fc115ae48377df22b6e189932c2f53b510a53319a7d4d66592a131",
+      "annotatedSHA256": "2f1b47a85c226119f4bdb3dd24e5650b07e72978ef2c38be456f3f6f83222783",
+      "tokenSHA256": "7b4ee33ac37d52fcf2c7b42078a84efb5d984d2161717d49956f073a075369b0",
+      "modules": 3,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_trigger_pipeline.v",
+      "baselineSHA256": "e1f909e907b6d9078e40ab700ce2e3a1130c76ed63d183ba1cebbbded461ae7a",
+      "annotatedSHA256": "963f8a48d7ad7ee9bc4ceb659720b660286f2013b498defd84f2b2482dc83810",
+      "tokenSHA256": "de5e604a19dac80ba735eb4d9d01e23fdb75443dc94520a4e053af3d4ad07b91",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_command_bridge.v",
+      "baselineSHA256": "b6f4891dd5cfb6034dce67597d6eddbe37ed19ea12d8f0ad41efccfcf1853b72",
+      "annotatedSHA256": "d25ad15ed064b636ec34ba3ad8a95cf671ed9db790136c2531382b950c8e1493",
+      "tokenSHA256": "d45338aa6748ac81bab320d984e0e7cd0f435769c114f857d7f5e4bdfd0095ef",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_command_port.v",
+      "baselineSHA256": "56a0e3048b3b1d61e2ae2b3acc723fc52f0586eeb74832e4a82f066115b09b1d",
+      "annotatedSHA256": "a21f7ea7e2ebcb613099ae43fa1b7953a3fd19ed8c22e4f7922b79e5db8612cf",
+      "tokenSHA256": "cbea9b69fc868449eb7871b1785c65da11a84456b48985566ef6b30525dcbdc9",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_command_gpmc.v",
+      "baselineSHA256": "62d4cc77e6061b4e02d47baf725b1f0b91622d13450ebb8d11c3fcdea1939e68",
+      "annotatedSHA256": "5b81a80ba337a19e9d368a373b0cc760536e1036d98dfd0c89469ca698ff51f7",
+      "tokenSHA256": "8dd418b4e67d39acaa76cf8c4fbf9557468c5e9e97072b05b937a2031da8281c",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_record.v",
+      "baselineSHA256": "5dc8515c27dfe5249722c83d87cd55094f46021241e29cb15fc3fd86178260f3",
+      "annotatedSHA256": "cc1264bef2b1fb46ec6c77cc1d99e15a1a17328dc61e19ddbab0f984f09c75a9",
+      "tokenSHA256": "fb56faecbcf3e8a8d79fe541e4142e511a488c2980635f1df255e61a72d803b4",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_finite_capture.v",
+      "baselineSHA256": "5843e39c1c8e45ab2479650c30e8cffebb0f062a227ac2d60d230d0280cab741",
+      "annotatedSHA256": "14dd8a72677979cc25a0aeef19a8205f43a586910241e4521a7cc51ee59153b8",
+      "tokenSHA256": "c54ea11e0c38a9f5a3354cfe2b7e2c80b24818f16fe735baec0770a8b60d10e0",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_finite_writer_faults.v",
+      "baselineSHA256": "fee6ffb230823ee54b50da1823c99d6ebed74d9c034f7751b6988e2122cf2a03",
+      "annotatedSHA256": "ca6d5bb1970780bf4e92894921a24503424f0164b086ed11c1536121a04c222b",
+      "tokenSHA256": "c3263d2ec5b8d0da6d995e0640b4514114f67799ccad76d6809f1e9e2dd01c67",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_finite_recall.v",
+      "baselineSHA256": "f64b71e7ddb7f99797341f28b7a354fe4418aa64e1f10a8e343fe69fa23e4f2a",
+      "annotatedSHA256": "787fb090100f3373d1f9b7507309dc6a29a56302ea2c091f2d5fc602332b02c7",
+      "tokenSHA256": "a86ee7bb9b5f902d73c6acda239b50da2f62db08fcfd64801e8853db11b747cf",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_finite_recall_faults.v",
+      "baselineSHA256": "56c2074834f1d16718aa940ab614e9462d6577aba67b3993268e58b140a266f9",
+      "annotatedSHA256": "9d2cb766856f62d2a588499b3cc27cf25712e6df0b4974386176493a0d2458d6",
+      "tokenSHA256": "bd98bcb13a513970083de255cf07c6a5c897e999cf802362da4b4420f223341a",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_acquisition_path.v",
+      "baselineSHA256": "aa880a846cbaf5c23c83138b4f04c4ee05efb1d11532a84bd5c1c5a5d095f225",
+      "annotatedSHA256": "c2df70e4d9924fc213d8df7414d61c59d766c75591e3eacdbb3227307f555958",
+      "tokenSHA256": "e25af87d1b27043e78449580cf009a877eeb64b35a97646de5e51f7704b2df11",
+      "modules": 3,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_board_capture.v",
+      "baselineSHA256": "a3153a1c0dfc684d3cbe562a841791853cf8f11f2028e88de04385c445da5e16",
+      "annotatedSHA256": "47048f55ba822c235e98566389279a0315096e862083724440c117d54ffbb1d4",
+      "tokenSHA256": "e71feb816b81809a8e9029ac9bd134314b5af341e96f92b420897e3c82d0fcca",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_capture_engine.v",
+      "baselineSHA256": "9168a23466bb5f3e8e3db80ffa5e4634f357b8e0fbead8e182717c990c344fa6",
+      "annotatedSHA256": "2af77f53e45b28e4ba13b291a88c95ccb655ef0dabb19c596048bd9fa64ce977",
+      "tokenSHA256": "c7d59e4946adaf6debd3f28f67aed548c2a670a342e9b7e5c0d31174760ec57b",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_capture_start.v",
+      "baselineSHA256": "5ffa466913965463681e4ff8d5d74c1e48feaabfbdf1deedd0126389ec28fd18",
+      "annotatedSHA256": "00ff4cb278c83b1700887bef4e33a7b0eecc85d327d9eb604aa290532b72b0ca",
+      "tokenSHA256": "986d6e2f161e734b37a28cea497bfc56ad1620cb4bb118268f581305b395e624",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/acq_sram/precision.v",
+      "baselineSHA256": "a773edf444d2b4a0c37e2d1504612cd5091e57bad1dc1c41bc10fb09c968d6c5",
+      "annotatedSHA256": "90d9e3c6b10f8128fe210a369b4d4bb4a4db0323f6cb88e02039488de9cdaf43",
+      "tokenSHA256": "40fbede759890a9f168a3f0025322b1658bc47cfc5a4efeba997efb138d8f8df",
+      "modules": 4,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/acq_sram/precision_tail.v",
+      "baselineSHA256": "dd4dfd694d649b84e2c798911d1f7cb5df3384211761cdf871714eae97505d72",
+      "annotatedSHA256": "2775db930af2ef5b10c7791e45bd5f887e354df116c2a9987fc7baa29b31d6a4",
+      "tokenSHA256": "39ea20ff94534c6a79d3516bfba4f82eef1e42e48d93c593ca3968cb04f4cfee",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_integrator.v",
+      "baselineSHA256": "8aefccca64816982a8a640513a4afe62ffe0896f44ef54ac5a2222b4e82a2852",
+      "annotatedSHA256": "c66df2125fdb22fec1d24b12fb300156d4f99aea93845313e274dca08d5f20fe",
+      "tokenSHA256": "659786a0338bbaf698ce944416a0088d43ccf77bf1c3681317e1892096991c67",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_precision.v",
+      "baselineSHA256": "b64a2fcc2aa89c677f429a9794f86cd413488226c82ea603b070ed72588aeb8e",
+      "annotatedSHA256": "ea74181e6351d36a9e8d2143302373e4f1d164115b97f950ff4b8bf87137c699",
+      "tokenSHA256": "85121ce80f0ae21eee8b06b25c1b5b17e99a0a1d613878dcd2745e0cf150a05e",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_precision_config.v",
+      "baselineSHA256": "dcfef26df8f2748583ca965f66ebfd7b3c8f603b358e903cad2bf77a16ef5198",
+      "annotatedSHA256": "effd711d852c39a7236ce1fcb5bbd684a2876f1c0745049627badb6622465c23",
+      "tokenSHA256": "c65a7774e9ca967cdbe4b8fff3bebaccea7645e30cf3e4a6c84ab5909e13b0be",
+      "modules": 2,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_precision_fir.v",
+      "baselineSHA256": "117c9280e504b2b5c2f09aeeee29b3e3080deb7bd1d2cf7acdfe7b15c306e060",
+      "annotatedSHA256": "d3ef922c758243b4672e467be0db01c34768955e03411b7bbafe6b57c68289c1",
+      "tokenSHA256": "c7f8540c843c183e5b395003f04ed5070e25a770f96c5ddad11ba739b9b40109",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_precision_shared.v",
+      "baselineSHA256": "24f3cc5a6e6f3115595069f2a33ee30f000d18245361eb329ed8440efff761c8",
+      "annotatedSHA256": "6d902dc772b598c14d7fdbd441a52e8d05e3ead6dfc36a788092bca4328ed653",
+      "tokenSHA256": "33ebeed15f0e8c0200b7a27cac478b9f39ca48880b92692fcb2230db88e2502b",
+      "modules": 2,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_precision_tail.v",
+      "baselineSHA256": "2170aca776487f193942f51da08378e0488af37646c89d36db1783f82a5208b1",
+      "annotatedSHA256": "c4d23f4ef78d92850f16b850f832ead9596fce5cae85a06da1d2537fe1d398e3",
+      "tokenSHA256": "11f10b9cb85eed798fea9116a6fdabe14f38567bee6c14767202c6e85c73508e",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_precision_tail_queue.v",
+      "baselineSHA256": "d309b2a47f4b6cfd0f25e67dfc4401836ea9c4d40e1705d7a06a3664f188fe07",
+      "annotatedSHA256": "86a5fdebc092c2fa0765bd0ac0f3dcba3308840311ab1a257b3b1ab58ff755b5",
+      "tokenSHA256": "0e612310ac0268e86fbb70c1912a1047d3c39c60573bb2525acb7715b30f73a3",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/acq_sram/stream.v",
+      "baselineSHA256": "af94be32991b32f706580b252eb9d955765f98b64ff58fb3da6f401b9b3c18d8",
+      "annotatedSHA256": "9bb767a7f3a779178e89e853a141e77ab3f2833b104c2d305b89d15925ba68a6",
+      "tokenSHA256": "b5f2dcfe1e331e6791f4bf06ee07830fa6e7c646ecb149e1eb00864fa427362b",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/acq_sram/stream_packetizer.v",
+      "baselineSHA256": "3fde05e9d732e03115666f036316d273407447402e928871244f171bae0591e0",
+      "annotatedSHA256": "3728985ebfea59e87696f74758a4e857c947297f589ac453a896494210e077f5",
+      "tokenSHA256": "086cfe4817d12b177d1f74b172c231b412a411ed6cf4d90454295d6b58cc4314",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/acq_sram/stream_banks.v",
+      "baselineSHA256": "852a2036f829e4cd3d0127929e854db0052648da4e815136c4ef73cf5dc9bc3b",
+      "annotatedSHA256": "1373a8fcaf3e6d99d2d4e497fc98a6e4f611854b42021d5803199810d4842a73",
+      "tokenSHA256": "4c16f0a5351bc7400a1877d30193fbaffa7ca5603cec2aa0afac645394588839",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/acq_sram/stream_engine.v",
+      "baselineSHA256": "8b2a5dc216fb29de59ca0b5a2615c47a8a8a099e6273338fe790f606a3b5c046",
+      "annotatedSHA256": "9fb5dec1aafa6dd4a6ea8ab85d02978de0b702f519c28e1ba9f4e4aefea951ea",
+      "tokenSHA256": "b5c72e815cc38240ec080d7c8eceae0b131d54f2e320027f500b4b6d2d7599e8",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/acq_sram/stream_path.v",
+      "baselineSHA256": "13976af491d5364d32a67db10abeee491d0aa161ed20ae3f3a564bae77f641eb",
+      "annotatedSHA256": "975f63326067edcdf9509f7aa4f42ddf375c4191b4c52483b342e5b8d9ffb47c",
+      "tokenSHA256": "e794e40a5ac2f15fbd58807a86deb214fa1a0833cabed2b0bd65b0d9408e282c",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_stream_banks.v",
+      "baselineSHA256": "2cbb89cd1939f665175b4ba3f748befc8b816c51888a30a8a6fc3d41f6b30251",
+      "annotatedSHA256": "751bc4db74b3013473c74be3b1b0f862bc5b3117beae50bdb8a6cc0daf0bcb91",
+      "tokenSHA256": "470417ba60a77351937f86312466a735ee47fe1f7a5d7796ded592acb2889dd6",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_stream_path.v",
+      "baselineSHA256": "c38ab1f37765b77088e786ee67f309ae04b22f067cc911d7edf46af0f615b15c",
+      "annotatedSHA256": "e1e1a86bc15c1591213d1048445520b586220349476178459aafb30c69250fb5",
+      "tokenSHA256": "ee53ba3890c1f1c74693cb884c05db65e2c4ce3f195ad664c118352208184798",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_sram_stream_path.v",
+      "baselineSHA256": "783a6ac5fd0a33522a8b18084cb6d276501743719e629a312cbad03febcc56a7",
+      "annotatedSHA256": "8f9e544c04d83c06794c79bd0dbc851547171e50a7def45ec914ceaf1b41fd83",
+      "tokenSHA256": "e634f83f9df0d146f26e0dc5d24c34d632382b97541961821d7f0c8bbc1bb0b7",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/acq_sram/profile_core.v",
+      "baselineSHA256": "5f05cec63d20012760b10c17bebfb9c0f34be64d453341fc3d039df68e04b7c5",
+      "annotatedSHA256": "645d661ee6b0c47c15c0c40a63650f45206ed8f8b3276d3415a719e80dcd8387",
+      "tokenSHA256": "3d47d705fbeac10f67377d6ce378e9233c0fb7e8674952eb6174e86ff56d3752",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/acq_sram/profile_top.v",
+      "baselineSHA256": "0036024f931f5151375f7c89f3ce0b44a83bc487d59651150c91ac0c2fc9267a",
+      "annotatedSHA256": "5a6032e1a32380ff8978020f2d350dd9d8ed2832e2e310d2eab51717b2318bc1",
+      "tokenSHA256": "2113e3bb81c60a456cf476c32d5eecd7e785f376d0ff4ee1cfa916113d417b3e",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/acq_sram/profile_pll.v",
+      "baselineSHA256": "cb86c7443db1202196801542f964707c3215b4a389ad64c7a4f930e4ede45c1d",
+      "annotatedSHA256": "7230a8cb941cc041fff308584f42bd1e1e51fca291121cb49ee1167408713495",
+      "tokenSHA256": "51b3db456c47cc92a00f6863c0e57b7b26b3274d9289754bef3828ff8e66171a",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/acq_sram/acquisition_adc_pll.v",
+      "baselineSHA256": "99e7183c435297a342a0d403d9381fa9ce541773c225a7d1d981e4bf5bbc0b91",
+      "annotatedSHA256": "e5005c8293bc67619f164495a6ff4e166086476f0914b80c1c486def74d73403",
+      "tokenSHA256": "d232082f3993e23588bfe4ce0df524fc12d46f2fbcbd7b208de2b5fb9e504e58",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/acq_sram/top.v",
+      "baselineSHA256": "7c61f8c1628fbc48074fbd39387b4322dbefc6da72130323fe124a0738412704",
+      "annotatedSHA256": "0d432dc54bcf6136ed8c93cbd067b0f6b281f3b08e9f09fdb3415a4f51510065",
+      "tokenSHA256": "26079b0556b92f6bcd0513025acd2b8846314eaa91d9660aff50397f9a86805e",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_profile_core.v",
+      "baselineSHA256": "cf9593afff1236df8e9c7b44515c8cf83519fbd225cafa406583531da7e9ce41",
+      "annotatedSHA256": "190bae62c40947711ff13a385789d83654eb9b67d321b4b47ab5abf193cf8294",
+      "tokenSHA256": "41bf3b3aa1ebedd0077fef1b92ab4a44f674a48292e74e02624d37d18f02a9bf",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_top.v",
+      "baselineSHA256": "dd1e47c6f51ddf2a52e3f0653b922c1a6451f464612ab8a9f9dc8d191e04455f",
+      "annotatedSHA256": "5a04c594f3d407477721a926619570907e40fdc24c6237a1b11b6faff3cb3073",
+      "tokenSHA256": "e8db870167d5b98940b7f8e1bea8a5b110f703085df2bab51132f71bb17da445",
+      "modules": 2,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_top_interleave.v",
+      "baselineSHA256": "daf7e9884dbaaec5725617066f1f02a65820648375707ab00f7da42352ade54f",
+      "annotatedSHA256": "90b676150f639774245aa58c047020dd90aa87b0622d11536e6ced7ed71df887",
+      "tokenSHA256": "a98721aeb1a533932bd308c29b1c3aecd256d94311a633ee8d676d1c9daa6340",
+      "modules": 3,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_top_adc.v",
+      "baselineSHA256": "e43aec9a8ae233a049ab31d7e85154f59dc5578c0006ac5e195063df0c0b92e3",
+      "annotatedSHA256": "97efc2b9103a8e9a0355b161020f5e1163877ea970654a855991c694697eb066",
+      "tokenSHA256": "447097e528b0a25f0fbec18e1dc8b2bc4c50923eee05d2d59f337f5a436d3c49",
+      "modules": 3,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_precision_top.v",
+      "baselineSHA256": "bb71af6786f21fee620ef5a7bbeb38758c62f70b55425e23581304d345c8e19b",
+      "annotatedSHA256": "cebd40e97810fb2239c4ab77e25a8fcbe55f0cdf6d22ee68dc5568b6dce4de79",
+      "tokenSHA256": "21ffbd581e5f82c09b63a7f311bfc38fe4f7876d26429de90c561fa2d83ad692",
+      "modules": 3,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_stream_top.v",
+      "baselineSHA256": "6d92d3d1e516e8f598604e79ff03467a1462c57fa1ea5b76a554aae65f751c21",
+      "annotatedSHA256": "936bfc46dab33f87b8f5169901ea35f4f617ef03ef45fddbed228690cd507e7f",
+      "tokenSHA256": "6e29ddc566ac1321b45e91f18669dd11fc3277f59ba0de569c96f776040a426c",
+      "modules": 4,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_burst.v",
+      "baselineSHA256": "c8bc915db6b965266ad3ae45cc9a884885c1b2ca44d9864df970151c6319bc3e",
+      "annotatedSHA256": "fdeba09ad30d6b05bdc8db88efe3e294782d222149667db6b687854bbc44497e",
+      "tokenSHA256": "935437d51082de6d85d158ae70368c43f197de0568c3d1bed69e819afe01c71d",
+      "modules": 3,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_continuation.v",
+      "baselineSHA256": "0a6df3290b63ea9b45e99b93d13e3ec2f01348b44508720ef80337fa57ea75a8",
+      "annotatedSHA256": "9cc61116a7924b645bbef81d8ead5a58ee40f333bfe45984f61ba7d6b831fcc9",
+      "tokenSHA256": "c909003905a69bd751e0609ed8c7893130067e6568a846a22f951ee7b3c34627",
+      "modules": 3,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_gpmc_burst.v",
+      "baselineSHA256": "043fd89ab1e60f061fad067449503f0c271e73c71fe145afb29b9647dae90512",
+      "annotatedSHA256": "e7647dc63881373e00a20729b71f9253c0e1192874d9a86e734fcf40e2536c49",
+      "tokenSHA256": "70a4e49de8181bad3056ad8cfdc4b2e58f27ea28a9c2c04e87cd2968ab7dee93",
+      "modules": 3,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_gpmc_read.v",
+      "baselineSHA256": "2a1885cd5a5e014c79110a5e53d319f818db862a56f6d7157e27447d193cdb25",
+      "annotatedSHA256": "fb593bfa19d324a5685fed03e3415962bac174365d3c4e171272b4aba6f322cd",
+      "tokenSHA256": "78fcad51d7278503de982cb39714ce33d9ee004a625ddf354116ceb6ba2252b6",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/common/gpmc_slave.v",
+      "baselineSHA256": "9d644b672324e0e5675b65e7375f60e14761219d0d70e390a00e76d63560aa0e",
+      "annotatedSHA256": "9290fbbc5641cd09029c119fceefe7c3d9c9b6ee52f9bb5d8a8141fc5772b1b0",
+      "tokenSHA256": "1d238dedfaf8f542f4913ce1c2c4b47f61984bcd1d1a5748191b32319d7ea389",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/common/ddio_pair.v",
+      "baselineSHA256": "0f32c77bac09fb1fb4a8069f7480743e8b0dd05669da22aa68e171798d33435c",
+      "annotatedSHA256": "7e33617ccb20197ad4826cb23ca325172a50935c468c90a2ec95a657d979a8a6",
+      "tokenSHA256": "adf5ef0298ab942072f2b6f6226ee3f0eae273c8f92df376d449e7b7e32c9084",
+      "modules": 2,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/common/lane_in.v",
+      "baselineSHA256": "1777785598b0670d0ec92cc5402bd27b78d939aafdab443796892deecad8a719",
+      "annotatedSHA256": "2d1253f0c81dc439b746ebd36df3acf22a4ecac51aa85676574db500e2cf473b",
+      "tokenSHA256": "76624974297760dd5e32cc8b42afab5992cdaf11c30bf1aef9df5aa64354e9df",
+      "modules": 3,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/common/pll_m2.v",
+      "baselineSHA256": "305800c87dce134eafffa0890fa3bd07f7ec42091aa4acce23490ebbcb71f203",
+      "annotatedSHA256": "120e8e933fe105a3c3e61be3cd1aa01e82b85fa9f9a12fdb60f6ed84a8e7c627",
+      "tokenSHA256": "8edb17b3facc18f34703564792a17e3c14cbed49f5a30f47ad209865e4c42d6e",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/common/sync.v",
+      "baselineSHA256": "e68447098f4ecfb40fedc3de07ade451fb79e06c87ce15c14d493055f8ac512b",
+      "annotatedSHA256": "40ee6aaa0b7995f2caa4c7a98d9119d9e5712527d47bed724673403671813fc8",
+      "tokenSHA256": "18fd08b58d21e4cd9203407a39000450e7c16509dd64d988a04506f5b740085b",
+      "modules": 4,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/common/sim/gpmc_bfm.v",
+      "baselineSHA256": "8e9fadbaf9b67bed2d7eddc4ad1e92203123b5e5b5f4fb21b150c12ae454a623",
+      "annotatedSHA256": "cb1138d9c81895b828284efe6fd0f9ccdf827945d9d1982a7ec6a8953c4fea0b",
+      "tokenSHA256": "996c2c9fa01e45fd4fab905731a988a652a44af1893d7fc2a3c2c3d4ffd545c6",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/common/sim/tb_ddio.v",
+      "baselineSHA256": "3f3efc2134267672f24438fb3de7b90904c84eb8fbe05b6eada6549a8b585404",
+      "annotatedSHA256": "aa7195031e4c1dd348263717a9e9549f89aff609540088437d5bd4c26d7169c1",
+      "tokenSHA256": "79f79a09b12e1d0f7287b2d7ac5fd2d963fc94b5b38300b4b7042c190ba68e5c",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/common/sim/tb_gpmc_slave.v",
+      "baselineSHA256": "7c143cc32a6fde6b16ced05e7bdd9124e99502cf94e068a18b5c174e9002cdd8",
+      "annotatedSHA256": "dd4d74d21b3ce7a21f7ef04b5cc7fca8bf04d3e963e046ee857cc1ec9d780c91",
+      "tokenSHA256": "8c6f982242d95043fca4f732bcf03ac17713bba6bd1580bd9f9dd9be9f407210",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/common/sim/tb_lane_in.v",
+      "baselineSHA256": "6e96b495d36f5f186235d93d5157dea34b744395c386007ead4030f961ffeed3",
+      "annotatedSHA256": "70782ac75f59bf74c5e2110fe7e70b1cac03688a6a78a0078c0a55f6eadf12d1",
+      "tokenSHA256": "b72c364399ab62c2605668dff9a303b61b5631f744f192b731b760e00eb35954",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/common/sim/tb_pll.v",
+      "baselineSHA256": "ee5c6927b8ad6717dca6c4895bcc05eadb21c21c21241505bf116454aa8070a4",
+      "annotatedSHA256": "ca2cd71bb39bc6be8c0225a25a4560f139c88b2fa33211076ea65c3e27bd1f05",
+      "tokenSHA256": "fe6cb76ae236d6e055e396c5ee80217308d64aa3099e176517c2d01f969e68f4",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/common/sim/tb_sync.v",
+      "baselineSHA256": "4f12012d3e0358707af838fba67b5889500aca13b5591605005f81a6d9eb2832",
+      "annotatedSHA256": "f36dfe6f5227ed347cc8efa5317161a197e10471d8ae4aee607430d489171fe0",
+      "tokenSHA256": "946752aca357418c069a42d45f0203bdcab80ab2b1d79e5d1e4a9b3130e22ed1",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/sram_bench/bench.v",
+      "baselineSHA256": "56041546ec45127435bc05b9e66d2da3c0d19a4966089c551c5713918dc51d73",
+      "annotatedSHA256": "5779800330f7f7604bc3a10eace8e1189b4637fc3b09ebaa157758b0e513a878",
+      "tokenSHA256": "909d3cdc534b76513eb42a6be8242328a62157cd11c8736e418a3d4a7a76b762",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/sram_bench/sim/tb.v",
+      "baselineSHA256": "22ca80b403f26ce72e3dc052607650946772c863cb29e863d041d910a92960af",
+      "annotatedSHA256": "6b1f6eb1b54d7b2dfb6f62fd3918c24a540b9493b17d940cecc387bd382aaead",
+      "tokenSHA256": "7ee2807745b3dfc88ed6d84061da5d1a1e3dd61712870b159278aba6373ed7a6",
+      "modules": 3,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/default/adc_front.v",
+      "baselineSHA256": "1c601a42b2aaf5d5052c4b26bcebeb762134841a9fa12c500bbaf0fa9439b335",
+      "annotatedSHA256": "cf725d9d2e8378729d0ce9a4c2d6106b045c1e47501c23b377c6c6e402b860c7",
+      "tokenSHA256": "ec908760b8408e426cc75b58577d94c4cd58d95d920f27056878b1000576dcd7",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/default/drain.v",
+      "baselineSHA256": "666c141e0f25195e363a7b08bd711113be13e13a45291f8428a675c6ffd72e1b",
+      "annotatedSHA256": "2c1ef04c4b51eb697a62dc96bb3984704ea63a05507a4b5f53ad81264cb1b4a1",
+      "tokenSHA256": "ed2f93cd47260e1be0aafaccfbf3ae8a17ad533d0542089900dc99612e923071",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/default/sim/tb_adc_front.v",
+      "baselineSHA256": "eb1889560e74867df5f4a396c7c53cb0b9fd5bb7d024a3daf4bcb9283c62bf21",
+      "annotatedSHA256": "739ca86c0bee72e245965c6d9b91e404debf4935d8dda96a99f805e95fc5893f",
+      "tokenSHA256": "ce62d722664d29a88f406e88d81fe9b0d7143d8e7c5d81040833e02ce5529c27",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/default/sim/tb_drain.v",
+      "baselineSHA256": "fc04526a01b80ac453cc1ba6921dab4a2f0cb73f6e562522eed15d303518f824",
+      "annotatedSHA256": "0ef2b2db41cfc2f98fd8ff10f5d302a337087b5f6686477993768596a5128186",
+      "tokenSHA256": "8a324801385cf1f92c8b3a8de833b063e81610cff04af3b5d4e86a8577471824",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/default/capture.v",
+      "baselineSHA256": "b08676bd94b5963be6d7f9233d382d04f0db5c2627a7d7d1964e9b07a23df781",
+      "annotatedSHA256": "88d190cd2ad63c006a2aa5485c654f48b292b2d0c80696ec7ad632a82d32e59d",
+      "tokenSHA256": "bd903d9843025160ec5f5ed8dcf9456dc7d5a404444d41d3429a4369e3b64c77",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/default/sim/tb_capture.v",
+      "baselineSHA256": "fea39685f6c8cb4c617c8a0d7c6fa7944e971dc116f555d613b754381b32a66b",
+      "annotatedSHA256": "de84214e70b5660db1da9d52597de9744af4d8eb093ee1520fc7d7b64e5de701",
+      "tokenSHA256": "f75f104c2a355733aeaa2a83d6bd47f85340f3806e040e8e2a1c36503629bd90",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/default/default.v",
+      "baselineSHA256": "081fbf5e64df17b89a6057e385a5cdfcb910fe79cb90db6608ad8a78acc5e4d3",
+      "annotatedSHA256": "876ec0e1056c071f87994172eef04e671169dabdb411680d9e6913ea3aa3ef6d",
+      "tokenSHA256": "c2bd2d2184544a922903f3c04ba4a2bbe8099ee22b8a2105e3b1ac4945a090eb",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/default/sim/tb_top.v",
+      "baselineSHA256": "344ee62ed6ac70790449bcb1ebc9e3b3afcbb3a28fe57597130a044255de947f",
+      "annotatedSHA256": "8014305d8917164b29baf691a47b49c66dc3943ec9fdcc60886000124a55f066",
+      "tokenSHA256": "51c384ca8194270c50b35828eb044c72f7d9fff3815017a157bcbe1b45b3559a",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/default/diag.v",
+      "baselineSHA256": "e75b0595437380b3410399042e88fb4bfa4a5bfecffb8a1fcf47a47db4fa7a01",
+      "annotatedSHA256": "34e4ade55368189abbae8a0e2a6a1aa3444d6779fb75ed286653f4ca7f8fdb8e",
+      "tokenSHA256": "fa4d9d05ce7dc98737c7160b7976b2e230c0c634e4ba9fb66ef7259dddf91d1a",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/default/sim/tb_diag.v",
+      "baselineSHA256": "443b937d5b6208ac65d71f850f74fe45d8f0b7c98f0d7807a9208429b9026948",
+      "annotatedSHA256": "712d8eb9f61ecb1a11a970bd7319121e41f2bbcd3624ad9dffd8d1a524e89459",
+      "tokenSHA256": "c142d34d7ec64d01f4a3efc48c1dbeecf1f7f3987af76fb9051601d09f77a1f6",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/acq_sram/sim/ddr_model.v",
+      "baselineSHA256": "ace57d159f0b1b9edd4e9c82b1496fab3b79b7c056b9aaa2da66698e65d164f2",
+      "annotatedSHA256": "2d2bb4ad3c7f5f13f73e08c68913f0aa1222b56573f09a5efd4e5994a7e4c527",
+      "tokenSHA256": "566a23c867c32103c83c3b48bcda1b44e40bf3dd29f59b467d5abafabcb1564a",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_sram_timeslice.v",
+      "baselineSHA256": "fa5b774dd5d3b720a4f7b72c68844326d9835c7db124756606187f86f9f072a7",
+      "annotatedSHA256": "614680953c206bcb2087e7cc08971883614dc127c7eb2520b74d3827b6dfde7f",
+      "tokenSHA256": "33ed96470b3676e75080b9d36c8a85c661ce815e833584a77c0777c4791ef0cc",
+      "modules": 1,
+      "exactBaselineRecovery": true
+    }
+  ],
+  "linkedModules": 154,
+  "result": "pass"
+}

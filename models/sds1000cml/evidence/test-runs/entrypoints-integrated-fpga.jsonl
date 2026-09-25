@@ -1,0 +1,3 @@
+{"Time":"2026-09-23T11:28:34.495559522+02:00","Action":"start","Package":"open-sds/fpga/cmd/buildfpga"}
+{"Time":"2026-09-23T11:28:34.495693251+02:00","Action":"output","Package":"open-sds/fpga/cmd/buildfpga","Output":"?   \topen-sds/fpga/cmd/buildfpga\t[no test files]\n"}
+{"Time":"2026-09-23T11:28:34.495707064+02:00","Action":"skip","Package":"open-sds/fpga/cmd/buildfpga","Elapsed":0}

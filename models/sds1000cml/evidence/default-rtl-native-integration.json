@@ -1,0 +1,27 @@
+{
+  "status": "integrated-with-explicit-verification-limits",
+  "files": 10,
+  "moduleLinks": 10,
+  "newRequirements": [
+    "REQ-SDS-194",
+    "REQ-SDS-195",
+    "REQ-SDS-196",
+    "REQ-SDS-197",
+    "REQ-SDS-198"
+  ],
+  "cases": 5,
+  "passed": 5,
+  "totalRTLCases": 128,
+  "totalNativeRTLSummaries": 63,
+  "checks": {
+    "exactBaselineAndTokens": "pass",
+    "evidenceProvenance": "pass",
+    "strictConsistency": "pass",
+    "mcp": "pass",
+    "publication": "pass",
+    "pdf": "deferred by user",
+    "nativeAttachments": "pass"
+  },
+  "remainingMissingRTLFiles": 2,
+  "scope": "Default tests retain partial status. Diagnostic mode5 known-valued sequence coverage remains unresolved. All63 RTL artifacts attach to intended testbenches after expression-macro and tb.v inference fixes. Strict mode remains enabled."
+}

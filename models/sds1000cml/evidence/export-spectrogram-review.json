@@ -1,0 +1,173 @@
+{
+  "result": "reviewed-and-native-traced",
+  "requirements": [
+    "REQ-SDS-068",
+    "REQ-SDS-069"
+  ],
+  "owners": [
+    "FU-WEB-SPECTROGRAM",
+    "FU-WEB-SIGROK-EXPORT"
+  ],
+  "sourceSHA256": {
+    "app/internal/web/sigrok_export.js": "7e19755f5d61103a066889924a830500197e46063ef91bfefa898ee514d573c1",
+    "app/internal/web/sigrok_export.test.cjs": "a96c99257fb236b69b44947c4b66261d75e65306906aec6dd103973bfed1fdda",
+    "app/internal/web/sigrok_export_node_test.go": "e12b6e8ec9838a4db801645467173d30979ff2542b4ef7573a00e8ba4a080863",
+    "app/internal/web/spectrogram.js": "6e685acc429caacb62d32ad8e2e22df005ab13d954ae277770ed54648d955a71",
+    "app/internal/web/spectrogram_node_test.go": "1b46878820c609ef6535a82b47b2099a0d24d5794b0968aec606b4ebdd91742c"
+  },
+  "scope": "Complete source read of both browser modules, the sigrok Node test script and three Go runner tests. Seventeen named declaration/direct binding links. Pure Node and a recording graphics context only; no browser, WebGL, LCD or physical run.",
+  "declarations": [
+    {
+      "path": "app/internal/web/sigrok_export.js",
+      "owner": "FU-WEB-SIGROK-EXPORT",
+      "declarations": [
+        {
+          "line": 37,
+          "sourceLine": "function sigrokCrc32(u8) {",
+          "requirements": [
+            "REQ-SDS-069"
+          ]
+        },
+        {
+          "line": 47,
+          "sourceLine": "function sigrokZip(entries) {",
+          "requirements": [
+            "REQ-SDS-069"
+          ]
+        },
+        {
+          "line": 101,
+          "sourceLine": "function sigrokSeries(frame) {",
+          "requirements": [
+            "REQ-SDS-069"
+          ]
+        },
+        {
+          "line": 113,
+          "sourceLine": "const gap = (i) => ch.every((c) => Number.isNaN(c.v[i]));",
+          "requirements": [
+            "REQ-SDS-069"
+          ]
+        },
+        {
+          "line": 131,
+          "sourceLine": "function sigrokLogicBytes(series) {",
+          "requirements": [
+            "REQ-SDS-069"
+          ]
+        },
+        {
+          "line": 164,
+          "sourceLine": "function sigrokSR(series) {",
+          "requirements": [
+            "REQ-SDS-069"
+          ]
+        },
+        {
+          "line": 195,
+          "sourceLine": "function sigrokVcdTimescale(rateHz) {",
+          "requirements": [
+            "REQ-SDS-069"
+          ]
+        },
+        {
+          "line": 204,
+          "sourceLine": "function sigrokVcdPeriod(tsHz) {",
+          "requirements": [
+            "REQ-SDS-069"
+          ]
+        },
+        {
+          "line": 221,
+          "sourceLine": "function sigrokVCD(series) {",
+          "requirements": [
+            "REQ-SDS-069"
+          ]
+        },
+        {
+          "line": 226,
+          "sourceLine": "const id = (i) => String.fromCharCode(33 + i); // '!' onward, like sigrok",
+          "requirements": [
+            "REQ-SDS-069"
+          ]
+        },
+        {
+          "line": 255,
+          "sourceLine": "function sigrokWAV(series) {",
+          "requirements": [
+            "REQ-SDS-069"
+          ]
+        },
+        {
+          "line": 262,
+          "sourceLine": "const tag = (p, s) => { for (let i = 0; i < 4; i++) out[p + i] = s.charCodeAt(i); };",
+          "requirements": [
+            "REQ-SDS-069"
+          ]
+        }
+      ]
+    },
+    {
+      "path": "app/internal/web/spectrogram.js",
+      "owner": "FU-WEB-SPECTROGRAM",
+      "declarations": [
+        {
+          "line": 8,
+          "sourceLine": "function sgHeat(t) {",
+          "requirements": [
+            "REQ-SDS-068"
+          ]
+        },
+        {
+          "line": 21,
+          "sourceLine": "function sgNew(w, h) {",
+          "requirements": [
+            "REQ-SDS-068"
+          ]
+        },
+        {
+          "line": 27,
+          "sourceLine": "function sgPushRow(sg, mags, half, peak, nyq) {",
+          "requirements": [
+            "REQ-SDS-068"
+          ]
+        },
+        {
+          "line": 45,
+          "sourceLine": "function sgClear(sg) { sg.data.fill(0); sg.rows = 0; }",
+          "requirements": [
+            "REQ-SDS-068"
+          ]
+        },
+        {
+          "line": 50,
+          "sourceLine": "function sgBlit(g, cw, ch, sg, textColor) {",
+          "requirements": [
+            "REQ-SDS-068"
+          ]
+        }
+      ]
+    }
+  ],
+  "testEvidence": "export-spectrogram-test-run.json",
+  "findings": [
+    "SR analog chunks preserve NaN gaps, derived logic holds the previous thresholded state, and WAV/VCD hold previous values. Shared all-gap outer margins are trimmed before export.",
+    "Stored ZIP has deterministic timestamps and 32-bit sizes/offsets; no ZIP64 or general allocation-limit validation is present. Existing CRC and structural round-trip checks do not run an external reader.",
+    "VCD sample-rate rounding and stride decimation are explicit. For n=131073 at 2 Hz, step=2 gives final stamp 65537 seconds rather than the original 65536.5 seconds.",
+    "Waterfall scrolling, row count, palette stops and selected hostile inputs are tested. Uint8ClampedArray byte validity in the breaker does not establish correct spectral/color semantics.",
+    "The recording-context sgBlit case reproduces the 100 MHz label as 1M. The trailing-zero regular expression removes significant integer zeros; the model records the defect and does not change instrument behavior.",
+    "Clearing leaves Nyquist metadata intact; invalid half/peak returns without clearing or scrolling. Caller dimension and magnitude-array validity remain preconditions."
+  ],
+  "externalReader": {
+    "result": "not-run",
+    "reason": "sigrok-cli not installed; no installation attempted",
+    "candidate": "app/internal/web/sigrok_export_e2e_test.go",
+    "sourceSHA256": "6e33119baf863876fca3ee4b4f68fa936488a1768d86c823ba14b74099f46446"
+  },
+  "limits": [
+    "Existing Node suites pass without skips; requirement outcomes remain partial.",
+    "The original E2E test was read but not run. Actual file-reader/UART-decoder interoperability is not claimed.",
+    "LCD spectrogram, download UI selection, graphics rendering and physical calibration remain separate scopes."
+  ],
+  "followUpEvidence": "browser-view-review.json: subsequent bounded Chromium evidence for spectrogram controls/drawing"
+}

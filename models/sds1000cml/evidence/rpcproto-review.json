@@ -1,0 +1,17 @@
+{
+  "scope": "Complete source read integrated into REQ-SDS-101; approved comments only. Dedicated test coverage remains bounded as described.",
+  "sourceSHA256": {
+    "ota/internal/rpcproto/rpcproto.go": "372875f47d0c3e556760f6a279b5d224315cf0b5e80ab6b31cbe5e734caded5e",
+    "ota/internal/rpcproto/rpcproto_test.go": "2d965f3c22005394b58ac2d3de56d7b724a271c532d611ee2f7707a50bc3cdf6",
+    "ota/internal/agent/rpc.go": "596124c80ae0ab5d1b5894ff0b7b9975c6457999aa673c7393a23dcc2cd64f7e"
+  },
+  "findings": [
+    "Production file has only Request/Response types, no functions. Source claims shared agent types, but agent/rpc.go duplicates the envelope.",
+    "Canonical Request.Args is any (JSON numeric decoding uses float64); agent Request.Args is RawMessage. Canonical Response.Data is RawMessage; agent Response.Data is any.",
+    "Golden tests and round trips check the canonical package and literal response examples, not actual dispatch or equality with agent fields.",
+    "The full-command test uses 23 literals; it does not enumerate or validate actual handler registration.",
+    "Four Test functions and two fuzz targets pass with -race using seed corpora, not a fuzz campaign.",
+    "The two production type declarations and all seven test/support functions now have explicit requirement comments. Native trace recognition is checked after generation."
+  ],
+  "testLog": "test-runs/ota-contracts.jsonl"
+}

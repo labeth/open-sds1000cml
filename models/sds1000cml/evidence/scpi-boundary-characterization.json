@@ -1,0 +1,33 @@
+{
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "scope": "Test-only overlay on the reviewed source. Passing assertions reproduce existing limitations; they do not certify requirement satisfaction or repair behavior.",
+  "sourceSHA256": {
+    "app/internal/scpi/scpi.go": "e17f1b95ae046bd9652eda6a6ed670d0af570274e86b63eca9de368cc667c9e0",
+    "app/internal/scpi/scpi_exec.go": "6f4e8e97ffa5cfb1956debc08ad6d437b75e1a680e0ad6b1f0c505dbe914b0a2",
+    "app/internal/scpi/scpi_test.go": "39c95649788f26a6954e3fae4f8e25c721c44799a4fc5164f330ef7d35a81734",
+    "app/internal/scpi/scpifuzz_test.go": "77b098a5f9868299d7b24a2b5cb72cf491a9cded1a2ae48826244a28f50f4321",
+    "app/internal/scpi/waveform.go": "0614fed0a005c5045c825cea7443ac433d46c4a36d5bc21d4e1285e3e7645712",
+    "app/internal/scpi/wffuzz_test.go": "cffc85c843338470ca75fc70b332217eac95f74d2296390a9146663c77840362",
+    "app/internal/analog/frontend.go": "6c3442cd15d77b3114045125436a83049fda1c26bb00467ddadd63b7156e843b",
+    "app/internal/analog/frontend_test.go": "85884b53241df23ff822e68d0b2561faac79353308bc633a8a045f6c1d999cdf",
+    "app/internal/analog/spi.go": "200ce839472af294f3f5b00aff8031383bccc91f9455e82270ebb135b101a1ea",
+    "app/internal/analog/trigcal.go": "56a42b038b8ceb65bb8760e0784b1825b8a7e8d3ceb8aeab1e4e2fb2e1d706a4"
+  },
+  "probe": "// Test-only overlay; never added to the instrument working tree.\nfunc TestModelReviewSCPIBoundaries(t *testing.T) {\n h, fs := newH(t)\n fe := analog.New(nil, nil, nil)\n h.fe = fe\n if got := do(t,h,\"WFSU SP,4,NP,-1\"); got != \"Data out of range\\n\" || h.wfSP != 4 { t.Fatalf(\"partial WFSU characterization: %q SP=%d\",got,h.wfSP) }\n if got := do(t,h,\"C1:ATTN 0.5\"); got != \"\" || h.attn[0] != .5 || fe.ProbeFactor(0) != 1 { t.Fatalf(\"attenuation mismatch characterization: %q shadow=%v front=%v\",got,h.attn[0],fe.ProbeFactor(0)) }\n do(t,h,\"TRDL 2US;TRLV 1\")\n level := h.trlvV\n if level == 0 { t.Fatal(\"expected nonzero trigger level before reset\") }\n do(t,h,\"*RST\")\n if h.trdlS != 2e-6 || h.trlvV != level { t.Fatalf(\"reset retention characterization: delay=%v level=%v\",h.trdlS,h.trlvV) }\n if got := do(t,h,\"C1:ATTN NAN\"); got != \"\" || !math.IsNaN(h.attn[0]) { t.Fatalf(\"NaN attenuation characterization: %q %v\",got,h.attn[0]) }\n if got := do(t,h,\"TRDL INF\"); got != \"\" || !math.IsInf(h.trdlS,1) { t.Fatalf(\"infinite delay characterization: %q %v\",got,h.trdlS) }\n do(t,h,\"WFSU SP,4,NP,10,FP,8\")\n data,desc := h.dat2(0,fs.frame),h.wavedesc(0,fs.frame)\n if len(data)!=10 || binary.LittleEndian.Uint32(desc[116:])!=2048 {t.Fatal(\"descriptor/window characterization changed\")}\n t.Log(\"Observed: partial WFSU update; 0.5 attenuation shadow versus front-end factor 1; reset retains trigger delay/level; NaN attenuation and infinite delay accepted; descriptor count is full frame while DAT2 count is windowed\")\n}\n",
+  "command": [
+    "go",
+    "test",
+    "-overlay",
+    "/tmp/sds-scpi-characterization-9n1565xk/overlay.json",
+    "-run",
+    "^TestModelReviewSCPIBoundaries$",
+    "-count=1",
+    "-v",
+    "./internal/scpi"
+  ],
+  "workingDirectory": "app",
+  "exitCode": 0,
+  "stdout": "=== RUN   TestModelReviewSCPIBoundaries\n    scpi_test.go:561: Observed: partial WFSU update; 0.5 attenuation shadow versus front-end factor 1; reset retains trigger delay/level; NaN attenuation and infinite delay accepted; descriptor count is full frame while DAT2 count is windowed\n--- PASS: TestModelReviewSCPIBoundaries (0.00s)\nPASS\nok  \topen-sds/app/internal/scpi\t0.002s\n",
+  "stderr": "",
+  "result": "known-limitations-reproduced"
+}

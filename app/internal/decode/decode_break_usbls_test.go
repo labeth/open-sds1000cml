@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-DECODE
 package decode
 
 import (
@@ -38,6 +39,7 @@ const pinKnownBugs = false
 // (SYNC + PID + data..., LSB-first per byte). It bit-stuffs (a 0 after six 1s),
 // NRZI-encodes from idle J (high), appends a 2-bit SE0 EOP + `gap` idle bits
 // after every packet, and `lead`/`trail` idle bits at the ends. hi=210, lo=40.
+// TRLC-LINKS: REQ-SDS-018
 func brkWave(bitLists [][]int, spb, lead, gap, trail int) []uint8 {
 	lo, hi := uint8(40), uint8(210)
 	const idle = 1
@@ -80,8 +82,10 @@ func brkWave(bitLists [][]int, spb, lead, gap, trail int) []uint8 {
 	return w
 }
 
+// TRLC-LINKS: REQ-SDS-018
 func brkSync() []int { return []int{0, 0, 0, 0, 0, 0, 0, 1} }
 
+// TRLC-LINKS: REQ-SDS-018
 func brkBits(v, n int) []int {
 	b := make([]int, n)
 	for i := 0; i < n; i++ {
@@ -91,6 +95,7 @@ func brkBits(v, n int) []int {
 }
 
 // brkFrame builds SYNC + a correct PID byte (nibble + ones-complement) + data.
+// TRLC-LINKS: REQ-SDS-018
 func brkFrame(pid int, data []int) []int {
 	pidByte := (pid & 0xF) | ((^pid & 0xF) << 4)
 	bits := append([]int{}, brkSync()...)
@@ -101,6 +106,7 @@ func brkFrame(pid int, data []int) []int {
 	return bits
 }
 
+// TRLC-LINKS: REQ-SDS-018
 func brkEqInts(a, b []int) bool {
 	if len(a) != len(b) {
 		return false
@@ -113,6 +119,7 @@ func brkEqInts(a, b []int) bool {
 	return true
 }
 
+// TRLC-LINKS: REQ-SDS-018
 func brkIdle(n int) []uint8 {
 	s := make([]uint8, n)
 	for i := range s {
@@ -124,6 +131,7 @@ func brkIdle(n int) []uint8 {
 // brkValidPIDs is the set of well-defined PID nibbles (all map to a name).
 var brkValidPIDs = []int{0x1, 0x9, 0x5, 0xD, 0x3, 0xB, 0x7, 0xF, 0x2, 0xA, 0xE, 0x6, 0xC, 0x8, 0x4}
 
+// TRLC-LINKS: REQ-SDS-018
 func TestBreakUsbls(t *testing.T) {
 
 	// ---------------------------------------------------------------------
@@ -475,6 +483,7 @@ func TestBreakUsbls(t *testing.T) {
 	})
 }
 
+// TRLC-LINKS: REQ-SDS-018
 func pidsList(pkts []usbPkt) []int {
 	var o []int
 	for _, p := range pkts {

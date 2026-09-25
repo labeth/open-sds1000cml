@@ -1,0 +1,3 @@
+["exec", "chmod", "755", "/dev/acqsram"]
+
+[exit 0]

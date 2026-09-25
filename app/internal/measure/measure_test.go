@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-MEASURE
 package measure
 
 import (
@@ -7,6 +8,7 @@ import (
 
 // square builds a 50%-duty square wave: `cycles` cycles of `period` samples,
 // low `base` for the first half, high `top` for the second.
+// TRLC-LINKS: REQ-SDS-017
 func square(period, cycles, base, top int) []uint8 {
 	out := make([]uint8, period*cycles)
 	for i := range out {
@@ -19,8 +21,10 @@ func square(period, cycles, base, top int) []uint8 {
 	return out
 }
 
+// TRLC-LINKS: REQ-SDS-017
 func approx(a, b, tol float64) bool { return math.Abs(a-b) <= tol }
 
+// TRLC-LINKS: REQ-SDS-017
 func TestSquareWave(t *testing.T) {
 	// 100-sample period @ 1 µs/sample → 10 kHz, 50 % duty. base 56, top 200.
 	sig := square(100, 10, 56, 200)
@@ -51,6 +55,7 @@ func TestSquareWave(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-017
 func TestDutyCycle(t *testing.T) {
 	// 25 % duty: high for the last quarter of each 100-sample period.
 	out := make([]uint8, 1000)
@@ -67,6 +72,7 @@ func TestDutyCycle(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-017
 func TestTrapezoidRiseTime(t *testing.T) {
 	// Trapezoid: 40-sample linear ramp base→top, hold, ramp down, hold.
 	base, top, ramp := 56, 200, 40
@@ -96,6 +102,7 @@ func TestTrapezoidRiseTime(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-017
 func TestFlatHasNoTiming(t *testing.T) {
 	flat := make([]uint8, 500)
 	for i := range flat {
@@ -113,6 +120,7 @@ func TestFlatHasNoTiming(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-017
 func TestClipped(t *testing.T) {
 	n := 800
 	// Clean square well inside the range (codes 56/200) — not clipped.
@@ -171,12 +179,14 @@ func TestClipped(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-017
 func TestEmptyRecord(t *testing.T) {
 	if Compute(nil, 1, 0, 1e-6) != nil {
 		t.Fatal("expected nil for empty record")
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-017
 func TestOvershoot(t *testing.T) {
 	// Square with a one-sample overshoot spike above the settled top.
 	sig := square(100, 8, 56, 200)
@@ -194,6 +204,7 @@ func TestOvershoot(t *testing.T) {
 }
 
 // avgWidthBrute is the pre-merge reference implementation (rescan per crossing).
+// TRLC-LINKS: REQ-SDS-017
 func avgWidthBrute(from, to []float64) float64 {
 	if len(from) == 0 || len(to) == 0 {
 		return 0
@@ -218,6 +229,7 @@ func avgWidthBrute(from, to []float64) float64 {
 // TestAvgWidthMergeParity property-checks the merge-pass avgWidth against the
 // brute-force reference on randomized ascending crossing lists (the shape
 // Compute produces), including empty/disjoint/interleaved cases.
+// TRLC-LINKS: REQ-SDS-017
 func TestAvgWidthMergeParity(t *testing.T) {
 	rng := uint64(1)
 	rand01 := func() float64 { // xorshift; deterministic, no seed plumbing
@@ -250,6 +262,7 @@ func TestAvgWidthMergeParity(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-017
 func TestFractionalAcquisitionMeasurements(t *testing.T) {
 	q := []uint16{25600, 25728, 25600, 25728}
 	r := ComputeQ8(q, 1, 0, 1)
@@ -262,6 +275,7 @@ func TestFractionalAcquisitionMeasurements(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-017
 func TestQ8SmallRippleOnLargeDC(t *testing.T) {
 	// Full precision depth excluding the 31-sample filter guard at each end.
 	const n = 524288 - 62
@@ -281,6 +295,7 @@ func TestQ8SmallRippleOnLargeDC(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-017
 func TestNoisyTriangleTiming(t *testing.T) {
 	q := make([]uint16, 500*40)
 	for i := range q {

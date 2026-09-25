@@ -1,4 +1,6 @@
+// ENGMODEL-OWNER-UNIT: FU-RTL-ACQ-TESTS
 `timescale 1ns/1ps
+// TRLC-LINKS: REQ-SDS-093
 module tb;
  parameter SOURCE_HALF=4,DEST_HALF=2,PHASE=0;
  reg source_clk=0,dest_clk=0;

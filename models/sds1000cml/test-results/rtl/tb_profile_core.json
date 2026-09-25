@@ -1,0 +1,60 @@
+{
+  "source": "fpga/acq_sram/sim/tb_profile_core.v",
+  "scope": "Original offline board/profile digital cases with explicit compile flags,PLL/ADC/DDR mocks or vendor libraries. Process/bench failures remain fail; assertions not reached by an earlier failure are not credited. Physical qualification is not established.",
+  "sourceSHA256": "190bae62c40947711ff13a385789d83654eb9b67d321b4b47ab5abf193cf8294",
+  "evidenceReports": {
+    "board-rtl-review-test-run.json": "8c1cd67011fce2b557f1a45985e076c3fa2fdad1805895c32d0dd21e1e932fb6",
+    "board-core-review-test-run.json": "fd8877f4d6b5c36c8c21ec99da0d2356b2816d6c8031304a44559aa03970ee96",
+    "board-metadata-observation.json": "cdad3b08b86aced4cccb930679c799b360a32eb447f2b62b6bab015c0ac42e9e"
+  },
+  "runs": [
+    "profile-core-original"
+  ],
+  "results": [
+    {
+      "requirement": "REQ-SDS-041",
+      "status": "partial",
+      "notes": "1 cases pass;0 cases fail;0 could not compile. Capture-metadata assertions terminate two legacy benches before later checks. Continuation requires37 externally verified values. See exact variant and vendor provenance in board-rtl-evidence-check.json; no physical qualification."
+    },
+    {
+      "requirement": "REQ-SDS-043",
+      "status": "partial",
+      "notes": "1 cases pass;0 cases fail;0 could not compile. Capture-metadata assertions terminate two legacy benches before later checks. Continuation requires37 externally verified values. See exact variant and vendor provenance in board-rtl-evidence-check.json; no physical qualification."
+    },
+    {
+      "requirement": "REQ-SDS-053",
+      "status": "partial",
+      "notes": "1 cases pass;0 cases fail;0 could not compile. Capture-metadata assertions terminate two legacy benches before later checks. Continuation requires37 externally verified values. See exact variant and vendor provenance in board-rtl-evidence-check.json; no physical qualification."
+    },
+    {
+      "requirement": "REQ-SDS-054",
+      "status": "partial",
+      "notes": "1 cases pass;0 cases fail;0 could not compile. Capture-metadata assertions terminate two legacy benches before later checks. Continuation requires37 externally verified values. See exact variant and vendor provenance in board-rtl-evidence-check.json; no physical qualification."
+    },
+    {
+      "requirement": "REQ-SDS-056",
+      "status": "partial",
+      "notes": "1 cases pass;0 cases fail;0 could not compile. Capture-metadata assertions terminate two legacy benches before later checks. Continuation requires37 externally verified values. See exact variant and vendor provenance in board-rtl-evidence-check.json; no physical qualification."
+    },
+    {
+      "requirement": "REQ-SDS-075",
+      "status": "partial",
+      "notes": "1 cases pass;0 cases fail;0 could not compile. Capture-metadata assertions terminate two legacy benches before later checks. Continuation requires37 externally verified values. See exact variant and vendor provenance in board-rtl-evidence-check.json; no physical qualification."
+    },
+    {
+      "requirement": "REQ-SDS-076",
+      "status": "partial",
+      "notes": "1 cases pass;0 cases fail;0 could not compile. Capture-metadata assertions terminate two legacy benches before later checks. Continuation requires37 externally verified values. See exact variant and vendor provenance in board-rtl-evidence-check.json; no physical qualification."
+    },
+    {
+      "requirement": "REQ-SDS-185",
+      "status": "partial",
+      "notes": "1 cases pass;0 cases fail;0 could not compile. Capture-metadata assertions terminate two legacy benches before later checks. Continuation requires37 externally verified values. See exact variant and vendor provenance in board-rtl-evidence-check.json; no physical qualification."
+    },
+    {
+      "requirement": "REQ-SDS-188",
+      "status": "partial",
+      "notes": "1 cases pass;0 cases fail;0 could not compile. Capture-metadata assertions terminate two legacy benches before later checks. Continuation requires37 externally verified values. See exact variant and vendor provenance in board-rtl-evidence-check.json; no physical qualification."
+    }
+  ]
+}

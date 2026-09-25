@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-DECODE
 package decode
 
 import (
@@ -14,6 +15,7 @@ import (
 // Words are transmitted contiguously (no idle between them), as on a real bus.
 // The lead idle is set OPPOSITE the first sync's first half so a clean sync-start
 // edge always exists; parity[i] is emitted verbatim so a test can corrupt it.
+// TRLC-LINKS: REQ-SDS-018
 func mil1553Wave(words []int, cmd []bool, parity []int, spb int) []uint8 {
 	lo, hi := uint8(40), uint8(210)
 	half := spb / 2
@@ -58,8 +60,10 @@ func mil1553Wave(words []int, cmd []bool, parity []int, spb int) []uint8 {
 
 // mil1553OddParity returns the parity bit that makes the total 1-count of the 16
 // data bits + parity bit odd (the MIL-STD-1553B rule).
+// TRLC-LINKS: REQ-SDS-018
 func mil1553OddParity(word int) int { return 1 - (popcount(word) & 1) }
 
+// TRLC-LINKS: REQ-SDS-018
 func TestDecodeMIL1553RoundTrip(t *testing.T) {
 	words := []int{0x1234, 0xABCD, 0x0F0F} // command word then two data-carrying words
 	cmd := []bool{true, false, true}       // command sync, data sync, command sync
@@ -119,6 +123,7 @@ func TestDecodeMIL1553RoundTrip(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-018
 func TestDecodeMIL1553ParityError(t *testing.T) {
 	words := []int{0x1234, 0xABCD, 0x0F0F}
 	cmd := []bool{true, false, true}
@@ -152,6 +157,7 @@ func TestDecodeMIL1553ParityError(t *testing.T) {
 
 // TestDecodeMIL1553NoPanic feeds degenerate/hostile inputs — a decoder must
 // return an error, never panic or hang (the package also runs a broader fuzz).
+// TRLC-LINKS: REQ-SDS-018
 func TestDecodeMIL1553NoPanic(t *testing.T) {
 	rng := rand.New(rand.NewSource(1553))
 	mk := func(n, kind int) []uint8 {

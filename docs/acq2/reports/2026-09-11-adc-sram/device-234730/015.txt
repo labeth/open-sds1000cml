@@ -1,0 +1,3 @@
+ARGS ["exec", "kill", "-STOP", "534"]
+
+[exit 0]

@@ -1,0 +1,67 @@
+{
+  "result": "pass",
+  "checks": [
+    {
+      "requirement": "REQ-SDS-023",
+      "file": "binframe.js",
+      "declarationLines": [
+        20,
+        43,
+        56,
+        66
+      ],
+      "verification": "VER-INF-TEST-BINFRAME_NODE_TEST-ECB221"
+    },
+    {
+      "requirement": "REQ-SDS-070",
+      "file": "peaks.js",
+      "declarationLines": [
+        8,
+        36,
+        58,
+        64,
+        85,
+        103
+      ],
+      "verification": "VER-INF-TEST-PEAKS_NODE_TEST-F29375"
+    },
+    {
+      "requirement": "REQ-SDS-068",
+      "file": "spectrogram.js",
+      "declarationLines": [
+        10,
+        24,
+        31,
+        50,
+        56
+      ],
+      "verification": "VER-INF-TEST-SPECTROGRAM_NODE_TEST-3F3999"
+    },
+    {
+      "requirement": "REQ-SDS-069",
+      "file": "sigrok_export.js",
+      "declarationLines": [
+        39,
+        50,
+        105,
+        118,
+        137,
+        171,
+        203,
+        213,
+        231,
+        237,
+        267,
+        275
+      ],
+      "verification": "VER-INF-TEST-SIGROK_EXPORT_NODE_TEST-DDCD70"
+    }
+  ],
+  "sha256": {
+    "generated/ARCHITECTURE.adoc": "fcb3b1772a4ed81b104708c08c63146ac6b6df7489cb4b71345b13992578b3d9",
+    "generated/TRACE-MATRIX.json": "98eef495fb24ccac02ee96f80c8e4c70fa169e42591a1c2d994366095bce6fb9",
+    "evidence/javascript-trace-audit.json": "51ff39740879f68776dfcb71cd72d5b1749a68e8db09493854312c24be1cb822"
+  },
+  "scope": "Exact 27 JavaScript source coordinates and separate Go runner verification nodes in four requirement graphs. Publication consistency only.",
+  "semanticLimitation": "Corrected by the recognized-test exclusion; see publication-test-runtime-gap.json for current review status."
+}

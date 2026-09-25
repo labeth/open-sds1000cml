@@ -1,0 +1,23 @@
+{"Time":"2026-09-23T02:16:47.228131576+02:00","Action":"start","Package":"open-sds/ota/internal/agent"}
+{"Time":"2026-09-23T02:16:47.241005731+02:00","Action":"run","Package":"open-sds/ota/internal/agent","Test":"TestServeTCPDispatchesOverRealSocket"}
+{"Time":"2026-09-23T02:16:47.241058289+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestServeTCPDispatchesOverRealSocket","Output":"=== RUN   TestServeTCPDispatchesOverRealSocket\n"}
+{"Time":"2026-09-23T02:16:47.242434432+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestServeTCPDispatchesOverRealSocket","Output":"[agent] 2026/09/23 02:16:47 tcp control listening on 127.0.0.1:0\n"}
+{"Time":"2026-09-23T02:16:47.254132828+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestServeTCPDispatchesOverRealSocket","Output":"--- PASS: TestServeTCPDispatchesOverRealSocket (0.01s)\n"}
+{"Time":"2026-09-23T02:16:47.254180154+02:00","Action":"pass","Package":"open-sds/ota/internal/agent","Test":"TestServeTCPDispatchesOverRealSocket","Elapsed":0.01}
+{"Time":"2026-09-23T02:16:47.254203895+02:00","Action":"run","Package":"open-sds/ota/internal/agent","Test":"TestServeTCPConcurrentConnections"}
+{"Time":"2026-09-23T02:16:47.254214187+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestServeTCPConcurrentConnections","Output":"=== RUN   TestServeTCPConcurrentConnections\n"}
+{"Time":"2026-09-23T02:16:47.254968219+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestServeTCPConcurrentConnections","Output":"[agent] 2026/09/23 02:16:47 tcp control listening on 127.0.0.1:0\n"}
+{"Time":"2026-09-23T02:16:47.267503089+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestServeTCPConcurrentConnections","Output":"--- PASS: TestServeTCPConcurrentConnections (0.01s)\n"}
+{"Time":"2026-09-23T02:16:47.2675431+02:00","Action":"pass","Package":"open-sds/ota/internal/agent","Test":"TestServeTCPConcurrentConnections","Elapsed":0.01}
+{"Time":"2026-09-23T02:16:47.267563818+02:00","Action":"run","Package":"open-sds/ota/internal/agent","Test":"TestServeTCPListenerClosesAfterStop"}
+{"Time":"2026-09-23T02:16:47.267573466+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestServeTCPListenerClosesAfterStop","Output":"=== RUN   TestServeTCPListenerClosesAfterStop\n"}
+{"Time":"2026-09-23T02:16:47.2684483+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestServeTCPListenerClosesAfterStop","Output":"[agent] 2026/09/23 02:16:47 tcp control listening on 127.0.0.1:0\n"}
+{"Time":"2026-09-23T02:16:47.29965439+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestServeTCPListenerClosesAfterStop","Output":"--- PASS: TestServeTCPListenerClosesAfterStop (0.03s)\n"}
+{"Time":"2026-09-23T02:16:47.299692613+02:00","Action":"pass","Package":"open-sds/ota/internal/agent","Test":"TestServeTCPListenerClosesAfterStop","Elapsed":0.03}
+{"Time":"2026-09-23T02:16:47.29970478+02:00","Action":"run","Package":"open-sds/ota/internal/agent","Test":"TestHandleConnSpeaksOtactlWire"}
+{"Time":"2026-09-23T02:16:47.299709604+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestHandleConnSpeaksOtactlWire","Output":"=== RUN   TestHandleConnSpeaksOtactlWire\n"}
+{"Time":"2026-09-23T02:16:47.302282479+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestHandleConnSpeaksOtactlWire","Output":"--- PASS: TestHandleConnSpeaksOtactlWire (0.00s)\n"}
+{"Time":"2026-09-23T02:16:47.302315502+02:00","Action":"pass","Package":"open-sds/ota/internal/agent","Test":"TestHandleConnSpeaksOtactlWire","Elapsed":0}
+{"Time":"2026-09-23T02:16:47.302370771+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Output":"PASS\n"}
+{"Time":"2026-09-23T02:16:48.305340105+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Output":"ok  \topen-sds/ota/internal/agent\t1.077s\n"}
+{"Time":"2026-09-23T02:16:48.305374908+02:00","Action":"pass","Package":"open-sds/ota/internal/agent","Elapsed":1.077}

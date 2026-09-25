@@ -1,4 +1,6 @@
+// ENGMODEL-OWNER-UNIT: FU-RTL-SRAM-BENCH-BENCH
 `timescale 1ns/1ps
+// TRLC-LINKS: REQ-SDS-193
 module sram_bench_top(
  input clk, mclk_in, nCS1, nOE, nWE, input [6:2] sel,
  input gpmc_a2,gpmc_b1, inout [15:0] gpmc_d, inout [31:0] dq,

@@ -11,6 +11,7 @@
 //     on amd64 can't fuse them (V8/ARM don't fuse) — keeps host CI == on-device.
 //   - float32 for the reference + drift-normalized frame + mean; float64 for
 //     accumulators/scores. Single-threaded, fixed feed order, one accumulator/bin.
+// ENGMODEL-OWNER-UNIT: FU-APP-SUPERRES
 package superres
 
 import (
@@ -19,8 +20,10 @@ import (
 
 // jsRound mirrors JS Math.round (round half UP, toward +Inf): base/shift are
 // routinely negative x.5 where Go's math.Round (half away from zero) diverges.
+// TRLC-LINKS: REQ-SDS-141
 func jsRound(x float64) int { return int(math.Floor(x + 0.5)) }
 
+// TRLC-LINKS: REQ-SDS-141
 type chanState struct {
 	sum, sum2, cnt, sumA, cntA []float64
 	ref                        []float32 // reference for the drift fit
@@ -28,6 +31,7 @@ type chanState struct {
 	clipSkips                  int
 }
 
+// TRLC-LINKS: REQ-SDS-141
 type template struct {
 	data      []float64
 	lo, hi, L int
@@ -35,6 +39,7 @@ type template struct {
 }
 
 // Stack is one accumulation state: n input samples drizzled onto n*K fine bins.
+// TRLC-LINKS: REQ-SDS-141
 type Stack struct {
 	N, K, Nbins int
 	C           [2]chanState
@@ -71,6 +76,7 @@ type Stack struct {
 }
 
 // New allocates a stack: n input samples → n*K fine bins per channel.
+// TRLC-LINKS: REQ-SDS-141
 func New(n, K int) *Stack {
 	nb := n * K
 	mk := func() chanState {
@@ -89,6 +95,7 @@ func New(n, K int) *Stack {
 }
 
 // Clipped reports whether a channel is railed (≥0.5% of samples pinned at a rail).
+// TRLC-LINKS: REQ-SDS-141
 func Clipped(sig []uint8) bool {
 	lo, hi := 255, 0
 	for _, v := range sig {
@@ -117,6 +124,7 @@ func Clipped(sig []uint8) bool {
 }
 
 // median = upper-middle element after sort (matches JS med: s[len>>1]).
+// TRLC-LINKS: REQ-SDS-141
 func median(a []float64) float64 {
 	if len(a) == 0 {
 		return 0
@@ -126,6 +134,7 @@ func median(a []float64) float64 {
 	return s[len(s)>>1]
 }
 
+// TRLC-LINKS: REQ-SDS-141
 func sortFloat(a []float64) {
 	// insertion sort is fine (stats slices are ≤4096); avoids importing sort for
 	// a hot path and matches JS's stable numeric sort on equal keys.
@@ -140,6 +149,7 @@ func sortFloat(a []float64) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-141
 func abs(x int) int {
 	if x < 0 {
 		return -x

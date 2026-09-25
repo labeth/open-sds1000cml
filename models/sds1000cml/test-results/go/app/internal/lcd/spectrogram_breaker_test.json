@@ -1,0 +1,53 @@
+{
+  "source": "app/internal/lcd/spectrogram_breaker_test.go",
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "scope": "Reviewed Go test outcomes; passing assertions contribute partial requirement evidence.",
+  "sourceSHA256": "a760f3163389db28182e6e13657effa9ab20dd02c31807ffe84c912bc80fadfd",
+  "logs": {
+    "test-runs/lcd-spectrogram-netaddr.jsonl": "1f17f9d410806ae33e736d47765fa079cf7b8495f10a2c5c8da3bf5c16c4f177"
+  },
+  "tests": [
+    {
+      "name": "TestHeatNeverPanics",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-068"
+      ]
+    },
+    {
+      "name": "TestSpectrogramBreaker50",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-068"
+      ]
+    },
+    {
+      "name": "TestSpectrogramFloorEdges",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-068"
+      ]
+    },
+    {
+      "name": "TestSpectrogramPushGuards",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-068"
+      ]
+    },
+    {
+      "name": "TestSpectrumMagsDegenerate",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-068"
+      ]
+    }
+  ],
+  "results": [
+    {
+      "requirement": "REQ-SDS-068",
+      "status": "partial",
+      "notes": "5 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    }
+  ]
+}

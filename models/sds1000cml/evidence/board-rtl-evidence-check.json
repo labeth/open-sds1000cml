@@ -1,0 +1,142 @@
+{
+  "result": "pass",
+  "cases": [
+    {
+      "id": "legacy-base",
+      "path": "fpga/acq_sram/sim/tb_top.v",
+      "module": "tb",
+      "status": "fail",
+      "log": "board-rtl-review-test-run.json"
+    },
+    {
+      "id": "legacy-interleave",
+      "path": "fpga/acq_sram/sim/tb_top_interleave.v",
+      "module": "tb",
+      "status": "fail",
+      "log": "board-rtl-review-test-run.json"
+    },
+    {
+      "id": "legacy-burst",
+      "path": "fpga/acq_sram/sim/tb_burst.v",
+      "module": "tb",
+      "status": "partial",
+      "log": "board-rtl-review-test-run.json"
+    },
+    {
+      "id": "qualified-gpmc-read",
+      "path": "fpga/acq_sram/sim/tb_gpmc_read.v",
+      "module": "tb",
+      "status": "partial",
+      "log": "board-rtl-review-test-run.json"
+    },
+    {
+      "id": "legacy-gpmc-burst",
+      "path": "fpga/acq_sram/sim/tb_gpmc_burst.v",
+      "module": "tb",
+      "status": "partial",
+      "log": "board-rtl-review-test-run.json"
+    },
+    {
+      "id": "legacy-continuation",
+      "path": "fpga/acq_sram/sim/tb_continuation.v",
+      "module": "tb",
+      "status": "partial",
+      "log": "board-rtl-review-test-run.json"
+    },
+    {
+      "id": "legacy-precision",
+      "path": "fpga/acq_sram/sim/tb_precision_top.v",
+      "module": "tb",
+      "status": "partial",
+      "log": "board-rtl-review-test-run.json"
+    },
+    {
+      "id": "legacy-stream-4096",
+      "path": "fpga/acq_sram/sim/tb_stream_top.v",
+      "module": "tb",
+      "status": "partial",
+      "log": "board-rtl-review-test-run.json"
+    },
+    {
+      "id": "legacy-stream-8192",
+      "path": "fpga/acq_sram/sim/tb_stream_top.v",
+      "module": "tb",
+      "status": "partial",
+      "log": "board-rtl-review-test-run.json"
+    },
+    {
+      "id": "legacy-adc",
+      "path": "fpga/acq_sram/sim/tb_top_adc.v",
+      "module": "tb",
+      "status": "partial",
+      "log": "board-rtl-review-test-run.json"
+    },
+    {
+      "id": "legacy-adc-normal",
+      "path": "fpga/acq_sram/sim/tb_top_adc.v",
+      "module": "tb",
+      "status": "partial",
+      "log": "board-rtl-review-test-run.json"
+    },
+    {
+      "id": "legacy-adc-recall",
+      "path": "fpga/acq_sram/sim/tb_top_adc.v",
+      "module": "tb",
+      "status": "partial",
+      "log": "board-rtl-review-test-run.json"
+    },
+    {
+      "id": "legacy-adc-normal-recall",
+      "path": "fpga/acq_sram/sim/tb_top_adc.v",
+      "module": "tb",
+      "status": "partial",
+      "log": "board-rtl-review-test-run.json"
+    },
+    {
+      "id": "profile-core-original",
+      "path": "fpga/acq_sram/sim/tb_profile_core.v",
+      "module": "tb_profile_core",
+      "status": "partial",
+      "log": "board-core-review-test-run.json"
+    }
+  ],
+  "annotationEquivalentSources": [
+    "fpga/acq_sram/command_bridge.v",
+    "fpga/acq_sram/command_port.v",
+    "fpga/acq_sram/host_read_window.v",
+    "fpga/acq_sram/profile_core.v",
+    "fpga/acq_sram/sim/ddr_model.v",
+    "fpga/acq_sram/sim/tb_burst.v",
+    "fpga/acq_sram/sim/tb_continuation.v",
+    "fpga/acq_sram/sim/tb_gpmc_burst.v",
+    "fpga/acq_sram/sim/tb_gpmc_read.v",
+    "fpga/acq_sram/sim/tb_precision_top.v",
+    "fpga/acq_sram/sim/tb_profile_core.v",
+    "fpga/acq_sram/sim/tb_stream_top.v",
+    "fpga/acq_sram/sim/tb_top.v",
+    "fpga/acq_sram/sim/tb_top_adc.v",
+    "fpga/acq_sram/sim/tb_top_interleave.v",
+    "fpga/acq_sram/top.v",
+    "fpga/common/ddio_pair.v",
+    "fpga/common/gpmc_slave.v",
+    "fpga/common/lane_in.v"
+  ],
+  "reportSHA256": {
+    "board-rtl-review-test-run.json": "8c1cd67011fce2b557f1a45985e076c3fa2fdad1805895c32d0dd21e1e932fb6",
+    "board-core-review-test-run.json": "fd8877f4d6b5c36c8c21ec99da0d2356b2816d6c8031304a44559aa03970ee96",
+    "board-metadata-observation.json": "cdad3b08b86aced4cccb930679c799b360a32eb447f2b62b6bab015c0ac42e9e"
+  },
+  "metadataObservations": {
+    "legacy-base": {
+      "length": 524288,
+      "origin": 17,
+      "position": 17
+    },
+    "legacy-interleave": {
+      "length": 524288,
+      "origin": 17,
+      "position": 17
+    }
+  },
+  "scope": "Exact flags,sources,vendor library hashes and original profile-core recipe. Failures are retained; continuation requires all37 exact external-oracle values. No physical qualification. Source changes allowed only by exact approved pinned-baseline comment reconstruction."
+}

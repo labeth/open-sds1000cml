@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-OTA-AGENT
 package agent
 
 import (
@@ -7,6 +8,7 @@ import (
 	"time"
 )
 
+// TRLC-LINKS: REQ-SDS-105
 func TestHealthWatcherFirstReportGate(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "app.health")
 	h := newHealthWatcher(path)
@@ -21,6 +23,7 @@ func TestHealthWatcherFirstReportGate(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-105
 func TestHealthWatcherLivenessAndStaleness(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "app.health")
 	h := newHealthWatcher(path)
@@ -49,6 +52,7 @@ func TestHealthWatcherLivenessAndStaleness(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-105
 func TestHealthWatcherIgnoresPreexistingToken(t *testing.T) {
 	// A token left from a previous run must be removed so the first-report
 	// gate is meaningful (spec 01 §4.2: do not rubber-stamp a wedged boot).

@@ -1,0 +1,56 @@
+{"Time":"2026-09-22T21:39:41.913396189+02:00","Action":"start","Package":"open-sds/app/internal/sramcapture"}
+{"Time":"2026-09-22T21:39:41.915319745+02:00","Action":"run","Package":"open-sds/app/internal/sramcapture","Test":"TestFullCapacityWrappedAndRepeatedRecall"}
+{"Time":"2026-09-22T21:39:41.915340215+02:00","Action":"output","Package":"open-sds/app/internal/sramcapture","Test":"TestFullCapacityWrappedAndRepeatedRecall","Output":"=== RUN   TestFullCapacityWrappedAndRepeatedRecall\n"}
+{"Time":"2026-09-22T21:39:41.989519323+02:00","Action":"output","Package":"open-sds/app/internal/sramcapture","Test":"TestFullCapacityWrappedAndRepeatedRecall","Output":"--- PASS: TestFullCapacityWrappedAndRepeatedRecall (0.07s)\n"}
+{"Time":"2026-09-22T21:39:41.989563656+02:00","Action":"pass","Package":"open-sds/app/internal/sramcapture","Test":"TestFullCapacityWrappedAndRepeatedRecall","Elapsed":0.07}
+{"Time":"2026-09-22T21:39:41.989589212+02:00","Action":"run","Package":"open-sds/app/internal/sramcapture","Test":"TestLegacyReadFallback"}
+{"Time":"2026-09-22T21:39:41.989594991+02:00","Action":"output","Package":"open-sds/app/internal/sramcapture","Test":"TestLegacyReadFallback","Output":"=== RUN   TestLegacyReadFallback\n"}
+{"Time":"2026-09-22T21:39:41.989686992+02:00","Action":"output","Package":"open-sds/app/internal/sramcapture","Test":"TestLegacyReadFallback","Output":"--- PASS: TestLegacyReadFallback (0.00s)\n"}
+{"Time":"2026-09-22T21:39:41.989696459+02:00","Action":"pass","Package":"open-sds/app/internal/sramcapture","Test":"TestLegacyReadFallback","Elapsed":0}
+{"Time":"2026-09-22T21:39:41.989719495+02:00","Action":"run","Package":"open-sds/app/internal/sramcapture","Test":"TestBoundsAndIdentityRejectBeforeWrites"}
+{"Time":"2026-09-22T21:39:41.989724738+02:00","Action":"output","Package":"open-sds/app/internal/sramcapture","Test":"TestBoundsAndIdentityRejectBeforeWrites","Output":"=== RUN   TestBoundsAndIdentityRejectBeforeWrites\n"}
+{"Time":"2026-09-22T21:39:41.989742002+02:00","Action":"output","Package":"open-sds/app/internal/sramcapture","Test":"TestBoundsAndIdentityRejectBeforeWrites","Output":"--- PASS: TestBoundsAndIdentityRejectBeforeWrites (0.00s)\n"}
+{"Time":"2026-09-22T21:39:41.989748359+02:00","Action":"pass","Package":"open-sds/app/internal/sramcapture","Test":"TestBoundsAndIdentityRejectBeforeWrites","Elapsed":0}
+{"Time":"2026-09-22T21:39:41.989758708+02:00","Action":"run","Package":"open-sds/app/internal/sramcapture","Test":"TestErrorsLeaveRecordRecallable"}
+{"Time":"2026-09-22T21:39:41.989763748+02:00","Action":"output","Package":"open-sds/app/internal/sramcapture","Test":"TestErrorsLeaveRecordRecallable","Output":"=== RUN   TestErrorsLeaveRecordRecallable\n"}
+{"Time":"2026-09-22T21:39:41.9899143+02:00","Action":"output","Package":"open-sds/app/internal/sramcapture","Test":"TestErrorsLeaveRecordRecallable","Output":"--- PASS: TestErrorsLeaveRecordRecallable (0.00s)\n"}
+{"Time":"2026-09-22T21:39:41.989922517+02:00","Action":"pass","Package":"open-sds/app/internal/sramcapture","Test":"TestErrorsLeaveRecordRecallable","Elapsed":0}
+{"Time":"2026-09-22T21:39:41.989930798+02:00","Action":"run","Package":"open-sds/app/internal/sramcapture","Test":"TestInterleaveWarmRecallPreservesFullCapacity"}
+{"Time":"2026-09-22T21:39:41.989935584+02:00","Action":"output","Package":"open-sds/app/internal/sramcapture","Test":"TestInterleaveWarmRecallPreservesFullCapacity","Output":"=== RUN   TestInterleaveWarmRecallPreservesFullCapacity\n"}
+{"Time":"2026-09-22T21:39:42.067619929+02:00","Action":"output","Package":"open-sds/app/internal/sramcapture","Test":"TestInterleaveWarmRecallPreservesFullCapacity","Output":"--- PASS: TestInterleaveWarmRecallPreservesFullCapacity (0.08s)\n"}
+{"Time":"2026-09-22T21:39:42.06967109+02:00","Action":"pass","Package":"open-sds/app/internal/sramcapture","Test":"TestInterleaveWarmRecallPreservesFullCapacity","Elapsed":0.08}
+{"Time":"2026-09-22T21:39:42.069693962+02:00","Action":"run","Package":"open-sds/app/internal/sramcapture","Test":"TestBurstRecallFullRecordAndTail"}
+{"Time":"2026-09-22T21:39:42.069699083+02:00","Action":"output","Package":"open-sds/app/internal/sramcapture","Test":"TestBurstRecallFullRecordAndTail","Output":"=== RUN   TestBurstRecallFullRecordAndTail\n"}
+{"Time":"2026-09-22T21:39:42.131590324+02:00","Action":"output","Package":"open-sds/app/internal/sramcapture","Test":"TestBurstRecallFullRecordAndTail","Output":"--- PASS: TestBurstRecallFullRecordAndTail (0.06s)\n"}
+{"Time":"2026-09-22T21:39:42.131614532+02:00","Action":"pass","Package":"open-sds/app/internal/sramcapture","Test":"TestBurstRecallFullRecordAndTail","Elapsed":0.06}
+{"Time":"2026-09-22T21:39:42.131623294+02:00","Action":"run","Package":"open-sds/app/internal/sramcapture","Test":"TestPrecisionMetadataAndConfig"}
+{"Time":"2026-09-22T21:39:42.131628927+02:00","Action":"output","Package":"open-sds/app/internal/sramcapture","Test":"TestPrecisionMetadataAndConfig","Output":"=== RUN   TestPrecisionMetadataAndConfig\n"}
+{"Time":"2026-09-22T21:39:42.131634477+02:00","Action":"output","Package":"open-sds/app/internal/sramcapture","Test":"TestPrecisionMetadataAndConfig","Output":"--- PASS: TestPrecisionMetadataAndConfig (0.00s)\n"}
+{"Time":"2026-09-22T21:39:42.131639805+02:00","Action":"pass","Package":"open-sds/app/internal/sramcapture","Test":"TestPrecisionMetadataAndConfig","Elapsed":0}
+{"Time":"2026-09-22T21:39:42.131656629+02:00","Action":"run","Package":"open-sds/app/internal/sramcapture","Test":"TestForwardRecallCoverage"}
+{"Time":"2026-09-22T21:39:42.131662128+02:00","Action":"output","Package":"open-sds/app/internal/sramcapture","Test":"TestForwardRecallCoverage","Output":"=== RUN   TestForwardRecallCoverage\n"}
+{"Time":"2026-09-22T21:39:42.134052977+02:00","Action":"output","Package":"open-sds/app/internal/sramcapture","Test":"TestForwardRecallCoverage","Output":"--- PASS: TestForwardRecallCoverage (0.00s)\n"}
+{"Time":"2026-09-22T21:39:42.134077656+02:00","Action":"pass","Package":"open-sds/app/internal/sramcapture","Test":"TestForwardRecallCoverage","Elapsed":0}
+{"Time":"2026-09-22T21:39:42.134084451+02:00","Action":"run","Package":"open-sds/app/internal/sramcapture","Test":"TestForwardRecallFullRecordAndTail"}
+{"Time":"2026-09-22T21:39:42.134088376+02:00","Action":"output","Package":"open-sds/app/internal/sramcapture","Test":"TestForwardRecallFullRecordAndTail","Output":"=== RUN   TestForwardRecallFullRecordAndTail\n"}
+{"Time":"2026-09-22T21:39:42.198346113+02:00","Action":"output","Package":"open-sds/app/internal/sramcapture","Test":"TestForwardRecallFullRecordAndTail","Output":"--- PASS: TestForwardRecallFullRecordAndTail (0.06s)\n"}
+{"Time":"2026-09-22T21:39:42.198413383+02:00","Action":"pass","Package":"open-sds/app/internal/sramcapture","Test":"TestForwardRecallFullRecordAndTail","Elapsed":0.06}
+{"Time":"2026-09-22T21:39:42.198479517+02:00","Action":"run","Package":"open-sds/app/internal/sramcapture","Test":"TestForwardRecallReadFailureDeliversNothing"}
+{"Time":"2026-09-22T21:39:42.198486826+02:00","Action":"output","Package":"open-sds/app/internal/sramcapture","Test":"TestForwardRecallReadFailureDeliversNothing","Output":"=== RUN   TestForwardRecallReadFailureDeliversNothing\n"}
+{"Time":"2026-09-22T21:39:42.246708283+02:00","Action":"output","Package":"open-sds/app/internal/sramcapture","Test":"TestForwardRecallReadFailureDeliversNothing","Output":"--- PASS: TestForwardRecallReadFailureDeliversNothing (0.05s)\n"}
+{"Time":"2026-09-22T21:39:42.246813259+02:00","Action":"pass","Package":"open-sds/app/internal/sramcapture","Test":"TestForwardRecallReadFailureDeliversNothing","Elapsed":0.05}
+{"Time":"2026-09-22T21:39:42.249576139+02:00","Action":"run","Package":"open-sds/app/internal/sramcapture","Test":"TestLargeStreamFabricRecallKeepsQualifiedChunkLimit"}
+{"Time":"2026-09-22T21:39:42.24959958+02:00","Action":"output","Package":"open-sds/app/internal/sramcapture","Test":"TestLargeStreamFabricRecallKeepsQualifiedChunkLimit","Output":"=== RUN   TestLargeStreamFabricRecallKeepsQualifiedChunkLimit\n"}
+{"Time":"2026-09-22T21:39:42.278568269+02:00","Action":"output","Package":"open-sds/app/internal/sramcapture","Test":"TestLargeStreamFabricRecallKeepsQualifiedChunkLimit","Output":"--- PASS: TestLargeStreamFabricRecallKeepsQualifiedChunkLimit (0.03s)\n"}
+{"Time":"2026-09-22T21:39:42.278668924+02:00","Action":"pass","Package":"open-sds/app/internal/sramcapture","Test":"TestLargeStreamFabricRecallKeepsQualifiedChunkLimit","Elapsed":0.03}
+{"Time":"2026-09-22T21:39:42.27874964+02:00","Action":"output","Package":"open-sds/app/internal/sramcapture","Output":"PASS\n"}
+{"Time":"2026-09-22T21:39:42.279997601+02:00","Action":"output","Package":"open-sds/app/internal/sramcapture","Output":"ok  \topen-sds/app/internal/sramcapture\t0.366s\n"}
+{"Time":"2026-09-22T21:39:42.280017804+02:00","Action":"pass","Package":"open-sds/app/internal/sramcapture","Elapsed":0.367}
+{"Time":"2026-09-22T21:39:42.531246784+02:00","Action":"start","Package":"open-sds/app/internal/engine"}
+{"Time":"2026-09-22T21:39:42.532975328+02:00","Action":"run","Package":"open-sds/app/internal/engine","Test":"TestArenaPublishConsume"}
+{"Time":"2026-09-22T21:39:42.533009281+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestArenaPublishConsume","Output":"=== RUN   TestArenaPublishConsume\n"}
+{"Time":"2026-09-22T21:39:42.533019629+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestArenaPublishConsume","Output":"--- PASS: TestArenaPublishConsume (0.00s)\n"}
+{"Time":"2026-09-22T21:39:42.533023121+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Test":"TestArenaPublishConsume","Elapsed":0}
+{"Time":"2026-09-22T21:39:42.533118512+02:00","Action":"output","Package":"open-sds/app/internal/engine","Output":"PASS\n"}
+{"Time":"2026-09-22T21:39:42.533348089+02:00","Action":"output","Package":"open-sds/app/internal/engine","Output":"ok  \topen-sds/app/internal/engine\t0.002s\n"}
+{"Time":"2026-09-22T21:39:42.533359219+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Elapsed":0.002}

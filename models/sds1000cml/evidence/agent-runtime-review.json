@@ -1,0 +1,42 @@
+{
+  "result": "integrated-source-review-with-explicit-limits",
+  "source": "ota/internal/agent/agent.go",
+  "sourceSHA256": "980e0263d6f5d811afacc17e5c6daebdc2dfaafb63bbc8b6b259c3892a8a6356",
+  "functions": [
+    "New",
+    "Run",
+    "Stop",
+    "pidPath",
+    "AgentSlot",
+    "event",
+    "setEventFn",
+    "acquireWatchdogForever",
+    "status"
+  ],
+  "types": [
+    "gpmcReader",
+    "Agent",
+    "appState",
+    "ctlMsg",
+    "statusDoc"
+  ],
+  "findings": [
+    "New creates a four-entry control channel, loads state, constructs store/watchdog, discovers inherited descriptors and constructs the read-only GPMC reader; New itself does not acquire the watchdog.",
+    "Run logs and continues after store initialization failure, ignores agent PID write failure, resumes watchdog acquisition if persisted TakenOver, otherwise optionally launches delayed automatic takeover. Automatic takeover sleep does not select stopped before invoking Takeover.",
+    "Run launches supervisor and configured TCP/NATS loops, waits only for stopped, then returns nil without joining workers or propagating listener/broker errors.",
+    "Stop checks stopped before Disarm and close but uses no once/lock around that sequence. Concurrent callers can both pass the check and attempt close; this is an inspection finding, not dynamically reproduced.",
+    "Watchdog retry invokes Acquire before checking stopped after a failed attempt. Stop does not cancel an acquisition already in progress; successful acquisition after Stop can return without observing stopped. No dynamic watchdog/device test was run.",
+    "AgentSlot compares resolved executable path against resolved A/B paths; map iteration makes the result unspecified if both configured paths resolve to that executable.",
+    "event logs first, copies the callback under eventMu, then invokes outside the lock. Callback panic is not caught here; payload maps are not copied.",
+    "status separately snapshots persisted state, app/paused, slots, watchdog, raw inherited descriptor integers and system information; it is not an atomic cross-subsystem snapshot. Descriptor numbers are reported without a lock shared with factory restore."
+  ],
+  "scope": "Complete agent.go source review integrated into REQ-SDS-114, 122 and 123 and type links to supervisor/control contracts. Selected isolated coexist Run path only; no watchdog acquisition, factory interaction or physical qualification.",
+  "candidateRequirements": [
+    "REQ-SDS-027",
+    "REQ-SDS-028",
+    "REQ-SDS-086",
+    "REQ-SDS-107",
+    "REQ-SDS-108"
+  ],
+  "integration": "Source requirement comments integrated; runtime/device evidence remains limited to recorded checks."
+}

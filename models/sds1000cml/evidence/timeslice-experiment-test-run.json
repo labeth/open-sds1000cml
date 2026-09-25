@@ -1,0 +1,62 @@
+{
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "status": "complete",
+  "cases": [
+    {
+      "id": "sram-timeslice-original",
+      "test": "fpga/acq_sram/sim/tb_sram_timeslice.v",
+      "top": "tb",
+      "sources": [
+        "fpga/acq_sram/transport.v",
+        "fpga/acq_sram/ingress_path.v",
+        "fpga/acq_sram/ingress_stream.v",
+        "fpga/acq_sram/ingress_fifo.v",
+        "fpga/acq_sram/word_bridge.v",
+        "fpga/acq_sram/sim/ddr_model.v"
+      ],
+      "success": "PASS timeslice:",
+      "parameters": {},
+      "timeoutSeconds": 900,
+      "compileCommand": [
+        "iverilog",
+        "-g2012",
+        "-s",
+        "tb",
+        "-o",
+        "/tmp/sds-timeslice-review-t_wia3fe/sram-timeslice-original",
+        "fpga/acq_sram/sim/tb_sram_timeslice.v",
+        "fpga/acq_sram/transport.v",
+        "fpga/acq_sram/ingress_path.v",
+        "fpga/acq_sram/ingress_stream.v",
+        "fpga/acq_sram/ingress_fifo.v",
+        "fpga/acq_sram/word_bridge.v",
+        "fpga/acq_sram/sim/ddr_model.v"
+      ],
+      "compileExitCode": 0,
+      "compileOutput": "",
+      "simulationCommand": [
+        "vvp",
+        "/tmp/sds-timeslice-review-t_wia3fe/sram-timeslice-original"
+      ],
+      "simulationExitCode": 0,
+      "simulationOutput": "round=0 excursion_clocks=524369 pending=4096 backlog=10240\nround=1 excursion_clocks=524369 pending=4101 backlog=9485\nround=2 excursion_clocks=524369 pending=4101 backlog=8735\nround=3 excursion_clocks=524369 pending=4101 backlog=7985\nround=4 excursion_clocks=524369 pending=4101 backlog=7235\nround=5 excursion_clocks=524369 pending=4097 backlog=25747\nround=6 excursion_clocks=524369 pending=4101 backlog=24993\nround=7 excursion_clocks=524369 pending=4101 backlog=24243\nround=8 excursion_clocks=524369 pending=4101 backlog=23493\nround=9 excursion_clocks=524369 pending=4101 backlog=22743\nround=10 excursion_clocks=524369 pending=4101 backlog=21993\nround=11 excursion_clocks=524369 pending=4101 backlog=21243\nround=12 excursion_clocks=524369 pending=4101 backlog=20493\nround=13 excursion_clocks=524369 pending=4101 backlog=19743\nround=14 excursion_clocks=524369 pending=4101 backlog=18993\nround=15 excursion_clocks=524369 pending=4101 backlog=18243\nPASS timeslice: read=81920 written=88904 max_ingress=4101/4608\nfpga/acq_sram/sim/tb_sram_timeslice.v:97: $finish called at 45650480800 (1ps)\n",
+      "timedOut": false,
+      "result": "pass",
+      "sourceSnapshot": true
+    }
+  ],
+  "scope": "Original full-geometry scheduling experiment: AW19,BATCH5120,FIFO4608,ROUNDS16,HOST_DELAY2500000. The scheduler is testbench code, with ideal clocks and SRAM; this is not execution of the production hardware scheduler or physical qualification.",
+  "runtime": {
+    "iverilog": "Icarus Verilog version 12.0 (stable) ()"
+  },
+  "runtimeInputSHA256": {
+    "fpga/acq_sram/ingress_fifo.v": "9c8378ef57fdaa6f82c58e3da8aedeb296564cec6d6655050f50a06aa1fcbadf",
+    "fpga/acq_sram/ingress_path.v": "0701c87be770e144b96ff09f4a07143caa86d447330844cb719a960e1401b0b2",
+    "fpga/acq_sram/ingress_stream.v": "2409307756c49a6b30b826a719e3b38dda887ae946e933723a1d77d6c6635478",
+    "fpga/acq_sram/sim/ddr_model.v": "ace57d159f0b1b9edd4e9c82b1496fab3b79b7c056b9aaa2da66698e65d164f2",
+    "fpga/acq_sram/sim/tb_sram_timeslice.v": "fa5b774dd5d3b720a4f7b72c68844326d9835c7db124756606187f86f9f072a7",
+    "fpga/acq_sram/transport.v": "814e344e31c1283a4d507e6d489179d0d1ab5b8c05404ed7d51c4047d5ca095a",
+    "fpga/acq_sram/word_bridge.v": "9769f4762e9ad0560cd3d115b028de30cb5402aede81e94239c8dde73241e50a"
+  },
+  "result": "pass"
+}

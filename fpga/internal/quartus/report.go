@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-FPGA-QUARTUS
 package quartus
 
 import (
@@ -17,6 +18,7 @@ import (
 // names: a port with no location (the fitter chose one) or a ball whose QSF
 // assignment did not end up on the port it names (typically the port does not
 // exist in the design, so the ball fell back to RESERVED_INPUT).
+// TRLC-LINKS: REQ-SDS-154
 type PinProblem struct {
 	Kind   string // "unassigned" | "unused" | "message"
 	Port   string // top-level port name (may be empty for a raw message)
@@ -24,6 +26,7 @@ type PinProblem struct {
 	Detail string
 }
 
+// TRLC-LINKS: REQ-SDS-154
 func (p PinProblem) String() string {
 	switch {
 	case p.Port != "" && p.Ball != "":
@@ -37,6 +40,7 @@ func (p PinProblem) String() string {
 }
 
 // FitReport is what the driver extracts from <project>.fit.rpt.
+// TRLC-LINKS: REQ-SDS-154
 type FitReport struct {
 	// Summary holds the Fitter Summary rows worth printing (Total logic
 	// elements, Total pins, Total memory bits, Total PLLs, M9Ks ...).
@@ -51,6 +55,7 @@ type FitReport struct {
 }
 
 // TimingReport is what the driver extracts from <project>.sta.rpt.
+// TRLC-LINKS: REQ-SDS-154
 type TimingReport struct {
 	// WorstSetup is the minimum setup slack per clock across every
 	// "<corner> Model Setup Summary" table (ns). Negative = timing failure.
@@ -63,6 +68,7 @@ type TimingReport struct {
 }
 
 // Clocks returns the clock names sorted.
+// TRLC-LINKS: REQ-SDS-154
 func (t TimingReport) Clocks() []string {
 	var cs []string
 	for c := range t.WorstSetup {
@@ -73,6 +79,7 @@ func (t TimingReport) Clocks() []string {
 }
 
 // Failing returns the clocks whose worst setup slack is negative.
+// TRLC-LINKS: REQ-SDS-154
 func (t TimingReport) Failing() []string {
 	var f []string
 	for _, c := range t.Clocks() {
@@ -87,6 +94,7 @@ var locationRE = regexp.MustCompile(`^\s*set_location_assignment\s+PIN_([A-Z]+[0
 
 // QSFPins returns ball -> port for every set_location_assignment PIN_x -to y
 // line of a QSF (comment lines ignored).
+// TRLC-LINKS: REQ-SDS-153
 func QSFPins(qsf string) map[string]string {
 	out := map[string]string{}
 	sc := bufio.NewScanner(strings.NewReader(qsf))
@@ -104,6 +112,7 @@ func QSFPins(qsf string) map[string]string {
 
 // QSFGlobal returns the value of a set_global_assignment -name NAME value line,
 // or "" if absent. Quotes are stripped.
+// TRLC-LINKS: REQ-SDS-153
 func QSFGlobal(qsf, name string) string {
 	needle := "-name " + name + " "
 	sc := bufio.NewScanner(strings.NewReader(qsf))
@@ -120,6 +129,7 @@ func QSFGlobal(qsf, name string) string {
 }
 
 // QSFGlobals returns every value of a repeated global assignment (VERILOG_FILE).
+// TRLC-LINKS: REQ-SDS-153
 func QSFGlobals(qsf, name string) []string {
 	needle := "-name " + name + " "
 	var out []string
@@ -139,6 +149,7 @@ func QSFGlobals(qsf, name string) []string {
 // tables splits a Quartus report into its named ";"-delimited tables: the title
 // row "; Name ;" followed by rows of cells. Returns title -> rows (each row a
 // slice of trimmed cells). A title that appears more than once keeps the first.
+// TRLC-LINKS: REQ-SDS-154
 func tables(text string) map[string][][]string {
 	out := map[string][][]string{}
 	lines := strings.Split(text, "\n")
@@ -171,6 +182,7 @@ func tables(text string) map[string][][]string {
 	return out
 }
 
+// TRLC-LINKS: REQ-SDS-154
 func splitCells(row string) []string {
 	row = strings.TrimSpace(row)
 	row = strings.TrimPrefix(row, ";")
@@ -206,6 +218,7 @@ var notPlacedRE = regexp.MustCompile(`Pin ([^ ]+) not assigned to an exact locat
 
 // ParseFitReport extracts the summary, the package-pin usage table and the
 // pin defects for the QSF pins (ball -> port) from a .fit.rpt text.
+// TRLC-LINKS: REQ-SDS-154
 func ParseFitReport(text string, qsfPins map[string]string) FitReport {
 	r := FitReport{Summary: map[string]string{}, PinUsage: map[string]string{}}
 	tb := tables(text)
@@ -308,6 +321,7 @@ func ParseFitReport(text string, qsfPins map[string]string) FitReport {
 // usageNames reports whether a "Pin Name/Usage" cell names the port: either
 // exactly, or as one of the " / "-joined names (dual-purpose balls read
 // "~ALTERA_FLASH_nCE_nCSO~ / d2").
+// TRLC-LINKS: REQ-SDS-154
 func usageNames(usage, port string) bool {
 	if usage == port {
 		return true
@@ -330,6 +344,7 @@ func usageNames(usage, port string) bool {
 // cell, never on the raw line.
 const staSetupTitle = " Model Setup Summary"
 
+// TRLC-LINKS: REQ-SDS-154
 func ParseSTAReport(text string) TimingReport {
 	t := TimingReport{WorstSetup: map[string]float64{}, Corner: map[string]string{}}
 	lines := strings.Split(text, "\n")

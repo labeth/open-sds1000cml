@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-LCD
 package lcd
 
 import (
@@ -18,6 +19,7 @@ var interfaceAddrs = net.InterfaceAddrs
 
 // PickDeviceURL returns "http://<ip>:8080" for the first global-unicast IPv4
 // in addrs, or "" when the device has no reachable address (render nothing).
+// TRLC-LINKS: REQ-SDS-021
 func PickDeviceURL(addrs []net.Addr) string {
 	for _, a := range addrs {
 		var ip net.IP
@@ -53,6 +55,7 @@ var (
 // DeviceURL returns the current device URL ("" without usable network),
 // re-checking the interfaces at most every urlRefresh. Safe from the LCD,
 // HTTP-screenshot and SCDP goroutines.
+// TRLC-LINKS: REQ-SDS-021
 func DeviceURL() string {
 	urlMu.Lock()
 	defer urlMu.Unlock()

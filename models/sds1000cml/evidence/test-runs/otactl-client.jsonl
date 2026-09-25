@@ -1,0 +1,28 @@
+{"Time":"2026-09-23T02:39:22.908648231+02:00","Action":"start","Package":"open-sds/ota/internal/otactl"}
+{"Time":"2026-09-23T02:39:22.922460671+02:00","Action":"run","Package":"open-sds/ota/internal/otactl","Test":"TestTCPTransportCall"}
+{"Time":"2026-09-23T02:39:22.922501797+02:00","Action":"output","Package":"open-sds/ota/internal/otactl","Test":"TestTCPTransportCall","Output":"=== RUN   TestTCPTransportCall\n"}
+{"Time":"2026-09-23T02:39:22.927344087+02:00","Action":"output","Package":"open-sds/ota/internal/otactl","Test":"TestTCPTransportCall","Output":"--- PASS: TestTCPTransportCall (0.00s)\n"}
+{"Time":"2026-09-23T02:39:22.927378236+02:00","Action":"pass","Package":"open-sds/ota/internal/otactl","Test":"TestTCPTransportCall","Elapsed":0}
+{"Time":"2026-09-23T02:39:22.927523574+02:00","Action":"run","Package":"open-sds/ota/internal/otactl","Test":"TestTCPTransportDeviceError"}
+{"Time":"2026-09-23T02:39:22.927534254+02:00","Action":"output","Package":"open-sds/ota/internal/otactl","Test":"TestTCPTransportDeviceError","Output":"=== RUN   TestTCPTransportDeviceError\n"}
+{"Time":"2026-09-23T02:39:22.930910972+02:00","Action":"output","Package":"open-sds/ota/internal/otactl","Test":"TestTCPTransportDeviceError","Output":"--- PASS: TestTCPTransportDeviceError (0.00s)\n"}
+{"Time":"2026-09-23T02:39:22.930944484+02:00","Action":"pass","Package":"open-sds/ota/internal/otactl","Test":"TestTCPTransportDeviceError","Elapsed":0}
+{"Time":"2026-09-23T02:39:22.930981756+02:00","Action":"run","Package":"open-sds/ota/internal/otactl","Test":"TestTCPTransportDialFailure"}
+{"Time":"2026-09-23T02:39:22.930993774+02:00","Action":"output","Package":"open-sds/ota/internal/otactl","Test":"TestTCPTransportDialFailure","Output":"=== RUN   TestTCPTransportDialFailure\n"}
+{"Time":"2026-09-23T02:39:22.931212723+02:00","Action":"output","Package":"open-sds/ota/internal/otactl","Test":"TestTCPTransportDialFailure","Output":"--- PASS: TestTCPTransportDialFailure (0.00s)\n"}
+{"Time":"2026-09-23T02:39:22.931227265+02:00","Action":"pass","Package":"open-sds/ota/internal/otactl","Test":"TestTCPTransportDialFailure","Elapsed":0}
+{"Time":"2026-09-23T02:39:22.931257842+02:00","Action":"run","Package":"open-sds/ota/internal/otactl","Test":"TestPutFileGetFileRoundTrip"}
+{"Time":"2026-09-23T02:39:22.931268473+02:00","Action":"output","Package":"open-sds/ota/internal/otactl","Test":"TestPutFileGetFileRoundTrip","Output":"=== RUN   TestPutFileGetFileRoundTrip\n"}
+{"Time":"2026-09-23T02:39:23.159184373+02:00","Action":"output","Package":"open-sds/ota/internal/otactl","Test":"TestPutFileGetFileRoundTrip","Output":"--- PASS: TestPutFileGetFileRoundTrip (0.23s)\n"}
+{"Time":"2026-09-23T02:39:23.15921544+02:00","Action":"pass","Package":"open-sds/ota/internal/otactl","Test":"TestPutFileGetFileRoundTrip","Elapsed":0.23}
+{"Time":"2026-09-23T02:39:23.159224897+02:00","Action":"run","Package":"open-sds/ota/internal/otactl","Test":"TestPutFileMissingLocal"}
+{"Time":"2026-09-23T02:39:23.159229411+02:00","Action":"output","Package":"open-sds/ota/internal/otactl","Test":"TestPutFileMissingLocal","Output":"=== RUN   TestPutFileMissingLocal\n"}
+{"Time":"2026-09-23T02:39:23.160132147+02:00","Action":"output","Package":"open-sds/ota/internal/otactl","Test":"TestPutFileMissingLocal","Output":"--- PASS: TestPutFileMissingLocal (0.00s)\n"}
+{"Time":"2026-09-23T02:39:23.160146693+02:00","Action":"pass","Package":"open-sds/ota/internal/otactl","Test":"TestPutFileMissingLocal","Elapsed":0}
+{"Time":"2026-09-23T02:39:23.160209909+02:00","Action":"run","Package":"open-sds/ota/internal/otactl","Test":"TestTruncate"}
+{"Time":"2026-09-23T02:39:23.160221738+02:00","Action":"output","Package":"open-sds/ota/internal/otactl","Test":"TestTruncate","Output":"=== RUN   TestTruncate\n"}
+{"Time":"2026-09-23T02:39:23.160252776+02:00","Action":"output","Package":"open-sds/ota/internal/otactl","Test":"TestTruncate","Output":"--- PASS: TestTruncate (0.00s)\n"}
+{"Time":"2026-09-23T02:39:23.160267837+02:00","Action":"pass","Package":"open-sds/ota/internal/otactl","Test":"TestTruncate","Elapsed":0}
+{"Time":"2026-09-23T02:39:23.160360165+02:00","Action":"output","Package":"open-sds/ota/internal/otactl","Output":"PASS\n"}
+{"Time":"2026-09-23T02:39:24.165622877+02:00","Action":"output","Package":"open-sds/ota/internal/otactl","Output":"ok  \topen-sds/ota/internal/otactl\t1.257s\n"}
+{"Time":"2026-09-23T02:39:24.165668878+02:00","Action":"pass","Package":"open-sds/ota/internal/otactl","Elapsed":1.2570000000000001}

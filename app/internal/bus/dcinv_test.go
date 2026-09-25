@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-BUS
 package bus
 
 import (
@@ -11,6 +12,7 @@ import (
 // The vendored module is the exact build proven on the unit (bus/dcinv/README.md).
 const dcinvKOSHA256 = "6f7654881bad20536d6fd883339757d947fef9001df3a8cfec3c9d8bbe663f88"
 
+// TRLC-LINKS: REQ-SDS-081
 func TestDcinvEmbedded(t *testing.T) {
 	if len(dcinvKO) < 4096 || string(dcinvKO[1:4]) != "ELF" {
 		t.Fatalf("embedded dcinv.ko is not an ELF module (%d bytes)", len(dcinvKO))
@@ -21,6 +23,7 @@ func TestDcinvEmbedded(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-081
 func fakeEnv(present map[string]bool, devices string) (dcinvEnv, *[]string) {
 	log := []string{}
 	e := dcinvEnv{
@@ -39,6 +42,7 @@ func fakeEnv(present map[string]bool, devices string) (dcinvEnv, *[]string) {
 	return e, &log
 }
 
+// TRLC-LINKS: REQ-SDS-081
 func TestEnsureDcinvAlreadyPresent(t *testing.T) {
 	e, log := fakeEnv(map[string]bool{DcinvPath: true}, "")
 	if err := ensureDcinv(e, "/slot", nil); err != nil || len(*log) != 0 {
@@ -46,6 +50,7 @@ func TestEnsureDcinvAlreadyPresent(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-081
 func TestEnsureDcinvLoadsAndDevtmpfsCreatesNode(t *testing.T) {
 	e, log := fakeEnv(map[string]bool{}, "Character devices:\n  1 mem\n")
 	if err := ensureDcinv(e, "/slot", nil); err != nil {
@@ -56,6 +61,7 @@ func TestEnsureDcinvLoadsAndDevtmpfsCreatesNode(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-081
 func TestEnsureDcinvMknodFromProcDevices(t *testing.T) {
 	present := map[string]bool{}
 	e, log := fakeEnv(present, "Character devices:\n  1 mem\n248 dcinv\n")
@@ -69,6 +75,7 @@ func TestEnsureDcinvMknodFromProcDevices(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-081
 func TestEnsureDcinvInsmodFails(t *testing.T) {
 	e, _ := fakeEnv(map[string]bool{}, "")
 	e.insmod = func(string) error { return errors.New("vermagic") }

@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
 package engine
 
 import "sync"
@@ -6,6 +7,7 @@ import "sync"
 // The three arena frames are reused in place: every producer path must set or
 // clear ALL metadata every frame (spec 01 §2 — a stale flag renders wrong
 // output from correct data).
+// TRLC-LINKS: REQ-SDS-007, REQ-SDS-009
 type Frame struct {
 	Q1, Q2         []uint16 // optional unsigned Q8.8 codes, same valid prefix
 	Decimation     uint32   // physical pre-storage reduction; 1 in raw mode
@@ -60,6 +62,7 @@ type Frame struct {
 // (spec 01 §2): write = producer's private drain target, ready = most recent
 // published, read = consumer's private slot. Double-buffering tears against
 // the immediate-re-arm invariant; three slots are required.
+// TRLC-LINKS: REQ-SDS-007
 type arena struct {
 	mu    sync.Mutex
 	write *Frame
@@ -68,6 +71,7 @@ type arena struct {
 	dirty bool
 }
 
+// TRLC-LINKS: REQ-SDS-007
 func newArena(capacity int) *arena {
 	mk := func() *Frame {
 		return &Frame{
@@ -80,11 +84,13 @@ func newArena(capacity int) *arena {
 }
 
 // Write returns the producer's private slot. Owner-only.
+// TRLC-LINKS: REQ-SDS-007
 func (a *arena) Write() *Frame { return a.write }
 
 // Publish swaps the drained write slot into ready. The mutex guards only the
 // pointer swap — never held across bus access. If the consumer hasn't taken
 // the previous frame it is overwritten (drop-newest backpressure).
+// TRLC-LINKS: REQ-SDS-007
 func (a *arena) Publish() {
 	a.mu.Lock()
 	a.write, a.ready = a.ready, a.write
@@ -95,6 +101,7 @@ func (a *arena) Publish() {
 // Consume returns the newest published frame. fresh=false means nothing new
 // was published since the last call — the caller re-presents the held frame
 // (a quiet NORM display, not an error).
+// TRLC-LINKS: REQ-SDS-007
 func (a *arena) Consume() (f *Frame, fresh bool) {
 	a.mu.Lock()
 	defer a.mu.Unlock()

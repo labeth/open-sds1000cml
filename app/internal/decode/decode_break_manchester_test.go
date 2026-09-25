@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-DECODE
 package decode
 
 import (
@@ -24,6 +25,7 @@ import (
 //           with an explicit bitrate returns ok=false ("no frame") under auto-infer.
 // ---------------------------------------------------------------------------
 
+// TRLC-LINKS: REQ-SDS-018
 func bkEqual(a []int, b []int) bool {
 	if len(a) != len(b) {
 		return false
@@ -36,6 +38,7 @@ func bkEqual(a []int, b []int) bool {
 	return true
 }
 
+// TRLC-LINKS: REQ-SDS-018
 func bkHasKind(r Result, kind string) bool {
 	for _, s := range r.Spans {
 		if s.Kind == kind {
@@ -48,6 +51,7 @@ func bkHasKind(r Result, kind string) bool {
 // bkAltWord returns the value whose expanded bit stream is [1,0,1,0,...] (length
 // `bits`), packed the SAME way DecodeManchester packs cells back into a word. Used
 // as a transition-rich preamble so phase lock is unambiguous.
+// TRLC-LINKS: REQ-SDS-018
 func bkAltWord(bits int, msb bool) int {
 	v := 0
 	for i := 0; i < bits; i++ {
@@ -65,6 +69,7 @@ func bkAltWord(bits int, msb bool) int {
 }
 
 // bkPad returns n samples of the idle (high) level.
+// TRLC-LINKS: REQ-SDS-018
 func bkPad(n int) []uint8 {
 	p := make([]uint8, n)
 	for i := range p {
@@ -76,6 +81,7 @@ func bkPad(n int) []uint8 {
 // bkBuild synthesizes a valid single-segment Manchester capture for `want` and
 // pads it with `pre`/`post` extra idle-high samples. colTimeS is chosen so the
 // bit period T lands on `spb` samples EXACTLY (ct = 1/(spb*bitrate)).
+// TRLC-LINKS: REQ-SDS-018
 func bkBuild(want []int, ieee, msb bool, bits, spb, bitrate, pre, post int) (w []uint8, ct float64) {
 	ct = 1.0 / (float64(spb) * float64(bitrate))
 	core := manchesterWave(mBits(want, msb, bits), ieee, spb)
@@ -83,6 +89,7 @@ func bkBuild(want []int, ieee, msb bool, bits, spb, bitrate, pre, post int) (w [
 	return
 }
 
+// TRLC-LINKS: REQ-SDS-018
 func TestBreakManchester(t *testing.T) {
 	// -----------------------------------------------------------------------
 	// CLASS 1 — FALSE NEGATIVES: >=50 fully VALID frames must round-trip EXACTLY.

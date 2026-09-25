@@ -1,0 +1,16 @@
+{
+  "source": "fpga/acq_sram/sim/tb_sram_timeslice.v",
+  "scope": "Original full-geometry scheduling experiment: AW19,BATCH5120,FIFO4608,ROUNDS16,HOST_DELAY2500000. The scheduler is testbench code, with ideal clocks and SRAM; this is not execution of the production hardware scheduler or physical qualification.",
+  "sourceSHA256": "614680953c206bcb2087e7cc08971883614dc127c7eb2520b74d3827b6dfde7f",
+  "reportSHA256": "34055b348412b6644da2fef16f03a759eadebdde15d785e98e4c66d42fb5660c",
+  "runs": [
+    "sram-timeslice-original"
+  ],
+  "results": [
+    {
+      "requirement": "REQ-SDS-048",
+      "status": "partial",
+      "notes": "Original testbench scheduler exercises full19-bit geometry,16 rounds and a2.5-million-cycle host stall with actual ingress/transport and ideal SRAM. Assertions cover order, markers, physical writes, read batches and excursion bounds. This is not a production-controller execution or physical timing qualification."
+    }
+  ]
+}

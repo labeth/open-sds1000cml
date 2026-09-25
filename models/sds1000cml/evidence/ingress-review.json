@@ -1,0 +1,67 @@
+{
+  "requirement": "REQ-SDS-046",
+  "sourceCommit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "result": "partial",
+  "reviewedRuns": [
+    "ingress-fifo-1-16",
+    "ingress-stream-1-16",
+    "ingress-fifo-2-16",
+    "ingress-stream-2-16",
+    "ingress-fifo-4-16",
+    "ingress-stream-4-16",
+    "ingress-fifo-9-512",
+    "ingress-stream-9-512",
+    "ingress-path-0",
+    "ingress-path-1",
+    "ingress-path-2",
+    "ingress-path-3"
+  ],
+  "sourceHashes": {
+    "fpga/acq_sram/sim/tb_ingress_fifo.v": "b864e0ce333ffd8669ed49fb95333a4d8bf6c544e047c8848ac74ac9c15a1c81",
+    "fpga/acq_sram/ingress_fifo.v": "9c8378ef57fdaa6f82c58e3da8aedeb296564cec6d6655050f50a06aa1fcbadf",
+    "fpga/acq_sram/sim/tb_ingress_stream.v": "faf515444141afeed6411060f48570ac08d0f72ad11a0490db965aedd368542d",
+    "fpga/acq_sram/ingress_stream.v": "2409307756c49a6b30b826a719e3b38dda887ae946e933723a1d77d6c6635478",
+    "fpga/acq_sram/sim/tb_ingress_path.v": "25944c44c9e0e7c5b5939458968e2d54aa4f94863a5d85b5ba700cf884b9f218",
+    "fpga/acq_sram/ingress_path.v": "0701c87be770e144b96ff09f4a07143caa86d447330844cb719a960e1401b0b2",
+    "fpga/acq_sram/word_bridge.v": "9769f4762e9ad0560cd3d115b028de30cb5402aede81e94239c8dde73241e50a"
+  },
+  "clauses": [
+    {
+      "behavior": "FIFO rejects full writes and empty reads, including simultaneous push/pop boundary collisions; sticky flags clear on reset.",
+      "evidence": "tb_ingress_fifo compares flags, count, empty/full and four-edge response validity against an independent queue model.",
+      "runs": [
+        "ingress-fifo-1-16",
+        "ingress-fifo-2-16",
+        "ingress-fifo-4-16",
+        "ingress-fifo-9-512"
+      ]
+    },
+    {
+      "behavior": "Response adapter preserves order and stable valid payload under stalls while accounting for outstanding RAM reads.",
+      "evidence": "tb_ingress_stream checks sequence, occupancy, held/reserved bounds, sustained throughput, abrupt stalls and reset across six pending-response phases.",
+      "runs": [
+        "ingress-stream-1-16",
+        "ingress-stream-2-16",
+        "ingress-stream-4-16",
+        "ingress-stream-9-512"
+      ]
+    },
+    {
+      "behavior": "Path reports source overload and queue overflow; pending includes accepted but undelivered words across both mailboxes and the queue.",
+      "evidence": "tb_ingress_path checks 36-bit payload/marker order, at least 4100 buffered words, at least 8192 deliveries, epoch reset, sticky source overload and RAM capacity overflow across four phase offsets.",
+      "runs": [
+        "ingress-path-0",
+        "ingress-path-1",
+        "ingress-path-2",
+        "ingress-path-3"
+      ]
+    }
+  ],
+  "limits": [
+    "Clock ratios are fixed at a 4 ns core period and an 8 ns RAM period; phase offsets 0 through 3 ns do not exhaust clock-frequency combinations.",
+    "Testbench path stimulus uses a source word every 128 core cycles for the ordinary case, then every cycle to provoke overload. This does not establish a physical decimation or ADC throughput limit.",
+    "Queue fault synchronization is exercised through overflow; a separately forced path-underflow synchronization scenario is not present.",
+    "RAM arrays are behavioral; no fitted M9K timing, analog metastability, routing or board qualification is established.",
+    "Reduced configurations cover BANKS=1,2,4 with ROWS=16; the default BANKS=9,ROWS=512 is also tested. Arbitrary parameter combinations are not proved."
+  ]
+}

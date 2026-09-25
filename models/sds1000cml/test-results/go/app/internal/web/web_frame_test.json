@@ -1,0 +1,60 @@
+{
+  "source": "app/internal/web/web_frame_test.go",
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "scope": "Reviewed Go test outcomes; passing assertions contribute partial requirement evidence.",
+  "sourceSHA256": "21f61a6d911170e859177393fef1436b9796554b799ebb44a9d8c0096a4edd61",
+  "logs": {
+    "test-runs/webapi-integrated.jsonl": "05e8d0213a8bb57533614fd3f9295676c3e8b93d44f2f32031b53e3cd0db3308"
+  },
+  "tests": [
+    {
+      "name": "TestFrameEndpoint",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-163"
+      ]
+    },
+    {
+      "name": "TestDeepFrameServesRawRecord",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-163"
+      ]
+    },
+    {
+      "name": "TestWindowMapping",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-163"
+      ]
+    },
+    {
+      "name": "TestWindowNoEndGaps",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-163"
+      ]
+    },
+    {
+      "name": "TestWindowRailExtendCentres",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-163"
+      ]
+    },
+    {
+      "name": "TestDtSTrueCapturePitch",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-163"
+      ]
+    }
+  ],
+  "results": [
+    {
+      "requirement": "REQ-SDS-163",
+      "status": "partial",
+      "notes": "6 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    }
+  ]
+}

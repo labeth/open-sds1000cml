@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-WEB
 package web
 
 import (
@@ -12,6 +13,7 @@ import (
 // under node against synthetic frames — the closest thing to an end-to-end test
 // of the client code without a headless browser. Skips if node is unavailable
 // (a hard failure under CI_REQUIRE_BROWSER=1).
+// TRLC-LINKS: REQ-SDS-070
 func TestPeaksJS(t *testing.T) {
 	testenv.NeedNode(t)
 	node, _ := exec.LookPath("node")

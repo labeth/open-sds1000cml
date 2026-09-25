@@ -1,0 +1,828 @@
+{
+  "status": "integrated",
+  "files": [
+    {
+      "path": "app/internal/engine/chaos_test.go",
+      "owner": "FU-APP-ENGINE",
+      "functions": {
+        "TestEngineConcurrencyChaos": [
+          "REQ-SDS-001",
+          "REQ-SDS-008"
+        ]
+      },
+      "types": {}
+    },
+    {
+      "path": "app/internal/engine/degraded_test.go",
+      "owner": "FU-APP-ENGINE",
+      "functions": {
+        "mkTail": [
+          "REQ-SDS-009",
+          "REQ-SDS-128"
+        ],
+        "TestRealDepthTolerantTail": [
+          "REQ-SDS-009",
+          "REQ-SDS-128"
+        ],
+        "TestDegradedFlagAndStuckEscalation": [
+          "REQ-SDS-009",
+          "REQ-SDS-128"
+        ]
+      },
+      "types": {}
+    },
+    {
+      "path": "app/internal/engine/discern.go",
+      "owner": "FU-APP-ENGINE",
+      "functions": {
+        "ptp": [
+          "REQ-SDS-009",
+          "REQ-SDS-011"
+        ],
+        "validDepth": [
+          "REQ-SDS-009"
+        ],
+        "validDepthP": [
+          "REQ-SDS-009"
+        ],
+        "realDepth": [
+          "REQ-SDS-009",
+          "REQ-SDS-128"
+        ],
+        "realDepthP": [
+          "REQ-SDS-009",
+          "REQ-SDS-128"
+        ],
+        "noiseFloor": [
+          "REQ-SDS-011"
+        ],
+        "signalPresent": [
+          "REQ-SDS-011"
+        ],
+        "midLevel": [
+          "REQ-SDS-011"
+        ],
+        "centerCross": [
+          "REQ-SDS-011"
+        ],
+        "centerCrossHint": [
+          "REQ-SDS-011"
+        ],
+        "windowSlopeMatches": [
+          "REQ-SDS-011"
+        ]
+      },
+      "types": {}
+    },
+    {
+      "path": "app/internal/engine/discern_test.go",
+      "owner": "FU-APP-ENGINE",
+      "functions": {
+        "square": [
+          "REQ-SDS-011"
+        ],
+        "TestMidLevel": [
+          "REQ-SDS-011"
+        ],
+        "TestCenterCrossNearestCentre": [
+          "REQ-SDS-011"
+        ],
+        "TestCenterCrossNoDitherFlip": [
+          "REQ-SDS-011"
+        ],
+        "TestCenterCrossFlat": [
+          "REQ-SDS-011"
+        ],
+        "TestCenterCrossSubSample": [
+          "REQ-SDS-011"
+        ],
+        "TestWindowSlopeMatches": [
+          "REQ-SDS-011"
+        ],
+        "TestWindowSlopeSmallWindowNeverVetoes": [
+          "REQ-SDS-011"
+        ],
+        "TestPtp": [
+          "REQ-SDS-009",
+          "REQ-SDS-011"
+        ],
+        "lcg.next": [
+          "REQ-SDS-011"
+        ],
+        "lcg.gauss": [
+          "REQ-SDS-011"
+        ],
+        "noisyTriangle": [
+          "REQ-SDS-011"
+        ],
+        "noisyFlat": [
+          "REQ-SDS-011"
+        ],
+        "TestSignalPresentSmallSignal": [
+          "REQ-SDS-011"
+        ],
+        "TestNoiseFloorPeriodIndependent": [
+          "REQ-SDS-011"
+        ]
+      },
+      "types": {
+        "lcg": [
+          "REQ-SDS-011"
+        ]
+      }
+    },
+    {
+      "path": "app/internal/engine/engine.go",
+      "owner": "FU-APP-ENGINE",
+      "functions": {
+        "realClock": [
+          "REQ-SDS-008"
+        ],
+        "New": [
+          "REQ-SDS-001",
+          "REQ-SDS-007",
+          "REQ-SDS-008"
+        ],
+        "Engine.Stop": [
+          "REQ-SDS-008"
+        ],
+        "Engine.QuietRLock": [
+          "REQ-SDS-001"
+        ],
+        "Engine.QuietRUnlock": [
+          "REQ-SDS-001"
+        ],
+        "Engine.Tune": [
+          "REQ-SDS-127"
+        ],
+        "Engine.TuneSnapshot": [
+          "REQ-SDS-127"
+        ],
+        "Engine.RenderPeriod": [
+          "REQ-SDS-021",
+          "REQ-SDS-127"
+        ],
+        "Engine.Snapshot": [
+          "REQ-SDS-009",
+          "REQ-SDS-127"
+        ],
+        "Engine.Consume": [
+          "REQ-SDS-007"
+        ],
+        "Engine.AcqLog": [
+          "REQ-SDS-127"
+        ],
+        "Engine.CmdLog": [
+          "REQ-SDS-127"
+        ],
+        "Engine.NoteCmd": [
+          "REQ-SDS-127"
+        ],
+        "TrigLevelVolts": [
+          "REQ-SDS-016"
+        ],
+        "Engine.NoteLCDFrame": [
+          "REQ-SDS-009"
+        ]
+      },
+      "types": {
+        "Clock": [
+          "REQ-SDS-008"
+        ],
+        "Config": [
+          "REQ-SDS-001",
+          "REQ-SDS-007",
+          "REQ-SDS-008"
+        ],
+        "Stats": [
+          "REQ-SDS-009",
+          "REQ-SDS-127"
+        ],
+        "AcqSample": [
+          "REQ-SDS-127"
+        ],
+        "CmdNote": [
+          "REQ-SDS-127"
+        ],
+        "Engine": [
+          "REQ-SDS-001",
+          "REQ-SDS-007",
+          "REQ-SDS-008"
+        ],
+        "TuneVals": [
+          "REQ-SDS-127"
+        ]
+      }
+    },
+    {
+      "path": "app/internal/engine/engine_bus.go",
+      "owner": "FU-APP-ENGINE",
+      "functions": {
+        "Engine.ReadMatrix": [
+          "REQ-SDS-022"
+        ],
+        "Engine.SetLEDs": [
+          "REQ-SDS-001",
+          "REQ-SDS-022"
+        ],
+        "Engine.Beats": [
+          "REQ-SDS-025"
+        ],
+        "Engine.sleepBeating": [
+          "REQ-SDS-008",
+          "REQ-SDS-025"
+        ],
+        "Engine.runWord": [
+          "REQ-SDS-010",
+          "REQ-SDS-011"
+        ],
+        "Engine.acqCtrlWord": [
+          "REQ-SDS-011"
+        ],
+        "Engine.trigLevelWord": [
+          "REQ-SDS-011"
+        ],
+        "Engine.flushTrigWords": [
+          "REQ-SDS-001",
+          "REQ-SDS-011"
+        ],
+        "Engine.w": [
+          "REQ-SDS-001"
+        ],
+        "Engine.w3": [
+          "REQ-SDS-001"
+        ],
+        "Engine.r": [
+          "REQ-SDS-001"
+        ],
+        "Engine.busErr": [
+          "REQ-SDS-127"
+        ],
+        "Engine.checkIdentity": [
+          "REQ-SDS-004"
+        ],
+        "Engine.Exec": [
+          "REQ-SDS-001",
+          "REQ-SDS-127"
+        ],
+        "Engine.serviceExec": [
+          "REQ-SDS-001",
+          "REQ-SDS-127"
+        ],
+        "Engine.resetDeadRuns": [
+          "REQ-SDS-128"
+        ],
+        "Engine.deadEvidence": [
+          "REQ-SDS-128"
+        ]
+      },
+      "types": {
+        "execReq": [
+          "REQ-SDS-001",
+          "REQ-SDS-127"
+        ]
+      }
+    },
+    {
+      "path": "app/internal/engine/engine_capture.go",
+      "owner": "FU-APP-ENGINE",
+      "functions": {
+        "Engine.bringUp": [
+          "REQ-SDS-001",
+          "REQ-SDS-008"
+        ],
+        "Engine.capDepth": [
+          "REQ-SDS-009",
+          "REQ-SDS-010"
+        ],
+        "Engine.doReinit": [
+          "REQ-SDS-128"
+        ],
+        "Engine.armEngine": [
+          "REQ-SDS-001",
+          "REQ-SDS-008"
+        ],
+        "Engine.armEngineQuiet": [
+          "REQ-SDS-001",
+          "REQ-SDS-008"
+        ],
+        "Engine.trigPosFracVal": [
+          "REQ-SDS-011"
+        ],
+        "Engine.readTrigPos": [
+          "REQ-SDS-009"
+        ],
+        "Engine.waitCapture": [
+          "REQ-SDS-001",
+          "REQ-SDS-008"
+        ],
+        "Engine.halt": [
+          "REQ-SDS-001",
+          "REQ-SDS-009"
+        ],
+        "Engine.haltSettle": [
+          "REQ-SDS-001",
+          "REQ-SDS-008"
+        ],
+        "Engine.drain": [
+          "REQ-SDS-001",
+          "REQ-SDS-007"
+        ],
+        "Engine.drainQuiet": [
+          "REQ-SDS-001",
+          "REQ-SDS-007",
+          "REQ-SDS-009"
+        ],
+        "Engine.stitchFrame": [
+          "REQ-SDS-007",
+          "REQ-SDS-009"
+        ]
+      },
+      "types": {}
+    },
+    {
+      "path": "app/internal/engine/engine_cmd.go",
+      "owner": "FU-APP-ENGINE",
+      "functions": {
+        "Engine.serviceCommands": [
+          "REQ-SDS-001"
+        ],
+        "Engine.syncBandStatsLocked": [
+          "REQ-SDS-009",
+          "REQ-SDS-010"
+        ]
+      },
+      "types": {}
+    },
+    {
+      "path": "app/internal/engine/engine_control.go",
+      "owner": "FU-APP-ENGINE",
+      "functions": {
+        "Engine.SetTrigType": [
+          "REQ-SDS-011"
+        ],
+        "Engine.SetPulseParams": [
+          "REQ-SDS-011"
+        ],
+        "Engine.SetSlopeParams": [
+          "REQ-SDS-011"
+        ],
+        "Engine.SetVideoParams": [
+          "REQ-SDS-011"
+        ],
+        "clampFrac": [
+          "REQ-SDS-011"
+        ],
+        "Engine.SetAcqMode": [
+          "REQ-SDS-012"
+        ],
+        "Engine.SetAvgCount": [
+          "REQ-SDS-012"
+        ],
+        "Engine.SetEresLen": [
+          "REQ-SDS-012"
+        ],
+        "Engine.SetRunning": [
+          "REQ-SDS-008"
+        ],
+        "Engine.SetSingle": [
+          "REQ-SDS-011"
+        ],
+        "Engine.SetChannelVdiv": [
+          "REQ-SDS-011",
+          "REQ-SDS-016"
+        ],
+        "Engine.TrigVoltsAt": [
+          "REQ-SDS-016"
+        ],
+        "Engine.SetChannelOffsetV": [
+          "REQ-SDS-011",
+          "REQ-SDS-015"
+        ],
+        "Engine.trigVolts": [
+          "REQ-SDS-016"
+        ],
+        "Engine.SetTrigPosFrac": [
+          "REQ-SDS-011"
+        ],
+        "Engine.chVdivV": [
+          "REQ-SDS-011"
+        ],
+        "Engine.trigDispLevel": [
+          "REQ-SDS-011"
+        ],
+        "Engine.SetNorm": [
+          "REQ-SDS-011"
+        ],
+        "Engine.SetTdiv": [
+          "REQ-SDS-010"
+        ],
+        "Engine.SetMemDepth": [
+          "REQ-SDS-009"
+        ],
+        "Engine.SetFramePeriod": [
+          "REQ-SDS-008"
+        ],
+        "Engine.SetHoldoff": [
+          "REQ-SDS-008",
+          "REQ-SDS-011"
+        ],
+        "Engine.paceHold": [
+          "REQ-SDS-008",
+          "REQ-SDS-011"
+        ],
+        "Engine.SetStreamMode": [
+          "REQ-SDS-009"
+        ],
+        "Engine.effDrainCols": [
+          "REQ-SDS-009"
+        ],
+        "Engine.SetTrigLevelCode": [
+          "REQ-SDS-011"
+        ],
+        "Engine.SetOffsetDAC": [
+          "REQ-SDS-001",
+          "REQ-SDS-015"
+        ],
+        "Engine.SetTrigSlope": [
+          "REQ-SDS-011"
+        ],
+        "Engine.SetETS": [
+          "REQ-SDS-019"
+        ],
+        "Engine.SetTrigSource": [
+          "REQ-SDS-011"
+        ],
+        "Engine.SetPrecisionRate": [
+          "REQ-SDS-036"
+        ]
+      },
+      "types": {}
+    },
+    {
+      "path": "app/internal/engine/engine_depth_test.go",
+      "owner": "FU-APP-ENGINE",
+      "functions": {
+        "TestMemDepth": [
+          "REQ-SDS-008",
+          "REQ-SDS-009"
+        ],
+        "TestSingleForcesFullDepth": [
+          "REQ-SDS-009",
+          "REQ-SDS-011"
+        ],
+        "TestStreamMode": [
+          "REQ-SDS-009"
+        ],
+        "TestSingleShotStopsAfterCapture": [
+          "REQ-SDS-008",
+          "REQ-SDS-011"
+        ]
+      },
+      "types": {}
+    },
+    {
+      "path": "app/internal/engine/engine_loop.go",
+      "owner": "FU-APP-ENGINE",
+      "functions": {
+        "Engine.Run": [
+          "REQ-SDS-001",
+          "REQ-SDS-004",
+          "REQ-SDS-006",
+          "REQ-SDS-008",
+          "REQ-SDS-010"
+        ],
+        "Engine.normNow": [
+          "REQ-SDS-011"
+        ],
+        "Engine.bumpFrames": [
+          "REQ-SDS-025"
+        ],
+        "Engine.oneFrame": [
+          "REQ-SDS-007",
+          "REQ-SDS-009",
+          "REQ-SDS-011",
+          "REQ-SDS-012",
+          "REQ-SDS-013",
+          "REQ-SDS-014",
+          "REQ-SDS-126",
+          "REQ-SDS-128"
+        ],
+        "Engine.holdFrame": [
+          "REQ-SDS-011",
+          "REQ-SDS-128"
+        ],
+        "Engine.pace": [
+          "REQ-SDS-008"
+        ]
+      },
+      "types": {}
+    },
+    {
+      "path": "app/internal/engine/engine_publish_test.go",
+      "owner": "FU-APP-ENGINE",
+      "functions": {
+        "TestDecimatedAutoPublishes": [
+          "REQ-SDS-007",
+          "REQ-SDS-009",
+          "REQ-SDS-011"
+        ],
+        "TestShortRecordIsNotCoherent": [
+          "REQ-SDS-009"
+        ],
+        "TestDecimatedNormHoldsWithoutDone": [
+          "REQ-SDS-011"
+        ],
+        "TestDecimatedAutoPublishesOnFreeRun": [
+          "REQ-SDS-011"
+        ],
+        "TestDecimatedAutoHoldsWrongSlopeFrame": [
+          "REQ-SDS-011"
+        ],
+        "TestDecimatedAutoWrongSlopeLiveness": [
+          "REQ-SDS-011"
+        ],
+        "TestDecimatedAutoLivenessTimeBound": [
+          "REQ-SDS-011"
+        ],
+        "TestSingleShotNotConsumedByFlatFallback": [
+          "REQ-SDS-011"
+        ],
+        "TestEdgeLevelOffSignalDoesNotLock": [
+          "REQ-SDS-011"
+        ],
+        "TestDecimatedFlatFallback": [
+          "REQ-SDS-011"
+        ],
+        "TestLevelAnchoredCentering": [
+          "REQ-SDS-011"
+        ],
+        "TestNativeFastAutoFreeRunUntriggered": [
+          "REQ-SDS-011"
+        ],
+        "TestNativeFastContentGate": [
+          "REQ-SDS-011"
+        ]
+      },
+      "types": {}
+    },
+    {
+      "path": "app/internal/engine/engine_test.go",
+      "owner": "FU-APP-ENGINE",
+      "functions": {
+        "fakeClock.clock": [
+          "REQ-SDS-001"
+        ],
+        "newFakeBus": [
+          "REQ-SDS-001"
+        ],
+        "fakeBus.record": [
+          "REQ-SDS-001"
+        ],
+        "fakeBus.Read": [
+          "REQ-SDS-001"
+        ],
+        "fakeBus.pop": [
+          "REQ-SDS-001"
+        ],
+        "fakeBus.Write": [
+          "REQ-SDS-001"
+        ],
+        "fakeBus.RawWrite": [
+          "REQ-SDS-001"
+        ],
+        "fakeBus.BurstInto": [
+          "REQ-SDS-001"
+        ],
+        "fakeBus.PopWords": [
+          "REQ-SDS-001"
+        ],
+        "fakeBus.FastDrain": [
+          "REQ-SDS-001"
+        ],
+        "fakeBus.snapWrites": [
+          "REQ-SDS-001"
+        ],
+        "fakeBus.clearWrites": [
+          "REQ-SDS-001"
+        ],
+        "bringUpWords": [
+          "REQ-SDS-001"
+        ],
+        "newTestEngine": [
+          "REQ-SDS-001"
+        ],
+        "wantWrites": [
+          "REQ-SDS-001"
+        ],
+        "TestHoldoffPacing": [
+          "REQ-SDS-008",
+          "REQ-SDS-011"
+        ],
+        "TestBringUpWriteOrder": [
+          "REQ-SDS-001",
+          "REQ-SDS-010",
+          "REQ-SDS-011"
+        ],
+        "TestArmSequence": [
+          "REQ-SDS-001",
+          "REQ-SDS-009"
+        ],
+        "TestBandChangeAppliedAtBoundary": [
+          "REQ-SDS-008",
+          "REQ-SDS-010"
+        ],
+        "TestStopKeepsHeartbeatAndServicesCommands": [
+          "REQ-SDS-001",
+          "REQ-SDS-008",
+          "REQ-SDS-025"
+        ],
+        "TestMatrixAndLEDService": [
+          "REQ-SDS-001",
+          "REQ-SDS-022"
+        ],
+        "TestRunStopsAtBoundary": [
+          "REQ-SDS-008"
+        ],
+        "waitFor": [
+          "REQ-SDS-001"
+        ]
+      },
+      "types": {
+        "fakeClock": [
+          "REQ-SDS-001"
+        ],
+        "wr": [
+          "REQ-SDS-001"
+        ],
+        "fakeBus": [
+          "REQ-SDS-001"
+        ]
+      }
+    },
+    {
+      "path": "app/internal/engine/engine_triglevel_test.go",
+      "owner": "FU-APP-ENGINE",
+      "functions": {
+        "TestTriggerLevelRecommit": [
+          "REQ-SDS-001",
+          "REQ-SDS-011"
+        ],
+        "TestTrigLevelClamp": [
+          "REQ-SDS-001",
+          "REQ-SDS-011"
+        ],
+        "TestOffsetDACFlush": [
+          "REQ-SDS-001",
+          "REQ-SDS-015"
+        ],
+        "TestTrigLevelZeroKeepsBootComparator": [
+          "REQ-SDS-001",
+          "REQ-SDS-011"
+        ]
+      },
+      "types": {}
+    },
+    {
+      "path": "app/internal/engine/engine_wedge_test.go",
+      "owner": "FU-APP-ENGINE",
+      "functions": {
+        "TestWedgeLadderNativeFast": [
+          "REQ-SDS-128"
+        ],
+        "TestWedgeLadderDecimated": [
+          "REQ-SDS-128"
+        ],
+        "TestWedgeLadderResetsOnActivity": [
+          "REQ-SDS-128"
+        ]
+      },
+      "types": {}
+    },
+    {
+      "path": "app/internal/engine/health_beat_test.go",
+      "owner": "FU-APP-ENGINE",
+      "functions": {
+        "TestHealthBeatsThroughHoldoff": [
+          "REQ-SDS-025"
+        ]
+      },
+      "types": {}
+    }
+  ],
+  "functions": 162,
+  "types": 12,
+  "uniqueReviewedTests": [
+    "TestArmSequence",
+    "TestBandChangeAppliedAtBoundary",
+    "TestBringUpWriteOrder",
+    "TestCenterCrossFlat",
+    "TestCenterCrossNearestCentre",
+    "TestCenterCrossNoDitherFlip",
+    "TestCenterCrossSubSample",
+    "TestDecimatedAutoHoldsWrongSlopeFrame",
+    "TestDecimatedAutoLivenessTimeBound",
+    "TestDecimatedAutoPublishes",
+    "TestDecimatedAutoPublishesOnFreeRun",
+    "TestDecimatedAutoWrongSlopeLiveness",
+    "TestDecimatedFlatFallback",
+    "TestDecimatedNormHoldsWithoutDone",
+    "TestDegradedFlagAndStuckEscalation",
+    "TestEdgeLevelOffSignalDoesNotLock",
+    "TestEngineConcurrencyChaos",
+    "TestHealthBeatsThroughHoldoff",
+    "TestHoldoffPacing",
+    "TestLevelAnchoredCentering",
+    "TestMatrixAndLEDService",
+    "TestMemDepth",
+    "TestMidLevel",
+    "TestNativeFastAutoFreeRunUntriggered",
+    "TestNativeFastContentGate",
+    "TestNoiseFloorPeriodIndependent",
+    "TestOffsetDACFlush",
+    "TestPtp",
+    "TestRealDepthTolerantTail",
+    "TestRunStopsAtBoundary",
+    "TestShortRecordIsNotCoherent",
+    "TestSignalPresentSmallSignal",
+    "TestSingleForcesFullDepth",
+    "TestSingleShotNotConsumedByFlatFallback",
+    "TestSingleShotStopsAfterCapture",
+    "TestStopKeepsHeartbeatAndServicesCommands",
+    "TestStreamMode",
+    "TestTrigLevelClamp",
+    "TestTrigLevelZeroKeepsBootComparator",
+    "TestTriggerLevelRecommit",
+    "TestWedgeLadderDecimated",
+    "TestWedgeLadderNativeFast",
+    "TestWedgeLadderResetsOnActivity",
+    "TestWindowSlopeMatches",
+    "TestWindowSlopeSmallWindowNeverVetoes"
+  ],
+  "nativeEligibleTests": [
+    "TestArmSequence",
+    "TestBandChangeAppliedAtBoundary",
+    "TestBringUpWriteOrder",
+    "TestCenterCrossFlat",
+    "TestCenterCrossNearestCentre",
+    "TestCenterCrossNoDitherFlip",
+    "TestCenterCrossSubSample",
+    "TestDecimatedAutoHoldsWrongSlopeFrame",
+    "TestDecimatedAutoLivenessTimeBound",
+    "TestDecimatedAutoPublishes",
+    "TestDecimatedAutoPublishesOnFreeRun",
+    "TestDecimatedAutoWrongSlopeLiveness",
+    "TestDecimatedFlatFallback",
+    "TestDecimatedNormHoldsWithoutDone",
+    "TestDegradedFlagAndStuckEscalation",
+    "TestEdgeLevelOffSignalDoesNotLock",
+    "TestEngineConcurrencyChaos",
+    "TestHealthBeatsThroughHoldoff",
+    "TestHoldoffPacing",
+    "TestLevelAnchoredCentering",
+    "TestMatrixAndLEDService",
+    "TestMemDepth",
+    "TestMidLevel",
+    "TestNativeFastAutoFreeRunUntriggered",
+    "TestNativeFastContentGate",
+    "TestNoiseFloorPeriodIndependent",
+    "TestOffsetDACFlush",
+    "TestPtp",
+    "TestRealDepthTolerantTail",
+    "TestRunStopsAtBoundary",
+    "TestShortRecordIsNotCoherent",
+    "TestSignalPresentSmallSignal",
+    "TestSingleForcesFullDepth",
+    "TestSingleShotNotConsumedByFlatFallback",
+    "TestSingleShotStopsAfterCapture",
+    "TestStopKeepsHeartbeatAndServicesCommands",
+    "TestStreamMode",
+    "TestTrigLevelClamp",
+    "TestTrigLevelZeroKeepsBootComparator",
+    "TestTriggerLevelRecommit",
+    "TestWedgeLadderDecimated",
+    "TestWedgeLadderNativeFast",
+    "TestWedgeLadderResetsOnActivity",
+    "TestWindowSlopeMatches",
+    "TestWindowSlopeSmallWindowNeverVetoes"
+  ],
+  "sourceSHA256": {
+    "app/internal/engine/chaos_test.go": "59e1c87aa73458fc511b651328a2291d3243876fe6aa5092025604ad6447f8df",
+    "app/internal/engine/degraded_test.go": "0f9841af98e077e71da39de9837a517ec81b8676a69a7730904e1b3c87e1251d",
+    "app/internal/engine/discern.go": "e9c66ad4c2595719eabed2c246b06c08800611fd497ab4f4c65587e2aacbdbfd",
+    "app/internal/engine/discern_test.go": "46f5a226ab124f97d53f55a1a24940b9f525ed1e9e3c19502f283b18076c66fe",
+    "app/internal/engine/engine.go": "16908439527c0264eaa92ac9c0a3a252dbcad5b5d8bf5d2ae0723ec09bc9e6f7",
+    "app/internal/engine/engine_bus.go": "8b47e0e0d0218e8c0ff004568ae541468a5e17bde7c9bf97d571cb283be38b50",
+    "app/internal/engine/engine_capture.go": "f9a0931a094c09172c64bad9b860c05b81582828cb9d43d871b36ad4d3efeb40",
+    "app/internal/engine/engine_cmd.go": "34bbbb8bec23a5bdb5c75589c0afe8bdb80985eb978c11df4aaf455b442e54b9",
+    "app/internal/engine/engine_control.go": "ca2928fdc5a401ee41466fe9bfe85c2262250ec2304ebe750fe68b70d178adea",
+    "app/internal/engine/engine_depth_test.go": "e074682f572b14996235b52284fd3a0bcb72a7d15a931c7764e709d2427cbbac",
+    "app/internal/engine/engine_loop.go": "5d0e794c4174ccd89c6636244c425ff4377c62de9e39c0ddf59c5161d32604e5",
+    "app/internal/engine/engine_publish_test.go": "0190547f41fec8a113a3c115ae426c608714e85bd7b921b80b39fe35ee64104b",
+    "app/internal/engine/engine_test.go": "3a92cb8cbaa54bd4d4f4a1eefa01aaf0ec0e336702f34d47a38cf5a284fccecf",
+    "app/internal/engine/engine_triglevel_test.go": "5bda06dbf1481b530a77caac5fe7ca3df90cd487198c5f4439c1f4c30011d5ec",
+    "app/internal/engine/engine_wedge_test.go": "91817a6442635ade27171e4d2d1c2151cb3d94f34277a08752f5cbe562492cc3",
+    "app/internal/engine/health_beat_test.go": "ea85f922e6ab0a17bda307317c5b04fea53115c70c206e73ab3e54ade3421b46"
+  },
+  "scope": "45 reviewed original host tests across engine control/capture/publication/discrimination and fake-bus support. Selected assertions only; no physical acquisition, universal concurrency, panic containment or complete diagnostic qualification."
+}

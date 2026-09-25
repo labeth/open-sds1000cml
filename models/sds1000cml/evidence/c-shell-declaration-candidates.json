@@ -1,0 +1,432 @@
+{
+  "status": "candidate-inventory-only",
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "counts": {
+    "C": {
+      "files": 4,
+      "functionCandidates": 19
+    },
+    "Sh": {
+      "files": 12,
+      "functionCandidates": 34
+    }
+  },
+  "files": [
+    {
+      "path": "app/internal/bus/dcinv/dcinv.c",
+      "language": "C",
+      "owner": "FU-APP-BUS",
+      "gitBlob": "fb394e21946483ea10542c82b6c063571ea3e26e",
+      "sourceSHA256": "f5422fa5f6182d9a67a7bd083998ffd1dd322a267ecae6c0a97cb667c9c5c0cf",
+      "candidates": [
+        {
+          "name": "dcinv_ioctl",
+          "line": 20,
+          "pattern": "/^static long dcinv_ioctl(struct file *f, unsigned int cmd, unsigned long arg)$/"
+        },
+        {
+          "name": "dcinv_init",
+          "line": 41,
+          "pattern": "/^static int __init dcinv_init(void)$/"
+        },
+        {
+          "name": "dcinv_exit",
+          "line": 60,
+          "pattern": "/^static void __exit dcinv_exit(void)$/"
+        }
+      ]
+    },
+    {
+      "path": "app/internal/bus/kerneldma/acq_dma.c",
+      "language": "C",
+      "owner": "FU-APP-BUS",
+      "gitBlob": "219017f89bfdc75d3fe7ae632133e09ec1e816f7",
+      "sourceSHA256": "669e5fc3eeaa5936fb68cebb4003b65d11a52bed55d6f8b09abfe9be9acc3f3b",
+      "candidates": [
+        {
+          "name": "dma_done",
+          "line": 52,
+          "pattern": "/^static void dma_done(unsigned ch, u16 status, void *arg)$/"
+        },
+        {
+          "name": "transfer_to",
+          "line": 59,
+          "pattern": "/^static int transfer_to(struct session *s, unsigned bytes, int test, dma_addr_t destination)$/"
+        },
+        {
+          "name": "read_reg",
+          "line": 87,
+          "pattern": "/^static int read_reg(struct file *f, u16 reg, u16 *value)$/"
+        },
+        {
+          "name": "write_reg",
+          "line": 98,
+          "pattern": "/^static int write_reg(struct file *f,u16 reg,u16 value)$/"
+        },
+        {
+          "name": "command",
+          "line": 105,
+          "pattern": "/^static int command(struct session *s,u16 op)$/"
+        },
+        {
+          "name": "stream_setup",
+          "line": 117,
+          "pattern": "/^static int stream_setup(struct session *s)$/"
+        },
+        {
+          "name": "stream_worker",
+          "line": 127,
+          "pattern": "/^static int stream_worker(void *arg)$/"
+        },
+        {
+          "name": "stream_read",
+          "line": 194,
+          "pattern": "/^static ssize_t stream_read(struct file *f,char __user *dst,size_t size,loff_t *pos)$/"
+        },
+        {
+          "name": "control",
+          "line": 211,
+          "pattern": "/^static long control(struct file *f,unsigned int cmd,unsigned long arg)$/"
+        },
+        {
+          "name": "open_session",
+          "line": 271,
+          "pattern": "/^static int open_session(struct inode *i,struct file *f)$/"
+        },
+        {
+          "name": "close_session",
+          "line": 290,
+          "pattern": "/^static int close_session(struct inode *i,struct file *f)$/"
+        },
+        {
+          "name": "start",
+          "line": 302,
+          "pattern": "/^static int __init start(void){$/"
+        },
+        {
+          "name": "stop",
+          "line": 315,
+          "pattern": "/^static void __exit stop(void){misc_deregister(&dev);}$/"
+        }
+      ]
+    },
+    {
+      "path": "app/internal/bus/kerneldma/acq_dma_test.c",
+      "language": "C",
+      "owner": "FU-APP-BUS",
+      "gitBlob": "8949c8ba36dcaefc73ee4c59b81a3356c8b701b7",
+      "sourceSHA256": "6b94e1e8d253daabde3ed921d7434af4a3982f5cede806e75c3cda6daeae6ea1",
+      "candidates": [
+        {
+          "name": "callback",
+          "line": 12,
+          "pattern": "/^static void callback(unsigned channel,u16 status,void *unused)$/"
+        },
+        {
+          "name": "start",
+          "line": 14,
+          "pattern": "/^static int __init start(void)$/"
+        },
+        {
+          "name": "stop",
+          "line": 38,
+          "pattern": "/^static void __exit stop(void){}$/"
+        }
+      ]
+    },
+    {
+      "path": "app/internal/bus/kerneldma/edma-3.2.h",
+      "language": "C",
+      "owner": "FU-APP-BUS",
+      "gitBlob": "20c77f29bf0f3a74c36ca48eb16085d0e87abacb",
+      "sourceSHA256": "e38a417e72cb6679291b03121c37e28805de46e09f17e818f793d599207f69d8",
+      "candidates": []
+    },
+    {
+      "path": "fpga/common/sim/run.sh",
+      "language": "Sh",
+      "owner": "FU-RTL-COMMON-TESTS",
+      "gitBlob": "d327e993f1224faac2138f12ce5fbd18b31fc570",
+      "sourceSHA256": "c2cd800d4205c35202dcb86b5c1b4e5167ff1c1550ba9d54c203820ecdc81eb2",
+      "candidates": [
+        {
+          "name": "run_tb",
+          "line": 12,
+          "pattern": "/^run_tb() {$/"
+        }
+      ]
+    },
+    {
+      "path": "fpga/default/sim/run.sh",
+      "language": "Sh",
+      "owner": "FU-RTL-DEFAULT-TESTS",
+      "gitBlob": "c7401f4023740e7661196c4c3fc82203cc53cdc7",
+      "sourceSHA256": "7b3b69cefafd9118855b13446d77f9f2325e0e447b76bfe5fe546cff6a0fe691",
+      "candidates": [
+        {
+          "name": "run_tb",
+          "line": 20,
+          "pattern": "/^run_tb() {$/"
+        }
+      ]
+    },
+    {
+      "path": "ota/boot/startup.sh",
+      "language": "Sh",
+      "owner": "FU-OTA-BOOT",
+      "gitBlob": "3e008f762f92bd0c4e638e1f247cdeecccb83ba1",
+      "sourceSHA256": "b363e1a0e67f0605eb8f8e538719a63ee1e78e49704476c15ca67055dddb24b2",
+      "candidates": [
+        {
+          "name": "find_usb",
+          "line": 34,
+          "pattern": "/^find_usb() {$/"
+        },
+        {
+          "name": "log",
+          "line": 111,
+          "pattern": "/^log() { echo \"$(date +%s 2>\\/dev\\/null || echo 0) $*\" >> \"$LOG\" 2>\\/dev\\/null; }$/"
+        },
+        {
+          "name": "rotate_log",
+          "line": 114,
+          "pattern": "/^rotate_log() {$/"
+        },
+        {
+          "name": "agent_slot_path",
+          "line": 132,
+          "pattern": "/^agent_slot_path() {   # $1 = A|B -> binary path$/"
+        },
+        {
+          "name": "read_slot",
+          "line": 136,
+          "pattern": "/^read_slot() {   # read a pointer file, echo A|B, default $2$/"
+        },
+        {
+          "name": "agent_loop",
+          "line": 141,
+          "pattern": "/^agent_loop() {$/"
+        }
+      ]
+    },
+    {
+      "path": "ota/checkdev.sh",
+      "language": "Sh",
+      "owner": "FU-OTA-BUILD",
+      "gitBlob": "8c875c72a50c6edadff939e3f9b541425168932a",
+      "sourceSHA256": "fd50151879cadde43985b2a39872f6050d4b411d88243e2d3b9704a68334ed7a",
+      "candidates": [
+        {
+          "name": "ok",
+          "line": 24,
+          "pattern": "/^ok()   { echo \"  PASS  $*\"; pass=$((pass+1)); }$/"
+        },
+        {
+          "name": "bad",
+          "line": 25,
+          "pattern": "/^bad()  { echo \"  FAIL  $*\"; fail=$((fail+1)); }$/"
+        },
+        {
+          "name": "dsh",
+          "line": 27,
+          "pattern": "/^dsh()  { $otactl $D sh \"$1\" 2>\\/dev\\/null | sed 's\\/\\\\[exit [0-9-]*\\\\]\\/\\/g'; }$/"
+        },
+        {
+          "name": "getj",
+          "line": 41,
+          "pattern": "/^getj() { printf '%s' \"$status\" | python3 -c \"import sys,json;d=json.load(sys.stdin)$/"
+        }
+      ]
+    },
+    {
+      "path": "ota/mkstick.sh",
+      "language": "Sh",
+      "owner": "FU-OTA-BUILD",
+      "gitBlob": "e23d881d702ca5c3beb90a94f70b7b5fdc21c6a8",
+      "sourceSHA256": "961f688b06859bb659fc3edd8e90ea8321f137a046d2321ceb91d25cda1866a5",
+      "candidates": [
+        {
+          "name": "die",
+          "line": 48,
+          "pattern": "/^die() { echo \"mkstick: $*\" >&2; exit 1; }$/"
+        },
+        {
+          "name": "build",
+          "line": 50,
+          "pattern": "/^build() {$/"
+        },
+        {
+          "name": "verify",
+          "line": 67,
+          "pattern": "/^verify() {$/"
+        },
+        {
+          "name": "ver",
+          "line": 88,
+          "pattern": "/^ver() { git -C \"$repo\" describe --tags --always --dirty 2>\\/dev\\/null || echo dev; }$/"
+        },
+        {
+          "name": "write_files",
+          "line": 92,
+          "pattern": "/^write_files() {$/"
+        },
+        {
+          "name": "populate",
+          "line": 109,
+          "pattern": "/^populate() {$/"
+        },
+        {
+          "name": "zip_stick",
+          "line": 120,
+          "pattern": "/^zip_stick() {$/"
+        },
+        {
+          "name": "format_stick",
+          "line": 150,
+          "pattern": "/^format_stick() {$/"
+        }
+      ]
+    },
+    {
+      "path": "tools/hw/accept.sh",
+      "language": "Sh",
+      "owner": "FU-TOOLS",
+      "gitBlob": "c5e00bec685f8cd5e2d0bdb6b6226742b5c78fa6",
+      "sourceSHA256": "eac193593bc4bba650a21c9d9876982971a05d96dcbaa456cc49678733737a7b",
+      "candidates": [
+        {
+          "name": "py",
+          "line": 28,
+          "pattern": "/^py() { python3 -c \"$1\" \"$OUT\\/$2.json\"; }$/"
+        },
+        {
+          "name": "fetch",
+          "line": 29,
+          "pattern": "/^fetch() { # name url [post-json]$/"
+        },
+        {
+          "name": "verdict",
+          "line": 36,
+          "pattern": "/^verdict() { # name ok message$/"
+        }
+      ]
+    },
+    {
+      "path": "tools/hw/bus_probe.sh",
+      "language": "Sh",
+      "owner": "FU-TOOLS",
+      "gitBlob": "68bbc04991a33fde8353ce156910bf2f20bd1b2e",
+      "sourceSHA256": "265820fed356fe7e452740af01d19fd9619565600c2d24d036e613b06ccae18c",
+      "candidates": [
+        {
+          "name": "post",
+          "line": 20,
+          "pattern": "/^post() { # name json$/"
+        },
+        {
+          "name": "report",
+          "line": 24,
+          "pattern": "/^report() { # name$/"
+        }
+      ]
+    },
+    {
+      "path": "tools/hw/coldstart.sh",
+      "language": "Sh",
+      "owner": "FU-TOOLS",
+      "gitBlob": "0de66e65226535bcd9dc7df93be7969fb3714031",
+      "sourceSHA256": "0f924fa1a8e064c6bad25165d572d22fee9806ff561d65b17470abedec29f4c9",
+      "candidates": [
+        {
+          "name": "say",
+          "line": 42,
+          "pattern": "/^say() { printf '%s %s\\\\n' \"$(date +%H:%M:%S)\" \"$*\"; }$/"
+        }
+      ]
+    },
+    {
+      "path": "tools/hw/deploy.sh",
+      "language": "Sh",
+      "owner": "FU-TOOLS",
+      "gitBlob": "00ea36afd8d85d6eba3da2fc4b7e4d36dad95e07",
+      "sourceSHA256": "4ea58e32c7f5dece0789d5ba0b836d4e96e8fc29018eea1d971eae668c8692c2",
+      "candidates": []
+    },
+    {
+      "path": "tools/hw/gpmc_sweep.sh",
+      "language": "Sh",
+      "owner": "FU-TOOLS",
+      "gitBlob": "f39bc8ca8712690b8cd07ec5f4917c1c404b8484",
+      "sourceSHA256": "6dbd2621b9b9effe32c05a7fe29afad14ee2fac06847fae31e416343738a0912",
+      "candidates": [
+        {
+          "name": "py",
+          "line": 32,
+          "pattern": "/^py() { python3 -c \"$1\" \"$OUT\\/$2.json\"; }$/"
+        },
+        {
+          "name": "fetch",
+          "line": 33,
+          "pattern": "/^fetch() { # name url [post-json]$/"
+        },
+        {
+          "name": "status",
+          "line": 41,
+          "pattern": "/^status() {$/"
+        },
+        {
+          "name": "table",
+          "line": 55,
+          "pattern": "/^table() {$/"
+        }
+      ]
+    },
+    {
+      "path": "tools/hw/readback.sh",
+      "language": "Sh",
+      "owner": "FU-TOOLS",
+      "gitBlob": "e51e7ad053dadc756d7a731222202a11ace52dcc",
+      "sourceSHA256": "eacc0124a0a1908ee934990deb16a3c000c353b66954dacc994495073af96cf9",
+      "candidates": [
+        {
+          "name": "say",
+          "line": 30,
+          "pattern": "/^say() { printf '[readback] %s\\\\n' \"$*\"; }$/"
+        },
+        {
+          "name": "scpi",
+          "line": 31,
+          "pattern": "/^scpi() { \"$OTACTL\" -tcp \"$DEV:$PORT\" scpi \"$@\"; }$/"
+        }
+      ]
+    },
+    {
+      "path": "tools/hw/sramburst.sh",
+      "language": "Sh",
+      "owner": "FU-TOOLS",
+      "gitBlob": "937a1325b5043a72941a744aafc7ba395a82e2bd",
+      "sourceSHA256": "c6aec1e7cbd3d617ce37d4e7794f5bcd7d0c0d4f2b77d9c3948d09be36708561",
+      "candidates": [
+        {
+          "name": "say",
+          "line": 34,
+          "pattern": "/^say() { printf '%s %s\\\\n' \"$(date +%H:%M:%S)\" \"$*\"; }$/"
+        },
+        {
+          "name": "ctl",
+          "line": 35,
+          "pattern": "/^ctl() { \"$OTACTL\" -tcp \"$DEV:$PORT\" \"$@\"; }$/"
+        }
+      ]
+    }
+  ],
+  "extractor": "Universal Ctags 6.2.1, Copyright (C) 2015-2025 Universal Ctags Team",
+  "options": [
+    "--options=NONE",
+    "--output-format=json",
+    "--fields=+n",
+    "--kinds-LANGUAGE=f",
+    "--language-force=LANGUAGE"
+  ],
+  "scope": "All nonhistorical .c/.h/.sh files in the pinned inventory. Ctags candidate extraction is not compiler validation, preprocessor configuration, complete syntax coverage, native requirement linkage or behavioral review. Top-level shell effects, C initializers/types/macros and assembly remain separate scope. No script or instrument code is executed."
+}

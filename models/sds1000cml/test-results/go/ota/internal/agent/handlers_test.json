@@ -1,0 +1,168 @@
+{
+  "source": "ota/internal/agent/handlers_test.go",
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "scope": "Reviewed Go test outcomes; passing assertions contribute partial requirement evidence.",
+  "sourceSHA256": "883571208d084a482175f5d1233f528f0141c79742844c9dfbaa3f08f5dec3c4",
+  "logs": {
+    "test-runs/agent-handlers.jsonl": "a3e27117e24fa422b9668d6960cfa8a2d0088ad3e97835e0e81d2051407fd23e"
+  },
+  "tests": [
+    {
+      "name": "TestHelpListsEveryRegisteredCommand",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-113"
+      ]
+    },
+    {
+      "name": "TestStatusHandlerShape",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-114"
+      ]
+    },
+    {
+      "name": "TestLogsHandler",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-115"
+      ]
+    },
+    {
+      "name": "TestExecHandler",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-115"
+      ]
+    },
+    {
+      "name": "TestShHandler",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-115"
+      ]
+    },
+    {
+      "name": "TestGetHandler",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-116"
+      ]
+    },
+    {
+      "name": "TestPutHandlersRejectBadInput",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-106"
+      ]
+    },
+    {
+      "name": "TestAppUpdateInstallsIntoInactiveSlot",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-118",
+        "REQ-SDS-029"
+      ]
+    },
+    {
+      "name": "TestAppActivate",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-118"
+      ]
+    },
+    {
+      "name": "TestAppInstallEmergency",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-118"
+      ]
+    },
+    {
+      "name": "TestAgentUpdateRefusalGates",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-119",
+        "REQ-SDS-029"
+      ]
+    },
+    {
+      "name": "TestRebootRequiresConfirm",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-121"
+      ]
+    },
+    {
+      "name": "TestRestoreFactoryGates",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-120"
+      ]
+    },
+    {
+      "name": "TestAppLifecycleHandlersDriveSupervisor",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-117"
+      ]
+    }
+  ],
+  "results": [
+    {
+      "requirement": "REQ-SDS-029",
+      "status": "partial",
+      "notes": "2 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    },
+    {
+      "requirement": "REQ-SDS-106",
+      "status": "partial",
+      "notes": "1 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    },
+    {
+      "requirement": "REQ-SDS-113",
+      "status": "partial",
+      "notes": "1 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    },
+    {
+      "requirement": "REQ-SDS-114",
+      "status": "partial",
+      "notes": "1 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    },
+    {
+      "requirement": "REQ-SDS-115",
+      "status": "partial",
+      "notes": "3 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    },
+    {
+      "requirement": "REQ-SDS-116",
+      "status": "partial",
+      "notes": "1 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    },
+    {
+      "requirement": "REQ-SDS-117",
+      "status": "partial",
+      "notes": "1 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    },
+    {
+      "requirement": "REQ-SDS-118",
+      "status": "partial",
+      "notes": "3 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    },
+    {
+      "requirement": "REQ-SDS-119",
+      "status": "partial",
+      "notes": "1 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    },
+    {
+      "requirement": "REQ-SDS-120",
+      "status": "partial",
+      "notes": "1 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    },
+    {
+      "requirement": "REQ-SDS-121",
+      "status": "partial",
+      "notes": "1 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    }
+  ]
+}

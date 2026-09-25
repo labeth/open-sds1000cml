@@ -1,0 +1,3 @@
+5b9c820dd543cba1a523ff1eed62f4c67e3d5004dc7ceb82e17231dece4fa6ab  fpga/acq_sram/out/250mhz-p1000-interleave-precision-hostfix/bench.rbf
+f1a4adda3ffadb3b0d832254942bc9535939b88e6c6174ccf16758f04c1d3bfd  app/dist/app-arm
+9d49ad52aad3762121326134b2e35a410ff10028abf5230b5dd4d976002a68b3  validation/2026-09-24-panel-current/sram-current-app

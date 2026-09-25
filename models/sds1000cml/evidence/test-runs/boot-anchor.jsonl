@@ -1,0 +1,27 @@
+{"Action":"start","Package":"open-sds/ota/boot"}
+{"Action":"run","Package":"open-sds/ota/boot","Test":"TestRespawnLoopBounded"}
+{"Action":"output","Package":"open-sds/ota/boot","Test":"TestRespawnLoopBounded","Output":"=== RUN   TestRespawnLoopBounded\n"}
+{"Action":"output","Package":"open-sds/ota/boot","Test":"TestRespawnLoopBounded","Output":"--- PASS: TestRespawnLoopBounded (0.07s)\n"}
+{"Action":"pass","Package":"open-sds/ota/boot","Test":"TestRespawnLoopBounded"}
+{"Action":"run","Package":"open-sds/ota/boot","Test":"TestConfirmStableSlot"}
+{"Action":"output","Package":"open-sds/ota/boot","Test":"TestConfirmStableSlot","Output":"=== RUN   TestConfirmStableSlot\n"}
+{"Action":"output","Package":"open-sds/ota/boot","Test":"TestConfirmStableSlot","Output":"--- PASS: TestConfirmStableSlot (2.04s)\n"}
+{"Action":"pass","Package":"open-sds/ota/boot","Test":"TestConfirmStableSlot"}
+{"Action":"run","Package":"open-sds/ota/boot","Test":"TestAgentSelfUpdateActivatesNewSlot"}
+{"Action":"output","Package":"open-sds/ota/boot","Test":"TestAgentSelfUpdateActivatesNewSlot","Output":"=== RUN   TestAgentSelfUpdateActivatesNewSlot\n"}
+{"Action":"output","Package":"open-sds/ota/boot","Test":"TestAgentSelfUpdateActivatesNewSlot","Output":"--- PASS: TestAgentSelfUpdateActivatesNewSlot (0.06s)\n"}
+{"Action":"pass","Package":"open-sds/ota/boot","Test":"TestAgentSelfUpdateActivatesNewSlot"}
+{"Action":"run","Package":"open-sds/ota/boot","Test":"TestCrashLoopRevertsToConfirmed"}
+{"Action":"output","Package":"open-sds/ota/boot","Test":"TestCrashLoopRevertsToConfirmed","Output":"=== RUN   TestCrashLoopRevertsToConfirmed\n"}
+{"Action":"output","Package":"open-sds/ota/boot","Test":"TestCrashLoopRevertsToConfirmed","Output":"--- PASS: TestCrashLoopRevertsToConfirmed (0.10s)\n"}
+{"Action":"pass","Package":"open-sds/ota/boot","Test":"TestCrashLoopRevertsToConfirmed"}
+{"Action":"run","Package":"open-sds/ota/boot","Test":"TestIntentMarkerIsNeutralNoRevert"}
+{"Action":"output","Package":"open-sds/ota/boot","Test":"TestIntentMarkerIsNeutralNoRevert","Output":"=== RUN   TestIntentMarkerIsNeutralNoRevert\n"}
+{"Action":"output","Package":"open-sds/ota/boot","Test":"TestIntentMarkerIsNeutralNoRevert","Output":"--- PASS: TestIntentMarkerIsNeutralNoRevert (0.10s)\n"}
+{"Action":"pass","Package":"open-sds/ota/boot","Test":"TestIntentMarkerIsNeutralNoRevert"}
+{"Action":"run","Package":"open-sds/ota/boot","Test":"TestCommandsFileRuns"}
+{"Action":"output","Package":"open-sds/ota/boot","Test":"TestCommandsFileRuns","Output":"=== RUN   TestCommandsFileRuns\n"}
+{"Action":"output","Package":"open-sds/ota/boot","Test":"TestCommandsFileRuns","Output":"--- PASS: TestCommandsFileRuns (0.04s)\n"}
+{"Action":"pass","Package":"open-sds/ota/boot","Test":"TestCommandsFileRuns"}
+{"Action":"output","Package":"open-sds/ota/boot","Output":"PASS\n"}
+{"Action":"pass","Package":"open-sds/ota/boot"}

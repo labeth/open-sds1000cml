@@ -1,0 +1,45 @@
+{
+  "result": "source-and-isolated-test-review-complete-integration-pending",
+  "sources": {
+    "ota/boot/startup.sh": "b363e1a0e67f0605eb8f8e538719a63ee1e78e49704476c15ca67055dddb24b2",
+    "ota/boot/boot_test.go": "bf677f8169f479205d0f8d1c79fcbc1348e5824bfd3c17685635e6ff3816afa5"
+  },
+  "functions": [
+    "find_usb",
+    "log",
+    "rotate_log",
+    "agent_slot_path",
+    "read_slot",
+    "agent_loop"
+  ],
+  "testCandidates": [
+    "TestRespawnLoopBounded",
+    "TestConfirmStableSlot",
+    "TestAgentSelfUpdateActivatesNewSlot",
+    "TestCrashLoopRevertsToConfirmed",
+    "TestIntentMarkerIsNeutralNoRevert",
+    "TestCommandsFileRuns"
+  ],
+  "findings": [
+    "USB discovery prefers explicit OTA_USB, then the fixed vendor mount carrying ota/agent.env, the script directory and fallback mounts. The fixed vendor path triggers real remount commands; this path was not executed.",
+    "The anchor appends execution markers under USB, OTA_DIR and the fixed /tmp directory. Marker and mkdir failures are ignored. Paths are configurable rather than constrained to USB/RAM by code.",
+    "agent.env is sourced as shell code after several anchor-local path variables are captured. It can change shell variables, but later exported agent A/B paths use the already-derived anchor variables.",
+    "The optional commands file runs synchronously before the background loop, without timeout or failure propagation. A hanging commands file prevents agent-loop launch.",
+    "The loop rereads the active pointer each iteration but loads confirmed only once. Invalid/missing pointers default to A. An active change resets the failure count.",
+    "Any nonempty intent marker clears the failure count; its value is not restricted to update/restart. The stale marker is removed before each launch and the current marker consumed afterward.",
+    "Stable confirmation is based on executable permission and wall-clock seconds elapsed, not agent exit status, health, RPC availability or image identity. A long-running command that exits unsuccessfully can still confirm.",
+    "Confirmation and active-pointer writes use direct shell redirection; failures are ignored and no temporary rename or sync is used. Log messages can report confirmation/reversion despite failed persistence.",
+    "Fast exits including missing/nonexecutable binaries count toward rollback. No distinct emergency agent fallback is implemented when active already equals confirmed; retry continues unless RUNS_LIMIT bounds it.",
+    "Log rotation happens before launch, so a long-running agent can grow its current log beyond LOG_MAX. Boot log rotation is not invoked by this source.",
+    "Existing six tests use stub shell agents and bound run counts; they cover respawn, stable-zero-exit confirmation, active-pointer switch, crash-loop revert, restart intent and commands execution. They do not assert unsuccessful long-run confirmation, pointer I/O failures, BusyBox parity or inherited device descriptors.",
+    "The original harness inherits environment and starts its polling deadline after executing the anchor. The review runner strips OTA_* settings and supplies private user/PID/mount/network namespaces, read-only root, private /tmp and synthetic /dev; the fixed marker therefore stays private. A compiled-test deadline bounds execution.",
+    "Isolated characterization dynamically reproduced nonzero-exit confirmation, arbitrary nonempty intent suppressing rollback, a confirmation log despite pointer-write failure, and continued agent launch after commands exit 7. These passing characterization assertions identify limitations, not successful recovery qualification."
+  ],
+  "syntaxCheck": {
+    "command": "/bin/sh -n ota/boot/startup.sh",
+    "exitCode": 0
+  },
+  "scope": "Complete source/test read, shell syntax check, six original tests and four limitation cases in private namespaces. Original source unchanged. No vendor remount, real agent, physical device, factory or network operation. Native annotation/contract integration remains pending.",
+  "testRun": "boot-anchor-test-run.json",
+  "characterization": "boot-anchor-characterization.json"
+}

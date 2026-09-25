@@ -1,5 +1,7 @@
+// ENGMODEL-OWNER-UNIT: FU-RTL-ACQ-SRAM-HOST-READ-PORT
 // Profile host readout register window. All ports use the GPMC host clock.
 // Descriptors come from sram_host_ownership's coherent host-domain outputs.
+// TRLC-LINKS: REQ-SDS-053
 module acq_host_read_port(
  input wire clk,reset,host_write,host_pop,
  input wire [7:0] write_sel,read_sel,input wire [15:0] write_data,

@@ -1,0 +1,1242 @@
+----------------
+; Command Info ;
+----------------
+Report Timing: Found 16 setup paths (0 violated).  Worst case slack is 1.569 
+
+Tcl Command:
+    report_timing -setup -file timeline-receiver-paths.txt -from [get_registers {uart_line_ordinal*}] -to [get_registers {receiver_ordinal0*}] -npaths 64 -detail path_only
+
+Options:
+    -from [get_registers {uart_line_ordinal*}] 
+    -to [get_registers {receiver_ordinal0*}] 
+    -setup 
+    -npaths 64 
+    -detail path_only 
+    -file {timeline-receiver-paths.txt} 
+
+Delay Model:
+    Slow 1200mV 85C Model
+
++--------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+; Summary of Paths                                                                                                                                                         ;
++-------+-----------------------+-----------------------+------------------------------------+------------------------------------+--------------+------------+------------+
+; Slack ; From Node             ; To Node               ; Launch Clock                       ; Latch Clock                        ; Relationship ; Clock Skew ; Data Delay ;
++-------+-----------------------+-----------------------+------------------------------------+------------------------------------+--------------+------------+------------+
+; 1.569 ; uart_line_ordinal[11] ; receiver_ordinal0[11] ; pll|pll|auto_generated|pll1|clk[0] ; pll|pll|auto_generated|pll1|clk[2] ; 4.000        ; -0.170     ; 2.262      ;
+; 1.591 ; uart_line_ordinal[12] ; receiver_ordinal0[12] ; pll|pll|auto_generated|pll1|clk[0] ; pll|pll|auto_generated|pll1|clk[2] ; 4.000        ; -0.161     ; 2.249      ;
+; 1.952 ; uart_line_ordinal[4]  ; receiver_ordinal0[4]  ; pll|pll|auto_generated|pll1|clk[0] ; pll|pll|auto_generated|pll1|clk[2] ; 4.000        ; -0.162     ; 1.887      ;
+; 2.073 ; uart_line_ordinal[2]  ; receiver_ordinal0[2]  ; pll|pll|auto_generated|pll1|clk[0] ; pll|pll|auto_generated|pll1|clk[2] ; 4.000        ; -0.162     ; 1.766      ;
+; 2.078 ; uart_line_ordinal[3]  ; receiver_ordinal0[3]  ; pll|pll|auto_generated|pll1|clk[0] ; pll|pll|auto_generated|pll1|clk[2] ; 4.000        ; -0.162     ; 1.761      ;
+; 2.129 ; uart_line_ordinal[9]  ; receiver_ordinal0[9]  ; pll|pll|auto_generated|pll1|clk[0] ; pll|pll|auto_generated|pll1|clk[2] ; 4.000        ; -0.163     ; 1.709      ;
+; 2.130 ; uart_line_ordinal[1]  ; receiver_ordinal0[1]  ; pll|pll|auto_generated|pll1|clk[0] ; pll|pll|auto_generated|pll1|clk[2] ; 4.000        ; -0.162     ; 1.709      ;
+; 2.178 ; uart_line_ordinal[0]  ; receiver_ordinal0[0]  ; pll|pll|auto_generated|pll1|clk[0] ; pll|pll|auto_generated|pll1|clk[2] ; 4.000        ; -0.175     ; 1.648      ;
+; 2.244 ; uart_line_ordinal[6]  ; receiver_ordinal0[6]  ; pll|pll|auto_generated|pll1|clk[0] ; pll|pll|auto_generated|pll1|clk[2] ; 4.000        ; -0.166     ; 1.591      ;
+; 2.354 ; uart_line_ordinal[5]  ; receiver_ordinal0[5]  ; pll|pll|auto_generated|pll1|clk[0] ; pll|pll|auto_generated|pll1|clk[2] ; 4.000        ; -0.177     ; 1.470      ;
+; 2.373 ; uart_line_ordinal[7]  ; receiver_ordinal0[7]  ; pll|pll|auto_generated|pll1|clk[0] ; pll|pll|auto_generated|pll1|clk[2] ; 4.000        ; -0.169     ; 1.459      ;
+; 2.378 ; uart_line_ordinal[15] ; receiver_ordinal0[15] ; pll|pll|auto_generated|pll1|clk[0] ; pll|pll|auto_generated|pll1|clk[2] ; 4.000        ; -0.176     ; 1.447      ;
+; 2.399 ; uart_line_ordinal[14] ; receiver_ordinal0[14] ; pll|pll|auto_generated|pll1|clk[0] ; pll|pll|auto_generated|pll1|clk[2] ; 4.000        ; -0.177     ; 1.425      ;
+; 2.403 ; uart_line_ordinal[10] ; receiver_ordinal0[10] ; pll|pll|auto_generated|pll1|clk[0] ; pll|pll|auto_generated|pll1|clk[2] ; 4.000        ; -0.177     ; 1.421      ;
+; 2.476 ; uart_line_ordinal[8]  ; receiver_ordinal0[8]  ; pll|pll|auto_generated|pll1|clk[0] ; pll|pll|auto_generated|pll1|clk[2] ; 4.000        ; -0.175     ; 1.350      ;
+; 2.510 ; uart_line_ordinal[13] ; receiver_ordinal0[13] ; pll|pll|auto_generated|pll1|clk[0] ; pll|pll|auto_generated|pll1|clk[2] ; 4.000        ; -0.175     ; 1.316      ;
++-------+-----------------------+-----------------------+------------------------------------+------------------------------------+--------------+------------+------------+
+
+Path #1: Setup slack is 1.569 
+===============================================================================
++---------------------------------------------------------+
+; Path Summary                                            ;
++--------------------+------------------------------------+
+; Property           ; Value                              ;
++--------------------+------------------------------------+
+; From Node          ; uart_line_ordinal[11]              ;
+; To Node            ; receiver_ordinal0[11]              ;
+; Launch Clock       ; pll|pll|auto_generated|pll1|clk[0] ;
+; Latch Clock        ; pll|pll|auto_generated|pll1|clk[2] ;
+; Data Arrival Time  ; 6.601                              ;
+; Data Required Time ; 8.170                              ;
+; Slack              ; 1.569                              ;
++--------------------+------------------------------------+
+
++-----------------------------------------------------------------------------------------+
+; Statistics                                                                              ;
++---------------------------+--------+-------+-------------+------------+--------+--------+
+; Property                  ; Value  ; Count ; Total Delay ; % of Total ; Min    ; Max    ;
++---------------------------+--------+-------+-------------+------------+--------+--------+
+; Setup Relationship        ; 4.000  ;       ;             ;            ;        ;        ;
+; Clock Skew                ; -0.170 ;       ;             ;            ;        ;        ;
+; Data Delay                ; 2.262  ;       ;             ;            ;        ;        ;
+; Number of Logic Levels    ;        ; 1     ;             ;            ;        ;        ;
+; Physical Delays           ;        ;       ;             ;            ;        ;        ;
+;  Arrival Path             ;        ;       ;             ;            ;        ;        ;
+;   Clock                   ;        ;       ;             ;            ;        ;        ;
+;    Clock Network (Lumped) ;        ; 1     ; 0.339       ; 100        ; 0.339  ; 0.339  ;
+;   Data                    ;        ;       ;             ;            ;        ;        ;
+;    IC                     ;        ; 2     ; 1.575       ; 70         ; 0.000  ; 1.575  ;
+;    Cell                   ;        ; 3     ; 0.426       ; 19         ; 0.000  ; 0.327  ;
+;    uTco                   ;        ; 1     ; 0.261       ; 12         ; 0.261  ; 0.261  ;
+;  Required Path            ;        ;       ;             ;            ;        ;        ;
+;   Clock                   ;        ;       ;             ;            ;        ;        ;
+;    Clock Network (Lumped) ;        ; 1     ; -0.077      ;            ; -0.077 ; -0.077 ;
++---------------------------+--------+-------+-------------+------------+--------+--------+
+Note: Negative delays are omitted from totals when calculating percentages
+
++---------------------------------------------------------------------------------------------------+
+; Data Arrival Path                                                                                 ;
++---------+---------+----+------+--------+-------------------+--------------------------------------+
+; Total   ; Incr    ; RF ; Type ; Fanout ; Location          ; Element                              ;
++---------+---------+----+------+--------+-------------------+--------------------------------------+
+; 4.000   ; 4.000   ;    ;      ;        ;                   ; launch edge time                     ;
+; 4.339   ; 0.339   ;    ;      ;        ;                   ; clock path                           ;
+;   4.339 ;   0.339 ; R  ;      ;        ;                   ; clock network delay                  ;
+; 6.601   ; 2.262   ;    ;      ;        ;                   ; data path                            ;
+;   4.600 ;   0.261 ;    ; uTco ; 1      ; FF_X22_Y12_N23    ; uart_line_ordinal[11]                ;
+;   4.600 ;   0.000 ; RR ; CELL ; 1      ; FF_X22_Y12_N23    ; uart_line_ordinal[11]|q              ;
+;   6.175 ;   1.575 ; RR ; IC   ; 1      ; LCCOMB_X32_Y13_N6 ; receiver_ordinal0[11]~feeder|datac   ;
+;   6.502 ;   0.327 ; RR ; CELL ; 1      ; LCCOMB_X32_Y13_N6 ; receiver_ordinal0[11]~feeder|combout ;
+;   6.502 ;   0.000 ; RR ; IC   ; 1      ; FF_X32_Y13_N7     ; receiver_ordinal0[11]|d              ;
+;   6.601 ;   0.099 ; RR ; CELL ; 1      ; FF_X32_Y13_N7     ; receiver_ordinal0[11]                ;
++---------+---------+----+------+--------+-------------------+--------------------------------------+
+
++-----------------------------------------------------------------------------------+
+; Data Required Path                                                                ;
++---------+----------+----+------+--------+---------------+-------------------------+
+; Total   ; Incr     ; RF ; Type ; Fanout ; Location      ; Element                 ;
++---------+----------+----+------+--------+---------------+-------------------------+
+; 8.000   ; 8.000    ;    ;      ;        ;               ; latch edge time         ;
+; 8.169   ; 0.169    ;    ;      ;        ;               ; clock path              ;
+;   7.923 ;   -0.077 ; R  ;      ;        ;               ; clock network delay     ;
+;   8.169 ;   0.246  ;    ;      ;        ;               ; clock pessimism removed ;
+; 8.149   ; -0.020   ;    ;      ;        ;               ; clock uncertainty       ;
+; 8.170   ; 0.021    ;    ; uTsu ; 1      ; FF_X32_Y13_N7 ; receiver_ordinal0[11]   ;
++---------+----------+----+------+--------+---------------+-------------------------+
+
+----------------------------
+; Extra Fitter Information ;
+----------------------------
+HTML report is unavailable in plain text report export.
+
+
+Path #2: Setup slack is 1.591 
+===============================================================================
++---------------------------------------------------------+
+; Path Summary                                            ;
++--------------------+------------------------------------+
+; Property           ; Value                              ;
++--------------------+------------------------------------+
+; From Node          ; uart_line_ordinal[12]              ;
+; To Node            ; receiver_ordinal0[12]              ;
+; Launch Clock       ; pll|pll|auto_generated|pll1|clk[0] ;
+; Latch Clock        ; pll|pll|auto_generated|pll1|clk[2] ;
+; Data Arrival Time  ; 6.578                              ;
+; Data Required Time ; 8.169                              ;
+; Slack              ; 1.591                              ;
++--------------------+------------------------------------+
+
++-----------------------------------------------------------------------------------------+
+; Statistics                                                                              ;
++---------------------------+--------+-------+-------------+------------+--------+--------+
+; Property                  ; Value  ; Count ; Total Delay ; % of Total ; Min    ; Max    ;
++---------------------------+--------+-------+-------------+------------+--------+--------+
+; Setup Relationship        ; 4.000  ;       ;             ;            ;        ;        ;
+; Clock Skew                ; -0.161 ;       ;             ;            ;        ;        ;
+; Data Delay                ; 2.249  ;       ;             ;            ;        ;        ;
+; Number of Logic Levels    ;        ; 1     ;             ;            ;        ;        ;
+; Physical Delays           ;        ;       ;             ;            ;        ;        ;
+;  Arrival Path             ;        ;       ;             ;            ;        ;        ;
+;   Clock                   ;        ;       ;             ;            ;        ;        ;
+;    Clock Network (Lumped) ;        ; 1     ; 0.329       ; 100        ; 0.329  ; 0.329  ;
+;   Data                    ;        ;       ;             ;            ;        ;        ;
+;    IC                     ;        ; 2     ; 1.562       ; 69         ; 0.000  ; 1.562  ;
+;    Cell                   ;        ; 3     ; 0.426       ; 19         ; 0.000  ; 0.327  ;
+;    uTco                   ;        ; 1     ; 0.261       ; 12         ; 0.261  ; 0.261  ;
+;  Required Path            ;        ;       ;             ;            ;        ;        ;
+;   Clock                   ;        ;       ;             ;            ;        ;        ;
+;    Clock Network (Lumped) ;        ; 1     ; -0.078      ;            ; -0.078 ; -0.078 ;
++---------------------------+--------+-------+-------------+------------+--------+--------+
+Note: Negative delays are omitted from totals when calculating percentages
+
++----------------------------------------------------------------------------------------------------+
+; Data Arrival Path                                                                                  ;
++---------+---------+----+------+--------+--------------------+--------------------------------------+
+; Total   ; Incr    ; RF ; Type ; Fanout ; Location           ; Element                              ;
++---------+---------+----+------+--------+--------------------+--------------------------------------+
+; 4.000   ; 4.000   ;    ;      ;        ;                    ; launch edge time                     ;
+; 4.329   ; 0.329   ;    ;      ;        ;                    ; clock path                           ;
+;   4.329 ;   0.329 ; R  ;      ;        ;                    ; clock network delay                  ;
+; 6.578   ; 2.249   ;    ;      ;        ;                    ; data path                            ;
+;   4.590 ;   0.261 ;    ; uTco ; 1      ; FF_X23_Y11_N25     ; uart_line_ordinal[12]                ;
+;   4.590 ;   0.000 ; RR ; CELL ; 1      ; FF_X23_Y11_N25     ; uart_line_ordinal[12]|q              ;
+;   6.152 ;   1.562 ; RR ; IC   ; 1      ; LCCOMB_X30_Y12_N14 ; receiver_ordinal0[12]~feeder|datac   ;
+;   6.479 ;   0.327 ; RR ; CELL ; 1      ; LCCOMB_X30_Y12_N14 ; receiver_ordinal0[12]~feeder|combout ;
+;   6.479 ;   0.000 ; RR ; IC   ; 1      ; FF_X30_Y12_N15     ; receiver_ordinal0[12]|d              ;
+;   6.578 ;   0.099 ; RR ; CELL ; 1      ; FF_X30_Y12_N15     ; receiver_ordinal0[12]                ;
++---------+---------+----+------+--------+--------------------+--------------------------------------+
+
++------------------------------------------------------------------------------------+
+; Data Required Path                                                                 ;
++---------+----------+----+------+--------+----------------+-------------------------+
+; Total   ; Incr     ; RF ; Type ; Fanout ; Location       ; Element                 ;
++---------+----------+----+------+--------+----------------+-------------------------+
+; 8.000   ; 8.000    ;    ;      ;        ;                ; latch edge time         ;
+; 8.168   ; 0.168    ;    ;      ;        ;                ; clock path              ;
+;   7.922 ;   -0.078 ; R  ;      ;        ;                ; clock network delay     ;
+;   8.168 ;   0.246  ;    ;      ;        ;                ; clock pessimism removed ;
+; 8.148   ; -0.020   ;    ;      ;        ;                ; clock uncertainty       ;
+; 8.169   ; 0.021    ;    ; uTsu ; 1      ; FF_X30_Y12_N15 ; receiver_ordinal0[12]   ;
++---------+----------+----+------+--------+----------------+-------------------------+
+
+----------------------------
+; Extra Fitter Information ;
+----------------------------
+HTML report is unavailable in plain text report export.
+
+
+Path #3: Setup slack is 1.952 
+===============================================================================
++---------------------------------------------------------+
+; Path Summary                                            ;
++--------------------+------------------------------------+
+; Property           ; Value                              ;
++--------------------+------------------------------------+
+; From Node          ; uart_line_ordinal[4]               ;
+; To Node            ; receiver_ordinal0[4]               ;
+; Launch Clock       ; pll|pll|auto_generated|pll1|clk[0] ;
+; Latch Clock        ; pll|pll|auto_generated|pll1|clk[2] ;
+; Data Arrival Time  ; 6.214                              ;
+; Data Required Time ; 8.166                              ;
+; Slack              ; 1.952                              ;
++--------------------+------------------------------------+
+
++-----------------------------------------------------------------------------------------+
+; Statistics                                                                              ;
++---------------------------+--------+-------+-------------+------------+--------+--------+
+; Property                  ; Value  ; Count ; Total Delay ; % of Total ; Min    ; Max    ;
++---------------------------+--------+-------+-------------+------------+--------+--------+
+; Setup Relationship        ; 4.000  ;       ;             ;            ;        ;        ;
+; Clock Skew                ; -0.162 ;       ;             ;            ;        ;        ;
+; Data Delay                ; 1.887  ;       ;             ;            ;        ;        ;
+; Number of Logic Levels    ;        ; 1     ;             ;            ;        ;        ;
+; Physical Delays           ;        ;       ;             ;            ;        ;        ;
+;  Arrival Path             ;        ;       ;             ;            ;        ;        ;
+;   Clock                   ;        ;       ;             ;            ;        ;        ;
+;    Clock Network (Lumped) ;        ; 1     ; 0.327       ; 100        ; 0.327  ; 0.327  ;
+;   Data                    ;        ;       ;             ;            ;        ;        ;
+;    IC                     ;        ; 2     ; 1.200       ; 64         ; 0.000  ; 1.200  ;
+;    Cell                   ;        ; 3     ; 0.426       ; 23         ; 0.000  ; 0.327  ;
+;    uTco                   ;        ; 1     ; 0.261       ; 14         ; 0.261  ; 0.261  ;
+;  Required Path            ;        ;       ;             ;            ;        ;        ;
+;   Clock                   ;        ;       ;             ;            ;        ;        ;
+;    Clock Network (Lumped) ;        ; 1     ; -0.081      ;            ; -0.081 ; -0.081 ;
++---------------------------+--------+-------+-------------+------------+--------+--------+
+Note: Negative delays are omitted from totals when calculating percentages
+
++---------------------------------------------------------------------------------------------------+
+; Data Arrival Path                                                                                 ;
++---------+---------+----+------+--------+--------------------+-------------------------------------+
+; Total   ; Incr    ; RF ; Type ; Fanout ; Location           ; Element                             ;
++---------+---------+----+------+--------+--------------------+-------------------------------------+
+; 4.000   ; 4.000   ;    ;      ;        ;                    ; launch edge time                    ;
+; 4.327   ; 0.327   ;    ;      ;        ;                    ; clock path                          ;
+;   4.327 ;   0.327 ; R  ;      ;        ;                    ; clock network delay                 ;
+; 6.214   ; 1.887   ;    ;      ;        ;                    ; data path                           ;
+;   4.588 ;   0.261 ;    ; uTco ; 1      ; FF_X22_Y9_N23      ; uart_line_ordinal[4]                ;
+;   4.588 ;   0.000 ; RR ; CELL ; 1      ; FF_X22_Y9_N23      ; uart_line_ordinal[4]|q              ;
+;   5.788 ;   1.200 ; RR ; IC   ; 1      ; LCCOMB_X26_Y12_N28 ; receiver_ordinal0[4]~feeder|datac   ;
+;   6.115 ;   0.327 ; RR ; CELL ; 1      ; LCCOMB_X26_Y12_N28 ; receiver_ordinal0[4]~feeder|combout ;
+;   6.115 ;   0.000 ; RR ; IC   ; 1      ; FF_X26_Y12_N29     ; receiver_ordinal0[4]|d              ;
+;   6.214 ;   0.099 ; RR ; CELL ; 1      ; FF_X26_Y12_N29     ; receiver_ordinal0[4]                ;
++---------+---------+----+------+--------+--------------------+-------------------------------------+
+
++------------------------------------------------------------------------------------+
+; Data Required Path                                                                 ;
++---------+----------+----+------+--------+----------------+-------------------------+
+; Total   ; Incr     ; RF ; Type ; Fanout ; Location       ; Element                 ;
++---------+----------+----+------+--------+----------------+-------------------------+
+; 8.000   ; 8.000    ;    ;      ;        ;                ; latch edge time         ;
+; 8.165   ; 0.165    ;    ;      ;        ;                ; clock path              ;
+;   7.919 ;   -0.081 ; R  ;      ;        ;                ; clock network delay     ;
+;   8.165 ;   0.246  ;    ;      ;        ;                ; clock pessimism removed ;
+; 8.145   ; -0.020   ;    ;      ;        ;                ; clock uncertainty       ;
+; 8.166   ; 0.021    ;    ; uTsu ; 1      ; FF_X26_Y12_N29 ; receiver_ordinal0[4]    ;
++---------+----------+----+------+--------+----------------+-------------------------+
+
+----------------------------
+; Extra Fitter Information ;
+----------------------------
+HTML report is unavailable in plain text report export.
+
+
+Path #4: Setup slack is 2.073 
+===============================================================================
++---------------------------------------------------------+
+; Path Summary                                            ;
++--------------------+------------------------------------+
+; Property           ; Value                              ;
++--------------------+------------------------------------+
+; From Node          ; uart_line_ordinal[2]               ;
+; To Node            ; receiver_ordinal0[2]               ;
+; Launch Clock       ; pll|pll|auto_generated|pll1|clk[0] ;
+; Latch Clock        ; pll|pll|auto_generated|pll1|clk[2] ;
+; Data Arrival Time  ; 6.093                              ;
+; Data Required Time ; 8.166                              ;
+; Slack              ; 2.073                              ;
++--------------------+------------------------------------+
+
++-----------------------------------------------------------------------------------------+
+; Statistics                                                                              ;
++---------------------------+--------+-------+-------------+------------+--------+--------+
+; Property                  ; Value  ; Count ; Total Delay ; % of Total ; Min    ; Max    ;
++---------------------------+--------+-------+-------------+------------+--------+--------+
+; Setup Relationship        ; 4.000  ;       ;             ;            ;        ;        ;
+; Clock Skew                ; -0.162 ;       ;             ;            ;        ;        ;
+; Data Delay                ; 1.766  ;       ;             ;            ;        ;        ;
+; Number of Logic Levels    ;        ; 1     ;             ;            ;        ;        ;
+; Physical Delays           ;        ;       ;             ;            ;        ;        ;
+;  Arrival Path             ;        ;       ;             ;            ;        ;        ;
+;   Clock                   ;        ;       ;             ;            ;        ;        ;
+;    Clock Network (Lumped) ;        ; 1     ; 0.327       ; 100        ; 0.327  ; 0.327  ;
+;   Data                    ;        ;       ;             ;            ;        ;        ;
+;    IC                     ;        ; 2     ; 1.229       ; 70         ; 0.000  ; 1.229  ;
+;    Cell                   ;        ; 3     ; 0.276       ; 16         ; 0.000  ; 0.177  ;
+;    uTco                   ;        ; 1     ; 0.261       ; 15         ; 0.261  ; 0.261  ;
+;  Required Path            ;        ;       ;             ;            ;        ;        ;
+;   Clock                   ;        ;       ;             ;            ;        ;        ;
+;    Clock Network (Lumped) ;        ; 1     ; -0.081      ;            ; -0.081 ; -0.081 ;
++---------------------------+--------+-------+-------------+------------+--------+--------+
+Note: Negative delays are omitted from totals when calculating percentages
+
++---------------------------------------------------------------------------------------------------+
+; Data Arrival Path                                                                                 ;
++---------+---------+----+------+--------+--------------------+-------------------------------------+
+; Total   ; Incr    ; RF ; Type ; Fanout ; Location           ; Element                             ;
++---------+---------+----+------+--------+--------------------+-------------------------------------+
+; 4.000   ; 4.000   ;    ;      ;        ;                    ; launch edge time                    ;
+; 4.327   ; 0.327   ;    ;      ;        ;                    ; clock path                          ;
+;   4.327 ;   0.327 ; R  ;      ;        ;                    ; clock network delay                 ;
+; 6.093   ; 1.766   ;    ;      ;        ;                    ; data path                           ;
+;   4.588 ;   0.261 ;    ; uTco ; 1      ; FF_X22_Y9_N3       ; uart_line_ordinal[2]                ;
+;   4.588 ;   0.000 ; RR ; CELL ; 1      ; FF_X22_Y9_N3       ; uart_line_ordinal[2]|q              ;
+;   5.817 ;   1.229 ; RR ; IC   ; 1      ; LCCOMB_X26_Y12_N12 ; receiver_ordinal0[2]~feeder|datad   ;
+;   5.994 ;   0.177 ; RR ; CELL ; 1      ; LCCOMB_X26_Y12_N12 ; receiver_ordinal0[2]~feeder|combout ;
+;   5.994 ;   0.000 ; RR ; IC   ; 1      ; FF_X26_Y12_N13     ; receiver_ordinal0[2]|d              ;
+;   6.093 ;   0.099 ; RR ; CELL ; 1      ; FF_X26_Y12_N13     ; receiver_ordinal0[2]                ;
++---------+---------+----+------+--------+--------------------+-------------------------------------+
+
++------------------------------------------------------------------------------------+
+; Data Required Path                                                                 ;
++---------+----------+----+------+--------+----------------+-------------------------+
+; Total   ; Incr     ; RF ; Type ; Fanout ; Location       ; Element                 ;
++---------+----------+----+------+--------+----------------+-------------------------+
+; 8.000   ; 8.000    ;    ;      ;        ;                ; latch edge time         ;
+; 8.165   ; 0.165    ;    ;      ;        ;                ; clock path              ;
+;   7.919 ;   -0.081 ; R  ;      ;        ;                ; clock network delay     ;
+;   8.165 ;   0.246  ;    ;      ;        ;                ; clock pessimism removed ;
+; 8.145   ; -0.020   ;    ;      ;        ;                ; clock uncertainty       ;
+; 8.166   ; 0.021    ;    ; uTsu ; 1      ; FF_X26_Y12_N13 ; receiver_ordinal0[2]    ;
++---------+----------+----+------+--------+----------------+-------------------------+
+
+----------------------------
+; Extra Fitter Information ;
+----------------------------
+HTML report is unavailable in plain text report export.
+
+
+Path #5: Setup slack is 2.078 
+===============================================================================
++---------------------------------------------------------+
+; Path Summary                                            ;
++--------------------+------------------------------------+
+; Property           ; Value                              ;
++--------------------+------------------------------------+
+; From Node          ; uart_line_ordinal[3]               ;
+; To Node            ; receiver_ordinal0[3]               ;
+; Launch Clock       ; pll|pll|auto_generated|pll1|clk[0] ;
+; Latch Clock        ; pll|pll|auto_generated|pll1|clk[2] ;
+; Data Arrival Time  ; 6.088                              ;
+; Data Required Time ; 8.166                              ;
+; Slack              ; 2.078                              ;
++--------------------+------------------------------------+
+
++-----------------------------------------------------------------------------------------+
+; Statistics                                                                              ;
++---------------------------+--------+-------+-------------+------------+--------+--------+
+; Property                  ; Value  ; Count ; Total Delay ; % of Total ; Min    ; Max    ;
++---------------------------+--------+-------+-------------+------------+--------+--------+
+; Setup Relationship        ; 4.000  ;       ;             ;            ;        ;        ;
+; Clock Skew                ; -0.162 ;       ;             ;            ;        ;        ;
+; Data Delay                ; 1.761  ;       ;             ;            ;        ;        ;
+; Number of Logic Levels    ;        ; 1     ;             ;            ;        ;        ;
+; Physical Delays           ;        ;       ;             ;            ;        ;        ;
+;  Arrival Path             ;        ;       ;             ;            ;        ;        ;
+;   Clock                   ;        ;       ;             ;            ;        ;        ;
+;    Clock Network (Lumped) ;        ; 1     ; 0.327       ; 100        ; 0.327  ; 0.327  ;
+;   Data                    ;        ;       ;             ;            ;        ;        ;
+;    IC                     ;        ; 2     ; 1.224       ; 70         ; 0.000  ; 1.224  ;
+;    Cell                   ;        ; 3     ; 0.276       ; 16         ; 0.000  ; 0.177  ;
+;    uTco                   ;        ; 1     ; 0.261       ; 15         ; 0.261  ; 0.261  ;
+;  Required Path            ;        ;       ;             ;            ;        ;        ;
+;   Clock                   ;        ;       ;             ;            ;        ;        ;
+;    Clock Network (Lumped) ;        ; 1     ; -0.081      ;            ; -0.081 ; -0.081 ;
++---------------------------+--------+-------+-------------+------------+--------+--------+
+Note: Negative delays are omitted from totals when calculating percentages
+
++--------------------------------------------------------------------------------------------------+
+; Data Arrival Path                                                                                ;
++---------+---------+----+------+--------+-------------------+-------------------------------------+
+; Total   ; Incr    ; RF ; Type ; Fanout ; Location          ; Element                             ;
++---------+---------+----+------+--------+-------------------+-------------------------------------+
+; 4.000   ; 4.000   ;    ;      ;        ;                   ; launch edge time                    ;
+; 4.327   ; 0.327   ;    ;      ;        ;                   ; clock path                          ;
+;   4.327 ;   0.327 ; R  ;      ;        ;                   ; clock network delay                 ;
+; 6.088   ; 1.761   ;    ;      ;        ;                   ; data path                           ;
+;   4.588 ;   0.261 ;    ; uTco ; 1      ; FF_X22_Y9_N13     ; uart_line_ordinal[3]                ;
+;   4.588 ;   0.000 ; RR ; CELL ; 1      ; FF_X22_Y9_N13     ; uart_line_ordinal[3]|q              ;
+;   5.812 ;   1.224 ; RR ; IC   ; 1      ; LCCOMB_X26_Y12_N6 ; receiver_ordinal0[3]~feeder|datad   ;
+;   5.989 ;   0.177 ; RR ; CELL ; 1      ; LCCOMB_X26_Y12_N6 ; receiver_ordinal0[3]~feeder|combout ;
+;   5.989 ;   0.000 ; RR ; IC   ; 1      ; FF_X26_Y12_N7     ; receiver_ordinal0[3]|d              ;
+;   6.088 ;   0.099 ; RR ; CELL ; 1      ; FF_X26_Y12_N7     ; receiver_ordinal0[3]                ;
++---------+---------+----+------+--------+-------------------+-------------------------------------+
+
++-----------------------------------------------------------------------------------+
+; Data Required Path                                                                ;
++---------+----------+----+------+--------+---------------+-------------------------+
+; Total   ; Incr     ; RF ; Type ; Fanout ; Location      ; Element                 ;
++---------+----------+----+------+--------+---------------+-------------------------+
+; 8.000   ; 8.000    ;    ;      ;        ;               ; latch edge time         ;
+; 8.165   ; 0.165    ;    ;      ;        ;               ; clock path              ;
+;   7.919 ;   -0.081 ; R  ;      ;        ;               ; clock network delay     ;
+;   8.165 ;   0.246  ;    ;      ;        ;               ; clock pessimism removed ;
+; 8.145   ; -0.020   ;    ;      ;        ;               ; clock uncertainty       ;
+; 8.166   ; 0.021    ;    ; uTsu ; 1      ; FF_X26_Y12_N7 ; receiver_ordinal0[3]    ;
++---------+----------+----+------+--------+---------------+-------------------------+
+
+----------------------------
+; Extra Fitter Information ;
+----------------------------
+HTML report is unavailable in plain text report export.
+
+
+Path #6: Setup slack is 2.129 
+===============================================================================
++---------------------------------------------------------+
+; Path Summary                                            ;
++--------------------+------------------------------------+
+; Property           ; Value                              ;
++--------------------+------------------------------------+
+; From Node          ; uart_line_ordinal[9]               ;
+; To Node            ; receiver_ordinal0[9]               ;
+; Launch Clock       ; pll|pll|auto_generated|pll1|clk[0] ;
+; Latch Clock        ; pll|pll|auto_generated|pll1|clk[2] ;
+; Data Arrival Time  ; 6.037                              ;
+; Data Required Time ; 8.166                              ;
+; Slack              ; 2.129                              ;
++--------------------+------------------------------------+
+
++-----------------------------------------------------------------------------------------+
+; Statistics                                                                              ;
++---------------------------+--------+-------+-------------+------------+--------+--------+
+; Property                  ; Value  ; Count ; Total Delay ; % of Total ; Min    ; Max    ;
++---------------------------+--------+-------+-------------+------------+--------+--------+
+; Setup Relationship        ; 4.000  ;       ;             ;            ;        ;        ;
+; Clock Skew                ; -0.163 ;       ;             ;            ;        ;        ;
+; Data Delay                ; 1.709  ;       ;             ;            ;        ;        ;
+; Number of Logic Levels    ;        ; 1     ;             ;            ;        ;        ;
+; Physical Delays           ;        ;       ;             ;            ;        ;        ;
+;  Arrival Path             ;        ;       ;             ;            ;        ;        ;
+;   Clock                   ;        ;       ;             ;            ;        ;        ;
+;    Clock Network (Lumped) ;        ; 1     ; 0.328       ; 100        ; 0.328  ; 0.328  ;
+;   Data                    ;        ;       ;             ;            ;        ;        ;
+;    IC                     ;        ; 2     ; 1.172       ; 69         ; 0.000  ; 1.172  ;
+;    Cell                   ;        ; 3     ; 0.276       ; 16         ; 0.000  ; 0.177  ;
+;    uTco                   ;        ; 1     ; 0.261       ; 15         ; 0.261  ; 0.261  ;
+;  Required Path            ;        ;       ;             ;            ;        ;        ;
+;   Clock                   ;        ;       ;             ;            ;        ;        ;
+;    Clock Network (Lumped) ;        ; 1     ; -0.081      ;            ; -0.081 ; -0.081 ;
++---------------------------+--------+-------+-------------+------------+--------+--------+
+Note: Negative delays are omitted from totals when calculating percentages
+
++---------------------------------------------------------------------------------------------------+
+; Data Arrival Path                                                                                 ;
++---------+---------+----+------+--------+--------------------+-------------------------------------+
+; Total   ; Incr    ; RF ; Type ; Fanout ; Location           ; Element                             ;
++---------+---------+----+------+--------+--------------------+-------------------------------------+
+; 4.000   ; 4.000   ;    ;      ;        ;                    ; launch edge time                    ;
+; 4.328   ; 0.328   ;    ;      ;        ;                    ; clock path                          ;
+;   4.328 ;   0.328 ; R  ;      ;        ;                    ; clock network delay                 ;
+; 6.037   ; 1.709   ;    ;      ;        ;                    ; data path                           ;
+;   4.589 ;   0.261 ;    ; uTco ; 1      ; FF_X23_Y9_N9       ; uart_line_ordinal[9]                ;
+;   4.589 ;   0.000 ; RR ; CELL ; 1      ; FF_X23_Y9_N9       ; uart_line_ordinal[9]|q              ;
+;   5.761 ;   1.172 ; RR ; IC   ; 1      ; LCCOMB_X26_Y12_N14 ; receiver_ordinal0[9]~feeder|datad   ;
+;   5.938 ;   0.177 ; RR ; CELL ; 1      ; LCCOMB_X26_Y12_N14 ; receiver_ordinal0[9]~feeder|combout ;
+;   5.938 ;   0.000 ; RR ; IC   ; 1      ; FF_X26_Y12_N15     ; receiver_ordinal0[9]|d              ;
+;   6.037 ;   0.099 ; RR ; CELL ; 1      ; FF_X26_Y12_N15     ; receiver_ordinal0[9]                ;
++---------+---------+----+------+--------+--------------------+-------------------------------------+
+
++------------------------------------------------------------------------------------+
+; Data Required Path                                                                 ;
++---------+----------+----+------+--------+----------------+-------------------------+
+; Total   ; Incr     ; RF ; Type ; Fanout ; Location       ; Element                 ;
++---------+----------+----+------+--------+----------------+-------------------------+
+; 8.000   ; 8.000    ;    ;      ;        ;                ; latch edge time         ;
+; 8.165   ; 0.165    ;    ;      ;        ;                ; clock path              ;
+;   7.919 ;   -0.081 ; R  ;      ;        ;                ; clock network delay     ;
+;   8.165 ;   0.246  ;    ;      ;        ;                ; clock pessimism removed ;
+; 8.145   ; -0.020   ;    ;      ;        ;                ; clock uncertainty       ;
+; 8.166   ; 0.021    ;    ; uTsu ; 1      ; FF_X26_Y12_N15 ; receiver_ordinal0[9]    ;
++---------+----------+----+------+--------+----------------+-------------------------+
+
+----------------------------
+; Extra Fitter Information ;
+----------------------------
+HTML report is unavailable in plain text report export.
+
+
+Path #7: Setup slack is 2.130 
+===============================================================================
++---------------------------------------------------------+
+; Path Summary                                            ;
++--------------------+------------------------------------+
+; Property           ; Value                              ;
++--------------------+------------------------------------+
+; From Node          ; uart_line_ordinal[1]               ;
+; To Node            ; receiver_ordinal0[1]               ;
+; Launch Clock       ; pll|pll|auto_generated|pll1|clk[0] ;
+; Latch Clock        ; pll|pll|auto_generated|pll1|clk[2] ;
+; Data Arrival Time  ; 6.036                              ;
+; Data Required Time ; 8.166                              ;
+; Slack              ; 2.130                              ;
++--------------------+------------------------------------+
+
++-----------------------------------------------------------------------------------------+
+; Statistics                                                                              ;
++---------------------------+--------+-------+-------------+------------+--------+--------+
+; Property                  ; Value  ; Count ; Total Delay ; % of Total ; Min    ; Max    ;
++---------------------------+--------+-------+-------------+------------+--------+--------+
+; Setup Relationship        ; 4.000  ;       ;             ;            ;        ;        ;
+; Clock Skew                ; -0.162 ;       ;             ;            ;        ;        ;
+; Data Delay                ; 1.709  ;       ;             ;            ;        ;        ;
+; Number of Logic Levels    ;        ; 1     ;             ;            ;        ;        ;
+; Physical Delays           ;        ;       ;             ;            ;        ;        ;
+;  Arrival Path             ;        ;       ;             ;            ;        ;        ;
+;   Clock                   ;        ;       ;             ;            ;        ;        ;
+;    Clock Network (Lumped) ;        ; 1     ; 0.327       ; 100        ; 0.327  ; 0.327  ;
+;   Data                    ;        ;       ;             ;            ;        ;        ;
+;    IC                     ;        ; 2     ; 1.172       ; 69         ; 0.000  ; 1.172  ;
+;    Cell                   ;        ; 3     ; 0.276       ; 16         ; 0.000  ; 0.177  ;
+;    uTco                   ;        ; 1     ; 0.261       ; 15         ; 0.261  ; 0.261  ;
+;  Required Path            ;        ;       ;             ;            ;        ;        ;
+;   Clock                   ;        ;       ;             ;            ;        ;        ;
+;    Clock Network (Lumped) ;        ; 1     ; -0.081      ;            ; -0.081 ; -0.081 ;
++---------------------------+--------+-------+-------------+------------+--------+--------+
+Note: Negative delays are omitted from totals when calculating percentages
+
++--------------------------------------------------------------------------------------------------+
+; Data Arrival Path                                                                                ;
++---------+---------+----+------+--------+-------------------+-------------------------------------+
+; Total   ; Incr    ; RF ; Type ; Fanout ; Location          ; Element                             ;
++---------+---------+----+------+--------+-------------------+-------------------------------------+
+; 4.000   ; 4.000   ;    ;      ;        ;                   ; launch edge time                    ;
+; 4.327   ; 0.327   ;    ;      ;        ;                   ; clock path                          ;
+;   4.327 ;   0.327 ; R  ;      ;        ;                   ; clock network delay                 ;
+; 6.036   ; 1.709   ;    ;      ;        ;                   ; data path                           ;
+;   4.588 ;   0.261 ;    ; uTco ; 1      ; FF_X22_Y9_N1      ; uart_line_ordinal[1]                ;
+;   4.588 ;   0.000 ; RR ; CELL ; 1      ; FF_X22_Y9_N1      ; uart_line_ordinal[1]|q              ;
+;   5.760 ;   1.172 ; RR ; IC   ; 1      ; LCCOMB_X26_Y12_N2 ; receiver_ordinal0[1]~feeder|datad   ;
+;   5.937 ;   0.177 ; RR ; CELL ; 1      ; LCCOMB_X26_Y12_N2 ; receiver_ordinal0[1]~feeder|combout ;
+;   5.937 ;   0.000 ; RR ; IC   ; 1      ; FF_X26_Y12_N3     ; receiver_ordinal0[1]|d              ;
+;   6.036 ;   0.099 ; RR ; CELL ; 1      ; FF_X26_Y12_N3     ; receiver_ordinal0[1]                ;
++---------+---------+----+------+--------+-------------------+-------------------------------------+
+
++-----------------------------------------------------------------------------------+
+; Data Required Path                                                                ;
++---------+----------+----+------+--------+---------------+-------------------------+
+; Total   ; Incr     ; RF ; Type ; Fanout ; Location      ; Element                 ;
++---------+----------+----+------+--------+---------------+-------------------------+
+; 8.000   ; 8.000    ;    ;      ;        ;               ; latch edge time         ;
+; 8.165   ; 0.165    ;    ;      ;        ;               ; clock path              ;
+;   7.919 ;   -0.081 ; R  ;      ;        ;               ; clock network delay     ;
+;   8.165 ;   0.246  ;    ;      ;        ;               ; clock pessimism removed ;
+; 8.145   ; -0.020   ;    ;      ;        ;               ; clock uncertainty       ;
+; 8.166   ; 0.021    ;    ; uTsu ; 1      ; FF_X26_Y12_N3 ; receiver_ordinal0[1]    ;
++---------+----------+----+------+--------+---------------+-------------------------+
+
+----------------------------
+; Extra Fitter Information ;
+----------------------------
+HTML report is unavailable in plain text report export.
+
+
+Path #8: Setup slack is 2.178 
+===============================================================================
++---------------------------------------------------------+
+; Path Summary                                            ;
++--------------------+------------------------------------+
+; Property           ; Value                              ;
++--------------------+------------------------------------+
+; From Node          ; uart_line_ordinal[0]               ;
+; To Node            ; receiver_ordinal0[0]               ;
+; Launch Clock       ; pll|pll|auto_generated|pll1|clk[0] ;
+; Latch Clock        ; pll|pll|auto_generated|pll1|clk[2] ;
+; Data Arrival Time  ; 5.987                              ;
+; Data Required Time ; 8.165                              ;
+; Slack              ; 2.178                              ;
++--------------------+------------------------------------+
+
++-----------------------------------------------------------------------------------------+
+; Statistics                                                                              ;
++---------------------------+--------+-------+-------------+------------+--------+--------+
+; Property                  ; Value  ; Count ; Total Delay ; % of Total ; Min    ; Max    ;
++---------------------------+--------+-------+-------------+------------+--------+--------+
+; Setup Relationship        ; 4.000  ;       ;             ;            ;        ;        ;
+; Clock Skew                ; -0.175 ;       ;             ;            ;        ;        ;
+; Data Delay                ; 1.648  ;       ;             ;            ;        ;        ;
+; Number of Logic Levels    ;        ; 1     ;             ;            ;        ;        ;
+; Physical Delays           ;        ;       ;             ;            ;        ;        ;
+;  Arrival Path             ;        ;       ;             ;            ;        ;        ;
+;   Clock                   ;        ;       ;             ;            ;        ;        ;
+;    Clock Network (Lumped) ;        ; 1     ; 0.339       ; 100        ; 0.339  ; 0.339  ;
+;   Data                    ;        ;       ;             ;            ;        ;        ;
+;    IC                     ;        ; 2     ; 1.111       ; 67         ; 0.000  ; 1.111  ;
+;    Cell                   ;        ; 3     ; 0.276       ; 17         ; 0.000  ; 0.177  ;
+;    uTco                   ;        ; 1     ; 0.261       ; 16         ; 0.261  ; 0.261  ;
+;  Required Path            ;        ;       ;             ;            ;        ;        ;
+;   Clock                   ;        ;       ;             ;            ;        ;        ;
+;    Clock Network (Lumped) ;        ; 1     ; -0.082      ;            ; -0.082 ; -0.082 ;
++---------------------------+--------+-------+-------------+------------+--------+--------+
+Note: Negative delays are omitted from totals when calculating percentages
+
++---------------------------------------------------------------------------------------------------+
+; Data Arrival Path                                                                                 ;
++---------+---------+----+------+--------+--------------------+-------------------------------------+
+; Total   ; Incr    ; RF ; Type ; Fanout ; Location           ; Element                             ;
++---------+---------+----+------+--------+--------------------+-------------------------------------+
+; 4.000   ; 4.000   ;    ;      ;        ;                    ; launch edge time                    ;
+; 4.339   ; 0.339   ;    ;      ;        ;                    ; clock path                          ;
+;   4.339 ;   0.339 ; R  ;      ;        ;                    ; clock network delay                 ;
+; 5.987   ; 1.648   ;    ;      ;        ;                    ; data path                           ;
+;   4.600 ;   0.261 ;    ; uTco ; 1      ; FF_X22_Y12_N31     ; uart_line_ordinal[0]                ;
+;   4.600 ;   0.000 ; RR ; CELL ; 1      ; FF_X22_Y12_N31     ; uart_line_ordinal[0]|q              ;
+;   5.711 ;   1.111 ; RR ; IC   ; 1      ; LCCOMB_X25_Y13_N22 ; receiver_ordinal0[0]~feeder|datad   ;
+;   5.888 ;   0.177 ; RR ; CELL ; 1      ; LCCOMB_X25_Y13_N22 ; receiver_ordinal0[0]~feeder|combout ;
+;   5.888 ;   0.000 ; RR ; IC   ; 1      ; FF_X25_Y13_N23     ; receiver_ordinal0[0]|d              ;
+;   5.987 ;   0.099 ; RR ; CELL ; 1      ; FF_X25_Y13_N23     ; receiver_ordinal0[0]                ;
++---------+---------+----+------+--------+--------------------+-------------------------------------+
+
++------------------------------------------------------------------------------------+
+; Data Required Path                                                                 ;
++---------+----------+----+------+--------+----------------+-------------------------+
+; Total   ; Incr     ; RF ; Type ; Fanout ; Location       ; Element                 ;
++---------+----------+----+------+--------+----------------+-------------------------+
+; 8.000   ; 8.000    ;    ;      ;        ;                ; latch edge time         ;
+; 8.164   ; 0.164    ;    ;      ;        ;                ; clock path              ;
+;   7.918 ;   -0.082 ; R  ;      ;        ;                ; clock network delay     ;
+;   8.164 ;   0.246  ;    ;      ;        ;                ; clock pessimism removed ;
+; 8.144   ; -0.020   ;    ;      ;        ;                ; clock uncertainty       ;
+; 8.165   ; 0.021    ;    ; uTsu ; 1      ; FF_X25_Y13_N23 ; receiver_ordinal0[0]    ;
++---------+----------+----+------+--------+----------------+-------------------------+
+
+----------------------------
+; Extra Fitter Information ;
+----------------------------
+HTML report is unavailable in plain text report export.
+
+
+Path #9: Setup slack is 2.244 
+===============================================================================
++---------------------------------------------------------+
+; Path Summary                                            ;
++--------------------+------------------------------------+
+; Property           ; Value                              ;
++--------------------+------------------------------------+
+; From Node          ; uart_line_ordinal[6]               ;
+; To Node            ; receiver_ordinal0[6]               ;
+; Launch Clock       ; pll|pll|auto_generated|pll1|clk[0] ;
+; Latch Clock        ; pll|pll|auto_generated|pll1|clk[2] ;
+; Data Arrival Time  ; 5.921                              ;
+; Data Required Time ; 8.165                              ;
+; Slack              ; 2.244                              ;
++--------------------+------------------------------------+
+
++-----------------------------------------------------------------------------------------+
+; Statistics                                                                              ;
++---------------------------+--------+-------+-------------+------------+--------+--------+
+; Property                  ; Value  ; Count ; Total Delay ; % of Total ; Min    ; Max    ;
++---------------------------+--------+-------+-------------+------------+--------+--------+
+; Setup Relationship        ; 4.000  ;       ;             ;            ;        ;        ;
+; Clock Skew                ; -0.166 ;       ;             ;            ;        ;        ;
+; Data Delay                ; 1.591  ;       ;             ;            ;        ;        ;
+; Number of Logic Levels    ;        ; 1     ;             ;            ;        ;        ;
+; Physical Delays           ;        ;       ;             ;            ;        ;        ;
+;  Arrival Path             ;        ;       ;             ;            ;        ;        ;
+;   Clock                   ;        ;       ;             ;            ;        ;        ;
+;    Clock Network (Lumped) ;        ; 1     ; 0.330       ; 100        ; 0.330  ; 0.330  ;
+;   Data                    ;        ;       ;             ;            ;        ;        ;
+;    IC                     ;        ; 2     ; 0.904       ; 57         ; 0.000  ; 0.904  ;
+;    Cell                   ;        ; 3     ; 0.426       ; 27         ; 0.000  ; 0.327  ;
+;    uTco                   ;        ; 1     ; 0.261       ; 16         ; 0.261  ; 0.261  ;
+;  Required Path            ;        ;       ;             ;            ;        ;        ;
+;   Clock                   ;        ;       ;             ;            ;        ;        ;
+;    Clock Network (Lumped) ;        ; 1     ; -0.082      ;            ; -0.082 ; -0.082 ;
++---------------------------+--------+-------+-------------+------------+--------+--------+
+Note: Negative delays are omitted from totals when calculating percentages
+
++---------------------------------------------------------------------------------------------------+
+; Data Arrival Path                                                                                 ;
++---------+---------+----+------+--------+--------------------+-------------------------------------+
+; Total   ; Incr    ; RF ; Type ; Fanout ; Location           ; Element                             ;
++---------+---------+----+------+--------+--------------------+-------------------------------------+
+; 4.000   ; 4.000   ;    ;      ;        ;                    ; launch edge time                    ;
+; 4.330   ; 0.330   ;    ;      ;        ;                    ; clock path                          ;
+;   4.330 ;   0.330 ; R  ;      ;        ;                    ; clock network delay                 ;
+; 5.921   ; 1.591   ;    ;      ;        ;                    ; data path                           ;
+;   4.591 ;   0.261 ;    ; uTco ; 1      ; FF_X25_Y10_N5      ; uart_line_ordinal[6]                ;
+;   4.591 ;   0.000 ; RR ; CELL ; 1      ; FF_X25_Y10_N5      ; uart_line_ordinal[6]|q              ;
+;   5.495 ;   0.904 ; RR ; IC   ; 1      ; LCCOMB_X25_Y13_N18 ; receiver_ordinal0[6]~feeder|datac   ;
+;   5.822 ;   0.327 ; RR ; CELL ; 1      ; LCCOMB_X25_Y13_N18 ; receiver_ordinal0[6]~feeder|combout ;
+;   5.822 ;   0.000 ; RR ; IC   ; 1      ; FF_X25_Y13_N19     ; receiver_ordinal0[6]|d              ;
+;   5.921 ;   0.099 ; RR ; CELL ; 1      ; FF_X25_Y13_N19     ; receiver_ordinal0[6]                ;
++---------+---------+----+------+--------+--------------------+-------------------------------------+
+
++------------------------------------------------------------------------------------+
+; Data Required Path                                                                 ;
++---------+----------+----+------+--------+----------------+-------------------------+
+; Total   ; Incr     ; RF ; Type ; Fanout ; Location       ; Element                 ;
++---------+----------+----+------+--------+----------------+-------------------------+
+; 8.000   ; 8.000    ;    ;      ;        ;                ; latch edge time         ;
+; 8.164   ; 0.164    ;    ;      ;        ;                ; clock path              ;
+;   7.918 ;   -0.082 ; R  ;      ;        ;                ; clock network delay     ;
+;   8.164 ;   0.246  ;    ;      ;        ;                ; clock pessimism removed ;
+; 8.144   ; -0.020   ;    ;      ;        ;                ; clock uncertainty       ;
+; 8.165   ; 0.021    ;    ; uTsu ; 1      ; FF_X25_Y13_N19 ; receiver_ordinal0[6]    ;
++---------+----------+----+------+--------+----------------+-------------------------+
+
+----------------------------
+; Extra Fitter Information ;
+----------------------------
+HTML report is unavailable in plain text report export.
+
+
+Path #10: Setup slack is 2.354 
+===============================================================================
++---------------------------------------------------------+
+; Path Summary                                            ;
++--------------------+------------------------------------+
+; Property           ; Value                              ;
++--------------------+------------------------------------+
+; From Node          ; uart_line_ordinal[5]               ;
+; To Node            ; receiver_ordinal0[5]               ;
+; Launch Clock       ; pll|pll|auto_generated|pll1|clk[0] ;
+; Latch Clock        ; pll|pll|auto_generated|pll1|clk[2] ;
+; Data Arrival Time  ; 5.800                              ;
+; Data Required Time ; 8.154                              ;
+; Slack              ; 2.354                              ;
++--------------------+------------------------------------+
+
++-----------------------------------------------------------------------------------------+
+; Statistics                                                                              ;
++---------------------------+--------+-------+-------------+------------+--------+--------+
+; Property                  ; Value  ; Count ; Total Delay ; % of Total ; Min    ; Max    ;
++---------------------------+--------+-------+-------------+------------+--------+--------+
+; Setup Relationship        ; 4.000  ;       ;             ;            ;        ;        ;
+; Clock Skew                ; -0.177 ;       ;             ;            ;        ;        ;
+; Data Delay                ; 1.470  ;       ;             ;            ;        ;        ;
+; Number of Logic Levels    ;        ; 1     ;             ;            ;        ;        ;
+; Physical Delays           ;        ;       ;             ;            ;        ;        ;
+;  Arrival Path             ;        ;       ;             ;            ;        ;        ;
+;   Clock                   ;        ;       ;             ;            ;        ;        ;
+;    Clock Network (Lumped) ;        ; 1     ; 0.330       ; 100        ; 0.330  ; 0.330  ;
+;   Data                    ;        ;       ;             ;            ;        ;        ;
+;    IC                     ;        ; 2     ; 0.622       ; 42         ; 0.000  ; 0.622  ;
+;    Cell                   ;        ; 3     ; 0.587       ; 40         ; 0.000  ; 0.472  ;
+;    uTco                   ;        ; 1     ; 0.261       ; 18         ; 0.261  ; 0.261  ;
+;  Required Path            ;        ;       ;             ;            ;        ;        ;
+;   Clock                   ;        ;       ;             ;            ;        ;        ;
+;    Clock Network (Lumped) ;        ; 1     ; -0.093      ;            ; -0.093 ; -0.093 ;
++---------------------------+--------+-------+-------------+------------+--------+--------+
+Note: Negative delays are omitted from totals when calculating percentages
+
++---------------------------------------------------------------------------------------------------+
+; Data Arrival Path                                                                                 ;
++---------+---------+----+------+--------+--------------------+-------------------------------------+
+; Total   ; Incr    ; RF ; Type ; Fanout ; Location           ; Element                             ;
++---------+---------+----+------+--------+--------------------+-------------------------------------+
+; 4.000   ; 4.000   ;    ;      ;        ;                    ; launch edge time                    ;
+; 4.330   ; 0.330   ;    ;      ;        ;                    ; clock path                          ;
+;   4.330 ;   0.330 ; R  ;      ;        ;                    ; clock network delay                 ;
+; 5.800   ; 1.470   ;    ;      ;        ;                    ; data path                           ;
+;   4.591 ;   0.261 ;    ; uTco ; 1      ; FF_X25_Y10_N3      ; uart_line_ordinal[5]                ;
+;   4.591 ;   0.000 ; FF ; CELL ; 1      ; FF_X25_Y10_N3      ; uart_line_ordinal[5]|q              ;
+;   5.213 ;   0.622 ; FF ; IC   ; 1      ; LCCOMB_X25_Y10_N10 ; receiver_ordinal0[5]~feeder|dataa   ;
+;   5.685 ;   0.472 ; FF ; CELL ; 1      ; LCCOMB_X25_Y10_N10 ; receiver_ordinal0[5]~feeder|combout ;
+;   5.685 ;   0.000 ; FF ; IC   ; 1      ; FF_X25_Y10_N11     ; receiver_ordinal0[5]|d              ;
+;   5.800 ;   0.115 ; FF ; CELL ; 1      ; FF_X25_Y10_N11     ; receiver_ordinal0[5]                ;
++---------+---------+----+------+--------+--------------------+-------------------------------------+
+
++------------------------------------------------------------------------------------+
+; Data Required Path                                                                 ;
++---------+----------+----+------+--------+----------------+-------------------------+
+; Total   ; Incr     ; RF ; Type ; Fanout ; Location       ; Element                 ;
++---------+----------+----+------+--------+----------------+-------------------------+
+; 8.000   ; 8.000    ;    ;      ;        ;                ; latch edge time         ;
+; 8.153   ; 0.153    ;    ;      ;        ;                ; clock path              ;
+;   7.907 ;   -0.093 ; R  ;      ;        ;                ; clock network delay     ;
+;   8.153 ;   0.246  ;    ;      ;        ;                ; clock pessimism removed ;
+; 8.133   ; -0.020   ;    ;      ;        ;                ; clock uncertainty       ;
+; 8.154   ; 0.021    ;    ; uTsu ; 1      ; FF_X25_Y10_N11 ; receiver_ordinal0[5]    ;
++---------+----------+----+------+--------+----------------+-------------------------+
+
+----------------------------
+; Extra Fitter Information ;
+----------------------------
+HTML report is unavailable in plain text report export.
+
+
+Path #11: Setup slack is 2.373 
+===============================================================================
++---------------------------------------------------------+
+; Path Summary                                            ;
++--------------------+------------------------------------+
+; Property           ; Value                              ;
++--------------------+------------------------------------+
+; From Node          ; uart_line_ordinal[7]               ;
+; To Node            ; receiver_ordinal0[7]               ;
+; Launch Clock       ; pll|pll|auto_generated|pll1|clk[0] ;
+; Latch Clock        ; pll|pll|auto_generated|pll1|clk[2] ;
+; Data Arrival Time  ; 5.787                              ;
+; Data Required Time ; 8.160                              ;
+; Slack              ; 2.373                              ;
++--------------------+------------------------------------+
+
++-----------------------------------------------------------------------------------------+
+; Statistics                                                                              ;
++---------------------------+--------+-------+-------------+------------+--------+--------+
+; Property                  ; Value  ; Count ; Total Delay ; % of Total ; Min    ; Max    ;
++---------------------------+--------+-------+-------------+------------+--------+--------+
+; Setup Relationship        ; 4.000  ;       ;             ;            ;        ;        ;
+; Clock Skew                ; -0.169 ;       ;             ;            ;        ;        ;
+; Data Delay                ; 1.459  ;       ;             ;            ;        ;        ;
+; Number of Logic Levels    ;        ; 1     ;             ;            ;        ;        ;
+; Physical Delays           ;        ;       ;             ;            ;        ;        ;
+;  Arrival Path             ;        ;       ;             ;            ;        ;        ;
+;   Clock                   ;        ;       ;             ;            ;        ;        ;
+;    Clock Network (Lumped) ;        ; 1     ; 0.328       ; 100        ; 0.328  ; 0.328  ;
+;   Data                    ;        ;       ;             ;            ;        ;        ;
+;    IC                     ;        ; 2     ; 0.922       ; 63         ; 0.000  ; 0.922  ;
+;    Cell                   ;        ; 3     ; 0.276       ; 19         ; 0.000  ; 0.177  ;
+;    uTco                   ;        ; 1     ; 0.261       ; 18         ; 0.261  ; 0.261  ;
+;  Required Path            ;        ;       ;             ;            ;        ;        ;
+;   Clock                   ;        ;       ;             ;            ;        ;        ;
+;    Clock Network (Lumped) ;        ; 1     ; -0.087      ;            ; -0.087 ; -0.087 ;
++---------------------------+--------+-------+-------------+------------+--------+--------+
+Note: Negative delays are omitted from totals when calculating percentages
+
++--------------------------------------------------------------------------------------------------+
+; Data Arrival Path                                                                                ;
++---------+---------+----+------+--------+-------------------+-------------------------------------+
+; Total   ; Incr    ; RF ; Type ; Fanout ; Location          ; Element                             ;
++---------+---------+----+------+--------+-------------------+-------------------------------------+
+; 4.000   ; 4.000   ;    ;      ;        ;                   ; launch edge time                    ;
+; 4.328   ; 0.328   ;    ;      ;        ;                   ; clock path                          ;
+;   4.328 ;   0.328 ; R  ;      ;        ;                   ; clock network delay                 ;
+; 5.787   ; 1.459   ;    ;      ;        ;                   ; data path                           ;
+;   4.589 ;   0.261 ;    ; uTco ; 1      ; FF_X23_Y9_N15     ; uart_line_ordinal[7]                ;
+;   4.589 ;   0.000 ; RR ; CELL ; 1      ; FF_X23_Y9_N15     ; uart_line_ordinal[7]|q              ;
+;   5.511 ;   0.922 ; RR ; IC   ; 1      ; LCCOMB_X28_Y9_N20 ; receiver_ordinal0[7]~feeder|datad   ;
+;   5.688 ;   0.177 ; RR ; CELL ; 1      ; LCCOMB_X28_Y9_N20 ; receiver_ordinal0[7]~feeder|combout ;
+;   5.688 ;   0.000 ; RR ; IC   ; 1      ; FF_X28_Y9_N21     ; receiver_ordinal0[7]|d              ;
+;   5.787 ;   0.099 ; RR ; CELL ; 1      ; FF_X28_Y9_N21     ; receiver_ordinal0[7]                ;
++---------+---------+----+------+--------+-------------------+-------------------------------------+
+
++-----------------------------------------------------------------------------------+
+; Data Required Path                                                                ;
++---------+----------+----+------+--------+---------------+-------------------------+
+; Total   ; Incr     ; RF ; Type ; Fanout ; Location      ; Element                 ;
++---------+----------+----+------+--------+---------------+-------------------------+
+; 8.000   ; 8.000    ;    ;      ;        ;               ; latch edge time         ;
+; 8.159   ; 0.159    ;    ;      ;        ;               ; clock path              ;
+;   7.913 ;   -0.087 ; R  ;      ;        ;               ; clock network delay     ;
+;   8.159 ;   0.246  ;    ;      ;        ;               ; clock pessimism removed ;
+; 8.139   ; -0.020   ;    ;      ;        ;               ; clock uncertainty       ;
+; 8.160   ; 0.021    ;    ; uTsu ; 1      ; FF_X28_Y9_N21 ; receiver_ordinal0[7]    ;
++---------+----------+----+------+--------+---------------+-------------------------+
+
+----------------------------
+; Extra Fitter Information ;
+----------------------------
+HTML report is unavailable in plain text report export.
+
+
+Path #12: Setup slack is 2.378 
+===============================================================================
++---------------------------------------------------------+
+; Path Summary                                            ;
++--------------------+------------------------------------+
+; Property           ; Value                              ;
++--------------------+------------------------------------+
+; From Node          ; uart_line_ordinal[15]              ;
+; To Node            ; receiver_ordinal0[15]              ;
+; Launch Clock       ; pll|pll|auto_generated|pll1|clk[0] ;
+; Latch Clock        ; pll|pll|auto_generated|pll1|clk[2] ;
+; Data Arrival Time  ; 5.777                              ;
+; Data Required Time ; 8.155                              ;
+; Slack              ; 2.378                              ;
++--------------------+------------------------------------+
+
++-----------------------------------------------------------------------------------------+
+; Statistics                                                                              ;
++---------------------------+--------+-------+-------------+------------+--------+--------+
+; Property                  ; Value  ; Count ; Total Delay ; % of Total ; Min    ; Max    ;
++---------------------------+--------+-------+-------------+------------+--------+--------+
+; Setup Relationship        ; 4.000  ;       ;             ;            ;        ;        ;
+; Clock Skew                ; -0.176 ;       ;             ;            ;        ;        ;
+; Data Delay                ; 1.447  ;       ;             ;            ;        ;        ;
+; Number of Logic Levels    ;        ; 1     ;             ;            ;        ;        ;
+; Physical Delays           ;        ;       ;             ;            ;        ;        ;
+;  Arrival Path             ;        ;       ;             ;            ;        ;        ;
+;   Clock                   ;        ;       ;             ;            ;        ;        ;
+;    Clock Network (Lumped) ;        ; 1     ; 0.330       ; 100        ; 0.330  ; 0.330  ;
+;   Data                    ;        ;       ;             ;            ;        ;        ;
+;    IC                     ;        ; 2     ; 0.598       ; 41         ; 0.000  ; 0.598  ;
+;    Cell                   ;        ; 3     ; 0.588       ; 41         ; 0.000  ; 0.473  ;
+;    uTco                   ;        ; 1     ; 0.261       ; 18         ; 0.261  ; 0.261  ;
+;  Required Path            ;        ;       ;             ;            ;        ;        ;
+;   Clock                   ;        ;       ;             ;            ;        ;        ;
+;    Clock Network (Lumped) ;        ; 1     ; -0.092      ;            ; -0.092 ; -0.092 ;
++---------------------------+--------+-------+-------------+------------+--------+--------+
+Note: Negative delays are omitted from totals when calculating percentages
+
++----------------------------------------------------------------------------------------------------+
+; Data Arrival Path                                                                                  ;
++---------+---------+----+------+--------+--------------------+--------------------------------------+
+; Total   ; Incr    ; RF ; Type ; Fanout ; Location           ; Element                              ;
++---------+---------+----+------+--------+--------------------+--------------------------------------+
+; 4.000   ; 4.000   ;    ;      ;        ;                    ; launch edge time                     ;
+; 4.330   ; 0.330   ;    ;      ;        ;                    ; clock path                           ;
+;   4.330 ;   0.330 ; R  ;      ;        ;                    ; clock network delay                  ;
+; 5.777   ; 1.447   ;    ;      ;        ;                    ; data path                            ;
+;   4.591 ;   0.261 ;    ; uTco ; 1      ; FF_X25_Y10_N21     ; uart_line_ordinal[15]                ;
+;   4.591 ;   0.000 ; FF ; CELL ; 1      ; FF_X25_Y10_N21     ; uart_line_ordinal[15]|q              ;
+;   5.189 ;   0.598 ; FF ; IC   ; 1      ; LCCOMB_X26_Y10_N30 ; receiver_ordinal0[15]~feeder|datab   ;
+;   5.662 ;   0.473 ; FF ; CELL ; 1      ; LCCOMB_X26_Y10_N30 ; receiver_ordinal0[15]~feeder|combout ;
+;   5.662 ;   0.000 ; FF ; IC   ; 1      ; FF_X26_Y10_N31     ; receiver_ordinal0[15]|d              ;
+;   5.777 ;   0.115 ; FF ; CELL ; 1      ; FF_X26_Y10_N31     ; receiver_ordinal0[15]                ;
++---------+---------+----+------+--------+--------------------+--------------------------------------+
+
++------------------------------------------------------------------------------------+
+; Data Required Path                                                                 ;
++---------+----------+----+------+--------+----------------+-------------------------+
+; Total   ; Incr     ; RF ; Type ; Fanout ; Location       ; Element                 ;
++---------+----------+----+------+--------+----------------+-------------------------+
+; 8.000   ; 8.000    ;    ;      ;        ;                ; latch edge time         ;
+; 8.154   ; 0.154    ;    ;      ;        ;                ; clock path              ;
+;   7.908 ;   -0.092 ; R  ;      ;        ;                ; clock network delay     ;
+;   8.154 ;   0.246  ;    ;      ;        ;                ; clock pessimism removed ;
+; 8.134   ; -0.020   ;    ;      ;        ;                ; clock uncertainty       ;
+; 8.155   ; 0.021    ;    ; uTsu ; 1      ; FF_X26_Y10_N31 ; receiver_ordinal0[15]   ;
++---------+----------+----+------+--------+----------------+-------------------------+
+
+----------------------------
+; Extra Fitter Information ;
+----------------------------
+HTML report is unavailable in plain text report export.
+
+
+Path #13: Setup slack is 2.399 
+===============================================================================
++---------------------------------------------------------+
+; Path Summary                                            ;
++--------------------+------------------------------------+
+; Property           ; Value                              ;
++--------------------+------------------------------------+
+; From Node          ; uart_line_ordinal[14]              ;
+; To Node            ; receiver_ordinal0[14]              ;
+; Launch Clock       ; pll|pll|auto_generated|pll1|clk[0] ;
+; Latch Clock        ; pll|pll|auto_generated|pll1|clk[2] ;
+; Data Arrival Time  ; 5.755                              ;
+; Data Required Time ; 8.154                              ;
+; Slack              ; 2.399                              ;
++--------------------+------------------------------------+
+
++-----------------------------------------------------------------------------------------+
+; Statistics                                                                              ;
++---------------------------+--------+-------+-------------+------------+--------+--------+
+; Property                  ; Value  ; Count ; Total Delay ; % of Total ; Min    ; Max    ;
++---------------------------+--------+-------+-------------+------------+--------+--------+
+; Setup Relationship        ; 4.000  ;       ;             ;            ;        ;        ;
+; Clock Skew                ; -0.177 ;       ;             ;            ;        ;        ;
+; Data Delay                ; 1.425  ;       ;             ;            ;        ;        ;
+; Number of Logic Levels    ;        ; 1     ;             ;            ;        ;        ;
+; Physical Delays           ;        ;       ;             ;            ;        ;        ;
+;  Arrival Path             ;        ;       ;             ;            ;        ;        ;
+;   Clock                   ;        ;       ;             ;            ;        ;        ;
+;    Clock Network (Lumped) ;        ; 1     ; 0.330       ; 100        ; 0.330  ; 0.330  ;
+;   Data                    ;        ;       ;             ;            ;        ;        ;
+;    IC                     ;        ; 2     ; 0.576       ; 40         ; 0.000  ; 0.576  ;
+;    Cell                   ;        ; 3     ; 0.588       ; 41         ; 0.000  ; 0.473  ;
+;    uTco                   ;        ; 1     ; 0.261       ; 18         ; 0.261  ; 0.261  ;
+;  Required Path            ;        ;       ;             ;            ;        ;        ;
+;   Clock                   ;        ;       ;             ;            ;        ;        ;
+;    Clock Network (Lumped) ;        ; 1     ; -0.093      ;            ; -0.093 ; -0.093 ;
++---------------------------+--------+-------+-------------+------------+--------+--------+
+Note: Negative delays are omitted from totals when calculating percentages
+
++----------------------------------------------------------------------------------------------------+
+; Data Arrival Path                                                                                  ;
++---------+---------+----+------+--------+--------------------+--------------------------------------+
+; Total   ; Incr    ; RF ; Type ; Fanout ; Location           ; Element                              ;
++---------+---------+----+------+--------+--------------------+--------------------------------------+
+; 4.000   ; 4.000   ;    ;      ;        ;                    ; launch edge time                     ;
+; 4.330   ; 0.330   ;    ;      ;        ;                    ; clock path                           ;
+;   4.330 ;   0.330 ; R  ;      ;        ;                    ; clock network delay                  ;
+; 5.755   ; 1.425   ;    ;      ;        ;                    ; data path                            ;
+;   4.591 ;   0.261 ;    ; uTco ; 1      ; FF_X25_Y10_N29     ; uart_line_ordinal[14]                ;
+;   4.591 ;   0.000 ; FF ; CELL ; 1      ; FF_X25_Y10_N29     ; uart_line_ordinal[14]|q              ;
+;   5.167 ;   0.576 ; FF ; IC   ; 1      ; LCCOMB_X25_Y10_N18 ; receiver_ordinal0[14]~feeder|datab   ;
+;   5.640 ;   0.473 ; FF ; CELL ; 1      ; LCCOMB_X25_Y10_N18 ; receiver_ordinal0[14]~feeder|combout ;
+;   5.640 ;   0.000 ; FF ; IC   ; 1      ; FF_X25_Y10_N19     ; receiver_ordinal0[14]|d              ;
+;   5.755 ;   0.115 ; FF ; CELL ; 1      ; FF_X25_Y10_N19     ; receiver_ordinal0[14]                ;
++---------+---------+----+------+--------+--------------------+--------------------------------------+
+
++------------------------------------------------------------------------------------+
+; Data Required Path                                                                 ;
++---------+----------+----+------+--------+----------------+-------------------------+
+; Total   ; Incr     ; RF ; Type ; Fanout ; Location       ; Element                 ;
++---------+----------+----+------+--------+----------------+-------------------------+
+; 8.000   ; 8.000    ;    ;      ;        ;                ; latch edge time         ;
+; 8.153   ; 0.153    ;    ;      ;        ;                ; clock path              ;
+;   7.907 ;   -0.093 ; R  ;      ;        ;                ; clock network delay     ;
+;   8.153 ;   0.246  ;    ;      ;        ;                ; clock pessimism removed ;
+; 8.133   ; -0.020   ;    ;      ;        ;                ; clock uncertainty       ;
+; 8.154   ; 0.021    ;    ; uTsu ; 1      ; FF_X25_Y10_N19 ; receiver_ordinal0[14]   ;
++---------+----------+----+------+--------+----------------+-------------------------+
+
+----------------------------
+; Extra Fitter Information ;
+----------------------------
+HTML report is unavailable in plain text report export.
+
+
+Path #14: Setup slack is 2.403 
+===============================================================================
++---------------------------------------------------------+
+; Path Summary                                            ;
++--------------------+------------------------------------+
+; Property           ; Value                              ;
++--------------------+------------------------------------+
+; From Node          ; uart_line_ordinal[10]              ;
+; To Node            ; receiver_ordinal0[10]              ;
+; Launch Clock       ; pll|pll|auto_generated|pll1|clk[0] ;
+; Latch Clock        ; pll|pll|auto_generated|pll1|clk[2] ;
+; Data Arrival Time  ; 5.751                              ;
+; Data Required Time ; 8.154                              ;
+; Slack              ; 2.403                              ;
++--------------------+------------------------------------+
+
++-----------------------------------------------------------------------------------------+
+; Statistics                                                                              ;
++---------------------------+--------+-------+-------------+------------+--------+--------+
+; Property                  ; Value  ; Count ; Total Delay ; % of Total ; Min    ; Max    ;
++---------------------------+--------+-------+-------------+------------+--------+--------+
+; Setup Relationship        ; 4.000  ;       ;             ;            ;        ;        ;
+; Clock Skew                ; -0.177 ;       ;             ;            ;        ;        ;
+; Data Delay                ; 1.421  ;       ;             ;            ;        ;        ;
+; Number of Logic Levels    ;        ; 1     ;             ;            ;        ;        ;
+; Physical Delays           ;        ;       ;             ;            ;        ;        ;
+;  Arrival Path             ;        ;       ;             ;            ;        ;        ;
+;   Clock                   ;        ;       ;             ;            ;        ;        ;
+;    Clock Network (Lumped) ;        ; 1     ; 0.330       ; 100        ; 0.330  ; 0.330  ;
+;   Data                    ;        ;       ;             ;            ;        ;        ;
+;    IC                     ;        ; 2     ; 0.572       ; 40         ; 0.000  ; 0.572  ;
+;    Cell                   ;        ; 3     ; 0.588       ; 41         ; 0.000  ; 0.473  ;
+;    uTco                   ;        ; 1     ; 0.261       ; 18         ; 0.261  ; 0.261  ;
+;  Required Path            ;        ;       ;             ;            ;        ;        ;
+;   Clock                   ;        ;       ;             ;            ;        ;        ;
+;    Clock Network (Lumped) ;        ; 1     ; -0.093      ;            ; -0.093 ; -0.093 ;
++---------------------------+--------+-------+-------------+------------+--------+--------+
+Note: Negative delays are omitted from totals when calculating percentages
+
++----------------------------------------------------------------------------------------------------+
+; Data Arrival Path                                                                                  ;
++---------+---------+----+------+--------+--------------------+--------------------------------------+
+; Total   ; Incr    ; RF ; Type ; Fanout ; Location           ; Element                              ;
++---------+---------+----+------+--------+--------------------+--------------------------------------+
+; 4.000   ; 4.000   ;    ;      ;        ;                    ; launch edge time                     ;
+; 4.330   ; 0.330   ;    ;      ;        ;                    ; clock path                           ;
+;   4.330 ;   0.330 ; R  ;      ;        ;                    ; clock network delay                  ;
+; 5.751   ; 1.421   ;    ;      ;        ;                    ; data path                            ;
+;   4.591 ;   0.261 ;    ; uTco ; 1      ; FF_X25_Y10_N23     ; uart_line_ordinal[10]                ;
+;   4.591 ;   0.000 ; FF ; CELL ; 1      ; FF_X25_Y10_N23     ; uart_line_ordinal[10]|q              ;
+;   5.163 ;   0.572 ; FF ; IC   ; 1      ; LCCOMB_X25_Y10_N12 ; receiver_ordinal0[10]~feeder|datab   ;
+;   5.636 ;   0.473 ; FF ; CELL ; 1      ; LCCOMB_X25_Y10_N12 ; receiver_ordinal0[10]~feeder|combout ;
+;   5.636 ;   0.000 ; FF ; IC   ; 1      ; FF_X25_Y10_N13     ; receiver_ordinal0[10]|d              ;
+;   5.751 ;   0.115 ; FF ; CELL ; 1      ; FF_X25_Y10_N13     ; receiver_ordinal0[10]                ;
++---------+---------+----+------+--------+--------------------+--------------------------------------+
+
++------------------------------------------------------------------------------------+
+; Data Required Path                                                                 ;
++---------+----------+----+------+--------+----------------+-------------------------+
+; Total   ; Incr     ; RF ; Type ; Fanout ; Location       ; Element                 ;
++---------+----------+----+------+--------+----------------+-------------------------+
+; 8.000   ; 8.000    ;    ;      ;        ;                ; latch edge time         ;
+; 8.153   ; 0.153    ;    ;      ;        ;                ; clock path              ;
+;   7.907 ;   -0.093 ; R  ;      ;        ;                ; clock network delay     ;
+;   8.153 ;   0.246  ;    ;      ;        ;                ; clock pessimism removed ;
+; 8.133   ; -0.020   ;    ;      ;        ;                ; clock uncertainty       ;
+; 8.154   ; 0.021    ;    ; uTsu ; 1      ; FF_X25_Y10_N13 ; receiver_ordinal0[10]   ;
++---------+----------+----+------+--------+----------------+-------------------------+
+
+----------------------------
+; Extra Fitter Information ;
+----------------------------
+HTML report is unavailable in plain text report export.
+
+
+Path #15: Setup slack is 2.476 
+===============================================================================
++---------------------------------------------------------+
+; Path Summary                                            ;
++--------------------+------------------------------------+
+; Property           ; Value                              ;
++--------------------+------------------------------------+
+; From Node          ; uart_line_ordinal[8]               ;
+; To Node            ; receiver_ordinal0[8]               ;
+; Launch Clock       ; pll|pll|auto_generated|pll1|clk[0] ;
+; Latch Clock        ; pll|pll|auto_generated|pll1|clk[2] ;
+; Data Arrival Time  ; 5.689                              ;
+; Data Required Time ; 8.165                              ;
+; Slack              ; 2.476                              ;
++--------------------+------------------------------------+
+
++-----------------------------------------------------------------------------------------+
+; Statistics                                                                              ;
++---------------------------+--------+-------+-------------+------------+--------+--------+
+; Property                  ; Value  ; Count ; Total Delay ; % of Total ; Min    ; Max    ;
++---------------------------+--------+-------+-------------+------------+--------+--------+
+; Setup Relationship        ; 4.000  ;       ;             ;            ;        ;        ;
+; Clock Skew                ; -0.175 ;       ;             ;            ;        ;        ;
+; Data Delay                ; 1.350  ;       ;             ;            ;        ;        ;
+; Number of Logic Levels    ;        ; 1     ;             ;            ;        ;        ;
+; Physical Delays           ;        ;       ;             ;            ;        ;        ;
+;  Arrival Path             ;        ;       ;             ;            ;        ;        ;
+;   Clock                   ;        ;       ;             ;            ;        ;        ;
+;    Clock Network (Lumped) ;        ; 1     ; 0.339       ; 100        ; 0.339  ; 0.339  ;
+;   Data                    ;        ;       ;             ;            ;        ;        ;
+;    IC                     ;        ; 2     ; 0.813       ; 60         ; 0.000  ; 0.813  ;
+;    Cell                   ;        ; 3     ; 0.276       ; 20         ; 0.000  ; 0.177  ;
+;    uTco                   ;        ; 1     ; 0.261       ; 19         ; 0.261  ; 0.261  ;
+;  Required Path            ;        ;       ;             ;            ;        ;        ;
+;   Clock                   ;        ;       ;             ;            ;        ;        ;
+;    Clock Network (Lumped) ;        ; 1     ; -0.082      ;            ; -0.082 ; -0.082 ;
++---------------------------+--------+-------+-------------+------------+--------+--------+
+Note: Negative delays are omitted from totals when calculating percentages
+
++---------------------------------------------------------------------------------------------------+
+; Data Arrival Path                                                                                 ;
++---------+---------+----+------+--------+--------------------+-------------------------------------+
+; Total   ; Incr    ; RF ; Type ; Fanout ; Location           ; Element                             ;
++---------+---------+----+------+--------+--------------------+-------------------------------------+
+; 4.000   ; 4.000   ;    ;      ;        ;                    ; launch edge time                    ;
+; 4.339   ; 0.339   ;    ;      ;        ;                    ; clock path                          ;
+;   4.339 ;   0.339 ; R  ;      ;        ;                    ; clock network delay                 ;
+; 5.689   ; 1.350   ;    ;      ;        ;                    ; data path                           ;
+;   4.600 ;   0.261 ;    ; uTco ; 1      ; FF_X22_Y12_N1      ; uart_line_ordinal[8]                ;
+;   4.600 ;   0.000 ; RR ; CELL ; 1      ; FF_X22_Y12_N1      ; uart_line_ordinal[8]|q              ;
+;   5.413 ;   0.813 ; RR ; IC   ; 1      ; LCCOMB_X25_Y13_N24 ; receiver_ordinal0[8]~feeder|datad   ;
+;   5.590 ;   0.177 ; RR ; CELL ; 1      ; LCCOMB_X25_Y13_N24 ; receiver_ordinal0[8]~feeder|combout ;
+;   5.590 ;   0.000 ; RR ; IC   ; 1      ; FF_X25_Y13_N25     ; receiver_ordinal0[8]|d              ;
+;   5.689 ;   0.099 ; RR ; CELL ; 1      ; FF_X25_Y13_N25     ; receiver_ordinal0[8]                ;
++---------+---------+----+------+--------+--------------------+-------------------------------------+
+
++------------------------------------------------------------------------------------+
+; Data Required Path                                                                 ;
++---------+----------+----+------+--------+----------------+-------------------------+
+; Total   ; Incr     ; RF ; Type ; Fanout ; Location       ; Element                 ;
++---------+----------+----+------+--------+----------------+-------------------------+
+; 8.000   ; 8.000    ;    ;      ;        ;                ; latch edge time         ;
+; 8.164   ; 0.164    ;    ;      ;        ;                ; clock path              ;
+;   7.918 ;   -0.082 ; R  ;      ;        ;                ; clock network delay     ;
+;   8.164 ;   0.246  ;    ;      ;        ;                ; clock pessimism removed ;
+; 8.144   ; -0.020   ;    ;      ;        ;                ; clock uncertainty       ;
+; 8.165   ; 0.021    ;    ; uTsu ; 1      ; FF_X25_Y13_N25 ; receiver_ordinal0[8]    ;
++---------+----------+----+------+--------+----------------+-------------------------+
+
+----------------------------
+; Extra Fitter Information ;
+----------------------------
+HTML report is unavailable in plain text report export.
+
+
+Path #16: Setup slack is 2.510 
+===============================================================================
++---------------------------------------------------------+
+; Path Summary                                            ;
++--------------------+------------------------------------+
+; Property           ; Value                              ;
++--------------------+------------------------------------+
+; From Node          ; uart_line_ordinal[13]              ;
+; To Node            ; receiver_ordinal0[13]              ;
+; Launch Clock       ; pll|pll|auto_generated|pll1|clk[0] ;
+; Latch Clock        ; pll|pll|auto_generated|pll1|clk[2] ;
+; Data Arrival Time  ; 5.645                              ;
+; Data Required Time ; 8.155                              ;
+; Slack              ; 2.510                              ;
++--------------------+------------------------------------+
+
++-----------------------------------------------------------------------------------------+
+; Statistics                                                                              ;
++---------------------------+--------+-------+-------------+------------+--------+--------+
+; Property                  ; Value  ; Count ; Total Delay ; % of Total ; Min    ; Max    ;
++---------------------------+--------+-------+-------------+------------+--------+--------+
+; Setup Relationship        ; 4.000  ;       ;             ;            ;        ;        ;
+; Clock Skew                ; -0.175 ;       ;             ;            ;        ;        ;
+; Data Delay                ; 1.316  ;       ;             ;            ;        ;        ;
+; Number of Logic Levels    ;        ; 1     ;             ;            ;        ;        ;
+; Physical Delays           ;        ;       ;             ;            ;        ;        ;
+;  Arrival Path             ;        ;       ;             ;            ;        ;        ;
+;   Clock                   ;        ;       ;             ;            ;        ;        ;
+;    Clock Network (Lumped) ;        ; 1     ; 0.329       ; 100        ; 0.329  ; 0.329  ;
+;   Data                    ;        ;       ;             ;            ;        ;        ;
+;    IC                     ;        ; 2     ; 0.779       ; 59         ; 0.000  ; 0.779  ;
+;    Cell                   ;        ; 3     ; 0.276       ; 21         ; 0.000  ; 0.177  ;
+;    uTco                   ;        ; 1     ; 0.261       ; 20         ; 0.261  ; 0.261  ;
+;  Required Path            ;        ;       ;             ;            ;        ;        ;
+;   Clock                   ;        ;       ;             ;            ;        ;        ;
+;    Clock Network (Lumped) ;        ; 1     ; -0.092      ;            ; -0.092 ; -0.092 ;
++---------------------------+--------+-------+-------------+------------+--------+--------+
+Note: Negative delays are omitted from totals when calculating percentages
+
++----------------------------------------------------------------------------------------------------+
+; Data Arrival Path                                                                                  ;
++---------+---------+----+------+--------+--------------------+--------------------------------------+
+; Total   ; Incr    ; RF ; Type ; Fanout ; Location           ; Element                              ;
++---------+---------+----+------+--------+--------------------+--------------------------------------+
+; 4.000   ; 4.000   ;    ;      ;        ;                    ; launch edge time                     ;
+; 4.329   ; 0.329   ;    ;      ;        ;                    ; clock path                           ;
+;   4.329 ;   0.329 ; R  ;      ;        ;                    ; clock network delay                  ;
+; 5.645   ; 1.316   ;    ;      ;        ;                    ; data path                            ;
+;   4.590 ;   0.261 ;    ; uTco ; 1      ; FF_X23_Y11_N31     ; uart_line_ordinal[13]                ;
+;   4.590 ;   0.000 ; RR ; CELL ; 1      ; FF_X23_Y11_N31     ; uart_line_ordinal[13]|q              ;
+;   5.369 ;   0.779 ; RR ; IC   ; 1      ; LCCOMB_X26_Y10_N18 ; receiver_ordinal0[13]~feeder|datad   ;
+;   5.546 ;   0.177 ; RR ; CELL ; 1      ; LCCOMB_X26_Y10_N18 ; receiver_ordinal0[13]~feeder|combout ;
+;   5.546 ;   0.000 ; RR ; IC   ; 1      ; FF_X26_Y10_N19     ; receiver_ordinal0[13]|d              ;
+;   5.645 ;   0.099 ; RR ; CELL ; 1      ; FF_X26_Y10_N19     ; receiver_ordinal0[13]                ;
++---------+---------+----+------+--------+--------------------+--------------------------------------+
+
++------------------------------------------------------------------------------------+
+; Data Required Path                                                                 ;
++---------+----------+----+------+--------+----------------+-------------------------+
+; Total   ; Incr     ; RF ; Type ; Fanout ; Location       ; Element                 ;
++---------+----------+----+------+--------+----------------+-------------------------+
+; 8.000   ; 8.000    ;    ;      ;        ;                ; latch edge time         ;
+; 8.154   ; 0.154    ;    ;      ;        ;                ; clock path              ;
+;   7.908 ;   -0.092 ; R  ;      ;        ;                ; clock network delay     ;
+;   8.154 ;   0.246  ;    ;      ;        ;                ; clock pessimism removed ;
+; 8.134   ; -0.020   ;    ;      ;        ;                ; clock uncertainty       ;
+; 8.155   ; 0.021    ;    ; uTsu ; 1      ; FF_X26_Y10_N19 ; receiver_ordinal0[13]   ;
++---------+----------+----+------+--------+----------------+-------------------------+
+
+----------------------------
+; Extra Fitter Information ;
+----------------------------
+HTML report is unavailable in plain text report export.
+
+

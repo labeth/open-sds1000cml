@@ -1,0 +1,82 @@
+{
+  "requirements": [
+    "REQ-SDS-044",
+    "REQ-SDS-048"
+  ],
+  "status": "partial",
+  "sourceHashes": {
+    "fpga/acq_sram/sim/tb_transport.v": "f808c0a13477fd94b998077e4fde86601539a29715aff7614fab1a2b71f06dda",
+    "fpga/acq_sram/transport.v": "814e344e31c1283a4d507e6d489179d0d1ab5b8c05404ed7d51c4047d5ca095a",
+    "fpga/acq_sram/sim/ddr_model.v": "ace57d159f0b1b9edd4e9c82b1496fab3b79b7c056b9aaa2da66698e65d164f2",
+    "fpga/acq_sram/sim/tb_timeslice_controller.v": "50cec8a88ff59bac2a606ad1325e6b133fa567025fc4cf73c2ea640e883df838",
+    "fpga/acq_sram/timeslice_controller.v": "5daedebf673cc8c7d2ae927615fb8d2e60b735ba363d9ad080f2cb154e5ec18d",
+    "fpga/acq_sram/ordinal_counter.v": "297ad038fd29b45044b6b91262890c12cdc462baafd453e761987c52c4cbf82c",
+    "fpga/acq_sram/word_bridge.v": "9769f4762e9ad0560cd3d115b028de30cb5402aede81e94239c8dde73241e50a",
+    "fpga/acq_sram/ingress_fifo.v": "9c8378ef57fdaa6f82c58e3da8aedeb296564cec6d6655050f50a06aa1fcbadf",
+    "fpga/acq_sram/ingress_stream.v": "2409307756c49a6b30b826a719e3b38dda887ae946e933723a1d77d6c6635478",
+    "fpga/acq_sram/ingress_path.v": "0701c87be770e144b96ff09f4a07143caa86d447330844cb719a960e1401b0b2",
+    "fpga/acq_sram/host_path.v": "2a0b52bc3c780895f3f7a283fecdcc2b9df32a3172525a50ab8584dbf9f27a7e",
+    "fpga/acq_sram/host_packer.v": "2b9902e2752e899f5eb4fd94e968c5d800b533b0253b1bc280835cc098aae531",
+    "fpga/acq_sram/host_fifo.v": "04794e2bfba0c485ca5be8b8ff2de48b992d6369601815d9461d9f08032f0883",
+    "fpga/acq_sram/host_sink.v": "0528b33b5c95a74a6b4f37ee76fc8c80aafbfa13739af1070e4feb92e299d0bd",
+    "fpga/acq_sram/host_ram.v": "bcc72b0eaf963f5f1576991e20d1bf9c8af55ba0a587d21309a06bd734487990",
+    "fpga/acq_sram/host_ownership.v": "310b124b4c1de198a9aa6655fb492d7934c22ec5291e37d23691b45ecfa87b0b"
+  },
+  "clauses": [
+    {
+      "requirement": "REQ-SDS-044",
+      "behavior": "Position counts enabled SRAM clock pulses modulo the address width, including a fresh-read flush.",
+      "evidence": "tb_transport fills all 524288 words with deterministic payloads, stalls writes, compares payloads after repeated wrapping reads, checks read/flush totals, performs a discard seek and checks two continued reads."
+    },
+    {
+      "requirement": "REQ-SDS-048",
+      "behavior": "Schedule writing and read bursts while protecting unread SRAM and respecting host bank ownership.",
+      "evidence": "tb_timeslice_controller independently models physical SRAM writes and checks address/payload order, unread overflow protection, marker/ordinal alignment, bank metadata, final drain and rearm."
+    },
+    {
+      "requirement": "REQ-SDS-048",
+      "behavior": "Reset suppresses source, ingress and host activity and clears scheduler accounting.",
+      "evidence": "Two active-reset modes terminate after checking reset during writing and payload readout. These are reset-specific runs, not completed captures."
+    },
+    {
+      "requirement": "REQ-SDS-048",
+      "behavior": "Host bank emission precedes publication and release through the production host path.",
+      "evidence": "REAL_HOST=1 reads actual behavioral host RAM in halfwords using the production descriptor/release handshake, compares reassembled data and asserts that a requested stall occurred."
+    }
+  ],
+  "limits": [
+    "Default 19-bit geometry test uses the ideal host scoreboard. The separate production host-path case uses a reduced 13-bit SRAM address range with 2560-word host banks. No combined full-address-space production host-path claim is made.",
+    "The scheduler source has fault branches for ingress/host faults and malformed transport read lengths. These reviewed tests do not independently inject every such fault.",
+    "The DDR shim models the subset used by transport. It does not implement every vendor primitive option; physical SRAM, FPGA placement, metastability and board-calibrated read_bias are not qualified.",
+    "Reset or lost lock sets the internal transport position to zero, but no external SRAM-counter reset is modeled as a consequence. This requires an independently aligned epoch at integration.",
+    "There is no host backpressure within a read burst. Caller source_finished ordering and validated bank-release tokens remain integration preconditions.",
+    "Unbounded host stalls cannot be lossless indefinitely; the no-release test expects unread-full failure before overwriting the oldest unread word."
+  ],
+  "sourceCommit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "reviewedRuns": [
+    "transport-full-capacity",
+    "scheduler-reset-writing",
+    "scheduler-reset-reading",
+    "scheduler-consecutive-captures",
+    "scheduler-wrap-tail-stall",
+    "scheduler-steady-bandwidth",
+    "scheduler-counter-lanes",
+    "scheduler-one-word-tail",
+    "scheduler-unread-protection",
+    "scheduler-owned-host-stall",
+    "scheduler-physical-geometry"
+  ],
+  "outputs": {
+    "transport-full-capacity": "PASS full-capacity SRAM transport, stalled writes, repeated reads and exact flush pointer (1049605 words)\nfpga/acq_sram/sim/tb_transport.v:57: $finish called at 15757581000 (1ps)",
+    "scheduler-reset-writing": "PASS active reset phase=1\nfpga/acq_sram/sim/tb_timeslice_controller.v:222: $finish called at 4194100 (1ps)",
+    "scheduler-reset-reading": "PASS active reset phase=2\nfpga/acq_sram/sim/tb_timeslice_controller.v:222: $finish called at 37014100 (1ps)",
+    "scheduler-consecutive-captures": "PASS RTL controller: words=402 blocks=202 max_pending=3 max_unread=36 skipped=0 overlap=82 stalls=0\nfpga/acq_sram/sim/tb_timeslice_controller.v:212: $finish called at 245008000 (1ps)",
+    "scheduler-wrap-tail-stall": "PASS RTL controller: words=6003 blocks=376 max_pending=13 max_unread=125 skipped=11 overlap=207 stalls=1\nfpga/acq_sram/sim/tb_timeslice_controller.v:212: $finish called at 3103156000 (1ps)",
+    "scheduler-steady-bandwidth": "PASS RTL controller: words=6003 blocks=376 max_pending=9 max_unread=64 skipped=0 overlap=185 stalls=0\nfpga/acq_sram/sim/tb_timeslice_controller.v:212: $finish called at 3101368000 (1ps)",
+    "scheduler-counter-lanes": "PASS RTL controller: words=10003 blocks=16 max_pending=33 max_unread=1312 skipped=0 overlap=0 stalls=0\nfpga/acq_sram/sim/tb_timeslice_controller.v:212: $finish called at 5553948000 (1ps)",
+    "scheduler-one-word-tail": "PASS RTL controller: words=201 blocks=101 max_pending=3 max_unread=36 skipped=0 overlap=41 stalls=0\nfpga/acq_sram/sim/tb_timeslice_controller.v:212: $finish called at 122640000 (1ps)",
+    "scheduler-unread-protection": "PASS controller unread protection: writes=1056 read=32\nfpga/acq_sram/sim/tb_timeslice_controller.v:212: $finish called at 546320000 (1ps)",
+    "scheduler-owned-host-stall": "PASS RTL controller: words=10003 blocks=4 max_pending=65 max_unread=5152 skipped=0 overlap=0 stalls=1\nfpga/acq_sram/sim/tb_timeslice_controller.v:212: $finish called at 7662088000 (1ps)",
+    "scheduler-physical-geometry": "PASS RTL controller: words=65539 blocks=26 max_pending=4101 max_unread=24437 skipped=4 overlap=16 stalls=1\nfpga/acq_sram/sim/tb_timeslice_controller.v:212: $finish called at 45030168000 (1ps)"
+  }
+}

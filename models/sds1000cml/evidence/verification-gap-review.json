@@ -1,0 +1,60 @@
+{
+  "result": "reviewed-gaps-retained",
+  "requirements": [
+    {
+      "requirement": "REQ-SDS-003",
+      "classification": "source-inspected-no-entrypoint-test",
+      "sources": [
+        "app/cmd/app/main.go",
+        "app/cmd/app/sram.go"
+      ],
+      "finding": "SCOPE_CAPTURE=sram dispatches runSRAMMode and returns before default image deployment. default/default-sram continue through separate setup; unsupported values return. Existing helper/timing tests do not directly execute this startup dispatch.",
+      "remainingEvidence": "A direct startup-mode dispatch test would be needed to claim runtime isolation verification.",
+      "sourceSHA256": {
+        "app/cmd/app/main.go": "22648d8dcc233a4804609425ca94c6a1e671e84ad0c9ab5d83eac28fb98bcd61",
+        "app/cmd/app/sram.go": "f4673afa30cf69e070ac4c2a1f21fbde6c220cc246b08e816407d49496108ac7"
+      }
+    },
+    {
+      "requirement": "REQ-SDS-006",
+      "classification": "source-inspected-no-owner-panic-test",
+      "sources": [
+        "app/internal/engine/engine_loop.go"
+      ],
+      "finding": "Run recovers a nonnil panic, logs it, sets Wedged and sleeps until stopReq; normal command/heartbeat service is absent from this parking loop. The reviewed original engine tests do not directly exercise owner-panic recovery. Callback recovery and decoder no-panic tests cover different behavior.",
+      "remainingEvidence": "Direct owner-loop panic injection and parking/stop assertions are unavailable in the reviewed original tests.",
+      "sourceSHA256": {
+        "app/internal/engine/engine_loop.go": "abc11965a4a0c73222f65566caa3b499decb18c9708e79bd3089018a88788b78"
+      }
+    },
+    {
+      "requirement": "REQ-SDS-059",
+      "classification": "source-inspected-board-wrapper-not-simulated",
+      "sources": [
+        "fpga/acq_sram/profile_top.v"
+      ],
+      "finding": "The wrapper instantiates profile PLL/core, stretches lock-loss/startup reset over eight input-clock edges, assigns SRAM control constants and concatenates host selector pins. Profile-core simulation bypasses this wrapper and cannot establish its physical pin, PLL or reset behavior.",
+      "remainingEvidence": "Wrapper-level elaboration/reset/pin checks and separately identified physical timing evidence are not supplied by the core bench.",
+      "sourceSHA256": {
+        "fpga/acq_sram/profile_top.v": "5a6032e1a32380ff8978020f2d350dd9d8ed2832e2e310d2eab51717b2318bc1"
+      }
+    },
+    {
+      "requirement": "REQ-SDS-073",
+      "classification": "existing-partial-test-evidence-missing-requirement-link",
+      "sources": [
+        "app/internal/decode/decode_jsparity_test.go",
+        "app/internal/web/decparity_check.mjs"
+      ],
+      "finding": "The recorded original test passes 286 synthetic Go/Node parity vectors. Native summary and source comment currently link REQ-SDS-018 only. This can support partial shared-decoder parity evidence after explicit trace integration, not universal parity or independent protocol correctness.",
+      "remainingEvidence": "Add REQ-SDS-073 to the approved source annotation and indexed partial summary in the next model batch, retaining vector/format/coercion limitations.",
+      "log": "test-runs/decode-extended-exploratory.jsonl",
+      "logSHA256": "66a80f8ce964936a9508047ef9b9cb0fc09d50284875a57ca1f588d481dfd694",
+      "sourceSHA256": {
+        "app/internal/decode/decode_jsparity_test.go": "d0ced1285b60b94a2750e3ea38d59dbcf1e45bb0469663f0e3eb9ce109119ca2",
+        "app/internal/web/decparity_check.mjs": "bf23b034b60b4a078acc4e2aed49a1496ab640a88f95f193dc525103d2af8d1e"
+      }
+    }
+  ],
+  "scope": "Source inspection and existing-test scope review only. No new test execution, passing requirement status or hardware qualification is asserted."
+}

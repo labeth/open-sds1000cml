@@ -1,0 +1,117 @@
+{
+  "source": "codegen/emit/emit_test.go",
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "scope": "Reviewed Go test outcomes; passing assertions contribute partial requirement evidence.",
+  "sourceSHA256": "36e5e2eecbcec807f1ce3cde615c697e81c3c1d8b6e4f9941ade4c0a3c227095",
+  "logs": {
+    "test-runs/codegen-integrated.jsonl": "61e5eee1ba4798f5b455aeff3217a9d963dee8f9f4dcc3b426b4a566d0c731f0"
+  },
+  "tests": [
+    {
+      "name": "TestRegsGolden",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-157"
+      ]
+    },
+    {
+      "name": "TestRegmuxGolden",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-158"
+      ]
+    },
+    {
+      "name": "TestGoBindingsGolden",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-157",
+        "REQ-SDS-159"
+      ]
+    },
+    {
+      "name": "TestDocGolden",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-157"
+      ]
+    },
+    {
+      "name": "TestBuildIDConsistent",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-157",
+        "REQ-SDS-158"
+      ]
+    },
+    {
+      "name": "TestEmittersRejectInvalid",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-157",
+        "REQ-SDS-158"
+      ]
+    },
+    {
+      "name": "TestCamel",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-157"
+      ]
+    },
+    {
+      "name": "TestSelMaskDoc",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-157"
+      ]
+    },
+    {
+      "name": "TestSpliceGoSource",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-157",
+        "REQ-SDS-159"
+      ]
+    },
+    {
+      "name": "TestWordfmtConstantsMatchSchema",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-156",
+        "REQ-SDS-157",
+        "REQ-SDS-159"
+      ]
+    },
+    {
+      "name": "TestGoBindingsCompile",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-157",
+        "REQ-SDS-159"
+      ]
+    }
+  ],
+  "results": [
+    {
+      "requirement": "REQ-SDS-156",
+      "status": "partial",
+      "notes": "1 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    },
+    {
+      "requirement": "REQ-SDS-157",
+      "status": "partial",
+      "notes": "10 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    },
+    {
+      "requirement": "REQ-SDS-158",
+      "status": "partial",
+      "notes": "3 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    },
+    {
+      "requirement": "REQ-SDS-159",
+      "status": "partial",
+      "notes": "4 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    }
+  ]
+}

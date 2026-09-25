@@ -1,0 +1,52 @@
+{"Time":"2026-09-23T00:32:27.551133514+02:00","Action":"start","Package":"open-sds/app/internal/analog"}
+{"Time":"2026-09-23T00:32:27.56081868+02:00","Action":"run","Package":"open-sds/app/internal/analog","Test":"TestSeedDoesNotEmit"}
+{"Time":"2026-09-23T00:32:27.560862366+02:00","Action":"output","Package":"open-sds/app/internal/analog","Test":"TestSeedDoesNotEmit","Output":"=== RUN   TestSeedDoesNotEmit\n"}
+{"Time":"2026-09-23T00:32:27.560882377+02:00","Action":"output","Package":"open-sds/app/internal/analog","Test":"TestSeedDoesNotEmit","Output":"--- PASS: TestSeedDoesNotEmit (0.00s)\n"}
+{"Time":"2026-09-23T00:32:27.560907608+02:00","Action":"pass","Package":"open-sds/app/internal/analog","Test":"TestSeedDoesNotEmit","Elapsed":0}
+{"Time":"2026-09-23T00:32:27.56092799+02:00","Action":"run","Package":"open-sds/app/internal/analog","Test":"TestSetVdivSequence"}
+{"Time":"2026-09-23T00:32:27.560933008+02:00","Action":"output","Package":"open-sds/app/internal/analog","Test":"TestSetVdivSequence","Output":"=== RUN   TestSetVdivSequence\n"}
+{"Time":"2026-09-23T00:32:27.560989461+02:00","Action":"output","Package":"open-sds/app/internal/analog","Test":"TestSetVdivSequence","Output":"--- PASS: TestSetVdivSequence (0.00s)\n"}
+{"Time":"2026-09-23T00:32:27.561012837+02:00","Action":"pass","Package":"open-sds/app/internal/analog","Test":"TestSetVdivSequence","Elapsed":0}
+{"Time":"2026-09-23T00:32:27.561028161+02:00","Action":"run","Package":"open-sds/app/internal/analog","Test":"TestRelayWordReference"}
+{"Time":"2026-09-23T00:32:27.561031774+02:00","Action":"output","Package":"open-sds/app/internal/analog","Test":"TestRelayWordReference","Output":"=== RUN   TestRelayWordReference\n"}
+{"Time":"2026-09-23T00:32:27.561113994+02:00","Action":"output","Package":"open-sds/app/internal/analog","Test":"TestRelayWordReference","Output":"--- PASS: TestRelayWordReference (0.00s)\n"}
+{"Time":"2026-09-23T00:32:27.561136113+02:00","Action":"pass","Package":"open-sds/app/internal/analog","Test":"TestRelayWordReference","Elapsed":0}
+{"Time":"2026-09-23T00:32:27.561155964+02:00","Action":"run","Package":"open-sds/app/internal/analog","Test":"TestCouplingIsSoftwareOnly"}
+{"Time":"2026-09-23T00:32:27.561161467+02:00","Action":"output","Package":"open-sds/app/internal/analog","Test":"TestCouplingIsSoftwareOnly","Output":"=== RUN   TestCouplingIsSoftwareOnly\n"}
+{"Time":"2026-09-23T00:32:27.56124518+02:00","Action":"output","Package":"open-sds/app/internal/analog","Test":"TestCouplingIsSoftwareOnly","Output":"--- PASS: TestCouplingIsSoftwareOnly (0.00s)\n"}
+{"Time":"2026-09-23T00:32:27.561270942+02:00","Action":"pass","Package":"open-sds/app/internal/analog","Test":"TestCouplingIsSoftwareOnly","Elapsed":0}
+{"Time":"2026-09-23T00:32:27.561288055+02:00","Action":"run","Package":"open-sds/app/internal/analog","Test":"TestCoupleDisplay"}
+{"Time":"2026-09-23T00:32:27.561291793+02:00","Action":"output","Package":"open-sds/app/internal/analog","Test":"TestCoupleDisplay","Output":"=== RUN   TestCoupleDisplay\n"}
+{"Time":"2026-09-23T00:32:27.56135006+02:00","Action":"output","Package":"open-sds/app/internal/analog","Test":"TestCoupleDisplay","Output":"--- PASS: TestCoupleDisplay (0.00s)\n"}
+{"Time":"2026-09-23T00:32:27.561367493+02:00","Action":"pass","Package":"open-sds/app/internal/analog","Test":"TestCoupleDisplay","Elapsed":0}
+{"Time":"2026-09-23T00:32:27.56139181+02:00","Action":"run","Package":"open-sds/app/internal/analog","Test":"TestRemoveDC"}
+{"Time":"2026-09-23T00:32:27.56139609+02:00","Action":"output","Package":"open-sds/app/internal/analog","Test":"TestRemoveDC","Output":"=== RUN   TestRemoveDC\n"}
+{"Time":"2026-09-23T00:32:27.561463837+02:00","Action":"output","Package":"open-sds/app/internal/analog","Test":"TestRemoveDC","Output":"--- PASS: TestRemoveDC (0.00s)\n"}
+{"Time":"2026-09-23T00:32:27.561480853+02:00","Action":"pass","Package":"open-sds/app/internal/analog","Test":"TestRemoveDC","Elapsed":0}
+{"Time":"2026-09-23T00:32:27.561496472+02:00","Action":"run","Package":"open-sds/app/internal/analog","Test":"TestPlanVdiv"}
+{"Time":"2026-09-23T00:32:27.561500231+02:00","Action":"output","Package":"open-sds/app/internal/analog","Test":"TestPlanVdiv","Output":"=== RUN   TestPlanVdiv\n"}
+{"Time":"2026-09-23T00:32:27.561563144+02:00","Action":"output","Package":"open-sds/app/internal/analog","Test":"TestPlanVdiv","Output":"--- PASS: TestPlanVdiv (0.00s)\n"}
+{"Time":"2026-09-23T00:32:27.561580197+02:00","Action":"pass","Package":"open-sds/app/internal/analog","Test":"TestPlanVdiv","Elapsed":0}
+{"Time":"2026-09-23T00:32:27.561599027+02:00","Action":"run","Package":"open-sds/app/internal/analog","Test":"TestZoomAndAnalogVdiv"}
+{"Time":"2026-09-23T00:32:27.561603122+02:00","Action":"output","Package":"open-sds/app/internal/analog","Test":"TestZoomAndAnalogVdiv","Output":"=== RUN   TestZoomAndAnalogVdiv\n"}
+{"Time":"2026-09-23T00:32:27.561672881+02:00","Action":"output","Package":"open-sds/app/internal/analog","Test":"TestZoomAndAnalogVdiv","Output":"--- PASS: TestZoomAndAnalogVdiv (0.00s)\n"}
+{"Time":"2026-09-23T00:32:27.56169004+02:00","Action":"pass","Package":"open-sds/app/internal/analog","Test":"TestZoomAndAnalogVdiv","Elapsed":0}
+{"Time":"2026-09-23T00:32:27.561708709+02:00","Action":"run","Package":"open-sds/app/internal/analog","Test":"TestCalibratedGainAndZero"}
+{"Time":"2026-09-23T00:32:27.561712768+02:00","Action":"output","Package":"open-sds/app/internal/analog","Test":"TestCalibratedGainAndZero","Output":"=== RUN   TestCalibratedGainAndZero\n"}
+{"Time":"2026-09-23T00:32:27.561784223+02:00","Action":"output","Package":"open-sds/app/internal/analog","Test":"TestCalibratedGainAndZero","Output":"--- PASS: TestCalibratedGainAndZero (0.00s)\n"}
+{"Time":"2026-09-23T00:32:27.56180767+02:00","Action":"pass","Package":"open-sds/app/internal/analog","Test":"TestCalibratedGainAndZero","Elapsed":0}
+{"Time":"2026-09-23T00:32:27.561826562+02:00","Action":"run","Package":"open-sds/app/internal/analog","Test":"TestOffsetKPerDivision"}
+{"Time":"2026-09-23T00:32:27.561830239+02:00","Action":"output","Package":"open-sds/app/internal/analog","Test":"TestOffsetKPerDivision","Output":"=== RUN   TestOffsetKPerDivision\n"}
+{"Time":"2026-09-23T00:32:27.561892315+02:00","Action":"output","Package":"open-sds/app/internal/analog","Test":"TestOffsetKPerDivision","Output":"--- PASS: TestOffsetKPerDivision (0.00s)\n"}
+{"Time":"2026-09-23T00:32:27.561914067+02:00","Action":"pass","Package":"open-sds/app/internal/analog","Test":"TestOffsetKPerDivision","Elapsed":0}
+{"Time":"2026-09-23T00:32:27.561933563+02:00","Action":"run","Package":"open-sds/app/internal/analog","Test":"TestOffsetTierRangeAndClamp"}
+{"Time":"2026-09-23T00:32:27.561937189+02:00","Action":"output","Package":"open-sds/app/internal/analog","Test":"TestOffsetTierRangeAndClamp","Output":"=== RUN   TestOffsetTierRangeAndClamp\n"}
+{"Time":"2026-09-23T00:32:27.562006803+02:00","Action":"output","Package":"open-sds/app/internal/analog","Test":"TestOffsetTierRangeAndClamp","Output":"--- PASS: TestOffsetTierRangeAndClamp (0.00s)\n"}
+{"Time":"2026-09-23T00:32:27.562028053+02:00","Action":"pass","Package":"open-sds/app/internal/analog","Test":"TestOffsetTierRangeAndClamp","Elapsed":0}
+{"Time":"2026-09-23T00:32:27.562045755+02:00","Action":"run","Package":"open-sds/app/internal/analog","Test":"TestOffsetCodeMapping"}
+{"Time":"2026-09-23T00:32:27.562049795+02:00","Action":"output","Package":"open-sds/app/internal/analog","Test":"TestOffsetCodeMapping","Output":"=== RUN   TestOffsetCodeMapping\n"}
+{"Time":"2026-09-23T00:32:27.562108836+02:00","Action":"output","Package":"open-sds/app/internal/analog","Test":"TestOffsetCodeMapping","Output":"--- PASS: TestOffsetCodeMapping (0.00s)\n"}
+{"Time":"2026-09-23T00:32:27.562127405+02:00","Action":"pass","Package":"open-sds/app/internal/analog","Test":"TestOffsetCodeMapping","Elapsed":0}
+{"Time":"2026-09-23T00:32:27.562154243+02:00","Action":"output","Package":"open-sds/app/internal/analog","Output":"PASS\n"}
+{"Time":"2026-09-23T00:32:28.563490117+02:00","Action":"output","Package":"open-sds/app/internal/analog","Output":"ok  \topen-sds/app/internal/analog\t1.012s\n"}
+{"Time":"2026-09-23T00:32:28.563508137+02:00","Action":"pass","Package":"open-sds/app/internal/analog","Elapsed":1.012}

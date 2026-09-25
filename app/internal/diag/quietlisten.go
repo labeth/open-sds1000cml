@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-DIAG
 package diag
 
 import (
@@ -50,6 +51,7 @@ import (
 // EncOn is the control rung: the identical measurement with the converters left
 // running. It must show the lanes loud. Without it a null means nothing, because
 // "the lanes were quiet" and "the lane monitors are broken" look the same.
+// TRLC-LINKS: REQ-SDS-150
 type QuietOptions struct {
 	DwellMs int    `json:"dwell_ms"` // listen time after the gate reset (0..5000)
 	PairEn  uint16 `json:"pair_en"`  // PAIR_EN bits to keep on (0 = all five pairs off)
@@ -153,6 +155,7 @@ type QuietOptions struct {
 }
 
 // QuietLane is one ADC lane over the listening window.
+// TRLC-LINKS: REQ-SDS-150
 type QuietLane struct {
 	Idx   int    `json:"idx"`
 	Name  string `json:"name"`
@@ -163,6 +166,7 @@ type QuietLane struct {
 }
 
 // QuietResult is one listening window.
+// TRLC-LINKS: REQ-SDS-150
 type QuietResult struct {
 	Options   QuietOptions   `json:"options"`
 	Broke     []string       `json:"broke"`      // control lines actually flipped
@@ -189,6 +193,7 @@ type QuietResult struct {
 }
 
 // broke renders the break list for a verdict line.
+// TRLC-LINKS: REQ-SDS-150
 func broke(b []string) string {
 	if len(b) == 0 {
 		return "the ADC recipe untouched"
@@ -200,6 +205,7 @@ func broke(b []string) string {
 // which of the 80 ADC lanes moved. Everything happens inside ONE Exec: the
 // engine rewrites ACQ_CTRL on every arm (engine_bus.go acqCtrlWord), so a
 // freeze that spans two Exec calls would be undone between them.
+// TRLC-LINKS: REQ-SDS-150
 func (d *Diag) QuietListen(o QuietOptions) (*QuietResult, error) {
 	if o.DwellMs < 0 || o.DwellMs > 5000 {
 		return nil, fmt.Errorf("diag: quiet dwell_ms %d out of range (0..5000)", o.DwellMs)

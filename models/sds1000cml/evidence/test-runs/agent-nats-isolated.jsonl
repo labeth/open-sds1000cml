@@ -1,0 +1,16 @@
+{"Time":"2026-09-23T03:52:13.495083614+02:00","Action":"start","Package":"open-sds/ota/internal/otactl"}
+{"Time":"2026-09-23T03:52:13.509113244+02:00","Action":"run","Package":"open-sds/ota/internal/otactl","Test":"TestNATSEndToEndSubjectsEventsAndTCPParity"}
+{"Time":"2026-09-23T03:52:13.509134762+02:00","Action":"output","Package":"open-sds/ota/internal/otactl","Test":"TestNATSEndToEndSubjectsEventsAndTCPParity","Output":"=== RUN   TestNATSEndToEndSubjectsEventsAndTCPParity\n"}
+{"Time":"2026-09-23T03:52:13.545002969+02:00","Action":"output","Package":"open-sds/ota/internal/otactl","Test":"TestNATSEndToEndSubjectsEventsAndTCPParity","Output":"[agent] 2026/09/23 03:52:13 open-sds OTA agent dev (unknown, unknown) device=e2e-dev-1 slot=?\n"}
+{"Time":"2026-09-23T03:52:13.545025287+02:00","Action":"output","Package":"open-sds/ota/internal/otactl","Test":"TestNATSEndToEndSubjectsEventsAndTCPParity","Output":"[agent] 2026/09/23 03:52:13 inherited fds: gpmc=-1 fpga_key=-1\n"}
+{"Time":"2026-09-23T03:52:13.545037232+02:00","Action":"output","Package":"open-sds/ota/internal/otactl","Test":"TestNATSEndToEndSubjectsEventsAndTCPParity","Output":"[agent] 2026/09/23 03:52:13 state: taken_over=false auto_takeover=false\n"}
+{"Time":"2026-09-23T03:52:13.545043739+02:00","Action":"output","Package":"open-sds/ota/internal/otactl","Test":"TestNATSEndToEndSubjectsEventsAndTCPParity","Output":"[agent] 2026/09/23 03:52:13 coexist mode: factory app owns the instrument; run `otactl takeover` when ready\n"}
+{"Time":"2026-09-23T03:52:13.545273697+02:00","Action":"output","Package":"open-sds/ota/internal/otactl","Test":"TestNATSEndToEndSubjectsEventsAndTCPParity","Output":"[agent] 2026/09/23 03:52:13 tcp control listening on 127.0.0.1:0\n"}
+{"Time":"2026-09-23T03:52:13.546680814+02:00","Action":"output","Package":"open-sds/ota/internal/otactl","Test":"TestNATSEndToEndSubjectsEventsAndTCPParity","Output":"[agent] 2026/09/23 03:52:13 nats connected to nats://127.0.0.1:46169\n"}
+{"Time":"2026-09-23T03:52:13.547828016+02:00","Action":"output","Package":"open-sds/ota/internal/otactl","Test":"TestNATSEndToEndSubjectsEventsAndTCPParity","Output":"[agent] 2026/09/23 03:52:13 event online: map[ips:[enp0s31f6 192.168.1.30/24] version:dev (unknown, unknown)]\n"}
+{"Time":"2026-09-23T03:52:14.561345651+02:00","Action":"output","Package":"open-sds/ota/internal/otactl","Test":"TestNATSEndToEndSubjectsEventsAndTCPParity","Output":"--- PASS: TestNATSEndToEndSubjectsEventsAndTCPParity (1.05s)\n"}
+{"Time":"2026-09-23T03:52:14.561364667+02:00","Action":"output","Package":"open-sds/ota/internal/otactl","Test":"TestNATSEndToEndSubjectsEventsAndTCPParity","Output":"[agent] 2026/09/23 03:52:14 nats disconnected: \u003cnil\u003e\n"}
+{"Time":"2026-09-23T03:52:14.561376081+02:00","Action":"pass","Package":"open-sds/ota/internal/otactl","Test":"TestNATSEndToEndSubjectsEventsAndTCPParity","Elapsed":1.05}
+{"Time":"2026-09-23T03:52:14.561392327+02:00","Action":"output","Package":"open-sds/ota/internal/otactl","Output":"PASS\n"}
+{"Time":"2026-09-23T03:52:15.56407961+02:00","Action":"output","Package":"open-sds/ota/internal/otactl","Output":"ok  \topen-sds/ota/internal/otactl\t2.069s\n"}
+{"Time":"2026-09-23T03:52:15.564104659+02:00","Action":"pass","Package":"open-sds/ota/internal/otactl","Elapsed":2.069}

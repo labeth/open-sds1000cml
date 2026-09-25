@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-SETTINGS
 package settings_test
 
 import (
@@ -13,25 +14,36 @@ import (
 // nullBus satisfies bus.Bus without any hardware: the engine is constructed
 // (never Run) purely so Apply exercises the REAL staging setters and their
 // clamps, and Snapshot reports what they stored.
+// TRLC-LINKS: REQ-SDS-072
 type nullBus struct{}
 
+// TRLC-LINKS: REQ-SDS-072
 func (nullBus) Read(plane uint8, sel uint16) (uint16, error) { return 0, nil }
+// TRLC-LINKS: REQ-SDS-072
 func (nullBus) Write(plane uint8, sel, val uint16) error     { return nil }
+// TRLC-LINKS: REQ-SDS-072
 func (nullBus) RawWrite(sel, val uint16) error               { return nil }
+// TRLC-LINKS: REQ-SDS-072
 func (nullBus) BurstInto(c1, c2 []uint8, n int)              {}
+// TRLC-LINKS: REQ-SDS-072
 func (nullBus) PopWords(sel uint16, dst []uint16, n int)     {}
+// TRLC-LINKS: REQ-SDS-072
 func (nullBus) FastDrain() bool                              { return true }
 
 // nullSPI satisfies analog.Transport so the real FrontEnd (with its per-tier
 // offset law, ladder and emit tracking) runs against no hardware.
+// TRLC-LINKS: REQ-SDS-072
 type nullSPI struct{ relays, gains int }
 
+// TRLC-LINKS: REQ-SDS-072
 func (n *nullSPI) WriteRelay(word uint32) error   { n.relays++; return nil }
+// TRLC-LINKS: REQ-SDS-072
 func (n *nullSPI) WriteGain(ch2, ch1 uint8) error { n.gains++; return nil }
 
 // rig builds the production object graph exactly as cmd/app/main.go wires it
 // (engine ← bus stub, front end ← SPI stub with the engine hooks, panel
 // controller on top), without running any goroutine.
+// TRLC-LINKS: REQ-SDS-072
 func rig(t *testing.T) (*engine.Engine, *analog.FrontEnd, *panel.Controller, *nullSPI) {
 	t.Helper()
 	e := engine.New(engine.Config{Bus: nullBus{}, Logf: t.Logf})
@@ -43,6 +55,7 @@ func rig(t *testing.T) (*engine.Engine, *analog.FrontEnd, *panel.Controller, *nu
 	return e, fe, pc, spi
 }
 
+// TRLC-LINKS: REQ-SDS-072
 func TestApplyRestoreCollectFidelity(t *testing.T) {
 	e, fe, pc, _ := rig(t)
 	want := settings.Settings{
@@ -96,6 +109,7 @@ func TestApplyRestoreCollectFidelity(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-072
 func TestApplyHostileValuesClampThroughSetters(t *testing.T) {
 	e, fe, pc, _ := rig(t)
 	hostile := settings.Settings{
@@ -149,6 +163,7 @@ func TestApplyHostileValuesClampThroughSetters(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-072
 func TestApplyVirginVerticalStaysUntouched(t *testing.T) {
 	// VertSet=false (the saved session never drove the front end): restore
 	// must preserve the seed-don't-emit boot rule — no relay/gain emission,
@@ -175,6 +190,7 @@ func TestApplyVirginVerticalStaysUntouched(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-072
 func TestApplyNilOwners(t *testing.T) {
 	// fe==nil (no SPI front end) and pc==nil must be tolerated everywhere.
 	e, _, _, _ := rig(t)
@@ -184,6 +200,7 @@ func TestApplyNilOwners(t *testing.T) {
 	_ = settings.Collect(nil, nil, nil)
 }
 
+// TRLC-LINKS: REQ-SDS-072
 func sampleValid() settings.Settings {
 	return settings.Settings{
 		Version: settings.Version,

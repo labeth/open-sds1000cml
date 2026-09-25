@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-WEB
 package web
 
 import (
@@ -14,6 +15,7 @@ import (
 // i2cWave renders one I2C transaction (START, addr 0x50 W, ACK, 0x00, ACK, 0xFF,
 // NAK, STOP) onto SCL/SDA code arrays of length n. SPB=40 cols/clock keeps it
 // well above the decoder's resolution guard.
+// TRLC-LINKS: REQ-SDS-180
 func i2cWave(n int) (scl, sda []uint8) {
 	const lo, hi, SPB = 40, 210, 40
 	half := SPB / 2
@@ -58,6 +60,7 @@ func i2cWave(n int) (scl, sda []uint8) {
 // server serving a synthetic I2C frame, and checks the decode transcript, the
 // byte count, the Copy button, and the navigator wheel-zoom + reset. Fully
 // device-independent; skips when node/Playwright are unavailable (fails under CI_REQUIRE_BROWSER=1).
+// TRLC-LINKS: REQ-SDS-180
 func TestDecodeBrowser(t *testing.T) {
 	testenv.NeedNode(t)
 	const N = 2048

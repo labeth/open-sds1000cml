@@ -1,0 +1,31 @@
+{
+  "identity": {
+    "epoch": 12,
+    "record": 1236
+  },
+  "config": {
+    "source": 0,
+    "normal": true,
+    "pre_words": 262144,
+    "post_words": 262144,
+    "trigger_level": 103,
+    "trigger_hysteresis": 4,
+    "mil1553": {
+      "enabled": true,
+      "channel": 0,
+      "inverted": true,
+      "bit_ticks": 125,
+      "pattern": 42330,
+      "match_any": false
+    }
+  },
+  "status": "Triggered: 1048576 samples/channel retained. Download before ending the session.",
+  "countBefore": "10169 events · 0 lost",
+  "rawBytes": 2097152,
+  "sha256": "825bd76d7dede1dc6dbf66e3f2b78352c5a86520658f5e71208307d21bd02b9a",
+  "countAfter": "234154 events · 0 lost",
+  "events": "DATA A55A\nDATA 5AA5\nERROR A55A\nDATA A55A\nDATA 5AA5\nERROR A55A\nDATA A55A\nDATA 5AA5\nERROR A55A\nDATA A55A\nDATA 5AA5\nERROR A55A\nDATA A55A\nDATA 5AA5\nERROR A55A\nDATA A55A\nDATA 5AA5\nERROR A55A\nDATA A55A\nDATA 5AA5\nERROR A55A\nDATA A55A\nDATA 5AA5\nERROR A55A",
+  "pass": true,
+  "endStatus": 204,
+  "restoreStatus": 200
+}

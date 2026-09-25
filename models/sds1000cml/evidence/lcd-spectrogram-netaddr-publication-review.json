@@ -1,0 +1,59 @@
+{
+  "result": "needs-work",
+  "pdfSHA256": "87c2f4e6ed83d4fca1b99efd2d0b86ffef9422b5fe6b6513f94fd26d24dff077",
+  "inputSHA256": "cfd4d311ff6eb6549738621645d2b485faac86f9fb12d7fbc323173aa1cd74ae",
+  "pages": 657,
+  "outside": 0,
+  "tinyTextPages": [
+    56,
+    58,
+    153,
+    154,
+    155,
+    156,
+    157,
+    286,
+    287,
+    288,
+    292,
+    327
+  ],
+  "samples": [
+    {
+      "page": 286,
+      "image": "/home/labeth/ws/open-sds1000cml-acq2/tmp/pdfs/lcd-spectrogram-netaddr/page-286.png",
+      "imageSHA256": "320f7b91311f9d895cc6c486be626d533d9c520d5c3a3896d6620606d323725a",
+      "minFont": 5.944898286695889,
+      "finding": "LCD panel retains its heading and coordinates; verification edge labels overlap nearby source boxes and compact text needs improvement."
+    },
+    {
+      "page": 287,
+      "image": "/home/labeth/ws/open-sds1000cml-acq2/tmp/pdfs/lcd-spectrogram-netaddr/page-287.png",
+      "imageSHA256": "ebf2f2c561efdb49ca35df9dd4913381ab3a5010c1e31b8f708de220a8c7e89c",
+      "minFont": 5.771085417138124,
+      "finding": "LCD panel retains its heading and coordinates; verification edge labels overlap nearby source boxes and compact text needs improvement."
+    },
+    {
+      "page": 288,
+      "image": "/home/labeth/ws/open-sds1000cml-acq2/tmp/pdfs/lcd-spectrogram-netaddr/page-288.png",
+      "imageSHA256": "61b74f0a7f628a6a6fda94e966b6c21399fb307fac3ce410dbfacea9ef6106d3",
+      "minFont": 5.7750789401716816,
+      "finding": "LCD panel retains its heading and coordinates; verification edge labels overlap nearby source boxes and compact text needs improvement."
+    },
+    {
+      "page": 289,
+      "image": "/home/labeth/ws/open-sds1000cml-acq2/tmp/pdfs/lcd-spectrogram-netaddr/page-289.png",
+      "imageSHA256": "3587b6d0b0f8bae12f91892d3bef2f4e6f2a2712958e29d2580a3e1bd85082d1",
+      "minFont": 6.352128042527966,
+      "finding": "LCD panel retains its heading and coordinates; verification edge labels overlap nearby source boxes and compact text needs improvement."
+    },
+    {
+      "page": 327,
+      "image": "/home/labeth/ws/open-sds1000cml-acq2/tmp/pdfs/lcd-spectrogram-netaddr/page-327.png",
+      "imageSHA256": "5e70f226654e6e29ff15c3e874c89afacae874ebb49d6df3e6185e2403793320",
+      "minFont": 5.744107575062117,
+      "finding": "Spectrogram coverage retains original LCD/browser/Node evidence; compact labels and awkward filename wrapping need improvement."
+    }
+  ],
+  "scope": "Current LCD and spectrogram visual samples only; exhaustive review and density/edge-label repairs remain pending."
+}

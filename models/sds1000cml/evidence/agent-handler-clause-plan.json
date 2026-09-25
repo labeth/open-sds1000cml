@@ -1,0 +1,184 @@
+{
+  "result": "integrated-annotations-and-reviewed-tests",
+  "scope": "Exhaustive handler/helper declaration partition integrated into authored requirements and native annotation/test evidence. Passing assertions remain partial requirement evidence; complete physical behavior is not established.",
+  "sources": {
+    "ota/internal/agent/handlers.go": "9cf4b8ebb61d0249b115df3e5e978744e33870847004baf88aafa9a5db0d6044",
+    "ota/internal/agent/exec.go": "e53b4c5d3ebbb3b0d565afdecbcd9c8757558afb29a15cc26b73ad03aeb3096e",
+    "ota/internal/agent/handlers_test.go": "883571208d084a482175f5d1233f528f0141c79742844c9dfbaa3f08f5dec3c4",
+    "ota/internal/agent/selfupdate_test.go": "36673ae5c3c363ee90dc0c23eac5b746a7c1436dfc30d503533055f8818a05ef"
+  },
+  "contracts": [
+    {
+      "contract": "dispatch-registry",
+      "handlerFunctions": [
+        "register",
+        "init",
+        "hHelp"
+      ],
+      "reviewedTests": [
+        "TestHelpListsEveryRegisteredCommand"
+      ],
+      "existingRequirement": "REQ-SDS-113"
+    },
+    {
+      "contract": "diagnostic-status",
+      "handlerFunctions": [
+        "hPing",
+        "hStatus",
+        "hProbe"
+      ],
+      "reviewedTests": [
+        "TestStatusHandlerShape"
+      ],
+      "existingRequirement": null
+    },
+    {
+      "contract": "execution-and-log-read",
+      "handlerFunctions": [
+        "hLogs",
+        "hExec",
+        "hSh"
+      ],
+      "reviewedTests": [
+        "TestLogsHandler",
+        "TestExecHandler",
+        "TestShHandler"
+      ],
+      "existingRequirement": null
+    },
+    {
+      "contract": "upload-session",
+      "handlerFunctions": [
+        "hPutBegin",
+        "hPutChunk",
+        "hPutCommit"
+      ],
+      "reviewedTests": [
+        "TestPutHandlersRejectBadInput"
+      ],
+      "existingRequirement": "REQ-SDS-106"
+    },
+    {
+      "contract": "file-read",
+      "handlerFunctions": [
+        "hGet"
+      ],
+      "reviewedTests": [
+        "TestGetHandler"
+      ],
+      "existingRequirement": null
+    },
+    {
+      "contract": "application-control",
+      "handlerFunctions": [
+        "hAppStart",
+        "hAppStop",
+        "hAppRestart"
+      ],
+      "reviewedTests": [
+        "TestAppLifecycleHandlersDriveSupervisor"
+      ],
+      "existingRequirement": null
+    },
+    {
+      "contract": "application-installation",
+      "handlerFunctions": [
+        "hAppUpdate",
+        "hAppActivate",
+        "hAppInstallEmergency"
+      ],
+      "reviewedTests": [
+        "TestAppUpdateInstallsIntoInactiveSlot",
+        "TestAppActivate",
+        "TestAppInstallEmergency"
+      ],
+      "existingRequirement": null
+    },
+    {
+      "contract": "agent-self-update",
+      "handlerFunctions": [
+        "hAgentUpdate",
+        "hAgentRestart",
+        "writeText",
+        "markIntent"
+      ],
+      "reviewedTests": [
+        "TestAgentUpdateRefusalGates",
+        "TestAgentUpdateInstallsFlipsAndExitsClean",
+        "TestAgentUpdateRefusesShaMismatchWithoutExiting",
+        "TestAgentRestartExitsCleanWithIntent"
+      ],
+      "existingRequirement": null
+    },
+    {
+      "contract": "takeover",
+      "handlerFunctions": [
+        "hTakeover"
+      ],
+      "reviewedTests": [],
+      "existingRequirement": "REQ-SDS-027"
+    },
+    {
+      "contract": "factory-recovery",
+      "handlerFunctions": [
+        "hUntakeover",
+        "hRestoreFactory"
+      ],
+      "reviewedTests": [
+        "TestRestoreFactoryGates"
+      ],
+      "existingRequirement": null
+    },
+    {
+      "contract": "reboot-confirmation",
+      "handlerFunctions": [
+        "hReboot"
+      ],
+      "reviewedTests": [
+        "TestRebootRequiresConfirm"
+      ],
+      "existingRequirement": null
+    }
+  ],
+  "executionHelpers": {
+    "runArgv": "execution-and-log-read",
+    "runShell": "execution-and-log-read",
+    "tailFile": "execution-and-log-read",
+    "bootEnv": "factory-recovery",
+    "launchDetached": "factory-recovery",
+    "copyExecFile": "agent-self-update"
+  },
+  "testHelpers": {
+    "mustData": "handler-test-support",
+    "captureExit": "agent-self-update",
+    "waitExit": "agent-self-update"
+  },
+  "types": {
+    "LaunchOpt": "factory-recovery"
+  },
+  "limitations": [
+    "Existing tests remain partial; registry help test does not prove every handler contract.",
+    "Refusal-only reboot and factory-restore tests do not prove real reboot or recovery.",
+    "Test-only overlays characterize timeout, digest/format and copy-mode limits without changing instrument behavior.",
+    "Source helper testAgent has its own RPC/takeover trace links; broader fixture reuse does not itself establish behavior."
+  ],
+  "authoredContracts": {
+    "diagnostic-status": "REQ-SDS-114",
+    "execution-and-log-read": "REQ-SDS-115",
+    "file-read": "REQ-SDS-116",
+    "application-control": "REQ-SDS-117",
+    "application-installation": "REQ-SDS-118",
+    "agent-self-update": "REQ-SDS-119",
+    "factory-recovery": "REQ-SDS-120",
+    "reboot-confirmation": "REQ-SDS-121",
+    "dispatch-registry": "REQ-SDS-113",
+    "upload-session": "REQ-SDS-106",
+    "takeover": "REQ-SDS-027"
+  },
+  "reviewedBaselineSHA256": {
+    "ota/internal/agent/handlers.go": "68214688693fafccdd0a748978673ee00d9f57f5d01fcd05e182cc4b8a84f6f9",
+    "ota/internal/agent/exec.go": "3b88d51733a63c98bc37478f09e41dceef2eb26647ea31a7615f4bfb85eecc1b",
+    "ota/internal/agent/handlers_test.go": "a0010fb57608e76b9357d669ab936e93f4776ec4ab251d6605a3a410f9a7fa1f",
+    "ota/internal/agent/selfupdate_test.go": "c492297140bca3e1ca73010dde8e81b33dd8003f0c43c196bc1ce3569dd33ace"
+  }
+}

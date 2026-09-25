@@ -1,0 +1,272 @@
+{
+  "status": "integrated",
+  "files": [
+    {
+      "path": "fpga/internal/quartus/quartus.go",
+      "owner": "FU-FPGA-QUARTUS",
+      "functions": {
+        "DefaultRoot": [
+          "REQ-SDS-152"
+        ],
+        "Result.Defects": [
+          "REQ-SDS-154"
+        ],
+        "Config.fill": [
+          "REQ-SDS-152"
+        ],
+        "AcquireLock": [
+          "REQ-SDS-152"
+        ],
+        "Lock.Release": [
+          "REQ-SDS-152"
+        ],
+        "MemAvailableMB": [
+          "REQ-SDS-152"
+        ],
+        "ParseMemAvailableMB": [
+          "REQ-SDS-152"
+        ],
+        "Run": [
+          "REQ-SDS-152",
+          "REQ-SDS-153",
+          "REQ-SDS-154"
+        ],
+        "stage": [
+          "REQ-SDS-153"
+        ],
+        "copyFile": [
+          "REQ-SDS-153"
+        ],
+        "runTool": [
+          "REQ-SDS-152"
+        ],
+        "lastLines": [
+          "REQ-SDS-152"
+        ]
+      },
+      "types": {
+        "Config": [
+          "REQ-SDS-152"
+        ],
+        "Stage": [
+          "REQ-SDS-152"
+        ],
+        "Result": [
+          "REQ-SDS-152",
+          "REQ-SDS-153",
+          "REQ-SDS-154"
+        ],
+        "Lock": [
+          "REQ-SDS-152"
+        ]
+      }
+    },
+    {
+      "path": "fpga/internal/quartus/quartus_test.go",
+      "owner": "FU-FPGA-QUARTUS",
+      "functions": {
+        "fitReport": [
+          "REQ-SDS-154"
+        ],
+        "staReport": [
+          "REQ-SDS-154"
+        ],
+        "fakeQuartus": [
+          "REQ-SDS-152"
+        ],
+        "fakeDesign": [
+          "REQ-SDS-153"
+        ],
+        "meminfo": [
+          "REQ-SDS-152"
+        ],
+        "config": [
+          "REQ-SDS-152"
+        ],
+        "calls": [
+          "REQ-SDS-152"
+        ],
+        "TestParseMemAvailableMB": [
+          "REQ-SDS-152"
+        ],
+        "TestQSFPinsAndGlobals": [
+          "REQ-SDS-153"
+        ],
+        "TestParseFitReportOK": [
+          "REQ-SDS-154"
+        ],
+        "TestParseFitReportUnassigned": [
+          "REQ-SDS-154"
+        ],
+        "TestParseFitReportUnused": [
+          "REQ-SDS-154"
+        ],
+        "TestParseFitReportBallMissingFromTable": [
+          "REQ-SDS-154"
+        ],
+        "TestParseFitReportNoPinTable": [
+          "REQ-SDS-154"
+        ],
+        "TestParseSTAReport": [
+          "REQ-SDS-154"
+        ],
+        "TestRealDefaultSTAReport": [
+          "REQ-SDS-154"
+        ],
+        "TestRunHappyPath": [
+          "REQ-SDS-152",
+          "REQ-SDS-153",
+          "REQ-SDS-154"
+        ],
+        "mustReal": [
+          "REQ-SDS-152"
+        ],
+        "TestRunReportsDefects": [
+          "REQ-SDS-152",
+          "REQ-SDS-154"
+        ],
+        "TestRunNoSTATables": [
+          "REQ-SDS-152",
+          "REQ-SDS-154"
+        ],
+        "TestRunWrongRBFSize": [
+          "REQ-SDS-152"
+        ],
+        "TestRunToolFailure": [
+          "REQ-SDS-152"
+        ],
+        "TestRunMemoryGate": [
+          "REQ-SDS-152"
+        ],
+        "TestRunLockHeld": [
+          "REQ-SDS-152"
+        ],
+        "TestRunStaleQSF": [
+          "REQ-SDS-153"
+        ],
+        "TestRunMissingSDC": [
+          "REQ-SDS-153"
+        ],
+        "TestRunBasenameCollision": [
+          "REQ-SDS-153"
+        ],
+        "TestRunMissingQSF": [
+          "REQ-SDS-153"
+        ],
+        "TestConfigRequired": [
+          "REQ-SDS-152"
+        ],
+        "TestRealReports": [
+          "REQ-SDS-154"
+        ]
+      },
+      "types": {}
+    },
+    {
+      "path": "fpga/internal/quartus/report.go",
+      "owner": "FU-FPGA-QUARTUS",
+      "functions": {
+        "PinProblem.String": [
+          "REQ-SDS-154"
+        ],
+        "TimingReport.Clocks": [
+          "REQ-SDS-154"
+        ],
+        "TimingReport.Failing": [
+          "REQ-SDS-154"
+        ],
+        "QSFPins": [
+          "REQ-SDS-153"
+        ],
+        "QSFGlobal": [
+          "REQ-SDS-153"
+        ],
+        "QSFGlobals": [
+          "REQ-SDS-153"
+        ],
+        "tables": [
+          "REQ-SDS-154"
+        ],
+        "splitCells": [
+          "REQ-SDS-154"
+        ],
+        "ParseFitReport": [
+          "REQ-SDS-154"
+        ],
+        "usageNames": [
+          "REQ-SDS-154"
+        ],
+        "ParseSTAReport": [
+          "REQ-SDS-154"
+        ]
+      },
+      "types": {
+        "PinProblem": [
+          "REQ-SDS-154"
+        ],
+        "FitReport": [
+          "REQ-SDS-154"
+        ],
+        "TimingReport": [
+          "REQ-SDS-154"
+        ]
+      }
+    }
+  ],
+  "functions": 53,
+  "types": 7,
+  "uniqueReviewedTests": [
+    "TestParseMemAvailableMB",
+    "TestQSFPinsAndGlobals",
+    "TestParseFitReportOK",
+    "TestParseFitReportUnassigned",
+    "TestParseFitReportUnused",
+    "TestParseFitReportBallMissingFromTable",
+    "TestParseFitReportNoPinTable",
+    "TestParseSTAReport",
+    "TestRealDefaultSTAReport",
+    "TestRunHappyPath",
+    "TestRunReportsDefects",
+    "TestRunNoSTATables",
+    "TestRunWrongRBFSize",
+    "TestRunToolFailure",
+    "TestRunMemoryGate",
+    "TestRunLockHeld",
+    "TestRunStaleQSF",
+    "TestRunMissingSDC",
+    "TestRunBasenameCollision",
+    "TestRunMissingQSF",
+    "TestConfigRequired",
+    "TestRealReports"
+  ],
+  "nativeEligibleTests": [
+    "TestParseMemAvailableMB",
+    "TestQSFPinsAndGlobals",
+    "TestParseFitReportOK",
+    "TestParseFitReportUnassigned",
+    "TestParseFitReportUnused",
+    "TestParseFitReportBallMissingFromTable",
+    "TestParseFitReportNoPinTable",
+    "TestParseSTAReport",
+    "TestRealDefaultSTAReport",
+    "TestRunHappyPath",
+    "TestRunReportsDefects",
+    "TestRunNoSTATables",
+    "TestRunWrongRBFSize",
+    "TestRunToolFailure",
+    "TestRunMemoryGate",
+    "TestRunLockHeld",
+    "TestRunStaleQSF",
+    "TestRunMissingSDC",
+    "TestRunBasenameCollision",
+    "TestRunMissingQSF",
+    "TestConfigRequired",
+    "TestRealReports"
+  ],
+  "sourceSHA256": {
+    "fpga/internal/quartus/quartus.go": "1bbf63561326ae6c330a9c873dc8fbc97202ac2c415808640110d09d3b3575bb",
+    "fpga/internal/quartus/quartus_test.go": "1d63e8b83d1242a31acd9cb98c0f1e275d937c8f67e6c4aa61a3ffd7b58ead32",
+    "fpga/internal/quartus/report.go": "19e43acbfa639661777dbbec650a59485b76423901e67f0c989f037baf285118"
+  },
+  "scope": "Complete three-file FPGA Quartus driver package; fake-tool host tests and optional existing report reads only. No synthesis, fitting, programming, device operation or physical qualification."
+}

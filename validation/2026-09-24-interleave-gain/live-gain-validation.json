@@ -1,0 +1,37 @@
+[
+  {
+    "name": "triangle-half-full.bin",
+    "depth": 1048576,
+    "filter": "interleave offset calibration (phase checked); stopped full record (single acquisition)",
+    "channels": [
+      {
+        "samples": 199100,
+        "rms": 0.5859669670456451
+      },
+      {
+        "samples": 222900,
+        "rms": 0.5809320947799713
+      }
+    ],
+    "inverse": null
+  },
+  {
+    "name": "triangle-half-gain-full.bin",
+    "depth": 1048576,
+    "filter": "interleave calibration (phase checked); stopped full record (single acquisition)",
+    "channels": [
+      {
+        "samples": 223000,
+        "rms": 0.5617084325990198
+      },
+      {
+        "samples": 208500,
+        "rms": 0.5484020720602031
+      }
+    ],
+    "inverse": {
+      "rotation": 1,
+      "meanSquaredError": 0.0000012688430878729023
+    }
+  }
+]

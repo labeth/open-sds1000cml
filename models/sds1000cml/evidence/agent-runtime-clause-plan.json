@@ -1,0 +1,133 @@
+{
+  "result": "integrated-annotations-and-reviewed-tests",
+  "scope": "Exhaustive reviewed declaration partition integrated into source comments and authored requirements. Test/runtime and physical scope limitations remain explicit.",
+  "sources": {
+    "ota/internal/agent/probe.go": "010bdab752c660de2ed093b8e9859f69c64b482a4c6dbb9d99b96cdb25813af1",
+    "ota/internal/agent/agent.go": "980e0263d6f5d811afacc17e5c6daebdc2dfaafb63bbc8b6b259c3892a8a6356",
+    "ota/internal/agent/supervise.go": "798e631bebd28eb8b24f75d0533311e01b3023240b4c881a4131c4d1605535ff",
+    "ota/internal/agent/supervise_test.go": "f8eb85c95aca937706e5d9ca152ed5cb08021dec9db09d349f0a343fbbd49df3",
+    "ota/cmd/agent/main.go": "b988f08fd3fbdb345ed723e620ebfbff55d5053bf148f86f7f349d6d858e6bbf"
+  },
+  "existingContracts": {
+    "REQ-SDS-028": {
+      "refinement": "Describe slot selection, outcome classification and the conditional recovery ladder; do not assert unconditional failed-update rollback. Preserve stale/nonzero confirmation, missing-executable bypass, ignored pointer errors and adopted-PID identity limits.",
+      "functions": [
+        "superviseLoop",
+        "pickSlot",
+        "orphanAppPid",
+        "superviseAdopted",
+        "runAppOnce",
+        "terminate",
+        "killPid",
+        "bumpFail",
+        "rollbackIfNeeded",
+        "clearEmergency",
+        "setAppState"
+      ],
+      "types": [
+        "appState"
+      ],
+      "evidence": [
+        "agent-supervisor-review.json",
+        "agent-supervisor-characterization.json"
+      ]
+    },
+    "REQ-SDS-117": {
+      "functions": [
+        "idleWait",
+        "ctlRequest"
+      ],
+      "types": [
+        "ctlMsg"
+      ],
+      "limits": "Separate send/reply deadlines; no cancellation of queued requests, no stopped case; unknown operations rejected only by idleWait.",
+      "evidence": [
+        "agent-control-characterization.json"
+      ]
+    },
+    "REQ-SDS-114": {
+      "functions": [
+        "Probe",
+        "probe",
+        "hex4",
+        "status",
+        "AgentSlot"
+      ],
+      "types": [
+        "ProbeReport",
+        "statusDoc"
+      ],
+      "limits": "Best-effort nonatomic diagnostics, explicit GPMC opt-in, discarded shell/read errors and no whole-probe deadline."
+    }
+  },
+  "proposedContracts": [
+    {
+      "name": "Agent runtime initialization and shutdown",
+      "functions": [
+        "New",
+        "Run",
+        "Stop",
+        "pidPath",
+        "acquireWatchdogForever"
+      ],
+      "types": [
+        "Agent",
+        "gpmcReader"
+      ],
+      "limits": "Store/PID failures do not prevent Run; workers unjoined; delayed takeover not stopped by shutdown; Stop check/close is not concurrently idempotent; acquisition can outlive Stop. Device behavior remains inspection-only."
+    },
+    {
+      "name": "Agent event callback delivery",
+      "functions": [
+        "event",
+        "setEventFn"
+      ],
+      "limits": "Logging precedes optional callback; callback copied under lock and invoked outside lock; payload not copied and callback panic not recovered."
+    },
+    {
+      "name": "Agent command-line dispatch",
+      "functions": [
+        "main",
+        "hasFlag"
+      ],
+      "limits": "Version/help aliases and unknown/status refusal tested; probe and no-argument supervisor path inspection-only. Unknown extra probe flags ignored, JSON write errors discarded."
+    }
+  ],
+  "supervisorReviewedTests": [
+    "TestPickSlotNothingInstalled",
+    "TestPickSlotActive",
+    "TestPickSlotFallsBackToConfirmed",
+    "TestPickSlotEmergencyBackstop",
+    "TestPickSlotForcedEmergencyWinsOverActive",
+    "TestRollbackBelowThresholdDoesNothing",
+    "TestRollbackToConfirmedAtThreshold",
+    "TestRollbackToEmergencyWhenConfirmedCrashLoops",
+    "TestRollbackExhaustedKeepsRetrying",
+    "TestRollbackWhileOnEmergencyOnlyLogs",
+    "TestOrphanAppPid",
+    "TestSuperviseAdoptedTornDownByControl",
+    "TestSuperviseAdoptedKillsWhenNoHealthEverArrives",
+    "TestIdleWaitServicesControlOps",
+    "TestCtlRequestTimesOutWithoutSupervisor",
+    "TestRunAppOnceStableRunConfirmsSlot",
+    "TestRunAppOnceCrashCountsAsFailure",
+    "TestRunAppOnceStaleHealthGetsTerminated"
+  ],
+  "testHelpers": [
+    "writeSlotBinary",
+    "appOf",
+    "pausedOf"
+  ],
+  "reviewedBaselineSHA256": {
+    "ota/internal/agent/probe.go": "87c41d2c5d0e3d4dc28c52ee539f24bb41131b6e2ac25d7a3c9dbcf390969857",
+    "ota/internal/agent/agent.go": "cae42ede46281a27f9bf51682abe4776db3a11edfb6766799c5bab01853c007d",
+    "ota/internal/agent/supervise.go": "d46b4a0da8508b4005e589cd8439a9141b518cef4b50ce0c88c3f3ddecbf63ba",
+    "ota/internal/agent/supervise_test.go": "88d6ebc0bf882a158560ba3360c9db059c12bb7a9874993bb4b2cdb25e1cc9fa",
+    "ota/cmd/agent/main.go": "df41849e59b48aba5d025968b2403a613034831268c7a333511919eef908f782"
+  },
+  "authoredContracts": {
+    "Agent runtime initialization and shutdown": "REQ-SDS-122",
+    "Agent event callback delivery": "REQ-SDS-123",
+    "Agent command-line dispatch": "REQ-SDS-124"
+  }
+}

@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-WEB
 package web
 
 import (
@@ -12,6 +13,7 @@ import (
 	"open-sds/app/internal/sramcapture"
 )
 
+// TRLC-LINKS: REQ-SDS-166
 type sramTestSource struct {
 	m             sramcapture.Metadata
 	cfg           sramcapture.Config
@@ -20,13 +22,19 @@ type sramTestSource struct {
 	err           error
 }
 
+// TRLC-LINKS: REQ-SDS-166
 func (s *sramTestSource) Status() (sramcapture.Metadata, error)             { return s.m, nil }
+// TRLC-LINKS: REQ-SDS-166
 func (s *sramTestSource) Arm(_ context.Context, c sramcapture.Config) error { s.cfg = c; return s.err }
+// TRLC-LINKS: REQ-SDS-166
 func (s *sramTestSource) Force(context.Context) error                       { return s.err }
+// TRLC-LINKS: REQ-SDS-166
 func (s *sramTestSource) Halt(context.Context) error                        { return s.err }
+// TRLC-LINKS: REQ-SDS-166
 func (s *sramTestSource) Snapshot(context.Context) ([10]uint8, error) {
 	return [10]uint8{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}, nil
 }
+// TRLC-LINKS: REQ-SDS-166
 func (s *sramTestSource) Recall(_ context.Context, off, n uint32, w io.Writer) (int64, error) {
 	s.calls++
 	s.offset = off
@@ -36,6 +44,7 @@ func (s *sramTestSource) Recall(_ context.Context, off, n uint32, w io.Writer) (
 	}
 	return io.CopyN(w, strings.NewReader(strings.Repeat("abcd", int(n))), int64(n)*4)
 }
+// TRLC-LINKS: REQ-SDS-166
 func TestSRAMFullRecordAndWindowAPI(t *testing.T) {
 	s := &sramTestSource{m: sramcapture.Metadata{Ready: true, Frozen: true, Length: sramcapture.Words}}
 	h := SRAMHandler(s)
@@ -67,6 +76,7 @@ func TestSRAMFullRecordAndWindowAPI(t *testing.T) {
 		t.Fatal("served live record")
 	}
 }
+// TRLC-LINKS: REQ-SDS-166
 func TestSRAMArmIsExplicitAndErrorsRemainJSON(t *testing.T) {
 	s := &sramTestSource{m: sramcapture.Metadata{Ready: true, Frozen: true, Length: 1}}
 	h := SRAMHandler(s)

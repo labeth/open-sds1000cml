@@ -1,0 +1,22 @@
+type modelReviewDownloadTransport struct { fail bool; calls int }
+func (m *modelReviewDownloadTransport) Call(cmd string, args any, timeout time.Duration) (*rpcproto.Response, error) {
+	m.calls++
+	if m.fail { return &rpcproto.Response{OK: false, Err: "fixture refusal"}, nil }
+	return &rpcproto.Response{OK: true, Data: []byte(`{"data":"","eof":false,"size":100}`)}, nil
+}
+func (*modelReviewDownloadTransport) Close() {}
+func TestModelReviewDownloadTruncation(t *testing.T) {
+	for _, fail := range []bool{false, true} {
+		path := filepath.Join(t.TempDir(), "existing.bin")
+		if err := os.WriteFile(path, []byte("keep-existing-data"), 0o600); err != nil { t.Fatal(err) }
+		transport := &modelReviewDownloadTransport{fail: fail}
+		client := &Client{T: transport}
+		err := client.GetFile("fixture-only", path, nil)
+		if (err != nil) != fail { t.Fatalf("fail=%v, error=%v", fail, err) }
+		data, readErr := os.ReadFile(path)
+		if readErr != nil || len(data) != 0 || transport.calls != 1 {
+			t.Fatalf("expected empty destination after one reply: data=%q error=%v calls=%d", data, readErr, transport.calls)
+		}
+	}
+	t.Log("empty non-EOF reply with size=100 succeeds; first-call device error also leaves preexisting destination truncated")
+}

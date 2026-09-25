@@ -1,0 +1,16 @@
+{
+  "result": "pass",
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "files": 25,
+  "matchedDeclarations": 51,
+  "diagnostics": null,
+  "sourceInventorySHA256": "4a6ba7f7b769c7eb5d32df3dc0a187c5f7b2cb9624b07f7fcdc7addf275ca9cd",
+  "scannerSHA256": {
+    "go.mod": "5ad54fc3bc9988f3422f55a30bd66614b81d0350eb7bb19db90246d3523c18d6",
+    "go.sum": "b2778a110705f64e4b82375879432b5e9c1407d87631e148d8111f8094452f7f",
+    "codemap/scan.go": "93637626fdd868acdf806064af64818038662d83bc3cb439bb32e185f677ce1d",
+    "codemap/python.go": "0410e8eb6176013230faf37568895dadbd0d3b2e6fbb8aca3ccf06d97b918814"
+  },
+  "runnerSHA256": "c1c3b4cec246e7e2c7628194c7a4ed26a5ad6acca7d02bae56876f0389dee266",
+  "scope": "Cross-parser comparison of all pinned nonhistorical Python named declarations against the independent standard-library AST inventory. Synthetic REQ-AUDIT-001 comments exist only in temporary copies. This is parser validation, not authored SDS requirement links or behavioral verification."
+}

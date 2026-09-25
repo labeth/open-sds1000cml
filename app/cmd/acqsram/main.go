@@ -1,4 +1,5 @@
 // srambench accesses only volatile FPGA configuration and bench CS1 registers.
+// ENGMODEL-OWNER-UNIT: FU-APP-ACQSRAM
 package main
 
 import (
@@ -14,6 +15,7 @@ import (
 	"open-sds/app/internal/bus"
 	"open-sds/app/internal/cal"
 	"open-sds/app/internal/fpgaload"
+	"open-sds/app/internal/lcd"
 	"open-sds/app/internal/sramcapture"
 	"os"
 	"strconv"
@@ -25,6 +27,7 @@ import (
 
 var fd int
 
+// TRLC-LINKS: REQ-SDS-170
 func xfer(plane, sel, val uint16, write bool) uint16 {
 	b := [6]byte{byte(plane), 0, byte(sel), byte(sel >> 8), byte(val), byte(val >> 8)}
 	req := uintptr(0x80026700)
@@ -37,14 +40,26 @@ func xfer(plane, sel, val uint16, write bool) uint16 {
 	}
 	return uint16(b[4]) | uint16(b[5])<<8
 }
-func rd(s uint16) uint16  { return xfer(1, s, 0, false) }
-func wr(s, v uint16)      { xfer(1, s, v, true) }
+
+// TRLC-LINKS: REQ-SDS-170
+func rd(s uint16) uint16 { return xfer(1, s, 0, false) }
+
+// TRLC-LINKS: REQ-SDS-170
+func wr(s, v uint16) { xfer(1, s, v, true) }
+
+// TRLC-LINKS: REQ-SDS-170
 func r32(s uint16) uint32 { return uint32(rd(s)) | uint32(rd(s+1))<<16 }
 
+// TRLC-LINKS: REQ-SDS-170
 type port struct{}
 
+// TRLC-LINKS: REQ-SDS-170
 func (port) ReadCfg() (uint16, error) { return xfer(3, 7, 0, false), nil }
-func (port) WriteCfg(v uint16) error  { xfer(3, 7, v, true); return nil }
+
+// TRLC-LINKS: REQ-SDS-170
+func (port) WriteCfg(v uint16) error { xfer(3, 7, v, true); return nil }
+
+// TRLC-LINKS: REQ-SDS-170
 func num(s string) uint32 {
 	v, e := strconv.ParseUint(s, 0, 32)
 	if e != nil {
@@ -52,6 +67,8 @@ func num(s string) uint32 {
 	}
 	return uint32(v)
 }
+
+// TRLC-LINKS: REQ-SDS-170
 func main() {
 	fd = -1
 	es, e := os.ReadDir("/proc/self/fd")
@@ -73,15 +90,30 @@ func main() {
 		panic("load FILE | status | run SEED LATENCY")
 	}
 	if os.Args[1] == "load" {
+		show := func(stage string, sent, total int) {}
+		if fb, err := lcd.OpenFB(); err == nil {
+			surface := lcd.NewMemSurface()
+			show = func(stage string, sent, total int) { lcd.DrawLoading(surface, stage, sent, total); fb.Present(surface) }
+		}
+		show("Preparing firmware", 0, 0)
 		p := os.Args[2]
 		b, e := os.ReadFile(p)
 		if e != nil {
+			show("Unable to read firmware", 0, 0)
 			panic(e)
 		}
-		e = fpgaload.Reload(port{}, b, fpgaload.Options{BitOrder: fpgaload.BitOrderReverse, Force: true, Attempts: 1, Logf: func(f string, a ...any) { fmt.Fprintf(os.Stderr, f+"\n", a...) }})
+		e = fpgaload.Reload(port{}, b, fpgaload.Options{BitOrder: fpgaload.BitOrderReverse, Force: true, Attempts: 1, Logf: func(f string, a ...any) { fmt.Fprintf(os.Stderr, f+"\n", a...) }, Progress: func(sent, total int) {
+			stage := "Transferring firmware"
+			if sent == total {
+				stage = "Verifying firmware"
+			}
+			show(stage, sent, total)
+		}})
 		if e != nil {
+			show("Firmware loading failed", 0, 0)
 			panic(e)
 		}
+		show("Starting acquisition", len(b), len(b))
 		fmt.Printf("loaded %d bytes, CONF_DONE=%04x, identity=%04x\n", len(b), xfer(3, 7, 0, false), rd(0))
 		return
 	}
@@ -534,6 +566,8 @@ func main() {
 	must(err)
 	emit(map[string]any{"capture": m, "identity": rd(0), "status": rd(1), "length": r32(2), "start": r32(4), "trigger_index": r32(6), "position": r32(8), "origin": r32(10), "buffer_words": rd(12), "revision": rd(13), "map_id": rd(14)})
 }
+
+// TRLC-LINKS: REQ-SDS-170
 func emit(v any) {
 	b, e := json.MarshalIndent(v, "", "  ")
 	if e != nil {
@@ -541,6 +575,8 @@ func emit(v any) {
 	}
 	fmt.Println(string(b))
 }
+
+// TRLC-LINKS: REQ-SDS-170
 func command(op uint16) {
 	ack := rd(1) & 512
 	wr(1, op)
@@ -554,6 +590,8 @@ func command(op uint16) {
 		panic("capture command rejected")
 	}
 }
+
+// TRLC-LINKS: REQ-SDS-170
 func waitReady() {
 	deadline := time.Now().Add(3 * time.Second)
 	for rd(1)&4 == 0 {
@@ -563,15 +601,19 @@ func waitReady() {
 		time.Sleep(100 * time.Microsecond)
 	}
 }
+
+// TRLC-LINKS: REQ-SDS-170
 func setCount(n uint32) { wr(8, uint16(n)); wr(9, uint16(n>>16)) }
 
 // Counter diagnostics are independent of the capture backend; ADC records
 // naturally have nonconsecutive values and are verified by repeat hashes.
+// TRLC-LINKS: REQ-SDS-170
 type counterCheck struct {
 	words, first, last, bad uint32
 	breaks                  [][3]uint32
 }
 
+// TRLC-LINKS: REQ-SDS-170
 func (c *counterCheck) Write(data []byte) (int, error) {
 	if len(data)%4 != 0 {
 		return 0, fmt.Errorf("unaligned counter diagnostic input")
@@ -593,11 +635,13 @@ func (c *counterCheck) Write(data []byte) (int, error) {
 }
 
 // timedWriter separates diagnostic hashing/verification CPU from transport time.
+// TRLC-LINKS: REQ-SDS-170
 type timedWriter struct {
 	dst     io.Writer
 	elapsed time.Duration
 }
 
+// TRLC-LINKS: REQ-SDS-170
 func (w *timedWriter) Write(p []byte) (int, error) {
 	start := time.Now()
 	n, e := w.dst.Write(p)

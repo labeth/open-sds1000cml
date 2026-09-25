@@ -1,0 +1,5 @@
+{
+  "sourceSHA256": "b0ff274b570e1fb618f89519a7ec54a81fcbe7c5a3a8c05dac91848d2f7ba333",
+  "purpose": "Isolated virtual-pin core resource estimate; not an acquisition image or board timing qualification",
+  "clockMHz": 125
+}

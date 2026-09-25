@@ -1,0 +1,108 @@
+{"Time":"2026-09-22T22:03:47.813672697+02:00","Action":"start","Package":"open-sds/ota/internal/fdinherit"}
+{"Time":"2026-09-22T22:03:47.813945809+02:00","Action":"start","Package":"open-sds/ota/internal/watchdog"}
+{"Time":"2026-09-22T22:03:47.814089932+02:00","Action":"start","Package":"open-sds/ota/internal/slots"}
+{"Time":"2026-09-22T22:03:47.817507882+02:00","Action":"run","Package":"open-sds/ota/internal/fdinherit","Test":"TestFindInheritedFD"}
+{"Time":"2026-09-22T22:03:47.817583009+02:00","Action":"output","Package":"open-sds/ota/internal/fdinherit","Test":"TestFindInheritedFD","Output":"=== RUN   TestFindInheritedFD\n"}
+{"Time":"2026-09-22T22:03:47.817601422+02:00","Action":"output","Package":"open-sds/ota/internal/fdinherit","Test":"TestFindInheritedFD","Output":"--- PASS: TestFindInheritedFD (0.00s)\n"}
+{"Time":"2026-09-22T22:03:47.817607854+02:00","Action":"pass","Package":"open-sds/ota/internal/fdinherit","Test":"TestFindInheritedFD","Elapsed":0}
+{"Time":"2026-09-22T22:03:47.81761662+02:00","Action":"run","Package":"open-sds/ota/internal/fdinherit","Test":"TestHoldersOfSelf"}
+{"Time":"2026-09-22T22:03:47.817621676+02:00","Action":"output","Package":"open-sds/ota/internal/fdinherit","Test":"TestHoldersOfSelf","Output":"=== RUN   TestHoldersOfSelf\n"}
+{"Time":"2026-09-22T22:03:47.817664708+02:00","Action":"run","Package":"open-sds/ota/internal/slots","Test":"TestPointerDefaultsAndValidation"}
+{"Time":"2026-09-22T22:03:47.817672447+02:00","Action":"output","Package":"open-sds/ota/internal/slots","Test":"TestPointerDefaultsAndValidation","Output":"=== RUN   TestPointerDefaultsAndValidation\n"}
+{"Time":"2026-09-22T22:03:47.81796707+02:00","Action":"output","Package":"open-sds/ota/internal/slots","Test":"TestPointerDefaultsAndValidation","Output":"--- PASS: TestPointerDefaultsAndValidation (0.00s)\n"}
+{"Time":"2026-09-22T22:03:47.817979765+02:00","Action":"pass","Package":"open-sds/ota/internal/slots","Test":"TestPointerDefaultsAndValidation","Elapsed":0}
+{"Time":"2026-09-22T22:03:47.817989135+02:00","Action":"run","Package":"open-sds/ota/internal/slots","Test":"TestOther"}
+{"Time":"2026-09-22T22:03:47.817993939+02:00","Action":"output","Package":"open-sds/ota/internal/slots","Test":"TestOther","Output":"=== RUN   TestOther\n"}
+{"Time":"2026-09-22T22:03:47.818000167+02:00","Action":"output","Package":"open-sds/ota/internal/slots","Test":"TestOther","Output":"--- PASS: TestOther (0.00s)\n"}
+{"Time":"2026-09-22T22:03:47.818006568+02:00","Action":"pass","Package":"open-sds/ota/internal/slots","Test":"TestOther","Elapsed":0}
+{"Time":"2026-09-22T22:03:47.8180121+02:00","Action":"run","Package":"open-sds/ota/internal/slots","Test":"TestInstallAndStatus"}
+{"Time":"2026-09-22T22:03:47.818017008+02:00","Action":"output","Package":"open-sds/ota/internal/slots","Test":"TestInstallAndStatus","Output":"=== RUN   TestInstallAndStatus\n"}
+{"Time":"2026-09-22T22:03:47.81837985+02:00","Action":"output","Package":"open-sds/ota/internal/slots","Test":"TestInstallAndStatus","Output":"--- PASS: TestInstallAndStatus (0.00s)\n"}
+{"Time":"2026-09-22T22:03:47.818391729+02:00","Action":"pass","Package":"open-sds/ota/internal/slots","Test":"TestInstallAndStatus","Elapsed":0}
+{"Time":"2026-09-22T22:03:47.818400372+02:00","Action":"run","Package":"open-sds/ota/internal/slots","Test":"TestHasBinaryRejectsEmpty"}
+{"Time":"2026-09-22T22:03:47.818404208+02:00","Action":"output","Package":"open-sds/ota/internal/slots","Test":"TestHasBinaryRejectsEmpty","Output":"=== RUN   TestHasBinaryRejectsEmpty\n"}
+{"Time":"2026-09-22T22:03:47.818476707+02:00","Action":"run","Package":"open-sds/ota/internal/watchdog","Test":"TestAcquirePetsImmediately"}
+{"Time":"2026-09-22T22:03:47.818485178+02:00","Action":"output","Package":"open-sds/ota/internal/watchdog","Test":"TestAcquirePetsImmediately","Output":"=== RUN   TestAcquirePetsImmediately\n"}
+{"Time":"2026-09-22T22:03:47.818599766+02:00","Action":"output","Package":"open-sds/ota/internal/slots","Test":"TestHasBinaryRejectsEmpty","Output":"--- PASS: TestHasBinaryRejectsEmpty (0.00s)\n"}
+{"Time":"2026-09-22T22:03:47.818607286+02:00","Action":"pass","Package":"open-sds/ota/internal/slots","Test":"TestHasBinaryRejectsEmpty","Elapsed":0}
+{"Time":"2026-09-22T22:03:47.818619495+02:00","Action":"output","Package":"open-sds/ota/internal/slots","Output":"PASS\n"}
+{"Time":"2026-09-22T22:03:47.818819224+02:00","Action":"output","Package":"open-sds/ota/internal/watchdog","Test":"TestAcquirePetsImmediately","Output":"--- PASS: TestAcquirePetsImmediately (0.00s)\n"}
+{"Time":"2026-09-22T22:03:47.818830787+02:00","Action":"pass","Package":"open-sds/ota/internal/watchdog","Test":"TestAcquirePetsImmediately","Elapsed":0}
+{"Time":"2026-09-22T22:03:47.818840462+02:00","Action":"run","Package":"open-sds/ota/internal/watchdog","Test":"TestPetLoopFeedsOnInterval"}
+{"Time":"2026-09-22T22:03:47.818845993+02:00","Action":"output","Package":"open-sds/ota/internal/watchdog","Test":"TestPetLoopFeedsOnInterval","Output":"=== RUN   TestPetLoopFeedsOnInterval\n"}
+{"Time":"2026-09-22T22:03:47.819110462+02:00","Action":"output","Package":"open-sds/ota/internal/slots","Output":"ok  \topen-sds/ota/internal/slots\t0.005s\n"}
+{"Time":"2026-09-22T22:03:47.819121451+02:00","Action":"pass","Package":"open-sds/ota/internal/slots","Elapsed":0.005}
+{"Time":"2026-09-22T22:03:47.891843001+02:00","Action":"output","Package":"open-sds/ota/internal/fdinherit","Test":"TestHoldersOfSelf","Output":"--- PASS: TestHoldersOfSelf (0.07s)\n"}
+{"Time":"2026-09-22T22:03:47.891869501+02:00","Action":"pass","Package":"open-sds/ota/internal/fdinherit","Test":"TestHoldersOfSelf","Elapsed":0.07}
+{"Time":"2026-09-22T22:03:47.891885995+02:00","Action":"run","Package":"open-sds/ota/internal/fdinherit","Test":"TestAncestorsAndAlive"}
+{"Time":"2026-09-22T22:03:47.891891156+02:00","Action":"output","Package":"open-sds/ota/internal/fdinherit","Test":"TestAncestorsAndAlive","Output":"=== RUN   TestAncestorsAndAlive\n"}
+{"Time":"2026-09-22T22:03:47.892120631+02:00","Action":"output","Package":"open-sds/ota/internal/fdinherit","Test":"TestAncestorsAndAlive","Output":"--- PASS: TestAncestorsAndAlive (0.00s)\n"}
+{"Time":"2026-09-22T22:03:47.89212946+02:00","Action":"pass","Package":"open-sds/ota/internal/fdinherit","Test":"TestAncestorsAndAlive","Elapsed":0}
+{"Time":"2026-09-22T22:03:47.892139076+02:00","Action":"run","Package":"open-sds/ota/internal/fdinherit","Test":"TestPPidOfSelf"}
+{"Time":"2026-09-22T22:03:47.892144603+02:00","Action":"output","Package":"open-sds/ota/internal/fdinherit","Test":"TestPPidOfSelf","Output":"=== RUN   TestPPidOfSelf\n"}
+{"Time":"2026-09-22T22:03:47.892213345+02:00","Action":"output","Package":"open-sds/ota/internal/fdinherit","Test":"TestPPidOfSelf","Output":"--- PASS: TestPPidOfSelf (0.00s)\n"}
+{"Time":"2026-09-22T22:03:47.89222088+02:00","Action":"pass","Package":"open-sds/ota/internal/fdinherit","Test":"TestPPidOfSelf","Elapsed":0}
+{"Time":"2026-09-22T22:03:47.892228088+02:00","Action":"output","Package":"open-sds/ota/internal/fdinherit","Output":"PASS\n"}
+{"Time":"2026-09-22T22:03:47.892828314+02:00","Action":"output","Package":"open-sds/ota/internal/fdinherit","Output":"ok  \topen-sds/ota/internal/fdinherit\t0.079s\n"}
+{"Time":"2026-09-22T22:03:47.892839664+02:00","Action":"pass","Package":"open-sds/ota/internal/fdinherit","Elapsed":0.079}
+{"Time":"2026-09-22T22:03:47.893580316+02:00","Action":"start","Package":"open-sds/ota/internal/config"}
+{"Time":"2026-09-22T22:03:47.895991384+02:00","Action":"run","Package":"open-sds/ota/internal/config","Test":"TestLoadDeviceDefaults"}
+{"Time":"2026-09-22T22:03:47.896013331+02:00","Action":"output","Package":"open-sds/ota/internal/config","Test":"TestLoadDeviceDefaults","Output":"=== RUN   TestLoadDeviceDefaults\n"}
+{"Time":"2026-09-22T22:03:47.896582952+02:00","Action":"output","Package":"open-sds/ota/internal/config","Test":"TestLoadDeviceDefaults","Output":"--- PASS: TestLoadDeviceDefaults (0.00s)\n"}
+{"Time":"2026-09-22T22:03:47.896593311+02:00","Action":"pass","Package":"open-sds/ota/internal/config","Test":"TestLoadDeviceDefaults","Elapsed":0}
+{"Time":"2026-09-22T22:03:47.896598519+02:00","Action":"run","Package":"open-sds/ota/internal/config","Test":"TestLoadEveryOverride"}
+{"Time":"2026-09-22T22:03:47.896606292+02:00","Action":"output","Package":"open-sds/ota/internal/config","Test":"TestLoadEveryOverride","Output":"=== RUN   TestLoadEveryOverride\n"}
+{"Time":"2026-09-22T22:03:47.897160489+02:00","Action":"output","Package":"open-sds/ota/internal/config","Test":"TestLoadEveryOverride","Output":"--- PASS: TestLoadEveryOverride (0.00s)\n"}
+{"Time":"2026-09-22T22:03:47.897166944+02:00","Action":"pass","Package":"open-sds/ota/internal/config","Test":"TestLoadEveryOverride","Elapsed":0}
+{"Time":"2026-09-22T22:03:47.897173139+02:00","Action":"run","Package":"open-sds/ota/internal/config","Test":"TestEnvDurSecs"}
+{"Time":"2026-09-22T22:03:47.897178431+02:00","Action":"output","Package":"open-sds/ota/internal/config","Test":"TestEnvDurSecs","Output":"=== RUN   TestEnvDurSecs\n"}
+{"Time":"2026-09-22T22:03:47.897256628+02:00","Action":"output","Package":"open-sds/ota/internal/config","Test":"TestEnvDurSecs","Output":"--- PASS: TestEnvDurSecs (0.00s)\n"}
+{"Time":"2026-09-22T22:03:47.897264711+02:00","Action":"pass","Package":"open-sds/ota/internal/config","Test":"TestEnvDurSecs","Elapsed":0}
+{"Time":"2026-09-22T22:03:47.897272134+02:00","Action":"run","Package":"open-sds/ota/internal/config","Test":"TestEnvInt"}
+{"Time":"2026-09-22T22:03:47.897276573+02:00","Action":"output","Package":"open-sds/ota/internal/config","Test":"TestEnvInt","Output":"=== RUN   TestEnvInt\n"}
+{"Time":"2026-09-22T22:03:47.89732298+02:00","Action":"output","Package":"open-sds/ota/internal/config","Test":"TestEnvInt","Output":"--- PASS: TestEnvInt (0.00s)\n"}
+{"Time":"2026-09-22T22:03:47.897329398+02:00","Action":"pass","Package":"open-sds/ota/internal/config","Test":"TestEnvInt","Elapsed":0}
+{"Time":"2026-09-22T22:03:47.897336392+02:00","Action":"run","Package":"open-sds/ota/internal/config","Test":"TestEnvBool"}
+{"Time":"2026-09-22T22:03:47.89734082+02:00","Action":"output","Package":"open-sds/ota/internal/config","Test":"TestEnvBool","Output":"=== RUN   TestEnvBool\n"}
+{"Time":"2026-09-22T22:03:47.89742841+02:00","Action":"output","Package":"open-sds/ota/internal/config","Test":"TestEnvBool","Output":"--- PASS: TestEnvBool (0.00s)\n"}
+{"Time":"2026-09-22T22:03:47.897434254+02:00","Action":"pass","Package":"open-sds/ota/internal/config","Test":"TestEnvBool","Elapsed":0}
+{"Time":"2026-09-22T22:03:47.897439527+02:00","Action":"run","Package":"open-sds/ota/internal/config","Test":"TestFactoryNamesParsing"}
+{"Time":"2026-09-22T22:03:47.897442871+02:00","Action":"output","Package":"open-sds/ota/internal/config","Test":"TestFactoryNamesParsing","Output":"=== RUN   TestFactoryNamesParsing\n"}
+{"Time":"2026-09-22T22:03:47.897832597+02:00","Action":"output","Package":"open-sds/ota/internal/config","Test":"TestFactoryNamesParsing","Output":"--- PASS: TestFactoryNamesParsing (0.00s)\n"}
+{"Time":"2026-09-22T22:03:47.897839+02:00","Action":"pass","Package":"open-sds/ota/internal/config","Test":"TestFactoryNamesParsing","Elapsed":0}
+{"Time":"2026-09-22T22:03:47.897843564+02:00","Action":"run","Package":"open-sds/ota/internal/config","Test":"TestEnvHelper"}
+{"Time":"2026-09-22T22:03:47.89784594+02:00","Action":"output","Package":"open-sds/ota/internal/config","Test":"TestEnvHelper","Output":"=== RUN   TestEnvHelper\n"}
+{"Time":"2026-09-22T22:03:47.897956868+02:00","Action":"output","Package":"open-sds/ota/internal/config","Test":"TestEnvHelper","Output":"--- PASS: TestEnvHelper (0.00s)\n"}
+{"Time":"2026-09-22T22:03:47.897962103+02:00","Action":"pass","Package":"open-sds/ota/internal/config","Test":"TestEnvHelper","Elapsed":0}
+{"Time":"2026-09-22T22:03:47.897969198+02:00","Action":"output","Package":"open-sds/ota/internal/config","Output":"PASS\n"}
+{"Time":"2026-09-22T22:03:47.898122407+02:00","Action":"output","Package":"open-sds/ota/internal/config","Output":"ok  \topen-sds/ota/internal/config\t0.005s\n"}
+{"Time":"2026-09-22T22:03:47.898135918+02:00","Action":"pass","Package":"open-sds/ota/internal/config","Elapsed":0.005}
+{"Time":"2026-09-22T22:03:48.119385423+02:00","Action":"output","Package":"open-sds/ota/internal/watchdog","Test":"TestPetLoopFeedsOnInterval","Output":"--- PASS: TestPetLoopFeedsOnInterval (0.30s)\n"}
+{"Time":"2026-09-22T22:03:48.119411775+02:00","Action":"pass","Package":"open-sds/ota/internal/watchdog","Test":"TestPetLoopFeedsOnInterval","Elapsed":0.3}
+{"Time":"2026-09-22T22:03:48.119426212+02:00","Action":"run","Package":"open-sds/ota/internal/watchdog","Test":"TestPetLoopStopsAfterDisarm"}
+{"Time":"2026-09-22T22:03:48.119429957+02:00","Action":"output","Package":"open-sds/ota/internal/watchdog","Test":"TestPetLoopStopsAfterDisarm","Output":"=== RUN   TestPetLoopStopsAfterDisarm\n"}
+{"Time":"2026-09-22T22:03:48.220666335+02:00","Action":"output","Package":"open-sds/ota/internal/watchdog","Test":"TestPetLoopStopsAfterDisarm","Output":"--- PASS: TestPetLoopStopsAfterDisarm (0.10s)\n"}
+{"Time":"2026-09-22T22:03:48.220684271+02:00","Action":"pass","Package":"open-sds/ota/internal/watchdog","Test":"TestPetLoopStopsAfterDisarm","Elapsed":0.1}
+{"Time":"2026-09-22T22:03:48.220692717+02:00","Action":"run","Package":"open-sds/ota/internal/watchdog","Test":"TestAcquireIdempotentWhileArmed"}
+{"Time":"2026-09-22T22:03:48.220696209+02:00","Action":"output","Package":"open-sds/ota/internal/watchdog","Test":"TestAcquireIdempotentWhileArmed","Output":"=== RUN   TestAcquireIdempotentWhileArmed\n"}
+{"Time":"2026-09-22T22:03:48.220847078+02:00","Action":"output","Package":"open-sds/ota/internal/watchdog","Test":"TestAcquireIdempotentWhileArmed","Output":"--- PASS: TestAcquireIdempotentWhileArmed (0.00s)\n"}
+{"Time":"2026-09-22T22:03:48.220859247+02:00","Action":"pass","Package":"open-sds/ota/internal/watchdog","Test":"TestAcquireIdempotentWhileArmed","Elapsed":0}
+{"Time":"2026-09-22T22:03:48.220865839+02:00","Action":"run","Package":"open-sds/ota/internal/watchdog","Test":"TestAcquireTimesOutWhenDeviceMissing"}
+{"Time":"2026-09-22T22:03:48.22086914+02:00","Action":"output","Package":"open-sds/ota/internal/watchdog","Test":"TestAcquireTimesOutWhenDeviceMissing","Output":"=== RUN   TestAcquireTimesOutWhenDeviceMissing\n"}
+{"Time":"2026-09-22T22:03:48.622450409+02:00","Action":"output","Package":"open-sds/ota/internal/watchdog","Test":"TestAcquireTimesOutWhenDeviceMissing","Output":"--- PASS: TestAcquireTimesOutWhenDeviceMissing (0.40s)\n"}
+{"Time":"2026-09-22T22:03:48.622467965+02:00","Action":"pass","Package":"open-sds/ota/internal/watchdog","Test":"TestAcquireTimesOutWhenDeviceMissing","Elapsed":0.4}
+{"Time":"2026-09-22T22:03:48.622474661+02:00","Action":"run","Package":"open-sds/ota/internal/watchdog","Test":"TestAcquireRetriesUntilDeviceAppears"}
+{"Time":"2026-09-22T22:03:48.622478291+02:00","Action":"output","Package":"open-sds/ota/internal/watchdog","Test":"TestAcquireRetriesUntilDeviceAppears","Output":"=== RUN   TestAcquireRetriesUntilDeviceAppears\n"}
+{"Time":"2026-09-22T22:03:49.022814099+02:00","Action":"output","Package":"open-sds/ota/internal/watchdog","Test":"TestAcquireRetriesUntilDeviceAppears","Output":"--- PASS: TestAcquireRetriesUntilDeviceAppears (0.40s)\n"}
+{"Time":"2026-09-22T22:03:49.022837641+02:00","Action":"pass","Package":"open-sds/ota/internal/watchdog","Test":"TestAcquireRetriesUntilDeviceAppears","Elapsed":0.4}
+{"Time":"2026-09-22T22:03:49.022846632+02:00","Action":"run","Package":"open-sds/ota/internal/watchdog","Test":"TestDisarmWithoutAcquireIsNoop"}
+{"Time":"2026-09-22T22:03:49.0228516+02:00","Action":"output","Package":"open-sds/ota/internal/watchdog","Test":"TestDisarmWithoutAcquireIsNoop","Output":"=== RUN   TestDisarmWithoutAcquireIsNoop\n"}
+{"Time":"2026-09-22T22:03:49.022927441+02:00","Action":"output","Package":"open-sds/ota/internal/watchdog","Test":"TestDisarmWithoutAcquireIsNoop","Output":"--- PASS: TestDisarmWithoutAcquireIsNoop (0.00s)\n"}
+{"Time":"2026-09-22T22:03:49.022934756+02:00","Action":"pass","Package":"open-sds/ota/internal/watchdog","Test":"TestDisarmWithoutAcquireIsNoop","Elapsed":0}
+{"Time":"2026-09-22T22:03:49.02294153+02:00","Action":"run","Package":"open-sds/ota/internal/watchdog","Test":"TestReacquireAfterDisarm"}
+{"Time":"2026-09-22T22:03:49.022946103+02:00","Action":"output","Package":"open-sds/ota/internal/watchdog","Test":"TestReacquireAfterDisarm","Output":"=== RUN   TestReacquireAfterDisarm\n"}
+{"Time":"2026-09-22T22:03:49.023073165+02:00","Action":"output","Package":"open-sds/ota/internal/watchdog","Test":"TestReacquireAfterDisarm","Output":"--- PASS: TestReacquireAfterDisarm (0.00s)\n"}
+{"Time":"2026-09-22T22:03:49.023081276+02:00","Action":"pass","Package":"open-sds/ota/internal/watchdog","Test":"TestReacquireAfterDisarm","Elapsed":0}
+{"Time":"2026-09-22T22:03:49.023086764+02:00","Action":"output","Package":"open-sds/ota/internal/watchdog","Output":"PASS\n"}
+{"Time":"2026-09-22T22:03:49.023467972+02:00","Action":"output","Package":"open-sds/ota/internal/watchdog","Output":"ok  \topen-sds/ota/internal/watchdog\t1.209s\n"}
+{"Time":"2026-09-22T22:03:49.023486779+02:00","Action":"pass","Package":"open-sds/ota/internal/watchdog","Elapsed":1.21}

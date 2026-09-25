@@ -1,0 +1,17 @@
+{
+  "result": "pass",
+  "requirement": "REQ-SDS-018",
+  "tests": [
+    "TestDecodeFuzzNoPanic",
+    "TestDecodeFuzzNewProtos",
+    "TestTruthSENT",
+    "TestTruthMIL1553",
+    "TestTruthARINC429",
+    "TestTruthManchester",
+    "TestJSDecoderParity"
+  ],
+  "nativeSummaries": 3,
+  "status": "partial",
+  "publicationSHA256": "ccaa15a05e607fcdc9f5b26503a94825e6977aaf7dc8f4a29a810170040233f2",
+  "scope": "Seven exact test outcomes published as verification, with test code excluded from implementation trace coordinates."
+}

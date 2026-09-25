@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-WEB-SPECTROGRAM
 // Spectrogram ("FFT over time") waterfall for the web. Each frame's Hann-
 // windowed magnitude spectrum (peaks.js spectrum()) becomes a colour-mapped
 // ROW; rows scroll down (newest on top). Colour parity with the Go LCD heat().
@@ -5,6 +6,7 @@
 
 // sgHeat maps t∈[0,1] to an inferno-like [r,g,b] ramp — monotone in brightness
 // so higher dB always reads hotter. Identical stops to the Go heat().
+// TRLC-LINKS: REQ-SDS-068
 function sgHeat(t) {
   if (!(t > 0)) return [0, 0, 0]; // NaN or <=0 → black (total, matches Go heat())
   if (t >= 1) return [255, 255, 255];
@@ -18,12 +20,14 @@ function sgHeat(t) {
 }
 
 // sgNew allocates a w×h waterfall (w = frequency columns, h = time rows).
+// TRLC-LINKS: REQ-SDS-068
 function sgNew(w, h) {
   return { w, h, data: new Uint8ClampedArray(w * h * 4), floorDb: -60, rows: 0, nyq: 0 };
 }
 
 // sgPushRow scrolls the image down one row and paints the newest spectrum on
 // top. mags/half/peak come from peaks.js spectrum(); nyq is its Nyquist (Hz).
+// TRLC-LINKS: REQ-SDS-068
 function sgPushRow(sg, mags, half, peak, nyq) {
   const { w, h, data } = sg;
   if (!(half > 0) || !(peak > 0)) return;
@@ -42,11 +46,13 @@ function sgPushRow(sg, mags, half, peak, nyq) {
   if (sg.rows < h) sg.rows++;
 }
 
+// TRLC-LINKS: REQ-SDS-068
 function sgClear(sg) { sg.data.fill(0); sg.rows = 0; }
 
 // sgBlit draws the waterfall onto a GL 2D-facade context sized cw×ch, plus a
 // frequency axis and a dB colour key. The caller clears the background (via
 // R.begin) and flushes (R.end); the waterfall itself is a texture blit.
+// TRLC-LINKS: REQ-SDS-068
 function sgBlit(g, cw, ch, sg, textColor) {
   if (!sg || sg.rows === 0) {
     g.fillStyle = textColor || "#9ab"; g.textAlign = "center"; g.font = "11px system-ui";

@@ -1,0 +1,81 @@
+{
+  "result": "pass",
+  "cases": [
+    {
+      "id": "integrator",
+      "path": "fpga/acq_sram/sim/tb_integrator.v",
+      "module": "tb",
+      "status": "partial",
+      "compileExitCode": 0,
+      "simulationExitCode": 0,
+      "timedOut": false
+    },
+    {
+      "id": "precision_fir",
+      "path": "fpga/acq_sram/sim/tb_precision_fir.v",
+      "module": "tb",
+      "status": "partial",
+      "compileExitCode": 0,
+      "simulationExitCode": 0,
+      "timedOut": false
+    },
+    {
+      "id": "precision",
+      "path": "fpga/acq_sram/sim/tb_precision.v",
+      "module": "tb",
+      "status": "partial",
+      "compileExitCode": 0,
+      "simulationExitCode": 0,
+      "timedOut": false
+    },
+    {
+      "id": "precision_shared",
+      "path": "fpga/acq_sram/sim/tb_precision_shared.v",
+      "module": "tb_precision_shared",
+      "status": "partial",
+      "compileExitCode": 0,
+      "simulationExitCode": 0,
+      "timedOut": false
+    },
+    {
+      "id": "precision_config",
+      "path": "fpga/acq_sram/sim/tb_precision_config.v",
+      "module": "tb_precision_config",
+      "status": "partial",
+      "compileExitCode": 0,
+      "simulationExitCode": 0,
+      "timedOut": false
+    },
+    {
+      "id": "precision_tail_queue",
+      "path": "fpga/acq_sram/sim/tb_precision_tail_queue.v",
+      "module": "tb_precision_tail_queue",
+      "status": "partial",
+      "compileExitCode": 0,
+      "simulationExitCode": 0,
+      "timedOut": false
+    },
+    {
+      "id": "precision_tail",
+      "path": "fpga/acq_sram/sim/tb_precision_tail.v",
+      "module": "tb_precision_tail",
+      "status": "partial",
+      "compileExitCode": 0,
+      "simulationExitCode": 0,
+      "timedOut": false
+    }
+  ],
+  "annotationEquivalentSources": [
+    "fpga/acq_sram/precision.v",
+    "fpga/acq_sram/precision_tail.v",
+    "fpga/acq_sram/sim/tb_integrator.v",
+    "fpga/acq_sram/sim/tb_precision.v",
+    "fpga/acq_sram/sim/tb_precision_config.v",
+    "fpga/acq_sram/sim/tb_precision_fir.v",
+    "fpga/acq_sram/sim/tb_precision_shared.v",
+    "fpga/acq_sram/sim/tb_precision_tail.v",
+    "fpga/acq_sram/sim/tb_precision_tail_queue.v"
+  ],
+  "reportSHA256": "f18b377dd82dca24fb9936dd296cff00234ca3ca570a96d6195fde9661413fea",
+  "scope": "Exact original simulation case/input provenance. Compilation failures are not-run behavioral checks; executed assertion failures remain fail. Passing simulation assertions contribute partial evidence only. Post-run changes are allowed solely when exact pinned-baseline reconstruction proves the approved comment-only overlay."
+}

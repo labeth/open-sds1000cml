@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
 package engine
 
 import (
@@ -27,6 +28,7 @@ const maxRecordCols = iface.PretrigMax
 // source (ADC) and drain window (the full record) explicitly, so a
 // diagnostic job that died mid-way can never leave a ramp or a partial
 // window under the frames.
+// TRLC-LINKS: REQ-SDS-001, REQ-SDS-008
 func (e *Engine) bringUp() {
 	capCols := e.capDepth()
 	e.lastCapCols = capCols
@@ -50,6 +52,7 @@ func (e *Engine) bringUp() {
 // capDepth is the record size programmed into the fabric: what the frame
 // will drain, bounded by what the fabric can finalize (pre + post <=
 // PRETRIG_MAX, see maxRecordCols) so the drain never exceeds the record.
+// TRLC-LINKS: REQ-SDS-009, REQ-SDS-010
 func (e *Engine) capDepth() int {
 	c := e.effDrainCols()
 	if c > maxRecordCols {
@@ -64,6 +67,7 @@ func (e *Engine) capDepth() int {
 // doReinit runs a staged FSM re-initialization on the OWNER goroutine at a loop
 // boundary (no capture in flight). Level 1 re-programs (identical to a band
 // change); level 2 first freezes and idles whatever is in flight.
+// TRLC-LINKS: REQ-SDS-128
 func (e *Engine) doReinit(level int64) {
 	e.logf("engine: FSM re-init level %d (degraded_run=%d)", level, e.degradedRun)
 	if level >= 2 {
@@ -76,6 +80,7 @@ func (e *Engine) doReinit(level int64) {
 }
 
 // armEngine arms (or re-arms) the capture: settle, then OPCODE = GO.
+// TRLC-LINKS: REQ-SDS-001, REQ-SDS-008
 func (e *Engine) armEngine() { e.armEngineQuiet(false) }
 
 // armEngineQuiet is armEngine with an optional already-held quiet lock. The
@@ -84,6 +89,7 @@ func (e *Engine) armEngine() { e.armEngineQuiet(false) }
 // the settle+GO (a framebuffer blit contends on the memory bus, not just the
 // CPU). Kept from the factory-fabric engine until the default image's
 // static-freeze byte-identity test passes on the bench.
+// TRLC-LINKS: REQ-SDS-001, REQ-SDS-008
 func (e *Engine) armEngineQuiet(quietHeld bool) {
 	if !quietHeld {
 		e.quiet.Lock()
@@ -109,11 +115,13 @@ func (e *Engine) armEngineQuiet(quietHeld bool) {
 }
 
 // trigPosFracVal reads the horizontal trigger-position fraction (0..1).
+// TRLC-LINKS: REQ-SDS-011
 func (e *Engine) trigPosFracVal() float64 {
 	return math.Float64frombits(e.trigPosFrac.Load())
 }
 
 // readTrigPos reads the trigger sample index (TRIGPOS_HI.IDX). Telemetry.
+// TRLC-LINKS: REQ-SDS-009
 func (e *Engine) readTrigPos() int {
 	return int(e.r(iface.SelTrigposHi) & iface.TrigposHiIdxMask)
 }
@@ -127,6 +135,7 @@ func (e *Engine) readTrigPos() int {
 // STATUS_A.VALID (the fabric's auto/free-run completion) or on a fill that
 // reached the programmed record, so an untriggered AUTO display publishes a
 // free-run frame instead of holding forever; NORM never free-runs.
+// TRLC-LINKS: REQ-SDS-001, REQ-SDS-008
 func (e *Engine) waitCapture(norm bool) (anchored, sawTrig, filled, fillMoved bool, trigPos int) {
 	start := e.clk.Now()
 	deadline := start.Add(time.Duration(e.band.WaitBudgetNs()))
@@ -223,6 +232,7 @@ func (e *Engine) waitCapture(norm bool) (anchored, sawTrig, filled, fillMoved bo
 
 // halt freezes the record (OPCODE = HALT) and confirms the fill froze:
 // accept the first pair of equal FILL reads within a handful of polls.
+// TRLC-LINKS: REQ-SDS-001, REQ-SDS-009
 func (e *Engine) halt() bool {
 	e.w(iface.SelOpcode, iface.OpHalt)
 	prev := e.r(iface.SelFill) & fillMask
@@ -240,6 +250,7 @@ func (e *Engine) halt() bool {
 
 // haltSettle gives a confirmed native-fast capture-halt a short, quiet window
 // before the first pop (tunable; 0 = off).
+// TRLC-LINKS: REQ-SDS-001, REQ-SDS-008
 func (e *Engine) haltSettle(nativeFast bool) {
 	if !nativeFast || !e.armBusy {
 		return
@@ -251,6 +262,7 @@ func (e *Engine) haltSettle(nativeFast bool) {
 
 // drain reads the frozen record into the producer slot through the BURST
 // port, under the quiet gate.
+// TRLC-LINKS: REQ-SDS-001, REQ-SDS-007
 func (e *Engine) drain(f *Frame, cols int) {
 	e.quiet.Lock()
 	e.drainQuiet(f, cols)
@@ -263,6 +275,7 @@ func (e *Engine) drain(f *Frame, cols int) {
 // the slot is filled with the last real word so no stale samples leak; the
 // shortfall is counted as telemetry. A port that reports nothing ready pops
 // nothing and the frame is marked incoherent by the caller through drainN.
+// TRLC-LINKS: REQ-SDS-001, REQ-SDS-007, REQ-SDS-009
 func (e *Engine) drainQuiet(f *Frame, cols int) {
 	rem := e.r(iface.SelBurstRemain)
 	n := cols
@@ -294,6 +307,7 @@ func (e *Engine) drainQuiet(f *Frame, cols int) {
 // (no trigger/saturation poll) → halt → burst drain → publish EVERY window raw
 // + contiguous with continuity metadata. The client stitches consecutive
 // windows on one axis, marking the GapNs blackout between them.
+// TRLC-LINKS: REQ-SDS-007, REQ-SDS-009
 func (e *Engine) stitchFrame(norm bool) {
 	cols := e.effDrainCols()
 	fillNs := int64(float64(cols) * e.band.CaptureIntervalNs())

@@ -1,0 +1,32 @@
+{
+  "source": "app/internal/decode/decode_usbls_test.go",
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "scope": "Reviewed Go test outcomes; passing assertions contribute partial requirement evidence.",
+  "sourceSHA256": "55e8b103aba2789c7dd283ff54992b2e7e05041af2ef37e1eb8856e09100d8a6",
+  "logs": {
+    "test-runs/decode-implementation.jsonl": "dde14e18f02e73c694af08de3897655d305e230d208c3215d1478008a42da228"
+  },
+  "tests": [
+    {
+      "name": "TestDecodeUSBLSRoundTrip",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-018"
+      ]
+    },
+    {
+      "name": "TestDecodeUSBLSNoPanic",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-018"
+      ]
+    }
+  ],
+  "results": [
+    {
+      "requirement": "REQ-SDS-018",
+      "status": "partial",
+      "notes": "2 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    }
+  ]
+}

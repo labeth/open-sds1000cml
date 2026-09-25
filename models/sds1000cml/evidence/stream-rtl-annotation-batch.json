@@ -1,0 +1,134 @@
+{
+  "status": "integrated-with-explicit-verification-limits",
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "files": [
+    {
+      "path": "fpga/acq_sram/stream.v",
+      "owner": "FU-RTL-ACQ-SRAM-STREAM",
+      "modules": {
+        "adc_stream": [
+          "REQ-SDS-187"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/stream_packetizer.v",
+      "owner": "FU-RTL-ACQ-SRAM-STREAM-PACKETIZER",
+      "modules": {
+        "stream_packetizer": [
+          "REQ-SDS-049",
+          "REQ-SDS-058",
+          "REQ-SDS-186"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/stream_banks.v",
+      "owner": "FU-RTL-ACQ-SRAM-STREAM-BANKS",
+      "modules": {
+        "stream_banks": [
+          "REQ-SDS-047",
+          "REQ-SDS-049",
+          "REQ-SDS-052",
+          "REQ-SDS-058"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/stream_engine.v",
+      "owner": "FU-RTL-ACQ-SRAM-STREAM-ENGINE",
+      "modules": {
+        "sram_stream_engine": [
+          "REQ-SDS-045",
+          "REQ-SDS-046",
+          "REQ-SDS-047",
+          "REQ-SDS-048",
+          "REQ-SDS-052",
+          "REQ-SDS-058"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/stream_path.v",
+      "owner": "FU-RTL-ACQ-SRAM-STREAM-PATH",
+      "modules": {
+        "sram_stream_path": [
+          "REQ-SDS-044",
+          "REQ-SDS-045",
+          "REQ-SDS-046",
+          "REQ-SDS-047",
+          "REQ-SDS-048",
+          "REQ-SDS-051",
+          "REQ-SDS-052",
+          "REQ-SDS-053"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_stream_banks.v",
+      "owner": "FU-RTL-ACQ-TESTS",
+      "modules": {
+        "tb": [
+          "REQ-SDS-047",
+          "REQ-SDS-049",
+          "REQ-SDS-052",
+          "REQ-SDS-058"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_stream_path.v",
+      "owner": "FU-RTL-ACQ-TESTS",
+      "modules": {
+        "tb": [
+          "REQ-SDS-049",
+          "REQ-SDS-052",
+          "REQ-SDS-058",
+          "REQ-SDS-186"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_sram_stream_path.v",
+      "owner": "FU-RTL-ACQ-TESTS",
+      "modules": {
+        "tb_stream_path": [
+          "REQ-SDS-044",
+          "REQ-SDS-047",
+          "REQ-SDS-048",
+          "REQ-SDS-051",
+          "REQ-SDS-052",
+          "REQ-SDS-053"
+        ]
+      }
+    }
+  ],
+  "modules": 8,
+  "newContracts": [
+    {
+      "id": "REQ-SDS-186",
+      "title": "Reduced-rate stream mailbox sealing",
+      "text": "The instrument shall use the reduced-rate stream tap to retain each in-flight packet until destination acknowledgement, include a word accepted with stop, seal the final partial or empty transfer, and latch overload rather than overwrite an unacknowledged packet.",
+      "owner": "FU-RTL-ACQ-SRAM-STREAM-PACKETIZER",
+      "notes": "Single acknowledged mailbox plus a staged half-word; this is not the profile eight-slot FIFO. finished denotes seal acknowledgement, not host-bank release. Intended for reduced precision rates; bundled payload timing remains physically unqualified."
+    },
+    {
+      "id": "REQ-SDS-187",
+      "title": "Legacy CPU FIFO halfword accounting",
+      "text": "The instrument shall expose low then high halfwords of each queued 32-bit word when the legacy adc_stream component is used, retire a word only on its second nonempty read, and retain detected overflow or underflow until the disabled epoch resets the affected state.",
+      "owner": "FU-RTL-ACQ-SRAM-STREAM",
+      "notes": "Retained standalone source with no current instantiation found in FPGA source. Uses vendor 4096-word dcfifo and unacknowledged related-clock input toggle; caller must enforce decimation log>=13. Source review only: no direct original bench or current-image activation is established. This is not the profile 5120-word two-bank host path."
+    }
+  ],
+  "sourceSHA256": {
+    "fpga/acq_sram/stream.v": "af94be32991b32f706580b252eb9d955765f98b64ff58fb3da6f401b9b3c18d8",
+    "fpga/acq_sram/stream_packetizer.v": "3fde05e9d732e03115666f036316d273407447402e928871244f171bae0591e0",
+    "fpga/acq_sram/stream_banks.v": "852a2036f829e4cd3d0127929e854db0052648da4e815136c4ef73cf5dc9bc3b",
+    "fpga/acq_sram/stream_engine.v": "8b2a5dc216fb29de59ca0b5a2615c47a8a8a099e6273338fe790f606a3b5c046",
+    "fpga/acq_sram/stream_path.v": "13976af491d5364d32a67db10abeee491d0aa161ed20ae3f3a564bae77f641eb",
+    "fpga/acq_sram/sim/tb_stream_banks.v": "2cbb89cd1939f665175b4ba3f748befc8b816c51888a30a8a6fc3d41f6b30251",
+    "fpga/acq_sram/sim/tb_stream_path.v": "c38ab1f37765b77088e786ee67f309ae04b22f067cc911d7edf46af0f615b15c",
+    "fpga/acq_sram/sim/tb_sram_stream_path.v": "783a6ac5fd0a33522a8b18084cb6d276501743719e629a312cbad03febcc56a7"
+  },
+  "scope": "Nine complete implementation/test files reviewed, 649 lines. Eight files planned for module annotations; legacy top bench is review-only. Original offline cases are pending; legacy adc_stream has no current direct behavioral bench or current FPGA instantiation."
+}

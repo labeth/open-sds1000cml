@@ -1,0 +1,59 @@
+{
+  "status": "Reference/boundary/rate/top simulations and strict validation pass; full image over capacity; protocol-domain probe fails timing; no deployment",
+  "baselineProtocolProbe": {
+    "candidate": "build-84QUNO",
+    "fit": "pass",
+    "logicElements": 9581,
+    "minSlackNs": -4.079
+  },
+  "firstTimestampPipeline": {
+    "protocolCandidate": "build-GQqKAD",
+    "protocolLogicElements": 9624,
+    "protocolMinSlackNs": -2.297,
+    "generalCandidate": "build-tMu2jl",
+    "generalFit": "fail",
+    "generalLogicElements": 11302
+  },
+  "contract": "Protocol-only snapshots omit PRECISION only to measure resource domains. They are not supported images and do not satisfy full scope.",
+  "remaining": "Pipeline frame-close/tie qualification; resolve complete-image capacity and remaining protocols/stacking; then qualify and deploy end to end",
+  "splitTimestampStages": {
+    "protocolCandidate": "build-cgfhLh",
+    "protocolLogicElements": 9717,
+    "protocolMinSlackNs": -2.715,
+    "worstPath": "Manchester candidate-valid to frame lead register through fail gating",
+    "generalCandidate": "build-3uWnAV",
+    "generalFit": "fail"
+  },
+  "failurePathRevision": {
+    "protocolCandidate": "build-5aRObS",
+    "protocolLogicElements": 9656,
+    "protocolMinSlackNs": -1.513,
+    "generalCandidate": "build-NmBA55",
+    "generalFit": "fail",
+    "generalLogicElements": 11315
+  },
+  "latestTests": {
+    "receiverAndFrameReference": "pass",
+    "fullBankReplay": "12 frames, 1536 words, both phases, minimum period",
+    "failurePriority": "DATA and matching END suppressed by immediate LOSS",
+    "timestampBoundaries": "64-bit wrap and 32-bit START borrow",
+    "topSimulationExitCode": 0
+  },
+  "finalSamplerRevision": {
+    "protocolCandidate": "build-p8WAYS",
+    "protocolFitExitCode": 0,
+    "protocolLogicElements": 9707,
+    "protocolM9Ks": 43,
+    "protocolTimingChecks": 96,
+    "protocolMinSlackNs": -1.273,
+    "generalCandidate": "build-FhlEHv",
+    "generalFitExitCode": 3,
+    "generalLogicElements": 11350,
+    "strictModelExitCode": 0
+  },
+  "modelValidationNote": "Strict validation passed for final RTL and tests; final resource-result prose passed model loading afterward",
+  "currentRTLHashes": {
+    "manchester_receive.v": "3d3bdc8c9a902dfaa82cecc0dff878d102c34686bf1c2ed8eae22e457f04339c",
+    "manchester_trigger.v": "936764e58c711c423845dbcc83e81b25ea5bc0c845d1fafb90efe0ab301ccd96"
+  }
+}

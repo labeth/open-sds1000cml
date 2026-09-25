@@ -1,0 +1,71 @@
+{
+  "result": "trace-integration-pass-with-observed-drift-failure",
+  "files": 16,
+  "functions": 109,
+  "types": 15,
+  "originalTests": 37,
+  "passingTests": 36,
+  "failingTests": [
+    "TestNoDrift"
+  ],
+  "nativeSummaries": 6,
+  "requirements": [
+    "REQ-SDS-155",
+    "REQ-SDS-156",
+    "REQ-SDS-157",
+    "REQ-SDS-158",
+    "REQ-SDS-159",
+    "REQ-SDS-160"
+  ],
+  "packageAudit": {
+    "functions": 109,
+    "types": 15,
+    "unlinkedFunctions": 0,
+    "unlinkedTypes": 0
+  },
+  "scope": "Complete codegen source review, original race-enabled Go tests and generated decode simulation. Generated instrument artifacts unchanged; current TestNoDrift failure preserved. No physical qualification.",
+  "unchangedGeneratedInstrumentSHA256": {
+    "fpga/default/regs.vh": "9763276d3fac76b11c6e887a3c6ba3dceed5b720642a722503f049af4068a3a8",
+    "fpga/default/regmux.vh": "e22bab1d142ee0034797379ac106bac92bf7892723e245491fba09a29dd2ed87",
+    "app/internal/iface/iface.go": "b3a16670139007a061948698d21f7db90377a0a6c45201021ad3449bf9c3871e",
+    "fpga/default/docs/REGISTER-MAP.md": "883149c7f23b24f998ba3f0c575042425633bc2cc010eabeebd9c9fe9cc6fe6b"
+  },
+  "publicationAttachments": [
+    {
+      "source": "codegen/cmd/ifacegen/drift_test.go",
+      "resultArtifact": "test-results/go/codegen/cmd/ifacegen/drift_test.json",
+      "status": "fail",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_DRIFT_TEST_9BD66B"
+    },
+    {
+      "source": "codegen/emit/emit_test.go",
+      "resultArtifact": "test-results/go/codegen/emit/emit_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_EMIT_TEST_50E679"
+    },
+    {
+      "source": "codegen/emit/regmux_sim_test.go",
+      "resultArtifact": "test-results/go/codegen/emit/regmux_sim_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_REGMUX_SIM_TEST_B7956E"
+    },
+    {
+      "source": "codegen/emit/wordfmt/wordfmt_test.go",
+      "resultArtifact": "test-results/go/codegen/emit/wordfmt/wordfmt_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_WORDFMT_TEST_B53AED"
+    },
+    {
+      "source": "codegen/ifacedef/default_test.go",
+      "resultArtifact": "test-results/go/codegen/ifacedef/default_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_DEFAULT_TEST_2D2309"
+    },
+    {
+      "source": "codegen/schema/schema_test.go",
+      "resultArtifact": "test-results/go/codegen/schema/schema_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_SCHEMA_TEST_B83FD0"
+    }
+  ]
+}

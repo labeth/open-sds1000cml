@@ -1,0 +1,16 @@
+// An in-memory request larger than the reader buffer; no listening socket.
+func TestModelReviewAgentTCPBuffer(t *testing.T) {
+	a := testAgent(t)
+	srv, cli := net.Pipe()
+	defer cli.Close()
+	go a.handleConn(srv)
+	if err := cli.SetDeadline(time.Now().Add(5 * time.Second)); err != nil { t.Fatal(err) }
+	raw := strings.Repeat(" ", (1<<20)+128) + `{"cmd":"ping"}` + "\n"
+	if _, err := cli.Write([]byte(raw)); err != nil { t.Fatal(err) }
+	line, err := bufio.NewReader(cli).ReadBytes('\n')
+	if err != nil { t.Fatal(err) }
+	var response Response
+	if err := json.Unmarshal(line, &response); err != nil { t.Fatal(err) }
+	if !response.OK { t.Fatalf("large request rejected: %+v", response) }
+	t.Logf("accepted %d-byte request; one-MiB reader buffer is not a request limit", len(raw))
+}

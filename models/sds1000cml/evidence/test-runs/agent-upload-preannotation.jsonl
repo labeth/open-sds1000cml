@@ -1,0 +1,12 @@
+{"Time":"2026-09-23T02:08:51.682112165+02:00","Action":"start","Package":"open-sds/ota/internal/agent"}
+{"Time":"2026-09-23T02:08:51.694860294+02:00","Action":"run","Package":"open-sds/ota/internal/agent","Test":"TestUploadRejectsGapWhenSizeDeclared"}
+{"Time":"2026-09-23T02:08:51.694926104+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestUploadRejectsGapWhenSizeDeclared","Output":"=== RUN   TestUploadRejectsGapWhenSizeDeclared\n"}
+{"Time":"2026-09-23T02:08:51.696184669+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestUploadRejectsGapWhenSizeDeclared","Output":"--- PASS: TestUploadRejectsGapWhenSizeDeclared (0.00s)\n"}
+{"Time":"2026-09-23T02:08:51.696199553+02:00","Action":"pass","Package":"open-sds/ota/internal/agent","Test":"TestUploadRejectsGapWhenSizeDeclared","Elapsed":0}
+{"Time":"2026-09-23T02:08:51.69621602+02:00","Action":"run","Package":"open-sds/ota/internal/agent","Test":"TestUploadRoundTripWithSHA"}
+{"Time":"2026-09-23T02:08:51.69622346+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestUploadRoundTripWithSHA","Output":"=== RUN   TestUploadRoundTripWithSHA\n"}
+{"Time":"2026-09-23T02:08:51.697436561+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestUploadRoundTripWithSHA","Output":"--- PASS: TestUploadRoundTripWithSHA (0.00s)\n"}
+{"Time":"2026-09-23T02:08:51.697456668+02:00","Action":"pass","Package":"open-sds/ota/internal/agent","Test":"TestUploadRoundTripWithSHA","Elapsed":0}
+{"Time":"2026-09-23T02:08:51.697468579+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Output":"PASS\n"}
+{"Time":"2026-09-23T02:08:52.699264435+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Output":"ok  \topen-sds/ota/internal/agent\t1.017s\n"}
+{"Time":"2026-09-23T02:08:52.69929643+02:00","Action":"pass","Package":"open-sds/ota/internal/agent","Elapsed":1.017}

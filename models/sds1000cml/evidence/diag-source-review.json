@@ -1,0 +1,73 @@
+{
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "owner": "FU-APP-DIAG",
+  "status": "integrated-with-observed-test-failure",
+  "completeReads": [
+    "app/internal/diag/busprobe.go",
+    "app/internal/diag/diag.go",
+    "app/internal/diag/diag_test.go",
+    "app/internal/diag/quietlisten.go",
+    "app/internal/diag/sramcrank.go",
+    "app/internal/diag/v3.go"
+  ],
+  "reviewedGoLines": 4132,
+  "sourceSHA256": {
+    "app/internal/diag/busprobe.go": "52726d94feef6d49b31d6dfd81987bcebc0dfa4a6f2b53183259e966f57794de",
+    "app/internal/diag/diag.go": "1fcab8d50ded0a4f94abcaa50dfd1eaa8fee1c7fafebcb63136674ab1558047e",
+    "app/internal/diag/diag_test.go": "02dc3c212b6552d550e3687b2bb925f7eb57c2028fed38f8718b6f0b4de55ffd",
+    "app/internal/diag/quietlisten.go": "b40455c80f08393e7a0c93067c5a3aa40e2bf37f2e3bf1ab9829fc1f951ca709",
+    "app/internal/diag/sramcrank.go": "17c081c2166e2dc5c9afef6be20fe9db016f1ac9213e0c659135c55073930cd1",
+    "app/internal/diag/v3.go": "afe4122c905e77d75e1e3683371b87595ba581f3a5e7c8902a5577d484769b98"
+  },
+  "uniqueReviewedTests": [
+    "TestBusDrive",
+    "TestCaptureScoresRamp",
+    "TestCaptureTsrcAndWindow",
+    "TestCensus",
+    "TestE2FollowRates",
+    "TestGpmcSweepPersistApply",
+    "TestIdentityAndStatus",
+    "TestRedrainWindows",
+    "TestRegAndWindowAccess",
+    "TestResolveNames",
+    "TestRunnerErrorsPropagate",
+    "TestSchemaCheck",
+    "TestSnapshot",
+    "TestVendorSequence"
+  ],
+  "findings": [
+    "All fabric operations are routed through Runner, but callbacks often sleep for extended periods and inherit Engine.Exec timeout-without-cancellation semantics. New defaults to5seconds and permits nil logger, not nil Runner. Package comments that every experiment restores everything are not supported by all paths.",
+    "ResolveSel accepts schema names or uint16 numeric selectors, including unknown selectors; unknown diagnostic indices below256 are also accepted. WindowWrite refuses known read-only entries but permits unknown indices. Raw writes bypass the normal schema guard. RegRead can consume a pop port. SetCtrl clears existing strobe bits before ORing the caller mask, so a mask explicitly containing strobes can still pulse them.",
+    "RegWriteSnoop performs write and snoop reads inside one owner callback, but errors after a successful write do not roll it back. readIdentity propagates only the first identity read error; other identity and configuration failures can become mismatch/default values. Identity OK and ConfDone are independent. Status extras can overwrite built-in fields while its text line partly uses earlier local identity.",
+    "Census scans118 named indices with3ms waits and returns a pointer also retained as lastCens. It restores DIAG_IDX, not the selected LANE_IDX despite the comment; restoration is at the success tail only. Many register/lane reads discard errors. Snapshot changes snapshot mode and clock, ignores polling-read errors and uses unchecked PopWords; it does not restore the prior mode/clock.",
+    "BusDrive writes levels before enables but only treats level==1 as high; other values become low. Several read-modify-write inputs ignore errors. BusReleaseAll disables the static master and clears its OE words, not all independent generator/ADC-hold/single drive mechanisms.",
+    "regSnapshot saves a fixed register list and requested diagnostic window words; restore resets the capture, writes all saved values with control strobes masked, restores selected window entries and DIAG_IDX, then re-arms if RUN was set. It attempts all writes and returns first error. This restarts acquisition rather than preserving an in-flight record.",
+    "VendorSequence restores only after all six raw writes; early errors skip restoration. Restore failure is exposed as Restored=false with nil operation error. Changed compares only endpoint P6/bus levels, while per-step observations are separate. It does not prove undocumented vendor words have no external consequences.",
+    "E2 alternates D2 states, drives one ball at both levels and measures released level after1ms. Blocks/repeats have minimum/defaults but no upper limit. Only release reads wait explicitly. Spread is variation of the average of each block\u2019s two follow rates, not the maximum variation of both rates independently. Deferred restore failure is a boolean, not returned error.",
+    "Capture normalizes words and zero decimation; EncRate0 remains0 despite the default3 comment. It polls for either DONE or VALID, ignores status errors, and can continue after timeout if the halted record reports READY. HALT write errors stored in the local error are not checked on every subsequent path. Plain BurstInto is unchecked; monitor errors are discarded. Exactness is delegated to previously reviewed bus helpers.",
+    "Capture scoring counts mod256 ramp steps and basic distributions even for ADC data, not physical correctness. Empty input returns zero-valued scores. First packs C1 high/C2 low consistently with existing word format. Short delivered records are reported separately but not necessarily operation errors. score relies on equal channel lengths.",
+    "BusProbe loads pattern in one Exec, starts/arms/reads in another and cleans up in a third; engine work or another diagnostic operation can interleave. Cleanup is not deferred, so failures can leave generation active. Successful cleanup resets controls rather than restoring entry state. SnapClk0 means use Rate, so explicit clock0 cannot be selected with nonzero Rate. Vendor repeat count has no upper bound.",
+    "BusProbe poll/status errors are ignored; a waiting trigger with no ready record returns success and zero samples. Decoding drops an odd trailing word. Driven is estimated from any nonzero OePhase or OeInv and mask, without checking actual configured phase reachability; auxiliary outputs are always marked not driven. Repeated decode on the same result would append summaries. No original tests exercise this file.",
+    "CS3Census reads twice but equality alone does not distinguish a stable register from a stable floating or side-effecting port. CS3Poke restores only after all post-reads succeed and uses readback as prior state even for write-only controls. Its comment claiming harmless volatile writes is not a hardware guarantee and conflicts with the explicit selector0x08 wedge warning in SramCrank. No physical accesses were executed in this review.",
+    "SramCrank validates basic ball/count/timing/guard fields, but GenRate/OePhase/Pre/DriveMask and pattern size are not equivalently validated. Optional generator setup may precede rejecting CS3 selector0x08. Generator restoration ignores errors, leaves pattern RAM changed and strips RUN; CS3 posture is not restored.",
+    "SramCrank preflight records values rather than software-enforcing every hardware gate. Many status/counter reads ignore errors; Busy after bounded polling does not force failure. Armed means REFUSED bit clear, not independently observed arm acceptance. Verdict PASS means any of128 sticky lane flags moved, not valid SRAM data or successful readback. Parking occurs only at the successful tail; abort still runs optional generator defers. No original crank tests exist.",
+    "QuietListen comments explicitly start from unproven bus-topology hypotheses, which must remain hypotheses in the hardware model. The one owner callback changes acquisition/control/ADC-hold and optionally generator/CS3/software clocks. Deferred restoration ignores write failures and does not restore generator pattern, CS3 posture or lane selection. CS3 selector0x08 is not specifically refused here.",
+    "QuietListen validates dwell/pair/rate/break/clock fields but not all generator fields; shifts/casts can silently truncate. Clock cycles can occupy the owner for up to200seconds plus scanning. Dwell is followed by serial lane reads with settling, so sticky observation windows continue during the scan. Wide mode scans118 indices but verdict strings still use /80. Nibbles is allocated but never populated; AcqRead equality does not independently prove converter electrical quietness.",
+    "GPMC sweeps run one Sweeper.Step per Exec and attempt register restoration, but restore errors are discarded and a job has no cancellation API. The job mutex guards progress metadata but not Step mutations read by Phase/Setting; GpmcStatus captures a timing pointer under d.mu then reads its mutable fields outside the lock and directly reads the timing port. These are potential race sites to characterize with the original race-enabled test.",
+    "runSweep marks done before publishing lastSweep, so a poll can observe Finished with no final result. GpmcPersist can read mutable lastSweep without holding d.mu. GpmcApply does not exclude a concurrent sweep; factory application restores selected read fields over current words and ignores its final read error. Existing bus restoration/timing qualification limits continue to apply.",
+    "SchemaCheck derives live bits from description text containing reads0 in v2.2, tests version>=3 writable nonstrobe registers, stubs, one LANEMAP entry and selected independence/undecoded behavior. Several read/write errors are ignored and per-register restoration is not deferred. Its OK does not incorporate Restored. Unknown physical register semantics are not established by schema-derived fakes.",
+    "Redrain inherits unchecked drains and monitor exactness limits, repeats one frozen reference and slices windows; pass/window counts lack upper bounds. ADC mode checks self-consistency only. Report OK excludes restoration failure. Error or unexpected short-reference handling is not comprehensively tested.",
+    "The sole test file has14 tests. Its direct Runner ignores timeout and replaces sleeps; the fake generates data and live masks from the same iface schema used by production checks. It immediately declares captures ready, provides fixed lane levels and models foreign bus owners synthetically. No individual bus-operation error injection, BusProbe, CS3 poke/census, QuietListen or SramCrank test is present.",
+    "TestSchemaCheck ends with a comment about a reserved-bit violation but does not inject one: the saved Write method is unused and the second run expects OK. TestRunnerErrorsPropagate tests only pre-callback Runner rejection. Timing coverage uses a fake duplicate-pop threshold and polls concurrently; host results cannot establish electrical timing, pin ownership, physical cache coherence or restoration after device failure.",
+    "Execution confirmed five race reports in TestGpmcSweepPersistApply: four involve production Sweeper mutation versus Phase/Setting reads from sweepJob.progress; one involves fakeTimingPort current timing versus GpmcStatus. Thirteen other original tests pass. This is recorded as failing evidence, not a successful package qualification; source behavior has not been modified."
+  ],
+  "scope": "All six diagnostic Go files reviewed. Tests use synthetic host fakes; no device command, register write, physical probe or qualification performed.",
+  "execution": "diag-review-test-run.json",
+  "executionResult": "fail",
+  "passingOriginalTests": 13,
+  "failingOriginalTests": [
+    "TestGpmcSweepPersistApply"
+  ],
+  "raceReports": 5,
+  "executionSupersededBy": "diag-test-run.json"
+}

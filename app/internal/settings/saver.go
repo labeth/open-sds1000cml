@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-SETTINGS
 package settings
 
 import (
@@ -15,6 +16,7 @@ import (
 // hot path), and write only after the setup has been STABLE for the settle
 // window (default 2 s) and actually differs from what is on disk. A knob
 // sweep therefore costs one write, ~2–3 s after the last detent.
+// TRLC-LINKS: REQ-SDS-090
 type Saver struct {
 	path   string
 	snap   func() Settings
@@ -37,6 +39,7 @@ type Saver struct {
 // (typically a Collect closure). Call Run on a goroutine after the restore
 // has been applied — the first poll primes the "on disk" shadow from the live
 // state, so an unchanged setup never rewrites the file.
+// TRLC-LINKS: REQ-SDS-090
 func NewSaver(path string, snap func() Settings, logf func(string, ...any)) *Saver {
 	if logf == nil {
 		logf = func(string, ...any) {}
@@ -49,6 +52,7 @@ func NewSaver(path string, snap func() Settings, logf func(string, ...any)) *Sav
 }
 
 // Run polls until stop closes, then flushes any pending change.
+// TRLC-LINKS: REQ-SDS-090
 func (s *Saver) Run(stop <-chan struct{}) {
 	t := time.NewTicker(s.poll)
 	defer t.Stop()
@@ -64,6 +68,7 @@ func (s *Saver) Run(stop <-chan struct{}) {
 }
 
 // step is one poll: observe, debounce, maybe save.
+// TRLC-LINKS: REQ-SDS-090
 func (s *Saver) step() {
 	cur := s.snap()
 	now := s.now()
@@ -89,6 +94,7 @@ func (s *Saver) step() {
 // Flush writes immediately when the current state differs from the file —
 // the shutdown path, so a change still inside the debounce window survives an
 // agent-driven restart (SIGTERM → relaunch).
+// TRLC-LINKS: REQ-SDS-090
 func (s *Saver) Flush() {
 	cur := s.snap()
 	s.mu.Lock()
@@ -103,6 +109,7 @@ func (s *Saver) Flush() {
 // persistLocked writes cur and updates the disk shadow. Failures retry on the
 // next poll (the stick can flake to read-only under load); the log is
 // throttled so a persistently broken path cannot flood agent.log.
+// TRLC-LINKS: REQ-SDS-090
 func (s *Saver) persistLocked(cur Settings) {
 	if err := s.save(s.path, cur); err != nil {
 		s.fails++

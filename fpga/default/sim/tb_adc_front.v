@@ -1,6 +1,8 @@
+// ENGMODEL-OWNER-UNIT: FU-RTL-DEFAULT-TESTS
 // tb_adc_front.v -- encode generation (rates, pair enable, complementary pairs, all five pairs in
 // phase on ph0), samp_tick period, and the LANEMAP assembly with a CH1 seed and a runtime remap.
 `timescale 1ns/1ps
+// TRLC-LINKS: REQ-SDS-194
 module tb_adc_front;
     reg ph0 = 0;
     always #2.5 ph0 = ~ph0;

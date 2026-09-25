@@ -1,0 +1,40 @@
+{"Time":"2026-09-23T11:17:39.672460083+02:00","Action":"start","Package":"open-sds/app/internal/superres"}
+{"Time":"2026-09-23T11:17:39.683618382+02:00","Action":"run","Package":"open-sds/app/internal/superres","Test":"TestCompParityJS"}
+{"Time":"2026-09-23T11:17:39.683657299+02:00","Action":"output","Package":"open-sds/app/internal/superres","Test":"TestCompParityJS","Output":"=== RUN   TestCompParityJS\n"}
+{"Time":"2026-09-23T11:17:39.912674319+02:00","Action":"output","Package":"open-sds/app/internal/superres","Test":"TestCompParityJS","Output":"    comp_jsparity_test.go:247: comp case 0: max |Δ| = 0 (n=300)\n"}
+{"Time":"2026-09-23T11:17:39.912912974+02:00","Action":"output","Package":"open-sds/app/internal/superres","Test":"TestCompParityJS","Output":"    comp_jsparity_test.go:247: comp case 1: max |Δ| = 0 (n=256)\n"}
+{"Time":"2026-09-23T11:17:39.913430392+02:00","Action":"output","Package":"open-sds/app/internal/superres","Test":"TestCompParityJS","Output":"    comp_jsparity_test.go:247: comp case 2: max |Δ| = 0 (n=520)\n"}
+{"Time":"2026-09-23T11:17:39.91343732+02:00","Action":"output","Package":"open-sds/app/internal/superres","Test":"TestCompParityJS","Output":"    comp_jsparity_test.go:247: comp case 3: max |Δ| = 0 (n=32)\n"}
+{"Time":"2026-09-23T11:17:39.913441973+02:00","Action":"output","Package":"open-sds/app/internal/superres","Test":"TestCompParityJS","Output":"    comp_jsparity_test.go:247: comp case 4: max |Δ| = 0 (n=7)\n"}
+{"Time":"2026-09-23T11:17:39.913496721+02:00","Action":"output","Package":"open-sds/app/internal/superres","Test":"TestCompParityJS","Output":"    comp_jsparity_test.go:247: comp case 5: max |Δ| = 0 (n=64)\n"}
+{"Time":"2026-09-23T11:17:39.913627521+02:00","Action":"output","Package":"open-sds/app/internal/superres","Test":"TestCompParityJS","Output":"--- PASS: TestCompParityJS (0.23s)\n"}
+{"Time":"2026-09-23T11:17:39.913648271+02:00","Action":"pass","Package":"open-sds/app/internal/superres","Test":"TestCompParityJS","Elapsed":0.23}
+{"Time":"2026-09-23T11:17:39.91370068+02:00","Action":"run","Package":"open-sds/app/internal/superres","Test":"TestCompCurveBasics"}
+{"Time":"2026-09-23T11:17:39.91370418+02:00","Action":"output","Package":"open-sds/app/internal/superres","Test":"TestCompCurveBasics","Output":"=== RUN   TestCompCurveBasics\n"}
+{"Time":"2026-09-23T11:17:39.914122587+02:00","Action":"output","Package":"open-sds/app/internal/superres","Test":"TestCompCurveBasics","Output":"--- PASS: TestCompCurveBasics (0.00s)\n"}
+{"Time":"2026-09-23T11:17:39.914133971+02:00","Action":"pass","Package":"open-sds/app/internal/superres","Test":"TestCompCurveBasics","Elapsed":0}
+{"Time":"2026-09-23T11:17:39.914155341+02:00","Action":"run","Package":"open-sds/app/internal/superres","Test":"TestCompAutoCaps"}
+{"Time":"2026-09-23T11:17:39.914160112+02:00","Action":"output","Package":"open-sds/app/internal/superres","Test":"TestCompAutoCaps","Output":"=== RUN   TestCompAutoCaps\n"}
+{"Time":"2026-09-23T11:17:39.931153107+02:00","Action":"output","Package":"open-sds/app/internal/superres","Test":"TestCompAutoCaps","Output":"--- PASS: TestCompAutoCaps (0.02s)\n"}
+{"Time":"2026-09-23T11:17:39.931176585+02:00","Action":"pass","Package":"open-sds/app/internal/superres","Test":"TestCompAutoCaps","Elapsed":0.02}
+{"Time":"2026-09-23T11:17:39.931214611+02:00","Action":"run","Package":"open-sds/app/internal/superres","Test":"TestCompensateContract"}
+{"Time":"2026-09-23T11:17:39.931219486+02:00","Action":"output","Package":"open-sds/app/internal/superres","Test":"TestCompensateContract","Output":"=== RUN   TestCompensateContract\n"}
+{"Time":"2026-09-23T11:17:39.932045483+02:00","Action":"output","Package":"open-sds/app/internal/superres","Test":"TestCompensateContract","Output":"--- PASS: TestCompensateContract (0.00s)\n"}
+{"Time":"2026-09-23T11:17:39.93206785+02:00","Action":"pass","Package":"open-sds/app/internal/superres","Test":"TestCompensateContract","Elapsed":0}
+{"Time":"2026-09-23T11:17:39.93210523+02:00","Action":"run","Package":"open-sds/app/internal/superres","Test":"TestSuperresFuzzNoPanic"}
+{"Time":"2026-09-23T11:17:39.932111858+02:00","Action":"output","Package":"open-sds/app/internal/superres","Test":"TestSuperresFuzzNoPanic","Output":"=== RUN   TestSuperresFuzzNoPanic\n"}
+{"Time":"2026-09-23T11:18:34.308418811+02:00","Action":"output","Package":"open-sds/app/internal/superres","Test":"TestSuperresFuzzNoPanic","Output":"--- PASS: TestSuperresFuzzNoPanic (54.38s)\n"}
+{"Time":"2026-09-23T11:18:34.30843774+02:00","Action":"pass","Package":"open-sds/app/internal/superres","Test":"TestSuperresFuzzNoPanic","Elapsed":54.38}
+{"Time":"2026-09-23T11:18:34.308445163+02:00","Action":"run","Package":"open-sds/app/internal/superres","Test":"TestParityJS"}
+{"Time":"2026-09-23T11:18:34.308447779+02:00","Action":"output","Package":"open-sds/app/internal/superres","Test":"TestParityJS","Output":"=== RUN   TestParityJS\n"}
+{"Time":"2026-09-23T11:18:34.565909924+02:00","Action":"output","Package":"open-sds/app/internal/superres","Test":"TestParityJS","Output":"    superres_parity_test.go:212: parity: gate [57,97) L=40, frames go=6/js=6, hits go=251/js=251, bits go=5.783/js=5.783, meanSum go=81919.8431/js=81919.8431\n"}
+{"Time":"2026-09-23T11:18:34.566046211+02:00","Action":"output","Package":"open-sds/app/internal/superres","Test":"TestParityJS","Output":"--- PASS: TestParityJS (0.26s)\n"}
+{"Time":"2026-09-23T11:18:34.566063737+02:00","Action":"pass","Package":"open-sds/app/internal/superres","Test":"TestParityJS","Elapsed":0.26}
+{"Time":"2026-09-23T11:18:34.56610754+02:00","Action":"run","Package":"open-sds/app/internal/superres","Test":"TestParityManualGate"}
+{"Time":"2026-09-23T11:18:34.566111045+02:00","Action":"output","Package":"open-sds/app/internal/superres","Test":"TestParityManualGate","Output":"=== RUN   TestParityManualGate\n"}
+{"Time":"2026-09-23T11:18:34.865429479+02:00","Action":"output","Package":"open-sds/app/internal/superres","Test":"TestParityManualGate","Output":"    superres_parity_test.go:212: parity: gate [40,160) L=120, frames go=6/js=6, hits go=102/js=102, bits go=3.048/js=3.048, meanSum go=245762.2208/js=245762.2208\n"}
+{"Time":"2026-09-23T11:18:34.865573186+02:00","Action":"output","Package":"open-sds/app/internal/superres","Test":"TestParityManualGate","Output":"--- PASS: TestParityManualGate (0.30s)\n"}
+{"Time":"2026-09-23T11:18:34.865581555+02:00","Action":"pass","Package":"open-sds/app/internal/superres","Test":"TestParityManualGate","Elapsed":0.3}
+{"Time":"2026-09-23T11:18:34.865606464+02:00","Action":"output","Package":"open-sds/app/internal/superres","Output":"PASS\n"}
+{"Time":"2026-09-23T11:18:35.872039315+02:00","Action":"output","Package":"open-sds/app/internal/superres","Output":"ok  \topen-sds/app/internal/superres\t56.199s\n"}
+{"Time":"2026-09-23T11:18:35.872056896+02:00","Action":"pass","Package":"open-sds/app/internal/superres","Elapsed":56.2}

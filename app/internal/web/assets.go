@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-WEB
 package web
 
 import (
@@ -18,6 +19,7 @@ var assetFS embed.FS
 // agent swaps the whole binary (embedded assets included), so a browser-cached
 // asset must round-trip before it can meet a newer server's wire format.
 // Returns false (writing nothing) when the file is not embedded.
+// TRLC-LINKS: REQ-SDS-161
 func serveAsset(w http.ResponseWriter, name string) bool {
 	body, err := assetFS.ReadFile(name)
 	if err != nil {
@@ -39,6 +41,7 @@ func serveAsset(w http.ResponseWriter, name string) bool {
 }
 
 // staticName reports whether p is a bare .js/.css filename (no path traversal).
+// TRLC-LINKS: REQ-SDS-161
 func staticName(p string) bool {
 	if strings.Contains(p, "/") {
 		return false

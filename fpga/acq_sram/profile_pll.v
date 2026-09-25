@@ -1,5 +1,7 @@
+// ENGMODEL-OWNER-UNIT: FU-RTL-ACQ-SRAM-PROFILE-PLL
 // Existing board clock plan: 100 MHz M2 reference, 250 MHz core,
 // 250 MHz SRAM input sampling at +1 ns, and 125 MHz host-buffer writes.
+// TRLC-LINKS: REQ-SDS-059
 module acq_profile_pll(input refclk,output core,sample_clk,ram_clk,locked);
  wire [4:0] clocks;
  altpll #(.inclk0_input_frequency(10000),.intended_device_family("Cyclone IV E"),

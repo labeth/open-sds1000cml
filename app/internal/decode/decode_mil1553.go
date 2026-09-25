@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-DECODE
 package decode
 
 import (
@@ -12,7 +13,10 @@ import (
 //	Bitrate   0 => auto-infer the bit period from the edge statistics; else
 //	          bits/s (real 1553 is 1_000_000).
 //	Threshold/HaveThr override the auto slice threshold (see sliceChannel).
+//
+// TRLC-LINKS: REQ-SDS-018
 type MIL1553Cfg struct {
+	Inverted  bool
 	Bitrate   int
 	Threshold float64
 	HaveThr   bool
@@ -28,7 +32,14 @@ type MIL1553Cfg struct {
 // and a rising = 0 — the Thomas convention (ieee=false) of recoverManchester.
 //
 // Kept algorithm-faithful to decode_mil1553.js so LCD and web agree byte-for-byte.
+// TRLC-LINKS: REQ-SDS-018
 func DecodeMIL1553(codes []uint8, colTimeS float64, cfg MIL1553Cfg) Result {
+	if cfg.Inverted {
+		codes = invertLogic(codes)
+		if cfg.HaveThr {
+			cfg.Threshold = 255 - cfg.Threshold
+		}
+	}
 	const minSPB = 4.0
 	S := sliceChannel(codes, cfg.Threshold, cfg.HaveThr)
 	if !S.ok {
@@ -94,6 +105,7 @@ func DecodeMIL1553(codes []uint8, colTimeS float64, cfg MIL1553Cfg) Result {
 
 // decodeMIL1553At finds each word's SYNC and decodes it at bit period T, returning
 // the Result plus the word count so the caller can score competing T hypotheses.
+// TRLC-LINKS: REQ-SDS-018
 func decodeMIL1553At(S sliced, T, colTimeS float64) (Result, int) {
 	var spans []Span
 	var bytesOut []int

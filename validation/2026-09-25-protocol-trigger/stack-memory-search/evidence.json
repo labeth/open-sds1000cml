@@ -1,0 +1,72 @@
+{
+  "status": "Memory-address scheduler connected to scoring and peak selection; physical memory adapters and complete FPGA stacking remain unfinished",
+  "sourceHashes": {
+    "fpga/acq_sram/stack_moments.v": "a8691de32e0a5745034205bd3578780e34735bbcfd21a35732e42237f4e70982",
+    "fpga/acq_sram/stack_correlation.v": "241e04c276c727794c4d94f85e9870aafcb4866142cc73a311796da127243d13",
+    "fpga/acq_sram/stack_match_score.v": "8ac0895724d76b0fb3c332e4abdf3399e22e15b0da7077fe49772aa2c7dd70fc",
+    "fpga/acq_sram/stack_peaks.v": "e350ca5798febdbff118ac1058256cb9fc8455663727aa1eb812456338fc5f56",
+    "fpga/acq_sram/stack_search.v": "ff831d06cb740c0cdf728dec1f5281ee1f9034e833d55776a666fd2b7d50eba0",
+    "fpga/acq_sram/stack_window_reader.v": "95550afb705a3b8d1da74b8bb4ebdb969cd83e3f20ddc4cf03c910a894d2d4d9",
+    "fpga/acq_sram/stack_memory_search.v": "82f759f9195b825a7b081dc7051f306698f14b6856785766831c9a9fef86368e",
+    "fpga/acq_sram/sim/tb_stack_search.v": "0ce6ef1a137ca956dc2e1e46b253808161d51d6acd1baf15880cff052518fff0",
+    "fpga/acq_sram/sim/tb_stack_memory_search.v": "0611edf5221f96533ee42164cb278e163ecf92d8935b68774fbce50f4a448d9e",
+    "fpga/acq_sram/sim/tb_stack_correlation.v": "ce273c324972b5e248a62e76ad31ad4d6bfddc51973813f8d15a179dfc46d5a7",
+    "app/internal/superres/stack_search_rtl_test.go": "8fba5a30a83843a4b543257a876b3673d71fb3e8f5d7dd915991615c95683818",
+    "app/internal/superres/stack_correlation_rtl_test.go": "c09def9c510699d26595eed00e974e028775104044e04db92e4ee5c96e79f33e",
+    "app/internal/superres/stack_peaks_rtl_test.go": "62c7738314a614ffe3e555ae80cac4ef34d53ae38857a6051726062081803377",
+    "fpga/acq_sram/sim/tb_stack_peaks.v": "25f6bb33a1b3368bab7ba763c9e1534a5589373b67d126553d9aed0e109e7ec3"
+  },
+  "tests": {
+    "exitCode": 0,
+    "memorySearchFixtures": 25,
+    "directSearchFixtures": 20,
+    "peakFixtures": 109,
+    "scoreWaveformWindows": 41,
+    "scoreFullWidthCases": 86,
+    "maxNormalizationClocks": 2660,
+    "coverage": "Each memory request address checked; request/response/verdict stalls; paired data accounting; reset/restart with buffered data, poisoned outstanding response, coincident response error, and blocked score; nonzero record offset; reference/record bounds; read errors; independent score and candidate oracle"
+  },
+  "memoryContract": "Exactly one paired read outstanding; response no earlier than next clock. Replacing start drains and discards old response. Reset must also reset adapter pipeline. Adapter owns reference/record stability; this block grants no SRAM overwrite permission.",
+  "synthesis": {
+    "build": "build-wM2O97",
+    "device": "EP4CE10F17C8",
+    "clockMHz": 125,
+    "logicElements": 4025,
+    "registers": 3166,
+    "memoryBits": 0,
+    "dsp9BitElements": 3,
+    "slacksNs": [
+      0.032,
+      0.299,
+      3.572,
+      0.533,
+      0.276,
+      3.422,
+      4.466,
+      0.099,
+      3.109
+    ],
+    "minSetupSlackNs": 0.032,
+    "minHoldSlackNs": 0.099,
+    "limitations": "Very small internal setup margin. Physical clock constrained; virtual data I/O unconstrained. Physical memory and acquisition-top timing not qualified."
+  },
+  "rejectedBuilds": [
+    {
+      "build": "build-rNGttx",
+      "minSetupSlackNs": -0.279
+    }
+  ],
+  "modelValidation": {
+    "exitCode": 0,
+    "strict": true,
+    "errors": 0,
+    "warnings": 604,
+    "log": "model-validation.log",
+    "sourceHashes": {
+      "models/sds1000cml/engmod.yml": "8efe84b1c1f1fb7eb97517330a65c23234164e36d2bdb90fdc49ad4804201940",
+      "models/sds1000cml/model/decisions.yml": "b7ad48be87caf9464a0e69a2684ba6e8ceff3cb1cdbfab8b6136649ad317a36b",
+      "models/sds1000cml/model/requirements.yml": "ef3cfc4e34b7ee029d1fcff8188a5e11741e58174f3a4e084c90231329b4e8c8"
+    }
+  },
+  "deployment": "No change; general/current remains build-v5T40o"
+}

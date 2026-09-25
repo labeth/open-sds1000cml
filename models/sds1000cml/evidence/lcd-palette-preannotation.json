@@ -1,0 +1,26 @@
+{
+  "result": "source-reviewed-native-trace-pending",
+  "sourceSHA256": {
+    "app/internal/web/gen_tokens.go": "6b1edc483d52054a1be9d531e8c88567c83170bf2512d264c165630a401c605b",
+    "app/internal/web/palette_parity_test.go": "9c49eeef5b2d8636a7611be6c96fbedcf59df7c9c69f49bac0e3ebd115c55c2c",
+    "app/internal/web/tokens.json": "133db42b261ad25e83f61b3b342053c764d0882b00b8bc2c16f93249deccfdc7",
+    "app/internal/web/tokens.css": "0572f3719ae98d99ac877ec45d57489bba9eebe46c055e22ce78cb1899127aac",
+    "app/internal/lcd/palette_gen.go": "a5b61ad2a18d458003ddc4715773bb000a16aac42efe5541eaf0a60a2e7fa721"
+  },
+  "completeReads": [
+    "app/internal/web/gen_tokens.go",
+    "app/internal/web/palette_parity_test.go",
+    "app/internal/web/tokens.json",
+    "app/internal/web/tokens.css",
+    "app/internal/lcd/palette_gen.go"
+  ],
+  "findings": [
+    "Generator sorts token/column names and emits CSS before validating LCD token references. An unknown LCD reference can leave CSS changed while the Go artifact remains old.",
+    "hexRGB ignores the Sscanf result; token strings are trusted rather than comprehensively validated.",
+    "Original parity test compares parsed CSS and RGB literals against JSON mappings; it does not execute the generator or establish optical color equality after RGB565 quantization.",
+    "Generated palette variables have no function/type declarations and remain unedited; ownership inventory and generator/input evidence cover the artifact."
+  ],
+  "tests": {
+    "TestPaletteParity": "pending"
+  }
+}

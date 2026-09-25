@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-SCPI
 package scpi
 
 import (
@@ -11,6 +12,7 @@ import (
 
 // waveform implements Cn:WF? DAT2|DESC (spec 11 §4): the byte-exact LeCroy
 // block. Reply shape: "Cn:WF ALL,#9<9-digit count><payload>\n".
+// TRLC-LINKS: REQ-SDS-024
 func (h *Handler) waveform(ch int, arg string) []byte {
 	sel := arg
 	if sel != "DAT2" && sel != "DESC" && sel != "ALL" {
@@ -50,6 +52,7 @@ func (h *Handler) waveform(ch int, arg string) []byte {
 // dat2 extracts the (sparsed, windowed) 8-bit codes. Deep-frame scale
 // (centred 128); roll-ring codes are half-scale and must be rescaled before
 // export (spec 11 §4 code-scale trap).
+// TRLC-LINKS: REQ-SDS-024
 func (h *Handler) dat2(ch int, f *engine.Frame) []byte {
 	sig := f.C1
 	if ch == 1 {
@@ -99,6 +102,7 @@ func (h *Handler) dat2(ch int, f *engine.Frame) []byte {
 }
 
 // wavedesc builds the 346-byte WAVEDESC (little-endian, COMM_ORDER=1).
+// TRLC-LINKS: REQ-SDS-024
 func (h *Handler) wavedesc(ch int, f *engine.Frame) []byte {
 	d := make([]byte, 346)
 	copy(d[0:], "WAVEDESC")

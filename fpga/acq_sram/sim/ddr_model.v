@@ -1,4 +1,6 @@
+// ENGMODEL-OWNER-UNIT: FU-RTL-ACQ-TESTS
 `timescale 1ns/1ps
+// TRLC-LINKS: REQ-SDS-189
 module altddio_out #(parameter width=1,power_up_high="OFF",intended_device_family="Cyclone IV E")
 (input outclock,datain_h,datain_l,oe,aclr,aset,sclr,sset,outclocken,output dataout);
  reg low_latched=0,value=0;

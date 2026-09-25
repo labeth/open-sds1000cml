@@ -1,0 +1,34 @@
+[
+  {
+    "signal": "sine-1mhz",
+    "frames": 80,
+    "channels": [
+      {
+        "before": 0.6900982253739147,
+        "after": 0.6114831330236445,
+        "improved": 80
+      },
+      {
+        "before": 0.6721332717315132,
+        "after": 0.6376822687221553,
+        "improved": 80
+      }
+    ]
+  },
+  {
+    "signal": "sine-5mhz",
+    "frames": 80,
+    "channels": [
+      {
+        "before": 0.6978516367202988,
+        "after": 0.6655927846525664,
+        "improved": 80
+      },
+      {
+        "before": 0.755077447338582,
+        "after": 0.7138685837842929,
+        "improved": 80
+      }
+    ]
+  }
+]

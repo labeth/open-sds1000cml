@@ -1,0 +1,248 @@
+{
+  "status": "integrated-with-explicit-verification-limits",
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "requirements": [
+    "REQ-SDS-040"
+  ],
+  "mcpContext": [
+    {
+      "exists": true,
+      "generatedAt": "2026-09-23T09:54:19Z",
+      "ok": true,
+      "requirement": {
+        "ID": "REQ-SDS-040",
+        "Title": "Precision reduction",
+        "Text": "The instrument shall support raw storage and legal power-of-two precision reductions without truncating Q8.8 fractions.",
+        "Notes": "Source-derived contract; source presence is not evidence of a passing hardware qualification.",
+        "Category": "functional",
+        "Rationale": "",
+        "SourceRefs": [
+          "REF-SOURCE-APP-INTERNAL-ENGINE-SRAM-TEST-GO",
+          "REF-SOURCE-APP-INTERNAL-ENGINE-SRAM-GO",
+          "REF-SOURCE-FPGA-ACQ-SRAM-PRECISION-V",
+          "REF-SOURCE-FPGA-ACQ-SRAM-PRECISION-TAIL-V",
+          "REF-SOURCE-FPGA-ACQ-SRAM-ACQUISITION-SOURCE-V",
+          "REF-SOURCE-FPGA-ACQ-SRAM-SIM-TB-ACQUISITION-SOURCE-V"
+        ],
+        "VerificationMethods": [
+          "inspection",
+          "test"
+        ],
+        "VerificationCriteria": "Inspect the linked implementation and run the corresponding offline tests; hardware claims require independently identified device evidence.",
+        "Priority": "",
+        "Criticality": "",
+        "Status": "draft",
+        "Derived": false,
+        "DerivedRationale": "",
+        "Tags": null,
+        "AppliesTo": [
+          "FU-RTL-ACQ-SRAM-PRECISION",
+          "FU-RTL-ACQ-SRAM-PRECISION-TAIL"
+        ]
+      },
+      "schemaVersion": "mcp.tool-response.v1",
+      "tool": "requirements.get"
+    }
+  ],
+  "completeReads": [
+    "fpga/acq_sram/precision.v",
+    "fpga/acq_sram/precision_tail.v",
+    "fpga/acq_sram/sim/tb_integrator.v",
+    "fpga/acq_sram/sim/tb_precision.v",
+    "fpga/acq_sram/sim/tb_precision_config.v",
+    "fpga/acq_sram/sim/tb_precision_fir.v",
+    "fpga/acq_sram/sim/tb_precision_shared.v",
+    "fpga/acq_sram/sim/tb_precision_tail.v",
+    "fpga/acq_sram/sim/tb_precision_tail_queue.v",
+    "fpga/acq_sram/sim/tb_precision_top.v"
+  ],
+  "supportCompleteReads": [
+    "validation/2026-09-14-stream-path/precision-tail/reference_precision.v",
+    "validation/2026-09-14-stream-path/test_precision_shared.py",
+    "validation/2026-09-14-stream-path/test_precision_config.py",
+    "validation/2026-09-14-stream-path/test_precision_tail.py",
+    "validation/2026-09-14-stream-path/test_precision_tail_queue.py",
+    "validation/2026-09-14-stream-path/precision-tail/README.md"
+  ],
+  "reviewedLines": 713,
+  "sourceSHA256": {
+    "fpga/acq_sram/precision.v": "a773edf444d2b4a0c37e2d1504612cd5091e57bad1dc1c41bc10fb09c968d6c5",
+    "fpga/acq_sram/precision_tail.v": "dd4dfd694d649b84e2c798911d1f7cb5df3384211761cdf871714eae97505d72",
+    "fpga/acq_sram/sim/tb_integrator.v": "8aefccca64816982a8a640513a4afe62ffe0896f44ef54ac5a2222b4e82a2852",
+    "fpga/acq_sram/sim/tb_precision.v": "b64a2fcc2aa89c677f429a9794f86cd413488226c82ea603b070ed72588aeb8e",
+    "fpga/acq_sram/sim/tb_precision_config.v": "dcfef26df8f2748583ca965f66ebfd7b3c8f603b358e903cad2bf77a16ef5198",
+    "fpga/acq_sram/sim/tb_precision_fir.v": "117c9280e504b2b5c2f09aeeee29b3e3080deb7bd1d2cf7acdfe7b15c306e060",
+    "fpga/acq_sram/sim/tb_precision_shared.v": "24f3cc5a6e6f3115595069f2a33ee30f000d18245361eb329ed8440efff761c8",
+    "fpga/acq_sram/sim/tb_precision_tail.v": "2170aca776487f193942f51da08378e0488af37646c89d36db1783f82a5208b1",
+    "fpga/acq_sram/sim/tb_precision_tail_queue.v": "d309b2a47f4b6cfd0f25e67dfc4401836ea9c4d40e1705d7a06a3664f188fe07",
+    "fpga/acq_sram/sim/tb_precision_top.v": "bb71af6786f21fee620ef5a7bbeb38758c62f70b55425e23581304d345c8e19b",
+    "validation/2026-09-14-stream-path/precision-tail/reference_precision.v": "dc03fe4fd3d2daf0d0f757f1f0f9c942793f650f8ab709aba881b95860598b33",
+    "validation/2026-09-14-stream-path/test_precision_shared.py": "e4630b80e77ad29a9bcd6930f600c47c2432fed62a81a408c8463900f96ff712",
+    "validation/2026-09-14-stream-path/test_precision_config.py": "e847a5f200ed06f7282ac5861091e11cd33dcaa468a1c059267ece3da467d5a8",
+    "validation/2026-09-14-stream-path/test_precision_tail.py": "67bf0a4722a0375c6335e5755e0c8e67058f9cc9ec629209cd72de21f0a46cb4",
+    "validation/2026-09-14-stream-path/test_precision_tail_queue.py": "3982fb2cfa1b996c56a2a3f6d19a624ed9b53d7b05e70d7dec10bf9887074078",
+    "validation/2026-09-14-stream-path/precision-tail/README.md": "4d1c7719ff75655db1edd9a69d1cb7e8d49b2907354b3486fc8ae9975b5e0880"
+  },
+  "modulesByFile": {
+    "fpga/acq_sram/precision.v": [
+      "cic_pair_integrator",
+      "cic16_pair",
+      "cic_stage",
+      "adc_precision"
+    ],
+    "fpga/acq_sram/precision_tail.v": [
+      "cic_precision_tail"
+    ],
+    "fpga/acq_sram/sim/tb_integrator.v": [
+      "tb"
+    ],
+    "fpga/acq_sram/sim/tb_precision.v": [
+      "tb"
+    ],
+    "fpga/acq_sram/sim/tb_precision_config.v": [
+      "dcfifo",
+      "tb_precision_config"
+    ],
+    "fpga/acq_sram/sim/tb_precision_fir.v": [
+      "tb"
+    ],
+    "fpga/acq_sram/sim/tb_precision_shared.v": [
+      "dcfifo",
+      "tb_precision_shared"
+    ],
+    "fpga/acq_sram/sim/tb_precision_tail.v": [
+      "tb_precision_tail"
+    ],
+    "fpga/acq_sram/sim/tb_precision_tail_queue.v": [
+      "tb_precision_tail_queue"
+    ],
+    "fpga/acq_sram/sim/tb_precision_top.v": [
+      "bench_pll",
+      "adc_interleave",
+      "tb"
+    ]
+  },
+  "findings": [
+    {
+      "id": "pair-integrator",
+      "path": "fpga/acq_sram/precision.v",
+      "requirements": [
+        "REQ-SDS-040"
+      ],
+      "finding": "cic_pair_integrator splits the accumulator into low/high halves, carrying operands and carry bits together through pending stages. Valid stalls preserve token alignment; local_enable resets accumulator state after its registered delay. Eight reset epochs and full-width wrap are exercised by tb_integrator."
+    },
+    {
+      "id": "first-cic",
+      "path": "fpga/acq_sram/precision.v",
+      "requirements": [
+        "REQ-SDS-040"
+      ],
+      "finding": "cic16_pair converts unsigned bytes to signed Q8, cascades three 28-bit pair integrators, takes every eighth pair, and discards eight comb outputs. Its direct FIR bench uses a separately constructed three-boxcar convolution, unlike the recurrence-based tail oracle."
+    },
+    {
+      "id": "configurable-stage",
+      "path": "fpga/acq_sram/precision.v",
+      "requirements": [
+        "REQ-SDS-040"
+      ],
+      "finding": "cic_stage supports bypass or CIC3 factors through 16. Integrators consume old preceding state, comb sampling consumes old i3, normalization shifts by three times factor_log, and each enabled stage discards eight comb outputs. The caller must constrain factor_log."
+    },
+    {
+      "id": "precision-composition",
+      "path": "fpga/acq_sram/precision.v",
+      "requirements": [
+        "REQ-SDS-040"
+      ],
+      "finding": "adc_precision always applies /16, then one or four parallel stages. SHARED_TAIL selects the remaining three stages in a scheduled tail; default remains parallel. Channel valid schedules are assumed identical; unused second-channel valid is not separately checked."
+    },
+    {
+      "id": "short-reset",
+      "path": "fpga/acq_sram/precision.v",
+      "requirements": [
+        "REQ-SDS-040"
+      ],
+      "finding": "Only SHARED_TAIL asynchronously asserts clk100/packclk enable resets and releases through three clock stages. It captures decim_log while disabled, requiring caller stability throughout the epoch. Legacy mode directly uses decim_log and synchronous enable propagation."
+    },
+    {
+      "id": "cdc-limits",
+      "path": "fpga/acq_sram/precision.v",
+      "requirements": [
+        "REQ-SDS-040"
+      ],
+      "finding": "Both FIFO interfaces use vendor dcfifo configuration. Toggle mailboxes between core and packclk assume bounded related-clock behavior; the ideal FIFO benches do not establish vendor memory latency, metastability safety or physical timing closure."
+    },
+    {
+      "id": "fault-propagation",
+      "path": "fpga/acq_sram/precision.v",
+      "requirements": [
+        "REQ-SDS-040"
+      ],
+      "finding": "Input FIFO full on push, output FIFO full on produced word, or tail fault latch overflow; synchronized flags latch core fault until disable. Wrapper valid is not directly masked by fault; acquisition_source is responsible for rejecting a faulted epoch."
+    },
+    {
+      "id": "shared-state-ram",
+      "path": "fpga/acq_sram/precision_tail.v",
+      "requirements": [
+        "REQ-SDS-040"
+      ],
+      "finding": "Six stage/channel contexts use addresses 0..45 with padding; queue uses 48..51. CLEAR walks 0..47. Queue pushes take the single RAM write port and pause conflicting CLEAR/APPLY state transitions; queued data survives initialization."
+    },
+    {
+      "id": "queue-handshake",
+      "path": "fpga/acq_sram/precision_tail.v",
+      "requirements": [
+        "REQ-SDS-040"
+      ],
+      "finding": "ready permits a full simultaneous pop/push, and synchronous read_available prefetch protects the oldest word. A non-bypass valid without ready or remaining_log above 12 sets sticky fault; fault masks out_valid and ready until disable."
+    },
+    {
+      "id": "tail-equivalence",
+      "path": "fpga/acq_sram/precision_tail.v",
+      "requirements": [
+        "REQ-SDS-040"
+      ],
+      "finding": "The tail shares one 28-bit add/subtract datapath and normalization mux. Channel counters/warmup are shared; value/order equivalence permits different latency. Intended non-bypass input rate is <=1.953125 Mwords/s at 100 MHz, not arbitrary sustained backpressure-free input."
+    },
+    {
+      "id": "oracle-independence",
+      "path": "fpga/acq_sram/sim/tb_precision_shared.v",
+      "requirements": [
+        "REQ-SDS-040"
+      ],
+      "finding": "Shared/config benches use frozen adc_precision composition but share unchanged fast CIC modules. They establish regression equivalence, not independent correctness of the entire filter. Full shared wrapper sweep covers logs 4..13; config bench epochs are logs 8,9,4,12."
+    },
+    {
+      "id": "full-tail-range",
+      "path": "fpga/acq_sram/sim/tb_precision_tail.v",
+      "requirements": [
+        "REQ-SDS-040"
+      ],
+      "finding": "Default MAX_LOG=12 sweeps all remaining logs, compares both channels against parallel cic_stage, exercises startup, rail/fractional/random words, gaps, four-word bursts, overload, illegal log13 and reset. Tail-only coverage is not complete wrapper coverage through decimation log20."
+    },
+    {
+      "id": "queue-corners",
+      "path": "fpga/acq_sram/sim/tb_precision_tail_queue.v",
+      "requirements": [
+        "REQ-SDS-040"
+      ],
+      "finding": "Queue bench fills during RAM initialization, replaces the oldest physical slot on full pop/push, and resets during APPLY with pending input; compares all emitted words to the parallel reference."
+    },
+    {
+      "id": "legacy-dc",
+      "path": "fpga/acq_sram/sim/tb_precision.v",
+      "requirements": [
+        "REQ-SDS-040"
+      ],
+      "finding": "Legacy precision bench checks independent channel DC and retained half-code means for logs4..12. This run will explicitly supply the original ideal dcfifo model from tb_precision_config; it is not a vendor simulation."
+    },
+    {
+      "id": "top-deferred",
+      "path": "fpga/acq_sram/sim/tb_precision_top.v",
+      "requirements": [
+        "REQ-SDS-040"
+      ],
+      "finding": "Legacy top bench substitutes ADC interleave and PLL, accesses command/config registers hierarchically, checks sparse counter SRAM writes for logs4..8 and uses ideal SRAM with an origin-minus-one convention. Execution belongs to the later top-level integration batch; source review alone is not a passing result."
+    }
+  ],
+  "scope": "Complete source bodies reviewed: ten implementation/test files plus six support artifacts. Nine files are trace-integrated; legacy tb_precision_top remains source-reviewed with execution deferred to top-level integration. Seven immutable digital cases pass with explicit partial-evidence limits. Publication attachment checks pass; 36 generated outputs reproduce byte-for-byte."
+}

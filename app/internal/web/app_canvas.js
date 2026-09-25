@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-WEB-APP-CANVAS
 // app_canvas.js — scope + navigator pointer/wheel/drag interactions (classic script; loaded after app.js state).
 
 // ---- scope + navigator pointer / wheel / drag interactions ----
@@ -44,6 +45,7 @@ scope.addEventListener("pointerdown", ev => {
   }
   if (view.cursors) {
     const p = ptToNorm(ev);
+    // TRLC-LINKS: REQ-SDS-202
     const near = (a, b) => Math.abs(a - b) < 0.025;
     let drag = null;
     if (near(p.y, cur.v1)) drag = "v1"; else if (near(p.y, cur.v2)) drag = "v2";

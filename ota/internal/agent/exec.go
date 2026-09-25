@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-OTA-AGENT
 package agent
 
 import (
@@ -16,6 +17,7 @@ import (
 
 // runArgv runs a command with a timeout, capturing combined output. It never
 // runs on the bus; it is a plain userspace exec for remote orchestration.
+// TRLC-LINKS: REQ-SDS-115
 func (a *Agent) runArgv(argv []string, dir string, timeout time.Duration) ([]byte, int, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
@@ -36,6 +38,7 @@ func (a *Agent) runArgv(argv []string, dir string, timeout time.Duration) ([]byt
 }
 
 // runShell runs a script through /bin/sh -c (busybox ash on the device).
+// TRLC-LINKS: REQ-SDS-115
 func (a *Agent) runShell(script string, timeout time.Duration) ([]byte, error) {
 	out, _, err := a.runArgv([]string{"/bin/sh", "-c", script}, "", timeout)
 	return out, err
@@ -51,6 +54,7 @@ func (a *Agent) runShell(script string, timeout time.Duration) ([]byte, error) {
 // "open keyboard interrupt: Bad address" without it, which is what closed the SRAM read port.
 // Which of the two details matters is an empirical question, so both are selectable and the
 // default is unchanged.
+// TRLC-LINKS: REQ-SDS-120
 type LaunchOpt struct {
 	Console string `json:"console"` // open this and give it to the child as stdin/out/err
 	Inherit bool   `json:"inherit"` // hand the child THIS agent's own stdin/out/err
@@ -65,6 +69,7 @@ type LaunchOpt struct {
 // carries 21, including TERM=vt102 and the whole OTA_* takeover flag set (OTA_AUTO_TAKEOVER,
 // OTA_SLOT_ROOT, OTA_HEALTH_DIR, ...).  Handing the vendor UI our takeover flags and the wrong
 // TERM is not "the still-open boot fds" that hRestoreFactory promises.
+// TRLC-LINKS: REQ-SDS-120
 func bootEnv() ([]string, error) {
 	b, err := os.ReadFile("/proc/1/environ")
 	if err != nil {
@@ -79,6 +84,7 @@ func bootEnv() ([]string, error) {
 	return out, nil
 }
 
+// TRLC-LINKS: REQ-SDS-120
 func (a *Agent) launchDetached(path, dir string, opt LaunchOpt) (int, error) {
 	cmd := exec.Command(path)
 	cmd.Dir = dir
@@ -118,6 +124,7 @@ func (a *Agent) launchDetached(path, dir string, opt LaunchOpt) (int, error) {
 }
 
 // tailFile returns the last n bytes of a file.
+// TRLC-LINKS: REQ-SDS-115
 func tailFile(path string, n int) ([]byte, error) {
 	f, err := os.Open(path)
 	if err != nil {
@@ -139,6 +146,7 @@ func tailFile(path string, n int) ([]byte, error) {
 }
 
 // copyExecFile copies src to dst (0755) atomically and returns dst's sha256.
+// TRLC-LINKS: REQ-SDS-119
 func copyExecFile(src, dst string) (string, error) {
 	in, err := os.Open(src)
 	if err != nil {

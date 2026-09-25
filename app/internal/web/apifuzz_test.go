@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-WEB
 package web
 
 import (
@@ -15,6 +16,7 @@ import (
 // remotely-triggerable crash of the scope), no unbounded allocation, and a
 // well-formed JSON error for garbage. A fakeScope keeps verdicts local; the
 // engine-level effects are separately covered by the engine suites.
+// TRLC-LINKS: REQ-SDS-161, REQ-SDS-162, REQ-SDS-163, REQ-SDS-164, REQ-SDS-165
 func TestAPIFuzz(t *testing.T) {
 	n := uint64(0)
 	gen := func() *engine.Frame {

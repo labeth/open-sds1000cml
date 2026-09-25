@@ -1,0 +1,10 @@
+{
+  "sourceHashes": {
+    "stack_moments.v": "a8691de32e0a5745034205bd3578780e34735bbcfd21a35732e42237f4e70982",
+    "stack_correlation.v": "d4bcff0e69ead30d48e854826589a2597e7fd3f6555f21c112fbdf7a1564ba98",
+    "stack_match_score.v": "8ac0895724d76b0fb3c332e4abdf3399e22e15b0da7077fe49772aa2c7dd70fc"
+  },
+  "clockMHz": 125,
+  "purpose": "Combined accepted sample pairs to normalized correlation score, not full matching or stacking",
+  "limitations": "Virtual I/O unconstrained; no reference memory, search scheduling, peak or segment decisions, interpolation or accumulators"
+}

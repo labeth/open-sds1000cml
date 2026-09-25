@@ -1,8 +1,10 @@
+// ENGMODEL-OWNER-UNIT: FU-RTL-ACQ-SRAM-WORD-BRIDGE
 // One outstanding word, acknowledged only when the destination consumes it.
 // The source must hold valid/data until ready. Payload is held throughout the
 // round trip; constrain its bundled path into received_data when integrating.
 // reset is a COMMON epoch boundary: assert to both clocks, with local
 // synchronized release. Independent reset of one side is not supported.
+// TRLC-LINKS: REQ-SDS-093
 module sram_word_bridge #(parameter WIDTH=32)(
  input wire reset,source_clk,dest_clk,
  input wire source_valid,input wire [WIDTH-1:0] source_data,

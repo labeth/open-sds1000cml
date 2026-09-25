@@ -1,0 +1,33 @@
+{
+  "scope": "Compile/link check only after comment-only annotations; ARM test binary is not executed. No physical or cross-architecture numerical equivalence claim.",
+  "workingDirectory": "app",
+  "command": [
+    "go",
+    "test",
+    "-c",
+    "-o",
+    "/tmp/sds-dsp-arm-build-aaw5mgd_/dsp.test",
+    "./internal/dsp"
+  ],
+  "environment": {
+    "GOPROXY": "off",
+    "GOOS": "linux",
+    "GOARCH": "arm",
+    "GOARM": "7",
+    "CGO_ENABLED": "0"
+  },
+  "sourceSHA256": {
+    "app/internal/dsp/precision.go": "ad0b20173336f0d41aa350ef9ab1a950971fbcc0975de289fe0e3a70f36e547f",
+    "app/internal/dsp/precision_arm.go": "c07c2b6aab74006d801e0d5b1c4a2a0b5454bfd3095162a40f1b99ba1ac87ac0",
+    "app/internal/dsp/precision_arm.s": "f13221841c1f2841119f2f43caa243b9b7aed7cab4fe0d71e395026dcf199727",
+    "app/internal/dsp/precision_generic.go": "72d705efe52337ecbe5f78dbe0e2fc6c75c69bf5e3a6cb65c0d986483e4685e4",
+    "app/internal/dsp/precision_limits.go": "c627d1c291f583d2d18492097d04a28f8147ac7a5d3444cf673f433c1ff3c34c",
+    "app/internal/dsp/precision_limits_test.go": "a8032f2d22cf40afdf0276a0715fa6a9e5a3e374fd32e3475ead968752f1c890",
+    "app/internal/dsp/precision_taps.go": "3c3cdc69943f4b7497df42d564d4499938dd9da83757d0476f0653bbe920ae0a",
+    "app/internal/dsp/precision_test.go": "3fe6c527d6ea80fd0ca7c2cce5115cae98925589cf6d0e832c50aa9f0266d707"
+  },
+  "exitCode": 0,
+  "stdout": "",
+  "stderr": "",
+  "binarySHA256": "dc46d8a4282d2ad488c5fa543b2da3e1969d5c4ba9b26a87992a13329c7e19af"
+}

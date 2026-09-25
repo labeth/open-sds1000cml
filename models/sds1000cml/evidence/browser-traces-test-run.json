@@ -1,0 +1,67 @@
+{
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "sourceSHA256": {
+    "app/internal/web/app_draw.js": "ed8727761e47b50072d4c75cb215dd820b8057f9bf30d371bf4d24c8f0c6455a",
+    "app/internal/web/app_fft.js": "747110e373a824e5ca0ef8438aa49a1a8d643ca923e91875862f06400cd78f9e",
+    "app/internal/web/app_geom.js": "b4dc43513ada665b830720d204e530aafa4df7d9f05b703128b8341cf8dad86c"
+  },
+  "helperSHA256": "0a4559a2d4be9a27618fa6039621475e097301377866d9156719409b1cf4864b",
+  "runnerSHA256": "53d95045e29b7a07397eaa87cdcb6eb5496e10f7d2b48d1d96d2c108658299f8",
+  "nodeVersion": "v22.20.0",
+  "result": "pass",
+  "cases": [
+    {
+      "name": "vertical code mapping and inverse agree across zoom",
+      "result": "pass"
+    },
+    {
+      "name": "sparse trace preserves gap pen-up and input bytes",
+      "result": "pass"
+    },
+    {
+      "name": "display inversion mirrors codes and leaves gap sentinels untouched",
+      "result": "pass"
+    },
+    {
+      "name": "math addition clips codes and propagates negative gaps",
+      "result": "pass"
+    },
+    {
+      "name": "unequal math channel lengths produce NaN rather than a missing-data sentinel",
+      "result": "pass"
+    },
+    {
+      "name": "reference capture copies and caps stored sample arrays",
+      "result": "pass"
+    },
+    {
+      "name": "FFT gap filling retains a uniform grid and trims margins",
+      "result": "pass"
+    },
+    {
+      "name": "FFT gap filling rejects at most 32 surviving samples",
+      "result": "pass"
+    },
+    {
+      "name": "live FFT uses raw samples but frozen FFT uses displayed record",
+      "result": "pass"
+    },
+    {
+      "name": "raw FFT stride is derived from display frame length",
+      "result": "pass"
+    },
+    {
+      "name": "source-identity FFT cache does not invalidate on sample-period change",
+      "result": "pass"
+    },
+    {
+      "name": "missing raw C2 falls back to display C2 but retains raw timebase",
+      "result": "pass"
+    },
+    {
+      "name": "peak amplitude uses displayed calibration with fallback",
+      "result": "pass"
+    }
+  ],
+  "scope": "Original trace/FFT/geometry functions in isolated VM; graphics calls and spectrum transform stubbed. Characterizes known limits; no GPU pixels, true FFT spectral accuracy, browser interaction or hardware operation."
+}

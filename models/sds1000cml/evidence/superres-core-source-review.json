@@ -1,0 +1,176 @@
+{
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "status": "source-model-integrated",
+  "requirements": [
+    "REQ-SDS-019",
+    "REQ-SDS-181"
+  ],
+  "files": [
+    {
+      "path": "app/internal/web/superres.js",
+      "owner": "FU-WEB-SUPERRES",
+      "baselineSHA256": "a9229bfb0c6cf75370005b5c68b911ee4224ba517d9d20dd824577314e94f82a",
+      "lines": 371,
+      "linkedDeclarations": 6,
+      "annotatedSHA256": "bbdf2cf74c5abedb5e808ece983316595fecd0aa0cbc9b8d8d0a4a28cbae4bc0"
+    },
+    {
+      "path": "app/internal/web/superres_math.js",
+      "owner": "FU-WEB-SUPERRES-MATH",
+      "baselineSHA256": "14a8add8638efac2259039e5e22299b9a410a704c7c8846a662f61ca9b2308fb",
+      "lines": 209,
+      "linkedDeclarations": 8,
+      "annotatedSHA256": "0bb3cc8ad55fb5f96cec323534111a2f2ec87ced0e8c00d1c41f5c7bed5e1e4b"
+    },
+    {
+      "path": "app/internal/web/superres_template.js",
+      "owner": "FU-WEB-SUPERRES-TEMPLATE",
+      "baselineSHA256": "a5e0a12681a9f48f9284648ad13f250f1977232a9fec7d6b433eabacbd75072d",
+      "lines": 205,
+      "linkedDeclarations": 5,
+      "annotatedSHA256": "a37804eed77d05d696137a8a81d7d06a31f08f77df1b238612d10279f013478b"
+    },
+    {
+      "path": "app/internal/web/superres_gate.js",
+      "owner": "FU-WEB-SUPERRES-GATE",
+      "baselineSHA256": "19730b6f161c9df4dbdd7881a06de7f6746df06837923e3c726e1b7d1bfb4a38",
+      "lines": 248,
+      "linkedDeclarations": 5,
+      "annotatedSHA256": "c49d8ce1ec920537434b3481885f677cc32ed5a52bb8fa650182c9601ae81529"
+    },
+    {
+      "path": "app/internal/web/superres_measure.js",
+      "owner": "FU-WEB-SUPERRES-MEASURE",
+      "baselineSHA256": "0c71d9a4a38e2aa12ea4345c894e5b63878b7b9e4ad687e4fc7a2c7ea8da40e5",
+      "lines": 225,
+      "linkedDeclarations": 7,
+      "annotatedSHA256": "32097ff8eb3667c7ef3795bfe6a757f5287e75448a43dd287c81a39f7dcbca5f"
+    },
+    {
+      "path": "app/internal/web/superres.test.cjs",
+      "owner": "FU-APP-WEB",
+      "baselineSHA256": "05ddcf1b683b13b17dc8b86f01a95cd99da0237a0101b25634066cb47d9ec3a4",
+      "lines": 636,
+      "linkedDeclarations": 35,
+      "annotatedSHA256": "5c65876a8e3137cabe742bce45232d5bc2fe5a0cc75d1e3c0f468c8b8c41ff05"
+    },
+    {
+      "path": "app/internal/web/superres_breaker.cjs",
+      "owner": "FU-APP-WEB",
+      "baselineSHA256": "4e2c7bab5d3ccb256166dec7519bed87ed8581940742f67d5d4953efb2dfc97b",
+      "lines": 333,
+      "linkedDeclarations": 22,
+      "annotatedSHA256": "402e0616ddcd114ba15c5b778f2855b87374fb8c2c8057af3cf03a85cee3d01e"
+    }
+  ],
+  "scope": "Complete source read of five browser stacking engines and both original Node test/harness files; synthetic evidence only.",
+  "findings": [
+    "Automatic reference adoption requires at least 12 codes of swing and rejects alignment-channel clipping. An absent companion reference is not adopted on later frames. Initial reference adoption does not separately reject a clipped companion.",
+    "After at least 30 offered non-short/non-clipped attempts, an automatic reference is replaced when accepted frames/attempts is below 0.3. User references remain locked. Short and clipping rejections do not increment attempts.",
+    "Alignment uses trigger-header coarse shift, windowed normalized correlation and edge-crossing or parabolic refinement. A single signal mean from the base window is reused across residual lags. Crossing lists combine both polarities without preserving polarity during nearest matching.",
+    "The p10/p90 midpoint is not mid-amplitude for every duty cycle despite the comment: sufficiently narrow pulses can leave both quantiles at baseline. Empty mean/std or midpoint inputs produce NaN; helpers assume valid samples.",
+    "Gain/offset fitting requires at least 16 overlapping samples and a fitted gain strictly between 0.1 and 10; otherwise it returns identity. Normalized samples are floored at zero without an upper clamp.",
+    "Locked-reference seeding updates reference arrays and edge metadata before all gate checks succeed. Flat gate installation returns false after setting gated/userRef and replacing accumulators; failed seeding is not transactional.",
+    "Template extraction excludes the first 16 samples after the trigger and uses moving range relative to a 20th-percentile floor. Gate auto-narrowing accepts integer autocorrelation periods of at least 16 samples; period search requires an initial dip below 0.3 and a subsequent peak above 0.5.",
+    "Segment matching uses a 2 percent energy threshold and correlation >=0.65, contrary to older 8 percent/0.5 comments. All segment relative levels are checked with a bounded gain estimate. One-segment templates bypass cross-checking.",
+    "Gate detection selects local maxima in increasing location order and suppresses subsequent peaks within half a gate length, even if stronger. Ambient threshold excludes correlations >=0.93 as repeats and is capped at 0.92; the final scan endpoint is not considered as a previous local maximum.",
+    "Decode-driven centers select the best local hit independently for each center without cross-center deduplication. Overlapping search windows can count and accumulate one occurrence repeatedly. Automatic wide-gate searches are bounded by a work heuristic, reducing translation coverage.",
+    "Interpolation kernels fill fine bins from linear or Catmull-Rom estimates; deposition splits raw samples across adjacent bins. Record-edge interpolation requires a next sample and therefore omits the final raw sample at zero shift. Negative/nonfinite inputs are not masked by accumulators.",
+    "Result statistics sample approximately 4096 positions in the alignment window, report median single-frame sigma, and use 1.4826 times median absolute half-stack differences when at least 16 paired bins exist. Zero measured noise with positive theoretical noise also activates the theory fallback. effBits=8+log2(noise ratio) is not SINAD ENOB; effective rate describes the grid.",
+    "Spectral fitting strides records longer than 32768 bins without an anti-alias filter, fills gaps only for spectral detection, and fits selected frequencies using original filled samples of that decimated record. Fewer than 64 filled values or less than half fill rejects the fit; normal equations use partial pivoting and a fixed singularity cutoff.",
+    "Measurement amplitude statistics skip negative internal gaps, but timing crossings operate on the full end-trimmed run and therefore include internal gap transitions. The minimum length check uses span rather than filled count. vrms is AC standard deviation, and top/base use a rounded 0..255 histogram even when floating values exceed that range.",
+    "Existing Go parity evidence is not a substitute for complete execution of the original browser core suite. Original JavaScript tests and breaker review, boundary characterizations, and refreshed native publication remain pending for this batch.",
+    "Original suite uses deterministic Gaussian synthetic frames and selected alignment, noise, clipping, gain/offset, deep-trigger wander, dead-tail, reseed, dither, interpolation, dual-channel, measurement, gate and supplied-center scenarios. Several calls pass maxLag as the third (companion) argument, so those calls use default options.",
+    "Original weighted-drizzle roughness comparison implements both kernels inside the test rather than calling the production accumulator. It demonstrates the synthetic method, not direct production-kernel conformance.",
+    "Breaker generates ten shapes across five compositions, 24 post-reference frames and four gates. Noise is uniform despite its sigma comment, occurrence positions are rounded to integers, and no independent analog-front-end model is present.",
+    "Breaker counts truth correlations from 0.7 to 0.97 as gray acceptance without failure, despite nearby commentary describing 0.7 to 0.9. False-reject limits apply only to gates with at least 90 percent feature coverage; alignment errors fail only when mean fidelity is also poor. Mean fidelity excludes reference filler bins.",
+    "Breaker junk-gate search defaults to position 30 if no empty candidate is found, without proving the fallback is feature-free. Gate seed failures are acceptable for junk gates. Each case also asserts a host-dependent 3000 ms timing limit.",
+    "Eight independent boundary characterizations confirm narrow-pulse midpoint collapse, empty-input NaNs, mutation on failed gate seeding, absent late companion adoption, initial clipped companion acceptance, duplicate supplied-center deposits, final-sample interpolation omission and span-based measurement acceptance with only two valid samples. These passing characterizations preserve limitations rather than qualifying them as correct behavior."
+  ],
+  "pending": [],
+  "validation": {
+    "linkedDeclarations": 88,
+    "exactBaselineRecovery": "pass",
+    "unchangedParserTokens": "pass",
+    "originalJavaScriptSuites": {
+      "assertions": 72,
+      "result": "pass"
+    },
+    "nonPDFPublication": "pass",
+    "pdf": "deferred",
+    "strictConsistency": "pass",
+    "adversarial": {
+      "runs": 200,
+      "passed": 194,
+      "failed": 6,
+      "result": "fail"
+    },
+    "boundaryCases": 8,
+    "nativeMCP": "pass",
+    "reproducibleArtifacts": 36
+  },
+  "testEvidence": "evidence/superres-core-test-run.json",
+  "failedAdversarialCases": [
+    {
+      "fam": 1,
+      "shape": "sine",
+      "comp": "train",
+      "gate": "half",
+      "fails": [
+        "mean-off-truth rms=4.1"
+      ]
+    },
+    {
+      "fam": 1,
+      "shape": "sine",
+      "comp": "train",
+      "gate": "triple",
+      "fails": [
+        "mean-off-truth rms=3.6"
+      ]
+    },
+    {
+      "fam": 6,
+      "shape": "uart",
+      "comp": "train",
+      "gate": "triple",
+      "fails": [
+        "mean-off-truth rms=5.3"
+      ]
+    },
+    {
+      "fam": 22,
+      "shape": "gauss",
+      "comp": "sparse",
+      "gate": "half",
+      "fails": [
+        "mean-off-truth rms=6.3"
+      ]
+    },
+    {
+      "fam": 31,
+      "shape": "sine",
+      "comp": "buried",
+      "gate": "junk",
+      "fails": [
+        "false-accept x1"
+      ]
+    },
+    {
+      "fam": 36,
+      "shape": "uart",
+      "comp": "buried",
+      "gate": "half",
+      "fails": [
+        "mean-off-truth rms=16.2"
+      ]
+    }
+  ],
+  "boundaryEvidence": "evidence/superres-core-boundaries.json",
+  "nativeVerification": {
+    "suite": "test-results/javascript/superres.test.json",
+    "adversarial": "test-results/javascript/superres_breaker.json",
+    "discoveryAlias": "tests/superres_breaker.cjs",
+    "aliasTarget": "../../../app/internal/web/superres_breaker.cjs"
+  }
+}

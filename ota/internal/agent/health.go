@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-OTA-AGENT
 package agent
 
 import (
@@ -15,6 +16,7 @@ import (
 //     frames; it must NOT write the token at launch, so seeing it change means
 //     genuine capture)
 //   - no change for > staleness while the process lives => stale => relaunch
+// TRLC-LINKS: REQ-SDS-105
 type healthWatcher struct {
 	path string
 
@@ -26,6 +28,7 @@ type healthWatcher struct {
 	lastContent []byte
 }
 
+// TRLC-LINKS: REQ-SDS-105
 func newHealthWatcher(path string) *healthWatcher {
 	// Remove any stale token from a previous run: the first-report gate is
 	// only meaningful if the file starts absent.
@@ -34,6 +37,7 @@ func newHealthWatcher(path string) *healthWatcher {
 }
 
 // poll checks the token once; call every ~500ms.
+// TRLC-LINKS: REQ-SDS-105
 func (h *healthWatcher) poll() {
 	fi, err := os.Stat(h.path)
 	if err != nil {
@@ -53,12 +57,14 @@ func (h *healthWatcher) poll() {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-105
 type healthStatus struct {
 	HealthyOnce bool          `json:"healthy_once"`
 	SinceChange time.Duration `json:"since_change_ms"`
 	Token       string        `json:"token,omitempty"`
 }
 
+// TRLC-LINKS: REQ-SDS-105
 func (h *healthWatcher) status() healthStatus {
 	h.mu.Lock()
 	defer h.mu.Unlock()
@@ -71,6 +77,7 @@ func (h *healthWatcher) status() healthStatus {
 
 // verdict returns (healthy, reason). grace = deadline for the FIRST report;
 // staleness = max quiet interval afterwards.
+// TRLC-LINKS: REQ-SDS-105
 func (h *healthWatcher) verdict(grace, staleness time.Duration) (bool, string) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
@@ -86,6 +93,7 @@ func (h *healthWatcher) verdict(grace, staleness time.Duration) (bool, string) {
 	return true, "ok"
 }
 
+// TRLC-LINKS: REQ-SDS-105
 func readPrefix(path string, n int) ([]byte, error) {
 	f, err := os.Open(path)
 	if err != nil {
@@ -97,6 +105,7 @@ func readPrefix(path string, n int) ([]byte, error) {
 	return buf[:m], nil
 }
 
+// TRLC-LINKS: REQ-SDS-105
 func itoa64(v int64) string {
 	if v == 0 {
 		return "0"

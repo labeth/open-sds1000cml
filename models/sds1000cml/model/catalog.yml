@@ -1,0 +1,42 @@
+schemaVersion: 2
+catalog:
+  systems:
+  - id: SYS-INSTRUMENT
+    name: instrument
+    definition: The SDS1102CML+ system of interest, including application, FPGA acquisition and operations software.
+    aliases:
+    - the instrument
+  dataTerms:
+  - id: TERM-RAW
+    name: raw captured record
+    definition: 32-bit SRAM words contain CH1(t0),CH2(t0),CH1(t1),CH2(t1), oldest first; 1,048,576 samples/channel
+      at full depth.
+  - id: TERM-PRECISION
+    name: precision q8.8 record
+    definition: 32-bit words contain one unsigned Q8.8 sample/channel; 524,288 pairs at full depth; preserve all
+      fractional bits.
+  - id: TERM-DESCRIPTOR
+    name: host bank descriptor
+    definition: Published bank token, first word ordinal, valid word count and status; stable until correctly released.
+  - id: TERM-FRAME
+    name: display and measurement frame
+    definition: Samples plus valid length, sample period, trigger position, filter bandwidth/guard and mode metadata.
+  - id: TERM-SETTINGS
+    name: instrument settings
+    definition: Desired channel, trigger, timebase, precision and display state with staged bus actions.
+  - id: TERM-CAL
+    name: per-unit calibration
+    definition: Factory blob and optional interleave coefficients; identity and phase validity matter.
+  - id: TERM-BITSTREAM
+    name: fpga image
+    definition: Volatile configuration plus identity, capabilities and qualification evidence; not a generic interchangeable
+      binary.
+  - id: TERM-HEALTH
+    name: health token
+    definition: Advancing engine heartbeat with initial coherent-frame gate; quiet NORM differs from a wedge.
+  - id: TERM-UPDATE
+    name: update payload
+    definition: Staged app/agent slot binary and checksum; checksum does not establish authenticity.
+  - id: TERM-EPOCH
+    name: acquisition epoch
+    definition: Capture/configuration ownership boundary; discontinuities and overruns must remain visible.

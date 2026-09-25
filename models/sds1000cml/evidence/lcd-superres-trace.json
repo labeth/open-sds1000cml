@@ -1,0 +1,14 @@
+{
+  "result": "pass",
+  "requirements": [
+    "REQ-SDS-021",
+    "REQ-SDS-070"
+  ],
+  "lcdCodeEntries": 74,
+  "lcdVerificationEntries": 5,
+  "superresProductionEntries": 8,
+  "newOriginalTestOutcomes": 6,
+  "verificationStatus": "partial",
+  "matrixSHA256": "b1b36ac169b1d0a94315bd856a1adb0c5fa795f52333e71abfbd9de21568cf06",
+  "scope": "Native source/test attachment only; synthetic means do not establish acquisition reconstruction or physical accuracy."
+}

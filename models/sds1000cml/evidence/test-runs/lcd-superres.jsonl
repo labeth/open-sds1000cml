@@ -1,0 +1,28 @@
+{"Time":"2026-09-23T07:44:13.024935544+02:00","Action":"start","Package":"open-sds/app/internal/lcd"}
+{"Time":"2026-09-23T07:44:13.036266033+02:00","Action":"run","Package":"open-sds/app/internal/lcd","Test":"TestSuperresFFTAboveRawNyquist"}
+{"Time":"2026-09-23T07:44:13.036318163+02:00","Action":"output","Package":"open-sds/app/internal/lcd","Test":"TestSuperresFFTAboveRawNyquist","Output":"=== RUN   TestSuperresFFTAboveRawNyquist\n"}
+{"Time":"2026-09-23T07:44:13.042983817+02:00","Action":"output","Package":"open-sds/app/internal/lcd","Test":"TestSuperresFFTAboveRawNyquist","Output":"--- PASS: TestSuperresFFTAboveRawNyquist (0.01s)\n"}
+{"Time":"2026-09-23T07:44:13.043011064+02:00","Action":"pass","Package":"open-sds/app/internal/lcd","Test":"TestSuperresFFTAboveRawNyquist","Elapsed":0.01}
+{"Time":"2026-09-23T07:44:13.043035946+02:00","Action":"run","Package":"open-sds/app/internal/lcd","Test":"TestSuperresFFTTiledWindowKeepsFineNyquist"}
+{"Time":"2026-09-23T07:44:13.043041162+02:00","Action":"output","Package":"open-sds/app/internal/lcd","Test":"TestSuperresFFTTiledWindowKeepsFineNyquist","Output":"=== RUN   TestSuperresFFTTiledWindowKeepsFineNyquist\n"}
+{"Time":"2026-09-23T07:44:13.047940045+02:00","Action":"output","Package":"open-sds/app/internal/lcd","Test":"TestSuperresFFTTiledWindowKeepsFineNyquist","Output":"--- PASS: TestSuperresFFTTiledWindowKeepsFineNyquist (0.00s)\n"}
+{"Time":"2026-09-23T07:44:13.047959907+02:00","Action":"pass","Package":"open-sds/app/internal/lcd","Test":"TestSuperresFFTTiledWindowKeepsFineNyquist","Elapsed":0}
+{"Time":"2026-09-23T07:44:13.047968558+02:00","Action":"run","Package":"open-sds/app/internal/lcd","Test":"TestSuperresFFTFloatFloorBeatsQuantised"}
+{"Time":"2026-09-23T07:44:13.047973358+02:00","Action":"output","Package":"open-sds/app/internal/lcd","Test":"TestSuperresFFTFloatFloorBeatsQuantised","Output":"=== RUN   TestSuperresFFTFloatFloorBeatsQuantised\n"}
+{"Time":"2026-09-23T07:44:13.050411289+02:00","Action":"output","Package":"open-sds/app/internal/lcd","Test":"TestSuperresFFTFloatFloorBeatsQuantised","Output":"--- PASS: TestSuperresFFTFloatFloorBeatsQuantised (0.00s)\n"}
+{"Time":"2026-09-23T07:44:13.050423631+02:00","Action":"pass","Package":"open-sds/app/internal/lcd","Test":"TestSuperresFFTFloatFloorBeatsQuantised","Elapsed":0}
+{"Time":"2026-09-23T07:44:13.050455715+02:00","Action":"run","Package":"open-sds/app/internal/lcd","Test":"TestSuperresResampleArray"}
+{"Time":"2026-09-23T07:44:13.05046291+02:00","Action":"output","Package":"open-sds/app/internal/lcd","Test":"TestSuperresResampleArray","Output":"=== RUN   TestSuperresResampleArray\n"}
+{"Time":"2026-09-23T07:44:13.050725107+02:00","Action":"output","Package":"open-sds/app/internal/lcd","Test":"TestSuperresResampleArray","Output":"--- PASS: TestSuperresResampleArray (0.00s)\n"}
+{"Time":"2026-09-23T07:44:13.050734545+02:00","Action":"pass","Package":"open-sds/app/internal/lcd","Test":"TestSuperresResampleArray","Elapsed":0}
+{"Time":"2026-09-23T07:44:13.05080751+02:00","Action":"run","Package":"open-sds/app/internal/lcd","Test":"TestSuperresReviewRoutesByViewMode"}
+{"Time":"2026-09-23T07:44:13.050816211+02:00","Action":"output","Package":"open-sds/app/internal/lcd","Test":"TestSuperresReviewRoutesByViewMode","Output":"=== RUN   TestSuperresReviewRoutesByViewMode\n"}
+{"Time":"2026-09-23T07:44:13.143638473+02:00","Action":"output","Package":"open-sds/app/internal/lcd","Test":"TestSuperresReviewRoutesByViewMode","Output":"--- PASS: TestSuperresReviewRoutesByViewMode (0.09s)\n"}
+{"Time":"2026-09-23T07:44:13.143660079+02:00","Action":"pass","Package":"open-sds/app/internal/lcd","Test":"TestSuperresReviewRoutesByViewMode","Elapsed":0.09}
+{"Time":"2026-09-23T07:44:13.143667948+02:00","Action":"run","Package":"open-sds/app/internal/lcd","Test":"TestSuperresXYNeedsCH2"}
+{"Time":"2026-09-23T07:44:13.143670643+02:00","Action":"output","Package":"open-sds/app/internal/lcd","Test":"TestSuperresXYNeedsCH2","Output":"=== RUN   TestSuperresXYNeedsCH2\n"}
+{"Time":"2026-09-23T07:44:13.158783054+02:00","Action":"output","Package":"open-sds/app/internal/lcd","Test":"TestSuperresXYNeedsCH2","Output":"--- PASS: TestSuperresXYNeedsCH2 (0.01s)\n"}
+{"Time":"2026-09-23T07:44:13.158799193+02:00","Action":"pass","Package":"open-sds/app/internal/lcd","Test":"TestSuperresXYNeedsCH2","Elapsed":0.01}
+{"Time":"2026-09-23T07:44:13.158805355+02:00","Action":"output","Package":"open-sds/app/internal/lcd","Output":"PASS\n"}
+{"Time":"2026-09-23T07:44:14.161447828+02:00","Action":"output","Package":"open-sds/app/internal/lcd","Output":"ok  \topen-sds/app/internal/lcd\t1.136s\n"}
+{"Time":"2026-09-23T07:44:14.161475292+02:00","Action":"pass","Package":"open-sds/app/internal/lcd","Elapsed":1.137}

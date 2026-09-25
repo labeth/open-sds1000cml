@@ -1,0 +1,37 @@
+{
+  "sourceHashes": {
+    "stack_positions.v": "aa0ff2fec939211de3a116c29b3bb82b48a38d94bf4a1091d4e25995e97d4f86",
+    "stack_interpolate.v": "9969a0a906eabef5909598441ab9d15e21851565f951418cd1086bf76d6c1cb9",
+    "stack_resample.v": "91e551b4731f554357bb003c73dcf71db8011a8c947eb8d6f083380bc174099a"
+  },
+  "status": "Isolated resampling prototype; not deployed or integrated with search and accumulation",
+  "tests": {
+    "positions": 33,
+    "interpolation": 332,
+    "connectedResampler": 18,
+    "exitCode": 0
+  },
+  "synthesis": {
+    "build": "build-FkLvjv",
+    "logicElements": 1312,
+    "registers": 888,
+    "ram": 0,
+    "dsp": 0,
+    "clockMHz": 125,
+    "minSetupSlackNs": 0.203,
+    "minHoldSlackNs": 0.172,
+    "internalChecksPassed": 9,
+    "limitations": "Virtual data I/O unconstrained; no full image qualification"
+  },
+  "modelValidation": {
+    "strict": true,
+    "exitCode": 0,
+    "errors": 0,
+    "warnings": 604,
+    "sourceHashes": {
+      "engmod.yml": "0b70c1dfb8ed28b7ffff3fb8c9956198422e44e4d9176c2fcc41727dc9bba2bb",
+      "model/decisions.yml": "136b3600b3db93ca213479c42b4f25a0e00cda9a22e0c88449037b8373accd3d",
+      "model/requirements.yml": "ef3cfc4e34b7ee029d1fcff8188a5e11741e58174f3a4e084c90231329b4e8c8"
+    }
+  }
+}

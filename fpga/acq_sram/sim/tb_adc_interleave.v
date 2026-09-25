@@ -1,8 +1,11 @@
+// ENGMODEL-OWNER-UNIT: FU-RTL-ACQ-TESTS
 `timescale 1ns/1ps
 `include "lanemap_seed.vh"
+// TRLC-LINKS: REQ-SDS-039
 module adc_phase_pll(input refclk,output [4:0] phase,output locked);
  assign #3 phase[0]=refclk;assign #4 phase[1]=refclk;assign #2 phase[2]=refclk;assign phase[3]=refclk;assign #1 phase[4]=refclk;assign locked=1;
 endmodule
+// TRLC-LINKS: REQ-SDS-039
 module tb;
  reg refclk=0,memclk=0,packclk=0,enable=0;always #4 packclk=~packclk;always #5 refclk=~refclk;always #2 memclk=~memclk;
  wire [79:0] lane;reg [79:0] adc=0;wire [4:0] ep,en;wire [31:0] data;wire valid,fault,locked,ack;wire [79:0] snap;
@@ -31,6 +34,10 @@ module tb;
  initial begin
   #200;enable=1;
   #40000;if(fault || count<9900)$fatal(1,"sustained packing fault=%b count=%d",fault,count);
-  $display("PASS factory-phase ADC model: continuous chronological 1 GB/s over propagation delay 4.5..6 ns");$finish;
+  enable=0;#13;last=-1;enable=1;
+  #2000;if(fault || count<10300)$fatal(1,"packing restart fault=%b count=%d",fault,count);
+  enable=0;#21;last=-1;enable=1;
+  #2000;if(fault || count<10700)$fatal(1,"second packing restart fault=%b count=%d",fault,count);
+  $display("PASS factory-phase ADC model: chronological 1 GB/s and restart epochs over propagation delay 4.5..6 ns");$finish;
  end
 endmodule

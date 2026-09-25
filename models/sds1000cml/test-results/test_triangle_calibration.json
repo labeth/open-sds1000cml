@@ -1,0 +1,10 @@
+{
+  "source": "tests/test_triangle_calibration.py",
+  "results": [
+    {
+      "requirement": "REQ-SDS-209",
+      "status": "partial",
+      "notes": "Five model-owned synthetic checks run the actual offline fitter and CLI with temporary local records. Passing checks provide partial evidence; they characterize the constant-record exception and do not qualify hardware or execute device control scripts."
+    }
+  ]
+}

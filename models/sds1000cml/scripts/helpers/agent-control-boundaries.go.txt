@@ -1,0 +1,12 @@
+// No supervisor loop or process launch: exercise only the buffered control channel.
+func TestModelReviewLateControl(t *testing.T) {
+	a := testAgent(t)
+	if err := a.ctlRequest("stop", 1000000); err == nil || !strings.Contains(err.Error(), "did not answer") {
+		t.Fatalf("expected reply timeout: %v", err)
+	}
+	if len(a.ctl) != 1 { t.Fatalf("timed-out request not queued: %d", len(a.ctl)) }
+	if a.paused { t.Fatal("control executed before servicing") }
+	a.idleWait(1000000000)
+	if !a.paused { t.Fatal("expected timed-out stop to execute when later serviced") }
+	t.Log("caller timed out, but buffered stop subsequently executed and paused the supervisor")
+}

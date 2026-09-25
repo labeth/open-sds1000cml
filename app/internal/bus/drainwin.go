@@ -16,6 +16,7 @@
 //   - BURST_REMAIN.REMAIN counts the words left in the window; a pop past it
 //     returns the last word and counts POP_MON.UNDERRUN (sticky since GO).
 //   - DRAIN_STAT.POPS counts BURST/BURST_ALIAS pops since GO / REWIND (wraps).
+// ENGMODEL-OWNER-UNIT: FU-APP-BUS
 package bus
 
 import (
@@ -26,6 +27,7 @@ import (
 )
 
 // DrainStat is one reading of DRAIN_STAT + POP_MON.
+// TRLC-LINKS: REQ-SDS-130
 type DrainStat struct {
 	Pops     uint16 `json:"pops"`      // DRAIN_STAT.POPS (since GO / REWIND, wraps)
 	MinGap   uint8  `json:"min_gap"`   // POP_MON.MIN_GAP: shortest nOE-rise-to-nOE-rise gap, clk cycles (saturating)
@@ -36,6 +38,7 @@ type DrainStat struct {
 }
 
 // ReadDrainStat reads DRAIN_STAT, POP_MON and BURST_REMAIN.
+// TRLC-LINKS: REQ-SDS-130
 func ReadDrainStat(b Bus) (DrainStat, error) {
 	var s DrainStat
 	st, err := b.Read(PlaneCS1, iface.SelDrainStat)
@@ -60,6 +63,7 @@ func ReadDrainStat(b Bus) (DrainStat, error) {
 }
 
 // Window is a drain window over the logical record: Len 0 = to the end.
+// TRLC-LINKS: REQ-SDS-130
 type Window struct {
 	Start uint16 `json:"start"`
 	Len   uint16 `json:"len"`
@@ -70,6 +74,7 @@ var Full = Window{}
 
 // SetWindow writes DRAIN_START / DRAIN_LEN. The fabric latches them at DONE
 // (the next finalized record) and at REWIND (the frozen one).
+// TRLC-LINKS: REQ-SDS-130
 func SetWindow(b Bus, w Window) error {
 	if w.Start > iface.PretrigMax {
 		return fmt.Errorf("bus: drain window start %d beyond the record (%d)", w.Start, iface.PretrigMax)
@@ -82,9 +87,11 @@ func SetWindow(b Bus, w Window) error {
 
 // Rewind issues OPCODE REWIND: the drain pointer returns to DRAIN_START with
 // DRAIN_LEN re-latched, DRAIN_STAT.POPS restarts at 0, the record is untouched.
+// TRLC-LINKS: REQ-SDS-130
 func Rewind(b Bus) error { return b.Write(PlaneCS1, iface.SelOpcode, iface.OpRewind) }
 
 // DrainResult is one windowed drain with its monitors.
+// TRLC-LINKS: REQ-SDS-130
 type DrainResult struct {
 	Window  Window        `json:"window"`
 	N       int           `json:"n"`       // words popped
@@ -94,6 +101,7 @@ type DrainResult struct {
 }
 
 // NsPerWord is the drain rate.
+// TRLC-LINKS: REQ-SDS-130
 func (r DrainResult) NsPerWord() float64 {
 	if r.N == 0 {
 		return 0
@@ -105,10 +113,12 @@ func (r DrainResult) NsPerWord() float64 {
 // REWIND, then pops min(len(dst), BURST_REMAIN.REMAIN) words into dst. The
 // monitors are read on both sides of the pops so the caller can run
 // CheckExact. Returns an error when no record is ready.
+// TRLC-LINKS: REQ-SDS-130
 func DrainWindow(b Bus, w Window, dst []uint16) (DrainResult, error) {
 	return drainWindow(b, w, dst, time.Now)
 }
 
+// TRLC-LINKS: REQ-SDS-130
 func drainWindow(b Bus, w Window, dst []uint16, now func() time.Time) (DrainResult, error) {
 	r := DrainResult{Window: w}
 	if err := SetWindow(b, w); err != nil {
@@ -140,6 +150,7 @@ func drainWindow(b Bus, w Window, dst []uint16, now func() time.Time) (DrainResu
 
 // DrainWindowInto is DrainWindow split into channels (hi byte = CH1, lo = CH2)
 // through a caller-supplied word scratch (len >= len(c1)).
+// TRLC-LINKS: REQ-SDS-130
 func DrainWindowInto(b Bus, w Window, c1, c2 []uint8, scratch []uint16) (DrainResult, error) {
 	n := len(c1)
 	if len(c2) < n {
@@ -157,6 +168,7 @@ func DrainWindowInto(b Bus, w Window, c1, c2 []uint8, scratch []uint16) (DrainRe
 
 // Exactness is the pointer-delta byte-exactness verdict of one drain (rung R1
 // (c): words/s, ramp breaks, DRAIN_STAT delta, POP_MON.UNDERRUN).
+// TRLC-LINKS: REQ-SDS-130
 type Exactness struct {
 	Words     int    `json:"words"`
 	PopsDelta int    `json:"pops_delta"` // DRAIN_STAT.POPS after - before (mod 2^16)
@@ -177,6 +189,7 @@ type Exactness struct {
 // exactly len(words), no pop may have found the window empty, the words must
 // follow the TSRC pattern (tsrc != ADC), and, when ref is given, equal it
 // word for word. ref may be nil.
+// TRLC-LINKS: REQ-SDS-130
 func CheckExact(r DrainResult, words []uint16, tsrc uint16, ref []uint16) Exactness {
 	e := Exactness{Words: len(words), Tsrc: tsrc, FirstBad: -1, FirstDiff: -1, MinGap: r.After.MinGap}
 	e.PopsDelta = int(uint16(r.After.Pops - r.Before.Pops))
@@ -224,6 +237,7 @@ func CheckExact(r DrainResult, words []uint16, tsrc uint16, ref []uint16) Exactn
 // ---- TSRC capture ----
 
 // TsrcOptions programs a frozen test-source record.
+// TRLC-LINKS: REQ-SDS-130
 type TsrcOptions struct {
 	Words   int    `json:"words"`    // record words, default and max iface.PretrigMax
 	Tsrc    uint16 `json:"tsrc"`     // IL_CTRL.TSRC (0 = the converters; RampCheck and the sweep use RAMP)
@@ -233,6 +247,7 @@ type TsrcOptions struct {
 	Timeout int    `json:"timeout_ms"`
 }
 
+// TRLC-LINKS: REQ-SDS-130
 func (o *TsrcOptions) defaults() {
 	if o.Words <= 0 || o.Words > iface.PretrigMax {
 		o.Words = iface.PretrigMax
@@ -260,6 +275,7 @@ func (o *TsrcOptions) defaults() {
 // finalized record length. The full window is selected. The caller restores
 // the engine's program afterwards (diag.saveRegs, or ResetTsrc for the boot
 // path); sleep runs on the owner goroutine.
+// TRLC-LINKS: REQ-SDS-130
 func CaptureTsrc(b Bus, o TsrcOptions, sleep func(time.Duration)) (recLen int, err error) {
 	o.defaults()
 	pre, post := uint32(o.Words/2), uint32(o.Words-o.Words/2)
@@ -309,6 +325,7 @@ func CaptureTsrc(b Bus, o TsrcOptions, sleep func(time.Duration)) (recLen int, e
 
 // ResetTsrc returns the fabric to the reset posture after a test-source run
 // outside the engine (boot path): capture idle, ADC source, full window.
+// TRLC-LINKS: REQ-SDS-130
 func ResetTsrc(b Bus) error {
 	var first error
 	keep := func(err error) {
@@ -327,6 +344,7 @@ func ResetTsrc(b Bus) error {
 // RampReport is the outcome of RampCheck: one test-source record re-drained
 // Passes times through REWIND, every drain checked for exactness against the
 // pattern and against the first drain.
+// TRLC-LINKS: REQ-SDS-130
 type RampReport struct {
 	Tsrc      uint16     `json:"tsrc"`
 	RecLen    int        `json:"rec_len"`
@@ -347,6 +365,7 @@ type RampReport struct {
 }
 
 // rampChecker holds a frozen test-source record and re-drains it.
+// TRLC-LINKS: REQ-SDS-130
 type rampChecker struct {
 	b    Bus
 	tsrc uint16
@@ -356,6 +375,7 @@ type rampChecker struct {
 	now  func() time.Time
 }
 
+// TRLC-LINKS: REQ-SDS-130
 func newRampChecker(b Bus, o TsrcOptions, sleep func(time.Duration), now func() time.Time) (*rampChecker, error) {
 	o.defaults()
 	rec, err := CaptureTsrc(b, o, sleep)
@@ -383,6 +403,7 @@ func newRampChecker(b Bus, o TsrcOptions, sleep func(time.Duration), now func() 
 // drain re-drains the full record and scores it. When the reference itself
 // is disputed (ref != nil but the pattern check fails on it) the caller sees
 // it in First.
+// TRLC-LINKS: REQ-SDS-130
 func (c *rampChecker) drain() (DrainResult, Exactness, error) {
 	r, err := drainWindow(c.b, Full, c.buf, c.now)
 	if err != nil {
@@ -392,6 +413,7 @@ func (c *rampChecker) drain() (DrainResult, Exactness, error) {
 }
 
 // run drains passes times and folds the verdicts into a report.
+// TRLC-LINKS: REQ-SDS-130
 func (c *rampChecker) run(passes int) (RampReport, error) {
 	rep := RampReport{Tsrc: c.tsrc, RecLen: c.rec, Passes: passes, OK: true, MinNsPerW: -1}
 	// The reference drain is scored on the pattern only (it IS the reference).
@@ -447,6 +469,7 @@ func (c *rampChecker) run(passes int) (RampReport, error) {
 // (REWIND), scoring every drain: the boot-time gate of a persisted GPMC
 // timing and the R1 per-setting block. It leaves the record frozen; the
 // caller restores the fabric program.
+// TRLC-LINKS: REQ-SDS-130
 func RampCheck(b Bus, o TsrcOptions, passes int, sleep func(time.Duration)) (RampReport, error) {
 	if passes <= 0 {
 		passes = 3

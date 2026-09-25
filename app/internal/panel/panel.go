@@ -4,6 +4,7 @@
 // through the engine's command surface and are applied by the bus owner at
 // the frame boundary. The analog V/div front end (SPI) is off-bus and is
 // driven directly.
+// ENGMODEL-OWNER-UNIT: FU-APP-PANEL
 package panel
 
 import (
@@ -16,6 +17,7 @@ import (
 )
 
 // Engine is the command surface the controller drives (spec 08 §4).
+// TRLC-LINKS: REQ-SDS-135
 type Engine interface {
 	ReadMatrix() ([5]uint16, bool)
 	SetLEDs(word uint16)
@@ -48,6 +50,7 @@ type Engine interface {
 }
 
 // Analog is the off-bus V/div front end; nil → V/div knobs claim-and-ignore.
+// TRLC-LINKS: REQ-SDS-135
 type Analog interface {
 	SetVdiv(ch, idx int) error
 	Snapshot() ([2]int, bool)
@@ -88,6 +91,7 @@ const (
 const knobPhaseMask = 0xC0C0 // encoder phase bits in every selector word
 
 // Button codes are sel-index<<8 | bit.
+// TRLC-LINKS: REQ-SDS-135
 func bcode(selIdx, bit int) int { return selIdx<<8 | bit }
 
 // Wired buttons (spec 08 §2 map; selIdx: 0=0x64, 1=0x65, 2=0x66, 3=0x67).
@@ -109,6 +113,7 @@ var (
 // one knob is serviced per interrupt — the first whose selector has a low
 // phase bit. Direction comes from WHICH bit rests low (never from a phase
 // change — that misses sustained rotation).
+// TRLC-LINKS: REQ-SDS-135
 type knobDef struct {
 	name    string
 	selIdx  int
@@ -130,6 +135,7 @@ var knobs = []knobDef{
 
 // accel maps the raw 0x69 magnitude to steps (continuous knobs): runaway
 // guard at 200 FIRST (must be ≥100 or the ≥20→100 row is unreachable).
+// TRLC-LINKS: REQ-SDS-135
 func accel(raw uint16) int {
 	if raw > 200 {
 		raw = 200
@@ -144,6 +150,7 @@ func accel(raw uint16) int {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-135
 type Controller struct {
 	eng   Engine
 	fe    Analog
@@ -250,6 +257,7 @@ type Controller struct {
 // does not own it); startTdiv seeds the knob index. All shadows are seeded
 // WITHOUT driving anything — the inherited analog state stays untouched
 // until the user turns a knob (spec 08 §7).
+// TRLC-LINKS: REQ-SDS-135
 func New(eng Engine, fe Analog, keyFD int, tdivs []float64, startTdiv float64, logf func(string, ...any)) *Controller {
 	c := &Controller{
 		eng: eng, fe: fe, keyFD: keyFD, logf: logf,

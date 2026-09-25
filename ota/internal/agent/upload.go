@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-OTA-AGENT
 package agent
 
 import (
@@ -16,6 +17,7 @@ import (
 // arrive out of order (WriteAt); commit verifies size + sha256 then renames
 // into place. Sessions are capped and time out so a dropped transfer can't
 // leak a temp file forever.
+// TRLC-LINKS: REQ-SDS-106
 type uploadSession struct {
 	mu      sync.Mutex
 	id      string
@@ -29,6 +31,7 @@ type uploadSession struct {
 	created time.Time
 }
 
+// TRLC-LINKS: REQ-SDS-106
 func (a *Agent) newUpload(dest string, size int64, sha string, mode uint32) (string, error) {
 	dest = filepath.Clean(dest)
 	if !filepath.IsAbs(dest) {
@@ -69,6 +72,7 @@ func (a *Agent) newUpload(dest string, size int64, sha string, mode uint32) (str
 	return id, nil
 }
 
+// TRLC-LINKS: REQ-SDS-106
 func (a *Agent) getUpload(id string) (*uploadSession, error) {
 	a.upMu.Lock()
 	defer a.upMu.Unlock()
@@ -79,6 +83,7 @@ func (a *Agent) getUpload(id string) (*uploadSession, error) {
 	return s, nil
 }
 
+// TRLC-LINKS: REQ-SDS-106
 func (a *Agent) writeUpload(id string, offset int64, data []byte) (int, error) {
 	s, err := a.getUpload(id)
 	if err != nil {
@@ -102,6 +107,7 @@ func (a *Agent) writeUpload(id string, offset int64, data []byte) (int, error) {
 	return n, nil
 }
 
+// TRLC-LINKS: REQ-SDS-106
 func (a *Agent) commitUpload(id string) (string, string, error) {
 	s, err := a.getUpload(id)
 	if err != nil {
@@ -152,6 +158,7 @@ func (a *Agent) commitUpload(id string) (string, string, error) {
 	return s.dest, sum, nil
 }
 
+// TRLC-LINKS: REQ-SDS-106
 func (s *uploadSession) abort() {
 	if s.f != nil {
 		s.f.Close()
@@ -160,6 +167,7 @@ func (s *uploadSession) abort() {
 	os.Remove(s.tmp)
 }
 
+// TRLC-LINKS: REQ-SDS-106
 func fileSHA(path string) (string, error) {
 	f, err := os.Open(path)
 	if err != nil {

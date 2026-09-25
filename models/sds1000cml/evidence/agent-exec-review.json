@@ -1,0 +1,30 @@
+{
+  "scope": "Complete helper review integrated into REQ-SDS-115, REQ-SDS-119 and REQ-SDS-120; executable tokens unchanged. No factory or device launch was performed.",
+  "sourceSHA256": {
+    "ota/internal/agent/exec.go": "e53b4c5d3ebbb3b0d565afdecbcd9c8757558afb29a15cc26b73ad03aeb3096e"
+  },
+  "functions": [
+    "runArgv",
+    "runShell",
+    "bootEnv",
+    "launchDetached",
+    "tailFile",
+    "copyExecFile"
+  ],
+  "types": [
+    "LaunchOpt"
+  ],
+  "characterization": "agent-copy-characterization.json",
+  "findings": [
+    "runArgv uses CommandContext and combined buffered stdout/stderr; it assumes nonempty argv. It inherits environment and sets working directory, but no ExtraFiles. A start failure can return exit code zero alongside non-nil error because ProcessState is absent.",
+    "Timeout returns context.DeadlineExceeded when the context expired. Output buffering has no explicit bound. Child process group termination and descendants holding output pipes are not handled here; timeout alone does not prove a hard wall-clock bound.",
+    "runShell delegates /bin/sh -c with the supplied timeout.",
+    "bootEnv reads /proc/1/environ and splits NUL-separated nonempty entries. No environment read was executed during this review.",
+    "launchDetached starts a child and asynchronously waits; immediate success reports a PID, not successful factory initialization. Default stdin is null, stdout/stderr inherited and Setpgid true. Inherit selects stdin; explicit Console replaces all three. Setsid overrides Setpgid settings and makes Console controlling when provided.",
+    "The launch comment promises retained boot descriptors, but this function sets no ExtraFiles. Actual descriptor inheritance depends on descriptor flags established elsewhere and remains unqualified here.",
+    "Tail seeks using initial stat size then reads to EOF; concurrent file growth can exceed requested tail size. Negative input is not validated in helper, although logs handler defaults nonpositive requests.",
+    "copyExecFile uses a fixed .tmp path, hashes copied bytes, syncs/closes and renames; directory sync and explicit chmod are absent. Existing .tmp permissions persist, reproduced as 0600 despite the 0755 comment. Concurrent copies to the same destination are not coordinated.",
+    "The isolated race-enabled probe confirms missing-command start failure returns exit 0 with error, nonzero exit preserves combined stdout/stderr, and a 500ms timeout returns after about two seconds when a test-owned descendant retains the output pipe."
+  ],
+  "executionCharacterization": "agent-exec-characterization.json"
+}

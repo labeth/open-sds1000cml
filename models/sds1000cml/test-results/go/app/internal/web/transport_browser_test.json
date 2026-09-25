@@ -1,0 +1,31 @@
+{
+  "source": "app/internal/web/transport_browser_test.go",
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "scope": "Reviewed Go test outcomes; passing assertions contribute partial requirement evidence.",
+  "sourceSHA256": "0a2824932c73c5a0ffd8197fa3c84371ddec0e67231eaa56ba004e4517ea669f",
+  "logs": {
+    "test-runs/browser-harness-integrated.jsonl": "da4a91068ce21da214cd93b5c8929a9bd71461932024deace68c87cd4f739e69"
+  },
+  "tests": [
+    {
+      "name": "TestTransportBrowser",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-023",
+        "REQ-SDS-180"
+      ]
+    }
+  ],
+  "results": [
+    {
+      "requirement": "REQ-SDS-023",
+      "status": "partial",
+      "notes": "1 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    },
+    {
+      "requirement": "REQ-SDS-180",
+      "status": "partial",
+      "notes": "1 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    }
+  ]
+}

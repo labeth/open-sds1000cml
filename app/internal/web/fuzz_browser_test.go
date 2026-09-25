@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-WEB
 package web
 
 import (
@@ -34,6 +35,7 @@ import (
 
 const fuzzN = 2048 // record length: native display window, same as chaos/acceptance
 
+// TRLC-LINKS: REQ-SDS-180
 type fuzzScope struct {
 	mu       sync.Mutex
 	seq      uint64
@@ -62,6 +64,7 @@ type fuzzScope struct {
 	cmds     []engine.CmdNote
 }
 
+// TRLC-LINKS: REQ-SDS-180
 func newFuzzScope() *fuzzScope {
 	return &fuzzScope{
 		running:  true,
@@ -76,6 +79,7 @@ func newFuzzScope() *fuzzScope {
 
 // frameLocked renders the synthetic two-tone frame for the CURRENT seq/tdiv.
 // Pure function of (seq, tdiv) so a given SEED replays identically.
+// TRLC-LINKS: REQ-SDS-180
 func (z *fuzzScope) frameLocked() *engine.Frame {
 	c1 := make([]uint8, fuzzN)
 	c2 := make([]uint8, fuzzN)
@@ -94,6 +98,7 @@ func (z *fuzzScope) frameLocked() *engine.Frame {
 // WithFrame advances the stream only while RUNNING (a stopped scope's display
 // holds); an armed SINGLE takes exactly one more capture and self-stops, which
 // the UI's fast post-single status poll then observes (run-after-single fix).
+// TRLC-LINKS: REQ-SDS-180
 func (z *fuzzScope) WithFrame(fn func(*engine.Frame)) {
 	z.mu.Lock()
 	if z.running {
@@ -107,6 +112,7 @@ func (z *fuzzScope) WithFrame(fn func(*engine.Frame)) {
 	fn(f)
 }
 
+// TRLC-LINKS: REQ-SDS-180
 func (z *fuzzScope) Snapshot() engine.Stats {
 	z.mu.Lock()
 	defer z.mu.Unlock()
@@ -128,6 +134,7 @@ func (z *fuzzScope) Snapshot() engine.Stats {
 
 // bandKindName mirrors the engine's tdiv→band classification strings so the
 // status line renders a plausible band label at any ladder position.
+// TRLC-LINKS: REQ-SDS-180
 func bandKindName(tdivS float64) string {
 	switch {
 	case tdivS >= 100e-3:
@@ -141,9 +148,12 @@ func bandKindName(tdivS float64) string {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-180
 func (z *fuzzScope) QuietRLock()   {}
+// TRLC-LINKS: REQ-SDS-180
 func (z *fuzzScope) QuietRUnlock() {}
 
+// TRLC-LINKS: REQ-SDS-180
 func (z *fuzzScope) SetRunning(on bool) {
 	z.mu.Lock()
 	z.running = on
@@ -152,8 +162,11 @@ func (z *fuzzScope) SetRunning(on bool) {
 	}
 	z.mu.Unlock()
 }
+// TRLC-LINKS: REQ-SDS-180
 func (z *fuzzScope) SetNorm(on bool) { z.mu.Lock(); z.norm = on; z.mu.Unlock() }
+// TRLC-LINKS: REQ-SDS-180
 func (z *fuzzScope) SetSingle()      { z.mu.Lock(); z.single, z.running = true, true; z.mu.Unlock() }
+// TRLC-LINKS: REQ-SDS-180
 func (z *fuzzScope) SetTdiv(s float64) (engine.Band, bool) {
 	b, ok := engine.PlanTdiv(s)
 	if ok {
@@ -163,6 +176,7 @@ func (z *fuzzScope) SetTdiv(s float64) (engine.Band, bool) {
 	}
 	return b, ok
 }
+// TRLC-LINKS: REQ-SDS-180
 func (z *fuzzScope) SetTrigLevelCode(c uint16) uint16 {
 	if c < engine.TrigCodeMin {
 		c = engine.TrigCodeMin
@@ -175,39 +189,64 @@ func (z *fuzzScope) SetTrigLevelCode(c uint16) uint16 {
 	z.mu.Unlock()
 	return c
 }
+// TRLC-LINKS: REQ-SDS-180
 func (z *fuzzScope) SetTrigSlope(r bool)                                 { z.mu.Lock(); z.trigRise = r; z.mu.Unlock() }
+// TRLC-LINKS: REQ-SDS-180
 func (z *fuzzScope) SetTrigSource(ch int)                                { z.mu.Lock(); z.trigSrc = ch & 1; z.mu.Unlock() }
+// TRLC-LINKS: REQ-SDS-180
 func (z *fuzzScope) SetOffsetDAC(ch int, code uint16)                    {}
+// TRLC-LINKS: REQ-SDS-180
 func (z *fuzzScope) SetETS(on bool)                                      { z.mu.Lock(); z.ets = on; z.mu.Unlock() }
+// TRLC-LINKS: REQ-SDS-180
 func (z *fuzzScope) SetTrigType(t int)                                   { z.mu.Lock(); z.trigType = t; z.mu.Unlock() }
+// TRLC-LINKS: REQ-SDS-180
 func (z *fuzzScope) SetPulseParams(lvl, wMin, wMax float64, cond int)    {}
+// TRLC-LINKS: REQ-SDS-180
 func (z *fuzzScope) SetSlopeParams(lo, hi, tMin, tMax float64, cond int) {}
+// TRLC-LINKS: REQ-SDS-180
 func (z *fuzzScope) SetVideoParams(std, line int, neg bool)              {}
+// TRLC-LINKS: REQ-SDS-180
 func (z *fuzzScope) SetAcqMode(m int)                                    { z.mu.Lock(); z.acqMode = m; z.mu.Unlock() }
+// TRLC-LINKS: REQ-SDS-180
 func (z *fuzzScope) SetAvgCount(n int)                                   { z.mu.Lock(); z.avgCount = n; z.mu.Unlock() }
+// TRLC-LINKS: REQ-SDS-180
 func (z *fuzzScope) SetEresLen(l int)                                    { z.mu.Lock(); z.eresLen = l; z.mu.Unlock() }
+// TRLC-LINKS: REQ-SDS-180
 func (z *fuzzScope) SetTrigPosFrac(frac float64)                         { z.mu.Lock(); z.trigPos = frac; z.mu.Unlock() }
+// TRLC-LINKS: REQ-SDS-180
 func (z *fuzzScope) SetMemDepth(n int) int                               { z.mu.Lock(); z.memDepth = n; z.mu.Unlock(); return n }
+// TRLC-LINKS: REQ-SDS-180
 func (z *fuzzScope) SetFramePeriod(ms int) int                           { return ms }
+// TRLC-LINKS: REQ-SDS-180
 func (z *fuzzScope) SetStreamMode(on bool) bool                          { return on }
+// TRLC-LINKS: REQ-SDS-180
 func (z *fuzzScope) SetHoldoff(sec float64) float64 {
 	z.mu.Lock()
 	z.holdoff = sec
 	z.mu.Unlock()
 	return sec
 }
+// TRLC-LINKS: REQ-SDS-180
 func (z *fuzzScope) SetZones(zs []engine.Zone)    { z.mu.Lock(); z.zones = zs; z.mu.Unlock() }
+// TRLC-LINKS: REQ-SDS-180
 func (z *fuzzScope) SetZoneMode(m int)            { z.mu.Lock(); z.zoneMode = m; z.mu.Unlock() }
+// TRLC-LINKS: REQ-SDS-180
 func (z *fuzzScope) SetMask(m *engine.Mask)       { z.mu.Lock(); z.maskSet = m != nil; z.mu.Unlock() }
+// TRLC-LINKS: REQ-SDS-180
 func (z *fuzzScope) SetMaskMode(m int)            { z.mu.Lock(); z.maskMode = m; z.mu.Unlock() }
+// TRLC-LINKS: REQ-SDS-180
 func (z *fuzzScope) ClearMaskFails()              {}
+// TRLC-LINKS: REQ-SDS-180
 func (z *fuzzScope) MaskFails() []engine.MaskFail { return nil }
+// TRLC-LINKS: REQ-SDS-180
 func (z *fuzzScope) SetSerialParams(p engine.SerialParams) {
 	z.mu.Lock()
 	z.serSet = p.Proto > 0
 	z.mu.Unlock()
 }
+// TRLC-LINKS: REQ-SDS-180
 func (z *fuzzScope) SetSerialMode(m int) { z.mu.Lock(); z.serMode = m; z.mu.Unlock() }
+// TRLC-LINKS: REQ-SDS-180
 func (z *fuzzScope) SetBodeMode(on bool, ref, dut int) {
 	z.mu.Lock()
 	if on {
@@ -217,10 +256,14 @@ func (z *fuzzScope) SetBodeMode(on bool, ref, dut int) {
 	}
 	z.mu.Unlock()
 }
+// TRLC-LINKS: REQ-SDS-180
 func (z *fuzzScope) ClearBode()                     {}
+// TRLC-LINKS: REQ-SDS-180
 func (z *fuzzScope) BodePoints() []engine.BodePoint { return nil }
 
+// TRLC-LINKS: REQ-SDS-180
 func (z *fuzzScope) AcqLog(n int) ([]engine.AcqSample, float64) { return nil, 0 }
+// TRLC-LINKS: REQ-SDS-180
 func (z *fuzzScope) CmdLog(n int) []engine.CmdNote {
 	z.mu.Lock()
 	defer z.mu.Unlock()
@@ -229,6 +272,7 @@ func (z *fuzzScope) CmdLog(n int) []engine.CmdNote {
 	}
 	return append([]engine.CmdNote(nil), z.cmds...)
 }
+// TRLC-LINKS: REQ-SDS-180
 func (z *fuzzScope) NoteCmd(name string, val float64) {
 	z.mu.Lock()
 	z.cmds = append(z.cmds, engine.CmdNote{Name: name, Val: val})
@@ -237,13 +281,16 @@ func (z *fuzzScope) NoteCmd(name string, val float64) {
 	}
 	z.mu.Unlock()
 }
+// TRLC-LINKS: REQ-SDS-180
 func (z *fuzzScope) Tune(t engine.TuneVals) engine.TuneVals { return t }
+// TRLC-LINKS: REQ-SDS-180
 func (z *fuzzScope) TuneSnapshot() engine.TuneVals          { return engine.TuneVals{} }
 
 // fuzzAnalog is a per-channel stateful Analog stub (fakeAnalog deliberately
 // shares one detent across channels, which would make vdiv1/vdiv2 fight):
 // V/div, probe and coupling all read back what was set, so the vertical
 // /api/set paths respond and /api/status carries the ladder + live values.
+// TRLC-LINKS: REQ-SDS-180
 type fuzzAnalog struct {
 	mu    sync.Mutex
 	idx   [2]int
@@ -251,28 +298,37 @@ type fuzzAnalog struct {
 	cpl   [2]int
 }
 
+// TRLC-LINKS: REQ-SDS-180
 func newFuzzAnalog() *fuzzAnalog {
 	return &fuzzAnalog{idx: [2]int{analog.BootDetent, analog.BootDetent}} // 1 V/div both
 }
 
+// TRLC-LINKS: REQ-SDS-180
 func (a *fuzzAnalog) SetVdiv(ch, idx int) error {
 	a.mu.Lock()
 	a.idx[ch&1] = idx
 	a.mu.Unlock()
 	return nil
 }
+// TRLC-LINKS: REQ-SDS-180
 func (a *fuzzAnalog) Snapshot() ([2]int, bool) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	return a.idx, true
 }
+// TRLC-LINKS: REQ-SDS-180
 func (a *fuzzAnalog) SetOffset(ch int, volts float64) uint16 { return analog.OffsetCode(ch, volts) }
+// TRLC-LINKS: REQ-SDS-180
 func (a *fuzzAnalog) OffsetVolts(ch int, code uint16) float64 {
 	return analog.OffsetVolts(ch, code)
 }
+// TRLC-LINKS: REQ-SDS-180
 func (a *fuzzAnalog) CalSource() string                    { return "synthetic" }
+// TRLC-LINKS: REQ-SDS-180
 func (a *fuzzAnalog) DCVolts(ch int, mean float64) float64 { return 0 }
+// TRLC-LINKS: REQ-SDS-180
 func (a *fuzzAnalog) SetProbe(ch int, x float64)           { a.mu.Lock(); a.probe[ch&1] = x; a.mu.Unlock() }
+// TRLC-LINKS: REQ-SDS-180
 func (a *fuzzAnalog) ProbeFactor(ch int) float64 {
 	a.mu.Lock()
 	defer a.mu.Unlock()
@@ -281,12 +337,14 @@ func (a *fuzzAnalog) ProbeFactor(ch int) float64 {
 	}
 	return 1
 }
+// TRLC-LINKS: REQ-SDS-180
 func (a *fuzzAnalog) SetCoupling(ch, mode int) error {
 	a.mu.Lock()
 	a.cpl[ch&1] = mode
 	a.mu.Unlock()
 	return nil
 }
+// TRLC-LINKS: REQ-SDS-180
 func (a *fuzzAnalog) Coupling(ch int) int {
 	a.mu.Lock()
 	defer a.mu.Unlock()
@@ -297,8 +355,10 @@ func (a *fuzzAnalog) Coupling(ch int) int {
 // (autoset). The synthetic "device autoset" restores a sane acquisition
 // (RUN + the home timebase), which is exactly the observable contract the
 // UI's convergence wait needs.
+// TRLC-LINKS: REQ-SDS-180
 type fuzzPanel struct{ z *fuzzScope }
 
+// TRLC-LINKS: REQ-SDS-180
 func (p *fuzzPanel) InjectButton(name string) bool {
 	if name != "auto" {
 		return false
@@ -309,6 +369,7 @@ func (p *fuzzPanel) InjectButton(name string) bool {
 	p.z.mu.Unlock()
 	return true
 }
+// TRLC-LINKS: REQ-SDS-180
 func (p *fuzzPanel) InjectKnob(name string, dir, steps int) bool { return false }
 
 // TestFuzzBrowserSynthetic runs the seeded operator fuzzer (e2e/fuzz.mjs — the
@@ -317,6 +378,7 @@ func (p *fuzzPanel) InjectKnob(name string, dir, steps int) bool { return false 
 // above. Every finding the fuzzer records is a test failure with the
 // findings.jsonl content in the message. Self-skips when node/Playwright is
 // absent; a hard failure on the CI browser lane (testenv).
+// TRLC-LINKS: REQ-SDS-180
 func TestFuzzBrowserSynthetic(t *testing.T) {
 	testenv.NeedNode(t)
 	fs := newFuzzScope()
@@ -355,5 +417,7 @@ func TestFuzzBrowserSynthetic(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-180
 func (a *fuzzAnalog) TrigVolts(code uint16, srcCh int) float64   { return (31437 - float64(code)) / 911 }
+// TRLC-LINKS: REQ-SDS-180
 func (a *fuzzAnalog) TrigCalActive(srcCh int) (float64, float64) { return 31437, 911 }

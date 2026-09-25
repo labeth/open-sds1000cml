@@ -122,6 +122,7 @@
   .panel2 input[type=number] { background: var(--ctrl); color: var(--text);
             border: 1px solid var(--edge); border-radius: 4px; padding: 3px 5px; }
   .decrow { display: flex; align-items: center; gap: 5px; margin-top: 6px; }
+  .decrow input[type="range"].grow { width: 0; min-width: 0; }
   .rolesel, .dsel { background: var(--well); color: var(--text); border: 1px solid var(--edge2);
             border-radius: 4px; padding: 2px 4px; font-size: 12px; }
   #decRoles input[type=number] { background: var(--well); color: var(--text);
@@ -175,3 +176,9 @@
     footer { flex-wrap: nowrap; overflow-x: auto; }
     footer .fsec { flex: 0 0 auto; }
   }
+
+  #acquisitionWarning { color: var(--warn, #f3b35b); }
+  #precisionCard { display: flex; }
+  #precisionFitCanvas { width: 100%; max-width: 700px; height: 200px; }
+
+.decoded-events { max-height: 140px; overflow: auto; font-size: 11px; }

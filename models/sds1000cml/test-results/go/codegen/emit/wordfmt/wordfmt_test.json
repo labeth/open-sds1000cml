@@ -1,0 +1,95 @@
+{
+  "source": "codegen/emit/wordfmt/wordfmt_test.go",
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "scope": "Reviewed Go test outcomes; passing assertions contribute partial requirement evidence.",
+  "sourceSHA256": "dedad9f68acdfaf68da0fa55c69fb0afec70c96e079d7532fe60c005f6eb2c1d",
+  "logs": {
+    "test-runs/codegen-integrated.jsonl": "61e5eee1ba4798f5b455aeff3217a9d963dee8f9f4dcc3b426b4a566d0c731f0"
+  },
+  "tests": [
+    {
+      "name": "TestTier",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-159"
+      ]
+    },
+    {
+      "name": "TestWordSplit",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-159"
+      ]
+    },
+    {
+      "name": "TestModelRecord",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-159"
+      ]
+    },
+    {
+      "name": "TestTsrc",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-159"
+      ]
+    },
+    {
+      "name": "TestModelDecim",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-159"
+      ]
+    },
+    {
+      "name": "TestModelPeak",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-159"
+      ]
+    },
+    {
+      "name": "TestBoxcarParams",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-159"
+      ]
+    },
+    {
+      "name": "TestModelBoxcar",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-159"
+      ]
+    },
+    {
+      "name": "TestStackParams",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-159"
+      ]
+    },
+    {
+      "name": "TestModelStack",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-159"
+      ]
+    },
+    {
+      "name": "TestSequenceTime",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-159"
+      ]
+    }
+  ],
+  "results": [
+    {
+      "requirement": "REQ-SDS-159",
+      "status": "partial",
+      "notes": "11 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    }
+  ]
+}

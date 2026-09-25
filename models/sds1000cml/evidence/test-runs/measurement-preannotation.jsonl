@@ -1,0 +1,57 @@
+{"Time":"2026-09-23T00:37:39.575890212+02:00","Action":"start","Package":"open-sds/app/internal/measure"}
+{"Time":"2026-09-23T00:37:39.586061945+02:00","Action":"run","Package":"open-sds/app/internal/measure","Test":"TestHardwareTriangleFrequency"}
+{"Time":"2026-09-23T00:37:39.58610586+02:00","Action":"output","Package":"open-sds/app/internal/measure","Test":"TestHardwareTriangleFrequency","Output":"=== RUN   TestHardwareTriangleFrequency\n"}
+{"Time":"2026-09-23T00:37:39.59256561+02:00","Action":"output","Package":"open-sds/app/internal/measure","Test":"TestHardwareTriangleFrequency","Output":"    hardware_triangle_test.go:24: hardware frequency 999929.209 Hz\n"}
+{"Time":"2026-09-23T00:37:39.59259404+02:00","Action":"output","Package":"open-sds/app/internal/measure","Test":"TestHardwareTriangleFrequency","Output":"--- PASS: TestHardwareTriangleFrequency (0.01s)\n"}
+{"Time":"2026-09-23T00:37:39.592608871+02:00","Action":"pass","Package":"open-sds/app/internal/measure","Test":"TestHardwareTriangleFrequency","Elapsed":0.01}
+{"Time":"2026-09-23T00:37:39.592624793+02:00","Action":"run","Package":"open-sds/app/internal/measure","Test":"TestMeasureFuzzFinite"}
+{"Time":"2026-09-23T00:37:39.592628817+02:00","Action":"output","Package":"open-sds/app/internal/measure","Test":"TestMeasureFuzzFinite","Output":"=== RUN   TestMeasureFuzzFinite\n"}
+{"Time":"2026-09-23T00:37:39.973783602+02:00","Action":"output","Package":"open-sds/app/internal/measure","Test":"TestMeasureFuzzFinite","Output":"--- PASS: TestMeasureFuzzFinite (0.38s)\n"}
+{"Time":"2026-09-23T00:37:39.973809048+02:00","Action":"pass","Package":"open-sds/app/internal/measure","Test":"TestMeasureFuzzFinite","Elapsed":0.38}
+{"Time":"2026-09-23T00:37:39.973843318+02:00","Action":"run","Package":"open-sds/app/internal/measure","Test":"TestSquareWave"}
+{"Time":"2026-09-23T00:37:39.973848915+02:00","Action":"output","Package":"open-sds/app/internal/measure","Test":"TestSquareWave","Output":"=== RUN   TestSquareWave\n"}
+{"Time":"2026-09-23T00:37:39.974127035+02:00","Action":"output","Package":"open-sds/app/internal/measure","Test":"TestSquareWave","Output":"--- PASS: TestSquareWave (0.00s)\n"}
+{"Time":"2026-09-23T00:37:39.974157929+02:00","Action":"pass","Package":"open-sds/app/internal/measure","Test":"TestSquareWave","Elapsed":0}
+{"Time":"2026-09-23T00:37:39.97418353+02:00","Action":"run","Package":"open-sds/app/internal/measure","Test":"TestDutyCycle"}
+{"Time":"2026-09-23T00:37:39.974188347+02:00","Action":"output","Package":"open-sds/app/internal/measure","Test":"TestDutyCycle","Output":"=== RUN   TestDutyCycle\n"}
+{"Time":"2026-09-23T00:37:39.974426493+02:00","Action":"output","Package":"open-sds/app/internal/measure","Test":"TestDutyCycle","Output":"--- PASS: TestDutyCycle (0.00s)\n"}
+{"Time":"2026-09-23T00:37:39.974445444+02:00","Action":"pass","Package":"open-sds/app/internal/measure","Test":"TestDutyCycle","Elapsed":0}
+{"Time":"2026-09-23T00:37:39.974482019+02:00","Action":"run","Package":"open-sds/app/internal/measure","Test":"TestTrapezoidRiseTime"}
+{"Time":"2026-09-23T00:37:39.974486718+02:00","Action":"output","Package":"open-sds/app/internal/measure","Test":"TestTrapezoidRiseTime","Output":"=== RUN   TestTrapezoidRiseTime\n"}
+{"Time":"2026-09-23T00:37:39.974726878+02:00","Action":"output","Package":"open-sds/app/internal/measure","Test":"TestTrapezoidRiseTime","Output":"--- PASS: TestTrapezoidRiseTime (0.00s)\n"}
+{"Time":"2026-09-23T00:37:39.974754394+02:00","Action":"pass","Package":"open-sds/app/internal/measure","Test":"TestTrapezoidRiseTime","Elapsed":0}
+{"Time":"2026-09-23T00:37:39.974781241+02:00","Action":"run","Package":"open-sds/app/internal/measure","Test":"TestFlatHasNoTiming"}
+{"Time":"2026-09-23T00:37:39.97478581+02:00","Action":"output","Package":"open-sds/app/internal/measure","Test":"TestFlatHasNoTiming","Output":"=== RUN   TestFlatHasNoTiming\n"}
+{"Time":"2026-09-23T00:37:39.974914242+02:00","Action":"output","Package":"open-sds/app/internal/measure","Test":"TestFlatHasNoTiming","Output":"--- PASS: TestFlatHasNoTiming (0.00s)\n"}
+{"Time":"2026-09-23T00:37:39.974941664+02:00","Action":"pass","Package":"open-sds/app/internal/measure","Test":"TestFlatHasNoTiming","Elapsed":0}
+{"Time":"2026-09-23T00:37:39.974960828+02:00","Action":"run","Package":"open-sds/app/internal/measure","Test":"TestClipped"}
+{"Time":"2026-09-23T00:37:39.974965028+02:00","Action":"output","Package":"open-sds/app/internal/measure","Test":"TestClipped","Output":"=== RUN   TestClipped\n"}
+{"Time":"2026-09-23T00:37:39.975448149+02:00","Action":"output","Package":"open-sds/app/internal/measure","Test":"TestClipped","Output":"--- PASS: TestClipped (0.00s)\n"}
+{"Time":"2026-09-23T00:37:39.975472007+02:00","Action":"pass","Package":"open-sds/app/internal/measure","Test":"TestClipped","Elapsed":0}
+{"Time":"2026-09-23T00:37:39.975492281+02:00","Action":"run","Package":"open-sds/app/internal/measure","Test":"TestEmptyRecord"}
+{"Time":"2026-09-23T00:37:39.975496623+02:00","Action":"output","Package":"open-sds/app/internal/measure","Test":"TestEmptyRecord","Output":"=== RUN   TestEmptyRecord\n"}
+{"Time":"2026-09-23T00:37:39.975571512+02:00","Action":"output","Package":"open-sds/app/internal/measure","Test":"TestEmptyRecord","Output":"--- PASS: TestEmptyRecord (0.00s)\n"}
+{"Time":"2026-09-23T00:37:39.975594586+02:00","Action":"pass","Package":"open-sds/app/internal/measure","Test":"TestEmptyRecord","Elapsed":0}
+{"Time":"2026-09-23T00:37:39.975617971+02:00","Action":"run","Package":"open-sds/app/internal/measure","Test":"TestOvershoot"}
+{"Time":"2026-09-23T00:37:39.975622093+02:00","Action":"output","Package":"open-sds/app/internal/measure","Test":"TestOvershoot","Output":"=== RUN   TestOvershoot\n"}
+{"Time":"2026-09-23T00:37:39.97583754+02:00","Action":"output","Package":"open-sds/app/internal/measure","Test":"TestOvershoot","Output":"--- PASS: TestOvershoot (0.00s)\n"}
+{"Time":"2026-09-23T00:37:39.975863477+02:00","Action":"pass","Package":"open-sds/app/internal/measure","Test":"TestOvershoot","Elapsed":0}
+{"Time":"2026-09-23T00:37:39.975886276+02:00","Action":"run","Package":"open-sds/app/internal/measure","Test":"TestAvgWidthMergeParity"}
+{"Time":"2026-09-23T00:37:39.975890742+02:00","Action":"output","Package":"open-sds/app/internal/measure","Test":"TestAvgWidthMergeParity","Output":"=== RUN   TestAvgWidthMergeParity\n"}
+{"Time":"2026-09-23T00:37:39.976991541+02:00","Action":"output","Package":"open-sds/app/internal/measure","Test":"TestAvgWidthMergeParity","Output":"--- PASS: TestAvgWidthMergeParity (0.00s)\n"}
+{"Time":"2026-09-23T00:37:39.977011759+02:00","Action":"pass","Package":"open-sds/app/internal/measure","Test":"TestAvgWidthMergeParity","Elapsed":0}
+{"Time":"2026-09-23T00:37:39.977037218+02:00","Action":"run","Package":"open-sds/app/internal/measure","Test":"TestFractionalAcquisitionMeasurements"}
+{"Time":"2026-09-23T00:37:39.977042163+02:00","Action":"output","Package":"open-sds/app/internal/measure","Test":"TestFractionalAcquisitionMeasurements","Output":"=== RUN   TestFractionalAcquisitionMeasurements\n"}
+{"Time":"2026-09-23T00:37:39.977490306+02:00","Action":"output","Package":"open-sds/app/internal/measure","Test":"TestFractionalAcquisitionMeasurements","Output":"--- PASS: TestFractionalAcquisitionMeasurements (0.00s)\n"}
+{"Time":"2026-09-23T00:37:39.977520894+02:00","Action":"pass","Package":"open-sds/app/internal/measure","Test":"TestFractionalAcquisitionMeasurements","Elapsed":0}
+{"Time":"2026-09-23T00:37:39.977545488+02:00","Action":"run","Package":"open-sds/app/internal/measure","Test":"TestQ8SmallRippleOnLargeDC"}
+{"Time":"2026-09-23T00:37:39.977550106+02:00","Action":"output","Package":"open-sds/app/internal/measure","Test":"TestQ8SmallRippleOnLargeDC","Output":"=== RUN   TestQ8SmallRippleOnLargeDC\n"}
+{"Time":"2026-09-23T00:37:40.113768038+02:00","Action":"output","Package":"open-sds/app/internal/measure","Test":"TestQ8SmallRippleOnLargeDC","Output":"--- PASS: TestQ8SmallRippleOnLargeDC (0.14s)\n"}
+{"Time":"2026-09-23T00:37:40.113799118+02:00","Action":"pass","Package":"open-sds/app/internal/measure","Test":"TestQ8SmallRippleOnLargeDC","Elapsed":0.14}
+{"Time":"2026-09-23T00:37:40.113806611+02:00","Action":"run","Package":"open-sds/app/internal/measure","Test":"TestNoisyTriangleTiming"}
+{"Time":"2026-09-23T00:37:40.113816831+02:00","Action":"output","Package":"open-sds/app/internal/measure","Test":"TestNoisyTriangleTiming","Output":"=== RUN   TestNoisyTriangleTiming\n"}
+{"Time":"2026-09-23T00:37:40.115094657+02:00","Action":"output","Package":"open-sds/app/internal/measure","Test":"TestNoisyTriangleTiming","Output":"--- PASS: TestNoisyTriangleTiming (0.00s)\n"}
+{"Time":"2026-09-23T00:37:40.115104503+02:00","Action":"pass","Package":"open-sds/app/internal/measure","Test":"TestNoisyTriangleTiming","Elapsed":0}
+{"Time":"2026-09-23T00:37:40.115128155+02:00","Action":"output","Package":"open-sds/app/internal/measure","Output":"PASS\n"}
+{"Time":"2026-09-23T00:37:41.117783856+02:00","Action":"output","Package":"open-sds/app/internal/measure","Output":"ok  \topen-sds/app/internal/measure\t1.542s\n"}
+{"Time":"2026-09-23T00:37:41.117802477+02:00","Action":"pass","Package":"open-sds/app/internal/measure","Elapsed":1.542}

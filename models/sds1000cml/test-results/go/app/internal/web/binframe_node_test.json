@@ -1,0 +1,25 @@
+{
+  "source": "app/internal/web/binframe_node_test.go",
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "scope": "Reviewed Go test outcomes; passing assertions contribute partial requirement evidence.",
+  "sourceSHA256": "2ec79de60ffc5f4e613302472083ecaf1dd8ef97eef0e77a0d6a1edbf7c0fdd7",
+  "logs": {
+    "test-runs/browser-pure.jsonl": "8b12e9f6782e3cfff22fb1b16bd9e00a7c09183e5c0ebfd7fb81e2f04a394f44"
+  },
+  "tests": [
+    {
+      "name": "TestBinframeJS",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-023"
+      ]
+    }
+  ],
+  "results": [
+    {
+      "requirement": "REQ-SDS-023",
+      "status": "partial",
+      "notes": "1 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    }
+  ]
+}

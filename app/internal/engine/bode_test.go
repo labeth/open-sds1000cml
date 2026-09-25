@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
 package engine
 
 import (
@@ -7,6 +8,7 @@ import (
 
 // synthSine builds an n-sample record of a sine at freqHz with the given
 // amplitude (codes), DC offset (codes), and phase (radians), clamped to 0..255.
+// TRLC-LINKS: REQ-SDS-066
 func synthSine(n int, freqHz, sampleS, ampCodes, offCodes, phaseRad float64) []uint8 {
 	s := make([]uint8, n)
 	for i := 0; i < n; i++ {
@@ -22,6 +24,7 @@ func synthSine(n int, freqHz, sampleS, ampCodes, offCodes, phaseRad float64) []u
 	return s
 }
 
+// TRLC-LINKS: REQ-SDS-066
 func TestFundamentalHz(t *testing.T) {
 	const n, dt = 4096, 2e-9
 	for _, f := range []float64{1e6, 5e6, 12.5e6, 25e6} {
@@ -33,6 +36,7 @@ func TestFundamentalHz(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-066
 func TestBodePointGainPhase(t *testing.T) {
 	e, _ := newTestEngine(t, newFakeBus())
 	const n, dt = 4096, 2e-9
@@ -84,6 +88,7 @@ func TestBodePointGainPhase(t *testing.T) {
 // A pure time delay τ on the DUT channel must read 0 dB and phase = −360·f·τ
 // (mod 360) — the analytic Bode of an ideal delay, and exactly the FPGA
 // validation source (C2 = C1 delayed by N samples).
+// TRLC-LINKS: REQ-SDS-066
 func TestBodePureDelay(t *testing.T) {
 	e, _ := newTestEngine(t, newFakeBus())
 	const n, dt = 6000, 2e-9
@@ -113,6 +118,7 @@ func TestBodePureDelay(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-066
 func TestBodeRejectsFloorAndSubCycle(t *testing.T) {
 	e, _ := newTestEngine(t, newFakeBus())
 	const n, dt = 4096, 2e-9
@@ -138,6 +144,7 @@ func TestBodeRejectsFloorAndSubCycle(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-066
 func TestBodeAccumulationBinsByFrequency(t *testing.T) {
 	e, _ := newTestEngine(t, newFakeBus())
 	const n, dt = 4096, 2e-9

@@ -1,0 +1,53 @@
+{
+  "source": "app/internal/decode/decode_canfd_test.go",
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "scope": "Reviewed Go test outcomes; passing assertions contribute partial requirement evidence.",
+  "sourceSHA256": "a5784ee117a7c320b0c86854a477a84cdfdd559d266d3d815840ee8a7ea8fe52",
+  "logs": {
+    "test-runs/decode-implementation.jsonl": "dde14e18f02e73c694af08de3897655d305e230d208c3215d1478008a42da228"
+  },
+  "tests": [
+    {
+      "name": "TestDecodeCANFDStandardRoundTrip",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-018"
+      ]
+    },
+    {
+      "name": "TestDecodeCANFDExtendedRoundTrip",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-018"
+      ]
+    },
+    {
+      "name": "TestDecodeCANFDInvertedPolarity",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-018"
+      ]
+    },
+    {
+      "name": "TestDecodeCANFDFDBestEffort",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-018"
+      ]
+    },
+    {
+      "name": "TestDecodeCANFDNoPanic",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-018"
+      ]
+    }
+  ],
+  "results": [
+    {
+      "requirement": "REQ-SDS-018",
+      "status": "partial",
+      "notes": "5 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    }
+  ]
+}

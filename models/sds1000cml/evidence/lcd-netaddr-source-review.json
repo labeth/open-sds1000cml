@@ -1,0 +1,43 @@
+{
+  "result": "reviewed-and-characterized-native-partial-evidence",
+  "sourceSHA256": {
+    "app/internal/lcd/netaddr.go": "6445d77eec6a8228516a23a13a3ae366a9c4571821539cd051e231e30cca32dd",
+    "app/internal/lcd/netaddr_test.go": "8d1ad3a9afffe126ffabe9d11a433164677f105d9ff62e721f8848ddeeb92fab"
+  },
+  "completeReads": [
+    "app/internal/lcd/netaddr.go",
+    "app/internal/lcd/netaddr_test.go"
+  ],
+  "tests": {
+    "TestPickDeviceURL": "pass",
+    "TestDeviceURLCaching": "pass",
+    "TestRenderDeviceURL": "pass"
+  },
+  "command": [
+    "go",
+    "test",
+    "-race",
+    "-json",
+    "-count=1",
+    "./internal/lcd",
+    "-run",
+    "^(TestDeviceURLCaching|TestHeatMonotone|TestHeatNeverPanics|TestHeatStops|TestPickDeviceURL|TestRenderDeviceURL|TestRenderSpectrogramView|TestSpectrogramBreaker50|TestSpectrogramFloorEdges|TestSpectrogramPeakColumn|TestSpectrogramPushGuards|TestSpectrogramTracksSteppedFrequency|TestSpectrumMagsDegenerate)$"
+  ],
+  "log": "test-runs/lcd-spectrogram-netaddr.jsonl",
+  "logSHA256": "1f17f9d410806ae33e736d47765fa079cf7b8495f10a2c5c8da3bf5c16c4f177",
+  "findings": [
+    "PickDeviceURL picks the first global-unicast IPv4 from IPNet/IPAddr values; it does not check route preference, control-port availability or network reachability.",
+    "DeviceURL holds a mutex during enumeration and caches empty results/errors for five seconds; expiry begins before enumeration.",
+    "Nil IP fields are handled, but typed-nil IPNet/IPAddr pointers are dereferenced without checking; characterization remains pending.",
+    "Original tests inject enumeration and simulate expiry; they do not inspect actual network interfaces or connections.",
+    "URL rendering checks dim-text presence/absence and horizontal bounds for the maximum IPv4 URL string; it does not prove all HUD combinations avoid overlap."
+  ],
+  "nextAction": "Retain explicit limitations; device qualification and remaining LCD source coverage are separate work.",
+  "boundaryEvidence": "evidence/lcd-netaddr-boundary-review.json",
+  "testedFindings": [
+    "A nil interface address is ignored; typed-nil IPNet and IPAddr pointers panic.",
+    "Enumeration failure is cached as an empty URL; restored enumeration remains hidden until cache expiry."
+  ],
+  "preannotationReview": "evidence/lcd-netaddr-preannotation.json",
+  "nativeEvidence": "evidence/lcd-spectrogram-netaddr-test-run.json"
+}

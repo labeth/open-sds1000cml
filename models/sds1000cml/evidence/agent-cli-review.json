@@ -1,0 +1,63 @@
+{
+  "result": "pass-with-documentation-discrepancy",
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "source": "ota/cmd/agent/main.go",
+  "sourceSHA256": "b988f08fd3fbdb345ed723e620ebfbff55d5053bf148f86f7f349d6d858e6bbf",
+  "checks": [
+    {
+      "argument": "version",
+      "exitCode": 0,
+      "stdout": "open-sds ota agent dev (unknown, unknown)\n",
+      "stderr": ""
+    },
+    {
+      "argument": "-v",
+      "exitCode": 0,
+      "stdout": "open-sds ota agent dev (unknown, unknown)\n",
+      "stderr": ""
+    },
+    {
+      "argument": "--version",
+      "exitCode": 0,
+      "stdout": "open-sds ota agent dev (unknown, unknown)\n",
+      "stderr": ""
+    },
+    {
+      "argument": "help",
+      "exitCode": 0,
+      "stdout": "open-sds OTA agent\n  agent                 run the supervisor (boot path)\n  agent probe [--gpmc]  read-only device fingerprint as JSON (--gpmc: also read version+fill)\n  agent version         print version\n  agent help            this help\n",
+      "stderr": ""
+    },
+    {
+      "argument": "-h",
+      "exitCode": 0,
+      "stdout": "open-sds OTA agent\n  agent                 run the supervisor (boot path)\n  agent probe [--gpmc]  read-only device fingerprint as JSON (--gpmc: also read version+fill)\n  agent version         print version\n  agent help            this help\n",
+      "stderr": ""
+    },
+    {
+      "argument": "--help",
+      "exitCode": 0,
+      "stdout": "open-sds OTA agent\n  agent                 run the supervisor (boot path)\n  agent probe [--gpmc]  read-only device fingerprint as JSON (--gpmc: also read version+fill)\n  agent version         print version\n  agent help            this help\n",
+      "stderr": ""
+    },
+    {
+      "argument": "status",
+      "exitCode": 2,
+      "stdout": "",
+      "stderr": "unknown subcommand \"status\"\n\nopen-sds OTA agent\n  agent                 run the supervisor (boot path)\n  agent probe [--gpmc]  read-only device fingerprint as JSON (--gpmc: also read version+fill)\n  agent version         print version\n  agent help            this help\n"
+    },
+    {
+      "argument": "unknown",
+      "exitCode": 2,
+      "stdout": "",
+      "stderr": "unknown subcommand \"unknown\"\n\nopen-sds OTA agent\n  agent                 run the supervisor (boot path)\n  agent probe [--gpmc]  read-only device fingerprint as JSON (--gpmc: also read version+fill)\n  agent version         print version\n  agent help            this help\n"
+    }
+  ],
+  "findings": [
+    "The introductory comment advertises status, but the switch rejects it with exit 2 and usage omits it.",
+    "Version and help aliases return before configuration, agent construction, probing or supervisor startup.",
+    "No-argument Run and probe/--gpmc paths were inspected but not executed. Probe ignores JSON encoder failure; extra flags other than --gpmc are not validated.",
+    "The supervisor path registers SIGINT/SIGTERM and invokes Stop from one signal receiver goroutine. This inspection does not prove graceful worker completion or watchdog behavior."
+  ],
+  "scope": "Eight explicit version/help/refusal CLI cases only. No device access, supervisor, probe, signal handling, factory process or network operation exercised."
+}

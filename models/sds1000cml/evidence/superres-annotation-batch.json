@@ -1,0 +1,298 @@
+{
+  "status": "integrated",
+  "files": [
+    {
+      "path": "app/internal/superres/comp.go",
+      "owner": "FU-APP-SUPERRES",
+      "functions": {
+        "CompOpts.withDefaults": [
+          "REQ-SDS-142"
+        ],
+        "CompCalH": [
+          "REQ-SDS-142"
+        ],
+        "CompTargetH": [
+          "REQ-SDS-142"
+        ],
+        "CompGain": [
+          "REQ-SDS-142"
+        ],
+        "CompFigures": [
+          "REQ-SDS-142"
+        ],
+        "CompAuto": [
+          "REQ-SDS-142"
+        ],
+        "compFFT": [
+          "REQ-SDS-142"
+        ],
+        "compResample": [
+          "REQ-SDS-142"
+        ],
+        "Compensate": [
+          "REQ-SDS-142"
+        ]
+      },
+      "types": {
+        "CompOpts": [
+          "REQ-SDS-142"
+        ],
+        "CompInfo": [
+          "REQ-SDS-142"
+        ]
+      }
+    },
+    {
+      "path": "app/internal/superres/comp_jsparity_test.go",
+      "owner": "FU-APP-SUPERRES",
+      "functions": {
+        "jsOpts.goOpts": [
+          "REQ-SDS-142"
+        ],
+        "TestCompParityJS": [
+          "REQ-SDS-142"
+        ]
+      },
+      "types": {
+        "jsOpts": [
+          "REQ-SDS-142"
+        ],
+        "autoCase": [
+          "REQ-SDS-142"
+        ],
+        "compCase": [
+          "REQ-SDS-142"
+        ]
+      }
+    },
+    {
+      "path": "app/internal/superres/comp_test.go",
+      "owner": "FU-APP-SUPERRES",
+      "functions": {
+        "TestCompCurveBasics": [
+          "REQ-SDS-142"
+        ],
+        "TestCompAutoCaps": [
+          "REQ-SDS-142"
+        ],
+        "TestCompensateContract": [
+          "REQ-SDS-142"
+        ]
+      },
+      "types": {}
+    },
+    {
+      "path": "app/internal/superres/srfuzz_test.go",
+      "owner": "FU-APP-SUPERRES",
+      "functions": {
+        "TestSuperresFuzzNoPanic": [
+          "REQ-SDS-141"
+        ]
+      },
+      "types": {}
+    },
+    {
+      "path": "app/internal/superres/superres.go",
+      "owner": "FU-APP-SUPERRES",
+      "functions": {
+        "jsRound": [
+          "REQ-SDS-141"
+        ],
+        "New": [
+          "REQ-SDS-141"
+        ],
+        "Clipped": [
+          "REQ-SDS-141"
+        ],
+        "median": [
+          "REQ-SDS-141"
+        ],
+        "sortFloat": [
+          "REQ-SDS-141"
+        ],
+        "abs": [
+          "REQ-SDS-141"
+        ]
+      },
+      "types": {
+        "chanState": [
+          "REQ-SDS-141"
+        ],
+        "template": [
+          "REQ-SDS-141"
+        ],
+        "Stack": [
+          "REQ-SDS-141"
+        ]
+      }
+    },
+    {
+      "path": "app/internal/superres/superres_gate.go",
+      "owner": "FU-APP-SUPERRES",
+      "functions": {
+        "gateTemplate": [
+          "REQ-SDS-141"
+        ],
+        "gateTpl.segMatch": [
+          "REQ-SDS-141"
+        ],
+        "Stack.ambientMax": [
+          "REQ-SDS-141"
+        ],
+        "detectPeriod": [
+          "REQ-SDS-141"
+        ],
+        "DetectPeriodU8": [
+          "REQ-SDS-141"
+        ],
+        "Stack.gateInstall": [
+          "REQ-SDS-141"
+        ],
+        "Stack.gateFind": [
+          "REQ-SDS-141"
+        ]
+      },
+      "types": {
+        "gateTpl": [
+          "REQ-SDS-141"
+        ],
+        "gateSeg": [
+          "REQ-SDS-141"
+        ],
+        "hit": [
+          "REQ-SDS-141"
+        ]
+      }
+    },
+    {
+      "path": "app/internal/superres/superres_parity_test.go",
+      "owner": "FU-APP-SUPERRES",
+      "functions": {
+        "genFrames": [
+          "REQ-SDS-141"
+        ],
+        "TestParityJS": [
+          "REQ-SDS-141"
+        ],
+        "TestParityManualGate": [
+          "REQ-SDS-141"
+        ],
+        "runParity": [
+          "REQ-SDS-141"
+        ],
+        "Result.MeanSumNonGap": [
+          "REQ-SDS-141"
+        ],
+        "Result.MeanCountNonGap": [
+          "REQ-SDS-141"
+        ],
+        "Result.Mean2SumNonGap": [
+          "REQ-SDS-141"
+        ],
+        "Result.Mean2CountNonGap": [
+          "REQ-SDS-141"
+        ]
+      },
+      "types": {
+        "jframe": [
+          "REQ-SDS-141"
+        ],
+        "jsResult": [
+          "REQ-SDS-141"
+        ]
+      }
+    },
+    {
+      "path": "app/internal/superres/superres_result.go",
+      "owner": "FU-APP-SUPERRES",
+      "functions": {
+        "Stack.Result": [
+          "REQ-SDS-141"
+        ]
+      },
+      "types": {
+        "Result": [
+          "REQ-SDS-141"
+        ]
+      }
+    },
+    {
+      "path": "app/internal/superres/superres_stack.go",
+      "owner": "FU-APP-SUPERRES",
+      "functions": {
+        "Stack.drizzleHit": [
+          "REQ-SDS-141"
+        ],
+        "Stack.SeedRef": [
+          "REQ-SDS-141"
+        ],
+        "Stack.SeedRefGate": [
+          "REQ-SDS-141"
+        ],
+        "Stack.ResetKeepRef": [
+          "REQ-SDS-141"
+        ],
+        "gainOffset": [
+          "REQ-SDS-141"
+        ],
+        "Stack.accumCh": [
+          "REQ-SDS-141"
+        ],
+        "Stack.Feed": [
+          "REQ-SDS-141"
+        ]
+      },
+      "types": {}
+    },
+    {
+      "path": "app/internal/superres/superres_template.go",
+      "owner": "FU-APP-SUPERRES",
+      "functions": {
+        "buildTemplate": [
+          "REQ-SDS-141"
+        ],
+        "Stack.matchLocate": [
+          "REQ-SDS-141"
+        ]
+      },
+      "types": {
+        "matchResult": [
+          "REQ-SDS-141"
+        ]
+      }
+    }
+  ],
+  "functions": 46,
+  "types": 15,
+  "uniqueReviewedTests": [
+    "TestCompAutoCaps",
+    "TestCompCurveBasics",
+    "TestCompParityJS",
+    "TestCompensateContract",
+    "TestParityJS",
+    "TestParityManualGate",
+    "TestSuperresFuzzNoPanic"
+  ],
+  "nativeEligibleTests": [
+    "TestCompAutoCaps",
+    "TestCompCurveBasics",
+    "TestCompParityJS",
+    "TestCompensateContract",
+    "TestParityJS",
+    "TestParityManualGate",
+    "TestSuperresFuzzNoPanic"
+  ],
+  "sourceSHA256": {
+    "app/internal/superres/comp.go": "b69ebf90f626c7f0a6d7f1d1e36abdfc3cd69567d3bd62d8801496b3ddb6d77d",
+    "app/internal/superres/comp_jsparity_test.go": "b5e44e320532ebfa3d45f8a1a00d656bc2feed3394557d32db9b4e15a35c9e4a",
+    "app/internal/superres/comp_test.go": "7fc556fe2fb2cabe03ac04241e80ea3b91954eddd3da54cef48792a58ef10733",
+    "app/internal/superres/srfuzz_test.go": "966cb15f30fb6761f14f12c6ee30086342ad93cf84c7c4095807e2c71a135cbe",
+    "app/internal/superres/superres.go": "34545c2ef9407a3ae489f4083cf6e11523655c5915b015a5273fa939f2374558",
+    "app/internal/superres/superres_gate.go": "c70a64f9e21bfbf1f1cab51685c9da250365d66724957af195db15480266006d",
+    "app/internal/superres/superres_parity_test.go": "b89240e883f4c236b1707fe3f9239b699527904f3c6247dc2f197eda48140d4c",
+    "app/internal/superres/superres_result.go": "2e5f9828035d5b664abd4f31f8b5535d9ce7c0188a24a1d847b91e3e36e6b6ff",
+    "app/internal/superres/superres_stack.go": "49cb40af4739a55c2478c92910bd8ed62d020d03485cdb4fb87c4347dbfa8c5f",
+    "app/internal/superres/superres_template.go": "05505f12b7e1e820798e53bcdd664c58eabf76d251ed37b89318f0446826c0c6"
+  },
+  "scope": "Complete Go processing package plus two Node harnesses; synthetic host behavior only. Browser production source and physical calibration are not fully reviewed or qualified by this batch."
+}

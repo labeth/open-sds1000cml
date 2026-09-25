@@ -1,0 +1,28 @@
+// Temporary slot files and captured exit only; no uploaded payload executes.
+func TestModelReviewAgentActivationBoundaries(t *testing.T) {
+ a := testAgent(t)
+ if err := a.store.Init(); err != nil { t.Fatal(err) }
+ src := t.TempDir()+"/payload"
+ payload := []byte("not an executable image\n")
+ if err := os.WriteFile(src,payload,0o600); err != nil { t.Fatal(err) }
+ request, err := json.Marshal(map[string]any{"cmd":"app.update","args":map[string]any{"src":src}})
+ if err != nil { t.Fatal(err) }
+ response := a.Dispatch(request)
+ if !response.OK || a.store.Active() != "B" { t.Fatalf("digest-free app update: %+v",response) }
+ installed, err := os.ReadFile(a.store.BinPath("B"))
+ if err != nil || string(installed) != string(payload) { t.Fatalf("installed=%q err=%v",installed,err) }
+ // Presence checks permit a regular nonempty file without execute bits.
+ if err := os.Chmod(a.store.BinPath("B"),0o600); err != nil { t.Fatal(err) }
+ response = a.Dispatch([]byte(`{"cmd":"app.activate","args":{"slot":"B"}}`))
+ if !response.OK { t.Fatalf("activation of nonexecutable file: %+v",response) }
+ t.Log("app.update accepts omitted digest and non-image payload; app.activate accepts nonempty regular file without execute bits")
+ exitCh := captureExit(t)
+ request, err = json.Marshal(map[string]any{"cmd":"agent.update","args":map[string]any{"src":src}})
+ if err != nil { t.Fatal(err) }
+ response = a.Dispatch(request)
+ if !response.OK { t.Fatalf("digest-free agent update: %+v",response) }
+ if code := waitExit(t,exitCh); code != 0 { t.Fatalf("captured exit=%d",code) }
+ installed, err = os.ReadFile(a.cfg.AgentB)
+ if err != nil || string(installed) != string(payload) { t.Fatalf("agent slot=%q err=%v",installed,err) }
+ t.Log("agent.update accepts omitted digest and non-image payload, flips slot and requests clean exit through the test recorder")
+}

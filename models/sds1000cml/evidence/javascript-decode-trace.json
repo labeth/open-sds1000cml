@@ -1,0 +1,318 @@
+{
+  "result": "pass",
+  "requirement": "REQ-SDS-018",
+  "javascriptDeclarations": 60,
+  "implementationFiles": [
+    "decode.js",
+    "decode_arinc429.js",
+    "decode_canfd.js",
+    "decode_flexray.js",
+    "decode_manchester.js",
+    "decode_mil1553.js",
+    "decode_sent.js",
+    "decode_usbls.js"
+  ],
+  "scope": "Native trace includes all 60 reviewed JavaScript declaration coordinates in eight implementation files; verification status remains partial.",
+  "coordinates": [
+    {
+      "symbol": "CODE-ADD",
+      "path": "decode.js",
+      "line": 542
+    },
+    {
+      "symbol": "CODE-AUTODETECT",
+      "path": "decode.js",
+      "line": 528
+    },
+    {
+      "symbol": "CODE-CANCRC15",
+      "path": "decode_canfd.js",
+      "line": 25
+    },
+    {
+      "symbol": "CODE-CANFAIL",
+      "path": "decode_canfd.js",
+      "line": 19
+    },
+    {
+      "symbol": "CODE-CANINFERSPB",
+      "path": "decode_canfd.js",
+      "line": 99
+    },
+    {
+      "symbol": "CODE-CANNEXT",
+      "path": "decode_canfd.js",
+      "line": 60
+    },
+    {
+      "symbol": "CODE-CANONEFRAME",
+      "path": "decode_canfd.js",
+      "line": 142
+    },
+    {
+      "symbol": "CODE-CANREADFIELD",
+      "path": "decode_canfd.js",
+      "line": 78
+    },
+    {
+      "symbol": "CODE-CANREADRAW",
+      "path": "decode_canfd.js",
+      "line": 45
+    },
+    {
+      "symbol": "CODE-CELLEND",
+      "path": "decode_arinc429.js",
+      "line": 131
+    },
+    {
+      "symbol": "CODE-CELLEND",
+      "path": "decode_usbls.js",
+      "line": 100
+    },
+    {
+      "symbol": "CODE-CELLSTART",
+      "path": "decode_arinc429.js",
+      "line": 129
+    },
+    {
+      "symbol": "CODE-CELLSTART",
+      "path": "decode_usbls.js",
+      "line": 98
+    },
+    {
+      "symbol": "CODE-CLAMPI",
+      "path": "decode_usbls.js",
+      "line": 96
+    },
+    {
+      "symbol": "CODE-CLOCKSCORE",
+      "path": "decode.js",
+      "line": 497
+    },
+    {
+      "symbol": "CODE-DECODE",
+      "path": "decode.js",
+      "line": 621
+    },
+    {
+      "symbol": "CODE-DECODEARINC429",
+      "path": "decode_arinc429.js",
+      "line": 16
+    },
+    {
+      "symbol": "CODE-DECODECANFD",
+      "path": "decode_canfd.js",
+      "line": 250
+    },
+    {
+      "symbol": "CODE-DECODEFLEXRAY",
+      "path": "decode_flexray.js",
+      "line": 70
+    },
+    {
+      "symbol": "CODE-DECODEI2C",
+      "path": "decode.js",
+      "line": 275
+    },
+    {
+      "symbol": "CODE-DECODEMANCHESTER",
+      "path": "decode_manchester.js",
+      "line": 58
+    },
+    {
+      "symbol": "CODE-DECODEMANCHESTERAT",
+      "path": "decode_manchester.js",
+      "line": 99
+    },
+    {
+      "symbol": "CODE-DECODEMIL1553",
+      "path": "decode_mil1553.js",
+      "line": 15
+    },
+    {
+      "symbol": "CODE-DECODEMIL1553AT",
+      "path": "decode_mil1553.js",
+      "line": 54
+    },
+    {
+      "symbol": "CODE-DECODESENT",
+      "path": "decode_sent.js",
+      "line": 29
+    },
+    {
+      "symbol": "CODE-DECODESPI",
+      "path": "decode.js",
+      "line": 333
+    },
+    {
+      "symbol": "CODE-DECODEUART",
+      "path": "decode.js",
+      "line": 213
+    },
+    {
+      "symbol": "CODE-DECODEUSBLS",
+      "path": "decode_usbls.js",
+      "line": 25
+    },
+    {
+      "symbol": "CODE-FAIL",
+      "path": "decode.js",
+      "line": 54
+    },
+    {
+      "symbol": "CODE-FAIL",
+      "path": "decode_arinc429.js",
+      "line": 21
+    },
+    {
+      "symbol": "CODE-FAIL",
+      "path": "decode_sent.js",
+      "line": 36
+    },
+    {
+      "symbol": "CODE-FDDATALEN",
+      "path": "decode_canfd.js",
+      "line": 37
+    },
+    {
+      "symbol": "CODE-FLEXFRAMECRC24",
+      "path": "decode_flexray.js",
+      "line": 57
+    },
+    {
+      "symbol": "CODE-FLEXHEADERCRC11",
+      "path": "decode_flexray.js",
+      "line": 38
+    },
+    {
+      "symbol": "CODE-FMTBYTE",
+      "path": "decode.js",
+      "line": 46
+    },
+    {
+      "symbol": "CODE-FN",
+      "path": "decode.js",
+      "line": 568
+    },
+    {
+      "symbol": "CODE-FRAMEDTS",
+      "path": "decode.js",
+      "line": 26
+    },
+    {
+      "symbol": "CODE-FRAMESPANS",
+      "path": "decode.js",
+      "line": 31
+    },
+    {
+      "symbol": "CODE-FXFAIL",
+      "path": "decode_flexray.js",
+      "line": 29
+    },
+    {
+      "symbol": "CODE-FXHEX2",
+      "path": "decode_flexray.js",
+      "line": 27
+    },
+    {
+      "symbol": "CODE-HEX2",
+      "path": "decode.js",
+      "line": 37
+    },
+    {
+      "symbol": "CODE-HEX4",
+      "path": "decode_mil1553.js",
+      "line": 58
+    },
+    {
+      "symbol": "CODE-HEX5",
+      "path": "decode_arinc429.js",
+      "line": 99
+    },
+    {
+      "symbol": "CODE-IDLELEVEL",
+      "path": "decode.js",
+      "line": 516
+    },
+    {
+      "symbol": "CODE-INFERUARTSPB",
+      "path": "decode.js",
+      "line": 156
+    },
+    {
+      "symbol": "CODE-ISCLOCKY",
+      "path": "decode.js",
+      "line": 553
+    },
+    {
+      "symbol": "CODE-KIND",
+      "path": "decode.js",
+      "line": 423
+    },
+    {
+      "symbol": "CODE-LOGICAT",
+      "path": "decode.js",
+      "line": 120
+    },
+    {
+      "symbol": "CODE-LOOKSSYNC",
+      "path": "decode_sent.js",
+      "line": 89
+    },
+    {
+      "symbol": "CODE-MINEDGEGAP",
+      "path": "decode.js",
+      "line": 131
+    },
+    {
+      "symbol": "CODE-OCT3",
+      "path": "decode_arinc429.js",
+      "line": 97
+    },
+    {
+      "symbol": "CODE-PARITYOF",
+      "path": "decode.js",
+      "line": 234
+    },
+    {
+      "symbol": "CODE-PICK",
+      "path": "decode.js",
+      "line": 625
+    },
+    {
+      "symbol": "CODE-POPCOUNT",
+      "path": "decode.js",
+      "line": 42
+    },
+    {
+      "symbol": "CODE-RECOVERMANCHESTER",
+      "path": "decode_manchester.js",
+      "line": 18
+    },
+    {
+      "symbol": "CODE-RESYNC",
+      "path": "decode_flexray.js",
+      "line": 104
+    },
+    {
+      "symbol": "CODE-SCORERESULT",
+      "path": "decode.js",
+      "line": 419
+    },
+    {
+      "symbol": "CODE-SENTCRC4",
+      "path": "decode_sent.js",
+      "line": 21
+    },
+    {
+      "symbol": "CODE-SENTHEX1",
+      "path": "decode_sent.js",
+      "line": 11
+    },
+    {
+      "symbol": "CODE-SLICECHANNEL",
+      "path": "decode.js",
+      "line": 65
+    }
+  ]
+}

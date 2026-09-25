@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-SETTINGS
 package settings_test
 
 import (
@@ -14,6 +15,7 @@ import (
 // panic, and anything it does accept must Apply cleanly through the real
 // owners (engine staging setters, front-end offset law, controller clamps) —
 // a malformed settings file must NEVER be able to take the boot down.
+// TRLC-LINKS: REQ-SDS-072
 func FuzzParseAndApply(f *testing.F) {
 	f.Add([]byte(`{"version":1,"tdiv_s":0.0005,"ch":[{"vdiv_v":0.5,"offset_v":1.5,"offset_set":true,"coupling":1,"probe":10},{"vdiv_v":2}],"vert_set":true,"trigger":{"level_code":30500,"rising":true,"source":1,"type":2,"norm":true,"holdoff_s":0.001},"acq":{"mode":1,"avg_count":64,"eres_len":1},"decode":{"proto":4,"baud":9600,"cha":1,"chb":0,"cpol":true,"cpha":true,"format":1},"view_mode":4}`))
 	f.Add([]byte(`{"version":1}`))

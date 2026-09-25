@@ -1,0 +1,29 @@
+{
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "requirements": [
+    "REQ-SDS-014"
+  ],
+  "owner": "FU-APP-ENGINE",
+  "completeReads": [
+    "app/internal/engine/zonemask_breaker_test.go",
+    "app/internal/engine/zonemask_breaker2_test.go"
+  ],
+  "reviewedLines": 645,
+  "sourceSHA256": {
+    "app/internal/engine/zonemask_breaker_test.go": "3f6cd7ca7da52d4438635b78451d2f306ccebc096da08f1aeed769e7d8cd61e9",
+    "app/internal/engine/zonemask_breaker2_test.go": "bb9046e85345a3b283bc0908e4c9f1349640a3d603aa6fbdf7e36ddf9adbf744"
+  },
+  "execution": "engine-serial-zonemask-test-run.json",
+  "result": "reviewed-host-tests-pass",
+  "findings": [
+    "First campaign uses 50 families (ten shapes by five violations), 32 training frames and 16 clean checks each: 800 clean verdicts. The 600 candidate violations are tested only if noiseless corrupted values exceed the production-built envelope by noise+2. There is no assertion or log counting tested violations per family or total.",
+    "The golden mask is constructed by production BuildMaskFromEnvelope, so this is selected consistency/detection evidence rather than independent morphology truth. Synthetic ideal anchors are computed before corruption/noise, with midpoint fallback; actual engine trigger estimation is not exercised. Both channels contain identical samples and mask evaluation selects channel zero.",
+    "The width injection holds a value plus 0.8 amplitude; it is not a pure timing fault. Detected failures must localize within injected sample minus8 to plus60. Empty-zone checks are conditional on measured maximum plus20 being below250; the test does not count that coverage.",
+    "The differential campaign uses 50 waveform parameter families and complementary channels, with valid3000 for one of five variants. Its continuous-time reference permits half-sample boundary ambiguity. The observed run has2250 verdicts,66 ambiguous ties skipped,2184 asserted comparisons. The test rejects tie counts above one third.",
+    "Randomized AND combos contain two or three zones; the loop recalculates its random bound each iteration. Several waveform q parameters cancel algebraically. Broad waveform diversity does not establish physical trigger or timing qualification.",
+    "Only campaign A is implemented in the second breaker file; B/C headings are empty. Publish policy and geometry evidence belongs to zonemask_policy_test.go and is not counted again here. Both breaker functions are ordinary deterministic tests, not native Go fuzz targets."
+  ],
+  "nextAction": "Integrate the combined ten-file serial/zone trace batch; retain source-review limits.",
+  "executionSupersededBy": "engine-serial-zonemask-test-run.json",
+  "nativeIntegration": "Combined ten-file batch:23 original host tests; review limitations retained."
+}

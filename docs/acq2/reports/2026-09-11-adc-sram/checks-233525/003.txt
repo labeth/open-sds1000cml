@@ -1,0 +1,11 @@
+ARGS ["get", "/dev/acq-adc.bin", "/home/labeth/ws/open-sds1000cml-acq2/docs/acq2/reports/2026-09-11-adc-sram/checks-233525/adc-full.bin"]
+
+download: 12% (262144/2097152)
+download: 25% (524288/2097152)
+download: 37% (786432/2097152)
+download: 50% (1048576/2097152)
+download: 62% (1310720/2097152)
+download: 75% (1572864/2097152)
+download: 87% (1835008/2097152)
+download: 100% (2097152/2097152)
+ok: /dev/acq-adc.bin -> /home/labeth/ws/open-sds1000cml-acq2/docs/acq2/reports/2026-09-11-adc-sram/checks-233525/adc-full.bin

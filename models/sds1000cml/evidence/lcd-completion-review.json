@@ -1,0 +1,64 @@
+{
+  "result": "function-level-review-complete-physical-qualification-pending",
+  "files": 22,
+  "linkedFunctions": 148,
+  "linkedTypes": 8,
+  "originalTestOutcomes": 50,
+  "goldensByteIdenticalToPinnedCommit": [
+    {
+      "path": "app/internal/lcd/testdata/golden/bode.png",
+      "sha256": "e75f29da0d41df040feb6f71ba91bdc573e7262bf44db82965f47202e7424b37"
+    },
+    {
+      "path": "app/internal/lcd/testdata/golden/cursors_time.png",
+      "sha256": "a5dc83688859dd2ebbb08f1e1859f57e88f395a96993c8cc20fc36b8b9208b3d"
+    },
+    {
+      "path": "app/internal/lcd/testdata/golden/cursors_volts.png",
+      "sha256": "26de392863283e72422f1ce837f5b9ba5a5f58fdd01ea15d7f68116b6b15670c"
+    },
+    {
+      "path": "app/internal/lcd/testdata/golden/envelope_band.png",
+      "sha256": "3ac59572203ad6112a1ef142a4f3b08b5647105b54f3a2fb7384d9bb53d4e82e"
+    },
+    {
+      "path": "app/internal/lcd/testdata/golden/fft_peaks.png",
+      "sha256": "3ee1863d056ea08df9dea567203c1d713d2519765f0114d3b33ff4608ed20440"
+    },
+    {
+      "path": "app/internal/lcd/testdata/golden/measure_panel.png",
+      "sha256": "a2ae4f2b440d58236c7ea732ce4a5fbc574f7605633ec11f2e2e857a5b40135d"
+    },
+    {
+      "path": "app/internal/lcd/testdata/golden/menu_trace.png",
+      "sha256": "a2bdc30690a6834c9253e118ce7f5100e8400e668e1eeab6b8b55b570015146b"
+    },
+    {
+      "path": "app/internal/lcd/testdata/golden/spectrogram.png",
+      "sha256": "99b5c170024f06c0ff8591a5bc94ae764c941d022ed8ac9412309553ebe69bb4"
+    },
+    {
+      "path": "app/internal/lcd/testdata/golden/superres_review_fft.png",
+      "sha256": "cc68566f17241998d9cea1bc33e1230f3981e28d5ce80e75371830046341ad6c"
+    },
+    {
+      "path": "app/internal/lcd/testdata/golden/superres_review_yt.png",
+      "sha256": "4ecc6fe408280116ad76a059705885374c473ffdc527209fb7c0b6cc493f593c"
+    },
+    {
+      "path": "app/internal/lcd/testdata/golden/xy_lissajous.png",
+      "sha256": "bd4ee79929c5c8e85de59b77e98044d21848ef1686cea9e1994f42add0091ac2"
+    },
+    {
+      "path": "app/internal/lcd/testdata/golden/yt_decode_uart.png",
+      "sha256": "49543d1ee857e9e001ade59df357656db60149583f87120d40b7207a81fd65d2"
+    },
+    {
+      "path": "app/internal/lcd/testdata/golden/yt_dual.png",
+      "sha256": "d9eb86c3c57aec99b4792eeec089b4e571cc1901b75f274a25db80a317bb907b"
+    }
+  ],
+  "generatedPalette": "Reviewed through generator/input and isolated byte-identical regeneration; no generated-source annotation.",
+  "scope": "All named LCD function declarations and original test outcomes are reviewed and linked. Does not imply every behavior/branch is tested, all defects are repaired, or physical framebuffer/GPIO/panel qualification.",
+  "publication": "PDF intentionally deferred per user instruction until a larger subsystem milestone."
+}

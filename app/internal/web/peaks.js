@@ -1,8 +1,10 @@
+// ENGMODEL-OWNER-UNIT: FU-WEB-PEAKS
 // Shared FFT + peak-detection logic, used by ui.html (loaded as a <script>) and
 // by peaks.test.cjs under node. Keep it pure (no DOM / no globals) so the exact
 // code the browser runs is the code the test exercises.
 
 // Iterative radix-2 FFT (in-place). re/im length must be a power of two.
+// TRLC-LINKS: REQ-SDS-070
 function fftInPlace(re, im) {
   const n = re.length;
   for (let i = 1, j = 0; i < n; i++) {
@@ -30,6 +32,7 @@ function fftInPlace(re, im) {
 // spectrum: Hann-windowed magnitude spectrum of a real sample vector. nyq is
 // the Nyquist frequency in Hz (caller computes it from the record's column
 // count and duration). Returns null if there is too little data.
+// TRLC-LINKS: REQ-SDS-070
 function spectrum(samples, nyq) {
   let N = 1; while (N * 2 <= samples.length) N <<= 1;
   if (N < 16) return null;
@@ -51,11 +54,13 @@ function spectrum(samples, nyq) {
 // frequency. Returns AT MOST maxPeaks entries — the strongest by magnitude —
 // but SORTED BY FREQUENCY ascending so the displayed list order is stable
 // frame-to-frame (magnitude ranking jitters with noise; frequency does not).
+// TRLC-LINKS: REQ-SDS-070
 function detectPeaks(spec, opts) {
   const floorDb = (opts && opts.floorDb != null) ? opts.floorDb : -50;
   const maxPeaks = (opts && opts.maxPeaks != null) ? opts.maxPeaks : 8;
   if (!spec) return [];
   const { mags, half, nyq, peak } = spec;
+  // TRLC-LINKS: REQ-SDS-070
   const dbAt = k => 20 * Math.log10(mags[k] / peak + 1e-12);
   const cand = [];
   for (let k = 2; k < half - 2; k++) {
@@ -76,6 +81,7 @@ function detectPeaks(spec, opts) {
 // there is no selection (freq < 0) or no peaks. This is what makes a selection
 // survive across frames — we re-locate the tracked peak by FREQUENCY every
 // frame instead of trusting a list index that magnitude re-sorting would move.
+// TRLC-LINKS: REQ-SDS-070
 function nearestPeak(peaks, freq) {
   if (!peaks || !peaks.length || !(freq >= 0)) return -1;
   let best = 0, bd = Infinity;
@@ -93,6 +99,7 @@ function nearestPeak(peaks, freq) {
 // the SAME code units so it can be drawn straight over the time trace — "show me
 // just this frequency inside the waveform". Values < 0 are treated as gaps:
 // skipped in the fit, still produced in the output.
+// TRLC-LINKS: REQ-SDS-070
 function component(samples, cyclesPerLen) {
   const M = samples.length;
   if (M < 2) return null;

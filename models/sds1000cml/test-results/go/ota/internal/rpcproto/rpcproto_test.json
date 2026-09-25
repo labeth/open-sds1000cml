@@ -1,0 +1,60 @@
+{
+  "source": "ota/internal/rpcproto/rpcproto_test.go",
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "scope": "Reviewed Go test outcomes; passing assertions contribute partial requirement evidence.",
+  "sourceSHA256": "2d965f3c22005394b58ac2d3de56d7b724a271c532d611ee2f7707a50bc3cdf6",
+  "logs": {
+    "test-runs/ota-contracts.jsonl": "edb137842a5465353f2830664f17c41e1f8fc3ed8275ab2ebcfdab40840881f2"
+  },
+  "tests": [
+    {
+      "name": "TestRequestGoldenWire",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-101"
+      ]
+    },
+    {
+      "name": "TestResponseGoldenWire",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-101"
+      ]
+    },
+    {
+      "name": "TestFullCommandSurfaceRoundTrip",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-101"
+      ]
+    },
+    {
+      "name": "TestResponseDecodeAgentShapes",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-101"
+      ]
+    },
+    {
+      "name": "FuzzRequestDecode",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-101"
+      ]
+    },
+    {
+      "name": "FuzzResponseDecode",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-101"
+      ]
+    }
+  ],
+  "results": [
+    {
+      "requirement": "REQ-SDS-101",
+      "status": "partial",
+      "notes": "6 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    }
+  ]
+}

@@ -1,0 +1,140 @@
+{"Time":"2026-09-23T11:28:10.615880569+02:00","Action":"start","Package":"open-sds/app/internal/panel"}
+{"Time":"2026-09-23T11:28:10.628454688+02:00","Action":"run","Package":"open-sds/app/internal/panel","Test":"TestRailing"}
+{"Time":"2026-09-23T11:28:10.628472521+02:00","Action":"output","Package":"open-sds/app/internal/panel","Test":"TestRailing","Output":"=== RUN   TestRailing\n"}
+{"Time":"2026-09-23T11:28:10.628854035+02:00","Action":"output","Package":"open-sds/app/internal/panel","Test":"TestRailing","Output":"--- PASS: TestRailing (0.00s)\n"}
+{"Time":"2026-09-23T11:28:10.628864478+02:00","Action":"pass","Package":"open-sds/app/internal/panel","Test":"TestRailing","Elapsed":0}
+{"Time":"2026-09-23T11:28:10.62887147+02:00","Action":"run","Package":"open-sds/app/internal/panel","Test":"TestOffScreenSaturated"}
+{"Time":"2026-09-23T11:28:10.628874981+02:00","Action":"output","Package":"open-sds/app/internal/panel","Test":"TestOffScreenSaturated","Output":"=== RUN   TestOffScreenSaturated\n"}
+{"Time":"2026-09-23T11:28:10.629099227+02:00","Action":"output","Package":"open-sds/app/internal/panel","Test":"TestOffScreenSaturated","Output":"--- PASS: TestOffScreenSaturated (0.00s)\n"}
+{"Time":"2026-09-23T11:28:10.629107559+02:00","Action":"pass","Package":"open-sds/app/internal/panel","Test":"TestOffScreenSaturated","Elapsed":0}
+{"Time":"2026-09-23T11:28:10.629128294+02:00","Action":"run","Package":"open-sds/app/internal/panel","Test":"TestAutosetVerifyTrigLevelScansIntoBand"}
+{"Time":"2026-09-23T11:28:10.629131386+02:00","Action":"output","Package":"open-sds/app/internal/panel","Test":"TestAutosetVerifyTrigLevelScansIntoBand","Output":"=== RUN   TestAutosetVerifyTrigLevelScansIntoBand\n"}
+{"Time":"2026-09-23T11:28:13.27336482+02:00","Action":"output","Package":"open-sds/app/internal/panel","Test":"TestAutosetVerifyTrigLevelScansIntoBand","Output":"--- PASS: TestAutosetVerifyTrigLevelScansIntoBand (2.64s)\n"}
+{"Time":"2026-09-23T11:28:13.273387497+02:00","Action":"pass","Package":"open-sds/app/internal/panel","Test":"TestAutosetVerifyTrigLevelScansIntoBand","Elapsed":2.64}
+{"Time":"2026-09-23T11:28:13.273459225+02:00","Action":"run","Package":"open-sds/app/internal/panel","Test":"TestAutosetVerifyTrigLevelKeepsComputedWhenNothingFires"}
+{"Time":"2026-09-23T11:28:13.273465838+02:00","Action":"output","Package":"open-sds/app/internal/panel","Test":"TestAutosetVerifyTrigLevelKeepsComputedWhenNothingFires","Output":"=== RUN   TestAutosetVerifyTrigLevelKeepsComputedWhenNothingFires\n"}
+{"Time":"2026-09-23T11:28:15.917712551+02:00","Action":"output","Package":"open-sds/app/internal/panel","Test":"TestAutosetVerifyTrigLevelKeepsComputedWhenNothingFires","Output":"--- PASS: TestAutosetVerifyTrigLevelKeepsComputedWhenNothingFires (2.64s)\n"}
+{"Time":"2026-09-23T11:28:15.917783825+02:00","Action":"pass","Package":"open-sds/app/internal/panel","Test":"TestAutosetVerifyTrigLevelKeepsComputedWhenNothingFires","Elapsed":2.64}
+{"Time":"2026-09-23T11:28:15.91781153+02:00","Action":"run","Package":"open-sds/app/internal/panel","Test":"TestPanelChaos"}
+{"Time":"2026-09-23T11:28:15.917817393+02:00","Action":"output","Package":"open-sds/app/internal/panel","Test":"TestPanelChaos","Output":"=== RUN   TestPanelChaos\n"}
+{"Time":"2026-09-23T11:28:16.138686495+02:00","Action":"output","Package":"open-sds/app/internal/panel","Test":"TestPanelChaos","Output":"--- PASS: TestPanelChaos (0.22s)\n"}
+{"Time":"2026-09-23T11:28:16.138707371+02:00","Action":"pass","Package":"open-sds/app/internal/panel","Test":"TestPanelChaos","Elapsed":0.22}
+{"Time":"2026-09-23T11:28:16.138751831+02:00","Action":"run","Package":"open-sds/app/internal/panel","Test":"TestDisplayStateAccessors"}
+{"Time":"2026-09-23T11:28:16.13875723+02:00","Action":"output","Package":"open-sds/app/internal/panel","Test":"TestDisplayStateAccessors","Output":"=== RUN   TestDisplayStateAccessors\n"}
+{"Time":"2026-09-23T11:28:16.138871426+02:00","Action":"output","Package":"open-sds/app/internal/panel","Test":"TestDisplayStateAccessors","Output":"--- PASS: TestDisplayStateAccessors (0.00s)\n"}
+{"Time":"2026-09-23T11:28:16.138882983+02:00","Action":"pass","Package":"open-sds/app/internal/panel","Test":"TestDisplayStateAccessors","Elapsed":0}
+{"Time":"2026-09-23T11:28:16.138916145+02:00","Action":"run","Package":"open-sds/app/internal/panel","Test":"TestFmtEngNoScientific"}
+{"Time":"2026-09-23T11:28:16.138919957+02:00","Action":"output","Package":"open-sds/app/internal/panel","Test":"TestFmtEngNoScientific","Output":"=== RUN   TestFmtEngNoScientific\n"}
+{"Time":"2026-09-23T11:28:16.139013722+02:00","Action":"output","Package":"open-sds/app/internal/panel","Test":"TestFmtEngNoScientific","Output":"--- PASS: TestFmtEngNoScientific (0.00s)\n"}
+{"Time":"2026-09-23T11:28:16.139024424+02:00","Action":"pass","Package":"open-sds/app/internal/panel","Test":"TestFmtEngNoScientific","Elapsed":0}
+{"Time":"2026-09-23T11:28:16.139051047+02:00","Action":"run","Package":"open-sds/app/internal/panel","Test":"TestMenuFuzz"}
+{"Time":"2026-09-23T11:28:16.139054922+02:00","Action":"output","Package":"open-sds/app/internal/panel","Test":"TestMenuFuzz","Output":"=== RUN   TestMenuFuzz\n"}
+{"Time":"2026-09-23T11:28:16.139221865+02:00","Action":"run","Package":"open-sds/app/internal/panel","Test":"TestMenuFuzz/seed1"}
+{"Time":"2026-09-23T11:28:16.139227173+02:00","Action":"output","Package":"open-sds/app/internal/panel","Test":"TestMenuFuzz/seed1","Output":"=== RUN   TestMenuFuzz/seed1\n"}
+{"Time":"2026-09-23T11:28:16.244613902+02:00","Action":"output","Package":"open-sds/app/internal/panel","Test":"TestMenuFuzz/seed1","Output":"--- PASS: TestMenuFuzz/seed1 (0.11s)\n"}
+{"Time":"2026-09-23T11:28:16.244633986+02:00","Action":"pass","Package":"open-sds/app/internal/panel","Test":"TestMenuFuzz/seed1","Elapsed":0.11}
+{"Time":"2026-09-23T11:28:16.244700832+02:00","Action":"run","Package":"open-sds/app/internal/panel","Test":"TestMenuFuzz/seed1337"}
+{"Time":"2026-09-23T11:28:16.244707565+02:00","Action":"output","Package":"open-sds/app/internal/panel","Test":"TestMenuFuzz/seed1337","Output":"=== RUN   TestMenuFuzz/seed1337\n"}
+{"Time":"2026-09-23T11:28:16.312972868+02:00","Action":"output","Package":"open-sds/app/internal/panel","Test":"TestMenuFuzz/seed1337","Output":"--- PASS: TestMenuFuzz/seed1337 (0.07s)\n"}
+{"Time":"2026-09-23T11:28:16.312989894+02:00","Action":"pass","Package":"open-sds/app/internal/panel","Test":"TestMenuFuzz/seed1337","Elapsed":0.07}
+{"Time":"2026-09-23T11:28:16.313034181+02:00","Action":"run","Package":"open-sds/app/internal/panel","Test":"TestMenuFuzz/seed20260710"}
+{"Time":"2026-09-23T11:28:16.313039566+02:00","Action":"output","Package":"open-sds/app/internal/panel","Test":"TestMenuFuzz/seed20260710","Output":"=== RUN   TestMenuFuzz/seed20260710\n"}
+{"Time":"2026-09-23T11:28:16.384925583+02:00","Action":"output","Package":"open-sds/app/internal/panel","Test":"TestMenuFuzz/seed20260710","Output":"--- PASS: TestMenuFuzz/seed20260710 (0.07s)\n"}
+{"Time":"2026-09-23T11:28:16.384942958+02:00","Action":"pass","Package":"open-sds/app/internal/panel","Test":"TestMenuFuzz/seed20260710","Elapsed":0.07}
+{"Time":"2026-09-23T11:28:16.384954407+02:00","Action":"output","Package":"open-sds/app/internal/panel","Test":"TestMenuFuzz","Output":"--- PASS: TestMenuFuzz (0.25s)\n"}
+{"Time":"2026-09-23T11:28:16.384965838+02:00","Action":"pass","Package":"open-sds/app/internal/panel","Test":"TestMenuFuzz","Elapsed":0.25}
+{"Time":"2026-09-23T11:28:16.385015599+02:00","Action":"run","Package":"open-sds/app/internal/panel","Test":"TestDecodeChannelComplementarityAcrossProtoSwitch"}
+{"Time":"2026-09-23T11:28:16.385024824+02:00","Action":"output","Package":"open-sds/app/internal/panel","Test":"TestDecodeChannelComplementarityAcrossProtoSwitch","Output":"=== RUN   TestDecodeChannelComplementarityAcrossProtoSwitch\n"}
+{"Time":"2026-09-23T11:28:16.385092097+02:00","Action":"output","Package":"open-sds/app/internal/panel","Test":"TestDecodeChannelComplementarityAcrossProtoSwitch","Output":"--- PASS: TestDecodeChannelComplementarityAcrossProtoSwitch (0.00s)\n"}
+{"Time":"2026-09-23T11:28:16.385101923+02:00","Action":"pass","Package":"open-sds/app/internal/panel","Test":"TestDecodeChannelComplementarityAcrossProtoSwitch","Elapsed":0}
+{"Time":"2026-09-23T11:28:16.385129364+02:00","Action":"run","Package":"open-sds/app/internal/panel","Test":"TestButtonEdges"}
+{"Time":"2026-09-23T11:28:16.385133655+02:00","Action":"output","Package":"open-sds/app/internal/panel","Test":"TestButtonEdges","Output":"=== RUN   TestButtonEdges\n"}
+{"Time":"2026-09-23T11:28:16.385207989+02:00","Action":"output","Package":"open-sds/app/internal/panel","Test":"TestButtonEdges","Output":"--- PASS: TestButtonEdges (0.00s)\n"}
+{"Time":"2026-09-23T11:28:16.385221493+02:00","Action":"pass","Package":"open-sds/app/internal/panel","Test":"TestButtonEdges","Elapsed":0}
+{"Time":"2026-09-23T11:28:16.385252834+02:00","Action":"run","Package":"open-sds/app/internal/panel","Test":"TestSingleAndAuto"}
+{"Time":"2026-09-23T11:28:16.385257452+02:00","Action":"output","Package":"open-sds/app/internal/panel","Test":"TestSingleAndAuto","Output":"=== RUN   TestSingleAndAuto\n"}
+{"Time":"2026-09-23T11:28:16.385323483+02:00","Action":"output","Package":"open-sds/app/internal/panel","Test":"TestSingleAndAuto","Output":"--- PASS: TestSingleAndAuto (0.00s)\n"}
+{"Time":"2026-09-23T11:28:16.385340696+02:00","Action":"pass","Package":"open-sds/app/internal/panel","Test":"TestSingleAndAuto","Elapsed":0}
+{"Time":"2026-09-23T11:28:16.385373751+02:00","Action":"run","Package":"open-sds/app/internal/panel","Test":"TestKnobPriorityOneRowPerEvent"}
+{"Time":"2026-09-23T11:28:16.3853777+02:00","Action":"output","Package":"open-sds/app/internal/panel","Test":"TestKnobPriorityOneRowPerEvent","Output":"=== RUN   TestKnobPriorityOneRowPerEvent\n"}
+{"Time":"2026-09-23T11:28:16.385445311+02:00","Action":"output","Package":"open-sds/app/internal/panel","Test":"TestKnobPriorityOneRowPerEvent","Output":"--- PASS: TestKnobPriorityOneRowPerEvent (0.00s)\n"}
+{"Time":"2026-09-23T11:28:16.38546465+02:00","Action":"pass","Package":"open-sds/app/internal/panel","Test":"TestKnobPriorityOneRowPerEvent","Elapsed":0}
+{"Time":"2026-09-23T11:28:16.385489015+02:00","Action":"run","Package":"open-sds/app/internal/panel","Test":"TestTdivKnob"}
+{"Time":"2026-09-23T11:28:16.38549312+02:00","Action":"output","Package":"open-sds/app/internal/panel","Test":"TestTdivKnob","Output":"=== RUN   TestTdivKnob\n"}
+{"Time":"2026-09-23T11:28:16.385571475+02:00","Action":"output","Package":"open-sds/app/internal/panel","Test":"TestTdivKnob","Output":"--- PASS: TestTdivKnob (0.00s)\n"}
+{"Time":"2026-09-23T11:28:16.385584076+02:00","Action":"pass","Package":"open-sds/app/internal/panel","Test":"TestTdivKnob","Elapsed":0}
+{"Time":"2026-09-23T11:28:16.385612514+02:00","Action":"run","Package":"open-sds/app/internal/panel","Test":"TestVdivKnob"}
+{"Time":"2026-09-23T11:28:16.385616756+02:00","Action":"output","Package":"open-sds/app/internal/panel","Test":"TestVdivKnob","Output":"=== RUN   TestVdivKnob\n"}
+{"Time":"2026-09-23T11:28:16.385696092+02:00","Action":"output","Package":"open-sds/app/internal/panel","Test":"TestVdivKnob","Output":"--- PASS: TestVdivKnob (0.00s)\n"}
+{"Time":"2026-09-23T11:28:16.385708573+02:00","Action":"pass","Package":"open-sds/app/internal/panel","Test":"TestVdivKnob","Elapsed":0}
+{"Time":"2026-09-23T11:28:16.385739647+02:00","Action":"run","Package":"open-sds/app/internal/panel","Test":"TestTrigLevelSign"}
+{"Time":"2026-09-23T11:28:16.385743558+02:00","Action":"output","Package":"open-sds/app/internal/panel","Test":"TestTrigLevelSign","Output":"=== RUN   TestTrigLevelSign\n"}
+{"Time":"2026-09-23T11:28:16.385813486+02:00","Action":"output","Package":"open-sds/app/internal/panel","Test":"TestTrigLevelSign","Output":"--- PASS: TestTrigLevelSign (0.00s)\n"}
+{"Time":"2026-09-23T11:28:16.385827061+02:00","Action":"pass","Package":"open-sds/app/internal/panel","Test":"TestTrigLevelSign","Elapsed":0}
+{"Time":"2026-09-23T11:28:16.385855222+02:00","Action":"run","Package":"open-sds/app/internal/panel","Test":"TestPositionKnobAccel"}
+{"Time":"2026-09-23T11:28:16.385858997+02:00","Action":"output","Package":"open-sds/app/internal/panel","Test":"TestPositionKnobAccel","Output":"=== RUN   TestPositionKnobAccel\n"}
+{"Time":"2026-09-23T11:28:16.385927393+02:00","Action":"output","Package":"open-sds/app/internal/panel","Test":"TestPositionKnobAccel","Output":"--- PASS: TestPositionKnobAccel (0.00s)\n"}
+{"Time":"2026-09-23T11:28:16.385939743+02:00","Action":"pass","Package":"open-sds/app/internal/panel","Test":"TestPositionKnobAccel","Elapsed":0}
+{"Time":"2026-09-23T11:28:16.385970092+02:00","Action":"run","Package":"open-sds/app/internal/panel","Test":"TestKnobResyncFromEngine"}
+{"Time":"2026-09-23T11:28:16.385976509+02:00","Action":"output","Package":"open-sds/app/internal/panel","Test":"TestKnobResyncFromEngine","Output":"=== RUN   TestKnobResyncFromEngine\n"}
+{"Time":"2026-09-23T11:28:16.386045576+02:00","Action":"output","Package":"open-sds/app/internal/panel","Test":"TestKnobResyncFromEngine","Output":"--- PASS: TestKnobResyncFromEngine (0.00s)\n"}
+{"Time":"2026-09-23T11:28:16.386062703+02:00","Action":"pass","Package":"open-sds/app/internal/panel","Test":"TestKnobResyncFromEngine","Elapsed":0}
+{"Time":"2026-09-23T11:28:16.386093946+02:00","Action":"run","Package":"open-sds/app/internal/panel","Test":"TestAccelMap"}
+{"Time":"2026-09-23T11:28:16.386098005+02:00","Action":"output","Package":"open-sds/app/internal/panel","Test":"TestAccelMap","Output":"=== RUN   TestAccelMap\n"}
+{"Time":"2026-09-23T11:28:16.386155806+02:00","Action":"output","Package":"open-sds/app/internal/panel","Test":"TestAccelMap","Output":"--- PASS: TestAccelMap (0.00s)\n"}
+{"Time":"2026-09-23T11:28:16.386174257+02:00","Action":"pass","Package":"open-sds/app/internal/panel","Test":"TestAccelMap","Elapsed":0}
+{"Time":"2026-09-23T11:28:16.386204664+02:00","Action":"run","Package":"open-sds/app/internal/panel","Test":"TestKnobGateOnZeroMagnitude"}
+{"Time":"2026-09-23T11:28:16.386208887+02:00","Action":"output","Package":"open-sds/app/internal/panel","Test":"TestKnobGateOnZeroMagnitude","Output":"=== RUN   TestKnobGateOnZeroMagnitude\n"}
+{"Time":"2026-09-23T11:28:16.386268168+02:00","Action":"output","Package":"open-sds/app/internal/panel","Test":"TestKnobGateOnZeroMagnitude","Output":"--- PASS: TestKnobGateOnZeroMagnitude (0.00s)\n"}
+{"Time":"2026-09-23T11:28:16.386287752+02:00","Action":"pass","Package":"open-sds/app/internal/panel","Test":"TestKnobGateOnZeroMagnitude","Elapsed":0}
+{"Time":"2026-09-23T11:28:16.386315275+02:00","Action":"run","Package":"open-sds/app/internal/panel","Test":"TestResyncButtonsOnly"}
+{"Time":"2026-09-23T11:28:16.386319106+02:00","Action":"output","Package":"open-sds/app/internal/panel","Test":"TestResyncButtonsOnly","Output":"=== RUN   TestResyncButtonsOnly\n"}
+{"Time":"2026-09-23T11:28:16.386378597+02:00","Action":"output","Package":"open-sds/app/internal/panel","Test":"TestResyncButtonsOnly","Output":"--- PASS: TestResyncButtonsOnly (0.00s)\n"}
+{"Time":"2026-09-23T11:28:16.386398002+02:00","Action":"pass","Package":"open-sds/app/internal/panel","Test":"TestResyncButtonsOnly","Elapsed":0}
+{"Time":"2026-09-23T11:28:16.386429075+02:00","Action":"run","Package":"open-sds/app/internal/panel","Test":"TestKnobPushTrigger"}
+{"Time":"2026-09-23T11:28:16.386433103+02:00","Action":"output","Package":"open-sds/app/internal/panel","Test":"TestKnobPushTrigger","Output":"=== RUN   TestKnobPushTrigger\n"}
+{"Time":"2026-09-23T11:28:16.386504624+02:00","Action":"output","Package":"open-sds/app/internal/panel","Test":"TestKnobPushTrigger","Output":"--- PASS: TestKnobPushTrigger (0.00s)\n"}
+{"Time":"2026-09-23T11:28:16.386518476+02:00","Action":"pass","Package":"open-sds/app/internal/panel","Test":"TestKnobPushTrigger","Elapsed":0}
+{"Time":"2026-09-23T11:28:16.386553038+02:00","Action":"run","Package":"open-sds/app/internal/panel","Test":"TestCursorMenu"}
+{"Time":"2026-09-23T11:28:16.386556843+02:00","Action":"output","Package":"open-sds/app/internal/panel","Test":"TestCursorMenu","Output":"=== RUN   TestCursorMenu\n"}
+{"Time":"2026-09-23T11:28:16.386674391+02:00","Action":"output","Package":"open-sds/app/internal/panel","Test":"TestCursorMenu","Output":"--- PASS: TestCursorMenu (0.00s)\n"}
+{"Time":"2026-09-23T11:28:16.386692514+02:00","Action":"pass","Package":"open-sds/app/internal/panel","Test":"TestCursorMenu","Elapsed":0}
+{"Time":"2026-09-23T11:28:16.386731086+02:00","Action":"run","Package":"open-sds/app/internal/panel","Test":"TestDecodeMenu"}
+{"Time":"2026-09-23T11:28:16.386735883+02:00","Action":"output","Package":"open-sds/app/internal/panel","Test":"TestDecodeMenu","Output":"=== RUN   TestDecodeMenu\n"}
+{"Time":"2026-09-23T11:28:16.386896091+02:00","Action":"output","Package":"open-sds/app/internal/panel","Test":"TestDecodeMenu","Output":"--- PASS: TestDecodeMenu (0.00s)\n"}
+{"Time":"2026-09-23T11:28:16.386908911+02:00","Action":"pass","Package":"open-sds/app/internal/panel","Test":"TestDecodeMenu","Elapsed":0}
+{"Time":"2026-09-23T11:28:16.386945729+02:00","Action":"run","Package":"open-sds/app/internal/panel","Test":"TestTriggerHoldoffSoftkey"}
+{"Time":"2026-09-23T11:28:16.386950456+02:00","Action":"output","Package":"open-sds/app/internal/panel","Test":"TestTriggerHoldoffSoftkey","Output":"=== RUN   TestTriggerHoldoffSoftkey\n"}
+{"Time":"2026-09-23T11:28:16.387035757+02:00","Action":"output","Package":"open-sds/app/internal/panel","Test":"TestTriggerHoldoffSoftkey","Output":"--- PASS: TestTriggerHoldoffSoftkey (0.00s)\n"}
+{"Time":"2026-09-23T11:28:16.387048839+02:00","Action":"pass","Package":"open-sds/app/internal/panel","Test":"TestTriggerHoldoffSoftkey","Elapsed":0}
+{"Time":"2026-09-23T11:28:16.387081807+02:00","Action":"run","Package":"open-sds/app/internal/panel","Test":"TestSuperresUX"}
+{"Time":"2026-09-23T11:28:16.387086201+02:00","Action":"output","Package":"open-sds/app/internal/panel","Test":"TestSuperresUX","Output":"=== RUN   TestSuperresUX\n"}
+{"Time":"2026-09-23T11:28:16.390514893+02:00","Action":"output","Package":"open-sds/app/internal/panel","Test":"TestSuperresUX","Output":"--- PASS: TestSuperresUX (0.00s)\n"}
+{"Time":"2026-09-23T11:28:16.39052928+02:00","Action":"pass","Package":"open-sds/app/internal/panel","Test":"TestSuperresUX","Elapsed":0}
+{"Time":"2026-09-23T11:28:16.390564858+02:00","Action":"run","Package":"open-sds/app/internal/panel","Test":"TestSingleThenRunLamp"}
+{"Time":"2026-09-23T11:28:16.390568523+02:00","Action":"output","Package":"open-sds/app/internal/panel","Test":"TestSingleThenRunLamp","Output":"=== RUN   TestSingleThenRunLamp\n"}
+{"Time":"2026-09-23T11:28:16.390650179+02:00","Action":"output","Package":"open-sds/app/internal/panel","Test":"TestSingleThenRunLamp","Output":"--- PASS: TestSingleThenRunLamp (0.00s)\n"}
+{"Time":"2026-09-23T11:28:16.390674618+02:00","Action":"pass","Package":"open-sds/app/internal/panel","Test":"TestSingleThenRunLamp","Elapsed":0}
+{"Time":"2026-09-23T11:28:16.39070537+02:00","Action":"run","Package":"open-sds/app/internal/panel","Test":"TestLEDMap"}
+{"Time":"2026-09-23T11:28:16.390708429+02:00","Action":"output","Package":"open-sds/app/internal/panel","Test":"TestLEDMap","Output":"=== RUN   TestLEDMap\n"}
+{"Time":"2026-09-23T11:28:16.390769532+02:00","Action":"output","Package":"open-sds/app/internal/panel","Test":"TestLEDMap","Output":"--- PASS: TestLEDMap (0.00s)\n"}
+{"Time":"2026-09-23T11:28:16.390790629+02:00","Action":"pass","Package":"open-sds/app/internal/panel","Test":"TestLEDMap","Elapsed":0}
+{"Time":"2026-09-23T11:28:16.390824118+02:00","Action":"run","Package":"open-sds/app/internal/panel","Test":"TestSettingsViewRoundTrip"}
+{"Time":"2026-09-23T11:28:16.390827355+02:00","Action":"output","Package":"open-sds/app/internal/panel","Test":"TestSettingsViewRoundTrip","Output":"=== RUN   TestSettingsViewRoundTrip\n"}
+{"Time":"2026-09-23T11:28:16.39089128+02:00","Action":"output","Package":"open-sds/app/internal/panel","Test":"TestSettingsViewRoundTrip","Output":"--- PASS: TestSettingsViewRoundTrip (0.00s)\n"}
+{"Time":"2026-09-23T11:28:16.39090988+02:00","Action":"pass","Package":"open-sds/app/internal/panel","Test":"TestSettingsViewRoundTrip","Elapsed":0}
+{"Time":"2026-09-23T11:28:16.390946764+02:00","Action":"run","Package":"open-sds/app/internal/panel","Test":"TestApplySettingsViewClamps"}
+{"Time":"2026-09-23T11:28:16.3909497+02:00","Action":"output","Package":"open-sds/app/internal/panel","Test":"TestApplySettingsViewClamps","Output":"=== RUN   TestApplySettingsViewClamps\n"}
+{"Time":"2026-09-23T11:28:16.391009377+02:00","Action":"output","Package":"open-sds/app/internal/panel","Test":"TestApplySettingsViewClamps","Output":"--- PASS: TestApplySettingsViewClamps (0.00s)\n"}
+{"Time":"2026-09-23T11:28:16.391028122+02:00","Action":"pass","Package":"open-sds/app/internal/panel","Test":"TestApplySettingsViewClamps","Elapsed":0}
+{"Time":"2026-09-23T11:28:16.391067515+02:00","Action":"run","Package":"open-sds/app/internal/panel","Test":"TestApplySettingsViewKeepsTwoSignalRolesOpposite"}
+{"Time":"2026-09-23T11:28:16.391070776+02:00","Action":"output","Package":"open-sds/app/internal/panel","Test":"TestApplySettingsViewKeepsTwoSignalRolesOpposite","Output":"=== RUN   TestApplySettingsViewKeepsTwoSignalRolesOpposite\n"}
+{"Time":"2026-09-23T11:28:16.391133628+02:00","Action":"output","Package":"open-sds/app/internal/panel","Test":"TestApplySettingsViewKeepsTwoSignalRolesOpposite","Output":"--- PASS: TestApplySettingsViewKeepsTwoSignalRolesOpposite (0.00s)\n"}
+{"Time":"2026-09-23T11:28:16.3911518+02:00","Action":"pass","Package":"open-sds/app/internal/panel","Test":"TestApplySettingsViewKeepsTwoSignalRolesOpposite","Elapsed":0}
+{"Time":"2026-09-23T11:28:16.391189332+02:00","Action":"run","Package":"open-sds/app/internal/panel","Test":"TestSRCompMeansAppliesFalloffComp"}
+{"Time":"2026-09-23T11:28:16.391192715+02:00","Action":"output","Package":"open-sds/app/internal/panel","Test":"TestSRCompMeansAppliesFalloffComp","Output":"=== RUN   TestSRCompMeansAppliesFalloffComp\n"}
+{"Time":"2026-09-23T11:28:16.409679457+02:00","Action":"output","Package":"open-sds/app/internal/panel","Test":"TestSRCompMeansAppliesFalloffComp","Output":"--- PASS: TestSRCompMeansAppliesFalloffComp (0.02s)\n"}
+{"Time":"2026-09-23T11:28:16.409696956+02:00","Action":"pass","Package":"open-sds/app/internal/panel","Test":"TestSRCompMeansAppliesFalloffComp","Elapsed":0.02}
+{"Time":"2026-09-23T11:28:16.409830047+02:00","Action":"output","Package":"open-sds/app/internal/panel","Output":"PASS\n"}
+{"Time":"2026-09-23T11:28:17.412774153+02:00","Action":"output","Package":"open-sds/app/internal/panel","Output":"ok  \topen-sds/app/internal/panel\t6.797s\n"}
+{"Time":"2026-09-23T11:28:17.412801253+02:00","Action":"pass","Package":"open-sds/app/internal/panel","Elapsed":6.797}

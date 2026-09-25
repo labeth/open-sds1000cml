@@ -1,5 +1,7 @@
+// ENGMODEL-OWNER-UNIT: FU-RTL-COMMON-TESTS
 // tb_ddio.v -- the ddio_out1 / ddio_pair SIM model: clock forward, static, SDR, complementary.
 `timescale 1ns/1ps
+// TRLC-LINKS: REQ-SDS-189
 module tb_ddio;
     reg clk = 0; always #2.5 clk = ~clk;
     reg dh = 0, dl = 0; wire p, n;

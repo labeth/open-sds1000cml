@@ -1,0 +1,44 @@
+package lcd
+
+import (
+ "math"
+ "reflect"
+ "testing"
+)
+
+// REQ-SDS-021 bounded renderer-helper characterization, not reconstruction proof.
+func TestModelLCDSuperresBoundaries(t *testing.T) {
+ t.Run("gap_fill_exact_values",func(t *testing.T){
+  got:=srFilled([]float32{-1,10,-1,30,-1});if !reflect.DeepEqual(got,[]float64{10,10,20,30,30}) {t.Fatal(got)}
+ })
+ t.Run("all_gaps_fill_midscale_but_remain_invalid",func(t *testing.T){
+  out,valid:=srResampleArray([]float32{-1,-1},4)
+  if !reflect.DeepEqual(out,[]float64{128,128,128,128}) || !reflect.DeepEqual(valid,[]bool{false,false,false,false}) {t.Fatal(out,valid)}
+ })
+ t.Run("nan_neighbor_precondition_panics",func(t *testing.T){
+  for _,mean:=range [][]float32{{float32(math.NaN()),1},{1,float32(math.NaN())}} {
+   func(){defer func(){if recover()==nil {t.Error("expected NaN interpolation boundary panic")}}();srFilled(mean)}()
+  }
+ })
+ t.Run("equal_size_resample_shifts_half_bin",func(t *testing.T){
+  out,valid:=srResampleArray([]float32{0,10,20,30},4)
+  if !reflect.DeepEqual(out,[]float64{5,15,25,30}) || !reflect.DeepEqual(valid,[]bool{true,true,true,true}) {t.Fatal(out,valid)}
+ })
+ t.Run("nonfinite_sample_interval_returns_ok_zero_nyquist",func(t *testing.T){
+  for _,dt:=range []float64{math.NaN(),math.Inf(1)} {n,nyq,_,_,ok:=srFFTPlan(HUD{SRMean:make([]float32,16),SRk:8,SRSampleS:dt});if !ok || n!=16 || nyq!=0 {t.Fatal(n,nyq,ok)}}
+ })
+ t.Run("fft_cap_resamples_without_antialias_filter",func(t *testing.T){
+  mean:=make([]float32,16384);for i:=range mean {mean[i]=float32(i%2*255)}
+  n,nyq,_,_,ok:=srFFTPlan(HUD{SRMean:mean,SRk:8,SRSampleS:1e-9});if !ok || n!=8192 || math.Abs(nyq-2e9)>1 {t.Fatal(n,nyq,ok)}
+  out,_:=srResampleArray(mean,n);for i,v:=range out {if v!=255 {t.Fatal(i,v)}}
+ })
+ t.Run("all_gap_second_channel_lifts_xy_pen",func(t *testing.T){
+  h:=defaultHUD();h.TwoChan=true;h.SRMean=[]float32{80,100,120,140};h.SRMean2=[]float32{-1,-1,-1,-1}
+  blank:=NewMemSurface();drawSuperresXY(blank,h);if countColor(blank,colMath)!=0 {t.Fatal("gap chord")}
+  h.SRMean2=[]float32{80,100,120,140};positive:=NewMemSurface();drawSuperresXY(positive,h);if countColor(positive,colMath)==0 {t.Fatal("valid counterexample missing")}
+ })
+ t.Run("review_bode_and_spectrogram_fall_back_to_yt",func(t *testing.T){
+  h:=defaultHUD();h.SRFocus=3;h.SRMean=[]float32{80,100,120,140};h.SRk=1;h.SRWinHi=4
+  for _,mode:=range []int{3,4} {h.ViewMode=mode;sf:=NewMemSurface();Render(sf,nil,h,false);if countColor(sf,colSR)==0 {t.Fatal("missing fallback",mode)}}
+ })
+}

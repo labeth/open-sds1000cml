@@ -19,6 +19,7 @@
 //
 // The package is unit-tested with fake quartus_* shell scripts; it never runs
 // the real tools in its tests.
+// ENGMODEL-OWNER-UNIT: FU-FPGA-QUARTUS
 package quartus
 
 import (
@@ -48,6 +49,7 @@ const DefaultLockPath = "/tmp/open-sds-quartus.lock"
 const DefaultMinFreeMB = 3 * 1024
 
 // DefaultRoot returns $QUARTUS_ROOTDIR or the pinned 21.1 Lite install.
+// TRLC-LINKS: REQ-SDS-152
 func DefaultRoot() string {
 	if r := os.Getenv("QUARTUS_ROOTDIR"); r != "" {
 		return r
@@ -56,6 +58,7 @@ func DefaultRoot() string {
 }
 
 // Config describes one flow.
+// TRLC-LINKS: REQ-SDS-152
 type Config struct {
 	Root      string // Quartus install root (bin/ underneath); DefaultRoot() if empty
 	FPGADir   string // the fpga module root (holds common/ and <Design>/)
@@ -69,6 +72,7 @@ type Config struct {
 }
 
 // Stage records one tool invocation.
+// TRLC-LINKS: REQ-SDS-152
 type Stage struct {
 	Tool     string
 	Args     []string
@@ -79,6 +83,7 @@ type Stage struct {
 // Result is the outcome of a successful flow (every tool exited 0 and the rbf
 // has the right size). Defects the reports show are carried in Fit.Problems
 // and Timing.Failing(); the caller decides whether they fail the build.
+// TRLC-LINKS: REQ-SDS-152, REQ-SDS-153, REQ-SDS-154
 type Result struct {
 	RBF     string
 	RBFSize int64
@@ -92,6 +97,7 @@ type Result struct {
 
 // Defects lists everything the caller should treat as a failed build even
 // though the tools exited 0.
+// TRLC-LINKS: REQ-SDS-154
 func (r Result) Defects() []string {
 	var d []string
 	for _, p := range r.Fit.Problems {
@@ -106,6 +112,7 @@ func (r Result) Defects() []string {
 	return d
 }
 
+// TRLC-LINKS: REQ-SDS-152
 func (c *Config) fill() error {
 	if c.Root == "" {
 		c.Root = DefaultRoot()
@@ -134,11 +141,13 @@ func (c *Config) fill() error {
 // --- lock ---------------------------------------------------------------------
 
 // Lock is a held flock on the serialization file.
+// TRLC-LINKS: REQ-SDS-152
 type Lock struct{ f *os.File }
 
 // AcquireLock takes an exclusive flock on path, waiting up to wait (0 = try
 // once). The holder's pid and design are written into the file for
 // diagnostics; a foreign holder is reported in the error.
+// TRLC-LINKS: REQ-SDS-152
 func AcquireLock(ctx context.Context, path string, wait time.Duration, tag string) (*Lock, error) {
 	f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0o666)
 	if err != nil {
@@ -172,6 +181,7 @@ func AcquireLock(ctx context.Context, path string, wait time.Duration, tag strin
 }
 
 // Release drops the lock.
+// TRLC-LINKS: REQ-SDS-152
 func (l *Lock) Release() {
 	if l == nil || l.f == nil {
 		return
@@ -185,6 +195,7 @@ func (l *Lock) Release() {
 
 // MemAvailableMB parses MemAvailable (in MB) from a /proc/meminfo-shaped file;
 // -1 if it cannot be read.
+// TRLC-LINKS: REQ-SDS-152
 func MemAvailableMB(path string) int {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -194,6 +205,7 @@ func MemAvailableMB(path string) int {
 }
 
 // ParseMemAvailableMB is the pure part of MemAvailableMB.
+// TRLC-LINKS: REQ-SDS-152
 func ParseMemAvailableMB(meminfo string) int {
 	for _, ln := range strings.Split(meminfo, "\n") {
 		if strings.HasPrefix(ln, "MemAvailable:") {
@@ -216,6 +228,7 @@ func ParseMemAvailableMB(meminfo string) int {
 // Run executes the whole flow. It returns an error for anything that stops
 // the flow (lock, memory, staging, a tool exiting non-zero, a wrong-size rbf);
 // report-level defects come back in Result.Defects().
+// TRLC-LINKS: REQ-SDS-152, REQ-SDS-153, REQ-SDS-154
 func Run(ctx context.Context, c Config) (*Result, error) {
 	if err := c.fill(); err != nil {
 		return nil, err
@@ -296,6 +309,7 @@ func Run(ctx context.Context, c Config) (*Result, error) {
 // stage wipes OutDir and copies the design's inputs into it flat. It returns
 // the staged .v file names in QSF order after checking the QSF lists exactly
 // that set and that the SDC it names is present.
+// TRLC-LINKS: REQ-SDS-153
 func stage(c Config, design, qsf string) ([]string, error) {
 	if err := os.RemoveAll(c.OutDir); err != nil {
 		return nil, err
@@ -377,6 +391,7 @@ func stage(c Config, design, qsf string) ([]string, error) {
 	return listed, nil
 }
 
+// TRLC-LINKS: REQ-SDS-153
 func copyFile(src, dst string) error {
 	data, err := os.ReadFile(src)
 	if err != nil {
@@ -387,6 +402,7 @@ func copyFile(src, dst string) error {
 
 // runTool runs one quartus_* binary in OutDir with its combined output
 // captured into OutDir/<tool>.log.
+// TRLC-LINKS: REQ-SDS-152
 func runTool(ctx context.Context, c Config, tool string, args []string) (Stage, error) {
 	st := Stage{Tool: tool, Args: args, LogFile: filepath.Join(c.OutDir, tool+".log")}
 	logf, err := os.Create(st.LogFile)
@@ -413,6 +429,7 @@ func runTool(ctx context.Context, c Config, tool string, args []string) (Stage, 
 	return st, nil
 }
 
+// TRLC-LINKS: REQ-SDS-152
 func lastLines(s string, n int) string {
 	ls := strings.Split(strings.TrimRight(s, "\n"), "\n")
 	if len(ls) > n {

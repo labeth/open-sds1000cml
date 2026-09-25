@@ -1,0 +1,404 @@
+{
+  "result": "pass",
+  "cases": [
+    {
+      "id": "unpack",
+      "path": "fpga/acq_sram/sim/tb_unpack.v",
+      "module": "tb",
+      "status": "partial",
+      "compileExitCode": 0,
+      "simulationExitCode": 0,
+      "timedOut": false
+    },
+    {
+      "id": "interleave",
+      "path": "fpga/acq_sram/sim/tb_interleave.v",
+      "module": "tb",
+      "status": "partial",
+      "compileExitCode": 0,
+      "simulationExitCode": 0,
+      "timedOut": false
+    },
+    {
+      "id": "adc_interleave",
+      "path": "fpga/acq_sram/sim/tb_adc_interleave.v",
+      "module": "tb",
+      "status": "not-run",
+      "compileExitCode": 2,
+      "simulationExitCode": null,
+      "timedOut": false
+    },
+    {
+      "id": "acquisition_source",
+      "path": "fpga/acq_sram/sim/tb_acquisition_source.v",
+      "module": "tb_acquisition_source",
+      "status": "partial",
+      "compileExitCode": 0,
+      "simulationExitCode": 0,
+      "timedOut": false
+    },
+    {
+      "id": "trigger_pipeline",
+      "path": "fpga/acq_sram/sim/tb_trigger_pipeline.v",
+      "module": "tb_trigger_pipeline",
+      "status": "partial",
+      "compileExitCode": 0,
+      "simulationExitCode": 0,
+      "timedOut": false
+    },
+    {
+      "id": "record",
+      "path": "fpga/acq_sram/sim/tb_record.v",
+      "module": "tb",
+      "status": "partial",
+      "compileExitCode": 0,
+      "simulationExitCode": 0,
+      "timedOut": false
+    },
+    {
+      "id": "finite_writer_faults",
+      "path": "fpga/acq_sram/sim/tb_finite_writer_faults.v",
+      "module": "tb_finite_writer_faults",
+      "status": "partial",
+      "compileExitCode": 0,
+      "simulationExitCode": 0,
+      "timedOut": false
+    },
+    {
+      "id": "finite_recall_faults",
+      "path": "fpga/acq_sram/sim/tb_finite_recall_faults.v",
+      "module": "tb_finite_recall_faults",
+      "status": "partial",
+      "compileExitCode": 0,
+      "simulationExitCode": 0,
+      "timedOut": false
+    },
+    {
+      "id": "capture_start",
+      "path": "fpga/acq_sram/sim/tb_capture_start.v",
+      "module": "tb_capture_start",
+      "status": "partial",
+      "compileExitCode": 0,
+      "simulationExitCode": 0,
+      "timedOut": false
+    },
+    {
+      "id": "board_capture",
+      "path": "fpga/acq_sram/sim/tb_board_capture.v",
+      "module": "tb_board_capture",
+      "status": "partial",
+      "compileExitCode": 0,
+      "simulationExitCode": 0,
+      "timedOut": false
+    },
+    {
+      "id": "finite-capture-13",
+      "path": "fpga/acq_sram/sim/tb_finite_capture.v",
+      "module": "tb_finite_capture",
+      "status": "partial",
+      "compileExitCode": 0,
+      "simulationExitCode": 0,
+      "timedOut": false
+    },
+    {
+      "id": "finite-capture-19",
+      "path": "fpga/acq_sram/sim/tb_finite_capture.v",
+      "module": "tb_finite_capture",
+      "status": "partial",
+      "compileExitCode": 0,
+      "simulationExitCode": 0,
+      "timedOut": false
+    },
+    {
+      "id": "finite-recall-13-0",
+      "path": "fpga/acq_sram/sim/tb_finite_recall.v",
+      "module": "tb_finite_recall",
+      "status": "partial",
+      "compileExitCode": 0,
+      "simulationExitCode": 0,
+      "timedOut": false
+    },
+    {
+      "id": "finite-recall-13-1",
+      "path": "fpga/acq_sram/sim/tb_finite_recall.v",
+      "module": "tb_finite_recall",
+      "status": "partial",
+      "compileExitCode": 0,
+      "simulationExitCode": 0,
+      "timedOut": false
+    },
+    {
+      "id": "finite-recall-19-1",
+      "path": "fpga/acq_sram/sim/tb_finite_recall.v",
+      "module": "tb_finite_recall",
+      "status": "partial",
+      "compileExitCode": 0,
+      "simulationExitCode": 0,
+      "timedOut": false
+    },
+    {
+      "id": "capture-engine-0-0",
+      "path": "fpga/acq_sram/sim/tb_capture_engine.v",
+      "module": "tb_capture_engine",
+      "status": "partial",
+      "compileExitCode": 0,
+      "simulationExitCode": 0,
+      "timedOut": false
+    },
+    {
+      "id": "capture-engine-0-1",
+      "path": "fpga/acq_sram/sim/tb_capture_engine.v",
+      "module": "tb_capture_engine",
+      "status": "partial",
+      "compileExitCode": 0,
+      "simulationExitCode": 0,
+      "timedOut": false
+    },
+    {
+      "id": "capture-engine-1-0",
+      "path": "fpga/acq_sram/sim/tb_capture_engine.v",
+      "module": "tb_capture_engine",
+      "status": "partial",
+      "compileExitCode": 0,
+      "simulationExitCode": 0,
+      "timedOut": false
+    },
+    {
+      "id": "capture-engine-1-1",
+      "path": "fpga/acq_sram/sim/tb_capture_engine.v",
+      "module": "tb_capture_engine",
+      "status": "partial",
+      "compileExitCode": 0,
+      "simulationExitCode": 0,
+      "timedOut": false
+    },
+    {
+      "id": "acquisition-path-stream",
+      "path": "fpga/acq_sram/sim/tb_acquisition_path.v",
+      "module": "tb_acquisition_path",
+      "status": "partial",
+      "compileExitCode": 0,
+      "simulationExitCode": 0,
+      "timedOut": false
+    },
+    {
+      "id": "acquisition-path-deep",
+      "path": "fpga/acq_sram/sim/tb_acquisition_path.v",
+      "module": "tb_acquisition_path",
+      "status": "partial",
+      "compileExitCode": 0,
+      "simulationExitCode": 0,
+      "timedOut": false
+    },
+    {
+      "id": "acquisition-path-ready",
+      "path": "fpga/acq_sram/sim/tb_acquisition_path.v",
+      "module": "tb_acquisition_path",
+      "status": "partial",
+      "compileExitCode": 0,
+      "simulationExitCode": 0,
+      "timedOut": false
+    },
+    {
+      "id": "acquisition-path-host-fault",
+      "path": "fpga/acq_sram/sim/tb_acquisition_path.v",
+      "module": "tb_acquisition_path",
+      "status": "partial",
+      "compileExitCode": 0,
+      "simulationExitCode": 0,
+      "timedOut": false
+    },
+    {
+      "id": "command-bridge-0-0",
+      "path": "fpga/acq_sram/sim/tb_command_bridge.v",
+      "module": "tb_command_bridge",
+      "status": "partial",
+      "compileExitCode": 0,
+      "simulationExitCode": 0,
+      "timedOut": false
+    },
+    {
+      "id": "command-bridge-0-1",
+      "path": "fpga/acq_sram/sim/tb_command_bridge.v",
+      "module": "tb_command_bridge",
+      "status": "partial",
+      "compileExitCode": 0,
+      "simulationExitCode": 0,
+      "timedOut": false
+    },
+    {
+      "id": "command-port-0-0",
+      "path": "fpga/acq_sram/sim/tb_command_port.v",
+      "module": "tb_command_port",
+      "status": "partial",
+      "compileExitCode": 0,
+      "simulationExitCode": 0,
+      "timedOut": false
+    },
+    {
+      "id": "command-port-0-1",
+      "path": "fpga/acq_sram/sim/tb_command_port.v",
+      "module": "tb_command_port",
+      "status": "partial",
+      "compileExitCode": 0,
+      "simulationExitCode": 0,
+      "timedOut": false
+    },
+    {
+      "id": "command-bridge-1-0",
+      "path": "fpga/acq_sram/sim/tb_command_bridge.v",
+      "module": "tb_command_bridge",
+      "status": "partial",
+      "compileExitCode": 0,
+      "simulationExitCode": 0,
+      "timedOut": false
+    },
+    {
+      "id": "command-bridge-1-1",
+      "path": "fpga/acq_sram/sim/tb_command_bridge.v",
+      "module": "tb_command_bridge",
+      "status": "partial",
+      "compileExitCode": 0,
+      "simulationExitCode": 0,
+      "timedOut": false
+    },
+    {
+      "id": "command-port-1-0",
+      "path": "fpga/acq_sram/sim/tb_command_port.v",
+      "module": "tb_command_port",
+      "status": "partial",
+      "compileExitCode": 0,
+      "simulationExitCode": 0,
+      "timedOut": false
+    },
+    {
+      "id": "command-port-1-1",
+      "path": "fpga/acq_sram/sim/tb_command_port.v",
+      "module": "tb_command_port",
+      "status": "partial",
+      "compileExitCode": 0,
+      "simulationExitCode": 0,
+      "timedOut": false
+    },
+    {
+      "id": "command-bridge-2-0",
+      "path": "fpga/acq_sram/sim/tb_command_bridge.v",
+      "module": "tb_command_bridge",
+      "status": "partial",
+      "compileExitCode": 0,
+      "simulationExitCode": 0,
+      "timedOut": false
+    },
+    {
+      "id": "command-bridge-2-1",
+      "path": "fpga/acq_sram/sim/tb_command_bridge.v",
+      "module": "tb_command_bridge",
+      "status": "partial",
+      "compileExitCode": 0,
+      "simulationExitCode": 0,
+      "timedOut": false
+    },
+    {
+      "id": "command-port-2-0",
+      "path": "fpga/acq_sram/sim/tb_command_port.v",
+      "module": "tb_command_port",
+      "status": "partial",
+      "compileExitCode": 0,
+      "simulationExitCode": 0,
+      "timedOut": false
+    },
+    {
+      "id": "command-port-2-1",
+      "path": "fpga/acq_sram/sim/tb_command_port.v",
+      "module": "tb_command_port",
+      "status": "partial",
+      "compileExitCode": 0,
+      "simulationExitCode": 0,
+      "timedOut": false
+    },
+    {
+      "id": "command-bridge-3-0",
+      "path": "fpga/acq_sram/sim/tb_command_bridge.v",
+      "module": "tb_command_bridge",
+      "status": "partial",
+      "compileExitCode": 0,
+      "simulationExitCode": 0,
+      "timedOut": false
+    },
+    {
+      "id": "command-bridge-3-1",
+      "path": "fpga/acq_sram/sim/tb_command_bridge.v",
+      "module": "tb_command_bridge",
+      "status": "partial",
+      "compileExitCode": 0,
+      "simulationExitCode": 0,
+      "timedOut": false
+    },
+    {
+      "id": "command-port-3-0",
+      "path": "fpga/acq_sram/sim/tb_command_port.v",
+      "module": "tb_command_port",
+      "status": "partial",
+      "compileExitCode": 0,
+      "simulationExitCode": 0,
+      "timedOut": false
+    },
+    {
+      "id": "command-port-3-1",
+      "path": "fpga/acq_sram/sim/tb_command_port.v",
+      "module": "tb_command_port",
+      "status": "partial",
+      "compileExitCode": 0,
+      "simulationExitCode": 0,
+      "timedOut": false
+    },
+    {
+      "id": "command_gpmc",
+      "path": "fpga/acq_sram/sim/tb_command_gpmc.v",
+      "module": "tb_command_gpmc",
+      "status": "partial",
+      "compileExitCode": 0,
+      "simulationExitCode": 0,
+      "timedOut": false
+    }
+  ],
+  "annotationEquivalentSources": [
+    "fpga/acq_sram/acquisition_path.v",
+    "fpga/acq_sram/acquisition_source.v",
+    "fpga/acq_sram/adc_unpack.v",
+    "fpga/acq_sram/board_capture_path.v",
+    "fpga/acq_sram/capture_engine.v",
+    "fpga/acq_sram/capture_path.v",
+    "fpga/acq_sram/command_bridge.v",
+    "fpga/acq_sram/command_port.v",
+    "fpga/acq_sram/finite_recall.v",
+    "fpga/acq_sram/finite_writer.v",
+    "fpga/acq_sram/interleave.v",
+    "fpga/acq_sram/recall.v",
+    "fpga/acq_sram/record.v",
+    "fpga/acq_sram/sim/ddr_model.v",
+    "fpga/acq_sram/sim/tb_acquisition_path.v",
+    "fpga/acq_sram/sim/tb_acquisition_source.v",
+    "fpga/acq_sram/sim/tb_adc_interleave.v",
+    "fpga/acq_sram/sim/tb_board_capture.v",
+    "fpga/acq_sram/sim/tb_capture_engine.v",
+    "fpga/acq_sram/sim/tb_capture_start.v",
+    "fpga/acq_sram/sim/tb_command_bridge.v",
+    "fpga/acq_sram/sim/tb_command_gpmc.v",
+    "fpga/acq_sram/sim/tb_command_port.v",
+    "fpga/acq_sram/sim/tb_finite_capture.v",
+    "fpga/acq_sram/sim/tb_finite_recall.v",
+    "fpga/acq_sram/sim/tb_finite_recall_faults.v",
+    "fpga/acq_sram/sim/tb_finite_writer_faults.v",
+    "fpga/acq_sram/sim/tb_interleave.v",
+    "fpga/acq_sram/sim/tb_record.v",
+    "fpga/acq_sram/sim/tb_trigger_pipeline.v",
+    "fpga/acq_sram/sim/tb_unpack.v",
+    "fpga/acq_sram/stream_engine.v",
+    "fpga/common/ddio_pair.v",
+    "fpga/common/gpmc_slave.v",
+    "fpga/common/lane_in.v"
+  ],
+  "reportSHA256": "285ba7d1733fa06cb516eebcdd04b7f445fce14110e66110aa41b7af19bad395",
+  "scope": "Exact original simulation case/input provenance. Compilation failures are not-run behavioral checks; executed assertion failures remain fail. Passing simulation assertions contribute partial evidence only. Post-run changes are allowed solely when exact pinned-baseline reconstruction proves the approved comment-only overlay."
+}

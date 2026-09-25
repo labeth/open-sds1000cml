@@ -1,0 +1,20 @@
+{
+  "seq": 6847,
+  "sample_s": 2e-9,
+  "channels": [
+    {
+      "samples": 1048576,
+      "min": 67,
+      "max": 185,
+      "positiveSpikes": 0,
+      "negativeSpikes": 0
+    },
+    {
+      "samples": 1048576,
+      "min": 72,
+      "max": 183,
+      "positiveSpikes": 0,
+      "negativeSpikes": 0
+    }
+  ]
+}

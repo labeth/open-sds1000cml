@@ -1,0 +1,15 @@
+{
+  "result": "pass",
+  "requirement": "REQ-SDS-125",
+  "declarationLines": [
+    10,
+    23,
+    37,
+    47,
+    72,
+    77,
+    79
+  ],
+  "exactPublicationLabel": "bode.js:10,23,37,47,72,77,79",
+  "inputSHA256": "fe72e7e106eaffd8d608ded3029bde14a2fa0b9a7b4c3908002fb87a51155ec7"
+}

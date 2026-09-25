@@ -1,0 +1,29 @@
+{
+  "status": "Isolated exact correlation-statistics kernel; complete FPGA matching and stacking remain unimplemented",
+  "sourceHashes": {
+    "fpga/acq_sram/stack_moments.v": "a8691de32e0a5745034205bd3578780e34735bbcfd21a35732e42237f4e70982",
+    "fpga/acq_sram/sim/tb_stack_moments.v": "669309aa97f0d0e0a797ad86c8eb70d0416f1bbbd7e0415cca014732a6ecdecb",
+    "app/internal/superres/stack_moments_rtl_test.go": "33c746aeab4d494717cdce6994615330fb2b973a8905c430c77d15fcf8df9891"
+  },
+  "tests": {
+    "exitCode": 0,
+    "exactWindows": 41,
+    "largestWindow": 65535,
+    "derivedCorrelationTolerance": 2e-12,
+    "control": "stalls, abort, reset, reduced-width overflow and recovery"
+  },
+  "synthesis": {
+    "build": "build-4g94K2",
+    "device": "EP4CE10F17C8",
+    "clockMHz": 125,
+    "logicElements": 339,
+    "registers": 322,
+    "memoryBits": 0,
+    "dsp9BitElements": 3,
+    "minSetupSlackNs": 1.322,
+    "minHoldSlackNs": 0.201,
+    "limitations": "Isolated kernel. Virtual I/O unconstrained; no sample/reference storage, scheduler, normalization, peak/segment decisions or accumulation."
+  },
+  "modelValidation": "Bundle schema/loading passed; full strict validation not repeated for this increment",
+  "deployment": "unchanged; general/current remains build-v5T40o"
+}

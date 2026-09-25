@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-WEB-DECODE-SENT
 // decode_sent.js — SENT (SAE J2716) single-wire decoder, a classic script that
 // mirrors decode_sent.go step for step so the web UI and the on-device LCD agree
 // byte-for-byte. Reuses the shared sliceChannel() from decode.js (a global when
@@ -6,6 +7,7 @@
 // value. A frame opens with a 56-tick SYNC (used to derive the tick), followed by
 // nibble pulses (12..27 ticks => 0..15), optionally closed by a pause pulse.
 
+// TRLC-LINKS: REQ-SDS-018
 function sentHex1(v) { return (v & 0xf).toString(16).toUpperCase(); }
 
 // sentCRC4Table is the SAE J2716 CRC-4 nibble table (polynomial x^4+x^3+x^2+1).
@@ -15,6 +17,7 @@ const sentCRC4Table = [0, 13, 7, 10, 14, 3, 9, 4, 1, 12, 6, 11, 15, 2, 8, 5];
 // a final table step). Covers the data nibbles only — not status, not the CRC
 // nibble. A frame whose trailing CRC nibble differs is flagged, so a corrupted
 // CRC (and noise, whose CRC is essentially never self-consistent) is not accepted.
+// TRLC-LINKS: REQ-SDS-018
 function sentCRC4(data) {
   let crc = 5;
   for (const d of data) crc = sentCRC4Table[crc] ^ (d & 0xf);
@@ -22,12 +25,14 @@ function sentCRC4(data) {
   return crc & 0xf;
 }
 
+// TRLC-LINKS: REQ-SDS-018
 function decodeSENT(codes, colTimeS, cfg) {
   cfg = cfg || {};
   const slice = (typeof sliceChannel === "function")
     ? sliceChannel
     : (typeof require === "function" ? require("./decode.js").sliceChannel : null);
   const SYNC = 56, NMIN = 12, NMAX = 27, TOL = 0.20;
+  // TRLC-LINKS: REQ-SDS-018
   const fail = (error) => ({ ok: false, error, proto: "sent", spans: [], text: "", bytes: [], meta: {} });
 
   let nib = cfg.nibbles | 0;
@@ -41,7 +46,7 @@ function decodeSENT(codes, colTimeS, cfg) {
   // Falling edges (high->low) delimit pulse periods; x is the interpolated
   // crossing (sub-sample precision), i anchors the span.
   const fallX = [], fallI = [];
-  for (const e of S.edges) if (e.dir < 0 && e.i < n) { fallX.push(e.x); fallI.push(e.i); }
+  for (const e of S.edges) if ((cfg.inverted ? e.dir > 0 : e.dir < 0) && e.i < n) { fallX.push(e.x); fallI.push(e.i); }
   if (fallX.length < 2) return fail("no SENT pulses (need >= 2 falling edges)");
 
   const np = fallX.length - 1;
@@ -80,6 +85,7 @@ function decodeSENT(codes, colTimeS, cfg) {
   }
   if (firstSync < 0 || seedTick <= 0) return fail("no SENT SYNC (~56-tick) pulse found");
 
+  // TRLC-LINKS: REQ-SDS-018
   const looksSync = (P, tick) => tick > 0 && Math.abs(P / tick - SYNC) <= TOL * SYNC;
 
   const spans = [], bytes = [], toks = [];

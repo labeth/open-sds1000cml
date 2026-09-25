@@ -1,0 +1,46 @@
+{
+  "agent_slot": "A",
+  "app": {
+    "adopted": false,
+    "emergency": false,
+    "fails": 0,
+    "last_exit": "ctl:stop",
+    "running": false
+  },
+  "auto_takeover": false,
+  "device": "sds1102",
+  "inherited_fds": {
+    "fpga_key": 6,
+    "gpmc": 5
+  },
+  "paused": true,
+  "slots": {
+    "active": "A",
+    "binaries": {
+      "A": "305d74dcf2085a8fba1337f6db6f6df2138d35ab5cfefddc47e72794a9e82fa9",
+      "B": "305d74dcf2085a8fba1337f6db6f6df2138d35ab5cfefddc47e72794a9e82fa9",
+      "emergency": "305d74dcf2085a8fba1337f6db6f6df2138d35ab5cfefddc47e72794a9e82fa9"
+    },
+    "confirmed": "A",
+    "has_emergency": true,
+    "root": "/usr/bin/siglent/usr/media/U-disk0/agent-slots"
+  },
+  "sys": {
+    "ips": [
+      "eth0 192.168.1.209/24"
+    ],
+    "loadavg": "0.08 0.05 0.05 1/57 1017",
+    "mem": "34924 kB free / 125768 kB",
+    "uname": "Linux (none) 3.2.0+ #716 Fri Dec 18 16:33:18 ULAT 2015 armv7l",
+    "uptime": "1830.00 598.66",
+    "usb_free_bytes": 30321901568
+  },
+  "taken_over": true,
+  "time_unix": 1830,
+  "uptime_s": 1807,
+  "version": "v0.0.5-111-g69d00a8-dirty (69d00a8, 2026-09-07T07:43:11Z)",
+  "watchdog": {
+    "armed": true,
+    "last_pet": "1970-01-01T00:30:19.947034682Z"
+  }
+}

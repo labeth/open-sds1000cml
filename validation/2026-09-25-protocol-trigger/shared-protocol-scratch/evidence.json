@@ -1,0 +1,23 @@
+{
+  "status": "Shared RAM simulation passed; integrated fit rejected; not timed or deployed",
+  "candidate": "build-AnDTaP",
+  "synthesisLogicElements": 13709,
+  "fitterLogicElements": 11391,
+  "deviceLogicElements": 10320,
+  "requiredLABs": 716,
+  "availableLABs": 645,
+  "memoryBits": 351232,
+  "m9kBlocks": 46,
+  "availableM9kBlocks": 46,
+  "mapExitCode": 0,
+  "fitExitCode": 3,
+  "topSimulationExitCode": 0,
+  "limitations": [
+    "Failed fit does not prove timing or physical functionality",
+    "Manchester not live-qualified",
+    "CAN FD, ARINC 429, FlexRay and FPGA stacking remain required"
+  ],
+  "next": "Resolve combined logic capacity without reducing protocol semantics or capture ownership",
+  "strictModelExitCode": 0,
+  "strictModelMode": "strict"
+}

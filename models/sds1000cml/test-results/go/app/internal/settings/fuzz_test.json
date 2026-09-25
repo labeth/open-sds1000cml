@@ -1,0 +1,25 @@
+{
+  "source": "app/internal/settings/fuzz_test.go",
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "scope": "Reviewed Go test outcomes; passing assertions contribute partial requirement evidence.",
+  "sourceSHA256": "29d55d316e1e6acdc5aac23a76bf39a66256a534fd3ce43beee4926e49e7ece4",
+  "logs": {
+    "test-runs/settings.jsonl": "18a11e0423fa759e90e82de4ea57e6b45419cb3811e35d279962ee0b7c26b45d"
+  },
+  "tests": [
+    {
+      "name": "FuzzParseAndApply",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-072"
+      ]
+    }
+  ],
+  "results": [
+    {
+      "requirement": "REQ-SDS-072",
+      "status": "partial",
+      "notes": "1 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    }
+  ]
+}

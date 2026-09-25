@@ -1,4 +1,6 @@
+// ENGMODEL-OWNER-UNIT: FU-RTL-ACQ-TESTS
 `timescale 1ns/1ps
+// TRLC-LINKS: REQ-SDS-051
 module tb;
  reg write_clk=0,read_clk=0;always #4 write_clk=~write_clk;always #5 read_clk=~read_clk;
  reg write_reset=1,write_enable=0,read_reset=1,read_enable=0;

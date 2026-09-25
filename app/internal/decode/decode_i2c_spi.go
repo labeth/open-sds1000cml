@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-DECODE
 package decode
 
 import (
@@ -8,13 +9,17 @@ import (
 )
 
 // I2CCfg / SPICfg configure those decoders.
+// TRLC-LINKS: REQ-SDS-018
 type I2CCfg struct {
+	Inverted  bool
 	Format    string
 	Threshold float64
 	HaveThr   bool
 }
 
+// TRLC-LINKS: REQ-SDS-018
 type SPICfg struct {
+	Inverted   bool
 	CPOL, CPHA bool
 	MSB        bool // bit order; true = MSB-first (default)
 	Format     string
@@ -23,7 +28,14 @@ type SPICfg struct {
 }
 
 // DecodeI2C decodes I2C given SCL + SDA codes (decode.js decodeI2C).
+// TRLC-LINKS: REQ-SDS-018
 func DecodeI2C(scl, sda []uint8, colTimeS float64, cfg I2CCfg) Result {
+	if cfg.Inverted {
+		scl, sda = invertLogic(scl), invertLogic(sda)
+		if cfg.HaveThr {
+			cfg.Threshold = 255 - cfg.Threshold
+		}
+	}
 	CL := sliceChannel(scl, cfg.Threshold, cfg.HaveThr)
 	DA := sliceChannel(sda, cfg.Threshold, cfg.HaveThr)
 	if !CL.ok {
@@ -131,7 +143,14 @@ func DecodeI2C(scl, sda []uint8, colTimeS float64, cfg I2CCfg) Result {
 }
 
 // DecodeSPI decodes SPI given CLK + DATA codes, no chip-select (decode.js decodeSPI).
+// TRLC-LINKS: REQ-SDS-018
 func DecodeSPI(clk, data []uint8, colTimeS float64, cfg SPICfg) Result {
+	if cfg.Inverted {
+		clk, data = invertLogic(clk), invertLogic(data)
+		if cfg.HaveThr {
+			cfg.Threshold = 255 - cfg.Threshold
+		}
+	}
 	CK := sliceChannel(clk, cfg.Threshold, cfg.HaveThr)
 	DA := sliceChannel(data, cfg.Threshold, cfg.HaveThr)
 	if !CK.ok {

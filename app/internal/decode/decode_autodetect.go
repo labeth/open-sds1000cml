@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-DECODE
 package decode
 
 import (
@@ -12,6 +13,7 @@ import (
 // parity, ARINC 429 word parity, USB's PID complement, I2C's START/addr/ACK
 // framing), which outscore the purely heuristic ones (UART stop bits,
 // Manchester mid-cell coding, and SPI — no framing at all, the fallback).
+// TRLC-LINKS: REQ-SDS-018
 func scoreResult(r Result) float64 {
 	if !r.OK {
 		return -1e9
@@ -111,6 +113,7 @@ func scoreResult(r Result) float64 {
 	return -1e9
 }
 
+// TRLC-LINKS: REQ-SDS-018
 type clockInfo struct {
 	ok      bool
 	uniFrac float64
@@ -122,6 +125,7 @@ type clockInfo struct {
 // dominant half-period is a low percentile of the edge gaps (ignoring big idle
 // gaps); uniFrac is the fraction of gaps that ARE that half-period (~1 for a
 // clock, low for a data line whose edges land on data-dependent bit boundaries).
+// TRLC-LINKS: REQ-SDS-018
 func clockScore(codes []uint8) clockInfo {
 	s := sliceChannel(codes, 0, false)
 	if !s.ok || len(s.edges) < 6 {
@@ -148,6 +152,7 @@ func clockScore(codes []uint8) clockInfo {
 }
 
 // idleLevel is the rail a channel rests on most (a clock idles at its CPOL rail).
+// TRLC-LINKS: REQ-SDS-018
 func idleLevel(s sliced) int {
 	if !s.ok {
 		return 0
@@ -169,6 +174,7 @@ func idleLevel(s sliced) int {
 // Autodetect tries every plausible protocol / channel-role / sub-setting against
 // the two channels (c1=index 0, c2=index 1) and returns the best-scoring decoded
 // Result, formatted per `format`. A Result with Proto=="off" means nothing matched.
+// TRLC-LINKS: REQ-SDS-018
 func Autodetect(c1, c2 []uint8, colTimeS float64, format string) Result {
 	chans := [2][]uint8{c1, c2}
 	var active []int

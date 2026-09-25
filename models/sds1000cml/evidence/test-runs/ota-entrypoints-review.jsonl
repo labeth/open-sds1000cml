@@ -1,0 +1,37 @@
+{"Time":"2026-09-23T10:54:28.363804013+02:00","Action":"start","Package":"open-sds/ota/boot"}
+{"Time":"2026-09-23T10:54:28.375196036+02:00","Action":"run","Package":"open-sds/ota/boot","Test":"TestRespawnLoopBounded"}
+{"Time":"2026-09-23T10:54:28.37521524+02:00","Action":"output","Package":"open-sds/ota/boot","Test":"TestRespawnLoopBounded","Output":"=== RUN   TestRespawnLoopBounded\n"}
+{"Time":"2026-09-23T10:54:28.44811781+02:00","Action":"output","Package":"open-sds/ota/boot","Test":"TestRespawnLoopBounded","Output":"--- PASS: TestRespawnLoopBounded (0.07s)\n"}
+{"Time":"2026-09-23T10:54:28.448137857+02:00","Action":"pass","Package":"open-sds/ota/boot","Test":"TestRespawnLoopBounded","Elapsed":0.07}
+{"Time":"2026-09-23T10:54:28.44818199+02:00","Action":"run","Package":"open-sds/ota/boot","Test":"TestConfirmStableSlot"}
+{"Time":"2026-09-23T10:54:28.448188494+02:00","Action":"output","Package":"open-sds/ota/boot","Test":"TestConfirmStableSlot","Output":"=== RUN   TestConfirmStableSlot\n"}
+{"Time":"2026-09-23T10:54:28.816958751+02:00","Action":"start","Package":"open-sds/ota/cmd/otactl"}
+{"Time":"2026-09-23T10:54:28.816974937+02:00","Action":"output","Package":"open-sds/ota/cmd/otactl","Output":"?   \topen-sds/ota/cmd/otactl\t[no test files]\n"}
+{"Time":"2026-09-23T10:54:28.816981616+02:00","Action":"skip","Package":"open-sds/ota/cmd/otactl","Elapsed":0}
+{"Time":"2026-09-23T10:54:28.816989034+02:00","Action":"start","Package":"open-sds/ota/cmd/stubapp"}
+{"Time":"2026-09-23T10:54:28.816992092+02:00","Action":"output","Package":"open-sds/ota/cmd/stubapp","Output":"?   \topen-sds/ota/cmd/stubapp\t[no test files]\n"}
+{"Time":"2026-09-23T10:54:28.816994695+02:00","Action":"skip","Package":"open-sds/ota/cmd/stubapp","Elapsed":0}
+{"Time":"2026-09-23T10:54:28.81700052+02:00","Action":"start","Package":"open-sds/ota/internal/buildinfo"}
+{"Time":"2026-09-23T10:54:28.817003413+02:00","Action":"output","Package":"open-sds/ota/internal/buildinfo","Output":"?   \topen-sds/ota/internal/buildinfo\t[no test files]\n"}
+{"Time":"2026-09-23T10:54:28.81700665+02:00","Action":"skip","Package":"open-sds/ota/internal/buildinfo","Elapsed":0}
+{"Time":"2026-09-23T10:54:30.486142879+02:00","Action":"output","Package":"open-sds/ota/boot","Test":"TestConfirmStableSlot","Output":"--- PASS: TestConfirmStableSlot (2.04s)\n"}
+{"Time":"2026-09-23T10:54:30.486163328+02:00","Action":"pass","Package":"open-sds/ota/boot","Test":"TestConfirmStableSlot","Elapsed":2.04}
+{"Time":"2026-09-23T10:54:30.486170679+02:00","Action":"run","Package":"open-sds/ota/boot","Test":"TestAgentSelfUpdateActivatesNewSlot"}
+{"Time":"2026-09-23T10:54:30.486173156+02:00","Action":"output","Package":"open-sds/ota/boot","Test":"TestAgentSelfUpdateActivatesNewSlot","Output":"=== RUN   TestAgentSelfUpdateActivatesNewSlot\n"}
+{"Time":"2026-09-23T10:54:30.548097089+02:00","Action":"output","Package":"open-sds/ota/boot","Test":"TestAgentSelfUpdateActivatesNewSlot","Output":"--- PASS: TestAgentSelfUpdateActivatesNewSlot (0.06s)\n"}
+{"Time":"2026-09-23T10:54:30.548112243+02:00","Action":"pass","Package":"open-sds/ota/boot","Test":"TestAgentSelfUpdateActivatesNewSlot","Elapsed":0.06}
+{"Time":"2026-09-23T10:54:30.54812396+02:00","Action":"run","Package":"open-sds/ota/boot","Test":"TestCrashLoopRevertsToConfirmed"}
+{"Time":"2026-09-23T10:54:30.548126732+02:00","Action":"output","Package":"open-sds/ota/boot","Test":"TestCrashLoopRevertsToConfirmed","Output":"=== RUN   TestCrashLoopRevertsToConfirmed\n"}
+{"Time":"2026-09-23T10:54:30.660832134+02:00","Action":"output","Package":"open-sds/ota/boot","Test":"TestCrashLoopRevertsToConfirmed","Output":"--- PASS: TestCrashLoopRevertsToConfirmed (0.11s)\n"}
+{"Time":"2026-09-23T10:54:30.660847751+02:00","Action":"pass","Package":"open-sds/ota/boot","Test":"TestCrashLoopRevertsToConfirmed","Elapsed":0.11}
+{"Time":"2026-09-23T10:54:30.660854395+02:00","Action":"run","Package":"open-sds/ota/boot","Test":"TestIntentMarkerIsNeutralNoRevert"}
+{"Time":"2026-09-23T10:54:30.660856757+02:00","Action":"output","Package":"open-sds/ota/boot","Test":"TestIntentMarkerIsNeutralNoRevert","Output":"=== RUN   TestIntentMarkerIsNeutralNoRevert\n"}
+{"Time":"2026-09-23T10:54:30.764957385+02:00","Action":"output","Package":"open-sds/ota/boot","Test":"TestIntentMarkerIsNeutralNoRevert","Output":"--- PASS: TestIntentMarkerIsNeutralNoRevert (0.10s)\n"}
+{"Time":"2026-09-23T10:54:30.764972688+02:00","Action":"pass","Package":"open-sds/ota/boot","Test":"TestIntentMarkerIsNeutralNoRevert","Elapsed":0.1}
+{"Time":"2026-09-23T10:54:30.764979786+02:00","Action":"run","Package":"open-sds/ota/boot","Test":"TestCommandsFileRuns"}
+{"Time":"2026-09-23T10:54:30.764982312+02:00","Action":"output","Package":"open-sds/ota/boot","Test":"TestCommandsFileRuns","Output":"=== RUN   TestCommandsFileRuns\n"}
+{"Time":"2026-09-23T10:54:30.803245394+02:00","Action":"output","Package":"open-sds/ota/boot","Test":"TestCommandsFileRuns","Output":"--- PASS: TestCommandsFileRuns (0.04s)\n"}
+{"Time":"2026-09-23T10:54:30.803267561+02:00","Action":"pass","Package":"open-sds/ota/boot","Test":"TestCommandsFileRuns","Elapsed":0.04}
+{"Time":"2026-09-23T10:54:30.80332279+02:00","Action":"output","Package":"open-sds/ota/boot","Output":"PASS\n"}
+{"Time":"2026-09-23T10:54:31.804911179+02:00","Action":"output","Package":"open-sds/ota/boot","Output":"ok  \topen-sds/ota/boot\t3.441s\n"}
+{"Time":"2026-09-23T10:54:31.8049351+02:00","Action":"pass","Package":"open-sds/ota/boot","Elapsed":3.441}

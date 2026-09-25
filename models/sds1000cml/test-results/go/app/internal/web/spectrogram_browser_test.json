@@ -1,0 +1,25 @@
+{
+  "source": "app/internal/web/spectrogram_browser_test.go",
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "scope": "Reviewed Go test outcomes; passing assertions contribute partial requirement evidence.",
+  "sourceSHA256": "8aae6491f9c56b78977613bdb33a5a255a90b485e6b37fee86a8bf9d67ac4202",
+  "logs": {
+    "test-runs/browser-views.jsonl": "73c57b6d771cb895adef97026183db3832c166d08137c8fe5d7dae4d499a2949"
+  },
+  "tests": [
+    {
+      "name": "TestSpectrogramBrowser",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-068"
+      ]
+    }
+  ],
+  "results": [
+    {
+      "requirement": "REQ-SDS-068",
+      "status": "partial",
+      "notes": "1 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    }
+  ]
+}

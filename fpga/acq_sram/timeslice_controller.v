@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-RTL-ACQ-SRAM-TIMESLICE-CONTROLLER
 // Continuous SRAM capture scheduler. All ports are in the 250 MHz core domain.
 // Host banks are reserved only after reaching the read target, allowing ARM to
 // drain the preceding banks during the address scan. Busy banks never stall a
@@ -10,6 +11,7 @@
 // writes to finish. Host writes cannot be backpressured during a read burst.
 // read_bias is a board-calibrated origin correction, zero in the ideal model.
 // This scheduler does not yet implement trigger-driven record geometry.
+// TRLC-LINKS: REQ-SDS-048
 module sram_timeslice_controller #(parameter AW=19,BANK_WORDS=2560,READ_RESERVE=32,READ_WARM=16)(
  input wire clk,reset,start,stop,source_finished,
  output wire start_ready,source_enable,

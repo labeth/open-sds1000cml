@@ -1,0 +1,106 @@
+schemaVersion: 2
+assurance:
+  controls:
+  - id: CTRL-BUS
+    name: Serialized bus ownership
+    category: integrity
+    description: Prevent overlapping acquisition, diagnostics and control transactions.
+  - id: CTRL-IDENTITY
+    name: Image identity and geometry checks
+    category: integrity
+    description: Refuse incompatible register maps and record bounds.
+  - id: CTRL-EPOCH
+    name: Descriptor tokens and epoch invalidation
+    category: integrity
+    description: Prevent stale bank release and silent continuity loss.
+  - id: CTRL-HEALTH
+    name: Capture-driven health and rollback
+    category: integrity
+    description: Detect wedges independently of process-alive.
+  - id: CTRL-TIMING
+    name: Timing and CDC qualification gates
+    category: integrity
+    description: Do not equate simulation or internal fit with external hardware qualification.
+  risks:
+  - id: RISK-BUS
+    title: Bus wedge
+    statement: Concurrent or incompatible GPMC access can stall the processor and prevent software recovery.
+    status: open
+    appliesTo:
+    - IF-GPMC
+    - FU-APP-ENGINE
+    relatedControls:
+    - CTRL-BUS
+    - CTRL-IDENTITY
+    rationale: Track source evidence and qualify the relevant boundary before changing deployment claims.
+    response: mitigate
+  - id: RISK-REMOTE
+    title: Remote privileged operations
+    statement: Network operations expose execution and update authority; untrusted reachability can compromise the
+      instrument.
+    status: open
+    appliesTo:
+    - IF-OTA
+    - FU-OTA-AGENT
+    relatedControls: []
+    rationale: Track source evidence and qualify the relevant boundary before changing deployment claims.
+    response: mitigate
+  - id: RISK-LOSS
+    title: Undetected discontinuity
+    statement: Lost samples or stale descriptors can make an incomplete waveform appear continuous.
+    status: open
+    appliesTo:
+    - DO-DESCRIPTOR
+    - DO-EPOCH
+    relatedControls:
+    - CTRL-EPOCH
+    rationale: Track source evidence and qualify the relevant boundary before changing deployment claims.
+    response: mitigate
+  - id: RISK-QUALIFICATION
+    title: Premature profile promotion
+    statement: A source or simulation success may be mistaken for timing closure or device qualification.
+    status: open
+    appliesTo:
+    - HW-FPGA
+    - FU-FPGA-ACQ-BUILD
+    relatedControls:
+    - CTRL-TIMING
+    rationale: Track source evidence and qualify the relevant boundary before changing deployment claims.
+    response: mitigate
+  - id: RISK-ADC-BOM
+    title: Unresolved converter population
+    statement: Physical package count is inconsistent with the observed ten logical cores.
+    status: open
+    appliesTo:
+    - HW-ADC
+    relatedControls: []
+    rationale: Track source evidence and qualify the relevant boundary before changing deployment claims.
+    response: mitigate
+  trustBoundaries:
+  - id: TB-DEVICE
+    name: Privileged instrument execution
+    description: Source-modeled trust and ownership boundary; no implicit authentication claim.
+    members:
+    - FU-APP-APP
+    - FU-OTA-AGENT
+    - IF-OTA
+    - IF-GPMC
+  - id: TB-NETWORK
+    name: Remote network clients
+    description: Source-modeled trust and ownership boundary; no implicit authentication claim.
+    members:
+    - ACT-OPERATOR
+    - ACT-HOST
+    - IF-HTTP
+    - IF-SCPI
+    - IF-OTA
+  - id: TB-FABRIC
+    name: ARM to FPGA command and data
+    description: Source-modeled trust and ownership boundary; no implicit authentication claim.
+    members:
+    - IF-GPMC
+    - IF-PROFILE
+    - HW-FPGA
+    - DO-DESCRIPTOR
+  threatScenarios: []
+  attackVectors: []

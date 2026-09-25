@@ -1,0 +1,66 @@
+{
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "status": "source-model-integrated",
+  "requirements": [
+    "REQ-SDS-014",
+    "REQ-SDS-019"
+  ],
+  "files": [
+    {
+      "path": "app/internal/web/app_superres.js",
+      "owner": "FU-WEB-APP-SUPERRES",
+      "baselineSHA256": "ce579da6cd38c559cc359a0c6be252b2421c8b3a9f7e4ad3e66e7f0d6f14fbb8",
+      "lines": 572,
+      "linkedDeclarations": 30,
+      "requirement": "REQ-SDS-019",
+      "annotatedSHA256": "416310aa3931c5c3939104627bdd89e1948f64fb18c6d9b66494a75487e4fb5a"
+    },
+    {
+      "path": "app/internal/web/app_zonemask.js",
+      "owner": "FU-WEB-APP-ZONEMASK",
+      "baselineSHA256": "a8bec7198c569011e01c172fc6d3f6d75fb2aa1b009d5875c3842e4186ff9d42",
+      "lines": 340,
+      "linkedDeclarations": 25,
+      "requirement": "REQ-SDS-014",
+      "annotatedSHA256": "3bd1ffabb81be3417cb1d4a5d0c8569aef405df59b39626543d6ceb7299e6b4b"
+    }
+  ],
+  "scope": "Complete read of both browser controllers including UI handlers, raw polling, mask build, timers, synthetic review and presets. Source inspection only; no hardware operations.",
+  "findings": [
+    "Stack statistics update at most every 500 ms. Ordinary bits targets explicitly recompute after feed, but decoded-event targets use the throttled lastBits value; elapsed-time targets are checked only when ingestion reaches the target check, not by an independent timer.",
+    "ETS auto-detection averages eight raw power spectra and selects a peak at or above 20 MHz, without a null-spectrum guard or checking dimensions/sample-period identity while accumulating the detection frames. It does not establish that the selected peak is the fundamental.",
+    "ETS and event ingest return before ordinary selected-channel, record-length and volts/code guards. After initialization they compare only sample period. Ordinary ingest compares both channels volts/code even if a companion is absent, but does not compare offsets.",
+    "Byte entry strips 0x and quotes, treats one or two hex characters as hexadecimal and otherwise uses the first UTF-16 code unit. Invalid multi-character input can become an unintended character target; there is no strict 0..255 validation.",
+    "UART event decoding maps numeric threshold zero to null through logical-OR; selects data spans matching the target without an additional parity/error filter here. First occurrence seeds the gate and remaining spans use independently searched centers.",
+    "Ordinary locked-reference seeding starts engine run with an unawaited command. Dither changes the alignment-channel offset every two ingested frames, skips one subsequent frame, and restores on stop only when its local index is nonzero. This is staging by assumption, not acknowledgment of a DAC write.",
+    "Raw polling rechecks armed/generation after fetch and decode, protecting against late successful responses. Its catch path increments shared failure state and schedules retries without a generation check until the next loop entry.",
+    "Arming clears prior stack state and may send normal-trigger mode changes before validating displayed gate metadata. ETS takes precedence when both ETS and event controls are selected. Arming ETS/events changes normal mode without restoring it on stop.",
+    "Stop always calls ordinary srUpdateStats, even for an ETS capture, so a stop reason can replace rather than retain final ETS metrics. Showing a stack freezes the display while raw stacking may continue; the shown synthetic frame is a snapshot.",
+    "Synthetic ordinary and ETS frames omit explicit dt_s/sample_s fields and rely on cols/col_span_s for downstream time interpretation. They mark clipping false, coherent true and trigd true regardless of underlying reconstruction validity. ETS tiles a single reconstructed period twice.",
+    "ETS compensation budgets against fine-grid Nyquist rather than raw acquisition Nyquist. Both channels share the alignment channel noise budget. The model-fit action writes the aligned channel into REF B C1 even when alignment used physical C2.",
+    "Zone point conversion and overlay rendering call C1 vertical transforms unconditionally. A selected C2 zone receives C1-derived codes but C2 voltage metadata, so unequal vertical settings can misplace it.",
+    "DC coupling is checked when drawing is armed and when mask building begins, not again on pointer-up or each acquired frame. zmVctx requires valid frame.vpc1 even for C2, yet does not require valid positive frame.vpc2.",
+    "Zone and mask reanchoring retain original code/voltage context and clamp remapped values to 0..255; zones round while masks floor/ceil. Local applied context updates before remote acknowledgment, so a failed upload is not retried solely because the same scale remains.",
+    "Mask builder accepts distinct sequence IDs with edge_x>=0 and sample_s>0 but does not require coherent/triggered records or fixed length/sample-period/vertical context across frames. It counts a frame even when few or no window positions contribute. It allows completion after at least four frames despite a larger requested count.",
+    "Unobserved mask columns become full-range always-pass bounds before dilation, which can widen neighbors. Time tolerance is not rounded to an integer before array indexing; fractional input can index nonexistent entries and produce inverted output bounds.",
+    "Zone uploads, mask uploads and mode changes use optimistic local state; HTTP rejection is not checked and rejected fetches are swallowed. Mask build can report success after an upload failure. No build-generation cancellation prevents concurrent builds from racing.",
+    "Failure gallery displays server-supplied current calibration, which may differ from calibration at capture. Overlay violation coordinates always use C1; malformed or single-sample records can give invalid fractions. Review freezes the display and resets horizontal home, without restoring vertical view state.",
+    "The one-second meter reports skip deltas as stale/inactive warnings and rebuilds gallery buttons only when ring count changes. Constant-size ring replacement does not trigger gallery rebuilding, though button clicks fetch current indexed records."
+  ],
+  "pending": [],
+  "validation": {
+    "linkedDeclarations": 55,
+    "exactBaselineRecovery": "pass",
+    "unchangedParserTokens": "pass",
+    "controllerCharacterization": {
+      "cases": 10,
+      "result": "pass"
+    },
+    "nonPDFPublication": "pass",
+    "pdf": "deferred",
+    "strictConsistency": "pass",
+    "nativeMCP": "pass",
+    "reproducibleArtifacts": 36
+  },
+  "testEvidence": "evidence/reconstruction-mask-ui-test-run.json"
+}

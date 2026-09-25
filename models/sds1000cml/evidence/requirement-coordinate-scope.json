@@ -1,0 +1,22 @@
+{
+  "result": "regression-tested-generated-and-pdf-reviewed",
+  "requirement": "REQ-EMG-003",
+  "instrumentRequirement": "REQ-SDS-113",
+  "source": "/home/labeth/ws/engineering-model-go/asciidoc_diagrams_core.go",
+  "finding": "Requirement graphs previously merged all coordinates of a source file across requirements. Verification source nodes reused the same IDs and could overwrite scoped labels.",
+  "fix": "Retain globally distinguishing filenames while grouping coordinates by owning unit and requirement. Namespace requirement source nodes by requirement and verification source nodes by requirement/check.",
+  "tests": [
+    "TestRequirementEvidenceExcludesOtherRequirementLines",
+    "TestRequirementAndVerificationSourceNodesDoNotOverwrite"
+  ],
+  "scope": "Requirement-specific source lines and separate whole-verification source artifacts. Verification artifacts still describe their complete test-file scope; they do not imply every test verifies every linked requirement.",
+  "sourceSHA256": "475da75f51a2db8b5712105c30fefd54baa9a30262dbd4bffae80d17acc6a0cf",
+  "fullSuiteLog": "test-runs/engineering-model-rpc.log",
+  "generatedRequirementLabel": "rpc_test.go:14,39,51,60,73,86",
+  "generatedVerificationLabel": "rpc_test.go:14,39,51,60,73,86,95,109",
+  "pdfCheck": {
+    "page": 344,
+    "pdfSHA256": "6d6b045b0d30bfa79b3a5554f435521fa03f01641fccad4f1d67349269afab22",
+    "inputSHA256": "985e0423523f87a57d3b0a280771b921455ff0425fe2e19d6b96a38de27d7d62"
+  }
+}

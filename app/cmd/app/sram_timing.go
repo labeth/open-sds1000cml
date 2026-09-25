@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-APP
 package main
 
 import (
@@ -8,6 +9,7 @@ import (
 // applySRAMReadTiming is revision-10-only, invoked before the engine owns CS1.
 // It writes no timing file. A failed fast-path check must restore and verify
 // the original setting; an unverified transport must not start acquisition.
+// TRLC-LINKS: REQ-SDS-034
 func applySRAMReadTiming(port bus.TimingPort, verify func() error) (fast bool, err error) {
 	old, err := port.Read()
 	if err != nil {

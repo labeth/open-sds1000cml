@@ -1,0 +1,212 @@
+{"Time":"2026-09-23T11:28:05.416892473+02:00","Action":"start","Package":"open-sds/app/internal/engine"}
+{"Time":"2026-09-23T11:28:05.429854089+02:00","Action":"run","Package":"open-sds/app/internal/engine","Test":"TestEngineConcurrencyChaos"}
+{"Time":"2026-09-23T11:28:05.429884164+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestEngineConcurrencyChaos","Output":"=== RUN   TestEngineConcurrencyChaos\n"}
+{"Time":"2026-09-23T11:28:06.772120617+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestEngineConcurrencyChaos","Output":"--- PASS: TestEngineConcurrencyChaos (1.34s)\n"}
+{"Time":"2026-09-23T11:28:06.772145586+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Test":"TestEngineConcurrencyChaos","Elapsed":1.34}
+{"Time":"2026-09-23T11:28:06.772164142+02:00","Action":"run","Package":"open-sds/app/internal/engine","Test":"TestRealDepthTolerantTail"}
+{"Time":"2026-09-23T11:28:06.772169337+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestRealDepthTolerantTail","Output":"=== RUN   TestRealDepthTolerantTail\n"}
+{"Time":"2026-09-23T11:28:06.772742079+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestRealDepthTolerantTail","Output":"--- PASS: TestRealDepthTolerantTail (0.00s)\n"}
+{"Time":"2026-09-23T11:28:06.77276755+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Test":"TestRealDepthTolerantTail","Elapsed":0}
+{"Time":"2026-09-23T11:28:06.772813651+02:00","Action":"run","Package":"open-sds/app/internal/engine","Test":"TestDegradedFlagAndStuckEscalation"}
+{"Time":"2026-09-23T11:28:06.77282019+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestDegradedFlagAndStuckEscalation","Output":"=== RUN   TestDegradedFlagAndStuckEscalation\n"}
+{"Time":"2026-09-23T11:28:07.064477667+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestDegradedFlagAndStuckEscalation","Output":"--- PASS: TestDegradedFlagAndStuckEscalation (0.29s)\n"}
+{"Time":"2026-09-23T11:28:07.064503057+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Test":"TestDegradedFlagAndStuckEscalation","Elapsed":0.29}
+{"Time":"2026-09-23T11:28:07.064522046+02:00","Action":"run","Package":"open-sds/app/internal/engine","Test":"TestMidLevel"}
+{"Time":"2026-09-23T11:28:07.064526944+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestMidLevel","Output":"=== RUN   TestMidLevel\n"}
+{"Time":"2026-09-23T11:28:07.064589453+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestMidLevel","Output":"--- PASS: TestMidLevel (0.00s)\n"}
+{"Time":"2026-09-23T11:28:07.064602862+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Test":"TestMidLevel","Elapsed":0}
+{"Time":"2026-09-23T11:28:07.064650004+02:00","Action":"run","Package":"open-sds/app/internal/engine","Test":"TestCenterCrossNearestCentre"}
+{"Time":"2026-09-23T11:28:07.064656651+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestCenterCrossNearestCentre","Output":"=== RUN   TestCenterCrossNearestCentre\n"}
+{"Time":"2026-09-23T11:28:07.064801294+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestCenterCrossNearestCentre","Output":"--- PASS: TestCenterCrossNearestCentre (0.00s)\n"}
+{"Time":"2026-09-23T11:28:07.06482484+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Test":"TestCenterCrossNearestCentre","Elapsed":0}
+{"Time":"2026-09-23T11:28:07.064860237+02:00","Action":"run","Package":"open-sds/app/internal/engine","Test":"TestCenterCrossNoDitherFlip"}
+{"Time":"2026-09-23T11:28:07.06486666+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestCenterCrossNoDitherFlip","Output":"=== RUN   TestCenterCrossNoDitherFlip\n"}
+{"Time":"2026-09-23T11:28:07.065038391+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestCenterCrossNoDitherFlip","Output":"--- PASS: TestCenterCrossNoDitherFlip (0.00s)\n"}
+{"Time":"2026-09-23T11:28:07.065048558+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Test":"TestCenterCrossNoDitherFlip","Elapsed":0}
+{"Time":"2026-09-23T11:28:07.065091568+02:00","Action":"run","Package":"open-sds/app/internal/engine","Test":"TestCenterCrossFlat"}
+{"Time":"2026-09-23T11:28:07.065097654+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestCenterCrossFlat","Output":"=== RUN   TestCenterCrossFlat\n"}
+{"Time":"2026-09-23T11:28:07.065201251+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestCenterCrossFlat","Output":"--- PASS: TestCenterCrossFlat (0.00s)\n"}
+{"Time":"2026-09-23T11:28:07.065213271+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Test":"TestCenterCrossFlat","Elapsed":0}
+{"Time":"2026-09-23T11:28:07.065249886+02:00","Action":"run","Package":"open-sds/app/internal/engine","Test":"TestCenterCrossSubSample"}
+{"Time":"2026-09-23T11:28:07.06525607+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestCenterCrossSubSample","Output":"=== RUN   TestCenterCrossSubSample\n"}
+{"Time":"2026-09-23T11:28:07.065308043+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestCenterCrossSubSample","Output":"--- PASS: TestCenterCrossSubSample (0.00s)\n"}
+{"Time":"2026-09-23T11:28:07.065322284+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Test":"TestCenterCrossSubSample","Elapsed":0}
+{"Time":"2026-09-23T11:28:07.065353882+02:00","Action":"run","Package":"open-sds/app/internal/engine","Test":"TestWindowSlopeMatches"}
+{"Time":"2026-09-23T11:28:07.065359043+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestWindowSlopeMatches","Output":"=== RUN   TestWindowSlopeMatches\n"}
+{"Time":"2026-09-23T11:28:07.06561049+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestWindowSlopeMatches","Output":"--- PASS: TestWindowSlopeMatches (0.00s)\n"}
+{"Time":"2026-09-23T11:28:07.065624537+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Test":"TestWindowSlopeMatches","Elapsed":0}
+{"Time":"2026-09-23T11:28:07.065673481+02:00","Action":"run","Package":"open-sds/app/internal/engine","Test":"TestWindowSlopeSmallWindowNeverVetoes"}
+{"Time":"2026-09-23T11:28:07.065681921+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestWindowSlopeSmallWindowNeverVetoes","Output":"=== RUN   TestWindowSlopeSmallWindowNeverVetoes\n"}
+{"Time":"2026-09-23T11:28:07.065734565+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestWindowSlopeSmallWindowNeverVetoes","Output":"--- PASS: TestWindowSlopeSmallWindowNeverVetoes (0.00s)\n"}
+{"Time":"2026-09-23T11:28:07.065749174+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Test":"TestWindowSlopeSmallWindowNeverVetoes","Elapsed":0}
+{"Time":"2026-09-23T11:28:07.065781061+02:00","Action":"run","Package":"open-sds/app/internal/engine","Test":"TestPtp"}
+{"Time":"2026-09-23T11:28:07.065786826+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestPtp","Output":"=== RUN   TestPtp\n"}
+{"Time":"2026-09-23T11:28:07.065837541+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestPtp","Output":"--- PASS: TestPtp (0.00s)\n"}
+{"Time":"2026-09-23T11:28:07.06585146+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Test":"TestPtp","Elapsed":0}
+{"Time":"2026-09-23T11:28:07.065885954+02:00","Action":"run","Package":"open-sds/app/internal/engine","Test":"TestSignalPresentSmallSignal"}
+{"Time":"2026-09-23T11:28:07.065891505+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestSignalPresentSmallSignal","Output":"=== RUN   TestSignalPresentSmallSignal\n"}
+{"Time":"2026-09-23T11:28:07.136273515+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestSignalPresentSmallSignal","Output":"--- PASS: TestSignalPresentSmallSignal (0.07s)\n"}
+{"Time":"2026-09-23T11:28:07.136294603+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Test":"TestSignalPresentSmallSignal","Elapsed":0.07}
+{"Time":"2026-09-23T11:28:07.136331795+02:00","Action":"run","Package":"open-sds/app/internal/engine","Test":"TestNoiseFloorPeriodIndependent"}
+{"Time":"2026-09-23T11:28:07.136337813+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestNoiseFloorPeriodIndependent","Output":"=== RUN   TestNoiseFloorPeriodIndependent\n"}
+{"Time":"2026-09-23T11:28:07.139222228+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestNoiseFloorPeriodIndependent","Output":"--- PASS: TestNoiseFloorPeriodIndependent (0.00s)\n"}
+{"Time":"2026-09-23T11:28:07.139232024+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Test":"TestNoiseFloorPeriodIndependent","Elapsed":0}
+{"Time":"2026-09-23T11:28:07.139274232+02:00","Action":"run","Package":"open-sds/app/internal/engine","Test":"TestMemDepth"}
+{"Time":"2026-09-23T11:28:07.13928016+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestMemDepth","Output":"=== RUN   TestMemDepth\n"}
+{"Time":"2026-09-23T11:28:07.141441287+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestMemDepth","Output":"--- PASS: TestMemDepth (0.00s)\n"}
+{"Time":"2026-09-23T11:28:07.141453647+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Test":"TestMemDepth","Elapsed":0}
+{"Time":"2026-09-23T11:28:07.14150247+02:00","Action":"run","Package":"open-sds/app/internal/engine","Test":"TestSingleForcesFullDepth"}
+{"Time":"2026-09-23T11:28:07.141509057+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestSingleForcesFullDepth","Output":"=== RUN   TestSingleForcesFullDepth\n"}
+{"Time":"2026-09-23T11:28:07.144861203+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestSingleForcesFullDepth","Output":"    engine_loop.go:667: single-shot captured seq=1 — stopped\n"}
+{"Time":"2026-09-23T11:28:07.144884705+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestSingleForcesFullDepth","Output":"--- PASS: TestSingleForcesFullDepth (0.00s)\n"}
+{"Time":"2026-09-23T11:28:07.144909756+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Test":"TestSingleForcesFullDepth","Elapsed":0}
+{"Time":"2026-09-23T11:28:07.144947351+02:00","Action":"run","Package":"open-sds/app/internal/engine","Test":"TestStreamMode"}
+{"Time":"2026-09-23T11:28:07.144957888+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestStreamMode","Output":"=== RUN   TestStreamMode\n"}
+{"Time":"2026-09-23T11:28:07.151434114+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestStreamMode","Output":"--- PASS: TestStreamMode (0.01s)\n"}
+{"Time":"2026-09-23T11:28:07.151446091+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Test":"TestStreamMode","Elapsed":0.01}
+{"Time":"2026-09-23T11:28:07.151456189+02:00","Action":"run","Package":"open-sds/app/internal/engine","Test":"TestSingleShotStopsAfterCapture"}
+{"Time":"2026-09-23T11:28:07.151460767+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestSingleShotStopsAfterCapture","Output":"=== RUN   TestSingleShotStopsAfterCapture\n"}
+{"Time":"2026-09-23T11:28:07.154477988+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestSingleShotStopsAfterCapture","Output":"    engine_loop.go:667: single-shot captured seq=1 — stopped\n"}
+{"Time":"2026-09-23T11:28:07.154490532+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestSingleShotStopsAfterCapture","Output":"--- PASS: TestSingleShotStopsAfterCapture (0.00s)\n"}
+{"Time":"2026-09-23T11:28:07.154498609+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Test":"TestSingleShotStopsAfterCapture","Elapsed":0}
+{"Time":"2026-09-23T11:28:07.15451809+02:00","Action":"run","Package":"open-sds/app/internal/engine","Test":"TestDecimatedAutoPublishes"}
+{"Time":"2026-09-23T11:28:07.154522864+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestDecimatedAutoPublishes","Output":"=== RUN   TestDecimatedAutoPublishes\n"}
+{"Time":"2026-09-23T11:28:07.157598776+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestDecimatedAutoPublishes","Output":"--- PASS: TestDecimatedAutoPublishes (0.00s)\n"}
+{"Time":"2026-09-23T11:28:07.15761465+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Test":"TestDecimatedAutoPublishes","Elapsed":0}
+{"Time":"2026-09-23T11:28:07.157622022+02:00","Action":"run","Package":"open-sds/app/internal/engine","Test":"TestShortRecordIsNotCoherent"}
+{"Time":"2026-09-23T11:28:07.157626443+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestShortRecordIsNotCoherent","Output":"=== RUN   TestShortRecordIsNotCoherent\n"}
+{"Time":"2026-09-23T11:28:07.158879697+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestShortRecordIsNotCoherent","Output":"--- PASS: TestShortRecordIsNotCoherent (0.00s)\n"}
+{"Time":"2026-09-23T11:28:07.158891306+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Test":"TestShortRecordIsNotCoherent","Elapsed":0}
+{"Time":"2026-09-23T11:28:07.158900151+02:00","Action":"run","Package":"open-sds/app/internal/engine","Test":"TestDecimatedNormHoldsWithoutDone"}
+{"Time":"2026-09-23T11:28:07.158903211+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestDecimatedNormHoldsWithoutDone","Output":"=== RUN   TestDecimatedNormHoldsWithoutDone\n"}
+{"Time":"2026-09-23T11:28:07.159648343+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestDecimatedNormHoldsWithoutDone","Output":"--- PASS: TestDecimatedNormHoldsWithoutDone (0.00s)\n"}
+{"Time":"2026-09-23T11:28:07.159658727+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Test":"TestDecimatedNormHoldsWithoutDone","Elapsed":0}
+{"Time":"2026-09-23T11:28:07.159664811+02:00","Action":"run","Package":"open-sds/app/internal/engine","Test":"TestDecimatedAutoPublishesOnFreeRun"}
+{"Time":"2026-09-23T11:28:07.159667774+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestDecimatedAutoPublishesOnFreeRun","Output":"=== RUN   TestDecimatedAutoPublishesOnFreeRun\n"}
+{"Time":"2026-09-23T11:28:07.161520368+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestDecimatedAutoPublishesOnFreeRun","Output":"--- PASS: TestDecimatedAutoPublishesOnFreeRun (0.00s)\n"}
+{"Time":"2026-09-23T11:28:07.161530143+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Test":"TestDecimatedAutoPublishesOnFreeRun","Elapsed":0}
+{"Time":"2026-09-23T11:28:07.161552744+02:00","Action":"run","Package":"open-sds/app/internal/engine","Test":"TestDecimatedAutoHoldsWrongSlopeFrame"}
+{"Time":"2026-09-23T11:28:07.161558108+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestDecimatedAutoHoldsWrongSlopeFrame","Output":"=== RUN   TestDecimatedAutoHoldsWrongSlopeFrame\n"}
+{"Time":"2026-09-23T11:28:07.163757258+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestDecimatedAutoHoldsWrongSlopeFrame","Output":"--- PASS: TestDecimatedAutoHoldsWrongSlopeFrame (0.00s)\n"}
+{"Time":"2026-09-23T11:28:07.163766871+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Test":"TestDecimatedAutoHoldsWrongSlopeFrame","Elapsed":0}
+{"Time":"2026-09-23T11:28:07.163775095+02:00","Action":"run","Package":"open-sds/app/internal/engine","Test":"TestDecimatedAutoWrongSlopeLiveness"}
+{"Time":"2026-09-23T11:28:07.163780269+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestDecimatedAutoWrongSlopeLiveness","Output":"=== RUN   TestDecimatedAutoWrongSlopeLiveness\n"}
+{"Time":"2026-09-23T11:28:07.28525597+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestDecimatedAutoWrongSlopeLiveness","Output":"--- PASS: TestDecimatedAutoWrongSlopeLiveness (0.12s)\n"}
+{"Time":"2026-09-23T11:28:07.285271493+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Test":"TestDecimatedAutoWrongSlopeLiveness","Elapsed":0.12}
+{"Time":"2026-09-23T11:28:07.285282106+02:00","Action":"run","Package":"open-sds/app/internal/engine","Test":"TestDecimatedAutoLivenessTimeBound"}
+{"Time":"2026-09-23T11:28:07.285287574+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestDecimatedAutoLivenessTimeBound","Output":"=== RUN   TestDecimatedAutoLivenessTimeBound\n"}
+{"Time":"2026-09-23T11:28:07.287317579+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestDecimatedAutoLivenessTimeBound","Output":"--- PASS: TestDecimatedAutoLivenessTimeBound (0.00s)\n"}
+{"Time":"2026-09-23T11:28:07.287326631+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Test":"TestDecimatedAutoLivenessTimeBound","Elapsed":0}
+{"Time":"2026-09-23T11:28:07.287334974+02:00","Action":"run","Package":"open-sds/app/internal/engine","Test":"TestSingleShotNotConsumedByFlatFallback"}
+{"Time":"2026-09-23T11:28:07.287342358+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestSingleShotNotConsumedByFlatFallback","Output":"=== RUN   TestSingleShotNotConsumedByFlatFallback\n"}
+{"Time":"2026-09-23T11:28:07.455784114+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestSingleShotNotConsumedByFlatFallback","Output":"    engine_loop.go:667: single-shot captured seq=2 — stopped\n"}
+{"Time":"2026-09-23T11:28:07.455814432+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestSingleShotNotConsumedByFlatFallback","Output":"--- PASS: TestSingleShotNotConsumedByFlatFallback (0.17s)\n"}
+{"Time":"2026-09-23T11:28:07.455821167+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Test":"TestSingleShotNotConsumedByFlatFallback","Elapsed":0.17}
+{"Time":"2026-09-23T11:28:07.455827637+02:00","Action":"run","Package":"open-sds/app/internal/engine","Test":"TestEdgeLevelOffSignalDoesNotLock"}
+{"Time":"2026-09-23T11:28:07.455830309+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestEdgeLevelOffSignalDoesNotLock","Output":"=== RUN   TestEdgeLevelOffSignalDoesNotLock\n"}
+{"Time":"2026-09-23T11:28:07.458975341+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestEdgeLevelOffSignalDoesNotLock","Output":"--- PASS: TestEdgeLevelOffSignalDoesNotLock (0.00s)\n"}
+{"Time":"2026-09-23T11:28:07.458995416+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Test":"TestEdgeLevelOffSignalDoesNotLock","Elapsed":0}
+{"Time":"2026-09-23T11:28:07.459001373+02:00","Action":"run","Package":"open-sds/app/internal/engine","Test":"TestDecimatedFlatFallback"}
+{"Time":"2026-09-23T11:28:07.459004309+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestDecimatedFlatFallback","Output":"=== RUN   TestDecimatedFlatFallback\n"}
+{"Time":"2026-09-23T11:28:07.519461605+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestDecimatedFlatFallback","Output":"--- PASS: TestDecimatedFlatFallback (0.06s)\n"}
+{"Time":"2026-09-23T11:28:07.519481444+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Test":"TestDecimatedFlatFallback","Elapsed":0.06}
+{"Time":"2026-09-23T11:28:07.519491416+02:00","Action":"run","Package":"open-sds/app/internal/engine","Test":"TestLevelAnchoredCentering"}
+{"Time":"2026-09-23T11:28:07.519494955+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestLevelAnchoredCentering","Output":"=== RUN   TestLevelAnchoredCentering\n"}
+{"Time":"2026-09-23T11:28:07.520810886+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestLevelAnchoredCentering","Output":"    engine_cmd.go:61: engine: trigger recommitted, code=0x728c level=186 acq=0x7c27\n"}
+{"Time":"2026-09-23T11:28:07.521792933+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestLevelAnchoredCentering","Output":"--- PASS: TestLevelAnchoredCentering (0.00s)\n"}
+{"Time":"2026-09-23T11:28:07.52180301+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Test":"TestLevelAnchoredCentering","Elapsed":0}
+{"Time":"2026-09-23T11:28:07.521808799+02:00","Action":"run","Package":"open-sds/app/internal/engine","Test":"TestNativeFastAutoFreeRunUntriggered"}
+{"Time":"2026-09-23T11:28:07.521811755+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestNativeFastAutoFreeRunUntriggered","Output":"=== RUN   TestNativeFastAutoFreeRunUntriggered\n"}
+{"Time":"2026-09-23T11:28:07.527987523+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestNativeFastAutoFreeRunUntriggered","Output":"--- PASS: TestNativeFastAutoFreeRunUntriggered (0.01s)\n"}
+{"Time":"2026-09-23T11:28:07.52800312+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Test":"TestNativeFastAutoFreeRunUntriggered","Elapsed":0.01}
+{"Time":"2026-09-23T11:28:07.52802773+02:00","Action":"run","Package":"open-sds/app/internal/engine","Test":"TestNativeFastContentGate"}
+{"Time":"2026-09-23T11:28:07.528033083+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestNativeFastContentGate","Output":"=== RUN   TestNativeFastContentGate\n"}
+{"Time":"2026-09-23T11:28:07.703097832+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestNativeFastContentGate","Output":"--- PASS: TestNativeFastContentGate (0.17s)\n"}
+{"Time":"2026-09-23T11:28:07.703117767+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Test":"TestNativeFastContentGate","Elapsed":0.17}
+{"Time":"2026-09-23T11:28:07.703125458+02:00","Action":"run","Package":"open-sds/app/internal/engine","Test":"TestHoldoffPacing"}
+{"Time":"2026-09-23T11:28:07.703128314+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestHoldoffPacing","Output":"=== RUN   TestHoldoffPacing\n"}
+{"Time":"2026-09-23T11:28:07.703252252+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestHoldoffPacing","Output":"--- PASS: TestHoldoffPacing (0.00s)\n"}
+{"Time":"2026-09-23T11:28:07.703263099+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Test":"TestHoldoffPacing","Elapsed":0}
+{"Time":"2026-09-23T11:28:07.703267442+02:00","Action":"run","Package":"open-sds/app/internal/engine","Test":"TestBringUpWriteOrder"}
+{"Time":"2026-09-23T11:28:07.703269906+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestBringUpWriteOrder","Output":"=== RUN   TestBringUpWriteOrder\n"}
+{"Time":"2026-09-23T11:28:07.703510233+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestBringUpWriteOrder","Output":"--- PASS: TestBringUpWriteOrder (0.00s)\n"}
+{"Time":"2026-09-23T11:28:07.703519557+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Test":"TestBringUpWriteOrder","Elapsed":0}
+{"Time":"2026-09-23T11:28:07.703523332+02:00","Action":"run","Package":"open-sds/app/internal/engine","Test":"TestArmSequence"}
+{"Time":"2026-09-23T11:28:07.703525773+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestArmSequence","Output":"=== RUN   TestArmSequence\n"}
+{"Time":"2026-09-23T11:28:07.703752506+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestArmSequence","Output":"--- PASS: TestArmSequence (0.00s)\n"}
+{"Time":"2026-09-23T11:28:07.703763117+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Test":"TestArmSequence","Elapsed":0}
+{"Time":"2026-09-23T11:28:07.703766788+02:00","Action":"run","Package":"open-sds/app/internal/engine","Test":"TestBandChangeAppliedAtBoundary"}
+{"Time":"2026-09-23T11:28:07.703769069+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestBandChangeAppliedAtBoundary","Output":"=== RUN   TestBandChangeAppliedAtBoundary\n"}
+{"Time":"2026-09-23T11:28:07.70390167+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestBandChangeAppliedAtBoundary","Output":"    engine_loop.go:50: engine: fabric identity verified (build-ID 0x6af8705a); panel key matrix not present on this image — physical buttons inactive, /api/panel + SCPI remain\n"}
+{"Time":"2026-09-23T11:28:07.712727156+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestBandChangeAppliedAtBoundary","Output":"--- PASS: TestBandChangeAppliedAtBoundary (0.01s)\n"}
+{"Time":"2026-09-23T11:28:07.712742816+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Test":"TestBandChangeAppliedAtBoundary","Elapsed":0.01}
+{"Time":"2026-09-23T11:28:07.712749836+02:00","Action":"run","Package":"open-sds/app/internal/engine","Test":"TestStopKeepsHeartbeatAndServicesCommands"}
+{"Time":"2026-09-23T11:28:07.712752201+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestStopKeepsHeartbeatAndServicesCommands","Output":"=== RUN   TestStopKeepsHeartbeatAndServicesCommands\n"}
+{"Time":"2026-09-23T11:28:07.712928858+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestStopKeepsHeartbeatAndServicesCommands","Output":"    engine_loop.go:50: engine: fabric identity verified (build-ID 0x6af8705a); panel key matrix not present on this image — physical buttons inactive, /api/panel + SCPI remain\n"}
+{"Time":"2026-09-23T11:28:07.71929285+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestStopKeepsHeartbeatAndServicesCommands","Output":"--- PASS: TestStopKeepsHeartbeatAndServicesCommands (0.01s)\n"}
+{"Time":"2026-09-23T11:28:07.719305786+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Test":"TestStopKeepsHeartbeatAndServicesCommands","Elapsed":0.01}
+{"Time":"2026-09-23T11:28:07.719315774+02:00","Action":"run","Package":"open-sds/app/internal/engine","Test":"TestMatrixAndLEDService"}
+{"Time":"2026-09-23T11:28:07.719320572+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestMatrixAndLEDService","Output":"=== RUN   TestMatrixAndLEDService\n"}
+{"Time":"2026-09-23T11:28:07.719738458+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestMatrixAndLEDService","Output":"--- PASS: TestMatrixAndLEDService (0.00s)\n"}
+{"Time":"2026-09-23T11:28:07.719753915+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Test":"TestMatrixAndLEDService","Elapsed":0}
+{"Time":"2026-09-23T11:28:07.7197829+02:00","Action":"run","Package":"open-sds/app/internal/engine","Test":"TestRunStopsAtBoundary"}
+{"Time":"2026-09-23T11:28:07.719787767+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestRunStopsAtBoundary","Output":"=== RUN   TestRunStopsAtBoundary\n"}
+{"Time":"2026-09-23T11:28:07.719987354+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestRunStopsAtBoundary","Output":"    engine_loop.go:50: engine: fabric identity verified (build-ID 0x6af8705a); panel key matrix not present on this image — physical buttons inactive, /api/panel + SCPI remain\n"}
+{"Time":"2026-09-23T11:28:07.722121807+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestRunStopsAtBoundary","Output":"--- PASS: TestRunStopsAtBoundary (0.00s)\n"}
+{"Time":"2026-09-23T11:28:07.722137291+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Test":"TestRunStopsAtBoundary","Elapsed":0}
+{"Time":"2026-09-23T11:28:07.722210951+02:00","Action":"run","Package":"open-sds/app/internal/engine","Test":"TestTriggerLevelRecommit"}
+{"Time":"2026-09-23T11:28:07.722219482+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestTriggerLevelRecommit","Output":"=== RUN   TestTriggerLevelRecommit\n"}
+{"Time":"2026-09-23T11:28:07.722533573+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestTriggerLevelRecommit","Output":"    engine_cmd.go:61: engine: trigger recommitted, code=0x7530 level=167 acq=0x7c27\n"}
+{"Time":"2026-09-23T11:28:07.722589319+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestTriggerLevelRecommit","Output":"    engine_cmd.go:61: engine: trigger recommitted, code=0x7560 level=166 acq=0x7c27\n"}
+{"Time":"2026-09-23T11:28:07.722750833+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestTriggerLevelRecommit","Output":"--- PASS: TestTriggerLevelRecommit (0.00s)\n"}
+{"Time":"2026-09-23T11:28:07.722758901+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Test":"TestTriggerLevelRecommit","Elapsed":0}
+{"Time":"2026-09-23T11:28:07.722777197+02:00","Action":"run","Package":"open-sds/app/internal/engine","Test":"TestTrigLevelClamp"}
+{"Time":"2026-09-23T11:28:07.722780019+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestTrigLevelClamp","Output":"=== RUN   TestTrigLevelClamp\n"}
+{"Time":"2026-09-23T11:28:07.722963299+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestTrigLevelClamp","Output":"--- PASS: TestTrigLevelClamp (0.00s)\n"}
+{"Time":"2026-09-23T11:28:07.722971315+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Test":"TestTrigLevelClamp","Elapsed":0}
+{"Time":"2026-09-23T11:28:07.722976421+02:00","Action":"run","Package":"open-sds/app/internal/engine","Test":"TestOffsetDACFlush"}
+{"Time":"2026-09-23T11:28:07.722979058+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestOffsetDACFlush","Output":"=== RUN   TestOffsetDACFlush\n"}
+{"Time":"2026-09-23T11:28:07.723308331+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestOffsetDACFlush","Output":"    engine_cmd.go:61: engine: trigger recommitted, code=0x7530 level=167 acq=0x7c27\n"}
+{"Time":"2026-09-23T11:28:07.723334723+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestOffsetDACFlush","Output":"--- PASS: TestOffsetDACFlush (0.00s)\n"}
+{"Time":"2026-09-23T11:28:07.723360157+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Test":"TestOffsetDACFlush","Elapsed":0}
+{"Time":"2026-09-23T11:28:07.723396576+02:00","Action":"run","Package":"open-sds/app/internal/engine","Test":"TestTrigLevelZeroKeepsBootComparator"}
+{"Time":"2026-09-23T11:28:07.723400138+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestTrigLevelZeroKeepsBootComparator","Output":"=== RUN   TestTrigLevelZeroKeepsBootComparator\n"}
+{"Time":"2026-09-23T11:28:07.723660092+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestTrigLevelZeroKeepsBootComparator","Output":"--- PASS: TestTrigLevelZeroKeepsBootComparator (0.00s)\n"}
+{"Time":"2026-09-23T11:28:07.723685718+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Test":"TestTrigLevelZeroKeepsBootComparator","Elapsed":0}
+{"Time":"2026-09-23T11:28:07.723726938+02:00","Action":"run","Package":"open-sds/app/internal/engine","Test":"TestWedgeLadderNativeFast"}
+{"Time":"2026-09-23T11:28:07.723733009+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestWedgeLadderNativeFast","Output":"=== RUN   TestWedgeLadderNativeFast\n"}
+{"Time":"2026-09-23T11:28:07.762390785+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestWedgeLadderNativeFast","Output":"    engine_bus.go:286: engine: 10 dead frames (fill frozen, flat drain) — re-asserting bring-up\n"}
+{"Time":"2026-09-23T11:28:07.794191587+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestWedgeLadderNativeFast","Output":"    engine_bus.go:286: engine: 20 dead frames (fill frozen, flat drain) — re-asserting bring-up\n"}
+{"Time":"2026-09-23T11:28:07.826030548+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestWedgeLadderNativeFast","Output":"    engine_bus.go:286: engine: 30 dead frames (fill frozen, flat drain) — re-asserting bring-up\n"}
+{"Time":"2026-09-23T11:28:07.857731177+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestWedgeLadderNativeFast","Output":"    engine_bus.go:286: engine: 40 dead frames (fill frozen, flat drain) — re-asserting bring-up\n"}
+{"Time":"2026-09-23T11:28:07.889330948+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestWedgeLadderNativeFast","Output":"    engine_bus.go:286: engine: 50 dead frames (fill frozen, flat drain) — re-asserting bring-up\n"}
+{"Time":"2026-09-23T11:28:07.88937199+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestWedgeLadderNativeFast","Output":"    engine_bus.go:307: engine: 50 dead frames but CONF_DONE high — flat input or partial wedge; continuing with periodic bring-up\n"}
+{"Time":"2026-09-23T11:28:07.921869924+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestWedgeLadderNativeFast","Output":"    engine_bus.go:286: engine: 60 dead frames (fill frozen, flat drain) — re-asserting bring-up\n"}
+{"Time":"2026-09-23T11:28:07.955708514+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestWedgeLadderNativeFast","Output":"    engine_bus.go:286: engine: 70 dead frames (fill frozen, flat drain) — re-asserting bring-up\n"}
+{"Time":"2026-09-23T11:28:07.987817377+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestWedgeLadderNativeFast","Output":"    engine_bus.go:286: engine: 80 dead frames (fill frozen, flat drain) — re-asserting bring-up\n"}
+{"Time":"2026-09-23T11:28:08.019934313+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestWedgeLadderNativeFast","Output":"    engine_bus.go:286: engine: 90 dead frames (fill frozen, flat drain) — re-asserting bring-up\n"}
+{"Time":"2026-09-23T11:28:08.055407128+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestWedgeLadderNativeFast","Output":"    engine_bus.go:286: engine: 100 dead frames (fill frozen, flat drain) — re-asserting bring-up\n"}
+{"Time":"2026-09-23T11:28:08.055511885+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestWedgeLadderNativeFast","Output":"    engine_bus.go:301: engine: CONF_DONE lost after 100 dead frames — marking wedged (agent will relaunch)\n"}
+{"Time":"2026-09-23T11:28:08.05560987+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestWedgeLadderNativeFast","Output":"--- PASS: TestWedgeLadderNativeFast (0.33s)\n"}
+{"Time":"2026-09-23T11:28:08.055617385+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Test":"TestWedgeLadderNativeFast","Elapsed":0.33}
+{"Time":"2026-09-23T11:28:08.055650237+02:00","Action":"run","Package":"open-sds/app/internal/engine","Test":"TestWedgeLadderDecimated"}
+{"Time":"2026-09-23T11:28:08.055654538+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestWedgeLadderDecimated","Output":"=== RUN   TestWedgeLadderDecimated\n"}
+{"Time":"2026-09-23T11:28:08.071671724+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestWedgeLadderDecimated","Output":"    engine_bus.go:286: engine: 10 dead frames (fill frozen, flat drain) — re-asserting bring-up\n"}
+{"Time":"2026-09-23T11:28:08.087777142+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestWedgeLadderDecimated","Output":"    engine_bus.go:286: engine: 20 dead frames (fill frozen, flat drain) — re-asserting bring-up\n"}
+{"Time":"2026-09-23T11:28:08.105055337+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestWedgeLadderDecimated","Output":"    engine_bus.go:286: engine: 30 dead frames (fill frozen, flat drain) — re-asserting bring-up\n"}
+{"Time":"2026-09-23T11:28:08.120248586+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestWedgeLadderDecimated","Output":"    engine_bus.go:286: engine: 40 dead frames (fill frozen, flat drain) — re-asserting bring-up\n"}
+{"Time":"2026-09-23T11:28:08.135560279+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestWedgeLadderDecimated","Output":"    engine_bus.go:286: engine: 50 dead frames (fill frozen, flat drain) — re-asserting bring-up\n"}
+{"Time":"2026-09-23T11:28:08.135604228+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestWedgeLadderDecimated","Output":"    engine_bus.go:301: engine: CONF_DONE lost after 50 dead frames — marking wedged (agent will relaunch)\n"}
+{"Time":"2026-09-23T11:28:08.135707965+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestWedgeLadderDecimated","Output":"--- PASS: TestWedgeLadderDecimated (0.08s)\n"}
+{"Time":"2026-09-23T11:28:08.13571515+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Test":"TestWedgeLadderDecimated","Elapsed":0.08}
+{"Time":"2026-09-23T11:28:08.135837592+02:00","Action":"run","Package":"open-sds/app/internal/engine","Test":"TestWedgeLadderResetsOnActivity"}
+{"Time":"2026-09-23T11:28:08.135843733+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestWedgeLadderResetsOnActivity","Output":"=== RUN   TestWedgeLadderResetsOnActivity\n"}
+{"Time":"2026-09-23T11:28:08.167833032+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestWedgeLadderResetsOnActivity","Output":"--- PASS: TestWedgeLadderResetsOnActivity (0.03s)\n"}
+{"Time":"2026-09-23T11:28:08.167848929+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Test":"TestWedgeLadderResetsOnActivity","Elapsed":0.03}
+{"Time":"2026-09-23T11:28:08.167986351+02:00","Action":"run","Package":"open-sds/app/internal/engine","Test":"TestHealthBeatsThroughHoldoff"}
+{"Time":"2026-09-23T11:28:08.16799258+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestHealthBeatsThroughHoldoff","Output":"=== RUN   TestHealthBeatsThroughHoldoff\n"}
+{"Time":"2026-09-23T11:28:08.169196209+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestHealthBeatsThroughHoldoff","Output":"--- PASS: TestHealthBeatsThroughHoldoff (0.00s)\n"}
+{"Time":"2026-09-23T11:28:08.169203501+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Test":"TestHealthBeatsThroughHoldoff","Elapsed":0}
+{"Time":"2026-09-23T11:28:08.169585181+02:00","Action":"output","Package":"open-sds/app/internal/engine","Output":"PASS\n"}
+{"Time":"2026-09-23T11:28:09.173880257+02:00","Action":"output","Package":"open-sds/app/internal/engine","Output":"ok  \topen-sds/app/internal/engine\t3.757s\n"}
+{"Time":"2026-09-23T11:28:09.17389614+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Elapsed":3.757}

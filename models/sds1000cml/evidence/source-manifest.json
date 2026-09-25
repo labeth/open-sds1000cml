@@ -1,0 +1,18 @@
+{
+  "branch": "cyclone-spec-sram-capture",
+  "categories": {
+    "asset-or-fixture": 23,
+    "build-or-configuration": 70,
+    "documentation": 48,
+    "historical-validation": 2782,
+    "implementation": 267,
+    "other-support": 25,
+    "test": 264
+  },
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "files": 3479,
+  "inventorySHA256": "3410075a0ba93603c43a2d3e9460865c3bc9a01f3e5c59c1daee5a4db7cf4028",
+  "repository": "../..",
+  "scope": "All committed paths at the pinned commit. Untracked files are excluded.",
+  "tree": "d3bddd940c04acb8cd78f48c91246bad692bc16a"
+}

@@ -1,0 +1,4 @@
+ARGS ["get", "/dev/acq-first.bin", "/home/labeth/ws/open-sds1000cml-acq2/docs/acq2/reports/2026-09-11-adc-sram/device-232610/first.bin"]
+
+download: 100% (2048/2048)
+ok: /dev/acq-first.bin -> /home/labeth/ws/open-sds1000cml-acq2/docs/acq2/reports/2026-09-11-adc-sram/device-232610/first.bin

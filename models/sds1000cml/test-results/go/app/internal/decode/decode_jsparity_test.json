@@ -1,0 +1,25 @@
+{
+  "source": "app/internal/decode/decode_jsparity_test.go",
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "scope": "Reviewed Go test outcomes; passing assertions contribute partial requirement evidence.",
+  "sourceSHA256": "d0ced1285b60b94a2750e3ea38d59dbcf1e45bb0469663f0e3eb9ce109119ca2",
+  "logs": {
+    "test-runs/decode-extended-exploratory.jsonl": "66a80f8ce964936a9508047ef9b9cb0fc09d50284875a57ca1f588d481dfd694"
+  },
+  "tests": [
+    {
+      "name": "TestJSDecoderParity",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-018"
+      ]
+    }
+  ],
+  "results": [
+    {
+      "requirement": "REQ-SDS-018",
+      "status": "partial",
+      "notes": "1 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    }
+  ]
+}

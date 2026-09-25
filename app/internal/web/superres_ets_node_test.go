@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-WEB
 package web
 
 import (
@@ -13,6 +14,7 @@ import (
 // clock at random phase + noise must recover the frequency, reconstruct the
 // period at the correct amplitude, gain measured ENOB, keep a square's
 // harmonics, and reject a pure-noise frame. Skips if node is absent (fails under CI_REQUIRE_BROWSER=1).
+// TRLC-LINKS: REQ-SDS-181
 func TestSuperresEtsJS(t *testing.T) {
 	testenv.NeedNode(t)
 	node, _ := exec.LookPath("node")

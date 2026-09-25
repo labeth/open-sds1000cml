@@ -1,0 +1,25 @@
+{
+  "source": "app/internal/web/web_invs_test.go",
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "scope": "Reviewed Go test outcomes; passing assertions contribute partial requirement evidence.",
+  "sourceSHA256": "1b58d30621b36a3cf06ebd0a1499e4a5902c0479bfab42e8d494610d26a7e445",
+  "logs": {
+    "test-runs/webapi-integrated.jsonl": "05e8d0213a8bb57533614fd3f9295676c3e8b93d44f2f32031b53e3cd0db3308"
+  },
+  "tests": [
+    {
+      "name": "TestStatusInvertSource",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-164"
+      ]
+    }
+  ],
+  "results": [
+    {
+      "requirement": "REQ-SDS-164",
+      "status": "partial",
+      "notes": "1 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    }
+  ]
+}

@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-BUS
 package bus
 
 import (
@@ -15,6 +16,7 @@ import (
 // pops and POP_MON underruns; and a "timing floor" hook that corrupts pops
 // (a duplicate every 32nd word — the EDMA burst-boundary signature) when the
 // GPMC timing applied through the fake port is below the floor.
+// TRLC-LINKS: REQ-SDS-130
 type fakeFab struct {
 	mu      sync.Mutex
 	regs    map[uint16]uint16
@@ -34,12 +36,14 @@ type fakeFab struct {
 	goCount int
 }
 
+// TRLC-LINKS: REQ-SDS-130
 func newFakeFab() *fakeFab {
 	f := &fakeFab{regs: map[uint16]uint16{}}
 	f.regs[iface.SelAcqCtrl] = 0x7c00
 	return f
 }
 
+// TRLC-LINKS: REQ-SDS-130
 func (f *fakeFab) window() (start, n int) {
 	start = f.winS
 	if start > f.rec {
@@ -52,6 +56,7 @@ func (f *fakeFab) window() (start, n int) {
 	return
 }
 
+// TRLC-LINKS: REQ-SDS-130
 func (f *fakeFab) latch() {
 	f.winS = int(f.regs[iface.SelDrainStart] & iface.DrainStartIdxMask)
 	f.winL = int(f.regs[iface.SelDrainLen])
@@ -59,6 +64,7 @@ func (f *fakeFab) latch() {
 	f.pops = 0
 }
 
+// TRLC-LINKS: REQ-SDS-130
 func (f *fakeFab) word(i int) uint16 {
 	w, _ := iface.TsrcWord(f.tsrc, f.k0+uint32(i))
 	if f.tsrc == iface.IlCtrlTsrcAdc {
@@ -67,6 +73,7 @@ func (f *fakeFab) word(i int) uint16 {
 	return w
 }
 
+// TRLC-LINKS: REQ-SDS-130
 func (f *fakeFab) pop() uint16 {
 	start, n := f.window()
 	f.pops++
@@ -86,6 +93,7 @@ func (f *fakeFab) pop() uint16 {
 	return f.last
 }
 
+// TRLC-LINKS: REQ-SDS-130
 func (f *fakeFab) Read(plane uint8, sel uint16) (uint16, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -116,6 +124,7 @@ func (f *fakeFab) Read(plane uint8, sel uint16) (uint16, error) {
 	return f.regs[iface.MaskSel(sel)], nil
 }
 
+// TRLC-LINKS: REQ-SDS-130
 func (f *fakeFab) Write(plane uint8, sel, val uint16) error {
 	if !Writable(plane, sel) {
 		return fmt.Errorf("fake: not writable cs%d %#04x", plane, sel)
@@ -153,22 +162,28 @@ func (f *fakeFab) Write(plane uint8, sel, val uint16) error {
 	return nil
 }
 
+// TRLC-LINKS: REQ-SDS-130
 func (f *fakeFab) RawWrite(sel, val uint16) error { return nil }
+// TRLC-LINKS: REQ-SDS-130
 func (f *fakeFab) BurstInto(c1, c2 []uint8, n int) {
 	for i := 0; i < n; i++ {
 		v, _ := f.Read(PlaneCS1, iface.SelBurst)
 		c1[i], c2[i] = iface.Split(v)
 	}
 }
+// TRLC-LINKS: REQ-SDS-130
 func (f *fakeFab) PopWords(sel uint16, dst []uint16, n int) {
 	for i := 0; i < n; i++ {
 		dst[i], _ = f.Read(PlaneCS1, sel)
 	}
 }
+// TRLC-LINKS: REQ-SDS-130
 func (f *fakeFab) FastDrain() bool { return true }
 
+// TRLC-LINKS: REQ-SDS-130
 func noSleep(time.Duration) {}
 
+// TRLC-LINKS: REQ-SDS-130
 func TestCaptureTsrcAndWindowedDrain(t *testing.T) {
 	f := newFakeFab()
 	rec, err := CaptureTsrc(f, TsrcOptions{Words: 1000, Tsrc: iface.IlCtrlTsrcRamp}, noSleep)
@@ -236,6 +251,7 @@ func TestCaptureTsrcAndWindowedDrain(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-130
 func TestCheckExactVerdicts(t *testing.T) {
 	words := []uint16{5, 6, 7, 8}
 	r := DrainResult{N: 4, Before: DrainStat{Pops: 0xfffe}, After: DrainStat{Pops: 2}}
@@ -268,6 +284,7 @@ func TestCheckExactVerdicts(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-130
 func TestRampCheckPassesAndDetectsCorruption(t *testing.T) {
 	f := newFakeFab()
 	rep, err := RampCheck(f, TsrcOptions{Words: 2000}, 4, noSleep)
@@ -296,6 +313,7 @@ func TestRampCheckPassesAndDetectsCorruption(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-130
 func TestRampCheckNeedsARecord(t *testing.T) {
 	f := newFakeFab()
 	f.regs[iface.SelPretrigLo] = 0 // GO with pre+post 0 finalizes nothing

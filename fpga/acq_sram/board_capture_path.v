@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-RTL-ACQ-SRAM-BOARD-CAPTURE-PATH
 // Shared acquisition/recall backend, with one physical transport and host RAM.
 // Board top supplies ADC/precision, record bookkeeping and GPMC ABI.
 // writer_request reserves the bus for the finite capture writer. Hold it until
@@ -5,6 +6,7 @@
 // Commands must only be issued with the matching ready signal. All writer ports
 // are core_clk synchronous. Reset must reset both clients and transport together.
 // position is never reset during handoff: record geometry uses this same origin.
+// TRLC-LINKS: REQ-SDS-045
 module sram_board_capture_path #(parameter ENABLE_STREAM=1,AW=19,CONTINUE_READS=1,READ_DELAY=0)(
  input wire reset,locked,core_clk,sample_clk,ram_clk,host_clk,
  input wire start,finite_mode,stop,source_finished,

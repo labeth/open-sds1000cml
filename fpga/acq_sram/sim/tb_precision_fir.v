@@ -1,7 +1,9 @@
+// ENGMODEL-OWNER-UNIT: FU-RTL-ACQ-TESTS
 `timescale 1ns/1ps
 // Independent direct FIR oracle for the first CIC: convolve three length-16
 // boxcars, then decimate. This checks varying data, overflow wrap and order;
 // it does not reproduce the RTL integrator/comb recurrence.
+// TRLC-LINKS: REQ-SDS-040
 module tb;
  reg clk=0,enable=0;always #2 clk=~clk;
  reg [7:0] a=0,b=0;wire valid;wire [15:0] q;

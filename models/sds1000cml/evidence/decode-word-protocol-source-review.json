@@ -1,0 +1,26 @@
+{
+  "result": "source-reviewed-tests-and-native-trace-pending",
+  "completeReads": [
+    "app/internal/decode/decode_sent.go",
+    "app/internal/decode/decode_mil1553.go",
+    "app/internal/decode/decode_arinc429.go"
+  ],
+  "sourceSHA256": {
+    "app/internal/decode/decode_sent.go": "d6b55ffc311fe28cd95da0279253fa53ef29116fe7a075ca4934778f614e3dd0",
+    "app/internal/decode/decode_mil1553.go": "06b5edbdf31ce18556966a38e3273507618baa36a7e6d73168d66f1bf9fe6958",
+    "app/internal/decode/decode_arinc429.go": "37c1e362a9d9c35f926b9ccf964edc44db520ebca47f674f13fe7d09e8f42d9d"
+  },
+  "findings": [
+    "SENT defaults nonpositive Nibbles to 8 and caps at 64. It infers SYNC from follower plausibility, falling back to the longest pulse, and recalibrates inferred ticks per frame. Positive explicit tick and positive sample interval select the override.",
+    "SENT returns OK only after at least one matching trailing CRC-4, but out-of-range intermediate pulses are clamped into frameNibs before later CRC computation. A coding-error span could therefore coexist with an accepted CRC; this is a source-derived hypothesis pending targeted test. Strong random-noise claims in comments are not quantified evidence.",
+    "SENT Bytes contains non-error status/data and CRC nibble values, not packed data octets. CRC uses data nibbles excluding status and trailing CRC. Pause is consumed only when configured and the next pulse does not look like SYNC.",
+    "MIL1553 rejects nonfinite or sub-four-sample bit periods; auto inference uses low-gap clustering and chooses between one/two base periods. Sync search requires bounded long holds on both sides, then delegates 17 cells to recoverManchester, which remains to be reviewed.",
+    "MIL1553 drops truncated/coding-invalid data words but emits parity-failed words with frame-error and returns OK when any word was emitted. Auto-detection applies a separate good-word score gate. Bytes contains 16-bit words.",
+    "ARINC uses a separate three-level histogram/mode slicer, mirrors absent polarity rails and infers period from pulse starts. It segments at gaps above 2.5 periods, requires all 32 slots and at most 34 pulse hits, and lets later duplicate hits replace earlier slot bits.",
+    "ARINC exposes label, data and SSM spans and four little-endian raw bytes per word; SDI is present in raw bytes but not emitted as a named field. Parity-failed complete words retain OK true plus error spans; auto-detection separately discounts them.",
+    "These findings describe this source implementation, not conformance certification against external protocol standards or electrical behavior."
+  ],
+  "nextAction": "Review Manchester dependency and remaining CAN/USB/FlexRay implementations, then their ordinary/breaker/oracle/parity evidence as a coherent decoder batch.",
+  "historicalBaseline": true,
+  "supersededBy": "evidence/decode-implementation-source-review.json"
+}

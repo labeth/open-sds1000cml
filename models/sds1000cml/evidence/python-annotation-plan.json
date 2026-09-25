@@ -1,0 +1,21 @@
+{
+  "scope": "Reviewed Python declarations; comments preserve exact pinned bytes, AST and tokens.",
+  "files": [
+    {
+      "path": "tools/hw/adc_sram/triangle_calibrate.py",
+      "owner": "FU-TOOLS-HW-ADC-SRAM",
+      "functions": {
+        "fit": [
+          "REQ-SDS-209"
+        ],
+        "validate": [
+          "REQ-SDS-209"
+        ],
+        "main": [
+          "REQ-SDS-209"
+        ]
+      },
+      "classes": {}
+    }
+  ]
+}

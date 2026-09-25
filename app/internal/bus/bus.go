@@ -13,6 +13,7 @@
 // Every method on *Dev must be called from the single engine-owner goroutine
 // only. The package does not enforce that; the engine does (Engine.Exec is the
 // door for everyone else).
+// ENGMODEL-OWNER-UNIT: FU-APP-BUS
 package bus
 
 import (
@@ -26,6 +27,7 @@ import (
 // Bus is the register surface the acquisition engine (and, through
 // Engine.Exec, the diagnostic block) drives. Implementations: *Dev (real
 // hardware) and the engine's offline fake fabric.
+// TRLC-LINKS: REQ-SDS-129
 type Bus interface {
 	// Read reads one 16-bit register. plane is PlaneCS1 or PlaneCS3.
 	Read(plane uint8, sel uint16) (uint16, error)
@@ -65,8 +67,10 @@ const (
 // Dev drives the real GPMC through the boot-inherited /dev/Gpmc fd. The fd is
 // held as a raw int and is never closed (closing frees the FPGA chip select
 // for the whole process tree).
+// TRLC-LINKS: REQ-SDS-129
 type Dev struct {
 	fd        int
+	remote    *workerClient
 	kernelDMA *kernelDMADrainer
 	edma      *edmaDrainer // nil → ioctl drains
 }
@@ -75,6 +79,7 @@ type Dev struct {
 // fabric holds the factory image (or nothing), so nothing about the register
 // map can be verified here — fpgaload.Bringup does that and reloads on
 // mismatch, and EnableEDMA runs only after the identity check passed.
+// TRLC-LINKS: REQ-SDS-002, REQ-SDS-129
 func New(fd int) (*Dev, error) {
 	if fd < 0 {
 		return nil, fmt.Errorf("bus: no inherited gpmc fd")
@@ -86,6 +91,7 @@ func New(fd int) (*Dev, error) {
 // schema says so (iface.BySel masks the selector like the fabric does); CS3
 // selectors are the MAX V front-end registers, all writable except the
 // configuration port.
+// TRLC-LINKS: REQ-SDS-129
 func Writable(plane uint8, sel uint16) bool {
 	switch plane {
 	case PlaneCS1:
@@ -97,23 +103,33 @@ func Writable(plane uint8, sel uint16) bool {
 	return false
 }
 
+// TRLC-LINKS: REQ-SDS-129
 func encode(plane uint8, sel, val uint16) [6]byte {
 	return [6]byte{plane, 0, byte(sel), byte(sel >> 8), byte(val), byte(val >> 8)}
 }
 
+// TRLC-LINKS: REQ-SDS-129, REQ-SDS-134
 func (d *Dev) ioctl(req uintptr, b *[6]byte) error {
+	if d.remote != nil {
+		return d.workerIOCTL(req, b)
+	}
 	if d.kernelDMA != nil && d.kernelDMA.streaming {
 		return fmt.Errorf("bus: kernel stream owns GPMC until CloseKernelDMA")
 	}
-	_, _, errno := syscall.Syscall(syscall.SYS_IOCTL, uintptr(d.fd), req, uintptr(unsafe.Pointer(&b[0])))
+	// These six-byte ioctls perform one bounded register transaction, not a
+	// blocking stream read. Keep the Go execution slot across the call so a
+	// register poll cannot hand it to a display render for an entire quantum.
+	_, _, errno := syscall.RawSyscall(syscall.SYS_IOCTL, uintptr(d.fd), req, uintptr(unsafe.Pointer(&b[0])))
 	if errno != 0 {
 		return errno
 	}
 	return nil
 }
 
+// TRLC-LINKS: REQ-SDS-129
 func validPlane(plane uint8) bool { return plane == PlaneCS1 || plane == PlaneCS3 }
 
+// TRLC-LINKS: REQ-SDS-129
 func (d *Dev) Read(plane uint8, sel uint16) (uint16, error) {
 	if !validPlane(plane) {
 		// plane 0 underflows the driver's base index and stalls the bus for
@@ -127,6 +143,7 @@ func (d *Dev) Read(plane uint8, sel uint16) (uint16, error) {
 	return uint16(b[4]) | uint16(b[5])<<8, nil
 }
 
+// TRLC-LINKS: REQ-SDS-129
 func (d *Dev) Write(plane uint8, sel, val uint16) error {
 	if !validPlane(plane) {
 		return fmt.Errorf("bus: invalid plane %d", plane)
@@ -140,8 +157,10 @@ func (d *Dev) Write(plane uint8, sel, val uint16) error {
 // RawWrite bypasses the schema guard on CS1 only: the E1 vendor-word replay.
 // The fabric decodes A1..A7 (schema v3, 128 selectors) and keeps the vendor
 // arm/halt words 0x21 / 0x57 undecoded, so the replay changes nothing.
+// TRLC-LINKS: REQ-SDS-129
 func (d *Dev) RawWrite(sel, val uint16) error { return d.rawWrite(PlaneCS1, sel, val) }
 
+// TRLC-LINKS: REQ-SDS-129
 func (d *Dev) rawWrite(plane uint8, sel, val uint16) error {
 	b := encode(plane, sel, val)
 	if err := d.ioctl(reqWrite, &b); err != nil {
@@ -157,8 +176,18 @@ func (d *Dev) rawWrite(plane uint8, sel, val uint16) error {
 // CPU reads of one address are served from the GPMC read buffer without a
 // fresh nOE strobe, so the port never pops (fpga-specs 12 §5.5, owned-fpga
 // 4770a81).
+// TRLC-LINKS: REQ-SDS-081, REQ-SDS-129
 func (d *Dev) BurstInto(c1, c2 []uint8, n int) {
 	if n <= 0 {
+		return
+	}
+	if d.remote != nil {
+		words := make([]uint16, n)
+		if d.PopWordsChecked(iface.SelBurst, words) == nil {
+			for i, v := range words {
+				c1[i], c2[i] = uint8(v>>8), uint8(v)
+			}
+		}
 		return
 	}
 	if d.edma != nil && d.edma.drain(c1, c2, n) {
@@ -173,8 +202,13 @@ func (d *Dev) BurstInto(c1, c2 []uint8, n int) {
 
 // PopWords pops n words from any pop-on-read port; the BURST port (and its
 // alias) takes the EDMA path when available.
+// TRLC-LINKS: REQ-SDS-081, REQ-SDS-129
 func (d *Dev) PopWords(sel uint16, dst []uint16, n int) {
 	if n <= 0 {
+		return
+	}
+	if d.remote != nil {
+		_ = d.PopWordsChecked(sel, dst[:n])
 		return
 	}
 	if d.edma != nil && (iface.MaskSel(sel) == iface.SelBurst || iface.MaskSel(sel) == iface.SelBurstAlias) &&
@@ -188,14 +222,24 @@ func (d *Dev) PopWords(sel uint16, dst []uint16, n int) {
 }
 
 // FastDrain reports whether the EDMA drain is active.
-func (d *Dev) FastDrain() bool { return d.edma != nil }
+// TRLC-LINKS: REQ-SDS-081
+func (d *Dev) FastDrain() bool {
+	if d.remote != nil {
+		return d.remote.fast
+	}
+	return d.edma != nil
+}
 
 // EnableEDMA sets up the EDMA fast drain sized for maxWords record words and
 // programs the CS1 cycle-to-cycle gap it depends on. MUST be called only after
 // the fabric identity is verified (the BURST port exists only on our image).
 // Any failure keeps the ioctl drain (logged through logf, non-fatal). Returns
 // whether EDMA is active; idempotent.
+// TRLC-LINKS: REQ-SDS-081, REQ-SDS-131, REQ-SDS-134
 func (d *Dev) EnableEDMA(maxWords int, logf func(string, ...any)) bool {
+	if d.remote != nil {
+		return d.remote.fast
+	}
 	if logf == nil {
 		logf = func(string, ...any) {}
 	}
@@ -229,7 +273,18 @@ func (d *Dev) EnableEDMA(maxWords int, logf func(string, ...any)) bool {
 
 // PopWordsChecked reads an explicitly selected pop port. A partially completed
 // DMA must be rewound by its owner; falling back here would silently skip data.
+// TRLC-LINKS: REQ-SDS-081, REQ-SDS-129, REQ-SDS-134
 func (d *Dev) PopWordsChecked(sel uint16, dst []uint16) error {
+	if d.remote != nil {
+		data := make([]byte, len(dst)*2)
+		if err := d.PopBytesChecked(sel, data); err != nil {
+			return err
+		}
+		for i := range dst {
+			dst[i] = uint16(data[i*2]) | uint16(data[i*2+1])<<8
+		}
+		return nil
+	}
 	if len(dst) == 0 {
 		return nil
 	}
@@ -267,12 +322,20 @@ func (d *Dev) PopWordsChecked(sel uint16, dst []uint16) error {
 
 // PopBytesChecked preserves the little-endian DMA bytes without a word roundtrip.
 // As with PopWordsChecked, a partial failure must not fall back or retry blindly.
+// TRLC-LINKS: REQ-SDS-081, REQ-SDS-129, REQ-SDS-134
 func (d *Dev) PopBytesChecked(sel uint16, dst []byte) error {
 	if sel > 127 || len(dst)%2 != 0 {
 		return fmt.Errorf("bus: invalid byte pop selector/length")
 	}
 	if len(dst) == 0 {
 		return nil
+	}
+	if d.remote != nil {
+		n, err := d.remote.call(workerPop, 1, sel, 0, 0, dst)
+		if err == nil && n != len(dst) {
+			return fmt.Errorf("bus: short worker pop (consumption uncertain)")
+		}
+		return err
 	}
 	if d.kernelDMA != nil {
 		return d.kernelDMA.pop(sel, dst)

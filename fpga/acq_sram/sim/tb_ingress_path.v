@@ -1,4 +1,6 @@
+// ENGMODEL-OWNER-UNIT: FU-RTL-ACQ-TESTS
 `timescale 1ns/1ps
+// TRLC-LINKS: REQ-SDS-046
 module tb;
  parameter PHASE=0;
  reg core=0,ram_clk=0;always #2 core=~core;

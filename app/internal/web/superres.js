@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-WEB-SUPERRES
 
 
 // superres.js — stack-and-crunch super-resolution for a repetitive waveform.
@@ -46,6 +47,7 @@
 // (the browser loads them as classic scripts before this one — same globals).
 if (typeof require !== "undefined") { Object.assign(globalThis, require("./superres_math.js"), require("./superres_template.js"), require("./superres_gate.js"), require("./superres_measure.js")); }
 
+// TRLC-LINKS: REQ-SDS-019
 function srSeedRef(st, sig1, sig2, edgeX, gate) {
   const sigs = [sig1, sig2];
   const alignSig = sigs[st.align];
@@ -102,6 +104,7 @@ function srSeedRef(st, sig1, sig2, edgeX, gate) {
 
 
 
+// TRLC-LINKS: REQ-SDS-019
 function srFeed(st, sig1, sig2, opts) {
   opts = opts || {};
   const maxLag = opts.maxLag || 8;
@@ -218,8 +221,10 @@ function srFeed(st, sig1, sig2, opts) {
 // information cost. Bins off the grid are dropped. Odd frames also land in
 // the A half-stack (see srNew).
 // srAccum kept as the single-channel entry (tests, channel 0).
+// TRLC-LINKS: REQ-SDS-019
 function srAccum(st, sig, shift) { srAccumCh(st, 0, sig, shift); }
 
+// TRLC-LINKS: REQ-SDS-019
 function srAccumCh(st, ch, sig, shift) {
   const K = st.K, nb = st.nbins, n = st.n;
   const C = st.c[ch];
@@ -291,6 +296,7 @@ function srAccumCh(st, ch, sig, shift) {
 // opts.statsOnly skips the mean array; opts.stride subsamples the bins for
 // the sigma medians (the live 500 ms stats tick uses both — a full reduction
 // over 1.3M bins with two million-element sorts would jank the UI).
+// TRLC-LINKS: REQ-SDS-019
 function srResult(st, opts) {
   opts = opts || {};
   const nb = st.nbins;
@@ -329,6 +335,7 @@ function srResult(st, opts) {
       }
     }
   }
+  // TRLC-LINKS: REQ-SDS-019
   const med = a => { if (!a.length) return 0; const s = [...a].sort((x, y) => x - y); return s[s.length >> 1]; };
   const sigmaSingle = med(sigSingles);
   // Median-based like sigmaSingle (×1.4826 = gaussian MAD→σ): an RMS here

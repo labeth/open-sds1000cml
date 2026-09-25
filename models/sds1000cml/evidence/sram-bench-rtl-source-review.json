@@ -1,0 +1,43 @@
+{
+  "status": "integrated-with-explicit-verification-limits",
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "completeReads": [
+    "fpga/sram_bench/bench.v",
+    "fpga/sram_bench/sim/tb.v"
+  ],
+  "reviewedLines": 240,
+  "sourceSHA256": {
+    "fpga/sram_bench/bench.v": "56041546ec45127435bc05b9e66d2da3c0d19a4966089c551c5713918dc51d73",
+    "fpga/sram_bench/sim/tb.v": "22ca80b403f26ce72e3dc052607650946772c863cb29e863d041d910a92960af"
+  },
+  "modulesByFile": {
+    "fpga/sram_bench/bench.v": [
+      "sram_bench_top"
+    ],
+    "fpga/sram_bench/sim/tb.v": [
+      "bench_pll",
+      "altddio_out",
+      "tb"
+    ]
+  },
+  "owners": {
+    "fpga/sram_bench/bench.v": [
+      "FU-RTL-SRAM-BENCH-BENCH"
+    ],
+    "fpga/sram_bench/sim/tb.v": [
+      "FU-RTL-BENCH-TESTS"
+    ]
+  },
+  "supportCompleteReads": [
+    "fpga/sram_bench/README.md"
+  ],
+  "findings": [
+    "Independent SRAM tester uses request toggles, a one-hot sequencer, 16-clock constant-data preamble and full-depth LFSR write/read comparison. Captures mismatch count, first mismatch and accumulated bad-bit mask. Result words are intended to be read after DONE; arbitrary live multiword reads are not coherent snapshots.",
+    "Latency is latched per run, while seed is a bus-domain register consumed in the test domain; host must keep configuration stable during a run. No new request is accepted while busy. Lock gates start and clears DDR output, but this source does not establish recovery from lock loss during a run.",
+    "Bench directly sets dut.req rather than issuing a GPMC transaction. Mock PLL forwards the 10 MHz reference to both test and sample clocks and asserts lock permanently; behavioral DDR and ideal pipelined SRAM do not establish physical phase/timing or fitted clock rates.",
+    "Original normal and +alias cases require exactly 524304 writes,524320 reads and524288 comparisons. Normal case requires zero mismatches; alias case folds address bit18 and requires a nonzero mismatch count. First mismatch, bad-mask details, debug head, all latency settings, host register protocol and repeated epochs are not asserted.",
+    "BENCH_MHZ controls debug-head inclusion and a reported register; setting it does not itself change the simulation clock. Original documented simulation compiles with BENCH_MHZ=10. No Quartus build or hardware runner is needed for this offline evidence."
+  ],
+  "scope": "Two complete RTL files, four approved module links and two original full-depth simulations integrated. Normal memory and address-bit18 alias cases pass; physical capacity/timing and host access remain unqualified. Publication refresh is deferred to combine with the remaining RTL batch.",
+  "executionEvidence": "sram-bench-rtl-review-test-run.json"
+}

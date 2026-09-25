@@ -1,7 +1,9 @@
+// ENGMODEL-OWNER-UNIT: FU-OTA-GPMC
 package gpmc
 
 import "testing"
 
+// TRLC-LINKS: REQ-SDS-103
 func TestEncodeAccess(t *testing.T) {
 	// spec 01 §1.2: version read on CS1, selector 0x12 un-shifted.
 	b := EncodeAccess(PlaneCS1, SelVersion, 0)
@@ -22,6 +24,7 @@ func TestEncodeAccess(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-103
 func TestDecodeValue(t *testing.T) {
 	if got := DecodeValue([6]byte{1, 0, 0x12, 0, 0x52, 0x00}); got != VersionMagic {
 		t.Errorf("decode = 0x%04x, want 0x%04x", got, VersionMagic)
@@ -31,6 +34,7 @@ func TestDecodeValue(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-103
 func TestReaderNoFDIsSafe(t *testing.T) {
 	r := NewReader(-1)
 	if r.OK() {
@@ -44,6 +48,7 @@ func TestReaderNoFDIsSafe(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-103
 func TestInvalidPlaneRejected(t *testing.T) {
 	// Use fd 0 (stdin) so we never reach a real device; plane 0 must be
 	// rejected BEFORE any syscall (b[0]=0 would stall the bus for seconds).

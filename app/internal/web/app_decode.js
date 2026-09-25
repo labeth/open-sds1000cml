@@ -1,17 +1,20 @@
+// ENGMODEL-OWNER-UNIT: FU-WEB-APP-DECODE
 // app_decode.js — protocol-decode UI (classic script; shares app.js globals).
 
 // ---- protocol decode: compute + render ----
 "use strict";
+// TRLC-LINKS: REQ-SDS-207
 function decCodes(role) { return role === 2 ? (frame && frame.c2) : (frame && frame.c1); }
 
+// TRLC-LINKS: REQ-SDS-207
 function computeDecode() {
   dcfg.result = null;
   if (dcfg.proto === "off" || !frame || frame.is_env || !frame.c1) { updateDecodeResults(); return; }
   const colTimeS = frameDtS(frame, frame.c1.length); // dt_s-aware: true baud on the 1-200 ns/div nominal bands
-  const cfg = { threshold: dcfg.auto ? null : +$("decThr").value, guard: 4, fmt: dcfg.fmt };
+  const cfg = { inverted: !!dcfg.inverted, threshold: dcfg.auto ? null : +$("decThr").value, guard: 4, fmt: dcfg.fmt };
   let r = null;
   if (dcfg.proto === "uart")
-    r = decodeUART(decCodes(dcfg.line), colTimeS, Object.assign(cfg, { baud: dcfg.baud > 0 ? dcfg.baud : null, bits: dcfg.bits, parity: dcfg.parity }));
+    r = decodeUART(decCodes(dcfg.line), colTimeS, Object.assign(cfg, { inverted: !!dcfg.inverted, baud: dcfg.baud > 0 ? dcfg.baud : null, bits: dcfg.bits, parity: dcfg.parity }));
   else if (dcfg.proto === "i2c")
     r = decodeI2C(decCodes(dcfg.scl), decCodes(dcfg.sda), colTimeS, cfg);
   else if (dcfg.proto === "spi")
@@ -19,7 +22,7 @@ function computeDecode() {
   else if (dcfg.proto === "manchester") // single line, self-clocking (auto bit rate)
     r = decodeManchester(decCodes(dcfg.line), colTimeS, Object.assign(cfg, { bitrate: dcfg.baud > 0 ? dcfg.baud : 0, ieee: true, msb: dcfg.msb, bits: dcfg.bits || 8, haveThr: !dcfg.auto }));
   else if (dcfg.proto === "sent") // single line, tick auto-derived from the 56-tick sync
-    r = decodeSENT(decCodes(dcfg.line), colTimeS, Object.assign(cfg, { tickNs: 0, nibbles: 0, pausePulse: false, haveThr: !dcfg.auto }));
+    r = decodeSENT(decCodes(dcfg.line), colTimeS, Object.assign(cfg, { tickNs: +$("decSentTick").value, nibbles: +$("decSentNibbles").value, pausePulse: false, haveThr: !dcfg.auto }));
   else if (dcfg.proto === "can") // single line (dominant = low), nominal baud auto or from decBaud
     r = decodeCANFD(decCodes(dcfg.line), colTimeS, Object.assign(cfg, { nominalBaud: dcfg.baud > 0 ? dcfg.baud : 0, dataBaud: 0, dominantLow: true, haveThr: !dcfg.auto }));
   else if (dcfg.proto === "mil1553") // single line, 1Mbit Manchester + 3-bit sync
@@ -62,6 +65,7 @@ function computeDecode() {
 // watchReason returns why a decode matches the watch rule ("" = no match): an
 // error kind (frame-error/parity-error, or NAK) and/or a transcript match of the
 // user string ("/re/" = regex, else case-insensitive substring).
+// TRLC-LINKS: REQ-SDS-207
 function watchReason(r) {
   let reason = "";
   if (dcfg.watchErr && r.spans.some(s => s.kind === "frame-error" || s.kind === "parity-error" || s.kind === "nak")) reason = "error";
@@ -75,6 +79,7 @@ function watchReason(r) {
   return reason;
 }
 
+// TRLC-LINKS: REQ-SDS-207
 function updateCaptureList() {
   const card = $("captureCard");
   if (dcfg.proto === "off" || (!dcfg.watch && !dcfg.captures.length)) { card.style.display = "none"; return; }
@@ -95,6 +100,7 @@ function updateCaptureList() {
 
 // Review a captured window: freeze on its snapshot so you can zoom/navigate/decode
 // it; "live" resumes.
+// TRLC-LINKS: REQ-SDS-207
 function reviewCapture(i) {
   const c = dcfg.captures[i];
   if (!c) return;
@@ -103,11 +109,13 @@ function reviewCapture(i) {
   computeDecode(); redraw(); updateMeas(); updateCursors(); updateCaptureList();
 }
 
+// TRLC-LINKS: REQ-SDS-207
 function reviewLive() {
   dcfg.reviewIdx = -1; frozen = false; $("freeze").classList.remove("on");
   updateCaptureList();
 }
 
+// TRLC-LINKS: REQ-SDS-207
 function updateDecodeResults() {
   const card = $("decodeResultCard");
   if (dcfg.proto === "off") { card.style.display = "none"; return; }
@@ -130,6 +138,7 @@ function updateDecodeResults() {
 // On-trace decode band (YT-only), placed in a reserved bottom lane. Uses the
 // windowed xForCol so labels track the trace at any zoom; spans off-window are
 // culled.
+// TRLC-LINKS: REQ-SDS-207
 function drawDecode(g) {
   if (view.mode !== "YT" || dcfg.proto === "off" || !frame || frame.is_env) return;
   const r = dcfg.result;
@@ -168,12 +177,19 @@ function drawDecode(g) {
 }
 
 // ---- decode wiring ----
+// TRLC-LINKS: REQ-SDS-207
 function updateDecodePanel() {
   const p = dcfg.proto;
   $("decRoles").style.display = p === "off" ? "none" : "";
   for (const c of document.querySelectorAll(".dec-uart")) c.style.display = p === "uart" ? "flex" : "none";
   for (const c of document.querySelectorAll(".dec-i2c")) c.style.display = p === "i2c" ? "flex" : "none";
   for (const c of document.querySelectorAll(".dec-spi")) c.style.display = p === "spi" ? "flex" : "none";
+  for (const c of document.querySelectorAll(".dec-sent")) c.style.display = p === "sent" ? "flex" : "none";
+  const single = p !== "off" && p !== "i2c" && p !== "spi";
+  for (const c of document.querySelectorAll(".dec-single")) c.style.display = single ? "flex" : "none";
+  for (const c of document.querySelectorAll(".dec-rate")) c.style.display = single && p !== "sent" ? "flex" : "none";
+  for (const c of document.querySelectorAll(".dec-word")) c.style.display = p === "uart" || p === "manchester" ? "flex" : "none";
+  for (const c of document.querySelectorAll(".dec-polarity")) c.style.display = p === "uart" || p === "i2c" || p === "spi" || p === "sent" || p === "mil1553" ? "flex" : "none";
   updateDecodeResults();
   updateCaptureList();
   if (typeof stOnDecodeChange === "function") stOnDecodeChange(); // serial trigger reuses this config
@@ -181,12 +197,14 @@ function updateDecodePanel() {
 
 // syncDecodeControls: write dcfg back into the DOM controls (used after
 // autodetect picks settings so the dropdowns/inputs reflect what it chose).
+// TRLC-LINKS: REQ-SDS-207
 function syncDecodeControls() {
   $("decProto").value = dcfg.proto;
   $("decScl").value = String(dcfg.scl); $("decSda").value = String(dcfg.sda);
   $("decClk").value = String(dcfg.clk); $("decData").value = String(dcfg.data);
   $("decLine").value = String(dcfg.line);
   $("decBaud").value = dcfg.baud; $("decBits").value = dcfg.bits; $("decParity").value = dcfg.parity;
+  $("decInverted").checked = !!dcfg.inverted;
   $("decCpol").value = String(dcfg.cpol); $("decCpha").value = String(dcfg.cpha);
   $("decMsb").value = dcfg.msb ? "1" : "0"; $("decFmt").value = dcfg.fmt;
   $("decAuto").classList.toggle("on", dcfg.auto);
@@ -194,8 +212,10 @@ function syncDecodeControls() {
 
 // detectProtoUI maps a decoder's canonical proto name to the #decProto select
 // value (the decoders say "canfd"/"usbls"; the UI options are "can"/"usb").
+// TRLC-LINKS: REQ-SDS-207
 function detectProtoUI(p) { return p === "canfd" ? "can" : p === "usbls" ? "usb" : p; }
 
+// TRLC-LINKS: REQ-SDS-207
 function detectLabel(d) {
   const b = d.result && d.result.meta || {};
   if (d.proto === "uart") return "UART · C" + d.roles.line + " · " + (b.baud ? b.baud + " bd" : "auto");
@@ -207,6 +227,7 @@ function detectLabel(d) {
   return name + (d.roles.line ? " · C" + d.roles.line : "") + (b.bitrate ? " · " + b.bitrate + " bd" : "");
 }
 
+// TRLC-LINKS: REQ-SDS-207
 function setDetectMsg(t, err) {
   const el = $("decDetectMsg");
   el.style.display = t ? "" : "none";
@@ -216,6 +237,7 @@ function setDetectMsg(t, err) {
 
 // runAutodetect: analyse the current frame, pick the best protocol + roles +
 // sub-settings, apply them to dcfg + the DOM controls, and re-decode.
+// TRLC-LINKS: REQ-SDS-207
 function runAutodetect() {
   if (!frame || !frame.c1 || frame.is_env) { setDetectMsg("no live waveform to analyse", true); return; }
   const d = autodetect(frame, { fmt: dcfg.fmt });
@@ -242,40 +264,67 @@ function runAutodetect() {
 
 // ---- decode panel init + wiring ----
 
+// TRLC-LINKS: REQ-SDS-207
 (function initDecode() {
   for (const sel of document.querySelectorAll(".rolesel")) {
     sel.innerHTML = '<option value="1">C1</option><option value="2">C2</option>';
   }
   $("decSda").value = "2"; $("decData").value = "2"; $("decLine").value = "1";
+  // TRLC-LINKS: REQ-SDS-207
+  $("decSentTick").onchange = $("decSentNibbles").onchange = () => { recompute(); if (typeof stOnDecodeChange === "function") stOnDecodeChange(); };
   $("decDetect").onclick = runAutodetect;
+  // TRLC-LINKS: REQ-SDS-207
   $("decProto").onchange = () => { dcfg.proto = $("decProto").value; setDetectMsg(""); updateDecodePanel(); recompute(); };
+  // TRLC-LINKS: REQ-SDS-207
   $("decScl").onchange = () => { dcfg.scl = +$("decScl").value; recompute(); };
+  // TRLC-LINKS: REQ-SDS-207
   $("decSda").onchange = () => { dcfg.sda = +$("decSda").value; recompute(); };
+  // TRLC-LINKS: REQ-SDS-207
   $("decClk").onchange = () => { dcfg.clk = +$("decClk").value; recompute(); };
+  // TRLC-LINKS: REQ-SDS-207
   $("decData").onchange = () => { dcfg.data = +$("decData").value; recompute(); };
+  // TRLC-LINKS: REQ-SDS-207
   $("decLine").onchange = () => { dcfg.line = +$("decLine").value; recompute(); };
+  // TRLC-LINKS: REQ-SDS-207
   $("decAuto").onclick = () => { dcfg.auto = !dcfg.auto; $("decAuto").classList.toggle("on", dcfg.auto); recompute(); };
+  // TRLC-LINKS: REQ-SDS-207
   $("decThr").oninput = () => { dcfg.auto = false; $("decAuto").classList.remove("on"); $("decThrV").textContent = $("decThr").value; recompute(); };
+  // TRLC-LINKS: REQ-SDS-207
   $("decBaud").onchange = () => { dcfg.baud = Math.max(0, +$("decBaud").value | 0); recompute(); }; // 0 = auto-baud
+  // TRLC-LINKS: REQ-SDS-207
   $("decBits").onchange = () => { dcfg.bits = Math.max(5, Math.min(9, +$("decBits").value | 0)); recompute(); };
+  // TRLC-LINKS: REQ-SDS-207
   $("decParity").onchange = () => { dcfg.parity = $("decParity").value; recompute(); };
+  // TRLC-LINKS: REQ-SDS-207
+  $("decInverted").onchange = () => { dcfg.inverted = $("decInverted").checked; recompute(); };
+  // TRLC-LINKS: REQ-SDS-207
   $("decCpol").onchange = () => { dcfg.cpol = +$("decCpol").value; recompute(); };
+  // TRLC-LINKS: REQ-SDS-207
   $("decCpha").onchange = () => { dcfg.cpha = +$("decCpha").value; recompute(); };
+  // TRLC-LINKS: REQ-SDS-207
   $("decMsb").onchange = () => { dcfg.msb = $("decMsb").value === "1"; recompute(); };
+  // TRLC-LINKS: REQ-SDS-207
   $("decFmt").onchange = () => { dcfg.fmt = $("decFmt").value; recompute(); }; // hex / ascii / both
+  // TRLC-LINKS: REQ-SDS-207
   $("decStream").onclick = () => {
     dcfg.stream = !dcfg.stream; $("decStream").classList.toggle("on", dcfg.stream);
     dcfg.hist = []; dcfg.lastStreamSeq = 0;
     fetch("/api/set", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ control: "stream", value: dcfg.stream ? 1 : 0 }) }).catch(() => {});
     updateDecodeResults();
   };
+  // TRLC-LINKS: REQ-SDS-207
   $("decHistClear").onclick = () => { dcfg.hist = []; dcfg.lastStreamSeq = 0; updateDecodeResults(); };
+  // TRLC-LINKS: REQ-SDS-207
   $("decWatch").onclick = () => { dcfg.watch = !dcfg.watch; $("decWatch").classList.toggle("on", dcfg.watch); updateCaptureList(); };
+  // TRLC-LINKS: REQ-SDS-207
   $("decWatchErr").onchange = () => { dcfg.watchErr = $("decWatchErr").checked; };
+  // TRLC-LINKS: REQ-SDS-207
   $("decWatchMatch").oninput = () => { dcfg.watchMatch = $("decWatchMatch").value; };
   $("captureList").addEventListener("click", ev => { const d = ev.target.closest(".cap"); if (d) reviewCapture(+d.dataset.i); });
   $("capLive").onclick = reviewLive;
+  // TRLC-LINKS: REQ-SDS-207
   $("capClear").onclick = () => { dcfg.captures = []; dcfg.reviewIdx = -1; dcfg.lastCapKey = ""; if (frozen) reviewLive(); updateCaptureList(); };
+  // TRLC-LINKS: REQ-SDS-207
   $("capCopy").onclick = () => {
     const t = dcfg.captures.map(c => new Date(c.t).toISOString() + " #" + c.seq + " [" + c.reason + "] " + c.text).join("\n");
     if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).catch(() => {});
@@ -288,6 +337,7 @@ function runAutodetect() {
     }
     $("capCopy").textContent = "copied"; setTimeout(() => $("capCopy").textContent = "copy", 900);
   };
+  // TRLC-LINKS: REQ-SDS-207
   $("decodeCopy").onclick = () => {
     const t = $("decodeText").value;
     if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).catch(() => {});

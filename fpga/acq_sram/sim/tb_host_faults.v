@@ -1,4 +1,6 @@
+// ENGMODEL-OWNER-UNIT: FU-RTL-ACQ-TESTS
 `timescale 1ns/1ps
+// TRLC-LINKS: REQ-SDS-094
 module tb_host_faults;
  parameter PHASE=0;
  reg c=0,m=0,h=0,reset=1;

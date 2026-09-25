@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
 package engine
 
 // Trigger qualifiers (spec 05, spec 03 §7): PULSE (GLIT), SLOPE (SLEW) and
@@ -8,6 +9,7 @@ package engine
 // min/max span (band- and V/div-independent).
 
 // TrigType selects the discrimination pipeline.
+// TRLC-LINKS: REQ-SDS-011
 type TrigType int
 
 const (
@@ -28,6 +30,7 @@ const (
 )
 
 // trigParams is the staged qualifier parameter set (command mutex).
+// TRLC-LINKS: REQ-SDS-011
 type trigParams struct {
 	typ TrigType
 
@@ -47,6 +50,7 @@ type trigParams struct {
 	videoNeg  bool
 }
 
+// TRLC-LINKS: REQ-SDS-011
 func defaultTrigParams() trigParams {
 	return trigParams{
 		typ:          TrigEdge,
@@ -56,6 +60,7 @@ func defaultTrigParams() trigParams {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-011
 func condOK(m, min, max float64, cond int) bool {
 	switch cond {
 	case CondLess:
@@ -74,6 +79,7 @@ func condOK(m, min, max float64, cond int) bool {
 const flatRejectSpan = 40
 
 // crossFrac interpolates the sub-sample position of a crossing at index c.
+// TRLC-LINKS: REQ-SDS-011
 func crossFrac(disc []uint8, c, lvl int) float64 {
 	a, b := int(disc[c-1]), int(disc[c])
 	frac := 0.0
@@ -90,6 +96,7 @@ func crossFrac(disc []uint8, c, lvl int) float64 {
 // level between a rising entry and the next falling exit); false mirrored.
 // The anchor is the COMPLETING edge of the qualifying pulse nearest the
 // frame centre — only when the pulse completes is its width known.
+// TRLC-LINKS: REQ-SDS-011
 func qualifyPulse(disc []uint8, intervalNs float64, p trigParams, rising bool) float64 {
 	n := len(disc)
 	mn, mx, span := ptp(disc)
@@ -136,6 +143,7 @@ func qualifyPulse(disc []uint8, intervalNs float64, p trigParams, rising bool) f
 // qualifySlope (spec 05: SLEW): a monotone lo→hi (rising) or hi→lo
 // (falling) traversal whose time qualifies. Anchor = the second-threshold
 // crossing nearest the frame centre.
+// TRLC-LINKS: REQ-SDS-011
 func qualifySlope(disc []uint8, intervalNs float64, p trigParams, rising bool) float64 {
 	n := len(disc)
 	mn, _, span := ptp(disc)
@@ -218,6 +226,7 @@ func qualifySlope(disc []uint8, intervalNs float64, p trigParams, rising bool) f
 // the selected line's sync edge. Only all-lines (line=0) and line-N exist;
 // odd/even field discrimination is NOT implementable here (needs a full
 // video frame in the record) and must never silently mis-trigger.
+// TRLC-LINKS: REQ-SDS-011
 func qualifyVideo(disc []uint8, p trigParams) float64 {
 	n := len(disc)
 	mn, mx, span := ptp(disc)

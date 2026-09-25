@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
 package engine
 
 import (
@@ -5,6 +6,7 @@ import (
 	"testing"
 )
 
+// TRLC-LINKS: REQ-SDS-014
 func TestZoneMaskPublishPolicy(t *testing.T) {
 	fb := newFakeBus()
 	// Square wave, period 256, plus a controllable feature pulse: code 250
@@ -102,6 +104,7 @@ func TestZoneMaskPublishPolicy(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-014
 func TestMaskGeometryFuzz(t *testing.T) {
 	e, _ := newTestEngine(t, newFakeBus())
 	win := e.band.WinCols()
@@ -173,6 +176,7 @@ func TestMaskGeometryFuzz(t *testing.T) {
 // They must still publish (holding would blank slow timebases forever), but
 // the bypass is COUNTED — a silently bypassed qualifier wears a clean run's
 // signature.
+// TRLC-LINKS: REQ-SDS-014
 func TestZoneMaskEnvRollCounted(t *testing.T) {
 	fb := newFakeBus()
 	e, _ := newTestEngine(t, fb)
@@ -223,6 +227,7 @@ func TestZoneMaskEnvRollCounted(t *testing.T) {
 // A frame whose whole window falls off the record / into the dead tail has
 // ZERO testable columns — that is a skip, not a pass (found by the geometry
 // fuzz review: a zero-column "pass" wears a clean run's signature).
+// TRLC-LINKS: REQ-SDS-014
 func TestMaskZeroTestableColumnsSkips(t *testing.T) {
 	e, _ := newTestEngine(t, newFakeBus())
 	win := e.band.WinCols()
@@ -252,6 +257,7 @@ func TestMaskZeroTestableColumnsSkips(t *testing.T) {
 
 // NaN trigger position would silently un-map every mask column (left = NaN
 // -> all columns "off-record" -> eternal skips at best).
+// TRLC-LINKS: REQ-SDS-014
 func TestTrigPosFracNaNGuard(t *testing.T) {
 	e, _ := newTestEngine(t, newFakeBus())
 	e.SetTrigPosFrac(math.NaN())
@@ -263,6 +269,7 @@ func TestTrigPosFracNaNGuard(t *testing.T) {
 // SINGLE + zone trigger compose: the latch must wait for a QUALIFYING frame,
 // not the first triggered one — that is the flagship "arm single, catch the
 // anomaly" workflow.
+// TRLC-LINKS: REQ-SDS-014
 func TestSingleShotWaitsForZoneQualify(t *testing.T) {
 	fb := newFakeBus()
 	// The feature must be PERIOD-RELATIVE: a SINGLE arms the full deep drain

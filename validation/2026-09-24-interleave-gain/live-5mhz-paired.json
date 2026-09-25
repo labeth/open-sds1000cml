@@ -1,0 +1,1059 @@
+{
+  "summary": {
+    "frames": 80,
+    "channels": [
+      {
+        "offsetOnlyRMS": 0.9177377602027994,
+        "gainCorrectedRMS": 0.8626823552845163,
+        "improved": 80
+      },
+      {
+        "offsetOnlyRMS": 0.9412429952633279,
+        "gainCorrectedRMS": 0.9003200300585774,
+        "improved": 80
+      }
+    ]
+  },
+  "rows": [
+    {
+      "seq": 4362,
+      "channels": [
+        {
+          "offsetOnlyRMS": 0.9400189710243572,
+          "gainCorrectedRMS": 0.8793746668649524
+        },
+        {
+          "offsetOnlyRMS": 0.9263336446966076,
+          "gainCorrectedRMS": 0.8859741160898065
+        }
+      ]
+    },
+    {
+      "seq": 4364,
+      "channels": [
+        {
+          "offsetOnlyRMS": 0.9311809639882441,
+          "gainCorrectedRMS": 0.8882930088187219
+        },
+        {
+          "offsetOnlyRMS": 0.9927269726916031,
+          "gainCorrectedRMS": 0.9550761614709498
+        }
+      ]
+    },
+    {
+      "seq": 4382,
+      "channels": [
+        {
+          "offsetOnlyRMS": 0.9521521599730078,
+          "gainCorrectedRMS": 0.9032504976516093
+        },
+        {
+          "offsetOnlyRMS": 0.9623058804461043,
+          "gainCorrectedRMS": 0.9266285451962899
+        }
+      ]
+    },
+    {
+      "seq": 4385,
+      "channels": [
+        {
+          "offsetOnlyRMS": 0.8887758575403492,
+          "gainCorrectedRMS": 0.822575981955452
+        },
+        {
+          "offsetOnlyRMS": 0.8848316863600754,
+          "gainCorrectedRMS": 0.835870494379083
+        }
+      ]
+    },
+    {
+      "seq": 4388,
+      "channels": [
+        {
+          "offsetOnlyRMS": 0.8930435232731002,
+          "gainCorrectedRMS": 0.8394465307764839
+        },
+        {
+          "offsetOnlyRMS": 0.9500268207795202,
+          "gainCorrectedRMS": 0.9099226197715641
+        }
+      ]
+    },
+    {
+      "seq": 4389,
+      "channels": [
+        {
+          "offsetOnlyRMS": 0.8898234954269223,
+          "gainCorrectedRMS": 0.8268378600160531
+        },
+        {
+          "offsetOnlyRMS": 0.9322783835371663,
+          "gainCorrectedRMS": 0.8896533889045127
+        }
+      ]
+    },
+    {
+      "seq": 4392,
+      "channels": [
+        {
+          "offsetOnlyRMS": 0.8902061957026733,
+          "gainCorrectedRMS": 0.8350062358703672
+        },
+        {
+          "offsetOnlyRMS": 0.9598756942286626,
+          "gainCorrectedRMS": 0.9193535974312352
+        }
+      ]
+    },
+    {
+      "seq": 4396,
+      "channels": [
+        {
+          "offsetOnlyRMS": 0.9102370871911366,
+          "gainCorrectedRMS": 0.8617958588940238
+        },
+        {
+          "offsetOnlyRMS": 0.9464412989879746,
+          "gainCorrectedRMS": 0.9042508079690722
+        }
+      ]
+    },
+    {
+      "seq": 4399,
+      "channels": [
+        {
+          "offsetOnlyRMS": 0.9170992395634834,
+          "gainCorrectedRMS": 0.8599572032048354
+        },
+        {
+          "offsetOnlyRMS": 0.9245310086765702,
+          "gainCorrectedRMS": 0.8787790762820082
+        }
+      ]
+    },
+    {
+      "seq": 4402,
+      "channels": [
+        {
+          "offsetOnlyRMS": 0.9293319151712406,
+          "gainCorrectedRMS": 0.8712769130139837
+        },
+        {
+          "offsetOnlyRMS": 0.9486393862460997,
+          "gainCorrectedRMS": 0.9075276704449096
+        }
+      ]
+    },
+    {
+      "seq": 4405,
+      "channels": [
+        {
+          "offsetOnlyRMS": 0.8998608786261674,
+          "gainCorrectedRMS": 0.8446157380800016
+        },
+        {
+          "offsetOnlyRMS": 0.9170486658283644,
+          "gainCorrectedRMS": 0.8724501545766438
+        }
+      ]
+    },
+    {
+      "seq": 4408,
+      "channels": [
+        {
+          "offsetOnlyRMS": 0.9430085290384755,
+          "gainCorrectedRMS": 0.8913172996018262
+        },
+        {
+          "offsetOnlyRMS": 0.955836368593372,
+          "gainCorrectedRMS": 0.9121919714491924
+        }
+      ]
+    },
+    {
+      "seq": 4365,
+      "channels": [
+        {
+          "offsetOnlyRMS": 0.9182934335120196,
+          "gainCorrectedRMS": 0.8540869228279324
+        },
+        {
+          "offsetOnlyRMS": 0.9437354858132622,
+          "gainCorrectedRMS": 0.8987299493217946
+        }
+      ]
+    },
+    {
+      "seq": 4409,
+      "channels": [
+        {
+          "offsetOnlyRMS": 0.9412552564346981,
+          "gainCorrectedRMS": 0.8888590013418354
+        },
+        {
+          "offsetOnlyRMS": 0.9304436582163318,
+          "gainCorrectedRMS": 0.8893254671067389
+        }
+      ]
+    },
+    {
+      "seq": 4412,
+      "channels": [
+        {
+          "offsetOnlyRMS": 0.880294427473163,
+          "gainCorrectedRMS": 0.8158375549996982
+        },
+        {
+          "offsetOnlyRMS": 0.912219476868427,
+          "gainCorrectedRMS": 0.8731585984841612
+        }
+      ]
+    },
+    {
+      "seq": 4413,
+      "channels": [
+        {
+          "offsetOnlyRMS": 0.9452921878080542,
+          "gainCorrectedRMS": 0.8835190199290961
+        },
+        {
+          "offsetOnlyRMS": 0.9381280406348942,
+          "gainCorrectedRMS": 0.8933161786816655
+        }
+      ]
+    },
+    {
+      "seq": 4416,
+      "channels": [
+        {
+          "offsetOnlyRMS": 0.9159977910195273,
+          "gainCorrectedRMS": 0.8633666399867128
+        },
+        {
+          "offsetOnlyRMS": 0.949127717035517,
+          "gainCorrectedRMS": 0.9082208471221782
+        }
+      ]
+    },
+    {
+      "seq": 4419,
+      "channels": [
+        {
+          "offsetOnlyRMS": 0.9307978842970019,
+          "gainCorrectedRMS": 0.8741639450189125
+        },
+        {
+          "offsetOnlyRMS": 0.9642646457063719,
+          "gainCorrectedRMS": 0.9156330597021904
+        }
+      ]
+    },
+    {
+      "seq": 4420,
+      "channels": [
+        {
+          "offsetOnlyRMS": 0.9576143727142428,
+          "gainCorrectedRMS": 0.9062679654732057
+        },
+        {
+          "offsetOnlyRMS": 0.9563844596088867,
+          "gainCorrectedRMS": 0.9181327827119169
+        }
+      ]
+    },
+    {
+      "seq": 4424,
+      "channels": [
+        {
+          "offsetOnlyRMS": 0.9187284749273722,
+          "gainCorrectedRMS": 0.8648447011324613
+        },
+        {
+          "offsetOnlyRMS": 0.9862814088314314,
+          "gainCorrectedRMS": 0.9429429947322833
+        }
+      ]
+    },
+    {
+      "seq": 4426,
+      "channels": [
+        {
+          "offsetOnlyRMS": 0.8914162081997782,
+          "gainCorrectedRMS": 0.834643577955701
+        },
+        {
+          "offsetOnlyRMS": 0.9493454351833271,
+          "gainCorrectedRMS": 0.9072278830105968
+        }
+      ]
+    },
+    {
+      "seq": 4427,
+      "channels": [
+        {
+          "offsetOnlyRMS": 0.932079376519333,
+          "gainCorrectedRMS": 0.8749854529359358
+        },
+        {
+          "offsetOnlyRMS": 0.9484944895204535,
+          "gainCorrectedRMS": 0.9008479732228698
+        }
+      ]
+    },
+    {
+      "seq": 4431,
+      "channels": [
+        {
+          "offsetOnlyRMS": 0.9082120942522939,
+          "gainCorrectedRMS": 0.8557613254344484
+        },
+        {
+          "offsetOnlyRMS": 0.9344487608709341,
+          "gainCorrectedRMS": 0.8946385998802672
+        }
+      ]
+    },
+    {
+      "seq": 4366,
+      "channels": [
+        {
+          "offsetOnlyRMS": 0.9647419086728337,
+          "gainCorrectedRMS": 0.9111597692066499
+        },
+        {
+          "offsetOnlyRMS": 0.9999675064007677,
+          "gainCorrectedRMS": 0.967785952729576
+        }
+      ]
+    },
+    {
+      "seq": 4434,
+      "channels": [
+        {
+          "offsetOnlyRMS": 0.9049931481493514,
+          "gainCorrectedRMS": 0.8446469767172012
+        },
+        {
+          "offsetOnlyRMS": 0.9057162230833726,
+          "gainCorrectedRMS": 0.8605891535238239
+        }
+      ]
+    },
+    {
+      "seq": 4437,
+      "channels": [
+        {
+          "offsetOnlyRMS": 0.9442057384838115,
+          "gainCorrectedRMS": 0.8908395540359857
+        },
+        {
+          "offsetOnlyRMS": 0.9857814500319867,
+          "gainCorrectedRMS": 0.9432390836350658
+        }
+      ]
+    },
+    {
+      "seq": 4438,
+      "channels": [
+        {
+          "offsetOnlyRMS": 0.8855690831591151,
+          "gainCorrectedRMS": 0.8243934324356099
+        },
+        {
+          "offsetOnlyRMS": 0.9186263175342352,
+          "gainCorrectedRMS": 0.8721042563015851
+        }
+      ]
+    },
+    {
+      "seq": 4440,
+      "channels": [
+        {
+          "offsetOnlyRMS": 0.9562370810448309,
+          "gainCorrectedRMS": 0.8957309062033458
+        },
+        {
+          "offsetOnlyRMS": 0.9950220805644132,
+          "gainCorrectedRMS": 0.9550075783314865
+        }
+      ]
+    },
+    {
+      "seq": 4441,
+      "channels": [
+        {
+          "offsetOnlyRMS": 0.9453769456678751,
+          "gainCorrectedRMS": 0.885041720267427
+        },
+        {
+          "offsetOnlyRMS": 0.9597904135007496,
+          "gainCorrectedRMS": 0.917111282059477
+        }
+      ]
+    },
+    {
+      "seq": 4445,
+      "channels": [
+        {
+          "offsetOnlyRMS": 0.9146316836949693,
+          "gainCorrectedRMS": 0.8628761214670427
+        },
+        {
+          "offsetOnlyRMS": 0.9567696360036456,
+          "gainCorrectedRMS": 0.921503184119682
+        }
+      ]
+    },
+    {
+      "seq": 4448,
+      "channels": [
+        {
+          "offsetOnlyRMS": 0.9160275206102789,
+          "gainCorrectedRMS": 0.8634752713517623
+        },
+        {
+          "offsetOnlyRMS": 0.9121184215448896,
+          "gainCorrectedRMS": 0.8681254091039137
+        }
+      ]
+    },
+    {
+      "seq": 4451,
+      "channels": [
+        {
+          "offsetOnlyRMS": 0.9146469518036635,
+          "gainCorrectedRMS": 0.8565978193100378
+        },
+        {
+          "offsetOnlyRMS": 0.9304485839415736,
+          "gainCorrectedRMS": 0.8952625101814644
+        }
+      ]
+    },
+    {
+      "seq": 4452,
+      "channels": [
+        {
+          "offsetOnlyRMS": 0.9507646685640305,
+          "gainCorrectedRMS": 0.8924138843331086
+        },
+        {
+          "offsetOnlyRMS": 0.9852866217421725,
+          "gainCorrectedRMS": 0.9420635562410404
+        }
+      ]
+    },
+    {
+      "seq": 4455,
+      "channels": [
+        {
+          "offsetOnlyRMS": 0.9550712714950633,
+          "gainCorrectedRMS": 0.8963913593899572
+        },
+        {
+          "offsetOnlyRMS": 0.9554938318332891,
+          "gainCorrectedRMS": 0.9111737953304972
+        }
+      ]
+    },
+    {
+      "seq": 4367,
+      "channels": [
+        {
+          "offsetOnlyRMS": 0.899796786411551,
+          "gainCorrectedRMS": 0.8475580473257155
+        },
+        {
+          "offsetOnlyRMS": 0.9371502406219833,
+          "gainCorrectedRMS": 0.8986315575642054
+        }
+      ]
+    },
+    {
+      "seq": 4456,
+      "channels": [
+        {
+          "offsetOnlyRMS": 0.9046860506007236,
+          "gainCorrectedRMS": 0.8546984855230283
+        },
+        {
+          "offsetOnlyRMS": 0.9120104082444869,
+          "gainCorrectedRMS": 0.874990895430602
+        }
+      ]
+    },
+    {
+      "seq": 4458,
+      "channels": [
+        {
+          "offsetOnlyRMS": 0.905755116853277,
+          "gainCorrectedRMS": 0.8494971859384634
+        },
+        {
+          "offsetOnlyRMS": 0.9280486820410183,
+          "gainCorrectedRMS": 0.8912289249131368
+        }
+      ]
+    },
+    {
+      "seq": 4459,
+      "channels": [
+        {
+          "offsetOnlyRMS": 0.9070553304400572,
+          "gainCorrectedRMS": 0.8489439263405463
+        },
+        {
+          "offsetOnlyRMS": 0.878835802681231,
+          "gainCorrectedRMS": 0.8314625838283778
+        }
+      ]
+    },
+    {
+      "seq": 4462,
+      "channels": [
+        {
+          "offsetOnlyRMS": 0.8768544059651431,
+          "gainCorrectedRMS": 0.817394034597301
+        },
+        {
+          "offsetOnlyRMS": 0.9266146653739386,
+          "gainCorrectedRMS": 0.8819542332897791
+        }
+      ]
+    },
+    {
+      "seq": 4463,
+      "channels": [
+        {
+          "offsetOnlyRMS": 0.9174590102435562,
+          "gainCorrectedRMS": 0.8649341238608732
+        },
+        {
+          "offsetOnlyRMS": 0.9676340202148294,
+          "gainCorrectedRMS": 0.9245092495545317
+        }
+      ]
+    },
+    {
+      "seq": 4466,
+      "channels": [
+        {
+          "offsetOnlyRMS": 0.9216458972185474,
+          "gainCorrectedRMS": 0.8705160004911535
+        },
+        {
+          "offsetOnlyRMS": 0.9732830097342685,
+          "gainCorrectedRMS": 0.9286335349108876
+        }
+      ]
+    },
+    {
+      "seq": 4467,
+      "channels": [
+        {
+          "offsetOnlyRMS": 0.8762288561009848,
+          "gainCorrectedRMS": 0.8227634961152037
+        },
+        {
+          "offsetOnlyRMS": 0.9324982064878679,
+          "gainCorrectedRMS": 0.8915447718639544
+        }
+      ]
+    },
+    {
+      "seq": 4470,
+      "channels": [
+        {
+          "offsetOnlyRMS": 0.8757839728855965,
+          "gainCorrectedRMS": 0.8114778635607895
+        },
+        {
+          "offsetOnlyRMS": 0.8885896407265855,
+          "gainCorrectedRMS": 0.8444973972321089
+        }
+      ]
+    },
+    {
+      "seq": 4473,
+      "channels": [
+        {
+          "offsetOnlyRMS": 0.9140624945285079,
+          "gainCorrectedRMS": 0.8575011643671921
+        },
+        {
+          "offsetOnlyRMS": 0.9916891792301902,
+          "gainCorrectedRMS": 0.9502416082948035
+        }
+      ]
+    },
+    {
+      "seq": 4474,
+      "channels": [
+        {
+          "offsetOnlyRMS": 0.937966536763275,
+          "gainCorrectedRMS": 0.881307372080267
+        },
+        {
+          "offsetOnlyRMS": 0.9571611309900813,
+          "gainCorrectedRMS": 0.9139139612234499
+        }
+      ]
+    },
+    {
+      "seq": 4371,
+      "channels": [
+        {
+          "offsetOnlyRMS": 0.8835841077760251,
+          "gainCorrectedRMS": 0.8266332724178964
+        },
+        {
+          "offsetOnlyRMS": 0.9166360927949783,
+          "gainCorrectedRMS": 0.8747568721776043
+        }
+      ]
+    },
+    {
+      "seq": 4478,
+      "channels": [
+        {
+          "offsetOnlyRMS": 0.8993710238336229,
+          "gainCorrectedRMS": 0.8413354583906316
+        },
+        {
+          "offsetOnlyRMS": 0.9037796905560496,
+          "gainCorrectedRMS": 0.8629425671852471
+        }
+      ]
+    },
+    {
+      "seq": 4481,
+      "channels": [
+        {
+          "offsetOnlyRMS": 0.9495445017394033,
+          "gainCorrectedRMS": 0.8955674842733435
+        },
+        {
+          "offsetOnlyRMS": 0.9589244091798435,
+          "gainCorrectedRMS": 0.9163047361557939
+        }
+      ]
+    },
+    {
+      "seq": 4484,
+      "channels": [
+        {
+          "offsetOnlyRMS": 0.9435128707997412,
+          "gainCorrectedRMS": 0.892613059883546
+        },
+        {
+          "offsetOnlyRMS": 0.9631409377093573,
+          "gainCorrectedRMS": 0.9276972769633705
+        }
+      ]
+    },
+    {
+      "seq": 4487,
+      "channels": [
+        {
+          "offsetOnlyRMS": 0.9408815131562552,
+          "gainCorrectedRMS": 0.8867820610367649
+        },
+        {
+          "offsetOnlyRMS": 0.9645292397863202,
+          "gainCorrectedRMS": 0.9221511721232915
+        }
+      ]
+    },
+    {
+      "seq": 4488,
+      "channels": [
+        {
+          "offsetOnlyRMS": 0.9532477667235235,
+          "gainCorrectedRMS": 0.9020171965531242
+        },
+        {
+          "offsetOnlyRMS": 0.9859278402414512,
+          "gainCorrectedRMS": 0.9541149409202307
+        }
+      ]
+    },
+    {
+      "seq": 4491,
+      "channels": [
+        {
+          "offsetOnlyRMS": 0.8765713918764182,
+          "gainCorrectedRMS": 0.821238990651054
+        },
+        {
+          "offsetOnlyRMS": 0.9111142115764869,
+          "gainCorrectedRMS": 0.868525871101423
+        }
+      ]
+    },
+    {
+      "seq": 4494,
+      "channels": [
+        {
+          "offsetOnlyRMS": 0.8934778806757319,
+          "gainCorrectedRMS": 0.8440998350607453
+        },
+        {
+          "offsetOnlyRMS": 0.9496217717020816,
+          "gainCorrectedRMS": 0.9114600593800181
+        }
+      ]
+    },
+    {
+      "seq": 4497,
+      "channels": [
+        {
+          "offsetOnlyRMS": 0.9443335626183864,
+          "gainCorrectedRMS": 0.8884106093501017
+        },
+        {
+          "offsetOnlyRMS": 0.9690447034684772,
+          "gainCorrectedRMS": 0.9287972455440571
+        }
+      ]
+    },
+    {
+      "seq": 4500,
+      "channels": [
+        {
+          "offsetOnlyRMS": 0.8666994145273772,
+          "gainCorrectedRMS": 0.8066610163363055
+        },
+        {
+          "offsetOnlyRMS": 0.9101782163198983,
+          "gainCorrectedRMS": 0.8683643584588878
+        }
+      ]
+    },
+    {
+      "seq": 4501,
+      "channels": [
+        {
+          "offsetOnlyRMS": 0.8918313669872304,
+          "gainCorrectedRMS": 0.8415581951932555
+        },
+        {
+          "offsetOnlyRMS": 0.9384569369211515,
+          "gainCorrectedRMS": 0.8996747060260162
+        }
+      ]
+    },
+    {
+      "seq": 4375,
+      "channels": [
+        {
+          "offsetOnlyRMS": 0.8664023922335167,
+          "gainCorrectedRMS": 0.8093789727833564
+        },
+        {
+          "offsetOnlyRMS": 0.8892783207182977,
+          "gainCorrectedRMS": 0.8497928073528559
+        }
+      ]
+    },
+    {
+      "seq": 4504,
+      "channels": [
+        {
+          "offsetOnlyRMS": 0.9555928793419515,
+          "gainCorrectedRMS": 0.9063006128850788
+        },
+        {
+          "offsetOnlyRMS": 0.9656998895902537,
+          "gainCorrectedRMS": 0.928978413410414
+        }
+      ]
+    },
+    {
+      "seq": 4508,
+      "channels": [
+        {
+          "offsetOnlyRMS": 0.921225854763253,
+          "gainCorrectedRMS": 0.8734338526415033
+        },
+        {
+          "offsetOnlyRMS": 0.9601245718630099,
+          "gainCorrectedRMS": 0.9226720896848599
+        }
+      ]
+    },
+    {
+      "seq": 4511,
+      "channels": [
+        {
+          "offsetOnlyRMS": 0.8800829969200188,
+          "gainCorrectedRMS": 0.82580677800742
+        },
+        {
+          "offsetOnlyRMS": 0.9505568929377057,
+          "gainCorrectedRMS": 0.9086019259920727
+        }
+      ]
+    },
+    {
+      "seq": 4514,
+      "channels": [
+        {
+          "offsetOnlyRMS": 0.960092091380911,
+          "gainCorrectedRMS": 0.9096536504275206
+        },
+        {
+          "offsetOnlyRMS": 0.9353885819477903,
+          "gainCorrectedRMS": 0.8994452806871454
+        }
+      ]
+    },
+    {
+      "seq": 4517,
+      "channels": [
+        {
+          "offsetOnlyRMS": 0.903148779174337,
+          "gainCorrectedRMS": 0.8622295431384978
+        },
+        {
+          "offsetOnlyRMS": 0.915237495876178,
+          "gainCorrectedRMS": 0.8774428964279968
+        }
+      ]
+    },
+    {
+      "seq": 4520,
+      "channels": [
+        {
+          "offsetOnlyRMS": 0.8735847174971427,
+          "gainCorrectedRMS": 0.826639173443382
+        },
+        {
+          "offsetOnlyRMS": 0.928255866188194,
+          "gainCorrectedRMS": 0.882342297542956
+        }
+      ]
+    },
+    {
+      "seq": 4523,
+      "channels": [
+        {
+          "offsetOnlyRMS": 0.9452797935046883,
+          "gainCorrectedRMS": 0.8834073751613669
+        },
+        {
+          "offsetOnlyRMS": 0.9608835548876988,
+          "gainCorrectedRMS": 0.9134311347612474
+        }
+      ]
+    },
+    {
+      "seq": 4524,
+      "channels": [
+        {
+          "offsetOnlyRMS": 0.9128897154119232,
+          "gainCorrectedRMS": 0.8619271398760875
+        },
+        {
+          "offsetOnlyRMS": 0.9520483786773047,
+          "gainCorrectedRMS": 0.9146666709205507
+        }
+      ]
+    },
+    {
+      "seq": 4527,
+      "channels": [
+        {
+          "offsetOnlyRMS": 0.9479929617573594,
+          "gainCorrectedRMS": 0.9007585549032583
+        },
+        {
+          "offsetOnlyRMS": 0.955693791145858,
+          "gainCorrectedRMS": 0.9150942243149499
+        }
+      ]
+    },
+    {
+      "seq": 4528,
+      "channels": [
+        {
+          "offsetOnlyRMS": 0.944587532334396,
+          "gainCorrectedRMS": 0.8913672206602842
+        },
+        {
+          "offsetOnlyRMS": 0.9068170454372624,
+          "gainCorrectedRMS": 0.8713089289942021
+        }
+      ]
+    },
+    {
+      "seq": 4377,
+      "channels": [
+        {
+          "offsetOnlyRMS": 0.8707325027334009,
+          "gainCorrectedRMS": 0.8119173885635894
+        },
+        {
+          "offsetOnlyRMS": 0.8976635270063863,
+          "gainCorrectedRMS": 0.8566034016790495
+        }
+      ]
+    },
+    {
+      "seq": 4531,
+      "channels": [
+        {
+          "offsetOnlyRMS": 0.9242088684072642,
+          "gainCorrectedRMS": 0.8632558561978698
+        },
+        {
+          "offsetOnlyRMS": 0.9303087788386332,
+          "gainCorrectedRMS": 0.8854476823881916
+        }
+      ]
+    },
+    {
+      "seq": 4532,
+      "channels": [
+        {
+          "offsetOnlyRMS": 0.8676420253473275,
+          "gainCorrectedRMS": 0.8050684667962775
+        },
+        {
+          "offsetOnlyRMS": 0.8882345762094769,
+          "gainCorrectedRMS": 0.8456482901043203
+        }
+      ]
+    },
+    {
+      "seq": 4535,
+      "channels": [
+        {
+          "offsetOnlyRMS": 0.9121065377129769,
+          "gainCorrectedRMS": 0.857189089807256
+        },
+        {
+          "offsetOnlyRMS": 0.9254021575007103,
+          "gainCorrectedRMS": 0.8812482323801385
+        }
+      ]
+    },
+    {
+      "seq": 4538,
+      "channels": [
+        {
+          "offsetOnlyRMS": 0.9254629914187829,
+          "gainCorrectedRMS": 0.8781751894041303
+        },
+        {
+          "offsetOnlyRMS": 0.9761693935152421,
+          "gainCorrectedRMS": 0.9385691370516938
+        }
+      ]
+    },
+    {
+      "seq": 4539,
+      "channels": [
+        {
+          "offsetOnlyRMS": 0.9251249572423025,
+          "gainCorrectedRMS": 0.8715574037808914
+        },
+        {
+          "offsetOnlyRMS": 0.9018755862187519,
+          "gainCorrectedRMS": 0.8655000223630296
+        }
+      ]
+    },
+    {
+      "seq": 4542,
+      "channels": [
+        {
+          "offsetOnlyRMS": 0.956307998732138,
+          "gainCorrectedRMS": 0.9050939316332515
+        },
+        {
+          "offsetOnlyRMS": 0.9384584005931514,
+          "gainCorrectedRMS": 0.8995193152744126
+        }
+      ]
+    },
+    {
+      "seq": 4545,
+      "channels": [
+        {
+          "offsetOnlyRMS": 0.9204451700005858,
+          "gainCorrectedRMS": 0.8671421156910067
+        },
+        {
+          "offsetOnlyRMS": 0.9683382988350998,
+          "gainCorrectedRMS": 0.9317392897088987
+        }
+      ]
+    },
+    {
+      "seq": 4546,
+      "channels": [
+        {
+          "offsetOnlyRMS": 0.9095003482295694,
+          "gainCorrectedRMS": 0.8536908387518972
+        },
+        {
+          "offsetOnlyRMS": 0.9099104610752948,
+          "gainCorrectedRMS": 0.8694471708159195
+        }
+      ]
+    },
+    {
+      "seq": 4549,
+      "channels": [
+        {
+          "offsetOnlyRMS": 0.9581049851457131,
+          "gainCorrectedRMS": 0.9086098662724988
+        },
+        {
+          "offsetOnlyRMS": 0.9654932514301952,
+          "gainCorrectedRMS": 0.9322091005507162
+        }
+      ]
+    },
+    {
+      "seq": 4550,
+      "channels": [
+        {
+          "offsetOnlyRMS": 0.9410868759788023,
+          "gainCorrectedRMS": 0.887104020858071
+        },
+        {
+          "offsetOnlyRMS": 0.9371389712357441,
+          "gainCorrectedRMS": 0.9051356356799535
+        }
+      ]
+    },
+    {
+      "seq": 4378,
+      "channels": [
+        {
+          "offsetOnlyRMS": 0.8982466991669268,
+          "gainCorrectedRMS": 0.8359115578490878
+        },
+        {
+          "offsetOnlyRMS": 0.9382357705932979,
+          "gainCorrectedRMS": 0.8931405364612034
+        }
+      ]
+    },
+    {
+      "seq": 4381,
+      "channels": [
+        {
+          "offsetOnlyRMS": 0.9418349580412345,
+          "gainCorrectedRMS": 0.8818102273780549
+        },
+        {
+          "offsetOnlyRMS": 0.918586546599073,
+          "gainCorrectedRMS": 0.8774006964980872
+        }
+      ]
+    }
+  ]
+}

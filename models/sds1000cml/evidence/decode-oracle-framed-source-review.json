@@ -1,0 +1,40 @@
+{
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "requirement": "REQ-SDS-018",
+  "owner": "FU-APP-DECODE",
+  "result": "source-reviewed-external-comparison-not-run",
+  "completeReads": [
+    "app/internal/decode/oracle_usbls_test.go",
+    "app/internal/decode/oracle_flexray_test.go"
+  ],
+  "reviewedLines": 1563,
+  "sourceSHA256": {
+    "app/internal/decode/oracle_usbls_test.go": "e7376c4ddf092928499c0ddd0fd7855bd345b0959e06eeda68c910517929898b",
+    "app/internal/decode/oracle_flexray_test.go": "8a222d4468921bf21a233c0ac47691d0205203898767dcf2cbe440e4c17cbf0f"
+  },
+  "findings": {
+    "USBLS": [
+      "Eleven subtests use synthesized differential low-speed signals at 1.5 Mbit/s. External decoding receives both lines; application decoding receives D-minus alone. This does not qualify differential state detection in the application.",
+      "CRC5/CRC16 functions are test helpers described as ports of external code. The CRC16 verdict is recomputed from application raw bytes in usblsRepoCRC16. The corrupted-CRC test requires application OK and does not assert an application CRC error span. Its name flagged-by-both must not be credited as production CRC validation.",
+      "Clean setup/data/handshake, stuffing, token address/endpoint corners, NAK/STALL and zero-length data fixtures compare selected fields and payloads. Some compare only decoder-to-decoder values rather than also anchoring generated truth. CRC validation shares helper code with generation.",
+      "Packet separation uses 40-bit gaps normally and 12 in the EOP test, plus the closing J bit. The four-bit gap case expects two external packets but permits exactly one merged application packet, then skips. If application splitting improves it instead asserts payload and helper CRC agreement. A suite pass would therefore not establish minimum-gap support.",
+      "Corrupt PID is a real application error-span assertion. The application retains raw bytes beneath the bad PID, while external decoding is expected to suppress fields; the test pins this difference and checks a clean following packet.",
+      "Keep-alive stress constructs sixty keep-alives separated by 100 idle bits and checks external count. Application auto and pinned results must agree on one packet and its bytes, but no explicit inferred-period tolerance or application PID equality with the external expected SETUP is asserted there.",
+      "Fractional timing uses 25 MSa/s and pinned bitrate; selected other alignment checks permit one bit period and frequently compare only start coordinates. This is not full span/result equality.",
+      "Parsers require exact prefixes and numeric values; packet reconstruction treats any frame-error as a PID name, which assumes the current error taxonomy. CRC attribution and protocol-standard claims in comments are not independently revalidated."
+    ],
+    "FlexRay": [
+      "Nine subtests including the two fill-pattern cases compare synthetic single-line frames, at 10 Mbit/s and normally 200 MSa/s. A 183 MSa/s fixture exercises fractional 18.3 samples/bit.",
+      "The introductory claim that the application checks only header CRC is stale. The frame-crc-corrupted test requires application rejection and one error span; production flexFrameCRC24 is called only when captured byte count exactly equals 5 + 2*header length + 3. These well-sized oracle fixtures do not close the separately characterized length-mismatch acceptance gap.",
+      "Frame generation reuses breaker header packers/CRC11 and defines its own CRC24 helper. Header corruption flips one transmitted bit and reseals frame CRC, isolating the header failure. Trailer corruption flips 0x5A in the final byte. Both tests retain raw bytes while requiring rejection.",
+      "Static fields, all-zero/all-one payloads, two frames and sync/startup flags have selected generated-truth checks. Flags use exact application note strings and require helper CRC values to change when flags change.",
+      "Inter-frame idle is fourteen bits to accommodate the external decoder expectations. The back-to-back label does not establish behavior for shorter separation. Version-specific external timing descriptions are inspected comments, not verified current library behavior.",
+      "The dynamic-tail fixture uses ID1500 and a nine-bit low tail. External DTS count/coordinates are checked; application must return exactly one frame with no phantom start, correct bytes and fields. It does not establish full dynamic-segment scheduling behavior.",
+      "Selected TSS endpoints permit one bit period. Payload start comparison compensates a two-bit BSS offset with another one-bit tolerance; payload end equality is not asserted.",
+      "Fractional pinned timing requires SPB within 1e-9 and exact reported baud, bytes and selected fields/CRCs. Auto timing requires SPB within 0.15 and exact bytes. Historical mutation claims in comments were not rerun during this source review.",
+      "Numeric annotation parsers validate text shape but discard conversion errors. Some field slices assume matching counts and would panic rather than emit a tailored assertion on missing external annotations. No physical bus or exhaustive protocol qualification is established."
+    ]
+  },
+  "scope": "Complete source inspection; external comparisons not executed. Availability gating is recorded separately in decode-oracle-all-availability.json.",
+  "nextAction": "Batch the seven reviewed oracle files into requirement annotations and native not-run records; preserve all known assertion limits."
+}

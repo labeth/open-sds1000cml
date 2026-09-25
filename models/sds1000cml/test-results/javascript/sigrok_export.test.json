@@ -1,0 +1,25 @@
+{
+  "source": "app/internal/web/sigrok_export.test.cjs",
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "sourceSHA256": "2830461fce684cdde044f636bf02db35e8923bd86f7c3644298a31967a6eb544",
+  "scope": "Original frozen Node suite, connected to current source by exact approved comment provenance. Bounded synthetic evidence only.",
+  "logs": {
+    "evidence/test-runs/reviewed-sigrok_export.test.cjs.log": "2967f38ae924a6724305e0439136bdb919ffb77a00c84a9a3b4431d5aea269b2"
+  },
+  "tests": [
+    {
+      "name": "sigrok_export.test.cjs",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-069"
+      ]
+    }
+  ],
+  "results": [
+    {
+      "requirement": "REQ-SDS-069",
+      "status": "partial",
+      "notes": "Original suite passes. See final-node-suites-source-review.json for oracle limits; no physical metrology, browser interaction or external libsigrok import qualification."
+    }
+  ]
+}

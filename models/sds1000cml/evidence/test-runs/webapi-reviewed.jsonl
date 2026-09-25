@@ -1,0 +1,164 @@
+{"Time":"2026-09-23T10:29:56.475483563+02:00","Action":"start","Package":"open-sds/app/internal/web"}
+{"Time":"2026-09-23T10:29:56.488555561+02:00","Action":"run","Package":"open-sds/app/internal/web","Test":"TestAPIFuzz"}
+{"Time":"2026-09-23T10:29:56.488571923+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestAPIFuzz","Output":"=== RUN   TestAPIFuzz\n"}
+{"Time":"2026-09-23T10:29:57.014249217+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestAPIFuzz","Output":"--- PASS: TestAPIFuzz (0.53s)\n"}
+{"Time":"2026-09-23T10:29:57.014280191+02:00","Action":"pass","Package":"open-sds/app/internal/web","Test":"TestAPIFuzz","Elapsed":0.53}
+{"Time":"2026-09-23T10:29:57.014293202+02:00","Action":"run","Package":"open-sds/app/internal/web","Test":"TestBinFrameParity"}
+{"Time":"2026-09-23T10:29:57.014297722+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestBinFrameParity","Output":"=== RUN   TestBinFrameParity\n"}
+{"Time":"2026-09-23T10:29:57.014759972+02:00","Action":"run","Package":"open-sds/app/internal/web","Test":"TestBinFrameParity/native-windowed"}
+{"Time":"2026-09-23T10:29:57.014768395+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestBinFrameParity/native-windowed","Output":"=== RUN   TestBinFrameParity/native-windowed\n"}
+{"Time":"2026-09-23T10:29:57.023349897+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestBinFrameParity/native-windowed","Output":"--- PASS: TestBinFrameParity/native-windowed (0.01s)\n"}
+{"Time":"2026-09-23T10:29:57.023363319+02:00","Action":"pass","Package":"open-sds/app/internal/web","Test":"TestBinFrameParity/native-windowed","Elapsed":0.01}
+{"Time":"2026-09-23T10:29:57.023397041+02:00","Action":"run","Package":"open-sds/app/internal/web","Test":"TestBinFrameParity/native-interp"}
+{"Time":"2026-09-23T10:29:57.023403374+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestBinFrameParity/native-interp","Output":"=== RUN   TestBinFrameParity/native-interp\n"}
+{"Time":"2026-09-23T10:29:57.032623209+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestBinFrameParity/native-interp","Output":"--- PASS: TestBinFrameParity/native-interp (0.01s)\n"}
+{"Time":"2026-09-23T10:29:57.032637498+02:00","Action":"pass","Package":"open-sds/app/internal/web","Test":"TestBinFrameParity/native-interp","Elapsed":0.01}
+{"Time":"2026-09-23T10:29:57.032659145+02:00","Action":"run","Package":"open-sds/app/internal/web","Test":"TestBinFrameParity/deep-trig-edge-start"}
+{"Time":"2026-09-23T10:29:57.032663949+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestBinFrameParity/deep-trig-edge-start","Output":"=== RUN   TestBinFrameParity/deep-trig-edge-start\n"}
+{"Time":"2026-09-23T10:29:57.056736716+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestBinFrameParity/deep-trig-edge-start","Output":"--- PASS: TestBinFrameParity/deep-trig-edge-start (0.02s)\n"}
+{"Time":"2026-09-23T10:29:57.056753884+02:00","Action":"pass","Package":"open-sds/app/internal/web","Test":"TestBinFrameParity/deep-trig-edge-start","Elapsed":0.02}
+{"Time":"2026-09-23T10:29:57.056763932+02:00","Action":"run","Package":"open-sds/app/internal/web","Test":"TestBinFrameParity/deep-trig-edge-end"}
+{"Time":"2026-09-23T10:29:57.056767557+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestBinFrameParity/deep-trig-edge-end","Output":"=== RUN   TestBinFrameParity/deep-trig-edge-end\n"}
+{"Time":"2026-09-23T10:29:57.081018307+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestBinFrameParity/deep-trig-edge-end","Output":"--- PASS: TestBinFrameParity/deep-trig-edge-end (0.02s)\n"}
+{"Time":"2026-09-23T10:29:57.081032869+02:00","Action":"pass","Package":"open-sds/app/internal/web","Test":"TestBinFrameParity/deep-trig-edge-end","Elapsed":0.02}
+{"Time":"2026-09-23T10:29:57.081042595+02:00","Action":"run","Package":"open-sds/app/internal/web","Test":"TestBinFrameParity/deep-freerun"}
+{"Time":"2026-09-23T10:29:57.081046395+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestBinFrameParity/deep-freerun","Output":"=== RUN   TestBinFrameParity/deep-freerun\n"}
+{"Time":"2026-09-23T10:29:57.104780118+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestBinFrameParity/deep-freerun","Output":"--- PASS: TestBinFrameParity/deep-freerun (0.02s)\n"}
+{"Time":"2026-09-23T10:29:57.10478998+02:00","Action":"pass","Package":"open-sds/app/internal/web","Test":"TestBinFrameParity/deep-freerun","Elapsed":0.02}
+{"Time":"2026-09-23T10:29:57.10479868+02:00","Action":"run","Package":"open-sds/app/internal/web","Test":"TestBinFrameParity/envelope"}
+{"Time":"2026-09-23T10:29:57.104802213+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestBinFrameParity/envelope","Output":"=== RUN   TestBinFrameParity/envelope\n"}
+{"Time":"2026-09-23T10:29:57.120678124+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestBinFrameParity/envelope","Output":"--- PASS: TestBinFrameParity/envelope (0.02s)\n"}
+{"Time":"2026-09-23T10:29:57.12068768+02:00","Action":"pass","Package":"open-sds/app/internal/web","Test":"TestBinFrameParity/envelope","Elapsed":0.02}
+{"Time":"2026-09-23T10:29:57.12069928+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestBinFrameParity","Output":"--- PASS: TestBinFrameParity (0.11s)\n"}
+{"Time":"2026-09-23T10:29:57.120711808+02:00","Action":"pass","Package":"open-sds/app/internal/web","Test":"TestBinFrameParity","Elapsed":0.11}
+{"Time":"2026-09-23T10:29:57.120789572+02:00","Action":"run","Package":"open-sds/app/internal/web","Test":"TestBinFrameUnchanged"}
+{"Time":"2026-09-23T10:29:57.12079648+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestBinFrameUnchanged","Output":"=== RUN   TestBinFrameUnchanged\n"}
+{"Time":"2026-09-23T10:29:57.121793984+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestBinFrameUnchanged","Output":"--- PASS: TestBinFrameUnchanged (0.00s)\n"}
+{"Time":"2026-09-23T10:29:57.121802034+02:00","Action":"pass","Package":"open-sds/app/internal/web","Test":"TestBinFrameUnchanged","Elapsed":0}
+{"Time":"2026-09-23T10:29:57.121809903+02:00","Action":"run","Package":"open-sds/app/internal/web","Test":"TestBinFrameLongPollDegrade"}
+{"Time":"2026-09-23T10:29:57.121815826+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestBinFrameLongPollDegrade","Output":"=== RUN   TestBinFrameLongPollDegrade\n"}
+{"Time":"2026-09-23T10:29:57.182893734+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestBinFrameLongPollDegrade","Output":"--- PASS: TestBinFrameLongPollDegrade (0.06s)\n"}
+{"Time":"2026-09-23T10:29:57.182910632+02:00","Action":"pass","Package":"open-sds/app/internal/web","Test":"TestBinFrameLongPollDegrade","Elapsed":0.06}
+{"Time":"2026-09-23T10:29:57.182917976+02:00","Action":"run","Package":"open-sds/app/internal/web","Test":"TestMeasCacheReuse"}
+{"Time":"2026-09-23T10:29:57.182921547+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestMeasCacheReuse","Output":"=== RUN   TestMeasCacheReuse\n"}
+{"Time":"2026-09-23T10:29:57.183387241+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestMeasCacheReuse","Output":"--- PASS: TestMeasCacheReuse (0.00s)\n"}
+{"Time":"2026-09-23T10:29:57.183397698+02:00","Action":"pass","Package":"open-sds/app/internal/web","Test":"TestMeasCacheReuse","Elapsed":0}
+{"Time":"2026-09-23T10:29:57.183405998+02:00","Action":"run","Package":"open-sds/app/internal/web","Test":"TestBinFrameRawShape"}
+{"Time":"2026-09-23T10:29:57.18341129+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestBinFrameRawShape","Output":"=== RUN   TestBinFrameRawShape\n"}
+{"Time":"2026-09-23T10:29:57.184420855+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestBinFrameRawShape","Output":"--- PASS: TestBinFrameRawShape (0.00s)\n"}
+{"Time":"2026-09-23T10:29:57.184428976+02:00","Action":"pass","Package":"open-sds/app/internal/web","Test":"TestBinFrameRawShape","Elapsed":0}
+{"Time":"2026-09-23T10:29:57.184505551+02:00","Action":"run","Package":"open-sds/app/internal/web","Test":"TestDiagV3Routes"}
+{"Time":"2026-09-23T10:29:57.184514334+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestDiagV3Routes","Output":"=== RUN   TestDiagV3Routes\n"}
+{"Time":"2026-09-23T10:29:57.188465878+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestDiagV3Routes","Output":"--- PASS: TestDiagV3Routes (0.00s)\n"}
+{"Time":"2026-09-23T10:29:57.188475604+02:00","Action":"pass","Package":"open-sds/app/internal/web","Test":"TestDiagV3Routes","Elapsed":0}
+{"Time":"2026-09-23T10:29:57.188481938+02:00","Action":"run","Package":"open-sds/app/internal/web","Test":"TestFrameServeFuzz"}
+{"Time":"2026-09-23T10:29:57.18848691+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestFrameServeFuzz","Output":"=== RUN   TestFrameServeFuzz\n"}
+{"Time":"2026-09-23T10:29:59.921846226+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestFrameServeFuzz","Output":"--- PASS: TestFrameServeFuzz (2.73s)\n"}
+{"Time":"2026-09-23T10:29:59.92186573+02:00","Action":"pass","Package":"open-sds/app/internal/web","Test":"TestFrameServeFuzz","Elapsed":2.73}
+{"Time":"2026-09-23T10:29:59.921897396+02:00","Action":"run","Package":"open-sds/app/internal/web","Test":"TestResampleEnv"}
+{"Time":"2026-09-23T10:29:59.921902176+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestResampleEnv","Output":"=== RUN   TestResampleEnv\n"}
+{"Time":"2026-09-23T10:29:59.921981372+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestResampleEnv","Output":"--- PASS: TestResampleEnv (0.00s)\n"}
+{"Time":"2026-09-23T10:29:59.921991972+02:00","Action":"pass","Package":"open-sds/app/internal/web","Test":"TestResampleEnv","Elapsed":0}
+{"Time":"2026-09-23T10:29:59.922044276+02:00","Action":"run","Package":"open-sds/app/internal/web","Test":"TestPrecisionBinaryPayload"}
+{"Time":"2026-09-23T10:29:59.922048636+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestPrecisionBinaryPayload","Output":"=== RUN   TestPrecisionBinaryPayload\n"}
+{"Time":"2026-09-23T10:29:59.922198427+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestPrecisionBinaryPayload","Output":"--- PASS: TestPrecisionBinaryPayload (0.00s)\n"}
+{"Time":"2026-09-23T10:29:59.922206997+02:00","Action":"pass","Package":"open-sds/app/internal/web","Test":"TestPrecisionBinaryPayload","Elapsed":0}
+{"Time":"2026-09-23T10:29:59.922267777+02:00","Action":"run","Package":"open-sds/app/internal/web","Test":"TestSRAMFullRecordAndWindowAPI"}
+{"Time":"2026-09-23T10:29:59.922273088+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestSRAMFullRecordAndWindowAPI","Output":"=== RUN   TestSRAMFullRecordAndWindowAPI\n"}
+{"Time":"2026-09-23T10:29:59.95627657+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestSRAMFullRecordAndWindowAPI","Output":"--- PASS: TestSRAMFullRecordAndWindowAPI (0.03s)\n"}
+{"Time":"2026-09-23T10:29:59.956292548+02:00","Action":"pass","Package":"open-sds/app/internal/web","Test":"TestSRAMFullRecordAndWindowAPI","Elapsed":0.03}
+{"Time":"2026-09-23T10:29:59.95629882+02:00","Action":"run","Package":"open-sds/app/internal/web","Test":"TestSRAMArmIsExplicitAndErrorsRemainJSON"}
+{"Time":"2026-09-23T10:29:59.956301337+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestSRAMArmIsExplicitAndErrorsRemainJSON","Output":"=== RUN   TestSRAMArmIsExplicitAndErrorsRemainJSON\n"}
+{"Time":"2026-09-23T10:29:59.956955031+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestSRAMArmIsExplicitAndErrorsRemainJSON","Output":"--- PASS: TestSRAMArmIsExplicitAndErrorsRemainJSON (0.00s)\n"}
+{"Time":"2026-09-23T10:29:59.956966022+02:00","Action":"pass","Package":"open-sds/app/internal/web","Test":"TestSRAMArmIsExplicitAndErrorsRemainJSON","Elapsed":0}
+{"Time":"2026-09-23T10:29:59.957036021+02:00","Action":"run","Package":"open-sds/app/internal/web","Test":"TestSetVerbs"}
+{"Time":"2026-09-23T10:29:59.957042822+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestSetVerbs","Output":"=== RUN   TestSetVerbs\n"}
+{"Time":"2026-09-23T10:29:59.960199637+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestSetVerbs","Output":"--- PASS: TestSetVerbs (0.00s)\n"}
+{"Time":"2026-09-23T10:29:59.960206917+02:00","Action":"pass","Package":"open-sds/app/internal/web","Test":"TestSetVerbs","Elapsed":0}
+{"Time":"2026-09-23T10:29:59.960210705+02:00","Action":"run","Package":"open-sds/app/internal/web","Test":"TestVerticalVerbs"}
+{"Time":"2026-09-23T10:29:59.960213073+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestVerticalVerbs","Output":"=== RUN   TestVerticalVerbs\n"}
+{"Time":"2026-09-23T10:29:59.962863046+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestVerticalVerbs","Output":"--- PASS: TestVerticalVerbs (0.00s)\n"}
+{"Time":"2026-09-23T10:29:59.962870401+02:00","Action":"pass","Package":"open-sds/app/internal/web","Test":"TestVerticalVerbs","Elapsed":0}
+{"Time":"2026-09-23T10:29:59.962873779+02:00","Action":"run","Package":"open-sds/app/internal/web","Test":"TestProbeAttenuation"}
+{"Time":"2026-09-23T10:29:59.962876128+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestProbeAttenuation","Output":"=== RUN   TestProbeAttenuation\n"}
+{"Time":"2026-09-23T10:29:59.965709799+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestProbeAttenuation","Output":"--- PASS: TestProbeAttenuation (0.00s)\n"}
+{"Time":"2026-09-23T10:29:59.965718689+02:00","Action":"pass","Package":"open-sds/app/internal/web","Test":"TestProbeAttenuation","Elapsed":0}
+{"Time":"2026-09-23T10:29:59.965730204+02:00","Action":"run","Package":"open-sds/app/internal/web","Test":"TestCouplingVerbs"}
+{"Time":"2026-09-23T10:29:59.965734173+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestCouplingVerbs","Output":"=== RUN   TestCouplingVerbs\n"}
+{"Time":"2026-09-23T10:29:59.967839229+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestCouplingVerbs","Output":"--- PASS: TestCouplingVerbs (0.00s)\n"}
+{"Time":"2026-09-23T10:29:59.967847677+02:00","Action":"pass","Package":"open-sds/app/internal/web","Test":"TestCouplingVerbs","Elapsed":0}
+{"Time":"2026-09-23T10:29:59.967855099+02:00","Action":"run","Package":"open-sds/app/internal/web","Test":"TestACCouplingRemovesDC"}
+{"Time":"2026-09-23T10:29:59.967859377+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestACCouplingRemovesDC","Output":"=== RUN   TestACCouplingRemovesDC\n"}
+{"Time":"2026-09-23T10:29:59.97211837+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestACCouplingRemovesDC","Output":"--- PASS: TestACCouplingRemovesDC (0.00s)\n"}
+{"Time":"2026-09-23T10:29:59.972128603+02:00","Action":"pass","Package":"open-sds/app/internal/web","Test":"TestACCouplingRemovesDC","Elapsed":0}
+{"Time":"2026-09-23T10:29:59.972133525+02:00","Action":"run","Package":"open-sds/app/internal/web","Test":"TestHoldoffVerb"}
+{"Time":"2026-09-23T10:29:59.972136327+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestHoldoffVerb","Output":"=== RUN   TestHoldoffVerb\n"}
+{"Time":"2026-09-23T10:29:59.972562999+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestHoldoffVerb","Output":"--- PASS: TestHoldoffVerb (0.00s)\n"}
+{"Time":"2026-09-23T10:29:59.972573257+02:00","Action":"pass","Package":"open-sds/app/internal/web","Test":"TestHoldoffVerb","Elapsed":0}
+{"Time":"2026-09-23T10:29:59.972577588+02:00","Action":"run","Package":"open-sds/app/internal/web","Test":"TestQualifierAndAcqVerbs"}
+{"Time":"2026-09-23T10:29:59.97258004+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestQualifierAndAcqVerbs","Output":"=== RUN   TestQualifierAndAcqVerbs\n"}
+{"Time":"2026-09-23T10:29:59.974758682+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestQualifierAndAcqVerbs","Output":"--- PASS: TestQualifierAndAcqVerbs (0.00s)\n"}
+{"Time":"2026-09-23T10:29:59.974775408+02:00","Action":"pass","Package":"open-sds/app/internal/web","Test":"TestQualifierAndAcqVerbs","Elapsed":0}
+{"Time":"2026-09-23T10:29:59.974844051+02:00","Action":"run","Package":"open-sds/app/internal/web","Test":"TestBodeEndpoint"}
+{"Time":"2026-09-23T10:29:59.974852187+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestBodeEndpoint","Output":"=== RUN   TestBodeEndpoint\n"}
+{"Time":"2026-09-23T10:29:59.976003073+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestBodeEndpoint","Output":"--- PASS: TestBodeEndpoint (0.00s)\n"}
+{"Time":"2026-09-23T10:29:59.976014402+02:00","Action":"pass","Package":"open-sds/app/internal/web","Test":"TestBodeEndpoint","Elapsed":0}
+{"Time":"2026-09-23T10:29:59.976055174+02:00","Action":"run","Package":"open-sds/app/internal/web","Test":"TestDiagRoutesUnwiredAre503"}
+{"Time":"2026-09-23T10:29:59.976062018+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestDiagRoutesUnwiredAre503","Output":"=== RUN   TestDiagRoutesUnwiredAre503\n"}
+{"Time":"2026-09-23T10:29:59.983351874+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestDiagRoutesUnwiredAre503","Output":"--- PASS: TestDiagRoutesUnwiredAre503 (0.01s)\n"}
+{"Time":"2026-09-23T10:29:59.98336206+02:00","Action":"pass","Package":"open-sds/app/internal/web","Test":"TestDiagRoutesUnwiredAre503","Elapsed":0.01}
+{"Time":"2026-09-23T10:29:59.983369617+02:00","Action":"run","Package":"open-sds/app/internal/web","Test":"TestDiagStatusRegWindow"}
+{"Time":"2026-09-23T10:29:59.983374444+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestDiagStatusRegWindow","Output":"=== RUN   TestDiagStatusRegWindow\n"}
+{"Time":"2026-09-23T10:29:59.987531811+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestDiagStatusRegWindow","Output":"--- PASS: TestDiagStatusRegWindow (0.00s)\n"}
+{"Time":"2026-09-23T10:29:59.987540684+02:00","Action":"pass","Package":"open-sds/app/internal/web","Test":"TestDiagStatusRegWindow","Elapsed":0}
+{"Time":"2026-09-23T10:29:59.987545874+02:00","Action":"run","Package":"open-sds/app/internal/web","Test":"TestDiagSnapshotBusExperiments"}
+{"Time":"2026-09-23T10:29:59.987548963+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestDiagSnapshotBusExperiments","Output":"=== RUN   TestDiagSnapshotBusExperiments\n"}
+{"Time":"2026-09-23T10:30:00.538436299+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestDiagSnapshotBusExperiments","Output":"--- PASS: TestDiagSnapshotBusExperiments (0.55s)\n"}
+{"Time":"2026-09-23T10:30:00.538454855+02:00","Action":"pass","Package":"open-sds/app/internal/web","Test":"TestDiagSnapshotBusExperiments","Elapsed":0.55}
+{"Time":"2026-09-23T10:30:00.5384652+02:00","Action":"run","Package":"open-sds/app/internal/web","Test":"TestFrameEndpoint"}
+{"Time":"2026-09-23T10:30:00.538468511+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestFrameEndpoint","Output":"=== RUN   TestFrameEndpoint\n"}
+{"Time":"2026-09-23T10:30:00.539885885+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestFrameEndpoint","Output":"--- PASS: TestFrameEndpoint (0.00s)\n"}
+{"Time":"2026-09-23T10:30:00.539894562+02:00","Action":"pass","Package":"open-sds/app/internal/web","Test":"TestFrameEndpoint","Elapsed":0}
+{"Time":"2026-09-23T10:30:00.539902909+02:00","Action":"run","Package":"open-sds/app/internal/web","Test":"TestDeepFrameServesRawRecord"}
+{"Time":"2026-09-23T10:30:00.539907732+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestDeepFrameServesRawRecord","Output":"=== RUN   TestDeepFrameServesRawRecord\n"}
+{"Time":"2026-09-23T10:30:00.540917012+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestDeepFrameServesRawRecord","Output":"--- PASS: TestDeepFrameServesRawRecord (0.00s)\n"}
+{"Time":"2026-09-23T10:30:00.540926543+02:00","Action":"pass","Package":"open-sds/app/internal/web","Test":"TestDeepFrameServesRawRecord","Elapsed":0}
+{"Time":"2026-09-23T10:30:00.540930963+02:00","Action":"run","Package":"open-sds/app/internal/web","Test":"TestWindowMapping"}
+{"Time":"2026-09-23T10:30:00.540933702+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestWindowMapping","Output":"=== RUN   TestWindowMapping\n"}
+{"Time":"2026-09-23T10:30:00.541003677+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestWindowMapping","Output":"--- PASS: TestWindowMapping (0.00s)\n"}
+{"Time":"2026-09-23T10:30:00.541013552+02:00","Action":"pass","Package":"open-sds/app/internal/web","Test":"TestWindowMapping","Elapsed":0}
+{"Time":"2026-09-23T10:30:00.541018533+02:00","Action":"run","Package":"open-sds/app/internal/web","Test":"TestWindowNoEndGaps"}
+{"Time":"2026-09-23T10:30:00.541021467+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestWindowNoEndGaps","Output":"=== RUN   TestWindowNoEndGaps\n"}
+{"Time":"2026-09-23T10:30:00.541124365+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestWindowNoEndGaps","Output":"--- PASS: TestWindowNoEndGaps (0.00s)\n"}
+{"Time":"2026-09-23T10:30:00.541133113+02:00","Action":"pass","Package":"open-sds/app/internal/web","Test":"TestWindowNoEndGaps","Elapsed":0}
+{"Time":"2026-09-23T10:30:00.541141207+02:00","Action":"run","Package":"open-sds/app/internal/web","Test":"TestWindowRailExtendCentres"}
+{"Time":"2026-09-23T10:30:00.541147013+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestWindowRailExtendCentres","Output":"=== RUN   TestWindowRailExtendCentres\n"}
+{"Time":"2026-09-23T10:30:00.541249903+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestWindowRailExtendCentres","Output":"--- PASS: TestWindowRailExtendCentres (0.00s)\n"}
+{"Time":"2026-09-23T10:30:00.541259513+02:00","Action":"pass","Package":"open-sds/app/internal/web","Test":"TestWindowRailExtendCentres","Elapsed":0}
+{"Time":"2026-09-23T10:30:00.541267987+02:00","Action":"run","Package":"open-sds/app/internal/web","Test":"TestDtSTrueCapturePitch"}
+{"Time":"2026-09-23T10:30:00.541272571+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestDtSTrueCapturePitch","Output":"=== RUN   TestDtSTrueCapturePitch\n"}
+{"Time":"2026-09-23T10:30:00.543724223+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestDtSTrueCapturePitch","Output":"--- PASS: TestDtSTrueCapturePitch (0.00s)\n"}
+{"Time":"2026-09-23T10:30:00.543733846+02:00","Action":"pass","Package":"open-sds/app/internal/web","Test":"TestDtSTrueCapturePitch","Elapsed":0}
+{"Time":"2026-09-23T10:30:00.5437386+02:00","Action":"run","Package":"open-sds/app/internal/web","Test":"TestStatusInvertSource"}
+{"Time":"2026-09-23T10:30:00.543741253+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestStatusInvertSource","Output":"=== RUN   TestStatusInvertSource\n"}
+{"Time":"2026-09-23T10:30:00.544934937+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestStatusInvertSource","Output":"--- PASS: TestStatusInvertSource (0.00s)\n"}
+{"Time":"2026-09-23T10:30:00.544944412+02:00","Action":"pass","Package":"open-sds/app/internal/web","Test":"TestStatusInvertSource","Elapsed":0}
+{"Time":"2026-09-23T10:30:00.544955686+02:00","Action":"run","Package":"open-sds/app/internal/web","Test":"TestSerialTriggerEndpoints"}
+{"Time":"2026-09-23T10:30:00.544959581+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestSerialTriggerEndpoints","Output":"=== RUN   TestSerialTriggerEndpoints\n"}
+{"Time":"2026-09-23T10:30:00.547024386+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestSerialTriggerEndpoints","Output":"--- PASS: TestSerialTriggerEndpoints (0.00s)\n"}
+{"Time":"2026-09-23T10:30:00.547034478+02:00","Action":"pass","Package":"open-sds/app/internal/web","Test":"TestSerialTriggerEndpoints","Elapsed":0}
+{"Time":"2026-09-23T10:30:00.547040444+02:00","Action":"run","Package":"open-sds/app/internal/web","Test":"TestStatusEndpoint"}
+{"Time":"2026-09-23T10:30:00.547042821+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestStatusEndpoint","Output":"=== RUN   TestStatusEndpoint\n"}
+{"Time":"2026-09-23T10:30:00.547765055+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestStatusEndpoint","Output":"--- PASS: TestStatusEndpoint (0.00s)\n"}
+{"Time":"2026-09-23T10:30:00.547780486+02:00","Action":"pass","Package":"open-sds/app/internal/web","Test":"TestStatusEndpoint","Elapsed":0}
+{"Time":"2026-09-23T10:30:00.547826949+02:00","Action":"run","Package":"open-sds/app/internal/web","Test":"TestRootServesUI"}
+{"Time":"2026-09-23T10:30:00.547846234+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestRootServesUI","Output":"=== RUN   TestRootServesUI\n"}
+{"Time":"2026-09-23T10:30:00.548490043+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestRootServesUI","Output":"--- PASS: TestRootServesUI (0.00s)\n"}
+{"Time":"2026-09-23T10:30:00.54850379+02:00","Action":"pass","Package":"open-sds/app/internal/web","Test":"TestRootServesUI","Elapsed":0}
+{"Time":"2026-09-23T10:30:00.548540459+02:00","Action":"run","Package":"open-sds/app/internal/web","Test":"TestZoneMaskAPI"}
+{"Time":"2026-09-23T10:30:00.548559082+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestZoneMaskAPI","Output":"=== RUN   TestZoneMaskAPI\n"}
+{"Time":"2026-09-23T10:30:00.550075859+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestZoneMaskAPI","Output":"--- PASS: TestZoneMaskAPI (0.00s)\n"}
+{"Time":"2026-09-23T10:30:00.550088396+02:00","Action":"pass","Package":"open-sds/app/internal/web","Test":"TestZoneMaskAPI","Elapsed":0}
+{"Time":"2026-09-23T10:30:00.550233279+02:00","Action":"output","Package":"open-sds/app/internal/web","Output":"PASS\n"}
+{"Time":"2026-09-23T10:30:01.561112229+02:00","Action":"output","Package":"open-sds/app/internal/web","Output":"ok  \topen-sds/app/internal/web\t5.085s\n"}
+{"Time":"2026-09-23T10:30:01.561129952+02:00","Action":"pass","Package":"open-sds/app/internal/web","Elapsed":5.086}

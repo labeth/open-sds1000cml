@@ -1,0 +1,89 @@
+{
+  "result": "pass",
+  "cases": [
+    {
+      "id": "stream_banks-3",
+      "path": "fpga/acq_sram/sim/tb_stream_banks.v",
+      "module": "tb",
+      "status": "partial",
+      "compileExitCode": 0,
+      "simulationExitCode": 0,
+      "timedOut": false
+    },
+    {
+      "id": "stream_path-3",
+      "path": "fpga/acq_sram/sim/tb_stream_path.v",
+      "module": "tb",
+      "status": "partial",
+      "compileExitCode": 0,
+      "simulationExitCode": 0,
+      "timedOut": false
+    },
+    {
+      "id": "stream_banks-10",
+      "path": "fpga/acq_sram/sim/tb_stream_banks.v",
+      "module": "tb",
+      "status": "partial",
+      "compileExitCode": 0,
+      "simulationExitCode": 0,
+      "timedOut": false
+    },
+    {
+      "id": "stream_path-10",
+      "path": "fpga/acq_sram/sim/tb_stream_path.v",
+      "module": "tb",
+      "status": "partial",
+      "compileExitCode": 0,
+      "simulationExitCode": 0,
+      "timedOut": false
+    },
+    {
+      "id": "stream_banks-11",
+      "path": "fpga/acq_sram/sim/tb_stream_banks.v",
+      "module": "tb",
+      "status": "partial",
+      "compileExitCode": 0,
+      "simulationExitCode": 0,
+      "timedOut": false
+    },
+    {
+      "id": "stream_path-11",
+      "path": "fpga/acq_sram/sim/tb_stream_path.v",
+      "module": "tb",
+      "status": "partial",
+      "compileExitCode": 0,
+      "simulationExitCode": 0,
+      "timedOut": false
+    },
+    {
+      "id": "sram-stream-13",
+      "path": "fpga/acq_sram/sim/tb_sram_stream_path.v",
+      "module": "tb_stream_path",
+      "status": "partial",
+      "compileExitCode": 0,
+      "simulationExitCode": 0,
+      "timedOut": false
+    },
+    {
+      "id": "sram-stream-19",
+      "path": "fpga/acq_sram/sim/tb_sram_stream_path.v",
+      "module": "tb_stream_path",
+      "status": "partial",
+      "compileExitCode": 0,
+      "simulationExitCode": 0,
+      "timedOut": false
+    }
+  ],
+  "annotationEquivalentSources": [
+    "fpga/acq_sram/sim/ddr_model.v",
+    "fpga/acq_sram/sim/tb_sram_stream_path.v",
+    "fpga/acq_sram/sim/tb_stream_banks.v",
+    "fpga/acq_sram/sim/tb_stream_path.v",
+    "fpga/acq_sram/stream_banks.v",
+    "fpga/acq_sram/stream_engine.v",
+    "fpga/acq_sram/stream_packetizer.v",
+    "fpga/acq_sram/stream_path.v"
+  ],
+  "reportSHA256": "9d675d4183ab6ca02a3c1d6de383f56059b284be5ebd5434d150339a784521ad",
+  "scope": "Exact original simulation case/input provenance. Compilation failures are not-run behavioral checks; executed assertion failures remain fail. Passing simulation assertions contribute partial evidence only. Post-run changes are allowed solely when exact pinned-baseline reconstruction proves the approved comment-only overlay."
+}

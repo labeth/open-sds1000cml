@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-CODEGEN-EMIT
 package emit
 
 import (
@@ -7,6 +8,7 @@ import (
 	"open-sds/codegen/schema"
 )
 
+// TRLC-LINKS: REQ-SDS-157
 func vFields(p func(string, ...any), prefix string, fs []schema.Field) {
 	for _, f := range fs {
 		p("`define %s_%s_MASK 16'h%04x\n", prefix, f.Name, f.Mask())
@@ -19,6 +21,7 @@ func vFields(p func(string, ...any), prefix string, fs []schema.Field) {
 
 // Regs renders regs.vh: Verilog-2001 `define macros for every selector, field
 // mask/LSB, enum value, identity value, opcode, geometry constant and DIAG index.
+// TRLC-LINKS: REQ-SDS-157
 func Regs(i schema.Interface) (string, error) {
 	if err := check(i); err != nil {
 		return "", err

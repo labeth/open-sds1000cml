@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-SUPERRES
 // Parity driver: run the reference-locked super-res path in JS (../web/superres.js)
 // on the SAME frames the Go package sees, so the golden-vector test can assert the
 // two engines converge to the same stack. Reads a JSON payload file (argv[2]),
@@ -10,6 +11,7 @@ const { N, K, align, frames, gate } = inp;
 const st = SR.srNew(N, K);
 st.align = align;
 st.c[0].vpc = st.c[1].vpc = 1 / 32;
+// TRLC-LINKS: REQ-SDS-019
 const arr = a => Int16Array.from(a);
 const f0 = frames[0];
 const seedOk = SR.srSeedRef(st, arr(f0.c1), arr(f0.c2), f0.edgeX, gate || null);

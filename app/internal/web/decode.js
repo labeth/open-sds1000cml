@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-WEB-DECODE
 // Serial-protocol decoders (UART / I2C / SPI here; the other seven protocols
 // live in the sibling decode_*.js files), pure JS mirroring peaks.js:
 // no DOM, no globals. Served at /decode.js, loaded by ui.html via <script src>,
@@ -21,22 +22,27 @@ const KINDS = ["start", "stop", "addr", "rw", "ack", "nak", "data", "frame-error
 // captures saved before dt_s existed. The on-screen time GRID deliberately
 // keeps the nominal (it must match the labelled tdiv); these helpers are for
 // measurements.
+// TRLC-LINKS: REQ-SDS-018
 function frameDtS(frame, n) {
   if (frame.dt_s > 0) return frame.dt_s;
   return (frame.col_span_s || 0) / (n || 1);
 }
+// TRLC-LINKS: REQ-SDS-018
 function frameSpanS(frame, n) {
   if (frame.dt_s > 0) return frame.dt_s * n;
   return frame.col_span_s || 0;
 }
 
+// TRLC-LINKS: REQ-SDS-018
 function hex2(b) { return (b & 0xff).toString(16).toUpperCase().padStart(2, "0"); }
 // UNSIGNED shift (>>>): a signed >> on a value with the sign bit set shifts
 // in 1s and never reaches 0 — an infinite loop, the same DoS the Go popcount
 // had. cfg.bits is bounded below so the assembled word stays non-negative.
+// TRLC-LINKS: REQ-SDS-018
 function popcount(v) { let c = 0; v = v >>> 0; while (v) { c += v & 1; v >>>= 1; } return c; }
 // fmtByte renders a payload byte per the display format: "hex" -> 48, "ascii" ->
 // the printable char (else .), "both" -> 48·H. Applied to data bytes only.
+// TRLC-LINKS: REQ-SDS-018
 function fmtByte(v, fmt) {
   v &= 0xff;
   const h = hex2(v), printable = v >= 0x20 && v < 0x7f, ch = printable ? String.fromCharCode(v) : ".";
@@ -44,6 +50,7 @@ function fmtByte(v, fmt) {
   if (fmt === "both") return printable ? h + "·" + ch : h;
   return h;
 }
+// TRLC-LINKS: REQ-SDS-018
 function fail(proto, error, meta) {
   return { ok: false, error, proto, spans: [], text: "", bytes: [], meta: meta || {} };
 }
@@ -54,6 +61,7 @@ function fail(proto, error, meta) {
 // band for edge/period detection, and records threshold crossings. The bit
 // VALUE is never read from the hysteretic level[] (which lags); callers use
 // logicAt(), which thresholds the raw code at the sample instant.
+// TRLC-LINKS: REQ-SDS-018
 function sliceChannel(codes, opts) {
   // A frame may carry NO per-sample array for a channel (channel toggled off,
   // or an envelope/roll band ships env min/max instead) — decCodes()/autodetect
@@ -108,6 +116,7 @@ function sliceChannel(codes, opts) {
 
 // logicAt: the bit-decision primitive — raw code vs threshold at column x
 // (rounded). Returns 0/1, or -1 for a gap / out of range.
+// TRLC-LINKS: REQ-SDS-018
 function logicAt(s, x) {
   const i = Math.round(x);
   if (i < 0 || i >= s.n) return -1;
@@ -118,6 +127,7 @@ function logicAt(s, x) {
 
 // minConsecutive returns the smallest column gap between successive edges whose
 // direction passes `dirOk` (used for the too-fast resolution guard).
+// TRLC-LINKS: REQ-SDS-018
 function minEdgeGap(edges, dirOk) {
   let prev = -1, min = Infinity;
   for (const e of edges) {
@@ -142,6 +152,7 @@ function minEdgeGap(edges, dirOk) {
 // but so does the true bit, and the true bit is the wide one); none =>
 // genuinely ambiguous, be honest. Mirrors decode_uart.go inferUARTspb step for
 // step. Returns { spb, reason }.
+// TRLC-LINKS: REQ-SDS-018
 function inferUARTspb(S) {
   const gaps = [];
   for (let k = 1; k < S.edges.length; k++) { const g = S.edges[k].x - S.edges[k - 1].x; if (g >= 1) gaps.push(g); }
@@ -198,8 +209,14 @@ function inferUARTspb(S) {
   return { spb: 0, reason: "baud ambiguous — set it explicitly" };
 }
 
+// TRLC-LINKS: REQ-SDS-018
 function decodeUART(codes, colTimeS, cfg) {
   cfg = cfg || {};
+  if (cfg.inverted) {
+    codes = Array.from(codes, x => x < 0 ? x : 255 - x);
+    cfg = Object.assign({}, cfg);
+    if (cfg.threshold != null) cfg.threshold = 255 - cfg.threshold;
+  }
   const bits = cfg.bits || 8, parity = cfg.parity || "none", idle = cfg.idle != null ? cfg.idle : 1;
   if (bits < 1 || bits > 16) return fail("uart", "data bits out of range (1..16)"); // guard shift/mask math
   const lsb = (cfg.bitOrder || "lsb") === "lsb", minSPB = cfg.minSPB || 3, guard = cfg.guard != null ? cfg.guard : 4;
@@ -218,6 +235,7 @@ function decodeUART(codes, colTimeS, cfg) {
   }
   if (!(SPB >= minSPB)) return fail("uart", SPB.toFixed(1) + " samples/bit; need >= " + minSPB, { samplesPerBit: SPB, baud });
 
+  // TRLC-LINKS: REQ-SDS-018
   const parityOf = v => { const p = popcount(v & ((1 << bits) - 1)) & 1; return parity === "even" ? p : (1 - p); };
   const spans = [], bytes = [], toks = [];
   // The parity bit lengthens the frame — count it so a frame near the record end
@@ -258,8 +276,15 @@ function decodeUART(codes, colTimeS, cfg) {
     meta: { baud: Math.round(baud), samplesPerBit: SPB, threshold: S.threshold, lowRail: S.lowRail, highRail: S.highRail } };
 }
 
+// TRLC-LINKS: REQ-SDS-018
 function decodeI2C(scl, sda, colTimeS, cfg) {
   cfg = cfg || {};
+  if (cfg.inverted) {
+    scl = Array.from(scl, x => x < 0 ? x : 255-x);
+    sda = Array.from(sda, x => x < 0 ? x : 255-x);
+    cfg = Object.assign({}, cfg);
+    if (cfg.threshold != null) cfg.threshold = 255-cfg.threshold;
+  }
   const fmt = cfg.fmt || "hex";
   const CL = sliceChannel(scl, cfg), DA = sliceChannel(sda, cfg);
   if (!CL.ok) return fail("i2c", "SCL " + CL.reason);
@@ -315,8 +340,15 @@ function decodeI2C(scl, sda, colTimeS, cfg) {
     meta: { threshold: CL.threshold, lowRail: CL.lowRail, highRail: CL.highRail, colsPerClock } };
 }
 
+// TRLC-LINKS: REQ-SDS-018
 function decodeSPI(clk, data, colTimeS, cfg) {
   cfg = cfg || {};
+  if (cfg.inverted) {
+    clk = Array.from(clk, x => x < 0 ? x : 255-x);
+    data = Array.from(data, x => x < 0 ? x : 255-x);
+    cfg = Object.assign({}, cfg);
+    if (cfg.threshold != null) cfg.threshold = 255-cfg.threshold;
+  }
   const cpol = cfg.cpol ? 1 : 0, cpha = cfg.cpha ? 1 : 0, msb = (cfg.bitOrder || "msb") === "msb";
   const fmt = cfg.fmt || "hex";
   const CK = sliceChannel(clk, cfg), DA = sliceChannel(data, cfg);
@@ -400,9 +432,11 @@ function decodeSPI(clk, data, colTimeS, cfg) {
 // bits, Manchester mid-cell coding, and SPI — no framing at all, the
 // fallback). A bad hypothesis racks up frame-errors and scores negative, so
 // the genuine match wins. Mirrors decode_autodetect.go scoreResult exactly.
+// TRLC-LINKS: REQ-SDS-018
 function scoreResult(r) {
   if (!r || !r.ok) return -1e9;
   const spans = r.spans || [], bytes = r.bytes ? r.bytes.length : 0;
+  // TRLC-LINKS: REQ-SDS-018
   const kind = k => spans.filter(s => s.kind === k).length;
   if (r.proto === "i2c") {
     // Score on real CONTENT, not bare framing: a channel-swapped mis-read floods
@@ -476,6 +510,7 @@ function scoreResult(r) {
 // half-period as a low percentile of the gaps (ignores the few big idle gaps) and
 // report uniFrac = the fraction of gaps that ARE that half-period. A clock is
 // ~near-1; a data line, whose edges land on data-dependent bit boundaries, is low.
+// TRLC-LINKS: REQ-SDS-018
 function clockScore(codes, opts) {
   const S = sliceChannel(codes, opts || {});
   if (!S.ok || S.edges.length < 6) return { ok: false, uniFrac: 0, halfPeriod: 0, S };
@@ -494,6 +529,7 @@ function clockScore(codes, opts) {
 
 // idleLevel: the rail a sliced channel rests on most of the time (a clock idles
 // at its CPOL rail between transactions). 1 = idle high, 0 = idle low.
+// TRLC-LINKS: REQ-SDS-018
 function idleLevel(S) {
   if (!S || !S.ok) return 0;
   let hi = 0, lo = 0;
@@ -505,6 +541,7 @@ function idleLevel(S) {
 // hypothesis against the two analog channels and return the best-scoring one,
 // ready to drop into the decode config. { proto, roles, cfg, result, score,
 // candidates[], reason }. proto === "off" means nothing matched.
+// TRLC-LINKS: REQ-SDS-018
 function autodetect(frame, opts) {
   opts = opts || {};
   const fmt = opts.fmt || "hex";
@@ -518,6 +555,7 @@ function autodetect(frame, opts) {
     return S.ok && S.edges.length >= 2;
   });
   const cands = [];
+  // TRLC-LINKS: REQ-SDS-018
   const add = (proto, roles, cfg, r) => cands.push({ proto, roles, cfg, result: r, score: scoreResult(r) });
 
   // Clock vs data, ROBUST at fast clocks. A single absolute uniFrac cutoff fails
@@ -528,6 +566,7 @@ function autodetect(frame, opts) {
   const clk1 = clockScore(chans[1], slOpts), clk2 = clockScore(chans[2], slOpts);
   const u1 = clk1.uniFrac, u2 = clk2.uniFrac, hi = Math.max(u1, u2), lo = Math.min(u1, u2);
   const clockedPair = active.length >= 2 && hi > 0.72 && hi > lo + 0.12;
+  // TRLC-LINKS: REQ-SDS-018
   const isClocky = k => { const c = k === 1 ? clk1 : clk2; return c.uniFrac > 0.78 && c.edges >= 40; };
 
   // UART — async single-wire. Suppress on a clocked pair (that IS SPI — a data line
@@ -542,6 +581,7 @@ function autodetect(frame, opts) {
   // them lazily so decode.js alone (the node unit test) still loads — in the
   // browser and the parity bundle every twin is present and every hypothesis
   // runs, mirroring decode_autodetect.go.
+  // TRLC-LINKS: REQ-SDS-018
   const fn = name => (typeof globalThis !== "undefined" && typeof globalThis[name] === "function") ? globalThis[name] : null;
   const dManch = fn("decodeManchester"), dSent = fn("decodeSENT"), dCan = fn("decodeCANFD"),
     dMil = fn("decodeMIL1553"), dArinc = fn("decodeARINC429"), dUsb = fn("decodeUSBLS"), dFlex = fn("decodeFlexRay");
@@ -594,9 +634,11 @@ function autodetect(frame, opts) {
 
 // decode: dispatcher used by node tests. frame = { c1, c2, col_span_s }.
 // cfg.protocol in {uart,i2c,spi}; role fields are 1|2 (=> c1|c2).
+// TRLC-LINKS: REQ-SDS-018
 function decode(frame, cfg) {
   cfg = cfg || {};
   const n = frame.c1.length, colTimeS = frameDtS(frame, n);
+  // TRLC-LINKS: REQ-SDS-018
   const pick = r => (r === 2 || r === "c2") ? frame.c2 : frame.c1;
   const p = cfg.protocol || cfg.proto;
   if (p === "uart") return decodeUART(pick(cfg.line || 1), colTimeS, cfg);

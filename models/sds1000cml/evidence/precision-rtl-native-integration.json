@@ -1,0 +1,69 @@
+{
+  "status": "integrated-with-explicit-verification-limits",
+  "requirement": "REQ-SDS-040",
+  "annotatedFiles": 9,
+  "moduleLinks": 14,
+  "productionFiles": 2,
+  "testbenchFiles": 7,
+  "simulationCases": 7,
+  "passedSimulations": 7,
+  "nativeAttachments": [
+    {
+      "source": "fpga/acq_sram/sim/tb_integrator.v",
+      "resultArtifact": "test-results/rtl/tb_integrator.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_TB_INTEGRATOR_F70D8E"
+    },
+    {
+      "source": "fpga/acq_sram/sim/tb_precision.v",
+      "resultArtifact": "test-results/rtl/tb_precision.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_TB_PRECISION_AE5071"
+    },
+    {
+      "source": "fpga/acq_sram/sim/tb_precision_config.v",
+      "resultArtifact": "test-results/rtl/tb_precision_config.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_TB_PRECISION_CONFIG_88E666"
+    },
+    {
+      "source": "fpga/acq_sram/sim/tb_precision_fir.v",
+      "resultArtifact": "test-results/rtl/tb_precision_fir.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_TB_PRECISION_FIR_DB4A2C"
+    },
+    {
+      "source": "fpga/acq_sram/sim/tb_precision_shared.v",
+      "resultArtifact": "test-results/rtl/tb_precision_shared.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_TB_PRECISION_SHARED_32C163"
+    },
+    {
+      "source": "fpga/acq_sram/sim/tb_precision_tail.v",
+      "resultArtifact": "test-results/rtl/tb_precision_tail.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_TB_PRECISION_TAIL_EEDB49"
+    },
+    {
+      "source": "fpga/acq_sram/sim/tb_precision_tail_queue.v",
+      "resultArtifact": "test-results/rtl/tb_precision_tail_queue.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_TB_PRECISION_TAIL_QUEUE_1ADA2A"
+    }
+  ],
+  "totalRTLNativeSummaries": 39,
+  "scope": [
+    "All seven digital results are partial requirement evidence; physical qualification is not established.",
+    "Frozen execution inputs are preserved and linked to current source by exact baseline reconstruction of approved comments.",
+    "Independent FIR oracle covers the first CIC; tail/composition equivalence shares fast CIC modules with its frozen reference.",
+    "Legacy top-level test execution remains pending; stream source review is separate and not integrated.",
+    "PDF generation remains deferred."
+  ],
+  "checks": {
+    "strictConsistency": "pass",
+    "mcp": "pass",
+    "nativePublication": "7 precision attachments; 39 total RTL summaries",
+    "reproducibility": "36 outputs byte-identical",
+    "provenanceMutationTests": "4 pass: altered oracle, altered compile inputs, nonzero exit with PASS marker, omitted case"
+  }
+}

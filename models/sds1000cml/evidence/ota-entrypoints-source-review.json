@@ -1,0 +1,105 @@
+{
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "status": "integrated-go-traces-shell-inference-pending",
+  "completeReads": [
+    "ota/cmd/otactl/main.go",
+    "ota/cmd/stubapp/main.go",
+    "ota/internal/buildinfo/buildinfo.go",
+    "ota/boot/doc.go",
+    "ota/boot/boot_test.go",
+    "ota/boot/startup.sh",
+    "ota/boot/commands",
+    "ota/boot/agent.env.example"
+  ],
+  "reviewedLines": 1204,
+  "reviewedGoLines": 894,
+  "sourceSHA256": {
+    "ota/cmd/otactl/main.go": "afc591743c7da1f84e986d8ff1f09b09c6d6f84c2d4414957266e38a32595a6f",
+    "ota/cmd/stubapp/main.go": "5d4ab1310fddeb1354af790abe64babcd7c56bcb87c4f049648677e55d3514c2",
+    "ota/internal/buildinfo/buildinfo.go": "ba1537d8bdf49d88d405cf7c9fd2e23bb7a899107a3d39c8ae07b2bc5127db5e",
+    "ota/boot/doc.go": "64a3a4073614b8b5689cf41fe864af0517bc984b5b8fe0171b69f8e84dbd7c68",
+    "ota/boot/boot_test.go": "bf677f8169f479205d0f8d1c79fcbc1348e5824bfd3c17685635e6ff3816afa5",
+    "ota/boot/startup.sh": "b363e1a0e67f0605eb8f8e538719a63ee1e78e49704476c15ca67055dddb24b2",
+    "ota/boot/commands": "3aa37387d705f897a9c0fcd795020153e27cd133db6d7aa4cfeba1a663a1b097",
+    "ota/boot/agent.env.example": "dab91495665c173f7400fb1050188928b8db7c6a34d1cfc9ad28006197de76eb"
+  },
+  "testsByFile": {
+    "ota/boot/boot_test.go": [
+      "TestRespawnLoopBounded",
+      "TestConfirmStableSlot",
+      "TestAgentSelfUpdateActivatesNewSlot",
+      "TestCrashLoopRevertsToConfirmed",
+      "TestIntentMarkerIsNeutralNoRevert",
+      "TestCommandsFileRuns"
+    ]
+  },
+  "uniqueReviewedTests": [
+    "TestRespawnLoopBounded",
+    "TestConfirmStableSlot",
+    "TestAgentSelfUpdateActivatesNewSlot",
+    "TestCrashLoopRevertsToConfirmed",
+    "TestIntentMarkerIsNeutralNoRevert",
+    "TestCommandsFileRuns"
+  ],
+  "findings": [
+    {
+      "title": "CLI dispatch and transport",
+      "detail": "otactl prioritizes direct TCP when both transports are supplied, requires device ID for NATS RPC, and handles version/broker/power/discovery/watch/SCPI before device-transport selection. Unknown commands become raw RPC with no arguments; many subcommand values are delegated rather than locally validated. Global flag parsing stops at the command, with separate flagsets only for serve and power. Timeout integer is not bounded before duration conversion."
+    },
+    {
+      "title": "Duplicate application upload and timeout scope",
+      "detail": "update-app first PutFiles the binary with progress, then calls Client.UpdateApp, which uploads the same file again before app.update. If the file changes between reads, the second upload/hash governs installation. update-agent uses one UpdateAgent call. Client update methods use their own30s RPC and transfer behavior, so global -timeout does not uniformly control these paths. install-emergency stages a file then submits its path without a SHA argument here."
+    },
+    {
+      "title": "CLI results and cleanup",
+      "detail": "printExec ignores JSON decode errors and prints the remote exit without setting the local process exit status. Logs likewise ignore JSON errors. fatal calls os.Exit(1), bypassing deferred transport/VXI/NATS cleanup. JSON pretty-printing through any uses float64 for numbers, potentially rounding large integer counters. Progress integer multiplication can overflow at extreme sizes; main has no original tests."
+    },
+    {
+      "title": "Observation and SCPI commands",
+      "detail": "Discover ignores SubscribeSync and PublishRequest errors and can dereference a nil subscription after a failed subscribe; it counts responses without deduplication or identity validation. Watch ignores subscription errors, reconnects indefinitely and blocks without signal cleanup. SCPI joins arguments and treats any question mark as query, including within quoted text; hostOf returns unparsed input when SplitHostPort fails. These are dispatch behaviors, not successful remote-operation evidence."
+    },
+    {
+      "title": "Power and broker boundaries",
+      "detail": "Power cycle delegates a five-second off/on sequence and does not implement a local confirmation gate. Broker defaults to0.0.0.0:4222 and delegates configuration. Explicit command invocation authorizes behavior operationally; source review does not invoke power, broker or device connections. The existing internal client tests do not directly test this command main."
+    },
+    {
+      "title": "Stub health is simulated",
+      "detail": "stubapp scans exact inherited descriptor paths without opening/closing the device. Missing GPMC only warns; after600ms warmup a400ms timer increments synthetic frame counts and writes health. This demonstrates environment/lifecycle shape, not genuine capture, descriptor correctness or device progress. Empty healthPath still attempts .tmp in the working directory then rename to an empty name; write/rename errors are ignored. Signals return normally; no direct original tests are present."
+    },
+    {
+      "title": "Boot location and remount",
+      "detail": "startup.sh chooses explicit OTA_USB, else fixed vendor mount or other candidates carrying ota/agent.env, with fallback to vendor path. It can remount the fixed vendor path read-write before any config sourcing. Location and path strings do not prove USB mount identity or prevent symlinks. Markers append to USB, OTA_DIR and /tmp; BOOT_MARKER logs are uncapped. Host harness overrides USB away from the vendor path, so it does not exercise mount commands."
+    },
+    {
+      "title": "Configuration is executable shell with ordering constraints",
+      "detail": "agent.env is sourced as shell code, not parsed as passive key/value data, and the optional commands file executes synchronously before respawn. Many local anchor variables are resolved before sourcing; editing OTA_AGENT_A or OTA_AGENT_STABLE in agent.env does not recompute AGENT_A or AGENT_STABLE, whereas explicitly changing local variables can. OTA_USB is exported without assigning the discovered USB back to it. Both env and commands are trusted executable inputs, with no timeout or authentication in the anchor."
+    },
+    {
+      "title": "Agent respawn and confirmation",
+      "detail": "The background loop rereads active pointer each iteration, defaults malformed/missing pointers toA, and resets failure count on a slot change. Confirmed pointer is read once at loop startup and updated on stable exits; an external confirmed-file change is not reread for rollback target. Stability is wall-clock duration on exit, not health, and exit status is ignored: a long failing process can be confirmed. A continuously running new agent is not persisted confirmed until it exits. Missing binaries count as fast failures; confirmed slot crash loops continue indefinitely."
+    },
+    {
+      "title": "Intent markers and pointer durability",
+      "detail": "Any nonempty agent.intent content resets failure count; stale intent is deleted before each spawn. A valid persistent or malicious intent can suppress rollback indefinitely. Pointer writes use direct redirection without atomic rename/fsync or checked errors; confirm/revert logs can claim an action whose write failed. Environment numeric/duration values are not validated and date failure/clock adjustment can distort lifetime calculations."
+    },
+    {
+      "title": "Background lifecycle and logs",
+      "detail": "Anchor returns after backgrounding a subshell loop, preserving inherited descriptors implicitly; it has no process-group cleanup, trap or duplicate-start lock. Log rotation occurs only before each agent spawn and overwrites .1, so a long-running agent can grow its log without the stated1MiB bound. Boot.log is not rotated by rotate_log; commands output and marker files can also grow. Lack of executable agents does not prevent boot-done."
+    },
+    {
+      "title": "Fingerprint command boundary",
+      "detail": "commands reads process, kernel, network and watchdog metadata and calls rpcinfo against localhost, then appends to the configured log path and truncates to a trailing128KiB after exceeding256KiB. It does not open GPMC/key or kill processes, but the STRICTLY READ-ONLY header excludes its own output writes and local RPC request. Output-path overrides/symlinks can escape the intended USB location. There are no command timeouts, many errors are merely recorded, and final shell status depends on the cap expression rather than a summary of successful probes. The actual fingerprint script is inspected only."
+    },
+    {
+      "title": "Boot harness scope",
+      "detail": "Six original tests execute the real startup.sh under host /bin/sh with bounded stub agents and temporary USB paths. They cover respawn count/logs, stable confirmation, pointer switch, crash rollback, neutral intent and commands existence. They do not run busybox ash, remount, real commands, actual inherited-device semantics, power loss, invalid configs or write failures. The commands test waits for boot-done rather than proving full bounded agent completion/order; other tests observe agent-loop-stop. Child execution inherits host environment unless the outer review runner removes OTA/SCOPE overrides. startup also appends its normal marker under/tmp."
+    },
+    {
+      "title": "Sample configuration and labels",
+      "detail": "agent.env.example enables auto-takeover by default and leaves NATS optional; comments refer to agent self-gating already reviewed elsewhere and are not proof from this file. buildinfo joins unvalidated version/commit/build labels with dev/unknown defaults. BOOT_MARKER.txt is historical output outside this source review."
+    }
+  ],
+  "scope": "OTA command and boot-anchor source review. Original bounded host boot harness plus command-package compilation; no device commands, power control, broker start, boot remount or actual fingerprint script execution. Shell sources are reviewed artifacts pending native shell inference support.",
+  "executionSupersededBy": "ota-entrypoints-integrated-test-run.json",
+  "execution": "ota-entrypoints-review-test-run.json"
+}

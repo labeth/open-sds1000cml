@@ -1,6 +1,8 @@
+// ENGMODEL-OWNER-UNIT: FU-RTL-ACQ-TESTS
 `timescale 1ns/1ps
 // Only ADC/CIC are mocked. Acquisition control, record geometry, transport,
 // ingress, host RAM and ownership are real RTL.
+// TRLC-LINKS: REQ-SDS-041, REQ-SDS-042, REQ-SDS-043, REQ-SDS-045, REQ-SDS-056, REQ-SDS-057, REQ-SDS-058, REQ-SDS-183, REQ-SDS-184
 module adc_interleave #(parameter SYNC_ENCODE=0)(input refclk,memclk,packclk,enable,input [79:0] lane,input [9:0] encode_enable,
  input snapshot_request,output snapshot_ack,input consume,output [31:0] word_data,output valid,fault,
  output [79:0] snapshot,output [4:0] enc_p,enc_n,output locked);
@@ -8,6 +10,7 @@ module adc_interleave #(parameter SYNC_ENCODE=0)(input refclk,memclk,packclk,ena
  assign snapshot=lane;assign snapshot_ack=snapshot_request;assign enc_p=0;assign enc_n=0;assign locked=1;
  always @(posedge memclk)if(enable && !consume)$fatal(1,"ADC paused during SRAM access");
 endmodule
+// TRLC-LINKS: REQ-SDS-041, REQ-SDS-042, REQ-SDS-043, REQ-SDS-045, REQ-SDS-056, REQ-SDS-057, REQ-SDS-058, REQ-SDS-183, REQ-SDS-184
 module adc_precision #(parameter SHARED_TAIL=0)(input core,packclk,clk100,enable,input [4:0] decim_log,input [31:0] raw,input raw_valid,
  output [31:0] data,output valid,fault);
  reg [19:0] count=0;
@@ -16,6 +19,7 @@ module adc_precision #(parameter SHARED_TAIL=0)(input core,packclk,clk100,enable
  assign valid=enable && raw_valid && (count & ((1<<(decim_log-1))-1))==0;
  assign fault=0;
 endmodule
+// TRLC-LINKS: REQ-SDS-041, REQ-SDS-042, REQ-SDS-043, REQ-SDS-045, REQ-SDS-056, REQ-SDS-057, REQ-SDS-058, REQ-SDS-183, REQ-SDS-184
 module tb_acquisition_path #(parameter ENABLE_STREAM=1,READY_ONLY=0,HOST_FAULT_ONLY=0);
  localparam AW=13,N=1<<AW;
  reg reset=1,locked=1,core_clk=0,ram_clk=0,host_clk=0,clk100=0;

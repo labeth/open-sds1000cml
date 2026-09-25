@@ -9,6 +9,7 @@
 // 8938920, 2ee23a0); this is a smaller re-implementation for the one-plane
 // default image of the acq2 analysis branch §2 (32 selectors, schema v2) and
 // the acq2 analysis branch §2 (128 selectors, schema v3).
+// ENGMODEL-OWNER-UNIT: FU-CODEGEN-SCHEMA
 package schema
 
 import (
@@ -19,6 +20,7 @@ import (
 )
 
 // Access is the read/write capability of a register or a DIAG window entry.
+// TRLC-LINKS: REQ-SDS-155
 type Access uint8
 
 const (
@@ -27,8 +29,11 @@ const (
 	RW Access = 3
 )
 
+// TRLC-LINKS: REQ-SDS-155
 func (a Access) CanRead() bool  { return a&R != 0 }
+// TRLC-LINKS: REQ-SDS-155
 func (a Access) CanWrite() bool { return a&W != 0 }
+// TRLC-LINKS: REQ-SDS-155
 func (a Access) String() string {
 	switch a {
 	case R:
@@ -42,6 +47,7 @@ func (a Access) String() string {
 }
 
 // Source says where the generated read mux takes a readable register's value.
+// TRLC-LINKS: REQ-SDS-155
 type Source uint8
 
 const (
@@ -52,6 +58,7 @@ const (
 	SrcAlias                   // another register's rdata (AliasOf); pops it too
 )
 
+// TRLC-LINKS: REQ-SDS-155
 func (s Source) String() string {
 	switch s {
 	case SrcWire:
@@ -70,6 +77,7 @@ func (s Source) String() string {
 
 // EnumValue is one named value of a field (a mode code shared by the RTL and
 // the app: `<REG>_<FIELD>_<NAME> / iface.<Reg><Field><Name>).
+// TRLC-LINKS: REQ-SDS-155
 type EnumValue struct {
 	Name  string
 	Value uint16
@@ -77,6 +85,7 @@ type EnumValue struct {
 }
 
 // Field is a named bit range [Hi:Lo] of a 16-bit word.
+// TRLC-LINKS: REQ-SDS-155
 type Field struct {
 	Name   string
 	Hi, Lo uint
@@ -85,14 +94,17 @@ type Field struct {
 }
 
 // Mask returns the field's 16-bit mask.
+// TRLC-LINKS: REQ-SDS-155
 func (f Field) Mask() uint16 {
 	return uint16(((1 << (f.Hi - f.Lo + 1)) - 1) << f.Lo)
 }
 
 // Width returns the field width in bits.
+// TRLC-LINKS: REQ-SDS-155
 func (f Field) Width() uint { return f.Hi - f.Lo + 1 }
 
 // Register is one selector of the CS1 map.
+// TRLC-LINKS: REQ-SDS-155
 type Register struct {
 	Name string
 	Sel  uint8 // selector (word index at the CS1 base); bits outside Interface.SelMask are not allowed
@@ -120,6 +132,7 @@ type Register struct {
 }
 
 // Opcode is one accepted payload of the strobe register named by Interface.OpcodeReg.
+// TRLC-LINKS: REQ-SDS-155
 type Opcode struct {
 	Name  string // emitted verbatim as `OP_<Name> / iface.Op<Name>
 	Value uint16
@@ -128,6 +141,7 @@ type Opcode struct {
 
 // DiagEntry is one index (or a run of Count consecutive indices) of the
 // DIAG_IDX -> DIAG_DATA window.
+// TRLC-LINKS: REQ-SDS-155
 type DiagEntry struct {
 	Name   string
 	Idx    uint8
@@ -142,9 +156,11 @@ type DiagEntry struct {
 }
 
 // Last returns the last index covered by the entry.
+// TRLC-LINKS: REQ-SDS-155
 func (d DiagEntry) Last() uint8 { return d.Idx + uint8(d.Count) - 1 }
 
 // Geometry is the record geometry shared by the fabric and the app.
+// TRLC-LINKS: REQ-SDS-155
 type Geometry struct {
 	RecDepth uint // record words (dual-channel samples) = RowCols * Rows
 	AddrW    uint // address width; 2^AddrW >= RecDepth
@@ -161,16 +177,19 @@ type Geometry struct {
 }
 
 // PretrigMax is the largest programmable pre-trigger depth.
+// TRLC-LINKS: REQ-SDS-155
 func (g Geometry) PretrigMax() uint { return g.RecDepth - g.Margin }
 
 // Legacy describes the selector space of the previous fabric generation so
 // the validator can keep the compatibility promise of 06-TIERS §2.
+// TRLC-LINKS: REQ-SDS-155
 type Legacy struct {
 	Version uint16 // last schema version of that generation (0 = no legacy rule)
 	SelMask uint8  // the selector bits it decoded
 }
 
 // Interface is the whole contract of one fabric image.
+// TRLC-LINKS: REQ-SDS-155
 type Interface struct {
 	Name         string
 	Version      uint16
@@ -204,6 +223,7 @@ type Interface struct {
 }
 
 // Reg looks a register up by name.
+// TRLC-LINKS: REQ-SDS-155
 func (i Interface) Reg(name string) (Register, bool) {
 	for _, r := range i.Regs {
 		if r.Name == name {
@@ -214,6 +234,7 @@ func (i Interface) Reg(name string) (Register, bool) {
 }
 
 // DiagEntry looks a DIAG window entry up by name.
+// TRLC-LINKS: REQ-SDS-155
 func (i Interface) DiagEntry(name string) (DiagEntry, bool) {
 	for _, d := range i.Diag {
 		if d.Name == name {
@@ -224,6 +245,7 @@ func (i Interface) DiagEntry(name string) (DiagEntry, bool) {
 }
 
 // Aliases returns the registers whose Source is SrcAlias with AliasOf == name.
+// TRLC-LINKS: REQ-SDS-155
 func (i Interface) Aliases(name string) []Register {
 	var out []Register
 	for _, r := range i.Regs {
@@ -236,6 +258,7 @@ func (i Interface) Aliases(name string) []Register {
 
 // SelCount is the number of distinct selectors the mask decodes (32 for 0x7c,
 // 128 for 0x7f).
+// TRLC-LINKS: REQ-SDS-155
 func (i Interface) SelCount() int {
 	n := 1
 	for m := i.SelMask; m != 0; m &= m - 1 {
@@ -247,6 +270,7 @@ func (i Interface) SelCount() int {
 // Canonical is the deterministic text the build-ID hashes: every structural
 // attribute of the interface, in declaration order. Desc strings are NOT part of
 // it — documentation edits must not force a fabric rebuild — everything else is.
+// TRLC-LINKS: REQ-SDS-155
 func (i Interface) Canonical() string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "iface %s v%d magic=%04x fabric=%04x selmask=%02x source=%08x\n", i.Name, i.Version, i.VersionMagic, i.FabricID, i.SelMask, i.SourceDigest)
@@ -284,6 +308,7 @@ func (i Interface) Canonical() string {
 // generated for: FNV-1a 64-bit over Canonical(), folded to 32 bits as
 // (hi32 XOR lo32). It is read back through the BUILDID_LO/HI registers; the
 // app refuses (reloads) a fabric whose build-ID differs.
+// TRLC-LINKS: REQ-SDS-155
 func (i Interface) BuildID() uint32 {
 	h := fnv.New64a()
 	h.Write([]byte(i.Canonical()))
@@ -309,6 +334,7 @@ var identRe = func(s string) bool {
 	return true
 }
 
+// TRLC-LINKS: REQ-SDS-155
 func checkFields(prefix string, fields []Field, errs *[]string) {
 	seen := map[string]bool{}
 	var used uint16
@@ -346,6 +372,7 @@ func checkFields(prefix string, fields []Field, errs *[]string) {
 
 // Validate returns every structural problem it finds (nil when the interface is
 // sound). Everything the emitters rely on is checked here, at schema-edit time.
+// TRLC-LINKS: REQ-SDS-155
 func (i Interface) Validate() []string {
 	var errs []string
 	if i.Name == "" {

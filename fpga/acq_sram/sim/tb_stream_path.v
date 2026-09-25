@@ -1,4 +1,6 @@
+// ENGMODEL-OWNER-UNIT: FU-RTL-ACQ-TESTS
 `timescale 1ns/1ps
+// TRLC-LINKS: REQ-SDS-049, REQ-SDS-052, REQ-SDS-058, REQ-SDS-186
 module tb #(parameter BANK_AW=3);
  localparam BANK_PACKETS=1<<BANK_AW;
  reg reset=1,wc=0,pc=0,hc=0,valid=0,stop=0;

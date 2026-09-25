@@ -1,0 +1,32 @@
+{
+  "source": "app/internal/decode/decode_break_uart_test.go",
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "scope": "Reviewed Go test outcomes; passing assertions contribute partial requirement evidence.",
+  "sourceSHA256": "7f8d629670761469c8297f6e9b0bc20878e1ff3397bbfcc35bddf542d1845edb",
+  "logs": {
+    "test-runs/decode-clock-breakers-reviewed.jsonl": "2b62b727364d382d69221e55e2d09ec1e731671a336d5dc3c07d67a56a547f46"
+  },
+  "tests": [
+    {
+      "name": "TestBreakUartRingyEdges",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-018"
+      ]
+    },
+    {
+      "name": "TestBreakUart",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-018"
+      ]
+    }
+  ],
+  "results": [
+    {
+      "requirement": "REQ-SDS-018",
+      "status": "partial",
+      "notes": "2 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    }
+  ]
+}

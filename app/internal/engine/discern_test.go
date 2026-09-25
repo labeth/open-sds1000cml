@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
 package engine
 
 import (
@@ -6,6 +7,7 @@ import (
 )
 
 // square builds n samples of a square wave: low then high each halfPeriod.
+// TRLC-LINKS: REQ-SDS-011
 func square(n, halfPeriod int, lo, hi uint8) []uint8 {
 	out := make([]uint8, n)
 	for i := range out {
@@ -18,6 +20,7 @@ func square(n, halfPeriod int, lo, hi uint8) []uint8 {
 	return out
 }
 
+// TRLC-LINKS: REQ-SDS-011
 func TestMidLevel(t *testing.T) {
 	if got := midLevel(nil); got != 128 {
 		t.Errorf("midLevel(nil) = %d, want 128", got)
@@ -27,6 +30,7 @@ func TestMidLevel(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-011
 func TestCenterCrossNearestCentre(t *testing.T) {
 	sig := square(1000, 100, 50, 200)
 	lvl := midLevel(sig)
@@ -56,6 +60,7 @@ func TestCenterCrossNearestCentre(t *testing.T) {
 // down-step (100→99) on the way up is a valid sample-level "falling" crossing
 // that the old fixed-count window occasionally confirmed → the rising⇄falling
 // display flip at ~1-period-on-screen bands. Noise-scaled hysteresis rejects it.
+// TRLC-LINKS: REQ-SDS-011
 func TestCenterCrossNoDitherFlip(t *testing.T) {
 	// A shallow rising ramp 90→110 over 200 samples (0.1 code/sample), with ±1
 	// code of dither so it crosses the level 100 up-and-down several times.
@@ -99,6 +104,7 @@ func TestCenterCrossNoDitherFlip(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-011
 func TestCenterCrossFlat(t *testing.T) {
 	flat := make([]uint8, 500)
 	for i := range flat {
@@ -109,6 +115,7 @@ func TestCenterCrossFlat(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-011
 func TestCenterCrossSubSample(t *testing.T) {
 	// Ramp crossing lvl=100 between samples: sig[4]=90, sig[5]=110 → frac 0.5.
 	sig := []uint8{90, 90, 90, 90, 90, 110, 110, 110, 110, 110}
@@ -118,6 +125,7 @@ func TestCenterCrossSubSample(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-011
 func TestWindowSlopeMatches(t *testing.T) {
 	sig := square(1000, 100, 50, 200)
 	lvl := midLevel(sig)
@@ -138,6 +146,7 @@ func TestWindowSlopeMatches(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-011
 func TestWindowSlopeSmallWindowNeverVetoes(t *testing.T) {
 	sig := square(1000, 100, 50, 200)
 	if !windowSlopeMatches(sig, 500, 4, true) || !windowSlopeMatches(sig, 500, 4, false) {
@@ -148,6 +157,7 @@ func TestWindowSlopeSmallWindowNeverVetoes(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-009, REQ-SDS-011
 func TestPtp(t *testing.T) {
 	lo, hi, p := ptp([]uint8{100, 50, 220, 128})
 	if lo != 50 || hi != 220 || p != 170 {
@@ -159,9 +169,12 @@ func TestPtp(t *testing.T) {
 }
 
 // lcg is a tiny deterministic PRNG so the noise tests are reproducible.
+// TRLC-LINKS: REQ-SDS-011
 type lcg uint64
 
+// TRLC-LINKS: REQ-SDS-011
 func (r *lcg) next() float64 { *r = *r*6364136223846793005 + 1442695040888963407; return float64(*r>>11) / float64(1<<53) }
+// TRLC-LINKS: REQ-SDS-011
 func (r *lcg) gauss() float64 { // Box-Muller-ish; good enough for noise shaping
 	u1, u2 := r.next()+1e-12, r.next()
 	return math.Sqrt(-2*math.Log(u1)) * math.Cos(2*math.Pi*u2)
@@ -169,6 +182,7 @@ func (r *lcg) gauss() float64 { // Box-Muller-ish; good enough for noise shaping
 
 // noisyTriangle builds n samples of a triangle (peak-to-peak amp, given
 // samples-per-period) centred at 128, plus Gaussian noise of the given sigma.
+// TRLC-LINKS: REQ-SDS-011
 func noisyTriangle(n, period int, amp, sigma float64, seed uint64) []uint8 {
 	r := lcg(seed)
 	out := make([]uint8, n)
@@ -191,6 +205,7 @@ func noisyTriangle(n, period int, amp, sigma float64, seed uint64) []uint8 {
 	return out
 }
 
+// TRLC-LINKS: REQ-SDS-011
 func noisyFlat(n int, sigma float64, seed uint64) []uint8 {
 	r := lcg(seed)
 	out := make([]uint8, n)
@@ -210,6 +225,7 @@ func noisyFlat(n int, sigma float64, seed uint64) []uint8 {
 // small on-screen signal (ptp well below the old 40-code floor) and REJECT a
 // noisy flat rail whose raw ptp can EXCEED that signal's. Covers the sub-1.6-div
 // case that used to freeze NORM (edge found but ptp<40 → never locked).
+// TRLC-LINKS: REQ-SDS-011
 func TestSignalPresentSmallSignal(t *testing.T) {
 	const k = 8.0
 	// Real signals: a 2.4 Vpp cal signal is ptp ≈ 8/13/32 at 10/5/2 V/div. Test
@@ -240,6 +256,7 @@ func TestSignalPresentSmallSignal(t *testing.T) {
 // noise, not the signal, regardless of how many periods sit in the record (the
 // 2nd difference cancels the linear ramp). A clean well-sampled ramp reads ~the
 // noise floor; a pure flat rail reads a similar per-sample noise.
+// TRLC-LINKS: REQ-SDS-011
 func TestNoiseFloorPeriodIndependent(t *testing.T) {
 	clean := noisyTriangle(6000, 300, 60, 0.4, 3)
 	nf := noiseFloor(clean)

@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-WEB
 package web
 
 import (
@@ -14,6 +15,7 @@ import (
 // libsigrok's readers parse, and the frame→series calibration contract shared
 // with the CSV export. Skips if node is unavailable (a hard failure under
 // CI_REQUIRE_BROWSER=1).
+// TRLC-LINKS: REQ-SDS-069
 func TestSigrokExportJS(t *testing.T) {
 	testenv.NeedNode(t)
 	node, _ := exec.LookPath("node")

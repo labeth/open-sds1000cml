@@ -1,0 +1,33 @@
+{
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "exitCode": 0,
+  "result": "pass",
+  "command": [
+    "/usr/bin/python3",
+    "-m",
+    "unittest",
+    "discover",
+    "-s",
+    "/home/labeth/ws/open-sds1000cml-acq2/models/sds1000cml/tests",
+    "-p",
+    "test_triangle_calibration.py",
+    "-v"
+  ],
+  "sourceSHA256": {
+    "tools/hw/adc_sram/triangle_calibrate.py": "1e701547aea2b5bc437f697573167238ccb9d57fe82065f00d7484641a2d2b6d",
+    "tests/test_triangle_calibration.py": "c54906fd9f321adc8bcde8ebd641dc700d17fbc9c8784b1075eb023635ed3141"
+  },
+  "runnerSHA256": "41914837d40beabbdf8de558e4e85c4feb389cbc942f7bf24290c00dd7beb54c",
+  "log": "test-runs/python-triangle.log",
+  "logSHA256": "d99604116828ef355d2c2cad5179d1022045f877a429ff8ceee6f4160371a2c8",
+  "tests": [
+    "test_cli_local_records_preserve_hashes_and_limits",
+    "test_constant_record_has_unhandled_crossing_failure",
+    "test_held_out_correction_does_not_hide_phase_rotation",
+    "test_ideal_triangle_reference",
+    "test_odd_record_rejected_without_output"
+  ],
+  "numpy": "2.3.5",
+  "scipy": "1.17.1",
+  "scope": "Five model-owned synthetic checks run the actual offline fitter and CLI with temporary local records. Passing checks provide partial evidence; they characterize the constant-record exception and do not qualify hardware or execute device control scripts."
+}

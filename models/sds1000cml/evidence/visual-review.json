@@ -1,0 +1,74 @@
+[
+  {
+    "view": "VIEW-HOST-RTL",
+    "source": "generated/views/VIEW-HOST-RTL.svg",
+    "sha256": "1f41adae7118c06c49695e561759045d979d773ec1152837333269e1e618d8d2",
+    "result": "pass",
+    "method": "Rendered SVG with ImageMagick and visually inspected the complete PNG.",
+    "findings": "All eleven node labels, nine numbered connections and the full relationship key are readable; no clipped text or overlaid node labels observed.",
+    "scope": "Visual layout only; relationships remain lexical instantiation evidence, not elaboration or hardware qualification."
+  },
+  {
+    "view": "VIEW-OPERATIONS",
+    "source": "generated/views/VIEW-OPERATIONS.svg",
+    "sha256": "209455ffd83c4c3bd8b6d6bd7077d171537eb6df7a019d48c3eeab941709ea2e",
+    "result": "layout-pass",
+    "method": "Rendered complete SVG with ImageMagick and visually inspected PNG.",
+    "findings": "Node labels, numbered arrows and all twelve relationship-key entries are readable; no clipped labels or text overlap observed.",
+    "scope": "Standalone visual layout only. No claim of complete architecture relationships, runtime correctness or physical qualification."
+  },
+  {
+    "view": "VIEW-BROWSER",
+    "source": "generated/views/VIEW-BROWSER.svg",
+    "sha256": "5db777d0637329b9e2cd226f199c92ef825b46160ab185c944400d9aab69b404",
+    "result": "layout-pass",
+    "method": "Rendered complete SVG with ImageMagick and visually inspected PNG.",
+    "findings": "Node labels and twenty-four relationship-key entries are readable; dense parallel arrow routing remains traceable by the key. Browser App and Web App Gl are disconnected in this view; this is a semantic modeling gap to audit, not a layout failure.",
+    "scope": "Standalone visual layout only. No claim of complete architecture relationships, runtime correctness or physical qualification."
+  },
+  {
+    "view": "VIEW-DEFAULT-RTL",
+    "source": "generated/views/VIEW-DEFAULT-RTL.svg",
+    "sha256": "6d0625fe6e56a829e27a5d08c869f90b3344eddac51e433363cac2877480d410",
+    "result": "layout-pass",
+    "method": "Rendered complete SVG with ImageMagick and visually inspected PNG.",
+    "findings": "All node labels and nine numbered RTL relationship entries are readable; no clipping or overlapping labels observed. Edges explicitly retain lexical-instantiation limits.",
+    "scope": "Standalone diagram inspection; no behavioral or physical qualification."
+  },
+  {
+    "view": "VIEW-LIFECYCLE",
+    "source": "generated/views/VIEW-LIFECYCLE.svg",
+    "sha256": "49841ab29aa5a7f414d35e3a016804cc1eeeadce8b499e25ee2aa71f23e87fb3",
+    "result": "layout-pass",
+    "method": "Rendered complete SVG with ImageMagick and visually inspected PNG.",
+    "findings": "State/event nodes and fourteen numbered relationships are readable. This is an architectural lifecycle view; detailed guards and variant-specific state machines are not established by this visual review.",
+    "scope": "Standalone diagram inspection; no behavioral or physical qualification."
+  },
+  {
+    "view": "VIEW-SECURITY",
+    "source": "generated/views/VIEW-SECURITY.svg",
+    "sha256": "80acaa85cbe3c33e188e8697221d58d8c4c84ffe447ff78c2869bcc7b0cd1637",
+    "result": "needs-model-content",
+    "method": "Rendered complete SVG with ImageMagick and visually inspected PNG.",
+    "findings": "Three trust-boundary nodes are readable, but no relationships appear and the relationship-key heading is empty. Boundary crossings, exposed interfaces and control associations require modeling; this is not a complete security view.",
+    "scope": "Standalone diagram inspection; no behavioral or physical qualification."
+  },
+  {
+    "view": "VIEW-SECURITY",
+    "source": "generated/views/VIEW-SECURITY.svg",
+    "sha256": "229abe8f3b6034e6820cae09f0e4fef904e880feaf555753ffd4e292da3f5967",
+    "result": "layout-pass",
+    "method": "Rendered complete SVG with ImageMagick and visually inspected PNG.",
+    "findings": "Fourteen nodes and thirteen numbered boundary-membership relationships are readable without clipping. Actors, FPGA hardware, descriptor data and shared interfaces are retained. This repairs membership projection, but does not establish actual enforcement or complete threat/control coverage.",
+    "scope": "Standalone visual review plus source-checked context-view projection. No runtime or physical qualification."
+  },
+  {
+    "view": "VIEW-BROWSER",
+    "source": "generated/views/VIEW-BROWSER.svg",
+    "sha256": "0eeb4558fa5a78a08949dbbe0c0ca8950bfb49f15d6bd0cfea5e0676f1d6e875",
+    "result": "layout-pass",
+    "method": "Rendered complete SVG with ImageMagick and visually inspected PNG.",
+    "findings": "Sixteen nodes and twenty-nine numbered relationships are readable; the five bootstrap/API calls connect the previously isolated App/GL nodes through Init and Core to HTTP. Existing server import dependencies remain. Dense parallel routes are resolved by the numbered key. Browser execution and full JavaScript coverage remain unverified.",
+    "scope": "Standalone visual review plus source-checked context-view projection. No runtime or physical qualification."
+  }
+]

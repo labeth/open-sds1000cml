@@ -1,4 +1,6 @@
+// ENGMODEL-OWNER-UNIT: FU-RTL-ACQ-TESTS
 `timescale 1ns/1ps
+// TRLC-LINKS: REQ-SDS-041, REQ-SDS-042, REQ-SDS-043, REQ-SDS-045, REQ-SDS-052, REQ-SDS-057
 module tb_finite_capture;
  parameter WRAPPED=1;
  parameter AW=13;

@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
 package engine
 
 import (
@@ -12,6 +13,7 @@ import (
 // touches the Bus. A panic is contained: logged, marked wedged, owner parks
 // (no process exit — a fast crash-loop would trigger slot rollback, and the
 // inherited fd must survive).
+// TRLC-LINKS: REQ-SDS-001, REQ-SDS-004, REQ-SDS-006, REQ-SDS-008, REQ-SDS-010
 func (e *Engine) Run() {
 	defer close(e.done)
 	defer func() {
@@ -135,12 +137,14 @@ func (e *Engine) Run() {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-011
 func (e *Engine) normNow() bool {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	return e.norm
 }
 
+// TRLC-LINKS: REQ-SDS-025
 func (e *Engine) bumpFrames() {
 	e.beatN.Add(1)
 	e.mu.Lock()
@@ -149,6 +153,7 @@ func (e *Engine) bumpFrames() {
 }
 
 // oneFrame runs one arm→wait→halt→drain→re-arm→publish iteration.
+// TRLC-LINKS: REQ-SDS-007, REQ-SDS-009, REQ-SDS-011, REQ-SDS-012, REQ-SDS-013, REQ-SDS-014, REQ-SDS-126, REQ-SDS-128
 func (e *Engine) oneFrame(norm bool) {
 	start := e.clk.Now()
 	if e.hintReset.Swap(false) {
@@ -683,6 +688,7 @@ func (e *Engine) oneFrame(norm bool) {
 // NORM keeps the fill advancing; a dead bus does not. A frozen SMALL fill at
 // a decimated band cannot be counter saturation (a saturated counter would
 // have set the filled gate), so it is certain wedge evidence.
+// TRLC-LINKS: REQ-SDS-011, REQ-SDS-128
 func (e *Engine) holdFrame(fillMoved, norm bool) {
 	e.mu.Lock()
 	e.stats.Held++
@@ -696,6 +702,7 @@ func (e *Engine) holdFrame(fillMoved, norm bool) {
 
 // pace enforces the ~50 ms frame-period floor (spec 03 §5.3): faster starves
 // the single shared ARM core and lowers delivered fps.
+// TRLC-LINKS: REQ-SDS-008
 func (e *Engine) pace(start time.Time) {
 	if d := time.Duration(e.framePeriodNs.Load()) - e.clk.Now().Sub(start); d > 0 {
 		e.sleepBeating(d)

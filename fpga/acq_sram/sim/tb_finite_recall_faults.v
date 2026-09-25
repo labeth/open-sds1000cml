@@ -1,4 +1,6 @@
+// ENGMODEL-OWNER-UNIT: FU-RTL-ACQ-TESTS
 `timescale 1ns/1ps
+// TRLC-LINKS: REQ-SDS-043, REQ-SDS-052, REQ-SDS-058
 module tb_finite_recall_faults;
  reg clk=0;always #2 clk=~clk;
  reg reset=1,start=0,frozen=1;

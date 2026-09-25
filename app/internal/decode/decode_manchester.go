@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-DECODE
 package decode
 
 import (
@@ -16,6 +17,7 @@ import (
 //	Bits      bits per word (default 8).
 //	Format    byte render format for FmtByte (hex/dec/bin/ascii/both); "" = hex.
 //	Threshold /HaveThr override the auto slice threshold (see sliceChannel).
+// TRLC-LINKS: REQ-SDS-018
 type ManchesterCfg struct {
 	Bitrate   int
 	IEEE      bool
@@ -29,6 +31,7 @@ type ManchesterCfg struct {
 // mCell is one recovered Manchester bit cell spanning sample indices [I0,I1].
 // Bit is 0/1, or -1 for a coding violation (the cell had no clean mid-cell
 // transition — the two half-cells sampled to the same level).
+// TRLC-LINKS: REQ-SDS-018
 type mCell struct {
 	I0, I1 int
 	Bit    int
@@ -42,6 +45,7 @@ type mCell struct {
 // rising@mid is 1). Cells are emitted until the sampler runs past the last edge
 // (trailing idle), so the stream ends where the signal does. Returns the cells
 // plus good/violation counts so a caller can score competing phase hypotheses.
+// TRLC-LINKS: REQ-SDS-018
 func recoverManchester(S sliced, s0, T float64, ieee bool, lastEdgeX float64) (cells []mCell, good, viol int) {
 	if !(T >= 2) || S.n == 0 {
 		return
@@ -102,6 +106,7 @@ func recoverManchester(S sliced, s0, T float64, ieee bool, lastEdgeX float64) (c
 
 // DecodeManchester decodes Manchester-encoded data on one channel's codes.
 // Mirrors decode_manchester.js step for step so LCD and web agree byte-for-byte.
+// TRLC-LINKS: REQ-SDS-018
 func DecodeManchester(codes []uint8, colTimeS float64, cfg ManchesterCfg) Result {
 	bits := cfg.Bits
 	if bits == 0 {
@@ -172,6 +177,7 @@ func DecodeManchester(codes []uint8, colTimeS float64, cfg ManchesterCfg) Result
 // decodeManchesterAt segments the edges into frames and decodes each at bit
 // period T, returning the Result plus (frames, total good cells) so the caller
 // can score competing T hypotheses. Split logic + per-frame phase lock as before.
+// TRLC-LINKS: REQ-SDS-018
 func decodeManchesterAt(S sliced, T float64, cfg ManchesterCfg, bits int, colTimeS float64) (Result, int, int) {
 	// Segment the edges into FRAMES: a captured record holds several frames
 	// separated by idle gaps, and a free-running scope starts at a random phase,

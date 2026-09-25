@@ -1,4 +1,6 @@
+// ENGMODEL-OWNER-UNIT: FU-RTL-ACQ-TESTS
 `timescale 1ns/1ps
+// TRLC-LINKS: REQ-SDS-054, REQ-SDS-055, REQ-SDS-058
 module tb_command_bridge;
  parameter PHASE=0,SHORT_RESET=0;
  reg host_clk=0,core_clk=0,reset=1,host_send=0;

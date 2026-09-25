@@ -1,0 +1,22 @@
+{
+  "candidate": "AeUVqM",
+  "fpgaSHA256": "c80de86ca565153a1ccca59e8d3da4d51532173ae1c29a2c30b13e2a9111e2fe",
+  "appSHA256": "15b597473b85f0de008cc9e2267509d6d9c60fcee6931a0a6182aff9d547df16",
+  "built": "2026-09-25T15:51:15Z",
+  "logicElements": 9209,
+  "previousLogicElements": 9455,
+  "m9kBlocks": 44,
+  "minimumSlackNs": 0.096,
+  "fastGPMCStartupVerified": true,
+  "protocols": [
+    "i2c",
+    "spi",
+    "sent",
+    "uart",
+    "mil1553"
+  ],
+  "fullScopeComplete": false,
+  "strictModelExit": 0,
+  "strictModelWarnings": true,
+  "finalEvidenceBundleLoad": "pass"
+}

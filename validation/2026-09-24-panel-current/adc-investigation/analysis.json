@@ -1,0 +1,8665 @@
+[
+  {
+    "seq": 1547,
+    "sample_s": 2e-9,
+    "channels": [
+      {
+        "min": 86,
+        "max": 150,
+        "means": [
+          122.79512195121951,
+          113.20731707317073,
+          112.75365853658536,
+          124.16870415647922,
+          124.04645476772616
+        ],
+        "spikes": []
+      },
+      {
+        "min": 91,
+        "max": 255,
+        "means": [
+          117.6609756097561,
+          118.77073170731707,
+          118.3048780487805,
+          119.3080684596577,
+          121.69682151589242
+        ],
+        "spikes": [
+          {
+            "i": 1931,
+            "value": 135,
+            "expected": 197,
+            "residual": -62,
+            "phase": 1
+          },
+          {
+            "i": 1936,
+            "value": 255,
+            "expected": 127.5,
+            "residual": 127.5,
+            "phase": 1
+          },
+          {
+            "i": 1941,
+            "value": 120,
+            "expected": 183,
+            "residual": -63,
+            "phase": 1
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "seq": 1548,
+    "sample_s": 2e-9,
+    "channels": [
+      {
+        "min": 86,
+        "max": 150,
+        "means": [
+          122.79024390243903,
+          113.41219512195121,
+          112.8048780487805,
+          124.10513447432763,
+          123.94621026894866
+        ],
+        "spikes": []
+      },
+      {
+        "min": 91,
+        "max": 255,
+        "means": [
+          117.62682926829268,
+          118.35609756097561,
+          119.5,
+          119.33740831295843,
+          121.55256723716381
+        ],
+        "spikes": [
+          {
+            "i": 37,
+            "value": 133,
+            "expected": 197,
+            "residual": -64,
+            "phase": 2
+          },
+          {
+            "i": 42,
+            "value": 255,
+            "expected": 126,
+            "residual": 129,
+            "phase": 2
+          },
+          {
+            "i": 47,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 2
+          },
+          {
+            "i": 437,
+            "value": 133,
+            "expected": 197,
+            "residual": -64,
+            "phase": 2
+          },
+          {
+            "i": 442,
+            "value": 255,
+            "expected": 126,
+            "residual": 129,
+            "phase": 2
+          },
+          {
+            "i": 447,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 2
+          },
+          {
+            "i": 1137,
+            "value": 134,
+            "expected": 197,
+            "residual": -63,
+            "phase": 2
+          },
+          {
+            "i": 1142,
+            "value": 255,
+            "expected": 126,
+            "residual": 129,
+            "phase": 2
+          },
+          {
+            "i": 1147,
+            "value": 118,
+            "expected": 183,
+            "residual": -65,
+            "phase": 2
+          },
+          {
+            "i": 1937,
+            "value": 133,
+            "expected": 197,
+            "residual": -64,
+            "phase": 2
+          },
+          {
+            "i": 1942,
+            "value": 255,
+            "expected": 126,
+            "residual": 129,
+            "phase": 2
+          },
+          {
+            "i": 1947,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 2
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "seq": 1549,
+    "sample_s": 2e-9,
+    "channels": [
+      {
+        "min": 86,
+        "max": 150,
+        "means": [
+          122.51951219512195,
+          113.3048780487805,
+          112.8219512195122,
+          123.9242053789731,
+          123.95110024449878
+        ],
+        "spikes": []
+      },
+      {
+        "min": 91,
+        "max": 193,
+        "means": [
+          117.67073170731707,
+          118.3,
+          119.09756097560975,
+          119.27139364303179,
+          121.60635696821515
+        ],
+        "spikes": [
+          {
+            "i": 712,
+            "value": 193,
+            "expected": 128.5,
+            "residual": 64.5,
+            "phase": 2
+          },
+          {
+            "i": 1012,
+            "value": 193,
+            "expected": 129,
+            "residual": 64,
+            "phase": 2
+          },
+          {
+            "i": 1112,
+            "value": 193,
+            "expected": 129,
+            "residual": 64,
+            "phase": 2
+          },
+          {
+            "i": 1312,
+            "value": 193,
+            "expected": 129,
+            "residual": 64,
+            "phase": 2
+          },
+          {
+            "i": 1912,
+            "value": 193,
+            "expected": 129.5,
+            "residual": 63.5,
+            "phase": 2
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "seq": 1550,
+    "sample_s": 2e-9,
+    "channels": [
+      {
+        "min": 86,
+        "max": 150,
+        "means": [
+          123.78048780487805,
+          123.64146341463415,
+          122.3780487804878,
+          112.96577017114915,
+          112.34963325183374
+        ],
+        "spikes": []
+      },
+      {
+        "min": 90,
+        "max": 148,
+        "means": [
+          119.03170731707317,
+          121.36585365853658,
+          117.36829268292684,
+          118.15403422982885,
+          117.99755501222494
+        ],
+        "spikes": []
+      }
+    ]
+  },
+  {
+    "seq": 1551,
+    "sample_s": 2e-9,
+    "channels": [
+      {
+        "min": 86,
+        "max": 150,
+        "means": [
+          123.7439024390244,
+          122.51463414634146,
+          113.09756097560975,
+          112.4278728606357,
+          123.86552567237163
+        ],
+        "spikes": []
+      },
+      {
+        "min": 91,
+        "max": 148,
+        "means": [
+          121.37073170731708,
+          117.3219512195122,
+          118.26585365853659,
+          118.0635696821516,
+          118.98533007334963
+        ],
+        "spikes": []
+      }
+    ]
+  },
+  {
+    "seq": 1552,
+    "sample_s": 2e-9,
+    "channels": [
+      {
+        "min": 86,
+        "max": 150,
+        "means": [
+          112.96585365853659,
+          112.35121951219512,
+          123.78780487804877,
+          123.58190709046455,
+          122.4083129584352
+        ],
+        "spikes": []
+      },
+      {
+        "min": 91,
+        "max": 148,
+        "means": [
+          118.07560975609756,
+          118.00975609756098,
+          118.97317073170731,
+          121.42542787286064,
+          117.30562347188264
+        ],
+        "spikes": []
+      }
+    ]
+  },
+  {
+    "seq": 1553,
+    "sample_s": 2e-9,
+    "channels": [
+      {
+        "min": 86,
+        "max": 150,
+        "means": [
+          122.1,
+          112.74878048780488,
+          112.06341463414634,
+          123.45721271393643,
+          123.2885085574572
+        ],
+        "spikes": []
+      },
+      {
+        "min": 90,
+        "max": 255,
+        "means": [
+          116.75853658536586,
+          117.62682926829268,
+          119.55853658536586,
+          118.5281173594132,
+          120.77261613691931
+        ],
+        "spikes": [
+          {
+            "i": 287,
+            "value": 134,
+            "expected": 197,
+            "residual": -63,
+            "phase": 2
+          },
+          {
+            "i": 292,
+            "value": 255,
+            "expected": 126.5,
+            "residual": 128.5,
+            "phase": 2
+          },
+          {
+            "i": 297,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 2
+          },
+          {
+            "i": 1087,
+            "value": 134,
+            "expected": 197,
+            "residual": -63,
+            "phase": 2
+          },
+          {
+            "i": 1092,
+            "value": 255,
+            "expected": 127,
+            "residual": 128,
+            "phase": 2
+          },
+          {
+            "i": 1097,
+            "value": 120,
+            "expected": 183,
+            "residual": -63,
+            "phase": 2
+          },
+          {
+            "i": 1187,
+            "value": 135,
+            "expected": 197,
+            "residual": -62,
+            "phase": 2
+          },
+          {
+            "i": 1192,
+            "value": 255,
+            "expected": 127,
+            "residual": 128,
+            "phase": 2
+          },
+          {
+            "i": 1197,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 2
+          },
+          {
+            "i": 1487,
+            "value": 134,
+            "expected": 197,
+            "residual": -63,
+            "phase": 2
+          },
+          {
+            "i": 1492,
+            "value": 255,
+            "expected": 126.5,
+            "residual": 128.5,
+            "phase": 2
+          },
+          {
+            "i": 1497,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 2
+          },
+          {
+            "i": 1587,
+            "value": 134,
+            "expected": 197,
+            "residual": -63,
+            "phase": 2
+          },
+          {
+            "i": 1592,
+            "value": 255,
+            "expected": 126.5,
+            "residual": 128.5,
+            "phase": 2
+          },
+          {
+            "i": 1597,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 2
+          },
+          {
+            "i": 1887,
+            "value": 134,
+            "expected": 197,
+            "residual": -63,
+            "phase": 2
+          },
+          {
+            "i": 1892,
+            "value": 255,
+            "expected": 127,
+            "residual": 128,
+            "phase": 2
+          },
+          {
+            "i": 1897,
+            "value": 120,
+            "expected": 183,
+            "residual": -63,
+            "phase": 2
+          },
+          {
+            "i": 1987,
+            "value": 134,
+            "expected": 197,
+            "residual": -63,
+            "phase": 2
+          },
+          {
+            "i": 1992,
+            "value": 255,
+            "expected": 126.5,
+            "residual": 128.5,
+            "phase": 2
+          },
+          {
+            "i": 1997,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 2
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "seq": 1554,
+    "sample_s": 2e-9,
+    "channels": [
+      {
+        "min": 86,
+        "max": 150,
+        "means": [
+          112.18536585365854,
+          123.55121951219512,
+          123.44390243902438,
+          122.28117359413203,
+          112.76528117359413
+        ],
+        "spikes": []
+      },
+      {
+        "min": 91,
+        "max": 148,
+        "means": [
+          117.82439024390244,
+          118.69268292682926,
+          121.10487804878049,
+          116.88997555012224,
+          117.89486552567237
+        ],
+        "spikes": []
+      }
+    ]
+  },
+  {
+    "seq": 1555,
+    "sample_s": 2e-9,
+    "channels": [
+      {
+        "min": 86,
+        "max": 150,
+        "means": [
+          123.3048780487805,
+          123.22926829268293,
+          122.03414634146341,
+          112.57946210268949,
+          111.93398533007336
+        ],
+        "spikes": []
+      },
+      {
+        "min": 91,
+        "max": 194,
+        "means": [
+          118.6829268292683,
+          120.92439024390244,
+          116.95121951219512,
+          117.67237163814181,
+          117.8239608801956
+        ],
+        "spikes": [
+          {
+            "i": 750,
+            "value": 193,
+            "expected": 128.5,
+            "residual": 64.5,
+            "phase": 0
+          },
+          {
+            "i": 1050,
+            "value": 194,
+            "expected": 129,
+            "residual": 65,
+            "phase": 0
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "seq": 1556,
+    "sample_s": 2e-9,
+    "channels": [
+      {
+        "min": 86,
+        "max": 150,
+        "means": [
+          113.40243902439025,
+          112.77317073170731,
+          124.1829268292683,
+          124.09535452322739,
+          122.66992665036675
+        ],
+        "spikes": []
+      },
+      {
+        "min": 91,
+        "max": 255,
+        "means": [
+          118.49756097560976,
+          118.5609756097561,
+          119.22195121951219,
+          121.67726161369193,
+          117.96821515892421
+        ],
+        "spikes": [
+          {
+            "i": 34,
+            "value": 135,
+            "expected": 197,
+            "residual": -62,
+            "phase": 4
+          },
+          {
+            "i": 39,
+            "value": 255,
+            "expected": 127,
+            "residual": 128,
+            "phase": 4
+          },
+          {
+            "i": 44,
+            "value": 119,
+            "expected": 182,
+            "residual": -63,
+            "phase": 4
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "seq": 1557,
+    "sample_s": 2e-9,
+    "channels": [
+      {
+        "min": 86,
+        "max": 150,
+        "means": [
+          123.10731707317073,
+          121.88780487804878,
+          112.64146341463415,
+          111.880195599022,
+          123.30317848410758
+        ],
+        "spikes": []
+      },
+      {
+        "min": 90,
+        "max": 255,
+        "means": [
+          121.51219512195122,
+          116.6829268292683,
+          117.49268292682927,
+          117.53300733496333,
+          118.37163814180929
+        ],
+        "spikes": [
+          {
+            "i": 1090,
+            "value": 192,
+            "expected": 127.5,
+            "residual": 64.5,
+            "phase": 0
+          },
+          {
+            "i": 1790,
+            "value": 192,
+            "expected": 127.5,
+            "residual": 64.5,
+            "phase": 0
+          },
+          {
+            "i": 1885,
+            "value": 135,
+            "expected": 198,
+            "residual": -63,
+            "phase": 0
+          },
+          {
+            "i": 1890,
+            "value": 255,
+            "expected": 127.5,
+            "residual": 127.5,
+            "phase": 0
+          },
+          {
+            "i": 1895,
+            "value": 120,
+            "expected": 183,
+            "residual": -63,
+            "phase": 0
+          },
+          {
+            "i": 1990,
+            "value": 192,
+            "expected": 127.5,
+            "residual": 64.5,
+            "phase": 0
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "seq": 1558,
+    "sample_s": 2e-9,
+    "channels": [
+      {
+        "min": 86,
+        "max": 150,
+        "means": [
+          124.08536585365853,
+          122.86829268292684,
+          113.27560975609757,
+          112.71393643031784,
+          124.13447432762837
+        ],
+        "spikes": []
+      },
+      {
+        "min": 91,
+        "max": 148,
+        "means": [
+          121.77073170731707,
+          117.60487804878049,
+          118.46341463414635,
+          118.34474327628362,
+          119.24938875305624
+        ],
+        "spikes": []
+      }
+    ]
+  },
+  {
+    "seq": 1559,
+    "sample_s": 2e-9,
+    "channels": [
+      {
+        "min": 86,
+        "max": 150,
+        "means": [
+          122.4390243902439,
+          113.0439024390244,
+          112.40975609756097,
+          123.6601466992665,
+          123.61613691931541
+        ],
+        "spikes": []
+      },
+      {
+        "min": 91,
+        "max": 148,
+        "means": [
+          117.1390243902439,
+          117.99024390243902,
+          117.8829268292683,
+          118.8875305623472,
+          121.21271393643032
+        ],
+        "spikes": []
+      }
+    ]
+  },
+  {
+    "seq": 1560,
+    "sample_s": 2e-9,
+    "channels": [
+      {
+        "min": 86,
+        "max": 149,
+        "means": [
+          123.88536585365854,
+          123.84146341463415,
+          122.42439024390244,
+          113.10757946210269,
+          112.50366748166259
+        ],
+        "spikes": []
+      },
+      {
+        "min": 90,
+        "max": 148,
+        "means": [
+          119.0439024390244,
+          121.46585365853659,
+          117.45853658536585,
+          118.34963325183374,
+          118.35452322738386
+        ],
+        "spikes": []
+      }
+    ]
+  },
+  {
+    "seq": 1561,
+    "sample_s": 2e-9,
+    "channels": [
+      {
+        "min": 86,
+        "max": 150,
+        "means": [
+          112.70975609756097,
+          124.00243902439024,
+          123.88048780487804,
+          122.66992665036675,
+          113.1638141809291
+        ],
+        "spikes": []
+      },
+      {
+        "min": 90,
+        "max": 255,
+        "means": [
+          118.25365853658536,
+          119.17560975609756,
+          121.64390243902439,
+          117.66992665036675,
+          122.57946210268949
+        ],
+        "spikes": [
+          {
+            "i": 229,
+            "value": 135,
+            "expected": 197.5,
+            "residual": -62.5,
+            "phase": 4
+          },
+          {
+            "i": 234,
+            "value": 255,
+            "expected": 127.5,
+            "residual": 127.5,
+            "phase": 4
+          },
+          {
+            "i": 239,
+            "value": 120,
+            "expected": 183,
+            "residual": -63,
+            "phase": 4
+          },
+          {
+            "i": 529,
+            "value": 135,
+            "expected": 197,
+            "residual": -62,
+            "phase": 4
+          },
+          {
+            "i": 534,
+            "value": 255,
+            "expected": 127,
+            "residual": 128,
+            "phase": 4
+          },
+          {
+            "i": 539,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 4
+          },
+          {
+            "i": 629,
+            "value": 134,
+            "expected": 197,
+            "residual": -63,
+            "phase": 4
+          },
+          {
+            "i": 634,
+            "value": 255,
+            "expected": 126.5,
+            "residual": 128.5,
+            "phase": 4
+          },
+          {
+            "i": 639,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 4
+          },
+          {
+            "i": 829,
+            "value": 135,
+            "expected": 197.5,
+            "residual": -62.5,
+            "phase": 4
+          },
+          {
+            "i": 834,
+            "value": 255,
+            "expected": 127,
+            "residual": 128,
+            "phase": 4
+          },
+          {
+            "i": 839,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 4
+          },
+          {
+            "i": 1029,
+            "value": 135,
+            "expected": 197,
+            "residual": -62,
+            "phase": 4
+          },
+          {
+            "i": 1034,
+            "value": 255,
+            "expected": 127.5,
+            "residual": 127.5,
+            "phase": 4
+          },
+          {
+            "i": 1039,
+            "value": 120,
+            "expected": 183,
+            "residual": -63,
+            "phase": 4
+          },
+          {
+            "i": 1329,
+            "value": 134,
+            "expected": 197,
+            "residual": -63,
+            "phase": 4
+          },
+          {
+            "i": 1334,
+            "value": 255,
+            "expected": 126.5,
+            "residual": 128.5,
+            "phase": 4
+          },
+          {
+            "i": 1339,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 4
+          },
+          {
+            "i": 1429,
+            "value": 134,
+            "expected": 197,
+            "residual": -63,
+            "phase": 4
+          },
+          {
+            "i": 1434,
+            "value": 255,
+            "expected": 127,
+            "residual": 128,
+            "phase": 4
+          },
+          {
+            "i": 1439,
+            "value": 120,
+            "expected": 183,
+            "residual": -63,
+            "phase": 4
+          },
+          {
+            "i": 1529,
+            "value": 135,
+            "expected": 197,
+            "residual": -62,
+            "phase": 4
+          },
+          {
+            "i": 1534,
+            "value": 255,
+            "expected": 127,
+            "residual": 128,
+            "phase": 4
+          },
+          {
+            "i": 1539,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 4
+          },
+          {
+            "i": 1629,
+            "value": 134,
+            "expected": 197.5,
+            "residual": -63.5,
+            "phase": 4
+          },
+          {
+            "i": 1634,
+            "value": 255,
+            "expected": 126.5,
+            "residual": 128.5,
+            "phase": 4
+          },
+          {
+            "i": 1639,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 4
+          },
+          {
+            "i": 1729,
+            "value": 134,
+            "expected": 197,
+            "residual": -63,
+            "phase": 4
+          },
+          {
+            "i": 1734,
+            "value": 255,
+            "expected": 126.5,
+            "residual": 128.5,
+            "phase": 4
+          },
+          {
+            "i": 1739,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 4
+          },
+          {
+            "i": 1829,
+            "value": 134,
+            "expected": 197,
+            "residual": -63,
+            "phase": 4
+          },
+          {
+            "i": 1834,
+            "value": 255,
+            "expected": 126.5,
+            "residual": 128.5,
+            "phase": 4
+          },
+          {
+            "i": 1839,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 4
+          },
+          {
+            "i": 1929,
+            "value": 134,
+            "expected": 197,
+            "residual": -63,
+            "phase": 4
+          },
+          {
+            "i": 1934,
+            "value": 255,
+            "expected": 126.5,
+            "residual": 128.5,
+            "phase": 4
+          },
+          {
+            "i": 1939,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 4
+          },
+          {
+            "i": 2029,
+            "value": 135,
+            "expected": 197,
+            "residual": -62,
+            "phase": 4
+          },
+          {
+            "i": 2034,
+            "value": 255,
+            "expected": 127,
+            "residual": 128,
+            "phase": 4
+          },
+          {
+            "i": 2039,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 4
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "seq": 1562,
+    "sample_s": 2e-9,
+    "channels": [
+      {
+        "min": 86,
+        "max": 150,
+        "means": [
+          112.51951219512195,
+          123.85853658536585,
+          123.6,
+          122.43765281173594,
+          113.0757946210269
+        ],
+        "spikes": []
+      },
+      {
+        "min": 91,
+        "max": 255,
+        "means": [
+          118.23170731707317,
+          119.25853658536586,
+          121.53658536585365,
+          117.71393643031784,
+          123.3960880195599
+        ],
+        "spikes": [
+          {
+            "i": 119,
+            "value": 134,
+            "expected": 197,
+            "residual": -63,
+            "phase": 4
+          },
+          {
+            "i": 124,
+            "value": 255,
+            "expected": 126.5,
+            "residual": 128.5,
+            "phase": 4
+          },
+          {
+            "i": 129,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 4
+          },
+          {
+            "i": 219,
+            "value": 135,
+            "expected": 197,
+            "residual": -62,
+            "phase": 4
+          },
+          {
+            "i": 224,
+            "value": 255,
+            "expected": 127,
+            "residual": 128,
+            "phase": 4
+          },
+          {
+            "i": 229,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 4
+          },
+          {
+            "i": 319,
+            "value": 134,
+            "expected": 197.5,
+            "residual": -63.5,
+            "phase": 4
+          },
+          {
+            "i": 324,
+            "value": 255,
+            "expected": 126.5,
+            "residual": 128.5,
+            "phase": 4
+          },
+          {
+            "i": 329,
+            "value": 119,
+            "expected": 183.5,
+            "residual": -64.5,
+            "phase": 4
+          },
+          {
+            "i": 419,
+            "value": 135,
+            "expected": 197,
+            "residual": -62,
+            "phase": 4
+          },
+          {
+            "i": 424,
+            "value": 255,
+            "expected": 127,
+            "residual": 128,
+            "phase": 4
+          },
+          {
+            "i": 429,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 4
+          },
+          {
+            "i": 519,
+            "value": 134,
+            "expected": 197,
+            "residual": -63,
+            "phase": 4
+          },
+          {
+            "i": 524,
+            "value": 255,
+            "expected": 126.5,
+            "residual": 128.5,
+            "phase": 4
+          },
+          {
+            "i": 529,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 4
+          },
+          {
+            "i": 719,
+            "value": 134,
+            "expected": 197.5,
+            "residual": -63.5,
+            "phase": 4
+          },
+          {
+            "i": 724,
+            "value": 255,
+            "expected": 126.5,
+            "residual": 128.5,
+            "phase": 4
+          },
+          {
+            "i": 729,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 4
+          },
+          {
+            "i": 919,
+            "value": 134,
+            "expected": 197,
+            "residual": -63,
+            "phase": 4
+          },
+          {
+            "i": 924,
+            "value": 255,
+            "expected": 126.5,
+            "residual": 128.5,
+            "phase": 4
+          },
+          {
+            "i": 929,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 4
+          },
+          {
+            "i": 1019,
+            "value": 134,
+            "expected": 197,
+            "residual": -63,
+            "phase": 4
+          },
+          {
+            "i": 1024,
+            "value": 255,
+            "expected": 126.5,
+            "residual": 128.5,
+            "phase": 4
+          },
+          {
+            "i": 1029,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 4
+          },
+          {
+            "i": 1119,
+            "value": 134,
+            "expected": 197,
+            "residual": -63,
+            "phase": 4
+          },
+          {
+            "i": 1124,
+            "value": 255,
+            "expected": 126.5,
+            "residual": 128.5,
+            "phase": 4
+          },
+          {
+            "i": 1129,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 4
+          },
+          {
+            "i": 1219,
+            "value": 134,
+            "expected": 197,
+            "residual": -63,
+            "phase": 4
+          },
+          {
+            "i": 1224,
+            "value": 255,
+            "expected": 127,
+            "residual": 128,
+            "phase": 4
+          },
+          {
+            "i": 1229,
+            "value": 120,
+            "expected": 183,
+            "residual": -63,
+            "phase": 4
+          },
+          {
+            "i": 1319,
+            "value": 135,
+            "expected": 197,
+            "residual": -62,
+            "phase": 4
+          },
+          {
+            "i": 1324,
+            "value": 255,
+            "expected": 127.5,
+            "residual": 127.5,
+            "phase": 4
+          },
+          {
+            "i": 1329,
+            "value": 120,
+            "expected": 183,
+            "residual": -63,
+            "phase": 4
+          },
+          {
+            "i": 1519,
+            "value": 134,
+            "expected": 197,
+            "residual": -63,
+            "phase": 4
+          },
+          {
+            "i": 1524,
+            "value": 255,
+            "expected": 127,
+            "residual": 128,
+            "phase": 4
+          },
+          {
+            "i": 1529,
+            "value": 120,
+            "expected": 183,
+            "residual": -63,
+            "phase": 4
+          },
+          {
+            "i": 1619,
+            "value": 134,
+            "expected": 197,
+            "residual": -63,
+            "phase": 4
+          },
+          {
+            "i": 1624,
+            "value": 255,
+            "expected": 126.5,
+            "residual": 128.5,
+            "phase": 4
+          },
+          {
+            "i": 1629,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 4
+          },
+          {
+            "i": 1719,
+            "value": 134,
+            "expected": 197,
+            "residual": -63,
+            "phase": 4
+          },
+          {
+            "i": 1724,
+            "value": 255,
+            "expected": 126.5,
+            "residual": 128.5,
+            "phase": 4
+          },
+          {
+            "i": 1729,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 4
+          },
+          {
+            "i": 1886,
+            "value": 193,
+            "expected": 128.5,
+            "residual": 64.5,
+            "phase": 1
+          },
+          {
+            "i": 1919,
+            "value": 134,
+            "expected": 197,
+            "residual": -63,
+            "phase": 4
+          },
+          {
+            "i": 1924,
+            "value": 255,
+            "expected": 126.5,
+            "residual": 128.5,
+            "phase": 4
+          },
+          {
+            "i": 1929,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 4
+          },
+          {
+            "i": 2019,
+            "value": 135,
+            "expected": 197,
+            "residual": -62,
+            "phase": 4
+          },
+          {
+            "i": 2024,
+            "value": 255,
+            "expected": 127,
+            "residual": 128,
+            "phase": 4
+          },
+          {
+            "i": 2029,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 4
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "seq": 1563,
+    "sample_s": 2e-9,
+    "channels": [
+      {
+        "min": 86,
+        "max": 150,
+        "means": [
+          123.24146341463414,
+          123.23170731707317,
+          121.84146341463415,
+          112.56968215158925,
+          111.96577017114915
+        ],
+        "spikes": []
+      },
+      {
+        "min": 91,
+        "max": 255,
+        "means": [
+          118.50243902439024,
+          120.89512195121951,
+          122.24634146341464,
+          117.74572127139365,
+          117.71882640586797
+        ],
+        "spikes": [
+          {
+            "i": 7,
+            "value": 119,
+            "expected": 182,
+            "residual": -63,
+            "phase": 2
+          },
+          {
+            "i": 197,
+            "value": 133,
+            "expected": 197,
+            "residual": -64,
+            "phase": 2
+          },
+          {
+            "i": 202,
+            "value": 255,
+            "expected": 126,
+            "residual": 129,
+            "phase": 2
+          },
+          {
+            "i": 207,
+            "value": 119,
+            "expected": 182,
+            "residual": -63,
+            "phase": 2
+          },
+          {
+            "i": 297,
+            "value": 133,
+            "expected": 197,
+            "residual": -64,
+            "phase": 2
+          },
+          {
+            "i": 302,
+            "value": 255,
+            "expected": 126,
+            "residual": 129,
+            "phase": 2
+          },
+          {
+            "i": 307,
+            "value": 119,
+            "expected": 182,
+            "residual": -63,
+            "phase": 2
+          },
+          {
+            "i": 397,
+            "value": 135,
+            "expected": 197,
+            "residual": -62,
+            "phase": 2
+          },
+          {
+            "i": 402,
+            "value": 255,
+            "expected": 127,
+            "residual": 128,
+            "phase": 2
+          },
+          {
+            "i": 407,
+            "value": 119,
+            "expected": 182,
+            "residual": -63,
+            "phase": 2
+          },
+          {
+            "i": 497,
+            "value": 133,
+            "expected": 197,
+            "residual": -64,
+            "phase": 2
+          },
+          {
+            "i": 502,
+            "value": 255,
+            "expected": 126,
+            "residual": 129,
+            "phase": 2
+          },
+          {
+            "i": 507,
+            "value": 119,
+            "expected": 182,
+            "residual": -63,
+            "phase": 2
+          },
+          {
+            "i": 597,
+            "value": 133,
+            "expected": 197,
+            "residual": -64,
+            "phase": 2
+          },
+          {
+            "i": 602,
+            "value": 255,
+            "expected": 126,
+            "residual": 129,
+            "phase": 2
+          },
+          {
+            "i": 607,
+            "value": 119,
+            "expected": 182,
+            "residual": -63,
+            "phase": 2
+          },
+          {
+            "i": 697,
+            "value": 134,
+            "expected": 197,
+            "residual": -63,
+            "phase": 2
+          },
+          {
+            "i": 702,
+            "value": 255,
+            "expected": 126.5,
+            "residual": 128.5,
+            "phase": 2
+          },
+          {
+            "i": 707,
+            "value": 119,
+            "expected": 182,
+            "residual": -63,
+            "phase": 2
+          },
+          {
+            "i": 797,
+            "value": 133,
+            "expected": 197,
+            "residual": -64,
+            "phase": 2
+          },
+          {
+            "i": 802,
+            "value": 255,
+            "expected": 126,
+            "residual": 129,
+            "phase": 2
+          },
+          {
+            "i": 807,
+            "value": 119,
+            "expected": 182,
+            "residual": -63,
+            "phase": 2
+          },
+          {
+            "i": 897,
+            "value": 133,
+            "expected": 197,
+            "residual": -64,
+            "phase": 2
+          },
+          {
+            "i": 902,
+            "value": 255,
+            "expected": 126,
+            "residual": 129,
+            "phase": 2
+          },
+          {
+            "i": 907,
+            "value": 119,
+            "expected": 182,
+            "residual": -63,
+            "phase": 2
+          },
+          {
+            "i": 1097,
+            "value": 133,
+            "expected": 197,
+            "residual": -64,
+            "phase": 2
+          },
+          {
+            "i": 1102,
+            "value": 255,
+            "expected": 126,
+            "residual": 129,
+            "phase": 2
+          },
+          {
+            "i": 1107,
+            "value": 119,
+            "expected": 182,
+            "residual": -63,
+            "phase": 2
+          },
+          {
+            "i": 1197,
+            "value": 133,
+            "expected": 197,
+            "residual": -64,
+            "phase": 2
+          },
+          {
+            "i": 1202,
+            "value": 255,
+            "expected": 125.5,
+            "residual": 129.5,
+            "phase": 2
+          },
+          {
+            "i": 1207,
+            "value": 118,
+            "expected": 182,
+            "residual": -64,
+            "phase": 2
+          },
+          {
+            "i": 1297,
+            "value": 133,
+            "expected": 197,
+            "residual": -64,
+            "phase": 2
+          },
+          {
+            "i": 1302,
+            "value": 255,
+            "expected": 126,
+            "residual": 129,
+            "phase": 2
+          },
+          {
+            "i": 1307,
+            "value": 119,
+            "expected": 182,
+            "residual": -63,
+            "phase": 2
+          },
+          {
+            "i": 1397,
+            "value": 133,
+            "expected": 197,
+            "residual": -64,
+            "phase": 2
+          },
+          {
+            "i": 1402,
+            "value": 255,
+            "expected": 126,
+            "residual": 129,
+            "phase": 2
+          },
+          {
+            "i": 1407,
+            "value": 119,
+            "expected": 182,
+            "residual": -63,
+            "phase": 2
+          },
+          {
+            "i": 1497,
+            "value": 133,
+            "expected": 197,
+            "residual": -64,
+            "phase": 2
+          },
+          {
+            "i": 1502,
+            "value": 255,
+            "expected": 126,
+            "residual": 129,
+            "phase": 2
+          },
+          {
+            "i": 1507,
+            "value": 119,
+            "expected": 182,
+            "residual": -63,
+            "phase": 2
+          },
+          {
+            "i": 1597,
+            "value": 133,
+            "expected": 197,
+            "residual": -64,
+            "phase": 2
+          },
+          {
+            "i": 1602,
+            "value": 255,
+            "expected": 126,
+            "residual": 129,
+            "phase": 2
+          },
+          {
+            "i": 1607,
+            "value": 119,
+            "expected": 182,
+            "residual": -63,
+            "phase": 2
+          },
+          {
+            "i": 1697,
+            "value": 134,
+            "expected": 197,
+            "residual": -63,
+            "phase": 2
+          },
+          {
+            "i": 1702,
+            "value": 255,
+            "expected": 126.5,
+            "residual": 128.5,
+            "phase": 2
+          },
+          {
+            "i": 1707,
+            "value": 119,
+            "expected": 182,
+            "residual": -63,
+            "phase": 2
+          },
+          {
+            "i": 1897,
+            "value": 133,
+            "expected": 196.5,
+            "residual": -63.5,
+            "phase": 2
+          },
+          {
+            "i": 1902,
+            "value": 254,
+            "expected": 125.5,
+            "residual": 128.5,
+            "phase": 2
+          },
+          {
+            "i": 1907,
+            "value": 118,
+            "expected": 181.5,
+            "residual": -63.5,
+            "phase": 2
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "seq": 1564,
+    "sample_s": 2e-9,
+    "channels": [
+      {
+        "min": 86,
+        "max": 150,
+        "means": [
+          113.09024390243903,
+          112.40487804878049,
+          123.6780487804878,
+          123.58190709046455,
+          122.37652811735941
+        ],
+        "spikes": []
+      },
+      {
+        "min": 91,
+        "max": 255,
+        "means": [
+          120.15853658536585,
+          118.21219512195123,
+          119.09024390243903,
+          121.38141809290954,
+          117.50122249388752
+        ],
+        "spikes": [
+          {
+            "i": 15,
+            "value": 133,
+            "expected": 196.5,
+            "residual": -63.5,
+            "phase": 0
+          },
+          {
+            "i": 20,
+            "value": 254,
+            "expected": 126,
+            "residual": 128,
+            "phase": 0
+          },
+          {
+            "i": 25,
+            "value": 119,
+            "expected": 182,
+            "residual": -63,
+            "phase": 0
+          },
+          {
+            "i": 215,
+            "value": 133,
+            "expected": 196.5,
+            "residual": -63.5,
+            "phase": 0
+          },
+          {
+            "i": 220,
+            "value": 254,
+            "expected": 126,
+            "residual": 128,
+            "phase": 0
+          },
+          {
+            "i": 225,
+            "value": 119,
+            "expected": 182.5,
+            "residual": -63.5,
+            "phase": 0
+          },
+          {
+            "i": 1215,
+            "value": 133,
+            "expected": 196.5,
+            "residual": -63.5,
+            "phase": 0
+          },
+          {
+            "i": 1220,
+            "value": 254,
+            "expected": 126,
+            "residual": 128,
+            "phase": 0
+          },
+          {
+            "i": 1225,
+            "value": 119,
+            "expected": 182.5,
+            "residual": -63.5,
+            "phase": 0
+          },
+          {
+            "i": 1282,
+            "value": 193,
+            "expected": 129,
+            "residual": 64,
+            "phase": 2
+          },
+          {
+            "i": 1415,
+            "value": 133,
+            "expected": 196.5,
+            "residual": -63.5,
+            "phase": 0
+          },
+          {
+            "i": 1420,
+            "value": 254,
+            "expected": 126,
+            "residual": 128,
+            "phase": 0
+          },
+          {
+            "i": 1425,
+            "value": 119,
+            "expected": 182.5,
+            "residual": -63.5,
+            "phase": 0
+          },
+          {
+            "i": 1715,
+            "value": 134,
+            "expected": 197,
+            "residual": -63,
+            "phase": 0
+          },
+          {
+            "i": 1720,
+            "value": 255,
+            "expected": 126.5,
+            "residual": 128.5,
+            "phase": 0
+          },
+          {
+            "i": 1725,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 0
+          },
+          {
+            "i": 1915,
+            "value": 133,
+            "expected": 197,
+            "residual": -64,
+            "phase": 0
+          },
+          {
+            "i": 1920,
+            "value": 255,
+            "expected": 126,
+            "residual": 129,
+            "phase": 0
+          },
+          {
+            "i": 1925,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 0
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "seq": 1565,
+    "sample_s": 2e-9,
+    "channels": [
+      {
+        "min": 86,
+        "max": 150,
+        "means": [
+          123.23658536585366,
+          121.86829268292684,
+          112.7390243902439,
+          112.10268948655256,
+          123.36919315403424
+        ],
+        "spikes": []
+      },
+      {
+        "min": 91,
+        "max": 148,
+        "means": [
+          120.8170731707317,
+          116.99024390243902,
+          117.65853658536585,
+          117.5158924205379,
+          118.56234718826406
+        ],
+        "spikes": []
+      }
+    ]
+  },
+  {
+    "seq": 1566,
+    "sample_s": 2e-9,
+    "channels": [
+      {
+        "min": 86,
+        "max": 150,
+        "means": [
+          123.57317073170732,
+          123.42682926829268,
+          122.16585365853659,
+          112.97066014669926,
+          112.31051344743277
+        ],
+        "spikes": []
+      },
+      {
+        "min": 91,
+        "max": 251,
+        "means": [
+          118.82682926829268,
+          121.23170731707317,
+          117.28048780487805,
+          118.89731051344744,
+          117.82885085574573
+        ],
+        "spikes": [
+          {
+            "i": 773,
+            "value": 130,
+            "expected": 193.5,
+            "residual": -63.5,
+            "phase": 3
+          },
+          {
+            "i": 778,
+            "value": 251,
+            "expected": 122,
+            "residual": 129,
+            "phase": 3
+          },
+          {
+            "i": 783,
+            "value": 114,
+            "expected": 179,
+            "residual": -65,
+            "phase": 3
+          },
+          {
+            "i": 973,
+            "value": 130,
+            "expected": 194,
+            "residual": -64,
+            "phase": 3
+          },
+          {
+            "i": 978,
+            "value": 251,
+            "expected": 122,
+            "residual": 129,
+            "phase": 3
+          },
+          {
+            "i": 983,
+            "value": 114,
+            "expected": 179,
+            "residual": -65,
+            "phase": 3
+          },
+          {
+            "i": 1873,
+            "value": 129,
+            "expected": 193,
+            "residual": -64,
+            "phase": 3
+          },
+          {
+            "i": 1878,
+            "value": 250,
+            "expected": 121.5,
+            "residual": 128.5,
+            "phase": 3
+          },
+          {
+            "i": 1883,
+            "value": 114,
+            "expected": 178.5,
+            "residual": -64.5,
+            "phase": 3
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "seq": 1567,
+    "sample_s": 2e-9,
+    "channels": [
+      {
+        "min": 86,
+        "max": 150,
+        "means": [
+          113.46341463414635,
+          112.72682926829269,
+          124.15365853658537,
+          124.09779951100245,
+          122.78728606356968
+        ],
+        "spikes": []
+      },
+      {
+        "min": 91,
+        "max": 255,
+        "means": [
+          118.39024390243902,
+          120.51219512195122,
+          119.33414634146341,
+          121.5721271393643,
+          117.5281173594132
+        ],
+        "spikes": [
+          {
+            "i": 241,
+            "value": 133,
+            "expected": 197,
+            "residual": -64,
+            "phase": 1
+          },
+          {
+            "i": 246,
+            "value": 255,
+            "expected": 126,
+            "residual": 129,
+            "phase": 1
+          },
+          {
+            "i": 251,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 1
+          },
+          {
+            "i": 441,
+            "value": 134,
+            "expected": 197,
+            "residual": -63,
+            "phase": 1
+          },
+          {
+            "i": 446,
+            "value": 255,
+            "expected": 126.5,
+            "residual": 128.5,
+            "phase": 1
+          },
+          {
+            "i": 451,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 1
+          },
+          {
+            "i": 741,
+            "value": 134,
+            "expected": 197,
+            "residual": -63,
+            "phase": 1
+          },
+          {
+            "i": 746,
+            "value": 255,
+            "expected": 126.5,
+            "residual": 128.5,
+            "phase": 1
+          },
+          {
+            "i": 751,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 1
+          },
+          {
+            "i": 1041,
+            "value": 134,
+            "expected": 197,
+            "residual": -63,
+            "phase": 1
+          },
+          {
+            "i": 1046,
+            "value": 255,
+            "expected": 126.5,
+            "residual": 128.5,
+            "phase": 1
+          },
+          {
+            "i": 1051,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 1
+          },
+          {
+            "i": 1241,
+            "value": 134,
+            "expected": 197,
+            "residual": -63,
+            "phase": 1
+          },
+          {
+            "i": 1246,
+            "value": 255,
+            "expected": 126.5,
+            "residual": 128.5,
+            "phase": 1
+          },
+          {
+            "i": 1251,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 1
+          },
+          {
+            "i": 1441,
+            "value": 133,
+            "expected": 197,
+            "residual": -64,
+            "phase": 1
+          },
+          {
+            "i": 1446,
+            "value": 255,
+            "expected": 126,
+            "residual": 129,
+            "phase": 1
+          },
+          {
+            "i": 1451,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 1
+          },
+          {
+            "i": 1841,
+            "value": 134,
+            "expected": 197,
+            "residual": -63,
+            "phase": 1
+          },
+          {
+            "i": 1846,
+            "value": 255,
+            "expected": 126.5,
+            "residual": 128.5,
+            "phase": 1
+          },
+          {
+            "i": 1851,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 1
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "seq": 1568,
+    "sample_s": 2e-9,
+    "channels": [
+      {
+        "min": 86,
+        "max": 150,
+        "means": [
+          122.71951219512195,
+          113.51951219512195,
+          112.82682926829268,
+          124.01955990220048,
+          123.90464547677261
+        ],
+        "spikes": []
+      },
+      {
+        "min": 91,
+        "max": 251,
+        "means": [
+          117.83658536585367,
+          119.05121951219512,
+          118.21219512195123,
+          119.2200488997555,
+          121.60635696821515
+        ],
+        "spikes": [
+          {
+            "i": 1141,
+            "value": 129,
+            "expected": 193,
+            "residual": -64,
+            "phase": 1
+          },
+          {
+            "i": 1146,
+            "value": 250,
+            "expected": 122,
+            "residual": 128,
+            "phase": 1
+          },
+          {
+            "i": 1151,
+            "value": 115,
+            "expected": 178.5,
+            "residual": -63.5,
+            "phase": 1
+          },
+          {
+            "i": 1241,
+            "value": 130,
+            "expected": 193.5,
+            "residual": -63.5,
+            "phase": 1
+          },
+          {
+            "i": 1246,
+            "value": 251,
+            "expected": 122.5,
+            "residual": 128.5,
+            "phase": 1
+          },
+          {
+            "i": 1251,
+            "value": 115,
+            "expected": 179,
+            "residual": -64,
+            "phase": 1
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "seq": 1569,
+    "sample_s": 2e-9,
+    "channels": [
+      {
+        "min": 86,
+        "max": 150,
+        "means": [
+          112.76585365853659,
+          124.06585365853658,
+          123.85853658536585,
+          122.77750611246944,
+          113.50122249388752
+        ],
+        "spikes": []
+      },
+      {
+        "min": 91,
+        "max": 253,
+        "means": [
+          118.75365853658536,
+          119.2560975609756,
+          121.64634146341463,
+          124.12713936430318,
+          118.37408312958435
+        ],
+        "spikes": [
+          {
+            "i": 43,
+            "value": 132,
+            "expected": 195,
+            "residual": -63,
+            "phase": 3
+          },
+          {
+            "i": 48,
+            "value": 253,
+            "expected": 124.5,
+            "residual": 128.5,
+            "phase": 3
+          },
+          {
+            "i": 53,
+            "value": 117,
+            "expected": 180.5,
+            "residual": -63.5,
+            "phase": 3
+          },
+          {
+            "i": 143,
+            "value": 132,
+            "expected": 195,
+            "residual": -63,
+            "phase": 3
+          },
+          {
+            "i": 148,
+            "value": 253,
+            "expected": 124.5,
+            "residual": 128.5,
+            "phase": 3
+          },
+          {
+            "i": 153,
+            "value": 117,
+            "expected": 180,
+            "residual": -63,
+            "phase": 3
+          },
+          {
+            "i": 243,
+            "value": 132,
+            "expected": 195,
+            "residual": -63,
+            "phase": 3
+          },
+          {
+            "i": 248,
+            "value": 253,
+            "expected": 124.5,
+            "residual": 128.5,
+            "phase": 3
+          },
+          {
+            "i": 253,
+            "value": 117,
+            "expected": 180.5,
+            "residual": -63.5,
+            "phase": 3
+          },
+          {
+            "i": 343,
+            "value": 132,
+            "expected": 195,
+            "residual": -63,
+            "phase": 3
+          },
+          {
+            "i": 348,
+            "value": 253,
+            "expected": 124.5,
+            "residual": 128.5,
+            "phase": 3
+          },
+          {
+            "i": 353,
+            "value": 117,
+            "expected": 180.5,
+            "residual": -63.5,
+            "phase": 3
+          },
+          {
+            "i": 443,
+            "value": 132,
+            "expected": 195,
+            "residual": -63,
+            "phase": 3
+          },
+          {
+            "i": 448,
+            "value": 253,
+            "expected": 124.5,
+            "residual": 128.5,
+            "phase": 3
+          },
+          {
+            "i": 453,
+            "value": 117,
+            "expected": 180,
+            "residual": -63,
+            "phase": 3
+          },
+          {
+            "i": 543,
+            "value": 132,
+            "expected": 195,
+            "residual": -63,
+            "phase": 3
+          },
+          {
+            "i": 548,
+            "value": 253,
+            "expected": 124,
+            "residual": 129,
+            "phase": 3
+          },
+          {
+            "i": 553,
+            "value": 116,
+            "expected": 180.5,
+            "residual": -64.5,
+            "phase": 3
+          },
+          {
+            "i": 643,
+            "value": 132,
+            "expected": 194.5,
+            "residual": -62.5,
+            "phase": 3
+          },
+          {
+            "i": 648,
+            "value": 252,
+            "expected": 124.5,
+            "residual": 127.5,
+            "phase": 3
+          },
+          {
+            "i": 653,
+            "value": 117,
+            "expected": 180,
+            "residual": -63,
+            "phase": 3
+          },
+          {
+            "i": 743,
+            "value": 132,
+            "expected": 195,
+            "residual": -63,
+            "phase": 3
+          },
+          {
+            "i": 748,
+            "value": 253,
+            "expected": 124.5,
+            "residual": 128.5,
+            "phase": 3
+          },
+          {
+            "i": 753,
+            "value": 117,
+            "expected": 180.5,
+            "residual": -63.5,
+            "phase": 3
+          },
+          {
+            "i": 843,
+            "value": 132,
+            "expected": 194.5,
+            "residual": -62.5,
+            "phase": 3
+          },
+          {
+            "i": 848,
+            "value": 252,
+            "expected": 124.5,
+            "residual": 127.5,
+            "phase": 3
+          },
+          {
+            "i": 853,
+            "value": 117,
+            "expected": 180,
+            "residual": -63,
+            "phase": 3
+          },
+          {
+            "i": 943,
+            "value": 132,
+            "expected": 195,
+            "residual": -63,
+            "phase": 3
+          },
+          {
+            "i": 948,
+            "value": 253,
+            "expected": 124.5,
+            "residual": 128.5,
+            "phase": 3
+          },
+          {
+            "i": 953,
+            "value": 117,
+            "expected": 180.5,
+            "residual": -63.5,
+            "phase": 3
+          },
+          {
+            "i": 1043,
+            "value": 132,
+            "expected": 195,
+            "residual": -63,
+            "phase": 3
+          },
+          {
+            "i": 1048,
+            "value": 253,
+            "expected": 124,
+            "residual": 129,
+            "phase": 3
+          },
+          {
+            "i": 1053,
+            "value": 116,
+            "expected": 180,
+            "residual": -64,
+            "phase": 3
+          },
+          {
+            "i": 1143,
+            "value": 132,
+            "expected": 195,
+            "residual": -63,
+            "phase": 3
+          },
+          {
+            "i": 1148,
+            "value": 253,
+            "expected": 124.5,
+            "residual": 128.5,
+            "phase": 3
+          },
+          {
+            "i": 1153,
+            "value": 117,
+            "expected": 180,
+            "residual": -63,
+            "phase": 3
+          },
+          {
+            "i": 1210,
+            "value": 195,
+            "expected": 130,
+            "residual": 65,
+            "phase": 0
+          },
+          {
+            "i": 1243,
+            "value": 132,
+            "expected": 194.5,
+            "residual": -62.5,
+            "phase": 3
+          },
+          {
+            "i": 1248,
+            "value": 252,
+            "expected": 124.5,
+            "residual": 127.5,
+            "phase": 3
+          },
+          {
+            "i": 1253,
+            "value": 117,
+            "expected": 179.5,
+            "residual": -62.5,
+            "phase": 3
+          },
+          {
+            "i": 1343,
+            "value": 132,
+            "expected": 195,
+            "residual": -63,
+            "phase": 3
+          },
+          {
+            "i": 1348,
+            "value": 253,
+            "expected": 124.5,
+            "residual": 128.5,
+            "phase": 3
+          },
+          {
+            "i": 1353,
+            "value": 117,
+            "expected": 180.5,
+            "residual": -63.5,
+            "phase": 3
+          },
+          {
+            "i": 1443,
+            "value": 132,
+            "expected": 195,
+            "residual": -63,
+            "phase": 3
+          },
+          {
+            "i": 1448,
+            "value": 253,
+            "expected": 124.5,
+            "residual": 128.5,
+            "phase": 3
+          },
+          {
+            "i": 1453,
+            "value": 117,
+            "expected": 180.5,
+            "residual": -63.5,
+            "phase": 3
+          },
+          {
+            "i": 1543,
+            "value": 132,
+            "expected": 195,
+            "residual": -63,
+            "phase": 3
+          },
+          {
+            "i": 1548,
+            "value": 253,
+            "expected": 124,
+            "residual": 129,
+            "phase": 3
+          },
+          {
+            "i": 1553,
+            "value": 116,
+            "expected": 180,
+            "residual": -64,
+            "phase": 3
+          },
+          {
+            "i": 1643,
+            "value": 132,
+            "expected": 194.5,
+            "residual": -62.5,
+            "phase": 3
+          },
+          {
+            "i": 1648,
+            "value": 252,
+            "expected": 124.5,
+            "residual": 127.5,
+            "phase": 3
+          },
+          {
+            "i": 1653,
+            "value": 117,
+            "expected": 180,
+            "residual": -63,
+            "phase": 3
+          },
+          {
+            "i": 1710,
+            "value": 195,
+            "expected": 130,
+            "residual": 65,
+            "phase": 0
+          },
+          {
+            "i": 1743,
+            "value": 132,
+            "expected": 195,
+            "residual": -63,
+            "phase": 3
+          },
+          {
+            "i": 1748,
+            "value": 253,
+            "expected": 124,
+            "residual": 129,
+            "phase": 3
+          },
+          {
+            "i": 1753,
+            "value": 116,
+            "expected": 180.5,
+            "residual": -64.5,
+            "phase": 3
+          },
+          {
+            "i": 1843,
+            "value": 132,
+            "expected": 195.5,
+            "residual": -63.5,
+            "phase": 3
+          },
+          {
+            "i": 1848,
+            "value": 253,
+            "expected": 124.5,
+            "residual": 128.5,
+            "phase": 3
+          },
+          {
+            "i": 1853,
+            "value": 117,
+            "expected": 180.5,
+            "residual": -63.5,
+            "phase": 3
+          },
+          {
+            "i": 1943,
+            "value": 132,
+            "expected": 195,
+            "residual": -63,
+            "phase": 3
+          },
+          {
+            "i": 1948,
+            "value": 253,
+            "expected": 124.5,
+            "residual": 128.5,
+            "phase": 3
+          },
+          {
+            "i": 1953,
+            "value": 117,
+            "expected": 180.5,
+            "residual": -63.5,
+            "phase": 3
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "seq": 1570,
+    "sample_s": 2e-9,
+    "channels": [
+      {
+        "min": 86,
+        "max": 150,
+        "means": [
+          123.65365853658537,
+          122.43170731707318,
+          113.10487804878049,
+          112.26161369193154,
+          123.66503667481662
+        ],
+        "spikes": []
+      },
+      {
+        "min": 91,
+        "max": 255,
+        "means": [
+          121.35609756097561,
+          117.12926829268292,
+          118.03658536585365,
+          122.2885085574572,
+          118.93887530562347
+        ],
+        "spikes": [
+          {
+            "i": 63,
+            "value": 134,
+            "expected": 197,
+            "residual": -63,
+            "phase": 3
+          },
+          {
+            "i": 68,
+            "value": 255,
+            "expected": 126.5,
+            "residual": 128.5,
+            "phase": 3
+          },
+          {
+            "i": 73,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 3
+          },
+          {
+            "i": 163,
+            "value": 134,
+            "expected": 197,
+            "residual": -63,
+            "phase": 3
+          },
+          {
+            "i": 168,
+            "value": 255,
+            "expected": 126.5,
+            "residual": 128.5,
+            "phase": 3
+          },
+          {
+            "i": 173,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 3
+          },
+          {
+            "i": 263,
+            "value": 134,
+            "expected": 197,
+            "residual": -63,
+            "phase": 3
+          },
+          {
+            "i": 268,
+            "value": 255,
+            "expected": 126.5,
+            "residual": 128.5,
+            "phase": 3
+          },
+          {
+            "i": 273,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 3
+          },
+          {
+            "i": 363,
+            "value": 134,
+            "expected": 197,
+            "residual": -63,
+            "phase": 3
+          },
+          {
+            "i": 368,
+            "value": 255,
+            "expected": 126.5,
+            "residual": 128.5,
+            "phase": 3
+          },
+          {
+            "i": 373,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 3
+          },
+          {
+            "i": 763,
+            "value": 134,
+            "expected": 197,
+            "residual": -63,
+            "phase": 3
+          },
+          {
+            "i": 768,
+            "value": 255,
+            "expected": 126.5,
+            "residual": 128.5,
+            "phase": 3
+          },
+          {
+            "i": 773,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 3
+          },
+          {
+            "i": 863,
+            "value": 133,
+            "expected": 197,
+            "residual": -64,
+            "phase": 3
+          },
+          {
+            "i": 868,
+            "value": 255,
+            "expected": 126,
+            "residual": 129,
+            "phase": 3
+          },
+          {
+            "i": 873,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 3
+          },
+          {
+            "i": 930,
+            "value": 195,
+            "expected": 131,
+            "residual": 64,
+            "phase": 0
+          },
+          {
+            "i": 1063,
+            "value": 134,
+            "expected": 197,
+            "residual": -63,
+            "phase": 3
+          },
+          {
+            "i": 1068,
+            "value": 255,
+            "expected": 126.5,
+            "residual": 128.5,
+            "phase": 3
+          },
+          {
+            "i": 1073,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 3
+          },
+          {
+            "i": 1163,
+            "value": 134,
+            "expected": 197,
+            "residual": -63,
+            "phase": 3
+          },
+          {
+            "i": 1168,
+            "value": 255,
+            "expected": 126.5,
+            "residual": 128.5,
+            "phase": 3
+          },
+          {
+            "i": 1173,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 3
+          },
+          {
+            "i": 1263,
+            "value": 134,
+            "expected": 197,
+            "residual": -63,
+            "phase": 3
+          },
+          {
+            "i": 1268,
+            "value": 255,
+            "expected": 126.5,
+            "residual": 128.5,
+            "phase": 3
+          },
+          {
+            "i": 1273,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 3
+          },
+          {
+            "i": 1463,
+            "value": 134,
+            "expected": 197,
+            "residual": -63,
+            "phase": 3
+          },
+          {
+            "i": 1468,
+            "value": 255,
+            "expected": 126.5,
+            "residual": 128.5,
+            "phase": 3
+          },
+          {
+            "i": 1473,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 3
+          },
+          {
+            "i": 1563,
+            "value": 134,
+            "expected": 197,
+            "residual": -63,
+            "phase": 3
+          },
+          {
+            "i": 1568,
+            "value": 255,
+            "expected": 126.5,
+            "residual": 128.5,
+            "phase": 3
+          },
+          {
+            "i": 1573,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 3
+          },
+          {
+            "i": 1663,
+            "value": 134,
+            "expected": 197,
+            "residual": -63,
+            "phase": 3
+          },
+          {
+            "i": 1668,
+            "value": 255,
+            "expected": 126.5,
+            "residual": 128.5,
+            "phase": 3
+          },
+          {
+            "i": 1673,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 3
+          },
+          {
+            "i": 1763,
+            "value": 134,
+            "expected": 197,
+            "residual": -63,
+            "phase": 3
+          },
+          {
+            "i": 1768,
+            "value": 255,
+            "expected": 126.5,
+            "residual": 128.5,
+            "phase": 3
+          },
+          {
+            "i": 1773,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 3
+          },
+          {
+            "i": 1963,
+            "value": 134,
+            "expected": 197,
+            "residual": -63,
+            "phase": 3
+          },
+          {
+            "i": 1968,
+            "value": 255,
+            "expected": 126.5,
+            "residual": 128.5,
+            "phase": 3
+          },
+          {
+            "i": 1973,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 3
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "seq": 1571,
+    "sample_s": 2e-9,
+    "channels": [
+      {
+        "min": 86,
+        "max": 150,
+        "means": [
+          121.94146341463414,
+          112.55609756097562,
+          111.96829268292683,
+          123.34474327628362,
+          123.26161369193154
+        ],
+        "spikes": []
+      },
+      {
+        "min": 91,
+        "max": 148,
+        "means": [
+          116.95365853658537,
+          117.69024390243902,
+          117.82682926829268,
+          118.45965770171149,
+          120.96577017114915
+        ],
+        "spikes": []
+      }
+    ]
+  },
+  {
+    "seq": 1572,
+    "sample_s": 2e-9,
+    "channels": [
+      {
+        "min": 86,
+        "max": 150,
+        "means": [
+          122.11463414634146,
+          112.90975609756097,
+          112.15609756097561,
+          123.49877750611248,
+          123.1882640586797
+        ],
+        "spikes": []
+      },
+      {
+        "min": 91,
+        "max": 193,
+        "means": [
+          117.25365853658536,
+          117.8,
+          117.6829268292683,
+          118.68459657701712,
+          121.04156479217603
+        ],
+        "spikes": [
+          {
+            "i": 1370,
+            "value": 193,
+            "expected": 128,
+            "residual": 65,
+            "phase": 0
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "seq": 1573,
+    "sample_s": 2e-9,
+    "channels": [
+      {
+        "min": 87,
+        "max": 150,
+        "means": [
+          112.34878048780487,
+          123.55609756097562,
+          123.4609756097561,
+          122.03667481662592,
+          112.90464547677261
+        ],
+        "spikes": []
+      },
+      {
+        "min": 91,
+        "max": 148,
+        "means": [
+          117.66585365853659,
+          118.67073170731707,
+          121.10487804878049,
+          117.0635696821516,
+          117.84107579462103
+        ],
+        "spikes": []
+      }
+    ]
+  },
+  {
+    "seq": 1574,
+    "sample_s": 2e-9,
+    "channels": [
+      {
+        "min": 86,
+        "max": 150,
+        "means": [
+          122.00731707317073,
+          112.62439024390244,
+          111.96341463414635,
+          123.43031784841075,
+          123.28117359413203
+        ],
+        "spikes": []
+      },
+      {
+        "min": 91,
+        "max": 148,
+        "means": [
+          116.88048780487804,
+          117.73170731707317,
+          117.65609756097561,
+          118.53789731051344,
+          121.09290953545232
+        ],
+        "spikes": []
+      }
+    ]
+  },
+  {
+    "seq": 1575,
+    "sample_s": 2e-9,
+    "channels": [
+      {
+        "min": 86,
+        "max": 149,
+        "means": [
+          123.46341463414635,
+          122.23170731707317,
+          112.89512195121951,
+          112.24938875305624,
+          123.65036674816626
+        ],
+        "spikes": []
+      },
+      {
+        "min": 91,
+        "max": 148,
+        "means": [
+          121.22195121951219,
+          117.29024390243903,
+          118.03658536585365,
+          117.8361858190709,
+          118.7677261613692
+        ],
+        "spikes": []
+      }
+    ]
+  },
+  {
+    "seq": 1576,
+    "sample_s": 2e-9,
+    "channels": [
+      {
+        "min": 86,
+        "max": 150,
+        "means": [
+          123.80975609756098,
+          123.67317073170732,
+          122.52682926829269,
+          113.14669926650367,
+          112.47677261613691
+        ],
+        "spikes": []
+      },
+      {
+        "min": 91,
+        "max": 255,
+        "means": [
+          118.96585365853659,
+          121.27804878048781,
+          117.26341463414634,
+          118.16870415647922,
+          120.84841075794621
+        ],
+        "spikes": [
+          {
+            "i": 59,
+            "value": 134,
+            "expected": 197,
+            "residual": -63,
+            "phase": 4
+          },
+          {
+            "i": 64,
+            "value": 255,
+            "expected": 127,
+            "residual": 128,
+            "phase": 4
+          },
+          {
+            "i": 69,
+            "value": 120,
+            "expected": 183,
+            "residual": -63,
+            "phase": 4
+          },
+          {
+            "i": 259,
+            "value": 134,
+            "expected": 197,
+            "residual": -63,
+            "phase": 4
+          },
+          {
+            "i": 264,
+            "value": 255,
+            "expected": 127,
+            "residual": 128,
+            "phase": 4
+          },
+          {
+            "i": 269,
+            "value": 120,
+            "expected": 183,
+            "residual": -63,
+            "phase": 4
+          },
+          {
+            "i": 359,
+            "value": 134,
+            "expected": 197,
+            "residual": -63,
+            "phase": 4
+          },
+          {
+            "i": 364,
+            "value": 255,
+            "expected": 127.5,
+            "residual": 127.5,
+            "phase": 4
+          },
+          {
+            "i": 369,
+            "value": 121,
+            "expected": 183,
+            "residual": -62,
+            "phase": 4
+          },
+          {
+            "i": 759,
+            "value": 134,
+            "expected": 197,
+            "residual": -63,
+            "phase": 4
+          },
+          {
+            "i": 764,
+            "value": 255,
+            "expected": 126.5,
+            "residual": 128.5,
+            "phase": 4
+          },
+          {
+            "i": 769,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 4
+          },
+          {
+            "i": 1059,
+            "value": 134,
+            "expected": 197,
+            "residual": -63,
+            "phase": 4
+          },
+          {
+            "i": 1064,
+            "value": 255,
+            "expected": 126.5,
+            "residual": 128.5,
+            "phase": 4
+          },
+          {
+            "i": 1069,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 4
+          },
+          {
+            "i": 1159,
+            "value": 134,
+            "expected": 197,
+            "residual": -63,
+            "phase": 4
+          },
+          {
+            "i": 1164,
+            "value": 255,
+            "expected": 126.5,
+            "residual": 128.5,
+            "phase": 4
+          },
+          {
+            "i": 1169,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 4
+          },
+          {
+            "i": 1259,
+            "value": 134,
+            "expected": 197,
+            "residual": -63,
+            "phase": 4
+          },
+          {
+            "i": 1264,
+            "value": 255,
+            "expected": 126.5,
+            "residual": 128.5,
+            "phase": 4
+          },
+          {
+            "i": 1269,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 4
+          },
+          {
+            "i": 1359,
+            "value": 134,
+            "expected": 197,
+            "residual": -63,
+            "phase": 4
+          },
+          {
+            "i": 1364,
+            "value": 255,
+            "expected": 126.5,
+            "residual": 128.5,
+            "phase": 4
+          },
+          {
+            "i": 1369,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 4
+          },
+          {
+            "i": 1559,
+            "value": 134,
+            "expected": 197,
+            "residual": -63,
+            "phase": 4
+          },
+          {
+            "i": 1564,
+            "value": 255,
+            "expected": 126.5,
+            "residual": 128.5,
+            "phase": 4
+          },
+          {
+            "i": 1569,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 4
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "seq": 1577,
+    "sample_s": 2e-9,
+    "channels": [
+      {
+        "min": 86,
+        "max": 150,
+        "means": [
+          123.56585365853658,
+          122.37317073170732,
+          112.98048780487805,
+          112.42542787286064,
+          123.7677261613692
+        ],
+        "spikes": []
+      },
+      {
+        "min": 91,
+        "max": 148,
+        "means": [
+          121.33414634146341,
+          117.44878048780488,
+          118.17073170731707,
+          117.92176039119805,
+          118.8679706601467
+        ],
+        "spikes": []
+      }
+    ]
+  },
+  {
+    "seq": 1578,
+    "sample_s": 2e-9,
+    "channels": [
+      {
+        "min": 86,
+        "max": 150,
+        "means": [
+          123.91463414634147,
+          123.88048780487804,
+          122.62439024390244,
+          113.26650366748166,
+          112.65770171149144
+        ],
+        "spikes": []
+      },
+      {
+        "min": 91,
+        "max": 255,
+        "means": [
+          119.14390243902439,
+          121.56341463414634,
+          120.81463414634146,
+          118.37408312958435,
+          118.40097799511003
+        ],
+        "spikes": [
+          {
+            "i": 247,
+            "value": 135,
+            "expected": 197,
+            "residual": -62,
+            "phase": 2
+          },
+          {
+            "i": 252,
+            "value": 255,
+            "expected": 127.5,
+            "residual": 127.5,
+            "phase": 2
+          },
+          {
+            "i": 257,
+            "value": 120,
+            "expected": 182,
+            "residual": -62,
+            "phase": 2
+          },
+          {
+            "i": 347,
+            "value": 135,
+            "expected": 197,
+            "residual": -62,
+            "phase": 2
+          },
+          {
+            "i": 352,
+            "value": 255,
+            "expected": 127.5,
+            "residual": 127.5,
+            "phase": 2
+          },
+          {
+            "i": 357,
+            "value": 120,
+            "expected": 183,
+            "residual": -63,
+            "phase": 2
+          },
+          {
+            "i": 647,
+            "value": 135,
+            "expected": 197,
+            "residual": -62,
+            "phase": 2
+          },
+          {
+            "i": 652,
+            "value": 255,
+            "expected": 127,
+            "residual": 128,
+            "phase": 2
+          },
+          {
+            "i": 657,
+            "value": 119,
+            "expected": 182,
+            "residual": -63,
+            "phase": 2
+          },
+          {
+            "i": 747,
+            "value": 135,
+            "expected": 197,
+            "residual": -62,
+            "phase": 2
+          },
+          {
+            "i": 752,
+            "value": 255,
+            "expected": 127.5,
+            "residual": 127.5,
+            "phase": 2
+          },
+          {
+            "i": 757,
+            "value": 120,
+            "expected": 182,
+            "residual": -62,
+            "phase": 2
+          },
+          {
+            "i": 947,
+            "value": 135,
+            "expected": 197,
+            "residual": -62,
+            "phase": 2
+          },
+          {
+            "i": 952,
+            "value": 255,
+            "expected": 127.5,
+            "residual": 127.5,
+            "phase": 2
+          },
+          {
+            "i": 957,
+            "value": 120,
+            "expected": 182,
+            "residual": -62,
+            "phase": 2
+          },
+          {
+            "i": 1047,
+            "value": 135,
+            "expected": 197,
+            "residual": -62,
+            "phase": 2
+          },
+          {
+            "i": 1052,
+            "value": 255,
+            "expected": 127,
+            "residual": 128,
+            "phase": 2
+          },
+          {
+            "i": 1057,
+            "value": 119,
+            "expected": 182,
+            "residual": -63,
+            "phase": 2
+          },
+          {
+            "i": 1147,
+            "value": 135,
+            "expected": 197,
+            "residual": -62,
+            "phase": 2
+          },
+          {
+            "i": 1152,
+            "value": 255,
+            "expected": 127,
+            "residual": 128,
+            "phase": 2
+          },
+          {
+            "i": 1157,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 2
+          },
+          {
+            "i": 1247,
+            "value": 135,
+            "expected": 197,
+            "residual": -62,
+            "phase": 2
+          },
+          {
+            "i": 1252,
+            "value": 255,
+            "expected": 127,
+            "residual": 128,
+            "phase": 2
+          },
+          {
+            "i": 1257,
+            "value": 119,
+            "expected": 182.5,
+            "residual": -63.5,
+            "phase": 2
+          },
+          {
+            "i": 1347,
+            "value": 135,
+            "expected": 197,
+            "residual": -62,
+            "phase": 2
+          },
+          {
+            "i": 1352,
+            "value": 255,
+            "expected": 127,
+            "residual": 128,
+            "phase": 2
+          },
+          {
+            "i": 1357,
+            "value": 119,
+            "expected": 182.5,
+            "residual": -63.5,
+            "phase": 2
+          },
+          {
+            "i": 1547,
+            "value": 135,
+            "expected": 197,
+            "residual": -62,
+            "phase": 2
+          },
+          {
+            "i": 1552,
+            "value": 255,
+            "expected": 127.5,
+            "residual": 127.5,
+            "phase": 2
+          },
+          {
+            "i": 1557,
+            "value": 120,
+            "expected": 182,
+            "residual": -62,
+            "phase": 2
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "seq": 1579,
+    "sample_s": 2e-9,
+    "channels": [
+      {
+        "min": 86,
+        "max": 150,
+        "means": [
+          113.29024390243903,
+          112.68780487804878,
+          123.94390243902438,
+          123.89731051344744,
+          122.51344743276283
+        ],
+        "spikes": []
+      },
+      {
+        "min": 91,
+        "max": 254,
+        "means": [
+          118.3609756097561,
+          119.09756097560975,
+          119.21707317073171,
+          121.54767726161369,
+          118.04156479217603
+        ],
+        "spikes": [
+          {
+            "i": 316,
+            "value": 193,
+            "expected": 128.5,
+            "residual": 64.5,
+            "phase": 1
+          },
+          {
+            "i": 416,
+            "value": 193,
+            "expected": 128.5,
+            "residual": 64.5,
+            "phase": 1
+          },
+          {
+            "i": 616,
+            "value": 193,
+            "expected": 129.5,
+            "residual": 63.5,
+            "phase": 1
+          },
+          {
+            "i": 749,
+            "value": 133,
+            "expected": 196.5,
+            "residual": -63.5,
+            "phase": 4
+          },
+          {
+            "i": 754,
+            "value": 254,
+            "expected": 125,
+            "residual": 129,
+            "phase": 4
+          },
+          {
+            "i": 759,
+            "value": 117,
+            "expected": 181,
+            "residual": -64,
+            "phase": 4
+          },
+          {
+            "i": 1016,
+            "value": 193,
+            "expected": 129.5,
+            "residual": 63.5,
+            "phase": 1
+          },
+          {
+            "i": 1116,
+            "value": 193,
+            "expected": 129,
+            "residual": 64,
+            "phase": 1
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "seq": 1580,
+    "sample_s": 2e-9,
+    "channels": [
+      {
+        "min": 86,
+        "max": 150,
+        "means": [
+          112.65121951219513,
+          112.09756097560975,
+          123.47073170731707,
+          123.4156479217604,
+          122.0635696821516
+        ],
+        "spikes": []
+      },
+      {
+        "min": 91,
+        "max": 255,
+        "means": [
+          117.85853658536585,
+          117.98536585365854,
+          118.59512195121951,
+          121.00488997555013,
+          120.53056234718827
+        ],
+        "spikes": [
+          {
+            "i": 499,
+            "value": 133,
+            "expected": 197,
+            "residual": -64,
+            "phase": 4
+          },
+          {
+            "i": 504,
+            "value": 255,
+            "expected": 126,
+            "residual": 129,
+            "phase": 4
+          },
+          {
+            "i": 509,
+            "value": 119,
+            "expected": 182.5,
+            "residual": -63.5,
+            "phase": 4
+          },
+          {
+            "i": 599,
+            "value": 134,
+            "expected": 197.5,
+            "residual": -63.5,
+            "phase": 4
+          },
+          {
+            "i": 604,
+            "value": 255,
+            "expected": 126.5,
+            "residual": 128.5,
+            "phase": 4
+          },
+          {
+            "i": 609,
+            "value": 119,
+            "expected": 182,
+            "residual": -63,
+            "phase": 4
+          },
+          {
+            "i": 699,
+            "value": 133,
+            "expected": 197,
+            "residual": -64,
+            "phase": 4
+          },
+          {
+            "i": 704,
+            "value": 255,
+            "expected": 126,
+            "residual": 129,
+            "phase": 4
+          },
+          {
+            "i": 709,
+            "value": 119,
+            "expected": 182,
+            "residual": -63,
+            "phase": 4
+          },
+          {
+            "i": 899,
+            "value": 133,
+            "expected": 197.5,
+            "residual": -64.5,
+            "phase": 4
+          },
+          {
+            "i": 904,
+            "value": 255,
+            "expected": 126,
+            "residual": 129,
+            "phase": 4
+          },
+          {
+            "i": 909,
+            "value": 119,
+            "expected": 182,
+            "residual": -63,
+            "phase": 4
+          },
+          {
+            "i": 999,
+            "value": 135,
+            "expected": 197.5,
+            "residual": -62.5,
+            "phase": 4
+          },
+          {
+            "i": 1004,
+            "value": 255,
+            "expected": 127,
+            "residual": 128,
+            "phase": 4
+          },
+          {
+            "i": 1009,
+            "value": 119,
+            "expected": 182,
+            "residual": -63,
+            "phase": 4
+          },
+          {
+            "i": 1099,
+            "value": 133,
+            "expected": 197,
+            "residual": -64,
+            "phase": 4
+          },
+          {
+            "i": 1104,
+            "value": 255,
+            "expected": 126,
+            "residual": 129,
+            "phase": 4
+          },
+          {
+            "i": 1109,
+            "value": 119,
+            "expected": 182,
+            "residual": -63,
+            "phase": 4
+          },
+          {
+            "i": 1199,
+            "value": 134,
+            "expected": 197,
+            "residual": -63,
+            "phase": 4
+          },
+          {
+            "i": 1204,
+            "value": 255,
+            "expected": 127,
+            "residual": 128,
+            "phase": 4
+          },
+          {
+            "i": 1209,
+            "value": 120,
+            "expected": 182,
+            "residual": -62,
+            "phase": 4
+          },
+          {
+            "i": 1499,
+            "value": 135,
+            "expected": 197,
+            "residual": -62,
+            "phase": 4
+          },
+          {
+            "i": 1504,
+            "value": 255,
+            "expected": 127,
+            "residual": 128,
+            "phase": 4
+          },
+          {
+            "i": 1509,
+            "value": 119,
+            "expected": 182,
+            "residual": -63,
+            "phase": 4
+          },
+          {
+            "i": 1599,
+            "value": 134,
+            "expected": 197,
+            "residual": -63,
+            "phase": 4
+          },
+          {
+            "i": 1604,
+            "value": 255,
+            "expected": 126.5,
+            "residual": 128.5,
+            "phase": 4
+          },
+          {
+            "i": 1609,
+            "value": 119,
+            "expected": 182,
+            "residual": -63,
+            "phase": 4
+          },
+          {
+            "i": 1899,
+            "value": 133,
+            "expected": 197,
+            "residual": -64,
+            "phase": 4
+          },
+          {
+            "i": 1904,
+            "value": 255,
+            "expected": 126,
+            "residual": 129,
+            "phase": 4
+          },
+          {
+            "i": 1909,
+            "value": 119,
+            "expected": 182,
+            "residual": -63,
+            "phase": 4
+          },
+          {
+            "i": 1999,
+            "value": 133,
+            "expected": 197,
+            "residual": -64,
+            "phase": 4
+          },
+          {
+            "i": 2004,
+            "value": 255,
+            "expected": 126,
+            "residual": 129,
+            "phase": 4
+          },
+          {
+            "i": 2009,
+            "value": 119,
+            "expected": 182,
+            "residual": -63,
+            "phase": 4
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "seq": 1581,
+    "sample_s": 2e-9,
+    "channels": [
+      {
+        "min": 86,
+        "max": 150,
+        "means": [
+          112.6609756097561,
+          124.02926829268293,
+          123.89268292682927,
+          122.66748166259168,
+          113.3643031784841
+        ],
+        "spikes": []
+      },
+      {
+        "min": 91,
+        "max": 148,
+        "means": [
+          118.44390243902438,
+          119.20731707317073,
+          121.72926829268293,
+          117.84596577017115,
+          118.4718826405868
+        ],
+        "spikes": []
+      }
+    ]
+  },
+  {
+    "seq": 1582,
+    "sample_s": 2e-9,
+    "channels": [
+      {
+        "min": 86,
+        "max": 150,
+        "means": [
+          112.9,
+          112.1609756097561,
+          123.51463414634146,
+          123.23716381418093,
+          122.08557457212714
+        ],
+        "spikes": []
+      },
+      {
+        "min": 91,
+        "max": 193,
+        "means": [
+          117.76829268292683,
+          117.65853658536585,
+          118.6390243902439,
+          121.65281173594133,
+          117.1638141809291
+        ],
+        "spikes": [
+          {
+            "i": 468,
+            "value": 193,
+            "expected": 128.5,
+            "residual": 64.5,
+            "phase": 3
+          },
+          {
+            "i": 868,
+            "value": 193,
+            "expected": 128.5,
+            "residual": 64.5,
+            "phase": 3
+          },
+          {
+            "i": 1268,
+            "value": 193,
+            "expected": 129,
+            "residual": 64,
+            "phase": 3
+          },
+          {
+            "i": 1568,
+            "value": 193,
+            "expected": 128.5,
+            "residual": 64.5,
+            "phase": 3
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "seq": 1583,
+    "sample_s": 2e-9,
+    "channels": [
+      {
+        "min": 86,
+        "max": 150,
+        "means": [
+          123.84634146341463,
+          123.78536585365853,
+          122.54878048780488,
+          113.1882640586797,
+          112.61124694376528
+        ],
+        "spikes": []
+      },
+      {
+        "min": 91,
+        "max": 148,
+        "means": [
+          118.94146341463414,
+          121.3048780487805,
+          117.40731707317073,
+          118.16136919315403,
+          118.02200488997555
+        ],
+        "spikes": []
+      }
+    ]
+  },
+  {
+    "seq": 1584,
+    "sample_s": 2e-9,
+    "channels": [
+      {
+        "min": 86,
+        "max": 150,
+        "means": [
+          112.5439024390244,
+          123.97073170731707,
+          123.78536585365853,
+          122.40097799511003,
+          113.17359413202934
+        ],
+        "spikes": []
+      },
+      {
+        "min": 91,
+        "max": 255,
+        "means": [
+          118.21463414634147,
+          119.09756097560975,
+          121.47804878048781,
+          121.97066014669926,
+          118.25672371638142
+        ],
+        "spikes": [
+          {
+            "i": 123,
+            "value": 133,
+            "expected": 197,
+            "residual": -64,
+            "phase": 3
+          },
+          {
+            "i": 128,
+            "value": 255,
+            "expected": 126,
+            "residual": 129,
+            "phase": 3
+          },
+          {
+            "i": 133,
+            "value": 119,
+            "expected": 182,
+            "residual": -63,
+            "phase": 3
+          },
+          {
+            "i": 223,
+            "value": 133,
+            "expected": 197,
+            "residual": -64,
+            "phase": 3
+          },
+          {
+            "i": 228,
+            "value": 255,
+            "expected": 126,
+            "residual": 129,
+            "phase": 3
+          },
+          {
+            "i": 233,
+            "value": 119,
+            "expected": 182,
+            "residual": -63,
+            "phase": 3
+          },
+          {
+            "i": 323,
+            "value": 133,
+            "expected": 197,
+            "residual": -64,
+            "phase": 3
+          },
+          {
+            "i": 328,
+            "value": 255,
+            "expected": 126,
+            "residual": 129,
+            "phase": 3
+          },
+          {
+            "i": 333,
+            "value": 119,
+            "expected": 182,
+            "residual": -63,
+            "phase": 3
+          },
+          {
+            "i": 423,
+            "value": 133,
+            "expected": 197,
+            "residual": -64,
+            "phase": 3
+          },
+          {
+            "i": 428,
+            "value": 255,
+            "expected": 126,
+            "residual": 129,
+            "phase": 3
+          },
+          {
+            "i": 433,
+            "value": 119,
+            "expected": 182,
+            "residual": -63,
+            "phase": 3
+          },
+          {
+            "i": 623,
+            "value": 133,
+            "expected": 197,
+            "residual": -64,
+            "phase": 3
+          },
+          {
+            "i": 628,
+            "value": 255,
+            "expected": 126,
+            "residual": 129,
+            "phase": 3
+          },
+          {
+            "i": 633,
+            "value": 119,
+            "expected": 182,
+            "residual": -63,
+            "phase": 3
+          },
+          {
+            "i": 723,
+            "value": 133,
+            "expected": 197,
+            "residual": -64,
+            "phase": 3
+          },
+          {
+            "i": 728,
+            "value": 255,
+            "expected": 125.5,
+            "residual": 129.5,
+            "phase": 3
+          },
+          {
+            "i": 733,
+            "value": 118,
+            "expected": 182,
+            "residual": -64,
+            "phase": 3
+          },
+          {
+            "i": 1023,
+            "value": 133,
+            "expected": 197,
+            "residual": -64,
+            "phase": 3
+          },
+          {
+            "i": 1028,
+            "value": 255,
+            "expected": 125,
+            "residual": 130,
+            "phase": 3
+          },
+          {
+            "i": 1033,
+            "value": 117,
+            "expected": 182,
+            "residual": -65,
+            "phase": 3
+          },
+          {
+            "i": 1223,
+            "value": 133,
+            "expected": 197,
+            "residual": -64,
+            "phase": 3
+          },
+          {
+            "i": 1228,
+            "value": 255,
+            "expected": 126,
+            "residual": 129,
+            "phase": 3
+          },
+          {
+            "i": 1233,
+            "value": 119,
+            "expected": 182,
+            "residual": -63,
+            "phase": 3
+          },
+          {
+            "i": 1323,
+            "value": 133,
+            "expected": 197,
+            "residual": -64,
+            "phase": 3
+          },
+          {
+            "i": 1328,
+            "value": 255,
+            "expected": 126,
+            "residual": 129,
+            "phase": 3
+          },
+          {
+            "i": 1333,
+            "value": 119,
+            "expected": 182,
+            "residual": -63,
+            "phase": 3
+          },
+          {
+            "i": 1423,
+            "value": 133,
+            "expected": 197,
+            "residual": -64,
+            "phase": 3
+          },
+          {
+            "i": 1428,
+            "value": 255,
+            "expected": 126,
+            "residual": 129,
+            "phase": 3
+          },
+          {
+            "i": 1433,
+            "value": 119,
+            "expected": 182,
+            "residual": -63,
+            "phase": 3
+          },
+          {
+            "i": 1523,
+            "value": 133,
+            "expected": 197,
+            "residual": -64,
+            "phase": 3
+          },
+          {
+            "i": 1528,
+            "value": 255,
+            "expected": 125.5,
+            "residual": 129.5,
+            "phase": 3
+          },
+          {
+            "i": 1533,
+            "value": 118,
+            "expected": 182,
+            "residual": -64,
+            "phase": 3
+          },
+          {
+            "i": 1623,
+            "value": 133,
+            "expected": 197,
+            "residual": -64,
+            "phase": 3
+          },
+          {
+            "i": 1628,
+            "value": 255,
+            "expected": 125.5,
+            "residual": 129.5,
+            "phase": 3
+          },
+          {
+            "i": 1633,
+            "value": 118,
+            "expected": 182,
+            "residual": -64,
+            "phase": 3
+          },
+          {
+            "i": 1923,
+            "value": 133,
+            "expected": 197,
+            "residual": -64,
+            "phase": 3
+          },
+          {
+            "i": 1928,
+            "value": 255,
+            "expected": 126,
+            "residual": 129,
+            "phase": 3
+          },
+          {
+            "i": 1933,
+            "value": 119,
+            "expected": 182,
+            "residual": -63,
+            "phase": 3
+          },
+          {
+            "i": 2023,
+            "value": 133,
+            "expected": 197,
+            "residual": -64,
+            "phase": 3
+          },
+          {
+            "i": 2028,
+            "value": 255,
+            "expected": 125.5,
+            "residual": 129.5,
+            "phase": 3
+          },
+          {
+            "i": 2033,
+            "value": 118,
+            "expected": 182,
+            "residual": -64,
+            "phase": 3
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "seq": 1585,
+    "sample_s": 2e-9,
+    "channels": [
+      {
+        "min": 86,
+        "max": 150,
+        "means": [
+          123.94878048780488,
+          123.86829268292684,
+          122.5780487804878,
+          113.29095354523227,
+          112.71393643031784
+        ],
+        "spikes": []
+      },
+      {
+        "min": 91,
+        "max": 193,
+        "means": [
+          119.19024390243902,
+          121.60731707317073,
+          117.65365853658537,
+          118.43520782396088,
+          118.41075794621027
+        ],
+        "spikes": [
+          {
+            "i": 1514,
+            "value": 193,
+            "expected": 128,
+            "residual": 65,
+            "phase": 4
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "seq": 1586,
+    "sample_s": 2e-9,
+    "channels": [
+      {
+        "min": 86,
+        "max": 150,
+        "means": [
+          123.78780487804877,
+          122.5170731707317,
+          113.09756097560975,
+          112.50366748166259,
+          123.76528117359413
+        ],
+        "spikes": []
+      },
+      {
+        "min": 91,
+        "max": 195,
+        "means": [
+          121.47804878048781,
+          117.42926829268292,
+          118.1780487804878,
+          118.32762836185819,
+          119.22982885085574
+        ],
+        "spikes": [
+          {
+            "i": 884,
+            "value": 194,
+            "expected": 129,
+            "residual": 65,
+            "phase": 4
+          },
+          {
+            "i": 1884,
+            "value": 195,
+            "expected": 129,
+            "residual": 66,
+            "phase": 4
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "seq": 1587,
+    "sample_s": 2e-9,
+    "channels": [
+      {
+        "min": 86,
+        "max": 150,
+        "means": [
+          112.69268292682926,
+          111.96829268292683,
+          123.32926829268293,
+          123.24938875305624,
+          122.05867970660147
+        ],
+        "spikes": []
+      },
+      {
+        "min": 90,
+        "max": 148,
+        "means": [
+          117.56829268292682,
+          117.39268292682927,
+          118.44146341463414,
+          120.67726161369193,
+          116.7481662591687
+        ],
+        "spikes": []
+      }
+    ]
+  },
+  {
+    "seq": 1588,
+    "sample_s": 2e-9,
+    "channels": [
+      {
+        "min": 86,
+        "max": 150,
+        "means": [
+          123.7390243902439,
+          122.52195121951219,
+          113.16829268292683,
+          112.44743276283619,
+          123.95354523227384
+        ],
+        "spikes": []
+      },
+      {
+        "min": 91,
+        "max": 255,
+        "means": [
+          121.39756097560975,
+          117.45853658536585,
+          119.4219512195122,
+          118.1002444987775,
+          119.02444987775061
+        ],
+        "spikes": [
+          {
+            "i": 257,
+            "value": 135,
+            "expected": 197.5,
+            "residual": -62.5,
+            "phase": 2
+          },
+          {
+            "i": 262,
+            "value": 255,
+            "expected": 127,
+            "residual": 128,
+            "phase": 2
+          },
+          {
+            "i": 267,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 2
+          },
+          {
+            "i": 757,
+            "value": 135,
+            "expected": 197,
+            "residual": -62,
+            "phase": 2
+          },
+          {
+            "i": 762,
+            "value": 255,
+            "expected": 127,
+            "residual": 128,
+            "phase": 2
+          },
+          {
+            "i": 767,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 2
+          },
+          {
+            "i": 1357,
+            "value": 135,
+            "expected": 197,
+            "residual": -62,
+            "phase": 2
+          },
+          {
+            "i": 1362,
+            "value": 255,
+            "expected": 127,
+            "residual": 128,
+            "phase": 2
+          },
+          {
+            "i": 1367,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 2
+          },
+          {
+            "i": 1857,
+            "value": 135,
+            "expected": 197,
+            "residual": -62,
+            "phase": 2
+          },
+          {
+            "i": 1862,
+            "value": 255,
+            "expected": 127,
+            "residual": 128,
+            "phase": 2
+          },
+          {
+            "i": 1867,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 2
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "seq": 1589,
+    "sample_s": 2e-9,
+    "channels": [
+      {
+        "min": 86,
+        "max": 150,
+        "means": [
+          123.65853658536585,
+          122.36585365853658,
+          113.20731707317073,
+          112.47921760391198,
+          123.78973105134475
+        ],
+        "spikes": []
+      },
+      {
+        "min": 90,
+        "max": 193,
+        "means": [
+          121.50975609756098,
+          117.56341463414634,
+          118.11219512195122,
+          118.09046454767726,
+          118.97066014669926
+        ],
+        "spikes": [
+          {
+            "i": 220,
+            "value": 193,
+            "expected": 128,
+            "residual": 65,
+            "phase": 0
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "seq": 1590,
+    "sample_s": 2e-9,
+    "channels": [
+      {
+        "min": 86,
+        "max": 150,
+        "means": [
+          112.24634146341464,
+          123.48536585365854,
+          123.25365853658536,
+          122.17359413202934,
+          113
+        ],
+        "spikes": []
+      },
+      {
+        "min": 91,
+        "max": 251,
+        "means": [
+          117.7439024390244,
+          118.70487804878049,
+          121.02439024390245,
+          117.24938875305624,
+          118.75550122249389
+        ],
+        "spikes": [
+          {
+            "i": 209,
+            "value": 130,
+            "expected": 194,
+            "residual": -64,
+            "phase": 4
+          },
+          {
+            "i": 214,
+            "value": 251,
+            "expected": 122.5,
+            "residual": 128.5,
+            "phase": 4
+          },
+          {
+            "i": 219,
+            "value": 115,
+            "expected": 179,
+            "residual": -64,
+            "phase": 4
+          },
+          {
+            "i": 1609,
+            "value": 130,
+            "expected": 193,
+            "residual": -63,
+            "phase": 4
+          },
+          {
+            "i": 1614,
+            "value": 250,
+            "expected": 122.5,
+            "residual": 127.5,
+            "phase": 4
+          },
+          {
+            "i": 1619,
+            "value": 115,
+            "expected": 178.5,
+            "residual": -63.5,
+            "phase": 4
+          },
+          {
+            "i": 1709,
+            "value": 130,
+            "expected": 193.5,
+            "residual": -63.5,
+            "phase": 4
+          },
+          {
+            "i": 1714,
+            "value": 250,
+            "expected": 122.5,
+            "residual": 127.5,
+            "phase": 4
+          },
+          {
+            "i": 1719,
+            "value": 115,
+            "expected": 178.5,
+            "residual": -63.5,
+            "phase": 4
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "seq": 1591,
+    "sample_s": 2e-9,
+    "channels": [
+      {
+        "min": 86,
+        "max": 150,
+        "means": [
+          112.82439024390244,
+          112.10731707317073,
+          123.44390243902438,
+          123.25427872860635,
+          122.119804400978
+        ],
+        "spikes": []
+      },
+      {
+        "min": 91,
+        "max": 193,
+        "means": [
+          117.66585365853659,
+          117.72439024390243,
+          118.58292682926829,
+          121.1760391198044,
+          117.12713936430318
+        ],
+        "spikes": [
+          {
+            "i": 868,
+            "value": 193,
+            "expected": 129,
+            "residual": 64,
+            "phase": 3
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "seq": 1592,
+    "sample_s": 2e-9,
+    "channels": [
+      {
+        "min": 86,
+        "max": 150,
+        "means": [
+          122.74146341463414,
+          113.52439024390245,
+          112.77073170731707,
+          124.01955990220048,
+          123.84352078239608
+        ],
+        "spikes": []
+      },
+      {
+        "min": 91,
+        "max": 251,
+        "means": [
+          117.92926829268292,
+          118.99512195121952,
+          118.29268292682927,
+          119.34718826405867,
+          121.65281173594133
+        ],
+        "spikes": [
+          {
+            "i": 1731,
+            "value": 130,
+            "expected": 193.5,
+            "residual": -63.5,
+            "phase": 1
+          },
+          {
+            "i": 1736,
+            "value": 251,
+            "expected": 122.5,
+            "residual": 128.5,
+            "phase": 1
+          },
+          {
+            "i": 1741,
+            "value": 115,
+            "expected": 179,
+            "residual": -64,
+            "phase": 1
+          },
+          {
+            "i": 1831,
+            "value": 130,
+            "expected": 194,
+            "residual": -64,
+            "phase": 1
+          },
+          {
+            "i": 1836,
+            "value": 251,
+            "expected": 122.5,
+            "residual": 128.5,
+            "phase": 1
+          },
+          {
+            "i": 1841,
+            "value": 115,
+            "expected": 179,
+            "residual": -64,
+            "phase": 1
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "seq": 1593,
+    "sample_s": 2e-9,
+    "channels": [
+      {
+        "min": 86,
+        "max": 150,
+        "means": [
+          112.7,
+          124.07317073170732,
+          123.95853658536585,
+          122.73594132029339,
+          113.32518337408312
+        ],
+        "spikes": []
+      },
+      {
+        "min": 90,
+        "max": 148,
+        "means": [
+          118.2439024390244,
+          119.23658536585366,
+          121.58292682926829,
+          117.56234718826406,
+          118.3960880195599
+        ],
+        "spikes": []
+      }
+    ]
+  },
+  {
+    "seq": 1594,
+    "sample_s": 2e-9,
+    "channels": [
+      {
+        "min": 86,
+        "max": 150,
+        "means": [
+          123.25121951219512,
+          121.97073170731707,
+          112.83414634146341,
+          112.11002444987776,
+          123.45232273838631
+        ],
+        "spikes": []
+      },
+      {
+        "min": 91,
+        "max": 148,
+        "means": [
+          120.92926829268292,
+          116.96829268292683,
+          117.6780487804878,
+          117.51100244498778,
+          118.54034229828851
+        ],
+        "spikes": []
+      }
+    ]
+  },
+  {
+    "seq": 1595,
+    "sample_s": 2e-9,
+    "channels": [
+      {
+        "min": 86,
+        "max": 150,
+        "means": [
+          122.34634146341463,
+          113.12682926829268,
+          112.49756097560976,
+          123.75061124694376,
+          123.55501222493888
+        ],
+        "spikes": []
+      },
+      {
+        "min": 91,
+        "max": 148,
+        "means": [
+          117.17317073170732,
+          118.04634146341463,
+          118.04878048780488,
+          118.880195599022,
+          121.28117359413203
+        ],
+        "spikes": []
+      }
+    ]
+  },
+  {
+    "seq": 1596,
+    "sample_s": 2e-9,
+    "channels": [
+      {
+        "min": 86,
+        "max": 150,
+        "means": [
+          112.6829268292683,
+          112.03170731707317,
+          123.3390243902439,
+          123.32029339853301,
+          122.00244498777506
+        ],
+        "spikes": []
+      },
+      {
+        "min": 91,
+        "max": 148,
+        "means": [
+          117.85121951219512,
+          117.76341463414634,
+          118.5609756097561,
+          121.02444987775061,
+          117.00244498777506
+        ],
+        "spikes": []
+      }
+    ]
+  },
+  {
+    "seq": 1597,
+    "sample_s": 2e-9,
+    "channels": [
+      {
+        "min": 86,
+        "max": 150,
+        "means": [
+          122.2390243902439,
+          113,
+          112.23414634146341,
+          123.52078239608802,
+          123.38386308068459
+        ],
+        "spikes": []
+      },
+      {
+        "min": 91,
+        "max": 148,
+        "means": [
+          117.22682926829269,
+          117.82682926829268,
+          117.69268292682926,
+          118.74327628361858,
+          121.1882640586797
+        ],
+        "spikes": []
+      }
+    ]
+  },
+  {
+    "seq": 1598,
+    "sample_s": 2e-9,
+    "channels": [
+      {
+        "min": 86,
+        "max": 150,
+        "means": [
+          123.92926829268292,
+          122.62682926829268,
+          113.27073170731707,
+          112.62347188264059,
+          124
+        ],
+        "spikes": []
+      },
+      {
+        "min": 91,
+        "max": 148,
+        "means": [
+          121.71219512195123,
+          117.72682926829269,
+          118.44634146341464,
+          118.27383863080685,
+          119.15403422982885
+        ],
+        "spikes": []
+      }
+    ]
+  },
+  {
+    "seq": 1599,
+    "sample_s": 2e-9,
+    "channels": [
+      {
+        "min": 86,
+        "max": 150,
+        "means": [
+          123.35853658536585,
+          122.04878048780488,
+          112.75365853658536,
+          112.13691931540342,
+          123.51100244498778
+        ],
+        "spikes": []
+      },
+      {
+        "min": 91,
+        "max": 255,
+        "means": [
+          121.1609756097561,
+          117.16829268292683,
+          123.29268292682927,
+          117.72371638141809,
+          118.87775061124694
+        ],
+        "spikes": [
+          {
+            "i": 67,
+            "value": 135,
+            "expected": 197.5,
+            "residual": -62.5,
+            "phase": 2
+          },
+          {
+            "i": 72,
+            "value": 255,
+            "expected": 127,
+            "residual": 128,
+            "phase": 2
+          },
+          {
+            "i": 77,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 2
+          },
+          {
+            "i": 267,
+            "value": 135,
+            "expected": 197,
+            "residual": -62,
+            "phase": 2
+          },
+          {
+            "i": 272,
+            "value": 255,
+            "expected": 127,
+            "residual": 128,
+            "phase": 2
+          },
+          {
+            "i": 277,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 2
+          },
+          {
+            "i": 367,
+            "value": 135,
+            "expected": 197.5,
+            "residual": -62.5,
+            "phase": 2
+          },
+          {
+            "i": 372,
+            "value": 255,
+            "expected": 127,
+            "residual": 128,
+            "phase": 2
+          },
+          {
+            "i": 377,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 2
+          },
+          {
+            "i": 467,
+            "value": 135,
+            "expected": 197,
+            "residual": -62,
+            "phase": 2
+          },
+          {
+            "i": 472,
+            "value": 255,
+            "expected": 127,
+            "residual": 128,
+            "phase": 2
+          },
+          {
+            "i": 477,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 2
+          },
+          {
+            "i": 567,
+            "value": 134,
+            "expected": 197,
+            "residual": -63,
+            "phase": 2
+          },
+          {
+            "i": 572,
+            "value": 255,
+            "expected": 126.5,
+            "residual": 128.5,
+            "phase": 2
+          },
+          {
+            "i": 577,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 2
+          },
+          {
+            "i": 667,
+            "value": 134,
+            "expected": 197,
+            "residual": -63,
+            "phase": 2
+          },
+          {
+            "i": 672,
+            "value": 255,
+            "expected": 126.5,
+            "residual": 128.5,
+            "phase": 2
+          },
+          {
+            "i": 677,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 2
+          },
+          {
+            "i": 767,
+            "value": 135,
+            "expected": 197,
+            "residual": -62,
+            "phase": 2
+          },
+          {
+            "i": 772,
+            "value": 255,
+            "expected": 127,
+            "residual": 128,
+            "phase": 2
+          },
+          {
+            "i": 777,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 2
+          },
+          {
+            "i": 867,
+            "value": 134,
+            "expected": 197,
+            "residual": -63,
+            "phase": 2
+          },
+          {
+            "i": 872,
+            "value": 255,
+            "expected": 127,
+            "residual": 128,
+            "phase": 2
+          },
+          {
+            "i": 877,
+            "value": 120,
+            "expected": 183,
+            "residual": -63,
+            "phase": 2
+          },
+          {
+            "i": 934,
+            "value": 193,
+            "expected": 128.5,
+            "residual": 64.5,
+            "phase": 4
+          },
+          {
+            "i": 1067,
+            "value": 134,
+            "expected": 197,
+            "residual": -63,
+            "phase": 2
+          },
+          {
+            "i": 1072,
+            "value": 255,
+            "expected": 126.5,
+            "residual": 128.5,
+            "phase": 2
+          },
+          {
+            "i": 1077,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 2
+          },
+          {
+            "i": 1167,
+            "value": 134,
+            "expected": 197,
+            "residual": -63,
+            "phase": 2
+          },
+          {
+            "i": 1172,
+            "value": 255,
+            "expected": 126.5,
+            "residual": 128.5,
+            "phase": 2
+          },
+          {
+            "i": 1177,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 2
+          },
+          {
+            "i": 1267,
+            "value": 134,
+            "expected": 197,
+            "residual": -63,
+            "phase": 2
+          },
+          {
+            "i": 1272,
+            "value": 255,
+            "expected": 126.5,
+            "residual": 128.5,
+            "phase": 2
+          },
+          {
+            "i": 1277,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 2
+          },
+          {
+            "i": 1367,
+            "value": 134,
+            "expected": 197,
+            "residual": -63,
+            "phase": 2
+          },
+          {
+            "i": 1372,
+            "value": 255,
+            "expected": 126.5,
+            "residual": 128.5,
+            "phase": 2
+          },
+          {
+            "i": 1377,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 2
+          },
+          {
+            "i": 1467,
+            "value": 134,
+            "expected": 197,
+            "residual": -63,
+            "phase": 2
+          },
+          {
+            "i": 1472,
+            "value": 255,
+            "expected": 126.5,
+            "residual": 128.5,
+            "phase": 2
+          },
+          {
+            "i": 1477,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 2
+          },
+          {
+            "i": 1567,
+            "value": 135,
+            "expected": 197,
+            "residual": -62,
+            "phase": 2
+          },
+          {
+            "i": 1572,
+            "value": 255,
+            "expected": 127,
+            "residual": 128,
+            "phase": 2
+          },
+          {
+            "i": 1577,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 2
+          },
+          {
+            "i": 1667,
+            "value": 135,
+            "expected": 197,
+            "residual": -62,
+            "phase": 2
+          },
+          {
+            "i": 1672,
+            "value": 255,
+            "expected": 127,
+            "residual": 128,
+            "phase": 2
+          },
+          {
+            "i": 1677,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 2
+          },
+          {
+            "i": 1867,
+            "value": 135,
+            "expected": 197,
+            "residual": -62,
+            "phase": 2
+          },
+          {
+            "i": 1872,
+            "value": 255,
+            "expected": 127,
+            "residual": 128,
+            "phase": 2
+          },
+          {
+            "i": 1877,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 2
+          },
+          {
+            "i": 1967,
+            "value": 134,
+            "expected": 197,
+            "residual": -63,
+            "phase": 2
+          },
+          {
+            "i": 1972,
+            "value": 255,
+            "expected": 126.5,
+            "residual": 128.5,
+            "phase": 2
+          },
+          {
+            "i": 1977,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 2
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "seq": 1600,
+    "sample_s": 2e-9,
+    "channels": [
+      {
+        "min": 86,
+        "max": 150,
+        "means": [
+          112.63414634146342,
+          112.03658536585365,
+          123.3170731707317,
+          123.2958435207824,
+          122.00977995110024
+        ],
+        "spikes": []
+      },
+      {
+        "min": 91,
+        "max": 148,
+        "means": [
+          117.87073170731708,
+          117.72195121951219,
+          118.50243902439024,
+          121.04645476772616,
+          117.03667481662592
+        ],
+        "spikes": []
+      }
+    ]
+  },
+  {
+    "seq": 1601,
+    "sample_s": 2e-9,
+    "channels": [
+      {
+        "min": 86,
+        "max": 150,
+        "means": [
+          123.3219512195122,
+          122.14390243902439,
+          112.81951219512194,
+          112.01955990220048,
+          123.48166259168704
+        ],
+        "spikes": []
+      },
+      {
+        "min": 91,
+        "max": 148,
+        "means": [
+          121.09024390243903,
+          117.13414634146342,
+          117.89024390243902,
+          117.72616136919315,
+          118.53545232273838
+        ],
+        "spikes": []
+      }
+    ]
+  },
+  {
+    "seq": 1602,
+    "sample_s": 2e-9,
+    "channels": [
+      {
+        "min": 86,
+        "max": 150,
+        "means": [
+          123.4829268292683,
+          122.44878048780488,
+          113.22926829268293,
+          112.45232273838631,
+          123.77506112469437
+        ],
+        "spikes": []
+      },
+      {
+        "min": 91,
+        "max": 252,
+        "means": [
+          121.3390243902439,
+          118.12439024390244,
+          118.05365853658536,
+          117.87530562347189,
+          119.0122249388753
+        ],
+        "spikes": [
+          {
+            "i": 561,
+            "value": 132,
+            "expected": 194.5,
+            "residual": -62.5,
+            "phase": 1
+          },
+          {
+            "i": 566,
+            "value": 252,
+            "expected": 124,
+            "residual": 128,
+            "phase": 1
+          },
+          {
+            "i": 571,
+            "value": 116,
+            "expected": 179.5,
+            "residual": -63.5,
+            "phase": 1
+          },
+          {
+            "i": 1861,
+            "value": 131,
+            "expected": 194.5,
+            "residual": -63.5,
+            "phase": 1
+          },
+          {
+            "i": 1866,
+            "value": 252,
+            "expected": 123.5,
+            "residual": 128.5,
+            "phase": 1
+          },
+          {
+            "i": 1871,
+            "value": 116,
+            "expected": 179.5,
+            "residual": -63.5,
+            "phase": 1
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "seq": 1603,
+    "sample_s": 2e-9,
+    "channels": [
+      {
+        "min": 86,
+        "max": 150,
+        "means": [
+          124.06829268292682,
+          123.89512195121951,
+          122.72195121951219,
+          113.57946210268949,
+          112.81662591687042
+        ],
+        "spikes": []
+      },
+      {
+        "min": 91,
+        "max": 148,
+        "means": [
+          119.3390243902439,
+          121.61951219512196,
+          117.85121951219512,
+          118.32518337408312,
+          118.2885085574572
+        ],
+        "spikes": []
+      }
+    ]
+  },
+  {
+    "seq": 1604,
+    "sample_s": 2e-9,
+    "channels": [
+      {
+        "min": 86,
+        "max": 150,
+        "means": [
+          111.8609756097561,
+          123.26585365853659,
+          123.22682926829269,
+          121.92909535452323,
+          112.56234718826406
+        ],
+        "spikes": []
+      },
+      {
+        "min": 91,
+        "max": 255,
+        "means": [
+          117.91463414634147,
+          118.53414634146341,
+          121.0170731707317,
+          118.81662591687042,
+          117.70660146699267
+        ],
+        "spikes": [
+          {
+            "i": 793,
+            "value": 133,
+            "expected": 197,
+            "residual": -64,
+            "phase": 3
+          },
+          {
+            "i": 798,
+            "value": 255,
+            "expected": 126,
+            "residual": 129,
+            "phase": 3
+          },
+          {
+            "i": 803,
+            "value": 119,
+            "expected": 182,
+            "residual": -63,
+            "phase": 3
+          },
+          {
+            "i": 893,
+            "value": 135,
+            "expected": 197,
+            "residual": -62,
+            "phase": 3
+          },
+          {
+            "i": 898,
+            "value": 255,
+            "expected": 127.5,
+            "residual": 127.5,
+            "phase": 3
+          },
+          {
+            "i": 903,
+            "value": 120,
+            "expected": 182,
+            "residual": -62,
+            "phase": 3
+          },
+          {
+            "i": 1193,
+            "value": 135,
+            "expected": 197,
+            "residual": -62,
+            "phase": 3
+          },
+          {
+            "i": 1198,
+            "value": 255,
+            "expected": 127,
+            "residual": 128,
+            "phase": 3
+          },
+          {
+            "i": 1203,
+            "value": 119,
+            "expected": 182,
+            "residual": -63,
+            "phase": 3
+          },
+          {
+            "i": 1693,
+            "value": 135,
+            "expected": 197,
+            "residual": -62,
+            "phase": 3
+          },
+          {
+            "i": 1698,
+            "value": 255,
+            "expected": 127,
+            "residual": 128,
+            "phase": 3
+          },
+          {
+            "i": 1703,
+            "value": 119,
+            "expected": 182,
+            "residual": -63,
+            "phase": 3
+          },
+          {
+            "i": 1893,
+            "value": 133,
+            "expected": 197,
+            "residual": -64,
+            "phase": 3
+          },
+          {
+            "i": 1898,
+            "value": 255,
+            "expected": 126,
+            "residual": 129,
+            "phase": 3
+          },
+          {
+            "i": 1903,
+            "value": 119,
+            "expected": 182,
+            "residual": -63,
+            "phase": 3
+          },
+          {
+            "i": 1993,
+            "value": 135,
+            "expected": 197,
+            "residual": -62,
+            "phase": 3
+          },
+          {
+            "i": 1998,
+            "value": 255,
+            "expected": 127.5,
+            "residual": 127.5,
+            "phase": 3
+          },
+          {
+            "i": 2003,
+            "value": 120,
+            "expected": 182.5,
+            "residual": -62.5,
+            "phase": 3
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "seq": 1605,
+    "sample_s": 2e-9,
+    "channels": [
+      {
+        "min": 86,
+        "max": 150,
+        "means": [
+          123.27317073170731,
+          121.96341463414635,
+          112.60243902439025,
+          112.06845965770171,
+          123.34474327628362
+        ],
+        "spikes": []
+      },
+      {
+        "min": 91,
+        "max": 148,
+        "means": [
+          120.99512195121952,
+          117.0390243902439,
+          117.66585365853659,
+          117.78728606356968,
+          118.51833740831296
+        ],
+        "spikes": []
+      }
+    ]
+  },
+  {
+    "seq": 1606,
+    "sample_s": 2e-9,
+    "channels": [
+      {
+        "min": 86,
+        "max": 150,
+        "means": [
+          123.88780487804878,
+          122.61951219512196,
+          113.24634146341464,
+          112.7041564792176,
+          123.98044009779952
+        ],
+        "spikes": []
+      },
+      {
+        "min": 91,
+        "max": 255,
+        "means": [
+          121.60243902439025,
+          120.54878048780488,
+          118.42439024390244,
+          118.40342298288509,
+          119.10513447432763
+        ],
+        "spikes": [
+          {
+            "i": 541,
+            "value": 135,
+            "expected": 197.5,
+            "residual": -62.5,
+            "phase": 1
+          },
+          {
+            "i": 546,
+            "value": 255,
+            "expected": 127.5,
+            "residual": 127.5,
+            "phase": 1
+          },
+          {
+            "i": 551,
+            "value": 120,
+            "expected": 182.5,
+            "residual": -62.5,
+            "phase": 1
+          },
+          {
+            "i": 941,
+            "value": 135,
+            "expected": 197,
+            "residual": -62,
+            "phase": 1
+          },
+          {
+            "i": 946,
+            "value": 255,
+            "expected": 127.5,
+            "residual": 127.5,
+            "phase": 1
+          },
+          {
+            "i": 951,
+            "value": 120,
+            "expected": 182,
+            "residual": -62,
+            "phase": 1
+          },
+          {
+            "i": 1241,
+            "value": 134,
+            "expected": 197,
+            "residual": -63,
+            "phase": 1
+          },
+          {
+            "i": 1246,
+            "value": 255,
+            "expected": 127,
+            "residual": 128,
+            "phase": 1
+          },
+          {
+            "i": 1251,
+            "value": 120,
+            "expected": 182,
+            "residual": -62,
+            "phase": 1
+          },
+          {
+            "i": 1341,
+            "value": 133,
+            "expected": 197,
+            "residual": -64,
+            "phase": 1
+          },
+          {
+            "i": 1346,
+            "value": 255,
+            "expected": 126,
+            "residual": 129,
+            "phase": 1
+          },
+          {
+            "i": 1351,
+            "value": 119,
+            "expected": 182,
+            "residual": -63,
+            "phase": 1
+          },
+          {
+            "i": 1441,
+            "value": 133,
+            "expected": 197,
+            "residual": -64,
+            "phase": 1
+          },
+          {
+            "i": 1446,
+            "value": 255,
+            "expected": 126,
+            "residual": 129,
+            "phase": 1
+          },
+          {
+            "i": 1451,
+            "value": 119,
+            "expected": 182,
+            "residual": -63,
+            "phase": 1
+          },
+          {
+            "i": 1541,
+            "value": 135,
+            "expected": 197,
+            "residual": -62,
+            "phase": 1
+          },
+          {
+            "i": 1546,
+            "value": 255,
+            "expected": 127,
+            "residual": 128,
+            "phase": 1
+          },
+          {
+            "i": 1551,
+            "value": 119,
+            "expected": 182,
+            "residual": -63,
+            "phase": 1
+          },
+          {
+            "i": 1641,
+            "value": 133,
+            "expected": 197,
+            "residual": -64,
+            "phase": 1
+          },
+          {
+            "i": 1646,
+            "value": 255,
+            "expected": 126,
+            "residual": 129,
+            "phase": 1
+          },
+          {
+            "i": 1651,
+            "value": 119,
+            "expected": 182,
+            "residual": -63,
+            "phase": 1
+          },
+          {
+            "i": 1841,
+            "value": 133,
+            "expected": 197,
+            "residual": -64,
+            "phase": 1
+          },
+          {
+            "i": 1846,
+            "value": 255,
+            "expected": 126,
+            "residual": 129,
+            "phase": 1
+          },
+          {
+            "i": 1851,
+            "value": 119,
+            "expected": 182,
+            "residual": -63,
+            "phase": 1
+          },
+          {
+            "i": 1941,
+            "value": 135,
+            "expected": 197.5,
+            "residual": -62.5,
+            "phase": 1
+          },
+          {
+            "i": 1946,
+            "value": 255,
+            "expected": 127.5,
+            "residual": 127.5,
+            "phase": 1
+          },
+          {
+            "i": 1951,
+            "value": 120,
+            "expected": 182,
+            "residual": -62,
+            "phase": 1
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "seq": 1607,
+    "sample_s": 2e-9,
+    "channels": [
+      {
+        "min": 86,
+        "max": 150,
+        "means": [
+          122.56341463414634,
+          113.14146341463415,
+          112.46341463414635,
+          123.83129584352078,
+          123.73838630806846
+        ],
+        "spikes": []
+      },
+      {
+        "min": 91,
+        "max": 255,
+        "means": [
+          117.31219512195122,
+          118.04878048780488,
+          118.5390243902439,
+          118.9877750611247,
+          121.37897310513448
+        ],
+        "spikes": [
+          {
+            "i": 1084,
+            "value": 195,
+            "expected": 131,
+            "residual": 64,
+            "phase": 4
+          },
+          {
+            "i": 1117,
+            "value": 133,
+            "expected": 197,
+            "residual": -64,
+            "phase": 2
+          },
+          {
+            "i": 1122,
+            "value": 255,
+            "expected": 125.5,
+            "residual": 129.5,
+            "phase": 2
+          },
+          {
+            "i": 1127,
+            "value": 118,
+            "expected": 183,
+            "residual": -65,
+            "phase": 2
+          },
+          {
+            "i": 2017,
+            "value": 133,
+            "expected": 197,
+            "residual": -64,
+            "phase": 2
+          },
+          {
+            "i": 2022,
+            "value": 255,
+            "expected": 126,
+            "residual": 129,
+            "phase": 2
+          },
+          {
+            "i": 2027,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 2
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "seq": 1608,
+    "sample_s": 2e-9,
+    "channels": [
+      {
+        "min": 86,
+        "max": 150,
+        "means": [
+          113.45121951219512,
+          112.80731707317074,
+          124.09756097560975,
+          123.85085574572128,
+          122.66503667481662
+        ],
+        "spikes": []
+      },
+      {
+        "min": 91,
+        "max": 149,
+        "means": [
+          118.31463414634146,
+          118.24146341463414,
+          119.3048780487805,
+          121.6601466992665,
+          117.87530562347189
+        ],
+        "spikes": []
+      }
+    ]
+  },
+  {
+    "seq": 1609,
+    "sample_s": 2e-9,
+    "channels": [
+      {
+        "min": 86,
+        "max": 150,
+        "means": [
+          123.1170731707317,
+          121.99756097560976,
+          112.77560975609757,
+          111.99266503667482,
+          123.24205378973105
+        ],
+        "spikes": []
+      },
+      {
+        "min": 91,
+        "max": 251,
+        "means": [
+          120.97073170731707,
+          117.56341463414634,
+          117.65365853658537,
+          117.73105134474328,
+          118.59413202933985
+        ],
+        "spikes": [
+          {
+            "i": 1081,
+            "value": 131,
+            "expected": 194,
+            "residual": -63,
+            "phase": 1
+          },
+          {
+            "i": 1086,
+            "value": 251,
+            "expected": 123,
+            "residual": 128,
+            "phase": 1
+          },
+          {
+            "i": 1091,
+            "value": 115,
+            "expected": 178,
+            "residual": -63,
+            "phase": 1
+          },
+          {
+            "i": 1381,
+            "value": 130,
+            "expected": 194,
+            "residual": -64,
+            "phase": 1
+          },
+          {
+            "i": 1386,
+            "value": 251,
+            "expected": 122.5,
+            "residual": 128.5,
+            "phase": 1
+          },
+          {
+            "i": 1391,
+            "value": 115,
+            "expected": 178,
+            "residual": -63,
+            "phase": 1
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "seq": 1610,
+    "sample_s": 2e-9,
+    "channels": [
+      {
+        "min": 86,
+        "max": 150,
+        "means": [
+          112.66341463414633,
+          112.0439024390244,
+          123.32682926829268,
+          123.28361858190709,
+          121.98044009779952
+        ],
+        "spikes": []
+      },
+      {
+        "min": 90,
+        "max": 255,
+        "means": [
+          117.59512195121951,
+          117.59512195121951,
+          118.43170731707318,
+          120.87041564792176,
+          121.4718826405868
+        ],
+        "spikes": [
+          {
+            "i": 9,
+            "value": 118,
+            "expected": 181.5,
+            "residual": -63.5,
+            "phase": 4
+          },
+          {
+            "i": 199,
+            "value": 133,
+            "expected": 197,
+            "residual": -64,
+            "phase": 4
+          },
+          {
+            "i": 204,
+            "value": 255,
+            "expected": 125.5,
+            "residual": 129.5,
+            "phase": 4
+          },
+          {
+            "i": 209,
+            "value": 118,
+            "expected": 182,
+            "residual": -64,
+            "phase": 4
+          },
+          {
+            "i": 299,
+            "value": 133,
+            "expected": 196.5,
+            "residual": -63.5,
+            "phase": 4
+          },
+          {
+            "i": 304,
+            "value": 255,
+            "expected": 125,
+            "residual": 130,
+            "phase": 4
+          },
+          {
+            "i": 309,
+            "value": 117,
+            "expected": 182,
+            "residual": -65,
+            "phase": 4
+          },
+          {
+            "i": 399,
+            "value": 133,
+            "expected": 197,
+            "residual": -64,
+            "phase": 4
+          },
+          {
+            "i": 404,
+            "value": 255,
+            "expected": 126,
+            "residual": 129,
+            "phase": 4
+          },
+          {
+            "i": 409,
+            "value": 119,
+            "expected": 182,
+            "residual": -63,
+            "phase": 4
+          },
+          {
+            "i": 499,
+            "value": 133,
+            "expected": 196.5,
+            "residual": -63.5,
+            "phase": 4
+          },
+          {
+            "i": 504,
+            "value": 255,
+            "expected": 125.5,
+            "residual": 129.5,
+            "phase": 4
+          },
+          {
+            "i": 509,
+            "value": 118,
+            "expected": 182,
+            "residual": -64,
+            "phase": 4
+          },
+          {
+            "i": 599,
+            "value": 134,
+            "expected": 196.5,
+            "residual": -62.5,
+            "phase": 4
+          },
+          {
+            "i": 604,
+            "value": 254,
+            "expected": 126,
+            "residual": 128,
+            "phase": 4
+          },
+          {
+            "i": 609,
+            "value": 118,
+            "expected": 181.5,
+            "residual": -63.5,
+            "phase": 4
+          },
+          {
+            "i": 699,
+            "value": 133,
+            "expected": 197,
+            "residual": -64,
+            "phase": 4
+          },
+          {
+            "i": 704,
+            "value": 255,
+            "expected": 125.5,
+            "residual": 129.5,
+            "phase": 4
+          },
+          {
+            "i": 709,
+            "value": 118,
+            "expected": 182,
+            "residual": -64,
+            "phase": 4
+          },
+          {
+            "i": 799,
+            "value": 133,
+            "expected": 196,
+            "residual": -63,
+            "phase": 4
+          },
+          {
+            "i": 804,
+            "value": 253,
+            "expected": 125.5,
+            "residual": 127.5,
+            "phase": 4
+          },
+          {
+            "i": 809,
+            "value": 118,
+            "expected": 181,
+            "residual": -63,
+            "phase": 4
+          },
+          {
+            "i": 899,
+            "value": 133,
+            "expected": 197,
+            "residual": -64,
+            "phase": 4
+          },
+          {
+            "i": 904,
+            "value": 255,
+            "expected": 125.5,
+            "residual": 129.5,
+            "phase": 4
+          },
+          {
+            "i": 909,
+            "value": 118,
+            "expected": 182,
+            "residual": -64,
+            "phase": 4
+          },
+          {
+            "i": 999,
+            "value": 133,
+            "expected": 197,
+            "residual": -64,
+            "phase": 4
+          },
+          {
+            "i": 1004,
+            "value": 255,
+            "expected": 125.5,
+            "residual": 129.5,
+            "phase": 4
+          },
+          {
+            "i": 1009,
+            "value": 118,
+            "expected": 182,
+            "residual": -64,
+            "phase": 4
+          },
+          {
+            "i": 1199,
+            "value": 133,
+            "expected": 197,
+            "residual": -64,
+            "phase": 4
+          },
+          {
+            "i": 1204,
+            "value": 255,
+            "expected": 126,
+            "residual": 129,
+            "phase": 4
+          },
+          {
+            "i": 1209,
+            "value": 119,
+            "expected": 182,
+            "residual": -63,
+            "phase": 4
+          },
+          {
+            "i": 1299,
+            "value": 133,
+            "expected": 197,
+            "residual": -64,
+            "phase": 4
+          },
+          {
+            "i": 1304,
+            "value": 255,
+            "expected": 125.5,
+            "residual": 129.5,
+            "phase": 4
+          },
+          {
+            "i": 1309,
+            "value": 118,
+            "expected": 182,
+            "residual": -64,
+            "phase": 4
+          },
+          {
+            "i": 1499,
+            "value": 133,
+            "expected": 197,
+            "residual": -64,
+            "phase": 4
+          },
+          {
+            "i": 1504,
+            "value": 255,
+            "expected": 125,
+            "residual": 130,
+            "phase": 4
+          },
+          {
+            "i": 1509,
+            "value": 117,
+            "expected": 182,
+            "residual": -65,
+            "phase": 4
+          },
+          {
+            "i": 1799,
+            "value": 133,
+            "expected": 197,
+            "residual": -64,
+            "phase": 4
+          },
+          {
+            "i": 1804,
+            "value": 255,
+            "expected": 125.5,
+            "residual": 129.5,
+            "phase": 4
+          },
+          {
+            "i": 1809,
+            "value": 118,
+            "expected": 182,
+            "residual": -64,
+            "phase": 4
+          },
+          {
+            "i": 1899,
+            "value": 133,
+            "expected": 196.5,
+            "residual": -63.5,
+            "phase": 4
+          },
+          {
+            "i": 1904,
+            "value": 254,
+            "expected": 125.5,
+            "residual": 128.5,
+            "phase": 4
+          },
+          {
+            "i": 1909,
+            "value": 118,
+            "expected": 181.5,
+            "residual": -63.5,
+            "phase": 4
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "seq": 1611,
+    "sample_s": 2e-9,
+    "channels": [
+      {
+        "min": 86,
+        "max": 149,
+        "means": [
+          122.1951219512195,
+          112.83658536585367,
+          112.27804878048781,
+          123.5281173594132,
+          123.4278728606357
+        ],
+        "spikes": []
+      },
+      {
+        "min": 91,
+        "max": 148,
+        "means": [
+          117.33170731707317,
+          118.12926829268292,
+          117.98780487804878,
+          118.77261613691931,
+          121.27872860635696
+        ],
+        "spikes": []
+      }
+    ]
+  },
+  {
+    "seq": 1612,
+    "sample_s": 2e-9,
+    "channels": [
+      {
+        "min": 86,
+        "max": 150,
+        "means": [
+          124.10731707317073,
+          123.95853658536585,
+          122.80731707317074,
+          113.30562347188264,
+          112.73838630806846
+        ],
+        "spikes": []
+      },
+      {
+        "min": 90,
+        "max": 255,
+        "means": [
+          119.22439024390243,
+          121.68536585365854,
+          117.71219512195123,
+          121.2200488997555,
+          118.29095354523227
+        ],
+        "spikes": [
+          {
+            "i": 533,
+            "value": 135,
+            "expected": 197,
+            "residual": -62,
+            "phase": 3
+          },
+          {
+            "i": 538,
+            "value": 255,
+            "expected": 127,
+            "residual": 128,
+            "phase": 3
+          },
+          {
+            "i": 543,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 3
+          },
+          {
+            "i": 833,
+            "value": 135,
+            "expected": 197,
+            "residual": -62,
+            "phase": 3
+          },
+          {
+            "i": 838,
+            "value": 255,
+            "expected": 127.5,
+            "residual": 127.5,
+            "phase": 3
+          },
+          {
+            "i": 843,
+            "value": 120,
+            "expected": 183,
+            "residual": -63,
+            "phase": 3
+          },
+          {
+            "i": 933,
+            "value": 135,
+            "expected": 197,
+            "residual": -62,
+            "phase": 3
+          },
+          {
+            "i": 938,
+            "value": 255,
+            "expected": 127.5,
+            "residual": 127.5,
+            "phase": 3
+          },
+          {
+            "i": 943,
+            "value": 120,
+            "expected": 183.5,
+            "residual": -63.5,
+            "phase": 3
+          },
+          {
+            "i": 1233,
+            "value": 134,
+            "expected": 197,
+            "residual": -63,
+            "phase": 3
+          },
+          {
+            "i": 1238,
+            "value": 255,
+            "expected": 126.5,
+            "residual": 128.5,
+            "phase": 3
+          },
+          {
+            "i": 1243,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 3
+          },
+          {
+            "i": 1533,
+            "value": 134,
+            "expected": 197,
+            "residual": -63,
+            "phase": 3
+          },
+          {
+            "i": 1538,
+            "value": 255,
+            "expected": 126.5,
+            "residual": 128.5,
+            "phase": 3
+          },
+          {
+            "i": 1543,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 3
+          },
+          {
+            "i": 1633,
+            "value": 135,
+            "expected": 197,
+            "residual": -62,
+            "phase": 3
+          },
+          {
+            "i": 1638,
+            "value": 255,
+            "expected": 127,
+            "residual": 128,
+            "phase": 3
+          },
+          {
+            "i": 1643,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 3
+          },
+          {
+            "i": 1833,
+            "value": 133,
+            "expected": 197,
+            "residual": -64,
+            "phase": 3
+          },
+          {
+            "i": 1838,
+            "value": 255,
+            "expected": 126,
+            "residual": 129,
+            "phase": 3
+          },
+          {
+            "i": 1843,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 3
+          },
+          {
+            "i": 1933,
+            "value": 133,
+            "expected": 197,
+            "residual": -64,
+            "phase": 3
+          },
+          {
+            "i": 1938,
+            "value": 255,
+            "expected": 126,
+            "residual": 129,
+            "phase": 3
+          },
+          {
+            "i": 1943,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 3
+          },
+          {
+            "i": 2033,
+            "value": 135,
+            "expected": 197,
+            "residual": -62,
+            "phase": 3
+          },
+          {
+            "i": 2038,
+            "value": 255,
+            "expected": 127.5,
+            "residual": 127.5,
+            "phase": 3
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "seq": 1613,
+    "sample_s": 2e-9,
+    "channels": [
+      {
+        "min": 86,
+        "max": 150,
+        "means": [
+          112.66341463414633,
+          112.03414634146341,
+          123.29756097560976,
+          123.24938875305624,
+          121.99755501222494
+        ],
+        "spikes": []
+      },
+      {
+        "min": 91,
+        "max": 255,
+        "means": [
+          117.7560975609756,
+          117.79268292682927,
+          118.48536585365854,
+          120.97310513447432,
+          118.30073349633251
+        ],
+        "spikes": [
+          {
+            "i": 199,
+            "value": 135,
+            "expected": 197,
+            "residual": -62,
+            "phase": 4
+          },
+          {
+            "i": 204,
+            "value": 255,
+            "expected": 127,
+            "residual": 128,
+            "phase": 4
+          },
+          {
+            "i": 209,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 4
+          },
+          {
+            "i": 1499,
+            "value": 135,
+            "expected": 197,
+            "residual": -62,
+            "phase": 4
+          },
+          {
+            "i": 1504,
+            "value": 255,
+            "expected": 127,
+            "residual": 128,
+            "phase": 4
+          },
+          {
+            "i": 1509,
+            "value": 119,
+            "expected": 182,
+            "residual": -63,
+            "phase": 4
+          },
+          {
+            "i": 1899,
+            "value": 135,
+            "expected": 197,
+            "residual": -62,
+            "phase": 4
+          },
+          {
+            "i": 1904,
+            "value": 255,
+            "expected": 127,
+            "residual": 128,
+            "phase": 4
+          },
+          {
+            "i": 1909,
+            "value": 119,
+            "expected": 182,
+            "residual": -63,
+            "phase": 4
+          },
+          {
+            "i": 1999,
+            "value": 133,
+            "expected": 197.5,
+            "residual": -64.5,
+            "phase": 4
+          },
+          {
+            "i": 2004,
+            "value": 255,
+            "expected": 126,
+            "residual": 129,
+            "phase": 4
+          },
+          {
+            "i": 2009,
+            "value": 119,
+            "expected": 182.5,
+            "residual": -63.5,
+            "phase": 4
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "seq": 1614,
+    "sample_s": 2e-9,
+    "channels": [
+      {
+        "min": 87,
+        "max": 150,
+        "means": [
+          123.60731707317073,
+          122.29756097560976,
+          113.08536585365853,
+          112.50855745721272,
+          123.7799511002445
+        ],
+        "spikes": []
+      },
+      {
+        "min": 91,
+        "max": 255,
+        "means": [
+          121.28780487804877,
+          118.5609756097561,
+          118.06341463414634,
+          117.90464547677261,
+          118.92176039119805
+        ],
+        "spikes": [
+          {
+            "i": 61,
+            "value": 133,
+            "expected": 197,
+            "residual": -64,
+            "phase": 1
+          },
+          {
+            "i": 66,
+            "value": 255,
+            "expected": 126,
+            "residual": 129,
+            "phase": 1
+          },
+          {
+            "i": 71,
+            "value": 119,
+            "expected": 182,
+            "residual": -63,
+            "phase": 1
+          },
+          {
+            "i": 161,
+            "value": 133,
+            "expected": 197,
+            "residual": -64,
+            "phase": 1
+          },
+          {
+            "i": 166,
+            "value": 255,
+            "expected": 125.5,
+            "residual": 129.5,
+            "phase": 1
+          },
+          {
+            "i": 171,
+            "value": 118,
+            "expected": 182,
+            "residual": -64,
+            "phase": 1
+          },
+          {
+            "i": 261,
+            "value": 133,
+            "expected": 196.5,
+            "residual": -63.5,
+            "phase": 1
+          },
+          {
+            "i": 266,
+            "value": 254,
+            "expected": 125.5,
+            "residual": 128.5,
+            "phase": 1
+          },
+          {
+            "i": 271,
+            "value": 118,
+            "expected": 181.5,
+            "residual": -63.5,
+            "phase": 1
+          },
+          {
+            "i": 1361,
+            "value": 133,
+            "expected": 197,
+            "residual": -64,
+            "phase": 1
+          },
+          {
+            "i": 1366,
+            "value": 255,
+            "expected": 125.5,
+            "residual": 129.5,
+            "phase": 1
+          },
+          {
+            "i": 1371,
+            "value": 118,
+            "expected": 182,
+            "residual": -64,
+            "phase": 1
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "seq": 1615,
+    "sample_s": 2e-9,
+    "channels": [
+      {
+        "min": 86,
+        "max": 150,
+        "means": [
+          113.3390243902439,
+          112.55853658536586,
+          123.9219512195122,
+          123.71393643031784,
+          122.52078239608802
+        ],
+        "spikes": []
+      },
+      {
+        "min": 91,
+        "max": 250,
+        "means": [
+          118.5609756097561,
+          118.1609756097561,
+          119.08536585365853,
+          121.51344743276283,
+          117.61613691931541
+        ],
+        "spikes": [
+          {
+            "i": 1955,
+            "value": 130,
+            "expected": 193,
+            "residual": -63,
+            "phase": 0
+          },
+          {
+            "i": 1960,
+            "value": 250,
+            "expected": 122.5,
+            "residual": 127.5,
+            "phase": 0
+          },
+          {
+            "i": 1965,
+            "value": 115,
+            "expected": 178.5,
+            "residual": -63.5,
+            "phase": 0
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "seq": 1616,
+    "sample_s": 2e-9,
+    "channels": [
+      {
+        "min": 86,
+        "max": 149,
+        "means": [
+          112.15853658536585,
+          123.57073170731708,
+          123.53170731707317,
+          122.25916870415648,
+          112.91687041564792
+        ],
+        "spikes": []
+      },
+      {
+        "min": 91,
+        "max": 148,
+        "means": [
+          117.87560975609756,
+          118.84146341463415,
+          121.3170731707317,
+          117.43765281173594,
+          118.13936430317848
+        ],
+        "spikes": []
+      }
+    ]
+  },
+  {
+    "seq": 1617,
+    "sample_s": 2e-9,
+    "channels": [
+      {
+        "min": 86,
+        "max": 150,
+        "means": [
+          123.91463414634147,
+          123.82926829268293,
+          122.51951219512195,
+          113.30317848410758,
+          112.5916870415648
+        ],
+        "spikes": []
+      },
+      {
+        "min": 91,
+        "max": 148,
+        "means": [
+          119.17073170731707,
+          121.59512195121951,
+          117.73414634146341,
+          118.51100244498778,
+          118.33007334963325
+        ],
+        "spikes": []
+      }
+    ]
+  },
+  {
+    "seq": 1618,
+    "sample_s": 2e-9,
+    "channels": [
+      {
+        "min": 86,
+        "max": 150,
+        "means": [
+          113.02682926829269,
+          112.31219512195122,
+          123.60975609756098,
+          123.39119804400978,
+          122.15158924205379
+        ],
+        "spikes": []
+      },
+      {
+        "min": 91,
+        "max": 253,
+        "means": [
+          117.86341463414634,
+          117.85365853658537,
+          118.69024390243902,
+          121.14914425427872,
+          122.29828850855746
+        ],
+        "spikes": [
+          {
+            "i": 9,
+            "value": 132,
+            "expected": 195.5,
+            "residual": -63.5,
+            "phase": 4
+          },
+          {
+            "i": 14,
+            "value": 253,
+            "expected": 124.5,
+            "residual": 128.5,
+            "phase": 4
+          },
+          {
+            "i": 19,
+            "value": 117,
+            "expected": 180.5,
+            "residual": -63.5,
+            "phase": 4
+          },
+          {
+            "i": 109,
+            "value": 132,
+            "expected": 195.5,
+            "residual": -63.5,
+            "phase": 4
+          },
+          {
+            "i": 114,
+            "value": 253,
+            "expected": 124.5,
+            "residual": 128.5,
+            "phase": 4
+          },
+          {
+            "i": 119,
+            "value": 117,
+            "expected": 180.5,
+            "residual": -63.5,
+            "phase": 4
+          },
+          {
+            "i": 209,
+            "value": 132,
+            "expected": 195.5,
+            "residual": -63.5,
+            "phase": 4
+          },
+          {
+            "i": 214,
+            "value": 253,
+            "expected": 124.5,
+            "residual": 128.5,
+            "phase": 4
+          },
+          {
+            "i": 219,
+            "value": 117,
+            "expected": 180.5,
+            "residual": -63.5,
+            "phase": 4
+          },
+          {
+            "i": 609,
+            "value": 132,
+            "expected": 195.5,
+            "residual": -63.5,
+            "phase": 4
+          },
+          {
+            "i": 614,
+            "value": 253,
+            "expected": 124.5,
+            "residual": 128.5,
+            "phase": 4
+          },
+          {
+            "i": 619,
+            "value": 117,
+            "expected": 180,
+            "residual": -63,
+            "phase": 4
+          },
+          {
+            "i": 709,
+            "value": 132,
+            "expected": 195.5,
+            "residual": -63.5,
+            "phase": 4
+          },
+          {
+            "i": 714,
+            "value": 253,
+            "expected": 124.5,
+            "residual": 128.5,
+            "phase": 4
+          },
+          {
+            "i": 719,
+            "value": 117,
+            "expected": 180.5,
+            "residual": -63.5,
+            "phase": 4
+          },
+          {
+            "i": 809,
+            "value": 132,
+            "expected": 195.5,
+            "residual": -63.5,
+            "phase": 4
+          },
+          {
+            "i": 814,
+            "value": 253,
+            "expected": 124.5,
+            "residual": 128.5,
+            "phase": 4
+          },
+          {
+            "i": 819,
+            "value": 117,
+            "expected": 180.5,
+            "residual": -63.5,
+            "phase": 4
+          },
+          {
+            "i": 909,
+            "value": 132,
+            "expected": 195,
+            "residual": -63,
+            "phase": 4
+          },
+          {
+            "i": 914,
+            "value": 253,
+            "expected": 124.5,
+            "residual": 128.5,
+            "phase": 4
+          },
+          {
+            "i": 919,
+            "value": 117,
+            "expected": 180.5,
+            "residual": -63.5,
+            "phase": 4
+          },
+          {
+            "i": 1009,
+            "value": 132,
+            "expected": 196,
+            "residual": -64,
+            "phase": 4
+          },
+          {
+            "i": 1014,
+            "value": 253,
+            "expected": 124.5,
+            "residual": 128.5,
+            "phase": 4
+          },
+          {
+            "i": 1019,
+            "value": 117,
+            "expected": 180.5,
+            "residual": -63.5,
+            "phase": 4
+          },
+          {
+            "i": 1109,
+            "value": 132,
+            "expected": 195,
+            "residual": -63,
+            "phase": 4
+          },
+          {
+            "i": 1114,
+            "value": 253,
+            "expected": 124.5,
+            "residual": 128.5,
+            "phase": 4
+          },
+          {
+            "i": 1119,
+            "value": 117,
+            "expected": 180.5,
+            "residual": -63.5,
+            "phase": 4
+          },
+          {
+            "i": 1209,
+            "value": 132,
+            "expected": 195,
+            "residual": -63,
+            "phase": 4
+          },
+          {
+            "i": 1214,
+            "value": 253,
+            "expected": 124.5,
+            "residual": 128.5,
+            "phase": 4
+          },
+          {
+            "i": 1219,
+            "value": 117,
+            "expected": 180.5,
+            "residual": -63.5,
+            "phase": 4
+          },
+          {
+            "i": 1309,
+            "value": 132,
+            "expected": 195,
+            "residual": -63,
+            "phase": 4
+          },
+          {
+            "i": 1314,
+            "value": 253,
+            "expected": 124.5,
+            "residual": 128.5,
+            "phase": 4
+          },
+          {
+            "i": 1319,
+            "value": 117,
+            "expected": 180.5,
+            "residual": -63.5,
+            "phase": 4
+          },
+          {
+            "i": 1409,
+            "value": 132,
+            "expected": 195,
+            "residual": -63,
+            "phase": 4
+          },
+          {
+            "i": 1414,
+            "value": 253,
+            "expected": 124.5,
+            "residual": 128.5,
+            "phase": 4
+          },
+          {
+            "i": 1419,
+            "value": 117,
+            "expected": 180.5,
+            "residual": -63.5,
+            "phase": 4
+          },
+          {
+            "i": 1509,
+            "value": 132,
+            "expected": 195.5,
+            "residual": -63.5,
+            "phase": 4
+          },
+          {
+            "i": 1514,
+            "value": 253,
+            "expected": 124.5,
+            "residual": 128.5,
+            "phase": 4
+          },
+          {
+            "i": 1519,
+            "value": 117,
+            "expected": 180.5,
+            "residual": -63.5,
+            "phase": 4
+          },
+          {
+            "i": 1609,
+            "value": 132,
+            "expected": 195,
+            "residual": -63,
+            "phase": 4
+          },
+          {
+            "i": 1614,
+            "value": 253,
+            "expected": 124.5,
+            "residual": 128.5,
+            "phase": 4
+          },
+          {
+            "i": 1619,
+            "value": 117,
+            "expected": 180.5,
+            "residual": -63.5,
+            "phase": 4
+          },
+          {
+            "i": 1709,
+            "value": 132,
+            "expected": 195.5,
+            "residual": -63.5,
+            "phase": 4
+          },
+          {
+            "i": 1714,
+            "value": 253,
+            "expected": 124.5,
+            "residual": 128.5,
+            "phase": 4
+          },
+          {
+            "i": 1719,
+            "value": 117,
+            "expected": 180.5,
+            "residual": -63.5,
+            "phase": 4
+          },
+          {
+            "i": 2009,
+            "value": 132,
+            "expected": 195,
+            "residual": -63,
+            "phase": 4
+          },
+          {
+            "i": 2014,
+            "value": 253,
+            "expected": 124,
+            "residual": 129,
+            "phase": 4
+          },
+          {
+            "i": 2019,
+            "value": 116,
+            "expected": 180.5,
+            "residual": -64.5,
+            "phase": 4
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "seq": 1619,
+    "sample_s": 2e-9,
+    "channels": [
+      {
+        "min": 86,
+        "max": 150,
+        "means": [
+          112.70731707317073,
+          112.07560975609756,
+          123.44878048780488,
+          123.30317848410758,
+          122.14425427872861
+        ],
+        "spikes": []
+      },
+      {
+        "min": 91,
+        "max": 148,
+        "means": [
+          117.67073170731707,
+          117.58292682926829,
+          118.48780487804878,
+          120.91198044009779,
+          116.84841075794621
+        ],
+        "spikes": []
+      }
+    ]
+  },
+  {
+    "seq": 1620,
+    "sample_s": 2e-9,
+    "channels": [
+      {
+        "min": 86,
+        "max": 150,
+        "means": [
+          112.0439024390244,
+          123.49512195121952,
+          123.27073170731707,
+          122.02689486552568,
+          112.77261613691931
+        ],
+        "spikes": []
+      },
+      {
+        "min": 91,
+        "max": 253,
+        "means": [
+          118.29024390243903,
+          118.6609756097561,
+          121.08536585365853,
+          123.39853300733496,
+          117.68948655256723
+        ],
+        "spikes": [
+          {
+            "i": 73,
+            "value": 132,
+            "expected": 195.5,
+            "residual": -63.5,
+            "phase": 3
+          },
+          {
+            "i": 78,
+            "value": 253,
+            "expected": 124.5,
+            "residual": 128.5,
+            "phase": 3
+          },
+          {
+            "i": 83,
+            "value": 117,
+            "expected": 180,
+            "residual": -63,
+            "phase": 3
+          },
+          {
+            "i": 173,
+            "value": 132,
+            "expected": 195.5,
+            "residual": -63.5,
+            "phase": 3
+          },
+          {
+            "i": 178,
+            "value": 253,
+            "expected": 124.5,
+            "residual": 128.5,
+            "phase": 3
+          },
+          {
+            "i": 183,
+            "value": 117,
+            "expected": 180,
+            "residual": -63,
+            "phase": 3
+          },
+          {
+            "i": 240,
+            "value": 195,
+            "expected": 130,
+            "residual": 65,
+            "phase": 0
+          },
+          {
+            "i": 273,
+            "value": 132,
+            "expected": 194.5,
+            "residual": -62.5,
+            "phase": 3
+          },
+          {
+            "i": 278,
+            "value": 252,
+            "expected": 124.5,
+            "residual": 127.5,
+            "phase": 3
+          },
+          {
+            "i": 283,
+            "value": 117,
+            "expected": 179.5,
+            "residual": -62.5,
+            "phase": 3
+          },
+          {
+            "i": 373,
+            "value": 132,
+            "expected": 195,
+            "residual": -63,
+            "phase": 3
+          },
+          {
+            "i": 378,
+            "value": 253,
+            "expected": 124.5,
+            "residual": 128.5,
+            "phase": 3
+          },
+          {
+            "i": 383,
+            "value": 117,
+            "expected": 180.5,
+            "residual": -63.5,
+            "phase": 3
+          },
+          {
+            "i": 440,
+            "value": 194,
+            "expected": 130,
+            "residual": 64,
+            "phase": 0
+          },
+          {
+            "i": 473,
+            "value": 132,
+            "expected": 195,
+            "residual": -63,
+            "phase": 3
+          },
+          {
+            "i": 478,
+            "value": 253,
+            "expected": 124,
+            "residual": 129,
+            "phase": 3
+          },
+          {
+            "i": 483,
+            "value": 116,
+            "expected": 180.5,
+            "residual": -64.5,
+            "phase": 3
+          },
+          {
+            "i": 573,
+            "value": 132,
+            "expected": 194.5,
+            "residual": -62.5,
+            "phase": 3
+          },
+          {
+            "i": 578,
+            "value": 252,
+            "expected": 124,
+            "residual": 128,
+            "phase": 3
+          },
+          {
+            "i": 583,
+            "value": 116,
+            "expected": 179.5,
+            "residual": -63.5,
+            "phase": 3
+          },
+          {
+            "i": 673,
+            "value": 132,
+            "expected": 195,
+            "residual": -63,
+            "phase": 3
+          },
+          {
+            "i": 678,
+            "value": 253,
+            "expected": 124.5,
+            "residual": 128.5,
+            "phase": 3
+          },
+          {
+            "i": 683,
+            "value": 117,
+            "expected": 180,
+            "residual": -63,
+            "phase": 3
+          },
+          {
+            "i": 773,
+            "value": 132,
+            "expected": 194.5,
+            "residual": -62.5,
+            "phase": 3
+          },
+          {
+            "i": 778,
+            "value": 252,
+            "expected": 124.5,
+            "residual": 127.5,
+            "phase": 3
+          },
+          {
+            "i": 783,
+            "value": 117,
+            "expected": 180,
+            "residual": -63,
+            "phase": 3
+          },
+          {
+            "i": 873,
+            "value": 132,
+            "expected": 195,
+            "residual": -63,
+            "phase": 3
+          },
+          {
+            "i": 878,
+            "value": 253,
+            "expected": 124.5,
+            "residual": 128.5,
+            "phase": 3
+          },
+          {
+            "i": 883,
+            "value": 117,
+            "expected": 180,
+            "residual": -63,
+            "phase": 3
+          },
+          {
+            "i": 973,
+            "value": 132,
+            "expected": 195,
+            "residual": -63,
+            "phase": 3
+          },
+          {
+            "i": 978,
+            "value": 253,
+            "expected": 124.5,
+            "residual": 128.5,
+            "phase": 3
+          },
+          {
+            "i": 983,
+            "value": 117,
+            "expected": 180.5,
+            "residual": -63.5,
+            "phase": 3
+          },
+          {
+            "i": 1073,
+            "value": 132,
+            "expected": 195,
+            "residual": -63,
+            "phase": 3
+          },
+          {
+            "i": 1078,
+            "value": 253,
+            "expected": 124.5,
+            "residual": 128.5,
+            "phase": 3
+          },
+          {
+            "i": 1083,
+            "value": 117,
+            "expected": 180.5,
+            "residual": -63.5,
+            "phase": 3
+          },
+          {
+            "i": 1140,
+            "value": 193,
+            "expected": 130,
+            "residual": 63,
+            "phase": 0
+          },
+          {
+            "i": 1173,
+            "value": 132,
+            "expected": 195,
+            "residual": -63,
+            "phase": 3
+          },
+          {
+            "i": 1178,
+            "value": 253,
+            "expected": 124,
+            "residual": 129,
+            "phase": 3
+          },
+          {
+            "i": 1183,
+            "value": 116,
+            "expected": 180,
+            "residual": -64,
+            "phase": 3
+          },
+          {
+            "i": 1273,
+            "value": 132,
+            "expected": 195,
+            "residual": -63,
+            "phase": 3
+          },
+          {
+            "i": 1278,
+            "value": 253,
+            "expected": 124.5,
+            "residual": 128.5,
+            "phase": 3
+          },
+          {
+            "i": 1283,
+            "value": 117,
+            "expected": 180,
+            "residual": -63,
+            "phase": 3
+          },
+          {
+            "i": 1373,
+            "value": 132,
+            "expected": 195,
+            "residual": -63,
+            "phase": 3
+          },
+          {
+            "i": 1378,
+            "value": 253,
+            "expected": 124.5,
+            "residual": 128.5,
+            "phase": 3
+          },
+          {
+            "i": 1383,
+            "value": 117,
+            "expected": 180,
+            "residual": -63,
+            "phase": 3
+          },
+          {
+            "i": 1473,
+            "value": 132,
+            "expected": 195.5,
+            "residual": -63.5,
+            "phase": 3
+          },
+          {
+            "i": 1478,
+            "value": 253,
+            "expected": 124,
+            "residual": 129,
+            "phase": 3
+          },
+          {
+            "i": 1483,
+            "value": 116,
+            "expected": 180,
+            "residual": -64,
+            "phase": 3
+          },
+          {
+            "i": 1573,
+            "value": 132,
+            "expected": 195,
+            "residual": -63,
+            "phase": 3
+          },
+          {
+            "i": 1578,
+            "value": 253,
+            "expected": 124.5,
+            "residual": 128.5,
+            "phase": 3
+          },
+          {
+            "i": 1583,
+            "value": 117,
+            "expected": 180,
+            "residual": -63,
+            "phase": 3
+          },
+          {
+            "i": 1673,
+            "value": 132,
+            "expected": 195,
+            "residual": -63,
+            "phase": 3
+          },
+          {
+            "i": 1678,
+            "value": 253,
+            "expected": 124.5,
+            "residual": 128.5,
+            "phase": 3
+          },
+          {
+            "i": 1683,
+            "value": 117,
+            "expected": 180.5,
+            "residual": -63.5,
+            "phase": 3
+          },
+          {
+            "i": 1773,
+            "value": 132,
+            "expected": 195,
+            "residual": -63,
+            "phase": 3
+          },
+          {
+            "i": 1778,
+            "value": 253,
+            "expected": 124.5,
+            "residual": 128.5,
+            "phase": 3
+          },
+          {
+            "i": 1783,
+            "value": 117,
+            "expected": 180,
+            "residual": -63,
+            "phase": 3
+          },
+          {
+            "i": 1873,
+            "value": 132,
+            "expected": 195,
+            "residual": -63,
+            "phase": 3
+          },
+          {
+            "i": 1878,
+            "value": 253,
+            "expected": 124.5,
+            "residual": 128.5,
+            "phase": 3
+          },
+          {
+            "i": 1883,
+            "value": 117,
+            "expected": 180,
+            "residual": -63,
+            "phase": 3
+          },
+          {
+            "i": 1973,
+            "value": 132,
+            "expected": 194.5,
+            "residual": -62.5,
+            "phase": 3
+          },
+          {
+            "i": 1978,
+            "value": 252,
+            "expected": 124.5,
+            "residual": 127.5,
+            "phase": 3
+          },
+          {
+            "i": 1983,
+            "value": 117,
+            "expected": 180,
+            "residual": -63,
+            "phase": 3
+          },
+          {
+            "i": 2040,
+            "value": 193,
+            "expected": 129.5,
+            "residual": 63.5,
+            "phase": 0
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "seq": 1621,
+    "sample_s": 2e-9,
+    "channels": [
+      {
+        "min": 86,
+        "max": 150,
+        "means": [
+          123.50243902439024,
+          123.43658536585366,
+          122.29024390243903,
+          112.87530562347189,
+          112.22249388753056
+        ],
+        "spikes": []
+      },
+      {
+        "min": 91,
+        "max": 255,
+        "means": [
+          118.71219512195123,
+          121.03170731707317,
+          117.0390243902439,
+          117.79951100244499,
+          119.95843520782397
+        ],
+        "spikes": [
+          {
+            "i": 169,
+            "value": 134,
+            "expected": 197,
+            "residual": -63,
+            "phase": 4
+          },
+          {
+            "i": 174,
+            "value": 255,
+            "expected": 126.5,
+            "residual": 128.5,
+            "phase": 4
+          },
+          {
+            "i": 179,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 4
+          },
+          {
+            "i": 469,
+            "value": 134,
+            "expected": 197,
+            "residual": -63,
+            "phase": 4
+          },
+          {
+            "i": 474,
+            "value": 255,
+            "expected": 126.5,
+            "residual": 128.5,
+            "phase": 4
+          },
+          {
+            "i": 479,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 4
+          },
+          {
+            "i": 669,
+            "value": 134,
+            "expected": 197,
+            "residual": -63,
+            "phase": 4
+          },
+          {
+            "i": 674,
+            "value": 255,
+            "expected": 126.5,
+            "residual": 128.5,
+            "phase": 4
+          },
+          {
+            "i": 679,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 4
+          },
+          {
+            "i": 869,
+            "value": 134,
+            "expected": 197,
+            "residual": -63,
+            "phase": 4
+          },
+          {
+            "i": 874,
+            "value": 255,
+            "expected": 126.5,
+            "residual": 128.5,
+            "phase": 4
+          },
+          {
+            "i": 879,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 4
+          },
+          {
+            "i": 1269,
+            "value": 133,
+            "expected": 197,
+            "residual": -64,
+            "phase": 4
+          },
+          {
+            "i": 1274,
+            "value": 255,
+            "expected": 126,
+            "residual": 129,
+            "phase": 4
+          },
+          {
+            "i": 1279,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 4
+          },
+          {
+            "i": 1469,
+            "value": 133,
+            "expected": 197,
+            "residual": -64,
+            "phase": 4
+          },
+          {
+            "i": 1474,
+            "value": 255,
+            "expected": 126,
+            "residual": 129,
+            "phase": 4
+          },
+          {
+            "i": 1479,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 4
+          },
+          {
+            "i": 1669,
+            "value": 133,
+            "expected": 197,
+            "residual": -64,
+            "phase": 4
+          },
+          {
+            "i": 1674,
+            "value": 255,
+            "expected": 126,
+            "residual": 129,
+            "phase": 4
+          },
+          {
+            "i": 1679,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 4
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "seq": 1622,
+    "sample_s": 2e-9,
+    "channels": [
+      {
+        "min": 86,
+        "max": 150,
+        "means": [
+          111.97317073170731,
+          123.38048780487804,
+          123.32439024390244,
+          122.09779951100245,
+          112.82885085574573
+        ],
+        "spikes": []
+      },
+      {
+        "min": 91,
+        "max": 255,
+        "means": [
+          118.89024390243902,
+          118.60975609756098,
+          121.00243902439024,
+          116.96821515892421,
+          117.78973105134475
+        ],
+        "spikes": [
+          {
+            "i": 75,
+            "value": 133,
+            "expected": 197,
+            "residual": -64,
+            "phase": 0
+          },
+          {
+            "i": 80,
+            "value": 255,
+            "expected": 126,
+            "residual": 129,
+            "phase": 0
+          },
+          {
+            "i": 85,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 0
+          },
+          {
+            "i": 275,
+            "value": 134,
+            "expected": 197,
+            "residual": -63,
+            "phase": 0
+          },
+          {
+            "i": 280,
+            "value": 255,
+            "expected": 126.5,
+            "residual": 128.5,
+            "phase": 0
+          },
+          {
+            "i": 285,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 0
+          },
+          {
+            "i": 575,
+            "value": 133,
+            "expected": 196.5,
+            "residual": -63.5,
+            "phase": 0
+          },
+          {
+            "i": 580,
+            "value": 254,
+            "expected": 126,
+            "residual": 128,
+            "phase": 0
+          },
+          {
+            "i": 585,
+            "value": 119,
+            "expected": 182.5,
+            "residual": -63.5,
+            "phase": 0
+          },
+          {
+            "i": 975,
+            "value": 133,
+            "expected": 197,
+            "residual": -64,
+            "phase": 0
+          },
+          {
+            "i": 980,
+            "value": 255,
+            "expected": 126,
+            "residual": 129,
+            "phase": 0
+          },
+          {
+            "i": 985,
+            "value": 119,
+            "expected": 183,
+            "residual": -64,
+            "phase": 0
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "seq": 1623,
+    "sample_s": 2e-9,
+    "channels": [
+      {
+        "min": 86,
+        "max": 150,
+        "means": [
+          122.82439024390244,
+          113.52195121951219,
+          112.78048780487805,
+          124.06845965770171,
+          124.0122249388753
+        ],
+        "spikes": []
+      },
+      {
+        "min": 91,
+        "max": 193,
+        "means": [
+          117.86341463414634,
+          118.33658536585367,
+          118.26341463414634,
+          119.2885085574572,
+          121.48899755501222
+        ],
+        "spikes": [
+          {
+            "i": 410,
+            "value": 193,
+            "expected": 129.5,
+            "residual": 63.5,
+            "phase": 0
+          },
+          {
+            "i": 1510,
+            "value": 193,
+            "expected": 129.5,
+            "residual": 63.5,
+            "phase": 0
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "seq": 1624,
+    "sample_s": 2e-9,
+    "channels": [
+      {
+        "min": 86,
+        "max": 150,
+        "means": [
+          122.13658536585366,
+          112.57317073170732,
+          112.05365853658536,
+          123.44987775061125,
+          123.26405867970661
+        ],
+        "spikes": []
+      },
+      {
+        "min": 90,
+        "max": 148,
+        "means": [
+          117.01219512195122,
+          117.78536585365853,
+          117.69756097560976,
+          118.57457212713936,
+          121.16625916870416
+        ],
+        "spikes": []
+      }
+    ]
+  },
+  {
+    "seq": 1625,
+    "sample_s": 2e-9,
+    "channels": [
+      {
+        "min": 86,
+        "max": 150,
+        "means": [
+          122.32682926829268,
+          113.14390243902439,
+          112.44390243902438,
+          123.68948655256723,
+          123.43276283618582
+        ],
+        "spikes": []
+      },
+      {
+        "min": 91,
+        "max": 251,
+        "means": [
+          117.63658536585366,
+          118.06585365853658,
+          117.98780487804878,
+          118.91931540342298,
+          121.32273838630807
+        ],
+        "spikes": [
+          {
+            "i": 1015,
+            "value": 130,
+            "expected": 194,
+            "residual": -64,
+            "phase": 0
+          },
+          {
+            "i": 1020,
+            "value": 251,
+            "expected": 122.5,
+            "residual": 128.5,
+            "phase": 0
+          },
+          {
+            "i": 1025,
+            "value": 115,
+            "expected": 178,
+            "residual": -63,
+            "phase": 0
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "seq": 1626,
+    "sample_s": 2e-9,
+    "channels": [
+      {
+        "min": 86,
+        "max": 150,
+        "means": [
+          123.21463414634147,
+          121.81463414634146,
+          112.56585365853658,
+          112.04645476772616,
+          123.27139364303179
+        ],
+        "spikes": []
+      },
+      {
+        "min": 91,
+        "max": 148,
+        "means": [
+          120.85609756097561,
+          116.85121951219512,
+          117.66585365853659,
+          117.47921760391198,
+          118.53056234718827
+        ],
+        "spikes": []
+      }
+    ]
+  }
+]

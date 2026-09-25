@@ -1,0 +1,50 @@
+{"Time":"2026-09-23T01:49:47.771413812+02:00","Action":"start","Package":"open-sds/ota/internal/agent"}
+{"Time":"2026-09-23T01:49:47.784198184+02:00","Action":"run","Package":"open-sds/ota/internal/agent","Test":"TestDispatchUnknownCmd"}
+{"Time":"2026-09-23T01:49:47.784248793+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestDispatchUnknownCmd","Output":"=== RUN   TestDispatchUnknownCmd\n"}
+{"Time":"2026-09-23T01:49:47.785119215+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestDispatchUnknownCmd","Output":"--- PASS: TestDispatchUnknownCmd (0.00s)\n"}
+{"Time":"2026-09-23T01:49:47.785138966+02:00","Action":"pass","Package":"open-sds/ota/internal/agent","Test":"TestDispatchUnknownCmd","Elapsed":0}
+{"Time":"2026-09-23T01:49:47.785178152+02:00","Action":"run","Package":"open-sds/ota/internal/agent","Test":"TestDispatchBadJSON"}
+{"Time":"2026-09-23T01:49:47.785185546+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestDispatchBadJSON","Output":"=== RUN   TestDispatchBadJSON\n"}
+{"Time":"2026-09-23T01:49:47.785876679+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestDispatchBadJSON","Output":"--- PASS: TestDispatchBadJSON (0.00s)\n"}
+{"Time":"2026-09-23T01:49:47.785891856+02:00","Action":"pass","Package":"open-sds/ota/internal/agent","Test":"TestDispatchBadJSON","Elapsed":0}
+{"Time":"2026-09-23T01:49:47.785930161+02:00","Action":"run","Package":"open-sds/ota/internal/agent","Test":"TestDispatchPing"}
+{"Time":"2026-09-23T01:49:47.785936721+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestDispatchPing","Output":"=== RUN   TestDispatchPing\n"}
+{"Time":"2026-09-23T01:49:47.786695108+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestDispatchPing","Output":"--- PASS: TestDispatchPing (0.00s)\n"}
+{"Time":"2026-09-23T01:49:47.786713066+02:00","Action":"pass","Package":"open-sds/ota/internal/agent","Test":"TestDispatchPing","Elapsed":0}
+{"Time":"2026-09-23T01:49:47.78675647+02:00","Action":"run","Package":"open-sds/ota/internal/agent","Test":"TestDispatchPanicContained"}
+{"Time":"2026-09-23T01:49:47.786763555+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestDispatchPanicContained","Output":"=== RUN   TestDispatchPanicContained\n"}
+{"Time":"2026-09-23T01:49:47.787386028+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestDispatchPanicContained","Output":"[agent] 2026/09/23 01:49:47 rpc panic: kaboom\n"}
+{"Time":"2026-09-23T01:49:47.787395471+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestDispatchPanicContained","Output":"goroutine 9 [running]:\n"}
+{"Time":"2026-09-23T01:49:47.787399927+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestDispatchPanicContained","Output":"runtime/debug.Stack()\n"}
+{"Time":"2026-09-23T01:49:47.787403757+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestDispatchPanicContained","Output":"\t/home/labeth/.local/go/go1.26.1/src/runtime/debug/stack.go:26 +0x68\n"}
+{"Time":"2026-09-23T01:49:47.787410388+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestDispatchPanicContained","Output":"open-sds/ota/internal/agent.(*Agent).Dispatch.func1()\n"}
+{"Time":"2026-09-23T01:49:47.787415635+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestDispatchPanicContained","Output":"\t/home/labeth/ws/open-sds1000cml-acq2/ota/internal/agent/rpc.go:31 +0x5d\n"}
+{"Time":"2026-09-23T01:49:47.7874215+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestDispatchPanicContained","Output":"panic({0x84a560?, 0x8dd200?})\n"}
+{"Time":"2026-09-23T01:49:47.787426587+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestDispatchPanicContained","Output":"\t/home/labeth/.local/go/go1.26.1/src/runtime/panic.go:860 +0x13a\n"}
+{"Time":"2026-09-23T01:49:47.787430458+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestDispatchPanicContained","Output":"open-sds/ota/internal/agent.TestDispatchPanicContained.func1(0x8677e0?, {0xc0000dcff0?, 0xc0001b89bb?, 0x5?})\n"}
+{"Time":"2026-09-23T01:49:47.787442029+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestDispatchPanicContained","Output":"\t/home/labeth/ws/open-sds1000cml-acq2/ota/internal/agent/rpc_test.go:70 +0x2b\n"}
+{"Time":"2026-09-23T01:49:47.787446883+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestDispatchPanicContained","Output":"open-sds/ota/internal/agent.(*Agent).Dispatch(0xc0000fcf00, {0xc0001b8991, 0xf, 0xf})\n"}
+{"Time":"2026-09-23T01:49:47.787450778+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestDispatchPanicContained","Output":"\t/home/labeth/ws/open-sds1000cml-acq2/ota/internal/agent/rpc.go:44 +0x237\n"}
+{"Time":"2026-09-23T01:49:47.787454662+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestDispatchPanicContained","Output":"open-sds/ota/internal/agent.TestDispatchPanicContained(0xc0000defc8)\n"}
+{"Time":"2026-09-23T01:49:47.787458597+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestDispatchPanicContained","Output":"\t/home/labeth/ws/open-sds1000cml-acq2/ota/internal/agent/rpc_test.go:73 +0x191\n"}
+{"Time":"2026-09-23T01:49:47.787462433+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestDispatchPanicContained","Output":"testing.tRunner(0xc0000defc8, 0x8da0f8)\n"}
+{"Time":"2026-09-23T01:49:47.787466277+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestDispatchPanicContained","Output":"\t/home/labeth/.local/go/go1.26.1/src/testing/testing.go:2036 +0x21d\n"}
+{"Time":"2026-09-23T01:49:47.78747045+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestDispatchPanicContained","Output":"created by testing.(*T).Run in goroutine 1\n"}
+{"Time":"2026-09-23T01:49:47.787474746+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestDispatchPanicContained","Output":"\t/home/labeth/.local/go/go1.26.1/src/testing/testing.go:2101 +0xb13\n"}
+{"Time":"2026-09-23T01:49:47.787633114+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestDispatchPanicContained","Output":"--- PASS: TestDispatchPanicContained (0.00s)\n"}
+{"Time":"2026-09-23T01:49:47.787653024+02:00","Action":"pass","Package":"open-sds/ota/internal/agent","Test":"TestDispatchPanicContained","Elapsed":0}
+{"Time":"2026-09-23T01:49:47.787691041+02:00","Action":"run","Package":"open-sds/ota/internal/agent","Test":"TestAppStartRequiresTakeover"}
+{"Time":"2026-09-23T01:49:47.7876977+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestAppStartRequiresTakeover","Output":"=== RUN   TestAppStartRequiresTakeover\n"}
+{"Time":"2026-09-23T01:49:47.788333752+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestAppStartRequiresTakeover","Output":"--- PASS: TestAppStartRequiresTakeover (0.00s)\n"}
+{"Time":"2026-09-23T01:49:47.7883612+02:00","Action":"pass","Package":"open-sds/ota/internal/agent","Test":"TestAppStartRequiresTakeover","Elapsed":0}
+{"Time":"2026-09-23T01:49:47.788399972+02:00","Action":"run","Package":"open-sds/ota/internal/agent","Test":"TestTakeoverRefusedWithoutInheritedFD"}
+{"Time":"2026-09-23T01:49:47.788406893+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestTakeoverRefusedWithoutInheritedFD","Output":"=== RUN   TestTakeoverRefusedWithoutInheritedFD\n"}
+{"Time":"2026-09-23T01:49:47.789080034+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestTakeoverRefusedWithoutInheritedFD","Output":"--- PASS: TestTakeoverRefusedWithoutInheritedFD (0.00s)\n"}
+{"Time":"2026-09-23T01:49:47.789100705+02:00","Action":"pass","Package":"open-sds/ota/internal/agent","Test":"TestTakeoverRefusedWithoutInheritedFD","Elapsed":0}
+{"Time":"2026-09-23T01:49:47.789140992+02:00","Action":"run","Package":"open-sds/ota/internal/agent","Test":"TestTakeoverDryRunReportsCandidates"}
+{"Time":"2026-09-23T01:49:47.789148498+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestTakeoverDryRunReportsCandidates","Output":"=== RUN   TestTakeoverDryRunReportsCandidates\n"}
+{"Time":"2026-09-23T01:49:47.913208661+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Test":"TestTakeoverDryRunReportsCandidates","Output":"--- PASS: TestTakeoverDryRunReportsCandidates (0.12s)\n"}
+{"Time":"2026-09-23T01:49:47.913242254+02:00","Action":"pass","Package":"open-sds/ota/internal/agent","Test":"TestTakeoverDryRunReportsCandidates","Elapsed":0.12}
+{"Time":"2026-09-23T01:49:47.913493409+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Output":"PASS\n"}
+{"Time":"2026-09-23T01:49:48.917104936+02:00","Action":"output","Package":"open-sds/ota/internal/agent","Output":"ok  \topen-sds/ota/internal/agent\t1.146s\n"}
+{"Time":"2026-09-23T01:49:48.917126744+02:00","Action":"pass","Package":"open-sds/ota/internal/agent","Elapsed":1.146}

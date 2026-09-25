@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
 package engine
 
 import (
@@ -7,6 +8,7 @@ import (
 )
 
 // adversarial matchI2C span sequences (repeated-START, missing R/W, cross-txn data).
+// TRLC-LINKS: REQ-SDS-013
 func TestMatchI2CEdges(t *testing.T) {
 	sp := func(kind string, val, i0 int, text string) decode.Span {
 		return decode.Span{Kind: kind, Val: val, I0: i0, Text: text}
@@ -53,6 +55,7 @@ func TestMatchI2CEdges(t *testing.T) {
 // NOT be mask-tested — so it can never trip mask stop-on-fail. (Before the fix,
 // the mask gate ran on `lock` regardless of the serial veto and could freeze the
 // scope on a frame the serial trigger explicitly rejected.)
+// TRLC-LINKS: REQ-SDS-013, REQ-SDS-014
 func TestSerialTriggerComposesWithMask(t *testing.T) {
 	fb := newFakeBus()
 	fb.wave = func(i int) (uint8, uint8) { // period-256 square: locks, decodes to ~2 bytes

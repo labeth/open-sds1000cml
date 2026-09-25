@@ -1,9 +1,11 @@
+// ENGMODEL-OWNER-UNIT: FU-RTL-ACQ-SRAM-FINITE-RECALL
 // Frozen-record reader using the same host producer interface as stream_engine.
 // Coordinates are transport-relative physical word addresses; record_start
 // includes the capture origin. The caller keeps the record frozen and grants
 // exclusive transport/host ownership until done. Reset is a coordinated epoch
 // abort, not a request to erase SRAM. No write command is ever generated.
 // Host first ordinals are relative to this requested range, starting at zero.
+// TRLC-LINKS: REQ-SDS-043, REQ-SDS-052, REQ-SDS-058
 module sram_finite_recall #(parameter AW=19,BANK_WORDS=2560,READ_WARM=16,CONTINUE_READS=1)(
  input wire clk,reset,start,frozen,
  input wire [AW-1:0] record_start,read_bias,

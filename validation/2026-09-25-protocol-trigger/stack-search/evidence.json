@@ -1,0 +1,77 @@
+{
+  "status": "Connected sample-pair scoring and peak-selection datapath; reference-memory scheduler, segment checking, alignment and accumulation remain unfinished",
+  "sourceHashes": {
+    "fpga/acq_sram/stack_moments.v": "a8691de32e0a5745034205bd3578780e34735bbcfd21a35732e42237f4e70982",
+    "fpga/acq_sram/stack_correlation.v": "cc4a70f762f09300c00dc7bd573abd7c4608604510b1eb7074f9ab2389b1b3dd",
+    "fpga/acq_sram/stack_match_score.v": "8ac0895724d76b0fb3c332e4abdf3399e22e15b0da7077fe49772aa2c7dd70fc",
+    "fpga/acq_sram/stack_peaks.v": "e350ca5798febdbff118ac1058256cb9fc8455663727aa1eb812456338fc5f56",
+    "fpga/acq_sram/stack_search.v": "ff831d06cb740c0cdf728dec1f5281ee1f9034e833d55776a666fd2b7d50eba0",
+    "fpga/acq_sram/sim/tb_stack_search.v": "27ecc95169f2bde8e7e26c277a449f1479174cd1996539c8d82b084322af7138",
+    "fpga/acq_sram/sim/tb_stack_correlation.v": "3f1b13786459c7db3e49d4c5eaa567e1e5acaa39546f5183d1984c6fd7b1356d",
+    "app/internal/superres/stack_search_rtl_test.go": "df49d6242516c3c4b8ef05b51f643bf3f4d99ab6bae51e5f152c3059604d03ba",
+    "app/internal/superres/stack_correlation_rtl_test.go": "1ea91b23fd81038ed7201a5e45c3a5610350974d339e8fc61be18f44a1837e76",
+    "app/internal/superres/stack_peaks_rtl_test.go": "62c7738314a614ffe3e555ae80cac4ef34d53ae38857a6051726062081803377",
+    "fpga/acq_sram/sim/tb_stack_peaks.v": "25f6bb33a1b3368bab7ba763c9e1534a5589373b67d126553d9aed0e109e7ec3"
+  },
+  "tests": {
+    "exitCode": 0,
+    "connectedSearchFixtures": 20,
+    "peakFixtures": 109,
+    "scoreWaveformWindows": 41,
+    "scoreFullWidthCases": 86,
+    "maxNormalizationClocks": 2356,
+    "largestSearch": {
+      "recordSamples": 1536,
+      "gateSamples": 512,
+      "positions": 1025,
+      "clocksIncludingStalls": 3076714
+    },
+    "coverage": "sample and verdict stalls, exact scores and neighbors, rejected candidates, reset/restart during feed/normalization/blocked result, flat windows, invalid geometry and overflow bounds"
+  },
+  "synthesis": {
+    "build": "build-5YLqp7",
+    "device": "EP4CE10F17C8",
+    "clockMHz": 125,
+    "logicElements": 3591,
+    "registers": 2989,
+    "memoryBits": 0,
+    "dsp9BitElements": 3,
+    "slacksNs": [
+      0.159,
+      0.286,
+      3.606,
+      0.621,
+      0.265,
+      3.447,
+      4.598,
+      0.111,
+      3.109
+    ],
+    "minSetupSlackNs": 0.159,
+    "minHoldSlackNs": 0.111,
+    "limitations": "Physical clock constrained; virtual data I/O unconstrained. No reference-memory, acquisition-top or external timing qualification."
+  },
+  "rejectedBuilds": [
+    {
+      "build": "build-qMoGT0",
+      "minSetupSlackNs": -0.114
+    },
+    {
+      "build": "build-Q5u8Av",
+      "minSetupSlackNs": -0.175
+    }
+  ],
+  "modelValidation": {
+    "exitCode": 0,
+    "strict": true,
+    "errors": 0,
+    "warnings": 604,
+    "log": "model-validation.log",
+    "sourceHashes": {
+      "models/sds1000cml/engmod.yml": "c42b0564ae3b537f450c9e318e62ca663a8a84156a5d67cb8f535b36c880b86d",
+      "models/sds1000cml/model/decisions.yml": "7dfaa0507a908eb7d7d55c752c3889c41d57f62399421c7f29a039a466778e2d",
+      "models/sds1000cml/model/requirements.yml": "ef3cfc4e34b7ee029d1fcff8188a5e11741e58174f3a4e084c90231329b4e8c8"
+    }
+  },
+  "deployment": "No change; general/current remains build-v5T40o"
+}

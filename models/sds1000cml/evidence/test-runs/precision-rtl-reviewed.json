@@ -1,0 +1,285 @@
+{
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "status": "complete",
+  "cases": [
+    {
+      "id": "integrator",
+      "test": "fpga/acq_sram/sim/tb_integrator.v",
+      "top": "tb",
+      "sources": [
+        "fpga/acq_sram/precision.v",
+        "fpga/acq_sram/precision_tail.v"
+      ],
+      "success": "PASS split integrator:",
+      "timeoutSeconds": 900,
+      "requirements": [
+        "REQ-SDS-040"
+      ],
+      "compileCommand": [
+        "iverilog",
+        "-g2012",
+        "-s",
+        "tb",
+        "-o",
+        "/tmp/sds-precision-review-j0ejntn9/integrator",
+        "fpga/acq_sram/sim/tb_integrator.v",
+        "fpga/acq_sram/precision.v",
+        "fpga/acq_sram/precision_tail.v"
+      ],
+      "compileExitCode": 0,
+      "compileOutput": "",
+      "simulationCommand": [
+        "vvp",
+        "/tmp/sds-precision-review-j0ejntn9/integrator"
+      ],
+      "simulationExitCode": 0,
+      "simulationOutput": "PASS split integrator: signed full-width wrap, continuous tokens, stalls, eight rearms\nfpga/acq_sram/sim/tb_integrator.v:37: $finish called at 33298010 (1ps)\n",
+      "timedOut": false,
+      "result": "pass",
+      "sourceSnapshot": true
+    },
+    {
+      "id": "precision_fir",
+      "test": "fpga/acq_sram/sim/tb_precision_fir.v",
+      "top": "tb",
+      "sources": [
+        "fpga/acq_sram/precision.v",
+        "fpga/acq_sram/precision_tail.v"
+      ],
+      "success": "PASS 500 independent FIR outputs:",
+      "timeoutSeconds": 900,
+      "requirements": [
+        "REQ-SDS-040"
+      ],
+      "compileCommand": [
+        "iverilog",
+        "-g2012",
+        "-s",
+        "tb",
+        "-o",
+        "/tmp/sds-precision-review-j0ejntn9/precision_fir",
+        "fpga/acq_sram/sim/tb_precision_fir.v",
+        "fpga/acq_sram/precision.v",
+        "fpga/acq_sram/precision_tail.v"
+      ],
+      "compileExitCode": 0,
+      "compileOutput": "",
+      "simulationCommand": [
+        "vvp",
+        "/tmp/sds-precision-review-j0ejntn9/precision_fir"
+      ],
+      "simulationExitCode": 0,
+      "simulationOutput": "PASS 500 independent FIR outputs: random full-range input, CIC3/16 Q8\nfpga/acq_sram/sim/tb_precision_fir.v:30: $finish called at 16310100 (1ps)\n",
+      "timedOut": false,
+      "result": "pass",
+      "sourceSnapshot": true
+    },
+    {
+      "id": "precision",
+      "test": "fpga/acq_sram/sim/tb_precision.v",
+      "top": "tb",
+      "sources": [
+        "fpga/acq_sram/precision.v",
+        "fpga/acq_sram/precision_tail.v",
+        "fpga/acq_sram/sim/tb_precision_config.v"
+      ],
+      "success": "PASS precision /4096:",
+      "timeoutSeconds": 900,
+      "requirements": [
+        "REQ-SDS-040"
+      ],
+      "compileCommand": [
+        "iverilog",
+        "-g2012",
+        "-s",
+        "tb",
+        "-o",
+        "/tmp/sds-precision-review-j0ejntn9/precision",
+        "fpga/acq_sram/sim/tb_precision.v",
+        "fpga/acq_sram/precision.v",
+        "fpga/acq_sram/precision_tail.v",
+        "fpga/acq_sram/sim/tb_precision_config.v"
+      ],
+      "compileExitCode": 0,
+      "compileOutput": "",
+      "simulationCommand": [
+        "vvp",
+        "/tmp/sds-precision-review-j0ejntn9/precision"
+      ],
+      "simulationExitCode": 0,
+      "simulationOutput": "PASS precision /16: DC unity, half-code retained, rearm, both channels\nPASS precision /32: DC unity, half-code retained, rearm, both channels\nPASS precision /64: DC unity, half-code retained, rearm, both channels\nPASS precision /128: DC unity, half-code retained, rearm, both channels\nPASS precision /256: DC unity, half-code retained, rearm, both channels\nPASS precision /512: DC unity, half-code retained, rearm, both channels\nPASS precision /1024: DC unity, half-code retained, rearm, both channels\nPASS precision /2048: DC unity, half-code retained, rearm, both channels\nPASS precision /4096: DC unity, half-code retained, rearm, both channels\nfpga/acq_sram/sim/tb_precision.v:19: $finish called at 479958000 (1ps)\n",
+      "timedOut": false,
+      "result": "pass",
+      "sourceSnapshot": true
+    },
+    {
+      "id": "precision_shared",
+      "test": "fpga/acq_sram/sim/tb_precision_shared.v",
+      "top": "tb_precision_shared",
+      "sources": [
+        "fpga/acq_sram/precision.v",
+        "fpga/acq_sram/precision_tail.v"
+      ],
+      "success": "PASS complete shared precision path,",
+      "timeoutSeconds": 900,
+      "requirements": [
+        "REQ-SDS-040"
+      ],
+      "compileCommand": [
+        "iverilog",
+        "-g2012",
+        "-s",
+        "tb_precision_shared",
+        "-o",
+        "/tmp/sds-precision-review-j0ejntn9/precision_shared",
+        "fpga/acq_sram/sim/tb_precision_shared.v",
+        "fpga/acq_sram/precision.v",
+        "fpga/acq_sram/precision_tail.v",
+        "reference.v"
+      ],
+      "compileExitCode": 0,
+      "compileOutput": "",
+      "simulationCommand": [
+        "vvp",
+        "/tmp/sds-precision-review-j0ejntn9/precision_shared"
+      ],
+      "simulationExitCode": 0,
+      "simulationOutput": "PASS complete precision /16: 47 identical dual-channel Q8.8 words\nPASS complete precision /32: 43 identical dual-channel Q8.8 words\nPASS complete precision /64: 45 identical dual-channel Q8.8 words\nPASS complete precision /128: 46 identical dual-channel Q8.8 words\nPASS complete precision /256: 47 identical dual-channel Q8.8 words\nPASS complete precision /512: 43 identical dual-channel Q8.8 words\nPASS complete precision /1024: 45 identical dual-channel Q8.8 words\nPASS complete precision /2048: 46 identical dual-channel Q8.8 words\nPASS complete precision /4096: 47 identical dual-channel Q8.8 words\nPASS complete precision /8192: 43 identical dual-channel Q8.8 words\nPASS complete shared precision path, fixed first CIC, FIFOs and stage selection against frozen parallel reference\nfpga/acq_sram/sim/tb_precision_shared.v:47: $finish called at 1917216100 (1ps)\n",
+      "timedOut": false,
+      "result": "pass",
+      "sourceSnapshot": true
+    },
+    {
+      "id": "precision_config",
+      "test": "fpga/acq_sram/sim/tb_precision_config.v",
+      "top": "tb_precision_config",
+      "sources": [
+        "fpga/acq_sram/precision.v",
+        "fpga/acq_sram/precision_tail.v"
+      ],
+      "success": "PASS precision settings/rearm",
+      "timeoutSeconds": 900,
+      "requirements": [
+        "REQ-SDS-040"
+      ],
+      "compileCommand": [
+        "iverilog",
+        "-g2012",
+        "-s",
+        "tb_precision_config",
+        "-o",
+        "/tmp/sds-precision-review-j0ejntn9/precision_config",
+        "fpga/acq_sram/sim/tb_precision_config.v",
+        "fpga/acq_sram/precision.v",
+        "fpga/acq_sram/precision_tail.v",
+        "reference.v"
+      ],
+      "compileExitCode": 0,
+      "compileOutput": "",
+      "simulationCommand": [
+        "vvp",
+        "/tmp/sds-precision-review-j0ejntn9/precision_config"
+      ],
+      "simulationExitCode": 0,
+      "simulationOutput": "PASS short precision epoch /256: 47 words match clean reference\nPASS short precision epoch /512: 43 words match clean reference\nPASS short precision epoch /16: 47 words match clean reference\nPASS short precision epoch /4096: 47 words match clean reference\nPASS precision settings/rearm after one-core-cycle disable\nfpga/acq_sram/sim/tb_precision_config.v:55: $finish called at 580192100 (1ps)\n",
+      "timedOut": false,
+      "result": "pass",
+      "sourceSnapshot": true
+    },
+    {
+      "id": "precision_tail_queue",
+      "test": "fpga/acq_sram/sim/tb_precision_tail_queue.v",
+      "top": "tb_precision_tail_queue",
+      "sources": [
+        "fpga/acq_sram/precision.v",
+        "fpga/acq_sram/precision_tail.v"
+      ],
+      "success": "PASS RAM queue: reset during filter update",
+      "timeoutSeconds": 900,
+      "requirements": [
+        "REQ-SDS-040"
+      ],
+      "compileCommand": [
+        "iverilog",
+        "-g2012",
+        "-s",
+        "tb_precision_tail_queue",
+        "-o",
+        "/tmp/sds-precision-review-j0ejntn9/precision_tail_queue",
+        "fpga/acq_sram/sim/tb_precision_tail_queue.v",
+        "fpga/acq_sram/precision.v",
+        "fpga/acq_sram/precision_tail.v"
+      ],
+      "compileExitCode": 0,
+      "compileOutput": "",
+      "simulationCommand": [
+        "vvp",
+        "/tmp/sds-precision-review-j0ejntn9/precision_tail_queue"
+      ],
+      "simulationExitCode": 0,
+      "simulationOutput": "PASS RAM queue: full simultaneous push/pop, every output matches parallel reference\nPASS precision tail log=1 burst=0 inputs=96 outputs=40 max_queue=1\nPASS RAM queue: reset during filter update with pending input\nfpga/acq_sram/sim/tb_precision_tail_queue.v:84: $finish called at 112830100 (1ps)\n",
+      "timedOut": false,
+      "result": "pass",
+      "sourceSnapshot": true
+    },
+    {
+      "id": "precision_tail",
+      "test": "fpga/acq_sram/sim/tb_precision_tail.v",
+      "top": "tb_precision_tail",
+      "sources": [
+        "fpga/acq_sram/precision.v",
+        "fpga/acq_sram/precision_tail.v"
+      ],
+      "success": "PASS scheduled precision tail:",
+      "timeoutSeconds": 900,
+      "requirements": [
+        "REQ-SDS-040"
+      ],
+      "compileCommand": [
+        "iverilog",
+        "-g2012",
+        "-s",
+        "tb_precision_tail",
+        "-o",
+        "/tmp/sds-precision-review-j0ejntn9/precision_tail",
+        "fpga/acq_sram/sim/tb_precision_tail.v",
+        "fpga/acq_sram/precision.v",
+        "fpga/acq_sram/precision_tail.v"
+      ],
+      "compileExitCode": 0,
+      "compileOutput": "",
+      "simulationCommand": [
+        "vvp",
+        "/tmp/sds-precision-review-j0ejntn9/precision_tail"
+      ],
+      "simulationExitCode": 0,
+      "simulationOutput": "PASS precision tail log=0 burst=0 inputs=48 outputs=48 max_queue=0\nPASS precision tail log=1 burst=0 inputs=96 outputs=40 max_queue=1\nPASS precision tail log=2 burst=0 inputs=192 outputs=40 max_queue=1\nPASS precision tail log=3 burst=0 inputs=384 outputs=40 max_queue=1\nPASS precision tail log=4 burst=0 inputs=768 outputs=40 max_queue=1\nPASS precision tail log=5 burst=0 inputs=1536 outputs=36 max_queue=1\nPASS precision tail log=6 burst=0 inputs=3072 outputs=38 max_queue=1\nPASS precision tail log=7 burst=0 inputs=6144 outputs=39 max_queue=1\nPASS precision tail log=8 burst=0 inputs=12288 outputs=39 max_queue=1\nPASS precision tail log=9 burst=0 inputs=24576 outputs=35 max_queue=1\nPASS precision tail log=10 burst=0 inputs=49152 outputs=37 max_queue=1\nPASS precision tail log=11 burst=0 inputs=98304 outputs=38 max_queue=1\nPASS precision tail log=12 burst=0 inputs=196608 outputs=39 max_queue=1\nPASS precision tail log=1 burst=1 inputs=512 outputs=248 max_queue=4\nPASS precision tail log=9 burst=1 inputs=24576 outputs=35 max_queue=4\nPASS precision tail log=2 burst=0 inputs=192 outputs=40 max_queue=1\nPASS scheduled precision tail: 16 equivalent epochs, overflow/illegal configuration and reset\nfpga/acq_sram/sim/tb_precision_tail.v:76: $finish called at 217667360100 (1ps)\n",
+      "timedOut": false,
+      "result": "pass",
+      "sourceSnapshot": true
+    }
+  ],
+  "scope": "Seven original self-checking precision benches. Full remaining tail logs0..12; full shared wrapper logs4..13; ideal dcfifo model explicitly supplied to legacy DC bench. Frozen parallel reference shares unchanged fast CIC modules. No physical CDC, vendor FIFO timing, fitted timing or hardware qualification.",
+  "runtime": {
+    "iverilog": "Icarus Verilog version 12.0 (stable) ()"
+  },
+  "runtimeInputSHA256": {
+    "fpga/acq_sram/precision.v": "a773edf444d2b4a0c37e2d1504612cd5091e57bad1dc1c41bc10fb09c968d6c5",
+    "fpga/acq_sram/precision_tail.v": "dd4dfd694d649b84e2c798911d1f7cb5df3384211761cdf871714eae97505d72",
+    "fpga/acq_sram/sim/tb_integrator.v": "8aefccca64816982a8a640513a4afe62ffe0896f44ef54ac5a2222b4e82a2852",
+    "fpga/acq_sram/sim/tb_precision.v": "b64a2fcc2aa89c677f429a9794f86cd413488226c82ea603b070ed72588aeb8e",
+    "fpga/acq_sram/sim/tb_precision_config.v": "dcfef26df8f2748583ca965f66ebfd7b3c8f603b358e903cad2bf77a16ef5198",
+    "fpga/acq_sram/sim/tb_precision_fir.v": "117c9280e504b2b5c2f09aeeee29b3e3080deb7bd1d2cf7acdfe7b15c306e060",
+    "fpga/acq_sram/sim/tb_precision_shared.v": "24f3cc5a6e6f3115595069f2a33ee30f000d18245361eb329ed8440efff761c8",
+    "fpga/acq_sram/sim/tb_precision_tail.v": "2170aca776487f193942f51da08378e0488af37646c89d36db1783f82a5208b1",
+    "fpga/acq_sram/sim/tb_precision_tail_queue.v": "d309b2a47f4b6cfd0f25e67dfc4401836ea9c4d40e1705d7a06a3664f188fe07",
+    "validation/2026-09-14-stream-path/precision-tail/reference_precision.v": "dc03fe4fd3d2daf0d0f757f1f0f9c942793f650f8ab709aba881b95860598b33"
+  },
+  "derivedReference": {
+    "source": "validation/2026-09-14-stream-path/precision-tail/reference_precision.v",
+    "sourceSHA256": "dc03fe4fd3d2daf0d0f757f1f0f9c942793f650f8ab709aba881b95860598b33",
+    "transformation": "Keep adc_precision module body and rename module to reference_adc_precision; reuse text-identical current fast CIC modules.",
+    "sha256": "56bf5de4ba38e6266f9c8dc53f638b641436f604d6ac400a58856d564d17853c"
+  },
+  "result": "pass"
+}

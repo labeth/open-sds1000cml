@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-CODEGEN-EMIT
 package emit
 
 import (
@@ -20,6 +21,7 @@ var wordfmtSrc string
 // comment) and the import declaration from a single-file package whose only
 // permitted import is "fmt" (iface.go imports it already), returning the
 // declarations to append to the bindings.
+// TRLC-LINKS: REQ-SDS-157, REQ-SDS-159
 func spliceGoSource(src string) (string, error) {
 	_, rest, ok := strings.Cut("\n"+src, "\npackage ")
 	if !ok {
@@ -43,6 +45,7 @@ func spliceGoSource(src string) (string, error) {
 }
 
 // GoBindings renders app/internal/iface/iface.go.
+// TRLC-LINKS: REQ-SDS-157, REQ-SDS-159
 func GoBindings(i schema.Interface) (string, error) {
 	if err := check(i); err != nil {
 		return "", err

@@ -1,0 +1,28 @@
+{"Time":"2026-09-23T00:54:06.094474685+02:00","Action":"start","Package":"open-sds/app/internal/dsp"}
+{"Time":"2026-09-23T00:54:06.104522267+02:00","Action":"run","Package":"open-sds/app/internal/dsp","Test":"TestPrecisionNoiseAgainstImpulse"}
+{"Time":"2026-09-23T00:54:06.104537521+02:00","Action":"output","Package":"open-sds/app/internal/dsp","Test":"TestPrecisionNoiseAgainstImpulse","Output":"=== RUN   TestPrecisionNoiseAgainstImpulse\n"}
+{"Time":"2026-09-23T00:54:06.105623064+02:00","Action":"output","Package":"open-sds/app/internal/dsp","Test":"TestPrecisionNoiseAgainstImpulse","Output":"    precision_limits_test.go:36: R16 ideal +2.94 bits single, 3.94 with four; -3dB 0.135 output Fs\n"}
+{"Time":"2026-09-23T00:54:06.106839383+02:00","Action":"output","Package":"open-sds/app/internal/dsp","Test":"TestPrecisionNoiseAgainstImpulse","Output":"    precision_limits_test.go:36: R32 ideal +3.44 bits single, 4.44 with four; -3dB 0.135 output Fs\n"}
+{"Time":"2026-09-23T00:54:06.108590157+02:00","Action":"output","Package":"open-sds/app/internal/dsp","Test":"TestPrecisionNoiseAgainstImpulse","Output":"    precision_limits_test.go:36: R64 ideal +3.94 bits single, 4.94 with four; -3dB 0.135 output Fs\n"}
+{"Time":"2026-09-23T00:54:06.116705665+02:00","Action":"output","Package":"open-sds/app/internal/dsp","Test":"TestPrecisionNoiseAgainstImpulse","Output":"    precision_limits_test.go:36: R256 ideal +4.94 bits single, 5.94 with four; -3dB 0.135 output Fs\n"}
+{"Time":"2026-09-23T00:54:06.116755802+02:00","Action":"output","Package":"open-sds/app/internal/dsp","Test":"TestPrecisionNoiseAgainstImpulse","Output":"--- PASS: TestPrecisionNoiseAgainstImpulse (0.01s)\n"}
+{"Time":"2026-09-23T00:54:06.116789971+02:00","Action":"pass","Package":"open-sds/app/internal/dsp","Test":"TestPrecisionNoiseAgainstImpulse","Elapsed":0.01}
+{"Time":"2026-09-23T00:54:06.116821137+02:00","Action":"run","Package":"open-sds/app/internal/dsp","Test":"TestPrecisionMatchesDirectConvolution"}
+{"Time":"2026-09-23T00:54:06.116824861+02:00","Action":"output","Package":"open-sds/app/internal/dsp","Test":"TestPrecisionMatchesDirectConvolution","Output":"=== RUN   TestPrecisionMatchesDirectConvolution\n"}
+{"Time":"2026-09-23T00:54:06.125617903+02:00","Action":"output","Package":"open-sds/app/internal/dsp","Test":"TestPrecisionMatchesDirectConvolution","Output":"--- PASS: TestPrecisionMatchesDirectConvolution (0.01s)\n"}
+{"Time":"2026-09-23T00:54:06.125625533+02:00","Action":"pass","Package":"open-sds/app/internal/dsp","Test":"TestPrecisionMatchesDirectConvolution","Elapsed":0.01}
+{"Time":"2026-09-23T00:54:06.125630415+02:00","Action":"run","Package":"open-sds/app/internal/dsp","Test":"TestPrecisionDCAndFraction"}
+{"Time":"2026-09-23T00:54:06.12563294+02:00","Action":"output","Package":"open-sds/app/internal/dsp","Test":"TestPrecisionDCAndFraction","Output":"=== RUN   TestPrecisionDCAndFraction\n"}
+{"Time":"2026-09-23T00:54:06.12624038+02:00","Action":"output","Package":"open-sds/app/internal/dsp","Test":"TestPrecisionDCAndFraction","Output":"--- PASS: TestPrecisionDCAndFraction (0.00s)\n"}
+{"Time":"2026-09-23T00:54:06.126248021+02:00","Action":"pass","Package":"open-sds/app/internal/dsp","Test":"TestPrecisionDCAndFraction","Elapsed":0}
+{"Time":"2026-09-23T00:54:06.126251378+02:00","Action":"run","Package":"open-sds/app/internal/dsp","Test":"TestPrecisionRejectsAlternatingAndKeepsBoundary"}
+{"Time":"2026-09-23T00:54:06.126253803+02:00","Action":"output","Package":"open-sds/app/internal/dsp","Test":"TestPrecisionRejectsAlternatingAndKeepsBoundary","Output":"=== RUN   TestPrecisionRejectsAlternatingAndKeepsBoundary\n"}
+{"Time":"2026-09-23T00:54:06.126879567+02:00","Action":"output","Package":"open-sds/app/internal/dsp","Test":"TestPrecisionRejectsAlternatingAndKeepsBoundary","Output":"--- PASS: TestPrecisionRejectsAlternatingAndKeepsBoundary (0.00s)\n"}
+{"Time":"2026-09-23T00:54:06.126887062+02:00","Action":"pass","Package":"open-sds/app/internal/dsp","Test":"TestPrecisionRejectsAlternatingAndKeepsBoundary","Elapsed":0}
+{"Time":"2026-09-23T00:54:06.126890677+02:00","Action":"run","Package":"open-sds/app/internal/dsp","Test":"TestPrecisionFilterCenteredPassband"}
+{"Time":"2026-09-23T00:54:06.126898676+02:00","Action":"output","Package":"open-sds/app/internal/dsp","Test":"TestPrecisionFilterCenteredPassband","Output":"=== RUN   TestPrecisionFilterCenteredPassband\n"}
+{"Time":"2026-09-23T00:54:06.128487285+02:00","Action":"output","Package":"open-sds/app/internal/dsp","Test":"TestPrecisionFilterCenteredPassband","Output":"--- PASS: TestPrecisionFilterCenteredPassband (0.00s)\n"}
+{"Time":"2026-09-23T00:54:06.128494699+02:00","Action":"pass","Package":"open-sds/app/internal/dsp","Test":"TestPrecisionFilterCenteredPassband","Elapsed":0}
+{"Time":"2026-09-23T00:54:06.128497933+02:00","Action":"output","Package":"open-sds/app/internal/dsp","Output":"PASS\n"}
+{"Time":"2026-09-23T00:54:07.132499802+02:00","Action":"output","Package":"open-sds/app/internal/dsp","Output":"ok  \topen-sds/app/internal/dsp\t1.038s\n"}
+{"Time":"2026-09-23T00:54:07.13252256+02:00","Action":"pass","Package":"open-sds/app/internal/dsp","Elapsed":1.038}

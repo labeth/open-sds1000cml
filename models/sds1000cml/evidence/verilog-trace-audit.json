@@ -1,0 +1,4686 @@
+{
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "scope": "Pinned inventory implementation/test Verilog paths, read from current source and hashed below. Lexical module scan only; no preprocessing, elaboration or behavioral verification.",
+  "result": "incomplete",
+  "files": [
+    "fpga/acq_sram/acquisition_adc_pll.v",
+    "fpga/acq_sram/acquisition_path.v",
+    "fpga/acq_sram/acquisition_source.v",
+    "fpga/acq_sram/adc_unpack.v",
+    "fpga/acq_sram/board_capture_path.v",
+    "fpga/acq_sram/capture_engine.v",
+    "fpga/acq_sram/capture_path.v",
+    "fpga/acq_sram/command_bridge.v",
+    "fpga/acq_sram/command_port.v",
+    "fpga/acq_sram/finite_recall.v",
+    "fpga/acq_sram/finite_writer.v",
+    "fpga/acq_sram/host_fifo.v",
+    "fpga/acq_sram/host_ownership.v",
+    "fpga/acq_sram/host_packer.v",
+    "fpga/acq_sram/host_path.v",
+    "fpga/acq_sram/host_ram.v",
+    "fpga/acq_sram/host_read_port.v",
+    "fpga/acq_sram/host_read_window.v",
+    "fpga/acq_sram/host_sink.v",
+    "fpga/acq_sram/ingress_fifo.v",
+    "fpga/acq_sram/ingress_path.v",
+    "fpga/acq_sram/ingress_stream.v",
+    "fpga/acq_sram/interleave.v",
+    "fpga/acq_sram/ordinal_counter.v",
+    "fpga/acq_sram/precision.v",
+    "fpga/acq_sram/precision_tail.v",
+    "fpga/acq_sram/profile_core.v",
+    "fpga/acq_sram/profile_pll.v",
+    "fpga/acq_sram/profile_top.v",
+    "fpga/acq_sram/recall.v",
+    "fpga/acq_sram/record.v",
+    "fpga/acq_sram/sim/ddr_model.v",
+    "fpga/acq_sram/sim/tb_acquisition_path.v",
+    "fpga/acq_sram/sim/tb_acquisition_source.v",
+    "fpga/acq_sram/sim/tb_adc_interleave.v",
+    "fpga/acq_sram/sim/tb_board_capture.v",
+    "fpga/acq_sram/sim/tb_burst.v",
+    "fpga/acq_sram/sim/tb_capture_engine.v",
+    "fpga/acq_sram/sim/tb_capture_start.v",
+    "fpga/acq_sram/sim/tb_command_bridge.v",
+    "fpga/acq_sram/sim/tb_command_gpmc.v",
+    "fpga/acq_sram/sim/tb_command_port.v",
+    "fpga/acq_sram/sim/tb_continuation.v",
+    "fpga/acq_sram/sim/tb_finite_capture.v",
+    "fpga/acq_sram/sim/tb_finite_recall.v",
+    "fpga/acq_sram/sim/tb_finite_recall_faults.v",
+    "fpga/acq_sram/sim/tb_finite_writer_faults.v",
+    "fpga/acq_sram/sim/tb_gpmc_burst.v",
+    "fpga/acq_sram/sim/tb_gpmc_read.v",
+    "fpga/acq_sram/sim/tb_host_faults.v",
+    "fpga/acq_sram/sim/tb_host_fifo.v",
+    "fpga/acq_sram/sim/tb_host_ownership.v",
+    "fpga/acq_sram/sim/tb_host_path.v",
+    "fpga/acq_sram/sim/tb_host_ram.v",
+    "fpga/acq_sram/sim/tb_host_read_port.v",
+    "fpga/acq_sram/sim/tb_host_read_window.v",
+    "fpga/acq_sram/sim/tb_host_sink.v",
+    "fpga/acq_sram/sim/tb_ingress_fifo.v",
+    "fpga/acq_sram/sim/tb_ingress_path.v",
+    "fpga/acq_sram/sim/tb_ingress_stream.v",
+    "fpga/acq_sram/sim/tb_integrator.v",
+    "fpga/acq_sram/sim/tb_interleave.v",
+    "fpga/acq_sram/sim/tb_ordinal_counter.v",
+    "fpga/acq_sram/sim/tb_precision.v",
+    "fpga/acq_sram/sim/tb_precision_config.v",
+    "fpga/acq_sram/sim/tb_precision_fir.v",
+    "fpga/acq_sram/sim/tb_precision_shared.v",
+    "fpga/acq_sram/sim/tb_precision_tail.v",
+    "fpga/acq_sram/sim/tb_precision_tail_queue.v",
+    "fpga/acq_sram/sim/tb_precision_top.v",
+    "fpga/acq_sram/sim/tb_profile_core.v",
+    "fpga/acq_sram/sim/tb_record.v",
+    "fpga/acq_sram/sim/tb_sram_stream_path.v",
+    "fpga/acq_sram/sim/tb_sram_timeslice.v",
+    "fpga/acq_sram/sim/tb_stream_banks.v",
+    "fpga/acq_sram/sim/tb_stream_path.v",
+    "fpga/acq_sram/sim/tb_stream_top.v",
+    "fpga/acq_sram/sim/tb_timeslice_controller.v",
+    "fpga/acq_sram/sim/tb_top.v",
+    "fpga/acq_sram/sim/tb_top_adc.v",
+    "fpga/acq_sram/sim/tb_top_interleave.v",
+    "fpga/acq_sram/sim/tb_transport.v",
+    "fpga/acq_sram/sim/tb_trigger_pipeline.v",
+    "fpga/acq_sram/sim/tb_unpack.v",
+    "fpga/acq_sram/sim/tb_word_bridge.v",
+    "fpga/acq_sram/stream.v",
+    "fpga/acq_sram/stream_banks.v",
+    "fpga/acq_sram/stream_engine.v",
+    "fpga/acq_sram/stream_packetizer.v",
+    "fpga/acq_sram/stream_path.v",
+    "fpga/acq_sram/timeslice_controller.v",
+    "fpga/acq_sram/top.v",
+    "fpga/acq_sram/transport.v",
+    "fpga/acq_sram/word_bridge.v",
+    "fpga/common/ddio_pair.v",
+    "fpga/common/gpmc_slave.v",
+    "fpga/common/lane_in.v",
+    "fpga/common/pll_m2.v",
+    "fpga/common/sim/gpmc_bfm.v",
+    "fpga/common/sim/tb_ddio.v",
+    "fpga/common/sim/tb_gpmc_slave.v",
+    "fpga/common/sim/tb_lane_in.v",
+    "fpga/common/sim/tb_pll.v",
+    "fpga/common/sim/tb_sync.v",
+    "fpga/common/sync.v",
+    "fpga/default/adc_front.v",
+    "fpga/default/capture.v",
+    "fpga/default/default.v",
+    "fpga/default/diag.v",
+    "fpga/default/drain.v",
+    "fpga/default/sim/tb_adc_front.v",
+    "fpga/default/sim/tb_capture.v",
+    "fpga/default/sim/tb_diag.v",
+    "fpga/default/sim/tb_drain.v",
+    "fpga/default/sim/tb_top.v",
+    "fpga/sram_bench/bench.v",
+    "fpga/sram_bench/sim/tb.v"
+  ],
+  "sha256": {
+    "fpga/acq_sram/acquisition_adc_pll.v": "e5005c8293bc67619f164495a6ff4e166086476f0914b80c1c486def74d73403",
+    "fpga/acq_sram/acquisition_path.v": "224328fddde54f0af9f15d31a95a5726667e27e67404c5986665acd0d76177a4",
+    "fpga/acq_sram/acquisition_source.v": "8f9f8fbaa5587fadf7b4dc634bd58e13bcb00ee42c99f561e1339cdd13bb72ef",
+    "fpga/acq_sram/adc_unpack.v": "d203e4037ed957a73458f5c8238184c7cfa2abb1ca10ca6de261be27f2f006cc",
+    "fpga/acq_sram/board_capture_path.v": "0756581c4662cd0985002645c4ed03c3b094d498276d3437679c6e4717158cdb",
+    "fpga/acq_sram/capture_engine.v": "ef42e5d820d59171d5102aee3d2cae349c3c96ecadba91489475be80412ad8d0",
+    "fpga/acq_sram/capture_path.v": "1e4bb47d0a031b1a253996d6c0fda065937146ca790097fa0adfb4d00aff6410",
+    "fpga/acq_sram/command_bridge.v": "698dc6fa9a0e43516f68f838c16e0a4581db4a4b58ee895f3a599d894dce3f0b",
+    "fpga/acq_sram/command_port.v": "603de36f1612ccb12b7f2ad46e88756383b46d43efe8587bde40e6869ba6734f",
+    "fpga/acq_sram/finite_recall.v": "ce2b07e489becd00c3ce0d2e64c4598ca384da56f244f78b6bfc78924622b369",
+    "fpga/acq_sram/finite_writer.v": "4c45e660f003fca43271021b38ada0874d318fae52ecad3d8513e77dd26a8882",
+    "fpga/acq_sram/host_fifo.v": "04794e2bfba0c485ca5be8b8ff2de48b992d6369601815d9461d9f08032f0883",
+    "fpga/acq_sram/host_ownership.v": "310b124b4c1de198a9aa6655fb492d7934c22ec5291e37d23691b45ecfa87b0b",
+    "fpga/acq_sram/host_packer.v": "2b9902e2752e899f5eb4fd94e968c5d800b533b0253b1bc280835cc098aae531",
+    "fpga/acq_sram/host_path.v": "2a0b52bc3c780895f3f7a283fecdcc2b9df32a3172525a50ab8584dbf9f27a7e",
+    "fpga/acq_sram/host_ram.v": "bcc72b0eaf963f5f1576991e20d1bf9c8af55ba0a587d21309a06bd734487990",
+    "fpga/acq_sram/host_read_port.v": "635a4078419a6410a75c46f7c5b5aee951baad46b53fa48ff7642dc32ce4982e",
+    "fpga/acq_sram/host_read_window.v": "4eecc90a6f592d648239b89645e95798e8e4f1dfbbbe9e0d19fdef0065210633",
+    "fpga/acq_sram/host_sink.v": "0528b33b5c95a74a6b4f37ee76fc8c80aafbfa13739af1070e4feb92e299d0bd",
+    "fpga/acq_sram/ingress_fifo.v": "9c8378ef57fdaa6f82c58e3da8aedeb296564cec6d6655050f50a06aa1fcbadf",
+    "fpga/acq_sram/ingress_path.v": "0701c87be770e144b96ff09f4a07143caa86d447330844cb719a960e1401b0b2",
+    "fpga/acq_sram/ingress_stream.v": "2409307756c49a6b30b826a719e3b38dda887ae946e933723a1d77d6c6635478",
+    "fpga/acq_sram/interleave.v": "f33209417a4505ef17cb6c194de33113b660898d8629bd76207177ca88306b10",
+    "fpga/acq_sram/ordinal_counter.v": "297ad038fd29b45044b6b91262890c12cdc462baafd453e761987c52c4cbf82c",
+    "fpga/acq_sram/precision.v": "90d9e3c6b10f8128fe210a369b4d4bb4a4db0323f6cb88e02039488de9cdaf43",
+    "fpga/acq_sram/precision_tail.v": "2775db930af2ef5b10c7791e45bd5f887e354df116c2a9987fc7baa29b31d6a4",
+    "fpga/acq_sram/profile_core.v": "645d661ee6b0c47c15c0c40a63650f45206ed8f8b3276d3415a719e80dcd8387",
+    "fpga/acq_sram/profile_pll.v": "7230a8cb941cc041fff308584f42bd1e1e51fca291121cb49ee1167408713495",
+    "fpga/acq_sram/profile_top.v": "5a6032e1a32380ff8978020f2d350dd9d8ed2832e2e310d2eab51717b2318bc1",
+    "fpga/acq_sram/recall.v": "705ab10b03ea07d4d5d9dd79e61f5daf58ea92b4e8be1ebb699072842f1ab850",
+    "fpga/acq_sram/record.v": "0234ec19ca0551bb260c0ddab2051f0162f3c49e0716d4434b0006b5740f0c86",
+    "fpga/acq_sram/sim/ddr_model.v": "2d2bb4ad3c7f5f13f73e08c68913f0aa1222b56573f09a5efd4e5994a7e4c527",
+    "fpga/acq_sram/sim/tb_acquisition_path.v": "c2df70e4d9924fc213d8df7414d61c59d766c75591e3eacdbb3227307f555958",
+    "fpga/acq_sram/sim/tb_acquisition_source.v": "2f1b47a85c226119f4bdb3dd24e5650b07e72978ef2c38be456f3f6f83222783",
+    "fpga/acq_sram/sim/tb_adc_interleave.v": "3532b6cb76581b12eaabfa1793065a8493d87c5f5f9017018a31869e3ae9ff3e",
+    "fpga/acq_sram/sim/tb_board_capture.v": "47048f55ba822c235e98566389279a0315096e862083724440c117d54ffbb1d4",
+    "fpga/acq_sram/sim/tb_burst.v": "fdeba09ad30d6b05bdc8db88efe3e294782d222149667db6b687854bbc44497e",
+    "fpga/acq_sram/sim/tb_capture_engine.v": "2af77f53e45b28e4ba13b291a88c95ccb655ef0dabb19c596048bd9fa64ce977",
+    "fpga/acq_sram/sim/tb_capture_start.v": "00ff4cb278c83b1700887bef4e33a7b0eecc85d327d9eb604aa290532b72b0ca",
+    "fpga/acq_sram/sim/tb_command_bridge.v": "d25ad15ed064b636ec34ba3ad8a95cf671ed9db790136c2531382b950c8e1493",
+    "fpga/acq_sram/sim/tb_command_gpmc.v": "5b81a80ba337a19e9d368a373b0cc760536e1036d98dfd0c89469ca698ff51f7",
+    "fpga/acq_sram/sim/tb_command_port.v": "a21f7ea7e2ebcb613099ae43fa1b7953a3fd19ed8c22e4f7922b79e5db8612cf",
+    "fpga/acq_sram/sim/tb_continuation.v": "9cc61116a7924b645bbef81d8ead5a58ee40f333bfe45984f61ba7d6b831fcc9",
+    "fpga/acq_sram/sim/tb_finite_capture.v": "14dd8a72677979cc25a0aeef19a8205f43a586910241e4521a7cc51ee59153b8",
+    "fpga/acq_sram/sim/tb_finite_recall.v": "787fb090100f3373d1f9b7507309dc6a29a56302ea2c091f2d5fc602332b02c7",
+    "fpga/acq_sram/sim/tb_finite_recall_faults.v": "9d2cb766856f62d2a588499b3cc27cf25712e6df0b4974386176493a0d2458d6",
+    "fpga/acq_sram/sim/tb_finite_writer_faults.v": "ca6d5bb1970780bf4e92894921a24503424f0164b086ed11c1536121a04c222b",
+    "fpga/acq_sram/sim/tb_gpmc_burst.v": "e7647dc63881373e00a20729b71f9253c0e1192874d9a86e734fcf40e2536c49",
+    "fpga/acq_sram/sim/tb_gpmc_read.v": "fb593bfa19d324a5685fed03e3415962bac174365d3c4e171272b4aba6f322cd",
+    "fpga/acq_sram/sim/tb_host_faults.v": "e401ae4f18a69908ad596926bc9f9965a2c7c616a67f76d51b5871da806df0de",
+    "fpga/acq_sram/sim/tb_host_fifo.v": "0e6ebed72c2eee251521de4dfe56c5789dd231c2547ff909d824dd17aa42c8f6",
+    "fpga/acq_sram/sim/tb_host_ownership.v": "5087eaa5cf073f38c83f0eedc31ae78284978825189905be0fa3c3079cddab1c",
+    "fpga/acq_sram/sim/tb_host_path.v": "9b7388e098b22a9fecc95313a660827d0a7c99489bb2708feae5c61431537afe",
+    "fpga/acq_sram/sim/tb_host_ram.v": "4809af3b0503c6e0f9f8cd3d2211ba52de7218514ce799620512f64bd60fa1ac",
+    "fpga/acq_sram/sim/tb_host_read_port.v": "d66bbed7584cfe91de6e61c20f63ff6b4ed1548f3b500b04db83a50417ebb008",
+    "fpga/acq_sram/sim/tb_host_read_window.v": "9bb8899de6b2b9a2d0c858c914ff0f0bdc52665616f236f170fa945917abb48d",
+    "fpga/acq_sram/sim/tb_host_sink.v": "ac872c6048bb5fbbeba68d20a6b05693d6be49330397fa4f7bba60ad3f933b20",
+    "fpga/acq_sram/sim/tb_ingress_fifo.v": "b864e0ce333ffd8669ed49fb95333a4d8bf6c544e047c8848ac74ac9c15a1c81",
+    "fpga/acq_sram/sim/tb_ingress_path.v": "25944c44c9e0e7c5b5939458968e2d54aa4f94863a5d85b5ba700cf884b9f218",
+    "fpga/acq_sram/sim/tb_ingress_stream.v": "faf515444141afeed6411060f48570ac08d0f72ad11a0490db965aedd368542d",
+    "fpga/acq_sram/sim/tb_integrator.v": "c66df2125fdb22fec1d24b12fb300156d4f99aea93845313e274dca08d5f20fe",
+    "fpga/acq_sram/sim/tb_interleave.v": "391fefbffe92961f1d04345017f7dce26a2a6fc699797dd95b1c49c4eba4718a",
+    "fpga/acq_sram/sim/tb_ordinal_counter.v": "1544b9fc10a789b99c1fbe65250fec73ff5972b83d33c953bd12d2ce7f78464c",
+    "fpga/acq_sram/sim/tb_precision.v": "ea74181e6351d36a9e8d2143302373e4f1d164115b97f950ff4b8bf87137c699",
+    "fpga/acq_sram/sim/tb_precision_config.v": "effd711d852c39a7236ce1fcb5bbd684a2876f1c0745049627badb6622465c23",
+    "fpga/acq_sram/sim/tb_precision_fir.v": "d3ef922c758243b4672e467be0db01c34768955e03411b7bbafe6b57c68289c1",
+    "fpga/acq_sram/sim/tb_precision_shared.v": "6d902dc772b598c14d7fdbd441a52e8d05e3ead6dfc36a788092bca4328ed653",
+    "fpga/acq_sram/sim/tb_precision_tail.v": "c4d23f4ef78d92850f16b850f832ead9596fce5cae85a06da1d2537fe1d398e3",
+    "fpga/acq_sram/sim/tb_precision_tail_queue.v": "86a5fdebc092c2fa0765bd0ac0f3dcba3308840311ab1a257b3b1ab58ff755b5",
+    "fpga/acq_sram/sim/tb_precision_top.v": "cebd40e97810fb2239c4ab77e25a8fcbe55f0cdf6d22ee68dc5568b6dce4de79",
+    "fpga/acq_sram/sim/tb_profile_core.v": "190bae62c40947711ff13a385789d83654eb9b67d321b4b47ab5abf193cf8294",
+    "fpga/acq_sram/sim/tb_record.v": "cc1264bef2b1fb46ec6c77cc1d99e15a1a17328dc61e19ddbab0f984f09c75a9",
+    "fpga/acq_sram/sim/tb_sram_stream_path.v": "8f9e544c04d83c06794c79bd0dbc851547171e50a7def45ec914ceaf1b41fd83",
+    "fpga/acq_sram/sim/tb_sram_timeslice.v": "614680953c206bcb2087e7cc08971883614dc127c7eb2520b74d3827b6dfde7f",
+    "fpga/acq_sram/sim/tb_stream_banks.v": "751bc4db74b3013473c74be3b1b0f862bc5b3117beae50bdb8a6cc0daf0bcb91",
+    "fpga/acq_sram/sim/tb_stream_path.v": "e1e1a86bc15c1591213d1048445520b586220349476178459aafb30c69250fb5",
+    "fpga/acq_sram/sim/tb_stream_top.v": "936bfc46dab33f87b8f5169901ea35f4f617ef03ef45fddbed228690cd507e7f",
+    "fpga/acq_sram/sim/tb_timeslice_controller.v": "50cec8a88ff59bac2a606ad1325e6b133fa567025fc4cf73c2ea640e883df838",
+    "fpga/acq_sram/sim/tb_top.v": "5a04c594f3d407477721a926619570907e40fdc24c6237a1b11b6faff3cb3073",
+    "fpga/acq_sram/sim/tb_top_adc.v": "97efc2b9103a8e9a0355b161020f5e1163877ea970654a855991c694697eb066",
+    "fpga/acq_sram/sim/tb_top_interleave.v": "90b676150f639774245aa58c047020dd90aa87b0622d11536e6ced7ed71df887",
+    "fpga/acq_sram/sim/tb_transport.v": "f808c0a13477fd94b998077e4fde86601539a29715aff7614fab1a2b71f06dda",
+    "fpga/acq_sram/sim/tb_trigger_pipeline.v": "963f8a48d7ad7ee9bc4ceb659720b660286f2013b498defd84f2b2482dc83810",
+    "fpga/acq_sram/sim/tb_unpack.v": "83507afd7d42d07d95efbc3f8216f93860cfae27847b19e988222e78a0a0b6a0",
+    "fpga/acq_sram/sim/tb_word_bridge.v": "39d6cc09758c134eb82b09e740588f992c17fbf696365153b4eb93136711875b",
+    "fpga/acq_sram/stream.v": "9bb767a7f3a779178e89e853a141e77ab3f2833b104c2d305b89d15925ba68a6",
+    "fpga/acq_sram/stream_banks.v": "1373a8fcaf3e6d99d2d4e497fc98a6e4f611854b42021d5803199810d4842a73",
+    "fpga/acq_sram/stream_engine.v": "9fb5dec1aafa6dd4a6ea8ab85d02978de0b702f519c28e1ba9f4e4aefea951ea",
+    "fpga/acq_sram/stream_packetizer.v": "3728985ebfea59e87696f74758a4e857c947297f589ac453a896494210e077f5",
+    "fpga/acq_sram/stream_path.v": "975f63326067edcdf9509f7aa4f42ddf375c4191b4c52483b342e5b8d9ffb47c",
+    "fpga/acq_sram/timeslice_controller.v": "5daedebf673cc8c7d2ae927615fb8d2e60b735ba363d9ad080f2cb154e5ec18d",
+    "fpga/acq_sram/top.v": "0d432dc54bcf6136ed8c93cbd067b0f6b281f3b08e9f09fdb3415a4f51510065",
+    "fpga/acq_sram/transport.v": "814e344e31c1283a4d507e6d489179d0d1ab5b8c05404ed7d51c4047d5ca095a",
+    "fpga/acq_sram/word_bridge.v": "9769f4762e9ad0560cd3d115b028de30cb5402aede81e94239c8dde73241e50a",
+    "fpga/common/ddio_pair.v": "7e33617ccb20197ad4826cb23ca325172a50935c468c90a2ec95a657d979a8a6",
+    "fpga/common/gpmc_slave.v": "9290fbbc5641cd09029c119fceefe7c3d9c9b6ee52f9bb5d8a8141fc5772b1b0",
+    "fpga/common/lane_in.v": "2d1253f0c81dc439b746ebd36df3acf22a4ecac51aa85676574db500e2cf473b",
+    "fpga/common/pll_m2.v": "120e8e933fe105a3c3e61be3cd1aa01e82b85fa9f9a12fdb60f6ed84a8e7c627",
+    "fpga/common/sim/gpmc_bfm.v": "cb1138d9c81895b828284efe6fd0f9ccdf827945d9d1982a7ec6a8953c4fea0b",
+    "fpga/common/sim/tb_ddio.v": "aa7195031e4c1dd348263717a9e9549f89aff609540088437d5bd4c26d7169c1",
+    "fpga/common/sim/tb_gpmc_slave.v": "dd4d74d21b3ce7a21f7ef04b5cc7fca8bf04d3e963e046ee857cc1ec9d780c91",
+    "fpga/common/sim/tb_lane_in.v": "70782ac75f59bf74c5e2110fe7e70b1cac03688a6a78a0078c0a55f6eadf12d1",
+    "fpga/common/sim/tb_pll.v": "ca2cd71bb39bc6be8c0225a25a4560f139c88b2fa33211076ea65c3e27bd1f05",
+    "fpga/common/sim/tb_sync.v": "f36dfe6f5227ed347cc8efa5317161a197e10471d8ae4aee607430d489171fe0",
+    "fpga/common/sync.v": "40ee6aaa0b7995f2caa4c7a98d9119d9e5712527d47bed724673403671813fc8",
+    "fpga/default/adc_front.v": "cf725d9d2e8378729d0ce9a4c2d6106b045c1e47501c23b377c6c6e402b860c7",
+    "fpga/default/capture.v": "88d190cd2ad63c006a2aa5485c654f48b292b2d0c80696ec7ad632a82d32e59d",
+    "fpga/default/default.v": "876ec0e1056c071f87994172eef04e671169dabdb411680d9e6913ea3aa3ef6d",
+    "fpga/default/diag.v": "34e4ade55368189abbae8a0e2a6a1aa3444d6779fb75ed286653f4ca7f8fdb8e",
+    "fpga/default/drain.v": "2c1ef04c4b51eb697a62dc96bb3984704ea63a05507a4b5f53ad81264cb1b4a1",
+    "fpga/default/sim/tb_adc_front.v": "739ca86c0bee72e245965c6d9b91e404debf4935d8dda96a99f805e95fc5893f",
+    "fpga/default/sim/tb_capture.v": "de84214e70b5660db1da9d52597de9744af4d8eb093ee1520fc7d7b64e5de701",
+    "fpga/default/sim/tb_diag.v": "712d8eb9f61ecb1a11a970bd7319121e41f2bbcd3624ad9dffd8d1a524e89459",
+    "fpga/default/sim/tb_drain.v": "0ef2b2db41cfc2f98fd8ff10f5d302a337087b5f6686477993768596a5128186",
+    "fpga/default/sim/tb_top.v": "8014305d8917164b29baf691a47b49c66dc3943ec9fdcc60886000124a55f066",
+    "fpga/sram_bench/bench.v": "5779800330f7f7604bc3a10eace8e1189b4637fc3b09ebaa157758b0e513a878",
+    "fpga/sram_bench/sim/tb.v": "6b1f6eb1b54d7b2dfb6f62fd3918c24a540b9493b17d940cecc387bd382aaead"
+  },
+  "counts": {
+    "code.verilog_expression_macro": 392
+  },
+  "diagnostics": [
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: LANEMAP_ENTRY",
+      "path": "fpga/acq_sram/adc_unpack.v:9"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: LANEMAP_ENTRY",
+      "path": "fpga/acq_sram/interleave.v:38"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: LANEMAP_ENTRY",
+      "path": "fpga/acq_sram/sim/tb_adc_interleave.v:22"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: LANEMAP_ENTRY",
+      "path": "fpga/acq_sram/sim/tb_top_adc.v:32"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: LANEMAP_ENTRY",
+      "path": "fpga/acq_sram/sim/tb_unpack.v:11"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: STREAM_BUFFER_AW",
+      "path": "fpga/acq_sram/top.v:14"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: LANEMAP_SEED_ID",
+      "path": "fpga/acq_sram/top.v:464"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: ADDR_W",
+      "path": "fpga/default/capture.v:101"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: ADDR_W",
+      "path": "fpga/default/capture.v:111"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: ADDR_W",
+      "path": "fpga/default/capture.v:113"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: ADDR_W",
+      "path": "fpga/default/capture.v:115"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: ADDR_W",
+      "path": "fpga/default/capture.v:121"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: REC_DEPTH",
+      "path": "fpga/default/capture.v:121"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: ADDR_W",
+      "path": "fpga/default/capture.v:122"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: REC_DEPTH",
+      "path": "fpga/default/capture.v:122"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: REC_DEPTH",
+      "path": "fpga/default/capture.v:123"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: ADDR_W",
+      "path": "fpga/default/capture.v:129"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: ADDR_W",
+      "path": "fpga/default/capture.v:130"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: ADDR_W",
+      "path": "fpga/default/capture.v:135"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: ADDR_W",
+      "path": "fpga/default/capture.v:138"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: ADDR_W",
+      "path": "fpga/default/capture.v:139"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: ADDR_W",
+      "path": "fpga/default/capture.v:149"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: ADDR_W",
+      "path": "fpga/default/capture.v:227"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: ADDR_W",
+      "path": "fpga/default/capture.v:228"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: ADDR_W",
+      "path": "fpga/default/capture.v:239"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: IL_CTRL_TSRC_ADC",
+      "path": "fpga/default/capture.v:258"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: ROW_COLS",
+      "path": "fpga/default/capture.v:264"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: ROW_COLS",
+      "path": "fpga/default/capture.v:265"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: IL_CTRL_TSRC_RAMP",
+      "path": "fpga/default/capture.v:270"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: IL_CTRL_TSRC_COLTAG",
+      "path": "fpga/default/capture.v:271"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: IL_CTRL_TSRC_GLITCH",
+      "path": "fpga/default/capture.v:272"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: ADDR_W",
+      "path": "fpga/default/capture.v:279"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: REC_DEPTH",
+      "path": "fpga/default/capture.v:285"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: ADDR_W",
+      "path": "fpga/default/capture.v:291"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: ADDR_W",
+      "path": "fpga/default/capture.v:292"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: ADDR_W",
+      "path": "fpga/default/capture.v:323"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: ADDR_W",
+      "path": "fpga/default/capture.v:392"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: ADDR_W",
+      "path": "fpga/default/capture.v:393"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: ADDR_W",
+      "path": "fpga/default/capture.v:412"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: ADDR_W",
+      "path": "fpga/default/capture.v:440"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: ADDR_W",
+      "path": "fpga/default/capture.v:441"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: ADDR_W",
+      "path": "fpga/default/capture.v:442"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: ADDR_W",
+      "path": "fpga/default/capture.v:445"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: ADDR_W",
+      "path": "fpga/default/capture.v:446"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: ADDR_W",
+      "path": "fpga/default/capture.v:448"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: ADDR_W",
+      "path": "fpga/default/capture.v:453"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: ADDR_W",
+      "path": "fpga/default/capture.v:461"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: ADDR_W",
+      "path": "fpga/default/capture.v:462"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: ADDR_W",
+      "path": "fpga/default/capture.v:463"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: ADDR_W",
+      "path": "fpga/default/capture.v:478"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: ADDR_W",
+      "path": "fpga/default/capture.v:480"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: ADDR_W",
+      "path": "fpga/default/capture.v:83"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: ADDR_W",
+      "path": "fpga/default/capture.v:84"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: ADDR_W",
+      "path": "fpga/default/capture.v:97"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: IL_CTRL_TSRC_ADC",
+      "path": "fpga/default/default.v:141"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: ADDR_W",
+      "path": "fpga/default/default.v:142"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: RUN_CHMODE_MASK",
+      "path": "fpga/default/default.v:146"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: RUN_MODE_MASK",
+      "path": "fpga/default/default.v:146"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: RUN_RUN_MASK",
+      "path": "fpga/default/default.v:146"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: RUN_STREAM_MASK",
+      "path": "fpga/default/default.v:146"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: IL_CTRL_TSRC_LSB",
+      "path": "fpga/default/default.v:150"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: ADDR_W",
+      "path": "fpga/default/default.v:151"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DRAIN_START_IDX_LSB",
+      "path": "fpga/default/default.v:151"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: RUN_RUN_LSB",
+      "path": "fpga/default/default.v:169"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: RUN_MODE_LSB",
+      "path": "fpga/default/default.v:170"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: RUN_STREAM_LSB",
+      "path": "fpga/default/default.v:171"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: RUN_CHMODE_LSB",
+      "path": "fpga/default/default.v:172"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: ACQ_CTRL_ENC_EN_LSB",
+      "path": "fpga/default/default.v:173"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: ACQ_CTRL_ENC_RATE_LSB",
+      "path": "fpga/default/default.v:174"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: ACQ_CTRL_TRIG_HYST_LSB",
+      "path": "fpga/default/default.v:175"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: ACQ_CTRL_TRIG_SRC_LSB",
+      "path": "fpga/default/default.v:176"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: ACQ_CTRL_TRIG_SLOPE_LSB",
+      "path": "fpga/default/default.v:177"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: ACQ_CTRL_PAIR_EN_LSB",
+      "path": "fpga/default/default.v:178"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: TRIG_LEVEL_LEVEL_LSB",
+      "path": "fpga/default/default.v:179"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: TRIG_LEVEL_HW_SEL_LSB",
+      "path": "fpga/default/default.v:180"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: ADDR_W",
+      "path": "fpga/default/default.v:183"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: ADDR_W",
+      "path": "fpga/default/default.v:191"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: ADDR_W",
+      "path": "fpga/default/default.v:192"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: ADDR_W",
+      "path": "fpga/default/default.v:227"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: ADDR_W",
+      "path": "fpga/default/default.v:252"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: ADDR_W",
+      "path": "fpga/default/default.v:254"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: ADDR_W",
+      "path": "fpga/default/default.v:256"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: REC_DEPTH",
+      "path": "fpga/default/default.v:83"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: PRETRIG_MAX",
+      "path": "fpga/default/default.v:84"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DIAG_BUSGEN_PAT_BASE",
+      "path": "fpga/default/diag.v:122"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DIAG_BUSGEN_PAT_LAST",
+      "path": "fpga/default/diag.v:122"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DIAG_BUSGEN_PAT_BASE",
+      "path": "fpga/default/diag.v:123"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DIAG_SRCLK_ARM",
+      "path": "fpga/default/diag.v:127"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DIAG_SRCLK_ARM_KEY_LSB",
+      "path": "fpga/default/diag.v:128"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DIAG_SRCLK_ARM_ARM_LSB",
+      "path": "fpga/default/diag.v:129"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DIAG_SRCLK_ARM_STOP_LSB",
+      "path": "fpga/default/diag.v:130"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DIAG_SRCLK_ARM_CLR_LSB",
+      "path": "fpga/default/diag.v:131"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: LANEMAP_PACKED_W",
+      "path": "fpga/default/diag.v:133"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: LANEMAP_SEED_PACKED",
+      "path": "fpga/default/diag.v:133"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DIAG_BUSGEN_PRE",
+      "path": "fpga/default/diag.v:139"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DIAG_SRCLK_CTRL",
+      "path": "fpga/default/diag.v:139"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DIAG_SRCLK_CTRL",
+      "path": "fpga/default/diag.v:143"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DIAG_SRCLK_N",
+      "path": "fpga/default/diag.v:144"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DIAG_SRCLK_DLY",
+      "path": "fpga/default/diag.v:145"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DIAG_SRCLK_ARM",
+      "path": "fpga/default/diag.v:146"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DIAG_LANEMAP_BASE",
+      "path": "fpga/default/diag.v:147"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DIAG_LANEMAP_LAST",
+      "path": "fpga/default/diag.v:147"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DIAG_LANEMAP_BASE",
+      "path": "fpga/default/diag.v:148"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DIAG_BUS_OE_LO",
+      "path": "fpga/default/diag.v:156"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DIAG_BUS_OE_HI",
+      "path": "fpga/default/diag.v:157"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DIAG_BUS_DRV_LO",
+      "path": "fpga/default/diag.v:158"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DIAG_BUS_DRV_HI",
+      "path": "fpga/default/diag.v:159"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DIAG_SINGLE_CTRL",
+      "path": "fpga/default/diag.v:160"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DIAG_ADC_HOLD",
+      "path": "fpga/default/diag.v:161"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DIAG_LANE_IDX",
+      "path": "fpga/default/diag.v:162"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DIAG_SNAP_MODE",
+      "path": "fpga/default/diag.v:163"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DIAG_BUSGEN_CTL",
+      "path": "fpga/default/diag.v:164"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DIAG_BUSGEN_AUX",
+      "path": "fpga/default/diag.v:165"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DIAG_BUSCAP_CTL",
+      "path": "fpga/default/diag.v:166"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DIAG_BUSGEN_OE_LO",
+      "path": "fpga/default/diag.v:167"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DIAG_BUSGEN_OE_HI",
+      "path": "fpga/default/diag.v:168"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DIAG_SRCLK_CTRL",
+      "path": "fpga/default/diag.v:169"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DIAG_SRCLK_N",
+      "path": "fpga/default/diag.v:170"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DIAG_SRCLK_DLY",
+      "path": "fpga/default/diag.v:171"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DIAG_SRCLK_W",
+      "path": "fpga/default/diag.v:172"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DIAG_BUSGEN_PRE",
+      "path": "fpga/default/diag.v:173"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: LANEMAP_CORE_W",
+      "path": "fpga/default/diag.v:182"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: LANEMAP_CORE_W",
+      "path": "fpga/default/diag.v:183"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: LANEMAP_ENTRY_W",
+      "path": "fpga/default/diag.v:184"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DIAG_CTRL_BUS_DRV_EN_LSB",
+      "path": "fpga/default/diag.v:191"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DIAG_BUSGEN_CTL_RATE_LSB",
+      "path": "fpga/default/diag.v:200"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DIAG_BUSGEN_CTL_EN_LSB",
+      "path": "fpga/default/diag.v:209"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DIAG_BUSGEN_CTL_RUN_LSB",
+      "path": "fpga/default/diag.v:210"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DIAG_BUSGEN_CTL_ONESHOT_LSB",
+      "path": "fpga/default/diag.v:211"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DIAG_BUSGEN_CTL_NPHASE_LSB",
+      "path": "fpga/default/diag.v:212"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DIAG_BUSGEN_CTL_OE_PH_LSB",
+      "path": "fpga/default/diag.v:213"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DIAG_BUSGEN_CTL_OE_INV_LSB",
+      "path": "fpga/default/diag.v:214"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DIAG_CTRL_K2_EN_LSB",
+      "path": "fpga/default/diag.v:312"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DIAG_CTRL_D2_LSB",
+      "path": "fpga/default/diag.v:313"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DIAG_CTRL_G2_LSB",
+      "path": "fpga/default/diag.v:314"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DIAG_CTRL_K1_LSB",
+      "path": "fpga/default/diag.v:316"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DIAG_BUSGEN_AUX_K2_LSB",
+      "path": "fpga/default/diag.v:319"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DIAG_BUSGEN_AUX_D1_LSB",
+      "path": "fpga/default/diag.v:320"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DIAG_BUSGEN_AUX_D2_LSB",
+      "path": "fpga/default/diag.v:321"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DIAG_BUSGEN_AUX_G2_LSB",
+      "path": "fpga/default/diag.v:322"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DIAG_BUSGEN_AUX_K1_LSB",
+      "path": "fpga/default/diag.v:323"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DIAG_CTRL_A11_LSB",
+      "path": "fpga/default/diag.v:370"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DIAG_CTRL_F1_LSB",
+      "path": "fpga/default/diag.v:371"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DIAG_CTRL_G1_LSB",
+      "path": "fpga/default/diag.v:372"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DIAG_CTRL_F2_SEL_LSB",
+      "path": "fpga/default/diag.v:411"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DIAG_CTRL_J2_SEL_LSB",
+      "path": "fpga/default/diag.v:412"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DIAG_BUSGEN_CTL_EN_LSB",
+      "path": "fpga/default/diag.v:415"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DIAG_BUSGEN_AUX_D1_LSB",
+      "path": "fpga/default/diag.v:571"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DIAG_SRCLK_CNT_D1",
+      "path": "fpga/default/diag.v:628"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DIAG_SRCLK_ARR_D1",
+      "path": "fpga/default/diag.v:629"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DIAG_SRCLK_ARR_P6",
+      "path": "fpga/default/diag.v:630"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DIAG_SRCLK_STAT",
+      "path": "fpga/default/diag.v:631"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DIAG_SRCLK_CNT_F2",
+      "path": "fpga/default/diag.v:632"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DIAG_SRCLK_CNT_J2",
+      "path": "fpga/default/diag.v:633"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DIAG_SRCLK_LIFE",
+      "path": "fpga/default/diag.v:634"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DIAG_CTRL_LANE_GATE_RST_LSB",
+      "path": "fpga/default/diag.v:646"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DIAG_CTRL_G2_LSB",
+      "path": "fpga/default/diag.v:711"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DIAG_BUS_OE_LO",
+      "path": "fpga/default/diag.v:718"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DIAG_BUS_OE_HI",
+      "path": "fpga/default/diag.v:719"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DIAG_BUS_DRV_LO",
+      "path": "fpga/default/diag.v:720"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DIAG_BUS_DRV_HI",
+      "path": "fpga/default/diag.v:721"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DIAG_BUS_RD_LO",
+      "path": "fpga/default/diag.v:722"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DIAG_BUS_RD_HI",
+      "path": "fpga/default/diag.v:723"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DIAG_SINGLE_CTRL",
+      "path": "fpga/default/diag.v:724"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DIAG_ADC_HOLD",
+      "path": "fpga/default/diag.v:725"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DIAG_LANE_IDX",
+      "path": "fpga/default/diag.v:726"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DIAG_LANE_TOG",
+      "path": "fpga/default/diag.v:727"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DIAG_LANE_LVL",
+      "path": "fpga/default/diag.v:728"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DIAG_SNAP_MODE",
+      "path": "fpga/default/diag.v:729"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DIAG_BUSGEN_CTL",
+      "path": "fpga/default/diag.v:730"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DIAG_BUSGEN_AUX",
+      "path": "fpga/default/diag.v:731"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DIAG_BUSGEN_OE_LO",
+      "path": "fpga/default/diag.v:732"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DIAG_BUSGEN_OE_HI",
+      "path": "fpga/default/diag.v:733"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DIAG_BUSCAP_CTL",
+      "path": "fpga/default/diag.v:734"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DIAG_BUSCAP_CTL_TRIG_LSB",
+      "path": "fpga/default/diag.v:735"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DIAG_BUSCAP_CTL_EN_LSB",
+      "path": "fpga/default/diag.v:736"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DIAG_CTRL_SNAP_CLK_LSB",
+      "path": "fpga/default/diag.v:747"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DIAG_CTRL_SNAP_ARM_LSB",
+      "path": "fpga/default/diag.v:760"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DIAG_BUSCAP_CTL_EN_LSB",
+      "path": "fpga/default/diag.v:780"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DIAG_BUSCAP_CTL_TRIG_LSB",
+      "path": "fpga/default/diag.v:781"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DIAG_BUSCAP_CTL_CONFIRM_LSB",
+      "path": "fpga/default/diag.v:802"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: ADDR_W",
+      "path": "fpga/default/drain.v:47"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: ADDR_W",
+      "path": "fpga/default/drain.v:49"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: ADDR_W",
+      "path": "fpga/default/drain.v:50"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: ADDR_W",
+      "path": "fpga/default/drain.v:53"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: ADDR_W",
+      "path": "fpga/default/drain.v:54"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: ADDR_W",
+      "path": "fpga/default/drain.v:59"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: REC_DEPTH",
+      "path": "fpga/default/drain.v:59"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: ADDR_W",
+      "path": "fpga/default/drain.v:60"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: ADDR_W",
+      "path": "fpga/default/drain.v:62"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: ADDR_W",
+      "path": "fpga/default/drain.v:69"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: ADDR_W",
+      "path": "fpga/default/drain.v:73"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: ADDR_W",
+      "path": "fpga/default/drain.v:77"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: ADDR_W",
+      "path": "fpga/default/drain.v:78"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: ADDR_W",
+      "path": "fpga/default/drain.v:79"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: ADDR_W",
+      "path": "fpga/default/drain.v:80"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: ADDR_W",
+      "path": "fpga/default/drain.v:81"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: REC_DEPTH",
+      "path": "fpga/default/drain.v:81"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: ADDR_W",
+      "path": "fpga/default/drain.v:83"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: REC_DEPTH",
+      "path": "fpga/default/drain.v:83"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: ADDR_W",
+      "path": "fpga/default/drain.v:87"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: ADDR_W",
+      "path": "fpga/default/drain.v:97"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: ADDR_W",
+      "path": "fpga/default/drain.v:98"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: IL_CTRL_TSRC_RAMP",
+      "path": "fpga/default/sim/tb_capture.v:142"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: IL_CTRL_TSRC_COLTAG",
+      "path": "fpga/default/sim/tb_capture.v:146"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: IL_CTRL_TSRC_GLITCH",
+      "path": "fpga/default/sim/tb_capture.v:150"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: IL_CTRL_TSRC_RAMP",
+      "path": "fpga/default/sim/tb_capture.v:154"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: REC_DEPTH",
+      "path": "fpga/default/sim/tb_capture.v:46"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: ROW_COLS",
+      "path": "fpga/default/sim/tb_capture.v:53"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: IL_CTRL_TSRC_RAMP",
+      "path": "fpga/default/sim/tb_capture.v:55"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: IL_CTRL_TSRC_COLTAG",
+      "path": "fpga/default/sim/tb_capture.v:56"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: IL_CTRL_TSRC_GLITCH",
+      "path": "fpga/default/sim/tb_capture.v:57"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: LANEMAP_PACKED_W",
+      "path": "fpga/default/sim/tb_diag.v:23"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: LANEMAP_SEED_PACKED",
+      "path": "fpga/default/sim/tb_diag.v:23"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: LANEMAP_N",
+      "path": "fpga/default/sim/tb_diag.v:75"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: REC_DEPTH",
+      "path": "fpga/default/sim/tb_drain.v:27"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_STATUS_B",
+      "path": "fpga/default/sim/tb_top.v:100"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_EYE_CNT",
+      "path": "fpga/default/sim/tb_top.v:101"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_DBG2",
+      "path": "fpga/default/sim/tb_top.v:102"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_ACQ_CTRL",
+      "path": "fpga/default/sim/tb_top.v:111"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_RUN",
+      "path": "fpga/default/sim/tb_top.v:111"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_DRAIN_START",
+      "path": "fpga/default/sim/tb_top.v:114"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_DRAIN_START",
+      "path": "fpga/default/sim/tb_top.v:115"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_DRAIN_LEN",
+      "path": "fpga/default/sim/tb_top.v:116"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_DRAIN_LEN",
+      "path": "fpga/default/sim/tb_top.v:117"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_DRAIN_START",
+      "path": "fpga/default/sim/tb_top.v:117"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_DRAIN_STAT",
+      "path": "fpga/default/sim/tb_top.v:118"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_POP_MON",
+      "path": "fpga/default/sim/tb_top.v:119"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_ACQ_CTRL",
+      "path": "fpga/default/sim/tb_top.v:120"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_TRIG_LEVEL",
+      "path": "fpga/default/sim/tb_top.v:121"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_DIAG_CTRL",
+      "path": "fpga/default/sim/tb_top.v:122"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_BURST_REMAIN",
+      "path": "fpga/default/sim/tb_top.v:123"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_BURST",
+      "path": "fpga/default/sim/tb_top.v:124"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_POP_MON",
+      "path": "fpga/default/sim/tb_top.v:125"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: LANEMAP_N",
+      "path": "fpga/default/sim/tb_top.v:128"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DIAG_LANEMAP_BASE",
+      "path": "fpga/default/sim/tb_top.v:129"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_DIAG_DATA",
+      "path": "fpga/default/sim/tb_top.v:129"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_DIAG_IDX",
+      "path": "fpga/default/sim/tb_top.v:129"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_DIAG_DATA",
+      "path": "fpga/default/sim/tb_top.v:133"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_DIAG_IDX",
+      "path": "fpga/default/sim/tb_top.v:133"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_DIAG_DATA",
+      "path": "fpga/default/sim/tb_top.v:134"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: DIAG_PAIR_TRIM",
+      "path": "fpga/default/sim/tb_top.v:135"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_DIAG_DATA",
+      "path": "fpga/default/sim/tb_top.v:135"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_DIAG_IDX",
+      "path": "fpga/default/sim/tb_top.v:135"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_DIAG_DATA",
+      "path": "fpga/default/sim/tb_top.v:136"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_DIAG_IDX",
+      "path": "fpga/default/sim/tb_top.v:136"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_DIAG_DATA",
+      "path": "fpga/default/sim/tb_top.v:138"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_DIAG_IDX",
+      "path": "fpga/default/sim/tb_top.v:139"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_MISC_RD",
+      "path": "fpga/default/sim/tb_top.v:141"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_CLK_STAT",
+      "path": "fpga/default/sim/tb_top.v:144"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_ACQ_CTRL",
+      "path": "fpga/default/sim/tb_top.v:147"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_DECIM_HI",
+      "path": "fpga/default/sim/tb_top.v:149"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_DECIM_LO",
+      "path": "fpga/default/sim/tb_top.v:149"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_PRETRIG_HI",
+      "path": "fpga/default/sim/tb_top.v:150"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_PRETRIG_LO",
+      "path": "fpga/default/sim/tb_top.v:150"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_POSTTRIG_HI",
+      "path": "fpga/default/sim/tb_top.v:151"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_POSTTRIG_LO",
+      "path": "fpga/default/sim/tb_top.v:151"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: RUN_RUN_MASK",
+      "path": "fpga/default/sim/tb_top.v:152"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_RUN",
+      "path": "fpga/default/sim/tb_top.v:152"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: OP_GO",
+      "path": "fpga/default/sim/tb_top.v:153"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_OPCODE",
+      "path": "fpga/default/sim/tb_top.v:153"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_POP_MON",
+      "path": "fpga/default/sim/tb_top.v:154"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: STATUS_A_VALID_MASK",
+      "path": "fpga/default/sim/tb_top.v:156"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_FILL",
+      "path": "fpga/default/sim/tb_top.v:157"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_TRIGPOS_HI",
+      "path": "fpga/default/sim/tb_top.v:158"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_BURST_REMAIN",
+      "path": "fpga/default/sim/tb_top.v:159"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_BURST",
+      "path": "fpga/default/sim/tb_top.v:160"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_BURST",
+      "path": "fpga/default/sim/tb_top.v:162"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_BURST_ALIAS",
+      "path": "fpga/default/sim/tb_top.v:162"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_BURST_REMAIN",
+      "path": "fpga/default/sim/tb_top.v:167"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_DRAIN_STAT",
+      "path": "fpga/default/sim/tb_top.v:168"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_POP_MON",
+      "path": "fpga/default/sim/tb_top.v:169"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_BURST",
+      "path": "fpga/default/sim/tb_top.v:171"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_POP_MON",
+      "path": "fpga/default/sim/tb_top.v:172"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_DRAIN_STAT",
+      "path": "fpga/default/sim/tb_top.v:173"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_DRAIN_LEN",
+      "path": "fpga/default/sim/tb_top.v:175"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_DRAIN_START",
+      "path": "fpga/default/sim/tb_top.v:175"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_BURST_REMAIN",
+      "path": "fpga/default/sim/tb_top.v:176"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: OP_REWIND",
+      "path": "fpga/default/sim/tb_top.v:177"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_OPCODE",
+      "path": "fpga/default/sim/tb_top.v:177"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_BURST_REMAIN",
+      "path": "fpga/default/sim/tb_top.v:178"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_DRAIN_STAT",
+      "path": "fpga/default/sim/tb_top.v:179"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_POP_MON",
+      "path": "fpga/default/sim/tb_top.v:180"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_BURST",
+      "path": "fpga/default/sim/tb_top.v:181"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_BURST_REMAIN",
+      "path": "fpga/default/sim/tb_top.v:183"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: OP_REWIND",
+      "path": "fpga/default/sim/tb_top.v:184"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_DRAIN_LEN",
+      "path": "fpga/default/sim/tb_top.v:184"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_DRAIN_START",
+      "path": "fpga/default/sim/tb_top.v:184"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_OPCODE",
+      "path": "fpga/default/sim/tb_top.v:184"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_BURST_REMAIN",
+      "path": "fpga/default/sim/tb_top.v:185"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_BURST",
+      "path": "fpga/default/sim/tb_top.v:186"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: OP_REWIND",
+      "path": "fpga/default/sim/tb_top.v:188"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_DRAIN_LEN",
+      "path": "fpga/default/sim/tb_top.v:188"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_DRAIN_START",
+      "path": "fpga/default/sim/tb_top.v:188"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_OPCODE",
+      "path": "fpga/default/sim/tb_top.v:188"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_BURST_REMAIN",
+      "path": "fpga/default/sim/tb_top.v:189"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_BURST",
+      "path": "fpga/default/sim/tb_top.v:190"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_DBG",
+      "path": "fpga/default/sim/tb_top.v:191"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: IL_CTRL_TSRC_LSB",
+      "path": "fpga/default/sim/tb_top.v:193"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: IL_CTRL_TSRC_RAMP",
+      "path": "fpga/default/sim/tb_top.v:193"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_IL_CTRL",
+      "path": "fpga/default/sim/tb_top.v:193"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_POSTTRIG_LO",
+      "path": "fpga/default/sim/tb_top.v:194"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_PRETRIG_LO",
+      "path": "fpga/default/sim/tb_top.v:194"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: OP_GO",
+      "path": "fpga/default/sim/tb_top.v:195"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_OPCODE",
+      "path": "fpga/default/sim/tb_top.v:195"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_FILL",
+      "path": "fpga/default/sim/tb_top.v:197"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_BURST_REMAIN",
+      "path": "fpga/default/sim/tb_top.v:198"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_BURST",
+      "path": "fpga/default/sim/tb_top.v:201"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_BURST_ALIAS",
+      "path": "fpga/default/sim/tb_top.v:201"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_BURST_REMAIN",
+      "path": "fpga/default/sim/tb_top.v:205"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_DRAIN_STAT",
+      "path": "fpga/default/sim/tb_top.v:206"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_POP_MON",
+      "path": "fpga/default/sim/tb_top.v:207"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: OP_REWIND",
+      "path": "fpga/default/sim/tb_top.v:208"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_DRAIN_LEN",
+      "path": "fpga/default/sim/tb_top.v:208"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_DRAIN_START",
+      "path": "fpga/default/sim/tb_top.v:208"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_OPCODE",
+      "path": "fpga/default/sim/tb_top.v:208"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_BURST_REMAIN",
+      "path": "fpga/default/sim/tb_top.v:209"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_BURST",
+      "path": "fpga/default/sim/tb_top.v:210"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_DRAIN_START",
+      "path": "fpga/default/sim/tb_top.v:212"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: IL_CTRL_TSRC_COLTAG",
+      "path": "fpga/default/sim/tb_top.v:214"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: IL_CTRL_TSRC_LSB",
+      "path": "fpga/default/sim/tb_top.v:214"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_IL_CTRL",
+      "path": "fpga/default/sim/tb_top.v:214"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_POSTTRIG_LO",
+      "path": "fpga/default/sim/tb_top.v:215"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_PRETRIG_LO",
+      "path": "fpga/default/sim/tb_top.v:215"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: OP_GO",
+      "path": "fpga/default/sim/tb_top.v:216"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_OPCODE",
+      "path": "fpga/default/sim/tb_top.v:216"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_BURST",
+      "path": "fpga/default/sim/tb_top.v:217"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_IL_CTRL",
+      "path": "fpga/default/sim/tb_top.v:219"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: OP_RESET",
+      "path": "fpga/default/sim/tb_top.v:221"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_OPCODE",
+      "path": "fpga/default/sim/tb_top.v:221"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_STATUS_A",
+      "path": "fpga/default/sim/tb_top.v:222"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_BURST_REMAIN",
+      "path": "fpga/default/sim/tb_top.v:223"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_DRAIN_STAT",
+      "path": "fpga/default/sim/tb_top.v:224"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: OP_GO",
+      "path": "fpga/default/sim/tb_top.v:226"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_OPCODE",
+      "path": "fpga/default/sim/tb_top.v:226"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_RUN",
+      "path": "fpga/default/sim/tb_top.v:226"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_STATUS_A",
+      "path": "fpga/default/sim/tb_top.v:227"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: LANEMAP_PACKED_W",
+      "path": "fpga/default/sim/tb_top.v:33"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: LANEMAP_SEED_PACKED",
+      "path": "fpga/default/sim/tb_top.v:33"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_STATUS_A",
+      "path": "fpga/default/sim/tb_top.v:47"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: STATUS_A_DONE_MASK",
+      "path": "fpga/default/sim/tb_top.v:47"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: STATUS_A_DONE_MASK",
+      "path": "fpga/default/sim/tb_top.v:48"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: IFACE_BUILD_ID_LO",
+      "path": "fpga/default/sim/tb_top.v:53"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_BUILDID_LO",
+      "path": "fpga/default/sim/tb_top.v:53"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: IFACE_BUILD_ID_HI",
+      "path": "fpga/default/sim/tb_top.v:54"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_BUILDID_HI",
+      "path": "fpga/default/sim/tb_top.v:54"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_VERSION",
+      "path": "fpga/default/sim/tb_top.v:55"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: VERSION_MAGIC",
+      "path": "fpga/default/sim/tb_top.v:55"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: FABRIC_ID",
+      "path": "fpga/default/sim/tb_top.v:56"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_FABRIC_ID",
+      "path": "fpga/default/sim/tb_top.v:56"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_ENV_DATA",
+      "path": "fpga/default/sim/tb_top.v:57"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_IL_CTRL",
+      "path": "fpga/default/sim/tb_top.v:59"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_RUN",
+      "path": "fpga/default/sim/tb_top.v:60"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_IL_CTRL",
+      "path": "fpga/default/sim/tb_top.v:61"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_SNOOP_SEL",
+      "path": "fpga/default/sim/tb_top.v:62"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_SNOOP_DATA",
+      "path": "fpga/default/sim/tb_top.v:64"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_IL_CTRL",
+      "path": "fpga/default/sim/tb_top.v:65"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_IL_CTRL",
+      "path": "fpga/default/sim/tb_top.v:66"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_RUN",
+      "path": "fpga/default/sim/tb_top.v:67"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_IL_CTRL",
+      "path": "fpga/default/sim/tb_top.v:68"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_RUN",
+      "path": "fpga/default/sim/tb_top.v:69"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_SNOOP_SEL",
+      "path": "fpga/default/sim/tb_top.v:70"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_RUN",
+      "path": "fpga/default/sim/tb_top.v:71"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_RUN",
+      "path": "fpga/default/sim/tb_top.v:72"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_RUN",
+      "path": "fpga/default/sim/tb_top.v:73"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_RUN",
+      "path": "fpga/default/sim/tb_top.v:74"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_IL_CTRL",
+      "path": "fpga/default/sim/tb_top.v:75"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_RUN",
+      "path": "fpga/default/sim/tb_top.v:75"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: RUN_RUN_MASK",
+      "path": "fpga/default/sim/tb_top.v:77"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_RUN",
+      "path": "fpga/default/sim/tb_top.v:77"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: OP_GO",
+      "path": "fpga/default/sim/tb_top.v:78"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_STATUS_A",
+      "path": "fpga/default/sim/tb_top.v:79"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_FILL",
+      "path": "fpga/default/sim/tb_top.v:83"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_ACQ_CTRL",
+      "path": "fpga/default/sim/tb_top.v:84"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_SNOOP_SEL",
+      "path": "fpga/default/sim/tb_top.v:85"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_RUN",
+      "path": "fpga/default/sim/tb_top.v:86"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_OPCODE",
+      "path": "fpga/default/sim/tb_top.v:87"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_STATUS_A",
+      "path": "fpga/default/sim/tb_top.v:88"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: OP_STACK_CLEAR",
+      "path": "fpga/default/sim/tb_top.v:89"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_OPCODE",
+      "path": "fpga/default/sim/tb_top.v:89"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_STATUS_A",
+      "path": "fpga/default/sim/tb_top.v:90"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_DEC_RECIP",
+      "path": "fpga/default/sim/tb_top.v:92"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_DEC_PRE",
+      "path": "fpga/default/sim/tb_top.v:93"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_STACK_N",
+      "path": "fpga/default/sim/tb_top.v:94"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_STACK_CTRL",
+      "path": "fpga/default/sim/tb_top.v:95"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_STACK_PRE",
+      "path": "fpga/default/sim/tb_top.v:96"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_STACK_LEN",
+      "path": "fpga/default/sim/tb_top.v:97"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_EYE_CTRL",
+      "path": "fpga/default/sim/tb_top.v:98"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: SEL_STACK_CNT",
+      "path": "fpga/default/sim/tb_top.v:99"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: BENCH_MHZ",
+      "path": "fpga/sram_bench/bench.v:164"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: BENCH_MHZ",
+      "path": "fpga/sram_bench/bench.v:195"
+    },
+    {
+      "code": "code.verilog_expression_macro",
+      "severity": "warning",
+      "message": "Unexpanded Verilog expression macro requires build evidence: BENCH_MHZ",
+      "path": "fpga/sram_bench/bench.v:197"
+    }
+  ],
+  "symbols": [
+    {
+      "TraceID": "CODE-ADCPHASEPLL",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-039",
+        "REQ-SDS-059"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/acquisition_adc_pll.v",
+      "Line": 4,
+      "Signature": "module adc_phase_pll",
+      "role": "implementation"
+    },
+    {
+      "TraceID": "CODE-SRAMACQUISITIONPATH",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-041",
+        "REQ-SDS-042",
+        "REQ-SDS-043",
+        "REQ-SDS-045",
+        "REQ-SDS-056",
+        "REQ-SDS-057",
+        "REQ-SDS-058",
+        "REQ-SDS-183",
+        "REQ-SDS-184"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/acquisition_path.v",
+      "Line": 8,
+      "Signature": "module sram_acquisition_path",
+      "role": "implementation"
+    },
+    {
+      "TraceID": "CODE-ACQUISITIONTRIGGERPIPELINE",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-184"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/acquisition_path.v",
+      "Line": 162,
+      "Signature": "module acquisition_trigger_pipeline",
+      "role": "implementation"
+    },
+    {
+      "TraceID": "CODE-ADCACQUISITIONSOURCE",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-040",
+        "REQ-SDS-058",
+        "REQ-SDS-183"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/acquisition_source.v",
+      "Line": 9,
+      "Signature": "module adc_acquisition_source",
+      "role": "implementation"
+    },
+    {
+      "TraceID": "CODE-ADCUNPACK",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-038"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/adc_unpack.v",
+      "Line": 6,
+      "Signature": "module adc_unpack",
+      "role": "implementation"
+    },
+    {
+      "TraceID": "CODE-SRAMBOARDCAPTUREPATH",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-045"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/board_capture_path.v",
+      "Line": 10,
+      "Signature": "module sram_board_capture_path",
+      "role": "implementation"
+    },
+    {
+      "TraceID": "CODE-SRAMCAPTUREENGINE",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-043",
+        "REQ-SDS-045",
+        "REQ-SDS-052",
+        "REQ-SDS-056",
+        "REQ-SDS-058"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/capture_engine.v",
+      "Line": 9,
+      "Signature": "module sram_capture_engine",
+      "role": "implementation"
+    },
+    {
+      "TraceID": "CODE-SRAMCAPTUREPATH",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-043",
+        "REQ-SDS-045"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/capture_path.v",
+      "Line": 5,
+      "Signature": "module sram_capture_path",
+      "role": "implementation"
+    },
+    {
+      "TraceID": "CODE-ACQCOMMANDBRIDGE",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-054",
+        "REQ-SDS-055",
+        "REQ-SDS-058",
+        "REQ-SDS-077"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/command_bridge.v",
+      "Line": 7,
+      "Signature": "module acq_command_bridge",
+      "role": "implementation"
+    },
+    {
+      "TraceID": "CODE-ACQCOMMANDPORT",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-054",
+        "REQ-SDS-055",
+        "REQ-SDS-056",
+        "REQ-SDS-058",
+        "REQ-SDS-185",
+        "REQ-SDS-077",
+        "REQ-SDS-080"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/command_port.v",
+      "Line": 6,
+      "Signature": "module acq_command_port",
+      "role": "implementation"
+    },
+    {
+      "TraceID": "CODE-SRAMFINITERECALL",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-043",
+        "REQ-SDS-052",
+        "REQ-SDS-058"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/finite_recall.v",
+      "Line": 9,
+      "Signature": "module sram_finite_recall",
+      "role": "implementation"
+    },
+    {
+      "TraceID": "CODE-SRAMFINITEWRITER",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-041",
+        "REQ-SDS-042",
+        "REQ-SDS-057",
+        "REQ-SDS-058"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/finite_writer.v",
+      "Line": 12,
+      "Signature": "module sram_finite_writer",
+      "role": "implementation"
+    },
+    {
+      "TraceID": "CODE-SRAMHOSTFIFO",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-050",
+        "REQ-SDS-078"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/host_fifo.v",
+      "Line": 9,
+      "Signature": "module sram_host_fifo",
+      "role": "implementation"
+    },
+    {
+      "TraceID": "CODE-SRAMHOSTOWNERSHIP",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-052"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/host_ownership.v",
+      "Line": 11,
+      "Signature": "module sram_host_ownership",
+      "role": "implementation"
+    },
+    {
+      "TraceID": "CODE-SRAMHOSTPACKER",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-049"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/host_packer.v",
+      "Line": 7,
+      "Signature": "module sram_host_packer",
+      "role": "implementation"
+    },
+    {
+      "TraceID": "CODE-SRAMHOSTPATH",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-049",
+        "REQ-SDS-050",
+        "REQ-SDS-051",
+        "REQ-SDS-052",
+        "REQ-SDS-078",
+        "REQ-SDS-094"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/host_path.v",
+      "Line": 8,
+      "Signature": "module sram_host_path",
+      "role": "implementation"
+    },
+    {
+      "TraceID": "CODE-SRAMHOSTRAM",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-051"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/host_ram.v",
+      "Line": 7,
+      "Signature": "module sram_host_ram",
+      "role": "implementation"
+    },
+    {
+      "TraceID": "CODE-ACQHOSTREADPORT",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-053"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/host_read_port.v",
+      "Line": 5,
+      "Signature": "module acq_host_read_port",
+      "role": "implementation"
+    },
+    {
+      "TraceID": "CODE-ACQHOSTREADWINDOW",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-053",
+        "REQ-SDS-079"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/host_read_window.v",
+      "Line": 6,
+      "Signature": "module acq_host_read_window",
+      "role": "implementation"
+    },
+    {
+      "TraceID": "CODE-SRAMHOSTSINK",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-094"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/host_sink.v",
+      "Line": 9,
+      "Signature": "module sram_host_sink",
+      "role": "implementation"
+    },
+    {
+      "TraceID": "CODE-SRAMINGRESSFIFO",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-046"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/ingress_fifo.v",
+      "Line": 9,
+      "Signature": "module sram_ingress_fifo",
+      "role": "implementation"
+    },
+    {
+      "TraceID": "CODE-SRAMINGRESSPATH",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-046"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/ingress_path.v",
+      "Line": 9,
+      "Signature": "module sram_ingress_path",
+      "role": "implementation"
+    },
+    {
+      "TraceID": "CODE-SRAMINGRESSSTREAM",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-046"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/ingress_stream.v",
+      "Line": 6,
+      "Signature": "module sram_ingress_stream",
+      "role": "implementation"
+    },
+    {
+      "TraceID": "CODE-ADCINTERLEAVE",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-039",
+        "REQ-SDS-058"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/interleave.v",
+      "Line": 8,
+      "Signature": "module adc_interleave",
+      "role": "implementation"
+    },
+    {
+      "TraceID": "CODE-INTERLEAVEGEARBOX",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-039"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/interleave.v",
+      "Line": 124,
+      "Signature": "module interleave_gearbox",
+      "role": "implementation"
+    },
+    {
+      "TraceID": "CODE-INTERLEAVEGEARBOX64",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-039"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/interleave.v",
+      "Line": 145,
+      "Signature": "module interleave_gearbox64",
+      "role": "implementation"
+    },
+    {
+      "TraceID": "CODE-SRAMORDINALCOUNTER",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-047"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/ordinal_counter.v",
+      "Line": 5,
+      "Signature": "module sram_ordinal_counter",
+      "role": "implementation"
+    },
+    {
+      "TraceID": "CODE-CICPAIRINTEGRATOR",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-040"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/precision.v",
+      "Line": 6,
+      "Signature": "module cic_pair_integrator",
+      "role": "implementation"
+    },
+    {
+      "TraceID": "CODE-CIC16PAIR",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-040"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/precision.v",
+      "Line": 47,
+      "Signature": "module cic16_pair",
+      "role": "implementation"
+    },
+    {
+      "TraceID": "CODE-CICSTAGE",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-040"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/precision.v",
+      "Line": 71,
+      "Signature": "module cic_stage",
+      "role": "implementation"
+    },
+    {
+      "TraceID": "CODE-ADCPRECISION",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-040"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/precision.v",
+      "Line": 94,
+      "Signature": "module adc_precision",
+      "role": "implementation"
+    },
+    {
+      "TraceID": "CODE-CICPRECISIONTAIL",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-040"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/precision_tail.v",
+      "Line": 11,
+      "Signature": "module cic_precision_tail",
+      "role": "implementation"
+    },
+    {
+      "TraceID": "CODE-ACQPROFILECORE",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-053",
+        "REQ-SDS-054",
+        "REQ-SDS-055",
+        "REQ-SDS-056",
+        "REQ-SDS-058",
+        "REQ-SDS-075",
+        "REQ-SDS-076",
+        "REQ-SDS-185"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/profile_core.v",
+      "Line": 6,
+      "Signature": "module acq_profile_core",
+      "role": "implementation"
+    },
+    {
+      "TraceID": "CODE-ACQPROFILEPLL",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-059"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/profile_pll.v",
+      "Line": 5,
+      "Signature": "module acq_profile_pll",
+      "role": "implementation"
+    },
+    {
+      "TraceID": "CODE-ACQPROFILETOP",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-058",
+        "REQ-SDS-059"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/profile_top.v",
+      "Line": 5,
+      "Signature": "module acq_profile_top",
+      "role": "implementation"
+    },
+    {
+      "TraceID": "CODE-SRAMRECALL",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-043"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/recall.v",
+      "Line": 8,
+      "Signature": "module sram_recall",
+      "role": "implementation"
+    },
+    {
+      "TraceID": "CODE-SRAMRECORD",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-041",
+        "REQ-SDS-042",
+        "REQ-SDS-057"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/record.v",
+      "Line": 12,
+      "Signature": "module sram_record",
+      "role": "implementation"
+    },
+    {
+      "TraceID": "CODE-ALTDDIOOUT",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-189"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/sim/ddr_model.v",
+      "Line": 4,
+      "Signature": "module altddio_out",
+      "role": "test-support"
+    },
+    {
+      "TraceID": "CODE-ADCINTERLEAVE",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-041",
+        "REQ-SDS-042",
+        "REQ-SDS-043",
+        "REQ-SDS-045",
+        "REQ-SDS-056",
+        "REQ-SDS-057",
+        "REQ-SDS-058",
+        "REQ-SDS-183",
+        "REQ-SDS-184"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/sim/tb_acquisition_path.v",
+      "Line": 6,
+      "Signature": "module adc_interleave",
+      "role": "test"
+    },
+    {
+      "TraceID": "CODE-ADCPRECISION",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-041",
+        "REQ-SDS-042",
+        "REQ-SDS-043",
+        "REQ-SDS-045",
+        "REQ-SDS-056",
+        "REQ-SDS-057",
+        "REQ-SDS-058",
+        "REQ-SDS-183",
+        "REQ-SDS-184"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/sim/tb_acquisition_path.v",
+      "Line": 14,
+      "Signature": "module adc_precision",
+      "role": "test"
+    },
+    {
+      "TraceID": "CODE-TBACQUISITIONPATH",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-041",
+        "REQ-SDS-042",
+        "REQ-SDS-043",
+        "REQ-SDS-045",
+        "REQ-SDS-056",
+        "REQ-SDS-057",
+        "REQ-SDS-058",
+        "REQ-SDS-183",
+        "REQ-SDS-184"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/sim/tb_acquisition_path.v",
+      "Line": 23,
+      "Signature": "module tb_acquisition_path",
+      "role": "test"
+    },
+    {
+      "TraceID": "CODE-ADCINTERLEAVE",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-040",
+        "REQ-SDS-058",
+        "REQ-SDS-183"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/sim/tb_acquisition_source.v",
+      "Line": 6,
+      "Signature": "module adc_interleave",
+      "role": "test"
+    },
+    {
+      "TraceID": "CODE-ADCPRECISION",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-040",
+        "REQ-SDS-058",
+        "REQ-SDS-183"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/sim/tb_acquisition_source.v",
+      "Line": 15,
+      "Signature": "module adc_precision",
+      "role": "test"
+    },
+    {
+      "TraceID": "CODE-TBACQUISITIONSOURCE",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-040",
+        "REQ-SDS-058",
+        "REQ-SDS-183"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/sim/tb_acquisition_source.v",
+      "Line": 21,
+      "Signature": "module tb_acquisition_source",
+      "role": "test"
+    },
+    {
+      "TraceID": "CODE-ADCPHASEPLL",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-039"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/sim/tb_adc_interleave.v",
+      "Line": 5,
+      "Signature": "module adc_phase_pll",
+      "role": "test"
+    },
+    {
+      "TraceID": "CODE-TB",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-039"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/sim/tb_adc_interleave.v",
+      "Line": 9,
+      "Signature": "module tb",
+      "role": "test"
+    },
+    {
+      "TraceID": "CODE-TBBOARDCAPTURE",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-043",
+        "REQ-SDS-045",
+        "REQ-SDS-052"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/sim/tb_board_capture.v",
+      "Line": 4,
+      "Signature": "module tb_board_capture",
+      "role": "test"
+    },
+    {
+      "TraceID": "CODE-BENCHPLL",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-043",
+        "REQ-SDS-083"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/sim/tb_burst.v",
+      "Line": 4,
+      "Signature": "module bench_pll",
+      "role": "test"
+    },
+    {
+      "TraceID": "CODE-ADCINTERLEAVE",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-043",
+        "REQ-SDS-083"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/sim/tb_burst.v",
+      "Line": 8,
+      "Signature": "module adc_interleave",
+      "role": "test"
+    },
+    {
+      "TraceID": "CODE-TB",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-043",
+        "REQ-SDS-083"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/sim/tb_burst.v",
+      "Line": 13,
+      "Signature": "module tb",
+      "role": "test"
+    },
+    {
+      "TraceID": "CODE-TBCAPTUREENGINE",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-043",
+        "REQ-SDS-045",
+        "REQ-SDS-052",
+        "REQ-SDS-056"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/sim/tb_capture_engine.v",
+      "Line": 4,
+      "Signature": "module tb_capture_engine",
+      "role": "test"
+    },
+    {
+      "TraceID": "CODE-TBCAPTURESTART",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-043",
+        "REQ-SDS-045",
+        "REQ-SDS-058"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/sim/tb_capture_start.v",
+      "Line": 4,
+      "Signature": "module tb_capture_start",
+      "role": "test"
+    },
+    {
+      "TraceID": "CODE-TBCOMMANDBRIDGE",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-054",
+        "REQ-SDS-055",
+        "REQ-SDS-058"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/sim/tb_command_bridge.v",
+      "Line": 4,
+      "Signature": "module tb_command_bridge",
+      "role": "test"
+    },
+    {
+      "TraceID": "CODE-TBCOMMANDGPMC",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-054",
+        "REQ-SDS-185"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/sim/tb_command_gpmc.v",
+      "Line": 4,
+      "Signature": "module tb_command_gpmc",
+      "role": "test"
+    },
+    {
+      "TraceID": "CODE-TBCOMMANDPORT",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-054",
+        "REQ-SDS-055",
+        "REQ-SDS-056",
+        "REQ-SDS-058",
+        "REQ-SDS-185",
+        "REQ-SDS-077",
+        "REQ-SDS-080"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/sim/tb_command_port.v",
+      "Line": 4,
+      "Signature": "module tb_command_port",
+      "role": "test"
+    },
+    {
+      "TraceID": "CODE-BENCHPLL",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-043"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/sim/tb_continuation.v",
+      "Line": 4,
+      "Signature": "module bench_pll",
+      "role": "test"
+    },
+    {
+      "TraceID": "CODE-ADCINTERLEAVE",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-043"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/sim/tb_continuation.v",
+      "Line": 8,
+      "Signature": "module adc_interleave",
+      "role": "test"
+    },
+    {
+      "TraceID": "CODE-TB",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-043"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/sim/tb_continuation.v",
+      "Line": 13,
+      "Signature": "module tb",
+      "role": "test"
+    },
+    {
+      "TraceID": "CODE-TBFINITECAPTURE",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-041",
+        "REQ-SDS-042",
+        "REQ-SDS-043",
+        "REQ-SDS-045",
+        "REQ-SDS-052",
+        "REQ-SDS-057"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/sim/tb_finite_capture.v",
+      "Line": 4,
+      "Signature": "module tb_finite_capture",
+      "role": "test"
+    },
+    {
+      "TraceID": "CODE-TBFINITERECALL",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-043",
+        "REQ-SDS-052"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/sim/tb_finite_recall.v",
+      "Line": 4,
+      "Signature": "module tb_finite_recall",
+      "role": "test"
+    },
+    {
+      "TraceID": "CODE-TBFINITERECALLFAULTS",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-043",
+        "REQ-SDS-052",
+        "REQ-SDS-058"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/sim/tb_finite_recall_faults.v",
+      "Line": 4,
+      "Signature": "module tb_finite_recall_faults",
+      "role": "test"
+    },
+    {
+      "TraceID": "CODE-TBFINITEWRITERFAULTS",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-041",
+        "REQ-SDS-042",
+        "REQ-SDS-057",
+        "REQ-SDS-058"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/sim/tb_finite_writer_faults.v",
+      "Line": 4,
+      "Signature": "module tb_finite_writer_faults",
+      "role": "test"
+    },
+    {
+      "TraceID": "CODE-BENCHPLL",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-043",
+        "REQ-SDS-188"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/sim/tb_gpmc_burst.v",
+      "Line": 4,
+      "Signature": "module bench_pll",
+      "role": "test"
+    },
+    {
+      "TraceID": "CODE-ADCINTERLEAVE",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-043",
+        "REQ-SDS-188"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/sim/tb_gpmc_burst.v",
+      "Line": 8,
+      "Signature": "module adc_interleave",
+      "role": "test"
+    },
+    {
+      "TraceID": "CODE-TB",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-043",
+        "REQ-SDS-188"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/sim/tb_gpmc_burst.v",
+      "Line": 13,
+      "Signature": "module tb",
+      "role": "test"
+    },
+    {
+      "TraceID": "CODE-TB",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-188"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/sim/tb_gpmc_read.v",
+      "Line": 4,
+      "Signature": "module tb",
+      "role": "test"
+    },
+    {
+      "TraceID": "CODE-TBHOSTFAULTS",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-094"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/sim/tb_host_faults.v",
+      "Line": 4,
+      "Signature": "module tb_host_faults",
+      "role": "test"
+    },
+    {
+      "TraceID": "CODE-TB",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-050",
+        "REQ-SDS-078"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/sim/tb_host_fifo.v",
+      "Line": 4,
+      "Signature": "module tb",
+      "role": "test"
+    },
+    {
+      "TraceID": "CODE-TBHOSTOWNERSHIP",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-052"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/sim/tb_host_ownership.v",
+      "Line": 4,
+      "Signature": "module tb_host_ownership",
+      "role": "test"
+    },
+    {
+      "TraceID": "CODE-TBHOSTPATH",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-049",
+        "REQ-SDS-050",
+        "REQ-SDS-051",
+        "REQ-SDS-052",
+        "REQ-SDS-094"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/sim/tb_host_path.v",
+      "Line": 4,
+      "Signature": "module tb_host_path",
+      "role": "test"
+    },
+    {
+      "TraceID": "CODE-TB",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-051"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/sim/tb_host_ram.v",
+      "Line": 4,
+      "Signature": "module tb",
+      "role": "test"
+    },
+    {
+      "TraceID": "CODE-TBHOSTREADPORT",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-053"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/sim/tb_host_read_port.v",
+      "Line": 4,
+      "Signature": "module tb_host_read_port",
+      "role": "test"
+    },
+    {
+      "TraceID": "CODE-TBHOSTREADWINDOW",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-053",
+        "REQ-SDS-079"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/sim/tb_host_read_window.v",
+      "Line": 4,
+      "Signature": "module tb_host_read_window",
+      "role": "test"
+    },
+    {
+      "TraceID": "CODE-TBHOSTSINK",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-094"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/sim/tb_host_sink.v",
+      "Line": 4,
+      "Signature": "module tb_host_sink",
+      "role": "test"
+    },
+    {
+      "TraceID": "CODE-TB",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-046"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/sim/tb_ingress_fifo.v",
+      "Line": 4,
+      "Signature": "module tb",
+      "role": "test"
+    },
+    {
+      "TraceID": "CODE-TB",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-046"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/sim/tb_ingress_path.v",
+      "Line": 4,
+      "Signature": "module tb",
+      "role": "test"
+    },
+    {
+      "TraceID": "CODE-TB",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-046"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/sim/tb_ingress_stream.v",
+      "Line": 4,
+      "Signature": "module tb",
+      "role": "test"
+    },
+    {
+      "TraceID": "CODE-TB",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-040"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/sim/tb_integrator.v",
+      "Line": 4,
+      "Signature": "module tb",
+      "role": "test"
+    },
+    {
+      "TraceID": "CODE-TB",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-039"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/sim/tb_interleave.v",
+      "Line": 4,
+      "Signature": "module tb",
+      "role": "test"
+    },
+    {
+      "TraceID": "CODE-TB",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-047"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/sim/tb_ordinal_counter.v",
+      "Line": 4,
+      "Signature": "module tb",
+      "role": "test"
+    },
+    {
+      "TraceID": "CODE-TB",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-040"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/sim/tb_precision.v",
+      "Line": 4,
+      "Signature": "module tb",
+      "role": "test"
+    },
+    {
+      "TraceID": "CODE-DCFIFO",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-040"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/sim/tb_precision_config.v",
+      "Line": 6,
+      "Signature": "module dcfifo",
+      "role": "test"
+    },
+    {
+      "TraceID": "CODE-TBPRECISIONCONFIG",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-040"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/sim/tb_precision_config.v",
+      "Line": 17,
+      "Signature": "module tb_precision_config",
+      "role": "test"
+    },
+    {
+      "TraceID": "CODE-TB",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-040"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/sim/tb_precision_fir.v",
+      "Line": 7,
+      "Signature": "module tb",
+      "role": "test"
+    },
+    {
+      "TraceID": "CODE-DCFIFO",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-040"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/sim/tb_precision_shared.v",
+      "Line": 6,
+      "Signature": "module dcfifo",
+      "role": "test"
+    },
+    {
+      "TraceID": "CODE-TBPRECISIONSHARED",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-040"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/sim/tb_precision_shared.v",
+      "Line": 17,
+      "Signature": "module tb_precision_shared",
+      "role": "test"
+    },
+    {
+      "TraceID": "CODE-TBPRECISIONTAIL",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-040"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/sim/tb_precision_tail.v",
+      "Line": 4,
+      "Signature": "module tb_precision_tail",
+      "role": "test"
+    },
+    {
+      "TraceID": "CODE-TBPRECISIONTAILQUEUE",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-040"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/sim/tb_precision_tail_queue.v",
+      "Line": 4,
+      "Signature": "module tb_precision_tail_queue",
+      "role": "test"
+    },
+    {
+      "TraceID": "CODE-BENCHPLL",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-040",
+        "REQ-SDS-041",
+        "REQ-SDS-044"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/sim/tb_precision_top.v",
+      "Line": 4,
+      "Signature": "module bench_pll",
+      "role": "test"
+    },
+    {
+      "TraceID": "CODE-ADCINTERLEAVE",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-040",
+        "REQ-SDS-041",
+        "REQ-SDS-044"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/sim/tb_precision_top.v",
+      "Line": 8,
+      "Signature": "module adc_interleave",
+      "role": "test"
+    },
+    {
+      "TraceID": "CODE-TB",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-040",
+        "REQ-SDS-041",
+        "REQ-SDS-044"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/sim/tb_precision_top.v",
+      "Line": 13,
+      "Signature": "module tb",
+      "role": "test"
+    },
+    {
+      "TraceID": "CODE-TBPROFILECORE",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-041",
+        "REQ-SDS-043",
+        "REQ-SDS-053",
+        "REQ-SDS-054",
+        "REQ-SDS-056",
+        "REQ-SDS-075",
+        "REQ-SDS-076",
+        "REQ-SDS-185",
+        "REQ-SDS-188"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/sim/tb_profile_core.v",
+      "Line": 4,
+      "Signature": "module tb_profile_core",
+      "role": "test"
+    },
+    {
+      "TraceID": "CODE-TB",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-041",
+        "REQ-SDS-042",
+        "REQ-SDS-043",
+        "REQ-SDS-057"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/sim/tb_record.v",
+      "Line": 4,
+      "Signature": "module tb",
+      "role": "test"
+    },
+    {
+      "TraceID": "CODE-TBSTREAMPATH",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-044",
+        "REQ-SDS-047",
+        "REQ-SDS-048",
+        "REQ-SDS-051",
+        "REQ-SDS-052",
+        "REQ-SDS-053"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/sim/tb_sram_stream_path.v",
+      "Line": 4,
+      "Signature": "module tb_stream_path",
+      "role": "test"
+    },
+    {
+      "TraceID": "CODE-TB",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-048"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/sim/tb_sram_timeslice.v",
+      "Line": 8,
+      "Signature": "module tb",
+      "role": "test"
+    },
+    {
+      "TraceID": "CODE-TB",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-047",
+        "REQ-SDS-049",
+        "REQ-SDS-052",
+        "REQ-SDS-058"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/sim/tb_stream_banks.v",
+      "Line": 4,
+      "Signature": "module tb",
+      "role": "test"
+    },
+    {
+      "TraceID": "CODE-TB",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-049",
+        "REQ-SDS-052",
+        "REQ-SDS-058",
+        "REQ-SDS-186"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/sim/tb_stream_path.v",
+      "Line": 4,
+      "Signature": "module tb",
+      "role": "test"
+    },
+    {
+      "TraceID": "CODE-BENCHPLL",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-041",
+        "REQ-SDS-042",
+        "REQ-SDS-043",
+        "REQ-SDS-049",
+        "REQ-SDS-052",
+        "REQ-SDS-083",
+        "REQ-SDS-186"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/sim/tb_stream_top.v",
+      "Line": 4,
+      "Signature": "module bench_pll",
+      "role": "test"
+    },
+    {
+      "TraceID": "CODE-ADCINTERLEAVE",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-041",
+        "REQ-SDS-042",
+        "REQ-SDS-043",
+        "REQ-SDS-049",
+        "REQ-SDS-052",
+        "REQ-SDS-083",
+        "REQ-SDS-186"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/sim/tb_stream_top.v",
+      "Line": 8,
+      "Signature": "module adc_interleave",
+      "role": "test"
+    },
+    {
+      "TraceID": "CODE-ADCPRECISION",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-041",
+        "REQ-SDS-042",
+        "REQ-SDS-043",
+        "REQ-SDS-049",
+        "REQ-SDS-052",
+        "REQ-SDS-083",
+        "REQ-SDS-186"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/sim/tb_stream_top.v",
+      "Line": 13,
+      "Signature": "module adc_precision",
+      "role": "test"
+    },
+    {
+      "TraceID": "CODE-TB",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-041",
+        "REQ-SDS-042",
+        "REQ-SDS-043",
+        "REQ-SDS-049",
+        "REQ-SDS-052",
+        "REQ-SDS-083",
+        "REQ-SDS-186"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/sim/tb_stream_top.v",
+      "Line": 20,
+      "Signature": "module tb",
+      "role": "test"
+    },
+    {
+      "TraceID": "CODE-TB",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-048"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/sim/tb_timeslice_controller.v",
+      "Line": 4,
+      "Signature": "module tb",
+      "role": "test"
+    },
+    {
+      "TraceID": "CODE-BENCHPLL",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-041",
+        "REQ-SDS-043",
+        "REQ-SDS-044",
+        "REQ-SDS-083"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/sim/tb_top.v",
+      "Line": 4,
+      "Signature": "module bench_pll",
+      "role": "test"
+    },
+    {
+      "TraceID": "CODE-TB",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-041",
+        "REQ-SDS-043",
+        "REQ-SDS-044",
+        "REQ-SDS-083"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/sim/tb_top.v",
+      "Line": 8,
+      "Signature": "module tb",
+      "role": "test"
+    },
+    {
+      "TraceID": "CODE-BENCHPLL",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-039",
+        "REQ-SDS-041",
+        "REQ-SDS-042",
+        "REQ-SDS-043",
+        "REQ-SDS-083"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/sim/tb_top_adc.v",
+      "Line": 4,
+      "Signature": "module bench_pll",
+      "role": "test"
+    },
+    {
+      "TraceID": "CODE-ADCPHASEPLL",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-039",
+        "REQ-SDS-041",
+        "REQ-SDS-042",
+        "REQ-SDS-043",
+        "REQ-SDS-083"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/sim/tb_top_adc.v",
+      "Line": 8,
+      "Signature": "module adc_phase_pll",
+      "role": "test"
+    },
+    {
+      "TraceID": "CODE-TB",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-039",
+        "REQ-SDS-041",
+        "REQ-SDS-042",
+        "REQ-SDS-043",
+        "REQ-SDS-083"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/sim/tb_top_adc.v",
+      "Line": 13,
+      "Signature": "module tb",
+      "role": "test"
+    },
+    {
+      "TraceID": "CODE-BENCHPLL",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-041",
+        "REQ-SDS-043",
+        "REQ-SDS-044",
+        "REQ-SDS-083"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/sim/tb_top_interleave.v",
+      "Line": 4,
+      "Signature": "module bench_pll",
+      "role": "test"
+    },
+    {
+      "TraceID": "CODE-ADCINTERLEAVE",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-041",
+        "REQ-SDS-043",
+        "REQ-SDS-044",
+        "REQ-SDS-083"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/sim/tb_top_interleave.v",
+      "Line": 8,
+      "Signature": "module adc_interleave",
+      "role": "test"
+    },
+    {
+      "TraceID": "CODE-TB",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-041",
+        "REQ-SDS-043",
+        "REQ-SDS-044",
+        "REQ-SDS-083"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/sim/tb_top_interleave.v",
+      "Line": 13,
+      "Signature": "module tb",
+      "role": "test"
+    },
+    {
+      "TraceID": "CODE-TB",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-044"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/sim/tb_transport.v",
+      "Line": 4,
+      "Signature": "module tb",
+      "role": "test"
+    },
+    {
+      "TraceID": "CODE-TBTRIGGERPIPELINE",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-184"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/sim/tb_trigger_pipeline.v",
+      "Line": 4,
+      "Signature": "module tb_trigger_pipeline",
+      "role": "test"
+    },
+    {
+      "TraceID": "CODE-TB",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-038"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/sim/tb_unpack.v",
+      "Line": 5,
+      "Signature": "module tb",
+      "role": "test"
+    },
+    {
+      "TraceID": "CODE-TB",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-093"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/sim/tb_word_bridge.v",
+      "Line": 4,
+      "Signature": "module tb",
+      "role": "test"
+    },
+    {
+      "TraceID": "CODE-ADCSTREAM",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-187"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/stream.v",
+      "Line": 7,
+      "Signature": "module adc_stream",
+      "role": "implementation"
+    },
+    {
+      "TraceID": "CODE-STREAMBANKS",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-047",
+        "REQ-SDS-049",
+        "REQ-SDS-052",
+        "REQ-SDS-058"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/stream_banks.v",
+      "Line": 22,
+      "Signature": "module stream_banks",
+      "role": "implementation"
+    },
+    {
+      "TraceID": "CODE-SRAMSTREAMENGINE",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-045",
+        "REQ-SDS-046",
+        "REQ-SDS-047",
+        "REQ-SDS-048",
+        "REQ-SDS-052",
+        "REQ-SDS-058"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/stream_engine.v",
+      "Line": 12,
+      "Signature": "module sram_stream_engine",
+      "role": "implementation"
+    },
+    {
+      "TraceID": "CODE-STREAMPACKETIZER",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-049",
+        "REQ-SDS-058",
+        "REQ-SDS-186"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/stream_packetizer.v",
+      "Line": 14,
+      "Signature": "module stream_packetizer",
+      "role": "implementation"
+    },
+    {
+      "TraceID": "CODE-SRAMSTREAMPATH",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-044",
+        "REQ-SDS-045",
+        "REQ-SDS-046",
+        "REQ-SDS-047",
+        "REQ-SDS-048",
+        "REQ-SDS-051",
+        "REQ-SDS-052",
+        "REQ-SDS-053"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/stream_path.v",
+      "Line": 8,
+      "Signature": "module sram_stream_path",
+      "role": "implementation"
+    },
+    {
+      "TraceID": "CODE-SRAMTIMESLICECONTROLLER",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-048"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/timeslice_controller.v",
+      "Line": 15,
+      "Signature": "module sram_timeslice_controller",
+      "role": "implementation"
+    },
+    {
+      "TraceID": "CODE-ACQSRAMTOP",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-039",
+        "REQ-SDS-040",
+        "REQ-SDS-041",
+        "REQ-SDS-042",
+        "REQ-SDS-043",
+        "REQ-SDS-044",
+        "REQ-SDS-049",
+        "REQ-SDS-052",
+        "REQ-SDS-082",
+        "REQ-SDS-083",
+        "REQ-SDS-084",
+        "REQ-SDS-186"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/top.v",
+      "Line": 8,
+      "Signature": "module acq_sram_top",
+      "role": "implementation"
+    },
+    {
+      "TraceID": "CODE-SRAMTRANSPORT",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-044"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/transport.v",
+      "Line": 15,
+      "Signature": "module sram_transport",
+      "role": "implementation"
+    },
+    {
+      "TraceID": "CODE-SRAMWORDBRIDGE",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-093"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/acq_sram/word_bridge.v",
+      "Line": 8,
+      "Signature": "module sram_word_bridge",
+      "role": "implementation"
+    },
+    {
+      "TraceID": "CODE-DDIOOUT1",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-189"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/common/ddio_pair.v",
+      "Line": 18,
+      "Signature": "module ddio_out1",
+      "role": "implementation"
+    },
+    {
+      "TraceID": "CODE-DDIOPAIR",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-189"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/common/ddio_pair.v",
+      "Line": 57,
+      "Signature": "module ddio_pair",
+      "role": "implementation"
+    },
+    {
+      "TraceID": "CODE-GPMCSLAVE",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-188"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/common/gpmc_slave.v",
+      "Line": 27,
+      "Signature": "module gpmc_slave",
+      "role": "implementation"
+    },
+    {
+      "TraceID": "CODE-LANEIN",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-190"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/common/lane_in.v",
+      "Line": 19,
+      "Signature": "module lane_in",
+      "role": "implementation"
+    },
+    {
+      "TraceID": "CODE-LANEMON",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-190"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/common/lane_in.v",
+      "Line": 35,
+      "Signature": "module lane_mon",
+      "role": "implementation"
+    },
+    {
+      "TraceID": "CODE-TOGGLECTR",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-190"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/common/lane_in.v",
+      "Line": 57,
+      "Signature": "module toggle_ctr",
+      "role": "implementation"
+    },
+    {
+      "TraceID": "CODE-PLLM2",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-191"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/common/pll_m2.v",
+      "Line": 30,
+      "Signature": "module pll_m2",
+      "role": "implementation"
+    },
+    {
+      "TraceID": "CODE-GPMCBFM",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-188"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/common/sim/gpmc_bfm.v",
+      "Line": 7,
+      "Signature": "module gpmc_bfm",
+      "role": "test-support"
+    },
+    {
+      "TraceID": "CODE-TBDDIO",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-189"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/common/sim/tb_ddio.v",
+      "Line": 5,
+      "Signature": "module tb_ddio",
+      "role": "test"
+    },
+    {
+      "TraceID": "CODE-TBGPMCSLAVE",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-188"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/common/sim/tb_gpmc_slave.v",
+      "Line": 6,
+      "Signature": "module tb_gpmc_slave",
+      "role": "test"
+    },
+    {
+      "TraceID": "CODE-TBLANEIN",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-190"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/common/sim/tb_lane_in.v",
+      "Line": 6,
+      "Signature": "module tb_lane_in",
+      "role": "test"
+    },
+    {
+      "TraceID": "CODE-TBPLL",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-191"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/common/sim/tb_pll.v",
+      "Line": 5,
+      "Signature": "module tb_pll",
+      "role": "test"
+    },
+    {
+      "TraceID": "CODE-TBSYNC",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-192"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/common/sim/tb_sync.v",
+      "Line": 6,
+      "Signature": "module tb_sync",
+      "role": "test"
+    },
+    {
+      "TraceID": "CODE-SYNCBIT",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-192"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/common/sync.v",
+      "Line": 20,
+      "Signature": "module sync_bit",
+      "role": "implementation"
+    },
+    {
+      "TraceID": "CODE-SYNCPULSE",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-192"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/common/sync.v",
+      "Line": 36,
+      "Signature": "module sync_pulse",
+      "role": "implementation"
+    },
+    {
+      "TraceID": "CODE-SYNCWORD",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-192"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/common/sync.v",
+      "Line": 50,
+      "Signature": "module sync_word",
+      "role": "implementation"
+    },
+    {
+      "TraceID": "CODE-STRETCH3",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-192"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/common/sync.v",
+      "Line": 87,
+      "Signature": "module stretch3",
+      "role": "implementation"
+    },
+    {
+      "TraceID": "CODE-ADCFRONT",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-194"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/default/adc_front.v",
+      "Line": 47,
+      "Signature": "module adc_front",
+      "role": "implementation"
+    },
+    {
+      "TraceID": "CODE-CAPTURE",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-195"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/default/capture.v",
+      "Line": 71,
+      "Signature": "module capture",
+      "role": "implementation"
+    },
+    {
+      "TraceID": "CODE-DEFAULTTOP",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-060",
+        "REQ-SDS-194",
+        "REQ-SDS-195",
+        "REQ-SDS-196",
+        "REQ-SDS-197"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/default/default.v",
+      "Line": 45,
+      "Signature": "module default_top",
+      "role": "implementation"
+    },
+    {
+      "TraceID": "CODE-DIAG",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-060",
+        "REQ-SDS-197",
+        "REQ-SDS-198"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/default/diag.v",
+      "Line": 47,
+      "Signature": "module diag",
+      "role": "implementation"
+    },
+    {
+      "TraceID": "CODE-DRAIN",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-196"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/default/drain.v",
+      "Line": 40,
+      "Signature": "module drain",
+      "role": "implementation"
+    },
+    {
+      "TraceID": "CODE-TBADCFRONT",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-194"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/default/sim/tb_adc_front.v",
+      "Line": 6,
+      "Signature": "module tb_adc_front",
+      "role": "test"
+    },
+    {
+      "TraceID": "CODE-TBCAPTURE",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-195"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/default/sim/tb_capture.v",
+      "Line": 10,
+      "Signature": "module tb_capture",
+      "role": "test"
+    },
+    {
+      "TraceID": "CODE-TBDIAG",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-060",
+        "REQ-SDS-197",
+        "REQ-SDS-198"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/default/sim/tb_diag.v",
+      "Line": 10,
+      "Signature": "module tb_diag",
+      "role": "test"
+    },
+    {
+      "TraceID": "CODE-TBDRAIN",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-196"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/default/sim/tb_drain.v",
+      "Line": 10,
+      "Signature": "module tb_drain",
+      "role": "test"
+    },
+    {
+      "TraceID": "CODE-TBTOP",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-060",
+        "REQ-SDS-194",
+        "REQ-SDS-195",
+        "REQ-SDS-196",
+        "REQ-SDS-197"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/default/sim/tb_top.v",
+      "Line": 14,
+      "Signature": "module tb_top",
+      "role": "test"
+    },
+    {
+      "TraceID": "CODE-SRAMBENCHTOP",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-193"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/sram_bench/bench.v",
+      "Line": 4,
+      "Signature": "module sram_bench_top",
+      "role": "implementation"
+    },
+    {
+      "TraceID": "CODE-BENCHPLL",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-193"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/sram_bench/sim/tb.v",
+      "Line": 4,
+      "Signature": "module bench_pll",
+      "role": "test"
+    },
+    {
+      "TraceID": "CODE-ALTDDIOOUT",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-193"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/sram_bench/sim/tb.v",
+      "Line": 8,
+      "Signature": "module altddio_out",
+      "role": "test"
+    },
+    {
+      "TraceID": "CODE-TB",
+      "PartOf": null,
+      "Implements": [
+        "REQ-SDS-193"
+      ],
+      "ModelLinks": null,
+      "Path": "fpga/sram_bench/sim/tb.v",
+      "Line": 20,
+      "Signature": "module tb",
+      "role": "test"
+    }
+  ]
+}

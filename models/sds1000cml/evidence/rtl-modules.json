@@ -1,0 +1,1234 @@
+[
+  {
+    "header": "module adc_phase_pll(input refclk,output [4:0] phase,output locked);",
+    "line": 2,
+    "name": "adc_phase_pll",
+    "owner": "FU-RTL-ACQ-SRAM-ACQUISITION-ADC-PLL",
+    "path": "fpga/acq_sram/acquisition_adc_pll.v",
+    "simulation": false
+  },
+  {
+    "header": "module sram_acquisition_path #(parameter ENABLE_STREAM=1,AW=19,READ_DELAY=0,CONTINUE_READS=1)(\n input wire reset,locked,core_clk,sample_clk,ram_clk,host_clk,clk100,\n input wire start,halt,input wire [1:0] operation,\n input wire [AW:0] pre_count,post_count,offset,length,\n input wire [AW-1:0] read_bias,\n input wire [4:0] decim_log,input wire [9:0] encode_enable,\n input wire [1:0] trigger_mode,input wire trigger_channel,trigger_falling,\n input wire [15:0] trigger_level,input wire force_trigger,match_trigger,\n input wire [79:0] lane,input wire snapshot_request,\n output wire snapshot_ack,output wire [79:0] snapshot,\n output wire [4:0] enc_p,enc_n,output wire adc_locked,\n output wire [31:0] source_word,output wire source_valid,precision_mode,\n output wire start_ready,active,done,fault,record_frozen,triggered,\n output reg request_error=0,output reg trigger_second=0,\n output wire [AW-1:0] record_start,output wire [AW:0] record_words,trigger_index,\n output wire [63:0] committed,read_ordinal,output wire [AW:0] unread,\n output wire [1:0] bank_busy,\n input wire host_release,release_bank,release_token,\n output wire host_fault,output wire [1:0] host_ready,host_token,\n output wire [63:0] host_first0,host_first1,\n output wire [11:0] host_words0,host_words1,\n input wire read_enable,input wire [13:0] read_halfword,\n output wire read_valid,read_error,output wire [15:0] read_data,\n inout wire [31:0] dq,output wire k1,k2,g1\n);",
+    "line": 6,
+    "name": "sram_acquisition_path",
+    "owner": "FU-RTL-ACQ-SRAM-ACQUISITION-PATH",
+    "path": "fpga/acq_sram/acquisition_path.v",
+    "simulation": false
+  },
+  {
+    "header": "module acquisition_trigger_pipeline(\n input wire clk,enable,valid,input wire [31:0] data,\n input wire precision_mode,channel,falling,input wire [15:0] level,\n input wire [1:0] mode,input wire force_trigger,match_trigger,\n output reg [31:0] out_data=0,output reg out_valid=0,\n output wire event_trigger,second\n);",
+    "line": 159,
+    "name": "acquisition_trigger_pipeline",
+    "owner": "FU-RTL-ACQ-SRAM-ACQUISITION-PATH",
+    "path": "fpga/acq_sram/acquisition_path.v",
+    "simulation": false
+  },
+  {
+    "header": "module adc_acquisition_source(\n input wire core,packclk,clk100,enable,\n input wire [79:0] lane,input wire [4:0] decim_log,\n input wire [9:0] encode_enable,\n input wire snapshot_request,output wire snapshot_ack,\n output wire [79:0] snapshot,output wire [4:0] enc_p,enc_n,\n output wire adc_locked,output reg [31:0] data=0,\n output reg valid=0,fault=0,output wire precision_mode\n);",
+    "line": 7,
+    "name": "adc_acquisition_source",
+    "owner": "FU-RTL-ACQ-SRAM-ACQUISITION-SOURCE",
+    "path": "fpga/acq_sram/acquisition_source.v",
+    "simulation": false
+  },
+  {
+    "header": "module adc_unpack(input wire [79:0] lanes, output wire [79:0] cores);",
+    "line": 4,
+    "name": "adc_unpack",
+    "owner": "FU-RTL-ACQ-SRAM-ADC-UNPACK",
+    "path": "fpga/acq_sram/adc_unpack.v",
+    "simulation": false
+  },
+  {
+    "header": "module sram_board_capture_path #(parameter ENABLE_STREAM=1,AW=19,CONTINUE_READS=1,READ_DELAY=0)(\n input wire reset,locked,core_clk,sample_clk,ram_clk,host_clk,\n input wire start,finite_mode,stop,source_finished,\n input wire frozen,input wire [AW-1:0] record_start,read_bias,\n input wire [AW:0] record_words,offset,length,\n input wire source_valid,source_fault,input wire [35:0] source_data,\n output wire [AW:0] record_words_sampled,\n output wire source_ready,start_ready,source_enable,\n output wire active,done,capture_done,fault,request_error,\n output wire start_rejected,selected_finite,\n output wire [3:0] error_code,output wire [63:0] committed,read_ordinal,\n output wire [AW:0] unread,output wire [1:0] bank_busy,\n input wire host_release,release_bank,release_token,\n output wire host_fault,output wire [1:0] host_ready,host_token,\n output wire [63:0] host_first0,host_first1,\n output wire [11:0] host_words0,host_words1,\n input wire read_enable,input wire [13:0] read_halfword,\n output wire read_valid,read_error,output wire [15:0] read_data,\n input wire writer_request,writer_command,writer_valid,writer_stop,\n input wire [31:0] writer_data,\n output reg writer_granted=0,\n output wire writer_ready,writer_write_ready,writer_done,\n output wire [AW-1:0] position,\n inout wire [31:0] dq,output wire k1,k2,g1\n);",
+    "line": 8,
+    "name": "sram_board_capture_path",
+    "owner": "FU-RTL-ACQ-SRAM-BOARD-CAPTURE-PATH",
+    "path": "fpga/acq_sram/board_capture_path.v",
+    "simulation": false
+  },
+  {
+    "header": "module sram_capture_engine #(parameter ENABLE_STREAM=1,AW=19,CONTINUE_READS=1)(\n input wire reset,core_clk,ram_clk,host_clk,\n input wire start,finite_mode,stop,source_finished,\n input wire frozen,input wire [AW-1:0] record_start,read_bias,\n input wire [AW:0] record_words,offset,length,\n input wire source_valid,source_fault,input wire [35:0] source_data,\n output wire [AW:0] record_words_sampled,\n output wire source_ready,start_ready,source_enable,\n output wire active,done,capture_done,fault,request_error,\n output reg start_rejected=0,\n output wire selected_finite,\n output wire [3:0] error_code,output wire [63:0] committed,read_ordinal,\n output wire [AW:0] unread,output wire [1:0] bank_busy,\n input wire host_release,release_bank,release_token,\n output wire host_fault,output wire [1:0] host_ready,host_token,\n output wire [63:0] host_first0,host_first1,\n output wire [11:0] host_words0,host_words1,\n input wire read_enable,input wire [13:0] read_halfword,\n output wire read_valid,read_error,output wire [15:0] read_data,\n input wire transport_ready,transport_write_ready,transport_done,transport_read_valid,\n input wire [31:0] transport_read_data,input wire [AW-1:0] position,\n output wire command,command_read,command_discard,command_continue,write_valid,write_stop,\n output wire [AW:0] command_count,output wire [31:0] write_data\n);",
+    "line": 7,
+    "name": "sram_capture_engine",
+    "owner": "FU-RTL-ACQ-SRAM-CAPTURE-ENGINE",
+    "path": "fpga/acq_sram/capture_engine.v",
+    "simulation": false
+  },
+  {
+    "header": "module sram_capture_path #(parameter ENABLE_STREAM=1,AW=19,CONTINUE_READS=1,READ_DELAY=0)(\n input wire reset,locked,core_clk,sample_clk,ram_clk,host_clk,\n input wire start,finite_mode,stop,source_finished,\n input wire frozen,input wire [AW-1:0] record_start,read_bias,\n input wire [AW:0] record_words,offset,length,\n input wire source_valid,source_fault,input wire [35:0] source_data,\n output wire source_ready,start_ready,source_enable,\n output wire active,done,capture_done,fault,request_error,\n output wire start_rejected,selected_finite,\n output wire [3:0] error_code,output wire [63:0] committed,read_ordinal,\n output wire [AW:0] unread,output wire [1:0] bank_busy,\n input wire host_release,release_bank,release_token,\n output wire host_fault,output wire [1:0] host_ready,host_token,\n output wire [63:0] host_first0,host_first1,\n output wire [11:0] host_words0,host_words1,\n input wire read_enable,input wire [13:0] read_halfword,\n output wire read_valid,read_error,output wire [15:0] read_data,\n inout wire [31:0] dq,output wire k1,k2,g1\n);",
+    "line": 3,
+    "name": "sram_capture_path",
+    "owner": "FU-RTL-ACQ-SRAM-CAPTURE-PATH",
+    "path": "fpga/acq_sram/capture_path.v",
+    "simulation": false
+  },
+  {
+    "header": "module acq_command_bridge #(parameter WIDTH=192)(\n input wire reset,host_clk,core_clk,\n input wire host_send,input wire [WIDTH-1:0] host_payload,\n output wire host_busy,output reg host_rejected=0,\n output reg core_valid=0,output reg [WIDTH-1:0] core_payload=0\n);",
+    "line": 5,
+    "name": "acq_command_bridge",
+    "owner": "FU-RTL-ACQ-SRAM-COMMAND-BRIDGE",
+    "path": "fpga/acq_sram/command_bridge.v",
+    "simulation": false
+  },
+  {
+    "header": "module acq_command_port #(parameter ENABLE_STREAM=0,ENABLE_SNAPSHOT=1,ENABLE_MATCH=1)(\n input wire reset,host_clk,core_clk,host_write,\n input wire [7:0] write_sel,read_sel,input wire [15:0] write_data,\n output reg read_hit,output reg [15:0] read_data,\n output wire host_busy,output reg host_rejected=0,\n output wire core_start,core_halt,core_force,core_snapshot,core_error,\n output wire [1:0] operation,\n output wire [19:0] pre_count,post_count,offset,length,\n output wire [18:0] read_bias,output wire [4:0] decim_log,\n output wire [9:0] encode_enable,output wire [1:0] trigger_mode,\n output wire trigger_channel,trigger_falling,output wire [15:0] trigger_level,\n input wire acquisition_request_error,input wire [127:0] acquisition_status\n);",
+    "line": 4,
+    "name": "acq_command_port",
+    "owner": "FU-RTL-ACQ-SRAM-COMMAND-PORT",
+    "path": "fpga/acq_sram/command_port.v",
+    "simulation": false
+  },
+  {
+    "header": "module sram_finite_recall #(parameter AW=19,BANK_WORDS=2560,READ_WARM=16,CONTINUE_READS=1)(\n input wire clk,reset,start,frozen,\n input wire [AW-1:0] record_start,read_bias,\n input wire [AW:0] record_words,offset,length,\n output wire start_ready,output reg active=0,done=0,request_error=0,fault=0,\n output reg [3:0] error_code=0,output wire [63:0] recalled,\n input wire host_core_fault,input wire [1:0] bank_release,\n output reg [1:0] bank_busy=0,bank_done=0,\n output wire word_valid,word_bank,output wire [31:0] word_data,\n output reg [11:0] word_index=0,\n output reg [63:0] first0=0,first1=0,\n output reg [AW:0] words0=0,words1=0,\n input wire transport_ready,transport_done,transport_read_valid,\n input wire [31:0] transport_read_data,input wire [AW-1:0] position,\n output reg command=0,command_discard=0,command_continue=0,\n output wire command_read,output wire [AW:0] command_count\n);",
+    "line": 7,
+    "name": "sram_finite_recall",
+    "owner": "FU-RTL-ACQ-SRAM-FINITE-RECALL",
+    "path": "fpga/acq_sram/finite_recall.v",
+    "simulation": false
+  },
+  {
+    "header": "module sram_finite_writer #(parameter AW=19,PRIME_WORDS=16)(\n input wire clk,reset,start,capture_allowed,halt,\n input wire [AW:0] pre_count,post_count,\n input wire source_valid,source_fault,trigger,input wire [31:0] source_data,\n output wire start_ready,active,source_enable,source_ready,\n output reg frozen=0,fault=0,request_error=0,\n output wire triggered,output wire [AW-1:0] record_start,\n output wire [AW:0] record_words,trigger_index,\n output wire writer_request,writer_command,writer_valid,writer_stop,\n output wire [31:0] writer_data,\n input wire writer_ready,writer_write_ready,\n input wire [AW-1:0] position\n);",
+    "line": 10,
+    "name": "sram_finite_writer",
+    "owner": "FU-RTL-ACQ-SRAM-FINITE-WRITER",
+    "path": "fpga/acq_sram/finite_writer.v",
+    "simulation": false
+  },
+  {
+    "header": "module sram_host_fifo #(parameter WIDTH=80,ADDR_BITS=3)(\n input wire reset,source_clk,dest_clk,\n input wire push,input wire [WIDTH-1:0] source_data,\n output wire source_ready,output reg overflow=0,\n output reg dest_valid=0,output reg [WIDTH-1:0] dest_data=0,\n input wire dest_ready\n);",
+    "line": 7,
+    "name": "sram_host_fifo",
+    "owner": "FU-RTL-ACQ-SRAM-HOST-FIFO",
+    "path": "fpga/acq_sram/host_fifo.v",
+    "simulation": false
+  },
+  {
+    "header": "module sram_host_ownership(\n input wire reset,producer_clk,host_clk,core_clk,\n input wire [1:0] publish,input wire [63:0] first0,first1,\n input wire [11:0] words0,words1,\n output reg fault=0,output wire [1:0] producer_busy,\n input wire host_release,release_bank,release_token,\n output wire [1:0] host_ready,host_token,\n output wire [63:0] host_first0,host_first1,\n output wire [11:0] host_words0,host_words1,\n output wire [1:0] core_release\n);",
+    "line": 9,
+    "name": "sram_host_ownership",
+    "owner": "FU-RTL-ACQ-SRAM-HOST-OWNERSHIP",
+    "path": "fpga/acq_sram/host_ownership.v",
+    "simulation": false
+  },
+  {
+    "header": "module sram_host_packer(\n input wire clk,reset,input wire word_valid,word_bank,\n input wire [31:0] word_data,input wire [11:0] word_index,\n input wire [1:0] bank_done,\n input wire [63:0] first0,first1,input wire [19:0] words0,words1,\n output reg push=0,output reg [79:0] packet=0,output reg fault=0\n);",
+    "line": 5,
+    "name": "sram_host_packer",
+    "owner": "FU-RTL-ACQ-SRAM-HOST-PACKER",
+    "path": "fpga/acq_sram/host_packer.v",
+    "simulation": false
+  },
+  {
+    "header": "module sram_host_path(\n input wire reset,core_clk,ram_clk,host_clk,\n input wire word_valid,word_bank,input wire [31:0] word_data,\n input wire [11:0] word_index,input wire [1:0] bank_done,\n input wire [63:0] first0,first1,input wire [19:0] words0,words1,\n output wire core_fault,host_fault,output wire [1:0] core_release,\n input wire host_release,release_bank,release_token,\n output wire [1:0] host_ready,host_token,\n output wire [63:0] host_first0,host_first1,\n output wire [11:0] host_words0,host_words1,\n input wire read_enable,input wire [13:0] read_halfword,\n output wire read_valid,read_error,output wire [15:0] read_data\n);",
+    "line": 6,
+    "name": "sram_host_path",
+    "owner": "FU-RTL-ACQ-SRAM-HOST-PATH",
+    "path": "fpga/acq_sram/host_path.v",
+    "simulation": false
+  },
+  {
+    "header": "module sram_host_ram(\n input wire write_clk,write_reset,write_enable,\n input wire [11:0] write_pair,input wire [63:0] write_data,\n output reg write_fault=0,\n input wire read_clk,read_reset,read_enable,\n input wire [13:0] read_halfword,\n output reg read_valid=0,read_error=0,output reg [15:0] read_data=0\n);",
+    "line": 5,
+    "name": "sram_host_ram",
+    "owner": "FU-RTL-ACQ-SRAM-HOST-RAM",
+    "path": "fpga/acq_sram/host_ram.v",
+    "simulation": false
+  },
+  {
+    "header": "module acq_host_read_port(\n input wire clk,reset,host_write,host_pop,\n input wire [7:0] write_sel,read_sel,input wire [15:0] write_data,\n output reg read_hit,output reg [15:0] read_data,\n input wire [1:0] host_ready,host_token,input wire host_fault,\n input wire [11:0] host_words0,host_words1,\n input wire [63:0] host_first0,host_first1,\n output wire host_release,release_bank,release_token,\n output wire ram_read_enable,output wire [13:0] ram_read_halfword,\n input wire ram_read_valid,ram_read_error,input wire [15:0] ram_read_data\n);",
+    "line": 3,
+    "name": "acq_host_read_port",
+    "owner": "FU-RTL-ACQ-SRAM-HOST-READ-PORT",
+    "path": "fpga/acq_sram/host_read_port.v",
+    "simulation": false
+  },
+  {
+    "header": "module acq_host_read_window(\n input wire clk,reset,select,select_bank,select_token,\n input wire [12:0] select_offset,input wire pop,release_request,clear_error,\n input wire [1:0] host_ready,host_token,input wire host_fault,\n input wire [11:0] host_words0,host_words1,\n output wire data_ready,exhausted,output wire [15:0] data,\n output reg selected=0,fault=0,output reg [12:0] cursor=0,\n output reg host_release=0,release_bank=0,release_token=0,\n output wire ram_read_enable,output wire [13:0] ram_read_halfword,\n input wire ram_read_valid,ram_read_error,input wire [15:0] ram_read_data\n);",
+    "line": 4,
+    "name": "acq_host_read_window",
+    "owner": "FU-RTL-ACQ-SRAM-HOST-READ-WINDOW",
+    "path": "fpga/acq_sram/host_read_window.v",
+    "simulation": false
+  },
+  {
+    "header": "module sram_host_sink(\n input wire clk,reset,upstream_fault,\n input wire valid,input wire [79:0] data,output wire ready,\n output reg ram_write=0,output reg [11:0] ram_pair=0,\n output reg [63:0] ram_data=0,input wire ram_fault,\n output reg fault=0,output reg [1:0] publish=0,\n output reg [63:0] first0=0,first1=0,\n output reg [11:0] words0=0,words1=0\n);",
+    "line": 7,
+    "name": "sram_host_sink",
+    "owner": "FU-RTL-ACQ-SRAM-HOST-SINK",
+    "path": "fpga/acq_sram/host_sink.v",
+    "simulation": false
+  },
+  {
+    "header": "module sram_ingress_fifo #(parameter WIDTH=32,BANKS=9,ROWS=512)(\n input wire clk,reset,push,pop,\n input wire [WIDTH-1:0] data_in,\n output reg [WIDTH-1:0] data_out=0,\n output reg data_valid=0,\n output reg empty=1,full=0,\n output reg [$clog2(BANKS*ROWS+1)-1:0] count=0,\n output reg overflow=0,underflow=0\n);",
+    "line": 7,
+    "name": "sram_ingress_fifo",
+    "owner": "FU-RTL-ACQ-SRAM-INGRESS-FIFO",
+    "path": "fpga/acq_sram/ingress_fifo.v",
+    "simulation": false
+  },
+  {
+    "header": "module sram_ingress_path #(parameter WIDTH=36,BANKS=9,ROWS=512)(\n input wire reset,core,ram_clk,\n input wire source_valid,input wire [WIDTH-1:0] source_data,\n output wire source_ready,\n input wire ready,output wire valid,output wire [WIDTH-1:0] data_out,\n output reg [$clog2(BANKS*ROWS+11)-1:0] pending=0,\n output reg fault=0\n);",
+    "line": 7,
+    "name": "sram_ingress_path",
+    "owner": "FU-RTL-ACQ-SRAM-INGRESS-PATH",
+    "path": "fpga/acq_sram/ingress_path.v",
+    "simulation": false
+  },
+  {
+    "header": "module sram_ingress_stream #(parameter WIDTH=32,BANKS=9,ROWS=512)(\n input wire clk,reset,push,input wire [WIDTH-1:0] data_in,\n input wire ready,output wire valid,output wire [WIDTH-1:0] data_out,\n output wire [$clog2(BANKS*ROWS+9)-1:0] count,\n output wire overflow,underflow\n);",
+    "line": 4,
+    "name": "sram_ingress_stream",
+    "owner": "FU-RTL-ACQ-SRAM-INGRESS-STREAM",
+    "path": "fpga/acq_sram/ingress_stream.v",
+    "simulation": false
+  },
+  {
+    "header": "module adc_interleave #(parameter SYNC_ENCODE=0)(\n input refclk,memclk,packclk,enable,input [79:0] lane,input [9:0] encode_enable,\n input snapshot_request,output snapshot_ack,input consume,output [31:0] word_data,output valid,output reg fault=0,\n output [79:0] snapshot,output [4:0] enc_p,enc_n,output locked\n);",
+    "line": 6,
+    "name": "adc_interleave",
+    "owner": "FU-RTL-ACQ-SRAM-INTERLEAVE",
+    "path": "fpga/acq_sram/interleave.v",
+    "simulation": false
+  },
+  {
+    "header": "module interleave_gearbox(input clk,enable,input [79:0] q,input empty,input [4:0] used,input consume,\n output [31:0] word_data,output valid,pop,output reg fault=0);",
+    "line": 121,
+    "name": "interleave_gearbox",
+    "owner": "FU-RTL-ACQ-SRAM-INTERLEAVE",
+    "path": "fpga/acq_sram/interleave.v",
+    "simulation": false
+  },
+  {
+    "header": "module interleave_gearbox64(input clk,enable,input [79:0] q,input empty,input [4:0] used,input consume,\n output [63:0] word_data,output valid,pop,output reg fault=0);",
+    "line": 141,
+    "name": "interleave_gearbox64",
+    "owner": "FU-RTL-ACQ-SRAM-INTERLEAVE",
+    "path": "fpga/acq_sram/interleave.v",
+    "simulation": false
+  },
+  {
+    "header": "module sram_ordinal_counter(input clk,clear,step,output reg [63:0] value=0);",
+    "line": 3,
+    "name": "sram_ordinal_counter",
+    "owner": "FU-RTL-ACQ-SRAM-ORDINAL-COUNTER",
+    "path": "fpga/acq_sram/ordinal_counter.v",
+    "simulation": false
+  },
+  {
+    "header": "module cic_pair_integrator #(parameter W=28)(input clk,enable,valid,input signed [W-1:0] a,b,\n output reg out_valid=0,output reg signed [W-1:0] lo=0,hi=0);",
+    "line": 4,
+    "name": "cic_pair_integrator",
+    "owner": "FU-RTL-ACQ-SRAM-PRECISION",
+    "path": "fpga/acq_sram/precision.v",
+    "simulation": false
+  },
+  {
+    "header": "module cic16_pair(input clk,enable,valid,input [7:0] a,b,output out_valid,output [15:0] q);",
+    "line": 44,
+    "name": "cic16_pair",
+    "owner": "FU-RTL-ACQ-SRAM-PRECISION",
+    "path": "fpga/acq_sram/precision.v",
+    "simulation": false
+  },
+  {
+    "header": "module cic_stage(input clk,enable,valid,input [3:0] factor_log,input [15:0] data,\n output reg out_valid=0,output reg [15:0] q=0);",
+    "line": 67,
+    "name": "cic_stage",
+    "owner": "FU-RTL-ACQ-SRAM-PRECISION",
+    "path": "fpga/acq_sram/precision.v",
+    "simulation": false
+  },
+  {
+    "header": "module adc_precision #(parameter SHARED_TAIL=0)(input core,packclk,clk100,enable,input [4:0] decim_log,input [31:0] raw,input raw_valid,\n output reg [31:0] data=0,output reg valid=0,output reg fault=0);",
+    "line": 89,
+    "name": "adc_precision",
+    "owner": "FU-RTL-ACQ-SRAM-PRECISION",
+    "path": "fpga/acq_sram/precision.v",
+    "simulation": false
+  },
+  {
+    "header": "module cic_precision_tail(\n input wire clk,enable,valid,input wire [3:0] remaining_log,\n input wire [31:0] data,\n output wire ready,out_valid,\n (* preserve *) output reg [31:0] q=0,output reg fault=0\n);",
+    "line": 9,
+    "name": "cic_precision_tail",
+    "owner": "FU-RTL-ACQ-SRAM-PRECISION-TAIL",
+    "path": "fpga/acq_sram/precision_tail.v",
+    "simulation": false
+  },
+  {
+    "header": "module acq_profile_core #(parameter ENABLE_STREAM=0,BUILD_ID=32'b0)(\n input wire reset,locked,core_clk,sample_clk,ram_clk,host_clk,clk100,\n input wire nCS1,nOE,nWE,input wire [6:0] sel,\n inout wire [15:0] gpmc_d,input wire [79:0] lane,\n inout wire [31:0] dq,output wire k1,k2,g1,\n output wire [4:0] enc_p,enc_n\n);",
+    "line": 4,
+    "name": "acq_profile_core",
+    "owner": "FU-RTL-ACQ-SRAM-PROFILE-CORE",
+    "path": "fpga/acq_sram/profile_core.v",
+    "simulation": false
+  },
+  {
+    "header": "module acq_profile_pll(input refclk,output core,sample_clk,ram_clk,locked);",
+    "line": 3,
+    "name": "acq_profile_pll",
+    "owner": "FU-RTL-ACQ-SRAM-PROFILE-PLL",
+    "path": "fpga/acq_sram/profile_pll.v",
+    "simulation": false
+  },
+  {
+    "header": "module acq_profile_top #(parameter ENABLE_STREAM=0,BUILD_ID=32'b0)(\n input wire clk,mclk_in,nCS1,nOE,nWE,input wire [6:2] sel,\n input wire gpmc_a2,gpmc_b1,inout wire [15:0] gpmc_d,\n inout wire [31:0] dq,input wire [79:0] lane,\n output wire k1,k2,g1,g2,d1,d2,f1,f2,j2,a11,output wire [4:0] enc_p,enc_n\n);",
+    "line": 3,
+    "name": "acq_profile_top",
+    "owner": "FU-RTL-ACQ-SRAM-PROFILE-TOP",
+    "path": "fpga/acq_sram/profile_top.v",
+    "simulation": false
+  },
+  {
+    "header": "module sram_recall #(parameter AW=19)(\n input wire clk, reset, request, frozen,\n input wire [AW-1:0] record_start, current_position,\n input wire [AW:0] record_length, offset, length,\n output reg valid=0, error=0,\n output reg [AW-1:0] skip=0,\n output reg [AW:0] count=0\n);",
+    "line": 6,
+    "name": "sram_recall",
+    "owner": "FU-RTL-ACQ-SRAM-RECALL",
+    "path": "fpga/acq_sram/recall.v",
+    "simulation": false
+  },
+  {
+    "header": "module sram_record #(parameter AW=19,CONFIG_VALIDATED=0)(\n input wire clk, reset, arm, halt,\n input wire [AW:0] pre_count, post_count,\n input wire step, trigger,\n output reg running=0, done=0, triggered=0, config_error=0,\n output reg [AW-1:0] write_addr=0, output wire [AW-1:0] record_start,\n output wire [AW:0] record_length, output wire [AW:0] trigger_index, output wire [AW:0] filled\n);",
+    "line": 10,
+    "name": "sram_record",
+    "owner": "FU-RTL-ACQ-SRAM-RECORD",
+    "path": "fpga/acq_sram/record.v",
+    "simulation": false
+  },
+  {
+    "header": "module altddio_out #(parameter width=1,power_up_high=\"OFF\",intended_device_family=\"Cyclone IV E\")\n(input outclock,datain_h,datain_l,oe,aclr,aset,sclr,sset,outclocken,output dataout);",
+    "line": 2,
+    "name": "altddio_out",
+    "owner": "FU-RTL-ACQ-TESTS",
+    "path": "fpga/acq_sram/sim/ddr_model.v",
+    "simulation": true
+  },
+  {
+    "header": "module adc_interleave #(parameter SYNC_ENCODE=0)(input refclk,memclk,packclk,enable,input [79:0] lane,input [9:0] encode_enable,\n input snapshot_request,output snapshot_ack,input consume,output [31:0] word_data,output valid,fault,\n output [79:0] snapshot,output [4:0] enc_p,enc_n,output locked);",
+    "line": 4,
+    "name": "adc_interleave",
+    "owner": "FU-RTL-ACQ-TESTS",
+    "path": "fpga/acq_sram/sim/tb_acquisition_path.v",
+    "simulation": true
+  },
+  {
+    "header": "module adc_precision #(parameter SHARED_TAIL=0)(input core,packclk,clk100,enable,input [4:0] decim_log,input [31:0] raw,input raw_valid,\n output [31:0] data,output valid,fault);",
+    "line": 11,
+    "name": "adc_precision",
+    "owner": "FU-RTL-ACQ-TESTS",
+    "path": "fpga/acq_sram/sim/tb_acquisition_path.v",
+    "simulation": true
+  },
+  {
+    "header": "module tb_acquisition_path #(parameter ENABLE_STREAM=1,READY_ONLY=0,HOST_FAULT_ONLY=0);",
+    "line": 19,
+    "name": "tb_acquisition_path",
+    "owner": "FU-RTL-ACQ-TESTS",
+    "path": "fpga/acq_sram/sim/tb_acquisition_path.v",
+    "simulation": true
+  },
+  {
+    "header": "module adc_interleave #(parameter SYNC_ENCODE=0)(input refclk,memclk,packclk,enable,input [79:0] lane,input [9:0] encode_enable,\n input snapshot_request,output snapshot_ack,input consume,output [31:0] word_data,output valid,fault,\n output [79:0] snapshot,output [4:0] enc_p,enc_n,output locked);",
+    "line": 4,
+    "name": "adc_interleave",
+    "owner": "FU-RTL-ACQ-TESTS",
+    "path": "fpga/acq_sram/sim/tb_acquisition_source.v",
+    "simulation": true
+  },
+  {
+    "header": "module adc_precision #(parameter SHARED_TAIL=0)(input core,packclk,clk100,enable,input [4:0] decim_log,input [31:0] raw,input raw_valid,\n output [31:0] data,output valid,fault);",
+    "line": 12,
+    "name": "adc_precision",
+    "owner": "FU-RTL-ACQ-TESTS",
+    "path": "fpga/acq_sram/sim/tb_acquisition_source.v",
+    "simulation": true
+  },
+  {
+    "header": "module tb_acquisition_source;\n reg core=0,packclk=0,clk100=0;\n always #2 core=~core;always #4 packclk=~packclk;always #5 clk100=~clk100;\n reg enable=0;reg [79:0] lane=0;reg [4:0] decim_log=0;\n reg [9:0] encode_enable=10'h3ff;reg snapshot_request=0;\n wire snapshot_ack;wire [79:0] snapshot;wire [4:0] enc_p,enc_n;\n wire adc_locked,valid,fault,precision_mode;wire [31:0] data;\n adc_acquisition_source dut(.*);",
+    "line": 17,
+    "name": "tb_acquisition_source",
+    "owner": "FU-RTL-ACQ-TESTS",
+    "path": "fpga/acq_sram/sim/tb_acquisition_source.v",
+    "simulation": true
+  },
+  {
+    "header": "module adc_phase_pll(input refclk,output [4:0] phase,output locked);",
+    "line": 3,
+    "name": "adc_phase_pll",
+    "owner": "FU-RTL-ACQ-TESTS",
+    "path": "fpga/acq_sram/sim/tb_adc_interleave.v",
+    "simulation": true
+  },
+  {
+    "header": "module tb;\n reg refclk=0,memclk=0,packclk=0,enable=0;always #4 packclk=~packclk;always #5 refclk=~refclk;always #2 memclk=~memclk;\n wire [79:0] lane;reg [79:0] adc=0;wire [4:0] ep,en;wire [31:0] data;wire valid,fault,locked,ack;wire [79:0] snap;\n adc_interleave dut(refclk,memclk,packclk,enable,lane,10'h3ff,1'b0,ack,enable,data,valid,fault,snap,ep,en,locked);",
+    "line": 6,
+    "name": "tb",
+    "owner": "FU-RTL-ACQ-TESTS",
+    "path": "fpga/acq_sram/sim/tb_adc_interleave.v",
+    "simulation": true
+  },
+  {
+    "header": "module tb_board_capture;\n parameter WRAPPED=1;\n localparam AW=13,N=1<<AW;\n reg core_clk=0,ram_clk=0,host_clk=0;\n always #2 core_clk=~core_clk;always #4 ram_clk=~ram_clk;always #5 host_clk=~host_clk;\n wire sample_clk;assign #0.4 sample_clk=core_clk;\n reg reset=1,start=0,finite_mode=0,stop=0,source_finished=0,frozen=1;\n reg [AW-1:0] record_start=N-73,read_bias=0;reg [AW:0] record_words=N,offset=19,length=5121;\n reg source_valid=0,source_fault=0;reg [35:0] source_data=0;\n wire source_ready,start_ready,source_enable,active,done,capture_done,fault,request_error,start_rejected,selected_finite;\n wire [3:0] error_code;wire [63:0] committed,read_ordinal;wire [AW:0] unread;\n wire [1:0] bank_busy,host_ready,host_token;\n reg host_release=0,release_bank=0,release_token=0,read_enable=0;\n reg [13:0] read_halfword=0;wire read_valid,read_error;wire [15:0] read_data;\n wire host_fault;wire [63:0] host_first0,host_first1;wire [11:0] host_words0,host_words1;\n wire transport_ready,transport_write_ready,transport_done,transport_read_valid;\n wire [31:0] transport_read_data;wire [AW-1:0] position;\n wire command,command_read,command_discard,command_continue,write_valid,write_stop;\n wire [AW:0] command_count;wire [31:0] write_data;\n wire [31:0] dq;wire k1,k2,g1;\n reg writer_request=0,writer_command=0,writer_valid=0,writer_stop=1;\n reg [31:0] writer_data=0;\n wire writer_granted,writer_ready,writer_write_ready,writer_done;\n sram_board_capture_path #(.AW(AW)) dut(.locked(1'b1),.sample_clk(sample_clk),.record_words_sampled(),.*);",
+    "line": 2,
+    "name": "tb_board_capture",
+    "owner": "FU-RTL-ACQ-TESTS",
+    "path": "fpga/acq_sram/sim/tb_board_capture.v",
+    "simulation": true
+  },
+  {
+    "header": "module bench_pll(input refclk,output reg c0=0,output c1,output locked,output reg halfclk=0);",
+    "line": 2,
+    "name": "bench_pll",
+    "owner": "FU-RTL-ACQ-TESTS",
+    "path": "fpga/acq_sram/sim/tb_burst.v",
+    "simulation": true
+  },
+  {
+    "header": "module adc_interleave(input refclk,memclk,packclk,enable,input [79:0] lane,input [9:0] encode_enable,\n input snapshot_request,output snapshot_ack,input consume,output [31:0] word_data,output valid,fault,output [79:0] snapshot,output [4:0] enc_p,enc_n,output locked);",
+    "line": 5,
+    "name": "adc_interleave",
+    "owner": "FU-RTL-ACQ-TESTS",
+    "path": "fpga/acq_sram/sim/tb_burst.v",
+    "simulation": true
+  },
+  {
+    "header": "module tb;\n reg clk=0,mclk_in=0;always #6.25 clk=~clk;always #5 mclk_in=~mclk_in;\n wire [15:0] gpmc_d;wire [31:0] dq;wire k1,k2,g1;\n acq_sram_top dut(.clk(clk),.mclk_in(mclk_in),.nCS1(1'b1),.nOE(1'b1),.nWE(1'b1),.sel(5'b0),\n  .gpmc_a2(1'b0),.gpmc_b1(1'b0),.gpmc_d(gpmc_d),.dq(dq),.lane(80'b0),.k1(k1),.k2(k2),.g1(g1));",
+    "line": 9,
+    "name": "tb",
+    "owner": "FU-RTL-ACQ-TESTS",
+    "path": "fpga/acq_sram/sim/tb_burst.v",
+    "simulation": true
+  },
+  {
+    "header": "module tb_capture_engine;\n parameter WRAPPED=0,ENABLE_STREAM=1;\n localparam AW=13,N=1<<AW;\n reg core_clk=0,ram_clk=0,host_clk=0;\n always #2 core_clk=~core_clk;always #4 ram_clk=~ram_clk;always #5 host_clk=~host_clk;\n wire sample_clk;assign #0.4 sample_clk=core_clk;\n reg reset=1,start=0,finite_mode=0,stop=0,source_finished=0,frozen=1;\n reg [AW-1:0] record_start=N-73,read_bias=0;reg [AW:0] record_words=N,offset=19,length=5121;\n reg source_valid=0,source_fault=0;reg [35:0] source_data=0;\n wire source_ready,start_ready,source_enable,active,done,capture_done,fault,request_error,start_rejected,selected_finite;\n wire [3:0] error_code;wire [63:0] committed,read_ordinal;wire [AW:0] unread;\n wire [1:0] bank_busy,host_ready,host_token;\n reg host_release=0,release_bank=0,release_token=0,read_enable=0;\n reg [13:0] read_halfword=0;wire read_valid,read_error;wire [15:0] read_data;\n wire host_fault;wire [63:0] host_first0,host_first1;wire [11:0] host_words0,host_words1;\n wire transport_ready,transport_write_ready,transport_done,transport_read_valid;\n wire [31:0] transport_read_data;wire [AW-1:0] position;\n wire command,command_read,command_discard,command_continue,write_valid,write_stop;\n wire [AW:0] command_count;wire [31:0] write_data;\n wire [31:0] dq;wire k1,k2,g1;\n generate if(WRAPPED)begin: wrapped\n  sram_capture_path #(.AW(AW),.ENABLE_STREAM(ENABLE_STREAM)) dut(.locked(1'b1),.sample_clk(sample_clk),.*);",
+    "line": 2,
+    "name": "tb_capture_engine",
+    "owner": "FU-RTL-ACQ-TESTS",
+    "path": "fpga/acq_sram/sim/tb_capture_engine.v",
+    "simulation": true
+  },
+  {
+    "header": "module tb_capture_start;\n localparam AW=13,N=1<<AW;\n reg core_clk=0,ram_clk=0,host_clk=0;\n always #2 core_clk=~core_clk;always #4 ram_clk=~ram_clk;always #5 host_clk=~host_clk;\n wire sample_clk;assign #0.4 sample_clk=core_clk;\n reg reset=1,start=0,finite_mode=0,stop=0,source_finished=0,frozen=1;\n reg [AW-1:0] record_start=N-73,read_bias=0;reg [AW:0] record_words=N,offset=19,length=5121;\n reg source_valid=0,source_fault=0;reg [35:0] source_data=0;\n wire source_ready,start_ready,source_enable,active,done,capture_done,fault,request_error,start_rejected,selected_finite;\n wire [3:0] error_code;wire [63:0] committed,read_ordinal;wire [AW:0] unread;\n wire [1:0] bank_busy,host_ready,host_token;\n reg host_release=0,release_bank=0,release_token=0,read_enable=0;\n reg [13:0] read_halfword=0;wire read_valid,read_error;wire [15:0] read_data;\n wire host_fault;wire [63:0] host_first0,host_first1;wire [11:0] host_words0,host_words1;\n reg transport_ready=1,transport_write_ready=0,transport_done=0,transport_read_valid=0;\n reg [31:0] transport_read_data=0;reg [AW-1:0] position=17;\n wire command,command_read,command_discard,command_continue,write_valid,write_stop;\n wire [AW:0] command_count;wire [31:0] write_data;\n sram_capture_engine #(.AW(AW)) dut(.record_words_sampled(),.*);",
+    "line": 2,
+    "name": "tb_capture_start",
+    "owner": "FU-RTL-ACQ-TESTS",
+    "path": "fpga/acq_sram/sim/tb_capture_start.v",
+    "simulation": true
+  },
+  {
+    "header": "module tb_command_bridge;\n parameter PHASE=0,SHORT_RESET=0;\n reg host_clk=0,core_clk=0,reset=1,host_send=0;\n reg [191:0] host_payload=0;\n wire host_busy,host_rejected,core_valid;\n wire [191:0] core_payload;\n always #5 host_clk=~host_clk;\n reg core_run=1;\n initial begin #(PHASE*0.3);",
+    "line": 2,
+    "name": "tb_command_bridge",
+    "owner": "FU-RTL-ACQ-TESTS",
+    "path": "fpga/acq_sram/sim/tb_command_bridge.v",
+    "simulation": true
+  },
+  {
+    "header": "module tb_command_gpmc;\n reg host_clk=0,core_clk=0,reset=1;\n always #5 host_clk=~host_clk;always #2 core_clk=~core_clk;\n reg ncs=1,noe=1,nwe=1;reg [6:0] selector=0;\n reg drive=0;reg [15:0] bus_value=0;wire [15:0] bus_data;\n assign bus_data=drive ? bus_value : 16'hzzzz;\n wire host_write,rd_pop,drive_active,read_hit,host_busy,host_rejected;\n wire [7:0] write_sel,read_sel;wire [15:0] write_data,port_data;\n wire [1:0] wr_aux;\n gpmc_slave #(.QUALIFIED_READ(1)) bus_slave(\n  .clk(host_clk),.nCS1(ncs),.nOE(noe),.nWE(nwe),.sel(selector),.gpmc_d(bus_data),\n  .we_commit(host_write),.wr_sel(write_sel),.wr_data(write_data),.wr_aux(wr_aux),\n  .rd_pop(rd_pop),.rd_sel(read_sel),.rdata(read_hit ? port_data : 16'hffff),.drive_active(drive_active));",
+    "line": 2,
+    "name": "tb_command_gpmc",
+    "owner": "FU-RTL-ACQ-TESTS",
+    "path": "fpga/acq_sram/sim/tb_command_gpmc.v",
+    "simulation": true
+  },
+  {
+    "header": "module tb_command_port;\n parameter ENABLE_STREAM=0,PHASE=0;\n reg reset=1,host_clk=0,core_clk=0,host_write=0;\n reg [7:0] write_sel=0,read_sel=0;reg [15:0] write_data=0;\n wire read_hit;wire [15:0] read_data;\n reg [15:0] status_counter=0;\n always @(posedge core_clk)status_counter<=status_counter+1'b1;\n wire [127:0] acquisition_status={status_counter,~status_counter,status_counter,~status_counter,\n                                 status_counter,~status_counter,status_counter,~status_counter};\n reg [127:0] expected_status=0;\n always @(posedge core_clk)if(!reset && dut.reply_send && !dut.reply_busy)\n  expected_status=acquisition_status;\n reg acquisition_request_error=0,reject_next=0;\n always @(posedge core_clk)acquisition_request_error<=!reset && core_start && reject_next;\n wire host_busy,host_rejected,core_start,core_halt,core_force,core_snapshot,core_error;\n wire [1:0] operation,trigger_mode;\n wire [19:0] pre_count,post_count,offset,length;\n wire [18:0] read_bias;wire [4:0] decim_log;wire [9:0] encode_enable;\n wire trigger_channel,trigger_falling;wire [15:0] trigger_level;\n always #5 host_clk=~host_clk;\n initial begin #(PHASE*0.3);",
+    "line": 2,
+    "name": "tb_command_port",
+    "owner": "FU-RTL-ACQ-TESTS",
+    "path": "fpga/acq_sram/sim/tb_command_port.v",
+    "simulation": true
+  },
+  {
+    "header": "module bench_pll(input refclk,output reg c0=0,output c1,output locked,output reg halfclk=0);",
+    "line": 2,
+    "name": "bench_pll",
+    "owner": "FU-RTL-ACQ-TESTS",
+    "path": "fpga/acq_sram/sim/tb_continuation.v",
+    "simulation": true
+  },
+  {
+    "header": "module adc_interleave(input refclk,memclk,packclk,enable,input [79:0] lane,input [9:0] encode_enable,\n input snapshot_request,output snapshot_ack,input consume,output [31:0] word_data,output valid,fault,output [79:0] snapshot,output [4:0] enc_p,enc_n,output locked);",
+    "line": 5,
+    "name": "adc_interleave",
+    "owner": "FU-RTL-ACQ-TESTS",
+    "path": "fpga/acq_sram/sim/tb_continuation.v",
+    "simulation": true
+  },
+  {
+    "header": "module tb;\n reg clk=0,mclk_in=0;always #6.25 clk=~clk;always #5 mclk_in=~mclk_in;\n wire [15:0] gpmc_d;wire [31:0] dq;wire k1,k2,g1;\n acq_sram_top dut(.clk(clk),.mclk_in(mclk_in),.nCS1(1'b1),.nOE(1'b1),.nWE(1'b1),.sel(5'b0),\n  .gpmc_a2(1'b0),.gpmc_b1(1'b0),.gpmc_d(gpmc_d),.dq(dq),.lane(80'b0),.k1(k1),.k2(k2),.g1(g1));",
+    "line": 9,
+    "name": "tb",
+    "owner": "FU-RTL-ACQ-TESTS",
+    "path": "fpga/acq_sram/sim/tb_continuation.v",
+    "simulation": true
+  },
+  {
+    "header": "module tb_finite_capture;\n parameter WRAPPED=1;\n parameter AW=13;\n localparam N=1<<AW;\n reg core_clk=0,ram_clk=0,host_clk=0;\n always #2 core_clk=~core_clk;always #4 ram_clk=~ram_clk;always #5 host_clk=~host_clk;\n wire sample_clk;assign #0.4 sample_clk=core_clk;\n reg reset=1,start=0,finite_mode=0,stop=0,source_finished=0,frozen=1;\n reg [AW-1:0] record_start=N-73,read_bias=0;reg [AW:0] record_words=N,offset=19,length=5121;\n reg source_valid=0,source_fault=0;reg [35:0] source_data=0;\n wire source_ready,start_ready,source_enable,active,done,capture_done,fault,request_error,start_rejected,selected_finite;\n wire [3:0] error_code;wire [63:0] committed,read_ordinal;wire [AW:0] unread;\n wire [1:0] bank_busy,host_ready,host_token;\n reg host_release=0,release_bank=0,release_token=0,read_enable=0;\n reg [13:0] read_halfword=0;wire read_valid,read_error;wire [15:0] read_data;\n wire host_fault;wire [63:0] host_first0,host_first1;wire [11:0] host_words0,host_words1;\n wire transport_ready,transport_write_ready,transport_done,transport_read_valid;\n wire [31:0] transport_read_data;wire [AW-1:0] position;\n wire command,command_read,command_discard,command_continue,write_valid,write_stop;\n wire [AW:0] command_count;wire [31:0] write_data;\n wire [31:0] dq;wire k1,k2,g1;\n wire writer_request,writer_command,writer_valid,writer_stop;\n wire [31:0] writer_data;\n reg capture_start=0,capture_halt=0,capture_valid=0,capture_trigger=0;\n reg [31:0] capture_data=0;\n reg [AW:0] capture_pre=0,capture_post=1;\n wire capture_start_ready,capture_active,capture_enable,capture_ready,capture_frozen,capture_fault,capture_error,capture_triggered;\n wire [AW-1:0] capture_origin;wire [AW:0] capture_words,capture_trigger_index;\n sram_finite_writer #(.AW(AW)) writer(\n  .clk(core_clk),.reset(reset),.start(capture_start),.capture_allowed(start_ready && !start),.halt(capture_halt),\n  .pre_count(capture_pre),.post_count(capture_post),.source_valid(capture_valid),.source_fault(1'b0),.trigger(capture_trigger),.source_data(capture_data),\n  .start_ready(capture_start_ready),.active(capture_active),.source_enable(capture_enable),.source_ready(capture_ready),\n  .frozen(capture_frozen),.fault(capture_fault),.request_error(capture_error),.triggered(capture_triggered),\n  .record_start(capture_origin),.record_words(capture_words),.trigger_index(capture_trigger_index),\n  .writer_request(writer_request),.writer_command(writer_command),.writer_valid(writer_valid),.writer_stop(writer_stop),.writer_data(writer_data),\n  .writer_ready(writer_ready),.writer_write_ready(writer_write_ready),.position(position));",
+    "line": 2,
+    "name": "tb_finite_capture",
+    "owner": "FU-RTL-ACQ-TESTS",
+    "path": "fpga/acq_sram/sim/tb_finite_capture.v",
+    "simulation": true
+  },
+  {
+    "header": "module tb_finite_recall;\n parameter AW=13,CONTINUE_READS=1,FULL_ONLY=0;\n localparam N=1<<AW;\n reg c=0,m=0,h=0;always #2 c=~c;always #4 m=~m;always #5 h=~h;\n wire sample;assign #0.4 sample=c;\n reg reset=1,start=0,frozen=1;reg [AW-1:0] record_start=N-73,read_bias=0;\n reg [AW:0] record_words=N,offset=0,length=0;\n wire start_ready,active,done,request_error,fault,host_fault,core_fault;\n wire [3:0] error_code;wire [63:0] recalled;\n wire [1:0] bank_busy,bank_done,bank_release,host_ready,host_token;\n wire word_valid,word_bank;wire [31:0] word_data;wire [11:0] word_index;\n wire [63:0] first0,first1,host_first0,host_first1;\n wire [AW:0] words0,words1;wire [19:0] hw0=words0,hw1=words1;\n wire [11:0] host_words0,host_words1;\n wire tr,td,tv,command,command_read,command_discard,command_continue;\n wire [31:0] tdata;wire [AW-1:0] position;wire [AW:0] command_count;\n reg release_en=0,release_bank=0,release_token=0,ren=0;\n reg [13:0] raddr=0;wire rv,re;wire [15:0] rdata;\n sram_finite_recall #(.AW(AW),.CONTINUE_READS(CONTINUE_READS)) reader(\n  .clk(c),.reset(reset),.start(start),.frozen(frozen),.record_start(record_start),.read_bias(read_bias),\n  .record_words(record_words),.offset(offset),.length(length),.start_ready(start_ready),.active(active),.done(done),\n  .request_error(request_error),.fault(fault),.error_code(error_code),.recalled(recalled),\n  .host_core_fault(core_fault),.bank_release(bank_release),.bank_busy(bank_busy),.bank_done(bank_done),\n  .word_valid(word_valid),.word_bank(word_bank),.word_data(word_data),.word_index(word_index),\n  .first0(first0),.first1(first1),.words0(words0),.words1(words1),\n  .transport_ready(tr),.transport_done(td),.transport_read_valid(tv),.transport_read_data(tdata),.position(position),\n  .command(command),.command_discard(command_discard),.command_continue(command_continue),\n  .command_read(command_read),.command_count(command_count));",
+    "line": 2,
+    "name": "tb_finite_recall",
+    "owner": "FU-RTL-ACQ-TESTS",
+    "path": "fpga/acq_sram/sim/tb_finite_recall.v",
+    "simulation": true
+  },
+  {
+    "header": "module tb_finite_recall_faults;\n reg clk=0;always #2 clk=~clk;\n reg reset=1,start=0,frozen=1;\n reg [12:0] record_start=0,read_bias=0,position=0;\n reg [13:0] record_words=8,offset=0,length=4;\n wire start_ready,active,done,request_error,fault;wire [3:0] error_code;\n wire [63:0] recalled,first0,first1;wire [13:0] words0,words1,command_count;\n reg host_core_fault=0;reg [1:0] bank_release=0;\n wire [1:0] bank_busy,bank_done;wire word_valid,word_bank;wire [31:0] word_data;\n wire [11:0] word_index;\n reg transport_ready=1,transport_done=0,transport_read_valid=0;\n reg [31:0] transport_read_data=0;\n wire command,command_discard,command_continue,command_read;\n sram_finite_recall #(.AW(13),.READ_WARM(0)) dut(.*);",
+    "line": 2,
+    "name": "tb_finite_recall_faults",
+    "owner": "FU-RTL-ACQ-TESTS",
+    "path": "fpga/acq_sram/sim/tb_finite_recall_faults.v",
+    "simulation": true
+  },
+  {
+    "header": "module tb_finite_writer_faults;\n localparam AW=13;\n reg clk=0;always #2 clk=~clk;\n reg reset=1,start=0,capture_allowed=1,halt=0,source_valid=0,source_fault=0,trigger=0;\n reg [AW:0] pre_count=0,post_count=1;\n reg [31:0] source_data=32'h53ad2e71;\n wire start_ready,active,source_enable,source_ready,frozen,fault,request_error,triggered;\n wire [AW-1:0] record_start;wire [AW:0] record_words,trigger_index;\n wire writer_request,writer_command,writer_valid,writer_stop;wire [31:0] writer_data;\n reg writer_ready=1,writer_write_ready=0,drop_ready=0;\n reg [AW-1:0] position=0;\n integer writes=0;\n sram_finite_writer #(.AW(AW),.PRIME_WORDS(2)) dut(.*);",
+    "line": 2,
+    "name": "tb_finite_writer_faults",
+    "owner": "FU-RTL-ACQ-TESTS",
+    "path": "fpga/acq_sram/sim/tb_finite_writer_faults.v",
+    "simulation": true
+  },
+  {
+    "header": "module bench_pll(input refclk,output reg c0=0,output c1,output locked,output reg halfclk=0);",
+    "line": 2,
+    "name": "bench_pll",
+    "owner": "FU-RTL-ACQ-TESTS",
+    "path": "fpga/acq_sram/sim/tb_gpmc_burst.v",
+    "simulation": true
+  },
+  {
+    "header": "module adc_interleave(input refclk,memclk,packclk,enable,input [79:0] lane,input [9:0] encode_enable,\n input snapshot_request,output snapshot_ack,input consume,output [31:0] word_data,output valid,fault,output [79:0] snapshot,output [4:0] enc_p,enc_n,output locked);",
+    "line": 5,
+    "name": "adc_interleave",
+    "owner": "FU-RTL-ACQ-TESTS",
+    "path": "fpga/acq_sram/sim/tb_gpmc_burst.v",
+    "simulation": true
+  },
+  {
+    "header": "module tb;\n reg clk=0,mclk_in=0;always #6.25 clk=~clk;always #5 mclk_in=~mclk_in;\n reg cs=1,oe=1;wire [15:0] gpmc_d;wire [31:0] dq;wire k1,k2,g1;\n acq_sram_top dut(.clk(clk),.mclk_in(mclk_in),.nCS1(cs),.nOE(oe),.nWE(1'b1),.sel(5'd6),\n  .gpmc_a2(1'b0),.gpmc_b1(1'b1),.gpmc_d(gpmc_d),.dq(dq),.lane(80'b0),.k1(k1),.k2(k2),.g1(g1));",
+    "line": 9,
+    "name": "tb",
+    "owner": "FU-RTL-ACQ-TESTS",
+    "path": "fpga/acq_sram/sim/tb_gpmc_burst.v",
+    "simulation": true
+  },
+  {
+    "header": "module tb;\n reg clk=0; always #6.25 clk=~clk;\n reg cs=1,oe=1; reg [6:0] sel=25;\n wire [15:0] d,old_d; wire pop,old_pop; wire [7:0] rs;\n integer count=0,old_count=0,i,j,expected=0;\n gpmc_slave #(.QUALIFIED_READ(1)) dut(.clk(clk),.nCS1(cs),.nOE(oe),.nWE(1'b1),.sel(sel),.gpmc_d(d),.rd_pop(pop),.rd_sel(rs),.rdata(16'hcafe));",
+    "line": 2,
+    "name": "tb",
+    "owner": "FU-RTL-ACQ-TESTS",
+    "path": "fpga/acq_sram/sim/tb_gpmc_read.v",
+    "simulation": true
+  },
+  {
+    "header": "module tb_host_faults;\n parameter PHASE=0;\n reg c=0,m=0,h=0,reset=1;\n always #2 c=~c;initial begin #(PHASE);",
+    "line": 2,
+    "name": "tb_host_faults",
+    "owner": "FU-RTL-ACQ-TESTS",
+    "path": "fpga/acq_sram/sim/tb_host_faults.v",
+    "simulation": true
+  },
+  {
+    "header": "module tb;\n parameter PHASE=1,SYNC_STALL=0;\n reg source_clk=0,dest_clk=0;always #2 source_clk=~source_clk;\n initial begin #PHASE;forever #4 dest_clk=~dest_clk;end\n reg reset=1,push=0,dest_ready=0;\n reg [79:0] source_data=0;wire source_ready,overflow,dest_valid;wire [79:0] dest_data;\n sram_host_fifo dut(.*);",
+    "line": 2,
+    "name": "tb",
+    "owner": "FU-RTL-ACQ-TESTS",
+    "path": "fpga/acq_sram/sim/tb_host_fifo.v",
+    "simulation": true
+  },
+  {
+    "header": "module tb_host_ownership;\n reg reset=1,pclk=0,hclk=0,cclk=0,pause_producer=0,pause_host=0,pause_core=0;\n always #4 if(!pause_producer)pclk=~pclk;\n always #5 if(!pause_host)hclk=~hclk;\n always #2 if(!pause_core)cclk=~cclk;\n reg [1:0] publish=0;reg [63:0] first0=0,first1=0;reg [11:0] words0=0,words1=0;\n reg release_en=0,bank=0,token=0;\n wire fault;wire [1:0] busy,ready,tokens,releases;\n wire [63:0] f0,f1;wire [11:0] w0,w1;\n sram_host_ownership dut(reset,pclk,hclk,cclk,publish,first0,first1,words0,words1,\n  fault,busy,release_en,bank,token,ready,tokens,f0,f1,w0,w1,releases);",
+    "line": 2,
+    "name": "tb_host_ownership",
+    "owner": "FU-RTL-ACQ-TESTS",
+    "path": "fpga/acq_sram/sim/tb_host_ownership.v",
+    "simulation": true
+  },
+  {
+    "header": "module tb_host_path;\n parameter PHASE=0;\n reg clk=0,mclk=0,rclk=0,reset=1;\n always #2 clk=~clk;\n initial begin #(PHASE);",
+    "line": 2,
+    "name": "tb_host_path",
+    "owner": "FU-RTL-ACQ-TESTS",
+    "path": "fpga/acq_sram/sim/tb_host_path.v",
+    "simulation": true
+  },
+  {
+    "header": "module tb;\n reg write_clk=0,read_clk=0;always #4 write_clk=~write_clk;always #5 read_clk=~read_clk;\n reg write_reset=1,write_enable=0,read_reset=1,read_enable=0;\n reg [11:0] write_pair=0;reg [63:0] write_data=0;\n reg [13:0] read_halfword=0;\n wire write_fault,read_valid,read_error;wire [15:0] read_data;\n sram_host_ram dut(.*);",
+    "line": 2,
+    "name": "tb",
+    "owner": "FU-RTL-ACQ-TESTS",
+    "path": "fpga/acq_sram/sim/tb_host_ram.v",
+    "simulation": true
+  },
+  {
+    "header": "module tb_host_read_port;\n reg clk=0,ram_clk=0,reset=1;\n always #5 clk=~clk;always #4 ram_clk=~ram_clk;\n reg ncs=1,noe=1,nwe=1,drive=0;reg [6:0] selector=0;\n reg [15:0] bus_value=0;wire [15:0] bus_data;\n assign bus_data=drive ? bus_value : 16'hzzzz;\n wire host_write,host_pop,read_hit;wire [7:0] write_sel,read_sel;\n wire [15:0] write_data,read_data;\n gpmc_slave #(.QUALIFIED_READ(1)) slave(.clk(clk),.nCS1(ncs),.nOE(noe),.nWE(nwe),\n  .sel(selector),.gpmc_d(bus_data),.we_commit(host_write),.wr_sel(write_sel),.wr_data(write_data),\n  .wr_aux(),.rd_pop(host_pop),.rd_sel(read_sel),.rdata(read_hit ? read_data : 16'hffff),.drive_active());",
+    "line": 2,
+    "name": "tb_host_read_port",
+    "owner": "FU-RTL-ACQ-TESTS",
+    "path": "fpga/acq_sram/sim/tb_host_read_port.v",
+    "simulation": true
+  },
+  {
+    "header": "module tb_host_read_window;\n reg clk=0,ram_clk=0,reset=1;\n always #5 clk=~clk;always #4 ram_clk=~ram_clk;\n reg select=0,select_bank=0,select_token=0,release_request=0,clear_error=0;\n reg [12:0] select_offset=0;\n reg [1:0] host_ready=0,host_token=0;\n reg host_fault=0;\n reg [11:0] host_words0=2560,host_words1=3;\n wire data_ready,exhausted,selected,fault;wire [15:0] data;\n wire [12:0] cursor;wire host_release,release_bank,release_token;\n wire ram_read_enable;wire [13:0] ram_read_halfword;\n wire ram_read_valid,ram_read_error;wire [15:0] ram_read_data;\n reg write_enable=0;reg [11:0] write_pair=0;reg [63:0] write_data=0;wire write_fault;\n sram_host_ram ram(ram_clk,reset,write_enable,write_pair,write_data,write_fault,\n  clk,reset,ram_read_enable,ram_read_halfword,ram_read_valid,ram_read_error,ram_read_data);",
+    "line": 2,
+    "name": "tb_host_read_window",
+    "owner": "FU-RTL-ACQ-TESTS",
+    "path": "fpga/acq_sram/sim/tb_host_read_window.v",
+    "simulation": true
+  },
+  {
+    "header": "module tb_host_sink;\n reg clk=0,rclk=0,reset=1,valid=0,upstream_fault=0;\n always #4 clk=~clk;\n always #5 rclk=~rclk;\n reg [79:0] data=0;\n wire ready,wr,rf,fault;wire [11:0] addr,w0,w1;\n wire [63:0] wd,f0,f1;wire [1:0] pub;\n reg ren=0;reg [13:0] ra=0;wire rv,re;wire [15:0] rd;\n sram_host_sink dut(clk,reset,upstream_fault,valid,data,ready,wr,addr,wd,rf,fault,pub,f0,f1,w0,w1);",
+    "line": 2,
+    "name": "tb_host_sink",
+    "owner": "FU-RTL-ACQ-TESTS",
+    "path": "fpga/acq_sram/sim/tb_host_sink.v",
+    "simulation": true
+  },
+  {
+    "header": "module tb;\n parameter BANKS=9,ROWS=512;\n localparam DEPTH=BANKS*ROWS;\n reg clk=0;always #2 clk=~clk;\n reg reset=1,push=0,pop=0;reg [31:0] data_in=0;\n wire [31:0] data_out;wire data_valid,empty,full,overflow,underflow;\n wire [$clog2(DEPTH+1)-1:0] count;\n sram_ingress_fifo #(.BANKS(BANKS),.ROWS(ROWS)) dut(.*);",
+    "line": 2,
+    "name": "tb",
+    "owner": "FU-RTL-ACQ-TESTS",
+    "path": "fpga/acq_sram/sim/tb_ingress_fifo.v",
+    "simulation": true
+  },
+  {
+    "header": "module tb;\n parameter PHASE=0;\n reg core=0,ram_clk=0;always #2 core=~core;\n initial begin #(PHASE);",
+    "line": 2,
+    "name": "tb",
+    "owner": "FU-RTL-ACQ-TESTS",
+    "path": "fpga/acq_sram/sim/tb_ingress_path.v",
+    "simulation": true
+  },
+  {
+    "header": "module tb;\n parameter BANKS=9,ROWS=512;\n localparam DEPTH=BANKS*ROWS;\n reg clk=0;always #2 clk=~clk;\n reg reset=1,push=0,ready=0;reg [31:0] data_in=0;\n wire valid,overflow,underflow;wire [31:0] data_out;\n wire [$clog2(DEPTH+9)-1:0] count;\n sram_ingress_stream #(.BANKS(BANKS),.ROWS(ROWS)) dut(.*);",
+    "line": 2,
+    "name": "tb",
+    "owner": "FU-RTL-ACQ-TESTS",
+    "path": "fpga/acq_sram/sim/tb_ingress_stream.v",
+    "simulation": true
+  },
+  {
+    "header": "module tb;\n reg clk=0,enable=0,valid=0;always #2 clk=~clk;\n reg signed [27:0] a=0,b=0;\n wire ov;wire signed [27:0] lo,hi;\n cic_pair_integrator dut(clk,enable,valid,a,b,ov,lo,hi);",
+    "line": 2,
+    "name": "tb",
+    "owner": "FU-RTL-ACQ-TESTS",
+    "path": "fpga/acq_sram/sim/tb_integrator.v",
+    "simulation": true
+  },
+  {
+    "header": "module tb;\n reg clk=0;always #2 clk=~clk;\n reg enable=0,consume=0,empty=0;reg [4:0] used=16;\n wire [79:0] q;wire [31:0] data;wire valid,pop,fault;\n integer frame=0,byteidx=0,i,n;\n interleave_gearbox dut(clk,enable,q,empty,used,consume,data,valid,pop,fault);",
+    "line": 2,
+    "name": "tb",
+    "owner": "FU-RTL-ACQ-TESTS",
+    "path": "fpga/acq_sram/sim/tb_interleave.v",
+    "simulation": true
+  },
+  {
+    "header": "module tb;\n reg clk=0;always #2 clk=~clk;\n reg clear=1,step=0;wire [63:0] value;\n reg [63:0] expected=0;\n integer i,k;\n sram_ordinal_counter dut(.*);",
+    "line": 2,
+    "name": "tb",
+    "owner": "FU-RTL-ACQ-TESTS",
+    "path": "fpga/acq_sram/sim/tb_ordinal_counter.v",
+    "simulation": true
+  },
+  {
+    "header": "module tb;\n reg core=0,packclk=0,clk100=0,enable=0;initial begin #2;forever #4 packclk=~packclk;end\n always #2 core=~core;always #5 clk100=~clk100;\n reg [4:0] log=4;reg [31:0] raw={8'd101,8'd40,8'd100,8'd40};\n wire [31:0] data;wire valid,fault;integer count=0;integer l;\n adc_precision dut(core,packclk,clk100,enable,log,raw,enable,data,valid,fault);",
+    "line": 2,
+    "name": "tb",
+    "owner": "FU-RTL-ACQ-TESTS",
+    "path": "fpga/acq_sram/sim/tb_precision.v",
+    "simulation": true
+  },
+  {
+    "header": "module dcfifo #(parameter lpm_width=32,lpm_numwords=32,lpm_widthu=5,\n lpm_showahead=\"ON\",add_ram_output_register=\"ON\",rdsync_delaypipe=4,wrsync_delaypipe=4,\n read_aclr_synch=\"ON\",write_aclr_synch=\"ON\",use_eab=\"ON\",intended_device_family=\"Cyclone IV E\")(\n input aclr,wrclk,input [lpm_width-1:0] data,input wrreq,output wrfull,\n input rdclk,rdreq,output [lpm_width-1:0] q,output rdempty);",
+    "line": 4,
+    "name": "dcfifo",
+    "owner": "FU-RTL-ACQ-TESTS",
+    "path": "fpga/acq_sram/sim/tb_precision_config.v",
+    "simulation": true
+  },
+  {
+    "header": "module tb_precision_config;\n reg core=0,packclk=0,clk100=0;always #2 core=~core;\n initial begin #2;forever #4 packclk=~packclk;end\n always #5 clk100=~clk100;\n reg enable=0,ref_enable=0,raw_valid=0;reg [4:0] decim_log=4;reg [31:0] raw=0;\n wire [31:0] data,ref_data;wire valid,fault,ref_valid,ref_fault;\n adc_precision #(.SHARED_TAIL(1)) dut(.*);",
+    "line": 14,
+    "name": "tb_precision_config",
+    "owner": "FU-RTL-ACQ-TESTS",
+    "path": "fpga/acq_sram/sim/tb_precision_config.v",
+    "simulation": true
+  },
+  {
+    "header": "module tb;\n reg clk=0,enable=0;always #2 clk=~clk;\n reg [7:0] a=0,b=0;wire valid;wire [15:0] q;\n cic16_pair dut(clk,enable,enable,a,b,valid,q);",
+    "line": 5,
+    "name": "tb",
+    "owner": "FU-RTL-ACQ-TESTS",
+    "path": "fpga/acq_sram/sim/tb_precision_fir.v",
+    "simulation": true
+  },
+  {
+    "header": "module dcfifo #(parameter lpm_width=32,lpm_numwords=32,lpm_widthu=5,\n lpm_showahead=\"ON\",add_ram_output_register=\"ON\",rdsync_delaypipe=4,wrsync_delaypipe=4,\n read_aclr_synch=\"ON\",write_aclr_synch=\"ON\",use_eab=\"ON\",intended_device_family=\"Cyclone IV E\")(\n input aclr,wrclk,input [lpm_width-1:0] data,input wrreq,output wrfull,\n input rdclk,rdreq,output [lpm_width-1:0] q,output rdempty);",
+    "line": 4,
+    "name": "dcfifo",
+    "owner": "FU-RTL-ACQ-TESTS",
+    "path": "fpga/acq_sram/sim/tb_precision_shared.v",
+    "simulation": true
+  },
+  {
+    "header": "module tb_precision_shared;\n reg core=0,packclk=0,clk100=0;always #2 core=~core;\n initial begin #2;forever #4 packclk=~packclk;end\n always #5 clk100=~clk100;\n reg enable=0,raw_valid=0;reg [4:0] decim_log=4;reg [31:0] raw=0;\n wire [31:0] data,ref_data;wire valid,fault,ref_valid,ref_fault;\n adc_precision #(.SHARED_TAIL(1)) dut(.*);",
+    "line": 14,
+    "name": "tb_precision_shared",
+    "owner": "FU-RTL-ACQ-TESTS",
+    "path": "fpga/acq_sram/sim/tb_precision_shared.v",
+    "simulation": true
+  },
+  {
+    "header": "module tb_precision_tail;\n parameter MAX_LOG=12;\n reg clk=0;always #5 clk=~clk;\n reg enable=0,valid=0;reg [3:0] remaining_log=0;reg [31:0] data=0;\n wire ready,out_valid,fault;wire [31:0] q;\n cic_precision_tail dut(.*);",
+    "line": 2,
+    "name": "tb_precision_tail",
+    "owner": "FU-RTL-ACQ-TESTS",
+    "path": "fpga/acq_sram/sim/tb_precision_tail.v",
+    "simulation": true
+  },
+  {
+    "header": "module tb_precision_tail_queue;\n parameter MAX_LOG=12;\n reg clk=0;always #5 clk=~clk;\n reg enable=0,valid=0;reg [3:0] remaining_log=0;reg [31:0] data=0;\n wire ready,out_valid,fault;wire [31:0] q;\n cic_precision_tail dut(.*);",
+    "line": 2,
+    "name": "tb_precision_tail_queue",
+    "owner": "FU-RTL-ACQ-TESTS",
+    "path": "fpga/acq_sram/sim/tb_precision_tail_queue.v",
+    "simulation": true
+  },
+  {
+    "header": "module bench_pll(input refclk,output reg c0=0,output c1,output locked,output reg halfclk=0);",
+    "line": 2,
+    "name": "bench_pll",
+    "owner": "FU-RTL-ACQ-TESTS",
+    "path": "fpga/acq_sram/sim/tb_precision_top.v",
+    "simulation": true
+  },
+  {
+    "header": "module adc_interleave(input refclk,memclk,packclk,enable,input [79:0] lane,input [9:0] encode_enable,\n input snapshot_request,output snapshot_ack,input consume,output [31:0] word_data,output valid,fault,output [79:0] snapshot,output [4:0] enc_p,enc_n,output locked);",
+    "line": 5,
+    "name": "adc_interleave",
+    "owner": "FU-RTL-ACQ-TESTS",
+    "path": "fpga/acq_sram/sim/tb_precision_top.v",
+    "simulation": true
+  },
+  {
+    "header": "module tb;\n reg clk=0,mclk_in=0;always #6.25 clk=~clk;always #5 mclk_in=~mclk_in;\n wire [15:0] gpmc_d;wire [31:0] dq;wire k1,k2,g1;\n acq_sram_top dut(.clk(clk),.mclk_in(mclk_in),.nCS1(1'b1),.nOE(1'b1),.nWE(1'b1),.sel(5'b0),\n  .gpmc_a2(1'b0),.gpmc_b1(1'b0),.gpmc_d(gpmc_d),.dq(dq),.lane(80'b0),.k1(k1),.k2(k2),.g1(g1));",
+    "line": 9,
+    "name": "tb",
+    "owner": "FU-RTL-ACQ-TESTS",
+    "path": "fpga/acq_sram/sim/tb_precision_top.v",
+    "simulation": true
+  },
+  {
+    "header": "module tb_profile_core;\n reg reset=1,locked=1,core_clk=0,ram_clk=0,host_clk=0,clk100=0;\n always #2 core_clk=~core_clk;always #4 ram_clk=~ram_clk;\n always #5 host_clk=~host_clk;always #5 clk100=~clk100;\n wire sample_clk;assign #0.4 sample_clk=core_clk;\n reg nCS1=1,nOE=1,nWE=1,drive=0;reg [6:0] sel=0;\n reg [15:0] bus_value=0;wire [15:0] gpmc_d;\n assign gpmc_d=drive ? bus_value : 16'hzzzz;\n reg [79:0] lane=80'h12345678;\n wire [31:0] dq;wire k1,k2,g1;wire [4:0] enc_p,enc_n;\n acq_profile_core #(.BUILD_ID(32'h1234abcd)) dut(.*);",
+    "line": 2,
+    "name": "tb_profile_core",
+    "owner": "FU-RTL-ACQ-TESTS",
+    "path": "fpga/acq_sram/sim/tb_profile_core.v",
+    "simulation": true
+  },
+  {
+    "header": "module tb;\n localparam AW=19,N=1<<AW;\n reg clk=0;always #5 clk=~clk;\n reg reset=1,arm=0,halt=0,step=0,trigger=0;\n reg [AW:0] pre_count=0,post_count=1;\n wire running,done,triggered,config_error;\n wire [AW-1:0] write_addr,record_start;\n wire [AW:0] record_length,trigger_index,filled;\n sram_record #(.AW(AW)) dut(.*);",
+    "line": 2,
+    "name": "tb",
+    "owner": "FU-RTL-ACQ-TESTS",
+    "path": "fpga/acq_sram/sim/tb_record.v",
+    "simulation": true
+  },
+  {
+    "header": "module tb_stream_path;\n parameter AW=13,TARGET=10003;\n localparam N=1<<AW;\n reg c=0,m=0,h=0;always #2 c=~c;always #4 m=~m;always #5 h=~h;\n wire sample;assign #0.4 sample=c;\n reg reset=1,start=0,stop=0,finished=0,valid=0;\n reg [35:0] data=0;\n wire source_ready,start_ready,enable,active,done,captured,fault,hfault;\n wire [3:0] error;wire [63:0] committed,recalled;wire [AW:0] unread;\n wire [1:0] busy,ready,token;wire [63:0] first0,first1;wire [11:0] count0,count1;\n reg release_en=0,release_bank=0,release_token=0,ren=0;\n reg [13:0] raddr=0;wire rv,re;wire [15:0] rdata;\n wire [31:0] dq;wire k1,k2,g1;\n sram_stream_path #(.AW(AW)) dut(reset,1'b1,c,sample,m,h,start,stop,finished,{AW{1'b0}},\n  valid,1'b0,data,source_ready,start_ready,enable,active,done,captured,fault,error,committed,recalled,unread,busy,\n  release_en,release_bank,release_token,hfault,ready,token,first0,first1,count0,count1,ren,raddr,rv,re,rdata,dq,k1,k2,g1);",
+    "line": 2,
+    "name": "tb_stream_path",
+    "owner": "FU-RTL-ACQ-TESTS",
+    "path": "fpga/acq_sram/sim/tb_sram_stream_path.v",
+    "simulation": true
+  },
+  {
+    "header": "module tb;\n parameter AW=19,BATCH=5120,FIFO=4608,HOST_DELAY=2500000,ROUNDS=16,READ_RESERVE=32,WRITE_DIV=1;\n localparam N=1<<AW;\n reg clk=0,ram_clk=0;always #2 clk=~clk;always #4 ram_clk=~ram_clk;\n wire sample_clk;assign #0.4 sample_clk=clk;\n reg reset=1,locked=1,command=0,command_read=0,command_discard=0,command_continue=0,write_stop=0;\n reg [AW:0] command_count=0;\n wire ready,write_ready,read_valid,done,k1,k2,g1;\n wire [31:0] read_data,dq;wire [AW-1:0] position;\n integer cycles=0,produced=0,consumed=0,max_fifo=0;\n reg source_on=0,allow_write=0;\n wire ingress_valid,ingress_fault,ingress_ready;\n wire [35:0] ingress_word;\n wire [$clog2(FIFO+11)-1:0] ingress_count;\n wire write_slot=cycles%WRITE_DIV==0;\n wire write_valid=allow_write && ingress_valid && write_slot;\n wire [31:0] write_data=ingress_word[31:0];\n localparam FIFO_ROWS=FIFO>=512 ? 512 : 2;\n sram_ingress_path #(.BANKS(FIFO/FIFO_ROWS),.ROWS(FIFO_ROWS)) ingress(\n  .core(clk),.ram_clk(ram_clk),.reset(reset),\n  .source_valid(source_on && cycles%128==0),.source_data({4'(produced),32'(N+produced)}),\n  .source_ready(ingress_ready),.ready(allow_write && write_ready && write_slot),\n  .valid(ingress_valid),.data_out(ingress_word),.pending(ingress_count),.fault(ingress_fault));",
+    "line": 6,
+    "name": "tb",
+    "owner": "FU-RTL-ACQ-TESTS",
+    "path": "fpga/acq_sram/sim/tb_sram_timeslice.v",
+    "simulation": true
+  },
+  {
+    "header": "module tb #(parameter BANK_AW=3);",
+    "line": 2,
+    "name": "tb",
+    "owner": "FU-RTL-ACQ-TESTS",
+    "path": "fpga/acq_sram/sim/tb_stream_banks.v",
+    "simulation": true
+  },
+  {
+    "header": "module tb #(parameter BANK_AW=3);",
+    "line": 2,
+    "name": "tb",
+    "owner": "FU-RTL-ACQ-TESTS",
+    "path": "fpga/acq_sram/sim/tb_stream_path.v",
+    "simulation": true
+  },
+  {
+    "header": "module bench_pll(input refclk,output reg c0=0,output c1,output locked,output reg halfclk=0);",
+    "line": 2,
+    "name": "bench_pll",
+    "owner": "FU-RTL-ACQ-TESTS",
+    "path": "fpga/acq_sram/sim/tb_stream_top.v",
+    "simulation": true
+  },
+  {
+    "header": "module adc_interleave(input refclk,memclk,packclk,enable,input [79:0] lane,input [9:0] encode_enable,\n input snapshot_request,output snapshot_ack,input consume,output [31:0] word_data,output valid,fault,output [79:0] snapshot,output [4:0] enc_p,enc_n,output locked);",
+    "line": 5,
+    "name": "adc_interleave",
+    "owner": "FU-RTL-ACQ-TESTS",
+    "path": "fpga/acq_sram/sim/tb_stream_top.v",
+    "simulation": true
+  },
+  {
+    "header": "module adc_precision(input core,packclk,slowclk,enable,input [4:0] log2decim,input [31:0] data,input valid,\n output [31:0] result,output out_valid,output fault);",
+    "line": 9,
+    "name": "adc_precision",
+    "owner": "FU-RTL-ACQ-TESTS",
+    "path": "fpga/acq_sram/sim/tb_stream_top.v",
+    "simulation": true
+  },
+  {
+    "header": "module tb;\n reg clk=0,mclk_in=0;always #6.25 clk=~clk;always #5 mclk_in=~mclk_in;\n wire [15:0] gpmc_d;wire [31:0] dq;wire k1,k2,g1;\n acq_sram_top dut(.clk(clk),.mclk_in(mclk_in),.nCS1(1'b1),.nOE(1'b1),.nWE(1'b1),.sel(5'b0),\n  .gpmc_a2(1'b0),.gpmc_b1(1'b0),.gpmc_d(gpmc_d),.dq(dq),.lane(80'b0),.k1(k1),.k2(k2),.g1(g1));",
+    "line": 15,
+    "name": "tb",
+    "owner": "FU-RTL-ACQ-TESTS",
+    "path": "fpga/acq_sram/sim/tb_stream_top.v",
+    "simulation": true
+  },
+  {
+    "header": "module tb;\n parameter STALL_BLOCK=5,REQUIRE_STALL=0,REAL_HOST=0,AW=10,BANK_WORDS=16,FIFO=4608,TARGET=6003,HOST_CYCLES_PER_WORD=100,STALL_CYCLES=10000,NO_RELEASE=0,RESET_PHASE=0,EPOCHS=1;\n localparam N=1<<AW;\n reg clk=0,ram_clk=0;always #2 clk=~clk;always #4 ram_clk=~ram_clk;\n wire sample_clk;assign #0.4 sample_clk=clk;\n reg reset=1,start=0,stop=0,source_finished=0;\n wire start_ready,source_enable,active,done,capture_done,fault;\n wire [3:0] error_code;wire [63:0] committed,read_ordinal;\n wire [AW:0] unread;reg [1:0] model_release=0;wire [1:0] bank_release;wire path_fault;\n wire [1:0] bank_busy,bank_begin,bank_done;\n wire [63:0] bank_first0,bank_first1;\n wire [AW:0] bank_words0,bank_words1;\n wire host_valid,host_bank;wire [31:0] host_data;\n wire [$clog2(BANK_WORDS)-1:0] host_index;\n wire transport_ready,transport_write_ready,transport_done,transport_read_valid;\n wire [31:0] transport_read_data;wire [AW-1:0] position;\n wire command,command_read,command_discard,command_continue,write_valid,write_stop;\n wire [AW:0] command_count;wire [31:0] write_data;\n wire [31:0] dq;wire k1,k2,g1;\n wire [35:0] ingress_data;wire ingress_valid,ingress_ready,ingress_fault,input_ready;\n wire [$clog2(FIFO+11)-1:0] pending;\n integer epoch_base=0,epoch_address=0,epoch=0;\n integer stalls_exercised=0;\n integer cycles=0,produced=0,physical_writes=0,host_words=0,blocks=0,max_pending=0,max_unread=0,skipped_scans=0,overlap_scans=0;\n reg source_valid=0;reg [35:0] source_data=0;\n wire [15:0] ingress_pending=pending;\n wire [63:0] next_read_ordinal=epoch_base+read_ordinal+dut.read_event;\n wire [3:0] next_commit_marker=committed[3:0]+dut.write_event;\n sram_ingress_path #(.BANKS(FIFO/512)) ingress(.reset(reset),.core(clk),.ram_clk(ram_clk),\n  .source_valid(source_valid),.source_data(source_data),.source_ready(input_ready),\n  .ready(ingress_ready),.valid(ingress_valid),.data_out(ingress_data),.pending(pending),.fault(ingress_fault));",
+    "line": 2,
+    "name": "tb",
+    "owner": "FU-RTL-ACQ-TESTS",
+    "path": "fpga/acq_sram/sim/tb_timeslice_controller.v",
+    "simulation": true
+  },
+  {
+    "header": "module bench_pll(input refclk,output c0,c1,locked);",
+    "line": 2,
+    "name": "bench_pll",
+    "owner": "FU-RTL-ACQ-TESTS",
+    "path": "fpga/acq_sram/sim/tb_top.v",
+    "simulation": true
+  },
+  {
+    "header": "module tb;\n reg clk=0,mclk_in=0;always #6.25 clk=~clk;always #5 mclk_in=~mclk_in;\n wire [15:0] gpmc_d;wire [31:0] dq;wire k1,k2,g1;\n acq_sram_top dut(.clk(clk),.mclk_in(mclk_in),.nCS1(1'b1),.nOE(1'b1),.nWE(1'b1),.sel(5'b0),\n  .gpmc_a2(1'b0),.gpmc_b1(1'b0),.gpmc_d(gpmc_d),.dq(dq),.lane(80'b0),.k1(k1),.k2(k2),.g1(g1));",
+    "line": 5,
+    "name": "tb",
+    "owner": "FU-RTL-ACQ-TESTS",
+    "path": "fpga/acq_sram/sim/tb_top.v",
+    "simulation": true
+  },
+  {
+    "header": "module bench_pll(input refclk,output reg c0=0,output c1,output locked,output reg halfclk=0);",
+    "line": 2,
+    "name": "bench_pll",
+    "owner": "FU-RTL-ACQ-TESTS",
+    "path": "fpga/acq_sram/sim/tb_top_adc.v",
+    "simulation": true
+  },
+  {
+    "header": "module adc_phase_pll(input refclk,output [4:0] phase,output locked);",
+    "line": 5,
+    "name": "adc_phase_pll",
+    "owner": "FU-RTL-ACQ-TESTS",
+    "path": "fpga/acq_sram/sim/tb_top_adc.v",
+    "simulation": true
+  },
+  {
+    "header": "module tb;\n reg clk=0,mclk_in=0;always #6.25 clk=~clk;always #5 mclk_in=~mclk_in;\n wire [79:0] lane;reg [79:0] adc=0;wire [4:0] ep,en;\n wire [15:0] gpmc_d;wire [31:0] dq;wire k1,k2,g1;\n acq_sram_top dut(.clk(clk),.mclk_in(mclk_in),.nCS1(1'b1),.nOE(1'b1),.nWE(1'b1),.sel(5'b0),\n  .gpmc_a2(1'b0),.gpmc_b1(1'b0),.gpmc_d(gpmc_d),.dq(dq),.lane(lane),.enc_p(ep),.enc_n(en),.k1(k1),.k2(k2),.g1(g1));",
+    "line": 9,
+    "name": "tb",
+    "owner": "FU-RTL-ACQ-TESTS",
+    "path": "fpga/acq_sram/sim/tb_top_adc.v",
+    "simulation": true
+  },
+  {
+    "header": "module bench_pll(input refclk,output reg c0=0,output c1,output locked,output reg halfclk=0);",
+    "line": 2,
+    "name": "bench_pll",
+    "owner": "FU-RTL-ACQ-TESTS",
+    "path": "fpga/acq_sram/sim/tb_top_interleave.v",
+    "simulation": true
+  },
+  {
+    "header": "module adc_interleave(input refclk,memclk,packclk,enable,input [79:0] lane,input [9:0] encode_enable,\n input snapshot_request,output snapshot_ack,input consume,output [31:0] word_data,output valid,fault,output [79:0] snapshot,output [4:0] enc_p,enc_n,output locked);",
+    "line": 5,
+    "name": "adc_interleave",
+    "owner": "FU-RTL-ACQ-TESTS",
+    "path": "fpga/acq_sram/sim/tb_top_interleave.v",
+    "simulation": true
+  },
+  {
+    "header": "module tb;\n reg clk=0,mclk_in=0;always #6.25 clk=~clk;always #5 mclk_in=~mclk_in;\n wire [15:0] gpmc_d;wire [31:0] dq;wire k1,k2,g1;\n acq_sram_top dut(.clk(clk),.mclk_in(mclk_in),.nCS1(1'b1),.nOE(1'b1),.nWE(1'b1),.sel(5'b0),\n  .gpmc_a2(1'b0),.gpmc_b1(1'b0),.gpmc_d(gpmc_d),.dq(dq),.lane(80'b0),.k1(k1),.k2(k2),.g1(g1));",
+    "line": 9,
+    "name": "tb",
+    "owner": "FU-RTL-ACQ-TESTS",
+    "path": "fpga/acq_sram/sim/tb_top_interleave.v",
+    "simulation": true
+  },
+  {
+    "header": "module tb;\n localparam AW=19,N=1<<AW;\n reg clk=0;always #5 clk=~clk;\n wire sample_clk;assign #1 sample_clk=clk;\n reg reset=1,locked=1,command=0,command_read=0,command_discard=0,command_continue=0,write_valid=0,write_stop=0;\n reg [AW:0] command_count=0;\n reg [31:0] write_data=0;\n wire ready,write_ready,read_valid,done,k1,k2,g1;\n wire [31:0] read_data,dq;wire [AW-1:0] position;\n sram_transport #(.AW(AW)) dut(.*);",
+    "line": 2,
+    "name": "tb",
+    "owner": "FU-RTL-ACQ-TESTS",
+    "path": "fpga/acq_sram/sim/tb_transport.v",
+    "simulation": true
+  },
+  {
+    "header": "module tb_trigger_pipeline;\n reg clk=0;always #2 clk=~clk;\n reg enable=0,valid=0,precision_mode=0,channel=0,falling=0,force_trigger=0,match_trigger=0;\n reg [31:0] data=0;reg [15:0] level=0;reg [1:0] mode=0;\n wire [31:0] out_data;wire out_valid,event_trigger,second;\n acquisition_trigger_pipeline dut(.*);",
+    "line": 2,
+    "name": "tb_trigger_pipeline",
+    "owner": "FU-RTL-ACQ-TESTS",
+    "path": "fpga/acq_sram/sim/tb_trigger_pipeline.v",
+    "simulation": true
+  },
+  {
+    "header": "module tb;\n reg [79:0] lanes=0;wire [79:0] cores;\n adc_unpack dut(lanes,cores);",
+    "line": 3,
+    "name": "tb",
+    "owner": "FU-RTL-ACQ-TESTS",
+    "path": "fpga/acq_sram/sim/tb_unpack.v",
+    "simulation": true
+  },
+  {
+    "header": "module tb;\n parameter SOURCE_HALF=4,DEST_HALF=2,PHASE=0;\n reg source_clk=0,dest_clk=0;\n always #(SOURCE_HALF)source_clk=~source_clk;\n initial begin #(PHASE);",
+    "line": 2,
+    "name": "tb",
+    "owner": "FU-RTL-ACQ-TESTS",
+    "path": "fpga/acq_sram/sim/tb_word_bridge.v",
+    "simulation": true
+  },
+  {
+    "header": "module adc_stream(input core,packclk,cpu,enable,input [31:0] data,input valid,\n input cpu_pop,output [15:0] cpu_data,output [12:0] available,\n output [15:0] flags,output reg [31:0] consumed=0,output fault);",
+    "line": 5,
+    "name": "adc_stream",
+    "owner": "FU-RTL-ACQ-SRAM-STREAM",
+    "path": "fpga/acq_sram/stream.v",
+    "simulation": false
+  },
+  {
+    "header": "module stream_banks #(parameter BANK_AW=10)(\n input wire reset,producer_clk,host_clk,\n input wire packet_valid,input wire [63:0] packet_data,input wire packet_single,seal,\n output wire packet_ready,\n output wire mem_write,output wire [BANK_AW:0] mem_address,output wire [63:0] mem_data,\n output reg overrun=0,output wire host_overrun,\n input wire host_release,input wire release_bank,release_token,\n output wire [1:0] host_ready,output wire [1:0] host_token,\n output wire [63:0] first_word0,first_word1,\n output wire [BANK_AW:0] packets0,packets1,output wire [1:0] last_single\n);",
+    "line": 20,
+    "name": "stream_banks",
+    "owner": "FU-RTL-ACQ-SRAM-STREAM-BANKS",
+    "path": "fpga/acq_sram/stream_banks.v",
+    "simulation": false
+  },
+  {
+    "header": "module sram_stream_engine #(parameter AW=19)(\n input wire reset,core_clk,ram_clk,\n input wire start,stop,source_finished,input wire [AW-1:0] read_bias,\n input wire source_valid,source_fault,input wire [35:0] source_data,\n output wire source_ready,start_ready,source_enable,\n output wire active,done,capture_done,fault,output wire [3:0] error_code,\n output wire [63:0] committed,read_ordinal,output wire [AW:0] unread,\n output wire [1:0] bank_busy,\n input wire host_core_fault,input wire [1:0] bank_release,\n output wire word_valid,word_bank,output wire [31:0] word_data,\n output wire [11:0] word_index,output wire [1:0] bank_done,\n output wire [63:0] first0,first1,output wire [AW:0] words0,words1,\n input wire transport_ready,transport_write_ready,transport_done,transport_read_valid,\n input wire [31:0] transport_read_data,input wire [AW-1:0] position,\n output wire command,command_read,command_discard,command_continue,write_valid,write_stop,\n output wire [AW:0] command_count,output wire [31:0] write_data\n);",
+    "line": 10,
+    "name": "sram_stream_engine",
+    "owner": "FU-RTL-ACQ-SRAM-STREAM-ENGINE",
+    "path": "fpga/acq_sram/stream_engine.v",
+    "simulation": false
+  },
+  {
+    "header": "module stream_packetizer(\n input wire reset,word_clk,packet_clk,\n input wire word_valid,input wire [31:0] word_data,input wire stop,\n output reg fault=0,output wire finished,\n output reg packet_valid=0,output reg [63:0] packet_data=0,\n output reg packet_single=0,output reg packet_seal=0\n);",
+    "line": 12,
+    "name": "stream_packetizer",
+    "owner": "FU-RTL-ACQ-SRAM-STREAM-PACKETIZER",
+    "path": "fpga/acq_sram/stream_packetizer.v",
+    "simulation": false
+  },
+  {
+    "header": "module sram_stream_path #(parameter AW=19)(\n input wire reset,locked,core_clk,sample_clk,ram_clk,host_clk,\n input wire start,stop,source_finished,input wire [AW-1:0] read_bias,\n input wire source_valid,source_fault,input wire [35:0] source_data,\n output wire source_ready,start_ready,source_enable,\n output wire active,done,capture_done,fault,output wire [3:0] error_code,\n output wire [63:0] committed,read_ordinal,output wire [AW:0] unread,\n output wire [1:0] bank_busy,\n input wire host_release,release_bank,release_token,\n output wire host_fault,output wire [1:0] host_ready,host_token,\n output wire [63:0] host_first0,host_first1,\n output wire [11:0] host_words0,host_words1,\n input wire read_enable,input wire [13:0] read_halfword,\n output wire read_valid,read_error,output wire [15:0] read_data,\n inout wire [31:0] dq,output wire k1,k2,g1\n);",
+    "line": 6,
+    "name": "sram_stream_path",
+    "owner": "FU-RTL-ACQ-SRAM-STREAM-PATH",
+    "path": "fpga/acq_sram/stream_path.v",
+    "simulation": false
+  },
+  {
+    "header": "module sram_timeslice_controller #(parameter AW=19,BANK_WORDS=2560,READ_RESERVE=32,READ_WARM=16)(\n input wire clk,reset,start,stop,source_finished,\n output wire start_ready,source_enable,\n input wire [AW-1:0] read_bias,\n input wire [35:0] ingress_data,input wire ingress_valid,\n input wire [15:0] ingress_pending,input wire ingress_fault,host_fault,\n output wire ingress_ready,\n output reg active=0,done=0,capture_done=0,fault=0,\n output reg [3:0] error_code=0,\n output wire [63:0] committed,read_ordinal,\n output reg [AW:0] unread=0,\n input wire [1:0] bank_release,\n output reg [1:0] bank_busy=0,bank_begin=0,bank_done=0,\n output reg [63:0] bank_first0=0,bank_first1=0,\n output reg [AW:0] bank_words0=0,bank_words1=0,\n output wire host_valid,host_bank,output wire [31:0] host_data,\n output wire [$clog2(BANK_WORDS)-1:0] host_index,\n input wire transport_ready,transport_write_ready,transport_done,\n input wire [AW-1:0] position,\n input wire transport_read_valid,input wire [31:0] transport_read_data,\n output reg command=0,command_read=0,command_discard=0,\n output wire command_continue,output reg [AW:0] command_count=0,\n output wire write_valid,write_stop,output wire [31:0] write_data\n);",
+    "line": 13,
+    "name": "sram_timeslice_controller",
+    "owner": "FU-RTL-ACQ-SRAM-TIMESLICE-CONTROLLER",
+    "path": "fpga/acq_sram/timeslice_controller.v",
+    "simulation": false
+  },
+  {
+    "header": "module acq_sram_top(\n input clk,mclk_in,nCS1,nOE,nWE,input [6:2] sel,input gpmc_a2,gpmc_b1,\n inout [15:0] gpmc_d,inout [31:0] dq,input [79:0] lane,\n output k1,k2,g1,g2,d1,d2,f1,f2,j2,a11,output [4:0] enc_p,enc_n\n);",
+    "line": 6,
+    "name": "acq_sram_top",
+    "owner": "FU-RTL-ACQ-SRAM-TOP",
+    "path": "fpga/acq_sram/top.v",
+    "simulation": false
+  },
+  {
+    "header": "module sram_transport #(parameter AW=19,CONTINUOUS_ONLY=0,READ_DELAY=0)(\n input wire clk,sample_clk,reset,locked,\n input wire command,command_read,command_discard,command_continue,\n input wire [AW:0] command_count,\n output wire ready,\n input wire [31:0] write_data,input wire write_valid,write_stop,\n output wire write_ready,\n output reg [31:0] read_data=0,output reg read_valid=0,\n output reg done=0,output reg [AW-1:0] position=0,\n inout wire [31:0] dq,output wire k1,k2,g1\n);",
+    "line": 13,
+    "name": "sram_transport",
+    "owner": "FU-RTL-ACQ-SRAM-TRANSPORT",
+    "path": "fpga/acq_sram/transport.v",
+    "simulation": false
+  },
+  {
+    "header": "module sram_word_bridge #(parameter WIDTH=32)(\n input wire reset,source_clk,dest_clk,\n input wire source_valid,input wire [WIDTH-1:0] source_data,\n output wire source_ready,\n output reg dest_valid=0,output reg [WIDTH-1:0] dest_data=0,\n input wire dest_ready\n);",
+    "line": 6,
+    "name": "sram_word_bridge",
+    "owner": "FU-RTL-ACQ-SRAM-WORD-BRIDGE",
+    "path": "fpga/acq_sram/word_bridge.v",
+    "simulation": false
+  },
+  {
+    "header": "module ddio_out1 (\n    input  wire outclock,\n    input  wire dh,\n    input  wire dl,\n    output wire pad\n);",
+    "line": 16,
+    "name": "ddio_out1",
+    "owner": "FU-RTL-COMMON-DDIO-PAIR",
+    "path": "fpga/common/ddio_pair.v",
+    "simulation": false
+  },
+  {
+    "header": "module ddio_pair (\n    input  wire outclock,\n    input  wire dh,\n    input  wire dl,\n    output wire pad_p,\n    output wire pad_n\n);",
+    "line": 54,
+    "name": "ddio_pair",
+    "owner": "FU-RTL-COMMON-DDIO-PAIR",
+    "path": "fpga/common/ddio_pair.v",
+    "simulation": false
+  },
+  {
+    "header": "module gpmc_slave #(parameter QUALIFIED_READ=0) (\n    input  wire        clk,\n    input  wire        nCS1,\n    input  wire        nOE,\n    input  wire        nWE,\n    input  wire [6:0]  sel,          // {A7..A3, A2 (ball A2), A1 (ball B1)}\n    inout  wire [15:0] gpmc_d,\n\n    output wire        we_commit,\n    output wire [7:0]  wr_sel,\n    output wire [15:0] wr_data,\n    output wire [1:0]  wr_aux,       // {B1, A2} levels at the commit = {wr_sel[0], wr_sel[1]}\n    output wire        rd_pop,\n    output wire [7:0]  rd_sel,\n    input  wire [15:0] rdata,\n    output wire        drive_active   // the data bus is being driven (DBG)\n);",
+    "line": 25,
+    "name": "gpmc_slave",
+    "owner": "FU-RTL-COMMON-GPMC-SLAVE",
+    "path": "fpga/common/gpmc_slave.v",
+    "simulation": false
+  },
+  {
+    "header": "module lane_in #(\n    parameter integer N = 80\n)(\n    input  wire         clk,\n    input  wire [N-1:0] pad,\n    output reg  [N-1:0] q\n);",
+    "line": 17,
+    "name": "lane_in",
+    "owner": "FU-RTL-COMMON-LANE-IN",
+    "path": "fpga/common/lane_in.v",
+    "simulation": false
+  },
+  {
+    "header": "module lane_mon #(\n    parameter integer N = 128\n)(\n    input  wire         clk,\n    input  wire [N-1:0] d,\n    input  wire         gate_rst,\n    output reg  [N-1:0] ever1,\n    output reg  [N-1:0] ever0\n);",
+    "line": 32,
+    "name": "lane_mon",
+    "owner": "FU-RTL-COMMON-LANE-IN",
+    "path": "fpga/common/lane_in.v",
+    "simulation": false
+  },
+  {
+    "header": "module toggle_ctr (\n    input  wire        clk,\n    input  wire        d,\n    output reg  [15:0] count,       // last completed window\n    output reg         window_done  // 1-cycle pulse at each window end\n);",
+    "line": 53,
+    "name": "toggle_ctr",
+    "owner": "FU-RTL-COMMON-LANE-IN",
+    "path": "fpga/common/lane_in.v",
+    "simulation": false
+  },
+  {
+    "header": "module pll_m2 (\n    input  wire       mclk_in,          // ball M2\n    output wire       ph0,              // 200 MHz phases\n    output wire       ph90,\n    output wire       ph180,\n    output wire       ph270,\n    output wire       cap_clk,          // 200 MHz capture clock (phase-shiftable)\n    output wire       clk100,\n    output wire       clk50,\n    output wire       locked_a,         // raw PLL lock outputs (async; synchronize before use)\n    output wire       locked_b,\n    // dynamic phase shift of cap_clk (scanclk domain; scanclk <= 100 MHz)\n    input  wire       scanclk,\n    input  wire [7:0] step_target,\n    output reg  [7:0] step_applied,\n    output wire       step_busy,\n    output reg        step_err\n);",
+    "line": 28,
+    "name": "pll_m2",
+    "owner": "FU-RTL-COMMON-PLL-M2",
+    "path": "fpga/common/pll_m2.v",
+    "simulation": false
+  },
+  {
+    "header": "module gpmc_bfm (\n    output reg        nCS1,\n    output reg        nOE,\n    output reg        nWE,\n    output reg [6:0]  sel,\n    inout  wire [15:0] d\n);",
+    "line": 5,
+    "name": "gpmc_bfm",
+    "owner": "FU-RTL-COMMON-TESTS",
+    "path": "fpga/common/sim/gpmc_bfm.v",
+    "simulation": true
+  },
+  {
+    "header": "module tb_ddio;\n    reg clk = 0; always #2.5 clk = ~clk;\n    reg dh = 0, dl = 0; wire p, n;\n    ddio_pair dut (.outclock(clk), .dh(dh), .dl(dl), .pad_p(p), .pad_n(n));",
+    "line": 3,
+    "name": "tb_ddio",
+    "owner": "FU-RTL-COMMON-TESTS",
+    "path": "fpga/common/sim/tb_ddio.v",
+    "simulation": true
+  },
+  {
+    "header": "module tb_gpmc_slave;\n    reg clk = 0; always #6.25 clk = ~clk;          // C2 ~80 MHz\n    wire nCS1, nOE, nWE; wire [6:0] sel; wire [15:0] d;\n    wire we_commit, rd_pop, drive_active;\n    wire [7:0] wr_sel, rd_sel; wire [15:0] wr_data; wire [1:0] wr_aux;\n    wire [15:0] rdata = {rd_sel, 8'ha5};\n    gpmc_bfm bfm (.nCS1(nCS1), .nOE(nOE), .nWE(nWE), .sel(sel), .d(d));",
+    "line": 4,
+    "name": "tb_gpmc_slave",
+    "owner": "FU-RTL-COMMON-TESTS",
+    "path": "fpga/common/sim/tb_gpmc_slave.v",
+    "simulation": true
+  },
+  {
+    "header": "module tb_lane_in;\n    reg clk = 0; always #10 clk = ~clk;      // 50 MHz\n    integer errors = 0;\n    task check(input cond, input [8*48-1:0] msg);",
+    "line": 4,
+    "name": "tb_lane_in",
+    "owner": "FU-RTL-COMMON-TESTS",
+    "path": "fpga/common/sim/tb_lane_in.v",
+    "simulation": true
+  },
+  {
+    "header": "module tb_pll;\n    reg mclk = 0; always #3.125 mclk = ~mclk;\n    reg scan = 0; always #6.25 scan = ~scan;\n    wire ph0, ph90, ph180, ph270, cap, c100, c50, la, lb, busy, err;\n    reg [7:0] target = 0; wire [7:0] applied;\n    pll_m2 dut (.mclk_in(mclk), .ph0(ph0), .ph90(ph90), .ph180(ph180), .ph270(ph270), .cap_clk(cap),\n        .clk100(c100), .clk50(c50), .locked_a(la), .locked_b(lb), .scanclk(scan),\n        .step_target(target), .step_applied(applied), .step_busy(busy), .step_err(err));",
+    "line": 3,
+    "name": "tb_pll",
+    "owner": "FU-RTL-COMMON-TESTS",
+    "path": "fpga/common/sim/tb_pll.v",
+    "simulation": true
+  },
+  {
+    "header": "module tb_sync;\n    reg clk_a = 0; always #18.5 clk_a = ~clk_a;   // 27 MHz-ish\n    reg clk_b = 0; always #2.5  clk_b = ~clk_b;   // 200 MHz\n    integer errors = 0;\n    task check(input cond, input [8*48-1:0] msg);",
+    "line": 4,
+    "name": "tb_sync",
+    "owner": "FU-RTL-COMMON-TESTS",
+    "path": "fpga/common/sim/tb_sync.v",
+    "simulation": true
+  },
+  {
+    "header": "module sync_bit #(\n    parameter integer W = 1\n)(\n    input  wire         clk,\n    input  wire [W-1:0] d,\n    output reg  [W-1:0] q\n);",
+    "line": 18,
+    "name": "sync_bit",
+    "owner": "FU-RTL-COMMON-SYNC",
+    "path": "fpga/common/sync.v",
+    "simulation": false
+  },
+  {
+    "header": "module sync_pulse (\n    input  wire clk_src,\n    input  wire pulse_src,\n    input  wire clk_dst,\n    output wire pulse_dst\n);",
+    "line": 33,
+    "name": "sync_pulse",
+    "owner": "FU-RTL-COMMON-SYNC",
+    "path": "fpga/common/sync.v",
+    "simulation": false
+  },
+  {
+    "header": "module sync_word #(\n    parameter integer W = 16\n)(\n    input  wire         clk_src,\n    input  wire [W-1:0] d_src,\n    input  wire         clk_dst,\n    output reg  [W-1:0] q_dst\n);",
+    "line": 46,
+    "name": "sync_word",
+    "owner": "FU-RTL-COMMON-SYNC",
+    "path": "fpga/common/sync.v",
+    "simulation": false
+  },
+  {
+    "header": "module stretch3 (\n    input  wire clk,\n    input  wire d,\n    output wire level,      // settled level (stage 2)\n    output wire rise,       // 1-cycle pulse on a 0->1 seen between stage 2 and stage 1\n    output wire fall\n);",
+    "line": 82,
+    "name": "stretch3",
+    "owner": "FU-RTL-COMMON-SYNC",
+    "path": "fpga/common/sync.v",
+    "simulation": false
+  },
+  {
+    "header": "module adc_front (\n    input  wire        cap_clk,\n    input  wire        ph0,           // the encode clock of every pair (PLL A c0)\n    input  wire [79:0] lane,          // pads\n    output wire [4:0]  enc_p,         // E1..E5 positive balls (K8 C14 K9 L8 K10)\n    output wire [4:0]  enc_n,         // E1..E5 negative balls (M8 D14 L10 M7 L9)\n\n    // control (C2-domain registers, quasi-static; re-registered on cap_clk here)\n    input  wire        enc_en,\n    input  wire [1:0]  enc_rate,      // 0=12.5 MHz 1=50 2=100 3=200\n    input  wire [4:0]  pair_en,\n    input  wire [55:0] map_ch1,       // 8 x 7-bit lane numbers, bit b at [7b+6:7b] (constants since v2.2)\n    input  wire [55:0] map_ch2,\n\n    output wire [79:0] lane_q,        // cap_clk-registered lanes (diag / snapshot source)\n    output reg  [15:0] samp,          // {CH1, CH2}\n    output reg         samp_tick,\n    output wire [3:0]  dbg            // {rate3, enc_sdr, en_q, tick0}\n);",
+    "line": 45,
+    "name": "adc_front",
+    "owner": "FU-RTL-DEFAULT-ADC-FRONT",
+    "path": "fpga/default/adc_front.v",
+    "simulation": false
+  },
+  {
+    "header": "module capture (\n    input  wire              cap_clk,\n    input  wire [15:0]       samp,\n    input  wire              samp_tick,\n\n    // control pulses (cap_clk domain, mutually exclusive)\n    input  wire              arm,\n    input  wire              halt,\n    input  wire              rst,\n\n    // quasi-static configuration (C2 registers; latched at arm where it matters)\n    input  wire [31:0]       decim_m1,       // decimation factor - 1\n    input  wire [`ADDR_W-1:0] pre_w,         // words, clamped\n    input  wire [`ADDR_W-1:0] post_w,        // words, clamped, >= 1\n    input  wire              mode_norm,\n    input  wire              stream_on,\n    input  wire [1:0]        chmode,         // 0 dual, 1 CH1 only, 2 CH2 only\n    input  wire              trig_src,       // 0 CH1, 1 CH2\n    input  wire              trig_slope,     // 0 rising, 1 falling\n    input  wire [7:0]        trig_level,\n    input  wire [3:0]        trig_hyst,\n    input  wire              hw_sel,\n    input  wire              trig_sense,     // A12 pad (async)\n    input  wire [1:0]        tsrc,           // IL_CTRL.TSRC (quasi-static): 0 ADC 1 RAMP 2 COLTAG 3 GLITCH\n\n    // read pointer of the drain (synchronized by the top) for stream overflow detection\n    input  wire [`ADDR_W-1:0] rd_ptr_s,\n\n    // record read port (drain clock)\n    input  wire              rd_clk,\n    input  wire [`ADDR_W-1:0] rd_addr,\n    output reg  [15:0]       rd_data,\n\n    // status (cap_clk registers; the top synchronizes)\n    output wire              filling,\n    output wire              armed,\n    output reg               triggered,\n    output reg               done,\n    output reg               valid,\n    output reg               overflow,\n    output wire [`ADDR_W-1:0] wr_ptr,\n    output reg  [15:0]       wrote_count,\n    output reg  [`ADDR_W-1:0] rec_start,     // frozen\n    output reg  [15:0]       rec_len,        // frozen (words)\n    output reg  [`ADDR_W-1:0] trig_idx,      // frozen\n    output reg               trig_half,      // frozen\n    output reg  [15:0]       trig_frac,      // frozen (Q16)\n    output reg               done_evt,       // 1-cycle pulse at finalize\n    output wire [1:0]        state_dbg\n);",
+    "line": 69,
+    "name": "capture",
+    "owner": "FU-RTL-DEFAULT-CAPTURE",
+    "path": "fpga/default/capture.v",
+    "simulation": false
+  },
+  {
+    "header": "module default_top (\n    input  wire        clk,            // C2, GPMC domain (~80 MHz)\n    input  wire        mclk_in,        // M2, PLL reference (~160 MHz)\n    inout  wire [15:0] gpmc_d,\n    input  wire        nCS1,\n    input  wire        nOE,\n    input  wire        nWE,\n    input  wire [6:2]  sel,            // A3..A7 (declared [6:2]: the QSF has no sel[1:0] balls)\n    input  wire        trig_sense,     // A12\n    input  wire        gpmc_a2,        // ball A2 = GPMC A2 = selector bit 1 (R0 report)\n    input  wire        gpmc_b1,        // ball B1 = GPMC A1 = selector bit 0\n    output wire [4:0]  enc_p,\n    output wire [4:0]  enc_n,\n    output wire        a11,\n    output wire        f1,\n    output wire        g1,\n    output wire        g2,\n    output wire        k1,\n    output wire        d2,\n    input  wire        p6,\n    // B11 and J1: input-class balls the factory image reads and this branch has\n    // never listened to. MAXV-INTERFACE.md s4 makes B11 \"the only far-end-ish\n    // input in the loop\" -- XNOR-compared against two CPU-written registers, its\n    // transition releasing the path that terminates the burst window -- and s6\n    // records that driving/observing it is \"the first stimulus the 79-condition\n    // sweep never tried, since all of them drove the bus balls and left B11\n    // alone\". Wired as INPUTS ONLY: we listen, we never drive, so no posture of\n    // ours can contend with whatever the board puts on them.\n    input  wire        b11,\n    input  wire        j1,\n    output wire        k2,\n    output wire        f2,\n    output wire        j2,\n    inout  wire [26:0] bus,\n    inout  wire [4:0]  single,\n    inout  wire        d1,\n    input  wire [79:0] lane\n);",
+    "line": 43,
+    "name": "default_top",
+    "owner": "FU-RTL-DEFAULT-DEFAULT",
+    "path": "fpga/default/default.v",
+    "simulation": false
+  },
+  {
+    "header": "module diag (\n    input  wire        clk,\n    input  wire        clk50,\n    input  wire        clk100,\n    input  wire        cap_clk,\n\n    // register interface (clk)\n    input  wire        we_idx,\n    input  wire        we_data,\n    input  wire        we_ctrl,\n    input  wire [15:0] wr_data,\n    input  wire        pop_snap,\n    output wire [15:0] rdata_idx,\n    output reg  [15:0] rdata_data,\n    output wire [15:0] rdata_ctrl,\n    output wire [15:0] rdata_snap_remain,\n    output wire [15:0] rdata_snap_pop,\n    output wire [15:0] rdata_misc,\n\n    // pads\n    inout  wire [26:0] bus,\n    inout  wire [4:0]  single,\n    output wire        d2,\n    output wire        k2,\n    output wire        f2,\n    output wire        j2,\n    output reg         a11,\n    output reg         f1,\n    output reg         g1,\n    output wire        g2,\n    output wire        k1,\n    input  wire        p6,\n    input  wire        b11,          // listen-only; see default.v\n    input  wire        j1,           // listen-only\n    inout  wire        d1,\n    input  wire        gpmc_a2,\n    input  wire        gpmc_b1,\n    input  wire        nWE_pad,\n    input  wire        nOE_pad,\n\n    // lanes (cap_clk registered, from adc_front)\n    input  wire [79:0] lane_q,\n\n    // to adc_front: the baked E1 map (constants)\n    output wire [55:0] map_ch1,\n    output wire [55:0] map_ch2,\n    output wire [1:0]  dbg_snap       // {snapshot running (synced), ready}\n);",
+    "line": 45,
+    "name": "diag",
+    "owner": "FU-RTL-DEFAULT-DIAG",
+    "path": "fpga/default/diag.v",
+    "simulation": false
+  },
+  {
+    "header": "module drain (\n    input  wire               clk,\n    input  wire               arm,          // OP_GO accepted (pointer to 0, statistics cleared)\n    input  wire               rst,          // OP_RESET\n    input  wire               rewind,       // OP_REWIND\n    input  wire               valid,        // synchronized: a frozen record is present\n    input  wire               stream_on,\n    input  wire [`ADDR_W-1:0] rec_start,    // frozen (stable while valid)\n    input  wire [15:0]        rec_len,\n    input  wire [`ADDR_W-1:0] wr_ptr_s,     // synchronized live write pointer (stream)\n    input  wire [`ADDR_W-1:0] drain_start,  // DRAIN_START.IDX (live register)\n    input  wire [15:0]        drain_len,    // DRAIN_LEN.LEN (live register)\n    input  wire               pop,          // pop_BURST (alias folded in)\n    output wire [`ADDR_W-1:0] rd_addr,\n    output wire [`ADDR_W-1:0] rd_ptr,       // for the capture-side overflow check\n    output wire [15:0]        remain_word,  // {READY, REMAIN[14:0]}\n    output reg  [15:0]        pops,         // DRAIN_STAT.POPS\n    output wire [15:0]        pop_mon       // {UNDERRUN, MIN_GAP}\n);",
+    "line": 38,
+    "name": "drain",
+    "owner": "FU-RTL-DEFAULT-DRAIN",
+    "path": "fpga/default/drain.v",
+    "simulation": false
+  },
+  {
+    "header": "module tb_adc_front;\n    reg ph0 = 0;\n    always #2.5 ph0 = ~ph0;\n    wire cap_clk = ph0;\n    reg  [79:0] lane = 0;\n    wire [4:0] enc_p, enc_n;\n    reg enc_en = 0; reg [1:0] rate = 3; reg [4:0] pair_en = 5'b11111;\n    // default seed: CH1 bit7..0 = lanes 8 47 45 35 46 36 13 11 ; CH2 = lanes 16..23 identity\n    reg [55:0] map1 = {7'd8, 7'd47, 7'd45, 7'd35, 7'd46, 7'd36, 7'd13, 7'd11};\n    reg [55:0] map2 = {7'd23, 7'd22, 7'd21, 7'd20, 7'd19, 7'd18, 7'd17, 7'd16};\n    wire [79:0] lane_q; wire [15:0] samp; wire tick; wire [3:0] dbg;\n    adc_front dut (.cap_clk(cap_clk), .ph0(ph0), .lane(lane),\n        .enc_p(enc_p), .enc_n(enc_n), .enc_en(enc_en), .enc_rate(rate), .pair_en(pair_en),\n        .map_ch1(map1), .map_ch2(map2), .lane_q(lane_q), .samp(samp), .samp_tick(tick), .dbg(dbg));",
+    "line": 4,
+    "name": "tb_adc_front",
+    "owner": "FU-RTL-DEFAULT-TESTS",
+    "path": "fpga/default/sim/tb_adc_front.v",
+    "simulation": true
+  },
+  {
+    "header": "module tb_capture;\n    reg cap_clk = 0; always #2.5 cap_clk = ~cap_clk;\n    reg rd_clk = 0;  always #6.25 rd_clk = ~rd_clk;\n    reg [15:0] samp = 0; reg samp_tick = 0;\n    reg arm = 0, halt = 0, rst = 0;\n    reg [31:0] decim_m1 = 0; reg [14:0] pre_w = 100, post_w = 50;\n    reg mode_norm = 0, stream_on = 0; reg [1:0] chmode = 0;\n    reg trig_src = 0, trig_slope = 0; reg [7:0] level = 8'h80; reg [3:0] hyst = 4'd8; reg hw_sel = 0; reg trig_sense = 0; reg [1:0] tsrc = 0;\n    reg [14:0] rd_ptr_s = 0, rd_addr = 0; wire [15:0] rd_data;\n    wire filling, armed, triggered, done, valid, overflow, done_evt, trig_half; wire [1:0] st;\n    wire [14:0] wr_ptr, rec_start, trig_idx; wire [15:0] wrote, rec_len, trig_frac;\n    capture dut (.cap_clk(cap_clk), .samp(samp), .samp_tick(samp_tick), .arm(arm), .halt(halt), .rst(rst),\n        .decim_m1(decim_m1), .pre_w(pre_w), .post_w(post_w), .mode_norm(mode_norm), .stream_on(stream_on),\n        .chmode(chmode), .trig_src(trig_src), .trig_slope(trig_slope), .trig_level(level), .trig_hyst(hyst),\n        .hw_sel(hw_sel), .trig_sense(trig_sense), .tsrc(tsrc), .rd_ptr_s(rd_ptr_s), .rd_clk(rd_clk), .rd_addr(rd_addr),\n        .rd_data(rd_data), .filling(filling), .armed(armed), .triggered(triggered), .done(done), .valid(valid),\n        .overflow(overflow), .wr_ptr(wr_ptr), .wrote_count(wrote), .rec_start(rec_start), .rec_len(rec_len),\n        .trig_idx(trig_idx), .trig_half(trig_half), .trig_frac(trig_frac), .done_evt(done_evt), .state_dbg(st));",
+    "line": 8,
+    "name": "tb_capture",
+    "owner": "FU-RTL-DEFAULT-TESTS",
+    "path": "fpga/default/sim/tb_capture.v",
+    "simulation": true
+  },
+  {
+    "header": "module tb_diag;\n    reg clk = 0;    always #6.25 clk = ~clk;\n    reg clk50 = 0;  always #10   clk50 = ~clk50;\n    reg clk100 = 0; always #5    clk100 = ~clk100;\n    reg cap = 0;    always #2.5  cap = ~cap;\n    reg we_idx = 0, we_data = 0, we_ctrl = 0, pop = 0; reg [15:0] wd = 0;\n    wire [15:0] r_idx, r_data, r_ctrl, r_srem, r_spop, r_misc;\n    wire [26:0] bus; wire [4:0] single;\n    wire d2, k2, f2, j2, a11, f1, g1, g2, k1;\n    reg p6 = 0, a2 = 0, b1 = 0, nwe = 1, noe = 1;\n    reg d1_drv = 0, d1_en = 1;  wire d1 = d1_en ? d1_drv : 1'bz;   // D1 is bidir (PORT-SPEC 2.3)\n    reg [79:0] lane_q = 0;\n    wire [55:0] m1, m2; wire [1:0] dbg;\n    localparam [`LANEMAP_PACKED_W-1:0] SEED = `LANEMAP_SEED_PACKED;\n    // external drivers (per ball) for the bidirectionals\n    reg [26:0] xd_en = 0, xd_v = 0; reg [4:0] xs_en = 0, xs_v = 0;\n    genvar g;\n    generate for (g = 0; g < 27; g = g + 1) begin : gx assign bus[g] = xd_en[g] ? xd_v[g] : 1'bz; end\n             for (g = 0; g < 5;  g = g + 1) begin : gs assign single[g] = xs_en[g] ? xs_v[g] : 1'bz; end endgenerate\n    diag dut (.clk(clk), .clk50(clk50), .clk100(clk100), .cap_clk(cap),\n        .we_idx(we_idx), .we_data(we_data), .we_ctrl(we_ctrl), .wr_data(wd), .pop_snap(pop),\n        .rdata_idx(r_idx), .rdata_data(r_data), .rdata_ctrl(r_ctrl), .rdata_snap_remain(r_srem),\n        .rdata_snap_pop(r_spop), .rdata_misc(r_misc),\n        .bus(bus), .single(single), .d2(d2), .k2(k2), .f2(f2), .j2(j2), .a11(a11), .f1(f1), .g1(g1), .g2(g2), .k1(k1),\n        .p6(p6), .d1(d1), .gpmc_a2(a2), .gpmc_b1(b1), .nWE_pad(nwe), .nOE_pad(noe), .lane_q(lane_q),\n        .map_ch1(m1), .map_ch2(m2), .dbg_snap(dbg));",
+    "line": 8,
+    "name": "tb_diag",
+    "owner": "FU-RTL-DEFAULT-TESTS",
+    "path": "fpga/default/sim/tb_diag.v",
+    "simulation": true
+  },
+  {
+    "header": "module tb_drain;\n    reg clk = 0; always #6.25 clk = ~clk;\n    reg arm = 0, rst = 0, rewind = 0, valid = 0, stream_on = 0, pop = 0;\n    reg [14:0] rec_start = 0, wr_ptr_s = 0, dstart = 0; reg [15:0] rec_len = 0, dlen = 0;\n    wire [14:0] rd_addr, rd_ptr; wire [15:0] remain, pops, mon;\n    drain dut (.clk(clk), .arm(arm), .rst(rst), .rewind(rewind), .valid(valid), .stream_on(stream_on),\n        .rec_start(rec_start), .rec_len(rec_len), .wr_ptr_s(wr_ptr_s), .drain_start(dstart), .drain_len(dlen),\n        .pop(pop), .rd_addr(rd_addr), .rd_ptr(rd_ptr), .remain_word(remain), .pops(pops), .pop_mon(mon));",
+    "line": 8,
+    "name": "tb_drain",
+    "owner": "FU-RTL-DEFAULT-TESTS",
+    "path": "fpga/default/sim/tb_drain.v",
+    "simulation": true
+  },
+  {
+    "header": "module tb_top;\n    reg clk = 0;  always #6.25  clk = ~clk;       // C2 80 MHz\n    reg mclk = 0; always #3.125 mclk = ~mclk;     // M2 160 MHz\n    wire nCS1, nOE, nWE; wire [6:0] sel; wire [15:0] d;\n    reg trig_sense = 0, p6 = 0;\n    reg d1_drv = 0, d1_en = 1;  wire d1 = d1_en ? d1_drv : 1'bz;\n    wire [4:0] enc_p, enc_n; wire a11, f1, g1, g2, k1, d2, k2, f2, j2;\n    wire [26:0] bus; wire [4:0] single;\n    reg [79:0] lane = 0;\n    gpmc_bfm bfm (.nCS1(nCS1), .nOE(nOE), .nWE(nWE), .sel(sel), .d(d));",
+    "line": 12,
+    "name": "tb_top",
+    "owner": "FU-RTL-DEFAULT-TESTS",
+    "path": "fpga/default/sim/tb_top.v",
+    "simulation": true
+  },
+  {
+    "header": "module sram_bench_top(\n input clk, mclk_in, nCS1, nOE, nWE, input [6:2] sel,\n input gpmc_a2,gpmc_b1, inout [15:0] gpmc_d, inout [31:0] dq,\n output k1,k2,g1,g2,d1,d2,f1,f2,j2,a11,\n output [4:0] enc_p,enc_n\n);",
+    "line": 2,
+    "name": "sram_bench_top",
+    "owner": "FU-RTL-SRAM-BENCH-BENCH",
+    "path": "fpga/sram_bench/bench.v",
+    "simulation": false
+  },
+  {
+    "header": "module bench_pll(input refclk,output c0,c1,locked);",
+    "line": 2,
+    "name": "bench_pll",
+    "owner": "FU-RTL-BENCH-TESTS",
+    "path": "fpga/sram_bench/sim/tb.v",
+    "simulation": true
+  },
+  {
+    "header": "module altddio_out #(parameter width=1,power_up_high=\"OFF\",intended_device_family=\"Cyclone IV E\")\n(input outclock,datain_h,datain_l,oe,aclr,aset,sclr,sset,outclocken,output dataout);",
+    "line": 5,
+    "name": "altddio_out",
+    "owner": "FU-RTL-BENCH-TESTS",
+    "path": "fpga/sram_bench/sim/tb.v",
+    "simulation": true
+  },
+  {
+    "header": "module tb;\nreg clk=0,refclk=0;always #6.25 clk=~clk;always #50 refclk=~refclk;\nwire [15:0] gd;wire [31:0] dq;wire k1,k2,g1;\nsram_bench_top dut(.clk(clk),.mclk_in(refclk),.nCS1(1'b1),.nOE(1'b1),.nWE(1'b1),.sel(5'b0),.gpmc_a2(1'b0),.gpmc_b1(1'b0),.gpmc_d(gd),.dq(dq),.k1(k1),.k2(k2),.g1(g1));",
+    "line": 16,
+    "name": "tb",
+    "owner": "FU-RTL-BENCH-TESTS",
+    "path": "fpga/sram_bench/sim/tb.v",
+    "simulation": true
+  }
+]

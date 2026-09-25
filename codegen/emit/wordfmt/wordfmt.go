@@ -20,6 +20,7 @@
 //     hands it back in the Sequence, so a consumer can ask when a word was
 //     sampled and by which converter pair;
 //   - the models are exact integer arithmetic, the fabric's arithmetic.
+// ENGMODEL-OWNER-UNIT: FU-CODEGEN-EMIT
 package wordfmt
 
 import "fmt"
@@ -27,6 +28,7 @@ import "fmt"
 // Tier is an interleave tier: the sample spacing and the pair that fills each
 // column of a row (06-TIERS §1.1 table; column order E1,E3,E5,E2,E4 at IL5-100,
 // §1.2.2).
+// TRLC-LINKS: REQ-SDS-159
 type Tier struct {
 	Name   string
 	TickNs float64        // sample spacing of one channel
@@ -45,6 +47,7 @@ var (
 
 // Decimated returns the tier with its tick scaled by the pick decimator
 // (dual-E1 records at DECIM = d have samples d x 5 ns apart).
+// TRLC-LINKS: REQ-SDS-159
 func (t Tier) Decimated(d uint32) Tier {
 	if d == 0 {
 		d = 1
@@ -54,11 +57,13 @@ func (t Tier) Decimated(d uint32) Tier {
 }
 
 // PairOfWord returns the pair (0 = E1) that sampled record word w.
+// TRLC-LINKS: REQ-SDS-159
 func (t Tier) PairOfWord(w int) uint8 { return t.Cols[w%RowCols] }
 
 // ColumnsOfPair returns the columns a pair fills (one at IL5, all five for E1
 // in dual-E1, none for E2..E5 in dual-E1) — the freeze-signature check of rung
 // R6 looks at exactly these.
+// TRLC-LINKS: REQ-SDS-159
 func (t Tier) ColumnsOfPair(pair uint8) []int {
 	var cols []int
 	for c, p := range t.Cols {
@@ -70,12 +75,15 @@ func (t Tier) ColumnsOfPair(pair uint8) []int {
 }
 
 // Word packs two samples into a BURST word.
+// TRLC-LINKS: REQ-SDS-159
 func Word(ch1, ch2 uint8) uint16 { return uint16(ch1)<<8 | uint16(ch2) }
 
 // Split unpacks a BURST word.
+// TRLC-LINKS: REQ-SDS-159
 func Split(w uint16) (ch1, ch2 uint8) { return uint8(w >> 8), uint8(w) }
 
 // SplitWords unpacks a word sequence into its two sample streams.
+// TRLC-LINKS: REQ-SDS-159
 func SplitWords(ws []uint16) (ch1, ch2 []uint8) {
 	ch1, ch2 = make([]uint8, len(ws)), make([]uint8, len(ws))
 	for i, w := range ws {
@@ -89,6 +97,7 @@ func SplitWords(ws []uint16) (ch1, ch2 []uint8) {
 // RECORD / DECIM / BOXCAR8, 2 for PEAK / BOXCAR16 whose two words describe the
 // same D samples); StepNs is the spacing of steps. Stack sequences are
 // addressed (row, phase, column) and use StackParams.TimeNs instead.
+// TRLC-LINKS: REQ-SDS-159
 type Sequence struct {
 	Tier   Tier
 	Words  []uint16
@@ -98,6 +107,7 @@ type Sequence struct {
 }
 
 // TimeNs returns the sample time of word i relative to word 0.
+// TRLC-LINKS: REQ-SDS-159
 func (s Sequence) TimeNs(i int) float64 {
 	if s.Stack != nil {
 		return s.Stack.TimeNs(s.Tier, i)
@@ -115,6 +125,7 @@ func (s Sequence) TimeNs(i int) float64 {
 // single-channel mode packs two consecutive samples of the one channel per
 // word, the earlier one in the high byte (BURST.CH1). Trailing samples that do
 // not fill a word are dropped.
+// TRLC-LINKS: REQ-SDS-159
 func ModelRecord(t Tier, chmode uint16, ch1, ch2 []uint8) (Sequence, error) {
 	var ws []uint16
 	step := t.TickNs
@@ -153,6 +164,7 @@ const TsrcGlitchPeriod = 512
 //	RAMP    k & 0xffff                         (+1 per word)
 //	COLTAG  {k mod ROW_COLS, (k / ROW_COLS) & 0xff}  (column in the high byte, row in the low)
 //	GLITCH  0xffff when k mod 512 == 0, else 0x0000
+// TRLC-LINKS: REQ-SDS-159
 func TsrcWord(mode uint16, k uint32) (uint16, error) {
 	switch mode {
 	case IlCtrlTsrcRamp:
@@ -172,6 +184,7 @@ func TsrcWord(mode uint16, k uint32) (uint16, error) {
 // index k0 (the writer's word index of the first drained word). Word content is
 // the same in every CHMODE — the substitution happens on the 16-bit record
 // word — which is what rung R2b relies on.
+// TRLC-LINKS: REQ-SDS-159
 func ModelTsrc(t Tier, mode uint16, k0 uint32, n int) (Sequence, error) {
 	ws := make([]uint16, n)
 	for i := range ws {
@@ -190,6 +203,7 @@ func ModelTsrc(t Tier, mode uint16, k0 uint32, n int) (Sequence, error) {
 // TsrcGlitchPeriod for GLITCH. A GLITCH drain shorter than one period without
 // a glitch word is consistent (k0 = 1 is returned); a longer one without any
 // is an error.
+// TRLC-LINKS: REQ-SDS-159
 func TsrcCheck(mode uint16, words []uint16) (k0 uint32, bad []int, err error) {
 	if len(words) == 0 {
 		return 0, nil, fmt.Errorf("wordfmt: no words")
@@ -229,6 +243,7 @@ func TsrcCheck(mode uint16, words []uint16) (k0 uint32, bad []int, err error) {
 
 // ---- REDUCE (IL_CTRL.REDUCE_MODE, D = DECIM) ---------------------------------------
 
+// TRLC-LINKS: REQ-SDS-159
 func checkBlocks(d uint32, ch1, ch2 []uint8) (n int, err error) {
 	if d == 0 {
 		return 0, fmt.Errorf("wordfmt: D = 0")
@@ -238,6 +253,7 @@ func checkBlocks(d uint32, ch1, ch2 []uint8) (n int, err error) {
 }
 
 // ModelDecim is REDUCE_MODE 1: the pick decimator, {CH1[kD], CH2[kD]}.
+// TRLC-LINKS: REQ-SDS-159
 func ModelDecim(t Tier, d uint32, ch1, ch2 []uint8) (Sequence, error) {
 	n, err := checkBlocks(d, ch1, ch2)
 	if err != nil {
@@ -252,6 +268,7 @@ func ModelDecim(t Tier, d uint32, ch1, ch2 []uint8) (Sequence, error) {
 
 // ModelPeak is REDUCE_MODE 2: per D samples the word {min1, min2} then the
 // word {max1, max2}. A partial trailing block emits nothing.
+// TRLC-LINKS: REQ-SDS-159
 func ModelPeak(t Tier, d uint32, ch1, ch2 []uint8) (Sequence, error) {
 	n, err := checkBlocks(d, ch1, ch2)
 	if err != nil {
@@ -285,6 +302,7 @@ const BoxcarMaxD = 65536
 // remains is the 16-bit reciprocal's own rounding (<= 0.5 / RECIP, i.e.
 // <= 2^-9 relative where D >> PRE approaches 256) plus the truncation of the
 // pre-shifted sum — not the 2^-15 the design quotes.
+// TRLC-LINKS: REQ-SDS-159
 func BoxcarParams(d uint32) (recip, pre uint16, err error) {
 	if d < 2 || d > BoxcarMaxD {
 		return 0, 0, fmt.Errorf("wordfmt: boxcar D = %d outside 2..%d", d, BoxcarMaxD)
@@ -303,11 +321,13 @@ func BoxcarParams(d uint32) (recip, pre uint16, err error) {
 
 // MeanQ88 is the reduce unit's scaling: ((sum >> pre) * recip) >> 8, the mean
 // in Q8.8 (the BOXCAR16 word).
+// TRLC-LINKS: REQ-SDS-159
 func MeanQ88(sum uint32, recip, pre uint16) uint16 {
 	return uint16(((uint64(sum) >> pre) * uint64(recip)) >> 8)
 }
 
 // Round8 rounds a Q8.8 mean to the 8-bit BOXCAR8 sample, saturating at 255.
+// TRLC-LINKS: REQ-SDS-159
 func Round8(q88 uint16) uint8 {
 	r := (uint32(q88) + 0x80) >> 8
 	if r > 255 {
@@ -316,6 +336,7 @@ func Round8(q88 uint16) uint8 {
 	return uint8(r)
 }
 
+// TRLC-LINKS: REQ-SDS-159
 func boxcarSums(d uint32, ch1, ch2 []uint8, fn func(sum1, sum2 uint32)) error {
 	n, err := checkBlocks(d, ch1, ch2)
 	if err != nil {
@@ -333,6 +354,7 @@ func boxcarSums(d uint32, ch1, ch2 []uint8, fn func(sum1, sum2 uint32)) error {
 }
 
 // ModelBoxcar8 is REDUCE_MODE 3: per D samples one word {Round8(mean1), Round8(mean2)}.
+// TRLC-LINKS: REQ-SDS-159
 func ModelBoxcar8(t Tier, d uint32, ch1, ch2 []uint8) (Sequence, error) {
 	recip, pre, err := BoxcarParams(d)
 	if err != nil {
@@ -347,6 +369,7 @@ func ModelBoxcar8(t Tier, d uint32, ch1, ch2 []uint8) (Sequence, error) {
 
 // ModelBoxcar16 is REDUCE_MODE 4: per D samples the word mean1 (Q8.8) then the
 // word mean2 (Q8.8).
+// TRLC-LINKS: REQ-SDS-159
 func ModelBoxcar16(t Tier, d uint32, ch1, ch2 []uint8) (Sequence, error) {
 	recip, pre, err := BoxcarParams(d)
 	if err != nil {
@@ -363,6 +386,7 @@ func ModelBoxcar16(t Tier, d uint32, ch1, ch2 []uint8) (Sequence, error) {
 
 // StackParams is the batch geometry: STACK_CTRL.PHASE_BINS (log2 F), STACK_CTRL.SHIFT
 // and STACK_LEN (rows per window).
+// TRLC-LINKS: REQ-SDS-159
 type StackParams struct {
 	PhaseBins uint8 // log2 F, F in {1, 2, 4, 8}
 	Shift     uint8 // readout shift, 0..3
@@ -370,13 +394,16 @@ type StackParams struct {
 }
 
 // F is the number of phase bins.
+// TRLC-LINKS: REQ-SDS-159
 func (p StackParams) F() uint { return 1 << p.PhaseBins }
 
 // Words is the readout length: CH1 bins (recA) then CH2 bins (recB), Rows*F rows
 // of ROW_COLS words each.
+// TRLC-LINKS: REQ-SDS-159
 func (p StackParams) Words() int { return 2 * int(p.Rows) * int(p.F()) * RowCols }
 
 // Validate checks the geometry against the fabric's limits.
+// TRLC-LINKS: REQ-SDS-159
 func (p StackParams) Validate() error {
 	if p.PhaseBins > 3 {
 		return fmt.Errorf("wordfmt: PHASE_BINS %d > 3", p.PhaseBins)
@@ -393,6 +420,7 @@ func (p StackParams) Validate() error {
 // TimeNs is the sample time of readout word i (within either channel block):
 // address a = i / ROW_COLS = row*F + phase, column c = i mod ROW_COLS, time =
 // (row*ROW_COLS + c) * tick + phase * tick / F.
+// TRLC-LINKS: REQ-SDS-159
 func (p StackParams) TimeNs(t Tier, i int) float64 {
 	half := p.Words() / 2
 	if half > 0 {
@@ -406,6 +434,7 @@ func (p StackParams) TimeNs(t Tier, i int) float64 {
 
 // PhaseBin is the phase bin of a record: the top PHASE_BINS bits of its Q16
 // trigger fraction (TRIGPOS_LO.FRAC).
+// TRLC-LINKS: REQ-SDS-159
 func PhaseBin(frac uint16, phaseBins uint8) uint8 {
 	if phaseBins == 0 {
 		return 0
@@ -415,6 +444,7 @@ func PhaseBin(frac uint16, phaseBins uint8) uint8 {
 
 // StackRecord is one accepted record of a batch: its phase bin and the window
 // the delay line delivered, Rows*ROW_COLS samples per channel in time order.
+// TRLC-LINKS: REQ-SDS-159
 type StackRecord struct {
 	Phase    uint8
 	CH1, CH2 []uint8
@@ -426,6 +456,7 @@ type StackRecord struct {
 // recB (CH2 bins), row-major, column-minor, each word (sum >> SHIFT)[15:0].
 // phaseCnt is the PHASE_CNT window. HALT ends a batch early: pass the records
 // accepted so far.
+// TRLC-LINKS: REQ-SDS-159
 func ModelStack(t Tier, p StackParams, recs []StackRecord) (seq Sequence, phaseCnt [8]uint16, err error) {
 	if err = p.Validate(); err != nil {
 		return Sequence{}, phaseCnt, err

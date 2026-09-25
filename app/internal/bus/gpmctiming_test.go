@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-BUS
 package bus
 
 import (
@@ -8,6 +9,7 @@ import (
 	"open-sds/app/internal/iface"
 )
 
+// TRLC-LINKS: REQ-SDS-131
 func TestCS1TimingFieldCodec(t *testing.T) {
 	f := FactoryCS1Timing.Fields()
 	// fpga-specs 10 §4.3: CONFIG2 0x00141400, CONFIG4 0x10041004, CONFIG5 0x010d141f, CONFIG6 0x060005c1.
@@ -38,6 +40,7 @@ func TestCS1TimingFieldCodec(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-131
 func TestCS1TimingValidate(t *testing.T) {
 	bad := []CS1Timing{
 		FactoryCS1Timing.WithRdAccess(31),                                                    // access >= cycle
@@ -66,6 +69,7 @@ func TestCS1TimingValidate(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-131
 func TestApplyTimingSequence(t *testing.T) {
 	g := &fakeGPMC{regs: map[uint32]uint32{gpmcConfig1: 0x00001001, gpmcConfig2: 0x00141400, gpmcConfig3: 0x00020201,
 		gpmcConfig4: 0x10041004, gpmcConfig5: 0x010d141f, gpmcConfig6: 0x060005c1, gpmcConfig7: 0x00000F41}}
@@ -98,6 +102,7 @@ func TestApplyTimingSequence(t *testing.T) {
 // fakePort is a timing port with floors: below them the fabric's pops
 // corrupt. It also drives the fake clock: each drained word costs
 // (RDCYCLETIME + gap) ticks at 100 MHz, so the FCLK estimate can be checked.
+// TRLC-LINKS: REQ-SDS-131
 type fakePort struct {
 	fab         *fakeFab
 	cur         CS1Timing
@@ -108,12 +113,15 @@ type fakePort struct {
 	validations int
 }
 
+// TRLC-LINKS: REQ-SDS-131
 func (p *fakePort) Read() (CS1Timing, error) { return p.cur, nil }
+// TRLC-LINKS: REQ-SDS-131
 func (p *fakePort) set(t CS1Timing) {
 	p.cur = t
 	p.applies++
 	p.fab.corrupt = t.RdAccess() < p.minAccess || t.RdCycle() < p.minCycle || t.Gap() < p.minGap
 }
+// TRLC-LINKS: REQ-SDS-131
 func (p *fakePort) Apply(t CS1Timing) error {
 	p.validations++
 	if err := t.Validate(); err != nil {
@@ -122,10 +130,12 @@ func (p *fakePort) Apply(t CS1Timing) error {
 	p.set(t)
 	return nil
 }
+// TRLC-LINKS: REQ-SDS-131
 func (p *fakePort) Restore(t CS1Timing) error { p.set(t); return nil }
 
 // tickClock advances 10 ns per GPMC tick per popped word: the fake fabric's
 // pop counter drives it.
+// TRLC-LINKS: REQ-SDS-131
 type tickClock struct {
 	fab  *fakeFab
 	port *fakePort
@@ -133,6 +143,7 @@ type tickClock struct {
 	last uint16
 }
 
+// TRLC-LINKS: REQ-SDS-131
 func (c *tickClock) now() time.Time {
 	c.fab.mu.Lock()
 	pops := c.fab.pops
@@ -143,6 +154,7 @@ func (c *tickClock) now() time.Time {
 	return c.t
 }
 
+// TRLC-LINKS: REQ-SDS-131
 func TestSweepFindsFloorsAndRestores(t *testing.T) {
 	fab := newFakeFab()
 	port := &fakePort{fab: fab, cur: FactoryCS1Timing, minAccess: 9, minCycle: 12, minGap: 4}
@@ -193,6 +205,7 @@ func TestSweepFindsFloorsAndRestores(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-131
 func TestSweepNothingGained(t *testing.T) {
 	// Every candidate fails: the chosen timing is the start timing, still restored.
 	fab := newFakeFab()
@@ -211,6 +224,7 @@ func TestSweepNothingGained(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-131
 func TestSweepAbortsOnBrokenBaseline(t *testing.T) {
 	fab := newFakeFab()
 	port := &fakePort{fab: fab, cur: FactoryCS1Timing, minAccess: 14} // the baseline itself is below the floor
@@ -224,14 +238,17 @@ func TestSweepAbortsOnBrokenBaseline(t *testing.T) {
 
 // slowFab is the fake fabric on the ioctl drain (FastDrain false): the step
 // budget then holds fewer drains per step.
+// TRLC-LINKS: REQ-SDS-131
 type slowFab struct{ *fakeFab }
 
+// TRLC-LINKS: REQ-SDS-131
 func (slowFab) FastDrain() bool { return false }
 
 // TestSweepStepsRestoreEveryStep is the health-contract property of the step
 // machine: every Step is bounded (at most DrainsStep scored drains, sized by
 // the drain mode), the start timing is back in the controller when it
 // returns, and the step timeout scales with the drain mode.
+// TRLC-LINKS: REQ-SDS-131
 func TestSweepStepsRestoreEveryStep(t *testing.T) {
 	fab := newFakeFab()
 	port := &fakePort{fab: fab, cur: FactoryCS1Timing, minAccess: 11, minCycle: 29}

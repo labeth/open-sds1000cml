@@ -1,0 +1,46 @@
+{
+  "status": "integrated-with-explicit-verification-limits",
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "files": [
+    {
+      "path": "fpga/sram_bench/bench.v",
+      "owner": "FU-RTL-SRAM-BENCH-BENCH",
+      "modules": {
+        "sram_bench_top": [
+          "REQ-SDS-193"
+        ]
+      }
+    },
+    {
+      "path": "fpga/sram_bench/sim/tb.v",
+      "owner": "FU-RTL-BENCH-TESTS",
+      "modules": {
+        "bench_pll": [
+          "REQ-SDS-193"
+        ],
+        "altddio_out": [
+          "REQ-SDS-193"
+        ],
+        "tb": [
+          "REQ-SDS-193"
+        ]
+      }
+    }
+  ],
+  "modules": 4,
+  "sourceSHA256": {
+    "fpga/sram_bench/bench.v": "56041546ec45127435bc05b9e66d2da3c0d19a4966089c551c5713918dc51d73",
+    "fpga/sram_bench/sim/tb.v": "22ca80b403f26ce72e3dc052607650946772c863cb29e863d041d910a92960af"
+  },
+  "newContracts": [
+    {
+      "id": "REQ-SDS-193",
+      "title": "Independent SRAM full-depth pattern comparison",
+      "text": "The instrument shall provide an independent SRAM test image that writes a seeded pattern over the full 524288-word address space, compares the returned sequence after pipeline warm-up, and exposes comparison counts and detected mismatch information after completion.",
+      "owner": "FU-RTL-SRAM-BENCH-BENCH",
+      "notes": "The host must hold configuration stable while the test runs and read results after DONE. Source provides first-mismatch and bit-mask reporting; original behavioral assertions cover full comparison count, zero errors for ideal memory and nonzero errors under address-bit18 aliasing, not all report fields. This test image is independent of acquisition and does not prove physical SRAM capacity or timing."
+    }
+  ],
+  "scope": "Two complete RTL files, four approved module links and two original full-depth simulations integrated. Normal memory and address-bit18 alias cases pass; physical capacity/timing and host access remain unqualified. Publication refresh is deferred to combine with the remaining RTL batch.",
+  "executionEvidence": "sram-bench-rtl-review-test-run.json"
+}

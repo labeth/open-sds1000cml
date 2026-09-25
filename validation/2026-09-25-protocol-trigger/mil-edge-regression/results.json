@@ -1,0 +1,754 @@
+[
+  {
+    "channel": 2,
+    "rising": true,
+    "captures": 30,
+    "wrongSlope": 0,
+    "rows": [
+      {
+        "seq": 569,
+        "edge": 78189,
+        "delta": 84.68125,
+        "correct": true
+      },
+      {
+        "seq": 570,
+        "edge": 78189,
+        "delta": 84.775,
+        "correct": true
+      },
+      {
+        "seq": 571,
+        "edge": 78189,
+        "delta": 84.266796875,
+        "correct": true
+      },
+      {
+        "seq": 572,
+        "edge": 78189,
+        "delta": 84.368359375,
+        "correct": true
+      },
+      {
+        "seq": 573,
+        "edge": 78189,
+        "delta": 84.7765625,
+        "correct": true
+      },
+      {
+        "seq": 574,
+        "edge": 78189,
+        "delta": 84.598046875,
+        "correct": true
+      },
+      {
+        "seq": 575,
+        "edge": 78189,
+        "delta": 84.266796875,
+        "correct": true
+      },
+      {
+        "seq": 576,
+        "edge": 78189,
+        "delta": 84.369921875,
+        "correct": true
+      },
+      {
+        "seq": 577,
+        "edge": 78189,
+        "delta": 84.373828125,
+        "correct": true
+      },
+      {
+        "seq": 578,
+        "edge": 78189,
+        "delta": 84.776953125,
+        "correct": true
+      },
+      {
+        "seq": 579,
+        "edge": 78189,
+        "delta": 84.4375,
+        "correct": true
+      },
+      {
+        "seq": 580,
+        "edge": 78189,
+        "delta": 84.366015625,
+        "correct": true
+      },
+      {
+        "seq": 581,
+        "edge": 78189,
+        "delta": 84.148046875,
+        "correct": true
+      },
+      {
+        "seq": 582,
+        "edge": 78189,
+        "delta": 84.558984375,
+        "correct": true
+      },
+      {
+        "seq": 583,
+        "edge": 78189,
+        "delta": 84.74375,
+        "correct": true
+      },
+      {
+        "seq": 584,
+        "edge": 78189,
+        "delta": 84.686328125,
+        "correct": true
+      },
+      {
+        "seq": 585,
+        "edge": 78189,
+        "delta": 84.5765625,
+        "correct": true
+      },
+      {
+        "seq": 586,
+        "edge": 78189,
+        "delta": 84.447265625,
+        "correct": true
+      },
+      {
+        "seq": 587,
+        "edge": 78189,
+        "delta": 84.446875,
+        "correct": true
+      },
+      {
+        "seq": 588,
+        "edge": 78189,
+        "delta": 84.43515625,
+        "correct": true
+      },
+      {
+        "seq": 589,
+        "edge": 78189,
+        "delta": 84.412890625,
+        "correct": true
+      },
+      {
+        "seq": 590,
+        "edge": 78189,
+        "delta": 84.4171875,
+        "correct": true
+      },
+      {
+        "seq": 591,
+        "edge": 78189,
+        "delta": 84.286328125,
+        "correct": true
+      },
+      {
+        "seq": 592,
+        "edge": 78189,
+        "delta": 84.505078125,
+        "correct": true
+      },
+      {
+        "seq": 593,
+        "edge": 78189,
+        "delta": 84.16328125,
+        "correct": true
+      },
+      {
+        "seq": 594,
+        "edge": 78189,
+        "delta": 84.473046875,
+        "correct": true
+      },
+      {
+        "seq": 595,
+        "edge": 78189,
+        "delta": 84.2515625,
+        "correct": true
+      },
+      {
+        "seq": 596,
+        "edge": 78189,
+        "delta": 84.30625,
+        "correct": true
+      },
+      {
+        "seq": 597,
+        "edge": 78189,
+        "delta": 84.419140625,
+        "correct": true
+      },
+      {
+        "seq": 598,
+        "edge": 78189,
+        "delta": 84.40625,
+        "correct": true
+      }
+    ]
+  },
+  {
+    "channel": 2,
+    "rising": false,
+    "captures": 30,
+    "wrongSlope": 0,
+    "rows": [
+      {
+        "seq": 601,
+        "edge": 78189,
+        "delta": -84.037890625,
+        "correct": true
+      },
+      {
+        "seq": 602,
+        "edge": 78189,
+        "delta": -84.1546875,
+        "correct": true
+      },
+      {
+        "seq": 603,
+        "edge": 78189,
+        "delta": -84.159765625,
+        "correct": true
+      },
+      {
+        "seq": 604,
+        "edge": 78189,
+        "delta": -83.98984375,
+        "correct": true
+      },
+      {
+        "seq": 605,
+        "edge": 78189,
+        "delta": -84.093359375,
+        "correct": true
+      },
+      {
+        "seq": 606,
+        "edge": 78189,
+        "delta": -84.00859375,
+        "correct": true
+      },
+      {
+        "seq": 607,
+        "edge": 78189,
+        "delta": -83.975,
+        "correct": true
+      },
+      {
+        "seq": 608,
+        "edge": 78189,
+        "delta": -84.098828125,
+        "correct": true
+      },
+      {
+        "seq": 609,
+        "edge": 78189,
+        "delta": -84.15625,
+        "correct": true
+      },
+      {
+        "seq": 610,
+        "edge": 78189,
+        "delta": -83.948046875,
+        "correct": true
+      },
+      {
+        "seq": 611,
+        "edge": 78189,
+        "delta": -84.07421875,
+        "correct": true
+      },
+      {
+        "seq": 612,
+        "edge": 78189,
+        "delta": -84.047265625,
+        "correct": true
+      },
+      {
+        "seq": 613,
+        "edge": 78189,
+        "delta": -84.16484375,
+        "correct": true
+      },
+      {
+        "seq": 614,
+        "edge": 78189,
+        "delta": -84.035546875,
+        "correct": true
+      },
+      {
+        "seq": 615,
+        "edge": 78189,
+        "delta": -83.92734375,
+        "correct": true
+      },
+      {
+        "seq": 616,
+        "edge": 78189,
+        "delta": -83.915234375,
+        "correct": true
+      },
+      {
+        "seq": 617,
+        "edge": 78189,
+        "delta": -83.97890625,
+        "correct": true
+      },
+      {
+        "seq": 618,
+        "edge": 78189,
+        "delta": -83.88671875,
+        "correct": true
+      },
+      {
+        "seq": 619,
+        "edge": 78189,
+        "delta": -83.894140625,
+        "correct": true
+      },
+      {
+        "seq": 620,
+        "edge": 78189,
+        "delta": -84.13515625,
+        "correct": true
+      },
+      {
+        "seq": 621,
+        "edge": 78189,
+        "delta": -84.08125,
+        "correct": true
+      },
+      {
+        "seq": 622,
+        "edge": 78189,
+        "delta": -84.030859375,
+        "correct": true
+      },
+      {
+        "seq": 623,
+        "edge": 78189,
+        "delta": -84.11796875,
+        "correct": true
+      },
+      {
+        "seq": 624,
+        "edge": 78189,
+        "delta": -84.088671875,
+        "correct": true
+      },
+      {
+        "seq": 625,
+        "edge": 78189,
+        "delta": -83.936328125,
+        "correct": true
+      },
+      {
+        "seq": 626,
+        "edge": 78189,
+        "delta": -83.996875,
+        "correct": true
+      },
+      {
+        "seq": 627,
+        "edge": 78189,
+        "delta": -84.065625,
+        "correct": true
+      },
+      {
+        "seq": 628,
+        "edge": 78189,
+        "delta": -84.050390625,
+        "correct": true
+      },
+      {
+        "seq": 629,
+        "edge": 78189,
+        "delta": -83.85703125,
+        "correct": true
+      },
+      {
+        "seq": 630,
+        "edge": 78189,
+        "delta": -84.050390625,
+        "correct": true
+      }
+    ]
+  },
+  {
+    "channel": 1,
+    "rising": true,
+    "captures": 30,
+    "wrongSlope": 0,
+    "rows": [
+      {
+        "seq": 633,
+        "edge": 78189,
+        "delta": 82.391796875,
+        "correct": true
+      },
+      {
+        "seq": 634,
+        "edge": 78189,
+        "delta": 82.55234375,
+        "correct": true
+      },
+      {
+        "seq": 635,
+        "edge": 78189,
+        "delta": 83.017578125,
+        "correct": true
+      },
+      {
+        "seq": 636,
+        "edge": 78189,
+        "delta": 82.827734375,
+        "correct": true
+      },
+      {
+        "seq": 637,
+        "edge": 78189,
+        "delta": 82.6953125,
+        "correct": true
+      },
+      {
+        "seq": 638,
+        "edge": 78189,
+        "delta": 82.9375,
+        "correct": true
+      },
+      {
+        "seq": 639,
+        "edge": 78189,
+        "delta": 83.107421875,
+        "correct": true
+      },
+      {
+        "seq": 640,
+        "edge": 78189,
+        "delta": 82.38671875,
+        "correct": true
+      },
+      {
+        "seq": 641,
+        "edge": 78189,
+        "delta": 82.525390625,
+        "correct": true
+      },
+      {
+        "seq": 642,
+        "edge": 78189,
+        "delta": 82.73203125,
+        "correct": true
+      },
+      {
+        "seq": 643,
+        "edge": 78189,
+        "delta": 83.14140625,
+        "correct": true
+      },
+      {
+        "seq": 644,
+        "edge": 78189,
+        "delta": 82.41796875,
+        "correct": true
+      },
+      {
+        "seq": 645,
+        "edge": 78189,
+        "delta": 82.832421875,
+        "correct": true
+      },
+      {
+        "seq": 646,
+        "edge": 78189,
+        "delta": 82.572265625,
+        "correct": true
+      },
+      {
+        "seq": 647,
+        "edge": 78189,
+        "delta": 82.6296875,
+        "correct": true
+      },
+      {
+        "seq": 648,
+        "edge": 78189,
+        "delta": 82.540234375,
+        "correct": true
+      },
+      {
+        "seq": 649,
+        "edge": 78189,
+        "delta": 82.584765625,
+        "correct": true
+      },
+      {
+        "seq": 650,
+        "edge": 78189,
+        "delta": 82.47265625,
+        "correct": true
+      },
+      {
+        "seq": 651,
+        "edge": 78189,
+        "delta": 82.875390625,
+        "correct": true
+      },
+      {
+        "seq": 652,
+        "edge": 78189,
+        "delta": 82.57578125,
+        "correct": true
+      },
+      {
+        "seq": 653,
+        "edge": 78189,
+        "delta": 82.50390625,
+        "correct": true
+      },
+      {
+        "seq": 654,
+        "edge": 78189,
+        "delta": 82.780859375,
+        "correct": true
+      },
+      {
+        "seq": 655,
+        "edge": 78189,
+        "delta": 82.692578125,
+        "correct": true
+      },
+      {
+        "seq": 656,
+        "edge": 78189,
+        "delta": 82.5859375,
+        "correct": true
+      },
+      {
+        "seq": 657,
+        "edge": 78189,
+        "delta": 82.387890625,
+        "correct": true
+      },
+      {
+        "seq": 658,
+        "edge": 78189,
+        "delta": 82.4015625,
+        "correct": true
+      },
+      {
+        "seq": 659,
+        "edge": 78189,
+        "delta": 82.91640625,
+        "correct": true
+      },
+      {
+        "seq": 660,
+        "edge": 78189,
+        "delta": 82.32890625,
+        "correct": true
+      },
+      {
+        "seq": 661,
+        "edge": 78189,
+        "delta": 82.621875,
+        "correct": true
+      },
+      {
+        "seq": 662,
+        "edge": 78189,
+        "delta": 82.6296875,
+        "correct": true
+      }
+    ]
+  },
+  {
+    "channel": 1,
+    "rising": false,
+    "captures": 30,
+    "wrongSlope": 0,
+    "rows": [
+      {
+        "seq": 665,
+        "edge": 78189,
+        "delta": -82.31171875,
+        "correct": true
+      },
+      {
+        "seq": 666,
+        "edge": 78189,
+        "delta": -82.221875,
+        "correct": true
+      },
+      {
+        "seq": 667,
+        "edge": 78189,
+        "delta": -82.14609375,
+        "correct": true
+      },
+      {
+        "seq": 668,
+        "edge": 78189,
+        "delta": -82.318359375,
+        "correct": true
+      },
+      {
+        "seq": 669,
+        "edge": 78189,
+        "delta": -82.13046875,
+        "correct": true
+      },
+      {
+        "seq": 670,
+        "edge": 78189,
+        "delta": -82.253125,
+        "correct": true
+      },
+      {
+        "seq": 671,
+        "edge": 78189,
+        "delta": -82.15390625,
+        "correct": true
+      },
+      {
+        "seq": 672,
+        "edge": 78189,
+        "delta": -82.128125,
+        "correct": true
+      },
+      {
+        "seq": 673,
+        "edge": 78189,
+        "delta": -82.28828125,
+        "correct": true
+      },
+      {
+        "seq": 674,
+        "edge": 78189,
+        "delta": -82.247265625,
+        "correct": true
+      },
+      {
+        "seq": 675,
+        "edge": 78189,
+        "delta": -82.369140625,
+        "correct": true
+      },
+      {
+        "seq": 676,
+        "edge": 78189,
+        "delta": -82.246875,
+        "correct": true
+      },
+      {
+        "seq": 677,
+        "edge": 78189,
+        "delta": -82.07421875,
+        "correct": true
+      },
+      {
+        "seq": 678,
+        "edge": 78189,
+        "delta": -82.2328125,
+        "correct": true
+      },
+      {
+        "seq": 679,
+        "edge": 78189,
+        "delta": -82.005859375,
+        "correct": true
+      },
+      {
+        "seq": 680,
+        "edge": 78189,
+        "delta": -82.25,
+        "correct": true
+      },
+      {
+        "seq": 681,
+        "edge": 78189,
+        "delta": -82.27109375,
+        "correct": true
+      },
+      {
+        "seq": 682,
+        "edge": 78189,
+        "delta": -82.233984375,
+        "correct": true
+      },
+      {
+        "seq": 683,
+        "edge": 78189,
+        "delta": -82.262890625,
+        "correct": true
+      },
+      {
+        "seq": 684,
+        "edge": 78189,
+        "delta": -82.16953125,
+        "correct": true
+      },
+      {
+        "seq": 685,
+        "edge": 78189,
+        "delta": -82.262890625,
+        "correct": true
+      },
+      {
+        "seq": 686,
+        "edge": 78189,
+        "delta": -82.19921875,
+        "correct": true
+      },
+      {
+        "seq": 687,
+        "edge": 78189,
+        "delta": -82.243359375,
+        "correct": true
+      },
+      {
+        "seq": 688,
+        "edge": 78189,
+        "delta": -82.264453125,
+        "correct": true
+      },
+      {
+        "seq": 689,
+        "edge": 78189,
+        "delta": -82.365234375,
+        "correct": true
+      },
+      {
+        "seq": 690,
+        "edge": 78189,
+        "delta": -82.355859375,
+        "correct": true
+      },
+      {
+        "seq": 691,
+        "edge": 78189,
+        "delta": -82.22265625,
+        "correct": true
+      },
+      {
+        "seq": 692,
+        "edge": 78189,
+        "delta": -82.2375,
+        "correct": true
+      },
+      {
+        "seq": 693,
+        "edge": 78189,
+        "delta": -82.2671875,
+        "correct": true
+      },
+      {
+        "seq": 694,
+        "edge": 78189,
+        "delta": -82.175,
+        "correct": true
+      }
+    ]
+  }
+]

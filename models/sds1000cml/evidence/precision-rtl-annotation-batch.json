@@ -1,0 +1,115 @@
+{
+  "status": "integrated-with-explicit-verification-limits",
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "files": [
+    {
+      "path": "fpga/acq_sram/precision.v",
+      "owner": "FU-RTL-ACQ-SRAM-PRECISION",
+      "modules": {
+        "cic_pair_integrator": [
+          "REQ-SDS-040"
+        ],
+        "cic16_pair": [
+          "REQ-SDS-040"
+        ],
+        "cic_stage": [
+          "REQ-SDS-040"
+        ],
+        "adc_precision": [
+          "REQ-SDS-040"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/precision_tail.v",
+      "owner": "FU-RTL-ACQ-SRAM-PRECISION-TAIL",
+      "modules": {
+        "cic_precision_tail": [
+          "REQ-SDS-040"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_integrator.v",
+      "owner": "FU-RTL-ACQ-TESTS",
+      "modules": {
+        "tb": [
+          "REQ-SDS-040"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_precision.v",
+      "owner": "FU-RTL-ACQ-TESTS",
+      "modules": {
+        "tb": [
+          "REQ-SDS-040"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_precision_config.v",
+      "owner": "FU-RTL-ACQ-TESTS",
+      "modules": {
+        "dcfifo": [
+          "REQ-SDS-040"
+        ],
+        "tb_precision_config": [
+          "REQ-SDS-040"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_precision_fir.v",
+      "owner": "FU-RTL-ACQ-TESTS",
+      "modules": {
+        "tb": [
+          "REQ-SDS-040"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_precision_shared.v",
+      "owner": "FU-RTL-ACQ-TESTS",
+      "modules": {
+        "dcfifo": [
+          "REQ-SDS-040"
+        ],
+        "tb_precision_shared": [
+          "REQ-SDS-040"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_precision_tail.v",
+      "owner": "FU-RTL-ACQ-TESTS",
+      "modules": {
+        "tb_precision_tail": [
+          "REQ-SDS-040"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_precision_tail_queue.v",
+      "owner": "FU-RTL-ACQ-TESTS",
+      "modules": {
+        "tb_precision_tail_queue": [
+          "REQ-SDS-040"
+        ]
+      }
+    }
+  ],
+  "modules": 14,
+  "sourceSHA256": {
+    "fpga/acq_sram/precision.v": "a773edf444d2b4a0c37e2d1504612cd5091e57bad1dc1c41bc10fb09c968d6c5",
+    "fpga/acq_sram/precision_tail.v": "dd4dfd694d649b84e2c798911d1f7cb5df3384211761cdf871714eae97505d72",
+    "fpga/acq_sram/sim/tb_integrator.v": "8aefccca64816982a8a640513a4afe62ffe0896f44ef54ac5a2222b4e82a2852",
+    "fpga/acq_sram/sim/tb_precision.v": "b64a2fcc2aa89c677f429a9794f86cd413488226c82ea603b070ed72588aeb8e",
+    "fpga/acq_sram/sim/tb_precision_config.v": "dcfef26df8f2748583ca965f66ebfd7b3c8f603b358e903cad2bf77a16ef5198",
+    "fpga/acq_sram/sim/tb_precision_fir.v": "117c9280e504b2b5c2f09aeeee29b3e3080deb7bd1d2cf7acdfe7b15c306e060",
+    "fpga/acq_sram/sim/tb_precision_shared.v": "24f3cc5a6e6f3115595069f2a33ee30f000d18245361eb329ed8440efff761c8",
+    "fpga/acq_sram/sim/tb_precision_tail.v": "2170aca776487f193942f51da08378e0488af37646c89d36db1783f82a5208b1",
+    "fpga/acq_sram/sim/tb_precision_tail_queue.v": "d309b2a47f4b6cfd0f25e67dfc4401836ea9c4d40e1705d7a06a3664f188fe07"
+  },
+  "scope": "Two precision implementation files and seven original benches; FIFO models in test files are verification support. Legacy top bench reviewed but deferred to top-level integration."
+}

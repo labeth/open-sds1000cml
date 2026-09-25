@@ -1,0 +1,16 @@
+{
+  "source": "fpga/common/sim/tb_lane_in.v",
+  "scope": "Original five common RTL benches, SIM behavioral clocks and ideal bus stimulus. No physical CDC, fitted timing, IO placement or hardware qualification.",
+  "sourceSHA256": "70782ac75f59bf74c5e2110fe7e70b1cac03688a6a78a0078c0a55f6eadf12d1",
+  "reportSHA256": "f4932c3f638b8136cd9f37dc2cdd8c773b37db76838efa148f6e981f0f7b0608",
+  "runs": [
+    "tb_lane_in"
+  ],
+  "results": [
+    {
+      "requirement": "REQ-SDS-190",
+      "status": "partial",
+      "notes": "Checks two-stage input latency, gate-reset/accumulated flags,128 transitions per window, saturation and idle windows. Bench reports FAIL text rather than fatal exit; tests use reduced widths and ideal clocks. See evidence/common-rtl-review-test-run.json. Exact original-source or approved comment-overlay equivalence is checked."
+    }
+  ]
+}

@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-OTA-AGENT
 package agent
 
 import (
@@ -21,8 +22,10 @@ var handlers = map[string]handlerFn{}
 // paths are testable in-process; production behavior is identical.
 var osExit = os.Exit
 
+// TRLC-LINKS: REQ-SDS-113
 func register(cmd string, fn handlerFn) { handlers[cmd] = fn }
 
+// TRLC-LINKS: REQ-SDS-113
 func init() {
 	register("help", hHelp)
 	register("ping", hPing)
@@ -57,6 +60,7 @@ func init() {
 	register("reboot", hReboot)
 }
 
+// TRLC-LINKS: REQ-SDS-113
 func hHelp(a *Agent, _ json.RawMessage) (any, error) {
 	cmds := make([]string, 0, len(handlers))
 	for k := range handlers {
@@ -66,12 +70,15 @@ func hHelp(a *Agent, _ json.RawMessage) (any, error) {
 	return map[string]any{"commands": cmds, "device": a.cfg.DeviceID}, nil
 }
 
+// TRLC-LINKS: REQ-SDS-114
 func hPing(a *Agent, _ json.RawMessage) (any, error) {
 	return map[string]any{"device": a.cfg.DeviceID, "time_unix": time.Now().Unix(), "agent_slot": a.AgentSlot()}, nil
 }
 
+// TRLC-LINKS: REQ-SDS-114
 func hStatus(a *Agent, _ json.RawMessage) (any, error) { return a.status(), nil }
 
+// TRLC-LINKS: REQ-SDS-115
 func hLogs(a *Agent, args json.RawMessage) (any, error) {
 	p, _ := decodeArgs[struct {
 		File string `json:"file"` // "agent" | "boot" | absolute path
@@ -97,6 +104,7 @@ func hLogs(a *Agent, args json.RawMessage) (any, error) {
 	return map[string]any{"path": path, "text": string(b)}, nil
 }
 
+// TRLC-LINKS: REQ-SDS-115
 func hExec(a *Agent, args json.RawMessage) (any, error) {
 	p, err := decodeArgs[struct {
 		Argv    []string `json:"argv"`
@@ -117,6 +125,7 @@ func hExec(a *Agent, args json.RawMessage) (any, error) {
 	return map[string]any{"exit": code, "output": string(out)}, err
 }
 
+// TRLC-LINKS: REQ-SDS-115
 func hSh(a *Agent, args json.RawMessage) (any, error) {
 	p, err := decodeArgs[struct {
 		Script  string `json:"script"`
@@ -138,6 +147,7 @@ func hSh(a *Agent, args json.RawMessage) (any, error) {
 
 // ---- file transfer ---------------------------------------------------------
 
+// TRLC-LINKS: REQ-SDS-106
 func hPutBegin(a *Agent, args json.RawMessage) (any, error) {
 	p, err := decodeArgs[struct {
 		Dest string `json:"dest"`
@@ -158,6 +168,7 @@ func hPutBegin(a *Agent, args json.RawMessage) (any, error) {
 	return map[string]any{"id": id}, nil
 }
 
+// TRLC-LINKS: REQ-SDS-106
 func hPutChunk(a *Agent, args json.RawMessage) (any, error) {
 	p, err := decodeArgs[struct {
 		ID     string `json:"id"`
@@ -175,6 +186,7 @@ func hPutChunk(a *Agent, args json.RawMessage) (any, error) {
 	return map[string]any{"written": n}, err
 }
 
+// TRLC-LINKS: REQ-SDS-106
 func hPutCommit(a *Agent, args json.RawMessage) (any, error) {
 	p, err := decodeArgs[struct {
 		ID string `json:"id"`
@@ -189,6 +201,7 @@ func hPutCommit(a *Agent, args json.RawMessage) (any, error) {
 	return map[string]any{"path": path, "sha256": sum}, nil
 }
 
+// TRLC-LINKS: REQ-SDS-116
 func hGet(a *Agent, args json.RawMessage) (any, error) {
 	p, err := decodeArgs[struct {
 		Path   string `json:"path"`
@@ -221,6 +234,7 @@ func hGet(a *Agent, args json.RawMessage) (any, error) {
 
 // ---- app lifecycle ---------------------------------------------------------
 
+// TRLC-LINKS: REQ-SDS-117
 func hAppStart(a *Agent, _ json.RawMessage) (any, error) {
 	if !a.st.get().TakenOver {
 		return nil, fmt.Errorf("not taken over — the factory app owns the instrument; run takeover first")
@@ -229,10 +243,12 @@ func hAppStart(a *Agent, _ json.RawMessage) (any, error) {
 	return map[string]any{"ok": true}, a.ctlRequest("start", 5*time.Second)
 }
 
+// TRLC-LINKS: REQ-SDS-117
 func hAppStop(a *Agent, _ json.RawMessage) (any, error) {
 	return map[string]any{"ok": true}, a.ctlRequest("stop", 8*time.Second)
 }
 
+// TRLC-LINKS: REQ-SDS-117
 func hAppRestart(a *Agent, _ json.RawMessage) (any, error) {
 	if !a.st.get().TakenOver {
 		return nil, fmt.Errorf("not taken over")
@@ -242,6 +258,7 @@ func hAppRestart(a *Agent, _ json.RawMessage) (any, error) {
 
 // hAppUpdate installs a staged/uploaded binary into the INACTIVE slot, points
 // active at it, and restarts. Stable run confirms it; crash-loop rolls back.
+// TRLC-LINKS: REQ-SDS-118, REQ-SDS-029
 func hAppUpdate(a *Agent, args json.RawMessage) (any, error) {
 	p, err := decodeArgs[struct {
 		Src string `json:"src"` // path on device (usually a committed upload)
@@ -279,6 +296,7 @@ func hAppUpdate(a *Agent, args json.RawMessage) (any, error) {
 	return map[string]any{"slot": target, "sha256": sum, "active": target}, nil
 }
 
+// TRLC-LINKS: REQ-SDS-118
 func hAppActivate(a *Agent, args json.RawMessage) (any, error) {
 	p, err := decodeArgs[struct {
 		Slot string `json:"slot"`
@@ -300,6 +318,7 @@ func hAppActivate(a *Agent, args json.RawMessage) (any, error) {
 	return map[string]any{"active": p.Slot}, nil
 }
 
+// TRLC-LINKS: REQ-SDS-118
 func hAppInstallEmergency(a *Agent, args json.RawMessage) (any, error) {
 	p, err := decodeArgs[struct {
 		Src string `json:"src"`
@@ -324,6 +343,7 @@ func hAppInstallEmergency(a *Agent, args json.RawMessage) (any, error) {
 // startup.sh A/B agent loop then launches the new slot; if it crash-loops
 // under STABLE seconds it reverts to the confirmed slot (spec/startup.sh).
 // The running app is left alive and re-adopted by the new agent.
+// TRLC-LINKS: REQ-SDS-119, REQ-SDS-029
 func hAgentUpdate(a *Agent, args json.RawMessage) (any, error) {
 	p, err := decodeArgs[struct {
 		Src string `json:"src"`
@@ -368,6 +388,7 @@ func hAgentUpdate(a *Agent, args json.RawMessage) (any, error) {
 	return map[string]any{"active_agent": target, "sha256": sum, "note": "agent exiting; startup.sh will launch the new slot"}, nil
 }
 
+// TRLC-LINKS: REQ-SDS-119
 func hAgentRestart(a *Agent, _ json.RawMessage) (any, error) {
 	go func() {
 		time.Sleep(500 * time.Millisecond)
@@ -381,6 +402,7 @@ func hAgentRestart(a *Agent, _ json.RawMessage) (any, error) {
 
 // ---- takeover / recovery ---------------------------------------------------
 
+// TRLC-LINKS: REQ-SDS-027
 func hTakeover(a *Agent, args json.RawMessage) (any, error) {
 	opts, err := decodeArgs[TakeoverOpts](args)
 	if err != nil {
@@ -401,6 +423,7 @@ func hTakeover(a *Agent, args json.RawMessage) (any, error) {
 // boots the factory app normally. It does NOT itself restore the factory app
 // (use restore-factory or reboot). This is what makes a takeover test fully
 // reversible.
+// TRLC-LINKS: REQ-SDS-120
 func hUntakeover(a *Agent, _ json.RawMessage) (any, error) {
 	_ = a.ctlRequest("stop", 8*time.Second) // pause supervisor + terminate the app
 	if err := a.st.update(func(s *State) { s.TakenOver = false; s.AutoTakeover = false }); err != nil {
@@ -417,6 +440,7 @@ func hUntakeover(a *Agent, _ json.RawMessage) (any, error) {
 // factory binary as a child of the agent (inheriting the still-open boot fds)
 // from its normal working directory. Reboot is the reliable fallback if the
 // vendor app does not cleanly re-drive from a mid-session restart.
+// TRLC-LINKS: REQ-SDS-120
 func hRestoreFactory(a *Agent, args json.RawMessage) (any, error) {
 	p, _ := decodeArgs[struct {
 		Path       string `json:"path"`
@@ -466,6 +490,7 @@ func hRestoreFactory(a *Agent, args json.RawMessage) (any, error) {
 		"note": "if the display does not return, reboot"}, nil
 }
 
+// TRLC-LINKS: REQ-SDS-114
 func hProbe(a *Agent, args json.RawMessage) (any, error) {
 	p, _ := decodeArgs[struct {
 		ReadGpmc bool `json:"read_gpmc"` // opt-in: read version+fill (safe, plain regs)
@@ -473,6 +498,7 @@ func hProbe(a *Agent, args json.RawMessage) (any, error) {
 	return a.probe(p.ReadGpmc), nil
 }
 
+// TRLC-LINKS: REQ-SDS-121
 func hReboot(a *Agent, args json.RawMessage) (any, error) {
 	p, _ := decodeArgs[struct {
 		Confirm bool `json:"confirm"`
@@ -484,6 +510,7 @@ func hReboot(a *Agent, args json.RawMessage) (any, error) {
 	return map[string]any{"output": string(out)}, err
 }
 
+// TRLC-LINKS: REQ-SDS-119
 func writeText(path, s string) error {
 	tmp := path + ".tmp"
 	if err := os.WriteFile(tmp, []byte(s), 0o644); err != nil {
@@ -495,6 +522,7 @@ func writeText(path, s string) error {
 // markIntent drops a one-shot marker the boot respawn loop consumes so a
 // deliberate agent exit (restart/update) is not mis-counted as a crash and
 // does not trigger a spurious A/B revert of a freshly-activated slot.
+// TRLC-LINKS: REQ-SDS-119
 func (a *Agent) markIntent(kind string) {
 	_ = os.WriteFile(filepath.Join(a.cfg.OTADir, "agent.intent"), []byte(kind+"\n"), 0o644)
 }

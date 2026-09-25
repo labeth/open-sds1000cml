@@ -1,0 +1,40 @@
+{
+  "scope": "Reviewed FIR package source. All ten nongenerated Go declarations have requirement links; ARM assembly and generator remain explicitly documented in the non-Go audit queue.",
+  "sources": {
+    "app/internal/dsp/precision.go": "ad0b20173336f0d41aa350ef9ab1a950971fbcc0975de289fe0e3a70f36e547f",
+    "app/internal/dsp/precision_arm.go": "c07c2b6aab74006d801e0d5b1c4a2a0b5454bfd3095162a40f1b99ba1ac87ac0",
+    "app/internal/dsp/precision_arm.s": "f13221841c1f2841119f2f43caa243b9b7aed7cab4fe0d71e395026dcf199727",
+    "app/internal/dsp/precision_generic.go": "72d705efe52337ecbe5f78dbe0e2fc6c75c69bf5e3a6cb65c0d986483e4685e4",
+    "app/internal/dsp/precision_limits.go": "c627d1c291f583d2d18492097d04a28f8147ac7a5d3444cf673f433c1ff3c34c",
+    "app/internal/dsp/precision_limits_test.go": "a8032f2d22cf40afdf0276a0715fa6a9e5a3e374fd32e3475ead968752f1c890",
+    "app/internal/dsp/precision_taps.go": "3c3cdc69943f4b7497df42d564d4499938dd9da83757d0476f0653bbe920ae0a",
+    "app/internal/dsp/precision_test.go": "3fe6c527d6ea80fd0ca7c2cce5115cae98925589cf6d0e832c50aa9f0266d707"
+  },
+  "implementation": [
+    "ConditionQ8 leaves records shorter than 63 samples unchanged; otherwise uses separate caller-provided scratch, a symmetric 63-tap Q22 convolution, half-unit rounding, and uint16 saturation.",
+    "The first and last 31 samples remain unchanged. Callers are responsible for scratch length and nonaliasing; these preconditions are not validated.",
+    "Generic code sums the center then 31 symmetric sample pairs. ARM assembly uses the same order with signed long multiply-accumulate and preserves the Go g register.",
+    "PrecisionLimits computes ideal CIC3 plus FIR white-noise gain and a 45-step bisection estimate for minus-three-dB bandwidth; reduction is not input-validated."
+  ],
+  "tests": [
+    "TestPrecisionNoiseAgainstImpulse",
+    "TestPrecisionMatchesDirectConvolution",
+    "TestPrecisionDCAndFraction",
+    "TestPrecisionRejectsAlternatingAndKeepsBoundary",
+    "TestPrecisionFilterCenteredPassband"
+  ],
+  "limits": [
+    "Host tests do not execute ARM assembly. The separate ARM compile/link result does not prove numerical equivalence or ABI runtime safety.",
+    "The host waveform test samples 1/64 Fs. The separate coefficient check covers the generator 2049-point grid across 17 reductions; it is not continuous-frequency proof or physical passband qualification.",
+    "Ideal-limit tests cover reductions 16, 32, 64 and 256 and compare against impulse-response power, excluding hardware noise and nonlinear effects.",
+    "Benchmark declaration is not a throughput result.",
+    "Generated taps must remain traceable to tools/dsp/precision_filter.py rather than hand-annotating generated data."
+  ],
+  "hostTestLog": "test-runs/dsp.jsonl",
+  "armBuildEvidence": "dsp-arm-build.json",
+  "responseEvidence": "precision-response-check.json",
+  "requirements": [
+    "REQ-SDS-037",
+    "REQ-SDS-099"
+  ]
+}

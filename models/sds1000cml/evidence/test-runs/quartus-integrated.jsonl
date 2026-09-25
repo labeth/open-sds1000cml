@@ -1,0 +1,92 @@
+{"Time":"2026-09-23T10:14:10.502141472+02:00","Action":"start","Package":"open-sds/fpga/internal/quartus"}
+{"Time":"2026-09-23T10:14:10.513354811+02:00","Action":"run","Package":"open-sds/fpga/internal/quartus","Test":"TestParseMemAvailableMB"}
+{"Time":"2026-09-23T10:14:10.513400217+02:00","Action":"output","Package":"open-sds/fpga/internal/quartus","Test":"TestParseMemAvailableMB","Output":"=== RUN   TestParseMemAvailableMB\n"}
+{"Time":"2026-09-23T10:14:10.513458193+02:00","Action":"output","Package":"open-sds/fpga/internal/quartus","Test":"TestParseMemAvailableMB","Output":"--- PASS: TestParseMemAvailableMB (0.00s)\n"}
+{"Time":"2026-09-23T10:14:10.513469584+02:00","Action":"pass","Package":"open-sds/fpga/internal/quartus","Test":"TestParseMemAvailableMB","Elapsed":0}
+{"Time":"2026-09-23T10:14:10.513475372+02:00","Action":"run","Package":"open-sds/fpga/internal/quartus","Test":"TestQSFPinsAndGlobals"}
+{"Time":"2026-09-23T10:14:10.513478855+02:00","Action":"output","Package":"open-sds/fpga/internal/quartus","Test":"TestQSFPinsAndGlobals","Output":"=== RUN   TestQSFPinsAndGlobals\n"}
+{"Time":"2026-09-23T10:14:10.513973661+02:00","Action":"output","Package":"open-sds/fpga/internal/quartus","Test":"TestQSFPinsAndGlobals","Output":"--- PASS: TestQSFPinsAndGlobals (0.00s)\n"}
+{"Time":"2026-09-23T10:14:10.513994675+02:00","Action":"pass","Package":"open-sds/fpga/internal/quartus","Test":"TestQSFPinsAndGlobals","Elapsed":0}
+{"Time":"2026-09-23T10:14:10.514059154+02:00","Action":"run","Package":"open-sds/fpga/internal/quartus","Test":"TestParseFitReportOK"}
+{"Time":"2026-09-23T10:14:10.514075959+02:00","Action":"output","Package":"open-sds/fpga/internal/quartus","Test":"TestParseFitReportOK","Output":"=== RUN   TestParseFitReportOK\n"}
+{"Time":"2026-09-23T10:14:10.514981558+02:00","Action":"output","Package":"open-sds/fpga/internal/quartus","Test":"TestParseFitReportOK","Output":"--- PASS: TestParseFitReportOK (0.00s)\n"}
+{"Time":"2026-09-23T10:14:10.514991222+02:00","Action":"pass","Package":"open-sds/fpga/internal/quartus","Test":"TestParseFitReportOK","Elapsed":0}
+{"Time":"2026-09-23T10:14:10.515021053+02:00","Action":"run","Package":"open-sds/fpga/internal/quartus","Test":"TestParseFitReportUnassigned"}
+{"Time":"2026-09-23T10:14:10.51502587+02:00","Action":"output","Package":"open-sds/fpga/internal/quartus","Test":"TestParseFitReportUnassigned","Output":"=== RUN   TestParseFitReportUnassigned\n"}
+{"Time":"2026-09-23T10:14:10.515972478+02:00","Action":"output","Package":"open-sds/fpga/internal/quartus","Test":"TestParseFitReportUnassigned","Output":"--- PASS: TestParseFitReportUnassigned (0.00s)\n"}
+{"Time":"2026-09-23T10:14:10.515979744+02:00","Action":"pass","Package":"open-sds/fpga/internal/quartus","Test":"TestParseFitReportUnassigned","Elapsed":0}
+{"Time":"2026-09-23T10:14:10.516002695+02:00","Action":"run","Package":"open-sds/fpga/internal/quartus","Test":"TestParseFitReportUnused"}
+{"Time":"2026-09-23T10:14:10.516013255+02:00","Action":"output","Package":"open-sds/fpga/internal/quartus","Test":"TestParseFitReportUnused","Output":"=== RUN   TestParseFitReportUnused\n"}
+{"Time":"2026-09-23T10:14:10.517916868+02:00","Action":"output","Package":"open-sds/fpga/internal/quartus","Test":"TestParseFitReportUnused","Output":"--- PASS: TestParseFitReportUnused (0.00s)\n"}
+{"Time":"2026-09-23T10:14:10.517928761+02:00","Action":"pass","Package":"open-sds/fpga/internal/quartus","Test":"TestParseFitReportUnused","Elapsed":0}
+{"Time":"2026-09-23T10:14:10.517934461+02:00","Action":"run","Package":"open-sds/fpga/internal/quartus","Test":"TestParseFitReportBallMissingFromTable"}
+{"Time":"2026-09-23T10:14:10.517936985+02:00","Action":"output","Package":"open-sds/fpga/internal/quartus","Test":"TestParseFitReportBallMissingFromTable","Output":"=== RUN   TestParseFitReportBallMissingFromTable\n"}
+{"Time":"2026-09-23T10:14:10.518853047+02:00","Action":"output","Package":"open-sds/fpga/internal/quartus","Test":"TestParseFitReportBallMissingFromTable","Output":"--- PASS: TestParseFitReportBallMissingFromTable (0.00s)\n"}
+{"Time":"2026-09-23T10:14:10.518861709+02:00","Action":"pass","Package":"open-sds/fpga/internal/quartus","Test":"TestParseFitReportBallMissingFromTable","Elapsed":0}
+{"Time":"2026-09-23T10:14:10.518869274+02:00","Action":"run","Package":"open-sds/fpga/internal/quartus","Test":"TestParseFitReportNoPinTable"}
+{"Time":"2026-09-23T10:14:10.518873666+02:00","Action":"output","Package":"open-sds/fpga/internal/quartus","Test":"TestParseFitReportNoPinTable","Output":"=== RUN   TestParseFitReportNoPinTable\n"}
+{"Time":"2026-09-23T10:14:10.519595505+02:00","Action":"output","Package":"open-sds/fpga/internal/quartus","Test":"TestParseFitReportNoPinTable","Output":"--- PASS: TestParseFitReportNoPinTable (0.00s)\n"}
+{"Time":"2026-09-23T10:14:10.519604032+02:00","Action":"pass","Package":"open-sds/fpga/internal/quartus","Test":"TestParseFitReportNoPinTable","Elapsed":0}
+{"Time":"2026-09-23T10:14:10.519611547+02:00","Action":"run","Package":"open-sds/fpga/internal/quartus","Test":"TestParseSTAReport"}
+{"Time":"2026-09-23T10:14:10.519615246+02:00","Action":"output","Package":"open-sds/fpga/internal/quartus","Test":"TestParseSTAReport","Output":"=== RUN   TestParseSTAReport\n"}
+{"Time":"2026-09-23T10:14:10.519777761+02:00","Action":"output","Package":"open-sds/fpga/internal/quartus","Test":"TestParseSTAReport","Output":"--- PASS: TestParseSTAReport (0.00s)\n"}
+{"Time":"2026-09-23T10:14:10.519785892+02:00","Action":"pass","Package":"open-sds/fpga/internal/quartus","Test":"TestParseSTAReport","Elapsed":0}
+{"Time":"2026-09-23T10:14:10.51988082+02:00","Action":"run","Package":"open-sds/fpga/internal/quartus","Test":"TestRealDefaultSTAReport"}
+{"Time":"2026-09-23T10:14:10.519888041+02:00","Action":"output","Package":"open-sds/fpga/internal/quartus","Test":"TestRealDefaultSTAReport","Output":"=== RUN   TestRealDefaultSTAReport\n"}
+{"Time":"2026-09-23T10:14:10.533665542+02:00","Action":"output","Package":"open-sds/fpga/internal/quartus","Test":"TestRealDefaultSTAReport","Output":"--- PASS: TestRealDefaultSTAReport (0.01s)\n"}
+{"Time":"2026-09-23T10:14:10.533682433+02:00","Action":"pass","Package":"open-sds/fpga/internal/quartus","Test":"TestRealDefaultSTAReport","Elapsed":0.01}
+{"Time":"2026-09-23T10:14:10.533698513+02:00","Action":"run","Package":"open-sds/fpga/internal/quartus","Test":"TestRunHappyPath"}
+{"Time":"2026-09-23T10:14:10.533701229+02:00","Action":"output","Package":"open-sds/fpga/internal/quartus","Test":"TestRunHappyPath","Output":"=== RUN   TestRunHappyPath\n"}
+{"Time":"2026-09-23T10:14:10.562550931+02:00","Action":"output","Package":"open-sds/fpga/internal/quartus","Test":"TestRunHappyPath","Output":"--- PASS: TestRunHappyPath (0.03s)\n"}
+{"Time":"2026-09-23T10:14:10.562568006+02:00","Action":"pass","Package":"open-sds/fpga/internal/quartus","Test":"TestRunHappyPath","Elapsed":0.03}
+{"Time":"2026-09-23T10:14:10.562593127+02:00","Action":"run","Package":"open-sds/fpga/internal/quartus","Test":"TestRunReportsDefects"}
+{"Time":"2026-09-23T10:14:10.562596879+02:00","Action":"output","Package":"open-sds/fpga/internal/quartus","Test":"TestRunReportsDefects","Output":"=== RUN   TestRunReportsDefects\n"}
+{"Time":"2026-09-23T10:14:10.591486481+02:00","Action":"output","Package":"open-sds/fpga/internal/quartus","Test":"TestRunReportsDefects","Output":"--- PASS: TestRunReportsDefects (0.03s)\n"}
+{"Time":"2026-09-23T10:14:10.591501938+02:00","Action":"pass","Package":"open-sds/fpga/internal/quartus","Test":"TestRunReportsDefects","Elapsed":0.03}
+{"Time":"2026-09-23T10:14:10.591537273+02:00","Action":"run","Package":"open-sds/fpga/internal/quartus","Test":"TestRunNoSTATables"}
+{"Time":"2026-09-23T10:14:10.59154192+02:00","Action":"output","Package":"open-sds/fpga/internal/quartus","Test":"TestRunNoSTATables","Output":"=== RUN   TestRunNoSTATables\n"}
+{"Time":"2026-09-23T10:14:10.620079539+02:00","Action":"output","Package":"open-sds/fpga/internal/quartus","Test":"TestRunNoSTATables","Output":"--- PASS: TestRunNoSTATables (0.03s)\n"}
+{"Time":"2026-09-23T10:14:10.620095189+02:00","Action":"pass","Package":"open-sds/fpga/internal/quartus","Test":"TestRunNoSTATables","Elapsed":0.03}
+{"Time":"2026-09-23T10:14:10.620102293+02:00","Action":"run","Package":"open-sds/fpga/internal/quartus","Test":"TestRunWrongRBFSize"}
+{"Time":"2026-09-23T10:14:10.62010489+02:00","Action":"output","Package":"open-sds/fpga/internal/quartus","Test":"TestRunWrongRBFSize","Output":"=== RUN   TestRunWrongRBFSize\n"}
+{"Time":"2026-09-23T10:14:10.645064736+02:00","Action":"output","Package":"open-sds/fpga/internal/quartus","Test":"TestRunWrongRBFSize","Output":"--- PASS: TestRunWrongRBFSize (0.02s)\n"}
+{"Time":"2026-09-23T10:14:10.645081104+02:00","Action":"pass","Package":"open-sds/fpga/internal/quartus","Test":"TestRunWrongRBFSize","Elapsed":0.02}
+{"Time":"2026-09-23T10:14:10.645087724+02:00","Action":"run","Package":"open-sds/fpga/internal/quartus","Test":"TestRunToolFailure"}
+{"Time":"2026-09-23T10:14:10.645092268+02:00","Action":"output","Package":"open-sds/fpga/internal/quartus","Test":"TestRunToolFailure","Output":"=== RUN   TestRunToolFailure\n"}
+{"Time":"2026-09-23T10:14:10.654196739+02:00","Action":"output","Package":"open-sds/fpga/internal/quartus","Test":"TestRunToolFailure","Output":"--- PASS: TestRunToolFailure (0.01s)\n"}
+{"Time":"2026-09-23T10:14:10.654217844+02:00","Action":"pass","Package":"open-sds/fpga/internal/quartus","Test":"TestRunToolFailure","Elapsed":0.01}
+{"Time":"2026-09-23T10:14:10.65425545+02:00","Action":"run","Package":"open-sds/fpga/internal/quartus","Test":"TestRunMemoryGate"}
+{"Time":"2026-09-23T10:14:10.654262484+02:00","Action":"output","Package":"open-sds/fpga/internal/quartus","Test":"TestRunMemoryGate","Output":"=== RUN   TestRunMemoryGate\n"}
+{"Time":"2026-09-23T10:14:10.680453924+02:00","Action":"output","Package":"open-sds/fpga/internal/quartus","Test":"TestRunMemoryGate","Output":"--- PASS: TestRunMemoryGate (0.03s)\n"}
+{"Time":"2026-09-23T10:14:10.680477773+02:00","Action":"pass","Package":"open-sds/fpga/internal/quartus","Test":"TestRunMemoryGate","Elapsed":0.03}
+{"Time":"2026-09-23T10:14:10.680600577+02:00","Action":"run","Package":"open-sds/fpga/internal/quartus","Test":"TestRunLockHeld"}
+{"Time":"2026-09-23T10:14:10.680608433+02:00","Action":"output","Package":"open-sds/fpga/internal/quartus","Test":"TestRunLockHeld","Output":"=== RUN   TestRunLockHeld\n"}
+{"Time":"2026-09-23T10:14:11.714888618+02:00","Action":"output","Package":"open-sds/fpga/internal/quartus","Test":"TestRunLockHeld","Output":"--- PASS: TestRunLockHeld (1.03s)\n"}
+{"Time":"2026-09-23T10:14:11.714912282+02:00","Action":"pass","Package":"open-sds/fpga/internal/quartus","Test":"TestRunLockHeld","Elapsed":1.03}
+{"Time":"2026-09-23T10:14:11.714952607+02:00","Action":"run","Package":"open-sds/fpga/internal/quartus","Test":"TestRunStaleQSF"}
+{"Time":"2026-09-23T10:14:11.714959176+02:00","Action":"output","Package":"open-sds/fpga/internal/quartus","Test":"TestRunStaleQSF","Output":"=== RUN   TestRunStaleQSF\n"}
+{"Time":"2026-09-23T10:14:11.71813069+02:00","Action":"output","Package":"open-sds/fpga/internal/quartus","Test":"TestRunStaleQSF","Output":"--- PASS: TestRunStaleQSF (0.00s)\n"}
+{"Time":"2026-09-23T10:14:11.718142656+02:00","Action":"pass","Package":"open-sds/fpga/internal/quartus","Test":"TestRunStaleQSF","Elapsed":0}
+{"Time":"2026-09-23T10:14:11.7182421+02:00","Action":"run","Package":"open-sds/fpga/internal/quartus","Test":"TestRunMissingSDC"}
+{"Time":"2026-09-23T10:14:11.718249683+02:00","Action":"output","Package":"open-sds/fpga/internal/quartus","Test":"TestRunMissingSDC","Output":"=== RUN   TestRunMissingSDC\n"}
+{"Time":"2026-09-23T10:14:11.721322105+02:00","Action":"output","Package":"open-sds/fpga/internal/quartus","Test":"TestRunMissingSDC","Output":"--- PASS: TestRunMissingSDC (0.00s)\n"}
+{"Time":"2026-09-23T10:14:11.721354934+02:00","Action":"pass","Package":"open-sds/fpga/internal/quartus","Test":"TestRunMissingSDC","Elapsed":0}
+{"Time":"2026-09-23T10:14:11.721428385+02:00","Action":"run","Package":"open-sds/fpga/internal/quartus","Test":"TestRunBasenameCollision"}
+{"Time":"2026-09-23T10:14:11.721436339+02:00","Action":"output","Package":"open-sds/fpga/internal/quartus","Test":"TestRunBasenameCollision","Output":"=== RUN   TestRunBasenameCollision\n"}
+{"Time":"2026-09-23T10:14:11.724079356+02:00","Action":"output","Package":"open-sds/fpga/internal/quartus","Test":"TestRunBasenameCollision","Output":"--- PASS: TestRunBasenameCollision (0.00s)\n"}
+{"Time":"2026-09-23T10:14:11.724101216+02:00","Action":"pass","Package":"open-sds/fpga/internal/quartus","Test":"TestRunBasenameCollision","Elapsed":0}
+{"Time":"2026-09-23T10:14:11.724185888+02:00","Action":"run","Package":"open-sds/fpga/internal/quartus","Test":"TestRunMissingQSF"}
+{"Time":"2026-09-23T10:14:11.724196345+02:00","Action":"output","Package":"open-sds/fpga/internal/quartus","Test":"TestRunMissingQSF","Output":"=== RUN   TestRunMissingQSF\n"}
+{"Time":"2026-09-23T10:14:11.725497296+02:00","Action":"output","Package":"open-sds/fpga/internal/quartus","Test":"TestRunMissingQSF","Output":"--- PASS: TestRunMissingQSF (0.00s)\n"}
+{"Time":"2026-09-23T10:14:11.725525959+02:00","Action":"pass","Package":"open-sds/fpga/internal/quartus","Test":"TestRunMissingQSF","Elapsed":0}
+{"Time":"2026-09-23T10:14:11.725575053+02:00","Action":"run","Package":"open-sds/fpga/internal/quartus","Test":"TestConfigRequired"}
+{"Time":"2026-09-23T10:14:11.725581228+02:00","Action":"output","Package":"open-sds/fpga/internal/quartus","Test":"TestConfigRequired","Output":"=== RUN   TestConfigRequired\n"}
+{"Time":"2026-09-23T10:14:11.725752535+02:00","Action":"output","Package":"open-sds/fpga/internal/quartus","Test":"TestConfigRequired","Output":"--- PASS: TestConfigRequired (0.00s)\n"}
+{"Time":"2026-09-23T10:14:11.725761443+02:00","Action":"pass","Package":"open-sds/fpga/internal/quartus","Test":"TestConfigRequired","Elapsed":0}
+{"Time":"2026-09-23T10:14:11.725838321+02:00","Action":"run","Package":"open-sds/fpga/internal/quartus","Test":"TestRealReports"}
+{"Time":"2026-09-23T10:14:11.725845811+02:00","Action":"output","Package":"open-sds/fpga/internal/quartus","Test":"TestRealReports","Output":"=== RUN   TestRealReports\n"}
+{"Time":"2026-09-23T10:14:11.78952175+02:00","Action":"output","Package":"open-sds/fpga/internal/quartus","Test":"TestRealReports","Output":"--- PASS: TestRealReports (0.06s)\n"}
+{"Time":"2026-09-23T10:14:11.789537087+02:00","Action":"pass","Package":"open-sds/fpga/internal/quartus","Test":"TestRealReports","Elapsed":0.06}
+{"Time":"2026-09-23T10:14:11.789653315+02:00","Action":"output","Package":"open-sds/fpga/internal/quartus","Output":"PASS\n"}
+{"Time":"2026-09-23T10:14:12.792087571+02:00","Action":"output","Package":"open-sds/fpga/internal/quartus","Output":"ok  \topen-sds/fpga/internal/quartus\t2.290s\n"}
+{"Time":"2026-09-23T10:14:12.792105395+02:00","Action":"pass","Package":"open-sds/fpga/internal/quartus","Elapsed":2.29}

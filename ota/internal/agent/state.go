@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-OTA-AGENT
 package agent
 
 import (
@@ -11,17 +12,20 @@ import (
 // BEFORE the factory kill: if the agent dies mid-takeover, its respawned
 // successor must immediately re-acquire the watchdog (an unserviced watchdog
 // warm-resets the SoC and drops the USB/OTA path — spec 01 §4.1).
+// TRLC-LINKS: REQ-SDS-104
 type State struct {
 	TakenOver    bool `json:"taken_over"`
 	AutoTakeover bool `json:"auto_takeover"`
 }
 
+// TRLC-LINKS: REQ-SDS-104
 type stateFile struct {
 	mu   sync.Mutex
 	path string
 	s    State
 }
 
+// TRLC-LINKS: REQ-SDS-104
 func loadState(path string) *stateFile {
 	sf := &stateFile{path: path}
 	if b, err := os.ReadFile(path); err == nil {
@@ -30,12 +34,14 @@ func loadState(path string) *stateFile {
 	return sf
 }
 
+// TRLC-LINKS: REQ-SDS-104
 func (sf *stateFile) get() State {
 	sf.mu.Lock()
 	defer sf.mu.Unlock()
 	return sf.s
 }
 
+// TRLC-LINKS: REQ-SDS-104
 func (sf *stateFile) update(fn func(*State)) error {
 	sf.mu.Lock()
 	defer sf.mu.Unlock()

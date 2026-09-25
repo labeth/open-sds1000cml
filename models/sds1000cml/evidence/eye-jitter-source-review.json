@@ -1,0 +1,109 @@
+{
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "status": "source-and-native-numerical-integration-complete",
+  "requirementIDs": [
+    "REQ-SDS-067",
+    "REQ-SDS-181",
+    "REQ-SDS-199",
+    "REQ-SDS-200",
+    "REQ-SDS-201"
+  ],
+  "files": [
+    {
+      "path": "app/internal/web/app_eye.js",
+      "baselineSHA256": "7b89ccacc0bdf6fd0305b2e4002b9d8e650ac639a2bba219f67a7ef20ff6f090",
+      "currentSHA256": "de5028e22f3b5f96cf39ca74a2ccf4b626d93fa508d918d521b1a304029e7142",
+      "baselineLines": 429,
+      "commentOverlay": "evidence/javascript-annotation-overlay.json"
+    },
+    {
+      "path": "app/internal/web/eyejitter.js",
+      "baselineSHA256": "8c6a41fec7ffb9c2dc2d4b87f03c8030aea39ec073855eb4f20284bcdbee09c8",
+      "currentSHA256": "cc70eb3a38f134ab897c7aee1331e19e379fd9a3f7381ad75909693c33e91052",
+      "baselineLines": 279,
+      "commentOverlay": "evidence/javascript-annotation-overlay.json"
+    },
+    {
+      "path": "app/internal/web/eyejitter_analysis.js",
+      "baselineSHA256": "b87f7a1bf044ba509cd72710fe6f945510336c66602de79f4804398c4406b570",
+      "currentSHA256": "a1da317b458f68cacc848f05c61771a013b49ccca23f0230374ea44b0b99efb7",
+      "baselineLines": 258,
+      "commentOverlay": "evidence/javascript-annotation-overlay.json"
+    },
+    {
+      "path": "app/internal/web/eyejitter.test.cjs",
+      "baselineSHA256": "395cc277830857d04c354d0557976bffd1c28f41b8e7e3a0d053ca88c822ca23",
+      "currentSHA256": "022b99fa32e8fd4574068dea96128175978ad951b63bc0fd23982596b2008eda",
+      "baselineLines": 273,
+      "commentOverlay": "evidence/javascript-annotation-overlay.json"
+    },
+    {
+      "path": "app/internal/web/eyejitter_breaker.cjs",
+      "baselineSHA256": "3e6997d5dfaaeb1fbdb5dfb38d3d0bb62a8dcfc127dde5147f2242b573073fa9",
+      "currentSHA256": "de5f0775b51cee645e56a759f07eb2cfd6b9251540256ec790a8f518716852e7",
+      "baselineLines": 358,
+      "commentOverlay": "evidence/javascript-annotation-overlay.json"
+    },
+    {
+      "path": "app/internal/web/eyejitter_node_test.go",
+      "baselineSHA256": "85b9cccc1be9e44b9c7ea740998f71764a6ec1a1f6bca650b62435b849d55b53",
+      "currentSHA256": "5e9af7c6828c5ff5f711876f9b9159b34731e73f9288d86438c88c8e70a1868c",
+      "baselineLines": 28
+    }
+  ],
+  "testEvidence": "evidence/eye-jitter-review-test-run.json",
+  "findings": [
+    {
+      "topic": "Vertical density coordinate mismatch",
+      "source": "app/internal/web/eyejitter.js",
+      "detail": "First lock sets eyeY0/eyeY1 with 40 percent swing headroom, but density deposits use lo-8 through hi+8. ejEyeMetrics converts bin indices using eyeY0/eyeY1. Height is therefore not expressed in the deposition code scale. Original clean test requires only height >90; breaker reports height without asserting it.",
+      "status": "source-discrepancy-not-corrected"
+    },
+    {
+      "topic": "Different jitter retention policies",
+      "source": "app/internal/web/eyejitter.js",
+      "detail": "TIE maintains exact lifetime aggregates and a periodically thinned buffer. Period and cycle-to-cycle arrays use ejPushCapped and retain the first tieCap samples, so those statistics stop adapting after saturation.",
+      "status": "documented-limitation"
+    },
+    {
+      "topic": "Spectrum frequency axis",
+      "source": "app/internal/web/eyejitter.js",
+      "detail": "Magnitude spectra are accumulated per record while specDf is replaced using the latest fitted UI/sample period. Spectra are not rebinned onto a shared physical frequency axis.",
+      "status": "documented-limitation"
+    },
+    {
+      "topic": "Sample-domain UI consistency",
+      "source": "app/internal/web/eyejitter.js",
+      "detail": "The two percent UI guard compares sample counts. sampleS is replaced on each accepted record; sample-period changes alone are not rejected by the numerical engine.",
+      "status": "documented-limitation"
+    },
+    {
+      "topic": "Calibration units in enlarged view",
+      "source": "app/internal/web/app_eye.js",
+      "detail": "Main metrics table conditions mV on real calibration; enlarged eye information formats mV using ej.vpc, including its fallback when calibration is absent.",
+      "status": "source-discrepancy-not-corrected"
+    },
+    {
+      "topic": "Enlarged view size and render throttling",
+      "source": "app/internal/web/app_eye.js",
+      "detail": "Canvas height is updated only when width changes. ejFreshState resets ej.lastUi, while render throttling uses ejLastUi. Browser layout behavior has not been tested.",
+      "status": "documented-limitation"
+    },
+    {
+      "topic": "Heuristic analysis",
+      "source": "app/internal/web/eyejitter_analysis.js",
+      "detail": "RJ/DJ uses a median-split/MAD heuristic with occupancy gates; density eye metrics use finite-count thresholds. No BER extrapolation or physical calibration claim follows.",
+      "status": "documented-limitation"
+    },
+    {
+      "topic": "Breaker oracle scope",
+      "source": "app/internal/web/eyejitter_breaker.cjs",
+      "detail": "Tone checks require an existing spectral peak and resolvable frequency above the reported CDR corner. ISI and selected lock-only cases omit truth checks; per-family 4000ms cutoff depends on host performance.",
+      "status": "documented-limitation"
+    }
+  ],
+  "remainingWork": [
+    "Rendering, acquisition optimization and physical metrology remain unverified; retain the eight recorded findings.",
+    "Guard results remain isolated evidence; no native instrument test-source link is claimed for the external helper."
+  ]
+}

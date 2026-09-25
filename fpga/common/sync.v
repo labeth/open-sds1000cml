@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-RTL-COMMON-SYNC
 // sync.v -- clock-domain crossing primitives shared by every acq2 design.
 //
 //   sync_bit   #(W)   plain 2-flop synchronizer for level signals (one per bit; the bits of a
@@ -15,6 +16,7 @@
 
 `timescale 1ns/1ps
 
+// TRLC-LINKS: REQ-SDS-192
 module sync_bit #(
     parameter integer W = 1
 )(
@@ -30,6 +32,7 @@ module sync_bit #(
     end
 endmodule
 
+// TRLC-LINKS: REQ-SDS-192
 module sync_pulse (
     input  wire clk_src,
     input  wire pulse_src,
@@ -43,6 +46,7 @@ module sync_pulse (
     assign pulse_dst = s[2] ^ s[1];
 endmodule
 
+// TRLC-LINKS: REQ-SDS-192
 module sync_word #(
     parameter integer W = 16
 )(
@@ -79,6 +83,7 @@ module sync_word #(
     end
 endmodule
 
+// TRLC-LINKS: REQ-SDS-192
 module stretch3 (
     input  wire clk,
     input  wire d,

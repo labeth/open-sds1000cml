@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-WEB
 package web
 
 import (
@@ -19,6 +20,7 @@ import (
 // lingering after a mode switch — and asserts they stay fixed. It is fully
 // device-independent. Skips when node or a Playwright browser is not
 // available — a hard failure under CI_REQUIRE_BROWSER=1 (internal/testenv).
+// TRLC-LINKS: REQ-SDS-180
 func TestFFTBrowser(t *testing.T) {
 	testenv.NeedNode(t)
 
@@ -76,6 +78,7 @@ func TestFFTBrowser(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-180
 func firstLine(b []byte) string {
 	if i := strings.IndexByte(string(b), '\n'); i >= 0 {
 		return string(b[:i])

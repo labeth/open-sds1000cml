@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-OTA-AGENT
 package agent
 
 import (
@@ -22,6 +23,7 @@ import (
 //     boot fds (spec 01 §2.3),
 //  3. classify the outcome; stable+healthy confirms the slot, repeated
 //     failure rolls back active→confirmed, then to the emergency binary.
+// TRLC-LINKS: REQ-SDS-028
 func (a *Agent) superviseLoop() {
 	for {
 		select {
@@ -70,6 +72,7 @@ func (a *Agent) superviseLoop() {
 
 // idleWait sleeps but still services control requests so app.start / restart
 // respond while idle/paused.
+// TRLC-LINKS: REQ-SDS-117
 func (a *Agent) idleWait(d time.Duration) {
 	select {
 	case <-a.stopped:
@@ -99,6 +102,7 @@ func (a *Agent) idleWait(d time.Duration) {
 
 // pickSlot chooses what to run: the emergency binary if the ladder forced it,
 // else the active slot, else the confirmed slot, else emergency.
+// TRLC-LINKS: REQ-SDS-028
 func (a *Agent) pickSlot() (slot string, emergency bool) {
 	a.appMu.Lock()
 	forced := a.useEmergency
@@ -121,6 +125,7 @@ func (a *Agent) pickSlot() (slot string, emergency bool) {
 }
 
 // orphanAppPid returns a live app pid from a previous agent generation.
+// TRLC-LINKS: REQ-SDS-028
 func (a *Agent) orphanAppPid() int {
 	b, err := os.ReadFile(a.pidPath(appPidFile))
 	if err != nil {
@@ -136,6 +141,7 @@ func (a *Agent) orphanAppPid() int {
 // superviseAdopted monitors an app we cannot wait() on (it reparented to init
 // when the previous agent exited). Health verdicts still apply; any failure
 // or control request tears it down so the normal child path takes over.
+// TRLC-LINKS: REQ-SDS-028
 func (a *Agent) superviseAdopted(pid int) {
 	a.log.Printf("adopted running app pid=%d from previous agent generation", pid)
 	h := &healthWatcher{path: a.cfg.HealthPath(), started: time.Now().Add(-time.Hour)}
@@ -189,6 +195,7 @@ func (a *Agent) superviseAdopted(pid int) {
 
 // runAppOnce launches one app generation and blocks until it ends, then
 // classifies the outcome (confirm / fail / rollback).
+// TRLC-LINKS: REQ-SDS-028
 func (a *Agent) runAppOnce(slot string, emergency bool) {
 	bin := a.store.BinPath(slot)
 	h := newHealthWatcher(a.cfg.HealthPath())
@@ -288,6 +295,7 @@ loop:
 
 // terminate asks the app to land the engine (SIGTERM), then SIGKILLs the
 // process group after a grace period.
+// TRLC-LINKS: REQ-SDS-028
 func (a *Agent) terminate(cmd *exec.Cmd, exit chan error) {
 	pid := cmd.Process.Pid
 	_ = syscall.Kill(-pid, syscall.SIGTERM) // whole group
@@ -303,6 +311,7 @@ func (a *Agent) terminate(cmd *exec.Cmd, exit chan error) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-028
 func (a *Agent) killPid(pid int) {
 	_ = syscall.Kill(pid, syscall.SIGTERM)
 	deadline := time.Now().Add(3 * time.Second)
@@ -315,6 +324,7 @@ func (a *Agent) killPid(pid int) {
 	_ = syscall.Kill(pid, syscall.SIGKILL)
 }
 
+// TRLC-LINKS: REQ-SDS-028
 func (a *Agent) bumpFail(why string) {
 	a.appMu.Lock()
 	a.app.Fails++
@@ -329,6 +339,7 @@ func (a *Agent) bumpFail(why string) {
 // failure, the emergency binary is next (pickSlot); past that the loop keeps
 // retrying with backoff — the agent itself stays up so the OTA path can push
 // a fix.
+// TRLC-LINKS: REQ-SDS-028
 func (a *Agent) rollbackIfNeeded(slot string, emergency bool) {
 	a.appMu.Lock()
 	fails := a.app.Fails
@@ -362,6 +373,7 @@ func (a *Agent) rollbackIfNeeded(slot string, emergency bool) {
 }
 
 // clearEmergency re-enables normal slot selection (after an OTA push).
+// TRLC-LINKS: REQ-SDS-028
 func (a *Agent) clearEmergency() {
 	a.appMu.Lock()
 	a.useEmergency = false
@@ -369,6 +381,7 @@ func (a *Agent) clearEmergency() {
 	a.appMu.Unlock()
 }
 
+// TRLC-LINKS: REQ-SDS-028
 func (a *Agent) setAppState(fn func(*appState)) {
 	a.appMu.Lock()
 	fn(&a.app)
@@ -376,6 +389,7 @@ func (a *Agent) setAppState(fn func(*appState)) {
 }
 
 // ctlRequest sends a control op to the supervisor and waits.
+// TRLC-LINKS: REQ-SDS-117
 func (a *Agent) ctlRequest(op string, timeout time.Duration) error {
 	m := ctlMsg{op: op, reply: make(chan error, 1)}
 	select {

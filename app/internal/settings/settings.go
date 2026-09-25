@@ -12,6 +12,7 @@
 // defaults on ANY error — a corrupt or hostile file must never prevent boot.
 // Restores go through the SAME setter paths the panel/web/SCPI use, so every
 // clamp and side-effect applies.
+// ENGMODEL-OWNER-UNIT: FU-APP-SETTINGS
 package settings
 
 import (
@@ -32,6 +33,7 @@ const Version = 1
 const maxFileSize = 64 << 10
 
 // Channel is one vertical channel's persisted setup.
+// TRLC-LINKS: REQ-SDS-072, REQ-SDS-089
 type Channel struct {
 	VdivV     float64 `json:"vdiv_v"`     // volts/div (must be a ladder detent to restore)
 	OffsetV   float64 `json:"offset_v"`   // input-referred offset volts
@@ -41,6 +43,7 @@ type Channel struct {
 }
 
 // Trigger is the persisted trigger setup.
+// TRLC-LINKS: REQ-SDS-072, REQ-SDS-089
 type Trigger struct {
 	LevelCode int     `json:"level_code"` // trigger-level DAC code; 0 = boot comparator untouched
 	Rising    bool    `json:"rising"`     // edge slope
@@ -51,6 +54,7 @@ type Trigger struct {
 }
 
 // Acq is the persisted acquisition mode.
+// TRLC-LINKS: REQ-SDS-072, REQ-SDS-089
 type Acq struct {
 	Mode     int `json:"mode"` // 0=normal 1=average 2=eres 3=peak
 	AvgCount int `json:"avg_count"`
@@ -59,6 +63,7 @@ type Acq struct {
 
 // Decode is the device protocol-decode setup (controller-owned; historically
 // reset to Off on every app restart).
+// TRLC-LINKS: REQ-SDS-072, REQ-SDS-089
 type Decode struct {
 	Proto  int  `json:"proto"` // 0=off 1=auto 2=uart 3=i2c 4=spi
 	Baud   int  `json:"baud"`
@@ -71,6 +76,7 @@ type Decode struct {
 
 // Settings is the whole persisted setup. Every field is comparable, so the
 // saver detects change with plain ==.
+// TRLC-LINKS: REQ-SDS-072, REQ-SDS-089
 type Settings struct {
 	Version  int        `json:"version"`
 	TdivS    float64    `json:"tdiv_s"`
@@ -93,6 +99,7 @@ type Settings struct {
 //     device.
 //   - next to the executable (an app slot on the U-disk when agent-launched;
 //     the build dir on a dev box).
+// TRLC-LINKS: REQ-SDS-089
 func DefaultPath() string {
 	if p := os.Getenv("SCOPE_SETTINGS"); p != "" {
 		return p
@@ -114,6 +121,7 @@ func DefaultPath() string {
 // input; any structural problem is an error (the caller falls back to
 // defaults). Value-range problems are NOT errors — Apply routes every value
 // through the owning setter, which clamps.
+// TRLC-LINKS: REQ-SDS-072, REQ-SDS-089
 func Parse(raw []byte) (Settings, error) {
 	if len(raw) > maxFileSize {
 		return Settings{}, fmt.Errorf("settings: file too large (%d bytes)", len(raw))
@@ -132,6 +140,7 @@ func Parse(raw []byte) (Settings, error) {
 // Load reads the settings file. ok=false means "no restore" (missing file,
 // unreadable, corrupt, wrong version): the scope boots with defaults exactly
 // as before this feature existed. Never fatal, never a panic.
+// TRLC-LINKS: REQ-SDS-089
 func Load(path string, logf func(string, ...any)) (Settings, bool) {
 	if logf == nil {
 		logf = func(string, ...any) {}
@@ -155,6 +164,7 @@ func Load(path string, logf func(string, ...any)) (Settings, bool) {
 // fsync, rename. A power cut mid-save leaves either the old file or the new
 // one, never a torn read (as atomic as the stick's FAT allows — the same
 // discipline the health token and the agent's state.json use).
+// TRLC-LINKS: REQ-SDS-089
 func Save(path string, s Settings) error {
 	s.Version = Version
 	b, err := json.MarshalIndent(s, "", "  ")

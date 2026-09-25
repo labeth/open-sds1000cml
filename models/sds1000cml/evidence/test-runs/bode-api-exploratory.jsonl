@@ -1,0 +1,8 @@
+{"Time":"2026-09-23T05:57:56.999577439+02:00","Action":"start","Package":"open-sds/app/internal/web"}
+{"Time":"2026-09-23T05:57:57.002523569+02:00","Action":"run","Package":"open-sds/app/internal/web","Test":"TestBodeEndpoint"}
+{"Time":"2026-09-23T05:57:57.002545957+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestBodeEndpoint","Output":"=== RUN   TestBodeEndpoint\n"}
+{"Time":"2026-09-23T05:57:57.002923378+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestBodeEndpoint","Output":"--- PASS: TestBodeEndpoint (0.00s)\n"}
+{"Time":"2026-09-23T05:57:57.002932696+02:00","Action":"pass","Package":"open-sds/app/internal/web","Test":"TestBodeEndpoint","Elapsed":0}
+{"Time":"2026-09-23T05:57:57.002937565+02:00","Action":"output","Package":"open-sds/app/internal/web","Output":"PASS\n"}
+{"Time":"2026-09-23T05:57:57.003114063+02:00","Action":"output","Package":"open-sds/app/internal/web","Output":"ok  \topen-sds/app/internal/web\t0.003s\n"}
+{"Time":"2026-09-23T05:57:57.003130146+02:00","Action":"pass","Package":"open-sds/app/internal/web","Elapsed":0.004}

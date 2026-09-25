@@ -1,0 +1,112 @@
+{
+  "result": "trace-integration-pass",
+  "files": 22,
+  "functions": 169,
+  "types": 17,
+  "originalTests": 34,
+  "passingTests": 34,
+  "passingSubtests": 6,
+  "nativeSummaries": 14,
+  "requirements": [
+    "REQ-SDS-161",
+    "REQ-SDS-162",
+    "REQ-SDS-163",
+    "REQ-SDS-164",
+    "REQ-SDS-165",
+    "REQ-SDS-166"
+  ],
+  "packageAudit": {
+    "scope": "Reviewed 22-file batch; remaining browser harness files are outside this batch.",
+    "functions": 169,
+    "types": 17,
+    "unlinkedFunctions": 0,
+    "unlinkedTypes": 0
+  },
+  "scope": "Eight web production Go files and14original host API/frame test files. Synthetic owner/front-end/fabric/record sources only; no device operations, physical qualification or full browser-production review.",
+  "publicationAttachments": [
+    {
+      "source": "app/internal/web/apifuzz_test.go",
+      "resultArtifact": "test-results/go/app/internal/web/apifuzz_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_APIFUZZ_TEST_2ECE82"
+    },
+    {
+      "source": "app/internal/web/bin_test.go",
+      "resultArtifact": "test-results/go/app/internal/web/bin_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_BIN_TEST_3991BF"
+    },
+    {
+      "source": "app/internal/web/diag_v3_test.go",
+      "resultArtifact": "test-results/go/app/internal/web/diag_v3_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_DIAG_V3_TEST_F2F3FC"
+    },
+    {
+      "source": "app/internal/web/framefuzz_test.go",
+      "resultArtifact": "test-results/go/app/internal/web/framefuzz_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_FRAMEFUZZ_TEST_E5DEC6"
+    },
+    {
+      "source": "app/internal/web/measure_test.go",
+      "resultArtifact": "test-results/go/app/internal/web/measure_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_MEASURE_TEST_87143B"
+    },
+    {
+      "source": "app/internal/web/precision_frame_test.go",
+      "resultArtifact": "test-results/go/app/internal/web/precision_frame_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_PRECISION_FRAME_TEST_EEB20A"
+    },
+    {
+      "source": "app/internal/web/sram_test.go",
+      "resultArtifact": "test-results/go/app/internal/web/sram_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_SRAM_TEST_E4927C"
+    },
+    {
+      "source": "app/internal/web/web_control_test.go",
+      "resultArtifact": "test-results/go/app/internal/web/web_control_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_WEB_CONTROL_TEST_4930B6"
+    },
+    {
+      "source": "app/internal/web/web_diag_test.go",
+      "resultArtifact": "test-results/go/app/internal/web/web_diag_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_WEB_DIAG_TEST_1A8B8E"
+    },
+    {
+      "source": "app/internal/web/web_frame_test.go",
+      "resultArtifact": "test-results/go/app/internal/web/web_frame_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_WEB_FRAME_TEST_B67F5E"
+    },
+    {
+      "source": "app/internal/web/web_invs_test.go",
+      "resultArtifact": "test-results/go/app/internal/web/web_invs_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_WEB_INVS_TEST_7F2D57"
+    },
+    {
+      "source": "app/internal/web/web_serialtrig_test.go",
+      "resultArtifact": "test-results/go/app/internal/web/web_serialtrig_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_WEB_SERIALTRIG_TEST_69772E"
+    },
+    {
+      "source": "app/internal/web/web_test.go",
+      "resultArtifact": "test-results/go/app/internal/web/web_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_WEB_TEST_770C8C"
+    },
+    {
+      "source": "app/internal/web/zonemask_api_test.go",
+      "resultArtifact": "test-results/go/app/internal/web/zonemask_api_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_ZONEMASK_API_TEST_9507D8"
+    }
+  ]
+}

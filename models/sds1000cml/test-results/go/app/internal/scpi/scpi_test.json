@@ -1,0 +1,116 @@
+{
+  "source": "app/internal/scpi/scpi_test.go",
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "scope": "Reviewed Go test outcomes; passing assertions contribute partial requirement evidence.",
+  "sourceSHA256": "39c95649788f26a6954e3fae4f8e25c721c44799a4fc5164f330ef7d35a81734",
+  "logs": {
+    "test-runs/scpi.jsonl": "be724f6504b27c0a93506cfb8fbcf8a1ceb8a7188da46210eb706611640e22ab"
+  },
+  "tests": [
+    {
+      "name": "TestIDN",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-024"
+      ]
+    },
+    {
+      "name": "TestReplyFormats",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-024"
+      ]
+    },
+    {
+      "name": "TestErrorTokens",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-024"
+      ]
+    },
+    {
+      "name": "TestSettersSilent",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-024"
+      ]
+    },
+    {
+      "name": "TestCompoundLine",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-024"
+      ]
+    },
+    {
+      "name": "TestWFSUAndDAT2",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-024"
+      ]
+    },
+    {
+      "name": "TestWavedesc",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-024"
+      ]
+    },
+    {
+      "name": "TestSetNeverLies",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-024"
+      ]
+    },
+    {
+      "name": "TestChannelShadowIndependence",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-024"
+      ]
+    },
+    {
+      "name": "TestRSTResetsChannelShadows",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-024"
+      ]
+    },
+    {
+      "name": "TestRSTResetsTraCplAttn",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-024"
+      ]
+    },
+    {
+      "name": "TestDisplayStubsWithoutPanel",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-024"
+      ]
+    },
+    {
+      "name": "TestInvertedSnapshot",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-024"
+      ]
+    },
+    {
+      "name": "TestRollRescale",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-024"
+      ]
+    }
+  ],
+  "results": [
+    {
+      "requirement": "REQ-SDS-024",
+      "status": "partial",
+      "notes": "14 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    }
+  ]
+}

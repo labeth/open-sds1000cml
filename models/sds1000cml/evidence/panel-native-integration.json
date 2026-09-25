@@ -1,0 +1,25 @@
+{
+  "result": "pass",
+  "files": 25,
+  "functions": 196,
+  "types": 15,
+  "originalTests": 31,
+  "subtests": 3,
+  "nativeSummaries": 11,
+  "requirements": [
+    "REQ-SDS-135",
+    "REQ-SDS-136",
+    "REQ-SDS-137",
+    "REQ-SDS-138",
+    "REQ-SDS-139",
+    "REQ-SDS-140"
+  ],
+  "packageAudit": {
+    "functions": 196,
+    "types": 15,
+    "unlinkedFunctions": 0,
+    "unlinkedTypes": 0
+  },
+  "scope": "Reviewed panel controls and original host tests only. Background acquisition, timing, lifecycle and physical-device qualification remain bounded by panel-source-review.json.",
+  "publicationAttachment": "All128 native Go summaries attach to their intended source; duplicate chaos basenames resolve to distinct verification IDs."
+}

@@ -1,0 +1,171 @@
+{"Time":"2026-09-23T17:05:26.210333437+02:00","Action":"start","Package":"open-sds/codegen/cmd/ifacegen"}
+{"Time":"2026-09-23T17:05:26.210506455+02:00","Action":"start","Package":"open-sds/codegen/emit"}
+{"Time":"2026-09-23T17:05:26.210584321+02:00","Action":"start","Package":"open-sds/codegen/emit/wordfmt"}
+{"Time":"2026-09-23T17:05:26.227662995+02:00","Action":"run","Package":"open-sds/codegen/emit","Test":"TestRegsGolden"}
+{"Time":"2026-09-23T17:05:26.227686065+02:00","Action":"output","Package":"open-sds/codegen/emit","Test":"TestRegsGolden","Output":"=== RUN   TestRegsGolden\n"}
+{"Time":"2026-09-23T17:05:26.227733597+02:00","Action":"run","Package":"open-sds/codegen/emit/wordfmt","Test":"TestTier"}
+{"Time":"2026-09-23T17:05:26.227738899+02:00","Action":"output","Package":"open-sds/codegen/emit/wordfmt","Test":"TestTier","Output":"=== RUN   TestTier\n"}
+{"Time":"2026-09-23T17:05:26.227754603+02:00","Action":"output","Package":"open-sds/codegen/emit/wordfmt","Test":"TestTier","Output":"--- PASS: TestTier (0.00s)\n"}
+{"Time":"2026-09-23T17:05:26.227758739+02:00","Action":"pass","Package":"open-sds/codegen/emit/wordfmt","Test":"TestTier","Elapsed":0}
+{"Time":"2026-09-23T17:05:26.227763436+02:00","Action":"run","Package":"open-sds/codegen/emit/wordfmt","Test":"TestWordSplit"}
+{"Time":"2026-09-23T17:05:26.22776664+02:00","Action":"output","Package":"open-sds/codegen/emit/wordfmt","Test":"TestWordSplit","Output":"=== RUN   TestWordSplit\n"}
+{"Time":"2026-09-23T17:05:26.227770754+02:00","Action":"output","Package":"open-sds/codegen/emit/wordfmt","Test":"TestWordSplit","Output":"--- PASS: TestWordSplit (0.00s)\n"}
+{"Time":"2026-09-23T17:05:26.227774059+02:00","Action":"pass","Package":"open-sds/codegen/emit/wordfmt","Test":"TestWordSplit","Elapsed":0}
+{"Time":"2026-09-23T17:05:26.227777449+02:00","Action":"run","Package":"open-sds/codegen/emit/wordfmt","Test":"TestModelRecord"}
+{"Time":"2026-09-23T17:05:26.227780616+02:00","Action":"output","Package":"open-sds/codegen/emit/wordfmt","Test":"TestModelRecord","Output":"=== RUN   TestModelRecord\n"}
+{"Time":"2026-09-23T17:05:26.227784394+02:00","Action":"output","Package":"open-sds/codegen/emit/wordfmt","Test":"TestModelRecord","Output":"--- PASS: TestModelRecord (0.00s)\n"}
+{"Time":"2026-09-23T17:05:26.227789506+02:00","Action":"pass","Package":"open-sds/codegen/emit/wordfmt","Test":"TestModelRecord","Elapsed":0}
+{"Time":"2026-09-23T17:05:26.227793332+02:00","Action":"run","Package":"open-sds/codegen/emit/wordfmt","Test":"TestTsrc"}
+{"Time":"2026-09-23T17:05:26.227797507+02:00","Action":"output","Package":"open-sds/codegen/emit/wordfmt","Test":"TestTsrc","Output":"=== RUN   TestTsrc\n"}
+{"Time":"2026-09-23T17:05:26.230807024+02:00","Action":"run","Package":"open-sds/codegen/cmd/ifacegen","Test":"TestNoDrift"}
+{"Time":"2026-09-23T17:05:26.230827703+02:00","Action":"output","Package":"open-sds/codegen/cmd/ifacegen","Test":"TestNoDrift","Output":"=== RUN   TestNoDrift\n"}
+{"Time":"2026-09-23T17:05:26.243401314+02:00","Action":"output","Package":"open-sds/codegen/emit","Test":"TestRegsGolden","Output":"--- PASS: TestRegsGolden (0.02s)\n"}
+{"Time":"2026-09-23T17:05:26.243537029+02:00","Action":"pass","Package":"open-sds/codegen/emit","Test":"TestRegsGolden","Elapsed":0.02}
+{"Time":"2026-09-23T17:05:26.243628029+02:00","Action":"run","Package":"open-sds/codegen/emit","Test":"TestRegmuxGolden"}
+{"Time":"2026-09-23T17:05:26.243647519+02:00","Action":"output","Package":"open-sds/codegen/emit","Test":"TestRegmuxGolden","Output":"=== RUN   TestRegmuxGolden\n"}
+{"Time":"2026-09-23T17:05:26.250094126+02:00","Action":"output","Package":"open-sds/codegen/emit","Test":"TestRegmuxGolden","Output":"--- PASS: TestRegmuxGolden (0.01s)\n"}
+{"Time":"2026-09-23T17:05:26.250281096+02:00","Action":"pass","Package":"open-sds/codegen/emit","Test":"TestRegmuxGolden","Elapsed":0.01}
+{"Time":"2026-09-23T17:05:26.250560788+02:00","Action":"run","Package":"open-sds/codegen/emit","Test":"TestGoBindingsGolden"}
+{"Time":"2026-09-23T17:05:26.250624879+02:00","Action":"output","Package":"open-sds/codegen/emit","Test":"TestGoBindingsGolden","Output":"=== RUN   TestGoBindingsGolden\n"}
+{"Time":"2026-09-23T17:05:26.373003296+02:00","Action":"output","Package":"open-sds/codegen/emit/wordfmt","Test":"TestTsrc","Output":"--- PASS: TestTsrc (0.14s)\n"}
+{"Time":"2026-09-23T17:05:26.373237453+02:00","Action":"pass","Package":"open-sds/codegen/emit/wordfmt","Test":"TestTsrc","Elapsed":0.14}
+{"Time":"2026-09-23T17:05:26.373278922+02:00","Action":"run","Package":"open-sds/codegen/emit/wordfmt","Test":"TestModelDecim"}
+{"Time":"2026-09-23T17:05:26.373346964+02:00","Action":"output","Package":"open-sds/codegen/emit/wordfmt","Test":"TestModelDecim","Output":"=== RUN   TestModelDecim\n"}
+{"Time":"2026-09-23T17:05:26.373372824+02:00","Action":"output","Package":"open-sds/codegen/emit/wordfmt","Test":"TestModelDecim","Output":"--- PASS: TestModelDecim (0.00s)\n"}
+{"Time":"2026-09-23T17:05:26.373397363+02:00","Action":"pass","Package":"open-sds/codegen/emit/wordfmt","Test":"TestModelDecim","Elapsed":0}
+{"Time":"2026-09-23T17:05:26.373420194+02:00","Action":"run","Package":"open-sds/codegen/emit/wordfmt","Test":"TestModelPeak"}
+{"Time":"2026-09-23T17:05:26.373440238+02:00","Action":"output","Package":"open-sds/codegen/emit/wordfmt","Test":"TestModelPeak","Output":"=== RUN   TestModelPeak\n"}
+{"Time":"2026-09-23T17:05:26.373460796+02:00","Action":"output","Package":"open-sds/codegen/emit/wordfmt","Test":"TestModelPeak","Output":"--- PASS: TestModelPeak (0.00s)\n"}
+{"Time":"2026-09-23T17:05:26.373485906+02:00","Action":"pass","Package":"open-sds/codegen/emit/wordfmt","Test":"TestModelPeak","Elapsed":0}
+{"Time":"2026-09-23T17:05:26.373550355+02:00","Action":"run","Package":"open-sds/codegen/emit/wordfmt","Test":"TestBoxcarParams"}
+{"Time":"2026-09-23T17:05:26.373576802+02:00","Action":"output","Package":"open-sds/codegen/emit/wordfmt","Test":"TestBoxcarParams","Output":"=== RUN   TestBoxcarParams\n"}
+{"Time":"2026-09-23T17:05:26.373598032+02:00","Action":"output","Package":"open-sds/codegen/emit/wordfmt","Test":"TestBoxcarParams","Output":"--- PASS: TestBoxcarParams (0.00s)\n"}
+{"Time":"2026-09-23T17:05:26.37362899+02:00","Action":"pass","Package":"open-sds/codegen/emit/wordfmt","Test":"TestBoxcarParams","Elapsed":0}
+{"Time":"2026-09-23T17:05:26.373663495+02:00","Action":"run","Package":"open-sds/codegen/emit/wordfmt","Test":"TestModelBoxcar"}
+{"Time":"2026-09-23T17:05:26.373689471+02:00","Action":"output","Package":"open-sds/codegen/emit/wordfmt","Test":"TestModelBoxcar","Output":"=== RUN   TestModelBoxcar\n"}
+{"Time":"2026-09-23T17:05:26.373711518+02:00","Action":"output","Package":"open-sds/codegen/emit/wordfmt","Test":"TestModelBoxcar","Output":"--- PASS: TestModelBoxcar (0.00s)\n"}
+{"Time":"2026-09-23T17:05:26.373732584+02:00","Action":"pass","Package":"open-sds/codegen/emit/wordfmt","Test":"TestModelBoxcar","Elapsed":0}
+{"Time":"2026-09-23T17:05:26.373757942+02:00","Action":"run","Package":"open-sds/codegen/emit/wordfmt","Test":"TestStackParams"}
+{"Time":"2026-09-23T17:05:26.373782402+02:00","Action":"output","Package":"open-sds/codegen/emit/wordfmt","Test":"TestStackParams","Output":"=== RUN   TestStackParams\n"}
+{"Time":"2026-09-23T17:05:26.373806777+02:00","Action":"output","Package":"open-sds/codegen/emit/wordfmt","Test":"TestStackParams","Output":"--- PASS: TestStackParams (0.00s)\n"}
+{"Time":"2026-09-23T17:05:26.373832753+02:00","Action":"pass","Package":"open-sds/codegen/emit/wordfmt","Test":"TestStackParams","Elapsed":0}
+{"Time":"2026-09-23T17:05:26.373858128+02:00","Action":"run","Package":"open-sds/codegen/emit/wordfmt","Test":"TestModelStack"}
+{"Time":"2026-09-23T17:05:26.373881841+02:00","Action":"output","Package":"open-sds/codegen/emit/wordfmt","Test":"TestModelStack","Output":"=== RUN   TestModelStack\n"}
+{"Time":"2026-09-23T17:05:26.373920951+02:00","Action":"output","Package":"open-sds/codegen/emit/wordfmt","Test":"TestModelStack","Output":"--- PASS: TestModelStack (0.00s)\n"}
+{"Time":"2026-09-23T17:05:26.373954269+02:00","Action":"pass","Package":"open-sds/codegen/emit/wordfmt","Test":"TestModelStack","Elapsed":0}
+{"Time":"2026-09-23T17:05:26.374081301+02:00","Action":"run","Package":"open-sds/codegen/emit/wordfmt","Test":"TestSequenceTime"}
+{"Time":"2026-09-23T17:05:26.374107286+02:00","Action":"output","Package":"open-sds/codegen/emit/wordfmt","Test":"TestSequenceTime","Output":"=== RUN   TestSequenceTime\n"}
+{"Time":"2026-09-23T17:05:26.374134973+02:00","Action":"output","Package":"open-sds/codegen/emit/wordfmt","Test":"TestSequenceTime","Output":"--- PASS: TestSequenceTime (0.00s)\n"}
+{"Time":"2026-09-23T17:05:26.374160166+02:00","Action":"pass","Package":"open-sds/codegen/emit/wordfmt","Test":"TestSequenceTime","Elapsed":0}
+{"Time":"2026-09-23T17:05:26.374191484+02:00","Action":"output","Package":"open-sds/codegen/emit/wordfmt","Output":"PASS\n"}
+{"Time":"2026-09-23T17:05:26.389125286+02:00","Action":"start","Package":"open-sds/codegen/ifacedef"}
+{"Time":"2026-09-23T17:05:26.389227204+02:00","Action":"start","Package":"open-sds/codegen/schema"}
+{"Time":"2026-09-23T17:05:26.405598574+02:00","Action":"run","Package":"open-sds/codegen/ifacedef","Test":"TestDefaultValidates"}
+{"Time":"2026-09-23T17:05:26.405620504+02:00","Action":"output","Package":"open-sds/codegen/ifacedef","Test":"TestDefaultValidates","Output":"=== RUN   TestDefaultValidates\n"}
+{"Time":"2026-09-23T17:05:26.405658292+02:00","Action":"output","Package":"open-sds/codegen/ifacedef","Test":"TestDefaultValidates","Output":"--- PASS: TestDefaultValidates (0.00s)\n"}
+{"Time":"2026-09-23T17:05:26.405664019+02:00","Action":"pass","Package":"open-sds/codegen/ifacedef","Test":"TestDefaultValidates","Elapsed":0}
+{"Time":"2026-09-23T17:05:26.40566915+02:00","Action":"run","Package":"open-sds/codegen/ifacedef","Test":"TestV2RegistersKeepTheirSelectors"}
+{"Time":"2026-09-23T17:05:26.405673857+02:00","Action":"output","Package":"open-sds/codegen/ifacedef","Test":"TestV2RegistersKeepTheirSelectors","Output":"=== RUN   TestV2RegistersKeepTheirSelectors\n"}
+{"Time":"2026-09-23T17:05:26.405679668+02:00","Action":"output","Package":"open-sds/codegen/ifacedef","Test":"TestV2RegistersKeepTheirSelectors","Output":"--- PASS: TestV2RegistersKeepTheirSelectors (0.00s)\n"}
+{"Time":"2026-09-23T17:05:26.405685174+02:00","Action":"pass","Package":"open-sds/codegen/ifacedef","Test":"TestV2RegistersKeepTheirSelectors","Elapsed":0}
+{"Time":"2026-09-23T17:05:26.405690552+02:00","Action":"run","Package":"open-sds/codegen/ifacedef","Test":"TestDefaultMatchesTiers"}
+{"Time":"2026-09-23T17:05:26.405694751+02:00","Action":"output","Package":"open-sds/codegen/ifacedef","Test":"TestDefaultMatchesTiers","Output":"=== RUN   TestDefaultMatchesTiers\n"}
+{"Time":"2026-09-23T17:05:26.405700668+02:00","Action":"output","Package":"open-sds/codegen/ifacedef","Test":"TestDefaultMatchesTiers","Output":"--- PASS: TestDefaultMatchesTiers (0.00s)\n"}
+{"Time":"2026-09-23T17:05:26.405705456+02:00","Action":"pass","Package":"open-sds/codegen/ifacedef","Test":"TestDefaultMatchesTiers","Elapsed":0}
+{"Time":"2026-09-23T17:05:26.405710657+02:00","Action":"run","Package":"open-sds/codegen/ifacedef","Test":"TestDefaultDiagWindow"}
+{"Time":"2026-09-23T17:05:26.405715002+02:00","Action":"output","Package":"open-sds/codegen/ifacedef","Test":"TestDefaultDiagWindow","Output":"=== RUN   TestDefaultDiagWindow\n"}
+{"Time":"2026-09-23T17:05:26.405720895+02:00","Action":"output","Package":"open-sds/codegen/ifacedef","Test":"TestDefaultDiagWindow","Output":"--- PASS: TestDefaultDiagWindow (0.00s)\n"}
+{"Time":"2026-09-23T17:05:26.405725926+02:00","Action":"pass","Package":"open-sds/codegen/ifacedef","Test":"TestDefaultDiagWindow","Elapsed":0}
+{"Time":"2026-09-23T17:05:26.405730582+02:00","Action":"output","Package":"open-sds/codegen/ifacedef","Output":"PASS\n"}
+{"Time":"2026-09-23T17:05:26.409473329+02:00","Action":"run","Package":"open-sds/codegen/schema","Test":"TestMinimalValidates"}
+{"Time":"2026-09-23T17:05:26.409559211+02:00","Action":"output","Package":"open-sds/codegen/schema","Test":"TestMinimalValidates","Output":"=== RUN   TestMinimalValidates\n"}
+{"Time":"2026-09-23T17:05:26.409618138+02:00","Action":"output","Package":"open-sds/codegen/schema","Test":"TestMinimalValidates","Output":"--- PASS: TestMinimalValidates (0.00s)\n"}
+{"Time":"2026-09-23T17:05:26.409675132+02:00","Action":"pass","Package":"open-sds/codegen/schema","Test":"TestMinimalValidates","Elapsed":0}
+{"Time":"2026-09-23T17:05:26.40971203+02:00","Action":"run","Package":"open-sds/codegen/schema","Test":"TestFieldMask"}
+{"Time":"2026-09-23T17:05:26.409747119+02:00","Action":"output","Package":"open-sds/codegen/schema","Test":"TestFieldMask","Output":"=== RUN   TestFieldMask\n"}
+{"Time":"2026-09-23T17:05:26.409882074+02:00","Action":"output","Package":"open-sds/codegen/schema","Test":"TestFieldMask","Output":"--- PASS: TestFieldMask (0.00s)\n"}
+{"Time":"2026-09-23T17:05:26.40992935+02:00","Action":"pass","Package":"open-sds/codegen/schema","Test":"TestFieldMask","Elapsed":0}
+{"Time":"2026-09-23T17:05:26.409963544+02:00","Action":"run","Package":"open-sds/codegen/schema","Test":"TestValidateRejects"}
+{"Time":"2026-09-23T17:05:26.409987613+02:00","Action":"output","Package":"open-sds/codegen/schema","Test":"TestValidateRejects","Output":"=== RUN   TestValidateRejects\n"}
+{"Time":"2026-09-23T17:05:26.412978277+02:00","Action":"output","Package":"open-sds/codegen/schema","Test":"TestValidateRejects","Output":"--- PASS: TestValidateRejects (0.00s)\n"}
+{"Time":"2026-09-23T17:05:26.41308436+02:00","Action":"pass","Package":"open-sds/codegen/schema","Test":"TestValidateRejects","Elapsed":0}
+{"Time":"2026-09-23T17:05:26.413120232+02:00","Action":"run","Package":"open-sds/codegen/schema","Test":"TestBuildIDStableAndSensitive"}
+{"Time":"2026-09-23T17:05:26.413153702+02:00","Action":"output","Package":"open-sds/codegen/schema","Test":"TestBuildIDStableAndSensitive","Output":"=== RUN   TestBuildIDStableAndSensitive\n"}
+{"Time":"2026-09-23T17:05:26.422463278+02:00","Action":"output","Package":"open-sds/codegen/schema","Test":"TestBuildIDStableAndSensitive","Output":"--- PASS: TestBuildIDStableAndSensitive (0.01s)\n"}
+{"Time":"2026-09-23T17:05:26.422556907+02:00","Action":"pass","Package":"open-sds/codegen/schema","Test":"TestBuildIDStableAndSensitive","Elapsed":0.01}
+{"Time":"2026-09-23T17:05:26.42259411+02:00","Action":"run","Package":"open-sds/codegen/schema","Test":"TestNoLegacyRule"}
+{"Time":"2026-09-23T17:05:26.42261445+02:00","Action":"output","Package":"open-sds/codegen/schema","Test":"TestNoLegacyRule","Output":"=== RUN   TestNoLegacyRule\n"}
+{"Time":"2026-09-23T17:05:26.422801804+02:00","Action":"output","Package":"open-sds/codegen/schema","Test":"TestNoLegacyRule","Output":"--- PASS: TestNoLegacyRule (0.00s)\n"}
+{"Time":"2026-09-23T17:05:26.422870536+02:00","Action":"pass","Package":"open-sds/codegen/schema","Test":"TestNoLegacyRule","Elapsed":0}
+{"Time":"2026-09-23T17:05:26.422912634+02:00","Action":"run","Package":"open-sds/codegen/schema","Test":"TestLookups"}
+{"Time":"2026-09-23T17:05:26.422919495+02:00","Action":"output","Package":"open-sds/codegen/schema","Test":"TestLookups","Output":"=== RUN   TestLookups\n"}
+{"Time":"2026-09-23T17:05:26.423019947+02:00","Action":"output","Package":"open-sds/codegen/schema","Test":"TestLookups","Output":"--- PASS: TestLookups (0.00s)\n"}
+{"Time":"2026-09-23T17:05:26.423088213+02:00","Action":"pass","Package":"open-sds/codegen/schema","Test":"TestLookups","Elapsed":0}
+{"Time":"2026-09-23T17:05:26.423151442+02:00","Action":"output","Package":"open-sds/codegen/schema","Output":"PASS\n"}
+{"Time":"2026-09-23T17:05:26.524443257+02:00","Action":"output","Package":"open-sds/codegen/cmd/ifacegen","Test":"TestNoDrift","Output":"    drift_test.go:36: generated artifacts are stale (run `make generate` in codegen/): fpga/default/regs.vh, fpga/default/regmux.vh, app/internal/iface/iface.go, fpga/default/docs/REGISTER-MAP.md\n"}
+{"Time":"2026-09-23T17:05:26.524935612+02:00","Action":"output","Package":"open-sds/codegen/cmd/ifacegen","Test":"TestNoDrift","Output":"--- FAIL: TestNoDrift (0.29s)\n"}
+{"Time":"2026-09-23T17:05:26.525037254+02:00","Action":"fail","Package":"open-sds/codegen/cmd/ifacegen","Test":"TestNoDrift","Elapsed":0.29}
+{"Time":"2026-09-23T17:05:26.525355976+02:00","Action":"run","Package":"open-sds/codegen/cmd/ifacegen","Test":"TestSourceDigestFollowsRTL"}
+{"Time":"2026-09-23T17:05:26.525367132+02:00","Action":"output","Package":"open-sds/codegen/cmd/ifacegen","Test":"TestSourceDigestFollowsRTL","Output":"=== RUN   TestSourceDigestFollowsRTL\n"}
+{"Time":"2026-09-23T17:05:26.526876773+02:00","Action":"output","Package":"open-sds/codegen/cmd/ifacegen","Test":"TestSourceDigestFollowsRTL","Output":"--- PASS: TestSourceDigestFollowsRTL (0.00s)\n"}
+{"Time":"2026-09-23T17:05:26.527115005+02:00","Action":"pass","Package":"open-sds/codegen/cmd/ifacegen","Test":"TestSourceDigestFollowsRTL","Elapsed":0}
+{"Time":"2026-09-23T17:05:26.528672721+02:00","Action":"run","Package":"open-sds/codegen/cmd/ifacegen","Test":"TestDriftDetectsChange"}
+{"Time":"2026-09-23T17:05:26.528700517+02:00","Action":"output","Package":"open-sds/codegen/cmd/ifacegen","Test":"TestDriftDetectsChange","Output":"=== RUN   TestDriftDetectsChange\n"}
+{"Time":"2026-09-23T17:05:26.739391222+02:00","Action":"output","Package":"open-sds/codegen/emit","Test":"TestGoBindingsGolden","Output":"--- PASS: TestGoBindingsGolden (0.49s)\n"}
+{"Time":"2026-09-23T17:05:26.739511509+02:00","Action":"pass","Package":"open-sds/codegen/emit","Test":"TestGoBindingsGolden","Elapsed":0.49}
+{"Time":"2026-09-23T17:05:26.739598791+02:00","Action":"run","Package":"open-sds/codegen/emit","Test":"TestDocGolden"}
+{"Time":"2026-09-23T17:05:26.739607692+02:00","Action":"output","Package":"open-sds/codegen/emit","Test":"TestDocGolden","Output":"=== RUN   TestDocGolden\n"}
+{"Time":"2026-09-23T17:05:26.748254469+02:00","Action":"output","Package":"open-sds/codegen/emit","Test":"TestDocGolden","Output":"--- PASS: TestDocGolden (0.01s)\n"}
+{"Time":"2026-09-23T17:05:26.751669945+02:00","Action":"pass","Package":"open-sds/codegen/emit","Test":"TestDocGolden","Elapsed":0.01}
+{"Time":"2026-09-23T17:05:26.751693567+02:00","Action":"run","Package":"open-sds/codegen/emit","Test":"TestBuildIDConsistent"}
+{"Time":"2026-09-23T17:05:26.751698302+02:00","Action":"output","Package":"open-sds/codegen/emit","Test":"TestBuildIDConsistent","Output":"=== RUN   TestBuildIDConsistent\n"}
+{"Time":"2026-09-23T17:05:27.016678149+02:00","Action":"output","Package":"open-sds/codegen/emit","Test":"TestBuildIDConsistent","Output":"--- PASS: TestBuildIDConsistent (0.27s)\n"}
+{"Time":"2026-09-23T17:05:27.016699484+02:00","Action":"pass","Package":"open-sds/codegen/emit","Test":"TestBuildIDConsistent","Elapsed":0.27}
+{"Time":"2026-09-23T17:05:27.016713597+02:00","Action":"run","Package":"open-sds/codegen/emit","Test":"TestEmittersRejectInvalid"}
+{"Time":"2026-09-23T17:05:27.016718167+02:00","Action":"output","Package":"open-sds/codegen/emit","Test":"TestEmittersRejectInvalid","Output":"=== RUN   TestEmittersRejectInvalid\n"}
+{"Time":"2026-09-23T17:05:27.017886492+02:00","Action":"output","Package":"open-sds/codegen/emit","Test":"TestEmittersRejectInvalid","Output":"--- PASS: TestEmittersRejectInvalid (0.00s)\n"}
+{"Time":"2026-09-23T17:05:27.017899522+02:00","Action":"pass","Package":"open-sds/codegen/emit","Test":"TestEmittersRejectInvalid","Elapsed":0}
+{"Time":"2026-09-23T17:05:27.01790896+02:00","Action":"run","Package":"open-sds/codegen/emit","Test":"TestCamel"}
+{"Time":"2026-09-23T17:05:27.017912572+02:00","Action":"output","Package":"open-sds/codegen/emit","Test":"TestCamel","Output":"=== RUN   TestCamel\n"}
+{"Time":"2026-09-23T17:05:27.017980444+02:00","Action":"output","Package":"open-sds/codegen/emit","Test":"TestCamel","Output":"--- PASS: TestCamel (0.00s)\n"}
+{"Time":"2026-09-23T17:05:27.017996589+02:00","Action":"pass","Package":"open-sds/codegen/emit","Test":"TestCamel","Elapsed":0}
+{"Time":"2026-09-23T17:05:27.018034051+02:00","Action":"run","Package":"open-sds/codegen/emit","Test":"TestSelMaskDoc"}
+{"Time":"2026-09-23T17:05:27.018043521+02:00","Action":"output","Package":"open-sds/codegen/emit","Test":"TestSelMaskDoc","Output":"=== RUN   TestSelMaskDoc\n"}
+{"Time":"2026-09-23T17:05:27.018194758+02:00","Action":"output","Package":"open-sds/codegen/emit","Test":"TestSelMaskDoc","Output":"--- PASS: TestSelMaskDoc (0.00s)\n"}
+{"Time":"2026-09-23T17:05:27.018211514+02:00","Action":"pass","Package":"open-sds/codegen/emit","Test":"TestSelMaskDoc","Elapsed":0}
+{"Time":"2026-09-23T17:05:27.018242379+02:00","Action":"run","Package":"open-sds/codegen/emit","Test":"TestSpliceGoSource"}
+{"Time":"2026-09-23T17:05:27.018250428+02:00","Action":"output","Package":"open-sds/codegen/emit","Test":"TestSpliceGoSource","Output":"=== RUN   TestSpliceGoSource\n"}
+{"Time":"2026-09-23T17:05:27.018346077+02:00","Action":"output","Package":"open-sds/codegen/emit","Test":"TestSpliceGoSource","Output":"--- PASS: TestSpliceGoSource (0.00s)\n"}
+{"Time":"2026-09-23T17:05:27.018409388+02:00","Action":"pass","Package":"open-sds/codegen/emit","Test":"TestSpliceGoSource","Elapsed":0}
+{"Time":"2026-09-23T17:05:27.018447852+02:00","Action":"run","Package":"open-sds/codegen/emit","Test":"TestWordfmtConstantsMatchSchema"}
+{"Time":"2026-09-23T17:05:27.018454156+02:00","Action":"output","Package":"open-sds/codegen/emit","Test":"TestWordfmtConstantsMatchSchema","Output":"=== RUN   TestWordfmtConstantsMatchSchema\n"}
+{"Time":"2026-09-23T17:05:27.377019765+02:00","Action":"output","Package":"open-sds/codegen/emit/wordfmt","Output":"ok  \topen-sds/codegen/emit/wordfmt\t1.166s\n"}
+{"Time":"2026-09-23T17:05:27.377040768+02:00","Action":"pass","Package":"open-sds/codegen/emit/wordfmt","Elapsed":1.166}
+{"Time":"2026-09-23T17:05:27.394109298+02:00","Action":"output","Package":"open-sds/codegen/emit","Test":"TestWordfmtConstantsMatchSchema","Output":"--- PASS: TestWordfmtConstantsMatchSchema (0.38s)\n"}
+{"Time":"2026-09-23T17:05:27.394140811+02:00","Action":"pass","Package":"open-sds/codegen/emit","Test":"TestWordfmtConstantsMatchSchema","Elapsed":0.38}
+{"Time":"2026-09-23T17:05:27.394147875+02:00","Action":"run","Package":"open-sds/codegen/emit","Test":"TestGoBindingsCompile"}
+{"Time":"2026-09-23T17:05:27.394151699+02:00","Action":"output","Package":"open-sds/codegen/emit","Test":"TestGoBindingsCompile","Output":"=== RUN   TestGoBindingsCompile\n"}
+{"Time":"2026-09-23T17:05:27.407442749+02:00","Action":"output","Package":"open-sds/codegen/ifacedef","Output":"ok  \topen-sds/codegen/ifacedef\t1.018s\n"}
+{"Time":"2026-09-23T17:05:27.407471106+02:00","Action":"pass","Package":"open-sds/codegen/ifacedef","Elapsed":1.018}
+{"Time":"2026-09-23T17:05:27.425414751+02:00","Action":"output","Package":"open-sds/codegen/schema","Output":"ok  \topen-sds/codegen/schema\t1.036s\n"}
+{"Time":"2026-09-23T17:05:27.425444032+02:00","Action":"pass","Package":"open-sds/codegen/schema","Elapsed":1.036}
+{"Time":"2026-09-23T17:05:27.495865478+02:00","Action":"output","Package":"open-sds/codegen/cmd/ifacegen","Test":"TestDriftDetectsChange","Output":"--- PASS: TestDriftDetectsChange (0.97s)\n"}
+{"Time":"2026-09-23T17:05:27.495888548+02:00","Action":"pass","Package":"open-sds/codegen/cmd/ifacegen","Test":"TestDriftDetectsChange","Elapsed":0.97}
+{"Time":"2026-09-23T17:05:27.495920989+02:00","Action":"output","Package":"open-sds/codegen/cmd/ifacegen","Output":"FAIL\n"}
+{"Time":"2026-09-23T17:05:27.498160284+02:00","Action":"output","Package":"open-sds/codegen/cmd/ifacegen","Output":"FAIL\topen-sds/codegen/cmd/ifacegen\t1.287s\n"}
+{"Time":"2026-09-23T17:05:27.498184761+02:00","Action":"fail","Package":"open-sds/codegen/cmd/ifacegen","Elapsed":1.288}
+{"Time":"2026-09-23T17:05:27.972001487+02:00","Action":"output","Package":"open-sds/codegen/emit","Test":"TestGoBindingsCompile","Output":"--- PASS: TestGoBindingsCompile (0.58s)\n"}
+{"Time":"2026-09-23T17:05:27.972025628+02:00","Action":"pass","Package":"open-sds/codegen/emit","Test":"TestGoBindingsCompile","Elapsed":0.58}
+{"Time":"2026-09-23T17:05:27.972033348+02:00","Action":"run","Package":"open-sds/codegen/emit","Test":"TestRegmuxSimulates"}
+{"Time":"2026-09-23T17:05:27.972036957+02:00","Action":"output","Package":"open-sds/codegen/emit","Test":"TestRegmuxSimulates","Output":"=== RUN   TestRegmuxSimulates\n"}
+{"Time":"2026-09-23T17:05:28.067886299+02:00","Action":"output","Package":"open-sds/codegen/emit","Test":"TestRegmuxSimulates","Output":"    regmux_sim_test.go:184: REGMUX PASS 408 checks\n"}
+{"Time":"2026-09-23T17:05:28.067903869+02:00","Action":"output","Package":"open-sds/codegen/emit","Test":"TestRegmuxSimulates","Output":"        /tmp/TestRegmuxSimulates2400975973/001/regmux_tb.v:528: $finish called at 298000 (1ps)\n"}
+{"Time":"2026-09-23T17:05:28.068216147+02:00","Action":"output","Package":"open-sds/codegen/emit","Test":"TestRegmuxSimulates","Output":"--- PASS: TestRegmuxSimulates (0.10s)\n"}
+{"Time":"2026-09-23T17:05:28.068253007+02:00","Action":"pass","Package":"open-sds/codegen/emit","Test":"TestRegmuxSimulates","Elapsed":0.1}
+{"Time":"2026-09-23T17:05:28.068290259+02:00","Action":"run","Package":"open-sds/codegen/emit","Test":"TestRegmuxTestbenchCatchesDrift"}
+{"Time":"2026-09-23T17:05:28.068296576+02:00","Action":"output","Package":"open-sds/codegen/emit","Test":"TestRegmuxTestbenchCatchesDrift","Output":"=== RUN   TestRegmuxTestbenchCatchesDrift\n"}
+{"Time":"2026-09-23T17:05:28.152264223+02:00","Action":"output","Package":"open-sds/codegen/emit","Test":"TestRegmuxTestbenchCatchesDrift","Output":"--- PASS: TestRegmuxTestbenchCatchesDrift (0.08s)\n"}
+{"Time":"2026-09-23T17:05:28.152291909+02:00","Action":"pass","Package":"open-sds/codegen/emit","Test":"TestRegmuxTestbenchCatchesDrift","Elapsed":0.08}
+{"Time":"2026-09-23T17:05:28.152328598+02:00","Action":"output","Package":"open-sds/codegen/emit","Output":"PASS\n"}
+{"Time":"2026-09-23T17:05:29.156230082+02:00","Action":"output","Package":"open-sds/codegen/emit","Output":"ok  \topen-sds/codegen/emit\t2.946s\n"}
+{"Time":"2026-09-23T17:05:29.156247279+02:00","Action":"pass","Package":"open-sds/codegen/emit","Elapsed":2.9459999999999997}

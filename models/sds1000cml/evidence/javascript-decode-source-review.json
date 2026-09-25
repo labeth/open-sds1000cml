@@ -1,0 +1,77 @@
+{
+  "result": "source-reviewed-and-bounded-host-checks-pass",
+  "requirement": "REQ-SDS-018",
+  "completeReads": [
+    "app/internal/web/decode.js",
+    "app/internal/web/decode_arinc429.js",
+    "app/internal/web/decode_canfd.js",
+    "app/internal/web/decode_flexray.js",
+    "app/internal/web/decode_manchester.js",
+    "app/internal/web/decode_mil1553.js",
+    "app/internal/web/decode_sent.js",
+    "app/internal/web/decode_usbls.js"
+  ],
+  "baselineSHA256": {
+    "app/internal/web/decode.js": "51f03480063e099bb6f1ff8dadc3f652151b65f83c179b24754801440d396ba0",
+    "app/internal/web/decode_arinc429.js": "8e1ec8d14e4795707668e3a510d488920a1851ab176a4d6f07daf4ac9aafaf93",
+    "app/internal/web/decode_canfd.js": "aaf986a310cfdef553c9b2cc6331824329a6fce7bd67a97e615f73d328181a78",
+    "app/internal/web/decode_flexray.js": "aa5833d52b438b37baa861ee531b74f2bcf1a337a5ea5aa76df350279e642c7a",
+    "app/internal/web/decode_manchester.js": "a9cc93e7a9cdf0f10670fa08bd193d751899fbe964a2e85bfc1729d7f40eccd2",
+    "app/internal/web/decode_mil1553.js": "05ddda065736f285337ebe1dc07e4743082e34cef0197fe26dd84275ef902f5a",
+    "app/internal/web/decode_sent.js": "3ed8ba69582b903ddeda1fc37169508d88f594343177a2d70850fd163c2043ee",
+    "app/internal/web/decode_usbls.js": "e58228eb41a2440c02a0499eb5145d490bb1ce57b18feb43aab6458dd372ac2f"
+  },
+  "findings": {
+    "decode.js": "Shared timing, slicing, formatting, UART/I2C/SPI decoding and structural auto-detection. Negative sample codes represent gaps; histogram rails exclude samples outside 0..255, while later logic is less restrictive. UART has configurable idle, bit order and sampling guards. I2C extracts seven-bit addresses and does not clear transaction state at a gap. SPI has no chip-select and defaults to MSB, whereas zero-valued Go configuration uses LSB. JS byte formatting masks to eight bits and supports hex/ascii/both; Go additionally supports decimal/binary and uses different both-format punctuation. Auto-detection discovers sibling decoders through globals and silently omits unavailable functions. Passing selected vectors does not establish universal parity or a false-positive rate.",
+    "decode_arinc429.js": "Three-level histogram slicing uses the mode as NULL and mirrors a missing rail. Pulse segmentation fills 32 slots with at most 34 hits; later duplicate hits replace earlier values. Odd-parity failure adds an error span but retains OK. SDI is present in raw output bytes rather than a dedicated annotation. Gap samples are skipped without resetting pulse state.",
+    "decode_canfd.js": "Classic CAN recovers base/extended identifiers, remote/data fields, dynamic destuffing and CRC-15. CRC or stuffing errors produce error spans but retain OK; delimiter values and EOF are not fully checked. Base CAN-FD returns after data, before trailer or accumulated stuffing-error validation; extended CAN-FD is not implemented as a distinct frame format. BRS changes the sample period without independently validating the trailer.",
+    "decode_flexray.js": "Single-line TSS detection and BSS phase recovery extract bytes. Header CRC-11 is checked after five bytes. Channel-A frame CRC-24 is checked only when recovered length exactly matches the header-implied size; other lengths retain the initial successful frame-CRC flag and can be accepted on the header alone. This contradicts the source comment asserting unconditional validation of both CRCs.",
+    "decode_manchester.js": "Recovers half-cell transitions, splits on gaps over 2.5 bit periods and chooses between two phases using good-cell minus four-times-violation scores. Ties use idle symmetry. Word assembly allows configurable bit order and one through sixteen bits; coding violations flush assembly and partial tails are flagged. Fractional configuration widths are not explicitly rejected. Used as the recovery core for MIL1553.",
+    "decode_mil1553.js": "Finds sync transitions with long holds on both sides, then recovers sixteen data cells and odd parity using the shared Manchester core. Returns sixteen-bit words in the bytes array. A parity error retains OK and marks a frame-error span; it does not independently establish electrical or transaction-level bus validity.",
+    "decode_sent.js": "Falling-edge periods establish a 56-tick sync and status/data/CRC nibble sequence. Malformed widths are clamped before insertion into CRC input, so a later CRC can pass while a coding-error span remains. Error nibbles are omitted from the bytes array. OK requires some matching CRC, not an entirely error-free record. Pause handling and configurable nibble counts are heuristic capture interpretation.",
+    "decode_usbls.js": "Single-line NRZI recovery segments on gaps greater than ten bit periods, removes two presumed EOP cells and destuffs before checking SYNC/PID. Invalid PID complement retains OK with an error span. Payload and CRC bytes are extracted without CRC verification; differential SE0 and complete low/full-speed electrical framing are not observed."
+  },
+  "qualification": "Comment-only provenance and selected Node VM behavior. No browser, electrical or standards qualification; seven reviewed Go tests and 286 selected parity vectors are recorded separately in decode-extended-source-review.json and are integrated into native partial-verification summaries.",
+  "sourceSHA256": {
+    "app/internal/web/decode.js": "553dfc13ae624093048b585c447c68130c1201b38dccf53fa84e21c75add7123",
+    "app/internal/web/decode_arinc429.js": "f93b415e6c84b884075a0a0ee0a46a96b68a6ccd068823d53b474343c16b5799",
+    "app/internal/web/decode_canfd.js": "25c7d61715a2a646f905347372560841db5defd847dd91ab2a78269343786a0f",
+    "app/internal/web/decode_flexray.js": "5283463497426c5b99084d10a64ac5fedc0ded6ad9950f2a5fdd2f0732094a8b",
+    "app/internal/web/decode_manchester.js": "2338850a8491f85c5d3a0cb0272f0f8007789af6bdc713c894ff2a5382f0a697",
+    "app/internal/web/decode_mil1553.js": "a01da097f2033b02d3ff715608dd294e7fc13e5791db99fcf3469fa6f40d5084",
+    "app/internal/web/decode_sent.js": "1a651ae56aebb0fae683f3d64c963f56f73cec59d6984d7797faa4baed6ac482",
+    "app/internal/web/decode_usbls.js": "f2fb56c667ad011dd947852d0949ced77239579fe4d7b5566c1d69781649497f"
+  },
+  "linkedDeclarations": 60,
+  "helperSHA256": "3eed366c4d20b0ea5edb5858546c029fff73c446f38536ee0f82855329299fb8",
+  "boundaryChecks": {
+    "result": "pass",
+    "cases": [
+      {
+        "name": "unsupported_decimal_and_binary_formats_fall_back_to_hex",
+        "result": "pass"
+      },
+      {
+        "name": "both_format_uses_middle_dot_and_ascii_masks_wide_words",
+        "result": "pass"
+      },
+      {
+        "name": "positive_infinite_frame_interval_is_preserved",
+        "result": "pass"
+      },
+      {
+        "name": "gap_sentinel_is_not_a_logic_level",
+        "result": "pass"
+      },
+      {
+        "name": "nonfinite_sample_position_returns_zero",
+        "result": "pass"
+      },
+      {
+        "name": "missing_c1_dispatch_throws_before_channel_selection",
+        "result": "pass"
+      }
+    ],
+    "scope": "Node VM characterization only; no browser or hardware execution."
+  }
+}

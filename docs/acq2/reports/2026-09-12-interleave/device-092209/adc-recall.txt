@@ -1,0 +1,12 @@
+{
+  "bytes": 2097152,
+  "first": 1534155130,
+  "last": 1501192059,
+  "nonconsecutive_words": 524287,
+  "path": "/dev/acq-adc.bin",
+  "prefix": 16,
+  "seconds": 10.80813132,
+  "sha256": "a8c103f3f70be9f97b45f806af9a26089d1117a8e4d0b401a8260c9fea04ce95",
+  "words": 524288
+}
+[exit 0]

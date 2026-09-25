@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
 package engine
 
 import (
@@ -30,12 +31,14 @@ import (
 
 // ---------- 50-family corpus (new shapes) ----------
 
+// TRLC-LINKS: REQ-SDS-014
 type zb2Family struct {
 	name  string
 	c1    func(i int) float64 // codes around 128
 	valid int
 }
 
+// TRLC-LINKS: REQ-SDS-014
 func zb2Families() []zb2Family {
 	// 10 shapes x 5 parameter variants = 50 distinct waves.
 	shapes := []struct {
@@ -154,6 +157,7 @@ func zb2Families() []zb2Family {
 
 // zb2Frame renders a family into a frame; C2 is the inverted C1 so channel
 // mix-ups are caught, plus deterministic per-family phase.
+// TRLC-LINKS: REQ-SDS-014
 func zb2Frame(fam zb2Family, rng func() float64) *Frame {
 	const n = 4096
 	f := &Frame{C1: make([]uint8, n), C2: make([]uint8, n), Valid: fam.valid}
@@ -177,6 +181,7 @@ func zb2Frame(fam zb2Family, rng func() float64) *Frame {
 // zoneRefState is the independent reference: +1 the zone MUST be satisfied,
 // -1 it MUST be violated, 0 tie (the verdict may go either way inside the
 // half-sample boundary tolerance of the engine's rounded column mapping).
+// TRLC-LINKS: REQ-SDS-014
 func zoneRefState(f *Frame, valid int, edgeX, sampleS float64, z Zone) int {
 	sig := f.C1
 	if z.Ch == 1 {
@@ -219,6 +224,7 @@ func zoneRefState(f *Frame, valid int, edgeX, sampleS float64, z Zone) int {
 	return 0
 }
 
+// TRLC-LINKS: REQ-SDS-014
 func TestZoneBreakerDifferential(t *testing.T) {
 	e := &Engine{}
 	fams := zb2Families()

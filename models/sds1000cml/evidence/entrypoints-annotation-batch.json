@@ -1,0 +1,324 @@
+{
+  "status": "integrated",
+  "files": [
+    {
+      "path": "app/cmd/acqsram/main.go",
+      "owner": "FU-APP-ACQSRAM",
+      "functions": {
+        "xfer": [
+          "REQ-SDS-170"
+        ],
+        "rd": [
+          "REQ-SDS-170"
+        ],
+        "wr": [
+          "REQ-SDS-170"
+        ],
+        "r32": [
+          "REQ-SDS-170"
+        ],
+        "port.ReadCfg": [
+          "REQ-SDS-170"
+        ],
+        "port.WriteCfg": [
+          "REQ-SDS-170"
+        ],
+        "num": [
+          "REQ-SDS-170"
+        ],
+        "main": [
+          "REQ-SDS-170"
+        ],
+        "emit": [
+          "REQ-SDS-170"
+        ],
+        "command": [
+          "REQ-SDS-170"
+        ],
+        "waitReady": [
+          "REQ-SDS-170"
+        ],
+        "setCount": [
+          "REQ-SDS-170"
+        ],
+        "counterCheck.Write": [
+          "REQ-SDS-170"
+        ],
+        "timedWriter.Write": [
+          "REQ-SDS-170"
+        ]
+      },
+      "types": {
+        "port": [
+          "REQ-SDS-170"
+        ],
+        "counterCheck": [
+          "REQ-SDS-170"
+        ],
+        "timedWriter": [
+          "REQ-SDS-170"
+        ]
+      }
+    },
+    {
+      "path": "app/cmd/acqsram/profile.go",
+      "owner": "FU-APP-ACQSRAM",
+      "functions": {
+        "profileBus.Read": [
+          "REQ-SDS-170"
+        ],
+        "profileBus.RawWrite": [
+          "REQ-SDS-170"
+        ],
+        "profileBus.PopWordsChecked": [
+          "REQ-SDS-170"
+        ],
+        "profileBus.PopBytesChecked": [
+          "REQ-SDS-170"
+        ]
+      },
+      "types": {
+        "profileBus": [
+          "REQ-SDS-170"
+        ]
+      }
+    },
+    {
+      "path": "app/cmd/acqsram/scheduling_linux.go",
+      "owner": "FU-APP-ACQSRAM",
+      "functions": {
+        "realtimeDrain": [
+          "REQ-SDS-170"
+        ],
+        "sleepDrain": [
+          "REQ-SDS-170"
+        ]
+      },
+      "types": {}
+    },
+    {
+      "path": "app/cmd/app/main.go",
+      "owner": "FU-APP-APP",
+      "functions": {
+        "scopeSource.WithFrame": [
+          "REQ-SDS-167"
+        ],
+        "scopeSource.WaitNextFrame": [
+          "REQ-SDS-167"
+        ],
+        "buildHUD": [
+          "REQ-SDS-168"
+        ],
+        "renderSigOf": [
+          "REQ-SDS-168"
+        ],
+        "runLCD": [
+          "REQ-SDS-168"
+        ],
+        "logf": [
+          "REQ-SDS-167"
+        ],
+        "findInheritedFD": [
+          "REQ-SDS-002"
+        ],
+        "envOr": [
+          "REQ-SDS-167"
+        ],
+        "healthLoop": [
+          "REQ-SDS-025",
+          "REQ-SDS-169"
+        ],
+        "main": [
+          "REQ-SDS-002",
+          "REQ-SDS-003",
+          "REQ-SDS-004",
+          "REQ-SDS-167",
+          "REQ-SDS-169"
+        ]
+      },
+      "types": {
+        "scopeSource": [
+          "REQ-SDS-167"
+        ],
+        "renderSig": [
+          "REQ-SDS-168"
+        ]
+      }
+    },
+    {
+      "path": "app/cmd/app/sram.go",
+      "owner": "FU-APP-APP",
+      "functions": {
+        "runSRAMMode": [
+          "REQ-SDS-167",
+          "REQ-SDS-169",
+          "REQ-SDS-003"
+        ],
+        "sramHealthPathAllowed": [
+          "REQ-SDS-169"
+        ],
+        "sramHealthLoop": [
+          "REQ-SDS-169"
+        ]
+      },
+      "types": {}
+    },
+    {
+      "path": "app/cmd/app/sram_test.go",
+      "owner": "FU-APP-APP",
+      "functions": {
+        "TestSRAMHealthStorage": [
+          "REQ-SDS-169"
+        ]
+      },
+      "types": {}
+    },
+    {
+      "path": "app/cmd/app/sram_timing.go",
+      "owner": "FU-APP-APP",
+      "functions": {
+        "applySRAMReadTiming": [
+          "REQ-SDS-034"
+        ]
+      },
+      "types": {}
+    },
+    {
+      "path": "app/cmd/app/sram_timing_test.go",
+      "owner": "FU-APP-APP",
+      "functions": {
+        "timingProbe.Read": [
+          "REQ-SDS-034"
+        ],
+        "timingProbe.Apply": [
+          "REQ-SDS-034"
+        ],
+        "timingProbe.Restore": [
+          "REQ-SDS-034"
+        ],
+        "TestSRAMTimingQualificationAndRollback": [
+          "REQ-SDS-034"
+        ]
+      },
+      "types": {
+        "timingProbe": [
+          "REQ-SDS-034"
+        ]
+      }
+    },
+    {
+      "path": "app/cmd/srambench/main.go",
+      "owner": "FU-APP-SRAMBENCH",
+      "functions": {
+        "xfer": [
+          "REQ-SDS-171"
+        ],
+        "rd": [
+          "REQ-SDS-171"
+        ],
+        "wr": [
+          "REQ-SDS-171"
+        ],
+        "r32": [
+          "REQ-SDS-171"
+        ],
+        "port.ReadCfg": [
+          "REQ-SDS-171"
+        ],
+        "port.WriteCfg": [
+          "REQ-SDS-171"
+        ],
+        "num": [
+          "REQ-SDS-171"
+        ],
+        "main": [
+          "REQ-SDS-171"
+        ]
+      },
+      "types": {
+        "port": [
+          "REQ-SDS-171"
+        ]
+      }
+    },
+    {
+      "path": "app/internal/buildinfo/buildinfo.go",
+      "owner": "FU-APP-BUILDINFO",
+      "functions": {
+        "String": [
+          "REQ-SDS-174"
+        ]
+      },
+      "types": {}
+    },
+    {
+      "path": "fpga/cmd/buildfpga/main.go",
+      "owner": "FU-FPGA-BUILDFPGA",
+      "functions": {
+        "main": [
+          "REQ-SDS-172"
+        ],
+        "printSummary": [
+          "REQ-SDS-172"
+        ],
+        "findModuleRoot": [
+          "REQ-SDS-172"
+        ],
+        "orDefault": [
+          "REQ-SDS-172"
+        ]
+      },
+      "types": {}
+    },
+    {
+      "path": "tools/hw/sramburst/main.go",
+      "owner": "FU-TOOLS-HW-SRAMBURST",
+      "functions": {
+        "findInheritedFD": [
+          "REQ-SDS-173"
+        ],
+        "ioctl": [
+          "REQ-SDS-173"
+        ],
+        "rd": [
+          "REQ-SDS-173"
+        ],
+        "wr": [
+          "REQ-SDS-173"
+        ],
+        "sweep": [
+          "REQ-SDS-173"
+        ],
+        "main": [
+          "REQ-SDS-173"
+        ]
+      },
+      "types": {}
+    }
+  ],
+  "functions": 58,
+  "types": 8,
+  "uniqueReviewedTests": [
+    "TestSRAMHealthStorage",
+    "TestSRAMTimingQualificationAndRollback"
+  ],
+  "nativeEligibleTests": [
+    "TestSRAMHealthStorage",
+    "TestSRAMTimingQualificationAndRollback"
+  ],
+  "sourceSHA256": {
+    "app/cmd/acqsram/main.go": "bad66f65f7ac157ed8154e1d4989dbd1f7b9dae77fd84f12a1eec30457ce481f",
+    "app/cmd/acqsram/profile.go": "c751656dff5fdccea7698f43ad06c0cc864328a4a0c6ba16a051abbca63a4709",
+    "app/cmd/acqsram/scheduling_linux.go": "e73a9b7a96e246312201cde0055a81f7e278f98aba2a37fce1ceffcde9857fd5",
+    "app/cmd/app/main.go": "6cc21b84f7b00909e510b5760c80922b6db128b2da55e75577cbe398cd15944d",
+    "app/cmd/app/sram.go": "1ee85a908c4037abc24c2d5e3fff89ec51ce1e36d17ba72a35faa42bf2872630",
+    "app/cmd/app/sram_test.go": "5fd4b28914ada1343e9ca11555957fab2aa2e138b23d4e2194645139f6aae85e",
+    "app/cmd/app/sram_timing.go": "bd8327b321ade3175d361bb738d4e07df59f858204b5f9543e35a25f01c28c58",
+    "app/cmd/app/sram_timing_test.go": "490da7141ed3fa36ebe893917d065b05c02d846ca52315f12535effefbb287f3",
+    "app/cmd/srambench/main.go": "92d6c73af0048453017934bb02ea75c02a91d86a686d3c7c713a99807037d39b",
+    "app/internal/buildinfo/buildinfo.go": "c3ad5515f3433e3ae8683ec3c62bde05aedfee1c8380a514cad6c33c5d38370b",
+    "fpga/cmd/buildfpga/main.go": "f534122226e6d5479e855125c9c1c65414884b9822ac7bd95b72f6311449e775",
+    "tools/hw/sramburst/main.go": "b86df31bae9a0551ae9faaed6675a75684749b7934365130d29078bd9ab40f6e"
+  },
+  "scope": "Application startup and SRAM diagnostic/build command source review. Only original host helper tests and package compilation; no command main, device IO, FPGA load, Quartus flow or real-time scheduling executed."
+}

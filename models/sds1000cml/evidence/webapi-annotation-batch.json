@@ -1,0 +1,844 @@
+{
+  "status": "integrated",
+  "files": [
+    {
+      "path": "app/internal/web/apifuzz_test.go",
+      "owner": "FU-APP-WEB",
+      "functions": {
+        "TestAPIFuzz": [
+          "REQ-SDS-161",
+          "REQ-SDS-162",
+          "REQ-SDS-163",
+          "REQ-SDS-164",
+          "REQ-SDS-165"
+        ]
+      },
+      "types": {}
+    },
+    {
+      "path": "app/internal/web/assets.go",
+      "owner": "FU-APP-WEB",
+      "functions": {
+        "serveAsset": [
+          "REQ-SDS-161"
+        ],
+        "staticName": [
+          "REQ-SDS-161"
+        ]
+      },
+      "types": {}
+    },
+    {
+      "path": "app/internal/web/bin_test.go",
+      "owner": "FU-APP-WEB",
+      "functions": {
+        "getBin": [
+          "REQ-SDS-163"
+        ],
+        "refReply": [
+          "REQ-SDS-163"
+        ],
+        "getRef": [
+          "REQ-SDS-163"
+        ],
+        "reconstruct": [
+          "REQ-SDS-163"
+        ],
+        "TestBinFrameParity": [
+          "REQ-SDS-163"
+        ],
+        "TestBinFrameUnchanged": [
+          "REQ-SDS-163"
+        ],
+        "TestBinFrameLongPollDegrade": [
+          "REQ-SDS-163"
+        ],
+        "TestMeasCacheReuse": [
+          "REQ-SDS-164"
+        ],
+        "TestBinFrameRawShape": [
+          "REQ-SDS-163"
+        ]
+      },
+      "types": {}
+    },
+    {
+      "path": "app/internal/web/diag.go",
+      "owner": "FU-APP-WEB",
+      "functions": {
+        "Server.SetDiag": [
+          "REQ-SDS-165"
+        ],
+        "Server.registerDiag": [
+          "REQ-SDS-165"
+        ],
+        "Server.withDiag": [
+          "REQ-SDS-165"
+        ],
+        "diagErr": [
+          "REQ-SDS-165"
+        ],
+        "decodeBody": [
+          "REQ-SDS-165"
+        ],
+        "parseWord": [
+          "REQ-SDS-165"
+        ],
+        "Server.hDiagStatus": [
+          "REQ-SDS-165"
+        ],
+        "Server.hDiagMap": [
+          "REQ-SDS-165"
+        ],
+        "Server.hDiagReg": [
+          "REQ-SDS-165"
+        ],
+        "Server.hDiagWindow": [
+          "REQ-SDS-165"
+        ],
+        "Server.hDiagCensus": [
+          "REQ-SDS-165"
+        ],
+        "Server.hDiagSnapshot": [
+          "REQ-SDS-165"
+        ],
+        "Server.hDiagBus": [
+          "REQ-SDS-165"
+        ],
+        "Server.hDiagCtrl": [
+          "REQ-SDS-165"
+        ],
+        "Server.hDiagVendor": [
+          "REQ-SDS-165"
+        ],
+        "Server.hDiagE2": [
+          "REQ-SDS-165"
+        ],
+        "Server.hDiagCapture": [
+          "REQ-SDS-165"
+        ],
+        "Server.hDiagBusProbe": [
+          "REQ-SDS-165"
+        ],
+        "Server.hDiagCS3": [
+          "REQ-SDS-165"
+        ],
+        "Server.hDiagCS3Poke": [
+          "REQ-SDS-165"
+        ],
+        "Server.hDiagSramCrank": [
+          "REQ-SDS-165"
+        ],
+        "Server.hDiagPeek": [
+          "REQ-SDS-165"
+        ],
+        "Server.hDiagQuiet": [
+          "REQ-SDS-165"
+        ],
+        "Server.hDiagGpmc": [
+          "REQ-SDS-165"
+        ],
+        "Server.hDiagSchema": [
+          "REQ-SDS-165"
+        ],
+        "Server.hDiagRedrain": [
+          "REQ-SDS-165"
+        ],
+        "Server.hDiagPage": [
+          "REQ-SDS-165"
+        ],
+        "Server.hDiagJS": [
+          "REQ-SDS-165"
+        ]
+      },
+      "types": {}
+    },
+    {
+      "path": "app/internal/web/diag_v3_test.go",
+      "owner": "FU-APP-WEB",
+      "functions": {
+        "TestDiagV3Routes": [
+          "REQ-SDS-165"
+        ]
+      },
+      "types": {}
+    },
+    {
+      "path": "app/internal/web/framefuzz_test.go",
+      "owner": "FU-APP-WEB",
+      "functions": {
+        "TestFrameServeFuzz": [
+          "REQ-SDS-163"
+        ]
+      },
+      "types": {}
+    },
+    {
+      "path": "app/internal/web/measure_test.go",
+      "owner": "FU-APP-WEB",
+      "functions": {
+        "TestResampleEnv": [
+          "REQ-SDS-163"
+        ]
+      },
+      "types": {}
+    },
+    {
+      "path": "app/internal/web/precision_frame_test.go",
+      "owner": "FU-APP-WEB",
+      "functions": {
+        "TestPrecisionBinaryPayload": [
+          "REQ-SDS-163"
+        ]
+      },
+      "types": {}
+    },
+    {
+      "path": "app/internal/web/sram.go",
+      "owner": "FU-APP-WEB",
+      "functions": {
+        "SRAMHandler": [
+          "REQ-SDS-166"
+        ],
+        "deadlineWriter.Write": [
+          "REQ-SDS-166"
+        ]
+      },
+      "types": {
+        "SRAMSource": [
+          "REQ-SDS-166"
+        ],
+        "deadlineWriter": [
+          "REQ-SDS-166"
+        ]
+      }
+    },
+    {
+      "path": "app/internal/web/sram_test.go",
+      "owner": "FU-APP-WEB",
+      "functions": {
+        "sramTestSource.Status": [
+          "REQ-SDS-166"
+        ],
+        "sramTestSource.Arm": [
+          "REQ-SDS-166"
+        ],
+        "sramTestSource.Force": [
+          "REQ-SDS-166"
+        ],
+        "sramTestSource.Halt": [
+          "REQ-SDS-166"
+        ],
+        "sramTestSource.Snapshot": [
+          "REQ-SDS-166"
+        ],
+        "sramTestSource.Recall": [
+          "REQ-SDS-166"
+        ],
+        "TestSRAMFullRecordAndWindowAPI": [
+          "REQ-SDS-166"
+        ],
+        "TestSRAMArmIsExplicitAndErrorsRemainJSON": [
+          "REQ-SDS-166"
+        ]
+      },
+      "types": {
+        "sramTestSource": [
+          "REQ-SDS-166"
+        ]
+      }
+    },
+    {
+      "path": "app/internal/web/web.go",
+      "owner": "FU-APP-WEB",
+      "functions": {
+        "New": [
+          "REQ-SDS-161",
+          "REQ-SDS-162",
+          "REQ-SDS-163",
+          "REQ-SDS-164"
+        ],
+        "Server.SetInvertSource": [
+          "REQ-SDS-164"
+        ],
+        "Server.Handler": [
+          "REQ-SDS-161"
+        ],
+        "Server.hClaim": [
+          "REQ-SDS-161"
+        ],
+        "Server.hTune": [
+          "REQ-SDS-162"
+        ],
+        "Server.superseded": [
+          "REQ-SDS-161"
+        ],
+        "Server.hPanel": [
+          "REQ-SDS-162"
+        ],
+        "Server.hScreen": [
+          "REQ-SDS-161"
+        ],
+        "Server.hRoot": [
+          "REQ-SDS-161"
+        ],
+        "writeJSON": [
+          "REQ-SDS-161",
+          "REQ-SDS-162",
+          "REQ-SDS-163",
+          "REQ-SDS-164"
+        ]
+      },
+      "types": {
+        "Scope": [
+          "REQ-SDS-161",
+          "REQ-SDS-162",
+          "REQ-SDS-163",
+          "REQ-SDS-164"
+        ],
+        "Analog": [
+          "REQ-SDS-161",
+          "REQ-SDS-162",
+          "REQ-SDS-163",
+          "REQ-SDS-164"
+        ],
+        "Panel": [
+          "REQ-SDS-162"
+        ],
+        "superresReporter": [
+          "REQ-SDS-164"
+        ],
+        "frameWaiter": [
+          "REQ-SDS-163"
+        ],
+        "Server": [
+          "REQ-SDS-161",
+          "REQ-SDS-162",
+          "REQ-SDS-163",
+          "REQ-SDS-164"
+        ],
+        "measKey": [
+          "REQ-SDS-164"
+        ],
+        "measVal": [
+          "REQ-SDS-164"
+        ]
+      }
+    },
+    {
+      "path": "app/internal/web/web_binframe.go",
+      "owner": "FU-APP-WEB",
+      "functions": {
+        "encodeBinFrame": [
+          "REQ-SDS-163"
+        ],
+        "Server.hFrameBin": [
+          "REQ-SDS-163"
+        ],
+        "Server.rawBinMsg": [
+          "REQ-SDS-163"
+        ]
+      },
+      "types": {}
+    },
+    {
+      "path": "app/internal/web/web_control.go",
+      "owner": "FU-APP-WEB",
+      "functions": {
+        "Server.hZones": [
+          "REQ-SDS-162"
+        ],
+        "Server.hSerial": [
+          "REQ-SDS-162"
+        ],
+        "clampI": [
+          "REQ-SDS-162"
+        ],
+        "Server.hMask": [
+          "REQ-SDS-162"
+        ],
+        "Server.hBode": [
+          "REQ-SDS-162"
+        ],
+        "Server.hMaskFail": [
+          "REQ-SDS-162"
+        ],
+        "Server.hSet": [
+          "REQ-SDS-162"
+        ]
+      },
+      "types": {
+        "setReq": [
+          "REQ-SDS-162"
+        ]
+      }
+    },
+    {
+      "path": "app/internal/web/web_control_test.go",
+      "owner": "FU-APP-WEB",
+      "functions": {
+        "TestSetVerbs": [
+          "REQ-SDS-162"
+        ],
+        "TestVerticalVerbs": [
+          "REQ-SDS-162"
+        ],
+        "TestProbeAttenuation": [
+          "REQ-SDS-162"
+        ],
+        "TestCouplingVerbs": [
+          "REQ-SDS-162"
+        ],
+        "TestACCouplingRemovesDC": [
+          "REQ-SDS-163"
+        ],
+        "TestHoldoffVerb": [
+          "REQ-SDS-162"
+        ],
+        "TestQualifierAndAcqVerbs": [
+          "REQ-SDS-162"
+        ],
+        "TestBodeEndpoint": [
+          "REQ-SDS-162"
+        ],
+        "fakeAnalog.TrigVolts": [
+          "REQ-SDS-162"
+        ],
+        "fakeAnalog.TrigCalActive": [
+          "REQ-SDS-162"
+        ]
+      },
+      "types": {}
+    },
+    {
+      "path": "app/internal/web/web_diag_test.go",
+      "owner": "FU-APP-WEB",
+      "functions": {
+        "newDiagBus": [
+          "REQ-SDS-165"
+        ],
+        "diagBus.Read": [
+          "REQ-SDS-165"
+        ],
+        "diagBus.Write": [
+          "REQ-SDS-165"
+        ],
+        "diagBus.RawWrite": [
+          "REQ-SDS-165"
+        ],
+        "diagBus.BurstInto": [
+          "REQ-SDS-165"
+        ],
+        "diagBus.PopWords": [
+          "REQ-SDS-165"
+        ],
+        "diagBus.FastDrain": [
+          "REQ-SDS-165"
+        ],
+        "diagServer": [
+          "REQ-SDS-165"
+        ],
+        "call": [
+          "REQ-SDS-165"
+        ],
+        "TestDiagRoutesUnwiredAre503": [
+          "REQ-SDS-165"
+        ],
+        "TestDiagStatusRegWindow": [
+          "REQ-SDS-165"
+        ],
+        "TestDiagSnapshotBusExperiments": [
+          "REQ-SDS-165"
+        ]
+      },
+      "types": {
+        "diagBus": [
+          "REQ-SDS-165"
+        ]
+      }
+    },
+    {
+      "path": "app/internal/web/web_frame.go",
+      "owner": "FU-APP-WEB",
+      "functions": {
+        "resampleEnv": [
+          "REQ-SDS-163"
+        ],
+        "toCols": [
+          "REQ-SDS-163"
+        ],
+        "rawInt16": [
+          "REQ-SDS-163"
+        ],
+        "window": [
+          "REQ-SDS-163"
+        ],
+        "Server.vertScales": [
+          "REQ-SDS-164"
+        ],
+        "Server.buildReply": [
+          "REQ-SDS-163",
+          "REQ-SDS-164"
+        ],
+        "coupleQ8": [
+          "REQ-SDS-163"
+        ]
+      },
+      "types": {
+        "frameReply": [
+          "REQ-SDS-163"
+        ]
+      }
+    },
+    {
+      "path": "app/internal/web/web_frame_test.go",
+      "owner": "FU-APP-WEB",
+      "functions": {
+        "TestFrameEndpoint": [
+          "REQ-SDS-163"
+        ],
+        "TestDeepFrameServesRawRecord": [
+          "REQ-SDS-163"
+        ],
+        "TestWindowMapping": [
+          "REQ-SDS-163"
+        ],
+        "TestWindowNoEndGaps": [
+          "REQ-SDS-163"
+        ],
+        "TestWindowRailExtendCentres": [
+          "REQ-SDS-163"
+        ],
+        "TestDtSTrueCapturePitch": [
+          "REQ-SDS-163"
+        ]
+      },
+      "types": {}
+    },
+    {
+      "path": "app/internal/web/web_invs_test.go",
+      "owner": "FU-APP-WEB",
+      "functions": {
+        "TestStatusInvertSource": [
+          "REQ-SDS-164"
+        ]
+      },
+      "types": {}
+    },
+    {
+      "path": "app/internal/web/web_serialtrig_test.go",
+      "owner": "FU-APP-WEB",
+      "functions": {
+        "TestSerialTriggerEndpoints": [
+          "REQ-SDS-162"
+        ]
+      },
+      "types": {}
+    },
+    {
+      "path": "app/internal/web/web_status.go",
+      "owner": "FU-APP-WEB",
+      "functions": {
+        "Server.hStatus": [
+          "REQ-SDS-164"
+        ]
+      },
+      "types": {
+        "statusReply": [
+          "REQ-SDS-164"
+        ]
+      }
+    },
+    {
+      "path": "app/internal/web/web_test.go",
+      "owner": "FU-APP-WEB",
+      "functions": {
+        "fakeScope.SetOffsetDAC": [
+          "REQ-SDS-162"
+        ],
+        "fakeScope.SetETS": [
+          "REQ-SDS-162"
+        ],
+        "fakeScope.SetSingle": [
+          "REQ-SDS-162"
+        ],
+        "fakeScope.QuietRLock": [
+          "REQ-SDS-163"
+        ],
+        "fakeScope.QuietRUnlock": [
+          "REQ-SDS-163"
+        ],
+        "fakeScope.Tune": [
+          "REQ-SDS-162"
+        ],
+        "fakeScope.TuneSnapshot": [
+          "REQ-SDS-162"
+        ],
+        "fakeScope.SetTrigPosFrac": [
+          "REQ-SDS-162"
+        ],
+        "fakeScope.SetMemDepth": [
+          "REQ-SDS-162"
+        ],
+        "fakeScope.SetFramePeriod": [
+          "REQ-SDS-162"
+        ],
+        "fakeScope.SetStreamMode": [
+          "REQ-SDS-162"
+        ],
+        "fakeScope.SetHoldoff": [
+          "REQ-SDS-162"
+        ],
+        "fakeScope.SetZones": [
+          "REQ-SDS-162"
+        ],
+        "fakeScope.SetZoneMode": [
+          "REQ-SDS-162"
+        ],
+        "fakeScope.SetMask": [
+          "REQ-SDS-162"
+        ],
+        "fakeScope.SetMaskMode": [
+          "REQ-SDS-162"
+        ],
+        "fakeScope.ClearMaskFails": [
+          "REQ-SDS-162"
+        ],
+        "fakeScope.MaskFails": [
+          "REQ-SDS-162"
+        ],
+        "fakeScope.SetSerialParams": [
+          "REQ-SDS-162"
+        ],
+        "fakeScope.SetSerialMode": [
+          "REQ-SDS-162"
+        ],
+        "fakeScope.SetBodeMode": [
+          "REQ-SDS-162"
+        ],
+        "fakeScope.ClearBode": [
+          "REQ-SDS-162"
+        ],
+        "fakeScope.BodePoints": [
+          "REQ-SDS-162"
+        ],
+        "fakeScope.AcqLog": [
+          "REQ-SDS-162"
+        ],
+        "fakeScope.CmdLog": [
+          "REQ-SDS-162"
+        ],
+        "fakeScope.NoteCmd": [
+          "REQ-SDS-162"
+        ],
+        "fakeScope.SetTrigType": [
+          "REQ-SDS-162"
+        ],
+        "fakeScope.SetAcqMode": [
+          "REQ-SDS-162"
+        ],
+        "fakeScope.SetAvgCount": [
+          "REQ-SDS-162"
+        ],
+        "fakeScope.SetEresLen": [
+          "REQ-SDS-162"
+        ],
+        "fakeScope.SetPulseParams": [
+          "REQ-SDS-162"
+        ],
+        "fakeScope.SetSlopeParams": [
+          "REQ-SDS-162"
+        ],
+        "fakeScope.SetVideoParams": [
+          "REQ-SDS-162"
+        ],
+        "fakeScope.lastCall": [
+          "REQ-SDS-162"
+        ],
+        "fakeAnalog.SetVdiv": [
+          "REQ-SDS-162"
+        ],
+        "fakeAnalog.Snapshot": [
+          "REQ-SDS-164"
+        ],
+        "fakeAnalog.SetOffset": [
+          "REQ-SDS-162"
+        ],
+        "fakeAnalog.OffsetVolts": [
+          "REQ-SDS-162"
+        ],
+        "fakeAnalog.CalSource": [
+          "REQ-SDS-162"
+        ],
+        "fakeAnalog.DCVolts": [
+          "REQ-SDS-162"
+        ],
+        "fakeAnalog.SetProbe": [
+          "REQ-SDS-162"
+        ],
+        "fakeAnalog.ProbeFactor": [
+          "REQ-SDS-162"
+        ],
+        "fakeAnalog.SetCoupling": [
+          "REQ-SDS-162"
+        ],
+        "fakeAnalog.Coupling": [
+          "REQ-SDS-162"
+        ],
+        "fakeScope.Snapshot": [
+          "REQ-SDS-164"
+        ],
+        "fakeScope.WithFrame": [
+          "REQ-SDS-163"
+        ],
+        "fakeScope.SetRunning": [
+          "REQ-SDS-162"
+        ],
+        "fakeScope.SetNorm": [
+          "REQ-SDS-162"
+        ],
+        "fakeScope.SetTrigSlope": [
+          "REQ-SDS-162"
+        ],
+        "fakeScope.SetTrigSource": [
+          "REQ-SDS-162"
+        ],
+        "fakeScope.SetTrigLevelCode": [
+          "REQ-SDS-162"
+        ],
+        "fakeScope.SetTdiv": [
+          "REQ-SDS-162"
+        ],
+        "post": [
+          "REQ-SDS-162"
+        ],
+        "getStatus": [
+          "REQ-SDS-164"
+        ],
+        "TestStatusEndpoint": [
+          "REQ-SDS-164"
+        ],
+        "TestRootServesUI": [
+          "REQ-SDS-161"
+        ]
+      },
+      "types": {
+        "fakeScope": [
+          "REQ-SDS-162"
+        ],
+        "fakeAnalog": [
+          "REQ-SDS-162"
+        ]
+      }
+    },
+    {
+      "path": "app/internal/web/zonemask_api_test.go",
+      "owner": "FU-APP-WEB",
+      "functions": {
+        "TestZoneMaskAPI": [
+          "REQ-SDS-162"
+        ]
+      },
+      "types": {}
+    }
+  ],
+  "functions": 169,
+  "types": 17,
+  "uniqueReviewedTests": [
+    "TestACCouplingRemovesDC",
+    "TestAPIFuzz",
+    "TestBinFrameLongPollDegrade",
+    "TestBinFrameParity",
+    "TestBinFrameRawShape",
+    "TestBinFrameUnchanged",
+    "TestBodeEndpoint",
+    "TestCouplingVerbs",
+    "TestDeepFrameServesRawRecord",
+    "TestDiagRoutesUnwiredAre503",
+    "TestDiagSnapshotBusExperiments",
+    "TestDiagStatusRegWindow",
+    "TestDiagV3Routes",
+    "TestDtSTrueCapturePitch",
+    "TestFrameEndpoint",
+    "TestFrameServeFuzz",
+    "TestHoldoffVerb",
+    "TestMeasCacheReuse",
+    "TestPrecisionBinaryPayload",
+    "TestProbeAttenuation",
+    "TestQualifierAndAcqVerbs",
+    "TestResampleEnv",
+    "TestRootServesUI",
+    "TestSRAMArmIsExplicitAndErrorsRemainJSON",
+    "TestSRAMFullRecordAndWindowAPI",
+    "TestSerialTriggerEndpoints",
+    "TestSetVerbs",
+    "TestStatusEndpoint",
+    "TestStatusInvertSource",
+    "TestVerticalVerbs",
+    "TestWindowMapping",
+    "TestWindowNoEndGaps",
+    "TestWindowRailExtendCentres",
+    "TestZoneMaskAPI"
+  ],
+  "nativeEligibleTests": [
+    "TestACCouplingRemovesDC",
+    "TestAPIFuzz",
+    "TestBinFrameLongPollDegrade",
+    "TestBinFrameParity",
+    "TestBinFrameRawShape",
+    "TestBinFrameUnchanged",
+    "TestBodeEndpoint",
+    "TestCouplingVerbs",
+    "TestDeepFrameServesRawRecord",
+    "TestDiagRoutesUnwiredAre503",
+    "TestDiagSnapshotBusExperiments",
+    "TestDiagStatusRegWindow",
+    "TestDiagV3Routes",
+    "TestDtSTrueCapturePitch",
+    "TestFrameEndpoint",
+    "TestFrameServeFuzz",
+    "TestHoldoffVerb",
+    "TestMeasCacheReuse",
+    "TestPrecisionBinaryPayload",
+    "TestProbeAttenuation",
+    "TestQualifierAndAcqVerbs",
+    "TestResampleEnv",
+    "TestRootServesUI",
+    "TestSRAMArmIsExplicitAndErrorsRemainJSON",
+    "TestSRAMFullRecordAndWindowAPI",
+    "TestSerialTriggerEndpoints",
+    "TestSetVerbs",
+    "TestStatusEndpoint",
+    "TestStatusInvertSource",
+    "TestVerticalVerbs",
+    "TestWindowMapping",
+    "TestWindowNoEndGaps",
+    "TestWindowRailExtendCentres",
+    "TestZoneMaskAPI"
+  ],
+  "sourceSHA256": {
+    "app/internal/web/apifuzz_test.go": "61d9ec6c902b8360fa6f737886123317eca7e17f08a033614869f2857ff97aab",
+    "app/internal/web/assets.go": "b37577f0078610acfb13b0c7884e9dce2c8201eaa9bc526356225a51f29edfbb",
+    "app/internal/web/bin_test.go": "5c6000cb60dd442624207574eae11f2e071eaf677ddcde76456999477518a12e",
+    "app/internal/web/diag.go": "83a7a7a5f1dad93a7c8d86f3b36ab4d650b6cf4f6526bccd7d7ea85f32d8ab44",
+    "app/internal/web/diag_v3_test.go": "3204015d68b995850c240072c39dae480bf010ae393928febef3ffb9c29bda20",
+    "app/internal/web/framefuzz_test.go": "be03763e4de5cf3dbc3818fb0231159665b651a1c392250f4e7879ec64535806",
+    "app/internal/web/measure_test.go": "00fdb35bc61ec67a41e6fdfb32c065abf28e9fef9b5431326bbc1ee22d5f06bb",
+    "app/internal/web/precision_frame_test.go": "d2969cdb1cb408f6aad4fc34253e553d1c11305feb18d9e3f81937db0a3c7e43",
+    "app/internal/web/sram.go": "0c1592081c6ac164374bf07582fe3919f790779f5ee34ce212024a6949de0b4a",
+    "app/internal/web/sram_test.go": "2773e823ab3fb8acdd01a3787b31984b7196038deaf2aeda5f9ce620e00e74da",
+    "app/internal/web/web.go": "981e135bf23fdb4ae264b5e62f78ec09ffa65c18c12ad72cfcacfde183fb8ba7",
+    "app/internal/web/web_binframe.go": "8a54b3eaf6f0903d2bf2c9377edec9135c80ab20dbbae8a6d2b2f87c47b2c2ce",
+    "app/internal/web/web_control.go": "1dd77a394d15d329506a343528ff114d4dec843a77032fa6261fd6763f28cd76",
+    "app/internal/web/web_control_test.go": "bf8981221326d03b1a1f7c09b5d6e26c1a175e21f77effac58edae8ad0d3d963",
+    "app/internal/web/web_diag_test.go": "2aa0c1ecdb2cf583dc38daa343f0f0bc1c8a9dac097b93a9adc493143f7c3161",
+    "app/internal/web/web_frame.go": "6ac131fdec8512dd05c149b7d8193c2d33cb56a8abf58ec4198e5c9966bf60cb",
+    "app/internal/web/web_frame_test.go": "2eb61813bfa70a1155adccf45c3ba2d236a7c78fb419c70e3a07a5349a6e4f15",
+    "app/internal/web/web_invs_test.go": "214de8a734802a31bfa482c7354a23dbb97c2ba741a3730682afa8d67dd0a5e2",
+    "app/internal/web/web_serialtrig_test.go": "e6bce98b189efe123a5843c412d7af38a3e1487c59a96ff8b59d3ad6ac76ccb8",
+    "app/internal/web/web_status.go": "8f124247fbb123cd0b6ce5c14e47eaf65110f7ee9ad2b6f118fd4f91b4315cbe",
+    "app/internal/web/web_test.go": "37f4c52d6ddeb726f786e0555e61fd7054631df40083de642309f9740a88d830",
+    "app/internal/web/zonemask_api_test.go": "4d7724bf98b0ed6836373861debcb9fcee13613979380e03cf10780142149af4"
+  },
+  "scope": "Eight web production Go files and14original host API/frame test files. Synthetic owner/front-end/fabric/record sources only; no device operations, physical qualification or full browser-production review."
+}

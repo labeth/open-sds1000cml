@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-LCD
 package lcd
 
 import (
@@ -7,6 +8,7 @@ import (
 
 // fftRadix2 is an in-place iterative Cooley–Tukey FFT (len must be a power of
 // two). Kept here (not shared with peaks.js) so the LCD has no JS dependency.
+// TRLC-LINKS: REQ-SDS-021, REQ-SDS-070
 func fftRadix2(re, im []float64) {
 	n := len(re)
 	for i, j := 1, 0; i < n; i++ {
@@ -41,6 +43,7 @@ func fftRadix2(re, im []float64) {
 // drawFFT renders the Hann-windowed magnitude spectrum (dB, peak-normalised) of
 // the display channel across the graticule (parity with the web FFT mode). n is
 // capped so the per-frame cost stays well under the render budget.
+// TRLC-LINKS: REQ-SDS-021, REQ-SDS-070
 func drawFFT(sf Surface, f *engine.Frame, hud HUD) {
 	valid := frameValid(f)
 	n := 1
@@ -111,6 +114,7 @@ func drawFFT(sf Surface, f *engine.Frame, hud HUD) {
 // fftTrace draws one channel's Hann magnitude spectrum (dB, peak-normalised)
 // across the graticule and returns its parabola-refined peak frequency. src is
 // strided by `stride` down to `n` samples.
+// TRLC-LINKS: REQ-SDS-021, REQ-SDS-070
 func fftTrace(sf Surface, src []uint8, n, stride int, col uint16, effNyq float64, kLo, kHi int) float64 {
 	samples := make([]float64, n)
 	for i := 0; i < n; i++ {
@@ -124,6 +128,7 @@ func fftTrace(sf Surface, src []uint8, n, stride int, col uint16, effNyq float64
 // screen, marks peaks, and returns the refined peak frequency. Shared by the
 // live FFT (uint8) and the super-res FFT (float fine grid — the float input is
 // what lets the crunched sub-LSB bits lower the spectrum noise floor).
+// TRLC-LINKS: REQ-SDS-021, REQ-SDS-070
 func fftCore(sf Surface, samples []float64, col uint16, effNyq float64, kLo, kHi int) float64 {
 	n := len(samples)
 	re := make([]float64, n)

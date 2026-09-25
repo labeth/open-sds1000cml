@@ -1,0 +1,95 @@
+{
+  "source": "app/internal/measure/measure_test.go",
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "scope": "Reviewed Go test outcomes; passing assertions contribute partial requirement evidence.",
+  "sourceSHA256": "d48b45ac8d766d17ef03e75b31bcd3c88dfbde4c3b7eec927dda203f3dba3865",
+  "logs": {
+    "test-runs/measurement.jsonl": "a2847dd09da9381dbbf827c4c4f8e30bcb5b3823320f70ac8e2a067ec581c05c"
+  },
+  "tests": [
+    {
+      "name": "TestSquareWave",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-017"
+      ]
+    },
+    {
+      "name": "TestDutyCycle",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-017"
+      ]
+    },
+    {
+      "name": "TestTrapezoidRiseTime",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-017"
+      ]
+    },
+    {
+      "name": "TestFlatHasNoTiming",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-017"
+      ]
+    },
+    {
+      "name": "TestClipped",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-017"
+      ]
+    },
+    {
+      "name": "TestEmptyRecord",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-017"
+      ]
+    },
+    {
+      "name": "TestOvershoot",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-017"
+      ]
+    },
+    {
+      "name": "TestAvgWidthMergeParity",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-017"
+      ]
+    },
+    {
+      "name": "TestFractionalAcquisitionMeasurements",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-017"
+      ]
+    },
+    {
+      "name": "TestQ8SmallRippleOnLargeDC",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-017"
+      ]
+    },
+    {
+      "name": "TestNoisyTriangleTiming",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-017"
+      ]
+    }
+  ],
+  "results": [
+    {
+      "requirement": "REQ-SDS-017",
+      "status": "partial",
+      "notes": "11 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    }
+  ]
+}

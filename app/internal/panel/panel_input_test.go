@@ -1,7 +1,9 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-PANEL
 package panel
 
 import "testing"
 
+// TRLC-LINKS: REQ-SDS-135
 func TestButtonEdges(t *testing.T) {
 	c, eng, _ := newC(t)
 
@@ -25,6 +27,7 @@ func TestButtonEdges(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-135
 func TestSingleAndAuto(t *testing.T) {
 	c, eng, _ := newC(t)
 	m := idle()
@@ -46,6 +49,7 @@ func TestSingleAndAuto(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-135
 func TestKnobPriorityOneRowPerEvent(t *testing.T) {
 	c, eng, fe := newC(t)
 	// Two knobs "moving" at once: HORIZ POSITION (pri 1) must win over TIME/DIV
@@ -64,6 +68,7 @@ func TestKnobPriorityOneRowPerEvent(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-135
 func TestTdivKnob(t *testing.T) {
 	c, eng, _ := newC(t)
 	// TIME/DIV CW (bit14 low): +1 detent (500µs → 1ms), stepped (0x69 ignored).
@@ -83,6 +88,7 @@ func TestTdivKnob(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-135
 func TestVdivKnob(t *testing.T) {
 	c, _, fe := newC(t)
 	// CH1 V/DIV CCW (0x65 bit15 low): 1V (idx 8) → 500mV (idx 7).
@@ -95,6 +101,7 @@ func TestVdivKnob(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-135
 func TestTrigLevelSign(t *testing.T) {
 	c, eng, _ := newC(t)
 	// TRIG LEVEL CW must LOWER the code: 31434 − 1·40·1 = 31394.
@@ -107,6 +114,7 @@ func TestTrigLevelSign(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-135
 func TestPositionKnobAccel(t *testing.T) {
 	c, _, fe := newC(t)
 	// CH1 POSITION (continuous) with raw 0x69 = 25 → 100 steps. Each step is
@@ -121,6 +129,7 @@ func TestPositionKnobAccel(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-135
 func TestKnobResyncFromEngine(t *testing.T) {
 	c, eng, fe := newC(t)
 	// Web/SCPI moved trigger level to 30000 and V/div to idx 5 behind the
@@ -145,6 +154,7 @@ func TestKnobResyncFromEngine(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-135
 func TestAccelMap(t *testing.T) {
 	cases := map[uint16]int{0: 0, 5: 5, 9: 9, 10: 50, 19: 50, 20: 100, 150: 100, 1000: 100}
 	for raw, want := range cases {
@@ -154,6 +164,7 @@ func TestAccelMap(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-135
 func TestKnobGateOnZeroMagnitude(t *testing.T) {
 	c, eng, fe := newC(t)
 	// Phase bit low but 0x69 == 0: plain button interrupt, no knob move.
@@ -166,6 +177,7 @@ func TestKnobGateOnZeroMagnitude(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-135
 func TestResyncButtonsOnly(t *testing.T) {
 	c, eng, _ := newC(t)
 	// Knob phase low + magnitude on a BUTTONS-ONLY decode (40 ms tick):
@@ -179,6 +191,7 @@ func TestResyncButtonsOnly(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-135
 func TestKnobPushTrigger(t *testing.T) {
 	c, eng, _ := newC(t)
 	last := func() call { return eng.calls[len(eng.calls)-1] }

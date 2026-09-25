@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-RTL-DEFAULT-ADC-FRONT
 // adc_front.v -- ADC front end of the default image: encode generation on the five DDIO pairs,
 // the 80 registered lanes, and the LANEMAP-driven assembly of the CH1/CH2 sample word.
 //
@@ -42,6 +43,7 @@
 
 `timescale 1ns/1ps
 
+// TRLC-LINKS: REQ-SDS-194
 module adc_front (
     input  wire        cap_clk,
     input  wire        ph0,           // the encode clock of every pair (PLL A c0)

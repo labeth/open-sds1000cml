@@ -1,0 +1,65 @@
+{"Time":"2026-09-23T05:09:05.620323918+02:00","Action":"start","Package":"open-sds/app/internal/web"}
+{"Time":"2026-09-23T05:09:05.62362128+02:00","Action":"run","Package":"open-sds/app/internal/web","Test":"TestSigrokExportJS"}
+{"Time":"2026-09-23T05:09:05.623635229+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestSigrokExportJS","Output":"=== RUN   TestSigrokExportJS\n"}
+{"Time":"2026-09-23T05:09:05.830074424+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestSigrokExportJS","Output":"    sigrok_export_node_test.go:23: sigrok_export.test.cjs output:\n"}
+{"Time":"2026-09-23T05:09:05.830101243+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestSigrokExportJS","Output":"        ok   crc32 empty = 0\n"}
+{"Time":"2026-09-23T05:09:05.830107602+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestSigrokExportJS","Output":"        ok   crc32 '123456789' = 0xCBF43926\n"}
+{"Time":"2026-09-23T05:09:05.830112931+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestSigrokExportJS","Output":"        ok   crc32 'a' = 0xE8B7BE43\n"}
+{"Time":"2026-09-23T05:09:05.830117078+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestSigrokExportJS","Output":"        ok   zip has both entries in order\n"}
+{"Time":"2026-09-23T05:09:05.830120743+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestSigrokExportJS","Output":"        ok   zip payloads roundtrip\n"}
+{"Time":"2026-09-23T05:09:05.830125091+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestSigrokExportJS","Output":"        ok   zip zero-length entry survives\n"}
+{"Time":"2026-09-23T05:09:05.830132454+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestSigrokExportJS","Output":"        ok   series: null frame -\u003e null\n"}
+{"Time":"2026-09-23T05:09:05.830135943+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestSigrokExportJS","Output":"        ok   series: envelope frame (no c1) -\u003e null\n"}
+{"Time":"2026-09-23T05:09:05.830140424+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestSigrokExportJS","Output":"        ok   series: no time base -\u003e null\n"}
+{"Time":"2026-09-23T05:09:05.830143998+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestSigrokExportJS","Output":"        ok   series: all-margin frame -\u003e null\n"}
+{"Time":"2026-09-23T05:09:05.830147338+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestSigrokExportJS","Output":"        ok   series: seq/channels/count\n"}
+{"Time":"2026-09-23T05:09:05.83015099+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestSigrokExportJS","Output":"        ok   series: head/tail margins trimmed\n"}
+{"Time":"2026-09-23T05:09:05.830154581+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestSigrokExportJS","Output":"        ok   series: volts = (code-128)*vpc - off\n"}
+{"Time":"2026-09-23T05:09:05.830162193+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestSigrokExportJS","Output":"        ok   series: interior gap stays NaN\n"}
+{"Time":"2026-09-23T05:09:05.830168907+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestSigrokExportJS","Output":"        ok   series: dt from col_span_s fallback\n"}
+{"Time":"2026-09-23T05:09:05.830173133+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestSigrokExportJS","Output":"        ok   series: dt_s wins over col_span_s (the 1-200 ns/div nominal fix)\n"}
+{"Time":"2026-09-23T05:09:05.830176452+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestSigrokExportJS","Output":"        ok   series: fractional superres codes + single channel\n"}
+{"Time":"2026-09-23T05:09:05.830180006+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestSigrokExportJS","Output":"        ok   series: c2 of mismatched length dropped\n"}
+{"Time":"2026-09-23T05:09:05.830184699+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestSigrokExportJS","Output":"        ok   sr: entry set (logic-1 chunk + shifted analog indices)\n"}
+{"Time":"2026-09-23T05:09:05.830189479+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestSigrokExportJS","Output":"        ok   sr: version is the single byte '2'\n"}
+{"Time":"2026-09-23T05:09:05.830193817+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestSigrokExportJS","Output":"        ok   sr: metadata exact (counts precede name keys; analog index = probes+K; unitsize last)\n"}
+{"Time":"2026-09-23T05:09:05.830199476+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestSigrokExportJS","Output":"        ok   sr: logic chunk thresholds each channel at its mid-rail\n"}
+{"Time":"2026-09-23T05:09:05.83020397+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestSigrokExportJS","Output":"        ok   sr: chunk is float32 LE volts\n"}
+{"Time":"2026-09-23T05:09:05.830209266+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestSigrokExportJS","Output":"        ok   sr: interior gap encodes as NaN\n"}
+{"Time":"2026-09-23T05:09:05.830213971+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestSigrokExportJS","Output":"        ok   sr: \u003e1Mi samples split into per-channel chunks numbered from 1\n"}
+{"Time":"2026-09-23T05:09:05.830220281+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestSigrokExportJS","Output":"        ok   vcd: timescale 500 MHz -\u003e 1 GHz\n"}
+{"Time":"2026-09-23T05:09:05.83022494+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestSigrokExportJS","Output":"        ok   vcd: timescale divisible stays at first decade\n"}
+{"Time":"2026-09-23T05:09:05.830229871+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestSigrokExportJS","Output":"        ok   vcd: timescale 1 Hz -\u003e 1 Hz\n"}
+{"Time":"2026-09-23T05:09:05.830234597+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestSigrokExportJS","Output":"        ok   vcd: timescale hunts then accepts residual (32 GHz)\n"}
+{"Time":"2026-09-23T05:09:05.83023894+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestSigrokExportJS","Output":"        ok   vcd: period strings\n"}
+{"Time":"2026-09-23T05:09:05.830244034+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestSigrokExportJS","Output":"        ok   vcd: golden (changes only, NaN holds, 2 ticks/sample, final stamp)\n"}
+{"Time":"2026-09-23T05:09:05.830247644+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestSigrokExportJS","Output":"        ok   vcd: cap comment records decimation\n"}
+{"Time":"2026-09-23T05:09:05.830252724+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestSigrokExportJS","Output":"        ok   vcd: decimated rate keeps the axis true (1 MHz -\u003e 1 us ticks)\n"}
+{"Time":"2026-09-23T05:09:05.830257032+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestSigrokExportJS","Output":"        ok   vcd: constant channel emits once\n"}
+{"Time":"2026-09-23T05:09:05.830261887+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestSigrokExportJS","Output":"        ok   vcd: final stamp at decimated length\n"}
+{"Time":"2026-09-23T05:09:05.830267758+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestSigrokExportJS","Output":"        ok   vcd: no cap comment under the threshold\n"}
+{"Time":"2026-09-23T05:09:05.830272324+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestSigrokExportJS","Output":"        ok   wav: RIFF size + WAVE + fmt at 12\n"}
+{"Time":"2026-09-23T05:09:05.830278229+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestSigrokExportJS","Output":"        ok   wav: 18-byte fmt, code 3 (IEEE float), 2ch\n"}
+{"Time":"2026-09-23T05:09:05.830282789+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestSigrokExportJS","Output":"        ok   wav: rate/block align/bits\n"}
+{"Time":"2026-09-23T05:09:05.830289285+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestSigrokExportJS","Output":"        ok   wav: data chunk sized 3 frames\n"}
+{"Time":"2026-09-23T05:09:05.830293906+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestSigrokExportJS","Output":"        ok   wav: interleaved ch order\n"}
+{"Time":"2026-09-23T05:09:05.830299411+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestSigrokExportJS","Output":"        ok   wav: NaN gap holds previous value\n"}
+{"Time":"2026-09-23T05:09:05.830303533+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestSigrokExportJS","Output":"        ok   wav: \u003euint32 rate refused (use .sr)\n"}
+{"Time":"2026-09-23T05:09:05.830310111+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestSigrokExportJS","Output":"        ALL PASS\n"}
+{"Time":"2026-09-23T05:09:05.830323503+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestSigrokExportJS","Output":"--- PASS: TestSigrokExportJS (0.21s)\n"}
+{"Time":"2026-09-23T05:09:05.830329257+02:00","Action":"pass","Package":"open-sds/app/internal/web","Test":"TestSigrokExportJS","Elapsed":0.21}
+{"Time":"2026-09-23T05:09:05.830348767+02:00","Action":"run","Package":"open-sds/app/internal/web","Test":"TestSpectrogramJS"}
+{"Time":"2026-09-23T05:09:05.830353345+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestSpectrogramJS","Output":"=== RUN   TestSpectrogramJS\n"}
+{"Time":"2026-09-23T05:09:05.934158021+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestSpectrogramJS","Output":"    spectrogram_node_test.go:51: spectrogram.js:\n"}
+{"Time":"2026-09-23T05:09:05.934174749+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestSpectrogramJS","Output":"        ALL PASS\n"}
+{"Time":"2026-09-23T05:09:05.934184079+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestSpectrogramJS","Output":"--- PASS: TestSpectrogramJS (0.10s)\n"}
+{"Time":"2026-09-23T05:09:05.934188243+02:00","Action":"pass","Package":"open-sds/app/internal/web","Test":"TestSpectrogramJS","Elapsed":0.1}
+{"Time":"2026-09-23T05:09:05.934193691+02:00","Action":"run","Package":"open-sds/app/internal/web","Test":"TestSpectrogramJSBreaker"}
+{"Time":"2026-09-23T05:09:05.934196592+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestSpectrogramJSBreaker","Output":"=== RUN   TestSpectrogramJSBreaker\n"}
+{"Time":"2026-09-23T05:09:06.045895983+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestSpectrogramJSBreaker","Output":"    spectrogram_node_test.go:100: spectrogram.js breaker:\n"}
+{"Time":"2026-09-23T05:09:06.045913934+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestSpectrogramJSBreaker","Output":"        ALL PASS\n"}
+{"Time":"2026-09-23T05:09:06.045923607+02:00","Action":"output","Package":"open-sds/app/internal/web","Test":"TestSpectrogramJSBreaker","Output":"--- PASS: TestSpectrogramJSBreaker (0.11s)\n"}
+{"Time":"2026-09-23T05:09:06.045932018+02:00","Action":"pass","Package":"open-sds/app/internal/web","Test":"TestSpectrogramJSBreaker","Elapsed":0.11}
+{"Time":"2026-09-23T05:09:06.045938653+02:00","Action":"output","Package":"open-sds/app/internal/web","Output":"PASS\n"}
+{"Time":"2026-09-23T05:09:06.046458783+02:00","Action":"output","Package":"open-sds/app/internal/web","Output":"ok  \topen-sds/app/internal/web\t0.426s\n"}
+{"Time":"2026-09-23T05:09:06.046488598+02:00","Action":"pass","Package":"open-sds/app/internal/web","Elapsed":0.426}

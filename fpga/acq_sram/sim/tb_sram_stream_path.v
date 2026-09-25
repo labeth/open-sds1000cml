@@ -1,4 +1,6 @@
+// ENGMODEL-OWNER-UNIT: FU-RTL-ACQ-TESTS
 `timescale 1ns/1ps
+// TRLC-LINKS: REQ-SDS-044, REQ-SDS-047, REQ-SDS-048, REQ-SDS-051, REQ-SDS-052, REQ-SDS-053
 module tb_stream_path;
  parameter AW=13,TARGET=10003;
  localparam N=1<<AW;

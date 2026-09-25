@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-APP
 package main
 
 import (
@@ -19,6 +20,7 @@ import (
 // SRAM mode deliberately has no settings store, normal acquisition engine,
 // analog reinitialization, or default-fabric loader. It inherits the front end
 // and serves raw-code captures through the shared SRAM acquisition owner.
+// TRLC-LINKS: REQ-SDS-167, REQ-SDS-169, REQ-SDS-003
 func runSRAMMode(b *bus.Dev, fd int, listen, healthPath string, signals <-chan os.Signal) error {
 	if healthPath != "" && !sramHealthPathAllowed(healthPath) {
 		return fmt.Errorf("health token must be /dev/acq-* or on U-disk0; refusing internal persistent storage path %q", healthPath)
@@ -66,11 +68,13 @@ func runSRAMMode(b *bus.Dev, fd int, listen, healthPath string, signals <-chan o
 	return nil
 }
 
+// TRLC-LINKS: REQ-SDS-169
 func sramHealthPathAllowed(path string) bool {
 	path = filepath.Clean(path)
 	return (filepath.Dir(path) == "/dev" && strings.HasPrefix(filepath.Base(path), "acq-")) || strings.HasPrefix(path, "/usr/bin/siglent/usr/media/U-disk0/")
 }
 
+// TRLC-LINKS: REQ-SDS-169
 func sramHealthLoop(ctx context.Context, capture *sramcapture.Capture, path string) {
 	// An idle status poll verifies clock/map health. During a long recall the
 	// owner remains busy, so successful bus-operation beats keep health live.

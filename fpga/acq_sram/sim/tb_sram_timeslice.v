@@ -1,8 +1,10 @@
+// ENGMODEL-OWNER-UNIT: FU-RTL-ACQ-TESTS
 `timescale 1ns/1ps
 // Executable scheduling experiment using synthesizable ingress storage.
 // Ingress RAM runs at 125 MHz behind acknowledged bridges to the 250 MHz
 // transport. The command scheduler remains a testbench, not a hardware controller.
 // Exercises the actual transport and a two-stage synchronous SRAM model.
+// TRLC-LINKS: REQ-SDS-048
 module tb;
  parameter AW=19,BATCH=5120,FIFO=4608,HOST_DELAY=2500000,ROUNDS=16,READ_RESERVE=32,WRITE_DIV=1;
  localparam N=1<<AW;

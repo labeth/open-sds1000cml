@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-WEB
 package web
 
 import (
@@ -8,6 +9,7 @@ import (
 	"time"
 )
 
+// TRLC-LINKS: REQ-SDS-163
 type frameReply struct {
 	NoiseGainIdeal float64  `json:"noise_gain_ideal,omitempty"`
 	PassbandHz     float64  `json:"passband_hz,omitempty"`
@@ -86,6 +88,7 @@ type frameReply struct {
 }
 
 // resampleEnv nearest-resamples an envelope column array to n output columns.
+// TRLC-LINKS: REQ-SDS-163
 func resampleEnv(v []uint8, envCols, n int) []int16 {
 	out := make([]int16, n)
 	for x := 0; x < n; x++ {
@@ -97,6 +100,7 @@ func resampleEnv(v []uint8, envCols, n int) []int16 {
 	return out
 }
 
+// TRLC-LINKS: REQ-SDS-163
 func toCols(v []uint8, n int) []int16 {
 	out := make([]int16, n)
 	for i := 0; i < n && i < len(v); i++ {
@@ -114,6 +118,7 @@ func toCols(v []uint8, n int) []int16 {
 // polyline there.
 // rawInt16 copies a raw code slice to the []int16 wire type without resampling —
 // used when there is no trigger to anchor on (free-run). Codes are contiguous.
+// TRLC-LINKS: REQ-SDS-163
 func rawInt16(codes []uint8) []int16 {
 	out := make([]int16, len(codes))
 	for i, c := range codes {
@@ -122,6 +127,7 @@ func rawInt16(codes []uint8) []int16 {
 	return out
 }
 
+// TRLC-LINKS: REQ-SDS-163
 func window(sig []uint8, valid, winCols int, edgeX float64, interp bool, n int, posFrac float64) []int16 {
 	out := make([]int16, n)
 	if valid < 1 {
@@ -175,6 +181,7 @@ func window(sig []uint8, valid, winCols int, edgeX float64, interp bool, n int, 
 // vertScales returns the applied offset volts and volts-per-code (Vdiv/25 —
 // the 25-codes/div render scale, spec 10 §7.1) for each channel, using the
 // front-end V/div when available.
+// TRLC-LINKS: REQ-SDS-164
 func (s *Server) vertScales() (off [2]float64, vpc [2]float64) {
 	vpc = [2]float64{1.0 / 25, 1.0 / 25} // nominal 1 V/div when no front end
 	st := s.sc.Snapshot()
@@ -205,6 +212,7 @@ func (s *Server) vertScales() (off [2]float64, vpc [2]float64) {
 // fan-out read lock); the returned reply owns all its data. measThrottle
 // permits reusing ≤100 ms-old measurements on a seq advance (fast free-run
 // only — pass false for single-shot/stopped, where values must be exact).
+// TRLC-LINKS: REQ-SDS-163, REQ-SDS-164
 func (s *Server) buildReply(f *engine.Frame, cols int, full bool, since uint64, off, vpc [2]float64, posFrac float64, measThrottle bool) frameReply {
 	if f == nil || f.Seq == 0 || f.Seq == since {
 		seq := uint64(0)
@@ -353,6 +361,7 @@ func (s *Server) buildReply(f *engine.Frame, cols int, full bool, since uint64, 
 
 // Copy the precision payload while holding the frame lock. AC centering uses
 // its fractional mean; exported raw records bypass this display operation.
+// TRLC-LINKS: REQ-SDS-163
 func coupleQ8(src []uint16, cpl int) []uint16 {
 	out := append([]uint16(nil), src...)
 	if cpl == analog.CplDC {

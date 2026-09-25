@@ -1,0 +1,53 @@
+{
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "result": "pass",
+  "sourceSHA256": {
+    "app/internal/web/sigrok_export.js": "7e19755f5d61103a066889924a830500197e46063ef91bfefa898ee514d573c1",
+    "app/internal/web/sigrok_export.test.cjs": "a96c99257fb236b69b44947c4b66261d75e65306906aec6dd103973bfed1fdda",
+    "app/internal/web/sigrok_export_node_test.go": "e12b6e8ec9838a4db801645467173d30979ff2542b4ef7573a00e8ba4a080863",
+    "app/internal/web/spectrogram.js": "6e685acc429caacb62d32ad8e2e22df005ab13d954ae277770ed54648d955a71",
+    "app/internal/web/spectrogram_node_test.go": "1b46878820c609ef6535a82b47b2099a0d24d5794b0968aec606b4ebdd91742c"
+  },
+  "helperSHA256": "0b6a1c589f8049ff7dde18c41f6ef70fc825499560c2fe6827426919e65ff1ad",
+  "nodeVersion": "v22.20.0",
+  "originalTests": {
+    "TestSigrokExportJS": "pass",
+    "TestSpectrogramJS": "pass",
+    "TestSpectrogramJSBreaker": "pass"
+  },
+  "boundaryCharacterization": {
+    "result": "pass",
+    "cases": [
+      {
+        "name": "envelope marker is accepted when channel arrays are present",
+        "result": "pass"
+      },
+      {
+        "name": "zero calibration scale uses the default volts-per-code",
+        "result": "pass"
+      },
+      {
+        "name": "VCD decimation rounds capture length up to a whole stride",
+        "result": "pass"
+      },
+      {
+        "name": "stored ZIP bytes are deterministic for identical entries",
+        "result": "pass"
+      },
+      {
+        "name": "waterfall clear removes rows and pixels but retains Nyquist",
+        "result": "pass"
+      },
+      {
+        "name": "invalid peak leaves the waterfall unchanged",
+        "result": "pass"
+      },
+      {
+        "name": "100 MHz upper-axis label is incorrectly rendered as 1M",
+        "result": "pass"
+      }
+    ],
+    "scope": "Seven reproduced source boundaries. Passing characterization does not endorse the incorrect 100 MHz label or establish browser/WebGL or external-reader compatibility."
+  },
+  "scope": "Original Node assertions via three Go tests and seven additional deterministic boundary cases. No skipped tests, browser, HTTP server, device access or physical qualification."
+}

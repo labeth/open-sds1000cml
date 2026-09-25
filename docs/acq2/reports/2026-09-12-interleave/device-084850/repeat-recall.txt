@@ -1,0 +1,11 @@
+{
+  "bytes": 2097152,
+  "first": 1,
+  "last": 524287,
+  "nonconsecutive_words": 2047,
+  "path": "/dev/acq-counter.bin",
+  "seconds": 4.253215,
+  "sha256": "d74a87910decc2c61d34062c6c6536ce3a0bf643220283c393a1b4e73912c15f",
+  "words": 524288
+}
+[exit 0]

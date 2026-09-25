@@ -1,0 +1,101 @@
+{
+  "result": "pass",
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "sourceSHA256": {
+    "app/internal/dsp/precision_taps.go": "3c3cdc69943f4b7497df42d564d4499938dd9da83757d0476f0653bbe920ae0a",
+    "tools/dsp/precision_filter.py": "e77ea6026829c05acd9d2f500f3224c664ff0bd96f752585db89d04f46522ca4",
+    "specs/precision-filter-response.json": "9284244badb66b825fedb510d3056826a3ff87d34d5b2e720df81542aa5895cb"
+  },
+  "tapCount": 63,
+  "symmetric": true,
+  "coefficientSum": 4194304,
+  "gridPoints": 2049,
+  "checks": [
+    {
+      "log2": 4,
+      "maxPassbandErrorDB": 0.0011015440470034717,
+      "stopbandMaxDB": -117.21034139794034
+    },
+    {
+      "log2": 5,
+      "maxPassbandErrorDB": 0.001694689992376424,
+      "stopbandMaxDB": -117.21034139794034
+    },
+    {
+      "log2": 6,
+      "maxPassbandErrorDB": 0.0018710512545305898,
+      "stopbandMaxDB": -117.21034139794034
+    },
+    {
+      "log2": 7,
+      "maxPassbandErrorDB": 0.0019151414954640155,
+      "stopbandMaxDB": -117.21034139794034
+    },
+    {
+      "log2": 8,
+      "maxPassbandErrorDB": 0.0019261640510350214,
+      "stopbandMaxDB": -117.21034139794034
+    },
+    {
+      "log2": 9,
+      "maxPassbandErrorDB": 0.0019289196896340184,
+      "stopbandMaxDB": -117.21034139794034
+    },
+    {
+      "log2": 10,
+      "maxPassbandErrorDB": 0.0019296085992665229,
+      "stopbandMaxDB": -117.21034139794034
+    },
+    {
+      "log2": 11,
+      "maxPassbandErrorDB": 0.0019297808266745056,
+      "stopbandMaxDB": -117.21034139794034
+    },
+    {
+      "log2": 12,
+      "maxPassbandErrorDB": 0.001929823883526553,
+      "stopbandMaxDB": -117.21034139794034
+    },
+    {
+      "log2": 13,
+      "maxPassbandErrorDB": 0.0019298346477400802,
+      "stopbandMaxDB": -117.21034139794034
+    },
+    {
+      "log2": 14,
+      "maxPassbandErrorDB": 0.0019298373387912938,
+      "stopbandMaxDB": -117.21034139794034
+    },
+    {
+      "log2": 15,
+      "maxPassbandErrorDB": 0.001929838011557232,
+      "stopbandMaxDB": -117.21034139794034
+    },
+    {
+      "log2": 16,
+      "maxPassbandErrorDB": 0.0019298381797463052,
+      "stopbandMaxDB": -117.21034139794034
+    },
+    {
+      "log2": 17,
+      "maxPassbandErrorDB": 0.0019298382217955024,
+      "stopbandMaxDB": -117.21034139794034
+    },
+    {
+      "log2": 18,
+      "maxPassbandErrorDB": 0.001929838232306114,
+      "stopbandMaxDB": -117.21034139794034
+    },
+    {
+      "log2": 19,
+      "maxPassbandErrorDB": 0.0019298382349344906,
+      "stopbandMaxDB": -117.21034139794034
+    },
+    {
+      "log2": 20,
+      "maxPassbandErrorDB": 0.0019298382355942367,
+      "stopbandMaxDB": -117.21034139794034
+    }
+  ],
+  "scope": "Independent scalar evaluation of the committed quantized coefficients on the generator 2049-point frequency grid. Matches recorded response within 1e-6 dB. This is sampled digital response, not continuous-frequency proof, ARM execution, coefficient regeneration or physical qualification."
+}

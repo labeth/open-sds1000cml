@@ -1,0 +1,1 @@
+../../../app/internal/web/superres_breaker.cjs

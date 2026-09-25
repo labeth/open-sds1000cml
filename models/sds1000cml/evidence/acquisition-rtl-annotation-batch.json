@@ -1,0 +1,867 @@
+{
+  "status": "integrated-with-explicit-verification-limits",
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "files": [
+    {
+      "path": "fpga/acq_sram/adc_unpack.v",
+      "owner": "FU-RTL-ACQ-SRAM-ADC-UNPACK",
+      "modules": {
+        "adc_unpack": [
+          "REQ-SDS-038"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/interleave.v",
+      "owner": "FU-RTL-ACQ-SRAM-INTERLEAVE",
+      "modules": {
+        "adc_interleave": [
+          "REQ-SDS-039",
+          "REQ-SDS-058"
+        ],
+        "interleave_gearbox": [
+          "REQ-SDS-039"
+        ],
+        "interleave_gearbox64": [
+          "REQ-SDS-039"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/acquisition_source.v",
+      "owner": "FU-RTL-ACQ-SRAM-ACQUISITION-SOURCE",
+      "modules": {
+        "adc_acquisition_source": [
+          "REQ-SDS-040",
+          "REQ-SDS-058",
+          "REQ-SDS-183"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/acquisition_path.v",
+      "owner": "FU-RTL-ACQ-SRAM-ACQUISITION-PATH",
+      "modules": {
+        "sram_acquisition_path": [
+          "REQ-SDS-041",
+          "REQ-SDS-042",
+          "REQ-SDS-043",
+          "REQ-SDS-045",
+          "REQ-SDS-056",
+          "REQ-SDS-057",
+          "REQ-SDS-058",
+          "REQ-SDS-183",
+          "REQ-SDS-184"
+        ],
+        "acquisition_trigger_pipeline": [
+          "REQ-SDS-184"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/board_capture_path.v",
+      "owner": "FU-RTL-ACQ-SRAM-BOARD-CAPTURE-PATH",
+      "modules": {
+        "sram_board_capture_path": [
+          "REQ-SDS-045"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/capture_engine.v",
+      "owner": "FU-RTL-ACQ-SRAM-CAPTURE-ENGINE",
+      "modules": {
+        "sram_capture_engine": [
+          "REQ-SDS-043",
+          "REQ-SDS-045",
+          "REQ-SDS-052",
+          "REQ-SDS-056",
+          "REQ-SDS-058"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/capture_path.v",
+      "owner": "FU-RTL-ACQ-SRAM-CAPTURE-PATH",
+      "modules": {
+        "sram_capture_path": [
+          "REQ-SDS-043",
+          "REQ-SDS-045"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/finite_writer.v",
+      "owner": "FU-RTL-ACQ-SRAM-FINITE-WRITER",
+      "modules": {
+        "sram_finite_writer": [
+          "REQ-SDS-041",
+          "REQ-SDS-042",
+          "REQ-SDS-057",
+          "REQ-SDS-058"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/finite_recall.v",
+      "owner": "FU-RTL-ACQ-SRAM-FINITE-RECALL",
+      "modules": {
+        "sram_finite_recall": [
+          "REQ-SDS-043",
+          "REQ-SDS-052",
+          "REQ-SDS-058"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/record.v",
+      "owner": "FU-RTL-ACQ-SRAM-RECORD",
+      "modules": {
+        "sram_record": [
+          "REQ-SDS-041",
+          "REQ-SDS-042",
+          "REQ-SDS-057"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/recall.v",
+      "owner": "FU-RTL-ACQ-SRAM-RECALL",
+      "modules": {
+        "sram_recall": [
+          "REQ-SDS-043"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/command_bridge.v",
+      "owner": "FU-RTL-ACQ-SRAM-COMMAND-BRIDGE",
+      "modules": {
+        "acq_command_bridge": [
+          "REQ-SDS-054",
+          "REQ-SDS-055",
+          "REQ-SDS-058"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/command_port.v",
+      "owner": "FU-RTL-ACQ-SRAM-COMMAND-PORT",
+      "modules": {
+        "acq_command_port": [
+          "REQ-SDS-054",
+          "REQ-SDS-055",
+          "REQ-SDS-056",
+          "REQ-SDS-058",
+          "REQ-SDS-185"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_unpack.v",
+      "owner": "FU-RTL-ACQ-TESTS",
+      "modules": {
+        "tb": [
+          "REQ-SDS-038"
+        ]
+      },
+      "note": "All declarations in this testbench file, including mocks, are verification/support artifacts; only the designated simulation top is an executed check."
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_interleave.v",
+      "owner": "FU-RTL-ACQ-TESTS",
+      "modules": {
+        "tb": [
+          "REQ-SDS-039"
+        ]
+      },
+      "note": "All declarations in this testbench file, including mocks, are verification/support artifacts; only the designated simulation top is an executed check."
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_adc_interleave.v",
+      "owner": "FU-RTL-ACQ-TESTS",
+      "modules": {
+        "adc_phase_pll": [
+          "REQ-SDS-039"
+        ],
+        "tb": [
+          "REQ-SDS-039"
+        ]
+      },
+      "note": "All declarations in this testbench file, including mocks, are verification/support artifacts; only the designated simulation top is an executed check."
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_acquisition_source.v",
+      "owner": "FU-RTL-ACQ-TESTS",
+      "modules": {
+        "adc_interleave": [
+          "REQ-SDS-040",
+          "REQ-SDS-058",
+          "REQ-SDS-183"
+        ],
+        "adc_precision": [
+          "REQ-SDS-040",
+          "REQ-SDS-058",
+          "REQ-SDS-183"
+        ],
+        "tb_acquisition_source": [
+          "REQ-SDS-040",
+          "REQ-SDS-058",
+          "REQ-SDS-183"
+        ]
+      },
+      "note": "All declarations in this testbench file, including mocks, are verification/support artifacts; only the designated simulation top is an executed check."
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_trigger_pipeline.v",
+      "owner": "FU-RTL-ACQ-TESTS",
+      "modules": {
+        "tb_trigger_pipeline": [
+          "REQ-SDS-184"
+        ]
+      },
+      "note": "All declarations in this testbench file, including mocks, are verification/support artifacts; only the designated simulation top is an executed check."
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_command_bridge.v",
+      "owner": "FU-RTL-ACQ-TESTS",
+      "modules": {
+        "tb_command_bridge": [
+          "REQ-SDS-054",
+          "REQ-SDS-055",
+          "REQ-SDS-058"
+        ]
+      },
+      "note": "All declarations in this testbench file, including mocks, are verification/support artifacts; only the designated simulation top is an executed check."
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_command_port.v",
+      "owner": "FU-RTL-ACQ-TESTS",
+      "modules": {
+        "tb_command_port": [
+          "REQ-SDS-054",
+          "REQ-SDS-055",
+          "REQ-SDS-056",
+          "REQ-SDS-058",
+          "REQ-SDS-185"
+        ]
+      },
+      "note": "All declarations in this testbench file, including mocks, are verification/support artifacts; only the designated simulation top is an executed check."
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_command_gpmc.v",
+      "owner": "FU-RTL-ACQ-TESTS",
+      "modules": {
+        "tb_command_gpmc": [
+          "REQ-SDS-054",
+          "REQ-SDS-185"
+        ]
+      },
+      "note": "All declarations in this testbench file, including mocks, are verification/support artifacts; only the designated simulation top is an executed check."
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_record.v",
+      "owner": "FU-RTL-ACQ-TESTS",
+      "modules": {
+        "tb": [
+          "REQ-SDS-041",
+          "REQ-SDS-042",
+          "REQ-SDS-043",
+          "REQ-SDS-057"
+        ]
+      },
+      "note": "All declarations in this testbench file, including mocks, are verification/support artifacts; only the designated simulation top is an executed check."
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_finite_capture.v",
+      "owner": "FU-RTL-ACQ-TESTS",
+      "modules": {
+        "tb_finite_capture": [
+          "REQ-SDS-041",
+          "REQ-SDS-042",
+          "REQ-SDS-043",
+          "REQ-SDS-045",
+          "REQ-SDS-052",
+          "REQ-SDS-057"
+        ]
+      },
+      "note": "All declarations in this testbench file, including mocks, are verification/support artifacts; only the designated simulation top is an executed check."
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_finite_writer_faults.v",
+      "owner": "FU-RTL-ACQ-TESTS",
+      "modules": {
+        "tb_finite_writer_faults": [
+          "REQ-SDS-041",
+          "REQ-SDS-042",
+          "REQ-SDS-057",
+          "REQ-SDS-058"
+        ]
+      },
+      "note": "All declarations in this testbench file, including mocks, are verification/support artifacts; only the designated simulation top is an executed check."
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_finite_recall.v",
+      "owner": "FU-RTL-ACQ-TESTS",
+      "modules": {
+        "tb_finite_recall": [
+          "REQ-SDS-043",
+          "REQ-SDS-052"
+        ]
+      },
+      "note": "All declarations in this testbench file, including mocks, are verification/support artifacts; only the designated simulation top is an executed check."
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_finite_recall_faults.v",
+      "owner": "FU-RTL-ACQ-TESTS",
+      "modules": {
+        "tb_finite_recall_faults": [
+          "REQ-SDS-043",
+          "REQ-SDS-052",
+          "REQ-SDS-058"
+        ]
+      },
+      "note": "All declarations in this testbench file, including mocks, are verification/support artifacts; only the designated simulation top is an executed check."
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_acquisition_path.v",
+      "owner": "FU-RTL-ACQ-TESTS",
+      "modules": {
+        "adc_interleave": [
+          "REQ-SDS-041",
+          "REQ-SDS-042",
+          "REQ-SDS-043",
+          "REQ-SDS-045",
+          "REQ-SDS-056",
+          "REQ-SDS-057",
+          "REQ-SDS-058",
+          "REQ-SDS-183",
+          "REQ-SDS-184"
+        ],
+        "adc_precision": [
+          "REQ-SDS-041",
+          "REQ-SDS-042",
+          "REQ-SDS-043",
+          "REQ-SDS-045",
+          "REQ-SDS-056",
+          "REQ-SDS-057",
+          "REQ-SDS-058",
+          "REQ-SDS-183",
+          "REQ-SDS-184"
+        ],
+        "tb_acquisition_path": [
+          "REQ-SDS-041",
+          "REQ-SDS-042",
+          "REQ-SDS-043",
+          "REQ-SDS-045",
+          "REQ-SDS-056",
+          "REQ-SDS-057",
+          "REQ-SDS-058",
+          "REQ-SDS-183",
+          "REQ-SDS-184"
+        ]
+      },
+      "note": "All declarations in this testbench file, including mocks, are verification/support artifacts; only the designated simulation top is an executed check."
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_board_capture.v",
+      "owner": "FU-RTL-ACQ-TESTS",
+      "modules": {
+        "tb_board_capture": [
+          "REQ-SDS-043",
+          "REQ-SDS-045",
+          "REQ-SDS-052"
+        ]
+      },
+      "note": "All declarations in this testbench file, including mocks, are verification/support artifacts; only the designated simulation top is an executed check."
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_capture_engine.v",
+      "owner": "FU-RTL-ACQ-TESTS",
+      "modules": {
+        "tb_capture_engine": [
+          "REQ-SDS-043",
+          "REQ-SDS-045",
+          "REQ-SDS-052",
+          "REQ-SDS-056"
+        ]
+      },
+      "note": "All declarations in this testbench file, including mocks, are verification/support artifacts; only the designated simulation top is an executed check."
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_capture_start.v",
+      "owner": "FU-RTL-ACQ-TESTS",
+      "modules": {
+        "tb_capture_start": [
+          "REQ-SDS-043",
+          "REQ-SDS-045",
+          "REQ-SDS-058"
+        ]
+      },
+      "note": "All declarations in this testbench file, including mocks, are verification/support artifacts; only the designated simulation top is an executed check."
+    }
+  ],
+  "modules": 38,
+  "newContracts": [
+    {
+      "id": "REQ-SDS-183",
+      "title": "ADC source configuration and fault epochs",
+      "text": "The instrument shall latch ADC source configuration at acquisition enable and suppress source validity after an invalid configuration or a detected source fault until the epoch is disabled.",
+      "owner": "FU-RTL-ACQ-SRAM-ACQUISITION-SOURCE",
+      "notes": "Raw mode uses decimation zero; legal precision logs are 4 through 20. Lock loss is faulted after lock was first observed. The source timeline is not backpressured by SRAM read operations. Mocked source-control tests do not verify precision arithmetic or physical encode timing."
+    },
+    {
+      "id": "REQ-SDS-184",
+      "title": "Acquisition trigger word alignment",
+      "text": "The instrument shall align raw or precision words with threshold, force and external-match trigger decisions through the acquisition trigger pipeline.",
+      "owner": "FU-RTL-ACQ-SRAM-ACQUISITION-PATH",
+      "notes": "Two stages retain validity and selected control decisions across bubbles. Raw words contain two channel pairs and can identify a second-sample edge; precision words contain one pair. Digital threshold tests do not qualify comparator timing or analog aperture."
+    },
+    {
+      "id": "REQ-SDS-185",
+      "title": "Profile command acceptance and result snapshot",
+      "text": "The instrument shall return a coherent profile command result and acquisition status snapshot after distinguishing command decoding from acquisition request acceptance.",
+      "owner": "FU-RTL-ACQ-SRAM-COMMAND-PORT",
+      "notes": "Mailbox acknowledgment means delivery. Pending result extends host busy; accepted opcode and wrapping 16-bit sequence identify the request. Result code distinguishes decode failure from rejected acquisition start. Status is a retained snapshot, not live synchronized readout."
+    }
+  ],
+  "sourceSHA256": {
+    "fpga/acq_sram/adc_unpack.v": "42dfd111d19b9776f5d061975f63f5c416b99148a908e8185e92be965f63bf2a",
+    "fpga/acq_sram/interleave.v": "71b2870b9884b22686bf39905d32ca21c1d08a99b7d010d19b0e3385bcd0fdb9",
+    "fpga/acq_sram/acquisition_source.v": "a9fbeb7d3d2b6a1f1f9165177ca533b81f588ff8663467ddb8fe8a3b4f9cc4a5",
+    "fpga/acq_sram/acquisition_path.v": "fe871387f2e9ab90350123bce737d44bbe14c72477fb1ae6eab8863378516940",
+    "fpga/acq_sram/board_capture_path.v": "53a1f9ba4c7d209d3d2b273a0bd18374839206e75ff68103b96818c9db5bf58d",
+    "fpga/acq_sram/capture_engine.v": "ca84f7e2efd44f19ca64afcb8d870f4abe8d6438f7fe7db465dc4de5761147c1",
+    "fpga/acq_sram/capture_path.v": "671a862245099ed76c1dd4db5cf80f87acc4fd6ff265ba13fac51cd556d19524",
+    "fpga/acq_sram/finite_writer.v": "ad76dd2dd475bd6d3b10839bb2dccbd9acddd596203b436e56d692ad1ac6055d",
+    "fpga/acq_sram/finite_recall.v": "061e01eaa28fc574d0903b607a344e43639a181450040b6eed2b3fa86af79d76",
+    "fpga/acq_sram/record.v": "a1d2ca4bd04d63d4af8d47840a385f12a0feb856e387e71571ec97dbbcdf939c",
+    "fpga/acq_sram/recall.v": "02ed7dee0de23b95142ee250c30be7af35e9c8f0a3f42131595516f3e132b53b",
+    "fpga/acq_sram/command_bridge.v": "72d25555954ae35663156676c9246f5e0d833828ad3e2f5919a4cb801d088d97",
+    "fpga/acq_sram/command_port.v": "3be3fcf97c279a517685a2a5ac8e7069bb25cad6308e545dd47bb44c720188e2",
+    "fpga/acq_sram/sim/tb_unpack.v": "d4fe519be348e3ff2489dd00b51f28369568162527926cfa6b6ce560c446291b",
+    "fpga/acq_sram/sim/tb_interleave.v": "6ff9a84061d3faf000d5b0e3a0dd1f0891b00d807d562a07d695e68b6e0c9c96",
+    "fpga/acq_sram/sim/tb_adc_interleave.v": "550366511f1161a96e4ed0a8c86b49550a7259f91bcf634dff0695370e811501",
+    "fpga/acq_sram/sim/tb_acquisition_source.v": "450f23e222fc115ae48377df22b6e189932c2f53b510a53319a7d4d66592a131",
+    "fpga/acq_sram/sim/tb_trigger_pipeline.v": "e1f909e907b6d9078e40ab700ce2e3a1130c76ed63d183ba1cebbbded461ae7a",
+    "fpga/acq_sram/sim/tb_command_bridge.v": "b6f4891dd5cfb6034dce67597d6eddbe37ed19ea12d8f0ad41efccfcf1853b72",
+    "fpga/acq_sram/sim/tb_command_port.v": "56a0e3048b3b1d61e2ae2b3acc723fc52f0586eeb74832e4a82f066115b09b1d",
+    "fpga/acq_sram/sim/tb_command_gpmc.v": "62d4cc77e6061b4e02d47baf725b1f0b91622d13450ebb8d11c3fcdea1939e68",
+    "fpga/acq_sram/sim/tb_record.v": "5dc8515c27dfe5249722c83d87cd55094f46021241e29cb15fc3fd86178260f3",
+    "fpga/acq_sram/sim/tb_finite_capture.v": "5843e39c1c8e45ab2479650c30e8cffebb0f062a227ac2d60d230d0280cab741",
+    "fpga/acq_sram/sim/tb_finite_writer_faults.v": "fee6ffb230823ee54b50da1823c99d6ebed74d9c034f7751b6988e2122cf2a03",
+    "fpga/acq_sram/sim/tb_finite_recall.v": "f64b71e7ddb7f99797341f28b7a354fe4418aa64e1f10a8e343fe69fa23e4f2a",
+    "fpga/acq_sram/sim/tb_finite_recall_faults.v": "56c2074834f1d16718aa940ab614e9462d6577aba67b3993268e58b140a266f9",
+    "fpga/acq_sram/sim/tb_acquisition_path.v": "aa880a846cbaf5c23c83138b4f04c4ee05efb1d11532a84bd5c1c5a5d095f225",
+    "fpga/acq_sram/sim/tb_board_capture.v": "a3153a1c0dfc684d3cbe562a841791853cf8f11f2028e88de04385c445da5e16",
+    "fpga/acq_sram/sim/tb_capture_engine.v": "9168a23466bb5f3e8e3db80ffa5e4634f357b8e0fbead8e182717c990c344fa6",
+    "fpga/acq_sram/sim/tb_capture_start.v": "5ffa466913965463681e4ff8d5d74c1e48feaabfbdf1deedd0126389ec28fd18",
+    "fpga/acq_sram/sim/ddr_model.v": "ace57d159f0b1b9edd4e9c82b1496fab3b79b7c056b9aaa2da66698e65d164f2",
+    "fpga/common/lane_in.v": "1777785598b0670d0ec92cc5402bd27b78d939aafdab443796892deecad8a719",
+    "fpga/common/ddio_pair.v": "0f32c77bac09fb1fb4a8069f7480743e8b0dd05669da22aa68e171798d33435c"
+  },
+  "mcpContext": {
+    "REQ-SDS-041": {
+      "ID": "REQ-SDS-041",
+      "Title": "Capture geometry",
+      "Text": "The instrument shall reject zero posthistory and total capture counts exceeding SRAM capacity.",
+      "Notes": "Source-derived contract; source presence is not evidence of a passing hardware qualification.",
+      "Category": "functional",
+      "Rationale": "",
+      "SourceRefs": [
+        "REF-SOURCE-FPGA-ACQ-SRAM-ACQUISITION-PATH-V",
+        "REF-SOURCE-FPGA-ACQ-SRAM-FINITE-WRITER-V"
+      ],
+      "VerificationMethods": [
+        "inspection",
+        "test"
+      ],
+      "VerificationCriteria": "Inspect the linked implementation and run the corresponding offline tests; hardware claims require independently identified device evidence.",
+      "Priority": "",
+      "Criticality": "",
+      "Status": "draft",
+      "Derived": false,
+      "DerivedRationale": "",
+      "Tags": null,
+      "AppliesTo": [
+        "FU-RTL-ACQ-SRAM-ACQUISITION-PATH",
+        "FU-RTL-ACQ-SRAM-FINITE-WRITER"
+      ]
+    },
+    "REQ-SDS-038": {
+      "ID": "REQ-SDS-038",
+      "Title": "ADC lane mapping",
+      "Text": "The instrument shall map eighty sampled lanes into the declared ten logical ADC bytes.",
+      "Notes": "Source-derived contract; source presence is not evidence of a passing hardware qualification.",
+      "Category": "functional",
+      "Rationale": "",
+      "SourceRefs": [
+        "REF-SOURCE-FPGA-ACQ-SRAM-ADC-UNPACK-V",
+        "REF-SOURCE-FPGA-DEFAULT-LANEMAP-SEED-VH"
+      ],
+      "VerificationMethods": [
+        "inspection",
+        "test"
+      ],
+      "VerificationCriteria": "Inspect the linked implementation and run the corresponding offline tests; hardware claims require independently identified device evidence.",
+      "Priority": "",
+      "Criticality": "",
+      "Status": "draft",
+      "Derived": false,
+      "DerivedRationale": "",
+      "Tags": null,
+      "AppliesTo": [
+        "FU-FPGA-DEFAULT-BUILD",
+        "FU-RTL-ACQ-SRAM-ADC-UNPACK"
+      ]
+    },
+    "REQ-SDS-039": {
+      "ID": "REQ-SDS-039",
+      "Title": "Chronological interleave",
+      "Text": "The instrument shall order the five-phase converter stream chronologically before SRAM packing.",
+      "Notes": "Source-derived contract; source presence is not evidence of a passing hardware qualification.",
+      "Category": "functional",
+      "Rationale": "",
+      "SourceRefs": [
+        "REF-SOURCE-FPGA-ACQ-SRAM-INTERLEAVE-V",
+        "REF-SOURCE-SPECS-12-ACQUISITION-FPGA-MD"
+      ],
+      "VerificationMethods": [
+        "inspection",
+        "test"
+      ],
+      "VerificationCriteria": "Inspect the linked implementation and run the corresponding offline tests; hardware claims require independently identified device evidence.",
+      "Priority": "",
+      "Criticality": "",
+      "Status": "draft",
+      "Derived": false,
+      "DerivedRationale": "",
+      "Tags": null,
+      "AppliesTo": [
+        "FU-RTL-ACQ-SRAM-INTERLEAVE"
+      ]
+    },
+    "REQ-SDS-040": {
+      "ID": "REQ-SDS-040",
+      "Title": "Precision reduction",
+      "Text": "The instrument shall support raw storage and legal power-of-two precision reductions without truncating Q8.8 fractions.",
+      "Notes": "Source-derived contract; source presence is not evidence of a passing hardware qualification.",
+      "Category": "functional",
+      "Rationale": "",
+      "SourceRefs": [
+        "REF-SOURCE-APP-INTERNAL-ENGINE-SRAM-TEST-GO",
+        "REF-SOURCE-APP-INTERNAL-ENGINE-SRAM-GO",
+        "REF-SOURCE-FPGA-ACQ-SRAM-PRECISION-V",
+        "REF-SOURCE-FPGA-ACQ-SRAM-PRECISION-TAIL-V"
+      ],
+      "VerificationMethods": [
+        "inspection",
+        "test"
+      ],
+      "VerificationCriteria": "Inspect the linked implementation and run the corresponding offline tests; hardware claims require independently identified device evidence.",
+      "Priority": "",
+      "Criticality": "",
+      "Status": "draft",
+      "Derived": false,
+      "DerivedRationale": "",
+      "Tags": null,
+      "AppliesTo": [
+        "FU-RTL-ACQ-SRAM-PRECISION",
+        "FU-RTL-ACQ-SRAM-PRECISION-TAIL"
+      ]
+    },
+    "REQ-SDS-042": {
+      "ID": "REQ-SDS-042",
+      "Title": "Finite pre/post capture",
+      "Text": "The instrument shall retain a bounded pretrigger ring and finish the requested posttrigger history.",
+      "Notes": "Source-derived contract; source presence is not evidence of a passing hardware qualification.",
+      "Category": "functional",
+      "Rationale": "",
+      "SourceRefs": [
+        "REF-SOURCE-FPGA-ACQ-SRAM-FINITE-WRITER-V",
+        "REF-SOURCE-FPGA-ACQ-SRAM-RECORD-V"
+      ],
+      "VerificationMethods": [
+        "inspection",
+        "test"
+      ],
+      "VerificationCriteria": "Inspect the linked implementation and run the corresponding offline tests; hardware claims require independently identified device evidence.",
+      "Priority": "",
+      "Criticality": "",
+      "Status": "draft",
+      "Derived": false,
+      "DerivedRationale": "",
+      "Tags": null,
+      "AppliesTo": [
+        "FU-RTL-ACQ-SRAM-FINITE-WRITER",
+        "FU-RTL-ACQ-SRAM-RECORD"
+      ]
+    },
+    "REQ-SDS-043": {
+      "ID": "REQ-SDS-043",
+      "Title": "Recall bounds",
+      "Text": "The instrument shall accept only recall windows contained in the frozen record.",
+      "Notes": "Source-derived contract; source presence is not evidence of a passing hardware qualification.",
+      "Category": "functional",
+      "Rationale": "",
+      "SourceRefs": [
+        "REF-SOURCE-FPGA-ACQ-SRAM-ACQUISITION-PATH-V",
+        "REF-SOURCE-FPGA-ACQ-SRAM-FINITE-RECALL-V"
+      ],
+      "VerificationMethods": [
+        "inspection",
+        "test"
+      ],
+      "VerificationCriteria": "Inspect the linked implementation and run the corresponding offline tests; hardware claims require independently identified device evidence.",
+      "Priority": "",
+      "Criticality": "",
+      "Status": "draft",
+      "Derived": false,
+      "DerivedRationale": "",
+      "Tags": null,
+      "AppliesTo": [
+        "FU-RTL-ACQ-SRAM-ACQUISITION-PATH",
+        "FU-RTL-ACQ-SRAM-FINITE-RECALL"
+      ]
+    },
+    "REQ-SDS-045": {
+      "ID": "REQ-SDS-045",
+      "Title": "Transport ownership",
+      "Text": "The instrument shall arbitrate finite writing and streaming or recall through one SRAM transport owner.",
+      "Notes": "Source-derived contract; source presence is not evidence of a passing hardware qualification.",
+      "Category": "functional",
+      "Rationale": "",
+      "SourceRefs": [
+        "REF-SOURCE-FPGA-ACQ-SRAM-BOARD-CAPTURE-PATH-V",
+        "REF-SOURCE-FPGA-ACQ-SRAM-CAPTURE-ENGINE-V"
+      ],
+      "VerificationMethods": [
+        "inspection",
+        "test"
+      ],
+      "VerificationCriteria": "Inspect the linked implementation and run the corresponding offline tests; hardware claims require independently identified device evidence.",
+      "Priority": "",
+      "Criticality": "",
+      "Status": "draft",
+      "Derived": false,
+      "DerivedRationale": "",
+      "Tags": null,
+      "AppliesTo": [
+        "FU-RTL-ACQ-SRAM-BOARD-CAPTURE-PATH",
+        "FU-RTL-ACQ-SRAM-CAPTURE-ENGINE"
+      ]
+    },
+    "REQ-SDS-052": {
+      "ID": "REQ-SDS-052",
+      "Title": "Host publication ownership",
+      "Text": "The instrument shall release a published bank only with its matching current token.",
+      "Notes": "The one-bit publication token rejects immediate stale or duplicate releases. A token retained across two bank reuses can match again; callers must not treat it as an unbounded generation identifier. Core reuse waits for the producer-domain acknowledgement, including when its clock pauses.",
+      "Category": "functional",
+      "Rationale": "",
+      "SourceRefs": [
+        "REF-SOURCE-FPGA-ACQ-SRAM-HOST-OWNERSHIP-V"
+      ],
+      "VerificationMethods": [
+        "inspection",
+        "test"
+      ],
+      "VerificationCriteria": "Inspect the linked implementation and run the corresponding offline tests; hardware claims require independently identified device evidence.",
+      "Priority": "",
+      "Criticality": "",
+      "Status": "draft",
+      "Derived": false,
+      "DerivedRationale": "",
+      "Tags": null,
+      "AppliesTo": [
+        "FU-RTL-ACQ-SRAM-HOST-OWNERSHIP"
+      ]
+    },
+    "REQ-SDS-054": {
+      "ID": "REQ-SDS-054",
+      "Title": "Command snapshot",
+      "Text": "The instrument shall snapshot the complete shadow configuration for each accepted profile command.",
+      "Notes": "Source-derived contract; source presence is not evidence of a passing hardware qualification.",
+      "Category": "functional",
+      "Rationale": "",
+      "SourceRefs": [
+        "REF-SOURCE-FPGA-ACQ-SRAM-COMMAND-PORT-V",
+        "REF-SOURCE-FPGA-ACQ-SRAM-COMMAND-BRIDGE-V"
+      ],
+      "VerificationMethods": [
+        "inspection",
+        "test"
+      ],
+      "VerificationCriteria": "Inspect the linked implementation and run the corresponding offline tests; hardware claims require independently identified device evidence.",
+      "Priority": "",
+      "Criticality": "",
+      "Status": "draft",
+      "Derived": false,
+      "DerivedRationale": "",
+      "Tags": null,
+      "AppliesTo": [
+        "FU-RTL-ACQ-SRAM-COMMAND-BRIDGE",
+        "FU-RTL-ACQ-SRAM-COMMAND-PORT"
+      ]
+    },
+    "REQ-SDS-055": {
+      "ID": "REQ-SDS-055",
+      "Title": "Busy command rejection",
+      "Text": "The instrument shall reject profile commands submitted while the mailbox is busy.",
+      "Notes": "Source-derived contract; source presence is not evidence of a passing hardware qualification.",
+      "Category": "functional",
+      "Rationale": "",
+      "SourceRefs": [
+        "REF-SOURCE-FPGA-ACQ-SRAM-COMMAND-PORT-V"
+      ],
+      "VerificationMethods": [
+        "inspection",
+        "test"
+      ],
+      "VerificationCriteria": "Inspect the linked implementation and run the corresponding offline tests; hardware claims require independently identified device evidence.",
+      "Priority": "",
+      "Criticality": "",
+      "Status": "draft",
+      "Derived": false,
+      "DerivedRationale": "",
+      "Tags": null,
+      "AppliesTo": [
+        "FU-RTL-ACQ-SRAM-COMMAND-PORT"
+      ]
+    },
+    "REQ-SDS-056": {
+      "ID": "REQ-SDS-056",
+      "Title": "Profile operation capabilities",
+      "Text": "The instrument shall reject streaming starts when the profile is built with streaming disabled.",
+      "Notes": "Source-derived contract; source presence is not evidence of a passing hardware qualification.",
+      "Category": "functional",
+      "Rationale": "",
+      "SourceRefs": [
+        "REF-SOURCE-FPGA-ACQ-SRAM-ACQUISITION-PATH-V",
+        "REF-SOURCE-FPGA-ACQ-SRAM-PROFILE-CORE-V"
+      ],
+      "VerificationMethods": [
+        "inspection",
+        "test"
+      ],
+      "VerificationCriteria": "Inspect the linked implementation and run the corresponding offline tests; hardware claims require independently identified device evidence.",
+      "Priority": "",
+      "Criticality": "",
+      "Status": "draft",
+      "Derived": false,
+      "DerivedRationale": "",
+      "Tags": null,
+      "AppliesTo": [
+        "FU-RTL-ACQ-SRAM-ACQUISITION-PATH",
+        "FU-RTL-ACQ-SRAM-PROFILE-CORE"
+      ]
+    },
+    "REQ-SDS-057": {
+      "ID": "REQ-SDS-057",
+      "Title": "Retained record metadata",
+      "Text": "The instrument shall preserve independently frozen record metadata across rejected requests and idle setting edits.",
+      "Notes": "Source-derived contract; source presence is not evidence of a passing hardware qualification.",
+      "Category": "functional",
+      "Rationale": "",
+      "SourceRefs": [
+        "REF-SOURCE-FPGA-ACQ-SRAM-ACQUISITION-PATH-V",
+        "REF-SOURCE-FPGA-ACQ-SRAM-FINITE-WRITER-V"
+      ],
+      "VerificationMethods": [
+        "inspection",
+        "test"
+      ],
+      "VerificationCriteria": "Inspect the linked implementation and run the corresponding offline tests; hardware claims require independently identified device evidence.",
+      "Priority": "",
+      "Criticality": "",
+      "Status": "draft",
+      "Derived": false,
+      "DerivedRationale": "",
+      "Tags": null,
+      "AppliesTo": [
+        "FU-RTL-ACQ-SRAM-ACQUISITION-PATH",
+        "FU-RTL-ACQ-SRAM-FINITE-WRITER"
+      ]
+    },
+    "REQ-SDS-058": {
+      "ID": "REQ-SDS-058",
+      "Title": "Epoch reset",
+      "Text": "The instrument shall invalidate in-flight ownership and command state across reset or loss of clock lock.",
+      "Notes": "Source-derived contract; source presence is not evidence of a passing hardware qualification.",
+      "Category": "functional",
+      "Rationale": "",
+      "SourceRefs": [
+        "REF-SOURCE-FPGA-ACQ-SRAM-PROFILE-CORE-V",
+        "REF-SOURCE-FPGA-ACQ-SRAM-PROFILE-TOP-V"
+      ],
+      "VerificationMethods": [
+        "inspection",
+        "test"
+      ],
+      "VerificationCriteria": "Inspect the linked implementation and run the corresponding offline tests; hardware claims require independently identified device evidence.",
+      "Priority": "",
+      "Criticality": "",
+      "Status": "draft",
+      "Derived": false,
+      "DerivedRationale": "",
+      "Tags": null,
+      "AppliesTo": [
+        "FU-RTL-ACQ-SRAM-PROFILE-CORE",
+        "FU-RTL-ACQ-SRAM-PROFILE-TOP"
+      ]
+    },
+    "REQ-SDS-059": {
+      "ID": "REQ-SDS-059",
+      "Title": "Profile board wrapper",
+      "Text": "The instrument shall connect the acquisition core to the board reference and declared physical pins.",
+      "Notes": "Source-derived contract; source presence is not evidence of a passing hardware qualification.",
+      "Category": "functional",
+      "Rationale": "",
+      "SourceRefs": [
+        "REF-SOURCE-FPGA-ACQ-SRAM-PROFILE-TOP-V",
+        "REF-SOURCE-FPGA-ACQ-SRAM-BUILD-PROFILE-PY"
+      ],
+      "VerificationMethods": [
+        "inspection",
+        "test"
+      ],
+      "VerificationCriteria": "Inspect the linked implementation and run the corresponding offline tests; hardware claims require independently identified device evidence.",
+      "Priority": "",
+      "Criticality": "",
+      "Status": "draft",
+      "Derived": false,
+      "DerivedRationale": "",
+      "Tags": null,
+      "AppliesTo": [
+        "FU-RTL-ACQ-SRAM-PROFILE-TOP"
+      ]
+    },
+    "REQ-SDS-061": {
+      "ID": "REQ-SDS-061",
+      "Title": "Clock-crossing audit",
+      "Text": "The instrument shall keep declared bundled-data and synchronizer paths visible to the timing and CDC audit.",
+      "Notes": "Source-derived contract; source presence is not evidence of a passing hardware qualification.",
+      "Category": "functional",
+      "Rationale": "",
+      "SourceRefs": [
+        "REF-SOURCE-FPGA-ACQ-SRAM-ACQUISITION-CONFIG-CDC-SDC",
+        "REF-SOURCE-FPGA-ACQ-SRAM-HOST-PATH-CDC-SDC",
+        "REF-SOURCE-FPGA-ACQ-SRAM-BUILD-PROFILE-PY"
+      ],
+      "VerificationMethods": [
+        "inspection",
+        "test"
+      ],
+      "VerificationCriteria": "Inspect the linked implementation and run the corresponding offline tests; hardware claims require independently identified device evidence.",
+      "Priority": "",
+      "Criticality": "",
+      "Status": "draft",
+      "Derived": false,
+      "DerivedRationale": "",
+      "Tags": null,
+      "AppliesTo": [
+        "FU-FPGA-ACQ-BUILD"
+      ]
+    }
+  },
+  "scope": "Explicit mapping for 16 production modules and 22 testbench/support modules in 30 fully reviewed files. No comments or authored requirements applied yet; baseline simulation remains in progress. Test mocks must never count as production implementation evidence."
+}

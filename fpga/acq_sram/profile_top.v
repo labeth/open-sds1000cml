@@ -1,5 +1,7 @@
+// ENGMODEL-OWNER-UNIT: FU-RTL-ACQ-SRAM-PROFILE-TOP
 // Physical board wrapper. SRAM control constants and pins follow acq_sram/top.v.
 // No internal flash programming interface is present.
+// TRLC-LINKS: REQ-SDS-058, REQ-SDS-059
 module acq_profile_top #(parameter ENABLE_STREAM=0,BUILD_ID=32'b0)(
  input wire clk,mclk_in,nCS1,nOE,nWE,input wire [6:2] sel,
  input wire gpmc_a2,gpmc_b1,inout wire [15:0] gpmc_d,

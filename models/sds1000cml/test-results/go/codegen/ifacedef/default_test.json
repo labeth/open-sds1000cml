@@ -1,0 +1,52 @@
+{
+  "source": "codegen/ifacedef/default_test.go",
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "scope": "Reviewed Go test outcomes; passing assertions contribute partial requirement evidence.",
+  "sourceSHA256": "0272ddf39657ac6566df28e4ccdac31397dcf5f27aee422f82a3b71ebfc8ced3",
+  "logs": {
+    "test-runs/codegen-integrated.jsonl": "61e5eee1ba4798f5b455aeff3217a9d963dee8f9f4dcc3b426b4a566d0c731f0"
+  },
+  "tests": [
+    {
+      "name": "TestDefaultValidates",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-156",
+        "REQ-SDS-031"
+      ]
+    },
+    {
+      "name": "TestV2RegistersKeepTheirSelectors",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-156"
+      ]
+    },
+    {
+      "name": "TestDefaultMatchesTiers",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-156"
+      ]
+    },
+    {
+      "name": "TestDefaultDiagWindow",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-156"
+      ]
+    }
+  ],
+  "results": [
+    {
+      "requirement": "REQ-SDS-031",
+      "status": "partial",
+      "notes": "1 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    },
+    {
+      "requirement": "REQ-SDS-156",
+      "status": "partial",
+      "notes": "4 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    }
+  ]
+}

@@ -1,8 +1,10 @@
+// ENGMODEL-OWNER-UNIT: FU-RTL-ACQ-SRAM-STREAM-PATH
 // Slower-rate continuous SRAM acquisition path. Source words are offered in
 // core_clk domain; stop source offers when source_enable falls, then assert
 // source_finished after the last offer. All components share an epoch reset.
 // The board top supplies phase-qualified core/sample clocks and read_bias.
 // This module does not implement trigger geometry or the GPMC register ABI.
+// TRLC-LINKS: REQ-SDS-044, REQ-SDS-045, REQ-SDS-046, REQ-SDS-047, REQ-SDS-048, REQ-SDS-051, REQ-SDS-052, REQ-SDS-053
 module sram_stream_path #(parameter AW=19)(
  input wire reset,locked,core_clk,sample_clk,ram_clk,host_clk,
  input wire start,stop,source_finished,input wire [AW-1:0] read_bias,

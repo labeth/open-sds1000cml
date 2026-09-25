@@ -1,0 +1,34 @@
+{
+  "scope": "Reviewed source and isolated test evidence integrated: TCP REQ-SDS-107 and NATS REQ-SDS-108; untested reconnect/security/delivery boundaries remain explicit.",
+  "sourceSHA256": {
+    "ota/internal/agent/tcp.go": "62919e26dfa31b9b9ca1eaec79a5c015e1111c548a47252f6d5f89c0c4d10a8b",
+    "ota/internal/agent/tcp_test.go": "ebdd0aa0bff7eefa24de1aa99a4063e21e1cc80df2bac066496d5fa0e349f5dc",
+    "ota/internal/agent/tcp_serve_test.go": "31b028cad8a84ccab4c2f77da9eb997788c2621712e533b1ba9cc2a708fa3e7a",
+    "ota/internal/agent/nats.go": "abaaf5f693390e99dfa3e261127a00121ef42319d852dd036197e2bcb7d2bbd8"
+  },
+  "supportSHA256": {
+    "ota/internal/agent/agent.go": "cae42ede46281a27f9bf51682abe4776db3a11edfb6766799c5bab01853c007d"
+  },
+  "testLog": "test-runs/agent-tcp.jsonl",
+  "findings": [
+    "TCP exposes three methods: serveTCP, TCPAddr and handleConn. Four tests cover canonical client envelope compatibility, socket dispatch, interleaved connections and listener closure after a stop plus subsequent accept.",
+    "TCP uses plain net.Listen without transport authentication or TLS in this file. Its access boundary depends on configured bind address and external network controls. Each connection receives a goroutine, with no explicit connection count limit.",
+    "ReadBytes newline framing uses a one-MiB buffer but does not cap accumulated request size. A nonempty final fragment is dispatched even with a simultaneous read error. Read deadline is renewed to 120 seconds per request; write deadline is 30 seconds. Neither bounds handler execution.",
+    "Stop closes the agent stopped channel but does not close the blocked listener directly. The accept loop notices stop between accepts, so tests deliberately dial after stop. Existing connection handlers do not check stopped and are not explicitly closed by Stop.",
+    "NATS uses configured URL, optional CA and credentials, optional NKey seed, unlimited reconnect attempts and two-second reconnect wait. Initial connection failure retries after five seconds. Invalid NKey seed is logged and the option omitted; actual authorization depends on broker policy.",
+    "NATS ReconnectBufSize(-1) disables reconnect buffering in pinned nats.go v1.52.0, per local dependency source. Publish errors are ignored here, so event/heartbeat/reply delivery is not guaranteed during disconnection.",
+    "RPC callbacks dispatch even when no reply subject exists. Discover only responds with a reply subject. Device ID is concatenated into subjects without validation here. Subscription and publish failures are not all checked.",
+    "Online event is emitted once on entering serveNATS. The reconnect callback only logs; the comment promising an online event on every reconnect is stronger than this code. Library resubscription behavior is separate.",
+    "Heartbeat reads persisted control flags, snapshots app under its mutex, increments an atomic sequence and collects watchdog/IP status. The fields are not an atomic cross-component snapshot. Broker test coverage is recorded separately in agent-nats-e2e-review.json.",
+    "An in-memory net.Pipe overlay successfully dispatches a ping request larger than one MiB, confirming the buffer is not a request-size rejection boundary."
+  ],
+  "dependencyInspection": {
+    "module": "github.com/nats-io/nats.go",
+    "version": "v1.52.0",
+    "file": "nats.go",
+    "sha256": "88b6e77a878bc560c7c37974c43f25e0fcc84b98ebd00453cea02a4f7a1871ba",
+    "scope": "ReconnectBufSize option and QueueSubscribe delegation only; not full dependency audit."
+  },
+  "characterization": "agent-tcp-characterization.json",
+  "brokerEvidence": "agent-nats-e2e-review.json"
+}

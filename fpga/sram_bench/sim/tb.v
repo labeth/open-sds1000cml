@@ -1,7 +1,10 @@
+// ENGMODEL-OWNER-UNIT: FU-RTL-BENCH-TESTS
 `timescale 1ns/1ps
+// TRLC-LINKS: REQ-SDS-193
 module bench_pll(input refclk,output c0,c1,locked);
 assign c0=refclk;assign c1=refclk;assign locked=1;
 endmodule
+// TRLC-LINKS: REQ-SDS-193
 module altddio_out #(parameter width=1,power_up_high="OFF",intended_device_family="Cyclone IV E")
 (input outclock,datain_h,datain_l,oe,aclr,aset,sclr,sset,outclocken,output dataout);
 // Match altddio_out: both inputs latch at the rising edge.
@@ -13,6 +16,7 @@ end
 always @(negedge outclock) if(!aclr && outclocken) output_value<=low_latched;
 assign dataout=output_value;
 endmodule
+// TRLC-LINKS: REQ-SDS-193
 module tb;
 reg clk=0,refclk=0;always #6.25 clk=~clk;always #50 refclk=~refclk;
 wire [15:0] gd;wire [31:0] dq;wire k1,k2,g1;

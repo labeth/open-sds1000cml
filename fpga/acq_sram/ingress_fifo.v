@@ -1,9 +1,11 @@
+// ENGMODEL-OWNER-UNIT: FU-RTL-ACQ-SRAM-INGRESS-FIFO
 // Single-clock ingress storage for time-sliced SRAM acquisition.
 // Explicit 512-word banks avoid rounding 4608 words up to 8192 in block RAM.
 // A successful pop returns data_valid/data after four clock edges; the caller
 // must reserve space for this response before popping. No empty bypass.
 // Full+pop still rejects a simultaneous push, avoiding mixed-port same-address
 // read/write dependence. Any rejected request sets a sticky fault until reset.
+// TRLC-LINKS: REQ-SDS-046
 module sram_ingress_fifo #(parameter WIDTH=32,BANKS=9,ROWS=512)(
  input wire clk,reset,push,pop,
  input wire [WIDTH-1:0] data_in,

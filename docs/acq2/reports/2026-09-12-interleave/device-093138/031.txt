@@ -1,0 +1,32 @@
+ARGS ["exec", "/dev/acqsram", "capture", "1", "262144", "262144"]
+{
+  "buffer_words": 0,
+  "capture": {
+    "locked": true,
+    "ready": true,
+    "running": false,
+    "frozen": true,
+    "triggered": true,
+    "prefetched": false,
+    "words": 524288,
+    "start": 0,
+    "trigger_index": 262144,
+    "position": 89,
+    "origin": 89,
+    "revision": 7,
+    "map_id": 57746,
+    "sample_rate_hz": 500000000,
+    "interleaved": true,
+    "data_fault": false
+  },
+  "identity": 23122,
+  "length": 524288,
+  "map_id": 57746,
+  "origin": 89,
+  "position": 89,
+  "revision": 7,
+  "start": 0,
+  "status": 116,
+  "trigger_index": 262144
+}
+[exit 0]

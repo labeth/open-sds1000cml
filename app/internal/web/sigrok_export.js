@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-WEB-SIGROK-EXPORT
 // sigrok_export.js — pure encoders for sigrok-compatible waveform export:
 // srzip (.sr, the PulseView / sigrok-cli session format), VCD, and float32
 // WAV. Classic script, zero deps; node-testable (sigrok_export.test.cjs).
@@ -34,6 +35,7 @@ const SIGROK_CRC_TABLE = (() => {
   return t;
 })();
 
+// TRLC-LINKS: REQ-SDS-069
 function sigrokCrc32(u8) {
   let c = 0xffffffff;
   for (let i = 0; i < u8.length; i++) c = SIGROK_CRC_TABLE[(c ^ u8[i]) & 0xff] ^ (c >>> 8);
@@ -44,6 +46,7 @@ function sigrokCrc32(u8) {
 // (method 0, no compression) ZIP. Sizes are known up front so no data
 // descriptors; a fixed 1980-01-01 DOS timestamp keeps the output
 // deterministic (nothing reads it). Entry names are ASCII by construction.
+// TRLC-LINKS: REQ-SDS-069
 function sigrokZip(entries) {
   const enc = new TextEncoder();
   const es = entries.map((e) => ({ name: enc.encode(e.name), data: e.data, crc: sigrokCrc32(e.data), off: 0 }));
@@ -98,6 +101,7 @@ function sigrokZip(entries) {
 // trimmed; interior gaps (unfilled superres bins) stay NaN and each encoder
 // documents its own gap policy. Returns null when there is nothing to
 // export (no frame, envelope/roll frame, no time base, all margin).
+// TRLC-LINKS: REQ-SDS-069
 function sigrokSeries(frame) {
   if (!frame || !frame.c1 || !frame.c1.length) return null;
   const n = frame.c1.length;
@@ -110,6 +114,7 @@ function sigrokSeries(frame) {
     for (let i = 0; i < n; i++) v[i] = codes[i] < 0 ? NaN : (codes[i] - 128) * vpc - off;
     return { name, v };
   });
+  // TRLC-LINKS: REQ-SDS-069
   const gap = (i) => ch.every((c) => Number.isNaN(c.v[i]));
   let lo = 0, hi = n;
   while (lo < hi && gap(lo)) lo++;
@@ -128,6 +133,7 @@ const SIGROK_CHUNK_SAMPLES = 1 << 20; // 4 MiB of float32 — libsigrok's flush 
 // predictable digitization so PulseView's protocol decoders attach directly
 // to the exported capture. NaN gaps hold the previous level (logic has no
 // "no sample"); a flat channel digitizes as constant 0.
+// TRLC-LINKS: REQ-SDS-069
 function sigrokLogicBytes(series) {
   const n = series.n;
   const out = new Uint8Array(n);
@@ -161,6 +167,7 @@ function sigrokLogicBytes(series) {
 // name keys, as `total analog` must precede analogK), and unitsize; the
 // FIRST analog index is total probes + 1 (analog3/analog4 here); logic data
 // lives in logic-1-<chunk> files, chunked like the analog ones.
+// TRLC-LINKS: REQ-SDS-069
 function sigrokSR(series) {
   const enc = new TextEncoder();
   const nL = series.ch.length; // one derived probe per analog channel
@@ -192,6 +199,7 @@ function sigrokSR(series) {
 // sigrokVcdTimescale mirrors libsigrok output/vcd.c get_timescale_freq(): the
 // smallest power of 10 ≥ rate, bumped by up to two more decades hunting for
 // exact divisibility (a residual remainder is accepted, as sigrok accepts it).
+// TRLC-LINKS: REQ-SDS-069
 function sigrokVcdTimescale(rateHz) {
   let ts = 1;
   while (ts < rateHz && ts < 1e15) ts *= 10;
@@ -201,6 +209,7 @@ function sigrokVcdTimescale(rateHz) {
 
 // sigrokVcdPeriod renders a power-of-10 timescale frequency as the VCD
 // `1|10|100 s..fs` period string (10^k always maps onto a legal pair).
+// TRLC-LINKS: REQ-SDS-069
 function sigrokVcdPeriod(tsHz) {
   const exp = Math.round(Math.log10(tsHz));
   const grp = Math.ceil(exp / 3);
@@ -218,11 +227,13 @@ const SIGROK_VCD_CAP = 131072; // points before stride-decimation — the CSV ex
 // seconds (and load just as badly in GTKWave) for sub-sample rows that carry
 // no new data. The decimated rate keeps the time axis true and a $comment
 // records what was dropped; .sr and WAV are binary and stay verbatim.
+// TRLC-LINKS: REQ-SDS-069
 function sigrokVCD(series) {
   const step = series.n > SIGROK_VCD_CAP ? Math.ceil(series.n / SIGROK_VCD_CAP) : 1;
   const rate = series.rateHz / step;
   const rows = Math.ceil(series.n / step);
   const ts = sigrokVcdTimescale(rate);
+  // TRLC-LINKS: REQ-SDS-069
   const id = (i) => String.fromCharCode(33 + i); // '!' onward, like sigrok
   const lines = ["$version open-sds1000cml sigrok export $end"];
   if (step > 1) lines.push("$comment decimated " + step + "x of " + series.n + " points $end");
@@ -252,6 +263,7 @@ function sigrokVCD(series) {
 // verbatim, no ±1 normalization. NaN gaps hold the previous value (0 before
 // the first sample) — WAV has no way to say "no sample". Returns null when
 // the rate does not fit the format's uint32 Hz field (fine-grid superres).
+// TRLC-LINKS: REQ-SDS-069
 function sigrokWAV(series) {
   const rate = series.rateHz;
   if (!(rate >= 1) || rate > 0xffffffff) return null;
@@ -259,6 +271,7 @@ function sigrokWAV(series) {
   const dataBytes = 4 * nch * series.n;
   const out = new Uint8Array(46 + dataBytes);
   const dv = new DataView(out.buffer);
+  // TRLC-LINKS: REQ-SDS-069
   const tag = (p, s) => { for (let i = 0; i < 4; i++) out[p + i] = s.charCodeAt(i); };
   tag(0, "RIFF");
   dv.setUint32(4, 38 + dataBytes, true);

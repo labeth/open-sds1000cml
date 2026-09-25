@@ -1,0 +1,608 @@
+{
+  "status": "integrated",
+  "files": [
+    {
+      "path": "codegen/cmd/ifacegen/drift_test.go",
+      "owner": "FU-CODEGEN-IFACEGEN",
+      "functions": {
+        "TestNoDrift": [
+          "REQ-SDS-160"
+        ],
+        "TestSourceDigestFollowsRTL": [
+          "REQ-SDS-160"
+        ],
+        "TestDriftDetectsChange": [
+          "REQ-SDS-160"
+        ]
+      },
+      "types": {}
+    },
+    {
+      "path": "codegen/cmd/ifacegen/main.go",
+      "owner": "FU-CODEGEN-IFACEGEN",
+      "functions": {
+        "Targets": [
+          "REQ-SDS-160"
+        ],
+        "Drift": [
+          "REQ-SDS-160"
+        ],
+        "SourceDigest": [
+          "REQ-SDS-160"
+        ],
+        "main": [
+          "REQ-SDS-160"
+        ]
+      },
+      "types": {
+        "Target": [
+          "REQ-SDS-160"
+        ]
+      }
+    },
+    {
+      "path": "codegen/emit/doc.go",
+      "owner": "FU-CODEGEN-EMIT",
+      "functions": {
+        "md": [
+          "REQ-SDS-157"
+        ],
+        "enumDoc": [
+          "REQ-SDS-157"
+        ],
+        "Doc": [
+          "REQ-SDS-157"
+        ],
+        "bitsDoc": [
+          "REQ-SDS-157"
+        ]
+      },
+      "types": {}
+    },
+    {
+      "path": "codegen/emit/emit.go",
+      "owner": "FU-CODEGEN-EMIT",
+      "functions": {
+        "check": [
+          "REQ-SDS-157"
+        ],
+        "lo16": [
+          "REQ-SDS-157"
+        ],
+        "hi16": [
+          "REQ-SDS-157"
+        ],
+        "camel": [
+          "REQ-SDS-157"
+        ],
+        "fieldSummary": [
+          "REQ-SDS-157"
+        ],
+        "accessDoc": [
+          "REQ-SDS-157"
+        ],
+        "diagAccessDoc": [
+          "REQ-SDS-157"
+        ],
+        "selMaskDoc": [
+          "REQ-SDS-157"
+        ],
+        "selList": [
+          "REQ-SDS-157"
+        ]
+      },
+      "types": {}
+    },
+    {
+      "path": "codegen/emit/emit_test.go",
+      "owner": "FU-CODEGEN-EMIT",
+      "functions": {
+        "mustContain": [
+          "REQ-SDS-157",
+          "REQ-SDS-158"
+        ],
+        "mustNotContain": [
+          "REQ-SDS-157",
+          "REQ-SDS-158"
+        ],
+        "idHex": [
+          "REQ-SDS-157",
+          "REQ-SDS-158"
+        ],
+        "TestRegsGolden": [
+          "REQ-SDS-157"
+        ],
+        "TestRegmuxGolden": [
+          "REQ-SDS-158"
+        ],
+        "TestGoBindingsGolden": [
+          "REQ-SDS-157",
+          "REQ-SDS-159"
+        ],
+        "TestDocGolden": [
+          "REQ-SDS-157"
+        ],
+        "TestBuildIDConsistent": [
+          "REQ-SDS-157",
+          "REQ-SDS-158"
+        ],
+        "TestEmittersRejectInvalid": [
+          "REQ-SDS-157",
+          "REQ-SDS-158"
+        ],
+        "TestCamel": [
+          "REQ-SDS-157"
+        ],
+        "TestSelMaskDoc": [
+          "REQ-SDS-157"
+        ],
+        "TestSpliceGoSource": [
+          "REQ-SDS-157",
+          "REQ-SDS-159"
+        ],
+        "TestWordfmtConstantsMatchSchema": [
+          "REQ-SDS-156",
+          "REQ-SDS-157",
+          "REQ-SDS-159"
+        ],
+        "TestGoBindingsCompile": [
+          "REQ-SDS-157",
+          "REQ-SDS-159"
+        ]
+      },
+      "types": {}
+    },
+    {
+      "path": "codegen/emit/gobind.go",
+      "owner": "FU-CODEGEN-EMIT",
+      "functions": {
+        "spliceGoSource": [
+          "REQ-SDS-157",
+          "REQ-SDS-159"
+        ],
+        "GoBindings": [
+          "REQ-SDS-157",
+          "REQ-SDS-159"
+        ]
+      },
+      "types": {}
+    },
+    {
+      "path": "codegen/emit/regmux.go",
+      "owner": "FU-CODEGEN-EMIT",
+      "functions": {
+        "Regmux": [
+          "REQ-SDS-158"
+        ]
+      },
+      "types": {}
+    },
+    {
+      "path": "codegen/emit/regmux_sim_test.go",
+      "owner": "FU-CODEGEN-EMIT",
+      "functions": {
+        "Testbench": [
+          "REQ-SDS-158"
+        ],
+        "TestRegmuxSimulates": [
+          "REQ-SDS-158"
+        ],
+        "TestRegmuxTestbenchCatchesDrift": [
+          "REQ-SDS-158"
+        ]
+      },
+      "types": {}
+    },
+    {
+      "path": "codegen/emit/regs.go",
+      "owner": "FU-CODEGEN-EMIT",
+      "functions": {
+        "vFields": [
+          "REQ-SDS-157"
+        ],
+        "Regs": [
+          "REQ-SDS-157"
+        ]
+      },
+      "types": {}
+    },
+    {
+      "path": "codegen/emit/wordfmt/geom.go",
+      "owner": "FU-CODEGEN-EMIT",
+      "functions": {},
+      "types": {}
+    },
+    {
+      "path": "codegen/emit/wordfmt/wordfmt.go",
+      "owner": "FU-CODEGEN-EMIT",
+      "functions": {
+        "Tier.Decimated": [
+          "REQ-SDS-159"
+        ],
+        "Tier.PairOfWord": [
+          "REQ-SDS-159"
+        ],
+        "Tier.ColumnsOfPair": [
+          "REQ-SDS-159"
+        ],
+        "Word": [
+          "REQ-SDS-159"
+        ],
+        "Split": [
+          "REQ-SDS-159"
+        ],
+        "SplitWords": [
+          "REQ-SDS-159"
+        ],
+        "Sequence.TimeNs": [
+          "REQ-SDS-159"
+        ],
+        "ModelRecord": [
+          "REQ-SDS-159"
+        ],
+        "TsrcWord": [
+          "REQ-SDS-159"
+        ],
+        "ModelTsrc": [
+          "REQ-SDS-159"
+        ],
+        "TsrcCheck": [
+          "REQ-SDS-159"
+        ],
+        "checkBlocks": [
+          "REQ-SDS-159"
+        ],
+        "ModelDecim": [
+          "REQ-SDS-159"
+        ],
+        "ModelPeak": [
+          "REQ-SDS-159"
+        ],
+        "BoxcarParams": [
+          "REQ-SDS-159"
+        ],
+        "MeanQ88": [
+          "REQ-SDS-159"
+        ],
+        "Round8": [
+          "REQ-SDS-159"
+        ],
+        "boxcarSums": [
+          "REQ-SDS-159"
+        ],
+        "ModelBoxcar8": [
+          "REQ-SDS-159"
+        ],
+        "ModelBoxcar16": [
+          "REQ-SDS-159"
+        ],
+        "StackParams.F": [
+          "REQ-SDS-159"
+        ],
+        "StackParams.Words": [
+          "REQ-SDS-159"
+        ],
+        "StackParams.Validate": [
+          "REQ-SDS-159"
+        ],
+        "StackParams.TimeNs": [
+          "REQ-SDS-159"
+        ],
+        "PhaseBin": [
+          "REQ-SDS-159"
+        ],
+        "ModelStack": [
+          "REQ-SDS-159"
+        ]
+      },
+      "types": {
+        "Tier": [
+          "REQ-SDS-159"
+        ],
+        "Sequence": [
+          "REQ-SDS-159"
+        ],
+        "StackParams": [
+          "REQ-SDS-159"
+        ],
+        "StackRecord": [
+          "REQ-SDS-159"
+        ]
+      }
+    },
+    {
+      "path": "codegen/emit/wordfmt/wordfmt_test.go",
+      "owner": "FU-CODEGEN-EMIT",
+      "functions": {
+        "ramp": [
+          "REQ-SDS-159"
+        ],
+        "TestTier": [
+          "REQ-SDS-159"
+        ],
+        "TestWordSplit": [
+          "REQ-SDS-159"
+        ],
+        "TestModelRecord": [
+          "REQ-SDS-159"
+        ],
+        "TestTsrc": [
+          "REQ-SDS-159"
+        ],
+        "TestModelDecim": [
+          "REQ-SDS-159"
+        ],
+        "TestModelPeak": [
+          "REQ-SDS-159"
+        ],
+        "TestBoxcarParams": [
+          "REQ-SDS-159"
+        ],
+        "TestModelBoxcar": [
+          "REQ-SDS-159"
+        ],
+        "fill": [
+          "REQ-SDS-159"
+        ],
+        "TestStackParams": [
+          "REQ-SDS-159"
+        ],
+        "TestModelStack": [
+          "REQ-SDS-159"
+        ],
+        "TestSequenceTime": [
+          "REQ-SDS-159"
+        ]
+      },
+      "types": {}
+    },
+    {
+      "path": "codegen/ifacedef/default.go",
+      "owner": "FU-CODEGEN-IFACEDEF",
+      "functions": {
+        "Default": [
+          "REQ-SDS-156"
+        ]
+      },
+      "types": {}
+    },
+    {
+      "path": "codegen/ifacedef/default_test.go",
+      "owner": "FU-CODEGEN-IFACEDEF",
+      "functions": {
+        "TestDefaultValidates": [
+          "REQ-SDS-156"
+        ],
+        "TestV2RegistersKeepTheirSelectors": [
+          "REQ-SDS-156"
+        ],
+        "TestDefaultMatchesTiers": [
+          "REQ-SDS-156"
+        ],
+        "TestDefaultDiagWindow": [
+          "REQ-SDS-156"
+        ]
+      },
+      "types": {}
+    },
+    {
+      "path": "codegen/schema/schema.go",
+      "owner": "FU-CODEGEN-SCHEMA",
+      "functions": {
+        "Access.CanRead": [
+          "REQ-SDS-155"
+        ],
+        "Access.CanWrite": [
+          "REQ-SDS-155"
+        ],
+        "Access.String": [
+          "REQ-SDS-155"
+        ],
+        "Source.String": [
+          "REQ-SDS-155"
+        ],
+        "Field.Mask": [
+          "REQ-SDS-155"
+        ],
+        "Field.Width": [
+          "REQ-SDS-155"
+        ],
+        "DiagEntry.Last": [
+          "REQ-SDS-155"
+        ],
+        "Geometry.PretrigMax": [
+          "REQ-SDS-155"
+        ],
+        "Interface.Reg": [
+          "REQ-SDS-155"
+        ],
+        "Interface.DiagEntry": [
+          "REQ-SDS-155"
+        ],
+        "Interface.Aliases": [
+          "REQ-SDS-155"
+        ],
+        "Interface.SelCount": [
+          "REQ-SDS-155"
+        ],
+        "Interface.Canonical": [
+          "REQ-SDS-155"
+        ],
+        "Interface.BuildID": [
+          "REQ-SDS-155"
+        ],
+        "checkFields": [
+          "REQ-SDS-155"
+        ],
+        "Interface.Validate": [
+          "REQ-SDS-155"
+        ]
+      },
+      "types": {
+        "Access": [
+          "REQ-SDS-155"
+        ],
+        "Source": [
+          "REQ-SDS-155"
+        ],
+        "EnumValue": [
+          "REQ-SDS-155"
+        ],
+        "Field": [
+          "REQ-SDS-155"
+        ],
+        "Register": [
+          "REQ-SDS-155"
+        ],
+        "Opcode": [
+          "REQ-SDS-155"
+        ],
+        "DiagEntry": [
+          "REQ-SDS-155"
+        ],
+        "Geometry": [
+          "REQ-SDS-155"
+        ],
+        "Legacy": [
+          "REQ-SDS-155"
+        ],
+        "Interface": [
+          "REQ-SDS-155"
+        ]
+      }
+    },
+    {
+      "path": "codegen/schema/schema_test.go",
+      "owner": "FU-CODEGEN-SCHEMA",
+      "functions": {
+        "minimal": [
+          "REQ-SDS-155"
+        ],
+        "TestMinimalValidates": [
+          "REQ-SDS-155"
+        ],
+        "TestFieldMask": [
+          "REQ-SDS-155"
+        ],
+        "TestValidateRejects": [
+          "REQ-SDS-155"
+        ],
+        "TestBuildIDStableAndSensitive": [
+          "REQ-SDS-155"
+        ],
+        "TestNoLegacyRule": [
+          "REQ-SDS-155"
+        ],
+        "TestLookups": [
+          "REQ-SDS-155"
+        ]
+      },
+      "types": {}
+    }
+  ],
+  "functions": 109,
+  "types": 15,
+  "uniqueReviewedTests": [
+    "TestBoxcarParams",
+    "TestBuildIDConsistent",
+    "TestBuildIDStableAndSensitive",
+    "TestCamel",
+    "TestDefaultDiagWindow",
+    "TestDefaultMatchesTiers",
+    "TestDefaultValidates",
+    "TestDocGolden",
+    "TestDriftDetectsChange",
+    "TestEmittersRejectInvalid",
+    "TestFieldMask",
+    "TestGoBindingsCompile",
+    "TestGoBindingsGolden",
+    "TestLookups",
+    "TestMinimalValidates",
+    "TestModelBoxcar",
+    "TestModelDecim",
+    "TestModelPeak",
+    "TestModelRecord",
+    "TestModelStack",
+    "TestNoDrift",
+    "TestNoLegacyRule",
+    "TestRegmuxGolden",
+    "TestRegmuxSimulates",
+    "TestRegmuxTestbenchCatchesDrift",
+    "TestRegsGolden",
+    "TestSelMaskDoc",
+    "TestSequenceTime",
+    "TestSourceDigestFollowsRTL",
+    "TestSpliceGoSource",
+    "TestStackParams",
+    "TestTier",
+    "TestTsrc",
+    "TestV2RegistersKeepTheirSelectors",
+    "TestValidateRejects",
+    "TestWordSplit",
+    "TestWordfmtConstantsMatchSchema"
+  ],
+  "nativeEligibleTests": [
+    "TestBoxcarParams",
+    "TestBuildIDConsistent",
+    "TestBuildIDStableAndSensitive",
+    "TestCamel",
+    "TestDefaultDiagWindow",
+    "TestDefaultMatchesTiers",
+    "TestDefaultValidates",
+    "TestDocGolden",
+    "TestDriftDetectsChange",
+    "TestEmittersRejectInvalid",
+    "TestFieldMask",
+    "TestGoBindingsCompile",
+    "TestGoBindingsGolden",
+    "TestLookups",
+    "TestMinimalValidates",
+    "TestModelBoxcar",
+    "TestModelDecim",
+    "TestModelPeak",
+    "TestModelRecord",
+    "TestModelStack",
+    "TestNoDrift",
+    "TestNoLegacyRule",
+    "TestRegmuxGolden",
+    "TestRegmuxSimulates",
+    "TestRegmuxTestbenchCatchesDrift",
+    "TestRegsGolden",
+    "TestSelMaskDoc",
+    "TestSequenceTime",
+    "TestSourceDigestFollowsRTL",
+    "TestSpliceGoSource",
+    "TestStackParams",
+    "TestTier",
+    "TestTsrc",
+    "TestV2RegistersKeepTheirSelectors",
+    "TestValidateRejects",
+    "TestWordSplit",
+    "TestWordfmtConstantsMatchSchema"
+  ],
+  "sourceSHA256": {
+    "codegen/cmd/ifacegen/drift_test.go": "6ddc7ff801929a78a9c57e2f47a89b6c5fd8705622f88fa4b451a803be13698a",
+    "codegen/cmd/ifacegen/main.go": "97cd60e80a9e30678a02ae20bc37ad42f41c837f2f01181f11e41c7864b9ea92",
+    "codegen/emit/doc.go": "197929ffa41efd3c49a3f8cb30330964bc97fad23e343fc51d77e8e5e31c1a11",
+    "codegen/emit/emit.go": "7bd672bb9625d11c6cc7b3a844019f885ce344bc79ad04bf7046fc50a023a05c",
+    "codegen/emit/emit_test.go": "6bcd1917ea504f5c5dc99b95f9362635881efffdf6eda7b8d3ba52ab33859efd",
+    "codegen/emit/gobind.go": "6062efd255e7cadb3be38498a50f5b0ed519bf861e0e278cba15866c07ca6712",
+    "codegen/emit/regmux.go": "7d47af1b7154a4d677f8cd74bd490fa78952f71b62c9ea563611dd0b4b79dcb6",
+    "codegen/emit/regmux_sim_test.go": "81487d9ceffefbabd3efa3a72335fa1fdf316f4f0eb339873cea6dad303cb218",
+    "codegen/emit/regs.go": "1fae5f4e1bb91bc70be6061376fd65c3870d4d5273bc59f96626fad72361d479",
+    "codegen/emit/wordfmt/geom.go": "3380705998224e104feb2a6e317d08252c79d358134e4ea48c5507d8e5e9bdc3",
+    "codegen/emit/wordfmt/wordfmt.go": "c370db073b41d4f6c7463bd4259b2cb5945c1d9ebeab08e588e6a74c3cea949c",
+    "codegen/emit/wordfmt/wordfmt_test.go": "f0b70e4cf852773320e9d351dbe6d25d824599d6285d524973321d68447c1b1a",
+    "codegen/ifacedef/default.go": "49d8056e95ab6c2840a95ee042aac0fa527ff1d20bee0ebb095b164453df180a",
+    "codegen/ifacedef/default_test.go": "5443c3524988db9f91961465f9dedd4f02df4a6c6b8ca18d0be21e881d9f9cd2",
+    "codegen/schema/schema.go": "37b4c0ef7acc3b1aa8eb44153f0048255e4e6fa580dc301e0bf9ef0e3b576725",
+    "codegen/schema/schema_test.go": "566e57ffa994ef76a3365799f0ca62ac9eedc154cca787a79ea91c7f750affce",
+    "codegen/README.md": "07b147e0dd6583259046622d790596fd2d58f83b0d4619cdf9b9e072d8d03339",
+    "codegen/Makefile": "da02a0c9158f0644cdc5da0915ebd4263c979bdb34040f439bfc89a76909507c",
+    "codegen/go.mod": "480d4193c0fc299205aa9953c902b43a0c7b80e34a1245ce7f1da565b9e8556c"
+  },
+  "expectedFailingTests": [
+    "TestNoDrift"
+  ],
+  "scope": "Complete codegen module source and original host/simulator tests; no hardware or physical qualification. Generated outputs remain unchanged and the drift failure is preserved."
+}

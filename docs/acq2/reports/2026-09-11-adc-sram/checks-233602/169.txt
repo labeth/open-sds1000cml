@@ -1,0 +1,13 @@
+ARGS ["exec", "/dev/acqsram", "offset", "1", "10420"]
+{
+  "buffer_words": 512,
+  "identity": 23122,
+  "length": 524288,
+  "origin": 562,
+  "position": 563,
+  "revision": 2,
+  "start": 0,
+  "status": 116,
+  "trigger_index": 524271
+}
+[exit 0]

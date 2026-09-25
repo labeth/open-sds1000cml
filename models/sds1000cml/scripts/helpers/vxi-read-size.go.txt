@@ -1,0 +1,17 @@
+// Local characterization only; no listener or network client is created.
+func TestModelReviewReadSizeBoundary(t *testing.T) {
+ srv := &Server{}
+ cn := &conn{srv:srv,lid:7,pending:[]byte{42}}
+ srv.linkOwner=cn
+ var requested uint32 = 0xffffffff
+ args:=putU32(nil,7); args=putU32(args,requested);args=putU32(args,0)
+ var panicValue any
+ func(){ defer func(){panicValue=recover()}();cn.dispatch(procDeviceRead,&xdr{b:args}) }()
+ if int(requested)<0 {
+  if panicValue==nil {t.Fatal("expected negative-int read-size boundary to panic in this baseline")}
+  t.Logf("32-bit read size converts to %d; observed recovered panic: %v",int(requested),panicValue)
+ } else {
+  if panicValue!=nil {t.Fatalf("unexpected wide-int panic: %v",panicValue)}
+  t.Logf("wide-int read size %d does not panic for one pending byte",int(requested))
+ }
+}

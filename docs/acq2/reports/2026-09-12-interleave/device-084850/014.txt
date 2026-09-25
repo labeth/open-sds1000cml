@@ -1,0 +1,3 @@
+ARGS ["exec", "pidof", "SDS1000_arm.app"]
+534
+[exit 0]

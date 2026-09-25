@@ -1,0 +1,113 @@
+{
+  "source": "app/internal/lcd/golden_views_test.go",
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "scope": "Reviewed Go test outcomes; passing assertions contribute partial requirement evidence.",
+  "sourceSHA256": "3dfcf9e8d0cc8767c8e5f8b46fd551f22abb365d93fdba785ad00665301c75e2",
+  "logs": {
+    "test-runs/lcd-remaining.jsonl": "d6ce2cb6bce156d62f466c55519c6631ebc7cd08c7a1d79df877ce034480901e"
+  },
+  "tests": [
+    {
+      "name": "TestGoldenYTDual",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-021"
+      ]
+    },
+    {
+      "name": "TestGoldenYTDecodeUART",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-021",
+        "REQ-SDS-018"
+      ]
+    },
+    {
+      "name": "TestGoldenFFTPeaks",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-021",
+        "REQ-SDS-070"
+      ]
+    },
+    {
+      "name": "TestGoldenXY",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-021"
+      ]
+    },
+    {
+      "name": "TestGoldenMeasurePanel",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-021"
+      ]
+    },
+    {
+      "name": "TestGoldenEnvelope",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-021"
+      ]
+    },
+    {
+      "name": "TestGoldenBode",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-021"
+      ]
+    },
+    {
+      "name": "TestGoldenSpectrogram",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-021",
+        "REQ-SDS-068"
+      ]
+    },
+    {
+      "name": "TestGoldenCursorsTime",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-021"
+      ]
+    },
+    {
+      "name": "TestGoldenCursorsVolts",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-021"
+      ]
+    },
+    {
+      "name": "TestGoldenMenu",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-021"
+      ]
+    }
+  ],
+  "results": [
+    {
+      "requirement": "REQ-SDS-018",
+      "status": "partial",
+      "notes": "1 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    },
+    {
+      "requirement": "REQ-SDS-021",
+      "status": "partial",
+      "notes": "11 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    },
+    {
+      "requirement": "REQ-SDS-068",
+      "status": "partial",
+      "notes": "1 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    },
+    {
+      "requirement": "REQ-SDS-070",
+      "status": "partial",
+      "notes": "1 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    }
+  ]
+}

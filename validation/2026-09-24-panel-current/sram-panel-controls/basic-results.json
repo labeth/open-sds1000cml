@@ -1,0 +1,201 @@
+{
+  "phase": "basic",
+  "base": "http://192.168.1.209:8080",
+  "results": [
+    {
+      "name": "latest build and panel snapshot",
+      "result": "pass"
+    },
+    {
+      "name": "AUTO starts; locks other inputs; second AUTO cancels",
+      "result": "pass"
+    },
+    {
+      "name": "AUTO completes on live input",
+      "result": "pass"
+    },
+    {
+      "name": "five-megahertz-before-controls",
+      "result": "fail",
+      "error": "m1: 74136059.34503347 Hz, expected 5 MHz"
+    },
+    {
+      "name": "RUN/STOP toggles both ways",
+      "result": "pass"
+    },
+    {
+      "name": "SINGLE captures and stops",
+      "result": "fail",
+      "error": "state timeout: {\"frames\":990,\"coherent\":968,\"published\":968,\"held\":0,\"halt_confirm\":968,\"bus_errors\":0,\"dead_runs\":0,\"wedged\":false,\"fps\":0,\"running\":true,\"norm\":true,\"single\":true,\"trig_pos_frac\":0.5,\"tdiv_s\":1e-7,\"displayed_sdiv_s\":1e-7,\"trig_code\":35000,\"off_c1\":6375,\"off_c2\":6366,\"trig_rising\":true,\"trig_source\":0,\"last_ptp\":21,\"last_trigpos\":0,\"arm_to_latch_ms\":0,\"drain_ms\":2832.81404,\"lcd_frames\":961,\"sram_recall_ms\":2809.93764,\"condition_ms\":0.05176,\"holdoff_s\":0.001,\"seq\":968,\"mmap_drain\":false,\"ets\":false,\"band\":\"sram\",\"halt_mode\":\"freeze-read-rearm\",\"trig_type\":0,\"acq_mode\":0,\"avg_count\":16,\"precision_rate_hz\":31250000,\"eres_len\":15,\"wincol_std\":0,\"wincol_std_raw\":0,\"wincol_max\":0,\"valid_depth\":1048576,\"win_cols\":500,\"mem_depth\":1048576,\"stream\":false,\"gap_ms\":0,\"short_drains\":0,\"stream_overflows\":0,\"tdivs\":[1e-9,2e-9,5e-9,1e-8,2.5e-8,5e-8,1e-7,2e-7,5e-7,0.000001,0.000002,0.000005,0.00001,0.00002,0.00005,0.0001,0.0002,0.0005,0.001,0.002,0.005,0.01,0.02,0.05,0.1,0.2,0.5,1,2,5,10,20,50],\"trig_volts\":-3.911086717892426,\"trig_zero\":31437,\"trig_cpv\":911,\"trig_code_min\":27000,\"trig_code_max\":35000,\"vdivs\":[0.002,0.005,0.01,0.02,0.05,0.1,0.2,0.5,1,2,5,10],\"vdiv1\":10,\"vdiv2\":10,\"probe1\":1,\"probe2\":1,\"cpl1\":0,\"cpl2\":0,\"inv1\":false,\"inv2\":false,\"zoom1\":1,\"zoom2\":1,\"vdiv_live\":true,\"off1_v\":40,\"off2_v\":40,\"cal_source\":\"file\",\"dc1_v\":-18.880875580483586,\"dc2_v\":-18.658836690032828,\"version\":\"v0.0.5-73-gf436963-dirty (f436963, 2026-09-24T19:21:07Z)\",\"panel\":{\"Open\":false,\"Title\":\"\",\"Items\":null,\"Sel\":0,\"ShowC1\":true,\"ShowC2\":true,\"ShowMeas\":false,\"ViewMode\":0,\"MathMode\":0,\"AutosetBusy\":false,\"AutosetMsg\":\"AUTOSET...\",\"Zoom\":1,\"ZoomOff\":0,\"Persist\":false,\"SRActive\":false,\"SRFocus\":0,\"SRGate\":[0,0],\"SRStatus\":\"\",\"MaskStatus\":\"\",\"DecProto\":0,\"DecBaud\":115200,\"DecChA\":0,\"DecChB\":1,\"DecCPOL\":false,\"DecCPHA\":false,\"DecFormat\":0,\"CurOn\":false,\"CurType\":0,\"CurSel\":0,\"CurX\":[0.35,0.65],\"CurY\":[0.35,0.65]},\"half_rate\":0}"
+    },
+    {
+      "name": "ch1 toggles display",
+      "result": "pass"
+    },
+    {
+      "name": "ch2 toggles display",
+      "result": "pass"
+    },
+    {
+      "name": "measure toggles display",
+      "result": "pass"
+    },
+    {
+      "name": "MATH cycles all five modes",
+      "result": "pass"
+    },
+    {
+      "name": "V/DIV pushes select trigger source",
+      "result": "pass"
+    },
+    {
+      "name": "TRIGGER LEVEL push reverses edge",
+      "result": "pass"
+    },
+    {
+      "name": "trigmenu opens menu",
+      "result": "pass"
+    },
+    {
+      "name": "acquire opens menu",
+      "result": "pass"
+    },
+    {
+      "name": "display opens menu",
+      "result": "pass"
+    },
+    {
+      "name": "horizmenu opens menu",
+      "result": "pass"
+    },
+    {
+      "name": "cursors opens menu",
+      "result": "pass"
+    },
+    {
+      "name": "ref opens menu",
+      "result": "pass"
+    },
+    {
+      "name": "MENU opens main and closes overlay",
+      "result": "pass"
+    },
+    {
+      "name": "tdiv rotation changes and restores",
+      "result": "fail",
+      "error": "Expected \"actual\" to be strictly unequal to: 1e-7"
+    },
+    {
+      "name": "ch1vdiv rotation changes and restores",
+      "result": "pass"
+    },
+    {
+      "name": "ch2vdiv rotation changes and restores",
+      "result": "pass"
+    },
+    {
+      "name": "ch1pos rotation changes and restores",
+      "result": "fail",
+      "error": "Expected \"actual\" to be strictly unequal to: 40"
+    },
+    {
+      "name": "ch2pos rotation changes and restores",
+      "result": "fail",
+      "error": "Expected \"actual\" to be strictly unequal to: 40"
+    },
+    {
+      "name": "triglevel rotation changes and restores",
+      "result": "pass"
+    },
+    {
+      "name": "horizpos rotation changes and restores",
+      "result": "pass"
+    },
+    {
+      "name": "ADJUST edits selected menu setting",
+      "result": "pass"
+    },
+    {
+      "name": "print accepted with no assigned action",
+      "result": "pass"
+    },
+    {
+      "name": "saverecall accepted with no assigned action",
+      "result": "pass"
+    },
+    {
+      "name": "set50 accepted with no assigned action",
+      "result": "pass"
+    },
+    {
+      "name": "defaultsetup accepted with no assigned action",
+      "result": "pass"
+    },
+    {
+      "name": "force accepted with no assigned action",
+      "result": "pass"
+    },
+    {
+      "name": "help accepted with no assigned action",
+      "result": "pass"
+    },
+    {
+      "name": "ch1pospush accepted with no assigned action",
+      "result": "pass"
+    },
+    {
+      "name": "ch2pospush accepted with no assigned action",
+      "result": "pass"
+    },
+    {
+      "name": "tdivpush accepted with no assigned action",
+      "result": "pass"
+    },
+    {
+      "name": "horizpospush accepted with no assigned action",
+      "result": "pass"
+    },
+    {
+      "name": "five-megahertz-after-controls",
+      "result": "fail",
+      "error": "timebase not reached"
+    }
+  ],
+  "touched": [
+    "auto",
+    "ch1",
+    "tdiv",
+    "runstop",
+    "single",
+    "ch2",
+    "measure",
+    "math",
+    "ch1vdivpush",
+    "ch2vdivpush",
+    "triglvlpush",
+    "trigmenu",
+    "menu",
+    "acquire",
+    "display",
+    "horizmenu",
+    "cursors",
+    "ref",
+    "ch1vdiv",
+    "ch2vdiv",
+    "ch1pos",
+    "ch2pos",
+    "triglevel",
+    "horizpos",
+    "adjust",
+    "print",
+    "saverecall",
+    "set50",
+    "defaultsetup",
+    "force",
+    "help",
+    "ch1pospush",
+    "ch2pospush",
+    "tdivpush",
+    "horizpospush"
+  ]
+}

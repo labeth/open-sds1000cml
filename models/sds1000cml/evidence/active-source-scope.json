@@ -1,0 +1,29 @@
+{
+  "status": "user-directed-scope",
+  "branch": "cyclone-spec-sram-capture",
+  "requestedLanguages": [
+    "Go",
+    "TypeScript",
+    "Verilog"
+  ],
+  "excludedFromRemainingSourceModeling": [
+    "Python support scripts",
+    "shell",
+    "C",
+    "assembly"
+  ],
+  "inventorySHA256": "d8c61b166a9174001db59b1a3835d25718118dc4afcbf79c023b5004d7053a6b",
+  "nonhistoricalFiles": {
+    ".go": 343,
+    ".ts": 0,
+    ".tsx": 0,
+    ".v": 117,
+    ".sv": 0,
+    ".js": 39,
+    ".py": 25,
+    ".sh": 12,
+    ".c": 3
+  },
+  "existingWork": "Existing JavaScript and Python evidence is retained as supplemental historical work, not a requirement to extend excluded-language coverage. No TypeScript files occur in the pinned inventory.",
+  "limits": "Language scope does not turn known failures or unimplemented Go/RTL requirements into passes. Hardware descriptions and specification evidence remain relevant. Model validation utilities may use Python; they are tooling, not instrument source-modeling targets."
+}

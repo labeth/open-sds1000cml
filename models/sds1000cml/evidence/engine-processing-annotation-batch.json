@@ -1,0 +1,361 @@
+{
+  "status": "integrated",
+  "files": [
+    {
+      "path": "app/internal/engine/sram.go",
+      "owner": "FU-APP-ENGINE",
+      "functions": {
+        "PlanSRAM": [
+          "REQ-SDS-010",
+          "REQ-SDS-040"
+        ],
+        "PlanPrecisionSRAM": [
+          "REQ-SDS-010",
+          "REQ-SDS-036"
+        ],
+        "sramFrameWriter.Write": [
+          "REQ-SDS-040"
+        ],
+        "roundQ8": [
+          "REQ-SDS-040"
+        ],
+        "qBuffer": [
+          "REQ-SDS-040"
+        ],
+        "Engine.sramConfig": [
+          "REQ-SDS-010",
+          "REQ-SDS-011",
+          "REQ-SDS-036",
+          "REQ-SDS-040"
+        ],
+        "Engine.runSRAM": [
+          "REQ-SDS-003",
+          "REQ-SDS-007",
+          "REQ-SDS-008",
+          "REQ-SDS-009",
+          "REQ-SDS-011",
+          "REQ-SDS-012",
+          "REQ-SDS-036",
+          "REQ-SDS-037",
+          "REQ-SDS-040"
+        ],
+        "boolInt": [
+          "REQ-SDS-040"
+        ],
+        "liveSRAMWindow": [
+          "REQ-SDS-010"
+        ]
+      },
+      "types": {
+        "SRAMPlan": [
+          "REQ-SDS-010",
+          "REQ-SDS-040"
+        ],
+        "sramFrameWriter": [
+          "REQ-SDS-010",
+          "REQ-SDS-040"
+        ]
+      }
+    },
+    {
+      "path": "app/internal/engine/sram_math.go",
+      "owner": "FU-APP-ENGINE",
+      "functions": {
+        "eresQ8": [
+          "REQ-SDS-012"
+        ],
+        "sramAverage.reset": [
+          "REQ-SDS-012"
+        ],
+        "sramAverage.push": [
+          "REQ-SDS-012"
+        ]
+      },
+      "types": {
+        "sramAverage": [
+          "REQ-SDS-012"
+        ]
+      }
+    },
+    {
+      "path": "app/internal/engine/sram_test.go",
+      "owner": "FU-APP-ENGINE",
+      "functions": {
+        "TestSRAMPlannerCoversEveryTimebase": [
+          "REQ-SDS-010"
+        ],
+        "TestSRAMFrameWriterPreservesChannelsAndFractions": [
+          "REQ-SDS-040"
+        ],
+        "TestSRAMFrameWriterRawOrder": [
+          "REQ-SDS-040"
+        ],
+        "TestSRAMPlanInvalidInput": [
+          "REQ-SDS-010"
+        ],
+        "TestSRAMSelectedDepth": [
+          "REQ-SDS-010"
+        ],
+        "TestLiveSRAMWindowBoundaries": [
+          "REQ-SDS-010"
+        ],
+        "TestPrecisionRateIndependentOfView": [
+          "REQ-SDS-036"
+        ],
+        "TestPrecisionRateSelection": [
+          "REQ-SDS-036"
+        ],
+        "TestAllTimebasesRateContract": [
+          "REQ-SDS-010",
+          "REQ-SDS-036"
+        ]
+      },
+      "types": {}
+    },
+    {
+      "path": "app/internal/engine/sram_math_test.go",
+      "owner": "FU-APP-ENGINE",
+      "functions": {
+        "TestERESQ8": [
+          "REQ-SDS-012"
+        ],
+        "TestSRAMBlockAverageFractionsAndReset": [
+          "REQ-SDS-012"
+        ],
+        "TestSRAMAverageAlignsShiftedRecordWithoutWrapping": [
+          "REQ-SDS-012"
+        ]
+      },
+      "types": {}
+    },
+    {
+      "path": "app/internal/engine/interleave_cal.go",
+      "owner": "FU-APP-ENGINE",
+      "functions": {
+        "LoadInterleaveCalibration": [
+          "REQ-SDS-016"
+        ],
+        "InterleaveCalibration.apply": [
+          "REQ-SDS-016"
+        ],
+        "InterleaveCalibration.supportsScale": [
+          "REQ-SDS-016"
+        ]
+      },
+      "types": {
+        "InterleaveCalibration": [
+          "REQ-SDS-016"
+        ]
+      }
+    },
+    {
+      "path": "app/internal/engine/interleave_cal_test.go",
+      "owner": "FU-APP-ENGINE",
+      "functions": {
+        "TestInterleaveCalibrationRotationAndGuards": [
+          "REQ-SDS-016"
+        ],
+        "TestVerifiedInterleaveRanges": [
+          "REQ-SDS-016"
+        ]
+      },
+      "types": {}
+    },
+    {
+      "path": "app/internal/engine/modes.go",
+      "owner": "FU-APP-ENGINE",
+      "functions": {
+        "EresLenForBits": [
+          "REQ-SDS-012"
+        ],
+        "clampEresLen": [
+          "REQ-SDS-012"
+        ],
+        "eresBoxcar": [
+          "REQ-SDS-012"
+        ],
+        "avgRing.reset": [
+          "REQ-SDS-012"
+        ],
+        "avgRing.push": [
+          "REQ-SDS-012"
+        ],
+        "avgRing.meanInto": [
+          "REQ-SDS-012"
+        ],
+        "uniRing.reset": [
+          "REQ-SDS-126"
+        ],
+        "uniRing.push": [
+          "REQ-SDS-126"
+        ],
+        "uniRing.stats": [
+          "REQ-SDS-126"
+        ]
+      },
+      "types": {
+        "avgRing": [
+          "REQ-SDS-012"
+        ],
+        "uniRing": [
+          "REQ-SDS-126"
+        ]
+      }
+    },
+    {
+      "path": "app/internal/engine/qualify.go",
+      "owner": "FU-APP-ENGINE",
+      "functions": {
+        "defaultTrigParams": [
+          "REQ-SDS-011"
+        ],
+        "condOK": [
+          "REQ-SDS-011"
+        ],
+        "crossFrac": [
+          "REQ-SDS-011"
+        ],
+        "qualifyPulse": [
+          "REQ-SDS-011"
+        ],
+        "qualifySlope": [
+          "REQ-SDS-011"
+        ],
+        "qualifyVideo": [
+          "REQ-SDS-011"
+        ]
+      },
+      "types": {
+        "TrigType": [
+          "REQ-SDS-011"
+        ],
+        "trigParams": [
+          "REQ-SDS-011"
+        ]
+      }
+    },
+    {
+      "path": "app/internal/engine/qualify_test.go",
+      "owner": "FU-APP-ENGINE",
+      "functions": {
+        "pulseTrain": [
+          "REQ-SDS-011"
+        ],
+        "TestQualifyPulseWidthWindow": [
+          "REQ-SDS-011"
+        ],
+        "TestQualifyPulseLowPolarity": [
+          "REQ-SDS-011"
+        ],
+        "TestQualifyPulseFlatReject": [
+          "REQ-SDS-011"
+        ],
+        "TestQualifySlope": [
+          "REQ-SDS-011"
+        ],
+        "TestQualifySlopeSingleStepEdge": [
+          "REQ-SDS-011"
+        ],
+        "TestQualifyVideo": [
+          "REQ-SDS-011"
+        ],
+        "TestEresBoxcar": [
+          "REQ-SDS-012"
+        ],
+        "TestEresLenForBits": [
+          "REQ-SDS-012"
+        ],
+        "TestAverageRing": [
+          "REQ-SDS-012"
+        ],
+        "TestAverageRingNoOffRecordBias": [
+          "REQ-SDS-012"
+        ],
+        "TestQualifierPublishPolicy": [
+          "REQ-SDS-011"
+        ],
+        "TestAverageModeInEngine": [
+          "REQ-SDS-012"
+        ],
+        "TestUniformityStats": [
+          "REQ-SDS-126"
+        ]
+      },
+      "types": {}
+    }
+  ],
+  "functions": 58,
+  "types": 8,
+  "excludedDeclarations": [],
+  "uniqueReviewedTests": [
+    "TestAllTimebasesRateContract",
+    "TestAverageModeInEngine",
+    "TestAverageRing",
+    "TestAverageRingNoOffRecordBias",
+    "TestERESQ8",
+    "TestEresBoxcar",
+    "TestEresLenForBits",
+    "TestInterleaveCalibrationRotationAndGuards",
+    "TestLiveSRAMWindowBoundaries",
+    "TestPrecisionRateIndependentOfView",
+    "TestPrecisionRateSelection",
+    "TestQualifierPublishPolicy",
+    "TestQualifyPulseFlatReject",
+    "TestQualifyPulseLowPolarity",
+    "TestQualifyPulseWidthWindow",
+    "TestQualifySlope",
+    "TestQualifySlopeSingleStepEdge",
+    "TestQualifyVideo",
+    "TestSRAMAverageAlignsShiftedRecordWithoutWrapping",
+    "TestSRAMBlockAverageFractionsAndReset",
+    "TestSRAMFrameWriterPreservesChannelsAndFractions",
+    "TestSRAMFrameWriterRawOrder",
+    "TestSRAMPlanInvalidInput",
+    "TestSRAMPlannerCoversEveryTimebase",
+    "TestSRAMSelectedDepth",
+    "TestUniformityStats",
+    "TestVerifiedInterleaveRanges"
+  ],
+  "nativeEligibleTests": [
+    "TestAllTimebasesRateContract",
+    "TestAverageModeInEngine",
+    "TestAverageRing",
+    "TestAverageRingNoOffRecordBias",
+    "TestERESQ8",
+    "TestEresBoxcar",
+    "TestEresLenForBits",
+    "TestInterleaveCalibrationRotationAndGuards",
+    "TestLiveSRAMWindowBoundaries",
+    "TestPrecisionRateIndependentOfView",
+    "TestPrecisionRateSelection",
+    "TestQualifierPublishPolicy",
+    "TestQualifyPulseFlatReject",
+    "TestQualifyPulseLowPolarity",
+    "TestQualifyPulseWidthWindow",
+    "TestQualifySlope",
+    "TestQualifySlopeSingleStepEdge",
+    "TestQualifyVideo",
+    "TestSRAMAverageAlignsShiftedRecordWithoutWrapping",
+    "TestSRAMBlockAverageFractionsAndReset",
+    "TestSRAMFrameWriterPreservesChannelsAndFractions",
+    "TestSRAMFrameWriterRawOrder",
+    "TestSRAMPlanInvalidInput",
+    "TestSRAMPlannerCoversEveryTimebase",
+    "TestSRAMSelectedDepth",
+    "TestUniformityStats",
+    "TestVerifiedInterleaveRanges"
+  ],
+  "requirementGap": "REQ-SDS-074 remains unproven: legacy fingerprint inference is not record-phase metadata. Calibration links target REQ-SDS-016 only.",
+  "sourceSHA256": {
+    "app/internal/engine/sram.go": "68c8f87091ea6a2d962b4ee607f7463336082404b100f781df68601d94827a3c",
+    "app/internal/engine/sram_math.go": "3ad989febc1ef1dd4799eee527adaf71544ca4006dac5a18ac72d85923d02264",
+    "app/internal/engine/sram_test.go": "5ecf9230232b78e8bfe42fdc63b267cefa60da6180d1646d24201f53ae2ead26",
+    "app/internal/engine/sram_math_test.go": "05a666a68844574b533c9bcac775e28812ec27c86c5e1c291763cac3f8f8dccc",
+    "app/internal/engine/interleave_cal.go": "84b1ca21eb844ae33372370107b14f4cfab02284b4cc30b2eb2806b123acec2a",
+    "app/internal/engine/interleave_cal_test.go": "4c01eae382eb040c413b167efc32c158b13aefac41448eda80f204249157c04e",
+    "app/internal/engine/modes.go": "7532e71cb641cc885581a724a9c582a67bc6dc17723efe7dfbcc1ad2e7b3c2f6",
+    "app/internal/engine/qualify.go": "2117c731d4fe42f1e9033c1b4be75cc4280dfa09c9d351ac821e8765786417ed",
+    "app/internal/engine/qualify_test.go": "e6aa1cf649cee07643d256041b5710838a32973ce3adafbd06daa953b89ba1db"
+  },
+  "uniformityRequirement": "REQ-SDS-126, source-derived telemetry contract; original test contributes partial evidence only."
+}

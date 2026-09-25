@@ -1,0 +1,22 @@
+// Off-device execution characterization; only test-owned shell/sleep processes.
+func TestModelReviewAgentExecBoundaries(t *testing.T) {
+ a := testAgent(t)
+ out, code, err := a.runArgv([]string{t.TempDir()+"/missing"}, "", time.Second)
+ if err == nil || code != 0 || len(out) != 0 {
+  t.Fatalf("missing executable: out=%q code=%d err=%v",out,code,err)
+ }
+ t.Log("start failure returns exit=0 alongside non-nil error")
+ out, code, err = a.runArgv([]string{"/bin/sh","-c","printf stdout; printf stderr >&2; exit 7"}, "", time.Second)
+ if err == nil || code != 7 || !strings.Contains(string(out),"stdout") || !strings.Contains(string(out),"stderr") {
+  t.Fatalf("combined output/nonzero exit: out=%q code=%d err=%v",out,code,err)
+ }
+ // The direct shell is killed at 500ms; its own sleep keeps the pipe open
+ // until two seconds. No long-running process or host process is targeted.
+ started := time.Now()
+ _, code, err = a.runArgv([]string{"/bin/sh","-c","sleep 2 & wait"}, "", 500*time.Millisecond)
+ elapsed := time.Since(started)
+ if err == nil || !strings.Contains(err.Error(),"deadline exceeded") || elapsed < 1500*time.Millisecond {
+  t.Fatalf("descendant pipe boundary: elapsed=%s code=%d err=%v",elapsed,code,err)
+ }
+ t.Logf("500ms timeout returned after %s because a descendant retained output pipe; exit=%d",elapsed,code)
+}

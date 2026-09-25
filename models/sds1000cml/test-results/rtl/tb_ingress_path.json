@@ -1,0 +1,17 @@
+{
+  "source": "fpga/acq_sram/sim/tb_ingress_path.v",
+  "scope": "Offline Icarus simulations with ideal digital clocks and behavioral RAM (ALTERA_RESERVED_QIS is not defined). No fitted primitive simulation, metastability analysis, physical timing or board qualification.",
+  "runs": [
+    "ingress-path-0",
+    "ingress-path-1",
+    "ingress-path-2",
+    "ingress-path-3"
+  ],
+  "results": [
+    {
+      "requirement": "REQ-SDS-046",
+      "status": "partial",
+      "notes": "Reviewed digital simulations pass. Full requirement-clause coverage and physical qualification remain unestablished. See evidence/test-runs/rtl-reviewed.json for exact commands, source hashes and output."
+    }
+  ]
+}

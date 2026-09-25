@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-PANEL
 package panel
 
 import (
@@ -8,19 +9,24 @@ import (
 
 // fireEng: AcqLog reports SawTrig only while the committed level code sits
 // inside [fireLo, fireHi] — a comparator with a band the volts fit misses.
+// TRLC-LINKS: REQ-SDS-137
 type fireEng struct {
 	fakeEng
 	level          uint16
 	fireLo, fireHi uint16
 }
 
+// TRLC-LINKS: REQ-SDS-137
 func (f *fireEng) SetTrigLevelCode(c uint16) uint16 { f.level = c; return c }
+
+// TRLC-LINKS: REQ-SDS-137
 func (f *fireEng) AcqLog(n int) ([]engine.AcqSample, float64) {
 	fired := f.level >= f.fireLo && f.level <= f.fireHi
 	return []engine.AcqSample{{SawTrig: fired}, {SawTrig: fired}, {SawTrig: fired}}, 0
 }
 
 // The computed code misses the band → the scan must land the level inside it.
+// TRLC-LINKS: REQ-SDS-137
 func TestAutosetVerifyTrigLevelScansIntoBand(t *testing.T) {
 	fe := &fireEng{fireLo: 30200, fireHi: 33400}
 	c := &Controller{eng: fe}
@@ -35,6 +41,7 @@ func TestAutosetVerifyTrigLevelScansIntoBand(t *testing.T) {
 }
 
 // No band fires anywhere (quiet input) → the computed code must be kept.
+// TRLC-LINKS: REQ-SDS-137
 func TestAutosetVerifyTrigLevelKeepsComputedWhenNothingFires(t *testing.T) {
 	fe := &fireEng{fireLo: 1, fireHi: 2} // outside the DAC range → never fires
 	c := &Controller{eng: fe}
@@ -45,5 +52,20 @@ func TestAutosetVerifyTrigLevelKeepsComputedWhenNothingFires(t *testing.T) {
 	}
 	if fe.level != 31000 {
 		t.Fatalf("quiet input must keep the computed code, got %d", fe.level)
+	}
+}
+
+// TRLC-LINKS: REQ-SDS-137
+func TestAutosetSRAMUsesPublishedTriggerEvidence(t *testing.T) {
+	e := &fakeEng{stats: engine.Stats{BandKind: "sram"}}
+	c := &Controller{eng: e}
+	f := &engine.Frame{Coherent: true, Trigd: true}
+	c.SetFrameSource(func(fn func(*engine.Frame)) { fn(f) })
+	if !c.trigFiring() {
+		t.Fatal("ignored SRAM frame trigger")
+	}
+	f.Trigd = false
+	if c.trigFiring() {
+		t.Fatal("forced SRAM frame counted as triggered")
 	}
 }

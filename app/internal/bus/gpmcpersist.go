@@ -42,6 +42,7 @@
 // so the relaunched app (and the OTA agent's rollback) always meets the
 // bootloader's timing. A rejected persisted file is left where it is: the
 // check costs ~50 ms per boot and a sweep on the new build replaces it.
+// ENGMODEL-OWNER-UNIT: FU-APP-BUS
 package bus
 
 import (
@@ -64,6 +65,7 @@ const FactoryFileName = "gpmc-factory.json"
 const TimingFileVersion = 1
 
 // TimingFile is the persisted sweep outcome.
+// TRLC-LINKS: REQ-SDS-132
 type TimingFile struct {
 	Version     int          `json:"version"`
 	Saved       string       `json:"saved"`
@@ -83,6 +85,7 @@ type TimingFile struct {
 }
 
 // FactoryFile is the captured bootloader timing.
+// TRLC-LINKS: REQ-SDS-132
 type FactoryFile struct {
 	Version    int          `json:"version"`
 	Saved      string       `json:"saved"`
@@ -95,6 +98,7 @@ type FactoryFile struct {
 
 // TimingPath resolves the persisted-timing file: SCOPE_GPMC_TIMING, else next
 // to the executable.
+// TRLC-LINKS: REQ-SDS-132
 func TimingPath() string {
 	if p := os.Getenv("SCOPE_GPMC_TIMING"); p != "" {
 		return p
@@ -116,6 +120,7 @@ func TimingPath() string {
 // ramp-checks whatever it applies and falls back to factory if the check fails.
 // A sibling is used only if it carries its own factory record beside it, which
 // is the same safety rule an own-slot record has to meet.
+// TRLC-LINKS: REQ-SDS-132
 func TimingPathForBoot() string {
 	own := TimingPath()
 	if _, err := os.Stat(own); err == nil {
@@ -149,11 +154,13 @@ func TimingPathForBoot() string {
 }
 
 // FactoryPathFor is the factory file next to the persisted-timing file.
+// TRLC-LINKS: REQ-SDS-132
 func FactoryPathFor(timingPath string) string {
 	return filepath.Join(filepath.Dir(timingPath), FactoryFileName)
 }
 
 // FileFromSweep builds the persisted record from a passed sweep.
+// TRLC-LINKS: REQ-SDS-132
 func FileFromSweep(r *SweepResult, appVersion string) (TimingFile, error) {
 	if r == nil || !r.OK {
 		return TimingFile{}, fmt.Errorf("gpmc timing: the sweep did not pass — nothing to persist")
@@ -172,6 +179,7 @@ func FileFromSweep(r *SweepResult, appVersion string) (TimingFile, error) {
 }
 
 // writeJSONAtomic writes v as indented JSON through temp + rename.
+// TRLC-LINKS: REQ-SDS-132
 func writeJSONAtomic(path string, v any) error {
 	b, err := json.MarshalIndent(v, "", "  ")
 	if err != nil {
@@ -185,6 +193,7 @@ func writeJSONAtomic(path string, v any) error {
 }
 
 // readJSON reads a small JSON file. os.IsNotExist(err) means "no file".
+// TRLC-LINKS: REQ-SDS-132
 func readJSON(path string, v any) error {
 	raw, err := os.ReadFile(path)
 	if err != nil {
@@ -200,6 +209,7 @@ func readJSON(path string, v any) error {
 }
 
 // SaveTiming writes the persisted-timing file atomically (temp + rename).
+// TRLC-LINKS: REQ-SDS-132
 func SaveTiming(path string, f TimingFile) error {
 	if err := f.Chosen.Validate(); err != nil {
 		return err
@@ -210,6 +220,7 @@ func SaveTiming(path string, f TimingFile) error {
 // LoadTiming reads and validates the persisted-timing file.
 // os.IsNotExist(err) means "never swept"; any other error means the file is
 // unusable.
+// TRLC-LINKS: REQ-SDS-132
 func LoadTiming(path string) (TimingFile, error) {
 	var f TimingFile
 	if err := readJSON(path, &f); err != nil {
@@ -225,6 +236,7 @@ func LoadTiming(path string) (TimingFile, error) {
 }
 
 // SaveFactory records t as the factory timing (the one-time capture).
+// TRLC-LINKS: REQ-SDS-132
 func SaveFactory(path string, t CS1Timing, appVersion string) (FactoryFile, error) {
 	f := FactoryFile{Version: TimingFileVersion, Saved: time.Now().UTC().Format(time.RFC3339),
 		BuildID: fmt.Sprintf("0x%08x", iface.BuildID), AppVersion: appVersion, Timing: t, Fields: t.Fields()}
@@ -243,6 +255,7 @@ func SaveFactory(path string, t CS1Timing, appVersion string) (FactoryFile, erro
 
 // LoadFactory reads the factory file. os.IsNotExist(err) means "never
 // captured"; any other error means the file is unusable.
+// TRLC-LINKS: REQ-SDS-132
 func LoadFactory(path string) (FactoryFile, error) {
 	var f FactoryFile
 	if err := readJSON(path, &f); err != nil {
@@ -258,11 +271,13 @@ func LoadFactory(path string) (FactoryFile, error) {
 }
 
 // sameReadSide reports whether the four words the sweep may change agree.
+// TRLC-LINKS: REQ-SDS-132
 func sameReadSide(a, b CS1Timing) bool {
 	return a.Config2 == b.Config2 && a.Config4 == b.Config4 && a.Config5 == b.Config5 && a.Config6 == b.Config6
 }
 
 // BootTiming is what ApplyPersistedTiming decided, for the log and /api/diag.
+// TRLC-LINKS: REQ-SDS-132
 type BootTiming struct {
 	Path        string       `json:"path"`
 	FactoryPath string       `json:"factory_path"`
@@ -283,10 +298,12 @@ const bootCheckPasses = 3
 // ApplyPersistedTiming is the boot hook: the state machine of the file
 // header. path is the persisted-timing file; the factory file sits next to
 // it. The fabric is left in the reset posture. Never fatal.
+// TRLC-LINKS: REQ-SDS-132
 func ApplyPersistedTiming(b Bus, port TimingPort, path, appVersion string, logf func(string, ...any)) BootTiming {
 	return applyPersisted(b, port, path, appVersion, logf, time.Sleep)
 }
 
+// TRLC-LINKS: REQ-SDS-132
 func applyPersisted(b Bus, port TimingPort, path, appVersion string, logf func(string, ...any), sleep func(time.Duration)) BootTiming {
 	if logf == nil {
 		logf = func(string, ...any) {}
@@ -394,6 +411,7 @@ func applyPersisted(b Bus, port TimingPort, path, appVersion string, logf func(s
 // controller (the exit / SIGTERM path, and the diag's "factory" apply). It
 // never reads the "factory" from the live controller. Returns the timing
 // restored.
+// TRLC-LINKS: REQ-SDS-132
 func RestoreFactoryTiming(port TimingPort, path string, logf func(string, ...any)) (CS1Timing, error) {
 	if logf == nil {
 		logf = func(string, ...any) {}
@@ -422,6 +440,7 @@ func RestoreFactoryTiming(port TimingPort, path string, logf func(string, ...any
 // ForgetTiming removes the persisted-timing file (the factory record stays)
 // and restores the factory timing. The next boot then runs at the factory
 // timing until a new sweep is persisted.
+// TRLC-LINKS: REQ-SDS-132
 func ForgetTiming(port TimingPort, path string, logf func(string, ...any)) error {
 	if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
 		return err

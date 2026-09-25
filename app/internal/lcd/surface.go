@@ -2,6 +2,7 @@
 // 800×480 RGB565-LE via /dev/fb0, double-buffered by y-pan. The renderer is
 // a pure consumer — it never touches the GPMC bus; its only cross-goroutine
 // touch point is the frame fan-out lock.
+// ENGMODEL-OWNER-UNIT: FU-APP-LCD
 package lcd
 
 import (
@@ -22,6 +23,7 @@ const (
 )
 
 // RGB565 packing: pixel = (R>>3)<<11 | (G>>2)<<5 | (B>>3).
+// TRLC-LINKS: REQ-SDS-021
 func rgb(r, g, b uint8) uint16 {
 	return uint16(r>>3)<<11 | uint16(g>>2)<<5 | uint16(b>>3)
 }
@@ -29,6 +31,7 @@ func rgb(r, g, b uint8) uint16 {
 // Surface is the only drawing contract the renderer sees (spec 07 §1.3):
 // the same renderer must run byte-identically against /dev/fb0 and an
 // in-memory test surface.
+// TRLC-LINKS: REQ-SDS-021
 type Surface interface {
 	SetPixel(x, y int, c uint16) // out-of-range ignored
 	Fill(c uint16)
@@ -36,12 +39,15 @@ type Surface interface {
 }
 
 // MemSurface is the back buffer (exactly one page) and the test surface.
+// TRLC-LINKS: REQ-SDS-021
 type MemSurface struct {
 	Pix []byte // RGB565 little-endian, W*H*2 bytes
 }
 
+// TRLC-LINKS: REQ-SDS-021
 func NewMemSurface() *MemSurface { return &MemSurface{Pix: make([]byte, pageBytes)} }
 
+// TRLC-LINKS: REQ-SDS-021
 func (m *MemSurface) SetPixel(x, y int, c uint16) {
 	if x < 0 || x >= W || y < 0 || y >= H {
 		return
@@ -51,6 +57,7 @@ func (m *MemSurface) SetPixel(x, y int, c uint16) {
 	m.Pix[o+1] = byte(c >> 8)
 }
 
+// TRLC-LINKS: REQ-SDS-021
 func (m *MemSurface) Fill(c uint16) {
 	lo, hi := byte(c), byte(c>>8)
 	row := m.Pix[:W*2]
@@ -62,6 +69,7 @@ func (m *MemSurface) Fill(c uint16) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-021
 func (m *MemSurface) At(x, y int) uint16 {
 	if x < 0 || x >= W || y < 0 || y >= H {
 		return 0
@@ -73,6 +81,7 @@ func (m *MemSurface) At(x, y int) uint16 {
 // FadeToBlack dims every RGB565 pixel toward black by 1/4 (the persistence decay
 // step). Pixels already black are skipped. Traces drawn onto this layer at full
 // brightness thus glow and fade over ~8 frames.
+// TRLC-LINKS: REQ-SDS-021
 func (m *MemSurface) FadeToBlack() {
 	p := m.Pix
 	for i := 0; i+1 < len(p); i += 2 {
@@ -90,6 +99,7 @@ func (m *MemSurface) FadeToBlack() {
 
 // BlitBright copies the non-black (bright enough) pixels of src onto m — the
 // persistence trace layer composited over the fresh graticule.
+// TRLC-LINKS: REQ-SDS-021
 func (m *MemSurface) BlitBright(src *MemSurface) {
 	d, s := m.Pix, src.Pix
 	n := len(s)
@@ -110,6 +120,7 @@ func (m *MemSurface) BlitBright(src *MemSurface) {
 
 // EncodePNG renders the surface (RGB565) to a PNG — the device-screen view for
 // the web /api/screen.png endpoint.
+// TRLC-LINKS: REQ-SDS-021
 func EncodePNG(m *MemSurface) []byte {
 	img := image.NewRGBA(image.Rect(0, 0, W, H))
 	for y := 0; y < H; y++ {
@@ -129,6 +140,7 @@ func EncodePNG(m *MemSurface) []byte {
 // FB is the real framebuffer: a FRESH open of /dev/fb0 (the opposite of the
 // GPMC/fpga_key fds, which must be inherited — the fb is a plain char device
 // completely off the GPMC bus).
+// TRLC-LINKS: REQ-SDS-021
 type FB struct {
 	fd    int
 	mem   []byte
@@ -149,6 +161,7 @@ const (
 	offActivate    = 84
 )
 
+// TRLC-LINKS: REQ-SDS-021
 func fbIoctl(fd int, req uintptr, p unsafe.Pointer) error {
 	_, _, errno := syscall.Syscall(syscall.SYS_IOCTL, uintptr(fd), req, uintptr(p))
 	if errno != 0 {
@@ -160,6 +173,7 @@ func fbIoctl(fd int, req uintptr, p unsafe.Pointer) error {
 // OpenFB opens and maps /dev/fb0. yresVirtual comes from
 // /sys/class/graphics/fb0/virtual_size ("xres,yres"), defaulting to 960
 // (two stacked pages).
+// TRLC-LINKS: REQ-SDS-021
 func OpenFB() (*FB, error) {
 	fd, err := syscall.Open("/dev/fb0", syscall.O_RDWR, 0)
 	if err != nil {
@@ -188,6 +202,26 @@ func OpenFB() (*FB, error) {
 	return fb, nil
 }
 
+// Close releases a temporary framebuffer mapping. The owner must stop drawing
+// before calling it; it does not close inherited acquisition descriptors.
+// TRLC-LINKS: REQ-SDS-021
+func (fb *FB) Close() error {
+	var err error
+	if fb.mem != nil {
+		err = syscall.Munmap(fb.mem)
+		fb.mem = nil
+	}
+	if fb.fd >= 0 {
+		closeErr := syscall.Close(fb.fd)
+		fb.fd = -1
+		if err == nil {
+			err = closeErr
+		}
+	}
+	return err
+}
+
+// TRLC-LINKS: REQ-SDS-021
 func (fb *FB) put32(off int, v uint32) {
 	fb.vinfo[off] = byte(v)
 	fb.vinfo[off+1] = byte(v >> 8)
@@ -198,6 +232,7 @@ func (fb *FB) put32(off int, v uint32) {
 // pan flips scanout to a page: FBIOPAN_DISPLAY first, then the
 // FBIOPUT_VSCREENINFO + FB_ACTIVATE_FORCE fallback (some drivers honour
 // only one).
+// TRLC-LINKS: REQ-SDS-021
 func (fb *FB) pan(page int) error {
 	fb.put32(offYoffset, uint32(page*H))
 	if err := fbIoctl(fb.fd, fbioPanDisplay, unsafe.Pointer(&fb.vinfo[0])); err == nil {
@@ -212,6 +247,7 @@ func (fb *FB) pan(page int) error {
 // EncodeBMP wraps a surface as the SCDP hardcopy (spec 11 §5): Windows BMP,
 // BI_BITFIELDS 16bpp, top-down, RGB565 masks, pixel data at offset 66 — a
 // straight memcpy of the framebuffer bytes, no byte swap.
+// TRLC-LINKS: REQ-SDS-021
 func EncodeBMP(m *MemSurface) []byte {
 	const hdrSize = 66
 	total := hdrSize + pageBytes
@@ -240,6 +276,7 @@ func EncodeBMP(m *MemSurface) []byte {
 
 // Present publishes a complete back buffer: copy into the HIDDEN page and
 // flip (tear-free); if panning is unavailable, copy into every page.
+// TRLC-LINKS: REQ-SDS-021
 func (fb *FB) Present(back *MemSurface) {
 	if fb.panOK {
 		next := 1 - fb.cur

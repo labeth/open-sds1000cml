@@ -1,0 +1,25 @@
+{
+  "result": "prototype-readable-full-publication-pending",
+  "pdfSHA256": "bce495be1f4a7f47bd032178a01e167afdd25b4ac6d8235cc394d3d06dbb432b",
+  "rows": [
+    {
+      "page": 1,
+      "minFont": 8.648219159657486,
+      "outside": 0,
+      "tiny": 0
+    },
+    {
+      "page": 2,
+      "minFont": 8.35493187587781,
+      "outside": 0,
+      "tiny": 0
+    },
+    {
+      "page": 3,
+      "minFont": 9.399409528357864,
+      "outside": 0,
+      "tiny": 0
+    }
+  ],
+  "visualReview": "All three prototype panels were viewed. Source labels and partial verification are legible; canonical node identities preserved. Repeated context increases page count. Full publication review still required."
+}

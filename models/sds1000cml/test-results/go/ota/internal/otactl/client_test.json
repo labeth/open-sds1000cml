@@ -1,0 +1,65 @@
+{
+  "source": "ota/internal/otactl/client_test.go",
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "scope": "Reviewed Go test outcomes; passing assertions contribute partial requirement evidence.",
+  "sourceSHA256": "d6ebb0c81892f23faf40377f2d898e48077f7792a451d966dcb4db421e7d1bef",
+  "logs": {
+    "test-runs/otactl-client.jsonl": "bd26553784fa9760506a66192f7792df0acdc09aef75aae176b3a99aae896267"
+  },
+  "tests": [
+    {
+      "name": "TestTCPTransportCall",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-109"
+      ]
+    },
+    {
+      "name": "TestTCPTransportDeviceError",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-109"
+      ]
+    },
+    {
+      "name": "TestTCPTransportDialFailure",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-109"
+      ]
+    },
+    {
+      "name": "TestPutFileGetFileRoundTrip",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-110"
+      ]
+    },
+    {
+      "name": "TestPutFileMissingLocal",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-110"
+      ]
+    },
+    {
+      "name": "TestTruncate",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-109"
+      ]
+    }
+  ],
+  "results": [
+    {
+      "requirement": "REQ-SDS-109",
+      "status": "partial",
+      "notes": "4 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    },
+    {
+      "requirement": "REQ-SDS-110",
+      "status": "partial",
+      "notes": "2 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    }
+  ]
+}

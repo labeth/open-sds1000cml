@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
 package engine
 
 import (
@@ -14,6 +15,7 @@ import (
 // interrupted reports whether the owner must bail out of a long capture loop
 // NOW: shutdown, STOP, or a staged band/mode/ETS change (spec 09 §3.1 —
 // otherwise a knob step waits out a multi-hundred-ms frame).
+// TRLC-LINKS: REQ-SDS-008
 func (e *Engine) interrupted() bool {
 	if e.stopReq.Load() || !e.running.Load() {
 		return true
@@ -26,6 +28,7 @@ func (e *Engine) interrupted() bool {
 // clearCrossFrame drops every cross-frame accumulation on a band change so
 // the new band's output is not polluted (spec 04 §4.2, spec 09 §2.2:
 // uniformity, envelope, roll, ETS phase and average rings all clear).
+// TRLC-LINKS: REQ-SDS-010, REQ-SDS-012, REQ-SDS-019, REQ-SDS-126
 func (e *Engine) clearCrossFrame() {
 	e.flatHeld = 0
 	e.envRingCnt, e.envRingPos = 0, 0
@@ -40,6 +43,7 @@ func (e *Engine) clearCrossFrame() {
 // transition applies a staged band/mode/ETS change at the frame boundary.
 // bringUp starts with OPCODE=RESET, which drops any latched stream/roll state
 // before the record is re-programmed (the roll ring is re-armed after).
+// TRLC-LINKS: REQ-SDS-010
 func (e *Engine) transition(norm, etsWant bool) {
 	newKind := e.band.Kind()
 	e.rollArmed = false
@@ -59,6 +63,7 @@ func (e *Engine) transition(norm, etsWant bool) {
 // a partial fill is fine, the ring accumulates scatter) → halt → drain the
 // window → re-arm → ring push + 800-column min/max reduction → publish.
 // Publishes EVERY frame in both AUTO and NORM (phase-independent band).
+// TRLC-LINKS: REQ-SDS-008, REQ-SDS-009, REQ-SDS-010, REQ-SDS-012
 func (e *Engine) envFrame(norm bool) {
 	start := e.clk.Now()
 	e.armEngine()
@@ -171,6 +176,7 @@ func (e *Engine) envFrame(norm bool) {
 // envPush copies the central [off:off+n] slice of the drained record into the
 // phase-scatter ring (off skips the centring margin captured for the triggered
 // path, so the untriggered envelope keeps the intended display width).
+// TRLC-LINKS: REQ-SDS-012
 func (e *Engine) envPush(f *Frame, off, n int) {
 	if e.envRing1 == nil {
 		e.envRing1 = make([][]uint8, envRingN)
@@ -195,6 +201,7 @@ func (e *Engine) envPush(f *Frame, off, n int) {
 // envReduce reduces the ring into per-column (min,max): every ring sample i
 // bins to col = i·800/len; never-seen columns copy the nearest SEEN
 // neighbour (real amplitude, never invented).
+// TRLC-LINKS: REQ-SDS-012
 func (e *Engine) envReduce(f *Frame) {
 	reduce := func(ring [][]uint8, mn, mx []uint8) {
 		var seen [envDisplayCols]bool
@@ -252,6 +259,7 @@ func (e *Engine) envReduce(f *Frame) {
 // STREAM and the roll decimation, GO starts the ring, and the first popped
 // sample pre-fills the whole display ring so unpopulated columns never draw a
 // false 0-rail bar.
+// TRLC-LINKS: REQ-SDS-010
 func (e *Engine) rollBringUp() {
 	if e.rollRing1 == nil {
 		e.rollRing1 = make([]uint8, rollWin)
@@ -277,6 +285,7 @@ func (e *Engine) rollBringUp() {
 // (BURST_REMAIN.REMAIN) into rollBuf1/2 and returns the count. Nothing is
 // popped when the ring reports no words — a pop past the write pointer would
 // return stale samples.
+// TRLC-LINKS: REQ-SDS-010
 func (e *Engine) rollPop(max int) int {
 	n := int(e.r(iface.SelBurstRemain) & iface.BurstRemainRemainMask)
 	if n > max {
@@ -294,6 +303,7 @@ func (e *Engine) rollPop(max int) int {
 // scrolling ring. NEVER halts (HALT would finalize the ring) and pops only what
 // BURST_REMAIN reports. A ring overflow (STATUS_A.OVERFLOW: the drain fell
 // behind) is counted as telemetry — the display keeps scrolling.
+// TRLC-LINKS: REQ-SDS-008, REQ-SDS-009, REQ-SDS-010, REQ-SDS-012
 func (e *Engine) rollUpdate(norm bool) {
 	if !e.rollArmed {
 		e.rollBringUp()
@@ -372,6 +382,7 @@ func (e *Engine) rollUpdate(norm bool) {
 
 // rollSnap pushes a scroll snapshot (full ring copy) onto the deque, keeping
 // the last envRingN. Slabs are reused once the deque is full.
+// TRLC-LINKS: REQ-SDS-012
 func (e *Engine) rollSnap(f *Frame) {
 	push := func(deque *[][]uint8, src []uint8) {
 		var slab []uint8
@@ -390,6 +401,7 @@ func (e *Engine) rollSnap(f *Frame) {
 // rollReduce reduces the snapshot deque to per-column (min,max): sample i
 // bins to col = i·800/4096. Every snapshot is at a different scroll phase,
 // so the band is solid and stable.
+// TRLC-LINKS: REQ-SDS-012
 func (e *Engine) rollReduce(f *Frame) {
 	reduce := func(snaps [][]uint8, mn, mx []uint8) {
 		for c := 0; c < envDisplayCols; c++ {
@@ -449,6 +461,7 @@ func (e *Engine) rollReduce(f *Frame) {
 // ---- shared publish/stat helpers ----
 
 // commitStats records the per-frame telemetry mirror.
+// TRLC-LINKS: REQ-SDS-009
 func (e *Engine) commitStats(coherent, haltOK bool, p, trigPos int, armToLatch, drainMs float64) {
 	e.mu.Lock()
 	if coherent {
@@ -469,6 +482,7 @@ func (e *Engine) commitStats(coherent, haltOK bool, p, trigPos int, armToLatch, 
 }
 
 // commitPublish stamps the sequence number and hands the frame to the arena.
+// TRLC-LINKS: REQ-SDS-007, REQ-SDS-009
 func (e *Engine) commitPublish(f *Frame) {
 	e.seq++
 	f.Seq = e.seq

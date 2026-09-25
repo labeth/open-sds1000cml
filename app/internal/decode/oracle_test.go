@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-DECODE
 package decode
 
 // Oracle cross-check harness: the Go decoders are validated against
@@ -32,6 +33,7 @@ const (
 	oracleHi = uint8(200) // logic-1 ADC code
 )
 
+// TRLC-LINKS: REQ-SDS-018
 func needSigrok(t *testing.T) string {
 	t.Helper()
 	p, err := exec.LookPath("sigrok-cli")
@@ -46,6 +48,7 @@ func needSigrok(t *testing.T) string {
 
 // bitsToCodes maps logic levels to the two-level ADC codes the repo decoders
 // consume.
+// TRLC-LINKS: REQ-SDS-018
 func bitsToCodes(bits []byte) []uint8 {
 	out := make([]uint8, len(bits))
 	for i, b := range bits {
@@ -61,14 +64,17 @@ func bitsToCodes(bits []byte) []uint8 {
 // timeline builds a logic waveform by appending levels for durations, with
 // float sample positions floored at boundaries — so non-integer
 // samples-per-bit accumulate exactly like a real capture of an async source.
+// TRLC-LINKS: REQ-SDS-018
 type timeline struct {
 	sr   float64 // samples per second
 	t    float64 // current time, seconds
 	bits []byte
 }
 
+// TRLC-LINKS: REQ-SDS-018
 func newTimeline(sampleRate float64) *timeline { return &timeline{sr: sampleRate} }
 
+// TRLC-LINKS: REQ-SDS-018
 func (w *timeline) add(level byte, dur float64) {
 	w.t += dur
 	for int(len(w.bits)) < int(w.t*w.sr) {
@@ -77,6 +83,7 @@ func (w *timeline) add(level byte, dur float64) {
 }
 
 // ann is one parsed sigrok-cli annotation.
+// TRLC-LINKS: REQ-SDS-018
 type ann struct {
 	I0, I1 int
 	Text   string
@@ -89,6 +96,7 @@ var annRe = regexp.MustCompile(`^(\d+)-(\d+) [\w-]+: (.*)$`)
 // class (invoked per class — sigrok-cli's -A output does not name the class
 // per line, so mixing classes would be ambiguous). channels preserve order;
 // names must match the -P channel assignments (e.g. rx=RX).
+// TRLC-LINKS: REQ-SDS-018
 func sigrokDecode(t *testing.T, sampleRate int, names []string, chans [][]byte, pdSpec, annSpec string) []ann {
 	t.Helper()
 	needSigrok(t)
@@ -145,6 +153,7 @@ func sigrokDecode(t *testing.T, sampleRate int, names []string, chans [][]byte, 
 
 // annBytes parses each annotation text as a hex byte (the PDs' default data
 // format) and returns the byte sequence.
+// TRLC-LINKS: REQ-SDS-018
 func annBytes(t *testing.T, anns []ann) []int {
 	t.Helper()
 	out := make([]int, 0, len(anns))
@@ -159,6 +168,7 @@ func annBytes(t *testing.T, anns []ann) []int {
 }
 
 // spanBytes extracts the decoded payload bytes from a repo decode Result.
+// TRLC-LINKS: REQ-SDS-018
 func spanBytes(res Result, kind string) []int {
 	var out []int
 	for _, s := range res.Spans {
@@ -170,6 +180,7 @@ func spanBytes(res Result, kind string) []int {
 }
 
 // countSpans reports whether any span of the given kind exists.
+// TRLC-LINKS: REQ-SDS-018
 func countSpans(res Result, kind string) int {
 	n := 0
 	for _, s := range res.Spans {
@@ -181,6 +192,7 @@ func countSpans(res Result, kind string) int {
 }
 
 // eqBytes asserts two byte sequences match exactly, with a readable diff.
+// TRLC-LINKS: REQ-SDS-018
 func eqBytes(t *testing.T, what string, repo, oracle []int) {
 	t.Helper()
 	if len(repo) != len(oracle) {
@@ -202,6 +214,7 @@ func eqBytes(t *testing.T, what string, repo, oracle []int) {
 // systematically longer extent by convention (sigrok's i2c data annotation
 // runs one SCL period further, through the ACK clock edge) — pass the
 // convention delta there so real smearing still fails.
+// TRLC-LINKS: REQ-SDS-018
 func eqAligned(t *testing.T, what string, res Result, kind string, anns []ann, tol int, endTol ...int) {
 	t.Helper()
 	et := tol

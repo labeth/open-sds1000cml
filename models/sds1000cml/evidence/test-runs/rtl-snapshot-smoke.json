@@ -1,0 +1,44 @@
+{
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "scope": "Offline Icarus simulations with ideal digital clocks and behavioral RAM (ALTERA_RESERVED_QIS is not defined). No fitted primitive simulation, metastability analysis, physical timing or board qualification.",
+  "cases": [
+    {
+      "id": "ordinal-counter",
+      "test": "fpga/acq_sram/sim/tb_ordinal_counter.v",
+      "top": "tb",
+      "sources": [
+        "fpga/acq_sram/ordinal_counter.v"
+      ],
+      "requirements": [
+        "REQ-SDS-047"
+      ],
+      "success": "PASS 64-bit ordinals across all carry boundaries and stalled steps",
+      "sha256": {
+        "fpga/acq_sram/sim/tb_ordinal_counter.v": "1544b9fc10a789b99c1fbe65250fec73ff5972b83d33c953bd12d2ce7f78464c",
+        "fpga/acq_sram/ordinal_counter.v": "297ad038fd29b45044b6b91262890c12cdc462baafd453e761987c52c4cbf82c"
+      },
+      "sourceSnapshot": true,
+      "workingDirectory": "/tmp/sds-rtl-tests-vvzz2gfi/sources",
+      "compileCommand": [
+        "iverilog",
+        "-g2012",
+        "-s",
+        "tb",
+        "-o",
+        "/tmp/sds-rtl-tests-vvzz2gfi/ordinal-counter",
+        "fpga/acq_sram/sim/tb_ordinal_counter.v",
+        "fpga/acq_sram/ordinal_counter.v"
+      ],
+      "compileExitCode": 0,
+      "compileOutput": "",
+      "simulationCommand": [
+        "vvp",
+        "/tmp/sds-rtl-tests-vvzz2gfi/ordinal-counter"
+      ],
+      "simulationExitCode": 0,
+      "simulationOutput": "PASS 64-bit ordinals across all carry boundaries and stalled steps\nfpga/acq_sram/sim/tb_ordinal_counter.v:27: $finish called at 864000 (1ps)\n",
+      "result": "pass"
+    }
+  ],
+  "result": "pass"
+}

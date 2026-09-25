@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-DIAG
 package diag
 
 import (
@@ -13,6 +14,7 @@ import (
 // word the factory image drives on those balls; the capture records what the
 // balls actually read, at the same rate, so a reaction that only exists while
 // the bus is moving is visible. Static postures cannot see one.
+// TRLC-LINKS: REQ-SDS-149
 type BusProbeOptions struct {
 	Rate    int      `json:"rate"`     // 0 = clk50, 1 = clk100, 2 = 200 MHz, 3 = C2
 	Phases  int      `json:"phases"`   // 1..5 phases per rotation
@@ -36,6 +38,7 @@ type BusProbeOptions struct {
 }
 
 // BallActivity is what one ball did over the recorded window.
+// TRLC-LINKS: REQ-SDS-149
 type BallActivity struct {
 	Ball    string `json:"ball"`
 	First   uint8  `json:"first"`
@@ -47,6 +50,7 @@ type BallActivity struct {
 }
 
 // BusProbeResult is one generator run seen from the capture side.
+// TRLC-LINKS: REQ-SDS-149
 type BusProbeResult struct {
 	Options   BusProbeOptions `json:"options"`
 	Triggered bool            `json:"triggered"`
@@ -63,6 +67,7 @@ type BusProbeResult struct {
 }
 
 // BusProbe programs the generator, arms the capture and reads it back.
+// TRLC-LINKS: REQ-SDS-149
 func (d *Diag) BusProbe(o BusProbeOptions) (*BusProbeResult, error) {
 	if o.Rate < 0 || o.Rate > 3 {
 		return nil, fmt.Errorf("diag: bus probe rate %d out of range (0..3)", o.Rate)
@@ -236,6 +241,7 @@ func (d *Diag) BusProbe(o BusProbeOptions) (*BusProbeResult, error) {
 }
 
 // decode turns the 2-words-per-sample stream into per-ball activity.
+// TRLC-LINKS: REQ-SDS-149
 func (r *BusProbeResult) decode(words []uint16, o BusProbeOptions) {
 	n := len(words) / 2
 	if o.Samples > 0 && o.Samples < n {
@@ -299,6 +305,7 @@ func (r *BusProbeResult) decode(words []uint16, o BusProbeOptions) {
 }
 
 // CS3Cell is one MAX V selector as read twice.
+// TRLC-LINKS: REQ-SDS-149
 type CS3Cell struct {
 	Sel    uint16 `json:"sel"`
 	A      uint16 `json:"a"`
@@ -313,6 +320,7 @@ type CS3Cell struct {
 // the one channel we have to the thing that can issue a write. Each selector is
 // read twice so a floating or self-changing cell is distinguishable from a
 // register that simply holds a value.
+// TRLC-LINKS: REQ-SDS-149
 func (d *Diag) CS3Census(n int) ([]CS3Cell, error) {
 	if n <= 0 || n > 0x100 {
 		n = 0x80
@@ -349,6 +357,7 @@ func (d *Diag) CS3Census(n int) ([]CS3Cell, error) {
 // Cyclone mid-run is not a probe. Everything written here is a volatile CPLD
 // register, never its configuration flash, so a mains cycle restores the board;
 // nothing here can brick it. Restore puts the previous value back after Dwell.
+// TRLC-LINKS: REQ-SDS-149
 type CS3PokeOptions struct {
 	Sel     uint16 `json:"sel"`
 	Val     uint16 `json:"val"`
@@ -358,6 +367,7 @@ type CS3PokeOptions struct {
 }
 
 // CS3Poke writes one CS3 register and reports the CS3 cells that changed.
+// TRLC-LINKS: REQ-SDS-149
 func (d *Diag) CS3Poke(o CS3PokeOptions) (map[string]any, error) {
 	if o.Census <= 0 || o.Census > 0x100 {
 		o.Census = 0x20

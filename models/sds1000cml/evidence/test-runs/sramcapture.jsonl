@@ -1,0 +1,124 @@
+{"Time":"2026-09-22T21:46:21.06072362+02:00","Action":"start","Package":"open-sds/app/internal/sramcapture"}
+{"Time":"2026-09-22T21:46:21.062662783+02:00","Action":"run","Package":"open-sds/app/internal/sramcapture","Test":"TestFullCapacityWrappedAndRepeatedRecall"}
+{"Time":"2026-09-22T21:46:21.06268133+02:00","Action":"output","Package":"open-sds/app/internal/sramcapture","Test":"TestFullCapacityWrappedAndRepeatedRecall","Output":"=== RUN   TestFullCapacityWrappedAndRepeatedRecall\n"}
+{"Time":"2026-09-22T21:46:21.126896319+02:00","Action":"output","Package":"open-sds/app/internal/sramcapture","Test":"TestFullCapacityWrappedAndRepeatedRecall","Output":"--- PASS: TestFullCapacityWrappedAndRepeatedRecall (0.06s)\n"}
+{"Time":"2026-09-22T21:46:21.126932887+02:00","Action":"pass","Package":"open-sds/app/internal/sramcapture","Test":"TestFullCapacityWrappedAndRepeatedRecall","Elapsed":0.06}
+{"Time":"2026-09-22T21:46:21.126951437+02:00","Action":"run","Package":"open-sds/app/internal/sramcapture","Test":"TestLegacyReadFallback"}
+{"Time":"2026-09-22T21:46:21.126955378+02:00","Action":"output","Package":"open-sds/app/internal/sramcapture","Test":"TestLegacyReadFallback","Output":"=== RUN   TestLegacyReadFallback\n"}
+{"Time":"2026-09-22T21:46:21.127088004+02:00","Action":"output","Package":"open-sds/app/internal/sramcapture","Test":"TestLegacyReadFallback","Output":"--- PASS: TestLegacyReadFallback (0.00s)\n"}
+{"Time":"2026-09-22T21:46:21.127103588+02:00","Action":"pass","Package":"open-sds/app/internal/sramcapture","Test":"TestLegacyReadFallback","Elapsed":0}
+{"Time":"2026-09-22T21:46:21.127111844+02:00","Action":"run","Package":"open-sds/app/internal/sramcapture","Test":"TestBoundsAndIdentityRejectBeforeWrites"}
+{"Time":"2026-09-22T21:46:21.127115571+02:00","Action":"output","Package":"open-sds/app/internal/sramcapture","Test":"TestBoundsAndIdentityRejectBeforeWrites","Output":"=== RUN   TestBoundsAndIdentityRejectBeforeWrites\n"}
+{"Time":"2026-09-22T21:46:21.127144654+02:00","Action":"output","Package":"open-sds/app/internal/sramcapture","Test":"TestBoundsAndIdentityRejectBeforeWrites","Output":"--- PASS: TestBoundsAndIdentityRejectBeforeWrites (0.00s)\n"}
+{"Time":"2026-09-22T21:46:21.127151076+02:00","Action":"pass","Package":"open-sds/app/internal/sramcapture","Test":"TestBoundsAndIdentityRejectBeforeWrites","Elapsed":0}
+{"Time":"2026-09-22T21:46:21.127157337+02:00","Action":"run","Package":"open-sds/app/internal/sramcapture","Test":"TestErrorsLeaveRecordRecallable"}
+{"Time":"2026-09-22T21:46:21.127162614+02:00","Action":"output","Package":"open-sds/app/internal/sramcapture","Test":"TestErrorsLeaveRecordRecallable","Output":"=== RUN   TestErrorsLeaveRecordRecallable\n"}
+{"Time":"2026-09-22T21:46:21.127271123+02:00","Action":"output","Package":"open-sds/app/internal/sramcapture","Test":"TestErrorsLeaveRecordRecallable","Output":"--- PASS: TestErrorsLeaveRecordRecallable (0.00s)\n"}
+{"Time":"2026-09-22T21:46:21.127277891+02:00","Action":"pass","Package":"open-sds/app/internal/sramcapture","Test":"TestErrorsLeaveRecordRecallable","Elapsed":0}
+{"Time":"2026-09-22T21:46:21.12728364+02:00","Action":"run","Package":"open-sds/app/internal/sramcapture","Test":"TestWaitAllowsForce"}
+{"Time":"2026-09-22T21:46:21.127286898+02:00","Action":"output","Package":"open-sds/app/internal/sramcapture","Test":"TestWaitAllowsForce","Output":"=== RUN   TestWaitAllowsForce\n"}
+{"Time":"2026-09-22T21:46:21.128446631+02:00","Action":"output","Package":"open-sds/app/internal/sramcapture","Test":"TestWaitAllowsForce","Output":"--- PASS: TestWaitAllowsForce (0.00s)\n"}
+{"Time":"2026-09-22T21:46:21.12845687+02:00","Action":"pass","Package":"open-sds/app/internal/sramcapture","Test":"TestWaitAllowsForce","Elapsed":0}
+{"Time":"2026-09-22T21:46:21.128462477+02:00","Action":"run","Package":"open-sds/app/internal/sramcapture","Test":"TestInterleaveRateAndFault"}
+{"Time":"2026-09-22T21:46:21.128466928+02:00","Action":"output","Package":"open-sds/app/internal/sramcapture","Test":"TestInterleaveRateAndFault","Output":"=== RUN   TestInterleaveRateAndFault\n"}
+{"Time":"2026-09-22T21:46:21.128473004+02:00","Action":"output","Package":"open-sds/app/internal/sramcapture","Test":"TestInterleaveRateAndFault","Output":"--- PASS: TestInterleaveRateAndFault (0.00s)\n"}
+{"Time":"2026-09-22T21:46:21.128486613+02:00","Action":"pass","Package":"open-sds/app/internal/sramcapture","Test":"TestInterleaveRateAndFault","Elapsed":0}
+{"Time":"2026-09-22T21:46:21.128490767+02:00","Action":"run","Package":"open-sds/app/internal/sramcapture","Test":"TestInterleaveWarmRecallPreservesFullCapacity"}
+{"Time":"2026-09-22T21:46:21.128494003+02:00","Action":"output","Package":"open-sds/app/internal/sramcapture","Test":"TestInterleaveWarmRecallPreservesFullCapacity","Output":"=== RUN   TestInterleaveWarmRecallPreservesFullCapacity\n"}
+{"Time":"2026-09-22T21:46:21.189825606+02:00","Action":"output","Package":"open-sds/app/internal/sramcapture","Test":"TestInterleaveWarmRecallPreservesFullCapacity","Output":"--- PASS: TestInterleaveWarmRecallPreservesFullCapacity (0.06s)\n"}
+{"Time":"2026-09-22T21:46:21.189849134+02:00","Action":"pass","Package":"open-sds/app/internal/sramcapture","Test":"TestInterleaveWarmRecallPreservesFullCapacity","Elapsed":0.06}
+{"Time":"2026-09-22T21:46:21.189856978+02:00","Action":"run","Package":"open-sds/app/internal/sramcapture","Test":"TestBurstRecallFullRecordAndTail"}
+{"Time":"2026-09-22T21:46:21.18986104+02:00","Action":"output","Package":"open-sds/app/internal/sramcapture","Test":"TestBurstRecallFullRecordAndTail","Output":"=== RUN   TestBurstRecallFullRecordAndTail\n"}
+{"Time":"2026-09-22T21:46:21.238385537+02:00","Action":"output","Package":"open-sds/app/internal/sramcapture","Test":"TestBurstRecallFullRecordAndTail","Output":"--- PASS: TestBurstRecallFullRecordAndTail (0.05s)\n"}
+{"Time":"2026-09-22T21:46:21.238403952+02:00","Action":"pass","Package":"open-sds/app/internal/sramcapture","Test":"TestBurstRecallFullRecordAndTail","Elapsed":0.05}
+{"Time":"2026-09-22T21:46:21.238408908+02:00","Action":"run","Package":"open-sds/app/internal/sramcapture","Test":"TestPrecisionMetadataAndConfig"}
+{"Time":"2026-09-22T21:46:21.238411326+02:00","Action":"output","Package":"open-sds/app/internal/sramcapture","Test":"TestPrecisionMetadataAndConfig","Output":"=== RUN   TestPrecisionMetadataAndConfig\n"}
+{"Time":"2026-09-22T21:46:21.238422304+02:00","Action":"output","Package":"open-sds/app/internal/sramcapture","Test":"TestPrecisionMetadataAndConfig","Output":"--- PASS: TestPrecisionMetadataAndConfig (0.00s)\n"}
+{"Time":"2026-09-22T21:46:21.238425319+02:00","Action":"pass","Package":"open-sds/app/internal/sramcapture","Test":"TestPrecisionMetadataAndConfig","Elapsed":0}
+{"Time":"2026-09-22T21:46:21.2384365+02:00","Action":"run","Package":"open-sds/app/internal/sramcapture","Test":"TestForwardRecallCoverage"}
+{"Time":"2026-09-22T21:46:21.238438877+02:00","Action":"output","Package":"open-sds/app/internal/sramcapture","Test":"TestForwardRecallCoverage","Output":"=== RUN   TestForwardRecallCoverage\n"}
+{"Time":"2026-09-22T21:46:21.238920947+02:00","Action":"output","Package":"open-sds/app/internal/sramcapture","Test":"TestForwardRecallCoverage","Output":"--- PASS: TestForwardRecallCoverage (0.00s)\n"}
+{"Time":"2026-09-22T21:46:21.238932725+02:00","Action":"pass","Package":"open-sds/app/internal/sramcapture","Test":"TestForwardRecallCoverage","Elapsed":0}
+{"Time":"2026-09-22T21:46:21.238937783+02:00","Action":"run","Package":"open-sds/app/internal/sramcapture","Test":"TestForwardRecallFullRecordAndTail"}
+{"Time":"2026-09-22T21:46:21.238941247+02:00","Action":"output","Package":"open-sds/app/internal/sramcapture","Test":"TestForwardRecallFullRecordAndTail","Output":"=== RUN   TestForwardRecallFullRecordAndTail\n"}
+{"Time":"2026-09-22T21:46:21.277528844+02:00","Action":"output","Package":"open-sds/app/internal/sramcapture","Test":"TestForwardRecallFullRecordAndTail","Output":"--- PASS: TestForwardRecallFullRecordAndTail (0.04s)\n"}
+{"Time":"2026-09-22T21:46:21.277548881+02:00","Action":"pass","Package":"open-sds/app/internal/sramcapture","Test":"TestForwardRecallFullRecordAndTail","Elapsed":0.04}
+{"Time":"2026-09-22T21:46:21.277556856+02:00","Action":"run","Package":"open-sds/app/internal/sramcapture","Test":"TestForwardRecallReadFailureDeliversNothing"}
+{"Time":"2026-09-22T21:46:21.277568216+02:00","Action":"output","Package":"open-sds/app/internal/sramcapture","Test":"TestForwardRecallReadFailureDeliversNothing","Output":"=== RUN   TestForwardRecallReadFailureDeliversNothing\n"}
+{"Time":"2026-09-22T21:46:21.303524211+02:00","Action":"output","Package":"open-sds/app/internal/sramcapture","Test":"TestForwardRecallReadFailureDeliversNothing","Output":"--- PASS: TestForwardRecallReadFailureDeliversNothing (0.03s)\n"}
+{"Time":"2026-09-22T21:46:21.303542463+02:00","Action":"pass","Package":"open-sds/app/internal/sramcapture","Test":"TestForwardRecallReadFailureDeliversNothing","Elapsed":0.03}
+{"Time":"2026-09-22T21:46:21.303560589+02:00","Action":"run","Package":"open-sds/app/internal/sramcapture","Test":"TestLargeStreamFabricRecallKeepsQualifiedChunkLimit"}
+{"Time":"2026-09-22T21:46:21.303564585+02:00","Action":"output","Package":"open-sds/app/internal/sramcapture","Test":"TestLargeStreamFabricRecallKeepsQualifiedChunkLimit","Output":"=== RUN   TestLargeStreamFabricRecallKeepsQualifiedChunkLimit\n"}
+{"Time":"2026-09-22T21:46:21.323251632+02:00","Action":"output","Package":"open-sds/app/internal/sramcapture","Test":"TestLargeStreamFabricRecallKeepsQualifiedChunkLimit","Output":"--- PASS: TestLargeStreamFabricRecallKeepsQualifiedChunkLimit (0.02s)\n"}
+{"Time":"2026-09-22T21:46:21.323271377+02:00","Action":"pass","Package":"open-sds/app/internal/sramcapture","Test":"TestLargeStreamFabricRecallKeepsQualifiedChunkLimit","Elapsed":0.02}
+{"Time":"2026-09-22T21:46:21.323276985+02:00","Action":"run","Package":"open-sds/app/internal/sramcapture","Test":"TestStreamDrainOrdersBanksAndKeepsOddTail"}
+{"Time":"2026-09-22T21:46:21.323280407+02:00","Action":"output","Package":"open-sds/app/internal/sramcapture","Test":"TestStreamDrainOrdersBanksAndKeepsOddTail","Output":"=== RUN   TestStreamDrainOrdersBanksAndKeepsOddTail\n"}
+{"Time":"2026-09-22T21:46:21.323335571+02:00","Action":"output","Package":"open-sds/app/internal/sramcapture","Test":"TestStreamDrainOrdersBanksAndKeepsOddTail","Output":"--- PASS: TestStreamDrainOrdersBanksAndKeepsOddTail (0.00s)\n"}
+{"Time":"2026-09-22T21:46:21.323343348+02:00","Action":"pass","Package":"open-sds/app/internal/sramcapture","Test":"TestStreamDrainOrdersBanksAndKeepsOddTail","Elapsed":0}
+{"Time":"2026-09-22T21:46:21.323347753+02:00","Action":"run","Package":"open-sds/app/internal/sramcapture","Test":"TestStreamDrainHighSequenceAndFractionBytes"}
+{"Time":"2026-09-22T21:46:21.323351239+02:00","Action":"output","Package":"open-sds/app/internal/sramcapture","Test":"TestStreamDrainHighSequenceAndFractionBytes","Output":"=== RUN   TestStreamDrainHighSequenceAndFractionBytes\n"}
+{"Time":"2026-09-22T21:46:21.323356832+02:00","Action":"output","Package":"open-sds/app/internal/sramcapture","Test":"TestStreamDrainHighSequenceAndFractionBytes","Output":"--- PASS: TestStreamDrainHighSequenceAndFractionBytes (0.00s)\n"}
+{"Time":"2026-09-22T21:46:21.323360384+02:00","Action":"pass","Package":"open-sds/app/internal/sramcapture","Test":"TestStreamDrainHighSequenceAndFractionBytes","Elapsed":0}
+{"Time":"2026-09-22T21:46:21.323363893+02:00","Action":"run","Package":"open-sds/app/internal/sramcapture","Test":"TestStreamDrainFailuresRetainOwnership"}
+{"Time":"2026-09-22T21:46:21.323367049+02:00","Action":"output","Package":"open-sds/app/internal/sramcapture","Test":"TestStreamDrainFailuresRetainOwnership","Output":"=== RUN   TestStreamDrainFailuresRetainOwnership\n"}
+{"Time":"2026-09-22T21:46:21.323371923+02:00","Action":"run","Package":"open-sds/app/internal/sramcapture","Test":"TestStreamDrainFailuresRetainOwnership/disabled"}
+{"Time":"2026-09-22T21:46:21.323375152+02:00","Action":"output","Package":"open-sds/app/internal/sramcapture","Test":"TestStreamDrainFailuresRetainOwnership/disabled","Output":"=== RUN   TestStreamDrainFailuresRetainOwnership/disabled\n"}
+{"Time":"2026-09-22T21:46:21.323383881+02:00","Action":"output","Package":"open-sds/app/internal/sramcapture","Test":"TestStreamDrainFailuresRetainOwnership/disabled","Output":"--- PASS: TestStreamDrainFailuresRetainOwnership/disabled (0.00s)\n"}
+{"Time":"2026-09-22T21:46:21.323394474+02:00","Action":"pass","Package":"open-sds/app/internal/sramcapture","Test":"TestStreamDrainFailuresRetainOwnership/disabled","Elapsed":0}
+{"Time":"2026-09-22T21:46:21.323398421+02:00","Action":"run","Package":"open-sds/app/internal/sramcapture","Test":"TestStreamDrainFailuresRetainOwnership/fault"}
+{"Time":"2026-09-22T21:46:21.32340164+02:00","Action":"output","Package":"open-sds/app/internal/sramcapture","Test":"TestStreamDrainFailuresRetainOwnership/fault","Output":"=== RUN   TestStreamDrainFailuresRetainOwnership/fault\n"}
+{"Time":"2026-09-22T21:46:21.323407176+02:00","Action":"output","Package":"open-sds/app/internal/sramcapture","Test":"TestStreamDrainFailuresRetainOwnership/fault","Output":"--- PASS: TestStreamDrainFailuresRetainOwnership/fault (0.00s)\n"}
+{"Time":"2026-09-22T21:46:21.323423969+02:00","Action":"pass","Package":"open-sds/app/internal/sramcapture","Test":"TestStreamDrainFailuresRetainOwnership/fault","Elapsed":0}
+{"Time":"2026-09-22T21:46:21.323428531+02:00","Action":"run","Package":"open-sds/app/internal/sramcapture","Test":"TestStreamDrainFailuresRetainOwnership/sequence"}
+{"Time":"2026-09-22T21:46:21.323431714+02:00","Action":"output","Package":"open-sds/app/internal/sramcapture","Test":"TestStreamDrainFailuresRetainOwnership/sequence","Output":"=== RUN   TestStreamDrainFailuresRetainOwnership/sequence\n"}
+{"Time":"2026-09-22T21:46:21.323440698+02:00","Action":"output","Package":"open-sds/app/internal/sramcapture","Test":"TestStreamDrainFailuresRetainOwnership/sequence","Output":"--- PASS: TestStreamDrainFailuresRetainOwnership/sequence (0.00s)\n"}
+{"Time":"2026-09-22T21:46:21.323444664+02:00","Action":"pass","Package":"open-sds/app/internal/sramcapture","Test":"TestStreamDrainFailuresRetainOwnership/sequence","Elapsed":0}
+{"Time":"2026-09-22T21:46:21.323449409+02:00","Action":"run","Package":"open-sds/app/internal/sramcapture","Test":"TestStreamDrainFailuresRetainOwnership/count-zero"}
+{"Time":"2026-09-22T21:46:21.323452628+02:00","Action":"output","Package":"open-sds/app/internal/sramcapture","Test":"TestStreamDrainFailuresRetainOwnership/count-zero","Output":"=== RUN   TestStreamDrainFailuresRetainOwnership/count-zero\n"}
+{"Time":"2026-09-22T21:46:21.323456581+02:00","Action":"output","Package":"open-sds/app/internal/sramcapture","Test":"TestStreamDrainFailuresRetainOwnership/count-zero","Output":"--- PASS: TestStreamDrainFailuresRetainOwnership/count-zero (0.00s)\n"}
+{"Time":"2026-09-22T21:46:21.32346133+02:00","Action":"pass","Package":"open-sds/app/internal/sramcapture","Test":"TestStreamDrainFailuresRetainOwnership/count-zero","Elapsed":0}
+{"Time":"2026-09-22T21:46:21.323466443+02:00","Action":"run","Package":"open-sds/app/internal/sramcapture","Test":"TestStreamDrainFailuresRetainOwnership/count-big"}
+{"Time":"2026-09-22T21:46:21.323469804+02:00","Action":"output","Package":"open-sds/app/internal/sramcapture","Test":"TestStreamDrainFailuresRetainOwnership/count-big","Output":"=== RUN   TestStreamDrainFailuresRetainOwnership/count-big\n"}
+{"Time":"2026-09-22T21:46:21.323476852+02:00","Action":"output","Package":"open-sds/app/internal/sramcapture","Test":"TestStreamDrainFailuresRetainOwnership/count-big","Output":"--- PASS: TestStreamDrainFailuresRetainOwnership/count-big (0.00s)\n"}
+{"Time":"2026-09-22T21:46:21.323481888+02:00","Action":"pass","Package":"open-sds/app/internal/sramcapture","Test":"TestStreamDrainFailuresRetainOwnership/count-big","Elapsed":0}
+{"Time":"2026-09-22T21:46:21.323487028+02:00","Action":"run","Package":"open-sds/app/internal/sramcapture","Test":"TestStreamDrainFailuresRetainOwnership/pointer"}
+{"Time":"2026-09-22T21:46:21.323490916+02:00","Action":"output","Package":"open-sds/app/internal/sramcapture","Test":"TestStreamDrainFailuresRetainOwnership/pointer","Output":"=== RUN   TestStreamDrainFailuresRetainOwnership/pointer\n"}
+{"Time":"2026-09-22T21:46:21.32349777+02:00","Action":"output","Package":"open-sds/app/internal/sramcapture","Test":"TestStreamDrainFailuresRetainOwnership/pointer","Output":"--- PASS: TestStreamDrainFailuresRetainOwnership/pointer (0.00s)\n"}
+{"Time":"2026-09-22T21:46:21.32350357+02:00","Action":"pass","Package":"open-sds/app/internal/sramcapture","Test":"TestStreamDrainFailuresRetainOwnership/pointer","Elapsed":0}
+{"Time":"2026-09-22T21:46:21.323507267+02:00","Action":"run","Package":"open-sds/app/internal/sramcapture","Test":"TestStreamDrainFailuresRetainOwnership/fault-during"}
+{"Time":"2026-09-22T21:46:21.323511461+02:00","Action":"output","Package":"open-sds/app/internal/sramcapture","Test":"TestStreamDrainFailuresRetainOwnership/fault-during","Output":"=== RUN   TestStreamDrainFailuresRetainOwnership/fault-during\n"}
+{"Time":"2026-09-22T21:46:21.323516878+02:00","Action":"output","Package":"open-sds/app/internal/sramcapture","Test":"TestStreamDrainFailuresRetainOwnership/fault-during","Output":"--- PASS: TestStreamDrainFailuresRetainOwnership/fault-during (0.00s)\n"}
+{"Time":"2026-09-22T21:46:21.323520588+02:00","Action":"pass","Package":"open-sds/app/internal/sramcapture","Test":"TestStreamDrainFailuresRetainOwnership/fault-during","Elapsed":0}
+{"Time":"2026-09-22T21:46:21.323524083+02:00","Action":"run","Package":"open-sds/app/internal/sramcapture","Test":"TestStreamDrainFailuresRetainOwnership/token-during"}
+{"Time":"2026-09-22T21:46:21.323527189+02:00","Action":"output","Package":"open-sds/app/internal/sramcapture","Test":"TestStreamDrainFailuresRetainOwnership/token-during","Output":"=== RUN   TestStreamDrainFailuresRetainOwnership/token-during\n"}
+{"Time":"2026-09-22T21:46:21.323532313+02:00","Action":"output","Package":"open-sds/app/internal/sramcapture","Test":"TestStreamDrainFailuresRetainOwnership/token-during","Output":"--- PASS: TestStreamDrainFailuresRetainOwnership/token-during (0.00s)\n"}
+{"Time":"2026-09-22T21:46:21.323536221+02:00","Action":"pass","Package":"open-sds/app/internal/sramcapture","Test":"TestStreamDrainFailuresRetainOwnership/token-during","Elapsed":0}
+{"Time":"2026-09-22T21:46:21.323539655+02:00","Action":"run","Package":"open-sds/app/internal/sramcapture","Test":"TestStreamDrainFailuresRetainOwnership/short-write"}
+{"Time":"2026-09-22T21:46:21.323542883+02:00","Action":"output","Package":"open-sds/app/internal/sramcapture","Test":"TestStreamDrainFailuresRetainOwnership/short-write","Output":"=== RUN   TestStreamDrainFailuresRetainOwnership/short-write\n"}
+{"Time":"2026-09-22T21:46:21.323548137+02:00","Action":"output","Package":"open-sds/app/internal/sramcapture","Test":"TestStreamDrainFailuresRetainOwnership/short-write","Output":"--- PASS: TestStreamDrainFailuresRetainOwnership/short-write (0.00s)\n"}
+{"Time":"2026-09-22T21:46:21.323551717+02:00","Action":"pass","Package":"open-sds/app/internal/sramcapture","Test":"TestStreamDrainFailuresRetainOwnership/short-write","Elapsed":0}
+{"Time":"2026-09-22T21:46:21.323555152+02:00","Action":"run","Package":"open-sds/app/internal/sramcapture","Test":"TestStreamDrainFailuresRetainOwnership/sink-error"}
+{"Time":"2026-09-22T21:46:21.323558254+02:00","Action":"output","Package":"open-sds/app/internal/sramcapture","Test":"TestStreamDrainFailuresRetainOwnership/sink-error","Output":"=== RUN   TestStreamDrainFailuresRetainOwnership/sink-error\n"}
+{"Time":"2026-09-22T21:46:21.323565452+02:00","Action":"output","Package":"open-sds/app/internal/sramcapture","Test":"TestStreamDrainFailuresRetainOwnership/sink-error","Output":"--- PASS: TestStreamDrainFailuresRetainOwnership/sink-error (0.00s)\n"}
+{"Time":"2026-09-22T21:46:21.323570749+02:00","Action":"pass","Package":"open-sds/app/internal/sramcapture","Test":"TestStreamDrainFailuresRetainOwnership/sink-error","Elapsed":0}
+{"Time":"2026-09-22T21:46:21.323576138+02:00","Action":"run","Package":"open-sds/app/internal/sramcapture","Test":"TestStreamDrainFailuresRetainOwnership/cancelled"}
+{"Time":"2026-09-22T21:46:21.323579282+02:00","Action":"output","Package":"open-sds/app/internal/sramcapture","Test":"TestStreamDrainFailuresRetainOwnership/cancelled","Output":"=== RUN   TestStreamDrainFailuresRetainOwnership/cancelled\n"}
+{"Time":"2026-09-22T21:46:21.323586326+02:00","Action":"output","Package":"open-sds/app/internal/sramcapture","Test":"TestStreamDrainFailuresRetainOwnership/cancelled","Output":"--- PASS: TestStreamDrainFailuresRetainOwnership/cancelled (0.00s)\n"}
+{"Time":"2026-09-22T21:46:21.323590088+02:00","Action":"pass","Package":"open-sds/app/internal/sramcapture","Test":"TestStreamDrainFailuresRetainOwnership/cancelled","Elapsed":0}
+{"Time":"2026-09-22T21:46:21.323593881+02:00","Action":"output","Package":"open-sds/app/internal/sramcapture","Test":"TestStreamDrainFailuresRetainOwnership","Output":"--- PASS: TestStreamDrainFailuresRetainOwnership (0.00s)\n"}
+{"Time":"2026-09-22T21:46:21.32359743+02:00","Action":"pass","Package":"open-sds/app/internal/sramcapture","Test":"TestStreamDrainFailuresRetainOwnership","Elapsed":0}
+{"Time":"2026-09-22T21:46:21.323602142+02:00","Action":"run","Package":"open-sds/app/internal/sramcapture","Test":"TestStreamBytePathPreservesFractionAndRetainsFaultedBank"}
+{"Time":"2026-09-22T21:46:21.323605317+02:00","Action":"output","Package":"open-sds/app/internal/sramcapture","Test":"TestStreamBytePathPreservesFractionAndRetainsFaultedBank","Output":"=== RUN   TestStreamBytePathPreservesFractionAndRetainsFaultedBank\n"}
+{"Time":"2026-09-22T21:46:21.323613909+02:00","Action":"output","Package":"open-sds/app/internal/sramcapture","Test":"TestStreamBytePathPreservesFractionAndRetainsFaultedBank","Output":"--- PASS: TestStreamBytePathPreservesFractionAndRetainsFaultedBank (0.00s)\n"}
+{"Time":"2026-09-22T21:46:21.323624727+02:00","Action":"pass","Package":"open-sds/app/internal/sramcapture","Test":"TestStreamBytePathPreservesFractionAndRetainsFaultedBank","Elapsed":0}
+{"Time":"2026-09-22T21:46:21.323628381+02:00","Action":"run","Package":"open-sds/app/internal/sramcapture","Test":"TestStreamLargeBanksUseAdvertisedCapacity"}
+{"Time":"2026-09-22T21:46:21.32363154+02:00","Action":"output","Package":"open-sds/app/internal/sramcapture","Test":"TestStreamLargeBanksUseAdvertisedCapacity","Output":"=== RUN   TestStreamLargeBanksUseAdvertisedCapacity\n"}
+{"Time":"2026-09-22T21:46:21.323838272+02:00","Action":"output","Package":"open-sds/app/internal/sramcapture","Test":"TestStreamLargeBanksUseAdvertisedCapacity","Output":"--- PASS: TestStreamLargeBanksUseAdvertisedCapacity (0.00s)\n"}
+{"Time":"2026-09-22T21:46:21.323845394+02:00","Action":"pass","Package":"open-sds/app/internal/sramcapture","Test":"TestStreamLargeBanksUseAdvertisedCapacity","Elapsed":0}
+{"Time":"2026-09-22T21:46:21.323849233+02:00","Action":"run","Package":"open-sds/app/internal/sramcapture","Test":"TestStartupCounterChecksFullRecord"}
+{"Time":"2026-09-22T21:46:21.323852396+02:00","Action":"output","Package":"open-sds/app/internal/sramcapture","Test":"TestStartupCounterChecksFullRecord","Output":"=== RUN   TestStartupCounterChecksFullRecord\n"}
+{"Time":"2026-09-22T21:46:21.364130517+02:00","Action":"output","Package":"open-sds/app/internal/sramcapture","Test":"TestStartupCounterChecksFullRecord","Output":"--- PASS: TestStartupCounterChecksFullRecord (0.04s)\n"}
+{"Time":"2026-09-22T21:46:21.364152697+02:00","Action":"pass","Package":"open-sds/app/internal/sramcapture","Test":"TestStartupCounterChecksFullRecord","Elapsed":0.04}
+{"Time":"2026-09-22T21:46:21.364159145+02:00","Action":"output","Package":"open-sds/app/internal/sramcapture","Output":"PASS\n"}
+{"Time":"2026-09-22T21:46:21.364930714+02:00","Action":"output","Package":"open-sds/app/internal/sramcapture","Output":"ok  \topen-sds/app/internal/sramcapture\t0.304s\n"}
+{"Time":"2026-09-22T21:46:21.364939992+02:00","Action":"pass","Package":"open-sds/app/internal/sramcapture","Elapsed":0.304}

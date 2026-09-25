@@ -1,0 +1,14 @@
+{
+  "result": "pass",
+  "requirement": "REQ-SDS-021",
+  "panels": 1,
+  "implementationFilesPerPanel": [
+    14
+  ],
+  "codeCoordinates": 81,
+  "verificationChecks": 10,
+  "completeRequirementDiagrams": 209,
+  "inputSHA256": "23f7eddf9e3db9a2c404b2088e60047392d57b58e830163ec19360e78fc0954b",
+  "matrixSHA256": "db2acd2de08f0f122e2c2b4578eaa84f82530d16f973bf436d845dd74193ed7f",
+  "scope": "LCD production source paths/coordinates appear once in one complete diagram and match the canonical matrix; verification context is preserved. Every requirement has exactly one diagram. PDF readability is independently reviewed."
+}

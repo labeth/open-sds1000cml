@@ -1,5 +1,7 @@
+// ENGMODEL-OWNER-UNIT: FU-RTL-ACQ-TESTS
 `timescale 1ns/1ps
 `include "lanemap_seed.vh"
+// TRLC-LINKS: REQ-SDS-038
 module tb;
  reg [79:0] lanes=0;wire [79:0] cores;
  adc_unpack dut(lanes,cores);

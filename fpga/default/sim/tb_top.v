@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-RTL-DEFAULT-TESTS
 // tb_top.v -- the default image through the GPMC model (schema v3, 128 selectors): identity,
 // the 7-bit selector decode (0x25 vs 0x24 independent, 0x21/0x57 undecoded, unclaimed and stub
 // selectors read 0 / ignore writes), SNOOP with the A2/B1 selector bits, RUN storing only its v2.2
@@ -9,6 +10,7 @@
 `timescale 1ns/1ps
 `include "regs.vh"
 `include "lanemap_seed.vh"
+// TRLC-LINKS: REQ-SDS-060, REQ-SDS-194, REQ-SDS-195, REQ-SDS-196, REQ-SDS-197
 module tb_top;
     reg clk = 0;  always #6.25  clk = ~clk;       // C2 80 MHz
     reg mclk = 0; always #3.125 mclk = ~mclk;     // M2 160 MHz

@@ -1,0 +1,60 @@
+{
+  "scope": "Previous approved requirement-comment plans before command/window linkage. Historical inputs are accepted only by exact recreation from pinned Git bytes and matching the recorded input SHA256.",
+  "files": [
+    {
+      "path": "fpga/acq_sram/host_read_window.v",
+      "owner": "FU-RTL-ACQ-SRAM-HOST-READ-WINDOW",
+      "modules": {
+        "acq_host_read_window": [
+          "REQ-SDS-053"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_host_read_window.v",
+      "owner": "FU-RTL-ACQ-TESTS",
+      "modules": {
+        "tb_host_read_window": [
+          "REQ-SDS-053"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/command_bridge.v",
+      "owner": "FU-RTL-ACQ-SRAM-COMMAND-BRIDGE",
+      "modules": {
+        "acq_command_bridge": [
+          "REQ-SDS-054",
+          "REQ-SDS-055",
+          "REQ-SDS-058"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/command_port.v",
+      "owner": "FU-RTL-ACQ-SRAM-COMMAND-PORT",
+      "modules": {
+        "acq_command_port": [
+          "REQ-SDS-054",
+          "REQ-SDS-055",
+          "REQ-SDS-056",
+          "REQ-SDS-058",
+          "REQ-SDS-185"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_command_port.v",
+      "owner": "FU-RTL-ACQ-TESTS",
+      "modules": {
+        "tb_command_port": [
+          "REQ-SDS-054",
+          "REQ-SDS-055",
+          "REQ-SDS-056",
+          "REQ-SDS-058",
+          "REQ-SDS-185"
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,5 @@
+ARGS ["exec", "/dev/acqsram", "load", "/dev/acq-capture.rbf"]
+fpgaload: bit order: explicit reverse, agrees with the container (native Quartus order (6a f7 …))
+fpgaload: CONF_DONE after 0s (port 0x00c0)
+loaded 368011 bytes, CONF_DONE=00c0, identity=5a52
+[exit 0]

@@ -1,0 +1,134 @@
+{
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "status": "integrated",
+  "completeReads": [
+    "app/cmd/acqsram/main.go",
+    "app/cmd/acqsram/profile.go",
+    "app/cmd/acqsram/scheduling_linux.go",
+    "app/cmd/app/main.go",
+    "app/cmd/app/sram.go",
+    "app/cmd/app/sram_test.go",
+    "app/cmd/app/sram_timing.go",
+    "app/cmd/app/sram_timing_test.go",
+    "app/cmd/srambench/main.go",
+    "app/internal/buildinfo/buildinfo.go",
+    "fpga/cmd/buildfpga/main.go",
+    "tools/hw/sramburst/main.go"
+  ],
+  "reviewedGoLines": 2256,
+  "sourceSHA256": {
+    "app/cmd/acqsram/main.go": "bad66f65f7ac157ed8154e1d4989dbd1f7b9dae77fd84f12a1eec30457ce481f",
+    "app/cmd/acqsram/profile.go": "c751656dff5fdccea7698f43ad06c0cc864328a4a0c6ba16a051abbca63a4709",
+    "app/cmd/acqsram/scheduling_linux.go": "e73a9b7a96e246312201cde0055a81f7e278f98aba2a37fce1ceffcde9857fd5",
+    "app/cmd/app/main.go": "6cc21b84f7b00909e510b5760c80922b6db128b2da55e75577cbe398cd15944d",
+    "app/cmd/app/sram.go": "1ee85a908c4037abc24c2d5e3fff89ec51ce1e36d17ba72a35faa42bf2872630",
+    "app/cmd/app/sram_test.go": "5fd4b28914ada1343e9ca11555957fab2aa2e138b23d4e2194645139f6aae85e",
+    "app/cmd/app/sram_timing.go": "bd8327b321ade3175d361bb738d4e07df59f858204b5f9543e35a25f01c28c58",
+    "app/cmd/app/sram_timing_test.go": "490da7141ed3fa36ebe893917d065b05c02d846ca52315f12535effefbb287f3",
+    "app/cmd/srambench/main.go": "92d6c73af0048453017934bb02ea75c02a91d86a686d3c7c713a99807037d39b",
+    "app/internal/buildinfo/buildinfo.go": "c3ad5515f3433e3ae8683ec3c62bde05aedfee1c8380a514cad6c33c5d38370b",
+    "fpga/cmd/buildfpga/main.go": "f534122226e6d5479e855125c9c1c65414884b9822ac7bd95b72f6311449e775",
+    "tools/hw/sramburst/main.go": "b86df31bae9a0551ae9faaed6675a75684749b7934365130d29078bd9ab40f6e"
+  },
+  "testsByFile": {
+    "app/cmd/app/sram_test.go": [
+      "TestSRAMHealthStorage"
+    ],
+    "app/cmd/app/sram_timing_test.go": [
+      "TestSRAMTimingQualificationAndRollback"
+    ]
+  },
+  "uniqueReviewedTests": [
+    "TestSRAMHealthStorage",
+    "TestSRAMTimingQualificationAndRollback"
+  ],
+  "findings": [
+    {
+      "title": "Descriptor discovery and mode ordering",
+      "detail": "Application and bench tools scan /proc/self/fd for exact path matches and descriptors >=3, without fresh-opening or closing the inherited GPMC descriptor. The app accepts SCOPE_GPMC; bench tools require /dev/Gpmc. Discovery does not validate driver identity, access mode or lifetime. App bus.New occurs before mode selection; mode-specific loader/engine setup follows the selection. Missing descriptors or bus initialization failure waits for a signal and exits zero; other fatal startup branches usually return zero."
+    },
+    {
+      "title": "Three distinct app compositions",
+      "detail": "SCOPE_CAPTURE defaults to default; sram branches to a separate handler before default loader, analog initialization, settings and normal engine. default-sram requires a preloaded locked SRAM revision9/10/11, uses the normal UI/engine with SRAM backend and does initialize analog and settings. Unknown capture mode returns without starting services. These are different ownership profiles, not interchangeable capability claims."
+    },
+    {
+      "title": "Fabric qualification and DMA fallback",
+      "detail": "Default fabric bringup failure leaves diagnostics and the non-driving engine available. Successful default bringup calls EnableEDMA even if EnsureDcinv fails, logging possible incoherence. default-sram enables EDMA only after EnsureDcinv succeeds. Only revision10 with FastDrain opens the timing port and runs counter verification; other combinations do not execute this startup counter check. FabricOK is a startup boolean, not continuously revalidated physical identity."
+    },
+    {
+      "title": "Revision10 timing rollback",
+      "detail": "applySRAMReadTiming reads old settings, selects read-cycle10/access8 and gap5 with bounded OE/CS off, preserving other fields through bus setters. Apply or verification failure restores the original setting and verifies again; failure to restore or verify returns an error. Successful rollback returns fast=false,nil, discarding the initial failure cause. The five original subtests cover fast/counter/apply/restore/both-fail using a fake; Read failure, actual register readback and hardware behavior are not tested here."
+    },
+    {
+      "title": "Engine and front-end ordering",
+      "detail": "Default starts the engine before analog wiring; default-sram initializes both channels to detent8 before starting it. Calibration load and optional SPI opening occur even if default fabric verification failed. Callback wiring synchronizes offset/range state through setters, not proof of simultaneous hardware state. Missing SPI leaves inherited range. Interleave calibration load failure aborts startup. No original test exercises main."
+    },
+    {
+      "title": "Service composition and process exit",
+      "detail": "One fanout consumes the engine arena; web and SCPI share scopeSource snapshots and wait interface. Panel, LCD, saver, health, VXI-11 and HTTP are launched, with settings restoration after panel/LCD start. Default HTTP has no global read/write/idle timeouts, logs ListenAndServe errors and continues waiting for a signal. On signal saver.Flush and e.Stop(2s) run, then os.Exit(0); stopFo is never closed and HTTP/VXI-11 shutdown, timing-port close and goroutine joins are not performed here."
+    },
+    {
+      "title": "Default health exception and freshness",
+      "detail": "healthLoop refuses writes when startup fabricOK is false or snapshots are Wedged. Otherwise default diagBeat permits health without coherent frames; frames mode needs counters>=3 but refresh is gated by engine Beats, not continuing frame growth. A held frame can retain frames mode while service beats advance. heartbeatMode can retain its previous label when writes stop. Token write/rename errors are ignored and retried, no context/shutdown or path restriction exists in this default helper. This is an explicit exception to the literal coherent-capture gate in REQ-SDS-025."
+    },
+    {
+      "title": "SRAM health and storage boundary",
+      "detail": "SRAM health permits cleaned /dev/acq-* or paths below U-disk0 by lexical check only; it does not resolve symlinks or prove mount type. The original test covers selected allowed/traversal/rejected names, not filesystem races. Status poll sets qualification from Locked and QualifiedMapID; beats keep token writes active during recalls, with cached qualification until the next status result. A Status call may block and has no context argument. No test executes this health loop."
+    },
+    {
+      "title": "SRAM fallback loading and shutdown",
+      "detail": "runSRAMMode attempts optional Force volatile image configuration on any sramcapture.New error, not only identity mismatch. It retries owner construction after load; image provenance is delegated. Listener uses 5s ReadHeaderTimeout and30s IdleTimeout. Normal signal path attempts10s HTTP shutdown and capture halt, discarding errors; non-ErrServerClosed listener failure returns before that halt path. Health cancellation does not join the nested status goroutine."
+    },
+    {
+      "title": "HUD composition has side effects",
+      "detail": "buildHUD merges engine, analog, panel, SCPI and reference observations with independent reads; detent indices and array geometry are trusted. It includes reference/mask slices without deep copying here. BODE view arms engine accumulation; leaving a previously device-armed view can disarm a concurrently web-armed session because the flag does not encode ownership. Screenshot calls also invoke buildHUD and these side effects. Trigger code0 suppresses conversion, and offcode0 suppresses offset conversion."
+    },
+    {
+      "title": "LCD cache is selected scalar state",
+      "detail": "renderSig omits fields the all-visible-state comment suggests are covered: decoder baud/channels/polarities/format, menu labels/values/title, reference contents, trigger source/position, acquisition sample interval and other same-sequence metadata. Changes in these can need repaint without changing the signature unless a force condition applies. runLCD force conditions include persistence/view>=3/SR/mask/zone; it holds quiet lock across rendering and framebuffer present, has no cancellation, and trusts sequence identity for fresh-frame and spectrogram ingestion. No original entrypoint test checks this cache."
+    },
+    {
+      "title": "Screenshots differ from live panel execution",
+      "detail": "PNG/BMP closures render a fresh headless surface with live=true and no persistence layer; they share render/HUD code but do not reproduce the LCD loop freshness, cache or afterglow history. Screenshots do not acquire the quiet lock around full rendering here. Calling shared rendering code alone is not exact pixel parity evidence."
+    },
+    {
+      "title": "Acqsram command boundary",
+      "detail": "acqsram scans inherited descriptors and validates0x5a52 before creating the SRAM owner, except load which forces one reverse-bit reload first. Subcommands index os.Args without per-command count checks; malformed/missing arguments panic, and the usage string is stale. Raw IOCTL helpers panic on errors, so their ConfigPort error returns cannot report them normally. Main is not executed in host review. Direct raw helpers bypass owner serialization, relying on exclusive diagnostic-process use."
+    },
+    {
+      "title": "Acqsram diagnostic storage and counter scope",
+      "detail": "Recall paths restrict a lexical /dev/acq-NAME but os.Create follows existing symlinks and truncates destinations. Hash and counter summaries describe returned bytes; ADC data naturally breaks counter continuity. profile-recall reports nonconsecutive words without making them an error, while stream paths reject bad/first-nonzero counters. counterCheck assumes four-byte aligned writes, counts modulo uint32, and retains only32break examples. Its independent algorithm is not physical acquisition truth."
+    },
+    {
+      "title": "Acqsram profiling and cleanup",
+      "detail": "Profile bus counters are unsynchronized and measure attempted calls including errors; Halfwords counts requested size and skip count counts writes, not verified completion. TimedWriter subtracts sink time from overall recall but still includes other overhead. Profile timing override restores on normal/panic unwinding, but the deferred function closes kernel DMA first and a close panic prevents Restore. Process kill cannot guarantee restoration. Timing values are delegated to bitfield setters; literal string31 selects an additional override unlike equivalent0x1f."
+    },
+    {
+      "title": "Acqsram streams and scheduler",
+      "detail": "Userspace stream-profile requires revision11 and log8..20/n>0, polls enabled, arms a counter capture, drains until target then halts and consumes final blocks. It can overshoot target and has a25s wall deadline plus shared30s context; kernel stream path relies on blocking driver reads without that context. Header continuity and counters are checked, but final target uses >=. Errors/panics can leave stream enable asserted; halt is deferred only after successful Arm. realtimeDrain locks one OS thread, saves policy/priority, selects FIFO1 and restores before unlock; failed restoration deliberately leaves the thread locked. No scheduling syscalls were exercised."
+    },
+    {
+      "title": "Acqsram direct probes and configuration",
+      "detail": "Warm/physical reads use hardcoded524288 ring geometry and four identity reads for settle, raw command ACK/ready timeouts and indexed buffers; these are diagnostic hypotheses, not timing proof. Normal capture may remain armed on process exit. range-both modifies analog SPI and offset writes CS3 DAC selectors; the file header saying only volatile FPGA configuration and bench CS1 registers is incomplete. Burst probes, capture/force/halt and load all require device ownership absent from host tests."
+    },
+    {
+      "title": "SRAM bench interpretation",
+      "detail": "srambench gates non-load paths on0x5b51. measure estimates clock from two snapshots separated by2s and reports IOCTL midpoint uncertainty, without reference-clock qualification or handling multiple uint32 wraps. stress validates524288 checked words, stops on nonzeroerrors but returns JSON with zero process status; run does not enforce checked/error criteria beyond final state. Unknown commands fall through to status reads. Argument underflow panics, no owner lock exists, and load is forced."
+    },
+    {
+      "title": "Build CLI policy",
+      "detail": "buildfpga wraps Quartus.Run and explicitly fails both Run errors and Result.Defects after printing summaries. Unlike Run alone, this enforces report policy, but inherits limited report parser scope and staged output side effects. findModuleRoot uses a textual prefix and can accept a longer module name beginning open-sds/fpga. The CLI has no original tests and compilation does not execute Quartus."
+    },
+    {
+      "title": "Factory burst probe limits",
+      "detail": "sramburst does not verify factory identity or suspend the vendor process: it merely reports identity selectors. Arbitrary numeric selector overrides are allowed; unknown text is ignored. Reads may be pop-on-read, contrary to the header claim they cannot disturb anything. Sweep errors silently truncate results, and the reported ports list remains fixed even with overrides. Halt write errors are logged but do not stop execution; fire errors exit immediately without cleanup, and --run intentionally leaves acquisition running. Comparing before/after arrays and emitting moved flags is not verified SRAM data or causal fire evidence; baseline2 is not automatically checked."
+    },
+    {
+      "title": "Version metadata",
+      "detail": "app buildinfo.String joins link-time variables with dev/unknown defaults. Values are unvalidated labels, not cryptographic source or build provenance. No direct original test exists."
+    }
+  ],
+  "scope": "Application startup and SRAM diagnostic/build command source review. Only original host helper tests and package compilation; no command main, device IO, FPGA load, Quartus flow or real-time scheduling executed.",
+  "executionSupersededBy": "entrypoints-integrated-test-run.json",
+  "execution": "entrypoints-review-test-run.json"
+}

@@ -1,14 +1,32 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
 package engine
 
-import "open-sds/app/internal/iface"
+import (
+	"open-sds/app/internal/iface"
+	"time"
+)
 
 // serviceCommands flushes staged work at the frame boundary — the engine is
 // armed+filling here, never inside a halt window. Snapshot+clear under the
 // mutex; bus writes with it released. Order: diagnostic Exec requests, the
 // LED latch, the offset DACs, then the trigger words.
+// TRLC-LINKS: REQ-SDS-001
 func (e *Engine) serviceCommands() {
+	stage := time.Now()
 	e.serviceExec()
+	if e.decodedSession != nil {
+		e.decodedService.maxExec = max(e.decodedService.maxExec, time.Since(stage))
+	}
+	if e.sram != nil {
+		stage = time.Now()
+		e.serviceDecodedRequests()
+		if e.decodedSession != nil {
+			e.decodedService.maxRequests = max(e.decodedService.maxRequests, time.Since(stage))
+		}
+		e.pumpDecodedEvents()
+	}
 
+	stage = time.Now()
 	e.mu.Lock()
 	trigDirty, code := e.trigDirty, e.trigCode
 	offDirty, offCode := e.offDirty, e.offCode
@@ -51,6 +69,9 @@ func (e *Engine) serviceCommands() {
 		e.w3(cs3LevelBHi, hi)
 	}
 	if e.sram != nil {
+		if e.decodedSession != nil {
+			e.decodedService.maxControl = max(e.decodedService.maxControl, time.Since(stage))
+		}
 		return
 	}
 	if e.flushTrigWords(false) && e.running.Load() {
@@ -62,6 +83,7 @@ func (e *Engine) serviceCommands() {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-009, REQ-SDS-010
 func (e *Engine) syncBandStatsLocked() {
 	e.stats.TdivS = e.band.TdivS
 	e.stats.DisplayedS = e.band.DisplayedSdivS()

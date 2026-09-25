@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-SRAMCAPTURE
 package sramcapture
 
 import (
@@ -9,6 +10,7 @@ import (
 // VerifyCounter replaces volatile SRAM contents with a complete counter
 // record and checks every recalled word. Call only before handing acquisition
 // ownership to the engine; this is a startup transport check, not a live probe.
+// TRLC-LINKS: REQ-SDS-034
 func (c *Capture) VerifyCounter(ctx context.Context) error {
 	if err := c.Arm(ctx, Config{Source: Counter, PreWords: Words - 17, PostWords: 17}); err != nil {
 		return err
@@ -35,8 +37,10 @@ func (c *Capture) VerifyCounter(ctx context.Context) error {
 	return nil
 }
 
+// TRLC-LINKS: REQ-SDS-034
 type counterVerifier struct{ next uint32 }
 
+// TRLC-LINKS: REQ-SDS-034
 func (s *counterVerifier) Write(b []byte) (int, error) {
 	if len(b)%4 != 0 {
 		return 0, fmt.Errorf("sramcapture: unaligned startup counter")

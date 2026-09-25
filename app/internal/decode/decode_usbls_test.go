@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-DECODE
 package decode
 
 import (
@@ -7,6 +8,7 @@ import (
 )
 
 // usbPkt is one synthetic packet: a 4-bit PID value and its payload bytes.
+// TRLC-LINKS: REQ-SDS-018
 type usbPkt struct {
 	pid  int
 	data []int
@@ -19,6 +21,7 @@ type usbPkt struct {
 // toggles the level, a 1 holds it). EOP is 2 bit-times of SE0 (D+ low), then the
 // line returns to idle. This mirrors the on-wire signal a real host/device pair
 // would drive, so the decoder round-trips it by construction.
+// TRLC-LINKS: REQ-SDS-018
 func usbWave(packets []usbPkt, spb int) []uint8 {
 	lo, hi := uint8(40), uint8(210)
 	const idle = 1 // J = high
@@ -73,6 +76,7 @@ func usbWave(packets []usbPkt, spb int) []uint8 {
 	return w
 }
 
+// TRLC-LINKS: REQ-SDS-018
 func TestDecodeUSBLSRoundTrip(t *testing.T) {
 	// A token (SETUP), a data packet whose payload forces bit stuffing (0xFF), and
 	// a handshake (ACK) — the three shapes a real transaction uses.
@@ -135,6 +139,7 @@ func TestDecodeUSBLSRoundTrip(t *testing.T) {
 }
 
 // usblsKinds concatenates span kinds for a containsWord check.
+// TRLC-LINKS: REQ-SDS-018
 func usblsKinds(spans []Span) string {
 	s := ""
 	for _, sp := range spans {
@@ -145,6 +150,7 @@ func usblsKinds(spans []Span) string {
 
 // TestDecodeUSBLSNoPanic feeds degenerate/hostile inputs — a decoder must return
 // an error, never panic or hang (the package also runs a broader decoder fuzz).
+// TRLC-LINKS: REQ-SDS-018
 func TestDecodeUSBLSNoPanic(t *testing.T) {
 	rng := rand.New(rand.NewSource(0x05B)) // deterministic seed
 	mk := func(nn, kind int) []uint8 {
@@ -195,4 +201,43 @@ func TestDecodeUSBLSNoPanic(t *testing.T) {
 			}()
 		}
 	}
+}
+
+// TRLC-LINKS: REQ-SDS-018
+func TestUSBObservedStuffViolationIsFrameError(t *testing.T) {
+	const spb = 40
+	var w []uint8
+	push := func(level int, cells int) {
+		v := uint8(40)
+		if level != 0 {
+			v = 210
+		}
+		for i := 0; i < cells*spb; i++ {
+			w = append(w, v)
+		}
+	}
+	push(1, 20)
+	level := 1
+	// Omit stuffing in FF, with a transition in the following 00 before the
+	// ten-cell packet-gap threshold. The clean 00 prefix must not hide corruption.
+	for _, b := range []int{0x80, 0xc3, 0x00, 0xff, 0x00} {
+		for i := 0; i < 8; i++ {
+			if (b>>i)&1 == 0 {
+				level ^= 1
+			}
+			push(level, 1)
+		}
+	}
+	push(0, 2)
+	push(1, 40)
+	r := DecodeUSBLS(w, 1.0/(1500000*spb), USBLSCfg{Bitrate: 1500000})
+	if !r.OK {
+		t.Fatalf("packet header lost: %s", r.Error)
+	}
+	for _, s := range r.Spans {
+		if s.Kind == "frame-error" && s.Text == "STUFF!" {
+			return
+		}
+	}
+	t.Fatalf("stuff violation accepted as clean prefix: %+v", r)
 }

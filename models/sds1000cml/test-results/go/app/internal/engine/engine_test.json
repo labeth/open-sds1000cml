@@ -1,0 +1,105 @@
+{
+  "source": "app/internal/engine/engine_test.go",
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "scope": "Reviewed Go test outcomes; passing assertions contribute partial requirement evidence.",
+  "sourceSHA256": "cf33d27320e8ad2a037360a093a178795b3adb287149aca5650048a60e833ec5",
+  "logs": {
+    "test-runs/engine-core-reviewed.jsonl": "cc8c0b3a23bc0794b3d4c4542093ab29f77f001115ec026cb74ce9e6b4502f4b"
+  },
+  "tests": [
+    {
+      "name": "TestHoldoffPacing",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-008",
+        "REQ-SDS-011"
+      ]
+    },
+    {
+      "name": "TestBringUpWriteOrder",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-001",
+        "REQ-SDS-010",
+        "REQ-SDS-011"
+      ]
+    },
+    {
+      "name": "TestArmSequence",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-001",
+        "REQ-SDS-009"
+      ]
+    },
+    {
+      "name": "TestBandChangeAppliedAtBoundary",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-008",
+        "REQ-SDS-010"
+      ]
+    },
+    {
+      "name": "TestStopKeepsHeartbeatAndServicesCommands",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-001",
+        "REQ-SDS-008",
+        "REQ-SDS-025"
+      ]
+    },
+    {
+      "name": "TestMatrixAndLEDService",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-001",
+        "REQ-SDS-022"
+      ]
+    },
+    {
+      "name": "TestRunStopsAtBoundary",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-008"
+      ]
+    }
+  ],
+  "results": [
+    {
+      "requirement": "REQ-SDS-001",
+      "status": "partial",
+      "notes": "4 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    },
+    {
+      "requirement": "REQ-SDS-008",
+      "status": "partial",
+      "notes": "4 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    },
+    {
+      "requirement": "REQ-SDS-009",
+      "status": "partial",
+      "notes": "1 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    },
+    {
+      "requirement": "REQ-SDS-010",
+      "status": "partial",
+      "notes": "2 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    },
+    {
+      "requirement": "REQ-SDS-011",
+      "status": "partial",
+      "notes": "2 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    },
+    {
+      "requirement": "REQ-SDS-022",
+      "status": "partial",
+      "notes": "1 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    },
+    {
+      "requirement": "REQ-SDS-025",
+      "status": "partial",
+      "notes": "1 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "source": "app/internal/superres/srfuzz_test.go",
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "scope": "Reviewed Go test outcomes; passing assertions contribute partial requirement evidence.",
+  "sourceSHA256": "8bddb0e000307b4ba3c13549a403fc5c0bb081315fec6efe9379d8b4182dae24",
+  "logs": {
+    "test-runs/superres-reviewed.jsonl": "41e836838baf830c6c7372cad49f2b9c60a203a08470acb1dbb759cb39de09e3"
+  },
+  "tests": [
+    {
+      "name": "TestSuperresFuzzNoPanic",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-141"
+      ]
+    }
+  ],
+  "results": [
+    {
+      "requirement": "REQ-SDS-141",
+      "status": "partial",
+      "notes": "1 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    }
+  ]
+}

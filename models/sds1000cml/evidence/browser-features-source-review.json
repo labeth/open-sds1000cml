@@ -1,0 +1,60 @@
+{
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "status": "source-model-integrated",
+  "requirements": [
+    "REQ-SDS-099",
+    "REQ-SDS-205",
+    "REQ-SDS-206",
+    "REQ-SDS-207"
+  ],
+  "files": [
+    {
+      "path": "app/internal/web/app_precision.js",
+      "baselineSHA256": "4474686cd683b848d08ae1ca0a55a89eedf6183fa365ecabf249d7e7b4d682c2",
+      "lines": 114,
+      "linkedDeclarations": 8,
+      "annotatedSHA256": "ef168e926e4aa2ccf9228e807fd49deb010191dcee162db4d261d017ac125943"
+    },
+    {
+      "path": "app/internal/web/app_serialtrig.js",
+      "baselineSHA256": "b79d865dfc14ea1186a8f5978bc8fba93073f283b90ad7b03d28b0cff2e28001",
+      "lines": 116,
+      "linkedDeclarations": 14,
+      "annotatedSHA256": "419e81011c6caec26a6d7a51234a46997c6f33d4579e11e0bcf552763efa9f28"
+    },
+    {
+      "path": "app/internal/web/app_decode.js",
+      "baselineSHA256": "135a916cef066acdbcf9fd5c88787ab3ff908cf12da95a073cc0a77ae14c7e83",
+      "lines": 298,
+      "linkedDeclarations": 38,
+      "annotatedSHA256": "12b2d60f143478b368c6e2a62bc9d88bc2e489d3303b3968d8dd1f7c95badcaf"
+    }
+  ],
+  "testEvidence": "evidence/browser-features-test-run.json",
+  "scope": "Complete source read of all three feature files, including DOM handlers and serial resynchronization timer. Isolated synthetic fitting and mocked controller evidence.",
+  "findings": [
+    "Precision sine/triangle fit searches a local frequency and phase grid with least-squares amplitude/DC; periodic fit solves normal equations with pivoting and a narrow frequency search, up to 15 harmonics. These local searches do not prove global optimality.",
+    "Public fitting helpers guard length, time spacing, seed rate and cycle count, but do not explicitly validate all sample values; UI path performs the clipped/nonfinite sample rejection.",
+    "Precision UI uses first 4096 visible samples and nominal col_span_s/cols. Its status-derived vdiv/probe conversion may differ from captured frame calibration and fine-detent display zoom. Preview uses Canvas2D.",
+    "Ideal noise gain display is theoretical, and harmonic-stripped residual-equivalent bits explicitly exclude distortion. Neither is ADC ENOB or physical accuracy.",
+    "Serial parser accepts lowercase 0x prefix; uppercase 0X is rejected. It validates every token before truncating valid patterns to 64 bytes; empty address means wildcard and other addresses must be <=127.",
+    "Serial config push records signature before awaiting success. Timer comparison suppresses repeated identical failed pushes; edits while armed swallow rejected pushes. Decode-off/unsupported protocols request disarming.",
+    "Serial arming installs configuration first, but the later serialmode command outcome does not control the optimistic button state. Inactive acquisition bands cause warnings rather than prevent arming.",
+    "Decode UI dispatches all ten protocol families with per-protocol configuration, but requires frame.c1 and raw/non-envelope shape regardless of selected channel. It uses frameDtS for protocol timing.",
+    "History advances once per stream sequence and caps at 200 transcripts. Watch stores up to 80 original frame references and suppresses a repeated reason/text key even across intervening nonmatching frames.",
+    "Watch accepts case-insensitive substring or slash-delimited regex; invalid regex is silently ignored. Capture-list HTML contains unescaped reason/transcript strings; no hostile-input DOM test is claimed.",
+    "Capture review freezes a referenced snapshot and resets horizontal window, but does not reset vertical window or applyFrame edge/signature state. Returning live resumes polling.",
+    "Clipboard actions optimistically label copied even if the asynchronous clipboard write rejects. Browser permission, actual clipboard and downloads were not exercised.",
+    "Individual decoder-setting handlers generally recompute without immediately pushing serial configuration; armed timer resynchronization runs once per second. Full updateDecodePanel calls the immediate hook.",
+    "Precision preview contradicts the earlier broad all-visible-surfaces-WebGL description. Main scope/navigation/analysis-card WebGL behavior remains as reviewed, but precisionFitCanvas is an explicit 2D exception."
+  ],
+  "validation": {
+    "isolatedCases": 13,
+    "linkedDeclarations": 60,
+    "strictConsistency": "pass",
+    "nativeMCP": "pass",
+    "nonPDFPublication": "pass",
+    "reproducibleArtifacts": 36,
+    "pdf": "deferred"
+  }
+}

@@ -1,0 +1,52 @@
+{"Time":"2026-09-23T09:05:41.544573904+02:00","Action":"start","Package":"open-sds/app/internal/engine"}
+{"Time":"2026-09-23T09:05:41.556714734+02:00","Action":"run","Package":"open-sds/app/internal/engine","Test":"TestMatchI2CEdges"}
+{"Time":"2026-09-23T09:05:41.556737277+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestMatchI2CEdges","Output":"=== RUN   TestMatchI2CEdges\n"}
+{"Time":"2026-09-23T09:05:41.55680467+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestMatchI2CEdges","Output":"--- PASS: TestMatchI2CEdges (0.00s)\n"}
+{"Time":"2026-09-23T09:05:41.556828296+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Test":"TestMatchI2CEdges","Elapsed":0}
+{"Time":"2026-09-23T09:05:41.556861534+02:00","Action":"run","Package":"open-sds/app/internal/engine","Test":"TestSerialTriggerComposesWithMask"}
+{"Time":"2026-09-23T09:05:41.556868388+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestSerialTriggerComposesWithMask","Output":"=== RUN   TestSerialTriggerComposesWithMask\n"}
+{"Time":"2026-09-23T09:05:41.566165689+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestSerialTriggerComposesWithMask","Output":"--- PASS: TestSerialTriggerComposesWithMask (0.01s)\n"}
+{"Time":"2026-09-23T09:05:41.566181387+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Test":"TestSerialTriggerComposesWithMask","Elapsed":0.01}
+{"Time":"2026-09-23T09:05:41.566200453+02:00","Action":"run","Package":"open-sds/app/internal/engine","Test":"TestSerialQualifyFuzz"}
+{"Time":"2026-09-23T09:05:41.566204304+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestSerialQualifyFuzz","Output":"=== RUN   TestSerialQualifyFuzz\n"}
+{"Time":"2026-09-23T09:05:41.825086555+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestSerialQualifyFuzz","Output":"--- PASS: TestSerialQualifyFuzz (0.26s)\n"}
+{"Time":"2026-09-23T09:05:41.825106122+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Test":"TestSerialQualifyFuzz","Elapsed":0.26}
+{"Time":"2026-09-23T09:05:41.825120153+02:00","Action":"run","Package":"open-sds/app/internal/engine","Test":"TestSerialQualifyUART"}
+{"Time":"2026-09-23T09:05:41.825125605+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestSerialQualifyUART","Output":"=== RUN   TestSerialQualifyUART\n"}
+{"Time":"2026-09-23T09:05:41.826241408+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestSerialQualifyUART","Output":"--- PASS: TestSerialQualifyUART (0.00s)\n"}
+{"Time":"2026-09-23T09:05:41.82625601+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Test":"TestSerialQualifyUART","Elapsed":0}
+{"Time":"2026-09-23T09:05:41.826295996+02:00","Action":"run","Package":"open-sds/app/internal/engine","Test":"TestSerialQualifySPI"}
+{"Time":"2026-09-23T09:05:41.826303327+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestSerialQualifySPI","Output":"=== RUN   TestSerialQualifySPI\n"}
+{"Time":"2026-09-23T09:05:41.826739603+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestSerialQualifySPI","Output":"--- PASS: TestSerialQualifySPI (0.00s)\n"}
+{"Time":"2026-09-23T09:05:41.826749696+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Test":"TestSerialQualifySPI","Elapsed":0}
+{"Time":"2026-09-23T09:05:41.826791217+02:00","Action":"run","Package":"open-sds/app/internal/engine","Test":"TestSerialQualifyI2C"}
+{"Time":"2026-09-23T09:05:41.82679765+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestSerialQualifyI2C","Output":"=== RUN   TestSerialQualifyI2C\n"}
+{"Time":"2026-09-23T09:05:41.827917239+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestSerialQualifyI2C","Output":"--- PASS: TestSerialQualifyI2C (0.00s)\n"}
+{"Time":"2026-09-23T09:05:41.827928403+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Test":"TestSerialQualifyI2C","Elapsed":0}
+{"Time":"2026-09-23T09:05:41.827972152+02:00","Action":"run","Package":"open-sds/app/internal/engine","Test":"TestSerialQualifyPassAndReject"}
+{"Time":"2026-09-23T09:05:41.827978847+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestSerialQualifyPassAndReject","Output":"=== RUN   TestSerialQualifyPassAndReject\n"}
+{"Time":"2026-09-23T09:05:41.828045364+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestSerialQualifyPassAndReject","Output":"--- PASS: TestSerialQualifyPassAndReject (0.00s)\n"}
+{"Time":"2026-09-23T09:05:41.828060932+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Test":"TestSerialQualifyPassAndReject","Elapsed":0}
+{"Time":"2026-09-23T09:05:41.828105319+02:00","Action":"run","Package":"open-sds/app/internal/engine","Test":"TestSetSerialModeResetsCount"}
+{"Time":"2026-09-23T09:05:41.828111344+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestSetSerialModeResetsCount","Output":"=== RUN   TestSetSerialModeResetsCount\n"}
+{"Time":"2026-09-23T09:05:41.82816944+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestSetSerialModeResetsCount","Output":"--- PASS: TestSetSerialModeResetsCount (0.00s)\n"}
+{"Time":"2026-09-23T09:05:41.828181615+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Test":"TestSetSerialModeResetsCount","Elapsed":0}
+{"Time":"2026-09-23T09:05:41.828223522+02:00","Action":"run","Package":"open-sds/app/internal/engine","Test":"TestMatchBytesUnit"}
+{"Time":"2026-09-23T09:05:41.828229666+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestMatchBytesUnit","Output":"=== RUN   TestMatchBytesUnit\n"}
+{"Time":"2026-09-23T09:05:41.828292636+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestMatchBytesUnit","Output":"--- PASS: TestMatchBytesUnit (0.00s)\n"}
+{"Time":"2026-09-23T09:05:41.828306796+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Test":"TestMatchBytesUnit","Elapsed":0}
+{"Time":"2026-09-23T09:05:41.828340174+02:00","Action":"run","Package":"open-sds/app/internal/engine","Test":"TestIndexSeqUnit"}
+{"Time":"2026-09-23T09:05:41.828346448+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestIndexSeqUnit","Output":"=== RUN   TestIndexSeqUnit\n"}
+{"Time":"2026-09-23T09:05:41.828401728+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestIndexSeqUnit","Output":"--- PASS: TestIndexSeqUnit (0.00s)\n"}
+{"Time":"2026-09-23T09:05:41.828419122+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Test":"TestIndexSeqUnit","Elapsed":0}
+{"Time":"2026-09-23T09:05:41.82844994+02:00","Action":"run","Package":"open-sds/app/internal/engine","Test":"TestSerialRegistryUnknownFailsClosed"}
+{"Time":"2026-09-23T09:05:41.828456354+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestSerialRegistryUnknownFailsClosed","Output":"=== RUN   TestSerialRegistryUnknownFailsClosed\n"}
+{"Time":"2026-09-23T09:05:41.828598807+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestSerialRegistryUnknownFailsClosed","Output":"--- PASS: TestSerialRegistryUnknownFailsClosed (0.00s)\n"}
+{"Time":"2026-09-23T09:05:41.828614752+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Test":"TestSerialRegistryUnknownFailsClosed","Elapsed":0}
+{"Time":"2026-09-23T09:05:41.828659777+02:00","Action":"run","Package":"open-sds/app/internal/engine","Test":"TestSerialRegistryCapabilities"}
+{"Time":"2026-09-23T09:05:41.828665634+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestSerialRegistryCapabilities","Output":"=== RUN   TestSerialRegistryCapabilities\n"}
+{"Time":"2026-09-23T09:05:41.828767091+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestSerialRegistryCapabilities","Output":"--- PASS: TestSerialRegistryCapabilities (0.00s)\n"}
+{"Time":"2026-09-23T09:05:41.828788912+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Test":"TestSerialRegistryCapabilities","Elapsed":0}
+{"Time":"2026-09-23T09:05:41.828928523+02:00","Action":"output","Package":"open-sds/app/internal/engine","Output":"PASS\n"}
+{"Time":"2026-09-23T09:05:42.833389406+02:00","Action":"output","Package":"open-sds/app/internal/engine","Output":"ok  \topen-sds/app/internal/engine\t1.289s\n"}
+{"Time":"2026-09-23T09:05:42.833408534+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Elapsed":1.289}

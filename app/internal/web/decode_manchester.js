@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-WEB-DECODE-MANCHESTER
 // Manchester decoder — JS twin of decode_manchester.go, kept algorithm-faithful
 // so the web overlay and the on-device LCD agree byte-for-byte. Classic script:
 // no imports/exports; reuses sliceChannel / logicAt / fmtByte / fail from
@@ -13,6 +14,7 @@
 // laying cells at s0, s0+T, s0+2T, ... (T = samples/bit). Mirrors the Go core:
 // returns { cells:[{i0,i1,bit}], good, viol } where bit is 0/1 or -1 (a coding
 // violation — the two half-cells sampled to the same level).
+// TRLC-LINKS: REQ-SDS-018
 function recoverManchester(S, s0, T, ieee, lastEdgeX) {
   const cells = [];
   let good = 0, viol = 0;
@@ -52,6 +54,7 @@ function recoverManchester(S, s0, T, ieee, lastEdgeX) {
   return { cells, good, viol };
 }
 
+// TRLC-LINKS: REQ-SDS-018
 function decodeManchester(codes, colTimeS, cfg) {
   cfg = cfg || {};
   const bits = cfg.bits || 8;
@@ -92,6 +95,7 @@ function decodeManchester(codes, colTimeS, cfg) {
 // decodeManchesterAt segments the edges into frames and decodes each at bit
 // period T, returning { res, frames, totalGood } so the caller can score
 // competing T hypotheses. Mirrors the Go helper of the same name.
+// TRLC-LINKS: REQ-SDS-018
 function decodeManchesterAt(S, T, cfg, bits, colTimeS) {
   const ieee = !!cfg.ieee, msb = !!cfg.msb, fmt = cfg.fmt || "hex";
   // Split on an inter-frame idle. Use 2.5·T (not 1.5·T): a single flattened cell

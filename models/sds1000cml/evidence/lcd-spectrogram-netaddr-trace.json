@@ -1,0 +1,14 @@
+{
+  "result": "pass",
+  "requirements": [
+    "REQ-SDS-021",
+    "REQ-SDS-068"
+  ],
+  "lcdCodeEntries": 66,
+  "lcdVerificationEntries": 4,
+  "spectrogramProductionEntries": 8,
+  "newOriginalTestOutcomes": 13,
+  "verificationStatus": "partial",
+  "matrixSHA256": "a8521357a4ff53bd8f03988132da4caa546cc4ebc1036f0010df8fe5b5e30619",
+  "scope": "Native source/test attachment only; original assertions and characterizations remain bounded host evidence."
+}

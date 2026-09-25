@@ -1,0 +1,559 @@
+{
+  "status": "native-tracing-incomplete",
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "files": [
+    {
+      "path": "fpga/acq_sram/audit.py",
+      "owner": "FU-FPGA-ACQ-BUILD",
+      "gitBlob": "ebf67372956fdcbd215f7c33bb124a392446ea22",
+      "sourceSHA256": "645253dc9729ee365c1c1b57996b20ca4a7fa0b80e95850b6b7e38bb79b22a78",
+      "declarations": []
+    },
+    {
+      "path": "fpga/acq_sram/build.py",
+      "owner": "FU-FPGA-ACQ-BUILD",
+      "gitBlob": "22ae43c69cf6410b2ee590ab739d0e4107051c1b",
+      "sourceSHA256": "bacbc4823aace1ade27c0531db69155edeffd8dfb03ef72afe5786b1ff04dcbe",
+      "declarations": []
+    },
+    {
+      "path": "fpga/acq_sram/build_profile.py",
+      "owner": "FU-FPGA-ACQ-BUILD",
+      "gitBlob": "eeb32bc094707d52d7f4585802a81e9526325925",
+      "sourceSHA256": "baae1528a690695e37059f6d655e2003b067499260613a3a34f610b0dbc72468",
+      "declarations": []
+    },
+    {
+      "path": "fpga/sram_bench/audit.py",
+      "owner": "FU-FPGA-BENCH-BUILD",
+      "gitBlob": "9d83905ece2d12502ca9fd014750df2863ea8464",
+      "sourceSHA256": "6599f5562540bd9942e2ddc6e159996ace8074a19a7c6a5a6a55c39b1d200a0c",
+      "declarations": []
+    },
+    {
+      "path": "fpga/sram_bench/build.py",
+      "owner": "FU-FPGA-BENCH-BUILD",
+      "gitBlob": "875ad8c0bdfcc2e5ac7d8fbf43d09a01ee1b772b",
+      "sourceSHA256": "69faefd64c601c9c75479784b6921b11f27a32e5948756af3d787c857b5883a8",
+      "declarations": []
+    },
+    {
+      "path": "tools/dsp/precision_filter.py",
+      "owner": "FU-TOOLS",
+      "gitBlob": "afd608aa4cc0e79d212a3288425db85aa6ce425e",
+      "sourceSHA256": "e77ea6026829c05acd9d2f500f3224c664ff0bd96f752585db89d04f46522ca4",
+      "declarations": []
+    },
+    {
+      "path": "tools/hw/adc_sram/analyze_interleave.py",
+      "owner": "FU-TOOLS-HW-ADC-SRAM",
+      "gitBlob": "5ca2e527f226f35414b2c09a01e90509e2e76ad4",
+      "sourceSHA256": "d311f2926b9c39daecf6c79d1299da6faf48d9d7848e7e2102e5ab161b1083d8",
+      "declarations": []
+    },
+    {
+      "path": "tools/hw/adc_sram/followup.py",
+      "owner": "FU-TOOLS-HW-ADC-SRAM",
+      "gitBlob": "12d6a4d50e876264151790a70c0543e4e83faac7",
+      "sourceSHA256": "0740a923e2858f73c021ee28f20ee90acbb2e14af1564144d03f73b5611dee3b",
+      "declarations": [
+        {
+          "name": "call",
+          "kind": "function",
+          "line": 8,
+          "endLine": 13,
+          "decoratorLines": []
+        },
+        {
+          "name": "probe",
+          "kind": "function",
+          "line": 15,
+          "endLine": 15,
+          "decoratorLines": []
+        }
+      ]
+    },
+    {
+      "path": "tools/hw/adc_sram/host_read_qualify.py",
+      "owner": "FU-TOOLS-HW-ADC-SRAM",
+      "gitBlob": "e2d8f8558cb774990713a2a30f364e167f2fe481",
+      "sourceSHA256": "3216aec6c177fec03cd8e1d45d3f9545d1ce57992394d42e681d37684f5894ba",
+      "declarations": [
+        {
+          "name": "call",
+          "kind": "function",
+          "line": 17,
+          "endLine": 23,
+          "decoratorLines": []
+        },
+        {
+          "name": "decode",
+          "kind": "function",
+          "line": 25,
+          "endLine": 26,
+          "decoratorLines": []
+        },
+        {
+          "name": "power",
+          "kind": "function",
+          "line": 28,
+          "endLine": 29,
+          "decoratorLines": []
+        },
+        {
+          "name": "wait_agent",
+          "kind": "function",
+          "line": 31,
+          "endLine": 39,
+          "decoratorLines": []
+        },
+        {
+          "name": "probe",
+          "kind": "function",
+          "line": 41,
+          "endLine": 45,
+          "decoratorLines": []
+        },
+        {
+          "name": "recall",
+          "kind": "function",
+          "line": 47,
+          "endLine": 53,
+          "decoratorLines": []
+        },
+        {
+          "name": "crossing",
+          "kind": "function",
+          "line": 92,
+          "endLine": 93,
+          "decoratorLines": []
+        }
+      ]
+    },
+    {
+      "path": "tools/hw/adc_sram/interleave_probe.py",
+      "owner": "FU-TOOLS-HW-ADC-SRAM",
+      "gitBlob": "781b70f294c20d9ba830701c0ce3515fe6dd7670",
+      "sourceSHA256": "0560b9eab76982eaf3ce9647e041ff785ad770253cadc26183475350d12e1295",
+      "declarations": [
+        {
+          "name": "call",
+          "kind": "function",
+          "line": 10,
+          "endLine": 14,
+          "decoratorLines": []
+        },
+        {
+          "name": "probe",
+          "kind": "function",
+          "line": 23,
+          "endLine": 23,
+          "decoratorLines": []
+        },
+        {
+          "name": "means",
+          "kind": "function",
+          "line": 24,
+          "endLine": 25,
+          "decoratorLines": []
+        }
+      ]
+    },
+    {
+      "path": "tools/hw/adc_sram/interleave_qualify.py",
+      "owner": "FU-TOOLS-HW-ADC-SRAM",
+      "gitBlob": "c91f0833f711e045170a516d45cea7691da5d620",
+      "sourceSHA256": "45343ca89b53925bacda435f627c698b056c89ef3960be16d5760a38aabf5d31",
+      "declarations": [
+        {
+          "name": "call",
+          "kind": "function",
+          "line": 16,
+          "endLine": 21,
+          "decoratorLines": []
+        },
+        {
+          "name": "obj",
+          "kind": "function",
+          "line": 23,
+          "endLine": 23,
+          "decoratorLines": []
+        },
+        {
+          "name": "probe",
+          "kind": "function",
+          "line": 39,
+          "endLine": 39,
+          "decoratorLines": []
+        },
+        {
+          "name": "valid",
+          "kind": "function",
+          "line": 40,
+          "endLine": 42,
+          "decoratorLines": []
+        }
+      ]
+    },
+    {
+      "path": "tools/hw/adc_sram/precision_qualify.py",
+      "owner": "FU-TOOLS-HW-ADC-SRAM",
+      "gitBlob": "83f7a6db8f77354e9cc9e61ac0340280632095f4",
+      "sourceSHA256": "5db602a782153c06ddbac71376d85979efc509b1dec9da38261a14795023d95c",
+      "declarations": [
+        {
+          "name": "call",
+          "kind": "function",
+          "line": 9,
+          "endLine": 14,
+          "decoratorLines": []
+        },
+        {
+          "name": "probe",
+          "kind": "function",
+          "line": 16,
+          "endLine": 18,
+          "decoratorLines": []
+        },
+        {
+          "name": "power",
+          "kind": "function",
+          "line": 20,
+          "endLine": 21,
+          "decoratorLines": []
+        },
+        {
+          "name": "wait_agent",
+          "kind": "function",
+          "line": 23,
+          "endLine": 29,
+          "decoratorLines": []
+        }
+      ]
+    },
+    {
+      "path": "tools/hw/adc_sram/run.py",
+      "owner": "FU-TOOLS-HW-ADC-SRAM",
+      "gitBlob": "7d7b53acb0814f29999510fd4b6aafcd30b735a2",
+      "sourceSHA256": "7c702f22f783235d0b9fcea00f41706961d4b8cdad7eb1ffd73e0ef7796ba841",
+      "declarations": [
+        {
+          "name": "call",
+          "kind": "function",
+          "line": 15,
+          "endLine": 20,
+          "decoratorLines": []
+        },
+        {
+          "name": "obj",
+          "kind": "function",
+          "line": 22,
+          "endLine": 22,
+          "decoratorLines": []
+        }
+      ]
+    },
+    {
+      "path": "tools/hw/adc_sram/triangle_calibrate.py",
+      "owner": "FU-TOOLS-HW-ADC-SRAM",
+      "gitBlob": "69a4985397e983639b8c9c6b4ff1ebcbb52f8859",
+      "sourceSHA256": "e7b5ac94b55c0a8ab84939b14928c10bb11ff1ff24f9188e67d3c6a960e5f61e",
+      "declarations": [
+        {
+          "name": "fit",
+          "kind": "function",
+          "line": 10,
+          "endLine": 34,
+          "decoratorLines": []
+        },
+        {
+          "name": "validate",
+          "kind": "function",
+          "line": 37,
+          "endLine": 48,
+          "decoratorLines": []
+        },
+        {
+          "name": "main",
+          "kind": "function",
+          "line": 51,
+          "endLine": 65,
+          "decoratorLines": []
+        }
+      ]
+    },
+    {
+      "path": "tools/hw/sram_boundary/boundary.py",
+      "owner": "FU-TOOLS-HW-SRAM-BOUNDARY",
+      "gitBlob": "a5ba31e21cafed091911a84f28eb34cb21f493f4",
+      "sourceSHA256": "8cdea0cdcbfcdbda1bf120798c4d3c8bd0f4160788826bff8bea4b7d4cce7f7b",
+      "declarations": [
+        {
+          "name": "Tap",
+          "kind": "class",
+          "line": 27,
+          "endLine": 59,
+          "decoratorLines": []
+        },
+        {
+          "name": "Tap.__init__",
+          "kind": "function",
+          "line": 28,
+          "endLine": 30,
+          "decoratorLines": []
+        },
+        {
+          "name": "Tap.cmd",
+          "kind": "function",
+          "line": 32,
+          "endLine": 46,
+          "decoratorLines": []
+        },
+        {
+          "name": "Tap.ir",
+          "kind": "function",
+          "line": 48,
+          "endLine": 50,
+          "decoratorLines": []
+        },
+        {
+          "name": "Tap.dr",
+          "kind": "function",
+          "line": 52,
+          "endLine": 55,
+          "decoratorLines": []
+        },
+        {
+          "name": "Tap.sample",
+          "kind": "function",
+          "line": 57,
+          "endLine": 59,
+          "decoratorLines": []
+        },
+        {
+          "name": "setbit",
+          "kind": "function",
+          "line": 62,
+          "endLine": 63,
+          "decoratorLines": []
+        },
+        {
+          "name": "cy_vector",
+          "kind": "function",
+          "line": 66,
+          "endLine": 76,
+          "decoratorLines": []
+        },
+        {
+          "name": "mv_vector",
+          "kind": "function",
+          "line": 79,
+          "endLine": 84,
+          "decoratorLines": []
+        },
+        {
+          "name": "dq_word",
+          "kind": "function",
+          "line": 87,
+          "endLine": 88,
+          "decoratorLines": []
+        },
+        {
+          "name": "main",
+          "kind": "function",
+          "line": 91,
+          "endLine": 136,
+          "decoratorLines": []
+        }
+      ]
+    },
+    {
+      "path": "tools/hw/sram_boundary/control_links.py",
+      "owner": "FU-TOOLS-HW-SRAM-BOUNDARY",
+      "gitBlob": "bcb80e15bc46e278bc9f03c79c7ff24427089905",
+      "sourceSHA256": "d93ed1d894c66818aca084fd775f29a6cbc1ad264479941e988af14d81a7e62d",
+      "declarations": []
+    },
+    {
+      "path": "tools/hw/sram_boundary/counter_controls.py",
+      "owner": "FU-TOOLS-HW-SRAM-BOUNDARY",
+      "gitBlob": "d0299de97353db2cc74e102f311a5c5049abb357",
+      "sourceSHA256": "6e27eb94525dadff3a574af1944719f3d1f6c294d4de14637c53efc518a44e4c",
+      "declarations": [
+        {
+          "name": "read",
+          "kind": "function",
+          "line": 7,
+          "endLine": 10,
+          "decoratorLines": []
+        },
+        {
+          "name": "level",
+          "kind": "function",
+          "line": 11,
+          "endLine": 11,
+          "decoratorLines": []
+        }
+      ]
+    },
+    {
+      "path": "tools/hw/sram_boundary/counter_read.py",
+      "owner": "FU-TOOLS-HW-SRAM-BOUNDARY",
+      "gitBlob": "460c48bccc46d94256cf50e35efebf0d6693f608",
+      "sourceSHA256": "d2b2f31b610a1525740dc0937388915f4782aa91285d00a43dbb824c2c94b1b1",
+      "declarations": [
+        {
+          "name": "level",
+          "kind": "function",
+          "line": 7,
+          "endLine": 7,
+          "decoratorLines": []
+        },
+        {
+          "name": "count",
+          "kind": "function",
+          "line": 8,
+          "endLine": 10,
+          "decoratorLines": []
+        }
+      ]
+    },
+    {
+      "path": "tools/hw/sram_boundary/k2_counter.py",
+      "owner": "FU-TOOLS-HW-SRAM-BOUNDARY",
+      "gitBlob": "b1072972614b1956bc0be83c38e3066573bdbea3",
+      "sourceSHA256": "1f763d130964970019e8198187bbd54e6be4f3c6fb5695bef18fd352cb708f07",
+      "declarations": [
+        {
+          "name": "count",
+          "kind": "function",
+          "line": 8,
+          "endLine": 8,
+          "decoratorLines": []
+        },
+        {
+          "name": "capture",
+          "kind": "function",
+          "line": 9,
+          "endLine": 12,
+          "decoratorLines": []
+        }
+      ]
+    },
+    {
+      "path": "tools/hw/sram_boundary/maxv_read_screen.py",
+      "owner": "FU-TOOLS-HW-SRAM-BOUNDARY",
+      "gitBlob": "c7a91877eaa6ef491512e44ee4ad79134494726e",
+      "sourceSHA256": "eb9562eacc59052f47d26b2dc7f3b3fdecd42178cdf201e20d7df74ac6bd8b68",
+      "declarations": []
+    },
+    {
+      "path": "tools/hw/sram_boundary/read_screen.py",
+      "owner": "FU-TOOLS-HW-SRAM-BOUNDARY",
+      "gitBlob": "afca40ae279b25bfc63c58c9f1aae44d853f6261",
+      "sourceSHA256": "6481a576b76d64941a5e92cbc0d802f7c8c6b996b3dbf6e5b9265d6ac142aedb",
+      "declarations": []
+    },
+    {
+      "path": "tools/hw/sram_boundary/repeat_read.py",
+      "owner": "FU-TOOLS-HW-SRAM-BOUNDARY",
+      "gitBlob": "d2afb51e51fc0dc37167a4296bd6d99cb26ad80d",
+      "sourceSHA256": "d567365b2639dd0f95c81b80985aa894a9f89d22f5b9e83b37f953340b995ae5",
+      "declarations": [
+        {
+          "name": "level",
+          "kind": "function",
+          "line": 7,
+          "endLine": 7,
+          "decoratorLines": []
+        },
+        {
+          "name": "count",
+          "kind": "function",
+          "line": 8,
+          "endLine": 10,
+          "decoratorLines": []
+        }
+      ]
+    },
+    {
+      "path": "tools/hw/sram_boundary/write_read.py",
+      "owner": "FU-TOOLS-HW-SRAM-BOUNDARY",
+      "gitBlob": "980ec1b93926315b0e3e82bb0fc84c6fc3a8d034",
+      "sourceSHA256": "965d7e234d234c9480afa06b4e0ffc00cccd305dcf18da5f37a8ce186aa5e530",
+      "declarations": [
+        {
+          "name": "level",
+          "kind": "function",
+          "line": 7,
+          "endLine": 7,
+          "decoratorLines": []
+        },
+        {
+          "name": "count",
+          "kind": "function",
+          "line": 8,
+          "endLine": 10,
+          "decoratorLines": []
+        },
+        {
+          "name": "reset",
+          "kind": "function",
+          "line": 11,
+          "endLine": 17,
+          "decoratorLines": []
+        },
+        {
+          "name": "clock",
+          "kind": "function",
+          "line": 18,
+          "endLine": 20,
+          "decoratorLines": []
+        }
+      ]
+    },
+    {
+      "path": "tools/hw/sram_speed/run.py",
+      "owner": "FU-TOOLS-HW-SRAM-SPEED",
+      "gitBlob": "cbe8d7c4a5acea16c8e6814bfda27237a72d318f",
+      "sourceSHA256": "cfb126cb2eebbd8d9a148d335d01548fe64d8cc309442e65226326ca898b9c08",
+      "declarations": [
+        {
+          "name": "call",
+          "kind": "function",
+          "line": 14,
+          "endLine": 19,
+          "decoratorLines": []
+        },
+        {
+          "name": "obj",
+          "kind": "function",
+          "line": 21,
+          "endLine": 21,
+          "decoratorLines": []
+        }
+      ]
+    },
+    {
+      "path": "tools/hw/sramburst/pulse_sweep.py",
+      "owner": "FU-TOOLS-HW-SRAMBURST",
+      "gitBlob": "4f84533013f0276caa9161bfeed6d1536380f494",
+      "sourceSHA256": "e0417272c08c6d5c73cde37b66423f432235dab97b4fcc1555c96e883dcf6ea5",
+      "declarations": [
+        {
+          "name": "run",
+          "kind": "function",
+          "line": 15,
+          "endLine": 18,
+          "decoratorLines": []
+        }
+      ]
+    }
+  ],
+  "counts": {
+    "files": 25,
+    "functions": 50,
+    "classes": 1
+  },
+  "scope": "All nonhistorical .py files in the pinned inventory, parsed without execution. Includes nested functions, methods, async functions and classes; excludes lambdas and top-level effects. This does not claim reviewed behavior, native requirement links or device qualification."
+}

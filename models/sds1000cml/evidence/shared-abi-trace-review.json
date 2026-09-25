@@ -1,0 +1,55 @@
+{
+  "requirement": "REQ-SDS-031",
+  "status": "linked-with-failing-consistency-check",
+  "sourceSHA256": {
+    "codegen/ifacedef/default.go": "1d5438f5d45b3386fe6e085ff07346032ce09ed29179e28dbbdcdfa8d371117b",
+    "codegen/ifacedef/default_test.go": "0272ddf39657ac6566df28e4ccdac31397dcf5f27aee422f82a3b71ebfc8ced3",
+    "codegen/cmd/ifacegen/main.go": "9d2ee787db347bbdfd6e127f20bb2a8e81a1cc857ab2607ca255b8664ecefbc4",
+    "codegen/cmd/ifacegen/drift_test.go": "e95a41a7a13de7e76654c2552a9aa5dd0d9ac1bdda9466d0d8dae34602022b9f"
+  },
+  "implementation": [
+    {
+      "path": "codegen/ifacedef/default.go",
+      "symbols": [
+        "Default"
+      ],
+      "scope": "One schema factory defines the default image register interface."
+    },
+    {
+      "path": "codegen/cmd/ifacegen/main.go",
+      "symbols": [
+        "Targets",
+        "Drift",
+        "main"
+      ],
+      "scope": "The entry point validates the same schema, Targets renders all four artifacts, and Drift compares temporary renders without writing the checked-in outputs."
+    }
+  ],
+  "verification": [
+    {
+      "path": "codegen/ifacedef/default_test.go",
+      "test": "TestDefaultValidates",
+      "result": "pass",
+      "scope": "The schema passes structural validation."
+    },
+    {
+      "path": "codegen/cmd/ifacegen/drift_test.go",
+      "test": "TestDriftDetectsChange",
+      "result": "pass",
+      "scope": "A clean temporary tree compares equal; a modified/missing generated file is reported without being overwritten."
+    },
+    {
+      "path": "codegen/cmd/ifacegen/drift_test.go",
+      "test": "TestNoDrift",
+      "result": "fail",
+      "scope": "Current checked-in artifacts differ from a fresh schema/RTL-digest render."
+    }
+  ],
+  "testRun": "codegen-test-run.json",
+  "logSHA256": "61e5eee1ba4798f5b455aeff3217a9d963dee8f9f4dcc3b426b4a566d0c731f0",
+  "limits": [
+    "Link completeness is distinct from requirement satisfaction: consistency currently fails.",
+    "SourceDigest hashes exact RTL bytes, including trace comments. The unannotated baseline already had recorded drift; annotations are not used to claim a newly introduced original-source defect.",
+    "No checked-in instrument ABI output was regenerated and no hardware compatibility is asserted."
+  ]
+}

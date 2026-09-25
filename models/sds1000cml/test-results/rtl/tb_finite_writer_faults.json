@@ -1,0 +1,31 @@
+{
+  "source": "fpga/acq_sram/sim/tb_finite_writer_faults.v",
+  "scope": "Original unchanged self-checking benches with ideal clocks and behavioral memory; ADC/precision mocks remain explicit. -DSIM selects behavioral DDR wrappers. The original ADC interleave bench may fail compilation when its vendor dcfifo model is unavailable; compilation failures are retained, not counted as exercised assertions. No fitted timing or physical hardware qualification.",
+  "sourceSHA256": "ca6d5bb1970780bf4e92894921a24503424f0164b086ed11c1536121a04c222b",
+  "reportSHA256": "285ba7d1733fa06cb516eebcdd04b7f445fce14110e66110aa41b7af19bad395",
+  "runs": [
+    "finite_writer_faults"
+  ],
+  "results": [
+    {
+      "requirement": "REQ-SDS-041",
+      "status": "partial",
+      "notes": "1 original digital cases pass; 0 executed cases fail; 0 could not execute because compilation failed. Passing cases provide partial assertion evidence only. Frozen pre-annotation source inputs remain auditable through exact approved comment overlays; no physical qualification is established. See evidence/acquisition-rtl-review-test-run.json."
+    },
+    {
+      "requirement": "REQ-SDS-042",
+      "status": "partial",
+      "notes": "1 original digital cases pass; 0 executed cases fail; 0 could not execute because compilation failed. Passing cases provide partial assertion evidence only. Frozen pre-annotation source inputs remain auditable through exact approved comment overlays; no physical qualification is established. See evidence/acquisition-rtl-review-test-run.json."
+    },
+    {
+      "requirement": "REQ-SDS-057",
+      "status": "partial",
+      "notes": "1 original digital cases pass; 0 executed cases fail; 0 could not execute because compilation failed. Passing cases provide partial assertion evidence only. Frozen pre-annotation source inputs remain auditable through exact approved comment overlays; no physical qualification is established. See evidence/acquisition-rtl-review-test-run.json."
+    },
+    {
+      "requirement": "REQ-SDS-058",
+      "status": "partial",
+      "notes": "1 original digital cases pass; 0 executed cases fail; 0 could not execute because compilation failed. Passing cases provide partial assertion evidence only. Frozen pre-annotation source inputs remain auditable through exact approved comment overlays; no physical qualification is established. See evidence/acquisition-rtl-review-test-run.json."
+    }
+  ]
+}

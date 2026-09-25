@@ -1,0 +1,31 @@
+{
+  "requirement": "REQ-SDS-100",
+  "scope": "Complete two-file client source review; one existing loopback happy-path test. No factory device or takeover qualification.",
+  "sourceSHA256": {
+    "ota/internal/vxi11/vxi11.go": "ce0617e2f40a8723d49c7eb27ad3fafb39fb96e80005296eec93c1a42d4f6d41",
+    "ota/internal/vxi11/vxi11_test.go": "f5a06d769b38df56101bdcf9bd615276ff9c4c0748373fb0a3ad378cb985cd1b"
+  },
+  "tests": [
+    "TestDialSendQuery"
+  ],
+  "testLog": "test-runs/vxi-client.jsonl",
+  "implementation": [
+    "GETPORT resolves core port; create_link retries three times with 500 ms sleeps.",
+    "Send appends newline; Query requests 4 MiB chunks for at most 64 calls.",
+    "RPC validates xid, reply type, accepted status and result status; AUTH_NULL is used.",
+    "Close attempts destroy_link and closes TCP."
+  ],
+  "limits": [
+    "No cumulative fragment/reply allocation bound.",
+    "Verifier-length arithmetic can wrap and lacks overflow-safe bounds; no malformed-reply test covers this.",
+    "Query payload uint32-to-int and slicing lack overflow-safe validation on 32-bit hosts.",
+    "A short device_write result succeeds and returned byte count is ignored.",
+    "64 unterminated read replies yield accumulated data with nil error.",
+    "Any low-three-bit read reason ends Query; interpretation and multi-read interoperability are not covered by the sole test.",
+    "No concurrency lock; use must be serialized.",
+    "Core address formatting uses host:port rather than net.JoinHostPort; IPv6 literals are not correctly bracketed.",
+    "Retries, malformed replies, RPC fragmentation, destroy failure and factory compatibility lack dedicated tests."
+  ],
+  "annotationSupersededBy": "remaining-go-types-source-review.json",
+  "annotationNote": "Historical reviewed source hashes are retained. The later type-comment transition has identical Go tokens; current exact source recovery is recorded in annotation-overlay.json."
+}

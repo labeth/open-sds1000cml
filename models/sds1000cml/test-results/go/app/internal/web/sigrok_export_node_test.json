@@ -1,0 +1,25 @@
+{
+  "source": "app/internal/web/sigrok_export_node_test.go",
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "scope": "Reviewed Go test outcomes; passing assertions contribute partial requirement evidence.",
+  "sourceSHA256": "e12b6e8ec9838a4db801645467173d30979ff2542b4ef7573a00e8ba4a080863",
+  "logs": {
+    "test-runs/export-spectrogram.jsonl": "de5308f52f379ce50304895b4d229921e31f122d3ea678c13fe6eba0d0ed2542"
+  },
+  "tests": [
+    {
+      "name": "TestSigrokExportJS",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-069"
+      ]
+    }
+  ],
+  "results": [
+    {
+      "requirement": "REQ-SDS-069",
+      "status": "partial",
+      "notes": "1 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    }
+  ]
+}

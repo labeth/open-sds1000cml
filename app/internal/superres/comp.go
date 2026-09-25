@@ -13,6 +13,7 @@
 // sums are materialized into named float64 locals so Go's FMA fusion on
 // arm64/ppc64 can't diverge from V8/amd64; loop bounds and evaluation order
 // mirror the JS statement-for-statement.
+// ENGMODEL-OWNER-UNIT: FU-APP-SUPERRES
 package superres
 
 import "math"
@@ -38,6 +39,7 @@ const (
 // SRCOMP_DEFAULT values ({fbw:70e6, order:3, eps:0.06, gmax:6}), exactly like
 // Object.assign({}, SRCOMP_DEFAULT, opts). BudgetDb/BitsGained/Auto are
 // informational (filled by CompAuto).
+// TRLC-LINKS: REQ-SDS-142
 type CompOpts struct {
 	Fbw        float64 // target −3 dB (Hz)
 	Order      int     // super-Gaussian order of the flat-top target
@@ -48,6 +50,7 @@ type CompOpts struct {
 	Auto       bool    // set by CompAuto
 }
 
+// TRLC-LINKS: REQ-SDS-142
 func (o CompOpts) withDefaults() CompOpts {
 	if o.Fbw == 0 {
 		o.Fbw = 70e6
@@ -67,6 +70,7 @@ func (o CompOpts) withDefaults() CompOpts {
 // CompCalH is the measured chain response at |f|, linearly interpolated over
 // the cal table; beyond it, the fitted 2-pole tail matched at the boundary
 // (JS srCompCalH).
+// TRLC-LINKS: REQ-SDS-142
 func CompCalH(f float64) float64 {
 	f = math.Abs(f)
 	last := float64(len(compHCal)-1) * compDF
@@ -97,6 +101,7 @@ func CompCalH(f float64) float64 {
 
 // CompTargetH is the flat-top target response: −3 dB at fbw, order-`order`
 // super-Gaussian (JS srCompTargetH).
+// TRLC-LINKS: REQ-SDS-142
 func CompTargetH(f, fbw float64, order int) float64 {
 	r := math.Abs(f) / fbw
 	return math.Exp(-0.6931471805599453 * math.Pow(r, float64(2*order)))
@@ -104,6 +109,7 @@ func CompTargetH(f, fbw float64, order int) float64 {
 
 // CompGain is the real, zero-phase de-embed gain G(f): Wiener inverse of the
 // cal reshaped to the target, capped at Gmax (JS srCompGain).
+// TRLC-LINKS: REQ-SDS-142
 func CompGain(f float64, o CompOpts) float64 {
 	o = o.withDefaults()
 	hc := CompCalH(f)
@@ -119,12 +125,14 @@ func CompGain(f float64, o CompOpts) float64 {
 }
 
 // CompInfo carries the data-independent filter figures (JS srCompInfo).
+// TRLC-LINKS: REQ-SDS-142
 type CompInfo struct {
 	PeakBoostDb float64 // peak of G(f) in dB
 	RecoveredF3 float64 // −3 dB of the compensated response Hcal·G (Hz)
 }
 
 // CompFigures scans G and Hcal·G on the JS 0..260 MHz / 0.5 MHz grid.
+// TRLC-LINKS: REQ-SDS-142
 func CompFigures(o CompOpts) CompInfo {
 	o = o.withDefaults()
 	var peak, f3, prevDb, prevF float64
@@ -152,6 +160,7 @@ func CompFigures(o CompOpts) CompInfo {
 // reduction as high-frequency boost (JS srCompAuto): budget = bits·6.02·spend
 // dB (min 4), then the HIGHEST recovered bandwidth whose peak boost fits.
 // Ceilings: 0.8×raw Nyquist and a 200 MHz cal-trust cap; floor 40 MHz.
+// TRLC-LINKS: REQ-SDS-142
 func CompAuto(bitsGained, rawNyqHz, spend float64) CompOpts {
 	s := spend
 	if !(s > 0) {
@@ -208,6 +217,7 @@ func CompAuto(bitsGained, rawNyqHz, spend float64) CompOpts {
 
 // compFFT is the radix-2 iterative FFT from superres_comp.js (in place; n must
 // be a power of two; inverse scales by 1/n).
+// TRLC-LINKS: REQ-SDS-142
 func compFFT(re, im []float64, inverse bool) {
 	n := len(re)
 	for i, j := 1, 0; i < n; i++ {
@@ -263,6 +273,7 @@ func compFFT(re, im []float64, inverse bool) {
 
 // compResample circular-linearly resamples src[0..m-1] → length nDst over the
 // SAME time span (JS srCompResample), so bin k always maps to k/T.
+// TRLC-LINKS: REQ-SDS-142
 func compResample(src []float64, m, nDst int) []float64 {
 	dst := make([]float64, nDst)
 	ratio := float64(m) / float64(nDst)
@@ -287,6 +298,7 @@ func compResample(src []float64, m, nDst int) []float64 {
 // held at unity so the vertical offset is preserved; filled samples floor at
 // 0. Returns the input slice untouched when inapplicable (dtFine ≤ 0, fewer
 // than 8 bins, or an all-gap grid) — the same gating as the JS.
+// TRLC-LINKS: REQ-SDS-142
 func Compensate(mean []float32, dtFine float64, o CompOpts) []float32 {
 	o = o.withDefaults()
 	m := len(mean)

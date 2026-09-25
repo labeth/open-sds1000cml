@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-WEB
 // Real-browser e2e for the FFT peak UI, driven by headless Chromium via
 // Playwright. It is launched by fft_browser_test.go against a local httptest
 // server (URL in argv[2]) that serves a synthetic multi-tone frame whose peak
@@ -35,6 +36,7 @@ try { browser = await chromium.launch({ headless: true, args: ["--no-sandbox"] }
 catch (e) { console.log("SKIP: cannot launch chromium:", e.message); process.exit(0); }
 
 let fails = 0;
+// TRLC-LINKS: REQ-SDS-180
 const ok = (c, m) => { console.log((c ? "ok  - " : "FAIL- ") + m); if (!c) fails++; };
 
 try {
@@ -63,10 +65,13 @@ try {
   ok(await page.locator("#fftBody1 .pk").count() === full, `raising top-N restores the full list (${full})`);
 
   await page.evaluate(() => clearPeaksCh(1));
+  // TRLC-LINKS: REQ-SDS-180
   const near = (a, b) => Math.abs(a - b) < 800;
+  // TRLC-LINKS: REQ-SDS-180
   const selFn = () => page.evaluate(() => [...fftCh[1].selIdx].map(i => Math.round(fftCh[1].peaks[i].freq)).sort((a, b) => a - b));
   // Toggle the peak nearest a frequency by finding+clicking its row in ONE
   // in-page step (no index race with the background poll re-rendering the list).
+  // TRLC-LINKS: REQ-SDS-180
   const toggle = f => page.evaluate(freq => {
     let best = null, bd = Infinity;
     for (const r of document.querySelectorAll("#fftBody1 .pk")) {

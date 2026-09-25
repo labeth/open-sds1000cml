@@ -1,7 +1,9 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
 package engine
 
 import "testing"
 
+// TRLC-LINKS: REQ-SDS-008, REQ-SDS-009
 func TestMemDepth(t *testing.T) {
 	// The configurable decimated drain depth (fps↔data): a deeper setting drains
 	// more samples per frame. Clamped to [decimWin, maxRecordCols] — the
@@ -24,6 +26,7 @@ func TestMemDepth(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-009, REQ-SDS-011
 func TestSingleForcesFullDepth(t *testing.T) {
 	// A SINGLE capture ignores the shallow mem-depth setting and drains the FULL
 	// record — the one frame you keep carries everything to zoom into. The
@@ -43,6 +46,7 @@ func TestSingleForcesFullDepth(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-009
 func TestStreamMode(t *testing.T) {
 	// Stitched streaming: SetStreamMode forces the deep record + un-paces, and
 	// stitchFrame publishes EVERY window raw + edge-agnostic with continuity
@@ -76,6 +80,7 @@ func TestStreamMode(t *testing.T) {
 	e.SetStreamMode(false)
 }
 
+// TRLC-LINKS: REQ-SDS-008, REQ-SDS-011
 func TestSingleShotStopsAfterCapture(t *testing.T) {
 	// SINGLE arms NORM and must STOP after the first triggered publish.
 	fb := newFakeBus() // doneOnGo=true → NORM triggers immediately

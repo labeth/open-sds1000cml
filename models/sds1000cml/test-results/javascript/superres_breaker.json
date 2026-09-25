@@ -1,0 +1,35 @@
+{
+  "source": "app/internal/web/superres_breaker.cjs",
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "sourceSHA256": "402e0616ddcd114ba15c5b778f2855b87374fb8c2c8057af3cf03a85cee3d01e",
+  "scope": "Original frozen Node execution with approved comment-only source overlay.",
+  "logs": {
+    "evidence/test-runs/reviewed-superres_breaker.cjs.log": "ac1c686cf6b94eeb5c5bb0aee79b838cb92e465b2aa52e8ddd419b34f4c1dcd3"
+  },
+  "tests": [
+    {
+      "name": "superres_breaker.cjs",
+      "result": "fail",
+      "requirements": [
+        "REQ-SDS-019",
+        "REQ-SDS-181"
+      ]
+    }
+  ],
+  "results": [
+    {
+      "requirement": "REQ-SDS-019",
+      "status": "fail",
+      "notes": "Original 200-case adversarial corpus: 194 pass, six fail (five mean-fidelity errors and one false acceptance). No failures waived."
+    },
+    {
+      "requirement": "REQ-SDS-181",
+      "status": "fail",
+      "notes": "Original 200-case adversarial corpus: 194 pass, six fail (five mean-fidelity errors and one false acceptance). No failures waived."
+    }
+  ],
+  "discoveryAlias": "tests/superres_breaker.cjs",
+  "caseResults": {
+    "evidence/test-runs/reviewed-superres-breaker-results.json": "0750079e59c097ce2de2e2569daf1ed70d2569e529e9dc78b35044c912eb3a58"
+  }
+}

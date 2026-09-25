@@ -1,0 +1,61 @@
+{
+  "ripple": {
+    "vdiv": 1,
+    "frames": 20,
+    "beforeRMS": [
+      5.090915880443129,
+      1.4750109101375781
+    ],
+    "afterRMS": [
+      0.6872487469827367,
+      0.7627487854128449
+    ],
+    "maxPhaseTimingSpreadNs": [
+      0.39319453857429776,
+      0.4387284097642768
+    ],
+    "limitation": "Gain and aperture residual remain; only measured 1 and 2 V/div ranges qualified."
+  },
+  "controls": {
+    "stoppedTimebase": "100 ns/div to 1 us/div; all 2097152 channel samples identical; sample pitch unchanged",
+    "single": "captured and self-stopped at requested 100 ns/div",
+    "ets": "disabled in SRAM mode",
+    "zeroOffset": "slider 0 and readout 0.00 V verified"
+  },
+  "triggers": [
+    {
+      "channel": 2,
+      "rising": true,
+      "captures": 300,
+      "wrongSlope": 0
+    },
+    {
+      "channel": 2,
+      "rising": false,
+      "captures": 300,
+      "wrongSlope": 0
+    },
+    {
+      "channel": 1,
+      "rising": true,
+      "captures": 300,
+      "wrongSlope": 0
+    },
+    {
+      "channel": 1,
+      "rising": false,
+      "captures": 300,
+      "wrongSlope": 0
+    }
+  ],
+  "final": {
+    "running": true,
+    "source": 1,
+    "rising": true,
+    "tdiv": 1e-7,
+    "vdiv1": 1,
+    "vdiv2": 1,
+    "busErrors": 0,
+    "wedged": false
+  }
+}

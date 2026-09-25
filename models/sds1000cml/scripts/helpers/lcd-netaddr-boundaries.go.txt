@@ -1,0 +1,29 @@
+package lcd
+
+import (
+ "errors"
+ "net"
+ "testing"
+ "time"
+)
+
+// REQ-SDS-021 helper preconditions and cache behavior, with no network access.
+func TestModelLCDNetaddrBoundaries(t *testing.T) {
+ t.Run("typed_nil_addresses_panic",func(t *testing.T){
+  if PickDeviceURL([]net.Addr{nil})!="" {t.Fatal("nil interface should be ignored")}
+  for _,addr:=range []net.Addr{(*net.IPNet)(nil),(*net.IPAddr)(nil)} {
+   func(){defer func(){if recover()==nil {t.Error("expected typed-nil dereference")}}();PickDeviceURL([]net.Addr{addr})}()
+  }
+ })
+ t.Run("enumeration_failure_cached_until_expiry",func(t *testing.T){
+  urlMu.Lock();oldAt,oldVal,oldFn:=urlAt,urlVal,interfaceAddrs;urlAt,urlVal=time.Time{},"";urlMu.Unlock()
+  defer func(){urlMu.Lock();urlAt,urlVal,interfaceAddrs=oldAt,oldVal,oldFn;urlMu.Unlock()}()
+  calls:=0;healthy:=false
+  interfaceAddrs=func()([]net.Addr,error){calls++;if !healthy {return nil,errors.New("injected enumeration failure")};return []net.Addr{&net.IPAddr{IP:net.ParseIP("192.0.2.1")}},nil}
+  if DeviceURL()!="" || calls!=1 {t.Fatal("initial failure")}
+  healthy=true;urlMu.Lock();urlAt=time.Now().Add(time.Hour);urlMu.Unlock()
+  if DeviceURL()!="" || calls!=1 {t.Fatal("expected cached failure")}
+  urlMu.Lock();urlAt=time.Now().Add(-urlRefresh-time.Second);urlMu.Unlock()
+  if DeviceURL()!="http://192.0.2.1:8080" || calls!=2 {t.Fatal("expiry did not discover recovered enumeration")}
+ })
+}

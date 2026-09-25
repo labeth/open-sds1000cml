@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-SUPERRES
 package superres
 
 import "math"
@@ -5,6 +6,7 @@ import "math"
 // buildTemplate isolates the reference's distinguishing content — the active
 // (non-flat) region after the trigger transition — as a zero-mean template. See
 // srBuildTemplate in superres.js; general-purpose (burst, UART byte, glitch…).
+// TRLC-LINKS: REQ-SDS-141
 func buildTemplate(ref []float32, n int, edgeX float64, valid int) *template {
 	hi0 := n
 	if valid > 0 && valid <= n {
@@ -96,6 +98,7 @@ func buildTemplate(ref []float32, n int, edgeX float64, valid int) *template {
 	return &template{data: data, lo: lo, hi: hi, L: L, norm: norm}
 }
 
+// TRLC-LINKS: REQ-SDS-141
 type matchResult struct {
 	shift float64
 	score float64
@@ -104,6 +107,7 @@ type matchResult struct {
 
 // matchLocate slides the template over the frame within base±R (the trigger-
 // predicted position ± translation budget) and returns the best sub-window match.
+// TRLC-LINKS: REQ-SDS-141
 func (st *Stack) matchLocate(sig []uint8, base, R int) (matchResult, bool) {
 	t := st.tpl
 	if t == nil {

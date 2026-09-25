@@ -100,7 +100,11 @@ Writes:
 - 2/3: prehistory low/high; 4/5: posthistory low/high (20-bit counts).
 - 6: configuration: bit0 ADC instead of ramp; bits3:1 pair index 0..4;
   bit4 normal instead of auto; bit5 falling; bit6 trigger CH2 instead of CH1.
-- 7: trigger code; 8/9: transport payload count low/high.
+- 7: bits7:0 trigger code; bits15:8 interleaved edge re-arm hysteresis in ADC codes
+  (zero selects the four-code default). Rising edges re-arm below the lower band,
+  falling edges above the upper band; both fire at the requested trigger code.
+  Earlier images ignored the upper byte.
+- 8/9: transport payload count low/high.
 - 16: buffer index 0..511.
 
 Reads:

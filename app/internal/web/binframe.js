@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-WEB-BINFRAME
 "use strict";
 // binframe.js — decoder for the /api/frame.bin binary transport (layout doc
 // in web.go next to encodeBinFrame). Produces the SAME frame object shape as
@@ -15,6 +16,7 @@
 const BIN_MAGIC = 0xf5;
 const BIN_FLAG_RAW = 0x10;
 
+// TRLC-LINKS: REQ-SDS-023
 function decodeBinFrame(buf) {
   const u8 = new Uint8Array(buf);
   if (u8.length < 8 || u8[0] !== BIN_MAGIC) return null;
@@ -37,6 +39,7 @@ function decodeBinFrame(buf) {
   // the layout must not switch to the 4-segment env decode).
   if (f.is_env && !(flags & BIN_FLAG_RAW)) {
     if (pay.length !== 4 * cols) return null;
+    // TRLC-LINKS: REQ-SDS-023
     const seg = (i) => {
       const out = new Int16Array(cols);
       out.set(pay.subarray(i * cols, (i + 1) * cols)); // u8 -> i16 element-wise
@@ -49,6 +52,7 @@ function decodeBinFrame(buf) {
   if (flags & 0x20) {
     if (f.fraction_bits !== 8 || pay.length !== 4 * body || f.is_env) return null;
     const view = new DataView(pay.buffer, pay.byteOffset, pay.byteLength);
+    // TRLC-LINKS: REQ-SDS-023
     const chan = (ch) => {
       const out = new Float32Array(cols);
       if (head || tail) out.fill(-1);
@@ -58,6 +62,7 @@ function decodeBinFrame(buf) {
     f.c1=chan(0); f.c2=chan(1); return f;
   }
   if (pay.length !== 2 * body) return null;
+  // TRLC-LINKS: REQ-SDS-023
   const chan = (off) => {
     const out = new Int16Array(cols);
     if (head || tail) out.fill(-1); // margins; body overwrites the middle

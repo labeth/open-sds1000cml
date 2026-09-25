@@ -1,0 +1,63 @@
+{
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "owner": "FU-FPGA-QUARTUS",
+  "status": "integrated",
+  "completeReads": [
+    "fpga/internal/quartus/quartus.go",
+    "fpga/internal/quartus/quartus_test.go",
+    "fpga/internal/quartus/report.go"
+  ],
+  "reviewedGoLines": 1554,
+  "sourceSHA256": {
+    "fpga/internal/quartus/quartus.go": "1bbf63561326ae6c330a9c873dc8fbc97202ac2c415808640110d09d3b3575bb",
+    "fpga/internal/quartus/quartus_test.go": "1d63e8b83d1242a31acd9cb98c0f1e275d937c8f67e6c4aa61a3ffd7b58ead32",
+    "fpga/internal/quartus/report.go": "19e43acbfa639661777dbbec650a59485b76423901e67f0c989f037baf285118"
+  },
+  "uniqueReviewedTests": [
+    "TestParseMemAvailableMB",
+    "TestQSFPinsAndGlobals",
+    "TestParseFitReportOK",
+    "TestParseFitReportUnassigned",
+    "TestParseFitReportUnused",
+    "TestParseFitReportBallMissingFromTable",
+    "TestParseFitReportNoPinTable",
+    "TestParseSTAReport",
+    "TestRealDefaultSTAReport",
+    "TestRunHappyPath",
+    "TestRunReportsDefects",
+    "TestRunNoSTATables",
+    "TestRunWrongRBFSize",
+    "TestRunToolFailure",
+    "TestRunMemoryGate",
+    "TestRunLockHeld",
+    "TestRunStaleQSF",
+    "TestRunMissingSDC",
+    "TestRunBasenameCollision",
+    "TestRunMissingQSF",
+    "TestConfigRequired",
+    "TestRealReports"
+  ],
+  "findings": [
+    "Config defaults to QUARTUS_ROOTDIR or the pinned local Quartus path; no tool version probe enforces 21.1. Only nonempty FPGADir and Design are required. OutDir and Design are trusted caller paths, not sandboxed or validated as descendants.",
+    "AcquireLock uses nonblocking exclusive flock on a configurable file. Zero wait tries once; positive waits poll every500ms and can overshoot the requested deadline. Context cancellation is checked only after contention; an uncontended canceled context can acquire. Diagnostic truncate/seek/write errors are ignored. Release is nil-safe but not synchronized for concurrent callers.",
+    "The default lock serializes cooperating callers using the same path; a different LockPath, foreign tool invocation or removed/replaced lock file is outside that guarantee. The driver does not impose a machine-wide exclusion on arbitrary Quartus processes.",
+    "Memory gating reads MemAvailable once after acquiring the lock. Values truncate kB/1024; units are not validated. Missing/unreadable/malformed fields yield-1 and explicitly bypass the gate. Zero MinFreeMB selects3072; negative disables. No continuous resource reservation or monitoring follows.",
+    "Run reads QSF before locking, then stage later copies the file; concurrent edits can make the validated text differ from the staged QSF. No source snapshot/hash binds all staging inputs atomically.",
+    "Stage removes the entire configured OutDir before validating input completeness, then copies flat common/*.v and design/*.v,*.vh,*.sdc,*.qsf. It ignores glob errors and rejects duplicate basenames; nested files, common headers and SystemVerilog are not included. Failure may leave partial staging.",
+    "QSF VERILOG_FILE membership must equal staged .v membership, but duplicate entries are accepted and retained in returned order. SDC_FILE uses the first matching assignment and only checks its name among all copied basenames, not SDC content, constraints, file extension or coverage. TOP_LEVEL_ENTITY need only be nonempty, not resolve to a module.",
+    "QSF parsing is a line-oriented subset, not a Tcl interpreter: literal single-space -name matching, simple quote trimming, no substitutions/continuations/inline comment interpretation. Duplicate ball assignments overwrite earlier values; first global is used and repeated globals preserve order. Scanner errors/oversize lines are ignored.",
+    "Run executes map, fit, sta, asm and cpf sequentially using CommandContext, logging combined output per tool. CPF requests bitstream_compression=off and the output must be368011bytes. Size alone does not establish bitstream contents, device identity or load safety. No programmer/load command is used.",
+    "Tool failure returns partial stages and the last25 log lines, though the entire log is read into memory first. Context cancellation targets the direct child rather than explicitly managing a process group. Log close/progress writer errors are ignored; no global runtime timeout is added by Run.",
+    "Report read failure returns a partial Result with error. Report-level pin/timing defects are returned with nil Run error; callers must invoke Defects and enforce their own policy. Warning strings are informational and are not automatically Defects.",
+    "Fitter parsing recognizes selected semicolon tables, retaining the first duplicate title. Summary counters remain strings. QSF balls are checked against exact port names or slash-separated dual-purpose usage; absent pin table is a defect only when QSF pins are nonempty. A malformed/empty pin map can therefore suppress this coverage check.",
+    "Pin problems derive from I/O warning rows, QSF-to-package-table mismatches and selected message patterns; deduplication uses formatted full problem text, so table and warning descriptions of one issue can both remain. Only a fixed warning-code allowlist is surfaced; this is not complete Quartus diagnostic interpretation.",
+    "STA parsing accepts only bordered Model Setup Summary tables and reduces minimum parsed slack per clock across them. Tables increments even with no valid clock/slack rows. ParseFloat permits NaN and infinity; NaN is not negative, so Failing does not flag it. Equal minima retain first corner. Hold/recovery/removal/pulse-width/unconstrained-path checks are outside the parser.",
+    "Defects flags zero setup tables or negative setup slacks, but does not require expected clock names, a minimum clock count, finite slack, three corners, complete constraints or absence of other critical warnings. A recognized empty setup table can yield no timing defect. Host parser agreement is not full hardware timing closure.",
+    "Original tests build synthetic reports and temporary shell-script tools, asserting flow order, cwd, staging, bitstream size, selected failures, lock release/contention and memory-floor behavior. Shell helpers use head/cp/touch/mkdir, not installed Quartus. Tests do not synthesize RTL or program hardware.",
+    "Two optional tests read existing current/default or historical reference reports and skip when unavailable. Historical owned-fpga fixture expectations are not proof for this branch; any consumed reports require independent input hashes. The default report test checks three tables, no negative slack and clk presence, not complete timing closure.",
+    "Existing suite does not directly exercise cancellation, unreadable-memory bypass during Run, concurrent source changes, malicious/overlapping OutDir, duplicate QSF entries, malformed scanner input, nonfinite slack, empty recognized timing tables or broad filesystem/log failures. No extra production behavior or fault-injection test was introduced by this review."
+  ],
+  "scope": "Complete three-file FPGA Quartus driver package; fake-tool host tests and optional existing report reads only. No synthesis, fitting, programming, device operation or physical qualification.",
+  "execution": "quartus-review-test-run.json",
+  "executionSupersededBy": "quartus-test-run.json"
+}

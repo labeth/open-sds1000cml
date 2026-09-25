@@ -1,0 +1,25 @@
+{
+  "source": "app/internal/web/peaks_node_test.go",
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "scope": "Reviewed Go test outcomes; passing assertions contribute partial requirement evidence.",
+  "sourceSHA256": "3be3107f5102b264fe3c7bb6d9ed133c5a3a351729bd7e2285b4d4023c8afee9",
+  "logs": {
+    "test-runs/browser-pure.jsonl": "8b12e9f6782e3cfff22fb1b16bd9e00a7c09183e5c0ebfd7fb81e2f04a394f44"
+  },
+  "tests": [
+    {
+      "name": "TestPeaksJS",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-070"
+      ]
+    }
+  ],
+  "results": [
+    {
+      "requirement": "REQ-SDS-070",
+      "status": "partial",
+      "notes": "1 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    }
+  ]
+}

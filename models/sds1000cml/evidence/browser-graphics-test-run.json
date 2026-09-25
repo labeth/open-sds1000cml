@@ -1,0 +1,76 @@
+{
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "sourceSHA256": {
+    "app/internal/web/app_gl.js": "adb4a70ba80855c1abe506cc1cdfb1a84486284fa74649f5ccc54261eece1ad0",
+    "app/internal/web/app_geom.js": "b4dc43513ada665b830720d204e530aafa4df7d9f05b703128b8341cf8dad86c",
+    "app/internal/web/app_canvas.js": "069b4eccc2ce210cf16781ab9d281e68dcbd3cf35ff48bebf131bd7484f1db36",
+    "app/internal/web/app_nav.js": "0d8bf6c679c282d4b1a8b060adca12da73567674cd20fb22a4004ac9822822a9"
+  },
+  "helperSHA256": "8418ec6624ebabcd53c7f165069a0796e310d199e42468b859320373975d5288",
+  "runnerSHA256": "06099e6e82c071744a16f9b5ac4b3785d75161ee3c52d837e95a453f6234360a",
+  "nodeVersion": "v22.20.0",
+  "result": "pass",
+  "cases": [
+    {
+      "name": "two rectangles batch as twelve triangle vertices",
+      "result": "pass"
+    },
+    {
+      "name": "translation is applied to uploaded vertex positions",
+      "result": "pass"
+    },
+    {
+      "name": "scissor changes flush pending geometry and flip the Y origin",
+      "result": "pass"
+    },
+    {
+      "name": "texture changes preserve solid-image-solid paint order",
+      "result": "pass"
+    },
+    {
+      "name": "lost context discards queued geometry; restored context schedules redraw",
+      "result": "pass"
+    },
+    {
+      "name": "non-ASCII glyph uses question-mark atlas coordinates",
+      "result": "pass"
+    },
+    {
+      "name": "facade save/restore retains alpha, style and dash values",
+      "result": "pass"
+    },
+    {
+      "name": "convex quad fan emits two triangles",
+      "result": "pass"
+    },
+    {
+      "name": "column and viewport fraction mapping are inverse across zoom",
+      "result": "pass"
+    },
+    {
+      "name": "live deep home window preserves edge location beyond record boundary",
+      "result": "pass"
+    },
+    {
+      "name": "stopped deep home window clamps to the record",
+      "result": "pass"
+    },
+    {
+      "name": "envelope home window uses full record",
+      "result": "pass"
+    },
+    {
+      "name": "gate coordinates follow the current edge anchor",
+      "result": "pass"
+    },
+    {
+      "name": "navigator pointer fraction clamps outside either edge",
+      "result": "pass"
+    },
+    {
+      "name": "acquisition signature ignores channel-two-only length changes",
+      "result": "pass"
+    }
+  ],
+  "scope": "Original renderer command construction with stub WebGL and raster atlas; original geometry functions in a VM. No shader execution, GPU rasterization, real DOM events or device commands."
+}

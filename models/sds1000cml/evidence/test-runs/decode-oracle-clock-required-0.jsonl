@@ -1,0 +1,14 @@
+{"Time":"2026-09-23T08:27:27.203403374+02:00","Action":"start","Package":"open-sds/app/internal/decode"}
+{"Time":"2026-09-23T08:27:27.214359514+02:00","Action":"run","Package":"open-sds/app/internal/decode","Test":"TestOracleSPI"}
+{"Time":"2026-09-23T08:27:27.214376702+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestOracleSPI","Output":"=== RUN   TestOracleSPI\n"}
+{"Time":"2026-09-23T08:27:27.214568721+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestOracleSPI","Output":"    oracle_spi_test.go:82: sigrok-cli not installed; skipping oracle cross-check\n"}
+{"Time":"2026-09-23T08:27:27.214614406+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestOracleSPI","Output":"--- SKIP: TestOracleSPI (0.00s)\n"}
+{"Time":"2026-09-23T08:27:27.214646089+02:00","Action":"skip","Package":"open-sds/app/internal/decode","Test":"TestOracleSPI","Elapsed":0}
+{"Time":"2026-09-23T08:27:27.214683891+02:00","Action":"run","Package":"open-sds/app/internal/decode","Test":"TestOracleUART"}
+{"Time":"2026-09-23T08:27:27.214689278+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestOracleUART","Output":"=== RUN   TestOracleUART\n"}
+{"Time":"2026-09-23T08:27:27.214926812+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestOracleUART","Output":"    oracle_uart_test.go:68: sigrok-cli not installed; skipping oracle cross-check\n"}
+{"Time":"2026-09-23T08:27:27.214938361+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestOracleUART","Output":"--- SKIP: TestOracleUART (0.00s)\n"}
+{"Time":"2026-09-23T08:27:27.21495097+02:00","Action":"skip","Package":"open-sds/app/internal/decode","Test":"TestOracleUART","Elapsed":0}
+{"Time":"2026-09-23T08:27:27.21505687+02:00","Action":"output","Package":"open-sds/app/internal/decode","Output":"PASS\n"}
+{"Time":"2026-09-23T08:27:28.216513395+02:00","Action":"output","Package":"open-sds/app/internal/decode","Output":"ok  \topen-sds/app/internal/decode\t1.013s\n"}
+{"Time":"2026-09-23T08:27:28.216542652+02:00","Action":"pass","Package":"open-sds/app/internal/decode","Elapsed":1.013}

@@ -1,0 +1,195 @@
+{
+  "phase": "basic",
+  "base": "http://192.168.1.209:8080",
+  "results": [
+    {
+      "name": "latest build and panel snapshot",
+      "result": "pass"
+    },
+    {
+      "name": "AUTO starts; locks other inputs; second AUTO cancels",
+      "result": "pass"
+    },
+    {
+      "name": "AUTO completes on live input",
+      "result": "pass"
+    },
+    {
+      "name": "five-megahertz-before-controls",
+      "result": "pass"
+    },
+    {
+      "name": "RUN/STOP toggles both ways",
+      "result": "pass"
+    },
+    {
+      "name": "SINGLE captures and stops",
+      "result": "pass"
+    },
+    {
+      "name": "ch1 toggles display",
+      "result": "pass"
+    },
+    {
+      "name": "ch2 toggles display",
+      "result": "pass"
+    },
+    {
+      "name": "measure toggles display",
+      "result": "pass"
+    },
+    {
+      "name": "MATH cycles all five modes",
+      "result": "pass"
+    },
+    {
+      "name": "V/DIV pushes select trigger source",
+      "result": "pass"
+    },
+    {
+      "name": "TRIGGER LEVEL push reverses edge",
+      "result": "pass"
+    },
+    {
+      "name": "trigmenu opens menu",
+      "result": "pass"
+    },
+    {
+      "name": "acquire opens menu",
+      "result": "pass"
+    },
+    {
+      "name": "display opens menu",
+      "result": "pass"
+    },
+    {
+      "name": "horizmenu opens menu",
+      "result": "pass"
+    },
+    {
+      "name": "cursors opens menu",
+      "result": "pass"
+    },
+    {
+      "name": "ref opens menu",
+      "result": "pass"
+    },
+    {
+      "name": "MENU opens main and closes overlay",
+      "result": "pass"
+    },
+    {
+      "name": "tdiv rotation changes and restores",
+      "result": "pass"
+    },
+    {
+      "name": "ch1vdiv rotation changes and restores",
+      "result": "pass"
+    },
+    {
+      "name": "ch2vdiv rotation changes and restores",
+      "result": "pass"
+    },
+    {
+      "name": "ch1pos rotation changes and restores",
+      "result": "pass"
+    },
+    {
+      "name": "ch2pos rotation changes and restores",
+      "result": "pass"
+    },
+    {
+      "name": "triglevel rotation changes and restores",
+      "result": "pass"
+    },
+    {
+      "name": "horizpos rotation changes and restores",
+      "result": "pass"
+    },
+    {
+      "name": "ADJUST edits selected menu setting",
+      "result": "pass"
+    },
+    {
+      "name": "print accepted with no assigned action",
+      "result": "pass"
+    },
+    {
+      "name": "saverecall accepted with no assigned action",
+      "result": "pass"
+    },
+    {
+      "name": "set50 accepted with no assigned action",
+      "result": "pass"
+    },
+    {
+      "name": "defaultsetup accepted with no assigned action",
+      "result": "pass"
+    },
+    {
+      "name": "force accepted with no assigned action",
+      "result": "pass"
+    },
+    {
+      "name": "help accepted with no assigned action",
+      "result": "pass"
+    },
+    {
+      "name": "ch1pospush accepted with no assigned action",
+      "result": "pass"
+    },
+    {
+      "name": "ch2pospush accepted with no assigned action",
+      "result": "pass"
+    },
+    {
+      "name": "tdivpush accepted with no assigned action",
+      "result": "pass"
+    },
+    {
+      "name": "horizpospush accepted with no assigned action",
+      "result": "pass"
+    },
+    {
+      "name": "five-megahertz-after-controls",
+      "result": "pass"
+    }
+  ],
+  "touched": [
+    "auto",
+    "ch1",
+    "runstop",
+    "single",
+    "ch2",
+    "measure",
+    "math",
+    "ch1vdivpush",
+    "ch2vdivpush",
+    "triglvlpush",
+    "trigmenu",
+    "menu",
+    "acquire",
+    "display",
+    "horizmenu",
+    "cursors",
+    "ref",
+    "tdiv",
+    "ch1vdiv",
+    "ch2vdiv",
+    "ch1pos",
+    "ch2pos",
+    "triglevel",
+    "horizpos",
+    "adjust",
+    "print",
+    "saverecall",
+    "set50",
+    "defaultsetup",
+    "force",
+    "help",
+    "ch1pospush",
+    "ch2pospush",
+    "tdivpush",
+    "horizpospush"
+  ]
+}

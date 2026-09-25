@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-SETTINGS
 package settings
 
 import (
@@ -10,6 +11,7 @@ import (
 // Engine is the slice of the engine's staging-setter surface the persisted
 // setup flows through (the same calls web /api/set and the panel make; every
 // setter clamps and stages — nothing here touches the bus).
+// TRLC-LINKS: REQ-SDS-072, REQ-SDS-089
 type Engine interface {
 	Snapshot() engine.Stats
 	SetTdiv(tdivS float64) (engine.Band, bool)
@@ -27,6 +29,7 @@ type Engine interface {
 // Analog is the vertical front-end surface (implemented by *analog.FrontEnd,
 // producer-direct off the GPMC bus). May be nil when SPI is unavailable —
 // vertical setup is then neither collected nor restored.
+// TRLC-LINKS: REQ-SDS-072, REQ-SDS-089
 type Analog interface {
 	Snapshot() (idx [2]int, emitted bool)
 	SetVdiv(ch, idx int) error
@@ -40,6 +43,7 @@ type Analog interface {
 
 // ViewState is the controller-owned slice of the setup: the device decode
 // config and the display view mode.
+// TRLC-LINKS: REQ-SDS-072, REQ-SDS-089
 type ViewState struct {
 	ViewMode int
 	Decode   Decode
@@ -48,6 +52,7 @@ type ViewState struct {
 // Panel is the front-panel controller surface (implemented by
 // *panel.Controller). ApplySettingsView must enforce the same domains the
 // DECODE/DISPLAY menus keep. May be nil.
+// TRLC-LINKS: REQ-SDS-072, REQ-SDS-089
 type Panel interface {
 	SettingsView() ViewState
 	ApplySettingsView(v ViewState)
@@ -57,6 +62,7 @@ type Panel interface {
 // engine stats snapshot, the analog front end's shadows and the controller's
 // view state. Cheap (mutex-guarded copies, zero bus access) — safe to call
 // from the saver's poll goroutine.
+// TRLC-LINKS: REQ-SDS-089
 func Collect(eng Engine, fe Analog, pc Panel) Settings {
 	s := Settings{Version: Version}
 	if eng != nil {
@@ -102,6 +108,7 @@ func Collect(eng Engine, fe Analog, pc Panel) Settings {
 // offset re-anchoring, trigger-map updates) applies. Out-of-domain values are
 // clamped by the setters or skipped with a log line; Apply never panics on a
 // hostile Settings value.
+// TRLC-LINKS: REQ-SDS-072
 func Apply(s Settings, eng Engine, fe Analog, pc Panel, logf func(string, ...any)) {
 	if logf == nil {
 		logf = func(string, ...any) {}
@@ -168,4 +175,5 @@ func Apply(s Settings, eng Engine, fe Analog, pc Panel, logf func(string, ...any
 // finite rejects NaN/±Inf before a value reaches float→hardware-code math
 // (encoding/json cannot produce them, but the saver snapshot could in
 // principle carry one and Apply is also fuzzed directly).
+// TRLC-LINKS: REQ-SDS-072
 func finite(f float64) bool { return !math.IsNaN(f) && !math.IsInf(f, 0) }

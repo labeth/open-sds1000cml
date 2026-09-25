@@ -1,6 +1,8 @@
+// ENGMODEL-OWNER-UNIT: FU-RTL-ACQ-SRAM-INGRESS-STREAM
 // Ready/valid adapter for the banked ingress FIFO. Eight response slots reserve
 // space before each synchronous RAM pop, including all stages of read response latency.
 // This allows one output word per clock and tolerates abrupt sink stalls.
+// TRLC-LINKS: REQ-SDS-046
 module sram_ingress_stream #(parameter WIDTH=32,BANKS=9,ROWS=512)(
  input wire clk,reset,push,input wire [WIDTH-1:0] data_in,
  input wire ready,output wire valid,output wire [WIDTH-1:0] data_out,

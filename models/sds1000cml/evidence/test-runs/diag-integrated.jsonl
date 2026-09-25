@@ -1,0 +1,345 @@
+{"Time":"2026-09-23T11:28:17.792779099+02:00","Action":"start","Package":"open-sds/app/internal/diag"}
+{"Time":"2026-09-23T11:28:17.804506914+02:00","Action":"run","Package":"open-sds/app/internal/diag","Test":"TestResolveNames"}
+{"Time":"2026-09-23T11:28:17.804521841+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestResolveNames","Output":"=== RUN   TestResolveNames\n"}
+{"Time":"2026-09-23T11:28:17.804994772+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestResolveNames","Output":"--- PASS: TestResolveNames (0.00s)\n"}
+{"Time":"2026-09-23T11:28:17.805011822+02:00","Action":"pass","Package":"open-sds/app/internal/diag","Test":"TestResolveNames","Elapsed":0}
+{"Time":"2026-09-23T11:28:17.805057259+02:00","Action":"run","Package":"open-sds/app/internal/diag","Test":"TestRegAndWindowAccess"}
+{"Time":"2026-09-23T11:28:17.805061522+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestRegAndWindowAccess","Output":"=== RUN   TestRegAndWindowAccess\n"}
+{"Time":"2026-09-23T11:28:17.805445956+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestRegAndWindowAccess","Output":"--- PASS: TestRegAndWindowAccess (0.00s)\n"}
+{"Time":"2026-09-23T11:28:17.8054681+02:00","Action":"pass","Package":"open-sds/app/internal/diag","Test":"TestRegAndWindowAccess","Elapsed":0}
+{"Time":"2026-09-23T11:28:17.805500783+02:00","Action":"run","Package":"open-sds/app/internal/diag","Test":"TestIdentityAndStatus"}
+{"Time":"2026-09-23T11:28:17.80550398+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestIdentityAndStatus","Output":"=== RUN   TestIdentityAndStatus\n"}
+{"Time":"2026-09-23T11:28:17.80579418+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestIdentityAndStatus","Output":"--- PASS: TestIdentityAndStatus (0.00s)\n"}
+{"Time":"2026-09-23T11:28:17.805816421+02:00","Action":"pass","Package":"open-sds/app/internal/diag","Test":"TestIdentityAndStatus","Elapsed":0}
+{"Time":"2026-09-23T11:28:17.805865159+02:00","Action":"run","Package":"open-sds/app/internal/diag","Test":"TestCensus"}
+{"Time":"2026-09-23T11:28:17.805870842+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestCensus","Output":"=== RUN   TestCensus\n"}
+{"Time":"2026-09-23T11:28:17.809981017+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestCensus","Output":"--- PASS: TestCensus (0.00s)\n"}
+{"Time":"2026-09-23T11:28:17.809990649+02:00","Action":"pass","Package":"open-sds/app/internal/diag","Test":"TestCensus","Elapsed":0}
+{"Time":"2026-09-23T11:28:17.809995973+02:00","Action":"run","Package":"open-sds/app/internal/diag","Test":"TestSnapshot"}
+{"Time":"2026-09-23T11:28:17.810000481+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestSnapshot","Output":"=== RUN   TestSnapshot\n"}
+{"Time":"2026-09-23T11:28:17.810262091+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestSnapshot","Output":"--- PASS: TestSnapshot (0.00s)\n"}
+{"Time":"2026-09-23T11:28:17.810271898+02:00","Action":"pass","Package":"open-sds/app/internal/diag","Test":"TestSnapshot","Elapsed":0}
+{"Time":"2026-09-23T11:28:17.81027624+02:00","Action":"run","Package":"open-sds/app/internal/diag","Test":"TestBusDrive"}
+{"Time":"2026-09-23T11:28:17.810278859+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestBusDrive","Output":"=== RUN   TestBusDrive\n"}
+{"Time":"2026-09-23T11:28:17.810882817+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestBusDrive","Output":"--- PASS: TestBusDrive (0.00s)\n"}
+{"Time":"2026-09-23T11:28:17.810892909+02:00","Action":"pass","Package":"open-sds/app/internal/diag","Test":"TestBusDrive","Elapsed":0}
+{"Time":"2026-09-23T11:28:17.810898208+02:00","Action":"run","Package":"open-sds/app/internal/diag","Test":"TestVendorSequence"}
+{"Time":"2026-09-23T11:28:17.810902926+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestVendorSequence","Output":"=== RUN   TestVendorSequence\n"}
+{"Time":"2026-09-23T11:28:17.811522681+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestVendorSequence","Output":"--- PASS: TestVendorSequence (0.00s)\n"}
+{"Time":"2026-09-23T11:28:17.811531846+02:00","Action":"pass","Package":"open-sds/app/internal/diag","Test":"TestVendorSequence","Elapsed":0}
+{"Time":"2026-09-23T11:28:17.811540585+02:00","Action":"run","Package":"open-sds/app/internal/diag","Test":"TestE2FollowRates"}
+{"Time":"2026-09-23T11:28:17.811544811+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestE2FollowRates","Output":"=== RUN   TestE2FollowRates\n"}
+{"Time":"2026-09-23T11:28:17.933280462+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestE2FollowRates","Output":"--- PASS: TestE2FollowRates (0.12s)\n"}
+{"Time":"2026-09-23T11:28:17.933297148+02:00","Action":"pass","Package":"open-sds/app/internal/diag","Test":"TestE2FollowRates","Elapsed":0.12}
+{"Time":"2026-09-23T11:28:17.933303704+02:00","Action":"run","Package":"open-sds/app/internal/diag","Test":"TestCaptureScoresRamp"}
+{"Time":"2026-09-23T11:28:17.933306021+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestCaptureScoresRamp","Output":"=== RUN   TestCaptureScoresRamp\n"}
+{"Time":"2026-09-23T11:28:17.981801442+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestCaptureScoresRamp","Output":"--- PASS: TestCaptureScoresRamp (0.05s)\n"}
+{"Time":"2026-09-23T11:28:17.981816794+02:00","Action":"pass","Package":"open-sds/app/internal/diag","Test":"TestCaptureScoresRamp","Elapsed":0.05}
+{"Time":"2026-09-23T11:28:17.98182347+02:00","Action":"run","Package":"open-sds/app/internal/diag","Test":"TestRunnerErrorsPropagate"}
+{"Time":"2026-09-23T11:28:17.981825963+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestRunnerErrorsPropagate","Output":"=== RUN   TestRunnerErrorsPropagate\n"}
+{"Time":"2026-09-23T11:28:17.981915863+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestRunnerErrorsPropagate","Output":"--- PASS: TestRunnerErrorsPropagate (0.00s)\n"}
+{"Time":"2026-09-23T11:28:17.981933597+02:00","Action":"pass","Package":"open-sds/app/internal/diag","Test":"TestRunnerErrorsPropagate","Elapsed":0}
+{"Time":"2026-09-23T11:28:17.981937147+02:00","Action":"run","Package":"open-sds/app/internal/diag","Test":"TestCaptureTsrcAndWindow"}
+{"Time":"2026-09-23T11:28:17.981939477+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestCaptureTsrcAndWindow","Output":"=== RUN   TestCaptureTsrcAndWindow\n"}
+{"Time":"2026-09-23T11:28:17.994050324+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestCaptureTsrcAndWindow","Output":"--- PASS: TestCaptureTsrcAndWindow (0.01s)\n"}
+{"Time":"2026-09-23T11:28:17.994064369+02:00","Action":"pass","Package":"open-sds/app/internal/diag","Test":"TestCaptureTsrcAndWindow","Elapsed":0.01}
+{"Time":"2026-09-23T11:28:17.994070848+02:00","Action":"run","Package":"open-sds/app/internal/diag","Test":"TestRedrainWindows"}
+{"Time":"2026-09-23T11:28:17.994073696+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestRedrainWindows","Output":"=== RUN   TestRedrainWindows\n"}
+{"Time":"2026-09-23T11:28:18.001655986+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestRedrainWindows","Output":"--- PASS: TestRedrainWindows (0.01s)\n"}
+{"Time":"2026-09-23T11:28:18.001673478+02:00","Action":"pass","Package":"open-sds/app/internal/diag","Test":"TestRedrainWindows","Elapsed":0.01}
+{"Time":"2026-09-23T11:28:18.001682207+02:00","Action":"run","Package":"open-sds/app/internal/diag","Test":"TestSchemaCheck"}
+{"Time":"2026-09-23T11:28:18.001685577+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestSchemaCheck","Output":"=== RUN   TestSchemaCheck\n"}
+{"Time":"2026-09-23T11:28:18.008610655+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestSchemaCheck","Output":"--- PASS: TestSchemaCheck (0.01s)\n"}
+{"Time":"2026-09-23T11:28:18.008626539+02:00","Action":"pass","Package":"open-sds/app/internal/diag","Test":"TestSchemaCheck","Elapsed":0.01}
+{"Time":"2026-09-23T11:28:18.008634805+02:00","Action":"run","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply"}
+{"Time":"2026-09-23T11:28:18.008638278+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"=== RUN   TestGpmcSweepPersistApply\n"}
+{"Time":"2026-09-23T11:28:18.011323221+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"==================\n"}
+{"Time":"2026-09-23T11:28:18.011334929+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"WARNING: DATA RACE\n"}
+{"Time":"2026-09-23T11:28:18.011339458+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"Write at 0x00c0003df860 by goroutine 30:\n"}
+{"Time":"2026-09-23T11:28:18.01134317+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  open-sds/app/internal/bus.(*Sweeper).begin()\n"}
+{"Time":"2026-09-23T11:28:18.011346653+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/ws/open-sds1000cml-acq2/app/internal/bus/gpmctiming.go:557 +0x6c4\n"}
+{"Time":"2026-09-23T11:28:18.011353565+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  open-sds/app/internal/bus.(*Sweeper).Step()\n"}
+{"Time":"2026-09-23T11:28:18.011356964+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/ws/open-sds1000cml-acq2/app/internal/bus/gpmctiming.go:529 +0x16d\n"}
+{"Time":"2026-09-23T11:28:18.011361459+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  open-sds/app/internal/diag.(*Diag).runSweep.func1()\n"}
+{"Time":"2026-09-23T11:28:18.011365937+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/ws/open-sds1000cml-acq2/app/internal/diag/v3.go:222 +0x164\n"}
+{"Time":"2026-09-23T11:28:18.011369665+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  open-sds/app/internal/diag.newTestDiag.direct.func2()\n"}
+{"Time":"2026-09-23T11:28:18.011373164+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/ws/open-sds1000cml-acq2/app/internal/diag/diag_test.go:336 +0x3b\n"}
+{"Time":"2026-09-23T11:28:18.011376777+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  open-sds/app/internal/diag.RunnerFunc.Exec()\n"}
+{"Time":"2026-09-23T11:28:18.0113815+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/ws/open-sds1000cml-acq2/app/internal/diag/diag.go:39 +0x3a\n"}
+{"Time":"2026-09-23T11:28:18.011385079+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  open-sds/app/internal/diag.(*Diag).runSweep()\n"}
+{"Time":"2026-09-23T11:28:18.011388498+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/ws/open-sds1000cml-acq2/app/internal/diag/v3.go:215 +0x18b\n"}
+{"Time":"2026-09-23T11:28:18.011391916+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  open-sds/app/internal/diag.(*Diag).GpmcSweep.gowrap1()\n"}
+{"Time":"2026-09-23T11:28:18.011400394+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/ws/open-sds1000cml-acq2/app/internal/diag/v3.go:206 +0x46\n"}
+{"Time":"2026-09-23T11:28:18.011405296+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"\n"}
+{"Time":"2026-09-23T11:28:18.011412396+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"Previous read at 0x00c0003df860 by goroutine 29:\n"}
+{"Time":"2026-09-23T11:28:18.011415827+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  open-sds/app/internal/bus.(*Sweeper).Phase()\n"}
+{"Time":"2026-09-23T11:28:18.011420528+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/ws/open-sds1000cml-acq2/app/internal/bus/gpmctiming.go:472 +0xe4\n"}
+{"Time":"2026-09-23T11:28:18.011423993+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  open-sds/app/internal/diag.(*sweepJob).progress()\n"}
+{"Time":"2026-09-23T11:28:18.011428324+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/ws/open-sds1000cml-acq2/app/internal/diag/v3.go:68 +0xb5\n"}
+{"Time":"2026-09-23T11:28:18.011431696+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  open-sds/app/internal/diag.(*Diag).GpmcStatus()\n"}
+{"Time":"2026-09-23T11:28:18.011435074+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/ws/open-sds1000cml-acq2/app/internal/diag/v3.go:142 +0x210\n"}
+{"Time":"2026-09-23T11:28:18.011438465+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  open-sds/app/internal/diag.TestGpmcSweepPersistApply()\n"}
+{"Time":"2026-09-23T11:28:18.011441922+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/ws/open-sds1000cml-acq2/app/internal/diag/diag_test.go:874 +0x911\n"}
+{"Time":"2026-09-23T11:28:18.011448011+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  testing.tRunner()\n"}
+{"Time":"2026-09-23T11:28:18.011451855+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/.local/go/go1.26.1/src/testing/testing.go:2036 +0x21c\n"}
+{"Time":"2026-09-23T11:28:18.011456153+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  testing.(*T).Run.gowrap1()\n"}
+{"Time":"2026-09-23T11:28:18.011460838+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/.local/go/go1.26.1/src/testing/testing.go:2101 +0x38\n"}
+{"Time":"2026-09-23T11:28:18.011464147+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"\n"}
+{"Time":"2026-09-23T11:28:18.011468371+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"Goroutine 30 (running) created at:\n"}
+{"Time":"2026-09-23T11:28:18.011471645+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  open-sds/app/internal/diag.(*Diag).GpmcSweep()\n"}
+{"Time":"2026-09-23T11:28:18.011475853+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/ws/open-sds1000cml-acq2/app/internal/diag/v3.go:206 +0x7bc\n"}
+{"Time":"2026-09-23T11:28:18.011482109+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  open-sds/app/internal/diag.TestGpmcSweepPersistApply()\n"}
+{"Time":"2026-09-23T11:28:18.011486349+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/ws/open-sds1000cml-acq2/app/internal/diag/diag_test.go:868 +0x83a\n"}
+{"Time":"2026-09-23T11:28:18.011490395+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  testing.tRunner()\n"}
+{"Time":"2026-09-23T11:28:18.011493865+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/.local/go/go1.26.1/src/testing/testing.go:2036 +0x21c\n"}
+{"Time":"2026-09-23T11:28:18.011497227+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  testing.(*T).Run.gowrap1()\n"}
+{"Time":"2026-09-23T11:28:18.011500569+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/.local/go/go1.26.1/src/testing/testing.go:2101 +0x38\n"}
+{"Time":"2026-09-23T11:28:18.011505514+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"\n"}
+{"Time":"2026-09-23T11:28:18.01150871+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"Goroutine 29 (running) created at:\n"}
+{"Time":"2026-09-23T11:28:18.01151202+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  testing.(*T).Run()\n"}
+{"Time":"2026-09-23T11:28:18.011515339+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/.local/go/go1.26.1/src/testing/testing.go:2101 +0xb12\n"}
+{"Time":"2026-09-23T11:28:18.011518756+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  testing.runTests.func1()\n"}
+{"Time":"2026-09-23T11:28:18.011522112+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/.local/go/go1.26.1/src/testing/testing.go:2585 +0x85\n"}
+{"Time":"2026-09-23T11:28:18.011525449+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  testing.tRunner()\n"}
+{"Time":"2026-09-23T11:28:18.011528748+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/.local/go/go1.26.1/src/testing/testing.go:2036 +0x21c\n"}
+{"Time":"2026-09-23T11:28:18.011532382+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  testing.runTests()\n"}
+{"Time":"2026-09-23T11:28:18.011535681+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/.local/go/go1.26.1/src/testing/testing.go:2583 +0x9e9\n"}
+{"Time":"2026-09-23T11:28:18.011539061+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  testing.(*M).Run()\n"}
+{"Time":"2026-09-23T11:28:18.011542338+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/.local/go/go1.26.1/src/testing/testing.go:2443 +0xf4b\n"}
+{"Time":"2026-09-23T11:28:18.011545704+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  main.main()\n"}
+{"Time":"2026-09-23T11:28:18.011548997+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      _testmain.go:72 +0x164\n"}
+{"Time":"2026-09-23T11:28:18.011553422+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"==================\n"}
+{"Time":"2026-09-23T11:28:18.011609808+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"==================\n"}
+{"Time":"2026-09-23T11:28:18.01161546+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"WARNING: DATA RACE\n"}
+{"Time":"2026-09-23T11:28:18.011618829+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"Write at 0x00c0003df878 by goroutine 30:\n"}
+{"Time":"2026-09-23T11:28:18.011623855+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  open-sds/app/internal/bus.(*Sweeper).nextSetting()\n"}
+{"Time":"2026-09-23T11:28:18.011628435+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/ws/open-sds1000cml-acq2/app/internal/bus/gpmctiming.go:614 +0x484\n"}
+{"Time":"2026-09-23T11:28:18.011633371+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  open-sds/app/internal/bus.(*Sweeper).Step()\n"}
+{"Time":"2026-09-23T11:28:18.011638065+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/ws/open-sds1000cml-acq2/app/internal/bus/gpmctiming.go:534 +0x19a\n"}
+{"Time":"2026-09-23T11:28:18.011651048+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  open-sds/app/internal/diag.(*Diag).runSweep.func1()\n"}
+{"Time":"2026-09-23T11:28:18.01165561+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/ws/open-sds1000cml-acq2/app/internal/diag/v3.go:222 +0x164\n"}
+{"Time":"2026-09-23T11:28:18.011658975+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  open-sds/app/internal/diag.newTestDiag.direct.func2()\n"}
+{"Time":"2026-09-23T11:28:18.011662363+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/ws/open-sds1000cml-acq2/app/internal/diag/diag_test.go:336 +0x3b\n"}
+{"Time":"2026-09-23T11:28:18.01166571+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  open-sds/app/internal/diag.RunnerFunc.Exec()\n"}
+{"Time":"2026-09-23T11:28:18.011669085+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/ws/open-sds1000cml-acq2/app/internal/diag/diag.go:39 +0x3a\n"}
+{"Time":"2026-09-23T11:28:18.011678599+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  open-sds/app/internal/diag.(*Diag).runSweep()\n"}
+{"Time":"2026-09-23T11:28:18.011682515+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/ws/open-sds1000cml-acq2/app/internal/diag/v3.go:215 +0x18b\n"}
+{"Time":"2026-09-23T11:28:18.011686+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  open-sds/app/internal/diag.(*Diag).GpmcSweep.gowrap1()\n"}
+{"Time":"2026-09-23T11:28:18.011690471+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/ws/open-sds1000cml-acq2/app/internal/diag/v3.go:206 +0x46\n"}
+{"Time":"2026-09-23T11:28:18.011695248+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"\n"}
+{"Time":"2026-09-23T11:28:18.011698715+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"Previous read at 0x00c0003df878 by goroutine 29:\n"}
+{"Time":"2026-09-23T11:28:18.011703119+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  open-sds/app/internal/bus.(*Sweeper).Setting()\n"}
+{"Time":"2026-09-23T11:28:18.011707567+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/ws/open-sds1000cml-acq2/app/internal/bus/gpmctiming.go:477 +0x165\n"}
+{"Time":"2026-09-23T11:28:18.011711185+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  open-sds/app/internal/diag.(*sweepJob).progress()\n"}
+{"Time":"2026-09-23T11:28:18.011714758+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/ws/open-sds1000cml-acq2/app/internal/diag/v3.go:68 +0xb5\n"}
+{"Time":"2026-09-23T11:28:18.011718554+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  open-sds/app/internal/diag.(*Diag).GpmcStatus()\n"}
+{"Time":"2026-09-23T11:28:18.011722129+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/ws/open-sds1000cml-acq2/app/internal/diag/v3.go:142 +0x210\n"}
+{"Time":"2026-09-23T11:28:18.011725485+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  open-sds/app/internal/diag.TestGpmcSweepPersistApply()\n"}
+{"Time":"2026-09-23T11:28:18.011729066+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/ws/open-sds1000cml-acq2/app/internal/diag/diag_test.go:874 +0x911\n"}
+{"Time":"2026-09-23T11:28:18.011735554+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  testing.tRunner()\n"}
+{"Time":"2026-09-23T11:28:18.011738982+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/.local/go/go1.26.1/src/testing/testing.go:2036 +0x21c\n"}
+{"Time":"2026-09-23T11:28:18.011742503+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  testing.(*T).Run.gowrap1()\n"}
+{"Time":"2026-09-23T11:28:18.011746675+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/.local/go/go1.26.1/src/testing/testing.go:2101 +0x38\n"}
+{"Time":"2026-09-23T11:28:18.011751126+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"\n"}
+{"Time":"2026-09-23T11:28:18.011754433+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"Goroutine 30 (running) created at:\n"}
+{"Time":"2026-09-23T11:28:18.011757848+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  open-sds/app/internal/diag.(*Diag).GpmcSweep()\n"}
+{"Time":"2026-09-23T11:28:18.011761489+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/ws/open-sds1000cml-acq2/app/internal/diag/v3.go:206 +0x7bc\n"}
+{"Time":"2026-09-23T11:28:18.011765609+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  open-sds/app/internal/diag.TestGpmcSweepPersistApply()\n"}
+{"Time":"2026-09-23T11:28:18.011770394+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/ws/open-sds1000cml-acq2/app/internal/diag/diag_test.go:868 +0x83a\n"}
+{"Time":"2026-09-23T11:28:18.011775235+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  testing.tRunner()\n"}
+{"Time":"2026-09-23T11:28:18.01177913+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/.local/go/go1.26.1/src/testing/testing.go:2036 +0x21c\n"}
+{"Time":"2026-09-23T11:28:18.011783437+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  testing.(*T).Run.gowrap1()\n"}
+{"Time":"2026-09-23T11:28:18.011787943+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/.local/go/go1.26.1/src/testing/testing.go:2101 +0x38\n"}
+{"Time":"2026-09-23T11:28:18.01179239+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"\n"}
+{"Time":"2026-09-23T11:28:18.01180839+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"Goroutine 29 (running) created at:\n"}
+{"Time":"2026-09-23T11:28:18.011813748+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  testing.(*T).Run()\n"}
+{"Time":"2026-09-23T11:28:18.011817931+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/.local/go/go1.26.1/src/testing/testing.go:2101 +0xb12\n"}
+{"Time":"2026-09-23T11:28:18.011822759+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  testing.runTests.func1()\n"}
+{"Time":"2026-09-23T11:28:18.011826864+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/.local/go/go1.26.1/src/testing/testing.go:2585 +0x85\n"}
+{"Time":"2026-09-23T11:28:18.011831925+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  testing.tRunner()\n"}
+{"Time":"2026-09-23T11:28:18.011836057+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/.local/go/go1.26.1/src/testing/testing.go:2036 +0x21c\n"}
+{"Time":"2026-09-23T11:28:18.011842245+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  testing.runTests()\n"}
+{"Time":"2026-09-23T11:28:18.011845868+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/.local/go/go1.26.1/src/testing/testing.go:2583 +0x9e9\n"}
+{"Time":"2026-09-23T11:28:18.011852006+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  testing.(*M).Run()\n"}
+{"Time":"2026-09-23T11:28:18.011865741+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/.local/go/go1.26.1/src/testing/testing.go:2443 +0xf4b\n"}
+{"Time":"2026-09-23T11:28:18.011870853+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  main.main()\n"}
+{"Time":"2026-09-23T11:28:18.011874703+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      _testmain.go:72 +0x164\n"}
+{"Time":"2026-09-23T11:28:18.011879571+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"==================\n"}
+{"Time":"2026-09-23T11:28:18.011884265+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"==================\n"}
+{"Time":"2026-09-23T11:28:18.011888431+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"WARNING: DATA RACE\n"}
+{"Time":"2026-09-23T11:28:18.011892133+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"Read at 0x00c0003df880 by goroutine 29:\n"}
+{"Time":"2026-09-23T11:28:18.011897166+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  open-sds/app/internal/bus.(*Sweeper).Setting()\n"}
+{"Time":"2026-09-23T11:28:18.01190134+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/ws/open-sds1000cml-acq2/app/internal/bus/gpmctiming.go:480 +0x195\n"}
+{"Time":"2026-09-23T11:28:18.011907315+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  open-sds/app/internal/diag.(*sweepJob).progress()\n"}
+{"Time":"2026-09-23T11:28:18.011910706+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/ws/open-sds1000cml-acq2/app/internal/diag/v3.go:68 +0xb5\n"}
+{"Time":"2026-09-23T11:28:18.011914094+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  open-sds/app/internal/diag.(*Diag).GpmcStatus()\n"}
+{"Time":"2026-09-23T11:28:18.01191747+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/ws/open-sds1000cml-acq2/app/internal/diag/v3.go:142 +0x210\n"}
+{"Time":"2026-09-23T11:28:18.011920835+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  open-sds/app/internal/diag.TestGpmcSweepPersistApply()\n"}
+{"Time":"2026-09-23T11:28:18.011924494+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/ws/open-sds1000cml-acq2/app/internal/diag/diag_test.go:874 +0x911\n"}
+{"Time":"2026-09-23T11:28:18.011927808+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  testing.tRunner()\n"}
+{"Time":"2026-09-23T11:28:18.011931071+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/.local/go/go1.26.1/src/testing/testing.go:2036 +0x21c\n"}
+{"Time":"2026-09-23T11:28:18.01193447+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  testing.(*T).Run.gowrap1()\n"}
+{"Time":"2026-09-23T11:28:18.011937773+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/.local/go/go1.26.1/src/testing/testing.go:2101 +0x38\n"}
+{"Time":"2026-09-23T11:28:18.011941355+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"\n"}
+{"Time":"2026-09-23T11:28:18.011944542+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"Previous write at 0x00c0003df880 by goroutine 30:\n"}
+{"Time":"2026-09-23T11:28:18.011950233+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  open-sds/app/internal/bus.(*Sweeper).nextSetting()\n"}
+{"Time":"2026-09-23T11:28:18.011953533+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/ws/open-sds1000cml-acq2/app/internal/bus/gpmctiming.go:615 +0x4e4\n"}
+{"Time":"2026-09-23T11:28:18.011956922+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  open-sds/app/internal/bus.(*Sweeper).Step()\n"}
+{"Time":"2026-09-23T11:28:18.011960223+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/ws/open-sds1000cml-acq2/app/internal/bus/gpmctiming.go:534 +0x19a\n"}
+{"Time":"2026-09-23T11:28:18.011963598+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  open-sds/app/internal/diag.(*Diag).runSweep.func1()\n"}
+{"Time":"2026-09-23T11:28:18.011966924+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/ws/open-sds1000cml-acq2/app/internal/diag/v3.go:222 +0x164\n"}
+{"Time":"2026-09-23T11:28:18.011974552+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  open-sds/app/internal/diag.newTestDiag.direct.func2()\n"}
+{"Time":"2026-09-23T11:28:18.01198861+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/ws/open-sds1000cml-acq2/app/internal/diag/diag_test.go:336 +0x3b\n"}
+{"Time":"2026-09-23T11:28:18.011998419+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  open-sds/app/internal/diag.RunnerFunc.Exec()\n"}
+{"Time":"2026-09-23T11:28:18.01200225+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/ws/open-sds1000cml-acq2/app/internal/diag/diag.go:39 +0x3a\n"}
+{"Time":"2026-09-23T11:28:18.012005559+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  open-sds/app/internal/diag.(*Diag).runSweep()\n"}
+{"Time":"2026-09-23T11:28:18.012008924+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/ws/open-sds1000cml-acq2/app/internal/diag/v3.go:215 +0x18b\n"}
+{"Time":"2026-09-23T11:28:18.012012266+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  open-sds/app/internal/diag.(*Diag).GpmcSweep.gowrap1()\n"}
+{"Time":"2026-09-23T11:28:18.012015593+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/ws/open-sds1000cml-acq2/app/internal/diag/v3.go:206 +0x46\n"}
+{"Time":"2026-09-23T11:28:18.01201917+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"\n"}
+{"Time":"2026-09-23T11:28:18.012022325+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"Goroutine 29 (running) created at:\n"}
+{"Time":"2026-09-23T11:28:18.012025622+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  testing.(*T).Run()\n"}
+{"Time":"2026-09-23T11:28:18.01202906+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/.local/go/go1.26.1/src/testing/testing.go:2101 +0xb12\n"}
+{"Time":"2026-09-23T11:28:18.012032344+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  testing.runTests.func1()\n"}
+{"Time":"2026-09-23T11:28:18.012035677+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/.local/go/go1.26.1/src/testing/testing.go:2585 +0x85\n"}
+{"Time":"2026-09-23T11:28:18.012038948+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  testing.tRunner()\n"}
+{"Time":"2026-09-23T11:28:18.012044924+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/.local/go/go1.26.1/src/testing/testing.go:2036 +0x21c\n"}
+{"Time":"2026-09-23T11:28:18.012048314+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  testing.runTests()\n"}
+{"Time":"2026-09-23T11:28:18.012051539+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/.local/go/go1.26.1/src/testing/testing.go:2583 +0x9e9\n"}
+{"Time":"2026-09-23T11:28:18.012054907+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  testing.(*M).Run()\n"}
+{"Time":"2026-09-23T11:28:18.012058163+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/.local/go/go1.26.1/src/testing/testing.go:2443 +0xf4b\n"}
+{"Time":"2026-09-23T11:28:18.012063931+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  main.main()\n"}
+{"Time":"2026-09-23T11:28:18.012067145+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      _testmain.go:72 +0x164\n"}
+{"Time":"2026-09-23T11:28:18.01207037+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"\n"}
+{"Time":"2026-09-23T11:28:18.012073562+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"Goroutine 30 (running) created at:\n"}
+{"Time":"2026-09-23T11:28:18.012076861+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  open-sds/app/internal/diag.(*Diag).GpmcSweep()\n"}
+{"Time":"2026-09-23T11:28:18.012080231+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/ws/open-sds1000cml-acq2/app/internal/diag/v3.go:206 +0x7bc\n"}
+{"Time":"2026-09-23T11:28:18.012083563+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  open-sds/app/internal/diag.TestGpmcSweepPersistApply()\n"}
+{"Time":"2026-09-23T11:28:18.012086991+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/ws/open-sds1000cml-acq2/app/internal/diag/diag_test.go:868 +0x83a\n"}
+{"Time":"2026-09-23T11:28:18.012090307+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  testing.tRunner()\n"}
+{"Time":"2026-09-23T11:28:18.01209361+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/.local/go/go1.26.1/src/testing/testing.go:2036 +0x21c\n"}
+{"Time":"2026-09-23T11:28:18.012096875+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  testing.(*T).Run.gowrap1()\n"}
+{"Time":"2026-09-23T11:28:18.012100224+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/.local/go/go1.26.1/src/testing/testing.go:2101 +0x38\n"}
+{"Time":"2026-09-23T11:28:18.012103575+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"==================\n"}
+{"Time":"2026-09-23T11:28:18.013098809+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"==================\n"}
+{"Time":"2026-09-23T11:28:18.013105583+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"WARNING: DATA RACE\n"}
+{"Time":"2026-09-23T11:28:18.013108302+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"Write at 0x00c0001a54a8 by goroutine 30:\n"}
+{"Time":"2026-09-23T11:28:18.013110818+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  open-sds/app/internal/diag.(*fakeTimingPort).set()\n"}
+{"Time":"2026-09-23T11:28:18.013121669+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/ws/open-sds1000cml-acq2/app/internal/diag/diag_test.go:824 +0x64\n"}
+{"Time":"2026-09-23T11:28:18.01312441+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  open-sds/app/internal/diag.(*fakeTimingPort).Apply()\n"}
+{"Time":"2026-09-23T11:28:18.013126872+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/ws/open-sds1000cml-acq2/app/internal/diag/diag_test.go:835 +0xf0\n"}
+{"Time":"2026-09-23T11:28:18.013129246+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  open-sds/app/internal/bus.(*Sweeper).chunk()\n"}
+{"Time":"2026-09-23T11:28:18.013131549+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/ws/open-sds1000cml-acq2/app/internal/bus/gpmctiming.go:761 +0x314\n"}
+{"Time":"2026-09-23T11:28:18.013133864+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  open-sds/app/internal/bus.(*Sweeper).Step()\n"}
+{"Time":"2026-09-23T11:28:18.013136086+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/ws/open-sds1000cml-acq2/app/internal/bus/gpmctiming.go:539 +0x218\n"}
+{"Time":"2026-09-23T11:28:18.013138436+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  open-sds/app/internal/diag.(*Diag).runSweep.func1()\n"}
+{"Time":"2026-09-23T11:28:18.013140663+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/ws/open-sds1000cml-acq2/app/internal/diag/v3.go:222 +0x164\n"}
+{"Time":"2026-09-23T11:28:18.013142896+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  open-sds/app/internal/diag.newTestDiag.direct.func2()\n"}
+{"Time":"2026-09-23T11:28:18.013145438+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/ws/open-sds1000cml-acq2/app/internal/diag/diag_test.go:336 +0x3b\n"}
+{"Time":"2026-09-23T11:28:18.013147608+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  open-sds/app/internal/diag.RunnerFunc.Exec()\n"}
+{"Time":"2026-09-23T11:28:18.013149759+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/ws/open-sds1000cml-acq2/app/internal/diag/diag.go:39 +0x3a\n"}
+{"Time":"2026-09-23T11:28:18.013152173+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  open-sds/app/internal/diag.(*Diag).runSweep()\n"}
+{"Time":"2026-09-23T11:28:18.013154349+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/ws/open-sds1000cml-acq2/app/internal/diag/v3.go:215 +0x18b\n"}
+{"Time":"2026-09-23T11:28:18.013156548+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  open-sds/app/internal/diag.(*Diag).GpmcSweep.gowrap1()\n"}
+{"Time":"2026-09-23T11:28:18.013158894+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/ws/open-sds1000cml-acq2/app/internal/diag/v3.go:206 +0x46\n"}
+{"Time":"2026-09-23T11:28:18.013161265+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"\n"}
+{"Time":"2026-09-23T11:28:18.01316358+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"Previous read at 0x00c0001a54a8 by goroutine 29:\n"}
+{"Time":"2026-09-23T11:28:18.013167541+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  open-sds/app/internal/diag.(*fakeTimingPort).Read()\n"}
+{"Time":"2026-09-23T11:28:18.013170271+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/ws/open-sds1000cml-acq2/app/internal/diag/diag_test.go:821 +0x4c\n"}
+{"Time":"2026-09-23T11:28:18.013172578+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  open-sds/app/internal/diag.(*Diag).GpmcStatus()\n"}
+{"Time":"2026-09-23T11:28:18.013174744+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/ws/open-sds1000cml-acq2/app/internal/diag/v3.go:148 +0x291\n"}
+{"Time":"2026-09-23T11:28:18.013177046+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  open-sds/app/internal/diag.TestGpmcSweepPersistApply()\n"}
+{"Time":"2026-09-23T11:28:18.013179603+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/ws/open-sds1000cml-acq2/app/internal/diag/diag_test.go:874 +0x911\n"}
+{"Time":"2026-09-23T11:28:18.01318184+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  testing.tRunner()\n"}
+{"Time":"2026-09-23T11:28:18.01318416+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/.local/go/go1.26.1/src/testing/testing.go:2036 +0x21c\n"}
+{"Time":"2026-09-23T11:28:18.013186693+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  testing.(*T).Run.gowrap1()\n"}
+{"Time":"2026-09-23T11:28:18.013188933+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/.local/go/go1.26.1/src/testing/testing.go:2101 +0x38\n"}
+{"Time":"2026-09-23T11:28:18.013191148+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"\n"}
+{"Time":"2026-09-23T11:28:18.013193249+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"Goroutine 30 (running) created at:\n"}
+{"Time":"2026-09-23T11:28:18.013195505+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  open-sds/app/internal/diag.(*Diag).GpmcSweep()\n"}
+{"Time":"2026-09-23T11:28:18.013197756+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/ws/open-sds1000cml-acq2/app/internal/diag/v3.go:206 +0x7bc\n"}
+{"Time":"2026-09-23T11:28:18.01320001+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  open-sds/app/internal/diag.TestGpmcSweepPersistApply()\n"}
+{"Time":"2026-09-23T11:28:18.013202266+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/ws/open-sds1000cml-acq2/app/internal/diag/diag_test.go:868 +0x83a\n"}
+{"Time":"2026-09-23T11:28:18.013207351+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  testing.tRunner()\n"}
+{"Time":"2026-09-23T11:28:18.013209552+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/.local/go/go1.26.1/src/testing/testing.go:2036 +0x21c\n"}
+{"Time":"2026-09-23T11:28:18.013211939+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  testing.(*T).Run.gowrap1()\n"}
+{"Time":"2026-09-23T11:28:18.013214182+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/.local/go/go1.26.1/src/testing/testing.go:2101 +0x38\n"}
+{"Time":"2026-09-23T11:28:18.013216347+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"\n"}
+{"Time":"2026-09-23T11:28:18.013218484+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"Goroutine 29 (running) created at:\n"}
+{"Time":"2026-09-23T11:28:18.01322065+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  testing.(*T).Run()\n"}
+{"Time":"2026-09-23T11:28:18.01322294+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/.local/go/go1.26.1/src/testing/testing.go:2101 +0xb12\n"}
+{"Time":"2026-09-23T11:28:18.013225135+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  testing.runTests.func1()\n"}
+{"Time":"2026-09-23T11:28:18.013229114+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/.local/go/go1.26.1/src/testing/testing.go:2585 +0x85\n"}
+{"Time":"2026-09-23T11:28:18.013231331+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  testing.tRunner()\n"}
+{"Time":"2026-09-23T11:28:18.013233722+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/.local/go/go1.26.1/src/testing/testing.go:2036 +0x21c\n"}
+{"Time":"2026-09-23T11:28:18.013235967+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  testing.runTests()\n"}
+{"Time":"2026-09-23T11:28:18.013238425+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/.local/go/go1.26.1/src/testing/testing.go:2583 +0x9e9\n"}
+{"Time":"2026-09-23T11:28:18.013253753+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  testing.(*M).Run()\n"}
+{"Time":"2026-09-23T11:28:18.013256304+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/.local/go/go1.26.1/src/testing/testing.go:2443 +0xf4b\n"}
+{"Time":"2026-09-23T11:28:18.013258553+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  main.main()\n"}
+{"Time":"2026-09-23T11:28:18.013260695+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      _testmain.go:72 +0x164\n"}
+{"Time":"2026-09-23T11:28:18.0132629+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"==================\n"}
+{"Time":"2026-09-23T11:28:18.024188326+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"==================\n"}
+{"Time":"2026-09-23T11:28:18.024215498+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"WARNING: DATA RACE\n"}
+{"Time":"2026-09-23T11:28:18.024218821+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"Write at 0x00c0003df878 by goroutine 30:\n"}
+{"Time":"2026-09-23T11:28:18.024230337+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  open-sds/app/internal/bus.(*Sweeper).closeSetting()\n"}
+{"Time":"2026-09-23T11:28:18.024233179+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/ws/open-sds1000cml-acq2/app/internal/bus/gpmctiming.go:828 +0x72\n"}
+{"Time":"2026-09-23T11:28:18.02423561+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  open-sds/app/internal/bus.(*Sweeper).chunk()\n"}
+{"Time":"2026-09-23T11:28:18.024237895+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/ws/open-sds1000cml-acq2/app/internal/bus/gpmctiming.go:820 +0x1136\n"}
+{"Time":"2026-09-23T11:28:18.024240397+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  open-sds/app/internal/bus.(*Sweeper).Step()\n"}
+{"Time":"2026-09-23T11:28:18.024242585+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/ws/open-sds1000cml-acq2/app/internal/bus/gpmctiming.go:539 +0x218\n"}
+{"Time":"2026-09-23T11:28:18.024244829+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  open-sds/app/internal/diag.(*Diag).runSweep.func1()\n"}
+{"Time":"2026-09-23T11:28:18.024247031+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/ws/open-sds1000cml-acq2/app/internal/diag/v3.go:222 +0x164\n"}
+{"Time":"2026-09-23T11:28:18.024249302+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  open-sds/app/internal/diag.newTestDiag.direct.func2()\n"}
+{"Time":"2026-09-23T11:28:18.02425149+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/ws/open-sds1000cml-acq2/app/internal/diag/diag_test.go:336 +0x3b\n"}
+{"Time":"2026-09-23T11:28:18.024253703+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  open-sds/app/internal/diag.RunnerFunc.Exec()\n"}
+{"Time":"2026-09-23T11:28:18.024255853+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/ws/open-sds1000cml-acq2/app/internal/diag/diag.go:39 +0x3a\n"}
+{"Time":"2026-09-23T11:28:18.024258083+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  open-sds/app/internal/diag.(*Diag).runSweep()\n"}
+{"Time":"2026-09-23T11:28:18.024260221+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/ws/open-sds1000cml-acq2/app/internal/diag/v3.go:215 +0x18b\n"}
+{"Time":"2026-09-23T11:28:18.024262406+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  open-sds/app/internal/diag.(*Diag).GpmcSweep.gowrap1()\n"}
+{"Time":"2026-09-23T11:28:18.024264868+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/ws/open-sds1000cml-acq2/app/internal/diag/v3.go:206 +0x46\n"}
+{"Time":"2026-09-23T11:28:18.024267139+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"\n"}
+{"Time":"2026-09-23T11:28:18.024269995+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"Previous read at 0x00c0003df878 by goroutine 29:\n"}
+{"Time":"2026-09-23T11:28:18.024272152+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  open-sds/app/internal/bus.(*Sweeper).Setting()\n"}
+{"Time":"2026-09-23T11:28:18.02427437+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/ws/open-sds1000cml-acq2/app/internal/bus/gpmctiming.go:477 +0x165\n"}
+{"Time":"2026-09-23T11:28:18.024276636+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  open-sds/app/internal/diag.(*sweepJob).progress()\n"}
+{"Time":"2026-09-23T11:28:18.02427882+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/ws/open-sds1000cml-acq2/app/internal/diag/v3.go:68 +0xb5\n"}
+{"Time":"2026-09-23T11:28:18.024280996+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  open-sds/app/internal/diag.(*Diag).GpmcStatus()\n"}
+{"Time":"2026-09-23T11:28:18.024284337+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/ws/open-sds1000cml-acq2/app/internal/diag/v3.go:142 +0x210\n"}
+{"Time":"2026-09-23T11:28:18.024288549+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  open-sds/app/internal/diag.TestGpmcSweepPersistApply()\n"}
+{"Time":"2026-09-23T11:28:18.024291222+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/ws/open-sds1000cml-acq2/app/internal/diag/diag_test.go:874 +0x911\n"}
+{"Time":"2026-09-23T11:28:18.024293518+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  testing.tRunner()\n"}
+{"Time":"2026-09-23T11:28:18.024295848+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/.local/go/go1.26.1/src/testing/testing.go:2036 +0x21c\n"}
+{"Time":"2026-09-23T11:28:18.024304444+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  testing.(*T).Run.gowrap1()\n"}
+{"Time":"2026-09-23T11:28:18.024306782+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/.local/go/go1.26.1/src/testing/testing.go:2101 +0x38\n"}
+{"Time":"2026-09-23T11:28:18.024308961+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"\n"}
+{"Time":"2026-09-23T11:28:18.024311143+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"Goroutine 30 (running) created at:\n"}
+{"Time":"2026-09-23T11:28:18.024313367+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  open-sds/app/internal/diag.(*Diag).GpmcSweep()\n"}
+{"Time":"2026-09-23T11:28:18.024315654+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/ws/open-sds1000cml-acq2/app/internal/diag/v3.go:206 +0x7bc\n"}
+{"Time":"2026-09-23T11:28:18.024317844+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  open-sds/app/internal/diag.TestGpmcSweepPersistApply()\n"}
+{"Time":"2026-09-23T11:28:18.024320369+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/ws/open-sds1000cml-acq2/app/internal/diag/diag_test.go:868 +0x83a\n"}
+{"Time":"2026-09-23T11:28:18.024326901+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  testing.tRunner()\n"}
+{"Time":"2026-09-23T11:28:18.024329206+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/.local/go/go1.26.1/src/testing/testing.go:2036 +0x21c\n"}
+{"Time":"2026-09-23T11:28:18.024331432+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  testing.(*T).Run.gowrap1()\n"}
+{"Time":"2026-09-23T11:28:18.02433368+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/.local/go/go1.26.1/src/testing/testing.go:2101 +0x38\n"}
+{"Time":"2026-09-23T11:28:18.024335871+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"\n"}
+{"Time":"2026-09-23T11:28:18.024338021+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"Goroutine 29 (running) created at:\n"}
+{"Time":"2026-09-23T11:28:18.024340155+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  testing.(*T).Run()\n"}
+{"Time":"2026-09-23T11:28:18.024343965+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/.local/go/go1.26.1/src/testing/testing.go:2101 +0xb12\n"}
+{"Time":"2026-09-23T11:28:18.024346307+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  testing.runTests.func1()\n"}
+{"Time":"2026-09-23T11:28:18.024348471+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/.local/go/go1.26.1/src/testing/testing.go:2585 +0x85\n"}
+{"Time":"2026-09-23T11:28:18.024352214+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  testing.tRunner()\n"}
+{"Time":"2026-09-23T11:28:18.024354466+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/.local/go/go1.26.1/src/testing/testing.go:2036 +0x21c\n"}
+{"Time":"2026-09-23T11:28:18.024356752+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  testing.runTests()\n"}
+{"Time":"2026-09-23T11:28:18.02435911+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/.local/go/go1.26.1/src/testing/testing.go:2583 +0x9e9\n"}
+{"Time":"2026-09-23T11:28:18.024361355+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  testing.(*M).Run()\n"}
+{"Time":"2026-09-23T11:28:18.024363508+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      /home/labeth/.local/go/go1.26.1/src/testing/testing.go:2443 +0xf4b\n"}
+{"Time":"2026-09-23T11:28:18.024365671+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"  main.main()\n"}
+{"Time":"2026-09-23T11:28:18.024373683+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"      _testmain.go:72 +0x164\n"}
+{"Time":"2026-09-23T11:28:18.02437623+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"==================\n"}
+{"Time":"2026-09-23T11:28:18.323032831+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"    testing.go:1712: race detected during execution of test\n"}
+{"Time":"2026-09-23T11:28:18.323052961+02:00","Action":"output","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Output":"--- FAIL: TestGpmcSweepPersistApply (0.31s)\n"}
+{"Time":"2026-09-23T11:28:18.323056538+02:00","Action":"fail","Package":"open-sds/app/internal/diag","Test":"TestGpmcSweepPersistApply","Elapsed":0.31}
+{"Time":"2026-09-23T11:28:18.32314414+02:00","Action":"output","Package":"open-sds/app/internal/diag","Output":"FAIL\n"}
+{"Time":"2026-09-23T11:28:18.3254353+02:00","Action":"output","Package":"open-sds/app/internal/diag","Output":"FAIL\topen-sds/app/internal/diag\t0.532s\n"}
+{"Time":"2026-09-23T11:28:18.325452077+02:00","Action":"fail","Package":"open-sds/app/internal/diag","Elapsed":0.533}

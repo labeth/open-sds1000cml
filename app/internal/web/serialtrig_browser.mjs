@@ -58,5 +58,30 @@ run(async (t) => {
   const off = posts.filter(p => /\/api\/set/.test(p.url) && p.body.control === "serialmode").pop();
   t.ok(!!off && off.body.value === 0, "disarm POSTed serialmode=0");
 
+  for (const [proto,id] of [["manchester",4],["sent",5],["can",6],["mil1553",7],["arinc429",8],["usb",9],["flexray",10]]) {
+    await po.setSelect("decProto",proto);
+    await po.setSelect("decLine","2");
+    const word=proto==="mil1553"?"ABCD":proto==="arinc429"?"7ABCD":"";
+    await po.eval(value=>{document.getElementById("stBytes").value=value;},word);
+    t.ok(await page.locator("#decLine").isVisible(), proto+" line selection visible");
+    await po.click("stArm");
+    await po.waitFor(() => document.getElementById("stArm").classList.contains("on"),null,4000);
+    const p=posts.filter(p=>/\/api\/serial/.test(p.url)).pop();
+    t.ok(p?.body.proto===id && p.body.chA===1,proto+" arms with C2 and correct protocol ID");
+    if(word)t.ok(p.body.bytes[0]===parseInt(word,16),proto+" preserves wide match values");
+    if(proto==="manchester")t.ok(p.body.ieee===true,"Manchester trigger uses the decode convention");
+    await po.setSelect("decProto","off");
+    await po.waitFor(() => !document.getElementById("stArm").classList.contains("on"),null,4000);
+  }
+  await po.setSelect("decProto","uart");
+  await po.eval(()=>{document.getElementById("stBytes").value="55";});
+  await page.route("**/api/serial",route=>route.fulfill({status:503,contentType:"application/json",body:JSON.stringify({ok:false})}));
+  await po.click("stArm");
+  await po.waitFor(()=>document.getElementById("stStats").textContent.includes("not applied"),null,4000);
+  t.ok(!(await po.hasClass("stArm","on")),"rejected settings never arm the trigger");
+  await page.unroute("**/api/serial");
+  await po.click("stArm");
+  await po.waitFor(()=>document.getElementById("stArm").classList.contains("on"),null,4000);
+  t.ok(!(await page.locator("#stStats").textContent()).includes("not applied"),"successful retry clears configuration error");
   t.ok(pageErrors.length === 0, "no page errors: " + pageErrors.join("; "));
 });

@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-FPGALOAD
 package fpgaload
 
 import (
@@ -13,6 +14,7 @@ import (
 // nSTATUS drops on an nCONFIG-low write and rises statusAfter reads later;
 // CONF_DONE asserts doneAfter reads after the port is parked following a
 // complete shift (never when doneNever).
+// TRLC-LINKS: REQ-SDS-005, REQ-SDS-092
 type fakePort struct {
 	writes      []uint16
 	reads       int
@@ -31,6 +33,7 @@ type fakePort struct {
 	confDone    bool
 }
 
+// TRLC-LINKS: REQ-SDS-005
 func (f *fakePort) WriteCfg(v uint16) error {
 	f.writes = append(f.writes, v)
 	if f.writeErrAt > 0 && len(f.writes) == f.writeErrAt {
@@ -62,6 +65,7 @@ func (f *fakePort) WriteCfg(v uint16) error {
 	return nil
 }
 
+// TRLC-LINKS: REQ-SDS-005
 func (f *fakePort) ReadCfg() (uint16, error) {
 	f.reads++
 	var v uint16
@@ -86,6 +90,7 @@ func (f *fakePort) ReadCfg() (uint16, error) {
 
 // dataBits reconstructs the bytes shifted in: DATA0 sampled at every DCLK
 // rising edge, MSB-first, between the nCONFIG release and the park.
+// TRLC-LINKS: REQ-SDS-005
 func (f *fakePort) dataBits() []byte {
 	var out []byte
 	var cur byte
@@ -114,6 +119,7 @@ func (f *fakePort) dataBits() []byte {
 	return out
 }
 
+// TRLC-LINKS: REQ-SDS-005
 func fastOpts() Options {
 	return Options{
 		AllowAnyLen: true,
@@ -124,6 +130,37 @@ func fastOpts() Options {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-005
+func TestTransferProgressReportsWrittenBytes(t *testing.T) {
+	for _, fail := range []bool{false, true} {
+		p := &fakePort{}
+		if fail {
+			p.writeErrAt = 100
+			p.writeErr = errors.New("transfer failed")
+		}
+		rbf := container(hdrNative, 40000)
+		o := fastOpts()
+		o.Attempts = 1
+		last, calls := -1, 0
+		o.Progress = func(sent, total int) {
+			if total != len(rbf) || sent <= last || sent > total || len(p.writes) < 2+sent*16 {
+				t.Fatalf("invalid progress %d/%d after %d writes", sent, total, len(p.writes))
+			}
+			last = sent
+			calls++
+		}
+		err := Reload(p, rbf, o)
+		if fail {
+			if err == nil || last == len(rbf) {
+				t.Fatal("failed transfer reported completion")
+			}
+		} else if err != nil || last != len(rbf) || calls != 4 {
+			t.Fatalf("incomplete progress: last=%d calls=%d err=%v", last, calls, err)
+		}
+	}
+}
+
+// TRLC-LINKS: REQ-SDS-092
 func container(hdr []byte, n int) []byte {
 	b := make([]byte, n)
 	for i := range b {
@@ -136,6 +173,7 @@ func container(hdr []byte, n int) []byte {
 	return b
 }
 
+// TRLC-LINKS: REQ-SDS-005, REQ-SDS-092
 func TestReloadSequenceNative(t *testing.T) {
 	p := &fakePort{}
 	rbf := container(hdrNative, 3000)
@@ -187,6 +225,7 @@ func TestReloadSequenceNative(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-005, REQ-SDS-092
 func TestReloadShipsPreReversedRaw(t *testing.T) {
 	p := &fakePort{}
 	rbf := container(hdrPreReversed, 1200)
@@ -199,6 +238,7 @@ func TestReloadShipsPreReversedRaw(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-092
 func TestReloadRefusesBeforeTouchingThePort(t *testing.T) {
 	cases := []struct {
 		name string
@@ -223,6 +263,7 @@ func TestReloadRefusesBeforeTouchingThePort(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-005
 func TestReloadTimeoutRetriesThenFails(t *testing.T) {
 	p := &fakePort{doneNever: true}
 	o := fastOpts()
@@ -240,6 +281,7 @@ func TestReloadTimeoutRetriesThenFails(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-005
 func TestReloadNStatusTimeout(t *testing.T) {
 	p := &fakePort{statusAfter: 1000}
 	o := fastOpts()
@@ -250,6 +292,7 @@ func TestReloadNStatusTimeout(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-005
 func TestReloadPropagatesWriteErrors(t *testing.T) {
 	sentinel := errors.New("boom")
 	p := &fakePort{writeErrAt: 5, writeErr: sentinel}
@@ -260,6 +303,7 @@ func TestReloadPropagatesWriteErrors(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-092
 func TestReloadExplicitOrder(t *testing.T) {
 	rbf := container(hdrNative, 400)
 	o := fastOpts()
@@ -279,12 +323,14 @@ func TestReloadExplicitOrder(t *testing.T) {
 
 // ---- EnsureDefault ----
 
+// TRLC-LINKS: REQ-SDS-004
 type fakeFabric struct {
 	good  bool
 	port  *fakePort
 	reads int
 }
 
+// TRLC-LINKS: REQ-SDS-004
 func (f *fakeFabric) read(sel uint16) (uint16, error) {
 	f.reads++
 	// the identity becomes good once the fake port reports CONF_DONE
@@ -305,6 +351,7 @@ func (f *fakeFabric) read(sel uint16) (uint16, error) {
 	return 0, nil
 }
 
+// TRLC-LINKS: REQ-SDS-004
 func TestEnsureDefaultSkipsWhenVerified(t *testing.T) {
 	p := &fakePort{}
 	fab := &fakeFabric{good: true}
@@ -316,6 +363,7 @@ func TestEnsureDefaultSkipsWhenVerified(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-004, REQ-SDS-005
 func TestEnsureDefaultReloadsAndVerifies(t *testing.T) {
 	p := &fakePort{}
 	fab := &fakeFabric{port: p}
@@ -330,6 +378,7 @@ func TestEnsureDefaultReloadsAndVerifies(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-004
 func TestEnsureDefaultWithoutBitstream(t *testing.T) {
 	p := &fakePort{}
 	fab := &fakeFabric{}
@@ -344,6 +393,7 @@ func TestEnsureDefaultWithoutBitstream(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-004
 func TestEnsureDefaultPostVerifyFails(t *testing.T) {
 	p := &fakePort{}
 	fab := &fakeFabric{} // never becomes good (port not linked)
@@ -358,6 +408,7 @@ func TestEnsureDefaultPostVerifyFails(t *testing.T) {
 
 // ---- container / bit order ----
 
+// TRLC-LINKS: REQ-SDS-092
 func TestDetectOrder(t *testing.T) {
 	if o, err := DetectOrder(container(hdrNative, 100)); err != nil || o != OrderNative || !o.Reverse() {
 		t.Fatalf("native: %v %v", o, err)
@@ -379,6 +430,7 @@ func TestDetectOrder(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-092
 func TestBitrev(t *testing.T) {
 	cases := map[byte]byte{0x00: 0x00, 0xFF: 0xFF, 0x01: 0x80, 0x6A: 0x56, 0xF7: 0xEF, 0xF3: 0xCF, 0xFB: 0xDF, 0x12: 0x48}
 	for in, want := range cases {
@@ -391,6 +443,7 @@ func TestBitrev(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-005, REQ-SDS-092
 func TestRBFLen(t *testing.T) {
 	if RBFLen != 368011 { // fpga-specs 05 §3.3
 		t.Fatalf("RBFLen = %d", RBFLen)

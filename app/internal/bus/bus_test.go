@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-BUS
 package bus
 
 import (
@@ -6,6 +7,7 @@ import (
 	"open-sds/app/internal/iface"
 )
 
+// TRLC-LINKS: REQ-SDS-129
 func TestEncode(t *testing.T) {
 	// Verified encodings (ota gpmc_test.go): plane, raw selector little-endian,
 	// value little-endian, never pre-shifted.
@@ -21,6 +23,7 @@ func TestEncode(t *testing.T) {
 // status, pop ports, snoop) is refused; every RW/W register passes; undefined
 // selectors (only bits outside the mask make one) are refused; CS3 passes
 // except the configuration port.
+// TRLC-LINKS: REQ-SDS-129
 func TestWritableIsSchemaDerived(t *testing.T) {
 	for _, r := range iface.Registers() {
 		if got := Writable(PlaneCS1, r.Sel); got != r.Access.CanWrite() {
@@ -55,6 +58,7 @@ func TestWritableIsSchemaDerived(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-002, REQ-SDS-129
 func TestNewDoesNotProbe(t *testing.T) {
 	// Construction must not touch the fabric (it may still hold the factory
 	// image at boot); only a negative fd is refused.
@@ -81,6 +85,7 @@ func TestNewDoesNotProbe(t *testing.T) {
 // fakeCC models the parts of the TPCC the drainer uses: a register file, the
 // shadow-region trigger that "completes" a transfer by filling the destination
 // page with a pattern derived from the running source word counter, and IPR.
+// TRLC-LINKS: REQ-SDS-081
 type fakeCC struct {
 	regs       map[uint32]uint32
 	pages      map[uint32][]byte // phys → page slice (from the fake pager)
@@ -90,12 +95,15 @@ type fakeCC struct {
 	writes     []uint32 // offsets written, in order
 }
 
+// TRLC-LINKS: REQ-SDS-081
 func newFakeCC() *fakeCC {
 	return &fakeCC{regs: map[uint32]uint32{}, pages: map[uint32][]byte{}}
 }
 
+// TRLC-LINKS: REQ-SDS-081
 func (f *fakeCC) R(off uint32) uint32 { return f.regs[off] }
 
+// TRLC-LINKS: REQ-SDS-081
 func (f *fakeCC) W(off, v uint32) {
 	f.writes = append(f.writes, off)
 	const ch = uint32(edmaChan)
@@ -126,12 +134,14 @@ func (f *fakeCC) W(off, v uint32) {
 	f.regs[off] = v
 }
 
+// TRLC-LINKS: REQ-SDS-081
 type fakePager struct {
 	cc     *fakeCC
 	allocs int
 	frees  int
 }
 
+// TRLC-LINKS: REQ-SDS-081
 func (p *fakePager) alloc(nbytes int) (*dmaBuf, error) {
 	nbytes = (nbytes + pageSize - 1) &^ (pageSize - 1)
 	buf := make([]byte, nbytes)
@@ -145,12 +155,14 @@ func (p *fakePager) alloc(nbytes int) (*dmaBuf, error) {
 	return &dmaBuf{buf: buf, phys: phys, release: func() { p.frees++ }}, nil
 }
 
+// TRLC-LINKS: REQ-SDS-081
 func newFakeDrainer(maxWords int) (*edmaDrainer, *fakeCC, *fakePager) {
 	cc := newFakeCC()
 	pg := &fakePager{cc: cc}
 	return &edmaDrainer{cc: cc, pg: pg, maxWords: maxWords, pollMax: 10}, cc, pg
 }
 
+// TRLC-LINKS: REQ-SDS-081
 func TestRunParamProgramsChannel40(t *testing.T) {
 	d, cc, _ := newFakeDrainer(20480)
 	if !d.runParam(burstPortPhys, 0x80001000, 2048) {
@@ -196,6 +208,7 @@ func TestRunParamProgramsChannel40(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-081
 func TestRunParamTimeout(t *testing.T) {
 	d, cc, _ := newFakeDrainer(20480)
 	cc.noComplete = true
@@ -204,6 +217,7 @@ func TestRunParamTimeout(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-081
 func TestDrainSplitsPagesAndBytes(t *testing.T) {
 	d, cc, pg := newFakeDrainer(20480)
 	const n = 5000 // 2048 + 2048 + 904
@@ -240,6 +254,7 @@ func TestDrainSplitsPagesAndBytes(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-081
 func TestDrainWordsPersistentWithInvalidate(t *testing.T) {
 	d, cc, pg := newFakeDrainer(4096)
 	buf, _ := pg.alloc(4096 * 2)
@@ -272,12 +287,15 @@ func TestDrainWordsPersistentWithInvalidate(t *testing.T) {
 
 // ---- CS1 cycle-to-cycle gap ----
 
+// TRLC-LINKS: REQ-SDS-131
 type fakeGPMC struct {
 	regs   map[uint32]uint32
 	events []string
 }
 
+// TRLC-LINKS: REQ-SDS-131
 func (f *fakeGPMC) R(off uint32) uint32 { return f.regs[off] }
+// TRLC-LINKS: REQ-SDS-131
 func (f *fakeGPMC) W(off, v uint32) {
 	f.regs[off] = v
 	switch off {
@@ -292,6 +310,7 @@ func (f *fakeGPMC) W(off, v uint32) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-131
 func TestCS1CycleGapSequence(t *testing.T) {
 	g := &fakeGPMC{regs: map[uint32]uint32{gpmcConfig6: 0x06000041, gpmcConfig7: 0x00000F41}}
 	if err := applyCS1CycleGap(g, cs1CycleGap); err != nil {
@@ -326,6 +345,7 @@ func TestCS1CycleGapSequence(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-081
 func TestPopBytesPreservesPagesAndReusedCoherentBuffer(t *testing.T) {
 	e, cc, pg := newFakeDrainer(5000)
 	e.persistent, _ = pg.alloc(10000)

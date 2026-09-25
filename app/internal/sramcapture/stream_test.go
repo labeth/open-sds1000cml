@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-SRAMCAPTURE
 package sramcapture
 
 import (
@@ -9,6 +10,7 @@ import (
 	"testing"
 )
 
+// TRLC-LINKS: REQ-SDS-035
 type streamFake struct {
 	*fakeBus
 	flags                              uint16
@@ -18,8 +20,10 @@ type streamFake struct {
 	badPointer, faultOnPop, tokenOnPop bool
 }
 
+// TRLC-LINKS: REQ-SDS-035
 type streamDMAFake struct{ *streamFake }
 
+// TRLC-LINKS: REQ-SDS-035
 func (s *streamDMAFake) PopWordsChecked(port uint16, dst []uint16) error {
 	for i := range dst {
 		v, e := s.Read(1, port)
@@ -30,11 +34,13 @@ func (s *streamDMAFake) PopWordsChecked(port uint16, dst []uint16) error {
 	}
 	return nil
 }
+// TRLC-LINKS: REQ-SDS-035
 func streamBus() *streamFake {
 	f := frozenBus()
 	f.revision = 11
 	return &streamFake{fakeBus: f, flags: 256 | 3 | 8 | 16, first: [2]uint64{2048, 0}, counts: [2]uint16{2, 1024}}
 }
+// TRLC-LINKS: REQ-SDS-035
 func (s *streamFake) Read(p uint8, r uint16) (uint16, error) {
 	if p != 1 {
 		return 0, errors.New("wrong plane")
@@ -59,6 +65,7 @@ func (s *streamFake) Read(p uint8, r uint16) (uint16, error) {
 	}
 	return s.fakeBus.Read(p, r)
 }
+// TRLC-LINKS: REQ-SDS-035
 func (s *streamFake) RawWrite(r, v uint16) error {
 	if r == 20 {
 		s.releases = append(s.releases, v)
@@ -68,10 +75,13 @@ func (s *streamFake) RawWrite(r, v uint16) error {
 	return s.fakeBus.RawWrite(r, v)
 }
 
+// TRLC-LINKS: REQ-SDS-035
 type streamWriter func([]byte) (int, error)
 
+// TRLC-LINKS: REQ-SDS-035
 func (f streamWriter) Write(b []byte) (int, error) { return f(b) }
 
+// TRLC-LINKS: REQ-SDS-035
 func TestStreamDrainOrdersBanksAndKeepsOddTail(t *testing.T) {
 	b := streamBus()
 	c, e := New(&streamDMAFake{b})
@@ -105,6 +115,7 @@ func TestStreamDrainOrdersBanksAndKeepsOddTail(t *testing.T) {
 		t.Fatal(e)
 	}
 }
+// TRLC-LINKS: REQ-SDS-035
 func TestStreamDrainHighSequenceAndFractionBytes(t *testing.T) {
 	b := streamBus()
 	b.flags = 256 | 1 | 16
@@ -118,6 +129,7 @@ func TestStreamDrainHighSequenceAndFractionBytes(t *testing.T) {
 		t.Fatalf("%+v %x %v", block, out.Bytes(), e)
 	}
 }
+// TRLC-LINKS: REQ-SDS-035
 func TestStreamDrainFailuresRetainOwnership(t *testing.T) {
 	for _, name := range []string{"disabled", "fault", "sequence", "count-zero", "count-big", "pointer", "fault-during", "token-during", "short-write", "sink-error", "cancelled"} {
 		t.Run(name, func(t *testing.T) {
@@ -163,8 +175,10 @@ func TestStreamDrainFailuresRetainOwnership(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-035
 type streamByteFake struct{ *streamDMAFake }
 
+// TRLC-LINKS: REQ-SDS-035
 func (s *streamByteFake) PopBytesChecked(port uint16, dst []byte) error {
 	for i := 0; i < len(dst); i += 2 {
 		v, e := s.Read(1, port)
@@ -175,6 +189,7 @@ func (s *streamByteFake) PopBytesChecked(port uint16, dst []byte) error {
 	}
 	return nil
 }
+// TRLC-LINKS: REQ-SDS-035
 func TestStreamBytePathPreservesFractionAndRetainsFaultedBank(t *testing.T) {
 	for _, fault := range []bool{false, true} {
 		b := streamBus()
@@ -202,6 +217,7 @@ func TestStreamBytePathPreservesFractionAndRetainsFaultedBank(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-035
 func TestStreamLargeBanksUseAdvertisedCapacity(t *testing.T) {
 	b := streamBus()
 	b.bufferCapacity = 8192

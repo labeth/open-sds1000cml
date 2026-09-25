@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-ACQSRAM
 package main
 
 import (
@@ -7,6 +8,7 @@ import (
 
 // Profile the transport separately from SRAM command waits and the sink.
 // This wrapper is used only by the explicit profiling command.
+// TRLC-LINKS: REQ-SDS-170
 type profileBus struct {
 	dev                            *bus.Dev
 	Reads, Writes, Pops, Halfwords uint64
@@ -15,6 +17,7 @@ type profileBus struct {
 	count                          uint32
 }
 
+// TRLC-LINKS: REQ-SDS-170
 func (p *profileBus) Read(plane uint8, selector uint16) (uint16, error) {
 	t := time.Now()
 	v, err := p.dev.Read(plane, selector)
@@ -22,6 +25,7 @@ func (p *profileBus) Read(plane uint8, selector uint16) (uint16, error) {
 	p.Reads++
 	return v, err
 }
+// TRLC-LINKS: REQ-SDS-170
 func (p *profileBus) RawWrite(selector, value uint16) error {
 	t := time.Now()
 	err := p.dev.RawWrite(selector, value)
@@ -41,6 +45,7 @@ func (p *profileBus) RawWrite(selector, value uint16) error {
 	}
 	return err
 }
+// TRLC-LINKS: REQ-SDS-170
 func (p *profileBus) PopWordsChecked(selector uint16, dst []uint16) error {
 	t := time.Now()
 	err := p.dev.PopWordsChecked(selector, dst)
@@ -50,6 +55,7 @@ func (p *profileBus) PopWordsChecked(selector uint16, dst []uint16) error {
 	return err
 }
 
+// TRLC-LINKS: REQ-SDS-170
 func (p *profileBus) PopBytesChecked(selector uint16, dst []byte) error {
 	t := time.Now()
 	err := p.dev.PopBytesChecked(selector, dst)

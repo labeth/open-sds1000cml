@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
 package engine
 
 import (
@@ -10,6 +11,7 @@ import (
 // Concurrency chaos: the engine loop runs frames while API goroutines hammer
 // every externally-reachable setter and reader. Run under -race; the test
 // also asserts the engine still publishes at the end (no deadlock/wedge).
+// TRLC-LINKS: REQ-SDS-001, REQ-SDS-008
 func TestEngineConcurrencyChaos(t *testing.T) {
 	fb := newFakeBus()
 	e, _ := newTestEngine(t, fb)

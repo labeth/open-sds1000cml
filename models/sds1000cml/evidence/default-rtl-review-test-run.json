@@ -1,0 +1,97 @@
+{
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "runtimeInputSHA256": {
+    "fpga/common/ddio_pair.v": "7e33617ccb20197ad4826cb23ca325172a50935c468c90a2ec95a657d979a8a6",
+    "fpga/common/gpmc_slave.v": "9290fbbc5641cd09029c119fceefe7c3d9c9b6ee52f9bb5d8a8141fc5772b1b0",
+    "fpga/common/lane_in.v": "2d1253f0c81dc439b746ebd36df3acf22a4ecac51aa85676574db500e2cf473b",
+    "fpga/common/pll_m2.v": "120e8e933fe105a3c3e61be3cd1aa01e82b85fa9f9a12fdb60f6ed84a8e7c627",
+    "fpga/common/sim/gpmc_bfm.v": "cb1138d9c81895b828284efe6fd0f9ccdf827945d9d1982a7ec6a8953c4fea0b",
+    "fpga/common/sim/run.sh": "c2cd800d4205c35202dcb86b5c1b4e5167ff1c1550ba9d54c203820ecdc81eb2",
+    "fpga/common/sim/tb_ddio.v": "aa7195031e4c1dd348263717a9e9549f89aff609540088437d5bd4c26d7169c1",
+    "fpga/common/sim/tb_gpmc_slave.v": "dd4d74d21b3ce7a21f7ef04b5cc7fca8bf04d3e963e046ee857cc1ec9d780c91",
+    "fpga/common/sim/tb_lane_in.v": "70782ac75f59bf74c5e2110fe7e70b1cac03688a6a78a0078c0a55f6eadf12d1",
+    "fpga/common/sim/tb_pll.v": "ca2cd71bb39bc6be8c0225a25a4560f139c88b2fa33211076ea65c3e27bd1f05",
+    "fpga/common/sim/tb_sync.v": "f36dfe6f5227ed347cc8efa5317161a197e10471d8ae4aee607430d489171fe0",
+    "fpga/common/sync.v": "40ee6aaa0b7995f2caa4c7a98d9119d9e5712527d47bed724673403671813fc8",
+    "fpga/default/adc_front.v": "1c601a42b2aaf5d5052c4b26bcebeb762134841a9fa12c500bbaf0fa9439b335",
+    "fpga/default/capture.v": "b08676bd94b5963be6d7f9233d382d04f0db5c2627a7d7d1964e9b07a23df781",
+    "fpga/default/default.v": "081fbf5e64df17b89a6057e385a5cdfcb910fe79cb90db6608ad8a78acc5e4d3",
+    "fpga/default/diag.v": "e75b0595437380b3410399042e88fb4bfa4a5bfecffb8a1fcf47a47db4fa7a01",
+    "fpga/default/drain.v": "666c141e0f25195e363a7b08bd711113be13e13a45291f8428a675c6ffd72e1b",
+    "fpga/default/lanemap_seed.vh": "bb6034a2616bb897cdb114aabf77d7c0870d30016dc96fc95c6bb2451d49362a",
+    "fpga/default/out/adc_front.v": "1c601a42b2aaf5d5052c4b26bcebeb762134841a9fa12c500bbaf0fa9439b335",
+    "fpga/default/out/capture.v": "b08676bd94b5963be6d7f9233d382d04f0db5c2627a7d7d1964e9b07a23df781",
+    "fpga/default/out/db/pll_a_altpll.v": "8f6d72c2231162b0c4d3f211faa5de0d4bbd18156016378397e7a8bde837b5f3",
+    "fpga/default/out/db/pll_b_altpll.v": "14616a88094a5aa6348b4d6c906acedb2c63fb73202fda83ed8ad1e479e6a62e",
+    "fpga/default/out/ddio_pair.v": "0f32c77bac09fb1fb4a8069f7480743e8b0dd05669da22aa68e171798d33435c",
+    "fpga/default/out/default.v": "081fbf5e64df17b89a6057e385a5cdfcb910fe79cb90db6608ad8a78acc5e4d3",
+    "fpga/default/out/diag.v": "a7bd574c9d731f33ec5251e813e1f0c24cb29c8530797b154dc5cfa051886155",
+    "fpga/default/out/drain.v": "666c141e0f25195e363a7b08bd711113be13e13a45291f8428a675c6ffd72e1b",
+    "fpga/default/out/gpmc_slave.v": "c9c9417d23053163d30245cfc6742445811c7af9a25b4ba29afd28afd797f9cc",
+    "fpga/default/out/lane_in.v": "1777785598b0670d0ec92cc5402bd27b78d939aafdab443796892deecad8a719",
+    "fpga/default/out/lanemap_seed.vh": "64fc6b1f48aa60a8f89ce45f1473657c7a3ae28d28a13d148e0624846fc7ea98",
+    "fpga/default/out/pll_m2.v": "305800c87dce134eafffa0890fa3bd07f7ec42091aa4acce23490ebbcb71f203",
+    "fpga/default/out/regmux.vh": "e22bab1d142ee0034797379ac106bac92bf7892723e245491fba09a29dd2ed87",
+    "fpga/default/out/regs.vh": "9763276d3fac76b11c6e887a3c6ba3dceed5b720642a722503f049af4068a3a8",
+    "fpga/default/out/sync.v": "e68447098f4ecfb40fedc3de07ade451fb79e06c87ce15c14d493055f8ac512b",
+    "fpga/default/regmux.vh": "e22bab1d142ee0034797379ac106bac92bf7892723e245491fba09a29dd2ed87",
+    "fpga/default/regs.vh": "9763276d3fac76b11c6e887a3c6ba3dceed5b720642a722503f049af4068a3a8",
+    "fpga/default/sim/run.sh": "7b3b69cefafd9118855b13446d77f9f2325e0e447b76bfe5fe546cff6a0fe691",
+    "fpga/default/sim/tb_adc_front.v": "eb1889560e74867df5f4a396c7c53cb0b9fd5bb7d024a3daf4bcb9283c62bf21",
+    "fpga/default/sim/tb_capture.v": "fea39685f6c8cb4c617c8a0d7c6fa7944e971dc116f555d613b754381b32a66b",
+    "fpga/default/sim/tb_diag.v": "443b937d5b6208ac65d71f850f74fe45d8f0b7c98f0d7807a9208429b9026948",
+    "fpga/default/sim/tb_drain.v": "fc04526a01b80ac453cc1ba6921dab4a2f0cb73f6e562522eed15d303518f824",
+    "fpga/default/sim/tb_top.v": "344ee62ed6ac70790449bcb1ebc9e3b3afcbb3a28fe57597130a044255de947f"
+  },
+  "scope": "Original default suite including its common prerequisite benches, SIM behavioral clocks and ideal bus stimulus. Five default outcomes are recorded separately from the previously integrated common cases. No physical CDC, fitted timing, IO placement or hardware qualification.",
+  "runtime": {
+    "iverilog": "Icarus Verilog version 12.0 (stable) ()",
+    "vvp": "Icarus Verilog runtime version 12.0 (stable) ()"
+  },
+  "cases": [
+    {
+      "id": "tb_adc_front",
+      "source": "fpga/default/sim/tb_adc_front.v",
+      "result": "pass",
+      "output": "PASS tb_adc_front\n/tmp/sds-default-review-jyeqwwxs/sources/fpga/default/sim/tb_adc_front.v:81: $finish called at 2620500 (1ps)\n",
+      "sourceSnapshot": true
+    },
+    {
+      "id": "tb_capture",
+      "source": "fpga/default/sim/tb_capture.v",
+      "result": "pass",
+      "output": "PASS tb_capture\n/tmp/sds-default-review-jyeqwwxs/sources/fpga/default/sim/tb_capture.v:180: $finish called at 1406332250 (1ps)\n",
+      "sourceSnapshot": true
+    },
+    {
+      "id": "tb_drain",
+      "source": "fpga/default/sim/tb_drain.v",
+      "result": "pass",
+      "output": "PASS tb_drain\n/tmp/sds-default-review-jyeqwwxs/sources/fpga/default/sim/tb_drain.v:110: $finish called at 529769750 (1ps)\n",
+      "sourceSnapshot": true
+    },
+    {
+      "id": "tb_diag",
+      "source": "fpga/default/sim/tb_diag.v",
+      "result": "pass",
+      "output": "PASS tb_diag\n/tmp/sds-default-review-jyeqwwxs/sources/fpga/default/sim/tb_diag.v:265: $finish called at 4335794750 (1ps)\n",
+      "sourceSnapshot": true
+    },
+    {
+      "id": "tb_top",
+      "source": "fpga/default/sim/tb_top.v",
+      "result": "pass",
+      "output": "PASS tb_top\n/tmp/sds-default-review-jyeqwwxs/sources/fpga/default/sim/tb_top.v:227: $finish called at 3774645000 (1ps)\n",
+      "sourceSnapshot": true
+    }
+  ],
+  "command": [
+    "bash",
+    "fpga/default/sim/run.sh"
+  ],
+  "exitCode": 0,
+  "stdout": "== fpga/common ==\n[PASS] tb_sync\n[PASS] tb_ddio\n[PASS] tb_pll\n[PASS] tb_lane_in\n[PASS] tb_gpmc_slave\n== fpga/default ==\n[PASS] tb_adc_front\n[PASS] tb_capture\n[PASS] tb_drain\n[PASS] tb_diag\n[PASS] tb_top\nALL PASS\n",
+  "stderr": "",
+  "status": "complete",
+  "result": "pass"
+}

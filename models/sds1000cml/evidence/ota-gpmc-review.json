@@ -1,0 +1,29 @@
+{
+  "scope": "Both OTA GPMC files reviewed and integrated into REQ-SDS-103; source behavior unchanged.",
+  "sourceSHA256": {
+    "ota/internal/gpmc/gpmc.go": "19c2169b7fb8dc3b319c92f6c42de8c0fb4a8adef9930790ae8a39ee73a30762",
+    "ota/internal/gpmc/gpmc_test.go": "ff33ccf811d56ad8f1190d858cc95e1587512babc213cbe207f1658e009865d5"
+  },
+  "implementation": [
+    "Read-only inherited descriptor wrapper; it does not open or close descriptors.",
+    "Read validates nonnegative fd and plane 1/3, then invokes the read ioctl with a six-byte little-endian access structure.",
+    "Version check compares CS1 selector 0x12 to factory magic 0x0052.",
+    "FillFrozen samples selector 0x46, masks to 11 bits and compares consecutive samples separated by the requested gap."
+  ],
+  "limits": [
+    "OK checks only fd >= 0, not descriptor validity or hardware identity.",
+    "EncodeAccess itself permits arbitrary plane values; safety validation lives in Read.",
+    "FillFrozen with pairs <= 0 returns true after one successful read. Gap is not validated; a nonpositive duration does not establish separated samples.",
+    "Equal sampled 11-bit counter values can alias wraparound and are not by themselves a universal proof that acquisition stopped.",
+    "Existing tests exercise packing/unpacking, missing fd and rejected planes before syscalls. Successful ioctl/version/frozen-counter paths are not tested.",
+    "Factory ABI constants are not evidence of compatibility with the new 0xacd2 profile.",
+    "Read validates planes but does not restrict selectors; the takeover caller selects the documented factory registers."
+  ],
+  "tests": [
+    "TestEncodeAccess",
+    "TestDecodeValue",
+    "TestReaderNoFDIsSafe",
+    "TestInvalidPlaneRejected"
+  ],
+  "testLog": "test-runs/ota-gpmc.jsonl"
+}

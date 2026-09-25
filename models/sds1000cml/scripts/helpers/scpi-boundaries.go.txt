@@ -1,0 +1,19 @@
+// Test-only overlay; never added to the instrument working tree.
+func TestModelReviewSCPIBoundaries(t *testing.T) {
+ h, fs := newH(t)
+ fe := analog.New(nil, nil, nil)
+ h.fe = fe
+ if got := do(t,h,"WFSU SP,4,NP,-1"); got != "Data out of range\n" || h.wfSP != 4 { t.Fatalf("partial WFSU characterization: %q SP=%d",got,h.wfSP) }
+ if got := do(t,h,"C1:ATTN 0.5"); got != "" || h.attn[0] != .5 || fe.ProbeFactor(0) != 1 { t.Fatalf("attenuation mismatch characterization: %q shadow=%v front=%v",got,h.attn[0],fe.ProbeFactor(0)) }
+ do(t,h,"TRDL 2US;TRLV 1")
+ level := h.trlvV
+ if level == 0 { t.Fatal("expected nonzero trigger level before reset") }
+ do(t,h,"*RST")
+ if h.trdlS != 2e-6 || h.trlvV != level { t.Fatalf("reset retention characterization: delay=%v level=%v",h.trdlS,h.trlvV) }
+ if got := do(t,h,"C1:ATTN NAN"); got != "" || !math.IsNaN(h.attn[0]) { t.Fatalf("NaN attenuation characterization: %q %v",got,h.attn[0]) }
+ if got := do(t,h,"TRDL INF"); got != "" || !math.IsInf(h.trdlS,1) { t.Fatalf("infinite delay characterization: %q %v",got,h.trdlS) }
+ do(t,h,"WFSU SP,4,NP,10,FP,8")
+ data,desc := h.dat2(0,fs.frame),h.wavedesc(0,fs.frame)
+ if len(data)!=10 || binary.LittleEndian.Uint32(desc[116:])!=2048 {t.Fatal("descriptor/window characterization changed")}
+ t.Log("Observed: partial WFSU update; 0.5 attenuation shadow versus front-end factor 1; reset retains trigger delay/level; NaN attenuation and infinite delay accepted; descriptor count is full frame while DAT2 count is windowed")
+}

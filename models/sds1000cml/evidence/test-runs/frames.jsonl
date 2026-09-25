@@ -1,0 +1,20 @@
+{"Time":"2026-09-22T22:22:40.487622751+02:00","Action":"start","Package":"open-sds/app/internal/frames"}
+{"Time":"2026-09-22T22:22:40.498779232+02:00","Action":"run","Package":"open-sds/app/internal/frames","Test":"TestWaitNextWakesOnPublish"}
+{"Time":"2026-09-22T22:22:40.4988399+02:00","Action":"output","Package":"open-sds/app/internal/frames","Test":"TestWaitNextWakesOnPublish","Output":"=== RUN   TestWaitNextWakesOnPublish\n"}
+{"Time":"2026-09-22T22:22:40.539832456+02:00","Action":"output","Package":"open-sds/app/internal/frames","Test":"TestWaitNextWakesOnPublish","Output":"--- PASS: TestWaitNextWakesOnPublish (0.04s)\n"}
+{"Time":"2026-09-22T22:22:40.539862232+02:00","Action":"pass","Package":"open-sds/app/internal/frames","Test":"TestWaitNextWakesOnPublish","Elapsed":0.04}
+{"Time":"2026-09-22T22:22:40.539885929+02:00","Action":"run","Package":"open-sds/app/internal/frames","Test":"TestWaitNextTimesOutIdle"}
+{"Time":"2026-09-22T22:22:40.539892337+02:00","Action":"output","Package":"open-sds/app/internal/frames","Test":"TestWaitNextTimesOutIdle","Output":"=== RUN   TestWaitNextTimesOutIdle\n"}
+{"Time":"2026-09-22T22:22:40.671624798+02:00","Action":"output","Package":"open-sds/app/internal/frames","Test":"TestWaitNextTimesOutIdle","Output":"--- PASS: TestWaitNextTimesOutIdle (0.13s)\n"}
+{"Time":"2026-09-22T22:22:40.671653509+02:00","Action":"pass","Package":"open-sds/app/internal/frames","Test":"TestWaitNextTimesOutIdle","Elapsed":0.13}
+{"Time":"2026-09-22T22:22:40.671683979+02:00","Action":"run","Package":"open-sds/app/internal/frames","Test":"TestWaitNextConcurrentWithReaders"}
+{"Time":"2026-09-22T22:22:40.671689104+02:00","Action":"output","Package":"open-sds/app/internal/frames","Test":"TestWaitNextConcurrentWithReaders","Output":"=== RUN   TestWaitNextConcurrentWithReaders\n"}
+{"Time":"2026-09-22T22:22:40.725997423+02:00","Action":"output","Package":"open-sds/app/internal/frames","Test":"TestWaitNextConcurrentWithReaders","Output":"--- PASS: TestWaitNextConcurrentWithReaders (0.05s)\n"}
+{"Time":"2026-09-22T22:22:40.726029477+02:00","Action":"pass","Package":"open-sds/app/internal/frames","Test":"TestWaitNextConcurrentWithReaders","Elapsed":0.05}
+{"Time":"2026-09-22T22:22:40.726041369+02:00","Action":"run","Package":"open-sds/app/internal/frames","Test":"TestPrecisionCopyOwnsStorage"}
+{"Time":"2026-09-22T22:22:40.726045793+02:00","Action":"output","Package":"open-sds/app/internal/frames","Test":"TestPrecisionCopyOwnsStorage","Output":"=== RUN   TestPrecisionCopyOwnsStorage\n"}
+{"Time":"2026-09-22T22:22:40.726144009+02:00","Action":"output","Package":"open-sds/app/internal/frames","Test":"TestPrecisionCopyOwnsStorage","Output":"--- PASS: TestPrecisionCopyOwnsStorage (0.00s)\n"}
+{"Time":"2026-09-22T22:22:40.726155225+02:00","Action":"pass","Package":"open-sds/app/internal/frames","Test":"TestPrecisionCopyOwnsStorage","Elapsed":0}
+{"Time":"2026-09-22T22:22:40.726194722+02:00","Action":"output","Package":"open-sds/app/internal/frames","Output":"PASS\n"}
+{"Time":"2026-09-22T22:22:41.727625968+02:00","Action":"output","Package":"open-sds/app/internal/frames","Output":"ok  \topen-sds/app/internal/frames\t1.240s\n"}
+{"Time":"2026-09-22T22:22:41.727665127+02:00","Action":"pass","Package":"open-sds/app/internal/frames","Elapsed":1.24}

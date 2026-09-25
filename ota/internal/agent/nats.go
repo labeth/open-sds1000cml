@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-OTA-AGENT
 package agent
 
 import (
@@ -20,6 +21,7 @@ import (
 //
 // The link auto-reconnects forever; on each (re)connect it re-subscribes and
 // publishes an "online" event so the host learns the device is reachable.
+// TRLC-LINKS: REQ-SDS-108
 func (a *Agent) runNATS() {
 	opts := []nats.Option{
 		nats.Name("ota-agent/" + a.cfg.DeviceID),
@@ -71,6 +73,7 @@ func (a *Agent) runNATS() {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-108
 func (a *Agent) serveNATS(nc *nats.Conn) {
 	reply := func(m *nats.Msg) {
 		resp := a.DispatchJSON(m.Data)
@@ -119,6 +122,7 @@ func (a *Agent) serveNATS(nc *nats.Conn) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-108
 func (a *Agent) heartbeat() map[string]any {
 	st := a.st.get()
 	a.appMu.Lock()

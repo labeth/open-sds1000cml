@@ -1,9 +1,11 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
 package engine
 
 import "testing"
 
 // mkFrame builds a synthetic frame: baseline 100, with a pulse of `code` over
 // sample range [pLo,pHi).
+// TRLC-LINKS: REQ-SDS-014
 func zmFrame(n int, code uint8, pLo, pHi int) *Frame {
 	f := &Frame{C1: make([]uint8, n), C2: make([]uint8, n), Valid: n}
 	for i := 0; i < n; i++ {
@@ -16,6 +18,7 @@ func zmFrame(n int, code uint8, pLo, pHi int) *Frame {
 	return f
 }
 
+// TRLC-LINKS: REQ-SDS-014
 func TestZonesQualify(t *testing.T) {
 	e := &Engine{}
 	const n = 2048
@@ -64,6 +67,7 @@ func TestZonesQualify(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-014
 func TestMaskEvalAndRing(t *testing.T) {
 	e, _ := newTestEngine(t, newFakeBus())
 	const n = 2048
@@ -117,6 +121,7 @@ func TestMaskEvalAndRing(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-014
 func TestBuildMaskFromEnvelope(t *testing.T) {
 	win := 100
 	lo := make([]uint8, win)

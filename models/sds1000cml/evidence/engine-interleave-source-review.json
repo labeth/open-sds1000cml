@@ -1,0 +1,99 @@
+{
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "requirements": [
+    "REQ-SDS-016",
+    "REQ-SDS-074"
+  ],
+  "owner": "FU-APP-ENGINE",
+  "completeReads": [
+    "app/internal/engine/interleave_cal.go",
+    "app/internal/engine/interleave_cal_test.go"
+  ],
+  "reviewedLines": 221,
+  "sourceSHA256": {
+    "app/internal/engine/interleave_cal.go": "84b1ca21eb844ae33372370107b14f4cfab02284b4cc30b2eb2806b123acec2a",
+    "app/internal/engine/interleave_cal_test.go": "4c01eae382eb040c413b167efc32c158b13aefac41448eda80f204249157c04e"
+  },
+  "runtimeInputSHA256": {
+    "app/internal/engine/arena.go": "7f2e3c7df687498bcb6629570bd548900da55ad8d0af4fa7649fa084ef4b9cae",
+    "app/internal/engine/arena_test.go": "27c04c98e4434b1a66e6e5d9e3c1c4ac5ab493f3f6baba369b1f49508dab0b07",
+    "app/internal/engine/bands.go": "403c739d18e883ad2521489f5b63c1062738b39b10bfad1f7e79c2877c0e5851",
+    "app/internal/engine/bands_test.go": "8ca6f588a609897b7b94796dedae46a69fceb90ca88ab31895471c3bedbba368",
+    "app/internal/engine/bode.go": "dde4a7e21d0dd2fa426bd78a8b2b892fc30aec01a69fa14777bbaa5416cd6c40",
+    "app/internal/engine/bode_breaker_test.go": "731ab6c1a441292dcbc169b5e6c5ed948d344c620763dcffd527347dec3d50b7",
+    "app/internal/engine/bode_test.go": "7d2994094f6b0eff08807505b0325e2a6705bd097c81abda5e0124f8aa66e6d5",
+    "app/internal/engine/chaos_test.go": "59e1c87aa73458fc511b651328a2291d3243876fe6aa5092025604ad6447f8df",
+    "app/internal/engine/degraded_test.go": "0f9841af98e077e71da39de9837a517ec81b8676a69a7730904e1b3c87e1251d",
+    "app/internal/engine/discern.go": "e9c66ad4c2595719eabed2c246b06c08800611fd497ab4f4c65587e2aacbdbfd",
+    "app/internal/engine/discern_test.go": "46f5a226ab124f97d53f55a1a24940b9f525ed1e9e3c19502f283b18076c66fe",
+    "app/internal/engine/engine.go": "16908439527c0264eaa92ac9c0a3a252dbcad5b5d8bf5d2ae0723ec09bc9e6f7",
+    "app/internal/engine/engine_bus.go": "8b47e0e0d0218e8c0ff004568ae541468a5e17bde7c9bf97d571cb283be38b50",
+    "app/internal/engine/engine_capture.go": "f9a0931a094c09172c64bad9b860c05b81582828cb9d43d871b36ad4d3efeb40",
+    "app/internal/engine/engine_cmd.go": "34bbbb8bec23a5bdb5c75589c0afe8bdb80985eb978c11df4aaf455b442e54b9",
+    "app/internal/engine/engine_control.go": "ca2928fdc5a401ee41466fe9bfe85c2262250ec2304ebe750fe68b70d178adea",
+    "app/internal/engine/engine_depth_test.go": "e074682f572b14996235b52284fd3a0bcb72a7d15a931c7764e709d2427cbbac",
+    "app/internal/engine/engine_loop.go": "5d0e794c4174ccd89c6636244c425ff4377c62de9e39c0ddf59c5161d32604e5",
+    "app/internal/engine/engine_publish_test.go": "0190547f41fec8a113a3c115ae426c608714e85bd7b921b80b39fe35ee64104b",
+    "app/internal/engine/engine_test.go": "3a92cb8cbaa54bd4d4f4a1eefa01aaf0ec0e336702f34d47a38cf5a284fccecf",
+    "app/internal/engine/engine_triglevel_test.go": "5bda06dbf1481b530a77caac5fe7ca3df90cd487198c5f4439c1f4c30011d5ec",
+    "app/internal/engine/engine_wedge_test.go": "91817a6442635ade27171e4d2d1c2151cb3d94f34277a08752f5cbe562492cc3",
+    "app/internal/engine/envroll.go": "5c0bf71b5364d4ca56edf528f3a1b19d75ecd7128f83f61fdf8429f7cc3099f1",
+    "app/internal/engine/envroll_test.go": "0b771bad9f8bbded3969516d5fbcc24bd49e857c4a95a8e955cb680985dd7abe",
+    "app/internal/engine/ets.go": "a3698c13114a70d838c3ac33fb21bac5361d44b94e8768a4753a69bc2c710b59",
+    "app/internal/engine/health_beat_test.go": "ea85f922e6ab0a17bda307317c5b04fea53115c70c206e73ab3e54ade3421b46",
+    "app/internal/engine/interleave_cal.go": "84b1ca21eb844ae33372370107b14f4cfab02284b4cc30b2eb2806b123acec2a",
+    "app/internal/engine/interleave_cal_test.go": "4c01eae382eb040c413b167efc32c158b13aefac41448eda80f204249157c04e",
+    "app/internal/engine/modes.go": "7532e71cb641cc885581a724a9c582a67bc6dc17723efe7dfbcc1ad2e7b3c2f6",
+    "app/internal/engine/qualify.go": "2117c731d4fe42f1e9033c1b4be75cc4280dfa09c9d351ac821e8765786417ed",
+    "app/internal/engine/qualify_test.go": "e6aa1cf649cee07643d256041b5710838a32973ce3adafbd06daa953b89ba1db",
+    "app/internal/engine/serial_registry.go": "0f10170c89532b630724a96e8749b5914f37e222e48a1bcd05627820f7cf8010",
+    "app/internal/engine/serialtrig.go": "9b08b17194fe866dfb99a6036ba9fb63c6aa545d12e63c1708b528871f7d3b3b",
+    "app/internal/engine/serialtrig_edge_test.go": "bf31fd427815730a3794c45e6448154bca9801c1b9735dd8bf7a963a96b0c228",
+    "app/internal/engine/serialtrig_fuzz_test.go": "d5e5591ef3a3afd2bf20e1ace6f165fcdb33e9db705c9d9288cd97d026bcfad5",
+    "app/internal/engine/serialtrig_test.go": "0563ab59f6199523d9665bef53fd2fe769cd2518d4b1ed861dad4b3484f8d1d5",
+    "app/internal/engine/sram.go": "68c8f87091ea6a2d962b4ee607f7463336082404b100f781df68601d94827a3c",
+    "app/internal/engine/sram_math.go": "3ad989febc1ef1dd4799eee527adaf71544ca4006dac5a18ac72d85923d02264",
+    "app/internal/engine/sram_math_test.go": "05a666a68844574b533c9bcac775e28812ec27c86c5e1c291763cac3f8f8dccc",
+    "app/internal/engine/sram_test.go": "5ecf9230232b78e8bfe42fdc63b267cefa60da6180d1646d24201f53ae2ead26",
+    "app/internal/engine/zonemask.go": "dbb8003d52fee119eb1e9c1595ea0d2b1c628376c53f7e0f22a4b4c69e1183a1",
+    "app/internal/engine/zonemask_breaker2_test.go": "bb9046e85345a3b283bc0908e4c9f1349640a3d603aa6fbdf7e36ddf9adbf744",
+    "app/internal/engine/zonemask_breaker_test.go": "3f6cd7ca7da52d4438635b78451d2f306ccebc096da08f1aeed769e7d8cd61e9",
+    "app/internal/engine/zonemask_policy_test.go": "bddeaedcab95f1bd5f1882cf2e7e9495f2aeb1e8a69fe8b50bb3c7ef89de1d0b",
+    "app/internal/engine/zonemask_test.go": "733953b9348d8b768458f1441465335c83cde740a0ec979e05a9d78afdbc3162"
+  },
+  "command": [
+    "go",
+    "test",
+    "-race",
+    "-json",
+    "-count=1",
+    "-timeout=60s",
+    "./internal/engine",
+    "-run",
+    "^Test(InterleaveCalibrationRotationAndGuards|VerifiedInterleaveRanges)$"
+  ],
+  "environment": {
+    "GOPROXY": "off"
+  },
+  "exitCode": 0,
+  "tests": {
+    "TestInterleaveCalibrationRotationAndGuards": "pass",
+    "TestVerifiedInterleaveRanges": "pass"
+  },
+  "log": "test-runs/engine-interleave-reviewed.jsonl",
+  "logSHA256": "b4c41dc2d6197e94a20b195281e17679165e7e9a46ab95cff37d0dc7f88dd7c4",
+  "result": "reviewed-host-tests-pass-not-yet-native-integrated",
+  "findings": [
+    "LoadInterleaveCalibration validates positive finite base/verified scales, finite offsets within +/-32 codes and per-channel offset sum within 0.01. JSON decoding uses the standard unmarshaler; unknown fields are accepted. Neither original test calls this loader.",
+    "apply requires a nonnil calibration, exact supported scales, at least 2000 samples, equal channel/output lengths and no input samples at either rail. It computes five phase means independently per channel and subtracts their unweighted mean.",
+    "Phase selection scores five cyclic rotations jointly across channels. It rejects best mean squared error greater than 0.25 or runner-up separation below 1. It infers rotation from signal statistics; no record-phase metadata enters the function.",
+    "REQ-SDS-074 requires valid record-phase metadata. This heuristic legacy path does not prove that condition, and passing rotation tests cannot be credited as satisfaction of the metadata requirement. Keep proposed profile requirements separate from this implementation.",
+    "On acceptance, a lazily initialized lookup table subtracts stored offsets, rounds to Q8 and saturates to 0..65535. Both raw channels are then replaced with rounded Q8 output. Table reuse assumes calibration offsets remain immutable after first successful application; the exported Offset fields are not mutation-guarded.",
+    "Rotation tests use one fixed joint fingerprint with five rotations and 50000 samples per rotation. They compare both Q8 channels to constructed truth but do not separately assert every rounded raw output.",
+    "Four rejection cases use unsupported scale, one added Fs/5 sinusoid, one upper-rail sample and flat ambiguous input. They assert rejection and preservation of channel1 and Q1 only, not channel2/Q2. This is bounded fixture coverage, not general rejection of signal-induced false matches.",
+    "The verified-range test exercises four accepted cross-channel scale pairs and one rejected scale. It does not prove those scales were physically measured. No loader errors, nil/short/mismatched inputs, lower-rail clipping, threshold boundaries, table invalidation or physical phase accuracy are tested here."
+  ],
+  "nextAction": "Integrate with SRAM engine batch while retaining the explicit mismatch between inferred phase and REQ-SDS-074 metadata qualification.",
+  "executionSupersededBy": "engine-processing-test-run.json",
+  "nativeIntegration": "27 deduplicated tests across the combined batch; uniformity has partial evidence only. Original source review and preannotation hashes retained."
+}

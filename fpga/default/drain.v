@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-RTL-DEFAULT-DRAIN
 // drain.v -- the BURST pop port on the record read port (C2 domain): the windowed logical pointer
 // over the wrapped record, BURST_REMAIN, OP_REWIND, DRAIN_STAT.POPS and POP_MON (06-TIERS s1.6 / s2
 // on the v2.1 read port; shape after owned-fpga fpga/standard/drain.v: one pointer, one pop per
@@ -35,6 +36,7 @@
 `timescale 1ns/1ps
 `include "regs.vh"
 
+// TRLC-LINKS: REQ-SDS-196
 module drain (
     input  wire               clk,
     input  wire               arm,          // OP_GO accepted (pointer to 0, statistics cleared)

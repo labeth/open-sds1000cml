@@ -1,0 +1,14 @@
+{
+  "status": "general-image integration simulated; FPGA fit rejected, not deployed",
+  "candidate": "build-sZUOJq",
+  "synthesisLogicElements": 13626,
+  "fitterLogicElements": 13379,
+  "deviceLogicElements": 10320,
+  "memoryBits": 352256,
+  "fitterFailure": "M9K location demand exceeds 46",
+  "mapExitCode": 0,
+  "fitExitCode": 3,
+  "topSimulationExitCode": 0,
+  "currentImageSHA256": "7c8e9c81bd5dc54531f383c332532e0c23c662fac22fbb8a1963f679be2f1896",
+  "next": "Share mutually exclusive receiver scratch memories without reducing capacity; then resolve logic pressure and rerun combined fit"
+}

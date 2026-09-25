@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-CAL
 package cal
 
 import (
@@ -9,6 +10,7 @@ import (
 // Cal parse fuzz: a corrupt calibration.dat (right size, wrong content) must
 // be rejected cleanly, never panic the boot. Also feeds checksum-valid random
 // payloads to exercise the descramble + record index math for any bytes.
+// TRLC-LINKS: REQ-SDS-016
 func TestCalParseFuzz(t *testing.T) {
 	rng := rand.New(rand.NewSource(0xCA1))
 	for i := 0; i < 5000; i++ {

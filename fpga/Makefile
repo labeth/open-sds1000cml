@@ -1,18 +1,9 @@
-# open-sds/fpga -- per-design Quartus projects for the SDS1102CML+ acquisition FPGA (Cyclone IV E EP4CE10F17C8).
-#
-#   make qsf        regenerate default/default.qsf from the acq2 analysis branch (the acq2 analysis branch)
-#   make bitstream  headless Quartus flow -> default/out/default.rbf (368011 bytes); NOT for CI:
-#                   takes flock /tmp/open-sds-quartus.lock, needs >= 3 GB free RAM and Quartus 21.1 at
-#                   $QUARTUS_ROOTDIR (or ~/intelFPGA_lite/21.1/quartus). Exits 1 on any unplaced/unused
-#                   QSF pin or negative setup slack even though the rbf was written.
-#   make test       go vet + go test (the driver is tested against fake quartus_* scripts) + QSF drift check
-#                   + lane-map include drift check (default/lanemap_seed.vh vs the lanecal report) + its unittest
-#   make sim        every self-checking iverilog testbench (common/sim, default/sim) -- owned by WP1b
-#
-# Layout: common/ (shared RTL), default/ (THE default image), internal/quartus (driver), cmd/buildfpga.
-# Build products live only under <design>/out/ (git-ignored).
+# General SRAM/triggering image for Cyclone IV E EP4CE10F17C8.
+# make bitstream publishes acq_sram/out/general/current/bench.rbf only after timing passes.
+# qsf/test/sim below retain legacy source-verification commands; they do not select release images.
 
 GO ?= go
+NODE ?= node
 PYTHON ?= python3
 DESIGN ?= default
 QSFGEN := ../the acq2 analysis branch
@@ -23,8 +14,8 @@ LANEMAPGEN := ../the acq2 analysis branch
 qsf:
 	$(PYTHON) $(QSFGEN)
 
-bitstream: qsf
-	$(GO) run ./cmd/buildfpga -design $(DESIGN)
+bitstream:
+	$(NODE) --experimental-strip-types acq_sram/build_general.ts
 
 vet:
 	$(GO) vet ./...

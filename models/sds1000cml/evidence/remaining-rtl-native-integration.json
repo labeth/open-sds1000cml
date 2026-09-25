@@ -1,0 +1,25 @@
+{
+  "status": "integrated-with-explicit-verification-limits",
+  "files": 2,
+  "moduleLinks": 2,
+  "newRequirements": [],
+  "cases": 1,
+  "passed": 1,
+  "totalRTLFiles": 117,
+  "totalModuleLinks": 154,
+  "totalRTLCases": 129,
+  "totalNativeRTLSummaries": 64,
+  "checks": {
+    "exactBaselineAndTokens": "pass",
+    "evidenceProvenance": "pass",
+    "strictConsistency": "pass",
+    "mcp": "pass",
+    "nativeAttachments": "pass",
+    "publication": "pass",
+    "reproducibility": "36 byte-identical artifacts",
+    "pdf": "deferred by user"
+  },
+  "remainingMissingRTLFiles": 0,
+  "remainingExpressionWarnings": 392,
+  "scope": "RTL link milestone only. Scheduling bench is not the production controller. See post-rtl-completion-gaps.json for the remaining full-model work."
+}

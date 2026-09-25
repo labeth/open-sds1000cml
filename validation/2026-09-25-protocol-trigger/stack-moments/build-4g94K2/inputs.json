@@ -1,0 +1,7 @@
+{
+  "sourceSHA256": "a8691de32e0a5745034205bd3578780e34735bbcfd21a35732e42237f4e70982",
+  "purpose": "Isolated correlation moment kernel, not complete matching or stacking",
+  "clockMHz": 125,
+  "countBits": 32,
+  "limitations": "Virtual input and output paths unconstrained; no reference/sample memory or bus interface included"
+}

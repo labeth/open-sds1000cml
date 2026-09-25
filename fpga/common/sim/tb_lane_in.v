@@ -1,6 +1,8 @@
+// ENGMODEL-OWNER-UNIT: FU-RTL-COMMON-TESTS
 // tb_lane_in.v -- lane_in registers, lane_mon ever-flags with gate reset, toggle_ctr window count
 // and saturation.
 `timescale 1ns/1ps
+// TRLC-LINKS: REQ-SDS-190
 module tb_lane_in;
     reg clk = 0; always #10 clk = ~clk;      // 50 MHz
     integer errors = 0;

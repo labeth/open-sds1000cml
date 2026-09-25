@@ -1,0 +1,92 @@
+{
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "result": "pass",
+  "sourceSHA256": {
+    "app/internal/web/bode.js": "0619533bedf59bffdbb187fe2c805a1b630ae70d1636aa12f68d335f733ba31b",
+    "app/internal/web/bode_node_test.go": "5eacd1ef28e019108e7957a0fc62186d6a84efb2e2964ee374789311e755bdbd"
+  },
+  "helperSHA256": "aa06724d846ceac1da38b7ca04e60a56daf854a625c77490b305a7173c5cd448",
+  "nodeVersion": "v22.20.0",
+  "originalTests": {
+    "TestBodeJSHelpers": "pass",
+    "TestBodeJSBreaker": "pass"
+  },
+  "boundaryCharacterization": {
+    "result": "pass",
+    "cases": [
+      {
+        "name": "frequency labels lose significant integer zeros",
+        "result": "pass",
+        "inputs": [
+          100,
+          100000,
+          100000000
+        ],
+        "actual": [
+          "1",
+          "1k",
+          "1M"
+        ]
+      },
+      {
+        "name": "all-NaN range is inverted infinite bounds",
+        "result": "pass",
+        "actual": [
+          "Infinity",
+          "-Infinity"
+        ]
+      },
+      {
+        "name": "clean three-point trace places log midpoints and both panels",
+        "result": "pass",
+        "arcX": [
+          42,
+          231,
+          420,
+          42,
+          231,
+          420
+        ]
+      },
+      {
+        "name": "hostile values reach drawing operations as nonfinite coordinates",
+        "result": "pass",
+        "nonfiniteCoordinateCounts": {
+          "nanGain": 2,
+          "infGain": 7,
+          "nanPhase": 2,
+          "zeroFrequency": 4,
+          "negativeFrequency": 4
+        }
+      },
+      {
+        "name": "nonempty point set requires gain and phase arrays",
+        "result": "pass"
+      },
+      {
+        "name": "unsorted frequencies can place finite points outside plot bounds",
+        "result": "pass",
+        "arcX": [
+          42,
+          -336,
+          -71.78933836098491,
+          42,
+          -336,
+          -71.78933836098491
+        ]
+      },
+      {
+        "name": "infinite tick upper bound exceeds bounded child execution",
+        "result": "pass",
+        "timeoutMs": 2000,
+        "resultMeaning": "characterized nontermination within deadline; child killed"
+      },
+      {
+        "name": "empty point set clears and draws invitation without traces",
+        "result": "pass"
+      }
+    ],
+    "scope": "Recording drawing context and one bounded child process; no browser pixels, measurement accuracy or physical qualification."
+  },
+  "scope": "Original Node assertions via two Go tests and eight additional deterministic boundary cases. No skipped tests, browser, HTTP server, device access or physical qualification."
+}

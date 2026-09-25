@@ -1,0 +1,23 @@
+{
+  "source": "fpga/acq_sram/sim/tb_timeslice_controller.v",
+  "scope": "Offline Icarus simulations with ideal digital clocks and behavioral RAM (ALTERA_RESERVED_QIS is not defined). No fitted primitive simulation, metastability analysis, physical timing or board qualification.",
+  "runs": [
+    "scheduler-reset-writing",
+    "scheduler-reset-reading",
+    "scheduler-consecutive-captures",
+    "scheduler-wrap-tail-stall",
+    "scheduler-steady-bandwidth",
+    "scheduler-counter-lanes",
+    "scheduler-one-word-tail",
+    "scheduler-unread-protection",
+    "scheduler-owned-host-stall",
+    "scheduler-physical-geometry"
+  ],
+  "results": [
+    {
+      "requirement": "REQ-SDS-048",
+      "status": "partial",
+      "notes": "Reviewed digital simulations pass. Full requirement-clause coverage and physical qualification remain unestablished. See evidence/test-runs/rtl-reviewed.json for exact commands, source hashes and output."
+    }
+  ]
+}

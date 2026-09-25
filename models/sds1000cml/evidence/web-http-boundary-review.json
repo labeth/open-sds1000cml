@@ -1,0 +1,55 @@
+{
+  "result": "selected-http-boundary-review",
+  "sourceSHA256": {
+    "app/internal/web/web.go": "981e135bf23fdb4ae264b5e62f78ec09ffa65c18c12ad72cfcacfde183fb8ba7",
+    "app/internal/web/web_binframe.go": "8a54b3eaf6f0903d2bf2c9377edec9135c80ab20dbbae8a6d2b2f87c47b2c2ce",
+    "app/internal/web/diag.go": "83a7a7a5f1dad93a7c8d86f3b36ab4d650b6cf4f6526bccd7d7ea85f32d8ab44",
+    "app/cmd/app/main.go": "6cc21b84f7b00909e510b5760c80922b6db128b2da55e75577cbe398cd15944d"
+  },
+  "reviewedRanges": {
+    "app/internal/web/web.go": [
+      [
+        136,
+        143
+      ],
+      [
+        178,
+        239
+      ]
+    ],
+    "app/internal/web/web_binframe.go": [
+      [
+        83,
+        99
+      ]
+    ],
+    "app/internal/web/diag.go": [
+      [
+        18,
+        64
+      ]
+    ],
+    "app/cmd/app/main.go": [
+      [
+        414,
+        422
+      ],
+      [
+        687,
+        703
+      ]
+    ]
+  },
+  "findings": [
+    "Main defaults SCOPE_HTTP to :8080 and constructs http.Server with ws.Handler directly, using ListenAndServe. No outer TLS or authentication middleware appears in this inspected construction path. Deployment/network protections are not established by this source inspection.",
+    "Handler returns a ServeMux with control, frame, claim, tuning, diagnostic and profiling routes. The registration layer supplies no common authorization wrapper; individual diagnostic/control implementations still need full review.",
+    "hClaim increments the atomic epoch without checking method, identity or credentials. The in-memory fixture exercises unauthenticated GET and DELETE claim requests.",
+    "superseded rejects only nonzero parsed epochs less than the current value. Missing, zero, malformed, current and future values are not rejected by this predicate; numeric prefixes are parsed despite trailing text. This is polling supersession, not identity or exclusive authorization.",
+    "hFrameBin invokes superseded before frame work. The supplied browser uses its claimed epoch for primary polling but raw FFT requests omit it. Full frame concurrency, resource bounds and server control policy remain unverified.",
+    "withDiag only checks whether the diagnostic object is wired, returning 503 when absent. It is not an authorization check; no diagnostic bus operation was executed."
+  ],
+  "characterization": "web-epoch-characterization.json",
+  "scope": "Selected source ranges only, not whole web package coverage. No browser, service listener, diagnostic action, device or network operation.",
+  "provenanceNote": "Historical inspection ranges and hashes refer to the pre-annotation source. The complete web API review and exact baseline-recoverable annotation overlay supersede this selected inspection for current source traceability.",
+  "supersededBy": "webapi-source-review.json"
+}

@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-LCD
 package lcd
 
 // The 5×7 bitmap font (spec 07 §10.0, normative glyph table copied
@@ -52,6 +53,7 @@ var glyphs = map[rune][5]byte{
 }
 
 // TextWidth is len(runes) × 6 × scale.
+// TRLC-LINKS: REQ-SDS-021
 func TextWidth(s string, scale int) int {
 	n := 0
 	for range s {
@@ -61,6 +63,7 @@ func TextWidth(s string, scale int) int {
 }
 
 // DrawText renders each set bit as a scale×scale block; advance 6·scale.
+// TRLC-LINKS: REQ-SDS-021
 func DrawText(sf Surface, x, y int, s string, c uint16, scale int) {
 	for _, r := range s {
 		g, ok := glyphs[r]
@@ -83,6 +86,7 @@ func DrawText(sf Surface, x, y int, s string, c uint16, scale int) {
 }
 
 // DrawTextRight right-aligns: draws ending at xr.
+// TRLC-LINKS: REQ-SDS-021
 func DrawTextRight(sf Surface, xr, y int, s string, c uint16, scale int) {
 	DrawText(sf, xr-TextWidth(s, scale), y, s, c, scale)
 }

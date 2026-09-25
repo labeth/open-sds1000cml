@@ -1,0 +1,18 @@
+{
+  "scope": "Complete RPC review integrated as REQ-SDS-113 with selected takeover and application-control tests for REQ-SDS-027 and REQ-SDS-117.",
+  "sourceSHA256": {
+    "ota/internal/agent/rpc.go": "9f91a128043c82e7d2c734d641f0b9d132886276520afe23e5f341a9e87c0f41",
+    "ota/internal/agent/rpc_test.go": "cc0c245f07d8a1e83c29f81ebfb529317451795ca30583a9e71b4ddde7f16bb5"
+  },
+  "findings": [
+    "Dispatch decodes raw JSON into the agent-specific envelope, rejects malformed/unknown commands and invokes the handler registry.",
+    "Handler errors retain response Data. Recovered panics become error responses and log a stack.",
+    "DispatchJSON marshals the response and falls back to an error envelope when Data cannot be encoded; the Dispatch comment promising always-marshalable data is stronger than the implementation.",
+    "decodeArgs is generic and must be captured by AST inspection rather than a simple function-name regex; missing args return a zero value.",
+    "Request.Args is RawMessage; Response.Data is any. This differs from the client-side rpcproto structs.",
+    "Seven existing tests cover malformed/unknown/ping/panic requests, pre-takeover app-start rejection, missing-fd takeover refusal and dry-run plumbing. Marshaling fallback and generic argument decoding need separate coverage review.",
+    "Test-only overlay confirms Dispatch may return OK with unmarshalable handler data, while DispatchJSON produces an error-only fallback. Generic decodeArgs returns zero value for omitted args and partially decoded fields alongside JSON type errors."
+  ],
+  "testLog": "test-runs/agent-handlers.jsonl",
+  "characterization": "agent-rpc-characterization.json"
+}

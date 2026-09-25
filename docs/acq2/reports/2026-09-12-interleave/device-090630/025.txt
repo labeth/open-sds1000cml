@@ -1,0 +1,7 @@
+ARGS ["exec", "/dev/acqsram", "readtrace"]
+{
+  "first": 1,
+  "second": 1,
+  "third_low": 0
+}
+[exit 0]

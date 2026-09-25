@@ -1,0 +1,20 @@
+{"Time":"2026-09-23T08:37:37.535081388+02:00","Action":"start","Package":"open-sds/app/internal/decode"}
+{"Time":"2026-09-23T08:37:37.545707162+02:00","Action":"run","Package":"open-sds/app/internal/decode","Test":"TestBreakUsbls"}
+{"Time":"2026-09-23T08:37:37.545729612+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestBreakUsbls","Output":"=== RUN   TestBreakUsbls\n"}
+{"Time":"2026-09-23T08:37:37.546057401+02:00","Action":"run","Package":"open-sds/app/internal/decode","Test":"TestBreakUsbls/known_bug_tight_interpacket_gap"}
+{"Time":"2026-09-23T08:37:37.546066893+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestBreakUsbls/known_bug_tight_interpacket_gap","Output":"=== RUN   TestBreakUsbls/known_bug_tight_interpacket_gap\n"}
+{"Time":"2026-09-23T08:37:37.546392885+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestBreakUsbls/known_bug_tight_interpacket_gap","Output":"    decode_break_usbls_test.go:448: gap=2bit: ok=true syncSpans=1 bytes=[17 11 40] (want syncs=2, bytes=[17]) -- MERGE BUG\n"}
+{"Time":"2026-09-23T08:37:37.546434895+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestBreakUsbls/known_bug_tight_interpacket_gap","Output":"    decode_break_usbls_test.go:452: KNOWN BUG (tight gap merge): two legal packets 2 bit-times apart decoded as ok=true syncSpans=1 bytes=[17 11 40]; want 2 SYNC spans and [0x11] (or an error)\n"}
+{"Time":"2026-09-23T08:37:37.546471228+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestBreakUsbls/known_bug_tight_interpacket_gap","Output":"--- FAIL: TestBreakUsbls/known_bug_tight_interpacket_gap (0.00s)\n"}
+{"Time":"2026-09-23T08:37:37.546485366+02:00","Action":"fail","Package":"open-sds/app/internal/decode","Test":"TestBreakUsbls/known_bug_tight_interpacket_gap","Elapsed":0}
+{"Time":"2026-09-23T08:37:37.546615572+02:00","Action":"run","Package":"open-sds/app/internal/decode","Test":"TestBreakUsbls/known_bug_crc_not_validated"}
+{"Time":"2026-09-23T08:37:37.546622019+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestBreakUsbls/known_bug_crc_not_validated","Output":"=== RUN   TestBreakUsbls/known_bug_crc_not_validated\n"}
+{"Time":"2026-09-23T08:37:37.546946947+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestBreakUsbls/known_bug_crc_not_validated","Output":"    decode_break_usbls_test.go:475: corrupted CRC: ok=true errFlagged=false bytes=[170 85 237 52] -- decoder does NOT validate CRC\n"}
+{"Time":"2026-09-23T08:37:37.546975684+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestBreakUsbls/known_bug_crc_not_validated","Output":"    decode_break_usbls_test.go:479: KNOWN BUG (no CRC check): a frame with a corrupted CRC decoded ok=true with no error flag (bytes=[170 85 237 52]); USB CRC16/CRC5 is never checked\n"}
+{"Time":"2026-09-23T08:37:37.547011041+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestBreakUsbls/known_bug_crc_not_validated","Output":"--- FAIL: TestBreakUsbls/known_bug_crc_not_validated (0.00s)\n"}
+{"Time":"2026-09-23T08:37:37.547026604+02:00","Action":"fail","Package":"open-sds/app/internal/decode","Test":"TestBreakUsbls/known_bug_crc_not_validated","Elapsed":0}
+{"Time":"2026-09-23T08:37:37.547066044+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestBreakUsbls","Output":"--- FAIL: TestBreakUsbls (0.00s)\n"}
+{"Time":"2026-09-23T08:37:37.547081651+02:00","Action":"fail","Package":"open-sds/app/internal/decode","Test":"TestBreakUsbls","Elapsed":0}
+{"Time":"2026-09-23T08:37:37.547378521+02:00","Action":"output","Package":"open-sds/app/internal/decode","Output":"FAIL\n"}
+{"Time":"2026-09-23T08:37:37.547574354+02:00","Action":"output","Package":"open-sds/app/internal/decode","Output":"FAIL\topen-sds/app/internal/decode\t0.012s\n"}
+{"Time":"2026-09-23T08:37:37.547589676+02:00","Action":"fail","Package":"open-sds/app/internal/decode","Elapsed":0.013}

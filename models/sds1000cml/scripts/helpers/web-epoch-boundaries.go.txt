@@ -1,0 +1,25 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-WEB
+// TRLC-LINKS: REQ-SDS-023
+// Characterization only: epoch supersession is not authentication.
+func TestModelReviewWebEpochPolicy(t *testing.T) {
+ s := &Server{}
+ handler := s.Handler()
+ for _, method := range []string{"GET", "DELETE"} {
+  rr := httptest.NewRecorder()
+  handler.ServeHTTP(rr, httptest.NewRequest(method, "/api/claim", nil))
+  var response map[string]uint64
+  if rr.Code != 200 || json.Unmarshal(rr.Body.Bytes(), &response) != nil || response["epoch"] != s.epoch.Load() {
+   t.Fatalf("claim response method=%s status=%d body=%s",method,rr.Code,rr.Body.String())
+  }
+ }
+ if s.epoch.Load()!=2 { t.Fatalf("epoch=%d",s.epoch.Load()) }
+ for _, tc := range []struct{ query string; rejected bool }{
+  {"",false},{"?epoch=0",false},{"?epoch=garbage",false},{"?epoch=1",true},
+  {"?epoch=2",false},{"?epoch=3",false},{"?epoch=1junk",true},
+ } {
+  if got:=s.superseded(httptest.NewRequest("GET","/api/frame.bin"+tc.query,nil));got!=tc.rejected {
+   t.Fatalf("query=%q superseded=%v want=%v",tc.query,got,tc.rejected)
+  }
+ }
+ t.Log("Unauthenticated GET and DELETE claims increment epoch. Missing, zero, malformed, current and future epochs are not superseded; old numeric prefixes are superseded.")
+}

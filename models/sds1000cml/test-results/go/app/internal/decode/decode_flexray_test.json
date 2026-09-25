@@ -1,0 +1,46 @@
+{
+  "source": "app/internal/decode/decode_flexray_test.go",
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "scope": "Reviewed Go test outcomes; passing assertions contribute partial requirement evidence.",
+  "sourceSHA256": "8096be646143d8fdf4ba92b19381a48453804dde84347beaf97e8623f2048c6b",
+  "logs": {
+    "test-runs/decode-implementation.jsonl": "dde14e18f02e73c694af08de3897655d305e230d208c3215d1478008a42da228"
+  },
+  "tests": [
+    {
+      "name": "TestDecodeFlexRayRoundTrip",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-018"
+      ]
+    },
+    {
+      "name": "TestDecodeFlexRayMultiFrame",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-018"
+      ]
+    },
+    {
+      "name": "TestDecodeFlexRayPartialAtStart",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-018"
+      ]
+    },
+    {
+      "name": "TestDecodeFlexRayNoPanic",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-018"
+      ]
+    }
+  ],
+  "results": [
+    {
+      "requirement": "REQ-SDS-018",
+      "status": "partial",
+      "notes": "4 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    }
+  ]
+}

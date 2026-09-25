@@ -1,0 +1,17 @@
+{
+  "source": "fpga/sram_bench/sim/tb.v",
+  "scope": "Original 10 MHz behavioral SRAM tester with normal and folded address-bit18 memory. Ideal PLL/DDR/SRAM models; no physical capacity, timing, host protocol or device qualification.",
+  "sourceSHA256": "6b1f6eb1b54d7b2dfb6f62fd3918c24a540b9493b17d940cecc387bd382aaead",
+  "reportSHA256": "a9f80f7072797cc17660ffa6bdeb97bf00fbd2832430f78f50197a44fad26d21",
+  "runs": [
+    "sram-bench-normal",
+    "sram-bench-alias"
+  ],
+  "results": [
+    {
+      "requirement": "REQ-SDS-193",
+      "status": "partial",
+      "notes": "Original normal-memory and address-bit18 alias cases use a fixed 10 MHz ideal PLL/DDR/SRAM configuration. Full-depth comparison and error presence are asserted; host register access, first-error/bit-mask correctness, all latency settings and repeated runs are not verified. See evidence/sram-bench-rtl-review-test-run.json."
+    }
+  ]
+}

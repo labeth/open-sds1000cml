@@ -1,0 +1,98 @@
+{
+  "result": "pass",
+  "documentSHA256": "e439f0eafd25ddf9f83fe3cef4b9bceefcd4c573b8b6cf2c6a9d2e83aac76738",
+  "views": [
+    {
+      "view": "VIEW-BROWSER",
+      "parts": 1,
+      "nodes": 16,
+      "relationships": 29,
+      "sourceSHA256": "dd9c3a6c144ce72c471c98b5365f2b1d433585ba649ad6caceaf4c4906a56d48"
+    },
+    {
+      "view": "VIEW-COMMUNICATION",
+      "parts": 1,
+      "nodes": 91,
+      "relationships": 125,
+      "sourceSHA256": "05c23a6772803a27dac9a1493e5393cb354d716572592cf529b8bb92c7624c6e"
+    },
+    {
+      "view": "VIEW-DEFAULT-RTL",
+      "parts": 1,
+      "nodes": 8,
+      "relationships": 9,
+      "sourceSHA256": "55610ef0ddce27c21b50e4943e5bf3ec390e3b6088eb73965c2f4ad16b8dd5b3"
+    },
+    {
+      "view": "VIEW-DEPLOYMENT",
+      "parts": 1,
+      "nodes": 132,
+      "relationships": 256,
+      "sourceSHA256": "eada3e7e20fcbd31c331d1e84d8981942a11a7da660af3887dca3c21610e9442"
+    },
+    {
+      "view": "VIEW-FLOWS",
+      "parts": 1,
+      "nodes": 31,
+      "relationships": 72,
+      "sourceSHA256": "6f6737229226de7f4bbb71e0f4bb00b6097c15dd35f8bb30fa5f7cbb7fc35207"
+    },
+    {
+      "view": "VIEW-HARDWARE",
+      "parts": 1,
+      "nodes": 16,
+      "relationships": 27,
+      "sourceSHA256": "c0892eebcb69dd69253df19f7c145049c75454e74f22cb50ba02a90c0390eeea"
+    },
+    {
+      "view": "VIEW-HOST-RTL",
+      "parts": 1,
+      "nodes": 11,
+      "relationships": 9,
+      "sourceSHA256": "0f7956e805476a9f52edf4358de2eb5ed036be4884c1c876032e138be89dedef"
+    },
+    {
+      "view": "VIEW-LIFECYCLE",
+      "parts": 1,
+      "nodes": 12,
+      "relationships": 14,
+      "sourceSHA256": "368782df2e462a48ce21822b0e4875615f6e11fa7076c4330b4d24faf5c76b79"
+    },
+    {
+      "view": "VIEW-OPERATIONS",
+      "parts": 1,
+      "nodes": 12,
+      "relationships": 12,
+      "sourceSHA256": "29adafda9e8c39c8c44e6970f1de9c303f200fb552c3cb905ca61ccdf156de7b"
+    },
+    {
+      "view": "VIEW-PROFILE-RTL",
+      "parts": 1,
+      "nodes": 10,
+      "relationships": 9,
+      "sourceSHA256": "2d42af4679844914abd04621becd76d455ef5560a5741d6b8937acf74076733f"
+    },
+    {
+      "view": "VIEW-SECURITY",
+      "parts": 1,
+      "nodes": 14,
+      "relationships": 13,
+      "sourceSHA256": "dc02a8d14b6e9bc33046927ca0beffebde9818fa25e66d079bab8948d697386a"
+    },
+    {
+      "view": "VIEW-SYSTEM",
+      "parts": 1,
+      "nodes": 43,
+      "relationships": 73,
+      "sourceSHA256": "355bad0aba5da255ca377807897c8aba89ad17f20aff4e8e7dabb8d670f170de"
+    },
+    {
+      "view": "VIEW-TRACEABILITY",
+      "parts": 1,
+      "nodes": 42,
+      "relationships": 82,
+      "sourceSHA256": "dc4959103fddd00f5f9c73fe57c84424573fe31f90644b0d5ef10d62c1a139fd"
+    }
+  ],
+  "scope": "Native Mermaid node IDs and complete edge-line multisets preserved in one diagram per view. Visual layout and semantic model completeness require separate review. Candidate document only; visual label-placement review is incomplete."
+}

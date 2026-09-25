@@ -1,0 +1,39 @@
+{
+  "source": "app/internal/superres/comp_test.go",
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "scope": "Reviewed Go test outcomes; passing assertions contribute partial requirement evidence.",
+  "sourceSHA256": "cd8b20eb9ded7034ee593d2d0fc4eb87ebb64f273ee7539a0070431a88b62e32",
+  "logs": {
+    "test-runs/superres-reviewed.jsonl": "41e836838baf830c6c7372cad49f2b9c60a203a08470acb1dbb759cb39de09e3"
+  },
+  "tests": [
+    {
+      "name": "TestCompCurveBasics",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-142"
+      ]
+    },
+    {
+      "name": "TestCompAutoCaps",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-142"
+      ]
+    },
+    {
+      "name": "TestCompensateContract",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-142"
+      ]
+    }
+  ],
+  "results": [
+    {
+      "requirement": "REQ-SDS-142",
+      "status": "partial",
+      "notes": "3 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "result": "pass",
+  "requirement": "REQ-SDS-021",
+  "productionFiles": [
+    "font.go",
+    "gen_tokens.go",
+    "lcd.go",
+    "netaddr.go",
+    "render.go",
+    "render_bode.go",
+    "render_fft.go",
+    "render_fmt.go",
+    "render_overlays.go",
+    "render_panels.go",
+    "render_superres.go",
+    "spectrogram.go",
+    "surface.go"
+  ],
+  "codeEntries": 80,
+  "verificationEntries": 10,
+  "newNativeTestGroups": [
+    "golden_test.go",
+    "golden_views_test.go",
+    "render_invs_test.go",
+    "renderfuzz_test.go",
+    "palette_parity_test.go"
+  ],
+  "matrixSHA256": "d19d2c8c61f826e827bf205108924b43af32abd59204ff3bbe1628a1f502ee8d",
+  "scope": "Reviewed LCD/palette implementation and original test attachment; verification remains partial and inferred runtime links are not physical execution evidence."
+}

@@ -1,11 +1,15 @@
+// ENGMODEL-OWNER-UNIT: FU-RTL-ACQ-TESTS
 `timescale 1ns/1ps
+// TRLC-LINKS: REQ-SDS-043, REQ-SDS-188
 module bench_pll(input refclk,output reg c0=0,output c1,output locked,output reg halfclk=0);
  always #2 c0=~c0;initial begin #2;forever #4 halfclk=~halfclk;end assign #1 c1=c0;assign locked=1;
 endmodule
+// TRLC-LINKS: REQ-SDS-043, REQ-SDS-188
 module adc_interleave(input refclk,memclk,packclk,enable,input [79:0] lane,input [9:0] encode_enable,
  input snapshot_request,output snapshot_ack,input consume,output [31:0] word_data,output valid,fault,output [79:0] snapshot,output [4:0] enc_p,enc_n,output locked);
  assign snapshot_ack=snapshot_request;assign word_data=0;assign valid=0;assign fault=0;assign snapshot=0;assign enc_p=0;assign enc_n=0;assign locked=1;
 endmodule
+// TRLC-LINKS: REQ-SDS-043, REQ-SDS-188
 module tb;
  reg clk=0,mclk_in=0;always #6.25 clk=~clk;always #5 mclk_in=~mclk_in;
  reg cs=1,oe=1;wire [15:0] gpmc_d;wire [31:0] dq;wire k1,k2,g1;

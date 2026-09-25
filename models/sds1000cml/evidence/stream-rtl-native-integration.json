@@ -1,0 +1,53 @@
+{
+  "status": "integrated-with-explicit-verification-limits",
+  "requirements": [
+    "REQ-SDS-186",
+    "REQ-SDS-187"
+  ],
+  "annotatedFiles": 8,
+  "moduleLinks": 8,
+  "productionFiles": 5,
+  "testbenchFiles": 3,
+  "simulationCases": 8,
+  "passedSimulations": 8,
+  "nativeAttachments": [
+    {
+      "source": "fpga/acq_sram/sim/tb_sram_stream_path.v",
+      "resultArtifact": "test-results/rtl/tb_sram_stream_path.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_TB_SRAM_STREAM_PATH_A64C90"
+    },
+    {
+      "source": "fpga/acq_sram/sim/tb_stream_banks.v",
+      "resultArtifact": "test-results/rtl/tb_stream_banks.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_TB_STREAM_BANKS_D51FD3"
+    },
+    {
+      "source": "fpga/acq_sram/sim/tb_stream_path.v",
+      "resultArtifact": "test-results/rtl/tb_stream_path.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_TB_STREAM_PATH_62FF98"
+    }
+  ],
+  "totalRTLNativeSummaries": 42,
+  "legacyCPUFIFO": {
+    "requirement": "REQ-SDS-187",
+    "verification": "not-run",
+    "note": "No direct original behavioral bench; no instantiation found in searched current FPGA .v/.qsf sources."
+  },
+  "scope": [
+    "Packetizer/bank tests use three bank sizes; SRAM-wrapper tests cover AW13 wrap and an AW19 bounded 65,539-word run, not full 19-bit wrap.",
+    "Ideal SRAM/clocks do not establish physical qualification,source fault injection or producer arbitration.",
+    "Frozen inputs remain auditable through exact approved comment overlays.",
+    "Board/profile characterization is separate and remains outside native integrated totals.",
+    "PDF generation remains deferred."
+  ],
+  "checks": {
+    "strictConsistency": "pass",
+    "mcp": "pass:187 requirement lookups",
+    "nativePublication": "3 stream attachments;42 total RTL summaries",
+    "reproducibility": "36 outputs byte-identical",
+    "provenanceMutationTests": "4 pass: altered geometry,altered compile inputs,nonzero exit with PASS marker,omitted case"
+  }
+}

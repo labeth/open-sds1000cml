@@ -1,7 +1,10 @@
+// ENGMODEL-OWNER-UNIT: FU-RTL-ACQ-TESTS
 `timescale 1ns/1ps
+// TRLC-LINKS: REQ-SDS-041, REQ-SDS-043, REQ-SDS-044, REQ-SDS-083
 module bench_pll(input refclk,output c0,c1,locked);
  assign c0=refclk;assign #1 c1=refclk;assign locked=1;
 endmodule
+// TRLC-LINKS: REQ-SDS-041, REQ-SDS-043, REQ-SDS-044, REQ-SDS-083
 module tb;
  reg clk=0,mclk_in=0;always #6.25 clk=~clk;always #5 mclk_in=~mclk_in;
  wire [15:0] gpmc_d;wire [31:0] dq;wire k1,k2,g1;

@@ -1,0 +1,132 @@
+{
+  "status": "integrated-with-explicit-verification-limits",
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "completeReads": [
+    "fpga/common/ddio_pair.v",
+    "fpga/common/lane_in.v",
+    "fpga/common/pll_m2.v",
+    "fpga/common/sync.v",
+    "fpga/common/sim/gpmc_bfm.v",
+    "fpga/common/sim/tb_ddio.v",
+    "fpga/common/sim/tb_gpmc_slave.v",
+    "fpga/common/sim/tb_lane_in.v",
+    "fpga/common/sim/tb_pll.v",
+    "fpga/common/sim/tb_sync.v"
+  ],
+  "reviewedLines": 744,
+  "sourceSHA256": {
+    "fpga/common/ddio_pair.v": "0f32c77bac09fb1fb4a8069f7480743e8b0dd05669da22aa68e171798d33435c",
+    "fpga/common/lane_in.v": "1777785598b0670d0ec92cc5402bd27b78d939aafdab443796892deecad8a719",
+    "fpga/common/pll_m2.v": "305800c87dce134eafffa0890fa3bd07f7ec42091aa4acce23490ebbcb71f203",
+    "fpga/common/sync.v": "e68447098f4ecfb40fedc3de07ade451fb79e06c87ce15c14d493055f8ac512b",
+    "fpga/common/sim/gpmc_bfm.v": "8e9fadbaf9b67bed2d7eddc4ad1e92203123b5e5b5f4fb21b150c12ae454a623",
+    "fpga/common/sim/tb_ddio.v": "3f3efc2134267672f24438fb3de7b90904c84eb8fbe05b6eada6549a8b585404",
+    "fpga/common/sim/tb_gpmc_slave.v": "7c143cc32a6fde6b16ced05e7bdd9124e99502cf94e068a18b5c174e9002cdd8",
+    "fpga/common/sim/tb_lane_in.v": "6e96b495d36f5f186235d93d5157dea34b744395c386007ead4030f961ffeed3",
+    "fpga/common/sim/tb_pll.v": "ee5c6927b8ad6717dca6c4895bcc05eadb21c21c21241505bf116454aa8070a4",
+    "fpga/common/sim/tb_sync.v": "4f12012d3e0358707af838fba67b5889500aca13b5591605005f81a6d9eb2832"
+  },
+  "modulesByFile": {
+    "fpga/common/ddio_pair.v": [
+      "ddio_out1",
+      "ddio_pair"
+    ],
+    "fpga/common/lane_in.v": [
+      "lane_in",
+      "lane_mon",
+      "toggle_ctr"
+    ],
+    "fpga/common/pll_m2.v": [
+      "pll_m2"
+    ],
+    "fpga/common/sync.v": [
+      "sync_bit",
+      "sync_pulse",
+      "sync_word",
+      "stretch3"
+    ],
+    "fpga/common/sim/gpmc_bfm.v": [
+      "gpmc_bfm"
+    ],
+    "fpga/common/sim/tb_ddio.v": [
+      "tb_ddio"
+    ],
+    "fpga/common/sim/tb_gpmc_slave.v": [
+      "tb_gpmc_slave"
+    ],
+    "fpga/common/sim/tb_lane_in.v": [
+      "tb_lane_in"
+    ],
+    "fpga/common/sim/tb_pll.v": [
+      "tb_pll"
+    ],
+    "fpga/common/sim/tb_sync.v": [
+      "tb_sync"
+    ]
+  },
+  "supportReviewedIn": [
+    {
+      "path": "fpga/common/gpmc_slave.v",
+      "evidence": "board-rtl-source-review.json"
+    }
+  ],
+  "findings": [
+    {
+      "path": "fpga/common/ddio_pair.v",
+      "owner": "FU-RTL-COMMON-DDIO-PAIR",
+      "finding": "SIM models both DDR input values sampled on the rising edge and the low half emitted on the falling edge; differential outputs are complementary. The non-SIM branch uses altddio_out parameters. Behavioral simulation does not prove IOE placement, drive strength or external timing."
+    },
+    {
+      "path": "fpga/common/lane_in.v",
+      "owner": "FU-RTL-COMMON-LANE-IN",
+      "finding": "Input lanes pass through an attributed IOE register then a second fabric register. lane_mon accumulates ever-high/ever-low flags until gate reset; toggle_ctr counts observed transitions in 65536-cycle windows and saturates at 65535. Physical pad mapping and sampling alias limits are separate."
+    },
+    {
+      "path": "fpga/common/pll_m2.v",
+      "owner": "FU-RTL-COMMON-PLL-M2",
+      "finding": "Default clock tree assumes 160 MHz M2 and derives 200 MHz encode/capture,100MHz and50MHz outputs. This differs from the profile 100 MHz reference plan. SIM ignores the actual input frequency, generates fixed periods, locks after 1 us and delays capture by 208 ps per applied step; it does not validate physical PLL behavior."
+    },
+    {
+      "path": "fpga/common/pll_m2.v",
+      "owner": "FU-RTL-COMMON-PLL-M2",
+      "finding": "Dynamic step engine settles select/direction, holds phasestep high for 4 scan clocks, and waits for phasedone low then high. A 256-clock timeout still counts the step as applied and sets sticky step_err until target changes. Applied count alone therefore does not prove a physical phase shift. Error/timeout branches are not exercised by the original PLL bench."
+    },
+    {
+      "path": "fpga/common/sync.v",
+      "owner": "FU-RTL-COMMON-SYNC",
+      "finding": "sync_bit synchronizes bits independently without multi-bit coherence. sync_pulse is an unacknowledged toggle and can merge/cancel closely spaced pulses. sync_word repeatedly requests a held source word via toggles, while stretch3 reports synchronized level and edges. Power-up initial values replace an explicit reset; physical bundled-data timing remains required."
+    },
+    {
+      "path": "fpga/common/sim/gpmc_bfm.v",
+      "owner": "FU-RTL-COMMON-TESTS",
+      "finding": "Simulation-only BFM drives ideal CS/OE/WE, address and data timing with fixed delays. Its write/read tasks do not establish AM3352 electrical timing or arbitrary bus phase tolerance."
+    },
+    {
+      "path": "fpga/common/sim/tb_ddio.v",
+      "owner": "FU-RTL-COMMON-TESTS",
+      "finding": "Checks forwarding, complementary pins, static output and SDR values against SIM behavior. Failures are printed with $finish rather than a nonzero exit; a runner must require PASS and reject FAIL text."
+    },
+    {
+      "path": "fpga/common/sim/tb_gpmc_slave.v",
+      "owner": "FU-RTL-COMMON-TESTS",
+      "finding": "Checks default-mode selected writes/read data/pop selector, back-to-back reads, all 128 selectors and shared-bus high impedance using the BFM. Unlike the qualified-read skew sweep, this bench does not require the default mode to survive CS-first read release."
+    },
+    {
+      "path": "fpga/common/sim/tb_lane_in.v",
+      "owner": "FU-RTL-COMMON-TESTS",
+      "finding": "Checks two-stage input latency, gate-reset/accumulated flags,128 transitions per window, saturation and idle windows. Bench reports FAIL text rather than fatal exit; tests use reduced widths and ideal clocks."
+    },
+    {
+      "path": "fpga/common/sim/tb_pll.v",
+      "owner": "FU-RTL-COMMON-TESTS",
+      "finding": "Checks SIM lock delay, periods, selected phase offsets, and up/down capture steps. It has a printed timeout but no nonzero failure exit; the real altpll branch and failure handshake are not exercised."
+    },
+    {
+      "path": "fpga/common/sim/tb_sync.v",
+      "owner": "FU-RTL-COMMON-TESTS",
+      "finding": "Checks 20 spaced pulses each direction, recent transferred counter values and 7 rise/fall events. Despite the header mentioning non-power-of-two wrap, the short stimulus is roughly 12 us versus a 102.4 us source-counter period and does not force the 20480 wrap. Recent-value checks are not an independent proof of arbitrary-word coherence or metastability safety. The original bench does not instantiate sync_bit, so that primitive has no direct assertion in this bench."
+    }
+  ],
+  "scope": "Ten complete source/test files reviewed; all five original common benches passed in an immutable source snapshot. Native annotations and requirement integration remain pending. SIM clocks, ideal bus stimulus and bounded checks do not establish physical qualification.",
+  "executionEvidence": "common-rtl-review-test-run.json"
+}

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# ENGMODEL-OWNER-UNIT: FU-TOOLS-HW-ADC-SRAM
 """Fit relative interleave errors from a triangle; validate on separate records.
 No device access. Residuals include source error; they are not sine-wave ENOB.
 """
@@ -7,6 +8,7 @@ import numpy as np
 from scipy.ndimage import uniform_filter1d
 
 
+# TRLC-LINKS: REQ-SDS-209
 def fit(x, fs=500e6):
     x=x.astype(float);n=np.arange(len(x));smooth=uniform_filter1d(x,15)
     lo,hi=np.percentile(smooth,[2,98]);mid=(lo+hi)/2
@@ -34,6 +36,7 @@ def fit(x, fs=500e6):
     return {'frequency_hz':float(fs/period),'period_samples':float(period),'min_code':int(x.min()),'max_code':int(x.max()),'rail_fraction':float(np.mean((x<=1)|(x>=254))),'raw_segment_residual_rms_codes':float(np.std((x-target)[valid])),'per_core_fit_residual_rms_codes':float(np.std((x-pred)[valid])),'cores':rows}, (phase,down,upmask,valid,common)
 
 
+# TRLC-LINKS: REQ-SDS-209
 def validate(x, calibration):
     result,(phase,down,upmask,valid,common)=fit(x)
     n=np.arange(len(x));target=np.where(upmask,common['rising_slope']*phase+common['rising_midpoint'],common['falling_slope']*down+common['falling_midpoint'])
@@ -48,6 +51,7 @@ def validate(x, calibration):
     return result
 
 
+# TRLC-LINKS: REQ-SDS-209
 def main():
     p=argparse.ArgumentParser();p.add_argument('records',nargs='+',type=pathlib.Path);p.add_argument('--out',type=pathlib.Path,required=True);a=p.parse_args()
     records=[];calibration=None

@@ -16,6 +16,8 @@
 //  2. The EDMA is not cache-coherent: a reused buffer reads back stale lines.
 //     Either invalidate through /dev/dcinv (persistent buffer) or use a fresh,
 //     never-read buffer per drain.
+//
+// ENGMODEL-OWNER-UNIT: FU-APP-BUS
 package bus
 
 import (
@@ -59,19 +61,27 @@ const (
 var burstPortPhys = uint32(cs1PhysBase + int(iface.SelBurst)<<1)
 
 // regs32 is a 32-bit register block (the TPCC mapping, or a fake in tests).
+// TRLC-LINKS: REQ-SDS-081
 type regs32 interface {
 	R(off uint32) uint32
 	W(off, v uint32)
 }
 
 // memRegs is a /dev/mem mapping.
+// TRLC-LINKS: REQ-SDS-081
 type memRegs struct{ m []byte }
 
+// TRLC-LINKS: REQ-SDS-081
 func (r memRegs) R(off uint32) uint32 { return *(*uint32)(unsafe.Pointer(&r.m[off])) }
-func (r memRegs) W(off, v uint32)     { *(*uint32)(unsafe.Pointer(&r.m[off])) = v }
-func (r memRegs) close()              { syscall.Munmap(r.m) }
+
+// TRLC-LINKS: REQ-SDS-081
+func (r memRegs) W(off, v uint32) { *(*uint32)(unsafe.Pointer(&r.m[off])) = v }
+
+// TRLC-LINKS: REQ-SDS-081
+func (r memRegs) close() { syscall.Munmap(r.m) }
 
 // dmaBuf is a pinned buffer with the physical address of every page.
+// TRLC-LINKS: REQ-SDS-081
 type dmaBuf struct {
 	buf     []byte
 	phys    []uint32 // per page
@@ -79,10 +89,12 @@ type dmaBuf struct {
 }
 
 // pager allocates pinned, physically-resolved buffers.
+// TRLC-LINKS: REQ-SDS-081
 type pager interface {
 	alloc(nbytes int) (*dmaBuf, error)
 }
 
+// TRLC-LINKS: REQ-SDS-081
 type edmaDrainer struct {
 	cc       regs32
 	pg       pager
@@ -97,6 +109,7 @@ type edmaDrainer struct {
 
 // newEDMADrainer maps the TPCC, validates the pagemap path once, and picks the
 // coherency strategy. Any failure returns an error and the caller stays on ioctl.
+// TRLC-LINKS: REQ-SDS-081
 func newEDMADrainer(maxWords int, logf func(string, ...any)) (*edmaDrainer, error) {
 	if maxWords <= 0 {
 		return nil, fmt.Errorf("edma: maxWords %d", maxWords)
@@ -139,7 +152,9 @@ func newEDMADrainer(maxWords int, logf func(string, ...any)) (*edmaDrainer, erro
 			d.persistent = buf
 			d.inv = func(b []byte) {
 				arg := [2]uint32{uint32(uintptr(unsafe.Pointer(&b[0]))), uint32(len(b))}
-				syscall.Syscall(syscall.SYS_IOCTL, uintptr(fd), dcinvIOC, uintptr(unsafe.Pointer(&arg[0])))
+				// The local driver only invalidates this bounded buffer's cache
+				// lines. It does not wait for DMA or any other device operation.
+				syscall.RawSyscall(syscall.SYS_IOCTL, uintptr(fd), dcinvIOC, uintptr(unsafe.Pointer(&arg[0])))
 			}
 			prev := d.closeFn
 			d.closeFn = func() { prev(); syscall.Close(fd) }
@@ -154,12 +169,14 @@ func newEDMADrainer(maxWords int, logf func(string, ...any)) (*edmaDrainer, erro
 	return d, nil
 }
 
+// TRLC-LINKS: REQ-SDS-081
 func (e *edmaDrainer) close() {
 	if e.closeFn != nil {
 		e.closeFn()
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-081
 func (e *edmaDrainer) coherency() string {
 	if e.inv != nil {
 		return "dcinv"
@@ -170,8 +187,10 @@ func (e *edmaDrainer) coherency() string {
 // pagemapPager: mmap(MAP_ANON) + mlock + /proc/self/pagemap PFN resolution.
 // The buffer is cache-cold from the CPU's point of view (nothing has read it),
 // which is what makes the no-dcinv path coherent.
+// TRLC-LINKS: REQ-SDS-081
 type pagemapPager struct{ pm *os.File }
 
+// TRLC-LINKS: REQ-SDS-081
 func (p *pagemapPager) alloc(nbytes int) (*dmaBuf, error) {
 	nbytes = (nbytes + pageSize - 1) &^ (pageSize - 1)
 	buf, err := syscall.Mmap(-1, 0, nbytes, syscall.PROT_READ|syscall.PROT_WRITE,
@@ -196,6 +215,7 @@ func (p *pagemapPager) alloc(nbytes int) (*dmaBuf, error) {
 }
 
 // physOf resolves a pinned page's physical address via /proc/self/pagemap.
+// TRLC-LINKS: REQ-SDS-081
 func physOf(pm *os.File, p unsafe.Pointer) uint32 {
 	v := uintptr(p)
 	var b [8]byte
@@ -215,6 +235,7 @@ func physOf(pm *os.File, p unsafe.Pointer) uint32 {
 // runParam programs channel edmaChan's PaRAM for a fixed-source (bcnt × 2-byte)
 // AB-synchronised transfer into dst, triggers it through shadow region 0 and
 // waits for completion. Returns false on timeout.
+// TRLC-LINKS: REQ-SDS-081
 func (e *edmaDrainer) runParam(src, dst, bcnt uint32) bool {
 	const ch = uint32(edmaChan)
 	pb := uint32(offPaRAM + ch*paramSize)
@@ -250,6 +271,7 @@ func (e *edmaDrainer) runParam(src, dst, bcnt uint32) bool {
 // transfer per physical page (pages are not contiguous; the fabric pointer
 // advances continuously across transfers). Returns false on any failure so the
 // caller falls back to ioctl. dst must have len ≥ n.
+// TRLC-LINKS: REQ-SDS-081
 func (e *edmaDrainer) drainWords(src uint32, dst []uint16, n int) bool {
 	if n <= 0 || n > e.maxWords || len(dst) < n {
 		return false
@@ -280,6 +302,7 @@ func (e *edmaDrainer) drainWords(src uint32, dst []uint16, n int) bool {
 	return true
 }
 
+// TRLC-LINKS: REQ-SDS-081
 func (e *edmaDrainer) drainBytes(src uint32, dst []byte) bool {
 	n := len(dst) / 2
 	if len(dst)%2 != 0 || n <= 0 || n > e.maxWords {
@@ -310,6 +333,7 @@ func (e *edmaDrainer) drainBytes(src uint32, dst []byte) bool {
 }
 
 // drain drains n BURST words and splits them (hi byte = CH1, lo byte = CH2).
+// TRLC-LINKS: REQ-SDS-081
 func (e *edmaDrainer) drain(c1, c2 []uint8, n int) bool {
 	if n <= 0 || n > e.maxWords || len(c1) < n || len(c2) < n {
 		return false

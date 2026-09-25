@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-SUPERRES
 package superres
 
 import (
@@ -15,6 +16,7 @@ import (
 // ONCE in Go and fed to BOTH engines (same values, noise baked in identically).
 // Mirrors the web multi-hit fixture: the auto-gate narrows to one period, so each
 // frame yields many hits; the last frame carries a different waveform → reject.
+// TRLC-LINKS: REQ-SDS-141
 func genFrames() (N, K, align int, frames []jframe) {
 	N, K, align = 2048, 16, 0
 	const edge, P = 40, 40
@@ -78,12 +80,14 @@ func genFrames() (N, K, align int, frames []jframe) {
 	return
 }
 
+// TRLC-LINKS: REQ-SDS-141
 type jframe struct {
 	C1    []int16 `json:"c1"`
 	C2    []int16 `json:"c2"`
 	EdgeX float64 `json:"edgeX"`
 }
 
+// TRLC-LINKS: REQ-SDS-141
 type jsResult struct {
 	SeedOk      bool     `json:"seedOk"`
 	Disp        []string `json:"disp"`
@@ -107,13 +111,16 @@ type jsResult struct {
 // stack as superres.js on identical frames: same accept/reject set, same integer
 // shifts, same frame/reject counts, the same mean array (sum + count), and
 // bitsGained within a small log2 tolerance. Skips if node is absent (fails under CI_REQUIRE_BROWSER=1).
+// TRLC-LINKS: REQ-SDS-141
 func TestParityJS(t *testing.T) { runParity(t, -1, -1) }
 
 // TestParityManualGate pins the MANUAL-gate path cross-engine with a 3-period
 // gate — wide enough to have segments, so the segment/level consistency checks
 // and the decoy REJECTION run identically in both engines.
+// TRLC-LINKS: REQ-SDS-141
 func TestParityManualGate(t *testing.T) { runParity(t, 40, 160) }
 
+// TRLC-LINKS: REQ-SDS-141
 func runParity(t *testing.T, gateLo, gateHi int) {
 	testenv.NeedNode(t)
 	N, K, align, frames := genFrames()
@@ -207,6 +214,7 @@ func runParity(t *testing.T, gateLo, gateHi int) {
 }
 
 // helpers on Result for the mean checksum (sum/count of non-gap bins).
+// TRLC-LINKS: REQ-SDS-141
 func (r Result) MeanSumNonGap() float64 {
 	s := 0.0
 	for _, v := range r.Mean {
@@ -216,6 +224,7 @@ func (r Result) MeanSumNonGap() float64 {
 	}
 	return s
 }
+// TRLC-LINKS: REQ-SDS-141
 func (r Result) MeanCountNonGap() int {
 	c := 0
 	for _, v := range r.Mean {
@@ -225,6 +234,7 @@ func (r Result) MeanCountNonGap() int {
 	}
 	return c
 }
+// TRLC-LINKS: REQ-SDS-141
 func (r Result) Mean2SumNonGap() float64 {
 	s := 0.0
 	for _, v := range r.Mean2 {
@@ -234,6 +244,7 @@ func (r Result) Mean2SumNonGap() float64 {
 	}
 	return s
 }
+// TRLC-LINKS: REQ-SDS-141
 func (r Result) Mean2CountNonGap() int {
 	c := 0
 	for _, v := range r.Mean2 {

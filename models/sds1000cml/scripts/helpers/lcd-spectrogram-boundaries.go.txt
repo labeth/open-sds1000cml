@@ -1,0 +1,59 @@
+package lcd
+
+import (
+ "bytes"
+ "math"
+ "reflect"
+ "testing"
+)
+
+// REQ-SDS-068 bounded characterization; helper calls do not exercise lcdLoop.
+func TestModelLCDSpectrogramBoundaries(t *testing.T) {
+ row:=func(sg *Spectrogram,y int) []byte {start:=(y*W+sgX0)*2;return append([]byte(nil),sg.img.Pix[start:start+sgCols*2]...)}
+ t.Run("invalid_floor_falls_back_without_updating_field",func(t *testing.T){
+  f:=sgSine(4096,20e6,2e-9);reference:=NewSpectrogram();reference.Push(f,0,250e6)
+  for _,floor:=range []float64{0,1,math.NaN()} {sg:=NewSpectrogram();sg.floorDB=floor;sg.Push(f,0,250e6)
+   if !bytes.Equal(row(sg,sgY0),row(reference,sgY0)) {t.Fatal("paint fallback differs")}
+   if !(sg.floorDB==floor || math.IsNaN(sg.floorDB)&&math.IsNaN(floor)) {t.Fatal("expected original floor field retained")}
+  }
+ })
+ t.Run("negative_infinite_floor_paints_white",func(t *testing.T){
+  sg:=NewSpectrogram();sg.floorDB=math.Inf(-1);sg.Push(sgSine(4096,20e6,2e-9),0,250e6)
+  for x:=sgX0;x<sgX1;x++ {if sg.img.At(x,sgY0)!=0xffff {t.Fatal("expected zero inverse-floor saturation",x)}}
+ })
+ t.Run("clear_keeps_scale_and_floor",func(t *testing.T){
+  sg:=NewSpectrogram();sg.floorDB=-40;sg.Push(sgSine(4096,20e6,2e-9),0,250e6);nyq:=sg.effNyq;sg.Clear()
+  if sg.Rows()!=0 || sg.effNyq!=nyq || sg.floorDB!=-40 || !bytes.Equal(sg.img.Pix,NewMemSurface().Pix) {t.Fatal("clear state")}
+ })
+ t.Run("helper_accepts_repeated_sequence_envelope_and_flat",func(t *testing.T){
+  sg:=NewSpectrogram();f:=sgSine(64,0,2e-9);f.Seq=7;f.IsEnv=true;sg.Push(f,0,250e6);sg.Push(f,0,250e6)
+  if sg.Rows()!=2 || !bytes.Equal(row(sg,sgY0),make([]byte,sgCols*2)) {t.Fatal("flat repeated envelope behavior")}
+ })
+ t.Run("rate_change_retains_prior_row",func(t *testing.T){
+  sg:=NewSpectrogram();f:=sgSine(4096,20e6,2e-9);sg.Push(f,0,250e6);first:=row(sg,sgY0);sg.Push(f,0,100e6)
+  if sg.effNyq!=50e6 || !bytes.Equal(first,row(sg,sgY0+1)) {t.Fatal("old row/new axis behavior")}
+ })
+ t.Run("channel_change_retains_prior_row",func(t *testing.T){
+  sg:=NewSpectrogram();f:=sgSine(4096,20e6,2e-9);f.C2=sgSine(4096,60e6,2e-9).C1;sg.Push(f,0,250e6);first:=row(sg,sgY0);sg.Push(f,1,250e6)
+  if !bytes.Equal(first,row(sg,sgY0+1)) || bytes.Equal(first,row(sg,sgY0)) {t.Fatal("mixed channel history")}
+ })
+ t.Run("nonfinite_nyquist_retained",func(t *testing.T){
+  for _,nyq:=range []float64{math.NaN(),math.Inf(1),math.Inf(-1)} {sg:=NewSpectrogram();sg.Push(sgSine(4096,20e6,2e-9),0,nyq)
+   if sg.Rows()!=1 || !(math.IsNaN(nyq)&&math.IsNaN(sg.effNyq) || math.IsInf(nyq,1)&&math.IsInf(sg.effNyq,1) || math.IsInf(nyq,-1)&&math.IsInf(sg.effNyq,-1)) {t.Fatal("Nyquist not retained",sg.effNyq)}
+  }
+ })
+ t.Run("spectrum_ignores_trailing_nonpower_of_two_data",func(t *testing.T){
+  a:=bytesFill(63,128);b:=append([]byte(nil),a...);for i:=32;i<len(b);i++ {b[i]=byte(i%2*255)}
+  am,ap:=spectrumMags(a,1);bm,bp:=spectrumMags(b,1)
+  if !reflect.DeepEqual(am,bm) || ap!=bp {t.Fatal("trailing samples unexpectedly used")}
+  b[4]=255;bm,bp=spectrumMags(b,1);if reflect.DeepEqual(am,bm) || ap==bp {t.Fatal("used-prefix counterexample missing")}
+ })
+ t.Run("row_counter_saturates",func(t *testing.T){
+  sg:=NewSpectrogram();sg.rows=sgRows-1;f:=sgSine(64,20e6,2e-9);sg.Push(f,0,250e6);sg.Push(f,0,250e6)
+  if sg.Rows()!=sgRows {t.Fatal(sg.Rows())}
+ })
+ t.Run("zero_value_requires_constructor",func(t *testing.T){
+  defer func(){if recover()==nil {t.Error("expected nil-image panic")}}()
+  var sg Spectrogram;sg.Push(sgSine(64,20e6,2e-9),0,250e6)
+ })
+}

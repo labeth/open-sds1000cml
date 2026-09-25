@@ -2,6 +2,7 @@
 // This file is NOT spliced into iface.go (there the same names are generated
 // from the schema); emit.TestWordfmtConstantsMatchSchema fails when a value
 // here drifts from codegen/ifacedef.
+// ENGMODEL-OWNER-UNIT: FU-CODEGEN-EMIT
 package wordfmt
 
 const (

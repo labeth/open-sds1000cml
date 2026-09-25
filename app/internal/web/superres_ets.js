@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-WEB-SUPERRES-ETS
 // superres_ets.js — phase-coherent EQUIVALENT-TIME super-resolution for a
 // FREE-RUN (untriggerable) periodic signal: a clock above the ~65 MHz trigger
 // comparator and/or near the ADC Nyquist (few samples/cycle), where the normal
@@ -17,6 +18,7 @@
 
 // srEtsDft1: single-bin DFT of x (dt spacing) at frequency f. Phase is the
 // fundamental's phase at t=0 (n=0): x[n] ≈ (2·mag/N)·cos(2πf·n·dt − phase).
+// TRLC-LINKS: REQ-SDS-019
 function srEtsDft1(x, dt, f) {
   let re = 0, im = 0;
   const w = 2 * Math.PI * f * dt;
@@ -32,6 +34,7 @@ function srEtsDft1(x, dt, f) {
 // the max-likelihood single-tone frequency estimate. f MUST be accurate to
 // within ~1/(record length) or the fold smears across the record; the fine
 // search + parabolic step gets there. Returns the refined frequency.
+// TRLC-LINKS: REQ-SDS-019
 function srEtsRefineFreq(x, dt, fGuess, opts) {
   opts = opts || {};
   const span = opts.span || fGuess * 0.002; // ±0.2%
@@ -51,7 +54,9 @@ function srEtsRefineFreq(x, dt, fGuess, opts) {
 
 // srEtsNew allocates a fold state: `nbins` phase bins across ONE period, two
 // channels (the align channel supplies the phase reference; both fold to it).
+// TRLC-LINKS: REQ-SDS-019
 function srEtsNew(nbins, dt) {
+  // TRLC-LINKS: REQ-SDS-019
   const chan = () => ({
     sum: new Float64Array(nbins), sum2: new Float64Array(nbins), cnt: new Float64Array(nbins),
     sumA: new Float64Array(nbins), cntA: new Float64Array(nbins), // odd half-stack for honest σ
@@ -69,6 +74,7 @@ function srEtsNew(nbins, dt) {
 // fundamental phase anchors the fold; both channels deposit at that phase, so an
 // unlocked companion channel smears honestly instead of corrupting the anchor.
 // A frame whose align-channel tone is too weak (mag below `minMag`) is rejected.
+// TRLC-LINKS: REQ-SDS-019
 function srEtsFeed(st, sig1, sig2, opts) {
   opts = opts || {};
   const sigs = [sig1, sig2];
@@ -109,10 +115,12 @@ function srEtsFeed(st, sig1, sig2, opts) {
 // srEtsResult reduces to one reconstructed period per channel + honest stats.
 // mean: Float32Array(nbins) in code space (−1 in any unfilled bin). effBits from
 // the odd/even half-stack difference (measured, not σ/√N).
+// TRLC-LINKS: REQ-SDS-019
 function srEtsResult(st, opts) {
   opts = opts || {};
   const nb = st.nbins, EPS = 0.5;
   const out = { nbins: nb, f: st.f, frames: st.frames, rejected: st.rejected, periodS: st.f > 0 ? 1 / st.f : 0 };
+  // TRLC-LINKS: REQ-SDS-019
   const reduce = (C) => {
     if (!C.present) return null;
     const mean = new Float32Array(nb);
@@ -127,6 +135,7 @@ function srEtsResult(st, opts) {
       const ca = C.cntA[b], cb = c - ca;
       if (ca >= 2 && cb >= 2) half.push(Math.abs((C.sumA[b] / ca) - (C.sum[b] - C.sumA[b]) / cb) / 2);
     }
+    // TRLC-LINKS: REQ-SDS-019
     const med = (arr) => { if (!arr.length) return 0; const s = [...arr].sort((x, y) => x - y); return s[s.length >> 1]; };
     const sigmaSingle = med(sig), sigmaStack = 1.4826 * med(half);
     const bitsGained = sigmaSingle > 0 && sigmaStack > 0 ? Math.log2(sigmaSingle / sigmaStack) : 0;

@@ -1,0 +1,29 @@
+{
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "sourceSHA256": {
+    "app/internal/web/web.go": "8a071dd54c43b0da264fb0180f6cb2ff190759aa06c50e9730fdbe93944755d9",
+    "app/internal/web/web_test.go": "2491a4eb14ebae0fa7f23551628b1422038c2d40e78e5bd0308952efe7793305",
+    "app/internal/web/web_binframe.go": "da08c5aee32f3db0ec2b2abef4f4ef9e7c2bf7b7929a6f3704697d4088d0d813",
+    "app/internal/web/app_init.js": "70d2f90d345e1fff4cc60ef846732e3ab8212a0a18a69117ad2c1f08cae9425c",
+    "app/internal/web/app_core.js": "b4d36f22c7b914fccda46f95d0c33f17b7ad3f74adeb42086233ebb0bf7e2fdd",
+    "app/cmd/app/main.go": "22648d8dcc233a4804609425ca94c6a1e671e84ad0c9ab5d83eac28fb98bcd61"
+  },
+  "helperSHA256": "0612efa0729b34d0be60a94127b73a4b190290c544e95641cf96503c233861a7",
+  "command": [
+    "go",
+    "test",
+    "-race",
+    "-overlay",
+    "/tmp/sds-web-epoch-s6rx6_yb/overlay.json",
+    "-run",
+    "^TestModelReviewWebEpochPolicy$",
+    "-count=1",
+    "-v",
+    "./internal/web"
+  ],
+  "exitCode": 0,
+  "stdout": "=== RUN   TestModelReviewWebEpochPolicy\n    web_test.go:332: Unauthenticated GET and DELETE claims increment epoch. Missing, zero, malformed, current and future epochs are not superseded; old numeric prefixes are superseded.\n--- PASS: TestModelReviewWebEpochPolicy (0.00s)\nPASS\nok  \topen-sds/app/internal/web\t1.015s\n",
+  "stderr": "",
+  "result": "known-limitations-reproduced",
+  "scope": "In-memory HTTP recorder and zero-value Server; no engine, bus, browser, listener, device or network operation. Only claim registration and superseded parsing are exercised. Full transport/authentication qualification is not implied."
+}

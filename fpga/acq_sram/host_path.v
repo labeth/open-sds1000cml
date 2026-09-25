@@ -1,8 +1,10 @@
+// ENGMODEL-OWNER-UNIT: FU-RTL-ACQ-SRAM-HOST-PATH
 // Controller-facing host storage: core 250 MHz, RAM 125 MHz, ARM 100 MHz.
 // Common reset abandons all data/descriptors. Caller reserves each bank before
 // emitting words and reuses it only after core_release. Completion follows the
 // final word, never on the same edge. Host reads only a ready bank and releases
 // after its final read response. Clock-crossing constraints still required.
+// TRLC-LINKS: REQ-SDS-049, REQ-SDS-050, REQ-SDS-051, REQ-SDS-052, REQ-SDS-078, REQ-SDS-094
 module sram_host_path(
  input wire reset,core_clk,ram_clk,host_clk,
  input wire word_valid,word_bank,input wire [31:0] word_data,

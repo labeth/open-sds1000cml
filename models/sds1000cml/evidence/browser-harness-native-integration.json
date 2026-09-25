@@ -1,0 +1,147 @@
+{
+  "result": "go-trace-integration-pass-javascript-driver-traces-pending",
+  "reviewedFiles": 40,
+  "annotatedGoFiles": 21,
+  "functions": 87,
+  "types": 3,
+  "originalTests": 22,
+  "outcomes": {
+    "pass": 14,
+    "fail": 6,
+    "skip": 2
+  },
+  "nativeSummaries": 20,
+  "requirements": [
+    "REQ-SDS-179",
+    "REQ-SDS-180",
+    "REQ-SDS-181",
+    "REQ-SDS-182"
+  ],
+  "existingRequirements": [
+    "REQ-SDS-023",
+    "REQ-SDS-069"
+  ],
+  "scope": "Complete source review of 21 Go harness/support files and 19 JavaScript drivers/support files; 22 original localhost browser/Node tests executed with race detection. Synthetic fixtures do not qualify physical acquisition, calibration, timing, or complete production JavaScript behavior. Native trace integration remains pending.",
+  "publicationAttachments": [
+    {
+      "source": "app/internal/web/acceptance_browser_test.go",
+      "resultArtifact": "test-results/go/app/internal/web/acceptance_browser_test.json",
+      "status": "fail",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_ACCEPTANCE_BROWSER_TEST_76F169"
+    },
+    {
+      "source": "app/internal/web/chaos_browser_test.go",
+      "resultArtifact": "test-results/go/app/internal/web/chaos_browser_test.json",
+      "status": "fail",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_CHAOS_BROWSER_TEST_86BAD0"
+    },
+    {
+      "source": "app/internal/web/decode_browser_test.go",
+      "resultArtifact": "test-results/go/app/internal/web/decode_browser_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_DECODE_BROWSER_TEST_B55739"
+    },
+    {
+      "source": "app/internal/web/decode_node_test.go",
+      "resultArtifact": "test-results/go/app/internal/web/decode_node_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_DECODE_NODE_TEST_EB097A"
+    },
+    {
+      "source": "app/internal/web/deepmem_browser_test.go",
+      "resultArtifact": "test-results/go/app/internal/web/deepmem_browser_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_DEEPMEM_BROWSER_TEST_D15C9F"
+    },
+    {
+      "source": "app/internal/web/eyejitter_node_test.go",
+      "resultArtifact": "test-results/go/app/internal/web/eyejitter_node_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_EYEJITTER_NODE_TEST_D610DA"
+    },
+    {
+      "source": "app/internal/web/fft_browser_test.go",
+      "resultArtifact": "test-results/go/app/internal/web/fft_browser_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_FFT_BROWSER_TEST_99BD9C"
+    },
+    {
+      "source": "app/internal/web/fuzz_browser_test.go",
+      "resultArtifact": "test-results/go/app/internal/web/fuzz_browser_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_FUZZ_BROWSER_TEST_195C9A"
+    },
+    {
+      "source": "app/internal/web/invs_browser_test.go",
+      "resultArtifact": "test-results/go/app/internal/web/invs_browser_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_INVS_BROWSER_TEST_D741C7"
+    },
+    {
+      "source": "app/internal/web/perf_browser_test.go",
+      "resultArtifact": "test-results/go/app/internal/web/perf_browser_test.json",
+      "status": "fail",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_PERF_BROWSER_TEST_2EF0A8"
+    },
+    {
+      "source": "app/internal/web/perfserve_test.go",
+      "resultArtifact": "test-results/go/app/internal/web/perfserve_test.json",
+      "status": "not-run",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_PERFSERVE_TEST_7D7786"
+    },
+    {
+      "source": "app/internal/web/serialtrig_browser_test.go",
+      "resultArtifact": "test-results/go/app/internal/web/serialtrig_browser_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_SERIALTRIG_BROWSER_TEST_DEBE54"
+    },
+    {
+      "source": "app/internal/web/sigrok_export_e2e_test.go",
+      "resultArtifact": "test-results/go/app/internal/web/sigrok_export_e2e_test.json",
+      "status": "not-run",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_SIGROK_EXPORT_E2E_TEST_D7C2CA"
+    },
+    {
+      "source": "app/internal/web/superres_browser_test.go",
+      "resultArtifact": "test-results/go/app/internal/web/superres_browser_test.json",
+      "status": "fail",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_SUPERRES_BROWSER_TEST_C1A8FF"
+    },
+    {
+      "source": "app/internal/web/superres_comp_node_test.go",
+      "resultArtifact": "test-results/go/app/internal/web/superres_comp_node_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_SUPERRES_COMP_NODE_TEST_B2A97A"
+    },
+    {
+      "source": "app/internal/web/superres_ets_node_test.go",
+      "resultArtifact": "test-results/go/app/internal/web/superres_ets_node_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_SUPERRES_ETS_NODE_TEST_96763E"
+    },
+    {
+      "source": "app/internal/web/superres_node_test.go",
+      "resultArtifact": "test-results/go/app/internal/web/superres_node_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_SUPERRES_NODE_TEST_C7A89B"
+    },
+    {
+      "source": "app/internal/web/transport_browser_test.go",
+      "resultArtifact": "test-results/go/app/internal/web/transport_browser_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_TRANSPORT_BROWSER_TEST_4015CA"
+    },
+    {
+      "source": "app/internal/web/ui_lint_test.go",
+      "resultArtifact": "test-results/go/app/internal/web/ui_lint_test.json",
+      "status": "fail",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_UI_LINT_TEST_C38716"
+    },
+    {
+      "source": "app/internal/web/zonemask_browser_test.go",
+      "resultArtifact": "test-results/go/app/internal/web/zonemask_browser_test.json",
+      "status": "fail",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_ZONEMASK_BROWSER_TEST_943627"
+    }
+  ]
+}

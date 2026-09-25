@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-RTL-ACQ-SRAM-STREAM-ENGINE
 // Continuous acquisition engine with an external SRAM transport. The board
 // integration can arbitrate this command/data interface with finite capture
 // and recall, using one physical SRAM bus owner. Grant this engine exclusive
@@ -7,6 +8,7 @@
 // while any bank is reserved, pending publication, or owned by the host.
 // Source and host contracts are the same as sram_stream_path.
 // Trigger geometry and the GPMC register ABI are supplied by the board top.
+// TRLC-LINKS: REQ-SDS-045, REQ-SDS-046, REQ-SDS-047, REQ-SDS-048, REQ-SDS-052, REQ-SDS-058
 module sram_stream_engine #(parameter AW=19)(
  input wire reset,core_clk,ram_clk,
  input wire start,stop,source_finished,input wire [AW-1:0] read_bias,

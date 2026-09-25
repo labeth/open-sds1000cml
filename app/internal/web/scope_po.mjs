@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-WEB
 // Shared Playwright page-object + harness for the scope web-UI acceptance suite.
 // Every `<path>_browser.mjs` driver imports this so a DOM-id or launch change is
 // fixed in ONE place (the audit's #1 e2e finding: the drivers duplicated setup).
@@ -19,6 +20,7 @@ import { execSync } from "node:child_process";
 import path from "node:path";
 
 // ---- Playwright discovery (identical policy to the original drivers) ---------
+// TRLC-LINKS: REQ-SDS-180
 export function findPlaywright() {
   const cands = [];
   if (process.env.PLAYWRIGHT_DIR) cands.push(path.join(process.env.PLAYWRIGHT_DIR, "playwright/index.js"));
@@ -35,6 +37,7 @@ export function findPlaywright() {
 // Wraps a driver body so every driver reports identically to its Go wrapper:
 // "SKIP: ..."+exit 0 when the browser is absent, "ALL PASS"+exit 0 on success,
 // exit 1 (with FAIL lines) otherwise. `t.ok(cond,msg)` / `t.near(a,b,tol,msg)`.
+// TRLC-LINKS: REQ-SDS-180
 export async function run(body) {
   const URL = process.argv[2];
   if (!URL) { console.log("SKIP: no URL argument"); process.exit(0); }
@@ -45,13 +48,16 @@ export async function run(body) {
 
   let fails = 0;
   const t = {
+    // TRLC-LINKS: REQ-SDS-180
     ok: (c, m) => { console.log((c ? "ok  - " : "FAIL- ") + m); if (!c) fails++; },
+    // TRLC-LINKS: REQ-SDS-180
     near: (a, b, tol, m) => { const c = Math.abs(a - b) <= tol; console.log((c ? "ok  - " : "FAIL- ") + `${m} (got ${a}, want ${b}±${tol})`); if (!c) fails++; },
     // Poll-convergent assertion. The UI mirrors /api/status once a second, so
     // state a control applied optimistically can be reverted for one poll
     // period by a stale in-flight status reply (the same tiny race exists
     // against the real device). Assert by retrying until the state converges
     // instead of racing the poll; the deadline keeps real failures loud.
+    // TRLC-LINKS: REQ-SDS-180
     until: async (fn, m, ms = 3000) => {
       const end = Date.now() + ms;
       let c = !!(await fn());
@@ -73,6 +79,7 @@ export async function run(body) {
 }
 
 // ---- openScope(): launch + page-object over the REAL ui.html -----------------
+// TRLC-LINKS: REQ-SDS-180
 export async function openScope(url, opts = {}) {
   const pwPath = findPlaywright();
   const { chromium } = (await import(pwPath)).default;
@@ -91,40 +98,59 @@ export async function openScope(url, opts = {}) {
   // Wait for the first real frame unless the caller wants the bare page.
   if (opts.waitFrame !== false)
     await page.waitForFunction(() => typeof frame !== "undefined" && frame && frame.c1, null, { timeout: 15000 });
+  // TRLC-LINKS: REQ-SDS-180
   return { browser, page, pageErrors, po: pageObject(page), close: () => browser.close() };
 }
 
 // ---- the page-object: intent methods over the UI, no per-driver DOM knowledge -
+// TRLC-LINKS: REQ-SDS-180
 export function pageObject(page) {
+  // TRLC-LINKS: REQ-SDS-180
   const $ = (id) => "#" + id;
   const po = {
     page,
     // view modes + toggles
+    // TRLC-LINKS: REQ-SDS-180
     setMode: (m) => page.click($({ YT: "mYT", XY: "mXY", FFT: "mFFT" }[m] || m)),
+    // TRLC-LINKS: REQ-SDS-180
     toggle: (id) => page.click($(id)),
+    // TRLC-LINKS: REQ-SDS-180
     click: (id) => page.click($(id)),
     // form controls
+    // TRLC-LINKS: REQ-SDS-180
     setSelect: (id, value) => page.selectOption($(id), String(value)),
+    // TRLC-LINKS: REQ-SDS-180
     fill: (id, value) => page.fill($(id), String(value)),
     // a range/slider: set value + fire input+change so listeners run
+    // TRLC-LINKS: REQ-SDS-180
     setRange: (id, value) => page.evaluate(([i, v]) => {
       const el = document.getElementById(i); el.value = String(v);
       el.dispatchEvent(new Event("input", { bubbles: true }));
       el.dispatchEvent(new Event("change", { bubbles: true }));
     }, [id, value]),
     // queries
+    // TRLC-LINKS: REQ-SDS-180
     isCardVisible: (id) => page.evaluate((i) => {
       const el = document.getElementById(i);
       return !!el && getComputedStyle(el).display !== "none";
     }, id),
+    // TRLC-LINKS: REQ-SDS-180
     text: (id) => page.evaluate((i) => { const el = document.getElementById(i); return el ? el.textContent.trim() : null; }, id),
+    // TRLC-LINKS: REQ-SDS-180
     value: (id) => page.evaluate((i) => { const el = document.getElementById(i); return el ? el.value : null; }, id),
+    // TRLC-LINKS: REQ-SDS-180
     statusLine: () => po.text("line"),
+    // TRLC-LINKS: REQ-SDS-180
     count: (sel) => page.locator(sel).count(),
+    // TRLC-LINKS: REQ-SDS-180
     eval: (fn, arg) => page.evaluate(fn, arg),
+    // TRLC-LINKS: REQ-SDS-180
     hasClass: (id, cls) => page.evaluate(([i, c]) => document.getElementById(i)?.classList.contains(c), [id, cls]),
+    // TRLC-LINKS: REQ-SDS-180
     wait: (ms) => page.waitForTimeout(ms),
+    // TRLC-LINKS: REQ-SDS-180
     waitFor: (fn, arg, timeout = 8000) => page.waitForFunction(fn, arg, { timeout }),
+    // TRLC-LINKS: REQ-SDS-180
     screenshot: (p) => page.screenshot({ path: p }),
   };
   return po;

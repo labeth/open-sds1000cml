@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-WEB
 // Real-browser e2e for the zone/mask card (argv[2]=URL). Verifies:
 // (1) armed zone drawing: click "draw zone", drag on the scope canvas -> a
 //     zone lands in zm.zones (edge-anchored coords) and the list renders it;
@@ -24,6 +25,7 @@ try { browser = await chromium.launch({ headless: true, args: ["--no-sandbox"] }
 catch (e) { console.log("SKIP: cannot launch chromium:", e.message); process.exit(0); }
 
 let fails = 0;
+// TRLC-LINKS: REQ-SDS-180
 const ok = (c, m) => { console.log((c ? "ok  - " : "FAIL- ") + m); if (!c) fails++; };
 
 try {
@@ -79,6 +81,7 @@ try {
     window.zmRescale();
     return { before, after: { lo0: zm.mask.lo[0], zlo: zm.zones[0].code_lo, zhi: zm.zones[0].code_hi } };
   });
+  // TRLC-LINKS: REQ-SDS-180
   const stretch = (c) => Math.round(128 + 2 * (c - 128));
   ok(Math.abs(rr.after.zlo - stretch(rr.before.zlo)) <= 2 && Math.abs(rr.after.zhi - stretch(rr.before.zhi)) <= 2,
     "zone re-anchored to the new V/div (codes stretched 2x about centre)");

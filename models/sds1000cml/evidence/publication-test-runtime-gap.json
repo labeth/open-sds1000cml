@@ -1,0 +1,32 @@
+{
+  "result": "resolved-and-pdf-reviewed",
+  "requirement": "REQ-SDS-023",
+  "owner": "FU-APP-WEB",
+  "pdfSHA256": "0b0e8508a66aa1c7d5c2dfcb93e952108b899bafa094a8032e50f8813ed04ea3",
+  "page": 285,
+  "source": "app/internal/web/binframe_node_test.go:17",
+  "finding": "Requirement, functional-group and security path diagrams now exclude test source from implementation/runtime inference; test coordinates remain under verification nodes. Owner and security-observability summaries apply the same recognized-test filter.",
+  "cause": "buildRequirementCoverageMermaid groups every symbol Implements link as code evidence without filtering verification test paths; the fallback synthesizes runtime whenever this group is nonempty.",
+  "toolSourceSHA256": {
+    "asciidoc_diagrams_core.go": "39aa8c9659d0ab7d69195ba93e9005b0724d3f16c75abf5193b5973dd4a2daec",
+    "asciidoc_diagrams_runtime.go": "7a5c9c7d061767e725ade527dd1e630b5574b142887204061e11df5d2ed4a82a",
+    "asciidoc_linking_units.go": "ed6efa4e203e7811ca1e04c6c925267937920af992dabfd88a2de3890d68ef56",
+    "inferred_code.go": "04f6d55ad6f7d48aeb0851a64cea550034d0597a7c9a2568397eedb1c2bede91",
+    "trace_matrix.go": "adde735b771715c6280b6301b8b48e98b1d8f65692f9ada38400192736f23c6e",
+    "asciidoc_test_evidence_test.go": "aaba4d4be7d37e93cb1c6a553f816f58534794b4508826a578c5285f841b6a59"
+  },
+  "nextAction": "Maintain recognized-test exclusion and regression guards. Remaining source trace coverage and numeric coordinate layout are separate open work.",
+  "scope": "Verified publication semantics defect; no claim that the instrument behavior or native production trace-matrix changed.",
+  "priorFinding": {
+    "pdfSHA256": "e19e42d3f9a9642589f596ee5359703bc5c86b6ecfebb51b79bee62cf05ba1ab",
+    "page": 285,
+    "finding": "The requirement diagram duplicates the Go Node-test runner as code-trace implementation and creates a synthetic Web server and transport runtime from that test-only owner evidence. Native trace-matrix production code correctly contains only binframe.js."
+  },
+  "verification": "Full tool suite pass; check_go_publication.py rejects test filenames in production diagram nodes and rejects synthetic FU-APP-WEB runtime in REQ-SDS-023.",
+  "visualReview": [
+    285,
+    362,
+    374,
+    385
+  ]
+}

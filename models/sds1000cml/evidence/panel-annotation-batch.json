@@ -1,0 +1,924 @@
+{
+  "status": "integrated",
+  "files": [
+    {
+      "path": "app/internal/panel/autoset.go",
+      "owner": "FU-APP-PANEL",
+      "functions": {
+        "Controller.SetFrameSource": [
+          "REQ-SDS-137",
+          "REQ-SDS-138",
+          "REQ-SDS-139",
+          "REQ-SDS-140"
+        ],
+        "Controller.autoset": [
+          "REQ-SDS-137"
+        ],
+        "Controller.runAutoset": [
+          "REQ-SDS-137"
+        ],
+        "Controller.trigFiring": [
+          "REQ-SDS-137"
+        ],
+        "Controller.verifyTrigLevel": [
+          "REQ-SDS-137"
+        ],
+        "Controller.waitFrame": [
+          "REQ-SDS-137"
+        ],
+        "Controller.measureChans": [
+          "REQ-SDS-137"
+        ],
+        "Controller.rawCenterErr": [
+          "REQ-SDS-137"
+        ],
+        "Controller.railing": [
+          "REQ-SDS-137"
+        ],
+        "Controller.offScreen": [
+          "REQ-SDS-137"
+        ],
+        "has": [
+          "REQ-SDS-137"
+        ],
+        "strongerCh": [
+          "REQ-SDS-137"
+        ],
+        "Controller.AutosetBusy": [
+          "REQ-SDS-137"
+        ],
+        "Controller.setVdiv": [
+          "REQ-SDS-137"
+        ],
+        "Controller.setTdivNearest": [
+          "REQ-SDS-137"
+        ],
+        "Controller.waitBandFrame": [
+          "REQ-SDS-137"
+        ],
+        "detentForVpp": [
+          "REQ-SDS-137"
+        ],
+        "nearestDetent": [
+          "REQ-SDS-137"
+        ]
+      },
+      "types": {}
+    },
+    {
+      "path": "app/internal/panel/autoset_test.go",
+      "owner": "FU-APP-PANEL",
+      "functions": {
+        "TestRailing": [
+          "REQ-SDS-137"
+        ],
+        "TestOffScreenSaturated": [
+          "REQ-SDS-137"
+        ]
+      },
+      "types": {}
+    },
+    {
+      "path": "app/internal/panel/autoset_verify_test.go",
+      "owner": "FU-APP-PANEL",
+      "functions": {
+        "fireEng.SetTrigLevelCode": [
+          "REQ-SDS-137"
+        ],
+        "fireEng.AcqLog": [
+          "REQ-SDS-137"
+        ],
+        "TestAutosetVerifyTrigLevelScansIntoBand": [
+          "REQ-SDS-137"
+        ],
+        "TestAutosetVerifyTrigLevelKeepsComputedWhenNothingFires": [
+          "REQ-SDS-137"
+        ]
+      },
+      "types": {
+        "fireEng": [
+          "REQ-SDS-137"
+        ]
+      }
+    },
+    {
+      "path": "app/internal/panel/chaos_test.go",
+      "owner": "FU-APP-PANEL",
+      "functions": {
+        "TestPanelChaos": [
+          "REQ-SDS-135",
+          "REQ-SDS-136"
+        ]
+      },
+      "types": {}
+    },
+    {
+      "path": "app/internal/panel/display_state.go",
+      "owner": "FU-APP-PANEL",
+      "functions": {
+        "Controller.ViewXY": [
+          "REQ-SDS-136"
+        ],
+        "Controller.SetViewXY": [
+          "REQ-SDS-136"
+        ],
+        "Controller.PersistOn": [
+          "REQ-SDS-136"
+        ],
+        "Controller.SetPersist": [
+          "REQ-SDS-136"
+        ],
+        "Controller.MenuOpen": [
+          "REQ-SDS-136"
+        ],
+        "Controller.SetMenuOpen": [
+          "REQ-SDS-136"
+        ]
+      },
+      "types": {}
+    },
+    {
+      "path": "app/internal/panel/display_state_test.go",
+      "owner": "FU-APP-PANEL",
+      "functions": {
+        "TestDisplayStateAccessors": [
+          "REQ-SDS-136"
+        ]
+      },
+      "types": {}
+    },
+    {
+      "path": "app/internal/panel/engfmt_test.go",
+      "owner": "FU-APP-PANEL",
+      "functions": {
+        "TestFmtEngNoScientific": [
+          "REQ-SDS-136"
+        ]
+      },
+      "types": {}
+    },
+    {
+      "path": "app/internal/panel/mask.go",
+      "owner": "FU-APP-PANEL",
+      "functions": {
+        "Controller.maskBuildStart": [
+          "REQ-SDS-139"
+        ],
+        "Controller.maskBuildRun": [
+          "REQ-SDS-139"
+        ],
+        "Controller.maskSetMsg": [
+          "REQ-SDS-139"
+        ],
+        "Controller.MaskStatus": [
+          "REQ-SDS-139"
+        ]
+      },
+      "types": {}
+    },
+    {
+      "path": "app/internal/panel/menu.go",
+      "owner": "FU-APP-PANEL",
+      "functions": {
+        "Controller.menuButton": [
+          "REQ-SDS-136"
+        ],
+        "Controller.openMenu": [
+          "REQ-SDS-136"
+        ],
+        "Controller.pageSlots": [
+          "REQ-SDS-136"
+        ],
+        "Controller.menuCount": [
+          "REQ-SDS-136"
+        ],
+        "Controller.menuAdjust": [
+          "REQ-SDS-136"
+        ],
+        "Controller.moveCursor": [
+          "REQ-SDS-136"
+        ],
+        "Controller.trigPos": [
+          "REQ-SDS-136"
+        ]
+      },
+      "types": {
+        "MenuItem": [
+          "REQ-SDS-136"
+        ]
+      }
+    },
+    {
+      "path": "app/internal/panel/menu_cycle.go",
+      "owner": "FU-APP-PANEL",
+      "functions": {
+        "Controller.menuCycle": [
+          "REQ-SDS-136",
+          "REQ-SDS-138",
+          "REQ-SDS-139",
+          "REQ-SDS-140"
+        ]
+      },
+      "types": {}
+    },
+    {
+      "path": "app/internal/panel/menu_inject.go",
+      "owner": "FU-APP-PANEL",
+      "functions": {
+        "nameCode": [
+          "REQ-SDS-135"
+        ],
+        "Controller.InjectButton": [
+          "REQ-SDS-135"
+        ],
+        "Controller.InjectKnob": [
+          "REQ-SDS-135"
+        ]
+      },
+      "types": {}
+    },
+    {
+      "path": "app/internal/panel/menu_util.go",
+      "owner": "FU-APP-PANEL",
+      "functions": {
+        "stepNs": [
+          "REQ-SDS-136"
+        ],
+        "depthLabel": [
+          "REQ-SDS-136"
+        ],
+        "b2ic": [
+          "REQ-SDS-136"
+        ],
+        "mod5": [
+          "REQ-SDS-136"
+        ],
+        "mod5b": [
+          "REQ-SDS-136"
+        ],
+        "mod4": [
+          "REQ-SDS-136"
+        ],
+        "mod3": [
+          "REQ-SDS-136"
+        ],
+        "nextHoldoff": [
+          "REQ-SDS-136"
+        ],
+        "cplName": [
+          "REQ-SDS-136"
+        ],
+        "probeName": [
+          "REQ-SDS-136"
+        ],
+        "nextProbe": [
+          "REQ-SDS-136"
+        ],
+        "ternary": [
+          "REQ-SDS-136"
+        ],
+        "nextOpt": [
+          "REQ-SDS-136"
+        ],
+        "clampF": [
+          "REQ-SDS-136"
+        ],
+        "fmtEng": [
+          "REQ-SDS-136"
+        ]
+      },
+      "types": {}
+    },
+    {
+      "path": "app/internal/panel/menu_view.go",
+      "owner": "FU-APP-PANEL",
+      "functions": {
+        "Controller.MenuView": [
+          "REQ-SDS-136"
+        ]
+      },
+      "types": {
+        "MenuView": [
+          "REQ-SDS-136"
+        ]
+      }
+    },
+    {
+      "path": "app/internal/panel/menufuzz_test.go",
+      "owner": "FU-APP-PANEL",
+      "functions": {
+        "newFuzzEng": [
+          "REQ-SDS-136"
+        ],
+        "fuzzEng.bad": [
+          "REQ-SDS-136"
+        ],
+        "fuzzEng.takeIllegal": [
+          "REQ-SDS-136"
+        ],
+        "fuzzEng.ReadMatrix": [
+          "REQ-SDS-136"
+        ],
+        "fuzzEng.SetLEDs": [
+          "REQ-SDS-136"
+        ],
+        "fuzzEng.AcqLog": [
+          "REQ-SDS-136"
+        ],
+        "fuzzEng.Snapshot": [
+          "REQ-SDS-136"
+        ],
+        "fuzzEng.SetOffsetDAC": [
+          "REQ-SDS-136"
+        ],
+        "fuzzEng.SetTrigLevelCode": [
+          "REQ-SDS-136"
+        ],
+        "fuzzEng.SetTdiv": [
+          "REQ-SDS-136"
+        ],
+        "fuzzEng.SetNorm": [
+          "REQ-SDS-136"
+        ],
+        "fuzzEng.SetRunning": [
+          "REQ-SDS-136"
+        ],
+        "fuzzEng.SetSingle": [
+          "REQ-SDS-136"
+        ],
+        "fuzzEng.SetTrigSlope": [
+          "REQ-SDS-136"
+        ],
+        "fuzzEng.SetTrigSource": [
+          "REQ-SDS-136"
+        ],
+        "fuzzEng.SetTrigType": [
+          "REQ-SDS-136"
+        ],
+        "fuzzEng.SetAcqMode": [
+          "REQ-SDS-136"
+        ],
+        "fuzzEng.SetAvgCount": [
+          "REQ-SDS-136"
+        ],
+        "fuzzEng.SetEresLen": [
+          "REQ-SDS-136"
+        ],
+        "fuzzEng.SetETS": [
+          "REQ-SDS-136"
+        ],
+        "fuzzEng.SetTrigPosFrac": [
+          "REQ-SDS-136"
+        ],
+        "fuzzEng.SetHoldoff": [
+          "REQ-SDS-136"
+        ],
+        "fuzzEng.SetMemDepth": [
+          "REQ-SDS-136"
+        ],
+        "fuzzEng.SetPulseParams": [
+          "REQ-SDS-136"
+        ],
+        "fuzzEng.SetSlopeParams": [
+          "REQ-SDS-136"
+        ],
+        "fuzzEng.SetVideoParams": [
+          "REQ-SDS-136"
+        ],
+        "fuzzEng.SetMask": [
+          "REQ-SDS-136"
+        ],
+        "fuzzEng.SetMaskMode": [
+          "REQ-SDS-136"
+        ],
+        "fuzzEng.ClearMaskFails": [
+          "REQ-SDS-136"
+        ],
+        "inInts": [
+          "REQ-SDS-136"
+        ],
+        "inIntRange": [
+          "REQ-SDS-136"
+        ],
+        "fuzzAlphabet": [
+          "REQ-SDS-136"
+        ],
+        "checkMenuInvariants": [
+          "REQ-SDS-136"
+        ],
+        "TestMenuFuzz": [
+          "REQ-SDS-136"
+        ],
+        "TestDecodeChannelComplementarityAcrossProtoSwitch": [
+          "REQ-SDS-136"
+        ]
+      },
+      "types": {
+        "fuzzEng": [
+          "REQ-SDS-136"
+        ],
+        "fuzzAction": [
+          "REQ-SDS-136"
+        ]
+      }
+    },
+    {
+      "path": "app/internal/panel/panel.go",
+      "owner": "FU-APP-PANEL",
+      "functions": {
+        "bcode": [
+          "REQ-SDS-135"
+        ],
+        "accel": [
+          "REQ-SDS-135"
+        ],
+        "New": [
+          "REQ-SDS-135"
+        ]
+      },
+      "types": {
+        "Engine": [
+          "REQ-SDS-135"
+        ],
+        "Analog": [
+          "REQ-SDS-135"
+        ],
+        "knobDef": [
+          "REQ-SDS-135"
+        ],
+        "Controller": [
+          "REQ-SDS-135"
+        ]
+      }
+    },
+    {
+      "path": "app/internal/panel/panel_dispatch.go",
+      "owner": "FU-APP-PANEL",
+      "functions": {
+        "Controller.Run": [
+          "REQ-SDS-135"
+        ],
+        "armSIGIO": [
+          "REQ-SDS-135"
+        ],
+        "Controller.decode": [
+          "REQ-SDS-135"
+        ],
+        "Controller.button": [
+          "REQ-SDS-135"
+        ],
+        "Controller.resync": [
+          "REQ-SDS-135"
+        ],
+        "absf": [
+          "REQ-SDS-135"
+        ],
+        "Controller.knob": [
+          "REQ-SDS-135"
+        ],
+        "Controller.dispatch": [
+          "REQ-SDS-135"
+        ]
+      },
+      "types": {}
+    },
+    {
+      "path": "app/internal/panel/panel_input_test.go",
+      "owner": "FU-APP-PANEL",
+      "functions": {
+        "TestButtonEdges": [
+          "REQ-SDS-135"
+        ],
+        "TestSingleAndAuto": [
+          "REQ-SDS-135"
+        ],
+        "TestKnobPriorityOneRowPerEvent": [
+          "REQ-SDS-135"
+        ],
+        "TestTdivKnob": [
+          "REQ-SDS-135"
+        ],
+        "TestVdivKnob": [
+          "REQ-SDS-135"
+        ],
+        "TestTrigLevelSign": [
+          "REQ-SDS-135"
+        ],
+        "TestPositionKnobAccel": [
+          "REQ-SDS-135"
+        ],
+        "TestKnobResyncFromEngine": [
+          "REQ-SDS-135"
+        ],
+        "TestAccelMap": [
+          "REQ-SDS-135"
+        ],
+        "TestKnobGateOnZeroMagnitude": [
+          "REQ-SDS-135"
+        ],
+        "TestResyncButtonsOnly": [
+          "REQ-SDS-135"
+        ],
+        "TestKnobPushTrigger": [
+          "REQ-SDS-135"
+        ]
+      },
+      "types": {}
+    },
+    {
+      "path": "app/internal/panel/panel_led.go",
+      "owner": "FU-APP-PANEL",
+      "functions": {
+        "Controller.SyncLEDs": [
+          "REQ-SDS-135"
+        ],
+        "Controller.pushLEDs": [
+          "REQ-SDS-135"
+        ],
+        "clampInt": [
+          "REQ-SDS-135"
+        ]
+      },
+      "types": {}
+    },
+    {
+      "path": "app/internal/panel/panel_menu_test.go",
+      "owner": "FU-APP-PANEL",
+      "functions": {
+        "TestCursorMenu": [
+          "REQ-SDS-136"
+        ],
+        "TestDecodeMenu": [
+          "REQ-SDS-136"
+        ],
+        "TestTriggerHoldoffSoftkey": [
+          "REQ-SDS-136"
+        ],
+        "TestSuperresUX": [
+          "REQ-SDS-140"
+        ]
+      },
+      "types": {}
+    },
+    {
+      "path": "app/internal/panel/panel_test.go",
+      "owner": "FU-APP-PANEL",
+      "functions": {
+        "fakeEng.ReadMatrix": [
+          "REQ-SDS-135"
+        ],
+        "fakeEng.SetLEDs": [
+          "REQ-SDS-135"
+        ],
+        "fakeEng.Snapshot": [
+          "REQ-SDS-135"
+        ],
+        "fakeEng.AcqLog": [
+          "REQ-SDS-135"
+        ],
+        "fakeEng.SetOffsetDAC": [
+          "REQ-SDS-135"
+        ],
+        "fakeEng.SetTrigLevelCode": [
+          "REQ-SDS-135"
+        ],
+        "fakeEng.SetTdiv": [
+          "REQ-SDS-135"
+        ],
+        "fakeEng.SetNorm": [
+          "REQ-SDS-135"
+        ],
+        "fakeEng.SetRunning": [
+          "REQ-SDS-135"
+        ],
+        "fakeEng.SetSingle": [
+          "REQ-SDS-135"
+        ],
+        "fakeEng.SetTrigSlope": [
+          "REQ-SDS-135"
+        ],
+        "fakeEng.SetTrigSource": [
+          "REQ-SDS-135"
+        ],
+        "fakeEng.SetTrigType": [
+          "REQ-SDS-135"
+        ],
+        "fakeEng.SetAcqMode": [
+          "REQ-SDS-135"
+        ],
+        "fakeEng.SetAvgCount": [
+          "REQ-SDS-135"
+        ],
+        "fakeEng.SetEresLen": [
+          "REQ-SDS-135"
+        ],
+        "fakeEng.SetETS": [
+          "REQ-SDS-135"
+        ],
+        "fakeEng.SetMemDepth": [
+          "REQ-SDS-135"
+        ],
+        "fakeEng.SetPulseParams": [
+          "REQ-SDS-135"
+        ],
+        "fakeEng.SetSlopeParams": [
+          "REQ-SDS-135"
+        ],
+        "fakeEng.SetMask": [
+          "REQ-SDS-135"
+        ],
+        "fakeEng.SetMaskMode": [
+          "REQ-SDS-135"
+        ],
+        "fakeEng.ClearMaskFails": [
+          "REQ-SDS-135"
+        ],
+        "fakeEng.SetVideoParams": [
+          "REQ-SDS-135"
+        ],
+        "fakeEng.SetTrigPosFrac": [
+          "REQ-SDS-135"
+        ],
+        "fakeEng.SetHoldoff": [
+          "REQ-SDS-135"
+        ],
+        "b2i": [
+          "REQ-SDS-135"
+        ],
+        "fakeFE.SetVdiv": [
+          "REQ-SDS-135"
+        ],
+        "fakeFE.Snapshot": [
+          "REQ-SDS-135"
+        ],
+        "fakeFE.SetOffset": [
+          "REQ-SDS-135"
+        ],
+        "fakeFE.OffsetReqV": [
+          "REQ-SDS-135"
+        ],
+        "fakeFE.OffsetVolts": [
+          "REQ-SDS-135"
+        ],
+        "fakeFE.OffsetK": [
+          "REQ-SDS-135"
+        ],
+        "fakeFE.SetCoupling": [
+          "REQ-SDS-135"
+        ],
+        "fakeFE.Coupling": [
+          "REQ-SDS-135"
+        ],
+        "fakeFE.SetProbe": [
+          "REQ-SDS-135"
+        ],
+        "fakeFE.ProbeFactor": [
+          "REQ-SDS-135"
+        ],
+        "idle": [
+          "REQ-SDS-135"
+        ],
+        "newC": [
+          "REQ-SDS-135"
+        ],
+        "TestSingleThenRunLamp": [
+          "REQ-SDS-135"
+        ],
+        "TestLEDMap": [
+          "REQ-SDS-135"
+        ],
+        "fakeFE.TrigCode": [
+          "REQ-SDS-135"
+        ],
+        "fakeFE.TrigVolts": [
+          "REQ-SDS-135"
+        ],
+        "fakeFE.SetTrigCalDetent": [
+          "REQ-SDS-135"
+        ]
+      },
+      "types": {
+        "call": [
+          "REQ-SDS-135"
+        ],
+        "fakeEng": [
+          "REQ-SDS-135"
+        ],
+        "fakeFE": [
+          "REQ-SDS-135"
+        ]
+      }
+    },
+    {
+      "path": "app/internal/panel/refs.go",
+      "owner": "FU-APP-PANEL",
+      "functions": {
+        "Controller.captureRef": [
+          "REQ-SDS-138"
+        ],
+        "Controller.RefView": [
+          "REQ-SDS-138"
+        ]
+      },
+      "types": {
+        "refWave": [
+          "REQ-SDS-138"
+        ],
+        "RefWave": [
+          "REQ-SDS-138"
+        ]
+      }
+    },
+    {
+      "path": "app/internal/panel/settings.go",
+      "owner": "FU-APP-PANEL",
+      "functions": {
+        "Controller.SettingsView": [
+          "REQ-SDS-136"
+        ],
+        "Controller.ApplySettingsView": [
+          "REQ-SDS-136"
+        ]
+      },
+      "types": {}
+    },
+    {
+      "path": "app/internal/panel/settings_test.go",
+      "owner": "FU-APP-PANEL",
+      "functions": {
+        "TestSettingsViewRoundTrip": [
+          "REQ-SDS-136"
+        ],
+        "TestApplySettingsViewClamps": [
+          "REQ-SDS-136"
+        ],
+        "TestApplySettingsViewKeepsTwoSignalRolesOpposite": [
+          "REQ-SDS-136"
+        ]
+      },
+      "types": {}
+    },
+    {
+      "path": "app/internal/panel/superres.go",
+      "owner": "FU-APP-PANEL",
+      "functions": {
+        "Controller.srToggle": [
+          "REQ-SDS-140"
+        ],
+        "Controller.srArm": [
+          "REQ-SDS-140"
+        ],
+        "Controller.srRearm": [
+          "REQ-SDS-140"
+        ],
+        "Controller.srGateAdjust": [
+          "REQ-SDS-140"
+        ],
+        "srFocusName": [
+          "REQ-SDS-140"
+        ],
+        "Controller.srSeedAndStart": [
+          "REQ-SDS-140"
+        ],
+        "Controller.srCancel": [
+          "REQ-SDS-140"
+        ],
+        "Controller.srFocusCycle": [
+          "REQ-SDS-140"
+        ],
+        "Controller.srReqReset": [
+          "REQ-SDS-140"
+        ],
+        "Controller.srSetStatus": [
+          "REQ-SDS-140"
+        ],
+        "srCompMeans": [
+          "REQ-SDS-140"
+        ],
+        "Controller.srReachReview": [
+          "REQ-SDS-140"
+        ],
+        "Controller.SuperresStatus": [
+          "REQ-SDS-140"
+        ],
+        "Controller.srLoop": [
+          "REQ-SDS-140"
+        ],
+        "Controller.SuperresView": [
+          "REQ-SDS-140"
+        ]
+      },
+      "types": {
+        "SuperresView": [
+          "REQ-SDS-140"
+        ]
+      }
+    },
+    {
+      "path": "app/internal/panel/superres_comp_test.go",
+      "owner": "FU-APP-PANEL",
+      "functions": {
+        "TestSRCompMeansAppliesFalloffComp": [
+          "REQ-SDS-140"
+        ]
+      },
+      "types": {}
+    }
+  ],
+  "functions": 196,
+  "types": 15,
+  "uniqueReviewedTests": [
+    "TestAccelMap",
+    "TestApplySettingsViewClamps",
+    "TestApplySettingsViewKeepsTwoSignalRolesOpposite",
+    "TestAutosetVerifyTrigLevelKeepsComputedWhenNothingFires",
+    "TestAutosetVerifyTrigLevelScansIntoBand",
+    "TestButtonEdges",
+    "TestCursorMenu",
+    "TestDecodeChannelComplementarityAcrossProtoSwitch",
+    "TestDecodeMenu",
+    "TestDisplayStateAccessors",
+    "TestFmtEngNoScientific",
+    "TestKnobGateOnZeroMagnitude",
+    "TestKnobPriorityOneRowPerEvent",
+    "TestKnobPushTrigger",
+    "TestKnobResyncFromEngine",
+    "TestLEDMap",
+    "TestMenuFuzz",
+    "TestOffScreenSaturated",
+    "TestPanelChaos",
+    "TestPositionKnobAccel",
+    "TestRailing",
+    "TestResyncButtonsOnly",
+    "TestSRCompMeansAppliesFalloffComp",
+    "TestSettingsViewRoundTrip",
+    "TestSingleAndAuto",
+    "TestSingleThenRunLamp",
+    "TestSuperresUX",
+    "TestTdivKnob",
+    "TestTrigLevelSign",
+    "TestTriggerHoldoffSoftkey",
+    "TestVdivKnob"
+  ],
+  "nativeEligibleTests": [
+    "TestAccelMap",
+    "TestApplySettingsViewClamps",
+    "TestApplySettingsViewKeepsTwoSignalRolesOpposite",
+    "TestAutosetVerifyTrigLevelKeepsComputedWhenNothingFires",
+    "TestAutosetVerifyTrigLevelScansIntoBand",
+    "TestButtonEdges",
+    "TestCursorMenu",
+    "TestDecodeChannelComplementarityAcrossProtoSwitch",
+    "TestDecodeMenu",
+    "TestDisplayStateAccessors",
+    "TestFmtEngNoScientific",
+    "TestKnobGateOnZeroMagnitude",
+    "TestKnobPriorityOneRowPerEvent",
+    "TestKnobPushTrigger",
+    "TestKnobResyncFromEngine",
+    "TestLEDMap",
+    "TestMenuFuzz",
+    "TestOffScreenSaturated",
+    "TestPanelChaos",
+    "TestPositionKnobAccel",
+    "TestRailing",
+    "TestResyncButtonsOnly",
+    "TestSRCompMeansAppliesFalloffComp",
+    "TestSettingsViewRoundTrip",
+    "TestSingleAndAuto",
+    "TestSingleThenRunLamp",
+    "TestSuperresUX",
+    "TestTdivKnob",
+    "TestTrigLevelSign",
+    "TestTriggerHoldoffSoftkey",
+    "TestVdivKnob"
+  ],
+  "sourceSHA256": {
+    "app/internal/panel/autoset.go": "d86b09fb1905fbeee35fe6e3639a8deb8f2fb73e489fc1ba24be04f9ce80d75d",
+    "app/internal/panel/autoset_test.go": "448b1c1b208041d044c0efad0b5f2d1464ed68d5c0295802cd440a4dea326908",
+    "app/internal/panel/autoset_verify_test.go": "0e114a182d2eceb4379e21547f4d6d173d7a875069747f719f6a25db416d6837",
+    "app/internal/panel/chaos_test.go": "86d2aa15b15e7a11e874f02f2268a00f186f0efff7231caa79ec214ad16e9804",
+    "app/internal/panel/display_state.go": "524d18b373cdbd70d8218fb691fc3f7f4a29142586dabadc372f44b51a5ac140",
+    "app/internal/panel/display_state_test.go": "6eae269523e84345dddc88d21c063c6258807df3927f37bcc4d31e5d0b9012ea",
+    "app/internal/panel/engfmt_test.go": "9f547742f552af15934ec5b0e310c60dbab229cee09852edc1630f6f23a08849",
+    "app/internal/panel/mask.go": "528df8bfd77cd8cfdecda59cc5f1cacf3ceb74eeb589259bef27c3b37dd29cd8",
+    "app/internal/panel/menu.go": "3d7f1b0ed824cfb7957c47efb0dfa783ce19aad05186731e2fbf6a72fc9a43ac",
+    "app/internal/panel/menu_cycle.go": "af0263c93679834d1c84fb2b47b1866d5b5c47cf4b3cb146309c6180864ebc58",
+    "app/internal/panel/menu_inject.go": "bd5a3863eff6741184356b480b456757c29f509c76b10e2e206ff86ab67fc1f7",
+    "app/internal/panel/menu_util.go": "cbdea139d15e13a621bf65ea4d6281b84914b456a0a4b8f522320597a93b037e",
+    "app/internal/panel/menu_view.go": "557e619844ded3b566aa6497512c4b64b378d99be08af69a941619f9389e838d",
+    "app/internal/panel/menufuzz_test.go": "f9e596c8ede923141fe6748f35837fdc133436b8cc6380566e019688061d3d5b",
+    "app/internal/panel/panel.go": "7d4cc1c0defd818a462999591745e6d709584c6895d288bebd7fe26bc36a1a63",
+    "app/internal/panel/panel_dispatch.go": "2eaec8d058f8f7f2743cabe67a24034b44d2d7961adb4ed43c2844e95568dbd6",
+    "app/internal/panel/panel_input_test.go": "baa3e7654ef3742dfa10af4d4b329d3bdeb6314163aaab3b1b4abc100b8a57e0",
+    "app/internal/panel/panel_led.go": "c614f986eb6bf5a0492c548914c1b7288da2d8e9d146b94c1162bdd8d96cc7f2",
+    "app/internal/panel/panel_menu_test.go": "d4c835f5edbba031b141a7072d6f808710d763b3b1931fe2797709505107578d",
+    "app/internal/panel/panel_test.go": "4653d37b0234c943ea8f4bbbfb2dad60f707f9ca4a58e078e3ed9dd83fbbfda1",
+    "app/internal/panel/refs.go": "63cc45068310ccfeca780e12545b20aba0dbc5c28b3cf1d9fd02eac7e820b325",
+    "app/internal/panel/settings.go": "c8f2fef8d8aac5d0053111988731c74c357deb8da6c3d749c4d4a3f0d938bc34",
+    "app/internal/panel/settings_test.go": "0094d0113d67a5a810e02c2032889c771feb7104f6adbd1a5a1925ee6327ba4e",
+    "app/internal/panel/superres.go": "cfe3d24d14a66d16c490d5106fd196c9373ea91bdec768a42dba61abc8a9f16b",
+    "app/internal/panel/superres_comp_test.go": "4cb120800d3e2303fe772f66aec7fd6c7a7a39a63f6b0c117c321acf7fd530e9"
+  },
+  "scope": "Reviewed panel controls and original host tests only. Background acquisition, timing, lifecycle and physical-device qualification remain bounded by panel-source-review.json."
+}

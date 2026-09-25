@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-PANEL
 package panel
 
 // Display-state accessors for the SCPI handler (scpi.Display): the panel
@@ -8,6 +9,7 @@ package panel
 
 // ViewXY reports whether the device display is in the X-Y view (the DISPLAY
 // menu "View" slot).
+// TRLC-LINKS: REQ-SDS-136
 func (c *Controller) ViewXY() bool {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -17,6 +19,7 @@ func (c *Controller) ViewXY() bool {
 // SetViewXY enters (true) or leaves (false) the X-Y view. Leaving only
 // returns to Y-T when X-Y is the current view — "X-Y display off" must not
 // clobber an unrelated view (FFT/Bode/Spectrogram).
+// TRLC-LINKS: REQ-SDS-136
 func (c *Controller) SetViewXY(on bool) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -28,6 +31,7 @@ func (c *Controller) SetViewXY(on bool) {
 }
 
 // PersistOn reports the display-persistence (afterglow) state.
+// TRLC-LINKS: REQ-SDS-136
 func (c *Controller) PersistOn() bool {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -35,6 +39,7 @@ func (c *Controller) PersistOn() bool {
 }
 
 // SetPersist sets the display persistence (the CHANNEL menu toggle).
+// TRLC-LINKS: REQ-SDS-136
 func (c *Controller) SetPersist(on bool) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -42,6 +47,7 @@ func (c *Controller) SetPersist(on bool) {
 }
 
 // MenuOpen reports whether the on-screen softkey menu is visible.
+// TRLC-LINKS: REQ-SDS-136
 func (c *Controller) MenuOpen() bool {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -51,6 +57,7 @@ func (c *Controller) MenuOpen() bool {
 // SetMenuOpen shows (the MAIN page) or hides the on-screen softkey menu —
 // the SCPI MENU ON/OFF verb. pushLEDs afterwards: closing e.g. the DISPLAY
 // page must also drop that key's lamp (same discipline as openMenu).
+// TRLC-LINKS: REQ-SDS-136
 func (c *Controller) SetMenuOpen(on bool) {
 	c.mu.Lock()
 	if on {

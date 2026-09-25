@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-LCD
 package lcd
 
 import (
@@ -7,6 +8,7 @@ import (
 	"open-sds/app/internal/engine"
 )
 
+// TRLC-LINKS: REQ-SDS-021
 func testFrame(valid int) *engine.Frame {
 	f := &engine.Frame{
 		C1: make([]uint8, valid), C2: make([]uint8, valid),
@@ -26,11 +28,13 @@ func testFrame(valid int) *engine.Frame {
 	return f
 }
 
+// TRLC-LINKS: REQ-SDS-021
 func defaultHUD() HUD {
 	return HUD{C1VdivV: 1, C2VdivV: 1, TdivS: 500e-6, TrigRising: true,
 		Running: true, SampleS: 800e-9, TwoChan: true}
 }
 
+// TRLC-LINKS: REQ-SDS-021
 func countColor(m *MemSurface, c uint16) int {
 	n := 0
 	for y := 0; y < H; y++ {
@@ -43,6 +47,7 @@ func countColor(m *MemSurface, c uint16) int {
 	return n
 }
 
+// TRLC-LINKS: REQ-SDS-021
 func countColorIn(m *MemSurface, c uint16, x0, y0, x1, y1 int) int {
 	n := 0
 	for y := y0; y < y1; y++ {
@@ -58,6 +63,7 @@ func countColorIn(m *MemSurface, c uint16, x0, y0, x1, y1 int) int {
 // Persistence: rendering two frames with the trace at different vertical
 // positions must leave BOTH on the persist layer — the previous one faded (but
 // still non-black) and the current one bright — i.e. an afterglow.
+// TRLC-LINKS: REQ-SDS-021
 func TestRenderPersistence(t *testing.T) {
 	persist := NewMemSurface()
 	sf := NewMemSurface()
@@ -99,6 +105,7 @@ func TestRenderPersistence(t *testing.T) {
 // The alternate views (web parity) must each render distinct output: X-Y and
 // math draw the purple math colour; FFT draws a spectrum; the autoset banner
 // draws its amber box centred.
+// TRLC-LINKS: REQ-SDS-021, REQ-SDS-070
 func TestRenderAltViews(t *testing.T) {
 	f := testFrame(2048)
 	f.C2 = make([]uint8, len(f.C2))
@@ -160,6 +167,7 @@ func TestRenderAltViews(t *testing.T) {
 
 // The selected softkey is a FILLED inverted amber bar (not a 1px outline): its
 // slot must be a solid block of colTrig with dark (colBG) inverted text on top.
+// TRLC-LINKS: REQ-SDS-021
 func TestRenderMenuSelectedSoftkeyFilled(t *testing.T) {
 	m := NewMemSurface()
 	h := defaultHUD()
@@ -179,6 +187,7 @@ func TestRenderMenuSelectedSoftkeyFilled(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-021
 func TestRenderMeasPanel(t *testing.T) {
 	box := rgb(6, 10, 22) // drawMeasPanel background fill
 	// Off: no MEASURE panel box.
@@ -209,6 +218,7 @@ func TestRenderMeasPanel(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-021
 func TestRenderCursors(t *testing.T) {
 	// Off: no cursor readout box.
 	box := rgb(6, 10, 22)
@@ -240,6 +250,7 @@ func TestRenderCursors(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-021
 func TestRenderTraceFrame(t *testing.T) {
 	m := NewMemSurface()
 	Render(m, testFrame(2048), defaultHUD(), true)
@@ -273,6 +284,7 @@ func TestRenderTraceFrame(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-021
 func TestRenderHeldFrameStripRed(t *testing.T) {
 	m := NewMemSurface()
 	Render(m, testFrame(2048), defaultHUD(), false) // held → red strip
@@ -285,6 +297,7 @@ func TestRenderHeldFrameStripRed(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-021
 func TestRenderEnvelopeBranch(t *testing.T) {
 	f := testFrame(4096)
 	f.IsEnv = true
@@ -301,6 +314,7 @@ func TestRenderEnvelopeBranch(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-021
 func TestRenderNilFrame(t *testing.T) {
 	m := NewMemSurface()
 	Render(m, nil, defaultHUD(), false)
@@ -309,6 +323,7 @@ func TestRenderNilFrame(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-021
 func TestRenderFlatRailNoFabrication(t *testing.T) {
 	f := testFrame(2048)
 	for i := range f.C1 {
@@ -336,6 +351,7 @@ func TestRenderFlatRailNoFabrication(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-021
 func TestFontMetrics(t *testing.T) {
 	if TextWidth("ABC", 1) != 18 {
 		t.Fatalf("TextWidth(ABC) = %d, want 18", TextWidth("ABC", 1))
@@ -355,6 +371,7 @@ func TestFontMetrics(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-021
 func TestFormatters(t *testing.T) {
 	if got := fmtTdiv(500e-6); got != "500us" {
 		t.Fatalf("fmtTdiv(500µs) = %q", got)
@@ -370,6 +387,7 @@ func TestFormatters(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-021
 func TestRenderZoneMaskOverlay(t *testing.T) {
 	f := testFrame(2048)
 	hud := defaultHUD()
@@ -415,6 +433,7 @@ func TestRenderZoneMaskOverlay(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-021
 func TestRenderBodeView(t *testing.T) {
 	hud := defaultHUD()
 	hud.ViewMode = 3

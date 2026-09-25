@@ -1,0 +1,986 @@
+[
+  {
+    "ball": "A10",
+    "line": 63,
+    "path": "fpga/default/default.qsf",
+    "port": "gpmc_d[0]"
+  },
+  {
+    "ball": "B9",
+    "line": 67,
+    "path": "fpga/default/default.qsf",
+    "port": "gpmc_d[1]"
+  },
+  {
+    "ball": "A9",
+    "line": 71,
+    "path": "fpga/default/default.qsf",
+    "port": "gpmc_d[2]"
+  },
+  {
+    "ball": "B8",
+    "line": 75,
+    "path": "fpga/default/default.qsf",
+    "port": "gpmc_d[3]"
+  },
+  {
+    "ball": "A8",
+    "line": 79,
+    "path": "fpga/default/default.qsf",
+    "port": "gpmc_d[4]"
+  },
+  {
+    "ball": "B7",
+    "line": 83,
+    "path": "fpga/default/default.qsf",
+    "port": "gpmc_d[5]"
+  },
+  {
+    "ball": "A7",
+    "line": 87,
+    "path": "fpga/default/default.qsf",
+    "port": "gpmc_d[6]"
+  },
+  {
+    "ball": "B6",
+    "line": 91,
+    "path": "fpga/default/default.qsf",
+    "port": "gpmc_d[7]"
+  },
+  {
+    "ball": "A6",
+    "line": 95,
+    "path": "fpga/default/default.qsf",
+    "port": "gpmc_d[8]"
+  },
+  {
+    "ball": "D6",
+    "line": 99,
+    "path": "fpga/default/default.qsf",
+    "port": "gpmc_d[9]"
+  },
+  {
+    "ball": "C6",
+    "line": 103,
+    "path": "fpga/default/default.qsf",
+    "port": "gpmc_d[10]"
+  },
+  {
+    "ball": "B5",
+    "line": 107,
+    "path": "fpga/default/default.qsf",
+    "port": "gpmc_d[11]"
+  },
+  {
+    "ball": "A5",
+    "line": 111,
+    "path": "fpga/default/default.qsf",
+    "port": "gpmc_d[12]"
+  },
+  {
+    "ball": "F6",
+    "line": 115,
+    "path": "fpga/default/default.qsf",
+    "port": "gpmc_d[13]"
+  },
+  {
+    "ball": "D5",
+    "line": 119,
+    "path": "fpga/default/default.qsf",
+    "port": "gpmc_d[14]"
+  },
+  {
+    "ball": "E5",
+    "line": 123,
+    "path": "fpga/default/default.qsf",
+    "port": "gpmc_d[15]"
+  },
+  {
+    "ball": "B4",
+    "line": 129,
+    "path": "fpga/default/default.qsf",
+    "port": "nCS1"
+  },
+  {
+    "ball": "E6",
+    "line": 132,
+    "path": "fpga/default/default.qsf",
+    "port": "nOE"
+  },
+  {
+    "ball": "B10",
+    "line": 135,
+    "path": "fpga/default/default.qsf",
+    "port": "nWE"
+  },
+  {
+    "ball": "C3",
+    "line": 140,
+    "path": "fpga/default/default.qsf",
+    "port": "sel[2]"
+  },
+  {
+    "ball": "D4",
+    "line": 143,
+    "path": "fpga/default/default.qsf",
+    "port": "sel[3]"
+  },
+  {
+    "ball": "A3",
+    "line": 146,
+    "path": "fpga/default/default.qsf",
+    "port": "sel[4]"
+  },
+  {
+    "ball": "B3",
+    "line": 149,
+    "path": "fpga/default/default.qsf",
+    "port": "sel[5]"
+  },
+  {
+    "ball": "A4",
+    "line": 152,
+    "path": "fpga/default/default.qsf",
+    "port": "sel[6]"
+  },
+  {
+    "ball": "C2",
+    "line": 157,
+    "path": "fpga/default/default.qsf",
+    "port": "clk"
+  },
+  {
+    "ball": "M2",
+    "line": 160,
+    "path": "fpga/default/default.qsf",
+    "port": "mclk_in"
+  },
+  {
+    "ball": "A12",
+    "line": 165,
+    "path": "fpga/default/default.qsf",
+    "port": "trig_sense"
+  },
+  {
+    "ball": "A2",
+    "line": 170,
+    "path": "fpga/default/default.qsf",
+    "port": "gpmc_a2"
+  },
+  {
+    "ball": "B1",
+    "line": 173,
+    "path": "fpga/default/default.qsf",
+    "port": "gpmc_b1"
+  },
+  {
+    "ball": "K8",
+    "line": 178,
+    "path": "fpga/default/default.qsf",
+    "port": "enc_p[0]"
+  },
+  {
+    "ball": "M8",
+    "line": 182,
+    "path": "fpga/default/default.qsf",
+    "port": "enc_n[0]"
+  },
+  {
+    "ball": "C14",
+    "line": 186,
+    "path": "fpga/default/default.qsf",
+    "port": "enc_p[1]"
+  },
+  {
+    "ball": "D14",
+    "line": 190,
+    "path": "fpga/default/default.qsf",
+    "port": "enc_n[1]"
+  },
+  {
+    "ball": "K9",
+    "line": 194,
+    "path": "fpga/default/default.qsf",
+    "port": "enc_p[2]"
+  },
+  {
+    "ball": "L10",
+    "line": 198,
+    "path": "fpga/default/default.qsf",
+    "port": "enc_n[2]"
+  },
+  {
+    "ball": "L8",
+    "line": 202,
+    "path": "fpga/default/default.qsf",
+    "port": "enc_p[3]"
+  },
+  {
+    "ball": "M7",
+    "line": 206,
+    "path": "fpga/default/default.qsf",
+    "port": "enc_n[3]"
+  },
+  {
+    "ball": "K10",
+    "line": 210,
+    "path": "fpga/default/default.qsf",
+    "port": "enc_p[4]"
+  },
+  {
+    "ball": "L9",
+    "line": 214,
+    "path": "fpga/default/default.qsf",
+    "port": "enc_n[4]"
+  },
+  {
+    "ball": "A11",
+    "line": 220,
+    "path": "fpga/default/default.qsf",
+    "port": "a11"
+  },
+  {
+    "ball": "F1",
+    "line": 224,
+    "path": "fpga/default/default.qsf",
+    "port": "f1"
+  },
+  {
+    "ball": "G1",
+    "line": 228,
+    "path": "fpga/default/default.qsf",
+    "port": "g1"
+  },
+  {
+    "ball": "G2",
+    "line": 232,
+    "path": "fpga/default/default.qsf",
+    "port": "g2"
+  },
+  {
+    "ball": "K1",
+    "line": 236,
+    "path": "fpga/default/default.qsf",
+    "port": "k1"
+  },
+  {
+    "ball": "D2",
+    "line": 242,
+    "path": "fpga/default/default.qsf",
+    "port": "d2"
+  },
+  {
+    "ball": "P6",
+    "line": 246,
+    "path": "fpga/default/default.qsf",
+    "port": "p6"
+  },
+  {
+    "ball": "K2",
+    "line": 249,
+    "path": "fpga/default/default.qsf",
+    "port": "k2"
+  },
+  {
+    "ball": "F2",
+    "line": 253,
+    "path": "fpga/default/default.qsf",
+    "port": "f2"
+  },
+  {
+    "ball": "J2",
+    "line": 257,
+    "path": "fpga/default/default.qsf",
+    "port": "j2"
+  },
+  {
+    "ball": "B11",
+    "line": 263,
+    "path": "fpga/default/default.qsf",
+    "port": "b11"
+  },
+  {
+    "ball": "J1",
+    "line": 266,
+    "path": "fpga/default/default.qsf",
+    "port": "j1"
+  },
+  {
+    "ball": "J6",
+    "line": 271,
+    "path": "fpga/default/default.qsf",
+    "port": "bus[0]"
+  },
+  {
+    "ball": "K5",
+    "line": 275,
+    "path": "fpga/default/default.qsf",
+    "port": "bus[1]"
+  },
+  {
+    "ball": "L1",
+    "line": 279,
+    "path": "fpga/default/default.qsf",
+    "port": "bus[2]"
+  },
+  {
+    "ball": "L2",
+    "line": 283,
+    "path": "fpga/default/default.qsf",
+    "port": "bus[3]"
+  },
+  {
+    "ball": "L3",
+    "line": 287,
+    "path": "fpga/default/default.qsf",
+    "port": "bus[4]"
+  },
+  {
+    "ball": "L4",
+    "line": 291,
+    "path": "fpga/default/default.qsf",
+    "port": "bus[5]"
+  },
+  {
+    "ball": "N1",
+    "line": 295,
+    "path": "fpga/default/default.qsf",
+    "port": "bus[6]"
+  },
+  {
+    "ball": "N2",
+    "line": 299,
+    "path": "fpga/default/default.qsf",
+    "port": "bus[7]"
+  },
+  {
+    "ball": "P1",
+    "line": 303,
+    "path": "fpga/default/default.qsf",
+    "port": "bus[8]"
+  },
+  {
+    "ball": "P2",
+    "line": 307,
+    "path": "fpga/default/default.qsf",
+    "port": "bus[9]"
+  },
+  {
+    "ball": "R1",
+    "line": 311,
+    "path": "fpga/default/default.qsf",
+    "port": "bus[10]"
+  },
+  {
+    "ball": "M6",
+    "line": 315,
+    "path": "fpga/default/default.qsf",
+    "port": "bus[11]"
+  },
+  {
+    "ball": "N6",
+    "line": 319,
+    "path": "fpga/default/default.qsf",
+    "port": "bus[12]"
+  },
+  {
+    "ball": "N3",
+    "line": 323,
+    "path": "fpga/default/default.qsf",
+    "port": "bus[13]"
+  },
+  {
+    "ball": "N5",
+    "line": 327,
+    "path": "fpga/default/default.qsf",
+    "port": "bus[14]"
+  },
+  {
+    "ball": "P3",
+    "line": 331,
+    "path": "fpga/default/default.qsf",
+    "port": "bus[15]"
+  },
+  {
+    "ball": "R3",
+    "line": 335,
+    "path": "fpga/default/default.qsf",
+    "port": "bus[16]"
+  },
+  {
+    "ball": "R4",
+    "line": 339,
+    "path": "fpga/default/default.qsf",
+    "port": "bus[17]"
+  },
+  {
+    "ball": "R5",
+    "line": 343,
+    "path": "fpga/default/default.qsf",
+    "port": "bus[18]"
+  },
+  {
+    "ball": "R6",
+    "line": 347,
+    "path": "fpga/default/default.qsf",
+    "port": "bus[19]"
+  },
+  {
+    "ball": "R7",
+    "line": 351,
+    "path": "fpga/default/default.qsf",
+    "port": "bus[20]"
+  },
+  {
+    "ball": "T2",
+    "line": 355,
+    "path": "fpga/default/default.qsf",
+    "port": "bus[21]"
+  },
+  {
+    "ball": "T3",
+    "line": 359,
+    "path": "fpga/default/default.qsf",
+    "port": "bus[22]"
+  },
+  {
+    "ball": "T4",
+    "line": 363,
+    "path": "fpga/default/default.qsf",
+    "port": "bus[23]"
+  },
+  {
+    "ball": "T5",
+    "line": 367,
+    "path": "fpga/default/default.qsf",
+    "port": "bus[24]"
+  },
+  {
+    "ball": "T6",
+    "line": 371,
+    "path": "fpga/default/default.qsf",
+    "port": "bus[25]"
+  },
+  {
+    "ball": "T7",
+    "line": 375,
+    "path": "fpga/default/default.qsf",
+    "port": "bus[26]"
+  },
+  {
+    "ball": "F3",
+    "line": 381,
+    "path": "fpga/default/default.qsf",
+    "port": "single[0]"
+  },
+  {
+    "ball": "F5",
+    "line": 385,
+    "path": "fpga/default/default.qsf",
+    "port": "single[1]"
+  },
+  {
+    "ball": "G5",
+    "line": 389,
+    "path": "fpga/default/default.qsf",
+    "port": "single[2]"
+  },
+  {
+    "ball": "D3",
+    "line": 393,
+    "path": "fpga/default/default.qsf",
+    "port": "single[3]"
+  },
+  {
+    "ball": "F7",
+    "line": 397,
+    "path": "fpga/default/default.qsf",
+    "port": "single[4]"
+  },
+  {
+    "ball": "D1",
+    "line": 403,
+    "path": "fpga/default/default.qsf",
+    "port": "d1"
+  },
+  {
+    "ball": "R11",
+    "line": 409,
+    "path": "fpga/default/default.qsf",
+    "port": "lane[0]"
+  },
+  {
+    "ball": "R12",
+    "line": 412,
+    "path": "fpga/default/default.qsf",
+    "port": "lane[1]"
+  },
+  {
+    "ball": "R13",
+    "line": 415,
+    "path": "fpga/default/default.qsf",
+    "port": "lane[2]"
+  },
+  {
+    "ball": "R14",
+    "line": 418,
+    "path": "fpga/default/default.qsf",
+    "port": "lane[3]"
+  },
+  {
+    "ball": "T12",
+    "line": 421,
+    "path": "fpga/default/default.qsf",
+    "port": "lane[4]"
+  },
+  {
+    "ball": "T13",
+    "line": 424,
+    "path": "fpga/default/default.qsf",
+    "port": "lane[5]"
+  },
+  {
+    "ball": "T14",
+    "line": 427,
+    "path": "fpga/default/default.qsf",
+    "port": "lane[6]"
+  },
+  {
+    "ball": "T15",
+    "line": 430,
+    "path": "fpga/default/default.qsf",
+    "port": "lane[7]"
+  },
+  {
+    "ball": "K15",
+    "line": 433,
+    "path": "fpga/default/default.qsf",
+    "port": "lane[8]"
+  },
+  {
+    "ball": "L15",
+    "line": 436,
+    "path": "fpga/default/default.qsf",
+    "port": "lane[9]"
+  },
+  {
+    "ball": "L16",
+    "line": 439,
+    "path": "fpga/default/default.qsf",
+    "port": "lane[10]"
+  },
+  {
+    "ball": "N15",
+    "line": 442,
+    "path": "fpga/default/default.qsf",
+    "port": "lane[11]"
+  },
+  {
+    "ball": "N16",
+    "line": 445,
+    "path": "fpga/default/default.qsf",
+    "port": "lane[12]"
+  },
+  {
+    "ball": "P15",
+    "line": 448,
+    "path": "fpga/default/default.qsf",
+    "port": "lane[13]"
+  },
+  {
+    "ball": "P16",
+    "line": 451,
+    "path": "fpga/default/default.qsf",
+    "port": "lane[14]"
+  },
+  {
+    "ball": "R16",
+    "line": 454,
+    "path": "fpga/default/default.qsf",
+    "port": "lane[15]"
+  },
+  {
+    "ball": "L7",
+    "line": 457,
+    "path": "fpga/default/default.qsf",
+    "port": "lane[16]"
+  },
+  {
+    "ball": "N8",
+    "line": 460,
+    "path": "fpga/default/default.qsf",
+    "port": "lane[17]"
+  },
+  {
+    "ball": "P8",
+    "line": 463,
+    "path": "fpga/default/default.qsf",
+    "port": "lane[18]"
+  },
+  {
+    "ball": "R8",
+    "line": 466,
+    "path": "fpga/default/default.qsf",
+    "port": "lane[19]"
+  },
+  {
+    "ball": "T8",
+    "line": 469,
+    "path": "fpga/default/default.qsf",
+    "port": "lane[20]"
+  },
+  {
+    "ball": "M9",
+    "line": 472,
+    "path": "fpga/default/default.qsf",
+    "port": "lane[21]"
+  },
+  {
+    "ball": "M10",
+    "line": 475,
+    "path": "fpga/default/default.qsf",
+    "port": "lane[22]"
+  },
+  {
+    "ball": "M11",
+    "line": 478,
+    "path": "fpga/default/default.qsf",
+    "port": "lane[23]"
+  },
+  {
+    "ball": "N9",
+    "line": 481,
+    "path": "fpga/default/default.qsf",
+    "port": "lane[24]"
+  },
+  {
+    "ball": "P9",
+    "line": 484,
+    "path": "fpga/default/default.qsf",
+    "port": "lane[25]"
+  },
+  {
+    "ball": "P11",
+    "line": 487,
+    "path": "fpga/default/default.qsf",
+    "port": "lane[26]"
+  },
+  {
+    "ball": "R9",
+    "line": 490,
+    "path": "fpga/default/default.qsf",
+    "port": "lane[27]"
+  },
+  {
+    "ball": "R10",
+    "line": 493,
+    "path": "fpga/default/default.qsf",
+    "port": "lane[28]"
+  },
+  {
+    "ball": "T9",
+    "line": 496,
+    "path": "fpga/default/default.qsf",
+    "port": "lane[29]"
+  },
+  {
+    "ball": "T10",
+    "line": 499,
+    "path": "fpga/default/default.qsf",
+    "port": "lane[30]"
+  },
+  {
+    "ball": "T11",
+    "line": 502,
+    "path": "fpga/default/default.qsf",
+    "port": "lane[31]"
+  },
+  {
+    "ball": "C16",
+    "line": 505,
+    "path": "fpga/default/default.qsf",
+    "port": "lane[32]"
+  },
+  {
+    "ball": "F13",
+    "line": 508,
+    "path": "fpga/default/default.qsf",
+    "port": "lane[33]"
+  },
+  {
+    "ball": "F14",
+    "line": 511,
+    "path": "fpga/default/default.qsf",
+    "port": "lane[34]"
+  },
+  {
+    "ball": "C9",
+    "line": 514,
+    "path": "fpga/default/default.qsf",
+    "port": "lane[35]"
+  },
+  {
+    "ball": "C11",
+    "line": 517,
+    "path": "fpga/default/default.qsf",
+    "port": "lane[36]"
+  },
+  {
+    "ball": "D9",
+    "line": 520,
+    "path": "fpga/default/default.qsf",
+    "port": "lane[37]"
+  },
+  {
+    "ball": "D11",
+    "line": 523,
+    "path": "fpga/default/default.qsf",
+    "port": "lane[38]"
+  },
+  {
+    "ball": "D12",
+    "line": 526,
+    "path": "fpga/default/default.qsf",
+    "port": "lane[39]"
+  },
+  {
+    "ball": "E10",
+    "line": 529,
+    "path": "fpga/default/default.qsf",
+    "port": "lane[40]"
+  },
+  {
+    "ball": "E11",
+    "line": 532,
+    "path": "fpga/default/default.qsf",
+    "port": "lane[41]"
+  },
+  {
+    "ball": "F9",
+    "line": 535,
+    "path": "fpga/default/default.qsf",
+    "port": "lane[42]"
+  },
+  {
+    "ball": "F11",
+    "line": 538,
+    "path": "fpga/default/default.qsf",
+    "port": "lane[43]"
+  },
+  {
+    "ball": "C8",
+    "line": 541,
+    "path": "fpga/default/default.qsf",
+    "port": "lane[44]"
+  },
+  {
+    "ball": "D8",
+    "line": 544,
+    "path": "fpga/default/default.qsf",
+    "port": "lane[45]"
+  },
+  {
+    "ball": "E8",
+    "line": 547,
+    "path": "fpga/default/default.qsf",
+    "port": "lane[46]"
+  },
+  {
+    "ball": "F8",
+    "line": 550,
+    "path": "fpga/default/default.qsf",
+    "port": "lane[47]"
+  },
+  {
+    "ball": "L11",
+    "line": 553,
+    "path": "fpga/default/default.qsf",
+    "port": "lane[48]"
+  },
+  {
+    "ball": "N11",
+    "line": 556,
+    "path": "fpga/default/default.qsf",
+    "port": "lane[49]"
+  },
+  {
+    "ball": "N12",
+    "line": 559,
+    "path": "fpga/default/default.qsf",
+    "port": "lane[50]"
+  },
+  {
+    "ball": "P14",
+    "line": 562,
+    "path": "fpga/default/default.qsf",
+    "port": "lane[51]"
+  },
+  {
+    "ball": "J11",
+    "line": 565,
+    "path": "fpga/default/default.qsf",
+    "port": "lane[52]"
+  },
+  {
+    "ball": "K11",
+    "line": 568,
+    "path": "fpga/default/default.qsf",
+    "port": "lane[53]"
+  },
+  {
+    "ball": "K12",
+    "line": 571,
+    "path": "fpga/default/default.qsf",
+    "port": "lane[54]"
+  },
+  {
+    "ball": "L12",
+    "line": 574,
+    "path": "fpga/default/default.qsf",
+    "port": "lane[55]"
+  },
+  {
+    "ball": "L13",
+    "line": 577,
+    "path": "fpga/default/default.qsf",
+    "port": "lane[56]"
+  },
+  {
+    "ball": "L14",
+    "line": 580,
+    "path": "fpga/default/default.qsf",
+    "port": "lane[57]"
+  },
+  {
+    "ball": "M12",
+    "line": 583,
+    "path": "fpga/default/default.qsf",
+    "port": "lane[58]"
+  },
+  {
+    "ball": "N13",
+    "line": 586,
+    "path": "fpga/default/default.qsf",
+    "port": "lane[59]"
+  },
+  {
+    "ball": "N14",
+    "line": 589,
+    "path": "fpga/default/default.qsf",
+    "port": "lane[60]"
+  },
+  {
+    "ball": "G11",
+    "line": 592,
+    "path": "fpga/default/default.qsf",
+    "port": "lane[61]"
+  },
+  {
+    "ball": "E9",
+    "line": 595,
+    "path": "fpga/default/default.qsf",
+    "port": "lane[62]"
+  },
+  {
+    "ball": "F10",
+    "line": 598,
+    "path": "fpga/default/default.qsf",
+    "port": "lane[63]"
+  },
+  {
+    "ball": "J16",
+    "line": 601,
+    "path": "fpga/default/default.qsf",
+    "port": "lane[64]"
+  },
+  {
+    "ball": "K16",
+    "line": 604,
+    "path": "fpga/default/default.qsf",
+    "port": "lane[65]"
+  },
+  {
+    "ball": "B16",
+    "line": 607,
+    "path": "fpga/default/default.qsf",
+    "port": "lane[66]"
+  },
+  {
+    "ball": "C15",
+    "line": 610,
+    "path": "fpga/default/default.qsf",
+    "port": "lane[67]"
+  },
+  {
+    "ball": "D15",
+    "line": 613,
+    "path": "fpga/default/default.qsf",
+    "port": "lane[68]"
+  },
+  {
+    "ball": "D16",
+    "line": 616,
+    "path": "fpga/default/default.qsf",
+    "port": "lane[69]"
+  },
+  {
+    "ball": "F15",
+    "line": 619,
+    "path": "fpga/default/default.qsf",
+    "port": "lane[70]"
+  },
+  {
+    "ball": "G15",
+    "line": 622,
+    "path": "fpga/default/default.qsf",
+    "port": "lane[71]"
+  },
+  {
+    "ball": "G16",
+    "line": 625,
+    "path": "fpga/default/default.qsf",
+    "port": "lane[72]"
+  },
+  {
+    "ball": "A13",
+    "line": 628,
+    "path": "fpga/default/default.qsf",
+    "port": "lane[73]"
+  },
+  {
+    "ball": "A14",
+    "line": 631,
+    "path": "fpga/default/default.qsf",
+    "port": "lane[74]"
+  },
+  {
+    "ball": "A15",
+    "line": 634,
+    "path": "fpga/default/default.qsf",
+    "port": "lane[75]"
+  },
+  {
+    "ball": "B12",
+    "line": 637,
+    "path": "fpga/default/default.qsf",
+    "port": "lane[76]"
+  },
+  {
+    "ball": "B13",
+    "line": 640,
+    "path": "fpga/default/default.qsf",
+    "port": "lane[77]"
+  },
+  {
+    "ball": "B14",
+    "line": 643,
+    "path": "fpga/default/default.qsf",
+    "port": "lane[78]"
+  },
+  {
+    "ball": "F16",
+    "line": 646,
+    "path": "fpga/default/default.qsf",
+    "port": "lane[79]"
+  }
+]

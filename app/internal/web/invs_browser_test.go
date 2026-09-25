@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-WEB
 package web
 
 import (
@@ -18,6 +19,7 @@ import (
 // centre), C2 flat at code 88 (below). Self-skips when node/Playwright is
 // absent (hard failure on the CI browser lane). Served: C1 flat at code 178
 // (above centre), C2 flat at code 88 (below).
+// TRLC-LINKS: REQ-SDS-180
 func TestINVSBrowser(t *testing.T) {
 	testenv.NeedNode(t)
 	// Flat codes chosen so no upright row collides with any inverted row

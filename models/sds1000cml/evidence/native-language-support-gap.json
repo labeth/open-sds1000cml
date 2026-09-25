@@ -1,0 +1,105 @@
+{
+  "result": "native-language-support-incomplete",
+  "scannerSHA256": "93637626fdd868acdf806064af64818038662d83bc3cb439bb32e185f677ce1d",
+  "supportedExtensions": [
+    ".go",
+    ".ts",
+    ".tsx",
+    ".rs",
+    ".v",
+    ".js",
+    ".mjs",
+    ".cjs",
+    ".py"
+  ],
+  "pinnedNonhistoricalCounts": {
+    ".js": 39,
+    ".sh": 12,
+    ".py": 25,
+    ".c": 3,
+    ".h": 1,
+    ".mjs": 24,
+    ".cjs": 12
+  },
+  "findings": [
+    "JavaScript native extraction now has 958 linked named declarations/direct function bindings across 68 annotated files. The exhaustive 75-file nonhistorical JavaScript audit passes with no diagnostics. Anonymous callbacks and top-level statements remain outside declaration counts; declaration trace coverage is not complete behavior or model qualification.",
+    "Shell and C native extraction remain absent. Python declaration extraction is implemented and cross-checked; authored SDS Python links and top-level script effects remain unfinished. Inventory and source references do not substitute for declaration trace coverage.",
+    "REQ-SDS-030 has reviewed shell source and six passing original Go tests, but native shell implementation extraction is absent. Resolve source trace representation before claiming complete boot coverage.",
+    "The pinned nonhistorical Python AST inventory contains 50 functions and one class in 25 files. Universal Ctags finds 19 C function candidates in four C/header files and 34 shell function candidates in twelve scripts. These inventories expose remaining scope; they are not native trace links or behavior verification. Top-level effects and assembly remain separate."
+  ],
+  "scope": "Local scanner/dependency and pinned inventory inspection only; no package installation or remote access.",
+  "cachedJavaScriptGrammar": {
+    "binding": "/home/labeth/go/pkg/mod/github.com/tree-sitter/tree-sitter-javascript@v0.25.0/bindings/go/binding.go",
+    "sha256": "9dac161fe73b440bcff6aefd1d8fd7e1af3f26fbe58e03058f0cf825e9bad661",
+    "entryPoint": "Language() unsafe.Pointer"
+  },
+  "javascriptValidation": {
+    "audit": "javascript-trace-audit.json",
+    "fullSuite": "test-runs/engineering-model-test-runtime.log",
+    "sourceSHA256": {
+      "codemap/scan.go": "667a99c853848fbe276a0cd4a52095a5ddef52c66d254aadce3b99aa066bc8d6",
+      "codemap/javascript.go": "07802aed315405a1a29bd071c5d436ea3f0a0613137c94b4d7d88c1dc6a79c98",
+      "codemap/javascript_test.go": "e50b31eeadcbb427c2abfbc64affc70fc5f253849b32cb1da0ba8592ddee4d0a",
+      "inferred_javascript_test.go": "b8ccc484eea758878872c295c7643ae0b168f348cd798cabdd304d68a9a8a943",
+      "inferred_code.go": "04f6d55ad6f7d48aeb0851a64cea550034d0597a7c9a2568397eedb1c2bede91",
+      "inferred_verification.go": "974fc59e7f4c89f2910072cc39cc8fe238460f6e6440e506462fc37d33eb4c97"
+    },
+    "scope": "Cached tree-sitter-javascript v0.25.0 promoted to direct dependency; no installation or remote access.",
+    "auditScopeCorrection": "The initial 56-file audit filtered inventory categories and omitted 19 .mjs/.cjs support files. The audit now includes every nonhistorical path with a supported JavaScript extension."
+  },
+  "currentJavaScriptTraceEvidence": {
+    "audit": "javascript-trace-audit.json",
+    "auditSHA256": "f858fba867c8a9d9ae94b39fb3562003053b651e7eb1563316f9d0db2cc80376",
+    "overlay": "javascript-annotation-overlay.json",
+    "overlaySHA256": "abe56890f7adc2896412133042e2d1641cba4b2b1dfa0b46373cff051231917c",
+    "linkedDeclarations": 958,
+    "filesAudited": 75,
+    "missingDeclarationDiagnostics": 0
+  },
+  "remainingDeclarationInventories": {
+    "python-declaration-inventory.json": {
+      "sha256": "4a6ba7f7b769c7eb5d32df3dc0a187c5f7b2cb9624b07f7fcdc7addf275ca9cd",
+      "counts": {
+        "files": 25,
+        "functions": 50,
+        "classes": 1
+      },
+      "status": "native-tracing-incomplete"
+    },
+    "c-shell-declaration-candidates.json": {
+      "sha256": "44b1e348db15f9aef558c52caaa0bc071fe0919dbcaffda6ba96f205d7321673",
+      "counts": {
+        "C": {
+          "files": 4,
+          "functionCandidates": 19
+        },
+        "Sh": {
+          "files": 12,
+          "functionCandidates": 34
+        }
+      },
+      "status": "candidate-inventory-only"
+    }
+  },
+  "pythonParserValidation": {
+    "report": "python-scanner-comparison.json",
+    "sha256": "7581a3404ea48f5ced835d2c7396fdee7aa33f50c698473c270271f02f7e9b87",
+    "files": 25,
+    "matchedDeclarations": 51,
+    "scope": "Synthetic trace comments in temporary baseline copies validate parsing. Reviewed authored Python links are accounted for separately."
+  },
+  "authoredPythonTrace": {
+    "requirements": [
+      "REQ-SDS-209"
+    ],
+    "linkedFunctions": 3,
+    "totalInventoriedFunctions": 50,
+    "remainingFunctions": 47,
+    "remainingClasses": 1,
+    "files": 1,
+    "plan": "python-annotation-plan.json",
+    "overlay": "python-annotation-overlay.json",
+    "review": "python-triangle-source-review.json",
+    "scope": "Offline triangle calibration only. Other scripts and top-level effects remain unreviewed or unlinked; parser matching does not confer requirement coverage."
+  }
+}

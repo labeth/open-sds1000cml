@@ -1,0 +1,29 @@
+{
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "sourceSHA256": {
+    "ota/internal/otactl/client.go": "859c678c27415993d098da54120322a173a3f84ba6704e0f2e1f4fe2a8cee8e6",
+    "ota/internal/otactl/client_test.go": "d6ebb0c81892f23faf40377f2d898e48077f7792a451d966dcb4db421e7d1bef",
+    "ota/internal/otactl/nats_e2e_test.go": "d562aa477e12582872d85831d0cbf55429d217d7453b35a7718674e495dba244",
+    "ota/internal/otactl/server.go": "e6d1a39a498823ef942ecf3eeb9f9119c6181fb553ffeaccef650d7ef1e354e0",
+    "ota/internal/otactl/shelly.go": "04a7d6e86d04324b84938e8fc852eb5c75246ca1ed8a9f93b9cf4a1a9cfd795e",
+    "ota/internal/otactl/transport.go": "b3f7e79d1255dc671c682224c2364cbb2ff21babe6cd3e6ed378848067d3a45d"
+  },
+  "probe": "type modelReviewDownloadTransport struct { fail bool; calls int }\nfunc (m *modelReviewDownloadTransport) Call(cmd string, args any, timeout time.Duration) (*rpcproto.Response, error) {\n\tm.calls++\n\tif m.fail { return &rpcproto.Response{OK: false, Err: \"fixture refusal\"}, nil }\n\treturn &rpcproto.Response{OK: true, Data: []byte(`{\"data\":\"\",\"eof\":false,\"size\":100}`)}, nil\n}\nfunc (*modelReviewDownloadTransport) Close() {}\nfunc TestModelReviewDownloadTruncation(t *testing.T) {\n\tfor _, fail := range []bool{false, true} {\n\t\tpath := filepath.Join(t.TempDir(), \"existing.bin\")\n\t\tif err := os.WriteFile(path, []byte(\"keep-existing-data\"), 0o600); err != nil { t.Fatal(err) }\n\t\ttransport := &modelReviewDownloadTransport{fail: fail}\n\t\tclient := &Client{T: transport}\n\t\terr := client.GetFile(\"fixture-only\", path, nil)\n\t\tif (err != nil) != fail { t.Fatalf(\"fail=%v, error=%v\", fail, err) }\n\t\tdata, readErr := os.ReadFile(path)\n\t\tif readErr != nil || len(data) != 0 || transport.calls != 1 {\n\t\t\tt.Fatalf(\"expected empty destination after one reply: data=%q error=%v calls=%d\", data, readErr, transport.calls)\n\t\t}\n\t}\n\tt.Log(\"empty non-EOF reply with size=100 succeeds; first-call device error also leaves preexisting destination truncated\")\n}\n",
+  "command": [
+    "go",
+    "test",
+    "-overlay",
+    "/tmp/sds-otactl-download-s6kk7k24/overlay.json",
+    "-run",
+    "^TestModelReviewDownloadTruncation$",
+    "-count=1",
+    "-v",
+    "./internal/otactl"
+  ],
+  "workingDirectory": "ota",
+  "exitCode": 0,
+  "stdout": "=== RUN   TestModelReviewDownloadTruncation\n    client_test.go:222: empty non-EOF reply with size=100 succeeds; first-call device error also leaves preexisting destination truncated\n--- PASS: TestModelReviewDownloadTruncation (0.00s)\nPASS\nok  \topen-sds/ota/internal/otactl\t0.004s\n",
+  "stderr": "",
+  "result": "known-limitations-reproduced",
+  "scope": "Temporary destination files and a fake Transport only. Checks early empty reply and first-call device error. No agent construction, command execution, device or network operation."
+}

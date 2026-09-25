@@ -1,0 +1,22 @@
+{
+  "result": "pass",
+  "requirement": "REQ-SDS-066",
+  "codeCoordinates": [
+    29,
+    37,
+    53,
+    70,
+    79,
+    93,
+    161,
+    172,
+    218
+  ],
+  "exactPublicationLabel": "bode.go:29,37,53,70,79,93,161,172,218",
+  "verificationNodes": [
+    "VER-INF-TEST-BODE_BREAKER_TEST-C5053B",
+    "VER-INF-TEST-BODE_TEST-4C463A"
+  ],
+  "inputSHA256": "171784e5a4e2ab4cd2d6244199fd04504d35d1fd894147468d53792f4a0246db",
+  "scope": "Nine production declaration/type coordinates, two separate test verification nodes, SRAM limitation note, and no test implementation node in this requirement section."
+}

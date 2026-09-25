@@ -13,6 +13,7 @@
 //	go run ./cmd/ifacegen -root ..          regenerate in place
 //	go run ./cmd/ifacegen -root .. -check   drift gate: render into a temp dir, exit 1 if any
 //	                                        checked-in artifact differs (nothing is written to the tree)
+// ENGMODEL-OWNER-UNIT: FU-CODEGEN-IFACEGEN
 package main
 
 import (
@@ -31,6 +32,7 @@ import (
 )
 
 // Target is one generated artifact: its path relative to the repo root and its content.
+// TRLC-LINKS: REQ-SDS-160
 type Target struct {
 	Path    string
 	Content string
@@ -39,6 +41,7 @@ type Target struct {
 // Targets renders every artifact in a fixed order. The generator, the -check
 // gate and the drift test all go through here, so an artifact cannot be added
 // to one and forgotten by the others.
+// TRLC-LINKS: REQ-SDS-160, REQ-SDS-031
 func Targets(i schema.Interface) ([]Target, error) {
 	regs, err := emit.Regs(i)
 	if err != nil {
@@ -67,6 +70,7 @@ func Targets(i schema.Interface) ([]Target, error) {
 // Drift regenerates into tmpDir and compares each artifact against its
 // checked-in copy under root. It returns the relative paths that differ (or are
 // missing) and never writes into root.
+// TRLC-LINKS: REQ-SDS-160, REQ-SDS-031
 func Drift(i schema.Interface, root, tmpDir string) ([]string, error) {
 	ts, err := Targets(i)
 	if err != nil {
@@ -99,6 +103,7 @@ const DefaultRTL = "fpga/common/*.v,fpga/default/*.v,fpga/default/*.sdc,fpga/def
 // SourceDigest hashes the files matched by the comma-separated globs (path and
 // content, in sorted path order) to the 32-bit digest the schema folds into the
 // build-ID. It returns the matched paths for the log line.
+// TRLC-LINKS: REQ-SDS-160
 func SourceDigest(root, globs string) (uint32, []string, error) {
 	var files []string
 	for _, g := range strings.Split(globs, ",") {
@@ -132,6 +137,7 @@ func SourceDigest(root, globs string) (uint32, []string, error) {
 	return uint32(s>>32) ^ uint32(s), rel, nil
 }
 
+// TRLC-LINKS: REQ-SDS-160, REQ-SDS-031
 func main() {
 	root := flag.String("root", "..", "repository root the artifact paths are relative to")
 	check := flag.Bool("check", false, "drift gate: regenerate into a temp dir and fail if a checked-in artifact differs")

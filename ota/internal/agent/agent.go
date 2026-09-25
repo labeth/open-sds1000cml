@@ -11,6 +11,7 @@
 //     during the factory app's capture-halt window black-screens the unit).
 //   - taken over: the factory app has been stopped at an idle landing and
 //     killed; the agent pets the watchdog and supervises the app slots.
+// ENGMODEL-OWNER-UNIT: FU-OTA-AGENT
 package agent
 
 import (
@@ -40,6 +41,7 @@ const (
 // inherited /dev/Gpmc descriptor. *gpmc.Reader is the sole production
 // implementation (assigned in New); the interface exists so the off-device
 // test harness can stand in an idle/busy engine without a real bus.
+// TRLC-LINKS: REQ-SDS-122, REQ-SDS-114
 type gpmcReader interface {
 	OK() bool
 	Read(plane uint8, sel uint16) (uint16, error)
@@ -47,6 +49,7 @@ type gpmcReader interface {
 	FillFrozen(pairs int, gap time.Duration) (bool, []uint16, error)
 }
 
+// TRLC-LINKS: REQ-SDS-122
 type Agent struct {
 	cfg   *config.Config
 	st    *stateFile
@@ -89,6 +92,7 @@ type Agent struct {
 	tcpAddr string
 }
 
+// TRLC-LINKS: REQ-SDS-028
 type appState struct {
 	Running   bool   `json:"running"`
 	Adopted   bool   `json:"adopted"` // orphan from a previous agent generation
@@ -101,11 +105,13 @@ type appState struct {
 	Health    any    `json:"health,omitempty"`
 }
 
+// TRLC-LINKS: REQ-SDS-117
 type ctlMsg struct {
 	op    string // "restart" | "stop" | "start"
 	reply chan error
 }
 
+// TRLC-LINKS: REQ-SDS-122
 func New(cfg *config.Config) *Agent {
 	a := &Agent{
 		cfg:     cfg,
@@ -125,6 +131,7 @@ func New(cfg *config.Config) *Agent {
 }
 
 // Run starts everything and blocks until Stop.
+// TRLC-LINKS: REQ-SDS-122
 func (a *Agent) Run() error {
 	if err := a.store.Init(); err != nil {
 		a.log.Printf("slot store init: %v (continuing)", err)
@@ -183,6 +190,7 @@ func (a *Agent) Run() error {
 // Stop performs the clean-shutdown path: disarm the watchdog with the magic
 // byte so the driver doesn't reset while the respawn loop restarts us. The
 // app (if any) is left running — the next agent generation adopts it.
+// TRLC-LINKS: REQ-SDS-122
 func (a *Agent) Stop() {
 	select {
 	case <-a.stopped:
@@ -193,11 +201,13 @@ func (a *Agent) Stop() {
 	close(a.stopped)
 }
 
+// TRLC-LINKS: REQ-SDS-122
 func (a *Agent) pidPath(name string) string {
 	return filepath.Join(a.cfg.HealthDir, name)
 }
 
 // AgentSlot reports which A/B agent binary this process is (or "?" off-slot).
+// TRLC-LINKS: REQ-SDS-114
 func (a *Agent) AgentSlot() string {
 	exe, err := os.Executable()
 	if err != nil {
@@ -212,6 +222,7 @@ func (a *Agent) AgentSlot() string {
 	return "?"
 }
 
+// TRLC-LINKS: REQ-SDS-123
 func (a *Agent) event(kind string, detail map[string]any) {
 	a.log.Printf("event %s: %v", kind, detail)
 	a.eventMu.Lock()
@@ -222,6 +233,7 @@ func (a *Agent) event(kind string, detail map[string]any) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-123
 func (a *Agent) setEventFn(fn func(string, map[string]any)) {
 	a.eventMu.Lock()
 	a.eventFn = fn
@@ -231,6 +243,7 @@ func (a *Agent) setEventFn(fn func(string, map[string]any)) {
 // acquireWatchdogForever keeps trying until the watchdog is ours; used after
 // takeover (or on restart in the taken-over state). Failure to acquire while
 // the factory app is dead means a warm reset in ~60 s, so never give up.
+// TRLC-LINKS: REQ-SDS-122
 func (a *Agent) acquireWatchdogForever() error {
 	for i := 0; ; i++ {
 		err := a.wd.Acquire(15*time.Second, a.cfg.WdPet)
@@ -249,6 +262,7 @@ func (a *Agent) acquireWatchdogForever() error {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-114
 type statusDoc struct {
 	Device       string          `json:"device"`
 	Version      string          `json:"version"`
@@ -265,6 +279,7 @@ type statusDoc struct {
 	TimeUnix     int64           `json:"time_unix"`
 }
 
+// TRLC-LINKS: REQ-SDS-114
 func (a *Agent) status() statusDoc {
 	st := a.st.get()
 	a.appMu.Lock()

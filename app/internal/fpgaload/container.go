@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-FPGALOAD
 package fpgaload
 
 import (
@@ -22,6 +23,7 @@ import (
 // operator sets BitOrder + Force on their own authority.
 
 // Order is the container's stored bit order.
+// TRLC-LINKS: REQ-SDS-092
 type Order int
 
 const (
@@ -30,6 +32,7 @@ const (
 	OrderPreReversed       // header 56 ef …: ship raw
 )
 
+// TRLC-LINKS: REQ-SDS-092
 func (o Order) String() string {
 	switch o {
 	case OrderNative:
@@ -41,9 +44,11 @@ func (o Order) String() string {
 }
 
 // Reverse reports whether the loader must bit-reverse each byte.
+// TRLC-LINKS: REQ-SDS-092
 func (o Order) Reverse() bool { return o == OrderNative }
 
 // BitOrder is the caller's request (Options.BitOrder). Zero = auto-detect.
+// TRLC-LINKS: REQ-SDS-092
 type BitOrder int
 
 const (
@@ -52,6 +57,7 @@ const (
 	BitOrderRaw
 )
 
+// TRLC-LINKS: REQ-SDS-092
 func (b BitOrder) String() string {
 	switch b {
 	case BitOrderReverse:
@@ -76,6 +82,7 @@ var (
 
 // DetectOrder reports the stored bit order of a passive-serial container from
 // its device header, or an error explaining why it cannot be trusted.
+// TRLC-LINKS: REQ-SDS-092
 func DetectOrder(rbf []byte) (Order, error) {
 	if len(rbf) < rbfHeaderOff+rbfHeaderLen {
 		return OrderUnknown, fmt.Errorf("image is %d bytes: too short for the device header at 0x%02x..0x%02x",
@@ -97,6 +104,7 @@ func DetectOrder(rbf []byte) (Order, error) {
 		rbfHeaderOff, hdr, hdrNative, hdrPreReversed, nearestHint(hdr))
 }
 
+// TRLC-LINKS: REQ-SDS-092
 func nearestHint(hdr []byte) string {
 	dN, dR := hamming(hdr, hdrNative), hamming(hdr, hdrPreReversed)
 	var o Order
@@ -119,6 +127,7 @@ func nearestHint(hdr []byte) string {
 	return fmt.Sprintf("; %d bit(s) from the %v header — Quartus global options move bits here; if this is your own build set BitOrder=%v with Force", d, o, want)
 }
 
+// TRLC-LINKS: REQ-SDS-092
 func hamming(a, b []byte) int {
 	n := 0
 	for i := range a {
@@ -132,6 +141,7 @@ func hamming(a, b []byte) int {
 
 // resolveBitOrder decides the wire order: auto takes the container's word; an
 // explicit request must agree with the container unless forced.
+// TRLC-LINKS: REQ-SDS-092
 func resolveBitOrder(rbf []byte, want BitOrder, force bool) (rev bool, why string, err error) {
 	order, derr := DetectOrder(rbf)
 	switch {

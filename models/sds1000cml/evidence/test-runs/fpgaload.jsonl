@@ -1,0 +1,76 @@
+{"Time":"2026-09-22T22:21:02.265715108+02:00","Action":"start","Package":"open-sds/app/internal/fpgaload"}
+{"Time":"2026-09-22T22:21:02.267720287+02:00","Action":"run","Package":"open-sds/app/internal/fpgaload","Test":"TestReloadSequenceNative"}
+{"Time":"2026-09-22T22:21:02.267743304+02:00","Action":"output","Package":"open-sds/app/internal/fpgaload","Test":"TestReloadSequenceNative","Output":"=== RUN   TestReloadSequenceNative\n"}
+{"Time":"2026-09-22T22:21:02.268966373+02:00","Action":"output","Package":"open-sds/app/internal/fpgaload","Test":"TestReloadSequenceNative","Output":"--- PASS: TestReloadSequenceNative (0.00s)\n"}
+{"Time":"2026-09-22T22:21:02.269027761+02:00","Action":"pass","Package":"open-sds/app/internal/fpgaload","Test":"TestReloadSequenceNative","Elapsed":0}
+{"Time":"2026-09-22T22:21:02.26910363+02:00","Action":"run","Package":"open-sds/app/internal/fpgaload","Test":"TestReloadShipsPreReversedRaw"}
+{"Time":"2026-09-22T22:21:02.269109544+02:00","Action":"output","Package":"open-sds/app/internal/fpgaload","Test":"TestReloadShipsPreReversedRaw","Output":"=== RUN   TestReloadShipsPreReversedRaw\n"}
+{"Time":"2026-09-22T22:21:02.26953548+02:00","Action":"output","Package":"open-sds/app/internal/fpgaload","Test":"TestReloadShipsPreReversedRaw","Output":"--- PASS: TestReloadShipsPreReversedRaw (0.00s)\n"}
+{"Time":"2026-09-22T22:21:02.269548206+02:00","Action":"pass","Package":"open-sds/app/internal/fpgaload","Test":"TestReloadShipsPreReversedRaw","Elapsed":0}
+{"Time":"2026-09-22T22:21:02.269554974+02:00","Action":"run","Package":"open-sds/app/internal/fpgaload","Test":"TestReloadRefusesBeforeTouchingThePort"}
+{"Time":"2026-09-22T22:21:02.26956241+02:00","Action":"output","Package":"open-sds/app/internal/fpgaload","Test":"TestReloadRefusesBeforeTouchingThePort","Output":"=== RUN   TestReloadRefusesBeforeTouchingThePort\n"}
+{"Time":"2026-09-22T22:21:02.269575373+02:00","Action":"run","Package":"open-sds/app/internal/fpgaload","Test":"TestReloadRefusesBeforeTouchingThePort/wrong_length"}
+{"Time":"2026-09-22T22:21:02.26957991+02:00","Action":"output","Package":"open-sds/app/internal/fpgaload","Test":"TestReloadRefusesBeforeTouchingThePort/wrong_length","Output":"=== RUN   TestReloadRefusesBeforeTouchingThePort/wrong_length\n"}
+{"Time":"2026-09-22T22:21:02.269586111+02:00","Action":"output","Package":"open-sds/app/internal/fpgaload","Test":"TestReloadRefusesBeforeTouchingThePort/wrong_length","Output":"--- PASS: TestReloadRefusesBeforeTouchingThePort/wrong_length (0.00s)\n"}
+{"Time":"2026-09-22T22:21:02.269590591+02:00","Action":"pass","Package":"open-sds/app/internal/fpgaload","Test":"TestReloadRefusesBeforeTouchingThePort/wrong_length","Elapsed":0}
+{"Time":"2026-09-22T22:21:02.269596179+02:00","Action":"run","Package":"open-sds/app/internal/fpgaload","Test":"TestReloadRefusesBeforeTouchingThePort/unknown_header"}
+{"Time":"2026-09-22T22:21:02.269600022+02:00","Action":"output","Package":"open-sds/app/internal/fpgaload","Test":"TestReloadRefusesBeforeTouchingThePort/unknown_header","Output":"=== RUN   TestReloadRefusesBeforeTouchingThePort/unknown_header\n"}
+{"Time":"2026-09-22T22:21:02.269604951+02:00","Action":"output","Package":"open-sds/app/internal/fpgaload","Test":"TestReloadRefusesBeforeTouchingThePort/unknown_header","Output":"--- PASS: TestReloadRefusesBeforeTouchingThePort/unknown_header (0.00s)\n"}
+{"Time":"2026-09-22T22:21:02.269613819+02:00","Action":"pass","Package":"open-sds/app/internal/fpgaload","Test":"TestReloadRefusesBeforeTouchingThePort/unknown_header","Elapsed":0}
+{"Time":"2026-09-22T22:21:02.269618127+02:00","Action":"run","Package":"open-sds/app/internal/fpgaload","Test":"TestReloadRefusesBeforeTouchingThePort/short"}
+{"Time":"2026-09-22T22:21:02.269621753+02:00","Action":"output","Package":"open-sds/app/internal/fpgaload","Test":"TestReloadRefusesBeforeTouchingThePort/short","Output":"=== RUN   TestReloadRefusesBeforeTouchingThePort/short\n"}
+{"Time":"2026-09-22T22:21:02.269626755+02:00","Action":"output","Package":"open-sds/app/internal/fpgaload","Test":"TestReloadRefusesBeforeTouchingThePort/short","Output":"--- PASS: TestReloadRefusesBeforeTouchingThePort/short (0.00s)\n"}
+{"Time":"2026-09-22T22:21:02.269648266+02:00","Action":"pass","Package":"open-sds/app/internal/fpgaload","Test":"TestReloadRefusesBeforeTouchingThePort/short","Elapsed":0}
+{"Time":"2026-09-22T22:21:02.269654361+02:00","Action":"run","Package":"open-sds/app/internal/fpgaload","Test":"TestReloadRefusesBeforeTouchingThePort/bad_preamble"}
+{"Time":"2026-09-22T22:21:02.269658133+02:00","Action":"output","Package":"open-sds/app/internal/fpgaload","Test":"TestReloadRefusesBeforeTouchingThePort/bad_preamble","Output":"=== RUN   TestReloadRefusesBeforeTouchingThePort/bad_preamble\n"}
+{"Time":"2026-09-22T22:21:02.269662605+02:00","Action":"output","Package":"open-sds/app/internal/fpgaload","Test":"TestReloadRefusesBeforeTouchingThePort/bad_preamble","Output":"--- PASS: TestReloadRefusesBeforeTouchingThePort/bad_preamble (0.00s)\n"}
+{"Time":"2026-09-22T22:21:02.269666643+02:00","Action":"pass","Package":"open-sds/app/internal/fpgaload","Test":"TestReloadRefusesBeforeTouchingThePort/bad_preamble","Elapsed":0}
+{"Time":"2026-09-22T22:21:02.269671141+02:00","Action":"output","Package":"open-sds/app/internal/fpgaload","Test":"TestReloadRefusesBeforeTouchingThePort","Output":"--- PASS: TestReloadRefusesBeforeTouchingThePort (0.00s)\n"}
+{"Time":"2026-09-22T22:21:02.269675246+02:00","Action":"pass","Package":"open-sds/app/internal/fpgaload","Test":"TestReloadRefusesBeforeTouchingThePort","Elapsed":0}
+{"Time":"2026-09-22T22:21:02.269679213+02:00","Action":"run","Package":"open-sds/app/internal/fpgaload","Test":"TestReloadTimeoutRetriesThenFails"}
+{"Time":"2026-09-22T22:21:02.269683079+02:00","Action":"output","Package":"open-sds/app/internal/fpgaload","Test":"TestReloadTimeoutRetriesThenFails","Output":"=== RUN   TestReloadTimeoutRetriesThenFails\n"}
+{"Time":"2026-09-22T22:21:02.269989957+02:00","Action":"output","Package":"open-sds/app/internal/fpgaload","Test":"TestReloadTimeoutRetriesThenFails","Output":"--- PASS: TestReloadTimeoutRetriesThenFails (0.00s)\n"}
+{"Time":"2026-09-22T22:21:02.269998773+02:00","Action":"pass","Package":"open-sds/app/internal/fpgaload","Test":"TestReloadTimeoutRetriesThenFails","Elapsed":0}
+{"Time":"2026-09-22T22:21:02.270007951+02:00","Action":"run","Package":"open-sds/app/internal/fpgaload","Test":"TestReloadNStatusTimeout"}
+{"Time":"2026-09-22T22:21:02.270012141+02:00","Action":"output","Package":"open-sds/app/internal/fpgaload","Test":"TestReloadNStatusTimeout","Output":"=== RUN   TestReloadNStatusTimeout\n"}
+{"Time":"2026-09-22T22:21:02.270020302+02:00","Action":"output","Package":"open-sds/app/internal/fpgaload","Test":"TestReloadNStatusTimeout","Output":"--- PASS: TestReloadNStatusTimeout (0.00s)\n"}
+{"Time":"2026-09-22T22:21:02.270035047+02:00","Action":"pass","Package":"open-sds/app/internal/fpgaload","Test":"TestReloadNStatusTimeout","Elapsed":0}
+{"Time":"2026-09-22T22:21:02.270042294+02:00","Action":"run","Package":"open-sds/app/internal/fpgaload","Test":"TestReloadPropagatesWriteErrors"}
+{"Time":"2026-09-22T22:21:02.270046524+02:00","Action":"output","Package":"open-sds/app/internal/fpgaload","Test":"TestReloadPropagatesWriteErrors","Output":"=== RUN   TestReloadPropagatesWriteErrors\n"}
+{"Time":"2026-09-22T22:21:02.270051756+02:00","Action":"output","Package":"open-sds/app/internal/fpgaload","Test":"TestReloadPropagatesWriteErrors","Output":"--- PASS: TestReloadPropagatesWriteErrors (0.00s)\n"}
+{"Time":"2026-09-22T22:21:02.27005792+02:00","Action":"pass","Package":"open-sds/app/internal/fpgaload","Test":"TestReloadPropagatesWriteErrors","Elapsed":0}
+{"Time":"2026-09-22T22:21:02.270062593+02:00","Action":"run","Package":"open-sds/app/internal/fpgaload","Test":"TestReloadExplicitOrder"}
+{"Time":"2026-09-22T22:21:02.270065979+02:00","Action":"output","Package":"open-sds/app/internal/fpgaload","Test":"TestReloadExplicitOrder","Output":"=== RUN   TestReloadExplicitOrder\n"}
+{"Time":"2026-09-22T22:21:02.270228023+02:00","Action":"output","Package":"open-sds/app/internal/fpgaload","Test":"TestReloadExplicitOrder","Output":"--- PASS: TestReloadExplicitOrder (0.00s)\n"}
+{"Time":"2026-09-22T22:21:02.270243819+02:00","Action":"pass","Package":"open-sds/app/internal/fpgaload","Test":"TestReloadExplicitOrder","Elapsed":0}
+{"Time":"2026-09-22T22:21:02.270251301+02:00","Action":"run","Package":"open-sds/app/internal/fpgaload","Test":"TestEnsureDefaultSkipsWhenVerified"}
+{"Time":"2026-09-22T22:21:02.270255368+02:00","Action":"output","Package":"open-sds/app/internal/fpgaload","Test":"TestEnsureDefaultSkipsWhenVerified","Output":"=== RUN   TestEnsureDefaultSkipsWhenVerified\n"}
+{"Time":"2026-09-22T22:21:02.270260561+02:00","Action":"output","Package":"open-sds/app/internal/fpgaload","Test":"TestEnsureDefaultSkipsWhenVerified","Output":"--- PASS: TestEnsureDefaultSkipsWhenVerified (0.00s)\n"}
+{"Time":"2026-09-22T22:21:02.270267025+02:00","Action":"pass","Package":"open-sds/app/internal/fpgaload","Test":"TestEnsureDefaultSkipsWhenVerified","Elapsed":0}
+{"Time":"2026-09-22T22:21:02.270271477+02:00","Action":"run","Package":"open-sds/app/internal/fpgaload","Test":"TestEnsureDefaultReloadsAndVerifies"}
+{"Time":"2026-09-22T22:21:02.270275058+02:00","Action":"output","Package":"open-sds/app/internal/fpgaload","Test":"TestEnsureDefaultReloadsAndVerifies","Output":"=== RUN   TestEnsureDefaultReloadsAndVerifies\n"}
+{"Time":"2026-09-22T22:21:02.270426069+02:00","Action":"output","Package":"open-sds/app/internal/fpgaload","Test":"TestEnsureDefaultReloadsAndVerifies","Output":"--- PASS: TestEnsureDefaultReloadsAndVerifies (0.00s)\n"}
+{"Time":"2026-09-22T22:21:02.270442055+02:00","Action":"pass","Package":"open-sds/app/internal/fpgaload","Test":"TestEnsureDefaultReloadsAndVerifies","Elapsed":0}
+{"Time":"2026-09-22T22:21:02.270452154+02:00","Action":"run","Package":"open-sds/app/internal/fpgaload","Test":"TestEnsureDefaultWithoutBitstream"}
+{"Time":"2026-09-22T22:21:02.270457349+02:00","Action":"output","Package":"open-sds/app/internal/fpgaload","Test":"TestEnsureDefaultWithoutBitstream","Output":"=== RUN   TestEnsureDefaultWithoutBitstream\n"}
+{"Time":"2026-09-22T22:21:02.270465911+02:00","Action":"output","Package":"open-sds/app/internal/fpgaload","Test":"TestEnsureDefaultWithoutBitstream","Output":"--- PASS: TestEnsureDefaultWithoutBitstream (0.00s)\n"}
+{"Time":"2026-09-22T22:21:02.270471538+02:00","Action":"pass","Package":"open-sds/app/internal/fpgaload","Test":"TestEnsureDefaultWithoutBitstream","Elapsed":0}
+{"Time":"2026-09-22T22:21:02.270477539+02:00","Action":"run","Package":"open-sds/app/internal/fpgaload","Test":"TestEnsureDefaultPostVerifyFails"}
+{"Time":"2026-09-22T22:21:02.270482384+02:00","Action":"output","Package":"open-sds/app/internal/fpgaload","Test":"TestEnsureDefaultPostVerifyFails","Output":"=== RUN   TestEnsureDefaultPostVerifyFails\n"}
+{"Time":"2026-09-22T22:21:02.270581307+02:00","Action":"output","Package":"open-sds/app/internal/fpgaload","Test":"TestEnsureDefaultPostVerifyFails","Output":"--- PASS: TestEnsureDefaultPostVerifyFails (0.00s)\n"}
+{"Time":"2026-09-22T22:21:02.270592738+02:00","Action":"pass","Package":"open-sds/app/internal/fpgaload","Test":"TestEnsureDefaultPostVerifyFails","Elapsed":0}
+{"Time":"2026-09-22T22:21:02.270797878+02:00","Action":"run","Package":"open-sds/app/internal/fpgaload","Test":"TestDetectOrder"}
+{"Time":"2026-09-22T22:21:02.270808095+02:00","Action":"output","Package":"open-sds/app/internal/fpgaload","Test":"TestDetectOrder","Output":"=== RUN   TestDetectOrder\n"}
+{"Time":"2026-09-22T22:21:02.270815831+02:00","Action":"output","Package":"open-sds/app/internal/fpgaload","Test":"TestDetectOrder","Output":"--- PASS: TestDetectOrder (0.00s)\n"}
+{"Time":"2026-09-22T22:21:02.270826148+02:00","Action":"pass","Package":"open-sds/app/internal/fpgaload","Test":"TestDetectOrder","Elapsed":0}
+{"Time":"2026-09-22T22:21:02.270832617+02:00","Action":"run","Package":"open-sds/app/internal/fpgaload","Test":"TestBitrev"}
+{"Time":"2026-09-22T22:21:02.270838013+02:00","Action":"output","Package":"open-sds/app/internal/fpgaload","Test":"TestBitrev","Output":"=== RUN   TestBitrev\n"}
+{"Time":"2026-09-22T22:21:02.270843898+02:00","Action":"output","Package":"open-sds/app/internal/fpgaload","Test":"TestBitrev","Output":"--- PASS: TestBitrev (0.00s)\n"}
+{"Time":"2026-09-22T22:21:02.270858809+02:00","Action":"pass","Package":"open-sds/app/internal/fpgaload","Test":"TestBitrev","Elapsed":0}
+{"Time":"2026-09-22T22:21:02.270864593+02:00","Action":"run","Package":"open-sds/app/internal/fpgaload","Test":"TestRBFLen"}
+{"Time":"2026-09-22T22:21:02.270869019+02:00","Action":"output","Package":"open-sds/app/internal/fpgaload","Test":"TestRBFLen","Output":"=== RUN   TestRBFLen\n"}
+{"Time":"2026-09-22T22:21:02.270874516+02:00","Action":"output","Package":"open-sds/app/internal/fpgaload","Test":"TestRBFLen","Output":"--- PASS: TestRBFLen (0.00s)\n"}
+{"Time":"2026-09-22T22:21:02.270879627+02:00","Action":"pass","Package":"open-sds/app/internal/fpgaload","Test":"TestRBFLen","Elapsed":0}
+{"Time":"2026-09-22T22:21:02.270884641+02:00","Action":"output","Package":"open-sds/app/internal/fpgaload","Output":"PASS\n"}
+{"Time":"2026-09-22T22:21:02.271294595+02:00","Action":"output","Package":"open-sds/app/internal/fpgaload","Output":"ok  \topen-sds/app/internal/fpgaload\t0.005s\n"}
+{"Time":"2026-09-22T22:21:02.271313531+02:00","Action":"pass","Package":"open-sds/app/internal/fpgaload","Elapsed":0.006}

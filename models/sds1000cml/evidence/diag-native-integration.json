@@ -1,0 +1,30 @@
+{
+  "result": "trace-integration-pass-with-observed-test-failure",
+  "files": 6,
+  "functions": 95,
+  "types": 44,
+  "originalTests": 14,
+  "passingTests": 13,
+  "failingTests": [
+    "TestGpmcSweepPersistApply"
+  ],
+  "nativeSummaries": 1,
+  "requirements": [
+    "REQ-SDS-143",
+    "REQ-SDS-144",
+    "REQ-SDS-145",
+    "REQ-SDS-146",
+    "REQ-SDS-147",
+    "REQ-SDS-148",
+    "REQ-SDS-149",
+    "REQ-SDS-150",
+    "REQ-SDS-151"
+  ],
+  "packageAudit": {
+    "functions": 95,
+    "types": 44,
+    "unlinkedFunctions": 0,
+    "unlinkedTypes": 0
+  },
+  "scope": "All six diagnostic Go files reviewed. Tests use synthetic host fakes; no device command, register write, physical probe or qualification performed. Original sweep test has observed data races; failure must remain failing evidence."
+}

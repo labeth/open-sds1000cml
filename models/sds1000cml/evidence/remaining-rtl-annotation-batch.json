@@ -1,0 +1,32 @@
+{
+  "status": "integrated-with-explicit-verification-limits",
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "files": [
+    {
+      "path": "fpga/acq_sram/sim/ddr_model.v",
+      "owner": "FU-RTL-ACQ-TESTS",
+      "modules": {
+        "altddio_out": [
+          "REQ-SDS-189"
+        ]
+      }
+    },
+    {
+      "path": "fpga/acq_sram/sim/tb_sram_timeslice.v",
+      "owner": "FU-RTL-ACQ-TESTS",
+      "modules": {
+        "tb": [
+          "REQ-SDS-048"
+        ]
+      }
+    }
+  ],
+  "modules": 2,
+  "newContracts": [],
+  "sourceSHA256": {
+    "fpga/acq_sram/sim/ddr_model.v": "ace57d159f0b1b9edd4e9c82b1496fab3b79b7c056b9aaa2da66698e65d164f2",
+    "fpga/acq_sram/sim/tb_sram_timeslice.v": "fa5b774dd5d3b720a4f7b72c68844326d9835c7db124756606187f86f9f072a7"
+  },
+  "scope": "Both final RTL sources have reviewed module links. Original full-geometry scheduling experiment passes; scalar DDR stand-in remains bounded simulation support. Complete RTL link coverage is not full HDL elaboration, physical qualification or overall model completion.",
+  "executionEvidence": "timeslice-experiment-test-run.json"
+}

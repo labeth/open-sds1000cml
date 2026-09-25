@@ -1,0 +1,162 @@
+{
+  "status": "incomplete",
+  "toolCommit": "d0da9a38560c7eff246accd184f60422f8c577e1",
+  "matrixSHA256": "33221f39b99a523cba1d0c776043a89e41294981796e8c245f21b6a940a828eb",
+  "summary": {
+    "requirements": 208,
+    "implemented": 194,
+    "verified": 156,
+    "delegated": 0,
+    "orphan": 11,
+    "danglingLinks": 0
+  },
+  "requirementsWithoutNativeImplementation": [
+    {
+      "requirement": "REQ-SDS-030",
+      "title": "Boot anchor",
+      "authoredStatus": "draft"
+    },
+    {
+      "requirement": "REQ-SDS-031",
+      "title": "Shared default ABI",
+      "authoredStatus": "draft"
+    },
+    {
+      "requirement": "REQ-SDS-061",
+      "title": "Clock-crossing audit",
+      "authoredStatus": "draft"
+    },
+    {
+      "requirement": "REQ-SDS-062",
+      "title": "Qualified profile selection",
+      "authoredStatus": "proposed"
+    },
+    {
+      "requirement": "REQ-SDS-063",
+      "title": "Warm profile switch",
+      "authoredStatus": "proposed"
+    },
+    {
+      "requirement": "REQ-SDS-064",
+      "title": "Honest continuous operation",
+      "authoredStatus": "proposed"
+    },
+    {
+      "requirement": "REQ-SDS-065",
+      "title": "Hardware protocol events",
+      "authoredStatus": "proposed"
+    },
+    {
+      "requirement": "REQ-SDS-073",
+      "title": "Go and browser parity",
+      "authoredStatus": "draft"
+    },
+    {
+      "requirement": "REQ-SDS-074",
+      "title": "Interleave calibration phase",
+      "authoredStatus": "draft"
+    },
+    {
+      "requirement": "REQ-SDS-077",
+      "title": "Coherent profile status",
+      "authoredStatus": "draft"
+    },
+    {
+      "requirement": "REQ-SDS-079",
+      "title": "Explicit bank release",
+      "authoredStatus": "draft"
+    },
+    {
+      "requirement": "REQ-SDS-080",
+      "title": "Force and halt controls",
+      "authoredStatus": "draft"
+    },
+    {
+      "requirement": "REQ-SDS-176",
+      "title": "USB anchor agent-slot recovery",
+      "authoredStatus": "draft"
+    },
+    {
+      "requirement": "REQ-SDS-182",
+      "title": "Web inline-content regression policy",
+      "authoredStatus": "draft"
+    }
+  ],
+  "requirementsWithoutNativeVerification": [
+    "REQ-SDS-003",
+    "REQ-SDS-006",
+    "REQ-SDS-031",
+    "REQ-SDS-059",
+    "REQ-SDS-061",
+    "REQ-SDS-062",
+    "REQ-SDS-063",
+    "REQ-SDS-064",
+    "REQ-SDS-065",
+    "REQ-SDS-067",
+    "REQ-SDS-071",
+    "REQ-SDS-073",
+    "REQ-SDS-074",
+    "REQ-SDS-077",
+    "REQ-SDS-079",
+    "REQ-SDS-080",
+    "REQ-SDS-084",
+    "REQ-SDS-097",
+    "REQ-SDS-098",
+    "REQ-SDS-102",
+    "REQ-SDS-111",
+    "REQ-SDS-112",
+    "REQ-SDS-122",
+    "REQ-SDS-123",
+    "REQ-SDS-124",
+    "REQ-SDS-127",
+    "REQ-SDS-138",
+    "REQ-SDS-139",
+    "REQ-SDS-149",
+    "REQ-SDS-150",
+    "REQ-SDS-151",
+    "REQ-SDS-167",
+    "REQ-SDS-168",
+    "REQ-SDS-170",
+    "REQ-SDS-171",
+    "REQ-SDS-172",
+    "REQ-SDS-173",
+    "REQ-SDS-174",
+    "REQ-SDS-175",
+    "REQ-SDS-177",
+    "REQ-SDS-178",
+    "REQ-SDS-179",
+    "REQ-SDS-187",
+    "REQ-SDS-200",
+    "REQ-SDS-201",
+    "REQ-SDS-202",
+    "REQ-SDS-203",
+    "REQ-SDS-204",
+    "REQ-SDS-205",
+    "REQ-SDS-206",
+    "REQ-SDS-207",
+    "REQ-SDS-208"
+  ],
+  "restoredSourceIdentity": {
+    "requirement": "REQ-SDS-178",
+    "code": [
+      {
+        "symbol": "CODE-STRING",
+        "path": "../../ota/internal/buildinfo/buildinfo.go",
+        "line": 13
+      }
+    ]
+  },
+  "pendingSemanticCorrections": [
+    {
+      "requirement": "REQ-SDS-074",
+      "source": "app/internal/engine/interleave_cal.go",
+      "finding": "Current-source requirement claims record-phase metadata, but revision 11 matches a measured joint two-channel fingerprint against five cyclic rotations; correction is rejected if ambiguous, mismatched, clipped, undersized, or at an unsupported scale."
+    },
+    {
+      "requirement": "REQ-SDS-077",
+      "source": "fpga/acq_sram/command_port.v",
+      "finding": "result_valid clears on accepted command, becomes true on returned response, and gates status reads to zero while invalid. Authored retention-until-next-response wording does not match source."
+    }
+  ],
+  "scope": "Native links and reviewed source discrepancies only; not proof of complete behavior or hardware qualification. Historical gap reports remain snapshots."
+}

@@ -1,8 +1,10 @@
+// ENGMODEL-OWNER-UNIT: FU-RTL-ACQ-SRAM-ACQUISITION-PATH
 // ADC -> precision -> finite/continuous SRAM capture -> shared host recall.
 // All control inputs are core_clk synchronous. Host RAM ports use host_clk.
 // operation: 0 finite capture, 1 continuous stream, 2 frozen finite recall.
 // trigger_mode: 0 automatic, 1 edge, 2 external match on source_word/valid.
 // This is the acquisition core; board PLL/pins and GPMC ABI remain external.
+// TRLC-LINKS: REQ-SDS-041, REQ-SDS-042, REQ-SDS-043, REQ-SDS-045, REQ-SDS-056, REQ-SDS-057, REQ-SDS-058, REQ-SDS-183, REQ-SDS-184
 module sram_acquisition_path #(parameter ENABLE_STREAM=1,AW=19,READ_DELAY=0,CONTINUE_READS=1)(
  input wire reset,locked,core_clk,sample_clk,ram_clk,host_clk,clk100,
  input wire start,halt,input wire [1:0] operation,
@@ -156,6 +158,7 @@ endmodule
 // Control settings remain fixed throughout enable. Force and external match
 // accompany the input word, including across bubbles. Two cycles of latency,
 // one word per cycle. Remember only threshold relations for the previous sample.
+// TRLC-LINKS: REQ-SDS-184
 module acquisition_trigger_pipeline(
  input wire clk,enable,valid,input wire [31:0] data,
  input wire precision_mode,channel,falling,input wire [15:0] level,

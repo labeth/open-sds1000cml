@@ -1,0 +1,16 @@
+{"Time":"2026-09-23T06:57:34.84445335+02:00","Action":"start","Package":"open-sds/app/internal/lcd"}
+{"Time":"2026-09-23T06:57:34.856255938+02:00","Action":"run","Package":"open-sds/app/internal/lcd","Test":"TestPickDeviceURL"}
+{"Time":"2026-09-23T06:57:34.856278629+02:00","Action":"output","Package":"open-sds/app/internal/lcd","Test":"TestPickDeviceURL","Output":"=== RUN   TestPickDeviceURL\n"}
+{"Time":"2026-09-23T06:57:34.856379289+02:00","Action":"output","Package":"open-sds/app/internal/lcd","Test":"TestPickDeviceURL","Output":"--- PASS: TestPickDeviceURL (0.00s)\n"}
+{"Time":"2026-09-23T06:57:34.856408727+02:00","Action":"pass","Package":"open-sds/app/internal/lcd","Test":"TestPickDeviceURL","Elapsed":0}
+{"Time":"2026-09-23T06:57:34.856436479+02:00","Action":"run","Package":"open-sds/app/internal/lcd","Test":"TestDeviceURLCaching"}
+{"Time":"2026-09-23T06:57:34.856445786+02:00","Action":"output","Package":"open-sds/app/internal/lcd","Test":"TestDeviceURLCaching","Output":"=== RUN   TestDeviceURLCaching\n"}
+{"Time":"2026-09-23T06:57:34.856549069+02:00","Action":"output","Package":"open-sds/app/internal/lcd","Test":"TestDeviceURLCaching","Output":"--- PASS: TestDeviceURLCaching (0.00s)\n"}
+{"Time":"2026-09-23T06:57:34.856577693+02:00","Action":"pass","Package":"open-sds/app/internal/lcd","Test":"TestDeviceURLCaching","Elapsed":0}
+{"Time":"2026-09-23T06:57:34.856610175+02:00","Action":"run","Package":"open-sds/app/internal/lcd","Test":"TestRenderDeviceURL"}
+{"Time":"2026-09-23T06:57:34.856615293+02:00","Action":"output","Package":"open-sds/app/internal/lcd","Test":"TestRenderDeviceURL","Output":"=== RUN   TestRenderDeviceURL\n"}
+{"Time":"2026-09-23T06:57:34.871519781+02:00","Action":"output","Package":"open-sds/app/internal/lcd","Test":"TestRenderDeviceURL","Output":"--- PASS: TestRenderDeviceURL (0.01s)\n"}
+{"Time":"2026-09-23T06:57:34.871547348+02:00","Action":"pass","Package":"open-sds/app/internal/lcd","Test":"TestRenderDeviceURL","Elapsed":0.01}
+{"Time":"2026-09-23T06:57:34.871781166+02:00","Action":"output","Package":"open-sds/app/internal/lcd","Output":"PASS\n"}
+{"Time":"2026-09-23T06:57:35.873856731+02:00","Action":"output","Package":"open-sds/app/internal/lcd","Output":"ok  \topen-sds/app/internal/lcd\t1.029s\n"}
+{"Time":"2026-09-23T06:57:35.873879306+02:00","Action":"pass","Package":"open-sds/app/internal/lcd","Elapsed":1.029}

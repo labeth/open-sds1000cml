@@ -1,0 +1,34 @@
+{"Time":"2026-09-23T08:37:31.263375587+02:00","Action":"start","Package":"open-sds/app/internal/decode"}
+{"Time":"2026-09-23T08:37:31.279353697+02:00","Action":"run","Package":"open-sds/app/internal/decode","Test":"TestOracleCAN"}
+{"Time":"2026-09-23T08:37:31.279371669+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestOracleCAN","Output":"=== RUN   TestOracleCAN\n"}
+{"Time":"2026-09-23T08:37:31.279629479+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestOracleCAN","Output":"    oracle_can_test.go:163: CI_REQUIRE_SIGROK=1 but sigrok-cli is not installed\n"}
+{"Time":"2026-09-23T08:37:31.279716167+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestOracleCAN","Output":"--- FAIL: TestOracleCAN (0.00s)\n"}
+{"Time":"2026-09-23T08:37:31.279723653+02:00","Action":"fail","Package":"open-sds/app/internal/decode","Test":"TestOracleCAN","Elapsed":0}
+{"Time":"2026-09-23T08:37:31.279792638+02:00","Action":"run","Package":"open-sds/app/internal/decode","Test":"TestOracleFlexRay"}
+{"Time":"2026-09-23T08:37:31.279799239+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestOracleFlexRay","Output":"=== RUN   TestOracleFlexRay\n"}
+{"Time":"2026-09-23T08:37:31.279939362+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestOracleFlexRay","Output":"    oracle_flexray_test.go:238: CI_REQUIRE_SIGROK=1 but sigrok-cli is not installed\n"}
+{"Time":"2026-09-23T08:37:31.279980772+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestOracleFlexRay","Output":"--- FAIL: TestOracleFlexRay (0.00s)\n"}
+{"Time":"2026-09-23T08:37:31.279993392+02:00","Action":"fail","Package":"open-sds/app/internal/decode","Test":"TestOracleFlexRay","Elapsed":0}
+{"Time":"2026-09-23T08:37:31.280032697+02:00","Action":"run","Package":"open-sds/app/internal/decode","Test":"TestOracleI2C"}
+{"Time":"2026-09-23T08:37:31.280037856+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestOracleI2C","Output":"=== RUN   TestOracleI2C\n"}
+{"Time":"2026-09-23T08:37:31.280246927+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestOracleI2C","Output":"    oracle_i2c_test.go:249: CI_REQUIRE_SIGROK=1 but sigrok-cli is not installed\n"}
+{"Time":"2026-09-23T08:37:31.280282523+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestOracleI2C","Output":"--- FAIL: TestOracleI2C (0.00s)\n"}
+{"Time":"2026-09-23T08:37:31.28030707+02:00","Action":"fail","Package":"open-sds/app/internal/decode","Test":"TestOracleI2C","Elapsed":0}
+{"Time":"2026-09-23T08:37:31.280336905+02:00","Action":"run","Package":"open-sds/app/internal/decode","Test":"TestOracleSPI"}
+{"Time":"2026-09-23T08:37:31.280342432+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestOracleSPI","Output":"=== RUN   TestOracleSPI\n"}
+{"Time":"2026-09-23T08:37:31.280577883+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestOracleSPI","Output":"    oracle_spi_test.go:87: CI_REQUIRE_SIGROK=1 but sigrok-cli is not installed\n"}
+{"Time":"2026-09-23T08:37:31.280611809+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestOracleSPI","Output":"--- FAIL: TestOracleSPI (0.00s)\n"}
+{"Time":"2026-09-23T08:37:31.280634416+02:00","Action":"fail","Package":"open-sds/app/internal/decode","Test":"TestOracleSPI","Elapsed":0}
+{"Time":"2026-09-23T08:37:31.280725364+02:00","Action":"run","Package":"open-sds/app/internal/decode","Test":"TestOracleUART"}
+{"Time":"2026-09-23T08:37:31.280730615+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestOracleUART","Output":"=== RUN   TestOracleUART\n"}
+{"Time":"2026-09-23T08:37:31.280956489+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestOracleUART","Output":"    oracle_uart_test.go:73: CI_REQUIRE_SIGROK=1 but sigrok-cli is not installed\n"}
+{"Time":"2026-09-23T08:37:31.280966364+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestOracleUART","Output":"--- FAIL: TestOracleUART (0.00s)\n"}
+{"Time":"2026-09-23T08:37:31.280991917+02:00","Action":"fail","Package":"open-sds/app/internal/decode","Test":"TestOracleUART","Elapsed":0}
+{"Time":"2026-09-23T08:37:31.281120058+02:00","Action":"run","Package":"open-sds/app/internal/decode","Test":"TestOracleUSBLS"}
+{"Time":"2026-09-23T08:37:31.281127515+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestOracleUSBLS","Output":"=== RUN   TestOracleUSBLS\n"}
+{"Time":"2026-09-23T08:37:31.281315289+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestOracleUSBLS","Output":"    oracle_usbls_test.go:341: CI_REQUIRE_SIGROK=1 but sigrok-cli is not installed\n"}
+{"Time":"2026-09-23T08:37:31.28133424+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestOracleUSBLS","Output":"--- FAIL: TestOracleUSBLS (0.00s)\n"}
+{"Time":"2026-09-23T08:37:31.281343418+02:00","Action":"fail","Package":"open-sds/app/internal/decode","Test":"TestOracleUSBLS","Elapsed":0}
+{"Time":"2026-09-23T08:37:31.281468321+02:00","Action":"output","Package":"open-sds/app/internal/decode","Output":"FAIL\n"}
+{"Time":"2026-09-23T08:37:31.281702538+02:00","Action":"output","Package":"open-sds/app/internal/decode","Output":"FAIL\topen-sds/app/internal/decode\t0.018s\n"}
+{"Time":"2026-09-23T08:37:31.281712459+02:00","Action":"fail","Package":"open-sds/app/internal/decode","Elapsed":0.018}

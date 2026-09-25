@@ -1,0 +1,87 @@
+{
+  "result": "integrated-and-projection-verified",
+  "scope": "Thirteen exact authored assurance memberships integrated as bounded_by mappings. Exposure and enforcement still require separate source review.",
+  "assuranceSHA256": "f8a71181ad8170d9c3f221e173c9f9e36e5d6b767a130be5bafe5d83e8053198",
+  "candidateMappings": [
+    {
+      "type": "bounded_by",
+      "from": "FU-APP-APP",
+      "to": "TB-DEVICE",
+      "description": "Authored boundary membership; does not imply authentication or enforcement."
+    },
+    {
+      "type": "bounded_by",
+      "from": "FU-OTA-AGENT",
+      "to": "TB-DEVICE",
+      "description": "Authored boundary membership; does not imply authentication or enforcement."
+    },
+    {
+      "type": "bounded_by",
+      "from": "IF-OTA",
+      "to": "TB-DEVICE",
+      "description": "Authored boundary membership; does not imply authentication or enforcement."
+    },
+    {
+      "type": "bounded_by",
+      "from": "IF-GPMC",
+      "to": "TB-DEVICE",
+      "description": "Authored boundary membership; does not imply authentication or enforcement."
+    },
+    {
+      "type": "bounded_by",
+      "from": "ACT-OPERATOR",
+      "to": "TB-NETWORK",
+      "description": "Authored boundary membership; does not imply authentication or enforcement."
+    },
+    {
+      "type": "bounded_by",
+      "from": "ACT-HOST",
+      "to": "TB-NETWORK",
+      "description": "Authored boundary membership; does not imply authentication or enforcement."
+    },
+    {
+      "type": "bounded_by",
+      "from": "IF-HTTP",
+      "to": "TB-NETWORK",
+      "description": "Authored boundary membership; does not imply authentication or enforcement."
+    },
+    {
+      "type": "bounded_by",
+      "from": "IF-SCPI",
+      "to": "TB-NETWORK",
+      "description": "Authored boundary membership; does not imply authentication or enforcement."
+    },
+    {
+      "type": "bounded_by",
+      "from": "IF-OTA",
+      "to": "TB-NETWORK",
+      "description": "Authored boundary membership; does not imply authentication or enforcement."
+    },
+    {
+      "type": "bounded_by",
+      "from": "IF-GPMC",
+      "to": "TB-FABRIC",
+      "description": "Authored boundary membership; does not imply authentication or enforcement."
+    },
+    {
+      "type": "bounded_by",
+      "from": "IF-PROFILE",
+      "to": "TB-FABRIC",
+      "description": "Authored boundary membership; does not imply authentication or enforcement."
+    },
+    {
+      "type": "bounded_by",
+      "from": "HW-FPGA",
+      "to": "TB-FABRIC",
+      "description": "Authored boundary membership; does not imply authentication or enforcement."
+    },
+    {
+      "type": "bounded_by",
+      "from": "DO-DESCRIPTOR",
+      "to": "TB-FABRIC",
+      "description": "Authored boundary membership; does not imply authentication or enforcement."
+    }
+  ],
+  "expectedBoundaryNodes": 3,
+  "expectedMemberNodes": 11
+}

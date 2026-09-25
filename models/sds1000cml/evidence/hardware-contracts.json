@@ -1,0 +1,5731 @@
+{
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "constraintFiles": [
+    {
+      "gitBlob": "b274fb9d301cdb2da41b762340160905f1555711",
+      "path": "fpga/acq_sram/acquisition_config_cdc.sdc"
+    },
+    {
+      "gitBlob": "867cabf2db38a6df22af3b0fbdd9cdeded960e60",
+      "path": "fpga/acq_sram/host_fifo_cdc.sdc"
+    },
+    {
+      "gitBlob": "a3cfb2a887ffeb3a37121dffc751c4a90f41683e",
+      "path": "fpga/acq_sram/host_path_cdc.sdc"
+    },
+    {
+      "gitBlob": "17267128b1abc2bcc8f53406b99a25bc91c6d4b8",
+      "path": "fpga/acq_sram/ingress_cdc.sdc"
+    },
+    {
+      "gitBlob": "b6634e1e700ccd80657cdd6de2b68df8509d0da8",
+      "path": "fpga/acq_sram/stream.sdc"
+    },
+    {
+      "gitBlob": "9969ad8b5aa14ef84c3ea5b7cd54b1c3db31049d",
+      "path": "fpga/acq_sram/stream_path_cdc.sdc"
+    },
+    {
+      "gitBlob": "19873d3eb1066b98b245884b9e0eb3b50bec4f6a",
+      "path": "fpga/default/default.sdc"
+    }
+  ],
+  "pllDeclarations": [
+    {
+      "gitBlob": "47d0a083ea021c39ee71dc3f37b3b915ce575fe8",
+      "limits": "PLL declarations only; no independent timing/CDC/board qualification inferred.",
+      "outputs": [
+        {
+          "divide": 1,
+          "frequencyHz": 100000000.0,
+          "index": 0,
+          "multiply": 1,
+          "phasePicoseconds": "3000"
+        },
+        {
+          "divide": 1,
+          "frequencyHz": 100000000.0,
+          "index": 1,
+          "multiply": 1,
+          "phasePicoseconds": "4000"
+        },
+        {
+          "divide": 1,
+          "frequencyHz": 100000000.0,
+          "index": 2,
+          "multiply": 1,
+          "phasePicoseconds": "2000"
+        },
+        {
+          "divide": 1,
+          "frequencyHz": 100000000.0,
+          "index": 3,
+          "multiply": 1,
+          "phasePicoseconds": "0"
+        },
+        {
+          "divide": 1,
+          "frequencyHz": 100000000.0,
+          "index": 4,
+          "multiply": 1,
+          "phasePicoseconds": "1000"
+        }
+      ],
+      "referencePeriodPicoseconds": 10000,
+      "source": "fpga/acq_sram/acquisition_adc_pll.v"
+    },
+    {
+      "gitBlob": "f17a5dcd7294b5f64b2a9486cdfd9e1d5e108994",
+      "limits": "PLL declarations only; no independent timing/CDC/board qualification inferred.",
+      "outputs": [
+        {
+          "divide": 2,
+          "frequencyHz": 250000000.0,
+          "index": 0,
+          "multiply": 5,
+          "phasePicoseconds": "0"
+        },
+        {
+          "divide": 2,
+          "frequencyHz": 250000000.0,
+          "index": 1,
+          "multiply": 5,
+          "phasePicoseconds": "1000"
+        },
+        {
+          "divide": 4,
+          "frequencyHz": 125000000.0,
+          "index": 2,
+          "multiply": 5,
+          "phasePicoseconds": "0"
+        }
+      ],
+      "referencePeriodPicoseconds": 10000,
+      "source": "fpga/acq_sram/profile_pll.v"
+    },
+    {
+      "gitBlob": "06991ebc35cb560f59848c485f31f020f790ea73",
+      "limits": "PLL declarations only; no independent timing/CDC/board qualification inferred.",
+      "outputs": [
+        {
+          "divide": 4,
+          "index": 0,
+          "multiply": 5,
+          "phasePicoseconds": "0"
+        },
+        {
+          "divide": 4,
+          "index": 1,
+          "multiply": 5,
+          "phasePicoseconds": "1250"
+        },
+        {
+          "divide": 4,
+          "index": 2,
+          "multiply": 5,
+          "phasePicoseconds": "2500"
+        },
+        {
+          "divide": 4,
+          "index": 3,
+          "multiply": 5,
+          "phasePicoseconds": "3750"
+        },
+        {
+          "divide": 4,
+          "index": 4,
+          "multiply": 5,
+          "phasePicoseconds": "0"
+        },
+        {
+          "divide": 4,
+          "index": 0,
+          "multiply": 5,
+          "phasePicoseconds": "0"
+        },
+        {
+          "divide": 4,
+          "index": 1,
+          "multiply": 5,
+          "phasePicoseconds": "1250"
+        }
+      ],
+      "referencePeriodPicoseconds": null,
+      "source": "fpga/common/pll_m2.v"
+    }
+  ],
+  "profilePinMaps": [
+    {
+      "base": "fpga/default/default.qsf",
+      "evidenceKind": "reconstructed from the committed builder pin subset plus explicit DQ override",
+      "gitBlob": "22ae43c69cf6410b2ee590ab739d0e4107051c1b",
+      "ioStandard": "3.3-V LVTTL",
+      "pins": [
+        {
+          "ball": "A11",
+          "port": "a11"
+        },
+        {
+          "ball": "C2",
+          "port": "clk"
+        },
+        {
+          "ball": "D1",
+          "port": "d1"
+        },
+        {
+          "ball": "D2",
+          "port": "d2"
+        },
+        {
+          "ball": "J6",
+          "port": "dq[0]"
+        },
+        {
+          "ball": "P2",
+          "port": "dq[10]"
+        },
+        {
+          "ball": "P1",
+          "port": "dq[11]"
+        },
+        {
+          "ball": "F3",
+          "port": "dq[12]"
+        },
+        {
+          "ball": "G5",
+          "port": "dq[13]"
+        },
+        {
+          "ball": "N3",
+          "port": "dq[14]"
+        },
+        {
+          "ball": "P3",
+          "port": "dq[15]"
+        },
+        {
+          "ball": "N5",
+          "port": "dq[16]"
+        },
+        {
+          "ball": "N6",
+          "port": "dq[17]"
+        },
+        {
+          "ball": "D3",
+          "port": "dq[18]"
+        },
+        {
+          "ball": "M6",
+          "port": "dq[19]"
+        },
+        {
+          "ball": "F5",
+          "port": "dq[1]"
+        },
+        {
+          "ball": "R5",
+          "port": "dq[20]"
+        },
+        {
+          "ball": "T5",
+          "port": "dq[21]"
+        },
+        {
+          "ball": "R6",
+          "port": "dq[22]"
+        },
+        {
+          "ball": "T6",
+          "port": "dq[23]"
+        },
+        {
+          "ball": "R3",
+          "port": "dq[24]"
+        },
+        {
+          "ball": "R7",
+          "port": "dq[25]"
+        },
+        {
+          "ball": "T7",
+          "port": "dq[26]"
+        },
+        {
+          "ball": "T3",
+          "port": "dq[27]"
+        },
+        {
+          "ball": "T2",
+          "port": "dq[28]"
+        },
+        {
+          "ball": "R4",
+          "port": "dq[29]"
+        },
+        {
+          "ball": "L2",
+          "port": "dq[2]"
+        },
+        {
+          "ball": "T4",
+          "port": "dq[30]"
+        },
+        {
+          "ball": "F7",
+          "port": "dq[31]"
+        },
+        {
+          "ball": "L1",
+          "port": "dq[3]"
+        },
+        {
+          "ball": "L3",
+          "port": "dq[4]"
+        },
+        {
+          "ball": "N2",
+          "port": "dq[5]"
+        },
+        {
+          "ball": "N1",
+          "port": "dq[6]"
+        },
+        {
+          "ball": "K5",
+          "port": "dq[7]"
+        },
+        {
+          "ball": "L4",
+          "port": "dq[8]"
+        },
+        {
+          "ball": "R1",
+          "port": "dq[9]"
+        },
+        {
+          "ball": "M8",
+          "port": "enc_n[0]"
+        },
+        {
+          "ball": "D14",
+          "port": "enc_n[1]"
+        },
+        {
+          "ball": "L10",
+          "port": "enc_n[2]"
+        },
+        {
+          "ball": "M7",
+          "port": "enc_n[3]"
+        },
+        {
+          "ball": "L9",
+          "port": "enc_n[4]"
+        },
+        {
+          "ball": "K8",
+          "port": "enc_p[0]"
+        },
+        {
+          "ball": "C14",
+          "port": "enc_p[1]"
+        },
+        {
+          "ball": "K9",
+          "port": "enc_p[2]"
+        },
+        {
+          "ball": "L8",
+          "port": "enc_p[3]"
+        },
+        {
+          "ball": "K10",
+          "port": "enc_p[4]"
+        },
+        {
+          "ball": "F1",
+          "port": "f1"
+        },
+        {
+          "ball": "F2",
+          "port": "f2"
+        },
+        {
+          "ball": "G1",
+          "port": "g1"
+        },
+        {
+          "ball": "G2",
+          "port": "g2"
+        },
+        {
+          "ball": "A2",
+          "port": "gpmc_a2"
+        },
+        {
+          "ball": "B1",
+          "port": "gpmc_b1"
+        },
+        {
+          "ball": "A10",
+          "port": "gpmc_d[0]"
+        },
+        {
+          "ball": "C6",
+          "port": "gpmc_d[10]"
+        },
+        {
+          "ball": "B5",
+          "port": "gpmc_d[11]"
+        },
+        {
+          "ball": "A5",
+          "port": "gpmc_d[12]"
+        },
+        {
+          "ball": "F6",
+          "port": "gpmc_d[13]"
+        },
+        {
+          "ball": "D5",
+          "port": "gpmc_d[14]"
+        },
+        {
+          "ball": "E5",
+          "port": "gpmc_d[15]"
+        },
+        {
+          "ball": "B9",
+          "port": "gpmc_d[1]"
+        },
+        {
+          "ball": "A9",
+          "port": "gpmc_d[2]"
+        },
+        {
+          "ball": "B8",
+          "port": "gpmc_d[3]"
+        },
+        {
+          "ball": "A8",
+          "port": "gpmc_d[4]"
+        },
+        {
+          "ball": "B7",
+          "port": "gpmc_d[5]"
+        },
+        {
+          "ball": "A7",
+          "port": "gpmc_d[6]"
+        },
+        {
+          "ball": "B6",
+          "port": "gpmc_d[7]"
+        },
+        {
+          "ball": "A6",
+          "port": "gpmc_d[8]"
+        },
+        {
+          "ball": "D6",
+          "port": "gpmc_d[9]"
+        },
+        {
+          "ball": "J2",
+          "port": "j2"
+        },
+        {
+          "ball": "K1",
+          "port": "k1"
+        },
+        {
+          "ball": "K2",
+          "port": "k2"
+        },
+        {
+          "ball": "R11",
+          "port": "lane[0]"
+        },
+        {
+          "ball": "L16",
+          "port": "lane[10]"
+        },
+        {
+          "ball": "N15",
+          "port": "lane[11]"
+        },
+        {
+          "ball": "N16",
+          "port": "lane[12]"
+        },
+        {
+          "ball": "P15",
+          "port": "lane[13]"
+        },
+        {
+          "ball": "P16",
+          "port": "lane[14]"
+        },
+        {
+          "ball": "R16",
+          "port": "lane[15]"
+        },
+        {
+          "ball": "L7",
+          "port": "lane[16]"
+        },
+        {
+          "ball": "N8",
+          "port": "lane[17]"
+        },
+        {
+          "ball": "P8",
+          "port": "lane[18]"
+        },
+        {
+          "ball": "R8",
+          "port": "lane[19]"
+        },
+        {
+          "ball": "R12",
+          "port": "lane[1]"
+        },
+        {
+          "ball": "T8",
+          "port": "lane[20]"
+        },
+        {
+          "ball": "M9",
+          "port": "lane[21]"
+        },
+        {
+          "ball": "M10",
+          "port": "lane[22]"
+        },
+        {
+          "ball": "M11",
+          "port": "lane[23]"
+        },
+        {
+          "ball": "N9",
+          "port": "lane[24]"
+        },
+        {
+          "ball": "P9",
+          "port": "lane[25]"
+        },
+        {
+          "ball": "P11",
+          "port": "lane[26]"
+        },
+        {
+          "ball": "R9",
+          "port": "lane[27]"
+        },
+        {
+          "ball": "R10",
+          "port": "lane[28]"
+        },
+        {
+          "ball": "T9",
+          "port": "lane[29]"
+        },
+        {
+          "ball": "R13",
+          "port": "lane[2]"
+        },
+        {
+          "ball": "T10",
+          "port": "lane[30]"
+        },
+        {
+          "ball": "T11",
+          "port": "lane[31]"
+        },
+        {
+          "ball": "C16",
+          "port": "lane[32]"
+        },
+        {
+          "ball": "F13",
+          "port": "lane[33]"
+        },
+        {
+          "ball": "F14",
+          "port": "lane[34]"
+        },
+        {
+          "ball": "C9",
+          "port": "lane[35]"
+        },
+        {
+          "ball": "C11",
+          "port": "lane[36]"
+        },
+        {
+          "ball": "D9",
+          "port": "lane[37]"
+        },
+        {
+          "ball": "D11",
+          "port": "lane[38]"
+        },
+        {
+          "ball": "D12",
+          "port": "lane[39]"
+        },
+        {
+          "ball": "R14",
+          "port": "lane[3]"
+        },
+        {
+          "ball": "E10",
+          "port": "lane[40]"
+        },
+        {
+          "ball": "E11",
+          "port": "lane[41]"
+        },
+        {
+          "ball": "F9",
+          "port": "lane[42]"
+        },
+        {
+          "ball": "F11",
+          "port": "lane[43]"
+        },
+        {
+          "ball": "C8",
+          "port": "lane[44]"
+        },
+        {
+          "ball": "D8",
+          "port": "lane[45]"
+        },
+        {
+          "ball": "E8",
+          "port": "lane[46]"
+        },
+        {
+          "ball": "F8",
+          "port": "lane[47]"
+        },
+        {
+          "ball": "L11",
+          "port": "lane[48]"
+        },
+        {
+          "ball": "N11",
+          "port": "lane[49]"
+        },
+        {
+          "ball": "T12",
+          "port": "lane[4]"
+        },
+        {
+          "ball": "N12",
+          "port": "lane[50]"
+        },
+        {
+          "ball": "P14",
+          "port": "lane[51]"
+        },
+        {
+          "ball": "J11",
+          "port": "lane[52]"
+        },
+        {
+          "ball": "K11",
+          "port": "lane[53]"
+        },
+        {
+          "ball": "K12",
+          "port": "lane[54]"
+        },
+        {
+          "ball": "L12",
+          "port": "lane[55]"
+        },
+        {
+          "ball": "L13",
+          "port": "lane[56]"
+        },
+        {
+          "ball": "L14",
+          "port": "lane[57]"
+        },
+        {
+          "ball": "M12",
+          "port": "lane[58]"
+        },
+        {
+          "ball": "N13",
+          "port": "lane[59]"
+        },
+        {
+          "ball": "T13",
+          "port": "lane[5]"
+        },
+        {
+          "ball": "N14",
+          "port": "lane[60]"
+        },
+        {
+          "ball": "G11",
+          "port": "lane[61]"
+        },
+        {
+          "ball": "E9",
+          "port": "lane[62]"
+        },
+        {
+          "ball": "F10",
+          "port": "lane[63]"
+        },
+        {
+          "ball": "J16",
+          "port": "lane[64]"
+        },
+        {
+          "ball": "K16",
+          "port": "lane[65]"
+        },
+        {
+          "ball": "B16",
+          "port": "lane[66]"
+        },
+        {
+          "ball": "C15",
+          "port": "lane[67]"
+        },
+        {
+          "ball": "D15",
+          "port": "lane[68]"
+        },
+        {
+          "ball": "D16",
+          "port": "lane[69]"
+        },
+        {
+          "ball": "T14",
+          "port": "lane[6]"
+        },
+        {
+          "ball": "F15",
+          "port": "lane[70]"
+        },
+        {
+          "ball": "G15",
+          "port": "lane[71]"
+        },
+        {
+          "ball": "G16",
+          "port": "lane[72]"
+        },
+        {
+          "ball": "A13",
+          "port": "lane[73]"
+        },
+        {
+          "ball": "A14",
+          "port": "lane[74]"
+        },
+        {
+          "ball": "A15",
+          "port": "lane[75]"
+        },
+        {
+          "ball": "B12",
+          "port": "lane[76]"
+        },
+        {
+          "ball": "B13",
+          "port": "lane[77]"
+        },
+        {
+          "ball": "B14",
+          "port": "lane[78]"
+        },
+        {
+          "ball": "F16",
+          "port": "lane[79]"
+        },
+        {
+          "ball": "T15",
+          "port": "lane[7]"
+        },
+        {
+          "ball": "K15",
+          "port": "lane[8]"
+        },
+        {
+          "ball": "L15",
+          "port": "lane[9]"
+        },
+        {
+          "ball": "M2",
+          "port": "mclk_in"
+        },
+        {
+          "ball": "B4",
+          "port": "nCS1"
+        },
+        {
+          "ball": "E6",
+          "port": "nOE"
+        },
+        {
+          "ball": "B10",
+          "port": "nWE"
+        },
+        {
+          "ball": "C3",
+          "port": "sel[2]"
+        },
+        {
+          "ball": "D4",
+          "port": "sel[3]"
+        },
+        {
+          "ball": "A3",
+          "port": "sel[4]"
+        },
+        {
+          "ball": "B3",
+          "port": "sel[5]"
+        },
+        {
+          "ball": "A4",
+          "port": "sel[6]"
+        }
+      ],
+      "qualified": false,
+      "source": "fpga/acq_sram/build.py",
+      "sramDQDrive": "8MA"
+    },
+    {
+      "base": "fpga/default/default.qsf",
+      "evidenceKind": "reconstructed from the committed builder pin subset plus explicit DQ override",
+      "gitBlob": "eeb32bc094707d52d7f4585802a81e9526325925",
+      "ioStandard": "3.3-V LVTTL",
+      "pins": [
+        {
+          "ball": "A11",
+          "port": "a11"
+        },
+        {
+          "ball": "C2",
+          "port": "clk"
+        },
+        {
+          "ball": "D1",
+          "port": "d1"
+        },
+        {
+          "ball": "D2",
+          "port": "d2"
+        },
+        {
+          "ball": "J6",
+          "port": "dq[0]"
+        },
+        {
+          "ball": "P2",
+          "port": "dq[10]"
+        },
+        {
+          "ball": "P1",
+          "port": "dq[11]"
+        },
+        {
+          "ball": "F3",
+          "port": "dq[12]"
+        },
+        {
+          "ball": "G5",
+          "port": "dq[13]"
+        },
+        {
+          "ball": "N3",
+          "port": "dq[14]"
+        },
+        {
+          "ball": "P3",
+          "port": "dq[15]"
+        },
+        {
+          "ball": "N5",
+          "port": "dq[16]"
+        },
+        {
+          "ball": "N6",
+          "port": "dq[17]"
+        },
+        {
+          "ball": "D3",
+          "port": "dq[18]"
+        },
+        {
+          "ball": "M6",
+          "port": "dq[19]"
+        },
+        {
+          "ball": "F5",
+          "port": "dq[1]"
+        },
+        {
+          "ball": "R5",
+          "port": "dq[20]"
+        },
+        {
+          "ball": "T5",
+          "port": "dq[21]"
+        },
+        {
+          "ball": "R6",
+          "port": "dq[22]"
+        },
+        {
+          "ball": "T6",
+          "port": "dq[23]"
+        },
+        {
+          "ball": "R3",
+          "port": "dq[24]"
+        },
+        {
+          "ball": "R7",
+          "port": "dq[25]"
+        },
+        {
+          "ball": "T7",
+          "port": "dq[26]"
+        },
+        {
+          "ball": "T3",
+          "port": "dq[27]"
+        },
+        {
+          "ball": "T2",
+          "port": "dq[28]"
+        },
+        {
+          "ball": "R4",
+          "port": "dq[29]"
+        },
+        {
+          "ball": "L2",
+          "port": "dq[2]"
+        },
+        {
+          "ball": "T4",
+          "port": "dq[30]"
+        },
+        {
+          "ball": "F7",
+          "port": "dq[31]"
+        },
+        {
+          "ball": "L1",
+          "port": "dq[3]"
+        },
+        {
+          "ball": "L3",
+          "port": "dq[4]"
+        },
+        {
+          "ball": "N2",
+          "port": "dq[5]"
+        },
+        {
+          "ball": "N1",
+          "port": "dq[6]"
+        },
+        {
+          "ball": "K5",
+          "port": "dq[7]"
+        },
+        {
+          "ball": "L4",
+          "port": "dq[8]"
+        },
+        {
+          "ball": "R1",
+          "port": "dq[9]"
+        },
+        {
+          "ball": "M8",
+          "port": "enc_n[0]"
+        },
+        {
+          "ball": "D14",
+          "port": "enc_n[1]"
+        },
+        {
+          "ball": "L10",
+          "port": "enc_n[2]"
+        },
+        {
+          "ball": "M7",
+          "port": "enc_n[3]"
+        },
+        {
+          "ball": "L9",
+          "port": "enc_n[4]"
+        },
+        {
+          "ball": "K8",
+          "port": "enc_p[0]"
+        },
+        {
+          "ball": "C14",
+          "port": "enc_p[1]"
+        },
+        {
+          "ball": "K9",
+          "port": "enc_p[2]"
+        },
+        {
+          "ball": "L8",
+          "port": "enc_p[3]"
+        },
+        {
+          "ball": "K10",
+          "port": "enc_p[4]"
+        },
+        {
+          "ball": "F1",
+          "port": "f1"
+        },
+        {
+          "ball": "F2",
+          "port": "f2"
+        },
+        {
+          "ball": "G1",
+          "port": "g1"
+        },
+        {
+          "ball": "G2",
+          "port": "g2"
+        },
+        {
+          "ball": "A2",
+          "port": "gpmc_a2"
+        },
+        {
+          "ball": "B1",
+          "port": "gpmc_b1"
+        },
+        {
+          "ball": "A10",
+          "port": "gpmc_d[0]"
+        },
+        {
+          "ball": "C6",
+          "port": "gpmc_d[10]"
+        },
+        {
+          "ball": "B5",
+          "port": "gpmc_d[11]"
+        },
+        {
+          "ball": "A5",
+          "port": "gpmc_d[12]"
+        },
+        {
+          "ball": "F6",
+          "port": "gpmc_d[13]"
+        },
+        {
+          "ball": "D5",
+          "port": "gpmc_d[14]"
+        },
+        {
+          "ball": "E5",
+          "port": "gpmc_d[15]"
+        },
+        {
+          "ball": "B9",
+          "port": "gpmc_d[1]"
+        },
+        {
+          "ball": "A9",
+          "port": "gpmc_d[2]"
+        },
+        {
+          "ball": "B8",
+          "port": "gpmc_d[3]"
+        },
+        {
+          "ball": "A8",
+          "port": "gpmc_d[4]"
+        },
+        {
+          "ball": "B7",
+          "port": "gpmc_d[5]"
+        },
+        {
+          "ball": "A7",
+          "port": "gpmc_d[6]"
+        },
+        {
+          "ball": "B6",
+          "port": "gpmc_d[7]"
+        },
+        {
+          "ball": "A6",
+          "port": "gpmc_d[8]"
+        },
+        {
+          "ball": "D6",
+          "port": "gpmc_d[9]"
+        },
+        {
+          "ball": "J2",
+          "port": "j2"
+        },
+        {
+          "ball": "K1",
+          "port": "k1"
+        },
+        {
+          "ball": "K2",
+          "port": "k2"
+        },
+        {
+          "ball": "R11",
+          "port": "lane[0]"
+        },
+        {
+          "ball": "L16",
+          "port": "lane[10]"
+        },
+        {
+          "ball": "N15",
+          "port": "lane[11]"
+        },
+        {
+          "ball": "N16",
+          "port": "lane[12]"
+        },
+        {
+          "ball": "P15",
+          "port": "lane[13]"
+        },
+        {
+          "ball": "P16",
+          "port": "lane[14]"
+        },
+        {
+          "ball": "R16",
+          "port": "lane[15]"
+        },
+        {
+          "ball": "L7",
+          "port": "lane[16]"
+        },
+        {
+          "ball": "N8",
+          "port": "lane[17]"
+        },
+        {
+          "ball": "P8",
+          "port": "lane[18]"
+        },
+        {
+          "ball": "R8",
+          "port": "lane[19]"
+        },
+        {
+          "ball": "R12",
+          "port": "lane[1]"
+        },
+        {
+          "ball": "T8",
+          "port": "lane[20]"
+        },
+        {
+          "ball": "M9",
+          "port": "lane[21]"
+        },
+        {
+          "ball": "M10",
+          "port": "lane[22]"
+        },
+        {
+          "ball": "M11",
+          "port": "lane[23]"
+        },
+        {
+          "ball": "N9",
+          "port": "lane[24]"
+        },
+        {
+          "ball": "P9",
+          "port": "lane[25]"
+        },
+        {
+          "ball": "P11",
+          "port": "lane[26]"
+        },
+        {
+          "ball": "R9",
+          "port": "lane[27]"
+        },
+        {
+          "ball": "R10",
+          "port": "lane[28]"
+        },
+        {
+          "ball": "T9",
+          "port": "lane[29]"
+        },
+        {
+          "ball": "R13",
+          "port": "lane[2]"
+        },
+        {
+          "ball": "T10",
+          "port": "lane[30]"
+        },
+        {
+          "ball": "T11",
+          "port": "lane[31]"
+        },
+        {
+          "ball": "C16",
+          "port": "lane[32]"
+        },
+        {
+          "ball": "F13",
+          "port": "lane[33]"
+        },
+        {
+          "ball": "F14",
+          "port": "lane[34]"
+        },
+        {
+          "ball": "C9",
+          "port": "lane[35]"
+        },
+        {
+          "ball": "C11",
+          "port": "lane[36]"
+        },
+        {
+          "ball": "D9",
+          "port": "lane[37]"
+        },
+        {
+          "ball": "D11",
+          "port": "lane[38]"
+        },
+        {
+          "ball": "D12",
+          "port": "lane[39]"
+        },
+        {
+          "ball": "R14",
+          "port": "lane[3]"
+        },
+        {
+          "ball": "E10",
+          "port": "lane[40]"
+        },
+        {
+          "ball": "E11",
+          "port": "lane[41]"
+        },
+        {
+          "ball": "F9",
+          "port": "lane[42]"
+        },
+        {
+          "ball": "F11",
+          "port": "lane[43]"
+        },
+        {
+          "ball": "C8",
+          "port": "lane[44]"
+        },
+        {
+          "ball": "D8",
+          "port": "lane[45]"
+        },
+        {
+          "ball": "E8",
+          "port": "lane[46]"
+        },
+        {
+          "ball": "F8",
+          "port": "lane[47]"
+        },
+        {
+          "ball": "L11",
+          "port": "lane[48]"
+        },
+        {
+          "ball": "N11",
+          "port": "lane[49]"
+        },
+        {
+          "ball": "T12",
+          "port": "lane[4]"
+        },
+        {
+          "ball": "N12",
+          "port": "lane[50]"
+        },
+        {
+          "ball": "P14",
+          "port": "lane[51]"
+        },
+        {
+          "ball": "J11",
+          "port": "lane[52]"
+        },
+        {
+          "ball": "K11",
+          "port": "lane[53]"
+        },
+        {
+          "ball": "K12",
+          "port": "lane[54]"
+        },
+        {
+          "ball": "L12",
+          "port": "lane[55]"
+        },
+        {
+          "ball": "L13",
+          "port": "lane[56]"
+        },
+        {
+          "ball": "L14",
+          "port": "lane[57]"
+        },
+        {
+          "ball": "M12",
+          "port": "lane[58]"
+        },
+        {
+          "ball": "N13",
+          "port": "lane[59]"
+        },
+        {
+          "ball": "T13",
+          "port": "lane[5]"
+        },
+        {
+          "ball": "N14",
+          "port": "lane[60]"
+        },
+        {
+          "ball": "G11",
+          "port": "lane[61]"
+        },
+        {
+          "ball": "E9",
+          "port": "lane[62]"
+        },
+        {
+          "ball": "F10",
+          "port": "lane[63]"
+        },
+        {
+          "ball": "J16",
+          "port": "lane[64]"
+        },
+        {
+          "ball": "K16",
+          "port": "lane[65]"
+        },
+        {
+          "ball": "B16",
+          "port": "lane[66]"
+        },
+        {
+          "ball": "C15",
+          "port": "lane[67]"
+        },
+        {
+          "ball": "D15",
+          "port": "lane[68]"
+        },
+        {
+          "ball": "D16",
+          "port": "lane[69]"
+        },
+        {
+          "ball": "T14",
+          "port": "lane[6]"
+        },
+        {
+          "ball": "F15",
+          "port": "lane[70]"
+        },
+        {
+          "ball": "G15",
+          "port": "lane[71]"
+        },
+        {
+          "ball": "G16",
+          "port": "lane[72]"
+        },
+        {
+          "ball": "A13",
+          "port": "lane[73]"
+        },
+        {
+          "ball": "A14",
+          "port": "lane[74]"
+        },
+        {
+          "ball": "A15",
+          "port": "lane[75]"
+        },
+        {
+          "ball": "B12",
+          "port": "lane[76]"
+        },
+        {
+          "ball": "B13",
+          "port": "lane[77]"
+        },
+        {
+          "ball": "B14",
+          "port": "lane[78]"
+        },
+        {
+          "ball": "F16",
+          "port": "lane[79]"
+        },
+        {
+          "ball": "T15",
+          "port": "lane[7]"
+        },
+        {
+          "ball": "K15",
+          "port": "lane[8]"
+        },
+        {
+          "ball": "L15",
+          "port": "lane[9]"
+        },
+        {
+          "ball": "M2",
+          "port": "mclk_in"
+        },
+        {
+          "ball": "B4",
+          "port": "nCS1"
+        },
+        {
+          "ball": "E6",
+          "port": "nOE"
+        },
+        {
+          "ball": "B10",
+          "port": "nWE"
+        },
+        {
+          "ball": "C3",
+          "port": "sel[2]"
+        },
+        {
+          "ball": "D4",
+          "port": "sel[3]"
+        },
+        {
+          "ball": "A3",
+          "port": "sel[4]"
+        },
+        {
+          "ball": "B3",
+          "port": "sel[5]"
+        },
+        {
+          "ball": "A4",
+          "port": "sel[6]"
+        }
+      ],
+      "qualified": false,
+      "source": "fpga/acq_sram/build_profile.py",
+      "sramDQDrive": "8MA"
+    }
+  ],
+  "registerAndSpecificationTables": [
+    {
+      "gitBlob": "f5ee3e56a0185a2e4d277d65eec50798bfeb6028",
+      "heading": "Identity",
+      "line": 10,
+      "rows": [
+        [
+          "item",
+          "value"
+        ],
+        [
+          "---",
+          "---"
+        ],
+        [
+          "build-ID (`BUILDID_HI:BUILDID_LO`)",
+          "`0x6af8705a` \u2014 `BUILDID_LO` = `0x705a`, `BUILDID_HI` = `0x6af8`"
+        ],
+        [
+          "`VERSION`",
+          "`0x00a3`"
+        ],
+        [
+          "`FABRIC_ID`",
+          "`0xa2f1`"
+        ],
+        [
+          "selector mask",
+          "`0x7f` (128 selectors, decodes GPMC A1,A2,A3,A4,A5,A6,A7; selector bit(s) 7 ignored) \u2014 GPMC A1..A7 reach the fabric (A1 = ball B1, A2 = ball A2, A3..A7 the v2 address balls): 128 selectors, selector N at CS1 byte address 2N; bit 7 of a selector is ignored"
+        ],
+        [
+          "legacy generation",
+          "v2 decoded `0x7c`; its registers keep those selectors, newer registers take slots outside it"
+        ],
+        [
+          "undecoded selectors",
+          "0x21, 0x57 \u2014 read 0, writes ignored, no register may take them"
+        ],
+        [
+          "record geometry",
+          "`REC_DEPTH` = 20480, `ADDR_W` = 15, `PRETRIG_MAX` = 20478, `ROW_COLS` = 5, `ROWS` = 4096, `DLINE_ROWS` = 512, `ACC_BITS` = 18, `STACK_N_MAX` = 1024"
+        ],
+        [
+          "build-ID rule",
+          "build-ID = FNV-1a 64-bit over schema.Interface.Canonical() folded to 32 bits (hi32 XOR lo32); every structural schema change (selectors, access, fields, enums, stubs, opcodes, DIAG layout, geometry, identity values) moves it, Desc text does not"
+        ]
+      ],
+      "source": "fpga/default/docs/REGISTER-MAP.md",
+      "status": "generated documentation; current codegen drift fails"
+    },
+    {
+      "gitBlob": "f5ee3e56a0185a2e4d277d65eec50798bfeb6028",
+      "heading": "Selectors",
+      "line": 25,
+      "rows": [
+        [
+          "sel",
+          "name",
+          "since",
+          "access",
+          "fields",
+          "meaning"
+        ],
+        [
+          "---",
+          "---",
+          "---",
+          "---",
+          "---",
+          "---"
+        ],
+        [
+          "`0x00`",
+          "`BURST_ALIAS`",
+          "v2",
+          "R pop",
+          "",
+          "same as BURST (DMA/prefetch-engine friendly: the CS1 base address)"
+        ],
+        [
+          "`0x04`",
+          "`CLK_STAT`",
+          "v2",
+          "R",
+          "PLLA_LOCK[0] PLLB_LOCK[1] RATIO[15:4]",
+          "clock status"
+        ],
+        [
+          "`0x08`",
+          "`DIAG_IDX`",
+          "v2",
+          "RW",
+          "IDX[7:0]",
+          "index into the diagnostic window (DIAG_DATA)"
+        ],
+        [
+          "`0x0c`",
+          "`DIAG_DATA`",
+          "v2",
+          "RW",
+          "",
+          "the 16-bit diagnostic window selected by DIAG_IDX (layout per index in the DIAG window table)"
+        ],
+        [
+          "`0x10`",
+          "`BUILDID_LO`",
+          "v2",
+          "R",
+          "",
+          "schema build-ID low word (from codegen; the app checks it against iface.BuildID)"
+        ],
+        [
+          "`0x14`",
+          "`BUILDID_HI`",
+          "v2",
+          "R",
+          "",
+          "schema build-ID high word"
+        ],
+        [
+          "`0x18`",
+          "`VERSION`",
+          "v2",
+          "R",
+          "",
+          "fabric self-check magic 0x00A3 (schema version 3)"
+        ],
+        [
+          "`0x1c`",
+          "`FABRIC_ID`",
+          "v2",
+          "R",
+          "",
+          "0xA2F1 = the default image"
+        ],
+        [
+          "`0x20`",
+          "`OPCODE`",
+          "v2",
+          "W strobe",
+          "",
+          "capture opcode strobe: RESET / GO (arm or re-arm, only while RUN) / HALT / REWIND / STACK_CLEAR; any other value is ignored"
+        ],
+        [
+          "`0x24`",
+          "`RUN`",
+          "v2",
+          "RW",
+          "MODE[1:0] RUN[2] STREAM[3] CHMODE[5:4] STACK[6] REDUCE[7]",
+          "run / mode control"
+        ],
+        [
+          "`0x28`",
+          "`DECIM_LO`",
+          "v2",
+          "RW",
+          "",
+          "decimation factor D, low word (cap_tick once per D samples; the reduce unit's block length)"
+        ],
+        [
+          "`0x2c`",
+          "`DECIM_HI`",
+          "v2",
+          "RW",
+          "",
+          "decimation factor, high word"
+        ],
+        [
+          "`0x30`",
+          "`PRETRIG_LO`",
+          "v2",
+          "RW",
+          "",
+          "pre-trigger samples (words), low word (<= PRETRIG_MAX; IL5 modes use multiples of ROW_COLS)"
+        ],
+        [
+          "`0x34`",
+          "`PRETRIG_HI`",
+          "v2",
+          "RW",
+          "",
+          "pre-trigger samples, high word"
+        ],
+        [
+          "`0x38`",
+          "`POSTTRIG_LO`",
+          "v2",
+          "RW",
+          "",
+          "post-trigger samples (words), low word"
+        ],
+        [
+          "`0x3c`",
+          "`POSTTRIG_HI`",
+          "v2",
+          "RW",
+          "",
+          "post-trigger samples, high word"
+        ],
+        [
+          "`0x40`",
+          "`BURST`",
+          "v2",
+          "R pop",
+          "CH1[15:8] CH2[7:0]",
+          "pop-on-read record word w = ROW_COLS*row + col of the drain window (row-major, column-minor, time order in every mode); a pop on an empty source returns the last word and counts POP_MON.UNDERRUN"
+        ],
+        [
+          "`0x44`",
+          "`BURST_REMAIN`",
+          "v2",
+          "R",
+          "READY[15] REMAIN[14:0]",
+          "drain flow control"
+        ],
+        [
+          "`0x48`",
+          "`STATUS_A`",
+          "v2",
+          "R",
+          "VALID[0] TRIG[1] DONE[2] OVERFLOW[3] ARMED[4]",
+          "acquisition status (level)"
+        ],
+        [
+          "`0x4c`",
+          "`TRIGPOS_LO`",
+          "v2",
+          "R",
+          "FRAC[15:0]",
+          "trigger position, fractional word"
+        ],
+        [
+          "`0x50`",
+          "`TRIGPOS_HI`",
+          "v2",
+          "R",
+          "IDX[14:0]",
+          "trigger position, index word"
+        ],
+        [
+          "`0x54`",
+          "`FILL`",
+          "v2",
+          "R",
+          "COUNT[15:0]",
+          "fill count"
+        ],
+        [
+          "`0x58`",
+          "`ACQ_CTRL`",
+          "v2",
+          "RW",
+          "ENC_EN[0] ENC_RATE[2:1] IL_EN[3] TRIG_HYST[7:4] TRIG_SRC[8] TRIG_SLOPE[9] PAIR_EN[14:10]",
+          "acquisition control (reset 0x7c00: encode off, all pairs enabled)"
+        ],
+        [
+          "`0x5c`",
+          "`TRIG_LEVEL`",
+          "v2",
+          "RW",
+          "LEVEL[7:0] HW_SEL[8]",
+          "trigger level / comparator select"
+        ],
+        [
+          "`0x60`",
+          "`SNOOP_SEL`",
+          "v2",
+          "R",
+          "SEL[6:0] A2[7] B1[8] COUNT[15:9]",
+          "last CS1 write, selector side"
+        ],
+        [
+          "`0x64`",
+          "`SNOOP_DATA`",
+          "v2",
+          "R",
+          "",
+          "data word of the last CS1 write"
+        ],
+        [
+          "`0x68`",
+          "`DIAG_CTRL`",
+          "v2",
+          "RW",
+          "D2[0] K2_EN[1] BUS_DRV_EN[2] F2_SEL[4:3] J2_SEL[6:5] A11[7] F1[8] G1[9] G2[10] K1[11] LANE_GATE_RST[12] SNAP_CLK[14:13] SNAP_ARM[15]",
+          "diagnostic output controls (reset 0x0102)"
+        ],
+        [
+          "`0x6c`",
+          "`SNAP_REMAIN`",
+          "v2",
+          "R",
+          "READY[15] REMAIN[14:0]",
+          "snapshot drain flow control"
+        ],
+        [
+          "`0x70`",
+          "`SNAP_POP`",
+          "v2",
+          "R pop",
+          "",
+          "snapshot word (pop-on-read; v3.0+: five words per delay-line row, SNAP_CTRL2)"
+        ],
+        [
+          "`0x74`",
+          "`MISC_RD`",
+          "v2",
+          "R",
+          "P6[0] F3[1] F5[2] G5[3] D3[4] F7[5] A2[6] B1[7] D1[8] G2[9] B10[10] E6[11]",
+          "miscellaneous pad readback"
+        ],
+        [
+          "`0x78`",
+          "`ENV_DATA`",
+          "v2",
+          "R pop",
+          "",
+          "reserved (the stack readout goes through BURST); reads 0"
+        ],
+        [
+          "`0x7c`",
+          "`DBG`",
+          "v2",
+          "R",
+          "",
+          "fabric FSM state for bring-up (layout per fpga/default/README.md)"
+        ],
+        [
+          "`0x25`",
+          "`IL_CTRL`",
+          "v3",
+          "RW",
+          "IL_EN[0] CAL_EN[1] TSRC[3:2] REDUCE_MODE[6:4] IL_RATE[7] DIV_PH[12:8]",
+          "interleave / test-source / reduce control; v2.2 implements TSRC on the dual-E1 datapath, the other fields read 0 (v3.0+)"
+        ],
+        [
+          "`0x26`",
+          "`DEC_RECIP`",
+          "v3",
+          "RW stub",
+          "RECIP[15:0]",
+          "boxcar reciprocal: mean_Q8.8 = ((sum >> DEC_PRE) * RECIP) >> 8 (06-TIERS \u00a71.5); v3.0+: reads 0 in v2.2"
+        ],
+        [
+          "`0x27`",
+          "`DEC_PRE`",
+          "v3",
+          "RW stub",
+          "PRE[4:0]",
+          "boxcar pre-shift; v3.0+: reads 0 in v2.2"
+        ],
+        [
+          "`0x41`",
+          "`DRAIN_START`",
+          "v3",
+          "RW",
+          "IDX[14:0]",
+          "drain window start; latched at DONE and at OP_REWIND"
+        ],
+        [
+          "`0x42`",
+          "`DRAIN_LEN`",
+          "v3",
+          "RW",
+          "LEN[15:0]",
+          "drain window length; latched with DRAIN_START"
+        ],
+        [
+          "`0x43`",
+          "`DRAIN_STAT`",
+          "v3",
+          "R",
+          "POPS[15:0]",
+          "drain statistics \u2014 the pointer-delta ground truth for rung R1"
+        ],
+        [
+          "`0x45`",
+          "`POP_MON`",
+          "v3",
+          "R",
+          "MIN_GAP[7:0] UNDERRUN[15:8]",
+          "pop monitor"
+        ],
+        [
+          "`0x46`",
+          "`STACK_N`",
+          "v3",
+          "RW stub",
+          "N[10:0]",
+          "stack batch size; v3.0+: reads 0 in v2.2"
+        ],
+        [
+          "`0x47`",
+          "`STACK_CTRL`",
+          "v3",
+          "RW stub",
+          "PHASE_BINS[1:0] SHIFT[3:2] HOLDOFF[15:4]",
+          "stack geometry, readout shift, holdoff; v3.0+: reads 0 in v2.2"
+        ],
+        [
+          "`0x49`",
+          "`STACK_CNT`",
+          "v3",
+          "R stub",
+          "RECORDS[10:0] PHASE_LAST[13:11]",
+          "stack progress; v3.0+: reads 0 in v2.2"
+        ],
+        [
+          "`0x4a`",
+          "`STACK_PRE`",
+          "v3",
+          "RW stub",
+          "ROWS[8:0]",
+          "stack window pre-trigger; v3.0+: reads 0 in v2.2"
+        ],
+        [
+          "`0x4b`",
+          "`STACK_LEN`",
+          "v3",
+          "RW stub",
+          "ROWS[11:0]",
+          "stack window length; v3.0+: reads 0 in v2.2"
+        ],
+        [
+          "`0x4d`",
+          "`STATUS_B`",
+          "v3",
+          "R stub",
+          "IL_ACTIVE[0] STACK_BUSY[1] STACK_DONE[2] FIFO_EMPTY[3] STEP_BUSY[7:4] STEP_ERR[8] CAL_SAT[9]",
+          "tier status; v3.0+: reads 0 in v2.2"
+        ],
+        [
+          "`0x4e`",
+          "`EYE_CTRL`",
+          "v3",
+          "RW stub",
+          "CORE[3:0] CENTRE[11:4] TOL[14:12] EN[15]",
+          "eye monitor control; v3.0+: reads 0 in v2.2"
+        ],
+        [
+          "`0x4f`",
+          "`EYE_CNT`",
+          "v3",
+          "R stub",
+          "COUNT[15:0]",
+          "eye monitor count; v3.0+: reads 0 in v2.2"
+        ],
+        [
+          "`0x7d`",
+          "`DBG2`",
+          "v3",
+          "R stub",
+          "STEPS[7:0] CSEL[10:8] BUSY[11] ERR[12]",
+          "phase-step engine debug; v3.0+: reads 0 in v2.2"
+        ]
+      ],
+      "source": "fpga/default/docs/REGISTER-MAP.md",
+      "status": "generated documentation; current codegen drift fails"
+    },
+    {
+      "gitBlob": "f5ee3e56a0185a2e4d277d65eec50798bfeb6028",
+      "heading": "OPCODE opcodes",
+      "line": 78,
+      "rows": [
+        [
+          "value",
+          "name",
+          "meaning"
+        ],
+        [
+          "---",
+          "---",
+          "---"
+        ],
+        [
+          "`0x0000`",
+          "`RESET`",
+          "return to idle, clear the record"
+        ],
+        [
+          "`0x0001`",
+          "`GO`",
+          "arm / re-arm (only while RUN.RUN=1); clears DRAIN_STAT and POP_MON"
+        ],
+        [
+          "`0x0002`",
+          "`HALT`",
+          "freeze the record for drain (stack: end the batch with the partial count)"
+        ],
+        [
+          "`0x0003`",
+          "`REWIND`",
+          "drain pointer back to DRAIN_START with DRAIN_LEN re-latched, record untouched (the app's re-drain path)"
+        ],
+        [
+          "`0x0004`",
+          "`STACK_CLEAR`",
+          "zero the stack accumulators and PHASE_CNT without re-arming; v3.0+ (stack, v3.1): ignored in v2.2"
+        ]
+      ],
+      "source": "fpga/default/docs/REGISTER-MAP.md",
+      "status": "generated documentation; current codegen drift fails"
+    },
+    {
+      "gitBlob": "f5ee3e56a0185a2e4d277d65eec50798bfeb6028",
+      "heading": "`CLK_STAT` (`0x04`, R)",
+      "line": 92,
+      "rows": [
+        [
+          "bits",
+          "field",
+          "meaning"
+        ],
+        [
+          "---",
+          "---",
+          "---"
+        ],
+        [
+          "[0]",
+          "`PLLA_LOCK`",
+          "PLL A (M2 -> the 200 MHz encode/capture phases) locked"
+        ],
+        [
+          "[1]",
+          "`PLLB_LOCK`",
+          "PLL B (bus clock) locked"
+        ],
+        [
+          "[15:4]",
+          "`RATIO`",
+          "M2-vs-C2 ratio: M2 edges per 4096 C2 cycles, /16, saturating"
+        ]
+      ],
+      "source": "fpga/default/docs/REGISTER-MAP.md",
+      "status": "generated documentation; current codegen drift fails"
+    },
+    {
+      "gitBlob": "f5ee3e56a0185a2e4d277d65eec50798bfeb6028",
+      "heading": "`DIAG_IDX` (`0x08`, RW)",
+      "line": 102,
+      "rows": [
+        [
+          "bits",
+          "field",
+          "meaning"
+        ],
+        [
+          "---",
+          "---",
+          "---"
+        ],
+        [
+          "[7:0]",
+          "`IDX`",
+          "window index (see the DIAG window table)"
+        ]
+      ],
+      "source": "fpga/default/docs/REGISTER-MAP.md",
+      "status": "generated documentation; current codegen drift fails"
+    },
+    {
+      "gitBlob": "f5ee3e56a0185a2e4d277d65eec50798bfeb6028",
+      "heading": "`RUN` (`0x24`, RW)",
+      "line": 110,
+      "rows": [
+        [
+          "bits",
+          "field",
+          "meaning"
+        ],
+        [
+          "---",
+          "---",
+          "---"
+        ],
+        [
+          "[1:0]",
+          "`MODE`",
+          "0=auto 1=norm Values: 0=`AUTO`, 1=`NORM`."
+        ],
+        [
+          "[2]",
+          "`RUN`",
+          "1=running (GO is accepted only while set)"
+        ],
+        [
+          "[3]",
+          "`STREAM`",
+          "1=gapless ring: the record never finalizes, the drain chases the write pointer"
+        ],
+        [
+          "[5:4]",
+          "`CHMODE`",
+          "0=dual 20480x2, 1=CH1 only 40960, 2=CH2 only 40960 Values: 0=`DUAL`, 1=`CH1`, 2=`CH2`."
+        ],
+        [
+          "[6]",
+          "`STACK`",
+          "stack (accumulate) enable: one batch of STACK_N records per GO, readout through BURST (06-TIERS \u00a71.4); v3.0+ (stack, v3.1): reads 0 in v2.2"
+        ],
+        [
+          "[7]",
+          "`REDUCE`",
+          "reduce unit on (IL_CTRL.REDUCE_MODE; mode 0 with REDUCE=1 is RAW) (06-TIERS \u00a71.5); v3.0+ (reduce, v3.2): reads 0 in v2.2"
+        ]
+      ],
+      "source": "fpga/default/docs/REGISTER-MAP.md",
+      "status": "generated documentation; current codegen drift fails"
+    },
+    {
+      "gitBlob": "f5ee3e56a0185a2e4d277d65eec50798bfeb6028",
+      "heading": "`BURST` (`0x40`, R pop)",
+      "line": 123,
+      "rows": [
+        [
+          "bits",
+          "field",
+          "meaning"
+        ],
+        [
+          "---",
+          "---",
+          "---"
+        ],
+        [
+          "[15:8]",
+          "`CH1`",
+          "CH1 sample (dual mode) or the first of two consecutive samples (single-channel mode); stack readout: (sum >> STACK_CTRL.SHIFT)[15:8]"
+        ],
+        [
+          "[7:0]",
+          "`CH2`",
+          "CH2 sample (dual mode) or the second consecutive sample (single-channel mode); stack readout: (sum >> STACK_CTRL.SHIFT)[7:0]"
+        ]
+      ],
+      "source": "fpga/default/docs/REGISTER-MAP.md",
+      "status": "generated documentation; current codegen drift fails"
+    },
+    {
+      "gitBlob": "f5ee3e56a0185a2e4d277d65eec50798bfeb6028",
+      "heading": "`BURST_REMAIN` (`0x44`, R)",
+      "line": 132,
+      "rows": [
+        [
+          "bits",
+          "field",
+          "meaning"
+        ],
+        [
+          "---",
+          "---",
+          "---"
+        ],
+        [
+          "[15]",
+          "`READY`",
+          "1=a record (or a stack batch) is available for drain"
+        ],
+        [
+          "[14:0]",
+          "`REMAIN`",
+          "words remaining to pop through BURST within the drain window (stream: words available)"
+        ]
+      ],
+      "source": "fpga/default/docs/REGISTER-MAP.md",
+      "status": "generated documentation; current codegen drift fails"
+    },
+    {
+      "gitBlob": "f5ee3e56a0185a2e4d277d65eec50798bfeb6028",
+      "heading": "`STATUS_A` (`0x48`, R)",
+      "line": 141,
+      "rows": [
+        [
+          "bits",
+          "field",
+          "meaning"
+        ],
+        [
+          "---",
+          "---",
+          "---"
+        ],
+        [
+          "[0]",
+          "`VALID`",
+          "a coherent record is present"
+        ],
+        [
+          "[1]",
+          "`TRIG`",
+          "a trigger was accepted this record"
+        ],
+        [
+          "[2]",
+          "`DONE`",
+          "post-trigger record complete (stack: the batch is complete, mirrors STATUS_B.STACK_DONE)"
+        ],
+        [
+          "[3]",
+          "`OVERFLOW`",
+          "stream ring overflowed (drain fell behind); sticky until GO"
+        ],
+        [
+          "[4]",
+          "`ARMED`",
+          "armed, waiting for a trigger"
+        ]
+      ],
+      "source": "fpga/default/docs/REGISTER-MAP.md",
+      "status": "generated documentation; current codegen drift fails"
+    },
+    {
+      "gitBlob": "f5ee3e56a0185a2e4d277d65eec50798bfeb6028",
+      "heading": "`TRIGPOS_LO` (`0x4c`, R)",
+      "line": 153,
+      "rows": [
+        [
+          "bits",
+          "field",
+          "meaning"
+        ],
+        [
+          "---",
+          "---",
+          "---"
+        ],
+        [
+          "[15:0]",
+          "`FRAC`",
+          "sub-sample trigger position, Q16 fraction (stack: the top log2 F bits select the phase bin)"
+        ]
+      ],
+      "source": "fpga/default/docs/REGISTER-MAP.md",
+      "status": "generated documentation; current codegen drift fails"
+    },
+    {
+      "gitBlob": "f5ee3e56a0185a2e4d277d65eec50798bfeb6028",
+      "heading": "`TRIGPOS_HI` (`0x50`, R)",
+      "line": 161,
+      "rows": [
+        [
+          "bits",
+          "field",
+          "meaning"
+        ],
+        [
+          "---",
+          "---",
+          "---"
+        ],
+        [
+          "[14:0]",
+          "`IDX`",
+          "record index (word) of the trigger sample (ADDR_W bits); as built bit 15 = trig_half in single-channel mode"
+        ]
+      ],
+      "source": "fpga/default/docs/REGISTER-MAP.md",
+      "status": "generated documentation; current codegen drift fails"
+    },
+    {
+      "gitBlob": "f5ee3e56a0185a2e4d277d65eec50798bfeb6028",
+      "heading": "`FILL` (`0x54`, R)",
+      "line": 169,
+      "rows": [
+        [
+          "bits",
+          "field",
+          "meaning"
+        ],
+        [
+          "---",
+          "---",
+          "---"
+        ],
+        [
+          "[15:0]",
+          "`COUNT`",
+          "low 16 bits of wrote_count (stream: the live write pointer)"
+        ]
+      ],
+      "source": "fpga/default/docs/REGISTER-MAP.md",
+      "status": "generated documentation; current codegen drift fails"
+    },
+    {
+      "gitBlob": "f5ee3e56a0185a2e4d277d65eec50798bfeb6028",
+      "heading": "`ACQ_CTRL` (`0x58`, RW)",
+      "line": 177,
+      "rows": [
+        [
+          "bits",
+          "field",
+          "meaning"
+        ],
+        [
+          "---",
+          "---",
+          "---"
+        ],
+        [
+          "[0]",
+          "`ENC_EN`",
+          "encode clock enable (all five pairs; 0 = converters static)"
+        ],
+        [
+          "[2:1]",
+          "`ENC_RATE`",
+          "encode rate: 0=12.5 MHz 1=50 MHz 2=100 MHz (IL5-100) 3=200 MHz (IL5-200) Values: 0=`R12M5`, 1=`R50M`, 2=`R100M`, 3=`R200M`."
+        ],
+        [
+          "[3]",
+          "`IL_EN`",
+          "interleave enable; v2.2: stored, no effect on the dual-E1 datapath; v3.0+: a read-only mirror of IL_CTRL.IL_EN"
+        ],
+        [
+          "[7:4]",
+          "`TRIG_HYST`",
+          "software trigger hysteresis in sample codes (0..15) around TRIG_LEVEL"
+        ],
+        [
+          "[8]",
+          "`TRIG_SRC`",
+          "trigger source: 0=CH1 1=CH2"
+        ],
+        [
+          "[9]",
+          "`TRIG_SLOPE`",
+          "trigger slope: 0=rising 1=falling"
+        ],
+        [
+          "[14:10]",
+          "`PAIR_EN`",
+          "per-pair encode enable E1..E5 (bit 10 = E1); ANDed with ENC_EN (freeze probe)"
+        ]
+      ],
+      "source": "fpga/default/docs/REGISTER-MAP.md",
+      "status": "generated documentation; current codegen drift fails"
+    },
+    {
+      "gitBlob": "f5ee3e56a0185a2e4d277d65eec50798bfeb6028",
+      "heading": "`TRIG_LEVEL` (`0x5c`, RW)",
+      "line": 191,
+      "rows": [
+        [
+          "bits",
+          "field",
+          "meaning"
+        ],
+        [
+          "---",
+          "---",
+          "---"
+        ],
+        [
+          "[7:0]",
+          "`LEVEL`",
+          "trigger level in sample codes"
+        ],
+        [
+          "[8]",
+          "`HW_SEL`",
+          "1=use the A12 hardware comparator instead of the software compare"
+        ]
+      ],
+      "source": "fpga/default/docs/REGISTER-MAP.md",
+      "status": "generated documentation; current codegen drift fails"
+    },
+    {
+      "gitBlob": "f5ee3e56a0185a2e4d277d65eec50798bfeb6028",
+      "heading": "`SNOOP_SEL` (`0x60`, R)",
+      "line": 200,
+      "rows": [
+        [
+          "bits",
+          "field",
+          "meaning"
+        ],
+        [
+          "---",
+          "---",
+          "---"
+        ],
+        [
+          "[6:0]",
+          "`SEL`",
+          "the full 7-bit selector (A7..A1) of the last CS1 write"
+        ],
+        [
+          "[7]",
+          "`A2`",
+          "A2 pad (= GPMC A2 = SEL[1]) level sampled at that write"
+        ],
+        [
+          "[8]",
+          "`B1`",
+          "B1 pad (= GPMC A1 = SEL[0]) level sampled at that write"
+        ],
+        [
+          "[15:9]",
+          "`COUNT`",
+          "CS1 write counter (wraps)"
+        ]
+      ],
+      "source": "fpga/default/docs/REGISTER-MAP.md",
+      "status": "generated documentation; current codegen drift fails"
+    },
+    {
+      "gitBlob": "f5ee3e56a0185a2e4d277d65eec50798bfeb6028",
+      "heading": "`DIAG_CTRL` (`0x68`, RW)",
+      "line": 211,
+      "rows": [
+        [
+          "bits",
+          "field",
+          "meaning"
+        ],
+        [
+          "---",
+          "---",
+          "---"
+        ],
+        [
+          "[0]",
+          "`D2`",
+          "D2 (nCSO) level; reset 0 (vendor idle posture)"
+        ],
+        [
+          "[1]",
+          "`K2_EN`",
+          "K2 50 MHz clock forward enable; reset 1"
+        ],
+        [
+          "[2]",
+          "`BUS_DRV_EN`",
+          "27-ball bus drive master enable (ANDs every DIAG BUS_OE bit); reset 0"
+        ],
+        [
+          "[4:3]",
+          "`F2_SEL`",
+          "F2 output: 0 = 0 (reset), 1 = 1; codes 2 (clk50) and 3 (clk100) are RETIRED and decode as 0 \u2014 they were the only free-running clock sources on an SRAM-clock candidate in the image, reachable from one 16-bit write, and every edge on F2/J2 now goes through the counted emitter (DIAG SRCLK_*)"
+        ],
+        [
+          "[6:5]",
+          "`J2_SEL`",
+          "J2 output: 0 = 0 (reset), 1 = 1; codes 2 and 3 RETIRED, see F2_SEL"
+        ],
+        [
+          "[7]",
+          "`A11`",
+          "A11 output level; reset 0"
+        ],
+        [
+          "[8]",
+          "`F1`",
+          "F1 output level; reset 1"
+        ],
+        [
+          "[9]",
+          "`G1`",
+          "G1 output level; reset 0"
+        ],
+        [
+          "[10]",
+          "`G2`",
+          "G2 output level; reset 0"
+        ],
+        [
+          "[11]",
+          "`K1`",
+          "K1 output level; reset 0"
+        ],
+        [
+          "[12]",
+          "`LANE_GATE_RST`",
+          "reset the lane ever-1/ever-0 flags (LANE_LVL)"
+        ],
+        [
+          "[14:13]",
+          "`SNAP_CLK`",
+          "snapshot clock select (v2.2: the 2048x16 snapshot RAM; retired in v3.0 with the snapshot on the delay line, reads 0 from then)"
+        ],
+        [
+          "[15]",
+          "`SNAP_ARM`",
+          "arm the snapshot"
+        ]
+      ],
+      "source": "fpga/default/docs/REGISTER-MAP.md",
+      "status": "generated documentation; current codegen drift fails"
+    },
+    {
+      "gitBlob": "f5ee3e56a0185a2e4d277d65eec50798bfeb6028",
+      "heading": "`SNAP_REMAIN` (`0x6c`, R)",
+      "line": 231,
+      "rows": [
+        [
+          "bits",
+          "field",
+          "meaning"
+        ],
+        [
+          "---",
+          "---",
+          "---"
+        ],
+        [
+          "[15]",
+          "`READY`",
+          "1=snapshot complete"
+        ],
+        [
+          "[14:0]",
+          "`REMAIN`",
+          "snapshot words remaining to pop"
+        ]
+      ],
+      "source": "fpga/default/docs/REGISTER-MAP.md",
+      "status": "generated documentation; current codegen drift fails"
+    },
+    {
+      "gitBlob": "f5ee3e56a0185a2e4d277d65eec50798bfeb6028",
+      "heading": "`MISC_RD` (`0x74`, R)",
+      "line": 240,
+      "rows": [
+        [
+          "bits",
+          "field",
+          "meaning"
+        ],
+        [
+          "---",
+          "---",
+          "---"
+        ],
+        [
+          "[0]",
+          "`P6`",
+          "P6 input (mirrors D2 through the MAX V)"
+        ],
+        [
+          "[1]",
+          "`F3`",
+          "F3 input level"
+        ],
+        [
+          "[2]",
+          "`F5`",
+          "F5 input level"
+        ],
+        [
+          "[3]",
+          "`G5`",
+          "G5 input level"
+        ],
+        [
+          "[4]",
+          "`D3`",
+          "D3 input level"
+        ],
+        [
+          "[5]",
+          "`F7`",
+          "F7 input level"
+        ],
+        [
+          "[6]",
+          "`A2`",
+          "A2 input level (GPMC A2)"
+        ],
+        [
+          "[7]",
+          "`B1`",
+          "B1 input level (GPMC A1)"
+        ],
+        [
+          "[8]",
+          "`D1`",
+          "D1 input level"
+        ],
+        [
+          "[9]",
+          "`G2`",
+          "the G2 level DIAG_CTRL asks for (G2 is a DDIO output, so the pad itself cannot be read back; equal to the pad whenever BUSGEN_AUX.G2 is 0)"
+        ],
+        [
+          "[10]",
+          "`B10`",
+          "B10 (nWE) level"
+        ],
+        [
+          "[11]",
+          "`E6`",
+          "E6 (nOE) level"
+        ]
+      ],
+      "source": "fpga/default/docs/REGISTER-MAP.md",
+      "status": "generated documentation; current codegen drift fails"
+    },
+    {
+      "gitBlob": "f5ee3e56a0185a2e4d277d65eec50798bfeb6028",
+      "heading": "`IL_CTRL` (`0x25`, RW)",
+      "line": 259,
+      "rows": [
+        [
+          "bits",
+          "field",
+          "meaning"
+        ],
+        [
+          "---",
+          "---",
+          "---"
+        ],
+        [
+          "[0]",
+          "`IL_EN`",
+          "interleave on (needs ENC_RATE = 2 + IL_RATE, else STATUS_B.IL_ACTIVE = 0); v3.0+: reads 0 in v2.2"
+        ],
+        [
+          "[1]",
+          "`CAL_EN`",
+          "fabric per-core offset/gain (CAL_OFF/CAL_GAIN) on; v3.0+: reads 0 in v2.2"
+        ],
+        [
+          "[3:2]",
+          "`TSRC`",
+          "test source substituted for the record word at the writer input: 0 ADC, 1 RAMP (word = k & 0xffff, +1 per word), 2 COLTAG ({col, row[7:0]} = {k mod ROW_COLS, (k / ROW_COLS) & 0xff}), 3 GLITCH (0xffff when k mod 512 == 0, else 0x0000); k = the writer's word index since GO (wraps with the ring in stream mode); the iface Go models (ModelTsrc) are the reference Values: 0=`ADC`, 1=`RAMP`, 2=`COLTAG`, 3=`GLITCH`."
+        ],
+        [
+          "[6:4]",
+          "`REDUCE_MODE`",
+          "reduce unit mode (RUN.REDUCE): 0 RAW, 1 DECIM pick, 2 PEAK {min,max}, 3 BOXCAR8, 4 BOXCAR16 (06-TIERS \u00a71.5); v3.0+: reads 0 in v2.2 Values: 0=`RAW`, 1=`DECIM`, 2=`PEAK`, 3=`BOXCAR8`, 4=`BOXCAR16`."
+        ],
+        [
+          "[7]",
+          "`IL_RATE`",
+          "rate tier: 0 = IL5-100 (100 MHz encode, 2 ns, one row per two c0 cycles, column order E1,E3,E5,E2,E4; the reset value), 1 = IL5-200 (200 MHz, 1 ns, one row per cycle, column order E1..E5); v3.0+: reads 0 in v2.2 Values: 0=`IL5_100`, 1=`IL5_200`."
+        ],
+        [
+          "[12:8]",
+          "`DIV_PH`",
+          "per-pair divider start phase for IL5-100: bit 8+k = pair E(k+1) one c_k cycle (5 ns) later; reset 0x0A00 (E2, E4) = the 2 ns lattice; ignored at IL5-200; change only with ENC_EN = 0; v3.0+: reads 0 in v2.2"
+        ]
+      ],
+      "source": "fpga/default/docs/REGISTER-MAP.md",
+      "status": "generated documentation; current codegen drift fails"
+    },
+    {
+      "gitBlob": "f5ee3e56a0185a2e4d277d65eec50798bfeb6028",
+      "heading": "`DEC_RECIP` (`0x26`, RW stub)",
+      "line": 272,
+      "rows": [
+        [
+          "bits",
+          "field",
+          "meaning"
+        ],
+        [
+          "---",
+          "---",
+          "---"
+        ],
+        [
+          "[15:0]",
+          "`RECIP`",
+          "round(2^(16+DEC_PRE) / D), D = 2..65536 (iface.BoxcarParams; equals the design's round(2^16 / (D >> DEC_PRE)) wherever that is exact)"
+        ]
+      ],
+      "source": "fpga/default/docs/REGISTER-MAP.md",
+      "status": "generated documentation; current codegen drift fails"
+    },
+    {
+      "gitBlob": "f5ee3e56a0185a2e4d277d65eec50798bfeb6028",
+      "heading": "`DEC_PRE` (`0x27`, RW stub)",
+      "line": 280,
+      "rows": [
+        [
+          "bits",
+          "field",
+          "meaning"
+        ],
+        [
+          "---",
+          "---",
+          "---"
+        ],
+        [
+          "[4:0]",
+          "`PRE`",
+          "max(0, ceil(log2 D) - 8)"
+        ]
+      ],
+      "source": "fpga/default/docs/REGISTER-MAP.md",
+      "status": "generated documentation; current codegen drift fails"
+    },
+    {
+      "gitBlob": "f5ee3e56a0185a2e4d277d65eec50798bfeb6028",
+      "heading": "`DRAIN_START` (`0x41`, RW)",
+      "line": 288,
+      "rows": [
+        [
+          "bits",
+          "field",
+          "meaning"
+        ],
+        [
+          "---",
+          "---",
+          "---"
+        ],
+        [
+          "[14:0]",
+          "`IDX`",
+          "first logical word of the drain window (0 = the record start)"
+        ]
+      ],
+      "source": "fpga/default/docs/REGISTER-MAP.md",
+      "status": "generated documentation; current codegen drift fails"
+    },
+    {
+      "gitBlob": "f5ee3e56a0185a2e4d277d65eec50798bfeb6028",
+      "heading": "`DRAIN_LEN` (`0x42`, RW)",
+      "line": 296,
+      "rows": [
+        [
+          "bits",
+          "field",
+          "meaning"
+        ],
+        [
+          "---",
+          "---",
+          "---"
+        ],
+        [
+          "[15:0]",
+          "`LEN`",
+          "words to drain (0 = to the record end / the full stack readout)"
+        ]
+      ],
+      "source": "fpga/default/docs/REGISTER-MAP.md",
+      "status": "generated documentation; current codegen drift fails"
+    },
+    {
+      "gitBlob": "f5ee3e56a0185a2e4d277d65eec50798bfeb6028",
+      "heading": "`DRAIN_STAT` (`0x43`, R)",
+      "line": 304,
+      "rows": [
+        [
+          "bits",
+          "field",
+          "meaning"
+        ],
+        [
+          "---",
+          "---",
+          "---"
+        ],
+        [
+          "[15:0]",
+          "`POPS`",
+          "BURST/BURST_ALIAS pops since GO / REWIND (wraps)"
+        ]
+      ],
+      "source": "fpga/default/docs/REGISTER-MAP.md",
+      "status": "generated documentation; current codegen drift fails"
+    },
+    {
+      "gitBlob": "f5ee3e56a0185a2e4d277d65eec50798bfeb6028",
+      "heading": "`POP_MON` (`0x45`, R)",
+      "line": 312,
+      "rows": [
+        [
+          "bits",
+          "field",
+          "meaning"
+        ],
+        [
+          "---",
+          "---",
+          "---"
+        ],
+        [
+          "[7:0]",
+          "`MIN_GAP`",
+          "shortest nOE-rise-to-nOE-rise gap between two pops, in clk cycles, since GO (saturating at 255)"
+        ],
+        [
+          "[15:8]",
+          "`UNDERRUN`",
+          "pops that found no word (the last word was returned), since GO (sticky, saturating at 255)"
+        ]
+      ],
+      "source": "fpga/default/docs/REGISTER-MAP.md",
+      "status": "generated documentation; current codegen drift fails"
+    },
+    {
+      "gitBlob": "f5ee3e56a0185a2e4d277d65eec50798bfeb6028",
+      "heading": "`STACK_N` (`0x46`, RW stub)",
+      "line": 321,
+      "rows": [
+        [
+          "bits",
+          "field",
+          "meaning"
+        ],
+        [
+          "---",
+          "---",
+          "---"
+        ],
+        [
+          "[10:0]",
+          "`N`",
+          "records per batch 1..STACK_N_MAX (0 = STACK_N_MAX)"
+        ]
+      ],
+      "source": "fpga/default/docs/REGISTER-MAP.md",
+      "status": "generated documentation; current codegen drift fails"
+    },
+    {
+      "gitBlob": "f5ee3e56a0185a2e4d277d65eec50798bfeb6028",
+      "heading": "`STACK_CTRL` (`0x47`, RW stub)",
+      "line": 329,
+      "rows": [
+        [
+          "bits",
+          "field",
+          "meaning"
+        ],
+        [
+          "---",
+          "---",
+          "---"
+        ],
+        [
+          "[1:0]",
+          "`PHASE_BINS`",
+          "log2 F: phase bins per sample, F in {1,2,4,8}; bins per channel = REC_DEPTH/2/F"
+        ],
+        [
+          "[3:2]",
+          "`SHIFT`",
+          "readout shift: word = (sum >> SHIFT)[15:0]; 0/1/2 for N <= 256/512/1024"
+        ],
+        [
+          "[15:4]",
+          "`HOLDOFF`",
+          "trigger holdoff after a window, in rows x 16"
+        ]
+      ],
+      "source": "fpga/default/docs/REGISTER-MAP.md",
+      "status": "generated documentation; current codegen drift fails"
+    },
+    {
+      "gitBlob": "f5ee3e56a0185a2e4d277d65eec50798bfeb6028",
+      "heading": "`STACK_CNT` (`0x49`, R stub)",
+      "line": 339,
+      "rows": [
+        [
+          "bits",
+          "field",
+          "meaning"
+        ],
+        [
+          "---",
+          "---",
+          "---"
+        ],
+        [
+          "[10:0]",
+          "`RECORDS`",
+          "records accumulated so far in the current/last batch"
+        ],
+        [
+          "[13:11]",
+          "`PHASE_LAST`",
+          "phase bin of the last accepted record"
+        ]
+      ],
+      "source": "fpga/default/docs/REGISTER-MAP.md",
+      "status": "generated documentation; current codegen drift fails"
+    },
+    {
+      "gitBlob": "f5ee3e56a0185a2e4d277d65eec50798bfeb6028",
+      "heading": "`STACK_PRE` (`0x4a`, RW stub)",
+      "line": 348,
+      "rows": [
+        [
+          "bits",
+          "field",
+          "meaning"
+        ],
+        [
+          "---",
+          "---",
+          "---"
+        ],
+        [
+          "[8:0]",
+          "`ROWS`",
+          "pre-trigger rows of the stack window (<= DLINE_ROWS - 64 = 448)"
+        ]
+      ],
+      "source": "fpga/default/docs/REGISTER-MAP.md",
+      "status": "generated documentation; current codegen drift fails"
+    },
+    {
+      "gitBlob": "f5ee3e56a0185a2e4d277d65eec50798bfeb6028",
+      "heading": "`STACK_LEN` (`0x4b`, RW stub)",
+      "line": 356,
+      "rows": [
+        [
+          "bits",
+          "field",
+          "meaning"
+        ],
+        [
+          "---",
+          "---",
+          "---"
+        ],
+        [
+          "[11:0]",
+          "`ROWS`",
+          "rows per stack window (<= ROWS/2/F)"
+        ]
+      ],
+      "source": "fpga/default/docs/REGISTER-MAP.md",
+      "status": "generated documentation; current codegen drift fails"
+    },
+    {
+      "gitBlob": "f5ee3e56a0185a2e4d277d65eec50798bfeb6028",
+      "heading": "`STATUS_B` (`0x4d`, R stub)",
+      "line": 364,
+      "rows": [
+        [
+          "bits",
+          "field",
+          "meaning"
+        ],
+        [
+          "---",
+          "---",
+          "---"
+        ],
+        [
+          "[0]",
+          "`IL_ACTIVE`",
+          "interleave running (IL_EN and the matching ENC_RATE)"
+        ],
+        [
+          "[1]",
+          "`STACK_BUSY`",
+          "a stack batch is accumulating"
+        ],
+        [
+          "[2]",
+          "`STACK_DONE`",
+          "the batch is complete (mirrored into STATUS_A.DONE)"
+        ],
+        [
+          "[3]",
+          "`FIFO_EMPTY`",
+          "the reader FIFO holds no word"
+        ],
+        [
+          "[7:4]",
+          "`STEP_BUSY`",
+          "phase-step engine busy per counter c1..c4 (bit 4 = c1)"
+        ],
+        [
+          "[8]",
+          "`STEP_ERR`",
+          "a step without phasedone (sticky)"
+        ],
+        [
+          "[9]",
+          "`CAL_SAT`",
+          "the CAL stage saturated (any core, sticky per GO)"
+        ]
+      ],
+      "source": "fpga/default/docs/REGISTER-MAP.md",
+      "status": "generated documentation; current codegen drift fails"
+    },
+    {
+      "gitBlob": "f5ee3e56a0185a2e4d277d65eec50798bfeb6028",
+      "heading": "`EYE_CTRL` (`0x4e`, RW stub)",
+      "line": 378,
+      "rows": [
+        [
+          "bits",
+          "field",
+          "meaning"
+        ],
+        [
+          "---",
+          "---",
+          "---"
+        ],
+        [
+          "[3:0]",
+          "`CORE`",
+          "core to watch, 0..9 = 2*pair + ch"
+        ],
+        [
+          "[11:4]",
+          "`CENTRE`",
+          "expected code"
+        ],
+        [
+          "[14:12]",
+          "`TOL`",
+          "glitch = \\",
+          "code - CENTRE\\",
+          "> 2^TOL"
+        ],
+        [
+          "[15]",
+          "`EN`",
+          "eye monitor enable"
+        ]
+      ],
+      "source": "fpga/default/docs/REGISTER-MAP.md",
+      "status": "generated documentation; current codegen drift fails"
+    },
+    {
+      "gitBlob": "f5ee3e56a0185a2e4d277d65eec50798bfeb6028",
+      "heading": "`EYE_CNT` (`0x4f`, R stub)",
+      "line": 389,
+      "rows": [
+        [
+          "bits",
+          "field",
+          "meaning"
+        ],
+        [
+          "---",
+          "---",
+          "---"
+        ],
+        [
+          "[15:0]",
+          "`COUNT`",
+          "glitches over the last 65536 rows (windowed like LANE_TOG, saturating)"
+        ]
+      ],
+      "source": "fpga/default/docs/REGISTER-MAP.md",
+      "status": "generated documentation; current codegen drift fails"
+    },
+    {
+      "gitBlob": "f5ee3e56a0185a2e4d277d65eec50798bfeb6028",
+      "heading": "`DBG2` (`0x7d`, R stub)",
+      "line": 397,
+      "rows": [
+        [
+          "bits",
+          "field",
+          "meaning"
+        ],
+        [
+          "---",
+          "---",
+          "---"
+        ],
+        [
+          "[7:0]",
+          "`STEPS`",
+          "phase steps applied on the last stepped counter"
+        ],
+        [
+          "[10:8]",
+          "`CSEL`",
+          "which counter was stepped last"
+        ],
+        [
+          "[11]",
+          "`BUSY`",
+          "the step engine is busy"
+        ],
+        [
+          "[12]",
+          "`ERR`",
+          "the last step reported no phasedone"
+        ]
+      ],
+      "source": "fpga/default/docs/REGISTER-MAP.md",
+      "status": "generated documentation; current codegen drift fails"
+    },
+    {
+      "gitBlob": "f5ee3e56a0185a2e4d277d65eec50798bfeb6028",
+      "heading": "DIAG window (`DIAG_IDX` -> `DIAG_DATA`)",
+      "line": 408,
+      "rows": [
+        [
+          "idx",
+          "name",
+          "access",
+          "fields",
+          "meaning"
+        ],
+        [
+          "---",
+          "---",
+          "---",
+          "---",
+          "---"
+        ],
+        [
+          "`0x00`",
+          "`BUS_OE_LO`",
+          "RW",
+          "",
+          "per-ball output enable, bus balls 0..15 (J6 K5 L1 L2 L3 L4 N1 N2 P1 P2 R1 M6 N6 N3 N5 P3); effective only with DIAG_CTRL.BUS_DRV_EN"
+        ],
+        [
+          "`0x01`",
+          "`BUS_OE_HI`",
+          "RW",
+          "OE[10:0]",
+          "per-ball output enable, bus balls 16..26"
+        ],
+        [
+          "`0x02`",
+          "`BUS_DRV_LO`",
+          "RW",
+          "",
+          "drive level, bus balls 0..15"
+        ],
+        [
+          "`0x03`",
+          "`BUS_DRV_HI`",
+          "RW",
+          "DRV[10:0]",
+          "drive level, bus balls 16..26"
+        ],
+        [
+          "`0x04`",
+          "`BUS_RD_LO`",
+          "R",
+          "",
+          "registered pad input level, bus balls 0..15"
+        ],
+        [
+          "`0x05`",
+          "`BUS_RD_HI`",
+          "R",
+          "RD[10:0]",
+          "registered pad input level, bus balls 16..26"
+        ],
+        [
+          "`0x06`",
+          "`SINGLE_CTRL`",
+          "RW",
+          "OE[4:0] DRV[12:8]",
+          "the five single bidirectional balls"
+        ],
+        [
+          "`0x07`",
+          "`ADC_HOLD`",
+          "RW",
+          "L4[0] T2[1] T7[2]",
+          "the proven ADC recipe (owned-fpga c8ec66d) vs bus membership of L4/T2/T7"
+        ],
+        [
+          "`0x08`",
+          "`LANE_IDX`",
+          "RW",
+          "IDX[6:0]",
+          "which input LANE_TOG / LANE_LVL report"
+        ],
+        [
+          "`0x09`",
+          "`LANE_TOG`",
+          "R",
+          "",
+          "toggle count of LANE_IDX over the last 65536 bus-clock cycles (saturating)"
+        ],
+        [
+          "`0x0a`",
+          "`LANE_LVL`",
+          "R",
+          "LEVEL[0] EVER1[1] EVER0[2]",
+          "level / ever-1 / ever-0 of LANE_IDX"
+        ],
+        [
+          "`0x0b`",
+          "`SNAP_MODE`",
+          "RW",
+          "SLICE[2:0]",
+          "snapshot RAM source (v2.2, the 2048x16 snapshot; superseded by SNAP_CTRL2 in v3.0)"
+        ],
+        [
+          "`0x0c`",
+          "`PAIR_TRIM`",
+          "RW stub",
+          "E2[3:0] E3[7:4] E4[11:8] E5[15:12]",
+          "per-pair encode phase trim on counters c1..c4 (E1 = c0 is the reference); a write starts the step engine on the changed counters (STATUS_B.STEP_BUSY, DBG2); replaces PHASE_SEL; v3.0+: reads 0 in v2.2"
+        ],
+        [
+          "`0x0d`",
+          "`IL_DLY`",
+          "RW stub",
+          "E1[1:0] E2[3:2] E3[5:4] E4[7:6] E5[9:8]",
+          "per-pair row-alignment delay (reset = the hop-chain latency table; at IL5-100 the LSB selects which of the two captures of a sample is taken); v3.0+: reads 0 in v2.2"
+        ],
+        [
+          "`0x0e`",
+          "`SNAP_CTRL2`",
+          "RW stub",
+          "ROWS[8:0] SRC[10:9] DECIM[14:11]",
+          "snapshot on the delay line: SNAP_POP pops ROW_COLS words per row, SNAP_REMAIN counts words; v3.0+: reads 0 in v2.2"
+        ],
+        [
+          "`0x10`..`0x5f`",
+          "`LANEMAP`",
+          "R",
+          "LANE[6:0]",
+          "the baked ten-core lane map (fpga/default/lanemap_seed.vh, from lanecal-2026-09-05), entry i = idx-0x10; read-only from v2.2 (a different map is a rebuild); dual mode reads CH1 from entries 0..7, CH2 from 8..15"
+        ],
+        [
+          "`0x60`..`0x69`",
+          "`CAL_OFF`",
+          "RW stub",
+          "OFF[7:0]",
+          "per-core offset, core = 2*pair + ch; y = sat((x - OFF) * GAIN); v3.0+: reads 0 in v2.2"
+        ],
+        [
+          "`0x6a`..`0x73`",
+          "`CAL_GAIN`",
+          "RW stub",
+          "GAIN[8:0]",
+          "per-core gain, core = 2*pair + ch; v3.0+: reads 0 in v2.2"
+        ],
+        [
+          "`0x74`..`0x7b`",
+          "`PHASE_CNT`",
+          "R stub",
+          "COUNT[15:0]",
+          "records per phase bin in the current/last stack batch; v3.0+: reads 0 in v2.2"
+        ],
+        [
+          "`0x7c`",
+          "`CAL_STAT`",
+          "R stub",
+          "SAT[9:0]",
+          "CAL stage saturation; v3.0+: reads 0 in v2.2"
+        ],
+        [
+          "`0x7d`..`0x81`",
+          "`CAP_SEL`",
+          "R stub",
+          "J[2:0] NEG[3] HOPS[5:4]",
+          "the static capture choice per pair k = idx-0x7d (build constant, for the calibration record and the app's sanity check); v3.0+: reads 0 in v2.2"
+        ],
+        [
+          "`0x82`",
+          "`BUSGEN_CTL`",
+          "RW",
+          "EN[0] RATE[2:1] NPHASE[5:3] ONESHOT[6] RUN[7] OE_PH[12:8] OE_INV[13]",
+          "27-ball bus generator: control"
+        ],
+        [
+          "`0x83`..`0x8c`",
+          "`BUSGEN_PAT`",
+          "RW",
+          "BITS[15:0]",
+          "27-ball bus generator: the word driven in each phase, two entries per phase, ball order J6 K5 L1 L2 L3 L4 N1 N2 P1 P2 R1 M6 N6 N3 N5 P3 R3 R4 R5 R6 R7 T2 T3 T4 T5 T6 T7"
+        ],
+        [
+          "`0x8d`",
+          "`BUSGEN_AUX`",
+          "RW",
+          "K2[2:0] D1[5:3] D2[8:6] G2[11:9] K1[14:12]",
+          "27-ball bus generator: what the four clock-shaped balls carry while EN"
+        ],
+        [
+          "`0x8e`",
+          "`BUSCAP_CTL`",
+          "RW",
+          "EN[0] TRIG[1] TRIGGERED[2] WAITING[3] CONFIRM[5:4]",
+          "27-ball bus capture: control and status"
+        ],
+        [
+          "`0x8f`",
+          "`BUSGEN_OE_LO`",
+          "RW",
+          "MASK[15:0]",
+          "27-ball bus generator: per-ball drive mask, low half \u2014 ANDed with BUSGEN_CTL.OE_PH so a subset of the group can be driven while the rest is listened to (BUSCAP's departure trigger only watches the balls this mask leaves alone)"
+        ],
+        [
+          "`0x90`",
+          "`BUSGEN_OE_HI`",
+          "RW",
+          "MASK[10:0]",
+          "27-ball bus generator: per-ball drive mask, high half"
+        ],
+        [
+          "`0x91`",
+          "`SRCLK_CTRL`",
+          "RW",
+          "F2_SRC[1:0] J2_SRC[3:2] CTRL_G2[4] SNAP_ON_ARM[5] D1_SRC[9:8] GUARD[7:6]",
+          "counted-edge crank: sources, control ball, snapshot coupling and the hardware abort"
+        ],
+        [
+          "`0x92`",
+          "`SRCLK_N`",
+          "RW",
+          "NEDGE[9:0] DIV[14:10]",
+          "counted-edge crank: how many edges, and how fast"
+        ],
+        [
+          "`0x93`",
+          "`SRCLK_DLY`",
+          "RW",
+          "DLY[9:0]",
+          "counted-edge crank: arm-to-first-edge delay, so one snapshot holds PRE and POST"
+        ],
+        [
+          "`0x94`",
+          "`SRCLK_ARM`",
+          "RW",
+          "KEY[7:0] ARM[8] STOP[9] CLR[10]",
+          "counted-edge crank: keyed arm / stop / clear strobe (no stored state)"
+        ],
+        [
+          "`0x95`",
+          "`SRCLK_STAT`",
+          "R",
+          "REMAIN[9:0] BUSY[10] ABORTED[11] REFUSED[12] REFUSE[15:13]",
+          "counted-edge crank: status (read while BUSY = 0; the crossing is per-bit)"
+        ],
+        [
+          "`0x96`",
+          "`SRCLK_CNT_F2`",
+          "R",
+          "EMITTED[15:0]",
+          "counted-edge crank: edges emitted on F2 since arm"
+        ],
+        [
+          "`0x97`",
+          "`SRCLK_CNT_J2`",
+          "R",
+          "EMITTED[15:0]",
+          "counted-edge crank: edges emitted on J2 since arm"
+        ],
+        [
+          "`0x98`",
+          "`SRCLK_LIFE`",
+          "R",
+          "EDGES[15:0]",
+          "counted-edge crank: the whole-configuration edge ceiling"
+        ],
+        [
+          "`0x99`",
+          "`SRCLK_DEP`",
+          "R",
+          "GRP[5:0] ABORT_EDGE[15:6]",
+          "counted-edge crank: the departure report, latched by the hardware abort"
+        ],
+        [
+          "`0x9a`",
+          "`SRCLK_CNT_D1`",
+          "R",
+          "EMITTED[15:0]",
+          "counted-edge crank: edges emitted on D1 since arm"
+        ],
+        [
+          "`0x9b`",
+          "`SRCLK_ARR_D1`",
+          "R",
+          "ARRIVED[15:0]",
+          "counted-edge crank: edges present on the D1 pad since arm"
+        ],
+        [
+          "`0x9c`",
+          "`SRCLK_ARR_P6`",
+          "R",
+          "ARRIVED[15:0]",
+          "counted-edge crank: MAX V responses to D1 seen at P6 since arm"
+        ],
+        [
+          "`0x9d`",
+          "`SRCLK_W`",
+          "RW",
+          "HIGH[9:0]",
+          "counted-edge crank: pulse width, held independent of the period"
+        ],
+        [
+          "`0x9e`",
+          "`BUSGEN_PRE`",
+          "RW",
+          "PRE[15:0]",
+          "27-ball bus generator: phase-advance prescaler, so the group can be driven slowly"
+        ]
+      ],
+      "source": "fpga/default/docs/REGISTER-MAP.md",
+      "status": "generated documentation; current codegen drift fails"
+    },
+    {
+      "gitBlob": "f5ee3e56a0185a2e4d277d65eec50798bfeb6028",
+      "heading": "DIAG `BUS_OE_HI` (`0x01`, RW)",
+      "line": 454,
+      "rows": [
+        [
+          "bits",
+          "field",
+          "meaning"
+        ],
+        [
+          "---",
+          "---",
+          "---"
+        ],
+        [
+          "[10:0]",
+          "`OE`",
+          "bus balls 16..26 (R3 R4 R5 R6 R7 T2 T3 T4 T5 T6 T7)"
+        ]
+      ],
+      "source": "fpga/default/docs/REGISTER-MAP.md",
+      "status": "generated documentation; current codegen drift fails"
+    },
+    {
+      "gitBlob": "f5ee3e56a0185a2e4d277d65eec50798bfeb6028",
+      "heading": "DIAG `BUS_DRV_HI` (`0x03`, RW)",
+      "line": 460,
+      "rows": [
+        [
+          "bits",
+          "field",
+          "meaning"
+        ],
+        [
+          "---",
+          "---",
+          "---"
+        ],
+        [
+          "[10:0]",
+          "`DRV`",
+          "bus balls 16..26"
+        ]
+      ],
+      "source": "fpga/default/docs/REGISTER-MAP.md",
+      "status": "generated documentation; current codegen drift fails"
+    },
+    {
+      "gitBlob": "f5ee3e56a0185a2e4d277d65eec50798bfeb6028",
+      "heading": "DIAG `BUS_RD_HI` (`0x05`, R)",
+      "line": 466,
+      "rows": [
+        [
+          "bits",
+          "field",
+          "meaning"
+        ],
+        [
+          "---",
+          "---",
+          "---"
+        ],
+        [
+          "[10:0]",
+          "`RD`",
+          "bus balls 16..26"
+        ]
+      ],
+      "source": "fpga/default/docs/REGISTER-MAP.md",
+      "status": "generated documentation; current codegen drift fails"
+    },
+    {
+      "gitBlob": "f5ee3e56a0185a2e4d277d65eec50798bfeb6028",
+      "heading": "DIAG `SINGLE_CTRL` (`0x06`, RW)",
+      "line": 472,
+      "rows": [
+        [
+          "bits",
+          "field",
+          "meaning"
+        ],
+        [
+          "---",
+          "---",
+          "---"
+        ],
+        [
+          "[4:0]",
+          "`OE`",
+          "output enable for the five single bidirectionals F3 F5 G5 D3 F7 (bit 0 = F3)"
+        ],
+        [
+          "[12:8]",
+          "`DRV`",
+          "drive level for F3 F5 G5 D3 F7 (bit 8 = F3)"
+        ]
+      ],
+      "source": "fpga/default/docs/REGISTER-MAP.md",
+      "status": "generated documentation; current codegen drift fails"
+    },
+    {
+      "gitBlob": "f5ee3e56a0185a2e4d277d65eec50798bfeb6028",
+      "heading": "DIAG `ADC_HOLD` (`0x07`, RW)",
+      "line": 479,
+      "rows": [
+        [
+          "bits",
+          "field",
+          "meaning"
+        ],
+        [
+          "---",
+          "---",
+          "---"
+        ],
+        [
+          "[0]",
+          "`L4`",
+          "hold L4 static 1 (reset 1); 0 = L4 is a bus member"
+        ],
+        [
+          "[1]",
+          "`T2`",
+          "hold T2 static 1 (reset 1); 0 = T2 is a bus member"
+        ],
+        [
+          "[2]",
+          "`T7`",
+          "hold T7 static 1 (reset 1); 0 = T7 is a bus member"
+        ]
+      ],
+      "source": "fpga/default/docs/REGISTER-MAP.md",
+      "status": "generated documentation; current codegen drift fails"
+    },
+    {
+      "gitBlob": "f5ee3e56a0185a2e4d277d65eec50798bfeb6028",
+      "heading": "DIAG `LANE_IDX` (`0x08`, RW)",
+      "line": 487,
+      "rows": [
+        [
+          "bits",
+          "field",
+          "meaning"
+        ],
+        [
+          "---",
+          "---",
+          "---"
+        ],
+        [
+          "[6:0]",
+          "`IDX`",
+          "0x00..0x4f lanes 0..79, 0x50..0x6a bus balls 0..26, 0x70..0x74 singles F3 F5 G5 D3 F7, 0x78 P6, 0x79 A2, 0x7a B1, 0x7b K2, 0x7c B11, 0x7d J1 (listen-only input balls the factory reads; B11 is MAXV-INTERFACE.md s4's only far-end-facing input in the burst-terminator loop)"
+        ]
+      ],
+      "source": "fpga/default/docs/REGISTER-MAP.md",
+      "status": "generated documentation; current codegen drift fails"
+    },
+    {
+      "gitBlob": "f5ee3e56a0185a2e4d277d65eec50798bfeb6028",
+      "heading": "DIAG `LANE_LVL` (`0x0a`, R)",
+      "line": 493,
+      "rows": [
+        [
+          "bits",
+          "field",
+          "meaning"
+        ],
+        [
+          "---",
+          "---",
+          "---"
+        ],
+        [
+          "[0]",
+          "`LEVEL`",
+          "current registered level"
+        ],
+        [
+          "[1]",
+          "`EVER1`",
+          "seen 1 since LANE_GATE reset"
+        ],
+        [
+          "[2]",
+          "`EVER0`",
+          "seen 0 since LANE_GATE reset"
+        ]
+      ],
+      "source": "fpga/default/docs/REGISTER-MAP.md",
+      "status": "generated documentation; current codegen drift fails"
+    },
+    {
+      "gitBlob": "f5ee3e56a0185a2e4d277d65eec50798bfeb6028",
+      "heading": "DIAG `SNAP_MODE` (`0x0b`, RW)",
+      "line": 501,
+      "rows": [
+        [
+          "bits",
+          "field",
+          "meaning"
+        ],
+        [
+          "---",
+          "---",
+          "---"
+        ],
+        [
+          "[2:0]",
+          "`SLICE`",
+          "slice recorded per clock: 0..4 = lanes 0-15..64-79, 5 = bus 0..15, 6 = {bus 16..26, P6, singles}, 7 = 5-word all-lane"
+        ]
+      ],
+      "source": "fpga/default/docs/REGISTER-MAP.md",
+      "status": "generated documentation; current codegen drift fails"
+    },
+    {
+      "gitBlob": "f5ee3e56a0185a2e4d277d65eec50798bfeb6028",
+      "heading": "DIAG `PAIR_TRIM` (`0x0c`, RW stub)",
+      "line": 507,
+      "rows": [
+        [
+          "bits",
+          "field",
+          "meaning"
+        ],
+        [
+          "---",
+          "---",
+          "---"
+        ],
+        [
+          "[3:0]",
+          "`E2`",
+          "pair E2 trim, signed 4-bit, 125 ps steps, saturating at +-7"
+        ],
+        [
+          "[7:4]",
+          "`E3`",
+          "pair E3 trim"
+        ],
+        [
+          "[11:8]",
+          "`E4`",
+          "pair E4 trim"
+        ],
+        [
+          "[15:12]",
+          "`E5`",
+          "pair E5 trim"
+        ]
+      ],
+      "source": "fpga/default/docs/REGISTER-MAP.md",
+      "status": "generated documentation; current codegen drift fails"
+    },
+    {
+      "gitBlob": "f5ee3e56a0185a2e4d277d65eec50798bfeb6028",
+      "heading": "DIAG `IL_DLY` (`0x0d`, RW stub)",
+      "line": 516,
+      "rows": [
+        [
+          "bits",
+          "field",
+          "meaning"
+        ],
+        [
+          "---",
+          "---",
+          "---"
+        ],
+        [
+          "[1:0]",
+          "`E1`",
+          "pair E1 row-alignment delay in c0 cycles"
+        ],
+        [
+          "[3:2]",
+          "`E2`",
+          "pair E2"
+        ],
+        [
+          "[5:4]",
+          "`E3`",
+          "pair E3"
+        ],
+        [
+          "[7:6]",
+          "`E4`",
+          "pair E4"
+        ],
+        [
+          "[9:8]",
+          "`E5`",
+          "pair E5"
+        ]
+      ],
+      "source": "fpga/default/docs/REGISTER-MAP.md",
+      "status": "generated documentation; current codegen drift fails"
+    },
+    {
+      "gitBlob": "f5ee3e56a0185a2e4d277d65eec50798bfeb6028",
+      "heading": "DIAG `SNAP_CTRL2` (`0x0e`, RW stub)",
+      "line": 526,
+      "rows": [
+        [
+          "bits",
+          "field",
+          "meaning"
+        ],
+        [
+          "---",
+          "---",
+          "---"
+        ],
+        [
+          "[8:0]",
+          "`ROWS`",
+          "rows to capture (<= DLINE_ROWS)"
+        ],
+        [
+          "[10:9]",
+          "`SRC`",
+          "0 = raw 80 lanes (post-hop, coherent), 1 = assembled core row (10 x 8), 2 = post-CAL row, 3 = {bus 26..0, singles, P6, K2 level, ...} (the E3 bus view) Values: 0=`LANES`, 1=`CORES`, 2=`CAL`, 3=`BUS`."
+        ],
+        [
+          "[14:11]",
+          "`DECIM`",
+          "one row per 2^DECIM c0 cycles"
+        ]
+      ],
+      "source": "fpga/default/docs/REGISTER-MAP.md",
+      "status": "generated documentation; current codegen drift fails"
+    },
+    {
+      "gitBlob": "f5ee3e56a0185a2e4d277d65eec50798bfeb6028",
+      "heading": "DIAG `LANEMAP` (`0x10`, R)",
+      "line": 534,
+      "rows": [
+        [
+          "bits",
+          "field",
+          "meaning"
+        ],
+        [
+          "---",
+          "---",
+          "---"
+        ],
+        [
+          "[6:0]",
+          "`LANE`",
+          "source lane (0..79) feeding core (i>>4), bit (i&15) of entry i; core k = pair E(k+1), bits 7..0 CH1, 15..8 CH2"
+        ]
+      ],
+      "source": "fpga/default/docs/REGISTER-MAP.md",
+      "status": "generated documentation; current codegen drift fails"
+    },
+    {
+      "gitBlob": "f5ee3e56a0185a2e4d277d65eec50798bfeb6028",
+      "heading": "DIAG `CAL_OFF` (`0x60`, RW stub)",
+      "line": 540,
+      "rows": [
+        [
+          "bits",
+          "field",
+          "meaning"
+        ],
+        [
+          "---",
+          "---",
+          "---"
+        ],
+        [
+          "[7:0]",
+          "`OFF`",
+          "signed offset in codes, subtracted before the gain"
+        ]
+      ],
+      "source": "fpga/default/docs/REGISTER-MAP.md",
+      "status": "generated documentation; current codegen drift fails"
+    },
+    {
+      "gitBlob": "f5ee3e56a0185a2e4d277d65eec50798bfeb6028",
+      "heading": "DIAG `CAL_GAIN` (`0x6a`, RW stub)",
+      "line": 546,
+      "rows": [
+        [
+          "bits",
+          "field",
+          "meaning"
+        ],
+        [
+          "---",
+          "---",
+          "---"
+        ],
+        [
+          "[8:0]",
+          "`GAIN`",
+          "Q1.8 gain 0.75..1.996, reset 0x100"
+        ]
+      ],
+      "source": "fpga/default/docs/REGISTER-MAP.md",
+      "status": "generated documentation; current codegen drift fails"
+    },
+    {
+      "gitBlob": "f5ee3e56a0185a2e4d277d65eec50798bfeb6028",
+      "heading": "DIAG `PHASE_CNT` (`0x74`, R stub)",
+      "line": 552,
+      "rows": [
+        [
+          "bits",
+          "field",
+          "meaning"
+        ],
+        [
+          "---",
+          "---",
+          "---"
+        ],
+        [
+          "[15:0]",
+          "`COUNT`",
+          "records accumulated into phase bin i = idx-0x74"
+        ]
+      ],
+      "source": "fpga/default/docs/REGISTER-MAP.md",
+      "status": "generated documentation; current codegen drift fails"
+    },
+    {
+      "gitBlob": "f5ee3e56a0185a2e4d277d65eec50798bfeb6028",
+      "heading": "DIAG `CAL_STAT` (`0x7c`, R stub)",
+      "line": 558,
+      "rows": [
+        [
+          "bits",
+          "field",
+          "meaning"
+        ],
+        [
+          "---",
+          "---",
+          "---"
+        ],
+        [
+          "[9:0]",
+          "`SAT`",
+          "saturation seen per core since GO (bit = core, sticky)"
+        ]
+      ],
+      "source": "fpga/default/docs/REGISTER-MAP.md",
+      "status": "generated documentation; current codegen drift fails"
+    },
+    {
+      "gitBlob": "f5ee3e56a0185a2e4d277d65eec50798bfeb6028",
+      "heading": "DIAG `CAP_SEL` (`0x7d`, R stub)",
+      "line": 564,
+      "rows": [
+        [
+          "bits",
+          "field",
+          "meaning"
+        ],
+        [
+          "---",
+          "---",
+          "---"
+        ],
+        [
+          "[2:0]",
+          "`J`",
+          "capture clock of pair k = c((k+J) mod 5)"
+        ],
+        [
+          "[3]",
+          "`NEG`",
+          "negative-edge capture"
+        ],
+        [
+          "[5:4]",
+          "`HOPS`",
+          "hop stages into c0"
+        ]
+      ],
+      "source": "fpga/default/docs/REGISTER-MAP.md",
+      "status": "generated documentation; current codegen drift fails"
+    },
+    {
+      "gitBlob": "f5ee3e56a0185a2e4d277d65eec50798bfeb6028",
+      "heading": "DIAG `BUSGEN_CTL` (`0x82`, RW)",
+      "line": 572,
+      "rows": [
+        [
+          "bits",
+          "field",
+          "meaning"
+        ],
+        [
+          "---",
+          "---",
+          "---"
+        ],
+        [
+          "[0]",
+          "`EN`",
+          "the generator owns the 27 balls (overrides the DIAG bus drive)"
+        ],
+        [
+          "[2:1]",
+          "`RATE`",
+          "phase clock: 0 = clk50, 1 = clk100, 2 = cap_clk (200 MHz), 3 = clk (C2)"
+        ],
+        [
+          "[5:3]",
+          "`NPHASE`",
+          "phases per rotation minus 1 (0 = 1 phase .. 4 = the factory's 5)"
+        ],
+        [
+          "[6]",
+          "`ONESHOT`",
+          "stop after one rotation instead of running free"
+        ],
+        [
+          "[7]",
+          "`RUN`",
+          "start (write 1; reads back the generator's running state)"
+        ],
+        [
+          "[12:8]",
+          "`OE_PH`",
+          "output enable per phase, bit k = phase k (0 = release the group)"
+        ],
+        [
+          "[13]",
+          "`OE_INV`",
+          "invert every OE_PH bit"
+        ]
+      ],
+      "source": "fpga/default/docs/REGISTER-MAP.md",
+      "status": "generated documentation; current codegen drift fails"
+    },
+    {
+      "gitBlob": "f5ee3e56a0185a2e4d277d65eec50798bfeb6028",
+      "heading": "DIAG `BUSGEN_PAT` (`0x83`, RW)",
+      "line": 584,
+      "rows": [
+        [
+          "bits",
+          "field",
+          "meaning"
+        ],
+        [
+          "---",
+          "---",
+          "---"
+        ],
+        [
+          "[15:0]",
+          "`BITS`",
+          "phase (idx-0x83)>>1: low word = balls 0..15, high word = balls 16..26"
+        ]
+      ],
+      "source": "fpga/default/docs/REGISTER-MAP.md",
+      "status": "generated documentation; current codegen drift fails"
+    },
+    {
+      "gitBlob": "f5ee3e56a0185a2e4d277d65eec50798bfeb6028",
+      "heading": "DIAG `BUSGEN_AUX` (`0x8d`, RW)",
+      "line": 590,
+      "rows": [
+        [
+          "bits",
+          "field",
+          "meaning"
+        ],
+        [
+          "---",
+          "---",
+          "---"
+        ],
+        [
+          "[2:0]",
+          "`K2`",
+          "K2 source: 0 = the DIAG_CTRL 50 MHz forward, 1 = 0, 2 = 1, 3 = the phase clock, 4 = phase clock / 2, 5 = one tick per rotation, 6 = the inverse of the generator drive enable (the factory's K1 shape: low while the group is driven), 7 = the drive enable itself"
+        ],
+        [
+          "[5:3]",
+          "`D1`",
+          "D1 source, same encoding (D1 is an output in the factory image; DIAG drives it constant otherwise)"
+        ],
+        [
+          "[8:6]",
+          "`D2`",
+          "D2 source, same encoding (0 = the DIAG_CTRL level)"
+        ],
+        [
+          "[11:9]",
+          "`G2`",
+          "G2 source, same encoding (0 = the DIAG_CTRL level)"
+        ],
+        [
+          "[14:12]",
+          "`K1`",
+          "K1 source, same encoding (0 = the DIAG_CTRL level). The factory drives K1 from REG:X6Y4M2, whose inverse is the output enable of 24 of the 27 bus balls (the acq2 analysis branch), so code 6 is the posture to reproduce"
+        ]
+      ],
+      "source": "fpga/default/docs/REGISTER-MAP.md",
+      "status": "generated documentation; current codegen drift fails"
+    },
+    {
+      "gitBlob": "f5ee3e56a0185a2e4d277d65eec50798bfeb6028",
+      "heading": "DIAG `BUSCAP_CTL` (`0x8e`, RW)",
+      "line": 600,
+      "rows": [
+        [
+          "bits",
+          "field",
+          "meaning"
+        ],
+        [
+          "---",
+          "---",
+          "---"
+        ],
+        [
+          "[0]",
+          "`EN`",
+          "the snapshot RAM records the whole 32-bit bus view (two words per sample: balls 0..15, then {singles 3..0, P6, balls 26..16}, both halves from the same bus tick), 1024 samples one every other tick"
+        ],
+        [
+          "[1]",
+          "`TRIG`",
+          "arm on a departure instead of immediately: the posture is latched at arm and recording starts on the first sample where a ball the generator is not driving differs from it"
+        ],
+        [
+          "[2]",
+          "`TRIGGERED`",
+          "read-only: the trigger fired in this run"
+        ],
+        [
+          "[3]",
+          "`WAITING`",
+          "read-only: armed and waiting for the departure"
+        ],
+        [
+          "[5:4]",
+          "`CONFIRM`",
+          "how many consecutive samples a departure must hold before it counts: 0 = 1 (any single sample), 1 = 2, 2 = 4, 3 = 8. A lone sample is not evidence: with the group switching hard, a floating ball reads low for one sample often enough to fire a 1-sample trigger in 6 runs of 10, and the record then shows it already back at its idle level (the acq2 analysis branch)"
+        ]
+      ],
+      "source": "fpga/default/docs/REGISTER-MAP.md",
+      "status": "generated documentation; current codegen drift fails"
+    },
+    {
+      "gitBlob": "f5ee3e56a0185a2e4d277d65eec50798bfeb6028",
+      "heading": "DIAG `BUSGEN_OE_LO` (`0x8f`, RW)",
+      "line": 610,
+      "rows": [
+        [
+          "bits",
+          "field",
+          "meaning"
+        ],
+        [
+          "---",
+          "---",
+          "---"
+        ],
+        [
+          "[15:0]",
+          "`MASK`",
+          "bit i enables the generator's drive on bus ball i, balls 0..15 (J6 K5 L1 L2 L3 L4 N1 N2 P1 P2 R1 M6 N6 N3 N5 P3); reset 0xffff"
+        ]
+      ],
+      "source": "fpga/default/docs/REGISTER-MAP.md",
+      "status": "generated documentation; current codegen drift fails"
+    },
+    {
+      "gitBlob": "f5ee3e56a0185a2e4d277d65eec50798bfeb6028",
+      "heading": "DIAG `BUSGEN_OE_HI` (`0x90`, RW)",
+      "line": 616,
+      "rows": [
+        [
+          "bits",
+          "field",
+          "meaning"
+        ],
+        [
+          "---",
+          "---",
+          "---"
+        ],
+        [
+          "[10:0]",
+          "`MASK`",
+          "bit i enables the generator's drive on bus ball 16+i (R3 R4 R5 R6 R7 T2 T3 T4 T5 T6 T7); reset 0x7ff"
+        ]
+      ],
+      "source": "fpga/default/docs/REGISTER-MAP.md",
+      "status": "generated documentation; current codegen drift fails"
+    },
+    {
+      "gitBlob": "f5ee3e56a0185a2e4d277d65eec50798bfeb6028",
+      "heading": "DIAG `SRCLK_CTRL` (`0x91`, RW)",
+      "line": 622,
+      "rows": [
+        [
+          "bits",
+          "field",
+          "meaning"
+        ],
+        [
+          "---",
+          "---",
+          "---"
+        ],
+        [
+          "[1:0]",
+          "`F2_SRC`",
+          "what drives ball F2; code 3 decodes as ZERO Values: 0=`LEGACY`, 1=`ZERO`, 2=`CRANK`."
+        ],
+        [
+          "[3:2]",
+          "`J2_SRC`",
+          "what drives ball J2, same encoding Values: 0=`LEGACY`, 1=`ZERO`, 2=`CRANK`."
+        ],
+        [
+          "[4]",
+          "`CTRL_G2`",
+          "RESERVED AND REFUSED in this build: an arm with this bit set is rejected with REFUSE = 7. G2's DDIO runs on busclk, which can be cap_clk, so routing the clk100 emitter to it creates a 100 -> 200 MHz transfer into the cell's own input flop, measured at -0.735 ns combinational and -1.716 ns registered against a domain with 0.2 ns to spare (the SDC false-paths G2's pad, not that flop). The crosstalk control is J2 instead: a DDIO on clk100, the emitter's own domain, costing no crossing, and being the other SRAM-clock candidate it is the more useful comparison"
+        ],
+        [
+          "[5]",
+          "`SNAP_ON_ARM`",
+          "RESERVED AND NOT WIRED in this build: setting it does nothing. Coupling the crank into the snapshot arm is the one new path into an existing, timing-critical block, and it put the snapshot arm downstream of an interlock that reads floating inputs \u2014 an unknown on the released bus then blocks the arm entirely. The app arms the snapshot itself immediately before arming the crank, and the edge-lock proof is the delay-shift rung, not the pre/post split"
+        ],
+        [
+          "[9:8]",
+          "`D1_SRC`",
+          "what drives ball D1; code 3 decodes as LEGACY Values: 0=`LEGACY`, 1=`ZERO`, 2=`CRANK`."
+        ],
+        [
+          "[7:6]",
+          "`GUARD`",
+          "the hardware abort watchdog: which monitored signals abort the burst the moment one moves Values: 0=`OFF`, 1=`LANES`, 2=`ALL`."
+        ]
+      ],
+      "source": "fpga/default/docs/REGISTER-MAP.md",
+      "status": "generated documentation; current codegen drift fails"
+    },
+    {
+      "gitBlob": "f5ee3e56a0185a2e4d277d65eec50798bfeb6028",
+      "heading": "DIAG `SRCLK_N` (`0x92`, RW)",
+      "line": 633,
+      "rows": [
+        [
+          "bits",
+          "field",
+          "meaning"
+        ],
+        [
+          "---",
+          "---",
+          "---"
+        ],
+        [
+          "[9:0]",
+          "`NEDGE`",
+          "pad rising edges this arm will emit, 0..1023. 0 emits nothing. There is no free-run encoding and no wider field: 1023 is the per-arm ceiling because the register has no more bits"
+        ],
+        [
+          "[14:10]",
+          "`DIV`",
+          "burst shape: f_pad = 100 MHz / 2^DIV (0 = a 5 ns DDIO pulse per clk100 cycle, 1 = 50 MHz, 4 = 6.25 MHz, 7 = 781 kHz). High time is half the period, so DIV varies rate and pulse width together. Latched at arm; it never free-runs"
+        ]
+      ],
+      "source": "fpga/default/docs/REGISTER-MAP.md",
+      "status": "generated documentation; current codegen drift fails"
+    },
+    {
+      "gitBlob": "f5ee3e56a0185a2e4d277d65eec50798bfeb6028",
+      "heading": "DIAG `SRCLK_DLY` (`0x93`, RW)",
+      "line": 640,
+      "rows": [
+        [
+          "bits",
+          "field",
+          "meaning"
+        ],
+        [
+          "---",
+          "---",
+          "---"
+        ],
+        [
+          "[9:0]",
+          "`DLY`",
+          "clk100 ticks from the accepted arm (after the guard baseline completes) to the first edge, 0..1023 = 0..10.23 us. With SNAP_ON_ARM the record carries its own baseline. Latched at arm"
+        ]
+      ],
+      "source": "fpga/default/docs/REGISTER-MAP.md",
+      "status": "generated documentation; current codegen drift fails"
+    },
+    {
+      "gitBlob": "f5ee3e56a0185a2e4d277d65eec50798bfeb6028",
+      "heading": "DIAG `SRCLK_ARM` (`0x94`, RW)",
+      "line": 646,
+      "rows": [
+        [
+          "bits",
+          "field",
+          "meaning"
+        ],
+        [
+          "---",
+          "---",
+          "---"
+        ],
+        [
+          "[7:0]",
+          "`KEY`",
+          "must be 0xA5 in the SAME write, or the whole word is ignored (reads back 0x00a5)"
+        ],
+        [
+          "[8]",
+          "`ARM`",
+          "write-1 strobe, self-clearing, edge-triggered: load the budget and start. Ignored unless every interlock in SRCLK_STAT.REFUSE holds; a re-arm during a burst is ignored and CANNOT extend a budget"
+        ],
+        [
+          "[9]",
+          "`STOP`",
+          "write-1 strobe: end the burst now, park both balls at 0, set ABORTED"
+        ],
+        [
+          "[10]",
+          "`CLR`",
+          "write-1 strobe: clear ABORTED / REFUSED / the departure report. Does NOT clear SRCLK_LIFE \u2014 nothing does"
+        ]
+      ],
+      "source": "fpga/default/docs/REGISTER-MAP.md",
+      "status": "generated documentation; current codegen drift fails"
+    },
+    {
+      "gitBlob": "f5ee3e56a0185a2e4d277d65eec50798bfeb6028",
+      "heading": "DIAG `SRCLK_STAT` (`0x95`, R)",
+      "line": 655,
+      "rows": [
+        [
+          "bits",
+          "field",
+          "meaning"
+        ],
+        [
+          "---",
+          "---",
+          "---"
+        ],
+        [
+          "[9:0]",
+          "`REMAIN`",
+          "edges still owed on this arm"
+        ],
+        [
+          "[10]",
+          "`BUSY`",
+          "a burst is in flight (guard baseline, delay, or emitting)"
+        ],
+        [
+          "[11]",
+          "`ABORTED`",
+          "sticky: the guard fired or STOP was written; ARM is refused until CLR"
+        ],
+        [
+          "[12]",
+          "`REFUSED`",
+          "sticky: the last keyed ARM was rejected by an interlock"
+        ],
+        [
+          "[15:13]",
+          "`REFUSE`",
+          "why: 0 = accepted; 1 = no CRANK source, or DIAG_CTRL.F2_SEL/J2_SEL not both 0; 2 = the 27-ball group is not in its released-high rest posture; 3 = NEDGE = 0; 4 = busy, or the guard baseline is not ready; 5 = ABORTED is set; 6 = would exceed the lifetime ceiling; 7 = GUARD off with NEDGE > 1, or CTRL_G2 without BUSGEN_CTL.RATE = 1"
+        ]
+      ],
+      "source": "fpga/default/docs/REGISTER-MAP.md",
+      "status": "generated documentation; current codegen drift fails"
+    },
+    {
+      "gitBlob": "f5ee3e56a0185a2e4d277d65eec50798bfeb6028",
+      "heading": "DIAG `SRCLK_CNT_F2` (`0x96`, R)",
+      "line": 665,
+      "rows": [
+        [
+          "bits",
+          "field",
+          "meaning"
+        ],
+        [
+          "---",
+          "---",
+          "---"
+        ],
+        [
+          "[15:0]",
+          "`EMITTED`",
+          "rising transitions of the data presented to F2's DDIO cell since the last accepted arm, counted in clk100 \u2014 the cell's own domain \u2014 from the FINAL per-ball mux output. This witnesses EMISSION, not arrival: a DDIO output port may not feed core logic on Cyclone IV, so no register in this image can report a pad level on F2/J2. Saturating"
+        ]
+      ],
+      "source": "fpga/default/docs/REGISTER-MAP.md",
+      "status": "generated documentation; current codegen drift fails"
+    },
+    {
+      "gitBlob": "f5ee3e56a0185a2e4d277d65eec50798bfeb6028",
+      "heading": "DIAG `SRCLK_CNT_J2` (`0x97`, R)",
+      "line": 671,
+      "rows": [
+        [
+          "bits",
+          "field",
+          "meaning"
+        ],
+        [
+          "---",
+          "---",
+          "---"
+        ],
+        [
+          "[15:0]",
+          "`EMITTED`",
+          "as SRCLK_CNT_F2, for J2"
+        ]
+      ],
+      "source": "fpga/default/docs/REGISTER-MAP.md",
+      "status": "generated documentation; current codegen drift fails"
+    },
+    {
+      "gitBlob": "f5ee3e56a0185a2e4d277d65eec50798bfeb6028",
+      "heading": "DIAG `SRCLK_LIFE` (`0x98`, R)",
+      "line": 677,
+      "rows": [
+        [
+          "bits",
+          "field",
+          "meaning"
+        ],
+        [
+          "---",
+          "---",
+          "---"
+        ],
+        [
+          "[15:0]",
+          "`EDGES`",
+          "emitter edges since this fabric was configured, saturating at the build ceiling 4096. An arm is refused unless EDGES + NEDGE <= 4096, so the ceiling is exact. There is no clear path in the fabric: only a reload resets it, which is reboot-recoverable (CRAM only, no flash)"
+        ]
+      ],
+      "source": "fpga/default/docs/REGISTER-MAP.md",
+      "status": "generated documentation; current codegen drift fails"
+    },
+    {
+      "gitBlob": "f5ee3e56a0185a2e4d277d65eec50798bfeb6028",
+      "heading": "DIAG `SRCLK_DEP` (`0x99`, R)",
+      "line": 683,
+      "rows": [
+        [
+          "bits",
+          "field",
+          "meaning"
+        ],
+        [
+          "---",
+          "---",
+          "---"
+        ],
+        [
+          "[5:0]",
+          "`GRP`",
+          "which group moved since the arm: bits 0..4 = lanes 0-15, 16-31, 32-47, 48-63, 64-79; bit 5 = the 27 bus balls / 5 singles / P6. The per-signal truth is already in LANE_IDX + LANE_LVL.EVER0/EVER1 over the same gate window, so this is a 6-bit summary"
+        ],
+        [
+          "[15:6]",
+          "`ABORT_EDGE`",
+          "the edge index in flight when the guard fired (0 = none)"
+        ]
+      ],
+      "source": "fpga/default/docs/REGISTER-MAP.md",
+      "status": "generated documentation; current codegen drift fails"
+    },
+    {
+      "gitBlob": "f5ee3e56a0185a2e4d277d65eec50798bfeb6028",
+      "heading": "DIAG `SRCLK_CNT_D1` (`0x9a`, R)",
+      "line": 690,
+      "rows": [
+        [
+          "bits",
+          "field",
+          "meaning"
+        ],
+        [
+          "---",
+          "---",
+          "---"
+        ],
+        [
+          "[15:0]",
+          "`EMITTED`",
+          "rising transitions of the data presented to D1's IOE output register since the last accepted arm, counted in clk100. EMISSION, exactly as SRCLK_CNT_F2. Saturating"
+        ]
+      ],
+      "source": "fpga/default/docs/REGISTER-MAP.md",
+      "status": "generated documentation; current codegen drift fails"
+    },
+    {
+      "gitBlob": "f5ee3e56a0185a2e4d277d65eec50798bfeb6028",
+      "heading": "DIAG `SRCLK_ARR_D1` (`0x9b`, R)",
+      "line": 696,
+      "rows": [
+        [
+          "bits",
+          "field",
+          "meaning"
+        ],
+        [
+          "---",
+          "---",
+          "---"
+        ],
+        [
+          "[15:0]",
+          "`ARRIVED`",
+          "rising transitions of D1's IOE INPUT register \u2014 the PAD NODE of the ball we are driving, sampled in clk100 while we drive it. ARRIVAL AT OUR OWN BALL: a count equal to NEDGE proves the output driver switched and the pad crossed both 3.3-V LVTTL thresholds. It does NOT prove the edge reached anything beyond the ball. Excluded from mon, moved, dep_grp and GUARD by construction. Valid for DIV >= 2 only. Saturating"
+        ]
+      ],
+      "source": "fpga/default/docs/REGISTER-MAP.md",
+      "status": "generated documentation; current codegen drift fails"
+    },
+    {
+      "gitBlob": "f5ee3e56a0185a2e4d277d65eec50798bfeb6028",
+      "heading": "DIAG `SRCLK_ARR_P6` (`0x9c`, R)",
+      "line": 702,
+      "rows": [
+        [
+          "bits",
+          "field",
+          "meaning"
+        ],
+        [
+          "---",
+          "---",
+          "---"
+        ],
+        [
+          "[15:0]",
+          "`ARRIVED`",
+          "rising transitions of P6, two-flop synchronised into clk100, since the last accepted arm. ARRIVAL AT THE FAR DIE: nothing inside the Cyclone drives P6. [BENCH] P6 = (NOT D1) OR D2, 9/9, so with D1_SRC = CRANK and DIAG_CTRL.D2 = 0 this predicts ARRIVED == NEDGE exactly. With D2 = 1, P6 is constant and this predicts 0 \u2014 the negative control on the witness itself. P6 is masked out of moved/dep_grp/GUARD whenever D1_SRC = CRANK, because a D1 crank moves it by construction and would otherwise abort every burst at edge 1 and report a phantom departure. Its per-signal truth stays readable at LANE_IDX 0x78. Saturating"
+        ]
+      ],
+      "source": "fpga/default/docs/REGISTER-MAP.md",
+      "status": "generated documentation; current codegen drift fails"
+    },
+    {
+      "gitBlob": "f5ee3e56a0185a2e4d277d65eec50798bfeb6028",
+      "heading": "DIAG `SRCLK_W` (`0x9d`, RW)",
+      "line": 708,
+      "rows": [
+        [
+          "bits",
+          "field",
+          "meaning"
+        ],
+        [
+          "---",
+          "---",
+          "---"
+        ],
+        [
+          "[9:0]",
+          "`HIGH`",
+          "pulse HIGH time in clk100 ticks (10 ns each), 1..1023, INDEPENDENT of the period. 0 selects the legacy shape where high time is half the period and DIV varies rate and width together. This exists because every corner measured so far is confounded: the D1 -> far end -> P6 loop returns every edge below 48.8 kHz and none above 97.7 kHz, and DIV moved the pulse width and the repetition rate at the same time, so 'the node needs N us to charge after D1 releases it' and 'the far end needs a minimum width to see the pulse' predict the identical table. Holding the period and sweeping HIGH separates them. Refused unless HIGH < the period, and DIV is capped at 23 in width mode so the period counter cannot overflow. Latched at arm"
+        ]
+      ],
+      "source": "fpga/default/docs/REGISTER-MAP.md",
+      "status": "generated documentation; current codegen drift fails"
+    },
+    {
+      "gitBlob": "f5ee3e56a0185a2e4d277d65eec50798bfeb6028",
+      "heading": "DIAG `BUSGEN_PRE` (`0x9e`, RW)",
+      "line": 714,
+      "rows": [
+        [
+          "bits",
+          "field",
+          "meaning"
+        ],
+        [
+          "---",
+          "---",
+          "---"
+        ],
+        [
+          "[15:0]",
+          "`PRE`",
+          "phase-advance prescaler: the generator advances one phase every PRE+1 bus-clock ticks, so a phase lasts (PRE+1) x 20 ns at RATE 0. 0 is the original behaviour, one phase per tick. This exists because EVERY experiment ever run on the 27-ball group has been fast: the generator's slowest phase was one bus-clock tick, about 20 ns, and its slowest pulse about 100 ns at five phases. The D1 loop then measured the only observable far-end path and found it passes a pulse only if it is wider than about 9.4 us (the acq2 analysis branch). If the bus group's far end filters anything like that, no stimulus this project has ever applied to those balls \u2014 107 departure-armed conditions, the leave-one-out sweeps, roughly 4,300 static postures \u2014 was wide enough to be seen. At RATE 0 a prescale of 511 gives a 10.24 us phase, just past that threshold, and 65535 gives 1.31 ms"
+        ]
+      ],
+      "source": "fpga/default/docs/REGISTER-MAP.md",
+      "status": "generated documentation; current codegen drift fails"
+    },
+    {
+      "gitBlob": "f5ee3e56a0185a2e4d277d65eec50798bfeb6028",
+      "heading": "Word formats",
+      "line": 722,
+      "rows": [
+        [
+          "model",
+          "format",
+          "words"
+        ],
+        [
+          "---",
+          "---",
+          "---"
+        ],
+        [
+          "`ModelRecord`",
+          "RAW record, `RUN.CHMODE`",
+          "dual: `{CH1[i], CH2[i]}`; single: `{s[2n], s[2n+1]}` of the one channel"
+        ],
+        [
+          "`ModelTsrc` / `TsrcWord` / `TsrcCheck`",
+          "`IL_CTRL.TSRC` test sources, k = the writer's word index since GO",
+          "RAMP `k & 0xffff`; COLTAG `{k mod ROW_COLS, (k/ROW_COLS) & 0xff}`; GLITCH `0xffff` when `k mod 512 == 0` else 0"
+        ],
+        [
+          "`ModelDecim`",
+          "REDUCE_MODE DECIM, D = DECIM",
+          "`{CH1[kD], CH2[kD]}`"
+        ],
+        [
+          "`ModelPeak`",
+          "REDUCE_MODE PEAK",
+          "per D samples `{min1, min2}` then `{max1, max2}`"
+        ],
+        [
+          "`ModelBoxcar8` / `ModelBoxcar16` / `BoxcarParams`",
+          "REDUCE_MODE BOXCAR8 / BOXCAR16",
+          "`mean_Q8.8 = ((sum >> DEC_PRE) * DEC_RECIP) >> 8` with `DEC_PRE = max(0, ceil(log2 D) - 8)`, `DEC_RECIP = round(2^(16+DEC_PRE) / D)`; BOXCAR8 `{round8(mean1), round8(mean2)}` (round half up, saturating), BOXCAR16 `mean1` then `mean2`"
+        ],
+        [
+          "`ModelStack` / `StackParams` / `PhaseBin`",
+          "`RUN.STACK` batch readout",
+          "bins at `row*F + phase` (phase = top log2 F bits of the Q16 trigger fraction), `ACC_BITS`-wide sums; drained as CH1 bins (recA) then CH2 bins (recB), row-major / column-minor, each word `(sum >> STACK_CTRL.SHIFT)[15:0]`; `PHASE_CNT[8]` returned alongside"
+        ]
+      ],
+      "source": "fpga/default/docs/REGISTER-MAP.md",
+      "status": "generated documentation; current codegen drift fails"
+    },
+    {
+      "gitBlob": "f5ee3e56a0185a2e4d277d65eec50798bfeb6028",
+      "heading": "Generated names",
+      "line": 733,
+      "rows": [
+        [
+          "artifact",
+          "what"
+        ],
+        [
+          "---",
+          "---"
+        ],
+        [
+          "`fpga/default/regs.vh`",
+          "`` `SEL_<REG> ``, `` `<REG>_<FIELD>_MASK/_LSB ``, `` `<REG>_<FIELD>_<ENUM> ``, `` `OP_<NAME> ``, `` `DIAG_<NAME> `` (+`_BASE/_COUNT/_LAST` for arrays), `` `DIAG_<NAME>_<FIELD>_MASK/_LSB ``, `` `IFACE_BUILD_ID(_LO/_HI) ``, `` `VERSION_MAGIC ``, `` `FABRIC_ID ``, `` `REC_DEPTH ``, `` `ADDR_W ``, `` `PRETRIG_MAX ``, `` `ROW_COLS ``, `` `ROWS ``, `` `DLINE_ROWS ``, `` `ACC_BITS ``, `` `STACK_N_MAX ``, `` `SEL_MASK ``"
+        ],
+        [
+          "`fpga/default/regmux.vh`",
+          "`we_<REG>` write strobes (non-stub), `op_<NAME>` opcode strobes, `pop_<REG>` pop strobes (aliases folded in), `rmux_rdata` read mux from `rdata_<REG>` (stubs and undecoded selectors read 0); selectors compared after `& SEL_MASK`"
+        ],
+        [
+          "`app/internal/iface/iface.go`",
+          "`Sel<Reg>`, `<Reg><Field>Mask/Shift`, `<Reg><Field><Enum>`, `Op<Name>`, `Diag<Name>`, `BuildID`, `VersionMagic`, `FabricID`, geometry constants, `Registers()`, `Undecoded()`, `DiagWindow()`, `Opcodes()`, `CheckIdentity()`, `Tier*`, `Model*`"
+        ]
+      ],
+      "source": "fpga/default/docs/REGISTER-MAP.md",
+      "status": "generated documentation; current codegen drift fails"
+    },
+    {
+      "gitBlob": "aaa384f40ad2dcec5f3f236927b245e5246ea499",
+      "heading": "1. Device and resources",
+      "line": 25,
+      "rows": [
+        [
+          "property",
+          "value"
+        ],
+        [
+          "---",
+          "---"
+        ],
+        [
+          "Part",
+          "Cyclone IV E `EP4CE10F17C8`"
+        ],
+        [
+          "Logic elements",
+          "10,320"
+        ],
+        [
+          "M9K blocks",
+          "46"
+        ],
+        [
+          "Total block memory",
+          "423,936 bits (46 \u00d7 9,216 incl. parity)"
+        ],
+        [
+          "Usable data bits, \u00d716 mode",
+          "376,832 (46 \u00d7 8,192; 512 \u00d7 16 words per block)"
+        ],
+        [
+          "Embedded 9-bit multiplier elements",
+          "46 (= 23 \u00d7 18\u00d718)"
+        ],
+        [
+          "PLLs",
+          "2"
+        ],
+        [
+          "Configuration",
+          "passive serial, volatile, via GPMC CS3 port `0x07`"
+        ]
+      ],
+      "source": "specs/12-acquisition-fpga.md",
+      "status": "specification with historical and unresolved physical claims"
+    },
+    {
+      "gitBlob": "aaa384f40ad2dcec5f3f236927b245e5246ea499",
+      "heading": "2. Clocking",
+      "line": 46,
+      "rows": [
+        [
+          "clock",
+          "rate",
+          "role"
+        ],
+        [
+          "---",
+          "---",
+          "---"
+        ],
+        [
+          "reference",
+          "100 MHz",
+          "board oscillator into the left PLL"
+        ],
+        [
+          "ADC encode",
+          "5 differential pairs at 100 MHz",
+          "converter encode; each pair's two legs clock **different** cores, 5 ns apart \u2014 one CH1 and one CH2 (\u00a73.0)"
+        ],
+        [
+          "packing clock",
+          "125 MHz",
+          "64-bit assembly stage"
+        ],
+        [
+          "SRAM port clock",
+          "250 MHz",
+          "external SRAM write"
+        ]
+      ],
+      "source": "specs/12-acquisition-fpga.md",
+      "status": "specification with historical and unresolved physical claims"
+    },
+    {
+      "gitBlob": "aaa384f40ad2dcec5f3f236927b245e5246ea499",
+      "heading": "3.0 The converters",
+      "line": 71,
+      "rows": [
+        [
+          "pair",
+          "base",
+          "positive leg",
+          "core",
+          "rising phase",
+          "negative leg",
+          "core",
+          "rising phase"
+        ],
+        [
+          "---",
+          "---:",
+          "---",
+          "---",
+          "---:",
+          "---",
+          "---",
+          "---:"
+        ],
+        [
+          "E1",
+          "3 ns",
+          "K8",
+          "CH2",
+          "3 ns",
+          "M8",
+          "CH1",
+          "8 ns"
+        ],
+        [
+          "E2",
+          "4 ns",
+          "C14",
+          "CH1",
+          "4 ns",
+          "D14",
+          "CH2",
+          "9 ns"
+        ],
+        [
+          "E3",
+          "2 ns",
+          "K9",
+          "CH2",
+          "7 ns",
+          "L10",
+          "CH1",
+          "2 ns"
+        ],
+        [
+          "E4",
+          "0 ns",
+          "L8",
+          "CH1",
+          "0 ns",
+          "M7",
+          "CH2",
+          "5 ns"
+        ],
+        [
+          "E5",
+          "1 ns",
+          "K10",
+          "CH1",
+          "6 ns",
+          "L9",
+          "CH2",
+          "1 ns"
+        ]
+      ],
+      "source": "specs/12-acquisition-fpga.md",
+      "status": "specification with historical and unresolved physical claims"
+    },
+    {
+      "gitBlob": "aaa384f40ad2dcec5f3f236927b245e5246ea499",
+      "heading": "3.0 The converters",
+      "line": 97,
+      "rows": [
+        [
+          "`PAIR_EN`",
+          "c0",
+          "c1",
+          "c2",
+          "c3",
+          "c4",
+          "c5",
+          "c6",
+          "c7",
+          "c8",
+          "c9"
+        ],
+        [
+          "---",
+          "--:",
+          "--:",
+          "--:",
+          "--:",
+          "--:",
+          "--:",
+          "--:",
+          "--:",
+          "--:",
+          "--:"
+        ],
+        [
+          "none (encode gated)",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        [
+          "E1 only",
+          "**3**",
+          "**5**",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        [
+          "E2 only",
+          "0",
+          "0",
+          "**5**",
+          "**3**",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        [
+          "E3 only",
+          "0",
+          "0",
+          "0",
+          "0",
+          "**5**",
+          "**3**",
+          "0",
+          "0",
+          "0",
+          "0"
+        ],
+        [
+          "E4 only",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "**5**",
+          "**3**",
+          "0",
+          "0"
+        ],
+        [
+          "E5 only",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "0",
+          "**4**",
+          "**5**"
+        ],
+        [
+          "all five",
+          "3",
+          "5",
+          "5",
+          "3",
+          "5",
+          "3",
+          "5",
+          "3",
+          "3",
+          "3"
+        ]
+      ],
+      "source": "specs/12-acquisition-fpga.md",
+      "status": "specification with historical and unresolved physical claims"
+    },
+    {
+      "gitBlob": "aaa384f40ad2dcec5f3f236927b245e5246ea499",
+      "heading": "3.1 Port surface",
+      "line": 132,
+      "rows": [
+        [
+          "port",
+          "width",
+          "direction",
+          "role"
+        ],
+        [
+          "---",
+          "---",
+          "---",
+          "---"
+        ],
+        [
+          "`lane`",
+          "80",
+          "in",
+          "ten cores \u00d7 8 bits, one parallel byte lane per core"
+        ],
+        [
+          "`enc_p` / `enc_n`",
+          "5 + 5",
+          "out",
+          "differential encode clock, one pair per converter pair"
+        ],
+        [
+          "static mode straps",
+          "\u2014",
+          "out",
+          "converter mode pins, held at fixed levels (\u00a73.3)"
+        ]
+      ],
+      "source": "specs/12-acquisition-fpga.md",
+      "status": "specification with historical and unresolved physical claims"
+    },
+    {
+      "gitBlob": "aaa384f40ad2dcec5f3f236927b245e5246ea499",
+      "heading": "3.3 Mode straps",
+      "line": 162,
+      "rows": [
+        [
+          "group",
+          "level"
+        ],
+        [
+          "---",
+          "---"
+        ],
+        [
+          "`adc_ctl_hi[0..3]`",
+          "**1**"
+        ],
+        [
+          "`adc_ctl_lo[0..2]`",
+          "**0**"
+        ]
+      ],
+      "source": "specs/12-acquisition-fpga.md",
+      "status": "specification with historical and unresolved physical claims"
+    },
+    {
+      "gitBlob": "aaa384f40ad2dcec5f3f236927b245e5246ea499",
+      "heading": "4. GPMC slave interface",
+      "line": 191,
+      "rows": [
+        [
+          "plane",
+          "window",
+          "owner"
+        ],
+        [
+          "---",
+          "---",
+          "---"
+        ],
+        [
+          "CS1",
+          "`0x01000000`",
+          "acquisition FPGA \u2014 all registers in \u00a78"
+        ],
+        [
+          "CS2",
+          "`0x02000000`",
+          "configured, unpopulated"
+        ],
+        [
+          "CS3",
+          "`0x03000000`",
+          "companion CPLD, and the FPGA configuration port at selector `0x07`"
+        ]
+      ],
+      "source": "specs/12-acquisition-fpga.md",
+      "status": "specification with historical and unresolved physical claims"
+    },
+    {
+      "gitBlob": "aaa384f40ad2dcec5f3f236927b245e5246ea499",
+      "heading": "5. External SRAM",
+      "line": 242,
+      "rows": [
+        [
+          "property",
+          "value"
+        ],
+        [
+          "---",
+          "---"
+        ],
+        [
+          "Part",
+          "NETSOL S7A163630M, 100-TQFP, 3.3 V"
+        ],
+        [
+          "Organisation",
+          "512K \u00d7 36 synchronous **pipelined burst** (not NoBL/ZBT)"
+        ],
+        [
+          "Address width",
+          "19 bits"
+        ],
+        [
+          "`tCYC`",
+          "\u2265 4.0 ns (250 MHz)"
+        ],
+        [
+          "`tCD`",
+          "\u2264 2.6 ns"
+        ],
+        [
+          "`tOH`",
+          "\u2265 1.5 ns"
+        ],
+        [
+          "setup / hold, every synchronous input",
+          "1.2 ns / 0.3 ns"
+        ]
+      ],
+      "source": "specs/12-acquisition-fpga.md",
+      "status": "specification with historical and unresolved physical claims"
+    },
+    {
+      "gitBlob": "aaa384f40ad2dcec5f3f236927b245e5246ea499",
+      "heading": "6. Record geometry",
+      "line": 273,
+      "rows": [
+        [
+          "quantity",
+          "value"
+        ],
+        [
+          "---",
+          "---"
+        ],
+        [
+          "Record",
+          "**524,288 \u00d7 32-bit words** (`1 << 19`)"
+        ],
+        [
+          "Bytes",
+          "2,097,152"
+        ],
+        [
+          "Samples per channel",
+          "1,048,576"
+        ],
+        [
+          "Sample rate, per channel",
+          "500 MS/s"
+        ],
+        [
+          "Aggregate sample rate",
+          "1 GS/s"
+        ],
+        [
+          "Full-depth span, per channel",
+          "2.097152 ms"
+        ],
+        [
+          "On-chip memory for host readout",
+          "512 \u00d7 32 bits"
+        ],
+        [
+          "FIFO + readout buffer",
+          "18,944 logical memory bits"
+        ]
+      ],
+      "source": "specs/12-acquisition-fpga.md",
+      "status": "specification with historical and unresolved physical claims"
+    },
+    {
+      "gitBlob": "aaa384f40ad2dcec5f3f236927b245e5246ea499",
+      "heading": "8.1 Reads",
+      "line": 324,
+      "rows": [
+        [
+          "sel",
+          "width",
+          "name",
+          "meaning"
+        ],
+        [
+          "---",
+          "---",
+          "---",
+          "---"
+        ],
+        [
+          "0",
+          "16",
+          "`FABRIC_ID`",
+          "image identity. This image answers **`0x5a52`**. A host **must** read this first and refuse to drive anything else."
+        ],
+        [
+          "1",
+          "16",
+          "`STATUS`",
+          "see \u00a78.3"
+        ],
+        [
+          "2",
+          "32",
+          "`LENGTH`",
+          "words **actually captured** \u2014 see \u00a710.1. Not what the host programmed."
+        ],
+        [
+          "4",
+          "32",
+          "`START`",
+          "the captured record's first word, as a logical word index"
+        ],
+        [
+          "6",
+          "32",
+          "`TRIGGER_INDEX`",
+          "**word** index of the triggering word within the record (not interpolated, not a sample half)"
+        ],
+        [
+          "8",
+          "32",
+          "`POSITION`",
+          "the bus engine's **next physical transaction address**, including read-pipeline flush clocks. It is **not** a count of delivered words and **not** the next deliverable word \u2014 see \u00a710.2."
+        ],
+        [
+          "10",
+          "32",
+          "`ORIGIN`",
+          "the physical address of logical word 0; maps `START`-relative indices onto the SRAM"
+        ],
+        [
+          "12",
+          "16",
+          "`FILL`",
+          "words actually present in the readout buffer after a fetch"
+        ],
+        [
+          "13",
+          "16",
+          "`REVISION`",
+          "image revision; gates behaviour, see \u00a712"
+        ],
+        [
+          "14",
+          "16",
+          "`MAP_ID`",
+          "lane map identity; qualified value `0xe192`"
+        ],
+        [
+          "15",
+          "16",
+          "`RATE`",
+          "per-channel MS/s. `500` in interleave mode. Present from revision 6; a host that reads any other value **must** refuse the image."
+        ],
+        [
+          "17",
+          "32",
+          "`DATA`",
+          "the readout buffer window selected by `BUFFER_INDEX` (\u00a78.2)"
+        ],
+        [
+          "19",
+          "16",
+          "`FLAGS`",
+          "`b0` sticky FIFO data fault, `b1` ADC PLL lock. The fault is **self-halting** \u2014 it stops the acquisition when it occurs \u2014 and is **cleared only by `ARM`**. There is no write to this selector."
+        ],
+        [
+          "20\u201324",
+          "5 \u00d7 16",
+          "`SNAPSHOT[0..4]`",
+          "the ten-byte atomic core snapshot latched by `SNAPSHOT` (\u00a79.2); selector `20+i` carries bytes `2i` (low half) and `2i+1` (high half)"
+        ]
+      ],
+      "source": "specs/12-acquisition-fpga.md",
+      "status": "specification with historical and unresolved physical claims"
+    },
+    {
+      "gitBlob": "aaa384f40ad2dcec5f3f236927b245e5246ea499",
+      "heading": "8.2 Writes",
+      "line": 346,
+      "rows": [
+        [
+          "sel",
+          "width",
+          "name",
+          "meaning"
+        ],
+        [
+          "---",
+          "---",
+          "---",
+          "---"
+        ],
+        [
+          "1",
+          "16",
+          "`COMMAND`",
+          "opcode, see \u00a78.4"
+        ],
+        [
+          "2",
+          "32",
+          "`PRE_WORDS`",
+          "pre-trigger words, **excluding** the triggering word"
+        ],
+        [
+          "4",
+          "32",
+          "`POST_WORDS`",
+          "post-trigger words, **including** the triggering word"
+        ],
+        [
+          "6",
+          "16",
+          "`CONFIG`",
+          "see \u00a78.5"
+        ],
+        [
+          "7",
+          "16",
+          "`TRIGGER_LEVEL`",
+          "8-bit level, compared against the raw sample code"
+        ],
+        [
+          "8",
+          "32",
+          "`SKIP` / `FETCH_LEN`",
+          "**dual purpose, by the command that follows it.** Before `ADVANCE` it is a **relative** word count to advance the read position. Before `FETCH` or `FETCH_CONTINUE` it is the **number of words to fetch** into the readout buffer."
+        ],
+        [
+          "16",
+          "16",
+          "`BUFFER_INDEX`",
+          "word index **within the readout buffer**, `0 .. FILL-1`; selects what `DATA` (\u00a78.1) returns"
+        ]
+      ],
+      "source": "specs/12-acquisition-fpga.md",
+      "status": "specification with historical and unresolved physical claims"
+    },
+    {
+      "gitBlob": "aaa384f40ad2dcec5f3f236927b245e5246ea499",
+      "heading": "8.3 `STATUS` (read 1)",
+      "line": 358,
+      "rows": [
+        [
+          "bit",
+          "mask",
+          "meaning"
+        ],
+        [
+          "---",
+          "---",
+          "---"
+        ],
+        [
+          "2",
+          "`0x0004`",
+          "`READY`"
+        ],
+        [
+          "3",
+          "`0x0008`",
+          "`RUNNING`"
+        ],
+        [
+          "4",
+          "`0x0010`",
+          "`FROZEN`"
+        ],
+        [
+          "5",
+          "`0x0020`",
+          "`TRIGGERED`"
+        ],
+        [
+          "6",
+          "`0x0040`",
+          "PLL `LOCKED`"
+        ],
+        [
+          "7\u20138",
+          "`0x0180`",
+          "command rejected"
+        ],
+        [
+          "9",
+          "`0x0200`",
+          "command acknowledge \u2014 **toggles** on completion"
+        ],
+        [
+          "10",
+          "`0x0400`",
+          "`PREFETCHED`"
+        ],
+        [
+          "11",
+          "`0x0800`",
+          "atomic snapshot pending"
+        ]
+      ],
+      "source": "specs/12-acquisition-fpga.md",
+      "status": "specification with historical and unresolved physical claims"
+    },
+    {
+      "gitBlob": "aaa384f40ad2dcec5f3f236927b245e5246ea499",
+      "heading": "8.4 Commands (write 1)",
+      "line": 374,
+      "rows": [
+        [
+          "op",
+          "name",
+          "effect"
+        ],
+        [
+          "---",
+          "---",
+          "---"
+        ],
+        [
+          "1",
+          "`ARM`",
+          "begin acquisition with the currently written configuration"
+        ],
+        [
+          "2",
+          "`FETCH`",
+          "fill the readout buffer with `FETCH_LEN` words starting at the current read position"
+        ],
+        [
+          "3",
+          "`ADVANCE`",
+          "advance the read position by `SKIP` words. `SKIP` is **relative** and reduces **modulo 524,288** \u2014 the whole SRAM, not modulo `LENGTH`."
+        ],
+        [
+          "4",
+          "`FORCE`",
+          "force a trigger"
+        ],
+        [
+          "5",
+          "`HALT`",
+          "stop the current acquisition"
+        ],
+        [
+          "6",
+          "`SNAPSHOT`",
+          "latch a ten-byte atomic core snapshot"
+        ],
+        [
+          "7",
+          "`FETCH_CONTINUE`",
+          "as `FETCH`, but continues the previous burst without re-addressing; legal **only** under the conditions in \u00a710.2"
+        ]
+      ],
+      "source": "specs/12-acquisition-fpga.md",
+      "status": "specification with historical and unresolved physical claims"
+    },
+    {
+      "gitBlob": "aaa384f40ad2dcec5f3f236927b245e5246ea499",
+      "heading": "8.5 `CONFIG` (write 6)",
+      "line": 400,
+      "rows": [
+        [
+          "bit",
+          "mask",
+          "meaning"
+        ],
+        [
+          "---",
+          "---",
+          "---"
+        ],
+        [
+          "0",
+          "`0x0001`",
+          "source: 1 = ADC, 0 = internal counter"
+        ],
+        [
+          "1\u20133",
+          "`0x000E`",
+          "pair select; **must be 0** in interleave mode (all five pairs are used)"
+        ],
+        [
+          "4",
+          "`0x0010`",
+          "normal trigger (else auto)"
+        ],
+        [
+          "5",
+          "`0x0020`",
+          "falling edge **in code space** \u2014 see the warning below"
+        ],
+        [
+          "6",
+          "`0x0040`",
+          "trigger channel: 1 = CH2"
+        ]
+      ],
+      "source": "specs/12-acquisition-fpga.md",
+      "status": "specification with historical and unresolved physical claims"
+    },
+    {
+      "gitBlob": "aaa384f40ad2dcec5f3f236927b245e5246ea499",
+      "heading": "12. Revision gating",
+      "line": 560,
+      "rows": [
+        [
+          "revision",
+          "behaviour"
+        ],
+        [
+          "---",
+          "---"
+        ],
+        [
+          "< 6",
+          "no `RATE` register; sample rate is the 100 MHz non-interleaved rate; pair select is meaningful"
+        ],
+        [
+          "\u2265 6",
+          "interleaved: `RATE` (read 15) reads `500`, `FLAGS` (read 19) is present, and `CONFIG` pair select **must be 0**"
+        ],
+        [
+          "\u2265 7",
+          "readout requires the 16-word warm-up prefix (\u00a710.2)"
+        ]
+      ],
+      "source": "specs/12-acquisition-fpga.md",
+      "status": "specification with historical and unresolved physical claims"
+    },
+    {
+      "gitBlob": "aaa384f40ad2dcec5f3f236927b245e5246ea499",
+      "heading": "13. Scope \u2014 what this document is sufficient to build",
+      "line": 581,
+      "rows": [
+        [
+          "what",
+          "where it actually lives"
+        ],
+        [
+          "---",
+          "---"
+        ],
+        [
+          "Device pin assignments \u2014 the 80 lanes, `enc_p`/`enc_n`, the strap pins, the SRAM group, the GPMC interface",
+          "`fpga/default/default.qsf`. This is **authoritative**: `fpga/acq_sram/build.py` derives its own assignments from that file rather than duplicating them."
+        ],
+        [
+          "The 80-entry lane map \u2014 which physical lane carries which (core, bit)",
+          "`fpga/default/lanemap_seed.vh`, a generated file. \u00a73.4 gives the identity (`MAP_ID`) a host checks; this file gives the contents."
+        ]
+      ],
+      "source": "specs/12-acquisition-fpga.md",
+      "status": "specification with historical and unresolved physical claims"
+    },
+    {
+      "gitBlob": "ac87e9f8cfcc0fb151cf0fa3f58ec733786a6620",
+      "heading": "Registers",
+      "line": 39,
+      "rows": [
+        [
+          "Access",
+          "Selector",
+          "Meaning"
+        ],
+        [
+          "---",
+          "---:",
+          "---"
+        ],
+        [
+          "Write",
+          "19",
+          "Mode: bit 0 streams; bit 1 runs continuously until force/halt. Bit 1 requires bit 0. Configure while idle."
+        ],
+        [
+          "Write",
+          "20",
+          "Release bank: bit 0 bank number, bit 1 observed publication token."
+        ],
+        [
+          "Read",
+          "13",
+          "Revision 11 when STREAM_CAPTURE and HOST_READ_FIX are defined."
+        ],
+        [
+          "Read",
+          "32",
+          "Bits 1:0 ready banks; 3:2 tokens; 5:4 last packet has only one valid word; bit 6 fault; bit 7 finished; bit 8 mode enabled."
+        ],
+        [
+          "Read",
+          "33,34",
+          "Valid 64-bit packet count in banks 0,1."
+        ],
+        [
+          "Read",
+          "35\u201338",
+          "Bank 0 first stream word ordinal, least-significant 16-bit part first."
+        ],
+        [
+          "Read",
+          "39\u201342",
+          "Bank 1 first stream word ordinal, least-significant part first."
+        ]
+      ],
+      "source": "fpga/acq_sram/STREAMING.md",
+      "status": "legacy revision-11 experimental documentation"
+    },
+    {
+      "gitBlob": "fe9135539a6296d42ed03cab367df2a64a85e1bb",
+      "heading": "Profile command window (draft ABI)",
+      "line": 15,
+      "rows": [
+        [
+          "Selector",
+          "Meaning"
+        ],
+        [
+          "---",
+          "---"
+        ],
+        [
+          "0x10 write",
+          "Command opcode below; not a bit mask"
+        ],
+        [
+          "0x11 read",
+          "Bit 0: command/result pending. Bit 1: sticky busy-command rejection. Bit 2: result valid"
+        ],
+        [
+          "0x11 write",
+          "Write bit 1 to clear sticky rejection; a new rejection wins"
+        ],
+        [
+          "0x12 read",
+          "Result: 0 accepted, 1 decoder/configuration error, 2 acquisition request rejected"
+        ],
+        [
+          "0x13 read",
+          "Last accepted opcode (busy-rejected writes do not replace it)"
+        ],
+        [
+          "0x14 read",
+          "Accepted-command sequence, modulo 65536; reset to zero on epoch reset"
+        ],
+        [
+          "0x20 / 0x21",
+          "Pre-trigger word count, low 16 / high 4 bits"
+        ],
+        [
+          "0x22 / 0x23",
+          "Post-trigger word count, low 16 / high 4 bits"
+        ],
+        [
+          "0x24 / 0x25",
+          "Recall offset, low 16 / high 4 bits"
+        ],
+        [
+          "0x26 / 0x27",
+          "Recall length, low 16 / high 4 bits"
+        ],
+        [
+          "0x28",
+          "Read-bias low 16 bits"
+        ],
+        [
+          "0x29",
+          "Bits 2:0 bias high; 8:4 decimation log; 10:9 trigger mode; 11 channel; 12 falling"
+        ],
+        [
+          "0x2a",
+          "Trigger level, 16 bits"
+        ],
+        [
+          "0x2b",
+          "ADC encode-enable mask, low 10 bits"
+        ]
+      ],
+      "source": "docs/fpga-profile-command-abi.md",
+      "status": "draft new-profile ABI; some board-status prose is stale"
+    },
+    {
+      "gitBlob": "fe9135539a6296d42ed03cab367df2a64a85e1bb",
+      "heading": "Profile command window (draft ABI)",
+      "line": 39,
+      "rows": [
+        [
+          "Opcode",
+          "Action"
+        ],
+        [
+          "---",
+          "---"
+        ],
+        [
+          "1",
+          "Start finite capture (acquisition operation 0)"
+        ],
+        [
+          "2",
+          "Start frozen recall (operation 2)"
+        ],
+        [
+          "3",
+          "Start streaming (operation 1); rejected when ENABLE_STREAM=0"
+        ],
+        [
+          "4",
+          "Halt pulse"
+        ],
+        [
+          "5",
+          "Force-trigger pulse"
+        ],
+        [
+          "6",
+          "Raw ADC snapshot service; rejected in the base profile, which has no snapshot adapter"
+        ],
+        [
+          "7",
+          "Query acquisition status without starting or stopping acquisition"
+        ]
+      ],
+      "source": "docs/fpga-profile-command-abi.md",
+      "status": "draft new-profile ABI; some board-status prose is stale"
+    },
+    {
+      "gitBlob": "fe9135539a6296d42ed03cab367df2a64a85e1bb",
+      "heading": "Host readout window",
+      "line": 90,
+      "rows": [
+        [
+          "Selector",
+          "Meaning"
+        ],
+        [
+          "---",
+          "---"
+        ],
+        [
+          "0x30 write",
+          "Select: bits 12:0 halfword offset, bit 13 bank, bit 14 token; bit 15 must be zero"
+        ],
+        [
+          "0x30 read",
+          "Current halfword cursor within the selected bank"
+        ],
+        [
+          "0x31 read",
+          "Prefetched 16-bit data; pop once at end of bus read"
+        ],
+        [
+          "0x32 read",
+          "Bits 0 ready, 1 exhausted, 2 sticky window fault, 3 selected"
+        ],
+        [
+          "0x33 write",
+          "Bit 0 explicit release, bit 1 clear window fault; all other bits zero"
+        ],
+        [
+          "0x34 read",
+          "Bits 1:0 published-ready, 3:2 tokens, bit 4 upstream host-path fault"
+        ],
+        [
+          "0x35 / 0x36 read",
+          "Published 32-bit word counts for bank 0 / 1"
+        ],
+        [
+          "0x38..0x3b read",
+          "Bank 0 first-word ordinal, low 16 bits first"
+        ],
+        [
+          "0x3c..0x3f read",
+          "Bank 1 first-word ordinal, low 16 bits first"
+        ]
+      ],
+      "source": "docs/fpga-profile-command-abi.md",
+      "status": "draft new-profile ABI; some board-status prose is stale"
+    },
+    {
+      "gitBlob": "fe9135539a6296d42ed03cab367df2a64a85e1bb",
+      "heading": "Acquisition status and discovery",
+      "line": 132,
+      "rows": [
+        [
+          "Word",
+          "Contents"
+        ],
+        [
+          "---",
+          "---"
+        ],
+        [
+          "0 (0x40/0x41)",
+          "Flags below; other bits zero"
+        ],
+        [
+          "1 (0x42/0x43)",
+          "Record word count, low 20 bits"
+        ],
+        [
+          "2 (0x44/0x45)",
+          "Trigger word index, low 20 bits"
+        ],
+        [
+          "3 (0x46/0x47)",
+          "Physical record start, low 19 bits"
+        ]
+      ],
+      "source": "docs/fpga-profile-command-abi.md",
+      "status": "draft new-profile ABI; some board-status prose is stale"
+    },
+    {
+      "gitBlob": "fe9135539a6296d42ed03cab367df2a64a85e1bb",
+      "heading": "Acquisition status and discovery",
+      "line": 149,
+      "rows": [
+        [
+          "Selector",
+          "Value"
+        ],
+        [
+          "---",
+          "---"
+        ],
+        [
+          "0x00",
+          "Magic 0xacd2"
+        ],
+        [
+          "0x01",
+          "ABI 1 (draft, not legacy rev11)"
+        ],
+        [
+          "0x02",
+          "Profile 1 deep, 0 unified experimental"
+        ],
+        [
+          "0x03",
+          "Capability bits: 0 finite, 1 precision, 2 stream, 3 edge trigger"
+        ],
+        [
+          "0x04 / 0x05",
+          "Total host words 5120 / bank words 2560"
+        ],
+        [
+          "0x06 / 0x07",
+          "SRAM depth 0x00080000 words, low half first"
+        ],
+        [
+          "0x08",
+          "Sample-format bitmap 3: raw and Q8.8"
+        ],
+        [
+          "0x09",
+          "ADC encode clock 100 MHz"
+        ],
+        [
+          "0x0a",
+          "Hardware-qualified flag 0; this image is experimental"
+        ],
+        [
+          "0x0b / 0x0c",
+          "Build ID, low half first"
+        ]
+      ],
+      "source": "docs/fpga-profile-command-abi.md",
+      "status": "draft new-profile ABI; some board-status prose is stale"
+    }
+  ]
+}

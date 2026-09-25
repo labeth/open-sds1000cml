@@ -1,0 +1,65 @@
+{
+  "source": "app/internal/cal/cal_test.go",
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "scope": "Reviewed Go test outcomes; passing assertions contribute partial requirement evidence.",
+  "sourceSHA256": "b99e0efe8aa4c400daf111c0740d617357156502ad0f25d0e3f9e0ce6a991559",
+  "logs": {
+    "test-runs/cal.jsonl": "8789850c1acbea6f042aeb98690fff83081289d5dfeee0ba1e69672142e55726"
+  },
+  "tests": [
+    {
+      "name": "TestScrambleRoundTrip",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-016"
+      ]
+    },
+    {
+      "name": "TestTriangularIndices",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-016"
+      ]
+    },
+    {
+      "name": "TestParseWorkedOffsets",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-016"
+      ]
+    },
+    {
+      "name": "TestChecksumRejects",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-016"
+      ]
+    },
+    {
+      "name": "TestDefaults",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-016"
+      ]
+    },
+    {
+      "name": "TestDCVolts",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-091"
+      ]
+    }
+  ],
+  "results": [
+    {
+      "requirement": "REQ-SDS-016",
+      "status": "partial",
+      "notes": "5 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    },
+    {
+      "requirement": "REQ-SDS-091",
+      "status": "partial",
+      "notes": "1 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    }
+  ]
+}

@@ -1,0 +1,56 @@
+{
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "status": "source-trace-and-publication-integrated",
+  "requirements": [
+    "REQ-SDS-163",
+    "REQ-SDS-070",
+    "REQ-SDS-069"
+  ],
+  "files": [
+    {
+      "path": "app/internal/web/binframe.test.cjs",
+      "baselineSHA256": "ed9e6b3565545f904a4e76d0127cce545ce43459e88dcefd0d4573c15d31ced7",
+      "lines": 115,
+      "linkedDeclarations": 2,
+      "requirement": "REQ-SDS-163",
+      "annotatedSHA256": "c39bbb11ce1b2125677ffa8cfd48772085f7dd361f7a23e3e29c388898603411"
+    },
+    {
+      "path": "app/internal/web/peaks.test.cjs",
+      "baselineSHA256": "6da89d87e61a091fcb48813fecc6615732beb0cc00807903676f0b724c1dc3e9",
+      "lines": 133,
+      "linkedDeclarations": 4,
+      "requirement": "REQ-SDS-070",
+      "annotatedSHA256": "2fbfd01abb6a282613d6d5a257a8a90aa03fbcf1bd8b740bbc417dd2d224fd78"
+    },
+    {
+      "path": "app/internal/web/sigrok_export.test.cjs",
+      "baselineSHA256": "a96c99257fb236b69b44947c4b66261d75e65306906aec6dd103973bfed1fdda",
+      "lines": 226,
+      "linkedDeclarations": 5,
+      "requirement": "REQ-SDS-069",
+      "annotatedSHA256": "2830461fce684cdde044f636bf02db35e8923bd86f7c3644298a31967a6eb544"
+    }
+  ],
+  "testEvidence": "evidence/final-node-suites-test-run.json",
+  "scope": "Complete read of three original Node suites; executed unchanged against pinned production dependencies.",
+  "findings": [
+    "Binary-frame fixtures cover native/deep margins, empty/envelope/unchanged layouts, selected malformed headers and payloads, allocation isolation, raw-envelope override and Q8 decoding. The named bad-header-JSON case encodes a valid JSON string rather than syntactically malformed JSON. No exhaustive flag/header or resource-exhaustion campaign is present.",
+    "Peak fixtures use deterministic two-tone bin-centered arrays, magnitude swaps, nearest-frequency selection, flat input and sinusoidal component isolation. Selection is numerical function calling, not actual DOM clicking. Gap tolerance checks non-null output, not gap-region accuracy; carrier removal is implemented in the test rather than the UI path.",
+    "Export fixtures cover known CRC vectors, stored ZIP structure, calibration and gap policy, exact srzip metadata, chunk boundaries, VCD timing/decimation and WAV fields. The ZIP reader independently walks directory entries but calls production sigrokCrc32 for data CRC; external libsigrok interoperability is not exercised.",
+    "Export golden files and exact byte-layout assertions cover selected sizes/rates. They do not establish all archive boundary limits or real application import. Synthetic code-to-voltage checks validate arithmetic contracts, not instrument calibration."
+  ],
+  "pending": [],
+  "validation": {
+    "linkedDeclarations": 11,
+    "originalSuites": 3,
+    "exactBaselineRecovery": "pass",
+    "unchangedParserTokens": "pass",
+    "strictConsistency": "pass",
+    "pdf": "deferred",
+    "nonPDFPublication": "pass",
+    "reproducibility": "pass",
+    "reproducibleArtifacts": 36,
+    "nativeMCP": "pass"
+  }
+}

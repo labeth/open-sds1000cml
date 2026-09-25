@@ -1,0 +1,63 @@
+{
+  "result": "pass",
+  "documentSHA256": "23f7eddf9e3db9a2c404b2088e60047392d57b58e830163ec19360e78fc0954b",
+  "views": [
+    {
+      "view": "VIEW-COMMUNICATION",
+      "parts": 1,
+      "nodes": 53,
+      "relationships": 87,
+      "sourceSHA256": "4068973868f1a78ae342ae954d3b2376718986b09b9ef0bf23868df8d09a5879"
+    },
+    {
+      "view": "VIEW-DEPLOYMENT",
+      "parts": 1,
+      "nodes": 132,
+      "relationships": 256,
+      "sourceSHA256": "eada3e7e20fcbd31c331d1e84d8981942a11a7da660af3887dca3c21610e9442"
+    },
+    {
+      "view": "VIEW-FLOWS",
+      "parts": 1,
+      "nodes": 31,
+      "relationships": 72,
+      "sourceSHA256": "f4f5f142ac05841e8a1194eda6b81957d7e2c48c59b3e3d9333b6981b35db4a7"
+    },
+    {
+      "view": "VIEW-HARDWARE",
+      "parts": 1,
+      "nodes": 16,
+      "relationships": 27,
+      "sourceSHA256": "c0892eebcb69dd69253df19f7c145049c75454e74f22cb50ba02a90c0390eeea"
+    },
+    {
+      "view": "VIEW-LIFECYCLE",
+      "parts": 1,
+      "nodes": 12,
+      "relationships": 14,
+      "sourceSHA256": "08adb856a87e49d5bfe6b36b644787f0cd6d34b0eab600906eeea7ed0e536a61"
+    },
+    {
+      "view": "VIEW-SECURITY",
+      "parts": 1,
+      "nodes": 14,
+      "relationships": 13,
+      "sourceSHA256": "421dfcb8de10030ac274dc65d48867eae14b80bda07a568246ca9909ad57a88e"
+    },
+    {
+      "view": "VIEW-SYSTEM",
+      "parts": 1,
+      "nodes": 220,
+      "relationships": 481,
+      "sourceSHA256": "951ff665e37db3dffc2f50b892ef11bf1731411377857e1728946d068dc02c7d"
+    },
+    {
+      "view": "VIEW-TRACEABILITY",
+      "parts": 1,
+      "nodes": 42,
+      "relationships": 82,
+      "sourceSHA256": "e5df5b711a1d33afa6abba7cee00526d1a2f08906e6cab2224d41a2ee425f09e"
+    }
+  ],
+  "scope": "Native Mermaid node IDs and complete edge-line multisets preserved in one diagram per view. Visual layout and semantic model completeness require separate review."
+}

@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-PANEL
 package panel
 
 // Seeded menu-state-machine fuzz: random button presses (menu, F1..F5, every
@@ -35,12 +36,14 @@ import (
 // fuzzEng is a stateful, mutex-guarded engine fake: every setter validates its
 // argument (recording violations) and updates the Stats snapshot the panel
 // resyncs from, mirroring the real engine's authoritative-state contract.
+// TRLC-LINKS: REQ-SDS-136
 type fuzzEng struct {
 	mu      sync.Mutex
 	stats   engine.Stats
 	illegal []string
 }
 
+// TRLC-LINKS: REQ-SDS-136
 func newFuzzEng() *fuzzEng {
 	return &fuzzEng{stats: engine.Stats{
 		Running: true, TrigCode: 31434, TdivS: 500e-6, TrigPosFrac: 0.5,
@@ -48,10 +51,12 @@ func newFuzzEng() *fuzzEng {
 	}}
 }
 
+// TRLC-LINKS: REQ-SDS-136
 func (f *fuzzEng) bad(format string, a ...any) {
 	f.illegal = append(f.illegal, fmt.Sprintf(format, a...))
 }
 
+// TRLC-LINKS: REQ-SDS-136
 func (f *fuzzEng) takeIllegal() []string {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -60,16 +65,21 @@ func (f *fuzzEng) takeIllegal() []string {
 	return out
 }
 
+// TRLC-LINKS: REQ-SDS-136
 func (f *fuzzEng) ReadMatrix() ([5]uint16, bool) { return idle(), true }
+// TRLC-LINKS: REQ-SDS-136
 func (f *fuzzEng) SetLEDs(uint16)                {}
 
+// TRLC-LINKS: REQ-SDS-136
 func (f *fuzzEng) AcqLog(n int) ([]engine.AcqSample, float64) { return nil, 0 }
+// TRLC-LINKS: REQ-SDS-136
 func (f *fuzzEng) Snapshot() engine.Stats {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	return f.stats
 }
 
+// TRLC-LINKS: REQ-SDS-136
 func (f *fuzzEng) SetOffsetDAC(ch int, code uint16) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -78,6 +88,7 @@ func (f *fuzzEng) SetOffsetDAC(ch int, code uint16) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-136
 func (f *fuzzEng) SetTrigLevelCode(code uint16) uint16 {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -88,6 +99,7 @@ func (f *fuzzEng) SetTrigLevelCode(code uint16) uint16 {
 	return code
 }
 
+// TRLC-LINKS: REQ-SDS-136
 func (f *fuzzEng) SetTdiv(t float64) (engine.Band, bool) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -101,12 +113,14 @@ func (f *fuzzEng) SetTdiv(t float64) (engine.Band, bool) {
 	return b, true
 }
 
+// TRLC-LINKS: REQ-SDS-136
 func (f *fuzzEng) SetNorm(on bool) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.stats.Norm = on
 }
 
+// TRLC-LINKS: REQ-SDS-136
 func (f *fuzzEng) SetRunning(on bool) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -116,18 +130,21 @@ func (f *fuzzEng) SetRunning(on bool) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-136
 func (f *fuzzEng) SetSingle() {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.stats.Single, f.stats.Norm, f.stats.Running = true, true, true
 }
 
+// TRLC-LINKS: REQ-SDS-136
 func (f *fuzzEng) SetTrigSlope(r bool) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.stats.TrigRising = r
 }
 
+// TRLC-LINKS: REQ-SDS-136
 func (f *fuzzEng) SetTrigSource(ch int) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -138,6 +155,7 @@ func (f *fuzzEng) SetTrigSource(ch int) {
 	f.stats.TrigSource = ch
 }
 
+// TRLC-LINKS: REQ-SDS-136
 func (f *fuzzEng) SetTrigType(t int) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -148,6 +166,7 @@ func (f *fuzzEng) SetTrigType(t int) {
 	f.stats.TrigType = t
 }
 
+// TRLC-LINKS: REQ-SDS-136
 func (f *fuzzEng) SetAcqMode(m int) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -158,6 +177,7 @@ func (f *fuzzEng) SetAcqMode(m int) {
 	f.stats.AcqMode = m
 }
 
+// TRLC-LINKS: REQ-SDS-136
 func (f *fuzzEng) SetAvgCount(n int) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -168,6 +188,7 @@ func (f *fuzzEng) SetAvgCount(n int) {
 	f.stats.AvgCount = n
 }
 
+// TRLC-LINKS: REQ-SDS-136
 func (f *fuzzEng) SetEresLen(l int) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -178,12 +199,14 @@ func (f *fuzzEng) SetEresLen(l int) {
 	f.stats.EresLen = l
 }
 
+// TRLC-LINKS: REQ-SDS-136
 func (f *fuzzEng) SetETS(on bool) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.stats.ETS = on
 }
 
+// TRLC-LINKS: REQ-SDS-136
 func (f *fuzzEng) SetTrigPosFrac(fr float64) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -194,6 +217,7 @@ func (f *fuzzEng) SetTrigPosFrac(fr float64) {
 	f.stats.TrigPosFrac = fr
 }
 
+// TRLC-LINKS: REQ-SDS-136
 func (f *fuzzEng) SetHoldoff(s float64) float64 {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -205,6 +229,7 @@ func (f *fuzzEng) SetHoldoff(s float64) float64 {
 	return s
 }
 
+// TRLC-LINKS: REQ-SDS-136
 func (f *fuzzEng) SetMemDepth(n int) int {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -216,6 +241,7 @@ func (f *fuzzEng) SetMemDepth(n int) int {
 	return n
 }
 
+// TRLC-LINKS: REQ-SDS-136
 func (f *fuzzEng) SetPulseParams(lvl, mn, mx float64, cond int) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -224,6 +250,7 @@ func (f *fuzzEng) SetPulseParams(lvl, mn, mx float64, cond int) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-136
 func (f *fuzzEng) SetSlopeParams(lo, hi, mn, mx float64, cond int) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -232,6 +259,7 @@ func (f *fuzzEng) SetSlopeParams(lo, hi, mn, mx float64, cond int) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-136
 func (f *fuzzEng) SetVideoParams(std, line int, neg bool) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -240,6 +268,7 @@ func (f *fuzzEng) SetVideoParams(std, line int, neg bool) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-136
 func (f *fuzzEng) SetMask(m *engine.Mask) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -250,6 +279,7 @@ func (f *fuzzEng) SetMask(m *engine.Mask) {
 	f.stats.MaskSet = true
 }
 
+// TRLC-LINKS: REQ-SDS-136
 func (f *fuzzEng) SetMaskMode(m int) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -260,8 +290,10 @@ func (f *fuzzEng) SetMaskMode(m int) {
 	f.stats.MaskMode = m
 }
 
+// TRLC-LINKS: REQ-SDS-136
 func (f *fuzzEng) ClearMaskFails() {}
 
+// TRLC-LINKS: REQ-SDS-136
 func inInts(v int, opts ...int) bool {
 	for _, o := range opts {
 		if v == o {
@@ -271,14 +303,17 @@ func inInts(v int, opts ...int) bool {
 	return false
 }
 
+// TRLC-LINKS: REQ-SDS-136
 func inIntRange(v, lo, hi int) bool { return v >= lo && v <= hi }
 
 // fuzzAction is one scripted step: a button press or a knob turn.
+// TRLC-LINKS: REQ-SDS-136
 type fuzzAction struct {
 	name string // for the failure log
 	run  func(c *Controller)
 }
 
+// TRLC-LINKS: REQ-SDS-136
 func fuzzAlphabet() []fuzzAction {
 	var acts []fuzzAction
 	buttons := []struct {
@@ -328,6 +363,7 @@ func fuzzAlphabet() []fuzzAction {
 
 // checkMenuInvariants inspects the controller under its own lock and returns
 // every violated invariant. pageSlots reads decProto, so it MUST run under mu.
+// TRLC-LINKS: REQ-SDS-136
 func checkMenuInvariants(c *Controller) []string {
 	var bad []string
 	fail := func(format string, a ...any) { bad = append(bad, fmt.Sprintf(format, a...)) }
@@ -429,6 +465,7 @@ func checkMenuInvariants(c *Controller) []string {
 	return bad
 }
 
+// TRLC-LINKS: REQ-SDS-136
 func TestMenuFuzz(t *testing.T) {
 	alphabet := fuzzAlphabet()
 	const steps = 2000
@@ -502,6 +539,7 @@ func TestMenuFuzz(t *testing.T) {
 // data-role shadow on the same channel — and the next switch to I2C/SPI
 // surfaced SCL/SDA (CLK/DATA) sharing one channel, which TestDecodeMenu
 // documents as never allowed.
+// TRLC-LINKS: REQ-SDS-136
 func TestDecodeChannelComplementarityAcrossProtoSwitch(t *testing.T) {
 	c, _, _ := newC(t)
 	c.menuButton(btnMenuOnOff) // MAIN

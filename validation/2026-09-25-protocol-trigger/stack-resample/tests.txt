@@ -1,0 +1,115 @@
+=== RUN   TestStackPositionsRTL
+=== RUN   TestStackPositionsRTL/0
+=== RUN   TestStackPositionsRTL/1
+=== RUN   TestStackPositionsRTL/2
+=== RUN   TestStackPositionsRTL/3
+=== RUN   TestStackPositionsRTL/4
+=== RUN   TestStackPositionsRTL/5
+=== RUN   TestStackPositionsRTL/6
+=== RUN   TestStackPositionsRTL/7
+=== RUN   TestStackPositionsRTL/8
+=== RUN   TestStackPositionsRTL/9
+=== RUN   TestStackPositionsRTL/10
+=== RUN   TestStackPositionsRTL/11
+=== RUN   TestStackPositionsRTL/12
+=== RUN   TestStackPositionsRTL/13
+=== RUN   TestStackPositionsRTL/14
+=== RUN   TestStackPositionsRTL/15
+=== RUN   TestStackPositionsRTL/16
+=== RUN   TestStackPositionsRTL/17
+=== RUN   TestStackPositionsRTL/18
+=== RUN   TestStackPositionsRTL/19
+=== RUN   TestStackPositionsRTL/20
+=== RUN   TestStackPositionsRTL/21
+=== RUN   TestStackPositionsRTL/22
+=== RUN   TestStackPositionsRTL/23
+=== RUN   TestStackPositionsRTL/24
+=== RUN   TestStackPositionsRTL/25
+=== RUN   TestStackPositionsRTL/26
+=== RUN   TestStackPositionsRTL/27
+=== RUN   TestStackPositionsRTL/28
+=== RUN   TestStackPositionsRTL/29
+=== RUN   TestStackPositionsRTL/30
+=== RUN   TestStackPositionsRTL/31
+=== RUN   TestStackPositionsRTL/32
+=== NAME  TestStackPositionsRTL
+    stack_resampling_rtl_test.go:105: 33 position fixtures; general uint32 factors, boundary skips, stalls and aborts
+--- PASS: TestStackPositionsRTL (0.34s)
+    --- PASS: TestStackPositionsRTL/0 (0.01s)
+    --- PASS: TestStackPositionsRTL/1 (0.01s)
+    --- PASS: TestStackPositionsRTL/2 (0.01s)
+    --- PASS: TestStackPositionsRTL/3 (0.01s)
+    --- PASS: TestStackPositionsRTL/4 (0.00s)
+    --- PASS: TestStackPositionsRTL/5 (0.01s)
+    --- PASS: TestStackPositionsRTL/6 (0.01s)
+    --- PASS: TestStackPositionsRTL/7 (0.00s)
+    --- PASS: TestStackPositionsRTL/8 (0.01s)
+    --- PASS: TestStackPositionsRTL/9 (0.02s)
+    --- PASS: TestStackPositionsRTL/10 (0.02s)
+    --- PASS: TestStackPositionsRTL/11 (0.01s)
+    --- PASS: TestStackPositionsRTL/12 (0.02s)
+    --- PASS: TestStackPositionsRTL/13 (0.01s)
+    --- PASS: TestStackPositionsRTL/14 (0.02s)
+    --- PASS: TestStackPositionsRTL/15 (0.01s)
+    --- PASS: TestStackPositionsRTL/16 (0.02s)
+    --- PASS: TestStackPositionsRTL/17 (0.02s)
+    --- PASS: TestStackPositionsRTL/18 (0.02s)
+    --- PASS: TestStackPositionsRTL/19 (0.01s)
+    --- PASS: TestStackPositionsRTL/20 (0.02s)
+    --- PASS: TestStackPositionsRTL/21 (0.01s)
+    --- PASS: TestStackPositionsRTL/22 (0.01s)
+    --- PASS: TestStackPositionsRTL/23 (0.01s)
+    --- PASS: TestStackPositionsRTL/24 (0.01s)
+    --- PASS: TestStackPositionsRTL/25 (0.01s)
+    --- PASS: TestStackPositionsRTL/26 (0.01s)
+    --- PASS: TestStackPositionsRTL/27 (0.01s)
+    --- PASS: TestStackPositionsRTL/28 (0.01s)
+    --- PASS: TestStackPositionsRTL/29 (0.01s)
+    --- PASS: TestStackPositionsRTL/30 (0.01s)
+    --- PASS: TestStackPositionsRTL/31 (0.01s)
+    --- PASS: TestStackPositionsRTL/32 (0.01s)
+=== RUN   TestStackInterpolateRTL
+    stack_resampling_rtl_test.go:187: 332 interpolation fixtures; maximum latency 54 clocks; error below one Q24 unit per channel
+--- PASS: TestStackInterpolateRTL (0.07s)
+=== RUN   TestStackResampleRTL
+=== RUN   TestStackResampleRTL/0
+=== RUN   TestStackResampleRTL/1
+=== RUN   TestStackResampleRTL/2
+=== RUN   TestStackResampleRTL/3
+=== RUN   TestStackResampleRTL/4
+=== RUN   TestStackResampleRTL/5
+=== RUN   TestStackResampleRTL/6
+=== RUN   TestStackResampleRTL/7
+=== RUN   TestStackResampleRTL/8
+=== RUN   TestStackResampleRTL/9
+=== RUN   TestStackResampleRTL/10
+=== RUN   TestStackResampleRTL/11
+=== RUN   TestStackResampleRTL/12
+=== RUN   TestStackResampleRTL/13
+=== RUN   TestStackResampleRTL/14
+=== RUN   TestStackResampleRTL/15
+=== RUN   TestStackResampleRTL/16
+=== RUN   TestStackResampleRTL/17
+=== NAME  TestStackResampleRTL
+    stack_resampling_rtl_test.go:316: 18 memory-to-resampled-bin fixtures compared with drizzleHit
+--- PASS: TestStackResampleRTL (0.44s)
+    --- PASS: TestStackResampleRTL/0 (0.03s)
+    --- PASS: TestStackResampleRTL/1 (0.01s)
+    --- PASS: TestStackResampleRTL/2 (0.02s)
+    --- PASS: TestStackResampleRTL/3 (0.05s)
+    --- PASS: TestStackResampleRTL/4 (0.06s)
+    --- PASS: TestStackResampleRTL/5 (0.04s)
+    --- PASS: TestStackResampleRTL/6 (0.04s)
+    --- PASS: TestStackResampleRTL/7 (0.01s)
+    --- PASS: TestStackResampleRTL/8 (0.01s)
+    --- PASS: TestStackResampleRTL/9 (0.01s)
+    --- PASS: TestStackResampleRTL/10 (0.03s)
+    --- PASS: TestStackResampleRTL/11 (0.03s)
+    --- PASS: TestStackResampleRTL/12 (0.03s)
+    --- PASS: TestStackResampleRTL/13 (0.03s)
+    --- PASS: TestStackResampleRTL/14 (0.01s)
+    --- PASS: TestStackResampleRTL/15 (0.01s)
+    --- PASS: TestStackResampleRTL/16 (0.01s)
+    --- PASS: TestStackResampleRTL/17 (0.01s)
+PASS
+ok  	open-sds/app/internal/superres	0.847s

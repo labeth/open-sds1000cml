@@ -1,0 +1,66 @@
+{
+  "status": "Final RTL and simulations validated; all three protocol-domain placements fail timing; full image exceeds capacity; not deployed",
+  "decisionPipeline": {
+    "protocolCandidate": "build-zQv6yl",
+    "logicElements": 9740,
+    "minSlackNs": -0.737,
+    "generalCandidate": "build-Syc0BO",
+    "generalFit": "fail",
+    "generalLogicElements": 11363
+  },
+  "predictedGap": {
+    "protocolCandidate": "build-bsbvIn",
+    "logicElements": 9736,
+    "minSlackNs": -0.194,
+    "generalCandidate": "build-00O4LV",
+    "generalFit": "fail",
+    "generalLogicElements": 11297
+  },
+  "tests": [
+    "receiver and public frame reference",
+    "immediate/coincident next-frame boundary",
+    "reset during pending close and resolved tie",
+    "full 128-record replay at minimum period",
+    "overflow priority and timestamp wrap/borrow",
+    "complete top simulation",
+    "paused accepted ticks at odd bit period"
+  ],
+  "deployment": "unchanged",
+  "strictModel": {
+    "exitCode": 0,
+    "warnings": 604
+  },
+  "placementProbes": [
+    {
+      "candidate": "build-X3Xesy",
+      "seed": 19,
+      "fit": "pass",
+      "minSlackNs": -0.51
+    },
+    {
+      "candidate": "build-uk0Lpk",
+      "seed": 20,
+      "fit": "pass",
+      "logicElements": 9686,
+      "minSlackNs": -0.387
+    }
+  ],
+  "currentRTLHashes": {
+    "top.v": "938e790ff947d66cdcf5136d8e8c94cc008bab7016089d2fe5cb691588a67380",
+    "manchester_receive.v": "3d3bdc8c9a902dfaa82cecc0dff878d102c34686bf1c2ed8eae22e457f04339c",
+    "manchester_trigger.v": "0c6685fba9ade6fae15043c8ce9587e3e1a02278238460723dafc19d69585787"
+  },
+  "bestPlacement": {
+    "candidate": "build-bsbvIn",
+    "seed": 18,
+    "minSlackNs": -0.194
+  },
+  "modelValidationNote": "Strict validation passed for final RTL and tests; final seed-result prose passed model loading afterward",
+  "remaining": [
+    "Full-image capacity",
+    "Remaining timing paths",
+    "Host Manchester configuration and live retained-record qualification",
+    "CAN FD, ARINC 429 and FlexRay hardware",
+    "FPGA reference-aligned stacking"
+  ]
+}

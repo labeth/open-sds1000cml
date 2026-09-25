@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-WEB
 package web
 
 import (
@@ -6,6 +7,7 @@ import (
 	"testing"
 )
 
+// TRLC-LINKS: REQ-SDS-163
 func TestPrecisionBinaryPayload(t *testing.T) {
 	rep := frameReply{Seq: 1, Cols: 2, Depth: 2, C1: []int16{100, 255}, C2: []int16{101, 0}, Q1: []uint16{25601, 65535}, Q2: []uint16{25728, 0}, FractionBits: 8}
 	b := encodeBinFrame(rep)

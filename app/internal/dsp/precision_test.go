@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-DSP
 package dsp
 
 import (
@@ -6,6 +7,7 @@ import (
 	"testing"
 )
 
+// TRLC-LINKS: REQ-SDS-037
 func TestPrecisionMatchesDirectConvolution(t *testing.T) {
 	rng := rand.New(rand.NewSource(903))
 	s := make([]uint16, 4096)
@@ -36,6 +38,7 @@ func TestPrecisionMatchesDirectConvolution(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-037
 func BenchmarkPrecisionFullRecord(b *testing.B) {
 	s := make([]uint16, 524288)
 	scratch := make([]uint16, len(s))
@@ -49,6 +52,7 @@ func BenchmarkPrecisionFullRecord(b *testing.B) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-037
 func TestPrecisionDCAndFraction(t *testing.T) {
 	s := make([]uint16, 1000)
 	for i := range s {
@@ -61,6 +65,7 @@ func TestPrecisionDCAndFraction(t *testing.T) {
 		}
 	}
 }
+// TRLC-LINKS: REQ-SDS-037
 func TestPrecisionRejectsAlternatingAndKeepsBoundary(t *testing.T) {
 	s := make([]uint16, 1000)
 	for i := range s {
@@ -76,6 +81,7 @@ func TestPrecisionRejectsAlternatingAndKeepsBoundary(t *testing.T) {
 		t.Fatal("invented missing boundary input")
 	}
 }
+// TRLC-LINKS: REQ-SDS-037
 func TestPrecisionFilterCenteredPassband(t *testing.T) {
 	const n = 2048
 	const f = 1.0 / 64

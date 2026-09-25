@@ -1,4 +1,6 @@
+// ENGMODEL-OWNER-UNIT: FU-RTL-ACQ-TESTS
 `timescale 1ns/1ps
+// TRLC-LINKS: REQ-SDS-044
 module tb;
  localparam AW=19,N=1<<AW;
  reg clk=0;always #5 clk=~clk;
@@ -34,7 +36,14 @@ module tb;
   if(position!==address)$fatal(1,"position drift after read");
  end endtask
  initial begin
-  tick;reset=0;launch(0,N);wait(write_ready);@(negedge clk);#1;
+  tick;reset=0;
+  launch(1,0);repeat(4)tick;
+  if(!ready || writes!=0 || reads!=0)$fatal(1,"zero-length read was not rejected");
+  launch(1,N+1);repeat(4)tick;
+  if(!ready || writes!=0 || reads!=0)$fatal(1,"oversized read was not rejected");
+  launch(0,N+1);repeat(4)tick;
+  if(!ready || writes!=0 || reads!=0)$fatal(1,"oversized write was not rejected");
+  launch(0,N);wait(write_ready);@(negedge clk);#1;
   for(i=0;i<N;i=i+1) begin
    write_data=32'h12300000+i;write_valid=1;tick;
    if(i%997==0) begin write_valid=0;repeat(3)tick;end

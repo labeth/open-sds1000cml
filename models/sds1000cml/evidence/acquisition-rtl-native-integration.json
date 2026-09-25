@@ -1,0 +1,136 @@
+{
+  "status": "integrated-with-explicit-verification-limits",
+  "annotatedFiles": 30,
+  "productionFiles": 13,
+  "testbenchFiles": 17,
+  "moduleLinks": 38,
+  "productionModules": 16,
+  "testAndSupportModules": 22,
+  "newRequirements": [
+    "REQ-SDS-183",
+    "REQ-SDS-184",
+    "REQ-SDS-185"
+  ],
+  "cases": 40,
+  "passedSimulations": 39,
+  "executedFailures": 0,
+  "compileFailures": 1,
+  "behavioralNotRun": 1,
+  "nativeAttachments": [
+    {
+      "source": "fpga/acq_sram/sim/tb_acquisition_path.v",
+      "resultArtifact": "test-results/rtl/tb_acquisition_path.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_TB_ACQUISITION_PATH_7766DD"
+    },
+    {
+      "source": "fpga/acq_sram/sim/tb_acquisition_source.v",
+      "resultArtifact": "test-results/rtl/tb_acquisition_source.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_TB_ACQUISITION_SOURCE_714589"
+    },
+    {
+      "source": "fpga/acq_sram/sim/tb_adc_interleave.v",
+      "resultArtifact": "test-results/rtl/tb_adc_interleave.json",
+      "status": "not-run",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_TB_ADC_INTERLEAVE_11865D"
+    },
+    {
+      "source": "fpga/acq_sram/sim/tb_board_capture.v",
+      "resultArtifact": "test-results/rtl/tb_board_capture.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_TB_BOARD_CAPTURE_9BAD16"
+    },
+    {
+      "source": "fpga/acq_sram/sim/tb_capture_engine.v",
+      "resultArtifact": "test-results/rtl/tb_capture_engine.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_TB_CAPTURE_ENGINE_925E4A"
+    },
+    {
+      "source": "fpga/acq_sram/sim/tb_capture_start.v",
+      "resultArtifact": "test-results/rtl/tb_capture_start.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_TB_CAPTURE_START_BD2A79"
+    },
+    {
+      "source": "fpga/acq_sram/sim/tb_command_bridge.v",
+      "resultArtifact": "test-results/rtl/tb_command_bridge.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_TB_COMMAND_BRIDGE_8BE368"
+    },
+    {
+      "source": "fpga/acq_sram/sim/tb_command_gpmc.v",
+      "resultArtifact": "test-results/rtl/tb_command_gpmc.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_TB_COMMAND_GPMC_63B080"
+    },
+    {
+      "source": "fpga/acq_sram/sim/tb_command_port.v",
+      "resultArtifact": "test-results/rtl/tb_command_port.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_TB_COMMAND_PORT_C834A0"
+    },
+    {
+      "source": "fpga/acq_sram/sim/tb_finite_capture.v",
+      "resultArtifact": "test-results/rtl/tb_finite_capture.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_TB_FINITE_CAPTURE_70FF91"
+    },
+    {
+      "source": "fpga/acq_sram/sim/tb_finite_recall.v",
+      "resultArtifact": "test-results/rtl/tb_finite_recall.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_TB_FINITE_RECALL_64F799"
+    },
+    {
+      "source": "fpga/acq_sram/sim/tb_finite_recall_faults.v",
+      "resultArtifact": "test-results/rtl/tb_finite_recall_faults.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_TB_FINITE_RECALL_FAULTS_B9BACA"
+    },
+    {
+      "source": "fpga/acq_sram/sim/tb_finite_writer_faults.v",
+      "resultArtifact": "test-results/rtl/tb_finite_writer_faults.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_TB_FINITE_WRITER_FAULTS_71ADE7"
+    },
+    {
+      "source": "fpga/acq_sram/sim/tb_interleave.v",
+      "resultArtifact": "test-results/rtl/tb_interleave.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_TB_INTERLEAVE_5525C9"
+    },
+    {
+      "source": "fpga/acq_sram/sim/tb_record.v",
+      "resultArtifact": "test-results/rtl/tb_record.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_TB_RECORD_52805C"
+    },
+    {
+      "source": "fpga/acq_sram/sim/tb_trigger_pipeline.v",
+      "resultArtifact": "test-results/rtl/tb_trigger_pipeline.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_TB_TRIGGER_PIPELINE_8E661E"
+    },
+    {
+      "source": "fpga/acq_sram/sim/tb_unpack.v",
+      "resultArtifact": "test-results/rtl/tb_unpack.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_TB_UNPACK_E905F0"
+    }
+  ],
+  "totalRTLNativeSummaries": 32,
+  "checks": {
+    "strictConsistency": "pass",
+    "mcp": "pass",
+    "rtlPublication": "pass",
+    "reproducibility": "36 generator outputs byte-identical"
+  },
+  "scope": [
+    "ADC interleave compilation requires unavailable dcfifo; behavioral verification is not-run.",
+    "Baseline execution evidence remains immutable; current source equivalence is established by exact approved annotation overlay and token identity.",
+    "Digital simulation uses ideal clocks and behavioral models; physical timing, analog performance and board operation remain unqualified.",
+    "PDF generation and visual verification intentionally deferred to a major milestone."
+  ]
+}

@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-CODEGEN-EMIT
 package emit
 
 import (
@@ -10,6 +11,7 @@ import (
 // Regmux renders regmux.vh: the selector decode, to be `included INSIDE the top
 // module after regs.vh. Hand RTL only drives behaviour behind the named wires;
 // it never writes a selector compare.
+// TRLC-LINKS: REQ-SDS-158
 func Regmux(i schema.Interface) (string, error) {
 	if err := check(i); err != nil {
 		return "", err

@@ -1,0 +1,37 @@
+package lcd
+
+import (
+ "math"
+ "testing"
+)
+
+func TestModelLCDBodeBoundaries(t *testing.T) {
+ t.Run("empty_curve_ignores_unused_arrays",func(t *testing.T){
+  sf:=NewMemSurface();drawBode(sf,HUD{BodeGain:[]float64{math.NaN()},BodePhase:[]float64{math.Inf(1)}})
+  if countColor(sf,colDim)==0 || countColor(sf,colC1)!=0 || countColor(sf,colC2)!=0 { t.Fatal("empty curve did not render only its hint") }
+ })
+ t.Run("missing_parallel_arrays_panic",func(t *testing.T){
+  for _,h:=range []HUD{{BodeFreq:[]float64{10},BodePhase:[]float64{0}},{BodeFreq:[]float64{10},BodeGain:[]float64{0}}}{
+   panicked:=false;func(){defer func(){panicked=recover()!=nil}();drawBode(NewMemSurface(),h)}();if !panicked {t.Fatal("expected unvalidated parallel-array panic")}
+  }
+ })
+ t.Run("decades_have_equal_pixel_spacing",func(t *testing.T){
+  sf:=NewMemSurface();drawBode(sf,HUD{BodeFreq:[]float64{10,100,1000},BodeGain:[]float64{0,0,0},BodePhase:[]float64{0,0,0}})
+  for _,x:=range []int{56,418,780}{if sf.At(x,141)!=colC1 || sf.At(x,364)!=colC2 {t.Fatalf("missing trace centers at x=%d",x)}}
+ })
+ t.Run("nonpositive_frequency_clamps_to_left",func(t *testing.T){
+  for _,f:=range []float64{0,-1}{sf:=NewMemSurface();drawBode(sf,HUD{BodeFreq:[]float64{f},BodeGain:[]float64{0},BodePhase:[]float64{0}});if sf.At(56,141)!=colC1 || sf.At(56,364)!=colC2 {t.Fatalf("f=%g did not map to left edge",f)}}
+ })
+ t.Run("unused_gain_tail_changes_scale",func(t *testing.T){
+  sf:=NewMemSurface();drawBode(sf,HUD{BodeFreq:[]float64{10},BodeGain:[]float64{0,1000},BodePhase:[]float64{0}})
+  if sf.At(56,241)!=colC1 || sf.At(56,141)==colC1 {t.Fatal("unused gain entry did not affect range")}
+ })
+ t.Run("range_empty_and_constant",func(t *testing.T){
+  lo,hi:=niceRange(nil,-20,20,10);if lo!=-20 || hi!=20 {t.Fatal(lo,hi)}
+  lo,hi=niceRange([]float64{3},-20,20,10);if lo!=-20 || hi!=30 {t.Fatal(lo,hi)}
+ })
+ t.Run("range_nonfinite_is_not_sanitized",func(t *testing.T){
+  lo,hi:=niceRange([]float64{math.NaN()},-20,20,10);if !math.IsInf(lo,1)||!math.IsInf(hi,-1){t.Fatal(lo,hi)}
+  lo,hi=niceRange([]float64{math.Inf(1)},-20,20,10);if !math.IsNaN(lo)||!math.IsNaN(hi){t.Fatal(lo,hi)}
+ })
+}

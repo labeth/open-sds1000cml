@@ -1,0 +1,872 @@
+{
+  "scope": "Exact planned original-bench compilation and parameter matrix; this is not a test outcome.",
+  "cases": [
+    {
+      "id": "unpack",
+      "test": "fpga/acq_sram/sim/tb_unpack.v",
+      "top": "tb",
+      "sources": [
+        "fpga/acq_sram/adc_unpack.v"
+      ],
+      "success": "PASS: all 80",
+      "parameters": {},
+      "timeoutSeconds": 180
+    },
+    {
+      "id": "interleave",
+      "test": "fpga/acq_sram/sim/tb_interleave.v",
+      "top": "tb",
+      "sources": [
+        "fpga/acq_sram/interleave.v"
+      ],
+      "success": "PASS 80-to-32",
+      "parameters": {},
+      "timeoutSeconds": 180
+    },
+    {
+      "id": "adc_interleave",
+      "test": "fpga/acq_sram/sim/tb_adc_interleave.v",
+      "top": "tb",
+      "sources": [
+        "fpga/acq_sram/interleave.v",
+        "fpga/common/lane_in.v",
+        "fpga/common/ddio_pair.v"
+      ],
+      "success": "PASS factory-phase",
+      "parameters": {},
+      "timeoutSeconds": 180
+    },
+    {
+      "id": "acquisition_source",
+      "test": "fpga/acq_sram/sim/tb_acquisition_source.v",
+      "top": "tb_acquisition_source",
+      "sources": [
+        "fpga/acq_sram/acquisition_source.v"
+      ],
+      "success": "PASS acquisition source:",
+      "parameters": {},
+      "timeoutSeconds": 180
+    },
+    {
+      "id": "trigger_pipeline",
+      "test": "fpga/acq_sram/sim/tb_trigger_pipeline.v",
+      "top": "tb_trigger_pipeline",
+      "sources": [
+        "fpga/acq_sram/acquisition_path.v"
+      ],
+      "success": "PASS trigger pipeline:",
+      "parameters": {},
+      "timeoutSeconds": 180
+    },
+    {
+      "id": "record",
+      "test": "fpga/acq_sram/sim/tb_record.v",
+      "top": "tb",
+      "sources": [
+        "fpga/acq_sram/record.v",
+        "fpga/acq_sram/recall.v"
+      ],
+      "success": "PASS full 524288-word",
+      "parameters": {},
+      "timeoutSeconds": 300
+    },
+    {
+      "id": "finite_writer_faults",
+      "test": "fpga/acq_sram/sim/tb_finite_writer_faults.v",
+      "top": "tb_finite_writer_faults",
+      "sources": [
+        "fpga/acq_sram/finite_writer.v",
+        "fpga/acq_sram/record.v"
+      ],
+      "success": "PASS finite writer:",
+      "parameters": {},
+      "timeoutSeconds": 180
+    },
+    {
+      "id": "finite_recall_faults",
+      "test": "fpga/acq_sram/sim/tb_finite_recall_faults.v",
+      "top": "tb_finite_recall_faults",
+      "sources": [
+        "fpga/acq_sram/finite_recall.v",
+        "fpga/acq_sram/ordinal_counter.v"
+      ],
+      "success": "PASS finite recall faults:",
+      "parameters": {},
+      "timeoutSeconds": 180
+    },
+    {
+      "id": "capture_start",
+      "test": "fpga/acq_sram/sim/tb_capture_start.v",
+      "top": "tb_capture_start",
+      "sources": [
+        "fpga/acq_sram/acquisition_path.v",
+        "fpga/acq_sram/acquisition_source.v",
+        "fpga/acq_sram/board_capture_path.v",
+        "fpga/acq_sram/capture_engine.v",
+        "fpga/acq_sram/capture_path.v",
+        "fpga/acq_sram/finite_recall.v",
+        "fpga/acq_sram/finite_writer.v",
+        "fpga/acq_sram/host_fifo.v",
+        "fpga/acq_sram/host_ownership.v",
+        "fpga/acq_sram/host_packer.v",
+        "fpga/acq_sram/host_path.v",
+        "fpga/acq_sram/host_ram.v",
+        "fpga/acq_sram/host_sink.v",
+        "fpga/acq_sram/ingress_fifo.v",
+        "fpga/acq_sram/ingress_path.v",
+        "fpga/acq_sram/ingress_stream.v",
+        "fpga/acq_sram/ordinal_counter.v",
+        "fpga/acq_sram/record.v",
+        "fpga/acq_sram/sim/ddr_model.v",
+        "fpga/acq_sram/stream_engine.v",
+        "fpga/acq_sram/timeslice_controller.v",
+        "fpga/acq_sram/transport.v",
+        "fpga/acq_sram/word_bridge.v"
+      ],
+      "success": "PASS shared start pipeline:",
+      "parameters": {},
+      "timeoutSeconds": 180
+    },
+    {
+      "id": "board_capture",
+      "test": "fpga/acq_sram/sim/tb_board_capture.v",
+      "top": "tb_board_capture",
+      "sources": [
+        "fpga/acq_sram/acquisition_path.v",
+        "fpga/acq_sram/acquisition_source.v",
+        "fpga/acq_sram/board_capture_path.v",
+        "fpga/acq_sram/capture_engine.v",
+        "fpga/acq_sram/capture_path.v",
+        "fpga/acq_sram/finite_recall.v",
+        "fpga/acq_sram/finite_writer.v",
+        "fpga/acq_sram/host_fifo.v",
+        "fpga/acq_sram/host_ownership.v",
+        "fpga/acq_sram/host_packer.v",
+        "fpga/acq_sram/host_path.v",
+        "fpga/acq_sram/host_ram.v",
+        "fpga/acq_sram/host_sink.v",
+        "fpga/acq_sram/ingress_fifo.v",
+        "fpga/acq_sram/ingress_path.v",
+        "fpga/acq_sram/ingress_stream.v",
+        "fpga/acq_sram/ordinal_counter.v",
+        "fpga/acq_sram/record.v",
+        "fpga/acq_sram/sim/ddr_model.v",
+        "fpga/acq_sram/stream_engine.v",
+        "fpga/acq_sram/timeslice_controller.v",
+        "fpga/acq_sram/transport.v",
+        "fpga/acq_sram/word_bridge.v"
+      ],
+      "success": "PASS board capture:",
+      "parameters": {},
+      "timeoutSeconds": 300
+    },
+    {
+      "id": "finite-capture-13",
+      "test": "fpga/acq_sram/sim/tb_finite_capture.v",
+      "top": "tb_finite_capture",
+      "sources": [
+        "fpga/acq_sram/acquisition_path.v",
+        "fpga/acq_sram/acquisition_source.v",
+        "fpga/acq_sram/board_capture_path.v",
+        "fpga/acq_sram/capture_engine.v",
+        "fpga/acq_sram/capture_path.v",
+        "fpga/acq_sram/finite_recall.v",
+        "fpga/acq_sram/finite_writer.v",
+        "fpga/acq_sram/host_fifo.v",
+        "fpga/acq_sram/host_ownership.v",
+        "fpga/acq_sram/host_packer.v",
+        "fpga/acq_sram/host_path.v",
+        "fpga/acq_sram/host_ram.v",
+        "fpga/acq_sram/host_sink.v",
+        "fpga/acq_sram/ingress_fifo.v",
+        "fpga/acq_sram/ingress_path.v",
+        "fpga/acq_sram/ingress_stream.v",
+        "fpga/acq_sram/ordinal_counter.v",
+        "fpga/acq_sram/record.v",
+        "fpga/acq_sram/sim/ddr_model.v",
+        "fpga/acq_sram/stream_engine.v",
+        "fpga/acq_sram/timeslice_controller.v",
+        "fpga/acq_sram/transport.v",
+        "fpga/acq_sram/word_bridge.v"
+      ],
+      "success": "PASS finite capture:",
+      "parameters": {
+        "AW": 13
+      },
+      "timeoutSeconds": 900
+    },
+    {
+      "id": "finite-capture-19",
+      "test": "fpga/acq_sram/sim/tb_finite_capture.v",
+      "top": "tb_finite_capture",
+      "sources": [
+        "fpga/acq_sram/acquisition_path.v",
+        "fpga/acq_sram/acquisition_source.v",
+        "fpga/acq_sram/board_capture_path.v",
+        "fpga/acq_sram/capture_engine.v",
+        "fpga/acq_sram/capture_path.v",
+        "fpga/acq_sram/finite_recall.v",
+        "fpga/acq_sram/finite_writer.v",
+        "fpga/acq_sram/host_fifo.v",
+        "fpga/acq_sram/host_ownership.v",
+        "fpga/acq_sram/host_packer.v",
+        "fpga/acq_sram/host_path.v",
+        "fpga/acq_sram/host_ram.v",
+        "fpga/acq_sram/host_sink.v",
+        "fpga/acq_sram/ingress_fifo.v",
+        "fpga/acq_sram/ingress_path.v",
+        "fpga/acq_sram/ingress_stream.v",
+        "fpga/acq_sram/ordinal_counter.v",
+        "fpga/acq_sram/record.v",
+        "fpga/acq_sram/sim/ddr_model.v",
+        "fpga/acq_sram/stream_engine.v",
+        "fpga/acq_sram/timeslice_controller.v",
+        "fpga/acq_sram/transport.v",
+        "fpga/acq_sram/word_bridge.v"
+      ],
+      "success": "PASS full physical depth:",
+      "parameters": {
+        "AW": 19
+      },
+      "timeoutSeconds": 900
+    },
+    {
+      "id": "finite-recall-13-0",
+      "test": "fpga/acq_sram/sim/tb_finite_recall.v",
+      "top": "tb_finite_recall",
+      "sources": [
+        "fpga/acq_sram/acquisition_path.v",
+        "fpga/acq_sram/acquisition_source.v",
+        "fpga/acq_sram/board_capture_path.v",
+        "fpga/acq_sram/capture_engine.v",
+        "fpga/acq_sram/capture_path.v",
+        "fpga/acq_sram/finite_recall.v",
+        "fpga/acq_sram/finite_writer.v",
+        "fpga/acq_sram/host_fifo.v",
+        "fpga/acq_sram/host_ownership.v",
+        "fpga/acq_sram/host_packer.v",
+        "fpga/acq_sram/host_path.v",
+        "fpga/acq_sram/host_ram.v",
+        "fpga/acq_sram/host_sink.v",
+        "fpga/acq_sram/ingress_fifo.v",
+        "fpga/acq_sram/ingress_path.v",
+        "fpga/acq_sram/ingress_stream.v",
+        "fpga/acq_sram/ordinal_counter.v",
+        "fpga/acq_sram/record.v",
+        "fpga/acq_sram/sim/ddr_model.v",
+        "fpga/acq_sram/stream_engine.v",
+        "fpga/acq_sram/timeslice_controller.v",
+        "fpga/acq_sram/transport.v",
+        "fpga/acq_sram/word_bridge.v"
+      ],
+      "success": "PASS finite recall suite:",
+      "parameters": {
+        "AW": 13,
+        "CONTINUE_READS": 0,
+        "FULL_ONLY": 0
+      },
+      "timeoutSeconds": 900
+    },
+    {
+      "id": "finite-recall-13-1",
+      "test": "fpga/acq_sram/sim/tb_finite_recall.v",
+      "top": "tb_finite_recall",
+      "sources": [
+        "fpga/acq_sram/acquisition_path.v",
+        "fpga/acq_sram/acquisition_source.v",
+        "fpga/acq_sram/board_capture_path.v",
+        "fpga/acq_sram/capture_engine.v",
+        "fpga/acq_sram/capture_path.v",
+        "fpga/acq_sram/finite_recall.v",
+        "fpga/acq_sram/finite_writer.v",
+        "fpga/acq_sram/host_fifo.v",
+        "fpga/acq_sram/host_ownership.v",
+        "fpga/acq_sram/host_packer.v",
+        "fpga/acq_sram/host_path.v",
+        "fpga/acq_sram/host_ram.v",
+        "fpga/acq_sram/host_sink.v",
+        "fpga/acq_sram/ingress_fifo.v",
+        "fpga/acq_sram/ingress_path.v",
+        "fpga/acq_sram/ingress_stream.v",
+        "fpga/acq_sram/ordinal_counter.v",
+        "fpga/acq_sram/record.v",
+        "fpga/acq_sram/sim/ddr_model.v",
+        "fpga/acq_sram/stream_engine.v",
+        "fpga/acq_sram/timeslice_controller.v",
+        "fpga/acq_sram/transport.v",
+        "fpga/acq_sram/word_bridge.v"
+      ],
+      "success": "PASS finite recall suite:",
+      "parameters": {
+        "AW": 13,
+        "CONTINUE_READS": 1,
+        "FULL_ONLY": 0
+      },
+      "timeoutSeconds": 900
+    },
+    {
+      "id": "finite-recall-19-1",
+      "test": "fpga/acq_sram/sim/tb_finite_recall.v",
+      "top": "tb_finite_recall",
+      "sources": [
+        "fpga/acq_sram/acquisition_path.v",
+        "fpga/acq_sram/acquisition_source.v",
+        "fpga/acq_sram/board_capture_path.v",
+        "fpga/acq_sram/capture_engine.v",
+        "fpga/acq_sram/capture_path.v",
+        "fpga/acq_sram/finite_recall.v",
+        "fpga/acq_sram/finite_writer.v",
+        "fpga/acq_sram/host_fifo.v",
+        "fpga/acq_sram/host_ownership.v",
+        "fpga/acq_sram/host_packer.v",
+        "fpga/acq_sram/host_path.v",
+        "fpga/acq_sram/host_ram.v",
+        "fpga/acq_sram/host_sink.v",
+        "fpga/acq_sram/ingress_fifo.v",
+        "fpga/acq_sram/ingress_path.v",
+        "fpga/acq_sram/ingress_stream.v",
+        "fpga/acq_sram/ordinal_counter.v",
+        "fpga/acq_sram/record.v",
+        "fpga/acq_sram/sim/ddr_model.v",
+        "fpga/acq_sram/stream_engine.v",
+        "fpga/acq_sram/timeslice_controller.v",
+        "fpga/acq_sram/transport.v",
+        "fpga/acq_sram/word_bridge.v"
+      ],
+      "success": "PASS finite recall suite:",
+      "parameters": {
+        "AW": 19,
+        "CONTINUE_READS": 1,
+        "FULL_ONLY": 1
+      },
+      "timeoutSeconds": 900
+    },
+    {
+      "id": "capture-engine-0-0",
+      "test": "fpga/acq_sram/sim/tb_capture_engine.v",
+      "top": "tb_capture_engine",
+      "sources": [
+        "fpga/acq_sram/acquisition_path.v",
+        "fpga/acq_sram/acquisition_source.v",
+        "fpga/acq_sram/board_capture_path.v",
+        "fpga/acq_sram/capture_engine.v",
+        "fpga/acq_sram/capture_path.v",
+        "fpga/acq_sram/finite_recall.v",
+        "fpga/acq_sram/finite_writer.v",
+        "fpga/acq_sram/host_fifo.v",
+        "fpga/acq_sram/host_ownership.v",
+        "fpga/acq_sram/host_packer.v",
+        "fpga/acq_sram/host_path.v",
+        "fpga/acq_sram/host_ram.v",
+        "fpga/acq_sram/host_sink.v",
+        "fpga/acq_sram/ingress_fifo.v",
+        "fpga/acq_sram/ingress_path.v",
+        "fpga/acq_sram/ingress_stream.v",
+        "fpga/acq_sram/ordinal_counter.v",
+        "fpga/acq_sram/record.v",
+        "fpga/acq_sram/sim/ddr_model.v",
+        "fpga/acq_sram/stream_engine.v",
+        "fpga/acq_sram/timeslice_controller.v",
+        "fpga/acq_sram/transport.v",
+        "fpga/acq_sram/word_bridge.v"
+      ],
+      "success": "PASS deep capture backend:",
+      "parameters": {
+        "WRAPPED": 0,
+        "ENABLE_STREAM": 0
+      },
+      "timeoutSeconds": 300
+    },
+    {
+      "id": "capture-engine-0-1",
+      "test": "fpga/acq_sram/sim/tb_capture_engine.v",
+      "top": "tb_capture_engine",
+      "sources": [
+        "fpga/acq_sram/acquisition_path.v",
+        "fpga/acq_sram/acquisition_source.v",
+        "fpga/acq_sram/board_capture_path.v",
+        "fpga/acq_sram/capture_engine.v",
+        "fpga/acq_sram/capture_path.v",
+        "fpga/acq_sram/finite_recall.v",
+        "fpga/acq_sram/finite_writer.v",
+        "fpga/acq_sram/host_fifo.v",
+        "fpga/acq_sram/host_ownership.v",
+        "fpga/acq_sram/host_packer.v",
+        "fpga/acq_sram/host_path.v",
+        "fpga/acq_sram/host_ram.v",
+        "fpga/acq_sram/host_sink.v",
+        "fpga/acq_sram/ingress_fifo.v",
+        "fpga/acq_sram/ingress_path.v",
+        "fpga/acq_sram/ingress_stream.v",
+        "fpga/acq_sram/ordinal_counter.v",
+        "fpga/acq_sram/record.v",
+        "fpga/acq_sram/sim/ddr_model.v",
+        "fpga/acq_sram/stream_engine.v",
+        "fpga/acq_sram/timeslice_controller.v",
+        "fpga/acq_sram/transport.v",
+        "fpga/acq_sram/word_bridge.v"
+      ],
+      "success": "PASS shared capture engine:",
+      "parameters": {
+        "WRAPPED": 0,
+        "ENABLE_STREAM": 1
+      },
+      "timeoutSeconds": 300
+    },
+    {
+      "id": "capture-engine-1-0",
+      "test": "fpga/acq_sram/sim/tb_capture_engine.v",
+      "top": "tb_capture_engine",
+      "sources": [
+        "fpga/acq_sram/acquisition_path.v",
+        "fpga/acq_sram/acquisition_source.v",
+        "fpga/acq_sram/board_capture_path.v",
+        "fpga/acq_sram/capture_engine.v",
+        "fpga/acq_sram/capture_path.v",
+        "fpga/acq_sram/finite_recall.v",
+        "fpga/acq_sram/finite_writer.v",
+        "fpga/acq_sram/host_fifo.v",
+        "fpga/acq_sram/host_ownership.v",
+        "fpga/acq_sram/host_packer.v",
+        "fpga/acq_sram/host_path.v",
+        "fpga/acq_sram/host_ram.v",
+        "fpga/acq_sram/host_sink.v",
+        "fpga/acq_sram/ingress_fifo.v",
+        "fpga/acq_sram/ingress_path.v",
+        "fpga/acq_sram/ingress_stream.v",
+        "fpga/acq_sram/ordinal_counter.v",
+        "fpga/acq_sram/record.v",
+        "fpga/acq_sram/sim/ddr_model.v",
+        "fpga/acq_sram/stream_engine.v",
+        "fpga/acq_sram/timeslice_controller.v",
+        "fpga/acq_sram/transport.v",
+        "fpga/acq_sram/word_bridge.v"
+      ],
+      "success": "PASS deep capture backend:",
+      "parameters": {
+        "WRAPPED": 1,
+        "ENABLE_STREAM": 0
+      },
+      "timeoutSeconds": 300
+    },
+    {
+      "id": "capture-engine-1-1",
+      "test": "fpga/acq_sram/sim/tb_capture_engine.v",
+      "top": "tb_capture_engine",
+      "sources": [
+        "fpga/acq_sram/acquisition_path.v",
+        "fpga/acq_sram/acquisition_source.v",
+        "fpga/acq_sram/board_capture_path.v",
+        "fpga/acq_sram/capture_engine.v",
+        "fpga/acq_sram/capture_path.v",
+        "fpga/acq_sram/finite_recall.v",
+        "fpga/acq_sram/finite_writer.v",
+        "fpga/acq_sram/host_fifo.v",
+        "fpga/acq_sram/host_ownership.v",
+        "fpga/acq_sram/host_packer.v",
+        "fpga/acq_sram/host_path.v",
+        "fpga/acq_sram/host_ram.v",
+        "fpga/acq_sram/host_sink.v",
+        "fpga/acq_sram/ingress_fifo.v",
+        "fpga/acq_sram/ingress_path.v",
+        "fpga/acq_sram/ingress_stream.v",
+        "fpga/acq_sram/ordinal_counter.v",
+        "fpga/acq_sram/record.v",
+        "fpga/acq_sram/sim/ddr_model.v",
+        "fpga/acq_sram/stream_engine.v",
+        "fpga/acq_sram/timeslice_controller.v",
+        "fpga/acq_sram/transport.v",
+        "fpga/acq_sram/word_bridge.v"
+      ],
+      "success": "PASS shared capture engine:",
+      "parameters": {
+        "WRAPPED": 1,
+        "ENABLE_STREAM": 1
+      },
+      "timeoutSeconds": 300
+    },
+    {
+      "id": "acquisition-path-stream",
+      "test": "fpga/acq_sram/sim/tb_acquisition_path.v",
+      "top": "tb_acquisition_path",
+      "sources": [
+        "fpga/acq_sram/acquisition_path.v",
+        "fpga/acq_sram/acquisition_source.v",
+        "fpga/acq_sram/board_capture_path.v",
+        "fpga/acq_sram/capture_engine.v",
+        "fpga/acq_sram/capture_path.v",
+        "fpga/acq_sram/finite_recall.v",
+        "fpga/acq_sram/finite_writer.v",
+        "fpga/acq_sram/host_fifo.v",
+        "fpga/acq_sram/host_ownership.v",
+        "fpga/acq_sram/host_packer.v",
+        "fpga/acq_sram/host_path.v",
+        "fpga/acq_sram/host_ram.v",
+        "fpga/acq_sram/host_sink.v",
+        "fpga/acq_sram/ingress_fifo.v",
+        "fpga/acq_sram/ingress_path.v",
+        "fpga/acq_sram/ingress_stream.v",
+        "fpga/acq_sram/ordinal_counter.v",
+        "fpga/acq_sram/record.v",
+        "fpga/acq_sram/sim/ddr_model.v",
+        "fpga/acq_sram/stream_engine.v",
+        "fpga/acq_sram/timeslice_controller.v",
+        "fpga/acq_sram/transport.v",
+        "fpga/acq_sram/word_bridge.v"
+      ],
+      "success": "PASS integrated ADC-source",
+      "parameters": {},
+      "timeoutSeconds": 300
+    },
+    {
+      "id": "acquisition-path-deep",
+      "test": "fpga/acq_sram/sim/tb_acquisition_path.v",
+      "top": "tb_acquisition_path",
+      "sources": [
+        "fpga/acq_sram/acquisition_path.v",
+        "fpga/acq_sram/acquisition_source.v",
+        "fpga/acq_sram/board_capture_path.v",
+        "fpga/acq_sram/capture_engine.v",
+        "fpga/acq_sram/capture_path.v",
+        "fpga/acq_sram/finite_recall.v",
+        "fpga/acq_sram/finite_writer.v",
+        "fpga/acq_sram/host_fifo.v",
+        "fpga/acq_sram/host_ownership.v",
+        "fpga/acq_sram/host_packer.v",
+        "fpga/acq_sram/host_path.v",
+        "fpga/acq_sram/host_ram.v",
+        "fpga/acq_sram/host_sink.v",
+        "fpga/acq_sram/ingress_fifo.v",
+        "fpga/acq_sram/ingress_path.v",
+        "fpga/acq_sram/ingress_stream.v",
+        "fpga/acq_sram/ordinal_counter.v",
+        "fpga/acq_sram/record.v",
+        "fpga/acq_sram/sim/ddr_model.v",
+        "fpga/acq_sram/stream_engine.v",
+        "fpga/acq_sram/timeslice_controller.v",
+        "fpga/acq_sram/transport.v",
+        "fpga/acq_sram/word_bridge.v"
+      ],
+      "success": "PASS deep acquisition:",
+      "parameters": {
+        "ENABLE_STREAM": 0
+      },
+      "timeoutSeconds": 300
+    },
+    {
+      "id": "acquisition-path-ready",
+      "test": "fpga/acq_sram/sim/tb_acquisition_path.v",
+      "top": "tb_acquisition_path",
+      "sources": [
+        "fpga/acq_sram/acquisition_path.v",
+        "fpga/acq_sram/acquisition_source.v",
+        "fpga/acq_sram/board_capture_path.v",
+        "fpga/acq_sram/capture_engine.v",
+        "fpga/acq_sram/capture_path.v",
+        "fpga/acq_sram/finite_recall.v",
+        "fpga/acq_sram/finite_writer.v",
+        "fpga/acq_sram/host_fifo.v",
+        "fpga/acq_sram/host_ownership.v",
+        "fpga/acq_sram/host_packer.v",
+        "fpga/acq_sram/host_path.v",
+        "fpga/acq_sram/host_ram.v",
+        "fpga/acq_sram/host_sink.v",
+        "fpga/acq_sram/ingress_fifo.v",
+        "fpga/acq_sram/ingress_path.v",
+        "fpga/acq_sram/ingress_stream.v",
+        "fpga/acq_sram/ordinal_counter.v",
+        "fpga/acq_sram/record.v",
+        "fpga/acq_sram/sim/ddr_model.v",
+        "fpga/acq_sram/stream_engine.v",
+        "fpga/acq_sram/timeslice_controller.v",
+        "fpga/acq_sram/transport.v",
+        "fpga/acq_sram/word_bridge.v"
+      ],
+      "success": "PASS cached readiness:",
+      "parameters": {
+        "READY_ONLY": 1
+      },
+      "timeoutSeconds": 300
+    },
+    {
+      "id": "acquisition-path-host-fault",
+      "test": "fpga/acq_sram/sim/tb_acquisition_path.v",
+      "top": "tb_acquisition_path",
+      "sources": [
+        "fpga/acq_sram/acquisition_path.v",
+        "fpga/acq_sram/acquisition_source.v",
+        "fpga/acq_sram/board_capture_path.v",
+        "fpga/acq_sram/capture_engine.v",
+        "fpga/acq_sram/capture_path.v",
+        "fpga/acq_sram/finite_recall.v",
+        "fpga/acq_sram/finite_writer.v",
+        "fpga/acq_sram/host_fifo.v",
+        "fpga/acq_sram/host_ownership.v",
+        "fpga/acq_sram/host_packer.v",
+        "fpga/acq_sram/host_path.v",
+        "fpga/acq_sram/host_ram.v",
+        "fpga/acq_sram/host_sink.v",
+        "fpga/acq_sram/ingress_fifo.v",
+        "fpga/acq_sram/ingress_path.v",
+        "fpga/acq_sram/ingress_stream.v",
+        "fpga/acq_sram/ordinal_counter.v",
+        "fpga/acq_sram/record.v",
+        "fpga/acq_sram/sim/ddr_model.v",
+        "fpga/acq_sram/stream_engine.v",
+        "fpga/acq_sram/timeslice_controller.v",
+        "fpga/acq_sram/transport.v",
+        "fpga/acq_sram/word_bridge.v"
+      ],
+      "success": "PASS recall host fault:",
+      "parameters": {
+        "HOST_FAULT_ONLY": 1
+      },
+      "timeoutSeconds": 300
+    },
+    {
+      "id": "command-bridge-0-0",
+      "test": "fpga/acq_sram/sim/tb_command_bridge.v",
+      "top": "tb_command_bridge",
+      "sources": [
+        "fpga/acq_sram/command_bridge.v"
+      ],
+      "success": "PASS command bridge",
+      "parameters": {
+        "PHASE": 0,
+        "SHORT_RESET": 0
+      },
+      "timeoutSeconds": 180
+    },
+    {
+      "id": "command-bridge-0-1",
+      "test": "fpga/acq_sram/sim/tb_command_bridge.v",
+      "top": "tb_command_bridge",
+      "sources": [
+        "fpga/acq_sram/command_bridge.v"
+      ],
+      "success": "PASS command bridge",
+      "parameters": {
+        "PHASE": 0,
+        "SHORT_RESET": 1
+      },
+      "timeoutSeconds": 180
+    },
+    {
+      "id": "command-port-0-0",
+      "test": "fpga/acq_sram/sim/tb_command_port.v",
+      "top": "tb_command_port",
+      "sources": [
+        "fpga/acq_sram/command_bridge.v",
+        "fpga/acq_sram/command_port.v"
+      ],
+      "success": "PASS command port",
+      "parameters": {
+        "PHASE": 0,
+        "ENABLE_STREAM": 0
+      },
+      "timeoutSeconds": 180
+    },
+    {
+      "id": "command-port-0-1",
+      "test": "fpga/acq_sram/sim/tb_command_port.v",
+      "top": "tb_command_port",
+      "sources": [
+        "fpga/acq_sram/command_bridge.v",
+        "fpga/acq_sram/command_port.v"
+      ],
+      "success": "PASS command port",
+      "parameters": {
+        "PHASE": 0,
+        "ENABLE_STREAM": 1
+      },
+      "timeoutSeconds": 180
+    },
+    {
+      "id": "command-bridge-1-0",
+      "test": "fpga/acq_sram/sim/tb_command_bridge.v",
+      "top": "tb_command_bridge",
+      "sources": [
+        "fpga/acq_sram/command_bridge.v"
+      ],
+      "success": "PASS command bridge",
+      "parameters": {
+        "PHASE": 1,
+        "SHORT_RESET": 0
+      },
+      "timeoutSeconds": 180
+    },
+    {
+      "id": "command-bridge-1-1",
+      "test": "fpga/acq_sram/sim/tb_command_bridge.v",
+      "top": "tb_command_bridge",
+      "sources": [
+        "fpga/acq_sram/command_bridge.v"
+      ],
+      "success": "PASS command bridge",
+      "parameters": {
+        "PHASE": 1,
+        "SHORT_RESET": 1
+      },
+      "timeoutSeconds": 180
+    },
+    {
+      "id": "command-port-1-0",
+      "test": "fpga/acq_sram/sim/tb_command_port.v",
+      "top": "tb_command_port",
+      "sources": [
+        "fpga/acq_sram/command_bridge.v",
+        "fpga/acq_sram/command_port.v"
+      ],
+      "success": "PASS command port",
+      "parameters": {
+        "PHASE": 1,
+        "ENABLE_STREAM": 0
+      },
+      "timeoutSeconds": 180
+    },
+    {
+      "id": "command-port-1-1",
+      "test": "fpga/acq_sram/sim/tb_command_port.v",
+      "top": "tb_command_port",
+      "sources": [
+        "fpga/acq_sram/command_bridge.v",
+        "fpga/acq_sram/command_port.v"
+      ],
+      "success": "PASS command port",
+      "parameters": {
+        "PHASE": 1,
+        "ENABLE_STREAM": 1
+      },
+      "timeoutSeconds": 180
+    },
+    {
+      "id": "command-bridge-2-0",
+      "test": "fpga/acq_sram/sim/tb_command_bridge.v",
+      "top": "tb_command_bridge",
+      "sources": [
+        "fpga/acq_sram/command_bridge.v"
+      ],
+      "success": "PASS command bridge",
+      "parameters": {
+        "PHASE": 2,
+        "SHORT_RESET": 0
+      },
+      "timeoutSeconds": 180
+    },
+    {
+      "id": "command-bridge-2-1",
+      "test": "fpga/acq_sram/sim/tb_command_bridge.v",
+      "top": "tb_command_bridge",
+      "sources": [
+        "fpga/acq_sram/command_bridge.v"
+      ],
+      "success": "PASS command bridge",
+      "parameters": {
+        "PHASE": 2,
+        "SHORT_RESET": 1
+      },
+      "timeoutSeconds": 180
+    },
+    {
+      "id": "command-port-2-0",
+      "test": "fpga/acq_sram/sim/tb_command_port.v",
+      "top": "tb_command_port",
+      "sources": [
+        "fpga/acq_sram/command_bridge.v",
+        "fpga/acq_sram/command_port.v"
+      ],
+      "success": "PASS command port",
+      "parameters": {
+        "PHASE": 2,
+        "ENABLE_STREAM": 0
+      },
+      "timeoutSeconds": 180
+    },
+    {
+      "id": "command-port-2-1",
+      "test": "fpga/acq_sram/sim/tb_command_port.v",
+      "top": "tb_command_port",
+      "sources": [
+        "fpga/acq_sram/command_bridge.v",
+        "fpga/acq_sram/command_port.v"
+      ],
+      "success": "PASS command port",
+      "parameters": {
+        "PHASE": 2,
+        "ENABLE_STREAM": 1
+      },
+      "timeoutSeconds": 180
+    },
+    {
+      "id": "command-bridge-3-0",
+      "test": "fpga/acq_sram/sim/tb_command_bridge.v",
+      "top": "tb_command_bridge",
+      "sources": [
+        "fpga/acq_sram/command_bridge.v"
+      ],
+      "success": "PASS command bridge",
+      "parameters": {
+        "PHASE": 3,
+        "SHORT_RESET": 0
+      },
+      "timeoutSeconds": 180
+    },
+    {
+      "id": "command-bridge-3-1",
+      "test": "fpga/acq_sram/sim/tb_command_bridge.v",
+      "top": "tb_command_bridge",
+      "sources": [
+        "fpga/acq_sram/command_bridge.v"
+      ],
+      "success": "PASS command bridge",
+      "parameters": {
+        "PHASE": 3,
+        "SHORT_RESET": 1
+      },
+      "timeoutSeconds": 180
+    },
+    {
+      "id": "command-port-3-0",
+      "test": "fpga/acq_sram/sim/tb_command_port.v",
+      "top": "tb_command_port",
+      "sources": [
+        "fpga/acq_sram/command_bridge.v",
+        "fpga/acq_sram/command_port.v"
+      ],
+      "success": "PASS command port",
+      "parameters": {
+        "PHASE": 3,
+        "ENABLE_STREAM": 0
+      },
+      "timeoutSeconds": 180
+    },
+    {
+      "id": "command-port-3-1",
+      "test": "fpga/acq_sram/sim/tb_command_port.v",
+      "top": "tb_command_port",
+      "sources": [
+        "fpga/acq_sram/command_bridge.v",
+        "fpga/acq_sram/command_port.v"
+      ],
+      "success": "PASS command port",
+      "parameters": {
+        "PHASE": 3,
+        "ENABLE_STREAM": 1
+      },
+      "timeoutSeconds": 180
+    },
+    {
+      "id": "command_gpmc",
+      "test": "fpga/acq_sram/sim/tb_command_gpmc.v",
+      "top": "tb_command_gpmc",
+      "sources": [
+        "fpga/acq_sram/command_bridge.v",
+        "fpga/acq_sram/command_port.v",
+        "fpga/common/gpmc_slave.v"
+      ],
+      "success": "PASS real GPMC slave",
+      "parameters": {},
+      "timeoutSeconds": 180
+    }
+  ]
+}

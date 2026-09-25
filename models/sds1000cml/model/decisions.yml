@@ -1,0 +1,1085 @@
+schemaVersion: 2
+decisions:
+- id: ADR-GENERAL-ACQUISITION-PIPELINE
+  title: Multiple acquisition images with common capture and event contracts
+  status: accepted
+  date: '2026-09-25'
+  context: The user now authorizes planning multiple FPGA images for the complete scope, superseding the earlier
+    single-image preference. Required capabilities include FPGA accelerated stacking, triggering for all ten repository
+    protocols, and continuous decoded-data delivery followed by raw SRAM retrieval on a trigger.
+    Six decoders are live-qualified with streaming, hardware matching and retained SRAM retrieval. Manchester
+    integration exceeds current image capacity; three further hardware decoders and FPGA stacking remain required.
+  decision: Keep acquisition, raw SRAM history, sample timestamps, trigger arbitration and record ownership together
+    in a common acquisition foundation used by every acquisition image. Decoder outputs feed both a timestamped
+    event transport and trigger predicates. Trigger
+    acceptance retains the requested pre/post-trigger SRAM record with an epoch and record identifier; event delivery
+    and later raw retrieval reference that same identity. Add FPGA stacking as an explicitly scheduled consumer of
+    samples or retained records, preserving the reference-matching, alignment and uncertainty semantics of the
+    existing stacker. Plan multiple images now, with final boundaries determined by complete capability and concurrency
+    coverage, measured resource budgets and timing. The seven-decoder prototype alone does not determine those boundaries.
+  consequences:
+  - Architecture planning assumes multiple images; only the existing qualified general image is currently supported.
+    Planning approval does not qualify a new image or authorize advertising unimplemented capabilities.
+  - Every acquisition image must preserve ADC acquisition and calibration, raw SRAM history, sample timebase,
+    pre/post-trigger retention, edge triggering, capture identity, bus ownership, responsive controls and explicit loss.
+    Specify one versioned capability and configuration contract rather than deriving features from revision numbers.
+  - Evaluate protocol acquisition images covering UART, I2C, SPI, Manchester, SENT, CAN FD, MIL-STD-1553,
+    ARINC 429, USB LS and FlexRay. Group protocols by measured resource sharing and required simultaneous use,
+    not by implementation order. Include framing, validity, timestamped events, matching predicates and raw retention
+    for every protocol. ARINC 429 requires three-level input interpretation; budget its input path as well as its decoder.
+  - Evaluate a numerical acquisition image for precision filtering and FPGA reference-aligned stacking. Budget reference
+    storage, search and matching, fractional alignment, interpolation, sums, squared sums, counts, split accumulators,
+    uncertainty and result transfer. Precision decimation alone is not stacking. Determine whether processing is live
+    or uses a retained record and explicitly budget SRAM arbitration and throughput for both cases.
+  - Model concurrency per workflow. Decoded streaming, hardware protocol matching and raw retention remain
+    concurrent in protocol acquisition. The user clarified that waveform stacking itself needs no protocol decoder.
+    capture a reference using a protocol trigger, preserve it, then switch to numerical acquisition and match the
+    waveform. Continuous decoded streaming during stacking or protocol qualification of every stack contribution
+    is an optional extension, not a requirement inferred from reference capture. Image switching still creates an
+    explicit epoch boundary and acquisition gap; it must not be described as concurrent protocol operation.
+  - Resource budgets must include all ten decoders and the complete stacker, common infrastructure, configuration,
+    clock crossings, event queues, raw transfer buffers, memory ports, DSPs, throughput and timing margin. Mark each
+    allocation as measured or estimated. The oversized full seven-decoder image and failing protocol-only timing probe
+    justify planning partitions, but neither proves that two images suffice or that an all-protocol image will fit.
+  - Image switching is a stopped acquisition transition, not gapless streaming. Quiesce the sole bus owner, terminate
+    the old event epoch visibly, and preserve required retained data in host storage before reconfiguration unless
+    SRAM survival and metadata restoration have been qualified. Load and verify the image and capability manifest,
+    restore only compatible configuration, establish a fresh epoch, then rearm. Define failure recovery and measure
+    switching latency. Keep the last qualified image available for recovery.
+  - The next architecture milestone is a complete workflow-to-image coverage matrix and resource budget in this
+    model, followed by representative synthesis of the proposed groups and missing processing engines. Only then
+    freeze the supported image inventory and implement automatic selection with the matching application.
+  - This is the target architecture, not an assertion that streaming, stacking or all hardware decoders are implemented.
+  - Work advances through deployed system increments. A feature is not accepted from an isolated browser or backend
+    test. Its FPGA must fit, meet timing and deploy with the matching app, then exercise the real signal input,
+    trigger, decoded transport and retained SRAM together. Local tests diagnose faults before deployment; they do
+    not replace this hardware acceptance. The completion scope remains all ten decoders and FPGA stacking.
+  - Upstream means the ten repository decoders, confirmed by the user; UART, I2C, SPI, Manchester, SENT, CAN FD,
+    MIL-STD-1553, ARINC 429, USB LS and FlexRay are all in scope.
+  - Manchester is connected to the candidate general image and passes simulation, but is not fitted, deployed
+    or advertised as hardware support. A Q2 quarter-cell sampler evaluates both first-edge phase hypotheses. Each hypothesis
+    packs 1 through 16 bit words in either bit order and either IEEE or Thomas convention, scoring clean
+    cells minus four times isolated violations. Two consecutive violations terminate the hypothesis and
+    discard the provisional idle error; a dangling word remains an error. Candidate events are provisional
+    and must not trigger or enter the public transcript before frame selection. A differential RTL test
+    compares both hypotheses against recoverManchester over 160 configurations, including odd periods and
+    coding violations. Boundary simulation covers one-bit error serialization, partial words, reset,
+    explicit finish, invalid widths, the full 65536-cell ordinal range, overflow and recovery. Overflow
+    invalidates the whole frame rather than wrapping its cell indices.
+    Standalone Quartus synthesis in out/manchester-receiver/build-lag2vr estimates 627 logic elements,
+    356 registers and no RAM or DSP blocks. This is component synthesis evidence, not a fitted image or
+    live qualification. The deployed six-protocol image has 361 unused fitted logic elements. These results
+    motivate sharing resources; summing standalone estimates does not prove an integrated fit failure.
+    The subsequent complete Manchester component adds two banks of provisional records for each phase,
+    final score selection and the repository idle-symmetry tie rule. A tie waits for the next edge or
+    until trailing idle reaches the leading idle duration. Only the selected frame enters the public
+    event output. Any coding or partial-word error vetoes the entire frame predicate, including a
+    match observed before that error. Predicates support zero through four full-width words and do
+    not cross frame boundaries. START, DATA, ERROR and END preserve original sample order; the trigger
+    pulse accompanies the qualified END. RAM stores cell indices and words, and readout reconstructs
+    full 64-bit ordinals for the raw-mode four-samples-per-receiver-tick timeline. Precision-filtered
+    input is not supported by that reconstruction. Phase decisions and publication can be delayed
+    beyond wire completion; integration must verify retained sample coverage rather than assume that
+    the trigger decision coincides with a payload edge, particularly for long idle-symmetry ties.
+    A receiver handoff finishes the old hypothesis before starting the next, compensating its one-clock
+    delay in the quarter-cell sampler. Differential simulation compares qualified output, whole-frame
+    matches and timestamps with DecodeManchester in 48 cases, including one-bit and sixteen-bit words,
+    both conventions and bit orders, inversion, constant-data ambiguity, minimum inter-frame gaps,
+    late coding violations and 32-bit sample-counter wrap. The earlier 160 receiver cases still pass.
+    Direct buffer tests cover both tie choices, four-word and any-data predicates, cross-frame rejection,
+    epoch reset and overflow. Each phase holds at most 128 provisional records per bank; exhaustion
+    emits one explicit unknown-count loss and disables publication and matching until a new epoch.
+    Standalone component synthesis in out/manchester-trigger/build-w5C4DT reports 2198 logic elements,
+    1100 registers, 16896 RAM bits and four multiplier elements. Virtual ports make this an area probe,
+    not a timing-qualified image. Evidence is manchester-frames under the protocol validation directory.
+    General-image source integration now assigns capability 0x4d01 at read register 102. Writes 102
+    through 108 stage control, 24-bit period and four 16-bit predicate words. The shared held pattern
+    bank is widened to 64 bits, with explicit low-word slices for existing protocols. Manchester has
+    exclusive decoder priority and feeds the existing sample timeline, event FIFO and trigger arbiter.
+    LOSS and invalid frame END are not marked valid. The top-level simulation passes wide configuration,
+    exclusive selection, capability discovery, event validity, full sample ordinals and trigger routing,
+    together with existing capture, recall, prehistory and retained-timeline checks.
+    Combined candidate sZUOJq synthesizes but does not fit. Its map report has 13626 logic elements and
+    352256 RAM bits; the failed fitter reports 13379 of 10320 logic elements and rejects the design for
+    requiring more than the device's 46 M9K locations. It never reaches timing qualification or deployment.
+    Evidence is manchester-general under the protocol validation directory. This is a measured limit
+    of the present parallel implementation, not proof that separate images are the only solution.
+    The mutually exclusive USB cell-history and Manchester candidate memories now share two
+    256-by-33 receiver-clock RAM banks. USB retains sixteen full 64-bit timestamps and Manchester
+    retains two 128-record frame banks for each phase. Mode selects the sole writer and read address;
+    receiver reset blocks writes at epoch handoff without clearing RAM. Ownership tests cover every
+    address, inactive-client writes and reset during handoff. USB passes with both private and shared
+    RAM; Manchester reference and boundary suites and the complete top-level simulation pass.
+    Combined candidate AnDTaP uses 351232 memory bits and 46 of 46 M9Ks, resolving the memory
+    allocation failure. The fitter still rejects 716 required LABs against 645 available, reporting
+    11391 of 10320 logic elements. These are failed-fit resource counts, not a placed or timed design.
+    Evidence is shared-protocol-scratch under the protocol validation directory. No candidate image
+    is published or deployed. Logic pressure still requires further work and an integrated fit.
+    Follow-up candidate Lhg9V6 eliminates the duplicate final-event timestamp register and retains
+    phase-tie qualification as two booleans instead of two 17-bit good-bit counts. Configuration is
+    held for the epoch, so those counts need only be compared with word width when the frame closes.
+    END holds the preceding DATA or ERROR timestamp. Reference and boundary tests pass, including
+    qualification surviving later receiver counts, both phases at the maximum supported bit period,
+    maximum cell ordinal and 64-bit timestamp wrap. Synthesis removes 96 registers and 97 combinational
+    cells. The combined fitter still fails at 11203 of 10320 logic elements with 46 M9Ks; this is not
+    a timing-qualified or deployable design. Evidence is manchester-compact under the protocol
+    validation directory. Further sharing or a measured architectural partition remains necessary.
+    An isolated follow-up build iZCbMS selects area synthesis and disables physical register
+    duplication. It produces the same 11203-element failed fit, requiring 707 LABs against 645.
+    The settings do not recover capacity; the supported build settings and image pointer remain
+    unchanged. The probe reports and exact snapshot settings are retained under manchester-compact.
+    A further exact-arithmetic experiment removes eight always-zero low bits from the first precision
+    CIC and restores Q8 scaling at its output. Candidate BUOVQe matches 93684 outputs cycle-for-cycle
+    against the frozen deployed CIC, passes complete dual-channel precision comparisons from /16
+    through /8192, short-reset tests and the top-level simulation. Its integrated fit is nevertheless
+    larger at 11277 logic elements. The experiment is rejected and the previous precision source
+    restored byte-for-byte; precision-integer-probe retains the source, oracle, tests and reports.
+    Mathematical width reduction alone does not establish a hardware saving with pipelined arithmetic.
+    A resource-domain probe removes PRECISION only from an isolated source snapshot. Candidate 84QUNO
+    fits the seven protocol cores and common acquisition path in 9581 logic elements, but fails setup
+    by 4.079 ns in Manchester timestamp arithmetic. It is not a supported second image and does not
+    implement the required numerical processing or the three remaining decoders. The measurement
+    supports evaluating protocol versus numerical processing, not partitioning by individual decoder.
+    Registering rounded phase offsets and adding them before full timestamp reconstruction improves
+    that probe's slack to -2.297 ns in GQqKAD, still failing. The matching full candidate tMu2jl needs
+    11302 logic elements and does not fit. Further staging splits the 16-by-24 multiply into two
+    registered 16-by-12 products and assembles sample ordinals with separate low-word carry and
+    high-word operations. START uses the same explicit borrow discipline. Event payload is meaningful
+    only on event_valid; END holds the last DATA or ERROR ordinal. Replay takes seven clocks per word,
+    below the eight-clock minimum input cell, and a twelve-frame test passes 1536 words with both phase
+    selections and concurrent next-frame reception at full 128-record bank capacity. Channel selection
+    and decoder trigger selection now register in the host domain beside the held timing/pattern banks.
+    Split-stage protocol probe cgfhLh fits in 9717 logic elements but fails at -2.715 ns on candidate
+    overflow detection gating unrelated frame scratch state. Its matching full image 3uWnAV needs
+    11367 elements and does not fit. The next revision removes that combinational failure gate from
+    scratch registers while retaining priority for immediate LOSS publication, ownership invalidation
+    and match suppression. Tests inject failure on both DATA and matching END clocks and confirm
+    that no payload or match escapes. A separate START check covers borrow across the low 32-bit
+    boundary. Failure-path probe 5aRObS fits in 9656 elements with minimum slack -1.513 ns; its full
+    counterpart NmBA55 still needs 11315 elements and does not fit. The remaining critical path starts
+    at the receiver's quarter-cell countdown comparison. A registered next-tick sample decision now
+    removes that comparison from hypothesis updates; countdown and prediction both hold during tick
+    stalls. All 160 receiver and 48 frame-reference cases, timestamp boundaries, failure-priority
+    cases and sustained replay tests pass. Final sampler probe p8WAYS fits in 9707 of 10320 logic
+    elements and 43 of 46 M9Ks, but fails setup at -1.273 ns from the frame gap to phase selection
+    and qualification. The matching full candidate FhlEHv needs 11350 logic elements and does not fit.
+    The full top-level simulation and strict model validation pass with traceability warnings.
+    Neither candidate is published or deployed. Frame-close/tie decision scheduling and integrated
+    resource sharing remain unresolved. Reports are retained under manchester-timestamp-pipeline
+    in the protocol validation directory. A seven-protocol resource-domain fit is not proof of room for the three
+    remaining decoders, FPGA stacking, or any completed runtime image-switching architecture.
+    Frame qualification now pipelines close-time comparisons and idle-tie resolution per bank.
+    Each bank retains its leading gap, score choice, validity and pending decision until publication;
+    live gap comparisons register before phase and qualification commit. A boundary one clock after
+    close is observed even before the deferred decision commits. Tests pass for that boundary,
+    coincident close/begin on alternate banks, reset during a pending close, sustained full-bank
+    replay and the existing receiver/frame-reference suite. The complete top-level simulation passes.
+    Decision-pipeline probe zQv6yl fits in 9740 elements with -0.737 ns worst slack, while its full
+    counterpart Syc0BO needs 11363 elements and does not fit. A next-gap predicate register then
+    removes the live 32-bit gap comparison from receiver completion. Both the gap count and its
+    prediction hold during stalled ticks. Complete frame-reference tests now include paused ticks
+    at odd periods and retain the same words, matches and sample ordinals. Probe bsbvIn fits in
+    9736 elements and reaches -0.194 ns worst slack on USB/SRAM-buffer paths. Its full counterpart
+    00O4LV needs 11297 elements and does not fit. The same full RTL passes top-level simulation.
+    A bounded placement-seed experiment keeps the RTL frozen to assess those remaining small
+    timing deficits. Seed 19 in X3Xesy reaches -0.510 ns and seed 20 in uk0Lpk reaches -0.387 ns;
+    both fit but fail timing. Seed 18 remains the best measured result at -0.194 ns. The sweep
+    ends without a supported build-setting change. Strict validation passes with 604 traceability
+    warnings. Evidence is manchester-frame-decisions in the protocol validation directory.
+    No probe publishes an image or changes the supported build profile. Integrated capacity,
+    remaining timing paths, host Manchester support and live retained-record qualification remain
+    open alongside the three remaining hardware decoders and FPGA stacking.
+    Any eventual partition must preserve common
+    acquisition and record ownership and follow the documented protocol versus numerical-processing
+    domains, rather than create one convenient image per newly added decoder.
+    Resource sharing, timing closure, host configuration and live end-to-end qualification remain
+    incomplete. The deployed six-protocol image is unchanged.
+  - USB hardware is deployed in the general image. The single-ended repository contract
+    uses NRZI, SYNC 0x80, complemented PID, stuffing and a greater-than-ten-bit edge gap to delimit packets.
+    CRC bytes remain payload, matching the repository decoder; this is not full USB electrical or CRC
+    qualification. Registers 97 through 101 expose capability 0x5501, channel/polarity, Q8 bit timing at
+    125 MHz and a zero-through-four-byte payload predicate. The receiver recenters on transitions and
+    delays sixteen raw cells so both EOP cells are excluded before destuffing. START identifies the full
+    valid PID, DATA carries each payload byte, END reports valid packet completion and ERROR rejects
+    bad PID or observed in-packet stuffing violations. Match is held until valid END. USB Count is zero,
+    like UART/SPI; byte order follows the common event sequence. Full 64-bit sampled-cell ordinals are
+    retained in a separate RAM, with the one-bit cells held in logic. Packet overflow beyond 65535 raw
+    cells emits ERROR. A held single-ended line cannot distinguish every bus fault from a packet gap.
+    Initial candidate vByagO exceeds RAM-block capacity because storing a wide per-byte index expands
+    both event FIFOs and a 65-bit cell RAM needs three blocks. Removing that redundant event index and
+    separating cell bits permits candidate omrfKU to fit at 9931 logic elements, but timing fails by
+    0.432 ns. Separating queue dequeue from byte parsing and registering host configuration selection
+    produces XsUymd at 9905 logic elements, with USB receiver timing positive but core timing -0.177 ns.
+    Seed-15 candidate MgwXwq also misses timing (-0.175 ns core and -0.122 ns receiver). None of these
+    candidates is deployed. Candidates fKHbdd (-0.639 ns) and WBLSMx (-0.416 ns) also fail timing.
+    The latter has positive receiver timing (0.304 ns); decoder selection into trigger acceptance is
+    its largest remaining core path. Match selection is now registered with its prehistory eligibility,
+    adding one core clock without admitting early matches. SPI configuration validity is registered; MIL
+    word state clears throughout idle. A dedicated frontend-run mirror serves the timestamp counter,
+    and precision output data continuously samples its held mailbox while valid retains its original
+    timing. Candidate cGuLKb misses by 0.438 ns. Candidate ItftPe passes core timing at 0.133 ns but
+    fails receiver timing by 0.149 ns. Reading the cell-bit logic directly at its current pointer removes
+    its lookahead-control path; qZgDdC passes receiver timing at 0.137 ns but misses core timing by
+    0.231 ns. The candidates use all 46 M9K blocks and about 96 percent of logic. A bounded placement
+    search over seeds 16 through 21 fails. Precomputed USB timer reloads, simplified MIL timer reloads
+    and one-hot ADC gearbox selection produce candidate v5T40o with all internal timing checks passing
+    at minimum 0.001 ns. It uses 9959 logic elements and 335360 memory bits. Full-record gearbox
+    simulation passes byte order, pauses, ten restart epochs and underflow. Event CDC has 208 paths
+    with minimum 2.632 ns, retained timeline 15 paths at 1.687 ns and live timeline 16 paths at 1.224 ns.
+    Timing and source reports remain in the corresponding build snapshots, with an index and test logs
+    in validation/2026-09-25-protocol-trigger/usb-development. Candidate v5T40o and its matching app
+    are deployed with the AeUVqM app preserved as general-release-app.pre-usb. Startup verifies the
+    full SRAM counter with fast GPMC timing. The first USB live tests find host-buffer overflow and
+    source FIFO loss at the unchanged 1.5 Mbit/s fixture rate. Removing the HTTP delay after nonempty
+    batches and retaining Go execution slots across bounded register/cache ioctls reduces overhead.
+    SRAM recall reuses transfer buffers and writes directly into one private response allocation.
+    Event delivery uses a 131072-entry circular host queue (at most 5 MiB) and a reusable 4096-event
+    consumer batch. Copies on the acquisition owner allocate no output storage; wrap ordering and
+    cancelled-buffer reuse pass a race-enabled test. Exhaustion remains an explicit transcript failure.
+    A locked acquisition thread uses SCHED_FIFO priority 1 during decoded epochs and a mandatory
+    500 us kernel sleep each cycle. At least two Go execution slots permit HTTP progress while that
+    thread sleeps. Original policy and execution-slot count are restored at epoch end. Reset-on-fork
+    prevents child runtime threads from inheriting real-time policy; kernel throttling remains at
+    950000 us per 1000000 us. Live process inspection confirms normal thread policies after ending.
+    This candidate passes a ten-second USB API dwell across sample-counter wrap with 834191 events
+    for an absent predicate and 1066861 for the matching/recall run, zero losses, and two identical
+    2 MiB recalls matching independent raw decode. Peak host backlog is 18019 events during a 224 ms
+    consumer pause. USB raw timing is checked against measured hysteretic edges because the FPGA
+    recenters each bit clock; the twelve-sample tolerance is unchanged. Hardware normal trigger
+    match, reject and resume also pass.
+    The shared-runtime browser workflow fails qualification. It downloads two identical records but
+    reports source FIFO losses during startup. Measured DMA reads stay near 2 ms while service gaps
+    reach 18 to 32 ms, including the intended 0.5 ms scheduling pause. More Go execution slots alone
+    also fail. These are evidence against accepting a shared GUI-runtime ingestion path for this
+    bounded FIFO. Isolated decoded ingestion now runs as an alternate entry point in the same
+    release binary. After FPGA load and the full SRAM counter check, the parent passes a duplicate
+    of the inherited GPMC open file to the worker and completes a ready handshake. The parent
+    then releases its DMA mapping and routes all bus access through bounded packet IPC. It never
+    reopens the device or falls back to direct access after failure. Only the worker drains events,
+    independently of GUI scheduling, into a bounded 131072-record binary ring. Controls, event
+    batches and retained-record reads use the same owner; each IPC payload is at most 16 KiB.
+    FIFO control guards prevent a competing consumer during an epoch. Socket failure is permanent
+    for that proxy, epoch mismatches are rejected, and queue exhaustion explicitly fails the
+    transcript. Parent death terminates the worker; normal shutdown closes the socket and reaps it.
+    Race-enabled tests cover idle consumers, ring wrap, overflow, stale epochs, competing FIFO
+    access, full-width sample ordinals, concurrent retained reads and disconnect failure.
+    The deployed worker app, built at 2026-09-25T17:40:02Z, retains the same v5T40o FPGA image.
+    Its first USB API run receives 124863 absent-predicate and 1096532 matching-predicate events
+    with no losses, and independently verifies the two identical 2 MiB retained records. The
+    browser run advances to 901451 events with zero losses while downloading two identical
+    records; the threshold and controls are visually readable. Evidence is usb-worker-api and
+    usb-worker-ui. An additional thirty-second browser dwell reaches 3453649 events with zero
+    losses after the two downloads, and normal hardware trigger match, reject and resume pass.
+    Evidence is usb-worker-ui-long and usb-worker-trigger. This qualifies the tested 1.5 Mbit/s fixture, not unlimited event throughput
+    or full-speed USB electrical behavior. An extra FPGA image would not remedy host scheduling.
+    Earlier shared-runtime failure evidence is under
+    validation/2026-09-25-protocol-trigger/usb-ring-wrap and usb-ui-stages. Earlier five-protocol
+    regressions are under usb-regression-PROTOCOL. The current service build passes SPI, SENT, UART,
+    MIL1553 and I2C with zero losses, correct trigger predicates and identical raw recalls; evidence
+    is under usb-service-PROTOCOL, with usb-service-mil1553-final the final MIL run. A dedicated
+    simulation confirms an epoch begun inside a sync-like run may report an initial zero-payload
+    coding ERROR without DATA or match. The validator distinguishes only that sequence-zero error
+    before a full word could complete; all later words and all loss checks remain strict. The Au
+    fixture and normal acquisition are restored to I2C.
+    The isolated worker build also passes the five regression protocols with zero event losses,
+    absent-predicate rejection, matching-predicate capture and two identical full raw recalls.
+    Evidence is worker-PROTOCOL and worker-qualification. After session end, every inspected
+    parent and worker thread has normal scheduling policy. Stopping the app removes both old
+    processes; restarting passes FPGA load and full SRAM counter verification, starts a new
+    worker, and produces coherent normal frames with zero bus errors. The recovery copy is
+    general-release-app.pre-isolated. Strict model validation passes with existing warnings.
+    An abandoned I2C event consumer exceeds the bounded host queue and receives an explicit
+    overflow error. Two complete 2 MiB recalls separated by sixty seconds are byte-identical,
+    and epoch, record identity and raw sample range remain unchanged. Ending the failed
+    transcript restores normal acquisition with zero bus errors. Evidence is worker-overflow.
+    A zero-length USB predicate means any payload byte, consistent with the repository
+    matcher; an empty handshake emits events but cannot trigger that predicate.
+    An oversized-packet regression finds and fixes a pending-byte leak after ERROR that made event
+    ordinals move backwards. Overflow now discards the pending parser state. Startup and overflow
+    recovery require an observed idle delimiter before accepting a SYNC-looking sequence, preventing
+    an epoch begun inside a packet from treating its payload as a new header. Both boundary tests pass.
+    The source snapshot must include these fixes before a passing placement can be deployed.
+    Standalone simulation covers integer and fractional LS/FS,
+    1024-byte packets with clock mismatch, inversion, absent predicates, empty handshakes, PID/stuffing
+    errors and reset/disable recovery. The independent Au fixture uses 100 MHz to generate 1.5 Mbit/s
+    bad-PID and good DATA0 packets, with stuffing and valid payload CRC16. Independent simulation
+    produces sixteen valid packets, eight bad PIDs and eight matches; the software decoder also reads
+    the generated waveform. Host configuration/planner tests and full acquisition simulation pass.
+    USB tests also expose a software error where an observed stuffing violation previously left a clean prefix
+    eligible for matching. Go and browser decoders now append an explicit frame-error, with targeted tests
+    and the complete decoder/engine/SRAM suites passing. Long single-ended gaps remain ambiguous.
+  - Mutually exclusive hardware decoders share one held timing bank and one held pattern bank at each
+    core-to-receiver configuration stage. Host staging registers stay independent, with the existing
+    MIL1553, SENT, SPI, I2C, UART selection priority. Capture or decoded streaming holds the receiver
+    configuration until idle. Full acquisition simulation checks each selection, priority, host edits
+    during capture, streaming-only hold and idle refresh, followed by retained-payload and timeline tests.
+    Candidate AeUVqM uses 9209 logic elements instead of 9455, with unchanged 332800 memory bits.
+    All 108 timing checks pass at minimum 0.096 ns without changing clocks or timing exceptions.
+    Event payload crossings pass on all 207 paths at minimum 2.964 ns; retained and live ordinal
+    crossings pass at 1.860 and 1.569 ns. The deployed FPGA SHA256 is
+    c80de86ca565153a1ccca59e8d3da4d51532173ae1c29a2c30b13e2a9111e2fe. App SHA256 is
+    15b597473b85f0de008cc9e2267509d6d9c60fcee6931a0a6182aff9d547df16, built 2026-09-25T15:51:15Z.
+    Startup verifies the full SRAM counter at fast GPMC timing. Same-image absent/matching runs pass for
+    I2C (289338/466667 events), SPI (36516/185895), SENT (25235/126932), UART (13027/65612) and
+    MIL1553 (54020/278405), all without event loss and with two identical full 2097152-byte recalls.
+    Event-to-raw correspondence covers 30, 39, 23, eight and 74 events respectively, within five samples;
+    trigger decisions precede retained triggers by 18 through 22 samples. I2C crosses the 32-bit sample
+    boundary during its ten-second dwell. SENT rejects 1401/7052 bad-CRC frames and MIL1553 rejects
+    18007/92802 bad-parity words. Evidence is shared-config-{i2c,spi,sent,uart,mil1553} under
+    validation/2026-09-25-protocol-trigger, with build, crossing and startup reports in shared-config-build.
+    The live browser sends A55A unchanged and downloads two identical full records with SHA256
+    757e8b5d01d348d79f4754380c5de83a27a9347bc7ef366f5ac3d40937549005 while the event display
+    advances from 8957 to 234281 with zero loss. Its threshold readout stays visible and the screenshot
+    is visually checked. Evidence is shared-config-ui. The session ends and normal acquisition resumes.
+    This qualifies the shared configuration increment for these fixtures; the five remaining hardware
+    decoders, precision-filter mapping and FPGA stacking are still required.
+  - The MIL-STD-1553 increment is deployed and passes its live trigger, event and retained-data path.
+    It uses the repository's binary two-sided sync and Thomas Manchester contract, sixteen MSB-first bits
+    and odd parity. Registers 93 through 96 expose capability 0x4d01, channel/polarity, explicit 125 MHz
+    bit ticks and a full 16-bit word predicate or any-word match. One DATA or ERROR event follows each
+    word; Value retains all sixteen bits and Count bit zero identifies command/status sync. Only valid
+    parity can trigger. Software and browser decoding share polarity support. The Au fixture drives
+    A2/C1 and A11/C2 at 1 MHz with bad-parity A55A commands, valid A55A commands and valid 5AA5 data.
+    RTL tests cover sync types, parity, coding violations, inversion, odd divisors, reset and disable recovery;
+    fixture simulation independently checks all three emitted cases. Timing failures remain recorded in
+    source snapshots y2in3i, 2etv1J, WAFQfB, 7i8SSX, Ax2gX4, H7jZJp, NI7pIK and lFg3W8; none was deployed.
+    Local edge thresholds, staged snapshot control, an elastic event stage and local read-count controls
+    address measured paths. Two-bit partial comparisons replace the previous input registers, preserving
+    trigger and timestamp latency. Exhaustive comparisons and 32932 aligned trigger cycles cover gaps and
+    rearming; full acquisition, SRAM transport and event-ABI tests pass. Clocks and timing exceptions are unchanged.
+    Candidate 6Gu612, seed 14, passes all 108 timing checks at minimum slack 0.114 ns, with 9455 logic elements,
+    332800 memory bits and 44 M9K blocks. All 207 held event-payload crossings pass at minimum 3.152 ns;
+    retained and live ordinal crossings pass at 1.417 and 1.178 ns. FPGA SHA256
+    694226ae2010aa7c9bdb06c1076687891c929470ddf1d86889a1f82be53cd3e5 is deployed in app SHA256
+    57ba5964ece34b83a9c79ddbf3b73130f331118fd0feef5f8e80a0ab9d0a1026, built 2026-09-25T15:23:33Z.
+    The fast GPMC setting fails its startup counter check; the app restores the original timing and verifies
+    the full SRAM counter before normal acquisition. Live MIL waiting/matching runs pass with 56096/278576
+    events and zero loss, including 18698/92859 deliberately bad-parity words. Matching recall returns two
+    identical full 2097152-byte records; 74 event-to-raw correspondences are within -2 through +4 samples,
+    and the retained trigger is 19 samples after the matching valid-word decision. Evidence is decoded-mil-first
+    under validation/2026-09-25-protocol-trigger. Normal MIL controls pass matching and recovery with ten
+    publications each, absent-pattern rejection with zero, and ten edge-acquisition publications after disable,
+    all without bus errors; evidence is mil-normal. Same-image absent/matching regressions also pass for SPI
+    (35858/185551 events), SENT (25854/127964), UART (13336/66347) and I2C (289284/470439), with zero loss
+    and two identical full SRAM recalls in every matching case. Raw correspondence covers 39 SPI, 23 SENT,
+    eight UART and 30 I2C events within five samples. SENT rejects 1436/7109 deliberately bad CRCs. I2C
+    crosses the 32-bit sample boundary during a ten-second dwell without moving the frozen range. Evidence
+    is decoded-mil-{spi,sent,uart,i2c}.
+    Deliberate host overflow preserves epoch 11 / record 551 after 60 seconds of validator inactivity,
+    including the full 2097152-byte record and sample range 20286 through 1068861. SHA256 remains
+    0e36cf1a8117e854549224f777ff6692f886f35ad56ff72c0bd6493438c64b67; evidence is decoded-mil-overflow.
+    The physical panel dispatcher also passes 120 retained edge captures, thirty rising and thirty falling
+    on each channel, with zero wrong-slope captures; evidence is mil-edge-regression.
+    The deployed browser controls send a full A55A predicate and display DATA A55A, DATA 5AA5 and ERROR A55A.
+    Two downloaded full SRAM records are identical while the displayed event count advances from 10169 to
+    234154 with zero loss; evidence is mil-ui. Visual inspection identifies a clipped threshold readout in
+    the narrow decode card; allowing its slider to shrink corrects the layout.
+    The final app, built 2026-09-25T15:36:15Z with SHA256
+    fb1870cb480cb1773efdedc7c61502c72b3d55f778584c596ecc24aed5f73fe1, changes only that CSS layout
+    relative to the qualified app and embeds the same FPGA. Startup again verifies the full SRAM counter
+    at original GPMC timing. The final live browser run verifies the readout stays inside the card, sends
+    A55A unchanged, and downloads two identical 2097152-byte files with SHA256
+    34df51193afa776401fe6790588da30e9a7589b7839dae99e7fea3c796799b03 while its event count advances
+    from 10534 to 236222 with zero loss. The final screenshot is visually checked; evidence is mil-ui-final.
+    Both browser sessions end cleanly and normal acquisition resumes; the I2C fixture is restored.
+    Final strict model generation passes with warnings and no errors. The scope reports zero bus errors
+    and zero supervisor failures after the restored acquisition resumes.
+    Five further hardware decoders, precision-filter sample mapping and FPGA stacking remain incomplete.
+  - Wider protocol events require reducing duplicated transport metadata before adding more decoder engines.
+    The host FIFO now has a compact-identity mode qualified with the four implemented decoders. It stores each event's payload once,
+    holds the epoch for the FIFO lifetime, and advances the head sequence only after the last halfword is read.
+    Rewind therefore preserves identity. Every incoming epoch and sequence is checked before insertion;
+    mismatches are rejected and latch an error that requires an epoch reset, so reconstruction cannot hide
+    mailbox corruption. The standalone generic reader still supports arbitrary complete records. The general
+    image removes its byte-only Value/Count limits and uses full 32-bit producer fields without reducing its
+    1024-source/512-host depths or changing the public event ABI. Tests cover wide values/counts, sequence and
+    RAM wrap, partial rewind, reset, identity corruption and Verilog-to-Go event parsing with explicit loss.
+    The preliminary compact-host candidate LiNER3 frees four M9K blocks, using 42 of 46, but misses timing
+    by 0.403 ns on acquisition paths and is not deployed. The full-width m5czxR candidate fits in 44 blocks
+    but misses timing by 0.096 ns. Protocol trigger selection is now predecoded into held enables while idle,
+    preserving priority and avoiding the configuration-selection chain on the active match path.
+    Candidate HnogcD passes all 108 timing checks at minimum slack 0.092 ns, using 8697 logic elements,
+    332800 memory bits and 44 M9K blocks. The 207 held event-payload crossings pass at minimum 2.885 ns;
+    retained and live sample-ordinal crossings pass at 1.660 and 1.659 ns. FPGA SHA256
+    69ee17d25ff0c4bb859722fec1931b3808f88c309c4c28b1031674f0b9799b80 is deployed in app SHA256
+    fe15ab7fb432673225b174e754ed278e423554051968cfd2268fb15f1d4cd272, built 2026-09-25T14:35:21Z.
+    Startup verifies the full SRAM counter with fast GPMC timing. Same-image absent/matching runs pass for
+    I2C (288319/471960 events), SPI (36164/188853), UART (13134/66213) and SENT (25691/126985), without
+    event loss and with two identical full 2097152-byte recalls per matching run. I2C crosses the 32-bit sample
+    boundary during its ten-second dwell. Raw correspondence covers 29/39/8/23 events respectively within
+    three samples. SENT reports 1427/7055 deliberate bad CRC frames. Normal SENT controls pass matching,
+    rejection, recovery and return to edge acquisition. Evidence is decoded-wide-{i2c,spi,uart,sent} and
+    wide-sent-normal under validation/2026-09-25-protocol-trigger. This frees two physical RAM blocks and
+    removes producer-width truncation; it does not claim implementation of the six remaining decoder engines.
+    Deliberate host overflow also passes on HnogcD. Epoch 10 / record 399 retains identical full SRAM bytes
+    after 60 seconds of validator inactivity, with SHA256
+    43d16a83fab66e11d93d694e66c9e97e25349c250d87ec97217cb538897419b4 and unchanged inclusive sample
+    range 10474 through 1059049. Evidence is decoded-wide-overflow; this does not assert absence of other
+    client traffic. The I2C fixture and normal acquisition are restored, with no supervisor failures.
+    Strict model generation passes with warnings and no errors.
+  - The sample-timeline increment is deployed for UART, I2C, SPI and SENT. A 16-bit ADC ordinal follows the raw sample payload
+    through the SRAM pipeline and the protocol slicer; the receiver extends wrap intervals to 64 bits.
+    Decoder pipeline latency selects the corresponding ordinal, and frozen metadata exposes the last stored
+    raw word with its retained record ID and event epoch through capability 0x5401 and registers 83 through 92.
+    The app only exposes the linear sample range for frozen, contiguous raw ADC records with matching identity.
+    Precision filter mapping remains unavailable until its delay and decimation are represented explicitly.
+    Simulation checks wrap reconstruction, discontinuous-write rejection, short rearm pulses, stream-disable
+    retention and the complete raw payload-to-SRAM-to-metadata path. Candidate I2JW45 exceeds the device's
+    46 M9K blocks after adding timestamp precision and is not deployable. Normal event Value/Count fields and
+    full-width loss counts now share a source-queue payload because loss events have no Value. Current byte
+    decoders use eight Value bits and seven Count bits; generic producers retain full 32-bit field defaults.
+    Source and host queue depths remain 1024 and 512, and the public 32-byte ABI is unchanged. New producers
+    must select widths that cover their full event values. Acceptance requires a successful fit, timing audit
+    and live event-to-raw comparison; the qualified results are recorded below.
+    Timing trials expose a comparison-plus-subtraction path in frozen timestamp reconstruction, a full-width
+    expected-word increment, and threshold/reset fanout. Frozen snapshots now compare and correct their upper
+    word in separate receiver cycles; write tags and acceptance advance through matching registered stages;
+    expected-word byte carries are registered before addition. The running counter uses registered carry
+    lookahead that holds across missing valid samples. Local counter enable and protocol threshold registers
+    reduce shared control fanout. Tests include all byte-carry boundaries and full counter wrap with a pause.
+    Pipeline-local ordinals are reduced from 32 to 16 bits to save fast-domain registers. Their 131 us wrap
+    period at 500 MS/s exceeds the bounded pipeline/snapshot delay; receiver extension preserves full 64-bit
+    timestamps. Continuous receiver sampling observes each wrap, including while the retained record is frozen.
+    Clocks and timing exceptions are unchanged. Failed candidates left the deployed RRO7w7 image intact.
+    Candidate 7bjzGm, seed 14, passes all 108 timing checks at minimum slack 0.039 ns. It uses 8542 of 10320
+    logic elements and 346112 memory bits; physical M9K allocation remains 46 of 46 blocks. All 183 held event
+    payload paths pass at minimum 1.996 ns; frozen last-word crossings pass at 1.848 ns and live ordinal
+    crossings at 1.307 ns. FPGA SHA256 5ec2e82559ee517b2f3c9c1c9b32ee51706087e9f25f563510b479af4a95aca6
+    is deployed with app SHA256 be858197ce660eb0195852b29e8173f2d6a7b39e00bafc47c600ee402f7ccb2b,
+    built 2026-09-25T14:14:52Z. Startup verifies the full SRAM counter with fast GPMC timing.
+    On this same image, absent/matching live runs pass for I2C (288773/468724 events), SPI (36240/185263),
+    UART (13291/65950) and SENT (25803/128342), with zero event loss and two identical full 2097152-byte
+    recalls for every matching case. Event-to-raw correspondence covers 29 I2C events at -3 through +3 samples,
+    39 SPI events at -3 through +3, eight UART events at 0 through +3, and 23 SENT events at -2 through +3.
+    These small differences include receiver sampling and analog threshold quantization. I2C runs for ten
+    seconds before recall, crossing the 32-bit sample boundary while preserving monotonic 64-bit timestamps
+    and the frozen range. SENT reports 1434/7130 deliberately bad CRC frames. UART correlation uses complete
+    valid fixture messages because a retained record can start inside a character; the first validator run
+    exposes this raw-decoder boundary limitation and is retained as failed evidence, not counted as a pass.
+    Evidence is decoded-timeline-{i2c,spi,uart-complete,sent} under validation/2026-09-25-protocol-trigger.
+    Normal SENT controls also pass matching and recovery with ten publications each, absent-pattern rejection
+    with zero publications, and return to edge acquisition; evidence is timeline-sent-normal.
+    Deliberate event-consumer abandonment reports host buffer overflow and preserves epoch 11 / record 772.
+    After 60 seconds of validator inactivity, the full 2097152-byte record remains identical with SHA256
+    37473e62c50cdfb091f95ec3a3534c2a5da1dad9a213e0f43d877f2357dd7f39, and its inclusive sample range
+    remains 87478 through 1136053. Evidence is decoded-timeline-overflow. The scope browser remains open,
+    so this is not a complete-client-silence test. Normal acquisition resumes with zero bus errors and no
+    supervisor failures; the I2C fixture is restored.
+    This qualification does not provide precision-filter sample mapping, six remaining hardware decoders or FPGA stacking.
+  - The SENT increment shares the existing ADC slicer, event transport, trigger arbitration and retained SRAM.
+    Registers 77 through 82 provide capability 0x5e01, explicit nominal ticks at 125 MHz, channel/polarity,
+    optional pause, frame length 1 through 64 and up to four byte-sized nibble values. Status and data produce
+    DATA events with their nibble index in Count; END carries the verified CRC, while a bad CRC or malformed
+    frame produces ERROR. DATA is provisional until END. Trigger suffix matches latch within one frame and
+    become eligible only when its CRC passes, matching the repository's augmented data-only CRC semantics.
+    Automatic tick inference remains a software configuration; explicit ticks select acquisition-time hardware.
+    Receiver tests cover values 0 through 15, CRC-only and 64-nibble frames, pause, polarity, truncation and bad
+    CRC rejection. The live AU fixture alternates good CRC 1 and bad CRC 2 for status/data 0 1 2 5 A 3 4 at
+    a 3 us tick. The live validator requires both good and bad frames and checks SRAM trigger alignment to a
+    CRC-valid frame, not merely the earlier matching payload.
+    Candidate JJj3bM missed timing by 3.368 ns through pulse-width classification; a registered width stage and
+    held tick-minus-one calculation remove that path. Subsequent placements exposed sub-nanosecond SRAM control
+    paths. Trigger origin now tracks speculatively until a trigger freezes it; transport terminal predicates
+    settle during setup without state-gating the upper-zero compare; the first recall payload tracks continuously
+    while validity controls publication. Full-capacity transport, stalled finite writes, exact flush positions,
+    4096-word burst recall and top-level precision/trigger tests pass. No failed image is published or deployed.
+    Candidate vjt0gi passes all 108 timing checks at minimum slack 0.115 ns and all 181 event payload crossings
+    at 2.956 ns, using 7900 logic elements and 350208 memory bits. FPGA SHA256
+    8922a6e5958fb8f17233f79e900d9ab6040746598cd6e87880e749e5c1d86b70 is deployed in app SHA256
+    fa4ab778b0485917439ccb0c9887cbc30567b89ff33addeba2d0f20bd6e4076f. Startup verifies full SRAM with
+    fast bus timing. Live SENT waiting/matching cases pass with 173604/274271 events and no loss; they report
+    9644/15237 deliberately bad CRC frames and 9645/15237 valid frames. Matching retains two identical
+    2097152-byte reads and aligns within 23 samples of a CRC-valid completion. Evidence is decoded-sent-general
+    under validation/2026-09-25-protocol-trigger. Normal SENT controls also pass matching (10 publications),
+    absent-pattern rejection (zero publications), recovery (10) and edge-mode recovery (10), with no bus errors
+    or wedge; evidence is sent-normal-trigger/sent-hardware-validation.json. This increment does not implement
+    the six remaining hardware decoders or stacking.
+    The SPI regression on this image exposes a partial first transaction when the receiver starts mid-message;
+    the retained record and subsequent bytes remain correct. Two-wire SPI now waits for its configured idle
+    gap before admitting the first START, byte or trigger. The startup regression fails against vjt0gi's source
+    and passes with the gate in all four clock modes and both bit orders. Candidate RRO7w7 deploys the fix
+    after all 108 timing checks pass at minimum slack 0.061 ns and all 181 event payload crossings pass at
+    2.607 ns. It uses 7874 logic elements and 350208 memory bits. FPGA SHA256
+    c6f685249519c2865dc74644a4b9084729005f6ff4045d7da71e3e142885f6fe is embedded in app SHA256
+    d7be132367142d9bd83e28269a5a9e2665fdd399534e33b08f2a7e65f528e496. On this same deployed image,
+    live waiting/matching cases pass for SPI (55410/207265 events), SENT (38849/140939), UART (20492/73107)
+    and I2C (65002/238718), all with zero reported loss and two identical full 2097152-byte retained reads
+    for every matching case. SENT reports 2158/7829 deliberate bad CRCs; its trigger aligns within 21 samples
+    of a valid CRC completion. Evidence is decoded-four-protocol-{spi,sent,uart,i2c} under
+    validation/2026-09-25-protocol-trigger. Deliberate host overflow preserves epoch 9 / record 59 and SRAM
+    SHA256 499a77174cebbb6aa50189c3e0e11f210af8b905ad8657e4a21575302c0cc7ba after 60 seconds of
+    validator inactivity. The live scope browser remained open, so this run is not evidence of complete client
+    silence; the earlier MTzetO test separately covers that condition. The scope remains healthy with no
+    supervisor failures, normal acquisition resumed, and the I2C fixture restored. Strict model generation
+    passes with warnings and no errors; SRAM/engine/decode tests and focused race tests pass. The full web
+    suite found only the stream panel's inline-style budget violation, fixed by moving its styling to the
+    stylesheet and passing the focused UI checks.
+  - The proposed event transport uses versioned 32-byte records, an ordered source queue in block RAM, a held-payload
+    clock-domain mailbox and a retryable host halfword reader. Overflow inserts ordered loss records. Host errors
+    are returned explicitly, including uncertain consumption of the last halfword; epochs reject stale events.
+  - UART byte/error and I2C START/byte/STOP event production are deployed in candidate build RObYNJ.
+    Live I2C qualification confirms the expected bytes, wrong-address rejection, matching trigger, continued events
+    after freeze and byte-identical repeated 2097152-byte retained downloads. The same test exposes severe event loss
+    with the initial eight-record queue and per-halfword ioctl reader; throughput qualification has not passed. I2C byte Count bit zero marks the address byte and bit one records NACK; Value preserves
+    the full byte including the address direction bit. Observed transactions stream independently of trigger filters.
+    Those initial event timestamps were stream-relative and were not yet correlated with retained SRAM records.
+  - The stream-and-capture arm operation configures the decoder, enables a new event epoch, then arms SRAM.
+    Each validated arm assigns a record ID and captures the active event epoch. Registers 69 through 73 expose
+    this stable identity and its capability; freeze, recall and stream disable preserve it. Host and top-level
+    simulation cover configuration ordering and identity retention. This initial version associated a record with a
+    stream epoch; the later sample-timeline increment above adds the raw record's acquisition timestamps.
+    The host capture session waits past command acknowledgement for the newly armed identity, offers independent
+    event-stream and trigger-wait operations, and checks epoch/record identity under the capture lock before raw
+    retrieval. A replaced capture is rejected before any SRAM transfer or client bytes. Session tests cover stream
+    configuration, forced freeze, successful raw recall and rejection after replacement.
+  - The normal engine now stages decoded-session commands on its acquisition owner, suspends normal frame rearming
+    during the session and drains events into a bounded host buffer. Overflow terminates the transcript explicitly
+    without replacing SRAM. Cancelled queued requests do not run. The normal HTTP service exposes decoded start,
+    event binary stream, status, retained binary recall and end operations through this owner interface. Event-stream
+    terminal errors use the X-Decoded-Error HTTP trailer; clients must check it and sequence continuity. Focused owner
+    race tests and HTTP tests pass. Operator-facing controls are integrated into the normal browser decode panel.
+    Live testing uses the real FPGA, acquisition owner, HTTP stream and retained record together; isolated web tests
+    do not establish end-to-end acceptance. Evidence is in validation/2026-09-25-protocol-trigger/decoded-general-e2e.
+    Build RObYNJ passes 108 timing checks with minimum slack 0.144 ns, uses 7167 logic elements and passes all 180
+    implemented event-payload crossings with minimum slack 3.382 ns. The next candidate enlarges the queue to 256
+    events, but build 0EQm5E fails timing at -0.776 ns and is not deployed. Checked DMA and yielding instead of
+    a forced millisecond sleep are deployed with RObYNJ. Live non-matching delivery improves to 35358 records with
+    1076 loss markers; matching capture and repeated raw recall deliver 44350 records with 5827 loss markers.
+    Trigger and immutable recall still pass, but loss-free throughput acceptance fails. Evidence is in
+    validation/2026-09-25-protocol-trigger/decoded-dma-e2e. Scheduling buffers and concurrent recall servicing remain work.
+  - The next event transport adds a host-clock FIFO of complete records. Capability 0x4502 and register 75 expose
+    batched readout and its available-record count. Only the host removes records, so a count reserves a safe DMA
+    length while arrivals continue. Rewind preserves the current record and count. Host code validates the epoch
+    and parses every returned ABI record; a failed DMA is reported as uncertain consumption and never retried.
+    The initially deployed source and host queues each hold 256 events; the bounded software buffer holds 8192. The larger software
+    buffer accommodates client scheduling pauses but still reports exhaustion explicitly. RTL checks cover RAM
+    wraparound, arrivals during a reserved batch, partial rewind and queue-to-Go ABI parsing. Precision arithmetic
+    splits each comb subtraction into two registered stages, with its valid token following all six stages.
+    Throughput and values are unchanged; latency increases by three core clocks. Outputs match the frozen reference
+    at /16 through /8192, including short-reset rearm checks. The carry-select experiment failed physical timing
+    and is not used. Live throughput acceptance is still required.
+  - Physical timing work also registers the frozen-record frontend-stop decision, computes threshold limits in
+    the host domain before the held configuration crosses to acquisition, and splits the SRAM post-trigger
+    countdown into low and high pieces with a look-ahead borrow. Full-depth record/recall and integrated capture
+    tests pass. A bounded placement sweep seeks a timing-qualified batch image; no failing candidate is deployed.
+  - Batch candidate G0g3hJ passes 108 timing checks at minimum slack 0.077 ns and 180 event payload crossing paths
+    at minimum slack 3.282 ns. It uses 7397 logic elements and 229888 memory bits and is deployed. Live batch reads
+    eliminate host-buffer exhaustion and reduce FPGA losses to short scheduling bursts. After allocation-free
+    parsing, reusable DMA/HTTP buffers and one HTTP write per batch, one matching run delivers over 114000 events
+    with zero losses through trigger and two identical 2 MiB downloads. A longer five-second-per-case run still
+    reports five loss markers while waiting and three during matching/recall; sustained loss-free acceptance is
+    therefore not established. All complete received transactions match the expected I2C message and trigger
+    alignment remains within 19 raw samples. Evidence is in decoded-batch-e2e, decoded-batch-hotpath-e2e and
+    decoded-batch-schedule-e2e under validation/2026-09-25-protocol-trigger.
+  - Measured scheduling gaps exceed the approximately 18 ms coverage of 512 combined queue slots at 28000 events
+    per second. Candidate qscivq doubles both FIFOs to 512 records and the maximum DMA batch to 512 records,
+    giving approximately 36 ms coverage. It is deployed, passes all 108 timing checks with minimum slack 0.082 ns,
+    and uses 7460 logic elements and 322048 memory bits; all 180 event payload paths pass with minimum slack
+    3.064 ns. This is a measured memory-versus-scheduling tradeoff. No scheduling policy or kernel realtime
+    setting has been changed. One complete live run passes with 148610 waiting events and 325845 matching events,
+    zero losses, and two identical 2 MiB downloads independently decoded and aligned to the trigger. Earlier
+    matching retrieval exposed intermittent invalid event framing, so this is not sustained qualification.
+    A longer run also exposed supervisor restart after stream failure; successful bus reads already feed health,
+    while a failed transcript stops polling. The live validator now preserves the stream error before cleanup
+    so a subsequent stale session error cannot hide it. Evidence is in decoded-batch1024-e2e,
+    decoded-batch1024-diagnostic and decoded-batch1024-long under validation/2026-09-25-protocol-trigger.
+  - A repeated 60-second-per-case qscivq live run passes waiting and matching, with 1689042 and 1867434 events
+    at the acceptance checkpoints, zero loss markers and two identical 2097152-byte retained downloads.
+    Independent raw decoding confirms the expected message and trigger alignment. Complete event evidence is
+    saved in bounded chunks under validation/2026-09-25-protocol-trigger/decoded-batch1024-minute-evidence;
+    an earlier equally successful hardware run exceeded the host JSON string limit during evidence saving.
+    These successful runs do not explain the earlier intermittent framing failure or qualify the remaining
+    seven hardware protocols, exact event-to-SRAM sample mapping or FPGA stacking.
+  - The same deployed qscivq image passes the complete SPI and UART stream/trigger/retained-record path without
+    reloading the scope fabric. SPI delivers 245234 waiting and 390602 matching events; UART delivers 90685 and
+    141577 respectively. Both reject an absent pattern, match the configured bytes, continue streaming after freeze,
+    and return two identical 2 MiB records whose independent raw decode agrees. Trigger displacement is 18 samples
+    for SPI and approximately 19 samples from the UART stop-bit midpoint. Evidence is in decoded-spi-general-e2e
+    and decoded-uart-general-e2e under validation/2026-09-25-protocol-trigger. Four further I2C repetitions also pass;
+    the intermittent framing fault has not reproduced and remains unexplained.
+  - Batch capability 0x4503 replaces the asynchronous read of a live binary FIFO count with an explicit reservation.
+    Writing selector 76 with value 1 captures the host-clock count; selector 75 then remains stable while arrivals
+    continue. The sole acquisition owner rewinds any partial event before reserving and serializes DMA consumption.
+    A live binary count can change several bits during an asynchronous read and overestimate available data.
+    This removes that identified risk without asserting it caused the earlier fault. Register simulation tests the
+    127-to-128 transition while a reservation remains held; Go tests require reservation before batch DMA.
+    Older capability values use single-event reads. Candidate MTzetO is deployed after passing all 108 timing
+    checks at minimum slack 0.061 ns and all 180 event payload paths at minimum slack 3.399 ns; it uses 7437 logic
+    elements and 322048 memory bits. The preceding placement 3X5EuZ failed timing and was not deployed.
+  - A transcript failure stops event consumption but no longer stops hardware health probes. The acquisition owner
+    polls stable capability registers without rearming or clearing the retained record, preserving the original
+    stream error for clients. Failed hardware probes do not advance bus health; the existing supervisor remains
+    responsible for a real hardware stall. The failed-session loop sleeps 20 ms between polls so panel and HTTP
+    control remain responsive. A live test deliberately abandons the event consumer, requires explicit host-buffer
+    overflow, waits 60 seconds without client traffic and compares full retained SRAM before and after. This live
+    test passes on MTzetO, retaining epoch 3 / record 543 and identical 2097152-byte data; evidence is in
+    decoded-retained-after-overflow under validation/2026-09-25-protocol-trigger.
+  - The MTzetO live run exposes a distinct startup defect in the first I2C transaction; the event ABI is intact,
+    but bytes are shifted left by one bit after a fabricated START only 92 sample positions after enable.
+    Later transactions and the independently decoded retained waveform are correct. The frontend had resumed
+    from frozen capture while decoders were already recognizing stale-to-live sliced input transitions.
+    Decoder reset and event admission now wait for valid sliced ADC levels synchronized alongside the input lines.
+    The integration regression fails on the previous image source and passes with this change; it also verifies
+    that a real START after valid input is accepted. Candidate x8LFl1 deploys this fix after all 108 timing checks
+    pass at minimum slack 0.131 ns and all 180 payload paths pass at 3.175 ns; it uses 7458 logic elements and
+    322048 memory bits. SRAM priming no longer repeats the transport write-readiness decode; prospective halt
+    metadata is tracked until halt freezes it, removing two measured critical control paths without adding latency.
+    Full-depth wrapped capture, partial/full recall, halt and top-level precision tests pass. Four live I2C runs
+    show no malformed startup transaction; one waiting run reports 126 lost events at about 133 ms, while all four
+    matching/recall cases have no losses. SPI also passes on this image. Loss-free acceptance is therefore still open.
+  - The source FIFO stores only per-record fields. Epoch is held for the queue lifetime and the output sequence
+    advances once per dequeued data or loss record, preserving the 32-byte wire ABI while removing 64 duplicated
+    bits per RAM entry. Ordering, wide payload, overflow, simultaneous enqueue/dequeue, epoch reset and RTL-to-Go
+    parsing tests pass. This allows 1024 source slots plus 512 host slots, approximately 55 ms of buffering at
+    the measured I2C event rate. Candidate dK0vhY fits in 348672 memory bits, 82 percent of the device, but fails
+    timing on host prehistory arithmetic and is not deployed. The general top now computes negative prehistory,
+    prehistory plus one and posthistory minus one at the host clock and holds these alongside configuration until
+    arm. Record pre/post terminal checks use a tracked upper-zero predicate and a small low-slice comparison.
+    Full-depth record and top-level integration tests pass; candidate aE4x26 below resolves the fit qualification.
+  - The acquisition owner reuses caller-owned decoded-event storage as well as its DMA byte buffer. The public
+    owned-batch API retains its previous lifetime guarantee; the new Into API explicitly aliases caller storage.
+    A steady-state allocation test verifies zero allocations per successful drain, and race checks cover the engine,
+    SRAM transport and HTTP decoded paths. This reduces producer-side garbage-collection pressure without changing
+    event framing, sequence checks, host-buffer bounds or failure reporting.
+    Deployed app 1f2ba562ed811a759965b7b2b756917cded575fa384fb9da5e28e2183773338a with qualified FPGA
+    x8LFl1 passes the live I2C waiting and matching cases with 429073 and 606106 events respectively, no loss
+    records, and two identical full 2097152-byte retained reads. Evidence is decoded-reused-buffer under
+    validation/2026-09-25-protocol-trigger. This is a bounded run, not proof of indefinite loss-free operation.
+  - Compact-queue candidate Xfnj3w misses timing by 0.032 ns on frontend enable to the gearbox saved payload.
+    The payload now captures on FIFO pop alone; epoch reset remains on gearbox control, and slot zero loads
+    fresh payload before subsequent slots consume it. The factory-phase ADC simulation fails its first-word
+    chronology assertion identically before this edit; it does not establish a regression from the payload edit
+    and remains an unresolved validation limitation. A dedicated 80-to-64 gearbox test passes ten complete
+    records, pauses, underflow and restart at every slot independently of the analog converter timing model.
+    Candidate aE4x26 then passes all 108 timing checks at minimum slack 0.033 ns and all 180 event payload
+    crossings at 3.041 ns. It uses 7399 logic elements and 348672 memory bits. FPGA SHA256
+    d62c96e3aa474ce35d1a717af95ea93f3708b233b328588737d0ee6ed73a9a3b is deployed in app SHA256
+    67b815f73ac68f70fe26c70620326c7e43e18b707be6f023a8ed3939a1670983; startup verifies the complete SRAM
+    counter with fast GPMC timing. On this same deployed image, live waiting/matching cases pass for I2C
+    (429936/602150 events), SPI mode 0 at 200 kHz (244572/390980) and UART at 115200 baud (90406/141767).
+    Every case has zero reported event loss; each matching case preserves two identical full 2097152-byte SRAM
+    reads and continues streaming after recall. Evidence is decoded-compact-i2c, decoded-compact-spi and
+    decoded-compact-uart under validation/2026-09-25-protocol-trigger. Deliberately abandoning the consumer
+    reports host-buffer overflow and preserves epoch 3 / record 70 plus identical SRAM after 60 seconds without
+    client traffic; decoded-compact-overflow records SHA256
+    7ed78fc2f6ec8cfba48490926b009611f9d9c23cde41ba3d23d52feffd5e848c. These bounded fixture tests qualify
+    the three implemented protocols only; seven hardware decoders, exact sample correlation and FPGA stacking
+    remain unfinished. The earlier factory-phase ADC simulation limitation remains open.
+  - Candidate i1vyS9 is now deployed through the general app. It passes all 108 timing checks with minimum slack
+    0.101 ns, uses 7149 logic elements and 183808 memory bits, and passes all 180 event payload crossings with
+    minimum slack 3.468 ns. The source queue holds 256 events. Priming writes no longer require a zero-data mux;
+    decimation data selection has separate preserved registers, and the fault shutdown uses a registered detector.
+    The app retrieves retained data in bounded owner requests and drains events between chunks, rechecking identity.
+    Live verification still fails loss-free streaming; the nonmatching run delivers 38445 records with 721 loss
+    markers, and the matching run terminates with an explicit host-buffer overflow. Identical 2 MiB downloads
+    independently decode to the expected I2C message. Evidence is in decoded-queue256-e2e under the validation directory.
+  - Live raw decoding exposed a trigger-position defect; a match before prehistory filled remained latched. The
+    general image now accepts only fresh protocol matches after history readiness; top-level simulation checks
+    rejection of early matches and acceptance of a later one. The deployed capture places the trigger 17 raw
+    samples after the matching AA byte, instead of the previous approximately 24656-sample displacement. Exact
+    event-epoch to SRAM-position correspondence remains a separate unfinished requirement.
+  - Live SPI mode 0, 200 kHz hardware tests pass matching, rejection, recovery and edge resume with zero bus errors
+    in the preceding RObYNJ general image. Evidence is in general-spi-hardware/spi-hardware-validation.json under
+    validation/2026-09-25-protocol-trigger. Other SPI modes and rates are not established by that bench test.
+  - SPI hardware source supports all four clock modes and both bit orders, with eight-bit words and an explicit
+    sampling-edge idle gap because only clock and data channels are observed. Gap boundaries clear trigger history.
+    Standalone simulation passes byte ordering and rejection of cross-gap suffixes. Integration is timed and deployed
+    in candidate RObYNJ; its mode 0 bench qualification is recorded above.
+    The backend selects SPI hardware only when capability 0x5301, explicit spiClockHz and an explicit threshold
+    are available. Automatic clock inference remains a software request. Registers 64 through 68 hold SPI control,
+    idle-gap ticks and the four-byte suffix; changing back to edge triggering explicitly disables SPI.
+  - Exactly one image is advertised by the normal build and deployment flow. Historical source and recovery artifacts
+    are retained until the general-image migration is verified; their presence does not make them supported profiles.
+  - Every event includes protocol, channel roles, acquisition epoch, sample position, payload and decoder validity.
+    Queue overflow is visible as loss; no dropped event may be reported as a complete stream.
+  - SRAM retention and stacking must arbitrate bandwidth explicitly. A host stall must not overwrite a retained record;
+    exhausted storage produces an explicit stop or loss indication rather than silently corrupting capture history.
+  - Event streaming keeps the ADC front end consuming after SRAM capture freeze, independently of the SRAM writer.
+    Top-level simulation checks that enabling events preserves record_done and the frozen physical SRAM position,
+    and disabling events stops the front end. This is simulation evidence, not physical-device qualification.
+  - The general candidate shares the three slow precision-filter tail stages through a scheduled arithmetic unit
+    and block RAM, retaining the fixed high-rate first stages. Complete-path comparisons against the frozen parallel
+    reference pass for decimation /16 through /8192, including short-disable rearming; queue collision/reset checks
+    pass. FPGA area and timing, higher-decimation coverage and bench qualification remain required. This precision
+    filter optimization does not implement the separately required reference-aligned waveform stacking.
+  - A decoder-trigger match must use the same event interpretation as the streamed transcript. Host publication filtering
+    alone is insufficient for continuous acquisition-time protocol triggering.
+  - In the planned partition, preserve acquisition and record ownership as a common invariant. Evaluate protocol
+    processing and reference-aligned stacking as resource domains; do not create one image per convenient implementation.
+    The v5T40o fitted hierarchy attributes 2473 logic cells and three M9Ks to precision filtering,
+    1462 cells and twenty-two M9Ks to event transport, sixteen M9Ks to the raw read buffer,
+    three M9Ks to ADC interleave, and two M9Ks to USB cell history. No DSP multipliers are used.
+    These measured allocations guide resource sharing for the remaining decoders and stacker;
+    they do not establish the final number of images or make dropping required functions acceptable.
+  - Image changes require capability discovery, visible loading and verification, epoch invalidation, and rearming only
+    after the new image is ready. No raw record or event from an earlier image may be attributed to the new epoch.
+  - Acceptance requires decoder-to-trigger-to-retained-record simulations, overflow and reset tests, numerical comparison
+    of FPGA stacking against the software reference, timing and resource reports, and live decoded-stream/capture tests.
+- id: ADR-ACQUISITION-IMAGE-COVERAGE
+  title: Complete workflow coverage before freezing FPGA image boundaries
+  status: accepted
+  date: '2026-09-25'
+  context: Multiple images are now the planning basis. The device has 10320 logic elements and 46 M9Ks.
+    The seven-decoder plus precision build-00O4LV uses 11297 logic elements and fails fitting. Removing precision
+    in isolated build-bsbvIn gives 9736 logic elements and 43 M9Ks but minimum slack is negative 0.194 ns.
+    CAN FD, ARINC 429, FlexRay and the FPGA stacker are absent from both probes. These are measured bounds on
+    current implementations, not estimates for complete proposed images. Evidence is in
+    validation/2026-09-25-protocol-trigger/manchester-frame-decisions/evidence.json and the archived reports.
+  decision: Evaluate a common acquisition foundation with replaceable processing groups. Candidate groups are
+    serial/word processing, packet processing, and numerical processing. These are synthesis candidates, not a
+    commitment to exactly three deployed images. Merge or subdivide them only after complete workload budgets
+    and synthesis demonstrate coverage and timing. Keep the qualified general image as the sole deployed image
+    until a replacement passes end-to-end qualification.
+  consequences:
+  - The common foundation includes two-channel ADC calibration/interleave, raw SRAM writer and reader, edge/force
+    trigger, timestamp and record identity, configuration/clock crossings, host ownership and bounded control service.
+    Instantiate event transport in every protocol acquisition candidate. Event and retained-record contracts must be
+    identical across candidates, while capability discovery describes the available processing and limits explicitly.
+  - Future protocols beyond the ten agreed repository decoders are an explicit architecture expansion requirement,
+    not an implementation deliverable for this increment. Do not add speculative decoders or advertise their support.
+    The proposed groups are resource domains, not a closed protocol list; assign later additions by frontend needs,
+    frame storage, timing, event bandwidth and required concurrency, including numerical processing combinations.
+  - Define a reusable decoder boundary with accepted-sample timing, channel roles and input representation,
+    immutable per-epoch configuration, reset/enable, timestamped events, provisional versus validated frame status,
+    trigger qualification, and explicit overflow. Describe maximum frame and decision latency, memory needs and
+    backpressure behavior per decoder. Reuse the acquisition and retained-record foundation across future additions.
+  - Keep protocol identifiers stable and never recycle them. Capability manifests and application registration must
+    enumerate supported descriptors rather than assuming ten entries, one fixed mask or fixed register blocks per
+    decoder. Unknown identifiers or unsupported ABI versions must fail explicitly without being interpreted as an
+    existing protocol. Saved configurations retain protocol identity and version across image changes.
+  - The current event ABI has an eight-bit protocol field but decoded_event.go rejects identifiers above ten.
+    Therefore future extensibility is planned, not already implemented. Adding a protocol requires a coordinated
+    manifest, producer and consumer compatibility change; do not merely remove validation or reinterpret reserved
+    fields. Preserve sample, epoch, sequence, record identity and loss semantics. If wider fields or longer payloads
+    are required, use an explicitly versioned format with bounded framing and migration tests.
+  - Reserve measured routing, logic, memory and service-bandwidth margin in each image budget, recording the
+    actual margin after integrated fitting rather than promising an arbitrary number of future decoders. Expansion
+    may add or regroup images when necessary; it must not force all future protocols into one near-full image,
+    reduce retained-record coverage silently, or interrupt a workflow that requires concurrent processing.
+  - A future protocol admission checklist is part of the model plan. Specify its electrical/sample interface and
+    decoding/trigger contract, independent reference fixtures and malformed input behavior; measure standalone
+    and integrated resources, timing, maximum event rate and retention latency; assign an image; qualify matching
+    application discovery, stream/trigger/raw retrieval, overload, reset and recovery. Implementation waits until
+    that protocol is explicitly brought into scope. No specific additional protocol is selected by this decision.
+  - Candidate serial/word processing covers UART, I2C, SPI, SENT, MIL-STD-1553 and ARINC 429. Its grouping hypothesis
+    is bounded word/state processing with configurable timing, parity/checksum and predicates. ARINC requires a
+    tri-level slicer and full 32-bit word representation. Existing MIL behavior and SENT validity remain independent
+    protocol contracts. Shared arithmetic or storage is permitted only when active protocol concurrency allows it.
+  - Candidate packet processing covers Manchester, USB LS, CAN FD and FlexRay. Its grouping hypothesis is reuse
+    of frame scratch memory and validated-frame publication. Manchester needs two phase hypotheses and idle-tie
+    resolution; USB needs line-state, stuffing and CRC handling; CAN needs nominal/data bit timing and stuffing;
+    FlexRay needs byte resynchronization and header/frame CRC validation. These differences require separate
+    frontend budgets even if frame storage is shared. This candidate has not been synthesized and may need subdivision.
+  - ARINC now has an isolated explicit-rate RTL candidate in arinc429_trigger.v. It accepts chronological ADC
+    codes with host-provided HI/LO entry and exit thresholds, including direct polarity transitions. Accepted ticks
+    drive nearest-cell assignment and the same complete-word and pulse-density gates as DecodeARINC429. It waits
+    for a pulse-start gap greater than 2.5 bit periods before publishing START, full 32-bit DATA or parity ERROR,
+    then END; only a complete odd-parity word satisfying the masked predicate can trigger. DATA timestamps the
+    first pulse and END the final in-window pulse, so publication latency is not mistaken for the signal position.
+    Automatic threshold/rate discovery is not implemented in this core. Configuration is immutable per epoch.
+    The candidate is not connected to the acquisition top, advertised by the host, deployed or live-qualified.
+  - The ARINC component reference suite covers 60 cases, including integer and odd bit periods, 1250 and 10000
+    receiver ticks per bit for nominal 100 kbit/s and 12.5 kbit/s at 125 MHz, good and bad parity, missing pulses,
+    permitted duplicate pulses, excessive density, hysteresis, direct polarity transitions, pulse jitter, partial words,
+    masks and rejection, exact gap
+    boundaries, paused accepted ticks, 64-bit timestamp wrap, invalid configuration, reset and disable. Reset on
+    close suppresses publication; reset after START cancels pending DATA and matching END. These are digital
+    component checks against the repository decoder, not independent electrical or acquisition-path qualification.
+  - The isolated ARINC build-saV85J fits at 869 logic elements, 524 registers, no M9K bits and no DSP elements.
+    With a physical 125 MHz clock and 301 virtual data pins, the reported internal setup slack is at least
+    positive 0.592 ns and hold slack at least positive 0.201 ns. Virtual input/output paths remain unconstrained;
+    these figures do not qualify integration or physical timing. This replaces an earlier virtual-clock probe for
+    internal timing evidence. Configuration, event transport growth and acquisition routing remain outside this
+    component measurement. Source hashes, all 60 test cases and probe reports are preserved under
+    validation/2026-09-25-protocol-trigger/arinc429-component. No deployable bitstream was produced.
+  - The current Go CAN FD reference stops after ID, DLC and payload and does not validate the FD trailer CRC.
+    Treat this as an explicit oracle limitation. Payload recovery cannot establish a valid-frame hardware trigger.
+    Specify provisional payload events versus validated-frame predicates and add independent CRC/trailer evidence
+    before claiming FD frame validity. Include the additional logic and buffering in the packet-processing budget.
+  - Candidate numerical processing covers precision filtering and gated reference-aligned stacking on both channels.
+    The software reference searches normalized correlation peaks, rejects partial segment matches, interpolates
+    fractional alignment, corrects per-channel gain/offset, rejects clipped data and accumulates multiple hits per frame.
+    Preserve those semantics and odd/even uncertainty statistics. Scope includes FPGA matching and accumulation;
+    moving both back to the CPU would not satisfy the acceleration requirement.
+  - The numerical candidate now has an isolated stack_moments kernel for exact reference/candidate statistics.
+    It accepts one pair of eight-bit ADC values per ready clock and pipelines three products into five sums and
+    a sample count. Sum widths derive from the count width; count overflow invalidates the window instead of
+    wrapping into a plausible correlation. Start aborts a previous window, reset cancels pending results, and
+    only done qualifies final statistics. This kernel can support global correlation, segment verification and
+    gain/offset fitting, but their scheduling and acceptance decisions are not implemented by it.
+  - Forty-one numerical windows, including 65535 pairs, match direct integer moments exactly in RTL simulation.
+    Cases include independent noise, identical/inverted signals, constant levels, small ripple and stalled inputs.
+    The normalized correlation derived from the moments agrees within 2e-12 with the existing centered gate
+    calculation for the tested windows. Reduced-width tests cover counter overflow, invalid pending results,
+    abort, reset and recovery. This does not establish threshold/peak decisions, fractional alignment, segment
+    rejection, accumulator equivalence or a physical performance improvement.
+  - Isolated stack_moments build-4g94K2 uses 339 logic elements, 322 registers, three nine-bit multiplier
+    elements and no block RAM. With a physical 125 MHz clock the minimum reported internal setup slack is
+    positive 1.322 ns and hold slack positive 0.201 ns. Virtual data I/O is unconstrained. These figures exclude
+    sample/reference storage, scheduling and downstream matching/stacking stages; do not treat them as the full
+    accelerator budget. Test logs, frozen source and synthesis reports are in
+    validation/2026-09-25-protocol-trigger/stack-moments. No deployable image or host capability was added.
+  - Complete FPGA stacking still requires physical reference/sample access and acquisition integration of window scheduling,
+    peak selection, adaptive acceptance and segment checks, use of fractional offsets in drift correction and
+    two-channel interpolation/accumulation, uncertainty state and bus arbitration. The moment kernel is a measured
+    building block, not a replacement for those requirements or an advertised stacking capability.
+  - The stack_match_score candidate now joins accepted sample-pair moments to FPGA correlation normalization.
+    stack_correlation forms wide centered products using a shared bit-serial multiplier, then a digit-by-digit
+    square root and divider produce a signed score with 48 fractional bits. Flat or empty windows are undefined;
+    detected inconsistent statistics are invalid. Start/reset abort every stage. This component does not choose
+    peaks, validate reference segments, fit drift, interpolate samples or add them to a stack.
+  - Arbitrary-precision Go arithmetic independently checks 86 full-width moment fixtures, including a count of
+    2^32-1, negative correlation, flat windows and inconsistent inputs. The joined sample-to-score RTL checks
+    41 waveform windows, including 65535 pairs, plus reset/restart during multiplication, square root and division.
+    Tested scores agree with the existing centered gate calculation within 2e-12. This tolerance does not establish
+    identical threshold or peak decisions near numerical ties; those require separate policy-level qualification.
+  - The score candidate splits multiplication, centered subtraction and both halves of division subtraction across
+    clock cycles. Its tested worst normalization latency is 2660 clocks, or 21.28 microseconds at a target 125 MHz,
+    excluding sample collection.
+    The serial wrapper cannot accept a new window during normalization. This is insufficient to normalize every
+    possible starting position in a continuous full-rate input stream. The complete matcher must budget candidate
+    selection, window reuse and parallel arithmetic against the required search rate; fitting this component alone
+    does not establish real-time stacking throughput. Test cancellation points cover the longer arithmetic stages.
+  - The earlier isolated sample-to-score revision build-CcpAcX fits EP4CE10F17C8 with 2739 logic elements, 2317 registers,
+    three nine-bit multiplier elements and no memory bits. All nine reported internal timing checks pass at
+    125 MHz, with minimum setup slack 0.479 ns and hold slack 0.186 ns. Physical clock placement is constrained;
+    virtual data I/O is unconstrained. Earlier pipeline revisions failed setup timing and are retained as rejected
+    evidence. Reports, source hashes and test results are in validation/2026-09-25-protocol-trigger/stack-correlation.
+    This result excludes storage, acquisition integration, matching decisions, accumulation and external I/O timing.
+    Its source snapshot predates the extra subtraction stage required by the connected stack_search fit below.
+  - The stack_peaks candidate implements ordered local-maximum selection from Q48 scores, with threshold equality,
+    first-of-plateau tie selection and one-sided record boundaries matching gateFind. Undefined flat-window scores
+    are treated as zero; invalid arithmetic or position overflow terminates the search explicitly. Candidate
+    descriptors include neighboring scores for subsequent fractional alignment. A downstream segment verdict
+    must complete before input resumes, and only an accepted verdict advances minimum separation. Reset or start
+    cancels a pending candidate. This stage does not implement segment checks or fractional interpolation itself.
+    Its 109 simulation fixtures include rejected-nearby candidates, stalls, aborts, malformed input and 12 actual
+    waveform comparisons against gateFind with single-segment gates. Multi-segment acceptance remains unimplemented.
+    Selection uses a registered decision cycle and input-validity stage. The earliest eligible position after acceptance is held in 33 bits
+    so separation beyond the 32-bit position range cannot wrap and admit a too-close candidate. This component
+    is connected to score arithmetic by stack_search and to an address scheduler by stack_memory_search, but not
+    yet to physical reference storage or the acquisition image.
+    Isolated build-Lxtr6X uses 657 logic elements and 449 registers, with no RAM or multiplier blocks. All nine
+    internal timing checks pass at 125 MHz; minimum setup slack is 0.965 ns and hold slack is 0.201 ns. Clock
+    placement is constrained but virtual data I/O is unconstrained. Two earlier fits failed timing and remain
+    recorded in validation/2026-09-25-protocol-trigger/stack-peaks. This is not full-image or live qualification.
+  - The stack_search candidate connects accepted eight-bit sample pairs through exact moments, Q48 normalization
+    and ordered peak selection. It latches search geometry, derives each window boundary from gate length and
+    registers and preserves a completed score until the peak stage is ready. One following window may compute while a segment
+    verdict is pending. Reset or start cancels both pending candidates and scores. Empty searches, gates shorter
+    than four samples, invalid thresholds and overflowing position ranges fail explicitly. The stack_window_reader
+    now supplies consecutive shifted candidate windows through stack_memory_search; its paired-read adapter still
+    requires physical-memory integration. Segment verdicts are supplied externally, not computed by this component.
+  - Twenty connected search fixtures cover 4 through 512 sample gates, flat windows, exact matches, rejection,
+    sample stalls, delayed verdicts, range boundaries, bad configuration and cancellation during sample collection,
+    normalization and a completed score blocked behind a verdict. Arbitrary-precision score calculations check
+    every emitted candidate and its neighbors; eligible short-gate cases also check locations against gateFind.
+    This serial candidate is not continuous full-rate search, and its retained-record processing budget must
+    remain explicit when designing the complete numerical image.
+    The earlier build-5YLqp7 1536-sample fixture with a 512-sample gate searches 1025 positions in 3076714 clocks including
+    input stalls, about 24.61 ms at 125 MHz. This measures that earlier serial revision, not a guaranteed
+    end-to-end acquisition or stacking rate.
+  - Connected search build-5YLqp7 fits EP4CE10F17C8 with 3591 logic elements, 2989 registers, three nine-bit
+    multiplier elements and no memory bits. All nine reported internal timing checks pass at 125 MHz, with
+    minimum setup slack 0.159 ns and hold slack 0.111 ns. Virtual data I/O is unconstrained, so this result does
+    not qualify sample-memory or acquisition integration. The first two connected fits failed timing; register
+    the score handoff and split low-half subtraction rather than treating isolated component timing as sufficient.
+    Frozen sources, reports and tests are retained in validation/2026-09-25-protocol-trigger/stack-search.
+  - The stack_window_reader candidate generates paired reference and retained-record addresses, checks the full
+    search range against record and reference lengths, and buffers responses until scoring accepts them. Exactly
+    one read is outstanding. A replacing start drains and discards any old response before issuing new reads,
+    and clears buffered data. Reset requires the paired-read adapter response pipeline to reset too. The adapter
+    must preserve reference and record contents throughout the search and respond no earlier than the next clock.
+    Read errors terminate the active search explicitly. This interface grants no permission to overwrite retained
+    SRAM and supplies no physical memory ownership or arbitration on its own.
+  - The stack_memory_search wrapper connects that scheduler to scoring and peak selection. A delayed behavioral
+    memory model checks every requested address and accepted pair count, compares candidates with independent
+    arithmetic, and deliberately corrupts an outstanding old response during restart. Tests cover buffered and
+    outstanding read cancellation, request stalls, delayed responses, delayed segment verdicts, memory read errors
+    and insufficient reference/record bounds. Physical SRAM/reference-memory adapters, record-identity validation,
+    calibration, segment acceptance, applying fractional alignment during resampling and accumulation remain
+    required before deployment.
+  - Memory-scheduled search build-wM2O97 fits EP4CE10F17C8 with 4025 logic elements, 3166 registers, three nine-bit
+    multiplier elements and no RAM allocated by the datapath itself. All nine internal timing checks pass at
+    125 MHz; minimum setup slack is only 0.032 ns and hold slack is 0.099 ns. This small internal margin is not
+    evidence of timing closure after adding physical memory adapters or the acquisition image. Virtual data I/O
+    remains unconstrained. The earlier combined fit failed at -0.279 ns; precomputing the reader's last offset and
+    splitting upper-half subtraction removes those measured paths. Reports and frozen source are retained in
+    validation/2026-09-25-protocol-trigger/stack-memory-search. No deployable image or host capability is added.
+  - The stack_alignment candidate computes gateFind's parabolic fractional offset from the peak and its two
+    neighboring Q48 scores. The signed Q24 result truncates toward zero, clips to half a sample in either
+    direction, and is zero for one-sided boundaries or non-concave triples. Invalid supplied scores fail explicitly.
+    Start/reset cancel pending arithmetic. Arbitrary-precision integer and floating-point comparisons cover
+    434 fixtures, including flat triples, tiny differences, saturation, boundaries and reset/restart throughout
+    calculation. Error against the floating-point formula is at most one Q24 unit, about 5.96e-8 sample, and
+    the measured maximum calculation latency is 229 clocks, or 1.832 microseconds at 125 MHz.
+  - The memory-backed search computes the offset before presenting a candidate for its segment verdict, and
+    keeps the position, scores and offset stable while that verdict is delayed. Rejected candidates still do not
+    advance minimum separation. Arithmetic failure terminates the search and suppresses new memory requests;
+    outstanding memory responses can still drain, preserving restart safety. Connected memory fixtures check
+    every emitted offset against independent arithmetic. This implements offset estimation, not the subsequent
+    two-channel interpolation, drift correction, accumulation or uncertainty calculations.
+  - Aligned memory-search build-eiEX00 fits EP4CE10F17C8 with 4774 logic elements, 3806 registers, three nine-bit
+    multiplier elements and no RAM in this datapath. All nine internal timing checks pass at 125 MHz, with
+    minimum setup slack 0.517 ns and hold slack 0.146 ns. Registering score-input validity in the peak stage
+    removes the earlier candidate-register enable path. Virtual data I/O remains unconstrained; no full image
+    or physical memory adapter is qualified. Evidence is in validation/2026-09-25-protocol-trigger/stack-alignment.
+    The 4774-element subtotal leaves only 5546 of the device's 10320 nominal logic elements before acquisition,
+    memory adapters, segment validation, drift fitting and accumulation are included. It cannot establish that
+    the complete numerical image fits. Evaluate shared arithmetic and widths bounded by physical record geometry
+    in the whole-image budget rather than assuming separately fitted stages can simply be added.
+  - The stack_positions candidate emits each fine-grid bin at hit position plus fractional offset plus bin/factor.
+    A quotient and remainder accumulator support any nonzero uint32 factor without cumulative phase drift,
+    including non-powers of two. The Q24 phase truncates by less than one phase unit. Signed index arithmetic
+    preserves negative offsets and positions beyond the record; only bins with two available adjacent samples
+    are eligible. Boundary bins remain explicit descriptors and must not contribute to counts. Tests cover
+    33 configurations including factors through uint32 maximum, range edges, stalled consumers and cancellation.
+  - The stack_interpolate candidate shares one serial multiplier between both channels. Inputs are nonnegative
+    37-bit Q24 normalized samples, covering values below 8192 rather than clipping corrected values at ADC 255.
+    Channel masks preserve disabled or clipped channels, and both channels use the same fractional position.
+    Integer arithmetic and floating-point interpolation comparisons cover 332 fixtures, with less than one Q24
+    unit of interpolation error and a maximum 54 clocks for two channels. Gain/offset fitting, conversion to this
+    format and its range checks remain upstream work; this module does not silently implement those stages.
+  - The stack_resample candidate joins position generation, a delayed normalized-sample memory interface and
+    two-channel interpolation. Eighteen connected fixtures compare outputs with drizzleHit, including boundaries,
+    arbitrary factors, channel masks and odd/even tags, memory errors, error recovery, and replacing starts while
+    a read, response or output is pending. Ineligible bins issue no memory reads and emit zero channel masks.
+    Replacing starts drain stale responses; reset must also reset the memory adapter. Outputs remain stable until
+    accepted. For non-power-of-two factors, phase quantization adds at most one Q24 unit times the adjacent-sample
+    slope to the interpolation error. This candidate neither updates accumulators nor fits channel drift.
+    Physical memory adapters and coordination with the search/verdict path remain unimplemented.
+  - Isolated resampler build-FkLvjv uses 1312 logic elements, 888 registers, no RAM and no DSP elements.
+    All nine internal timing checks pass at 125 MHz, with minimum setup slack 0.203 ns and hold slack 0.172 ns.
+    Virtual data I/O remains unconstrained. This result does not qualify a combined numerical image or deployment.
+  - Workflow coverage row RAW requires the common foundation and edge/force capture in every acquisition image.
+    Acceptance is calibrated acquisition, pre/post-trigger placement, retained recall and responsive panel controls.
+  - Workflow coverage row PROTOCOL requires one selected protocol frontend, hardware predicate, complete event
+    transport and raw retention concurrently. All ten protocols must have an image assignment, matching/absent/error
+    fixtures, zero-loss operation within the advertised envelope and an explicit overload result outside it.
+  - Workflow coverage row STREAM-RECALL keeps the selected decoder observing input after raw capture freezes.
+    Event draining and raw download share one bus owner with bounded scheduling. Recall must preserve identity
+    and must not implicitly switch images, disable the decoder or rearm the record.
+  - Workflow coverage row NUMERICAL requires reference seeding, FPGA search/alignment and accumulation, precision
+    processing where selected, and two-channel result transfer. Budget matching work by gate length and searched
+    positions, and accumulation work by accepted hits times fine-grid bins. Qualify exact acceptance decisions and
+    bounded numerical error against the Go reference, including rejection, clipping, reset and overflow.
+  - Workflow coverage row REFERENCE-THEN-STACK is the primary protocol-to-numerical workflow. Use a protocol
+    acquisition image to identify and retain a reference, preserve its samples, channel calibration, sample interval,
+    gate, trigger position and record provenance in host storage, then explicitly end that decoded epoch and load
+    the numerical image. Seed the matcher from the preserved waveform and acquire new waveform occurrences for
+    FPGA alignment and accumulation. This is ongoing waveform acquisition, not merely replay of the seed record.
+    Keep reference provenance separate from the new acquisition epoch. No protocol decoder is required in this image.
+  - Waveform matching uses a selected time gate and acceptance tolerances. The existing reference implementation
+    uses normalized shape correlation and segment checks with fractional timing alignment; a pointwise upper/lower
+    amplitude envelope is a possible acceptance rule, not a claim about an already implemented FPGA feature.
+    Align accepted occurrences before accumulation so timing variation does not smear the stack. Waveform similarity
+    does not independently prove protocol validity; the seed's protocol qualification must not be attributed to every hit.
+  - Simultaneous decoded streaming while stacking, or protocol qualification of every contribution, would require
+    additional concurrent hardware and a separate measured operating envelope. Keep that optional extension visible
+    in the expansion plan, but do not make a combined protocol/numerical image a completion gate for the clarified
+    reference-then-stack workflow.
+  - Stack storage estimate from the software representation is 80 times G bytes for the two-channel five-array
+    accumulators alone, where G equals gate length times interpolation factor. For G equal to 4096 this is 327680
+    bytes, exceeding the entire 52992-byte nominal M9K capacity before any acquisition allocation. This is a
+    representation estimate, not a lower bound for fixed-point hardware. Reference samples, correlation workspace,
+    match history and transport storage are additional. A hardware proposal therefore needs measured numeric widths,
+    maximum accepted hit count, tiling or external/host-backed state and its bandwidth; none is yet qualified.
+  - Integrated resource budget rows for ARINC, CAN, FlexRay, the FPGA matcher, accumulators
+    are explicitly unmeasured. Any optional combined protocol/numerical candidate needs its own budget. Do not fill them with invented logic counts.
+    Obtain standalone synthesis for each engine, then integrated fitting because sharing, routing and clock crossings
+    invalidate simple addition. Preserve margin for timing and control service rather than targeting nominal 100 percent.
+  - Full-width ARINC word publication makes all 32 Value bits meaningful. Although the current transport ABI
+    already carries a 32-bit Value, synthesis can prune unused upper bits for existing narrower producers.
+    Therefore the integrated ARINC budget must remeasure both event queues and host readout memory; the isolated
+    receiver logic count does not include possible growth in shared event storage or configuration and routing.
+  - Event-width probes now measure the common transport at its production 1024-event source and 512-event host
+    depths. A reduced header with four protocol bits, three kind bits and three flag bits uses 21 M9Ks and
+    188928 memory bits for both 16-bit and 32-bit Value with a seven-bit normal Count. The respective fitted
+    logic counts are 1449 and 1434. Loss representation already keeps the shared 32-bit payload live, so widening
+    Value alone adds no RAM in these probes. Full 32-bit normal Count increases the source queue by three M9Ks,
+    to 24 total. The deployed top uses 22 transport M9Ks with different header propagation; these isolated
+    totals must not replace integrated budgets. All three probes have positive reported internal and bounded
+    mailbox timing at 125 MHz receiver and 80 MHz host; external virtual I/O is unconstrained. Reports and
+    source hashes are in validation/2026-09-25-protocol-trigger/event-width-budget.
+  - The production-depth transport simulation sends 1568 events carrying full 32-bit values and counts through
+    the actual queue, clock crossing and reader RTL. Host consumption is paused until its 512 entries are full;
+    overflow must account for every input as delivered or explicitly lost. The Go parser verifies epoch, sequence,
+    sample ordinal, payload and loss count for each complete wire record. This passes alongside the small-depth
+    overflow case. It verifies the transport contract digitally, not board bandwidth or a newly integrated decoder.
+  - Block RAM must be budgeted independently from image logic. The deployed foundation allocates sixteen M9Ks
+    to raw readout and three to interleave; precision uses three more. A numerical-only candidate would therefore
+    have at most 24 of 46 M9Ks left before adding matching, stacking or other storage. Keeping the deployed
+    22-M9K event transport concurrently reduces that upper bound to two, and packet scratch can consume both.
+    These arithmetic upper bounds use existing allocations, not a completed candidate fit. Additional images alone
+    do not make large persistent stack arrays fit on chip. Evaluate host-backed tiled accumulator state with FPGA
+    matching and accumulation, including state-transfer bandwidth, bounded event service and numerical equivalence.
+    Preserve retained raw ownership; reusing SRAM as workspace must never silently destroy the record being offered
+    for later download. Do not substitute host-only matching or accumulation for the requested FPGA acceleration.
+  - Whole-frame validity delays trigger decisions. Budget the maximum frame duration, Manchester phase resolution,
+    decoder publication delay and requested prehistory against retained SRAM depth at the actual sample rate.
+    If history can expire before a valid match, implement candidate record retention or state an explicit bounded
+    acquisition contract; a correct decoder alone does not prove matching raw capture coverage.
+  - A shared versioned manifest shall declare protocol modes, input roles/levels, supported rates and predicates,
+    numerical limits, concurrent combinations, event ABI, raw mapping and bitstream identity. The application selects
+    a qualified image before arming and rejects incompatible combinations explicitly. Revision-number heuristics
+    are insufficient for multiple images. Switching behavior is modeled in FLOW-ACQUISITION-IMAGE-SWITCH.
+- id: ADR-PROTOCOL-TRIGGER-IMAGE
+  title: Keep UART and I2C triggering in the SRAM acquisition image
+  status: accepted
+  date: '2026-09-25'
+  context: The user requested protocol triggering and fast FPGA image changes if capacity requires them. The combined
+    acquisition, UART and I2C image fits the EP4CE10 at approximately 71 percent logic utilization. Its receivers
+    run at 125 MHz alongside the 250 MHz acquisition domain.
+  decision: Use one combined image for edge, UART and I2C hardware triggering. Switching these modes changes registers,
+    without reloading the FPGA. Select hardware only when its capability identifier and configuration support the
+    request; retain software matching for other registered protocols and unsupported UART or I2C configurations.
+    During an actual FPGA load, show transfer progress on the LCD, then verification and acquisition startup.
+  consequences:
+  - The deployed combined image passes UART match, rejection, recovery and edge-resume bench tests with zero bus errors.
+  - I2C simulation and live bench checks pass. C1 on blue A2 receives SCL and C2 on yellow A11 receives SDA.
+    The 0x24 write and 55 AA pattern produce captures; wrong address, direction and data produce none; restoring
+    the match resumes captures with zero bus errors. The former A8 connection did not deliver a usable C1 signal.
+  - Software matching supports SPI, Manchester, SENT, CAN FD, MIL-STD-1553, ARINC 429, USB LS and FlexRay within their
+    existing decoder limits. It is a captured-record publication gate, not a continuous hardware event detector.
+  - Live SPI mode 0 at 200 kHz passes software match, absent-pattern rejection, match recovery and edge-resume
+    checks on A2/A11. This validates that bench configuration, not all SPI modes or maximum input rates.
+  - Framed matchers reject decoder-reported corrupt packets and prohibit matching across packet boundaries. This
+    does not establish validation of protocol fields that the decoder does not inspect.
+  - The TypeScript build uses seed 4 and standard fitter effort. A clean rebuild has positive internal timing slack;
+    this does not establish external ADC or SRAM timing closure or qualify the rebuilt image on hardware.
+  - No image manager is required for the current hardware pair. Additional hardware decoders require capacity,
+    timing and bench evaluation before deciding whether another image is needed.
+  - Evidence is retained in validation/2026-09-25-protocol-trigger/combined-uart/uart-hardware-validation.json,
+    validation/2026-09-25-protocol-trigger/a2-a11-i2c/i2c-hardware-validation.json,
+    validation/2026-09-25-protocol-trigger/a2-a11-spi/spi-software-validation.json,
+    validation/2026-09-25-protocol-trigger/loading-device.png and fpga/acq_sram/out/protocol-rebuild/output_files/bench.sta.summary.
+- id: ADR-SOURCE-BASELINE
+  title: Use the user-selected current branch
+  status: accepted
+  date: '2026-09-22'
+  context: The directory name and initial goal mention acq2; the user explicitly selected cyclone-spec-sram-capture.
+  decision: Pin all source evidence to f43696305a7957b9956e3b1ac425cdf323edde84; exclude untracked documentation
+    and validation files.
+  consequences:
+  - No checkout, instrumentation, device deployment or remote write is required.
+  - Rebaseline explicitly when the source branch changes.
+- id: ADR-ABI-SEPARATION
+  title: Keep fabric generations separate
+  status: accepted
+  date: '2026-09-22'
+  context: Default, legacy SRAM and new profile register maps and host geometries differ.
+  decision: Model each implementation and proposed integration separately; prefer current code over stale prose
+    for implementation presence.
+  consequences:
+  - No claim the legacy ARM backend drives the new profile shell.
+  - Physical panel code does not establish default-fabric matrix capability.
+- id: ADR-EVIDENCE
+  title: Do not equate modeled behavior with device qualification
+  status: accepted
+  date: '2026-09-22'
+  context: Historical validation includes failed candidates and unresolved physical details.
+  decision: Retain source hashes, test candidates and explicit proposed requirements; track physical unknowns without
+    fabricated BOM values.
+  consequences:
+  - Offline checks establish model and simulation properties only.
+  - ADC population, profile timing/device tests and warm-switch qualification remain open system facts.

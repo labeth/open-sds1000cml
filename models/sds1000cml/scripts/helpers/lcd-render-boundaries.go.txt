@@ -1,0 +1,110 @@
+package lcd
+
+import (
+ "bytes"
+ "math"
+ "testing"
+ "time"
+ "open-sds/app/internal/engine"
+)
+
+// REQ-SDS-021 characterization only: no production behavior is altered.
+type modelSurfaceWrapper struct { *MemSurface }
+
+func TestModelLCDRenderBoundaries(t *testing.T) {
+ expectPanic:=func(t *testing.T, f func()) {t.Helper();defer func(){if recover()==nil {t.Error("expected existing input-precondition panic")}}();f()}
+ t.Run("same_sequence_ignores_signal_precision_guard_and_age",func(t *testing.T){
+  measMu.Lock();old:=measSlots;measSlots[0].m=nil;measMu.Unlock()
+  defer func(){measMu.Lock();measSlots=old;measMu.Unlock()}()
+  first:=measFor(0,[]byte{100,100,100,100},nil,0,41,1,0,1e-6,0)
+  measMu.Lock();measSlots[0].at=time.Now().Add(-time.Hour);measMu.Unlock()
+  raw:=[]byte{0,80,180,255};q:=[]uint16{0,80<<8,180<<8,255<<8}
+  same:=measFor(0,raw,q,1,41,1,0,1e-6,0)
+  fresh:=measFor(0,raw,q,1,0,1,0,1e-6,0)
+  if same!=first || same.Vpp!=0 || fresh.Vpp<=0 {t.Fatal("cache reuse or uncached counterexample missing",same,fresh)}
+ })
+ t.Run("changed_sequence_throttled_then_expires",func(t *testing.T){
+  measMu.Lock();old:=measSlots;measSlots[0].m=nil;measMu.Unlock()
+  defer func(){measMu.Lock();measSlots=old;measMu.Unlock()}()
+  first:=measFor(0,[]byte{100,100},nil,0,51,1,0,1e-6,0)
+  // A future timestamp deterministically exercises the refresh branch without sleeping.
+  measMu.Lock();measSlots[0].at=time.Now().Add(time.Hour);measMu.Unlock()
+  held:=measFor(0,[]byte{0,255},nil,0,52,1,0,1e-6,0)
+  if held!=first || held.Vpp!=0 {t.Fatal("expected throttled old measurement")}
+  measMu.Lock();measSlots[0].at=time.Now().Add(-time.Hour);measMu.Unlock()
+  updated:=measFor(0,[]byte{0,255},nil,0,52,1,0,1e-6,0)
+  if updated==first || updated.Vpp!=255 {t.Fatal("expiry failed",updated)}
+ })
+ t.Run("scale_change_recomputes_even_same_sequence",func(t *testing.T){
+  measMu.Lock();old:=measSlots;measSlots[0].m=nil;measMu.Unlock()
+  defer func(){measMu.Lock();measSlots=old;measMu.Unlock()}()
+  first:=measFor(0,[]byte{0,255},nil,0,61,1,0,1e-6,0)
+  second:=measFor(0,[]byte{0,255},nil,0,61,2,0,1e-6,0)
+  if first==second || second.Vpp!=510 {t.Fatal("scale invalidation",second)}
+ })
+ t.Run("negative_valid_panics",func(t *testing.T){
+  f:=testFrame(1);f.Valid=-1
+  expectPanic(t,func(){Render(NewMemSurface(),f,defaultHUD(),false)})
+  expectPanic(t,func(){drawMeasPanel(NewMemSurface(),f,defaultHUD())})
+ })
+ t.Run("negative_decoder_selectors_panic",func(t *testing.T){
+  f:=testFrame(32);h:=defaultHUD();h.DecProto=2;h.DecFormat=-1
+  expectPanic(t,func(){drawDecode(NewMemSurface(),f,h,32,16,.5)})
+  h.DecFormat=0;h.DecProto=-1
+  expectPanic(t,func(){drawDecode(NewMemSurface(),f,h,32,16,.5)})
+ })
+ t.Run("zero_window_mask_panics",func(t *testing.T){
+  h:=defaultHUD();h.MaskMode=1
+  expectPanic(t,func(){drawZoneMask(NewMemSurface(),testFrame(1),h,0,0,.5)})
+ })
+ t.Run("enabled_mask_rejects_geometry_mismatch",func(t *testing.T){
+  h:=defaultHUD();h.MaskMode=1;h.MaskWin=32;h.MaskLo=make([]byte,32);h.MaskHi=make([]byte,32)
+  for i:=range h.MaskLo {h.MaskLo[i]=80;h.MaskHi[i]=180}
+  good:=NewMemSurface();drawZoneMask(good,testFrame(32),h,32,16,.5)
+  h.MaskWin=16;bad:=NewMemSurface();drawZoneMask(bad,testFrame(32),h,32,16,.5)
+  if countColor(good,colMask)==0 || countColor(bad,colMask)!=0 {t.Fatal("isolated mask geometry guard")}
+ })
+ t.Run("zones_draw_with_mode_zero",func(t *testing.T){
+  h:=defaultHUD();h.ZoneMode=0;h.Zones=[]engine.Zone{{DtLoS:-1e-6,DtHiS:1e-6,CodeLo:90,CodeHi:160}}
+  m:=NewMemSurface();drawZoneMask(m,testFrame(32),h,32,16,.5)
+  if countColor(m,colOK)==0 {t.Fatal("expected zones based on presence")}
+ })
+ t.Run("one_sample_xy_has_no_segment",func(t *testing.T){
+  one,two:=NewMemSurface(),NewMemSurface();drawXY(one,testFrame(1),defaultHUD());drawXY(two,testFrame(2),defaultHUD())
+  if countColor(one,colMath)!=0 || countColor(two,colMath)==0 {t.Fatal("XY segment-only behavior")}
+ })
+ t.Run("persistence_requires_concrete_mem_surface",func(t *testing.T){
+  h:=defaultHUD();h.Persist=true;h.ShowC1=true;h.ShowC2=false
+  f:=testFrame(32);for i:=range f.C1 {f.C1[i]=210}
+  plain,wrapped:=NewMemSurface(),&modelSurfaceWrapper{NewMemSurface()}
+  p1,p2:=NewMemSurface(),NewMemSurface();Render(plain,f,h,true,p1);Render(wrapped,f,h,true,p2)
+  x,y:=203,sampleToY(210)
+  if p1.At(x,y)!=colC1 || p2.At(x,y)!=colC1 || plain.At(x,y)!=colC1 || wrapped.At(x,y)==colC1 {t.Fatal("concrete-surface compositor behavior")}
+ })
+ t.Run("fft_matches_direct_dft",func(t *testing.T){
+  for _,n:=range []int{16,32} {
+   input:=make([]float64,n);re:=make([]float64,n);im:=make([]float64,n)
+   for i:=range input {input[i]=3+math.Cos(2*math.Pi*3*float64(i)/float64(n))+0.25*math.Sin(2*math.Pi*5*float64(i)/float64(n));re[i]=input[i]}
+   fftRadix2(re,im)
+   for k:=0;k<n;k++ {var wr,wi float64;for j,v:=range input {angle:=-2*math.Pi*float64(k*j)/float64(n);wr+=v*math.Cos(angle);wi+=v*math.Sin(angle)}
+    if math.Abs(re[k]-wr)>1e-10 || math.Abs(im[k]-wi)>1e-10 {t.Fatalf("n=%d bin=%d FFT differs from direct DFT",n,k)}
+   }
+  }
+ })
+ t.Run("flat_fft_reports_lower_visible_frequency",func(t *testing.T){
+  flat:=make([]float64,64);for i:=range flat {flat[i]=128}
+  got:=fftCore(NewMemSurface(),flat,colC1,32000,1,31)
+  if got!=1000 {t.Fatalf("expected lower-bin frequency for flat input, got %g",got)}
+ })
+ t.Run("fft_leaves_trailing_record_unsampled",func(t *testing.T){
+  a,b:=testFrame(31),testFrame(31);h:=defaultHUD();h.TwoChan=false;h.ShowC1=true
+  for i:=range a.C1 {a.C1[i]=128;b.C1[i]=128}
+  for i:=16;i<31;i++ {b.C1[i]=byte((i%2)*255)}
+  left,right:=NewMemSurface(),NewMemSurface();drawFFT(left,a,h);drawFFT(right,b,h)
+  if !bytes.Equal(left.Pix,right.Pix) {t.Fatal("expected last 15 of 31 samples to be unused")}
+  for i:=0;i<16;i++ {b.C1[i]=byte((i%4)*60)}
+  changed:=NewMemSurface();drawFFT(changed,b,h)
+  if bytes.Equal(left.Pix,changed.Pix) {t.Fatal("prefix-change counterexample missing")}
+ })
+
+}

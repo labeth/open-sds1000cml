@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
 package engine
 
 import "math"
@@ -17,11 +18,13 @@ const (
 
 // EresLenForBits maps enhancement bits to a boxcar length: L = round(4^b),
 // clamped [1,64], forced odd (even L → L−1 so 64 → 63 stays in range).
+// TRLC-LINKS: REQ-SDS-012
 func EresLenForBits(bits float64) int {
 	l := int(math.Round(math.Pow(4, bits)))
 	return clampEresLen(l)
 }
 
+// TRLC-LINKS: REQ-SDS-012
 func clampEresLen(l int) int {
 	if l < 1 {
 		l = 1
@@ -39,6 +42,7 @@ func clampEresLen(l int) int {
 // whole record — BEFORE edge detection, so the trigger anchor and the
 // display see the same enhanced samples. At the record ends the kernel
 // shrinks to the available samples: no wrap-around, no fabricated tail.
+// TRLC-LINKS: REQ-SDS-012
 func eresBoxcar(sig []uint8, l int, scratch []uint16) {
 	n := len(sig)
 	if l <= 1 || n == 0 {
@@ -77,6 +81,7 @@ func eresBoxcar(sig []uint8, l int, scratch []uint16) {
 // published, coherent, edge-aligned frames. Admission is strict — a flat or
 // held frame would drag the mean toward the rail. Off-record window columns
 // carry NO sample (valid mask false) so they never bias the mean.
+// TRLC-LINKS: REQ-SDS-012
 type avgRing struct {
 	c1, c2 [][]uint8 // aligned windows
 	valid  [][]bool  // per-slot per-column contribution mask
@@ -86,6 +91,7 @@ type avgRing struct {
 	width  int
 }
 
+// TRLC-LINKS: REQ-SDS-012
 func (r *avgRing) reset(depth, width int) {
 	if depth < 1 {
 		depth = 1
@@ -107,6 +113,7 @@ func (r *avgRing) reset(depth, width int) {
 // push aligns the frame so its crossing lands at the window centre (integer
 // shift), then accumulates it. Off-record columns are marked invalid, not
 // filled with a fabricated code.
+// TRLC-LINKS: REQ-SDS-012
 func (r *avgRing) push(f *Frame, edgeX float64) {
 	shift := int(math.Round(edgeX)) - r.width/2
 	c1, c2, vm := r.c1[r.pos], r.c2[r.pos], r.valid[r.pos]
@@ -127,6 +134,7 @@ func (r *avgRing) push(f *Frame, edgeX float64) {
 // meanInto replaces the frame's samples with the per-column mean over the
 // contributing slots only; a column with no contribution keeps mid-scale.
 // The published frame's EdgeX becomes the window centre by construction.
+// TRLC-LINKS: REQ-SDS-012
 func (r *avgRing) meanInto(f *Frame) {
 	if r.cnt == 0 {
 		return
@@ -160,6 +168,7 @@ const (
 	uniCols  = 256
 )
 
+// TRLC-LINKS: REQ-SDS-126
 type uniRing struct {
 	centred [][]uint8
 	raw     [][]uint8
@@ -167,6 +176,7 @@ type uniRing struct {
 	cnt     int
 }
 
+// TRLC-LINKS: REQ-SDS-126
 func (u *uniRing) reset() {
 	if u.centred == nil {
 		u.centred = make([][]uint8, uniDepth)
@@ -181,6 +191,7 @@ func (u *uniRing) reset() {
 
 // push extracts uniCols nearest-sample columns from the WinCols window, once
 // centred on edgeX and once at the fixed record centre.
+// TRLC-LINKS: REQ-SDS-126
 func (u *uniRing) push(disc []uint8, winCols int, edgeX float64) {
 	if u.centred == nil {
 		u.reset()
@@ -213,6 +224,7 @@ func (u *uniRing) push(disc []uint8, winCols int, edgeX float64) {
 
 // stats returns (mean per-column std centred, mean std raw, worst centred
 // column std). Aggregation is implementer-defined but stable (spec 03 §11).
+// TRLC-LINKS: REQ-SDS-126
 func (u *uniRing) stats() (std, stdRaw, worst float64) {
 	if u.cnt < 2 {
 		return 0, 0, 0

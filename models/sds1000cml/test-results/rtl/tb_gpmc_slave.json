@@ -1,0 +1,16 @@
+{
+  "source": "fpga/common/sim/tb_gpmc_slave.v",
+  "scope": "Original five common RTL benches, SIM behavioral clocks and ideal bus stimulus. No physical CDC, fitted timing, IO placement or hardware qualification.",
+  "sourceSHA256": "dd4d74d21b3ce7a21f7ef04b5cc7fca8bf04d3e963e046ee857cc1ec9d780c91",
+  "reportSHA256": "f4932c3f638b8136cd9f37dc2cdd8c773b37db76838efa148f6e981f0f7b0608",
+  "runs": [
+    "tb_gpmc_slave"
+  ],
+  "results": [
+    {
+      "requirement": "REQ-SDS-188",
+      "status": "partial",
+      "notes": "Checks default-mode selected writes/read data/pop selector, back-to-back reads, all 128 selectors and shared-bus high impedance using the BFM. Unlike the qualified-read skew sweep, this bench does not require the default mode to survive CS-first read release. See evidence/common-rtl-review-test-run.json. Exact original-source or approved comment-overlay equivalence is checked."
+    }
+  ]
+}

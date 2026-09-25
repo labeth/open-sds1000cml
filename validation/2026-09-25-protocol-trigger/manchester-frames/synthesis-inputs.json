@@ -1,0 +1,7 @@
+{
+  "inputs": {
+    "manchester_receive.v": "cc112aa8cce80e3c13e83cb138b356f202649b3c69c82f25f0f11072a44862b9",
+    "manchester_trigger.v": "a70861dcd13c9a72d15da722fafd69cfff341eb27bd3a7600c3c9416c8c59e03"
+  },
+  "purpose": "Complete Manchester component synthesis; not a deployable image"
+}

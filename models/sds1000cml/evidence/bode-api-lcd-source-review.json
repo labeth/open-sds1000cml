@@ -1,0 +1,54 @@
+{
+  "result": "bounded-source-review-native-trace-pending",
+  "sourceSHA256": {
+    "app/internal/lcd/render_bode.go": "34bf8921c44993eab21a7600222e730dd8a6befc955512cbaf1af0991f598087",
+    "app/internal/lcd/golden_test.go": "fe508216d2025b0d455a7a6f90069c3f55d9f08fe693b726cd5cebc65e3c47b4",
+    "app/internal/lcd/golden_views_test.go": "615184166bb364dba028bd8e01c8121581cc9edff037b324fc3a6959a24678c5",
+    "app/internal/lcd/surface.go": "f2639f4fc4f104ca97f5c254800714e847b82f3ac5c87f720beb15f84eb5f573",
+    "app/internal/lcd/render.go": "e4d438c8a7d5927ebc14a534cfad8e399162acdf9f4c4f629ea29b094c15e32e",
+    "app/internal/lcd/render_test.go": "9f86651eefb23853dfd3529b3308ae0fb611a9b6c9ea5e72ac259a4439d1e0b9",
+    "app/internal/web/web_control.go": "1dd77a394d15d329506a343528ff114d4dec843a77032fa6261fd6763f28cd76",
+    "app/internal/web/web_control_test.go": "bf8981221326d03b1a1f7c09b5d6e26c1a175e21f77effac58edae8ad0d3d963",
+    "app/internal/web/web.go": "981e135bf23fdb4ae264b5e62f78ec09ffa65c18c12ad72cfcacfde183fb8ba7"
+  },
+  "completeReads": [
+    "app/internal/lcd/render_bode.go",
+    "app/internal/lcd/golden_test.go"
+  ],
+  "reviewedRanges": {
+    "app/internal/lcd/golden_views_test.go": "1\u201328 and 219\u2013236",
+    "app/internal/lcd/surface.go": "1\u2013128 (in-memory surface and PNG export)",
+    "app/internal/lcd/render.go": "327\u2013397 and 430\u2013490 (Bode dispatch and common overlays; Y-T middle remains unreviewed)",
+    "app/internal/lcd/render_test.go": "29\u201333 (defaultHUD)",
+    "app/internal/web/web_control.go": "129\u2013145 (hBode), 175\u2013221 and 245\u2013275 (partial hSet review)",
+    "app/internal/web/web_control_test.go": "226\u2013267 (TestBodeEndpoint)",
+    "app/internal/web/web.go": "304\u2013307 (writeJSON)"
+  },
+  "exploratoryTests": {
+    "TestGoldenBode": {
+      "log": "test-runs/lcd-bode-exploratory.jsonl",
+      "sha256": "203b0d1d7b5a456cf46d3e85226f8433ad27194516e4755f67a6bcf77706b11f",
+      "result": "pass"
+    },
+    "TestBodeEndpoint": {
+      "log": "test-runs/bode-api-exploratory.jsonl",
+      "sha256": "d26e07eb82e75b5233e1a3084c8d8e5dd543c2637799e32430289f95a17671bd",
+      "result": "pass"
+    }
+  },
+  "golden": {
+    "path": "app/internal/lcd/testdata/golden/bode.png",
+    "sha256": "e75f29da0d41df040feb6f71ba91bdc573e7262bf44db82965f47202e7424b37",
+    "unchangedBeforeAfter": true,
+    "updateFlag": false,
+    "allowedDifferentPixels": 64,
+    "visualReview": "Magnitude and phase curves/axes visible at 800x480; top-right point count and common HUD text overlap. A passing reference comparison does not prove layout quality or physical LCD output."
+  },
+  "findings": [
+    "hBode preserves BodePoints order and serves non-null empty arrays; no sorting or method gate occurs inside this handler.",
+    "writeJSON ignores encoder errors; malformed nonfinite supplied points need separate characterization.",
+    "LCD Bode rendering consumes parallel HUD arrays with no length/finite-value validation; unlike browser xOf, nonpositive input frequency is clamped to f0 before log conversion.",
+    "Golden fixture uses 25 analytic low-pass points and no engine frame; it is not evidence of SRAM Bode computation or device display behavior."
+  ],
+  "nextAction": "Finish API dispatch and LCD shared-helper review, choose precise requirement scope, characterize malformed inputs and native trace sources/tests. Preserve golden unchanged; overlapping text is a finding, not a reason to regenerate the reference."
+}

@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-DECODE
 package decode
 
 import (
@@ -15,6 +16,7 @@ import (
 // physical CAN bus drives dominant LOW, DominantLow should be true for standard
 // captures (the JS twin defaults it true; in Go the zero value is false so the
 // caller must set it — Autodetect/menus pass DominantLow:true).
+// TRLC-LINKS: REQ-SDS-018
 type CANFDCfg struct {
 	NominalBaud int     // arbitration-phase bit rate; 0 => auto-infer from the shortest bit run
 	DataBaud    int     // FD data-phase bit rate (used after a recessive BRS); 0 => same as nominal
@@ -26,6 +28,7 @@ type CANFDCfg struct {
 // canCRC15 is the classic-CAN CRC-15 (generator polynomial 0x4599, i.e.
 // x^15+x^14+x^10+x^8+x^7+x^4+x^3+1) over the destuffed bit stream from SOF
 // through the end of the data field. Register seeded 0, MSB-first.
+// TRLC-LINKS: REQ-SDS-018
 func canCRC15(bits []int) int {
 	crc := 0
 	for _, b := range bits {
@@ -40,6 +43,7 @@ func canCRC15(bits []int) int {
 
 // fdDataLen maps a CAN-FD DLC (0..15) to a byte count (classic 0..8, then the
 // FD steps 12/16/20/24/32/48/64).
+// TRLC-LINKS: REQ-SDS-018
 func fdDataLen(dlc int) int {
 	switch {
 	case dlc <= 8:
@@ -67,6 +71,7 @@ func fdDataLen(dlc int) int {
 // while stuffOn is set. bits records the destuffed stream while record is set
 // (used for the CRC-15 check). All reads are bounds-checked; out of range => ok
 // false and the caller aborts the frame.
+// TRLC-LINKS: REQ-SDS-018
 type canReader struct {
 	S           sliced
 	dominantLow bool
@@ -83,6 +88,7 @@ type canReader struct {
 }
 
 // readRaw samples one wire bit at pos+0.5*spb and advances pos by spb.
+// TRLC-LINKS: REQ-SDS-018
 func (r *canReader) readRaw() (int, bool) {
 	center := r.pos + 0.5*r.spb
 	r.li0 = int(math.Round(r.pos))
@@ -107,6 +113,7 @@ func (r *canReader) readRaw() (int, bool) {
 
 // next returns the next destuffed CAN bit, consuming a preceding stuff bit when
 // the running same-bit count has reached 5.
+// TRLC-LINKS: REQ-SDS-018
 func (r *canReader) next() (int, bool) {
 	if r.stuffOn && r.runLen >= 5 {
 		sv, ok := r.readRaw()
@@ -136,6 +143,7 @@ func (r *canReader) next() (int, bool) {
 
 // readField reads nbits destuffed bits MSB-first into an int and reports the
 // sample span [i0,i1] covered (first bit start .. last bit end).
+// TRLC-LINKS: REQ-SDS-018
 func (r *canReader) readField(nbits int) (val, i0, i1 int, ok bool) {
 	i0, i1 = -1, -1
 	for k := 0; k < nbits; k++ {
@@ -152,6 +160,7 @@ func (r *canReader) readField(nbits int) (val, i0, i1 int, ok bool) {
 	return val, i0, i1, true
 }
 
+// TRLC-LINKS: REQ-SDS-018
 type canFrame struct {
 	spans []Span
 	toks  []string
@@ -162,6 +171,7 @@ type canFrame struct {
 
 // DecodeCANFD decodes classic CAN (fully) and CAN-FD base frames (best-effort:
 // ID + control + DLC + data with dynamic destuffing) on one sliced logic line.
+// TRLC-LINKS: REQ-SDS-018
 func DecodeCANFD(codes []uint8, colTimeS float64, cfg CANFDCfg) Result {
 	S := sliceChannel(codes, cfg.Threshold, cfg.HaveThr)
 	if !S.ok {
@@ -240,6 +250,7 @@ func DecodeCANFD(codes []uint8, colTimeS float64, cfg CANFDCfg) Result {
 // as integer bit multiples — best fraction wins, ties to the larger period.
 // Gaps beyond ~16 candidate bits are idle/interframe spacing, not bit-timing
 // evidence, and are excluded from refine and validation.
+// TRLC-LINKS: REQ-SDS-018
 func inferCANspb(S sliced) (float64, string) {
 	var gaps []float64
 	for k := 1; k < len(S.edges); k++ {
@@ -309,6 +320,7 @@ func inferCANspb(S sliced) (float64, string) {
 // decodeCANOneFrame decodes a single frame starting at sofStart (the SOF bit
 // cell start, in fractional samples). Returns ok=false on any truncation/form
 // problem so the caller can skip a false SOF candidate.
+// TRLC-LINKS: REQ-SDS-018
 func decodeCANOneFrame(S sliced, cfg CANFDCfg, sofStart, spb, dataSpb float64) canFrame {
 	r := &canReader{S: S, dominantLow: cfg.DominantLow, pos: sofStart, spb: spb,
 		runVal: -1, runLen: 0, stuffOn: true, record: true}

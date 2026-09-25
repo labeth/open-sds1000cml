@@ -1,0 +1,16 @@
+{
+  "source": "fpga/common/sim/tb_sync.v",
+  "scope": "Original five common RTL benches, SIM behavioral clocks and ideal bus stimulus. No physical CDC, fitted timing, IO placement or hardware qualification.",
+  "sourceSHA256": "f36dfe6f5227ed347cc8efa5317161a197e10471d8ae4aee607430d489171fe0",
+  "reportSHA256": "f4932c3f638b8136cd9f37dc2cdd8c773b37db76838efa148f6e981f0f7b0608",
+  "runs": [
+    "tb_sync"
+  ],
+  "results": [
+    {
+      "requirement": "REQ-SDS-192",
+      "status": "partial",
+      "notes": "Checks 20 spaced pulses each direction, recent transferred counter values and 7 rise/fall events. Despite the header mentioning non-power-of-two wrap, the short stimulus is roughly 12 us versus a 102.4 us source-counter period and does not force the 20480 wrap. Recent-value checks are not an independent proof of arbitrary-word coherence or metastability safety. The original bench does not instantiate sync_bit, so that primitive has no direct assertion in this bench. See evidence/common-rtl-review-test-run.json. Exact original-source or approved comment-overlay equivalence is checked."
+    }
+  ]
+}

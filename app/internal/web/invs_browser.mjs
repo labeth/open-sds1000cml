@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-WEB
 // Real-browser e2e for the display-level INVS (SCPI Cn:INVS) trace invert:
 // with st.inv1/st.inv2 set (the /api/status fields fed by the SCPI shadow),
 // the RENDERED Y-T trace mirrors about the display centre — per channel,
@@ -24,6 +25,7 @@ run(async (t) => {
   // (px − bg) onto (colour − bg) — t is its coverage — and rejecting anything
   // off-axis (grid, markers, text, the OTHER trace). The scan skips the
   // left/right 20% (channel/trigger edge markers).
+  // TRLC-LINKS: REQ-SDS-180
   const traceY = (which, inv1, inv2) => po.eval(([w1, i1, i2]) => {
     st.inv1 = i1; st.inv2 = i2;
     redraw();

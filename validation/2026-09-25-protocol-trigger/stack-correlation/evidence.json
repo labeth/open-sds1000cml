@@ -1,0 +1,75 @@
+{
+  "status": "Isolated sample-to-score component passes arithmetic tests and internal timing; complete matching and FPGA stacking remain unfinished",
+  "sourceHashes": {
+    "fpga/acq_sram/stack_moments.v": "a8691de32e0a5745034205bd3578780e34735bbcfd21a35732e42237f4e70982",
+    "fpga/acq_sram/stack_correlation.v": "ff0010ca374dbf1258d4ddb26a8ef96c7c702ac5c4c58d518dc6d0906514a001",
+    "fpga/acq_sram/stack_match_score.v": "8ac0895724d76b0fb3c332e4abdf3399e22e15b0da7077fe49772aa2c7dd70fc",
+    "fpga/acq_sram/sim/tb_stack_correlation.v": "e782b59beb90949592332ab2d9586513bca21d531aede22e0a373af80724f078",
+    "app/internal/superres/stack_correlation_rtl_test.go": "1ea91b23fd81038ed7201a5e45c3a5610350974d339e8fc61be18f44a1837e76"
+  },
+  "tests": {
+    "exitCode": 0,
+    "waveformWindows": 41,
+    "fullWidthMomentCases": 86,
+    "maxCount": "4294967295",
+    "maxNormalizationClocks": 2052,
+    "scoreFractionalBits": 48,
+    "referenceScoreTolerance": 2e-12,
+    "control": "reset and start cancellation across multiply, square root and division; moment stalls, overflow and recovery"
+  },
+  "synthesis": {
+    "build": "build-CcpAcX",
+    "device": "EP4CE10F17C8",
+    "clockMHz": 125,
+    "logicElements": 2739,
+    "registers": 2317,
+    "dsp9BitElements": 3,
+    "memoryBits": 0,
+    "slacksNs": [
+      0.479,
+      0.477,
+      3.54,
+      1.306,
+      0.4,
+      3.363,
+      4.559,
+      0.186,
+      3.119
+    ],
+    "minSetupSlackNs": 0.479,
+    "minHoldSlackNs": 0.186,
+    "limitations": "Isolated component; physical clock, unconstrained virtual data I/O. No acquisition, reference storage, scheduler, acceptance, alignment or accumulation."
+  },
+  "rejectedBuilds": [
+    {
+      "build": "build-UkUUnO",
+      "minSetupSlackNs": -6.376
+    },
+    {
+      "build": "build-dXANx7",
+      "minSetupSlackNs": -2.988
+    },
+    {
+      "build": "build-c4sqkd",
+      "minSetupSlackNs": -2.873
+    },
+    {
+      "build": "build-MCcK0L",
+      "minSetupSlackNs": -1.36
+    }
+  ],
+  "throughput": "Serial normalization takes up to 16.416 us at 125 MHz, excluding sample collection; cannot score every incoming full-rate position. Complete matcher requires a separately qualified search-rate budget.",
+  "modelValidation": {
+    "exitCode": 0,
+    "strict": true,
+    "errors": 0,
+    "warnings": 604,
+    "log": "model-validation.log",
+    "sourceHashes": {
+      "models/sds1000cml/engmod.yml": "1a060153002ed1d5c9993be178e72b368268e0d100244376aba6cbc0b3ed77c3",
+      "models/sds1000cml/model/decisions.yml": "14e31ef61d4fd521651773c81caf7bf9805abc70080b7bda9785199248e15e8c",
+      "models/sds1000cml/model/requirements.yml": "ef3cfc4e34b7ee029d1fcff8188a5e11741e58174f3a4e084c90231329b4e8c8"
+    }
+  },
+  "deployment": "Unchanged; general/current remains build-v5T40o; no prototype deployed"
+}

@@ -1,7 +1,9 @@
+// ENGMODEL-OWNER-UNIT: FU-RTL-ACQ-SRAM-COMMAND-BRIDGE
 // Coherent host -> acquisition command mailbox. A shared reset aborts the
 // epoch; it must assert to both domains. Payload remains held until the core
 // has sampled it and its acknowledgment has crossed back to the host.
 // Acknowledgment means delivered, not accepted by the acquisition engine.
+// TRLC-LINKS: REQ-SDS-054, REQ-SDS-055, REQ-SDS-058, REQ-SDS-077
 module acq_command_bridge #(parameter WIDTH=192)(
  input wire reset,host_clk,core_clk,
  input wire host_send,input wire [WIDTH-1:0] host_payload,

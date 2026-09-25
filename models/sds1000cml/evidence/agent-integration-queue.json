@@ -1,0 +1,105 @@
+{
+  "scope": "Reviewed agent files integrated into native source annotations; this queue does not establish complete clause coverage or physical qualification.",
+  "files": [
+    {
+      "path": "ota/internal/agent/rpc.go",
+      "review": "agent-rpc-review.json",
+      "sourceSHA256": "9f91a128043c82e7d2c734d641f0b9d132886276520afe23e5f341a9e87c0f41",
+      "annotationIntegrated": true
+    },
+    {
+      "path": "ota/internal/agent/rpc_test.go",
+      "review": "agent-rpc-review.json",
+      "sourceSHA256": "cc0c245f07d8a1e83c29f81ebfb529317451795ca30583a9e71b4ddde7f16bb5",
+      "annotationIntegrated": true
+    },
+    {
+      "path": "ota/internal/agent/handlers.go",
+      "review": "agent-handlers-review.json",
+      "sourceSHA256": "9cf4b8ebb61d0249b115df3e5e978744e33870847004baf88aafa9a5db0d6044",
+      "annotationIntegrated": true
+    },
+    {
+      "path": "ota/internal/agent/exec.go",
+      "review": "agent-exec-review.json",
+      "sourceSHA256": "e53b4c5d3ebbb3b0d565afdecbcd9c8757558afb29a15cc26b73ad03aeb3096e",
+      "annotationIntegrated": true
+    },
+    {
+      "path": "ota/internal/agent/tcp.go",
+      "review": "agent-transports-review.json",
+      "sourceSHA256": "62919e26dfa31b9b9ca1eaec79a5c015e1111c548a47252f6d5f89c0c4d10a8b",
+      "annotationIntegrated": true
+    },
+    {
+      "path": "ota/internal/agent/tcp_test.go",
+      "review": "agent-transports-review.json",
+      "sourceSHA256": "ebdd0aa0bff7eefa24de1aa99a4063e21e1cc80df2bac066496d5fa0e349f5dc",
+      "annotationIntegrated": true
+    },
+    {
+      "path": "ota/internal/agent/tcp_serve_test.go",
+      "review": "agent-transports-review.json",
+      "sourceSHA256": "31b028cad8a84ccab4c2f77da9eb997788c2621712e533b1ba9cc2a708fa3e7a",
+      "annotationIntegrated": true
+    },
+    {
+      "path": "ota/internal/agent/nats.go",
+      "review": "agent-transports-review.json",
+      "sourceSHA256": "abaaf5f693390e99dfa3e261127a00121ef42319d852dd036197e2bcb7d2bbd8",
+      "annotationIntegrated": true
+    },
+    {
+      "path": "ota/internal/agent/probe.go",
+      "review": "agent-probe-review.json",
+      "sourceSHA256": "010bdab752c660de2ed093b8e9859f69c64b482a4c6dbb9d99b96cdb25813af1",
+      "annotationIntegrated": true
+    },
+    {
+      "path": "ota/internal/agent/supervise.go",
+      "review": "agent-supervisor-review.json",
+      "sourceSHA256": "798e631bebd28eb8b24f75d0533311e01b3023240b4c881a4131c4d1605535ff",
+      "annotationIntegrated": true
+    },
+    {
+      "path": "ota/internal/agent/supervise_test.go",
+      "review": "agent-supervisor-review.json",
+      "sourceSHA256": "f8eb85c95aca937706e5d9ca152ed5cb08021dec9db09d349f0a343fbbd49df3",
+      "annotationIntegrated": true
+    },
+    {
+      "path": "ota/internal/agent/agent.go",
+      "review": "agent-runtime-review.json",
+      "sourceSHA256": "980e0263d6f5d811afacc17e5c6daebdc2dfaafb63bbc8b6b259c3892a8a6356",
+      "annotationIntegrated": true
+    },
+    {
+      "path": "ota/internal/agent/handlers_test.go",
+      "review": "agent-handler-tests-review.json",
+      "sourceSHA256": "883571208d084a482175f5d1233f528f0141c79742844c9dfbaa3f08f5dec3c4",
+      "annotationIntegrated": true
+    },
+    {
+      "path": "ota/internal/agent/selfupdate_test.go",
+      "review": "agent-handler-tests-review.json",
+      "sourceSHA256": "36673ae5c3c363ee90dc0c23eac5b746a7c1436dfc30d503533055f8818a05ef",
+      "annotationIntegrated": true
+    },
+    {
+      "path": "ota/cmd/agent/main.go",
+      "review": "agent-cli-review.json",
+      "sourceSHA256": "b988f08fd3fbdb345ed723e620ebfbff55d5053bf148f86f7f349d6d858e6bbf",
+      "annotationIntegrated": true
+    }
+  ],
+  "nextActions": [
+    "Continue the broader repository trace audit: agent package and CLI source comments are integrated, but boot-anchor, browser, other Go packages and remaining RTL/supporting-source contracts remain incomplete."
+  ],
+  "validation": {
+    "modelSourceConsistency": "generated/coverage.json",
+    "nativeLookup": "evidence/runtime-mcp-after.json",
+    "traceAudit": "evidence/trace-audit.json",
+    "reproducibility": "generated/reproducibility.json",
+    "limitations": "evidence/agent-supervisor-characterization.json"
+  }
+}

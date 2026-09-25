@@ -1,0 +1,24 @@
+{
+  "scope": "Isolated pinned-source characterization. A passing probe confirms the discrepancy, not requirement satisfaction or a fix.",
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "source": "app/internal/measure/measure.go",
+  "sourceKind": "pinned Git blob, without annotation comments",
+  "sourceSHA256": "a8484749aa7551a08978753fe591e6cdd8ca37e3dc063260e0f3b183c288eaba",
+  "probe": "package measure\nimport \"testing\"\nfunc TestReviewQ8HistogramParity(t *testing.T) {\n raw:=make([]uint8,800); q:=make([]uint16,800)\n for i:=range raw { raw[i]=56; if i%100>=50 {raw[i]=200}; if i%100==50 {raw[i]=230}; q[i]=uint16(raw[i])*256 }\n a,b:=Compute(raw,1,0,1e-6),ComputeQ8(q,1,0,1e-6)\n t.Logf(\"raw top=%v base=%v overshoot=%v; Q8 top=%v base=%v overshoot=%v\",a.Vtop,a.Vbase,a.Overshoot,b.Vtop,b.Vbase,b.Overshoot)\n if a.Vtop!=72 || b.Vtop!=102 || a.Overshoot<=0 || b.Overshoot!=0 { t.Fatalf(\"unexpected characterization: raw=%+v q=%+v\",a,b) }\n}\n",
+  "command": [
+    "go",
+    "test",
+    "-v",
+    "-count=1",
+    "./..."
+  ],
+  "environment": {
+    "GOWORK": "off",
+    "GOPROXY": "off"
+  },
+  "exitCode": 0,
+  "stdout": "=== RUN   TestReviewQ8HistogramParity\n    review_test.go:7: raw top=72 base=-72 overshoot=20.833333333333336; Q8 top=102 base=-72 overshoot=0\n--- PASS: TestReviewQ8HistogramParity (0.00s)\nPASS\nok  \tmeasurement-review\t0.002s\n",
+  "stderr": "",
+  "result": "known-discrepancy-reproduced",
+  "finding": "modeInRange caps hi at 255 for Q8 histograms. Equivalent records yield raw overshoot 20.833333333333336 percent and Q8 overshoot zero."
+}

@@ -1,0 +1,6 @@
+ARGS ["ping"]
+{
+  "agent_slot": "A",
+  "device": "sds1102",
+  "time_unix": 20
+}

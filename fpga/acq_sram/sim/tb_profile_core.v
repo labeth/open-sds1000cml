@@ -1,4 +1,6 @@
+// ENGMODEL-OWNER-UNIT: FU-RTL-ACQ-TESTS
 `timescale 1ns/1ps
+// TRLC-LINKS: REQ-SDS-041, REQ-SDS-043, REQ-SDS-053, REQ-SDS-054, REQ-SDS-056, REQ-SDS-075, REQ-SDS-076, REQ-SDS-185, REQ-SDS-188
 module tb_profile_core;
  reg reset=1,locked=1,core_clk=0,ram_clk=0,host_clk=0,clk100=0;
  always #2 core_clk=~core_clk;always #4 ram_clk=~ram_clk;

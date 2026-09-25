@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-CODEGEN-EMIT
 package wordfmt
 
 import (
@@ -5,6 +6,7 @@ import (
 	"testing"
 )
 
+// TRLC-LINKS: REQ-SDS-159
 func ramp(n int, start uint8) []uint8 {
 	s := make([]uint8, n)
 	for i := range s {
@@ -13,6 +15,7 @@ func ramp(n int, start uint8) []uint8 {
 	return s
 }
 
+// TRLC-LINKS: REQ-SDS-159
 func TestTier(t *testing.T) {
 	if TierIL5x100.PairOfWord(6) != 2 || TierIL5x200.PairOfWord(6) != 1 || TierDualE1.PairOfWord(6) != 0 {
 		t.Error("PairOfWord")
@@ -39,6 +42,7 @@ func TestTier(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-159
 func TestWordSplit(t *testing.T) {
 	if Word(0x12, 0x34) != 0x1234 {
 		t.Error("Word")
@@ -53,6 +57,7 @@ func TestWordSplit(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-159
 func TestModelRecord(t *testing.T) {
 	ch1, ch2 := ramp(6, 10), ramp(7, 100)
 	s, err := ModelRecord(TierIL5x100, RunChmodeDual, ch1, ch2)
@@ -72,6 +77,7 @@ func TestModelRecord(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-159
 func TestTsrc(t *testing.T) {
 	cases := []struct {
 		mode uint16
@@ -148,6 +154,7 @@ func TestTsrc(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-159
 func TestModelDecim(t *testing.T) {
 	ch1, ch2 := ramp(11, 0), ramp(11, 50)
 	s, err := ModelDecim(TierDualE1, 4, ch1, ch2)
@@ -159,6 +166,7 @@ func TestModelDecim(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-159
 func TestModelPeak(t *testing.T) {
 	ch1 := []uint8{5, 9, 1, 7, 200, 0, 3, 3, 8}
 	ch2 := []uint8{50, 40, 60, 55, 10, 250, 30, 30, 99}
@@ -187,6 +195,7 @@ func TestModelPeak(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-159
 func TestBoxcarParams(t *testing.T) {
 	for _, d := range []uint32{2, 3, 5, 10, 16, 100, 200, 255, 256, 257, 300, 512, 1000, 4096, 65535, 65536} {
 		recip, pre, err := BoxcarParams(d)
@@ -236,6 +245,7 @@ func TestBoxcarParams(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-159
 func TestModelBoxcar(t *testing.T) {
 	// D=8, constant blocks: exact means
 	ch1 := append(append(make([]uint8, 0, 24), fill(8, 100)...), append(fill(8, 7), fill(8, 255)...)...)
@@ -274,6 +284,7 @@ func TestModelBoxcar(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-159
 func fill(n int, v uint8) []uint8 {
 	s := make([]uint8, n)
 	for i := range s {
@@ -282,6 +293,7 @@ func fill(n int, v uint8) []uint8 {
 	return s
 }
 
+// TRLC-LINKS: REQ-SDS-159
 func TestStackParams(t *testing.T) {
 	p := StackParams{PhaseBins: 3, Shift: 2, Rows: 256}
 	if p.F() != 8 || p.Words() != 2*256*8*5 || p.Validate() != nil {
@@ -307,6 +319,7 @@ func TestStackParams(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-159
 func TestModelStack(t *testing.T) {
 	p := StackParams{PhaseBins: 1, Shift: 0, Rows: 3}
 	n := int(p.Rows) * RowCols
@@ -378,6 +391,7 @@ func TestModelStack(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-159
 func TestSequenceTime(t *testing.T) {
 	s := Sequence{Tier: TierIL5x100, Words: make([]uint16, 4), StepNs: 2}
 	if s.TimeNs(3) != 6 { // Group 0 counts as 1

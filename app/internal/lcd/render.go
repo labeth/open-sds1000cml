@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-LCD
 package lcd
 
 import (
@@ -12,6 +13,7 @@ import (
 
 // HUD is the UI-state snapshot the overlay renders alongside the frozen
 // frame (spec 07 §6). It carries no capture state.
+// TRLC-LINKS: REQ-SDS-021
 type HUD struct {
 	C1VdivV, C2VdivV float64
 	Probe1, Probe2   float64 // probe attenuation (1/10/100); 0 treated as ×1
@@ -110,6 +112,7 @@ type HUD struct {
 }
 
 // MenuItem is one softkey slot label + value for the LCD menu overlay.
+// TRLC-LINKS: REQ-SDS-021
 type MenuItem struct{ Label, Value string }
 
 const (
@@ -121,6 +124,7 @@ const (
 // 25 codes/div render scale (spec 10 §7.1): 8 divisions = 200 codes centred on
 // code 128, so the ADC's 256 codes span 10.24 div and the trace clips at the
 // graticule edge beyond ±4 div.
+// TRLC-LINKS: REQ-SDS-021
 func sampleToY(v float64) int {
 	y := traceBot - int(((v-128)/200+0.5)*float64(traceBot-traceTop)+0.5)
 	if y < 0 {
@@ -132,6 +136,7 @@ func sampleToY(v float64) int {
 	return y
 }
 
+// TRLC-LINKS: REQ-SDS-021
 func drawGraticule(sf Surface) {
 	for c := 0; c <= 10; c++ {
 		x := c * (W - 1) / 10
@@ -156,6 +161,7 @@ func drawGraticule(sf Surface) {
 }
 
 // drawLine is a Bresenham segment (spec 07 §3.5).
+// TRLC-LINKS: REQ-SDS-021
 func drawLine(sf Surface, x0, y0, x1, y1 int, c uint16) {
 	dx := x1 - x0
 	if dx < 0 {
@@ -193,6 +199,7 @@ func drawLine(sf Surface, x0, y0, x1, y1 int, c uint16) {
 // drawTrace maps the record window onto the panel (spec 07 §3.5): nearest
 // sample when Interp is false, linear interpolation of REAL samples when
 // true — never sinc, never a segment across a skipped column.
+// TRLC-LINKS: REQ-SDS-021
 func drawTrace(sf Surface, sig []uint8, win int, xc float64, interp bool, col uint16, posFrac float64) {
 	n := len(sig)
 	if n == 0 {
@@ -245,6 +252,7 @@ func drawTrace(sf Surface, sig []uint8, win int, xc float64, interp bool, col ui
 
 // drawEnvelope fills each column min→max (spec 07 §4): every pixel lies
 // between a real captured min and max.
+// TRLC-LINKS: REQ-SDS-021
 func drawEnvelope(sf Surface, mn, mx []uint8, cols int, col uint16) {
 	for x := 0; x < W; x++ {
 		c := x * cols / W
@@ -264,6 +272,7 @@ func drawEnvelope(sf Surface, mn, mx []uint8, cols int, col uint16) {
 
 // frameValid clamps a frame's valid-sample count into range (shared by the
 // alternate-view renderers below).
+// TRLC-LINKS: REQ-SDS-021
 func frameValid(f *engine.Frame) int {
 	valid := f.Valid
 	if valid < 1 {
@@ -277,6 +286,7 @@ func frameValid(f *engine.Frame) int {
 
 // coupledDisplay applies the software coupling model for a channel (mirrors the
 // Y-T path so the alternate views see the same trace).
+// TRLC-LINKS: REQ-SDS-021
 func coupledDisplay(sig []uint8, cpl int) []uint8 {
 	if cpl != analog.CplDC {
 		return analog.CoupleDisplay(sig, cpl)
@@ -290,6 +300,7 @@ func coupledDisplay(sig []uint8, cpl int) []uint8 {
 // frame. Applied to the RENDERED Y-T trace/envelope only: measurements,
 // decode, math, X-Y/FFT and mask/zone tests keep the true captured polarity
 // (see the Cn:INVS handler for the rationale).
+// TRLC-LINKS: REQ-SDS-021
 func invertCodes(sig []uint8) []uint8 {
 	out := make([]uint8, len(sig))
 	for i, v := range sig {
@@ -301,6 +312,7 @@ func invertCodes(sig []uint8) []uint8 {
 // ---- value formatting (spec 07 §6.2): 3 sig figs, ASCII suffixes ----
 
 // siUnit is one prefix row for siScale (high→low).
+// TRLC-LINKS: REQ-SDS-021
 type siUnit struct {
 	scale  float64
 	suffix string
@@ -313,6 +325,7 @@ var (
 )
 
 // fillRect paints a solid rectangle (clipped to the surface).
+// TRLC-LINKS: REQ-SDS-021
 func fillRect(sf Surface, x, y, w, h int, c uint16) {
 	for yy := y; yy < y+h; yy++ {
 		for xx := x; xx < x+w; xx++ {
@@ -324,6 +337,7 @@ func fillRect(sf Surface, x, y, w, h int, c uint16) {
 // Render draws one complete frame into the back buffer (spec 07 §3.2):
 // fill → graticule → trace/envelope → liveness strip → readouts. Never
 // blanks on a held frame; the strip goes red instead.
+// TRLC-LINKS: REQ-SDS-021
 func Render(sf Surface, f *engine.Frame, hud HUD, live bool, persist ...*MemSurface) {
 	sf.Fill(colBG)
 	drawGraticule(sf)
@@ -489,6 +503,7 @@ func Render(sf Surface, f *engine.Frame, hud HUD, live bool, persist ...*MemSurf
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-021
 func absI(x int) int {
 	if x < 0 {
 		return -x

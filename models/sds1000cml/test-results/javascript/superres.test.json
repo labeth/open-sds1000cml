@@ -1,0 +1,31 @@
+{
+  "source": "app/internal/web/superres.test.cjs",
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "sourceSHA256": "5c65876a8e3137cabe742bce45232d5bc2fe5a0cc75d1e3c0f468c8b8c41ff05",
+  "scope": "Original frozen Node execution with approved comment-only source overlay.",
+  "logs": {
+    "evidence/test-runs/reviewed-superres.test.cjs.log": "4c3c1c633c6748e3a6c1830bff5157da34b29fbfc1515253cb654b749c827d68"
+  },
+  "tests": [
+    {
+      "name": "superres.test.cjs",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-019",
+        "REQ-SDS-181"
+      ]
+    }
+  ],
+  "results": [
+    {
+      "requirement": "REQ-SDS-019",
+      "status": "partial",
+      "notes": "Original 72 synthetic assertions pass. Independent adversarial corpus still has six failures; this suite does not establish physical performance."
+    },
+    {
+      "requirement": "REQ-SDS-181",
+      "status": "partial",
+      "notes": "Original 72 synthetic assertions pass. Independent adversarial corpus still has six failures; this suite does not establish physical performance."
+    }
+  ]
+}

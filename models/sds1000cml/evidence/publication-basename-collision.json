@@ -1,0 +1,27 @@
+{
+  "result": "regression-tested-generated-and-pdf-reviewed",
+  "source": "/home/labeth/ws/engineering-model-go/asciidoc_diagrams_core.go",
+  "sourceSHA256": "475da75f51a2db8b5712105c30fefd54baa9a30262dbd4bffae80d17acc6a0cf",
+  "functions": [
+    "codeItemEvidenceElement",
+    "codeElementEvidenceLabelLookup",
+    "codeElementEvidenceFileKey",
+    "splitCodeEvidencePathLines"
+  ],
+  "finding": "Both group by lowercased filepath.Base rather than complete source path. Distinct server.go files merge line coordinates; REQ-SDS-111 broker graph displays unrelated VXI-11 server lines. Case-distinct paths can also collapse.",
+  "observedPDFPage": 340,
+  "nextAction": "Continue remaining coverage and publication-layout work; this source-identity defect is resolved.",
+  "fix": "Group by normalized case-sensitive absolute scanner path when available; preserve complete fallback paths. Show shortest distinguishing path suffix for repeated basenames. Never merge line coordinates across independent source roots.",
+  "generatedCheck": {
+    "requirement": "REQ-SDS-111",
+    "expectedLabel": "otactl/server.go:16",
+    "script": "scripts/check_go_publication.py"
+  },
+  "tests": "evidence/test-runs/engineering-model-source-identity.log",
+  "reproducibility": "generated/reproducibility.json",
+  "pdfCheck": {
+    "page": 342,
+    "pdfSHA256": "6d6b045b0d30bfa79b3a5554f435521fa03f01641fccad4f1d67349269afab22",
+    "inputSHA256": "985e0423523f87a57d3b0a280771b921455ff0425fe2e19d6b96a38de27d7d62"
+  }
+}

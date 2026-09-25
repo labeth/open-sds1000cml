@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-WEB
 package web
 
 import (
@@ -18,6 +19,7 @@ var sramPage string
 
 // SRAMSource is an exclusive, serialized acquisition owner, separate from the
 // normal default-fabric engine. Handlers never access device registers.
+// TRLC-LINKS: REQ-SDS-166
 type SRAMSource interface {
 	Status() (sramcapture.Metadata, error)
 	Arm(context.Context, sramcapture.Config) error
@@ -27,6 +29,7 @@ type SRAMSource interface {
 	Recall(context.Context, uint32, uint32, io.Writer) (int64, error)
 }
 
+// TRLC-LINKS: REQ-SDS-166
 func SRAMHandler(source SRAMSource) http.Handler {
 	mux := http.NewServeMux()
 	fail := func(w http.ResponseWriter, code int, err error) {
@@ -146,8 +149,10 @@ func SRAMHandler(source SRAMSource) http.Handler {
 	return mux
 }
 
+// TRLC-LINKS: REQ-SDS-166
 type deadlineWriter struct{ http.ResponseWriter }
 
+// TRLC-LINKS: REQ-SDS-166
 func (w deadlineWriter) Write(p []byte) (int, error) {
 	// Bound network backpressure per chunk so the bus owner and health poll
 	// are not held for longer than the OTA supervisor's three-second window.

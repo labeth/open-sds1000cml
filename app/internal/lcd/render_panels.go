@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-LCD
 package lcd
 
 import (
@@ -34,6 +35,7 @@ var (
 	}
 )
 
+// TRLC-LINKS: REQ-SDS-021
 func measFor(ch int, sig []uint8, q []uint16, guard int, seq uint64, vpc, off, ss float64, cpl int) *measure.Result {
 	if seq == 0 || ch < 0 || ch > 1 {
 		return measure.ComputeAcquisition(sig, q, vpc, off, ss, cpl, guard)
@@ -55,6 +57,7 @@ func measFor(ch int, sig []uint8, q []uint16, guard int, seq uint64, vpc, off, s
 // box PER enabled channel (via the shared measure package, so it matches the web
 // exactly), so both C1 and C2 are readable at once without disturbing the trigger
 // source. Uses the real probe-scaled volts/div and the channel's software coupling.
+// TRLC-LINKS: REQ-SDS-021
 func drawMeasPanel(sf Surface, f *engine.Frame, hud HUD) {
 	if f == nil || f.Valid == 0 {
 		return
@@ -74,6 +77,7 @@ func drawMeasPanel(sf Surface, f *engine.Frame, hud HUD) {
 }
 
 // measBox renders one channel's full measurement set at left edge x.
+// TRLC-LINKS: REQ-SDS-021
 func measBox(sf Surface, f *engine.Frame, hud HUD, ch, x int) {
 	valid := f.Valid
 	if valid > len(f.C1) {
@@ -145,6 +149,7 @@ func measBox(sf Surface, f *engine.Frame, hud HUD, ch, x int) {
 // drawCursors draws the on-screen X (time) or Y (volts) cursor pair and a Δ
 // readout. Time Δ uses the labelled t/div × 10 divisions; volts Δ uses the
 // trigger-source channel's probe-scaled V/div × 8 divisions.
+// TRLC-LINKS: REQ-SDS-021
 func drawCursors(sf Surface, hud HUD) {
 	if !hud.CurOn {
 		return
@@ -210,6 +215,7 @@ func drawCursors(sf Surface, hud HUD) {
 
 // drawAutosetBanner overlays a centred "AUTOSET…" progress banner while the
 // sweep runs, with the cancel hint (a second AUTO press stops it).
+// TRLC-LINKS: REQ-SDS-021
 func drawAutosetBanner(sf Surface, msg string) {
 	if msg == "" {
 		msg = "AUTOSET..."
@@ -246,6 +252,7 @@ var softkeyY = [5]int{80, 160, 240, 320, 410}
 // drawMenu overlays the softkey menu down the right edge (spec 08 §6): a title
 // band + five slots (F1 top … F5 bottom) each a label over its current value,
 // the active slot boxed. F1..F5 select/cycle; the ADJUST knob tracks the box.
+// TRLC-LINKS: REQ-SDS-021
 func drawMenu(sf Surface, hud HUD) {
 	if !hud.MenuOpen {
 		return
@@ -292,6 +299,7 @@ func drawMenu(sf Surface, hud HUD) {
 // drawMarkers overlays the trigger level (horizontal line + right handle), the
 // trigger position (top pointer), and the per-channel ground/offset arrows on
 // the left edge — the same references the web canvas shows (spec 07 §6).
+// TRLC-LINKS: REQ-SDS-021
 func drawMarkers(sf Surface, hud HUD) {
 	px := func(x, y int, c uint16) {
 		if x >= 0 && x < W && y >= 0 && y < H {
@@ -340,6 +348,7 @@ func drawMarkers(sf Surface, hud HUD) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-021
 func drawHUD(sf Surface, f *engine.Frame, hud HUD) {
 	if f != nil && f.NoiseGainIdeal > 1 {
 		label := fmt.Sprintf("Ideal +%.2f bits (not ENOB)", math.Log2(f.NoiseGainIdeal))
@@ -451,6 +460,7 @@ func drawHUD(sf Surface, f *engine.Frame, hud HUD) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-021
 func frameQ(f *engine.Frame, ch int) []uint16 {
 	if ch == 1 {
 		return f.Q2

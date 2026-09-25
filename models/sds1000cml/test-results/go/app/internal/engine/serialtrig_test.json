@@ -1,0 +1,81 @@
+{
+  "source": "app/internal/engine/serialtrig_test.go",
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "scope": "Reviewed Go test outcomes; passing assertions contribute partial requirement evidence.",
+  "sourceSHA256": "6872b37637907ff678793dc963fa5baa494a145dd3804aea52c8abe98c943208",
+  "logs": {
+    "test-runs/engine-serial-zonemask-reviewed.jsonl": "7764e6feeed08a5d9d3974339936e798d2e4673861d54d3feaaa23eccb223491"
+  },
+  "tests": [
+    {
+      "name": "TestSerialQualifyUART",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-013"
+      ]
+    },
+    {
+      "name": "TestSerialQualifySPI",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-013"
+      ]
+    },
+    {
+      "name": "TestSerialQualifyI2C",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-013"
+      ]
+    },
+    {
+      "name": "TestSerialQualifyPassAndReject",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-013"
+      ]
+    },
+    {
+      "name": "TestSetSerialModeResetsCount",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-013"
+      ]
+    },
+    {
+      "name": "TestMatchBytesUnit",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-013"
+      ]
+    },
+    {
+      "name": "TestIndexSeqUnit",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-013"
+      ]
+    },
+    {
+      "name": "TestSerialRegistryUnknownFailsClosed",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-013"
+      ]
+    },
+    {
+      "name": "TestSerialRegistryCapabilities",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-013"
+      ]
+    }
+  ],
+  "results": [
+    {
+      "requirement": "REQ-SDS-013",
+      "status": "partial",
+      "notes": "9 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    }
+  ]
+}

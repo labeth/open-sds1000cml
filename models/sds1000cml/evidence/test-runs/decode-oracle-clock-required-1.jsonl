@@ -1,0 +1,14 @@
+{"Time":"2026-09-23T08:27:28.515164053+02:00","Action":"start","Package":"open-sds/app/internal/decode"}
+{"Time":"2026-09-23T08:27:28.525941318+02:00","Action":"run","Package":"open-sds/app/internal/decode","Test":"TestOracleSPI"}
+{"Time":"2026-09-23T08:27:28.525959947+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestOracleSPI","Output":"=== RUN   TestOracleSPI\n"}
+{"Time":"2026-09-23T08:27:28.52617474+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestOracleSPI","Output":"    oracle_spi_test.go:82: CI_REQUIRE_SIGROK=1 but sigrok-cli is not installed\n"}
+{"Time":"2026-09-23T08:27:28.526189226+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestOracleSPI","Output":"--- FAIL: TestOracleSPI (0.00s)\n"}
+{"Time":"2026-09-23T08:27:28.52619831+02:00","Action":"fail","Package":"open-sds/app/internal/decode","Test":"TestOracleSPI","Elapsed":0}
+{"Time":"2026-09-23T08:27:28.526215692+02:00","Action":"run","Package":"open-sds/app/internal/decode","Test":"TestOracleUART"}
+{"Time":"2026-09-23T08:27:28.526221323+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestOracleUART","Output":"=== RUN   TestOracleUART\n"}
+{"Time":"2026-09-23T08:27:28.526382933+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestOracleUART","Output":"    oracle_uart_test.go:68: CI_REQUIRE_SIGROK=1 but sigrok-cli is not installed\n"}
+{"Time":"2026-09-23T08:27:28.526392993+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestOracleUART","Output":"--- FAIL: TestOracleUART (0.00s)\n"}
+{"Time":"2026-09-23T08:27:28.526403021+02:00","Action":"fail","Package":"open-sds/app/internal/decode","Test":"TestOracleUART","Elapsed":0}
+{"Time":"2026-09-23T08:27:28.526476546+02:00","Action":"output","Package":"open-sds/app/internal/decode","Output":"FAIL\n"}
+{"Time":"2026-09-23T08:27:28.526618815+02:00","Action":"output","Package":"open-sds/app/internal/decode","Output":"FAIL\topen-sds/app/internal/decode\t0.011s\n"}
+{"Time":"2026-09-23T08:27:28.526633933+02:00","Action":"fail","Package":"open-sds/app/internal/decode","Elapsed":0.011}

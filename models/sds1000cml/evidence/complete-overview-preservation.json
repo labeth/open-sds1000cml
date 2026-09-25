@@ -1,0 +1,34 @@
+{
+  "result": "pass",
+  "documentSHA256": "1a80d298f85f5f1b86936a44ae651f1161ebde81c5ae5d0a72c7acafde7c84f9",
+  "requirements": 209,
+  "units": 130,
+  "mappings": 281,
+  "manhattanFigures": [
+    {
+      "overview": 1,
+      "labels": 16
+    },
+    {
+      "overview": 2,
+      "labels": 9
+    },
+    {
+      "overview": 3,
+      "labels": 12
+    },
+    {
+      "overview": 4,
+      "labels": 12
+    },
+    {
+      "overview": 5,
+      "labels": 10
+    },
+    {
+      "overview": 6,
+      "labels": 42
+    }
+  ],
+  "scope": "Exact authored requirement mappings and complete decomposition labels preserved in single SVG figures; no column bands. PDF layout reviewed separately."
+}

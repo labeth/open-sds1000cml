@@ -1,0 +1,15 @@
+{
+  "result": "resolved-and-pdf-reviewed",
+  "pdfSHA256": "0b0e8508a66aa1c7d5c2dfcb93e952108b899bafa094a8032e50f8813ed04ea3",
+  "page": 149,
+  "view": "VIEW-SECURITY",
+  "finding": "Authored scope and limitations are published before each view diagram; security page 149 visually confirms the membership-only explanation and corrected generic introduction.",
+  "nextAction": "Keep scope explanations current as model evidence changes. Overall PDF layout and model trace completeness remain separate open work.",
+  "toolSources": {
+    "templates/asciidoc.tmpl": "afdb321881c77d4d5e9b07e2e1e273c39f36660f5d14ca16659aa247611ba3d4",
+    "asciidoc_views.go": "4b8c3af0196cac966c3fee8241d953b8105c7988e2c9fb1d678e969ab373ee67",
+    "asciidoc_publication_scope_test.go": "52e31c5b9995ae954004d1f3c511ca9445cc7daec59ad66119e872eda3af4488"
+  },
+  "verification": "TestPublicationKeepsAuthoredScopeWithEachView plus full tool suite; check_context_views.py asserts scope placement in all thirteen authored view chapters.",
+  "priorFinding": "Generated security-purpose prose refers to attack paths and security evidence, but the explicit view filter currently projects bounded_by memberships only. AuthoredStatusExplanation carries the limitation but is not shown adjacent to this section."
+}

@@ -1,0 +1,66 @@
+{
+  "files": 16,
+  "functions": 162,
+  "types": 12,
+  "nativeSummaries": [
+    {
+      "path": "test-results/go/app/internal/engine/chaos_test.json",
+      "tests": 1
+    },
+    {
+      "path": "test-results/go/app/internal/engine/degraded_test.json",
+      "tests": 2
+    },
+    {
+      "path": "test-results/go/app/internal/engine/discern_test.json",
+      "tests": 10
+    },
+    {
+      "path": "test-results/go/app/internal/engine/engine_depth_test.json",
+      "tests": 4
+    },
+    {
+      "path": "test-results/go/app/internal/engine/engine_publish_test.json",
+      "tests": 13
+    },
+    {
+      "path": "test-results/go/app/internal/engine/engine_test.json",
+      "tests": 7
+    },
+    {
+      "path": "test-results/go/app/internal/engine/engine_triglevel_test.json",
+      "tests": 4
+    },
+    {
+      "path": "test-results/go/app/internal/engine/engine_wedge_test.json",
+      "tests": 3
+    },
+    {
+      "path": "test-results/go/app/internal/engine/health_beat_test.json",
+      "tests": 1
+    }
+  ],
+  "enginePackage": {
+    "files": 45,
+    "functions": 350,
+    "types": 36,
+    "unlinkedDeclarations": [
+      {
+        "path": "app/internal/engine/arena.go",
+        "type": "Frame",
+        "line": 10,
+        "role": "implementation",
+        "requirements": []
+      },
+      {
+        "path": "app/internal/engine/arena.go",
+        "type": "arena",
+        "line": 64,
+        "role": "implementation",
+        "requirements": []
+      }
+    ]
+  },
+  "scope": "45 reviewed original host tests across engine control/capture/publication/discrimination and fake-bus support. Selected assertions only; no physical acquisition, universal concurrency, panic containment or complete diagnostic qualification.",
+  "packageAuditSupersededBy": "bus-native-integration.json"
+}

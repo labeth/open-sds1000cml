@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
 package engine
 
 // Software edge discrimination and centring (spec 03 §7, spec 05 §3).
@@ -6,6 +7,7 @@ package engine
 // judged in code space with exactly these predicates.
 
 // ptp returns min, max and peak-to-peak of sig.
+// TRLC-LINKS: REQ-SDS-009, REQ-SDS-011
 func ptp(sig []uint8) (lo, hi, p int) {
 	if len(sig) == 0 {
 		return 0, 0, 0
@@ -28,6 +30,7 @@ func ptp(sig []uint8) (lo, hi, p int) {
 // scans fixed windows and returns the end of the last window whose local
 // peak-to-peak still shows activity. Used to size the decimated drain safely:
 // draining past validDepth would centre the display on dead samples.
+// TRLC-LINKS: REQ-SDS-009
 func validDepth(sig []uint8) int {
 	_, _, p := ptp(sig)
 	return validDepthP(sig, p)
@@ -36,6 +39,7 @@ func validDepth(sig []uint8) int {
 // validDepthP is validDepth with the record's peak-to-peak span precomputed, so
 // a caller that already scanned the record (oneFrame does exactly one ptp pass
 // per frame) doesn't pay a second O(n) pass here. Same arithmetic as validDepth.
+// TRLC-LINKS: REQ-SDS-009
 func validDepthP(sig []uint8, p int) int {
 	n := len(sig)
 	if n == 0 {
@@ -69,6 +73,7 @@ func validDepthP(sig []uint8, p int) int {
 // valid_depth re-capture gate and got published broken. Here we detect it head
 // on: scan from the end while sig[i]==sig[i-5]; that contiguous run IS the dead
 // tail. A flat record (no signal) has no tail to trim — return full.
+// TRLC-LINKS: REQ-SDS-009, REQ-SDS-128
 func realDepth(sig []uint8) int {
 	_, _, p := ptp(sig)
 	return realDepthP(sig, p)
@@ -84,6 +89,7 @@ func realDepth(sig []uint8) int {
 // coherent:true for hours on the bench). A period-5 sample matches within
 // ±realDepthTol codes, and up to realDepthMiss consecutive misses are forgiven
 // (sparse glitches inside the dead tail); a longer miss streak is live signal.
+// TRLC-LINKS: REQ-SDS-009, REQ-SDS-128
 func realDepthP(sig []uint8, p int) int {
 	n := len(sig)
 	if n < 6 {
@@ -124,6 +130,7 @@ func realDepthP(sig []uint8, p int) int {
 // every timebase. Exact median via a histogram over the small integer |Δ²|
 // values: O(n) time, O(1) space. Floored at 0.5 (a perfectly clean slow ramp has
 // median |Δ²| = 0 because adjacent codes repeat).
+// TRLC-LINKS: REQ-SDS-011
 func noiseFloor(sig []uint8) float64 {
 	n := len(sig)
 	if n < 3 {
@@ -163,6 +170,7 @@ func noiseFloor(sig []uint8) float64 {
 // ptp-relative-to-noise separates them cleanly at ANY timebase (a real signal
 // has ptp ≫ noise; a rail's ptp IS its noise, ~5σ). Used as the DECIMATED lock
 // gate; native-fast keeps the raw-ptp test (its record spans < 1 period).
+// TRLC-LINKS: REQ-SDS-011
 func signalPresent(sig []uint8, k float64) bool {
 	_, _, p := ptp(sig)
 	return float64(p) >= k*noiseFloor(sig)
@@ -170,6 +178,7 @@ func signalPresent(sig []uint8, k float64) bool {
 
 // midLevel is the crossing threshold: (min+max)/2 over the drained samples
 // (128 for an empty slice). It floats with amplitude so it works at any V/div.
+// TRLC-LINKS: REQ-SDS-011
 func midLevel(sig []uint8) int {
 	if len(sig) == 0 {
 		return 128
@@ -199,10 +208,12 @@ func midLevel(sig []uint8) int {
 // physical trigger event across frames instead of hopping to an adjacent
 // same-slope crossing when the capture phase drifts — the residual display
 // jitter on a multi-period record.
+// TRLC-LINKS: REQ-SDS-011
 func centerCross(sig []uint8, lvl int, rising bool) float64 {
 	return centerCrossHint(sig, lvl, rising, -1)
 }
 
+// TRLC-LINKS: REQ-SDS-011
 func centerCrossHint(sig []uint8, lvl int, rising bool, hint float64) float64 {
 	n := len(sig)
 	if n < 2 {
@@ -327,6 +338,7 @@ func centerCrossHint(sig []uint8, lvl int, rising bool, hint float64) float64 {
 // crossing — never the outer window edges (outer-eighth comparison
 // false-rejects every correctly-centred edge in a multi-period window).
 // Returns true (never veto) when the window is too small to judge.
+// TRLC-LINKS: REQ-SDS-011
 func windowSlopeMatches(sig []uint8, xc float64, winCols int, rising bool) bool {
 	n := len(sig)
 	if n < 8 || winCols < 8 {

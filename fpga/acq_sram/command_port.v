@@ -1,6 +1,8 @@
+// ENGMODEL-OWNER-UNIT: FU-RTL-ACQ-SRAM-COMMAND-PORT
 // Host-domain register window and coherent acquisition command decoder.
 // Connect to gpmc_slave's committed writes; full board status/RAM readout is
 // outside this module. See docs/fpga-profile-command-abi.md.
+// TRLC-LINKS: REQ-SDS-054, REQ-SDS-055, REQ-SDS-056, REQ-SDS-058, REQ-SDS-185, REQ-SDS-077, REQ-SDS-080
 module acq_command_port #(parameter ENABLE_STREAM=0,ENABLE_SNAPSHOT=1,ENABLE_MATCH=1)(
  input wire reset,host_clk,core_clk,host_write,
  input wire [7:0] write_sel,read_sel,input wire [15:0] write_data,

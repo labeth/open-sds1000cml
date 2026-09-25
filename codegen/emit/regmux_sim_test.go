@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-CODEGEN-EMIT
 package emit
 
 import (
@@ -20,6 +21,7 @@ import (
 // through $finish only when every check passed; a mismatch prints FAIL lines
 // and ends with $fatal (non-zero vvp exit; $finish instead under `define
 // NO_FATAL so the bench also compiles as plain Verilog-2001).
+// TRLC-LINKS: REQ-SDS-158
 func Testbench(i schema.Interface) string {
 	var b strings.Builder
 	p := func(format string, a ...any) { fmt.Fprintf(&b, format, a...) }
@@ -142,6 +144,7 @@ func Testbench(i schema.Interface) string {
 
 // The generated decode include must compile as Verilog-2001 and behave under
 // simulation (iverilog). Skipped when iverilog is absent.
+// TRLC-LINKS: REQ-SDS-158
 func TestRegmuxSimulates(t *testing.T) {
 	iv, err := exec.LookPath("iverilog")
 	if err != nil {
@@ -182,6 +185,7 @@ func TestRegmuxSimulates(t *testing.T) {
 }
 
 // A broken include must make the testbench fail (proves the bench is not vacuous).
+// TRLC-LINKS: REQ-SDS-158
 func TestRegmuxTestbenchCatchesDrift(t *testing.T) {
 	iv, err := exec.LookPath("iverilog")
 	if err != nil {

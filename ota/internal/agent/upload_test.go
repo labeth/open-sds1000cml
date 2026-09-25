@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-OTA-AGENT
 package agent
 
 import (
@@ -8,6 +9,7 @@ import (
 	"testing"
 )
 
+// TRLC-LINKS: REQ-SDS-106
 func TestUploadRejectsGapWhenSizeDeclared(t *testing.T) {
 	a := testAgent(t)
 	dest := filepath.Join(t.TempDir(), "out.bin")
@@ -28,6 +30,7 @@ func TestUploadRejectsGapWhenSizeDeclared(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-106
 func TestUploadRoundTripWithSHA(t *testing.T) {
 	a := testAgent(t)
 	dest := filepath.Join(t.TempDir(), "ok.bin")
@@ -58,6 +61,7 @@ func TestUploadRoundTripWithSHA(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-106
 func fileSHAOfBytes(b []byte) (string, error) {
 	h := sha256.Sum256(b)
 	return hex.EncodeToString(h[:]), nil

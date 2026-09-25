@@ -1,0 +1,32 @@
+{
+  "result": "pass-partial-native-evidence",
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "sourceSHA256": {
+    "app/internal/web/gen_tokens.go": "63b9c72f2adf45a8441e668d40eeec71deb7a3b6c4927d046be0e46d87c15ea7",
+    "app/internal/web/palette_parity_test.go": "48d5860e12af636b2c09171c3bfb661f90fac605ae4d9c5a8aee7110a17ebb68",
+    "app/internal/web/tokens.json": "133db42b261ad25e83f61b3b342053c764d0882b00b8bc2c16f93249deccfdc7",
+    "app/internal/web/tokens.css": "0572f3719ae98d99ac877ec45d57489bba9eebe46c055e22ce78cb1899127aac",
+    "app/internal/lcd/palette_gen.go": "a5b61ad2a18d458003ddc4715773bb000a16aac42efe5541eaf0a60a2e7fa721"
+  },
+  "tests": {
+    "TestPaletteParity": "pass"
+  },
+  "command": [
+    "go",
+    "test",
+    "-race",
+    "-json",
+    "-count=1",
+    "./internal/web",
+    "-run",
+    "^TestPaletteParity$"
+  ],
+  "log": "test-runs/lcd-palette.jsonl",
+  "logSHA256": "8dac7ca4e9fbdefec5370c69fe5fb31972cd136fac3916a712d486ad889447a2",
+  "isolatedGeneratorCases": [
+    "valid artifacts byte-identical",
+    "unknown LCD reference fails after CSS write; Go artifact retained",
+    "malformed hex succeeds with black Go color and invalid CSS literal"
+  ],
+  "scope": "Original parity assertions plus three isolated generator cases. No original generated artifact rewritten. Parsed RGB equality is not optical/display qualification."
+}

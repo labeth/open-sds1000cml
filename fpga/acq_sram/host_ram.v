@@ -1,7 +1,9 @@
+// ENGMODEL-OWNER-UNIT: FU-RTL-ACQ-SRAM-HOST-RAM
 // 5120 32-bit host words, packed as 2560 pairs in five explicit M9K sections.
 // Logical bank boundary is pair 1280, not a physical RAM-section boundary.
 // Caller owns collision avoidance and bank publication; concurrent read/write
 // to the same pair is intentionally unspecified. No reset erases RAM contents.
+// TRLC-LINKS: REQ-SDS-051
 module sram_host_ram(
  input wire write_clk,write_reset,write_enable,
  input wire [11:0] write_pair,input wire [63:0] write_data,

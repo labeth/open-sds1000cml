@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-LCD
 package lcd
 
 import (
@@ -9,6 +10,7 @@ import (
 // drawXY plots C1 (x) against C2 (y) — the Lissajous view (parity with the web
 // X-Y mode). Codes 0..255 map across the graticule (x) and up it (y); a stride
 // keeps dense records cheap.
+// TRLC-LINKS: REQ-SDS-021
 func drawXY(sf Surface, f *engine.Frame, hud HUD) {
 	valid := frameValid(f)
 	if len(f.C2) < valid {
@@ -36,6 +38,7 @@ func drawXY(sf Surface, f *engine.Frame, hud HUD) {
 // drawMath overlays the math trace (C1+C2 / C1-C2 / C1×C2) in purple, in code
 // space centred at 128 so it shares the Y-T trace mapping (parity with the web
 // math card).
+// TRLC-LINKS: REQ-SDS-021
 func drawMath(sf Surface, f *engine.Frame, hud HUD, win int, xc, posFrac float64) {
 	valid := frameValid(f)
 	if len(f.C2) < valid {
@@ -71,6 +74,7 @@ func drawMath(sf Surface, f *engine.Frame, hud HUD, win int, xc, posFrac float64
 // comparison against the live trace (parity with the web REF A/B). Screen-space
 // snapshots — they align while the timebase/scale are unchanged. A is purple,
 // B is the info tint, so they read apart from the live channels.
+// TRLC-LINKS: REQ-SDS-021
 func drawRefs(sf Surface, hud HUD, win int, xc float64, interp bool, posFrac float64) {
 	cols := [2]uint16{colInfo, colDim} // distinct from the purple math trace
 	for i := 0; i < 2; i++ {
@@ -89,6 +93,7 @@ func drawRefs(sf Surface, hud HUD, win int, xc float64, interp bool, posFrac flo
 }
 
 // decodeColor maps a decode span kind to a display colour.
+// TRLC-LINKS: REQ-SDS-021
 func decodeColor(kind string) uint16 {
 	switch kind {
 	case "start", "stop", "ack":
@@ -107,6 +112,7 @@ func decodeColor(kind string) uint16 {
 // drawDecode runs the protocol decoder on the frame and draws the decoded byte
 // spans in a strip below the trace (parity with the web decode overlay). Only in
 // Y-T; the span sample indices map to screen x through the same trace window.
+// TRLC-LINKS: REQ-SDS-021
 func drawDecode(sf Surface, f *engine.Frame, hud HUD, win int, xc, posFrac float64) {
 	if hud.DecProto == 0 || f == nil {
 		return
@@ -220,6 +226,7 @@ var colMask = rgb(90, 120, 160)
 // LCD == web == engine test point. The mask band only renders when the frame's
 // window geometry matches the mask (zoom or a band change break the column
 // alignment — the engine skips those frames too).
+// TRLC-LINKS: REQ-SDS-021
 func drawZoneMask(sf Surface, f *engine.Frame, hud HUD, win int, xc, posFrac float64) {
 	if posFrac <= 0 || posFrac > 1 {
 		posFrac = 0.5
@@ -267,6 +274,7 @@ func drawZoneMask(sf Surface, f *engine.Frame, hud HUD, win int, xc, posFrac flo
 // drawMaskHUD paints the mask pass/fail meter (top edge, under the liveness
 // strip) whenever mask testing or the zone trigger is on, plus the panel's
 // build/status line.
+// TRLC-LINKS: REQ-SDS-021
 func drawMaskHUD(sf Surface, hud HUD) {
 	if hud.MaskMode == 0 && hud.MaskMsg == "" && hud.ZoneMode == 0 {
 		return

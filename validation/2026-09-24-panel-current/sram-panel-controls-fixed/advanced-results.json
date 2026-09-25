@@ -1,0 +1,36 @@
+{
+  "phase": "advanced",
+  "base": "http://192.168.1.209:8080",
+  "results": [
+    {
+      "name": "trigger qualifier softkeys",
+      "result": "fail",
+      "error": "Expected values to be strictly deep-equal:\n+ actual - expected\n... Skipped lines\n\n  {\n    AutosetBusy: false,\n    AutosetMsg: '',\n    CurOn: false,\n    CurSel: 1,\n...\n    SRStatus: '',\n+   Sel: 4,\n-   Sel: 3,\n    ShowC1: true,\n    ShowC2: true,\n    ShowMeas: false,\n    Title: 'PULSE',\n    ViewMode: 0,\n"
+    },
+    {
+      "name": "UTILITY arms, ADJUST push selects gates/review, UTILITY cancels",
+      "result": "pass"
+    },
+    {
+      "name": "mask menu mode, build settings, clear and build",
+      "result": "pass"
+    },
+    {
+      "name": "five-megahertz-after-advanced",
+      "result": "pass"
+    }
+  ],
+  "touched": [
+    "trigmenu",
+    "f4",
+    "f1",
+    "adjust",
+    "f2",
+    "f3",
+    "f5",
+    "menu",
+    "utility",
+    "adjustpush",
+    "acquire"
+  ]
+}

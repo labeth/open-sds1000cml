@@ -1,0 +1,21 @@
+{
+  "result": "pass",
+  "displayLabels": 863,
+  "canonicalExample": {
+    "requirement": "REQ-SDS-066",
+    "path": "bode.go",
+    "lines": [
+      29,
+      37,
+      53,
+      70,
+      79,
+      93,
+      161,
+      172,
+      218
+    ]
+  },
+  "inputSHA256": "23f7eddf9e3db9a2c404b2088e60047392d57b58e830163ec19360e78fc0954b",
+  "scope": "Display labels provide spaces after the filename colon and between complete decimal coordinates; canonical trace matrix example remains unchanged. Actual PDF line placement is independently reviewed."
+}

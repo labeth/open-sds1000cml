@@ -1,8 +1,10 @@
+// ENGMODEL-OWNER-UNIT: FU-RTL-ACQ-SRAM-RECALL
 // Plan a sequential-counter seek, without a second sample memory. Addresses
 // and current_position use the same logical origin as sram_record.write_addr.
 // The bus engine reports its NEXT physical transaction address, including any
 // read pipeline flush clocks; do not substitute a count of delivered words.
 // Zero length is explicitly empty. A full-depth request is DEPTH, never zero.
+// TRLC-LINKS: REQ-SDS-043
 module sram_recall #(parameter AW=19)(
  input wire clk, reset, request, frozen,
  input wire [AW-1:0] record_start, current_position,

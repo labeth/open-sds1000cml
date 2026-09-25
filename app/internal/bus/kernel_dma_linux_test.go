@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-BUS
 package bus
 
 import (
@@ -5,6 +6,7 @@ import (
 	"testing"
 )
 
+// TRLC-LINKS: REQ-SDS-134
 func TestKernelStreamOwnsGPMC(t *testing.T) {
 	// Nil module file and invalid GPMC fd ensure guards precede device access.
 	d := &Dev{fd: -1, kernelDMA: &kernelDMADrainer{streaming: true, bytes: make([]byte, 16)}}
@@ -27,6 +29,7 @@ func TestKernelStreamOwnsGPMC(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-134
 func TestKernelStreamReadRequiresStart(t *testing.T) {
 	d := &Dev{kernelDMA: &kernelDMADrainer{}}
 	if _, e := d.ReadKernelStream(make([]byte, 16400)); e == nil {

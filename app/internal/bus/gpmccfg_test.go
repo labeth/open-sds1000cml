@@ -1,17 +1,22 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-BUS
 package bus
 
 import "testing"
 
 // The region survey must decode CONFIG7 the way the AM335x TRM defines it and
 // must never write. fakeRegs records writes.
+// TRLC-LINKS: REQ-SDS-133
 type recRegs struct {
 	v      map[uint32]uint32
 	writes int
 }
 
+// TRLC-LINKS: REQ-SDS-133
 func (r *recRegs) R(off uint32) uint32 { return r.v[off] }
+// TRLC-LINKS: REQ-SDS-133
 func (r *recRegs) W(off, val uint32)   { r.writes++ }
 
+// TRLC-LINKS: REQ-SDS-133
 func TestSurveyRegions(t *testing.T) {
 	r := &recRegs{v: map[uint32]uint32{}}
 	// CS1: valid, base 0x01000000, mask 0xF (16 MB); CS3: valid, base 0x07000000, 16 MB

@@ -1,0 +1,25 @@
+{
+  "source": "app/internal/web/perfserve_test.go",
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "scope": "Reviewed Go test outcomes; passing assertions contribute partial requirement evidence.",
+  "sourceSHA256": "6019eea0f667a32441e69d4b723c4dfcbd25e573933e08be9c0d4ce62ce077f1",
+  "logs": {
+    "test-runs/browser-harness-integrated.jsonl": "da4a91068ce21da214cd93b5c8929a9bd71461932024deace68c87cd4f739e69"
+  },
+  "tests": [
+    {
+      "name": "TestPerfServe",
+      "result": "skip",
+      "requirements": [
+        "REQ-SDS-180"
+      ]
+    }
+  ],
+  "results": [
+    {
+      "requirement": "REQ-SDS-180",
+      "status": "not-run",
+      "notes": "0 reviewed test outcomes pass; 0 fail; 1 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    }
+  ]
+}

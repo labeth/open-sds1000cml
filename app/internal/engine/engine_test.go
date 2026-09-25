@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
 package engine
 
 import (
@@ -11,11 +12,13 @@ import (
 )
 
 // fakeClock advances instantly on Sleep so FSM waits are deterministic.
+// TRLC-LINKS: REQ-SDS-001
 type fakeClock struct {
 	mu sync.Mutex
 	t  time.Time
 }
 
+// TRLC-LINKS: REQ-SDS-001
 func (c *fakeClock) clock() Clock {
 	return Clock{
 		Now: func() time.Time {
@@ -31,6 +34,7 @@ func (c *fakeClock) clock() Clock {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-001
 type wr struct {
 	plane uint8
 	sel   uint16
@@ -42,6 +46,7 @@ type wr struct {
 // state, BURST_REMAIN/BURST serve the programmed record only after HALT (or
 // continuously in STREAM mode), and every write is recorded for order
 // assertions.
+// TRLC-LINKS: REQ-SDS-001
 type fakeBus struct {
 	mu          sync.Mutex
 	writes      []wr
@@ -66,6 +71,7 @@ type fakeBus struct {
 	armCount              int  // GO writes; lets waves shift phase per capture
 }
 
+// TRLC-LINKS: REQ-SDS-001
 func newFakeBus() *fakeBus {
 	return &fakeBus{
 		doneOnGo:    true,
@@ -87,6 +93,7 @@ func newFakeBus() *fakeBus {
 // PRETRIG_MAX, post <= PRETRIG_MAX - pre, post >= 1. Programming more than
 // the fabric holds therefore yields a SHORTER record than asked for — the
 // mismatch the engine must never create.
+// TRLC-LINKS: REQ-SDS-001
 func (f *fakeBus) record() int {
 	pre, post := f.pre, f.post
 	if pre > iface.PretrigMax {
@@ -101,6 +108,7 @@ func (f *fakeBus) record() int {
 	return int(pre + post)
 }
 
+// TRLC-LINKS: REQ-SDS-001
 func (f *fakeBus) Read(plane uint8, sel uint16) (uint16, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -181,6 +189,7 @@ func (f *fakeBus) Read(plane uint8, sel uint16) (uint16, error) {
 }
 
 // pop is one BURST read (caller holds f.mu).
+// TRLC-LINKS: REQ-SDS-001
 func (f *fakeBus) pop() uint16 {
 	if !f.halted && !f.stream {
 		f.earlyDrain = true
@@ -198,6 +207,7 @@ func (f *fakeBus) pop() uint16 {
 	return uint16(c1)<<8 | uint16(c2)
 }
 
+// TRLC-LINKS: REQ-SDS-001
 func (f *fakeBus) Write(plane uint8, sel, val uint16) error {
 	if !bus.Writable(plane, sel) {
 		return fmt.Errorf("fake: write to non-writable cs%d %#04x", plane, sel)
@@ -240,6 +250,7 @@ func (f *fakeBus) Write(plane uint8, sel, val uint16) error {
 	return nil
 }
 
+// TRLC-LINKS: REQ-SDS-001
 func (f *fakeBus) RawWrite(sel, val uint16) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -247,6 +258,7 @@ func (f *fakeBus) RawWrite(sel, val uint16) error {
 	return nil
 }
 
+// TRLC-LINKS: REQ-SDS-001
 func (f *fakeBus) BurstInto(c1, c2 []uint8, n int) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -257,6 +269,7 @@ func (f *fakeBus) BurstInto(c1, c2 []uint8, n int) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-001
 func (f *fakeBus) PopWords(sel uint16, dst []uint16, n int) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -269,8 +282,10 @@ func (f *fakeBus) PopWords(sel uint16, dst []uint16, n int) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-001
 func (f *fakeBus) FastDrain() bool { return true }
 
+// TRLC-LINKS: REQ-SDS-001
 func (f *fakeBus) snapWrites() []wr {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -279,6 +294,7 @@ func (f *fakeBus) snapWrites() []wr {
 	return out
 }
 
+// TRLC-LINKS: REQ-SDS-001
 func (f *fakeBus) clearWrites() {
 	f.mu.Lock()
 	f.writes = nil
@@ -287,6 +303,7 @@ func (f *fakeBus) clearWrites() {
 
 // bringUpWords is the register program bringUp writes for a band at record
 // depth cols: the sequence the test suite pins (workplan §2 order).
+// TRLC-LINKS: REQ-SDS-001
 func bringUpWords(b Band, cols int, run, acq, lvl uint16) []wr {
 	pre, post := uint32(cols/2), uint32(cols-cols/2)
 	d := b.Decim()
@@ -310,6 +327,7 @@ const (
 		uint16(trigHyst)<<iface.AcqCtrlTrigHystShift | iface.AcqCtrlPairEnMask // CH1, rising
 )
 
+// TRLC-LINKS: REQ-SDS-001
 func newTestEngine(t *testing.T, fb *fakeBus) (*Engine, *fakeClock) {
 	t.Helper()
 	clk := &fakeClock{t: time.Unix(1000, 0)}
@@ -317,6 +335,7 @@ func newTestEngine(t *testing.T, fb *fakeBus) (*Engine, *fakeClock) {
 	return e, clk
 }
 
+// TRLC-LINKS: REQ-SDS-001
 func wantWrites(t *testing.T, got, want []wr) {
 	t.Helper()
 	if len(got) != len(want) {
@@ -331,6 +350,7 @@ func wantWrites(t *testing.T, got, want []wr) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-008, REQ-SDS-011
 func TestHoldoffPacing(t *testing.T) {
 	fb := newFakeBus()
 	e, _ := newTestEngine(t, fb)
@@ -362,6 +382,7 @@ func TestHoldoffPacing(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-001, REQ-SDS-010, REQ-SDS-011
 func TestBringUpWriteOrder(t *testing.T) {
 	fb := newFakeBus()
 	e, _ := newTestEngine(t, fb)
@@ -402,6 +423,7 @@ func TestBringUpWriteOrder(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-001, REQ-SDS-009
 func TestArmSequence(t *testing.T) {
 	fb := newFakeBus()
 	e, _ := newTestEngine(t, fb)
@@ -430,6 +452,7 @@ func TestArmSequence(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-008, REQ-SDS-010
 func TestBandChangeAppliedAtBoundary(t *testing.T) {
 	fb := newFakeBus()
 	e, _ := newTestEngine(t, fb)
@@ -450,6 +473,7 @@ func TestBandChangeAppliedAtBoundary(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-001, REQ-SDS-008, REQ-SDS-025
 func TestStopKeepsHeartbeatAndServicesCommands(t *testing.T) {
 	fb := newFakeBus()
 	e, _ := newTestEngine(t, fb)
@@ -492,6 +516,7 @@ func TestStopKeepsHeartbeatAndServicesCommands(t *testing.T) {
 	waitFor(t, func() bool { return e.Snapshot().Published > pub })
 }
 
+// TRLC-LINKS: REQ-SDS-001, REQ-SDS-022
 func TestMatrixAndLEDService(t *testing.T) {
 	fb := newFakeBus()
 	e, _ := newTestEngine(t, fb)
@@ -522,6 +547,7 @@ func TestMatrixAndLEDService(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-008
 func TestRunStopsAtBoundary(t *testing.T) {
 	fb := newFakeBus()
 	e, _ := newTestEngine(t, fb)
@@ -532,6 +558,7 @@ func TestRunStopsAtBoundary(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-001
 func waitFor(t *testing.T, cond func() bool) {
 	t.Helper()
 	deadline := time.Now().Add(5 * time.Second)

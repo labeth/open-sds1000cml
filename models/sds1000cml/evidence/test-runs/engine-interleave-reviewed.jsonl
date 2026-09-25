@@ -1,0 +1,12 @@
+{"Time":"2026-09-23T08:43:43.927493411+02:00","Action":"start","Package":"open-sds/app/internal/engine"}
+{"Time":"2026-09-23T08:43:43.938079485+02:00","Action":"run","Package":"open-sds/app/internal/engine","Test":"TestInterleaveCalibrationRotationAndGuards"}
+{"Time":"2026-09-23T08:43:43.938132628+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestInterleaveCalibrationRotationAndGuards","Output":"=== RUN   TestInterleaveCalibrationRotationAndGuards\n"}
+{"Time":"2026-09-23T08:43:43.994481161+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestInterleaveCalibrationRotationAndGuards","Output":"--- PASS: TestInterleaveCalibrationRotationAndGuards (0.06s)\n"}
+{"Time":"2026-09-23T08:43:43.994516761+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Test":"TestInterleaveCalibrationRotationAndGuards","Elapsed":0.06}
+{"Time":"2026-09-23T08:43:43.994542885+02:00","Action":"run","Package":"open-sds/app/internal/engine","Test":"TestVerifiedInterleaveRanges"}
+{"Time":"2026-09-23T08:43:43.994548414+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestVerifiedInterleaveRanges","Output":"=== RUN   TestVerifiedInterleaveRanges\n"}
+{"Time":"2026-09-23T08:43:43.994616479+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestVerifiedInterleaveRanges","Output":"--- PASS: TestVerifiedInterleaveRanges (0.00s)\n"}
+{"Time":"2026-09-23T08:43:43.994626301+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Test":"TestVerifiedInterleaveRanges","Elapsed":0}
+{"Time":"2026-09-23T08:43:43.994871317+02:00","Action":"output","Package":"open-sds/app/internal/engine","Output":"PASS\n"}
+{"Time":"2026-09-23T08:43:44.996860167+02:00","Action":"output","Package":"open-sds/app/internal/engine","Output":"ok  \topen-sds/app/internal/engine\t1.069s\n"}
+{"Time":"2026-09-23T08:43:44.996882153+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Elapsed":1.069}

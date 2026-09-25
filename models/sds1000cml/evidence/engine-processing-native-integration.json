@@ -1,0 +1,29 @@
+{
+  "requirements": 126,
+  "files": 9,
+  "functions": 58,
+  "types": 8,
+  "nativeSummaries": [
+    {
+      "path": "test-results/go/app/internal/engine/sram_test.json",
+      "tests": 9
+    },
+    {
+      "path": "test-results/go/app/internal/engine/sram_math_test.json",
+      "tests": 3
+    },
+    {
+      "path": "test-results/go/app/internal/engine/interleave_cal_test.json",
+      "tests": 2
+    },
+    {
+      "path": "test-results/go/app/internal/engine/qualify_test.json",
+      "tests": 13
+    }
+  ],
+  "scope": "27 unique original tests with partial requirement evidence; no runSRAM, physical interleave phase or effective-locking qualification.",
+  "knownGaps": [
+    "REQ-SDS-074 metadata condition remains unproven on legacy fingerprint path",
+    "Uniformity test permits zero telemetry without proving updates"
+  ]
+}

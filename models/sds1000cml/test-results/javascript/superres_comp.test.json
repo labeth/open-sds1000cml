@@ -1,0 +1,31 @@
+{
+  "source": "app/internal/web/superres_comp.test.cjs",
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "sourceSHA256": "51683258b41f20d8d3ce772ffb0ec7e90417ea6ec745bdbd45ca59eefa864944",
+  "scope": "Original frozen Node suite; exact approved comments connect the tested inputs to current source. Synthetic evidence only.",
+  "logs": {
+    "evidence/test-runs/reviewed-superres_comp.test.cjs.log": "4162f87b1b9b2faf3b2ebccca9d74441a23091c0c1b8815ef98c833a9f1c4d44"
+  },
+  "tests": [
+    {
+      "name": "superres_comp.test.cjs",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-142",
+        "REQ-SDS-181"
+      ]
+    }
+  ],
+  "results": [
+    {
+      "requirement": "REQ-SDS-142",
+      "status": "partial",
+      "notes": "Original synthetic assertions pass. Preserve superres-numerical-source-review.json limitations; no physical calibration, timing or ENOB qualification."
+    },
+    {
+      "requirement": "REQ-SDS-181",
+      "status": "partial",
+      "notes": "Original synthetic assertions pass. Preserve superres-numerical-source-review.json limitations; no physical calibration, timing or ENOB qualification."
+    }
+  ]
+}

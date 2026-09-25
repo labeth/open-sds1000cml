@@ -1,0 +1,31 @@
+{
+  "identity": {
+    "epoch": 3,
+    "record": 109
+  },
+  "config": {
+    "source": 0,
+    "normal": true,
+    "pre_words": 262144,
+    "post_words": 262144,
+    "trigger_level": 103,
+    "trigger_hysteresis": 4,
+    "usbls": {
+      "enabled": true,
+      "channel": 0,
+      "inverted": false,
+      "bit_ticks_q8": 21333,
+      "pattern": 65365,
+      "length": 2
+    }
+  },
+  "status": "Triggered: 1048576 samples/channel retained. Download before ending the session.",
+  "countBefore": "40736 events · 2068 lost",
+  "rawBytes": 2097152,
+  "sha256": "9568c0e752faf170b33695984a9ebdf3e8e28ed9da587bbaae98c42fd004ac9c",
+  "countAfter": "254916 events · 2068 lost",
+  "events": "DATA F7\nDATA 6B\nEND C3\nERROR C2\nSTART C3\nDATA FF\nDATA 55\nDATA AA\nDATA F\nDATA F0\nDATA 0\nDATA F8\nDATA FD\nDATA 48\nEND C3\nSTART C3\nDATA 0\nDATA 11\nDATA 22\nDATA 33\nDATA F7\nDATA 6B\nEND C3\nERROR C2",
+  "error": "Error: UI transcript stopped, lost events or omitted USB bytes",
+  "endStatus": 204,
+  "restoreStatus": 200
+}

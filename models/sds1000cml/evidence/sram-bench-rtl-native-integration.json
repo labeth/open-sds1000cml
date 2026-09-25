@@ -1,0 +1,23 @@
+{
+  "status": "integrated-with-explicit-verification-limits",
+  "files": 2,
+  "moduleLinks": 4,
+  "newRequirements": [
+    "REQ-SDS-193"
+  ],
+  "cases": 2,
+  "passed": 2,
+  "nativeSummaries": 1,
+  "totalRTLCases": 123,
+  "totalNativeRTLSummaries": 58,
+  "checks": {
+    "exactBaselineAndTokens": "pass",
+    "evidenceProvenance": "pass",
+    "traceAudit": "incomplete:12 RTL files still lack links",
+    "publication": "pass",
+    "pdf": "deferred by user",
+    "nativeAttachments": "pass",
+    "strictConsistency": "pass"
+  },
+  "scope": "Bounded behavioral SRAM test evidence; full model completion remains unproven."
+}

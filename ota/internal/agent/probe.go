@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-OTA-AGENT
 package agent
 
 import (
@@ -13,6 +14,7 @@ import (
 // the open platform questions the specs leave to on-device verification:
 // kernel, network config, factory-app identity, watchdog/portmap holders,
 // mount points, and (opt-in) a safe GPMC version/fill read.
+// TRLC-LINKS: REQ-SDS-114
 type ProbeReport struct {
 	Device      string             `json:"device"`
 	Uname       string             `json:"uname"`
@@ -29,8 +31,10 @@ type ProbeReport struct {
 }
 
 // Probe is the exported entry for the `agent probe` subcommand.
+// TRLC-LINKS: REQ-SDS-114
 func (a *Agent) Probe(readGpmc bool) ProbeReport { return a.probe(readGpmc) }
 
+// TRLC-LINKS: REQ-SDS-114
 func (a *Agent) probe(readGpmc bool) ProbeReport {
 	r := ProbeReport{
 		Device:      a.cfg.DeviceID,
@@ -76,6 +80,7 @@ func (a *Agent) probe(readGpmc bool) ProbeReport {
 	return r
 }
 
+// TRLC-LINKS: REQ-SDS-114
 func hex4(v uint16) string {
 	const d = "0123456789abcdef"
 	return "0x" + string([]byte{d[v>>12&0xf], d[v>>8&0xf], d[v>>4&0xf], d[v&0xf]})

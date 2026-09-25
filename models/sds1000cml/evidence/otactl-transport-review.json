@@ -1,0 +1,17 @@
+{
+  "scope": "Reviewed source integrated with REQ-SDS-109 through REQ-SDS-112. Verification is limited to identified tests and inspection; no physical operations or qualification.",
+  "sourceSHA256": {
+    "ota/internal/otactl/transport.go": "b3f7e79d1255dc671c682224c2364cbb2ff21babe6cd3e6ed378848067d3a45d"
+  },
+  "brokerEvidence": "agent-nats-e2e-review.json",
+  "findings": [
+    "Transport interface defines Call and Close; TCP and NATS implementations return decoded response objects without converting OK=false into a transport error.",
+    "TCP creates a fresh connection per call, with fixed five-second dial timeout followed by caller-supplied I/O deadline. Caller timeout is not an end-to-end deadline including dial. Close is a no-op because calls own their connections.",
+    "Both Call implementations ignore request JSON marshal errors. Unsupported argument values can result in an empty payload, producing downstream protocol behavior instead of immediate serialization failure.",
+    "TCP writes one request plus newline and reads through newline; a nonempty response fragment is decoded despite a simultaneous read error. One-MiB buffer does not bound response length.",
+    "NATS connection uses name otactl and five-second connection timeout, then caller options. Calls use ota.<device>.rpc and supplied request timeout. Device text is concatenated without validation here.",
+    "NATS Close calls Drain and ignores its error; Conn exposes the underlying connection on the concrete type. truncate limits error excerpts by bytes and can split UTF-8; negative n would panic but internal use is 200.",
+    "Existing isolated NATS/TCP parity test covers selected valid requests, response identity/status and unknown-command errors. It does not establish malformed argument handling, complete timeouts, reconnect or transport security."
+  ],
+  "integration": "Host controller declarations integrated with REQ-SDS-109 through REQ-SDS-112; broker test also retains REQ-SDS-108. Inspection-only recovery and broker startup remain unqualified."
+}

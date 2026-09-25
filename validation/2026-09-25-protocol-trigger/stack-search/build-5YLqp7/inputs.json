@@ -1,0 +1,9 @@
+{
+  "sourceHashes": {
+    "stack_moments.v": "a8691de32e0a5745034205bd3578780e34735bbcfd21a35732e42237f4e70982",
+    "stack_correlation.v": "cc4a70f762f09300c00dc7bd573abd7c4608604510b1eb7074f9ab2389b1b3dd",
+    "stack_match_score.v": "8ac0895724d76b0fb3c332e4abdf3399e22e15b0da7077fe49772aa2c7dd70fc",
+    "stack_peaks.v": "e350ca5798febdbff118ac1058256cb9fc8455663727aa1eb812456338fc5f56",
+    "stack_search.v": "ff831d06cb740c0cdf728dec1f5281ee1f9034e833d55776a666fd2b7d50eba0"
+  }
+}

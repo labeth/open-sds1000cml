@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-WEB
 // Real-browser e2e for the frame transport (argv[2]=URL). There is ONE
 // transport — the binary /api/frame.bin long-poll — with no JSON fallback.
 // Verifies:
@@ -24,7 +25,9 @@ try { browser = await chromium.launch({ headless: true, args: ["--no-sandbox", "
 catch (e) { console.log("SKIP: cannot launch chromium:", e.message); process.exit(0); }
 
 let fails = 0;
+// TRLC-LINKS: REQ-SDS-180
 const ok = (c, m) => { console.log((c ? "ok  - " : "FAIL- ") + m); if (!c) fails++; };
+// TRLC-LINKS: REQ-SDS-180
 const seqAdvances = async (page, ms) => {
   const s0 = await page.evaluate(() => (typeof frame !== "undefined" && frame) ? frame.seq : 0);
   await page.waitForTimeout(ms);

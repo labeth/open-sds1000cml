@@ -1,0 +1,71 @@
+{
+  "status": "Memory-scheduled waveform search now supplies Q24 fractional offsets; physical memory integration, segment checking, resampling and accumulation remain unfinished",
+  "sourceHashes": {
+    "fpga/acq_sram/stack_moments.v": "a8691de32e0a5745034205bd3578780e34735bbcfd21a35732e42237f4e70982",
+    "fpga/acq_sram/stack_correlation.v": "241e04c276c727794c4d94f85e9870aafcb4866142cc73a311796da127243d13",
+    "fpga/acq_sram/stack_match_score.v": "8ac0895724d76b0fb3c332e4abdf3399e22e15b0da7077fe49772aa2c7dd70fc",
+    "fpga/acq_sram/stack_peaks.v": "b7d75dc8b2d3461265bb43bb28ac91cd965e049fe5cc80951f82ab36718ebe37",
+    "fpga/acq_sram/stack_search.v": "ff831d06cb740c0cdf728dec1f5281ee1f9034e833d55776a666fd2b7d50eba0",
+    "fpga/acq_sram/stack_window_reader.v": "95550afb705a3b8d1da74b8bb4ebdb969cd83e3f20ddc4cf03c910a894d2d4d9",
+    "fpga/acq_sram/stack_memory_search.v": "9d1d555a0faeaff4706fa5484f6a37fe9fb1bdc846930e62b794b3a5f5214c97",
+    "fpga/acq_sram/stack_alignment.v": "8f2354248802dc348d6ed84c4cba7e7aa938f939646b5c6779bf8f45bcb6e505",
+    "fpga/acq_sram/sim/tb_stack_alignment.v": "0bfc7ec145ac17ca0f60d18e7b0407754720a9b1884ca4c80962f0d7244a0dfc",
+    "app/internal/superres/stack_alignment_rtl_test.go": "b3ef3396a141016da86880ec25d7d993bd8e7a557325de60293741ee9830abb9",
+    "fpga/acq_sram/sim/tb_stack_search.v": "0ce6ef1a137ca956dc2e1e46b253808161d51d6acd1baf15880cff052518fff0",
+    "fpga/acq_sram/sim/tb_stack_memory_search.v": "1729a871aeacb5a9528d00276e431916e49e628834c538a903e5301c5629f0dc",
+    "fpga/acq_sram/sim/tb_stack_correlation.v": "ce273c324972b5e248a62e76ad31ad4d6bfddc51973813f8d15a179dfc46d5a7",
+    "app/internal/superres/stack_search_rtl_test.go": "7d1759b51254e1928d0474ca65c974506a6ed28131b5a8f380b72b9b90589772",
+    "app/internal/superres/stack_correlation_rtl_test.go": "c09def9c510699d26595eed00e974e028775104044e04db92e4ee5c96e79f33e",
+    "app/internal/superres/stack_peaks_rtl_test.go": "62c7738314a614ffe3e555ae80cac4ef34d53ae38857a6051726062081803377",
+    "fpga/acq_sram/sim/tb_stack_peaks.v": "25f6bb33a1b3368bab7ba763c9e1534a5589373b67d126553d9aed0e109e7ec3"
+  },
+  "tests": {
+    "exitCode": 0,
+    "alignmentFixtures": 434,
+    "alignmentMaxClocks": 229,
+    "alignmentFractionalBits": 24,
+    "maxAlignmentErrorSamples": 5.960464477539063e-8,
+    "memorySearchFixtures": 25,
+    "directSearchFixtures": 20,
+    "peakFixtures": 109,
+    "scoreWaveformWindows": 41,
+    "scoreFullWidthCases": 86,
+    "coverage": "Exact arbitrary-precision and floating-point alignment comparison; boundaries, curvature, clamping, tiny differences and aborts; connected memory candidates include verified stable offsets; memory errors, stalls and restart safety retained"
+  },
+  "synthesis": {
+    "build": "build-eiEX00",
+    "device": "EP4CE10F17C8",
+    "clockMHz": 125,
+    "logicElements": 4774,
+    "registers": 3806,
+    "memoryBits": 0,
+    "dsp9BitElements": 3,
+    "slacksNs": [
+      0.517,
+      0.404,
+      3.476,
+      1.064,
+      0.363,
+      3.381,
+      4.713,
+      0.146,
+      3.097
+    ],
+    "minSetupSlackNs": 0.517,
+    "minHoldSlackNs": 0.146,
+    "limitations": "Physical clock constrained; virtual data I/O unconstrained. No physical memory adapters, acquisition image, segment validation or accumulator. Nominal unallocated LE count 5546 is not a full-image budget."
+  },
+  "modelValidation": {
+    "exitCode": 0,
+    "strict": true,
+    "errors": 0,
+    "warnings": 604,
+    "log": "model-validation.log",
+    "sourceHashes": {
+      "models/sds1000cml/engmod.yml": "85cd6c8a6e268f8301c4fe64392855034b5a5b2e5075cc951b59711fb545c733",
+      "models/sds1000cml/model/decisions.yml": "2697d7eef8cabfd636de38996d3ff5247591d924ca72e0d1f361715e6d14d9d4",
+      "models/sds1000cml/model/requirements.yml": "ef3cfc4e34b7ee029d1fcff8188a5e11741e58174f3a4e084c90231329b4e8c8"
+    }
+  },
+  "deployment": "No change; general/current remains build-v5T40o"
+}

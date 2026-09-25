@@ -1,9 +1,11 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-PANEL
 package panel
 
 import "testing"
 
 // The SCPI display commands (XYDS/PESU/MENU) are backed by these accessors —
 // they must reflect and drive the same state the menus/LCD use.
+// TRLC-LINKS: REQ-SDS-136
 func TestDisplayStateAccessors(t *testing.T) {
 	c, _, _ := newC(t)
 

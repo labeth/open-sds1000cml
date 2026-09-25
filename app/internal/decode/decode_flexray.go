@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-DECODE
 package decode
 
 import (
@@ -12,6 +13,7 @@ import (
 //	Bitrate   0 => auto-infer the bit period from edge statistics; else bits/s
 //	          (FlexRay is 10 Mbit/s, but colTimeS varies so infer when unset).
 //	Threshold /HaveThr override the auto slice threshold (see sliceChannel).
+// TRLC-LINKS: REQ-SDS-018
 type FlexRayCfg struct {
 	Bitrate   int
 	Threshold float64
@@ -22,6 +24,7 @@ type FlexRayCfg struct {
 // x^7+x^2+1, init 0x1A) over the 20 protected header bits, MSB-first: sync(1),
 // startup(1), frameID(11), payloadLen(7). A frame whose transmitted header-CRC
 // field disagrees with this is corrupt and must not be accepted as a valid frame.
+// TRLC-LINKS: REQ-SDS-018
 func flexHeaderCRC11(sync, startup, frameID, payloadLen int) int {
 	bits := make([]int, 0, 20)
 	bits = append(bits, sync&1, startup&1)
@@ -48,6 +51,7 @@ func flexHeaderCRC11(sync, startup, frameID, payloadLen int) int {
 // sigrok oracle cross-check: this decoder validated only the header CRC-11,
 // so a corrupted payload/trailer read back as a clean frame while sigrok's
 // flexray decoder flagged it (oracle_flexray_test.go pins both now).
+// TRLC-LINKS: REQ-SDS-018
 func flexFrameCRC24(frameBytes []int) int {
 	crc := 0xFEDCBA
 	for _, by := range frameBytes {
@@ -78,6 +82,7 @@ func flexFrameCRC24(frameBytes []int) int {
 // its shape distinguishes "another byte follows" (BSS = high,low) from "frame is
 // over" (FES = low,high, or idle = high,high). Mirrors decode_flexray.js step
 // for step so the web overlay and the on-device LCD agree byte-for-byte.
+// TRLC-LINKS: REQ-SDS-018
 func DecodeFlexRay(codes []uint8, colTimeS float64, cfg FlexRayCfg) Result {
 	const minSPB = 4.0
 	const tssMinLowBits = 4.0 // "~5 bit-times of LOW" — accept a little short for jitter

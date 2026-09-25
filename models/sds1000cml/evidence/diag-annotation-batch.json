@@ -1,0 +1,605 @@
+{
+  "status": "integrated",
+  "files": [
+    {
+      "path": "app/internal/diag/busprobe.go",
+      "owner": "FU-APP-DIAG",
+      "functions": {
+        "Diag.BusProbe": [
+          "REQ-SDS-149"
+        ],
+        "BusProbeResult.decode": [
+          "REQ-SDS-149"
+        ],
+        "Diag.CS3Census": [
+          "REQ-SDS-149"
+        ],
+        "Diag.CS3Poke": [
+          "REQ-SDS-149"
+        ]
+      },
+      "types": {
+        "BusProbeOptions": [
+          "REQ-SDS-149"
+        ],
+        "BallActivity": [
+          "REQ-SDS-149"
+        ],
+        "BusProbeResult": [
+          "REQ-SDS-149"
+        ],
+        "CS3Cell": [
+          "REQ-SDS-149"
+        ],
+        "CS3PokeOptions": [
+          "REQ-SDS-149"
+        ]
+      }
+    },
+    {
+      "path": "app/internal/diag/diag.go",
+      "owner": "FU-APP-DIAG",
+      "functions": {
+        "RunnerFunc.Exec": [
+          "REQ-SDS-143"
+        ],
+        "New": [
+          "REQ-SDS-143"
+        ],
+        "Diag.SetStatusExtra": [
+          "REQ-SDS-143"
+        ],
+        "BusBallIndex": [
+          "REQ-SDS-144",
+          "REQ-SDS-145"
+        ],
+        "LaneName": [
+          "REQ-SDS-144"
+        ],
+        "laneIndices": [
+          "REQ-SDS-144"
+        ],
+        "ResolveSel": [
+          "REQ-SDS-143"
+        ],
+        "ResolveDiagIdx": [
+          "REQ-SDS-143"
+        ],
+        "diagEntryAt": [
+          "REQ-SDS-143"
+        ],
+        "decode": [
+          "REQ-SDS-143"
+        ],
+        "Diag.RegRead": [
+          "REQ-SDS-143"
+        ],
+        "Diag.RegWrite": [
+          "REQ-SDS-143"
+        ],
+        "Diag.RegWriteSnoop": [
+          "REQ-SDS-143"
+        ],
+        "winRead": [
+          "REQ-SDS-143"
+        ],
+        "winWrite": [
+          "REQ-SDS-143"
+        ],
+        "Diag.WindowRead": [
+          "REQ-SDS-143"
+        ],
+        "Diag.WindowWrite": [
+          "REQ-SDS-143"
+        ],
+        "readIdentity": [
+          "REQ-SDS-143"
+        ],
+        "Diag.Identity": [
+          "REQ-SDS-143"
+        ],
+        "Diag.Status": [
+          "REQ-SDS-143"
+        ],
+        "boolWord": [
+          "REQ-SDS-143"
+        ],
+        "reg": [
+          "REQ-SDS-144"
+        ],
+        "Diag.Census": [
+          "REQ-SDS-144"
+        ],
+        "busBit": [
+          "REQ-SDS-144",
+          "REQ-SDS-145"
+        ],
+        "setBusBit": [
+          "REQ-SDS-144",
+          "REQ-SDS-145"
+        ],
+        "Diag.Snapshot": [
+          "REQ-SDS-144"
+        ],
+        "readBus": [
+          "REQ-SDS-145"
+        ],
+        "Diag.BusRead": [
+          "REQ-SDS-145"
+        ],
+        "Diag.BusDrive": [
+          "REQ-SDS-145"
+        ],
+        "driveBall": [
+          "REQ-SDS-145"
+        ],
+        "Diag.BusMaster": [
+          "REQ-SDS-145"
+        ],
+        "Diag.BusReleaseAll": [
+          "REQ-SDS-145"
+        ],
+        "Diag.SetCtrl": [
+          "REQ-SDS-145"
+        ],
+        "setCtrlBits": [
+          "REQ-SDS-145"
+        ],
+        "saveRegs": [
+          "REQ-SDS-145",
+          "REQ-SDS-146",
+          "REQ-SDS-147",
+          "REQ-SDS-148"
+        ],
+        "regSnapshot.restore": [
+          "REQ-SDS-145",
+          "REQ-SDS-146",
+          "REQ-SDS-147",
+          "REQ-SDS-148"
+        ],
+        "observe": [
+          "REQ-SDS-145"
+        ],
+        "Diag.VendorSequence": [
+          "REQ-SDS-145"
+        ],
+        "Diag.E2": [
+          "REQ-SDS-145"
+        ],
+        "Diag.Capture": [
+          "REQ-SDS-148"
+        ],
+        "score": [
+          "REQ-SDS-148"
+        ]
+      },
+      "types": {
+        "Runner": [
+          "REQ-SDS-143"
+        ],
+        "RunnerFunc": [
+          "REQ-SDS-143"
+        ],
+        "Diag": [
+          "REQ-SDS-143"
+        ],
+        "RegVal": [
+          "REQ-SDS-143"
+        ],
+        "SnoopVal": [
+          "REQ-SDS-143"
+        ],
+        "WindowVal": [
+          "REQ-SDS-143"
+        ],
+        "Identity": [
+          "REQ-SDS-143"
+        ],
+        "Lane": [
+          "REQ-SDS-144"
+        ],
+        "Census": [
+          "REQ-SDS-144"
+        ],
+        "BusState": [
+          "REQ-SDS-145"
+        ],
+        "Ball": [
+          "REQ-SDS-145"
+        ],
+        "regSnapshot": [
+          "REQ-SDS-145",
+          "REQ-SDS-146",
+          "REQ-SDS-147",
+          "REQ-SDS-148"
+        ],
+        "VendorStep": [
+          "REQ-SDS-145"
+        ],
+        "VendorResult": [
+          "REQ-SDS-145"
+        ],
+        "E2Options": [
+          "REQ-SDS-145"
+        ],
+        "BallScore": [
+          "REQ-SDS-145"
+        ],
+        "E2Condition": [
+          "REQ-SDS-145"
+        ],
+        "E2Result": [
+          "REQ-SDS-145"
+        ],
+        "tally": [
+          "REQ-SDS-145"
+        ],
+        "CaptureOptions": [
+          "REQ-SDS-148"
+        ],
+        "CaptureResult": [
+          "REQ-SDS-148"
+        ]
+      }
+    },
+    {
+      "path": "app/internal/diag/diag_test.go",
+      "owner": "FU-APP-DIAG",
+      "functions": {
+        "newFakeFabric": [
+          "REQ-SDS-143",
+          "REQ-SDS-144",
+          "REQ-SDS-145",
+          "REQ-SDS-146",
+          "REQ-SDS-147",
+          "REQ-SDS-148"
+        ],
+        "fakeFabric.window": [
+          "REQ-SDS-143",
+          "REQ-SDS-144",
+          "REQ-SDS-145",
+          "REQ-SDS-146",
+          "REQ-SDS-147",
+          "REQ-SDS-148"
+        ],
+        "fakeFabric.latch": [
+          "REQ-SDS-143",
+          "REQ-SDS-144",
+          "REQ-SDS-145",
+          "REQ-SDS-146",
+          "REQ-SDS-147",
+          "REQ-SDS-148"
+        ],
+        "fakeFabric.pop": [
+          "REQ-SDS-143",
+          "REQ-SDS-144",
+          "REQ-SDS-145",
+          "REQ-SDS-146",
+          "REQ-SDS-147",
+          "REQ-SDS-148"
+        ],
+        "v22Live": [
+          "REQ-SDS-143",
+          "REQ-SDS-144",
+          "REQ-SDS-145",
+          "REQ-SDS-146",
+          "REQ-SDS-147",
+          "REQ-SDS-148"
+        ],
+        "fakeFabric.busRd": [
+          "REQ-SDS-143",
+          "REQ-SDS-144",
+          "REQ-SDS-145",
+          "REQ-SDS-146",
+          "REQ-SDS-147",
+          "REQ-SDS-148"
+        ],
+        "fakeFabric.Read": [
+          "REQ-SDS-143",
+          "REQ-SDS-144",
+          "REQ-SDS-145",
+          "REQ-SDS-146",
+          "REQ-SDS-147",
+          "REQ-SDS-148"
+        ],
+        "fakeFabric.Write": [
+          "REQ-SDS-143",
+          "REQ-SDS-144",
+          "REQ-SDS-145",
+          "REQ-SDS-146",
+          "REQ-SDS-147",
+          "REQ-SDS-148"
+        ],
+        "fakeFabric.RawWrite": [
+          "REQ-SDS-143",
+          "REQ-SDS-144",
+          "REQ-SDS-145",
+          "REQ-SDS-146",
+          "REQ-SDS-147",
+          "REQ-SDS-148"
+        ],
+        "fakeFabric.BurstInto": [
+          "REQ-SDS-143",
+          "REQ-SDS-144",
+          "REQ-SDS-145",
+          "REQ-SDS-146",
+          "REQ-SDS-147",
+          "REQ-SDS-148"
+        ],
+        "fakeFabric.PopWords": [
+          "REQ-SDS-143",
+          "REQ-SDS-144",
+          "REQ-SDS-145",
+          "REQ-SDS-146",
+          "REQ-SDS-147",
+          "REQ-SDS-148"
+        ],
+        "fakeFabric.FastDrain": [
+          "REQ-SDS-143",
+          "REQ-SDS-144",
+          "REQ-SDS-145",
+          "REQ-SDS-146",
+          "REQ-SDS-147",
+          "REQ-SDS-148"
+        ],
+        "direct": [
+          "REQ-SDS-143",
+          "REQ-SDS-144",
+          "REQ-SDS-145",
+          "REQ-SDS-146",
+          "REQ-SDS-147",
+          "REQ-SDS-148"
+        ],
+        "newTestDiag": [
+          "REQ-SDS-143",
+          "REQ-SDS-144",
+          "REQ-SDS-145",
+          "REQ-SDS-146",
+          "REQ-SDS-147",
+          "REQ-SDS-148"
+        ],
+        "TestResolveNames": [
+          "REQ-SDS-143",
+          "REQ-SDS-144"
+        ],
+        "TestRegAndWindowAccess": [
+          "REQ-SDS-143"
+        ],
+        "TestIdentityAndStatus": [
+          "REQ-SDS-143"
+        ],
+        "TestCensus": [
+          "REQ-SDS-144"
+        ],
+        "TestSnapshot": [
+          "REQ-SDS-144"
+        ],
+        "TestBusDrive": [
+          "REQ-SDS-145"
+        ],
+        "TestVendorSequence": [
+          "REQ-SDS-145"
+        ],
+        "TestE2FollowRates": [
+          "REQ-SDS-145"
+        ],
+        "TestCaptureScoresRamp": [
+          "REQ-SDS-148"
+        ],
+        "TestRunnerErrorsPropagate": [
+          "REQ-SDS-143",
+          "REQ-SDS-144"
+        ],
+        "TestCaptureTsrcAndWindow": [
+          "REQ-SDS-148"
+        ],
+        "TestRedrainWindows": [
+          "REQ-SDS-148"
+        ],
+        "TestSchemaCheck": [
+          "REQ-SDS-147"
+        ],
+        "fakeTimingPort.Read": [
+          "REQ-SDS-146"
+        ],
+        "fakeTimingPort.set": [
+          "REQ-SDS-146"
+        ],
+        "fakeTimingPort.Apply": [
+          "REQ-SDS-146"
+        ],
+        "fakeTimingPort.Restore": [
+          "REQ-SDS-146"
+        ],
+        "TestGpmcSweepPersistApply": [
+          "REQ-SDS-146"
+        ]
+      },
+      "types": {
+        "fakeFabric": [
+          "REQ-SDS-143",
+          "REQ-SDS-144",
+          "REQ-SDS-145",
+          "REQ-SDS-146",
+          "REQ-SDS-147",
+          "REQ-SDS-148"
+        ],
+        "fakeTimingPort": [
+          "REQ-SDS-146"
+        ]
+      }
+    },
+    {
+      "path": "app/internal/diag/quietlisten.go",
+      "owner": "FU-APP-DIAG",
+      "functions": {
+        "broke": [
+          "REQ-SDS-150"
+        ],
+        "Diag.QuietListen": [
+          "REQ-SDS-150"
+        ]
+      },
+      "types": {
+        "QuietOptions": [
+          "REQ-SDS-150"
+        ],
+        "QuietLane": [
+          "REQ-SDS-150"
+        ],
+        "QuietResult": [
+          "REQ-SDS-150"
+        ]
+      }
+    },
+    {
+      "path": "app/internal/diag/sramcrank.go",
+      "owner": "FU-APP-DIAG",
+      "functions": {
+        "Diag.SramCrank": [
+          "REQ-SDS-151"
+        ]
+      },
+      "types": {
+        "CrankOptions": [
+          "REQ-SDS-151"
+        ],
+        "CrankLane": [
+          "REQ-SDS-151"
+        ],
+        "CrankResult": [
+          "REQ-SDS-151"
+        ]
+      }
+    },
+    {
+      "path": "app/internal/diag/v3.go",
+      "owner": "FU-APP-DIAG",
+      "functions": {
+        "sweepJob.finished": [
+          "REQ-SDS-146"
+        ],
+        "sweepJob.progress": [
+          "REQ-SDS-146"
+        ],
+        "Diag.SetTiming": [
+          "REQ-SDS-146"
+        ],
+        "Diag.timingPort": [
+          "REQ-SDS-146"
+        ],
+        "Diag.GpmcStatus": [
+          "REQ-SDS-146"
+        ],
+        "sweepTimeout": [
+          "REQ-SDS-146"
+        ],
+        "Diag.GpmcSweep": [
+          "REQ-SDS-146"
+        ],
+        "Diag.runSweep": [
+          "REQ-SDS-146"
+        ],
+        "Diag.GpmcPersist": [
+          "REQ-SDS-146"
+        ],
+        "Diag.GpmcApply": [
+          "REQ-SDS-146"
+        ],
+        "fromFields": [
+          "REQ-SDS-146"
+        ],
+        "liveMask": [
+          "REQ-SDS-147"
+        ],
+        "fieldUnion": [
+          "REQ-SDS-147"
+        ],
+        "Diag.SchemaCheck": [
+          "REQ-SDS-147"
+        ],
+        "Diag.Redrain": [
+          "REQ-SDS-148"
+        ]
+      },
+      "types": {
+        "timingCtl": [
+          "REQ-SDS-146"
+        ],
+        "sweepJob": [
+          "REQ-SDS-146"
+        ],
+        "GpmcStatus": [
+          "REQ-SDS-146"
+        ],
+        "SweepProgress": [
+          "REQ-SDS-146"
+        ],
+        "SchemaOptions": [
+          "REQ-SDS-147"
+        ],
+        "RegCheck": [
+          "REQ-SDS-147"
+        ],
+        "SchemaResult": [
+          "REQ-SDS-147"
+        ],
+        "RedrainOptions": [
+          "REQ-SDS-148"
+        ],
+        "WindowCheck": [
+          "REQ-SDS-148"
+        ],
+        "RedrainResult": [
+          "REQ-SDS-148"
+        ]
+      }
+    }
+  ],
+  "functions": 95,
+  "types": 44,
+  "uniqueReviewedTests": [
+    "TestBusDrive",
+    "TestCaptureScoresRamp",
+    "TestCaptureTsrcAndWindow",
+    "TestCensus",
+    "TestE2FollowRates",
+    "TestGpmcSweepPersistApply",
+    "TestIdentityAndStatus",
+    "TestRedrainWindows",
+    "TestRegAndWindowAccess",
+    "TestResolveNames",
+    "TestRunnerErrorsPropagate",
+    "TestSchemaCheck",
+    "TestSnapshot",
+    "TestVendorSequence"
+  ],
+  "nativeEligibleTests": [
+    "TestBusDrive",
+    "TestCaptureScoresRamp",
+    "TestCaptureTsrcAndWindow",
+    "TestCensus",
+    "TestE2FollowRates",
+    "TestGpmcSweepPersistApply",
+    "TestIdentityAndStatus",
+    "TestRedrainWindows",
+    "TestRegAndWindowAccess",
+    "TestResolveNames",
+    "TestRunnerErrorsPropagate",
+    "TestSchemaCheck",
+    "TestSnapshot",
+    "TestVendorSequence"
+  ],
+  "sourceSHA256": {
+    "app/internal/diag/busprobe.go": "52726d94feef6d49b31d6dfd81987bcebc0dfa4a6f2b53183259e966f57794de",
+    "app/internal/diag/diag.go": "1fcab8d50ded0a4f94abcaa50dfd1eaa8fee1c7fafebcb63136674ab1558047e",
+    "app/internal/diag/diag_test.go": "02dc3c212b6552d550e3687b2bb925f7eb57c2028fed38f8718b6f0b4de55ffd",
+    "app/internal/diag/quietlisten.go": "b40455c80f08393e7a0c93067c5a3aa40e2bf37f2e3bf1ab9829fc1f951ca709",
+    "app/internal/diag/sramcrank.go": "17c081c2166e2dc5c9afef6be20fe9db016f1ac9213e0c659135c55073930cd1",
+    "app/internal/diag/v3.go": "afe4122c905e77d75e1e3683371b87595ba581f3a5e7c8902a5577d484769b98"
+  },
+  "expectedFailingTests": [
+    "TestGpmcSweepPersistApply"
+  ],
+  "scope": "All six diagnostic Go files reviewed. Tests use synthetic host fakes; no device command, register write, physical probe or qualification performed. Original sweep test has observed data races; failure must remain failing evidence."
+}

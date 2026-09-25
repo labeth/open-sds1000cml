@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-RTL-ACQ-SRAM-FINITE-WRITER
 // Finite pre/post-trigger capture client for sram_board_capture_path.
 // All signals are core-clock synchronous. capture_allowed must exclude an
 // active backend, outstanding host banks and another accepted start.
@@ -7,6 +8,7 @@
 // Data is opaque (raw packed pairs or both Q8.8 channels). No sample RAM here.
 // Prime writes are fully drained before recording the physical origin. The
 // resulting origin convention needs board qualification before deployment.
+// TRLC-LINKS: REQ-SDS-041, REQ-SDS-042, REQ-SDS-057, REQ-SDS-058
 module sram_finite_writer #(parameter AW=19,PRIME_WORDS=16)(
  input wire clk,reset,start,capture_allowed,halt,
  input wire [AW:0] pre_count,post_count,

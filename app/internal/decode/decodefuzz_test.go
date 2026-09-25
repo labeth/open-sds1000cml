@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-DECODE
 package decode
 
 import (
@@ -12,6 +13,7 @@ import (
 // deterministic default (mirrors the browser fuzz's FUZZ_ITERS/FUZZ_SEED):
 // DECODE_FUZZ_SEED shifts the base seed, DECODE_FUZZ_MULT multiplies the
 // iteration counts. CI always runs the fixed defaults.
+// TRLC-LINKS: REQ-SDS-018
 func fuzzKnob(name string, def int) int {
 	if v := os.Getenv(name); v != "" {
 		if n, err := strconv.Atoi(v); err == nil && n > 0 {
@@ -24,6 +26,7 @@ func fuzzKnob(name string, def int) int {
 // Decoder fuzz: the protocol decoders parse UNTRUSTED analog data every
 // frame — random noise, rail garbage, and degenerate configs must never
 // panic (index arithmetic on edge positions is the classic failure).
+// TRLC-LINKS: REQ-SDS-018
 func TestDecodeFuzzNoPanic(t *testing.T) {
 	rng := rand.New(rand.NewSource(int64(2718 + fuzzKnob("DECODE_FUZZ_SEED", 0))))
 	sig := func(n int, kind int) []uint8 {
@@ -100,6 +103,7 @@ func TestDecodeFuzzNoPanic(t *testing.T) {
 // DoS. It also feeds TRUNCATED views of a synthesized real frame (a captured
 // record almost never contains a whole frame), the input class HW validation
 // showed the round-trip tests miss.
+// TRLC-LINKS: REQ-SDS-018
 func TestDecodeFuzzNewProtos(t *testing.T) {
 	rng := rand.New(rand.NewSource(int64(31415 + fuzzKnob("DECODE_FUZZ_SEED", 0))))
 	mk := func(n, kind int) []uint8 {

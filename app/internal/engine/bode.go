@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
 package engine
 
 import (
@@ -24,6 +25,7 @@ const (
 )
 
 // BodePoint is one accumulated transfer-function sample.
+// TRLC-LINKS: REQ-SDS-066
 type BodePoint struct {
 	FreqHz   float64
 	GainDB   float64
@@ -31,6 +33,7 @@ type BodePoint struct {
 	Seq      uint64 // capture ordinal of the frame that set this bin (freshness)
 }
 
+// TRLC-LINKS: REQ-SDS-066
 type bodeState struct {
 	mu    sync.Mutex
 	refCh int // 0 = C1, 1 = C2 (DUT input reference)
@@ -46,6 +49,7 @@ type bodeState struct {
 // SetBodeMode arms/disarms FRA and sets the reference + DUT channels. Arming
 // with a fresh channel pair does NOT clear the accumulated curve (the operator
 // may re-arm mid-sweep); use ClearBode to reset.
+// TRLC-LINKS: REQ-SDS-066
 func (e *Engine) SetBodeMode(on bool, refCh, dutCh int) {
 	e.bode.mu.Lock()
 	e.bode.refCh = refCh & 1
@@ -62,6 +66,7 @@ func (e *Engine) SetBodeMode(on bool, refCh, dutCh int) {
 }
 
 // ClearBode empties the accumulated curve.
+// TRLC-LINKS: REQ-SDS-066
 func (e *Engine) ClearBode() {
 	e.bode.mu.Lock()
 	e.bode.bins = make(map[int]BodePoint)
@@ -70,6 +75,7 @@ func (e *Engine) ClearBode() {
 }
 
 // BodePoints returns the accumulated curve sorted by frequency.
+// TRLC-LINKS: REQ-SDS-066
 func (e *Engine) BodePoints() []BodePoint {
 	e.bode.mu.Lock()
 	defer e.bode.mu.Unlock()
@@ -83,6 +89,7 @@ func (e *Engine) BodePoints() []BodePoint {
 
 // bodeEval computes the transfer-function point for a locked frame and, if
 // valid, updates its log-frequency bin. Runs on the engine goroutine.
+// TRLC-LINKS: REQ-SDS-066
 func (e *Engine) bodeEval(f *Frame, valid int, sampleS float64) {
 	if sampleS <= 0 || valid < 8 {
 		return
@@ -150,6 +157,7 @@ func (e *Engine) bodeEval(f *Frame, valid int, sampleS float64) {
 	e.bode.mu.Unlock()
 }
 
+// TRLC-LINKS: REQ-SDS-066
 func (e *Engine) bodeInvalidate() {
 	e.bode.mu.Lock()
 	e.bode.liveValid = false
@@ -160,6 +168,7 @@ func (e *Engine) bodeInvalidate() {
 // mean-level crossing spacing (works for square or sine stimuli; no FFT). The
 // single-bin DFT that follows only needs this as an f0 estimate — the gain/
 // phase come from the X2/X1 ratio, which is robust to a small f0 error.
+// TRLC-LINKS: REQ-SDS-066
 func fundamentalHz(sig []uint8, sampleS float64) float64 {
 	n := len(sig)
 	if n < 8 {
@@ -205,6 +214,7 @@ func fundamentalHz(sig []uint8, sampleS float64) float64 {
 // singleBinDFT returns the real/imag parts of the DFT coefficient at frequency
 // f0: Σ (v[n]−mean)·exp(−j·2π·f0·n·dt). Mean-subtracted so the DC term does not
 // leak into the fundamental.
+// TRLC-LINKS: REQ-SDS-066
 func singleBinDFT(sig []uint8, f0, sampleS float64) (re, im float64) {
 	n := len(sig)
 	var sum float64

@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-LCD
 package lcd
 
 import (
@@ -9,6 +10,7 @@ import (
 // traceRows scans the mid-screen window (clear of the top-bar channel labels,
 // the left-edge ground markers and the right-edge trigger handle) and returns
 // the min/max row holding a pixel of the given trace colour.
+// TRLC-LINKS: REQ-SDS-021
 func traceRows(sf *MemSurface, col uint16) (minY, maxY int, found bool) {
 	minY, maxY = H, -1
 	for y := 16; y <= 450; y++ {
@@ -26,6 +28,7 @@ func traceRows(sf *MemSurface, col uint16) (minY, maxY int, found bool) {
 	return minY, maxY, maxY >= 0
 }
 
+// TRLC-LINKS: REQ-SDS-021
 func flatFrame(v1, v2 uint8) *engine.Frame {
 	const n = 2048
 	f := &engine.Frame{
@@ -43,6 +46,7 @@ func flatFrame(v1, v2 uint8) *engine.Frame {
 // contract: with HUD.Inv set, the rendered Y-T trace is mirrored about the
 // display centre — y(v) becomes y(255−v) — for BOTH channels, independently,
 // while nothing else about the render is inverted.
+// TRLC-LINKS: REQ-SDS-021
 func TestRenderINVSFlipsTrace(t *testing.T) {
 	f := flatFrame(168, 88) // C1 above centre, C2 below — asymmetric on purpose
 	hud := HUD{
@@ -89,6 +93,7 @@ func TestRenderINVSFlipsTrace(t *testing.T) {
 
 // TestRenderINVSFlipsEnvelope pins the envelope (peak-detect/roll) path: the
 // inverted band's rows are the mirror of the upright band's codes.
+// TRLC-LINKS: REQ-SDS-021
 func TestRenderINVSFlipsEnvelope(t *testing.T) {
 	const n = 400
 	f := &engine.Frame{

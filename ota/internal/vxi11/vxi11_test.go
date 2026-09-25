@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-OTA-VXI11
 package vxi11
 
 import (
@@ -11,6 +12,7 @@ import (
 // fakeInstrument is a minimal VXI-11 server: a portmapper on the listener that
 // GETPORTs to a second core listener, which answers create_link / device_write
 // / device_read / destroy_link. It records the SCPI commands it receives.
+// TRLC-LINKS: REQ-SDS-100
 type fakeInstrument struct {
 	pmLn, coreLn net.Listener
 	corePort     uint32
@@ -18,6 +20,7 @@ type fakeInstrument struct {
 	readReply    string
 }
 
+// TRLC-LINKS: REQ-SDS-100
 func readRecord(c net.Conn) ([]byte, error) {
 	var rm [4]byte
 	if _, err := io.ReadFull(c, rm[:]); err != nil {
@@ -29,6 +32,7 @@ func readRecord(c net.Conn) ([]byte, error) {
 	return buf, err
 }
 
+// TRLC-LINKS: REQ-SDS-100
 func writeRecord(c net.Conn, body []byte) {
 	var rm [4]byte
 	binary.BigEndian.PutUint32(rm[:], 0x80000000|uint32(len(body)))
@@ -36,6 +40,7 @@ func writeRecord(c net.Conn, body []byte) {
 }
 
 // acceptedReply builds an accepted RPC reply header for xid + result payload.
+// TRLC-LINKS: REQ-SDS-100
 func acceptedReply(xid uint32, result []byte) []byte {
 	b := make([]byte, 24)
 	binary.BigEndian.PutUint32(b[0:], xid)
@@ -47,9 +52,12 @@ func acceptedReply(xid uint32, result []byte) []byte {
 	return append(b, result...)
 }
 
+// TRLC-LINKS: REQ-SDS-100
 func callXID(body []byte) uint32  { return binary.BigEndian.Uint32(body[0:4]) }
+// TRLC-LINKS: REQ-SDS-100
 func callProc(body []byte) uint32 { return binary.BigEndian.Uint32(body[20:24]) }
 
+// TRLC-LINKS: REQ-SDS-100
 func newFake(t *testing.T) *fakeInstrument {
 	t.Helper()
 	pm, err := net.Listen("tcp", "127.0.0.1:0")
@@ -71,9 +79,12 @@ func newFake(t *testing.T) *fakeInstrument {
 	return f
 }
 
+// TRLC-LINKS: REQ-SDS-100
 func (f *fakeInstrument) host() string { return "127.0.0.1" }
+// TRLC-LINKS: REQ-SDS-100
 func (f *fakeInstrument) pmPort() int  { return f.pmLn.Addr().(*net.TCPAddr).Port }
 
+// TRLC-LINKS: REQ-SDS-100
 func (f *fakeInstrument) servePortmap() {
 	for {
 		c, err := f.pmLn.Accept()
@@ -96,6 +107,7 @@ func (f *fakeInstrument) servePortmap() {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-100
 func (f *fakeInstrument) serveCore() {
 	for {
 		c, err := f.coreLn.Accept()
@@ -146,11 +158,13 @@ func (f *fakeInstrument) serveCore() {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-100
 func (f *fakeInstrument) close() {
 	f.pmLn.Close()
 	f.coreLn.Close()
 }
 
+// TRLC-LINKS: REQ-SDS-100
 func TestDialSendQuery(t *testing.T) {
 	f := newFake(t)
 	defer f.close()
@@ -187,6 +201,7 @@ func TestDialSendQuery(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-100
 func itoa(n int) string {
 	if n == 0 {
 		return "0"

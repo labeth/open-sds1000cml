@@ -1,0 +1,314 @@
+{
+  "status": "incomplete",
+  "basis": "Fresh post-JavaScript trace matrix plus authored requirement statuses; not a full completion audit.",
+  "matrixSHA256": "7036d1d1abb10d062c97ec5f0178ce3d54b8b8108785e966a715446913f0734c",
+  "summary": {
+    "requirements": 208,
+    "implemented": 193,
+    "verified": 156,
+    "delegated": 0,
+    "orphan": 12,
+    "danglingLinks": 0
+  },
+  "nativeFunctionLinks": {
+    "go": 2491,
+    "javascript": 958,
+    "total": 3449,
+    "scope": "Named declarations/direct bindings; excludes anonymous callbacks, top-level effects, unsupported language declarations and hardware internals."
+  },
+  "requirementsWithoutNativeImplementation": [
+    {
+      "requirement": "REQ-SDS-030",
+      "title": "Boot anchor",
+      "authoredStatus": "draft",
+      "classification": "native-language-or-build-trace-gap",
+      "notes": "Source-derived contract; source presence is not evidence of a passing hardware qualification.",
+      "sourceRefs": [
+        "REF-SOURCE-OTA-BOOT-STARTUP-SH",
+        "REF-SOURCE-OTA-BOOT-BOOT-TEST-GO",
+        "REF-SOURCE-OTA-BOOT-COMMANDS",
+        "REF-SOURCE-OTA-BOOT-AGENT-ENV-EXAMPLE"
+      ]
+    },
+    {
+      "requirement": "REQ-SDS-031",
+      "title": "Shared default ABI",
+      "authoredStatus": "draft",
+      "classification": "native-language-or-build-trace-gap",
+      "notes": "Source-derived contract; source presence is not evidence of a passing hardware qualification.",
+      "sourceRefs": [
+        "REF-SOURCE-CODEGEN-IFACEDEF-DEFAULT-GO",
+        "REF-SOURCE-CODEGEN-README-MD"
+      ]
+    },
+    {
+      "requirement": "REQ-SDS-061",
+      "title": "Clock-crossing audit",
+      "authoredStatus": "draft",
+      "classification": "native-language-or-build-trace-gap",
+      "notes": "Source-derived contract; source presence is not evidence of a passing hardware qualification.",
+      "sourceRefs": [
+        "REF-SOURCE-FPGA-ACQ-SRAM-ACQUISITION-CONFIG-CDC-SDC",
+        "REF-SOURCE-FPGA-ACQ-SRAM-HOST-PATH-CDC-SDC",
+        "REF-SOURCE-FPGA-ACQ-SRAM-BUILD-PROFILE-PY"
+      ]
+    },
+    {
+      "requirement": "REQ-SDS-062",
+      "title": "Qualified profile selection",
+      "authoredStatus": "proposed",
+      "classification": "proposed-design-gap",
+      "notes": "The common profile shell exists in RTL; application/kernel profile negotiation and device qualification are incomplete.",
+      "sourceRefs": [
+        "REF-SOURCE-DOCS-FPGA-IMAGE-PROFILES-MD"
+      ]
+    },
+    {
+      "requirement": "REQ-SDS-063",
+      "title": "Warm profile switch",
+      "authoredStatus": "proposed",
+      "classification": "proposed-design-gap",
+      "notes": "Proposed policy. Physical SRAM retention does not prove metadata survival. Warm-switch timing/reliability is not established.",
+      "sourceRefs": [
+        "REF-SOURCE-DOCS-FPGA-IMAGE-PROFILES-MD"
+      ]
+    },
+    {
+      "requirement": "REQ-SDS-064",
+      "title": "Honest continuous operation",
+      "authoredStatus": "proposed",
+      "classification": "proposed-design-gap",
+      "notes": "Legacy /512 and /256 stream diagnostics have recorded overruns. Offline model validation cannot promote a rate.",
+      "sourceRefs": [
+        "REF-SOURCE-DOCS-FPGA-IMAGE-PROFILES-MD"
+      ]
+    },
+    {
+      "requirement": "REQ-SDS-065",
+      "title": "Hardware protocol events",
+      "authoredStatus": "proposed",
+      "classification": "proposed-design-gap",
+      "notes": "UART/I2C/SPI profile families are proposed; browser/Go decoders do not constitute FPGA protocol triggers.",
+      "sourceRefs": [
+        "REF-SOURCE-DOCS-FPGA-IMAGE-PROFILES-MD"
+      ]
+    },
+    {
+      "requirement": "REQ-SDS-073",
+      "title": "Go and browser parity",
+      "authoredStatus": "draft",
+      "classification": "implementation-trace-mapping-review",
+      "notes": "Source-derived contract. Behavior depends on the selected acquisition mode; not a claim of complete device qualification.",
+      "sourceRefs": [
+        "REF-SOURCE-APP-INTERNAL-DECODE-DECODE-JSPARITY-TEST-GO"
+      ]
+    },
+    {
+      "requirement": "REQ-SDS-074",
+      "title": "Interleave calibration phase",
+      "authoredStatus": "draft",
+      "classification": "implementation-trace-mapping-review",
+      "notes": "Source-derived contract. Behavior depends on the selected acquisition mode; not a claim of complete device qualification.",
+      "sourceRefs": [
+        "REF-SOURCE-APP-INTERNAL-ENGINE-INTERLEAVE-CAL-GO"
+      ]
+    },
+    {
+      "requirement": "REQ-SDS-077",
+      "title": "Coherent profile status",
+      "authoredStatus": "draft",
+      "classification": "implementation-trace-mapping-review",
+      "notes": "Source-derived contract. Behavior depends on the selected acquisition mode; not a claim of complete device qualification.",
+      "sourceRefs": [
+        "REF-SOURCE-FPGA-ACQ-SRAM-COMMAND-PORT-V",
+        "REF-SOURCE-FPGA-ACQ-SRAM-COMMAND-BRIDGE-V"
+      ]
+    },
+    {
+      "requirement": "REQ-SDS-079",
+      "title": "Explicit bank release",
+      "authoredStatus": "draft",
+      "classification": "implementation-trace-mapping-review",
+      "notes": "Source-derived contract. Behavior depends on the selected acquisition mode; not a claim of complete device qualification.",
+      "sourceRefs": [
+        "REF-SOURCE-FPGA-ACQ-SRAM-HOST-READ-WINDOW-V"
+      ]
+    },
+    {
+      "requirement": "REQ-SDS-080",
+      "title": "Force and halt controls",
+      "authoredStatus": "draft",
+      "classification": "implementation-trace-mapping-review",
+      "notes": "Source-derived contract. Behavior depends on the selected acquisition mode; not a claim of complete device qualification.",
+      "sourceRefs": [
+        "REF-SOURCE-FPGA-ACQ-SRAM-COMMAND-PORT-V"
+      ]
+    },
+    {
+      "requirement": "REQ-SDS-176",
+      "title": "USB anchor agent-slot recovery",
+      "authoredStatus": "draft",
+      "classification": "native-language-or-build-trace-gap",
+      "notes": "Confirmation depends on elapsed runtime after exit, not health or successful exit. Any nonempty intent resets failures. Pointer writes and path/mount assumptions lack atomicity or validation. Shell sources are reviewed artifacts; native shell declaration inference is not yet available.",
+      "sourceRefs": [
+        "REF-SOURCE-OTA-BOOT-BOOT-TEST-GO",
+        "REF-SOURCE-OTA-BOOT-STARTUP-SH",
+        "REF-SOURCE-OTA-BOOT-COMMANDS",
+        "REF-SOURCE-OTA-BOOT-AGENT-ENV-EXAMPLE"
+      ]
+    },
+    {
+      "requirement": "REQ-SDS-178",
+      "title": "OTA version label",
+      "authoredStatus": "draft",
+      "classification": "metadata-or-test-only-classification-review",
+      "notes": "Labels default to dev and unknown and do not establish validated build provenance.",
+      "sourceRefs": [
+        "REF-SOURCE-OTA-INTERNAL-BUILDINFO-BUILDINFO-GO"
+      ]
+    },
+    {
+      "requirement": "REQ-SDS-182",
+      "title": "Web inline-content regression policy",
+      "authoredStatus": "draft",
+      "classification": "metadata-or-test-only-classification-review",
+      "notes": "The current inline style count is 18 against a budget of 14 and fails. Script-budget and selected CSP checks pass; these checks are not a complete security audit.",
+      "sourceRefs": [
+        "REF-SOURCE-APP-INTERNAL-WEB-UI-LINT-TEST-GO"
+      ]
+    }
+  ],
+  "requirementsWithoutNativeVerification": [
+    "REQ-SDS-003",
+    "REQ-SDS-006",
+    "REQ-SDS-031",
+    "REQ-SDS-059",
+    "REQ-SDS-061",
+    "REQ-SDS-062",
+    "REQ-SDS-063",
+    "REQ-SDS-064",
+    "REQ-SDS-065",
+    "REQ-SDS-067",
+    "REQ-SDS-071",
+    "REQ-SDS-073",
+    "REQ-SDS-074",
+    "REQ-SDS-077",
+    "REQ-SDS-079",
+    "REQ-SDS-080",
+    "REQ-SDS-084",
+    "REQ-SDS-097",
+    "REQ-SDS-098",
+    "REQ-SDS-102",
+    "REQ-SDS-111",
+    "REQ-SDS-112",
+    "REQ-SDS-122",
+    "REQ-SDS-123",
+    "REQ-SDS-124",
+    "REQ-SDS-127",
+    "REQ-SDS-138",
+    "REQ-SDS-139",
+    "REQ-SDS-149",
+    "REQ-SDS-150",
+    "REQ-SDS-151",
+    "REQ-SDS-167",
+    "REQ-SDS-168",
+    "REQ-SDS-170",
+    "REQ-SDS-171",
+    "REQ-SDS-172",
+    "REQ-SDS-173",
+    "REQ-SDS-174",
+    "REQ-SDS-175",
+    "REQ-SDS-177",
+    "REQ-SDS-178",
+    "REQ-SDS-179",
+    "REQ-SDS-187",
+    "REQ-SDS-200",
+    "REQ-SDS-201",
+    "REQ-SDS-202",
+    "REQ-SDS-203",
+    "REQ-SDS-204",
+    "REQ-SDS-205",
+    "REQ-SDS-206",
+    "REQ-SDS-207",
+    "REQ-SDS-208"
+  ],
+  "nonhistoricalSupportLanguagePaths": {
+    ".sh": [
+      "fpga/common/sim/run.sh",
+      "fpga/default/sim/run.sh",
+      "ota/boot/startup.sh",
+      "ota/checkdev.sh",
+      "ota/mkstick.sh",
+      "tools/hw/accept.sh",
+      "tools/hw/bus_probe.sh",
+      "tools/hw/coldstart.sh",
+      "tools/hw/deploy.sh",
+      "tools/hw/gpmc_sweep.sh",
+      "tools/hw/readback.sh",
+      "tools/hw/sramburst.sh"
+    ],
+    ".py": [
+      "fpga/acq_sram/audit.py",
+      "fpga/acq_sram/build.py",
+      "fpga/acq_sram/build_profile.py",
+      "fpga/sram_bench/audit.py",
+      "fpga/sram_bench/build.py",
+      "tools/dsp/precision_filter.py",
+      "tools/hw/adc_sram/analyze_interleave.py",
+      "tools/hw/adc_sram/followup.py",
+      "tools/hw/adc_sram/host_read_qualify.py",
+      "tools/hw/adc_sram/interleave_probe.py",
+      "tools/hw/adc_sram/interleave_qualify.py",
+      "tools/hw/adc_sram/precision_qualify.py",
+      "tools/hw/adc_sram/run.py",
+      "tools/hw/adc_sram/triangle_calibrate.py",
+      "tools/hw/sram_boundary/boundary.py",
+      "tools/hw/sram_boundary/control_links.py",
+      "tools/hw/sram_boundary/counter_controls.py",
+      "tools/hw/sram_boundary/counter_read.py",
+      "tools/hw/sram_boundary/k2_counter.py",
+      "tools/hw/sram_boundary/maxv_read_screen.py",
+      "tools/hw/sram_boundary/read_screen.py",
+      "tools/hw/sram_boundary/repeat_read.py",
+      "tools/hw/sram_boundary/write_read.py",
+      "tools/hw/sram_speed/run.py",
+      "tools/hw/sramburst/pulse_sweep.py"
+    ],
+    ".c": [
+      "app/internal/bus/dcinv/dcinv.c",
+      "app/internal/bus/kerneldma/acq_dma.c",
+      "app/internal/bus/kerneldma/acq_dma_test.c"
+    ],
+    ".h": [
+      "app/internal/bus/kerneldma/edma-3.2.h"
+    ],
+    ".s": [
+      "app/internal/dsp/precision_arm.s"
+    ],
+    ".sdc": [
+      "fpga/acq_sram/acquisition_config_cdc.sdc",
+      "fpga/acq_sram/host_fifo_cdc.sdc",
+      "fpga/acq_sram/host_path_cdc.sdc",
+      "fpga/acq_sram/ingress_cdc.sdc",
+      "fpga/acq_sram/stream.sdc",
+      "fpga/acq_sram/stream_path_cdc.sdc",
+      "fpga/default/default.sdc"
+    ],
+    ".vh": [
+      "fpga/default/lanemap_seed.vh",
+      "fpga/default/regmux.vh",
+      "fpga/default/regs.vh"
+    ]
+  },
+  "nextActions": [
+    "Review missing native mappings separately from explicit proposed design gaps",
+    "Resolve source trace representation for Shell/Python/C and build constraints",
+    "Audit remaining requirement semantics, assets, interfaces, hardware timing and evidence limits",
+    "Keep original runtime failures, skips, proposed features and physical qualification gaps visible"
+  ],
+  "pdf": "Deferred at user request; existing PDF is not current evidence.",
+  "publicationValidation": {
+    "nativeMCP": "pass",
+    "reproducibleArtifacts": 36
+  }
+}

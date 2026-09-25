@@ -1,0 +1,51 @@
+{
+  "source": "app/internal/panel/panel_menu_test.go",
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "scope": "Reviewed Go test outcomes; passing assertions contribute partial requirement evidence.",
+  "sourceSHA256": "586c75d12f96bb03c43fec8353df9110c555b52b19181d6eb79b54636e8a86ce",
+  "logs": {
+    "test-runs/panel-integrated.jsonl": "2fbcb88c41a0275721d1edc08e3847581a7054b52e3eee8bbfd8abb17853f635"
+  },
+  "tests": [
+    {
+      "name": "TestCursorMenu",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-136"
+      ]
+    },
+    {
+      "name": "TestDecodeMenu",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-136"
+      ]
+    },
+    {
+      "name": "TestTriggerHoldoffSoftkey",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-136"
+      ]
+    },
+    {
+      "name": "TestSuperresUX",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-140"
+      ]
+    }
+  ],
+  "results": [
+    {
+      "requirement": "REQ-SDS-136",
+      "status": "partial",
+      "notes": "3 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    },
+    {
+      "requirement": "REQ-SDS-140",
+      "status": "partial",
+      "notes": "1 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    }
+  ]
+}

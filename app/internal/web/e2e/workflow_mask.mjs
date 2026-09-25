@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-WEB
 // workflow_mask.mjs — mask-violation source workflows.
 import { near, assert } from "./workflow_assert.mjs";
 
@@ -10,22 +11,26 @@ import { near, assert } from "./workflow_assert.mjs";
 // measurement + trigger, mask build/test/catch, and the zone trigger.
 // ---------------------------------------------------------------------------
 export const maskv = [
+  // TRLC-LINKS: REQ-SDS-208
   { id: "M1", name: "Autoset the pulse train and read its repetition rate", run: async (op) => {
     await op.clickExpect("autoset", async () => (await op.readMeasValue(1, "Freq")) != null, { timeout: 12000, why: "autoset the pulse train" });
     const f = await op.waitMeas(1, "Freq");
     assert(near(f, 2500, 0.05), `pulse rate ${f} Hz, expected ~2.5 kHz (400 µs period)`);
   }},
+  // TRLC-LINKS: REQ-SDS-208
   { id: "M2", name: "Measure the positive pulse width (~100 µs)", run: async (op) => {
     await op.autosetStable(1);
     await op.measMore();
     const w = await op.waitMeas(1, "+Width");
     assert(near(w, 100e-6, 0.25), `+Width ${w} s, expected ~100 µs`);
   }},
+  // TRLC-LINKS: REQ-SDS-208
   { id: "M3", name: "Measure the pulse-train duty cycle (~25%)", run: async (op) => {
     await op.autosetStable(1);
     const d = await op.waitMeas(1, "Duty");
     assert(near(d, 25, 0, 8), `Duty ${d}%, expected ~25%`);
   }},
+  // TRLC-LINKS: REQ-SDS-208
   { id: "M4", name: "Pulse-width trigger: select PULSE and reveal the qualifier panel", run: async (op) => {
     await op.selectExpect("ttype", "1", async () => await op.page.evaluate(() => {
       const q = document.getElementById("qualrow"); return q && getComputedStyle(q).display !== "none";
@@ -34,6 +39,7 @@ export const maskv = [
       const q = document.getElementById("qualrow"); return !q || getComputedStyle(q).display === "none";
     }), { why: "EDGE hides the qualifier panel" });
   }},
+  // TRLC-LINKS: REQ-SDS-208
   { id: "M5", name: "Mask test: build a golden mask from live frames, enable counting", run: async (op) => {
     await op.autosetStable(1);
     await op.fill("zmN", "24", { why: "build from 24 frames" });
@@ -48,6 +54,7 @@ export const maskv = [
     }, 8000, "mask meter never counted a tested frame");
     assert(/pass/.test(meter), `mask meter should show a pass count, got "${meter}"`);
   }},
+  // TRLC-LINKS: REQ-SDS-208
   { id: "M6", name: "Mask stop-on-fail: arm the latch and confirm the tester is live", run: async (op) => {
     // (continues from M5's installed mask) A real operator arms stop-on-fail to
     // freeze on the next anomaly. Confirm the mode engages and the tester keeps
@@ -64,6 +71,7 @@ export const maskv = [
     await op.selectExpect("zmMode", "0", null, { why: "mask test off" });
     await op.click("zmClearStats", { why: "reset counters" });
   }},
+  // TRLC-LINKS: REQ-SDS-208
   { id: "M7", name: "Zone trigger: draw a zone on the pulse and keep publishing", run: async (op) => {
     await op.clickExpect("autoset", async () => (await op.readMeasValue(1, "Freq")) != null, { timeout: 12000, why: "trigger the pulse" });
     await op.waitMeas(1, "Freq");
@@ -83,12 +91,14 @@ export const maskv = [
     await op.click("zmTrig", { why: "zone trigger off" });
     await op.click("zmClearZones", { why: "clear zones" });
   }},
+  // TRLC-LINKS: REQ-SDS-208
   { id: "M8", name: "Measure the pulse-train period (~400 µs)", run: async (op) => {
     await op.autosetStable(1);
     await op.measMore();
     const per = await op.waitMeas(1, "Period");
     assert(near(per, 400e-6, 0.08), `Period ${per} s, expected ~400 µs`);
   }},
+  // TRLC-LINKS: REQ-SDS-208
   { id: "M9", name: "Switch the trigger source to C2 and back, still acquiring", run: async (op) => {
     await op.autosetStable(1);
     await op.page.waitForTimeout(700); // let the autoset trigger-source settle before toggling
@@ -100,6 +110,7 @@ export const maskv = [
     await op.clickExpect("source", async () => await op.page.evaluate(() => document.getElementById("source").textContent.includes("C1")),
       { why: "trigger-source button must switch back to C1" });
   }},
+  // TRLC-LINKS: REQ-SDS-208
   { id: "M10", name: "Set a trigger holdoff shorter than the period and stay locked", run: async (op) => {
     await op.autosetStable(1);
     await op.fill("holdoff", "0.0002", { why: "200 µs holdoff (< 400 µs period)" });
@@ -111,6 +122,7 @@ export const maskv = [
     await op.fill("holdoff", "0", { why: "clear holdoff" });
     await op.page.evaluate(() => { const e = document.getElementById("holdoff"); e.dispatchEvent(new Event("change")); });
   }},
+  // TRLC-LINKS: REQ-SDS-208
   { id: "M11", name: "Zoom into the pulse edge and keep a stable render", run: async (op) => {
     await op.clickExpect("autoset", async () => (await op.readMeasValue(1, "Freq")) != null, { timeout: 12000, why: "autoset" });
     await op.waitMeas(1, "Freq");
@@ -121,6 +133,7 @@ export const maskv = [
     const sz = await op.lcdPng();
     assert(sz > 3000, "zoomed view did not render");
   }},
+  // TRLC-LINKS: REQ-SDS-208
   { id: "M12", name: "Deeper memory depth still yields a measurable trace", run: async (op) => {
     await op.selectExpect("memdepth", await op.page.evaluate(() => {
       const e = document.getElementById("memdepth");

@@ -1,0 +1,60 @@
+{
+  "source": "app/internal/engine/engine_triglevel_test.go",
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "scope": "Reviewed Go test outcomes; passing assertions contribute partial requirement evidence.",
+  "sourceSHA256": "488d66b7e69aae19659af69abaf6202825d8ad071ac593face6223c931a2d6fe",
+  "logs": {
+    "test-runs/engine-core-reviewed.jsonl": "cc8c0b3a23bc0794b3d4c4542093ab29f77f001115ec026cb74ce9e6b4502f4b"
+  },
+  "tests": [
+    {
+      "name": "TestTriggerLevelRecommit",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-001",
+        "REQ-SDS-011"
+      ]
+    },
+    {
+      "name": "TestTrigLevelClamp",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-001",
+        "REQ-SDS-011"
+      ]
+    },
+    {
+      "name": "TestOffsetDACFlush",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-001",
+        "REQ-SDS-015"
+      ]
+    },
+    {
+      "name": "TestTrigLevelZeroKeepsBootComparator",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-001",
+        "REQ-SDS-011"
+      ]
+    }
+  ],
+  "results": [
+    {
+      "requirement": "REQ-SDS-001",
+      "status": "partial",
+      "notes": "4 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    },
+    {
+      "requirement": "REQ-SDS-011",
+      "status": "partial",
+      "notes": "3 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    },
+    {
+      "requirement": "REQ-SDS-015",
+      "status": "partial",
+      "notes": "1 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    }
+  ]
+}

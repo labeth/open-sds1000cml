@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
 package engine
 
 import (
@@ -6,6 +7,7 @@ import (
 	"open-sds/app/internal/iface"
 )
 
+// TRLC-LINKS: REQ-SDS-001, REQ-SDS-011
 func TestTriggerLevelRecommit(t *testing.T) {
 	fb := newFakeBus()
 	e, _ := newTestEngine(t, fb)
@@ -71,6 +73,7 @@ func TestTriggerLevelRecommit(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-001, REQ-SDS-011
 func TestTrigLevelClamp(t *testing.T) {
 	fb := newFakeBus()
 	e, _ := newTestEngine(t, fb)
@@ -82,6 +85,7 @@ func TestTrigLevelClamp(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-001, REQ-SDS-015
 func TestOffsetDACFlush(t *testing.T) {
 	fb := newFakeBus()
 	e, _ := newTestEngine(t, fb)
@@ -112,6 +116,7 @@ func TestOffsetDACFlush(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-001, REQ-SDS-011
 func TestTrigLevelZeroKeepsBootComparator(t *testing.T) {
 	fb := newFakeBus()
 	e, _ := newTestEngine(t, fb)

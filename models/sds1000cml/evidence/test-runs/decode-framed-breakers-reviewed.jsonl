@@ -1,0 +1,127 @@
+{"Time":"2026-09-23T08:37:33.282426593+02:00","Action":"start","Package":"open-sds/app/internal/decode"}
+{"Time":"2026-09-23T08:37:33.294048506+02:00","Action":"run","Package":"open-sds/app/internal/decode","Test":"TestBreakCanfd"}
+{"Time":"2026-09-23T08:37:33.294066764+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestBreakCanfd","Output":"=== RUN   TestBreakCanfd\n"}
+{"Time":"2026-09-23T08:37:33.294098629+02:00","Action":"run","Package":"open-sds/app/internal/decode","Test":"TestBreakCanfd/false_negative"}
+{"Time":"2026-09-23T08:37:33.294102917+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestBreakCanfd/false_negative","Output":"=== RUN   TestBreakCanfd/false_negative\n"}
+{"Time":"2026-09-23T08:37:33.339805802+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestBreakCanfd/false_negative","Output":"--- PASS: TestBreakCanfd/false_negative (0.05s)\n"}
+{"Time":"2026-09-23T08:37:33.339835132+02:00","Action":"pass","Package":"open-sds/app/internal/decode","Test":"TestBreakCanfd/false_negative","Elapsed":0.05}
+{"Time":"2026-09-23T08:37:33.339859303+02:00","Action":"run","Package":"open-sds/app/internal/decode","Test":"TestBreakCanfd/false_positive"}
+{"Time":"2026-09-23T08:37:33.339865517+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestBreakCanfd/false_positive","Output":"=== RUN   TestBreakCanfd/false_positive\n"}
+{"Time":"2026-09-23T08:37:33.443424834+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestBreakCanfd/false_positive","Output":"--- PASS: TestBreakCanfd/false_positive (0.10s)\n"}
+{"Time":"2026-09-23T08:37:33.443455563+02:00","Action":"pass","Package":"open-sds/app/internal/decode","Test":"TestBreakCanfd/false_positive","Elapsed":0.1}
+{"Time":"2026-09-23T08:37:33.443479472+02:00","Action":"run","Package":"open-sds/app/internal/decode","Test":"TestBreakCanfd/edge"}
+{"Time":"2026-09-23T08:37:33.443484628+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestBreakCanfd/edge","Output":"=== RUN   TestBreakCanfd/edge\n"}
+{"Time":"2026-09-23T08:37:33.493267829+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestBreakCanfd/edge","Output":"--- PASS: TestBreakCanfd/edge (0.05s)\n"}
+{"Time":"2026-09-23T08:37:33.493284813+02:00","Action":"pass","Package":"open-sds/app/internal/decode","Test":"TestBreakCanfd/edge","Elapsed":0.05}
+{"Time":"2026-09-23T08:37:33.493293589+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestBreakCanfd","Output":"--- PASS: TestBreakCanfd (0.20s)\n"}
+{"Time":"2026-09-23T08:37:33.493319292+02:00","Action":"pass","Package":"open-sds/app/internal/decode","Test":"TestBreakCanfd","Elapsed":0.2}
+{"Time":"2026-09-23T08:37:33.493393897+02:00","Action":"run","Package":"open-sds/app/internal/decode","Test":"TestBreakFlexray"}
+{"Time":"2026-09-23T08:37:33.493401151+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestBreakFlexray","Output":"=== RUN   TestBreakFlexray\n"}
+{"Time":"2026-09-23T08:37:33.493419486+02:00","Action":"run","Package":"open-sds/app/internal/decode","Test":"TestBreakFlexray/false_negatives"}
+{"Time":"2026-09-23T08:37:33.493428379+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestBreakFlexray/false_negatives","Output":"=== RUN   TestBreakFlexray/false_negatives\n"}
+{"Time":"2026-09-23T08:37:33.548189796+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestBreakFlexray/false_negatives","Output":"    decode_break_flexray_test.go:268: false_negatives: 80 valid frames all decoded byte-exact\n"}
+{"Time":"2026-09-23T08:37:33.548212276+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestBreakFlexray/false_negatives","Output":"--- PASS: TestBreakFlexray/false_negatives (0.05s)\n"}
+{"Time":"2026-09-23T08:37:33.54822515+02:00","Action":"pass","Package":"open-sds/app/internal/decode","Test":"TestBreakFlexray/false_negatives","Elapsed":0.05}
+{"Time":"2026-09-23T08:37:33.548256429+02:00","Action":"run","Package":"open-sds/app/internal/decode","Test":"TestBreakFlexray/false_positives"}
+{"Time":"2026-09-23T08:37:33.548261141+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestBreakFlexray/false_positives","Output":"=== RUN   TestBreakFlexray/false_positives\n"}
+{"Time":"2026-09-23T08:37:33.567324755+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestBreakFlexray/false_positives","Output":"    decode_break_flexray_test.go:437: false_positives: 85 strict adversarial inputs asserted; 0/20 noise inputs spuriously OK (inherent for a CRC-less byte extractor)\n"}
+{"Time":"2026-09-23T08:37:33.567363255+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestBreakFlexray/false_positives","Output":"--- PASS: TestBreakFlexray/false_positives (0.02s)\n"}
+{"Time":"2026-09-23T08:37:33.567395827+02:00","Action":"pass","Package":"open-sds/app/internal/decode","Test":"TestBreakFlexray/false_positives","Elapsed":0.02}
+{"Time":"2026-09-23T08:37:33.567440099+02:00","Action":"run","Package":"open-sds/app/internal/decode","Test":"TestBreakFlexray/edge_cases"}
+{"Time":"2026-09-23T08:37:33.567445939+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestBreakFlexray/edge_cases","Output":"=== RUN   TestBreakFlexray/edge_cases\n"}
+{"Time":"2026-09-23T08:37:33.573375215+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestBreakFlexray/edge_cases","Output":"--- PASS: TestBreakFlexray/edge_cases (0.01s)\n"}
+{"Time":"2026-09-23T08:37:33.573399064+02:00","Action":"pass","Package":"open-sds/app/internal/decode","Test":"TestBreakFlexray/edge_cases","Elapsed":0.01}
+{"Time":"2026-09-23T08:37:33.573439716+02:00","Action":"run","Package":"open-sds/app/internal/decode","Test":"TestBreakFlexray/integrity_no_crc"}
+{"Time":"2026-09-23T08:37:33.573455196+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestBreakFlexray/integrity_no_crc","Output":"=== RUN   TestBreakFlexray/integrity_no_crc\n"}
+{"Time":"2026-09-23T08:37:33.584134283+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestBreakFlexray/integrity_no_crc","Output":"--- PASS: TestBreakFlexray/integrity_no_crc (0.01s)\n"}
+{"Time":"2026-09-23T08:37:33.584156823+02:00","Action":"pass","Package":"open-sds/app/internal/decode","Test":"TestBreakFlexray/integrity_no_crc","Elapsed":0.01}
+{"Time":"2026-09-23T08:37:33.584185829+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestBreakFlexray","Output":"--- PASS: TestBreakFlexray (0.09s)\n"}
+{"Time":"2026-09-23T08:37:33.584209162+02:00","Action":"pass","Package":"open-sds/app/internal/decode","Test":"TestBreakFlexray","Elapsed":0.09}
+{"Time":"2026-09-23T08:37:33.584262693+02:00","Action":"run","Package":"open-sds/app/internal/decode","Test":"TestBreakManchester"}
+{"Time":"2026-09-23T08:37:33.584269468+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestBreakManchester","Output":"=== RUN   TestBreakManchester\n"}
+{"Time":"2026-09-23T08:37:33.584332436+02:00","Action":"run","Package":"open-sds/app/internal/decode","Test":"TestBreakManchester/FalseNegatives_explicit"}
+{"Time":"2026-09-23T08:37:33.584339792+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestBreakManchester/FalseNegatives_explicit","Output":"=== RUN   TestBreakManchester/FalseNegatives_explicit\n"}
+{"Time":"2026-09-23T08:37:33.600244061+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestBreakManchester/FalseNegatives_explicit","Output":"    decode_break_manchester_test.go:147: explicit-bitrate round-trip: 80/80 exact (robust)\n"}
+{"Time":"2026-09-23T08:37:33.600273868+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestBreakManchester/FalseNegatives_explicit","Output":"--- PASS: TestBreakManchester/FalseNegatives_explicit (0.02s)\n"}
+{"Time":"2026-09-23T08:37:33.600306656+02:00","Action":"pass","Package":"open-sds/app/internal/decode","Test":"TestBreakManchester/FalseNegatives_explicit","Elapsed":0.02}
+{"Time":"2026-09-23T08:37:33.60037486+02:00","Action":"run","Package":"open-sds/app/internal/decode","Test":"TestBreakManchester/FalseNegatives_auto"}
+{"Time":"2026-09-23T08:37:33.600382756+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestBreakManchester/FalseNegatives_auto","Output":"=== RUN   TestBreakManchester/FalseNegatives_auto\n"}
+{"Time":"2026-09-23T08:37:33.612226671+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestBreakManchester/FalseNegatives_auto","Output":"    decode_break_manchester_test.go:178: auto-bitrate round-trip (spb 8..64): robust\n"}
+{"Time":"2026-09-23T08:37:33.61225342+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestBreakManchester/FalseNegatives_auto","Output":"--- PASS: TestBreakManchester/FalseNegatives_auto (0.01s)\n"}
+{"Time":"2026-09-23T08:37:33.612299054+02:00","Action":"pass","Package":"open-sds/app/internal/decode","Test":"TestBreakManchester/FalseNegatives_auto","Elapsed":0.01}
+{"Time":"2026-09-23T08:37:33.612362412+02:00","Action":"run","Package":"open-sds/app/internal/decode","Test":"TestBreakManchester/BUG3_auto_spb5"}
+{"Time":"2026-09-23T08:37:33.612369612+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestBreakManchester/BUG3_auto_spb5","Output":"=== RUN   TestBreakManchester/BUG3_auto_spb5\n"}
+{"Time":"2026-09-23T08:37:33.612666943+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestBreakManchester/BUG3_auto_spb5","Output":"--- PASS: TestBreakManchester/BUG3_auto_spb5 (0.00s)\n"}
+{"Time":"2026-09-23T08:37:33.612681259+02:00","Action":"pass","Package":"open-sds/app/internal/decode","Test":"TestBreakManchester/BUG3_auto_spb5","Elapsed":0}
+{"Time":"2026-09-23T08:37:33.612720115+02:00","Action":"run","Package":"open-sds/app/internal/decode","Test":"TestBreakManchester/FP_flat_dc"}
+{"Time":"2026-09-23T08:37:33.612727338+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestBreakManchester/FP_flat_dc","Output":"=== RUN   TestBreakManchester/FP_flat_dc\n"}
+{"Time":"2026-09-23T08:37:33.617032277+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestBreakManchester/FP_flat_dc","Output":"--- PASS: TestBreakManchester/FP_flat_dc (0.00s)\n"}
+{"Time":"2026-09-23T08:37:33.617047818+02:00","Action":"pass","Package":"open-sds/app/internal/decode","Test":"TestBreakManchester/FP_flat_dc","Elapsed":0}
+{"Time":"2026-09-23T08:37:33.617085074+02:00","Action":"run","Package":"open-sds/app/internal/decode","Test":"TestBreakManchester/FP_shapes"}
+{"Time":"2026-09-23T08:37:33.617091781+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestBreakManchester/FP_shapes","Output":"=== RUN   TestBreakManchester/FP_shapes\n"}
+{"Time":"2026-09-23T08:37:33.618727919+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestBreakManchester/FP_shapes","Output":"--- PASS: TestBreakManchester/FP_shapes (0.00s)\n"}
+{"Time":"2026-09-23T08:37:33.618752964+02:00","Action":"pass","Package":"open-sds/app/internal/decode","Test":"TestBreakManchester/FP_shapes","Elapsed":0}
+{"Time":"2026-09-23T08:37:33.618818583+02:00","Action":"run","Package":"open-sds/app/internal/decode","Test":"TestBreakManchester/FP_noise"}
+{"Time":"2026-09-23T08:37:33.61882569+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestBreakManchester/FP_noise","Output":"=== RUN   TestBreakManchester/FP_noise\n"}
+{"Time":"2026-09-23T08:37:33.649531294+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestBreakManchester/FP_noise","Output":"--- PASS: TestBreakManchester/FP_noise (0.03s)\n"}
+{"Time":"2026-09-23T08:37:33.649552507+02:00","Action":"pass","Package":"open-sds/app/internal/decode","Test":"TestBreakManchester/FP_noise","Elapsed":0.03}
+{"Time":"2026-09-23T08:37:33.649594534+02:00","Action":"run","Package":"open-sds/app/internal/decode","Test":"TestBreakManchester/FP_corrupted_frame"}
+{"Time":"2026-09-23T08:37:33.649599378+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestBreakManchester/FP_corrupted_frame","Output":"=== RUN   TestBreakManchester/FP_corrupted_frame\n"}
+{"Time":"2026-09-23T08:37:33.674208682+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestBreakManchester/FP_corrupted_frame","Output":"--- PASS: TestBreakManchester/FP_corrupted_frame (0.02s)\n"}
+{"Time":"2026-09-23T08:37:33.674235135+02:00","Action":"pass","Package":"open-sds/app/internal/decode","Test":"TestBreakManchester/FP_corrupted_frame","Elapsed":0.02}
+{"Time":"2026-09-23T08:37:33.67424906+02:00","Action":"run","Package":"open-sds/app/internal/decode","Test":"TestBreakManchester/FP_truncated"}
+{"Time":"2026-09-23T08:37:33.674252739+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestBreakManchester/FP_truncated","Output":"=== RUN   TestBreakManchester/FP_truncated\n"}
+{"Time":"2026-09-23T08:37:33.677450358+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestBreakManchester/FP_truncated","Output":"--- PASS: TestBreakManchester/FP_truncated (0.00s)\n"}
+{"Time":"2026-09-23T08:37:33.677474977+02:00","Action":"pass","Package":"open-sds/app/internal/decode","Test":"TestBreakManchester/FP_truncated","Elapsed":0}
+{"Time":"2026-09-23T08:37:33.677503209+02:00","Action":"run","Package":"open-sds/app/internal/decode","Test":"TestBreakManchester/Edge_rates_and_payloads"}
+{"Time":"2026-09-23T08:37:33.677507473+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestBreakManchester/Edge_rates_and_payloads","Output":"=== RUN   TestBreakManchester/Edge_rates_and_payloads\n"}
+{"Time":"2026-09-23T08:37:33.679164713+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestBreakManchester/Edge_rates_and_payloads","Output":"--- PASS: TestBreakManchester/Edge_rates_and_payloads (0.00s)\n"}
+{"Time":"2026-09-23T08:37:33.679177019+02:00","Action":"pass","Package":"open-sds/app/internal/decode","Test":"TestBreakManchester/Edge_rates_and_payloads","Elapsed":0}
+{"Time":"2026-09-23T08:37:33.67918532+02:00","Action":"run","Package":"open-sds/app/internal/decode","Test":"TestBreakManchester/BUG1_constant_bit_inversion"}
+{"Time":"2026-09-23T08:37:33.679189035+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestBreakManchester/BUG1_constant_bit_inversion","Output":"=== RUN   TestBreakManchester/BUG1_constant_bit_inversion\n"}
+{"Time":"2026-09-23T08:37:33.679709655+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestBreakManchester/BUG1_constant_bit_inversion","Output":"--- PASS: TestBreakManchester/BUG1_constant_bit_inversion (0.00s)\n"}
+{"Time":"2026-09-23T08:37:33.679721501+02:00","Action":"pass","Package":"open-sds/app/internal/decode","Test":"TestBreakManchester/BUG1_constant_bit_inversion","Elapsed":0}
+{"Time":"2026-09-23T08:37:33.679727674+02:00","Action":"run","Package":"open-sds/app/internal/decode","Test":"TestBreakManchester/Edge_no_panic"}
+{"Time":"2026-09-23T08:37:33.67973446+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestBreakManchester/Edge_no_panic","Output":"=== RUN   TestBreakManchester/Edge_no_panic\n"}
+{"Time":"2026-09-23T08:37:33.684697997+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestBreakManchester/Edge_no_panic","Output":"--- PASS: TestBreakManchester/Edge_no_panic (0.00s)\n"}
+{"Time":"2026-09-23T08:37:33.68472134+02:00","Action":"pass","Package":"open-sds/app/internal/decode","Test":"TestBreakManchester/Edge_no_panic","Elapsed":0}
+{"Time":"2026-09-23T08:37:33.684754622+02:00","Action":"run","Package":"open-sds/app/internal/decode","Test":"TestBreakManchester/Edge_long_record"}
+{"Time":"2026-09-23T08:37:33.684759339+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestBreakManchester/Edge_long_record","Output":"=== RUN   TestBreakManchester/Edge_long_record\n"}
+{"Time":"2026-09-23T08:37:33.689374407+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestBreakManchester/Edge_long_record","Output":"--- PASS: TestBreakManchester/Edge_long_record (0.00s)\n"}
+{"Time":"2026-09-23T08:37:33.689391296+02:00","Action":"pass","Package":"open-sds/app/internal/decode","Test":"TestBreakManchester/Edge_long_record","Elapsed":0}
+{"Time":"2026-09-23T08:37:33.689401992+02:00","Action":"run","Package":"open-sds/app/internal/decode","Test":"TestBreakManchester/HW_half_period_false_positive"}
+{"Time":"2026-09-23T08:37:33.689406815+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestBreakManchester/HW_half_period_false_positive","Output":"=== RUN   TestBreakManchester/HW_half_period_false_positive\n"}
+{"Time":"2026-09-23T08:37:33.69996819+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestBreakManchester/HW_half_period_false_positive","Output":"--- PASS: TestBreakManchester/HW_half_period_false_positive (0.01s)\n"}
+{"Time":"2026-09-23T08:37:33.699992781+02:00","Action":"pass","Package":"open-sds/app/internal/decode","Test":"TestBreakManchester/HW_half_period_false_positive","Elapsed":0.01}
+{"Time":"2026-09-23T08:37:33.70004376+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestBreakManchester","Output":"--- PASS: TestBreakManchester (0.12s)\n"}
+{"Time":"2026-09-23T08:37:33.700077617+02:00","Action":"pass","Package":"open-sds/app/internal/decode","Test":"TestBreakManchester","Elapsed":0.12}
+{"Time":"2026-09-23T08:37:33.700224628+02:00","Action":"run","Package":"open-sds/app/internal/decode","Test":"TestBreakUsbls"}
+{"Time":"2026-09-23T08:37:33.700236285+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestBreakUsbls","Output":"=== RUN   TestBreakUsbls\n"}
+{"Time":"2026-09-23T08:37:33.700263876+02:00","Action":"run","Package":"open-sds/app/internal/decode","Test":"TestBreakUsbls/false_negatives"}
+{"Time":"2026-09-23T08:37:33.70026821+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestBreakUsbls/false_negatives","Output":"=== RUN   TestBreakUsbls/false_negatives\n"}
+{"Time":"2026-09-23T08:37:33.793193807+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestBreakUsbls/false_negatives","Output":"--- PASS: TestBreakUsbls/false_negatives (0.09s)\n"}
+{"Time":"2026-09-23T08:37:33.793224668+02:00","Action":"pass","Package":"open-sds/app/internal/decode","Test":"TestBreakUsbls/false_negatives","Elapsed":0.09}
+{"Time":"2026-09-23T08:37:33.793264906+02:00","Action":"run","Package":"open-sds/app/internal/decode","Test":"TestBreakUsbls/false_positives"}
+{"Time":"2026-09-23T08:37:33.793269637+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestBreakUsbls/false_positives","Output":"=== RUN   TestBreakUsbls/false_positives\n"}
+{"Time":"2026-09-23T08:37:33.867924394+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestBreakUsbls/false_positives","Output":"    decode_break_usbls_test.go:285: no false positives across 60 adversarial inputs (noise/DC/ramp/nyquist/square/UART)\n"}
+{"Time":"2026-09-23T08:37:33.868530615+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestBreakUsbls/false_positives","Output":"--- PASS: TestBreakUsbls/false_positives (0.08s)\n"}
+{"Time":"2026-09-23T08:37:33.868549986+02:00","Action":"pass","Package":"open-sds/app/internal/decode","Test":"TestBreakUsbls/false_positives","Elapsed":0.08}
+{"Time":"2026-09-23T08:37:33.868600636+02:00","Action":"run","Package":"open-sds/app/internal/decode","Test":"TestBreakUsbls/edge_cases"}
+{"Time":"2026-09-23T08:37:33.86860774+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestBreakUsbls/edge_cases","Output":"=== RUN   TestBreakUsbls/edge_cases\n"}
+{"Time":"2026-09-23T08:37:33.886991883+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestBreakUsbls/edge_cases","Output":"--- PASS: TestBreakUsbls/edge_cases (0.02s)\n"}
+{"Time":"2026-09-23T08:37:33.887046367+02:00","Action":"pass","Package":"open-sds/app/internal/decode","Test":"TestBreakUsbls/edge_cases","Elapsed":0.02}
+{"Time":"2026-09-23T08:37:33.887057957+02:00","Action":"run","Package":"open-sds/app/internal/decode","Test":"TestBreakUsbls/known_bug_tight_interpacket_gap"}
+{"Time":"2026-09-23T08:37:33.887061659+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestBreakUsbls/known_bug_tight_interpacket_gap","Output":"=== RUN   TestBreakUsbls/known_bug_tight_interpacket_gap\n"}
+{"Time":"2026-09-23T08:37:33.887412832+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestBreakUsbls/known_bug_tight_interpacket_gap","Output":"    decode_break_usbls_test.go:448: gap=2bit: ok=true syncSpans=1 bytes=[17 11 40] (want syncs=2, bytes=[17]) -- MERGE BUG\n"}
+{"Time":"2026-09-23T08:37:33.887464073+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestBreakUsbls/known_bug_tight_interpacket_gap","Output":"--- PASS: TestBreakUsbls/known_bug_tight_interpacket_gap (0.00s)\n"}
+{"Time":"2026-09-23T08:37:33.88747836+02:00","Action":"pass","Package":"open-sds/app/internal/decode","Test":"TestBreakUsbls/known_bug_tight_interpacket_gap","Elapsed":0}
+{"Time":"2026-09-23T08:37:33.887516801+02:00","Action":"run","Package":"open-sds/app/internal/decode","Test":"TestBreakUsbls/known_bug_crc_not_validated"}
+{"Time":"2026-09-23T08:37:33.887539098+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestBreakUsbls/known_bug_crc_not_validated","Output":"=== RUN   TestBreakUsbls/known_bug_crc_not_validated\n"}
+{"Time":"2026-09-23T08:37:33.887988909+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestBreakUsbls/known_bug_crc_not_validated","Output":"    decode_break_usbls_test.go:475: corrupted CRC: ok=true errFlagged=false bytes=[170 85 237 52] -- decoder does NOT validate CRC\n"}
+{"Time":"2026-09-23T08:37:33.888019598+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestBreakUsbls/known_bug_crc_not_validated","Output":"--- PASS: TestBreakUsbls/known_bug_crc_not_validated (0.00s)\n"}
+{"Time":"2026-09-23T08:37:33.888026481+02:00","Action":"pass","Package":"open-sds/app/internal/decode","Test":"TestBreakUsbls/known_bug_crc_not_validated","Elapsed":0}
+{"Time":"2026-09-23T08:37:33.888032173+02:00","Action":"output","Package":"open-sds/app/internal/decode","Test":"TestBreakUsbls","Output":"--- PASS: TestBreakUsbls (0.19s)\n"}
+{"Time":"2026-09-23T08:37:33.888045676+02:00","Action":"pass","Package":"open-sds/app/internal/decode","Test":"TestBreakUsbls","Elapsed":0.19}
+{"Time":"2026-09-23T08:37:33.888283324+02:00","Action":"output","Package":"open-sds/app/internal/decode","Output":"PASS\n"}
+{"Time":"2026-09-23T08:37:34.890599618+02:00","Action":"output","Package":"open-sds/app/internal/decode","Output":"ok  \topen-sds/app/internal/decode\t1.608s\n"}
+{"Time":"2026-09-23T08:37:34.890619782+02:00","Action":"pass","Package":"open-sds/app/internal/decode","Elapsed":1.608}

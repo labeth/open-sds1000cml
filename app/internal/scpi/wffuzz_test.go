@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-SCPI
 package scpi
 
 import (
@@ -10,6 +11,7 @@ import (
 // Waveform readout fuzz: the VXI-11 WF? path is network-exposed and does
 // index math on user WFSU params over a frame of arbitrary geometry. Neither
 // hostile SP/NP/FP nor a degenerate frame may panic the handler.
+// TRLC-LINKS: REQ-SDS-024
 func TestWaveformReadoutFuzz(t *testing.T) {
 	rng := rand.New(rand.NewSource(0xBEEF))
 	for i := 0; i < 4000; i++ {
@@ -49,6 +51,7 @@ func TestWaveformReadoutFuzz(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-024
 func itoa(v int) string {
 	if v == 0 {
 		return "0"

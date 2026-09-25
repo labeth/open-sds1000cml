@@ -1,0 +1,308 @@
+{
+  "appSHA256": "dde6b318f9554d2d5caba8f026aaa49e757ebc9033fe9190e919428115137d93",
+  "image": {
+    "image": "general-sram-trigger",
+    "sha256": "7c8e9c81bd5dc54531f383c332532e0c23c662fac22fbb8a1963f679be2f1896",
+    "minimumInternalSlackNs": 0.001,
+    "inputs": {
+      "bench.qsf": "4ec78d16e95b4db6ef7d3051ee4d6419a0af107d5b96d0d255d751b17643ef73",
+      "bench.sdc": "b90f72740314568ce0496f95b832817d97c3378f4b2c909f388f050bcbfb1a59",
+      "pll.v": "3055b2c49594d940fd4a7f7a0e7a3f07b5393e22c12de1de8341fa006869ece8",
+      "adc_pll.v": "398cba5ba3d9cecf94aa92ddcbd5070082cdc82984afe2bce2d78eb5badcc50c",
+      "record.v": "41e4ac512f76f2fe77862e7272dde3491b263d3494805f161645a29e126d6954",
+      "transport.v": "7262bed346ea1657979c688e773cb2a30c61ddd56bf9b1c1ed74db6b16526009",
+      "adc_unpack.v": "d203e4037ed957a73458f5c8238184c7cfa2abb1ca10ca6de261be27f2f006cc",
+      "interleave.v": "a2e4bad607ebc203de2328ddb2112980dacd60c3f077ae9d95ea2706d5dc0cb7",
+      "precision.v": "55125dc307388b16c09243e3422bf23427d4a734fdbea7a6dd764bd24016f984",
+      "precision_tail.v": "9ef560304395378f353986ca8f545481334d56d835934f5cbf0dd80506960e42",
+      "uart_trigger.v": "e8b133bc1263a58560fc32bcff8bbab088281869ac997fa68f08a5336fde137b",
+      "i2c_trigger.v": "40578d65ed804528589a3e14d4187b733e15f41a86ee182b46811eb3aec70589",
+      "spi_trigger.v": "d1dee4f02dd00561f47a7abf19445e2fd51dae2a5bb3c696b6191e1e02ec25bb",
+      "sent_trigger.v": "05147eefa8f3ae35ca01cc6a9ac6a7bb2b4059c0bb250065764e0d29afd52f51",
+      "mil1553_trigger.v": "6f06040b117bebc2388bc8303605c0447b28cd4021a7a7fe0d3fb5f4f724a056",
+      "usbls_trigger.v": "782e6deb6cc55d276c4644ed35bedbe3d3cf7ada499bd97b58d9cf8687c24d99",
+      "sample_timeline.v": "a3e78a9d5758c6e64e6d192a51d00d5457e910725342dd23fdbf0c04f605ce28",
+      "decoded_event_queue.v": "4243cfd5be87d9489ab51c10a7b3e6863c1e1c03dee8201f08b9c54c381a5689",
+      "decoded_event_bridge.v": "43d116143c3403f6a8259f1d1190cb7c27e2df9b1b5563552df44e5921206eb5",
+      "decoded_event_reader.v": "32e40a4d12310c9633f2491294c9f400ca38052ef58893fff73246ab8ee2da3a",
+      "decoded_event_transport.v": "e3ed4e6d6f2a28dbc9d67774071af45343a7fde6abfd502d51ca2d9864e7a9d1",
+      "decoded_event_port.v": "de7c14385fad87fe2bc14840e33efe4665433d48e3a2eb11e20f1bafa4a67940",
+      "gpmc_slave.v": "9290fbbc5641cd09029c119fceefe7c3d9c9b6ee52f9bb5d8a8141fc5772b1b0",
+      "ddio_pair.v": "7e33617ccb20197ad4826cb23ca325172a50935c468c90a2ec95a657d979a8a6",
+      "lane_in.v": "2d1253f0c81dc439b746ebd36df3acf22a4ecac51aa85676574db500e2cf473b",
+      "lanemap_seed.vh": "bb6034a2616bb897cdb114aabf77d7c0870d30016dc96fc95c6bb2451d49362a",
+      "bench.v": "8124d01de9f11dd76a83805208ea88908ad9678bfa41dc649333fa42d2154a40"
+    },
+    "benchQualified": false
+  },
+  "protocols": {
+    "spi": [
+      {
+        "match": false,
+        "events": 36748,
+        "lossEvents": 0,
+        "pass": true
+      },
+      {
+        "match": true,
+        "events": 241502,
+        "lossEvents": 0,
+        "pass": true
+      }
+    ],
+    "sent": [
+      {
+        "match": false,
+        "events": 25873,
+        "lossEvents": 0,
+        "pass": true
+      },
+      {
+        "match": true,
+        "events": 161048,
+        "lossEvents": 0,
+        "pass": true
+      }
+    ],
+    "uart": [
+      {
+        "match": false,
+        "events": 13604,
+        "lossEvents": 0,
+        "pass": true
+      },
+      {
+        "match": true,
+        "events": 77071,
+        "lossEvents": 0,
+        "pass": true
+      }
+    ],
+    "mil1553": [
+      {
+        "match": false,
+        "events": 54245,
+        "lossEvents": 0,
+        "pass": true
+      },
+      {
+        "match": true,
+        "events": 375017,
+        "lossEvents": 0,
+        "pass": true
+      }
+    ],
+    "i2c": [
+      {
+        "match": false,
+        "events": 43419,
+        "lossEvents": 0,
+        "pass": true
+      },
+      {
+        "match": true,
+        "events": 296658,
+        "lossEvents": 0,
+        "pass": true
+      }
+    ]
+  },
+  "usb": {
+    "api": "../usb-worker-api",
+    "browser": "../usb-worker-ui-long",
+    "trigger": "../usb-worker-trigger"
+  },
+  "lifecycle": {
+    "previousParent": 1822,
+    "previousWorker": 1828,
+    "stopVerifiedBothAbsent": true,
+    "normalSchedulingAfterEnd": true
+  },
+  "restart": {
+    "workerPID": 1872,
+    "status": {
+      "frames": 19,
+      "coherent": 18,
+      "published": 18,
+      "held": 0,
+      "halt_confirm": 18,
+      "bus_errors": 0,
+      "dead_runs": 0,
+      "wedged": false,
+      "fps": 1,
+      "running": true,
+      "norm": true,
+      "single": false,
+      "trig_pos_frac": 0.5,
+      "tdiv_s": 0.0005,
+      "displayed_sdiv_s": 0.0005,
+      "trig_code": 32148,
+      "off_c1": 10515,
+      "off_c2": 10563,
+      "trig_rising": true,
+      "trig_source": 1,
+      "last_ptp": 96,
+      "last_trigpos": 0,
+      "arm_to_latch_ms": 0,
+      "drain_ms": 550.41196,
+      "lcd_frames": 18,
+      "sram_recall_ms": 391.14096,
+      "condition_ms": 155.95832,
+      "holdoff_s": 0.001,
+      "seq": 18,
+      "mmap_drain": true,
+      "ets": false,
+      "band": "sram",
+      "halt_mode": "freeze-read-rearm",
+      "trig_type": 0,
+      "acq_mode": 0,
+      "avg_count": 16,
+      "precision_rate_hz": 31250000,
+      "eres_len": 15,
+      "wincol_std": 0,
+      "wincol_std_raw": 0,
+      "wincol_max": 0,
+      "valid_depth": 156378,
+      "win_cols": 156250,
+      "mem_depth": 524288,
+      "stream": false,
+      "gap_ms": 0,
+      "short_drains": 0,
+      "stream_overflows": 0,
+      "serial_backend": "software",
+      "tdivs": [
+        1e-9,
+        2e-9,
+        5e-9,
+        1e-8,
+        2.5e-8,
+        5e-8,
+        1e-7,
+        2e-7,
+        5e-7,
+        0.000001,
+        0.000002,
+        0.000005,
+        0.00001,
+        0.00002,
+        0.00005,
+        0.0001,
+        0.0002,
+        0.0005,
+        0.001,
+        0.002,
+        0.005,
+        0.01,
+        0.02,
+        0.05,
+        0.1,
+        0.2,
+        0.5,
+        1,
+        2,
+        5,
+        10,
+        20,
+        50
+      ],
+      "trig_volts": -0.7804610318331504,
+      "trig_zero": 31437,
+      "trig_cpv": 911,
+      "trig_code_min": 27000,
+      "trig_code_max": 35000,
+      "vdivs": [
+        0.002,
+        0.005,
+        0.01,
+        0.02,
+        0.05,
+        0.1,
+        0.2,
+        0.5,
+        1,
+        2,
+        5,
+        10
+      ],
+      "vdiv1": 1,
+      "vdiv2": 1,
+      "probe1": 1,
+      "probe2": 1,
+      "cpl1": 0,
+      "cpl2": 0,
+      "inv1": false,
+      "inv2": false,
+      "zoom1": 1,
+      "zoom2": 1,
+      "vdiv_live": true,
+      "off1_v": 0.7,
+      "off2_v": 0.75,
+      "cal_source": "file",
+      "dc1_v": -0.5226791367767276,
+      "dc2_v": -0.342701906931582,
+      "version": "v0.0.5-73-gf436963-dirty (f436963, 2026-09-25T17:40:02Z)",
+      "panel": {
+        "Open": false,
+        "Title": "",
+        "Items": null,
+        "Sel": 0,
+        "ShowC1": true,
+        "ShowC2": true,
+        "ShowMeas": false,
+        "ViewMode": 0,
+        "MathMode": 0,
+        "AutosetBusy": false,
+        "AutosetMsg": "",
+        "Zoom": 1,
+        "ZoomOff": 0,
+        "Persist": false,
+        "SRActive": false,
+        "SRFocus": 0,
+        "SRGate": [
+          0,
+          0
+        ],
+        "SRStatus": "",
+        "MaskStatus": "",
+        "DecProto": 0,
+        "DecBaud": 115200,
+        "DecChA": 0,
+        "DecChB": 1,
+        "DecCPOL": false,
+        "DecCPHA": false,
+        "DecFormat": 0,
+        "CurOn": false,
+        "CurType": 0,
+        "CurSel": 0,
+        "CurX": [
+          0.35,
+          0.65
+        ],
+        "CurY": [
+          0.35,
+          0.65
+        ]
+      },
+      "half_rate": 0,
+      "acq_log": [],
+      "cmd_log": []
+    }
+  },
+  "model": {
+    "strictExitCode": 0,
+    "log": "model-validation.log",
+    "proseReload": "pass"
+  },
+  "overflow": {
+    "evidence": "../worker-overflow/decoded-failure.json",
+    "pass": true,
+    "rawBytes": 2097152,
+    "sha256": "9608e403f81b05baf3649d835803b9445b9e8b738958509f230220891fb020e8"
+  },
+  "finalStatus": {
+    "running": true,
+    "busErrors": 0,
+    "wedged": false,
+    "coherent": 243
+  }
+}

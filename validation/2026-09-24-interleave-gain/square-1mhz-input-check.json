@@ -1,0 +1,12 @@
+[
+  {
+    "min": 14,
+    "max": 255,
+    "railSamples": 233385
+  },
+  {
+    "min": 17,
+    "max": 255,
+    "railSamples": 80806
+  }
+]

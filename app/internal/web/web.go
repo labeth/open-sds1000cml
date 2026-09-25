@@ -1,6 +1,7 @@
 // Package web hosts the control webpage and JSON API on the device. It is a
 // pure producer/consumer against the engine: handlers only call staging
 // setters and read frame copies/stat snapshots — never the bus (spec 09 §1).
+// ENGMODEL-OWNER-UNIT: FU-APP-WEB
 package web
 
 import (
@@ -28,6 +29,7 @@ import (
 // *engine.Engine; WithFrame comes from the frames.Fanout — the arena's
 // single-consumer read slot belongs to the fan-out, and every other reader
 // works on its snapshot under the fan-out lock).
+// TRLC-LINKS: REQ-SDS-161, REQ-SDS-162, REQ-SDS-163, REQ-SDS-164
 type Scope interface {
 	Snapshot() engine.Stats
 	WithFrame(fn func(*engine.Frame))
@@ -80,6 +82,7 @@ type Scope interface {
 // *analog.FrontEnd). It is producer-direct — off the GPMC bus — so the web
 // layer drives it without going through the engine (spec 09 §1). May be nil
 // when the SPI nodes are unavailable.
+// TRLC-LINKS: REQ-SDS-161, REQ-SDS-162, REQ-SDS-163, REQ-SDS-164
 type Analog interface {
 	SetVdiv(ch, idx int) error
 	Snapshot() (idx [2]int, emitted bool)
@@ -97,6 +100,7 @@ type Analog interface {
 
 // Panel is the front-panel injection surface (spec 08 §6): drive any button or
 // knob over the API so only the physical matrix decode needs a real press.
+// TRLC-LINKS: REQ-SDS-162
 type Panel interface {
 	InjectButton(name string) bool
 	InjectKnob(name string, dir, steps int) bool
@@ -104,6 +108,7 @@ type Panel interface {
 
 // superresReporter is the optional device super-res status surface (the panel
 // Controller implements it). Handlers type-assert so test doubles can omit it.
+// TRLC-LINKS: REQ-SDS-164
 type superresReporter interface {
 	SuperresStatus() (active, review bool, bits float64, frames, rejected int, status string)
 }
@@ -111,6 +116,7 @@ type superresReporter interface {
 // frameWaiter is the optional long-poll surface: implemented by main's
 // scopeSource (delegating to frames.Fanout.WaitNext). Handlers type-assert
 // for it so test doubles without it degrade to a short seq poll.
+// TRLC-LINKS: REQ-SDS-163
 type frameWaiter interface {
 	WaitNextFrame(last uint64, timeout time.Duration) uint64
 }
@@ -118,6 +124,7 @@ type frameWaiter interface {
 // Server serves the UI and API. Frame reads happen inside Scope.WithFrame;
 // the reply is fully assembled under the fan-out read lock and serialized +
 // written to the socket after it is released (never hold the lock over I/O).
+// TRLC-LINKS: REQ-SDS-161, REQ-SDS-162, REQ-SDS-163, REQ-SDS-164
 type Server struct {
 	sc     Scope
 	fe     Analog
@@ -154,6 +161,7 @@ type Server struct {
 	measAt  time.Time // when meas was computed (drives the fast-flow throttle)
 }
 
+// TRLC-LINKS: REQ-SDS-164
 type measKey struct {
 	seq        uint64
 	cpl1, cpl2 int
@@ -161,11 +169,13 @@ type measKey struct {
 	sampleS    float64
 }
 
+// TRLC-LINKS: REQ-SDS-164
 type measVal struct {
 	m1, m2       *measure.Result
 	clip1, clip2 bool
 }
 
+// TRLC-LINKS: REQ-SDS-161, REQ-SDS-162, REQ-SDS-163, REQ-SDS-164
 func New(sc Scope, fe Analog, panel Panel, screen func() []byte) *Server {
 	return &Server{sc: sc, fe: fe, panel: panel, screen: screen}
 }
@@ -173,10 +183,13 @@ func New(sc Scope, fe Analog, panel Panel, screen func() []byte) *Server {
 // SetInvertSource wires the SCPI INVS shadow — the single source of truth for
 // display-level trace inversion — into the /api/status snapshot (inv1/inv2),
 // which the page applies in its trace draw path. Call before serving.
+// TRLC-LINKS: REQ-SDS-164
 func (s *Server) SetInvertSource(fn func() [2]bool) { s.invSrc = fn }
 
+// TRLC-LINKS: REQ-SDS-161
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
+	s.registerDecodedCapture(mux)
 	mux.HandleFunc("/", s.hRoot)
 	mux.HandleFunc("/api/status", s.hStatus)
 	mux.HandleFunc("/api/frame.bin", s.hFrameBin)
@@ -201,6 +214,7 @@ func (s *Server) Handler() http.Handler {
 
 // hClaim issues a fresh single-client epoch (see Server.epoch). The page calls
 // it once on load; opening a second browser bumps the epoch and takes over.
+// TRLC-LINKS: REQ-SDS-161
 func (s *Server) hClaim(w http.ResponseWriter, r *http.Request) {
 	e := s.epoch.Add(1)
 	w.Header().Set("Content-Type", "application/json")
@@ -210,6 +224,7 @@ func (s *Server) hClaim(w http.ResponseWriter, r *http.Request) {
 // hTune applies live tuning knobs for the framerate/CPU/success campaign and
 // returns the effective values. GET reports current values; POST {json} sets
 // them. Fields omitted / negative are left unchanged (see engine.Tune).
+// TRLC-LINKS: REQ-SDS-162
 func (s *Server) hTune(w http.ResponseWriter, r *http.Request) {
 	cur := s.sc.TuneSnapshot()
 	if r.Method != http.MethodPost {
@@ -228,6 +243,7 @@ func (s *Server) hTune(w http.ResponseWriter, r *http.Request) {
 
 // superseded reports whether a request's ?epoch is older than the active client
 // (a newer browser has claimed). epoch 0 / absent (SCPI, curl, tests) is exempt.
+// TRLC-LINKS: REQ-SDS-161
 func (s *Server) superseded(r *http.Request) bool {
 	q := r.URL.Query().Get("epoch")
 	if q == "" {
@@ -240,6 +256,7 @@ func (s *Server) superseded(r *http.Request) bool {
 
 // hPanel injects a front-panel button or knob event (spec 08 §6). Body:
 // {"button":"F1"} or {"knob":"adjust","dir":1,"steps":1}.
+// TRLC-LINKS: REQ-SDS-162
 func (s *Server) hPanel(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Button string `json:"button"`
@@ -268,6 +285,7 @@ func (s *Server) hPanel(w http.ResponseWriter, r *http.Request) {
 }
 
 // hScreen returns a PNG of the current LCD render — the exact device screen.
+// TRLC-LINKS: REQ-SDS-161
 func (s *Server) hScreen(w http.ResponseWriter, r *http.Request) {
 	if s.screen == nil {
 		http.Error(w, "no screen", http.StatusServiceUnavailable)
@@ -281,6 +299,7 @@ func (s *Server) hScreen(w http.ResponseWriter, r *http.Request) {
 // hRoot serves the page at "/" (with the strict CSP) and every embedded
 // .js/.css asset by bare filename. It is the ServeMux catch-all; the /api/*
 // routes are registered explicitly and never reach here.
+// TRLC-LINKS: REQ-SDS-161
 func (s *Server) hRoot(w http.ResponseWriter, r *http.Request) {
 	p := strings.TrimPrefix(r.URL.Path, "/")
 	if p == "" {
@@ -301,6 +320,7 @@ func (s *Server) hRoot(w http.ResponseWriter, r *http.Request) {
 	http.NotFound(w, r)
 }
 
+// TRLC-LINKS: REQ-SDS-161, REQ-SDS-162, REQ-SDS-163, REQ-SDS-164
 func writeJSON(w http.ResponseWriter, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(v)

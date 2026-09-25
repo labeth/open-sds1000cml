@@ -1,0 +1,53 @@
+{
+  "enabled": "Offset/gain/aperture calibration at 1 V/div and 500 MS/s; other rates/ranges retain their existing behavior",
+  "trainedOnMHz": [
+    1,
+    10
+  ],
+  "independentSquareChecksMHz": [
+    0.5,
+    25,
+    31.25
+  ],
+  "liveCheck": {
+    "frequencyMHz": 31.25,
+    "channels": [
+      {
+        "channel": 1,
+        "edges": 131073,
+        "beforeSpreadNs": 0.2573831352839877,
+        "afterSpreadNs": 0.08781020660376657,
+        "rejected": 0
+      },
+      {
+        "channel": 2,
+        "edges": 131073,
+        "beforeSpreadNs": 0.3249258977640605,
+        "afterSpreadNs": 0.0676927802662459,
+        "rejected": 0
+      }
+    ]
+  },
+  "health": {
+    "running": true,
+    "fps": 50,
+    "busErrors": 0,
+    "wedged": false
+  },
+  "generator": {
+    "pin": "Alchitry A11 / L2",
+    "finalMHz": 10,
+    "volatile": true
+  },
+  "artifacts": [
+    {
+      "path": "app/dist/app-arm",
+      "sha256": "b859bb95c511af72012b03cea11a42841c2de0d94f593c8a4ca160763e1b4441"
+    },
+    {
+      "path": "validation/2026-09-24-interleave-gain/interleave-timing-cal.json",
+      "sha256": "b25f315695fb77ff506a70de844d8b4a57e6267738574dbd35d9bddad52438f1"
+    }
+  ],
+  "limitations": "Timing spread is a crossing-based relative estimate; qualification is limited to measured waveforms and ranges, not absolute timing accuracy or complete instrument bandwidth."
+}

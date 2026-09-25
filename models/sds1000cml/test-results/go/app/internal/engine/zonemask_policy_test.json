@@ -1,0 +1,60 @@
+{
+  "source": "app/internal/engine/zonemask_policy_test.go",
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "scope": "Reviewed Go test outcomes; passing assertions contribute partial requirement evidence.",
+  "sourceSHA256": "6d0c6094d90cf5dac8e0d911a45673a94067fe48fee5179cc7d14362e26d3256",
+  "logs": {
+    "test-runs/engine-serial-zonemask-reviewed.jsonl": "7764e6feeed08a5d9d3974339936e798d2e4673861d54d3feaaa23eccb223491"
+  },
+  "tests": [
+    {
+      "name": "TestZoneMaskPublishPolicy",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-014"
+      ]
+    },
+    {
+      "name": "TestMaskGeometryFuzz",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-014"
+      ]
+    },
+    {
+      "name": "TestZoneMaskEnvRollCounted",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-014"
+      ]
+    },
+    {
+      "name": "TestMaskZeroTestableColumnsSkips",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-014"
+      ]
+    },
+    {
+      "name": "TestTrigPosFracNaNGuard",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-014"
+      ]
+    },
+    {
+      "name": "TestSingleShotWaitsForZoneQualify",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-014"
+      ]
+    }
+  ],
+  "results": [
+    {
+      "requirement": "REQ-SDS-014",
+      "status": "partial",
+      "notes": "6 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    }
+  ]
+}

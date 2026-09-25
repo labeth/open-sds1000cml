@@ -1,0 +1,48 @@
+{
+  "status": "partial-review-layout-issue-found",
+  "pdfSHA256": "bf268f2ba25f78bc27ab1ab63df8a80c74e8a530b92e999eacf6b6283dd1a774",
+  "pages": 949,
+  "reviewedPages": [
+    {
+      "page": 19,
+      "finding": "Host RTL authored view remains one complete diagram, with visible nodes/arrows and no observed clipping."
+    },
+    {
+      "page": 355,
+      "finding": "REQ-SDS-073/074 diagrams are complete; corrected unmet-metadata note is visible and legible."
+    },
+    {
+      "page": 11,
+      "finding": "Browser authored view is complete and fits the page, but contains/calls relationship labels crowd or overlap near Web App Core and Browser control API. Needs label placement review."
+    },
+    {
+      "page": 300,
+      "finding": "Complete requirement diagrams retained. REQ-SDS-007 implemented_by labels overlap in current PDF; standalone spacing preview improves separation. Generator changed; PDF not refreshed yet."
+    },
+    {
+      "page": 47,
+      "finding": "Hardware diagram retained whole. Long relationship labels crowd near boot-slot/host connections; larger spacing alone did not resolve this in a standalone preview. Hardware layout remains unchanged pending a targeted fix."
+    }
+  ],
+  "scope": "Visual inspection of these three rendered pages only. Full PDF quality is not established; automated geometry audit is separate.",
+  "spacingPreview": "Mermaid 11 local browser PNG previews, nodeSpacing=70 and rankSpacing=100. Applied to authored default flowcharts and requirement coverage only; not proof of final PDF layout.",
+  "hardwareLayoutExperiments": [
+    {
+      "layout": "nodeSpacing 140, rankSpacing 200",
+      "result": "rejected",
+      "reason": "Long hardware edge label still overlaps allocated_to near boot-slot artifact."
+    },
+    {
+      "layout": "Numbered long edges with disconnected Mermaid key subgraph",
+      "result": "rejected",
+      "reason": "Mermaid placed key horizontally, making the complete diagram excessively wide. Prototype only; not applied to generator."
+    }
+  ],
+  "hardwareCandidate": {
+    "status": "standalone-preview-reviewed",
+    "method": "Generated AsciiDoc section, numbered long relationships plus one extra Mermaid routing rank; full description table below the single diagram.",
+    "preview": "tmp/pdfs/complete-diagrams/hardware-key-preview.png",
+    "sha256": "db6f9d822436214d8a5f05776573426c5e9911ec8fb0bbb042a45311496305f4",
+    "finding": "Previously crowded hardware labels are separated. Final paginated PDF remains pending."
+  }
+}

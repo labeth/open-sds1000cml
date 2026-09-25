@@ -1,0 +1,61 @@
+{
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "result": "pass",
+  "exitCode": 0,
+  "runtimeInputSHA256": {
+    "source": {
+      "fpga/internal/quartus/quartus.go": "1bbf63561326ae6c330a9c873dc8fbc97202ac2c415808640110d09d3b3575bb",
+      "fpga/internal/quartus/quartus_test.go": "1d63e8b83d1242a31acd9cb98c0f1e275d937c8f67e6c4aa61a3ffd7b58ead32",
+      "fpga/internal/quartus/report.go": "19e43acbfa639661777dbbec650a59485b76423901e67f0c989f037baf285118",
+      "fpga/go.mod": "9e5bd69245e96b0bed043ec32a4f43574f5db262174f5b3b406cadc6c862fcab"
+    },
+    "optionalReports": {
+      "/home/labeth/ws/open-sds1000cml-acq2/fpga/default/out/output_files/default.sta.rpt": "3cc34c5d94905bddb471eca9732f4471f193f06bea5397d225b2dee098da649d",
+      "/home/labeth/ws/open-sds1000cml/fpga/standard/output_files/acq.fit.rpt": "6804293c851ec2ba441263510fb0e13410a851d84992943ee5bd41344427be3e",
+      "/home/labeth/ws/open-sds1000cml/fpga/standard/acq.qsf": "3518957de0913fde0c0d6ed90e0f10f5c9caedf302ea10417e786077f589a4d1",
+      "/home/labeth/ws/open-sds1000cml/fpga/adcstrap/output_files/adcstrap.sta.rpt": "8e1cf35fbec64beaa4cee9cf703c6ee29404d050010846eec1345df5af7f1b7f"
+    }
+  },
+  "command": [
+    "go",
+    "test",
+    "-race",
+    "-json",
+    "-count=1",
+    "-timeout=120s",
+    "./internal/quartus",
+    "-run",
+    "^(TestParseMemAvailableMB|TestQSFPinsAndGlobals|TestParseFitReportOK|TestParseFitReportUnassigned|TestParseFitReportUnused|TestParseFitReportBallMissingFromTable|TestParseFitReportNoPinTable|TestParseSTAReport|TestRealDefaultSTAReport|TestRunHappyPath|TestRunReportsDefects|TestRunNoSTATables|TestRunWrongRBFSize|TestRunToolFailure|TestRunMemoryGate|TestRunLockHeld|TestRunStaleQSF|TestRunMissingSDC|TestRunBasenameCollision|TestRunMissingQSF|TestConfigRequired|TestRealReports)$"
+  ],
+  "environment": {
+    "GOPROXY": "off"
+  },
+  "tests": {
+    "TestParseMemAvailableMB": "pass",
+    "TestQSFPinsAndGlobals": "pass",
+    "TestParseFitReportOK": "pass",
+    "TestParseFitReportUnassigned": "pass",
+    "TestParseFitReportUnused": "pass",
+    "TestParseFitReportBallMissingFromTable": "pass",
+    "TestParseFitReportNoPinTable": "pass",
+    "TestParseSTAReport": "pass",
+    "TestRealDefaultSTAReport": "pass",
+    "TestRunHappyPath": "pass",
+    "TestRunReportsDefects": "pass",
+    "TestRunNoSTATables": "pass",
+    "TestRunWrongRBFSize": "pass",
+    "TestRunToolFailure": "pass",
+    "TestRunMemoryGate": "pass",
+    "TestRunLockHeld": "pass",
+    "TestRunStaleQSF": "pass",
+    "TestRunMissingSDC": "pass",
+    "TestRunBasenameCollision": "pass",
+    "TestRunMissingQSF": "pass",
+    "TestConfigRequired": "pass",
+    "TestRealReports": "pass"
+  },
+  "log": "test-runs/quartus-reviewed.jsonl",
+  "logSHA256": "2b640193ed0accec07eebfcdfbc32fefed18f41f1bdfe77387daa9c6488d05cd",
+  "nativeEligibleTests": [],
+  "scope": "Complete three-file FPGA Quartus driver package; fake-tool host tests and optional existing report reads only. No synthesis, fitting, programming, device operation or physical qualification."
+}

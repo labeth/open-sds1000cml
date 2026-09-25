@@ -1,0 +1,384 @@
+{
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "status": "complete",
+  "cases": [
+    {
+      "id": "stream_banks-3",
+      "test": "fpga/acq_sram/sim/tb_stream_banks.v",
+      "top": "tb",
+      "sources": [
+        "fpga/acq_sram/stream_banks.v"
+      ],
+      "success": "PASS stream banks:",
+      "parameters": {
+        "BANK_AW": 3
+      },
+      "timeoutSeconds": 900,
+      "compileCommand": [
+        "iverilog",
+        "-g2012",
+        "-s",
+        "tb",
+        "-o",
+        "/tmp/sds-stream-review-paj_ky_q/stream_banks-3",
+        "-Ptb.BANK_AW=3",
+        "fpga/acq_sram/sim/tb_stream_banks.v",
+        "fpga/acq_sram/stream_banks.v"
+      ],
+      "compileExitCode": 0,
+      "compileOutput": "",
+      "simulationCommand": [
+        "vvp",
+        "/tmp/sds-stream-review-paj_ky_q/stream_banks-3"
+      ],
+      "simulationExitCode": 0,
+      "simulationOutput": "PASS stream banks: bank=8 packets, 1003 input packets, asynchronous releases, partial/empty seal, stale release, overrun retention and reset\nfpga/acq_sram/sim/tb_stream_banks.v:81: $finish called at 83288000 (1ps)\n",
+      "timedOut": false,
+      "result": "pass",
+      "sourceSnapshot": true
+    },
+    {
+      "id": "stream_path-3",
+      "test": "fpga/acq_sram/sim/tb_stream_path.v",
+      "top": "tb",
+      "sources": [
+        "fpga/acq_sram/stream_packetizer.v",
+        "fpga/acq_sram/stream_banks.v"
+      ],
+      "success": "PASS packetizer + banks:",
+      "parameters": {
+        "BANK_AW": 3
+      },
+      "timeoutSeconds": 900,
+      "compileCommand": [
+        "iverilog",
+        "-g2012",
+        "-s",
+        "tb",
+        "-o",
+        "/tmp/sds-stream-review-paj_ky_q/stream_path-3",
+        "-Ptb.BANK_AW=3",
+        "fpga/acq_sram/sim/tb_stream_path.v",
+        "fpga/acq_sram/stream_packetizer.v",
+        "fpga/acq_sram/stream_banks.v"
+      ],
+      "compileExitCode": 0,
+      "compileOutput": "",
+      "simulationCommand": [
+        "vvp",
+        "/tmp/sds-stream-review-paj_ky_q/stream_path-3"
+      ],
+      "simulationExitCode": 0,
+      "simulationOutput": "PASS packetizer + banks: bank=           8, odd/even/empty stop, live word+stop, sequence and overload reset\nfpga/acq_sram/sim/tb_stream_path.v:65: $finish called at 38975000 (1ps)\n",
+      "timedOut": false,
+      "result": "pass",
+      "sourceSnapshot": true
+    },
+    {
+      "id": "stream_banks-10",
+      "test": "fpga/acq_sram/sim/tb_stream_banks.v",
+      "top": "tb",
+      "sources": [
+        "fpga/acq_sram/stream_banks.v"
+      ],
+      "success": "PASS stream banks:",
+      "parameters": {
+        "BANK_AW": 10
+      },
+      "timeoutSeconds": 900,
+      "compileCommand": [
+        "iverilog",
+        "-g2012",
+        "-s",
+        "tb",
+        "-o",
+        "/tmp/sds-stream-review-paj_ky_q/stream_banks-10",
+        "-Ptb.BANK_AW=10",
+        "fpga/acq_sram/sim/tb_stream_banks.v",
+        "fpga/acq_sram/stream_banks.v"
+      ],
+      "compileExitCode": 0,
+      "compileOutput": "",
+      "simulationCommand": [
+        "vvp",
+        "/tmp/sds-stream-review-paj_ky_q/stream_banks-10"
+      ],
+      "simulationExitCode": 0,
+      "simulationOutput": "PASS stream banks: bank=1024 packets, 10243 input packets, asynchronous releases, partial/empty seal, stale release, overrun retention and reset\nfpga/acq_sram/sim/tb_stream_banks.v:81: $finish called at 925962000 (1ps)\n",
+      "timedOut": false,
+      "result": "pass",
+      "sourceSnapshot": true
+    },
+    {
+      "id": "stream_path-10",
+      "test": "fpga/acq_sram/sim/tb_stream_path.v",
+      "top": "tb",
+      "sources": [
+        "fpga/acq_sram/stream_packetizer.v",
+        "fpga/acq_sram/stream_banks.v"
+      ],
+      "success": "PASS packetizer + banks:",
+      "parameters": {
+        "BANK_AW": 10
+      },
+      "timeoutSeconds": 900,
+      "compileCommand": [
+        "iverilog",
+        "-g2012",
+        "-s",
+        "tb",
+        "-o",
+        "/tmp/sds-stream-review-paj_ky_q/stream_path-10",
+        "-Ptb.BANK_AW=10",
+        "fpga/acq_sram/sim/tb_stream_path.v",
+        "fpga/acq_sram/stream_packetizer.v",
+        "fpga/acq_sram/stream_banks.v"
+      ],
+      "compileExitCode": 0,
+      "compileOutput": "",
+      "simulationCommand": [
+        "vvp",
+        "/tmp/sds-stream-review-paj_ky_q/stream_path-10"
+      ],
+      "simulationExitCode": 0,
+      "simulationOutput": "PASS packetizer + banks: bank=          1024, odd/even/empty stop, live word+stop, sequence and overload reset\nfpga/acq_sram/sim/tb_stream_path.v:65: $finish called at 4202187500 (1ps)\n",
+      "timedOut": false,
+      "result": "pass",
+      "sourceSnapshot": true
+    },
+    {
+      "id": "stream_banks-11",
+      "test": "fpga/acq_sram/sim/tb_stream_banks.v",
+      "top": "tb",
+      "sources": [
+        "fpga/acq_sram/stream_banks.v"
+      ],
+      "success": "PASS stream banks:",
+      "parameters": {
+        "BANK_AW": 11
+      },
+      "timeoutSeconds": 900,
+      "compileCommand": [
+        "iverilog",
+        "-g2012",
+        "-s",
+        "tb",
+        "-o",
+        "/tmp/sds-stream-review-paj_ky_q/stream_banks-11",
+        "-Ptb.BANK_AW=11",
+        "fpga/acq_sram/sim/tb_stream_banks.v",
+        "fpga/acq_sram/stream_banks.v"
+      ],
+      "compileExitCode": 0,
+      "compileOutput": "",
+      "simulationCommand": [
+        "vvp",
+        "/tmp/sds-stream-review-paj_ky_q/stream_banks-11"
+      ],
+      "simulationExitCode": 0,
+      "simulationOutput": "PASS stream banks: bank=2048 packets, 20483 input packets, asynchronous releases, partial/empty seal, stale release, overrun retention and reset\nfpga/acq_sram/sim/tb_stream_banks.v:81: $finish called at 1849612000 (1ps)\n",
+      "timedOut": false,
+      "result": "pass",
+      "sourceSnapshot": true
+    },
+    {
+      "id": "stream_path-11",
+      "test": "fpga/acq_sram/sim/tb_stream_path.v",
+      "top": "tb",
+      "sources": [
+        "fpga/acq_sram/stream_packetizer.v",
+        "fpga/acq_sram/stream_banks.v"
+      ],
+      "success": "PASS packetizer + banks:",
+      "parameters": {
+        "BANK_AW": 11
+      },
+      "timeoutSeconds": 900,
+      "compileCommand": [
+        "iverilog",
+        "-g2012",
+        "-s",
+        "tb",
+        "-o",
+        "/tmp/sds-stream-review-paj_ky_q/stream_path-11",
+        "-Ptb.BANK_AW=11",
+        "fpga/acq_sram/sim/tb_stream_path.v",
+        "fpga/acq_sram/stream_packetizer.v",
+        "fpga/acq_sram/stream_banks.v"
+      ],
+      "compileExitCode": 0,
+      "compileOutput": "",
+      "simulationCommand": [
+        "vvp",
+        "/tmp/sds-stream-review-paj_ky_q/stream_path-11"
+      ],
+      "simulationExitCode": 0,
+      "simulationOutput": "PASS packetizer + banks: bank=          2048, odd/even/empty stop, live word+stop, sequence and overload reset\nfpga/acq_sram/sim/tb_stream_path.v:65: $finish called at 8398487500 (1ps)\n",
+      "timedOut": false,
+      "result": "pass",
+      "sourceSnapshot": true
+    },
+    {
+      "id": "sram-stream-13",
+      "test": "fpga/acq_sram/sim/tb_sram_stream_path.v",
+      "top": "tb_stream_path",
+      "sources": [
+        "fpga/acq_sram/host_fifo.v",
+        "fpga/acq_sram/host_ownership.v",
+        "fpga/acq_sram/host_packer.v",
+        "fpga/acq_sram/host_path.v",
+        "fpga/acq_sram/host_ram.v",
+        "fpga/acq_sram/host_sink.v",
+        "fpga/acq_sram/ingress_fifo.v",
+        "fpga/acq_sram/ingress_path.v",
+        "fpga/acq_sram/ingress_stream.v",
+        "fpga/acq_sram/ordinal_counter.v",
+        "fpga/acq_sram/sim/ddr_model.v",
+        "fpga/acq_sram/stream_engine.v",
+        "fpga/acq_sram/stream_path.v",
+        "fpga/acq_sram/timeslice_controller.v",
+        "fpga/acq_sram/transport.v",
+        "fpga/acq_sram/word_bridge.v"
+      ],
+      "success": "PASS stream wrapper:",
+      "parameters": {
+        "AW": 13,
+        "TARGET": 10003
+      },
+      "timeoutSeconds": 900,
+      "compileCommand": [
+        "iverilog",
+        "-g2012",
+        "-s",
+        "tb_stream_path",
+        "-o",
+        "/tmp/sds-stream-review-paj_ky_q/sram-stream-13",
+        "-Ptb_stream_path.AW=13",
+        "-Ptb_stream_path.TARGET=10003",
+        "fpga/acq_sram/sim/tb_sram_stream_path.v",
+        "fpga/acq_sram/host_fifo.v",
+        "fpga/acq_sram/host_ownership.v",
+        "fpga/acq_sram/host_packer.v",
+        "fpga/acq_sram/host_path.v",
+        "fpga/acq_sram/host_ram.v",
+        "fpga/acq_sram/host_sink.v",
+        "fpga/acq_sram/ingress_fifo.v",
+        "fpga/acq_sram/ingress_path.v",
+        "fpga/acq_sram/ingress_stream.v",
+        "fpga/acq_sram/ordinal_counter.v",
+        "fpga/acq_sram/sim/ddr_model.v",
+        "fpga/acq_sram/stream_engine.v",
+        "fpga/acq_sram/stream_path.v",
+        "fpga/acq_sram/timeslice_controller.v",
+        "fpga/acq_sram/transport.v",
+        "fpga/acq_sram/word_bridge.v"
+      ],
+      "compileExitCode": 0,
+      "compileOutput": "",
+      "simulationCommand": [
+        "vvp",
+        "/tmp/sds-stream-review-paj_ky_q/sram-stream-13"
+      ],
+      "simulationExitCode": 0,
+      "simulationOutput": "PASS stream wrapper: 10003 words, 4 banks, AW=13, actual SRAM pins and host reads\nfpga/acq_sram/sim/tb_sram_stream_path.v:72: $finish called at 7098812000 (1ps)\n",
+      "timedOut": false,
+      "result": "pass",
+      "sourceSnapshot": true
+    },
+    {
+      "id": "sram-stream-19",
+      "test": "fpga/acq_sram/sim/tb_sram_stream_path.v",
+      "top": "tb_stream_path",
+      "sources": [
+        "fpga/acq_sram/host_fifo.v",
+        "fpga/acq_sram/host_ownership.v",
+        "fpga/acq_sram/host_packer.v",
+        "fpga/acq_sram/host_path.v",
+        "fpga/acq_sram/host_ram.v",
+        "fpga/acq_sram/host_sink.v",
+        "fpga/acq_sram/ingress_fifo.v",
+        "fpga/acq_sram/ingress_path.v",
+        "fpga/acq_sram/ingress_stream.v",
+        "fpga/acq_sram/ordinal_counter.v",
+        "fpga/acq_sram/sim/ddr_model.v",
+        "fpga/acq_sram/stream_engine.v",
+        "fpga/acq_sram/stream_path.v",
+        "fpga/acq_sram/timeslice_controller.v",
+        "fpga/acq_sram/transport.v",
+        "fpga/acq_sram/word_bridge.v"
+      ],
+      "success": "PASS stream wrapper:",
+      "parameters": {
+        "AW": 19,
+        "TARGET": 65539
+      },
+      "timeoutSeconds": 900,
+      "compileCommand": [
+        "iverilog",
+        "-g2012",
+        "-s",
+        "tb_stream_path",
+        "-o",
+        "/tmp/sds-stream-review-paj_ky_q/sram-stream-19",
+        "-Ptb_stream_path.AW=19",
+        "-Ptb_stream_path.TARGET=65539",
+        "fpga/acq_sram/sim/tb_sram_stream_path.v",
+        "fpga/acq_sram/host_fifo.v",
+        "fpga/acq_sram/host_ownership.v",
+        "fpga/acq_sram/host_packer.v",
+        "fpga/acq_sram/host_path.v",
+        "fpga/acq_sram/host_ram.v",
+        "fpga/acq_sram/host_sink.v",
+        "fpga/acq_sram/ingress_fifo.v",
+        "fpga/acq_sram/ingress_path.v",
+        "fpga/acq_sram/ingress_stream.v",
+        "fpga/acq_sram/ordinal_counter.v",
+        "fpga/acq_sram/sim/ddr_model.v",
+        "fpga/acq_sram/stream_engine.v",
+        "fpga/acq_sram/stream_path.v",
+        "fpga/acq_sram/timeslice_controller.v",
+        "fpga/acq_sram/transport.v",
+        "fpga/acq_sram/word_bridge.v"
+      ],
+      "compileExitCode": 0,
+      "compileOutput": "",
+      "simulationCommand": [
+        "vvp",
+        "/tmp/sds-stream-review-paj_ky_q/sram-stream-19"
+      ],
+      "simulationExitCode": 0,
+      "simulationOutput": "PASS stream wrapper: 65539 words, 26 banks, AW=19, actual SRAM pins and host reads\nfpga/acq_sram/sim/tb_sram_stream_path.v:72: $finish called at 38316020000 (1ps)\n",
+      "timedOut": false,
+      "result": "pass",
+      "sourceSnapshot": true
+    }
+  ],
+  "scope": "Eight original stream cases: packetizer/banks at BANK_AW3,10,11 and SRAM wrapper AW13/TARGET10003,AW19/TARGET65539. Fixed ideal clocks and behavioral SRAM/RAM; no physical CDC, vendor FIFO timing, fitted timing or hardware qualification. Legacy adc_stream and top-level bench are not executed.",
+  "runtime": {
+    "iverilog": "Icarus Verilog version 12.0 (stable) ()"
+  },
+  "runtimeInputSHA256": {
+    "fpga/acq_sram/host_fifo.v": "04794e2bfba0c485ca5be8b8ff2de48b992d6369601815d9461d9f08032f0883",
+    "fpga/acq_sram/host_ownership.v": "310b124b4c1de198a9aa6655fb492d7934c22ec5291e37d23691b45ecfa87b0b",
+    "fpga/acq_sram/host_packer.v": "2b9902e2752e899f5eb4fd94e968c5d800b533b0253b1bc280835cc098aae531",
+    "fpga/acq_sram/host_path.v": "2a0b52bc3c780895f3f7a283fecdcc2b9df32a3172525a50ab8584dbf9f27a7e",
+    "fpga/acq_sram/host_ram.v": "bcc72b0eaf963f5f1576991e20d1bf9c8af55ba0a587d21309a06bd734487990",
+    "fpga/acq_sram/host_sink.v": "0528b33b5c95a74a6b4f37ee76fc8c80aafbfa13739af1070e4feb92e299d0bd",
+    "fpga/acq_sram/ingress_fifo.v": "9c8378ef57fdaa6f82c58e3da8aedeb296564cec6d6655050f50a06aa1fcbadf",
+    "fpga/acq_sram/ingress_path.v": "0701c87be770e144b96ff09f4a07143caa86d447330844cb719a960e1401b0b2",
+    "fpga/acq_sram/ingress_stream.v": "2409307756c49a6b30b826a719e3b38dda887ae946e933723a1d77d6c6635478",
+    "fpga/acq_sram/ordinal_counter.v": "297ad038fd29b45044b6b91262890c12cdc462baafd453e761987c52c4cbf82c",
+    "fpga/acq_sram/sim/ddr_model.v": "ace57d159f0b1b9edd4e9c82b1496fab3b79b7c056b9aaa2da66698e65d164f2",
+    "fpga/acq_sram/sim/tb_sram_stream_path.v": "783a6ac5fd0a33522a8b18084cb6d276501743719e629a312cbad03febcc56a7",
+    "fpga/acq_sram/sim/tb_stream_banks.v": "2cbb89cd1939f665175b4ba3f748befc8b816c51888a30a8a6fc3d41f6b30251",
+    "fpga/acq_sram/sim/tb_stream_path.v": "c38ab1f37765b77088e786ee67f309ae04b22f067cc911d7edf46af0f615b15c",
+    "fpga/acq_sram/stream_banks.v": "852a2036f829e4cd3d0127929e854db0052648da4e815136c4ef73cf5dc9bc3b",
+    "fpga/acq_sram/stream_engine.v": "8b2a5dc216fb29de59ca0b5a2615c47a8a8a099e6273338fe790f606a3b5c046",
+    "fpga/acq_sram/stream_packetizer.v": "3fde05e9d732e03115666f036316d273407447402e928871244f171bae0591e0",
+    "fpga/acq_sram/stream_path.v": "13976af491d5364d32a67db10abeee491d0aa161ed20ae3f3a564bae77f641eb",
+    "fpga/acq_sram/timeslice_controller.v": "5daedebf673cc8c7d2ae927615fb8d2e60b735ba363d9ad080f2cb154e5ec18d",
+    "fpga/acq_sram/transport.v": "814e344e31c1283a4d507e6d489179d0d1ab5b8c05404ed7d51c4047d5ca095a",
+    "fpga/acq_sram/word_bridge.v": "9769f4762e9ad0560cd3d115b028de30cb5402aede81e94239c8dde73241e50a"
+  },
+  "result": "pass"
+}

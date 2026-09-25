@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-PANEL
 package panel
 
 import (
@@ -12,6 +13,7 @@ import (
 // view consumes them). Pin the wrapper's gating and per-channel application;
 // the compensation math itself is pinned cross-engine in
 // internal/superres/comp_jsparity_test.go.
+// TRLC-LINKS: REQ-SDS-140
 func TestSRCompMeansAppliesFalloffComp(t *testing.T) {
 	st := superres.New(256, 16)
 	st.SampleS = 2e-9 // raw 500 MSa/s → fine dt 0.125 ns
@@ -70,5 +72,22 @@ func TestSRCompMeansAppliesFalloffComp(t *testing.T) {
 	nm, nm2 := srCompMeans(st, superres.Result{})
 	if nm != nil || nm2 != nil {
 		t.Error("nil means must stay nil")
+	}
+}
+
+// TRLC-LINKS: REQ-SDS-140
+func TestCancelledOrReplacedStackCannotRestoreReview(t *testing.T) {
+	c, _, _ := newC(t)
+	old := superres.New(32, 8)
+	c.srStack, c.srActive, c.srStop = old, true, make(chan struct{})
+	c.srCancel("cancelled")
+	c.srReachReview(old, "late result")
+	if c.srFocus != 0 || c.srStatus != "cancelled" {
+		t.Fatal("cancelled stack restored review")
+	}
+	c.srStack, c.srActive, c.srFocus = superres.New(32, 8), true, 1
+	c.srReachReview(old, "old stack result")
+	if c.srFocus != 1 || c.srStatus != "cancelled" {
+		t.Fatal("old stack overwrote replacement")
 	}
 }

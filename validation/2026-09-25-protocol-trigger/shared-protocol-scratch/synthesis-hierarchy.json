@@ -1,0 +1,145 @@
+{
+  "note": "Synthesis counts; not additive fitted logic elements. Integrated fitter failed.",
+  "rows": [
+    {
+      "entity": "|adc_interleave:frontend|",
+      "combinationalALUTs": "312 (54)",
+      "registers": "615 (310)",
+      "memoryBits": 2560,
+      "dspElements": 0
+    },
+    {
+      "entity": "|adc_precision:precision|",
+      "combinationalALUTs": "2136 (30)",
+      "registers": "1990 (156)",
+      "memoryBits": 4096,
+      "dspElements": 0
+    },
+    {
+      "entity": "|altsyncram:buffer_mem64_rtl_0|",
+      "combinationalALUTs": "0 (0)",
+      "registers": "0 (0)",
+      "memoryBits": 131072,
+      "dspElements": 0
+    },
+    {
+      "entity": "|bench_pll:pll|",
+      "combinationalALUTs": "3 (0)",
+      "registers": "0 (0)",
+      "memoryBits": 0,
+      "dspElements": 0
+    },
+    {
+      "entity": "|decoded_event_port:event_port|",
+      "combinationalALUTs": "74 (74)",
+      "registers": "44 (44)",
+      "memoryBits": 0,
+      "dspElements": 0
+    },
+    {
+      "entity": "|decoded_event_transport:events|",
+      "combinationalALUTs": "944 (11)",
+      "registers": "1193 (211)",
+      "memoryBits": 196608,
+      "dspElements": 0
+    },
+    {
+      "entity": "|gpmc_slave:busif|",
+      "combinationalALUTs": "11 (11)",
+      "registers": "62 (62)",
+      "memoryBits": 0,
+      "dspElements": 0
+    },
+    {
+      "entity": "|i2c_trigger:i2c|",
+      "combinationalALUTs": "107 (107)",
+      "registers": "60 (60)",
+      "memoryBits": 0,
+      "dspElements": 0
+    },
+    {
+      "entity": "|manchester_trigger:man|",
+      "combinationalALUTs": "1844 (183)",
+      "registers": "1098 (161)",
+      "memoryBits": 0,
+      "dspElements": 4
+    },
+    {
+      "entity": "|mil1553_trigger:mil|",
+      "combinationalALUTs": "394 (394)",
+      "registers": "218 (218)",
+      "memoryBits": 0,
+      "dspElements": 0
+    },
+    {
+      "entity": "|protocol_scratch:scratch|",
+      "combinationalALUTs": "99 (99)",
+      "registers": "0 (0)",
+      "memoryBits": 16896,
+      "dspElements": 0
+    },
+    {
+      "entity": "|sample_timeline:timeline|",
+      "combinationalALUTs": "262 (262)",
+      "registers": "497 (497)",
+      "memoryBits": 0,
+      "dspElements": 0
+    },
+    {
+      "entity": "|sent_trigger:sent|",
+      "combinationalALUTs": "242 (242)",
+      "registers": "113 (113)",
+      "memoryBits": 0,
+      "dspElements": 0
+    },
+    {
+      "entity": "|spi_trigger:spi|",
+      "combinationalALUTs": "168 (168)",
+      "registers": "80 (80)",
+      "memoryBits": 0,
+      "dspElements": 0
+    },
+    {
+      "entity": "|sram_edge_pair:trigger_compare[0].edges|",
+      "combinationalALUTs": "74 (74)",
+      "registers": "86 (86)",
+      "memoryBits": 0,
+      "dspElements": 0
+    },
+    {
+      "entity": "|sram_edge_pair:trigger_compare[1].edges|",
+      "combinationalALUTs": "75 (75)",
+      "registers": "86 (86)",
+      "memoryBits": 0,
+      "dspElements": 0
+    },
+    {
+      "entity": "|sram_record:record|",
+      "combinationalALUTs": "239 (239)",
+      "registers": "233 (233)",
+      "memoryBits": 0,
+      "dspElements": 0
+    },
+    {
+      "entity": "|sram_transport:transport|",
+      "combinationalALUTs": "89 (89)",
+      "registers": "196 (196)",
+      "memoryBits": 0,
+      "dspElements": 0
+    },
+    {
+      "entity": "|uart_trigger:uart|",
+      "combinationalALUTs": "187 (187)",
+      "registers": "89 (89)",
+      "memoryBits": 0,
+      "dspElements": 0
+    },
+    {
+      "entity": "|usbls_trigger:usb|",
+      "combinationalALUTs": "626 (626)",
+      "registers": "397 (397)",
+      "memoryBits": 0,
+      "dspElements": 0
+    }
+  ]
+}

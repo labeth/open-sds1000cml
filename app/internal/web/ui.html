@@ -230,7 +230,7 @@
           <span>SDA</span><select id="decSda" class="rolesel"></select></div>
         <div class="dec-spi decrow"><span>CLK</span><select id="decClk" class="rolesel"></select>
           <span>DATA</span><select id="decData" class="rolesel"></select></div>
-        <div class="dec-uart decrow"><span>Line</span><select id="decLine" class="rolesel"></select></div>
+        <div class="dec-single decrow"><span>Line</span><select id="decLine" class="rolesel"></select></div>
         <div class="decrow"><button id="decAuto" class="sm on">auto&nbsp;thr</button>
           <input id="decThr" type="range" min="0" max="255" value="128" class="grow">
           <span id="decThrV" class="readout xs">128</span></div>
@@ -239,9 +239,12 @@
         <div class="decrow"><button id="decWatch" class="sm" title="save decoded windows matching the rule to a review buffer">watch</button>
           <label class="row-tight"><input type="checkbox" id="decWatchErr" checked>err</label>
           <input id="decWatchMatch" placeholder="match (text or /regex/)" class="grow min"></div>
-        <div class="dec-uart decrow"><span>baud</span><input id="decBaud" type="number" value="115200" class="w-md">
-          <span>bits</span><input id="decBits" type="number" min="5" max="9" value="8" class="w-xs">
-          <select id="decParity" class="dsel"><option value="none">N</option><option value="even">E</option><option value="odd">O</option></select></div>
+        <div class="dec-rate decrow"><span>baud (0 = auto)</span><input id="decBaud" type="number" value="115200" class="w-md">
+          <span class="dec-word"><span>bits</span><input id="decBits" type="number" min="5" max="9" value="8" class="w-xs"></span>
+          <select id="decParity" class="dec-uart dsel"><option value="none">N</option><option value="even">E</option><option value="odd">O</option></select>
+          </div>
+        <div class="dec-sent decrow"><label for="decSentTick">SENT tick ns (0 = auto)</label><input id="decSentTick" type="number" min="0" value="3000" class="w-md"><label for="decSentNibbles">Nibbles</label><input id="decSentNibbles" type="number" min="1" max="64" value="8" class="w-xs"></div>
+        <div class="dec-polarity decrow"><label><input id="decInverted" type="checkbox"> Inverted inputs</label></div>
         <div class="dec-spi decrow"><span>CPOL</span><select id="decCpol" class="dsel"><option>0</option><option>1</option></select>
           <span>CPHA</span><select id="decCpha" class="dsel"><option>0</option><option>1</option></select>
           <select id="decMsb" class="dsel"><option value="1">MSB</option><option value="0">LSB</option></select></div>
@@ -249,11 +252,17 @@
         <div class="decrow">
           <span class="dec-i2c"><span>addr</span><input id="stAddr" type="text" placeholder="any" class="num w-xs" title="7-bit hex address to trigger on, e.g. 24 — blank = any">
             <select id="stRW" class="dsel"><option value="2">any</option><option value="0">W</option><option value="1">R</option></select></span>
-          <input id="stBytes" type="text" placeholder="any" class="num grow min" title="hex byte sequence to trigger on (I²C: data bytes) — blank = any byte/transaction">
+          <input id="stBytes" type="text" placeholder="any" class="num grow min" title="Hex data sequence: bytes for byte protocols, nibbles for SENT, 16-bit words for MIL-1553, 19-bit data for ARINC 429. Blank = any valid data/transaction.">
           <button id="stArm" class="sm" title="serial trigger: publish only frames whose decoded stream matches, centred on the match. Uses the decode settings above. AUTO passes a liveness frame; NORM/SINGLE hold for the match.">arm</button>
         </div>
         <div id="stStats" class="subtle"></div>
+
       </div>
+        <div class="grp-label">decoded stream → retained capture</div>
+        <div class="decrow dec-spi"><label for="dsClock">SPI clock Hz</label><input id="dsClock" type="number" min="1" value="200000" class="w-md"></div>
+        <div class="decrow"><button id="dsStart" class="sm">Stream + trigger</button><button id="dsRaw" class="sm" disabled>Download raw</button><button id="dsEnd" class="sm" disabled>End session</button></div>
+        <div id="dsStatus" class="subtle">Uses the decode settings and match above. Full-depth capture, 50% pretrigger.</div>
+        <div id="dsCount" class="subtle"></div><pre id="dsEvents" class="decoded-events"></pre>
     </div>
 
     <div class="card" id="decodeResultCard" style="display:none">
@@ -328,9 +337,9 @@
       <option value="2">ERES</option><option value="3">PEAK</option><option value="4">PRECISION</option>
     </select>
     <select id="acqn" style="display:none"></select>
-    <span id="acquisitionWarning" style="color:#f3b35b"></span>
+    <span id="acquisitionWarning"></span>
     <span id="actualSampleRate" aria-live="polite">Sample rate: —</span>
-    <label id="precisionRateLabel" style="display:none">Samples/s per channel <select id="precisionRate" aria-label="Precision samples per second"></select></label>
+    <label id="precisionRateLabel" hidden>Samples/s per channel <select id="precisionRate" aria-label="Precision samples per second"></select></label>
     <label class="hint">mem</label>
     <select id="memdepth" aria-label="memory depth">
       <option value="1048576">1M (SRAM deep)</option>
@@ -340,7 +349,7 @@
     </select>
   </div>
 
-  <section class="panel2" id="precisionCard" style="display:flex">
+  <section class="panel2" id="precisionCard">
  <strong>Precision &amp; fit</strong>
  <span id="precisionLimits">No precision filter selected.</span>
 
@@ -348,7 +357,7 @@
  <label>Channel <select id="precisionChannel"><option value="0">C1</option><option value="1">C2</option></select></label>
  <button id="precisionFit">Fit current view</button>
  <div id="precisionFitResult">Fits estimate model parameters; they do not increase ADC accuracy. Residual includes noise and model mismatch.</div>
- <canvas id="precisionFitCanvas" width="700" height="200" style="width:100%;max-width:700px;height:200px;display:none"></canvas>
+ <canvas id="precisionFitCanvas" width="700" height="200" hidden></canvas>
 </section>
 <div id="qualrow" class="panel2">
     <div class="grp" id="qp-pulse" style="display:none">
@@ -429,6 +438,7 @@
 <script src="app_eye.js"></script>        <!-- eye/jitter + wiring -->
 <script src="app_zonemask.js"></script>   <!-- zone-trigger/mask + wiring -->
 <script src="app_serialtrig.js"></script> <!-- serial/protocol trigger + wiring -->
+<script src="app_decoded_capture.js"></script>
 <script src="app_views.js"></script>      <!-- Bode + spectrogram + wiring -->
 <script src="app_controls.js"></script>   <!-- acquisition/trigger/timebase/vertical/view controls -->
 <script src="app_canvas.js"></script>     <!-- scope + navigator pointer/wheel interactions -->

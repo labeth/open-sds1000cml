@@ -1,0 +1,2508 @@
+{
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "scope": "Offline Icarus simulations with ideal digital clocks and behavioral RAM (ALTERA_RESERVED_QIS is not defined). No fitted primitive simulation, metastability analysis, physical timing or board qualification.",
+  "cases": [
+    {
+      "id": "ordinal-counter",
+      "test": "fpga/acq_sram/sim/tb_ordinal_counter.v",
+      "top": "tb",
+      "sources": [
+        "fpga/acq_sram/ordinal_counter.v"
+      ],
+      "requirements": [
+        "REQ-SDS-047"
+      ],
+      "success": "PASS 64-bit ordinals across all carry boundaries and stalled steps",
+      "sha256": {
+        "fpga/acq_sram/sim/tb_ordinal_counter.v": "1544b9fc10a789b99c1fbe65250fec73ff5972b83d33c953bd12d2ce7f78464c",
+        "fpga/acq_sram/ordinal_counter.v": "297ad038fd29b45044b6b91262890c12cdc462baafd453e761987c52c4cbf82c"
+      },
+      "compileCommand": [
+        "iverilog",
+        "-g2012",
+        "-s",
+        "tb",
+        "-o",
+        "/tmp/sds-rtl-tests-lnvrgbnk/ordinal-counter",
+        "fpga/acq_sram/sim/tb_ordinal_counter.v",
+        "fpga/acq_sram/ordinal_counter.v"
+      ],
+      "compileExitCode": 0,
+      "compileOutput": "",
+      "simulationCommand": [
+        "vvp",
+        "/tmp/sds-rtl-tests-lnvrgbnk/ordinal-counter"
+      ],
+      "simulationExitCode": 0,
+      "simulationOutput": "PASS 64-bit ordinals across all carry boundaries and stalled steps\nfpga/acq_sram/sim/tb_ordinal_counter.v:27: $finish called at 864000 (1ps)\n",
+      "result": "pass"
+    },
+    {
+      "id": "host-ram",
+      "test": "fpga/acq_sram/sim/tb_host_ram.v",
+      "top": "tb",
+      "sources": [
+        "fpga/acq_sram/host_ram.v"
+      ],
+      "requirements": [
+        "REQ-SDS-051"
+      ],
+      "success": "PASS host RAM:",
+      "sha256": {
+        "fpga/acq_sram/sim/tb_host_ram.v": "4809af3b0503c6e0f9f8cd3d2211ba52de7218514ce799620512f64bd60fa1ac",
+        "fpga/acq_sram/host_ram.v": "bcc72b0eaf963f5f1576991e20d1bf9c8af55ba0a587d21309a06bd734487990"
+      },
+      "compileCommand": [
+        "iverilog",
+        "-g2012",
+        "-s",
+        "tb",
+        "-o",
+        "/tmp/sds-rtl-tests-lnvrgbnk/host-ram",
+        "fpga/acq_sram/sim/tb_host_ram.v",
+        "fpga/acq_sram/host_ram.v"
+      ],
+      "compileExitCode": 0,
+      "compileOutput": "",
+      "simulationCommand": [
+        "vvp",
+        "/tmp/sds-rtl-tests-lnvrgbnk/host-ram"
+      ],
+      "simulationExitCode": 0,
+      "simulationOutput": "PASS host RAM: 30757 halfword responses, full range, disjoint concurrency, invalid addresses, resets\nfpga/acq_sram/sim/tb_host_ram.v:75: $finish called at 328470000 (1ps)\n",
+      "result": "pass"
+    },
+    {
+      "id": "host-read-window",
+      "test": "fpga/acq_sram/sim/tb_host_read_window.v",
+      "top": "tb_host_read_window",
+      "sources": [
+        "fpga/acq_sram/host_read_window.v",
+        "fpga/acq_sram/host_ram.v",
+        "fpga/common/gpmc_slave.v"
+      ],
+      "requirements": [
+        "REQ-SDS-053",
+        "REQ-SDS-079"
+      ],
+      "success": "PASS host read window:",
+      "sha256": {
+        "fpga/acq_sram/sim/tb_host_read_window.v": "9bb8899de6b2b9a2d0c858c914ff0f0bdc52665616f236f170fa945917abb48d",
+        "fpga/acq_sram/host_read_window.v": "4eecc90a6f592d648239b89645e95798e8e4f1dfbbbe9e0d19fdef0065210633",
+        "fpga/acq_sram/host_ram.v": "bcc72b0eaf963f5f1576991e20d1bf9c8af55ba0a587d21309a06bd734487990",
+        "fpga/common/gpmc_slave.v": "9290fbbc5641cd09029c119fceefe7c3d9c9b6ee52f9bb5d8a8141fc5772b1b0"
+      },
+      "sourceSnapshot": true,
+      "workingDirectory": "/tmp/sds-rtl-tests-qih0cujd/sources",
+      "compileCommand": [
+        "iverilog",
+        "-g2012",
+        "-s",
+        "tb_host_read_window",
+        "-o",
+        "/tmp/sds-rtl-tests-qih0cujd/host-read-window",
+        "fpga/acq_sram/sim/tb_host_read_window.v",
+        "fpga/acq_sram/host_read_window.v",
+        "fpga/acq_sram/host_ram.v",
+        "fpga/common/gpmc_slave.v"
+      ],
+      "compileExitCode": 0,
+      "compileOutput": "",
+      "simulationCommand": [
+        "vvp",
+        "/tmp/sds-rtl-tests-qih0cujd/host-read-window"
+      ],
+      "simulationExitCode": 0,
+      "simulationOutput": "PASS host read window: real RAM/GPMC, 5120-halfword bank, odd record, final address, overread, token reuse, release\nfpga/acq_sram/sim/tb_host_read_window.v:98: $finish called at 842110000 (1ps)\n",
+      "result": "pass"
+    },
+    {
+      "id": "host-read-port",
+      "test": "fpga/acq_sram/sim/tb_host_read_port.v",
+      "top": "tb_host_read_port",
+      "sources": [
+        "fpga/acq_sram/host_read_port.v",
+        "fpga/acq_sram/host_read_window.v",
+        "fpga/acq_sram/host_ram.v",
+        "fpga/common/gpmc_slave.v"
+      ],
+      "requirements": [
+        "REQ-SDS-053"
+      ],
+      "success": "PASS host read port:",
+      "sha256": {
+        "fpga/acq_sram/sim/tb_host_read_port.v": "d66bbed7584cfe91de6e61c20f63ff6b4ed1548f3b500b04db83a50417ebb008",
+        "fpga/acq_sram/host_read_port.v": "635a4078419a6410a75c46f7c5b5aee951baad46b53fa48ff7642dc32ce4982e",
+        "fpga/acq_sram/host_read_window.v": "4eecc90a6f592d648239b89645e95798e8e4f1dfbbbe9e0d19fdef0065210633",
+        "fpga/acq_sram/host_ram.v": "bcc72b0eaf963f5f1576991e20d1bf9c8af55ba0a587d21309a06bd734487990",
+        "fpga/common/gpmc_slave.v": "9290fbbc5641cd09029c119fceefe7c3d9c9b6ee52f9bb5d8a8141fc5772b1b0"
+      },
+      "sourceSnapshot": true,
+      "workingDirectory": "/tmp/sds-rtl-tests-1y1lcuvi/sources",
+      "compileCommand": [
+        "iverilog",
+        "-g2012",
+        "-s",
+        "tb_host_read_port",
+        "-o",
+        "/tmp/sds-rtl-tests-1y1lcuvi/host-read-port",
+        "fpga/acq_sram/sim/tb_host_read_port.v",
+        "fpga/acq_sram/host_read_port.v",
+        "fpga/acq_sram/host_read_window.v",
+        "fpga/acq_sram/host_ram.v",
+        "fpga/common/gpmc_slave.v"
+      ],
+      "compileExitCode": 0,
+      "compileOutput": "",
+      "simulationCommand": [
+        "vvp",
+        "/tmp/sds-rtl-tests-1y1lcuvi/host-read-port"
+      ],
+      "simulationExitCode": 0,
+      "simulationOutput": "PASS host read port: GPMC selection/read/pop/release, descriptors, final address, malformed writes, unclaimed registers\nfpga/acq_sram/sim/tb_host_read_port.v:73: $finish called at 26600000 (1ps)\n",
+      "result": "pass"
+    },
+    {
+      "id": "word-bridge-4-2-0",
+      "test": "fpga/acq_sram/sim/tb_word_bridge.v",
+      "top": "tb",
+      "sources": [
+        "fpga/acq_sram/word_bridge.v"
+      ],
+      "requirements": [
+        "REQ-SDS-093"
+      ],
+      "success": "PASS word bridge delivered=",
+      "parameters": {
+        "SOURCE_HALF": 4,
+        "DEST_HALF": 2,
+        "PHASE": 0
+      },
+      "sha256": {
+        "fpga/acq_sram/sim/tb_word_bridge.v": "39d6cc09758c134eb82b09e740588f992c17fbf696365153b4eb93136711875b",
+        "fpga/acq_sram/word_bridge.v": "9769f4762e9ad0560cd3d115b028de30cb5402aede81e94239c8dde73241e50a"
+      },
+      "compileCommand": [
+        "iverilog",
+        "-g2012",
+        "-s",
+        "tb",
+        "-o",
+        "/tmp/sds-rtl-tests-lnvrgbnk/word-bridge-4-2-0",
+        "-Ptb.SOURCE_HALF=4",
+        "-Ptb.DEST_HALF=2",
+        "-Ptb.PHASE=0",
+        "fpga/acq_sram/sim/tb_word_bridge.v",
+        "fpga/acq_sram/word_bridge.v"
+      ],
+      "compileExitCode": 0,
+      "compileOutput": "",
+      "simulationCommand": [
+        "vvp",
+        "/tmp/sds-rtl-tests-lnvrgbnk/word-bridge-4-2-0"
+      ],
+      "simulationExitCode": 0,
+      "simulationOutput": "throughput source_half=4 dest_half=2 phase=0 ns_per_word=31.993000\nPASS word bridge delivered=2161 reset/stall epochs checked\nfpga/acq_sram/sim/tb_word_bridge.v:55: $finish called at 73840000 (1ps)\n",
+      "result": "pass"
+    },
+    {
+      "id": "word-bridge-2-5-1",
+      "test": "fpga/acq_sram/sim/tb_word_bridge.v",
+      "top": "tb",
+      "sources": [
+        "fpga/acq_sram/word_bridge.v"
+      ],
+      "requirements": [
+        "REQ-SDS-093"
+      ],
+      "success": "PASS word bridge delivered=",
+      "parameters": {
+        "SOURCE_HALF": 2,
+        "DEST_HALF": 5,
+        "PHASE": 1
+      },
+      "sha256": {
+        "fpga/acq_sram/sim/tb_word_bridge.v": "39d6cc09758c134eb82b09e740588f992c17fbf696365153b4eb93136711875b",
+        "fpga/acq_sram/word_bridge.v": "9769f4762e9ad0560cd3d115b028de30cb5402aede81e94239c8dde73241e50a"
+      },
+      "compileCommand": [
+        "iverilog",
+        "-g2012",
+        "-s",
+        "tb",
+        "-o",
+        "/tmp/sds-rtl-tests-lnvrgbnk/word-bridge-2-5-1",
+        "-Ptb.SOURCE_HALF=2",
+        "-Ptb.DEST_HALF=5",
+        "-Ptb.PHASE=1",
+        "fpga/acq_sram/sim/tb_word_bridge.v",
+        "fpga/acq_sram/word_bridge.v"
+      ],
+      "compileExitCode": 0,
+      "compileOutput": "",
+      "simulationCommand": [
+        "vvp",
+        "/tmp/sds-rtl-tests-lnvrgbnk/word-bridge-2-5-1"
+      ],
+      "simulationExitCode": 0,
+      "simulationOutput": "throughput source_half=2 dest_half=5 phase=1 ns_per_word=49.993000\nPASS word bridge delivered=2161 reset/stall epochs checked\nfpga/acq_sram/sim/tb_word_bridge.v:55: $finish called at 112708000 (1ps)\n",
+      "result": "pass"
+    },
+    {
+      "id": "word-bridge-5-2-1",
+      "test": "fpga/acq_sram/sim/tb_word_bridge.v",
+      "top": "tb",
+      "sources": [
+        "fpga/acq_sram/word_bridge.v"
+      ],
+      "requirements": [
+        "REQ-SDS-093"
+      ],
+      "success": "PASS word bridge delivered=",
+      "parameters": {
+        "SOURCE_HALF": 5,
+        "DEST_HALF": 2,
+        "PHASE": 1
+      },
+      "sha256": {
+        "fpga/acq_sram/sim/tb_word_bridge.v": "39d6cc09758c134eb82b09e740588f992c17fbf696365153b4eb93136711875b",
+        "fpga/acq_sram/word_bridge.v": "9769f4762e9ad0560cd3d115b028de30cb5402aede81e94239c8dde73241e50a"
+      },
+      "compileCommand": [
+        "iverilog",
+        "-g2012",
+        "-s",
+        "tb",
+        "-o",
+        "/tmp/sds-rtl-tests-lnvrgbnk/word-bridge-5-2-1",
+        "-Ptb.SOURCE_HALF=5",
+        "-Ptb.DEST_HALF=2",
+        "-Ptb.PHASE=1",
+        "fpga/acq_sram/sim/tb_word_bridge.v",
+        "fpga/acq_sram/word_bridge.v"
+      ],
+      "compileExitCode": 0,
+      "compileOutput": "",
+      "simulationCommand": [
+        "vvp",
+        "/tmp/sds-rtl-tests-lnvrgbnk/word-bridge-5-2-1"
+      ],
+      "simulationExitCode": 0,
+      "simulationOutput": "throughput source_half=5 dest_half=2 phase=1 ns_per_word=39.989500\nPASS word bridge delivered=2161 reset/stall epochs checked\nfpga/acq_sram/sim/tb_word_bridge.v:55: $finish called at 91040000 (1ps)\n",
+      "result": "pass"
+    },
+    {
+      "id": "word-bridge-3-3-2",
+      "test": "fpga/acq_sram/sim/tb_word_bridge.v",
+      "top": "tb",
+      "sources": [
+        "fpga/acq_sram/word_bridge.v"
+      ],
+      "requirements": [
+        "REQ-SDS-093"
+      ],
+      "success": "PASS word bridge delivered=",
+      "parameters": {
+        "SOURCE_HALF": 3,
+        "DEST_HALF": 3,
+        "PHASE": 2
+      },
+      "sha256": {
+        "fpga/acq_sram/sim/tb_word_bridge.v": "39d6cc09758c134eb82b09e740588f992c17fbf696365153b4eb93136711875b",
+        "fpga/acq_sram/word_bridge.v": "9769f4762e9ad0560cd3d115b028de30cb5402aede81e94239c8dde73241e50a"
+      },
+      "compileCommand": [
+        "iverilog",
+        "-g2012",
+        "-s",
+        "tb",
+        "-o",
+        "/tmp/sds-rtl-tests-lnvrgbnk/word-bridge-3-3-2",
+        "-Ptb.SOURCE_HALF=3",
+        "-Ptb.DEST_HALF=3",
+        "-Ptb.PHASE=2",
+        "fpga/acq_sram/sim/tb_word_bridge.v",
+        "fpga/acq_sram/word_bridge.v"
+      ],
+      "compileExitCode": 0,
+      "compileOutput": "",
+      "simulationCommand": [
+        "vvp",
+        "/tmp/sds-rtl-tests-lnvrgbnk/word-bridge-3-3-2"
+      ],
+      "simulationExitCode": 0,
+      "simulationOutput": "throughput source_half=3 dest_half=3 phase=2 ns_per_word=35.992500\nPASS word bridge delivered=2161 reset/stall epochs checked\nfpga/acq_sram/sim/tb_word_bridge.v:55: $finish called at 82440000 (1ps)\n",
+      "result": "pass"
+    },
+    {
+      "id": "host-fifo-1-0",
+      "test": "fpga/acq_sram/sim/tb_host_fifo.v",
+      "top": "tb",
+      "sources": [
+        "fpga/acq_sram/host_fifo.v"
+      ],
+      "requirements": [
+        "REQ-SDS-050",
+        "REQ-SDS-078"
+      ],
+      "success": "PASS host FIFO",
+      "parameters": {
+        "PHASE": 1,
+        "SYNC_STALL": 0
+      },
+      "sha256": {
+        "fpga/acq_sram/sim/tb_host_fifo.v": "0e6ebed72c2eee251521de4dfe56c5789dd231c2547ff909d824dd17aa42c8f6",
+        "fpga/acq_sram/host_fifo.v": "04794e2bfba0c485ca5be8b8ff2de48b992d6369601815d9461d9f08032f0883"
+      },
+      "compileCommand": [
+        "iverilog",
+        "-g2012",
+        "-s",
+        "tb",
+        "-o",
+        "/tmp/sds-rtl-tests-lnvrgbnk/host-fifo-1-0",
+        "-Ptb.PHASE=1",
+        "-Ptb.SYNC_STALL=0",
+        "fpga/acq_sram/sim/tb_host_fifo.v",
+        "fpga/acq_sram/host_fifo.v"
+      ],
+      "compileExitCode": 0,
+      "compileOutput": "",
+      "simulationCommand": [
+        "vvp",
+        "/tmp/sds-rtl-tests-lnvrgbnk/host-fifo-1-0"
+      ],
+      "simulationExitCode": 0,
+      "simulationOutput": "packed burst phase=1 words=2562 max_pending=6\nPASS host FIFO phase=1 sync_stall=0: packed throughput, wraps, stalls, overflow, common reset\nfpga/acq_sram/sim/tb_host_fifo.v:120: $finish called at 62033000 (1ps)\n",
+      "result": "pass"
+    },
+    {
+      "id": "host-fifo-1-1",
+      "test": "fpga/acq_sram/sim/tb_host_fifo.v",
+      "top": "tb",
+      "sources": [
+        "fpga/acq_sram/host_fifo.v"
+      ],
+      "requirements": [
+        "REQ-SDS-050",
+        "REQ-SDS-078"
+      ],
+      "success": "PASS host FIFO",
+      "parameters": {
+        "PHASE": 1,
+        "SYNC_STALL": 1
+      },
+      "sha256": {
+        "fpga/acq_sram/sim/tb_host_fifo.v": "0e6ebed72c2eee251521de4dfe56c5789dd231c2547ff909d824dd17aa42c8f6",
+        "fpga/acq_sram/host_fifo.v": "04794e2bfba0c485ca5be8b8ff2de48b992d6369601815d9461d9f08032f0883"
+      },
+      "compileCommand": [
+        "iverilog",
+        "-g2012",
+        "-s",
+        "tb",
+        "-o",
+        "/tmp/sds-rtl-tests-lnvrgbnk/host-fifo-1-1",
+        "-Ptb.PHASE=1",
+        "-Ptb.SYNC_STALL=1",
+        "fpga/acq_sram/sim/tb_host_fifo.v",
+        "fpga/acq_sram/host_fifo.v"
+      ],
+      "compileExitCode": 0,
+      "compileOutput": "",
+      "simulationCommand": [
+        "vvp",
+        "/tmp/sds-rtl-tests-lnvrgbnk/host-fifo-1-1"
+      ],
+      "simulationExitCode": 0,
+      "simulationOutput": "packed burst phase=1 words=2562 max_pending=7\nPASS host FIFO phase=1 sync_stall=1: packed throughput, wraps, stalls, overflow, common reset\nfpga/acq_sram/sim/tb_host_fifo.v:120: $finish called at 62049000 (1ps)\n",
+      "result": "pass"
+    },
+    {
+      "id": "host-fifo-2-0",
+      "test": "fpga/acq_sram/sim/tb_host_fifo.v",
+      "top": "tb",
+      "sources": [
+        "fpga/acq_sram/host_fifo.v"
+      ],
+      "requirements": [
+        "REQ-SDS-050",
+        "REQ-SDS-078"
+      ],
+      "success": "PASS host FIFO",
+      "parameters": {
+        "PHASE": 2,
+        "SYNC_STALL": 0
+      },
+      "sha256": {
+        "fpga/acq_sram/sim/tb_host_fifo.v": "0e6ebed72c2eee251521de4dfe56c5789dd231c2547ff909d824dd17aa42c8f6",
+        "fpga/acq_sram/host_fifo.v": "04794e2bfba0c485ca5be8b8ff2de48b992d6369601815d9461d9f08032f0883"
+      },
+      "compileCommand": [
+        "iverilog",
+        "-g2012",
+        "-s",
+        "tb",
+        "-o",
+        "/tmp/sds-rtl-tests-lnvrgbnk/host-fifo-2-0",
+        "-Ptb.PHASE=2",
+        "-Ptb.SYNC_STALL=0",
+        "fpga/acq_sram/sim/tb_host_fifo.v",
+        "fpga/acq_sram/host_fifo.v"
+      ],
+      "compileExitCode": 0,
+      "compileOutput": "",
+      "simulationCommand": [
+        "vvp",
+        "/tmp/sds-rtl-tests-lnvrgbnk/host-fifo-2-0"
+      ],
+      "simulationExitCode": 0,
+      "simulationOutput": "packed burst phase=2 words=2562 max_pending=6\nPASS host FIFO phase=2 sync_stall=0: packed throughput, wraps, stalls, overflow, common reset\nfpga/acq_sram/sim/tb_host_fifo.v:120: $finish called at 62034000 (1ps)\n",
+      "result": "pass"
+    },
+    {
+      "id": "host-fifo-2-1",
+      "test": "fpga/acq_sram/sim/tb_host_fifo.v",
+      "top": "tb",
+      "sources": [
+        "fpga/acq_sram/host_fifo.v"
+      ],
+      "requirements": [
+        "REQ-SDS-050",
+        "REQ-SDS-078"
+      ],
+      "success": "PASS host FIFO",
+      "parameters": {
+        "PHASE": 2,
+        "SYNC_STALL": 1
+      },
+      "sha256": {
+        "fpga/acq_sram/sim/tb_host_fifo.v": "0e6ebed72c2eee251521de4dfe56c5789dd231c2547ff909d824dd17aa42c8f6",
+        "fpga/acq_sram/host_fifo.v": "04794e2bfba0c485ca5be8b8ff2de48b992d6369601815d9461d9f08032f0883"
+      },
+      "compileCommand": [
+        "iverilog",
+        "-g2012",
+        "-s",
+        "tb",
+        "-o",
+        "/tmp/sds-rtl-tests-lnvrgbnk/host-fifo-2-1",
+        "-Ptb.PHASE=2",
+        "-Ptb.SYNC_STALL=1",
+        "fpga/acq_sram/sim/tb_host_fifo.v",
+        "fpga/acq_sram/host_fifo.v"
+      ],
+      "compileExitCode": 0,
+      "compileOutput": "",
+      "simulationCommand": [
+        "vvp",
+        "/tmp/sds-rtl-tests-lnvrgbnk/host-fifo-2-1"
+      ],
+      "simulationExitCode": 0,
+      "simulationOutput": "packed burst phase=2 words=2562 max_pending=7\nPASS host FIFO phase=2 sync_stall=1: packed throughput, wraps, stalls, overflow, common reset\nfpga/acq_sram/sim/tb_host_fifo.v:120: $finish called at 62042000 (1ps)\n",
+      "result": "pass"
+    },
+    {
+      "id": "host-fifo-3-0",
+      "test": "fpga/acq_sram/sim/tb_host_fifo.v",
+      "top": "tb",
+      "sources": [
+        "fpga/acq_sram/host_fifo.v"
+      ],
+      "requirements": [
+        "REQ-SDS-050",
+        "REQ-SDS-078"
+      ],
+      "success": "PASS host FIFO",
+      "parameters": {
+        "PHASE": 3,
+        "SYNC_STALL": 0
+      },
+      "sha256": {
+        "fpga/acq_sram/sim/tb_host_fifo.v": "0e6ebed72c2eee251521de4dfe56c5789dd231c2547ff909d824dd17aa42c8f6",
+        "fpga/acq_sram/host_fifo.v": "04794e2bfba0c485ca5be8b8ff2de48b992d6369601815d9461d9f08032f0883"
+      },
+      "compileCommand": [
+        "iverilog",
+        "-g2012",
+        "-s",
+        "tb",
+        "-o",
+        "/tmp/sds-rtl-tests-lnvrgbnk/host-fifo-3-0",
+        "-Ptb.PHASE=3",
+        "-Ptb.SYNC_STALL=0",
+        "fpga/acq_sram/sim/tb_host_fifo.v",
+        "fpga/acq_sram/host_fifo.v"
+      ],
+      "compileExitCode": 0,
+      "compileOutput": "",
+      "simulationCommand": [
+        "vvp",
+        "/tmp/sds-rtl-tests-lnvrgbnk/host-fifo-3-0"
+      ],
+      "simulationExitCode": 0,
+      "simulationOutput": "packed burst phase=3 words=2562 max_pending=7\nPASS host FIFO phase=3 sync_stall=0: packed throughput, wraps, stalls, overflow, common reset\nfpga/acq_sram/sim/tb_host_fifo.v:120: $finish called at 62027000 (1ps)\n",
+      "result": "pass"
+    },
+    {
+      "id": "host-fifo-3-1",
+      "test": "fpga/acq_sram/sim/tb_host_fifo.v",
+      "top": "tb",
+      "sources": [
+        "fpga/acq_sram/host_fifo.v"
+      ],
+      "requirements": [
+        "REQ-SDS-050",
+        "REQ-SDS-078"
+      ],
+      "success": "PASS host FIFO",
+      "parameters": {
+        "PHASE": 3,
+        "SYNC_STALL": 1
+      },
+      "sha256": {
+        "fpga/acq_sram/sim/tb_host_fifo.v": "0e6ebed72c2eee251521de4dfe56c5789dd231c2547ff909d824dd17aa42c8f6",
+        "fpga/acq_sram/host_fifo.v": "04794e2bfba0c485ca5be8b8ff2de48b992d6369601815d9461d9f08032f0883"
+      },
+      "compileCommand": [
+        "iverilog",
+        "-g2012",
+        "-s",
+        "tb",
+        "-o",
+        "/tmp/sds-rtl-tests-lnvrgbnk/host-fifo-3-1",
+        "-Ptb.PHASE=3",
+        "-Ptb.SYNC_STALL=1",
+        "fpga/acq_sram/sim/tb_host_fifo.v",
+        "fpga/acq_sram/host_fifo.v"
+      ],
+      "compileExitCode": 0,
+      "compileOutput": "",
+      "simulationCommand": [
+        "vvp",
+        "/tmp/sds-rtl-tests-lnvrgbnk/host-fifo-3-1"
+      ],
+      "simulationExitCode": 0,
+      "simulationOutput": "packed burst phase=3 words=2562 max_pending=8\nPASS host FIFO phase=3 sync_stall=1: packed throughput, wraps, stalls, overflow, common reset\nfpga/acq_sram/sim/tb_host_fifo.v:120: $finish called at 62035000 (1ps)\n",
+      "result": "pass"
+    },
+    {
+      "id": "host-ownership",
+      "test": "fpga/acq_sram/sim/tb_host_ownership.v",
+      "top": "tb_host_ownership",
+      "sources": [
+        "fpga/acq_sram/host_ownership.v"
+      ],
+      "requirements": [
+        "REQ-SDS-052"
+      ],
+      "success": "PASS ownership:",
+      "sha256": {
+        "fpga/acq_sram/sim/tb_host_ownership.v": "5087eaa5cf073f38c83f0eedc31ae78284978825189905be0fa3c3079cddab1c",
+        "fpga/acq_sram/host_ownership.v": "310b124b4c1de198a9aa6655fb492d7934c22ec5291e37d23691b45ecfa87b0b"
+      },
+      "compileCommand": [
+        "iverilog",
+        "-g2012",
+        "-s",
+        "tb_host_ownership",
+        "-o",
+        "/tmp/sds-rtl-tests-lnvrgbnk/host-ownership",
+        "fpga/acq_sram/sim/tb_host_ownership.v",
+        "fpga/acq_sram/host_ownership.v"
+      ],
+      "compileExitCode": 0,
+      "compileOutput": "",
+      "simulationCommand": [
+        "vvp",
+        "/tmp/sds-rtl-tests-lnvrgbnk/host-ownership"
+      ],
+      "simulationExitCode": 0,
+      "simulationOutput": "PASS ownership: metadata, dual banks, 20 reuses, stale/duplicate releases, overwrite fault, reset, short reset with all clocks stopped and new epoch\nfpga/acq_sram/sim/tb_host_ownership.v:76: $finish called at 5940000 (1ps)\n",
+      "result": "pass"
+    },
+    {
+      "id": "host-sink",
+      "test": "fpga/acq_sram/sim/tb_host_sink.v",
+      "top": "tb_host_sink",
+      "sources": [
+        "fpga/acq_sram/host_sink.v",
+        "fpga/acq_sram/host_ram.v"
+      ],
+      "requirements": [
+        "REQ-SDS-094"
+      ],
+      "success": "PASS host sink:",
+      "sha256": {
+        "fpga/acq_sram/sim/tb_host_sink.v": "ac872c6048bb5fbbeba68d20a6b05693d6be49330397fa4f7bba60ad3f933b20",
+        "fpga/acq_sram/host_sink.v": "0528b33b5c95a74a6b4f37ee76fc8c80aafbfa13739af1070e4feb92e299d0bd",
+        "fpga/acq_sram/host_ram.v": "bcc72b0eaf963f5f1576991e20d1bf9c8af55ba0a587d21309a06bd734487990"
+      },
+      "compileCommand": [
+        "iverilog",
+        "-g2012",
+        "-s",
+        "tb_host_sink",
+        "-o",
+        "/tmp/sds-rtl-tests-lnvrgbnk/host-sink",
+        "fpga/acq_sram/sim/tb_host_sink.v",
+        "fpga/acq_sram/host_sink.v",
+        "fpga/acq_sram/host_ram.v"
+      ],
+      "compileExitCode": 0,
+      "compileOutput": "",
+      "simulationCommand": [
+        "vvp",
+        "/tmp/sds-rtl-tests-lnvrgbnk/host-sink"
+      ],
+      "simulationExitCode": 0,
+      "simulationOutput": "PASS host sink: full bank RAM readback, odd tail, ordering, malformed descriptors, fault/reset\nfpga/acq_sram/sim/tb_host_sink.v:71: $finish called at 123408000 (1ps)\n",
+      "result": "pass"
+    },
+    {
+      "id": "host-path-0",
+      "test": "fpga/acq_sram/sim/tb_host_path.v",
+      "top": "tb_host_path",
+      "sources": [
+        "fpga/acq_sram/host_path.v",
+        "fpga/acq_sram/host_packer.v",
+        "fpga/acq_sram/host_fifo.v",
+        "fpga/acq_sram/host_sink.v",
+        "fpga/acq_sram/host_ram.v",
+        "fpga/acq_sram/host_ownership.v"
+      ],
+      "requirements": [
+        "REQ-SDS-049",
+        "REQ-SDS-050",
+        "REQ-SDS-051",
+        "REQ-SDS-052",
+        "REQ-SDS-094"
+      ],
+      "success": "PASS host path",
+      "parameters": {
+        "PHASE": 0
+      },
+      "sha256": {
+        "fpga/acq_sram/sim/tb_host_path.v": "9b7388e098b22a9fecc95313a660827d0a7c99489bb2708feae5c61431537afe",
+        "fpga/acq_sram/host_path.v": "2a0b52bc3c780895f3f7a283fecdcc2b9df32a3172525a50ab8584dbf9f27a7e",
+        "fpga/acq_sram/host_packer.v": "2b9902e2752e899f5eb4fd94e968c5d800b533b0253b1bc280835cc098aae531",
+        "fpga/acq_sram/host_fifo.v": "04794e2bfba0c485ca5be8b8ff2de48b992d6369601815d9461d9f08032f0883",
+        "fpga/acq_sram/host_sink.v": "0528b33b5c95a74a6b4f37ee76fc8c80aafbfa13739af1070e4feb92e299d0bd",
+        "fpga/acq_sram/host_ram.v": "bcc72b0eaf963f5f1576991e20d1bf9c8af55ba0a587d21309a06bd734487990",
+        "fpga/acq_sram/host_ownership.v": "310b124b4c1de198a9aa6655fb492d7934c22ec5291e37d23691b45ecfa87b0b"
+      },
+      "compileCommand": [
+        "iverilog",
+        "-g2012",
+        "-s",
+        "tb_host_path",
+        "-o",
+        "/tmp/sds-rtl-tests-lnvrgbnk/host-path-0",
+        "-Ptb_host_path.PHASE=0",
+        "fpga/acq_sram/sim/tb_host_path.v",
+        "fpga/acq_sram/host_path.v",
+        "fpga/acq_sram/host_packer.v",
+        "fpga/acq_sram/host_fifo.v",
+        "fpga/acq_sram/host_sink.v",
+        "fpga/acq_sram/host_ram.v",
+        "fpga/acq_sram/host_ownership.v"
+      ],
+      "compileExitCode": 0,
+      "compileOutput": "",
+      "simulationCommand": [
+        "vvp",
+        "/tmp/sds-rtl-tests-lnvrgbnk/host-path-0"
+      ],
+      "simulationExitCode": 0,
+      "simulationOutput": "PASS host path phase=0 full banks, odd tails, exact RAM, metadata, ownership and reuse\nfpga/acq_sram/sim/tb_host_path.v:102: $finish called at 564320000 (1ps)\n",
+      "result": "pass"
+    },
+    {
+      "id": "host-faults-0",
+      "test": "fpga/acq_sram/sim/tb_host_faults.v",
+      "top": "tb_host_faults",
+      "sources": [
+        "fpga/acq_sram/host_path.v",
+        "fpga/acq_sram/host_packer.v",
+        "fpga/acq_sram/host_fifo.v",
+        "fpga/acq_sram/host_sink.v",
+        "fpga/acq_sram/host_ram.v",
+        "fpga/acq_sram/host_ownership.v"
+      ],
+      "requirements": [
+        "REQ-SDS-094"
+      ],
+      "success": "PASS host faults",
+      "parameters": {
+        "PHASE": 0
+      },
+      "sha256": {
+        "fpga/acq_sram/sim/tb_host_faults.v": "e401ae4f18a69908ad596926bc9f9965a2c7c616a67f76d51b5871da806df0de",
+        "fpga/acq_sram/host_path.v": "2a0b52bc3c780895f3f7a283fecdcc2b9df32a3172525a50ab8584dbf9f27a7e",
+        "fpga/acq_sram/host_packer.v": "2b9902e2752e899f5eb4fd94e968c5d800b533b0253b1bc280835cc098aae531",
+        "fpga/acq_sram/host_fifo.v": "04794e2bfba0c485ca5be8b8ff2de48b992d6369601815d9461d9f08032f0883",
+        "fpga/acq_sram/host_sink.v": "0528b33b5c95a74a6b4f37ee76fc8c80aafbfa13739af1070e4feb92e299d0bd",
+        "fpga/acq_sram/host_ram.v": "bcc72b0eaf963f5f1576991e20d1bf9c8af55ba0a587d21309a06bd734487990",
+        "fpga/acq_sram/host_ownership.v": "310b124b4c1de198a9aa6655fb492d7934c22ec5291e37d23691b45ecfa87b0b"
+      },
+      "compileCommand": [
+        "iverilog",
+        "-g2012",
+        "-s",
+        "tb_host_faults",
+        "-o",
+        "/tmp/sds-rtl-tests-lnvrgbnk/host-faults-0",
+        "-Ptb_host_faults.PHASE=0",
+        "fpga/acq_sram/sim/tb_host_faults.v",
+        "fpga/acq_sram/host_path.v",
+        "fpga/acq_sram/host_packer.v",
+        "fpga/acq_sram/host_fifo.v",
+        "fpga/acq_sram/host_sink.v",
+        "fpga/acq_sram/host_ram.v",
+        "fpga/acq_sram/host_ownership.v"
+      ],
+      "compileExitCode": 0,
+      "compileOutput": "",
+      "simulationCommand": [
+        "vvp",
+        "/tmp/sds-rtl-tests-lnvrgbnk/host-faults-0"
+      ],
+      "simulationExitCode": 0,
+      "simulationOutput": "PASS host faults phase=0 malformed input, owned-bank protection, fault CDC and reset recovery\nfpga/acq_sram/sim/tb_host_faults.v:88: $finish called at 3990000 (1ps)\n",
+      "result": "pass"
+    },
+    {
+      "id": "host-path-1",
+      "test": "fpga/acq_sram/sim/tb_host_path.v",
+      "top": "tb_host_path",
+      "sources": [
+        "fpga/acq_sram/host_path.v",
+        "fpga/acq_sram/host_packer.v",
+        "fpga/acq_sram/host_fifo.v",
+        "fpga/acq_sram/host_sink.v",
+        "fpga/acq_sram/host_ram.v",
+        "fpga/acq_sram/host_ownership.v"
+      ],
+      "requirements": [
+        "REQ-SDS-049",
+        "REQ-SDS-050",
+        "REQ-SDS-051",
+        "REQ-SDS-052",
+        "REQ-SDS-094"
+      ],
+      "success": "PASS host path",
+      "parameters": {
+        "PHASE": 1
+      },
+      "sha256": {
+        "fpga/acq_sram/sim/tb_host_path.v": "9b7388e098b22a9fecc95313a660827d0a7c99489bb2708feae5c61431537afe",
+        "fpga/acq_sram/host_path.v": "2a0b52bc3c780895f3f7a283fecdcc2b9df32a3172525a50ab8584dbf9f27a7e",
+        "fpga/acq_sram/host_packer.v": "2b9902e2752e899f5eb4fd94e968c5d800b533b0253b1bc280835cc098aae531",
+        "fpga/acq_sram/host_fifo.v": "04794e2bfba0c485ca5be8b8ff2de48b992d6369601815d9461d9f08032f0883",
+        "fpga/acq_sram/host_sink.v": "0528b33b5c95a74a6b4f37ee76fc8c80aafbfa13739af1070e4feb92e299d0bd",
+        "fpga/acq_sram/host_ram.v": "bcc72b0eaf963f5f1576991e20d1bf9c8af55ba0a587d21309a06bd734487990",
+        "fpga/acq_sram/host_ownership.v": "310b124b4c1de198a9aa6655fb492d7934c22ec5291e37d23691b45ecfa87b0b"
+      },
+      "compileCommand": [
+        "iverilog",
+        "-g2012",
+        "-s",
+        "tb_host_path",
+        "-o",
+        "/tmp/sds-rtl-tests-lnvrgbnk/host-path-1",
+        "-Ptb_host_path.PHASE=1",
+        "fpga/acq_sram/sim/tb_host_path.v",
+        "fpga/acq_sram/host_path.v",
+        "fpga/acq_sram/host_packer.v",
+        "fpga/acq_sram/host_fifo.v",
+        "fpga/acq_sram/host_sink.v",
+        "fpga/acq_sram/host_ram.v",
+        "fpga/acq_sram/host_ownership.v"
+      ],
+      "compileExitCode": 0,
+      "compileOutput": "",
+      "simulationCommand": [
+        "vvp",
+        "/tmp/sds-rtl-tests-lnvrgbnk/host-path-1"
+      ],
+      "simulationExitCode": 0,
+      "simulationOutput": "PASS host path phase=1 full banks, odd tails, exact RAM, metadata, ownership and reuse\nfpga/acq_sram/sim/tb_host_path.v:102: $finish called at 564320000 (1ps)\n",
+      "result": "pass"
+    },
+    {
+      "id": "host-faults-1",
+      "test": "fpga/acq_sram/sim/tb_host_faults.v",
+      "top": "tb_host_faults",
+      "sources": [
+        "fpga/acq_sram/host_path.v",
+        "fpga/acq_sram/host_packer.v",
+        "fpga/acq_sram/host_fifo.v",
+        "fpga/acq_sram/host_sink.v",
+        "fpga/acq_sram/host_ram.v",
+        "fpga/acq_sram/host_ownership.v"
+      ],
+      "requirements": [
+        "REQ-SDS-094"
+      ],
+      "success": "PASS host faults",
+      "parameters": {
+        "PHASE": 1
+      },
+      "sha256": {
+        "fpga/acq_sram/sim/tb_host_faults.v": "e401ae4f18a69908ad596926bc9f9965a2c7c616a67f76d51b5871da806df0de",
+        "fpga/acq_sram/host_path.v": "2a0b52bc3c780895f3f7a283fecdcc2b9df32a3172525a50ab8584dbf9f27a7e",
+        "fpga/acq_sram/host_packer.v": "2b9902e2752e899f5eb4fd94e968c5d800b533b0253b1bc280835cc098aae531",
+        "fpga/acq_sram/host_fifo.v": "04794e2bfba0c485ca5be8b8ff2de48b992d6369601815d9461d9f08032f0883",
+        "fpga/acq_sram/host_sink.v": "0528b33b5c95a74a6b4f37ee76fc8c80aafbfa13739af1070e4feb92e299d0bd",
+        "fpga/acq_sram/host_ram.v": "bcc72b0eaf963f5f1576991e20d1bf9c8af55ba0a587d21309a06bd734487990",
+        "fpga/acq_sram/host_ownership.v": "310b124b4c1de198a9aa6655fb492d7934c22ec5291e37d23691b45ecfa87b0b"
+      },
+      "compileCommand": [
+        "iverilog",
+        "-g2012",
+        "-s",
+        "tb_host_faults",
+        "-o",
+        "/tmp/sds-rtl-tests-lnvrgbnk/host-faults-1",
+        "-Ptb_host_faults.PHASE=1",
+        "fpga/acq_sram/sim/tb_host_faults.v",
+        "fpga/acq_sram/host_path.v",
+        "fpga/acq_sram/host_packer.v",
+        "fpga/acq_sram/host_fifo.v",
+        "fpga/acq_sram/host_sink.v",
+        "fpga/acq_sram/host_ram.v",
+        "fpga/acq_sram/host_ownership.v"
+      ],
+      "compileExitCode": 0,
+      "compileOutput": "",
+      "simulationCommand": [
+        "vvp",
+        "/tmp/sds-rtl-tests-lnvrgbnk/host-faults-1"
+      ],
+      "simulationExitCode": 0,
+      "simulationOutput": "PASS host faults phase=1 malformed input, owned-bank protection, fault CDC and reset recovery\nfpga/acq_sram/sim/tb_host_faults.v:88: $finish called at 3980000 (1ps)\n",
+      "result": "pass"
+    },
+    {
+      "id": "host-path-2",
+      "test": "fpga/acq_sram/sim/tb_host_path.v",
+      "top": "tb_host_path",
+      "sources": [
+        "fpga/acq_sram/host_path.v",
+        "fpga/acq_sram/host_packer.v",
+        "fpga/acq_sram/host_fifo.v",
+        "fpga/acq_sram/host_sink.v",
+        "fpga/acq_sram/host_ram.v",
+        "fpga/acq_sram/host_ownership.v"
+      ],
+      "requirements": [
+        "REQ-SDS-049",
+        "REQ-SDS-050",
+        "REQ-SDS-051",
+        "REQ-SDS-052",
+        "REQ-SDS-094"
+      ],
+      "success": "PASS host path",
+      "parameters": {
+        "PHASE": 2
+      },
+      "sha256": {
+        "fpga/acq_sram/sim/tb_host_path.v": "9b7388e098b22a9fecc95313a660827d0a7c99489bb2708feae5c61431537afe",
+        "fpga/acq_sram/host_path.v": "2a0b52bc3c780895f3f7a283fecdcc2b9df32a3172525a50ab8584dbf9f27a7e",
+        "fpga/acq_sram/host_packer.v": "2b9902e2752e899f5eb4fd94e968c5d800b533b0253b1bc280835cc098aae531",
+        "fpga/acq_sram/host_fifo.v": "04794e2bfba0c485ca5be8b8ff2de48b992d6369601815d9461d9f08032f0883",
+        "fpga/acq_sram/host_sink.v": "0528b33b5c95a74a6b4f37ee76fc8c80aafbfa13739af1070e4feb92e299d0bd",
+        "fpga/acq_sram/host_ram.v": "bcc72b0eaf963f5f1576991e20d1bf9c8af55ba0a587d21309a06bd734487990",
+        "fpga/acq_sram/host_ownership.v": "310b124b4c1de198a9aa6655fb492d7934c22ec5291e37d23691b45ecfa87b0b"
+      },
+      "compileCommand": [
+        "iverilog",
+        "-g2012",
+        "-s",
+        "tb_host_path",
+        "-o",
+        "/tmp/sds-rtl-tests-lnvrgbnk/host-path-2",
+        "-Ptb_host_path.PHASE=2",
+        "fpga/acq_sram/sim/tb_host_path.v",
+        "fpga/acq_sram/host_path.v",
+        "fpga/acq_sram/host_packer.v",
+        "fpga/acq_sram/host_fifo.v",
+        "fpga/acq_sram/host_sink.v",
+        "fpga/acq_sram/host_ram.v",
+        "fpga/acq_sram/host_ownership.v"
+      ],
+      "compileExitCode": 0,
+      "compileOutput": "",
+      "simulationCommand": [
+        "vvp",
+        "/tmp/sds-rtl-tests-lnvrgbnk/host-path-2"
+      ],
+      "simulationExitCode": 0,
+      "simulationOutput": "PASS host path phase=2 full banks, odd tails, exact RAM, metadata, ownership and reuse\nfpga/acq_sram/sim/tb_host_path.v:102: $finish called at 564320000 (1ps)\n",
+      "result": "pass"
+    },
+    {
+      "id": "host-faults-2",
+      "test": "fpga/acq_sram/sim/tb_host_faults.v",
+      "top": "tb_host_faults",
+      "sources": [
+        "fpga/acq_sram/host_path.v",
+        "fpga/acq_sram/host_packer.v",
+        "fpga/acq_sram/host_fifo.v",
+        "fpga/acq_sram/host_sink.v",
+        "fpga/acq_sram/host_ram.v",
+        "fpga/acq_sram/host_ownership.v"
+      ],
+      "requirements": [
+        "REQ-SDS-094"
+      ],
+      "success": "PASS host faults",
+      "parameters": {
+        "PHASE": 2
+      },
+      "sha256": {
+        "fpga/acq_sram/sim/tb_host_faults.v": "e401ae4f18a69908ad596926bc9f9965a2c7c616a67f76d51b5871da806df0de",
+        "fpga/acq_sram/host_path.v": "2a0b52bc3c780895f3f7a283fecdcc2b9df32a3172525a50ab8584dbf9f27a7e",
+        "fpga/acq_sram/host_packer.v": "2b9902e2752e899f5eb4fd94e968c5d800b533b0253b1bc280835cc098aae531",
+        "fpga/acq_sram/host_fifo.v": "04794e2bfba0c485ca5be8b8ff2de48b992d6369601815d9461d9f08032f0883",
+        "fpga/acq_sram/host_sink.v": "0528b33b5c95a74a6b4f37ee76fc8c80aafbfa13739af1070e4feb92e299d0bd",
+        "fpga/acq_sram/host_ram.v": "bcc72b0eaf963f5f1576991e20d1bf9c8af55ba0a587d21309a06bd734487990",
+        "fpga/acq_sram/host_ownership.v": "310b124b4c1de198a9aa6655fb492d7934c22ec5291e37d23691b45ecfa87b0b"
+      },
+      "compileCommand": [
+        "iverilog",
+        "-g2012",
+        "-s",
+        "tb_host_faults",
+        "-o",
+        "/tmp/sds-rtl-tests-lnvrgbnk/host-faults-2",
+        "-Ptb_host_faults.PHASE=2",
+        "fpga/acq_sram/sim/tb_host_faults.v",
+        "fpga/acq_sram/host_path.v",
+        "fpga/acq_sram/host_packer.v",
+        "fpga/acq_sram/host_fifo.v",
+        "fpga/acq_sram/host_sink.v",
+        "fpga/acq_sram/host_ram.v",
+        "fpga/acq_sram/host_ownership.v"
+      ],
+      "compileExitCode": 0,
+      "compileOutput": "",
+      "simulationCommand": [
+        "vvp",
+        "/tmp/sds-rtl-tests-lnvrgbnk/host-faults-2"
+      ],
+      "simulationExitCode": 0,
+      "simulationOutput": "PASS host faults phase=2 malformed input, owned-bank protection, fault CDC and reset recovery\nfpga/acq_sram/sim/tb_host_faults.v:88: $finish called at 3980000 (1ps)\n",
+      "result": "pass"
+    },
+    {
+      "id": "host-path-3",
+      "test": "fpga/acq_sram/sim/tb_host_path.v",
+      "top": "tb_host_path",
+      "sources": [
+        "fpga/acq_sram/host_path.v",
+        "fpga/acq_sram/host_packer.v",
+        "fpga/acq_sram/host_fifo.v",
+        "fpga/acq_sram/host_sink.v",
+        "fpga/acq_sram/host_ram.v",
+        "fpga/acq_sram/host_ownership.v"
+      ],
+      "requirements": [
+        "REQ-SDS-049",
+        "REQ-SDS-050",
+        "REQ-SDS-051",
+        "REQ-SDS-052",
+        "REQ-SDS-094"
+      ],
+      "success": "PASS host path",
+      "parameters": {
+        "PHASE": 3
+      },
+      "sha256": {
+        "fpga/acq_sram/sim/tb_host_path.v": "9b7388e098b22a9fecc95313a660827d0a7c99489bb2708feae5c61431537afe",
+        "fpga/acq_sram/host_path.v": "2a0b52bc3c780895f3f7a283fecdcc2b9df32a3172525a50ab8584dbf9f27a7e",
+        "fpga/acq_sram/host_packer.v": "2b9902e2752e899f5eb4fd94e968c5d800b533b0253b1bc280835cc098aae531",
+        "fpga/acq_sram/host_fifo.v": "04794e2bfba0c485ca5be8b8ff2de48b992d6369601815d9461d9f08032f0883",
+        "fpga/acq_sram/host_sink.v": "0528b33b5c95a74a6b4f37ee76fc8c80aafbfa13739af1070e4feb92e299d0bd",
+        "fpga/acq_sram/host_ram.v": "bcc72b0eaf963f5f1576991e20d1bf9c8af55ba0a587d21309a06bd734487990",
+        "fpga/acq_sram/host_ownership.v": "310b124b4c1de198a9aa6655fb492d7934c22ec5291e37d23691b45ecfa87b0b"
+      },
+      "compileCommand": [
+        "iverilog",
+        "-g2012",
+        "-s",
+        "tb_host_path",
+        "-o",
+        "/tmp/sds-rtl-tests-lnvrgbnk/host-path-3",
+        "-Ptb_host_path.PHASE=3",
+        "fpga/acq_sram/sim/tb_host_path.v",
+        "fpga/acq_sram/host_path.v",
+        "fpga/acq_sram/host_packer.v",
+        "fpga/acq_sram/host_fifo.v",
+        "fpga/acq_sram/host_sink.v",
+        "fpga/acq_sram/host_ram.v",
+        "fpga/acq_sram/host_ownership.v"
+      ],
+      "compileExitCode": 0,
+      "compileOutput": "",
+      "simulationCommand": [
+        "vvp",
+        "/tmp/sds-rtl-tests-lnvrgbnk/host-path-3"
+      ],
+      "simulationExitCode": 0,
+      "simulationOutput": "PASS host path phase=3 full banks, odd tails, exact RAM, metadata, ownership and reuse\nfpga/acq_sram/sim/tb_host_path.v:102: $finish called at 564320000 (1ps)\n",
+      "result": "pass"
+    },
+    {
+      "id": "host-faults-3",
+      "test": "fpga/acq_sram/sim/tb_host_faults.v",
+      "top": "tb_host_faults",
+      "sources": [
+        "fpga/acq_sram/host_path.v",
+        "fpga/acq_sram/host_packer.v",
+        "fpga/acq_sram/host_fifo.v",
+        "fpga/acq_sram/host_sink.v",
+        "fpga/acq_sram/host_ram.v",
+        "fpga/acq_sram/host_ownership.v"
+      ],
+      "requirements": [
+        "REQ-SDS-094"
+      ],
+      "success": "PASS host faults",
+      "parameters": {
+        "PHASE": 3
+      },
+      "sha256": {
+        "fpga/acq_sram/sim/tb_host_faults.v": "e401ae4f18a69908ad596926bc9f9965a2c7c616a67f76d51b5871da806df0de",
+        "fpga/acq_sram/host_path.v": "2a0b52bc3c780895f3f7a283fecdcc2b9df32a3172525a50ab8584dbf9f27a7e",
+        "fpga/acq_sram/host_packer.v": "2b9902e2752e899f5eb4fd94e968c5d800b533b0253b1bc280835cc098aae531",
+        "fpga/acq_sram/host_fifo.v": "04794e2bfba0c485ca5be8b8ff2de48b992d6369601815d9461d9f08032f0883",
+        "fpga/acq_sram/host_sink.v": "0528b33b5c95a74a6b4f37ee76fc8c80aafbfa13739af1070e4feb92e299d0bd",
+        "fpga/acq_sram/host_ram.v": "bcc72b0eaf963f5f1576991e20d1bf9c8af55ba0a587d21309a06bd734487990",
+        "fpga/acq_sram/host_ownership.v": "310b124b4c1de198a9aa6655fb492d7934c22ec5291e37d23691b45ecfa87b0b"
+      },
+      "compileCommand": [
+        "iverilog",
+        "-g2012",
+        "-s",
+        "tb_host_faults",
+        "-o",
+        "/tmp/sds-rtl-tests-lnvrgbnk/host-faults-3",
+        "-Ptb_host_faults.PHASE=3",
+        "fpga/acq_sram/sim/tb_host_faults.v",
+        "fpga/acq_sram/host_path.v",
+        "fpga/acq_sram/host_packer.v",
+        "fpga/acq_sram/host_fifo.v",
+        "fpga/acq_sram/host_sink.v",
+        "fpga/acq_sram/host_ram.v",
+        "fpga/acq_sram/host_ownership.v"
+      ],
+      "compileExitCode": 0,
+      "compileOutput": "",
+      "simulationCommand": [
+        "vvp",
+        "/tmp/sds-rtl-tests-lnvrgbnk/host-faults-3"
+      ],
+      "simulationExitCode": 0,
+      "simulationOutput": "PASS host faults phase=3 malformed input, owned-bank protection, fault CDC and reset recovery\nfpga/acq_sram/sim/tb_host_faults.v:88: $finish called at 3980000 (1ps)\n",
+      "result": "pass"
+    },
+    {
+      "id": "ingress-fifo-1-16",
+      "test": "fpga/acq_sram/sim/tb_ingress_fifo.v",
+      "top": "tb",
+      "sources": [
+        "fpga/acq_sram/ingress_fifo.v"
+      ],
+      "requirements": [
+        "REQ-SDS-046"
+      ],
+      "success": "PASS ingress banks=",
+      "parameters": {
+        "BANKS": 1,
+        "ROWS": 16
+      },
+      "sha256": {
+        "fpga/acq_sram/sim/tb_ingress_fifo.v": "b864e0ce333ffd8669ed49fb95333a4d8bf6c544e047c8848ac74ac9c15a1c81",
+        "fpga/acq_sram/ingress_fifo.v": "9c8378ef57fdaa6f82c58e3da8aedeb296564cec6d6655050f50a06aa1fcbadf"
+      },
+      "compileCommand": [
+        "iverilog",
+        "-g2012",
+        "-s",
+        "tb",
+        "-o",
+        "/tmp/sds-rtl-tests-lnvrgbnk/ingress-fifo-1-16",
+        "-Ptb.BANKS=1",
+        "-Ptb.ROWS=16",
+        "fpga/acq_sram/sim/tb_ingress_fifo.v",
+        "fpga/acq_sram/ingress_fifo.v"
+      ],
+      "compileExitCode": 0,
+      "compileOutput": "",
+      "simulationCommand": [
+        "vvp",
+        "/tmp/sds-rtl-tests-lnvrgbnk/ingress-fifo-1-16"
+      ],
+      "simulationExitCode": 0,
+      "simulationOutput": "PASS ingress banks=1 rows=16 accepted=402 returned=402\nfpga/acq_sram/sim/tb_ingress_fifo.v:56: $finish called at 2043000 (1ps)\n",
+      "result": "pass"
+    },
+    {
+      "id": "ingress-stream-1-16",
+      "test": "fpga/acq_sram/sim/tb_ingress_stream.v",
+      "top": "tb",
+      "sources": [
+        "fpga/acq_sram/ingress_stream.v",
+        "fpga/acq_sram/ingress_fifo.v"
+      ],
+      "requirements": [
+        "REQ-SDS-046"
+      ],
+      "success": "PASS ingress stream depth=",
+      "parameters": {
+        "BANKS": 1,
+        "ROWS": 16
+      },
+      "sha256": {
+        "fpga/acq_sram/sim/tb_ingress_stream.v": "faf515444141afeed6411060f48570ac08d0f72ad11a0490db965aedd368542d",
+        "fpga/acq_sram/ingress_stream.v": "2409307756c49a6b30b826a719e3b38dda887ae946e933723a1d77d6c6635478",
+        "fpga/acq_sram/ingress_fifo.v": "9c8378ef57fdaa6f82c58e3da8aedeb296564cec6d6655050f50a06aa1fcbadf"
+      },
+      "compileCommand": [
+        "iverilog",
+        "-g2012",
+        "-s",
+        "tb",
+        "-o",
+        "/tmp/sds-rtl-tests-lnvrgbnk/ingress-stream-1-16",
+        "-Ptb.BANKS=1",
+        "-Ptb.ROWS=16",
+        "fpga/acq_sram/sim/tb_ingress_stream.v",
+        "fpga/acq_sram/ingress_stream.v",
+        "fpga/acq_sram/ingress_fifo.v"
+      ],
+      "compileExitCode": 0,
+      "compileOutput": "",
+      "simulationCommand": [
+        "vvp",
+        "/tmp/sds-rtl-tests-lnvrgbnk/ingress-stream-1-16"
+      ],
+      "simulationExitCode": 0,
+      "simulationOutput": "PASS ingress stream depth=16 words=191 full-rate and stalled output\nfpga/acq_sram/sim/tb_ingress_stream.v:49: $finish called at 1499000 (1ps)\n",
+      "result": "pass"
+    },
+    {
+      "id": "ingress-fifo-2-16",
+      "test": "fpga/acq_sram/sim/tb_ingress_fifo.v",
+      "top": "tb",
+      "sources": [
+        "fpga/acq_sram/ingress_fifo.v"
+      ],
+      "requirements": [
+        "REQ-SDS-046"
+      ],
+      "success": "PASS ingress banks=",
+      "parameters": {
+        "BANKS": 2,
+        "ROWS": 16
+      },
+      "sha256": {
+        "fpga/acq_sram/sim/tb_ingress_fifo.v": "b864e0ce333ffd8669ed49fb95333a4d8bf6c544e047c8848ac74ac9c15a1c81",
+        "fpga/acq_sram/ingress_fifo.v": "9c8378ef57fdaa6f82c58e3da8aedeb296564cec6d6655050f50a06aa1fcbadf"
+      },
+      "compileCommand": [
+        "iverilog",
+        "-g2012",
+        "-s",
+        "tb",
+        "-o",
+        "/tmp/sds-rtl-tests-lnvrgbnk/ingress-fifo-2-16",
+        "-Ptb.BANKS=2",
+        "-Ptb.ROWS=16",
+        "fpga/acq_sram/sim/tb_ingress_fifo.v",
+        "fpga/acq_sram/ingress_fifo.v"
+      ],
+      "compileExitCode": 0,
+      "compileOutput": "",
+      "simulationCommand": [
+        "vvp",
+        "/tmp/sds-rtl-tests-lnvrgbnk/ingress-fifo-2-16"
+      ],
+      "simulationExitCode": 0,
+      "simulationOutput": "PASS ingress banks=2 rows=16 accepted=796 returned=796\nfpga/acq_sram/sim/tb_ingress_fifo.v:56: $finish called at 4011000 (1ps)\n",
+      "result": "pass"
+    },
+    {
+      "id": "ingress-stream-2-16",
+      "test": "fpga/acq_sram/sim/tb_ingress_stream.v",
+      "top": "tb",
+      "sources": [
+        "fpga/acq_sram/ingress_stream.v",
+        "fpga/acq_sram/ingress_fifo.v"
+      ],
+      "requirements": [
+        "REQ-SDS-046"
+      ],
+      "success": "PASS ingress stream depth=",
+      "parameters": {
+        "BANKS": 2,
+        "ROWS": 16
+      },
+      "sha256": {
+        "fpga/acq_sram/sim/tb_ingress_stream.v": "faf515444141afeed6411060f48570ac08d0f72ad11a0490db965aedd368542d",
+        "fpga/acq_sram/ingress_stream.v": "2409307756c49a6b30b826a719e3b38dda887ae946e933723a1d77d6c6635478",
+        "fpga/acq_sram/ingress_fifo.v": "9c8378ef57fdaa6f82c58e3da8aedeb296564cec6d6655050f50a06aa1fcbadf"
+      },
+      "compileCommand": [
+        "iverilog",
+        "-g2012",
+        "-s",
+        "tb",
+        "-o",
+        "/tmp/sds-rtl-tests-lnvrgbnk/ingress-stream-2-16",
+        "-Ptb.BANKS=2",
+        "-Ptb.ROWS=16",
+        "fpga/acq_sram/sim/tb_ingress_stream.v",
+        "fpga/acq_sram/ingress_stream.v",
+        "fpga/acq_sram/ingress_fifo.v"
+      ],
+      "compileExitCode": 0,
+      "compileOutput": "",
+      "simulationCommand": [
+        "vvp",
+        "/tmp/sds-rtl-tests-lnvrgbnk/ingress-stream-2-16"
+      ],
+      "simulationExitCode": 0,
+      "simulationOutput": "PASS ingress stream depth=32 words=367 full-rate and stalled output\nfpga/acq_sram/sim/tb_ingress_stream.v:49: $finish called at 2623000 (1ps)\n",
+      "result": "pass"
+    },
+    {
+      "id": "ingress-fifo-4-16",
+      "test": "fpga/acq_sram/sim/tb_ingress_fifo.v",
+      "top": "tb",
+      "sources": [
+        "fpga/acq_sram/ingress_fifo.v"
+      ],
+      "requirements": [
+        "REQ-SDS-046"
+      ],
+      "success": "PASS ingress banks=",
+      "parameters": {
+        "BANKS": 4,
+        "ROWS": 16
+      },
+      "sha256": {
+        "fpga/acq_sram/sim/tb_ingress_fifo.v": "b864e0ce333ffd8669ed49fb95333a4d8bf6c544e047c8848ac74ac9c15a1c81",
+        "fpga/acq_sram/ingress_fifo.v": "9c8378ef57fdaa6f82c58e3da8aedeb296564cec6d6655050f50a06aa1fcbadf"
+      },
+      "compileCommand": [
+        "iverilog",
+        "-g2012",
+        "-s",
+        "tb",
+        "-o",
+        "/tmp/sds-rtl-tests-lnvrgbnk/ingress-fifo-4-16",
+        "-Ptb.BANKS=4",
+        "-Ptb.ROWS=16",
+        "fpga/acq_sram/sim/tb_ingress_fifo.v",
+        "fpga/acq_sram/ingress_fifo.v"
+      ],
+      "compileExitCode": 0,
+      "compileOutput": "",
+      "simulationCommand": [
+        "vvp",
+        "/tmp/sds-rtl-tests-lnvrgbnk/ingress-fifo-4-16"
+      ],
+      "simulationExitCode": 0,
+      "simulationOutput": "PASS ingress banks=4 rows=16 accepted=1596 returned=1596\nfpga/acq_sram/sim/tb_ingress_fifo.v:56: $finish called at 8067000 (1ps)\n",
+      "result": "pass"
+    },
+    {
+      "id": "ingress-stream-4-16",
+      "test": "fpga/acq_sram/sim/tb_ingress_stream.v",
+      "top": "tb",
+      "sources": [
+        "fpga/acq_sram/ingress_stream.v",
+        "fpga/acq_sram/ingress_fifo.v"
+      ],
+      "requirements": [
+        "REQ-SDS-046"
+      ],
+      "success": "PASS ingress stream depth=",
+      "parameters": {
+        "BANKS": 4,
+        "ROWS": 16
+      },
+      "sha256": {
+        "fpga/acq_sram/sim/tb_ingress_stream.v": "faf515444141afeed6411060f48570ac08d0f72ad11a0490db965aedd368542d",
+        "fpga/acq_sram/ingress_stream.v": "2409307756c49a6b30b826a719e3b38dda887ae946e933723a1d77d6c6635478",
+        "fpga/acq_sram/ingress_fifo.v": "9c8378ef57fdaa6f82c58e3da8aedeb296564cec6d6655050f50a06aa1fcbadf"
+      },
+      "compileCommand": [
+        "iverilog",
+        "-g2012",
+        "-s",
+        "tb",
+        "-o",
+        "/tmp/sds-rtl-tests-lnvrgbnk/ingress-stream-4-16",
+        "-Ptb.BANKS=4",
+        "-Ptb.ROWS=16",
+        "fpga/acq_sram/sim/tb_ingress_stream.v",
+        "fpga/acq_sram/ingress_stream.v",
+        "fpga/acq_sram/ingress_fifo.v"
+      ],
+      "compileExitCode": 0,
+      "compileOutput": "",
+      "simulationCommand": [
+        "vvp",
+        "/tmp/sds-rtl-tests-lnvrgbnk/ingress-stream-4-16"
+      ],
+      "simulationExitCode": 0,
+      "simulationOutput": "PASS ingress stream depth=64 words=740 full-rate and stalled output\nfpga/acq_sram/sim/tb_ingress_stream.v:49: $finish called at 4971000 (1ps)\n",
+      "result": "pass"
+    },
+    {
+      "id": "ingress-fifo-9-512",
+      "test": "fpga/acq_sram/sim/tb_ingress_fifo.v",
+      "top": "tb",
+      "sources": [
+        "fpga/acq_sram/ingress_fifo.v"
+      ],
+      "requirements": [
+        "REQ-SDS-046"
+      ],
+      "success": "PASS ingress banks=",
+      "parameters": {
+        "BANKS": 9,
+        "ROWS": 512
+      },
+      "sha256": {
+        "fpga/acq_sram/sim/tb_ingress_fifo.v": "b864e0ce333ffd8669ed49fb95333a4d8bf6c544e047c8848ac74ac9c15a1c81",
+        "fpga/acq_sram/ingress_fifo.v": "9c8378ef57fdaa6f82c58e3da8aedeb296564cec6d6655050f50a06aa1fcbadf"
+      },
+      "compileCommand": [
+        "iverilog",
+        "-g2012",
+        "-s",
+        "tb",
+        "-o",
+        "/tmp/sds-rtl-tests-lnvrgbnk/ingress-fifo-9-512",
+        "-Ptb.BANKS=9",
+        "-Ptb.ROWS=512",
+        "fpga/acq_sram/sim/tb_ingress_fifo.v",
+        "fpga/acq_sram/ingress_fifo.v"
+      ],
+      "compileExitCode": 0,
+      "compileOutput": "",
+      "simulationCommand": [
+        "vvp",
+        "/tmp/sds-rtl-tests-lnvrgbnk/ingress-fifo-9-512"
+      ],
+      "simulationExitCode": 0,
+      "simulationOutput": "PASS ingress banks=9 rows=512 accepted=112959 returned=112959\nfpga/acq_sram/sim/tb_ingress_fifo.v:56: $finish called at 572151000 (1ps)\n",
+      "result": "pass"
+    },
+    {
+      "id": "ingress-stream-9-512",
+      "test": "fpga/acq_sram/sim/tb_ingress_stream.v",
+      "top": "tb",
+      "sources": [
+        "fpga/acq_sram/ingress_stream.v",
+        "fpga/acq_sram/ingress_fifo.v"
+      ],
+      "requirements": [
+        "REQ-SDS-046"
+      ],
+      "success": "PASS ingress stream depth=",
+      "parameters": {
+        "BANKS": 9,
+        "ROWS": 512
+      },
+      "sha256": {
+        "fpga/acq_sram/sim/tb_ingress_stream.v": "faf515444141afeed6411060f48570ac08d0f72ad11a0490db965aedd368542d",
+        "fpga/acq_sram/ingress_stream.v": "2409307756c49a6b30b826a719e3b38dda887ae946e933723a1d77d6c6635478",
+        "fpga/acq_sram/ingress_fifo.v": "9c8378ef57fdaa6f82c58e3da8aedeb296564cec6d6655050f50a06aa1fcbadf"
+      },
+      "compileCommand": [
+        "iverilog",
+        "-g2012",
+        "-s",
+        "tb",
+        "-o",
+        "/tmp/sds-rtl-tests-lnvrgbnk/ingress-stream-9-512",
+        "-Ptb.BANKS=9",
+        "-Ptb.ROWS=512",
+        "fpga/acq_sram/sim/tb_ingress_stream.v",
+        "fpga/acq_sram/ingress_stream.v",
+        "fpga/acq_sram/ingress_fifo.v"
+      ],
+      "compileExitCode": 0,
+      "compileOutput": "",
+      "simulationCommand": [
+        "vvp",
+        "/tmp/sds-rtl-tests-lnvrgbnk/ingress-stream-9-512"
+      ],
+      "simulationExitCode": 0,
+      "simulationOutput": "PASS ingress stream depth=4608 words=52813 full-rate and stalled output\nfpga/acq_sram/sim/tb_ingress_stream.v:49: $finish called at 331219000 (1ps)\n",
+      "result": "pass"
+    },
+    {
+      "id": "ingress-path-0",
+      "test": "fpga/acq_sram/sim/tb_ingress_path.v",
+      "top": "tb",
+      "sources": [
+        "fpga/acq_sram/ingress_path.v",
+        "fpga/acq_sram/ingress_stream.v",
+        "fpga/acq_sram/ingress_fifo.v",
+        "fpga/acq_sram/word_bridge.v"
+      ],
+      "requirements": [
+        "REQ-SDS-046"
+      ],
+      "success": "PASS ingress path RAM overflow detected",
+      "parameters": {
+        "PHASE": 0
+      },
+      "sha256": {
+        "fpga/acq_sram/sim/tb_ingress_path.v": "25944c44c9e0e7c5b5939458968e2d54aa4f94863a5d85b5ba700cf884b9f218",
+        "fpga/acq_sram/ingress_path.v": "0701c87be770e144b96ff09f4a07143caa86d447330844cb719a960e1401b0b2",
+        "fpga/acq_sram/ingress_stream.v": "2409307756c49a6b30b826a719e3b38dda887ae946e933723a1d77d6c6635478",
+        "fpga/acq_sram/ingress_fifo.v": "9c8378ef57fdaa6f82c58e3da8aedeb296564cec6d6655050f50a06aa1fcbadf",
+        "fpga/acq_sram/word_bridge.v": "9769f4762e9ad0560cd3d115b028de30cb5402aede81e94239c8dde73241e50a"
+      },
+      "compileCommand": [
+        "iverilog",
+        "-g2012",
+        "-s",
+        "tb",
+        "-o",
+        "/tmp/sds-rtl-tests-lnvrgbnk/ingress-path-0",
+        "-Ptb.PHASE=0",
+        "fpga/acq_sram/sim/tb_ingress_path.v",
+        "fpga/acq_sram/ingress_path.v",
+        "fpga/acq_sram/ingress_stream.v",
+        "fpga/acq_sram/ingress_fifo.v",
+        "fpga/acq_sram/word_bridge.v"
+      ],
+      "compileExitCode": 0,
+      "compileOutput": "",
+      "simulationCommand": [
+        "vvp",
+        "/tmp/sds-rtl-tests-lnvrgbnk/ingress-path-0"
+      ],
+      "simulationExitCode": 0,
+      "simulationOutput": "PASS ingress path phase=0 words=8192 max_pending=4100\nPASS ingress path reset with buffered data\nPASS ingress path source overload detected\nPASS ingress path RAM overflow detected pending=4618\nfpga/acq_sram/sim/tb_ingress_path.v:59: $finish called at 6613034000 (1ps)\n",
+      "result": "pass"
+    },
+    {
+      "id": "ingress-path-1",
+      "test": "fpga/acq_sram/sim/tb_ingress_path.v",
+      "top": "tb",
+      "sources": [
+        "fpga/acq_sram/ingress_path.v",
+        "fpga/acq_sram/ingress_stream.v",
+        "fpga/acq_sram/ingress_fifo.v",
+        "fpga/acq_sram/word_bridge.v"
+      ],
+      "requirements": [
+        "REQ-SDS-046"
+      ],
+      "success": "PASS ingress path RAM overflow detected",
+      "parameters": {
+        "PHASE": 1
+      },
+      "sha256": {
+        "fpga/acq_sram/sim/tb_ingress_path.v": "25944c44c9e0e7c5b5939458968e2d54aa4f94863a5d85b5ba700cf884b9f218",
+        "fpga/acq_sram/ingress_path.v": "0701c87be770e144b96ff09f4a07143caa86d447330844cb719a960e1401b0b2",
+        "fpga/acq_sram/ingress_stream.v": "2409307756c49a6b30b826a719e3b38dda887ae946e933723a1d77d6c6635478",
+        "fpga/acq_sram/ingress_fifo.v": "9c8378ef57fdaa6f82c58e3da8aedeb296564cec6d6655050f50a06aa1fcbadf",
+        "fpga/acq_sram/word_bridge.v": "9769f4762e9ad0560cd3d115b028de30cb5402aede81e94239c8dde73241e50a"
+      },
+      "compileCommand": [
+        "iverilog",
+        "-g2012",
+        "-s",
+        "tb",
+        "-o",
+        "/tmp/sds-rtl-tests-lnvrgbnk/ingress-path-1",
+        "-Ptb.PHASE=1",
+        "fpga/acq_sram/sim/tb_ingress_path.v",
+        "fpga/acq_sram/ingress_path.v",
+        "fpga/acq_sram/ingress_stream.v",
+        "fpga/acq_sram/ingress_fifo.v",
+        "fpga/acq_sram/word_bridge.v"
+      ],
+      "compileExitCode": 0,
+      "compileOutput": "",
+      "simulationCommand": [
+        "vvp",
+        "/tmp/sds-rtl-tests-lnvrgbnk/ingress-path-1"
+      ],
+      "simulationExitCode": 0,
+      "simulationOutput": "PASS ingress path phase=1 words=8192 max_pending=4100\nPASS ingress path reset with buffered data\nPASS ingress path source overload detected\nPASS ingress path RAM overflow detected pending=4618\nfpga/acq_sram/sim/tb_ingress_path.v:59: $finish called at 6613034000 (1ps)\n",
+      "result": "pass"
+    },
+    {
+      "id": "ingress-path-2",
+      "test": "fpga/acq_sram/sim/tb_ingress_path.v",
+      "top": "tb",
+      "sources": [
+        "fpga/acq_sram/ingress_path.v",
+        "fpga/acq_sram/ingress_stream.v",
+        "fpga/acq_sram/ingress_fifo.v",
+        "fpga/acq_sram/word_bridge.v"
+      ],
+      "requirements": [
+        "REQ-SDS-046"
+      ],
+      "success": "PASS ingress path RAM overflow detected",
+      "parameters": {
+        "PHASE": 2
+      },
+      "sha256": {
+        "fpga/acq_sram/sim/tb_ingress_path.v": "25944c44c9e0e7c5b5939458968e2d54aa4f94863a5d85b5ba700cf884b9f218",
+        "fpga/acq_sram/ingress_path.v": "0701c87be770e144b96ff09f4a07143caa86d447330844cb719a960e1401b0b2",
+        "fpga/acq_sram/ingress_stream.v": "2409307756c49a6b30b826a719e3b38dda887ae946e933723a1d77d6c6635478",
+        "fpga/acq_sram/ingress_fifo.v": "9c8378ef57fdaa6f82c58e3da8aedeb296564cec6d6655050f50a06aa1fcbadf",
+        "fpga/acq_sram/word_bridge.v": "9769f4762e9ad0560cd3d115b028de30cb5402aede81e94239c8dde73241e50a"
+      },
+      "compileCommand": [
+        "iverilog",
+        "-g2012",
+        "-s",
+        "tb",
+        "-o",
+        "/tmp/sds-rtl-tests-lnvrgbnk/ingress-path-2",
+        "-Ptb.PHASE=2",
+        "fpga/acq_sram/sim/tb_ingress_path.v",
+        "fpga/acq_sram/ingress_path.v",
+        "fpga/acq_sram/ingress_stream.v",
+        "fpga/acq_sram/ingress_fifo.v",
+        "fpga/acq_sram/word_bridge.v"
+      ],
+      "compileExitCode": 0,
+      "compileOutput": "",
+      "simulationCommand": [
+        "vvp",
+        "/tmp/sds-rtl-tests-lnvrgbnk/ingress-path-2"
+      ],
+      "simulationExitCode": 0,
+      "simulationOutput": "PASS ingress path phase=2 words=8192 max_pending=4100\nPASS ingress path reset with buffered data\nPASS ingress path source overload detected\nPASS ingress path RAM overflow detected pending=4618\nfpga/acq_sram/sim/tb_ingress_path.v:59: $finish called at 6613038000 (1ps)\n",
+      "result": "pass"
+    },
+    {
+      "id": "ingress-path-3",
+      "test": "fpga/acq_sram/sim/tb_ingress_path.v",
+      "top": "tb",
+      "sources": [
+        "fpga/acq_sram/ingress_path.v",
+        "fpga/acq_sram/ingress_stream.v",
+        "fpga/acq_sram/ingress_fifo.v",
+        "fpga/acq_sram/word_bridge.v"
+      ],
+      "requirements": [
+        "REQ-SDS-046"
+      ],
+      "success": "PASS ingress path RAM overflow detected",
+      "parameters": {
+        "PHASE": 3
+      },
+      "sha256": {
+        "fpga/acq_sram/sim/tb_ingress_path.v": "25944c44c9e0e7c5b5939458968e2d54aa4f94863a5d85b5ba700cf884b9f218",
+        "fpga/acq_sram/ingress_path.v": "0701c87be770e144b96ff09f4a07143caa86d447330844cb719a960e1401b0b2",
+        "fpga/acq_sram/ingress_stream.v": "2409307756c49a6b30b826a719e3b38dda887ae946e933723a1d77d6c6635478",
+        "fpga/acq_sram/ingress_fifo.v": "9c8378ef57fdaa6f82c58e3da8aedeb296564cec6d6655050f50a06aa1fcbadf",
+        "fpga/acq_sram/word_bridge.v": "9769f4762e9ad0560cd3d115b028de30cb5402aede81e94239c8dde73241e50a"
+      },
+      "compileCommand": [
+        "iverilog",
+        "-g2012",
+        "-s",
+        "tb",
+        "-o",
+        "/tmp/sds-rtl-tests-lnvrgbnk/ingress-path-3",
+        "-Ptb.PHASE=3",
+        "fpga/acq_sram/sim/tb_ingress_path.v",
+        "fpga/acq_sram/ingress_path.v",
+        "fpga/acq_sram/ingress_stream.v",
+        "fpga/acq_sram/ingress_fifo.v",
+        "fpga/acq_sram/word_bridge.v"
+      ],
+      "compileExitCode": 0,
+      "compileOutput": "",
+      "simulationCommand": [
+        "vvp",
+        "/tmp/sds-rtl-tests-lnvrgbnk/ingress-path-3"
+      ],
+      "simulationExitCode": 0,
+      "simulationOutput": "PASS ingress path phase=3 words=8192 max_pending=4100\nPASS ingress path reset with buffered data\nPASS ingress path source overload detected\nPASS ingress path RAM overflow detected pending=4618\nfpga/acq_sram/sim/tb_ingress_path.v:59: $finish called at 6613038000 (1ps)\n",
+      "result": "pass"
+    },
+    {
+      "id": "transport-full-capacity",
+      "test": "fpga/acq_sram/sim/tb_transport.v",
+      "top": "tb",
+      "sources": [
+        "fpga/acq_sram/transport.v",
+        "fpga/acq_sram/sim/ddr_model.v"
+      ],
+      "requirements": [
+        "REQ-SDS-044"
+      ],
+      "success": "PASS full-capacity SRAM transport",
+      "timeoutSeconds": 180,
+      "sha256": {
+        "fpga/acq_sram/sim/tb_transport.v": "f808c0a13477fd94b998077e4fde86601539a29715aff7614fab1a2b71f06dda",
+        "fpga/acq_sram/transport.v": "814e344e31c1283a4d507e6d489179d0d1ab5b8c05404ed7d51c4047d5ca095a",
+        "fpga/acq_sram/sim/ddr_model.v": "ace57d159f0b1b9edd4e9c82b1496fab3b79b7c056b9aaa2da66698e65d164f2"
+      },
+      "compileCommand": [
+        "iverilog",
+        "-g2012",
+        "-s",
+        "tb",
+        "-o",
+        "/tmp/sds-rtl-tests-lnvrgbnk/transport-full-capacity",
+        "fpga/acq_sram/sim/tb_transport.v",
+        "fpga/acq_sram/transport.v",
+        "fpga/acq_sram/sim/ddr_model.v"
+      ],
+      "compileExitCode": 0,
+      "compileOutput": "",
+      "simulationCommand": [
+        "vvp",
+        "/tmp/sds-rtl-tests-lnvrgbnk/transport-full-capacity"
+      ],
+      "simulationExitCode": 0,
+      "simulationOutput": "PASS full-capacity SRAM transport, stalled writes, repeated reads and exact flush pointer (1049605 words)\nfpga/acq_sram/sim/tb_transport.v:57: $finish called at 15757581000 (1ps)\n",
+      "result": "pass"
+    },
+    {
+      "id": "scheduler-reset-writing",
+      "test": "fpga/acq_sram/sim/tb_timeslice_controller.v",
+      "top": "tb",
+      "sources": [
+        "fpga/acq_sram/timeslice_controller.v",
+        "fpga/acq_sram/transport.v",
+        "fpga/acq_sram/ordinal_counter.v",
+        "fpga/acq_sram/word_bridge.v",
+        "fpga/acq_sram/ingress_fifo.v",
+        "fpga/acq_sram/ingress_stream.v",
+        "fpga/acq_sram/ingress_path.v",
+        "fpga/acq_sram/sim/ddr_model.v",
+        "fpga/acq_sram/host_path.v",
+        "fpga/acq_sram/host_packer.v",
+        "fpga/acq_sram/host_fifo.v",
+        "fpga/acq_sram/host_sink.v",
+        "fpga/acq_sram/host_ram.v",
+        "fpga/acq_sram/host_ownership.v"
+      ],
+      "requirements": [
+        "REQ-SDS-048"
+      ],
+      "success": "PASS active reset",
+      "parameters": {
+        "RESET_PHASE": 1
+      },
+      "timeoutSeconds": 900,
+      "sha256": {
+        "fpga/acq_sram/sim/tb_timeslice_controller.v": "50cec8a88ff59bac2a606ad1325e6b133fa567025fc4cf73c2ea640e883df838",
+        "fpga/acq_sram/timeslice_controller.v": "5daedebf673cc8c7d2ae927615fb8d2e60b735ba363d9ad080f2cb154e5ec18d",
+        "fpga/acq_sram/transport.v": "814e344e31c1283a4d507e6d489179d0d1ab5b8c05404ed7d51c4047d5ca095a",
+        "fpga/acq_sram/ordinal_counter.v": "297ad038fd29b45044b6b91262890c12cdc462baafd453e761987c52c4cbf82c",
+        "fpga/acq_sram/word_bridge.v": "9769f4762e9ad0560cd3d115b028de30cb5402aede81e94239c8dde73241e50a",
+        "fpga/acq_sram/ingress_fifo.v": "9c8378ef57fdaa6f82c58e3da8aedeb296564cec6d6655050f50a06aa1fcbadf",
+        "fpga/acq_sram/ingress_stream.v": "2409307756c49a6b30b826a719e3b38dda887ae946e933723a1d77d6c6635478",
+        "fpga/acq_sram/ingress_path.v": "0701c87be770e144b96ff09f4a07143caa86d447330844cb719a960e1401b0b2",
+        "fpga/acq_sram/sim/ddr_model.v": "ace57d159f0b1b9edd4e9c82b1496fab3b79b7c056b9aaa2da66698e65d164f2",
+        "fpga/acq_sram/host_path.v": "2a0b52bc3c780895f3f7a283fecdcc2b9df32a3172525a50ab8584dbf9f27a7e",
+        "fpga/acq_sram/host_packer.v": "2b9902e2752e899f5eb4fd94e968c5d800b533b0253b1bc280835cc098aae531",
+        "fpga/acq_sram/host_fifo.v": "04794e2bfba0c485ca5be8b8ff2de48b992d6369601815d9461d9f08032f0883",
+        "fpga/acq_sram/host_sink.v": "0528b33b5c95a74a6b4f37ee76fc8c80aafbfa13739af1070e4feb92e299d0bd",
+        "fpga/acq_sram/host_ram.v": "bcc72b0eaf963f5f1576991e20d1bf9c8af55ba0a587d21309a06bd734487990",
+        "fpga/acq_sram/host_ownership.v": "310b124b4c1de198a9aa6655fb492d7934c22ec5291e37d23691b45ecfa87b0b"
+      },
+      "compileCommand": [
+        "iverilog",
+        "-g2012",
+        "-s",
+        "tb",
+        "-o",
+        "/tmp/sds-rtl-tests-lnvrgbnk/scheduler-reset-writing",
+        "-Ptb.RESET_PHASE=1",
+        "fpga/acq_sram/sim/tb_timeslice_controller.v",
+        "fpga/acq_sram/timeslice_controller.v",
+        "fpga/acq_sram/transport.v",
+        "fpga/acq_sram/ordinal_counter.v",
+        "fpga/acq_sram/word_bridge.v",
+        "fpga/acq_sram/ingress_fifo.v",
+        "fpga/acq_sram/ingress_stream.v",
+        "fpga/acq_sram/ingress_path.v",
+        "fpga/acq_sram/sim/ddr_model.v",
+        "fpga/acq_sram/host_path.v",
+        "fpga/acq_sram/host_packer.v",
+        "fpga/acq_sram/host_fifo.v",
+        "fpga/acq_sram/host_sink.v",
+        "fpga/acq_sram/host_ram.v",
+        "fpga/acq_sram/host_ownership.v"
+      ],
+      "compileExitCode": 0,
+      "compileOutput": "",
+      "simulationCommand": [
+        "vvp",
+        "/tmp/sds-rtl-tests-lnvrgbnk/scheduler-reset-writing"
+      ],
+      "simulationExitCode": 0,
+      "simulationOutput": "PASS active reset phase=1\nfpga/acq_sram/sim/tb_timeslice_controller.v:222: $finish called at 4194100 (1ps)\n",
+      "result": "pass"
+    },
+    {
+      "id": "scheduler-reset-reading",
+      "test": "fpga/acq_sram/sim/tb_timeslice_controller.v",
+      "top": "tb",
+      "sources": [
+        "fpga/acq_sram/timeslice_controller.v",
+        "fpga/acq_sram/transport.v",
+        "fpga/acq_sram/ordinal_counter.v",
+        "fpga/acq_sram/word_bridge.v",
+        "fpga/acq_sram/ingress_fifo.v",
+        "fpga/acq_sram/ingress_stream.v",
+        "fpga/acq_sram/ingress_path.v",
+        "fpga/acq_sram/sim/ddr_model.v",
+        "fpga/acq_sram/host_path.v",
+        "fpga/acq_sram/host_packer.v",
+        "fpga/acq_sram/host_fifo.v",
+        "fpga/acq_sram/host_sink.v",
+        "fpga/acq_sram/host_ram.v",
+        "fpga/acq_sram/host_ownership.v"
+      ],
+      "requirements": [
+        "REQ-SDS-048"
+      ],
+      "success": "PASS active reset",
+      "parameters": {
+        "RESET_PHASE": 2
+      },
+      "timeoutSeconds": 900,
+      "sha256": {
+        "fpga/acq_sram/sim/tb_timeslice_controller.v": "50cec8a88ff59bac2a606ad1325e6b133fa567025fc4cf73c2ea640e883df838",
+        "fpga/acq_sram/timeslice_controller.v": "5daedebf673cc8c7d2ae927615fb8d2e60b735ba363d9ad080f2cb154e5ec18d",
+        "fpga/acq_sram/transport.v": "814e344e31c1283a4d507e6d489179d0d1ab5b8c05404ed7d51c4047d5ca095a",
+        "fpga/acq_sram/ordinal_counter.v": "297ad038fd29b45044b6b91262890c12cdc462baafd453e761987c52c4cbf82c",
+        "fpga/acq_sram/word_bridge.v": "9769f4762e9ad0560cd3d115b028de30cb5402aede81e94239c8dde73241e50a",
+        "fpga/acq_sram/ingress_fifo.v": "9c8378ef57fdaa6f82c58e3da8aedeb296564cec6d6655050f50a06aa1fcbadf",
+        "fpga/acq_sram/ingress_stream.v": "2409307756c49a6b30b826a719e3b38dda887ae946e933723a1d77d6c6635478",
+        "fpga/acq_sram/ingress_path.v": "0701c87be770e144b96ff09f4a07143caa86d447330844cb719a960e1401b0b2",
+        "fpga/acq_sram/sim/ddr_model.v": "ace57d159f0b1b9edd4e9c82b1496fab3b79b7c056b9aaa2da66698e65d164f2",
+        "fpga/acq_sram/host_path.v": "2a0b52bc3c780895f3f7a283fecdcc2b9df32a3172525a50ab8584dbf9f27a7e",
+        "fpga/acq_sram/host_packer.v": "2b9902e2752e899f5eb4fd94e968c5d800b533b0253b1bc280835cc098aae531",
+        "fpga/acq_sram/host_fifo.v": "04794e2bfba0c485ca5be8b8ff2de48b992d6369601815d9461d9f08032f0883",
+        "fpga/acq_sram/host_sink.v": "0528b33b5c95a74a6b4f37ee76fc8c80aafbfa13739af1070e4feb92e299d0bd",
+        "fpga/acq_sram/host_ram.v": "bcc72b0eaf963f5f1576991e20d1bf9c8af55ba0a587d21309a06bd734487990",
+        "fpga/acq_sram/host_ownership.v": "310b124b4c1de198a9aa6655fb492d7934c22ec5291e37d23691b45ecfa87b0b"
+      },
+      "compileCommand": [
+        "iverilog",
+        "-g2012",
+        "-s",
+        "tb",
+        "-o",
+        "/tmp/sds-rtl-tests-lnvrgbnk/scheduler-reset-reading",
+        "-Ptb.RESET_PHASE=2",
+        "fpga/acq_sram/sim/tb_timeslice_controller.v",
+        "fpga/acq_sram/timeslice_controller.v",
+        "fpga/acq_sram/transport.v",
+        "fpga/acq_sram/ordinal_counter.v",
+        "fpga/acq_sram/word_bridge.v",
+        "fpga/acq_sram/ingress_fifo.v",
+        "fpga/acq_sram/ingress_stream.v",
+        "fpga/acq_sram/ingress_path.v",
+        "fpga/acq_sram/sim/ddr_model.v",
+        "fpga/acq_sram/host_path.v",
+        "fpga/acq_sram/host_packer.v",
+        "fpga/acq_sram/host_fifo.v",
+        "fpga/acq_sram/host_sink.v",
+        "fpga/acq_sram/host_ram.v",
+        "fpga/acq_sram/host_ownership.v"
+      ],
+      "compileExitCode": 0,
+      "compileOutput": "",
+      "simulationCommand": [
+        "vvp",
+        "/tmp/sds-rtl-tests-lnvrgbnk/scheduler-reset-reading"
+      ],
+      "simulationExitCode": 0,
+      "simulationOutput": "PASS active reset phase=2\nfpga/acq_sram/sim/tb_timeslice_controller.v:222: $finish called at 37014100 (1ps)\n",
+      "result": "pass"
+    },
+    {
+      "id": "scheduler-consecutive-captures",
+      "test": "fpga/acq_sram/sim/tb_timeslice_controller.v",
+      "top": "tb",
+      "sources": [
+        "fpga/acq_sram/timeslice_controller.v",
+        "fpga/acq_sram/transport.v",
+        "fpga/acq_sram/ordinal_counter.v",
+        "fpga/acq_sram/word_bridge.v",
+        "fpga/acq_sram/ingress_fifo.v",
+        "fpga/acq_sram/ingress_stream.v",
+        "fpga/acq_sram/ingress_path.v",
+        "fpga/acq_sram/sim/ddr_model.v",
+        "fpga/acq_sram/host_path.v",
+        "fpga/acq_sram/host_packer.v",
+        "fpga/acq_sram/host_fifo.v",
+        "fpga/acq_sram/host_sink.v",
+        "fpga/acq_sram/host_ram.v",
+        "fpga/acq_sram/host_ownership.v"
+      ],
+      "requirements": [
+        "REQ-SDS-048"
+      ],
+      "success": "PASS RTL controller",
+      "parameters": {
+        "AW": 8,
+        "BANK_WORDS": 2,
+        "TARGET": 201,
+        "STALL_CYCLES": 0,
+        "EPOCHS": 2
+      },
+      "timeoutSeconds": 900,
+      "sha256": {
+        "fpga/acq_sram/sim/tb_timeslice_controller.v": "50cec8a88ff59bac2a606ad1325e6b133fa567025fc4cf73c2ea640e883df838",
+        "fpga/acq_sram/timeslice_controller.v": "5daedebf673cc8c7d2ae927615fb8d2e60b735ba363d9ad080f2cb154e5ec18d",
+        "fpga/acq_sram/transport.v": "814e344e31c1283a4d507e6d489179d0d1ab5b8c05404ed7d51c4047d5ca095a",
+        "fpga/acq_sram/ordinal_counter.v": "297ad038fd29b45044b6b91262890c12cdc462baafd453e761987c52c4cbf82c",
+        "fpga/acq_sram/word_bridge.v": "9769f4762e9ad0560cd3d115b028de30cb5402aede81e94239c8dde73241e50a",
+        "fpga/acq_sram/ingress_fifo.v": "9c8378ef57fdaa6f82c58e3da8aedeb296564cec6d6655050f50a06aa1fcbadf",
+        "fpga/acq_sram/ingress_stream.v": "2409307756c49a6b30b826a719e3b38dda887ae946e933723a1d77d6c6635478",
+        "fpga/acq_sram/ingress_path.v": "0701c87be770e144b96ff09f4a07143caa86d447330844cb719a960e1401b0b2",
+        "fpga/acq_sram/sim/ddr_model.v": "ace57d159f0b1b9edd4e9c82b1496fab3b79b7c056b9aaa2da66698e65d164f2",
+        "fpga/acq_sram/host_path.v": "2a0b52bc3c780895f3f7a283fecdcc2b9df32a3172525a50ab8584dbf9f27a7e",
+        "fpga/acq_sram/host_packer.v": "2b9902e2752e899f5eb4fd94e968c5d800b533b0253b1bc280835cc098aae531",
+        "fpga/acq_sram/host_fifo.v": "04794e2bfba0c485ca5be8b8ff2de48b992d6369601815d9461d9f08032f0883",
+        "fpga/acq_sram/host_sink.v": "0528b33b5c95a74a6b4f37ee76fc8c80aafbfa13739af1070e4feb92e299d0bd",
+        "fpga/acq_sram/host_ram.v": "bcc72b0eaf963f5f1576991e20d1bf9c8af55ba0a587d21309a06bd734487990",
+        "fpga/acq_sram/host_ownership.v": "310b124b4c1de198a9aa6655fb492d7934c22ec5291e37d23691b45ecfa87b0b"
+      },
+      "compileCommand": [
+        "iverilog",
+        "-g2012",
+        "-s",
+        "tb",
+        "-o",
+        "/tmp/sds-rtl-tests-lnvrgbnk/scheduler-consecutive-captures",
+        "-Ptb.AW=8",
+        "-Ptb.BANK_WORDS=2",
+        "-Ptb.TARGET=201",
+        "-Ptb.STALL_CYCLES=0",
+        "-Ptb.EPOCHS=2",
+        "fpga/acq_sram/sim/tb_timeslice_controller.v",
+        "fpga/acq_sram/timeslice_controller.v",
+        "fpga/acq_sram/transport.v",
+        "fpga/acq_sram/ordinal_counter.v",
+        "fpga/acq_sram/word_bridge.v",
+        "fpga/acq_sram/ingress_fifo.v",
+        "fpga/acq_sram/ingress_stream.v",
+        "fpga/acq_sram/ingress_path.v",
+        "fpga/acq_sram/sim/ddr_model.v",
+        "fpga/acq_sram/host_path.v",
+        "fpga/acq_sram/host_packer.v",
+        "fpga/acq_sram/host_fifo.v",
+        "fpga/acq_sram/host_sink.v",
+        "fpga/acq_sram/host_ram.v",
+        "fpga/acq_sram/host_ownership.v"
+      ],
+      "compileExitCode": 0,
+      "compileOutput": "",
+      "simulationCommand": [
+        "vvp",
+        "/tmp/sds-rtl-tests-lnvrgbnk/scheduler-consecutive-captures"
+      ],
+      "simulationExitCode": 0,
+      "simulationOutput": "PASS RTL controller: words=402 blocks=202 max_pending=3 max_unread=36 skipped=0 overlap=82 stalls=0\nfpga/acq_sram/sim/tb_timeslice_controller.v:212: $finish called at 245008000 (1ps)\n",
+      "result": "pass"
+    },
+    {
+      "id": "scheduler-wrap-tail-stall",
+      "test": "fpga/acq_sram/sim/tb_timeslice_controller.v",
+      "top": "tb",
+      "sources": [
+        "fpga/acq_sram/timeslice_controller.v",
+        "fpga/acq_sram/transport.v",
+        "fpga/acq_sram/ordinal_counter.v",
+        "fpga/acq_sram/word_bridge.v",
+        "fpga/acq_sram/ingress_fifo.v",
+        "fpga/acq_sram/ingress_stream.v",
+        "fpga/acq_sram/ingress_path.v",
+        "fpga/acq_sram/sim/ddr_model.v",
+        "fpga/acq_sram/host_path.v",
+        "fpga/acq_sram/host_packer.v",
+        "fpga/acq_sram/host_fifo.v",
+        "fpga/acq_sram/host_sink.v",
+        "fpga/acq_sram/host_ram.v",
+        "fpga/acq_sram/host_ownership.v"
+      ],
+      "requirements": [
+        "REQ-SDS-048"
+      ],
+      "success": "PASS RTL controller",
+      "parameters": {},
+      "timeoutSeconds": 900,
+      "sha256": {
+        "fpga/acq_sram/sim/tb_timeslice_controller.v": "50cec8a88ff59bac2a606ad1325e6b133fa567025fc4cf73c2ea640e883df838",
+        "fpga/acq_sram/timeslice_controller.v": "5daedebf673cc8c7d2ae927615fb8d2e60b735ba363d9ad080f2cb154e5ec18d",
+        "fpga/acq_sram/transport.v": "814e344e31c1283a4d507e6d489179d0d1ab5b8c05404ed7d51c4047d5ca095a",
+        "fpga/acq_sram/ordinal_counter.v": "297ad038fd29b45044b6b91262890c12cdc462baafd453e761987c52c4cbf82c",
+        "fpga/acq_sram/word_bridge.v": "9769f4762e9ad0560cd3d115b028de30cb5402aede81e94239c8dde73241e50a",
+        "fpga/acq_sram/ingress_fifo.v": "9c8378ef57fdaa6f82c58e3da8aedeb296564cec6d6655050f50a06aa1fcbadf",
+        "fpga/acq_sram/ingress_stream.v": "2409307756c49a6b30b826a719e3b38dda887ae946e933723a1d77d6c6635478",
+        "fpga/acq_sram/ingress_path.v": "0701c87be770e144b96ff09f4a07143caa86d447330844cb719a960e1401b0b2",
+        "fpga/acq_sram/sim/ddr_model.v": "ace57d159f0b1b9edd4e9c82b1496fab3b79b7c056b9aaa2da66698e65d164f2",
+        "fpga/acq_sram/host_path.v": "2a0b52bc3c780895f3f7a283fecdcc2b9df32a3172525a50ab8584dbf9f27a7e",
+        "fpga/acq_sram/host_packer.v": "2b9902e2752e899f5eb4fd94e968c5d800b533b0253b1bc280835cc098aae531",
+        "fpga/acq_sram/host_fifo.v": "04794e2bfba0c485ca5be8b8ff2de48b992d6369601815d9461d9f08032f0883",
+        "fpga/acq_sram/host_sink.v": "0528b33b5c95a74a6b4f37ee76fc8c80aafbfa13739af1070e4feb92e299d0bd",
+        "fpga/acq_sram/host_ram.v": "bcc72b0eaf963f5f1576991e20d1bf9c8af55ba0a587d21309a06bd734487990",
+        "fpga/acq_sram/host_ownership.v": "310b124b4c1de198a9aa6655fb492d7934c22ec5291e37d23691b45ecfa87b0b"
+      },
+      "compileCommand": [
+        "iverilog",
+        "-g2012",
+        "-s",
+        "tb",
+        "-o",
+        "/tmp/sds-rtl-tests-lnvrgbnk/scheduler-wrap-tail-stall",
+        "fpga/acq_sram/sim/tb_timeslice_controller.v",
+        "fpga/acq_sram/timeslice_controller.v",
+        "fpga/acq_sram/transport.v",
+        "fpga/acq_sram/ordinal_counter.v",
+        "fpga/acq_sram/word_bridge.v",
+        "fpga/acq_sram/ingress_fifo.v",
+        "fpga/acq_sram/ingress_stream.v",
+        "fpga/acq_sram/ingress_path.v",
+        "fpga/acq_sram/sim/ddr_model.v",
+        "fpga/acq_sram/host_path.v",
+        "fpga/acq_sram/host_packer.v",
+        "fpga/acq_sram/host_fifo.v",
+        "fpga/acq_sram/host_sink.v",
+        "fpga/acq_sram/host_ram.v",
+        "fpga/acq_sram/host_ownership.v"
+      ],
+      "compileExitCode": 0,
+      "compileOutput": "",
+      "simulationCommand": [
+        "vvp",
+        "/tmp/sds-rtl-tests-lnvrgbnk/scheduler-wrap-tail-stall"
+      ],
+      "simulationExitCode": 0,
+      "simulationOutput": "PASS RTL controller: words=6003 blocks=376 max_pending=13 max_unread=125 skipped=11 overlap=207 stalls=1\nfpga/acq_sram/sim/tb_timeslice_controller.v:212: $finish called at 3103156000 (1ps)\n",
+      "result": "pass"
+    },
+    {
+      "id": "scheduler-steady-bandwidth",
+      "test": "fpga/acq_sram/sim/tb_timeslice_controller.v",
+      "top": "tb",
+      "sources": [
+        "fpga/acq_sram/timeslice_controller.v",
+        "fpga/acq_sram/transport.v",
+        "fpga/acq_sram/ordinal_counter.v",
+        "fpga/acq_sram/word_bridge.v",
+        "fpga/acq_sram/ingress_fifo.v",
+        "fpga/acq_sram/ingress_stream.v",
+        "fpga/acq_sram/ingress_path.v",
+        "fpga/acq_sram/sim/ddr_model.v",
+        "fpga/acq_sram/host_path.v",
+        "fpga/acq_sram/host_packer.v",
+        "fpga/acq_sram/host_fifo.v",
+        "fpga/acq_sram/host_sink.v",
+        "fpga/acq_sram/host_ram.v",
+        "fpga/acq_sram/host_ownership.v"
+      ],
+      "requirements": [
+        "REQ-SDS-048"
+      ],
+      "success": "PASS RTL controller",
+      "parameters": {
+        "STALL_CYCLES": 0
+      },
+      "timeoutSeconds": 900,
+      "sha256": {
+        "fpga/acq_sram/sim/tb_timeslice_controller.v": "50cec8a88ff59bac2a606ad1325e6b133fa567025fc4cf73c2ea640e883df838",
+        "fpga/acq_sram/timeslice_controller.v": "5daedebf673cc8c7d2ae927615fb8d2e60b735ba363d9ad080f2cb154e5ec18d",
+        "fpga/acq_sram/transport.v": "814e344e31c1283a4d507e6d489179d0d1ab5b8c05404ed7d51c4047d5ca095a",
+        "fpga/acq_sram/ordinal_counter.v": "297ad038fd29b45044b6b91262890c12cdc462baafd453e761987c52c4cbf82c",
+        "fpga/acq_sram/word_bridge.v": "9769f4762e9ad0560cd3d115b028de30cb5402aede81e94239c8dde73241e50a",
+        "fpga/acq_sram/ingress_fifo.v": "9c8378ef57fdaa6f82c58e3da8aedeb296564cec6d6655050f50a06aa1fcbadf",
+        "fpga/acq_sram/ingress_stream.v": "2409307756c49a6b30b826a719e3b38dda887ae946e933723a1d77d6c6635478",
+        "fpga/acq_sram/ingress_path.v": "0701c87be770e144b96ff09f4a07143caa86d447330844cb719a960e1401b0b2",
+        "fpga/acq_sram/sim/ddr_model.v": "ace57d159f0b1b9edd4e9c82b1496fab3b79b7c056b9aaa2da66698e65d164f2",
+        "fpga/acq_sram/host_path.v": "2a0b52bc3c780895f3f7a283fecdcc2b9df32a3172525a50ab8584dbf9f27a7e",
+        "fpga/acq_sram/host_packer.v": "2b9902e2752e899f5eb4fd94e968c5d800b533b0253b1bc280835cc098aae531",
+        "fpga/acq_sram/host_fifo.v": "04794e2bfba0c485ca5be8b8ff2de48b992d6369601815d9461d9f08032f0883",
+        "fpga/acq_sram/host_sink.v": "0528b33b5c95a74a6b4f37ee76fc8c80aafbfa13739af1070e4feb92e299d0bd",
+        "fpga/acq_sram/host_ram.v": "bcc72b0eaf963f5f1576991e20d1bf9c8af55ba0a587d21309a06bd734487990",
+        "fpga/acq_sram/host_ownership.v": "310b124b4c1de198a9aa6655fb492d7934c22ec5291e37d23691b45ecfa87b0b"
+      },
+      "compileCommand": [
+        "iverilog",
+        "-g2012",
+        "-s",
+        "tb",
+        "-o",
+        "/tmp/sds-rtl-tests-lnvrgbnk/scheduler-steady-bandwidth",
+        "-Ptb.STALL_CYCLES=0",
+        "fpga/acq_sram/sim/tb_timeslice_controller.v",
+        "fpga/acq_sram/timeslice_controller.v",
+        "fpga/acq_sram/transport.v",
+        "fpga/acq_sram/ordinal_counter.v",
+        "fpga/acq_sram/word_bridge.v",
+        "fpga/acq_sram/ingress_fifo.v",
+        "fpga/acq_sram/ingress_stream.v",
+        "fpga/acq_sram/ingress_path.v",
+        "fpga/acq_sram/sim/ddr_model.v",
+        "fpga/acq_sram/host_path.v",
+        "fpga/acq_sram/host_packer.v",
+        "fpga/acq_sram/host_fifo.v",
+        "fpga/acq_sram/host_sink.v",
+        "fpga/acq_sram/host_ram.v",
+        "fpga/acq_sram/host_ownership.v"
+      ],
+      "compileExitCode": 0,
+      "compileOutput": "",
+      "simulationCommand": [
+        "vvp",
+        "/tmp/sds-rtl-tests-lnvrgbnk/scheduler-steady-bandwidth"
+      ],
+      "simulationExitCode": 0,
+      "simulationOutput": "PASS RTL controller: words=6003 blocks=376 max_pending=9 max_unread=64 skipped=0 overlap=185 stalls=0\nfpga/acq_sram/sim/tb_timeslice_controller.v:212: $finish called at 3101368000 (1ps)\n",
+      "result": "pass"
+    },
+    {
+      "id": "scheduler-counter-lanes",
+      "test": "fpga/acq_sram/sim/tb_timeslice_controller.v",
+      "top": "tb",
+      "sources": [
+        "fpga/acq_sram/timeslice_controller.v",
+        "fpga/acq_sram/transport.v",
+        "fpga/acq_sram/ordinal_counter.v",
+        "fpga/acq_sram/word_bridge.v",
+        "fpga/acq_sram/ingress_fifo.v",
+        "fpga/acq_sram/ingress_stream.v",
+        "fpga/acq_sram/ingress_path.v",
+        "fpga/acq_sram/sim/ddr_model.v",
+        "fpga/acq_sram/host_path.v",
+        "fpga/acq_sram/host_packer.v",
+        "fpga/acq_sram/host_fifo.v",
+        "fpga/acq_sram/host_sink.v",
+        "fpga/acq_sram/host_ram.v",
+        "fpga/acq_sram/host_ownership.v"
+      ],
+      "requirements": [
+        "REQ-SDS-048"
+      ],
+      "success": "PASS RTL controller",
+      "parameters": {
+        "AW": 12,
+        "BANK_WORDS": 640,
+        "TARGET": 10003,
+        "STALL_CYCLES": 0
+      },
+      "timeoutSeconds": 900,
+      "sha256": {
+        "fpga/acq_sram/sim/tb_timeslice_controller.v": "50cec8a88ff59bac2a606ad1325e6b133fa567025fc4cf73c2ea640e883df838",
+        "fpga/acq_sram/timeslice_controller.v": "5daedebf673cc8c7d2ae927615fb8d2e60b735ba363d9ad080f2cb154e5ec18d",
+        "fpga/acq_sram/transport.v": "814e344e31c1283a4d507e6d489179d0d1ab5b8c05404ed7d51c4047d5ca095a",
+        "fpga/acq_sram/ordinal_counter.v": "297ad038fd29b45044b6b91262890c12cdc462baafd453e761987c52c4cbf82c",
+        "fpga/acq_sram/word_bridge.v": "9769f4762e9ad0560cd3d115b028de30cb5402aede81e94239c8dde73241e50a",
+        "fpga/acq_sram/ingress_fifo.v": "9c8378ef57fdaa6f82c58e3da8aedeb296564cec6d6655050f50a06aa1fcbadf",
+        "fpga/acq_sram/ingress_stream.v": "2409307756c49a6b30b826a719e3b38dda887ae946e933723a1d77d6c6635478",
+        "fpga/acq_sram/ingress_path.v": "0701c87be770e144b96ff09f4a07143caa86d447330844cb719a960e1401b0b2",
+        "fpga/acq_sram/sim/ddr_model.v": "ace57d159f0b1b9edd4e9c82b1496fab3b79b7c056b9aaa2da66698e65d164f2",
+        "fpga/acq_sram/host_path.v": "2a0b52bc3c780895f3f7a283fecdcc2b9df32a3172525a50ab8584dbf9f27a7e",
+        "fpga/acq_sram/host_packer.v": "2b9902e2752e899f5eb4fd94e968c5d800b533b0253b1bc280835cc098aae531",
+        "fpga/acq_sram/host_fifo.v": "04794e2bfba0c485ca5be8b8ff2de48b992d6369601815d9461d9f08032f0883",
+        "fpga/acq_sram/host_sink.v": "0528b33b5c95a74a6b4f37ee76fc8c80aafbfa13739af1070e4feb92e299d0bd",
+        "fpga/acq_sram/host_ram.v": "bcc72b0eaf963f5f1576991e20d1bf9c8af55ba0a587d21309a06bd734487990",
+        "fpga/acq_sram/host_ownership.v": "310b124b4c1de198a9aa6655fb492d7934c22ec5291e37d23691b45ecfa87b0b"
+      },
+      "compileCommand": [
+        "iverilog",
+        "-g2012",
+        "-s",
+        "tb",
+        "-o",
+        "/tmp/sds-rtl-tests-lnvrgbnk/scheduler-counter-lanes",
+        "-Ptb.AW=12",
+        "-Ptb.BANK_WORDS=640",
+        "-Ptb.TARGET=10003",
+        "-Ptb.STALL_CYCLES=0",
+        "fpga/acq_sram/sim/tb_timeslice_controller.v",
+        "fpga/acq_sram/timeslice_controller.v",
+        "fpga/acq_sram/transport.v",
+        "fpga/acq_sram/ordinal_counter.v",
+        "fpga/acq_sram/word_bridge.v",
+        "fpga/acq_sram/ingress_fifo.v",
+        "fpga/acq_sram/ingress_stream.v",
+        "fpga/acq_sram/ingress_path.v",
+        "fpga/acq_sram/sim/ddr_model.v",
+        "fpga/acq_sram/host_path.v",
+        "fpga/acq_sram/host_packer.v",
+        "fpga/acq_sram/host_fifo.v",
+        "fpga/acq_sram/host_sink.v",
+        "fpga/acq_sram/host_ram.v",
+        "fpga/acq_sram/host_ownership.v"
+      ],
+      "compileExitCode": 0,
+      "compileOutput": "",
+      "simulationCommand": [
+        "vvp",
+        "/tmp/sds-rtl-tests-lnvrgbnk/scheduler-counter-lanes"
+      ],
+      "simulationExitCode": 0,
+      "simulationOutput": "PASS RTL controller: words=10003 blocks=16 max_pending=33 max_unread=1312 skipped=0 overlap=0 stalls=0\nfpga/acq_sram/sim/tb_timeslice_controller.v:212: $finish called at 5553948000 (1ps)\n",
+      "result": "pass"
+    },
+    {
+      "id": "scheduler-one-word-tail",
+      "test": "fpga/acq_sram/sim/tb_timeslice_controller.v",
+      "top": "tb",
+      "sources": [
+        "fpga/acq_sram/timeslice_controller.v",
+        "fpga/acq_sram/transport.v",
+        "fpga/acq_sram/ordinal_counter.v",
+        "fpga/acq_sram/word_bridge.v",
+        "fpga/acq_sram/ingress_fifo.v",
+        "fpga/acq_sram/ingress_stream.v",
+        "fpga/acq_sram/ingress_path.v",
+        "fpga/acq_sram/sim/ddr_model.v",
+        "fpga/acq_sram/host_path.v",
+        "fpga/acq_sram/host_packer.v",
+        "fpga/acq_sram/host_fifo.v",
+        "fpga/acq_sram/host_sink.v",
+        "fpga/acq_sram/host_ram.v",
+        "fpga/acq_sram/host_ownership.v"
+      ],
+      "requirements": [
+        "REQ-SDS-048"
+      ],
+      "success": "PASS RTL controller",
+      "parameters": {
+        "AW": 8,
+        "BANK_WORDS": 2,
+        "TARGET": 201,
+        "STALL_CYCLES": 0
+      },
+      "timeoutSeconds": 900,
+      "sha256": {
+        "fpga/acq_sram/sim/tb_timeslice_controller.v": "50cec8a88ff59bac2a606ad1325e6b133fa567025fc4cf73c2ea640e883df838",
+        "fpga/acq_sram/timeslice_controller.v": "5daedebf673cc8c7d2ae927615fb8d2e60b735ba363d9ad080f2cb154e5ec18d",
+        "fpga/acq_sram/transport.v": "814e344e31c1283a4d507e6d489179d0d1ab5b8c05404ed7d51c4047d5ca095a",
+        "fpga/acq_sram/ordinal_counter.v": "297ad038fd29b45044b6b91262890c12cdc462baafd453e761987c52c4cbf82c",
+        "fpga/acq_sram/word_bridge.v": "9769f4762e9ad0560cd3d115b028de30cb5402aede81e94239c8dde73241e50a",
+        "fpga/acq_sram/ingress_fifo.v": "9c8378ef57fdaa6f82c58e3da8aedeb296564cec6d6655050f50a06aa1fcbadf",
+        "fpga/acq_sram/ingress_stream.v": "2409307756c49a6b30b826a719e3b38dda887ae946e933723a1d77d6c6635478",
+        "fpga/acq_sram/ingress_path.v": "0701c87be770e144b96ff09f4a07143caa86d447330844cb719a960e1401b0b2",
+        "fpga/acq_sram/sim/ddr_model.v": "ace57d159f0b1b9edd4e9c82b1496fab3b79b7c056b9aaa2da66698e65d164f2",
+        "fpga/acq_sram/host_path.v": "2a0b52bc3c780895f3f7a283fecdcc2b9df32a3172525a50ab8584dbf9f27a7e",
+        "fpga/acq_sram/host_packer.v": "2b9902e2752e899f5eb4fd94e968c5d800b533b0253b1bc280835cc098aae531",
+        "fpga/acq_sram/host_fifo.v": "04794e2bfba0c485ca5be8b8ff2de48b992d6369601815d9461d9f08032f0883",
+        "fpga/acq_sram/host_sink.v": "0528b33b5c95a74a6b4f37ee76fc8c80aafbfa13739af1070e4feb92e299d0bd",
+        "fpga/acq_sram/host_ram.v": "bcc72b0eaf963f5f1576991e20d1bf9c8af55ba0a587d21309a06bd734487990",
+        "fpga/acq_sram/host_ownership.v": "310b124b4c1de198a9aa6655fb492d7934c22ec5291e37d23691b45ecfa87b0b"
+      },
+      "compileCommand": [
+        "iverilog",
+        "-g2012",
+        "-s",
+        "tb",
+        "-o",
+        "/tmp/sds-rtl-tests-lnvrgbnk/scheduler-one-word-tail",
+        "-Ptb.AW=8",
+        "-Ptb.BANK_WORDS=2",
+        "-Ptb.TARGET=201",
+        "-Ptb.STALL_CYCLES=0",
+        "fpga/acq_sram/sim/tb_timeslice_controller.v",
+        "fpga/acq_sram/timeslice_controller.v",
+        "fpga/acq_sram/transport.v",
+        "fpga/acq_sram/ordinal_counter.v",
+        "fpga/acq_sram/word_bridge.v",
+        "fpga/acq_sram/ingress_fifo.v",
+        "fpga/acq_sram/ingress_stream.v",
+        "fpga/acq_sram/ingress_path.v",
+        "fpga/acq_sram/sim/ddr_model.v",
+        "fpga/acq_sram/host_path.v",
+        "fpga/acq_sram/host_packer.v",
+        "fpga/acq_sram/host_fifo.v",
+        "fpga/acq_sram/host_sink.v",
+        "fpga/acq_sram/host_ram.v",
+        "fpga/acq_sram/host_ownership.v"
+      ],
+      "compileExitCode": 0,
+      "compileOutput": "",
+      "simulationCommand": [
+        "vvp",
+        "/tmp/sds-rtl-tests-lnvrgbnk/scheduler-one-word-tail"
+      ],
+      "simulationExitCode": 0,
+      "simulationOutput": "PASS RTL controller: words=201 blocks=101 max_pending=3 max_unread=36 skipped=0 overlap=41 stalls=0\nfpga/acq_sram/sim/tb_timeslice_controller.v:212: $finish called at 122640000 (1ps)\n",
+      "result": "pass"
+    },
+    {
+      "id": "scheduler-unread-protection",
+      "test": "fpga/acq_sram/sim/tb_timeslice_controller.v",
+      "top": "tb",
+      "sources": [
+        "fpga/acq_sram/timeslice_controller.v",
+        "fpga/acq_sram/transport.v",
+        "fpga/acq_sram/ordinal_counter.v",
+        "fpga/acq_sram/word_bridge.v",
+        "fpga/acq_sram/ingress_fifo.v",
+        "fpga/acq_sram/ingress_stream.v",
+        "fpga/acq_sram/ingress_path.v",
+        "fpga/acq_sram/sim/ddr_model.v",
+        "fpga/acq_sram/host_path.v",
+        "fpga/acq_sram/host_packer.v",
+        "fpga/acq_sram/host_fifo.v",
+        "fpga/acq_sram/host_sink.v",
+        "fpga/acq_sram/host_ram.v",
+        "fpga/acq_sram/host_ownership.v"
+      ],
+      "requirements": [
+        "REQ-SDS-048"
+      ],
+      "success": "PASS controller unread protection",
+      "parameters": {
+        "NO_RELEASE": 1
+      },
+      "timeoutSeconds": 900,
+      "sha256": {
+        "fpga/acq_sram/sim/tb_timeslice_controller.v": "50cec8a88ff59bac2a606ad1325e6b133fa567025fc4cf73c2ea640e883df838",
+        "fpga/acq_sram/timeslice_controller.v": "5daedebf673cc8c7d2ae927615fb8d2e60b735ba363d9ad080f2cb154e5ec18d",
+        "fpga/acq_sram/transport.v": "814e344e31c1283a4d507e6d489179d0d1ab5b8c05404ed7d51c4047d5ca095a",
+        "fpga/acq_sram/ordinal_counter.v": "297ad038fd29b45044b6b91262890c12cdc462baafd453e761987c52c4cbf82c",
+        "fpga/acq_sram/word_bridge.v": "9769f4762e9ad0560cd3d115b028de30cb5402aede81e94239c8dde73241e50a",
+        "fpga/acq_sram/ingress_fifo.v": "9c8378ef57fdaa6f82c58e3da8aedeb296564cec6d6655050f50a06aa1fcbadf",
+        "fpga/acq_sram/ingress_stream.v": "2409307756c49a6b30b826a719e3b38dda887ae946e933723a1d77d6c6635478",
+        "fpga/acq_sram/ingress_path.v": "0701c87be770e144b96ff09f4a07143caa86d447330844cb719a960e1401b0b2",
+        "fpga/acq_sram/sim/ddr_model.v": "ace57d159f0b1b9edd4e9c82b1496fab3b79b7c056b9aaa2da66698e65d164f2",
+        "fpga/acq_sram/host_path.v": "2a0b52bc3c780895f3f7a283fecdcc2b9df32a3172525a50ab8584dbf9f27a7e",
+        "fpga/acq_sram/host_packer.v": "2b9902e2752e899f5eb4fd94e968c5d800b533b0253b1bc280835cc098aae531",
+        "fpga/acq_sram/host_fifo.v": "04794e2bfba0c485ca5be8b8ff2de48b992d6369601815d9461d9f08032f0883",
+        "fpga/acq_sram/host_sink.v": "0528b33b5c95a74a6b4f37ee76fc8c80aafbfa13739af1070e4feb92e299d0bd",
+        "fpga/acq_sram/host_ram.v": "bcc72b0eaf963f5f1576991e20d1bf9c8af55ba0a587d21309a06bd734487990",
+        "fpga/acq_sram/host_ownership.v": "310b124b4c1de198a9aa6655fb492d7934c22ec5291e37d23691b45ecfa87b0b"
+      },
+      "compileCommand": [
+        "iverilog",
+        "-g2012",
+        "-s",
+        "tb",
+        "-o",
+        "/tmp/sds-rtl-tests-lnvrgbnk/scheduler-unread-protection",
+        "-Ptb.NO_RELEASE=1",
+        "fpga/acq_sram/sim/tb_timeslice_controller.v",
+        "fpga/acq_sram/timeslice_controller.v",
+        "fpga/acq_sram/transport.v",
+        "fpga/acq_sram/ordinal_counter.v",
+        "fpga/acq_sram/word_bridge.v",
+        "fpga/acq_sram/ingress_fifo.v",
+        "fpga/acq_sram/ingress_stream.v",
+        "fpga/acq_sram/ingress_path.v",
+        "fpga/acq_sram/sim/ddr_model.v",
+        "fpga/acq_sram/host_path.v",
+        "fpga/acq_sram/host_packer.v",
+        "fpga/acq_sram/host_fifo.v",
+        "fpga/acq_sram/host_sink.v",
+        "fpga/acq_sram/host_ram.v",
+        "fpga/acq_sram/host_ownership.v"
+      ],
+      "compileExitCode": 0,
+      "compileOutput": "",
+      "simulationCommand": [
+        "vvp",
+        "/tmp/sds-rtl-tests-lnvrgbnk/scheduler-unread-protection"
+      ],
+      "simulationExitCode": 0,
+      "simulationOutput": "PASS controller unread protection: writes=1056 read=32\nfpga/acq_sram/sim/tb_timeslice_controller.v:212: $finish called at 546320000 (1ps)\n",
+      "result": "pass"
+    },
+    {
+      "id": "scheduler-owned-host-stall",
+      "test": "fpga/acq_sram/sim/tb_timeslice_controller.v",
+      "top": "tb",
+      "sources": [
+        "fpga/acq_sram/timeslice_controller.v",
+        "fpga/acq_sram/transport.v",
+        "fpga/acq_sram/ordinal_counter.v",
+        "fpga/acq_sram/word_bridge.v",
+        "fpga/acq_sram/ingress_fifo.v",
+        "fpga/acq_sram/ingress_stream.v",
+        "fpga/acq_sram/ingress_path.v",
+        "fpga/acq_sram/sim/ddr_model.v",
+        "fpga/acq_sram/host_path.v",
+        "fpga/acq_sram/host_packer.v",
+        "fpga/acq_sram/host_fifo.v",
+        "fpga/acq_sram/host_sink.v",
+        "fpga/acq_sram/host_ram.v",
+        "fpga/acq_sram/host_ownership.v"
+      ],
+      "requirements": [
+        "REQ-SDS-048"
+      ],
+      "success": "PASS RTL controller",
+      "parameters": {
+        "REAL_HOST": 1,
+        "AW": 13,
+        "BANK_WORDS": 2560,
+        "TARGET": 10003,
+        "STALL_BLOCK": 0,
+        "STALL_CYCLES": 250000,
+        "REQUIRE_STALL": 1
+      },
+      "timeoutSeconds": 900,
+      "sha256": {
+        "fpga/acq_sram/sim/tb_timeslice_controller.v": "50cec8a88ff59bac2a606ad1325e6b133fa567025fc4cf73c2ea640e883df838",
+        "fpga/acq_sram/timeslice_controller.v": "5daedebf673cc8c7d2ae927615fb8d2e60b735ba363d9ad080f2cb154e5ec18d",
+        "fpga/acq_sram/transport.v": "814e344e31c1283a4d507e6d489179d0d1ab5b8c05404ed7d51c4047d5ca095a",
+        "fpga/acq_sram/ordinal_counter.v": "297ad038fd29b45044b6b91262890c12cdc462baafd453e761987c52c4cbf82c",
+        "fpga/acq_sram/word_bridge.v": "9769f4762e9ad0560cd3d115b028de30cb5402aede81e94239c8dde73241e50a",
+        "fpga/acq_sram/ingress_fifo.v": "9c8378ef57fdaa6f82c58e3da8aedeb296564cec6d6655050f50a06aa1fcbadf",
+        "fpga/acq_sram/ingress_stream.v": "2409307756c49a6b30b826a719e3b38dda887ae946e933723a1d77d6c6635478",
+        "fpga/acq_sram/ingress_path.v": "0701c87be770e144b96ff09f4a07143caa86d447330844cb719a960e1401b0b2",
+        "fpga/acq_sram/sim/ddr_model.v": "ace57d159f0b1b9edd4e9c82b1496fab3b79b7c056b9aaa2da66698e65d164f2",
+        "fpga/acq_sram/host_path.v": "2a0b52bc3c780895f3f7a283fecdcc2b9df32a3172525a50ab8584dbf9f27a7e",
+        "fpga/acq_sram/host_packer.v": "2b9902e2752e899f5eb4fd94e968c5d800b533b0253b1bc280835cc098aae531",
+        "fpga/acq_sram/host_fifo.v": "04794e2bfba0c485ca5be8b8ff2de48b992d6369601815d9461d9f08032f0883",
+        "fpga/acq_sram/host_sink.v": "0528b33b5c95a74a6b4f37ee76fc8c80aafbfa13739af1070e4feb92e299d0bd",
+        "fpga/acq_sram/host_ram.v": "bcc72b0eaf963f5f1576991e20d1bf9c8af55ba0a587d21309a06bd734487990",
+        "fpga/acq_sram/host_ownership.v": "310b124b4c1de198a9aa6655fb492d7934c22ec5291e37d23691b45ecfa87b0b"
+      },
+      "compileCommand": [
+        "iverilog",
+        "-g2012",
+        "-s",
+        "tb",
+        "-o",
+        "/tmp/sds-rtl-tests-lnvrgbnk/scheduler-owned-host-stall",
+        "-Ptb.REAL_HOST=1",
+        "-Ptb.AW=13",
+        "-Ptb.BANK_WORDS=2560",
+        "-Ptb.TARGET=10003",
+        "-Ptb.STALL_BLOCK=0",
+        "-Ptb.STALL_CYCLES=250000",
+        "-Ptb.REQUIRE_STALL=1",
+        "fpga/acq_sram/sim/tb_timeslice_controller.v",
+        "fpga/acq_sram/timeslice_controller.v",
+        "fpga/acq_sram/transport.v",
+        "fpga/acq_sram/ordinal_counter.v",
+        "fpga/acq_sram/word_bridge.v",
+        "fpga/acq_sram/ingress_fifo.v",
+        "fpga/acq_sram/ingress_stream.v",
+        "fpga/acq_sram/ingress_path.v",
+        "fpga/acq_sram/sim/ddr_model.v",
+        "fpga/acq_sram/host_path.v",
+        "fpga/acq_sram/host_packer.v",
+        "fpga/acq_sram/host_fifo.v",
+        "fpga/acq_sram/host_sink.v",
+        "fpga/acq_sram/host_ram.v",
+        "fpga/acq_sram/host_ownership.v"
+      ],
+      "compileExitCode": 0,
+      "compileOutput": "",
+      "simulationCommand": [
+        "vvp",
+        "/tmp/sds-rtl-tests-lnvrgbnk/scheduler-owned-host-stall"
+      ],
+      "simulationExitCode": 0,
+      "simulationOutput": "PASS RTL controller: words=10003 blocks=4 max_pending=65 max_unread=5152 skipped=0 overlap=0 stalls=1\nfpga/acq_sram/sim/tb_timeslice_controller.v:212: $finish called at 7662088000 (1ps)\n",
+      "result": "pass"
+    },
+    {
+      "id": "scheduler-physical-geometry",
+      "test": "fpga/acq_sram/sim/tb_timeslice_controller.v",
+      "top": "tb",
+      "sources": [
+        "fpga/acq_sram/timeslice_controller.v",
+        "fpga/acq_sram/transport.v",
+        "fpga/acq_sram/ordinal_counter.v",
+        "fpga/acq_sram/word_bridge.v",
+        "fpga/acq_sram/ingress_fifo.v",
+        "fpga/acq_sram/ingress_stream.v",
+        "fpga/acq_sram/ingress_path.v",
+        "fpga/acq_sram/sim/ddr_model.v",
+        "fpga/acq_sram/host_path.v",
+        "fpga/acq_sram/host_packer.v",
+        "fpga/acq_sram/host_fifo.v",
+        "fpga/acq_sram/host_sink.v",
+        "fpga/acq_sram/host_ram.v",
+        "fpga/acq_sram/host_ownership.v"
+      ],
+      "requirements": [
+        "REQ-SDS-048"
+      ],
+      "success": "PASS RTL controller",
+      "parameters": {
+        "AW": 19,
+        "BANK_WORDS": 2560,
+        "TARGET": 65539,
+        "STALL_CYCLES": 2500000
+      },
+      "timeoutSeconds": 900,
+      "sha256": {
+        "fpga/acq_sram/sim/tb_timeslice_controller.v": "50cec8a88ff59bac2a606ad1325e6b133fa567025fc4cf73c2ea640e883df838",
+        "fpga/acq_sram/timeslice_controller.v": "5daedebf673cc8c7d2ae927615fb8d2e60b735ba363d9ad080f2cb154e5ec18d",
+        "fpga/acq_sram/transport.v": "814e344e31c1283a4d507e6d489179d0d1ab5b8c05404ed7d51c4047d5ca095a",
+        "fpga/acq_sram/ordinal_counter.v": "297ad038fd29b45044b6b91262890c12cdc462baafd453e761987c52c4cbf82c",
+        "fpga/acq_sram/word_bridge.v": "9769f4762e9ad0560cd3d115b028de30cb5402aede81e94239c8dde73241e50a",
+        "fpga/acq_sram/ingress_fifo.v": "9c8378ef57fdaa6f82c58e3da8aedeb296564cec6d6655050f50a06aa1fcbadf",
+        "fpga/acq_sram/ingress_stream.v": "2409307756c49a6b30b826a719e3b38dda887ae946e933723a1d77d6c6635478",
+        "fpga/acq_sram/ingress_path.v": "0701c87be770e144b96ff09f4a07143caa86d447330844cb719a960e1401b0b2",
+        "fpga/acq_sram/sim/ddr_model.v": "ace57d159f0b1b9edd4e9c82b1496fab3b79b7c056b9aaa2da66698e65d164f2",
+        "fpga/acq_sram/host_path.v": "2a0b52bc3c780895f3f7a283fecdcc2b9df32a3172525a50ab8584dbf9f27a7e",
+        "fpga/acq_sram/host_packer.v": "2b9902e2752e899f5eb4fd94e968c5d800b533b0253b1bc280835cc098aae531",
+        "fpga/acq_sram/host_fifo.v": "04794e2bfba0c485ca5be8b8ff2de48b992d6369601815d9461d9f08032f0883",
+        "fpga/acq_sram/host_sink.v": "0528b33b5c95a74a6b4f37ee76fc8c80aafbfa13739af1070e4feb92e299d0bd",
+        "fpga/acq_sram/host_ram.v": "bcc72b0eaf963f5f1576991e20d1bf9c8af55ba0a587d21309a06bd734487990",
+        "fpga/acq_sram/host_ownership.v": "310b124b4c1de198a9aa6655fb492d7934c22ec5291e37d23691b45ecfa87b0b"
+      },
+      "compileCommand": [
+        "iverilog",
+        "-g2012",
+        "-s",
+        "tb",
+        "-o",
+        "/tmp/sds-rtl-tests-lnvrgbnk/scheduler-physical-geometry",
+        "-Ptb.AW=19",
+        "-Ptb.BANK_WORDS=2560",
+        "-Ptb.TARGET=65539",
+        "-Ptb.STALL_CYCLES=2500000",
+        "fpga/acq_sram/sim/tb_timeslice_controller.v",
+        "fpga/acq_sram/timeslice_controller.v",
+        "fpga/acq_sram/transport.v",
+        "fpga/acq_sram/ordinal_counter.v",
+        "fpga/acq_sram/word_bridge.v",
+        "fpga/acq_sram/ingress_fifo.v",
+        "fpga/acq_sram/ingress_stream.v",
+        "fpga/acq_sram/ingress_path.v",
+        "fpga/acq_sram/sim/ddr_model.v",
+        "fpga/acq_sram/host_path.v",
+        "fpga/acq_sram/host_packer.v",
+        "fpga/acq_sram/host_fifo.v",
+        "fpga/acq_sram/host_sink.v",
+        "fpga/acq_sram/host_ram.v",
+        "fpga/acq_sram/host_ownership.v"
+      ],
+      "compileExitCode": 0,
+      "compileOutput": "",
+      "simulationCommand": [
+        "vvp",
+        "/tmp/sds-rtl-tests-lnvrgbnk/scheduler-physical-geometry"
+      ],
+      "simulationExitCode": 0,
+      "simulationOutput": "PASS RTL controller: words=65539 blocks=26 max_pending=4101 max_unread=24437 skipped=4 overlap=16 stalls=1\nfpga/acq_sram/sim/tb_timeslice_controller.v:212: $finish called at 45030168000 (1ps)\n",
+      "result": "pass"
+    }
+  ],
+  "result": "pass"
+}

@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-OTA-AGENT
 package agent
 
 import (
@@ -11,6 +12,7 @@ import (
 // even when NATS is unreachable (e.g. no outbound path from the lab), reached
 // directly at OTA_LISTEN. Like every other worker it only calls Dispatch —
 // never the GPMC bus.
+// TRLC-LINKS: REQ-SDS-107
 func (a *Agent) serveTCP() {
 	ln, err := net.Listen("tcp", a.cfg.TCPListen)
 	if err != nil {
@@ -45,12 +47,14 @@ func (a *Agent) serveTCP() {
 // TCPAddr reports the TCP control listener's bound address ("" until it is
 // listening). With OTA_LISTEN=127.0.0.1:0 this is how a harness learns the
 // ephemeral port; it records state only and changes no listener behavior.
+// TRLC-LINKS: REQ-SDS-107
 func (a *Agent) TCPAddr() string {
 	a.tcpMu.Lock()
 	defer a.tcpMu.Unlock()
 	return a.tcpAddr
 }
 
+// TRLC-LINKS: REQ-SDS-107
 func (a *Agent) handleConn(conn net.Conn) {
 	defer conn.Close()
 	// Large deadline: file-transfer chunks and long exec can take a while.

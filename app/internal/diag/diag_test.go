@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-DIAG
 package diag
 
 import (
@@ -18,6 +19,7 @@ import (
 // balls "owned" by someone else, a fixed foreign level), lane counters, the
 // snapshot RAM, a record that fills as a +1 ramp on CH1 and a constant on
 // CH2, and the identity words.
+// TRLC-LINKS: REQ-SDS-143, REQ-SDS-144, REQ-SDS-145, REQ-SDS-146, REQ-SDS-147, REQ-SDS-148
 type fakeFabric struct {
 	mu      sync.Mutex
 	regs    map[uint16]uint16
@@ -47,6 +49,7 @@ type fakeFabric struct {
 	dupped  bool
 }
 
+// TRLC-LINKS: REQ-SDS-143, REQ-SDS-144, REQ-SDS-145, REQ-SDS-146, REQ-SDS-147, REQ-SDS-148
 func newFakeFabric() *fakeFabric {
 	f := &fakeFabric{regs: map[uint16]uint16{}, win: map[uint16]uint16{}, foreign: map[int]uint8{}, snapN: 2048}
 	f.regs[iface.SelBuildidLo] = iface.BuildIDLo
@@ -73,6 +76,7 @@ func newFakeFabric() *fakeFabric {
 }
 
 // window is the latched drain window over the frozen record.
+// TRLC-LINKS: REQ-SDS-143, REQ-SDS-144, REQ-SDS-145, REQ-SDS-146, REQ-SDS-147, REQ-SDS-148
 func (f *fakeFabric) window() (start, n int) {
 	start = f.winS
 	if start > f.rec {
@@ -85,6 +89,7 @@ func (f *fakeFabric) window() (start, n int) {
 	return
 }
 
+// TRLC-LINKS: REQ-SDS-143, REQ-SDS-144, REQ-SDS-145, REQ-SDS-146, REQ-SDS-147, REQ-SDS-148
 func (f *fakeFabric) latch() {
 	f.winS = int(f.regs[iface.SelDrainStart] & iface.DrainStartIdxMask)
 	f.winL = int(f.regs[iface.SelDrainLen])
@@ -94,6 +99,7 @@ func (f *fakeFabric) latch() {
 // pop is one BURST pop: the TSRC pattern word at k0+index when a test source
 // is on, else the v2 fake's ramp-on-CH1 / 0x55-on-CH2 word; past the window
 // the last word repeats and UNDERRUN counts.
+// TRLC-LINKS: REQ-SDS-143, REQ-SDS-144, REQ-SDS-145, REQ-SDS-146, REQ-SDS-147, REQ-SDS-148
 func (f *fakeFabric) pop() uint16 {
 	start, n := f.window()
 	f.pops++
@@ -119,6 +125,7 @@ func (f *fakeFabric) pop() uint16 {
 
 // v22Live is the v2.2 fabric's stored bits of a register: nothing for a stub,
 // every field not marked "reads 0 in v2.2" otherwise.
+// TRLC-LINKS: REQ-SDS-143, REQ-SDS-144, REQ-SDS-145, REQ-SDS-146, REQ-SDS-147, REQ-SDS-148
 func v22Live(r iface.Register) uint16 {
 	if r.Stub {
 		return 0
@@ -135,6 +142,7 @@ func v22Live(r iface.Register) uint16 {
 	return m
 }
 
+// TRLC-LINKS: REQ-SDS-143, REQ-SDS-144, REQ-SDS-145, REQ-SDS-146, REQ-SDS-147, REQ-SDS-148
 func (f *fakeFabric) busRd() (lo, hi uint16) {
 	master := f.regs[iface.SelDiagCtrl]&iface.DiagCtrlBusDrvEnMask != 0
 	d2 := f.regs[iface.SelDiagCtrl]&iface.DiagCtrlD2Mask != 0
@@ -150,6 +158,7 @@ func (f *fakeFabric) busRd() (lo, hi uint16) {
 	return
 }
 
+// TRLC-LINKS: REQ-SDS-143, REQ-SDS-144, REQ-SDS-145, REQ-SDS-146, REQ-SDS-147, REQ-SDS-148
 func (f *fakeFabric) Read(plane uint8, sel uint16) (uint16, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -227,6 +236,7 @@ func (f *fakeFabric) Read(plane uint8, sel uint16) (uint16, error) {
 	return f.regs[sel], nil
 }
 
+// TRLC-LINKS: REQ-SDS-143, REQ-SDS-144, REQ-SDS-145, REQ-SDS-146, REQ-SDS-147, REQ-SDS-148
 func (f *fakeFabric) Write(plane uint8, sel, val uint16) error {
 	if !bus.Writable(plane, sel) {
 		return fmt.Errorf("fake: not writable cs%d %#04x", plane, sel)
@@ -293,6 +303,7 @@ func (f *fakeFabric) Write(plane uint8, sel, val uint16) error {
 	return nil
 }
 
+// TRLC-LINKS: REQ-SDS-143, REQ-SDS-144, REQ-SDS-145, REQ-SDS-146, REQ-SDS-147, REQ-SDS-148
 func (f *fakeFabric) RawWrite(sel, val uint16) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -302,6 +313,7 @@ func (f *fakeFabric) RawWrite(sel, val uint16) error {
 	return nil
 }
 
+// TRLC-LINKS: REQ-SDS-143, REQ-SDS-144, REQ-SDS-145, REQ-SDS-146, REQ-SDS-147, REQ-SDS-148
 func (f *fakeFabric) BurstInto(c1, c2 []uint8, n int) {
 	for i := 0; i < n; i++ {
 		v, _ := f.Read(bus.PlaneCS1, iface.SelBurst)
@@ -309,18 +321,22 @@ func (f *fakeFabric) BurstInto(c1, c2 []uint8, n int) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-143, REQ-SDS-144, REQ-SDS-145, REQ-SDS-146, REQ-SDS-147, REQ-SDS-148
 func (f *fakeFabric) PopWords(sel uint16, dst []uint16, n int) {
 	for i := 0; i < n; i++ {
 		dst[i], _ = f.Read(bus.PlaneCS1, sel)
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-143, REQ-SDS-144, REQ-SDS-145, REQ-SDS-146, REQ-SDS-147, REQ-SDS-148
 func (f *fakeFabric) FastDrain() bool { return false }
 
+// TRLC-LINKS: REQ-SDS-143, REQ-SDS-144, REQ-SDS-145, REQ-SDS-146, REQ-SDS-147, REQ-SDS-148
 func direct(f *fakeFabric) Runner {
 	return RunnerFunc(func(fn func(bus.Bus) error, _ time.Duration) error { return fn(f) })
 }
 
+// TRLC-LINKS: REQ-SDS-143, REQ-SDS-144, REQ-SDS-145, REQ-SDS-146, REQ-SDS-147, REQ-SDS-148
 func newTestDiag() (*Diag, *fakeFabric) {
 	f := newFakeFabric()
 	d := New(direct(f), nil)
@@ -328,6 +344,7 @@ func newTestDiag() (*Diag, *fakeFabric) {
 	return d, f
 }
 
+// TRLC-LINKS: REQ-SDS-143, REQ-SDS-144
 func TestResolveNames(t *testing.T) {
 	for _, c := range []struct {
 		in   string
@@ -372,6 +389,7 @@ func TestResolveNames(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-143
 func TestRegAndWindowAccess(t *testing.T) {
 	d, f := newTestDiag()
 	rv, err := d.RegRead("CLK_STAT")
@@ -414,6 +432,7 @@ func TestRegAndWindowAccess(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-143
 func TestIdentityAndStatus(t *testing.T) {
 	d, f := newTestDiag()
 	id, err := d.Identity()
@@ -435,6 +454,7 @@ func TestIdentityAndStatus(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-144
 func TestCensus(t *testing.T) {
 	d, f := newTestDiag()
 	f.regs[iface.SelDiagIdx] = 0x0c // must be restored
@@ -462,6 +482,7 @@ func TestCensus(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-144
 func TestSnapshot(t *testing.T) {
 	d, f := newTestDiag()
 	f.snapN = 300
@@ -484,6 +505,7 @@ func TestSnapshot(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-145
 func TestBusDrive(t *testing.T) {
 	d, f := newTestDiag()
 	if err := d.BusDrive("R3", true, 0); err != nil {
@@ -529,6 +551,7 @@ func TestBusDrive(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-145
 func TestVendorSequence(t *testing.T) {
 	d, f := newTestDiag()
 	f.d2Dep = true
@@ -552,6 +575,7 @@ func TestVendorSequence(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-145
 func TestE2FollowRates(t *testing.T) {
 	d, f := newTestDiag()
 	// R4 is foreign-driven low only while D2=1; M6 always foreign high.
@@ -613,6 +637,7 @@ func TestE2FollowRates(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-148
 func TestCaptureScoresRamp(t *testing.T) {
 	d, f := newTestDiag()
 	res, err := d.Capture(CaptureOptions{Words: 1000, Samples: true})
@@ -648,6 +673,7 @@ func TestCaptureScoresRamp(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-143, REQ-SDS-144
 func TestRunnerErrorsPropagate(t *testing.T) {
 	d := New(RunnerFunc(func(fn func(bus.Bus) error, _ time.Duration) error { return fmt.Errorf("busy") }), nil)
 	if _, err := d.RegRead("RUN"); err == nil || err.Error() != "busy" {
@@ -663,6 +689,7 @@ func TestRunnerErrorsPropagate(t *testing.T) {
 
 // ---- v3 rungs ----
 
+// TRLC-LINKS: REQ-SDS-148
 func TestCaptureTsrcAndWindow(t *testing.T) {
 	d, f := newTestDiag()
 	for _, chmode := range []uint16{iface.RunChmodeDual, iface.RunChmodeCh1, iface.RunChmodeCh2} {
@@ -701,6 +728,7 @@ func TestCaptureTsrcAndWindow(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-148
 func TestRedrainWindows(t *testing.T) {
 	d, f := newTestDiag()
 	res, err := d.Redrain(RedrainOptions{Words: 2000, Windows: 8, Passes: 2, Odd: true})
@@ -729,6 +757,7 @@ func TestRedrainWindows(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-147
 func TestSchemaCheck(t *testing.T) {
 	d, f := newTestDiag()
 	res, err := d.SchemaCheck(SchemaOptions{Writes: 20})
@@ -780,6 +809,7 @@ func TestSchemaCheck(t *testing.T) {
 
 // fakeTimingPort is a CS1 timing port with a floor below which the fake
 // fabric duplicates every 32nd pop (the burst-boundary signature).
+// TRLC-LINKS: REQ-SDS-146
 type fakeTimingPort struct {
 	f         *fakeFabric
 	cur       bus.CS1Timing
@@ -787,7 +817,9 @@ type fakeTimingPort struct {
 	applies   int
 }
 
+// TRLC-LINKS: REQ-SDS-146
 func (p *fakeTimingPort) Read() (bus.CS1Timing, error) { return p.cur, nil }
+// TRLC-LINKS: REQ-SDS-146
 func (p *fakeTimingPort) set(t bus.CS1Timing) {
 	p.cur = t
 	p.applies++
@@ -795,6 +827,7 @@ func (p *fakeTimingPort) set(t bus.CS1Timing) {
 	p.f.corrupt = t.RdAccess() < p.minAccess
 	p.f.mu.Unlock()
 }
+// TRLC-LINKS: REQ-SDS-146
 func (p *fakeTimingPort) Apply(t bus.CS1Timing) error {
 	if err := t.Validate(); err != nil {
 		return err
@@ -802,8 +835,10 @@ func (p *fakeTimingPort) Apply(t bus.CS1Timing) error {
 	p.set(t)
 	return nil
 }
+// TRLC-LINKS: REQ-SDS-146
 func (p *fakeTimingPort) Restore(t bus.CS1Timing) error { p.set(t); return nil }
 
+// TRLC-LINKS: REQ-SDS-146
 func TestGpmcSweepPersistApply(t *testing.T) {
 	d, f := newTestDiag()
 	if _, err := d.GpmcSweep(bus.SweepOptions{}); err == nil {

@@ -1,0 +1,50 @@
+{
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "status": "complete",
+  "runtimeInputSHA256": {
+    "fpga/sram_bench/sim/tb.v": "22ca80b403f26ce72e3dc052607650946772c863cb29e863d041d910a92960af",
+    "fpga/sram_bench/bench.v": "56041546ec45127435bc05b9e66d2da3c0d19a4966089c551c5713918dc51d73",
+    "fpga/common/gpmc_slave.v": "9290fbbc5641cd09029c119fceefe7c3d9c9b6ee52f9bb5d8a8141fc5772b1b0"
+  },
+  "cases": [
+    {
+      "id": "sram-bench-normal",
+      "alias": 0,
+      "simulationCommand": [
+        "vvp",
+        "/tmp/sds-sram-bench-review-6hif9h60/bench.vvp"
+      ],
+      "simulationExitCode": 0,
+      "output": "writes=524304 reads=524320 checked=524288 errors=0 first=4294967295 want=00000000 got=00000000\nPASS behavioral SRAM, alias test=0\nfpga/sram_bench/sim/tb.v:37: $finish called at 104869051000 (1ps)\n",
+      "result": "pass"
+    },
+    {
+      "id": "sram-bench-alias",
+      "alias": 1,
+      "simulationCommand": [
+        "vvp",
+        "/tmp/sds-sram-bench-review-6hif9h60/bench.vvp",
+        "+alias"
+      ],
+      "simulationExitCode": 0,
+      "output": "writes=524304 reads=524320 checked=524288 errors=262144 first=0 want=9bdf0afb got=a5fb4b16\nPASS behavioral SRAM, alias test=1\nfpga/sram_bench/sim/tb.v:37: $finish called at 104869051000 (1ps)\n",
+      "result": "pass"
+    }
+  ],
+  "scope": "Original 10 MHz behavioral SRAM tester with normal and folded address-bit18 memory. Ideal PLL/DDR/SRAM models; no physical capacity, timing, host protocol or device qualification.",
+  "compileCommand": [
+    "iverilog",
+    "-g2012",
+    "-DBENCH_MHZ=10",
+    "-s",
+    "tb",
+    "-o",
+    "/tmp/sds-sram-bench-review-6hif9h60/bench.vvp",
+    "fpga/sram_bench/sim/tb.v",
+    "fpga/sram_bench/bench.v",
+    "fpga/common/gpmc_slave.v"
+  ],
+  "compileExitCode": 0,
+  "compileOutput": "",
+  "result": "pass"
+}

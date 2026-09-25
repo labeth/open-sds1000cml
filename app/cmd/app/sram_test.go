@@ -1,7 +1,9 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-APP
 package main
 
 import "testing"
 
+// TRLC-LINKS: REQ-SDS-169
 func TestSRAMHealthStorage(t *testing.T) {
 	for _, p := range []string{"/dev/acq-app.health", "/usr/bin/siglent/usr/media/U-disk0/acq2/health"} {
 		if !sramHealthPathAllowed(p) {

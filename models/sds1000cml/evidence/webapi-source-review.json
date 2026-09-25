@@ -1,0 +1,186 @@
+{
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "owner": "FU-APP-WEB",
+  "status": "integrated",
+  "completeReads": [
+    "app/internal/web/apifuzz_test.go",
+    "app/internal/web/assets.go",
+    "app/internal/web/bin_test.go",
+    "app/internal/web/diag.go",
+    "app/internal/web/diag_v3_test.go",
+    "app/internal/web/framefuzz_test.go",
+    "app/internal/web/measure_test.go",
+    "app/internal/web/precision_frame_test.go",
+    "app/internal/web/sram.go",
+    "app/internal/web/sram_test.go",
+    "app/internal/web/web.go",
+    "app/internal/web/web_binframe.go",
+    "app/internal/web/web_control.go",
+    "app/internal/web/web_control_test.go",
+    "app/internal/web/web_diag_test.go",
+    "app/internal/web/web_frame.go",
+    "app/internal/web/web_frame_test.go",
+    "app/internal/web/web_invs_test.go",
+    "app/internal/web/web_serialtrig_test.go",
+    "app/internal/web/web_status.go",
+    "app/internal/web/web_test.go",
+    "app/internal/web/zonemask_api_test.go"
+  ],
+  "reviewedGoLines": 4306,
+  "sourceSHA256": {
+    "app/internal/web/apifuzz_test.go": "61d9ec6c902b8360fa6f737886123317eca7e17f08a033614869f2857ff97aab",
+    "app/internal/web/assets.go": "b37577f0078610acfb13b0c7884e9dce2c8201eaa9bc526356225a51f29edfbb",
+    "app/internal/web/bin_test.go": "5c6000cb60dd442624207574eae11f2e071eaf677ddcde76456999477518a12e",
+    "app/internal/web/diag.go": "83a7a7a5f1dad93a7c8d86f3b36ab4d650b6cf4f6526bccd7d7ea85f32d8ab44",
+    "app/internal/web/diag_v3_test.go": "3204015d68b995850c240072c39dae480bf010ae393928febef3ffb9c29bda20",
+    "app/internal/web/framefuzz_test.go": "be03763e4de5cf3dbc3818fb0231159665b651a1c392250f4e7879ec64535806",
+    "app/internal/web/measure_test.go": "00fdb35bc61ec67a41e6fdfb32c065abf28e9fef9b5431326bbc1ee22d5f06bb",
+    "app/internal/web/precision_frame_test.go": "d2969cdb1cb408f6aad4fc34253e553d1c11305feb18d9e3f81937db0a3c7e43",
+    "app/internal/web/sram.go": "0c1592081c6ac164374bf07582fe3919f790779f5ee34ce212024a6949de0b4a",
+    "app/internal/web/sram_test.go": "2773e823ab3fb8acdd01a3787b31984b7196038deaf2aeda5f9ce620e00e74da",
+    "app/internal/web/web.go": "981e135bf23fdb4ae264b5e62f78ec09ffa65c18c12ad72cfcacfde183fb8ba7",
+    "app/internal/web/web_binframe.go": "8a54b3eaf6f0903d2bf2c9377edec9135c80ab20dbbae8a6d2b2f87c47b2c2ce",
+    "app/internal/web/web_control.go": "1dd77a394d15d329506a343528ff114d4dec843a77032fa6261fd6763f28cd76",
+    "app/internal/web/web_control_test.go": "bf8981221326d03b1a1f7c09b5d6e26c1a175e21f77effac58edae8ad0d3d963",
+    "app/internal/web/web_diag_test.go": "2aa0c1ecdb2cf583dc38daa343f0f0bc1c8a9dac097b93a9adc493143f7c3161",
+    "app/internal/web/web_frame.go": "6ac131fdec8512dd05c149b7d8193c2d33cb56a8abf58ec4198e5c9966bf60cb",
+    "app/internal/web/web_frame_test.go": "2eb61813bfa70a1155adccf45c3ba2d236a7c78fb419c70e3a07a5349a6e4f15",
+    "app/internal/web/web_invs_test.go": "214de8a734802a31bfa482c7354a23dbb97c2ba741a3730682afa8d67dd0a5e2",
+    "app/internal/web/web_serialtrig_test.go": "e6bce98b189efe123a5843c412d7af38a3e1487c59a96ff8b59d3ad6ac76ccb8",
+    "app/internal/web/web_status.go": "8f124247fbb123cd0b6ce5c14e47eaf65110f7ee9ad2b6f118fd4f91b4315cbe",
+    "app/internal/web/web_test.go": "37f4c52d6ddeb726f786e0555e61fd7054631df40083de642309f9740a88d830",
+    "app/internal/web/zonemask_api_test.go": "4d7724bf98b0ed6836373861debcb9fcee13613979380e03cf10780142149af4"
+  },
+  "testsByFile": {
+    "app/internal/web/apifuzz_test.go": [
+      "TestAPIFuzz"
+    ],
+    "app/internal/web/bin_test.go": [
+      "TestBinFrameParity",
+      "TestBinFrameUnchanged",
+      "TestBinFrameLongPollDegrade",
+      "TestMeasCacheReuse",
+      "TestBinFrameRawShape"
+    ],
+    "app/internal/web/diag_v3_test.go": [
+      "TestDiagV3Routes"
+    ],
+    "app/internal/web/framefuzz_test.go": [
+      "TestFrameServeFuzz"
+    ],
+    "app/internal/web/measure_test.go": [
+      "TestResampleEnv"
+    ],
+    "app/internal/web/precision_frame_test.go": [
+      "TestPrecisionBinaryPayload"
+    ],
+    "app/internal/web/sram_test.go": [
+      "TestSRAMFullRecordAndWindowAPI",
+      "TestSRAMArmIsExplicitAndErrorsRemainJSON"
+    ],
+    "app/internal/web/web_control_test.go": [
+      "TestSetVerbs",
+      "TestVerticalVerbs",
+      "TestProbeAttenuation",
+      "TestCouplingVerbs",
+      "TestACCouplingRemovesDC",
+      "TestHoldoffVerb",
+      "TestQualifierAndAcqVerbs",
+      "TestBodeEndpoint"
+    ],
+    "app/internal/web/web_diag_test.go": [
+      "TestDiagRoutesUnwiredAre503",
+      "TestDiagStatusRegWindow",
+      "TestDiagSnapshotBusExperiments"
+    ],
+    "app/internal/web/web_frame_test.go": [
+      "TestFrameEndpoint",
+      "TestDeepFrameServesRawRecord",
+      "TestWindowMapping",
+      "TestWindowNoEndGaps",
+      "TestWindowRailExtendCentres",
+      "TestDtSTrueCapturePitch"
+    ],
+    "app/internal/web/web_invs_test.go": [
+      "TestStatusInvertSource"
+    ],
+    "app/internal/web/web_serialtrig_test.go": [
+      "TestSerialTriggerEndpoints"
+    ],
+    "app/internal/web/web_test.go": [
+      "TestStatusEndpoint",
+      "TestRootServesUI"
+    ],
+    "app/internal/web/zonemask_api_test.go": [
+      "TestZoneMaskAPI"
+    ]
+  },
+  "uniqueReviewedTests": [
+    "TestACCouplingRemovesDC",
+    "TestAPIFuzz",
+    "TestBinFrameLongPollDegrade",
+    "TestBinFrameParity",
+    "TestBinFrameRawShape",
+    "TestBinFrameUnchanged",
+    "TestBodeEndpoint",
+    "TestCouplingVerbs",
+    "TestDeepFrameServesRawRecord",
+    "TestDiagRoutesUnwiredAre503",
+    "TestDiagSnapshotBusExperiments",
+    "TestDiagStatusRegWindow",
+    "TestDiagV3Routes",
+    "TestDtSTrueCapturePitch",
+    "TestFrameEndpoint",
+    "TestFrameServeFuzz",
+    "TestHoldoffVerb",
+    "TestMeasCacheReuse",
+    "TestPrecisionBinaryPayload",
+    "TestProbeAttenuation",
+    "TestQualifierAndAcqVerbs",
+    "TestResampleEnv",
+    "TestRootServesUI",
+    "TestSRAMArmIsExplicitAndErrorsRemainJSON",
+    "TestSRAMFullRecordAndWindowAPI",
+    "TestSerialTriggerEndpoints",
+    "TestSetVerbs",
+    "TestStatusEndpoint",
+    "TestStatusInvertSource",
+    "TestVerticalVerbs",
+    "TestWindowMapping",
+    "TestWindowNoEndGaps",
+    "TestWindowRailExtendCentres",
+    "TestZoneMaskAPI"
+  ],
+  "findings": [
+    "Handler builds the default-engine HTTP surface with embedded assets, status, binary frames, staged controls, diagnostics and pprof. No authentication, authorization or origin checks occur here. SRAMHandler is a separate mux and owner interface; its API is not automatically part of the default-engine Handler. HTTP listener/TLS lifecycle belongs elsewhere.",
+    "Root UI receives same-origin CSP with inline styles allowed and data images; bare JS/CSS assets receive no-cache. Other paths fall through to404, including removed /api/frame or /api/measure paths. The root comment that all /api paths are explicitly registered is too broad. The standalone SRAM page has no CSP/cache header here. JSON and write errors are generally discarded.",
+    "Claim increments an atomic epoch on any method. Only the sustained frame endpoint checks it; absent/zero/malformed epochs and future epochs are not refused. It checks once before waiting, so a newer claim does not abort an in-flight wait. This mechanism neither authenticates a client nor strictly bounds simultaneous unclaimed connections.",
+    "SetInvertSource and SetDiag mutate callbacks/pointers without synchronization and assume wiring before serving. Status composes separately obtained engine, analog, panel and frame observations rather than one atomic instrument snapshot. Analog detent indices and status-frame Valid lengths are trusted, unlike frame-serving clamps.",
+    "Status publishes command/acquisition logs and optional super-resolution fields, calibration/probe/coupling/inversion metadata. DC diagnosis averages raw nonroll/nonenvelope frame codes with unguarded slice lengths. Zero offset codes suppress conversion. Display metadata and bench-calibrated units do not independently establish current calibration accuracy.",
+    "Most JSON handlers use LimitReader and decode one value without requiring EOF or rejecting unknown fields. A valid prefix can leave trailing data ignored; null often decodes as zero-valued config. Error status varies: controls often return200 with okfalse, diagnostics400, unwired diagnostics503. hDiagCS3Poke uses an unbounded decoder. HTTP methods are inconsistently enforced.",
+    "Scalar controls require POST and finite float fields, log commands before dispatch, and delegate most effective limits to engine setters. Only trigger code bounds are checked before uint16 conversion; many float-to-int casts remain unchecked at extreme finite magnitudes. Fractional coupling values truncate but echo original value; applied often echoes request rather than confirmed hardware state.",
+    "Analog V/div, probe and coupling controls use the front-end directly rather than the acquisition bus. Probe permits1/10/100; offsets outer-bound40V before tier-specific conversion, with a nominal DAC fallback when front end absent. Single, qualifier, Bode and serial/zone/mask modes stage configuration; success does not prove hardware completion.",
+    "Zone upload truncates to four before skipping nonfinite times, clamps codes and masks channel; it does not normalize reversed bounds. Serial upload clamps selected fields and64patternbytes but leaves several protocol semantics and equal channel-role handling to engine. Mask permits1..65536columns, clamps codes independently without lo<=hi and clears on emptylo regardless of other fields.",
+    "Mask-failure replies use current calibration/scales, not those at capture time, and uint8 slices encode as JSON base64. Bode replies preserve Scope.BodePoints order rather than sorting themselves. Panel injection defaults zero steps to1 and relies on the panel for queue/argument behavior; it has no method guard. Tune decodes onto current values and all nonPOST methods read.",
+    "Binary handler clamps cols64..4096 and waitms0..2000. Optional WaitNextFrame return is ignored; fallback polls every20ms. Neither wait observes request cancellation here. Quiet lock covers assembly/encoding, frame lock covers reads/copies, and network writing is outside both. Five-second write deadlines are best-effort and cleared afterward; errors are ignored.",
+    "Window mapping repeats nearest edge samples to preserve trigger anchor, despite older comments about clamping the window or -1 margins. Negative/NaN anchor maps to midpoint, positive infinity clamps samples. Helper arguments still require consistent sample bounds; negative output sizes or negative envCols can panic. Envelope resampling fills missing positive-index data with zero.",
+    "buildReply clamps Valid down to shorter channels but not up from negative. Full precision/deep path can use CaptureDepth>0 even when Valid=0, with zero-length divisions; negative Valid can panic later. The fixed frame fuzz uses nonnegative Valid/envCols and does not request full=1 (depth=1 is ignored), so those branches are not covered.",
+    "Display reply uses software AC/GND coupling and current probe-scaled25codes/div metadata, even though older field comments mention32. Envelope traces bypass coupling. Deep records preserve sample order and actual sample interval; windowed dt_s derives from min(WinCols,Valid)*SampleS/cols and differs from display nominal. These intervals inherit frame metadata, not independent clock measurement.",
+    "Measurement cache keys sequence,coupling,scales,offset and sample interval, but not every frame field such as filter guard or precision data. It assumes sequence identifies immutable capture content. Throttle permits up-to100ms reuse for any running nonsingle request, not exclusively fast/free-run frames. Coupling/scales refresh immediately; returned measurement pointers are shared read-only.",
+    "Precision display copies Q8.8 slices only on matching deep-record lengths, applies fractional AC/GND transforms and reports fraction_bits8. Raw transport copies unwindowed/pre-coupling samples, clamps to shorter channels, propagates acquisition metadata and avoids measurements. Raw precision selection checks Q lengths, not a separate explicit source-format flag.",
+    "encodeBinFrame derives byte margins from C1 only and assumes equal segment lengths/contiguous sentinels; direct malformed replies can panic or truncate values. If precision is true but header JSON marshal fails, flags are changed to unchanged but precision remains true and Q payload is still appended. Ordinary finite-shape tests do not cover this fallback inconsistency.",
+    "Diagnostic wrappers mostly use Diag owner callbacks, but hDiagPeek directly calls bus.PeekCS without withDiag or the owner, contradicting the package-level no-bus claim. Read-only device mappings can still have hardware read side effects. This review does not call that route or open device memory.",
+    "Diagnostic register/window POST writes and readbacks are separate operations and can interleave; readback can fail after a successful write. Read-all omits pop registers but includes write-only registers. Window read-all samples only four entries of each array. Ctrl accepts any DIAG_CTRL field mask, including multibit/strobe fields, and delegates boolean-set semantics.",
+    "Several diagnostic experiment routes accept GET or any nonPOST request. Many POST routes ignore decodeBody errors and proceed with zero/partially decoded options; query parsing errors often become zero and signed decimation casts to uint32. Crank/quiet enforce POST with400, but still ignore JSON errors. Physical cleanup/restore limitations are inherited from Diag, not fixed by HTTP.",
+    "Diagnostic GPMC status retains underlying sweep concurrency limitations; routes map errors but do not repair races. Tests use no timing port, so refusal/shape assertions do not exercise a live sweep. Peek, CS3 poke, busprobe, quiet and crank are not executed by this reviewed suite. Embedded diagnostic HTML/JS is read here but browser behavior is not newly exercised; fetch helpers do not inspect status before parsing JSON.",
+    "SRAM arm uses4096byte MaxBytesReader, rejects unknown fields and trailing JSON, and delegates config validity to source.Arm. JSON null is not explicitly distinguished from a zero config. Force/halt are POST and return later status, which can fail after action success. Status format/capacity trust metadata; samples-per-word0 defaults2.",
+    "SRAM download requires Ready/Frozen/notRunning metadata, validates decimal uint32 offset/count with64bit sum, then streams count*4bytes with30second context. Status and recall are separate owner calls; source must revalidate. Before any bytes an error becomes409JSON; after bytes no JSON is appended. Short writes and success bytecount are not independently verified by handler, relying on Content-Length/owner.",
+    "SRAM deadlineWriter attempts a1500ms deadline per chunk but ignores unsupported/deadline errors and does not clear the final deadline for keep-alive reuse. The recorder fake does not exercise network backpressure or deadline support. Empty count is allowed; Status has no request context in its interface.",
+    "Host test fakes record setters without real engine clamps/locks and run diagnostic callbacks synchronously while ignoring timeouts. Their selected output checks show HTTP dispatch and formatting, not owner scheduling, device side effects, complete cleanup or hardware qualification. Bode/serial/zone assertions use synthetic source state.",
+    "Binary parity tests cover six shapes and compare to the same buildReply implementation; this checks encoding round-trip, not independent waveform correctness. Raw tests compare exact bytes, precision test checks four Q8.8 words, and measurement-cache tests check pointer reuse/config refresh. Long-poll degradation checks reply contents but does not assert elapsed timing or cancellation.",
+    "API fuzz is a fixed malformed-input campaign, not a Go Fuzz target; it mainly rejects transport errors or status>=500, without decoding every error body or measuring allocations. Some tested nonexistent routes returning404 satisfy it. Frame fuzz is1500fixed-seed synthetic frames, closes bodies unread and does not validate binary payloads, negativeValid, precision metadata or the full-depth path. Passing is bounded evidence."
+  ],
+  "scope": "Eight web production Go files and14original host API/frame test files. Synthetic owner/front-end/fabric/record sources only; no device operations, physical qualification or full browser-production review.",
+  "execution": "webapi-review-test-run.json",
+  "executionSupersededBy": "webapi-test-run.json"
+}

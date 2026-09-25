@@ -1,0 +1,159 @@
+{
+  "requirement": "REQ-SDS-017",
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "scope": "Reviewed shared measurement core and all four Go source/test files; pinned waveform fixture replay is not fresh device qualification.",
+  "sourceSHA256": {
+    "app/internal/measure/measure.go": "f94cb59de1fca9fca4e38a07e0a4fcb85aa15b13c95e3fcd7bb48b343d0d2b1d",
+    "app/internal/measure/measure_test.go": "d48b45ac8d766d17ef03e75b31bcd3c88dfbde4c3b7eec927dda203f3dba3865",
+    "app/internal/measure/measfuzz_test.go": "a2c592a853ac12d69ab95f5aa40002e6729027b7d23df518b47b7292b0c1f13b",
+    "app/internal/measure/hardware_triangle_test.go": "fd82b4d00c71ba6f7d2ae72f7c6de190a8547087a5d326279582953e8c661934"
+  },
+  "reviewedTests": [
+    {
+      "path": "app/internal/measure/measure_test.go",
+      "test": "TestSquareWave",
+      "requirements": [
+        "REQ-SDS-017"
+      ],
+      "result": "pass",
+      "log": "test-runs/measurement.jsonl",
+      "scope": "Thirteen existing measurement tests after comment-only annotation. Includes synthetic records and stored capture replay; no fresh hardware acquisition. Existing assertions do not catch the separately characterized Q8 overshoot discrepancy."
+    },
+    {
+      "path": "app/internal/measure/measure_test.go",
+      "test": "TestDutyCycle",
+      "requirements": [
+        "REQ-SDS-017"
+      ],
+      "result": "pass",
+      "log": "test-runs/measurement.jsonl",
+      "scope": "Thirteen existing measurement tests after comment-only annotation. Includes synthetic records and stored capture replay; no fresh hardware acquisition. Existing assertions do not catch the separately characterized Q8 overshoot discrepancy."
+    },
+    {
+      "path": "app/internal/measure/measure_test.go",
+      "test": "TestTrapezoidRiseTime",
+      "requirements": [
+        "REQ-SDS-017"
+      ],
+      "result": "pass",
+      "log": "test-runs/measurement.jsonl",
+      "scope": "Thirteen existing measurement tests after comment-only annotation. Includes synthetic records and stored capture replay; no fresh hardware acquisition. Existing assertions do not catch the separately characterized Q8 overshoot discrepancy."
+    },
+    {
+      "path": "app/internal/measure/measure_test.go",
+      "test": "TestFlatHasNoTiming",
+      "requirements": [
+        "REQ-SDS-017"
+      ],
+      "result": "pass",
+      "log": "test-runs/measurement.jsonl",
+      "scope": "Thirteen existing measurement tests after comment-only annotation. Includes synthetic records and stored capture replay; no fresh hardware acquisition. Existing assertions do not catch the separately characterized Q8 overshoot discrepancy."
+    },
+    {
+      "path": "app/internal/measure/measure_test.go",
+      "test": "TestClipped",
+      "requirements": [
+        "REQ-SDS-017"
+      ],
+      "result": "pass",
+      "log": "test-runs/measurement.jsonl",
+      "scope": "Thirteen existing measurement tests after comment-only annotation. Includes synthetic records and stored capture replay; no fresh hardware acquisition. Existing assertions do not catch the separately characterized Q8 overshoot discrepancy."
+    },
+    {
+      "path": "app/internal/measure/measure_test.go",
+      "test": "TestEmptyRecord",
+      "requirements": [
+        "REQ-SDS-017"
+      ],
+      "result": "pass",
+      "log": "test-runs/measurement.jsonl",
+      "scope": "Thirteen existing measurement tests after comment-only annotation. Includes synthetic records and stored capture replay; no fresh hardware acquisition. Existing assertions do not catch the separately characterized Q8 overshoot discrepancy."
+    },
+    {
+      "path": "app/internal/measure/measure_test.go",
+      "test": "TestOvershoot",
+      "requirements": [
+        "REQ-SDS-017"
+      ],
+      "result": "pass",
+      "log": "test-runs/measurement.jsonl",
+      "scope": "Thirteen existing measurement tests after comment-only annotation. Includes synthetic records and stored capture replay; no fresh hardware acquisition. Existing assertions do not catch the separately characterized Q8 overshoot discrepancy."
+    },
+    {
+      "path": "app/internal/measure/measure_test.go",
+      "test": "TestAvgWidthMergeParity",
+      "requirements": [
+        "REQ-SDS-017"
+      ],
+      "result": "pass",
+      "log": "test-runs/measurement.jsonl",
+      "scope": "Thirteen existing measurement tests after comment-only annotation. Includes synthetic records and stored capture replay; no fresh hardware acquisition. Existing assertions do not catch the separately characterized Q8 overshoot discrepancy."
+    },
+    {
+      "path": "app/internal/measure/measure_test.go",
+      "test": "TestFractionalAcquisitionMeasurements",
+      "requirements": [
+        "REQ-SDS-017"
+      ],
+      "result": "pass",
+      "log": "test-runs/measurement.jsonl",
+      "scope": "Thirteen existing measurement tests after comment-only annotation. Includes synthetic records and stored capture replay; no fresh hardware acquisition. Existing assertions do not catch the separately characterized Q8 overshoot discrepancy."
+    },
+    {
+      "path": "app/internal/measure/measure_test.go",
+      "test": "TestQ8SmallRippleOnLargeDC",
+      "requirements": [
+        "REQ-SDS-017"
+      ],
+      "result": "pass",
+      "log": "test-runs/measurement.jsonl",
+      "scope": "Thirteen existing measurement tests after comment-only annotation. Includes synthetic records and stored capture replay; no fresh hardware acquisition. Existing assertions do not catch the separately characterized Q8 overshoot discrepancy."
+    },
+    {
+      "path": "app/internal/measure/measure_test.go",
+      "test": "TestNoisyTriangleTiming",
+      "requirements": [
+        "REQ-SDS-017"
+      ],
+      "result": "pass",
+      "log": "test-runs/measurement.jsonl",
+      "scope": "Thirteen existing measurement tests after comment-only annotation. Includes synthetic records and stored capture replay; no fresh hardware acquisition. Existing assertions do not catch the separately characterized Q8 overshoot discrepancy."
+    },
+    {
+      "path": "app/internal/measure/measfuzz_test.go",
+      "test": "TestMeasureFuzzFinite",
+      "requirements": [
+        "REQ-SDS-017"
+      ],
+      "result": "pass",
+      "log": "test-runs/measurement.jsonl",
+      "scope": "Thirteen existing measurement tests after comment-only annotation. Includes synthetic records and stored capture replay; no fresh hardware acquisition. Existing assertions do not catch the separately characterized Q8 overshoot discrepancy."
+    },
+    {
+      "path": "app/internal/measure/hardware_triangle_test.go",
+      "test": "TestHardwareTriangleFrequency",
+      "requirements": [
+        "REQ-SDS-017"
+      ],
+      "result": "pass",
+      "log": "test-runs/measurement.jsonl",
+      "scope": "Thirteen existing measurement tests after comment-only annotation. Includes synthetic records and stored capture replay; no fresh hardware acquisition. Existing assertions do not catch the separately characterized Q8 overshoot discrepancy."
+    }
+  ],
+  "implementation": [
+    "Compute handles raw uint8 and ComputeQ8 preserves uint16 fractional codes. Empty records return nil.",
+    "Voltage fields use supplied scale and offset; Vrms is centered standard deviation (AC RMS).",
+    "Timing uses Schmitt-qualified midpoint crossings, average rising-edge spacing, merged pulse widths and first 10-to-90 percent transitions. HasTiming is distinct from nonzero edge widths.",
+    "ComputeAcquisition prefers Q8 only when lengths match and are nonempty; a valid optional guard trims only that precision record. Ground coupling returns zero results, while AC subtracts the mean from level fields.",
+    "Clipped is an 8-bit rail-pileup heuristic with minimum<=6 or maximum>=253 and more than 0.5 percent of samples near the relevant extreme."
+  ],
+  "limits": [
+    "modeInRange caps histogram search at 255 for both raw and Q8 data; the separate characterization confirms lost Q8 overshoot for equivalent records.",
+    "No dedicated tests establish every ComputeAcquisition guard/fallback/ground branch or arbitrary nonfinite conversion parameters.",
+    "The deterministic finite-result test is not an unbounded fuzz campaign.",
+    "The fixture named hardware_triangle replays stored samples; it is not a fresh physical measurement."
+  ],
+  "characterization": "measurement-histogram-characterization.json",
+  "annotationSupersededBy": "remaining-go-types-source-review.json",
+  "annotationNote": "Historical reviewed source hashes are retained. The later type-comment transition has identical Go tokens; current exact source recovery is recorded in annotation-overlay.json."
+}

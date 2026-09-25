@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-WEB
 package web
 
 import (
@@ -13,6 +14,7 @@ import (
 // truth: sub-sample alignment accuracy, peak-locking uniformity, sqrt(N)
 // noise reduction, lucky-frame rejection, drift normalization and the
 // sum-of-sinusoids model fit. Skips if node is absent (fails under CI_REQUIRE_BROWSER=1).
+// TRLC-LINKS: REQ-SDS-181
 func TestSuperresJS(t *testing.T) {
 	testenv.NeedNode(t)
 	node, _ := exec.LookPath("node")

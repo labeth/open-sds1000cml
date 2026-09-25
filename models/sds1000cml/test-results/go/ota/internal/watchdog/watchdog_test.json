@@ -1,0 +1,82 @@
+{
+  "source": "ota/internal/watchdog/watchdog_test.go",
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "scope": "Reviewed Go test outcomes; passing assertions contribute partial requirement evidence.",
+  "sourceSHA256": "46edef4a08181a3a45c2864156ce3f2b98c8729a2a57c6bc26911256c3631b50",
+  "logs": {
+    "test-runs/ota-foundations.jsonl": "a7b46957bbd6ac0ac0933ae862be9598f0c39cdbcb5d0c1a8422a573ecf3b90a"
+  },
+  "tests": [
+    {
+      "name": "TestAcquirePetsImmediately",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-026",
+        "REQ-SDS-086"
+      ]
+    },
+    {
+      "name": "TestPetLoopFeedsOnInterval",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-026",
+        "REQ-SDS-086"
+      ]
+    },
+    {
+      "name": "TestPetLoopStopsAfterDisarm",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-026",
+        "REQ-SDS-086"
+      ]
+    },
+    {
+      "name": "TestAcquireIdempotentWhileArmed",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-086"
+      ]
+    },
+    {
+      "name": "TestAcquireTimesOutWhenDeviceMissing",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-086"
+      ]
+    },
+    {
+      "name": "TestAcquireRetriesUntilDeviceAppears",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-086"
+      ]
+    },
+    {
+      "name": "TestDisarmWithoutAcquireIsNoop",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-086"
+      ]
+    },
+    {
+      "name": "TestReacquireAfterDisarm",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-086"
+      ]
+    }
+  ],
+  "results": [
+    {
+      "requirement": "REQ-SDS-026",
+      "status": "partial",
+      "notes": "3 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    },
+    {
+      "requirement": "REQ-SDS-086",
+      "status": "partial",
+      "notes": "8 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    }
+  ]
+}

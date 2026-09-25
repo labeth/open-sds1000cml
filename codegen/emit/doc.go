@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-CODEGEN-EMIT
 package emit
 
 import (
@@ -7,8 +8,10 @@ import (
 	"open-sds/codegen/schema"
 )
 
+// TRLC-LINKS: REQ-SDS-157
 func md(s string) string { return strings.ReplaceAll(s, "|", "\\|") }
 
+// TRLC-LINKS: REQ-SDS-157
 func enumDoc(f schema.Field) string {
 	if len(f.Enum) == 0 {
 		return ""
@@ -21,6 +24,7 @@ func enumDoc(f schema.Field) string {
 }
 
 // Doc renders REGISTER-MAP.md, the human reference.
+// TRLC-LINKS: REQ-SDS-157
 func Doc(i schema.Interface) (string, error) {
 	if err := check(i); err != nil {
 		return "", err
@@ -102,6 +106,7 @@ func Doc(i schema.Interface) (string, error) {
 	return b.String(), nil
 }
 
+// TRLC-LINKS: REQ-SDS-157
 func bitsDoc(f schema.Field) string {
 	if f.Hi == f.Lo {
 		return fmt.Sprintf("[%d]", f.Lo)

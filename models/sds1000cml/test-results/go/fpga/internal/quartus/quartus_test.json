@@ -1,0 +1,186 @@
+{
+  "source": "fpga/internal/quartus/quartus_test.go",
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "scope": "Reviewed Go test outcomes; passing assertions contribute partial requirement evidence.",
+  "sourceSHA256": "f3f4aea79faa60525c21a5a7431a477674772430b9be8347a104e496649402b3",
+  "logs": {
+    "test-runs/quartus-integrated.jsonl": "69191c6aa858f340817962cd6ff19d7c8f35adb30ef83873471c691ef2af9b6e"
+  },
+  "tests": [
+    {
+      "name": "TestParseMemAvailableMB",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-152"
+      ]
+    },
+    {
+      "name": "TestQSFPinsAndGlobals",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-153"
+      ]
+    },
+    {
+      "name": "TestParseFitReportOK",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-154"
+      ]
+    },
+    {
+      "name": "TestParseFitReportUnassigned",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-154"
+      ]
+    },
+    {
+      "name": "TestParseFitReportUnused",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-154"
+      ]
+    },
+    {
+      "name": "TestParseFitReportBallMissingFromTable",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-154"
+      ]
+    },
+    {
+      "name": "TestParseFitReportNoPinTable",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-154"
+      ]
+    },
+    {
+      "name": "TestParseSTAReport",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-154"
+      ]
+    },
+    {
+      "name": "TestRealDefaultSTAReport",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-154"
+      ]
+    },
+    {
+      "name": "TestRunHappyPath",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-152",
+        "REQ-SDS-153",
+        "REQ-SDS-154"
+      ]
+    },
+    {
+      "name": "TestRunReportsDefects",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-152",
+        "REQ-SDS-154"
+      ]
+    },
+    {
+      "name": "TestRunNoSTATables",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-152",
+        "REQ-SDS-154"
+      ]
+    },
+    {
+      "name": "TestRunWrongRBFSize",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-152"
+      ]
+    },
+    {
+      "name": "TestRunToolFailure",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-152"
+      ]
+    },
+    {
+      "name": "TestRunMemoryGate",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-152"
+      ]
+    },
+    {
+      "name": "TestRunLockHeld",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-152"
+      ]
+    },
+    {
+      "name": "TestRunStaleQSF",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-153"
+      ]
+    },
+    {
+      "name": "TestRunMissingSDC",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-153"
+      ]
+    },
+    {
+      "name": "TestRunBasenameCollision",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-153"
+      ]
+    },
+    {
+      "name": "TestRunMissingQSF",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-153"
+      ]
+    },
+    {
+      "name": "TestConfigRequired",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-152"
+      ]
+    },
+    {
+      "name": "TestRealReports",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-154"
+      ]
+    }
+  ],
+  "results": [
+    {
+      "requirement": "REQ-SDS-152",
+      "status": "partial",
+      "notes": "9 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    },
+    {
+      "requirement": "REQ-SDS-153",
+      "status": "partial",
+      "notes": "6 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    },
+    {
+      "requirement": "REQ-SDS-154",
+      "status": "partial",
+      "notes": "11 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    }
+  ]
+}

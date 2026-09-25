@@ -1,0 +1,42 @@
+{"Time":"2026-09-23T09:07:13.558526533+02:00","Action":"start","Package":"open-sds/app/internal/engine"}
+{"Time":"2026-09-23T09:07:13.569793271+02:00","Action":"run","Package":"open-sds/app/internal/engine","Test":"TestZoneMaskPublishPolicy"}
+{"Time":"2026-09-23T09:07:13.569845491+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestZoneMaskPublishPolicy","Output":"=== RUN   TestZoneMaskPublishPolicy\n"}
+{"Time":"2026-09-23T09:07:13.711571302+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestZoneMaskPublishPolicy","Output":"--- PASS: TestZoneMaskPublishPolicy (0.14s)\n"}
+{"Time":"2026-09-23T09:07:13.711588779+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Test":"TestZoneMaskPublishPolicy","Elapsed":0.14}
+{"Time":"2026-09-23T09:07:13.711705422+02:00","Action":"run","Package":"open-sds/app/internal/engine","Test":"TestMaskGeometryFuzz"}
+{"Time":"2026-09-23T09:07:13.711712273+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestMaskGeometryFuzz","Output":"=== RUN   TestMaskGeometryFuzz\n"}
+{"Time":"2026-09-23T09:07:13.812861363+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestMaskGeometryFuzz","Output":"    zonemask_policy_test.go:169: mask geometry fuzz: 432 cases\n"}
+{"Time":"2026-09-23T09:07:13.812884965+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestMaskGeometryFuzz","Output":"--- PASS: TestMaskGeometryFuzz (0.10s)\n"}
+{"Time":"2026-09-23T09:07:13.812890796+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Test":"TestMaskGeometryFuzz","Elapsed":0.1}
+{"Time":"2026-09-23T09:07:13.812967736+02:00","Action":"run","Package":"open-sds/app/internal/engine","Test":"TestZoneMaskEnvRollCounted"}
+{"Time":"2026-09-23T09:07:13.812974066+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestZoneMaskEnvRollCounted","Output":"=== RUN   TestZoneMaskEnvRollCounted\n"}
+{"Time":"2026-09-23T09:07:13.814912661+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestZoneMaskEnvRollCounted","Output":"--- PASS: TestZoneMaskEnvRollCounted (0.00s)\n"}
+{"Time":"2026-09-23T09:07:13.814919888+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Test":"TestZoneMaskEnvRollCounted","Elapsed":0}
+{"Time":"2026-09-23T09:07:13.814924778+02:00","Action":"run","Package":"open-sds/app/internal/engine","Test":"TestMaskZeroTestableColumnsSkips"}
+{"Time":"2026-09-23T09:07:13.814928408+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestMaskZeroTestableColumnsSkips","Output":"=== RUN   TestMaskZeroTestableColumnsSkips\n"}
+{"Time":"2026-09-23T09:07:13.815698901+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestMaskZeroTestableColumnsSkips","Output":"--- PASS: TestMaskZeroTestableColumnsSkips (0.00s)\n"}
+{"Time":"2026-09-23T09:07:13.815707862+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Test":"TestMaskZeroTestableColumnsSkips","Elapsed":0}
+{"Time":"2026-09-23T09:07:13.81571388+02:00","Action":"run","Package":"open-sds/app/internal/engine","Test":"TestTrigPosFracNaNGuard"}
+{"Time":"2026-09-23T09:07:13.815718358+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestTrigPosFracNaNGuard","Output":"=== RUN   TestTrigPosFracNaNGuard\n"}
+{"Time":"2026-09-23T09:07:13.815722964+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestTrigPosFracNaNGuard","Output":"--- PASS: TestTrigPosFracNaNGuard (0.00s)\n"}
+{"Time":"2026-09-23T09:07:13.815727101+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Test":"TestTrigPosFracNaNGuard","Elapsed":0}
+{"Time":"2026-09-23T09:07:13.815731334+02:00","Action":"run","Package":"open-sds/app/internal/engine","Test":"TestSingleShotWaitsForZoneQualify"}
+{"Time":"2026-09-23T09:07:13.815734751+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestSingleShotWaitsForZoneQualify","Output":"=== RUN   TestSingleShotWaitsForZoneQualify\n"}
+{"Time":"2026-09-23T09:07:13.848144047+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestSingleShotWaitsForZoneQualify","Output":"    engine_loop.go:662: single-shot captured seq=2 — stopped\n"}
+{"Time":"2026-09-23T09:07:13.848168407+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestSingleShotWaitsForZoneQualify","Output":"--- PASS: TestSingleShotWaitsForZoneQualify (0.03s)\n"}
+{"Time":"2026-09-23T09:07:13.848176946+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Test":"TestSingleShotWaitsForZoneQualify","Elapsed":0.03}
+{"Time":"2026-09-23T09:07:13.848184396+02:00","Action":"run","Package":"open-sds/app/internal/engine","Test":"TestZonesQualify"}
+{"Time":"2026-09-23T09:07:13.848187929+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestZonesQualify","Output":"=== RUN   TestZonesQualify\n"}
+{"Time":"2026-09-23T09:07:13.848358115+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestZonesQualify","Output":"--- PASS: TestZonesQualify (0.00s)\n"}
+{"Time":"2026-09-23T09:07:13.848366412+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Test":"TestZonesQualify","Elapsed":0}
+{"Time":"2026-09-23T09:07:13.848375046+02:00","Action":"run","Package":"open-sds/app/internal/engine","Test":"TestMaskEvalAndRing"}
+{"Time":"2026-09-23T09:07:13.848378545+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestMaskEvalAndRing","Output":"=== RUN   TestMaskEvalAndRing\n"}
+{"Time":"2026-09-23T09:07:13.849445852+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestMaskEvalAndRing","Output":"--- PASS: TestMaskEvalAndRing (0.00s)\n"}
+{"Time":"2026-09-23T09:07:13.849454174+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Test":"TestMaskEvalAndRing","Elapsed":0}
+{"Time":"2026-09-23T09:07:13.849462639+02:00","Action":"run","Package":"open-sds/app/internal/engine","Test":"TestBuildMaskFromEnvelope"}
+{"Time":"2026-09-23T09:07:13.849466206+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestBuildMaskFromEnvelope","Output":"=== RUN   TestBuildMaskFromEnvelope\n"}
+{"Time":"2026-09-23T09:07:13.849572004+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestBuildMaskFromEnvelope","Output":"--- PASS: TestBuildMaskFromEnvelope (0.00s)\n"}
+{"Time":"2026-09-23T09:07:13.849584518+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Test":"TestBuildMaskFromEnvelope","Elapsed":0}
+{"Time":"2026-09-23T09:07:13.849675269+02:00","Action":"output","Package":"open-sds/app/internal/engine","Output":"PASS\n"}
+{"Time":"2026-09-23T09:07:14.851951604+02:00","Action":"output","Package":"open-sds/app/internal/engine","Output":"ok  \topen-sds/app/internal/engine\t1.293s\n"}
+{"Time":"2026-09-23T09:07:14.851984257+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Elapsed":1.293}

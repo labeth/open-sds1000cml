@@ -1,0 +1,158 @@
+{
+  "status": "integrated-with-explicit-verification-limits",
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "files": [
+    {
+      "path": "fpga/common/ddio_pair.v",
+      "owner": "FU-RTL-COMMON-DDIO-PAIR",
+      "modules": {
+        "ddio_out1": [
+          "REQ-SDS-189"
+        ],
+        "ddio_pair": [
+          "REQ-SDS-189"
+        ]
+      }
+    },
+    {
+      "path": "fpga/common/lane_in.v",
+      "owner": "FU-RTL-COMMON-LANE-IN",
+      "modules": {
+        "lane_in": [
+          "REQ-SDS-190"
+        ],
+        "lane_mon": [
+          "REQ-SDS-190"
+        ],
+        "toggle_ctr": [
+          "REQ-SDS-190"
+        ]
+      }
+    },
+    {
+      "path": "fpga/common/pll_m2.v",
+      "owner": "FU-RTL-COMMON-PLL-M2",
+      "modules": {
+        "pll_m2": [
+          "REQ-SDS-191"
+        ]
+      }
+    },
+    {
+      "path": "fpga/common/sync.v",
+      "owner": "FU-RTL-COMMON-SYNC",
+      "modules": {
+        "sync_bit": [
+          "REQ-SDS-192"
+        ],
+        "sync_pulse": [
+          "REQ-SDS-192"
+        ],
+        "sync_word": [
+          "REQ-SDS-192"
+        ],
+        "stretch3": [
+          "REQ-SDS-192"
+        ]
+      }
+    },
+    {
+      "path": "fpga/common/sim/gpmc_bfm.v",
+      "owner": "FU-RTL-COMMON-TESTS",
+      "modules": {
+        "gpmc_bfm": [
+          "REQ-SDS-188"
+        ]
+      }
+    },
+    {
+      "path": "fpga/common/sim/tb_ddio.v",
+      "owner": "FU-RTL-COMMON-TESTS",
+      "modules": {
+        "tb_ddio": [
+          "REQ-SDS-189"
+        ]
+      }
+    },
+    {
+      "path": "fpga/common/sim/tb_gpmc_slave.v",
+      "owner": "FU-RTL-COMMON-TESTS",
+      "modules": {
+        "tb_gpmc_slave": [
+          "REQ-SDS-188"
+        ]
+      }
+    },
+    {
+      "path": "fpga/common/sim/tb_lane_in.v",
+      "owner": "FU-RTL-COMMON-TESTS",
+      "modules": {
+        "tb_lane_in": [
+          "REQ-SDS-190"
+        ]
+      }
+    },
+    {
+      "path": "fpga/common/sim/tb_pll.v",
+      "owner": "FU-RTL-COMMON-TESTS",
+      "modules": {
+        "tb_pll": [
+          "REQ-SDS-191"
+        ]
+      }
+    },
+    {
+      "path": "fpga/common/sim/tb_sync.v",
+      "owner": "FU-RTL-COMMON-TESTS",
+      "modules": {
+        "tb_sync": [
+          "REQ-SDS-192"
+        ]
+      }
+    }
+  ],
+  "modules": 16,
+  "newContracts": [
+    {
+      "id": "REQ-SDS-189",
+      "title": "DDR output pairing",
+      "text": "The instrument shall emit the high and low values on successive output clock edges and provide complementary differential outputs where a DDR pair is used.",
+      "owner": "FU-RTL-COMMON-DDIO-PAIR",
+      "notes": "SIM behavior is verified; vendor primitive configuration is source-reviewed. Physical IO placement and edge timing remain unqualified."
+    },
+    {
+      "id": "REQ-SDS-190",
+      "title": "Input lane registration and activity monitoring",
+      "text": "The instrument shall register input lanes through two stages, accumulate observed high and low activity until gate reset, and saturate transition counts within each configured monitoring window.",
+      "owner": "FU-RTL-COMMON-LANE-IN",
+      "notes": "Original simulation checks reduced monitoring widths, latency, activity flags, saturation and idle windows. Sampling cannot observe transitions between sampling edges."
+    },
+    {
+      "id": "REQ-SDS-191",
+      "title": "Legacy M2 clock and phase-step control",
+      "text": "The instrument shall derive the legacy clock domains from the M2 reference and sequence requested capture phase steps with bounded completion waits and a latched error indication for timeout.",
+      "owner": "FU-RTL-COMMON-PLL-M2",
+      "notes": "Legacy 160 MHz reference configuration differs from the profile clock plan. Timeout advances the applied count and latches error; applied count alone does not establish physical phase movement. Original bench exercises only the SIM clock model and successful up/down steps."
+    },
+    {
+      "id": "REQ-SDS-192",
+      "title": "Clock-domain transfer primitives",
+      "text": "The instrument shall provide independent bit synchronization, toggle-based pulse transfer, acknowledged held-word transfer, and synchronized level-edge detection for their respective clock-domain interfaces.",
+      "owner": "FU-RTL-COMMON-SYNC",
+      "notes": "Pulse transfers require sufficient separation and can merge otherwise. Independent bit synchronization does not provide word coherence. Physical metastability and bundled-data timing require separate qualification; original bench does not exercise sync_bit or the advertised counter wrap."
+    }
+  ],
+  "sourceSHA256": {
+    "fpga/common/ddio_pair.v": "0f32c77bac09fb1fb4a8069f7480743e8b0dd05669da22aa68e171798d33435c",
+    "fpga/common/lane_in.v": "1777785598b0670d0ec92cc5402bd27b78d939aafdab443796892deecad8a719",
+    "fpga/common/pll_m2.v": "305800c87dce134eafffa0890fa3bd07f7ec42091aa4acce23490ebbcb71f203",
+    "fpga/common/sync.v": "e68447098f4ecfb40fedc3de07ade451fb79e06c87ce15c14d493055f8ac512b",
+    "fpga/common/sim/gpmc_bfm.v": "8e9fadbaf9b67bed2d7eddc4ad1e92203123b5e5b5f4fb21b150c12ae454a623",
+    "fpga/common/sim/tb_ddio.v": "3f3efc2134267672f24438fb3de7b90904c84eb8fbe05b6eada6549a8b585404",
+    "fpga/common/sim/tb_gpmc_slave.v": "7c143cc32a6fde6b16ced05e7bdd9124e99502cf94e068a18b5c174e9002cdd8",
+    "fpga/common/sim/tb_lane_in.v": "6e96b495d36f5f186235d93d5157dea34b744395c386007ead4030f961ffeed3",
+    "fpga/common/sim/tb_pll.v": "ee5c6927b8ad6717dca6c4895bcc05eadb21c21c21241505bf116454aa8070a4",
+    "fpga/common/sim/tb_sync.v": "4f12012d3e0358707af838fba67b5889500aca13b5591605005f81a6d9eb2832"
+  },
+  "scope": "Ten complete source files; sixteen literal module links proposed. Five original behavioral benches passed. Requirements are source-derived draft contracts, not physical qualification."
+}

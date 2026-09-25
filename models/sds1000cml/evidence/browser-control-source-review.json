@@ -1,0 +1,64 @@
+{
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "status": "source-model-integrated",
+  "requirements": [
+    "REQ-SDS-023",
+    "REQ-SDS-069",
+    "REQ-SDS-071",
+    "REQ-SDS-125",
+    "REQ-SDS-200",
+    "REQ-SDS-202",
+    "REQ-SDS-203",
+    "REQ-SDS-204"
+  ],
+  "files": [
+    {
+      "path": "app/internal/web/app.js",
+      "baselineSHA256": "99e4ac1c2f384bec50ee02e029404e375a4f681b47509a8928e3d8238dd50463",
+      "lines": 379,
+      "linkedDeclarations": 27,
+      "annotatedSHA256": "e5dccfb276a63fea7efd05e5514c0eebc9bbafb5921d6820cce071c11b9eb493"
+    },
+    {
+      "path": "app/internal/web/app_core.js",
+      "baselineSHA256": "b4d36f22c7b914fccda46f95d0c33f17b7ad3f74adeb42086233ebb0bf7e2fdd",
+      "lines": 426,
+      "linkedDeclarations": 28,
+      "annotatedSHA256": "a81234adce9cf2679cb7b3db76cd5c72dc994898c273f6fbd4a5b70cdb3943b3"
+    },
+    {
+      "path": "app/internal/web/app_controls.js",
+      "baselineSHA256": "359d1754004bec1e425893b0a6a26186be4da3dc24cb853c129d493f8ba91abd",
+      "lines": 150,
+      "linkedDeclarations": 47,
+      "annotatedSHA256": "ee5c751b046276e56d032c224436f89e28319aab2e59134fbe1b8b1a9624e227"
+    }
+  ],
+  "testEvidence": "evidence/browser-control-test-run.json",
+  "scope": "Complete read of three original classic scripts, 955 lines, including top-level shared state and anonymous event callbacks.",
+  "findings": [
+    "Classic scripts share lexical state and rely on ordered loading. Frame and status snapshots are separate; applying status does not make them an atomic instrument snapshot.",
+    "Render scheduling coalesces requestAnimationFrame work; decode throttles above 120 ms. Persistent rendering fades per redraw, so visual decay depends on frame/interaction rate, not elapsed time.",
+    "Display polling carries the claim epoch, handles 409 by stopping, pauses on hidden/frozen state and rechecks freeze after await. A response started before document.hidden changes may still be applied.",
+    "Raw FFT polling has only a busy guard; it sends neither claim epoch nor since sequence and accepts a late frame after freezing, leaving FFT mode or supersession. It requires C1 even for C2 use.",
+    "Status polling does not pause on document.hidden and does not check HTTP status. Single-shot click adds its own bounded 200 ms status loop alongside the regular 250/1000 ms loop; overlapping status responses can overwrite newer state.",
+    "Control send parses any JSON response regardless of HTTP status; sendParams ignores response payload and HTTP status. Optimistic run/mode/source controls do not roll back on command failure.",
+    "Autoset posts the panel auto action, then waits at most roughly nine seconds for measured frequency stability. It ignores awaitFrame false returns, so the same stale frame can satisfy consecutive stable measurements.",
+    "Zero-valued calibration fields fall back through truthiness. Zero channel offsets do not update slider positions in applyStatus. This can retain stale visible slider values.",
+    "Cursor time reads nominal col_span_s; true sample dt_s used by CSV is not used in cursor delta time. Trigger conversion divides tip-referred volts by selected-channel probe attenuation.",
+    "CSV requires C1, emits blank negative/missing samples, uses dt_s or nominal-span fallback and stride-caps about 131072 rows without anti-alias filtering. C2-only frame export is a no-op.",
+    "PNG export forces synchronous repaint before reading WebGL canvas. Blob downloads revoke URLs after 60 seconds. No real download was executed in the isolated checks.",
+    "Keyboard shortcut suppression checks INPUT/SELECT/TEXTAREA and modifier keys but not arbitrary contenteditable elements. Escape closes help; it does not cancel box zoom despite the shared-state comment.",
+    "Frame application follows edge changes when zoomed, without clamping to record bounds. It restores home view on acquisition-signature changes; the signature limitations are documented in the geometry review.",
+    "Status line uses innerHTML with status fields; these are server-provided strings, not escaped by this function. No hostile-status or browser DOM security test was executed."
+  ],
+  "validation": {
+    "isolatedCases": 13,
+    "linkedDeclarations": 102,
+    "strictConsistency": "pass",
+    "nativeMCP": "pass",
+    "nonPDFPublication": "pass",
+    "reproducibleArtifacts": 36,
+    "pdf": "deferred"
+  }
+}

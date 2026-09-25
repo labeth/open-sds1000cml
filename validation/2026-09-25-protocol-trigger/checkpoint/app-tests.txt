@@ -1,0 +1,24 @@
+?   	open-sds/app/cmd/acqsram	[no test files]
+ok  	open-sds/app/cmd/app	0.012s
+?   	open-sds/app/cmd/srambench	[no test files]
+ok  	open-sds/app/internal/analog	(cached)
+?   	open-sds/app/internal/buildinfo	[no test files]
+ok  	open-sds/app/internal/bus	0.530s
+ok  	open-sds/app/internal/cal	0.100s
+ok  	open-sds/app/internal/decode	42.541s
+ok  	open-sds/app/internal/diag	0.219s
+ok  	open-sds/app/internal/dsp	0.046s
+ok  	open-sds/app/internal/engine	2.045s
+ok  	open-sds/app/internal/fpgaload	0.081s
+ok  	open-sds/app/internal/frames	0.255s
+?   	open-sds/app/internal/iface	[no test files]
+ok  	open-sds/app/internal/lcd	2.225s
+ok  	open-sds/app/internal/measure	0.142s
+ok  	open-sds/app/internal/panel	5.580s
+ok  	open-sds/app/internal/scpi	0.516s
+ok  	open-sds/app/internal/settings	0.018s
+ok  	open-sds/app/internal/sramcapture	1.905s
+ok  	open-sds/app/internal/superres	157.214s
+?   	open-sds/app/internal/testenv	[no test files]
+ok  	open-sds/app/internal/vxi11srv	2.106s
+ok  	open-sds/app/internal/web	320.663s

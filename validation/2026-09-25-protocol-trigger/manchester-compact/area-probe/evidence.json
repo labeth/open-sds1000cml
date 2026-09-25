@@ -1,0 +1,15 @@
+{
+  "candidate": "build-iZCbMS",
+  "status": "Isolated build-setting probe failed fit; no source profile or publication change",
+  "changes": [
+    "OPTIMIZATION_TECHNIQUE AREA",
+    "PHYSICAL_SYNTHESIS_REGISTER_DUPLICATION OFF"
+  ],
+  "mapExitCode": 0,
+  "fitExitCode": 3,
+  "fitterLogicElements": 11203,
+  "deviceLogicElements": 10320,
+  "requiredLABs": 707,
+  "availableLABs": 645,
+  "conclusion": "These settings do not reduce the measured capacity excess"
+}

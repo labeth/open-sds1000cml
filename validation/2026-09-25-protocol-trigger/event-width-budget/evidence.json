@@ -1,0 +1,55 @@
+{
+  "status": "Completed resource probes and production-depth digital transport test; not an integrated image qualification",
+  "results": [
+    {
+      "name": "word16-count7",
+      "build": "word16-count7-l3tJ5G",
+      "logicElements": 1449,
+      "memoryBits": 188928,
+      "m9ks": 21,
+      "timingChecks": 30,
+      "minimumReportedSlackNs": 0.14,
+      "fitted": true
+    },
+    {
+      "name": "word32-count7",
+      "build": "word32-count7-OSEpqA",
+      "logicElements": 1434,
+      "memoryBits": 188928,
+      "m9ks": 21,
+      "timingChecks": 30,
+      "minimumReportedSlackNs": 0.149,
+      "fitted": true
+    },
+    {
+      "name": "word32-count32",
+      "build": "word32-count32-kDQc6x",
+      "logicElements": 1495,
+      "memoryBits": 214528,
+      "m9ks": 24,
+      "timingChecks": 30,
+      "minimumReportedSlackNs": 0.142,
+      "fitted": true
+    }
+  ],
+  "test": {
+    "command": "go test ./internal/sramcapture -run '^TestDecodedEventRTL$' -count=1 -v",
+    "exitCode": 0,
+    "sourceDepth": 1024,
+    "hostDepth": 512,
+    "inputEvents": 1568,
+    "hostFull": true,
+    "fields": "32-bit Value and Count; ordinal and sequence reconstruction; ordered explicit loss"
+  },
+  "sourceHashes": {
+    "app/internal/sramcapture/decoded_event_rtl_test.go": "dcb66298a5cc233ca7326f06478c3278af6e7e1f06efd6a8794ae9be6bfa9ef1",
+    "fpga/acq_sram/sim/tb_decoded_event_transport.v": "7e3c0b93b37a9e7bdfb15acac5f6be07805adc58d6264f7cfee71a5965e01293"
+  },
+  "interpretation": "Widening Value alone costs no additional RAM in these probes. The loss payload already keeps all 32 payload bits live. Widening normal Count from seven to 32 bits adds three source-queue M9Ks. The reduced header differs from the deployed top, whose transport uses 22 M9Ks; do not substitute isolated totals for integrated measurements.",
+  "deployment": "unchanged",
+  "strictModel": {
+    "exitCode": 0,
+    "warnings": 604,
+    "errors": 0
+  }
+}

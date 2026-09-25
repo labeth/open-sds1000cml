@@ -1,0 +1,46 @@
+{
+  "source": "app/internal/settings/apply_test.go",
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "scope": "Reviewed Go test outcomes; passing assertions contribute partial requirement evidence.",
+  "sourceSHA256": "191ac606407babad6efe6edf380f1ce517be4d8c1104bffa18e6967108904b03",
+  "logs": {
+    "test-runs/settings.jsonl": "18a11e0423fa759e90e82de4ea57e6b45419cb3811e35d279962ee0b7c26b45d"
+  },
+  "tests": [
+    {
+      "name": "TestApplyRestoreCollectFidelity",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-072"
+      ]
+    },
+    {
+      "name": "TestApplyHostileValuesClampThroughSetters",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-072"
+      ]
+    },
+    {
+      "name": "TestApplyVirginVerticalStaysUntouched",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-072"
+      ]
+    },
+    {
+      "name": "TestApplyNilOwners",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-072"
+      ]
+    }
+  ],
+  "results": [
+    {
+      "requirement": "REQ-SDS-072",
+      "status": "partial",
+      "notes": "4 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    }
+  ]
+}

@@ -1,0 +1,38 @@
+{
+  "result": "pass",
+  "requirements": [
+    {
+      "code": [
+        "rpcproto.go:10",
+        "rpcproto.go:16"
+      ],
+      "id": "REQ-SDS-101",
+      "status": "implemented",
+      "units": [
+        "FU-OTA-RPCPROTO"
+      ],
+      "verifications": [
+        "VER-INF-TEST-RPCPROTO_TEST-425F65"
+      ]
+    },
+    {
+      "code": [
+        "sysinfo.go:110",
+        "sysinfo.go:25",
+        "sysinfo.go:70",
+        "sysinfo.go:101",
+        "sysinfo.go:15",
+        "sysinfo.go:46",
+        "sysinfo.go:83",
+        "sysinfo.go:33"
+      ],
+      "id": "REQ-SDS-102",
+      "status": "implemented",
+      "units": [
+        "FU-OTA-SYSINFO"
+      ],
+      "verifications": []
+    }
+  ],
+  "scope": "Checks native implementation links, including type-only production code, and bounded verification presence. No device claims."
+}

@@ -1,0 +1,50 @@
+{
+  "result": "trace-integration-pass",
+  "files": 12,
+  "functions": 58,
+  "types": 8,
+  "originalTests": 2,
+  "passingTests": 2,
+  "passingSubtests": 5,
+  "compiledPackages": 6,
+  "nativeSummaries": 2,
+  "requirements": [
+    "REQ-SDS-167",
+    "REQ-SDS-168",
+    "REQ-SDS-169",
+    "REQ-SDS-170",
+    "REQ-SDS-171",
+    "REQ-SDS-172",
+    "REQ-SDS-173",
+    "REQ-SDS-174"
+  ],
+  "existingRequirements": [
+    "REQ-SDS-002",
+    "REQ-SDS-003",
+    "REQ-SDS-004",
+    "REQ-SDS-025",
+    "REQ-SDS-034"
+  ],
+  "packageAudit": {
+    "scope": "Reviewed12-file entrypoint batch only",
+    "functions": 58,
+    "types": 8,
+    "unlinkedFunctions": 0,
+    "unlinkedTypes": 0
+  },
+  "scope": "Application startup and SRAM diagnostic/build command source review. Only original host helper tests and package compilation; no command main, device IO, FPGA load, Quartus flow or real-time scheduling executed.",
+  "publicationAttachments": [
+    {
+      "source": "app/cmd/app/sram_test.go",
+      "resultArtifact": "test-results/go/app/cmd/app/sram_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_SRAM_TEST_6BB5EC"
+    },
+    {
+      "source": "app/cmd/app/sram_timing_test.go",
+      "resultArtifact": "test-results/go/app/cmd/app/sram_timing_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_SRAM_TIMING_TEST_8CAAEC"
+    }
+  ]
+}

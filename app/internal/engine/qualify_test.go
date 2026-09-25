@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
 package engine
 
 import (
@@ -7,6 +8,7 @@ import (
 
 // pulseTrain builds a record with pulses of given widths (samples) above a
 // low rail, separated by gaps.
+// TRLC-LINKS: REQ-SDS-011
 func pulseTrain(n int, widths []int, gap int, lo, hi uint8) []uint8 {
 	out := make([]uint8, n)
 	for i := range out {
@@ -22,6 +24,7 @@ func pulseTrain(n int, widths []int, gap int, lo, hi uint8) []uint8 {
 	return out
 }
 
+// TRLC-LINKS: REQ-SDS-011
 func TestQualifyPulseWidthWindow(t *testing.T) {
 	// Pulses of 10, 50, 10 samples at 100 ns/sample → 1 µs, 5 µs, 1 µs.
 	sig := pulseTrain(1000, []int{10, 50, 10}, 200, 50, 200)
@@ -54,6 +57,7 @@ func TestQualifyPulseWidthWindow(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-011
 func TestQualifyPulseLowPolarity(t *testing.T) {
 	// Low pulses: invert the train.
 	sig := pulseTrain(1000, []int{20}, 400, 200, 50) // one low dip of 20 samples
@@ -80,6 +84,7 @@ func TestQualifyPulseLowPolarity(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-011
 func TestQualifyPulseFlatReject(t *testing.T) {
 	flat := make([]uint8, 500)
 	for i := range flat {
@@ -90,6 +95,7 @@ func TestQualifyPulseFlatReject(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-011
 func TestQualifySlope(t *testing.T) {
 	// A slow ramp (100 samples lo→hi) and a fast step, both rising.
 	sig := make([]uint8, 2000)
@@ -123,6 +129,7 @@ func TestQualifySlope(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-011
 func TestQualifySlopeSingleStepEdge(t *testing.T) {
 	// A hard square edge that spans lo→hi in ONE sample step (the decimated
 	// cal-square case): the traversal exists at index c with time 0 and must
@@ -148,6 +155,7 @@ func TestQualifySlopeSingleStepEdge(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-011
 func TestQualifyVideo(t *testing.T) {
 	// Composite-ish: negative sync pulses every 200 samples dipping to 20
 	// from a 150 rail; "video" content rides above.
@@ -187,6 +195,7 @@ func TestQualifyVideo(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-012
 func TestEresBoxcar(t *testing.T) {
 	// A boxcar of 15 shrinks σ ≈ √15; check it smooths an alternating signal
 	// to near its mean and preserves the ends without wrap.
@@ -211,6 +220,7 @@ func TestEresBoxcar(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-012
 func TestEresLenForBits(t *testing.T) {
 	cases := map[float64]int{0.5: 1, 1.0: 3, 1.5: 7, 2.0: 15, 2.5: 31, 3.0: 63}
 	for b, want := range cases {
@@ -220,6 +230,7 @@ func TestEresLenForBits(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-012
 func TestAverageRing(t *testing.T) {
 	r := &avgRing{}
 	r.reset(4, 100)
@@ -248,6 +259,7 @@ func TestAverageRing(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-012
 func TestAverageRingNoOffRecordBias(t *testing.T) {
 	// Frames whose edge is far off centre contribute off-record columns at
 	// one window end; those must NOT be averaged as a fabricated 128 —
@@ -275,6 +287,7 @@ func TestAverageRingNoOffRecordBias(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-011
 func TestQualifierPublishPolicy(t *testing.T) {
 	// A pulse-qualified engine holds frames without a qualifying pulse even
 	// in AUTO (the qualifier IS the trigger), and publishes when one appears.
@@ -311,6 +324,7 @@ func TestQualifierPublishPolicy(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-012
 func TestAverageModeInEngine(t *testing.T) {
 	fb := newFakeBus()
 	e, _ := newTestEngine(t, fb)
@@ -330,6 +344,7 @@ func TestAverageModeInEngine(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-126
 func TestUniformityStats(t *testing.T) {
 	fb := newFakeBus()
 	e, _ := newTestEngine(t, fb)

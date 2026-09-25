@@ -1,7 +1,9 @@
+// ENGMODEL-OWNER-UNIT: FU-RTL-COMMON-TESTS
 // gpmc_bfm.v -- bus-functional model of the AM3352 GPMC as seen by the CS1 slave (sim only).
 // Timing in ns: an access is CS low ~100 ns with the strobe low 60-80 ns inside it, address and
 // write data held from before CS to after CS; 50 ns cycle gap (the app's EDMA uses a 5-fclk gap).
 `timescale 1ns/1ps
+// TRLC-LINKS: REQ-SDS-188
 module gpmc_bfm (
     output reg        nCS1,
     output reg        nOE,

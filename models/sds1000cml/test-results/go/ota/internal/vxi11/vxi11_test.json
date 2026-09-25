@@ -1,0 +1,25 @@
+{
+  "source": "ota/internal/vxi11/vxi11_test.go",
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "scope": "Reviewed Go test outcomes; passing assertions contribute partial requirement evidence.",
+  "sourceSHA256": "fea433236af02ad097e1feb5bb415af10abebe68d19a5a36600be365c2bda4c6",
+  "logs": {
+    "test-runs/vxi-client.jsonl": "718587156ebbd2bc8f1f79bc7a3d26b9d44145d9c68ae808bdacbe3ca272f9a2"
+  },
+  "tests": [
+    {
+      "name": "TestDialSendQuery",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-100"
+      ]
+    }
+  ],
+  "results": [
+    {
+      "requirement": "REQ-SDS-100",
+      "status": "partial",
+      "notes": "1 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    }
+  ]
+}

@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-DECODE
 package decode
 
 import (
@@ -19,6 +20,7 @@ import (
 // truth, then replays the vectors through the JS twins under node and asserts an
 // exact {ok, bytes} match. Skips when node is unavailable — a hard failure
 // under CI_REQUIRE_BROWSER=1 (internal/testenv).
+// TRLC-LINKS: REQ-SDS-018
 func TestJSDecoderParity(t *testing.T) {
 	testenv.NeedNode(t)
 	node, _ := exec.LookPath("node")
@@ -94,6 +96,8 @@ func TestJSDecoderParity(t *testing.T) {
 		w := mil1553Wave(words, cmd, par, spb)
 		ct := 1.0 / (float64(spb) * 1e6)
 		add("mil1553", w, ct, jsCfg{}, DecodeMIL1553(w, ct, MIL1553Cfg{}))
+		inv := invertLogic(w)
+		add("mil1553", inv, ct, jsCfg{"inverted": true, "threshold": 130}, DecodeMIL1553(inv, ct, MIL1553Cfg{Inverted: true, Threshold: 130, HaveThr: true}))
 	}
 
 	// ---- FlexRay: a valid-CRC frame (explicit + auto) and a corrupted-CRC frame.
@@ -120,6 +124,10 @@ func TestJSDecoderParity(t *testing.T) {
 		bad[7] ^= 0xF
 		wb := sentWave([][]int{bad}, 6, 0, 0)
 		add("sent", wb, 1e-6, jsCfg{"nibbles": 8}, DecodeSENT(wb, 1e-6, SENTCfg{Nibbles: 8}))
+		for i := range w {
+			w[i] = 255 - w[i]
+		}
+		add("sent", w, 1e-6, jsCfg{"nibbles": 8, "inverted": true}, DecodeSENT(w, 1e-6, SENTCfg{Nibbles: 8, Inverted: true}))
 	}
 
 	// ---- CAN: a standard data frame (stuff-bit + CRC-15 path).

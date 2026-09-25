@@ -1,0 +1,36 @@
+{
+  "files": 10,
+  "functions": 57,
+  "types": 9,
+  "nativeSummaries": [
+    {
+      "path": "test-results/go/app/internal/engine/serialtrig_test.json",
+      "tests": 9
+    },
+    {
+      "path": "test-results/go/app/internal/engine/serialtrig_edge_test.json",
+      "tests": 2
+    },
+    {
+      "path": "test-results/go/app/internal/engine/serialtrig_fuzz_test.json",
+      "tests": 1
+    },
+    {
+      "path": "test-results/go/app/internal/engine/zonemask_test.json",
+      "tests": 3
+    },
+    {
+      "path": "test-results/go/app/internal/engine/zonemask_policy_test.json",
+      "tests": 6
+    },
+    {
+      "path": "test-results/go/app/internal/engine/zonemask_breaker_test.json",
+      "tests": 1
+    },
+    {
+      "path": "test-results/go/app/internal/engine/zonemask_breaker2_test.json",
+      "tests": 1
+    }
+  ],
+  "scope": "23 original host tests; partial REQ-SDS-013/014 evidence. Source-review limitations retained; no physical qualification."
+}

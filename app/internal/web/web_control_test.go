@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-WEB
 package web
 
 import (
@@ -9,6 +10,7 @@ import (
 	"testing"
 )
 
+// TRLC-LINKS: REQ-SDS-162
 func TestSetVerbs(t *testing.T) {
 	fs := &fakeScope{}
 	s := New(fs, nil, nil, nil)
@@ -39,6 +41,7 @@ func TestSetVerbs(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-162
 func TestVerticalVerbs(t *testing.T) {
 	fs := &fakeScope{}
 	fa := &fakeAnalog{}
@@ -72,6 +75,7 @@ func TestVerticalVerbs(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-162
 func TestProbeAttenuation(t *testing.T) {
 	// code 30496 ≈ +1 V trigger level on source C1.
 	fs := &fakeScope{stats: engine.Stats{TrigCode: 30496, TrigSource: 0}}
@@ -112,6 +116,7 @@ func TestProbeAttenuation(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-162
 func TestCouplingVerbs(t *testing.T) {
 	fs := &fakeScope{}
 	fa := &fakeAnalog{}
@@ -132,6 +137,7 @@ func TestCouplingVerbs(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-163
 func TestACCouplingRemovesDC(t *testing.T) {
 	const N = 512
 	// A DC-offset square-ish signal: mean well above centre.
@@ -180,6 +186,7 @@ func TestACCouplingRemovesDC(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-162
 func TestHoldoffVerb(t *testing.T) {
 	fs := &fakeScope{}
 	s := New(fs, nil, nil, nil)
@@ -191,6 +198,7 @@ func TestHoldoffVerb(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-162
 func TestQualifierAndAcqVerbs(t *testing.T) {
 	fs := &fakeScope{}
 	s := New(fs, nil, nil, nil)
@@ -224,6 +232,7 @@ func TestQualifierAndAcqVerbs(t *testing.T) {
 }
 
 // The /api/bode endpoint (hBode) JSON contract had no Go coverage.
+// TRLC-LINKS: REQ-SDS-162
 func TestBodeEndpoint(t *testing.T) {
 	fs := &fakeScope{bodePts: []engine.BodePoint{
 		{FreqHz: 1e6, GainDB: -6, PhaseDeg: -45},
@@ -265,7 +274,9 @@ func TestBodeEndpoint(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-162
 func (f *fakeAnalog) TrigVolts(code uint16, srcCh int) float64 {
 	return (31437 - float64(code)) / 911 * f.ProbeFactor(srcCh) // fold probe like the real front end
 }
+// TRLC-LINKS: REQ-SDS-162
 func (f *fakeAnalog) TrigCalActive(srcCh int) (float64, float64) { return 31437, 911 }

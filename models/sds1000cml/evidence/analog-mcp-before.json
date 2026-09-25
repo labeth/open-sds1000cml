@@ -1,0 +1,57 @@
+[
+  {
+    "id": 1,
+    "jsonrpc": "2.0",
+    "result": {
+      "capabilities": {
+        "tools": {
+          "listChanged": false
+        }
+      },
+      "protocolVersion": "2024-11-05",
+      "serverInfo": {
+        "name": "engineering-model-mcp",
+        "version": "0.2.0"
+      }
+    }
+  },
+  {
+    "id": 2,
+    "jsonrpc": "2.0",
+    "result": {
+      "content": [
+        {
+          "text": "{\"exists\":true,\"generatedAt\":\"2026-09-22T22:30:08Z\",\"ok\":true,\"requirement\":{\"ID\":\"REQ-SDS-015\",\"Title\":\"Absolute analog state\",\"Text\":\"The instrument shall emit seeded absolute analog range and gain settings through SPI.\",\"Notes\":\"Source-derived contract; source presence is not evidence of a passing hardware qualification.\",\"Category\":\"functional\",\"Rationale\":\"\",\"SourceRefs\":[\"REF-SOURCE-APP-INTERNAL-ANALOG-FRONTEND-GO\",\"REF-SOURCE-APP-INTERNAL-ANALOG-SPI-GO\"],\"VerificationMethods\":[\"inspection\",\"test\"],\"VerificationCriteria\":\"Inspect the linked implementation and run the corresponding offline tests; hardware claims require independently identified device evidence.\",\"Priority\":\"\",\"Criticality\":\"\",\"Status\":\"draft\",\"Derived\":false,\"DerivedRationale\":\"\",\"Tags\":null,\"AppliesTo\":[\"FU-APP-ANALOG\"]},\"schemaVersion\":\"mcp.tool-response.v1\",\"tool\":\"requirements.get\"}",
+          "type": "text"
+        }
+      ],
+      "isError": false
+    }
+  },
+  {
+    "id": 3,
+    "jsonrpc": "2.0",
+    "result": {
+      "content": [
+        {
+          "text": "{\"exists\":true,\"generatedAt\":\"2026-09-22T22:30:08Z\",\"ok\":true,\"requirement\":{\"ID\":\"REQ-SDS-016\",\"Title\":\"Calibration\",\"Text\":\"The instrument shall decode and validate per-unit calibration data with a fallback path.\",\"Notes\":\"Source-derived contract; source presence is not evidence of a passing hardware qualification.\",\"Category\":\"functional\",\"Rationale\":\"\",\"SourceRefs\":[\"REF-SOURCE-APP-INTERNAL-CAL-CAL-GO\"],\"VerificationMethods\":[\"inspection\",\"test\"],\"VerificationCriteria\":\"Check the 2752-byte length, word-zero checksum, descrambling, record offsets and compiled defaults. Parsing tests do not establish coefficient finiteness or physical calibration accuracy.\",\"Priority\":\"\",\"Criticality\":\"\",\"Status\":\"draft\",\"Derived\":false,\"DerivedRationale\":\"\",\"Tags\":null,\"AppliesTo\":[\"FU-APP-CAL\"]},\"schemaVersion\":\"mcp.tool-response.v1\",\"tool\":\"requirements.get\"}",
+          "type": "text"
+        }
+      ],
+      "isError": false
+    }
+  },
+  {
+    "id": 4,
+    "jsonrpc": "2.0",
+    "result": {
+      "content": [
+        {
+          "text": "{\"entity\":{\"ID\":\"FU-APP-ANALOG\",\"Name\":\"Analog front-end control\",\"Group\":\"FG-APP\",\"Tags\":[\"source-backed\"],\"Prose\":\"Absolute SPI relay/gain writes with seeded channel state; trigger calibration and staged offset handling. Software coupling behavior must not be confused with an independently qualified analog high-pass. Primary source: app/internal/analog/frontend.go at f43696305a79. 4 committed artifacts are assigned to this unit.\"},\"exists\":true,\"generatedAt\":\"2026-09-22T22:30:08Z\",\"kind\":\"functional_unit\",\"ok\":true,\"schemaVersion\":\"mcp.tool-response.v1\",\"tool\":\"model.entity\"}",
+          "type": "text"
+        }
+      ],
+      "isError": false
+    }
+  }
+]

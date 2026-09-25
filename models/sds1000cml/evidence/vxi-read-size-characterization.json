@@ -1,0 +1,47 @@
+{
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "scope": "Test-only overlay directly invokes an owned connection with one pending byte. No listener, network request or device is used. 386 execution checks 32-bit integer behavior, not ARM machine-code execution.",
+  "sourceSHA256": {
+    "app/internal/vxi11srv/server.go": "4c35c651e952c93889836913e598d762e546474c43c1e0c7e38025083d1b6198",
+    "app/internal/vxi11srv/server_test.go": "c4af5863fb8937364d3d8817baf194f1acfa3fd2bf2a5b236bdcba8297e005b0",
+    "app/internal/vxi11srv/xdrfuzz_test.go": "fe64a169b696f0cd294a4bd34417615b35c173541e0a2c7c533663a18730914e"
+  },
+  "probe": "// Local characterization only; no listener or network client is created.\nfunc TestModelReviewReadSizeBoundary(t *testing.T) {\n srv := &Server{}\n cn := &conn{srv:srv,lid:7,pending:[]byte{42}}\n srv.linkOwner=cn\n var requested uint32 = 0xffffffff\n args:=putU32(nil,7); args=putU32(args,requested);args=putU32(args,0)\n var panicValue any\n func(){ defer func(){panicValue=recover()}();cn.dispatch(procDeviceRead,&xdr{b:args}) }()\n if int(requested)<0 {\n  if panicValue==nil {t.Fatal(\"expected negative-int read-size boundary to panic in this baseline\")}\n  t.Logf(\"32-bit read size converts to %d; observed recovered panic: %v\",int(requested),panicValue)\n } else {\n  if panicValue!=nil {t.Fatalf(\"unexpected wide-int panic: %v\",panicValue)}\n  t.Logf(\"wide-int read size %d does not panic for one pending byte\",int(requested))\n }\n}\n",
+  "cases": [
+    {
+      "architecture": "amd64",
+      "command": [
+        "go",
+        "test",
+        "-overlay",
+        "/tmp/sds-vxi-read-size-u8sseiis/overlay.json",
+        "-run",
+        "^TestModelReviewReadSizeBoundary$",
+        "-count=1",
+        "-v",
+        "./internal/vxi11srv"
+      ],
+      "exitCode": 0,
+      "stdout": "=== RUN   TestModelReviewReadSizeBoundary\n    server_test.go:231: wide-int read size 4294967295 does not panic for one pending byte\n--- PASS: TestModelReviewReadSizeBoundary (0.00s)\nPASS\nok  \topen-sds/app/internal/vxi11srv\t0.002s\n",
+      "stderr": ""
+    },
+    {
+      "architecture": "386",
+      "command": [
+        "go",
+        "test",
+        "-overlay",
+        "/tmp/sds-vxi-read-size-u8sseiis/overlay.json",
+        "-run",
+        "^TestModelReviewReadSizeBoundary$",
+        "-count=1",
+        "-v",
+        "./internal/vxi11srv"
+      ],
+      "exitCode": 0,
+      "stdout": "=== RUN   TestModelReviewReadSizeBoundary\n    server_test.go:228: 32-bit read size converts to -1; observed recovered panic: runtime error: slice bounds out of range [:-1]\n--- PASS: TestModelReviewReadSizeBoundary (0.00s)\nPASS\nok  \topen-sds/app/internal/vxi11srv\t0.002s\n",
+      "stderr": ""
+    }
+  ],
+  "result": "boundary-characterized"
+}

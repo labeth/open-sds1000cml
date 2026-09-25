@@ -1,0 +1,100 @@
+{
+  "result": "membership-projection-resolved-further-security-review-pending",
+  "scope": "Inspection of current authored assurance, architecture and security-view projection; no security qualification.",
+  "sourceSHA256": {
+    "model/assurance.yml": "f8a71181ad8170d9c3f221e173c9f9e36e5d6b767a130be5bafe5d83e8053198",
+    "model/architecture.yml": "df7c811166d4dfaf6ebab9b3f938a034538d20e4049ddadceb03033d3ed1c6cb",
+    "model/views.yml": "d513cc3cf76fc4ba197f7befd527e68a39162d0786bf79cdc1b8b924f84a68b2"
+  },
+  "boundaries": [
+    {
+      "id": "TB-DEVICE",
+      "name": "Privileged instrument execution",
+      "description": "Source-modeled trust and ownership boundary; no implicit authentication claim.",
+      "members": [
+        "FU-APP-APP",
+        "FU-OTA-AGENT",
+        "IF-OTA",
+        "IF-GPMC"
+      ]
+    },
+    {
+      "id": "TB-NETWORK",
+      "name": "Remote network clients",
+      "description": "Source-modeled trust and ownership boundary; no implicit authentication claim.",
+      "members": [
+        "ACT-OPERATOR",
+        "ACT-HOST",
+        "IF-HTTP",
+        "IF-SCPI",
+        "IF-OTA"
+      ]
+    },
+    {
+      "id": "TB-FABRIC",
+      "name": "ARM to FPGA command and data",
+      "description": "Source-modeled trust and ownership boundary; no implicit authentication claim.",
+      "members": [
+        "IF-GPMC",
+        "IF-PROFILE",
+        "HW-FPGA",
+        "DO-DESCRIPTOR"
+      ]
+    }
+  ],
+  "incidentMappings": [],
+  "projectionSource": "/home/labeth/ws/engineering-model-go/view/project.go",
+  "finding": "Trust-boundary membership lists exist, but this view projector walks authored mappings rather than converting members to bounded_by edges. No mappings touch the three selected boundary roots. Default security node kinds also omit actors, hardware and data objects. Additional validator inspection shows bounded_by permits only functional_unit, deployment_target and interface sources. Four existing member entries cannot be represented with that relation under the current validator, even if view filters include their kinds.",
+  "nextAction": "Review actual exposed-interface crossings, authentication/authorization and control associations against source. The current view faithfully shows all thirteen existing memberships; it is not a complete threat assessment.",
+  "validatorSource": "/home/labeth/ws/engineering-model-go/validate/validate.go",
+  "validatorSHA256": "7aca131131e8a8ac4d87c25a001e81e92df977927b84cc3c927e345e0b27e534",
+  "projectionSHA256": "9ca89ea6458946ab0002d335a11acd15534d33537f60c233a86a1a2432e013d5",
+  "boundedByAllowedSourceKinds": [
+    "functional_unit",
+    "deployment_target",
+    "interface"
+  ],
+  "unsupportedMemberships": [
+    {
+      "member": "ACT-OPERATOR",
+      "boundary": "TB-NETWORK",
+      "kind": "actor"
+    },
+    {
+      "member": "ACT-HOST",
+      "boundary": "TB-NETWORK",
+      "kind": "actor"
+    },
+    {
+      "member": "HW-FPGA",
+      "boundary": "TB-FABRIC",
+      "kind": "hardware_item"
+    },
+    {
+      "member": "DO-DESCRIPTOR",
+      "boundary": "TB-FABRIC",
+      "kind": "data_object"
+    }
+  ],
+  "toolResolution": {
+    "supportedAdditionalMemberKinds": [
+      "actor",
+      "hardware_item",
+      "data_object"
+    ],
+    "defaultSecurityViewRetainsKinds": true,
+    "tests": [
+      "validate.TestBoundaryMembershipAcrossSoftwareHardwareAndActors",
+      "view.TestSecurityViewPreservesBoundaryMembersAndExplicitFilters"
+    ],
+    "fullSuite": "test-runs/engineering-model-boundary.log",
+    "existingViewsUnchanged": 26,
+    "sourceSHA256": {
+      "validate/validate.go": "5545bc4dce9b7d351fcc339df2a0661479b523177a943692b35f3e71fabc12ed",
+      "view/project.go": "358af9682fec9131864903ed19dde2f00edbb6d4da3dcdf2eb0e9a12d249c27b",
+      "validate/boundary_test.go": "eaf8cc3253fc295a35f5a981156e79510f7cfd180f73c0fb5b5dbba5d673a0ab",
+      "view/boundary_test.go": "66b30802bd1d13d03ff7434273f974b435a6de6375e71d9570d0fe81965cbc73"
+    }
+  },
+  "integrationEvidence": "context-view-check.json"
+}

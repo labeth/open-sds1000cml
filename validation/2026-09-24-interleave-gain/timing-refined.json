@@ -1,0 +1,19 @@
+{
+  "timing_ns": [
+    [
+      0.03335461377772994,
+      0.04291253966418175,
+      -0.1993583238674108,
+      0.049297295195439586,
+      0.07379387521374346
+    ],
+    [
+      0.1369875345535429,
+      -0.16363713101225008,
+      -0.10144034539040897,
+      -0.07258126338198988,
+      0.20067120523746934
+    ]
+  ],
+  "method": "Equal-weight midpoint delay from independent 1 MHz and 10 MHz square records; 500 kHz and higher frequencies reserved for validation"
+}

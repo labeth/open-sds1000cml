@@ -1,0 +1,92 @@
+{
+  "source": "app/internal/engine/sram_test.go",
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "scope": "Reviewed Go test outcomes; passing assertions contribute partial requirement evidence.",
+  "sourceSHA256": "de5dfc6f0b6dc5e7dd880be5a448713ab8b0db48f773c7d9c795ed03b0f86182",
+  "logs": {
+    "test-runs/engine-processing-reviewed.jsonl": "e9d2dedf48e1c9db4a8f9d2b20153dde76fa9d2f3f9079d541916f6d455cd056"
+  },
+  "tests": [
+    {
+      "name": "TestSRAMPlannerCoversEveryTimebase",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-010"
+      ]
+    },
+    {
+      "name": "TestSRAMFrameWriterPreservesChannelsAndFractions",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-040"
+      ]
+    },
+    {
+      "name": "TestSRAMFrameWriterRawOrder",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-040"
+      ]
+    },
+    {
+      "name": "TestSRAMPlanInvalidInput",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-010"
+      ]
+    },
+    {
+      "name": "TestSRAMSelectedDepth",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-010"
+      ]
+    },
+    {
+      "name": "TestLiveSRAMWindowBoundaries",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-010"
+      ]
+    },
+    {
+      "name": "TestPrecisionRateIndependentOfView",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-036"
+      ]
+    },
+    {
+      "name": "TestPrecisionRateSelection",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-036"
+      ]
+    },
+    {
+      "name": "TestAllTimebasesRateContract",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-010",
+        "REQ-SDS-036"
+      ]
+    }
+  ],
+  "results": [
+    {
+      "requirement": "REQ-SDS-010",
+      "status": "partial",
+      "notes": "5 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    },
+    {
+      "requirement": "REQ-SDS-036",
+      "status": "partial",
+      "notes": "3 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    },
+    {
+      "requirement": "REQ-SDS-040",
+      "status": "partial",
+      "notes": "2 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    }
+  ]
+}

@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
 package engine
 
 import (
@@ -8,6 +9,7 @@ import (
 
 // ---- synthetic protocol waveforms (mirrors internal/decode/decode_test.go) ---
 
+// TRLC-LINKS: REQ-SDS-013
 func uartWave(bytes []int, spb int) []uint8 {
 	lo, hi := uint8(40), uint8(210)
 	var w []uint8
@@ -33,6 +35,7 @@ func uartWave(bytes []int, spb int) []uint8 {
 	return w
 }
 
+// TRLC-LINKS: REQ-SDS-013
 func spiWave(bytes []int, h int) (clk, data []uint8) {
 	lo, hi := uint8(40), uint8(210)
 	seg := func(c, d uint8, n int) {
@@ -56,6 +59,7 @@ func spiWave(bytes []int, h int) (clk, data []uint8) {
 	return clk, data
 }
 
+// TRLC-LINKS: REQ-SDS-013
 func i2cWave(addr7, rw int, data []int, h int) (scl, sda []uint8) {
 	lo, hi := uint8(40), uint8(210)
 	seg := func(c, d uint8, n int) {
@@ -91,6 +95,7 @@ func i2cWave(addr7, rw int, data []int, h int) (scl, sda []uint8) {
 
 // ---- serialQualify: full decode + match on a synthetic frame -----------------
 
+// TRLC-LINKS: REQ-SDS-013
 func TestSerialQualifyUART(t *testing.T) {
 	w := uartWave([]int{0x11, 0x22, 0x55, 0x33}, 40)
 	f := &Frame{C1: w, C2: make([]uint8, len(w)), Valid: len(w), SampleS: 1e-6}
@@ -133,6 +138,7 @@ func TestSerialQualifyUART(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-013
 func TestSerialQualifySPI(t *testing.T) {
 	clk, data := spiWave([]int{0xA5, 0x3C, 0x55}, 20)
 	f := &Frame{C1: clk, C2: data, Valid: len(clk), SampleS: 2e-7}
@@ -147,6 +153,7 @@ func TestSerialQualifySPI(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-013
 func TestSerialQualifyI2C(t *testing.T) {
 	scl, sda := i2cWave(0x50, 0 /*write*/, []int{0xDE, 0xAD}, 20)
 	f := &Frame{C1: scl, C2: sda, Valid: len(scl), SampleS: 2e-7}
@@ -191,6 +198,7 @@ func TestSerialQualifyI2C(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-013
 func TestSerialQualifyPassAndReject(t *testing.T) {
 	e := &Engine{}
 	f := &Frame{C1: make([]uint8, 100), C2: make([]uint8, 100), Valid: 100, SampleS: 1e-6}
@@ -210,6 +218,7 @@ func TestSerialQualifyPassAndReject(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-013
 func TestSetSerialModeResetsCount(t *testing.T) {
 	e := &Engine{}
 	e.serialMatches.Store(7)
@@ -229,12 +238,12 @@ func TestSetSerialModeResetsCount(t *testing.T) {
 
 // ---- match-logic units on hand-built spans (no decoding) ---------------------
 
+// TRLC-LINKS: REQ-SDS-013
 func TestMatchBytesUnit(t *testing.T) {
 	// contiguous bytes ~10 samples wide, abutting (like a continuous UART stream)
 	spans := []decode.Span{
 		{Kind: "data", Val: 0x11, I0: 10, I1: 19},
 		{Kind: "data", Val: 0x22, I0: 20, I1: 29},
-		{Kind: "gap"},
 		{Kind: "data", Val: 0x33, I0: 30, I1: 39},
 	}
 	if ok, a := matchBytes(spans, []int{0x22}); !ok || a != 20 {
@@ -261,6 +270,20 @@ func TestMatchBytesUnit(t *testing.T) {
 	if ok, _ := matchBytes(errSpans, nil); ok {
 		t.Fatal("empty pattern must NOT fire on a record of only error bytes")
 	}
+	for _, kind := range []string{"gap", "frame-error", "parity-error"} {
+		broken := []decode.Span{
+			{Kind: "data", Val: 0x41, I0: 0, I1: 9},
+			{Kind: kind, I0: 10, I1: 19},
+			{Kind: "data", Val: 0x42, I0: 20, I1: 29},
+			{Kind: "data", Val: 0x43, I0: 30, I1: 39},
+		}
+		if ok, _ := matchBytes(broken, []int{0x41, 0x42}); ok {
+			t.Fatalf("pattern bridged %s", kind)
+		}
+		if ok, anchor := matchBytes(broken, []int{0x42, 0x43}); !ok || anchor != 20 {
+			t.Fatalf("valid sequence after %s rejected: %v %d", kind, ok, anchor)
+		}
+	}
 
 	// CONTIGUITY: two matching bytes separated by a large idle gap must NOT form
 	// a sequence (different transmissions), but MUST still match individually.
@@ -276,6 +299,7 @@ func TestMatchBytesUnit(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-013
 func TestIndexSeqUnit(t *testing.T) {
 	hay := []int{1, 2, 3, 2, 3, 4}
 	if indexSeq(hay, []int{2, 3, 4}) != 3 {
@@ -292,6 +316,7 @@ func TestIndexSeqUnit(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-013
 func TestSerialRegistryUnknownFailsClosed(t *testing.T) {
 	e := New(Config{Bus: newFakeBus()})
 	w := uartWave([]int{0x55}, 16)
@@ -302,6 +327,7 @@ func TestSerialRegistryUnknownFailsClosed(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-013
 func TestSerialRegistryCapabilities(t *testing.T) {
 	ds := SerialDecoderList()
 	if len(ds) < 10 {

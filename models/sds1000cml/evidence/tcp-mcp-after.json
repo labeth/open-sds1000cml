@@ -1,0 +1,486 @@
+[
+  {
+    "id": 1,
+    "jsonrpc": "2.0",
+    "result": {
+      "capabilities": {
+        "tools": {
+          "listChanged": false
+        }
+      },
+      "protocolVersion": "2024-11-05",
+      "serverInfo": {
+        "name": "engineering-model-mcp",
+        "version": "0.2.0"
+      }
+    }
+  },
+  {
+    "id": 2,
+    "jsonrpc": "2.0",
+    "result": {
+      "content": [
+        {
+          "text": "{\"entities\":[{\"id\":\"HW-ADC\",\"kind\":\"hardware_item\",\"name\":\"Analog converter bank\"},{\"id\":\"HW-AFE\",\"kind\":\"hardware_item\",\"name\":\"Two-channel analog front end\"},{\"id\":\"HW-FPGA\",\"kind\":\"hardware_item\",\"name\":\"Acquisition FPGA\"},{\"id\":\"HW-HOST\",\"kind\":\"hardware_item\",\"name\":\"Operator development computer\"},{\"id\":\"HW-INSTRUMENT\",\"kind\":\"hardware_item\",\"name\":\"SDS1102CML+ oscilloscope\"},{\"id\":\"HW-LCD\",\"kind\":\"hardware_item\",\"name\":\"Instrument display\"},{\"id\":\"HW-MAXV\",\"kind\":\"hardware_item\",\"name\":\"Factory address/control logic\"},{\"id\":\"HW-NETWORK\",\"kind\":\"hardware_item\",\"name\":\"Ethernet interface\"},{\"id\":\"HW-OSC\",\"kind\":\"hardware_item\",\"name\":\"Board reference oscillator\"},{\"id\":\"HW-PANEL\",\"kind\":\"hardware_item\",\"name\":\"Keys, encoders and LEDs\"},{\"id\":\"HW-POWER\",\"kind\":\"hardware_item\",\"name\":\"Optional Shelly power switch\"},{\"id\":\"HW-SOC\",\"kind\":\"hardware_item\",\"name\":\"ARM host processor\"},{\"id\":\"HW-SRAM\",\"kind\":\"hardware_item\",\"name\":\"External capture SRAM\"},{\"id\":\"HW-USB\",\"kind\":\"hardware_item\",\"name\":\"USB boot storage\"},{\"id\":\"HW-WATCHDOG\",\"kind\":\"hardware_item\",\"name\":\"SoC watchdog\"}],\"generatedAt\":\"2026-09-23T00:23:46Z\",\"ok\":true,\"schemaVersion\":\"mcp.tool-response.v1\",\"tool\":\"model.list\"}",
+          "type": "text"
+        }
+      ],
+      "isError": false
+    }
+  },
+  {
+    "id": 3,
+    "jsonrpc": "2.0",
+    "result": {
+      "content": [
+        {
+          "text": "{\"entity\":{\"ID\":\"HW-FPGA\",\"Name\":\"Acquisition FPGA\",\"Kind\":\"fpga\",\"PartNumber\":\"EP4CE10F17C8\",\"Supplier\":\"Altera\",\"SafetyLevel\":\"\",\"Description\":\"10,320 LEs, 46 M9K blocks, two PLLs; volatile passive-serial configuration.\",\"Hosts\":[\"FU-RTL-ACQ-SRAM-ACQUISITION-ADC-PLL\",\"FU-RTL-ACQ-SRAM-ACQUISITION-PATH\",\"FU-RTL-ACQ-SRAM-ACQUISITION-SOURCE\",\"FU-RTL-ACQ-SRAM-ADC-UNPACK\",\"FU-RTL-ACQ-SRAM-BOARD-CAPTURE-PATH\",\"FU-RTL-ACQ-SRAM-CAPTURE-ENGINE\",\"FU-RTL-ACQ-SRAM-CAPTURE-PATH\",\"FU-RTL-ACQ-SRAM-COMMAND-BRIDGE\",\"FU-RTL-ACQ-SRAM-COMMAND-PORT\",\"FU-RTL-ACQ-SRAM-FINITE-RECALL\",\"FU-RTL-ACQ-SRAM-FINITE-WRITER\",\"FU-RTL-ACQ-SRAM-HOST-FIFO\",\"FU-RTL-ACQ-SRAM-HOST-OWNERSHIP\",\"FU-RTL-ACQ-SRAM-HOST-PACKER\",\"FU-RTL-ACQ-SRAM-HOST-PATH\",\"FU-RTL-ACQ-SRAM-HOST-RAM\",\"FU-RTL-ACQ-SRAM-HOST-READ-PORT\",\"FU-RTL-ACQ-SRAM-HOST-READ-WINDOW\",\"FU-RTL-ACQ-SRAM-HOST-SINK\",\"FU-RTL-ACQ-SRAM-INGRESS-FIFO\",\"FU-RTL-ACQ-SRAM-INGRESS-PATH\",\"FU-RTL-ACQ-SRAM-INGRESS-STREAM\",\"FU-RTL-ACQ-SRAM-INTERLEAVE\",\"FU-RTL-ACQ-SRAM-ORDINAL-COUNTER\",\"FU-RTL-ACQ-SRAM-PRECISION\",\"FU-RTL-ACQ-SRAM-PRECISION-TAIL\",\"FU-RTL-ACQ-SRAM-PROFILE-CORE\",\"FU-RTL-ACQ-SRAM-PROFILE-PLL\",\"FU-RTL-ACQ-SRAM-PROFILE-TOP\",\"FU-RTL-ACQ-SRAM-RECALL\",\"FU-RTL-ACQ-SRAM-RECORD\",\"FU-RTL-ACQ-SRAM-STREAM\",\"FU-RTL-ACQ-SRAM-STREAM-BANKS\",\"FU-RTL-ACQ-SRAM-STREAM-ENGINE\",\"FU-RTL-ACQ-SRAM-STREAM-PACKETIZER\",\"FU-RTL-ACQ-SRAM-STREAM-PATH\",\"FU-RTL-ACQ-SRAM-TIMESLICE-CONTROLLER\",\"FU-RTL-ACQ-SRAM-TOP\",\"FU-RTL-ACQ-SRAM-TRANSPORT\",\"FU-RTL-ACQ-SRAM-WORD-BRIDGE\",\"FU-RTL-COMMON-DDIO-PAIR\",\"FU-RTL-COMMON-GPMC-SLAVE\",\"FU-RTL-COMMON-LANE-IN\",\"FU-RTL-COMMON-PLL-M2\",\"FU-RTL-COMMON-SYNC\",\"FU-RTL-DEFAULT-ADC-FRONT\",\"FU-RTL-DEFAULT-CAPTURE\",\"FU-RTL-DEFAULT-DEFAULT\",\"FU-RTL-DEFAULT-DIAG\",\"FU-RTL-DEFAULT-DRAIN\",\"FU-RTL-SRAM-BENCH-BENCH\"]},\"exists\":true,\"generatedAt\":\"2026-09-23T00:23:46Z\",\"kind\":\"hardware_item\",\"ok\":true,\"schemaVersion\":\"mcp.tool-response.v1\",\"tool\":\"model.entity\"}",
+          "type": "text"
+        }
+      ],
+      "isError": false
+    }
+  },
+  {
+    "id": 4,
+    "jsonrpc": "2.0",
+    "result": {
+      "content": [
+        {
+          "text": "{\"exists\":true,\"generatedAt\":\"2026-09-23T00:23:46Z\",\"ok\":true,\"requirement\":{\"ID\":\"REQ-SDS-041\",\"Title\":\"Capture geometry\",\"Text\":\"The instrument shall reject zero posthistory and total capture counts exceeding SRAM capacity.\",\"Notes\":\"Source-derived contract; source presence is not evidence of a passing hardware qualification.\",\"Category\":\"functional\",\"Rationale\":\"\",\"SourceRefs\":[\"REF-SOURCE-FPGA-ACQ-SRAM-ACQUISITION-PATH-V\",\"REF-SOURCE-FPGA-ACQ-SRAM-FINITE-WRITER-V\"],\"VerificationMethods\":[\"inspection\",\"test\"],\"VerificationCriteria\":\"Inspect the linked implementation and run the corresponding offline tests; hardware claims require independently identified device evidence.\",\"Priority\":\"\",\"Criticality\":\"\",\"Status\":\"draft\",\"Derived\":false,\"DerivedRationale\":\"\",\"Tags\":null,\"AppliesTo\":[\"FU-RTL-ACQ-SRAM-ACQUISITION-PATH\",\"FU-RTL-ACQ-SRAM-FINITE-WRITER\"]},\"schemaVersion\":\"mcp.tool-response.v1\",\"tool\":\"requirements.get\"}",
+          "type": "text"
+        }
+      ],
+      "isError": false
+    }
+  },
+  {
+    "id": 5,
+    "jsonrpc": "2.0",
+    "result": {
+      "content": [
+        {
+          "text": "{\"danglingLinks\":[],\"diagnostics\":[{\"code\":\"requirement.orphan\",\"message\":\"requirement REQ-SDS-001 is traced by no code, verification, or delegation\",\"path\":\"requirements\",\"severity\":\"warning\"},{\"code\":\"requirement.orphan\",\"message\":\"requirement REQ-SDS-003 is traced by no code, verification, or delegation\",\"path\":\"requirements\",\"severity\":\"warning\"},{\"code\":\"requirement.orphan\",\"message\":\"requirement REQ-SDS-006 is traced by no code, verification, or delegation\",\"path\":\"requirements\",\"severity\":\"warning\"},{\"code\":\"requirement.orphan\",\"message\":\"requirement REQ-SDS-008 is traced by no code, verification, or delegation\",\"path\":\"requirements\",\"severity\":\"warning\"},{\"code\":\"requirement.orphan\",\"message\":\"requirement REQ-SDS-009 is traced by no code, verification, or delegation\",\"path\":\"requirements\",\"severity\":\"warning\"},{\"code\":\"requirement.orphan\",\"message\":\"requirement REQ-SDS-010 is traced by no code, verification, or delegation\",\"path\":\"requirements\",\"severity\":\"warning\"},{\"code\":\"requirement.orphan\",\"message\":\"requirement REQ-SDS-011 is traced by no code, verification, or delegation\",\"path\":\"requirements\",\"severity\":\"warning\"},{\"code\":\"requirement.orphan\",\"message\":\"requirement REQ-SDS-012 is traced by no code, verification, or delegation\",\"path\":\"requirements\",\"severity\":\"warning\"},{\"code\":\"requirement.orphan\",\"message\":\"requirement REQ-SDS-013 is traced by no code, verification, or delegation\",\"path\":\"requirements\",\"severity\":\"warning\"},{\"code\":\"requirement.orphan\",\"message\":\"requirement REQ-SDS-014 is traced by no code, verification, or delegation\",\"path\":\"requirements\",\"severity\":\"warning\"},{\"code\":\"requirement.orphan\",\"message\":\"requirement REQ-SDS-018 is traced by no code, verification, or delegation\",\"path\":\"requirements\",\"severity\":\"warning\"},{\"code\":\"requirement.orphan\",\"message\":\"requirement REQ-SDS-019 is traced by no code, verification, or delegation\",\"path\":\"requirements\",\"severity\":\"warning\"},{\"code\":\"requirement.orphan\",\"message\":\"requirement REQ-SDS-021 is traced by no code, verification, or delegation\",\"path\":\"requirements\",\"severity\":\"warning\"},{\"code\":\"requirement.orphan\",\"message\":\"requirement REQ-SDS-022 is traced by no code, verification, or delegation\",\"path\":\"requirements\",\"severity\":\"warning\"},{\"code\":\"requirement.orphan\",\"message\":\"requirement REQ-SDS-023 is traced by no code, verification, or delegation\",\"path\":\"requirements\",\"severity\":\"warning\"},{\"code\":\"requirement.orphan\",\"message\":\"requirement REQ-SDS-028 is traced by no code, verification, or delegation\",\"path\":\"requirements\",\"severity\":\"warning\"},{\"code\":\"requirement.orphan\",\"message\":\"requirement REQ-SDS-029 is traced by no code, verification, or delegation\",\"path\":\"requirements\",\"severity\":\"warning\"},{\"code\":\"requirement.orphan\",\"message\":\"requirement REQ-SDS-030 is traced by no code, verification, or delegation\",\"path\":\"requirements\",\"severity\":\"warning\"},{\"code\":\"requirement.orphan\",\"message\":\"requirement REQ-SDS-031 is traced by no code, verification, or delegation\",\"path\":\"requirements\",\"severity\":\"warning\"},{\"code\":\"requirement.orphan\",\"message\":\"requirement REQ-SDS-036 is traced by no code, verification, or delegation\",\"path\":\"requirements\",\"severity\":\"warning\"},{\"code\":\"requirement.orphan\",\"message\":\"requirement REQ-SDS-038 is traced by no code, verification, or delegation\",\"path\":\"requirements\",\"severity\":\"warning\"},{\"code\":\"requirement.orphan\",\"message\":\"requirement REQ-SDS-039 is traced by no code, verification, or delegation\",\"path\":\"requirements\",\"severity\":\"warning\"},{\"code\":\"requirement.orphan\",\"message\":\"requirement REQ-SDS-041 is traced by no code, verification, or delegation\",\"path\":\"requirements\",\"severity\":\"warning\"},{\"code\":\"requirement.orphan\",\"message\":\"requirement REQ-SDS-042 is traced by no code, verification, or delegation\",\"path\":\"requirements\",\"severity\":\"warning\"},{\"code\":\"requirement.orphan\",\"message\":\"requirement REQ-SDS-043 is traced by no code, verification, or delegation\",\"path\":\"requirements\",\"severity\":\"warning\"},{\"code\":\"requirement.orphan\",\"message\":\"requirement REQ-SDS-045 is traced by no code, verification, or delegation\",\"path\":\"requirements\",\"severity\":\"warning\"},{\"code\":\"requirement.orphan\",\"message\":\"requirement REQ-SDS-054 is traced by no code, verification, or delegation\",\"path\":\"requirements\",\"severity\":\"warning\"},{\"code\":\"requirement.orphan\",\"message\":\"requirement REQ-SDS-055 is traced by no code, verification, or delegation\",\"path\":\"requirements\",\"severity\":\"warning\"},{\"code\":\"requirement.orphan\",\"message\":\"requirement REQ-SDS-056 is traced by no code, verification, or delegation\",\"path\":\"requirements\",\"severity\":\"warning\"},{\"code\":\"requirement.orphan\",\"message\":\"requirement REQ-SDS-057 is traced by no code, verification, or delegation\",\"path\":\"requirements\",\"severity\":\"warning\"},{\"code\":\"requirement.orphan\",\"message\":\"requirement REQ-SDS-058 is traced by no code, verification, or delegation\",\"path\":\"requirements\",\"severity\":\"warning\"},{\"code\":\"requirement.orphan\",\"message\":\"requirement REQ-SDS-059 is traced by no code, verification, or delegation\",\"path\":\"requirements\",\"severity\":\"warning\"},{\"code\":\"requirement.orphan\",\"message\":\"requirement REQ-SDS-060 is traced by no code, verification, or delegation\",\"path\":\"requirements\",\"severity\":\"warning\"},{\"code\":\"requirement.orphan\",\"message\":\"requirement REQ-SDS-061 is traced by no code, verification, or delegation\",\"path\":\"requirements\",\"severity\":\"warning\"},{\"code\":\"requirement.orphan\",\"message\":\"requirement REQ-SDS-062 is traced by no code, verification, or delegation\",\"path\":\"requirements\",\"severity\":\"warning\"},{\"code\":\"requirement.orphan\",\"message\":\"requirement REQ-SDS-063 is traced by no code, verification, or delegation\",\"path\":\"requirements\",\"severity\":\"warning\"},{\"code\":\"requirement.orphan\",\"message\":\"requirement REQ-SDS-064 is traced by no code, verification, or delegation\",\"path\":\"requirements\",\"severity\":\"warning\"},{\"code\":\"requirement.orphan\",\"message\":\"requirement REQ-SDS-065 is traced by no code, verification, or delegation\",\"path\":\"requirements\",\"severity\":\"warning\"},{\"code\":\"requirement.orphan\",\"message\":\"requirement REQ-SDS-066 is traced by no code, verification, or delegation\",\"path\":\"requirements\",\"severity\":\"warning\"},{\"code\":\"requirement.orphan\",\"message\":\"requirement REQ-SDS-067 is traced by no code, verification, or delegation\",\"path\":\"requirements\",\"severity\":\"warning\"},{\"code\":\"requirement.orphan\",\"message\":\"requirement REQ-SDS-068 is traced by no code, verification, or delegation\",\"path\":\"requirements\",\"severity\":\"warning\"},{\"code\":\"requirement.orphan\",\"message\":\"requirement REQ-SDS-069 is traced by no code, verification, or delegation\",\"path\":\"requirements\",\"severity\":\"warning\"},{\"code\":\"requirement.orphan\",\"message\":\"requirement REQ-SDS-070 is traced by no code, verification, or delegation\",\"path\":\"requirements\",\"severity\":\"warning\"},{\"code\":\"requirement.orphan\",\"message\":\"requirement REQ-SDS-071 is traced by no code, verification, or delegation\",\"path\":\"requirements\",\"severity\":\"warning\"},{\"code\":\"requirement.orphan\",\"message\":\"requirement REQ-SDS-073 is traced by no code, verification, or delegation\",\"path\":\"requirements\",\"severity\":\"warning\"},{\"code\":\"requirement.orphan\",\"message\":\"requirement REQ-SDS-074 is traced by no code, verification, or delegation\",\"path\":\"requirements\",\"severity\":\"warning\"},{\"code\":\"requirement.orphan\",\"message\":\"requirement REQ-SDS-075 is traced by no code, verification, or delegation\",\"path\":\"requirements\",\"severity\":\"warning\"},{\"code\":\"requirement.orphan\",\"message\":\"requirement REQ-SDS-076 is traced by no code, verification, or delegation\",\"path\":\"requirements\",\"severity\":\"warning\"},{\"code\":\"requirement.orphan\",\"message\":\"requirement REQ-SDS-077 is traced by no code, verification, or delegation\",\"path\":\"requirements\",\"severity\":\"warning\"},{\"code\":\"requirement.orphan\",\"message\":\"requirement REQ-SDS-079 is traced by no code, verification, or delegation\",\"path\":\"requirements\",\"severity\":\"warning\"},{\"code\":\"requirement.orphan\",\"message\":\"requirement REQ-SDS-080 is traced by no code, verification, or delegation\",\"path\":\"requirements\",\"severity\":\"warning\"},{\"code\":\"requirement.orphan\",\"message\":\"requirement REQ-SDS-081 is traced by no code, verification, or delegation\",\"path\":\"requirements\",\"severity\":\"warning\"}],\"generatedAt\":\"2026-09-23T00:23:46Z\",\"model\":\"sds1000cml-cyclone-spec-sram-capture\",\"ok\":true,\"orphans\":[\"REQ-SDS-001\",\"REQ-SDS-003\",\"REQ-SDS-006\",\"REQ-SDS-008\",\"REQ-SDS-009\",\"REQ-SDS-010\",\"REQ-SDS-011\",\"REQ-SDS-012\",\"REQ-SDS-013\",\"REQ-SDS-014\",\"REQ-SDS-018\",\"REQ-SDS-019\",\"REQ-SDS-021\",\"REQ-SDS-022\",\"REQ-SDS-023\",\"REQ-SDS-028\",\"REQ-SDS-029\",\"REQ-SDS-030\",\"REQ-SDS-031\",\"REQ-SDS-036\",\"REQ-SDS-038\",\"REQ-SDS-039\",\"REQ-SDS-041\",\"REQ-SDS-042\",\"REQ-SDS-043\",\"REQ-SDS-045\",\"REQ-SDS-054\",\"REQ-SDS-055\",\"REQ-SDS-056\",\"REQ-SDS-057\",\"REQ-SDS-058\",\"REQ-SDS-059\",\"REQ-SDS-060\",\"REQ-SDS-061\",\"REQ-SDS-062\",\"REQ-SDS-063\",\"REQ-SDS-064\",\"REQ-SDS-065\",\"REQ-SDS-066\",\"REQ-SDS-067\",\"REQ-SDS-068\",\"REQ-SDS-069\",\"REQ-SDS-070\",\"REQ-SDS-071\",\"REQ-SDS-073\",\"REQ-SDS-074\",\"REQ-SDS-075\",\"REQ-SDS-076\",\"REQ-SDS-077\",\"REQ-SDS-079\",\"REQ-SDS-080\",\"REQ-SDS-081\"],\"requirements\":[{\"code\":[],\"id\":\"REQ-SDS-001\",\"status\":\"orphan\",\"units\":[\"FU-APP-ENGINE\"],\"verifications\":[]},{\"code\":[\"fdinherit.go:23\"],\"id\":\"REQ-SDS-002\",\"status\":\"implemented\",\"units\":[\"FU-APP-APP\",\"FU-OTA-FDINHERIT\"],\"verifications\":[\"VER-INF-TEST-FDINHERIT_TEST-D53A34\"]},{\"code\":[],\"id\":\"REQ-SDS-003\",\"status\":\"orphan\",\"units\":[\"FU-APP-APP\"],\"verifications\":[]},{\"code\":[\"device.go:114\",\"fpgaload.go:244\",\"fpgaload.go:282\",\"fpgaload.go:248\",\"fpgaload.go:268\"],\"id\":\"REQ-SDS-004\",\"status\":\"implemented\",\"units\":[\"FU-APP-APP\",\"FU-APP-ENGINE\",\"FU-APP-FPGALOAD\"],\"verifications\":[\"VER-INF-TEST-FPGALOAD_TEST-33DCD0\"]},{\"code\":[\"device.go:114\",\"device.go:77\",\"device.go:159\",\"fpgaload.go:160\",\"device.go:144\",\"bitstream_embed.go:17\",\"bitstream_stub.go:11\",\"fpgaload.go:282\",\"device.go:70\",\"device.go:83\",\"device.go:46\",\"device.go:75\",\"fpgaload.go:134\",\"device.go:66\",\"fpgaload.go:90\",\"device.go:38\",\"device.go:73\",\"device.go:29\"],\"id\":\"REQ-SDS-005\",\"status\":\"implemented\",\"units\":[\"FU-APP-FPGALOAD\",\"FU-SPECIFICATIONS\"],\"verifications\":[\"VER-INF-TEST-FPGALOAD_TEST-33DCD0\"]},{\"code\":[],\"id\":\"REQ-SDS-006\",\"status\":\"orphan\",\"units\":[\"FU-APP-ENGINE\"],\"verifications\":[]},{\"code\":[\"arena.go:103\",\"arena.go:73\",\"arena.go:92\",\"arena.go:86\"],\"id\":\"REQ-SDS-007\",\"status\":\"implemented\",\"units\":[\"FU-APP-ENGINE\"],\"verifications\":[\"VER-INF-TEST-ARENA_TEST-860548\"]},{\"code\":[],\"id\":\"REQ-SDS-008\",\"status\":\"orphan\",\"units\":[\"FU-APP-ENGINE\"],\"verifications\":[]},{\"code\":[],\"id\":\"REQ-SDS-009\",\"status\":\"orphan\",\"units\":[\"FU-APP-ENGINE\"],\"verifications\":[]},{\"code\":[],\"id\":\"REQ-SDS-010\",\"status\":\"orphan\",\"units\":[\"FU-APP-ENGINE\"],\"verifications\":[]},{\"code\":[],\"id\":\"REQ-SDS-011\",\"status\":\"orphan\",\"units\":[\"FU-APP-ENGINE\"],\"verifications\":[]},{\"code\":[],\"id\":\"REQ-SDS-012\",\"status\":\"orphan\",\"units\":[\"FU-APP-ENGINE\"],\"verifications\":[]},{\"code\":[],\"id\":\"REQ-SDS-013\",\"status\":\"orphan\",\"units\":[\"FU-APP-ENGINE\"],\"verifications\":[]},{\"code\":[],\"id\":\"REQ-SDS-014\",\"status\":\"orphan\",\"units\":[\"FU-APP-ENGINE\"],\"verifications\":[]},{\"code\":[\"frontend.go:56\",\"frontend.go:376\",\"frontend.go:304\",\"frontend.go:82\",\"frontend.go:310\",\"spi.go:60\",\"spi.go:115\",\"frontend.go:121\",\"spi.go:102\",\"spi.go:69\",\"frontend.go:44\",\"frontend.go:365\",\"frontend.go:393\",\"frontend.go:422\",\"spi.go:141\",\"spi.go:130\"],\"id\":\"REQ-SDS-015\",\"status\":\"implemented\",\"units\":[\"FU-APP-ANALOG\"],\"verifications\":[\"VER-INF-TEST-FRONTEND_TEST-6B53AF\"]},{\"code\":[\"cal.go:156\",\"cal.go:167\",\"cal.go:114\",\"cal.go:45\",\"cal.go:66\",\"cal.go:137\",\"cal.go:145\",\"cal.go:76\",\"cal.go:130\",\"cal.go:123\"],\"id\":\"REQ-SDS-016\",\"status\":\"implemented\",\"units\":[\"FU-APP-CAL\"],\"verifications\":[\"VER-INF-TEST-CALFUZZ_TEST-10B1BB\",\"VER-INF-TEST-CAL_TEST-4C71A9\"]},{\"code\":[\"measure.go:311\",\"measure.go:56\",\"measure.go:129\",\"measure.go:92\",\"measure.go:106\",\"measure.go:98\",\"measure.go:339\",\"measure.go:278\",\"measure.go:288\"],\"id\":\"REQ-SDS-017\",\"status\":\"implemented\",\"units\":[\"FU-APP-MEASURE\"],\"verifications\":[\"VER-INF-TEST-HARDWARE_TRIANGLE_TEST-400F30\",\"VER-INF-TEST-MEASFUZZ_TEST-A9F0C2\",\"VER-INF-TEST-MEASURE_TEST-DA76E7\"]},{\"code\":[],\"id\":\"REQ-SDS-018\",\"status\":\"orphan\",\"units\":[\"FU-APP-DECODE\"],\"verifications\":[]},{\"code\":[],\"id\":\"REQ-SDS-019\",\"status\":\"orphan\",\"units\":[\"FU-APP-SUPERRES\"],\"verifications\":[]},{\"code\":[\"fanout.go:97\",\"fanout.go:28\",\"fanout.go:33\",\"fanout.go:61\",\"fanout.go:86\"],\"id\":\"REQ-SDS-020\",\"status\":\"implemented\",\"units\":[\"FU-APP-FRAMES\"],\"verifications\":[\"VER-INF-TEST-FANOUT_TEST-A49B33\"]},{\"code\":[],\"id\":\"REQ-SDS-021\",\"status\":\"orphan\",\"units\":[\"FU-APP-LCD\"],\"verifications\":[]},{\"code\":[],\"id\":\"REQ-SDS-022\",\"status\":\"orphan\",\"units\":[\"FU-APP-ENGINE\",\"FU-APP-PANEL\"],\"verifications\":[]},{\"code\":[],\"id\":\"REQ-SDS-023\",\"status\":\"orphan\",\"units\":[\"FU-APP-WEB\"],\"verifications\":[]},{\"code\":[\"server.go:89\",\"waveform.go:56\",\"server.go:273\",\"scpi.go:180\",\"scpi.go:207\",\"scpi_exec.go:393\",\"scpi_exec.go:14\",\"scpi.go:156\",\"server.go:397\",\"scpi.go:126\",\"scpi.go:133\",\"scpi.go:109\",\"server.go:161\",\"server.go:390\",\"scpi.go:237\",\"server.go:206\",\"server.go:199\",\"server.go:107\",\"server.go:412\",\"server.go:264\",\"scpi.go:172\",\"scpi.go:192\",\"scpi.go:188\",\"scpi.go:184\",\"server.go:218\",\"scpi_exec.go:578\",\"scpi_exec.go:604\",\"server.go:184\",\"server.go:72\",\"server.go:150\",\"waveform.go:106\",\"waveform.go:16\",\"server.go:131\"],\"id\":\"REQ-SDS-024\",\"status\":\"implemented\",\"units\":[\"FU-APP-SCPI\",\"FU-APP-VXI11SRV\"],\"verifications\":[\"VER-INF-TEST-SCPIFUZZ_TEST-C8673A\",\"VER-INF-TEST-SCPI_TEST-AE30D1\",\"VER-INF-TEST-SERVER_TEST-9CAF93\",\"VER-INF-TEST-WFFUZZ_TEST-634F4F\",\"VER-INF-TEST-XDRFUZZ_TEST-216EFA\"]},{\"code\":[\"capture.go:133\",\"capture.go:122\"],\"id\":\"REQ-SDS-025\",\"status\":\"implemented\",\"units\":[\"FU-APP-APP\",\"FU-OTA-AGENT\"],\"verifications\":[]},{\"code\":[\"watchdog.go:73\",\"watchdog.go:92\"],\"id\":\"REQ-SDS-026\",\"status\":\"implemented\",\"units\":[\"FU-OTA-WATCHDOG\"],\"verifications\":[\"VER-INF-TEST-WATCHDOG_TEST-362F01\"]},{\"code\":[\"takeover.go:264\",\"takeover.go:86\",\"takeover.go:243\",\"takeover.go:297\",\"takeover.go:112\",\"takeover.go:325\",\"takeover.go:219\",\"takeover.go:354\",\"takeover.go:57\",\"takeover.go:62\",\"takeover.go:122\",\"takeover.go:40\",\"takeover.go:49\"],\"id\":\"REQ-SDS-027\",\"status\":\"implemented\",\"units\":[\"FU-OTA-AGENT\",\"FU-OTA-GPMC\"],\"verifications\":[\"VER-INF-TEST-TAKEOVER_TEST-6A3079\",\"VER-INF-TEST-TAKEOVER_VXI11_TEST-E471E9\"]},{\"code\":[],\"id\":\"REQ-SDS-028\",\"status\":\"orphan\",\"units\":[\"FU-OTA-AGENT\",\"FU-OTA-SLOTS\"],\"verifications\":[]},{\"code\":[],\"id\":\"REQ-SDS-029\",\"status\":\"orphan\",\"units\":[\"FU-OTA-AGENT\"],\"verifications\":[]},{\"code\":[],\"id\":\"REQ-SDS-030\",\"status\":\"orphan\",\"units\":[\"FU-OTA-BOOT\"],\"verifications\":[]},{\"code\":[],\"id\":\"REQ-SDS-031\",\"status\":\"orphan\",\"units\":[\"FU-CODEGEN-IFACEDEF\"],\"verifications\":[]},{\"code\":[\"capture.go:292\",\"capture.go:96\"],\"id\":\"REQ-SDS-032\",\"status\":\"implemented\",\"units\":[\"FU-APP-SRAMCAPTURE\"],\"verifications\":[\"VER-INF-TEST-CAPTURE_TEST-18B9D1\"]},{\"code\":[\"capture.go:426\",\"capture.go:439\",\"capture.go:434\",\"capture.go:618\"],\"id\":\"REQ-SDS-033\",\"status\":\"implemented\",\"units\":[\"FU-APP-SRAMCAPTURE\",\"FU-RTL-ACQ-SRAM-RECALL\"],\"verifications\":[\"VER-INF-TEST-CAPTURE_TEST-18B9D1\"]},{\"code\":[\"verify.go:14\",\"verify.go:43\"],\"id\":\"REQ-SDS-034\",\"status\":\"implemented\",\"units\":[\"FU-APP-APP\",\"FU-APP-SRAMCAPTURE\"],\"verifications\":[\"VER-INF-TEST-VERIFY_TEST-C30923\"]},{\"code\":[\"stream.go:25\",\"stream.go:94\",\"stream.go:46\",\"stream.go:60\",\"stream.go:29\"],\"id\":\"REQ-SDS-035\",\"status\":\"implemented\",\"units\":[\"FU-APP-SRAMCAPTURE\"],\"verifications\":[\"VER-INF-TEST-STREAM_TEST-51F41D\"]},{\"code\":[],\"id\":\"REQ-SDS-036\",\"status\":\"orphan\",\"units\":[\"FU-APP-ENGINE\"],\"verifications\":[]},{\"code\":[\"precision.go:15\",\"precision_arm.go:9\",\"precision_generic.go:7\"],\"id\":\"REQ-SDS-037\",\"status\":\"implemented\",\"units\":[\"FU-APP-DSP\"],\"verifications\":[\"VER-INF-TEST-PRECISION_TEST-FF3F06\"]},{\"code\":[],\"id\":\"REQ-SDS-038\",\"status\":\"orphan\",\"units\":[\"FU-FPGA-DEFAULT-BUILD\",\"FU-RTL-ACQ-SRAM-ADC-UNPACK\"],\"verifications\":[]},{\"code\":[],\"id\":\"REQ-SDS-039\",\"status\":\"orphan\",\"units\":[\"FU-RTL-ACQ-SRAM-INTERLEAVE\"],\"verifications\":[]},{\"code\":[\"capture.go:292\",\"capture.go:154\",\"capture.go:156\"],\"id\":\"REQ-SDS-040\",\"status\":\"implemented\",\"units\":[\"FU-RTL-ACQ-SRAM-PRECISION\",\"FU-RTL-ACQ-SRAM-PRECISION-TAIL\"],\"verifications\":[\"VER-INF-TEST-CAPTURE_TEST-18B9D1\"]},{\"code\":[],\"id\":\"REQ-SDS-041\",\"status\":\"orphan\",\"units\":[\"FU-RTL-ACQ-SRAM-ACQUISITION-PATH\",\"FU-RTL-ACQ-SRAM-FINITE-WRITER\"],\"verifications\":[]},{\"code\":[],\"id\":\"REQ-SDS-042\",\"status\":\"orphan\",\"units\":[\"FU-RTL-ACQ-SRAM-FINITE-WRITER\",\"FU-RTL-ACQ-SRAM-RECORD\"],\"verifications\":[]},{\"code\":[],\"id\":\"REQ-SDS-043\",\"status\":\"orphan\",\"units\":[\"FU-RTL-ACQ-SRAM-ACQUISITION-PATH\",\"FU-RTL-ACQ-SRAM-FINITE-RECALL\"],\"verifications\":[]},{\"code\":[\"transport.v:15\"],\"id\":\"REQ-SDS-044\",\"status\":\"implemented\",\"units\":[\"FU-RTL-ACQ-SRAM-TRANSPORT\"],\"verifications\":[\"VER-INF-TEST-TB_TRANSPORT-4F5813\"]},{\"code\":[],\"id\":\"REQ-SDS-045\",\"status\":\"orphan\",\"units\":[\"FU-RTL-ACQ-SRAM-BOARD-CAPTURE-PATH\",\"FU-RTL-ACQ-SRAM-CAPTURE-ENGINE\"],\"verifications\":[]},{\"code\":[\"ingress_fifo.v:9\",\"ingress_path.v:9\",\"ingress_stream.v:6\"],\"id\":\"REQ-SDS-046\",\"status\":\"implemented\",\"units\":[\"FU-RTL-ACQ-SRAM-INGRESS-FIFO\",\"FU-RTL-ACQ-SRAM-INGRESS-PATH\",\"FU-RTL-ACQ-SRAM-INGRESS-STREAM\"],\"verifications\":[\"VER-INF-TEST-TB_INGRESS_FIFO-33A9CE\",\"VER-INF-TEST-TB_INGRESS_PATH-B57296\",\"VER-INF-TEST-TB_INGRESS_STREAM-F43F5E\"]},{\"code\":[\"ordinal_counter.v:5\"],\"id\":\"REQ-SDS-047\",\"status\":\"implemented\",\"units\":[\"FU-RTL-ACQ-SRAM-ORDINAL-COUNTER\"],\"verifications\":[\"VER-INF-TEST-TB_ORDINAL_COUNTER-B685E6\"]},{\"code\":[\"timeslice_controller.v:15\"],\"id\":\"REQ-SDS-048\",\"status\":\"implemented\",\"units\":[\"FU-RTL-ACQ-SRAM-TIMESLICE-CONTROLLER\"],\"verifications\":[\"VER-INF-TEST-TB_TIMESLICE_CONTROLLER-E11DBA\"]},{\"code\":[\"host_packer.v:7\",\"host_path.v:8\"],\"id\":\"REQ-SDS-049\",\"status\":\"implemented\",\"units\":[\"FU-RTL-ACQ-SRAM-HOST-PACKER\"],\"verifications\":[\"VER-INF-TEST-TB_HOST_PATH-762BDA\"]},{\"code\":[\"host_fifo.v:9\",\"host_path.v:8\"],\"id\":\"REQ-SDS-050\",\"status\":\"implemented\",\"units\":[\"FU-RTL-ACQ-SRAM-HOST-FIFO\"],\"verifications\":[\"VER-INF-TEST-TB_HOST_FIFO-B7E6E7\",\"VER-INF-TEST-TB_HOST_PATH-762BDA\"]},{\"code\":[\"host_path.v:8\",\"host_ram.v:7\"],\"id\":\"REQ-SDS-051\",\"status\":\"implemented\",\"units\":[\"FU-RTL-ACQ-SRAM-HOST-OWNERSHIP\",\"FU-RTL-ACQ-SRAM-HOST-RAM\"],\"verifications\":[\"VER-INF-TEST-TB_HOST_PATH-762BDA\",\"VER-INF-TEST-TB_HOST_RAM-1DAAA6\"]},{\"code\":[\"host_ownership.v:11\",\"host_path.v:8\"],\"id\":\"REQ-SDS-052\",\"status\":\"implemented\",\"units\":[\"FU-RTL-ACQ-SRAM-HOST-OWNERSHIP\"],\"verifications\":[\"VER-INF-TEST-TB_HOST_OWNERSHIP-CAEEC2\",\"VER-INF-TEST-TB_HOST_PATH-762BDA\"]},{\"code\":[\"host_read_port.v:5\",\"host_read_window.v:6\"],\"id\":\"REQ-SDS-053\",\"status\":\"implemented\",\"units\":[\"FU-RTL-ACQ-SRAM-HOST-READ-PORT\",\"FU-RTL-ACQ-SRAM-HOST-READ-WINDOW\"],\"verifications\":[\"VER-INF-TEST-TB_HOST_READ_PORT-BE8C32\",\"VER-INF-TEST-TB_HOST_READ_WINDOW-EE7B9E\"]},{\"code\":[],\"id\":\"REQ-SDS-054\",\"status\":\"orphan\",\"units\":[\"FU-RTL-ACQ-SRAM-COMMAND-BRIDGE\",\"FU-RTL-ACQ-SRAM-COMMAND-PORT\"],\"verifications\":[]},{\"code\":[],\"id\":\"REQ-SDS-055\",\"status\":\"orphan\",\"units\":[\"FU-RTL-ACQ-SRAM-COMMAND-PORT\"],\"verifications\":[]},{\"code\":[],\"id\":\"REQ-SDS-056\",\"status\":\"orphan\",\"units\":[\"FU-RTL-ACQ-SRAM-ACQUISITION-PATH\",\"FU-RTL-ACQ-SRAM-PROFILE-CORE\"],\"verifications\":[]},{\"code\":[],\"id\":\"REQ-SDS-057\",\"status\":\"orphan\",\"units\":[\"FU-RTL-ACQ-SRAM-ACQUISITION-PATH\",\"FU-RTL-ACQ-SRAM-FINITE-WRITER\"],\"verifications\":[]},{\"code\":[],\"id\":\"REQ-SDS-058\",\"status\":\"orphan\",\"units\":[\"FU-RTL-ACQ-SRAM-PROFILE-CORE\",\"FU-RTL-ACQ-SRAM-PROFILE-TOP\"],\"verifications\":[]},{\"code\":[],\"id\":\"REQ-SDS-059\",\"status\":\"orphan\",\"units\":[\"FU-RTL-ACQ-SRAM-PROFILE-TOP\"],\"verifications\":[]},{\"code\":[],\"id\":\"REQ-SDS-060\",\"status\":\"orphan\",\"units\":[\"FU-CODEGEN-IFACEDEF\",\"FU-RTL-DEFAULT-DEFAULT\"],\"verifications\":[]},{\"code\":[],\"id\":\"REQ-SDS-061\",\"status\":\"orphan\",\"units\":[\"FU-FPGA-ACQ-BUILD\"],\"verifications\":[]},{\"code\":[],\"id\":\"REQ-SDS-062\",\"status\":\"orphan\",\"units\":[\"FU-DOCUMENTATION\"],\"verifications\":[]},{\"code\":[],\"id\":\"REQ-SDS-063\",\"status\":\"orphan\",\"units\":[\"FU-DOCUMENTATION\"],\"verifications\":[]},{\"code\":[],\"id\":\"REQ-SDS-064\",\"status\":\"orphan\",\"units\":[\"FU-DOCUMENTATION\"],\"verifications\":[]},{\"code\":[],\"id\":\"REQ-SDS-065\",\"status\":\"orphan\",\"units\":[\"FU-DOCUMENTATION\"],\"verifications\":[]},{\"code\":[],\"id\":\"REQ-SDS-066\",\"status\":\"orphan\",\"units\":[\"FU-APP-ENGINE\",\"FU-WEB-BODE\"],\"verifications\":[]},{\"code\":[],\"id\":\"REQ-SDS-067\",\"status\":\"orphan\",\"units\":[\"FU-WEB-APP-EYE\",\"FU-WEB-EYEJITTER-ANALYSIS\"],\"verifications\":[]},{\"code\":[],\"id\":\"REQ-SDS-068\",\"status\":\"orphan\",\"units\":[\"FU-APP-LCD\",\"FU-WEB-SPECTROGRAM\"],\"verifications\":[]},{\"code\":[],\"id\":\"REQ-SDS-069\",\"status\":\"orphan\",\"units\":[\"FU-WEB-SIGROK-EXPORT\"],\"verifications\":[]},{\"code\":[],\"id\":\"REQ-SDS-070\",\"status\":\"orphan\",\"units\":[\"FU-WEB-APP-FFT\",\"FU-WEB-PEAKS\"],\"verifications\":[]},{\"code\":[],\"id\":\"REQ-SDS-071\",\"status\":\"orphan\",\"units\":[\"FU-WEB-APP-DRAW\",\"FU-WEB-APP-GL\"],\"verifications\":[]},{\"code\":[\"wire.go:108\",\"wire.go:175\",\"settings.go:120\"],\"id\":\"REQ-SDS-072\",\"status\":\"implemented\",\"units\":[\"FU-APP-SETTINGS\"],\"verifications\":[\"VER-INF-TEST-APPLY_TEST-1DC1D7\",\"VER-INF-TEST-FUZZ_TEST-3D592A\",\"VER-INF-TEST-SETTINGS_TEST-9C57EB\"]},{\"code\":[],\"id\":\"REQ-SDS-073\",\"status\":\"orphan\",\"units\":[\"FU-APP-DECODE\"],\"verifications\":[]},{\"code\":[],\"id\":\"REQ-SDS-074\",\"status\":\"orphan\",\"units\":[\"FU-APP-ENGINE\"],\"verifications\":[]},{\"code\":[],\"id\":\"REQ-SDS-075\",\"status\":\"orphan\",\"units\":[\"FU-RTL-ACQ-SRAM-PROFILE-CORE\"],\"verifications\":[]},{\"code\":[],\"id\":\"REQ-SDS-076\",\"status\":\"orphan\",\"units\":[\"FU-RTL-ACQ-SRAM-COMMAND-PORT\",\"FU-RTL-ACQ-SRAM-PROFILE-CORE\"],\"verifications\":[]},{\"code\":[],\"id\":\"REQ-SDS-077\",\"status\":\"orphan\",\"units\":[\"FU-RTL-ACQ-SRAM-COMMAND-BRIDGE\",\"FU-RTL-ACQ-SRAM-COMMAND-PORT\"],\"verifications\":[]},{\"code\":[\"host_fifo.v:9\",\"host_path.v:8\"],\"id\":\"REQ-SDS-078\",\"status\":\"implemented\",\"units\":[\"FU-RTL-ACQ-SRAM-HOST-FIFO\",\"FU-RTL-ACQ-SRAM-INGRESS-FIFO\"],\"verifications\":[\"VER-INF-TEST-TB_HOST_FIFO-B7E6E7\"]},{\"code\":[],\"id\":\"REQ-SDS-079\",\"status\":\"orphan\",\"units\":[\"FU-RTL-ACQ-SRAM-HOST-READ-WINDOW\"],\"verifications\":[]},{\"code\":[],\"id\":\"REQ-SDS-080\",\"status\":\"orphan\",\"units\":[\"FU-RTL-ACQ-SRAM-COMMAND-PORT\"],\"verifications\":[]},{\"code\":[],\"id\":\"REQ-SDS-081\",\"status\":\"orphan\",\"units\":[\"FU-APP-BUS\"],\"verifications\":[]},{\"code\":[\"capture.go:292\",\"capture.go:232\",\"capture.go:351\",\"capture.go:357\",\"capture.go:122\",\"capture.go:137\",\"capture.go:285\",\"capture.go:263\",\"capture.go:366\",\"capture.go:135\",\"capture.go:146\"],\"id\":\"REQ-SDS-082\",\"status\":\"implemented\",\"units\":[\"FU-APP-SRAMCAPTURE\"],\"verifications\":[\"VER-INF-TEST-CAPTURE_TEST-18B9D1\"]},{\"code\":[\"capture.go:154\",\"capture.go:156\"],\"id\":\"REQ-SDS-083\",\"status\":\"implemented\",\"units\":[\"FU-APP-SRAMCAPTURE\"],\"verifications\":[\"VER-INF-TEST-CAPTURE_TEST-18B9D1\"]},{\"code\":[\"capture.go:392\"],\"id\":\"REQ-SDS-084\",\"status\":\"implemented\",\"units\":[\"FU-APP-SRAMCAPTURE\"],\"verifications\":[]},{\"code\":[\"fdinherit.go:167\",\"fdinherit.go:120\",\"fdinherit.go:80\",\"fdinherit.go:138\",\"fdinherit.go:90\",\"fdinherit.go:50\",\"fdinherit.go:100\"],\"id\":\"REQ-SDS-085\",\"status\":\"implemented\",\"units\":[\"FU-OTA-FDINHERIT\"],\"verifications\":[\"VER-INF-TEST-FDINHERIT_TEST-D53A34\"]},{\"code\":[\"watchdog.go:43\",\"watchdog.go:112\",\"watchdog.go:73\",\"watchdog.go:35\",\"watchdog.go:92\",\"watchdog.go:131\"],\"id\":\"REQ-SDS-086\",\"status\":\"implemented\",\"units\":[\"FU-OTA-WATCHDOG\"],\"verifications\":[\"VER-INF-TEST-WATCHDOG_TEST-362F01\"]},{\"code\":[\"slots.go:81\",\"slots.go:54\",\"slots.go:83\",\"slots.go:165\",\"slots.go:114\",\"slots.go:42\",\"slots.go:122\",\"slots.go:36\",\"slots.go:105\",\"slots.go:59\",\"slots.go:39\",\"slots.go:88\",\"slots.go:96\",\"slots.go:52\",\"slots.go:56\",\"slots.go:187\",\"slots.go:72\"],\"id\":\"REQ-SDS-087\",\"status\":\"implemented\",\"units\":[\"FU-OTA-SLOTS\"],\"verifications\":[\"VER-INF-TEST-SLOTS_TEST-DD141C\"]},{\"code\":[\"config.go:107\",\"config.go:58\",\"config.go:87\",\"config.go:66\",\"config.go:79\",\"config.go:98\",\"config.go:172\",\"config.go:125\",\"config.go:184\",\"config.go:178\"],\"id\":\"REQ-SDS-088\",\"status\":\"implemented\",\"units\":[\"FU-OTA-CONFIG\"],\"verifications\":[\"VER-INF-TEST-CONFIG_TEST-4D8A08\"]},{\"code\":[\"wire.go:62\",\"settings.go:98\",\"settings.go:139\",\"settings.go:120\",\"settings.go:163\"],\"id\":\"REQ-SDS-089\",\"status\":\"implemented\",\"units\":[\"FU-APP-SETTINGS\"],\"verifications\":[\"VER-INF-TEST-SETTINGS_TEST-9C57EB\"]},{\"code\":[\"saver.go:97\",\"saver.go:42\",\"saver.go:112\",\"saver.go:55\",\"saver.go:71\"],\"id\":\"REQ-SDS-090\",\"status\":\"implemented\",\"units\":[\"FU-APP-SETTINGS\"],\"verifications\":[\"VER-INF-TEST-SETTINGS_TEST-9C57EB\"]},{\"code\":[\"cal.go:184\",\"frontend.go:357\"],\"id\":\"REQ-SDS-091\",\"status\":\"implemented\",\"units\":[\"FU-APP-ANALOG\",\"FU-APP-CAL\"],\"verifications\":[\"VER-INF-TEST-CAL_TEST-4C71A9\"]},{\"code\":[\"fpgaload.go:123\",\"container.go:84\",\"container.go:129\",\"container.go:106\",\"fpgaload.go:134\",\"container.go:143\",\"container.go:47\",\"container.go:35\",\"container.go:59\"],\"id\":\"REQ-SDS-092\",\"status\":\"implemented\",\"units\":[\"FU-APP-FPGALOAD\"],\"verifications\":[\"VER-INF-TEST-FPGALOAD_TEST-33DCD0\"]},{\"code\":[\"word_bridge.v:8\"],\"id\":\"REQ-SDS-093\",\"status\":\"implemented\",\"units\":[\"FU-RTL-ACQ-SRAM-WORD-BRIDGE\"],\"verifications\":[\"VER-INF-TEST-TB_WORD_BRIDGE-A2ADC2\"]},{\"code\":[\"host_path.v:8\",\"host_sink.v:9\"],\"id\":\"REQ-SDS-094\",\"status\":\"implemented\",\"units\":[\"FU-RTL-ACQ-SRAM-HOST-PATH\",\"FU-RTL-ACQ-SRAM-HOST-SINK\"],\"verifications\":[\"VER-INF-TEST-TB_HOST_FAULTS-148902\",\"VER-INF-TEST-TB_HOST_PATH-762BDA\",\"VER-INF-TEST-TB_HOST_SINK-765560\"]},{\"code\":[\"frontend.go:248\",\"frontend.go:334\",\"frontend.go:468\",\"frontend.go:494\",\"frontend.go:351\",\"frontend.go:296\",\"frontend.go:457\",\"frontend.go:342\",\"frontend.go:500\",\"frontend.go:321\",\"frontend.go:230\",\"frontend.go:236\",\"frontend.go:279\",\"frontend.go:393\"],\"id\":\"REQ-SDS-095\",\"status\":\"implemented\",\"units\":[\"FU-APP-ANALOG\"],\"verifications\":[\"VER-INF-TEST-FRONTEND_TEST-6B53AF\"]},{\"code\":[\"frontend.go:186\",\"frontend.go:173\",\"frontend.go:205\",\"frontend.go:161\"],\"id\":\"REQ-SDS-096\",\"status\":\"implemented\",\"units\":[\"FU-APP-ANALOG\"],\"verifications\":[\"VER-INF-TEST-FRONTEND_TEST-6B53AF\"]},{\"code\":[\"frontend.go:147\",\"frontend.go:136\"],\"id\":\"REQ-SDS-097\",\"status\":\"implemented\",\"units\":[\"FU-APP-ANALOG\"],\"verifications\":[]},{\"code\":[\"trigcal.go:54\",\"trigcal.go:67\",\"frontend.go:262\",\"trigcal.go:110\",\"trigcal.go:100\",\"trigcal.go:122\",\"trigcal.go:88\",\"trigcal.go:78\"],\"id\":\"REQ-SDS-098\",\"status\":\"implemented\",\"units\":[\"FU-APP-ANALOG\"],\"verifications\":[]},{\"code\":[\"precision_limits.go:10\"],\"id\":\"REQ-SDS-099\",\"status\":\"implemented\",\"units\":[\"FU-APP-DSP\"],\"verifications\":[\"VER-INF-TEST-PRECISION_LIMITS_TEST-6E4869\"]},{\"code\":[\"vxi11.go:248\",\"vxi11.go:128\",\"vxi11.go:136\",\"vxi11.go:142\",\"vxi11.go:50\",\"vxi11.go:213\",\"vxi11.go:62\",\"vxi11.go:192\",\"vxi11.go:42\"],\"id\":\"REQ-SDS-100\",\"status\":\"implemented\",\"units\":[\"FU-OTA-VXI11\"],\"verifications\":[\"VER-INF-TEST-VXI11_TEST-7689EC\"]},{\"code\":[\"rpcproto.go:10\",\"rpcproto.go:16\"],\"id\":\"REQ-SDS-101\",\"status\":\"implemented\",\"units\":[\"FU-OTA-RPCPROTO\"],\"verifications\":[\"VER-INF-TEST-RPCPROTO_TEST-425F65\"]},{\"code\":[\"sysinfo.go:110\",\"sysinfo.go:25\",\"sysinfo.go:70\",\"sysinfo.go:101\",\"sysinfo.go:15\",\"sysinfo.go:46\",\"sysinfo.go:83\",\"sysinfo.go:33\"],\"id\":\"REQ-SDS-102\",\"status\":\"implemented\",\"units\":[\"FU-OTA-SYSINFO\"],\"verifications\":[]},{\"code\":[\"gpmc.go:59\",\"gpmc.go:53\",\"gpmc.go:91\",\"gpmc.go:43\",\"gpmc.go:46\",\"gpmc.go:65\",\"gpmc.go:36\",\"gpmc.go:82\"],\"id\":\"REQ-SDS-103\",\"status\":\"implemented\",\"units\":[\"FU-OTA-GPMC\"],\"verifications\":[\"VER-INF-TEST-GPMC_TEST-5C566C\"]},{\"code\":[\"state.go:38\",\"state.go:29\",\"state.go:16\",\"state.go:22\",\"state.go:45\"],\"id\":\"REQ-SDS-104\",\"status\":\"implemented\",\"units\":[\"FU-OTA-AGENT\"],\"verifications\":[\"VER-INF-TEST-TAKEOVER_TEST-6A3079\"]},{\"code\":[\"health.go:61\",\"health.go:20\",\"health.go:109\",\"health.go:32\",\"health.go:41\",\"health.go:97\",\"health.go:68\",\"health.go:81\"],\"id\":\"REQ-SDS-105\",\"status\":\"implemented\",\"units\":[\"FU-OTA-AGENT\"],\"verifications\":[\"VER-INF-TEST-HEALTH_TEST-275F9D\"]},{\"code\":[\"upload.go:162\",\"upload.go:111\",\"upload.go:171\",\"upload.go:76\",\"upload.go:35\",\"upload.go:21\",\"upload.go:87\"],\"id\":\"REQ-SDS-106\",\"status\":\"implemented\",\"units\":[\"FU-OTA-AGENT\"],\"verifications\":[\"VER-INF-TEST-UPLOAD_TEST-853DDA\"]},{\"code\":[\"tcp.go:58\",\"tcp.go:16\",\"tcp.go:51\"],\"id\":\"REQ-SDS-107\",\"status\":\"implemented\",\"units\":[\"FU-OTA-AGENT\"],\"verifications\":[\"VER-INF-TEST-TCP_SERVE_TEST-8FD983\",\"VER-INF-TEST-TCP_TEST-668D62\"]}],\"schemaVersion\":\"mcp.tool-response.v1\",\"summary\":{\"dangling\":0,\"delegated\":0,\"implemented\":55,\"orphan\":52,\"requirements\":107,\"verified\":50},\"tool\":\"trace.matrix\"}",
+          "type": "text"
+        }
+      ],
+      "isError": false
+    }
+  },
+  {
+    "id": 6,
+    "jsonrpc": "2.0",
+    "result": {
+      "content": [
+        {
+          "text": "{\"exists\":true,\"generatedAt\":\"2026-09-23T00:23:46Z\",\"ok\":true,\"requirement\":{\"ID\":\"REQ-SDS-044\",\"Title\":\"SRAM address accounting\",\"Text\":\"The instrument shall count every transport clock advance including pipeline flush pulses.\",\"Notes\":\"Fresh reads add one flush clock; continued reads consume the prefetched word and add no flush. Discard reads advance the counter without payload publication. Position is modulo 2^AW and resets to zero with reset or lost lock; this does not physically reset the external SRAM address counter. The behavioral DDR model does not establish board timing.\",\"Category\":\"functional\",\"Rationale\":\"\",\"SourceRefs\":[\"REF-SOURCE-FPGA-ACQ-SRAM-TRANSPORT-V\"],\"VerificationMethods\":[\"inspection\",\"test\"],\"VerificationCriteria\":\"Compare the tracked position against an independent SRAM model after full-capacity writes, stalled writes, repeated reads, a discard seek and continued reads. Check exact payload and enabled-clock counts across wrapping addresses.\",\"Priority\":\"\",\"Criticality\":\"\",\"Status\":\"draft\",\"Derived\":false,\"DerivedRationale\":\"\",\"Tags\":null,\"AppliesTo\":[\"FU-RTL-ACQ-SRAM-TRANSPORT\"]},\"schemaVersion\":\"mcp.tool-response.v1\",\"tool\":\"requirements.get\"}",
+          "type": "text"
+        }
+      ],
+      "isError": false
+    }
+  },
+  {
+    "id": 7,
+    "jsonrpc": "2.0",
+    "result": {
+      "content": [
+        {
+          "text": "{\"exists\":true,\"generatedAt\":\"2026-09-23T00:23:46Z\",\"ok\":true,\"requirement\":{\"ID\":\"REQ-SDS-048\",\"Title\":\"Capture and read scheduling\",\"Text\":\"The instrument shall schedule bounded SRAM writer and reader service using occupancy and progress.\",\"Notes\":\"The scheduler starts only when transport is ready and both host banks are free. It seeks and samples available banks before reservation, retries busy banks by returning to writing, and drains final buffered ingress only after source_finished. Bank_done marks emission completion; RAM publication belongs to the host path. A full unread ring faults before overwrite. Host writes cannot be backpressured during a read burst. Trigger-driven record geometry is outside this scheduler.\",\"Category\":\"functional\",\"Rationale\":\"\",\"SourceRefs\":[\"REF-SOURCE-FPGA-ACQ-SRAM-TIMESLICE-CONTROLLER-V\"],\"VerificationMethods\":[\"inspection\",\"test\"],\"VerificationCriteria\":\"Check ordinal and physical-write ordering, unread bounds, bank ownership, stop and final drain, odd tails, repeated captures, active reset, stalled host service, and a no-release unread-overflow case. Exercise default SRAM address geometry and the production host RAM/descriptor/release path with separately recorded simulation configurations. Physical timing and sustainable device throughput remain separate qualifications.\",\"Priority\":\"\",\"Criticality\":\"\",\"Status\":\"draft\",\"Derived\":false,\"DerivedRationale\":\"\",\"Tags\":null,\"AppliesTo\":[\"FU-RTL-ACQ-SRAM-TIMESLICE-CONTROLLER\"]},\"schemaVersion\":\"mcp.tool-response.v1\",\"tool\":\"requirements.get\"}",
+          "type": "text"
+        }
+      ],
+      "isError": false
+    }
+  },
+  {
+    "id": 8,
+    "jsonrpc": "2.0",
+    "result": {
+      "content": [
+        {
+          "text": "{\"exists\":true,\"generatedAt\":\"2026-09-23T00:23:46Z\",\"ok\":true,\"requirement\":{\"ID\":\"REQ-SDS-046\",\"Title\":\"Ingress loss detection\",\"Text\":\"The instrument shall flag ingress loss instead of silently dropping committed stream words.\",\"Notes\":\"The FIFO rejects a full push even with a simultaneous pop, and rejects an empty pop even with a simultaneous push. Overflow and underflow persist until reset. The stream adapter reserves eight response slots across the synchronous read pipeline; its count includes reserved words. The path also reports source_valid without source_ready and synchronizes queue faults into the core domain. Intended reduced-rate ingress is not a claim of raw ADC throughput, metastability safety or fitted RAM timing.\",\"Category\":\"functional\",\"Rationale\":\"\",\"SourceRefs\":[\"REF-SOURCE-FPGA-ACQ-SRAM-INGRESS-FIFO-V\",\"REF-SOURCE-FPGA-ACQ-SRAM-INGRESS-PATH-V\",\"REF-SOURCE-FPGA-ACQ-SRAM-INGRESS-STREAM-V\"],\"VerificationMethods\":[\"inspection\",\"test\"],\"VerificationCriteria\":\"Check ordered payloads, occupancy, sticky overflow/underflow, full and empty collisions, bank wrapping, response latency, stable stalled output, and reset during buffered reads. Exercise path overload and RAM overflow across clock phases with pending-count checks. Physical CDC and timing qualification require independently identified board evidence.\",\"Priority\":\"\",\"Criticality\":\"\",\"Status\":\"draft\",\"Derived\":false,\"DerivedRationale\":\"\",\"Tags\":null,\"AppliesTo\":[\"FU-RTL-ACQ-SRAM-INGRESS-FIFO\",\"FU-RTL-ACQ-SRAM-INGRESS-PATH\",\"FU-RTL-ACQ-SRAM-INGRESS-STREAM\"]},\"schemaVersion\":\"mcp.tool-response.v1\",\"tool\":\"requirements.get\"}",
+          "type": "text"
+        }
+      ],
+      "isError": false
+    }
+  },
+  {
+    "id": 9,
+    "jsonrpc": "2.0",
+    "result": {
+      "content": [
+        {
+          "text": "{\"exists\":true,\"generatedAt\":\"2026-09-23T00:23:46Z\",\"ok\":true,\"requirement\":{\"ID\":\"REQ-SDS-085\",\"Title\":\"Process descriptor inspection\",\"Text\":\"The instrument shall expose device-holder identities, process ancestry and process liveness through read-only process inspection.\",\"Notes\":\"Source-derived contract; source presence is not evidence of a passing hardware qualification.\",\"Category\":\"functional\",\"Rationale\":\"\",\"SourceRefs\":[\"REF-SOURCE-OTA-INTERNAL-FDINHERIT-FDINHERIT-GO\"],\"VerificationMethods\":[\"inspection\",\"test\"],\"VerificationCriteria\":\"Inspect the linked implementation and run the corresponding offline tests; hardware claims require independently identified device evidence.\",\"Priority\":\"\",\"Criticality\":\"\",\"Status\":\"draft\",\"Derived\":false,\"DerivedRationale\":\"\",\"Tags\":null,\"AppliesTo\":[\"FU-OTA-FDINHERIT\"]},\"schemaVersion\":\"mcp.tool-response.v1\",\"tool\":\"requirements.get\"}",
+          "type": "text"
+        }
+      ],
+      "isError": false
+    }
+  },
+  {
+    "id": 10,
+    "jsonrpc": "2.0",
+    "result": {
+      "content": [
+        {
+          "text": "{\"exists\":true,\"generatedAt\":\"2026-09-23T00:23:46Z\",\"ok\":true,\"requirement\":{\"ID\":\"REQ-SDS-086\",\"Title\":\"Watchdog lifecycle\",\"Text\":\"The instrument shall support retrying watchdog acquisition, reporting keepalive status and disarming the watchdog on a clean agent stop.\",\"Notes\":\"Source-derived contract; source presence is not evidence of a passing hardware qualification.\",\"Category\":\"functional\",\"Rationale\":\"\",\"SourceRefs\":[\"REF-SOURCE-OTA-INTERNAL-WATCHDOG-WATCHDOG-GO\"],\"VerificationMethods\":[\"inspection\",\"test\"],\"VerificationCriteria\":\"Inspect the linked implementation and run the corresponding offline tests; hardware claims require independently identified device evidence.\",\"Priority\":\"\",\"Criticality\":\"\",\"Status\":\"draft\",\"Derived\":false,\"DerivedRationale\":\"\",\"Tags\":null,\"AppliesTo\":[\"FU-OTA-WATCHDOG\"]},\"schemaVersion\":\"mcp.tool-response.v1\",\"tool\":\"requirements.get\"}",
+          "type": "text"
+        }
+      ],
+      "isError": false
+    }
+  },
+  {
+    "id": 11,
+    "jsonrpc": "2.0",
+    "result": {
+      "content": [
+        {
+          "text": "{\"exists\":true,\"generatedAt\":\"2026-09-23T00:23:46Z\",\"ok\":true,\"requirement\":{\"ID\":\"REQ-SDS-087\",\"Title\":\"Application slot store\",\"Text\":\"The instrument shall maintain A/B application binaries, an optional emergency binary, and active and confirmed slot pointers.\",\"Notes\":\"Source-derived contract; source presence is not evidence of a passing hardware qualification.\",\"Category\":\"functional\",\"Rationale\":\"\",\"SourceRefs\":[\"REF-SOURCE-OTA-INTERNAL-SLOTS-SLOTS-GO\"],\"VerificationMethods\":[\"inspection\",\"test\"],\"VerificationCriteria\":\"Inspect the linked implementation and run the corresponding offline tests; hardware claims require independently identified device evidence.\",\"Priority\":\"\",\"Criticality\":\"\",\"Status\":\"draft\",\"Derived\":false,\"DerivedRationale\":\"\",\"Tags\":null,\"AppliesTo\":[\"FU-OTA-SLOTS\"]},\"schemaVersion\":\"mcp.tool-response.v1\",\"tool\":\"requirements.get\"}",
+          "type": "text"
+        }
+      ],
+      "isError": false
+    }
+  },
+  {
+    "id": 12,
+    "jsonrpc": "2.0",
+    "result": {
+      "content": [
+        {
+          "text": "{\"exists\":true,\"generatedAt\":\"2026-09-23T00:23:46Z\",\"ok\":true,\"requirement\":{\"ID\":\"REQ-SDS-088\",\"Title\":\"Agent runtime configuration\",\"Text\":\"The instrument shall resolve agent identity, transport, storage paths and supervision settings using device defaults and environment overrides.\",\"Notes\":\"Source-derived contract; source presence is not evidence of a passing hardware qualification.\",\"Category\":\"functional\",\"Rationale\":\"\",\"SourceRefs\":[\"REF-SOURCE-OTA-INTERNAL-CONFIG-CONFIG-GO\"],\"VerificationMethods\":[\"inspection\",\"test\"],\"VerificationCriteria\":\"Inspect the linked implementation and run the corresponding offline tests; hardware claims require independently identified device evidence.\",\"Priority\":\"\",\"Criticality\":\"\",\"Status\":\"draft\",\"Derived\":false,\"DerivedRationale\":\"\",\"Tags\":null,\"AppliesTo\":[\"FU-OTA-CONFIG\"]},\"schemaVersion\":\"mcp.tool-response.v1\",\"tool\":\"requirements.get\"}",
+          "type": "text"
+        }
+      ],
+      "isError": false
+    }
+  },
+  {
+    "id": 13,
+    "jsonrpc": "2.0",
+    "result": {
+      "content": [
+        {
+          "text": "{\"exists\":true,\"generatedAt\":\"2026-09-23T00:23:46Z\",\"ok\":true,\"requirement\":{\"ID\":\"REQ-SDS-089\",\"Title\":\"Settings snapshot persistence\",\"Text\":\"The instrument shall persist versioned setup snapshots and fall back to defaults when a snapshot cannot be loaded.\",\"Notes\":\"Source-derived contract. Behavior depends on the selected acquisition mode; not a claim of complete device qualification.\",\"Category\":\"functional\",\"Rationale\":\"\",\"SourceRefs\":[\"REF-SOURCE-APP-INTERNAL-SETTINGS-SETTINGS-GO\",\"REF-SOURCE-APP-INTERNAL-SETTINGS-WIRE-GO\"],\"VerificationMethods\":[\"inspection\",\"test\"],\"VerificationCriteria\":\"Run the linked settings tests with a temporary file or simulated clock; this does not qualify power-loss behavior on FAT storage.\",\"Priority\":\"\",\"Criticality\":\"\",\"Status\":\"draft\",\"Derived\":false,\"DerivedRationale\":\"\",\"Tags\":null,\"AppliesTo\":[\"FU-APP-SETTINGS\"]},\"schemaVersion\":\"mcp.tool-response.v1\",\"tool\":\"requirements.get\"}",
+          "type": "text"
+        }
+      ],
+      "isError": false
+    }
+  },
+  {
+    "id": 14,
+    "jsonrpc": "2.0",
+    "result": {
+      "content": [
+        {
+          "text": "{\"exists\":true,\"generatedAt\":\"2026-09-23T00:23:46Z\",\"ok\":true,\"requirement\":{\"ID\":\"REQ-SDS-090\",\"Title\":\"Debounced settings saving\",\"Text\":\"The instrument shall save changed settings after the settling interval and flush pending changes when the saver stops.\",\"Notes\":\"Source-derived contract. Behavior depends on the selected acquisition mode; not a claim of complete device qualification.\",\"Category\":\"functional\",\"Rationale\":\"\",\"SourceRefs\":[\"REF-SOURCE-APP-INTERNAL-SETTINGS-SAVER-GO\"],\"VerificationMethods\":[\"inspection\",\"test\"],\"VerificationCriteria\":\"Run the linked settings tests with a temporary file or simulated clock; this does not qualify power-loss behavior on FAT storage.\",\"Priority\":\"\",\"Criticality\":\"\",\"Status\":\"draft\",\"Derived\":false,\"DerivedRationale\":\"\",\"Tags\":null,\"AppliesTo\":[\"FU-APP-SETTINGS\"]},\"schemaVersion\":\"mcp.tool-response.v1\",\"tool\":\"requirements.get\"}",
+          "type": "text"
+        }
+      ],
+      "isError": false
+    }
+  },
+  {
+    "id": 15,
+    "jsonrpc": "2.0",
+    "result": {
+      "content": [
+        {
+          "text": "{\"exists\":true,\"generatedAt\":\"2026-09-23T00:23:46Z\",\"ok\":true,\"requirement\":{\"ID\":\"REQ-SDS-091\",\"Title\":\"Calibration DC diagnostic\",\"Text\":\"The instrument shall compute DC diagnostic volts using (mean ADC code - 128) * calibration gain / 110 for the selected channel and range.\",\"Notes\":\"Source-derived contract; source presence is not evidence of a passing hardware qualification.\",\"Category\":\"functional\",\"Rationale\":\"\",\"SourceRefs\":[\"REF-SOURCE-APP-INTERNAL-CAL-CAL-GO\"],\"VerificationMethods\":[\"inspection\",\"test\"],\"VerificationCriteria\":\"Run TestDCVolts for the known diagnostic conversion; inspect the channel/range guards. This is not an analog calibration qualification.\",\"Priority\":\"\",\"Criticality\":\"\",\"Status\":\"draft\",\"Derived\":false,\"DerivedRationale\":\"\",\"Tags\":null,\"AppliesTo\":[\"FU-APP-CAL\",\"FU-APP-ANALOG\"]},\"schemaVersion\":\"mcp.tool-response.v1\",\"tool\":\"requirements.get\"}",
+          "type": "text"
+        }
+      ],
+      "isError": false
+    }
+  },
+  {
+    "id": 16,
+    "jsonrpc": "2.0",
+    "result": {
+      "content": [
+        {
+          "text": "{\"exists\":true,\"generatedAt\":\"2026-09-23T00:23:46Z\",\"ok\":true,\"requirement\":{\"ID\":\"REQ-SDS-092\",\"Title\":\"Configuration container validation\",\"Text\":\"The instrument shall validate passive-serial container length and bit order before configuration writes unless the corresponding explicit override is selected.\",\"Notes\":\"Source-derived contract; source presence is not evidence of a passing hardware qualification.\",\"Category\":\"functional\",\"Rationale\":\"\",\"SourceRefs\":[\"REF-SOURCE-APP-INTERNAL-FPGALOAD-FPGALOAD-GO\",\"REF-SOURCE-APP-INTERNAL-FPGALOAD-CONTAINER-GO\"],\"VerificationMethods\":[\"inspection\",\"test\"],\"VerificationCriteria\":\"Run container and reload tests for length, preamble, recognized headers and explicit-order refusal or override. Force controls bit-order override; AllowAnyLen separately controls size. Fake-port tests do not qualify electrical behavior.\",\"Priority\":\"\",\"Criticality\":\"\",\"Status\":\"draft\",\"Derived\":false,\"DerivedRationale\":\"\",\"Tags\":null,\"AppliesTo\":[\"FU-APP-FPGALOAD\"]},\"schemaVersion\":\"mcp.tool-response.v1\",\"tool\":\"requirements.get\"}",
+          "type": "text"
+        }
+      ],
+      "isError": false
+    }
+  },
+  {
+    "id": 17,
+    "jsonrpc": "2.0",
+    "result": {
+      "content": [
+        {
+          "text": "{\"exists\":true,\"generatedAt\":\"2026-09-23T00:23:46Z\",\"ok\":true,\"requirement\":{\"ID\":\"REQ-SDS-020\",\"Title\":\"Frame consumers\",\"Text\":\"The instrument shall share one engine frame stream with display and remote consumers.\",\"Notes\":\"Source-derived contract; source presence is not evidence of a passing hardware qualification.\",\"Category\":\"functional\",\"Rationale\":\"\",\"SourceRefs\":[\"REF-SOURCE-APP-INTERNAL-FRAMES-FANOUT-GO\"],\"VerificationMethods\":[\"inspection\",\"test\"],\"VerificationCriteria\":\"Inspect the linked implementation and run the corresponding offline tests; hardware claims require independently identified device evidence.\",\"Priority\":\"\",\"Criticality\":\"\",\"Status\":\"draft\",\"Derived\":false,\"DerivedRationale\":\"\",\"Tags\":null,\"AppliesTo\":[\"FU-APP-FRAMES\"]},\"schemaVersion\":\"mcp.tool-response.v1\",\"tool\":\"requirements.get\"}",
+          "type": "text"
+        }
+      ],
+      "isError": false
+    }
+  },
+  {
+    "id": 18,
+    "jsonrpc": "2.0",
+    "result": {
+      "content": [
+        {
+          "text": "{\"exists\":true,\"generatedAt\":\"2026-09-23T00:23:46Z\",\"ok\":true,\"requirement\":{\"ID\":\"REQ-SDS-093\",\"Title\":\"Clock-domain word mailbox\",\"Text\":\"The instrument shall retain each clock-domain mailbox word until its destination consumes it and discard pending transfers on a common reset.\",\"Notes\":\"Source-derived mailbox contract. Independent reset of one clock domain is unsupported; simulation is not metastability or physical timing qualification.\",\"Category\":\"functional\",\"Rationale\":\"\",\"SourceRefs\":[\"REF-SOURCE-FPGA-ACQ-SRAM-WORD-BRIDGE-V\"],\"VerificationMethods\":[\"inspection\",\"test\"],\"VerificationCriteria\":\"Simulate ordered delivery, destination stalls and common-reset epochs at multiple source/destination clock ratios. Physical CDC timing requires separate constraints and implementation evidence.\",\"Priority\":\"\",\"Criticality\":\"\",\"Status\":\"draft\",\"Derived\":false,\"DerivedRationale\":\"\",\"Tags\":null,\"AppliesTo\":[\"FU-RTL-ACQ-SRAM-WORD-BRIDGE\"]},\"schemaVersion\":\"mcp.tool-response.v1\",\"tool\":\"requirements.get\"}",
+          "type": "text"
+        }
+      ],
+      "isError": false
+    }
+  },
+  {
+    "id": 19,
+    "jsonrpc": "2.0",
+    "result": {
+      "content": [
+        {
+          "text": "{\"exists\":true,\"generatedAt\":\"2026-09-23T00:23:46Z\",\"ok\":true,\"requirement\":{\"ID\":\"REQ-SDS-094\",\"Title\":\"Host publication validation\",\"Text\":\"The instrument shall publish a host bank only after its ordered data pairs are written and its nonzero descriptor count matches the accepted pairs.\",\"Notes\":\"Source-derived digital contract. The caller reserves banks; the host-path ownership guard rejects subsequent packets while publication or producer ownership is active. Physical timing is not qualified by simulation.\",\"Category\":\"functional\",\"Rationale\":\"\",\"SourceRefs\":[\"REF-SOURCE-FPGA-ACQ-SRAM-HOST-SINK-V\",\"REF-SOURCE-FPGA-ACQ-SRAM-HOST-PATH-V\"],\"VerificationMethods\":[\"inspection\",\"test\"],\"VerificationCriteria\":\"Simulate full and odd-length banks, invalid descriptor counts, duplicate or cross-bank pairs, writes to owned banks and fault recovery. Inspect publication timing relative to the final RAM write.\",\"Priority\":\"\",\"Criticality\":\"\",\"Status\":\"draft\",\"Derived\":false,\"DerivedRationale\":\"\",\"Tags\":null,\"AppliesTo\":[\"FU-RTL-ACQ-SRAM-HOST-SINK\",\"FU-RTL-ACQ-SRAM-HOST-PATH\"]},\"schemaVersion\":\"mcp.tool-response.v1\",\"tool\":\"requirements.get\"}",
+          "type": "text"
+        }
+      ],
+      "isError": false
+    }
+  },
+  {
+    "id": 20,
+    "jsonrpc": "2.0",
+    "result": {
+      "content": [
+        {
+          "text": "{\"exists\":true,\"generatedAt\":\"2026-09-23T00:23:46Z\",\"ok\":true,\"requirement\":{\"ID\":\"REQ-SDS-015\",\"Title\":\"Absolute analog state\",\"Text\":\"The instrument shall emit seeded absolute analog range and gain settings through SPI.\",\"Notes\":\"Source-derived contract; source presence is not evidence of a passing hardware qualification.\",\"Category\":\"functional\",\"Rationale\":\"\",\"SourceRefs\":[\"REF-SOURCE-APP-INTERNAL-ANALOG-FRONTEND-GO\",\"REF-SOURCE-APP-INTERNAL-ANALOG-SPI-GO\"],\"VerificationMethods\":[\"inspection\",\"test\"],\"VerificationCriteria\":\"Inspect the linked implementation and run the corresponding offline tests; hardware claims require independently identified device evidence.\",\"Priority\":\"\",\"Criticality\":\"\",\"Status\":\"draft\",\"Derived\":false,\"DerivedRationale\":\"\",\"Tags\":null,\"AppliesTo\":[\"FU-APP-ANALOG\"]},\"schemaVersion\":\"mcp.tool-response.v1\",\"tool\":\"requirements.get\"}",
+          "type": "text"
+        }
+      ],
+      "isError": false
+    }
+  },
+  {
+    "id": 21,
+    "jsonrpc": "2.0",
+    "result": {
+      "content": [
+        {
+          "text": "{\"exists\":true,\"generatedAt\":\"2026-09-23T00:23:46Z\",\"ok\":true,\"requirement\":{\"ID\":\"REQ-SDS-095\",\"Title\":\"Calibrated offset conversion\",\"Text\":\"The instrument shall convert requested offset volts to a calibrated DAC code with the implemented fixed slope and range clamps.\",\"Notes\":\"The implemented slope is 100 codes per input volt, independent of detent; nominal clamps are +/-1.6 V on the sensitive tier and +/-40 V on the attenuated tier, then 16-bit rails. User offsets are restaged after a successful detent change when a stager is installed. Older per-division comments disagree. This arithmetic does not establish physical offset authority.\",\"Category\":\"functional\",\"Rationale\":\"\",\"SourceRefs\":[\"REF-SOURCE-APP-INTERNAL-ANALOG-FRONTEND-GO\"],\"VerificationMethods\":[\"inspection\",\"test\"],\"VerificationCriteria\":\"Run the offset mapping, calibrated zero, fixed-slope and tier-clamp tests. Inspect staging hooks, fallback zero 10223, rounding and final rails separately; existing tests do not cover every hook/error path.\",\"Priority\":\"\",\"Criticality\":\"\",\"Status\":\"draft\",\"Derived\":false,\"DerivedRationale\":\"\",\"Tags\":null,\"AppliesTo\":[\"FU-APP-ANALOG\"]},\"schemaVersion\":\"mcp.tool-response.v1\",\"tool\":\"requirements.get\"}",
+          "type": "text"
+        }
+      ],
+      "isError": false
+    }
+  },
+  {
+    "id": 22,
+    "jsonrpc": "2.0",
+    "result": {
+      "content": [
+        {
+          "text": "{\"exists\":true,\"generatedAt\":\"2026-09-23T00:23:46Z\",\"ok\":true,\"requirement\":{\"ID\":\"REQ-SDS-096\",\"Title\":\"Software display coupling\",\"Text\":\"The instrument shall apply the selected DC, AC or ground display transform without issuing a coupling relay write.\",\"Notes\":\"DC returns the original slice; AC allocates a mean-shifted, clipped copy; ground allocates midscale samples. Mode setters reject values outside 0 through 2. This is a software transform, not an analog high-pass.\",\"Category\":\"functional\",\"Rationale\":\"\",\"SourceRefs\":[\"REF-SOURCE-APP-INTERNAL-ANALOG-FRONTEND-GO\"],\"VerificationMethods\":[\"inspection\",\"test\"],\"VerificationCriteria\":\"Run coupling state, no-relay-write, display-transform and input-preservation tests. TestRemoveDC has a vacuous uint8 greater-than-255 assertion; it does not establish clipping boundary behavior.\",\"Priority\":\"\",\"Criticality\":\"\",\"Status\":\"draft\",\"Derived\":false,\"DerivedRationale\":\"\",\"Tags\":null,\"AppliesTo\":[\"FU-APP-ANALOG\"]},\"schemaVersion\":\"mcp.tool-response.v1\",\"tool\":\"requirements.get\"}",
+          "type": "text"
+        }
+      ],
+      "isError": false
+    }
+  },
+  {
+    "id": 23,
+    "jsonrpc": "2.0",
+    "result": {
+      "content": [
+        {
+          "text": "{\"exists\":true,\"generatedAt\":\"2026-09-23T00:23:46Z\",\"ok\":true,\"requirement\":{\"ID\":\"REQ-SDS-097\",\"Title\":\"Probe display multiplier\",\"Text\":\"The instrument shall retain each channel probe multiplier independently of analog gain programming.\",\"Notes\":\"SetProbe clamps finite values below one to one but accepts arbitrary larger values, despite the 1/10/100 comment. NaN and infinity are not rejected. ProbeFactor falls back to one unless the stored value is at least one. Trigger conversion uses the stored multiplier directly.\",\"Category\":\"functional\",\"Rationale\":\"\",\"SourceRefs\":[\"REF-SOURCE-APP-INTERNAL-ANALOG-FRONTEND-GO\"],\"VerificationMethods\":[\"inspection\",\"test\"],\"VerificationCriteria\":\"Inspect per-channel storage and callers. No dedicated probe multiplier test is present in the reviewed analog package; readout integration and nonfinite input behavior remain unverified.\",\"Priority\":\"\",\"Criticality\":\"\",\"Status\":\"draft\",\"Derived\":false,\"DerivedRationale\":\"\",\"Tags\":null,\"AppliesTo\":[\"FU-APP-ANALOG\"]},\"schemaVersion\":\"mcp.tool-response.v1\",\"tool\":\"requirements.get\"}",
+          "type": "text"
+        }
+      ],
+      "isError": false
+    }
+  },
+  {
+    "id": 24,
+    "jsonrpc": "2.0",
+    "result": {
+      "content": [
+        {
+          "text": "{\"exists\":true,\"generatedAt\":\"2026-09-23T00:23:46Z\",\"ok\":true,\"requirement\":{\"ID\":\"REQ-SDS-098\",\"Title\":\"Trigger calibration selection\",\"Text\":\"The instrument shall select the channel and detent trigger calibration for probe-referred trigger voltage conversion.\",\"Notes\":\"Nonzero-CPV overrides precede per-detent defaults and global Zero=31437, CPV=911. Zero CPV clears an override; invalid detents are ignored. TrigCode is unclamped and relies on its caller. Coefficient finiteness is not validated. Source comments about bench accuracy are not fresh qualification evidence.\",\"Category\":\"functional\",\"Rationale\":\"\",\"SourceRefs\":[\"REF-SOURCE-APP-INTERNAL-ANALOG-TRIGCAL-GO\",\"REF-SOURCE-APP-INTERNAL-ANALOG-FRONTEND-GO\"],\"VerificationMethods\":[\"inspection\",\"test\"],\"VerificationCriteria\":\"Inspect override precedence, conversion inverses, channel/probe handling, table snapshots and hook propagation. No dedicated trigger-calibration tests are present in the reviewed analog package; physical accuracy remains unqualified.\",\"Priority\":\"\",\"Criticality\":\"\",\"Status\":\"draft\",\"Derived\":false,\"DerivedRationale\":\"\",\"Tags\":null,\"AppliesTo\":[\"FU-APP-ANALOG\"]},\"schemaVersion\":\"mcp.tool-response.v1\",\"tool\":\"requirements.get\"}",
+          "type": "text"
+        }
+      ],
+      "isError": false
+    }
+  },
+  {
+    "id": 25,
+    "jsonrpc": "2.0",
+    "result": {
+      "content": [
+        {
+          "text": "{\"exists\":true,\"generatedAt\":\"2026-09-23T00:23:46Z\",\"ok\":true,\"requirement\":{\"ID\":\"REQ-SDS-017\",\"Title\":\"Measurements\",\"Text\":\"The instrument shall compute voltage and timing measurements from the shared measurement core.\",\"Notes\":\"Source-derived contract. Vrms is the AC standard deviation, not total RMS including DC. Timing requires at least eight ADC codes of settled amplitude and positive sample period; HasTiming needs two rising crossings, while isolated edge widths may still be nonzero. Q8 histogram mode lookup currently caps its upper index at 255, causing typical Q8 settled levels to fall back to extrema and suppressing overshoot; see evidence/measurement-histogram-characterization.json. No instrument behavior is repaired by this model.\",\"Category\":\"functional\",\"Rationale\":\"\",\"SourceRefs\":[\"REF-SOURCE-APP-INTERNAL-MEASURE-MEASURE-GO\"],\"VerificationMethods\":[\"inspection\",\"test\"],\"VerificationCriteria\":\"Run the existing waveform, clipping, width-merge parity, finite-result, fractional precision, small-ripple and stored-triangle tests. The recorded triangle is fixture replay, not a new hardware run. Preserve the separate raw/Q8 overshoot characterization as a known discrepancy; existing test success does not establish Q8 settled-level equivalence or arbitrary nonfinite input handling.\",\"Priority\":\"\",\"Criticality\":\"\",\"Status\":\"draft\",\"Derived\":false,\"DerivedRationale\":\"\",\"Tags\":null,\"AppliesTo\":[\"FU-APP-MEASURE\"]},\"schemaVersion\":\"mcp.tool-response.v1\",\"tool\":\"requirements.get\"}",
+          "type": "text"
+        }
+      ],
+      "isError": false
+    }
+  },
+  {
+    "id": 26,
+    "jsonrpc": "2.0",
+    "result": {
+      "content": [
+        {
+          "text": "{\"exists\":true,\"generatedAt\":\"2026-09-23T00:23:46Z\",\"ok\":true,\"requirement\":{\"ID\":\"REQ-SDS-037\",\"Title\":\"Precision compensation\",\"Text\":\"The instrument shall preserve Q8.8 fractions and record boundaries during FIR conditioning.\",\"Notes\":\"The 63-tap symmetric Q22 FIR retains the first and last 31 samples unchanged, rounds and saturates the interior to uint16, and leaves short records unchanged. Scratch must have sufficient length and must not alias input; these are caller preconditions, not validated guards. The generic Go and ARM assembly paths are distinct execution targets. Generated coefficients remain unmodified.\",\"Category\":\"functional\",\"Rationale\":\"\",\"SourceRefs\":[\"REF-SOURCE-APP-INTERNAL-DSP-PRECISION-GO\",\"REF-SOURCE-APP-INTERNAL-DSP-PRECISION-GENERIC-GO\",\"REF-SOURCE-APP-INTERNAL-DSP-PRECISION-ARM-GO\",\"REF-SOURCE-APP-INTERNAL-DSP-PRECISION-ARM-S\",\"REF-SOURCE-APP-INTERNAL-DSP-PRECISION-TAPS-GO\",\"REF-SOURCE-SPECS-PRECISION-FILTER-RESPONSE-JSON\",\"REF-SOURCE-TOOLS-DSP-PRECISION-FILTER-PY\"],\"VerificationMethods\":[\"inspection\",\"test\"],\"VerificationCriteria\":\"Run direct-convolution, exact fractional DC, alternating-sample rejection and centered passband tests on the host. Check the committed quantized coefficients and sampled frequency response separately. Cross-compile the ARM test binary, but do not infer ARM execution, target throughput or physical ADC performance from compilation or host tests.\",\"Priority\":\"\",\"Criticality\":\"\",\"Status\":\"draft\",\"Derived\":false,\"DerivedRationale\":\"\",\"Tags\":null,\"AppliesTo\":[\"FU-APP-DSP\"]},\"schemaVersion\":\"mcp.tool-response.v1\",\"tool\":\"requirements.get\"}",
+          "type": "text"
+        }
+      ],
+      "isError": false
+    }
+  },
+  {
+    "id": 27,
+    "jsonrpc": "2.0",
+    "result": {
+      "content": [
+        {
+          "text": "{\"exists\":true,\"generatedAt\":\"2026-09-23T00:23:46Z\",\"ok\":true,\"requirement\":{\"ID\":\"REQ-SDS-099\",\"Title\":\"Ideal precision response limits\",\"Text\":\"The instrument shall report ideal white-noise gain and normalized bandwidth for supported positive precision reductions.\",\"Notes\":\"PrecisionLimits models CIC3 followed by the committed FIR. It excludes ADC nonlinearity, correlated noise, clock error and Q8 rounding. Reduction is not input-validated. The bandwidth search uses 45 bisection steps between 0.075 and 0.5 output sample rate.\",\"Category\":\"functional\",\"Rationale\":\"\",\"SourceRefs\":[\"REF-SOURCE-APP-INTERNAL-DSP-PRECISION-LIMITS-GO\"],\"VerificationMethods\":[\"inspection\",\"test\"],\"VerificationCriteria\":\"Compare ideal gain to explicit CIC/FIR impulse-response power at reductions 16, 32, 64 and 256; check the reported bandwidth lies within the search bracket. This does not establish analog bandwidth or noise performance.\",\"Priority\":\"\",\"Criticality\":\"\",\"Status\":\"draft\",\"Derived\":false,\"DerivedRationale\":\"\",\"Tags\":null,\"AppliesTo\":[\"FU-APP-DSP\"]},\"schemaVersion\":\"mcp.tool-response.v1\",\"tool\":\"requirements.get\"}",
+          "type": "text"
+        }
+      ],
+      "isError": false
+    }
+  },
+  {
+    "id": 28,
+    "jsonrpc": "2.0",
+    "result": {
+      "content": [
+        {
+          "text": "{\"exists\":true,\"generatedAt\":\"2026-09-23T00:23:46Z\",\"ok\":true,\"requirement\":{\"ID\":\"REQ-SDS-024\",\"Title\":\"Remote instrument commands\",\"Text\":\"The instrument shall serve implemented SCPI commands and waveform transfers through VXI-11.\",\"Notes\":\"The handler serializes command lines, dispatches a supported short-form subset, stages setters and formats snapshot queries. Status/setup-memory and selected measure/cursor commands are accepted stubs; constant self-test/calibration replies are not executed checks. Waveform ALL aliases DAT2; exports use 8-bit frame channels, not Q8 fractions. WFSU pairs apply incrementally before later errors. Attenuation and trigger-delay inputs lack nonfinite rejection, and reset leaves trigger-level/delay shadows unchanged. Handler tests with fake scope/front-end/panel do not establish live VXI-11 or physical behavior. The VXI-11 transport admits one link owner, assembles newline-terminated commands and chunks pending replies. Disconnect releases the link. Empty reads return timeout after at most the clamped 10-second request interval. Trigger, remote/local, lock/unlock and SRQ procedures are success stubs; asynchronous device support is absent. RPC versions and authorization are not validated. Portmapper reply acceptance is not checked. Record bounds do not bound cumulative command/reply queues. A direct 386 probe reproduces a slice panic for read size 0xffffffff; amd64 does not panic. This is 32-bit Go evidence, not executed ARM or device qualification.\",\"Category\":\"functional\",\"Rationale\":\"\",\"SourceRefs\":[\"REF-SOURCE-APP-INTERNAL-SCPI-SCPI-GO\",\"REF-SOURCE-APP-INTERNAL-VXI11SRV-SERVER-GO\",\"REF-SOURCE-APP-INTERNAL-SCPI-SCPI-EXEC-GO\",\"REF-SOURCE-APP-INTERNAL-SCPI-WAVEFORM-GO\"],\"VerificationMethods\":[\"inspection\",\"test\"],\"VerificationCriteria\":\"Run the exact command/reply, error, set/query, reset, per-channel, waveform block/descriptor and roll-rescale tests. Retain deterministic mutation workloads as bounded tests rather than an unbounded fuzz claim. Characterize partial WFSU updates, attenuation/front-end divergence and retained reset shadows separately. Run transport link/write/read, chunking, disconnect release, timeout and bounded XDR mutation tests with registration disabled. Retain the 32-bit read-size characterization as a known limitation, not a passing safety requirement. Portmapper registration, real SCPI integration and device interoperability remain unverified.\",\"Priority\":\"\",\"Criticality\":\"\",\"Status\":\"draft\",\"Derived\":false,\"DerivedRationale\":\"\",\"Tags\":null,\"AppliesTo\":[\"FU-APP-SCPI\",\"FU-APP-VXI11SRV\"]},\"schemaVersion\":\"mcp.tool-response.v1\",\"tool\":\"requirements.get\"}",
+          "type": "text"
+        }
+      ],
+      "isError": false
+    }
+  },
+  {
+    "id": 29,
+    "jsonrpc": "2.0",
+    "result": {
+      "content": [
+        {
+          "text": "{\"exists\":true,\"generatedAt\":\"2026-09-23T00:23:46Z\",\"ok\":true,\"requirement\":{\"ID\":\"REQ-SDS-100\",\"Title\":\"Factory instrument command transport\",\"Text\":\"The instrument shall provide a VXI-11 client for factory command writes and query replies used during takeover.\",\"Notes\":\"The client resolves DEVICE_CORE through portmapper GETPORT, retries create_link three times and appends a newline to writes. RPC calls use AUTH_NULL and per-call deadlines. Query reassembles up to 64 read replies; any nonzero low-three-bit reason ends reassembly. Exhausting all 64 reads returns accumulated data without an explicit incomplete-response error. Send accepts a result shorter than four bytes and does not validate the reported write count. RPC fragments have no cumulative size bound. Verifier-length and read-payload arithmetic lack the server parser's overflow-safe checks. Close ignores destroy-link errors. The implementation has no concurrency lock; callers must serialize a client. Existing tests use a loopback fake, not factory firmware.\",\"Category\":\"functional\",\"Rationale\":\"\",\"SourceRefs\":[\"REF-SOURCE-OTA-INTERNAL-VXI11-VXI11-GO\"],\"VerificationMethods\":[\"inspection\",\"test\"],\"VerificationCriteria\":\"Exercise fake portmapper/core discovery, newline-terminated STOP writes and SAST query replies. Inspect retries, deadlines, framing and close behavior. The existing happy-path test does not qualify malformed replies, retry exhaustion, 64-read truncation, factory compatibility or physical idle takeover.\",\"Priority\":\"\",\"Criticality\":\"\",\"Status\":\"draft\",\"Derived\":false,\"DerivedRationale\":\"\",\"Tags\":null,\"AppliesTo\":[\"FU-OTA-VXI11\"]},\"schemaVersion\":\"mcp.tool-response.v1\",\"tool\":\"requirements.get\"}",
+          "type": "text"
+        }
+      ],
+      "isError": false
+    }
+  },
+  {
+    "id": 30,
+    "jsonrpc": "2.0",
+    "result": {
+      "content": [
+        {
+          "text": "{\"exists\":true,\"generatedAt\":\"2026-09-23T00:23:46Z\",\"ok\":true,\"requirement\":{\"ID\":\"REQ-SDS-101\",\"Title\":\"OTA JSON command envelope\",\"Text\":\"The instrument shall define JSON request and response envelopes for OTA command transport.\",\"Notes\":\"Requests encode cmd and optional args; responses encode ok and optional err/data. The canonical client request stores args as any, so default JSON decoding converts numbers to float64. Response data is RawMessage. Contrary to the package comment, the agent declares separate types with RawMessage args and any response data. Golden and fixed-point tests exercise the canonical package and literal examples, not actual agent dispatch or exhaustive command registration. These envelopes provide no authentication or transport framing.\",\"Category\":\"functional\",\"Rationale\":\"\",\"SourceRefs\":[\"REF-SOURCE-OTA-INTERNAL-RPCPROTO-RPCPROTO-GO\"],\"VerificationMethods\":[\"inspection\",\"test\"],\"VerificationCriteria\":\"Check exact golden request/response encodings, error responses retaining data, 23 sample command round trips and literal agent response shapes. Run the 15 request and 11 response fuzz seeds as bounded corpus checks. Stable re-encoding does not prove preservation of arbitrary numeric precision or handler behavior.\",\"Priority\":\"\",\"Criticality\":\"\",\"Status\":\"draft\",\"Derived\":false,\"DerivedRationale\":\"\",\"Tags\":null,\"AppliesTo\":[\"FU-OTA-RPCPROTO\"]},\"schemaVersion\":\"mcp.tool-response.v1\",\"tool\":\"requirements.get\"}",
+          "type": "text"
+        }
+      ],
+      "isError": false
+    }
+  },
+  {
+    "id": 31,
+    "jsonrpc": "2.0",
+    "result": {
+      "content": [
+        {
+          "text": "{\"exists\":true,\"generatedAt\":\"2026-09-23T00:23:46Z\",\"ok\":true,\"requirement\":{\"ID\":\"REQ-SDS-102\",\"Title\":\"Platform status collection\",\"Text\":\"The instrument shall collect kernel, IPv4, memory, uptime, load and OTA-filesystem space facts for status reporting.\",\"Notes\":\"Uname joins the five kernel identity strings. IPv4s excludes loopback interfaces but does not require an interface to be up. Memory reports MemFree and MemTotal, not MemAvailable. Uptime and load are trimmed first lines from procfs. Filesystem space uses available blocks times block size. Proc read failures yield empty strings; Statfs failure yields -1; Uname embeds its error in a string. Collection is not an atomic snapshot.\",\"Category\":\"functional\",\"Rationale\":\"\",\"SourceRefs\":[\"REF-SOURCE-OTA-INTERNAL-SYSINFO-SYSINFO-GO\"],\"VerificationMethods\":[\"inspection\"],\"VerificationCriteria\":\"Inspect all seven functions, JSON field tags and error defaults against pinned source. No dedicated sysinfo tests exist; source inspection does not establish device values, refresh timing or accuracy.\",\"Priority\":\"\",\"Criticality\":\"\",\"Status\":\"draft\",\"Derived\":false,\"DerivedRationale\":\"\",\"Tags\":null,\"AppliesTo\":[\"FU-OTA-SYSINFO\"]},\"schemaVersion\":\"mcp.tool-response.v1\",\"tool\":\"requirements.get\"}",
+          "type": "text"
+        }
+      ],
+      "isError": false
+    }
+  },
+  {
+    "id": 32,
+    "jsonrpc": "2.0",
+    "result": {
+      "content": [
+        {
+          "text": "{\"exists\":true,\"generatedAt\":\"2026-09-23T00:23:46Z\",\"ok\":true,\"requirement\":{\"ID\":\"REQ-SDS-027\",\"Title\":\"Factory takeover policy\",\"Text\":\"The instrument shall gate ordinary factory takeover on an inherited GPMC descriptor and idle confirmation, with explicit forced-takeover and already-taken-over reclamation exceptions.\",\"Notes\":\"Takeover serializes through tkMu. Dry-run stops after candidate discovery. With candidates present, the ordinary path sends STOP, attempts TRMD STOP and queries SAST diagnostically before checking factory version 0x0052 and three equal masked fill-counter pairs 50 ms apart. With no candidates, STOP is omitted but idle is still checked. Force attempts the same gates and ignores their errors. State is persisted before any kill; four kill/rescan rounds are followed by watchdog acquisition or background retry and asynchronous network reassertion. Success does not require that all holders are gone, watchdog acquisition has succeeded or network restoration has completed. An already-taken-over call returns success and rearms watchdog acquisition. reclaimBus serializes with takeover but kills despite missing descriptor, STOP failure or idle-check failure. The idle deadline does not interrupt a blocking ioctl. A nonpositive timeout enters no polling iteration and returns nil; normal callers use positive timeouts. A failed persistence attempt can leave the live TakenOver flag true, causing a later call to take the idempotent branch. Network restoration waits 2, then 10, then 30 seconds.\",\"Category\":\"functional\",\"Rationale\":\"\",\"SourceRefs\":[\"REF-SOURCE-OTA-INTERNAL-AGENT-TAKEOVER-GO\",\"REF-SOURCE-OTA-INTERNAL-GPMC-GPMC-GO\"],\"VerificationMethods\":[\"inspection\",\"test\"],\"VerificationCriteria\":\"Run the reviewed candidate, result-summary, CIDR, idempotency, ordered happy-path, STOP refusal, busy-engine refusal and forced-failure tests. These use temporary files, test-created processes, fake register readings and a loopback VXI-11 stub. They do not qualify real GPMC timing, counter aliasing, physical watchdog operation, actual network restoration or factory firmware. Preserve the force/reclaim exceptions and successful-return limitations rather than reporting unconditional idle-before-kill safety.\",\"Priority\":\"\",\"Criticality\":\"\",\"Status\":\"draft\",\"Derived\":false,\"DerivedRationale\":\"\",\"Tags\":null,\"AppliesTo\":[\"FU-OTA-AGENT\",\"FU-OTA-GPMC\"]},\"schemaVersion\":\"mcp.tool-response.v1\",\"tool\":\"requirements.get\"}",
+          "type": "text"
+        }
+      ],
+      "isError": false
+    }
+  },
+  {
+    "id": 33,
+    "jsonrpc": "2.0",
+    "result": {
+      "content": [
+        {
+          "text": "{\"exists\":true,\"generatedAt\":\"2026-09-23T00:23:46Z\",\"ok\":true,\"requirement\":{\"ID\":\"REQ-SDS-103\",\"Title\":\"Read-only inherited GPMC access\",\"Text\":\"The instrument shall expose read-only factory-register access through the inherited GPMC descriptor.\",\"Notes\":\"Reader neither opens nor closes the descriptor. Read rejects negative descriptors and planes other than 1 or 3, then issues read ioctl 0x80026700 with a six-byte little-endian access record. OK only checks fd \\u003e= 0; EncodeAccess itself does not validate the plane, and Read accepts any selector. Factory version selector 0x12 expects 0x0052. FillFrozen masks selector 0x46 to 11 bits and compares consecutive samples. Nonpositive pair counts accept one successful sample, and the gap is not validated. Equal masked samples can alias counter wraparound; they do not independently prove stopped acquisition. These constants describe the factory ABI, not 0xacd2.\",\"Category\":\"functional\",\"Rationale\":\"\",\"SourceRefs\":[\"REF-SOURCE-OTA-INTERNAL-GPMC-GPMC-GO\"],\"VerificationMethods\":[\"inspection\",\"test\"],\"VerificationCriteria\":\"Run packing, unpacking, missing-descriptor and invalid-plane tests. These reject invalid requests before syscalls and do not execute successful device reads. Version and frozen-counter behavior remain source-inspected; physical idle evidence and successful ioctl behavior require separate evidence.\",\"Priority\":\"\",\"Criticality\":\"\",\"Status\":\"draft\",\"Derived\":false,\"DerivedRationale\":\"\",\"Tags\":null,\"AppliesTo\":[\"FU-OTA-GPMC\"]},\"schemaVersion\":\"mcp.tool-response.v1\",\"tool\":\"requirements.get\"}",
+          "type": "text"
+        }
+      ],
+      "isError": false
+    }
+  },
+  {
+    "id": 34,
+    "jsonrpc": "2.0",
+    "result": {
+      "content": [
+        {
+          "text": "{\"exists\":true,\"generatedAt\":\"2026-09-23T00:23:46Z\",\"ok\":true,\"requirement\":{\"ID\":\"REQ-SDS-104\",\"Title\":\"Persisted agent control flags\",\"Text\":\"The instrument shall serialize agent control flags to a JSON state file and report persistence failures.\",\"Notes\":\"A mutex serializes each stateFile instance. Update mutates the live state first, writes a fixed .tmp path, syncs and closes the file, then renames it. Directory sync is best effort. Failures do not roll back the live state and may leave a temporary file. Load ignores file-read and JSON decode errors; a type error can leave successfully decoded fields applied. The mutex does not coordinate independent stateFile instances. This behavior does not establish power-loss durability on a particular filesystem or device.\",\"Category\":\"functional\",\"Rationale\":\"\",\"SourceRefs\":[\"REF-SOURCE-OTA-INTERNAL-AGENT-STATE-GO\"],\"VerificationMethods\":[\"inspection\",\"test\"],\"VerificationCriteria\":\"The untakeover fixture checks clearing both flags and reloading them in a new agent. A test-only state probe characterizes memory/disk divergence after a failed write and partial application of malformed JSON. Those boundary observations document limitations, not passing durability requirements.\",\"Priority\":\"\",\"Criticality\":\"\",\"Status\":\"draft\",\"Derived\":false,\"DerivedRationale\":\"\",\"Tags\":null,\"AppliesTo\":[\"FU-OTA-AGENT\"]},\"schemaVersion\":\"mcp.tool-response.v1\",\"tool\":\"requirements.get\"}",
+          "type": "text"
+        }
+      ],
+      "isError": false
+    }
+  },
+  {
+    "id": 35,
+    "jsonrpc": "2.0",
+    "result": {
+      "content": [
+        {
+          "text": "{\"exists\":true,\"generatedAt\":\"2026-09-23T00:23:46Z\",\"ok\":true,\"requirement\":{\"ID\":\"REQ-SDS-105\",\"Title\":\"Agent health-file liveness\",\"Text\":\"The instrument shall observe health-file changes and apply first-report grace and subsequent staleness deadlines.\",\"Notes\":\"The watcher attempts to remove the old token at construction, ignoring removal errors. Poll compares mtime, size and up to 256 content bytes; stat errors return without updating, and read errors are ignored. An observed change sets HealthyOnce and a local monotonic observation time. This does not validate coherent frames or token semantics. Changes outside the prefix can be missed if size and mtime are unchanged. Verdict treats waiting within grace as healthy and uses strict greater-than comparisons for expiry. Status rounds elapsed duration to millisecond precision, but since_change_ms serializes the duration as nanoseconds.\",\"Category\":\"functional\",\"Rationale\":\"\",\"SourceRefs\":[\"REF-SOURCE-OTA-INTERNAL-AGENT-HEALTH-GO\"],\"VerificationMethods\":[\"inspection\",\"test\"],\"VerificationCriteria\":\"Temporary-file tests cover first-report grace, refreshed versus stale tokens and removal of a preexisting token. A serialization overlay reproduces the mislabeled timing unit as a limitation, not requirement satisfaction. Device acquisition health, removal/read failures and unsampled content changes remain unqualified.\",\"Priority\":\"\",\"Criticality\":\"\",\"Status\":\"draft\",\"Derived\":false,\"DerivedRationale\":\"\",\"Tags\":null,\"AppliesTo\":[\"FU-OTA-AGENT\"]},\"schemaVersion\":\"mcp.tool-response.v1\",\"tool\":\"requirements.get\"}",
+          "type": "text"
+        }
+      ],
+      "isError": false
+    }
+  },
+  {
+    "id": 36,
+    "jsonrpc": "2.0",
+    "result": {
+      "content": [
+        {
+          "text": "{\"exists\":true,\"generatedAt\":\"2026-09-23T00:23:46Z\",\"ok\":true,\"requirement\":{\"ID\":\"REQ-SDS-106\",\"Title\":\"Chunked file upload sessions\",\"Text\":\"The instrument shall receive file chunks into upload sessions and validate declared size and digest before destination replacement.\",\"Notes\":\"Cleaned destinations must be absolute. Temporary files reside in the destination directory. The eight-session limit is checked after directory creation. Sessions older than ten minutes are evicted only when another upload starts. Writes track a high-water offset, not byte coverage; positive sizes bound writes and require a SHA-256 digest at commit. Nonpositive sizes do neither. Commit syncs and closes before validation, then hashes, chmods and renames. Failed commits can retain closed sessions and exhaust capacity until later eviction. fileSHA treats all read errors as EOF and can return a partial digest without an error. Directory sync is absent. Eviction does not acquire the session mutex, so the sequential tests do not establish concurrent eviction safety or durability.\",\"Category\":\"functional\",\"Rationale\":\"\",\"SourceRefs\":[\"REF-SOURCE-OTA-INTERNAL-AGENT-UPLOAD-GO\"],\"VerificationMethods\":[\"inspection\",\"test\"],\"VerificationCriteria\":\"Test complete out-of-order transfer with a declared digest and rejection of a missing-hash sparse upload. Temporary-file probes characterize failed-commit capacity exhaustion, pre-rejection directory creation, lazy eviction and ignored hash read failures. These observations document limitations; they do not qualify concurrent sessions, transport framing, arbitrary failure recovery or device filesystem durability.\",\"Priority\":\"\",\"Criticality\":\"\",\"Status\":\"draft\",\"Derived\":false,\"DerivedRationale\":\"\",\"Tags\":null,\"AppliesTo\":[\"FU-OTA-AGENT\"]},\"schemaVersion\":\"mcp.tool-response.v1\",\"tool\":\"requirements.get\"}",
+          "type": "text"
+        }
+      ],
+      "isError": false
+    }
+  },
+  {
+    "id": 37,
+    "jsonrpc": "2.0",
+    "result": {
+      "content": [
+        {
+          "text": "{\"exists\":true,\"generatedAt\":\"2026-09-23T00:23:46Z\",\"ok\":true,\"requirement\":{\"ID\":\"REQ-SDS-107\",\"Title\":\"TCP agent command transport\",\"Text\":\"The instrument shall dispatch JSON command requests received over TCP and return JSON response lines.\",\"Notes\":\"The configured plain TCP listener has no authentication or TLS in this implementation. Each accepted connection receives a goroutine; no connection-count limit is enforced here. ReadBytes uses newline framing and a one-MiB buffer, which does not limit request size. A nonempty final fragment is dispatched even when the read also reports an error. Read and write deadlines are 120 and 30 seconds; they do not bound handler execution. Stop is checked between accepts and does not directly unblock an idle listener. Existing connection handlers do not check the stopped channel. TCPAddr exposes the recorded bound address, not ongoing readiness.\",\"Category\":\"functional\",\"Rationale\":\"\",\"SourceRefs\":[\"REF-SOURCE-OTA-INTERNAL-AGENT-TCP-GO\"],\"VerificationMethods\":[\"inspection\",\"test\"],\"VerificationCriteria\":\"Run the in-memory client-envelope test and loopback socket tests for repeated requests, malformed-request recovery, interleaved connections and listener closure after Stop plus another accept. An in-memory overlay confirms acceptance beyond one MiB. These tests do not establish prompt idle shutdown, closure of existing connections, authentication, resource bounds or behavior on the device network.\",\"Priority\":\"\",\"Criticality\":\"\",\"Status\":\"draft\",\"Derived\":false,\"DerivedRationale\":\"\",\"Tags\":null,\"AppliesTo\":[\"FU-OTA-AGENT\"]},\"schemaVersion\":\"mcp.tool-response.v1\",\"tool\":\"requirements.get\"}",
+          "type": "text"
+        }
+      ],
+      "isError": false
+    }
+  }
+]

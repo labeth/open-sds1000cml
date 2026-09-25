@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-PANEL
 package panel
 
 import (
@@ -7,11 +8,13 @@ import (
 	"open-sds/app/internal/engine"
 )
 
+// TRLC-LINKS: REQ-SDS-135
 type call struct {
 	what string
 	a, b int
 }
 
+// TRLC-LINKS: REQ-SDS-135
 type fakeEng struct {
 	matrix [5]uint16
 	calls  []call
@@ -20,52 +23,79 @@ type fakeEng struct {
 	acqLog []engine.AcqSample
 }
 
+// TRLC-LINKS: REQ-SDS-135
 func (f *fakeEng) ReadMatrix() ([5]uint16, bool)              { return f.matrix, true }
+// TRLC-LINKS: REQ-SDS-135
 func (f *fakeEng) SetLEDs(w uint16)                           { f.leds = append(f.leds, w) }
+// TRLC-LINKS: REQ-SDS-135
 func (f *fakeEng) Snapshot() engine.Stats                     { return f.stats }
+// TRLC-LINKS: REQ-SDS-135
 func (f *fakeEng) AcqLog(n int) ([]engine.AcqSample, float64) { return f.acqLog, 0 }
+// TRLC-LINKS: REQ-SDS-135
 func (f *fakeEng) SetOffsetDAC(ch int, code uint16) {
 	f.calls = append(f.calls, call{"offset", ch, int(code)})
 }
+// TRLC-LINKS: REQ-SDS-135
 func (f *fakeEng) SetTrigLevelCode(code uint16) uint16 {
 	f.calls = append(f.calls, call{"triglevel", int(code), 0})
 	return code
 }
+// TRLC-LINKS: REQ-SDS-135
 func (f *fakeEng) SetTdiv(t float64) (engine.Band, bool) {
 	f.calls = append(f.calls, call{"tdiv", int(t * 1e9), 0})
 	return engine.Band{}, true
 }
+// TRLC-LINKS: REQ-SDS-135
 func (f *fakeEng) SetNorm(on bool)       { f.calls = append(f.calls, call{"norm", b2i(on), 0}) }
+// TRLC-LINKS: REQ-SDS-135
 func (f *fakeEng) SetRunning(on bool)    { f.calls = append(f.calls, call{"run", b2i(on), 0}) }
+// TRLC-LINKS: REQ-SDS-135
 func (f *fakeEng) SetSingle()            { f.calls = append(f.calls, call{"single", 0, 0}) }
+// TRLC-LINKS: REQ-SDS-135
 func (f *fakeEng) SetTrigSlope(r bool)   { f.calls = append(f.calls, call{"slope", b2i(r), 0}) }
+// TRLC-LINKS: REQ-SDS-135
 func (f *fakeEng) SetTrigSource(ch int)  { f.calls = append(f.calls, call{"src", ch, 0}) }
+// TRLC-LINKS: REQ-SDS-135
 func (f *fakeEng) SetTrigType(t int)     { f.calls = append(f.calls, call{"ttype", t, 0}) }
+// TRLC-LINKS: REQ-SDS-135
 func (f *fakeEng) SetAcqMode(m int)      { f.calls = append(f.calls, call{"acq", m, 0}) }
+// TRLC-LINKS: REQ-SDS-135
 func (f *fakeEng) SetAvgCount(n int)     { f.calls = append(f.calls, call{"avg", n, 0}) }
+// TRLC-LINKS: REQ-SDS-135
 func (f *fakeEng) SetEresLen(l int)      { f.calls = append(f.calls, call{"eres", l, 0}) }
+// TRLC-LINKS: REQ-SDS-135
 func (f *fakeEng) SetETS(on bool)        { f.calls = append(f.calls, call{"ets", b2i(on), 0}) }
+// TRLC-LINKS: REQ-SDS-135
 func (f *fakeEng) SetMemDepth(n int) int { f.calls = append(f.calls, call{"memdepth", n, 0}); return n }
+// TRLC-LINKS: REQ-SDS-135
 func (f *fakeEng) SetPulseParams(l, mn, mx float64, c int) {
 	f.calls = append(f.calls, call{"pulse", c, 0})
 }
+// TRLC-LINKS: REQ-SDS-135
 func (f *fakeEng) SetSlopeParams(lo, hi, mn, mx float64, c int) {
 	f.calls = append(f.calls, call{"slope", c, 0})
 }
+// TRLC-LINKS: REQ-SDS-135
 func (f *fakeEng) SetMask(m *engine.Mask) { f.calls = append(f.calls, call{"mask", m.WinCols, 0}) }
+// TRLC-LINKS: REQ-SDS-135
 func (f *fakeEng) SetMaskMode(m int)      { f.calls = append(f.calls, call{"maskmode", m, 0}) }
+// TRLC-LINKS: REQ-SDS-135
 func (f *fakeEng) ClearMaskFails()        { f.calls = append(f.calls, call{"maskclear", 0, 0}) }
+// TRLC-LINKS: REQ-SDS-135
 func (f *fakeEng) SetVideoParams(std, line int, neg bool) {
 	f.calls = append(f.calls, call{"video", std, line})
 }
+// TRLC-LINKS: REQ-SDS-135
 func (f *fakeEng) SetTrigPosFrac(fr float64) {
 	f.calls = append(f.calls, call{"trigpos", int(fr * 100), 0})
 }
+// TRLC-LINKS: REQ-SDS-135
 func (f *fakeEng) SetHoldoff(s float64) float64 {
 	f.calls = append(f.calls, call{"holdoff", int(s * 1e6), 0})
 	return s
 }
 
+// TRLC-LINKS: REQ-SDS-135
 func b2i(b bool) int {
 	if b {
 		return 1
@@ -73,6 +103,7 @@ func b2i(b bool) int {
 	return 0
 }
 
+// TRLC-LINKS: REQ-SDS-135
 type fakeFE struct {
 	calls   []call
 	idx     [2]int
@@ -81,30 +112,40 @@ type fakeFE struct {
 	probe   [2]float64
 }
 
+// TRLC-LINKS: REQ-SDS-135
 func (f *fakeFE) SetVdiv(ch, idx int) error {
 	f.calls = append(f.calls, call{"vdiv", ch, idx})
 	f.idx[ch] = idx
 	return nil
 }
+// TRLC-LINKS: REQ-SDS-135
 func (f *fakeFE) Snapshot() ([2]int, bool) { return f.idx, false }
+// TRLC-LINKS: REQ-SDS-135
 func (f *fakeFE) SetOffset(ch int, volts float64) uint16 {
 	f.calls = append(f.calls, call{"offset", ch, int(volts * 100)})
 	f.offReqV[ch] = volts
 	return uint16(10223 - int(volts*100))
 }
+// TRLC-LINKS: REQ-SDS-135
 func (f *fakeFE) OffsetReqV(ch int) float64               { return f.offReqV[ch] }
+// TRLC-LINKS: REQ-SDS-135
 func (f *fakeFE) OffsetVolts(ch int, code uint16) float64 { return (10223 - float64(code)) / 100 }
+// TRLC-LINKS: REQ-SDS-135
 func (f *fakeFE) OffsetK(ch int) float64                  { return 100 }
+// TRLC-LINKS: REQ-SDS-135
 func (f *fakeFE) SetCoupling(ch, mode int) error {
 	f.calls = append(f.calls, call{"coupling", ch, mode})
 	f.cpl[ch] = mode
 	return nil
 }
+// TRLC-LINKS: REQ-SDS-135
 func (f *fakeFE) Coupling(ch int) int { return f.cpl[ch] }
+// TRLC-LINKS: REQ-SDS-135
 func (f *fakeFE) SetProbe(ch int, x float64) {
 	f.calls = append(f.calls, call{"probe", ch, int(x)})
 	f.probe[ch] = x
 }
+// TRLC-LINKS: REQ-SDS-135
 func (f *fakeFE) ProbeFactor(ch int) float64 {
 	if f.probe[ch] >= 1 {
 		return f.probe[ch]
@@ -112,10 +153,12 @@ func (f *fakeFE) ProbeFactor(ch int) float64 {
 	return 1
 }
 
+// TRLC-LINKS: REQ-SDS-135
 func idle() [5]uint16 {
 	return [5]uint16{0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0}
 }
 
+// TRLC-LINKS: REQ-SDS-135
 func newC(t *testing.T) (*Controller, *fakeEng, *fakeFE) {
 	t.Helper()
 	fe := &fakeFE{idx: [2]int{8, 8}} // boot detent
@@ -128,6 +171,7 @@ func newC(t *testing.T) (*Controller, *fakeEng, *fakeFE) {
 	return c, eng, fe
 }
 
+// TRLC-LINKS: REQ-SDS-135
 func TestSingleThenRunLamp(t *testing.T) {
 	c, eng, _ := newC(t)
 	c.button(btnSingle)
@@ -140,6 +184,7 @@ func TestSingleThenRunLamp(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-135
 func TestLEDMap(t *testing.T) {
 	// Shadow-word bits must match spec 02 §7.5 (corroborated PCB wiring).
 	if ledCH1 != 0x0010 || ledMath != 0x0020 || ledCH2 != 0x0040 {
@@ -184,6 +229,9 @@ func TestLEDMap(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-135
 func (f *fakeFE) TrigCode(volts float64, srcCh int) float64         { return 31437 - 911*volts }
+// TRLC-LINKS: REQ-SDS-135
 func (f *fakeFE) TrigVolts(code uint16, srcCh int) float64          { return (31437 - float64(code)) / 911 }
+// TRLC-LINKS: REQ-SDS-135
 func (f *fakeFE) SetTrigCalDetent(ch, detent int, c analog.TrigCal) {}

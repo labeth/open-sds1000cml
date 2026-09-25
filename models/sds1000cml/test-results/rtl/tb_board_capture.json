@@ -1,0 +1,26 @@
+{
+  "source": "fpga/acq_sram/sim/tb_board_capture.v",
+  "scope": "Original unchanged self-checking benches with ideal clocks and behavioral memory; ADC/precision mocks remain explicit. -DSIM selects behavioral DDR wrappers. The original ADC interleave bench may fail compilation when its vendor dcfifo model is unavailable; compilation failures are retained, not counted as exercised assertions. No fitted timing or physical hardware qualification.",
+  "sourceSHA256": "47048f55ba822c235e98566389279a0315096e862083724440c117d54ffbb1d4",
+  "reportSHA256": "285ba7d1733fa06cb516eebcdd04b7f445fce14110e66110aa41b7af19bad395",
+  "runs": [
+    "board_capture"
+  ],
+  "results": [
+    {
+      "requirement": "REQ-SDS-043",
+      "status": "partial",
+      "notes": "1 original digital cases pass; 0 executed cases fail; 0 could not execute because compilation failed. Passing cases provide partial assertion evidence only. Frozen pre-annotation source inputs remain auditable through exact approved comment overlays; no physical qualification is established. See evidence/acquisition-rtl-review-test-run.json."
+    },
+    {
+      "requirement": "REQ-SDS-045",
+      "status": "partial",
+      "notes": "1 original digital cases pass; 0 executed cases fail; 0 could not execute because compilation failed. Passing cases provide partial assertion evidence only. Frozen pre-annotation source inputs remain auditable through exact approved comment overlays; no physical qualification is established. See evidence/acquisition-rtl-review-test-run.json."
+    },
+    {
+      "requirement": "REQ-SDS-052",
+      "status": "partial",
+      "notes": "1 original digital cases pass; 0 executed cases fail; 0 could not execute because compilation failed. Passing cases provide partial assertion evidence only. Frozen pre-annotation source inputs remain auditable through exact approved comment overlays; no physical qualification is established. See evidence/acquisition-rtl-review-test-run.json."
+    }
+  ]
+}

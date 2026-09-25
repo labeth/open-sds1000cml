@@ -1,9 +1,11 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-PANEL
 package panel
 
 import "fmt"
 
 // MenuView is the render snapshot of the on-screen menu (read by the LCD
 // renderer on a different goroutine; taken under the controller mutex).
+// TRLC-LINKS: REQ-SDS-136
 type MenuView struct {
 	Open           bool
 	Title          string
@@ -18,7 +20,12 @@ type MenuView struct {
 	Zoom           int        // horizontal magnification (1 = none)
 	ZoomOff        float64    // zoom-window pan offset (fraction of the record)
 	Persist        bool       // display persistence (afterglow)
-	DecProto       int        // 0=off,1=Auto,2=UART,3=I2C,4=SPI
+	SRActive       bool
+	SRFocus        int
+	SRGate         [2]int
+	SRStatus       string
+	MaskStatus     string
+	DecProto       int // 0=off,1=Auto,2=UART,3=I2C,4=SPI
 	DecBaud        int
 	DecChA, DecChB int // channel roles (0=C1,1=C2)
 	DecCPOL        bool
@@ -33,6 +40,7 @@ type MenuView struct {
 }
 
 // MenuView is the render snapshot; safe to call from the render goroutine.
+// TRLC-LINKS: REQ-SDS-136
 func (c *Controller) MenuView() MenuView {
 	c.mu.Lock()
 	pg, sel, c1, c2, meas := c.menuPage, c.menuSel, c.chDisp[0], c.chDisp[1], c.showMeas
@@ -47,10 +55,16 @@ func (c *Controller) MenuView() MenuView {
 	decCPOL, decCPHA, decFormat := c.decCPOL, c.decCPHA, c.decFormat
 	srMode, srVal, srCh, srK := c.srStopMode, c.srStopVal, c.srCh, c.srK
 	maskN, maskTol, maskBusy := c.maskN, c.maskTol, c.maskBuilding
+	srActive, srFocus, srStatus, maskStatus := c.srActive, c.srFocus, c.srStatus, c.maskMsg
+	var srGate [2]int
+	if c.srStack != nil {
+		srGate = [2]int{c.srStack.GateLo, c.srStack.GateHi}
+	}
 	c.mu.Unlock()
 	v := MenuView{Open: pg != pgNone, Sel: sel, ShowC1: c1, ShowC2: c2, ShowMeas: meas,
 		ViewMode: view, MathMode: mth, AutosetBusy: busy, AutosetMsg: amsg,
 		Zoom: zoom, ZoomOff: zoomOff, Persist: persist,
+		SRActive: srActive, SRFocus: srFocus, SRGate: srGate, SRStatus: srStatus, MaskStatus: maskStatus,
 		DecProto: decProto, DecBaud: decBaud, DecChA: decChA, DecChB: decChB, DecCPOL: decCPOL, DecCPHA: decCPHA, DecFormat: decFormat,
 		CurOn: curOn, CurType: curType, CurSel: curSel, CurX: curX, CurY: curY}
 	if pg == pgNone {
@@ -171,7 +185,7 @@ func (c *Controller) MenuView() MenuView {
 			{"Holdoff", ho},
 		}
 	case pgAcq:
-		modes := []string{"Normal", "Average", "ERes", "Peak"}
+		modes := []string{"Normal", "Average", "ERes", "Peak", "Precision"}
 		cnt := "-"
 		if st.AcqMode == 1 {
 			cnt = fmt.Sprint(st.AvgCount)
@@ -180,11 +194,15 @@ func (c *Controller) MenuView() MenuView {
 		}
 		v.Title = "ACQUIRE"
 		v.Items = []MenuItem{
-			{"Acquire", modes[st.AcqMode&3]},
+			{"Acquire", modes[st.AcqMode%len(modes)]},
 			{"Count", cnt},
 			{"ETS", onoff(st.ETS)},
 			{"Mem", depthLabel(st.MemDepth)},
 			{"", ""},
+		}
+		if st.BandKind == "sram" {
+			v.Items[2].Value = "N/A"
+			v.Items[3].Value += " fixed"
 		}
 	case pgDisp:
 		v.Title = "DISPLAY"

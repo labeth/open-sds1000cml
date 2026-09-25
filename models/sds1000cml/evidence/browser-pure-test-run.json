@@ -1,0 +1,61 @@
+{
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "result": "pass",
+  "sourceSHA256": {
+    "app/internal/web/binframe.js": "ee6b19ce469fee3a6c3c383eb050429ccc17189da560ee2851a27fbf4282ca04",
+    "app/internal/web/binframe.test.cjs": "ed9e6b3565545f904a4e76d0127cce545ce43459e88dcefd0d4573c15d31ced7",
+    "app/internal/web/binframe_node_test.go": "2ec79de60ffc5f4e613302472083ecaf1dd8ef97eef0e77a0d6a1edbf7c0fdd7",
+    "app/internal/web/peaks.js": "bcd3946ff1eac3a9ec7a993983c21a93947678a13e4f184bed09fc5cef645dcc",
+    "app/internal/web/peaks.test.cjs": "6da89d87e61a091fcb48813fecc6615732beb0cc00807903676f0b724c1dc3e9",
+    "app/internal/web/peaks_node_test.go": "3be3107f5102b264fe3c7bb6d9ed133c5a3a351729bd7e2285b4d4023c8afee9"
+  },
+  "helperSHA256": "e7905380a4f1a044548ddc01c798966cead6134d715ebf1294cd2246a10c251b",
+  "nodeVersion": "v22.20.0",
+  "originalTests": {
+    "TestBinframeJS": "pass",
+    "TestPeaksJS": "pass"
+  },
+  "boundaryCharacterization": {
+    "result": "pass",
+    "cases": [
+      {
+        "name": "fractional cols and head are coerced to signed integers",
+        "result": "pass"
+      },
+      {
+        "name": "unknown high flag bit is accepted",
+        "result": "pass"
+      },
+      {
+        "name": "envelope branch precedes Q8 flag validation",
+        "result": "pass"
+      },
+      {
+        "name": "raw Q8 envelope is rejected",
+        "result": "pass"
+      },
+      {
+        "name": "unchanged header bypasses cols validation with empty payload",
+        "result": "pass"
+      },
+      {
+        "name": "spectrum takes largest power-of-two prefix",
+        "result": "pass"
+      },
+      {
+        "name": "peak frequency is zero when Nyquist is omitted",
+        "result": "pass"
+      },
+      {
+        "name": "nearestPeak uses first entry on equal-distance tie",
+        "result": "pass"
+      },
+      {
+        "name": "component synthesizes gaps but returns null for all-gap input",
+        "result": "pass"
+      }
+    ],
+    "scope": "Nine deterministic source-boundary cases under Node. No browser rendering, HTTP server or physical measurement qualification."
+  },
+  "scope": "Original Node assertions via two Go runners and nine additional deterministic boundary cases. No skipped tests, browser, HTTP server, device access or physical qualification."
+}

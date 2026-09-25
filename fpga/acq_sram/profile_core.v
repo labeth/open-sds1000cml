@@ -1,6 +1,8 @@
+// ENGMODEL-OWNER-UNIT: FU-RTL-ACQ-SRAM-PROFILE-CORE
 // Shared profile composition with the actual GPMC slave and acquisition core.
 // Board wrapper supplies qualified PLL clocks, reset, lane/pin assignments.
 // This composition is experimental until real board fit/CDC/device checks pass.
+// TRLC-LINKS: REQ-SDS-053, REQ-SDS-054, REQ-SDS-055, REQ-SDS-056, REQ-SDS-058, REQ-SDS-075, REQ-SDS-076, REQ-SDS-185
 module acq_profile_core #(parameter ENABLE_STREAM=0,BUILD_ID=32'b0)(
  input wire reset,locked,core_clk,sample_clk,ram_clk,host_clk,clk100,
  input wire nCS1,nOE,nWE,input wire [6:0] sel,

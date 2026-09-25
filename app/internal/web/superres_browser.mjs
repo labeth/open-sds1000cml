@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-WEB
 // Real-browser e2e for the superres stacker (argv[2]=URL of a server whose
 // fakeScope generates a jittered noisy sine): arm → frames accumulate and
 // stats populate → view shows the stacked waveform as a frozen synthetic
@@ -19,6 +20,7 @@ try { browser = await chromium.launch({ headless: true, args: ["--no-sandbox"] }
 catch (e) { console.log("SKIP: cannot launch chromium:", e.message); process.exit(0); }
 
 let fails = 0;
+// TRLC-LINKS: REQ-SDS-180
 const ok = (c, m) => { console.log((c ? "ok  - " : "FAIL- ") + m); if (!c) fails++; };
 
 try {

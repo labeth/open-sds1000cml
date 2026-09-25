@@ -1,9 +1,11 @@
+// ENGMODEL-OWNER-UNIT: FU-RTL-ACQ-SRAM-INGRESS-PATH
 // Reduced-rate acquisition ingress: core -> RAM clock -> core SRAM writer.
 // Source samples cannot be retried: a word offered without source_ready latches
 // fault. Intended for /256 or slower, never the raw ADC word stream.
 // WIDTH=36 leaves four marker bits alongside the Q8.8 channel pair without
 // increasing the nine-bank M9K allocation. The SRAM payload itself stays 32 bits.
 // pending is in core's domain and includes both mailboxes and RAM prefetch slots.
+// TRLC-LINKS: REQ-SDS-046
 module sram_ingress_path #(parameter WIDTH=36,BANKS=9,ROWS=512)(
  input wire reset,core,ram_clk,
  input wire source_valid,input wire [WIDTH-1:0] source_data,

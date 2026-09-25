@@ -1,0 +1,6 @@
+ARGS ["put", "/home/labeth/ws/open-sds1000cml-acq2/fpga/acq_sram/out/250mhz-p1000-interleave/bench.rbf", "/dev/acq-capture.rbf"]
+
+upload: 35% (131072/368011)
+upload: 71% (262144/368011)
+upload: 100% (368011/368011)
+ok: /home/labeth/ws/open-sds1000cml-acq2/fpga/acq_sram/out/250mhz-p1000-interleave/bench.rbf -> /dev/acq-capture.rbf sha256=4a2ad2d2f96415e501246ff62be64981e709c933f56492a0186fca34cfe5ce3a

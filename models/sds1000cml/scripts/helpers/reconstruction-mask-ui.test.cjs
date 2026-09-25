@@ -1,0 +1,26 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-WEB
+// TRLC-LINKS: REQ-SDS-014, REQ-SDS-019
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict'),path=require('node:path');
+const cases=[],root=process.argv[2];
+async function check(name,f){await f();cases.push({name,result:'pass'});}
+function fixture(){
+ const els=new Map(),requests=[],commands=[],timers=[];
+ const $=id=>{if(!els.has(id)){const classes=new Set();els.set(id,{value:'',textContent:'',checked:false,classList:{contains:k=>classes.has(k),add:k=>classes.add(k),remove:k=>classes.delete(k),toggle:(k,b)=>{if(b===undefined)b=!classes.has(k);b?classes.add(k):classes.delete(k);}}});}return els.get(id);};
+ const c=vm.createContext({$,document:{querySelectorAll:()=>[]},performance:{now:()=>1000},setInterval:f=>timers.push(f),setTimeout:()=>{},fetch:async(...a)=>{requests.push(a);return {ok:true};},send:(...a)=>commands.push(a),redraw(){},eng:String,frame:{cols:100,col_span_s:1,edge_frac:.5,vpc1:1,vpc2:2,off1_v:0,off2_v:0},st:{cpl1:0,cpl2:0,win_cols:4,trig_pos_frac:.5},frozen:false,view:{mode:'YT',win:{a:0,b:1}},CW:100,CH:100,dpr:1,codeAtY:(y,ch)=>ch===1?100+20*y:200+20*y,yFor:(v,ch)=>v+1000*ch,sr:{armed:false,st:null,etsSt:null,lastUi:0,lastBits:0,dither:{on:false},gen:1,lastSeq:0},srGate:{on:false},srFails:0,probeOf:()=>1});
+ c.window=c;
+ for(const name of ['app_superres.js','app_zonemask.js'])vm.runInContext(fs.readFileSync(path.join(root,name),'utf8'),c);
+ return {c,$,requests,commands,timers};
+}
+(async()=>{
+await check('event byte parser falls back to first character on malformed input',()=>{const {c}=fixture();assert.equal(c.srEvtParseByte('GG'),71);assert.equal(c.srEvtParseByte("'A'"),10);assert(Number.isNaN(c.srEvtParseByte('')));});
+await check('manual zero UART threshold becomes null',()=>{const {c,$}=fixture();c.dcfg={proto:'uart',auto:false};$('decThr').value='0';let cfg;c.decodeUART=(s,dt,x)=>{cfg=x;return {ok:true,meta:{},spans:[]};};c.srEvtDecode([128],1,65);assert.equal(cfg.threshold,null);});
+await check('normal stack stops on changed volts per code before feed',()=>{const {c,$}=fixture();c.sr.st={};c.sr.ch=0;c.sr.alignCh=0;c.sr.meta={cols:4,sample_s:1,vpc1:1,vpc2:1};$('srCh').value='0';let reason;c.srStop=x=>reason=x;c.srFeed=()=>{throw Error('must not feed');};c.srIngest({c1:[1,2,3,4],cols:4,sample_s:1,vpc1:2,vpc2:1});assert.match(reason,/vertical scale changed/);});
+await check('ETS ignores changed record length and volts per code at same sample interval',()=>{const {c}=fixture();c.sr.alignCh=0;c.sr.etsSt={frames:1};c.sr.meta={sample_s:1,cols:4,vpc1:1};c.sr.stopMode='manual';let fed=false;c.srEtsFeed=()=>fed=true;c.srEtsUpdateStats=()=>{};c.srStop=()=>{throw Error('unexpected stop');};c.srEtsIngest({c1:[1,2],cols:2,sample_s:1,vpc1:99});assert(fed);});
+await check('late successful raw response cannot ingest after stop',async()=>{const {c}=fixture();c.sr.armed=true;let resolve;c.fetch=()=>new Promise(r=>resolve=r);c.decodeBinFrame=()=>({seq:2});c.srIngest=()=>{throw Error('late ingest');};const work=c.srLoop(1);c.sr.armed=false;resolve({ok:true,arrayBuffer:async()=>new ArrayBuffer(0)});await work;assert.equal(c.sr.lastSeq,0);});
+await check('C2 zone uses C1 drawing codes with C2 voltage metadata',()=>{const {c,$}=fixture();$('zmCh').value='1';c.zm.drawArmed=true;c.zm.drawA={x:.2,y:.1};c.zm.drawB={x:.4,y:.8};c.zmPointerUp();const z=c.zm.zones[0];assert.equal(z.ch,1);assert.equal(z.code_lo,102);assert.equal(z.code_hi,116);assert.equal(z._svpc,2);});
+await check('C2 vertical context accepts zero C2 scale when C1 is positive',()=>{const {c}=fixture();c.frame.vpc2=0;assert.equal(c.zmVctx(1).vpc,0);c.frame.vpc1=0;c.frame.vpc2=2;assert.equal(c.zmVctx(1),null);});
+await check('failed zone rescale upload advances local context and suppresses retry',async()=>{const {c}=fixture();let calls=0;c.fetch=async()=>{calls++;throw Error('offline');};c.zm.zones=[{ch:0,_svpc:1,_soff:0,_sclo:100,_schi:150,_avpc:1,_aoff:0}];c.frame.vpc1=2;c.zmRescale();await Promise.resolve();c.zmRescale();assert.equal(calls,1);assert.equal(c.zm.zones[0]._avpc,2);});
+await check('mask build can claim success after upload rejection',async()=>{const {c,$}=fixture();$('zmN').value='4';let seq=0;c.fetch=async url=>{if(url==='/api/mask')throw Error('upload rejected');return {arrayBuffer:async()=>null};};c.decodeBinFrame=()=>({seq:++seq,edge_x:2,sample_s:1,cols:4,c1:[100,110,120,130]});await $('zmBuild').onclick();assert(c.zm.mask);assert.match($('zmStats').textContent,/mask built from 4 frames/);});
+await check('fractional mask time tolerance produces inverted interior bounds',async()=>{const {c,$}=fixture();$('zmN').value='4';$('zmTolT').value='0.5';let seq=0;c.fetch=async()=>({arrayBuffer:async()=>null});c.decodeBinFrame=()=>({seq:++seq,edge_x:2,sample_s:1,cols:4,c1:[100,110,120,130]});await $('zmBuild').onclick();assert.equal(c.zm.mask.lo[1],255);assert.equal(c.zm.mask.hi[1],0);});
+console.log(JSON.stringify({result:'pass',cases,scope:'Ten isolated controller characterizations against pinned scripts with mocked DOM, timers, network and commands. Includes limitations, not browser rendering or device qualification.'},null,2));
+})().catch(e=>{console.error(e);process.exitCode=1;});

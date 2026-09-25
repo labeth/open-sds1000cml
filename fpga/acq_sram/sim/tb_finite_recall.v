@@ -1,4 +1,6 @@
+// ENGMODEL-OWNER-UNIT: FU-RTL-ACQ-TESTS
 `timescale 1ns/1ps
+// TRLC-LINKS: REQ-SDS-043, REQ-SDS-052
 module tb_finite_recall;
  parameter AW=13,CONTINUE_READS=1,FULL_ONLY=0;
  localparam N=1<<AW;

@@ -1,8 +1,11 @@
+// ENGMODEL-OWNER-UNIT: FU-WEB-APP-SUPERRES
 // app_superres.js — super-res stacker UI glue (classic script; shares app.js globals).
 
 "use strict";
+// TRLC-LINKS: REQ-SDS-019
 function srStatus(msg) { $("srStats").textContent = msg; }
 
+// TRLC-LINKS: REQ-SDS-019
 function srUpdateStats(final) {
   const now = performance.now();
   if (!final && now - sr.lastUi < 500) return;
@@ -34,6 +37,7 @@ function srUpdateStats(final) {
 // srTargetReached: has the selected stop target been met? bits + stacks are
 // acquisition-rate independent (the device gets the same result crunching
 // slower than the engine); time is the wall-clock fallback; manual never stops.
+// TRLC-LINKS: REQ-SDS-019
 function srTargetReached() {
   if (!sr.st || sr.stopVal <= 0) return false;
   switch (sr.stopMode) {
@@ -45,6 +49,7 @@ function srTargetReached() {
 }
 
 // ==== ETS: phase-coherent equivalent-time reconstruction of a free-run clock ==
+// TRLC-LINKS: REQ-SDS-019
 function srEtsInit(f, fref, dt) {
   const nbins = 4 * (+$("srK").value || 32); // K16→64, K32→128, K64→256 phase bins
   sr.etsSt = srEtsNew(nbins, dt);
@@ -54,6 +59,7 @@ function srEtsInit(f, fref, dt) {
   sr.meta = { tdiv_s: f.tdiv_s, cols: f.cols, sample_s: dt };
 }
 
+// TRLC-LINKS: REQ-SDS-019
 function srEtsIngest(f) {
   const alignSig = sr.alignCh === 1 ? f.c2 : f.c1;
   if (!alignSig || f.is_env) { srStop("band unsupported for ETS — use a native/decimated t/div"); return; }
@@ -92,6 +98,7 @@ function srEtsIngest(f) {
   }
 }
 
+// TRLC-LINKS: REQ-SDS-019
 function srEtsUpdateStats(final) {
   const now = performance.now();
   if (!final && now - sr.lastUi < 500) return;
@@ -112,6 +119,7 @@ function srEtsUpdateStats(final) {
 // the free-run clock ETS. Reuses the DECODE config from the Decode card and the
 // gated multi-hit stacker (srSeedRef seeds the gate on the first occurrence's
 // waveform; srGateFeed with hitCenters aligns+stacks the rest).
+// TRLC-LINKS: REQ-SDS-019
 function srEvtParseByte(s) {
   s = (s || "").trim().replace(/^0x/i, "").replace(/^'|'$/g, "");
   if (s.length === 1 && !/^[0-9a-fA-F]$/.test(s)) return s.charCodeAt(0); // a single non-hex char, e.g. H
@@ -122,15 +130,17 @@ function srEvtParseByte(s) {
 
 // srEvtDecode decodes the align channel of a RAW frame and returns the spans of
 // the target byte (data only). v1: UART (the Decode card must be set to UART).
+// TRLC-LINKS: REQ-SDS-019
 function srEvtDecode(sig, sampleS, target) {
   if (typeof dcfg === "undefined" || dcfg.proto !== "uart" || typeof decodeUART !== "function") return null;
-  const cfg = { baud: dcfg.baud > 0 ? dcfg.baud : null, bits: dcfg.bits || 8, parity: dcfg.parity || "none",
+  const cfg = { inverted: !!dcfg.inverted, baud: dcfg.baud > 0 ? dcfg.baud : null, bits: dcfg.bits || 8, parity: dcfg.parity || "none",
     threshold: dcfg.auto ? null : (+$("decThr").value || null), guard: 4 };
   const r = decodeUART(sig, sampleS, cfg);
   if (!r || !r.ok) return { spb: 0, occ: [] };
   return { spb: r.meta.samplesPerBit || 0, occ: r.spans.filter(s => s.kind === "data" && s.val === target) };
 }
 
+// TRLC-LINKS: REQ-SDS-019
 function srEvtIngest(f) {
   const alignSig = sr.alignCh === 1 ? f.c2 : f.c1;
   if (!alignSig || f.is_env) { srStop("band unsupported for decode-trig — use a native/decimated t/div"); return; }
@@ -166,6 +176,7 @@ function srEvtIngest(f) {
   if (sr.stopVal > 0 && srTargetReached()) { srStop("target reached"); return; }
 }
 
+// TRLC-LINKS: REQ-SDS-019
 function srIngest(f) {
   if (sr.ets) { srEtsIngest(f); return; }
   if (sr.evt) { srEvtIngest(f); return; }
@@ -251,6 +262,7 @@ function srIngest(f) {
   if (sr.stopVal > 0 && srTargetReached()) { srStop("target reached"); return; }
 }
 
+// TRLC-LINKS: REQ-SDS-019
 function srStop(why) {
   sr.armed = false;
   if (sr.dither.on && sr.dither.idx !== 0) {
@@ -269,6 +281,7 @@ function srStop(why) {
 // measurements, FFT, X-Y, math, decode, cursors, CSV/PNG — works on the
 // synthetic frame, and you can flip between live and stack freely (the
 // stack zoom is remembered across visits).
+// TRLC-LINKS: REQ-SDS-019
 function srExitView() {
   sr.showing = false;
   $("srShow").classList.remove("on");
@@ -280,6 +293,7 @@ function srExitView() {
 // ==== wiring ====
 
 // ---- super-res stacker wiring ----
+// TRLC-LINKS: REQ-SDS-019
 async function srLoop(gen) {
   if (!sr.armed || gen !== sr.gen) return;
   try {
@@ -305,6 +319,7 @@ async function srLoop(gen) {
 }
 
 
+// TRLC-LINKS: REQ-SDS-019
 $("srArm").onclick = () => {
   if (sr.armed) { srStop("stopped"); return; }
   if (!st || (st.band !== "native-fast" && st.band !== "decimated")) {
@@ -360,11 +375,13 @@ $("srArm").onclick = () => {
   srLoop(++sr.gen);
 };
 
+// TRLC-LINKS: REQ-SDS-019
 $("srReset").onclick = () => { if (sr.showing) srExitView(); srStop(); sr.st = null; sr.etsSt = null; sr.etsDetect = null; sr.meta = null; sr.savedWin = null; srStatus("idle"); };
 
 // AUTOGATE: always (re-)place the markers on the best feature in the current
 // view, then show them. GATE: show/hide toggle — auto-places only the first time;
 // after that the markers are wherever you dragged them (the only truth).
+// TRLC-LINKS: REQ-SDS-019
 $("srAutoGate").onclick = () => {
   srGateDefaultFromView();
   srGate.placed = true;
@@ -373,6 +390,7 @@ $("srAutoGate").onclick = () => {
   srStatus("gate placed — drag to adjust, then ARM");
   redraw();
 };
+// TRLC-LINKS: REQ-SDS-019
 $("srGate").onclick = () => {
   srGate.on = !srGate.on;
   if (srGate.on && !srGate.placed) { srGateDefaultFromView(); srGate.placed = true; }
@@ -382,6 +400,7 @@ $("srGate").onclick = () => {
 };
 
 // Stop-mode selector: adapt the target field's default + step to the units.
+// TRLC-LINKS: REQ-SDS-019
 $("srStopMode").onchange = () => {
   const m = $("srStopMode").value, v = $("srStopVal");
   const d = { bits: [4, 0.5], stacks: [500, 50], time: [60, 10] }[m];
@@ -392,6 +411,7 @@ $("srStopMode").onchange = () => {
 // Build the synthetic review frame from the current stack into the global
 // `frame`, optionally analog-falloff compensated. Factored out so the BW-comp
 // toggle can re-render the already-showing view in place.
+// TRLC-LINKS: REQ-SDS-019
 function srMakeViewFrame() {
   if (sr.ets) { srMakeEtsViewFrame(); return; }
   const res = srResult(sr.st);
@@ -420,6 +440,7 @@ function srMakeViewFrame() {
     sr.compInfo.auto = !!opts.auto; sr.compInfo.budgetDb = opts.budgetDb; sr.compInfo.bitsGained = opts.bitsGained;
   }
   srUpdateCompInfo();
+  // TRLC-LINKS: REQ-SDS-019
   const meas = (mean, ch) => mean ? srMeasure(mean, sr.st.c[ch].vpc, sr.st.c[ch].offV, dt) : null;
   // A gated stack's mean spans only the gate (gridL raw samples), not the whole
   // record — size the time axis and edge anchor to the grid actually served.
@@ -449,6 +470,7 @@ function srMakeViewFrame() {
 // the global `frame` (optionally BW-compensated to recover the attenuated
 // high-frequency amplitude). Two periods are tiled so a full cycle is easy to
 // see. dtFine = period / phase-bins.
+// TRLC-LINKS: REQ-SDS-019
 function srMakeEtsViewFrame() {
   const st = sr.etsSt, r = srEtsResult(st);
   const nb = st.nbins, dtFine = r.periodS / nb;
@@ -465,8 +487,10 @@ function srMakeEtsViewFrame() {
   }
   srUpdateCompInfo();
   // tile two periods so a whole cycle reads clearly
+  // TRLC-LINKS: REQ-SDS-019
   const tile = (m) => { if (!m) return null; const out = new Float32Array(nb * 2); for (let i = 0; i < nb * 2; i++) out[i] = m[i % nb]; return out; };
   const c1t = tile(c1m), c2t = tile(c2m);
+  // TRLC-LINKS: REQ-SDS-019
   const meas = (m, ch) => m ? srMeasure(m, st.c[ch].vpc, st.c[ch].offV, dtFine) : null;
   frame = {
     seq: frame ? frame.seq : 0, unchanged: false, sr_view: true,
@@ -482,6 +506,7 @@ function srMakeEtsViewFrame() {
 
 // srUpdateCompInfo writes the compensation readout (measured → recovered −3 dB
 // and the peak boost) into the panel.
+// TRLC-LINKS: REQ-SDS-019
 function srUpdateCompInfo() {
   const el = $("srCompInfo");
   if (!el) return;
@@ -503,6 +528,7 @@ const SR_PRESETS = {
   // Coarse grid fills fast + short stop: a quick usable stack, modest boost.
   fast: { K: "16", kernel: "interp", stopMode: "time", stopVal: 8, dither: false, comp: true, fbw: "auto", spend: 0.65 },
 };
+// TRLC-LINKS: REQ-SDS-019
 function srApplyPreset(name) {
   const p = SR_PRESETS[name];
   if (!p) return; // "custom" — leave the controls as the user set them
@@ -518,6 +544,7 @@ function srApplyPreset(name) {
   else srUpdateCompInfo();
 }
 
+// TRLC-LINKS: REQ-SDS-019
 $("srShow").onclick = () => {
   if (sr.showing) { srExitView(); return; }
   const has = sr.ets ? (sr.etsSt && sr.etsSt.frames) : (sr.st && sr.st.frames);
@@ -538,22 +565,26 @@ $("srShow").onclick = () => {
 
 // BW-compensation toggle + target: re-render the stack view in place when it's
 // already showing (a pure post-process of the crunched grid, no re-stacking).
+// TRLC-LINKS: REQ-SDS-019
 $("srComp").onchange = () => {
   sr.comp = $("srComp").checked;
   if (sr.showing) { srMakeViewFrame(); computeDecode(); redraw(); updateMeas(); updateCursors(); }
   else srUpdateCompInfo();
 };
+// TRLC-LINKS: REQ-SDS-019
 $("srCompBw").onchange = () => {
   const v = $("srCompBw").value;
   sr.compFbw = v === "auto" ? "auto" : (+v || 70e6);
   if (sr.comp && sr.showing) { srMakeViewFrame(); computeDecode(); redraw(); updateMeas(); updateCursors(); }
   else if (sr.comp) srUpdateCompInfo();
 };
+// TRLC-LINKS: REQ-SDS-019
 $("srPreset").onchange = () => {
   srApplyPreset($("srPreset").value);
   srStatus(`preset: ${$("srPreset").selectedOptions[0].textContent} — ARM to apply`);
 };
 
+// TRLC-LINKS: REQ-SDS-019
 $("srFit").onclick = () => {
   if (!sr.st || !sr.st.frames) { srStatus("nothing stacked yet"); return; }
   const res = srResult(sr.st);

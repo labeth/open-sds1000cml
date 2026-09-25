@@ -1,0 +1,31 @@
+{
+  "buffer_words": 0,
+  "capture": {
+    "locked": true,
+    "ready": true,
+    "running": false,
+    "frozen": true,
+    "triggered": true,
+    "prefetched": false,
+    "words": 524288,
+    "start": 0,
+    "trigger_index": 524271,
+    "position": 523795,
+    "origin": 523795,
+    "revision": 6,
+    "map_id": 57746,
+    "sample_rate_hz": 500000000,
+    "interleaved": true,
+    "data_fault": false
+  },
+  "identity": 23122,
+  "length": 524288,
+  "map_id": 57746,
+  "origin": 523795,
+  "position": 523795,
+  "revision": 6,
+  "start": 0,
+  "status": 116,
+  "trigger_index": 524271
+}
+[exit 0]

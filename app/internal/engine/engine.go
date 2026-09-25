@@ -3,6 +3,7 @@
 // bus. HTTP handlers stage commands into coalescing shadows and consume frame
 // copies; the owner applies commands at the frame boundary and runs the
 // per-frame arm → wait → capture-halt → drain → re-arm FSM.
+// ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
 package engine
 
 import (
@@ -84,6 +85,7 @@ const (
 )
 
 // Clock abstracts time for tests. Sleep must also advance Now in fakes.
+// TRLC-LINKS: REQ-SDS-008
 type Clock struct {
 	Now   func() time.Time
 	Sleep func(time.Duration)
@@ -122,9 +124,11 @@ const defaultArmSettle = 1 * time.Millisecond
 // TSRC ramp afterwards 0 breaks over 256 distinct codes.
 const defaultMatureUs = 750
 
+// TRLC-LINKS: REQ-SDS-008
 func realClock() Clock { return Clock{Now: time.Now, Sleep: time.Sleep} }
 
 // Config wires an Engine.
+// TRLC-LINKS: REQ-SDS-001, REQ-SDS-007, REQ-SDS-008
 type Config struct {
 	InterleaveCalibration *InterleaveCalibration
 	SRAM                  *sramcapture.Capture // non-nil selects the external SRAM ABI
@@ -138,6 +142,7 @@ type Config struct {
 
 // Stats is the exported snapshot for the health writer and the web UI.
 // Field meanings follow the spec 09 stats shape.
+// TRLC-LINKS: REQ-SDS-009, REQ-SDS-127
 type Stats struct {
 	Frames          uint64  `json:"frames"`                  // FSM heartbeat: +1 per loop iteration, publish or not
 	Coherent        uint64  `json:"coherent"`                // frames that latched+drained coherently
@@ -204,9 +209,10 @@ type Stats struct {
 	MaskSet     bool  `json:"mask_set,omitempty"`     // an envelope mask is installed
 
 	// Serial / protocol trigger (serialtrig.go)
-	SerialMode    int   `json:"serial_mode,omitempty"`    // 0 off, 1 armed
-	SerialMatches int64 `json:"serial_matches,omitempty"` // frames that matched the pattern
-	SerialSet     bool  `json:"serial_set,omitempty"`     // a match pattern is configured
+	SerialMode    int    `json:"serial_mode,omitempty"` // 0 off, 1 armed
+	SerialBackend string `json:"serial_backend,omitempty"`
+	SerialMatches int64  `json:"serial_matches,omitempty"` // frames that matched the pattern
+	SerialSet     bool   `json:"serial_set,omitempty"`     // a match pattern is configured
 
 	// FRA / Bode plot (bode.go)
 	BodeMode     int     `json:"bode_mode,omitempty"`      // 0 off, 1 armed
@@ -223,6 +229,7 @@ type Stats struct {
 // record (valid_depth ≈ half of cols on a native-fast band) can be correlated
 // with the arm/wait/halt outcome that produced it. Recorded for every frame
 // that reaches halt+drain, published or held.
+// TRLC-LINKS: REQ-SDS-127
 type AcqSample struct {
 	Seq          uint64  `json:"seq"`          // FSM heartbeat (stats.Frames) at record time
 	Band         string  `json:"band"`         // native-fast | decimated | envelope | roll
@@ -245,12 +252,14 @@ type AcqSample struct {
 // CmdNote records one web set-control invocation (name + numeric value +
 // the published Seq at the time), so the acq log can be read against "what we
 // did just before". Pure instrumentation.
+// TRLC-LINKS: REQ-SDS-127
 type CmdNote struct {
 	Name string  `json:"name"`
 	Val  float64 `json:"val"`
 	Seq  uint64  `json:"at_seq"`
 }
 
+// TRLC-LINKS: REQ-SDS-001, REQ-SDS-007, REQ-SDS-008
 type Engine struct {
 	interleaveCalibration *InterleaveCalibration
 	b                     bus.Bus
@@ -258,6 +267,12 @@ type Engine struct {
 	logf                  func(string, ...any)
 	arena                 *arena
 	sram                  *sramcapture.Capture
+	hardwareUART          bool // immutable while runSRAM owns the loaded image
+	hardwareI2C           bool
+	hardwareSPI           bool
+	hardwareSENT          bool
+	hardwareMIL1553       bool
+	hardwareUSBLS         bool
 
 	framePeriodNs atomic.Int64 // publish pacing floor (ns); 0 = back-to-back (stream)
 	holdoffNs     atomic.Int64 // minimum time after a triggered frame before re-arm; 0 = off
@@ -353,7 +368,16 @@ type Engine struct {
 	pubTimes  []time.Time // recent publish timestamps for the FPS window
 
 	// execReq carries diagnostic/owner-side work (Exec) to the owner goroutine.
-	execReq chan execReq
+	execReq                   chan execReq
+	decodedRequests           chan decodedRequest
+	decodedSession            *sramcapture.DecodedCapture // acquisition-owner fields
+	decodedBuffer             []sramcapture.DecodedEvent
+	decodedHead, decodedCount int
+	decodedScratch            []sramcapture.DecodedEvent
+	decodedSequence           uint32
+	decodedError              error
+	decodedService            decodedServiceStats
+	decodedDeadline           *bus.DecodedDeadline
 
 	// Owner-private state (no locking needed).
 	acqShadow, trigShadow uint16 // last ACQ_CTRL / TRIG_LEVEL words written (compare-on-change)
@@ -415,6 +439,7 @@ type Engine struct {
 	eresScratch []uint16
 }
 
+// TRLC-LINKS: REQ-SDS-001, REQ-SDS-007, REQ-SDS-008
 func New(cfg Config) *Engine {
 	// A nil clock means the real monotonic clock (production). Only then may the
 	// arm-settle busy-wait, which spins on time.Now(); a fake clock's Now advances
@@ -454,6 +479,7 @@ func New(cfg Config) *Engine {
 		prevKind:              start.Kind(),
 		done:                  make(chan struct{}),
 		execReq:               make(chan execReq, 8),
+		decodedRequests:       make(chan decodedRequest, 8),
 	}
 	// Tuning defaults. ROOT-CAUSE FIX for the native-fast half-record: the free-run
 	// wait returned the instant done+fill asserted and halted immediately, catching
@@ -534,6 +560,7 @@ func New(cfg Config) *Engine {
 // waits for it. The engine is left armed and filling — a safe state to be
 // SIGKILLed in; only a mid-frame kill wedges the bus, and boundaries are the
 // only place we stop.
+// TRLC-LINKS: REQ-SDS-008
 func (e *Engine) Stop(timeout time.Duration) bool {
 	e.stopReq.Store(true)
 	select {
@@ -548,10 +575,14 @@ func (e *Engine) Stop(timeout time.Duration) bool {
 // web serialize, panel). It blocks while the engine is in a load-sensitive
 // window (arm-settle or drain), so the consumer runs only during the loop's
 // ~90ms of dead time — never during the ~19ms that corrupts the HW capture.
-func (e *Engine) QuietRLock()   { e.quiet.RLock() }
+// TRLC-LINKS: REQ-SDS-001
+func (e *Engine) QuietRLock() { e.quiet.RLock() }
+
+// TRLC-LINKS: REQ-SDS-001
 func (e *Engine) QuietRUnlock() { e.quiet.RUnlock() }
 
 // TuneVals is the live-tunable knob set (see the tune* atomics).
+// TRLC-LINKS: REQ-SDS-127
 type TuneVals struct {
 	ArmSettleUs  int64 `json:"arm_settle_us"`
 	ArmSpin      bool  `json:"arm_spin"`
@@ -569,6 +600,7 @@ type TuneVals struct {
 
 // Tune applies a knob set (debug /api/debug/tune) and returns the effective
 // values. Ignored on a non-device (fake clock) engine so tests stay stock.
+// TRLC-LINKS: REQ-SDS-127
 func (e *Engine) Tune(t TuneVals) TuneVals {
 	if !e.armBusy {
 		return e.TuneSnapshot()
@@ -607,6 +639,7 @@ func (e *Engine) Tune(t TuneVals) TuneVals {
 }
 
 // TuneSnapshot reports the current knob values.
+// TRLC-LINKS: REQ-SDS-127
 func (e *Engine) TuneSnapshot() TuneVals {
 	return TuneVals{
 		ArmSettleUs:  e.tuneArmSettleUs.Load(),
@@ -624,6 +657,7 @@ func (e *Engine) TuneSnapshot() TuneVals {
 }
 
 // RenderPeriod is the LCD loop's tunable tick (read each render tick).
+// TRLC-LINKS: REQ-SDS-021, REQ-SDS-127
 func (e *Engine) RenderPeriod() time.Duration {
 	ms := e.tuneRenderMs.Load()
 	if ms < 1 {
@@ -633,6 +667,7 @@ func (e *Engine) RenderPeriod() time.Duration {
 }
 
 // Snapshot returns a copy of the stats. Never touches the bus.
+// TRLC-LINKS: REQ-SDS-009, REQ-SDS-127
 func (e *Engine) Snapshot() Stats {
 	e.mu.Lock()
 	defer e.mu.Unlock()
@@ -681,12 +716,14 @@ func (e *Engine) Snapshot() Stats {
 }
 
 // Consume hands the newest published frame to a consumer (the web layer).
+// TRLC-LINKS: REQ-SDS-007
 func (e *Engine) Consume() (*Frame, bool) { return e.arena.Consume() }
 
 // AcqLog returns the last n acquisition samples (most-recent-last) plus the
 // HALF rate over the last up-to-64 recorded samples. Instrumentation only; the
 // ring is read under e.mu since it is written by the engine goroutine. n is
 // clamped to the ring size.
+// TRLC-LINKS: REQ-SDS-127
 func (e *Engine) AcqLog(n int) ([]AcqSample, float64) {
 	if n < 0 {
 		n = 0
@@ -735,6 +772,7 @@ func (e *Engine) AcqLog(n int) ([]AcqSample, float64) {
 
 // CmdLog returns the last n command notes (most-recent-last). Instrumentation
 // only; read under e.mu since NoteCmd writes from the HTTP goroutine.
+// TRLC-LINKS: REQ-SDS-127
 func (e *Engine) CmdLog(n int) []CmdNote {
 	if n < 0 {
 		n = 0
@@ -766,6 +804,7 @@ func (e *Engine) CmdLog(n int) []CmdNote {
 // NoteCmd records a web set-control invocation into the command ring, stamping
 // the current published Seq. Called from the HTTP goroutine → locks e.mu.
 // Instrumentation only; it never touches the bus or the FSM.
+// TRLC-LINKS: REQ-SDS-127
 func (e *Engine) NoteCmd(name string, val float64) {
 	e.mu.Lock()
 	e.cmdRing[e.cmdHead] = CmdNote{Name: name, Val: val, Seq: e.stats.Seq}
@@ -777,7 +816,9 @@ func (e *Engine) NoteCmd(name string, val float64) {
 
 // TrigLevelVolts converts a DAC code to approximate volts using the measured
 // global fit (docs/trigcal-notes.md): code = 31437 − 911·V.
+// TRLC-LINKS: REQ-SDS-016
 func TrigLevelVolts(code uint16) float64 { return (31437 - float64(code)) / 911 }
 
 // NoteLCDFrame counts distinct acquisition frames actually presented to the LCD.
+// TRLC-LINKS: REQ-SDS-009
 func (e *Engine) NoteLCDFrame() { e.mu.Lock(); e.stats.LCDFrames++; e.mu.Unlock() }

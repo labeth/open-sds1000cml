@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-DECODE
 package decode
 
 import (
@@ -10,6 +11,7 @@ import (
 // ---- CAN waveform synthesis (mirrors the decoder's stuffing + CRC exactly) ----
 
 // canBitsMSB expands val into nbits bits, most-significant first.
+// TRLC-LINKS: REQ-SDS-018
 func canBitsMSB(val, nbits int) []int {
 	out := make([]int, nbits)
 	for k := 0; k < nbits; k++ {
@@ -22,6 +24,7 @@ func canBitsMSB(val, nbits int) []int {
 // identical) and reports the final run state, so the caller can add the trailing
 // stuff bit that precedes the (unstuffed) CRC delimiter when the CRC ends on a
 // 5-run. This is the inverse of the decoder's destuffing in canReader.next().
+// TRLC-LINKS: REQ-SDS-018
 func canStuffCore(bits []int) (out []int, runVal, runLen int) {
 	runVal, runLen = -1, 0
 	for _, b := range bits {
@@ -42,6 +45,7 @@ func canStuffCore(bits []int) (out []int, runVal, runLen int) {
 
 // canStdFrame builds a classic standard (11-bit) data frame. Returns the
 // destuffed SOF..data bits (for assertions) and the full on-wire bit sequence.
+// TRLC-LINKS: REQ-SDS-018
 func canStdFrame(id, dlc int, data []int) (crcInput, wire []int) {
 	crcInput = append(crcInput, 0)                     // SOF (dominant)
 	crcInput = append(crcInput, canBitsMSB(id, 11)...) // identifier
@@ -69,6 +73,7 @@ func canStdFrame(id, dlc int, data []int) (crcInput, wire []int) {
 }
 
 // canExtFrame builds a classic extended (29-bit) data frame.
+// TRLC-LINKS: REQ-SDS-018
 func canExtFrame(id29, dlc int, data []int) (crcInput, wire []int) {
 	base := (id29 >> 18) & 0x7ff
 	ext := id29 & 0x3ffff
@@ -101,6 +106,7 @@ func canExtFrame(id29, dlc int, data []int) (crcInput, wire []int) {
 // canFDStdFrame builds a CAN-FD base-format frame through the data field. FD
 // dynamic stuffing covers SOF..data; the trailing recessive run stands in for
 // the (unparsed) stuff-count/CRC/ACK/EOF that the best-effort FD path skips.
+// TRLC-LINKS: REQ-SDS-018
 func canFDStdFrame(id, dlc int, data []int) []int {
 	var bits []int
 	bits = append(bits, 0)                     // SOF
@@ -125,6 +131,7 @@ func canFDStdFrame(id, dlc int, data []int) []int {
 
 // canRender lays a wire bit sequence out as sampled codes at spb samples/bit,
 // with lead/trail idle (recessive). dominantLow maps recessive(1)->high level.
+// TRLC-LINKS: REQ-SDS-018
 func canRender(wire []int, spb int, dominantLow bool, lead, trail int) []uint8 {
 	lo, hi := uint8(40), uint8(210)
 	var codes []uint8
@@ -156,6 +163,7 @@ func canRender(wire []int, spb int, dominantLow bool, lead, trail int) []uint8 {
 	return codes
 }
 
+// TRLC-LINKS: REQ-SDS-018
 func spanKinds(r Result) string {
 	s := ""
 	for _, sp := range r.Spans {
@@ -164,6 +172,7 @@ func spanKinds(r Result) string {
 	return s
 }
 
+// TRLC-LINKS: REQ-SDS-018
 func findSpan(r Result, kind string) *Span {
 	for i := range r.Spans {
 		if r.Spans[i].Kind == kind {
@@ -173,6 +182,7 @@ func findSpan(r Result, kind string) *Span {
 	return nil
 }
 
+// TRLC-LINKS: REQ-SDS-018
 func TestDecodeCANFDStandardRoundTrip(t *testing.T) {
 	id := 0x123
 	// 0x00 then 0xFF forces long same-polarity runs so destuffing IS exercised.
@@ -237,6 +247,7 @@ func TestDecodeCANFDStandardRoundTrip(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-018
 func hasBang(s string) bool {
 	for i := 0; i < len(s); i++ {
 		if s[i] == '!' {
@@ -246,6 +257,7 @@ func hasBang(s string) bool {
 	return false
 }
 
+// TRLC-LINKS: REQ-SDS-018
 func TestDecodeCANFDExtendedRoundTrip(t *testing.T) {
 	id29 := (0x123 << 18) | 0x1ABCD
 	data := []int{0xDE, 0xAD, 0xBE, 0xEF}
@@ -270,6 +282,7 @@ func TestDecodeCANFDExtendedRoundTrip(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-018
 func TestDecodeCANFDInvertedPolarity(t *testing.T) {
 	// DominantLow=false: dominant is the HIGH level. Same frame must still decode.
 	id := 0x2AA
@@ -289,6 +302,7 @@ func TestDecodeCANFDInvertedPolarity(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-018
 func TestDecodeCANFDFDBestEffort(t *testing.T) {
 	id := 0x0C5
 	dlc := 9 // FD DLC 9 => 12 data bytes
@@ -317,6 +331,7 @@ func TestDecodeCANFDFDBestEffort(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-018
 func TestDecodeCANFDNoPanic(t *testing.T) {
 	rng := rand.New(rand.NewSource(4242))
 	mk := func(n, kind int) []uint8 {

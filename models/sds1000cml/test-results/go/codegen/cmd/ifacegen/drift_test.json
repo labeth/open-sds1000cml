@@ -1,0 +1,46 @@
+{
+  "source": "codegen/cmd/ifacegen/drift_test.go",
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "scope": "Reviewed Go test outcomes; passing assertions contribute partial requirement evidence.",
+  "sourceSHA256": "e95a41a7a13de7e76654c2552a9aa5dd0d9ac1bdda9466d0d8dae34602022b9f",
+  "logs": {
+    "test-runs/codegen-integrated.jsonl": "61e5eee1ba4798f5b455aeff3217a9d963dee8f9f4dcc3b426b4a566d0c731f0"
+  },
+  "tests": [
+    {
+      "name": "TestNoDrift",
+      "result": "fail",
+      "requirements": [
+        "REQ-SDS-160",
+        "REQ-SDS-031"
+      ]
+    },
+    {
+      "name": "TestSourceDigestFollowsRTL",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-160"
+      ]
+    },
+    {
+      "name": "TestDriftDetectsChange",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-160",
+        "REQ-SDS-031"
+      ]
+    }
+  ],
+  "results": [
+    {
+      "requirement": "REQ-SDS-031",
+      "status": "fail",
+      "notes": "1 reviewed test outcomes pass; 1 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    },
+    {
+      "requirement": "REQ-SDS-160",
+      "status": "fail",
+      "notes": "2 reviewed test outcomes pass; 1 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    }
+  ]
+}

@@ -1,7 +1,19 @@
-# open-sds/fpga — the acq2 acquisition fabric (Cyclone IV E EP4CE10F17C8)
+# General SRAM and triggering image
 
-One default image, `default/`, built from the pad contract in `the acq2 analysis branch` /
-`the acq2 analysis branch`. Layout and rules are binding in `the acq2 analysis branch`.
+`make bitstream` builds the single supported general acquisition image with
+`acq_sram/build_general.ts`. The canonical output is
+`acq_sram/out/general/current/bench.rbf`, accompanied by `image.json` with its
+source hashes and timing result. Failed builds cannot replace this pointer.
+The build shares the Quartus lock with historical build tooling. A successful
+build still requires bench qualification before deployment.
+
+Architecture and any future partition decisions live in the SDS model under
+`ADR-GENERAL-ACQUISITION-PIPELINE`. Old designs and build candidates are retained
+for source history and recovery; they are not selectable product profiles.
+
+## Historical default-fabric build notes
+
+The following describes the earlier default fabric, not the supported release target.
 
 ```
 fpga/

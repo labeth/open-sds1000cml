@@ -1,0 +1,25 @@
+{
+  "source": "app/internal/decode/oracle_i2c_test.go",
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "scope": "Reviewed Go test outcomes; passing assertions contribute partial requirement evidence.",
+  "sourceSHA256": "85fb4d3c99822e7e8d2d068c749e96e88aec320cc096351af63ea7ecfad01589",
+  "logs": {
+    "test-runs/decode-oracle-all-required-0.jsonl": "d99f2b4201759948bdfeb7af1a78ca24b763119c1fd8138ee4b2e8aac9d5815e"
+  },
+  "tests": [
+    {
+      "name": "TestOracleI2C",
+      "result": "skip",
+      "requirements": [
+        "REQ-SDS-018"
+      ]
+    }
+  ],
+  "results": [
+    {
+      "requirement": "REQ-SDS-018",
+      "status": "not-run",
+      "notes": "0 reviewed test outcomes pass; 0 fail; 1 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    }
+  ]
+}

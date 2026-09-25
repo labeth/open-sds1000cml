@@ -1,17 +1,22 @@
+// ENGMODEL-OWNER-UNIT: FU-RTL-ACQ-TESTS
 `timescale 1ns/1ps
+// TRLC-LINKS: REQ-SDS-041, REQ-SDS-042, REQ-SDS-043, REQ-SDS-049, REQ-SDS-052, REQ-SDS-083, REQ-SDS-186
 module bench_pll(input refclk,output reg c0=0,output c1,output locked,output reg halfclk=0);
  always #2 c0=~c0;initial begin #2;forever #4 halfclk=~halfclk;end assign #1 c1=c0;assign locked=1;
 endmodule
+// TRLC-LINKS: REQ-SDS-041, REQ-SDS-042, REQ-SDS-043, REQ-SDS-049, REQ-SDS-052, REQ-SDS-083, REQ-SDS-186
 module adc_interleave(input refclk,memclk,packclk,enable,input [79:0] lane,input [9:0] encode_enable,
  input snapshot_request,output snapshot_ack,input consume,output [31:0] word_data,output valid,fault,output [79:0] snapshot,output [4:0] enc_p,enc_n,output locked);
  assign snapshot_ack=snapshot_request;assign word_data=32'h65646464;assign valid=enable;assign fault=0;assign snapshot=0;assign enc_p=0;assign enc_n=0;assign locked=1;
 endmodule
+// TRLC-LINKS: REQ-SDS-041, REQ-SDS-042, REQ-SDS-043, REQ-SDS-049, REQ-SDS-052, REQ-SDS-083, REQ-SDS-186
 module adc_precision(input core,packclk,slowclk,enable,input [4:0] log2decim,input [31:0] data,input valid,
  output [31:0] result,output out_valid,output fault);
  reg [6:0] phase=0;
  always @(posedge core)if(!enable)phase<=0;else phase<=phase+1'b1;
  assign result=32'h64006400;assign out_valid=enable && phase==0;assign fault=0;
 endmodule
+// TRLC-LINKS: REQ-SDS-041, REQ-SDS-042, REQ-SDS-043, REQ-SDS-049, REQ-SDS-052, REQ-SDS-083, REQ-SDS-186
 module tb;
  reg clk=0,mclk_in=0;always #6.25 clk=~clk;always #5 mclk_in=~mclk_in;
  wire [15:0] gpmc_d;wire [31:0] dq;wire k1,k2,g1;

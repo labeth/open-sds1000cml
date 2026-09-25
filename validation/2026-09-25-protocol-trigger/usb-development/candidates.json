@@ -1,0 +1,98 @@
+[
+  {
+    "candidate": "vByagO",
+    "deployed": false,
+    "minimumSlackNs": null,
+    "fit": "Fitter Status : Failed - Fri Sep 25 18:02:12 2026\nQuartus Prime Version : 21.1.0 Build 842 10/21/2021 SJ Lite Edition\nRevision Name : bench\nTop-level Entity Name : acq_sram_top\nFamily : Cyclone IV E\nDevice : EP4CE10F17C8\nTiming Models : Final\nTotal logic elements : 10,828 / 10,320 ( 105 % )\n    Total combinational functions : 7,845 / 10,320 ( 76 % )\n    Dedicated logic registers : 7,226 / 10,320 ( 70 % )\nTotal registers : 7392\nTotal pins : 160 / 180 ( 89 % )\nTotal virtual pins : 0\nTotal memory bits : 344,592 / 423,936 ( 81 % )\nEmbedded Multiplier 9-bit elements : 0 / 46 ( 0 % )\nTotal PLLs : 2 / 2 ( 100 % )\n"
+  },
+  {
+    "candidate": "omrfKU",
+    "deployed": false,
+    "minimumSlackNs": -0.432,
+    "fit": "Fitter Status : Successful - Fri Sep 25 18:05:50 2026\nQuartus Prime Version : 21.1.0 Build 842 10/21/2021 SJ Lite Edition\nRevision Name : bench\nTop-level Entity Name : acq_sram_top\nFamily : Cyclone IV E\nDevice : EP4CE10F17C8\nTiming Models : Final\nTotal logic elements : 9,931 / 10,320 ( 96 % )\n    Total combinational functions : 7,850 / 10,320 ( 76 % )\n    Dedicated logic registers : 7,218 / 10,320 ( 70 % )\nTotal registers : 7384\nTotal pins : 160 / 180 ( 89 % )\nTotal virtual pins : 0\nTotal memory bits : 335,360 / 423,936 ( 79 % )\nEmbedded Multiplier 9-bit elements : 0 / 46 ( 0 % )\nTotal PLLs : 2 / 2 ( 100 % )\n"
+  },
+  {
+    "candidate": "XsUymd",
+    "deployed": false,
+    "minimumSlackNs": -0.177,
+    "fit": "Fitter Status : Successful - Fri Sep 25 18:08:40 2026\nQuartus Prime Version : 21.1.0 Build 842 10/21/2021 SJ Lite Edition\nRevision Name : bench\nTop-level Entity Name : acq_sram_top\nFamily : Cyclone IV E\nDevice : EP4CE10F17C8\nTiming Models : Final\nTotal logic elements : 9,905 / 10,320 ( 96 % )\n    Total combinational functions : 7,838 / 10,320 ( 76 % )\n    Dedicated logic registers : 7,276 / 10,320 ( 71 % )\nTotal registers : 7442\nTotal pins : 160 / 180 ( 89 % )\nTotal virtual pins : 0\nTotal memory bits : 335,360 / 423,936 ( 79 % )\nEmbedded Multiplier 9-bit elements : 0 / 46 ( 0 % )\nTotal PLLs : 2 / 2 ( 100 % )\n"
+  },
+  {
+    "candidate": "MgwXwq",
+    "deployed": false,
+    "minimumSlackNs": -0.175,
+    "fit": "Fitter Status : Successful - Fri Sep 25 18:11:18 2026\nQuartus Prime Version : 21.1.0 Build 842 10/21/2021 SJ Lite Edition\nRevision Name : bench\nTop-level Entity Name : acq_sram_top\nFamily : Cyclone IV E\nDevice : EP4CE10F17C8\nTiming Models : Final\nTotal logic elements : 9,884 / 10,320 ( 96 % )\n    Total combinational functions : 7,838 / 10,320 ( 76 % )\n    Dedicated logic registers : 7,276 / 10,320 ( 71 % )\nTotal registers : 7442\nTotal pins : 160 / 180 ( 89 % )\nTotal virtual pins : 0\nTotal memory bits : 335,360 / 423,936 ( 79 % )\nEmbedded Multiplier 9-bit elements : 0 / 46 ( 0 % )\nTotal PLLs : 2 / 2 ( 100 % )\n"
+  },
+  {
+    "candidate": "fKHbdd",
+    "deployed": false,
+    "minimumSlackNs": -0.639,
+    "fit": "Fitter Status : Successful - Fri Sep 25 18:14:16 2026\nQuartus Prime Version : 21.1.0 Build 842 10/21/2021 SJ Lite Edition\nRevision Name : bench\nTop-level Entity Name : acq_sram_top\nFamily : Cyclone IV E\nDevice : EP4CE10F17C8\nTiming Models : Final\nTotal logic elements : 9,921 / 10,320 ( 96 % )\n    Total combinational functions : 7,846 / 10,320 ( 76 % )\n    Dedicated logic registers : 7,277 / 10,320 ( 71 % )\nTotal registers : 7443\nTotal pins : 160 / 180 ( 89 % )\nTotal virtual pins : 0\nTotal memory bits : 335,360 / 423,936 ( 79 % )\nEmbedded Multiplier 9-bit elements : 0 / 46 ( 0 % )\nTotal PLLs : 2 / 2 ( 100 % )\n"
+  },
+  {
+    "candidate": "WBLSMx",
+    "deployed": false,
+    "minimumSlackNs": -0.416,
+    "fit": "Fitter Status : Successful - Fri Sep 25 18:17:34 2026\nQuartus Prime Version : 21.1.0 Build 842 10/21/2021 SJ Lite Edition\nRevision Name : bench\nTop-level Entity Name : acq_sram_top\nFamily : Cyclone IV E\nDevice : EP4CE10F17C8\nTiming Models : Final\nTotal logic elements : 9,903 / 10,320 ( 96 % )\n    Total combinational functions : 7,844 / 10,320 ( 76 % )\n    Dedicated logic registers : 7,279 / 10,320 ( 71 % )\nTotal registers : 7445\nTotal pins : 160 / 180 ( 89 % )\nTotal virtual pins : 0\nTotal memory bits : 335,360 / 423,936 ( 79 % )\nEmbedded Multiplier 9-bit elements : 0 / 46 ( 0 % )\nTotal PLLs : 2 / 2 ( 100 % )\n"
+  },
+  {
+    "candidate": "cGuLKb",
+    "deployed": false,
+    "minimumSlackNs": -0.438,
+    "fit": "Fitter Status : Successful - Fri Sep 25 18:20:04 2026\nQuartus Prime Version : 21.1.0 Build 842 10/21/2021 SJ Lite Edition\nRevision Name : bench\nTop-level Entity Name : acq_sram_top\nFamily : Cyclone IV E\nDevice : EP4CE10F17C8\nTiming Models : Final\nTotal logic elements : 9,899 / 10,320 ( 96 % )\n    Total combinational functions : 7,840 / 10,320 ( 76 % )\n    Dedicated logic registers : 7,280 / 10,320 ( 71 % )\nTotal registers : 7446\nTotal pins : 160 / 180 ( 89 % )\nTotal virtual pins : 0\nTotal memory bits : 335,360 / 423,936 ( 79 % )\nEmbedded Multiplier 9-bit elements : 0 / 46 ( 0 % )\nTotal PLLs : 2 / 2 ( 100 % )\n"
+  },
+  {
+    "candidate": "ItftPe",
+    "deployed": false,
+    "minimumSlackNs": -0.149,
+    "fit": "Fitter Status : Successful - Fri Sep 25 18:22:06 2026\nQuartus Prime Version : 21.1.0 Build 842 10/21/2021 SJ Lite Edition\nRevision Name : bench\nTop-level Entity Name : acq_sram_top\nFamily : Cyclone IV E\nDevice : EP4CE10F17C8\nTiming Models : Final\nTotal logic elements : 9,935 / 10,320 ( 96 % )\n    Total combinational functions : 7,843 / 10,320 ( 76 % )\n    Dedicated logic registers : 7,281 / 10,320 ( 71 % )\nTotal registers : 7447\nTotal pins : 160 / 180 ( 89 % )\nTotal virtual pins : 0\nTotal memory bits : 335,360 / 423,936 ( 79 % )\nEmbedded Multiplier 9-bit elements : 0 / 46 ( 0 % )\nTotal PLLs : 2 / 2 ( 100 % )\n"
+  },
+  {
+    "candidate": "qZgDdC",
+    "deployed": false,
+    "minimumSlackNs": -0.231,
+    "fit": "Fitter Status : Successful - Fri Sep 25 18:24:40 2026\nQuartus Prime Version : 21.1.0 Build 842 10/21/2021 SJ Lite Edition\nRevision Name : bench\nTop-level Entity Name : acq_sram_top\nFamily : Cyclone IV E\nDevice : EP4CE10F17C8\nTiming Models : Final\nTotal logic elements : 9,916 / 10,320 ( 96 % )\n    Total combinational functions : 7,845 / 10,320 ( 76 % )\n    Dedicated logic registers : 7,280 / 10,320 ( 71 % )\nTotal registers : 7446\nTotal pins : 160 / 180 ( 89 % )\nTotal virtual pins : 0\nTotal memory bits : 335,360 / 423,936 ( 79 % )\nEmbedded Multiplier 9-bit elements : 0 / 46 ( 0 % )\nTotal PLLs : 2 / 2 ( 100 % )\n"
+  },
+  {
+    "candidate": "0v7Ecy",
+    "deployed": false,
+    "minimumSlackNs": -0.311,
+    "fit": "Fitter Status : Successful - Fri Sep 25 18:27:30 2026\nQuartus Prime Version : 21.1.0 Build 842 10/21/2021 SJ Lite Edition\nRevision Name : bench\nTop-level Entity Name : acq_sram_top\nFamily : Cyclone IV E\nDevice : EP4CE10F17C8\nTiming Models : Final\nTotal logic elements : 9,914 / 10,320 ( 96 % )\n    Total combinational functions : 7,845 / 10,320 ( 76 % )\n    Dedicated logic registers : 7,280 / 10,320 ( 71 % )\nTotal registers : 7446\nTotal pins : 160 / 180 ( 89 % )\nTotal virtual pins : 0\nTotal memory bits : 335,360 / 423,936 ( 79 % )\nEmbedded Multiplier 9-bit elements : 0 / 46 ( 0 % )\nTotal PLLs : 2 / 2 ( 100 % )\n"
+  },
+  {
+    "candidate": "DtePP9",
+    "deployed": false,
+    "minimumSlackNs": -0.707,
+    "fit": "Fitter Status : Successful - Fri Sep 25 18:29:25 2026\nQuartus Prime Version : 21.1.0 Build 842 10/21/2021 SJ Lite Edition\nRevision Name : bench\nTop-level Entity Name : acq_sram_top\nFamily : Cyclone IV E\nDevice : EP4CE10F17C8\nTiming Models : Final\nTotal logic elements : 9,936 / 10,320 ( 96 % )\n    Total combinational functions : 7,845 / 10,320 ( 76 % )\n    Dedicated logic registers : 7,280 / 10,320 ( 71 % )\nTotal registers : 7446\nTotal pins : 160 / 180 ( 89 % )\nTotal virtual pins : 0\nTotal memory bits : 335,360 / 423,936 ( 79 % )\nEmbedded Multiplier 9-bit elements : 0 / 46 ( 0 % )\nTotal PLLs : 2 / 2 ( 100 % )\n"
+  },
+  {
+    "candidate": "ceqOnc",
+    "deployed": false,
+    "minimumSlackNs": -0.007,
+    "fit": "Fitter Status : Successful - Fri Sep 25 18:31:18 2026\nQuartus Prime Version : 21.1.0 Build 842 10/21/2021 SJ Lite Edition\nRevision Name : bench\nTop-level Entity Name : acq_sram_top\nFamily : Cyclone IV E\nDevice : EP4CE10F17C8\nTiming Models : Final\nTotal logic elements : 9,907 / 10,320 ( 96 % )\n    Total combinational functions : 7,842 / 10,320 ( 76 % )\n    Dedicated logic registers : 7,280 / 10,320 ( 71 % )\nTotal registers : 7446\nTotal pins : 160 / 180 ( 89 % )\nTotal virtual pins : 0\nTotal memory bits : 335,360 / 423,936 ( 79 % )\nEmbedded Multiplier 9-bit elements : 0 / 46 ( 0 % )\nTotal PLLs : 2 / 2 ( 100 % )\n"
+  },
+  {
+    "candidate": "oXYZPC",
+    "deployed": false,
+    "minimumSlackNs": -0.415,
+    "fit": "Fitter Status : Successful - Fri Sep 25 18:33:10 2026\nQuartus Prime Version : 21.1.0 Build 842 10/21/2021 SJ Lite Edition\nRevision Name : bench\nTop-level Entity Name : acq_sram_top\nFamily : Cyclone IV E\nDevice : EP4CE10F17C8\nTiming Models : Final\nTotal logic elements : 9,895 / 10,320 ( 96 % )\n    Total combinational functions : 7,842 / 10,320 ( 76 % )\n    Dedicated logic registers : 7,280 / 10,320 ( 71 % )\nTotal registers : 7446\nTotal pins : 160 / 180 ( 89 % )\nTotal virtual pins : 0\nTotal memory bits : 335,360 / 423,936 ( 79 % )\nEmbedded Multiplier 9-bit elements : 0 / 46 ( 0 % )\nTotal PLLs : 2 / 2 ( 100 % )\n"
+  },
+  {
+    "candidate": "9bBQKg",
+    "deployed": false,
+    "minimumSlackNs": -0.296,
+    "fit": "Fitter Status : Successful - Fri Sep 25 18:35:04 2026\nQuartus Prime Version : 21.1.0 Build 842 10/21/2021 SJ Lite Edition\nRevision Name : bench\nTop-level Entity Name : acq_sram_top\nFamily : Cyclone IV E\nDevice : EP4CE10F17C8\nTiming Models : Final\nTotal logic elements : 9,953 / 10,320 ( 96 % )\n    Total combinational functions : 7,849 / 10,320 ( 76 % )\n    Dedicated logic registers : 7,281 / 10,320 ( 71 % )\nTotal registers : 7447\nTotal pins : 160 / 180 ( 89 % )\nTotal virtual pins : 0\nTotal memory bits : 335,360 / 423,936 ( 79 % )\nEmbedded Multiplier 9-bit elements : 0 / 46 ( 0 % )\nTotal PLLs : 2 / 2 ( 100 % )\n"
+  },
+  {
+    "candidate": "Vnpmv6",
+    "deployed": false,
+    "minimumSlackNs": -0.575,
+    "fit": "Fitter Status : Successful - Fri Sep 25 18:36:57 2026\nQuartus Prime Version : 21.1.0 Build 842 10/21/2021 SJ Lite Edition\nRevision Name : bench\nTop-level Entity Name : acq_sram_top\nFamily : Cyclone IV E\nDevice : EP4CE10F17C8\nTiming Models : Final\nTotal logic elements : 9,906 / 10,320 ( 96 % )\n    Total combinational functions : 7,849 / 10,320 ( 76 % )\n    Dedicated logic registers : 7,281 / 10,320 ( 71 % )\nTotal registers : 7447\nTotal pins : 160 / 180 ( 89 % )\nTotal virtual pins : 0\nTotal memory bits : 335,360 / 423,936 ( 79 % )\nEmbedded Multiplier 9-bit elements : 0 / 46 ( 0 % )\nTotal PLLs : 2 / 2 ( 100 % )\n"
+  },
+  {
+    "candidate": "v5T40o",
+    "deployed": true,
+    "minimumSlackNs": 0.001,
+    "fit": "Fitter Status : Successful - Fri Sep 25 18:39:57 2026\nQuartus Prime Version : 21.1.0 Build 842 10/21/2021 SJ Lite Edition\nRevision Name : bench\nTop-level Entity Name : acq_sram_top\nFamily : Cyclone IV E\nDevice : EP4CE10F17C8\nTiming Models : Final\nTotal logic elements : 9,959 / 10,320 ( 97 % )\n    Total combinational functions : 7,895 / 10,320 ( 77 % )\n    Dedicated logic registers : 7,317 / 10,320 ( 71 % )\nTotal registers : 7483\nTotal pins : 160 / 180 ( 89 % )\nTotal virtual pins : 0\nTotal memory bits : 335,360 / 423,936 ( 79 % )\nEmbedded Multiplier 9-bit elements : 0 / 46 ( 0 % )\nTotal PLLs : 2 / 2 ( 100 % )\n"
+  }
+]

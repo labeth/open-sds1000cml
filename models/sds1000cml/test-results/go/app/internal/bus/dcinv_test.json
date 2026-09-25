@@ -1,0 +1,53 @@
+{
+  "source": "app/internal/bus/dcinv_test.go",
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "scope": "Reviewed Go test outcomes; passing assertions contribute partial requirement evidence.",
+  "sourceSHA256": "631bac81ac1e49b7b6b2f92606f61183db4c04eba284ce06b395e051a43e5254",
+  "logs": {
+    "test-runs/bus-reviewed.jsonl": "4b0399dd8ebd1f48836af0a7d43ecaf39de4f8c22be48f7cdb92f87dd7e9b734"
+  },
+  "tests": [
+    {
+      "name": "TestDcinvEmbedded",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-081"
+      ]
+    },
+    {
+      "name": "TestEnsureDcinvAlreadyPresent",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-081"
+      ]
+    },
+    {
+      "name": "TestEnsureDcinvLoadsAndDevtmpfsCreatesNode",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-081"
+      ]
+    },
+    {
+      "name": "TestEnsureDcinvMknodFromProcDevices",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-081"
+      ]
+    },
+    {
+      "name": "TestEnsureDcinvInsmodFails",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-081"
+      ]
+    }
+  ],
+  "results": [
+    {
+      "requirement": "REQ-SDS-081",
+      "status": "partial",
+      "notes": "5 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    }
+  ]
+}

@@ -1,0 +1,2 @@
+ARGS ["scpi", "STOP"]
+sent: STOP

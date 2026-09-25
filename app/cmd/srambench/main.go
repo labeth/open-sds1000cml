@@ -1,4 +1,5 @@
 // srambench accesses only volatile FPGA configuration and bench CS1 registers.
+// ENGMODEL-OWNER-UNIT: FU-APP-SRAMBENCH
 package main
 
 import (
@@ -14,6 +15,7 @@ import (
 
 var fd int
 
+// TRLC-LINKS: REQ-SDS-171
 func xfer(plane, sel, val uint16, write bool) uint16 {
 	b := [6]byte{byte(plane), 0, byte(sel), byte(sel >> 8), byte(val), byte(val >> 8)}
 	req := uintptr(0x80026700)
@@ -26,14 +28,21 @@ func xfer(plane, sel, val uint16, write bool) uint16 {
 	}
 	return uint16(b[4]) | uint16(b[5])<<8
 }
+// TRLC-LINKS: REQ-SDS-171
 func rd(s uint16) uint16  { return xfer(1, s, 0, false) }
+// TRLC-LINKS: REQ-SDS-171
 func wr(s, v uint16)      { xfer(1, s, v, true) }
+// TRLC-LINKS: REQ-SDS-171
 func r32(s uint16) uint32 { return uint32(rd(s)) | uint32(rd(s+1))<<16 }
 
+// TRLC-LINKS: REQ-SDS-171
 type port struct{}
 
+// TRLC-LINKS: REQ-SDS-171
 func (port) ReadCfg() (uint16, error) { return xfer(3, 7, 0, false), nil }
+// TRLC-LINKS: REQ-SDS-171
 func (port) WriteCfg(v uint16) error  { xfer(3, 7, v, true); return nil }
+// TRLC-LINKS: REQ-SDS-171
 func num(s string) uint32 {
 	v, e := strconv.ParseUint(s, 0, 32)
 	if e != nil {
@@ -41,6 +50,7 @@ func num(s string) uint32 {
 	}
 	return uint32(v)
 }
+// TRLC-LINKS: REQ-SDS-171
 func main() {
 	fd = -1
 	es, e := os.ReadDir("/proc/self/fd")

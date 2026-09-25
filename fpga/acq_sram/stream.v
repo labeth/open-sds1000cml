@@ -1,7 +1,9 @@
+// ENGMODEL-OWNER-UNIT: FU-RTL-ACQ-SRAM-STREAM
 `timescale 1ns/1ps
 // Reduced-rate, loss-detecting ARM stream. The caller must enforce log2>=13:
 // at most 61,035 sample pairs/s gives this 4096-word FIFO about 67 ms of cover.
 // GPMC consumes two little-endian halfwords per word from a single pop port.
+// TRLC-LINKS: REQ-SDS-187
 module adc_stream(input core,packclk,cpu,enable,input [31:0] data,input valid,
  input cpu_pop,output [15:0] cpu_data,output [12:0] available,
  output [15:0] flags,output reg [31:0] consumed=0,output fault);

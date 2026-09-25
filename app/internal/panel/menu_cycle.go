@@ -1,5 +1,7 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-PANEL
 package panel
 
+// TRLC-LINKS: REQ-SDS-136, REQ-SDS-138, REQ-SDS-139, REQ-SDS-140
 func (c *Controller) menuCycle(slot, dir int) {
 	c.mu.Lock()
 	pg := c.menuPage
@@ -188,13 +190,21 @@ func (c *Controller) menuCycle(slot, dir int) {
 	case pgAcq:
 		switch slot {
 		case 0:
-			c.eng.SetAcqMode(mod4(st.AcqMode + dir))
+			modes := 4
+			if st.BandKind == "sram" {
+				modes = 5
+			}
+			c.eng.SetAcqMode((st.AcqMode + dir + modes) % modes)
 		case 1:
 			c.menuCount(st, dir)
 		case 2:
-			c.eng.SetETS(!st.ETS)
+			if st.BandKind != "sram" {
+				c.eng.SetETS(!st.ETS)
+			}
 		case 3: // memory depth (fps <-> data knob)
-			c.eng.SetMemDepth(nextOpt([]int{2048, 6144, 14336, 20480}, st.MemDepth, dir))
+			if st.BandKind != "sram" {
+				c.eng.SetMemDepth(nextOpt([]int{2048, 6144, 14336, 20480}, st.MemDepth, dir))
+			}
 		}
 	case pgDisp:
 		switch slot {

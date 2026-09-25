@@ -1,0 +1,31 @@
+{
+  "source": "app/internal/web/eyejitter.test.cjs",
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "scope": "Unmodified original Node suite on frozen pinned sources, connected to current source by exact comment removal and unchanged parser tokens. Not the breaker or isolated guard suite.",
+  "sourceSHA256": "022b99fa32e8fd4574068dea96128175978ad951b63bc0fd23982596b2008eda",
+  "logs": {
+    "evidence/test-runs/eye-jitter-original-suite.log": "733e94392e7daedd50e34d7ee91bdcedf08bc47b5dbdddc440e1b19ca48d4fba"
+  },
+  "tests": [
+    {
+      "name": "eyejitter.test.cjs original suite",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-181",
+        "REQ-SDS-199"
+      ]
+    }
+  ],
+  "results": [
+    {
+      "requirement": "REQ-SDS-181",
+      "status": "partial",
+      "notes": "Original bounded synthetic assertions pass. Eye-height scaling discrepancy and all source-review limitations remain; no browser rendering or hardware qualification."
+    },
+    {
+      "requirement": "REQ-SDS-199",
+      "status": "partial",
+      "notes": "Original bounded synthetic assertions pass. Eye-height scaling discrepancy and all source-review limitations remain; no browser rendering or hardware qualification."
+    }
+  ]
+}

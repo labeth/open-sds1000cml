@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-BUS
 package bus
 
 import (
@@ -8,6 +9,7 @@ import (
 	"unsafe"
 )
 
+// TRLC-LINKS: REQ-SDS-134
 type kernelDMADrainer struct {
 	file      *os.File
 	bytes     []byte
@@ -16,6 +18,7 @@ type kernelDMADrainer struct {
 
 // EnableKernelDMA is experimental and exclusive with userspace EDMA. The
 // module holds a reference to our inherited GPMC fd; it never opens GPMC.
+// TRLC-LINKS: REQ-SDS-002, REQ-SDS-081, REQ-SDS-134
 func (d *Dev) EnableKernelDMA() error {
 	if unsafe.Sizeof(uintptr(0)) != 4 {
 		return fmt.Errorf("bus: kernel DMA ABI requires 32-bit ARM scope")
@@ -42,6 +45,7 @@ func (d *Dev) EnableKernelDMA() error {
 	d.kernelDMA = &kernelDMADrainer{file: f, bytes: make([]byte, 16384)}
 	return nil
 }
+// TRLC-LINKS: REQ-SDS-002, REQ-SDS-134
 func (d *Dev) CloseKernelDMA() error {
 	if d.kernelDMA == nil {
 		return nil
@@ -50,6 +54,7 @@ func (d *Dev) CloseKernelDMA() error {
 	d.kernelDMA = nil
 	return err
 }
+// TRLC-LINKS: REQ-SDS-134
 func (k *kernelDMADrainer) pop(sel uint16, dst []byte) error {
 	if k.streaming {
 		return fmt.Errorf("bus: kernel stream owns GPMC until CloseKernelDMA")
@@ -69,6 +74,7 @@ func (k *kernelDMADrainer) pop(sel uint16, dst []byte) error {
 // StartKernelStream transfers exclusive GPMC ownership to the kernel worker.
 // No Read/RawWrite/Pop calls are allowed until EOF and CloseKernelDMA. This
 // bounded experimental ABI uses source 0=ADC, 1=counter and a word target.
+// TRLC-LINKS: REQ-SDS-134
 func (d *Dev) StartKernelStream(log, source, target, seconds uint32) error {
 	if d.kernelDMA == nil {
 		return fmt.Errorf("bus: kernel DMA disabled")
@@ -90,6 +96,7 @@ func (d *Dev) StartKernelStream(log, source, target, seconds uint32) error {
 
 // ReadKernelStream returns one complete LE header (first word u64, word count
 // u32, reserved u32) followed by sample bytes, or EOF after all banks drain.
+// TRLC-LINKS: REQ-SDS-134
 func (d *Dev) ReadKernelStream(dst []byte) (int, error) {
 	if d.kernelDMA == nil {
 		return 0, fmt.Errorf("bus: kernel DMA disabled")
@@ -103,6 +110,7 @@ func (d *Dev) ReadKernelStream(dst []byte) (int, error) {
 	return d.kernelDMA.file.Read(dst)
 }
 
+// TRLC-LINKS: REQ-SDS-134
 func (d *Dev) KernelStreamStats() ([8]uint32, error) {
 	var stats [8]uint32
 	if d.kernelDMA == nil {

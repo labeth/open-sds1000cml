@@ -1,0 +1,24 @@
+{
+  "requirement": "REQ-SDS-104",
+  "sourceSHA256": {
+    "ota/internal/agent/state.go": "e1144cbd26ae4c784bba6307ac1654b2d9c04df91fbb0aec80d486fc11684042"
+  },
+  "scope": "Complete state.go source inspection and temporary-file boundary characterization; behavior unchanged.",
+  "characterization": "agent-state-characterization.json",
+  "tests": [
+    "TestUntakeoverReleasesControl"
+  ],
+  "testLog": "test-runs/takeover-state.jsonl",
+  "implementation": [
+    "loadState starts with zero flags, reads JSON if possible, and ignores read/decode errors.",
+    "get copies state under the instance mutex.",
+    "update mutates live flags under the mutex, writes and fsyncs .tmp, closes, renames and best-effort syncs the directory."
+  ],
+  "limits": [
+    "No rollback of live flags after any persistence failure.",
+    "Ignored JSON type errors can leave successfully decoded fields applied.",
+    "Fixed .tmp path and per-instance mutex do not coordinate independent stateFile instances.",
+    "Directory sync errors are ignored; device/filesystem power-loss durability is unqualified.",
+    "Untakeover ignores supervisor stop-request errors, then clears flags, clears emergency mode and disarms watchdog after successful state update. Its test uses an idle supervisor with no app binary."
+  ]
+}

@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-RTL-DEFAULT-TESTS
 // tb_capture.v -- pre/post window exactness, trigger position + Q16 fraction, wrapped records,
 // decimation, single-channel packing, stream ring + overflow, HALT without trigger, hardware
 // trigger, falling slope, RESET, and the TSRC test sources (ramp / column tag / glitch) bit-exact
@@ -5,6 +6,7 @@
 // restarting at k = 0 on a GO issued while the previous record is still filling.
 `timescale 1ns/1ps
 `include "regs.vh"
+// TRLC-LINKS: REQ-SDS-195
 module tb_capture;
     reg cap_clk = 0; always #2.5 cap_clk = ~cap_clk;
     reg rd_clk = 0;  always #6.25 rd_clk = ~rd_clk;

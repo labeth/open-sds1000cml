@@ -1,0 +1,14 @@
+{
+  "result": "pass",
+  "requirement": "REQ-EMG-010",
+  "owner": "FU-CODEMAP-INFERENCE",
+  "command": "GOPROXY=off go test ./...",
+  "workingDirectory": "/home/labeth/ws/engineering-model-go",
+  "sourceSHA256": {
+    "codemap/verilog.go": "2d21e5a4df8952b1600bce267579144a053cb388fdde0bd97331ca89cfbf4d4d",
+    "codemap/verilog_test.go": "13bd8c6a96673084c4966124c0df89486161d8ff543eaec8f270fdc0d457cfb2"
+  },
+  "log": "test-runs/engineering-model-verilog-expression.log",
+  "logSHA256": "aa9fddd05b66ac2f4b7d798aa6aca677c2bd01e8aa25afbe1e258b822a7f0cfc",
+  "scope": "Full engineering-model-go test suite after the expression-macro scanner change. Recognized expression contexts retain warning diagnostics and subsequent literal module boundaries; unresolved declaration-position macros remain errors. This is lexical tracing support, not preprocessing or HDL elaboration."
+}

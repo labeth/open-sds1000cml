@@ -1,0 +1,33 @@
+{
+  "result": "go-trace-integration-pass-shell-inference-pending",
+  "reviewedFiles": 8,
+  "annotatedGoFiles": 5,
+  "functions": 32,
+  "types": 0,
+  "originalTests": 6,
+  "passingTests": 6,
+  "compiledPackages": 4,
+  "nativeSummaries": 1,
+  "requirements": [
+    "REQ-SDS-175",
+    "REQ-SDS-176",
+    "REQ-SDS-177",
+    "REQ-SDS-178"
+  ],
+  "existingRequirements": [
+    "REQ-SDS-030",
+    "REQ-SDS-109",
+    "REQ-SDS-110",
+    "REQ-SDS-111",
+    "REQ-SDS-112"
+  ],
+  "scope": "OTA command and boot-anchor source review. Original bounded host boot harness plus command-package compilation; no device commands, power control, broker start, boot remount or actual fingerprint script execution. Shell sources are reviewed artifacts pending native shell inference support.",
+  "publicationAttachments": [
+    {
+      "source": "ota/boot/boot_test.go",
+      "resultArtifact": "test-results/go/ota/boot/boot_test.json",
+      "status": "partial",
+      "verificationID": "REF_VERIFY_VER_INF_TEST_BOOT_TEST_9DE2CF"
+    }
+  ]
+}

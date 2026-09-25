@@ -1,6 +1,7 @@
 // Package decode ports the web protocol decoders (internal/web/decode.js) to Go
 // for the on-device LCD: UART / I2C / SPI over sampled 8-bit codes. Kept
 // algorithm-faithful to decode.js so the two surfaces agree byte-for-byte.
+// ENGMODEL-OWNER-UNIT: FU-APP-DECODE
 package decode
 
 import (
@@ -9,6 +10,7 @@ import (
 )
 
 // Span is one decoded token spanning sample indices [I0,I1].
+// TRLC-LINKS: REQ-SDS-018
 type Span struct {
 	I0, I1 int
 	Text   string
@@ -17,6 +19,7 @@ type Span struct {
 }
 
 // Result is a decode outcome.
+// TRLC-LINKS: REQ-SDS-018
 type Result struct {
 	OK     bool
 	Error  string
@@ -30,8 +33,19 @@ type Result struct {
 	Margin float64 // SPI: mean |sample−threshold|/halfAmp (autodetect CPHA tiebreak)
 }
 
+// TRLC-LINKS: REQ-SDS-018
+func invertLogic(codes []uint8) []uint8 {
+	out := make([]uint8, len(codes))
+	for i, v := range codes {
+		out[i] = 255 - v
+	}
+	return out
+}
+
+// TRLC-LINKS: REQ-SDS-018
 func hex2(b int) string { return fmt.Sprintf("%02X", b&0xff) }
 
+// TRLC-LINKS: REQ-SDS-018
 func popcount(v int) int {
 	// UNSIGNED shift: an arithmetic >> on a negative int shifts in sign bits
 	// and never reaches 0 — an infinite loop. A hostile UART bit count can set
@@ -46,6 +60,7 @@ func popcount(v int) int {
 }
 
 // FmtByte renders a byte in the requested format (hex/dec/bin/ascii).
+// TRLC-LINKS: REQ-SDS-018
 func FmtByte(v int, format string) string {
 	switch format {
 	case "dec":
@@ -67,11 +82,13 @@ func FmtByte(v int, format string) string {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-018
 type edge struct {
 	i, dir int
 	x      float64
 }
 
+// TRLC-LINKS: REQ-SDS-018
 type sliced struct {
 	ok         bool
 	reason     string
@@ -88,6 +105,7 @@ type sliced struct {
 
 // sliceChannel builds the threshold/hysteresis + level/edge model for one
 // channel (decode.js sliceChannel). thr overrides the auto midpoint when set.
+// TRLC-LINKS: REQ-SDS-018
 func sliceChannel(codes []uint8, thr float64, haveThr bool) sliced {
 	const hystFrac = 0.20
 	const minAmp = 20.0
@@ -178,6 +196,7 @@ func sliceChannel(codes []uint8, thr float64, haveThr bool) sliced {
 		highRail: highRail, amp: amp, thHi: thHi, thLo: thLo, level: level, edges: edges}
 }
 
+// TRLC-LINKS: REQ-SDS-018
 func logicAt(s sliced, x float64) int {
 	i := int(math.Round(x))
 	if i < 0 || i >= s.n {
@@ -189,6 +208,7 @@ func logicAt(s sliced, x float64) int {
 	return 0
 }
 
+// TRLC-LINKS: REQ-SDS-018
 func minEdgeGap(edges []edge, dirOk func(int) bool) float64 {
 	prev := -1
 	min := math.Inf(1)

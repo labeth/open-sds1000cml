@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-BUS
 package bus
 
 import (
@@ -9,6 +10,7 @@ import (
 	"open-sds/app/internal/iface"
 )
 
+// TRLC-LINKS: REQ-SDS-132
 func TestTimingFileRoundTrip(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, TimingFileName)
@@ -46,6 +48,7 @@ func TestTimingFileRoundTrip(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-132
 func hex8(v uint32) string {
 	const d = "0123456789abcdef"
 	var b [8]byte
@@ -56,6 +59,7 @@ func hex8(v uint32) string {
 	return string(b[:])
 }
 
+// TRLC-LINKS: REQ-SDS-132
 func bootFile(t *testing.T, dir string, chosen CS1Timing) string {
 	t.Helper()
 	path := filepath.Join(dir, TimingFileName)
@@ -67,6 +71,7 @@ func bootFile(t *testing.T, dir string, chosen CS1Timing) string {
 }
 
 // factoryFile writes the factory record next to the persisted file.
+// TRLC-LINKS: REQ-SDS-132
 func factoryFile(t *testing.T, timingPath string, fac CS1Timing) {
 	t.Helper()
 	if _, err := SaveFactory(FactoryPathFor(timingPath), fac, "v"); err != nil {
@@ -74,6 +79,7 @@ func factoryFile(t *testing.T, timingPath string, fac CS1Timing) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-132
 func TestBootApplyPersistedPasses(t *testing.T) {
 	fab := newFakeFab()
 	port := &fakePort{fab: fab, cur: FactoryCS1Timing, minAccess: 9, minCycle: 12}
@@ -94,6 +100,7 @@ func TestBootApplyPersistedPasses(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-132
 func TestBootApplyPersistedFallsBack(t *testing.T) {
 	fab := newFakeFab()
 	port := &fakePort{fab: fab, cur: FactoryCS1Timing, minAccess: 12, minCycle: 12} // the persisted access time is below this unit's floor
@@ -141,6 +148,7 @@ func TestBootApplyPersistedFallsBack(t *testing.T) {
 // TestFactoryRecordRules is the factory-file state machine of the file
 // header: captured once from the controller on the first run without a
 // persisted file, then always the file — never the live controller.
+// TRLC-LINKS: REQ-SDS-132
 func TestFactoryRecordRules(t *testing.T) {
 	logf := func(f string, a ...any) { t.Logf(f, a...) }
 	// (a) First run, no files: the controller's values are recorded and nothing is written to the controller.
@@ -250,6 +258,7 @@ func TestFactoryRecordRules(t *testing.T) {
 // TestTimingPathForBootFallsBackToSibling: a deploy lands the app in the other
 // OTA slot, where no timing record exists, and the board's measured timing must
 // not be lost. The sibling is used only when it carries a factory record too.
+// TRLC-LINKS: REQ-SDS-132
 func TestTimingPathForBootFallsBackToSibling(t *testing.T) {
 	root := t.TempDir()
 	a := filepath.Join(root, "A")

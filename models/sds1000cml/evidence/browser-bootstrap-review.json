@@ -1,0 +1,471 @@
+{
+  "result": "bootstrap-source-relationships-integrated",
+  "scope": "Complete asset server/bootstrap file read, parsed HTML script order, and selected shared-state/GL/core polling excerpts. This is not complete browser-function review or browser execution.",
+  "sources": {
+    "app/internal/web/ui.html": "37e8108e15f436ba0be3ba690e711deaa203ade8bde039321223a6f8385dc7e0",
+    "app/internal/web/assets.go": "b37577f0078610acfb13b0c7884e9dce2c8201eaa9bc526356225a51f29edfbb",
+    "app/internal/web/app.js": "99e4ac1c2f384bec50ee02e029404e375a4f681b47509a8928e3d8238dd50463",
+    "app/internal/web/app_gl.js": "adb4a70ba80855c1abe506cc1cdfb1a84486284fa74649f5ccc54261eece1ad0",
+    "app/internal/web/app_init.js": "70d2f90d345e1fff4cc60ef846732e3ab8212a0a18a69117ad2c1f08cae9425c",
+    "app/internal/web/app_core.js": "b4d36f22c7b914fccda46f95d0c33f17b7ad3f74adeb42086233ebb0bf7e2fdd"
+  },
+  "classicScriptLoadOrder": [
+    {
+      "src": "peaks.js",
+      "line": 394,
+      "attributes": {
+        "src": "peaks.js"
+      },
+      "path": "app/internal/web/peaks.js",
+      "owner": "FU-WEB-PEAKS",
+      "sourceSHA256": "bcd3946ff1eac3a9ec7a993983c21a93947678a13e4f184bed09fc5cef645dcc"
+    },
+    {
+      "src": "decode.js",
+      "line": 395,
+      "attributes": {
+        "src": "decode.js"
+      },
+      "path": "app/internal/web/decode.js",
+      "owner": "FU-WEB-DECODE",
+      "sourceSHA256": "51f03480063e099bb6f1ff8dadc3f652151b65f83c179b24754801440d396ba0"
+    },
+    {
+      "src": "decode_manchester.js",
+      "line": 396,
+      "attributes": {
+        "src": "decode_manchester.js"
+      },
+      "path": "app/internal/web/decode_manchester.js",
+      "owner": "FU-WEB-DECODE-MANCHESTER",
+      "sourceSHA256": "a9cc93e7a9cdf0f10670fa08bd193d751899fbe964a2e85bfc1729d7f40eccd2"
+    },
+    {
+      "src": "decode_sent.js",
+      "line": 397,
+      "attributes": {
+        "src": "decode_sent.js"
+      },
+      "path": "app/internal/web/decode_sent.js",
+      "owner": "FU-WEB-DECODE-SENT",
+      "sourceSHA256": "3ed8ba69582b903ddeda1fc37169508d88f594343177a2d70850fd163c2043ee"
+    },
+    {
+      "src": "decode_canfd.js",
+      "line": 398,
+      "attributes": {
+        "src": "decode_canfd.js"
+      },
+      "path": "app/internal/web/decode_canfd.js",
+      "owner": "FU-WEB-DECODE-CANFD",
+      "sourceSHA256": "aaf986a310cfdef553c9b2cc6331824329a6fce7bd67a97e615f73d328181a78"
+    },
+    {
+      "src": "decode_mil1553.js",
+      "line": 399,
+      "attributes": {
+        "src": "decode_mil1553.js"
+      },
+      "path": "app/internal/web/decode_mil1553.js",
+      "owner": "FU-WEB-DECODE-MIL1553",
+      "sourceSHA256": "05ddda065736f285337ebe1dc07e4743082e34cef0197fe26dd84275ef902f5a"
+    },
+    {
+      "src": "decode_arinc429.js",
+      "line": 400,
+      "attributes": {
+        "src": "decode_arinc429.js"
+      },
+      "path": "app/internal/web/decode_arinc429.js",
+      "owner": "FU-WEB-DECODE-ARINC429",
+      "sourceSHA256": "8e1ec8d14e4795707668e3a510d488920a1851ab176a4d6f07daf4ac9aafaf93"
+    },
+    {
+      "src": "decode_usbls.js",
+      "line": 401,
+      "attributes": {
+        "src": "decode_usbls.js"
+      },
+      "path": "app/internal/web/decode_usbls.js",
+      "owner": "FU-WEB-DECODE-USBLS",
+      "sourceSHA256": "e58228eb41a2440c02a0499eb5145d490bb1ce57b18feb43aab6458dd372ac2f"
+    },
+    {
+      "src": "decode_flexray.js",
+      "line": 402,
+      "attributes": {
+        "src": "decode_flexray.js"
+      },
+      "path": "app/internal/web/decode_flexray.js",
+      "owner": "FU-WEB-DECODE-FLEXRAY",
+      "sourceSHA256": "aa5833d52b438b37baa861ee531b74f2bcf1a337a5ea5aa76df350279e642c7a"
+    },
+    {
+      "src": "binframe.js",
+      "line": 403,
+      "attributes": {
+        "src": "binframe.js"
+      },
+      "path": "app/internal/web/binframe.js",
+      "owner": "FU-WEB-BINFRAME",
+      "sourceSHA256": "ee6b19ce469fee3a6c3c383eb050429ccc17189da560ee2851a27fbf4282ca04"
+    },
+    {
+      "src": "sigrok_export.js",
+      "line": 404,
+      "attributes": {
+        "src": "sigrok_export.js"
+      },
+      "path": "app/internal/web/sigrok_export.js",
+      "owner": "FU-WEB-SIGROK-EXPORT",
+      "sourceSHA256": "7e19755f5d61103a066889924a830500197e46063ef91bfefa898ee514d573c1"
+    },
+    {
+      "src": "superres_math.js",
+      "line": 405,
+      "attributes": {
+        "src": "superres_math.js"
+      },
+      "path": "app/internal/web/superres_math.js",
+      "owner": "FU-WEB-SUPERRES-MATH",
+      "sourceSHA256": "14a8add8638efac2259039e5e22299b9a410a704c7c8846a662f61ca9b2308fb"
+    },
+    {
+      "src": "superres_template.js",
+      "line": 406,
+      "attributes": {
+        "src": "superres_template.js"
+      },
+      "path": "app/internal/web/superres_template.js",
+      "owner": "FU-WEB-SUPERRES-TEMPLATE",
+      "sourceSHA256": "a5e0a12681a9f48f9284648ad13f250f1977232a9fec7d6b433eabacbd75072d"
+    },
+    {
+      "src": "superres_gate.js",
+      "line": 407,
+      "attributes": {
+        "src": "superres_gate.js"
+      },
+      "path": "app/internal/web/superres_gate.js",
+      "owner": "FU-WEB-SUPERRES-GATE",
+      "sourceSHA256": "19730b6f161c9df4dbdd7881a06de7f6746df06837923e3c726e1b7d1bfb4a38"
+    },
+    {
+      "src": "superres_measure.js",
+      "line": 408,
+      "attributes": {
+        "src": "superres_measure.js"
+      },
+      "path": "app/internal/web/superres_measure.js",
+      "owner": "FU-WEB-SUPERRES-MEASURE",
+      "sourceSHA256": "0c71d9a4a38e2aa12ea4345c894e5b63878b7b9e4ad687e4fc7a2c7ea8da40e5"
+    },
+    {
+      "src": "superres_comp.js",
+      "line": 409,
+      "attributes": {
+        "src": "superres_comp.js"
+      },
+      "path": "app/internal/web/superres_comp.js",
+      "owner": "FU-WEB-SUPERRES-COMP",
+      "sourceSHA256": "3d551ee3ceca857a1ed1728f6b236bcf864801a3af483f8284714379ad3d6b33"
+    },
+    {
+      "src": "superres_ets.js",
+      "line": 410,
+      "attributes": {
+        "src": "superres_ets.js"
+      },
+      "path": "app/internal/web/superres_ets.js",
+      "owner": "FU-WEB-SUPERRES-ETS",
+      "sourceSHA256": "11e2f6ffcb27d934a67cb516665c015edc184b2b69c9797a41346381ffaa347b"
+    },
+    {
+      "src": "superres.js",
+      "line": 411,
+      "attributes": {
+        "src": "superres.js"
+      },
+      "path": "app/internal/web/superres.js",
+      "owner": "FU-WEB-SUPERRES",
+      "sourceSHA256": "a9229bfb0c6cf75370005b5c68b911ee4224ba517d9d20dd824577314e94f82a"
+    },
+    {
+      "src": "eyejitter_analysis.js",
+      "line": 412,
+      "attributes": {
+        "src": "eyejitter_analysis.js"
+      },
+      "path": "app/internal/web/eyejitter_analysis.js",
+      "owner": "FU-WEB-EYEJITTER-ANALYSIS",
+      "sourceSHA256": "b87f7a1bf044ba509cd72710fe6f945510336c66602de79f4804398c4406b570"
+    },
+    {
+      "src": "eyejitter.js",
+      "line": 413,
+      "attributes": {
+        "src": "eyejitter.js"
+      },
+      "path": "app/internal/web/eyejitter.js",
+      "owner": "FU-WEB-EYEJITTER",
+      "sourceSHA256": "8c6a41fec7ffb9c2dc2d4b87f03c8030aea39ec073855eb4f20284bcdbee09c8"
+    },
+    {
+      "src": "bode.js",
+      "line": 414,
+      "attributes": {
+        "src": "bode.js"
+      },
+      "path": "app/internal/web/bode.js",
+      "owner": "FU-WEB-BODE",
+      "sourceSHA256": "0619533bedf59bffdbb187fe2c805a1b630ae70d1636aa12f68d335f733ba31b"
+    },
+    {
+      "src": "spectrogram.js",
+      "line": 415,
+      "attributes": {
+        "src": "spectrogram.js"
+      },
+      "path": "app/internal/web/spectrogram.js",
+      "owner": "FU-WEB-SPECTROGRAM",
+      "sourceSHA256": "6e685acc429caacb62d32ad8e2e22df005ab13d954ae277770ed54648d955a71"
+    },
+    {
+      "src": "app.js",
+      "line": 420,
+      "attributes": {
+        "src": "app.js"
+      },
+      "path": "app/internal/web/app.js",
+      "owner": "FU-WEB-APP",
+      "sourceSHA256": "99e4ac1c2f384bec50ee02e029404e375a4f681b47509a8928e3d8238dd50463"
+    },
+    {
+      "src": "app_gl.js",
+      "line": 421,
+      "attributes": {
+        "src": "app_gl.js"
+      },
+      "path": "app/internal/web/app_gl.js",
+      "owner": "FU-WEB-APP-GL",
+      "sourceSHA256": "adb4a70ba80855c1abe506cc1cdfb1a84486284fa74649f5ccc54261eece1ad0"
+    },
+    {
+      "src": "app_geom.js",
+      "line": 422,
+      "attributes": {
+        "src": "app_geom.js"
+      },
+      "path": "app/internal/web/app_geom.js",
+      "owner": "FU-WEB-APP-GEOM",
+      "sourceSHA256": "b4dc43513ada665b830720d204e530aafa4df7d9f05b703128b8341cf8dad86c"
+    },
+    {
+      "src": "app_draw.js",
+      "line": 423,
+      "attributes": {
+        "src": "app_draw.js"
+      },
+      "path": "app/internal/web/app_draw.js",
+      "owner": "FU-WEB-APP-DRAW",
+      "sourceSHA256": "ed8727761e47b50072d4c75cb215dd820b8057f9bf30d371bf4d24c8f0c6455a"
+    },
+    {
+      "src": "app_nav.js",
+      "line": 424,
+      "attributes": {
+        "src": "app_nav.js"
+      },
+      "path": "app/internal/web/app_nav.js",
+      "owner": "FU-WEB-APP-NAV",
+      "sourceSHA256": "0d8bf6c679c282d4b1a8b060adca12da73567674cd20fb22a4004ac9822822a9"
+    },
+    {
+      "src": "app_core.js",
+      "line": 425,
+      "attributes": {
+        "src": "app_core.js"
+      },
+      "path": "app/internal/web/app_core.js",
+      "owner": "FU-WEB-APP-CORE",
+      "sourceSHA256": "b4d36f22c7b914fccda46f95d0c33f17b7ad3f74adeb42086233ebb0bf7e2fdd"
+    },
+    {
+      "src": "app_fft.js",
+      "line": 426,
+      "attributes": {
+        "src": "app_fft.js"
+      },
+      "path": "app/internal/web/app_fft.js",
+      "owner": "FU-WEB-APP-FFT",
+      "sourceSHA256": "747110e373a824e5ca0ef8438aa49a1a8d643ca923e91875862f06400cd78f9e"
+    },
+    {
+      "src": "app_decode.js",
+      "line": 427,
+      "attributes": {
+        "src": "app_decode.js"
+      },
+      "path": "app/internal/web/app_decode.js",
+      "owner": "FU-WEB-APP-DECODE",
+      "sourceSHA256": "135a916cef066acdbcf9fd5c88787ab3ff908cf12da95a073cc0a77ae14c7e83"
+    },
+    {
+      "src": "app_superres.js",
+      "line": 428,
+      "attributes": {
+        "src": "app_superres.js"
+      },
+      "path": "app/internal/web/app_superres.js",
+      "owner": "FU-WEB-APP-SUPERRES",
+      "sourceSHA256": "ce579da6cd38c559cc359a0c6be252b2421c8b3a9f7e4ad3e66e7f0d6f14fbb8"
+    },
+    {
+      "src": "app_eye.js",
+      "line": 429,
+      "attributes": {
+        "src": "app_eye.js"
+      },
+      "path": "app/internal/web/app_eye.js",
+      "owner": "FU-WEB-APP-EYE",
+      "sourceSHA256": "7b89ccacc0bdf6fd0305b2e4002b9d8e650ac639a2bba219f67a7ef20ff6f090"
+    },
+    {
+      "src": "app_zonemask.js",
+      "line": 430,
+      "attributes": {
+        "src": "app_zonemask.js"
+      },
+      "path": "app/internal/web/app_zonemask.js",
+      "owner": "FU-WEB-APP-ZONEMASK",
+      "sourceSHA256": "a8bec7198c569011e01c172fc6d3f6d75fb2aa1b009d5875c3842e4186ff9d42"
+    },
+    {
+      "src": "app_serialtrig.js",
+      "line": 431,
+      "attributes": {
+        "src": "app_serialtrig.js"
+      },
+      "path": "app/internal/web/app_serialtrig.js",
+      "owner": "FU-WEB-APP-SERIALTRIG",
+      "sourceSHA256": "b79d865dfc14ea1186a8f5978bc8fba93073f283b90ad7b03d28b0cff2e28001"
+    },
+    {
+      "src": "app_views.js",
+      "line": 432,
+      "attributes": {
+        "src": "app_views.js"
+      },
+      "path": "app/internal/web/app_views.js",
+      "owner": "FU-WEB-APP-VIEWS",
+      "sourceSHA256": "aae095a63d1efe8931038cce2e94fd38278e7746ba41ba30e74f2177de32f04a"
+    },
+    {
+      "src": "app_controls.js",
+      "line": 433,
+      "attributes": {
+        "src": "app_controls.js"
+      },
+      "path": "app/internal/web/app_controls.js",
+      "owner": "FU-WEB-APP-CONTROLS",
+      "sourceSHA256": "359d1754004bec1e425893b0a6a26186be4da3dc24cb853c129d493f8ba91abd"
+    },
+    {
+      "src": "app_canvas.js",
+      "line": 434,
+      "attributes": {
+        "src": "app_canvas.js"
+      },
+      "path": "app/internal/web/app_canvas.js",
+      "owner": "FU-WEB-APP-CANVAS",
+      "sourceSHA256": "069b4eccc2ce210cf16781ab9d281e68dcbd3cf35ff48bebf131bd7484f1db36"
+    },
+    {
+      "src": "app_precision.js",
+      "line": 435,
+      "attributes": {
+        "src": "app_precision.js"
+      },
+      "path": "app/internal/web/app_precision.js",
+      "owner": "FU-WEB-APP-PRECISION",
+      "sourceSHA256": "4474686cd683b848d08ae1ca0a55a89eedf6183fa365ecabf249d7e7b4d682c2"
+    },
+    {
+      "src": "app_init.js",
+      "line": 436,
+      "attributes": {
+        "src": "app_init.js"
+      },
+      "path": "app/internal/web/app_init.js",
+      "owner": "FU-WEB-APP-INIT",
+      "sourceSHA256": "70d2f90d345e1fff4cc60ef846732e3ab8212a0a18a69117ad2c1f08cae9425c"
+    }
+  ],
+  "bootstrapCalls": [
+    {
+      "caller": "app_init.js",
+      "callee": "app_gl.js",
+      "symbol": "glInit",
+      "owner": "FU-WEB-APP-GL"
+    },
+    {
+      "caller": "app_init.js",
+      "callee": "app.js",
+      "symbol": "resize",
+      "owner": "FU-WEB-APP"
+    },
+    {
+      "caller": "app_init.js",
+      "callee": "app_core.js",
+      "symbol": "pollFrameBin",
+      "owner": "FU-WEB-APP-CORE"
+    },
+    {
+      "caller": "app_init.js",
+      "callee": "app_core.js",
+      "symbol": "pollStatus",
+      "owner": "FU-WEB-APP-CORE"
+    }
+  ],
+  "findings": [
+    "assets.go embeds ui.html plus all local JS/CSS and serves them with no-cache revalidation; missing embedded paths return false. staticName rejects slash-containing names before JS/CSS suffix recognition.",
+    "The page loads local classic scripts in document order; app.js defines shared globals, app_gl.js supplies the renderer, and app_init.js runs last. HTML load order is not an ES-module import graph.",
+    "Bootstrap calls glInit then resize, registers resize handlers, claims /api/claim and starts frame/status polling in finally even when the claim request fails. The default epoch remains zero on failure.",
+    "Primary frame polling uses /api/frame.bin with sequence, columns and epoch; 409 supersedes the client, hidden/frozen states wait, decoding failure retries with backoff and frozen is rechecked after await. This is source inspection, not proven browser behavior.",
+    "FFT raw polling uses /api/frame.bin?raw=1 without the epoch parameter visible on primary polling. Status polling uses /api/status; setter and auto controls use POST /api/set and /api/panel. Server-side enforcement still requires review.",
+    "VIEW-BROWSER now includes five source-backed bootstrap/API relationships, with exact graph checks and standalone visual review. Full browser-function review and browser execution remain pending."
+  ],
+  "authoredRelationships": [
+    {
+      "type": "calls",
+      "from": "FU-WEB-APP-INIT",
+      "to": "FU-WEB-APP-GL",
+      "description": "app_init.js calls glInit through classic-script shared globals after HTML load ordering; source inspection only."
+    },
+    {
+      "type": "calls",
+      "from": "FU-WEB-APP-INIT",
+      "to": "FU-WEB-APP",
+      "description": "app_init.js calls resize through classic-script shared globals after HTML load ordering; source inspection only."
+    },
+    {
+      "type": "calls",
+      "from": "FU-WEB-APP-INIT",
+      "to": "FU-WEB-APP-CORE",
+      "description": "app_init.js calls pollFrameBin and pollStatus through classic-script shared globals after HTML load ordering; source inspection only."
+    },
+    {
+      "type": "calls",
+      "from": "FU-WEB-APP-INIT",
+      "to": "IF-HTTP",
+      "description": "app_init.js fetches /api/claim and starts polling in finally, including after claim failure. Source inspection, not browser execution."
+    },
+    {
+      "type": "calls",
+      "from": "FU-WEB-APP-CORE",
+      "to": "IF-HTTP",
+      "description": "app_core.js frame/status polling and control posts use the browser HTTP API. Primary frames include an epoch; raw FFT requests omit it in this source. Server enforcement is not established by these client calls."
+    }
+  ],
+  "followupHttpReview": "web-http-boundary-review.json"
+}

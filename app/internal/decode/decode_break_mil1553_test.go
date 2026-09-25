@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-DECODE
 package decode
 
 import (
@@ -34,6 +35,7 @@ import (
 // mbConfident reports whether the decoder returned a "confident valid" 1553
 // result: OK with at least one word whose parity was accepted (no frame-error
 // span over it). A corrupted or garbage input must NOT be confident.
+// TRLC-LINKS: REQ-SDS-018
 func mbConfident(r Result) bool {
 	if !r.OK {
 		return false
@@ -41,6 +43,7 @@ func mbConfident(r Result) bool {
 	return mbFrameErrs(r) < len(r.Bytes) // some word survived with intact parity
 }
 
+// TRLC-LINKS: REQ-SDS-018
 func mbFrameErrs(r Result) int {
 	fe := 0
 	for _, s := range r.Spans {
@@ -51,6 +54,7 @@ func mbFrameErrs(r Result) int {
 	return fe
 }
 
+// TRLC-LINKS: REQ-SDS-018
 func mbIntEq(a []int, b []int) bool {
 	if len(a) != len(b) {
 		return false
@@ -66,6 +70,7 @@ func mbIntEq(a []int, b []int) bool {
 // mbPad extends a capture with `pre` leading and `post` trailing samples held at
 // the wave's existing idle levels (its first/last sample), so no spurious edge
 // is introduced. It models a real capture that does not begin/end on a frame.
+// TRLC-LINKS: REQ-SDS-018
 func mbPad(w []uint8, pre, post int) []uint8 {
 	if len(w) == 0 {
 		return w
@@ -81,6 +86,7 @@ func mbPad(w []uint8, pre, post int) []uint8 {
 	return out
 }
 
+// TRLC-LINKS: REQ-SDS-018
 func TestBreakMil1553(t *testing.T) {
 	rng := rand.New(rand.NewSource(0x1553beef))
 

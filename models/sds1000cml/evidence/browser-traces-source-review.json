@@ -1,0 +1,51 @@
+{
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "status": "source-model-integrated",
+  "requirements": [
+    "REQ-SDS-070",
+    "REQ-SDS-071",
+    "REQ-SDS-202",
+    "REQ-SDS-203"
+  ],
+  "files": [
+    {
+      "path": "app/internal/web/app_draw.js",
+      "baselineSHA256": "ed8727761e47b50072d4c75cb215dd820b8057f9bf30d371bf4d24c8f0c6455a",
+      "lines": 352,
+      "linkedDeclarations": 25,
+      "annotatedSHA256": "c38114946f8e117aad8af84e55eda8a2294b4e49691d45ecc26d59d42af0a750"
+    },
+    {
+      "path": "app/internal/web/app_fft.js",
+      "baselineSHA256": "747110e373a824e5ca0ef8438aa49a1a8d643ca923e91875862f06400cd78f9e",
+      "lines": 403,
+      "linkedDeclarations": 28,
+      "annotatedSHA256": "cb540b3e0617b32c7e183404bacf362062d2165215aed3d0109555badf497156"
+    }
+  ],
+  "testEvidence": "evidence/browser-traces-test-run.json",
+  "scope": "Complete source read of both files, including delegated FFT row handlers and reference-row callbacks; isolated helper checks selected code paths with spectrum and graphics stubs.",
+  "findings": [
+    "YT draw order is grid, references, C2, C1, math, channel and trigger markers; inversion applies only to live YT/envelope traces, not measurements, math, references, XY or FFT.",
+    "Sparse trace paths break on negative samples and offscreen Y; dense paths draw per-pixel min/max and may bridge gaps within a pixel. Envelope path does not explicitly check negative gap sentinels.",
+    "Trigger marker drawing includes source offset, while previously reviewed markerHit/moveMarker geometry does not include that offset. Nonzero offset can separate drawn and draggable trigger positions.",
+    "Arithmetic is clipped code-domain arithmetic, not calibrated voltage arithmetic. Unequal channel lengths can produce NaN. Memoization assumes immutable arrays and omits other frame metadata.",
+    "Residual tone subtraction uses floating-point storage, but skips each subsequent subtraction if the current residual has gone negative; final gap validity uses the original source.",
+    "References copy enabled channels and stride-limit storage to 65536 samples. Normal saved references have no sample-time span; only superres references with srSpanS are hidden on mismatched spans.",
+    "FFT trims leading/trailing negative gaps and linearly interpolates interior gaps on a uniform grid. At least 33 retained samples are required. This can invent spectral content across large gaps.",
+    "Raw FFT requires raw C1, while C2 can fall back to display samples under raw timing. fftStride is based on display frame length, independent of selected raw source length.",
+    "Spectrum cache keys only source-array identity; sample-period, display length, source mode and calibration changes are not part of the key. Pure stride subsampling has no anti-alias filtering.",
+    "FFT magnitude display is relative to each channel peak over an 80 dB range; peakVolts uses displayed vpc or fallback 1/25. Reported median-bin SNR divided by 6.02 is not calibrated ENOB.",
+    "XY sampling uses floor(n/20000) stride, so between 20000 and 39999 points it still draws every point. It omits display inversion and channel zoom.",
+    "Isolated cases do not execute GPU pixels, real DOM interaction or spectral transform accuracy. Existing pure spectrum tests remain separate evidence; no instrument behavior was changed."
+  ],
+  "validation": {
+    "isolatedCases": 13,
+    "linkedDeclarations": 53,
+    "strictConsistency": "pass",
+    "nativeMCP": "pass",
+    "nonPDFPublication": "pass",
+    "reproducibleArtifacts": 36,
+    "pdf": "deferred"
+  }
+}

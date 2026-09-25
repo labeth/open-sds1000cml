@@ -1,0 +1,312 @@
+{"Time":"2026-09-23T00:58:23.880638154+02:00","Action":"start","Package":"open-sds/app/internal/scpi"}
+{"Time":"2026-09-23T00:58:23.89018442+02:00","Action":"run","Package":"open-sds/app/internal/scpi","Test":"TestIDN"}
+{"Time":"2026-09-23T00:58:23.890202888+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestIDN","Output":"=== RUN   TestIDN\n"}
+{"Time":"2026-09-23T00:58:23.890334925+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestIDN","Output":"--- PASS: TestIDN (0.00s)\n"}
+{"Time":"2026-09-23T00:58:23.890349228+02:00","Action":"pass","Package":"open-sds/app/internal/scpi","Test":"TestIDN","Elapsed":0}
+{"Time":"2026-09-23T00:58:23.890366927+02:00","Action":"run","Package":"open-sds/app/internal/scpi","Test":"TestReplyFormats"}
+{"Time":"2026-09-23T00:58:23.890370285+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestReplyFormats","Output":"=== RUN   TestReplyFormats\n"}
+{"Time":"2026-09-23T00:58:23.890540979+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestReplyFormats","Output":"--- PASS: TestReplyFormats (0.00s)\n"}
+{"Time":"2026-09-23T00:58:23.890555925+02:00","Action":"pass","Package":"open-sds/app/internal/scpi","Test":"TestReplyFormats","Elapsed":0}
+{"Time":"2026-09-23T00:58:23.890576872+02:00","Action":"run","Package":"open-sds/app/internal/scpi","Test":"TestErrorTokens"}
+{"Time":"2026-09-23T00:58:23.890581389+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestErrorTokens","Output":"=== RUN   TestErrorTokens\n"}
+{"Time":"2026-09-23T00:58:23.89073237+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestErrorTokens","Output":"--- PASS: TestErrorTokens (0.00s)\n"}
+{"Time":"2026-09-23T00:58:23.890749973+02:00","Action":"pass","Package":"open-sds/app/internal/scpi","Test":"TestErrorTokens","Elapsed":0}
+{"Time":"2026-09-23T00:58:23.890766033+02:00","Action":"run","Package":"open-sds/app/internal/scpi","Test":"TestSettersSilent"}
+{"Time":"2026-09-23T00:58:23.890769776+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSettersSilent","Output":"=== RUN   TestSettersSilent\n"}
+{"Time":"2026-09-23T00:58:23.89088109+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSettersSilent","Output":"--- PASS: TestSettersSilent (0.00s)\n"}
+{"Time":"2026-09-23T00:58:23.890902155+02:00","Action":"pass","Package":"open-sds/app/internal/scpi","Test":"TestSettersSilent","Elapsed":0}
+{"Time":"2026-09-23T00:58:23.890908629+02:00","Action":"run","Package":"open-sds/app/internal/scpi","Test":"TestCompoundLine"}
+{"Time":"2026-09-23T00:58:23.890911876+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestCompoundLine","Output":"=== RUN   TestCompoundLine\n"}
+{"Time":"2026-09-23T00:58:23.891027871+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestCompoundLine","Output":"--- PASS: TestCompoundLine (0.00s)\n"}
+{"Time":"2026-09-23T00:58:23.891036946+02:00","Action":"pass","Package":"open-sds/app/internal/scpi","Test":"TestCompoundLine","Elapsed":0}
+{"Time":"2026-09-23T00:58:23.891051552+02:00","Action":"run","Package":"open-sds/app/internal/scpi","Test":"TestWFSUAndDAT2"}
+{"Time":"2026-09-23T00:58:23.891055146+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestWFSUAndDAT2","Output":"=== RUN   TestWFSUAndDAT2\n"}
+{"Time":"2026-09-23T00:58:23.891201082+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestWFSUAndDAT2","Output":"--- PASS: TestWFSUAndDAT2 (0.00s)\n"}
+{"Time":"2026-09-23T00:58:23.891211879+02:00","Action":"pass","Package":"open-sds/app/internal/scpi","Test":"TestWFSUAndDAT2","Elapsed":0}
+{"Time":"2026-09-23T00:58:23.891226089+02:00","Action":"run","Package":"open-sds/app/internal/scpi","Test":"TestWavedesc"}
+{"Time":"2026-09-23T00:58:23.891229778+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestWavedesc","Output":"=== RUN   TestWavedesc\n"}
+{"Time":"2026-09-23T00:58:23.891374664+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestWavedesc","Output":"--- PASS: TestWavedesc (0.00s)\n"}
+{"Time":"2026-09-23T00:58:23.891388107+02:00","Action":"pass","Package":"open-sds/app/internal/scpi","Test":"TestWavedesc","Elapsed":0}
+{"Time":"2026-09-23T00:58:23.891398111+02:00","Action":"run","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies"}
+{"Time":"2026-09-23T00:58:23.891401835+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies","Output":"=== RUN   TestSetNeverLies\n"}
+{"Time":"2026-09-23T00:58:23.891454689+02:00","Action":"run","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/C1:UNIT_A"}
+{"Time":"2026-09-23T00:58:23.891459307+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/C1:UNIT_A","Output":"=== RUN   TestSetNeverLies/C1:UNIT_A\n"}
+{"Time":"2026-09-23T00:58:23.891584411+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/C1:UNIT_A","Output":"--- PASS: TestSetNeverLies/C1:UNIT_A (0.00s)\n"}
+{"Time":"2026-09-23T00:58:23.891595086+02:00","Action":"pass","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/C1:UNIT_A","Elapsed":0}
+{"Time":"2026-09-23T00:58:23.891607829+02:00","Action":"run","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/C2:UNIT_V"}
+{"Time":"2026-09-23T00:58:23.891614305+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/C2:UNIT_V","Output":"=== RUN   TestSetNeverLies/C2:UNIT_V\n"}
+{"Time":"2026-09-23T00:58:23.891800038+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/C2:UNIT_V","Output":"--- PASS: TestSetNeverLies/C2:UNIT_V (0.00s)\n"}
+{"Time":"2026-09-23T00:58:23.891817918+02:00","Action":"pass","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/C2:UNIT_V","Elapsed":0}
+{"Time":"2026-09-23T00:58:23.891876882+02:00","Action":"run","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/C1:UNIT_W"}
+{"Time":"2026-09-23T00:58:23.891883132+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/C1:UNIT_W","Output":"=== RUN   TestSetNeverLies/C1:UNIT_W\n"}
+{"Time":"2026-09-23T00:58:23.892055892+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/C1:UNIT_W","Output":"--- PASS: TestSetNeverLies/C1:UNIT_W (0.00s)\n"}
+{"Time":"2026-09-23T00:58:23.892063099+02:00","Action":"pass","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/C1:UNIT_W","Elapsed":0}
+{"Time":"2026-09-23T00:58:23.892067858+02:00","Action":"run","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/C1:SKEW_100NS"}
+{"Time":"2026-09-23T00:58:23.89207026+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/C1:SKEW_100NS","Output":"=== RUN   TestSetNeverLies/C1:SKEW_100NS\n"}
+{"Time":"2026-09-23T00:58:23.892314266+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/C1:SKEW_100NS","Output":"--- PASS: TestSetNeverLies/C1:SKEW_100NS (0.00s)\n"}
+{"Time":"2026-09-23T00:58:23.892321909+02:00","Action":"pass","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/C1:SKEW_100NS","Elapsed":0}
+{"Time":"2026-09-23T00:58:23.892328141+02:00","Action":"run","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/C2:SKEW_-2.5E-9"}
+{"Time":"2026-09-23T00:58:23.892330915+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/C2:SKEW_-2.5E-9","Output":"=== RUN   TestSetNeverLies/C2:SKEW_-2.5E-9\n"}
+{"Time":"2026-09-23T00:58:23.892547487+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/C2:SKEW_-2.5E-9","Output":"--- PASS: TestSetNeverLies/C2:SKEW_-2.5E-9 (0.00s)\n"}
+{"Time":"2026-09-23T00:58:23.892555528+02:00","Action":"pass","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/C2:SKEW_-2.5E-9","Elapsed":0}
+{"Time":"2026-09-23T00:58:23.892560376+02:00","Action":"run","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/C1:SKEW_ABC"}
+{"Time":"2026-09-23T00:58:23.892562791+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/C1:SKEW_ABC","Output":"=== RUN   TestSetNeverLies/C1:SKEW_ABC\n"}
+{"Time":"2026-09-23T00:58:23.892794009+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/C1:SKEW_ABC","Output":"--- PASS: TestSetNeverLies/C1:SKEW_ABC (0.00s)\n"}
+{"Time":"2026-09-23T00:58:23.89280152+02:00","Action":"pass","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/C1:SKEW_ABC","Elapsed":0}
+{"Time":"2026-09-23T00:58:23.892807554+02:00","Action":"run","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/C1:INVS_ON"}
+{"Time":"2026-09-23T00:58:23.892809975+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/C1:INVS_ON","Output":"=== RUN   TestSetNeverLies/C1:INVS_ON\n"}
+{"Time":"2026-09-23T00:58:23.893028591+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/C1:INVS_ON","Output":"--- PASS: TestSetNeverLies/C1:INVS_ON (0.00s)\n"}
+{"Time":"2026-09-23T00:58:23.893035775+02:00","Action":"pass","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/C1:INVS_ON","Elapsed":0}
+{"Time":"2026-09-23T00:58:23.893040715+02:00","Action":"run","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/C1:INVS_OFF"}
+{"Time":"2026-09-23T00:58:23.89304321+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/C1:INVS_OFF","Output":"=== RUN   TestSetNeverLies/C1:INVS_OFF\n"}
+{"Time":"2026-09-23T00:58:23.893470422+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/C1:INVS_OFF","Output":"--- PASS: TestSetNeverLies/C1:INVS_OFF (0.00s)\n"}
+{"Time":"2026-09-23T00:58:23.893500001+02:00","Action":"pass","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/C1:INVS_OFF","Elapsed":0}
+{"Time":"2026-09-23T00:58:23.893518959+02:00","Action":"run","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/C2:INVS_1"}
+{"Time":"2026-09-23T00:58:23.893524196+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/C2:INVS_1","Output":"=== RUN   TestSetNeverLies/C2:INVS_1\n"}
+{"Time":"2026-09-23T00:58:23.893531478+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/C2:INVS_1","Output":"--- PASS: TestSetNeverLies/C2:INVS_1 (0.00s)\n"}
+{"Time":"2026-09-23T00:58:23.893536988+02:00","Action":"pass","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/C2:INVS_1","Elapsed":0}
+{"Time":"2026-09-23T00:58:23.893543555+02:00","Action":"run","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/C1:BWL_OFF"}
+{"Time":"2026-09-23T00:58:23.893561904+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/C1:BWL_OFF","Output":"=== RUN   TestSetNeverLies/C1:BWL_OFF\n"}
+{"Time":"2026-09-23T00:58:23.893749957+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/C1:BWL_OFF","Output":"--- PASS: TestSetNeverLies/C1:BWL_OFF (0.00s)\n"}
+{"Time":"2026-09-23T00:58:23.893772851+02:00","Action":"pass","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/C1:BWL_OFF","Elapsed":0}
+{"Time":"2026-09-23T00:58:23.893800815+02:00","Action":"run","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/C1:BWL_ON"}
+{"Time":"2026-09-23T00:58:23.893818047+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/C1:BWL_ON","Output":"=== RUN   TestSetNeverLies/C1:BWL_ON\n"}
+{"Time":"2026-09-23T00:58:23.893904747+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/C1:BWL_ON","Output":"--- PASS: TestSetNeverLies/C1:BWL_ON (0.00s)\n"}
+{"Time":"2026-09-23T00:58:23.893921002+02:00","Action":"pass","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/C1:BWL_ON","Elapsed":0}
+{"Time":"2026-09-23T00:58:23.893970051+02:00","Action":"run","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/C2:BWL_X"}
+{"Time":"2026-09-23T00:58:23.893988939+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/C2:BWL_X","Output":"=== RUN   TestSetNeverLies/C2:BWL_X\n"}
+{"Time":"2026-09-23T00:58:23.894156531+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/C2:BWL_X","Output":"--- PASS: TestSetNeverLies/C2:BWL_X (0.00s)\n"}
+{"Time":"2026-09-23T00:58:23.894179476+02:00","Action":"pass","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/C2:BWL_X","Elapsed":0}
+{"Time":"2026-09-23T00:58:23.894204296+02:00","Action":"run","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/TRCP_DC"}
+{"Time":"2026-09-23T00:58:23.894211057+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/TRCP_DC","Output":"=== RUN   TestSetNeverLies/TRCP_DC\n"}
+{"Time":"2026-09-23T00:58:23.894399523+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/TRCP_DC","Output":"--- PASS: TestSetNeverLies/TRCP_DC (0.00s)\n"}
+{"Time":"2026-09-23T00:58:23.894441091+02:00","Action":"pass","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/TRCP_DC","Elapsed":0}
+{"Time":"2026-09-23T00:58:23.894452173+02:00","Action":"run","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/TRCP_AC"}
+{"Time":"2026-09-23T00:58:23.894454836+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/TRCP_AC","Output":"=== RUN   TestSetNeverLies/TRCP_AC\n"}
+{"Time":"2026-09-23T00:58:23.894717307+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/TRCP_AC","Output":"--- PASS: TestSetNeverLies/TRCP_AC (0.00s)\n"}
+{"Time":"2026-09-23T00:58:23.894727694+02:00","Action":"pass","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/TRCP_AC","Elapsed":0}
+{"Time":"2026-09-23T00:58:23.894732719+02:00","Action":"run","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/TRCP_JUNK"}
+{"Time":"2026-09-23T00:58:23.894736993+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/TRCP_JUNK","Output":"=== RUN   TestSetNeverLies/TRCP_JUNK\n"}
+{"Time":"2026-09-23T00:58:23.894950132+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/TRCP_JUNK","Output":"--- PASS: TestSetNeverLies/TRCP_JUNK (0.00s)\n"}
+{"Time":"2026-09-23T00:58:23.894958826+02:00","Action":"pass","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/TRCP_JUNK","Elapsed":0}
+{"Time":"2026-09-23T00:58:23.89499325+02:00","Action":"run","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/TRSE_EDGE,SR,EX,HT,OFF"}
+{"Time":"2026-09-23T00:58:23.89499746+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/TRSE_EDGE,SR,EX,HT,OFF","Output":"=== RUN   TestSetNeverLies/TRSE_EDGE,SR,EX,HT,OFF\n"}
+{"Time":"2026-09-23T00:58:23.895191018+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/TRSE_EDGE,SR,EX,HT,OFF","Output":"--- PASS: TestSetNeverLies/TRSE_EDGE,SR,EX,HT,OFF (0.00s)\n"}
+{"Time":"2026-09-23T00:58:23.895211802+02:00","Action":"pass","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/TRSE_EDGE,SR,EX,HT,OFF","Elapsed":0}
+{"Time":"2026-09-23T00:58:23.89523507+02:00","Action":"run","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/TRSE_EDGE,SR,LINE,HT,OFF"}
+{"Time":"2026-09-23T00:58:23.895238259+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/TRSE_EDGE,SR,LINE,HT,OFF","Output":"=== RUN   TestSetNeverLies/TRSE_EDGE,SR,LINE,HT,OFF\n"}
+{"Time":"2026-09-23T00:58:23.895414497+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/TRSE_EDGE,SR,LINE,HT,OFF","Output":"--- PASS: TestSetNeverLies/TRSE_EDGE,SR,LINE,HT,OFF (0.00s)\n"}
+{"Time":"2026-09-23T00:58:23.895430663+02:00","Action":"pass","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/TRSE_EDGE,SR,LINE,HT,OFF","Elapsed":0}
+{"Time":"2026-09-23T00:58:23.89545249+02:00","Action":"run","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/TRSE_EDGE,SR,BOGUS,HT,OFF"}
+{"Time":"2026-09-23T00:58:23.895459023+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/TRSE_EDGE,SR,BOGUS,HT,OFF","Output":"=== RUN   TestSetNeverLies/TRSE_EDGE,SR,BOGUS,HT,OFF\n"}
+{"Time":"2026-09-23T00:58:23.895634498+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/TRSE_EDGE,SR,BOGUS,HT,OFF","Output":"--- PASS: TestSetNeverLies/TRSE_EDGE,SR,BOGUS,HT,OFF (0.00s)\n"}
+{"Time":"2026-09-23T00:58:23.895662726+02:00","Action":"pass","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/TRSE_EDGE,SR,BOGUS,HT,OFF","Elapsed":0}
+{"Time":"2026-09-23T00:58:23.895685533+02:00","Action":"run","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/C2:CPL_GND"}
+{"Time":"2026-09-23T00:58:23.895689228+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/C2:CPL_GND","Output":"=== RUN   TestSetNeverLies/C2:CPL_GND\n"}
+{"Time":"2026-09-23T00:58:23.895860588+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/C2:CPL_GND","Output":"--- PASS: TestSetNeverLies/C2:CPL_GND (0.00s)\n"}
+{"Time":"2026-09-23T00:58:23.895907534+02:00","Action":"pass","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/C2:CPL_GND","Elapsed":0}
+{"Time":"2026-09-23T00:58:23.895911885+02:00","Action":"run","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/C1:CPL_A50"}
+{"Time":"2026-09-23T00:58:23.895914144+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/C1:CPL_A50","Output":"=== RUN   TestSetNeverLies/C1:CPL_A50\n"}
+{"Time":"2026-09-23T00:58:23.896073868+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/C1:CPL_A50","Output":"--- PASS: TestSetNeverLies/C1:CPL_A50 (0.00s)\n"}
+{"Time":"2026-09-23T00:58:23.896086727+02:00","Action":"pass","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/C1:CPL_A50","Elapsed":0}
+{"Time":"2026-09-23T00:58:23.89611596+02:00","Action":"run","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/C1:CPL_D50"}
+{"Time":"2026-09-23T00:58:23.896119963+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/C1:CPL_D50","Output":"=== RUN   TestSetNeverLies/C1:CPL_D50\n"}
+{"Time":"2026-09-23T00:58:23.896324839+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/C1:CPL_D50","Output":"--- PASS: TestSetNeverLies/C1:CPL_D50 (0.00s)\n"}
+{"Time":"2026-09-23T00:58:23.896342633+02:00","Action":"pass","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/C1:CPL_D50","Elapsed":0}
+{"Time":"2026-09-23T00:58:23.896364707+02:00","Action":"run","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/C1:CPL_GARBAGE"}
+{"Time":"2026-09-23T00:58:23.896368644+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/C1:CPL_GARBAGE","Output":"=== RUN   TestSetNeverLies/C1:CPL_GARBAGE\n"}
+{"Time":"2026-09-23T00:58:23.896535663+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/C1:CPL_GARBAGE","Output":"--- PASS: TestSetNeverLies/C1:CPL_GARBAGE (0.00s)\n"}
+{"Time":"2026-09-23T00:58:23.896552592+02:00","Action":"pass","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/C1:CPL_GARBAGE","Elapsed":0}
+{"Time":"2026-09-23T00:58:23.896571286+02:00","Action":"run","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/TRLV_100"}
+{"Time":"2026-09-23T00:58:23.896575155+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/TRLV_100","Output":"=== RUN   TestSetNeverLies/TRLV_100\n"}
+{"Time":"2026-09-23T00:58:23.896732003+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/TRLV_100","Output":"--- PASS: TestSetNeverLies/TRLV_100 (0.00s)\n"}
+{"Time":"2026-09-23T00:58:23.896741003+02:00","Action":"pass","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/TRLV_100","Elapsed":0}
+{"Time":"2026-09-23T00:58:23.896754375+02:00","Action":"run","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/TRLV_-100"}
+{"Time":"2026-09-23T00:58:23.896758044+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/TRLV_-100","Output":"=== RUN   TestSetNeverLies/TRLV_-100\n"}
+{"Time":"2026-09-23T00:58:23.896874726+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/TRLV_-100","Output":"--- PASS: TestSetNeverLies/TRLV_-100 (0.00s)\n"}
+{"Time":"2026-09-23T00:58:23.896882989+02:00","Action":"pass","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/TRLV_-100","Elapsed":0}
+{"Time":"2026-09-23T00:58:23.896907135+02:00","Action":"run","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/TRLV_5E-4"}
+{"Time":"2026-09-23T00:58:23.896911685+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/TRLV_5E-4","Output":"=== RUN   TestSetNeverLies/TRLV_5E-4\n"}
+{"Time":"2026-09-23T00:58:23.897019694+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/TRLV_5E-4","Output":"--- PASS: TestSetNeverLies/TRLV_5E-4 (0.00s)\n"}
+{"Time":"2026-09-23T00:58:23.897030675+02:00","Action":"pass","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/TRLV_5E-4","Elapsed":0}
+{"Time":"2026-09-23T00:58:23.897053838+02:00","Action":"run","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/XYDS_ON"}
+{"Time":"2026-09-23T00:58:23.897058947+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/XYDS_ON","Output":"=== RUN   TestSetNeverLies/XYDS_ON\n"}
+{"Time":"2026-09-23T00:58:23.897172883+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/XYDS_ON","Output":"--- PASS: TestSetNeverLies/XYDS_ON (0.00s)\n"}
+{"Time":"2026-09-23T00:58:23.897181616+02:00","Action":"pass","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/XYDS_ON","Elapsed":0}
+{"Time":"2026-09-23T00:58:23.897244913+02:00","Action":"run","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/XYDS_OFF"}
+{"Time":"2026-09-23T00:58:23.897251275+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/XYDS_OFF","Output":"=== RUN   TestSetNeverLies/XYDS_OFF\n"}
+{"Time":"2026-09-23T00:58:23.897373861+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/XYDS_OFF","Output":"--- PASS: TestSetNeverLies/XYDS_OFF (0.00s)\n"}
+{"Time":"2026-09-23T00:58:23.897380885+02:00","Action":"pass","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/XYDS_OFF","Elapsed":0}
+{"Time":"2026-09-23T00:58:23.897403977+02:00","Action":"run","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/XYDS_MAYBE"}
+{"Time":"2026-09-23T00:58:23.897408058+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/XYDS_MAYBE","Output":"=== RUN   TestSetNeverLies/XYDS_MAYBE\n"}
+{"Time":"2026-09-23T00:58:23.897543244+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/XYDS_MAYBE","Output":"--- PASS: TestSetNeverLies/XYDS_MAYBE (0.00s)\n"}
+{"Time":"2026-09-23T00:58:23.897570147+02:00","Action":"pass","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/XYDS_MAYBE","Elapsed":0}
+{"Time":"2026-09-23T00:58:23.897599757+02:00","Action":"run","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/PESU_INFINITE"}
+{"Time":"2026-09-23T00:58:23.897604022+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/PESU_INFINITE","Output":"=== RUN   TestSetNeverLies/PESU_INFINITE\n"}
+{"Time":"2026-09-23T00:58:23.897793582+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/PESU_INFINITE","Output":"--- PASS: TestSetNeverLies/PESU_INFINITE (0.00s)\n"}
+{"Time":"2026-09-23T00:58:23.897817969+02:00","Action":"pass","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/PESU_INFINITE","Elapsed":0}
+{"Time":"2026-09-23T00:58:23.897844078+02:00","Action":"run","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/PESU_OFF"}
+{"Time":"2026-09-23T00:58:23.89785295+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/PESU_OFF","Output":"=== RUN   TestSetNeverLies/PESU_OFF\n"}
+{"Time":"2026-09-23T00:58:23.898046674+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/PESU_OFF","Output":"--- PASS: TestSetNeverLies/PESU_OFF (0.00s)\n"}
+{"Time":"2026-09-23T00:58:23.898173688+02:00","Action":"pass","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/PESU_OFF","Elapsed":0}
+{"Time":"2026-09-23T00:58:23.898967796+02:00","Action":"run","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/PESU_2"}
+{"Time":"2026-09-23T00:58:23.898986158+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/PESU_2","Output":"=== RUN   TestSetNeverLies/PESU_2\n"}
+{"Time":"2026-09-23T00:58:23.898996313+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/PESU_2","Output":"--- PASS: TestSetNeverLies/PESU_2 (0.00s)\n"}
+{"Time":"2026-09-23T00:58:23.899002303+02:00","Action":"pass","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/PESU_2","Elapsed":0}
+{"Time":"2026-09-23T00:58:23.899008942+02:00","Action":"run","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/PESU_FOREVER"}
+{"Time":"2026-09-23T00:58:23.899013641+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/PESU_FOREVER","Output":"=== RUN   TestSetNeverLies/PESU_FOREVER\n"}
+{"Time":"2026-09-23T00:58:23.899019746+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/PESU_FOREVER","Output":"--- PASS: TestSetNeverLies/PESU_FOREVER (0.00s)\n"}
+{"Time":"2026-09-23T00:58:23.899027963+02:00","Action":"pass","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/PESU_FOREVER","Elapsed":0}
+{"Time":"2026-09-23T00:58:23.899034001+02:00","Action":"run","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/MENU_ON"}
+{"Time":"2026-09-23T00:58:23.899038847+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/MENU_ON","Output":"=== RUN   TestSetNeverLies/MENU_ON\n"}
+{"Time":"2026-09-23T00:58:23.899053178+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/MENU_ON","Output":"--- PASS: TestSetNeverLies/MENU_ON (0.00s)\n"}
+{"Time":"2026-09-23T00:58:23.899058992+02:00","Action":"pass","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/MENU_ON","Elapsed":0}
+{"Time":"2026-09-23T00:58:23.899076669+02:00","Action":"run","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/MENU_OFF"}
+{"Time":"2026-09-23T00:58:23.899081506+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/MENU_OFF","Output":"=== RUN   TestSetNeverLies/MENU_OFF\n"}
+{"Time":"2026-09-23T00:58:23.899282427+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/MENU_OFF","Output":"--- PASS: TestSetNeverLies/MENU_OFF (0.00s)\n"}
+{"Time":"2026-09-23T00:58:23.899295395+02:00","Action":"pass","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/MENU_OFF","Elapsed":0}
+{"Time":"2026-09-23T00:58:23.89933914+02:00","Action":"run","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/GRDS_FULL"}
+{"Time":"2026-09-23T00:58:23.899357433+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/GRDS_FULL","Output":"=== RUN   TestSetNeverLies/GRDS_FULL\n"}
+{"Time":"2026-09-23T00:58:23.899525333+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/GRDS_FULL","Output":"--- PASS: TestSetNeverLies/GRDS_FULL (0.00s)\n"}
+{"Time":"2026-09-23T00:58:23.899548505+02:00","Action":"pass","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/GRDS_FULL","Elapsed":0}
+{"Time":"2026-09-23T00:58:23.899575074+02:00","Action":"run","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/GRDS_OFF"}
+{"Time":"2026-09-23T00:58:23.899588311+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/GRDS_OFF","Output":"=== RUN   TestSetNeverLies/GRDS_OFF\n"}
+{"Time":"2026-09-23T00:58:23.899776561+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/GRDS_OFF","Output":"--- PASS: TestSetNeverLies/GRDS_OFF (0.00s)\n"}
+{"Time":"2026-09-23T00:58:23.899796462+02:00","Action":"pass","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/GRDS_OFF","Elapsed":0}
+{"Time":"2026-09-23T00:58:23.899852801+02:00","Action":"run","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/GRDS_X"}
+{"Time":"2026-09-23T00:58:23.899860992+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/GRDS_X","Output":"=== RUN   TestSetNeverLies/GRDS_X\n"}
+{"Time":"2026-09-23T00:58:23.900020286+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/GRDS_X","Output":"--- PASS: TestSetNeverLies/GRDS_X (0.00s)\n"}
+{"Time":"2026-09-23T00:58:23.900035101+02:00","Action":"pass","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/GRDS_X","Elapsed":0}
+{"Time":"2026-09-23T00:58:23.900076547+02:00","Action":"run","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/INTS_GRID,100,TRACE,100"}
+{"Time":"2026-09-23T00:58:23.900081814+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/INTS_GRID,100,TRACE,100","Output":"=== RUN   TestSetNeverLies/INTS_GRID,100,TRACE,100\n"}
+{"Time":"2026-09-23T00:58:23.900282084+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/INTS_GRID,100,TRACE,100","Output":"--- PASS: TestSetNeverLies/INTS_GRID,100,TRACE,100 (0.00s)\n"}
+{"Time":"2026-09-23T00:58:23.900311315+02:00","Action":"pass","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/INTS_GRID,100,TRACE,100","Elapsed":0}
+{"Time":"2026-09-23T00:58:23.900325375+02:00","Action":"run","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/INTS_TRACE,100"}
+{"Time":"2026-09-23T00:58:23.900331205+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/INTS_TRACE,100","Output":"=== RUN   TestSetNeverLies/INTS_TRACE,100\n"}
+{"Time":"2026-09-23T00:58:23.900524792+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/INTS_TRACE,100","Output":"--- PASS: TestSetNeverLies/INTS_TRACE,100 (0.00s)\n"}
+{"Time":"2026-09-23T00:58:23.900549508+02:00","Action":"pass","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/INTS_TRACE,100","Elapsed":0}
+{"Time":"2026-09-23T00:58:23.900575207+02:00","Action":"run","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/INTS_GRID,50,TRACE,80"}
+{"Time":"2026-09-23T00:58:23.90058046+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/INTS_GRID,50,TRACE,80","Output":"=== RUN   TestSetNeverLies/INTS_GRID,50,TRACE,80\n"}
+{"Time":"2026-09-23T00:58:23.900780998+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/INTS_GRID,50,TRACE,80","Output":"--- PASS: TestSetNeverLies/INTS_GRID,50,TRACE,80 (0.00s)\n"}
+{"Time":"2026-09-23T00:58:23.900797829+02:00","Action":"pass","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/INTS_GRID,50,TRACE,80","Elapsed":0}
+{"Time":"2026-09-23T00:58:23.900834723+02:00","Action":"run","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/INTS_GRID,100,TRACE"}
+{"Time":"2026-09-23T00:58:23.900846824+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/INTS_GRID,100,TRACE","Output":"=== RUN   TestSetNeverLies/INTS_GRID,100,TRACE\n"}
+{"Time":"2026-09-23T00:58:23.90103073+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/INTS_GRID,100,TRACE","Output":"--- PASS: TestSetNeverLies/INTS_GRID,100,TRACE (0.00s)\n"}
+{"Time":"2026-09-23T00:58:23.901069097+02:00","Action":"pass","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/INTS_GRID,100,TRACE","Elapsed":0}
+{"Time":"2026-09-23T00:58:23.901124563+02:00","Action":"run","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/BUZZ_OFF"}
+{"Time":"2026-09-23T00:58:23.901130571+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/BUZZ_OFF","Output":"=== RUN   TestSetNeverLies/BUZZ_OFF\n"}
+{"Time":"2026-09-23T00:58:23.901365666+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/BUZZ_OFF","Output":"--- PASS: TestSetNeverLies/BUZZ_OFF (0.00s)\n"}
+{"Time":"2026-09-23T00:58:23.901388358+02:00","Action":"pass","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/BUZZ_OFF","Elapsed":0}
+{"Time":"2026-09-23T00:58:23.901416284+02:00","Action":"run","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/BUZZ_ON"}
+{"Time":"2026-09-23T00:58:23.901420547+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/BUZZ_ON","Output":"=== RUN   TestSetNeverLies/BUZZ_ON\n"}
+{"Time":"2026-09-23T00:58:23.901654105+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/BUZZ_ON","Output":"--- PASS: TestSetNeverLies/BUZZ_ON (0.00s)\n"}
+{"Time":"2026-09-23T00:58:23.901665451+02:00","Action":"pass","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/BUZZ_ON","Elapsed":0}
+{"Time":"2026-09-23T00:58:23.901674419+02:00","Action":"run","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/CHDR_SHORT"}
+{"Time":"2026-09-23T00:58:23.9016794+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/CHDR_SHORT","Output":"=== RUN   TestSetNeverLies/CHDR_SHORT\n"}
+{"Time":"2026-09-23T00:58:23.90186936+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/CHDR_SHORT","Output":"--- PASS: TestSetNeverLies/CHDR_SHORT (0.00s)\n"}
+{"Time":"2026-09-23T00:58:23.901894871+02:00","Action":"pass","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/CHDR_SHORT","Elapsed":0}
+{"Time":"2026-09-23T00:58:23.901924653+02:00","Action":"run","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/TDIV_1E-3"}
+{"Time":"2026-09-23T00:58:23.90192886+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/TDIV_1E-3","Output":"=== RUN   TestSetNeverLies/TDIV_1E-3\n"}
+{"Time":"2026-09-23T00:58:23.902150803+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/TDIV_1E-3","Output":"--- PASS: TestSetNeverLies/TDIV_1E-3 (0.00s)\n"}
+{"Time":"2026-09-23T00:58:23.902174774+02:00","Action":"pass","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/TDIV_1E-3","Elapsed":0}
+{"Time":"2026-09-23T00:58:23.902204701+02:00","Action":"run","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/TRDL_2E-6"}
+{"Time":"2026-09-23T00:58:23.902208964+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/TRDL_2E-6","Output":"=== RUN   TestSetNeverLies/TRDL_2E-6\n"}
+{"Time":"2026-09-23T00:58:23.902453312+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/TRDL_2E-6","Output":"--- PASS: TestSetNeverLies/TRDL_2E-6 (0.00s)\n"}
+{"Time":"2026-09-23T00:58:23.902463551+02:00","Action":"pass","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/TRDL_2E-6","Elapsed":0}
+{"Time":"2026-09-23T00:58:23.902471516+02:00","Action":"run","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/TRMD_NORM"}
+{"Time":"2026-09-23T00:58:23.902476296+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/TRMD_NORM","Output":"=== RUN   TestSetNeverLies/TRMD_NORM\n"}
+{"Time":"2026-09-23T00:58:23.902739835+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/TRMD_NORM","Output":"--- PASS: TestSetNeverLies/TRMD_NORM (0.00s)\n"}
+{"Time":"2026-09-23T00:58:23.90275011+02:00","Action":"pass","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/TRMD_NORM","Elapsed":0}
+{"Time":"2026-09-23T00:58:23.902763427+02:00","Action":"run","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/TRLV_0.5"}
+{"Time":"2026-09-23T00:58:23.902771481+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/TRLV_0.5","Output":"=== RUN   TestSetNeverLies/TRLV_0.5\n"}
+{"Time":"2026-09-23T00:58:23.902935866+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/TRLV_0.5","Output":"--- PASS: TestSetNeverLies/TRLV_0.5 (0.00s)\n"}
+{"Time":"2026-09-23T00:58:23.902947232+02:00","Action":"pass","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/TRLV_0.5","Elapsed":0}
+{"Time":"2026-09-23T00:58:23.902984596+02:00","Action":"run","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/TRSL_NEG"}
+{"Time":"2026-09-23T00:58:23.902991165+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/TRSL_NEG","Output":"=== RUN   TestSetNeverLies/TRSL_NEG\n"}
+{"Time":"2026-09-23T00:58:23.903173181+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/TRSL_NEG","Output":"--- PASS: TestSetNeverLies/TRSL_NEG (0.00s)\n"}
+{"Time":"2026-09-23T00:58:23.903191781+02:00","Action":"pass","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/TRSL_NEG","Elapsed":0}
+{"Time":"2026-09-23T00:58:23.903237054+02:00","Action":"run","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/TRSE_EDGE,SR,C2,HT,OFF"}
+{"Time":"2026-09-23T00:58:23.90324308+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/TRSE_EDGE,SR,C2,HT,OFF","Output":"=== RUN   TestSetNeverLies/TRSE_EDGE,SR,C2,HT,OFF\n"}
+{"Time":"2026-09-23T00:58:23.903425523+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/TRSE_EDGE,SR,C2,HT,OFF","Output":"--- PASS: TestSetNeverLies/TRSE_EDGE,SR,C2,HT,OFF (0.00s)\n"}
+{"Time":"2026-09-23T00:58:23.903458141+02:00","Action":"pass","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/TRSE_EDGE,SR,C2,HT,OFF","Elapsed":0}
+{"Time":"2026-09-23T00:58:23.903466956+02:00","Action":"run","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/ACQW_AVERAGE"}
+{"Time":"2026-09-23T00:58:23.903472034+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/ACQW_AVERAGE","Output":"=== RUN   TestSetNeverLies/ACQW_AVERAGE\n"}
+{"Time":"2026-09-23T00:58:23.903698456+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/ACQW_AVERAGE","Output":"--- PASS: TestSetNeverLies/ACQW_AVERAGE (0.00s)\n"}
+{"Time":"2026-09-23T00:58:23.903711239+02:00","Action":"pass","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/ACQW_AVERAGE","Elapsed":0}
+{"Time":"2026-09-23T00:58:23.903754233+02:00","Action":"run","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/ACQW_PEAK_DETECT"}
+{"Time":"2026-09-23T00:58:23.903763991+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/ACQW_PEAK_DETECT","Output":"=== RUN   TestSetNeverLies/ACQW_PEAK_DETECT\n"}
+{"Time":"2026-09-23T00:58:23.903956293+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/ACQW_PEAK_DETECT","Output":"--- PASS: TestSetNeverLies/ACQW_PEAK_DETECT (0.00s)\n"}
+{"Time":"2026-09-23T00:58:23.903970699+02:00","Action":"pass","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/ACQW_PEAK_DETECT","Elapsed":0}
+{"Time":"2026-09-23T00:58:23.903994579+02:00","Action":"run","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/AVGA_64"}
+{"Time":"2026-09-23T00:58:23.903999732+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/AVGA_64","Output":"=== RUN   TestSetNeverLies/AVGA_64\n"}
+{"Time":"2026-09-23T00:58:23.904200935+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/AVGA_64","Output":"--- PASS: TestSetNeverLies/AVGA_64 (0.00s)\n"}
+{"Time":"2026-09-23T00:58:23.904212567+02:00","Action":"pass","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/AVGA_64","Elapsed":0}
+{"Time":"2026-09-23T00:58:23.90425091+02:00","Action":"run","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/WFSU_SP,4,NP,100,FP,8"}
+{"Time":"2026-09-23T00:58:23.904257065+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/WFSU_SP,4,NP,100,FP,8","Output":"=== RUN   TestSetNeverLies/WFSU_SP,4,NP,100,FP,8\n"}
+{"Time":"2026-09-23T00:58:23.904468303+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/WFSU_SP,4,NP,100,FP,8","Output":"--- PASS: TestSetNeverLies/WFSU_SP,4,NP,100,FP,8 (0.00s)\n"}
+{"Time":"2026-09-23T00:58:23.904484388+02:00","Action":"pass","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/WFSU_SP,4,NP,100,FP,8","Elapsed":0}
+{"Time":"2026-09-23T00:58:23.904513182+02:00","Action":"run","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/C1:VDIV_0.5"}
+{"Time":"2026-09-23T00:58:23.904518671+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/C1:VDIV_0.5","Output":"=== RUN   TestSetNeverLies/C1:VDIV_0.5\n"}
+{"Time":"2026-09-23T00:58:23.904755227+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/C1:VDIV_0.5","Output":"--- PASS: TestSetNeverLies/C1:VDIV_0.5 (0.00s)\n"}
+{"Time":"2026-09-23T00:58:23.904785037+02:00","Action":"pass","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/C1:VDIV_0.5","Elapsed":0}
+{"Time":"2026-09-23T00:58:23.904810772+02:00","Action":"run","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/C2:VDIV_0.02"}
+{"Time":"2026-09-23T00:58:23.904816533+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/C2:VDIV_0.02","Output":"=== RUN   TestSetNeverLies/C2:VDIV_0.02\n"}
+{"Time":"2026-09-23T00:58:23.905012034+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/C2:VDIV_0.02","Output":"--- PASS: TestSetNeverLies/C2:VDIV_0.02 (0.00s)\n"}
+{"Time":"2026-09-23T00:58:23.905030384+02:00","Action":"pass","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/C2:VDIV_0.02","Elapsed":0}
+{"Time":"2026-09-23T00:58:23.905074243+02:00","Action":"run","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/C1:OFST_1.0"}
+{"Time":"2026-09-23T00:58:23.905080235+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/C1:OFST_1.0","Output":"=== RUN   TestSetNeverLies/C1:OFST_1.0\n"}
+{"Time":"2026-09-23T00:58:23.905297755+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/C1:OFST_1.0","Output":"--- PASS: TestSetNeverLies/C1:OFST_1.0 (0.00s)\n"}
+{"Time":"2026-09-23T00:58:23.905318602+02:00","Action":"pass","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/C1:OFST_1.0","Elapsed":0}
+{"Time":"2026-09-23T00:58:23.905350164+02:00","Action":"run","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/C1:CPL_A1M"}
+{"Time":"2026-09-23T00:58:23.905356108+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/C1:CPL_A1M","Output":"=== RUN   TestSetNeverLies/C1:CPL_A1M\n"}
+{"Time":"2026-09-23T00:58:23.905583893+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/C1:CPL_A1M","Output":"--- PASS: TestSetNeverLies/C1:CPL_A1M (0.00s)\n"}
+{"Time":"2026-09-23T00:58:23.905608226+02:00","Action":"pass","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/C1:CPL_A1M","Elapsed":0}
+{"Time":"2026-09-23T00:58:23.905645965+02:00","Action":"run","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/C1:ATTN_10"}
+{"Time":"2026-09-23T00:58:23.90565229+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/C1:ATTN_10","Output":"=== RUN   TestSetNeverLies/C1:ATTN_10\n"}
+{"Time":"2026-09-23T00:58:23.90583653+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/C1:ATTN_10","Output":"--- PASS: TestSetNeverLies/C1:ATTN_10 (0.00s)\n"}
+{"Time":"2026-09-23T00:58:23.905854086+02:00","Action":"pass","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/C1:ATTN_10","Elapsed":0}
+{"Time":"2026-09-23T00:58:23.905885085+02:00","Action":"run","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/C1:TRA_OFF"}
+{"Time":"2026-09-23T00:58:23.905891362+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/C1:TRA_OFF","Output":"=== RUN   TestSetNeverLies/C1:TRA_OFF\n"}
+{"Time":"2026-09-23T00:58:23.906056676+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/C1:TRA_OFF","Output":"--- PASS: TestSetNeverLies/C1:TRA_OFF (0.00s)\n"}
+{"Time":"2026-09-23T00:58:23.906086403+02:00","Action":"pass","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies/C1:TRA_OFF","Elapsed":0}
+{"Time":"2026-09-23T00:58:23.906137367+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies","Output":"--- PASS: TestSetNeverLies (0.01s)\n"}
+{"Time":"2026-09-23T00:58:23.906164176+02:00","Action":"pass","Package":"open-sds/app/internal/scpi","Test":"TestSetNeverLies","Elapsed":0.01}
+{"Time":"2026-09-23T00:58:23.906187624+02:00","Action":"run","Package":"open-sds/app/internal/scpi","Test":"TestChannelShadowIndependence"}
+{"Time":"2026-09-23T00:58:23.906194102+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestChannelShadowIndependence","Output":"=== RUN   TestChannelShadowIndependence\n"}
+{"Time":"2026-09-23T00:58:23.906364591+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestChannelShadowIndependence","Output":"--- PASS: TestChannelShadowIndependence (0.00s)\n"}
+{"Time":"2026-09-23T00:58:23.906388014+02:00","Action":"pass","Package":"open-sds/app/internal/scpi","Test":"TestChannelShadowIndependence","Elapsed":0}
+{"Time":"2026-09-23T00:58:23.906414496+02:00","Action":"run","Package":"open-sds/app/internal/scpi","Test":"TestRSTResetsChannelShadows"}
+{"Time":"2026-09-23T00:58:23.906420314+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestRSTResetsChannelShadows","Output":"=== RUN   TestRSTResetsChannelShadows\n"}
+{"Time":"2026-09-23T00:58:23.90662223+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestRSTResetsChannelShadows","Output":"--- PASS: TestRSTResetsChannelShadows (0.00s)\n"}
+{"Time":"2026-09-23T00:58:23.90663789+02:00","Action":"pass","Package":"open-sds/app/internal/scpi","Test":"TestRSTResetsChannelShadows","Elapsed":0}
+{"Time":"2026-09-23T00:58:23.906681574+02:00","Action":"run","Package":"open-sds/app/internal/scpi","Test":"TestRSTResetsTraCplAttn"}
+{"Time":"2026-09-23T00:58:23.906688289+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestRSTResetsTraCplAttn","Output":"=== RUN   TestRSTResetsTraCplAttn\n"}
+{"Time":"2026-09-23T00:58:23.906935017+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestRSTResetsTraCplAttn","Output":"--- PASS: TestRSTResetsTraCplAttn (0.00s)\n"}
+{"Time":"2026-09-23T00:58:23.906957627+02:00","Action":"pass","Package":"open-sds/app/internal/scpi","Test":"TestRSTResetsTraCplAttn","Elapsed":0}
+{"Time":"2026-09-23T00:58:23.906987231+02:00","Action":"run","Package":"open-sds/app/internal/scpi","Test":"TestDisplayStubsWithoutPanel"}
+{"Time":"2026-09-23T00:58:23.906992349+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestDisplayStubsWithoutPanel","Output":"=== RUN   TestDisplayStubsWithoutPanel\n"}
+{"Time":"2026-09-23T00:58:23.907213191+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestDisplayStubsWithoutPanel","Output":"--- PASS: TestDisplayStubsWithoutPanel (0.00s)\n"}
+{"Time":"2026-09-23T00:58:23.907221475+02:00","Action":"pass","Package":"open-sds/app/internal/scpi","Test":"TestDisplayStubsWithoutPanel","Elapsed":0}
+{"Time":"2026-09-23T00:58:23.907250232+02:00","Action":"run","Package":"open-sds/app/internal/scpi","Test":"TestInvertedSnapshot"}
+{"Time":"2026-09-23T00:58:23.90725541+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestInvertedSnapshot","Output":"=== RUN   TestInvertedSnapshot\n"}
+{"Time":"2026-09-23T00:58:23.907437036+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestInvertedSnapshot","Output":"--- PASS: TestInvertedSnapshot (0.00s)\n"}
+{"Time":"2026-09-23T00:58:23.907467733+02:00","Action":"pass","Package":"open-sds/app/internal/scpi","Test":"TestInvertedSnapshot","Elapsed":0}
+{"Time":"2026-09-23T00:58:23.907494302+02:00","Action":"run","Package":"open-sds/app/internal/scpi","Test":"TestRollRescale"}
+{"Time":"2026-09-23T00:58:23.907500378+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestRollRescale","Output":"=== RUN   TestRollRescale\n"}
+{"Time":"2026-09-23T00:58:23.907912651+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestRollRescale","Output":"--- PASS: TestRollRescale (0.00s)\n"}
+{"Time":"2026-09-23T00:58:23.907930114+02:00","Action":"pass","Package":"open-sds/app/internal/scpi","Test":"TestRollRescale","Elapsed":0}
+{"Time":"2026-09-23T00:58:23.907955781+02:00","Action":"run","Package":"open-sds/app/internal/scpi","Test":"TestSCPIFuzzNoPanic"}
+{"Time":"2026-09-23T00:58:23.907961308+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSCPIFuzzNoPanic","Output":"=== RUN   TestSCPIFuzzNoPanic\n"}
+{"Time":"2026-09-23T00:58:24.011999211+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSCPIFuzzNoPanic","Output":"--- PASS: TestSCPIFuzzNoPanic (0.10s)\n"}
+{"Time":"2026-09-23T00:58:24.012017651+02:00","Action":"pass","Package":"open-sds/app/internal/scpi","Test":"TestSCPIFuzzNoPanic","Elapsed":0.1}
+{"Time":"2026-09-23T00:58:24.012033536+02:00","Action":"run","Package":"open-sds/app/internal/scpi","Test":"TestSCPIFuzzSetQueryInvariant"}
+{"Time":"2026-09-23T00:58:24.012036635+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSCPIFuzzSetQueryInvariant","Output":"=== RUN   TestSCPIFuzzSetQueryInvariant\n"}
+{"Time":"2026-09-23T00:58:24.052121054+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestSCPIFuzzSetQueryInvariant","Output":"--- PASS: TestSCPIFuzzSetQueryInvariant (0.04s)\n"}
+{"Time":"2026-09-23T00:58:24.052149382+02:00","Action":"pass","Package":"open-sds/app/internal/scpi","Test":"TestSCPIFuzzSetQueryInvariant","Elapsed":0.04}
+{"Time":"2026-09-23T00:58:24.052172415+02:00","Action":"run","Package":"open-sds/app/internal/scpi","Test":"TestWaveformReadoutFuzz"}
+{"Time":"2026-09-23T00:58:24.052176969+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestWaveformReadoutFuzz","Output":"=== RUN   TestWaveformReadoutFuzz\n"}
+{"Time":"2026-09-23T00:58:26.216561719+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Test":"TestWaveformReadoutFuzz","Output":"--- PASS: TestWaveformReadoutFuzz (2.16s)\n"}
+{"Time":"2026-09-23T00:58:26.216579828+02:00","Action":"pass","Package":"open-sds/app/internal/scpi","Test":"TestWaveformReadoutFuzz","Elapsed":2.16}
+{"Time":"2026-09-23T00:58:26.216588259+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Output":"PASS\n"}
+{"Time":"2026-09-23T00:58:27.219501845+02:00","Action":"output","Package":"open-sds/app/internal/scpi","Output":"ok  \topen-sds/app/internal/scpi\t3.339s\n"}
+{"Time":"2026-09-23T00:58:27.219529726+02:00","Action":"pass","Package":"open-sds/app/internal/scpi","Elapsed":3.339}

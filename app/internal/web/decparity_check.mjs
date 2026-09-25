@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-WEB
 // decparity_check.mjs — Go<->JS decoder parity checker.
 //
 // Loads the browser decode logic (decode.js + every protocol twin) into one
@@ -45,20 +46,32 @@ const D = ctx.__D;
 
 // codes2 carries the second channel for two-channel protocols (I2C, SPI) and
 // for autodetect vectors; an empty/missing array means "channel off".
+// TRLC-LINKS: REQ-SDS-181
 const c2of = (v) => (v.codes2 && v.codes2.length ? v.codes2 : undefined);
 const dispatch = {
+  // TRLC-LINKS: REQ-SDS-181
   manchester: (v) => D.decodeManchester(v.codes, v.colT, v.cfg),
+  // TRLC-LINKS: REQ-SDS-181
   mil1553: (v) => D.decodeMIL1553(v.codes, v.colT, v.cfg),
+  // TRLC-LINKS: REQ-SDS-181
   flexray: (v) => D.decodeFlexRay(v.codes, v.colT, v.cfg),
+  // TRLC-LINKS: REQ-SDS-181
   sent: (v) => D.decodeSENT(v.codes, v.colT, v.cfg),
+  // TRLC-LINKS: REQ-SDS-181
   canfd: (v) => D.decodeCANFD(v.codes, v.colT, v.cfg),
+  // TRLC-LINKS: REQ-SDS-181
   arinc429: (v) => D.decodeARINC429(v.codes, v.colT, v.cfg),
+  // TRLC-LINKS: REQ-SDS-181
   usbls: (v) => D.decodeUSBLS(v.codes, v.colT, v.cfg),
+  // TRLC-LINKS: REQ-SDS-181
   uart: (v) => D.decodeUART(v.codes, v.colT, v.cfg),
+  // TRLC-LINKS: REQ-SDS-181
   i2c: (v) => D.decodeI2C(v.codes, c2of(v), v.colT, v.cfg),
+  // TRLC-LINKS: REQ-SDS-181
   spi: (v) => D.decodeSPI(v.codes, c2of(v), v.colT, v.cfg),
   // autodetect: the FINAL CHOICE must match Go byte-for-byte — both the chosen
   // protocol (v.det) and the winning hypothesis' decoded {ok, bytes, text}.
+  // TRLC-LINKS: REQ-SDS-181
   autodetect: (v) => {
     const d = D.autodetect(
       { c1: v.codes, c2: c2of(v), col_span_s: v.colT * v.codes.length },
@@ -70,6 +83,7 @@ const dispatch = {
   },
 };
 
+// TRLC-LINKS: REQ-SDS-181
 const arrEq = (a, b) => {
   a = a || [];
   b = b || [];

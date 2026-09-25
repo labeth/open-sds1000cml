@@ -1,0 +1,130 @@
+{
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "status": "source-trace-and-publication-integrated",
+  "requirements": [
+    "REQ-SDS-180",
+    "REQ-SDS-181"
+  ],
+  "sourceReview": "evidence/browser-harness-source-review.json",
+  "sourceReviewSHA256": "ed2aafbd0a2cce2064bcf549e81ae960f6043350a45f24b69d5d6f5df71e65c5",
+  "files": [
+    {
+      "path": "app/internal/web/chaos_browser.mjs",
+      "baselineSHA256": "9e6b5570cb7c31ede92a0aa01a11ac9df95b1fe03672c9226466afd0ef40bb65",
+      "lines": 99,
+      "linkedDeclarations": 3,
+      "requirement": "REQ-SDS-180",
+      "annotatedSHA256": "f93c00b36af5e488fbba8a11987cd78f45ee15d38ef74c77d29285a0f8300979"
+    },
+    {
+      "path": "app/internal/web/decode.test.cjs",
+      "baselineSHA256": "7aa1ad98a71295b45f99137d447c4ccba5fb4d27e29e00c68fc6b4b18503e180",
+      "lines": 284,
+      "linkedDeclarations": 15,
+      "requirement": "REQ-SDS-181",
+      "annotatedSHA256": "39b3f2821021116ccedbed8c2b6d01541f15284c3172d672ae2d9510c49286a1"
+    },
+    {
+      "path": "app/internal/web/decode_browser.mjs",
+      "baselineSHA256": "84d87ec7b337f62c4c382d5b4f72152f191921ef158b054a9e095de964f645f0",
+      "lines": 87,
+      "linkedDeclarations": 2,
+      "requirement": "REQ-SDS-180",
+      "annotatedSHA256": "4f5bbbf9caffd67d4ac4e9db7ba8c3c1bd87511043b52eb67b5f562847e90837"
+    },
+    {
+      "path": "app/internal/web/deepmem_browser.mjs",
+      "baselineSHA256": "8b9213a5c324d8cad71726c0e9d578a8deacff413536e2952a0891a4bd3861a1",
+      "lines": 78,
+      "linkedDeclarations": 1,
+      "requirement": "REQ-SDS-180",
+      "annotatedSHA256": "1b613b4ce9a7e851358fa50a124371eb67586dbc0bd120a3005e44ddfd1aad04"
+    },
+    {
+      "path": "app/internal/web/e2e/fuzz.mjs",
+      "baselineSHA256": "51135a2bb59c6d720fdab839ba0662a841074c52051c2a6c8456796a2db09954",
+      "lines": 348,
+      "linkedDeclarations": 54,
+      "requirement": "REQ-SDS-180",
+      "annotatedSHA256": "c1768f32a352800a2e561e7a85bb55242638e8235d70fc767031b860e3fadce0"
+    },
+    {
+      "path": "app/internal/web/e2e/operator.mjs",
+      "baselineSHA256": "376de9a31e0eae2b3bb33bd58d1410ead48eacc71a18d17b696238fb04d1e068",
+      "lines": 273,
+      "linkedDeclarations": 28,
+      "requirement": "REQ-SDS-180",
+      "annotatedSHA256": "9a57ea07199b22b1e48904c9ee66c5ee99060e8d51559818b273c8a85c0f7142"
+    },
+    {
+      "path": "app/internal/web/fft_browser.mjs",
+      "baselineSHA256": "ac13b5737914a7b9690e880592f436bcb0e653219e8f59c51fc45534e2811955",
+      "lines": 166,
+      "linkedDeclarations": 4,
+      "requirement": "REQ-SDS-180",
+      "annotatedSHA256": "fda37d43fbd64d61ebe5475b84c8606b84c96c1ed681c249a52ab853635887cb"
+    },
+    {
+      "path": "app/internal/web/invs_browser.mjs",
+      "baselineSHA256": "f8510a83df5affc3e3ab055702ffe3b8871980403caef1374eae06c9f283e417",
+      "lines": 80,
+      "linkedDeclarations": 1,
+      "requirement": "REQ-SDS-180",
+      "annotatedSHA256": "ecd1369f6312e520248d3513476e030dd2a0f027facb1d96a63765f094f72c2a"
+    },
+    {
+      "path": "app/internal/web/scope_po.mjs",
+      "baselineSHA256": "7f8b00905986ed6c45cb03e118561dcc1e5bbf03e5d3fab7d51818f7bc70922b",
+      "lines": 131,
+      "linkedDeclarations": 25,
+      "requirement": "REQ-SDS-180",
+      "annotatedSHA256": "2b68badf59af3046bc05bc1b52673e26e19130c21db3a77255e0dcca974b43f2"
+    },
+    {
+      "path": "app/internal/web/stackperf_browser.mjs",
+      "baselineSHA256": "938f39d55e9f35e32f01c253510c3060ce46a147c0b12df40638ba712a076a6e",
+      "lines": 89,
+      "linkedDeclarations": 3,
+      "requirement": "REQ-SDS-180",
+      "annotatedSHA256": "c8e775d2b362be698df5066c4b8e3cd789cae4ba515af45e88b30092c574b412"
+    },
+    {
+      "path": "app/internal/web/superres_browser.mjs",
+      "baselineSHA256": "77e38a4c480d7127cf102df20d6e0c88624432d0f7d45dc8aaf4aaf24643c663",
+      "lines": 182,
+      "linkedDeclarations": 1,
+      "requirement": "REQ-SDS-180",
+      "annotatedSHA256": "6d568aa232c45bf70205591f444fd23439cf7cfe5da48145ba2c02634ff24265"
+    },
+    {
+      "path": "app/internal/web/transport_browser.mjs",
+      "baselineSHA256": "86c0115e3c4e7ed858245366580e86dd53b31127b43d575c2d55f880d1a88bd4",
+      "lines": 67,
+      "linkedDeclarations": 2,
+      "requirement": "REQ-SDS-180",
+      "annotatedSHA256": "c6199416a0bd2600ffa7ebc27e3a842362c735e9cb86e1fb037bfb129f73ef0e"
+    },
+    {
+      "path": "app/internal/web/zonemask_browser.mjs",
+      "baselineSHA256": "6da0bb34743ba76055104dca7f2638449022c681baad5383a92d12d7cc3d96fc",
+      "lines": 101,
+      "linkedDeclarations": 2,
+      "requirement": "REQ-SDS-180",
+      "annotatedSHA256": "f808be28e97a99a44ffa5d93e62fc2c6e55220e82e1e386f7903038ff4b6f756"
+    }
+  ],
+  "executionEvidence": "evidence/browser-harness-integrated-test-run.json",
+  "scope": "Reused complete source reviews only after exact pinned/current hash matches. Comment integration does not rerun or improve original browser/Node outcomes; historical failures and skips remain evidence.",
+  "validation": {
+    "linkedDeclarations": 141,
+    "publication": "pending",
+    "pdf": "deferred",
+    "exactBaselineRecovery": "pass",
+    "unchangedParserTokens": "pass",
+    "strictConsistency": "pass",
+    "nonPDFPublication": "pass",
+    "reproducibility": "pass",
+    "reproducibleArtifacts": 36,
+    "nativeMCP": "pass"
+  }
+}

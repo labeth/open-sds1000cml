@@ -1,0 +1,26 @@
+{
+  "scope": "Reviewed source and isolated test evidence integrated: TCP REQ-SDS-107 and NATS REQ-SDS-108; untested reconnect/security/delivery boundaries remain explicit.",
+  "sourceSHA256": {
+    "ota/internal/otactl/nats_e2e_test.go": "d562aa477e12582872d85831d0cbf55429d217d7453b35a7718674e495dba244",
+    "ota/internal/agent/nats.go": "abaaf5f693390e99dfa3e261127a00121ef42319d852dd036197e2bcb7d2bbd8"
+  },
+  "functions": [
+    "startEmbeddedNATS",
+    "startAgent",
+    "waitNATSReady",
+    "callBoth",
+    "TestNATSEndToEndSubjectsEventsAndTCPParity"
+  ],
+  "testLog": "test-runs/agent-nats-isolated.jsonl",
+  "findings": [
+    "Embedded NATS server binds 127.0.0.1 with ephemeral port, JetStream disabled and signal handling disabled. Agent TCP fallback also binds ephemeral loopback.",
+    "Run environment strips inherited OTA variables, forces coexist mode and redirects watchdog/GPMC/key paths to temporary locations. Test creates fresh state and slot directories. No real device or external broker is used.",
+    "Test observes ota.e2e-dev-1.rpc ping request and validates initial online event and heartbeat device/positive sequence fields.",
+    "Ping identity, stable status subset, deterministic printf output and structured unknown-command error agree across NATS and TCP.",
+    "No reconnect, credential failure, TLS, publish failure, fleet broadcast, discovery, resource limit or abnormal shutdown behavior is covered. A first online event is not evidence for online announcements after reconnect.",
+    "Fixture starts real Agent.Run; cleanup signals Stop but does not join every worker. TCP idle-listener shutdown limitation remains independently documented."
+  ],
+  "runner": "scripts/check_agent_nats.py",
+  "runReport": "agent-nats-isolated-run.json",
+  "integration": "Host controller declarations integrated with REQ-SDS-109 through REQ-SDS-112; broker test also retains REQ-SDS-108. Inspection-only recovery and broker startup remain unqualified."
+}

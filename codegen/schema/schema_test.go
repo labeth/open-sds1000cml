@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-CODEGEN-SCHEMA
 package schema
 
 import (
@@ -5,6 +6,7 @@ import (
 	"testing"
 )
 
+// TRLC-LINKS: REQ-SDS-155
 func minimal() Interface {
 	return Interface{
 		Name: "t", Version: 3, VersionMagic: 0x0001, FabricID: 0xBEEF, SelMask: 0x7f,
@@ -35,12 +37,14 @@ func minimal() Interface {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-155
 func TestMinimalValidates(t *testing.T) {
 	if errs := minimal().Validate(); len(errs) > 0 {
 		t.Fatal(errs)
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-155
 func TestFieldMask(t *testing.T) {
 	cases := []struct {
 		hi, lo uint
@@ -55,6 +59,7 @@ func TestFieldMask(t *testing.T) {
 
 // Every rule the emitters rely on must be caught by Validate with a message
 // naming the offender.
+// TRLC-LINKS: REQ-SDS-155
 func TestValidateRejects(t *testing.T) {
 	cases := []struct {
 		name string
@@ -135,6 +140,7 @@ func TestValidateRejects(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-155
 func TestBuildIDStableAndSensitive(t *testing.T) {
 	a, b := minimal(), minimal()
 	if a.BuildID() != b.BuildID() {
@@ -191,6 +197,7 @@ func TestBuildIDStableAndSensitive(t *testing.T) {
 
 // A schema without a legacy generation has no slot-shape rule and a v1
 // interface with the v2 mask still validates (the v2 shape of 05-WORKPLAN §2).
+// TRLC-LINKS: REQ-SDS-155
 func TestNoLegacyRule(t *testing.T) {
 	i := minimal()
 	i.Legacy = Legacy{}
@@ -209,6 +216,7 @@ func TestNoLegacyRule(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-155
 func TestLookups(t *testing.T) {
 	i := minimal()
 	if d, ok := i.DiagEntry("MAP"); !ok || d.Last() != 11 {

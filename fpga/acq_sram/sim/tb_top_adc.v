@@ -1,11 +1,15 @@
+// ENGMODEL-OWNER-UNIT: FU-RTL-ACQ-TESTS
 `timescale 1ns/1ps
+// TRLC-LINKS: REQ-SDS-039, REQ-SDS-041, REQ-SDS-042, REQ-SDS-043, REQ-SDS-083
 module bench_pll(input refclk,output reg c0=0,output c1,output locked,output reg halfclk=0);
  always #2 c0=~c0;initial begin #2;forever #4 halfclk=~halfclk;end assign #1 c1=c0;assign locked=1;
 endmodule
+// TRLC-LINKS: REQ-SDS-039, REQ-SDS-041, REQ-SDS-042, REQ-SDS-043, REQ-SDS-083
 module adc_phase_pll(input refclk,output [4:0] phase,output locked);
  assign #3 phase[0]=refclk;assign #4 phase[1]=refclk;assign #2 phase[2]=refclk;assign phase[3]=refclk;assign #1 phase[4]=refclk;assign locked=1;
 endmodule
 `include "lanemap_seed.vh"
+// TRLC-LINKS: REQ-SDS-039, REQ-SDS-041, REQ-SDS-042, REQ-SDS-043, REQ-SDS-083
 module tb;
  reg clk=0,mclk_in=0;always #6.25 clk=~clk;always #5 mclk_in=~mclk_in;
  wire [79:0] lane;reg [79:0] adc=0;wire [4:0] ep,en;

@@ -1,0 +1,171 @@
+{"Time":"2026-09-23T01:30:08.749846907+02:00","Action":"start","Package":"open-sds/ota/internal/rpcproto"}
+{"Time":"2026-09-23T01:30:08.760692097+02:00","Action":"run","Package":"open-sds/ota/internal/rpcproto","Test":"TestRequestGoldenWire"}
+{"Time":"2026-09-23T01:30:08.760728089+02:00","Action":"output","Package":"open-sds/ota/internal/rpcproto","Test":"TestRequestGoldenWire","Output":"=== RUN   TestRequestGoldenWire\n"}
+{"Time":"2026-09-23T01:30:08.760809879+02:00","Action":"run","Package":"open-sds/ota/internal/rpcproto","Test":"TestRequestGoldenWire/bare"}
+{"Time":"2026-09-23T01:30:08.760817164+02:00","Action":"output","Package":"open-sds/ota/internal/rpcproto","Test":"TestRequestGoldenWire/bare","Output":"=== RUN   TestRequestGoldenWire/bare\n"}
+{"Time":"2026-09-23T01:30:08.761212625+02:00","Action":"output","Package":"open-sds/ota/internal/rpcproto","Test":"TestRequestGoldenWire/bare","Output":"--- PASS: TestRequestGoldenWire/bare (0.00s)\n"}
+{"Time":"2026-09-23T01:30:08.76124355+02:00","Action":"pass","Package":"open-sds/ota/internal/rpcproto","Test":"TestRequestGoldenWire/bare","Elapsed":0}
+{"Time":"2026-09-23T01:30:08.761301438+02:00","Action":"run","Package":"open-sds/ota/internal/rpcproto","Test":"TestRequestGoldenWire/empty_cmd"}
+{"Time":"2026-09-23T01:30:08.761307537+02:00","Action":"output","Package":"open-sds/ota/internal/rpcproto","Test":"TestRequestGoldenWire/empty_cmd","Output":"=== RUN   TestRequestGoldenWire/empty_cmd\n"}
+{"Time":"2026-09-23T01:30:08.761405587+02:00","Action":"output","Package":"open-sds/ota/internal/rpcproto","Test":"TestRequestGoldenWire/empty_cmd","Output":"--- PASS: TestRequestGoldenWire/empty_cmd (0.00s)\n"}
+{"Time":"2026-09-23T01:30:08.761432311+02:00","Action":"pass","Package":"open-sds/ota/internal/rpcproto","Test":"TestRequestGoldenWire/empty_cmd","Elapsed":0}
+{"Time":"2026-09-23T01:30:08.761460847+02:00","Action":"run","Package":"open-sds/ota/internal/rpcproto","Test":"TestRequestGoldenWire/object_args"}
+{"Time":"2026-09-23T01:30:08.761465227+02:00","Action":"output","Package":"open-sds/ota/internal/rpcproto","Test":"TestRequestGoldenWire/object_args","Output":"=== RUN   TestRequestGoldenWire/object_args\n"}
+{"Time":"2026-09-23T01:30:08.761688496+02:00","Action":"output","Package":"open-sds/ota/internal/rpcproto","Test":"TestRequestGoldenWire/object_args","Output":"--- PASS: TestRequestGoldenWire/object_args (0.00s)\n"}
+{"Time":"2026-09-23T01:30:08.7617195+02:00","Action":"pass","Package":"open-sds/ota/internal/rpcproto","Test":"TestRequestGoldenWire/object_args","Elapsed":0}
+{"Time":"2026-09-23T01:30:08.761763578+02:00","Action":"run","Package":"open-sds/ota/internal/rpcproto","Test":"TestRequestGoldenWire/nested_array_args"}
+{"Time":"2026-09-23T01:30:08.761768319+02:00","Action":"output","Package":"open-sds/ota/internal/rpcproto","Test":"TestRequestGoldenWire/nested_array_args","Output":"=== RUN   TestRequestGoldenWire/nested_array_args\n"}
+{"Time":"2026-09-23T01:30:08.761975489+02:00","Action":"output","Package":"open-sds/ota/internal/rpcproto","Test":"TestRequestGoldenWire/nested_array_args","Output":"--- PASS: TestRequestGoldenWire/nested_array_args (0.00s)\n"}
+{"Time":"2026-09-23T01:30:08.7620086+02:00","Action":"pass","Package":"open-sds/ota/internal/rpcproto","Test":"TestRequestGoldenWire/nested_array_args","Elapsed":0}
+{"Time":"2026-09-23T01:30:08.762048745+02:00","Action":"run","Package":"open-sds/ota/internal/rpcproto","Test":"TestRequestGoldenWire/bool_args"}
+{"Time":"2026-09-23T01:30:08.762055086+02:00","Action":"output","Package":"open-sds/ota/internal/rpcproto","Test":"TestRequestGoldenWire/bool_args","Output":"=== RUN   TestRequestGoldenWire/bool_args\n"}
+{"Time":"2026-09-23T01:30:08.762198534+02:00","Action":"output","Package":"open-sds/ota/internal/rpcproto","Test":"TestRequestGoldenWire/bool_args","Output":"--- PASS: TestRequestGoldenWire/bool_args (0.00s)\n"}
+{"Time":"2026-09-23T01:30:08.76222711+02:00","Action":"pass","Package":"open-sds/ota/internal/rpcproto","Test":"TestRequestGoldenWire/bool_args","Elapsed":0}
+{"Time":"2026-09-23T01:30:08.762274675+02:00","Action":"output","Package":"open-sds/ota/internal/rpcproto","Test":"TestRequestGoldenWire","Output":"--- PASS: TestRequestGoldenWire (0.00s)\n"}
+{"Time":"2026-09-23T01:30:08.762304481+02:00","Action":"pass","Package":"open-sds/ota/internal/rpcproto","Test":"TestRequestGoldenWire","Elapsed":0}
+{"Time":"2026-09-23T01:30:08.762336602+02:00","Action":"run","Package":"open-sds/ota/internal/rpcproto","Test":"TestResponseGoldenWire"}
+{"Time":"2026-09-23T01:30:08.762341082+02:00","Action":"output","Package":"open-sds/ota/internal/rpcproto","Test":"TestResponseGoldenWire","Output":"=== RUN   TestResponseGoldenWire\n"}
+{"Time":"2026-09-23T01:30:08.762397168+02:00","Action":"run","Package":"open-sds/ota/internal/rpcproto","Test":"TestResponseGoldenWire/ok_bare"}
+{"Time":"2026-09-23T01:30:08.762402598+02:00","Action":"output","Package":"open-sds/ota/internal/rpcproto","Test":"TestResponseGoldenWire/ok_bare","Output":"=== RUN   TestResponseGoldenWire/ok_bare\n"}
+{"Time":"2026-09-23T01:30:08.762624198+02:00","Action":"output","Package":"open-sds/ota/internal/rpcproto","Test":"TestResponseGoldenWire/ok_bare","Output":"--- PASS: TestResponseGoldenWire/ok_bare (0.00s)\n"}
+{"Time":"2026-09-23T01:30:08.762654944+02:00","Action":"pass","Package":"open-sds/ota/internal/rpcproto","Test":"TestResponseGoldenWire/ok_bare","Elapsed":0}
+{"Time":"2026-09-23T01:30:08.762697807+02:00","Action":"run","Package":"open-sds/ota/internal/rpcproto","Test":"TestResponseGoldenWire/ok_with_data"}
+{"Time":"2026-09-23T01:30:08.762703161+02:00","Action":"output","Package":"open-sds/ota/internal/rpcproto","Test":"TestResponseGoldenWire/ok_with_data","Output":"=== RUN   TestResponseGoldenWire/ok_with_data\n"}
+{"Time":"2026-09-23T01:30:08.762889297+02:00","Action":"output","Package":"open-sds/ota/internal/rpcproto","Test":"TestResponseGoldenWire/ok_with_data","Output":"--- PASS: TestResponseGoldenWire/ok_with_data (0.00s)\n"}
+{"Time":"2026-09-23T01:30:08.76291496+02:00","Action":"pass","Package":"open-sds/ota/internal/rpcproto","Test":"TestResponseGoldenWire/ok_with_data","Elapsed":0}
+{"Time":"2026-09-23T01:30:08.762977376+02:00","Action":"run","Package":"open-sds/ota/internal/rpcproto","Test":"TestResponseGoldenWire/error"}
+{"Time":"2026-09-23T01:30:08.76298333+02:00","Action":"output","Package":"open-sds/ota/internal/rpcproto","Test":"TestResponseGoldenWire/error","Output":"=== RUN   TestResponseGoldenWire/error\n"}
+{"Time":"2026-09-23T01:30:08.763110361+02:00","Action":"output","Package":"open-sds/ota/internal/rpcproto","Test":"TestResponseGoldenWire/error","Output":"--- PASS: TestResponseGoldenWire/error (0.00s)\n"}
+{"Time":"2026-09-23T01:30:08.763136781+02:00","Action":"pass","Package":"open-sds/ota/internal/rpcproto","Test":"TestResponseGoldenWire/error","Elapsed":0}
+{"Time":"2026-09-23T01:30:08.763183201+02:00","Action":"run","Package":"open-sds/ota/internal/rpcproto","Test":"TestResponseGoldenWire/error_with_data"}
+{"Time":"2026-09-23T01:30:08.76318793+02:00","Action":"output","Package":"open-sds/ota/internal/rpcproto","Test":"TestResponseGoldenWire/error_with_data","Output":"=== RUN   TestResponseGoldenWire/error_with_data\n"}
+{"Time":"2026-09-23T01:30:08.763364191+02:00","Action":"output","Package":"open-sds/ota/internal/rpcproto","Test":"TestResponseGoldenWire/error_with_data","Output":"--- PASS: TestResponseGoldenWire/error_with_data (0.00s)\n"}
+{"Time":"2026-09-23T01:30:08.763397924+02:00","Action":"pass","Package":"open-sds/ota/internal/rpcproto","Test":"TestResponseGoldenWire/error_with_data","Elapsed":0}
+{"Time":"2026-09-23T01:30:08.763568552+02:00","Action":"output","Package":"open-sds/ota/internal/rpcproto","Test":"TestResponseGoldenWire","Output":"--- PASS: TestResponseGoldenWire (0.00s)\n"}
+{"Time":"2026-09-23T01:30:08.763576255+02:00","Action":"pass","Package":"open-sds/ota/internal/rpcproto","Test":"TestResponseGoldenWire","Elapsed":0}
+{"Time":"2026-09-23T01:30:08.763581054+02:00","Action":"run","Package":"open-sds/ota/internal/rpcproto","Test":"TestFullCommandSurfaceRoundTrip"}
+{"Time":"2026-09-23T01:30:08.7635846+02:00","Action":"output","Package":"open-sds/ota/internal/rpcproto","Test":"TestFullCommandSurfaceRoundTrip","Output":"=== RUN   TestFullCommandSurfaceRoundTrip\n"}
+{"Time":"2026-09-23T01:30:08.764964989+02:00","Action":"output","Package":"open-sds/ota/internal/rpcproto","Test":"TestFullCommandSurfaceRoundTrip","Output":"--- PASS: TestFullCommandSurfaceRoundTrip (0.00s)\n"}
+{"Time":"2026-09-23T01:30:08.764992108+02:00","Action":"pass","Package":"open-sds/ota/internal/rpcproto","Test":"TestFullCommandSurfaceRoundTrip","Elapsed":0}
+{"Time":"2026-09-23T01:30:08.765028213+02:00","Action":"run","Package":"open-sds/ota/internal/rpcproto","Test":"TestResponseDecodeAgentShapes"}
+{"Time":"2026-09-23T01:30:08.765034775+02:00","Action":"output","Package":"open-sds/ota/internal/rpcproto","Test":"TestResponseDecodeAgentShapes","Output":"=== RUN   TestResponseDecodeAgentShapes\n"}
+{"Time":"2026-09-23T01:30:08.765219949+02:00","Action":"output","Package":"open-sds/ota/internal/rpcproto","Test":"TestResponseDecodeAgentShapes","Output":"--- PASS: TestResponseDecodeAgentShapes (0.00s)\n"}
+{"Time":"2026-09-23T01:30:08.765224095+02:00","Action":"pass","Package":"open-sds/ota/internal/rpcproto","Test":"TestResponseDecodeAgentShapes","Elapsed":0}
+{"Time":"2026-09-23T01:30:08.765322768+02:00","Action":"run","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzRequestDecode"}
+{"Time":"2026-09-23T01:30:08.765326377+02:00","Action":"output","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzRequestDecode","Output":"=== RUN   FuzzRequestDecode\n"}
+{"Time":"2026-09-23T01:30:08.765573232+02:00","Action":"run","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzRequestDecode/seed#0"}
+{"Time":"2026-09-23T01:30:08.765578547+02:00","Action":"output","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzRequestDecode/seed#0","Output":"=== RUN   FuzzRequestDecode/seed#0\n"}
+{"Time":"2026-09-23T01:30:08.765784313+02:00","Action":"output","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzRequestDecode/seed#0","Output":"--- PASS: FuzzRequestDecode/seed#0 (0.00s)\n"}
+{"Time":"2026-09-23T01:30:08.765821096+02:00","Action":"pass","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzRequestDecode/seed#0","Elapsed":0}
+{"Time":"2026-09-23T01:30:08.765865129+02:00","Action":"run","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzRequestDecode/seed#1"}
+{"Time":"2026-09-23T01:30:08.765869417+02:00","Action":"output","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzRequestDecode/seed#1","Output":"=== RUN   FuzzRequestDecode/seed#1\n"}
+{"Time":"2026-09-23T01:30:08.766165705+02:00","Action":"output","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzRequestDecode/seed#1","Output":"--- PASS: FuzzRequestDecode/seed#1 (0.00s)\n"}
+{"Time":"2026-09-23T01:30:08.766190274+02:00","Action":"pass","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzRequestDecode/seed#1","Elapsed":0}
+{"Time":"2026-09-23T01:30:08.766258023+02:00","Action":"run","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzRequestDecode/seed#2"}
+{"Time":"2026-09-23T01:30:08.766262388+02:00","Action":"output","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzRequestDecode/seed#2","Output":"=== RUN   FuzzRequestDecode/seed#2\n"}
+{"Time":"2026-09-23T01:30:08.766557642+02:00","Action":"output","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzRequestDecode/seed#2","Output":"--- PASS: FuzzRequestDecode/seed#2 (0.00s)\n"}
+{"Time":"2026-09-23T01:30:08.766581789+02:00","Action":"pass","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzRequestDecode/seed#2","Elapsed":0}
+{"Time":"2026-09-23T01:30:08.766628127+02:00","Action":"run","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzRequestDecode/seed#3"}
+{"Time":"2026-09-23T01:30:08.766633454+02:00","Action":"output","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzRequestDecode/seed#3","Output":"=== RUN   FuzzRequestDecode/seed#3\n"}
+{"Time":"2026-09-23T01:30:08.766932809+02:00","Action":"output","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzRequestDecode/seed#3","Output":"--- PASS: FuzzRequestDecode/seed#3 (0.00s)\n"}
+{"Time":"2026-09-23T01:30:08.766994339+02:00","Action":"pass","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzRequestDecode/seed#3","Elapsed":0}
+{"Time":"2026-09-23T01:30:08.767008761+02:00","Action":"run","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzRequestDecode/seed#4"}
+{"Time":"2026-09-23T01:30:08.767011845+02:00","Action":"output","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzRequestDecode/seed#4","Output":"=== RUN   FuzzRequestDecode/seed#4\n"}
+{"Time":"2026-09-23T01:30:08.767334175+02:00","Action":"output","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzRequestDecode/seed#4","Output":"--- PASS: FuzzRequestDecode/seed#4 (0.00s)\n"}
+{"Time":"2026-09-23T01:30:08.767359814+02:00","Action":"pass","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzRequestDecode/seed#4","Elapsed":0}
+{"Time":"2026-09-23T01:30:08.767401185+02:00","Action":"run","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzRequestDecode/seed#5"}
+{"Time":"2026-09-23T01:30:08.767405603+02:00","Action":"output","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzRequestDecode/seed#5","Output":"=== RUN   FuzzRequestDecode/seed#5\n"}
+{"Time":"2026-09-23T01:30:08.767653244+02:00","Action":"output","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzRequestDecode/seed#5","Output":"--- PASS: FuzzRequestDecode/seed#5 (0.00s)\n"}
+{"Time":"2026-09-23T01:30:08.767686112+02:00","Action":"pass","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzRequestDecode/seed#5","Elapsed":0}
+{"Time":"2026-09-23T01:30:08.767768248+02:00","Action":"run","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzRequestDecode/seed#6"}
+{"Time":"2026-09-23T01:30:08.76777343+02:00","Action":"output","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzRequestDecode/seed#6","Output":"=== RUN   FuzzRequestDecode/seed#6\n"}
+{"Time":"2026-09-23T01:30:08.768001463+02:00","Action":"output","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzRequestDecode/seed#6","Output":"--- PASS: FuzzRequestDecode/seed#6 (0.00s)\n"}
+{"Time":"2026-09-23T01:30:08.768007038+02:00","Action":"pass","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzRequestDecode/seed#6","Elapsed":0}
+{"Time":"2026-09-23T01:30:08.768072636+02:00","Action":"run","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzRequestDecode/seed#7"}
+{"Time":"2026-09-23T01:30:08.76807728+02:00","Action":"output","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzRequestDecode/seed#7","Output":"=== RUN   FuzzRequestDecode/seed#7\n"}
+{"Time":"2026-09-23T01:30:08.768366673+02:00","Action":"output","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzRequestDecode/seed#7","Output":"--- PASS: FuzzRequestDecode/seed#7 (0.00s)\n"}
+{"Time":"2026-09-23T01:30:08.768373762+02:00","Action":"pass","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzRequestDecode/seed#7","Elapsed":0}
+{"Time":"2026-09-23T01:30:08.768437917+02:00","Action":"run","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzRequestDecode/seed#8"}
+{"Time":"2026-09-23T01:30:08.768443502+02:00","Action":"output","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzRequestDecode/seed#8","Output":"=== RUN   FuzzRequestDecode/seed#8\n"}
+{"Time":"2026-09-23T01:30:08.768610565+02:00","Action":"output","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzRequestDecode/seed#8","Output":"--- PASS: FuzzRequestDecode/seed#8 (0.00s)\n"}
+{"Time":"2026-09-23T01:30:08.768617218+02:00","Action":"pass","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzRequestDecode/seed#8","Elapsed":0}
+{"Time":"2026-09-23T01:30:08.768709319+02:00","Action":"run","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzRequestDecode/seed#9"}
+{"Time":"2026-09-23T01:30:08.768715991+02:00","Action":"output","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzRequestDecode/seed#9","Output":"=== RUN   FuzzRequestDecode/seed#9\n"}
+{"Time":"2026-09-23T01:30:08.768826971+02:00","Action":"output","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzRequestDecode/seed#9","Output":"--- PASS: FuzzRequestDecode/seed#9 (0.00s)\n"}
+{"Time":"2026-09-23T01:30:08.768843826+02:00","Action":"pass","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzRequestDecode/seed#9","Elapsed":0}
+{"Time":"2026-09-23T01:30:08.768927789+02:00","Action":"run","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzRequestDecode/seed#10"}
+{"Time":"2026-09-23T01:30:08.768934364+02:00","Action":"output","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzRequestDecode/seed#10","Output":"=== RUN   FuzzRequestDecode/seed#10\n"}
+{"Time":"2026-09-23T01:30:08.769060403+02:00","Action":"output","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzRequestDecode/seed#10","Output":"--- PASS: FuzzRequestDecode/seed#10 (0.00s)\n"}
+{"Time":"2026-09-23T01:30:08.769068056+02:00","Action":"pass","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzRequestDecode/seed#10","Elapsed":0}
+{"Time":"2026-09-23T01:30:08.769142687+02:00","Action":"run","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzRequestDecode/seed#11"}
+{"Time":"2026-09-23T01:30:08.76914929+02:00","Action":"output","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzRequestDecode/seed#11","Output":"=== RUN   FuzzRequestDecode/seed#11\n"}
+{"Time":"2026-09-23T01:30:08.769263192+02:00","Action":"output","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzRequestDecode/seed#11","Output":"--- PASS: FuzzRequestDecode/seed#11 (0.00s)\n"}
+{"Time":"2026-09-23T01:30:08.769289484+02:00","Action":"pass","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzRequestDecode/seed#11","Elapsed":0}
+{"Time":"2026-09-23T01:30:08.769329391+02:00","Action":"run","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzRequestDecode/seed#12"}
+{"Time":"2026-09-23T01:30:08.769332708+02:00","Action":"output","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzRequestDecode/seed#12","Output":"=== RUN   FuzzRequestDecode/seed#12\n"}
+{"Time":"2026-09-23T01:30:08.769454128+02:00","Action":"output","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzRequestDecode/seed#12","Output":"--- PASS: FuzzRequestDecode/seed#12 (0.00s)\n"}
+{"Time":"2026-09-23T01:30:08.769489324+02:00","Action":"pass","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzRequestDecode/seed#12","Elapsed":0}
+{"Time":"2026-09-23T01:30:08.769532081+02:00","Action":"run","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzRequestDecode/seed#13"}
+{"Time":"2026-09-23T01:30:08.769535075+02:00","Action":"output","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzRequestDecode/seed#13","Output":"=== RUN   FuzzRequestDecode/seed#13\n"}
+{"Time":"2026-09-23T01:30:08.769857622+02:00","Action":"output","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzRequestDecode/seed#13","Output":"--- PASS: FuzzRequestDecode/seed#13 (0.00s)\n"}
+{"Time":"2026-09-23T01:30:08.769878423+02:00","Action":"pass","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzRequestDecode/seed#13","Elapsed":0}
+{"Time":"2026-09-23T01:30:08.769894245+02:00","Action":"run","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzRequestDecode/seed#14"}
+{"Time":"2026-09-23T01:30:08.769900628+02:00","Action":"output","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzRequestDecode/seed#14","Output":"=== RUN   FuzzRequestDecode/seed#14\n"}
+{"Time":"2026-09-23T01:30:08.770136092+02:00","Action":"output","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzRequestDecode/seed#14","Output":"--- PASS: FuzzRequestDecode/seed#14 (0.00s)\n"}
+{"Time":"2026-09-23T01:30:08.770153771+02:00","Action":"pass","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzRequestDecode/seed#14","Elapsed":0}
+{"Time":"2026-09-23T01:30:08.77020813+02:00","Action":"output","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzRequestDecode","Output":"--- PASS: FuzzRequestDecode (0.00s)\n"}
+{"Time":"2026-09-23T01:30:08.770223604+02:00","Action":"pass","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzRequestDecode","Elapsed":0}
+{"Time":"2026-09-23T01:30:08.770254341+02:00","Action":"run","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzResponseDecode"}
+{"Time":"2026-09-23T01:30:08.770258983+02:00","Action":"output","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzResponseDecode","Output":"=== RUN   FuzzResponseDecode\n"}
+{"Time":"2026-09-23T01:30:08.770471711+02:00","Action":"run","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzResponseDecode/seed#0"}
+{"Time":"2026-09-23T01:30:08.770478635+02:00","Action":"output","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzResponseDecode/seed#0","Output":"=== RUN   FuzzResponseDecode/seed#0\n"}
+{"Time":"2026-09-23T01:30:08.770629106+02:00","Action":"output","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzResponseDecode/seed#0","Output":"--- PASS: FuzzResponseDecode/seed#0 (0.00s)\n"}
+{"Time":"2026-09-23T01:30:08.770658819+02:00","Action":"pass","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzResponseDecode/seed#0","Elapsed":0}
+{"Time":"2026-09-23T01:30:08.770704023+02:00","Action":"run","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzResponseDecode/seed#1"}
+{"Time":"2026-09-23T01:30:08.770709498+02:00","Action":"output","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzResponseDecode/seed#1","Output":"=== RUN   FuzzResponseDecode/seed#1\n"}
+{"Time":"2026-09-23T01:30:08.770932129+02:00","Action":"output","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzResponseDecode/seed#1","Output":"--- PASS: FuzzResponseDecode/seed#1 (0.00s)\n"}
+{"Time":"2026-09-23T01:30:08.770951424+02:00","Action":"pass","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzResponseDecode/seed#1","Elapsed":0}
+{"Time":"2026-09-23T01:30:08.770997259+02:00","Action":"run","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzResponseDecode/seed#2"}
+{"Time":"2026-09-23T01:30:08.771003968+02:00","Action":"output","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzResponseDecode/seed#2","Output":"=== RUN   FuzzResponseDecode/seed#2\n"}
+{"Time":"2026-09-23T01:30:08.771181392+02:00","Action":"output","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzResponseDecode/seed#2","Output":"--- PASS: FuzzResponseDecode/seed#2 (0.00s)\n"}
+{"Time":"2026-09-23T01:30:08.771200544+02:00","Action":"pass","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzResponseDecode/seed#2","Elapsed":0}
+{"Time":"2026-09-23T01:30:08.77124165+02:00","Action":"run","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzResponseDecode/seed#3"}
+{"Time":"2026-09-23T01:30:08.771245988+02:00","Action":"output","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzResponseDecode/seed#3","Output":"=== RUN   FuzzResponseDecode/seed#3\n"}
+{"Time":"2026-09-23T01:30:08.771485956+02:00","Action":"output","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzResponseDecode/seed#3","Output":"--- PASS: FuzzResponseDecode/seed#3 (0.00s)\n"}
+{"Time":"2026-09-23T01:30:08.771493127+02:00","Action":"pass","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzResponseDecode/seed#3","Elapsed":0}
+{"Time":"2026-09-23T01:30:08.7715258+02:00","Action":"run","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzResponseDecode/seed#4"}
+{"Time":"2026-09-23T01:30:08.771530083+02:00","Action":"output","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzResponseDecode/seed#4","Output":"=== RUN   FuzzResponseDecode/seed#4\n"}
+{"Time":"2026-09-23T01:30:08.771808503+02:00","Action":"output","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzResponseDecode/seed#4","Output":"--- PASS: FuzzResponseDecode/seed#4 (0.00s)\n"}
+{"Time":"2026-09-23T01:30:08.771819364+02:00","Action":"pass","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzResponseDecode/seed#4","Elapsed":0}
+{"Time":"2026-09-23T01:30:08.771845576+02:00","Action":"run","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzResponseDecode/seed#5"}
+{"Time":"2026-09-23T01:30:08.771850474+02:00","Action":"output","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzResponseDecode/seed#5","Output":"=== RUN   FuzzResponseDecode/seed#5\n"}
+{"Time":"2026-09-23T01:30:08.772055071+02:00","Action":"output","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzResponseDecode/seed#5","Output":"--- PASS: FuzzResponseDecode/seed#5 (0.00s)\n"}
+{"Time":"2026-09-23T01:30:08.772082841+02:00","Action":"pass","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzResponseDecode/seed#5","Elapsed":0}
+{"Time":"2026-09-23T01:30:08.772123208+02:00","Action":"run","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzResponseDecode/seed#6"}
+{"Time":"2026-09-23T01:30:08.77212847+02:00","Action":"output","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzResponseDecode/seed#6","Output":"=== RUN   FuzzResponseDecode/seed#6\n"}
+{"Time":"2026-09-23T01:30:08.772356704+02:00","Action":"output","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzResponseDecode/seed#6","Output":"--- PASS: FuzzResponseDecode/seed#6 (0.00s)\n"}
+{"Time":"2026-09-23T01:30:08.77236596+02:00","Action":"pass","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzResponseDecode/seed#6","Elapsed":0}
+{"Time":"2026-09-23T01:30:08.772437265+02:00","Action":"run","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzResponseDecode/seed#7"}
+{"Time":"2026-09-23T01:30:08.772445428+02:00","Action":"output","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzResponseDecode/seed#7","Output":"=== RUN   FuzzResponseDecode/seed#7\n"}
+{"Time":"2026-09-23T01:30:08.772602463+02:00","Action":"output","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzResponseDecode/seed#7","Output":"--- PASS: FuzzResponseDecode/seed#7 (0.00s)\n"}
+{"Time":"2026-09-23T01:30:08.772608773+02:00","Action":"pass","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzResponseDecode/seed#7","Elapsed":0}
+{"Time":"2026-09-23T01:30:08.772665061+02:00","Action":"run","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzResponseDecode/seed#8"}
+{"Time":"2026-09-23T01:30:08.772671177+02:00","Action":"output","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzResponseDecode/seed#8","Output":"=== RUN   FuzzResponseDecode/seed#8\n"}
+{"Time":"2026-09-23T01:30:08.772868016+02:00","Action":"output","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzResponseDecode/seed#8","Output":"--- PASS: FuzzResponseDecode/seed#8 (0.00s)\n"}
+{"Time":"2026-09-23T01:30:08.772900917+02:00","Action":"pass","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzResponseDecode/seed#8","Elapsed":0}
+{"Time":"2026-09-23T01:30:08.772945841+02:00","Action":"run","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzResponseDecode/seed#9"}
+{"Time":"2026-09-23T01:30:08.772951451+02:00","Action":"output","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzResponseDecode/seed#9","Output":"=== RUN   FuzzResponseDecode/seed#9\n"}
+{"Time":"2026-09-23T01:30:08.773121087+02:00","Action":"output","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzResponseDecode/seed#9","Output":"--- PASS: FuzzResponseDecode/seed#9 (0.00s)\n"}
+{"Time":"2026-09-23T01:30:08.773127914+02:00","Action":"pass","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzResponseDecode/seed#9","Elapsed":0}
+{"Time":"2026-09-23T01:30:08.773175433+02:00","Action":"run","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzResponseDecode/seed#10"}
+{"Time":"2026-09-23T01:30:08.773182138+02:00","Action":"output","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzResponseDecode/seed#10","Output":"=== RUN   FuzzResponseDecode/seed#10\n"}
+{"Time":"2026-09-23T01:30:08.773302876+02:00","Action":"output","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzResponseDecode/seed#10","Output":"--- PASS: FuzzResponseDecode/seed#10 (0.00s)\n"}
+{"Time":"2026-09-23T01:30:08.773327674+02:00","Action":"pass","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzResponseDecode/seed#10","Elapsed":0}
+{"Time":"2026-09-23T01:30:08.773374765+02:00","Action":"output","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzResponseDecode","Output":"--- PASS: FuzzResponseDecode (0.00s)\n"}
+{"Time":"2026-09-23T01:30:08.773398669+02:00","Action":"pass","Package":"open-sds/ota/internal/rpcproto","Test":"FuzzResponseDecode","Elapsed":0}
+{"Time":"2026-09-23T01:30:08.773419018+02:00","Action":"output","Package":"open-sds/ota/internal/rpcproto","Output":"PASS\n"}
+{"Time":"2026-09-23T01:30:09.36467907+02:00","Action":"start","Package":"open-sds/ota/internal/sysinfo"}
+{"Time":"2026-09-23T01:30:09.364710287+02:00","Action":"output","Package":"open-sds/ota/internal/sysinfo","Output":"?   \topen-sds/ota/internal/sysinfo\t[no test files]\n"}
+{"Time":"2026-09-23T01:30:09.364715634+02:00","Action":"skip","Package":"open-sds/ota/internal/sysinfo","Elapsed":0}
+{"Time":"2026-09-23T01:30:09.774883014+02:00","Action":"output","Package":"open-sds/ota/internal/rpcproto","Output":"ok  \topen-sds/ota/internal/rpcproto\t1.025s\n"}
+{"Time":"2026-09-23T01:30:09.774907292+02:00","Action":"pass","Package":"open-sds/ota/internal/rpcproto","Elapsed":1.025}

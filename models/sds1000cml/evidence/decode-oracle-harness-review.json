@@ -1,0 +1,17 @@
+{
+  "result": "source-reviewed-external-runner-unavailable",
+  "completeReads": [
+    "app/internal/decode/oracle_test.go"
+  ],
+  "sourceSHA256": {
+    "app/internal/decode/oracle_test.go": "796dc98e76c399a59f8fe8fdc2113bda95cd0005bbb296857e9d1f9c76572cd5"
+  },
+  "sigrokCLI": null,
+  "findings": [
+    "Harness writes identical synthetic logic channels to temporary CSV for sigrok and maps binary levels to ADC codes for repository decoders. Shorter CSV channels are padded with zero, so fixture lengths matter.",
+    "External annotations are parsed with a specific line regex; unmatched lines are silently ignored. Per-class runs avoid class ambiguity. Byte and alignment comparisons only establish assertions present in each protocol test.",
+    "CI_REQUIRE_SIGROK=1 makes missing sigrok-cli fail; otherwise the original tests skip. This workspace currently has no sigrok-cli on PATH and no oracle execution is claimed. No installation is required for continuing source/model work.",
+    "Timeline boundaries truncate accumulated sample positions. Alignment checks permit protocol-specific end tolerance, and those tolerances need review in each test file."
+  ],
+  "nextAction": "Review six protocol-specific oracle files, retain skips as not-run if executable remains unavailable; do not promote historical oracle claims to current passing evidence."
+}

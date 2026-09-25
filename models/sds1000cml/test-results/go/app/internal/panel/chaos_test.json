@@ -1,0 +1,31 @@
+{
+  "source": "app/internal/panel/chaos_test.go",
+  "commit": "f43696305a7957b9956e3b1ac425cdf323edde84",
+  "scope": "Reviewed Go test outcomes; passing assertions contribute partial requirement evidence.",
+  "sourceSHA256": "2e7ec87e96d5592b6db3f192ffa6b3a896819447cc407c1c00488d9a19b57977",
+  "logs": {
+    "test-runs/panel-integrated.jsonl": "2fbcb88c41a0275721d1edc08e3847581a7054b52e3eee8bbfd8abb17853f635"
+  },
+  "tests": [
+    {
+      "name": "TestPanelChaos",
+      "result": "pass",
+      "requirements": [
+        "REQ-SDS-135",
+        "REQ-SDS-136"
+      ]
+    }
+  ],
+  "results": [
+    {
+      "requirement": "REQ-SDS-135",
+      "status": "partial",
+      "notes": "1 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    },
+    {
+      "requirement": "REQ-SDS-136",
+      "status": "partial",
+      "notes": "1 reviewed test outcomes pass; 0 fail; 0 skip. This summarizes exercised assertions only, not complete clause coverage or physical qualification. Exact outcomes and indexed logs are in evidence/reviewed-test-links.json."
+    }
+  ]
+}

@@ -1,9 +1,11 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-SUPERRES
 package superres
 
 import "math"
 
 // gateTpl is the gate's matched filter: zero-mean reference window + its norm,
 // plus SEGMENT sub-templates for the per-hit consistency check (see segMatch).
+// TRLC-LINKS: REQ-SDS-141
 type gateTpl struct {
 	data []float64
 	L    int
@@ -15,6 +17,7 @@ type gateTpl struct {
 // gateSeg is one template segment: re-zero-meaned shape data + its own norm,
 // share of the total template energy, and its raw level relative to the window
 // mean (relMean) — dead/flat segments discriminate by LEVEL, not shape.
+// TRLC-LINKS: REQ-SDS-141
 type gateSeg struct {
 	a, len  int
 	data    []float64
@@ -23,6 +26,7 @@ type gateSeg struct {
 	relMean float64
 }
 
+// TRLC-LINKS: REQ-SDS-141
 type hit struct {
 	loc   int
 	score float64
@@ -31,6 +35,7 @@ type hit struct {
 
 // gateTemplate builds the zero-mean unit-referenced matched filter for [lo,hi),
 // with per-segment sub-templates for the consistency check. Mirrors srGateTemplate.
+// TRLC-LINKS: REQ-SDS-141
 func gateTemplate(ref []float32, lo, hi int) *gateTpl {
 	L := hi - lo
 	if L < 4 {
@@ -98,6 +103,7 @@ func gateTemplate(ref []float32, lo, hi int) *gateTpl {
 // only where the energy is concentrated — the global energy-weighted NCC cannot
 // tell those apart, and depositing them contaminates the stack. Mirrors
 // srSegMatch (thresholds measured on the adversarial 50-family corpus).
+// TRLC-LINKS: REQ-SDS-141
 func (t *gateTpl) segMatch(sig []uint8, loc int) bool {
 	if len(t.segs) < 2 {
 		return true // nothing to cross-check
@@ -159,6 +165,7 @@ func (t *gateTpl) segMatch(sig []uint8, loc int) bool {
 // ambientMax measures the reference record's own ambient similarity to the gate
 // template: the max off-gate local-maximum NCC below 0.93 (≥0.93 = genuine
 // periodic repeats, which must keep stacking). Mirrors srAmbientMax.
+// TRLC-LINKS: REQ-SDS-141
 func (st *Stack) ambientMax(ref []float32) float64 {
 	t := st.gtpl
 	L, n := t.L, st.N
@@ -201,6 +208,7 @@ func (st *Stack) ambientMax(ref []float32) float64 {
 // detectPeriod returns the fundamental period (samples) of ref[lo:hi) via
 // normalized autocorrelation — the first local peak above 0.5 — or 0 if not
 // clearly periodic. Mirrors srDetectPeriod.
+// TRLC-LINKS: REQ-SDS-141
 func detectPeriod(ref []float32, lo, hi int) int {
 	W := hi - lo
 	if W < 32 {
@@ -252,6 +260,7 @@ func detectPeriod(ref []float32, lo, hi int) int {
 
 // DetectPeriodU8 is the exported period probe for callers holding raw codes
 // (the device panel): the fundamental period of sig[lo:hi) in samples, or 0.
+// TRLC-LINKS: REQ-SDS-141
 func DetectPeriodU8(sig []uint8, lo, hi int) int {
 	if lo < 0 {
 		lo = 0
@@ -271,6 +280,7 @@ func DetectPeriodU8(sig []uint8, lo, hi int) int {
 
 // gateInstall resizes the stack to an L·K gate grid, builds the gate template,
 // and seeds the reference's own gate at fractional offset 0. gate = [gLo,gHi).
+// TRLC-LINKS: REQ-SDS-141
 func (st *Stack) gateInstall(gLo, gHi int) bool {
 	L := gHi - gLo
 	st.Gated = true
@@ -321,6 +331,7 @@ func (st *Stack) gateInstall(gLo, gHi int) bool {
 // occurrence: NCC local maxima above the floor, L/2-separated, each with a
 // parabolic sub-sample offset. R>0 bounds to trigger-predicted ±R; R=0 = whole
 // frame. Mirrors srGateFind.
+// TRLC-LINKS: REQ-SDS-141
 func (st *Stack) gateFind(sig []uint8, base, R int) []hit {
 	t := st.gtpl
 	if t == nil {

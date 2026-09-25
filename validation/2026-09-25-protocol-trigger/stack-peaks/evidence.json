@@ -1,0 +1,50 @@
+{
+  "status": "Isolated ordered peak-selection stage; not yet integrated into score path or acquisition image",
+  "sourceHashes": {
+    "fpga/acq_sram/stack_peaks.v": "e350ca5798febdbff118ac1058256cb9fc8455663727aa1eb812456338fc5f56",
+    "fpga/acq_sram/sim/tb_stack_peaks.v": "25f6bb33a1b3368bab7ba763c9e1534a5589373b67d126553d9aed0e109e7ec3",
+    "app/internal/superres/stack_peaks_rtl_test.go": "62c7738314a614ffe3e555ae80cac4ef34d53ae38857a6051726062081803377"
+  },
+  "tests": {
+    "exitCode": 0,
+    "fixtures": 109,
+    "gateFindWaveformComparisons": 12,
+    "coverage": "threshold equality, plateau ties, record boundaries, rejection without suppression, signed/undefined scores, input and verdict stalls, reset/restart, invalid scores and position/separation overflow"
+  },
+  "synthesis": {
+    "build": "build-Lxtr6X",
+    "device": "EP4CE10F17C8",
+    "clockMHz": 125,
+    "logicElements": 657,
+    "registers": 449,
+    "memoryBits": 0,
+    "dsp9BitElements": 0,
+    "slacksNs": [
+      0.965,
+      0.485,
+      3.637,
+      1.399,
+      0.43,
+      3.52,
+      4.991,
+      0.201,
+      3.183
+    ],
+    "minSetupSlackNs": 0.965,
+    "minHoldSlackNs": 0.201,
+    "limitations": "Physical clock constrained; virtual data I/O unconstrained. No full-image or external I/O qualification."
+  },
+  "rejectedBuilds": [
+    {
+      "build": "build-eS8M2Y",
+      "minSetupSlackNs": -2.598
+    },
+    {
+      "build": "build-PFD1YY",
+      "minSetupSlackNs": -0.983
+    }
+  ],
+  "remaining": "Reference memory scheduling, score-path integration, adaptive floor preparation, segment acceptance, fractional alignment, drift correction, two-channel accumulation and hardware deployment",
+  "modelValidation": "Bundle schema/loading passed; full strict validation not repeated for this increment",
+  "deployment": "No change; general/current remains build-v5T40o"
+}

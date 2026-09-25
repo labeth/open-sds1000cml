@@ -1,0 +1,3 @@
+305d74dcf2085a8fba1337f6db6f6df2138d35ab5cfefddc47e72794a9e82fa9  app/dist/app-arm
+66e3615626951224b6c865d0831325a59e981896f7ed2b9d329caf26eabbb4c2  fpga/default/out/default.rbf
+352d01541a73599195162bff3392382c4d5a130825800d3a3b9066aec508ece4  app/dist/acqsram-panel-validation

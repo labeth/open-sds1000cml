@@ -1,6 +1,8 @@
+// ENGMODEL-OWNER-UNIT: FU-RTL-ACQ-TESTS
 `timescale 1ns/1ps
 // Mocks isolate epoch/configuration/word alignment. ADC pin ordering and CIC
 // arithmetic are covered by their own benches and still need board validation.
+// TRLC-LINKS: REQ-SDS-040, REQ-SDS-058, REQ-SDS-183
 module adc_interleave #(parameter SYNC_ENCODE=0)(input refclk,memclk,packclk,enable,input [79:0] lane,input [9:0] encode_enable,
  input snapshot_request,output snapshot_ack,input consume,output [31:0] word_data,output valid,fault,
  output [79:0] snapshot,output [4:0] enc_p,enc_n,output locked);
@@ -9,11 +11,13 @@ module adc_interleave #(parameter SYNC_ENCODE=0)(input refclk,memclk,packclk,ena
  assign enc_p=encode_enable[4:0];assign enc_n=encode_enable[9:5];assign locked=!lane[34];
  always @(posedge memclk)if(enable && !consume)$fatal(1,"ADC consumption paused");
 endmodule
+// TRLC-LINKS: REQ-SDS-040, REQ-SDS-058, REQ-SDS-183
 module adc_precision #(parameter SHARED_TAIL=0)(input core,packclk,clk100,enable,input [4:0] decim_log,input [31:0] raw,input raw_valid,
  output [31:0] data,output valid,fault);
  assign data=raw^32'h965a87c3;assign valid=enable && raw_valid && raw[0];
  assign fault=enable && raw[31];
 endmodule
+// TRLC-LINKS: REQ-SDS-040, REQ-SDS-058, REQ-SDS-183
 module tb_acquisition_source;
  reg core=0,packclk=0,clk100=0;
  always #2 core=~core;always #4 packclk=~packclk;always #5 clk100=~clk100;

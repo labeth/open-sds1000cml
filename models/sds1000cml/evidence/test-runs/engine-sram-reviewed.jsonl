@@ -1,0 +1,52 @@
+{"Time":"2026-09-23T08:42:13.57073627+02:00","Action":"start","Package":"open-sds/app/internal/engine"}
+{"Time":"2026-09-23T08:42:13.582467049+02:00","Action":"run","Package":"open-sds/app/internal/engine","Test":"TestERESQ8"}
+{"Time":"2026-09-23T08:42:13.582484803+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestERESQ8","Output":"=== RUN   TestERESQ8\n"}
+{"Time":"2026-09-23T08:42:13.582747975+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestERESQ8","Output":"--- PASS: TestERESQ8 (0.00s)\n"}
+{"Time":"2026-09-23T08:42:13.582766288+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Test":"TestERESQ8","Elapsed":0}
+{"Time":"2026-09-23T08:42:13.582812859+02:00","Action":"run","Package":"open-sds/app/internal/engine","Test":"TestSRAMBlockAverageFractionsAndReset"}
+{"Time":"2026-09-23T08:42:13.582820411+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestSRAMBlockAverageFractionsAndReset","Output":"=== RUN   TestSRAMBlockAverageFractionsAndReset\n"}
+{"Time":"2026-09-23T08:42:13.582967971+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestSRAMBlockAverageFractionsAndReset","Output":"--- PASS: TestSRAMBlockAverageFractionsAndReset (0.00s)\n"}
+{"Time":"2026-09-23T08:42:13.582977735+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Test":"TestSRAMBlockAverageFractionsAndReset","Elapsed":0}
+{"Time":"2026-09-23T08:42:13.583020284+02:00","Action":"run","Package":"open-sds/app/internal/engine","Test":"TestSRAMAverageAlignsShiftedRecordWithoutWrapping"}
+{"Time":"2026-09-23T08:42:13.583027449+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestSRAMAverageAlignsShiftedRecordWithoutWrapping","Output":"=== RUN   TestSRAMAverageAlignsShiftedRecordWithoutWrapping\n"}
+{"Time":"2026-09-23T08:42:13.583156685+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestSRAMAverageAlignsShiftedRecordWithoutWrapping","Output":"--- PASS: TestSRAMAverageAlignsShiftedRecordWithoutWrapping (0.00s)\n"}
+{"Time":"2026-09-23T08:42:13.583166866+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Test":"TestSRAMAverageAlignsShiftedRecordWithoutWrapping","Elapsed":0}
+{"Time":"2026-09-23T08:42:13.583205569+02:00","Action":"run","Package":"open-sds/app/internal/engine","Test":"TestSRAMPlannerCoversEveryTimebase"}
+{"Time":"2026-09-23T08:42:13.583212164+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestSRAMPlannerCoversEveryTimebase","Output":"=== RUN   TestSRAMPlannerCoversEveryTimebase\n"}
+{"Time":"2026-09-23T08:42:13.58329362+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestSRAMPlannerCoversEveryTimebase","Output":"--- PASS: TestSRAMPlannerCoversEveryTimebase (0.00s)\n"}
+{"Time":"2026-09-23T08:42:13.583319376+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Test":"TestSRAMPlannerCoversEveryTimebase","Elapsed":0}
+{"Time":"2026-09-23T08:42:13.583359348+02:00","Action":"run","Package":"open-sds/app/internal/engine","Test":"TestSRAMFrameWriterPreservesChannelsAndFractions"}
+{"Time":"2026-09-23T08:42:13.583366396+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestSRAMFrameWriterPreservesChannelsAndFractions","Output":"=== RUN   TestSRAMFrameWriterPreservesChannelsAndFractions\n"}
+{"Time":"2026-09-23T08:42:13.583435041+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestSRAMFrameWriterPreservesChannelsAndFractions","Output":"--- PASS: TestSRAMFrameWriterPreservesChannelsAndFractions (0.00s)\n"}
+{"Time":"2026-09-23T08:42:13.583451325+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Test":"TestSRAMFrameWriterPreservesChannelsAndFractions","Elapsed":0}
+{"Time":"2026-09-23T08:42:13.583485229+02:00","Action":"run","Package":"open-sds/app/internal/engine","Test":"TestSRAMFrameWriterRawOrder"}
+{"Time":"2026-09-23T08:42:13.583491216+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestSRAMFrameWriterRawOrder","Output":"=== RUN   TestSRAMFrameWriterRawOrder\n"}
+{"Time":"2026-09-23T08:42:13.58356356+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestSRAMFrameWriterRawOrder","Output":"--- PASS: TestSRAMFrameWriterRawOrder (0.00s)\n"}
+{"Time":"2026-09-23T08:42:13.583575849+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Test":"TestSRAMFrameWriterRawOrder","Elapsed":0}
+{"Time":"2026-09-23T08:42:13.583616946+02:00","Action":"run","Package":"open-sds/app/internal/engine","Test":"TestSRAMPlanInvalidInput"}
+{"Time":"2026-09-23T08:42:13.583622605+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestSRAMPlanInvalidInput","Output":"=== RUN   TestSRAMPlanInvalidInput\n"}
+{"Time":"2026-09-23T08:42:13.583695497+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestSRAMPlanInvalidInput","Output":"--- PASS: TestSRAMPlanInvalidInput (0.00s)\n"}
+{"Time":"2026-09-23T08:42:13.583710049+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Test":"TestSRAMPlanInvalidInput","Elapsed":0}
+{"Time":"2026-09-23T08:42:13.583742879+02:00","Action":"run","Package":"open-sds/app/internal/engine","Test":"TestSRAMSelectedDepth"}
+{"Time":"2026-09-23T08:42:13.583748578+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestSRAMSelectedDepth","Output":"=== RUN   TestSRAMSelectedDepth\n"}
+{"Time":"2026-09-23T08:42:13.583945257+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestSRAMSelectedDepth","Output":"--- PASS: TestSRAMSelectedDepth (0.00s)\n"}
+{"Time":"2026-09-23T08:42:13.583954425+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Test":"TestSRAMSelectedDepth","Elapsed":0}
+{"Time":"2026-09-23T08:42:13.583991093+02:00","Action":"run","Package":"open-sds/app/internal/engine","Test":"TestLiveSRAMWindowBoundaries"}
+{"Time":"2026-09-23T08:42:13.583997249+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestLiveSRAMWindowBoundaries","Output":"=== RUN   TestLiveSRAMWindowBoundaries\n"}
+{"Time":"2026-09-23T08:42:13.584062976+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestLiveSRAMWindowBoundaries","Output":"--- PASS: TestLiveSRAMWindowBoundaries (0.00s)\n"}
+{"Time":"2026-09-23T08:42:13.58407758+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Test":"TestLiveSRAMWindowBoundaries","Elapsed":0}
+{"Time":"2026-09-23T08:42:13.584116898+02:00","Action":"run","Package":"open-sds/app/internal/engine","Test":"TestPrecisionRateIndependentOfView"}
+{"Time":"2026-09-23T08:42:13.584123309+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestPrecisionRateIndependentOfView","Output":"=== RUN   TestPrecisionRateIndependentOfView\n"}
+{"Time":"2026-09-23T08:42:13.584197794+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestPrecisionRateIndependentOfView","Output":"--- PASS: TestPrecisionRateIndependentOfView (0.00s)\n"}
+{"Time":"2026-09-23T08:42:13.584216068+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Test":"TestPrecisionRateIndependentOfView","Elapsed":0}
+{"Time":"2026-09-23T08:42:13.584245053+02:00","Action":"run","Package":"open-sds/app/internal/engine","Test":"TestPrecisionRateSelection"}
+{"Time":"2026-09-23T08:42:13.584251612+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestPrecisionRateSelection","Output":"=== RUN   TestPrecisionRateSelection\n"}
+{"Time":"2026-09-23T08:42:13.584357725+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestPrecisionRateSelection","Output":"--- PASS: TestPrecisionRateSelection (0.00s)\n"}
+{"Time":"2026-09-23T08:42:13.584379299+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Test":"TestPrecisionRateSelection","Elapsed":0}
+{"Time":"2026-09-23T08:42:13.584409822+02:00","Action":"run","Package":"open-sds/app/internal/engine","Test":"TestAllTimebasesRateContract"}
+{"Time":"2026-09-23T08:42:13.584415511+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestAllTimebasesRateContract","Output":"=== RUN   TestAllTimebasesRateContract\n"}
+{"Time":"2026-09-23T08:42:13.584594884+02:00","Action":"output","Package":"open-sds/app/internal/engine","Test":"TestAllTimebasesRateContract","Output":"--- PASS: TestAllTimebasesRateContract (0.00s)\n"}
+{"Time":"2026-09-23T08:42:13.584617068+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Test":"TestAllTimebasesRateContract","Elapsed":0}
+{"Time":"2026-09-23T08:42:13.584794349+02:00","Action":"output","Package":"open-sds/app/internal/engine","Output":"PASS\n"}
+{"Time":"2026-09-23T08:42:14.586140337+02:00","Action":"output","Package":"open-sds/app/internal/engine","Output":"ok  \topen-sds/app/internal/engine\t1.015s\n"}
+{"Time":"2026-09-23T08:42:14.586158745+02:00","Action":"pass","Package":"open-sds/app/internal/engine","Elapsed":1.015}
