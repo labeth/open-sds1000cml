@@ -62,11 +62,11 @@ func TestStackCorrelationRTL(t *testing.T) {
 	}
 	dir := t.TempDir()
 	rtl := filepath.Join("..", "..", "..", "fpga", "acq_sram")
-	run := func(t *testing.T, fromSamples int, input string, length int, want []correlationResult) {
+	run := func(t *testing.T, fromSamples, countBits int, input string, length int, want []correlationResult) {
 		t.Helper()
 		image := filepath.Join(dir, fmt.Sprintf("score-%d.vvp", fromSamples))
 		file := filepath.Join(dir, "input.mem")
-		args := []string{"-g2012", "-s", "tb_stack_correlation", fmt.Sprintf("-Ptb_stack_correlation.FROM_SAMPLES=%d", fromSamples), "-o", image}
+		args := []string{"-g2012", "-s", "tb_stack_correlation", fmt.Sprintf("-Ptb_stack_correlation.FROM_SAMPLES=%d", fromSamples), fmt.Sprintf("-Ptb_stack_correlation.COUNT_BITS=%d", countBits), "-o", image}
 		for _, f := range []string{"stack_moments.v", "stack_correlation.v", "stack_match_score.v", "sim/tb_stack_correlation.v"} {
 			args = append(args, filepath.Join(rtl, f))
 		}
@@ -183,7 +183,65 @@ func TestStackCorrelationRTL(t *testing.T) {
 		for _, v := range commands {
 			fmt.Fprintf(&b, "%05x\n", v)
 		}
-		run(t, 1, b.String(), len(commands), expected)
+		run(t, 1, 32, b.String(), len(commands), expected)
+	})
+	t.Run("bounded-moments-and-truncation-rejection", func(t *testing.T) {
+		for _, bits := range []int{1, 21, 31} {
+			t.Run(fmt.Sprint(bits), func(t *testing.T) {
+				limit := uint64(1)<<bits - 1
+				var cases []windowMoments
+				for _, m := range moments {
+					if m.N > limit {
+						continue
+					}
+					k := limit / m.N
+					cases = append(cases, m, windowMoments{m.N * k, m.X * k, m.Y * k, m.XX * k, m.YY * k, m.XY * k})
+				}
+				// Full physical SRAM record, with positive and negative correlation.
+				if bits >= 21 {
+					n := uint64(1) << 20
+					cases = append(cases, windowMoments{n, n * 128, n * 128, n * 16385, n * 16385, n * 16385},
+						windowMoments{n, n * 128, n * 128, n * 16385, n * 16385, n * 16383})
+				}
+				// Unconstrained representable moments exercise subtraction signs,
+				// carries and invalid covariance, independently of waveform fixtures.
+				random := rand.New(rand.NewSource(int64(bits)))
+				for i := 0; i < 128; i++ {
+					cases = append(cases, windowMoments{random.Uint64() & limit,
+						random.Uint64() & (uint64(1)<<(bits+8) - 1), random.Uint64() & (uint64(1)<<(bits+8) - 1),
+						random.Uint64() & (uint64(1)<<(bits+16) - 1), random.Uint64() & (uint64(1)<<(bits+16) - 1),
+						random.Uint64() & (uint64(1)<<(bits+16) - 1)})
+				}
+				cases = append(cases, windowMoments{}, windowMoments{N: 1, X: 1}, windowMoments{N: 1, XX: 1, YY: 1, XY: 2})
+				var b strings.Builder
+				var want []correlationResult
+				for _, m := range cases {
+					fmt.Fprintf(&b, "%08x%010x%010x%012x%012x%012x\n", m.N, m.X, m.Y, m.XX, m.YY, m.XY)
+					want = append(want, exactCorrelation(m))
+				}
+				// Each public field must reject its first unrepresentable bit.
+				for field := 0; field < 6; field++ {
+					m := windowMoments{N: 1, XX: 1, YY: 1}
+					switch field {
+					case 0:
+						m.N = uint64(1) << bits
+					case 1:
+						m.X = uint64(1) << (bits + 8)
+					case 2:
+						m.Y = uint64(1) << (bits + 8)
+					case 3:
+						m.XX = uint64(1) << (bits + 16)
+					case 4:
+						m.YY = uint64(1) << (bits + 16)
+					case 5:
+						m.XY = uint64(1) << (bits + 16)
+					}
+					fmt.Fprintf(&b, "%08x%010x%010x%012x%012x%012x\n", m.N, m.X, m.Y, m.XX, m.YY, m.XY)
+					want = append(want, correlationResult{Invalid: 1})
+				}
+				run(t, 0, bits, b.String(), len(want), want)
+			})
+		}
 	})
 	t.Run("full-width-moments-and-invalid-input", func(t *testing.T) {
 		base := append([]windowMoments(nil), moments...)
@@ -199,7 +257,7 @@ func TestStackCorrelationRTL(t *testing.T) {
 			fmt.Fprintf(&b, "%08x%010x%010x%012x%012x%012x\n", m.N, m.X, m.Y, m.XX, m.YY, m.XY)
 			want = append(want, exactCorrelation(m))
 		}
-		run(t, 0, b.String(), len(moments), want)
+		run(t, 0, 32, b.String(), len(moments), want)
 		t.Logf("%d full-width moment cases; maximum count reaches 2^32-1", len(moments))
 	})
 }

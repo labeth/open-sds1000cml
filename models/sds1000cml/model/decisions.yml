@@ -1086,6 +1086,21 @@ decisions:
     search result plus this combined subsystem totals 9287 elements before the missing acquisition and processing
     stages, leaving only 1033 nominal elements. This is a resource warning, not a complete-image fit; evaluate
     geometry-bounded widths and arithmetic reuse before treating the numerical architecture as deployable.
+  - Correlation moment arithmetic now has a checked COUNT_BITS parameter, with the existing 32-bit mode
+    retained by default. The 21-bit candidate represents the full 1048576-sample per-channel physical SRAM
+    record without reducing gate length. Public moment inputs remain full width and reject values outside the
+    selected representation rather than silently truncating. This parameter is a numeric representation bound,
+    not a replacement for physical record and address validation. Centered products use 58 bits instead of 80;
+    square-root and division retain their existing widths and exact Q48 behavior. Tests compare 21-bit and
+    boundary parameter configurations with an arbitrary-precision oracle, including full-record positive and
+    negative correlation, arbitrary representable moments and overflow of each public input field. The existing
+    full-width and sample-stream abort regressions remain required. Isolated seed-18 EP4CE10F17C8 probes measure
+    2183 logic elements and 1867 registers for 21 bits versus 2471 elements and 2130 registers for 32 bits,
+    with no RAM or DSP blocks in either. All nine internal 125 MHz timing checks pass in both probes;
+    the narrowed probe has minimum setup slack 1.240 ns and hold slack 0.178 ns. Virtual data I/O is unconstrained.
+    Tested narrowed maximum latency is 2352 clocks versus 2660 clocks at full width. The 288-element saving is
+    isolated evidence only; search wrappers still select the full-width default. Propagating bounded geometry,
+    reducing the remaining wide arithmetic and fitting the complete numerical image remain required before deployment.
   - Stack storage estimate from the software representation is 80 times G bytes for the two-channel five-array
     accumulators alone, where G equals gate length times interpolation factor. For G equal to 4096 this is 327680
     bytes, exceeding the entire 52992-byte nominal M9K capacity before any acquisition allocation. This is a

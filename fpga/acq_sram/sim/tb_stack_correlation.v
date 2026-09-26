@@ -1,7 +1,7 @@
 // ENGMODEL-OWNER-UNIT: FU-RTL-ACQ-TESTS
 `timescale 1ns/1ps
 // TRLC-LINKS: REQ-SDS-141
-module tb_stack_correlation #(parameter FROM_SAMPLES=0);
+module tb_stack_correlation #(parameter FROM_SAMPLES=0,COUNT_BITS=32);
  reg clk=0;always #4 clk=~clk;
  reg reset=1,start=0,valid=0,last=0;reg [7:0] x=0,y=0;
  reg [31:0] count=0;reg [39:0] sum_x=0,sum_y=0;
@@ -12,7 +12,7 @@ module tb_stack_correlation #(parameter FROM_SAMPLES=0);
   stack_match_score dut(.clk(clk),.reset(reset),.start(start),.valid(valid),.last(last),.x(x),.y(y),
    .ready(ready),.defined(defined),.invalid(invalid),.overflow(overflow),.busy(busy),.done(done),.score(score));
  end else begin
-  stack_correlation dut(.clk(clk),.reset(reset),.start(start),.count(count),.sum_x(sum_x),.sum_y(sum_y),
+  stack_correlation #(.COUNT_BITS(COUNT_BITS)) dut(.clk(clk),.reset(reset),.start(start),.count(count),.sum_x(sum_x),.sum_y(sum_y),
    .sum_xx(sum_xx),.sum_yy(sum_yy),.sum_xy(sum_xy),.busy(busy),.done(done),.defined(defined),.invalid(invalid),.score(score));
   assign ready=0;assign overflow=0;
  end endgenerate

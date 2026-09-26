@@ -7,7 +7,10 @@
 // The square root carries 48 fractional bits before score division. This is
 // score arithmetic only, not peak selection, segment checking or stacking.
 // TRLC-LINKS: REQ-SDS-141
-module stack_correlation(
+// COUNT_BITS (1..32) bounds internal moment arithmetic. Public inputs stay
+// full width so a narrowed configuration rejects overflow instead of truncating.
+// The root/division path retains full precision and the existing Q48 contract.
+module stack_correlation #(parameter COUNT_BITS=32)(
  input wire clk,reset,start,
  input wire [31:0] count,
  input wire [39:0] sum_x,sum_y,
@@ -15,29 +18,31 @@ module stack_correlation(
  output reg busy=0,done=0,defined=0,invalid=0,
  output reg signed [49:0] score=0
 );
+ localparam W=2*COUNT_BITS+16,H=W/2;
  localparam IDLE=0,LOAD=1,MULTIPLY=2,PRODUCT=3,SQ_LOW=4,SQ_HIGH=5,DIV_LOW=6,DIV_HIGH=7,PUBLISH=8,SQ_COMMIT=9,DIV_COMMIT=10,CHECK_X=11,CHECK_Y=12,MULTIPLY_HIGH=13,CENTER=14,LOW_UPPER=15,HIGH_UPPER=16;
  reg [4:0] state=IDLE;
  reg [2:0] operation=0;
  reg [7:0] step=0;
- reg [31:0] n=0;
- reg [39:0] sx=0,sy=0;
- reg [47:0] sxx=0,syy=0,sxy=0;
- reg [79:0] multiplicand=0,term=0,energy_x=0,energy_y=0;
- reg [159:0] product=0;
- reg signed [80:0] covariance=0;
- reg [80:0] magnitude=0;
+ reg [COUNT_BITS-1:0] n=0;
+ reg [COUNT_BITS+7:0] sx=0,sy=0;
+ reg [COUNT_BITS+15:0] sxx=0,syy=0,sxy=0;
+ reg [W-1:0] multiplicand=0,term=0,energy_x=0,energy_y=0;
+ reg [2*W-1:0] product=0;
+ reg signed [W:0] covariance=0;
+ reg [W:0] magnitude=0;
+ reg input_overflow=0;
  reg bad_energy=0,flat_energy=0,zero_covariance=0;
- reg [39:0] center_low=0;
+ reg [H-1:0] center_low=0;
  reg center_borrow=0;
- wire [40:0] center_low_difference={1'b0,term[39:0]}-{1'b0,product[39:0]};
- wire [40:0] center_high_addition={1'b0,term[79:40]}+{1'b0,~product[79:40]}+!center_borrow;
- wire [80:0] centered_difference={!center_high_addition[40],center_high_addition[39:0],center_low};
+ wire [H:0] center_low_difference={1'b0,term[H-1:0]}-{1'b0,product[H-1:0]};
+ wire [H:0] center_high_addition={1'b0,term[W-1:H]}+{1'b0,~product[W-1:H]}+!center_borrow;
+ wire [W:0] centered_difference={!center_high_addition[H],center_high_addition[H-1:0],center_low};
  // Covariance settles several products before magnitude is consumed.
- always @(posedge clk)magnitude<=covariance[80] ? -covariance : covariance;
- reg [40:0] multiply_low=0;
- wire [40:0] multiply_low_sum={1'b0,product[119:80]}+(product[0]?{1'b0,multiplicand[39:0]}:41'd0);
- wire [40:0] multiply_high_sum={1'b0,product[159:120]}+(product[0]?{1'b0,multiplicand[79:40]}:41'd0)+multiply_low[40];
- wire [159:0] multiply_next={multiply_high_sum,multiply_low[39:0],product[79:1]};
+ always @(posedge clk)magnitude<=covariance[W] ? -covariance : covariance;
+ reg [H:0] multiply_low=0;
+ wire [H:0] multiply_low_sum={1'b0,product[W+H-1:W]}+(product[0]?{1'b0,multiplicand[H-1:0]}:{(H+1){1'b0}});
+ wire [H:0] multiply_high_sum={1'b0,product[2*W-1:W+H]}+(product[0]?{1'b0,multiplicand[W-1:H]}:{(H+1){1'b0}})+multiply_low[H];
+ wire [2*W-1:0] multiply_next={multiply_high_sum,multiply_low[H-1:0],product[W-1:1]};
  reg [255:0] radicand=0;
  reg [127:0] root=0,denominator=0;
  reg [129:0] root_remainder=0;
@@ -69,21 +74,25 @@ module stack_correlation(
   done<=0;
   if(reset)begin state<=IDLE;busy<=0;defined<=0;invalid<=0;score<=0;end
   else if(start)begin
+   input_overflow<=((count >> COUNT_BITS)!=0) || ((sum_x >> (COUNT_BITS+8))!=0) ||
+    ((sum_y >> (COUNT_BITS+8))!=0) || ((sum_xx >> (COUNT_BITS+16))!=0) ||
+    ((sum_yy >> (COUNT_BITS+16))!=0) || ((sum_xy >> (COUNT_BITS+16))!=0);
    n<=count;sx<=sum_x;sy<=sum_y;sxx<=sum_xx;syy<=sum_yy;sxy<=sum_xy;
    state<=LOAD;operation<=0;busy<=1;defined<=0;invalid<=0;score<=0;
   end else case(state)
    LOAD:begin
-    step<=79;state<=MULTIPLY;
+    step<=W-1;state<=MULTIPLY;
     case(operation)
-     0:begin multiplicand<={48'd0,n};product<={112'd0,sxy};end
-     1:begin multiplicand<={40'd0,sx};product<={120'd0,sy};end
-     2:begin multiplicand<={48'd0,n};product<={112'd0,sxx};end
-     3:begin multiplicand<={40'd0,sx};product<={120'd0,sx};end
-     4:begin multiplicand<={48'd0,n};product<={112'd0,syy};end
-     5:begin multiplicand<={40'd0,sy};product<={120'd0,sy};end
-     6:begin multiplicand<=energy_x;product<={80'd0,energy_y};end
+     0:begin multiplicand<=n;product<=sxy;end
+     1:begin multiplicand<=sx;product<=sy;end
+     2:begin multiplicand<=n;product<=sxx;end
+     3:begin multiplicand<=sx;product<=sx;end
+     4:begin multiplicand<=n;product<=syy;end
+     5:begin multiplicand<=sy;product<=sy;end
+     6:begin multiplicand<=energy_x;product<=energy_y;end
     endcase
-    if(n==0)begin state<=IDLE;busy<=0;done<=1;end
+    if(input_overflow)begin invalid<=1;state<=IDLE;busy<=0;done<=1;end
+    else if(n==0)begin state<=IDLE;busy<=0;done<=1;end
    end
    MULTIPLY:begin
     multiply_low<=multiply_low_sum;state<=MULTIPLY_HIGH;
@@ -95,9 +104,9 @@ module stack_correlation(
    PRODUCT:begin
     operation<=operation+1'b1;state<=LOAD;
     case(operation)
-     0,2,4:term<=product[79:0];
+     0,2,4:term<=product[W-1:0];
      1,3,5:begin
-      center_low<=center_low_difference[39:0];center_borrow<=center_low_difference[40];
+      center_low<=center_low_difference[H-1:0];center_borrow<=center_low_difference[H];
       operation<=operation;state<=CENTER;
      end
      6:begin
@@ -111,11 +120,11 @@ module stack_correlation(
     case(operation)
      1:covariance<=centered_difference;
      3:begin
-      energy_x<=centered_difference[79:0];bad_energy<=centered_difference[80];state<=CHECK_X;
+      energy_x<=centered_difference[W-1:0];bad_energy<=centered_difference[W];state<=CHECK_X;
      end
      5:begin
-      energy_y<=centered_difference[79:0];bad_energy<=centered_difference[80] || magnitude[80];
-      flat_energy<=term==product[79:0] || energy_x==0;zero_covariance<=covariance==0;state<=CHECK_Y;
+      energy_y<=centered_difference[W-1:0];bad_energy<=centered_difference[W] || magnitude[W];
+      flat_energy<=term==product[W-1:0] || energy_x==0;zero_covariance<=covariance==0;state<=CHECK_Y;
      end
     endcase
    end
@@ -151,7 +160,7 @@ module stack_correlation(
     root<=root_next;radicand<=radicand<<2;
     root_remainder<=subtract_ok ? {difference_high,difference_low}:root_shift;
     if(step==0)begin
-     denominator<=root_next;numerator<={magnitude[79:0],96'd0};
+     denominator<=root_next;numerator<={magnitude[W-1:0],96'd0};
      divide_remainder<=0;quotient<=0;step<=175;state<=DIV_LOW;
     end else begin step<=step-1'b1;state<=SQ_LOW;end
    end
@@ -167,7 +176,7 @@ module stack_correlation(
     busy<=0;done<=1;state<=IDLE;
     if(quotient>49'h1000000000000)invalid<=1;
     else begin
-     defined<=1;score<=covariance[80] ? -$signed({1'b0,quotient}):$signed({1'b0,quotient});
+     defined<=1;score<=covariance[W] ? -$signed({1'b0,quotient}):$signed({1'b0,quotient});
     end
    end
   endcase
