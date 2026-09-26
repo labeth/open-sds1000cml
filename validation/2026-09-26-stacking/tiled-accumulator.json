@@ -1,0 +1,66 @@
+{
+  "status": "Combined host-restored FPGA accumulation subsystem; not deployed",
+  "sourceHashes": {
+    "fpga/acq_sram/stack_tiled_accumulator.v": "62baf4838669bf7f9879d1024e718b869c7f7b732aba66641a48baca13833920",
+    "fpga/acq_sram/stack_tile_access.v": "1dd0d9071c0d3002f748acc60787f143f0fc16e329b2c90f91a1ea7c8aeecb49",
+    "fpga/acq_sram/stack_tile_transfer.v": "57bd21ddddc491169085f57c9094c70f175c317c69836c892a70dc5517cabc95",
+    "fpga/acq_sram/stack_state_tile.v": "c215c946f394a1c8b2fd84561366d7fbe272d2a74c06ae1bbf3c924bc21d5746",
+    "fpga/acq_sram/stack_resample_store.v": "32589d47c5c2506f84cc4509ffb260cf6175e2cbaa46b83fc32da2e007c59b24",
+    "fpga/acq_sram/stack_resample.v": "413809c6beb3b9de2d4bc46ed784b2b21a478f5bee6968cc8ac63954bb83c435",
+    "fpga/acq_sram/stack_positions.v": "1236709577dd3ae68ae72cecb6a972ea40d6d2bcaf8c91e19bebfb3f5384835a",
+    "fpga/acq_sram/stack_interpolate.v": "9969a0a906eabef5909598441ab9d15e21851565f951418cd1086bf76d6c1cb9",
+    "fpga/acq_sram/stack_accumulate.v": "ec485f1149530f4cc4db596328fb08153d1fb4b5f69e0977ac99705e02e5b057",
+    "fpga/acq_sram/stack_bin_writer.v": "518195be384ec84adb00f166b3a9f1d7acb08e583ac401b534254d2d06ab3ef2",
+    "app/internal/superres/stack_tiled_accumulator_rtl_test.go": "bc50c372000d7a01f0fccea6a62dc5d3eeb87bc899b79a1c3253134e7e9653e7",
+    "fpga/acq_sram/sim/tb_stack_tiled_accumulator.v": "521ae178ec43c097eb7fcb262f479cd0f629478892b9640e39ea6723eb63063b",
+    "app/internal/superres/fpga_moments.go": "ff584360b50adc6f250e23c6b0697d6cb550fc9d1f2dd07d9df2e4957a25ee3a"
+  },
+  "tests": {
+    "hostUploads": 96,
+    "processedHits": 36,
+    "hostDownloads": 98,
+    "oracle": "Go wire codec with independent exact moments for restored state plus normalized/interpolated contributions",
+    "coverage": [
+      "multiple global tile origins and factors",
+      "both channels and masks",
+      "host contention",
+      "configuration latched at acceptance",
+      "sample fault invalidation",
+      "oversized tile rejection without memory access",
+      "count overflow",
+      "shared reset recovery"
+    ]
+  },
+  "synthesis": {
+    "device": "EP4CE10F17C8",
+    "seed": 18,
+    "clockMHz": 125,
+    "logicElements": 4513,
+    "registers": 3210,
+    "m9kBlocks": 3,
+    "allocatedDataBits": 24576,
+    "dspElements": 0,
+    "internalChecksPassed": 9,
+    "minSetupSlackNs": 0.341,
+    "minHoldSlackNs": 0.164,
+    "limitations": "Virtual data I/O unconstrained; normalized source is external; missing acquisition foundation/search/correction; no complete numerical image fit"
+  },
+  "remaining": [
+    "physical normalized-sample access and drift fitting",
+    "segment acceptance and candidate search integration",
+    "host GPMC mapping, clock crossing, live driver and tile/record identity",
+    "whole-image budget, timing and hardware qualification"
+  ],
+  "deployment": "Unchanged general SRAM image only",
+  "modelValidation": {
+    "strict": true,
+    "exitCode": 0,
+    "errors": 0,
+    "warnings": 604,
+    "sourceHashes": {
+      "engmod.yml": "64e1c0e235adc9c35977f5e0aeed75ba93350fe5422c1bca068ddc9cfb698755",
+      "model/decisions.yml": "279beb403af42db980e554d6cca92b4ceacee382920ff143448f91cc3ef0688e",
+      "model/requirements.yml": "ef3cfc4e34b7ee029d1fcff8188a5e11741e58174f3a4e084c90231329b4e8c8"
+    }
+  }
+}

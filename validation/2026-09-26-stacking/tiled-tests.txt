@@ -1,0 +1,17 @@
+=== RUN   TestFPGAMomentsWire
+--- PASS: TestFPGAMomentsWire (0.01s)
+=== RUN   TestStackStateTileRTL
+    stack_state_tile_rtl_test.go:92: 537 state operations: all bins/channels, bank crossings, 308-bit packing, bounds, stalls and reset during writes passed
+--- PASS: TestStackStateTileRTL (0.10s)
+=== RUN   TestStackTileTransferRTL
+    stack_tile_transfer_rtl_test.go:107: 561 host transfers: exact 20-halfword round trips, padding rejection, bounds, stalls and partial-upload resets passed
+--- PASS: TestStackTileTransferRTL (0.29s)
+=== RUN   TestStackTileAccessRTL
+    stack_tile_transfer_rtl_test.go:118: PASS exclusive ownership, full-width host/engine exchange, in-flight release and shared reset
+        ../../../fpga/acq_sram/sim/tb_stack_tile_access.v:74: $finish called at 11784000 (1ps)
+--- PASS: TestStackTileAccessRTL (0.02s)
+=== RUN   TestStackTiledAccumulatorRTL
+    stack_tiled_accumulator_rtl_test.go:124: 96 host uploads, 36 accepted hits and 98 exact Go-decoded state downloads passed, plus ownership, sample faults, overflow and reset recovery
+--- PASS: TestStackTiledAccumulatorRTL (0.82s)
+PASS
+ok  	open-sds/app/internal/superres	1.246s

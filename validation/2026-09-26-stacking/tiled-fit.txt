@@ -1,0 +1,16 @@
+Fitter Status : Successful - Sat Sep 26 09:46:21 2026
+Quartus Prime Version : 21.1.0 Build 842 10/21/2021 SJ Lite Edition
+Revision Name : core
+Top-level Entity Name : stack_tiled_accumulator
+Family : Cyclone IV E
+Device : EP4CE10F17C8
+Timing Models : Final
+Total logic elements : 4,513 / 10,320 ( 44 % )
+    Total combinational functions : 3,968 / 10,320 ( 38 % )
+    Dedicated logic registers : 3,210 / 10,320 ( 31 % )
+Total registers : 3210
+Total pins : 1 / 180 ( < 1 % )
+Total virtual pins : 456
+Total memory bits : 24,576 / 423,936 ( 6 % )
+Embedded Multiplier 9-bit elements : 0 / 46 ( 0 % )
+Total PLLs : 0 / 2 ( 0 % )

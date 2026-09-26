@@ -1080,6 +1080,12 @@ decisions:
     with independent exact moments. It also checks host contention, mutated inputs after acceptance, source faults,
     counter overflow and reset recovery. The normalized sample adapter remains behavioral; physical sample access,
     drift fitting, segment acceptance, tile/record identity, GPMC mapping and the live command driver remain required.
+    Combined EP4CE10F17C8 seed-18 synthesis uses 4513 logic elements, 3210 registers and three M9Ks containing
+    24576 allocated data bits, with no DSP blocks. All nine internal 125 MHz timing checks pass, with minimum
+    setup slack 0.341 ns and hold slack 0.164 ns. Virtual data I/O is unconstrained. The separate 4774-element
+    search result plus this combined subsystem totals 9287 elements before the missing acquisition and processing
+    stages, leaving only 1033 nominal elements. This is a resource warning, not a complete-image fit; evaluate
+    geometry-bounded widths and arithmetic reuse before treating the numerical architecture as deployable.
   - Stack storage estimate from the software representation is 80 times G bytes for the two-channel five-array
     accumulators alone, where G equals gate length times interpolation factor. For G equal to 4096 this is 327680
     bytes, exceeding the entire 52992-byte nominal M9K capacity before any acquisition allocation. This is a
