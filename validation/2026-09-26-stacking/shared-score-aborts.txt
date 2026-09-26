@@ -1,0 +1,8 @@
+=== RUN   TestStackCorrelationRTL
+=== RUN   TestStackCorrelationRTL/sample-pairs-through-score-and-aborts
+    stack_correlation_rtl_test.go:203: 41 results; maximum start-to-result latency 75908 clocks
+    stack_correlation_rtl_test.go:204: 41 results; maximum start-to-result latency 75380 clocks
+--- PASS: TestStackCorrelationRTL (16.16s)
+    --- PASS: TestStackCorrelationRTL/sample-pairs-through-score-and-aborts (16.14s)
+PASS
+ok  	open-sds/app/internal/superres	16.163s

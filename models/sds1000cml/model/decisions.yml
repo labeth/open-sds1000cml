@@ -18,6 +18,16 @@ decisions:
     existing stacker. Plan multiple images now, with final boundaries determined by complete capability and concurrency
     coverage, measured resource budgets and timing. The seven-decoder prototype alone does not determine those boundaries.
   consequences:
+  - Correlation square-root and division stages now share the radicand/dividend shift register, remainder
+    register and completed root/divisor. Exact Q48 results and latency are unchanged; full-width and physical-record
+    arithmetic, memory search, committed tile accumulation, and handoff reset/restart tests pass. The isolated
+    complete numerical core now uses 8657 logic elements and 6367 registers, saving 195 elements and 270 registers
+    against the earlier 8852-element fit. At 125 MHz all nine internal checks pass with minimum setup slack
+    plus 0.083 ns and hold slack plus 0.146 ns. Evidence is in validation/2026-09-26-stacking/shared-score.json.
+  - Further sharing of multiplication-product and radicand storage was rejected after fitting increased the core
+    to 8819 logic elements. The accepted 8657-element core still leaves only 1663 nominal elements, fewer than
+    the isolated 2195-element page transfer needs. Resource sharing/reduction and complete-image integration
+    remain required; the virtual-I/O arithmetic probe does not qualify external timing or physical stacking.
   - A development page transfer reuses the ordered host packer, register FIFO and sink to cross from 250 MHz
     SRAM words to 125 MHz paired memory writes. Pages publish only after their final write and remain owned
     until release is acknowledged across the clock boundary. The common reset abandons queued data and descriptors.

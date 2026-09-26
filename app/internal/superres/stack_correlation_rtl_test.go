@@ -120,6 +120,14 @@ func TestStackCorrelationRTL(t *testing.T) {
 		for d := 325; d <= 345; d++ {
 			delays = append(delays, d)
 		}
+		// Root-to-division handoff overwrites the shared shift/remainder storage.
+		// Sweep the transition neighborhood for both supported physical and
+		// full-width modes under reset and replacement-start cancellation.
+		for _, base := range []int{1350, 1765} {
+			for d := base; d <= base+30; d++ {
+				delays = append(delays, d)
+			}
+		}
 		for _, delay := range delays {
 			commands = append(commands, start, valid, valid|0x0a0a, valid|0xe6e6, valid|last|0xffff)
 			idle(delay)

@@ -56,10 +56,14 @@ module stack_correlation #(parameter COUNT_BITS=32)(
  wire [H:0] multiply_high_sum={1'b0,product[2*W-1:W+H]}+(product[0]?{1'b0,multiplicand[W-1:H]}:{(H+1){1'b0}})+multiply_low[H];
  wire [2*W-1:0] multiply_next={multiply_high_sum,multiply_low[H-1:0],product[W-1:1]};
  reg [2*ROOT_BITS-1:0] radicand=0;
- reg [ROOT_BITS-1:0] root=0,denominator=0;
+ // Square-root and division lifetimes do not overlap. The completed root
+ // is already the divisor; reuse the radicand shift register for the dividend
+ // and the root remainder for division, without narrowing either operation.
+ reg [ROOT_BITS-1:0] root=0;
+ wire [ROOT_BITS-1:0] denominator=root;
  reg [ROOT_BITS+1:0] root_remainder=0;
- reg [NUM_BITS-1:0] numerator=0;
- reg [ROOT_BITS:0] divide_remainder=0;
+ wire [NUM_BITS-1:0] numerator=radicand[NUM_BITS-1:0];
+ wire [ROOT_BITS:0] divide_remainder=root_remainder[ROOT_BITS:0];
  reg [48:0] quotient=0;
  reg [LOW_BITS-1:0] difference_low=0;
  reg [HIGH_BITS-1:0] difference_high=0;
@@ -171,13 +175,13 @@ module stack_correlation #(parameter COUNT_BITS=32)(
     root<=root_next;radicand<=radicand<<2;
     root_remainder<=subtract_ok ? {difference_high,difference_low}:root_shift;
     if(step==0)begin
-     denominator<=root_next;numerator<={magnitude[W-1:0],96'd0};
-     divide_remainder<=0;quotient<=0;step<=NUM_BITS-1;state<=DIV_LOW;
+     radicand<={{W{1'b0}},magnitude[W-1:0],96'd0};
+     root_remainder<=0;quotient<=0;step<=NUM_BITS-1;state<=DIV_LOW;
     end else begin step<=step-1'b1;state<=SQ_LOW;end
    end
    DIV_COMMIT:begin
-    numerator<=numerator<<1;quotient<=quotient_next;
-    divide_remainder<=subtract_ok ? {difference_high[HIGH_BITS-2:0],difference_low}:divide_shift;
+    radicand<={{W{1'b0}},numerator[NUM_BITS-2:0],1'b0};quotient<=quotient_next;
+    root_remainder<=subtract_ok ? {1'b0,difference_high[HIGH_BITS-2:0],difference_low}:{1'b0,divide_shift};
     if(subtract_ok && step>48)begin invalid<=1;busy<=0;done<=1;state<=IDLE;end
     else if(step==0)state<=PUBLISH;
     else begin step<=step-1'b1;state<=DIV_LOW;end
