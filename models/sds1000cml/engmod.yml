@@ -1025,6 +1025,9 @@ inferenceHints:
   - ../../fpga/acq_sram/stack_state_tile.v
   - ../../fpga/acq_sram/stack_tile_transfer.v
   - ../../fpga/acq_sram/stack_tile_access.v
+  - ../../fpga/acq_sram/stack_tiled_accumulator.v
+  - ../../fpga/acq_sram/sim/tb_stack_tiled_accumulator.v
+  - ../../app/internal/superres/stack_tiled_accumulator_rtl_test.go
   - ../../app/internal/superres/fpga_moments.go
   - ../../app/internal/superres/fpga_moments_test.go
   - ../../fpga/acq_sram/sim/tb_stack_tile_access.v

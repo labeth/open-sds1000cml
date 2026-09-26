@@ -1071,6 +1071,15 @@ decisions:
     overflow, wrong record lengths and nonzero reserved padding. Tests compare 1024 random records with an
     independent arbitrary-precision packing oracle. This wire codec does not validate statistical consistency
     or capture/tile identity and is not yet connected to a live command driver.
+  - The stack_tiled_accumulator candidate connects host transfers, exclusive tile ownership, resampling and
+    moment updates. An accepted hit acquires ownership and latches geometry on the same edge. Completion waits
+    for acknowledged state writes and release of ownership before allowing host access. Oversized tiles reject
+    without a sample read. Sample or arithmetic faults poison the logical tile and block both new hits and host
+    readback until shared reset. Simulation uses the Go codec to restore 96 nonzero channel/bin states, processes
+    36 hits across multiple global tile origins and interpolation factors, and compares 98 downloaded states
+    with independent exact moments. It also checks host contention, mutated inputs after acceptance, source faults,
+    counter overflow and reset recovery. The normalized sample adapter remains behavioral; physical sample access,
+    drift fitting, segment acceptance, tile/record identity, GPMC mapping and the live command driver remain required.
   - Stack storage estimate from the software representation is 80 times G bytes for the two-channel five-array
     accumulators alone, where G equals gate length times interpolation factor. For G equal to 4096 this is 327680
     bytes, exceeding the entire 52992-byte nominal M9K capacity before any acquisition allocation. This is a
