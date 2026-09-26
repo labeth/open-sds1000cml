@@ -1,0 +1,419 @@
+=== RUN   TestStackAlignmentRTL
+    stack_alignment_rtl_test.go:120: 434 alignment fixtures; maximum latency 229 clocks; error at most one Q24 unit
+--- PASS: TestStackAlignmentRTL (0.26s)
+=== RUN   TestStackCorrelationRTL
+=== RUN   TestStackCorrelationRTL/sample-pairs-through-score-and-aborts
+    stack_correlation_rtl_test.go:186: 41 results; maximum start-to-result latency 75908 clocks
+    stack_correlation_rtl_test.go:187: 41 results; maximum start-to-result latency 75380 clocks
+=== RUN   TestStackCorrelationRTL/full-physical-record-through-bounded-moments
+    stack_correlation_rtl_test.go:203: 1 results; maximum start-to-result latency 1050711 clocks
+=== RUN   TestStackCorrelationRTL/bounded-moments-and-truncation-rejection
+=== RUN   TestStackCorrelationRTL/bounded-moments-and-truncation-rejection/1
+    stack_correlation_rtl_test.go:266: 151 results; maximum start-to-result latency 1172 clocks
+=== RUN   TestStackCorrelationRTL/bounded-moments-and-truncation-rejection/2
+    stack_correlation_rtl_test.go:266: 151 results; maximum start-to-result latency 1220 clocks
+=== RUN   TestStackCorrelationRTL/bounded-moments-and-truncation-rejection/20
+    stack_correlation_rtl_test.go:266: 223 results; maximum start-to-result latency 2084 clocks
+=== RUN   TestStackCorrelationRTL/bounded-moments-and-truncation-rejection/21
+    stack_correlation_rtl_test.go:266: 225 results; maximum start-to-result latency 2132 clocks
+=== RUN   TestStackCorrelationRTL/bounded-moments-and-truncation-rejection/22
+    stack_correlation_rtl_test.go:266: 225 results; maximum start-to-result latency 2180 clocks
+=== RUN   TestStackCorrelationRTL/bounded-moments-and-truncation-rejection/31
+    stack_correlation_rtl_test.go:266: 225 results; maximum start-to-result latency 2612 clocks
+=== RUN   TestStackCorrelationRTL/full-width-moments-and-invalid-input
+    stack_correlation_rtl_test.go:284: 86 results; maximum start-to-result latency 2660 clocks
+    stack_correlation_rtl_test.go:285: 86 full-width moment cases; maximum count reaches 2^32-1
+--- PASS: TestStackCorrelationRTL (32.21s)
+    --- PASS: TestStackCorrelationRTL/sample-pairs-through-score-and-aborts (5.83s)
+    --- PASS: TestStackCorrelationRTL/full-physical-record-through-bounded-moments (14.35s)
+    --- PASS: TestStackCorrelationRTL/bounded-moments-and-truncation-rejection (10.07s)
+        --- PASS: TestStackCorrelationRTL/bounded-moments-and-truncation-rejection/1 (0.22s)
+        --- PASS: TestStackCorrelationRTL/bounded-moments-and-truncation-rejection/2 (0.31s)
+        --- PASS: TestStackCorrelationRTL/bounded-moments-and-truncation-rejection/20 (1.85s)
+        --- PASS: TestStackCorrelationRTL/bounded-moments-and-truncation-rejection/21 (1.97s)
+        --- PASS: TestStackCorrelationRTL/bounded-moments-and-truncation-rejection/22 (2.11s)
+        --- PASS: TestStackCorrelationRTL/bounded-moments-and-truncation-rejection/31 (3.62s)
+    --- PASS: TestStackCorrelationRTL/full-width-moments-and-invalid-input (1.94s)
+=== RUN   TestStackMomentsRTL
+=== RUN   TestStackMomentsRTL/exact-moments-and-reference-correlation
+    stack_moments_rtl_test.go:148: 41 windows matched exactly, including a 65535-pair window
+=== RUN   TestStackMomentsRTL/abort-reset-overflow-recovery
+--- PASS: TestStackMomentsRTL (1.01s)
+    --- PASS: TestStackMomentsRTL/exact-moments-and-reference-correlation (0.99s)
+    --- PASS: TestStackMomentsRTL/abort-reset-overflow-recovery (0.03s)
+=== RUN   TestStackPeaksRTL
+=== RUN   TestStackPeaksRTL/single
+=== RUN   TestStackPeaksRTL/plateau
+=== RUN   TestStackPeaksRTL/both-boundaries
+=== RUN   TestStackPeaksRTL/threshold-equality
+=== RUN   TestStackPeaksRTL/reject-does-not-suppress
+=== RUN   TestStackPeaksRTL/accepted-separation
+=== RUN   TestStackPeaksRTL/undefined-is-zero
+=== RUN   TestStackPeaksRTL/signed
+=== RUN   TestStackPeaksRTL/reset-pending
+=== RUN   TestStackPeaksRTL/restart-pending
+=== RUN   TestStackPeaksRTL/separation-past-position-range
+=== RUN   TestStackPeaksRTL/maximum-separation
+=== RUN   TestStackPeaksRTL/last-position
+=== RUN   TestStackPeaksRTL/position-overflow
+=== RUN   TestStackPeaksRTL/invalid-score
+=== RUN   TestStackPeaksRTL/score-range
+=== RUN   TestStackPeaksRTL/threshold-range
+=== RUN   TestStackPeaksRTL/random-0
+=== RUN   TestStackPeaksRTL/random-1
+=== RUN   TestStackPeaksRTL/random-2
+=== RUN   TestStackPeaksRTL/random-3
+=== RUN   TestStackPeaksRTL/random-4
+=== RUN   TestStackPeaksRTL/random-5
+=== RUN   TestStackPeaksRTL/random-6
+=== RUN   TestStackPeaksRTL/random-7
+=== RUN   TestStackPeaksRTL/random-8
+=== RUN   TestStackPeaksRTL/random-9
+=== RUN   TestStackPeaksRTL/random-10
+=== RUN   TestStackPeaksRTL/random-11
+=== RUN   TestStackPeaksRTL/random-12
+=== RUN   TestStackPeaksRTL/random-13
+=== RUN   TestStackPeaksRTL/random-14
+=== RUN   TestStackPeaksRTL/random-15
+=== RUN   TestStackPeaksRTL/random-16
+=== RUN   TestStackPeaksRTL/random-17
+=== RUN   TestStackPeaksRTL/random-18
+=== RUN   TestStackPeaksRTL/random-19
+=== RUN   TestStackPeaksRTL/random-20
+=== RUN   TestStackPeaksRTL/random-21
+=== RUN   TestStackPeaksRTL/random-22
+=== RUN   TestStackPeaksRTL/random-23
+=== RUN   TestStackPeaksRTL/random-24
+=== RUN   TestStackPeaksRTL/random-25
+=== RUN   TestStackPeaksRTL/random-26
+=== RUN   TestStackPeaksRTL/random-27
+=== RUN   TestStackPeaksRTL/random-28
+=== RUN   TestStackPeaksRTL/random-29
+=== RUN   TestStackPeaksRTL/random-30
+=== RUN   TestStackPeaksRTL/random-31
+=== RUN   TestStackPeaksRTL/random-32
+=== RUN   TestStackPeaksRTL/random-33
+=== RUN   TestStackPeaksRTL/random-34
+=== RUN   TestStackPeaksRTL/random-35
+=== RUN   TestStackPeaksRTL/random-36
+=== RUN   TestStackPeaksRTL/random-37
+=== RUN   TestStackPeaksRTL/random-38
+=== RUN   TestStackPeaksRTL/random-39
+=== RUN   TestStackPeaksRTL/random-40
+=== RUN   TestStackPeaksRTL/random-41
+=== RUN   TestStackPeaksRTL/random-42
+=== RUN   TestStackPeaksRTL/random-43
+=== RUN   TestStackPeaksRTL/random-44
+=== RUN   TestStackPeaksRTL/random-45
+=== RUN   TestStackPeaksRTL/random-46
+=== RUN   TestStackPeaksRTL/random-47
+=== RUN   TestStackPeaksRTL/random-48
+=== RUN   TestStackPeaksRTL/random-49
+=== RUN   TestStackPeaksRTL/random-50
+=== RUN   TestStackPeaksRTL/random-51
+=== RUN   TestStackPeaksRTL/random-52
+=== RUN   TestStackPeaksRTL/random-53
+=== RUN   TestStackPeaksRTL/random-54
+=== RUN   TestStackPeaksRTL/random-55
+=== RUN   TestStackPeaksRTL/random-56
+=== RUN   TestStackPeaksRTL/random-57
+=== RUN   TestStackPeaksRTL/random-58
+=== RUN   TestStackPeaksRTL/random-59
+=== RUN   TestStackPeaksRTL/random-60
+=== RUN   TestStackPeaksRTL/random-61
+=== RUN   TestStackPeaksRTL/random-62
+=== RUN   TestStackPeaksRTL/random-63
+=== RUN   TestStackPeaksRTL/random-64
+=== RUN   TestStackPeaksRTL/random-65
+=== RUN   TestStackPeaksRTL/random-66
+=== RUN   TestStackPeaksRTL/random-67
+=== RUN   TestStackPeaksRTL/random-68
+=== RUN   TestStackPeaksRTL/random-69
+=== RUN   TestStackPeaksRTL/random-70
+=== RUN   TestStackPeaksRTL/random-71
+=== RUN   TestStackPeaksRTL/random-72
+=== RUN   TestStackPeaksRTL/random-73
+=== RUN   TestStackPeaksRTL/random-74
+=== RUN   TestStackPeaksRTL/random-75
+=== RUN   TestStackPeaksRTL/random-76
+=== RUN   TestStackPeaksRTL/random-77
+=== RUN   TestStackPeaksRTL/random-78
+=== RUN   TestStackPeaksRTL/random-79
+=== RUN   TestStackPeaksRTL/gateFind-waveform-0
+=== RUN   TestStackPeaksRTL/gateFind-waveform-1
+=== RUN   TestStackPeaksRTL/gateFind-waveform-2
+=== RUN   TestStackPeaksRTL/gateFind-waveform-3
+=== RUN   TestStackPeaksRTL/gateFind-waveform-4
+=== RUN   TestStackPeaksRTL/gateFind-waveform-5
+=== RUN   TestStackPeaksRTL/gateFind-waveform-6
+=== RUN   TestStackPeaksRTL/gateFind-waveform-7
+=== RUN   TestStackPeaksRTL/gateFind-waveform-8
+=== RUN   TestStackPeaksRTL/gateFind-waveform-9
+=== RUN   TestStackPeaksRTL/gateFind-waveform-10
+=== RUN   TestStackPeaksRTL/gateFind-waveform-11
+=== NAME  TestStackPeaksRTL
+    stack_peaks_rtl_test.go:206: 109 score-stream fixtures, including 12 actual-waveform gateFind comparisons
+--- PASS: TestStackPeaksRTL (1.24s)
+    --- PASS: TestStackPeaksRTL/single (0.01s)
+    --- PASS: TestStackPeaksRTL/plateau (0.01s)
+    --- PASS: TestStackPeaksRTL/both-boundaries (0.01s)
+    --- PASS: TestStackPeaksRTL/threshold-equality (0.01s)
+    --- PASS: TestStackPeaksRTL/reject-does-not-suppress (0.01s)
+    --- PASS: TestStackPeaksRTL/accepted-separation (0.02s)
+    --- PASS: TestStackPeaksRTL/undefined-is-zero (0.01s)
+    --- PASS: TestStackPeaksRTL/signed (0.01s)
+    --- PASS: TestStackPeaksRTL/reset-pending (0.01s)
+    --- PASS: TestStackPeaksRTL/restart-pending (0.01s)
+    --- PASS: TestStackPeaksRTL/separation-past-position-range (0.01s)
+    --- PASS: TestStackPeaksRTL/maximum-separation (0.01s)
+    --- PASS: TestStackPeaksRTL/last-position (0.01s)
+    --- PASS: TestStackPeaksRTL/position-overflow (0.01s)
+    --- PASS: TestStackPeaksRTL/invalid-score (0.01s)
+    --- PASS: TestStackPeaksRTL/score-range (0.01s)
+    --- PASS: TestStackPeaksRTL/threshold-range (0.01s)
+    --- PASS: TestStackPeaksRTL/random-0 (0.01s)
+    --- PASS: TestStackPeaksRTL/random-1 (0.01s)
+    --- PASS: TestStackPeaksRTL/random-2 (0.01s)
+    --- PASS: TestStackPeaksRTL/random-3 (0.01s)
+    --- PASS: TestStackPeaksRTL/random-4 (0.01s)
+    --- PASS: TestStackPeaksRTL/random-5 (0.01s)
+    --- PASS: TestStackPeaksRTL/random-6 (0.01s)
+    --- PASS: TestStackPeaksRTL/random-7 (0.01s)
+    --- PASS: TestStackPeaksRTL/random-8 (0.01s)
+    --- PASS: TestStackPeaksRTL/random-9 (0.01s)
+    --- PASS: TestStackPeaksRTL/random-10 (0.01s)
+    --- PASS: TestStackPeaksRTL/random-11 (0.01s)
+    --- PASS: TestStackPeaksRTL/random-12 (0.01s)
+    --- PASS: TestStackPeaksRTL/random-13 (0.01s)
+    --- PASS: TestStackPeaksRTL/random-14 (0.01s)
+    --- PASS: TestStackPeaksRTL/random-15 (0.01s)
+    --- PASS: TestStackPeaksRTL/random-16 (0.01s)
+    --- PASS: TestStackPeaksRTL/random-17 (0.01s)
+    --- PASS: TestStackPeaksRTL/random-18 (0.01s)
+    --- PASS: TestStackPeaksRTL/random-19 (0.01s)
+    --- PASS: TestStackPeaksRTL/random-20 (0.01s)
+    --- PASS: TestStackPeaksRTL/random-21 (0.01s)
+    --- PASS: TestStackPeaksRTL/random-22 (0.01s)
+    --- PASS: TestStackPeaksRTL/random-23 (0.01s)
+    --- PASS: TestStackPeaksRTL/random-24 (0.01s)
+    --- PASS: TestStackPeaksRTL/random-25 (0.01s)
+    --- PASS: TestStackPeaksRTL/random-26 (0.01s)
+    --- PASS: TestStackPeaksRTL/random-27 (0.01s)
+    --- PASS: TestStackPeaksRTL/random-28 (0.01s)
+    --- PASS: TestStackPeaksRTL/random-29 (0.01s)
+    --- PASS: TestStackPeaksRTL/random-30 (0.01s)
+    --- PASS: TestStackPeaksRTL/random-31 (0.01s)
+    --- PASS: TestStackPeaksRTL/random-32 (0.01s)
+    --- PASS: TestStackPeaksRTL/random-33 (0.01s)
+    --- PASS: TestStackPeaksRTL/random-34 (0.01s)
+    --- PASS: TestStackPeaksRTL/random-35 (0.02s)
+    --- PASS: TestStackPeaksRTL/random-36 (0.01s)
+    --- PASS: TestStackPeaksRTL/random-37 (0.01s)
+    --- PASS: TestStackPeaksRTL/random-38 (0.01s)
+    --- PASS: TestStackPeaksRTL/random-39 (0.01s)
+    --- PASS: TestStackPeaksRTL/random-40 (0.01s)
+    --- PASS: TestStackPeaksRTL/random-41 (0.01s)
+    --- PASS: TestStackPeaksRTL/random-42 (0.01s)
+    --- PASS: TestStackPeaksRTL/random-43 (0.01s)
+    --- PASS: TestStackPeaksRTL/random-44 (0.01s)
+    --- PASS: TestStackPeaksRTL/random-45 (0.01s)
+    --- PASS: TestStackPeaksRTL/random-46 (0.01s)
+    --- PASS: TestStackPeaksRTL/random-47 (0.01s)
+    --- PASS: TestStackPeaksRTL/random-48 (0.01s)
+    --- PASS: TestStackPeaksRTL/random-49 (0.01s)
+    --- PASS: TestStackPeaksRTL/random-50 (0.01s)
+    --- PASS: TestStackPeaksRTL/random-51 (0.01s)
+    --- PASS: TestStackPeaksRTL/random-52 (0.01s)
+    --- PASS: TestStackPeaksRTL/random-53 (0.01s)
+    --- PASS: TestStackPeaksRTL/random-54 (0.01s)
+    --- PASS: TestStackPeaksRTL/random-55 (0.01s)
+    --- PASS: TestStackPeaksRTL/random-56 (0.01s)
+    --- PASS: TestStackPeaksRTL/random-57 (0.02s)
+    --- PASS: TestStackPeaksRTL/random-58 (0.01s)
+    --- PASS: TestStackPeaksRTL/random-59 (0.01s)
+    --- PASS: TestStackPeaksRTL/random-60 (0.01s)
+    --- PASS: TestStackPeaksRTL/random-61 (0.01s)
+    --- PASS: TestStackPeaksRTL/random-62 (0.01s)
+    --- PASS: TestStackPeaksRTL/random-63 (0.01s)
+    --- PASS: TestStackPeaksRTL/random-64 (0.01s)
+    --- PASS: TestStackPeaksRTL/random-65 (0.01s)
+    --- PASS: TestStackPeaksRTL/random-66 (0.02s)
+    --- PASS: TestStackPeaksRTL/random-67 (0.01s)
+    --- PASS: TestStackPeaksRTL/random-68 (0.01s)
+    --- PASS: TestStackPeaksRTL/random-69 (0.01s)
+    --- PASS: TestStackPeaksRTL/random-70 (0.01s)
+    --- PASS: TestStackPeaksRTL/random-71 (0.01s)
+    --- PASS: TestStackPeaksRTL/random-72 (0.01s)
+    --- PASS: TestStackPeaksRTL/random-73 (0.01s)
+    --- PASS: TestStackPeaksRTL/random-74 (0.01s)
+    --- PASS: TestStackPeaksRTL/random-75 (0.01s)
+    --- PASS: TestStackPeaksRTL/random-76 (0.02s)
+    --- PASS: TestStackPeaksRTL/random-77 (0.02s)
+    --- PASS: TestStackPeaksRTL/random-78 (0.01s)
+    --- PASS: TestStackPeaksRTL/random-79 (0.01s)
+    --- PASS: TestStackPeaksRTL/gateFind-waveform-0 (0.01s)
+    --- PASS: TestStackPeaksRTL/gateFind-waveform-1 (0.02s)
+    --- PASS: TestStackPeaksRTL/gateFind-waveform-2 (0.02s)
+    --- PASS: TestStackPeaksRTL/gateFind-waveform-3 (0.01s)
+    --- PASS: TestStackPeaksRTL/gateFind-waveform-4 (0.01s)
+    --- PASS: TestStackPeaksRTL/gateFind-waveform-5 (0.01s)
+    --- PASS: TestStackPeaksRTL/gateFind-waveform-6 (0.01s)
+    --- PASS: TestStackPeaksRTL/gateFind-waveform-7 (0.01s)
+    --- PASS: TestStackPeaksRTL/gateFind-waveform-8 (0.02s)
+    --- PASS: TestStackPeaksRTL/gateFind-waveform-9 (0.01s)
+    --- PASS: TestStackPeaksRTL/gateFind-waveform-10 (0.02s)
+    --- PASS: TestStackPeaksRTL/gateFind-waveform-11 (0.01s)
+=== RUN   TestStackSearchRTL
+=== RUN   TestStackSearchRTL/waveform-4
+    stack_search_rtl_test.go:229: 9 windows, 24045 clocks
+=== RUN   TestStackSearchRTL/waveform-16
+    stack_search_rtl_test.go:229: 33 windows, 88622 clocks
+=== RUN   TestStackSearchRTL/waveform-47
+    stack_search_rtl_test.go:229: 95 windows, 258886 clocks
+=== RUN   TestStackSearchRTL/waveform-64
+    stack_search_rtl_test.go:229: 129 windows, 354119 clocks
+=== RUN   TestStackSearchRTL/waveform-193
+    stack_search_rtl_test.go:229: 387 windows, 1125207 clocks
+=== RUN   TestStackSearchRTL/waveform-512
+    stack_search_rtl_test.go:229: 1025 windows, 3387633 clocks
+=== RUN   TestStackSearchRTL/reject-first
+    stack_search_rtl_test.go:229: 33 windows, 88622 clocks
+=== RUN   TestStackSearchRTL/long-verdict
+    stack_search_rtl_test.go:229: 33 windows, 97942 clocks
+=== RUN   TestStackSearchRTL/reset-feed
+    stack_search_rtl_test.go:229: 33 windows, 88632 clocks
+=== RUN   TestStackSearchRTL/restart-score
+    stack_search_rtl_test.go:229: 33 windows, 89022 clocks
+=== RUN   TestStackSearchRTL/reset-held-score
+    stack_search_rtl_test.go:229: 33 windows, 106317 clocks
+=== RUN   TestStackSearchRTL/restart-held-score
+    stack_search_rtl_test.go:229: 33 windows, 106317 clocks
+=== RUN   TestStackSearchRTL/maximum-position
+    stack_search_rtl_test.go:229: 33 windows, 88622 clocks
+=== RUN   TestStackSearchRTL/flat-reference
+    stack_search_rtl_test.go:229: 3 windows, 2968 clocks
+=== RUN   TestStackSearchRTL/flat-candidate
+    stack_search_rtl_test.go:229: 1 windows, 992 clocks
+=== RUN   TestStackSearchRTL/single-window
+    stack_search_rtl_test.go:229: 1 windows, 2676 clocks
+=== RUN   TestStackSearchRTL/empty
+    stack_search_rtl_test.go:229: 0 windows, 0 clocks
+=== RUN   TestStackSearchRTL/short-gate
+    stack_search_rtl_test.go:229: 46 windows, 0 clocks
+=== RUN   TestStackSearchRTL/bad-threshold
+    stack_search_rtl_test.go:229: 33 windows, 0 clocks
+=== RUN   TestStackSearchRTL/position-overflow
+    stack_search_rtl_test.go:229: 33 windows, 0 clocks
+=== NAME  TestStackSearchRTL
+    stack_search_rtl_test.go:319: 20 connected search fixtures; memory=false
+--- PASS: TestStackSearchRTL (84.22s)
+    --- PASS: TestStackSearchRTL/waveform-4 (0.44s)
+    --- PASS: TestStackSearchRTL/waveform-16 (1.23s)
+    --- PASS: TestStackSearchRTL/waveform-47 (3.24s)
+    --- PASS: TestStackSearchRTL/waveform-64 (4.76s)
+    --- PASS: TestStackSearchRTL/waveform-193 (13.61s)
+    --- PASS: TestStackSearchRTL/waveform-512 (53.90s)
+    --- PASS: TestStackSearchRTL/reject-first (0.91s)
+    --- PASS: TestStackSearchRTL/long-verdict (1.07s)
+    --- PASS: TestStackSearchRTL/reset-feed (0.89s)
+    --- PASS: TestStackSearchRTL/restart-score (0.88s)
+    --- PASS: TestStackSearchRTL/reset-held-score (1.07s)
+    --- PASS: TestStackSearchRTL/restart-held-score (1.15s)
+    --- PASS: TestStackSearchRTL/maximum-position (0.87s)
+    --- PASS: TestStackSearchRTL/flat-reference (0.04s)
+    --- PASS: TestStackSearchRTL/flat-candidate (0.02s)
+    --- PASS: TestStackSearchRTL/single-window (0.04s)
+    --- PASS: TestStackSearchRTL/empty (0.01s)
+    --- PASS: TestStackSearchRTL/short-gate (0.01s)
+    --- PASS: TestStackSearchRTL/bad-threshold (0.01s)
+    --- PASS: TestStackSearchRTL/position-overflow (0.01s)
+=== RUN   TestStackMemorySearchRTL
+=== RUN   TestStackMemorySearchRTL/waveform-4
+    stack_search_rtl_test.go:229: 9 windows, 19524 clocks
+=== RUN   TestStackMemorySearchRTL/waveform-16
+    stack_search_rtl_test.go:229: 33 windows, 75165 clocks
+=== RUN   TestStackMemorySearchRTL/waveform-47
+    stack_search_rtl_test.go:229: 95 windows, 243275 clocks
+=== RUN   TestStackMemorySearchRTL/waveform-64
+    stack_search_rtl_test.go:229: 129 windows, 350386 clocks
+=== RUN   TestStackMemorySearchRTL/waveform-193
+    stack_search_rtl_test.go:229: 387 windows, 1507545 clocks
+=== RUN   TestStackMemorySearchRTL/reject-first
+    stack_search_rtl_test.go:229: 33 windows, 75165 clocks
+=== RUN   TestStackMemorySearchRTL/long-verdict
+    stack_search_rtl_test.go:229: 33 windows, 84897 clocks
+=== RUN   TestStackMemorySearchRTL/reset-feed
+    stack_search_rtl_test.go:229: 33 windows, 75173 clocks
+=== RUN   TestStackMemorySearchRTL/restart-score
+    stack_search_rtl_test.go:229: 33 windows, 75565 clocks
+=== RUN   TestStackMemorySearchRTL/reset-held-score
+    stack_search_rtl_test.go:229: 33 windows, 92961 clocks
+=== RUN   TestStackMemorySearchRTL/restart-held-score
+    stack_search_rtl_test.go:229: 33 windows, 92961 clocks
+=== RUN   TestStackMemorySearchRTL/flat-reference
+    stack_search_rtl_test.go:229: 3 windows, 2251 clocks
+=== RUN   TestStackMemorySearchRTL/flat-candidate
+    stack_search_rtl_test.go:229: 1 windows, 754 clocks
+=== RUN   TestStackMemorySearchRTL/single-window
+    stack_search_rtl_test.go:229: 1 windows, 2179 clocks
+=== RUN   TestStackMemorySearchRTL/empty
+    stack_search_rtl_test.go:229: 0 windows, 1 clocks
+=== RUN   TestStackMemorySearchRTL/short-gate
+    stack_search_rtl_test.go:229: 46 windows, 1 clocks
+=== RUN   TestStackMemorySearchRTL/bad-threshold
+    stack_search_rtl_test.go:229: 33 windows, 1 clocks
+=== RUN   TestStackMemorySearchRTL/position-overflow
+    stack_search_rtl_test.go:229: 33 windows, 1 clocks
+=== RUN   TestStackMemorySearchRTL/physical-record-end
+    stack_search_rtl_test.go:229: 33 windows, 75165 clocks
+=== RUN   TestStackMemorySearchRTL/oversized-record
+    stack_search_rtl_test.go:229: 33 windows, 1 clocks
+=== RUN   TestStackMemorySearchRTL/oversized-reference
+    stack_search_rtl_test.go:229: 33 windows, 1 clocks
+=== RUN   TestStackMemorySearchRTL/record-offset
+    stack_search_rtl_test.go:229: 33 windows, 75165 clocks
+=== RUN   TestStackMemorySearchRTL/long-gate-single-window
+    stack_search_rtl_test.go:229: 1 windows, 6828 clocks
+=== RUN   TestStackMemorySearchRTL/restart-memory-read
+    stack_search_rtl_test.go:229: 33 windows, 75169 clocks
+=== RUN   TestStackMemorySearchRTL/restart-on-response
+    stack_search_rtl_test.go:229: 33 windows, 75169 clocks
+=== RUN   TestStackMemorySearchRTL/memory-read-error
+    stack_search_rtl_test.go:229: 33 windows, 6 clocks
+=== RUN   TestStackMemorySearchRTL/short-reference-memory
+    stack_search_rtl_test.go:229: 33 windows, 1 clocks
+=== RUN   TestStackMemorySearchRTL/short-record-memory
+    stack_search_rtl_test.go:229: 33 windows, 1 clocks
+=== NAME  TestStackMemorySearchRTL
+    stack_search_rtl_test.go:319: 28 connected search fixtures; memory=true
+--- PASS: TestStackMemorySearchRTL (53.77s)
+    --- PASS: TestStackMemorySearchRTL/waveform-4 (0.32s)
+    --- PASS: TestStackMemorySearchRTL/waveform-16 (1.14s)
+    --- PASS: TestStackMemorySearchRTL/waveform-47 (3.52s)
+    --- PASS: TestStackMemorySearchRTL/waveform-64 (5.39s)
+    --- PASS: TestStackMemorySearchRTL/waveform-193 (26.08s)
+    --- PASS: TestStackMemorySearchRTL/reject-first (1.81s)
+    --- PASS: TestStackMemorySearchRTL/long-verdict (2.56s)
+    --- PASS: TestStackMemorySearchRTL/reset-feed (1.66s)
+    --- PASS: TestStackMemorySearchRTL/restart-score (1.43s)
+    --- PASS: TestStackMemorySearchRTL/reset-held-score (1.84s)
+    --- PASS: TestStackMemorySearchRTL/restart-held-score (1.78s)
+    --- PASS: TestStackMemorySearchRTL/flat-reference (0.06s)
+    --- PASS: TestStackMemorySearchRTL/flat-candidate (0.05s)
+    --- PASS: TestStackMemorySearchRTL/single-window (0.06s)
+    --- PASS: TestStackMemorySearchRTL/empty (0.02s)
+    --- PASS: TestStackMemorySearchRTL/short-gate (0.02s)
+    --- PASS: TestStackMemorySearchRTL/bad-threshold (0.02s)
+    --- PASS: TestStackMemorySearchRTL/position-overflow (0.02s)
+    --- PASS: TestStackMemorySearchRTL/physical-record-end (1.41s)
+    --- PASS: TestStackMemorySearchRTL/oversized-record (0.02s)
+    --- PASS: TestStackMemorySearchRTL/oversized-reference (0.02s)
+    --- PASS: TestStackMemorySearchRTL/record-offset (1.40s)
+    --- PASS: TestStackMemorySearchRTL/long-gate-single-window (0.15s)
+    --- PASS: TestStackMemorySearchRTL/restart-memory-read (1.48s)
+    --- PASS: TestStackMemorySearchRTL/restart-on-response (1.45s)
+    --- PASS: TestStackMemorySearchRTL/memory-read-error (0.02s)
+    --- PASS: TestStackMemorySearchRTL/short-reference-memory (0.02s)
+    --- PASS: TestStackMemorySearchRTL/short-record-memory (0.02s)
+PASS
+ok  	open-sds/app/internal/superres	172.727s

@@ -19,6 +19,14 @@ module stack_correlation #(parameter COUNT_BITS=32)(
  output reg signed [49:0] score=0
 );
  localparam W=2*COUNT_BITS+16,H=W/2;
+ // Energy product is 2*W bits. Appending 96 zeros preserves 48 root
+ // fractional bits, so the root needs W+48 bits and the numerator W+96.
+ // Split the root/divide subtraction into four registered carry sections;
+ // odd section widths retain every bit instead of rounding down the halves.
+ localparam ROOT_BITS=W+48,NUM_BITS=W+96;
+ localparam LOW_BITS=ROOT_BITS/2,HIGH_BITS=ROOT_BITS+2-LOW_BITS;
+ localparam LOW_FIRST=LOW_BITS/2,LOW_LAST=LOW_BITS-LOW_FIRST;
+ localparam HIGH_FIRST=HIGH_BITS/2,HIGH_LAST=HIGH_BITS-HIGH_FIRST;
  localparam IDLE=0,LOAD=1,MULTIPLY=2,PRODUCT=3,SQ_LOW=4,SQ_HIGH=5,DIV_LOW=6,DIV_HIGH=7,PUBLISH=8,SQ_COMMIT=9,DIV_COMMIT=10,CHECK_X=11,CHECK_Y=12,MULTIPLY_HIGH=13,CENTER=14,LOW_UPPER=15,HIGH_UPPER=16;
  reg [4:0] state=IDLE;
  reg [2:0] operation=0;
@@ -43,32 +51,32 @@ module stack_correlation #(parameter COUNT_BITS=32)(
  wire [H:0] multiply_low_sum={1'b0,product[W+H-1:W]}+(product[0]?{1'b0,multiplicand[H-1:0]}:{(H+1){1'b0}});
  wire [H:0] multiply_high_sum={1'b0,product[2*W-1:W+H]}+(product[0]?{1'b0,multiplicand[W-1:H]}:{(H+1){1'b0}})+multiply_low[H];
  wire [2*W-1:0] multiply_next={multiply_high_sum,multiply_low[H-1:0],product[W-1:1]};
- reg [255:0] radicand=0;
- reg [127:0] root=0,denominator=0;
- reg [129:0] root_remainder=0;
- reg [175:0] numerator=0;
- reg [128:0] divide_remainder=0;
+ reg [2*ROOT_BITS-1:0] radicand=0;
+ reg [ROOT_BITS-1:0] root=0,denominator=0;
+ reg [ROOT_BITS+1:0] root_remainder=0;
+ reg [NUM_BITS-1:0] numerator=0;
+ reg [ROOT_BITS:0] divide_remainder=0;
  reg [48:0] quotient=0;
- reg [63:0] difference_low=0;
- reg [65:0] difference_high=0;
+ reg [LOW_BITS-1:0] difference_low=0;
+ reg [HIGH_BITS-1:0] difference_high=0;
  reg borrow_low=0,borrow_high=0;
- wire [129:0] root_shift={root_remainder[127:0],radicand[255:254]};
- wire [129:0] root_trial={root,2'b01};
- wire [128:0] divide_shift={divide_remainder[127:0],numerator[175]};
- wire [63:0] low_left=state==SQ_LOW ? root_shift[63:0] : divide_shift[63:0];
- wire [63:0] low_right=state==SQ_LOW ? root_trial[63:0] : denominator[63:0];
- reg [31:0] low_upper_left=0,low_upper_right=0;
+ wire [ROOT_BITS+1:0] root_shift={root_remainder[ROOT_BITS-1:0],radicand[2*ROOT_BITS-1:2*ROOT_BITS-2]};
+ wire [ROOT_BITS+1:0] root_trial={root,2'b01};
+ wire [ROOT_BITS:0] divide_shift={divide_remainder[ROOT_BITS-1:0],numerator[NUM_BITS-1]};
+ wire [LOW_BITS-1:0] low_left=state==SQ_LOW ? root_shift[LOW_BITS-1:0] : divide_shift[LOW_BITS-1:0];
+ wire [LOW_BITS-1:0] low_right=state==SQ_LOW ? root_trial[LOW_BITS-1:0] : denominator[LOW_BITS-1:0];
+ reg [LOW_LAST-1:0] low_upper_left=0,low_upper_right=0;
  reg low_borrow=0,low_is_root=0;
- wire [32:0] low_difference={1'b0,low_left[31:0]}-{1'b0,low_right[31:0]};
- wire [32:0] low_upper_addition={1'b0,low_upper_left}+{1'b0,~low_upper_right}+!low_borrow;
- wire [65:0] high_left=state==SQ_HIGH ? root_shift[129:64] : {1'b0,divide_shift[128:64]};
- wire [65:0] high_right=state==SQ_HIGH ? root_trial[129:64] : {2'b0,denominator[127:64]};
- reg [32:0] high_upper_left=0,high_upper_right=0;
+ wire [LOW_FIRST:0] low_difference={1'b0,low_left[LOW_FIRST-1:0]}-{1'b0,low_right[LOW_FIRST-1:0]};
+ wire [LOW_LAST:0] low_upper_addition={1'b0,low_upper_left}+{1'b0,~low_upper_right}+!low_borrow;
+ wire [HIGH_BITS-1:0] high_left=state==SQ_HIGH ? root_shift[ROOT_BITS+1:LOW_BITS] : {1'b0,divide_shift[ROOT_BITS:LOW_BITS]};
+ wire [HIGH_BITS-1:0] high_right=state==SQ_HIGH ? root_trial[ROOT_BITS+1:LOW_BITS] : {2'b0,denominator[ROOT_BITS-1:LOW_BITS]};
+ reg [HIGH_LAST-1:0] high_upper_left=0,high_upper_right=0;
  reg high_borrow=0,high_is_root=0;
- wire [33:0] high_addition={1'b0,high_left[32:0]}+{1'b0,~high_right[32:0]}+!borrow_low;
- wire [33:0] high_upper_addition={1'b0,high_upper_left}+{1'b0,~high_upper_right}+!high_borrow;
+ wire [HIGH_FIRST:0] high_addition={1'b0,high_left[HIGH_FIRST-1:0]}+{1'b0,~high_right[HIGH_FIRST-1:0]}+!borrow_low;
+ wire [HIGH_LAST:0] high_upper_addition={1'b0,high_upper_left}+{1'b0,~high_upper_right}+!high_borrow;
  wire subtract_ok=!borrow_high;
- wire [127:0] root_next={root[126:0],subtract_ok};
+ wire [ROOT_BITS-1:0] root_next={root[ROOT_BITS-2:0],subtract_ok};
  wire [48:0] quotient_next={quotient[47:0],subtract_ok};
  always @(posedge clk)begin
   done<=0;
@@ -111,7 +119,7 @@ module stack_correlation #(parameter COUNT_BITS=32)(
      end
      6:begin
       radicand<={product,96'd0};root<=0;root_remainder<=0;
-      step<=127;state<=SQ_LOW;
+      step<=ROOT_BITS-1;state<=SQ_LOW;
      end
     endcase
    end
@@ -139,21 +147,21 @@ module stack_correlation #(parameter COUNT_BITS=32)(
     else state<=LOAD;
    end
    SQ_LOW,DIV_LOW:begin
-    difference_low[31:0]<=low_difference[31:0];low_borrow<=low_difference[32];
-    low_upper_left<=low_left[63:32];low_upper_right<=low_right[63:32];
+    difference_low[LOW_FIRST-1:0]<=low_difference[LOW_FIRST-1:0];low_borrow<=low_difference[LOW_FIRST];
+    low_upper_left<=low_left[LOW_BITS-1:LOW_FIRST];low_upper_right<=low_right[LOW_BITS-1:LOW_FIRST];
     low_is_root<=state==SQ_LOW;state<=LOW_UPPER;
    end
    LOW_UPPER:begin
-    difference_low[63:32]<=low_upper_addition[31:0];borrow_low<=!low_upper_addition[32];
+    difference_low[LOW_BITS-1:LOW_FIRST]<=low_upper_addition[LOW_LAST-1:0];borrow_low<=!low_upper_addition[LOW_LAST];
     state<=low_is_root ? SQ_HIGH:DIV_HIGH;
    end
    SQ_HIGH,DIV_HIGH:begin
-    difference_high[32:0]<=high_addition[32:0];high_borrow<=!high_addition[33];
-    high_upper_left<=high_left[65:33];high_upper_right<=high_right[65:33];
+    difference_high[HIGH_FIRST-1:0]<=high_addition[HIGH_FIRST-1:0];high_borrow<=!high_addition[HIGH_FIRST];
+    high_upper_left<=high_left[HIGH_BITS-1:HIGH_FIRST];high_upper_right<=high_right[HIGH_BITS-1:HIGH_FIRST];
     high_is_root<=state==SQ_HIGH;state<=HIGH_UPPER;
    end
    HIGH_UPPER:begin
-    difference_high[65:33]<=high_upper_addition[32:0];borrow_high<=!high_upper_addition[33];
+    difference_high[HIGH_BITS-1:HIGH_FIRST]<=high_upper_addition[HIGH_LAST-1:0];borrow_high<=!high_upper_addition[HIGH_LAST];
     state<=high_is_root ? SQ_COMMIT:DIV_COMMIT;
    end
    SQ_COMMIT:begin
@@ -161,12 +169,12 @@ module stack_correlation #(parameter COUNT_BITS=32)(
     root_remainder<=subtract_ok ? {difference_high,difference_low}:root_shift;
     if(step==0)begin
      denominator<=root_next;numerator<={magnitude[W-1:0],96'd0};
-     divide_remainder<=0;quotient<=0;step<=175;state<=DIV_LOW;
+     divide_remainder<=0;quotient<=0;step<=NUM_BITS-1;state<=DIV_LOW;
     end else begin step<=step-1'b1;state<=SQ_LOW;end
    end
    DIV_COMMIT:begin
     numerator<=numerator<<1;quotient<=quotient_next;
-    divide_remainder<=subtract_ok ? {difference_high[64:0],difference_low}:divide_shift;
+    divide_remainder<=subtract_ok ? {difference_high[HIGH_BITS-2:0],difference_low}:divide_shift;
     if(subtract_ok && step>48)begin invalid<=1;busy<=0;done<=1;state<=IDLE;end
     else if(step==0)state<=PUBLISH;
     else begin step<=step-1'b1;state<=DIV_LOW;end

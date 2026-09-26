@@ -203,7 +203,7 @@ func TestStackCorrelationRTL(t *testing.T) {
 		run(t, 1, 21, b.String(), n+2801, []correlationResult{{Defined: 1, Score: 1 << 48}})
 	})
 	t.Run("bounded-moments-and-truncation-rejection", func(t *testing.T) {
-		for _, bits := range []int{1, 21, 31} {
+		for _, bits := range []int{1, 2, 20, 21, 22, 31} {
 			t.Run(fmt.Sprint(bits), func(t *testing.T) {
 				limit := uint64(1)<<bits - 1
 				var cases []windowMoments
@@ -220,6 +220,13 @@ func TestStackCorrelationRTL(t *testing.T) {
 					cases = append(cases, windowMoments{n, n * 128, n * 128, n * 16385, n * 16385, n * 16385},
 						windowMoments{n, n * 128, n * 128, n * 16385, n * 16385, n * 16383})
 				}
+				// Near-maximal energies exercise the root's highest bit; adjacent
+				// cross moments must retain Q48 distinctions close to unity.
+				maxSquare := uint64(1)<<(bits+16) - 1
+				for _, cross := range []uint64{maxSquare, maxSquare - 1, maxSquare / 2} {
+					cases = append(cases, windowMoments{N: limit, XX: maxSquare, YY: maxSquare, XY: cross})
+				}
+				cases = append(cases, windowMoments{N: 1, XX: 1, YY: 2, XY: 1})
 				// Unconstrained representable moments exercise subtraction signs,
 				// carries and invalid covariance, independently of waveform fixtures.
 				random := rand.New(rand.NewSource(int64(bits)))
