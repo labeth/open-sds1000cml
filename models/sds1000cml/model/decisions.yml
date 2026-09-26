@@ -963,8 +963,18 @@ decisions:
     state with an explicit invalid result. Results remain stable under backpressure; reset or a replacing start
     cancels an unconsumed result. Tests compare 273 fixtures with arbitrary-precision arithmetic, including
     repeated contributions, all overflow fields and cancellation, with a maximum 198 clocks. Physical state
-    storage, read-modify-write serialization, two-channel scheduling and integration with resampling remain
-    required. This component is not a deployed stacking capability or evidence that a numerical image fits.
+    storage and integration with resampling remain required. This component is not a deployed stacking
+    capability or evidence that a numerical image fits. Isolated EP4CE10F17C8 synthesis uses 1525 logic elements,
+    1222 registers and no RAM or DSP blocks; all nine internal 125 MHz timing checks pass. Virtual data I/O
+    remains unconstrained, so physical memory interface timing is not qualified.
+  - The stack_bin_writer candidate serializes both enabled channels of a resampled bin through one accumulator.
+    Each channel reads its state, calculates updated moments, requests an atomic state write and waits for its
+    acknowledgement. It permits one outstanding operation, skips disabled channels and backpressures new bins.
+    Read errors, write errors or arithmetic overflow poison the logical stack until reset. Earlier writes are not
+    rolled back; software must not present a failed stack as complete. The eventual state adapter must share reset,
+    preserve operation order, acknowledge writes, and avoid aliasing retained raw SRAM. Simulation compares 256
+    updates across eight two-channel bins with exact moments under stalled requests and delayed responses,
+    including fault and reset recovery. Physical storage and resampler integration are still required.
   - Workflow coverage row RAW requires the common foundation and edge/force capture in every acquisition image.
     Acceptance is calibrated acquisition, pre/post-trigger placement, retained recall and responsive panel controls.
   - Workflow coverage row PROTOCOL requires one selected protocol frontend, hardware predicate, complete event
