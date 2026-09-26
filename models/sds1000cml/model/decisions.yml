@@ -1040,8 +1040,16 @@ decisions:
     and verifies that untouched bins remain zero. Isolated EP4CE10F17C8 seed-18 synthesis uses 628 logic elements,
     480 registers, three M9Ks containing 24576 allocated data bits, and no DSP blocks. All nine internal 125 MHz
     timing checks pass, with minimum setup slack 1.398 ns and hold slack 0.201 ns; virtual data I/O is unconstrained.
-    Host transfer, global tile scheduling and acquisition-image integration
+    Host bus integration, global tile scheduling and acquisition-image integration
     remain required; this tile does not provide the complete large-stack storage capacity by itself.
+  - The stack_tile_transfer candidate serializes one channel/bin as twenty little-endian 16-bit words using the
+    tile's 308-bit state layout and twelve zero padding bits. Uploads are completely staged and checked for zero
+    padding before issuing a tile write. Downloads and completion status remain held under backpressure; a new
+    command cannot interrupt a transfer. Shared reset must reset the tile and invalidate the logical stack.
+    Simulation checks 561 transfers against actual tile RAM, including both channels, exact full-width round trips,
+    invalid padding and addresses, stalled interfaces and resets after incomplete uploads. This module is a
+    transfer protocol core, not a GPMC register mapping or clock-domain crossing. Exclusive ownership arbitration,
+    host software, tile scheduling and live acquisition-image integration remain unfinished.
   - Stack storage estimate from the software representation is 80 times G bytes for the two-channel five-array
     accumulators alone, where G equals gate length times interpolation factor. For G equal to 4096 this is 327680
     bytes, exceeding the entire 52992-byte nominal M9K capacity before any acquisition allocation. This is a
