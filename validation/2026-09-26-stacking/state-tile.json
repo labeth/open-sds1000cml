@@ -1,0 +1,62 @@
+{
+  "status": "On-chip state tile and connected RTL simulation; not deployed",
+  "sourceHashes": {
+    "fpga/acq_sram/stack_state_tile.v": "c215c946f394a1c8b2fd84561366d7fbe272d2a74c06ae1bbf3c924bc21d5746",
+    "fpga/acq_sram/sim/tb_stack_state_tile.v": "d7f7e7be9b5358bcb7fd9d85b68ae24a917c35da824275e5e29102362c8d6178",
+    "fpga/acq_sram/sim/tb_stack_tiled_store.v": "1bf293b137f50000ce71cb26b2eadbea00ffc47bd62c3484ea0dae0c460713b2",
+    "app/internal/superres/stack_state_tile_rtl_test.go": "077cbc846cff42108688cf7d1583b4724335d755451932562232a4de6d8d9774",
+    "app/internal/superres/stack_resample_store_rtl_test.go": "01f5b9b83276675199fd17df483f1ab6677c5e13debc9d1f3626b9e5afc2bd78"
+  },
+  "tile": {
+    "bins": 32,
+    "channels": 2,
+    "wordsPerChannelBin": 10,
+    "wordBits": 32,
+    "stateBits": 308,
+    "allocatedWords": 768,
+    "usedWords": 640,
+    "resetClearClocks": 640
+  },
+  "tests": {
+    "stateOperations": 537,
+    "connectedHitsPerAdapter": 144,
+    "adapters": [
+      "behavioral delayed/error memory",
+      "stack_state_tile inferred RAM"
+    ],
+    "scope": "Packing, bounds, bank crossings, both channels, backpressure, partial-write resets, connected persisted moments and untouched-bin isolation"
+  },
+  "synthesis": {
+    "device": "EP4CE10F17C8",
+    "seed": 18,
+    "clockMHz": 125,
+    "logicElements": 628,
+    "registers": 480,
+    "m9kBlocks": 3,
+    "allocatedDataBits": 24576,
+    "dspElements": 0,
+    "internalTimingChecksPassed": 9,
+    "minSetupSlackNs": 1.398,
+    "minHoldSlackNs": 0.201,
+    "limitations": "Isolated tile; virtual data I/O unconstrained; no host bus or acquisition image integration"
+  },
+  "remaining": [
+    "Host tile upload/download with exclusive ownership",
+    "Global bin offsets and tiled scheduling",
+    "Physical normalized-sample adapter and drift correction",
+    "Segment acceptance",
+    "Combined numerical acquisition image fit and live qualification"
+  ],
+  "deployment": "Unchanged; qualified general SRAM image only",
+  "modelValidation": {
+    "strict": true,
+    "exitCode": 0,
+    "errors": 0,
+    "warnings": 604,
+    "sourceHashes": {
+      "engmod.yml": "718bca2d019dafb32acae8b92cb1fbb961b0fae5ac5cb4ec2f9048e8257be17c",
+      "model/decisions.yml": "b9241745b80b3382b4b5ae3c55a1925fecfedb870b4e484f43913a0206ed9679",
+      "model/requirements.yml": "ef3cfc4e34b7ee029d1fcff8188a5e11741e58174f3a4e084c90231329b4e8c8"
+    }
+  }
+}

@@ -1,0 +1,13 @@
+=== RUN   TestStackResampleStoreRTL
+=== RUN   TestStackResampleStoreRTL/tb_stack_resample_store
+=== RUN   TestStackResampleStoreRTL/tb_stack_tiled_store
+=== NAME  TestStackResampleStoreRTL
+    stack_resample_store_rtl_test.go:96: 144 connected hits per adapter: exact persisted moments, boundaries, masks, busy starts, adapter faults and reset recovery passed
+--- PASS: TestStackResampleStoreRTL (2.98s)
+    --- PASS: TestStackResampleStoreRTL/tb_stack_resample_store (1.54s)
+    --- PASS: TestStackResampleStoreRTL/tb_stack_tiled_store (1.44s)
+=== RUN   TestStackStateTileRTL
+    stack_state_tile_rtl_test.go:92: 537 state operations: all bins/channels, bank crossings, 308-bit packing, bounds, stalls and reset during writes passed
+--- PASS: TestStackStateTileRTL (0.09s)
+PASS
+ok  	open-sds/app/internal/superres	3.076s

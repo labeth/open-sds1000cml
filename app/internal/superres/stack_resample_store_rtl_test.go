@@ -69,25 +69,29 @@ func TestStackResampleStoreRTL(t *testing.T) {
 	if err := os.WriteFile(path, []byte(input.String()), 0600); err != nil {
 		t.Fatal(err)
 	}
-	image := compileStackRTL(t, dir, "tb_stack_resample_store", "stack_positions.v", "stack_interpolate.v", "stack_resample.v", "stack_accumulate.v", "stack_bin_writer.v", "stack_resample_store.v", "sim/tb_stack_resample_store.v")
-	out, err := exec.Command("vvp", image, "+input="+path).CombinedOutput()
-	if err != nil {
-		t.Fatalf("simulation %v\n%s", err, out)
+	for _, bench := range []string{"tb_stack_resample_store", "tb_stack_tiled_store"} {
+		t.Run(bench, func(t *testing.T) {
+			image := compileStackRTL(t, dir, bench, "stack_positions.v", "stack_interpolate.v", "stack_resample.v", "stack_accumulate.v", "stack_bin_writer.v", "stack_resample_store.v", "stack_state_tile.v", "sim/"+bench+".v")
+			out, err := exec.Command("vvp", image, "+input="+path).CombinedOutput()
+			if err != nil {
+				t.Fatalf("simulation %v\n%s", err, out)
+			}
+			n := 0
+			for _, line := range strings.Split(string(out), "\n") {
+				if !strings.HasPrefix(line, "B ") {
+					continue
+				}
+				m := want[n]
+				expected := fmt.Sprintf("B %d %s %s %d %s %d", n, m.s, m.q, m.n, m.a, m.na)
+				if line != expected {
+					t.Fatalf("got %s want %s", line, expected)
+				}
+				n++
+			}
+			if n != 16 || !strings.Contains(string(out), "PASS connected") {
+				t.Fatalf("incomplete results\n%s", out)
+			}
+		})
 	}
-	n := 0
-	for _, line := range strings.Split(string(out), "\n") {
-		if !strings.HasPrefix(line, "B ") {
-			continue
-		}
-		m := want[n]
-		expected := fmt.Sprintf("B %d %s %s %d %s %d", n, m.s, m.q, m.n, m.a, m.na)
-		if line != expected {
-			t.Fatalf("got %s want %s", line, expected)
-		}
-		n++
-	}
-	if n != 16 || !strings.Contains(string(out), "PASS connected") {
-		t.Fatalf("incomplete results\n%s", out)
-	}
-	t.Logf("%d connected hits: exact persisted moments, boundaries, masks, busy starts, adapter faults and reset recovery passed", fixtures)
+	t.Logf("%d connected hits per adapter: exact persisted moments, boundaries, masks, busy starts, adapter faults and reset recovery passed", fixtures)
 }
