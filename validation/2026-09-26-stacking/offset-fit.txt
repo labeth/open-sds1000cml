@@ -1,0 +1,16 @@
+Fitter Status : Successful - Sat Sep 26 09:22:16 2026
+Quartus Prime Version : 21.1.0 Build 842 10/21/2021 SJ Lite Edition
+Revision Name : core
+Top-level Entity Name : stack_resample_store
+Family : Cyclone IV E
+Device : EP4CE10F17C8
+Timing Models : Final
+Total logic elements : 3,280 / 10,320 ( 32 % )
+    Total combinational functions : 2,961 / 10,320 ( 29 % )
+    Dedicated logic registers : 2,355 / 10,320 ( 23 % )
+Total registers : 2355
+Total pins : 1 / 180 ( < 1 % )
+Total virtual pins : 1,033
+Total memory bits : 0 / 423,936 ( 0 % )
+Embedded Multiplier 9-bit elements : 0 / 46 ( 0 % )
+Total PLLs : 0 / 2 ( 0 % )

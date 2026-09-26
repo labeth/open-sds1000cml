@@ -16,7 +16,7 @@ module stack_positions(
  output wire eligible,
  output reg busy=0,done=0,invalid=0
 );
- localparam IDLE=0,DIV_LOW=1,DIV_HIGH=2,DIV_COMMIT=3,EMIT=4,ADVANCE_SUM=5,ADVANCE_CARRY=6,ADVANCE_POSITION=7,ORIGIN_SUM=8,ORIGIN_POSITION=9;
+ localparam IDLE=0,DIV_LOW=1,DIV_HIGH=2,DIV_COMMIT=3,EMIT=4,ADVANCE_SUM=5,ADVANCE_CARRY=6,ADVANCE_POSITION=7,ORIGIN_SUM=8,ORIGIN_POSITION=9,ADVANCE_PHASE=10;
  reg [3:0] state=IDLE;
  reg [31:0] divisor=0,bins_left=0,last_sample=0;
  reg enough_samples=0;
@@ -39,6 +39,7 @@ module stack_positions(
  reg [31:0] step_remainder=0,phase_remainder=0;
  reg [32:0] remainder_sum=0;
  reg [25:0] phase_sum=0,phase_next=0;
+ reg phase_carry=0;
  assign valid=state==EMIT && !reset && !start;
  assign eligible=enough_samples && sample_index[33:32]==0 && sample_index[31:0]<last_sample;
  always @(posedge clk)begin
@@ -82,8 +83,9 @@ module stack_positions(
    end
    ADVANCE_CARRY:begin
     phase_remainder<=remainder_sum>={1'b0,divisor} ? remainder_sum-{1'b0,divisor}:remainder_sum[31:0];
-    phase_next<=phase_sum+(remainder_sum>={1'b0,divisor});state<=ADVANCE_POSITION;
+    phase_carry<=remainder_sum>={1'b0,divisor};state<=ADVANCE_PHASE;
    end
+   ADVANCE_PHASE:begin phase_next<=phase_sum+phase_carry;state<=ADVANCE_POSITION;end
    ADVANCE_POSITION:begin
     fraction<=phase_next[23:0];sample_index<=sample_index+phase_next[24];state<=EMIT;
    end

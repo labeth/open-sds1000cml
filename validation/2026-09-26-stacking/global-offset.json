@@ -1,0 +1,72 @@
+{
+  "status": "Global tile origins preserve full-grid resampling phase; no new deployed image",
+  "sourceHashes": {
+    "fpga/acq_sram/stack_positions.v": "1236709577dd3ae68ae72cecb6a972ea40d6d2bcaf8c91e19bebfb3f5384835a",
+    "fpga/acq_sram/stack_interpolate.v": "9969a0a906eabef5909598441ab9d15e21851565f951418cd1086bf76d6c1cb9",
+    "fpga/acq_sram/stack_resample.v": "413809c6beb3b9de2d4bc46ed784b2b21a478f5bee6968cc8ac63954bb83c435",
+    "fpga/acq_sram/stack_accumulate.v": "ec485f1149530f4cc4db596328fb08153d1fb4b5f69e0977ac99705e02e5b057",
+    "fpga/acq_sram/stack_bin_writer.v": "518195be384ec84adb00f166b3a9f1d7acb08e583ac401b534254d2d06ab3ef2",
+    "fpga/acq_sram/stack_resample_store.v": "32589d47c5c2506f84cc4509ffb260cf6175e2cbaa46b83fc32da2e007c59b24",
+    "fpga/acq_sram/sim/tb_stack_positions.v": "6e2eada495e078e386a82f1aa89671ec4348ac3a9b849faf2bf1c9078dc17402",
+    "fpga/acq_sram/sim/tb_stack_resample.v": "1fe73e846c5b5d5dc210b5eb470e3befd183d81c71f2758c9388d43304918aa9",
+    "fpga/acq_sram/sim/tb_stack_resample_store.v": "b8c171564bdfe82e216af60bb7b161f26476fc1a0a2958a7c26b247bb0a6ffe2",
+    "fpga/acq_sram/sim/tb_stack_tiled_store.v": "c8a04d771621231361e3d01c4d86995ce937d77d02c3b801221814817167549b",
+    "app/internal/superres/stack_resampling_rtl_test.go": "721c7a8e6ec8851f72e98430f1dbf921783ed4fe374e7cc89411d91a5e80e2da",
+    "app/internal/superres/stack_resample_store_rtl_test.go": "f9e2cf13c225adba5ca7a7b292005b3c10777ce237f4a787ef85c68a1ae262fd"
+  },
+  "tests": {
+    "positionFixtures": 77,
+    "connectedHitsPerAdapter": 432,
+    "adapters": [
+      "behavioral state memory",
+      "stack_state_tile RAM"
+    ],
+    "rawResamplingFixtures": 18,
+    "coverage": "Nonzero tile origins, uint32 factors and global-bin limits, negative fractional offsets, phase remainder across tile boundaries, stalls, aborts and persisted exact moments"
+  },
+  "synthesis": {
+    "device": "EP4CE10F17C8",
+    "seed": 18,
+    "clockMHz": 125,
+    "logicElements": 3280,
+    "registers": 2355,
+    "ramBits": 0,
+    "dspElements": 0,
+    "internalChecksPassed": 9,
+    "minSetupSlackNs": 0.992,
+    "minHoldSlackNs": 0.188,
+    "limitations": "Virtual data I/O unconstrained; tile RAM, search, physical adapters and acquisition foundation not included"
+  },
+  "remaining": [
+    "Host tile transfer and ownership",
+    "Global tile scheduling across accepted hits",
+    "Drift correction and segment acceptance",
+    "Whole-image resource/timing and hardware qualification"
+  ],
+  "deployment": "Unchanged qualified general image",
+  "previousFit": {
+    "device": "EP4CE10F17C8",
+    "seed": 18,
+    "clockMHz": 125,
+    "logicElements": 3287,
+    "registers": 2353,
+    "ramBits": 0,
+    "dspElements": 0,
+    "internalChecksPassed": 9,
+    "minSetupSlackNs": 0.029,
+    "minHoldSlackNs": 0.201,
+    "limitations": "Virtual data I/O unconstrained; tile RAM, search, physical adapters and acquisition foundation not included"
+  },
+  "timingChange": "Register remainder-carry comparison before phase addition; one extra clock per bin, same numerical results",
+  "modelValidation": {
+    "strict": true,
+    "exitCode": 0,
+    "errors": 0,
+    "warnings": 604,
+    "sourceHashes": {
+      "engmod.yml": "718bca2d019dafb32acae8b92cb1fbb961b0fae5ac5cb4ec2f9048e8257be17c",
+      "model/decisions.yml": "17e1d4f353a93dc059275a84f0532c9c1c2cf7e02b1e46b2bd43d551910eaabe",
+      "model/requirements.yml": "ef3cfc4e34b7ee029d1fcff8188a5e11741e58174f3a4e084c90231329b4e8c8"
+    }
+  }
+}

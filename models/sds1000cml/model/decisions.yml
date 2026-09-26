@@ -989,10 +989,16 @@ decisions:
     negative fractional offsets, record boundaries, non-power-of-two factors, channel masks, delayed/stalled
     memory, busy starts, read/write failures and reset recovery. Physical sample/state adapters, drift fitting,
     segment acceptance and connection to candidate search remain unfinished; this is not deployed hardware.
-    Isolated EP4CE10F17C8 seed-18 synthesis of this connected path uses 3021 logic elements and 2229 registers,
+    The pre-global-offset version's isolated EP4CE10F17C8 seed-18 synthesis uses 3021 logic elements and 2229 registers,
     with no RAM or DSP blocks. All nine internal 125 MHz checks pass, with minimum setup slack 0.052 ns and
     hold slack 0.201 ns. Virtual data I/O remains unconstrained. The narrow setup margin and separate 4774-element
     search subtotal require a combined whole-image budget; neither isolated result proves the numerical image fits.
+    With global tile offsets enabled, the connected resampling/storage path uses 3280 logic elements and 2355
+    registers, still with no RAM or DSP blocks in that datapath. All nine internal 125 MHz timing checks pass,
+    with minimum setup slack 0.992 ns and hold slack 0.188 ns. Registering the phase-remainder carry decision
+    before fractional-phase addition adds one clock per bin and improves setup slack from the first offset fit's
+    0.029 ns without changing numerical results. These measurements exclude the state tile and acquisition
+    foundation; they do not prove that the full numerical image fits or can be deployed.
   - Workflow coverage row RAW requires the common foundation and edge/force capture in every acquisition image.
     Acceptance is calibrated acquisition, pre/post-trigger placement, retained recall and responsive panel controls.
   - Workflow coverage row PROTOCOL requires one selected protocol frontend, hardware predicate, complete event

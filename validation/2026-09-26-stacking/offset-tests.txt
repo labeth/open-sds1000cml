@@ -1,0 +1,208 @@
+=== RUN   TestStackResampleStoreRTL
+=== RUN   TestStackResampleStoreRTL/tb_stack_resample_store
+=== RUN   TestStackResampleStoreRTL/tb_stack_tiled_store
+=== NAME  TestStackResampleStoreRTL
+    stack_resample_store_rtl_test.go:98: 432 connected hits per adapter: exact persisted moments, boundaries, masks, busy starts, adapter faults and reset recovery passed
+--- PASS: TestStackResampleStoreRTL (9.62s)
+    --- PASS: TestStackResampleStoreRTL/tb_stack_resample_store (4.59s)
+    --- PASS: TestStackResampleStoreRTL/tb_stack_tiled_store (5.03s)
+=== RUN   TestStackPositionsRTL
+=== RUN   TestStackPositionsRTL/0
+=== RUN   TestStackPositionsRTL/1
+=== RUN   TestStackPositionsRTL/2
+=== RUN   TestStackPositionsRTL/3
+=== RUN   TestStackPositionsRTL/4
+=== RUN   TestStackPositionsRTL/5
+=== RUN   TestStackPositionsRTL/6
+=== RUN   TestStackPositionsRTL/7
+=== RUN   TestStackPositionsRTL/8
+=== RUN   TestStackPositionsRTL/9
+=== RUN   TestStackPositionsRTL/10
+=== RUN   TestStackPositionsRTL/11
+=== RUN   TestStackPositionsRTL/12
+=== RUN   TestStackPositionsRTL/13
+=== RUN   TestStackPositionsRTL/14
+=== RUN   TestStackPositionsRTL/15
+=== RUN   TestStackPositionsRTL/16
+=== RUN   TestStackPositionsRTL/17
+=== RUN   TestStackPositionsRTL/18
+=== RUN   TestStackPositionsRTL/19
+=== RUN   TestStackPositionsRTL/20
+=== RUN   TestStackPositionsRTL/21
+=== RUN   TestStackPositionsRTL/22
+=== RUN   TestStackPositionsRTL/23
+=== RUN   TestStackPositionsRTL/24
+=== RUN   TestStackPositionsRTL/25
+=== RUN   TestStackPositionsRTL/26
+=== RUN   TestStackPositionsRTL/27
+=== RUN   TestStackPositionsRTL/28
+=== RUN   TestStackPositionsRTL/29
+=== RUN   TestStackPositionsRTL/30
+=== RUN   TestStackPositionsRTL/31
+=== RUN   TestStackPositionsRTL/32
+=== RUN   TestStackPositionsRTL/33
+=== RUN   TestStackPositionsRTL/34
+=== RUN   TestStackPositionsRTL/35
+=== RUN   TestStackPositionsRTL/36
+=== RUN   TestStackPositionsRTL/37
+=== RUN   TestStackPositionsRTL/38
+=== RUN   TestStackPositionsRTL/39
+=== RUN   TestStackPositionsRTL/40
+=== RUN   TestStackPositionsRTL/41
+=== RUN   TestStackPositionsRTL/42
+=== RUN   TestStackPositionsRTL/43
+=== RUN   TestStackPositionsRTL/44
+=== RUN   TestStackPositionsRTL/45
+=== RUN   TestStackPositionsRTL/46
+=== RUN   TestStackPositionsRTL/47
+=== RUN   TestStackPositionsRTL/48
+=== RUN   TestStackPositionsRTL/49
+=== RUN   TestStackPositionsRTL/50
+=== RUN   TestStackPositionsRTL/51
+=== RUN   TestStackPositionsRTL/52
+=== RUN   TestStackPositionsRTL/53
+=== RUN   TestStackPositionsRTL/54
+=== RUN   TestStackPositionsRTL/55
+=== RUN   TestStackPositionsRTL/56
+=== RUN   TestStackPositionsRTL/57
+=== RUN   TestStackPositionsRTL/58
+=== RUN   TestStackPositionsRTL/59
+=== RUN   TestStackPositionsRTL/60
+=== RUN   TestStackPositionsRTL/61
+=== RUN   TestStackPositionsRTL/62
+=== RUN   TestStackPositionsRTL/63
+=== RUN   TestStackPositionsRTL/64
+=== RUN   TestStackPositionsRTL/65
+=== RUN   TestStackPositionsRTL/66
+=== RUN   TestStackPositionsRTL/67
+=== RUN   TestStackPositionsRTL/68
+=== RUN   TestStackPositionsRTL/69
+=== RUN   TestStackPositionsRTL/70
+=== RUN   TestStackPositionsRTL/71
+=== RUN   TestStackPositionsRTL/72
+=== RUN   TestStackPositionsRTL/73
+=== RUN   TestStackPositionsRTL/74
+=== RUN   TestStackPositionsRTL/75
+=== RUN   TestStackPositionsRTL/76
+=== NAME  TestStackPositionsRTL
+    stack_resampling_rtl_test.go:115: 77 position fixtures; general uint32 factors, boundary skips, stalls and aborts
+--- PASS: TestStackPositionsRTL (0.77s)
+    --- PASS: TestStackPositionsRTL/0 (0.01s)
+    --- PASS: TestStackPositionsRTL/1 (0.01s)
+    --- PASS: TestStackPositionsRTL/2 (0.01s)
+    --- PASS: TestStackPositionsRTL/3 (0.01s)
+    --- PASS: TestStackPositionsRTL/4 (0.01s)
+    --- PASS: TestStackPositionsRTL/5 (0.01s)
+    --- PASS: TestStackPositionsRTL/6 (0.01s)
+    --- PASS: TestStackPositionsRTL/7 (0.01s)
+    --- PASS: TestStackPositionsRTL/8 (0.00s)
+    --- PASS: TestStackPositionsRTL/9 (0.02s)
+    --- PASS: TestStackPositionsRTL/10 (0.02s)
+    --- PASS: TestStackPositionsRTL/11 (0.02s)
+    --- PASS: TestStackPositionsRTL/12 (0.03s)
+    --- PASS: TestStackPositionsRTL/13 (0.02s)
+    --- PASS: TestStackPositionsRTL/14 (0.02s)
+    --- PASS: TestStackPositionsRTL/15 (0.02s)
+    --- PASS: TestStackPositionsRTL/16 (0.02s)
+    --- PASS: TestStackPositionsRTL/17 (0.03s)
+    --- PASS: TestStackPositionsRTL/18 (0.02s)
+    --- PASS: TestStackPositionsRTL/19 (0.02s)
+    --- PASS: TestStackPositionsRTL/20 (0.02s)
+    --- PASS: TestStackPositionsRTL/21 (0.01s)
+    --- PASS: TestStackPositionsRTL/22 (0.01s)
+    --- PASS: TestStackPositionsRTL/23 (0.01s)
+    --- PASS: TestStackPositionsRTL/24 (0.01s)
+    --- PASS: TestStackPositionsRTL/25 (0.01s)
+    --- PASS: TestStackPositionsRTL/26 (0.01s)
+    --- PASS: TestStackPositionsRTL/27 (0.01s)
+    --- PASS: TestStackPositionsRTL/28 (0.01s)
+    --- PASS: TestStackPositionsRTL/29 (0.01s)
+    --- PASS: TestStackPositionsRTL/30 (0.01s)
+    --- PASS: TestStackPositionsRTL/31 (0.01s)
+    --- PASS: TestStackPositionsRTL/32 (0.01s)
+    --- PASS: TestStackPositionsRTL/33 (0.01s)
+    --- PASS: TestStackPositionsRTL/34 (0.01s)
+    --- PASS: TestStackPositionsRTL/35 (0.01s)
+    --- PASS: TestStackPositionsRTL/36 (0.01s)
+    --- PASS: TestStackPositionsRTL/37 (0.01s)
+    --- PASS: TestStackPositionsRTL/38 (0.01s)
+    --- PASS: TestStackPositionsRTL/39 (0.01s)
+    --- PASS: TestStackPositionsRTL/40 (0.01s)
+    --- PASS: TestStackPositionsRTL/41 (0.01s)
+    --- PASS: TestStackPositionsRTL/42 (0.01s)
+    --- PASS: TestStackPositionsRTL/43 (0.01s)
+    --- PASS: TestStackPositionsRTL/44 (0.01s)
+    --- PASS: TestStackPositionsRTL/45 (0.01s)
+    --- PASS: TestStackPositionsRTL/46 (0.01s)
+    --- PASS: TestStackPositionsRTL/47 (0.01s)
+    --- PASS: TestStackPositionsRTL/48 (0.01s)
+    --- PASS: TestStackPositionsRTL/49 (0.01s)
+    --- PASS: TestStackPositionsRTL/50 (0.01s)
+    --- PASS: TestStackPositionsRTL/51 (0.01s)
+    --- PASS: TestStackPositionsRTL/52 (0.01s)
+    --- PASS: TestStackPositionsRTL/53 (0.01s)
+    --- PASS: TestStackPositionsRTL/54 (0.01s)
+    --- PASS: TestStackPositionsRTL/55 (0.01s)
+    --- PASS: TestStackPositionsRTL/56 (0.01s)
+    --- PASS: TestStackPositionsRTL/57 (0.01s)
+    --- PASS: TestStackPositionsRTL/58 (0.01s)
+    --- PASS: TestStackPositionsRTL/59 (0.01s)
+    --- PASS: TestStackPositionsRTL/60 (0.01s)
+    --- PASS: TestStackPositionsRTL/61 (0.01s)
+    --- PASS: TestStackPositionsRTL/62 (0.01s)
+    --- PASS: TestStackPositionsRTL/63 (0.01s)
+    --- PASS: TestStackPositionsRTL/64 (0.01s)
+    --- PASS: TestStackPositionsRTL/65 (0.01s)
+    --- PASS: TestStackPositionsRTL/66 (0.01s)
+    --- PASS: TestStackPositionsRTL/67 (0.01s)
+    --- PASS: TestStackPositionsRTL/68 (0.01s)
+    --- PASS: TestStackPositionsRTL/69 (0.01s)
+    --- PASS: TestStackPositionsRTL/70 (0.01s)
+    --- PASS: TestStackPositionsRTL/71 (0.01s)
+    --- PASS: TestStackPositionsRTL/72 (0.01s)
+    --- PASS: TestStackPositionsRTL/73 (0.01s)
+    --- PASS: TestStackPositionsRTL/74 (0.01s)
+    --- PASS: TestStackPositionsRTL/75 (0.01s)
+    --- PASS: TestStackPositionsRTL/76 (0.01s)
+=== RUN   TestStackResampleRTL
+=== RUN   TestStackResampleRTL/0
+=== RUN   TestStackResampleRTL/1
+=== RUN   TestStackResampleRTL/2
+=== RUN   TestStackResampleRTL/3
+=== RUN   TestStackResampleRTL/4
+=== RUN   TestStackResampleRTL/5
+=== RUN   TestStackResampleRTL/6
+=== RUN   TestStackResampleRTL/7
+=== RUN   TestStackResampleRTL/8
+=== RUN   TestStackResampleRTL/9
+=== RUN   TestStackResampleRTL/10
+=== RUN   TestStackResampleRTL/11
+=== RUN   TestStackResampleRTL/12
+=== RUN   TestStackResampleRTL/13
+=== RUN   TestStackResampleRTL/14
+=== RUN   TestStackResampleRTL/15
+=== RUN   TestStackResampleRTL/16
+=== RUN   TestStackResampleRTL/17
+=== NAME  TestStackResampleRTL
+    stack_resampling_rtl_test.go:326: 18 memory-to-resampled-bin fixtures compared with drizzleHit
+--- PASS: TestStackResampleRTL (0.39s)
+    --- PASS: TestStackResampleRTL/0 (0.03s)
+    --- PASS: TestStackResampleRTL/1 (0.01s)
+    --- PASS: TestStackResampleRTL/2 (0.02s)
+    --- PASS: TestStackResampleRTL/3 (0.04s)
+    --- PASS: TestStackResampleRTL/4 (0.05s)
+    --- PASS: TestStackResampleRTL/5 (0.03s)
+    --- PASS: TestStackResampleRTL/6 (0.03s)
+    --- PASS: TestStackResampleRTL/7 (0.01s)
+    --- PASS: TestStackResampleRTL/8 (0.01s)
+    --- PASS: TestStackResampleRTL/9 (0.01s)
+    --- PASS: TestStackResampleRTL/10 (0.02s)
+    --- PASS: TestStackResampleRTL/11 (0.02s)
+    --- PASS: TestStackResampleRTL/12 (0.03s)
+    --- PASS: TestStackResampleRTL/13 (0.02s)
+    --- PASS: TestStackResampleRTL/14 (0.01s)
+    --- PASS: TestStackResampleRTL/15 (0.01s)
+    --- PASS: TestStackResampleRTL/16 (0.01s)
+    --- PASS: TestStackResampleRTL/17 (0.01s)
+PASS
+ok  	open-sds/app/internal/superres	10.789s
