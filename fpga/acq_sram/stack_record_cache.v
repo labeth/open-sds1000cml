@@ -6,11 +6,12 @@
 // The caller grants exclusive transport ownership through response consumption
 // and holds record metadata stable. Both this module and transport share reset;
 // reset invalidates the retained-record epoch, not just the cache. This interface
-// is in the transport clock domain; crossing to the numerical clock is external.
+// is in the transport clock domain; RAM uses memory_clk at 125 MHz.
+// Crossing the request interface to the numerical clock is still external.
 // CACHE_AW is 1..11, less than AW, with page size + READ_WARM <= SRAM depth.
 // TRLC-LINKS: REQ-SDS-141, REQ-SDS-043, REQ-SDS-044
 module stack_record_cache #(parameter AW=19,CACHE_AW=8,READ_WARM=16)(
- input wire clk,reset,owned,frozen,raw8,
+ input wire clk,memory_clk,reset,owned,frozen,raw8,
  input wire [31:0] epoch,record_id,
  input wire [AW-1:0] record_start,read_bias,input wire [AW:0] record_words,
  input wire request_valid,output wire request_ready,input wire [31:0] sample_index,input wire adjacent,
@@ -48,25 +49,27 @@ module stack_record_cache #(parameter AW=19,CACHE_AW=8,READ_WARM=16)(
  reg [AW:0] refill_offset=0,refill_length=0;
  wire [AW:0] page_base={1'b0,word_offset[AW-1:CACHE_AW],{CACHE_AW{1'b0}}};
  wire [AW:0] page_left=held_words-page_base;
- (* ramstyle="M9K" *) reg [31:0] memory[0:2*PAGE_WORDS-1];
- reg [31:0] fetched=0;
+ wire [31:0] fetched;
  wire recall_ready,recall_active,recall_done,recall_error,recall_fault,word_valid;
- wire [1:0] bank_done;
- wire [11:0] word_index;
- wire [31:0] word_data;
- wire recall_command;
- always @(posedge clk)begin
-  // Writes only fill an unpublished page. Identity loss invalidates its tag
-  // and poisons the response; no wide metadata compare gates the RAM clock enable.
-  if(word_valid && !reset)memory[{refill_bank,word_index[CACHE_AW-1:0]}]<=word_data;
-  if(state==READ)fetched<=memory[word_offset[CACHE_AW:0]];
- end
+ wire [1:0] bank_done,cache_release;
+ wire [11:0] word_index;wire [31:0] word_data;
+ wire recall_command,memory_fault,read_ready,read_response;
+ wire [1:0] page_done=(|bank_done) ? (refill_bank ? 2'b10:2'b01):2'b00;
+ wire [1:0] recall_release={1'b0,|cache_release};
+ stack_cache_memory #(.CACHE_AW(CACHE_AW)) storage(
+ .reset(reset),.core_clk(clk),.memory_clk(memory_clk),
+ .word_valid(word_valid),.word_bank(refill_bank),.word_data(word_data),.word_index(word_index),
+ .bank_done(page_done),.first0({{(63-AW){1'b0}},refill_offset}),.first1({{(63-AW){1'b0}},refill_offset}),
+ .words0({{(19-AW){1'b0}},refill_length}),.words1({{(19-AW){1'b0}},refill_length}),
+ .core_fault(memory_fault),.core_release(cache_release),
+ .read_valid(state==READ && !fault),.read_ready(read_ready),.read_word(word_offset[CACHE_AW:0]),
+ .response_valid(read_response),.response_ready(state==CAPTURE),.response_data(fetched));
  assign command=recall_command && permission && !fault && !reset;
  sram_finite_recall #(.AW(AW),.BANK_WORDS(PAGE_WORDS),.READ_WARM(READ_WARM),.CONTINUE_READS(0)) recall(
  .clk(clk),.reset(reset),.start(state==START && !fault),.frozen(owned && frozen && raw8),
  .record_start(held_start),.read_bias(held_bias),.record_words(held_words),.offset(refill_offset),.length(refill_length),
  .start_ready(recall_ready),.active(recall_active),.done(recall_done),.request_error(recall_error),.fault(recall_fault),
- .host_core_fault(fault || !owned || !frozen || !raw8),.bank_release(bank_done),.bank_done(bank_done),
+ .host_core_fault(fault || memory_fault || !owned || !frozen || !raw8),.bank_release(recall_release),.bank_done(bank_done),
  .word_valid(word_valid),.word_data(word_data),.word_index(word_index),
  .transport_ready(transport_ready),.transport_done(transport_done),.transport_read_valid(transport_read_valid),
  .transport_read_data(transport_read_data),.position(position),
@@ -90,8 +93,8 @@ module stack_record_cache #(parameter AW=19,CACHE_AW=8,READ_WARM=16)(
      else state<=LOOKUP;
     end
     LOOKUP:if(hit)state<=READ;else state<=PREP;
-    READ:state<=CAPTURE;
-    CAPTURE:begin
+    READ:if(read_ready)state<=CAPTURE;
+    CAPTURE:if(read_response)begin
      if(second)begin ch0_right<=fetched[7:0];ch1_right<=fetched[15:8];state<=RESPONSE;end
      else begin
       ch0_left<=odd ? fetched[23:16]:fetched[7:0];ch1_left<=odd ? fetched[31:24]:fetched[15:8];
@@ -109,7 +112,7 @@ module stack_record_cache #(parameter AW=19,CACHE_AW=8,READ_WARM=16)(
     end
     START:if(recall_ready)state<=WAIT;
     WAIT:begin
-     if(recall_error || recall_fault)begin fault<=1;error_l<=1;cache_valid<=0;state<=ERROR_WAIT;end
+     if(memory_fault || recall_error || recall_fault)begin fault<=1;error_l<=1;cache_valid<=0;state<=ERROR_WAIT;end
      else if(recall_done)begin
       cache_valid[refill_bank]<=1;if(refill_bank)tag1<=refill_page;else tag0<=refill_page;
       state<=LOOKUP;
@@ -126,6 +129,12 @@ module stack_record_cache #(parameter AW=19,CACHE_AW=8,READ_WARM=16)(
     if(state!=RESPONSE)state<=ERROR_WAIT;
    end
    if(!owned || !frozen || !raw8)cache_valid<=0;
+   if(memory_fault)begin
+    fault<=1;error_l<=1;cache_valid<=0;
+    // A sticky fault must not override drain completion or manufacture an
+    // unsolicited response after the failed transaction was consumed.
+    if(state!=IDLE && state!=RESPONSE && state!=ERROR_WAIT)state<=ERROR_WAIT;
+   end
   end
  end
 endmodule

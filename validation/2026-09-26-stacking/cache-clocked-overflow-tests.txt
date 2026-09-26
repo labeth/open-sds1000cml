@@ -1,0 +1,8 @@
+=== RUN   TestStackRecordCacheRTL
+=== RUN   TestStackRecordCacheRTL/transfer-overflow
+    stack_record_cache_rtl_test.go:35: PASS frozen SRAM cache AW=10 cases=2085 commands=57 seeks=29 K2_pulses=33858
+        ../../../fpga/acq_sram/sim/tb_stack_record_cache.v:156: $finish called at 436844000 (1ps)
+--- PASS: TestStackRecordCacheRTL (3.89s)
+    --- PASS: TestStackRecordCacheRTL/transfer-overflow (3.89s)
+PASS
+ok  	open-sds/app/internal/superres	3.889s
