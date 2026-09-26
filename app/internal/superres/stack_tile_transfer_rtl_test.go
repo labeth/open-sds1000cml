@@ -106,3 +106,14 @@ func TestStackTileTransferRTL(t *testing.T) {
 	}
 	t.Logf("%d host transfers: exact 20-halfword round trips, padding rejection, bounds, stalls and partial-upload resets passed", n)
 }
+
+// TRLC-LINKS: REQ-SDS-141
+func TestStackTileAccessRTL(t *testing.T) {
+	dir := t.TempDir()
+	image := compileStackRTL(t, dir, "tb_stack_tile_access", "stack_tile_access.v", "stack_tile_transfer.v", "stack_state_tile.v", "sim/tb_stack_tile_access.v")
+	out, err := exec.Command("vvp", image).CombinedOutput()
+	if err != nil || !strings.Contains(string(out), "PASS exclusive ownership") {
+		t.Fatalf("ownership simulation: %v\n%s", err, out)
+	}
+	t.Log(strings.TrimSpace(string(out)))
+}

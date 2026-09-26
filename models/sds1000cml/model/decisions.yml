@@ -1048,8 +1048,29 @@ decisions:
     command cannot interrupt a transfer. Shared reset must reset the tile and invalidate the logical stack.
     Simulation checks 561 transfers against actual tile RAM, including both channels, exact full-width round trips,
     invalid padding and addresses, stalled interfaces and resets after incomplete uploads. This module is a
-    transfer protocol core, not a GPMC register mapping or clock-domain crossing. Exclusive ownership arbitration,
-    host software, tile scheduling and live acquisition-image integration remain unfinished.
+    transfer protocol core, not a GPMC register mapping or clock-domain crossing. Host software, tile scheduling
+    and live acquisition-image integration remain unfinished.
+  - The stack_tile_access candidate joins the host transfer core and physical tile with exclusive engine ownership.
+    Host commands win simultaneous idle requests and hold ownership through consumed completion status. The engine
+    explicitly acquires the tile for a whole hit, including gaps between its read and write operations. Release
+    blocks new requests and waits for any outstanding response to be consumed before allowing host access. Shared
+    reset revokes ownership and clears tile state before either client can acquire it. Simulation verifies idle
+    arbitration, stalled uploads/downloads, read/write gaps, in-flight release and exact full-width state exchange
+    between the host stream and engine fields. This is same-clock arbitration; host bus mapping and clock crossing
+    are still required before integration with the live instrument.
+    Isolated EP4CE10F17C8 seed-18 synthesis of the combined access controller, transfer core and physical tile
+    uses 1069 logic elements, 850 registers and three M9Ks containing 24576 allocated data bits, with no DSP
+    blocks. All nine internal 125 MHz timing checks pass; minimum setup slack is 0.188 ns and hold slack is
+    0.169 ns. Virtual data I/O remains unconstrained. This total already includes the tile; do not add its
+    separately measured resource count again. The 3280-element resampling/storage datapath, 4774-element search
+    and this 1069-element access subsystem total 9123 elements before the acquisition foundation, drift fitting,
+    segment acceptance and integration overhead. This arithmetic subtotal is not a combined fit, but makes
+    the resource risk explicit. Shared arithmetic and widths bounded by physical geometry need evaluation.
+  - Go FPGAStackMoments preserves the 69-bit and 106-bit integer fields as little-endian uint64 limbs. Its
+    twenty-word encoder and decoder match the FPGA transfer layout without float64 roundoff, reject field
+    overflow, wrong record lengths and nonzero reserved padding. Tests compare 1024 random records with an
+    independent arbitrary-precision packing oracle. This wire codec does not validate statistical consistency
+    or capture/tile identity and is not yet connected to a live command driver.
   - Stack storage estimate from the software representation is 80 times G bytes for the two-channel five-array
     accumulators alone, where G equals gate length times interpolation factor. For G equal to 4096 this is 327680
     bytes, exceeding the entire 52992-byte nominal M9K capacity before any acquisition allocation. This is a

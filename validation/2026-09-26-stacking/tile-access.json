@@ -1,0 +1,52 @@
+{
+  "status": "Host transfer protocol, exclusive ownership and exact Go codec; not deployed or GPMC mapped",
+  "sourceHashes": {
+    "fpga/acq_sram/stack_tile_access.v": "1dd0d9071c0d3002f748acc60787f143f0fc16e329b2c90f91a1ea7c8aeecb49",
+    "fpga/acq_sram/stack_tile_transfer.v": "57bd21ddddc491169085f57c9094c70f175c317c69836c892a70dc5517cabc95",
+    "fpga/acq_sram/stack_state_tile.v": "c215c946f394a1c8b2fd84561366d7fbe272d2a74c06ae1bbf3c924bc21d5746",
+    "app/internal/superres/fpga_moments.go": "ff584360b50adc6f250e23c6b0697d6cb550fc9d1f2dd07d9df2e4957a25ee3a",
+    "app/internal/superres/fpga_moments_test.go": "7122468baf5bdaa6a3d6c3d0347724ee19256aa76fd249307288482bb4f4b355",
+    "app/internal/superres/stack_tile_transfer_rtl_test.go": "45a02d4a0cd3da0a3f95bfb00ea447b75fc03f4c9d91796e99e991ad0d0d4ef3",
+    "fpga/acq_sram/sim/tb_stack_tile_transfer.v": "d833ba6779b9aed2dfae8d6520346c7537c330b1feb16942c52391ad0d6644d1",
+    "fpga/acq_sram/sim/tb_stack_tile_access.v": "58672554f6d9cde40502437dabf6a239852bfebcae3f8b1044d87108447584f6"
+  },
+  "tests": {
+    "hostTransfers": 561,
+    "codecOracleCases": 1024,
+    "ownership": "Simultaneous requests, stalled host transfer/completion, engine read/write gap, release with outstanding response, full-width host/engine exchange and shared reset"
+  },
+  "synthesis": {
+    "device": "EP4CE10F17C8",
+    "seed": 18,
+    "clockMHz": 125,
+    "logicElements": 1069,
+    "registers": 850,
+    "m9kBlocks": 3,
+    "allocatedDataBits": 24576,
+    "dspElements": 0,
+    "internalChecksPassed": 9,
+    "minSetupSlackNs": 0.188,
+    "minHoldSlackNs": 0.169,
+    "limitations": "Includes tile, serializer and arbitration only; virtual data I/O unconstrained; not a complete numerical image"
+  },
+  "remaining": [
+    "GPMC mapping and clock crossing",
+    "Live host command driver and epoch/tile identity",
+    "Tile scheduling",
+    "Drift correction and segment acceptance",
+    "Physical sample adapter",
+    "Full-image budget, fit and live qualification"
+  ],
+  "deployment": "Unchanged general image only",
+  "modelValidation": {
+    "strict": true,
+    "exitCode": 0,
+    "errors": 0,
+    "warnings": 604,
+    "sourceHashes": {
+      "engmod.yml": "67f4d9d38ad64a9773e0ea22017ead284e44a7a201250fab386271a3381c2128",
+      "model/decisions.yml": "de272c3e8c72c0ae6cc395fbee6033ae079e1babed66f5312cdb2c2fa99ce7be",
+      "model/requirements.yml": "ef3cfc4e34b7ee029d1fcff8188a5e11741e58174f3a4e084c90231329b4e8c8"
+    }
+  }
+}

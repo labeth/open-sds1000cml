@@ -1,0 +1,22 @@
+=== RUN   TestFPGAMomentsWire
+--- PASS: TestFPGAMomentsWire (0.01s)
+=== RUN   TestStackResampleStoreRTL
+=== RUN   TestStackResampleStoreRTL/tb_stack_resample_store
+=== RUN   TestStackResampleStoreRTL/tb_stack_tiled_store
+=== NAME  TestStackResampleStoreRTL
+    stack_resample_store_rtl_test.go:98: 432 connected hits per adapter: exact persisted moments, boundaries, masks, busy starts, adapter faults and reset recovery passed
+--- PASS: TestStackResampleStoreRTL (7.06s)
+    --- PASS: TestStackResampleStoreRTL/tb_stack_resample_store (3.41s)
+    --- PASS: TestStackResampleStoreRTL/tb_stack_tiled_store (3.65s)
+=== RUN   TestStackStateTileRTL
+    stack_state_tile_rtl_test.go:92: 537 state operations: all bins/channels, bank crossings, 308-bit packing, bounds, stalls and reset during writes passed
+--- PASS: TestStackStateTileRTL (0.09s)
+=== RUN   TestStackTileTransferRTL
+    stack_tile_transfer_rtl_test.go:107: 561 host transfers: exact 20-halfword round trips, padding rejection, bounds, stalls and partial-upload resets passed
+--- PASS: TestStackTileTransferRTL (0.26s)
+=== RUN   TestStackTileAccessRTL
+    stack_tile_transfer_rtl_test.go:118: PASS exclusive ownership, full-width host/engine exchange, in-flight release and shared reset
+        ../../../fpga/acq_sram/sim/tb_stack_tile_access.v:74: $finish called at 11784000 (1ps)
+--- PASS: TestStackTileAccessRTL (0.02s)
+PASS
+ok  	open-sds/app/internal/superres	7.438s
