@@ -18,10 +18,11 @@ module stack_state_tile #(parameter BINS=32)(
  output wire initialized
 );
  localparam WORDS=BINS*20,AW=WORDS<=256 ? 8:$clog2(WORDS),SECTIONS=(WORDS+255)/256;
- localparam CLEAR=0,IDLE=1,WRITE=2,READ=3,COLLECT=4,RESPONSE=5;
+ localparam CLEAR=0,IDLE=1,WRITE=2,READ=3,COLLECT=4,RESPONSE=5,CHECK=6;
  reg [2:0] state=CLEAR;
  reg [AW-1:0] address=0;
  reg [3:0] word_index=0;
+ reg write_l=0;
  reg [319:0] payload=0;
  wire [36:0] base=({5'd0,request_bin}<<4)+({5'd0,request_bin}<<2)+(request_channel ? 37'd10:37'd0);
  assign request_ready=state==IDLE && !reset;
@@ -47,11 +48,23 @@ module stack_state_tile #(parameter BINS=32)(
   if(reset)begin state<=CLEAR;address<=0;word_index<=0;payload<=0;response_error<=0;end
   else case(state)
    CLEAR:if(address==WORDS-1)begin address<=0;state<=IDLE;end else address<=address+1'b1;
-   IDLE:if(request_valid)begin
-    response_error<=0;word_index<=0;
-    payload<=request_write ? {12'd0,write_count_a,write_sum_a,write_count,write_sum2,write_sum}:320'd0;
-    if(request_bin>=BINS)begin response_error<=1;payload<=0;state<=RESPONSE;end
-    else begin address<=base[AW-1:0];state<=request_write ? WRITE:READ;end
+   IDLE:begin
+    // Capture while idle, including the accepted request edge. Request and
+    // write qualification must not drive the wide payload enable. Outputs
+    // are meaningful only with response_valid; reads/invalid commands clear
+    // this speculative payload in CHECK before any memory access.
+    payload<={12'd0,write_count_a,write_sum_a,write_count,write_sum2,write_sum};
+    if(request_valid)begin
+     response_error<=request_bin>=BINS;word_index<=0;write_l<=request_write;
+     address<=base[AW-1:0];state<=CHECK;
+    end
+   end
+   CHECK:begin
+    if(response_error)begin payload<=0;state<=RESPONSE;end
+    else begin
+     if(!write_l)payload<=0;
+     state<=write_l ? WRITE:READ;
+    end
    end
    WRITE:begin
     payload<=payload>>32;

@@ -1,0 +1,7 @@
+=== RUN   TestStackSearchAccumulatorRTL
+=== RUN   TestStackSearchAccumulatorRTL/oversized-tile
+    stack_search_accumulator_rtl_test.go:184: fault blocked readback and further work
+--- PASS: TestStackSearchAccumulatorRTL (0.10s)
+    --- PASS: TestStackSearchAccumulatorRTL/oversized-tile (0.06s)
+PASS
+ok  	open-sds/app/internal/superres	0.099s

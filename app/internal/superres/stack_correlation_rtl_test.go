@@ -111,7 +111,16 @@ func TestStackCorrelationRTL(t *testing.T) {
 	idle := func(n int) { commands = append(commands, make([]uint32, n)...) }
 	// Cancel nonflat windows while multiplying, square-rooting and dividing.
 	for _, abort := range []uint32{reset, start} {
-		for _, delay := range []int{30, 100, 200, 400, 650, 1050, 1400, 1800, 2000} {
+		delays := []int{30, 100, 200, 400, 650, 1050, 1400, 1800, 2000}
+		// Cover both 21- and 32-bit covariance capture neighborhoods, where a
+		// speculative old write must never escape an abort as a valid score.
+		for d := 240; d <= 260; d++ {
+			delays = append(delays, d)
+		}
+		for d := 325; d <= 345; d++ {
+			delays = append(delays, d)
+		}
+		for _, delay := range delays {
 			commands = append(commands, start, valid, valid|0x0a0a, valid|0xe6e6, valid|last|0xffff)
 			idle(delay)
 			commands = append(commands, abort)

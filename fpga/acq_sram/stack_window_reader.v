@@ -18,7 +18,7 @@ module stack_window_reader #(parameter [31:0] MAX_SAMPLES=32'hffffffff)(
  output wire [7:0] reference_sample,candidate_sample,
  output reg busy=0,done=0,fault=0
 );
- reg pending=0,discard_pending=0,buffer_valid=0;
+ reg pending=0,discard_pending=0,buffer_valid=0,buffer_last=0;
  reg [7:0] buffered_reference=0,buffered_candidate=0;
  reg [31:0] last_offset=0,windows_left=0,offset=0,window_position=0;
  wire [33:0] range_end={2'b0,first_position}+{2'b0,window_count}+{2'b0,gate_length}-34'd1;
@@ -48,12 +48,17 @@ module stack_window_reader #(parameter [31:0] MAX_SAMPLES=32'hffffffff)(
     if(discard_pending)discard_pending<=0;
     else if(busy)begin
      if(response_error)begin fault<=1;busy<=0;buffer_valid<=0;done<=1;end
-     else begin buffered_reference<=reference_data;buffered_candidate<=candidate_data;buffer_valid<=1;end
+     else begin
+      buffered_reference<=reference_data;buffered_candidate<=candidate_data;buffer_valid<=1;
+      // Compute the boundary while buffering; do not cascade a wide compare
+      // into the next window address increment on the consume clock.
+      buffer_last<=offset==last_offset;
+     end
     end
    end
    if(pair_valid && pair_ready)begin
     buffer_valid<=0;
-    if(offset==last_offset)begin
+    if(buffer_last)begin
      offset<=0;windows_left<=windows_left-1'b1;
      if(windows_left==1)begin busy<=0;done<=1;end
      else window_position<=window_position+1'b1;

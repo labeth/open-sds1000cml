@@ -45,6 +45,10 @@ module stack_correlation #(parameter COUNT_BITS=32)(
  wire [H:0] center_low_difference={1'b0,term[H-1:0]}-{1'b0,product[H-1:0]};
  wire [H:0] center_high_addition={1'b0,term[W-1:H]}+{1'b0,~product[W-1:H]}+!center_borrow;
  wire [W:0] centered_difference={!center_high_addition[H],center_high_addition[H-1:0],center_low};
+ // Every nonempty calculation overwrites covariance before checking energy.
+ // A speculative old CENTER write on start/reset is therefore harmless, and
+ // keeping it outside abort qualification avoids a wide cross-module enable.
+ always @(posedge clk)if(state==CENTER && operation==1)covariance<=centered_difference;
  // Covariance settles several products before magnitude is consumed.
  always @(posedge clk)magnitude<=covariance[W] ? -covariance : covariance;
  reg [H:0] multiply_low=0;
@@ -126,7 +130,6 @@ module stack_correlation #(parameter COUNT_BITS=32)(
    CENTER:begin
     operation<=operation+1'b1;state<=LOAD;
     case(operation)
-     1:covariance<=centered_difference;
      3:begin
       energy_x<=centered_difference[W-1:0];bad_energy<=centered_difference[W];state<=CHECK_X;
      end

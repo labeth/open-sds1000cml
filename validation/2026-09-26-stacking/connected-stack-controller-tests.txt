@@ -1,0 +1,34 @@
+=== RUN   TestStackSearchAccumulatorRTL
+=== RUN   TestStackSearchAccumulatorRTL/all-hits
+    stack_search_accumulator_rtl_test.go:228: 3 qualified candidates, hit count 5, 16 exact host-decoded channel/bin states
+=== RUN   TestStackSearchAccumulatorRTL/rejected-hit-and-separation
+    stack_search_accumulator_rtl_test.go:228: 2 qualified candidates, hit count 3, 16 exact host-decoded channel/bin states
+=== RUN   TestStackSearchAccumulatorRTL/normalized-read-fault
+    stack_search_accumulator_rtl_test.go:184: fault blocked readback and further work
+=== RUN   TestStackSearchAccumulatorRTL/search-fault-during-update
+    stack_search_accumulator_rtl_test.go:184: fault blocked readback and further work
+=== RUN   TestStackSearchAccumulatorRTL/hit-count-overflow
+    stack_search_accumulator_rtl_test.go:184: fault blocked readback and further work
+=== RUN   TestStackSearchAccumulatorRTL/reset-during-update
+    stack_search_accumulator_rtl_test.go:228: 3 qualified candidates, hit count 5, 16 exact host-decoded channel/bin states
+=== RUN   TestStackSearchAccumulatorRTL/oversized-reference
+    stack_search_accumulator_rtl_test.go:184: fault blocked readback and further work
+=== RUN   TestStackSearchAccumulatorRTL/moment-overflow
+    stack_search_accumulator_rtl_test.go:184: fault blocked readback and further work
+=== RUN   TestStackSearchAccumulatorRTL/oversized-tile
+    stack_search_accumulator_rtl_test.go:184: fault blocked readback and further work
+=== RUN   TestStackSearchAccumulatorRTL/all-candidates-rejected
+    stack_search_accumulator_rtl_test.go:228: 3 qualified candidates, hit count 2, 16 exact host-decoded channel/bin states
+--- PASS: TestStackSearchAccumulatorRTL (9.10s)
+    --- PASS: TestStackSearchAccumulatorRTL/all-hits (1.89s)
+    --- PASS: TestStackSearchAccumulatorRTL/rejected-hit-and-separation (1.84s)
+    --- PASS: TestStackSearchAccumulatorRTL/normalized-read-fault (0.24s)
+    --- PASS: TestStackSearchAccumulatorRTL/search-fault-during-update (0.49s)
+    --- PASS: TestStackSearchAccumulatorRTL/hit-count-overflow (0.22s)
+    --- PASS: TestStackSearchAccumulatorRTL/reset-during-update (2.19s)
+    --- PASS: TestStackSearchAccumulatorRTL/oversized-reference (0.05s)
+    --- PASS: TestStackSearchAccumulatorRTL/moment-overflow (0.23s)
+    --- PASS: TestStackSearchAccumulatorRTL/oversized-tile (0.05s)
+    --- PASS: TestStackSearchAccumulatorRTL/all-candidates-rejected (1.88s)
+PASS
+ok  	open-sds/app/internal/superres	9.105s

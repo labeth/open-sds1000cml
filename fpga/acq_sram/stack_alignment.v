@@ -50,12 +50,13 @@ module stack_alignment(
     state<=CHECK;
    end
    CHECK:begin
+    // Stage division inputs independently of the wide validity comparisons.
+    // Only the state transition authorizes use of these captured values.
+    denominator<={curvature[51:0],1'b0};numerator<={magnitude,24'd0};
+    remainder<=0;quotient<=0;step<=74;
     if(bad || !both || curvature<=0 || magnitude==0)begin
      invalid<=bad;busy<=0;done<=1;state<=IDLE;
-    end else begin
-     denominator<={curvature[51:0],1'b0};numerator<={magnitude,24'd0};
-     remainder<=0;quotient<=0;step<=74;state<=LOW;
-    end
+    end else state<=LOW;
    end
    LOW:begin low_difference<=low_subtract[26:0];low_borrow<=low_subtract[27];state<=HIGH;end
    HIGH:begin high_difference<=high_add[26:0];high_borrow<=!high_add[27];state<=COMMIT;end
