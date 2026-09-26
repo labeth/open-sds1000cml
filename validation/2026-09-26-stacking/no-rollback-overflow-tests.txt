@@ -1,0 +1,5 @@
+=== RUN   TestStackBinWriterRTL
+    stack_bin_writer_rtl_test.go:75: 256 two-channel updates across eight bins passed; delayed/stalled memory, masked channels, read/write errors, overflow and reset recovery checked
+--- PASS: TestStackBinWriterRTL (0.30s)
+PASS
+ok  	open-sds/app/internal/superres	0.302s

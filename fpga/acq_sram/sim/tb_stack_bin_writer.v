@@ -49,6 +49,7 @@ module tb_stack_bin_writer;
   cycles=0;while(!done && !fault)begin @(negedge clk);cycles=cycles+1;if(cycles>1000)$fatal(1,"completion");end
  end
  endtask
+ reg [307:0] before_overflow;
  integer fd,r;reg [4095:0] file_name;
  initial begin
   if(!$value$plusargs("input=%s",file_name))$fatal(1,"input");
@@ -59,11 +60,20 @@ module tb_stack_bin_writer;
   end
   if(operations!=expected_ops)$fatal(1,"masked channel access");
   for(j=0;j<16;j=j+1)$display("B %0d %0d %0d %0d %0d %0d",j,sums[j],squares[j],counts[j],sums_a[j],counts_a[j]);
-  for(j=1;j<=3;j=j+1)begin
+  for(j=1;j<=7;j=j+1)begin
    reset=1;@(negedge clk);reset=0;fail_at=j<=2 ? j:0;
-   if(j==3)counts[0]=32'hffffffff;
-   bin=0;mask=1;odd=1;value0=37'h1fffffffff;send();if(!fault)$fatal(1,"missing failure");
+   case(j)
+    3:counts[0]=32'hffffffff;
+    4:sums[0]={69{1'b1}};
+    5:squares[0]={106{1'b1}};
+    6:sums_a[0]={69{1'b1}};
+    7:counts_a[0]=32'hffffffff;
+   endcase
+   before_overflow={sums[0],squares[0],counts[0],sums_a[0],counts_a[0]};
+   bin=0;mask=j>=3 ? 3:1;odd=1;value0=37'h1fffffffff;send();if(!fault)$fatal(1,"missing failure");
    if(operations!=(j==2 ? 2:1))$fatal(1,"failure operation count");
+   if(j>=3 && before_overflow!=={sums[0],squares[0],counts[0],sums_a[0],counts_a[0]})
+    $fatal(1,"overflow changed retained state field=%0d",j);
    repeat(30)begin @(negedge clk);if(request_valid || ready || done)$fatal(1,"fault not sticky");end
   end
   reset=1;@(negedge clk);reset=0;fail_at=0;

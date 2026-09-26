@@ -3,9 +3,12 @@
 // must serialize updates to each bin. Values/sums use Q24, squares use Q48.
 // Output is atomic and held until ready. On overflow all old fields return
 // unchanged with invalid asserted; reset/start cancel an unconsumed result.
+// RETURN_OLD_ON_INVALID=0 omits rollback payload storage for callers that
+// discard all invalid results. In that mode invalid output fields are
+// unspecified; invalid still guards every write and poisons the logical stack.
 // A single 36-bit adder is shared by squaring and all accumulator updates.
 // TRLC-LINKS: REQ-SDS-141
-module stack_accumulate(
+module stack_accumulate #(parameter RETURN_OLD_ON_INVALID=1)(
  input wire clk,reset,start,enabled,odd,
  input wire [36:0] value,
  input wire [68:0] sum,sum_a,
@@ -33,11 +36,11 @@ module stack_accumulate(
  reg [105:0] old_sum2=0,new_sum2=0;
  reg [31:0] old_count=0,old_count_a=0,new_count=0,new_count_a=0;
  assign valid=state==OUTPUT && !reset && !start;
- assign result_sum=invalid ? old_sum:new_sum;
- assign result_sum2=invalid ? old_sum2:new_sum2;
- assign result_sum_a=invalid ? old_sum_a:new_sum_a;
- assign result_count=invalid ? old_count:new_count;
- assign result_count_a=invalid ? old_count_a:new_count_a;
+ assign result_sum=(RETURN_OLD_ON_INVALID && invalid) ? old_sum:new_sum;
+ assign result_sum2=(RETURN_OLD_ON_INVALID && invalid) ? old_sum2:new_sum2;
+ assign result_sum_a=(RETURN_OLD_ON_INVALID && invalid) ? old_sum_a:new_sum_a;
+ assign result_count=(RETURN_OLD_ON_INVALID && invalid) ? old_count:new_count;
+ assign result_count_a=(RETURN_OLD_ON_INVALID && invalid) ? old_count_a:new_count_a;
  always @(posedge clk)begin
   if(reset)begin state<=IDLE;busy<=0;invalid<=0;end
   else if(start)begin
@@ -64,7 +67,7 @@ module stack_accumulate(
    SHIFT:begin
     if(bit_index==36)begin
      multiplicand<=answer[73:0];
-     a<={39'd0,old_sum};b<={37'd0,value_l};answer<=0;carry<=0;limb<=0;
+     a<={39'd0,new_sum};b<={37'd0,value_l};answer<=0;carry<=0;limb<=0;
      after_add<=SUM;state<=ADD;
     end else begin
      multiplier<=multiplier>>1;multiplicand<=multiplicand<<1;
@@ -77,12 +80,12 @@ module stack_accumulate(
    end
    SUM:begin
     new_sum<=answer[68:0];if(|answer[107:69] || carry)invalid<=1;
-    a<={2'd0,old_sum2};b<=multiplicand;answer<=0;carry<=0;limb<=0;after_add<=SUM2;state<=ADD;
+    a<={2'd0,new_sum2};b<=multiplicand;answer<=0;carry<=0;limb<=0;after_add<=SUM2;state<=ADD;
    end
    SUM2:begin
     new_sum2<=answer[105:0];if(|answer[107:106] || carry)invalid<=1;
     if(odd_l)begin
-     a<={39'd0,old_sum_a};b<={71'd0,value_l};answer<=0;carry<=0;limb<=0;after_add<=SUMA;state<=ADD;
+     a<={39'd0,new_sum_a};b<={71'd0,value_l};answer<=0;carry<=0;limb<=0;after_add<=SUMA;state<=ADD;
     end else state<=FINISH;
    end
    SUMA:begin

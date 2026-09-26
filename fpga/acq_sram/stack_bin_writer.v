@@ -32,7 +32,9 @@ module stack_bin_writer(
  assign request_channel=channel;
  assign response_ready=(state==READ_WAIT || state==WRITE_WAIT) && !fault && !reset;
  wire acc_start=state==READ_WAIT && response_valid && !response_error && !fault && !reset;
- stack_accumulate accumulator(.clk(clk),.reset(reset),.start(acc_start),.enabled(1'b1),.odd(odd_l),
+ // CALCULATE never issues a write for invalid arithmetic, so rollback
+ // payload is unnecessary here. The RAM retains its original channel state.
+ stack_accumulate #(.RETURN_OLD_ON_INVALID(0)) accumulator(.clk(clk),.reset(reset),.start(acc_start),.enabled(1'b1),.odd(odd_l),
   .value(channel ? value1_l:value0_l),.sum(read_sum),.sum2(read_sum2),.sum_a(read_sum_a),
   .count(read_count),.count_a(read_count_a),.valid(acc_valid),
   .ready(state==WRITE_WAIT && response_valid && !response_error && !reset),

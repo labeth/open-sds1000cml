@@ -18,6 +18,16 @@ decisions:
     existing stacker. Plan multiple images now, with final boundaries determined by complete capability and concurrency
     coverage, measured resource budgets and timing. The seven-decoder prototype alone does not determine those boundaries.
   consequences:
+  - The bin writer discards invalid arithmetic and never issues a state write on overflow. Its accumulator
+    therefore disables the redundant rollback payload copy. Standalone accumulator instances retain the default
+    old-state-on-overflow contract. Each old moment is consumed before its result replaces it; valid results,
+    precision and latency are unchanged. Extended tests overflow all five state fields, verify exactly one read
+    and no write, retain the original RAM state, and prevent processing the second channel after a fault.
+  - Omitting the unused rollback copy reduces the numerical-core probe to 8081 logic elements and 5949 registers,
+    saving 496 elements and 308 registers. All nine 125 MHz internal checks pass with minimum setup margin 0.258 ns
+    and hold margin 0.139 ns. Separate core and transfer estimates total 9990 elements, leaving only 330 nominal
+    elements before cache, acquisition and normalization integration. This is not a complete-image fit; transfer
+    timing and full integration remain open. Evidence is in validation/2026-09-26-stacking/no-rollback.json.
   - Page-transfer bookkeeping advances privately while validation still guards RAM writes and publication.
     Independent sticky word/descriptor error flags preserve same-edge fault reporting. A registered next Gray
     pointer removes pointer arithmetic from FIFO fullness feedback. Transfer, general host-path and fault tests
