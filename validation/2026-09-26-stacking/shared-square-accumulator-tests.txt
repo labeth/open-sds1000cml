@@ -1,0 +1,51 @@
+=== RUN   TestStackAccumulateRTL
+    stack_accumulate_rtl_test.go:161: 273 exact-moment fixtures; maximum 198 clocks; overflow, mask, stalls, reset and replacing starts passed
+--- PASS: TestStackAccumulateRTL (0.16s)
+=== RUN   TestStackBinWriterRTL
+    stack_bin_writer_rtl_test.go:75: 256 two-channel updates across eight bins passed; delayed/stalled memory, masked channels, read/write errors, overflow and reset recovery checked
+--- PASS: TestStackBinWriterRTL (0.27s)
+=== RUN   TestStackResampleStoreRTL
+=== RUN   TestStackResampleStoreRTL/tb_stack_resample_store
+=== RUN   TestStackResampleStoreRTL/tb_stack_tiled_store
+=== NAME  TestStackResampleStoreRTL
+    stack_resample_store_rtl_test.go:98: 432 connected hits per adapter: exact persisted moments, boundaries, masks, busy starts, adapter faults and reset recovery passed
+--- PASS: TestStackResampleStoreRTL (8.44s)
+    --- PASS: TestStackResampleStoreRTL/tb_stack_resample_store (4.06s)
+    --- PASS: TestStackResampleStoreRTL/tb_stack_tiled_store (4.38s)
+=== RUN   TestStackSearchAccumulatorRTL
+=== RUN   TestStackSearchAccumulatorRTL/all-hits
+    stack_search_accumulator_rtl_test.go:228: 3 qualified candidates, hit count 5, 16 exact host-decoded channel/bin states
+=== RUN   TestStackSearchAccumulatorRTL/rejected-hit-and-separation
+    stack_search_accumulator_rtl_test.go:228: 2 qualified candidates, hit count 3, 16 exact host-decoded channel/bin states
+=== RUN   TestStackSearchAccumulatorRTL/normalized-read-fault
+    stack_search_accumulator_rtl_test.go:184: fault blocked readback and further work
+=== RUN   TestStackSearchAccumulatorRTL/search-fault-during-update
+    stack_search_accumulator_rtl_test.go:184: fault blocked readback and further work
+=== RUN   TestStackSearchAccumulatorRTL/hit-count-overflow
+    stack_search_accumulator_rtl_test.go:184: fault blocked readback and further work
+=== RUN   TestStackSearchAccumulatorRTL/reset-during-update
+    stack_search_accumulator_rtl_test.go:228: 3 qualified candidates, hit count 5, 16 exact host-decoded channel/bin states
+=== RUN   TestStackSearchAccumulatorRTL/oversized-reference
+    stack_search_accumulator_rtl_test.go:184: fault blocked readback and further work
+=== RUN   TestStackSearchAccumulatorRTL/moment-overflow
+    stack_search_accumulator_rtl_test.go:184: fault blocked readback and further work
+=== RUN   TestStackSearchAccumulatorRTL/oversized-tile
+    stack_search_accumulator_rtl_test.go:184: fault blocked readback and further work
+=== RUN   TestStackSearchAccumulatorRTL/all-candidates-rejected
+    stack_search_accumulator_rtl_test.go:228: 3 qualified candidates, hit count 2, 16 exact host-decoded channel/bin states
+--- PASS: TestStackSearchAccumulatorRTL (9.09s)
+    --- PASS: TestStackSearchAccumulatorRTL/all-hits (2.02s)
+    --- PASS: TestStackSearchAccumulatorRTL/rejected-hit-and-separation (1.85s)
+    --- PASS: TestStackSearchAccumulatorRTL/normalized-read-fault (0.24s)
+    --- PASS: TestStackSearchAccumulatorRTL/search-fault-during-update (0.47s)
+    --- PASS: TestStackSearchAccumulatorRTL/hit-count-overflow (0.22s)
+    --- PASS: TestStackSearchAccumulatorRTL/reset-during-update (2.10s)
+    --- PASS: TestStackSearchAccumulatorRTL/oversized-reference (0.05s)
+    --- PASS: TestStackSearchAccumulatorRTL/moment-overflow (0.23s)
+    --- PASS: TestStackSearchAccumulatorRTL/oversized-tile (0.05s)
+    --- PASS: TestStackSearchAccumulatorRTL/all-candidates-rejected (1.84s)
+=== RUN   TestStackTiledAccumulatorRTL
+    stack_tiled_accumulator_rtl_test.go:124: 96 host uploads, 36 accepted hits and 98 exact Go-decoded state downloads passed, plus ownership, sample faults, overflow and reset recovery
+--- PASS: TestStackTiledAccumulatorRTL (0.70s)
+PASS
+ok  	open-sds/app/internal/superres	18.660s

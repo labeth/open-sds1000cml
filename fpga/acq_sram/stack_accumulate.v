@@ -23,7 +23,10 @@ module stack_accumulate(
  reg [36:0] value_l=0,multiplier=0;
  reg [73:0] multiplicand=0;
  reg [5:0] bit_index=0;
- reg [107:0] square=0,a=0,b=0,answer=0;
+ // The adder result is also the running square. Once multiplication ends,
+ // its dead multiplicand register retains the exact 74-bit square.
+ reg [107:0] a=0,answer=0;
+ reg [73:0] b=0;
  reg carry=0;reg [1:0] limb=0;
  wire [36:0] step={1'b0,a[35:0]}+{1'b0,b[35:0]}+carry;
  reg [68:0] old_sum=0,old_sum_a=0,new_sum=0,new_sum_a=0;
@@ -43,7 +46,7 @@ module stack_accumulate(
    new_sum<=sum;new_sum2<=sum2;new_sum_a<=sum_a;
    new_count<=count;new_count_a<=count_a;
    odd_l<=odd;value_l<=value;multiplier<=value;multiplicand<={37'd0,value};
-   square<=0;bit_index<=0;busy<=1;invalid<=0;
+   answer<=0;bit_index<=0;busy<=1;invalid<=0;
    if(!enabled)state<=OUTPUT;
    else if(count==32'hffffffff || (odd && count_a==32'hffffffff))begin
     invalid<=1;state<=OUTPUT;
@@ -54,14 +57,14 @@ module stack_accumulate(
    IDLE:begin end
    SQUARE:begin
     if(multiplier[0])begin
-     a<=square;b<={34'd0,multiplicand};answer<=0;carry<=0;limb<=0;
+     a<=answer;b<=multiplicand;carry<=0;limb<=0;
      after_add<=SHIFT;state<=ADD;
-    end else begin answer<=square;state<=SHIFT;end
+    end else state<=SHIFT;
    end
    SHIFT:begin
-    square<=answer;
     if(bit_index==36)begin
-     a<={39'd0,old_sum};b<={71'd0,value_l};answer<=0;carry<=0;limb<=0;
+     multiplicand<=answer[73:0];
+     a<={39'd0,old_sum};b<={37'd0,value_l};answer<=0;carry<=0;limb<=0;
      after_add<=SUM;state<=ADD;
     end else begin
      multiplier<=multiplier>>1;multiplicand<=multiplicand<<1;
@@ -74,7 +77,7 @@ module stack_accumulate(
    end
    SUM:begin
     new_sum<=answer[68:0];if(|answer[107:69] || carry)invalid<=1;
-    a<={2'd0,old_sum2};b<=square;answer<=0;carry<=0;limb<=0;after_add<=SUM2;state<=ADD;
+    a<={2'd0,old_sum2};b<=multiplicand;answer<=0;carry<=0;limb<=0;after_add<=SUM2;state<=ADD;
    end
    SUM2:begin
     new_sum2<=answer[105:0];if(|answer[107:106] || carry)invalid<=1;

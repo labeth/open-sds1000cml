@@ -1,0 +1,186 @@
+=== RUN   TestStackSearchAccumulatorRTL
+=== RUN   TestStackSearchAccumulatorRTL/all-hits
+    stack_search_accumulator_rtl_test.go:228: 3 qualified candidates, hit count 5, 16 exact host-decoded channel/bin states
+=== RUN   TestStackSearchAccumulatorRTL/rejected-hit-and-separation
+    stack_search_accumulator_rtl_test.go:228: 2 qualified candidates, hit count 3, 16 exact host-decoded channel/bin states
+=== RUN   TestStackSearchAccumulatorRTL/normalized-read-fault
+    stack_search_accumulator_rtl_test.go:184: fault blocked readback and further work
+=== RUN   TestStackSearchAccumulatorRTL/search-fault-during-update
+    stack_search_accumulator_rtl_test.go:184: fault blocked readback and further work
+=== RUN   TestStackSearchAccumulatorRTL/hit-count-overflow
+    stack_search_accumulator_rtl_test.go:184: fault blocked readback and further work
+=== RUN   TestStackSearchAccumulatorRTL/reset-during-update
+    stack_search_accumulator_rtl_test.go:228: 3 qualified candidates, hit count 5, 16 exact host-decoded channel/bin states
+=== RUN   TestStackSearchAccumulatorRTL/oversized-reference
+    stack_search_accumulator_rtl_test.go:184: fault blocked readback and further work
+=== RUN   TestStackSearchAccumulatorRTL/moment-overflow
+    stack_search_accumulator_rtl_test.go:184: fault blocked readback and further work
+=== RUN   TestStackSearchAccumulatorRTL/oversized-tile
+    stack_search_accumulator_rtl_test.go:184: fault blocked readback and further work
+=== RUN   TestStackSearchAccumulatorRTL/all-candidates-rejected
+    stack_search_accumulator_rtl_test.go:228: 3 qualified candidates, hit count 2, 16 exact host-decoded channel/bin states
+--- PASS: TestStackSearchAccumulatorRTL (9.63s)
+    --- PASS: TestStackSearchAccumulatorRTL/all-hits (2.17s)
+    --- PASS: TestStackSearchAccumulatorRTL/rejected-hit-and-separation (1.92s)
+    --- PASS: TestStackSearchAccumulatorRTL/normalized-read-fault (0.25s)
+    --- PASS: TestStackSearchAccumulatorRTL/search-fault-during-update (0.50s)
+    --- PASS: TestStackSearchAccumulatorRTL/hit-count-overflow (0.24s)
+    --- PASS: TestStackSearchAccumulatorRTL/reset-during-update (2.23s)
+    --- PASS: TestStackSearchAccumulatorRTL/oversized-reference (0.05s)
+    --- PASS: TestStackSearchAccumulatorRTL/moment-overflow (0.24s)
+    --- PASS: TestStackSearchAccumulatorRTL/oversized-tile (0.05s)
+    --- PASS: TestStackSearchAccumulatorRTL/all-candidates-rejected (1.94s)
+=== RUN   TestStackSearchRTL
+=== RUN   TestStackSearchRTL/waveform-4
+    stack_search_rtl_test.go:229: 9 windows, 24045 clocks
+=== RUN   TestStackSearchRTL/waveform-16
+    stack_search_rtl_test.go:229: 33 windows, 88622 clocks
+=== RUN   TestStackSearchRTL/waveform-47
+    stack_search_rtl_test.go:229: 95 windows, 258886 clocks
+=== RUN   TestStackSearchRTL/waveform-64
+    stack_search_rtl_test.go:229: 129 windows, 354119 clocks
+=== RUN   TestStackSearchRTL/waveform-193
+    stack_search_rtl_test.go:229: 387 windows, 1125207 clocks
+=== RUN   TestStackSearchRTL/waveform-512
+    stack_search_rtl_test.go:229: 1025 windows, 3387633 clocks
+=== RUN   TestStackSearchRTL/reject-first
+    stack_search_rtl_test.go:229: 33 windows, 88622 clocks
+=== RUN   TestStackSearchRTL/long-verdict
+    stack_search_rtl_test.go:229: 33 windows, 97942 clocks
+=== RUN   TestStackSearchRTL/reset-feed
+    stack_search_rtl_test.go:229: 33 windows, 88632 clocks
+=== RUN   TestStackSearchRTL/restart-score
+    stack_search_rtl_test.go:229: 33 windows, 89022 clocks
+=== RUN   TestStackSearchRTL/reset-held-score
+    stack_search_rtl_test.go:229: 33 windows, 106317 clocks
+=== RUN   TestStackSearchRTL/restart-held-score
+    stack_search_rtl_test.go:229: 33 windows, 106317 clocks
+=== RUN   TestStackSearchRTL/maximum-position
+    stack_search_rtl_test.go:229: 33 windows, 88622 clocks
+=== RUN   TestStackSearchRTL/flat-reference
+    stack_search_rtl_test.go:229: 3 windows, 2968 clocks
+=== RUN   TestStackSearchRTL/flat-candidate
+    stack_search_rtl_test.go:229: 1 windows, 992 clocks
+=== RUN   TestStackSearchRTL/single-window
+    stack_search_rtl_test.go:229: 1 windows, 2676 clocks
+=== RUN   TestStackSearchRTL/empty
+    stack_search_rtl_test.go:229: 0 windows, 0 clocks
+=== RUN   TestStackSearchRTL/short-gate
+    stack_search_rtl_test.go:229: 46 windows, 0 clocks
+=== RUN   TestStackSearchRTL/bad-threshold
+    stack_search_rtl_test.go:229: 33 windows, 0 clocks
+=== RUN   TestStackSearchRTL/position-overflow
+    stack_search_rtl_test.go:229: 33 windows, 0 clocks
+=== NAME  TestStackSearchRTL
+    stack_search_rtl_test.go:319: 20 connected search fixtures; memory=false
+--- PASS: TestStackSearchRTL (53.07s)
+    --- PASS: TestStackSearchRTL/waveform-4 (0.19s)
+    --- PASS: TestStackSearchRTL/waveform-16 (0.68s)
+    --- PASS: TestStackSearchRTL/waveform-47 (2.02s)
+    --- PASS: TestStackSearchRTL/waveform-64 (3.09s)
+    --- PASS: TestStackSearchRTL/waveform-193 (9.15s)
+    --- PASS: TestStackSearchRTL/waveform-512 (32.16s)
+    --- PASS: TestStackSearchRTL/reject-first (0.75s)
+    --- PASS: TestStackSearchRTL/long-verdict (0.87s)
+    --- PASS: TestStackSearchRTL/reset-feed (0.69s)
+    --- PASS: TestStackSearchRTL/restart-score (0.70s)
+    --- PASS: TestStackSearchRTL/reset-held-score (0.90s)
+    --- PASS: TestStackSearchRTL/restart-held-score (1.03s)
+    --- PASS: TestStackSearchRTL/maximum-position (0.71s)
+    --- PASS: TestStackSearchRTL/flat-reference (0.03s)
+    --- PASS: TestStackSearchRTL/flat-candidate (0.02s)
+    --- PASS: TestStackSearchRTL/single-window (0.03s)
+    --- PASS: TestStackSearchRTL/empty (0.01s)
+    --- PASS: TestStackSearchRTL/short-gate (0.01s)
+    --- PASS: TestStackSearchRTL/bad-threshold (0.01s)
+    --- PASS: TestStackSearchRTL/position-overflow (0.01s)
+=== RUN   TestStackMemorySearchRTL
+=== RUN   TestStackMemorySearchRTL/waveform-4
+    stack_search_rtl_test.go:229: 9 windows, 19524 clocks
+=== RUN   TestStackMemorySearchRTL/waveform-16
+    stack_search_rtl_test.go:229: 33 windows, 75165 clocks
+=== RUN   TestStackMemorySearchRTL/waveform-47
+    stack_search_rtl_test.go:229: 95 windows, 243275 clocks
+=== RUN   TestStackMemorySearchRTL/waveform-64
+    stack_search_rtl_test.go:229: 129 windows, 350386 clocks
+=== RUN   TestStackMemorySearchRTL/waveform-193
+    stack_search_rtl_test.go:229: 387 windows, 1507545 clocks
+=== RUN   TestStackMemorySearchRTL/reject-first
+    stack_search_rtl_test.go:229: 33 windows, 75165 clocks
+=== RUN   TestStackMemorySearchRTL/long-verdict
+    stack_search_rtl_test.go:229: 33 windows, 84897 clocks
+=== RUN   TestStackMemorySearchRTL/reset-feed
+    stack_search_rtl_test.go:229: 33 windows, 75173 clocks
+=== RUN   TestStackMemorySearchRTL/restart-score
+    stack_search_rtl_test.go:229: 33 windows, 75565 clocks
+=== RUN   TestStackMemorySearchRTL/reset-held-score
+    stack_search_rtl_test.go:229: 33 windows, 92961 clocks
+=== RUN   TestStackMemorySearchRTL/restart-held-score
+    stack_search_rtl_test.go:229: 33 windows, 92961 clocks
+=== RUN   TestStackMemorySearchRTL/flat-reference
+    stack_search_rtl_test.go:229: 3 windows, 2251 clocks
+=== RUN   TestStackMemorySearchRTL/flat-candidate
+    stack_search_rtl_test.go:229: 1 windows, 754 clocks
+=== RUN   TestStackMemorySearchRTL/single-window
+    stack_search_rtl_test.go:229: 1 windows, 2179 clocks
+=== RUN   TestStackMemorySearchRTL/empty
+    stack_search_rtl_test.go:229: 0 windows, 1 clocks
+=== RUN   TestStackMemorySearchRTL/short-gate
+    stack_search_rtl_test.go:229: 46 windows, 1 clocks
+=== RUN   TestStackMemorySearchRTL/bad-threshold
+    stack_search_rtl_test.go:229: 33 windows, 1 clocks
+=== RUN   TestStackMemorySearchRTL/position-overflow
+    stack_search_rtl_test.go:229: 33 windows, 1 clocks
+=== RUN   TestStackMemorySearchRTL/physical-record-end
+    stack_search_rtl_test.go:229: 33 windows, 75165 clocks
+=== RUN   TestStackMemorySearchRTL/oversized-record
+    stack_search_rtl_test.go:229: 33 windows, 1 clocks
+=== RUN   TestStackMemorySearchRTL/oversized-reference
+    stack_search_rtl_test.go:229: 33 windows, 1 clocks
+=== RUN   TestStackMemorySearchRTL/record-offset
+    stack_search_rtl_test.go:229: 33 windows, 75165 clocks
+=== RUN   TestStackMemorySearchRTL/long-gate-single-window
+    stack_search_rtl_test.go:229: 1 windows, 6828 clocks
+=== RUN   TestStackMemorySearchRTL/restart-memory-read
+    stack_search_rtl_test.go:229: 33 windows, 75169 clocks
+=== RUN   TestStackMemorySearchRTL/restart-on-response
+    stack_search_rtl_test.go:229: 33 windows, 75169 clocks
+=== RUN   TestStackMemorySearchRTL/memory-read-error
+    stack_search_rtl_test.go:229: 33 windows, 6 clocks
+=== RUN   TestStackMemorySearchRTL/short-reference-memory
+    stack_search_rtl_test.go:229: 33 windows, 1 clocks
+=== RUN   TestStackMemorySearchRTL/short-record-memory
+    stack_search_rtl_test.go:229: 33 windows, 1 clocks
+=== NAME  TestStackMemorySearchRTL
+    stack_search_rtl_test.go:319: 28 connected search fixtures; memory=true
+--- PASS: TestStackMemorySearchRTL (34.59s)
+    --- PASS: TestStackMemorySearchRTL/waveform-4 (0.22s)
+    --- PASS: TestStackMemorySearchRTL/waveform-16 (0.89s)
+    --- PASS: TestStackMemorySearchRTL/waveform-47 (3.30s)
+    --- PASS: TestStackMemorySearchRTL/waveform-64 (4.03s)
+    --- PASS: TestStackMemorySearchRTL/waveform-193 (17.01s)
+    --- PASS: TestStackMemorySearchRTL/reject-first (0.81s)
+    --- PASS: TestStackMemorySearchRTL/long-verdict (0.96s)
+    --- PASS: TestStackMemorySearchRTL/reset-feed (0.83s)
+    --- PASS: TestStackMemorySearchRTL/restart-score (0.79s)
+    --- PASS: TestStackMemorySearchRTL/reset-held-score (1.02s)
+    --- PASS: TestStackMemorySearchRTL/restart-held-score (1.04s)
+    --- PASS: TestStackMemorySearchRTL/flat-reference (0.03s)
+    --- PASS: TestStackMemorySearchRTL/flat-candidate (0.02s)
+    --- PASS: TestStackMemorySearchRTL/single-window (0.03s)
+    --- PASS: TestStackMemorySearchRTL/empty (0.01s)
+    --- PASS: TestStackMemorySearchRTL/short-gate (0.01s)
+    --- PASS: TestStackMemorySearchRTL/bad-threshold (0.01s)
+    --- PASS: TestStackMemorySearchRTL/position-overflow (0.01s)
+    --- PASS: TestStackMemorySearchRTL/physical-record-end (0.86s)
+    --- PASS: TestStackMemorySearchRTL/oversized-record (0.01s)
+    --- PASS: TestStackMemorySearchRTL/oversized-reference (0.01s)
+    --- PASS: TestStackMemorySearchRTL/record-offset (0.85s)
+    --- PASS: TestStackMemorySearchRTL/long-gate-single-window (0.09s)
+    --- PASS: TestStackMemorySearchRTL/restart-memory-read (0.88s)
+    --- PASS: TestStackMemorySearchRTL/restart-on-response (0.81s)
+    --- PASS: TestStackMemorySearchRTL/memory-read-error (0.01s)
+    --- PASS: TestStackMemorySearchRTL/short-reference-memory (0.01s)
+    --- PASS: TestStackMemorySearchRTL/short-record-memory (0.01s)
+PASS
+ok  	open-sds/app/internal/superres	97.297s

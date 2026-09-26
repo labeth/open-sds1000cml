@@ -55,6 +55,19 @@ module stack_correlation #(parameter COUNT_BITS=32)(
  wire [H:0] multiply_low_sum={1'b0,product[W+H-1:W]}+(product[0]?{1'b0,multiplicand[H-1:0]}:{(H+1){1'b0}});
  wire [H:0] multiply_high_sum={1'b0,product[2*W-1:W+H]}+(product[0]?{1'b0,multiplicand[W-1:H]}:{(H+1){1'b0}})+multiply_low[H];
  wire [2*W-1:0] multiply_next={multiply_high_sum,multiply_low[H-1:0],product[W-1:1]};
+ // LOAD overwrites product before every multiply. Speculative writes on an
+ // abort edge are private and cannot qualify a result; a new LOAD replaces them.
+ always @(posedge clk)begin
+  if(state==LOAD)case(operation)
+   0:product<=sxy;
+   1,5:product<=sy;
+   2:product<=sxx;
+   3:product<=sx;
+   4:product<=syy;
+   6:product<=energy_y;
+  endcase
+  else if(state==MULTIPLY_HIGH)product<=multiply_next;
+ end
  reg [2*ROOT_BITS-1:0] radicand=0;
  // Square-root and division lifetimes do not overlap. The completed root
  // is already the divisor; reuse the radicand shift register for the dividend
@@ -99,13 +112,13 @@ module stack_correlation #(parameter COUNT_BITS=32)(
    LOAD:begin
     step<=W-1;state<=MULTIPLY;
     case(operation)
-     0:begin multiplicand<=n;product<=sxy;end
-     1:begin multiplicand<=sx;product<=sy;end
-     2:begin multiplicand<=n;product<=sxx;end
-     3:begin multiplicand<=sx;product<=sx;end
-     4:begin multiplicand<=n;product<=syy;end
-     5:begin multiplicand<=sy;product<=sy;end
-     6:begin multiplicand<=energy_x;product<=energy_y;end
+     0:begin multiplicand<=n;end
+     1:begin multiplicand<=sx;end
+     2:begin multiplicand<=n;end
+     3:begin multiplicand<=sx;end
+     4:begin multiplicand<=n;end
+     5:begin multiplicand<=sy;end
+     6:begin multiplicand<=energy_x;end
     endcase
     if(input_overflow)begin invalid<=1;state<=IDLE;busy<=0;done<=1;end
     else if(n==0)begin state<=IDLE;busy<=0;done<=1;end
@@ -114,7 +127,6 @@ module stack_correlation #(parameter COUNT_BITS=32)(
     multiply_low<=multiply_low_sum;state<=MULTIPLY_HIGH;
    end
    MULTIPLY_HIGH:begin
-    product<=multiply_next;
     if(step==0)state<=PRODUCT;else begin step<=step-1'b1;state<=MULTIPLY;end
    end
    PRODUCT:begin

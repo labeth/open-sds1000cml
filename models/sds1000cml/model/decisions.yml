@@ -18,6 +18,17 @@ decisions:
     existing stacker. Plan multiple images now, with final boundaries determined by complete capability and concurrency
     coverage, measured resource budgets and timing. The seven-decoder prototype alone does not determine those boundaries.
   consequences:
+  - The accumulator reuses its adder result as the running square and preserves the completed 74-bit square
+    in the expired multiplicand register. Its second operand is bounded to 74 bits while the 108-bit result
+    and atomic overflow behavior remain unchanged. Correlation private-product capture no longer depends on
+    abort qualification; every valid calculation overwrites it before use. Search precomputes its next window
+    count before peak acceptance. Exact arithmetic, aborts, search and persisted host-decoded stack tests pass.
+  - The resulting complete numerical-core probe uses 8577 logic elements and 6257 registers, saving 80 elements
+    and 110 registers against the previous accepted fit. All nine internal 125 MHz checks pass, but minimum setup
+    slack is only plus 0.010 ns; minimum hold slack is plus 0.152 ns. The 1743 remaining nominal logic elements
+    are still insufficient for the separate 2195-element transfer, before other integration. This virtual-I/O
+    probe is not a deployed or physically qualified image. Evidence is in
+    validation/2026-09-26-stacking/shared-square.json, including the initial smaller but timing-failing candidate.
   - Correlation square-root and division stages now share the radicand/dividend shift register, remainder
     register and completed root/divisor. Exact Q48 results and latency are unchanged; full-width and physical-record
     arithmetic, memory search, committed tile accumulation, and handoff reset/restart tests pass. The isolated

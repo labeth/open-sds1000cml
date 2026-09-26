@@ -20,6 +20,10 @@ module stack_search #(parameter COUNT_BITS=32)(
  localparam IDLE=0,LAUNCH=1,FEED=2,WAIT_SCORE=3,PUBLISH=4,FINISH=5;
  reg [2:0] state=IDLE;
  reg [31:0] length=0,pairs_left=0,windows_left=0;
+ // Each window's scoring latency settles this decrement before PUBLISH.
+ // Keep the carry chain separate from the peak consumer's ready condition.
+ reg [31:0] next_windows_left=0;
+ always @(posedge clk)next_windows_left<=windows_left-1'b1;
  wire [32:0] end_exclusive={1'b0,first_position}+{1'b0,window_count};
  wire bad_config=window_count==0 || gate_length<4 || (gate_length >> COUNT_BITS)!=0 ||
   end_exclusive>33'h100000000 ||
@@ -64,7 +68,7 @@ module stack_search #(parameter COUNT_BITS=32)(
    end
    PUBLISH:if(peaks_ready)begin
     if(windows_left==1)state<=FINISH;
-    else begin windows_left<=windows_left-1'b1;state<=LAUNCH;end
+    else begin windows_left<=next_windows_left;state<=LAUNCH;end
    end
   endcase
  end
