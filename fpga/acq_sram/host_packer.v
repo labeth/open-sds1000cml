@@ -10,7 +10,7 @@ module sram_host_packer #(parameter ORDINAL_BITS=64)(
  input wire [31:0] word_data,input wire [11:0] word_index,
  input wire [1:0] bank_done,
  input wire [63:0] first0,first1,input wire [19:0] words0,words1,
- output reg push=0,output reg [79:0] packet=0,output reg fault=0
+ output reg push=0,output reg [79:0] packet=0,output wire fault
 );
  reg [11:0] count[0:1];
  reg [31:0] half[0:1];
@@ -47,7 +47,7 @@ module sram_host_packer #(parameter ORDINAL_BITS=64)(
  wire [1:0] descriptor_legal={count_legal_q[1] && words1_q!=0 && words1_q==count[1],
                               count_legal_q[0] && words0_q!=0 && words0_q==count[0]};
  wire legal_word=index_legal_q && index_q==count[bank_q] && !pending[bank_q] && !done_q[bank_q];
- wire complete_pair=valid_q && legal_word && index_q[0];
+ wire pair_arrival=valid_q && index_q[0];
  wire selected=pending[0] ? 1'b0 : 1'b1;
  // Expected next index is derived from the offered index, not a counter
  // feedback increment gated by the full validator. Invalid offers still fault
@@ -87,36 +87,44 @@ module sram_host_packer #(parameter ORDINAL_BITS=64)(
   // Validation still chooses the packet, with the same offer latency.
   pair_candidate<={1'b0,bank_q,pair_address[bank_q],data_q,half[bank_q]};
   tail_candidate<={1'b0,selected,pair_address[selected],32'b0,half[selected]};
-  pair_selected<=complete_pair;
+  pair_selected<=pair_arrival;
   meta_candidate<={1'b1,selected,words[selected],{(64-ORDINAL_BITS){1'b0}},first[selected]};
-  packet_metadata<=!complete_pair && !half_valid[selected];
+  packet_metadata<=!pair_arrival && !half_valid[selected];
   if(reset)begin push<=0;packet<=0;end
   else begin
    push<=offer;
    packet<=packet_metadata ? meta_candidate : pair_selected ? pair_candidate : tail_candidate;
   end
  end
+ // Independent sticky validators avoid priority selection between unrelated
+ // word and descriptor errors. Their OR preserves same-edge fault reporting.
+ reg [2:0] fault_flags=0;
+ assign fault=|fault_flags;
+ always @(posedge clk)begin
+  if(reset)fault_flags<=0;
+  else begin
+   if(valid_q && (!legal_word || (index_q[0] && !half_valid[bank_q]) ||
+      (!index_q[0] && half_valid[bank_q])))fault_flags[0]<=1;
+   if(done_q[0] && (pending[0] || !descriptor_legal[0]))fault_flags[1]<=1;
+   if(done_q[1] && (pending[1] || !descriptor_legal[1]))fault_flags[2]<=1;
+  end
+ end
  integer b;
  always @(posedge clk)begin
   offer<=0;
   if(reset)begin
-   fault<=0;pending<=0;half_valid<=0;
+   pending<=0;half_valid<=0;
   end else if(!fault)begin
    for(b=0;b<2;b=b+1)if(done_q[b])begin
-    if(pending[b] || !descriptor_legal[b])fault<=1;
-    else pending[b]<=1;
+    // Private bookkeeping may advance on malformed input; fault prevents
+    // subsequent offers. No descriptor is made public by setting pending.
+    pending[b]<=1;
    end
    if(valid_q)begin
-    if(!legal_word || (index_q[0] && !half_valid[bank_q]) ||
-       (!index_q[0] && half_valid[bank_q]))fault<=1;
-    else begin
-     if(!index_q[0])begin
-      half_valid[bank_q]<=1;
-     end else half_valid[bank_q]<=0;
-    end
+    half_valid[bank_q]<=!index_q[0];
    end
-   if(complete_pair)begin
-    offer<=1;
+   if(pair_arrival)begin
+    offer<=legal_word;
    end else if(|pending)begin
     offer<=1;
     if(half_valid[selected])begin

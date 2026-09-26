@@ -31,8 +31,8 @@ module sram_host_sink #(parameter ORDINAL_BITS=64)(
  // Validation controls publication and accounting, not private payload capture.
  (* keep *) wire metadata0=valid && ready && legal_descriptor && descriptor && !bank;
  (* keep *) wire metadata1=valid && ready && legal_descriptor && descriptor && bank;
- (* keep *) wire advance0=valid && ready && legal_data && !descriptor && !bank;
- (* keep *) wire advance1=valid && ready && legal_data && !descriptor && bank;
+ (* keep *) wire advance0=valid && ready && !descriptor && !bank;
+ (* keep *) wire advance1=valid && ready && !descriptor && bank;
  // DATA is validated at edge N and physically written at edge N+1.
  // A following META publishes after edge N+1, once that write has occurred.
  always @(posedge clk)begin
@@ -52,9 +52,13 @@ module sram_host_sink #(parameter ORDINAL_BITS=64)(
    fault<=0;pairs0<=0;pairs1<=0;
   end else begin
    if(upstream_fault || ram_fault || (valid && ready && !legal))fault<=1;
-   if(metadata0)begin publish[0]<=1;pairs0<=0;end
+   if(metadata0)publish[0]<=1;
+   if(metadata1)publish[1]<=1;
+   // Invalid packets fault on this edge. Private counts can still advance;
+   // validation continues to guard all RAM writes and publication.
+   if(valid && ready && descriptor && !bank)pairs0<=0;
    else if(advance0)pairs0<=pairs0+1'b1;
-   if(metadata1)begin publish[1]<=1;pairs1<=0;end
+   if(valid && ready && descriptor && bank)pairs1<=0;
    else if(advance1)pairs1<=pairs1+1'b1;
   end
  end

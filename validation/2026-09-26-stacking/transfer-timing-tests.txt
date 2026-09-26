@@ -1,0 +1,36 @@
+=== RUN   TestStackPageTransferRTL
+=== RUN   TestStackPageTransferRTL/0
+    stack_page_transfer_rtl_test.go:29: PASS page transfer phase=0 cases=269
+        ../../../fpga/acq_sram/sim/tb_stack_page_transfer.v:107: $finish called at 180036000 (1ps)
+=== RUN   TestStackPageTransferRTL/1
+    stack_page_transfer_rtl_test.go:29: PASS page transfer phase=1 cases=269
+        ../../../fpga/acq_sram/sim/tb_stack_page_transfer.v:107: $finish called at 180032000 (1ps)
+=== RUN   TestStackPageTransferRTL/2
+    stack_page_transfer_rtl_test.go:29: PASS page transfer phase=2 cases=269
+        ../../../fpga/acq_sram/sim/tb_stack_page_transfer.v:107: $finish called at 181060000 (1ps)
+=== RUN   TestStackPageTransferRTL/3
+    stack_page_transfer_rtl_test.go:29: PASS page transfer phase=3 cases=269
+        ../../../fpga/acq_sram/sim/tb_stack_page_transfer.v:107: $finish called at 180020000 (1ps)
+=== RUN   TestStackPageTransferRTL/5
+    stack_page_transfer_rtl_test.go:29: PASS page transfer phase=5 cases=269
+        ../../../fpga/acq_sram/sim/tb_stack_page_transfer.v:107: $finish called at 180028000 (1ps)
+=== RUN   TestStackPageTransferRTL/7
+    stack_page_transfer_rtl_test.go:29: PASS page transfer phase=7 cases=269
+        ../../../fpga/acq_sram/sim/tb_stack_page_transfer.v:107: $finish called at 180024000 (1ps)
+=== RUN   TestStackPageTransferRTL/sink-ordinal-19
+    stack_page_transfer_rtl_test.go:44: PASS host sink: full bank RAM readback, odd tail, ordering, malformed descriptors, fault/reset
+        ../../../fpga/acq_sram/sim/tb_host_sink.v:77: $finish called at 123488000 (1ps)
+=== RUN   TestStackPageTransferRTL/sink-ordinal-64
+    stack_page_transfer_rtl_test.go:44: PASS host sink: full bank RAM readback, odd tail, ordering, malformed descriptors, fault/reset
+        ../../../fpga/acq_sram/sim/tb_host_sink.v:77: $finish called at 123408000 (1ps)
+--- PASS: TestStackPageTransferRTL (9.72s)
+    --- PASS: TestStackPageTransferRTL/0 (1.24s)
+    --- PASS: TestStackPageTransferRTL/1 (1.63s)
+    --- PASS: TestStackPageTransferRTL/2 (1.97s)
+    --- PASS: TestStackPageTransferRTL/3 (1.47s)
+    --- PASS: TestStackPageTransferRTL/5 (1.88s)
+    --- PASS: TestStackPageTransferRTL/7 (1.21s)
+    --- PASS: TestStackPageTransferRTL/sink-ordinal-19 (0.16s)
+    --- PASS: TestStackPageTransferRTL/sink-ordinal-64 (0.17s)
+PASS
+ok  	open-sds/app/internal/superres	9.723s

@@ -1,0 +1,15 @@
+PASS host sink: full bank RAM readback, odd tail, ordering, malformed descriptors, fault/reset
+fpga/acq_sram/sim/tb_host_sink.v:77: $finish called at 123408000 (1ps)
+PASS host path phase=0 full banks, odd tails, exact RAM, metadata, ownership and reuse
+fpga/acq_sram/sim/tb_host_path.v:102: $finish called at 564320000 (1ps)
+PASS host faults phase=0 malformed input, owned-bank protection, fault CDC and reset recovery
+fpga/acq_sram/sim/tb_host_faults.v:88: $finish called at 3990000 (1ps)
+packed burst phase=0 words=2562 max_pending=7
+PASS host FIFO phase=0 sync_stall=1: packed throughput, wraps, stalls, overflow, common reset
+fpga/acq_sram/sim/tb_host_fifo.v:120: $finish called at 62064000 (1ps)
+packed burst phase=1 words=2562 max_pending=7
+PASS host FIFO phase=1 sync_stall=1: packed throughput, wraps, stalls, overflow, common reset
+fpga/acq_sram/sim/tb_host_fifo.v:120: $finish called at 62049000 (1ps)
+packed burst phase=3 words=2562 max_pending=8
+PASS host FIFO phase=3 sync_stall=1: packed throughput, wraps, stalls, overflow, common reset
+fpga/acq_sram/sim/tb_host_fifo.v:120: $finish called at 62035000 (1ps)

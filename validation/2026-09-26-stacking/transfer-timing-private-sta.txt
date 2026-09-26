@@ -1,0 +1,125 @@
+------------------------------------------------------------
+Timing Analyzer Summary
+------------------------------------------------------------
+
+Type  : Slow 1200mV 85C Model Setup 'transport'
+Slack : -0.589
+TNS   : -8.570
+
+Type  : Slow 1200mV 85C Model Setup 'memory'
+Slack : 0.826
+TNS   : 0.000
+
+Type  : Slow 1200mV 85C Model Hold 'transport'
+Slack : 0.198
+TNS   : 0.000
+
+Type  : Slow 1200mV 85C Model Hold 'memory'
+Slack : 0.483
+TNS   : 0.000
+
+Type  : Slow 1200mV 85C Model Recovery 'transport'
+Slack : 0.878
+TNS   : 0.000
+
+Type  : Slow 1200mV 85C Model Recovery 'memory'
+Slack : 1.620
+TNS   : 0.000
+
+Type  : Slow 1200mV 85C Model Removal 'transport'
+Slack : 1.254
+TNS   : 0.000
+
+Type  : Slow 1200mV 85C Model Removal 'memory'
+Slack : 1.407
+TNS   : 0.000
+
+Type  : Slow 1200mV 85C Model Minimum Pulse Width 'transport'
+Slack : 0.000
+TNS   : 0.000
+
+Type  : Slow 1200mV 85C Model Minimum Pulse Width 'memory'
+Slack : 3.598
+TNS   : 0.000
+
+Type  : Slow 1200mV 0C Model Setup 'transport'
+Slack : -0.287
+TNS   : -1.610
+
+Type  : Slow 1200mV 0C Model Setup 'memory'
+Slack : 1.051
+TNS   : 0.000
+
+Type  : Slow 1200mV 0C Model Hold 'transport'
+Slack : 0.112
+TNS   : 0.000
+
+Type  : Slow 1200mV 0C Model Hold 'memory'
+Slack : 0.430
+TNS   : 0.000
+
+Type  : Slow 1200mV 0C Model Recovery 'transport'
+Slack : 1.074
+TNS   : 0.000
+
+Type  : Slow 1200mV 0C Model Recovery 'memory'
+Slack : 1.783
+TNS   : 0.000
+
+Type  : Slow 1200mV 0C Model Removal 'transport'
+Slack : 1.076
+TNS   : 0.000
+
+Type  : Slow 1200mV 0C Model Removal 'memory'
+Slack : 1.233
+TNS   : 0.000
+
+Type  : Slow 1200mV 0C Model Minimum Pulse Width 'transport'
+Slack : 0.000
+TNS   : 0.000
+
+Type  : Slow 1200mV 0C Model Minimum Pulse Width 'memory'
+Slack : 3.464
+TNS   : 0.000
+
+Type  : Fast 1200mV 0C Model Setup 'transport'
+Slack : 2.008
+TNS   : 0.000
+
+Type  : Fast 1200mV 0C Model Setup 'memory'
+Slack : 2.675
+TNS   : 0.000
+
+Type  : Fast 1200mV 0C Model Hold 'transport'
+Slack : 0.076
+TNS   : 0.000
+
+Type  : Fast 1200mV 0C Model Hold 'memory'
+Slack : 0.191
+TNS   : 0.000
+
+Type  : Fast 1200mV 0C Model Recovery 'transport'
+Slack : 2.596
+TNS   : 0.000
+
+Type  : Fast 1200mV 0C Model Recovery 'memory'
+Slack : 2.917
+TNS   : 0.000
+
+Type  : Fast 1200mV 0C Model Removal 'transport'
+Slack : 0.535
+TNS   : 0.000
+
+Type  : Fast 1200mV 0C Model Removal 'memory'
+Slack : 0.589
+TNS   : 0.000
+
+Type  : Fast 1200mV 0C Model Minimum Pulse Width 'transport'
+Slack : 0.000
+TNS   : 0.000
+
+Type  : Fast 1200mV 0C Model Minimum Pulse Width 'memory'
+Slack : 3.333
+TNS   : 0.000
+
+------------------------------------------------------------

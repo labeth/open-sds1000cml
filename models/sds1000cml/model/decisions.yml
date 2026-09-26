@@ -18,6 +18,15 @@ decisions:
     existing stacker. Plan multiple images now, with final boundaries determined by complete capability and concurrency
     coverage, measured resource budgets and timing. The seven-decoder prototype alone does not determine those boundaries.
   consequences:
+  - Page-transfer bookkeeping advances privately while validation still guards RAM writes and publication.
+    Independent sticky word/descriptor error flags preserve same-edge fault reporting. A registered next Gray
+    pointer removes pointer arithmetic from FIFO fullness feedback. Transfer, general host-path and fault tests
+    pass, including FIFO packed bursts, wraparound, stalls, overflow, common reset and delayed synchronizer observations.
+  - The selected transfer probe uses 1909 logic elements and 1577 registers. Memory-domain setup now passes with
+    0.748 ns margin, while 250 MHz transport setup still fails by 0.020 ns. This is explicitly not timing closure.
+    A further compare-before-selection experiment worsened setup and was discarded. The numerical core plus this
+    separate transfer still totals 10486 nominal elements before other integration, above the device capacity.
+    Evidence and all four measured iterations are in validation/2026-09-26-stacking/transfer-timing.json.
   - Stacking page metadata uses 19-bit retained-record word ordinals, matching the physical SRAM range.
     Both packet construction and destination publication reject oversized ordinals instead of truncating them.
     Shared host packer and sink default to 64-bit ordinals for general streaming; their full-width RAM, ownership

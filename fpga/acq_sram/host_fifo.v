@@ -27,12 +27,24 @@ module sram_host_fifo #(parameter WIDTH=80,ADDR_BITS=3)(
  assign source_ready=!reset && !source_reset[1] && !full;
  wire take_write=push && source_ready;
  wire take_read=!dest_reset[1] && !reset && !empty && (!dest_valid || dest_ready);
- wire [ADDR_BITS:0] wnext=wbin+take_write;
- wire [ADDR_BITS:0] wgray_next=(wnext>>1)^wnext;
+ // Calculate the candidate pointer independently of fullness. Selecting
+ // between precomputed comparisons avoids full -> increment -> Gray ->
+ // comparison on the distributed next-write-enable feedback path.
+ reg [ADDR_BITS:0] incremented_bin=1,incremented_gray=1;
+ wire [ADDR_BITS:0] following_bin=incremented_bin+1'b1;
+ always @(posedge source_clk or posedge source_reset[1])begin
+  if(source_reset[1])begin incremented_bin<=1;incremented_gray<=1;end
+  else if(take_write)begin
+   incremented_bin<=following_bin;incremented_gray<=(following_bin>>1)^following_bin;
+  end
+ end
+ wire [ADDR_BITS:0] wnext=take_write ? incremented_bin:wbin;
+ wire [ADDR_BITS:0] wgray_next=take_write ? incremented_gray:wgray;
  wire [ADDR_BITS:0] rnext=rbin+take_read;
  wire [ADDR_BITS:0] rgray_next=(rnext>>1)^rnext;
  // ADDR_BITS >= 2. Invert the two high Gray bits to detect one full lap.
  wire [ADDR_BITS:0] full_target={~rgray_sync[ADDR_BITS:ADDR_BITS-1],rgray_sync[ADDR_BITS-2:0]};
+ wire full_next=take_write ? incremented_gray==full_target : wgray==full_target;
  // Registered one-hot write location avoids binary decode feeding all
  // WIDTH write enables. Gray/binary pointers still handle occupancy/CDC.
  (* preserve *) reg [DEPTH-1:0] write_slot=1;
@@ -46,7 +58,7 @@ module sram_host_fifo #(parameter WIDTH=80,ADDR_BITS=3)(
  wire [DEPTH-1:0] slot_next=take_write ? {write_slot[DEPTH-2:0],write_slot[DEPTH-1]} : write_slot;
  always @(posedge source_clk or posedge source_reset[1])begin
   if(source_reset[1])writable_slot<=1;
-  else writable_slot<=wgray_next==full_target ? {DEPTH{1'b0}} : slot_next;
+  else writable_slot<=full_next ? {DEPTH{1'b0}} : slot_next;
  end
  genvar slot;
  generate for(slot=0;slot<DEPTH;slot=slot+1)begin: write_slots
@@ -56,7 +68,7 @@ module sram_host_fifo #(parameter WIDTH=80,ADDR_BITS=3)(
   if(source_reset[1])begin wbin<=0;wgray<=0;rgray_meta<=0;rgray_sync<=0;full<=0;overflow<=0;end
   else begin
    rgray_meta<=rgray;rgray_sync<=rgray_meta;
-   wbin<=wnext;wgray<=wgray_next;full<=wgray_next==full_target;
+   wbin<=wnext;wgray<=wgray_next;full<=full_next;
    if(push && full)overflow<=1;
   end
  end
