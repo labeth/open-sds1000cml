@@ -56,15 +56,17 @@ module stack_record_cache #(parameter AW=19,CACHE_AW=8,READ_WARM=16)(
  wire [31:0] word_data;
  wire recall_command;
  always @(posedge clk)begin
-  if(word_valid && permission && !fault && !reset)memory[{refill_bank,word_index[CACHE_AW-1:0]}]<=word_data;
+  // Writes only fill an unpublished page. Identity loss invalidates its tag
+  // and poisons the response; no wide metadata compare gates the RAM clock enable.
+  if(word_valid && !reset)memory[{refill_bank,word_index[CACHE_AW-1:0]}]<=word_data;
   if(state==READ)fetched<=memory[word_offset[CACHE_AW:0]];
  end
  assign command=recall_command && permission && !fault && !reset;
  sram_finite_recall #(.AW(AW),.BANK_WORDS(PAGE_WORDS),.READ_WARM(READ_WARM),.CONTINUE_READS(0)) recall(
- .clk(clk),.reset(reset),.start(state==START && recall_ready && permission && !fault),.frozen(permission),
+ .clk(clk),.reset(reset),.start(state==START && !fault),.frozen(owned && frozen && raw8),
  .record_start(held_start),.read_bias(held_bias),.record_words(held_words),.offset(refill_offset),.length(refill_length),
  .start_ready(recall_ready),.active(recall_active),.done(recall_done),.request_error(recall_error),.fault(recall_fault),
- .host_core_fault(!permission),.bank_release(bank_done),.bank_done(bank_done),
+ .host_core_fault(fault || !owned || !frozen || !raw8),.bank_release(bank_done),.bank_done(bank_done),
  .word_valid(word_valid),.word_data(word_data),.word_index(word_index),
  .transport_ready(transport_ready),.transport_done(transport_done),.transport_read_valid(transport_read_valid),
  .transport_read_data(transport_read_data),.position(position),

@@ -18,6 +18,15 @@ decisions:
     existing stacker. Plan multiple images now, with final boundaries determined by complete capability and concurrency
     coverage, measured resource budgets and timing. The seven-decoder prototype alone does not determine those boundaries.
   consequences:
+  - Cache writes fill unpublished pages without gating the RAM enable through the wide identity comparison.
+    Record changes still poison publication and invalidate tags; 546 boundary/fault cases and three physical-depth
+    cases pass, including changes to each identity field during a refill. This reduces the isolated cache to 877
+    logic elements with setup slack minus 2.042 ns at 250 MHz. Evidence is in
+    validation/2026-09-26-stacking/cache-enable.json; the earlier record-cache evidence remains historical.
+  - The fitted cache M9K ports require a minimum period of 4.201 ns, exceeding the 4 ns transport period.
+    The numerical image therefore requires a slower cache memory clock and a lossless transfer stage from SRAM
+    transport, preserving burst order, complete words, epoch reset and exclusive record ownership. Merely
+    pipelining control logic cannot close this memory period violation. The transfer stage remains unimplemented.
   - The stacking record cache reads raw eight-bit retained SRAM words through the existing finite recall
     and sequential transport. Two direct-mapped 256-word pages reuse overlapping windows; ascending bytes
     are CH1[n], CH2[n], CH1[n+1], CH2[n+1]. Precision Q8.8 records are explicitly rejected.

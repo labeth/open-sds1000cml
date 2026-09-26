@@ -115,6 +115,21 @@ module tb_stack_record_cache #(parameter AW=8,CACHE_AW=3,FULL_ONLY=0);
    launch(0,1);while(!dut.recall_active || transport_ready)@(negedge clk);owned=0;
    finish(0,1,1);if(!fault || request_ready || !transport_ready)$fatal(1,"ownership loss did not drain/poison");
    new_epoch();
+   // Drop each identity field while a page is receiving words. The RAM may
+   // finish an unpublished write, but no tag or response may remain valid.
+   for(j=0;j<5;j=j+1)begin
+    launch(0,1);while(!dut.word_valid)@(negedge clk);
+    case(j)
+     0:epoch=epoch+1;
+     1:record_id=record_id+1;
+     2:record_start=record_start+1'b1;
+     3:read_bias=read_bias+1'b1;
+     4:record_words=record_words-1'b1;
+    endcase
+    finish(0,1,1);
+    if(!fault || request_ready || dut.cache_valid!=0 || !transport_ready)$fatal(1,"refill identity change escaped poisoning field=%0d",j);
+    new_epoch();run(0,1,0);new_epoch();
+   end
    // Unexpected early completion must never publish a partial cache page.
    launch(0,1);while(dut.recall.state!=10)@(negedge clk);early_done=1;
    @(negedge clk);early_done=0;finish(0,1,1);if(!fault)$fatal(1,"partial refill not poisoned");
