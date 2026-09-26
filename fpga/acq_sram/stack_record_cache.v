@@ -61,8 +61,9 @@ module stack_record_cache #(parameter AW=19,CACHE_AW=8,READ_WARM=16)(
  (* async_reg="true",preserve *) reg [1:0] completion_sync=0,idle_sync=0,grant_sync=0,available_sync=0;
  (* async_reg="true",preserve *) reg [1:0] request_sync=0,abort_sync=0;
  reg request_seen=0,completion_toggle=0,core_failed=0;
- localparam CORE_IDLE=0,CORE_LAUNCH=1,CORE_RUN=2,CORE_DRAIN=3;
- reg [1:0] core_state=CORE_IDLE;
+ localparam CORE_IDLE=0,CORE_LAUNCH=1,CORE_RUN=2,CORE_DRAIN=3,CORE_VERIFY=4;
+ reg [2:0] core_state=CORE_IDLE;
+ reg failure_q=0;
  reg [AW-1:0] core_start=0,core_bias=0;
  reg [AW:0] core_words=0,core_offset=0,core_length=0;
  reg core_bank=0;
@@ -90,8 +91,9 @@ module stack_record_cache #(parameter AW=19,CACHE_AW=8,READ_WARM=16)(
  end
  always @(posedge transport_clk or posedge core_reset[1])begin
   if(core_reset[1])begin
-   request_sync<=0;abort_sync<=0;request_seen<=0;completion_toggle<=0;core_state<=CORE_IDLE;core_failed<=0;
+   request_sync<=0;abort_sync<=0;request_seen<=0;completion_toggle<=0;core_state<=CORE_IDLE;core_failed<=0;failure_q<=0;
   end else begin
+   failure_q<=core_abort || recall_error || recall_fault;
    request_sync<={request_sync[0],request_toggle};
    abort_sync<={abort_sync[0],fault || !owned || !frozen || !raw8};
    case(core_state)
@@ -99,19 +101,27 @@ module stack_record_cache #(parameter AW=19,CACHE_AW=8,READ_WARM=16)(
      request_seen<=request_sync[1];core_failed<=0;
      core_start<=held_start;core_bias<=held_bias;core_words<=held_words;
      core_offset<=refill_offset;core_length<=refill_length;core_bank<=refill_bank;
-     if(core_abort)begin core_failed<=1;core_state<=CORE_DRAIN;end
-     else core_state<=CORE_LAUNCH;
+     core_state<=CORE_LAUNCH;
     end
-    CORE_LAUNCH:begin
-     if(core_abort)begin core_failed<=1;core_state<=CORE_DRAIN;end
-     else if(recall_ready)core_state<=CORE_RUN;
-    end
+    CORE_LAUNCH:if(recall_ready)core_state<=CORE_RUN;
     CORE_RUN:begin
-     if(core_abort || recall_error || recall_fault)begin core_failed<=1;core_state<=CORE_DRAIN;end
-     else if(recall_done)begin completion_toggle<=request_seen;core_state<=CORE_IDLE;end
+     if(recall_done)core_state<=CORE_VERIFY;
+    end
+    // Let the registered failure summary catch a fault concurrent with done.
+    // Recall has already drained the transport. Include any newly arriving
+    // fault in the stable completion payload instead of gating its toggle.
+    CORE_VERIFY:begin
+     core_failed<=core_abort || recall_error || recall_fault;
+     completion_toggle<=request_seen;core_state<=CORE_IDLE;
     end
     CORE_DRAIN:if(transport_ready)begin completion_toggle<=request_seen;core_state<=CORE_IDLE;end
    endcase
+   // One shared failure transition avoids a cascaded per-state priority mux.
+   // It also wins over simultaneous successful completion; no token returns
+   // until transport drain has completed. Command gating remains immediate.
+   if((core_state==CORE_LAUNCH || core_state==CORE_RUN || core_state==CORE_VERIFY) && failure_q)begin
+    core_failed<=1;core_state<=CORE_DRAIN;completion_toggle<=completion_toggle;
+   end
   end
  end
  wire [1:0] page_done=(|bank_done) ? (core_bank ? 2'b10:2'b01):2'b00;

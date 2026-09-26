@@ -9,18 +9,18 @@ set slots [cache_checked_registers {*fifo|slots*} 640]
 set payload [cache_checked_registers {*fifo|dest_data*} 80]
 set_max_delay 6.0 -from $slots -to $payload
 set_min_delay 0.0 -from $slots -to $payload
-foreach name {wgray_meta rgray_meta} {
+foreach {name source_clock} {wgray_meta transport rgray_meta memory} {
  set points [cache_checked_registers "*fifo|${name}*" 4]
- set_max_delay 4.0 -to $points
- set_min_delay 0.0 -to $points
+ set_max_delay 4.0 -from [get_clocks $source_clock] -to $points
+ set_min_delay 0.0 -from [get_clocks $source_clock] -to $points
 }
 set releases [cache_checked_registers {*transfer|release_meta*} 2]
-set_max_delay 4.0 -to $releases
-set_min_delay 0.0 -to $releases
-foreach name {source_bad_memory memory_bad_core} {
+set_max_delay 4.0 -from [get_clocks memory] -to $releases
+set_min_delay 0.0 -from [get_clocks memory] -to $releases
+foreach {name source_clock} {source_bad_memory transport memory_bad_core memory} {
  set points [cache_checked_registers [format {*transfer|%s[0]} $name] 1]
- set_max_delay 4.0 -to $points
- set_min_delay 0.0 -to $points
+ set_max_delay 4.0 -from [get_clocks $source_clock] -to $points
+ set_min_delay 0.0 -from [get_clocks $source_clock] -to $points
 }
 # Refill geometry is held until the completion toggle returns. Transport
 # snapshots it only after the two-stage request synchronizer has settled.
@@ -33,9 +33,18 @@ foreach {source target count} {held_start core_start 19 held_bias core_bias 19 h
  set_max_delay 6.0 -from $origins -to $targets
  set_min_delay 0.0 -from $origins -to $targets
 }
-foreach name {request_sync abort_sync completion_sync idle_sync grant_sync available_sync} {
+# Bound only incoming CDC data, not local reset recovery or other local paths.
+# The standalone interface leaves arbitrary data I/O unconstrained, but these
+# explicit asynchronous control inputs still receive first-stage route bounds.
+foreach {name source_clock input_ports} {request_sync memory {} abort_sync memory {owned frozen raw8} completion_sync transport {} idle_sync {} {transport_ready} grant_sync {} {transport_owned} available_sync transport {transport_owned}} {
  set points [cache_checked_registers [format {%s[0]} $name] 1]
- set_max_delay 4.0 -to $points
- set_min_delay 0.0 -to $points
+ if {$source_clock ne ""} {
+  set_max_delay 4.0 -from [get_clocks $source_clock] -to $points
+  set_min_delay 0.0 -from [get_clocks $source_clock] -to $points
+ }
+ if {$input_ports ne ""} {
+  set_max_delay 4.0 -from [get_ports $input_ports] -to $points
+  set_min_delay 0.0 -from [get_ports $input_ports] -to $points
+ }
 }
-# Subsequent synchronizer stages remain subject to ordinary clock timing.
+# Subsequent synchronizer stages and local reset recovery remain clock-timed.

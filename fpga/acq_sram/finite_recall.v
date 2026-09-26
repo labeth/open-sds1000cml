@@ -31,6 +31,12 @@ module sram_finite_recall #(parameter AW=19,BANK_WORDS=2560,READ_WARM=16,CONTINU
  reg geometry_ok=0,bank=0,continued=0;
  reg [AW-1:0] base_stage=0,bias=0,base_address=0,target_pre=0,target=0,distance=0;
  reg [AW:0] requested=0,left=0;
+ // Private request payload may settle while idle. Acceptance still uses
+ // start_ready, but its fault/ownership fan-in need not gate wide registers.
+ // Every accepted start captures these same operands on that clock edge.
+ always @(posedge clk)if(state==IDLE)begin
+  requested<=length;base_stage<=record_start+offset[AW-1:0];bias<=read_bias;
+ end
  // Per-burst arithmetic is bounded by one host bank, not the SRAM depth.
  localparam CW=$clog2(BANK_WORDS+1);
  reg [CW-1:0] chunk=0,remaining=0;
@@ -72,7 +78,6 @@ module sram_finite_recall #(parameter AW=19,BANK_WORDS=2560,READ_WARM=16,CONTINU
    bank_busy<=bank_busy & ~bank_release;
    case(state)
     IDLE:if(start && start_ready)begin
-     requested<=length;base_stage<=record_start+offset[AW-1:0];bias<=read_bias;
      active<=1;done<=0;continued<=0;state<=SNAPSHOT;
     end
     SNAPSHOT:state<=CHECK;

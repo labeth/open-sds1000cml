@@ -122,6 +122,24 @@ module tb_stack_record_cache #(parameter AW=8,CACHE_AW=3,FULL_ONLY=0,PHASE=1);
    finish(0,1,1);
    if(!fault || request_ready || !transport_ready || dut.cache_valid!=0)$fatal(1,"fast grant loss did not drain/poison");
    new_epoch();
+   // A fault on the same edge as recall completion must win. The bridge
+   // must not publish a successful completion before entering its drain state.
+   launch(0,1);while(!dut.recall_done)@(negedge clk);transport_owned=0;
+   @(negedge clk);
+   if(dut.completion_toggle==dut.request_seen)$fatal(1,"fault published simultaneous completion");
+   @(negedge clk);
+   if(dut.completion_toggle==dut.request_seen || dut.core_state!=3 || !dut.core_failed)
+    $fatal(1,"fault lost priority over recall completion");
+   finish(0,1,1);if(!fault || dut.cache_valid!=0)$fatal(1,"completion race exposed cache");
+   new_epoch();
+   // A newly revoked grant in the final verification cycle returns an error
+   // payload even before the registered failure summary sees it.
+   launch(0,1);while(dut.core_state!=4)@(negedge clk);
+   if(!transport_ready)$fatal(1,"verification before transport drain");
+   transport_owned=0;@(negedge clk);
+   if(!dut.core_failed || dut.completion_toggle!=dut.request_seen)$fatal(1,"late grant loss escaped completion payload");
+   finish(0,1,1);if(!fault || dut.cache_valid!=0)$fatal(1,"late grant loss exposed cache");
+   new_epoch();
    // Drop each identity field while a page is receiving words. The RAM may
    // finish an unpublished write, but no tag or response may remain valid.
    for(j=0;j<5;j=j+1)begin
