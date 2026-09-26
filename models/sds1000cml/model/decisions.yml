@@ -1014,6 +1014,17 @@ decisions:
     additional concurrent hardware and a separate measured operating envelope. Keep that optional extension visible
     in the expansion plan, but do not make a combined protocol/numerical image a completion gate for the clarified
     reference-then-stack workflow.
+  - The external acquisition SRAM is sequentially addressed by K2 pulses; arbitrary per-bin accumulator
+    read-modify-write requests cannot assume a random-access SRAM port. Keep retained raw SRAM untouched and
+    use a small on-chip accumulator tile with eventual host-backed tile transfer and exclusive port ownership.
+    The stack_state_tile candidate stores 32 two-channel bins in 640 words, partitioned into 256-word M9K
+    sections. Each channel/bin occupies ten little-endian 32-bit words containing sum69, sum2 106, count32,
+    sumA69, countA32 and twelve zero padding bits, in low-to-high bit order. One outstanding request makes
+    each ten-word update atomically visible at this port. Reset sweeps all 640 words before accepting requests,
+    preventing partially written old state from surviving. Out-of-range requests return an error without access.
+    Simulation covers 537 operations including both channels, bank crossings, full-width state, response stalls,
+    bounds and resets during writes. Host transfer, global tile scheduling and acquisition-image integration
+    remain required; this tile does not provide the complete large-stack storage capacity by itself.
   - Stack storage estimate from the software representation is 80 times G bytes for the two-channel five-array
     accumulators alone, where G equals gate length times interpolation factor. For G equal to 4096 this is 327680
     bytes, exceeding the entire 52992-byte nominal M9K capacity before any acquisition allocation. This is a

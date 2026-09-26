@@ -1022,6 +1022,9 @@ inferenceHints:
   - ../../fpga/acq_sram/stack_accumulate.v
   - ../../fpga/acq_sram/stack_bin_writer.v
   - ../../fpga/acq_sram/stack_resample_store.v
+  - ../../fpga/acq_sram/stack_state_tile.v
+  - ../../fpga/acq_sram/sim/tb_stack_state_tile.v
+  - ../../app/internal/superres/stack_state_tile_rtl_test.go
   - ../../fpga/acq_sram/sim/tb_stack_resample_store.v
   - ../../app/internal/superres/stack_resample_store_rtl_test.go
   - ../../fpga/acq_sram/sim/tb_stack_bin_writer.v
