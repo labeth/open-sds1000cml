@@ -3,8 +3,10 @@
 // A paired-read adapter must preserve the reference and record for the search,
 // honor backpressure, and share reset with this module. Segment verdicts are
 // still external. No SRAM ownership, channel calibration or accumulation here.
+// The default bound is the physical 2^19-word record with two samples/channel
+// per word. Count width includes the full 2^20-sample gate, not only its index.
 // TRLC-LINKS: REQ-SDS-141
-module stack_memory_search(
+module stack_memory_search #(parameter [31:0] MAX_SAMPLES=32'd1048576)(
  input wire clk,reset,start,
  input wire [31:0] first_position,window_count,gate_length,record_samples,reference_samples,min_separation,
  input wire signed [49:0] threshold,
@@ -19,6 +21,7 @@ module stack_memory_search(
  output wire left_present,right_present,
  output reg busy=0,done=0,invalid=0
 );
+ localparam COUNT_BITS=$clog2({1'b0,MAX_SAMPLES}+33'd1);
  wire read_request,read_pair,read_pair_ready,read_busy,read_done,read_fault;
  wire [7:0] reference_sample,candidate_sample;
  wire search_busy,search_done,search_invalid,search_candidate;
@@ -40,7 +43,7 @@ module stack_memory_search(
    if(candidate_valid && verdict_valid)begin alignment_active<=0;alignment_ready<=0;end
   end
  end
- stack_window_reader reader(.clk(clk),.reset(reset),.start(start),
+ stack_window_reader #(.MAX_SAMPLES(MAX_SAMPLES)) reader(.clk(clk),.reset(reset),.start(start),
   .first_position(first_position),.window_count(window_count),.gate_length(gate_length),
   .record_samples(record_samples),.reference_samples(reference_samples),
   .request_valid(read_request),.request_ready(request_ready && permit),
@@ -50,7 +53,7 @@ module stack_memory_search(
   .pair_valid(read_pair),.pair_ready(read_pair_ready),
   .reference_sample(reference_sample),.candidate_sample(candidate_sample),
   .busy(read_busy),.done(read_done),.fault(read_fault));
- stack_search search(.clk(clk),.reset(reset || (read_fault && !start)),.start(start),
+ stack_search #(.COUNT_BITS(COUNT_BITS)) search(.clk(clk),.reset(reset || (read_fault && !start)),.start(start),
   .first_position(first_position),.window_count(window_count),.gate_length(gate_length),
   .min_separation(min_separation),.threshold(threshold),
   .pair_valid(read_pair),.reference_sample(reference_sample),.candidate_sample(candidate_sample),

@@ -5,7 +5,7 @@
 // One result may wait behind a segment verdict; no score is dropped on stalls.
 // This is a search datapath, not reference storage or a complete stack engine.
 // TRLC-LINKS: REQ-SDS-141
-module stack_search(
+module stack_search #(parameter COUNT_BITS=32)(
  input wire clk,reset,start,
  input wire [31:0] first_position,window_count,gate_length,min_separation,
  input wire signed [49:0] threshold,
@@ -21,7 +21,7 @@ module stack_search(
  reg [2:0] state=IDLE;
  reg [31:0] length=0,pairs_left=0,windows_left=0;
  wire [32:0] end_exclusive={1'b0,first_position}+{1'b0,window_count};
- wire bad_config=window_count==0 || gate_length<4 ||
+ wire bad_config=window_count==0 || gate_length<4 || (gate_length >> COUNT_BITS)!=0 ||
   end_exclusive>33'h100000000 ||
   threshold>50'sh1000000000000 || threshold< -50'sh1000000000000;
  wire score_ready,score_defined,score_invalid,score_overflow,score_busy,score_done;
@@ -32,7 +32,7 @@ module stack_search(
  wire pair_last=pairs_left==1;
  assign pair_ready=busy && state==FEED && score_ready && !start && !reset;
  assign candidate_valid=busy && peaks_candidate && !start && !reset;
- stack_match_score scoring(.clk(clk),.reset(reset || start || peaks_done),
+ stack_match_score #(.COUNT_BITS(COUNT_BITS)) scoring(.clk(clk),.reset(reset || start || peaks_done),
   .start(state==LAUNCH && !reset && !start),.valid(pair_valid && pair_ready),.last(pair_last),
   .x(reference_sample),.y(candidate_sample),.ready(score_ready),.defined(score_defined),
   .invalid(score_invalid),.overflow(score_overflow),.busy(score_busy),.done(score_done),.score(score));

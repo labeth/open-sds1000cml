@@ -1,0 +1,7 @@
+=== RUN   TestStackCorrelationRTL
+=== RUN   TestStackCorrelationRTL/full-physical-record-through-bounded-moments
+    stack_correlation_rtl_test.go:203: 1 results; maximum start-to-result latency 1050931 clocks
+--- PASS: TestStackCorrelationRTL (14.73s)
+    --- PASS: TestStackCorrelationRTL/full-physical-record-through-bounded-moments (14.72s)
+PASS
+ok  	open-sds/app/internal/superres	14.733s

@@ -6,7 +6,7 @@
 // reset MUST also reset the adapter response pipeline, as for host_read_window.
 // This module neither owns SRAM nor authorizes overwriting the retained record.
 // TRLC-LINKS: REQ-SDS-141
-module stack_window_reader(
+module stack_window_reader #(parameter [31:0] MAX_SAMPLES=32'hffffffff)(
  input wire clk,reset,start,
  input wire [31:0] first_position,window_count,gate_length,record_samples,reference_samples,
  output wire request_valid,input wire request_ready,
@@ -22,7 +22,7 @@ module stack_window_reader(
  reg [7:0] buffered_reference=0,buffered_candidate=0;
  reg [31:0] last_offset=0,windows_left=0,offset=0,window_position=0;
  wire [33:0] range_end={2'b0,first_position}+{2'b0,window_count}+{2'b0,gate_length}-34'd1;
- wire bad_config=window_count==0 || gate_length<4 || gate_length>reference_samples ||
+ wire bad_config=record_samples>MAX_SAMPLES || reference_samples>MAX_SAMPLES || window_count==0 || gate_length<4 || gate_length>reference_samples ||
   range_end>{2'b0,record_samples};
  assign request_valid=busy && !fault && !pending && !buffer_valid && !start && !reset;
  assign reference_address=offset;

@@ -184,6 +184,23 @@ func TestStackCorrelationRTL(t *testing.T) {
 			fmt.Fprintf(&b, "%05x\n", v)
 		}
 		run(t, 1, 32, b.String(), len(commands), expected)
+		run(t, 1, 21, b.String(), len(commands), expected)
+	})
+	t.Run("full-physical-record-through-bounded-moments", func(t *testing.T) {
+		const n = 1 << 20
+		var b strings.Builder
+		fmt.Fprintf(&b, "%05x\n", start)
+		for i := 0; i < n; i++ {
+			v := valid | uint32(127+2*(i&1))*0x101
+			if i == n-1 {
+				v |= last
+			}
+			fmt.Fprintf(&b, "%05x\n", v)
+		}
+		for i := 0; i < 2800; i++ {
+			b.WriteString("00000\n")
+		}
+		run(t, 1, 21, b.String(), n+2801, []correlationResult{{Defined: 1, Score: 1 << 48}})
 	})
 	t.Run("bounded-moments-and-truncation-rejection", func(t *testing.T) {
 		for _, bits := range []int{1, 21, 31} {

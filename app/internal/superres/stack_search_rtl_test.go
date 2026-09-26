@@ -114,6 +114,19 @@ func runStackSearchRTL(t *testing.T, memory bool) {
 		fixtures = append(fixtures, f)
 	}
 	if memory {
+		for _, name := range []string{"physical-record-end", "oversized-record", "oversized-reference"} {
+			f := small
+			f.name = name
+			f.first = (1 << 20) - uint32(len(f.samples))
+			if name == "oversized-record" {
+				f.first++
+				f.invalid = true
+			}
+			if name == "oversized-reference" {
+				f.invalid = true
+			}
+			fixtures = append(fixtures, f)
+		}
 		offset := small
 		offset.name = "record-offset"
 		offset.first = 29
@@ -168,6 +181,9 @@ func runStackSearchRTL(t *testing.T, memory bool) {
 				t.Fatal(err)
 			}
 			vargs := []string{image, "+input=" + file}
+			if f.name == "oversized-reference" {
+				vargs = append(vargs, "+oversized_reference=1")
+			}
 			if f.name == "memory-read-error" {
 				vargs = append(vargs, "+fault=1")
 			}

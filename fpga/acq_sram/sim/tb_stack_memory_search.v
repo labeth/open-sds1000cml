@@ -18,10 +18,10 @@ wire request_valid,response_ready;
  reg [7:0] reference_data=0,candidate_data=0;
  reg mem_pending=0,poison=0;
  reg [31:0] saved_ref=0,saved_candidate=0;
- integer response_delay=0,error_enabled=0,short_reference=0,short_record=0;
+ integer response_delay=0,error_enabled=0,short_reference=0,short_record=0,oversized_reference=0;
  wire request_ready=!mem_pending && cycles%4!=1;
  wire [31:0] record_samples=first_position+n-(short_record!=0 ? gate_length:0);
- wire [31:0] reference_samples=gate_length-(short_reference!=0 ? 1:0);
+ wire [31:0] reference_samples=oversized_reference!=0 ? 32'd1048577:gate_length-(short_reference!=0 ? 1:0);
  stack_memory_search dut(.*);
  always @(posedge clk)begin
   if(reset)begin mem_pending<=0;response_valid<=0;poison<=0;end
@@ -55,6 +55,7 @@ wire request_valid,response_ready;
  reg holding=0;
  initial begin
   if(!$value$plusargs("input=%s",file_name))$fatal(1,"input");
+  r=$value$plusargs("oversized_reference=%d",oversized_reference);
   r=$value$plusargs("fault=%d",error_enabled);
   r=$value$plusargs("short_reference=%d",short_reference);
   r=$value$plusargs("short_record=%d",short_record);
@@ -100,6 +101,7 @@ wire request_valid,response_ready;
    if(cycles>4000000)$fatal(1,"timeout");
   end
   pair_valid=0;verdict_valid=0;
+  if((record_samples>1048576 || reference_samples>1048576) && sent!=0)$fatal(1,"oversized geometry read memory");
   if(busy)$fatal(1,"busy result");
   if(!invalid && sent!=window_count*gate_length)$fatal(1,"sample accounting");
   if(abort_kind!=0 && !abort_used)$fatal(1,"abort not exercised");
