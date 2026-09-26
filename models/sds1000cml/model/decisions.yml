@@ -20,6 +20,11 @@ decisions:
   consequences:
   - Architecture planning assumes multiple images; only the existing qualified general image is currently supported.
     Planning approval does not qualify a new image or authorize advertising unimplemented capabilities.
+  - The committed deployment inventory contains only fpga/images/general/bench.rbf, with its frozen source,
+    Quartus project and input hashes in the same directory. App release builds use this pinned qualified image
+    by default. Historical FPGA snapshots under validation and reports are local evidence, excluded from Git;
+    their summary results remain historical evidence, not selectable designs. Current source and simulation
+    testbenches for planned decoders and stacking remain development work until whole-image qualification.
   - Every acquisition image must preserve ADC acquisition and calibration, raw SRAM history, sample timebase,
     pre/post-trigger retention, edge triggering, capture identity, bus ownership, responsive controls and explicit loss.
     Specify one versioned capability and configuration contract rather than deriving features from revision numbers.

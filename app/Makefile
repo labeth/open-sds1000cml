@@ -17,8 +17,9 @@ LDFLAGS := -s -w \
   -X open-sds/app/internal/buildinfo.Built=$(BUILT)
 
 DIST := dist
-# The general SRAM/triggering image, built by `cd ../fpga && make bitstream`.
-RBF ?= ../fpga/acq_sram/out/general/current/bench.rbf
+# Pinned, hardware-qualified general image. Development builds must be
+# explicitly selected with RBF=... after hardware qualification.
+RBF ?= ../fpga/images/general/bench.rbf
 EMBED := internal/fpgaload/general.rbf
 
 .PHONY: all app app-release test vet clean

@@ -1,5 +1,11 @@
 # General SRAM and triggering image
 
+The committed, hardware-qualified release image is `images/general/bench.rbf`.
+Its matching source snapshot, Quartus project and input hashes are in the same
+directory. `make -C app app-release` from the repository root embeds this image.
+There is exactly one committed deployment image; historical test-build snapshots
+under validation and reports are excluded from Git.
+
 `make bitstream` builds the single supported general acquisition image with
 `acq_sram/build_general.ts`. The canonical output is
 `acq_sram/out/general/current/bench.rbf`, accompanied by `image.json` with its
@@ -8,8 +14,10 @@ The build shares the Quartus lock with historical build tooling. A successful
 build still requires bench qualification before deployment.
 
 Architecture and any future partition decisions live in the SDS model under
-`ADR-GENERAL-ACQUISITION-PIPELINE`. Old designs and build candidates are retained
-for source history and recovery; they are not selectable product profiles.
+`ADR-GENERAL-ACQUISITION-PIPELINE`. The current development RTL includes unfinished
+decoder and numerical work: a generated candidate must pass whole-image timing
+and hardware qualification before it replaces the committed release image.
+Legacy design source and current regression testbenches are not deployment images.
 
 ## Historical default-fabric build notes
 

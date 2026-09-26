@@ -3,8 +3,8 @@
   "branch": "cyclone-spec-sram-capture",
   "deployment": {
     "fpgaSHA256": "7c8e9c81bd5dc54531f383c332532e0c23c662fac22fbb8a1963f679be2f1896",
-    "fpgaSource": "qualified-fpga/",
-    "appBuild": "make -C app app-release RBF=../validation/2026-09-25-protocol-trigger/checkpoint/qualified-fpga/bench.rbf",
+    "fpgaSource": "fpga/images/general/",
+    "appBuild": "make -C app app-release",
     "wrapper": "tools/deploy/general-app.sh",
     "protocols": [
       "UART",
