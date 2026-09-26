@@ -1,0 +1,16 @@
+PASS finite recall faults: host error, lost freeze, short/extra read, reset recovery, final release
+sim/tb_finite_recall_faults.v:64: $finish called at 534100 (1ps)
+PASS finite case: AW=13 continuation=0 offset=8192 words=0 banks=0
+PASS finite case: AW=13 continuation=0 offset=19 words=8173 banks=4
+PASS finite case: AW=13 continuation=0 offset=0 words=1 banks=1
+PASS finite case: AW=13 continuation=0 offset=0 words=17 banks=1
+PASS finite case: AW=13 continuation=0 offset=0 words=8192 banks=4
+PASS finite recall suite: cases=5 total_words=16383 SRAM_pulses=90065
+sim/tb_finite_recall.v:116: $finish called at 488392000 (1ps)
+PASS finite case: AW=13 continuation=1 offset=8192 words=0 banks=0
+PASS finite case: AW=13 continuation=1 offset=19 words=8173 banks=4
+PASS finite case: AW=13 continuation=1 offset=0 words=1 banks=1
+PASS finite case: AW=13 continuation=1 offset=0 words=17 banks=1
+PASS finite case: AW=13 continuation=1 offset=0 words=8192 banks=4
+PASS finite recall suite: cases=5 total_words=16383 SRAM_pulses=40913
+sim/tb_finite_recall.v:116: $finish called at 488392000 (1ps)

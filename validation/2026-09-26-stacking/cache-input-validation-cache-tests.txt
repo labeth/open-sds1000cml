@@ -1,0 +1,44 @@
+=== RUN   TestStackRecordCacheRTL
+=== RUN   TestStackRecordCacheRTL/phase-0
+    stack_record_cache_rtl_test.go:35: PASS frozen SRAM cache AW=8 cases=551 commands=117 seeks=59 K2_pulses=15302
+        ../../../fpga/acq_sram/sim/tb_stack_record_cache.v:180: $finish called at 182008000 (1ps)
+=== RUN   TestStackRecordCacheRTL/phase-1
+    stack_record_cache_rtl_test.go:35: PASS frozen SRAM cache AW=8 cases=551 commands=117 seeks=59 K2_pulses=15302
+        ../../../fpga/acq_sram/sim/tb_stack_record_cache.v:180: $finish called at 182009000 (1ps)
+=== RUN   TestStackRecordCacheRTL/phase-2
+    stack_record_cache_rtl_test.go:35: PASS frozen SRAM cache AW=8 cases=551 commands=118 seeks=59 K2_pulses=15302
+        ../../../fpga/acq_sram/sim/tb_stack_record_cache.v:180: $finish called at 182410000 (1ps)
+=== RUN   TestStackRecordCacheRTL/phase-3
+    stack_record_cache_rtl_test.go:35: PASS frozen SRAM cache AW=8 cases=551 commands=117 seeks=59 K2_pulses=15302
+        ../../../fpga/acq_sram/sim/tb_stack_record_cache.v:180: $finish called at 182011000 (1ps)
+=== RUN   TestStackRecordCacheRTL/phase-5
+    stack_record_cache_rtl_test.go:35: PASS frozen SRAM cache AW=8 cases=551 commands=117 seeks=59 K2_pulses=15302
+        ../../../fpga/acq_sram/sim/tb_stack_record_cache.v:180: $finish called at 182013000 (1ps)
+=== RUN   TestStackRecordCacheRTL/phase-7
+    stack_record_cache_rtl_test.go:35: PASS frozen SRAM cache AW=8 cases=551 commands=117 seeks=59 K2_pulses=15302
+        ../../../fpga/acq_sram/sim/tb_stack_record_cache.v:180: $finish called at 182015000 (1ps)
+=== RUN   TestStackRecordCacheRTL/transfer-overflow
+    stack_record_cache_rtl_test.go:35: PASS frozen SRAM cache AW=10 cases=2088 commands=63 seeks=32 K2_pulses=37668
+        ../../../fpga/acq_sram/sim/tb_stack_record_cache.v:180: $finish called at 524153000 (1ps)
+=== RUN   TestStackRecordCacheRTL/two-word-pages
+    stack_record_cache_rtl_test.go:35: PASS frozen SRAM cache AW=8 cases=3 commands=4 seeks=2 K2_pulses=502
+        ../../../fpga/acq_sram/sim/tb_stack_record_cache.v:180: $finish called at 3491000 (1ps)
+=== RUN   TestStackRecordCacheRTL/largest-pages
+    stack_record_cache_rtl_test.go:35: PASS frozen SRAM cache AW=12 cases=3 commands=4 seeks=2 K2_pulses=12278
+        ../../../fpga/acq_sram/sim/tb_stack_record_cache.v:180: $finish called at 50610000 (1ps)
+=== RUN   TestStackRecordCacheRTL/physical-depth
+    stack_record_cache_rtl_test.go:35: PASS frozen SRAM cache AW=19 cases=3 commands=4 seeks=2 K2_pulses=1048566
+        ../../../fpga/acq_sram/sim/tb_stack_record_cache.v:180: $finish called at 4195745000 (1ps)
+--- PASS: TestStackRecordCacheRTL (57.12s)
+    --- PASS: TestStackRecordCacheRTL/phase-0 (1.93s)
+    --- PASS: TestStackRecordCacheRTL/phase-1 (1.70s)
+    --- PASS: TestStackRecordCacheRTL/phase-2 (1.67s)
+    --- PASS: TestStackRecordCacheRTL/phase-3 (1.70s)
+    --- PASS: TestStackRecordCacheRTL/phase-5 (1.72s)
+    --- PASS: TestStackRecordCacheRTL/phase-7 (1.67s)
+    --- PASS: TestStackRecordCacheRTL/transfer-overflow (4.91s)
+    --- PASS: TestStackRecordCacheRTL/two-word-pages (0.07s)
+    --- PASS: TestStackRecordCacheRTL/largest-pages (0.55s)
+    --- PASS: TestStackRecordCacheRTL/physical-depth (41.20s)
+PASS
+ok  	open-sds/app/internal/superres	57.121s

@@ -48,7 +48,21 @@ module tb_host_faults;
    descriptor_words=2;
   end
  endtask
+ // No idle bubble may hide ordinal or completion errors in the input stage.
+ task reject_back_to_back(input integer next_index,input bit early_completion);
+  begin
+   clear_epoch;
+   @(negedge c);valid=1;index=0;data=32'h12345678;
+   @(negedge c);index=next_index;data=32'habcd9876;done=early_completion;
+   @(negedge c);valid=0;done=0;
+   expect_fault;
+   if(writes || ready || rel)$fatal(1,"back-to-back malformed input published");
+  end
+ endtask
  initial begin
+  reject_back_to_back(0,0); // duplicate
+  reject_back_to_back(2,0); // missing ordinal
+  reject_back_to_back(1,1); // completion must follow the final word
   reject_descriptor(0);
   reject_descriptor(1);
   reject_descriptor(20'h1002);

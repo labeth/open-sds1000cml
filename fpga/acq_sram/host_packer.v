@@ -21,32 +21,28 @@ module sram_host_packer #(parameter ORDINAL_BITS=64)(
  reg [31:0] data_q=0;reg [11:0] index_q=0;
  reg [1:0] done_q=0,count_legal_q=0;
  reg [ORDINAL_BITS-1:0] first0_q=0,first1_q=0;
- // Reject discarded upper bits in the input stage; validate the retained
- // count in the packing stage alongside descriptor equality.
+ // Reject discarded upper bits and validate the retained descriptor count
+ // in the input stage, alongside the associated completion pulse.
  reg [11:0] words0_q=0,words1_q=0;
- // Counts commit from the existing input stage. Index equality is checked
- // in that same stage, against the count before its current word is committed.
- wire [11:0] pending_count=index_q+1'b1;
- // Validate ordinal/count in parallel with a one-cycle input pipeline.
- // Pending/half-pair state belongs to the delayed packing stage.
+ // Validate ordinals and descriptor counts in the input stage. Counts track
+ // offered words before the delayed packing stage, so back-to-back words and
+ // completion immediately after the final word use the correct predecessor.
+ wire index_matches=word_bank ? word_index==count[1] : word_index==count[0];
  always @(posedge clk)begin
   if(reset)begin valid_q<=0;done_q<=0;index_legal_q<=0;count_legal_q<=0;end
   else begin
    valid_q<=word_valid;done_q<=bank_done;
-   index_legal_q<=word_index<2560;
-   count_legal_q[0]<=words0[19:12]==0 && (first0 >> ORDINAL_BITS)==0;
-   count_legal_q[1]<=words1[19:12]==0 && (first1 >> ORDINAL_BITS)==0;
+   index_legal_q<=word_index<2560 && index_matches;
+   count_legal_q[0]<=words0[19:12]==0 && (first0 >> ORDINAL_BITS)==0 && words0[11:0]!=0 && words0[11:0]==count[0];
+   count_legal_q[1]<=words1[19:12]==0 && (first1 >> ORDINAL_BITS)==0 && words1[11:0]!=0 && words1[11:0]==count[1];
   end
   bank_q<=word_bank;data_q<=word_data;index_q<=word_index;
   first0_q<=first0;first1_q<=first1;words0_q<=words0[11:0];words1_q<=words1[11:0];
  end
- // While fault is clear, count is at most 2560: it is reset to zero or
- // comes from a valid index (<2560) plus one. An invalid index faults on
- // the same edge that commits its count. Equality therefore enforces the
- // descriptor upper bound without a second magnitude comparator.
- wire [1:0] descriptor_legal={count_legal_q[1] && words1_q!=0 && words1_q==count[1],
-                              count_legal_q[0] && words0_q!=0 && words0_q==count[0]};
- wire legal_word=index_legal_q && index_q==count[bank_q] && !pending[bank_q] && !done_q[bank_q];
+ // Delayed packing only needs bank ownership/half-pair checks. Wide count
+ // comparisons were registered with the associated word or completion.
+ wire [1:0] descriptor_legal=count_legal_q;
+ wire legal_word=index_legal_q && !pending[bank_q] && !done_q[bank_q];
  wire pair_arrival=valid_q && index_q[0];
  wire selected=pending[0] ? 1'b0 : 1'b1;
  // Expected next index is derived from the offered index, not a counter
@@ -55,8 +51,8 @@ module sram_host_packer #(parameter ORDINAL_BITS=64)(
  genvar bank_number;
  generate for(bank_number=0;bank_number<2;bank_number=bank_number+1)begin: indices
   always @(posedge clk)begin
-   if(reset || done_q[bank_number])count[bank_number]<=0;
-   else if(valid_q && bank_q==bank_number)count[bank_number]<=pending_count;
+   if(reset || bank_done[bank_number])count[bank_number]<=0;
+   else if(word_valid && word_bank==bank_number)count[bank_number]<=word_index+1'b1;
   end
   // Payload capture is independent of the validator. The validity state
   // and packet offer still reject malformed input and invalidate its epoch.

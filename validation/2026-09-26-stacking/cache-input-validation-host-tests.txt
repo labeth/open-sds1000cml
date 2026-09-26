@@ -1,0 +1,37 @@
+PASS host path phase=0 full banks, odd tails, exact RAM, metadata, ownership and reuse
+sim/tb_host_path.v:102: $finish called at 564320000 (1ps)
+PASS host path phase=1 full banks, odd tails, exact RAM, metadata, ownership and reuse
+sim/tb_host_path.v:102: $finish called at 564320000 (1ps)
+PASS host path phase=2 full banks, odd tails, exact RAM, metadata, ownership and reuse
+sim/tb_host_path.v:102: $finish called at 564320000 (1ps)
+PASS host path phase=3 full banks, odd tails, exact RAM, metadata, ownership and reuse
+sim/tb_host_path.v:102: $finish called at 564320000 (1ps)
+PASS host path phase=5 full banks, odd tails, exact RAM, metadata, ownership and reuse
+sim/tb_host_path.v:102: $finish called at 564320000 (1ps)
+PASS host path phase=7 full banks, odd tails, exact RAM, metadata, ownership and reuse
+sim/tb_host_path.v:102: $finish called at 564320000 (1ps)
+PASS host faults phase=0 malformed input, owned-bank protection, fault CDC and reset recovery
+sim/tb_host_faults.v:88: $finish called at 3990000 (1ps)
+PASS host faults phase=1 malformed input, owned-bank protection, fault CDC and reset recovery
+sim/tb_host_faults.v:88: $finish called at 3980000 (1ps)
+PASS host faults phase=2 malformed input, owned-bank protection, fault CDC and reset recovery
+sim/tb_host_faults.v:88: $finish called at 3980000 (1ps)
+PASS host faults phase=3 malformed input, owned-bank protection, fault CDC and reset recovery
+sim/tb_host_faults.v:88: $finish called at 3980000 (1ps)
+PASS host faults phase=5 malformed input, owned-bank protection, fault CDC and reset recovery
+sim/tb_host_faults.v:88: $finish called at 3980000 (1ps)
+PASS host faults phase=7 malformed input, owned-bank protection, fault CDC and reset recovery
+sim/tb_host_faults.v:88: $finish called at 3990000 (1ps)
+
+PASS host faults phase=0 malformed input, owned-bank protection, fault CDC and reset recovery
+fpga/acq_sram/sim/tb_host_faults.v:102: $finish called at 5560000 (1ps)
+PASS host faults phase=1 malformed input, owned-bank protection, fault CDC and reset recovery
+fpga/acq_sram/sim/tb_host_faults.v:102: $finish called at 5560000 (1ps)
+PASS host faults phase=2 malformed input, owned-bank protection, fault CDC and reset recovery
+fpga/acq_sram/sim/tb_host_faults.v:102: $finish called at 5570000 (1ps)
+PASS host faults phase=3 malformed input, owned-bank protection, fault CDC and reset recovery
+fpga/acq_sram/sim/tb_host_faults.v:102: $finish called at 5570000 (1ps)
+PASS host faults phase=5 malformed input, owned-bank protection, fault CDC and reset recovery
+fpga/acq_sram/sim/tb_host_faults.v:102: $finish called at 5560000 (1ps)
+PASS host faults phase=7 malformed input, owned-bank protection, fault CDC and reset recovery
+fpga/acq_sram/sim/tb_host_faults.v:102: $finish called at 5560000 (1ps)

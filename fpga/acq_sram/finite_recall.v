@@ -29,6 +29,8 @@ module sram_finite_recall #(parameter AW=19,BANK_WORDS=2560,READ_WARM=16,CONTINU
   DRAIN=11,PUBLISH=12,FINISH=13,FAILED=14,SNAPSHOT=15;
  reg [3:0] state=IDLE;
  reg geometry_ok=0,bank=0,continued=0;
+ // Precompute wide terminal comparisons before their state-transition edge.
+ reg last_word=0,last_chunk=0,distance_zero=0;
  reg [AW-1:0] base_stage=0,bias=0,base_address=0,target_pre=0,target=0,distance=0;
  reg [AW:0] requested=0,left=0;
  // Private request payload may settle while idle. Acceptance still uses
@@ -46,6 +48,7 @@ module sram_finite_recall #(parameter AW=19,BANK_WORDS=2560,READ_WARM=16,CONTINU
  assign command_count=command_discard ? {1'b0,distance} : read_count;
  localparam WW=READ_WARM>0 ? $clog2(READ_WARM+1) : 1;
  reg [WW-1:0] warm_left=0;
+ reg warm_done=1;
  wire [AW+1:0] range_end={1'b0,offset}+{1'b0,length};
  // Snapshot every operand together, then compare on the next clock. The
  // SNAPSHOT state aligns CHECK with the settings accepted at start; later
@@ -61,7 +64,7 @@ module sram_finite_recall #(parameter AW=19,BANK_WORDS=2560,READ_WARM=16,CONTINU
  wire [1:0] free_banks=~(bank_busy & ~bank_release);
  assign start_ready=state==IDLE && transport_ready && bank_busy==0 && !fault && !host_core_fault && !reset;
  assign command_read=1'b1;
- assign word_valid=state==READING && transport_read_valid && warm_left==0 && !fault && !reset;
+ assign word_valid=state==READING && transport_read_valid && warm_done && !fault && !reset;
  assign word_bank=bank;assign word_data=transport_read_data;
  reg word_event=0;
  always @(posedge clk)begin
@@ -72,7 +75,7 @@ module sram_finite_recall #(parameter AW=19,BANK_WORDS=2560,READ_WARM=16,CONTINU
   command<=0;bank_done<=0;request_error<=0;
   if(reset)begin
    state<=IDLE;active<=0;done<=0;fault<=0;error_code<=0;
-   bank_busy<=0;continued<=0;word_index<=0;remaining<=0;warm_left<=0;
+   bank_busy<=0;continued<=0;word_index<=0;remaining<=0;warm_left<=0;warm_done<=1;
    command_discard<=0;command_continue<=0;read_count<=0;
   end else begin
    bank_busy<=bank_busy & ~bank_release;
@@ -90,34 +93,35 @@ module sram_finite_recall #(parameter AW=19,BANK_WORDS=2560,READ_WARM=16,CONTINU
     WAIT_BANK:if(|free_banks)begin
      bank<=!free_banks[0];
      bank_busy<=(bank_busy & ~bank_release) | (free_banks[0] ? 2'b01 : 2'b10);
-     chunk<=left>BANK_WORDS ? BANK_WORDS : left;
+     chunk<=left>BANK_WORDS ? BANK_WORDS : left;last_chunk<=left<=BANK_WORDS;
      state<=PREP;
     end
     PREP:begin
      // The ordinal pipeline has settled during transport drain / host wait.
      if(bank)begin first1<=recalled;words1<=chunk;end
      else begin first0<=recalled;words0<=chunk;end
-     remaining<=chunk;word_index<=0;
+     remaining<=chunk;last_word<=chunk==1;word_index<=0;
      warm_left<=CONTINUE_READS && continued ? 0 : READ_WARM;
+     warm_done<=(CONTINUE_READS && continued) || READ_WARM==0;
      command_continue<=CONTINUE_READS && continued;
      read_count<=chunk+(CONTINUE_READS && continued ? 0 : READ_WARM);
      target_pre<=base_address+recalled[AW-1:0];
      if(CONTINUE_READS && continued)state<=READ_COMMAND;else state<=TARGET;
     end
     TARGET:begin target<=target_pre-READ_WARM;state<=DISTANCE;end
-    DISTANCE:begin distance<=target-position;state<=SEEK;end
+    DISTANCE:begin distance<=target-position;distance_zero<=target==position;state<=SEEK;end
     SEEK:if(transport_ready)begin
-     if(distance==0)state<=READ_COMMAND;
+     if(distance_zero)state<=READ_COMMAND;
      else begin command<=1;command_discard<=1;command_continue<=0;state<=SEEK_WAIT;end
     end
     SEEK_WAIT:if(transport_done)state<=READ_COMMAND;
     READ_COMMAND:if(transport_ready)begin command<=1;command_discard<=0;state<=READING;end
     READING:begin
      if(transport_read_valid)begin
-      if(warm_left!=0)warm_left<=warm_left-1'b1;
+      if(!warm_done)begin warm_left<=warm_left-1'b1;warm_done<=warm_left==1;end
       else begin
-       remaining<=remaining-1'b1;word_index<=word_index+1'b1;
-       if(remaining==1)state<=DRAIN;
+       remaining<=remaining-1'b1;last_word<=remaining==2;word_index<=word_index+1'b1;
+       if(last_word)state<=DRAIN;
       end
      end
      if(transport_done)begin fault<=1;error_code<=1;state<=FAILED;end
@@ -128,7 +132,7 @@ module sram_finite_recall #(parameter AW=19,BANK_WORDS=2560,READ_WARM=16,CONTINU
     end
     PUBLISH:begin
      bank_done<=bank ? 2'b10 : 2'b01;left<=left-chunk;continued<=1;
-     if(left==chunk)state<=FINISH;else state<=WAIT_BANK;
+     if(last_chunk)state<=FINISH;else state<=WAIT_BANK;
     end
     FINISH:if(bank_busy==0 && transport_ready)begin active<=0;done<=1;state<=IDLE;end
     FAILED:if(transport_ready)active<=0;

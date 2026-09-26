@@ -134,12 +134,14 @@ module stack_record_cache #(parameter AW=19,CACHE_AW=8,READ_WARM=16)(
  .core_fault(memory_core_fault),.core_release(cache_release),.read_fault(memory_fault),
  .read_valid(state==READ && !fault),.read_ready(read_ready),.read_word(word_offset[CACHE_AW:0]),
  .response_valid(read_response),.response_ready(state==CAPTURE),.response_data(fetched));
- assign command=recall_command && transport_owned && !core_abort && !reset && !core_reset[1];
+ assign command=recall_command && transport_owned && !core_abort && !failure_q && !reset && !core_reset[1];
+ // Registered failure drives recall state; the outer command gate above
+ // still blocks SRAM commands immediately when the grant or transfer fails.
  sram_finite_recall #(.AW(AW),.BANK_WORDS(PAGE_WORDS),.READ_WARM(READ_WARM),.CONTINUE_READS(0)) recall(
  .clk(transport_clk),.reset(core_reset[1]),.start(core_state==CORE_LAUNCH && !core_abort),.frozen(transport_owned),
  .record_start(core_start),.read_bias(core_bias),.record_words(core_words),.offset(core_offset),.length(core_length),
  .start_ready(recall_ready),.active(recall_active),.done(recall_done),.request_error(recall_error),.fault(recall_fault),
- .host_core_fault(core_abort),.bank_release(recall_release),.bank_done(bank_done),
+ .host_core_fault(failure_q),.bank_release(recall_release),.bank_done(bank_done),
  .word_valid(word_valid),.word_data(word_data),.word_index(word_index),
  .transport_ready(transport_ready),.transport_done(transport_done),.transport_read_valid(transport_read_valid),
  .transport_read_data(transport_read_data),.position(position),
