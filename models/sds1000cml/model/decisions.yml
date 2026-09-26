@@ -956,6 +956,15 @@ decisions:
   - Isolated resampler build-FkLvjv uses 1312 logic elements, 888 registers, no RAM and no DSP elements.
     All nine internal timing checks pass at 125 MHz, with minimum setup slack 0.203 ns and hold slack 0.172 ns.
     Virtual data I/O remains unconstrained. This result does not qualify a combined numerical image or deployment.
+  - The stack_accumulate candidate updates one channel and fine-grid bin with exact integer moments for a Q24
+    resampled value. Sums and odd-hit sums have 69 bits, squared sums have 106 Q48 bits, and counts have 32 bits.
+    One shared 36-bit adder performs serial squaring and moment updates without a multiplier. Disabled bins
+    preserve every field. Any sum or count overflow rejects the entire update and returns the unchanged old
+    state with an explicit invalid result. Results remain stable under backpressure; reset or a replacing start
+    cancels an unconsumed result. Tests compare 273 fixtures with arbitrary-precision arithmetic, including
+    repeated contributions, all overflow fields and cancellation, with a maximum 198 clocks. Physical state
+    storage, read-modify-write serialization, two-channel scheduling and integration with resampling remain
+    required. This component is not a deployed stacking capability or evidence that a numerical image fits.
   - Workflow coverage row RAW requires the common foundation and edge/force capture in every acquisition image.
     Acceptance is calibrated acquisition, pre/post-trigger placement, retained recall and responsive panel controls.
   - Workflow coverage row PROTOCOL requires one selected protocol frontend, hardware predicate, complete event
