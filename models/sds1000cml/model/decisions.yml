@@ -18,6 +18,19 @@ decisions:
     existing stacker. Plan multiple images now, with final boundaries determined by complete capability and concurrency
     coverage, measured resource budgets and timing. The seven-decoder prototype alone does not determine those boundaries.
   consequences:
+  - A development page transfer reuses the ordered host packer, register FIFO and sink to cross from 250 MHz
+    SRAM words to 125 MHz paired memory writes. Pages publish only after their final write and remain owned
+    until release is acknowledged across the clock boundary. The common reset abandons queued data and descriptors.
+    Geometry, overflow, memory and ownership faults poison the epoch. This transfer is not yet wired into the cache.
+  - The isolated reused transfer costs 2195 logic elements and 1886 registers, with no M9K or DSP use. Its worst
+    setup slack is minus 1.313 ns in the transport domain and plus 0.714 ns in the memory domain. Clock crossings
+    have bounded payload and first-synchronizer delays with endpoint-count checks; virtual external data I/O is
+    unconstrained. This is not physical timing closure or a deployable numerical image.
+  - The 8852-element numerical core plus the 2195-element transfer already exceeds the device's 10320 elements
+    before cache and acquisition integration. Separate-probe counts are a capacity warning, not a whole-image
+    fit result. Share the existing acquisition transfer where possible and reduce required numerical/transfer
+    resources before approving an additional image; neither narrower functional coverage nor another image split
+    removes the need to fit each complete workflow. Evidence is in validation/2026-09-26-stacking/page-transfer.json.
   - Cache writes fill unpublished pages without gating the RAM enable through the wide identity comparison.
     Record changes still poison publication and invalidate tags; 546 boundary/fault cases and three physical-depth
     cases pass, including changes to each identity field during a refill. This reduces the isolated cache to 877
@@ -26,7 +39,7 @@ decisions:
   - The fitted cache M9K ports require a minimum period of 4.201 ns, exceeding the 4 ns transport period.
     The numerical image therefore requires a slower cache memory clock and a lossless transfer stage from SRAM
     transport, preserving burst order, complete words, epoch reset and exclusive record ownership. Merely
-    pipelining control logic cannot close this memory period violation. The transfer stage remains unimplemented.
+    pipelining control logic cannot close this memory period violation. The development transfer described above remains unintegrated and unqualified.
   - The stacking record cache reads raw eight-bit retained SRAM words through the existing finite recall
     and sequential transport. Two direct-mapped 256-word pages reuse overlapping windows; ascending bytes
     are CH1[n], CH2[n], CH1[n+1], CH2[n+1]. Precision Q8.8 records are explicitly rejected.
