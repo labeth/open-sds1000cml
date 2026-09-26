@@ -5,7 +5,7 @@ module tb_stack_record_cache #(parameter AW=8,CACHE_AW=3,FULL_ONLY=0,PHASE=1);
  localparam N=1<<AW,PAGE=1<<CACHE_AW;
  reg clk=0;always #2 clk=~clk;wire sample_clk;assign #0.4 sample_clk=clk;
  reg memory_clk=0,memory_running=1;initial begin #PHASE;forever begin #4;if(memory_running)memory_clk=~memory_clk;end end
- reg reset=1,owned=1,frozen=1,raw8=1;
+ reg reset=1,owned=1,transport_owned=1,frozen=1,raw8=1;
  reg [31:0] epoch=7,record_id=9;reg [AW-1:0] record_start=N-11,read_bias=0;
  reg [AW:0] record_words=N;
  reg request_valid=0,adjacent=0,response_ready=0;reg [31:0] sample_index=0;
@@ -15,7 +15,7 @@ module tb_stack_record_cache #(parameter AW=8,CACHE_AW=3,FULL_ONLY=0,PHASE=1);
  wire [31:0] transport_read_data;wire [AW-1:0] position;wire [AW:0] command_count;
  reg early_done=0;
  stack_record_cache #(.AW(AW),.CACHE_AW(CACHE_AW)) dut(
- .clk(clk),.memory_clk(memory_clk),.reset(reset),.owned(owned),.frozen(frozen),.raw8(raw8),.epoch(epoch),.record_id(record_id),
+ .clk(memory_clk),.transport_clk(clk),.transport_owned(transport_owned),.reset(reset),.owned(owned),.frozen(frozen),.raw8(raw8),.epoch(epoch),.record_id(record_id),
  .record_start(record_start),.read_bias(read_bias),.record_words(record_words),
  .request_valid(request_valid),.request_ready(request_ready),.sample_index(sample_index),.adjacent(adjacent),
  .response_valid(response_valid),.response_ready(response_ready),.response_error(response_error),
@@ -46,15 +46,15 @@ module tb_stack_record_cache #(parameter AW=8,CACHE_AW=3,FULL_ONLY=0,PHASE=1);
  end
  task launch(input integer idx,input integer pair_request);
  begin
-  cycles=0;while(!request_ready)begin @(negedge clk);cycles=cycles+1;if(cycles>100)$fatal(1,"request ready timeout");end
+  cycles=0;while(!request_ready)begin @(negedge memory_clk);cycles=cycles+1;if(cycles>100)$fatal(1,"request ready timeout");end
   sample_index=idx;adjacent=pair_request;request_valid=1;
-  @(negedge clk);request_valid=0;sample_index=32'hffffffff;adjacent=0;
+  @(negedge memory_clk);request_valid=0;sample_index=32'hffffffff;adjacent=0;
  end
  endtask
  task finish(input integer idx,input integer pair_request,input integer bad);
  reg [32:0] held;
  begin
-  cycles=0;while(!response_valid)begin @(negedge clk);cycles=cycles+1;if(cycles>2*N+2*PAGE+2000)$fatal(1,"response timeout state=%0d recall=%0d",dut.state,dut.recall.state);end
+  cycles=0;while(!response_valid)begin @(negedge memory_clk);cycles=cycles+1;if(cycles>2*N+2*PAGE+2000)$fatal(1,"response timeout state=%0d recall=%0d",dut.state,dut.recall.state);end
   if(response_error!==bad[0])$fatal(1,"error idx=%0d got=%b expected=%0d",idx,response_error,bad);
   if(!bad)begin
    if(ch0_left!==expected(idx,0) || ch1_left!==expected(idx,1))$fatal(1,"left byte order idx=%0d got=%h %h expected=%h %h",idx,ch0_left,ch1_left,expected(idx,0),expected(idx,1));
@@ -62,8 +62,8 @@ module tb_stack_record_cache #(parameter AW=8,CACHE_AW=3,FULL_ONLY=0,PHASE=1);
    if(!pair_request && (ch0_right!=0 || ch1_right!=0))$fatal(1,"unrequested right sample");
   end
   held={response_error,ch0_left,ch1_left,ch0_right,ch1_right};
-  repeat(11)begin @(negedge clk);if(!response_valid || request_ready || held!=={response_error,ch0_left,ch1_left,ch0_right,ch1_right})$fatal(1,"unstable held response");end
-  response_ready=1;@(negedge clk);response_ready=0;
+  repeat(11)begin @(negedge memory_clk);if(!response_valid || request_ready || held!=={response_error,ch0_left,ch1_left,ch0_right,ch1_right})$fatal(1,"unstable held response");end
+  response_ready=1;@(negedge memory_clk);response_ready=0;
   if(response_valid || busy)$fatal(1,"response not consumed");
   if(transport_ready && position!==AW'(address-physical_origin))$fatal(1,"transport cursor lost flush pulses");
   cases=cases+1;
@@ -76,14 +76,14 @@ module tb_stack_record_cache #(parameter AW=8,CACHE_AW=3,FULL_ONLY=0,PHASE=1);
  begin
   // Shared reset abandons the old epoch. Rebase a synthetic new record's
   // logical origin to the actual counter; reset does not reset physical SRAM.
-  reset=1;request_valid=0;response_ready=0;owned=1;frozen=1;raw8=1;early_done=0;
-  repeat(3)@(negedge clk);physical_origin=address;epoch=epoch+1;record_id=record_id+1;
-  record_start=N-11;read_bias=0;record_words=N;reset=0;repeat(12)@(negedge clk);
+  reset=1;request_valid=0;response_ready=0;owned=1;transport_owned=1;frozen=1;raw8=1;early_done=0;
+  repeat(3)@(negedge memory_clk);physical_origin=address;epoch=epoch+1;record_id=record_id+1;
+  record_start=N-11;read_bias=0;record_words=N;reset=0;repeat(12)@(negedge memory_clk);
  end
  endtask
  initial begin
   for(i=0;i<N;i=i+1)memory[i]=pattern(i);
-  repeat(5)@(negedge clk);reset=0;repeat(12)@(negedge clk);
+  repeat(5)@(negedge memory_clk);reset=0;repeat(12)@(negedge memory_clk);
   run(0,1,0);run(2*N-1,0,0);before_pulses=pulses;run(1,1,0);
   if(pulses!=before_pulses)$fatal(1,"cached pair touched SRAM");
   if(!FULL_ONLY)begin
@@ -107,14 +107,20 @@ module tb_stack_record_cache #(parameter AW=8,CACHE_AW=3,FULL_ONLY=0,PHASE=1);
    if(seeks!=before_seeks)$fatal(1,"zero-distance refill sought unnecessarily");
    // Identity change while a response is held must be an error on the same
    // consume edge, even before the controller's registered fault is updated.
-   launch(1,1);while(!response_valid)@(negedge clk);record_id=record_id+1;#1;
+   launch(1,1);while(!response_valid)@(negedge memory_clk);record_id=record_id+1;#1;
    if(!response_error)$fatal(1,"held response ignored identity change");
-   response_ready=1;@(negedge clk);response_ready=0;
+   response_ready=1;@(negedge memory_clk);response_ready=0;
    if(!fault || request_ready || response_valid)$fatal(1,"identity fault did not poison reader");
    new_epoch();
    // Revoke ownership with an actual transport read active, then drain it.
-   launch(0,1);while(!dut.recall_active || transport_ready)@(negedge clk);owned=0;
+   launch(0,1);while(!dut.recall_active || transport_ready)@(negedge memory_clk);owned=0;
    finish(0,1,1);if(!fault || request_ready || !transport_ready)$fatal(1,"ownership loss did not drain/poison");
+   new_epoch();
+   // The fast arbiter can revoke independently of the numerical controller.
+   launch(0,1);while(!dut.word_valid)@(negedge clk);transport_owned=0;#0.1;
+   if(command)$fatal(1,"fast grant loss did not suppress commands");
+   finish(0,1,1);
+   if(!fault || request_ready || !transport_ready || dut.cache_valid!=0)$fatal(1,"fast grant loss did not drain/poison");
    new_epoch();
    // Drop each identity field while a page is receiving words. The RAM may
    // finish an unpublished write, but no tag or response may remain valid.
@@ -142,14 +148,14 @@ module tb_stack_record_cache #(parameter AW=8,CACHE_AW=3,FULL_ONLY=0,PHASE=1);
    memory_running=1;
    if(PAGE>16)begin
     finish(0,1,1);if(!fault)$fatal(1,"cache ignored transfer overflow");
-    repeat(20)begin @(negedge clk);if(response_valid || request_ready)$fatal(1,"poisoned cache repeated a response");end
+    repeat(20)begin @(negedge memory_clk);if(response_valid || request_ready)$fatal(1,"poisoned cache repeated a response");end
     new_epoch();run(0,1,0);
    end else finish(0,1,0);
-   // Reset also cancels a cached read crossing the clock boundary.
-   launch(1,1);while(!dut.storage.pending)@(negedge clk);new_epoch();
-   repeat(20)@(negedge clk);if(response_valid || fault)$fatal(1,"old memory read escaped reset");run(0,1,0);
+   // Reset also cancels a cached read in the memory clock domain.
+   launch(1,1);while(dut.storage.read_state==0)@(negedge memory_clk);new_epoch();
+   repeat(20)@(negedge memory_clk);if(response_valid || fault)$fatal(1,"old memory read escaped reset");run(0,1,0);
    // A coordinated reset during a burst clears tags and in-flight response.
-   new_epoch();launch(0,1);while(dut.recall.state!=10)@(negedge clk);new_epoch();
+   new_epoch();launch(0,1);while(dut.recall.state!=10)@(negedge memory_clk);new_epoch();
    if(response_valid || fault)$fatal(1,"reset exposed old response");run(0,1,0);
   end
   for(i=0;i<N;i=i+1)if(memory[i]!==pattern(i))$fatal(1,"retained SRAM was modified");

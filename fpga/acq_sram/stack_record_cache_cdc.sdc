@@ -22,18 +22,19 @@ foreach name {source_bad_memory memory_bad_core} {
  set_max_delay 4.0 -to $points
  set_min_delay 0.0 -to $points
 }
-# Bundled addresses/results are held through the synchronized toggle handshake.
-# Default CACHE_AW=8; endpoint count intentionally fails if geometry changes.
-set addresses [cache_checked_registers {*storage|held_word*} 9]
-set memory_addresses [cache_checked_registers {*storage|memory_word*} 9]
-set_max_delay 6.0 -from $addresses -to $memory_addresses
-set_min_delay 0.0 -from $addresses -to $memory_addresses
-set results [cache_checked_registers {*storage|held_response*} 32]
-set returned [cache_checked_registers {*storage|response_data*} 32]
-set_max_delay 6.0 -from $results -to $returned
-set_min_delay 0.0 -from $results -to $returned
-foreach name {request_sync response_sync} {
- set points [cache_checked_registers [format {*storage|%s[0]} $name] 1]
+# Refill geometry is held until the completion toggle returns. Transport
+# snapshots it only after the two-stage request synchronizer has settled.
+# Counts target AW=19, CACHE_AW=8. Offset bits 7:0 and 19 are
+# constant; bit 8 shares the bank register. Length only needs bits 8:0.
+# Geometry changes require rechecking endpoints.
+foreach {source target count} {held_start core_start 19 held_bias core_bias 19 held_words core_words 20 refill_offset core_offset 10 refill_length core_length 9 refill_bank core_bank 1 core_failed refill_error 1} {
+ set origins [cache_checked_registers $source* $count]
+ set targets [cache_checked_registers $target* $count]
+ set_max_delay 6.0 -from $origins -to $targets
+ set_min_delay 0.0 -from $origins -to $targets
+}
+foreach name {request_sync abort_sync completion_sync idle_sync grant_sync available_sync} {
+ set points [cache_checked_registers [format {%s[0]} $name] 1]
  set_max_delay 4.0 -to $points
  set_min_delay 0.0 -to $points
 }

@@ -18,20 +18,21 @@ decisions:
     existing stacker. Plan multiple images now, with final boundaries determined by complete capability and concurrency
     coverage, measured resource budgets and timing. The seven-decoder prototype alone does not determine those boundaries.
   consequences:
-  - The retained-record cache now connects the finite SRAM recall controller to the page transfer and two M9Ks
-    clocked at 125 MHz. The cache controller remains at 250 MHz. Refill completion waits for destination RAM
-    publication and the release acknowledgement; cached reads use a separate stable-payload toggle handshake.
-    Common reset abandons both domains. The request interface still needs integration with the numerical clock.
-  - Connected tests use the actual sequential SRAM transport RTL and cover full physical depth, two through
-    2048-word pages, six clock phases, byte order, page reuse, identity/ownership faults, paused memory clocks
-    and reset during a cached read. A new overflow test found and fixed a sticky transfer fault that prevented
-    drain completion; the cache now produces exactly one error response and remains poisoned until reset.
-  - The connected cache/recall/transfer probe uses 2672 logic elements, 2076 registers and two M9Ks. Its 125 MHz
-    memory setup margin is 0.621 ns and the earlier M9K period violation is gone. Transport control setup still
-    fails by 2.279 ns. Adding its separate count to the 8081-element numerical core gives 10753 elements before
-    physical acquisition/control and normalization. This is not an integrated-image fit or deployment; moving
-    slow cache control out of the transport domain and reducing/sharing resources remain necessary.
-    Evidence and checked CDC bounds are in validation/2026-09-26-stacking/cache-clocked.json.
+  - The retained-record cache controller, request interface and two M9Ks now run at 125 MHz alongside
+    the numerical engine. Only finite SRAM recall and source page transport run at 250 MHz. An acknowledged
+    bundled-data handshake transfers stable refill geometry and returns completion after RAM publication.
+    Cache-hit reads are local to the numerical clock. Common reset abandons both domains and cached tags.
+  - Independent fast-domain transport ownership gates commands immediately; synchronized grant state also
+    invalidates the slow cache. Tests cover independent grant revocation, record metadata changes, error draining,
+    paused memory clocks, overflow and common reset. All 5389 cases pass across six phases, page sizes from two
+    through 2048 words, and full physical SRAM depth. Hits generate no SRAM pulses and retained memory is unchanged.
+  - The new cache/recall/transfer probe uses 2867 logic elements, 2241 registers and two M9Ks. It supersedes
+    the previous 2672-element probe; transport setup improves from minus 2.279 ns to minus 0.838 ns, but memory
+    setup misses by 0.046 ns and memory reset recovery misses by 0.444 ns. Minimum hold margin is 0.102 ns.
+    Timing is not closed and this is not a deployable image. Adding the separate 8081-element numerical probe
+    gives 10948 elements, above the 10320-device capacity before physical acquisition/control and normalization.
+    Resource sharing, timing closure and integration remain required. Virtual data I/O is unconstrained.
+    Evidence and endpoint-checked CDC bounds are in validation/2026-09-26-stacking/cache-controller-125.json.
   - The bin writer discards invalid arithmetic and never issues a state write on overflow. Its accumulator
     therefore disables the redundant rollback payload copy. Standalone accumulator instances retain the default
     old-state-on-overflow contract. Each old moment is consumed before its result replaces it; valid results,

@@ -11,14 +11,12 @@ module stack_cache_memory #(parameter CACHE_AW=8)(
  input wire word_valid,word_bank,input wire [31:0] word_data,
  input wire [11:0] word_index,input wire [1:0] bank_done,
  input wire [63:0] first0,first1,input wire [19:0] words0,words1,
- output wire core_fault,output wire [1:0] core_release,
+ output wire core_fault,output wire [1:0] core_release,output wire read_fault,
  input wire read_valid,output wire read_ready,input wire [CACHE_AW:0] read_word,
  output reg response_valid=0,input wire response_ready,output reg [31:0] response_data=0
 );
  localparam PAGE_WORDS=1<<CACHE_AW,PAGE_PAIRS=PAGE_WORDS/2;
- (* async_reg="true" *) reg [1:0] core_reset=3,memory_reset=3;
- always @(posedge core_clk or posedge reset)
-  if(reset)core_reset<=3;else core_reset<={core_reset[0],1'b0};
+ (* async_reg="true" *) reg [1:0] memory_reset=3;
  always @(posedge memory_clk or posedge reset)
   if(reset)memory_reset<=3;else memory_reset<={memory_reset[0],1'b0};
  wire memory_write,page_fault;wire [11:0] memory_pair,page_words0,page_words1;
@@ -40,28 +38,12 @@ module stack_cache_memory #(parameter CACHE_AW=8)(
   memory_write,memory_pair,memory_data,memory_fault,page_fault,page_ready,
   , ,page_words0,page_words1,page_release);
 
- // Request address and returned word remain stable until their toggle has
- // crossed two synchronizer stages. No new request precedes response consume.
- reg request_toggle=0,pending=0;
- reg [CACHE_AW:0] held_word=0;
- (* async_reg="true",preserve *) reg [1:0] request_sync=0,response_sync=0;
- reg response_toggle=0;
- reg [31:0] held_response=0;
- assign read_ready=!reset && !core_reset[1] && !core_fault && !pending && !response_valid;
- always @(posedge core_clk or posedge core_reset[1])begin
-  if(core_reset[1])begin request_toggle<=0;pending<=0;response_sync<=0;response_valid<=0;response_data<=0;end
-  else begin
-   response_sync<={response_sync[0],response_toggle};
-   if(response_valid && response_ready)response_valid<=0;
-   if(read_valid && read_ready)begin held_word<=read_word;request_toggle<=!request_toggle;pending<=1;end
-   if(pending && response_sync[1]==request_toggle)begin
-    response_data<=held_response;response_valid<=!core_fault;pending<=0;
-   end
-   if(core_fault)response_valid<=0;
-  end
- end
+ // Cache-hit reads are local to the 125 MHz memory/numerical clock.
+ // The controller owns the page and serializes reads with refills.
+ assign read_fault=page_fault;
  reg [1:0] read_state=0;
- (* preserve *) reg [CACHE_AW:0] memory_word=0;
+ reg [CACHE_AW:0] memory_word=0;
+ assign read_ready=!reset && !memory_reset[1] && !page_fault && read_state==0 && !response_valid;
  (* ramstyle="M9K" *) reg [63:0] memory[0:PAGE_WORDS-1];
  reg [63:0] fetched=0;
  always @(posedge memory_clk)begin
@@ -70,17 +52,18 @@ module stack_cache_memory #(parameter CACHE_AW=8)(
   if(read_state==1)fetched<=memory[memory_word[CACHE_AW:1]];
  end
  always @(posedge memory_clk or posedge memory_reset[1])begin
-  if(memory_reset[1])begin request_sync<=0;response_toggle<=0;read_state<=0;held_response<=0;end
+  if(memory_reset[1])begin read_state<=0;response_valid<=0;response_data<=0;end
   else begin
-   request_sync<={request_sync[0],request_toggle};
+   if(response_valid && response_ready)response_valid<=0;
    case(read_state)
-    0:if(request_sync[1]!=response_toggle && !page_fault)begin memory_word<=held_word;read_state<=1;end
+    0:if(read_valid && read_ready)begin memory_word<=read_word;read_state<=1;end
     1:read_state<=2;
     2:begin
-     held_response<=memory_word[0] ? fetched[63:32]:fetched[31:0];
-     response_toggle<=request_sync[1];read_state<=0;
+     response_data<=memory_word[0] ? fetched[63:32]:fetched[31:0];
+     response_valid<=!page_fault;read_state<=0;
     end
    endcase
+   if(page_fault)response_valid<=0;
   end
  end
 endmodule
