@@ -1025,6 +1025,9 @@ inferenceHints:
   - ../../fpga/acq_sram/stack_state_tile.v
   - ../../fpga/acq_sram/stack_tile_transfer.v
   - ../../fpga/acq_sram/stack_tile_access.v
+  - ../../fpga/acq_sram/stack_record_cache.v
+  - ../../fpga/acq_sram/sim/tb_stack_record_cache.v
+  - ../../app/internal/superres/stack_record_cache_rtl_test.go
   - ../../fpga/acq_sram/stack_search_accumulator.v
   - ../../fpga/acq_sram/sim/tb_stack_search_accumulator.v
   - ../../app/internal/superres/stack_search_accumulator_rtl_test.go

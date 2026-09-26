@@ -18,6 +18,19 @@ decisions:
     existing stacker. Plan multiple images now, with final boundaries determined by complete capability and concurrency
     coverage, measured resource budgets and timing. The seven-decoder prototype alone does not determine those boundaries.
   consequences:
+  - The stacking record cache reads raw eight-bit retained SRAM words through the existing finite recall
+    and sequential transport. Two direct-mapped 256-word pages reuse overlapping windows; ascending bytes
+    are CH1[n], CH2[n], CH1[n+1], CH2[n+1]. Precision Q8.8 records are explicitly rejected.
+    Epoch, record identifier, origin, read bias and length must stay stable under exclusive ownership through
+    response consumption. Ownership loss, incomplete reads or metadata changes poison the cache until shared reset.
+  - Cache simulation covers 536 boundary and fault cases plus three full-depth cases using the real transport RTL
+    and a sequential SRAM model. Cache hits generate no SRAM clocks and retained memory is unchanged.
+    The isolated cache and recall helper fit in 898 logic elements and 16384 memory bits, but fail 250 MHz
+    internal setup timing by 2.608 ns and minimum pulse width by 0.201 ns. This is development evidence,
+    not a qualified image. Evidence is in validation/2026-09-26-stacking/record-cache.json.
+  - Cache misses still seek the sequential SRAM counter and may require a full wrap. Throughput remains
+    unqualified. Clock-domain crossing to the 125 MHz numerical engine, reference storage, normalization,
+    arbitration and complete-image timing closure remain required before physical stacking deployment.
   - Architecture planning assumes multiple images; only the existing qualified general image is currently supported.
     Planning approval does not qualify a new image or authorize advertising unimplemented capabilities.
   - The committed deployment inventory contains only fpga/images/general/bench.rbf, with its frozen source,

@@ -1,0 +1,12 @@
+=== RUN   TestStackRecordCacheRTL
+=== RUN   TestStackRecordCacheRTL/boundaries-cache-ownership
+    stack_record_cache_rtl_test.go:35: PASS frozen SRAM cache AW=8 cases=536 commands=87 seeks=44 K2_pulses=11492
+        ../../../fpga/acq_sram/sim/tb_stack_record_cache.v:127: $finish called at 97812000 (1ps)
+=== RUN   TestStackRecordCacheRTL/physical-depth
+    stack_record_cache_rtl_test.go:35: PASS frozen SRAM cache AW=19 cases=3 commands=4 seeks=2 K2_pulses=1048566
+        ../../../fpga/acq_sram/sim/tb_stack_record_cache.v:127: $finish called at 4195072000 (1ps)
+--- PASS: TestStackRecordCacheRTL (20.94s)
+    --- PASS: TestStackRecordCacheRTL/boundaries-cache-ownership (0.45s)
+    --- PASS: TestStackRecordCacheRTL/physical-depth (20.50s)
+PASS
+ok  	open-sds/app/internal/superres	20.945s
