@@ -29,4 +29,19 @@ func TestStackPageTransferRTL(t *testing.T) {
 			t.Log(strings.TrimSpace(string(out)))
 		})
 	}
+	for _, bits := range []int{19, 64} {
+		t.Run(fmt.Sprintf("sink-ordinal-%d", bits), func(t *testing.T) {
+			image := filepath.Join(t.TempDir(), "sink.vvp")
+			root := filepath.Join("..", "..", "..", "fpga", "acq_sram")
+			args := []string{"-g2012", "-s", "tb_host_sink", fmt.Sprintf("-Ptb_host_sink.ORDINAL_BITS=%d", bits), "-o", image, filepath.Join(root, "host_sink.v"), filepath.Join(root, "host_ram.v"), filepath.Join(root, "sim", "tb_host_sink.v")}
+			if out, err := exec.Command("iverilog", args...).CombinedOutput(); err != nil {
+				t.Fatalf("compile %v\n%s", err, out)
+			}
+			out, err := exec.Command("vvp", image).CombinedOutput()
+			if err != nil || !strings.Contains(string(out), "PASS host sink") {
+				t.Fatalf("simulate %v\n%s", err, out)
+			}
+			t.Log(strings.TrimSpace(string(out)))
+		})
+	}
 }

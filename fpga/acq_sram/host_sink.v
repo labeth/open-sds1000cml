@@ -5,8 +5,9 @@
 // next edge after acceptance; a subsequent descriptor publishes after that write.
 // Caller supplies common epoch reset, prevents writes to owned banks, and
 // crosses publication/metadata to ARM with an ownership handshake.
+// ORDINAL_BITS (1..64) rejects oversized descriptors before publication.
 // TRLC-LINKS: REQ-SDS-094
-module sram_host_sink(
+module sram_host_sink #(parameter ORDINAL_BITS=64)(
  input wire clk,reset,upstream_fault,
  input wire valid,input wire [79:0] data,output wire ready,
  output reg ram_write=0,output reg [11:0] ram_pair=0,
@@ -23,7 +24,7 @@ module sram_host_sink(
  wire [11:0] count=bank ? pairs1 : pairs0;
  wire [13:0] expected_pair=(bank ? 14'd1280 : 14'd0)+count;
  wire legal_data=count<1280 && field==expected_pair;
- wire legal_descriptor=field!=0 && field<=2560 &&
+ wire legal_descriptor=(data[63:0] >> ORDINAL_BITS)==0 && field!=0 && field<=2560 &&
                        (({1'b0,field}+1'b1)>>1)==count;
  wire legal=descriptor ? legal_descriptor : legal_data;
  assign ready=!reset && !fault && !upstream_fault && !ram_fault;
@@ -42,8 +43,8 @@ module sram_host_sink(
  // the ownership/geometry fan-in; only the validated publication below makes
  // it visible. Ownership samples on the following edge and holds its own copy.
  always @(posedge clk)begin
-  if(valid && descriptor && !bank)begin first0<=data[63:0];words0<=field[11:0];end
-  if(valid && descriptor && bank)begin first1<=data[63:0];words1<=field[11:0];end
+  if(valid && descriptor && !bank)begin first0<={{(64-ORDINAL_BITS){1'b0}},data[ORDINAL_BITS-1:0]};words0<=field[11:0];end
+  if(valid && descriptor && bank)begin first1<={{(64-ORDINAL_BITS){1'b0}},data[ORDINAL_BITS-1:0]};words1<=field[11:0];end
  end
  always @(posedge clk)begin
   publish<=0;

@@ -6,6 +6,7 @@ module tb_stack_page_transfer;
  reg core_clk=0,memory_clk=0,reset=1,memory_running=1;
  always #2 core_clk=~core_clk;
  initial begin #PHASE;forever begin #4;if(memory_running)memory_clk=~memory_clk;end end
+ reg bad_ordinal=0;
  reg word_valid=0,word_bank=0;reg [31:0] word_data=0;reg [11:0] word_index=0;
  reg [1:0] bank_done=0,page_release=0;
  reg [63:0] first0=0,first1=0;reg [19:0] words0=0,words1=0;
@@ -41,8 +42,8 @@ module tb_stack_page_transfer;
  task send(input integer bank,input integer length);
  begin
   @(negedge core_clk);
-  if(bank)begin words1=length;first1=64'h1234567800000000+length;end
-  else begin words0=length;first0=64'h8765432100000000+length;end
+  if(bank)begin words1=length;first1=(bad_ordinal ? 64'h80000:64'h40000)+length;end
+  else begin words0=length;first0=(bad_ordinal ? 64'h8000000000000000:64'h10000)+length;end
   for(i=0;i<length;i=i+1)begin
    word_valid=1;word_bank=bank;word_index=i;word_data=value(bank,i);@(negedge core_clk);
   end
@@ -93,6 +94,8 @@ module tb_stack_page_transfer;
   clear_epoch();send(0,5);check_page(0,5);memory_fault=1;expect_fault();
   clear_epoch();@(negedge memory_clk);page_release=1;@(negedge memory_clk);page_release=0;expect_fault();
   clear_epoch();word_valid=1;word_index=0;@(negedge core_clk);word_valid=0;words0=2;bank_done=1;@(negedge core_clk);bank_done=0;expect_fault();
+  clear_epoch();bad_ordinal=1;send(0,7);expect_fault();
+  clear_epoch();send(1,8);expect_fault();bad_ordinal=0;
   // A stopped memory consumer cannot silently lose a fixed-rate SRAM burst.
   clear_epoch();@(negedge memory_clk);memory_running=0;send(0,256);
   if(!core_fault)$fatal(1,"FIFO overflow not reported in transport domain");

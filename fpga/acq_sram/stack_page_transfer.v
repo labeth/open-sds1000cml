@@ -1,5 +1,7 @@
 // ENGMODEL-OWNER-UNIT: FU-RTL-ACQ-SRAM-TOP
 // Retained-page transfer: 250 MHz ordered words -> 125 MHz paired RAM writes.
+// Ordinals are bounded to the 19-bit physical retained-record word range.
+// Oversized metadata faults instead of truncating.
 // Reuses the host packet format (bank 1 starts at pair address 1280). A cache
 // maps that address to its own page bank and rejects addresses beyond its size.
 // Writes are non-backpressurable. The caller reserves banks before input and
@@ -58,7 +60,7 @@ module stack_page_transfer(
    core_release<=release_sync ^ release_seen;
   end
  end
- sram_host_packer pack(core_clk,core_reset[1],word_valid,word_bank,word_data,word_index,
+ sram_host_packer #(.ORDINAL_BITS(19)) pack(core_clk,core_reset[1],word_valid,word_bank,word_data,word_index,
   bank_done,first0,first1,words0,words1,push,packet,pack_fault);
  (* preserve *) reg [79:0] fifo_packet=0;
  reg fifo_push=0;
@@ -67,7 +69,7 @@ module stack_page_transfer(
   else begin fifo_push<=push;fifo_packet<=packet;end
  end
  sram_host_fifo fifo(reset,core_clk,memory_clk,fifo_push,fifo_packet,fifo_ready,overflow,valid,data,ready);
- sram_host_sink sink(memory_clk,memory_reset[1],source_bad_memory[1] || ownership_fault || owned_packet,
+ sram_host_sink #(.ORDINAL_BITS(19)) sink(memory_clk,memory_reset[1],source_bad_memory[1] || ownership_fault || owned_packet,
   valid,data,ready,memory_write,memory_pair,memory_data,memory_fault,sink_fault,publish,
   page_first0,page_first1,page_words0,page_words1);
 endmodule

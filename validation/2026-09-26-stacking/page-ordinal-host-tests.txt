@@ -1,0 +1,6 @@
+PASS host sink: full bank RAM readback, odd tail, ordering, malformed descriptors, fault/reset
+fpga/acq_sram/sim/tb_host_sink.v:71: $finish called at 123408000 (1ps)
+PASS host path phase=0 full banks, odd tails, exact RAM, metadata, ownership and reuse
+fpga/acq_sram/sim/tb_host_path.v:102: $finish called at 564320000 (1ps)
+PASS host faults phase=0 malformed input, owned-bank protection, fault CDC and reset recovery
+fpga/acq_sram/sim/tb_host_faults.v:88: $finish called at 3990000 (1ps)

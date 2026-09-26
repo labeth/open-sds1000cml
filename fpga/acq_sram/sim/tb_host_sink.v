@@ -2,6 +2,8 @@
 `timescale 1ns/1ps
 // TRLC-LINKS: REQ-SDS-094
 module tb_host_sink;
+ parameter ORDINAL_BITS=64;
+ localparam [63:0] FIRST_VALUE=64'h123456789abcdef0 >> (64-ORDINAL_BITS);
  reg clk=0,rclk=0,reset=1,valid=0,upstream_fault=0;
  always #4 clk=~clk;
  always #5 rclk=~rclk;
@@ -9,7 +11,7 @@ module tb_host_sink;
  wire ready,wr,rf,fault;wire [11:0] addr,w0,w1;
  wire [63:0] wd,f0,f1;wire [1:0] pub;
  reg ren=0;reg [13:0] ra=0;wire rv,re;wire [15:0] rd;
- sram_host_sink dut(clk,reset,upstream_fault,valid,data,ready,wr,addr,wd,rf,fault,pub,f0,f1,w0,w1);
+ sram_host_sink #(.ORDINAL_BITS(ORDINAL_BITS)) dut(clk,reset,upstream_fault,valid,data,ready,wr,addr,wd,rf,fault,pub,f0,f1,w0,w1);
  sram_host_ram ram(clk,reset,wr,addr,wd,rf,rclk,reset,ren,ra,rv,re,rd);
  integer published=0,writes=0,i;
  always @(posedge clk)if(wr)writes=writes+1;
@@ -45,8 +47,8 @@ module tb_host_sink;
    send(0,0,i,payload(i));
    if(pub || published)$fatal(1,"early publication");
   end
-  send(1,0,2560,64'h123456789abcdef0);
-  if(pub!==1 || w0!=2560 || f0!=64'h123456789abcdef0 || writes!=1280)$fatal(1,"full descriptor");
+  send(1,0,2560,FIRST_VALUE);
+  if(pub!==1 || w0!=2560 || f0!=FIRST_VALUE || writes!=1280)$fatal(1,"full descriptor");
   for(i=0;i<1280;i=i+1)begin
    value=payload(i);
    read_check(i*4,value[15:0]);read_check(i*4+1,value[31:16]);
@@ -66,6 +68,10 @@ module tb_host_sink;
   if(!fault || pub)$fatal(1,"duplicate accepted");
   clear_epoch;send(1,0,0,0);
   if(!fault || pub)$fatal(1,"empty descriptor accepted");
+  if(ORDINAL_BITS<64)begin
+   clear_epoch;send(0,0,0,payload(0));send(1,0,2,64'd1<<ORDINAL_BITS);
+   if(!fault || pub || ready)$fatal(1,"oversized ordinal accepted");
+  end
   clear_epoch;upstream_fault=1;repeat(2)@(negedge clk);
   if(!fault || ready)$fatal(1,"upstream fault ignored");
   $display("PASS host sink: full bank RAM readback, odd tail, ordering, malformed descriptors, fault/reset");$finish;

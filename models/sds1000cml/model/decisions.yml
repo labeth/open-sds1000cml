@@ -18,6 +18,16 @@ decisions:
     existing stacker. Plan multiple images now, with final boundaries determined by complete capability and concurrency
     coverage, measured resource budgets and timing. The seven-decoder prototype alone does not determine those boundaries.
   consequences:
+  - Stacking page metadata uses 19-bit retained-record word ordinals, matching the physical SRAM range.
+    Both packet construction and destination publication reject oversized ordinals instead of truncating them.
+    Shared host packer and sink default to 64-bit ordinals for general streaming; their full-width RAM, ownership
+    and fault regressions pass. The page transfer retains eight register-FIFO slots because a four-slot experiment
+    failed seven-word pages at all six tested clock phases. Depth reduction is therefore rejected.
+  - The bounded-ordinal page-transfer probe uses 1919 logic elements and 1571 registers, saving 276 elements and
+    315 registers. It still fails setup timing by 0.612 ns in the 250 MHz transport domain and 0.058 ns in the
+    125 MHz memory domain. Its separate count plus the 8577-element numerical core is 10496, already above
+    the device's 10320 elements before cache/acquisition integration. This remains development RTL; evidence
+    is in validation/2026-09-26-stacking/page-ordinal.json. No additional image is qualified or deployed.
   - The accumulator reuses its adder result as the running square and preserves the completed 74-bit square
     in the expired multiplicand register. Its second operand is bounded to 74 bits while the 108-bit result
     and atomic overflow behavior remain unchanged. Correlation private-product capture no longer depends on

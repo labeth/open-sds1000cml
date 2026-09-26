@@ -3,8 +3,9 @@
 // its final word, with stable first/count metadata. Ownership is external:
 // no reuse until RAM publication and ARM release. Common epoch reset required.
 // Output packets feed sram_host_fifo; FIFO overflow invalidates the epoch.
+// ORDINAL_BITS (1..64) may bound retained-record metadata; upper bits fault.
 // TRLC-LINKS: REQ-SDS-049
-module sram_host_packer(
+module sram_host_packer #(parameter ORDINAL_BITS=64)(
  input wire clk,reset,input wire word_valid,word_bank,
  input wire [31:0] word_data,input wire [11:0] word_index,
  input wire [1:0] bank_done,
@@ -15,11 +16,11 @@ module sram_host_packer(
  reg [31:0] half[0:1];
  reg [13:0] pair_address[0:1];
  reg [1:0] half_valid=0,pending=0;
- reg [63:0] first[0:1];reg [13:0] words[0:1];
+ reg [ORDINAL_BITS-1:0] first[0:1];reg [13:0] words[0:1];
  reg valid_q=0,bank_q=0,index_legal_q=0;
  reg [31:0] data_q=0;reg [11:0] index_q=0;
  reg [1:0] done_q=0,count_legal_q=0;
- reg [63:0] first0_q=0,first1_q=0;
+ reg [ORDINAL_BITS-1:0] first0_q=0,first1_q=0;
  // Reject discarded upper bits in the input stage; validate the retained
  // count in the packing stage alongside descriptor equality.
  reg [11:0] words0_q=0,words1_q=0;
@@ -33,8 +34,8 @@ module sram_host_packer(
   else begin
    valid_q<=word_valid;done_q<=bank_done;
    index_legal_q<=word_index<2560;
-   count_legal_q[0]<=words0[19:12]==0;
-   count_legal_q[1]<=words1[19:12]==0;
+   count_legal_q[0]<=words0[19:12]==0 && (first0 >> ORDINAL_BITS)==0;
+   count_legal_q[1]<=words1[19:12]==0 && (first1 >> ORDINAL_BITS)==0;
   end
   bank_q<=word_bank;data_q<=word_data;index_q<=word_index;
   first0_q<=first0;first1_q<=first1;words0_q<=words0[11:0];words1_q<=words1[11:0];
@@ -87,7 +88,7 @@ module sram_host_packer(
   pair_candidate<={1'b0,bank_q,pair_address[bank_q],data_q,half[bank_q]};
   tail_candidate<={1'b0,selected,pair_address[selected],32'b0,half[selected]};
   pair_selected<=complete_pair;
-  meta_candidate<={1'b1,selected,words[selected],first[selected]};
+  meta_candidate<={1'b1,selected,words[selected],{(64-ORDINAL_BITS){1'b0}},first[selected]};
   packet_metadata<=!complete_pair && !half_valid[selected];
   if(reset)begin push<=0;packet<=0;end
   else begin
