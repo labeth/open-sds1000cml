@@ -33,27 +33,37 @@ func TestStackPositionsRTL(t *testing.T) {
 		p, b, k, n   uint32
 		d            int64
 		abort, delay int
+		first        uint32
 	}
 	fixtures := []fixture{
-		{0, 20, 4, 8, -1 << 23, 0, 0}, {0, 20, 4, 8, 1 << 23, 0, 0}, {7, 20, 4, 8, 0, 0, 0},
-		{0, 8, 1, 0, 0, 0, 0}, {0, 8, 1, 1, 0, 0, 0},
-		{^uint32(0), 20, 1, ^uint32(0), 1 << 23, 0, 0},
-		{2, 12, 0, 30, 0, 0, 0}, {2, 0, 4, 30, 0, 0, 0}, {2, 12, 4, 30, 1<<23 + 1, 0, 0},
+		{0, 20, 4, 8, -1 << 23, 0, 0, 0}, {0, 20, 4, 8, 1 << 23, 0, 0, 0}, {7, 20, 4, 8, 0, 0, 0, 0},
+		{0, 8, 1, 0, 0, 0, 0, 0}, {0, 8, 1, 1, 0, 0, 0, 0},
+		{^uint32(0), 20, 1, ^uint32(0), 1 << 23, 0, 0, 0},
+		{2, 12, 0, 30, 0, 0, 0, 0}, {2, 0, 4, 30, 0, 0, 0, 0}, {2, 12, 4, 30, 1<<23 + 1, 0, 0, 0},
 	}
 	for _, k := range []uint32{1, 2, 3, 7, 16, 32, 64, 255, 65535, 1 << 24, 1<<24 + 1, ^uint32(0)} {
-		fixtures = append(fixtures, fixture{3, 513, k, 1000, -2359296, 0, 0})
+		fixtures = append(fixtures, fixture{3, 513, k, 1000, -2359296, 0, 0, 0})
 	}
 	for _, a := range []int{1, 2} {
 		for _, d := range []int{0, 1, 20, 74, 80, 100} {
-			fixtures = append(fixtures, fixture{2, 65, 7, 100, 1234567, a, d})
+			fixtures = append(fixtures, fixture{2, 65, 7, 100, 1234567, a, d, 0})
 		}
+	}
+	for _, first := range []uint32{1, 31, 32, 63, 1025, 1<<24 + 3} {
+		for _, factor := range []uint32{1, 3, 7, 65535, 1<<24 + 1, ^uint32(0)} {
+			fixtures = append(fixtures, fixture{3, 35, factor, ^uint32(0), -2359296, 0, 0, first})
+		}
+	}
+	fixtures = append(fixtures, fixture{0, 1, 1, ^uint32(0), 0, 0, 0, ^uint32(0)}, fixture{0, 2, 1, ^uint32(0), 0, 0, 0, ^uint32(0)}, fixture{0, 3, 7, ^uint32(0), 0, 0, 0, ^uint32(0) - 2})
+	for _, delay := range []int{76, 120, 240, 250, 300} {
+		fixtures = append(fixtures, fixture{3, 20, 7, 1000, 12345, 2, delay, 33})
 	}
 	dir := t.TempDir()
 	image := compileStackRTL(t, dir, "tb_stack_positions", "stack_positions.v", "sim/tb_stack_positions.v")
 	for no, f := range fixtures {
 		t.Run(fmt.Sprint(no), func(t *testing.T) {
 			file := filepath.Join(dir, "positions.txt")
-			input := fmt.Sprintf("%d %d %d %d %d %d %d\n", f.p, f.b, f.k, f.n, f.d, f.abort, f.delay)
+			input := fmt.Sprintf("%d %d %d %d %d %d %d %d\n", f.p, f.b, f.k, f.n, f.d, f.abort, f.delay, f.first)
 			if err := os.WriteFile(file, []byte(input), 0600); err != nil {
 				t.Fatal(err)
 			}
@@ -61,7 +71,7 @@ func TestStackPositionsRTL(t *testing.T) {
 			if err != nil {
 				t.Fatalf("simulate %v: %s", err, out)
 			}
-			bad := f.k == 0 || f.b == 0 || f.d > 1<<23 || f.d < -(1<<23)
+			bad := uint64(f.first)+uint64(f.b) > 1<<32 || f.k == 0 || f.b == 0 || f.d > 1<<23 || f.d < -(1<<23)
 			count := uint32(0)
 			completed := false
 			for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
@@ -86,7 +96,7 @@ func TestStackPositionsRTL(t *testing.T) {
 					t.Fatal("invalid geometry emitted a bin")
 				}
 				// All terms fit signed 64 bits: uint32 indices shifted by 24 use <=57 bits.
-				fixed := (int64(f.p) << 24) + f.d + int64((uint64(bin)<<24)/uint64(f.k))
+				fixed := (int64(f.p) << 24) + f.d + int64(((uint64(f.first)+uint64(bin))<<24)/uint64(f.k))
 				wantIndex, wantFraction := fixed>>24, fixed&((1<<24)-1)
 				wantEligible := 0
 				if wantIndex >= 0 && wantIndex+1 < int64(f.n) {

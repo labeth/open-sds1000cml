@@ -3,6 +3,7 @@
 // TRLC-LINKS: REQ-SDS-141
 module tb_stack_resample_store;
  reg clk=0;always #4 clk=~clk;
+ reg [31:0] first_bin=0;
  reg reset=1,start=0,odd=0;reg [31:0] hit_position=0,bin_count=8,factor=1,record_samples=32;
  reg signed [24:0] delta=0;reg [1:0] channel_mask=3;
  wire sample_request_valid,sample_response_ready;wire [31:0] sample_index;
@@ -14,7 +15,7 @@ module tb_stack_resample_store;
  wire [68:0] write_sum,write_sum_a;wire [105:0] write_sum2;wire [31:0] write_count,write_count_a;
  reg [68:0] read_sum=0,read_sum_a=0;reg [105:0] read_sum2=0;reg [31:0] read_count=0,read_count_a=0;
  wire busy,done,invalid;
- stack_resample_store dut(.clk(clk),.reset(reset),.start(start),.hit_position(hit_position),.bin_count(bin_count),
+ stack_resample_store dut(.clk(clk),.reset(reset),.start(start),.hit_position(hit_position),.bin_count(bin_count),.first_bin(first_bin),
  .factor(factor),.record_samples(record_samples),.delta(delta),.channel_mask(channel_mask),.odd(odd),
  .sample_request_valid(sample_request_valid),.sample_request_ready(sample_request_ready),.sample_index(sample_index),
  .sample_response_valid(sample_response_valid),.sample_response_error(sample_response_error),.sample_response_ready(sample_response_ready),
@@ -91,7 +92,7 @@ module tb_stack_resample_store;
   if(!$value$plusargs("input=%s",file_name))$fatal(1,"input");fd=$fopen(file_name,"r");
   repeat(3)@(negedge clk);reset=0;
   while(!$feof(fd))begin
-   r=$fscanf(fd,"%d %d %d %d %d %d %d\n",hit_position,delta,factor,channel_mask,odd,dr,dp);if(r!=7)$fatal(1,"fixture");
+   r=$fscanf(fd,"%d %d %d %d %d %d %d %d\n",hit_position,delta,factor,channel_mask,odd,dr,dp,first_bin);if(r!=8)$fatal(1,"fixture");
    reads_expected=reads_expected+dr;ops_expected=ops_expected+dp;launch();
    if(invalid || pending || response_valid)$fatal(1,"completion before writes acknowledged");
    if(sample_reads!=reads_expected || operations!=ops_expected)$fatal(1,"operation count");

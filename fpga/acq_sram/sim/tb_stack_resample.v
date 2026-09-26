@@ -2,6 +2,7 @@
 `timescale 1ns/1ps
 // TRLC-LINKS: REQ-SDS-141
 module tb_stack_resample;
+ reg [31:0] first_bin=0;
  reg clk=0;always #4 clk=~clk;
  reg reset=1,start=0,ready=0,odd=0;
  reg [31:0] hit_position=0,bin_count=0,factor=0,record_samples=0;

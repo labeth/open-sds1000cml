@@ -7,7 +7,7 @@
 // TRLC-LINKS: REQ-SDS-141
 module stack_resample_store(
  input wire clk,reset,start,
- input wire [31:0] hit_position,bin_count,factor,record_samples,
+ input wire [31:0] hit_position,bin_count,factor,record_samples,first_bin,
  input wire signed [24:0] delta,input wire [1:0] channel_mask,input wire odd,
  output wire sample_request_valid,input wire sample_request_ready,output wire [31:0] sample_index,
  input wire sample_response_valid,sample_response_error,output wire sample_response_ready,
@@ -30,7 +30,7 @@ module stack_resample_store(
  assign state_request_valid=writer_request && busy && !invalid;
  assign rs_ready=writer_ready && busy && !invalid;
  stack_resample resampler(.clk(clk),.reset(reset),.start(launch),.hit_position(hit_position),
-  .bin_count(bin_count),.factor(factor),.record_samples(record_samples),.delta(delta),
+  .first_bin(first_bin),.bin_count(bin_count),.factor(factor),.record_samples(record_samples),.delta(delta),
   .channel_mask(channel_mask),.odd(odd),.request_valid(rs_request),
   .request_ready(sample_request_ready && busy && !invalid),.request_index(sample_index),
   .response_valid(sample_response_valid),.response_error(sample_response_error),.response_ready(sample_response_ready),

@@ -7,7 +7,7 @@
 // TRLC-LINKS: REQ-SDS-141
 module stack_resample(
  input wire clk,reset,start,
- input wire [31:0] hit_position,bin_count,factor,record_samples,
+ input wire [31:0] hit_position,bin_count,factor,record_samples,first_bin,
  input wire signed [24:0] delta,input wire [1:0] channel_mask,input wire odd,
  output wire request_valid,input wire request_ready,output wire [31:0] request_index,
  input wire response_valid,response_error,output wire response_ready,
@@ -35,7 +35,7 @@ module stack_resample(
  assign result_mask=skip ? 2'd0:value_mask;
  assign result_odd=odd_l;
  stack_positions positions(.clk(clk),.reset(reset),.start(start),.hit_position(hit_position),
-  .bin_count(bin_count),.factor(factor),.record_samples(record_samples),.delta(delta),
+  .first_bin(first_bin),.bin_count(bin_count),.factor(factor),.record_samples(record_samples),.delta(delta),
   .valid(pos_valid),.ready(pos_ready),.bin(bin),.sample_index(sample_index),.fraction(fraction),
   .eligible(pos_eligible),.busy(pos_busy),.done(pos_done),.invalid(pos_invalid));
  stack_interpolate interpolate(.clk(clk),.reset(reset || start),.start(interpolate_start),

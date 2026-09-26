@@ -23,43 +23,45 @@ func TestStackResampleStoreRTL(t *testing.T) {
 	}
 	var input strings.Builder
 	fixtures := 0
-	for _, p := range []int64{0, 4, 29, 31} {
-		for _, delta := range []int64{-1 << 23, 0, 1 << 22} {
-			for _, factor := range []int64{1, 3, 8} {
-				for mask := 0; mask < 4; mask++ {
-					odd := fixtures % 2
-					reads, ops := 0, 0
-					for bin := int64(0); bin < 8; bin++ {
-						q := (p << 24) + delta + (bin<<24)/factor
-						if q < 0 || (q>>24)+1 >= 32 || mask == 0 {
-							continue
-						}
-						reads++
-						idx, frac := q>>24, q&((1<<24)-1)
-						for ch := 0; ch < 2; ch++ {
-							if mask&(1<<ch) == 0 {
+	for _, first := range []int64{0, 7, 31} {
+		for _, p := range []int64{0, 4, 29, 31} {
+			for _, delta := range []int64{-1 << 23, 0, 1 << 22} {
+				for _, factor := range []int64{1, 3, 8} {
+					for mask := 0; mask < 4; mask++ {
+						odd := fixtures % 2
+						reads, ops := 0, 0
+						for bin := int64(0); bin < 8; bin++ {
+							q := (p << 24) + delta + ((first+bin)<<24)/factor
+							if q < 0 || (q>>24)+1 >= 32 || mask == 0 {
 								continue
 							}
-							ops += 2
-							slope, offset := int64(37), int64(5)
-							if ch == 1 {
-								slope = 19
-								offset = 3
-							}
-							value := ((idx*slope + offset) << 20) + ((slope << 20) * frac >> 24)
-							m := &want[int(bin)*2+ch]
-							v := big.NewInt(value)
-							m.s.Add(m.s, v)
-							m.q.Add(m.q, new(big.Int).Mul(v, v))
-							m.n++
-							if odd != 0 {
-								m.a.Add(m.a, v)
-								m.na++
+							reads++
+							idx, frac := q>>24, q&((1<<24)-1)
+							for ch := 0; ch < 2; ch++ {
+								if mask&(1<<ch) == 0 {
+									continue
+								}
+								ops += 2
+								slope, offset := int64(37), int64(5)
+								if ch == 1 {
+									slope = 19
+									offset = 3
+								}
+								value := ((idx*slope + offset) << 20) + ((slope << 20) * frac >> 24)
+								m := &want[int(bin)*2+ch]
+								v := big.NewInt(value)
+								m.s.Add(m.s, v)
+								m.q.Add(m.q, new(big.Int).Mul(v, v))
+								m.n++
+								if odd != 0 {
+									m.a.Add(m.a, v)
+									m.na++
+								}
 							}
 						}
+						fmt.Fprintf(&input, "%d %d %d %d %d %d %d %d\n", p, delta, factor, mask, odd, reads, ops, first)
+						fixtures++
 					}
-					fmt.Fprintf(&input, "%d %d %d %d %d %d %d\n", p, delta, factor, mask, odd, reads, ops)
-					fixtures++
 				}
 			}
 		}

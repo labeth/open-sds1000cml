@@ -933,12 +933,18 @@ decisions:
     memory adapters, segment validation, drift fitting and accumulation are included. It cannot establish that
     the complete numerical image fits. Evaluate shared arithmetic and widths bounded by physical record geometry
     in the whole-image budget rather than assuming separately fitted stages can simply be added.
-  - The stack_positions candidate emits each fine-grid bin at hit position plus fractional offset plus bin/factor.
+  - The stack_positions candidate emits each tile-local bin at hit position plus fractional offset plus
+    (first_bin plus bin)/factor. The global first_bin origin is initialized by exact division of its Q24
+    numerator; the division remainder seeds the subsequent phase stepper. This preserves the full-grid phase
+    across tile boundaries without walking through preceding bins. A global bin range exceeding uint32 indices
+    is rejected before any descriptor is emitted. The resampler and storage path carry the global origin while
+    state addresses remain tile-local. Seventy-seven position fixtures and 432 connected hits per memory adapter
+    cover nonzero origins, boundary carries, large factors, invalid ranges, stalls and replacing starts.
     A quotient and remainder accumulator support any nonzero uint32 factor without cumulative phase drift,
     including non-powers of two. The Q24 phase truncates by less than one phase unit. Signed index arithmetic
     preserves negative offsets and positions beyond the record; only bins with two available adjacent samples
     are eligible. Boundary bins remain explicit descriptors and must not contribute to counts. Tests cover
-    33 configurations including factors through uint32 maximum, range edges, stalled consumers and cancellation.
+    factors through uint32 maximum, range edges, stalled consumers and cancellation.
   - The stack_interpolate candidate shares one serial multiplier between both channels. Inputs are nonnegative
     37-bit Q24 normalized samples, covering values below 8192 rather than clipping corrected values at ADC 255.
     Channel masks preserve disabled or clipped channels, and both channels use the same fractional position.
