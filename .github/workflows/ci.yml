@@ -29,6 +29,11 @@ jobs:
       - name: vet
         run: go vet ./...
 
+      # The app's RTL tests drive the FPGA testbenches through iverilog.
+      - name: Install iverilog
+        if: matrix.module == 'app'
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends iverilog
+
       # The web browser E2E self-skips when Playwright is absent, so the offline
       # suite (engine, front end, LCD, panel, measure, SCPI, web guardrails) runs.
       - name: test
@@ -84,6 +89,9 @@ jobs:
       # sigrok-cli feeds the export e2e (TestSigrokExportLogicE2E): the .sr
       # written by the real encoder must open in a real sigrok and its uart
       # PD must decode the exported logic channel.
+      - name: Install iverilog
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends iverilog
+
       - name: Install sigrok-cli
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends sigrok-cli
 
