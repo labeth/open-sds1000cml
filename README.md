@@ -1,22 +1,132 @@
 # open-sds1000cml
 
-Clean-room replacement firmware for the **Siglent SDS1000CML+** two-channel
-oscilloscope (developed on the SDS1102CML+): an application for the scope's ARM
-processor and the FPGA images it loads, plus the on-device agent that installs
-and runs it.
+Open replacement firmware for the **Siglent SDS1000CML+** two-channel oscilloscope (developed on the
+SDS1102CML+). It turns a budget 100 MHz scope into a deep-memory protocol and analysis instrument:
+both channels at 500 MS/s into a 1 M-sample record, hardware triggers on ten serial protocols,
+continuous decoding, super-resolution and a full web interface. It replaces the application on the
+scope's ARM processor and the FPGA images that application loads. Nothing is flashed: a power cycle
+always brings back the factory firmware.
 
 > ⚠️ **Use at your own risk.** This firmware takes over a mains-powered
 > instrument and drives its relays, DACs and acquisition bus. It is for the
 > SDS1000CML+ series only. There is no warranty (see [LICENSE](LICENSE) and
 > [SAFETY.txt](SAFETY.txt)).
 
+## At a glance
+
+| | |
+|---|---|
+| **Channels** | 2, sampled together |
+| **Sample rate** | **500 MS/s per channel**, real time, on both channels at once (1 GS/s aggregate) |
+| **Record length** | **1,048,576 samples per channel** at full rate, captured on every acquisition and kept after you stop |
+| **Precision mode** | 16-bit filtered samples, 524,288 per channel; decimation ×16 to ×1,048,576 for long records (137 s at 50 s/div) |
+| **Super-resolution** | up to a **×64 time grid** (31.25 ps); about **+4 bits** from FPGA stacking |
+| **Timebase** | 1 ns/div to 50 s/div |
+| **Vertical** | 2 mV/div to 10 V/div; DC, AC or GND; 20 MHz bandwidth limit; probe ×1, ×10 or ×100 |
+| **Serial protocols** | **10**, each with hardware trigger and decode: UART, I²C, SPI, CAN / CAN FD, FlexRay, ARINC 429, MIL-STD-1553, SENT, Manchester, USB low-speed |
+| **Streaming decode** | **continuous, gap-free protocol decoding**, not one capture at a time: 921,600-baud UART ran for 3 minutes without losing a byte, with the full-rate record kept for every frame |
+| **Analysis** | 18 automatic measurements, cursors, math, FFT, spectrogram, eye diagram and jitter, mask test |
+| **Interfaces** | web UI in any browser, SCPI over VXI-11 (LAN), the scope's own LCD and front panel |
+
+## Acquisition
+
+* **Full-depth capture on both channels.** Every acquisition fills the scope's 2 MiB SRAM: 1 M
+  samples per channel at 500 MS/s, 2.1 ms. The live view never trades this away for speed. A
+  stopped record can be zoomed, measured, decoded and exported at full resolution.
+* **Calibrated five-way interleaving.** Each channel runs five 100 MS/s converters in turn. Per-core
+  correction removes the interleave pattern (the comb drops from 11 codes to 0.15).
+* **Precision mode.** At slow timebases the FPGA decimates by a power of two, ×16 to ×1,048,576,
+  through a CIC filter. The ARM applies a 63-tap compensation filter and keeps 16-bit samples, so a
+  slow record gains resolution instead of aliasing. The UI shows the resulting bandwidth and bit
+  gain.
+* **Modes:** normal, average (up to 256 frames), enhanced resolution and precision.
+* **Live min/max envelope** for long windows, so narrow events stay visible at any zoom.
+
+## Triggering
+
+* **Edge** in hardware, with sub-sample placement: 0.19 ns peak-to-peak edge wander at 5 ns/div.
+* **Pulse width, slope and video** (PAL / NTSC, line select), qualified on the captured record.
+* **Auto, normal and single** modes; holdoff up to 10 s; force trigger.
+* **Protocol triggers in the FPGA** for all ten protocols. Match a byte, word, address, ID or frame
+  pattern, with masks and wildcards.
+* **Sequence trigger:** chain up to **32 protocol events**, including **trigger on error**.
+* **Zone trigger:** draw boxes on the screen that the waveform must cross or avoid.
+* **Mask test:** build a golden mask from live frames with time and voltage tolerances. Count
+  failures or stop on the first one, and browse the failure gallery.
+
+## Serial protocols
+
+Every protocol has an FPGA trigger and a decoder. The scope loads the FPGA image a protocol needs
+automatically.
+
+| Protocol | FPGA image | Highlights |
+|---|---|---|
+| UART | general | auto baud from 300 Bd to 3 MBd |
+| I²C | general | 7-bit address, direction, data bytes |
+| SPI | general | all four modes, both bit orders |
+| CAN / CAN FD | packet | ID and data bytes; CRC check |
+| FlexRay | packet | header and payload; header CRC |
+| ARINC 429 | packet | masked 32-bit word |
+| MIL-STD-1553 | packet | 16-bit words; parity |
+| SENT | packet | tick-calibrated nibbles; CRC |
+| Manchester | line | IEEE 802.3 and Thomas conventions |
+| USB low-speed | line | PID and payload bytes |
+
+* **Auto-detect** finds the protocol, channel roles, threshold and settings from a capture.
+* **Continuous decoding:** a live decoded stream, with the full-rate record kept for every frame.
+  UART at **921,600 baud ran lossless for 3 minutes** (16.6 M bytes). At higher rates a lost event
+  is marked, never silently dropped.
+* Hex, ASCII and combined views, and a watch buffer with regex search.
+
+## Analysis
+
+* **18 automatic measurements:** Vpp, Vmax, Vmin, Vmean, Vrms, AC rms, Vtop, Vbase, amplitude,
+  overshoot, preshoot, frequency, period, duty cycle, rise time, fall time, +width and −width.
+* **Cursors** in time and voltage, with Δt, 1/Δt and ΔV.
+* **Math:** C1 − C2, C2 − C1, C1 + C2, C1 × C2, and carrier removal using FFT peaks.
+* **FFT** with a peak table (up to 64 peaks), and a **spectrogram** waterfall.
+* **Eye diagram and jitter:** software clock recovery; TIE rms and peak-to-peak, RJ / DJ split,
+  period and cycle-to-cycle jitter, eye height and width; TIE histogram and spectrum.
+* **Super-resolution:** stacks repeated edges on a time grid up to ×64 finer than the sample period,
+  with interpolating, cubic or drizzle kernels, or triggered on a decoded UART byte. The **FPGA
+  stacking image** accumulates the hits in hardware: 10 records give about +4 bits with 736× less
+  bus traffic. Phase-coherent equivalent-time folding resolves clocks above the trigger
+  comparator's range.
+* **Reference waveforms** (two), **persistence**, **XY mode**, **freeze** and **autoset**.
+
+## Connect and control
+
+* **Web UI** on port 8080 in any browser, with WebGL rendering and every feature above.
+* **Export:** PNG, CSV, sigrok `.sr` (opens in PulseView, with thresholded logic channels), VCD and
+  WAV.
+* **SCPI over VXI-11** (LAN): Siglent / LeCroy short-form commands, including `WF?` waveform
+  transfer with a WAVEDESC header and `SCDP` screenshots, so existing Siglent scripts and VISA tools
+  work.
+* **On the scope itself:** the LCD (Y-T, X-Y, FFT and spectrogram views) and the real front-panel
+  keys and knobs, with menus for every feature. Settings are kept across restarts.
+* **Safe updates:** an on-device agent installs new versions over the network into A/B slots and
+  rolls back automatically if a version fails its health check. Nothing is written to the scope's
+  flash.
+
+## What it adds over the factory firmware
+
+The factory firmware advertises 1 GSa/s real-time sampling, a 40 k-point normal record (2 M points
+maximum), and edge, pulse, video, slope and alternate triggers. It lists no serial protocol
+triggering or decoding. This firmware adds:
+
+* the full 1 M-sample record on **both** channels on every acquisition;
+* hardware triggering and decoding for **ten serial protocols**, sequence triggers and trigger on
+  error;
+* **streaming decode**: protocol traffic decoded continuously, without the gaps between captures;
+* zone triggering, eye-diagram and jitter analysis, a spectrogram, precision mode and
+  super-resolution;
+* a complete browser interface, sigrok export, and open source you can extend.
+
 ## Documentation
 
-The engineering model is the documentation: requirements, architecture,
-behaviour and design decisions are in
-[`model/`](model/) (start with
-`requirements.yml` and `decisions.yml`). The behavioural specifications the
-implementation was written from are in [`specs/`](specs/).
+The engineering model is the documentation: requirements, architecture, behaviour and design
+decisions are in [`model/`](model/) (start with `requirements.yml` and `decisions.yml`). The
+behavioural specifications the implementation was written from are in [`specs/`](specs/).
 
 ## Layout
 
