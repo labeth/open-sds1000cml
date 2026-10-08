@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-LCD
 package lcd
 
 import (
@@ -11,6 +12,7 @@ import (
 // unit the boot firmware normally loads the LCD stack already, so each step
 // is skipped when its effect is present. Module load order is load-bearing:
 // da8xx-fb depends on the three cfb* helpers and must load LAST.
+// TRLC-LINKS: REQ-SDS-021
 func Bringup(logf func(string, ...any)) error {
 	if _, err := os.Stat("/dev/fb0"); err != nil {
 		for _, mod := range []string{"cfbcopyarea.ko", "cfbfillrect.ko", "cfbimgblt.ko", "da8xx-fb.ko"} {
@@ -38,6 +40,7 @@ func Bringup(logf func(string, ...any)) error {
 	return nil
 }
 
+// TRLC-LINKS: REQ-SDS-021
 func findModule(name string) string {
 	for _, dir := range []string{"/lib/modules", "/usr/bin/siglent/modules", "/usr/bin/siglent"} {
 		var found string

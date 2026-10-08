@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
 package engine
 
 import (
@@ -7,6 +8,7 @@ import (
 
 // pulseTrain builds a record with pulses of given widths (samples) above a
 // low rail, separated by gaps.
+// TRLC-LINKS: REQ-SDS-011
 func pulseTrain(n int, widths []int, gap int, lo, hi uint8) []uint8 {
 	out := make([]uint8, n)
 	for i := range out {
@@ -22,6 +24,7 @@ func pulseTrain(n int, widths []int, gap int, lo, hi uint8) []uint8 {
 	return out
 }
 
+// TRLC-LINKS: REQ-SDS-011
 func TestQualifyPulseWidthWindow(t *testing.T) {
 	// Pulses of 10, 50, 10 samples at 100 ns/sample → 1 µs, 5 µs, 1 µs.
 	sig := pulseTrain(1000, []int{10, 50, 10}, 200, 50, 200)
@@ -54,6 +57,7 @@ func TestQualifyPulseWidthWindow(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-011
 func TestQualifyPulseLowPolarity(t *testing.T) {
 	// Low pulses: invert the train.
 	sig := pulseTrain(1000, []int{20}, 400, 200, 50) // one low dip of 20 samples
@@ -80,6 +84,7 @@ func TestQualifyPulseLowPolarity(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-011
 func TestQualifyPulseFlatReject(t *testing.T) {
 	flat := make([]uint8, 500)
 	for i := range flat {
@@ -90,6 +95,7 @@ func TestQualifyPulseFlatReject(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-011
 func TestQualifySlope(t *testing.T) {
 	// A slow ramp (100 samples lo→hi) and a fast step, both rising.
 	sig := make([]uint8, 2000)
@@ -123,6 +129,7 @@ func TestQualifySlope(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-011
 func TestQualifySlopeSingleStepEdge(t *testing.T) {
 	// A hard square edge that spans lo→hi in ONE sample step (the decimated
 	// cal-square case): the traversal exists at index c with time 0 and must
@@ -148,6 +155,7 @@ func TestQualifySlopeSingleStepEdge(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-011
 func TestQualifyVideo(t *testing.T) {
 	// Composite-ish: negative sync pulses every 200 samples dipping to 20
 	// from a 150 rail; "video" content rides above.
@@ -187,6 +195,7 @@ func TestQualifyVideo(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-012
 func TestEresBoxcar(t *testing.T) {
 	// A boxcar of 15 shrinks σ ≈ √15; check it smooths an alternating signal
 	// to near its mean and preserves the ends without wrap.
@@ -211,6 +220,7 @@ func TestEresBoxcar(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-012
 func TestEresLenForBits(t *testing.T) {
 	cases := map[float64]int{0.5: 1, 1.0: 3, 1.5: 7, 2.0: 15, 2.5: 31, 3.0: 63}
 	for b, want := range cases {
@@ -220,6 +230,7 @@ func TestEresLenForBits(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-012
 func TestAverageRing(t *testing.T) {
 	r := &avgRing{}
 	r.reset(4, 100)
@@ -248,6 +259,7 @@ func TestAverageRing(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-012
 func TestAverageRingNoOffRecordBias(t *testing.T) {
 	// Frames whose edge is far off centre contribute off-record columns at
 	// one window end; those must NOT be averaged as a fabricated 128 —
@@ -275,6 +287,7 @@ func TestAverageRingNoOffRecordBias(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-011
 func TestQualifierPublishPolicy(t *testing.T) {
 	// A pulse-qualified engine holds frames without a qualifying pulse even
 	// in AUTO (the qualifier IS the trigger), and publishes when one appears.
@@ -311,6 +324,7 @@ func TestQualifierPublishPolicy(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-012
 func TestAverageModeInEngine(t *testing.T) {
 	fb := newFakeBus()
 	e, _ := newTestEngine(t, fb)
@@ -330,6 +344,7 @@ func TestAverageModeInEngine(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-126
 func TestUniformityStats(t *testing.T) {
 	fb := newFakeBus()
 	e, _ := newTestEngine(t, fb)
@@ -341,5 +356,119 @@ func TestUniformityStats(t *testing.T) {
 	// Identical frames, software-centred: uniformity must be ~0.
 	if s.WinColStd > 1 {
 		t.Fatalf("WinColStd = %v for identical frames, want ≈0", s.WinColStd)
+	}
+}
+
+// The SRAM path anchors a qualified pulse where the display can fill a
+// screen around it, nearest the hardware edge - not at the window centre.
+// TRLC-LINKS: REQ-SDS-011
+func TestQualifyPulseAnchorsWithinScreenSpan(t *testing.T) {
+	// 10-sample pulses every 110 samples over a 2000-sample window, 1000 on screen.
+	widths := make([]int, 18)
+	for i := range widths {
+		widths[i] = 10
+	}
+	sig := pulseTrain(2000, widths, 100, 50, 200)
+	p := defaultTrigParams()
+	at := softAnchor(len(sig), 1000, 0.2, 400)
+	if at.lo != 200 || at.hi != 1200 {
+		t.Fatalf("span %+v", at)
+	}
+	x := qualifyPulseAt(sig, 1, p, true, at)
+	if x < 350 || x > 450 {
+		t.Fatalf("anchor %.1f, want the pulse ending nearest the hardware edge at 400", x)
+	}
+	// No hardware edge: still inside the fillable span.
+	if x := qualifyPulseAt(sig, 1, p, true, softAnchor(len(sig), 1000, 0.8, -1)); x < 800 || x > 1800 {
+		t.Fatalf("anchor %.1f outside [800,1800]", x)
+	}
+	// A pulse only outside the span is no trigger.
+	only := pulseTrain(2000, []int{10}, 1900, 50, 200)
+	if x := qualifyPulseAt(only, 1, p, true, at); x >= 0 {
+		t.Fatalf("anchored at %.1f outside the span", x)
+	}
+}
+
+// A stopped record re-expressed at a new V/div and offset reads the same
+// volts there; codes beyond the screen clip.
+// TRLC-LINKS: REQ-SDS-015, REQ-SDS-040
+func TestRescaleCodesKeepsVolts(t *testing.T) {
+	volts := func(code float64, s chScale) float64 { return (code-128)*s.vdiv/25 - s.off }
+	from, to := chScale{vdiv: 2, off: 0}, chScale{vdiv: 1, off: -1}
+	c := []uint8{128, 169, 87, 250}
+	q := []uint16{128 << 8, 169 << 8, 87 << 8, 250 << 8}
+	want := make([]float64, len(c))
+	for i, v := range c {
+		want[i] = volts(float64(v), from)
+	}
+	rescaleCodes(c, q, from, to)
+	for i := 0; i < 3; i++ {
+		if got := volts(float64(c[i]), to); math.Abs(got-want[i]) > to.vdiv/25 {
+			t.Fatalf("code %d reads %.3f V, captured %.3f V", i, got, want[i])
+		}
+		if got := volts(float64(q[i])/256, to); math.Abs(got-want[i]) > 1e-3 {
+			t.Fatalf("Q8 %d reads %.4f V, captured %.4f V", i, got, want[i])
+		}
+	}
+	if c[3] != 255 || q[3] != 65535 {
+		t.Fatalf("off-screen code %d / %d, want clipped", c[3], q[3])
+	}
+}
+
+// A hardware trigger stands only where the calibrated record crosses the
+// level in the trigger's direction; converter noise on a flat baseline does
+// not.
+// TRLC-LINKS: REQ-SDS-011, REQ-SDS-016
+func TestConfirmTriggerEdge(t *testing.T) {
+	edge := make([]uint8, 200)
+	flat := make([]uint8, 200)
+	for i := range edge {
+		edge[i], flat[i] = 128, uint8(128+i%2)
+		if i >= 100 {
+			edge[i] = 144
+		}
+	}
+	if !confirmTriggerEdge(edge, nil, 200, 98, 136, true, false) {
+		t.Fatal("real rising edge refused")
+	}
+	if confirmTriggerEdge(edge, nil, 200, 98, 136, false, false) {
+		t.Fatal("rising edge accepted as falling")
+	}
+	if confirmTriggerEdge(flat, nil, 200, 98, 136, true, false) {
+		t.Fatal("flat baseline accepted")
+	}
+	if confirmTriggerEdge(edge, nil, 200, 160, 136, true, false) {
+		t.Fatal("edge 60 samples away accepted")
+	}
+	env := []uint8{128, 129, 128, 129, 128, 144, 143, 144, 143, 144}
+	if !confirmTriggerEdge(env, nil, len(env), 4, 136, true, true) || confirmTriggerEdge(env[:4], nil, 4, 2, 136, true, true) {
+		t.Fatal("envelope confirmation")
+	}
+}
+
+// An AC-coupled trigger source's level sits that far above the channel's raw
+// mean, not above the offset-shifted zero, so a 0 V level fires where the AC
+// trace crosses its centre.
+// TRLC-LINKS: REQ-SDS-011, REQ-SDS-096
+func TestACTriggerLevelFollowsMean(t *testing.T) {
+	e := &Engine{}
+	e.chVdivBits[0].Store(math.Float64bits(1))
+	e.trigCPV[0].Store(math.Float64bits(trigCPVDefault))
+	e.trigZero[0].Store(math.Float64bits(trigZeroDefault))
+	e.trigCode = uint16(math.Round(trigZeroDefault)) // 0 V
+	f := &Frame{C1: make([]uint8, 100), C2: make([]uint8, 100), Valid: 100}
+	for i := range f.C1 {
+		f.C1[i] = 128
+		if i%2 == 0 {
+			f.C1[i] = 210 // 0..3.3 V square: mean 169
+		}
+	}
+	e.noteChannelMeans(f)
+	if got := e.trigDispLevel(0); got != 128 {
+		t.Fatalf("DC level %d, want 128", got)
+	}
+	e.SetChannelCoupling(0, couplingAC)
+	if got := e.trigDispLevel(0); got != 169 {
+		t.Fatalf("AC level %d, want the mean 169", got)
 	}
 }

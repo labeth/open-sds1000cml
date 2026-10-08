@@ -1,14 +1,18 @@
+// ENGMODEL-OWNER-UNIT: FU-WEB-APP-DRAW
 // app_draw.js — Y-T/X-Y trace, grid, math, refs, cursors drawing (classic script; shares app.js globals).
 
 "use strict";
 // Clear the afterglow accumulation buffer (the WebGL persistence framebuffer).
 // Called on view/zoom/scale changes so stale trails don't linger.
+// TRLC-LINKS: REQ-SDS-071
 function clearPersist() { if (GLR) GLR.persistClear(); }
 
 // ---- drawing ----
+// TRLC-LINKS: REQ-SDS-071
 function drawGrid(g) {
   g.fillStyle = "#05080c"; g.fillRect(0, 0, CW, CH);
   g.strokeStyle = "#182430"; g.lineWidth = dpr;
+  // TRLC-LINKS: REQ-SDS-071
   const vline = xf => { const px = Math.round(xf) + .5; g.beginPath(); g.moveTo(px, 0); g.lineTo(px, CH); g.stroke(); };
   // Vertical (TIME) divisions. In Y-T each line marks one tdiv_s of SIGNAL,
   // anchored to the trigger — so the marker SPACING scales with zoom (further
@@ -36,6 +40,7 @@ function drawGrid(g) {
 
 // yFor maps a code to a screen y through the VOLTAGE window (vwin) — box
 // zoom narrows vwin so a stack's sub-code detail becomes visible.
+// TRLC-LINKS: REQ-SDS-202
 function yFor(code, zoom) {
   zoom = zoom || 1;
   const v01 = 0.5 + (code - 128) * zoom / 200; // 0=bottom .. 1=top of full scale
@@ -45,6 +50,7 @@ function yFor(code, zoom) {
 
 // codeAtY inverts yFor for interactions (marker drags, shift+click): cy is
 // the pointer's screen fraction (0=top), zoom the channel detent zoom.
+// TRLC-LINKS: REQ-SDS-202
 function codeAtY(cy, zoom) {
   zoom = zoom || 1;
   const w = view.vwin;
@@ -59,6 +65,7 @@ function codeAtY(cy, zoom) {
 // and mask/zone tests keep the true captured polarity (hardware scopes vary
 // here; this clone pins the narrow, unsurprising meaning — what you SEE flips,
 // what is measured does not). Gap sentinels (-1) pass through untouched.
+// TRLC-LINKS: REQ-SDS-071
 function drawTrace(g, cols, color, zoom, inv) {
   if (!cols || !cols.length) return;
   g.strokeStyle = color; g.lineWidth = 1.4 * dpr; g.lineJoin = "round";
@@ -101,6 +108,7 @@ function drawTrace(g, cols, color, zoom, inv) {
   g.stroke();
 }
 
+// TRLC-LINKS: REQ-SDS-071
 function drawEnv(g, mn, mx, color, zoom, inv) {
   if (!mn || !mx) return;
   zoom = zoom || 1; g.fillStyle = color; g.globalAlpha = .8;
@@ -115,6 +123,7 @@ function drawEnv(g, mn, mx, color, zoom, inv) {
   g.globalAlpha = 1;
 }
 
+// TRLC-LINKS: REQ-SDS-071
 function drawTrigMarkers(g) {
   if (!st) return;
   // Horizontal trigger-LEVEL line (where the level sits on the trace = the
@@ -151,6 +160,7 @@ function drawTrigMarkers(g) {
 
 // Per-channel GROUND (0 V) markers on the left edge: where each channel's zero
 // sits after its offset. Ground code = 128 + offV/vpc (V = (code-128)·vpc - offV).
+// TRLC-LINKS: REQ-SDS-071
 function drawChannelMarkers(g) {
   if (!frame) return;
   g.textBaseline = "middle"; g.font = "bold " + (10 * dpr) + "px system-ui";
@@ -167,6 +177,7 @@ function drawChannelMarkers(g) {
   g.textBaseline = "alphabetic";
 }
 
+// TRLC-LINKS: REQ-SDS-203
 function componentMemo(src, cyclesPerLen) {
   if (compMemo.src !== src) { compMemo.src = src; compMemo.map.clear(); }
   const m = compMemo.map;
@@ -177,6 +188,7 @@ function componentMemo(src, cyclesPerLen) {
   return out;
 }
 
+// TRLC-LINKS: REQ-SDS-203
 function computeMath() {
   if (mathFn === "off" || !frame || frame.is_env || !frame.c1) return null;
   const selSig = (mathFn === "res1")
@@ -188,8 +200,10 @@ function computeMath() {
   return out;
 }
 
+// TRLC-LINKS: REQ-SDS-203
 function computeMathRaw() {
   const a = frame.c1, b = frame.c2, n = a.length, out = new Array(n);
+  // TRLC-LINKS: REQ-SDS-203
   const clip = v => v < 0 ? 0 : v > 255 ? 255 : v;
   if (mathFn === "res1" || mathFn === "res2") {
     const ch = mathFn === "res1" ? 1 : 2, src = ch === 1 ? a : b, S = fftCh[ch];
@@ -219,11 +233,13 @@ function computeMathRaw() {
 
 // Draw the math trace (if any) at its SOURCE channel's vertical zoom, so it lines
 // up with the trace it's derived from. Used by both the plain and persist paths.
+// TRLC-LINKS: REQ-SDS-203
 function drawMath(g) {
   const m = computeMath();
   if (m) drawTrace(g, m, MATHCOL, (mathFn === "res2") ? (st ? st.zoom2 : 1) : (st ? st.zoom1 : 1));
 }
 
+// TRLC-LINKS: REQ-SDS-203
 function drawRefTrace(g, cols, refVpc, refOff, curVpc, curOff, color, zoom) {
   if (!cols || !cols.length || !curVpc) return;
   g.strokeStyle = color; g.lineWidth = 1.2 * dpr; g.lineJoin = "round";
@@ -241,6 +257,7 @@ function drawRefTrace(g, cols, refVpc, refOff, curVpc, curOff, color, zoom) {
   g.stroke(); g.globalAlpha = 1; g.setLineDash([]);
 }
 
+// TRLC-LINKS: REQ-SDS-203
 function drawRefs(g) {
   for (const slot of ["A", "B"]) {
     const r = refs[slot];
@@ -255,10 +272,12 @@ function drawRefs(g) {
   }
 }
 
+// TRLC-LINKS: REQ-SDS-203
 function saveRef(slot) {
   if (!frame) return;
   // Cap stored refs (a superres stack reaches 1.3M points; drawRefTrace
   // strokes per sample, so an uncapped ref would jank every redraw).
+  // TRLC-LINKS: REQ-SDS-203
   const cap = arr => {
     if (!arr) return null;
     const stride = Math.ceil(arr.length / 65536);
@@ -277,6 +296,7 @@ function saveRef(slot) {
   updateRefRows(); redraw();
 }
 
+// TRLC-LINKS: REQ-SDS-203
 function updateRefRows() {
   let html = "";
   for (const slot of ["A", "B"]) {
@@ -287,10 +307,13 @@ function updateRefRows() {
       `<button class="btn-mini refclr" data-slot="${slot}" title="clear REF ${slot}">✕</button></div>`;
   }
   const el = $("refRows"); el.innerHTML = html;
+  // TRLC-LINKS: REQ-SDS-203
   el.querySelectorAll(".reftog").forEach(b => b.onclick = () => { refs[b.dataset.slot].show = !refs[b.dataset.slot].show; updateRefRows(); redraw(); });
+  // TRLC-LINKS: REQ-SDS-203
   el.querySelectorAll(".refclr").forEach(b => b.onclick = () => { refs[b.dataset.slot] = null; updateRefRows(); redraw(); });
 }
 
+// TRLC-LINKS: REQ-SDS-071
 function drawYT(g) {
   drawGrid(g);
   drawRefs(g); // references sit UNDER the live traces
@@ -308,6 +331,7 @@ function drawYT(g) {
   drawTrigMarkers(g);
 }
 
+// TRLC-LINKS: REQ-SDS-071
 function drawXY() {
   drawGrid(ctx);
   if (!frame || !frame.c1 || !frame.c2) return;
@@ -326,6 +350,7 @@ function drawXY() {
   ctx.fillText("X: C1   Y: C2", 8 * dpr, 16 * dpr);
 }
 
+// TRLC-LINKS: REQ-SDS-071
 function drawCursors() {
   if (!view.cursors) return;
   const g = ctx;
@@ -339,6 +364,7 @@ function drawCursors() {
   for (const [i, v] of [[1, cur.v1], [2, cur.v2]]) { g.fillRect(0, v * CH - 4 * dpr, 8 * dpr, 8 * dpr); }
 }
 
+// TRLC-LINKS: REQ-SDS-071
 function drawBoxZoom(g) {
   if (!boxZoom.active || !boxZoom.moved) return;
   const b = boxRect();

@@ -1,8 +1,10 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-PANEL
 package panel
 
 // SyncLEDs refreshes the acquisition lamps (RUN/STOP, SINGLE) from the engine and
 // re-latches only when the state actually changed — so the lamps follow a single-shot
 // self-stopping, or the web/SCPI toggling run, without a front-panel key press.
+// TRLC-LINKS: REQ-SDS-135
 func (c *Controller) SyncLEDs() {
 	st := c.eng.Snapshot()
 	c.mu.Lock()
@@ -14,6 +16,7 @@ func (c *Controller) SyncLEDs() {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-135
 func (c *Controller) pushLEDs() {
 	c.mu.Lock()
 	c1, c2, pg, meas := c.chDisp[0], c.chDisp[1], c.menuPage, c.showMeas
@@ -57,6 +60,7 @@ func (c *Controller) pushLEDs() {
 	c.eng.SetLEDs(word)
 }
 
+// TRLC-LINKS: REQ-SDS-135
 func clampInt(v, lo, hi int) int {
 	if v < lo {
 		return lo

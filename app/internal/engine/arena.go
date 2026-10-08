@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
 package engine
 
 import "sync"
@@ -6,22 +7,35 @@ import "sync"
 // The three arena frames are reused in place: every producer path must set or
 // clear ALL metadata every frame (spec 01 §2 — a stale flag renders wrong
 // output from correct data).
+// TRLC-LINKS: REQ-SDS-007, REQ-SDS-009
 type Frame struct {
-	C1, C2 []uint8 // full-capacity backing arrays; valid prefix is [:Valid]
+	Q1, Q2         []uint16 // optional unsigned Q8.8 codes, same valid prefix
+	Decimation     uint32   // physical pre-storage reduction; 1 in raw mode
+	FilterGuard    int      // boundary samples excluded from conditioned measurements
+	BandwidthHz    float64  // qualified flat passband; 0 means no digital bandwidth limit
+	Filter         string
+	NoiseGainIdeal float64
+	PassbandHz     float64
+	CaptureDepth   int     // full record samples per channel
+	TriggerKind    string  // hardware-edge, software-window, or forced
+	C1, C2         []uint8 // full-capacity backing arrays; valid prefix is [:Valid]
 
-	Seq      uint64  // advances only on a real publish
-	Valid    int     // drained sample count; the tail beyond it is stale
-	WinCols  int     // samples spanning the 10-division screen
-	EdgeX    float64 // software crossing position, -1 = flat rail
-	Interp   bool    // native-fast: consumer should linearly interpolate
-	IsEnv    bool    // envelope/roll band: render Env* instead of traces
-	EnvCols  int     // envelope column count (800) when IsEnv, else 0
-	Ptp      int     // peak-to-peak of the discrimination channel
-	Trigd    bool    // HW comparator fired (0x39 bit1)
-	TrigPos  int     // HW trigger-position latch (telemetry only)
-	Coherent bool
-	HaltOK   bool
-	Degraded bool // native-fast: a dead tail survived the re-capture retries — the
+	Seq     uint64  // advances only on a real publish
+	Valid   int     // drained sample count; the tail beyond it is stale
+	WinCols int     // samples spanning the 10-division screen
+	EdgeX   float64 // software crossing position, -1 = flat rail
+	Interp  bool    // native-fast: consumer should linearly interpolate
+	IsEnv   bool    // envelope/roll band: render Env* instead of traces
+	// PeakDetect marks a record of bucket extremes (min, max pairs) read as a
+	// display envelope: amplitude is valid, timing is not.
+	PeakDetect bool
+	EnvCols    int  // envelope column count (800) when IsEnv, else 0
+	Ptp        int  // peak-to-peak of the discrimination channel
+	Trigd      bool // HW comparator fired (0x39 bit1)
+	TrigPos    int  // HW trigger-position latch (telemetry only)
+	Coherent   bool
+	HaltOK     bool
+	Degraded   bool // native-fast: a dead tail survived the re-capture retries — the
 	//               record is a half-capture; content beyond realDepth is not signal
 
 	// Per-column (min,max) envelope bands, valid [:EnvCols] when IsEnv.
@@ -38,7 +52,11 @@ type Frame struct {
 	TdivS      float64
 	DisplayedS float64
 	SampleS    float64 // per-sample capture interval in seconds
-	Norm       bool
+	// CaptureSampleS is the converters' sample interval for this record. It
+	// equals SampleS except on a PeakDetect frame, whose values are bucket
+	// extremes SampleS apart while the capture ran this fast.
+	CaptureSampleS float64
+	Norm           bool
 
 	// Stream/stitch mode continuity metadata: the client places consecutive
 	// windows on one time axis and marks the blackout (GapNs) between them.
@@ -51,6 +69,7 @@ type Frame struct {
 // (spec 01 §2): write = producer's private drain target, ready = most recent
 // published, read = consumer's private slot. Double-buffering tears against
 // the immediate-re-arm invariant; three slots are required.
+// TRLC-LINKS: REQ-SDS-007
 type arena struct {
 	mu    sync.Mutex
 	write *Frame
@@ -59,6 +78,7 @@ type arena struct {
 	dirty bool
 }
 
+// TRLC-LINKS: REQ-SDS-007
 func newArena(capacity int) *arena {
 	mk := func() *Frame {
 		return &Frame{
@@ -71,11 +91,13 @@ func newArena(capacity int) *arena {
 }
 
 // Write returns the producer's private slot. Owner-only.
+// TRLC-LINKS: REQ-SDS-007
 func (a *arena) Write() *Frame { return a.write }
 
 // Publish swaps the drained write slot into ready. The mutex guards only the
 // pointer swap — never held across bus access. If the consumer hasn't taken
 // the previous frame it is overwritten (drop-newest backpressure).
+// TRLC-LINKS: REQ-SDS-007
 func (a *arena) Publish() {
 	a.mu.Lock()
 	a.write, a.ready = a.ready, a.write
@@ -86,6 +108,7 @@ func (a *arena) Publish() {
 // Consume returns the newest published frame. fresh=false means nothing new
 // was published since the last call — the caller re-presents the held frame
 // (a quiet NORM display, not an error).
+// TRLC-LINKS: REQ-SDS-007
 func (a *arena) Consume() (f *Frame, fresh bool) {
 	a.mu.Lock()
 	defer a.mu.Unlock()

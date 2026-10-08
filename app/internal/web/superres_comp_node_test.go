@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-WEB
 package web
 
 import (
@@ -13,6 +14,7 @@ import (
 // (recovered -3 dB, bounded boost), restoration of an attenuated multi-tone
 // toward flat, DC/offset preservation, gap-sentinel preservation and the
 // non-power-of-two resample path. Skips if node is absent (fails under CI_REQUIRE_BROWSER=1).
+// TRLC-LINKS: REQ-SDS-181
 func TestSuperresCompJS(t *testing.T) {
 	testenv.NeedNode(t)
 	node, _ := exec.LookPath("node")

@@ -1,9 +1,11 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-SUPERRES
 package superres
 
 import "math"
 
 // Result is the crunch output: the super-resolved mean trace (nil if statsOnly)
 // plus the measured resolution figures.
+// TRLC-LINKS: REQ-SDS-141
 type Result struct {
 	Mean                    []float32 // align-channel mean; nil if statsOnly
 	Mean2                   []float32 // the OTHER channel, same fine grid; nil if statsOnly
@@ -17,6 +19,7 @@ type Result struct {
 
 // Result crunches the stack: builds the mean trace and measures σ_single→σ_stack
 // (odd/even half-stack) → bitsGained. stride subsamples the O(nbins) stats.
+// TRLC-LINKS: REQ-SDS-141
 func (st *Stack) Result(statsOnly bool, stride int) Result {
 	nb := st.Nbins
 	if stride < 1 {

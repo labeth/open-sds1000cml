@@ -8,6 +8,7 @@
 // Run: go generate ./internal/web   (or: cd internal/web && go run gen_tokens.go)
 // A golden test (palette_parity_test.go) asserts the two agree color-for-color
 // and that the committed files match this generator, so drift is unmergeable.
+// ENGMODEL-OWNER-UNIT: FU-APP-WEB
 package main
 
 import (
@@ -19,11 +20,13 @@ import (
 	"strings"
 )
 
+// TRLC-LINKS: REQ-SDS-021
 type spec struct {
 	Tokens map[string]string `json:"tokens"`
 	LCD    map[string]string `json:"lcd"`
 }
 
+// TRLC-LINKS: REQ-SDS-021
 func hexRGB(h string) (r, g, b uint8) {
 	h = strings.TrimPrefix(h, "#")
 	var v uint64
@@ -31,6 +34,7 @@ func hexRGB(h string) (r, g, b uint8) {
 	return uint8(v >> 16), uint8(v >> 8), uint8(v)
 }
 
+// TRLC-LINKS: REQ-SDS-021
 func main() {
 	raw, err := os.ReadFile("tokens.json")
 	must(err)
@@ -79,6 +83,7 @@ func main() {
 	fmt.Printf("generated tokens.css (%d tokens) + ../lcd/palette_gen.go (%d cols)\n", len(names), len(cols))
 }
 
+// TRLC-LINKS: REQ-SDS-021
 func must(err error) {
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)

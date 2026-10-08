@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-DECODE
 package decode
 
 import (
@@ -13,6 +14,8 @@ import (
 //	Bitrate   0 => auto-infer the bit period from the pulse spacing; else bits/s
 //	          (typically 100000 high-speed, or 12500 low-speed).
 //	Threshold /HaveThr override the auto NULL (mid) level of the tri-level slicer.
+//
+// TRLC-LINKS: REQ-SDS-018
 type ARINC429Cfg struct {
 	Bitrate   int
 	Threshold float64
@@ -40,6 +43,7 @@ type ARINC429Cfg struct {
 // segmented on that inter-word gap and each COMPLETE 32-bit word is decoded;
 // a word truncated by the capture start/end (a partial with < 32 pulses) is
 // dropped, since a free-running scope starts at a random phase.
+// TRLC-LINKS: REQ-SDS-018
 func DecodeARINC429(codes []uint8, colTimeS float64, cfg ARINC429Cfg) Result {
 	const proto = "arinc429"
 	const minSPB = 4.0
@@ -48,55 +52,10 @@ func DecodeARINC429(codes []uint8, colTimeS float64, cfg ARINC429Cfg) Result {
 		return Result{Proto: proto, Error: "no/too-few samples"}
 	}
 
-	// --- tri-level slice: histogram -> NULL(mid), HI rail(gmax), LO rail(gmin).
-	var h [256]int
-	for _, v := range codes {
-		h[v]++
+	midf, thrHi, thrLo, exitHi, exitLo, reason := ARINC429Levels(codes, cfg)
+	if reason != "" {
+		return Result{Proto: proto, Error: reason}
 	}
-	noiseFloor := math.Max(1, 0.001*float64(n))
-	gmin := 0
-	for gmin < 255 && float64(h[gmin]) < noiseFloor {
-		gmin++
-	}
-	gmax := 255
-	for gmax > 0 && float64(h[gmax]) < noiseFloor {
-		gmax--
-	}
-	if gmax <= gmin {
-		return Result{Proto: proto, Error: "flat/no transitions"}
-	}
-	// NULL level = the dominant (mode) code in the active range: an RZ line rests
-	// at NULL for the second half of every bit plus the inter-word gaps.
-	mid := gmin
-	best := -1.0
-	for c := gmin; c <= gmax; c++ {
-		if float64(h[c]) > best {
-			best = float64(h[c])
-			mid = c
-		}
-	}
-	midf := float64(mid)
-	if cfg.HaveThr {
-		midf = cfg.Threshold
-	}
-	rangeUp := float64(gmax) - midf
-	rangeDn := midf - float64(gmin)
-	span := math.Max(rangeUp, rangeDn)
-	if span < 16 {
-		return Result{Proto: proto, Error: "amplitude too small / not a bipolar RZ signal"}
-	}
-	// If one polarity is absent (an all-1s or all-0s word) mirror the present
-	// rail so its threshold stays meaningful instead of collapsing onto NULL.
-	if rangeUp < 0.25*span {
-		rangeUp = span
-	}
-	if rangeDn < 0.25*span {
-		rangeDn = span
-	}
-	thrHi := midf + 0.4*rangeUp
-	thrLo := midf - 0.4*rangeDn
-	exitHi := midf + 0.15*rangeUp // hysteretic return-to-NULL from a HI pulse
-	exitLo := midf - 0.15*rangeDn // ... and from a LO pulse
 
 	// --- detect pulses: NULL->HI / NULL->LO transitions. Each RZ pulse is one
 	// bit cell; its polarity is the bit (HI=1, LO=0) and its start locates it.
@@ -285,4 +244,63 @@ func DecodeARINC429(codes []uint8, colTimeS float64, cfg ARINC429Cfg) Result {
 	}
 	return Result{OK: true, Proto: proto, Spans: spans, Text: strings.Join(toks, " "),
 		Bytes: bytesOut, Baud: baud, SPB: T, Thr: midf}
+}
+
+// ARINC429Levels derives the tri-level slicer from a record: NULL is the mode
+// (or the threshold override), the rails are the extreme populated codes, and
+// pulses enter at 40 percent and return to NULL below 15 percent of each
+// rail's excursion. Hardware ARINC triggering uses the same levels.
+// TRLC-LINKS: REQ-SDS-018
+func ARINC429Levels(codes []uint8, cfg ARINC429Cfg) (null, thrHi, thrLo, exitHi, exitLo float64, reason string) {
+	n := len(codes)
+	// --- tri-level slice: histogram -> NULL(mid), HI rail(gmax), LO rail(gmin).
+	var h [256]int
+	for _, v := range codes {
+		h[v]++
+	}
+	noiseFloor := math.Max(1, 0.001*float64(n))
+	gmin := 0
+	for gmin < 255 && float64(h[gmin]) < noiseFloor {
+		gmin++
+	}
+	gmax := 255
+	for gmax > 0 && float64(h[gmax]) < noiseFloor {
+		gmax--
+	}
+	if gmax <= gmin {
+		return 0, 0, 0, 0, 0, "flat/no transitions"
+	}
+	// NULL level = the dominant (mode) code in the active range: an RZ line rests
+	// at NULL for the second half of every bit plus the inter-word gaps.
+	mid := gmin
+	best := -1.0
+	for c := gmin; c <= gmax; c++ {
+		if float64(h[c]) > best {
+			best = float64(h[c])
+			mid = c
+		}
+	}
+	midf := float64(mid)
+	if cfg.HaveThr {
+		midf = cfg.Threshold
+	}
+	rangeUp := float64(gmax) - midf
+	rangeDn := midf - float64(gmin)
+	span := math.Max(rangeUp, rangeDn)
+	if span < 16 {
+		return 0, 0, 0, 0, 0, "amplitude too small / not a bipolar RZ signal"
+	}
+	// If one polarity is absent (an all-1s or all-0s word) mirror the present
+	// rail so its threshold stays meaningful instead of collapsing onto NULL.
+	if rangeUp < 0.25*span {
+		rangeUp = span
+	}
+	if rangeDn < 0.25*span {
+		rangeDn = span
+	}
+	thrHi = midf + 0.4*rangeUp
+	thrLo = midf - 0.4*rangeDn
+	exitHi = midf + 0.15*rangeUp // hysteretic return-to-NULL from a HI pulse
+	exitLo = midf - 0.15*rangeDn // ... and from a LO pulse
+	return midf, thrHi, thrLo, exitHi, exitLo, ""
 }

@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-OTA-BOOT
 package boot
 
 // These tests drive the real startup.sh with stub agents and a stub commands
@@ -15,6 +16,7 @@ import (
 	"time"
 )
 
+// TRLC-LINKS: REQ-SDS-030, REQ-SDS-176
 func scriptPath(t *testing.T) string {
 	t.Helper()
 	p, err := filepath.Abs("startup.sh")
@@ -30,6 +32,7 @@ func scriptPath(t *testing.T) string {
 // run executes startup.sh with env and returns the boot log after the agent
 // loop has finished (RUNS_LIMIT bounds it). Because the loop is backgrounded
 // with `( agent_loop & )`, we poll the log for the terminal marker.
+// TRLC-LINKS: REQ-SDS-030, REQ-SDS-176
 func run(t *testing.T, env map[string]string, wantMarker string, timeout time.Duration) (bootLog, agentLog string) {
 	t.Helper()
 	dir := t.TempDir()
@@ -74,6 +77,7 @@ func run(t *testing.T, env map[string]string, wantMarker string, timeout time.Du
 }
 
 // writeStub writes an executable shell stub.
+// TRLC-LINKS: REQ-SDS-030, REQ-SDS-176
 func writeStub(t *testing.T, path, body string) {
 	t.Helper()
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
@@ -84,6 +88,7 @@ func writeStub(t *testing.T, path, body string) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-030, REQ-SDS-176
 func TestRespawnLoopBounded(t *testing.T) {
 	dir := t.TempDir()
 	otaDir := filepath.Join(dir, "ota")
@@ -108,6 +113,7 @@ func TestRespawnLoopBounded(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-030, REQ-SDS-176
 func TestConfirmStableSlot(t *testing.T) {
 	dir := t.TempDir()
 	otaDir := filepath.Join(dir, "ota")
@@ -132,6 +138,7 @@ func TestConfirmStableSlot(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-030, REQ-SDS-176
 func TestAgentSelfUpdateActivatesNewSlot(t *testing.T) {
 	dir := t.TempDir()
 	otaDir := filepath.Join(dir, "ota")
@@ -162,6 +169,7 @@ func TestAgentSelfUpdateActivatesNewSlot(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-030, REQ-SDS-176
 func TestCrashLoopRevertsToConfirmed(t *testing.T) {
 	dir := t.TempDir()
 	otaDir := filepath.Join(dir, "ota")
@@ -202,6 +210,7 @@ func TestCrashLoopRevertsToConfirmed(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-030, REQ-SDS-176
 func TestIntentMarkerIsNeutralNoRevert(t *testing.T) {
 	// A freshly-activated slot B that exits fast but drops an intent marker
 	// each time (a deliberate agent.restart) must NOT be reverted to confirmed
@@ -241,6 +250,7 @@ func TestIntentMarkerIsNeutralNoRevert(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-030
 func TestCommandsFileRuns(t *testing.T) {
 	dir := t.TempDir()
 	otaDir := filepath.Join(dir, "ota")

@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-WEB-APP-GL
 // app_gl.js — a small 2D renderer built on native WebGL. Every graphics box in
 // the UI (the scope, the navigator, the eye/spectrogram/bode cards) is a WebGL
 // canvas — no 2D canvas anywhere, so there is exactly ONE viewport and ONE
@@ -19,6 +20,7 @@
 const GL_GLYPH_W = 8, GL_GLYPH_H = 14, GL_FIRST = 32, GL_LAST = 126;
 let glAtlas = null; // { canvas-derived pixels, texW, texH, cols }
 
+// TRLC-LINKS: REQ-SDS-071
 function glBuildAtlas() {
   if (glAtlas) return glAtlas;
   const n = GL_LAST - GL_FIRST + 1;
@@ -47,6 +49,7 @@ function glBuildAtlas() {
 }
 
 // ---- a renderer bound to one canvas -----------------------------------------
+// TRLC-LINKS: REQ-SDS-071
 function glRenderer(canvas) {
   let gl;
   try {
@@ -78,6 +81,7 @@ function glRenderer(canvas) {
   let prog, aPos, aUV, aCol, aMode, uRes, buf, atlasTex, curTex, blitTex;
   let persistFB = null, persistTex = null, persistW = 0, persistH = 0; // afterglow FBO
 
+  // TRLC-LINKS: REQ-SDS-071
   function initGL() {
     prog = glCompile(gl, vs, fs);
     if (!prog) return false;
@@ -111,12 +115,15 @@ function glRenderer(canvas) {
     scissor: null,                  // {x,y,w,h} in device px (top-left origin) or null
   };
 
+  // TRLC-LINKS: REQ-SDS-071
   function ensure(floats) {
     if (vN + floats <= verts.length) return;
     let cap = verts.length; while (vN + floats > cap) cap <<= 1;
     const nv = new Float32Array(cap); nv.set(verts.subarray(0, vN)); verts = nv;
   }
+  // TRLC-LINKS: REQ-SDS-071
   function tx(x, y) { const m = R.xf; return [m[0] * x + m[2] * y + m[4], m[1] * x + m[3] * y + m[5]]; }
+  // TRLC-LINKS: REQ-SDS-071
   function vert(x, y, u, v, c) {
     const p = tx(x, y);
     verts[vN++] = p[0]; verts[vN++] = p[1]; verts[vN++] = u; verts[vN++] = v;
@@ -124,14 +131,17 @@ function glRenderer(canvas) {
     verts[vN++] = curMode;
   }
   // a triangle (untransformed uv), pushing 3 verts
+  // TRLC-LINKS: REQ-SDS-071
   function tri(x0, y0, x1, y1, x2, y2, u0, v0, u1, v1, u2, v2, c) {
     ensure(FLOATS * 3);
     vert(x0, y0, u0, v0, c); vert(x1, y1, u1, v1, c); vert(x2, y2, u2, v2, c);
   }
+  // TRLC-LINKS: REQ-SDS-071
   function quad(x0, y0, x1, y1, x2, y2, x3, y3, u0, v0, u1, v1, u2, v2, u3, v3, c) {
     tri(x0, y0, x1, y1, x2, y2, u0, v0, u1, v1, u2, v2, c);
     tri(x0, y0, x2, y2, x3, y3, u0, v0, u2, v2, u3, v3, c);
   }
+  // TRLC-LINKS: REQ-SDS-071
   function flush() {
     if (vN === 0 || gl.isContextLost()) { vN = 0; return; }
     gl.useProgram(prog);
@@ -147,7 +157,9 @@ function glRenderer(canvas) {
     gl.drawArrays(gl.TRIANGLES, 0, vN / FLOATS);
     vN = 0;
   }
+  // TRLC-LINKS: REQ-SDS-071
   function useTex(t) { if (t !== curTex) { flush(); curTex = t; } }
+  // TRLC-LINKS: REQ-SDS-071
   function setScissor(s) {
     flush();
     if (!s) { gl.disable(gl.SCISSOR_TEST); R.scissor = null; return; }
@@ -159,11 +171,14 @@ function glRenderer(canvas) {
   // ---- public API ----
   // The app owns each canvas's backing-store size (scope/nav sized in resize();
   // cards set their own width/height). resize() just syncs the GL viewport.
+  // TRLC-LINKS: REQ-SDS-071
   R.resize = function () {
     R.w = canvas.width; R.h = canvas.height;
     if (!gl.isContextLost()) gl.viewport(0, 0, R.w, R.h);
   };
+  // TRLC-LINKS: REQ-SDS-071
   R.lost = function () { return gl.isContextLost(); };
+  // TRLC-LINKS: REQ-SDS-071
   R.begin = function (bg) {
     R.w = canvas.width; R.h = canvas.height; gl.viewport(0, 0, R.w, R.h);
     R.xf = [1, 0, 0, 1, 0, 0]; R.stack.length = 0; R.lw = 1; setScissor(null);
@@ -172,25 +187,35 @@ function glRenderer(canvas) {
     gl.clear(gl.COLOR_BUFFER_BIT);
     curTex = atlasTex; curMode = 0; vN = 0;
   };
+  // TRLC-LINKS: REQ-SDS-071
   R.end = function () { flush(); };
+  // TRLC-LINKS: REQ-SDS-071
   R.save = function () { R.stack.push(R.xf.slice()); R.stack.push(R.lw); };
+  // TRLC-LINKS: REQ-SDS-071
   R.restore = function () { R.lw = R.stack.pop(); R.xf = R.stack.pop(); };
+  // TRLC-LINKS: REQ-SDS-071
   R.translate = function (x, y) { const m = R.xf; m[4] += m[0] * x + m[2] * y; m[5] += m[1] * x + m[3] * y; };
+  // TRLC-LINKS: REQ-SDS-071
   R.rotate = function (r) { const m = R.xf, s = Math.sin(r), c = Math.cos(r); const a = m[0], b = m[1], cc = m[2], d = m[3]; m[0] = a * c + cc * s; m[1] = b * c + d * s; m[2] = a * -s + cc * c; m[3] = b * -s + d * c; };
+  // TRLC-LINKS: REQ-SDS-071
   R.clip = function (x, y, w, h) { setScissor(w > 0 && h > 0 ? { x, y, w, h } : null); };
+  // TRLC-LINKS: REQ-SDS-071
   R.unclip = function () { setScissor(null); };
 
+  // TRLC-LINKS: REQ-SDS-071
   R.fillRect = function (x, y, w, h, col) {
     useTex(atlasTex);
     const c = glCol(col), u = atlas.whiteU, v = atlas.whiteV;
     quad(x, y, x + w, y, x + w, y + h, x, y + h, u, v, u, v, u, v, u, v, c);
   };
+  // TRLC-LINKS: REQ-SDS-071
   R.triangle = function (x0, y0, x1, y1, x2, y2, col) {
     useTex(atlasTex);
     const c = glCol(col), u = atlas.whiteU, v = atlas.whiteV;
     tri(x0, y0, x1, y1, x2, y2, u, v, u, v, u, v, c);
   };
   // a stroked segment as a quad of width R.lw
+  // TRLC-LINKS: REQ-SDS-071
   R.line = function (x0, y0, x1, y1, col, wOpt) {
     useTex(atlasTex);
     const c = glCol(col), u = atlas.whiteU, v = atlas.whiteV;
@@ -198,12 +223,14 @@ function glRenderer(canvas) {
     const hw = (wOpt || R.lw) * 0.5, nx = -dy / len * hw, ny = dx / len * hw;
     quad(x0 + nx, y0 + ny, x1 + nx, y1 + ny, x1 - nx, y1 - ny, x0 - nx, y0 - ny, u, v, u, v, u, v, u, v, c);
   };
+  // TRLC-LINKS: REQ-SDS-071
   R.polyline = function (pts, col, wOpt) { // pts: flat [x,y,x,y,...]; NaN x = pen-up
     for (let i = 2; i < pts.length; i += 2) {
       if (isNaN(pts[i - 2]) || isNaN(pts[i])) continue;
       R.line(pts[i - 2], pts[i - 1], pts[i], pts[i + 1], col, wOpt);
     }
   };
+  // TRLC-LINKS: REQ-SDS-071
   R.dashedLine = function (x0, y0, x1, y1, col, on, off, wOpt) {
     const len = Math.hypot(x1 - x0, y1 - y0) || 1, ux = (x1 - x0) / len, uy = (y1 - y0) / len;
     let d = 0;
@@ -213,12 +240,14 @@ function glRenderer(canvas) {
       d += on + off;
     }
   };
+  // TRLC-LINKS: REQ-SDS-071
   R.strokeRect = function (x, y, w, h, col, wOpt) {
     R.line(x, y, x + w, y, col, wOpt); R.line(x + w, y, x + w, y + h, col, wOpt);
     R.line(x + w, y + h, x, y + h, col, wOpt); R.line(x, y + h, x, y, col, wOpt);
   };
   // text at (x,y) top-left; px = glyph height (device px). align: 'l' 'c' 'r'.
   // Returns the drawn width (device px).
+  // TRLC-LINKS: REQ-SDS-071
   R.text = function (str, x, y, col, px, align) {
     useTex(atlasTex);
     str = String(str);
@@ -237,9 +266,11 @@ function glRenderer(canvas) {
     }
     return total;
   };
+  // TRLC-LINKS: REQ-SDS-071
   R.textWidth = function (str, px) { return String(str).length * (atlas.cw * ((px || 12) / atlas.ch)); };
 
   // draw a pre-uploaded RGBA texture (col optionally tints); mode 1 = use tex RGB
+  // TRLC-LINKS: REQ-SDS-071
   R.image = function (texObj, dstX, dstY, dstW, dstH, col) {
     useTex(texObj);
     const c = col ? glCol(col) : [1, 1, 1, 1];
@@ -250,6 +281,7 @@ function glRenderer(canvas) {
   // blit a raw RGBA buffer (eye persistence, spectrogram waterfall) scaled into a
   // dst rect. Uploads to a single reusable texture and draws it immediately, so
   // it acts like a scaled putImageData/drawImage. smooth = LINEAR upscale.
+  // TRLC-LINKS: REQ-SDS-071
   R.blit = function (rgba, w, h, dx, dy, dw, dh, smooth) {
     flush();                                   // emit anything queued on the atlas first
     if (!blitTex) blitTex = gl.createTexture();
@@ -275,6 +307,7 @@ function glRenderer(canvas) {
   // drawn on top; the whole layer is then composited over the grid, so the grid
   // shows through wherever the afterglow has faded out. Replaces the old 2D
   // offscreen-canvas persistence layer.
+  // TRLC-LINKS: REQ-SDS-071
   function ensurePersist() {
     if (persistTex && persistW === R.w && persistH === R.h) return;
     if (!persistFB) persistFB = gl.createFramebuffer();
@@ -292,6 +325,7 @@ function glRenderer(canvas) {
     persistW = R.w; persistH = R.h;
     curTex = atlasTex;
   }
+  // TRLC-LINKS: REQ-SDS-071
   R.persistClear = function () {
     if (!persistTex || gl.isContextLost()) return;
     gl.bindFramebuffer(gl.FRAMEBUFFER, persistFB);
@@ -301,6 +335,7 @@ function glRenderer(canvas) {
     gl.viewport(0, 0, R.w, R.h);
   };
   // route subsequent draws into the accumulation FBO, first decaying old content
+  // TRLC-LINKS: REQ-SDS-071
   R.persistFade = function (fade) {
     flush();                                   // emit the grid/refs to the screen first
     ensurePersist();
@@ -317,6 +352,7 @@ function glRenderer(canvas) {
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA); // normal blend for the new trace
   };
   // composite the accumulation FBO back over the screen (over the grid)
+  // TRLC-LINKS: REQ-SDS-071
   R.persistComposite = function () {
     flush();                                   // emit the new trace into the FBO
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
@@ -343,7 +379,9 @@ function glRenderer(canvas) {
   return R;
 }
 
+// TRLC-LINKS: REQ-SDS-071
 function glCompile(gl, vsSrc, fsSrc) {
+  // TRLC-LINKS: REQ-SDS-071
   const sh = (type, src) => { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s); return gl.getShaderParameter(s, gl.COMPILE_STATUS) ? s : (gl.deleteShader(s), 0); };
   const v = sh(gl.VERTEX_SHADER, vsSrc), f = sh(gl.FRAGMENT_SHADER, fsSrc);
   if (!v || !f) return 0;
@@ -353,6 +391,7 @@ function glCompile(gl, vsSrc, fsSrc) {
 
 // ---- colour parsing → [r,g,b,a] 0..1 (cached) ----
 const _glColCache = new Map();
+// TRLC-LINKS: REQ-SDS-071
 function glCol(css, alpha) {
   if (Array.isArray(css) || css instanceof Float32Array) return css;
   const key = css + "|" + (alpha == null ? "" : alpha);
@@ -375,6 +414,7 @@ function glCol(css, alpha) {
 // ---- glContext2D: a CanvasRenderingContext2D-shaped facade over a GL renderer.
 // Draw code keeps its expressive 2D-canvas form; every call becomes GPU
 // triangles. Only the subset the UI actually uses is implemented.
+// TRLC-LINKS: REQ-SDS-071
 function glContext2D(R, canvasEl) {
   const ctx = {
     canvas: canvasEl,
@@ -384,14 +424,23 @@ function glContext2D(R, canvasEl) {
     _path: [], _dash: [], _sv: [],
     _R: R,
   };
+  // TRLC-LINKS: REQ-SDS-071
   const A = c => { const g = glCol(c); return ctx.globalAlpha < 1 ? [g[0], g[1], g[2], g[3] * ctx.globalAlpha] : g; };
+  // TRLC-LINKS: REQ-SDS-071
   const px = () => { const m = /(\d+(?:\.\d+)?)px/.exec(ctx.font); return m ? parseFloat(m[1]) : 12; };
+  // TRLC-LINKS: REQ-SDS-071
   ctx.beginPath = () => { ctx._path = []; };
+  // TRLC-LINKS: REQ-SDS-071
   ctx.moveTo = (x, y) => { ctx._path.push([x, y]); };
+  // TRLC-LINKS: REQ-SDS-071
   ctx.lineTo = (x, y) => { let s = ctx._path[ctx._path.length - 1]; if (!s) { s = []; ctx._path.push(s); } s.push(x, y); };
+  // TRLC-LINKS: REQ-SDS-071
   ctx.closePath = () => { const s = ctx._path[ctx._path.length - 1]; if (s && s.length >= 2) s.push(s[0], s[1]); };
+  // TRLC-LINKS: REQ-SDS-071
   ctx.rect = (x, y, w, h) => { ctx._path.push([x, y, x + w, y, x + w, y + h, x, y + h, x, y]); };
+  // TRLC-LINKS: REQ-SDS-071
   ctx.arc = (x, y, r, a0, a1) => { const seg = Math.max(10, Math.ceil(r) * 2), s = []; for (let i = 0; i <= seg; i++) { const a = a0 + (a1 - a0) * i / seg; s.push(x + Math.cos(a) * r, y + Math.sin(a) * r); } ctx._path.push(s); };
+  // TRLC-LINKS: REQ-SDS-071
   ctx.stroke = () => {
     const c = A(ctx.strokeStyle), w = ctx.lineWidth;
     for (const s of ctx._path) {
@@ -399,10 +448,15 @@ function glContext2D(R, canvasEl) {
       else R.polyline(s, c, w);
     }
   };
+  // TRLC-LINKS: REQ-SDS-071
   ctx.fill = () => { const c = A(ctx.fillStyle); for (const s of ctx._path) glFillFan(R, s, c); };
+  // TRLC-LINKS: REQ-SDS-071
   ctx.fillRect = (x, y, w, h) => R.fillRect(x, y, w, h, A(ctx.fillStyle));
+  // TRLC-LINKS: REQ-SDS-071
   ctx.strokeRect = (x, y, w, h) => R.strokeRect(x, y, w, h, A(ctx.strokeStyle), ctx.lineWidth);
+  // TRLC-LINKS: REQ-SDS-071
   ctx.clearRect = () => { /* whole-frame clear is R.begin(bg); partial clears unused */ };
+  // TRLC-LINKS: REQ-SDS-071
   ctx.fillText = (t, x, y) => {
     const p = px(), al = ctx.textAlign === "center" ? "c" : (ctx.textAlign === "right" || ctx.textAlign === "end") ? "r" : "l";
     let top = y - p * 0.78;                 // alphabetic baseline
@@ -412,23 +466,35 @@ function glContext2D(R, canvasEl) {
     R.text(t, x, top, A(ctx.fillStyle), p, al);
   };
   ctx.strokeText = ctx.fillText;
+  // TRLC-LINKS: REQ-SDS-071
   ctx.measureText = t => ({ width: R.textWidth(t, px()) });
+  // TRLC-LINKS: REQ-SDS-071
   ctx.setLineDash = d => { ctx._dash = d || []; };
+  // TRLC-LINKS: REQ-SDS-071
   ctx.getLineDash = () => ctx._dash;
+  // TRLC-LINKS: REQ-SDS-071
   ctx.save = () => { R.save(); ctx._sv.push([ctx.fillStyle, ctx.strokeStyle, ctx.lineWidth, ctx.globalAlpha, ctx.font, ctx.textAlign, ctx.textBaseline, ctx._dash.slice()]); };
+  // TRLC-LINKS: REQ-SDS-071
   ctx.restore = () => { R.restore(); const s = ctx._sv.pop(); if (s) { ctx.fillStyle = s[0]; ctx.strokeStyle = s[1]; ctx.lineWidth = s[2]; ctx.globalAlpha = s[3]; ctx.font = s[4]; ctx.textAlign = s[5]; ctx.textBaseline = s[6]; ctx._dash = s[7]; } };
+  // TRLC-LINKS: REQ-SDS-071
   ctx.translate = (x, y) => R.translate(x, y);
+  // TRLC-LINKS: REQ-SDS-071
   ctx.rotate = r => R.rotate(r);
+  // TRLC-LINKS: REQ-SDS-071
   ctx.scale = () => { /* unused */ };
+  // TRLC-LINKS: REQ-SDS-071
   ctx.drawImage = (src, dx, dy, dw, dh) => { if (src && src._glTex) R.image(src._glTex, dx || 0, dy || 0, dw || src.width, dh || src.height); };
   // blit a raw RGBA buffer (heatmaps); the app calls this instead of the old
   // putImageData → temp-canvas → drawImage dance.
+  // TRLC-LINKS: REQ-SDS-071
   ctx.blit = (rgba, w, h, dx, dy, dw, dh, smooth) => R.blit(rgba, w, h, dx, dy, dw, dh, smooth);
+  // TRLC-LINKS: REQ-SDS-071
   ctx.clip = () => { /* rect clips are applied via R.clip directly where needed */ };
   return ctx;
 }
 
 // triangle-fan fill of a flat point list (convex shapes: rects, circles, arrows)
+// TRLC-LINKS: REQ-SDS-071
 function glFillFan(R, pts, col) {
   if (pts.length < 6) return;
   for (let i = 4; i < pts.length; i += 2) R.triangle(pts[0], pts[1], pts[i - 2], pts[i - 1], pts[i], pts[i + 1], col);
@@ -438,6 +504,7 @@ function glFillFan(R, pts, col) {
 // globals) are their 2D facades ----
 let GLR = null;      // main-scope renderer
 let NAVR = null;     // navigator renderer
+// TRLC-LINKS: REQ-SDS-071
 function glInit() {
   const cv = document.getElementById("scope");
   GLR = glRenderer(cv);
@@ -448,7 +515,9 @@ function glInit() {
   if (NAVR) navCtx = glContext2D(NAVR, nv);
   return true;
 }
+// TRLC-LINKS: REQ-SDS-071
 function glBeginFrame(bg) { if (GLR && !GLR.lost()) GLR.begin(bg); }
+// TRLC-LINKS: REQ-SDS-071
 function glEndFrame() { if (GLR) GLR.end(); }
 
 // ---- per-card GL box: the analysis cards (eye/hist/spec/bode/spectrogram, and
@@ -456,6 +525,7 @@ function glEndFrame() { if (GLR) GLR.end(); }
 // glCardCtx(cv,bg) returns the card's 2D facade with a fresh frame begun (cleared
 // to bg); pair every successful call with glCardEnd(cv) to flush. Returns null if
 // WebGL is unavailable or the context is currently lost (caller skips the frame).
+// TRLC-LINKS: REQ-SDS-071
 function glCardCtx(cv, bg) {
   if (!cv) return null;
   let box = cv._glbox;
@@ -468,4 +538,5 @@ function glCardCtx(cv, bg) {
   box.R.begin(bg);
   return box.ctx;
 }
+// TRLC-LINKS: REQ-SDS-071
 function glCardEnd(cv) { const box = cv && cv._glbox; if (box) box.R.end(); }

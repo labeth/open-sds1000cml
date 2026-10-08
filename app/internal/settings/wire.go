@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-SETTINGS
 package settings
 
 import (
@@ -10,6 +11,7 @@ import (
 // Engine is the slice of the engine's staging-setter surface the persisted
 // setup flows through (the same calls web /api/set and the panel make; every
 // setter clamps and stages — nothing here touches the bus).
+// TRLC-LINKS: REQ-SDS-072, REQ-SDS-089
 type Engine interface {
 	Snapshot() engine.Stats
 	SetTdiv(tdivS float64) (engine.Band, bool)
@@ -19,6 +21,7 @@ type Engine interface {
 	SetTrigType(t int)
 	SetTrigLevelCode(code uint16) uint16
 	SetHoldoff(sec float64) float64
+	SetTrigPosFrac(frac float64)
 	SetAcqMode(m int)
 	SetAvgCount(n int)
 	SetEresLen(l int)
@@ -27,6 +30,7 @@ type Engine interface {
 // Analog is the vertical front-end surface (implemented by *analog.FrontEnd,
 // producer-direct off the GPMC bus). May be nil when SPI is unavailable —
 // vertical setup is then neither collected nor restored.
+// TRLC-LINKS: REQ-SDS-072, REQ-SDS-089
 type Analog interface {
 	Snapshot() (idx [2]int, emitted bool)
 	SetVdiv(ch, idx int) error
@@ -40,6 +44,7 @@ type Analog interface {
 
 // ViewState is the controller-owned slice of the setup: the device decode
 // config and the display view mode.
+// TRLC-LINKS: REQ-SDS-072, REQ-SDS-089
 type ViewState struct {
 	ViewMode int
 	Decode   Decode
@@ -48,6 +53,7 @@ type ViewState struct {
 // Panel is the front-panel controller surface (implemented by
 // *panel.Controller). ApplySettingsView must enforce the same domains the
 // DECODE/DISPLAY menus keep. May be nil.
+// TRLC-LINKS: REQ-SDS-072, REQ-SDS-089
 type Panel interface {
 	SettingsView() ViewState
 	ApplySettingsView(v ViewState)
@@ -57,6 +63,7 @@ type Panel interface {
 // engine stats snapshot, the analog front end's shadows and the controller's
 // view state. Cheap (mutex-guarded copies, zero bus access) — safe to call
 // from the saver's poll goroutine.
+// TRLC-LINKS: REQ-SDS-089
 func Collect(eng Engine, fe Analog, pc Panel) Settings {
 	s := Settings{Version: Version}
 	if eng != nil {
@@ -69,8 +76,12 @@ func Collect(eng Engine, fe Analog, pc Panel) Settings {
 			Type:      st.TrigType,
 			Norm:      st.Norm,
 			HoldoffS:  st.HoldoffS,
+			PosFrac:   st.TrigPosFrac,
 		}
 		s.Acq = Acq{Mode: st.AcqMode, AvgCount: st.AvgCount, EresLen: st.EresLen}
+		if md, ok := eng.(interface{ MemDepth() int }); ok {
+			s.Acq.MemDepth = md.MemDepth()
+		}
 		// OffC1/OffC2 are the staged DAC codes; 0 means the boot-inherited
 		// offset was never touched (spec 06 §4.4) — record that so restore
 		// won't drive an explicit 0 V over an untouched channel.
@@ -87,6 +98,9 @@ func Collect(eng Engine, fe Analog, pc Panel) Settings {
 			s.Ch[ch].OffsetV = fe.OffsetReqV(ch)
 			s.Ch[ch].Coupling = fe.Coupling(ch)
 			s.Ch[ch].Probe = fe.ProbeFactor(ch)
+			if b, ok := fe.(interface{ BWL(ch int) bool }); ok {
+				s.Ch[ch].BWL = b.BWL(ch)
+			}
 		}
 	}
 	if pc != nil {
@@ -102,6 +116,7 @@ func Collect(eng Engine, fe Analog, pc Panel) Settings {
 // offset re-anchoring, trigger-map updates) applies. Out-of-domain values are
 // clamped by the setters or skipped with a log line; Apply never panics on a
 // hostile Settings value.
+// TRLC-LINKS: REQ-SDS-072
 func Apply(s Settings, eng Engine, fe Analog, pc Panel, logf func(string, ...any)) {
 	if logf == nil {
 		logf = func(string, ...any) {}
@@ -121,6 +136,12 @@ func Apply(s Settings, eng Engine, fe Analog, pc Panel, logf func(string, ...any
 		// out-of-range conversion is implementation-defined on ARMv7).
 		if c := s.Trigger.LevelCode; c > 0 && c <= 0xFFFF {
 			eng.SetTrigLevelCode(uint16(c)) // clamps to the operational window
+		}
+		if p := s.Trigger.PosFrac; finite(p) && p > 0 && p <= 1 {
+			eng.SetTrigPosFrac(p)
+		}
+		if md, ok := eng.(interface{ SetMemDepth(int) int }); ok && s.Acq.MemDepth > 0 {
+			md.SetMemDepth(s.Acq.MemDepth) // clamps to the backend's range
 		}
 		if finite(s.Trigger.HoldoffS) {
 			eng.SetHoldoff(s.Trigger.HoldoffS) // clamps [0, 10] s
@@ -158,6 +179,11 @@ func Apply(s Settings, eng Engine, fe Analog, pc Panel, logf func(string, ...any
 			if cs.Probe == 1 || cs.Probe == 10 || cs.Probe == 100 { // same domain the web enforces
 				fe.SetProbe(ch, cs.Probe)
 			}
+			if b, ok := fe.(interface{ SetBWL(ch int, on bool) error }); ok && s.VertSet {
+				if err := b.SetBWL(ch, cs.BWL); err != nil {
+					logf("settings: BWL C%d: %v", ch+1, err)
+				}
+			}
 		}
 	}
 	if pc != nil {
@@ -168,4 +194,5 @@ func Apply(s Settings, eng Engine, fe Analog, pc Panel, logf func(string, ...any
 // finite rejects NaN/±Inf before a value reaches float→hardware-code math
 // (encoding/json cannot produce them, but the saver snapshot could in
 // principle carry one and Apply is also fuzzed directly).
+// TRLC-LINKS: REQ-SDS-072
 func finite(f float64) bool { return !math.IsNaN(f) && !math.IsInf(f, 0) }

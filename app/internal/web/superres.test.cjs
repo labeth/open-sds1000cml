@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-WEB
 // Node tests for superres.js: synthetic repetitive waveforms with KNOWN
 // sub-sample shifts, noise, drift and glitches — the stacker must recover
 // the shifts, reject the junk, drop the noise ~sqrt(N), and fill the fine
@@ -7,12 +8,14 @@ const { srAlign, srGainOffset, srNew, srSeedRef, srFeed, srResult, srModelFit, s
 const peaksLib = require("./peaks.js");
 
 let fails = 0;
+// TRLC-LINKS: REQ-SDS-019, REQ-SDS-181
 function check(name, ok, detail) {
   console.log((ok ? "ok   " : "FAIL ") + name + (detail ? "  [" + detail + "]" : ""));
   if (!ok) fails++;
 }
 
 // Deterministic PRNG (mulberry32) — reproducible tests.
+// TRLC-LINKS: REQ-SDS-019, REQ-SDS-181
 function rng(seed) {
   let a = seed >>> 0;
   return () => {
@@ -24,6 +27,7 @@ function rng(seed) {
 }
 const rnd = rng(0xC0FFEE);
 // Box-Muller gaussian.
+// TRLC-LINKS: REQ-SDS-019, REQ-SDS-181
 function gauss() {
   const u = Math.max(rnd(), 1e-12), v = rnd();
   return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
@@ -31,6 +35,7 @@ function gauss() {
 
 // Band-limited square: sum of odd harmonics up to fmax — models the analog
 // front end rounding the edges (what makes sub-sample alignment possible).
+// TRLC-LINKS: REQ-SDS-019, REQ-SDS-181
 function blSquare(n, period, phase, harmonics) {
   const out = new Float64Array(n);
   for (let i = 0; i < n; i++) {
@@ -41,6 +46,7 @@ function blSquare(n, period, phase, harmonics) {
   return out;
 }
 // Frame generator: codes = 128 + amp·wave + gaussian noise.
+// TRLC-LINKS: REQ-SDS-019, REQ-SDS-181
 function frame(n, period, shift, noise, amp, harmonics) {
   const w = blSquare(n, period, shift, harmonics || 15);
   const out = new Float64Array(n);
@@ -260,8 +266,11 @@ function frame(n, period, shift, noise, amp, harmonics) {
 {
   const n = 2048, K = 8, N = 240, noise = 0.15; // noise well below 0.5 LSB
   const P = 1024, A = 40;
+  // TRLC-LINKS: REQ-SDS-019, REQ-SDS-181
   const trueVal = i => 128 + A * Math.sin(2 * Math.PI * i / P);
+  // TRLC-LINKS: REQ-SDS-019, REQ-SDS-181
   const slopeAt = i => A * 2 * Math.PI / P * Math.cos(2 * Math.PI * i / P);
+  // TRLC-LINKS: REQ-SDS-019, REQ-SDS-181
   const mkStack = (dither) => {
     const st = srNew(n, K);
     st.sampleS = 1e-8;
@@ -279,6 +288,7 @@ function frame(n, period, shift, noise, amp, harmonics) {
   };
   // Error measured on SLOW bins only (|slope| < 0.05 codes/sample — the
   // staircase regime); rms not max (single-bin noise shouldn't decide).
+  // TRLC-LINKS: REQ-SDS-019, REQ-SDS-181
   const errOf = (res) => {
     let s2 = 0, c = 0;
     for (let b = 64 * K; b < (n - 64) * K; b++) {
@@ -305,6 +315,7 @@ function frame(n, period, shift, noise, amp, harmonics) {
 {
   const n = 1024, K = 16, N = 200, noise = 2.0;
   const nb = n * K;
+  // TRLC-LINKS: REQ-SDS-019, REQ-SDS-181
   const mk = () => ({ sum: new Float64Array(nb), cnt: new Float64Array(nb) });
   const lin = mk(), near = mk();
   for (let k = 0; k < N; k++) {
@@ -319,6 +330,7 @@ function frame(n, period, shift, noise, amp, harmonics) {
       if (b0 + 1 >= 0 && b0 + 1 < nb) { lin.sum[b0 + 1] += w1 * v; lin.cnt[b0 + 1] += w1; }
     }
   }
+  // TRLC-LINKS: REQ-SDS-019, REQ-SDS-181
   const roughness = (acc) => {
     const diffs = [];
     let prev = null;
@@ -340,6 +352,7 @@ function frame(n, period, shift, noise, amp, harmonics) {
 // sharpness (10-90% rise in fine bins) which must not blur >10%.
 {
   const n = 1024, period = 256, K = 16, noise = 2.0, N = 200;
+  // TRLC-LINKS: REQ-SDS-019, REQ-SDS-181
   const mk = (kernel) => {
     const st = srNew(n, K);
     st.kernel = kernel;
@@ -349,6 +362,7 @@ function frame(n, period, shift, noise, amp, harmonics) {
     }
     return srResult(st);
   };
+  // TRLC-LINKS: REQ-SDS-019, REQ-SDS-181
   const rise1090 = (mean) => {
     // find the largest rising edge in the middle half and measure 10-90%
     const nb = mean.length;
@@ -379,6 +393,7 @@ function frame(n, period, shift, noise, amp, harmonics) {
 // the same contributor count; noise within 10%, no spurious ringing.
 {
   const n = 1024, period = 256, K = 16, noise = 2.0, N = 200;
+  // TRLC-LINKS: REQ-SDS-019, REQ-SDS-181
   const mk = (kernel) => {
     const st = srNew(n, K);
     st.kernel = kernel;
@@ -388,6 +403,7 @@ function frame(n, period, shift, noise, amp, harmonics) {
     }
     return srResult(st);
   };
+  // TRLC-LINKS: REQ-SDS-019, REQ-SDS-181
   const rise1090 = (mean) => {
     const nb = mean.length;
     let lo = 1e9, hi = -1e9;
@@ -478,8 +494,11 @@ function frame(n, period, shift, noise, amp, harmonics) {
 // just averaging).
 {
   const N = 2048, EDGE = 40, P = 40;         // triangle, 40-sample period
+  // TRLC-LINKS: REQ-SDS-019, REQ-SDS-181
   const clampC = v => Math.max(12, Math.min(243, Math.round(v)));
+  // TRLC-LINKS: REQ-SDS-019, REQ-SDS-181
   const tval = t => { const ph = ((t % P) + P) % P; return 128 + (ph < P / 2 ? -40 + 160 * ph / P : 120 - 160 * ph / P); };
+  // TRLC-LINKS: REQ-SDS-019, REQ-SDS-181
   const tri = (frac, na) => {                 // triangle, sub-sample shiftable by `frac`
     const a = new Int16Array(N);
     for (let i = 0; i < N; i++) a[i] = clampC(tval(i - frac) + na * (rnd() - 0.5));
@@ -505,12 +524,15 @@ function frame(n, period, shift, noise, amp, harmonics) {
 // whatever you froze — a glitch, one UART byte, a runt pulse.
 {
   const N = 1024, EDGE = 100;
+  // TRLC-LINKS: REQ-SDS-019, REQ-SDS-181
   const clampC = v => Math.max(12, Math.min(243, Math.round(v)));
+  // TRLC-LINKS: REQ-SDS-019, REQ-SDS-181
   const withFeat = na => {                    // flat baseline + one distinctive bipolar pulse
     const a = new Int16Array(N);
     for (let i = 0; i < N; i++) { let v = 128; const j = i - 400; if (j >= 0 && j < 40) v = 128 + 70 * Math.sin(j * 2 * Math.PI / 40); a[i] = clampC(v + na * (rnd() - 0.5)); }
     return a;
   };
+  // TRLC-LINKS: REQ-SDS-019, REQ-SDS-181
   const other = na => {                        // a DIFFERENT, non-matching waveform (slow ramp)
     const a = new Int16Array(N);
     for (let i = 0; i < N; i++) a[i] = clampC(90 + 70 * i / N + na * (rnd() - 0.5));
@@ -532,8 +554,11 @@ function frame(n, period, shift, noise, amp, harmonics) {
 // 250 MHz path). Both must stack; drizzle must fill the fine grid (not all gaps).
 {
   const N = 2048, EDGE = 40, P = 40;
+  // TRLC-LINKS: REQ-SDS-019, REQ-SDS-181
   const clampC = v => Math.max(12, Math.min(243, Math.round(v)));
+  // TRLC-LINKS: REQ-SDS-019, REQ-SDS-181
   const tval = t => { const ph = ((t % P) + P) % P; return 128 + (ph < P / 2 ? -40 + 160 * ph / P : 120 - 160 * ph / P); };
+  // TRLC-LINKS: REQ-SDS-019, REQ-SDS-181
   const tri = (frac, na) => { const a = new Int16Array(N); for (let i = 0; i < N; i++) a[i] = clampC(tval(i - frac) + na * (rnd() - 0.5)); return a; };
   const st = srNew(N, 16);
   st.align = 0; st.c[0].vpc = st.c[1].vpc = 1 / 32;
@@ -554,13 +579,18 @@ function frame(n, period, shift, noise, amp, harmonics) {
 // lookalikes in the reference RAISE the acceptance floor (low-info templates).
 {
   const N = 1024, L = 180;
+  // TRLC-LINKS: REQ-SDS-019, REQ-SDS-181
   const clampC = v => Math.max(12, Math.min(243, Math.round(v)));
   let s = 77;
+  // TRLC-LINKS: REQ-SDS-019, REQ-SDS-181
   const rnd = () => { s = (s * 1103515245 + 12345) & 0x7fffffff; return s / 0x7fffffff - 0.5; };
   // square feature: low 30%, high 70% — one transition, wide plateaus
+  // TRLC-LINKS: REQ-SDS-019, REQ-SDS-181
   const square = i => (i / L) < 0.3 ? -1 : 1;
   // decoy: same transition + an EXTRA pulse in the square's high plateau
+  // TRLC-LINKS: REQ-SDS-019, REQ-SDS-181
   const dec = i => { const p = i / L; return (p < 0.3 ? -1 : 1) * (p > 0.6 && p < 0.75 ? -1 : 1); };
+  // TRLC-LINKS: REQ-SDS-019, REQ-SDS-181
   const mkframe = (shape, na) => {
     const a = new Int16Array(N);
     for (let i = 0; i < N; i++) {
@@ -583,11 +613,16 @@ function frame(n, period, shift, noise, amp, harmonics) {
   // environment whose filler already produces ~0.85 lookalikes. The self-
   // calibrated floor must sit above the ambient so junk humps don't stack.
   const N = 2048, L = 100;
+  // TRLC-LINKS: REQ-SDS-019, REQ-SDS-181
   const clampC = v => Math.max(12, Math.min(243, Math.round(v)));
   let s = 33;
+  // TRLC-LINKS: REQ-SDS-019, REQ-SDS-181
   const rnd = () => { s = (s * 1103515245 + 12345) & 0x7fffffff; return s / 0x7fffffff - 0.5; };
+  // TRLC-LINKS: REQ-SDS-019, REQ-SDS-181
   const hump = (c, w, a, out) => { for (let i = 0; i < N; i++) out[i] += a * Math.exp(-((i - c) ** 2) / (2 * w * w)); };
+  // TRLC-LINKS: REQ-SDS-019, REQ-SDS-181
   const rect = (c, w, a, out) => { for (let i = Math.max(0, c - w); i < Math.min(N, c + w); i++) out[i] += a; };
+  // TRLC-LINKS: REQ-SDS-019, REQ-SDS-181
   const mk = (humps, rects, na) => {
     const f = new Float64Array(N);
     for (const [c, w, a] of humps) hump(c, w, a, f);
@@ -616,6 +651,7 @@ function frame(n, period, shift, noise, amp, harmonics) {
 // the seeded gate; a supplied position with no matching waveform is rejected. --
 {
   const N = 1200;
+  // TRLC-LINKS: REQ-SDS-019, REQ-SDS-181
   const stamp = (a, at) => { // a distinctive multi-transition "byte" waveform
     const pat = [230, 230, 30, 30, 230, 30, 30, 230, 230, 30, 230, 30]; // ~12 half-bit levels
     for (let k = 0; k < pat.length; k++) for (let j = 0; j < 8; j++) a[at + k * 8 + j] = pat[k];

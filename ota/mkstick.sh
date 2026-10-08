@@ -51,8 +51,8 @@ build() {
   echo ">> building OTA tree + agent (make -C ota dist) ..."
   ( cd "$here" && make dist >/dev/null )
   [ -f "$tree/startup.sh" ] && [ -d "$tree/ota" ] || die "make dist did not produce $tree"
-  echo ">> building the clean-room app (make -C app app) ..."
-  ( cd "$repo/app" && make app >/dev/null )
+  echo ">> building the app with its FPGA images (make -C app app-release) ..."
+  ( cd "$repo/app" && make app-release >/dev/null )
   [ -f "$appbin" ] || die "app build failed ($appbin)"
   echo ">> building the emergency backstop (make -C ota stubapp) ..."
   ( cd "$here" && make stubapp >/dev/null )

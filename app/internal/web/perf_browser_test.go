@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-WEB
 package web
 
 import (
@@ -18,6 +19,7 @@ import (
 // ~1 if the memoization regresses, e.g. recomputing every fit per pan/zoom). The
 // fakeScope here only needs to serve a basic frame so the page loads — the mjs
 // installs its own synthetic stack in-page.
+// TRLC-LINKS: REQ-SDS-180
 func TestStackPerfBrowser(t *testing.T) {
 	testenv.NeedNode(t)
 	const N = 2048

@@ -1,21 +1,32 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
 package engine
 
 import "math"
 
-// Band is one row of the timebase ladder (spec 04 §2): the divisor triple of
-// the row plus everything the FSM derives from it. Rows ≥5 ms carry the
-// FAITHFUL-NOMINAL divisor for reporting only — what bring-up programs comes
-// from Prog() (the envelope phase-scatter formula / the fixed roll divisor),
-// never these values.
+// Band is one row of the timebase ladder (app spec 04 §2). The row carries the
+// factory ladder's NOMINAL per-sample interval (class + 32-bit divisor, 10 ns
+// units; class 0x20 = 2 ns, 0x01 = 4 ns) as the label of what the band wants;
+// what the acq2 fabric is programmed with comes from Decim(): the nominal
+// interval quantised to the fabric base tick (baseTickNs, one encode sample at
+// the base rate). CaptureIntervalNs reports the interval actually delivered.
+// TRLC-LINKS: REQ-SDS-010
 type Band struct {
 	TdivS float64 // nominal seconds/div label
-	Class uint16  // divisor class (0x19), nominal
-	Lo    uint16  // divisor low (0x1a), nominal
-	Hi    uint16  // divisor high (0x1b), nominal
+	Class uint16  // nominal interval class (factory ladder: 0x20=2 ns, 0x01=4 ns, 0x80=divisor×10 ns)
+	Lo    uint16  // nominal divisor low
+	Hi    uint16  // nominal divisor high
 }
 
 const (
-	deepRecord = 20480 // physical deep-record depth in samples
+	// The default image samples one core per channel at the encode rate
+	// (workplan §3, v2.0 dual mode): ENC_RATE 3 = 200 MHz → 5 ns per sample at
+	// DECIM=1. Interleaved 2 ns/4 ns records are WP4; until then the fast rows
+	// deliver 5 ns and say so through CaptureIntervalNs/DisplayedSdivS.
+	baseTickNs = 5.0
+	encRate    = 3 // ACQ_CTRL.ENC_RATE: 200 MHz
+
+	deepRecord = 20480 // physical deep-record depth in samples (iface.RecDepth); a
+	// finalized record holds at most maxRecordCols (engine_capture.go) of it
 	// Decimated bands: the DISPLAY window (10-division span) is decimWin, but
 	// the FSM drains decimDrain samples so software centring has margin on BOTH
 	// sides of the record centre. With drain == window (the old decimCols) the
@@ -24,12 +35,12 @@ const (
 	// drain stays well inside the record actually captured by halt time
 	// (arm-to-latch clocks ~14k samples at 500 µs/div), verified per-frame by
 	// ValidDepth telemetry.
-	decimWin    = 2048  // decimated display window (10-division span cap)
-	decimDrain  = 6144  // decimated drain depth = window + centring margin
-	latchAt     = 0x200 // fill-counter gate before capture-halt
-	fillMask    = 0x07ff
-	screenDivsH = 10 // horizontal graticule divisions
-	screenDivsV = 8  // vertical graticule divisions
+	decimWin    = 2048   // decimated display window (10-division span cap)
+	decimDrain  = 6144   // decimated drain depth = window + centring margin
+	latchAt     = 0x200  // fill-counter gate before capture-halt (samples written)
+	fillMask    = 0xffff // FILL is the low 16 bits of wrote_count
+	screenDivsH = 10     // horizontal graticule divisions
+	screenDivsV = 8      // vertical graticule divisions
 
 	// Slow-envelope constants (spec 04): the per-sample interval is chosen
 	// for PHASE SCATTER (~0.23 of the 1 kHz cal period), never for density —
@@ -44,9 +55,9 @@ const (
 	// display window, so a triggered envelope frame re-centres the anchor without
 	// repeat-extending the screen edges. Deadline-gated: only added where the
 	// extra capture clears the 250 ms fill deadline with headroom.
-	envMargin          = 128
-	envFillFloorMs     = 250  // responsiveness floor for the envelope fill deadline
-	envFillSlack       = 1.30 // grow the deadline to 1.3× the expected capture time
+	envMargin      = 128
+	envFillFloorMs = 250  // responsiveness floor for the envelope fill deadline
+	envFillSlack   = 1.30 // grow the deadline to 1.3× the expected capture time
 
 	// Roll constants (spec 04): a FIXED phase-scatter divisor for every roll
 	// tdiv — the table divisor would pace reads at exactly one signal period
@@ -60,6 +71,7 @@ const (
 )
 
 // Kind routes the FSM: which capture path a band runs.
+// TRLC-LINKS: REQ-SDS-010
 type Kind int
 
 const (
@@ -109,6 +121,7 @@ var bands = []Band{
 // PlanTdiv resolves a requested seconds/div to a ladder row with 1e-6
 // relative tolerance (float round-trip safety). ok=false → not a detent;
 // the caller rejects the request.
+// TRLC-LINKS: REQ-SDS-010
 func PlanTdiv(tdivS float64) (Band, bool) {
 	for _, b := range bands {
 		if math.Abs(b.TdivS-tdivS) <= b.TdivS*1e-6 {
@@ -119,6 +132,7 @@ func PlanTdiv(tdivS float64) (Band, bool) {
 }
 
 // SupportedTdivs lists the ladder's tdiv column, ascending (UI source of truth).
+// TRLC-LINKS: REQ-SDS-010
 func SupportedTdivs() []float64 {
 	out := make([]float64, len(bands))
 	for i, b := range bands {
@@ -128,6 +142,7 @@ func SupportedTdivs() []float64 {
 }
 
 // Kind classifies the band (spec 04 routing predicates, resolved in order).
+// TRLC-LINKS: REQ-SDS-010
 func (b Band) Kind() Kind {
 	switch {
 	case b.TdivS >= 100e-3:
@@ -145,6 +160,7 @@ func (b Band) Kind() Kind {
 // (spec 04): winCols = round(10·tdiv/envInterval) clamped BEFORE the divisor
 // calc; divisor = round(span/winCols/10 ns) — preserving the labelled span
 // exactly, so displayed s/div equals the label.
+// TRLC-LINKS: REQ-SDS-010
 func (b Band) EnvPlan() (winCols int, divisor uint32) {
 	span := screenDivsH * b.TdivS
 	w := int(math.Round(span / envIntervalS))
@@ -171,6 +187,7 @@ func (b Band) EnvPlan() (winCols int, divisor uint32) {
 // fast envelope bands (5–10 ms/div), which is exactly where the few-periods
 // anchor wander makes the shimmer worst. At 20–50 ms/div the deadline binds (and
 // the wander is already sub-5 %), so the capture stays the display span.
+// TRLC-LINKS: REQ-SDS-010
 func (b Band) EnvCaptureCols() int {
 	w, _ := b.EnvPlan()
 	want := w + 2*envMargin
@@ -188,6 +205,7 @@ func (b Band) EnvCaptureCols() int {
 
 // EnvFillTarget is the fill-counter gate for an envelope frame: the capture
 // width (display + deadline-gated centring margin), capped at the counter's cap.
+// TRLC-LINKS: REQ-SDS-010
 func (b Band) EnvFillTarget() uint16 {
 	c := b.EnvCaptureCols()
 	if c > envFillCap {
@@ -196,40 +214,13 @@ func (b Band) EnvFillTarget() uint16 {
 	return uint16(c)
 }
 
-// Prog is what bringUp actually programs (spec 04 §5).
-func (b Band) Prog() (class, lo, hi uint16) {
+// nominalIntervalNs is the per-sample interval the band asks for: the
+// envelope phase-scatter divisor, the fixed roll divisor, or the ladder row.
+// TRLC-LINKS: REQ-SDS-010
+func (b Band) nominalIntervalNs() float64 {
 	switch b.Kind() {
 	case KindEnvelope:
 		_, d := b.EnvPlan()
-		return 0x80, uint16(d & 0xffff), uint16(d >> 16)
-	case KindRoll:
-		return 0x80, rollDivisor & 0xffff, 0
-	default:
-		return b.Class, b.Lo, b.Hi
-	}
-}
-
-// Divisor is the 32-bit NOMINAL decimation divisor of the table row.
-func (b Band) Divisor() uint32 { return uint32(b.Lo) | uint32(b.Hi)<<16 }
-
-// NativeFast: class 0x20/0x01 always, class 0x80 with divisor ≤ 4. The
-// ladder has no divisor 5–7, so >4 → decimated is gap-free.
-func (b Band) NativeFast() bool {
-	if b.TdivS >= 5e-3 {
-		return false
-	}
-	if b.Class == 0x20 || b.Class == 0x01 {
-		return true
-	}
-	return b.Class == 0x80 && b.Divisor() <= 4
-}
-
-// CaptureIntervalNs is the real per-sample interval of the captured record.
-func (b Band) CaptureIntervalNs() float64 {
-	switch b.Kind() {
-	case KindEnvelope:
-		w, d := b.EnvPlan()
-		_ = w
 		return float64(d) * 10
 	case KindRoll:
 		return rollDivisor * 10
@@ -244,23 +235,54 @@ func (b Band) CaptureIntervalNs() float64 {
 	}
 }
 
-// displayIntervalNs sizes the display window. Class 0x20 uses the 1 ns
-// nominal (spec 04: sizing at the real 2 ns would render everything ≤200 ns
-// 2× zoomed; the nominal makes 10 divisions match the labelled tdiv).
-func (b Band) displayIntervalNs() float64 {
-	if b.Class == 0x20 && b.Kind() == KindNativeFast {
-		return 1
+// Decim is what bringUp programs into DECIM_LO/HI: the nominal interval in
+// base ticks, at least 1 (cap_tick once per DECIM encode samples).
+// TRLC-LINKS: REQ-SDS-010
+func (b Band) Decim() uint32 {
+	d := uint32(math.Round(b.nominalIntervalNs() / baseTickNs))
+	if d < 1 {
+		d = 1
 	}
-	return b.CaptureIntervalNs()
+	return d
 }
 
+// Divisor is the 32-bit NOMINAL decimation divisor of the table row.
+// TRLC-LINKS: REQ-SDS-010
+func (b Band) Divisor() uint32 { return uint32(b.Lo) | uint32(b.Hi)<<16 }
+
+// NativeFast: class 0x20/0x01 always, class 0x80 with divisor ≤ 4. The
+// ladder has no divisor 5–7, so >4 → decimated is gap-free.
+// TRLC-LINKS: REQ-SDS-010
+func (b Band) NativeFast() bool {
+	if b.TdivS >= 5e-3 {
+		return false
+	}
+	if b.Class == 0x20 || b.Class == 0x01 {
+		return true
+	}
+	return b.Class == 0x80 && b.Divisor() <= 4
+}
+
+// CaptureIntervalNs is the real per-sample interval of the captured record:
+// DECIM base ticks.
+// TRLC-LINKS: REQ-SDS-010
+func (b Band) CaptureIntervalNs() float64 { return float64(b.Decim()) * baseTickNs }
+
+// displayIntervalNs sizes the display window: the delivered interval, so ten
+// divisions of the screen hold exactly the samples the fabric captured and
+// DisplayedSdivS reports the honest seconds/div (the ≤2 ns rows deliver 5 ns
+// until interleave lands in WP4).
+// TRLC-LINKS: REQ-SDS-010
+func (b Band) displayIntervalNs() float64 { return b.CaptureIntervalNs() }
+
 // DrainCols is how many samples the FSM drains per frame: native-fast always
-// drains the full deep record (the edge lands mid-record); decimated drains
+// drains the full record (the edge lands mid-record); decimated drains
 // the display record; envelope drains its window; roll fills its raw ring.
+// TRLC-LINKS: REQ-SDS-010
 func (b Band) DrainCols() int {
 	switch b.Kind() {
 	case KindNativeFast:
-		return deepRecord
+		return maxRecordCols
 	case KindEnvelope:
 		return b.EnvCaptureCols() // display span + deadline-gated centring margin
 	case KindRoll:
@@ -270,6 +292,7 @@ func (b Band) DrainCols() int {
 }
 
 // WinCols is the sample count spanning the 10-division screen.
+// TRLC-LINKS: REQ-SDS-010
 func (b Band) WinCols() int {
 	switch b.Kind() {
 	case KindEnvelope:
@@ -306,6 +329,7 @@ func (b Band) WinCols() int {
 // preserves the label on every band except the counter-limited slowest one,
 // where the reduced display span honestly reports fewer s/div; roll reports the
 // label.
+// TRLC-LINKS: REQ-SDS-010
 func (b Band) DisplayedSdivS() float64 {
 	switch b.Kind() {
 	case KindRoll:
@@ -316,6 +340,7 @@ func (b Band) DisplayedSdivS() float64 {
 
 // WaitBudget is the bounded wait-for-capture budget for real-time bands:
 // clamp(3 · captureInterval · LatchAt, 40 ms, 80 ms), in nanoseconds.
+// TRLC-LINKS: REQ-SDS-008, REQ-SDS-010
 func (b Band) WaitBudgetNs() int64 {
 	n := int64(3 * b.CaptureIntervalNs() * latchAt)
 	if n < 40e6 {
@@ -332,6 +357,7 @@ func (b Band) WaitBudgetNs() int64 {
 // lands on a FRESH sample: pacing 5× slower (× 50 ns) misses 4-of-5 fresh
 // samples and fills the ring glacially; pacing faster just re-reads dwells
 // (skipped by rollUpdate) and risks wedging the port. Clamped to [50 µs, 40 ms].
+// TRLC-LINKS: REQ-SDS-010
 func RollPaceNs() int64 {
 	n := int64(rollDivisor * 10)
 	if n < 50e3 {

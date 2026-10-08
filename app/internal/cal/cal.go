@@ -3,6 +3,7 @@
 // in-RAM table does not exist under a clean takeover — the app builds its
 // own table from the file, falling back to the redundant backup and then to
 // compiled defaults ("Calibration memory lost").
+// ENGMODEL-OWNER-UNIT: FU-APP-CAL
 package cal
 
 import (
@@ -19,6 +20,7 @@ const (
 )
 
 // Rec is one per-(channel, V/div) calibration record (Block A).
+// TRLC-LINKS: REQ-SDS-016, REQ-SDS-091
 type Rec struct {
 	GainDAC int16   // fine analog gain code (spidev1.1)
 	Zero    int16   // offset-DAC zero (live-zero; file +2 copies to both)
@@ -27,6 +29,7 @@ type Rec struct {
 }
 
 // Table is the in-process calibration table.
+// TRLC-LINKS: REQ-SDS-016, REQ-SDS-091
 type Table struct {
 	Rec    [2][numVdiv]Rec
 	Source string // "file" | "backup" | "defaults"
@@ -40,6 +43,7 @@ const (
 
 // Load reads the cal chain: primary → backup → compiled defaults. It never
 // fails; check Source to see what was loaded.
+// TRLC-LINKS: REQ-SDS-016
 func Load(logf func(string, ...any)) *Table {
 	if t, err := LoadFile(PathPrimary); err == nil {
 		t.Source = "file"
@@ -60,6 +64,7 @@ func Load(logf func(string, ...any)) *Table {
 }
 
 // LoadFile parses one calibration blob.
+// TRLC-LINKS: REQ-SDS-016
 func LoadFile(path string) (*Table, error) {
 	raw, err := os.ReadFile(path)
 	if err != nil {
@@ -69,6 +74,7 @@ func LoadFile(path string) (*Table, error) {
 }
 
 // Parse validates, de-scrambles and parses a raw 2752-byte blob.
+// TRLC-LINKS: REQ-SDS-016
 func Parse(raw []byte) (*Table, error) {
 	if len(raw) != fileSize {
 		return nil, fmt.Errorf("cal: size %d, want %d", len(raw), fileSize)
@@ -106,6 +112,7 @@ func Parse(raw []byte) (*Table, error) {
 // descramble applies the three byte-involutions IN ORDER (spec 10 §2.2):
 // reverse, NOT the back half, NOT the triangular indices. The transform is
 // NOT self-inverse — Scramble applies them in reverse order.
+// TRLC-LINKS: REQ-SDS-016
 func descramble(buf []byte) {
 	reverse(buf)
 	notBackHalf(buf)
@@ -114,18 +121,21 @@ func descramble(buf []byte) {
 
 // Scramble is the write-side inverse (offline tooling/tests only — never
 // the live volume).
+// TRLC-LINKS: REQ-SDS-016
 func Scramble(buf []byte) {
 	notTriangular(buf)
 	notBackHalf(buf)
 	reverse(buf)
 }
 
+// TRLC-LINKS: REQ-SDS-016
 func reverse(buf []byte) {
 	for i, j := 0, len(buf)-1; i < j; i, j = i+1, j-1 {
 		buf[i], buf[j] = buf[j], buf[i]
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-016
 func notBackHalf(buf []byte) {
 	n := len(buf)
 	for i := n - n/2; i < n; i++ {
@@ -133,6 +143,7 @@ func notBackHalf(buf []byte) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-016
 func notTriangular(buf []byte) {
 	pos, step := 1, 2
 	for pos < len(buf) {
@@ -143,6 +154,7 @@ func notTriangular(buf []byte) {
 }
 
 // Checksum computes the word-0 value for a scrambled payload (tooling).
+// TRLC-LINKS: REQ-SDS-016
 func Checksum(payload []byte) uint32 {
 	var sum uint32
 	for _, b := range payload {
@@ -153,6 +165,7 @@ func Checksum(payload []byte) uint32 {
 
 // Defaults is the compiled fallback table (firmware boot-default ladder).
 // Working but uncalibrated; offset zeros at the boot default 10223 (0x27ef).
+// TRLC-LINKS: REQ-SDS-016
 func Defaults() *Table {
 	gainDAC := [numVdiv]int16{0xe6, 0xa8, 0x94, 0x5e, 0x45, 0x20, 0x10, 0x08, 0x0d, 0x1c, 0x48, 0x05}
 	// NOTE the per-range break at index 4→5 (0.936 → 16.495): never
@@ -169,6 +182,7 @@ func Defaults() *Table {
 
 // DCVolts is the detent-invariant DC diagnostic (spec 10 §3.3):
 // (mean − 128) · GAIN / 110. The GAIN coefficient's only consumer.
+// TRLC-LINKS: REQ-SDS-091
 func (t *Table) DCVolts(ch, vd int, meanCode float64) float64 {
 	if ch < 0 || ch > 1 || vd < 0 || vd >= numVdiv {
 		return 0

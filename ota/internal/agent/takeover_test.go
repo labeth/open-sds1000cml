@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-OTA-AGENT
 package agent
 
 import (
@@ -8,6 +9,7 @@ import (
 	"open-sds/ota/internal/fdinherit"
 )
 
+// TRLC-LINKS: REQ-SDS-027
 func TestSplitCIDR(t *testing.T) {
 	cases := []struct {
 		in       string
@@ -34,6 +36,7 @@ func TestSplitCIDR(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-027
 func TestMatchesFactoryName(t *testing.T) {
 	a := testAgent(t)
 	a.cfg.FactoryNames = []string{"SDS1000", "phoenix"}
@@ -58,6 +61,7 @@ func TestMatchesFactoryName(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-027
 func TestFactoryCandidatesEmptyWhenNobodyHoldsDevice(t *testing.T) {
 	// cfg.GpmcDev points into a fresh TempDir; no process on this machine can
 	// hold it, so the /proc scan must come back empty — the gate that keeps
@@ -68,6 +72,7 @@ func TestFactoryCandidatesEmptyWhenNobodyHoldsDevice(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-027
 func TestTakeoverResultSteps(t *testing.T) {
 	r := &TakeoverResult{}
 	r.step("gate: inherited gpmc fd=%d", 7)
@@ -80,6 +85,7 @@ func TestTakeoverResultSteps(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-027
 func TestTakeoverIdempotentWhenAlreadyTakenOver(t *testing.T) {
 	a := testAgent(t)
 	if err := a.st.update(func(s *State) { s.TakenOver = true }); err != nil {
@@ -97,6 +103,7 @@ func TestTakeoverIdempotentWhenAlreadyTakenOver(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 }
 
+// TRLC-LINKS: REQ-SDS-104
 func TestUntakeoverReleasesControl(t *testing.T) {
 	a := testAgent(t)
 	if err := a.st.update(func(s *State) { s.TakenOver = true; s.AutoTakeover = true }); err != nil {

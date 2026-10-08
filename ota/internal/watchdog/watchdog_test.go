@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-OTA-WATCHDOG
 package watchdog
 
 import (
@@ -14,6 +15,7 @@ import (
 // ioctl fails with ENOTTY, which exercises the belt-and-suspenders contract
 // (pet is healthy as long as the write half succeeds).
 
+// TRLC-LINKS: REQ-SDS-026, REQ-SDS-086
 func fakeDev(t *testing.T) string {
 	t.Helper()
 	path := filepath.Join(t.TempDir(), "watchdog")
@@ -23,6 +25,7 @@ func fakeDev(t *testing.T) string {
 	return path
 }
 
+// TRLC-LINKS: REQ-SDS-026, REQ-SDS-086
 func TestAcquirePetsImmediately(t *testing.T) {
 	dev := fakeDev(t)
 	w := New(dev)
@@ -50,6 +53,7 @@ func TestAcquirePetsImmediately(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-026, REQ-SDS-086
 func TestPetLoopFeedsOnInterval(t *testing.T) {
 	dev := fakeDev(t)
 	w := New(dev)
@@ -76,6 +80,7 @@ func TestPetLoopFeedsOnInterval(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-026, REQ-SDS-086
 func TestPetLoopStopsAfterDisarm(t *testing.T) {
 	dev := fakeDev(t)
 	w := New(dev)
@@ -91,6 +96,7 @@ func TestPetLoopStopsAfterDisarm(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-086
 func TestAcquireIdempotentWhileArmed(t *testing.T) {
 	dev := fakeDev(t)
 	w := New(dev)
@@ -108,6 +114,7 @@ func TestAcquireIdempotentWhileArmed(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-086
 func TestAcquireTimesOutWhenDeviceMissing(t *testing.T) {
 	missing := filepath.Join(t.TempDir(), "nope")
 	w := New(missing)
@@ -123,6 +130,7 @@ func TestAcquireTimesOutWhenDeviceMissing(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-086
 func TestAcquireRetriesUntilDeviceAppears(t *testing.T) {
 	// The takeover contract: the factory app's fd needs a moment to drain
 	// after the kill, so Acquire retries the open until the timeout.
@@ -141,6 +149,7 @@ func TestAcquireRetriesUntilDeviceAppears(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-086
 func TestDisarmWithoutAcquireIsNoop(t *testing.T) {
 	w := New(filepath.Join(t.TempDir(), "never-opened"))
 	w.Disarm() // must not panic or create anything
@@ -150,6 +159,7 @@ func TestDisarmWithoutAcquireIsNoop(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-086
 func TestReacquireAfterDisarm(t *testing.T) {
 	// A respawned agent generation re-acquires; the fd/stop-channel cycle must
 	// survive disarm -> acquire.

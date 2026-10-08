@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
 package engine
 
 import (
@@ -22,6 +23,7 @@ import (
 
 // Zone is one qualification rectangle. Times are SECONDS RELATIVE TO THE
 // TRIGGER EDGE (portable across bands); codes are display codes (0..255).
+// TRLC-LINKS: REQ-SDS-014
 type Zone struct {
 	DtLoS, DtHiS   float64
 	CodeLo, CodeHi int
@@ -32,6 +34,7 @@ type Zone struct {
 // Mask is a per-display-column envelope: a frame FAILS if any sample in
 // column j falls outside [Lo[j], Hi[j]]. Columns are the same edge-anchored
 // display window the renderer uses (WinCols samples, edge at PosFrac).
+// TRLC-LINKS: REQ-SDS-014
 type Mask struct {
 	Lo, Hi  []uint8
 	WinCols int
@@ -42,8 +45,13 @@ type Mask struct {
 	// same 2048 columns while seconds/column differ 10× (review finding).
 	TdivS   float64
 	SampleS float64
-	VdivKey uint64 // channel V/div bits at install (0 = unknown/don't guard)
-	OffKey  uint16 // channel offset DAC shadow at install
+	// FrameIdent marks an identity taken from the published frames (the SRAM
+	// engine has no band geometry): the mask compares only with frames of the
+	// same window, sample interval, timebase and kind (PeakDetect).
+	FrameIdent bool
+	PeakDetect bool
+	VdivKey    uint64 // channel V/div bits at install (0 = unknown/don't guard)
+	OffKey     uint16 // channel offset DAC shadow at install
 }
 
 // zone/mask modes
@@ -60,6 +68,7 @@ const (
 )
 
 // MaskFail is one captured failing frame (ring entry).
+// TRLC-LINKS: REQ-SDS-014
 type MaskFail struct {
 	C1, C2 []uint8
 	Valid  int
@@ -77,6 +86,7 @@ type MaskFail struct {
 	FailSample int   // raw sample index of the violation
 }
 
+// TRLC-LINKS: REQ-SDS-014
 type zoneMaskState struct {
 	// LOCK ORDER: e.mu is acquired BEFORE zm.mu (Snapshot nests that way).
 	// Never take e.mu while holding zm.mu — that is an ABBA deadlock against
@@ -91,6 +101,7 @@ type zoneMaskState struct {
 
 // SetZones installs the qualification zones (nil/empty disables the test but
 // not the mode). Copies the slice.
+// TRLC-LINKS: REQ-SDS-014
 func (e *Engine) SetZones(z []Zone) {
 	e.zm.mu.Lock()
 	e.zm.zones = append([]Zone(nil), z...)
@@ -98,6 +109,7 @@ func (e *Engine) SetZones(z []Zone) {
 }
 
 // SetZoneMode switches the zone trigger (ZoneOff/ZoneTrigger).
+// TRLC-LINKS: REQ-SDS-014
 func (e *Engine) SetZoneMode(m int) {
 	if m != ZoneOff && m != ZoneTrigger {
 		m = ZoneOff
@@ -108,6 +120,7 @@ func (e *Engine) SetZoneMode(m int) {
 // SetMask installs the envelope mask (nil clears). Copies the envelopes.
 // Identity is stamped BEFORE taking zm.mu — e.mu inside zm.mu would invert
 // the lock order against Snapshot (e.mu -> zm.mu) and deadlock.
+// TRLC-LINKS: REQ-SDS-014
 func (e *Engine) SetMask(m *Mask) {
 	var cp *Mask
 	if m != nil {
@@ -119,6 +132,12 @@ func (e *Engine) SetMask(m *Mask) {
 		e.mu.Lock()
 		cp.TdivS = e.band.TdivS
 		cp.SampleS = e.band.CaptureIntervalNs() * 1e-9
+		if e.sram != nil {
+			// The SRAM engine's geometry lives in its frames: the mask was
+			// built from the latest ones, so it compares with frames like them.
+			id := e.pubIdent
+			cp.FrameIdent, cp.TdivS, cp.SampleS, cp.PeakDetect = true, id.TdivS, id.SampleS, id.PeakDetect
+		}
 		cp.OffKey = e.offCode[m.Ch&1]
 		e.mu.Unlock()
 	}
@@ -129,6 +148,7 @@ func (e *Engine) SetMask(m *Mask) {
 
 // SetMaskMode switches mask testing (MaskOff/MaskTest/MaskStopFail) and
 // resets the running counters when turning on.
+// TRLC-LINKS: REQ-SDS-014
 func (e *Engine) SetMaskMode(m int) {
 	if m < MaskOff || m > MaskStopFail {
 		m = MaskOff
@@ -144,6 +164,7 @@ func (e *Engine) SetMaskMode(m int) {
 }
 
 // ClearMaskFails empties the failure ring and counters.
+// TRLC-LINKS: REQ-SDS-014
 func (e *Engine) ClearMaskFails() {
 	e.zm.mu.Lock()
 	e.zm.ring = nil
@@ -154,6 +175,7 @@ func (e *Engine) ClearMaskFails() {
 }
 
 // MaskFails returns a snapshot of the failure ring (most recent last).
+// TRLC-LINKS: REQ-SDS-014
 func (e *Engine) MaskFails() []MaskFail {
 	e.zm.mu.Lock()
 	defer e.zm.mu.Unlock()
@@ -161,6 +183,7 @@ func (e *Engine) MaskFails() []MaskFail {
 }
 
 // Zones returns a copy of the installed zones (render/UI readers).
+// TRLC-LINKS: REQ-SDS-014
 func (e *Engine) Zones() []Zone {
 	e.zm.mu.Lock()
 	defer e.zm.mu.Unlock()
@@ -169,6 +192,7 @@ func (e *Engine) Zones() []Zone {
 
 // MaskEnvelope returns a copy of the installed mask (nil if none) for the
 // LCD/web renderers.
+// TRLC-LINKS: REQ-SDS-014
 func (e *Engine) MaskEnvelope() *Mask {
 	e.zm.mu.Lock()
 	defer e.zm.mu.Unlock()
@@ -187,6 +211,7 @@ func (e *Engine) MaskEnvelope() *Mask {
 // and holding would blank the display — but the bypass is COUNTED so the UI
 // can say "zone/mask inactive at this timebase" instead of the feature
 // silently wearing a clean run's signature (same principle as MaskSkip).
+// TRLC-LINKS: REQ-SDS-014
 func (e *Engine) zoneMaskUncomparable() {
 	if e.zoneMode.Load() == ZoneTrigger {
 		e.zoneSkip.Add(1)
@@ -199,6 +224,7 @@ func (e *Engine) zoneMaskUncomparable() {
 // zonesQualify tests a locked frame against the installed zones. Runs on the
 // engine goroutine; f is the producer slot (safe to read). All zones must
 // pass (intersect zones must be hit, avoid zones must be missed).
+// TRLC-LINKS: REQ-SDS-014
 func (e *Engine) zonesQualify(f *Frame, valid int, edgeX, sampleS float64) bool {
 	e.zm.mu.Lock()
 	zones := e.zm.zones
@@ -244,6 +270,7 @@ func (e *Engine) zonesQualify(f *Frame, valid int, edgeX, sampleS float64) bool 
 // maskEval tests a locked frame against the envelope mask, updates counters,
 // captures failures into the ring, and reports whether acquisition should
 // stop (stop-on-fail). Runs on the engine goroutine.
+// TRLC-LINKS: REQ-SDS-014
 func (e *Engine) maskEval(f *Frame, valid, liveDepth int, edgeX, sampleS, posFrac float64) (fail, stop bool) {
 	mode := int(e.maskMode.Load())
 	if mode == MaskOff {
@@ -259,7 +286,16 @@ func (e *Engine) maskEval(f *Frame, valid, liveDepth int, edgeX, sampleS, posFra
 	// clean run, so every non-comparable frame COUNTS as skipped (Stats.MaskSkip)
 	// and the UI can say "mask invalid".
 	win := m.WinCols
-	if e.band.WinCols() != win ||
+	if m.FrameIdent {
+		w := f.WinCols
+		if w <= 0 || w > valid {
+			w = valid
+		}
+		if w != win || m.TdivS != f.TdivS || m.SampleS != f.SampleS || m.PeakDetect != f.PeakDetect {
+			e.maskSkip.Add(1)
+			return false, false // a frame of another geometry: not comparable
+		}
+	} else if e.band.WinCols() != win ||
 		m.TdivS != e.band.TdivS || m.SampleS != e.band.CaptureIntervalNs()*1e-9 {
 		e.maskSkip.Add(1)
 		return false, false // band changed since the mask was built: not comparable
@@ -350,6 +386,7 @@ func (e *Engine) maskEval(f *Frame, valid, liveDepth int, edgeX, sampleS, posFra
 // BuildMaskFromEnvelope dilates a per-column [lo,hi] envelope by ±tolCols
 // horizontally and ±tolCodes vertically — the standard mask morphology. The
 // input envelopes must be winCols long.
+// TRLC-LINKS: REQ-SDS-014
 func BuildMaskFromEnvelope(lo, hi []uint8, winCols, tolCols, tolCodes, ch int) *Mask {
 	if len(lo) != winCols || len(hi) != winCols || winCols <= 0 {
 		return nil
@@ -401,4 +438,11 @@ func BuildMaskFromEnvelope(lo, hi []uint8, winCols, tolCols, tolCodes, ch int) *
 		outHi[j] = uint8(mx)
 	}
 	return &Mask{Lo: outLo, Hi: outHi, WinCols: winCols, Ch: ch}
+}
+
+// frameIdent is the geometry of the latest published frame (guarded by e.mu),
+// the identity a mask installed on the SRAM engine compares against.
+type frameIdent struct {
+	TdivS, SampleS float64
+	PeakDetect     bool
 }

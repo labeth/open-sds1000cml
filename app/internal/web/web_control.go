@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-WEB
 package web
 
 import (
@@ -8,10 +9,12 @@ import (
 	"net/http"
 	"open-sds/app/internal/analog"
 	"open-sds/app/internal/engine"
+	"time"
 )
 
 // hZones installs the zone-trigger rectangles (POST JSON array of zones in
 // edge-anchored seconds x display codes). Empty array clears.
+// TRLC-LINKS: REQ-SDS-162
 func (s *Server) hZones(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "POST only", http.StatusMethodNotAllowed)
@@ -47,7 +50,8 @@ func (s *Server) hZones(w http.ResponseWriter, r *http.Request) {
 
 // hSerial installs the serial/protocol-trigger config (POST JSON = SerialParams:
 // {proto,chA,chB,baud,cpol,cpha,msb,addr,rw,bytes}). Arm/disarm is separate, via
-// /api/set {control:"serialmode"}. The byte pattern is clamped to 0..255.
+// /api/set {control:"serialmode"}. Match values retain the protocol's word width.
+// TRLC-LINKS: REQ-SDS-162
 func (s *Server) hSerial(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "POST only", http.StatusMethodNotAllowed)
@@ -73,13 +77,27 @@ func (s *Server) hSerial(w http.ResponseWriter, r *http.Request) {
 	if len(p.Bytes) > 64 { // a match pattern longer than a record is pointless
 		p.Bytes = p.Bytes[:64]
 	}
+	maxValue := 255
+	switch p.Proto {
+	case 1, 4: // UART / Manchester configurable data word
+		if p.Bits > 0 {
+			maxValue = (1 << p.Bits) - 1
+		}
+	case 5: // SENT nibble
+		maxValue = 15
+	case 7: // MIL-STD-1553 word
+		maxValue = 65535
+	case 8: // ARINC 429 data field
+		maxValue = 0x7ffff
+	}
 	for i := range p.Bytes {
-		p.Bytes[i] = clampI(p.Bytes[i], 0, 255)
+		p.Bytes[i] = clampI(p.Bytes[i], 0, maxValue)
 	}
 	s.sc.SetSerialParams(p)
 	writeJSON(w, map[string]any{"ok": true})
 }
 
+// TRLC-LINKS: REQ-SDS-162
 func clampI(v, lo, hi int) int {
 	if v < lo {
 		return lo
@@ -93,6 +111,7 @@ func clampI(v, lo, hi int) int {
 // hMask uploads the envelope mask (POST JSON {lo:[],hi:[],win,ch}; empty lo
 // clears). The envelopes are display-window columns (win = engine WinCols at
 // build time); the client builds + dilates.
+// TRLC-LINKS: REQ-SDS-162
 func (s *Server) hMask(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "POST only", http.StatusMethodNotAllowed)
@@ -132,6 +151,7 @@ func (s *Server) hMask(w http.ResponseWriter, r *http.Request) {
 // hBode serves the accumulated Frequency-Response (Bode) curve as parallel
 // arrays (compact for the plot): frequency (Hz), magnitude (dB), phase (deg),
 // sorted ascending by frequency.
+// TRLC-LINKS: REQ-SDS-162
 func (s *Server) hBode(w http.ResponseWriter, r *http.Request) {
 	pts := s.sc.BodePoints()
 	f := make([]float64, len(pts))
@@ -143,6 +163,7 @@ func (s *Server) hBode(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, map[string]any{"ok": true, "n": len(pts), "freq": f, "gain_db": g, "phase_deg": p})
 }
 
+// TRLC-LINKS: REQ-SDS-162
 func (s *Server) hMaskFail(w http.ResponseWriter, r *http.Request) {
 	ring := s.sc.MaskFails()
 	i := 0
@@ -168,6 +189,7 @@ func (s *Server) hMaskFail(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// TRLC-LINKS: REQ-SDS-162
 type setReq struct {
 	Control string  `json:"control"`
 	Value   float64 `json:"value"`
@@ -183,6 +205,7 @@ type setReq struct {
 	Neg  bool    `json:"neg"`  // video: negative sync
 }
 
+// TRLC-LINKS: REQ-SDS-162
 func (s *Server) hSet(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "POST only", http.StatusMethodNotAllowed)
@@ -228,6 +251,12 @@ func (s *Server) hSet(w http.ResponseWriter, r *http.Request) {
 		s.sc.SetTrigSlope(req.Value != 0)
 	case "ets":
 		s.sc.SetETS(req.Value != 0)
+		// The SRAM fabric has no equivalent-time mode and the engine keeps it
+		// off; report that instead of a silent success.
+		if req.Value != 0 && !s.sc.Snapshot().ETS {
+			ok, errStr = false, "equivalent-time sampling is not available on this acquisition fabric"
+			applied = 0
+		}
 	case "single":
 		s.sc.SetSingle()
 	case "trigpos":
@@ -239,6 +268,16 @@ func (s *Server) hSet(w http.ResponseWriter, r *http.Request) {
 	case "frameperiod":
 		applied := s.sc.SetFramePeriod(int(req.Value))
 		writeJSON(w, map[string]any{"ok": true, "applied": applied})
+		return
+	case "decodeview":
+		// A browser decoding the frames: sample frames for value seconds
+		// (renewed while it decodes), not peak-detect pairs.
+		if sc, ok := s.sc.(interface{ LeaseDecodeView(time.Duration) }); ok {
+			sc.LeaseDecodeView(time.Duration(math.Max(0, math.Min(req.Value, 10)) * float64(time.Second)))
+			writeJSON(w, map[string]any{"ok": true, "applied": req.Value})
+		} else {
+			writeJSON(w, map[string]any{"ok": false, "err": "unsupported"})
+		}
 		return
 	case "holdoff":
 		applied := s.sc.SetHoldoff(req.Value)
@@ -271,6 +310,13 @@ func (s *Server) hSet(w http.ResponseWriter, r *http.Request) {
 		s.sc.SetVideoParams(req.Std, req.Line, req.Neg)
 	case "acqmode":
 		s.sc.SetAcqMode(int(req.Value))
+	case "precisionrate":
+		if sc, supported := s.sc.(interface{ SetPrecisionRate(float64) float64 }); supported {
+			applied = sc.SetPrecisionRate(req.Value)
+		} else {
+			ok = false
+			errStr = "precision sample rate unavailable"
+		}
 	case "avgcount":
 		s.sc.SetAvgCount(int(req.Value))
 	case "eres":
@@ -353,6 +399,22 @@ func (s *Server) hSet(w http.ResponseWriter, r *http.Request) {
 			ch = 1
 		}
 		if err := s.fe.SetCoupling(ch, mode); err != nil {
+			ok, errStr = false, err.Error()
+			break
+		}
+		applied = req.Value
+	case "bwl1", "bwl2":
+		// 20 MHz bandwidth limit: 1 engages the relay, 0 releases it.
+		bw, can := s.fe.(interface{ SetBWL(ch int, on bool) error })
+		if s.fe == nil || !can {
+			ok, errStr = false, "bandwidth limit unavailable"
+			break
+		}
+		ch := 0
+		if req.Control == "bwl2" {
+			ch = 1
+		}
+		if err := bw.SetBWL(ch, req.Value != 0); err != nil {
 			ok, errStr = false, err.Error()
 			break
 		}

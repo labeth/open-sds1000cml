@@ -22,6 +22,7 @@
 // this surface — same fds, same env, same health file — and adds the actual
 // acquisition/render engine. It needs no knowledge of takeover, watchdog, A/B
 // slots, or rollback: the agent owns all of that.
+// ENGMODEL-OWNER-UNIT: FU-OTA-STUBAPP
 package main
 
 import (
@@ -34,6 +35,7 @@ import (
 	"time"
 )
 
+// TRLC-LINKS: REQ-SDS-177
 func findInheritedFD(path string) int {
 	entries, err := os.ReadDir("/proc/self/fd")
 	if err != nil {
@@ -51,6 +53,7 @@ func findInheritedFD(path string) int {
 	return -1
 }
 
+// TRLC-LINKS: REQ-SDS-177
 func main() {
 	log := func(f string, a ...any) { fmt.Printf("[stubapp] "+f+"\n", a...) }
 
@@ -108,6 +111,7 @@ func main() {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-177
 func envOr(k, d string) string {
 	if v := os.Getenv(k); v != "" {
 		return v

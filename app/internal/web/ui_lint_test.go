@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-WEB
 package web
 
 import (
@@ -15,6 +16,7 @@ import (
 // load-bearing invariants live here where `go test ./...` always executes them.
 // See app/docs/ui-architecture.md.
 
+// TRLC-LINKS: REQ-SDS-182
 func readUIHTML(t *testing.T) string {
 	t.Helper()
 	b, err := os.ReadFile("ui.html")
@@ -33,6 +35,7 @@ func readUIHTML(t *testing.T) string {
 // singletons. Target 0 after Phase 4.
 const inlineStyleBudget = 14
 
+// TRLC-LINKS: REQ-SDS-182
 func TestInlineStyleBudget(t *testing.T) {
 	n := strings.Count(readUIHTML(t), "style=\"")
 	if n > inlineStyleBudget {
@@ -46,6 +49,7 @@ func TestInlineStyleBudget(t *testing.T) {
 // external same-origin (app.js/peaks.js/decode.js).
 const inlineScriptBudget = 0
 
+// TRLC-LINKS: REQ-SDS-182
 func TestInlineScriptBudget(t *testing.T) {
 	// Count opening <script> tags with NO src attribute (inline blocks).
 	html := readUIHTML(t)
@@ -69,6 +73,7 @@ func TestInlineScriptBudget(t *testing.T) {
 // same-origin default, and SCRIPT restricted to 'self' with no 'unsafe-inline'
 // (the XSS-relevant directive). style-src may keep 'unsafe-inline' until Phase 4
 // removes the last inline display:none hooks.
+// TRLC-LINKS: REQ-SDS-182
 func TestContentSecurityPolicy(t *testing.T) {
 	fs := &fakeScope{stats: engine.Stats{Running: true}}
 	rec := httptest.NewRecorder()

@@ -1,12 +1,15 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-ANALOG
 package analog
 
 import (
+	"math"
 	"testing"
 	"time"
 
 	"open-sds/app/internal/cal"
 )
 
+// TRLC-LINKS: REQ-SDS-015
 type op struct {
 	kind string // "relay" | "gain"
 	word uint32
@@ -14,25 +17,30 @@ type op struct {
 	ch1  uint8
 }
 
+// TRLC-LINKS: REQ-SDS-015, REQ-SDS-095, REQ-SDS-096
 type fakeTr struct {
 	ops    []op
 	sleeps []time.Duration
 }
 
+// TRLC-LINKS: REQ-SDS-015
 func (f *fakeTr) WriteRelay(word uint32) error {
 	f.ops = append(f.ops, op{kind: "relay", word: word})
 	return nil
 }
 
+// TRLC-LINKS: REQ-SDS-015
 func (f *fakeTr) WriteGain(ch2, ch1 uint8) error {
 	f.ops = append(f.ops, op{kind: "gain", ch2: ch2, ch1: ch1})
 	return nil
 }
 
+// TRLC-LINKS: REQ-SDS-015
 func newFE(tr *fakeTr) *FrontEnd {
 	return New(tr, func(d time.Duration) { tr.sleeps = append(tr.sleeps, d) }, nil)
 }
 
+// TRLC-LINKS: REQ-SDS-015
 func TestSeedDoesNotEmit(t *testing.T) {
 	tr := &fakeTr{}
 	fe := newFE(tr)
@@ -45,6 +53,7 @@ func TestSeedDoesNotEmit(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-015
 func TestSetVdivSequence(t *testing.T) {
 	tr := &fakeTr{}
 	fe := newFE(tr)
@@ -73,6 +82,7 @@ func TestSetVdivSequence(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-015
 func TestRelayWordReference(t *testing.T) {
 	// Spec 06 §4.2 reference: DC / BWL-off / both attenuated → 0x70ad2d.
 	tr := &fakeTr{}
@@ -85,6 +95,7 @@ func TestRelayWordReference(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-015
 func lastRelay(tr *fakeTr) (uint32, bool) {
 	for i := len(tr.ops) - 1; i >= 0; i-- {
 		if tr.ops[i].kind == "relay" {
@@ -94,6 +105,7 @@ func lastRelay(tr *fakeTr) (uint32, bool) {
 	return 0, false
 }
 
+// TRLC-LINKS: REQ-SDS-096
 func TestCouplingIsSoftwareOnly(t *testing.T) {
 	tr := &fakeTr{}
 	fe := newFE(tr)
@@ -126,6 +138,7 @@ func TestCouplingIsSoftwareOnly(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-096
 func TestCoupleDisplay(t *testing.T) {
 	sig := []uint8{100, 200, 100, 200} // mean 150
 	// DC passes through unchanged (same backing array).
@@ -145,6 +158,7 @@ func TestCoupleDisplay(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-096
 func TestRemoveDC(t *testing.T) {
 	sig := make([]uint8, 100)
 	for i := range sig {
@@ -165,6 +179,7 @@ func TestRemoveDC(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-015
 func TestPlanVdiv(t *testing.T) {
 	if idx, ok := PlanVdiv(0.002); !ok || idx != 0 {
 		t.Fatalf("PlanVdiv(2mV) = %d,%v", idx, ok)
@@ -177,6 +192,7 @@ func TestPlanVdiv(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-015
 func TestZoomAndAnalogVdiv(t *testing.T) {
 	// 2 mV and 5 mV run the 10 mV analog range with display zoom.
 	if AnalogVdiv(0) != 0.010 || Detents[0].Zoom != 5 {
@@ -190,6 +206,7 @@ func TestZoomAndAnalogVdiv(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-015, REQ-SDS-095
 func TestCalibratedGainAndZero(t *testing.T) {
 	tab := cal.Defaults()
 	tab.Source = "file" // pretend a real file loaded
@@ -219,41 +236,43 @@ func TestCalibratedGainAndZero(t *testing.T) {
 	}
 }
 
-// TestOffsetKPerDivision pins the vendor slope: codes/volt = 50/VDIV, the same
-// on both tiers (the attenuator sets the clamp, not the slope — spec 06 §5.2).
+// TestOffsetKPerDivision pins the per-tier slope: one value per tier, not
+// per V/div — 4800 codes/V on the sensitive tier (bench 2026-10-05) and 100 on
+// the attenuated tier.
+// TRLC-LINKS: REQ-SDS-095
 func TestOffsetKPerDivision(t *testing.T) {
 	tr := &fakeTr{}
 	fe := New(tr, func(time.Duration) {}, cal.Defaults())
-	if err := fe.SetVdiv(0, 6); err != nil { // 200 mV/div: fixed slope
-		t.Fatal(err)
-	}
-	if k := fe.OffsetK(0); k < 99.9 || k > 100.1 {
-		t.Fatalf("200mV OffsetK = %v, want 100 (fixed codes/volt)", k)
-	}
-	if err := fe.SetVdiv(0, 8); err != nil { // 1 V/div: same fixed slope
-		t.Fatal(err)
-	}
-	if k := fe.OffsetK(0); k < 99.9 || k > 100.1 {
-		t.Fatalf("1V OffsetK = %v, want 100 (fixed codes/volt)", k)
+	for _, c := range []struct {
+		idx  int
+		want float64
+	}{{2, 4800}, {6, 4800}, {7, 100}, {8, 100}} {
+		if err := fe.SetVdiv(0, c.idx); err != nil {
+			t.Fatal(err)
+		}
+		if k := fe.OffsetK(0); k != c.want {
+			t.Fatalf("detent %d OffsetK = %v, want %v", c.idx, k, c.want)
+		}
 	}
 }
 
 // TestOffsetTierRangeAndClamp checks per-tier authority (spec 06 §5.2.1):
 // ±1.6 V on the sensitive ×1 tier, ±40 V on the attenuated ×25 tier.
+// TRLC-LINKS: REQ-SDS-095
 func TestOffsetTierRangeAndClamp(t *testing.T) {
 	tr := &fakeTr{}
 	fe := New(tr, func(time.Duration) {}, cal.Defaults()) // zeros 10223
 	if err := fe.SetVdiv(0, 6); err != nil {              // 200 mV sensitive
 		t.Fatal(err)
 	}
-	if c := fe.OffsetCode(0, 1.6); c != 10223-160 { // 100·1.6=160 (fixed codes/volt)
-		t.Fatalf("200mV +1.6V code = %d, want %d", c, 10223-160)
+	if c := fe.OffsetCode(0, 1.6); c != 10223-7680 { // −4800·1.6: sensitive-tier slope, positive offset lowers the code
+		t.Fatalf("200mV +1.6V code = %d, want %d", c, 10223-7680)
 	}
 	if v := fe.OffsetVolts(0, fe.OffsetCode(0, 1.6)); v < 1.599 || v > 1.601 {
 		t.Fatalf("200mV +1.6V readback = %v", v)
 	}
-	if c := fe.OffsetCode(0, 5.0); c != 10223-160 { // clamps to ±1.6 V (×1 tier)
-		t.Fatalf("200mV +5V clamps to %d, want %d", c, 10223-160)
+	if c := fe.OffsetCode(0, 5.0); c != 10223-7680 { // clamps to ±1.6 V (×1 tier)
+		t.Fatalf("200mV +5V clamps to %d, want %d", c, 10223-7680)
 	}
 	if err := fe.SetVdiv(0, 8); err != nil { // 1 V attenuated
 		t.Fatal(err)
@@ -266,6 +285,7 @@ func TestOffsetTierRangeAndClamp(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-095
 func TestOffsetCodeMapping(t *testing.T) {
 	// Table-less fallback: boot detent 1 V/div (idx 8), zero 10223, slope 50.
 	if got := OffsetCode(0, 0); got != 10223 {
@@ -285,5 +305,90 @@ func TestOffsetCodeMapping(t *testing.T) {
 	}
 	if v := OffsetVolts(0, OffsetCode(0, 1.5)); v < 1.49 || v > 1.51 {
 		t.Fatalf("round-trip 1.5V = %v", v)
+	}
+}
+
+// TRLC-LINKS: REQ-SDS-095
+func TestOffsetRequestDoesNotWindUpBeyondDACRange(t *testing.T) {
+	f := New(&fakeTr{}, func(time.Duration) {}, nil)
+	for _, sign := range []float64{-1, 1} {
+		f.SetOffset(0, sign*1000)
+		before := f.OffsetReqV(0)
+		vd, _ := f.offsetZeroAndDetent(0)
+		if before != sign*offsetTierRangeV(vd) {
+			t.Fatalf("request outside range: %g", before)
+		}
+		old := f.OffsetCode(0, before)
+		next := f.SetOffset(0, before-sign*0.2)
+		if old == next {
+			t.Fatal("reversing at the limit did not move the DAC")
+		}
+	}
+}
+
+// The zero trim moves the 0 V code by slope·trim on each tier, and the
+// built-in default parses.
+// TRLC-LINKS: REQ-SDS-015
+func TestZeroTrimMovesZero(t *testing.T) {
+	f := New(nil, func(time.Duration) {}, nil)
+	_, z0 := f.offsetZeroAndDetent(0)
+	f.SetZeroTrim(&ZeroTrim{VdivV: []float64{1, 0.01}, C1V: []float64{0.1, 0.002}, C2V: []float64{0, 0}})
+	if _, z := f.offsetZeroAndDetent(0); z != z0+offsetCodesPerVolt*0.1 {
+		t.Fatalf("1 V/div zero %v, want %v", z, z0+10)
+	}
+	if v := f.OffsetVolts(0, f.OffsetCode(0, 0)); math.Abs(v) > 1e-9 {
+		t.Fatalf("0 V round trip %v", v)
+	}
+	f.mu.Lock()
+	f.idx[0] = 2
+	f.mu.Unlock()
+	want := float64(f.tab.Rec[0][2].Zero) + offsetCodesPerVoltSensitive*0.002
+	if _, z := f.offsetZeroAndDetent(0); z != want {
+		t.Fatalf("10 mV/div zero %v, want %v", z, want)
+	}
+	if _, err := DefaultZeroTrim(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := parseZeroTrim([]byte(`{"vdiv_v":[0.003],"c1_v":[0],"c2_v":[0]}`)); err == nil {
+		t.Fatal("non-detent accepted")
+	}
+}
+
+// The zoomed detents run the 10 mV analog record even when the cal file
+// gives them their own gain codes.
+// TRLC-LINKS: REQ-SDS-015
+func TestZoomedDetentsUseAnalogRecord(t *testing.T) {
+	tab := cal.Defaults()
+	tab.Source = "file"
+	tab.Rec[0][0].GainDAC, tab.Rec[0][1].GainDAC, tab.Rec[0][2].GainDAC = 219, 164, 146
+	tab.Rec[0][0].Zero, tab.Rec[0][2].Zero = 10434, 10426
+	f := New(nil, func(time.Duration) {}, tab)
+	for _, idx := range []int{0, 1, 2} {
+		if g := f.gainFor(0, idx); g != 146 {
+			t.Fatalf("detent %d gain %d, want 146", idx, g)
+		}
+	}
+	f.mu.Lock()
+	f.idx[0] = 0
+	f.mu.Unlock()
+	if _, z := f.offsetZeroAndDetent(0); z != 10426 {
+		t.Fatalf("2 mV zero %v, want the 10 mV record's 10426", z)
+	}
+}
+
+// A V/div change re-stages the offset DAC on the new detent's zero even when
+// no offset was ever set.
+// TRLC-LINKS: REQ-SDS-015
+func TestSetVdivStagesZeroWithoutOffset(t *testing.T) {
+	tab := cal.Defaults()
+	tab.Rec[0][2].Zero, tab.Rec[0][8].Zero = 10426, 10445
+	fe := New(&fakeTr{}, func(time.Duration) {}, tab)
+	var staged []uint16
+	fe.OnOffset(func(ch int, code uint16) { staged = append(staged, code) })
+	if err := fe.SetVdiv(0, 2); err != nil {
+		t.Fatal(err)
+	}
+	if len(staged) != 1 || staged[0] != 10426 {
+		t.Fatalf("staged %v, want [10426]", staged)
 	}
 }

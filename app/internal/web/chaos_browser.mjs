@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-WEB
 // Browser chaos monkey (argv[2]=URL, argv[3]=seed, argv[4]=actions).
 // Randomly pokes every interactive control, drags/wheels/keys the scope
 // canvas, and flips modes as fast as the UI allows. ANY pageerror or
@@ -23,10 +24,13 @@ catch (e) { console.log("SKIP: cannot launch chromium:", e.message); process.exi
 
 // mulberry32: reproducible chaos — the failing seed is the repro recipe
 let s = SEED >>> 0;
+// TRLC-LINKS: REQ-SDS-180
 const rnd = () => (s = (s + 0x6d2b79f5) | 0, ((Math.imul(s ^ (s >>> 15), 1 | s) + 0x6d2b79f5) >>> 0) / 4294967296);
+// TRLC-LINKS: REQ-SDS-180
 const pick = (a) => a[Math.floor(rnd() * a.length)];
 
 let fails = 0;
+// TRLC-LINKS: REQ-SDS-180
 const ok = (c, m) => { console.log((c ? "ok  - " : "FAIL- ") + m); if (!c) fails++; };
 try {
   const page = await browser.newPage({ viewport: { width: 1500, height: 950 } });

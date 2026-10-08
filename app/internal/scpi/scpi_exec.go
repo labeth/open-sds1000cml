@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-SCPI
 package scpi
 
 import (
@@ -7,8 +8,10 @@ import (
 	"open-sds/app/internal/engine"
 	"strconv"
 	"strings"
+	"time"
 )
 
+// TRLC-LINKS: REQ-SDS-024
 func (h *Handler) execGlobal(head, arg string) []byte {
 	st := h.sc.Snapshot()
 	switch head {
@@ -24,6 +27,9 @@ func (h *Handler) execGlobal(head, arg string) []byte {
 		h.sc.SetNorm(false)
 		h.sc.SetRunning(true)
 		h.sc.SetTdiv(500e-6)
+		if sc, ok := h.sc.(interface{ SetTrigPosFrac(float64) }); ok {
+			sc.SetTrigPosFrac(.5) // TRDL 0
+		}
 		h.trmd = "AUTO"
 		h.chdr = "SHORT"
 		h.wfSP, h.wfNP, h.wfFP, h.wfSN = 1, 0, 0, 0
@@ -161,14 +167,27 @@ func (h *Handler) execGlobal(head, arg string) []byte {
 	case "TDIV?":
 		return h.reply("TDIV", sciS(st.TdivS))
 	case "TRDL":
+		// TRDL is the trigger's offset from the screen centre: the guide's
+		// time formula t = -TRDL - 5·TDIV + i/SARA puts a positive delay's
+		// trigger right of centre. It drives the real trigger position,
+		// which holds the screen's span only.
 		v, err := parseNum(arg)
 		if err != nil {
 			return errTok(errHeader)
 		}
-		h.trdlS = v
+		sc, ok := h.sc.(interface{ SetTrigPosFrac(float64) })
+		frac := .5 + v/(10*st.TdivS)
+		if !ok || !(frac >= -1e-9 && frac <= 1+1e-9) {
+			return errTok(errOutOfRange)
+		}
+		sc.SetTrigPosFrac(math.Min(1, math.Max(0, frac)))
 		return nil
 	case "TRDL?":
-		return h.reply("TRDL", sciS(h.trdlS))
+		frac := st.TrigPosFrac
+		if !(frac >= 0 && frac <= 1) {
+			frac = .5
+		}
+		return h.reply("TRDL", sciS((frac-.5)*10*st.TdivS))
 	case "TRMD":
 		switch arg {
 		case "AUTO":
@@ -187,7 +206,18 @@ func (h *Handler) execGlobal(head, arg string) []byte {
 		h.trmd = arg
 		return nil
 	case "TRMD?":
-		return h.reply("TRMD", h.trmd)
+		// From the engine: RUN/STOP, SINGLE and AUTO/NORMAL change on the
+		// panel and the web too, which never touch h.trmd.
+		v := "AUTO"
+		switch {
+		case st.Single && st.Running:
+			v = "SINGLE"
+		case !st.Running:
+			v = "STOP"
+		case st.Norm:
+			v = "NORM"
+		}
+		return h.reply("TRMD", v)
 	case "TRLV":
 		v, err := parseNum(arg)
 		if err != nil {
@@ -223,7 +253,21 @@ func (h *Handler) execGlobal(head, arg string) []byte {
 		}
 		return nil
 	case "TRLV?":
-		return h.reply("TRLV", sciV(h.trlvV))
+		// Answer from the engine's live code: the level also changes from the
+		// panel and the web UI, which never touch this handler's shadow.
+		v := h.trlvV
+		if st.TrigCode != 0 {
+			src := 0
+			if st.TrigSource == 1 {
+				src = 1
+			}
+			if h.fe != nil {
+				v = h.fe.TrigVolts(st.TrigCode, src)
+			} else {
+				v = engine.TrigLevelVolts(st.TrigCode)
+			}
+		}
+		return h.reply("TRLV", sciV(v))
 	case "TRSL":
 		switch arg {
 		case "POS":
@@ -287,7 +331,17 @@ func (h *Handler) execGlobal(head, arg string) []byte {
 		}
 	case "TRCP?":
 		return h.reply("TRCP", "DC")
-	case "ARM", "FRTR":
+	case "ARM":
+		// ARM_ACQUISITION: one single acquisition, as TRMD SINGLE.
+		h.sc.SetSingle()
+		h.trmd = "SINGLE"
+		return nil
+	case "FRTR":
+		// FORCE_TRIGGER: capture now, even while NORMAL or SINGLE waits.
+		if sc, ok := h.sc.(interface{ ForceTrigger() }); ok {
+			sc.ForceTrigger()
+			return nil
+		}
 		h.sc.SetRunning(true)
 		return nil
 	case "STOP":
@@ -328,9 +382,14 @@ func (h *Handler) execGlobal(head, arg string) []byte {
 		})
 		return h.reply("SARA", saraStr(rate))
 	case "SAST?":
-		s := "Ready"
+		// Stop, Ready (NORMAL/SINGLE armed, nothing triggered lately), or
+		// Trig'd - the same WAIT rule the LCD and web status use.
+		s := "Trig'd"
 		if !st.Running {
 			s = "Stop"
+		} else if sp, ok := h.sc.(interface{ SincePublish() time.Duration }); ok && st.Norm &&
+			sp.SincePublish() > time.Duration(math.Max(1, 25*st.TdivS)*float64(time.Second)) {
+			s = "Ready"
 		}
 		return h.reply("SAST", s)
 	case "SANU?":
@@ -387,8 +446,25 @@ func (h *Handler) execGlobal(head, arg string) []byte {
 	return errTok(errUndefined)
 }
 
+// TRLC-LINKS: REQ-SDS-024
 func (h *Handler) execChannel(ch int, head, arg string) []byte {
 	switch head {
+	case "TRLV", "TRLV?", "TRSL", "TRSL?":
+		// The programming guide's form is <source>:TRLV / <source>:TRSL. One
+		// level and slope exist, the trigger source's; another channel has
+		// none to set or report.
+		src := 0
+		if h.sc.Snapshot().TrigSource == 1 {
+			src = 1
+		}
+		if ch != src {
+			return errTok(errOutOfRange)
+		}
+		out := h.execGlobal(head, arg)
+		if strings.HasSuffix(head, "?") && h.chdr != "OFF" {
+			out = append([]byte(fmt.Sprintf("C%d:", ch+1)), out...)
+		}
+		return out
 	case "VDIV":
 		v, err := parseNum(arg)
 		if err != nil {
@@ -397,7 +473,9 @@ func (h *Handler) execChannel(ch int, head, arg string) []byte {
 		if h.fe == nil {
 			return errTok(errOutOfRange)
 		}
-		idx, ok := analog.PlanVdiv(v)
+		// VDIV and OFST are probe-tip volts, like TRLV, PAVA? and the WF?
+		// descriptor: with ATTN 10, "VDIV 5" is the 0.5 V/div BNC range.
+		idx, ok := analog.PlanVdiv(v / h.probe(ch))
 		if !ok {
 			return errTok(errOutOfRange)
 		}
@@ -411,13 +489,17 @@ func (h *Handler) execChannel(ch int, head, arg string) []byte {
 			idx, _ := h.fe.Snapshot()
 			v = analog.Detents[idx[ch]].VdivV
 		}
-		return h.reply(fmt.Sprintf("C%d:VDIV", ch+1), sciV(v))
+		return h.reply(fmt.Sprintf("C%d:VDIV", ch+1), sciV(v*h.probe(ch)))
 	case "OFST":
 		v, err := parseNum(arg)
 		if err != nil {
 			return errTok(errHeader)
 		}
-		if math.IsNaN(v) || math.IsInf(v, 0) || v < -40 || v > 40 {
+		if math.IsNaN(v) || math.IsInf(v, 0) {
+			return errTok(errOutOfRange)
+		}
+		v /= h.probe(ch) // probe-tip volts → BNC volts
+		if v < -40 || v > 40 {
 			return errTok(errOutOfRange)
 		}
 		if h.fe != nil {
@@ -440,8 +522,10 @@ func (h *Handler) execChannel(ch int, head, arg string) []byte {
 				v = analog.OffsetVolts(ch, code)
 			}
 		}
-		return h.reply(fmt.Sprintf("C%d:OFST", ch+1), sciV(v))
+		return h.reply(fmt.Sprintf("C%d:OFST", ch+1), sciV(v*h.probe(ch)))
 	case "TRA":
+		// The trace's visibility is the panel's (CH1/CH2 keys): set and
+		// report that, not a shadow the screen never saw.
 		switch arg {
 		case "ON":
 			h.tra[ch] = true
@@ -450,10 +534,17 @@ func (h *Handler) execChannel(ch int, head, arg string) []byte {
 		default:
 			return errTok(errHeader)
 		}
+		if d, ok := h.disp.(traceDisplay); ok {
+			d.SetTraceOn(ch, h.tra[ch])
+		}
 		return nil
 	case "TRA?":
+		on := h.tra[ch]
+		if d, ok := h.disp.(traceDisplay); ok {
+			on = d.TraceOn(ch)
+		}
 		v := "OFF"
-		if h.tra[ch] {
+		if on {
 			v = "ON"
 		}
 		return h.reply(fmt.Sprintf("C%d:TRA", ch+1), v)
@@ -482,7 +573,12 @@ func (h *Handler) execChannel(ch int, head, arg string) []byte {
 		}
 		return nil
 	case "CPL?":
-		return h.reply(fmt.Sprintf("C%d:CPL", ch+1), h.cpl[ch])
+		// Live: the panel's CHANNEL page changes coupling too.
+		v := h.cpl[ch]
+		if _, ok := h.fe.(liveFront); ok {
+			v = [...]string{"D1M", "A1M", "GND"}[min(max(h.coupling(ch), 0), 2)]
+		}
+		return h.reply(fmt.Sprintf("C%d:CPL", ch+1), v)
 	case "ATTN":
 		v, err := parseNum(arg)
 		if err != nil || v <= 0 {
@@ -494,24 +590,35 @@ func (h *Handler) execChannel(ch int, head, arg string) []byte {
 		}
 		return nil
 	case "ATTN?":
-		return h.reply(fmt.Sprintf("C%d:ATTN", ch+1), strconv.FormatFloat(h.attn[ch], 'g', -1, 64))
+		return h.reply(fmt.Sprintf("C%d:ATTN", ch+1), strconv.FormatFloat(h.probe(ch), 'g', -1, 64)) // live: the panel sets it too
 	case "BWL":
-		// This build cannot engage the 20 MHz limit: only the relay-bit
-		// write is pinned, the roll-off itself is unvalidated (spec 06 §6),
-		// and the handler has no front-end hook for it. BWL is therefore
-		// fixed OFF: setting OFF matches reality (and round-trips through
-		// BWL?), setting ON must error — never silent success — per the
-		// spec 11 §3.4 convention (rejected argument → error token).
+		// The 20 MHz limit is the BWL relay (spec 06 §6); a front end without
+		// it keeps BWL fixed OFF, and ON errors rather than silently passing.
+		bw, can := h.fe.(interface {
+			SetBWL(ch int, on bool) error
+			BWL(ch int) bool
+		})
 		switch arg {
-		case "OFF":
+		case "ON", "OFF":
+			if !can {
+				if arg == "OFF" {
+					return nil
+				}
+				return errTok(errOutOfRange)
+			}
+			if err := bw.SetBWL(ch, arg == "ON"); err != nil {
+				return errTok(errOutOfRange)
+			}
 			return nil
-		case "ON":
-			return errTok(errOutOfRange)
 		default:
 			return errTok(errHeader)
 		}
 	case "BWL?":
-		return h.reply(fmt.Sprintf("C%d:BWL", ch+1), "OFF")
+		v := "OFF"
+		if bw, can := h.fe.(interface{ BWL(ch int) bool }); can && bw.BWL(ch) {
+			v = "ON"
+		}
+		return h.reply(fmt.Sprintf("C%d:BWL", ch+1), v)
 	case "UNIT":
 		// Vertical unit label (display/bookkeeping): real shadow state.
 		switch arg {
@@ -563,6 +670,8 @@ func (h *Handler) execChannel(ch int, head, arg string) []byte {
 		return h.reply(fmt.Sprintf("C%d:INVS", ch+1), v)
 	case "WF?":
 		return h.waveform(ch, arg)
+	case "PAVA?":
+		return h.pava(ch, arg)
 	}
 	return errTok(errUndefined)
 }
@@ -571,6 +680,7 @@ func (h *Handler) execChannel(ch int, head, arg string) []byte {
 // there is no intensity control on this build). keyword,value pairs in any
 // order/subset, WFSU-style: a request for the fixed levels is a no-op success,
 // any other level is a §3.4 range error, malformed input a grammar error.
+// TRLC-LINKS: REQ-SDS-024
 func (h *Handler) setINTS(arg string) []byte {
 	parts := strings.Split(arg, ",")
 	if len(parts)%2 != 0 {
@@ -596,6 +706,7 @@ func (h *Handler) setINTS(arg string) []byte {
 	return nil
 }
 
+// TRLC-LINKS: REQ-SDS-024
 func (h *Handler) setWFSU(arg string) []byte {
 	parts := strings.Split(arg, ",")
 	if len(parts)%2 != 0 {

@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-LCD
 package lcd
 
 import (
@@ -11,6 +12,7 @@ var colSR = rgb(230, 120, 240)
 // drawSuperresHUD overlays the super-res status line (focus/bits/count) along the
 // bottom edge while stacking is active, and — in the gate-edit foci — the gate
 // markers over the live trace with the active edge highlighted.
+// TRLC-LINKS: REQ-SDS-021
 func drawSuperresHUD(sf Surface, hud HUD) {
 	// Gate overlay while watching/editing (focus 0/1/2): two vertical markers at
 	// the SELECTED span's edges (the user's region — not the internal one-period
@@ -55,6 +57,7 @@ func drawSuperresHUD(sf Surface, hud HUD) {
 	DrawText(sf, 4, y, msg, colSR, 1)
 }
 
+// TRLC-LINKS: REQ-SDS-021
 func srFocusTag(f int) string {
 	switch f {
 	case 1:
@@ -75,6 +78,7 @@ func srFocusTag(f int) string {
 // across the window (phase-locked to the gate start), reconstructing the frozen
 // multi-wave view from the fast one-period stack. Each screen column takes the
 // min/max over its covered fine bins so detail survives any grid size.
+// TRLC-LINKS: REQ-SDS-021
 func drawSuperresTrace(sf Surface, hud HUD) {
 	m := hud.SRMean
 	nb := len(m)
@@ -159,6 +163,7 @@ func drawSuperresTrace(sf Surface, hud HUD) {
 // bins are linear-interpolated from their nearest valid neighbours (held at the
 // ends). The crunched float values are preserved, so the sub-LSB super-res bits
 // survive into the FFT/X-Y — the whole point of super-resolving these views.
+// TRLC-LINKS: REQ-SDS-021, REQ-SDS-070
 func srFilled(mean []float32) []float64 {
 	nb := len(mean)
 	out := make([]float64, nb)
@@ -208,6 +213,7 @@ func srFilled(mean []float32) []float64 {
 // Y-T review shows: [SRWinLo,SRWinHi), period-tiled when SRPeriod>0) uniformly
 // into nOut float64 code values — the common representation the stacked FFT and
 // X-Y both consume, guaranteeing they match what Y-T draws.
+// TRLC-LINKS: REQ-SDS-021, REQ-SDS-070
 func srResampleArray(mean []float32, nOut int) (out []float64, valid []bool) {
 	nb := len(mean)
 	if nb == 0 || nOut < 2 {
@@ -235,6 +241,7 @@ func srResampleArray(mean []float32, nOut int) (out []float64, valid []bool) {
 // so effNyq ≈ 0.5·K/SRSampleS — the FULL K× fine-grid Nyquist. It transforms the
 // one-period fine grid DIRECTLY (like the web FFTs res.mean), NOT the tiled Y-T
 // display window, so the super-res band is never decimated/aliased away.
+// TRLC-LINKS: REQ-SDS-021, REQ-SDS-070
 func srFFTPlan(hud HUD) (n int, effNyq float64, kLo, kHi int, ok bool) {
 	nb := len(hud.SRMean)
 	if nb < 16 || hud.SRSampleS <= 0 {
@@ -283,6 +290,7 @@ func srFFTPlan(hud HUD) (n int, effNyq float64, kLo, kHi int, ok bool) {
 // with the web). The transform runs on the FLOAT fine grid at dt = SRSampleS/K,
 // so its Nyquist extends K× past the raw single-shot Nyquist AND its noise floor
 // drops by the gained bits — the super-res win, now visible in the spectrum.
+// TRLC-LINKS: REQ-SDS-021, REQ-SDS-070
 func drawSuperresFFT(sf Surface, hud HUD) {
 	n, effNyq, kLo, kHi, ok := srFFTPlan(hud)
 	if !ok {
@@ -323,6 +331,7 @@ func drawSuperresFFT(sf Surface, hud HUD) {
 // C1 stack, Y = the C2 stack, sampled index-for-index on the same fine grid so
 // they pair up. Float grid ⇒ smoother than the live X-Y. The pen lifts over
 // uncovered (-1 gap) bins rather than drawing a false chord (matches the web).
+// TRLC-LINKS: REQ-SDS-021
 func drawSuperresXY(sf Surface, hud HUD) {
 	c1Mean, c2Mean := hud.SRMean, hud.SRMean2
 	if hud.SRAlign == 1 {

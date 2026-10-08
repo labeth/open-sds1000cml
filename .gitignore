@@ -1,8 +1,31 @@
-# Release / build artifacts assembled at the repo root by the release flow.
+# Build products
 /dist/
+/app/dist/
+/ota/dist/
+/fpga/out/
 *.zip
-# local HW-verification tools — the repo maintains exactly ONE app main (cmd/app);
-# workstation probes live untracked so they never add device-testing surface
-/app/cmd/decodeprobe/
-/app/cmd/bandcheck/
-/app/cmd/draintest/
+# The app's copies of the bitstreams it embeds (sources: fpga/bitstreams/)
+/app/internal/fpgaload/*.rbf
+# Quartus databases and reports
+**/db/
+**/incremental_db/
+**/output_files/
+*.qws
+*.rpt
+*.summary
+*.smsg
+*.jdi
+*.pin
+*.sld
+*.done
+*.sof
+*.pof
+# Simulation outputs
+*.vcd
+*.fst
+*.vvp
+# Scratch
+/tmp/
+*.log
+__pycache__/
+node_modules/

@@ -1,7 +1,13 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
 package engine
 
-import "testing"
+import (
+	"testing"
 
+	"open-sds/app/internal/iface"
+)
+
+// TRLC-LINKS: REQ-SDS-007, REQ-SDS-009, REQ-SDS-011
 func TestDecimatedAutoPublishes(t *testing.T) {
 	fb := newFakeBus()
 	e, _ := newTestEngine(t, fb)
@@ -32,16 +38,37 @@ func TestDecimatedAutoPublishes(t *testing.T) {
 	if f.IsEnv || f.EnvCols != 0 {
 		t.Fatal("envelope metadata not cleared")
 	}
-	// Round-robin drain port order 0x30..0x34 repeating.
-	fb.mu.Lock()
-	defer fb.mu.Unlock()
-	for i, sel := range fb.drainSels[:10] {
-		if want := uint16(0x30 + i%5); sel != want {
-			t.Fatalf("drain[%d] port %#04x, want %#04x", i, sel, want)
-		}
+	// Every pop was covered by BURST_REMAIN (no read past the record).
+	if fb.popNoRemain {
+		t.Fatal("BURST popped beyond what BURST_REMAIN reported")
+	}
+	if s.ShortDrains != 0 {
+		t.Fatalf("short drains = %d, want 0", s.ShortDrains)
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-009
+func TestShortRecordIsNotCoherent(t *testing.T) {
+	// The fabric finalized fewer words than the frame asked for: the drain
+	// pops only what BURST_REMAIN holds, pads the slot with the last real word,
+	// counts the shortfall, and the frame is not coherent.
+	fb := newFakeBus()
+	e, _ := newTestEngine(t, fb)
+	e.bringUp()
+	fb.mu.Lock()
+	fb.post = 1000 // record = 3072 + 1000 < decimDrain
+	fb.mu.Unlock()
+	e.oneFrame(false)
+	s := e.Snapshot()
+	if s.ShortDrains != 1 || s.Coherent != 0 {
+		t.Fatalf("short record: short_drains=%d coherent=%d, want 1/0", s.ShortDrains, s.Coherent)
+	}
+	if fb.popNoRemain {
+		t.Fatal("popped past the record")
+	}
+}
+
+// TRLC-LINKS: REQ-SDS-011
 func TestDecimatedNormHoldsWithoutDone(t *testing.T) {
 	fb := newFakeBus()
 	fb.doneOnGo = false // comparator never fires
@@ -55,7 +82,7 @@ func TestDecimatedNormHoldsWithoutDone(t *testing.T) {
 	}
 	// The engine must not have halted a half-empty record.
 	for _, w := range fb.snapWrites() {
-		if w.plane == 1 && w.sel == selArm && w.val == opHalt {
+		if w.plane == 1 && w.sel == iface.SelOpcode && w.val == iface.OpHalt {
 			t.Fatal("capture-halt issued on an unanchored decimated frame")
 		}
 	}
@@ -64,6 +91,7 @@ func TestDecimatedNormHoldsWithoutDone(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-011
 func TestDecimatedAutoPublishesOnFreeRun(t *testing.T) {
 	// AUTO with NO trigger at all (neither DONE nor VALID, and 0x46 the
 	// post-trigger counter would stay low): the frame must still PUBLISH the
@@ -92,6 +120,7 @@ func TestDecimatedAutoPublishesOnFreeRun(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-011
 func TestDecimatedAutoHoldsWrongSlopeFrame(t *testing.T) {
 	// Sub-period AUTO backstop: a free-run frame whose only edge is the WRONG
 	// slope (falling when we want rising → edgeX=-1) but which is NOT flat
@@ -127,6 +156,7 @@ func TestDecimatedAutoHoldsWrongSlopeFrame(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-011
 func TestDecimatedAutoWrongSlopeLiveness(t *testing.T) {
 	// AUTO LIVENESS on a persistently un-lockable signal (fuzz-found, HW-verified):
 	// a live signal whose record NEVER contains the requested slope (e.g. a fast
@@ -178,6 +208,7 @@ func TestDecimatedAutoWrongSlopeLiveness(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-011
 func TestDecimatedAutoLivenessTimeBound(t *testing.T) {
 	// The AUTO liveness fallback must be bounded by WALL CLOCK, not only by the
 	// 60-frame count: at slow bands one hold cycle costs the full wait budget, so
@@ -210,6 +241,7 @@ func TestDecimatedAutoLivenessTimeBound(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-011
 func TestSingleShotNotConsumedByFlatFallback(t *testing.T) {
 	// SINGLE on a QUIET screen must never fire (a real scope's single-shot waits
 	// forever without a trigger). On native-fast NORM the flat fallback publishes
@@ -259,6 +291,7 @@ func TestSingleShotNotConsumedByFlatFallback(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-011
 func TestEdgeLevelOffSignalDoesNotLock(t *testing.T) {
 	// A trigger level set OFF the signal band cannot be crossed, so no trigger is
 	// possible. Regression: the EDGE path used to fall back to the signal's own
@@ -310,6 +343,7 @@ func TestEdgeLevelOffSignalDoesNotLock(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-011
 func TestDecimatedFlatFallback(t *testing.T) {
 	// A genuinely flat/DC decimated screen (ptp < threshold) has no lock to be had. AUTO
 	// HOLDs (re-presenting the last edge) and publishes ONE honest flat capture (EdgeX=-1)
@@ -337,6 +371,7 @@ func TestDecimatedFlatFallback(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-011
 func TestLevelAnchoredCentering(t *testing.T) {
 	// With a trigger level set, the display should anchor on the crossing of
 	// THAT level, not the mid-level.
@@ -367,6 +402,7 @@ func TestLevelAnchoredCentering(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-011
 func TestNativeFastAutoFreeRunUntriggered(t *testing.T) {
 	// Native-fast "free run + trigger hold" (spec 04 §11): when the HW comparator does NOT fire
 	// within the budget (untriggered), AUTO FREE-RUNS a live refresh frame (EdgeX=-1, record
@@ -408,6 +444,7 @@ func TestNativeFastAutoFreeRunUntriggered(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-011
 func TestNativeFastContentGate(t *testing.T) {
 	fb := newFakeBus()
 	fb.trigOnGo = true // HW comparator fires → native-fast waits for it and catches the edge
@@ -423,27 +460,37 @@ func TestNativeFastContentGate(t *testing.T) {
 	// from the full deep record (spec 04 §11 trigger-hold path).
 	e.oneFrame(false)
 	f, fresh := e.Consume()
-	if !fresh || f.Valid != deepRecord || !f.Interp {
+	if !fresh || f.Valid != maxRecordCols || !f.Interp {
 		t.Fatalf("native-fast edge frame: fresh=%v valid=%d interp=%v", fresh, f.Valid, f.Interp)
 	}
 	if f.EdgeX < 0 {
 		t.Fatalf("native-fast edge frame not centred: EdgeX=%v", f.EdgeX)
 	}
 
-	// Comparator fires but the content is a flat rail (an inconsistent/rare case): no lock,
-	// so it HOLDS with the honest 60-frame flat fallback rather than centring noise.
+	// Comparator fires but the content is a flat rail (the common DC-input case: a mid-scale
+	// level inside the noise fires the comparator every record): no lock, so AUTO native-fast
+	// FREE-RUNS an honest unlocked refresh (EdgeX = -1) every frame — never a 60-frame hold
+	// (HW-verified 0 fps with the calibrated default image before this rule).
 	fb.mu.Lock()
 	fb.wave = func(int) (uint8, uint8) { return 128, 128 }
 	fb.mu.Unlock()
-	for i := 0; i < nativeFlatFallbck-1; i++ {
+	for i := 0; i < 3; i++ {
 		e.oneFrame(false)
+		f, fresh = e.Consume()
+		if !fresh || f.EdgeX != -1 || f.Trigd {
+			t.Fatalf("flat AUTO native-fast frame %d: fresh=%v EdgeX=%v trigd=%v, want a fresh unlocked refresh", i, fresh, f.EdgeX, f.Trigd)
+		}
+	}
+	// NORM keeps the trigger-hold with the honest 60-frame flat fallback.
+	for i := 0; i < nativeFlatFallbck-1; i++ {
+		e.oneFrame(true)
 	}
 	if _, fresh := e.Consume(); fresh {
-		t.Fatal("flat frame published before the fallback threshold")
+		t.Fatal("NORM flat frame published before the fallback threshold")
 	}
-	e.oneFrame(false)
+	e.oneFrame(true)
 	f, fresh = e.Consume()
 	if !fresh || f.EdgeX != -1 {
-		t.Fatalf("flat fallback: fresh=%v EdgeX=%v, want fresh EdgeX=-1", fresh, f.EdgeX)
+		t.Fatalf("NORM flat fallback: fresh=%v EdgeX=%v, want fresh EdgeX=-1", fresh, f.EdgeX)
 	}
 }

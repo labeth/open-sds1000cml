@@ -1,6 +1,8 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-PANEL
 package panel
 
 import (
+	"math"
 	"open-sds/app/internal/analog"
 	"open-sds/app/internal/engine"
 	"os"
@@ -12,6 +14,7 @@ import (
 // Run is the panel event loop: SIGIO (knobs + buttons, rate-capped ~150 Hz)
 // plus the MANDATORY 40 ms re-sync tick (buttons only — a timer-driven read
 // lands mid-detent and misreads quadrature). Blocks; run as a goroutine.
+// TRLC-LINKS: REQ-SDS-135
 func (c *Controller) Run(stop <-chan struct{}) {
 	// Push the qualifier shadows to the engine once so the pgTrigQ page and the
 	// engine agree from boot (inert until a non-Edge trigger type is selected).
@@ -37,6 +40,12 @@ func (c *Controller) Run(stop <-chan struct{}) {
 	}
 	c.pushLEDs()
 
+	// ADR-PANEL-SERIAL-SCAN: a matrix built from knob counts may be decoded
+	// on every read.
+	synthesized := false
+	if s, ok := c.eng.(interface{ MatrixSynthesized() bool }); ok {
+		synthesized = s.MatrixSynthesized()
+	}
 	tick := time.NewTicker(40 * time.Millisecond)
 	defer tick.Stop()
 	// trailing fires shortly after a rate-limited interrupt so the LAST
@@ -74,13 +83,15 @@ func (c *Controller) Run(stop <-chan struct{}) {
 		case <-tick.C:
 			if m, ok := c.eng.ReadMatrix(); ok {
 				// Fallback mode (no SIGIO) decodes knobs on the tick too —
-				// the deliberate exception that accepts mid-detent reads.
-				c.decode(m, !haveSIGIO)
+				// the deliberate exception that accepts mid-detent reads. A
+				// matrix synthesized from knob counts has no mid-detent phase.
+				c.decode(m, !haveSIGIO || synthesized)
 			}
 		}
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-135
 func armSIGIO(fd int) error {
 	if _, _, errno := syscall.Syscall(syscall.SYS_FCNTL, uintptr(fd), syscall.F_SETOWN, uintptr(syscall.Getpid())); errno != 0 {
 		return errno
@@ -97,6 +108,7 @@ func armSIGIO(fd int) error {
 
 // decode processes one matrix snapshot: button 1→0 edges always; knob
 // quadrature only on interrupt-aligned reads (spec 08 §1/§3).
+// TRLC-LINKS: REQ-SDS-135
 func (c *Controller) decode(m [5]uint16, knobsOn bool) {
 	if !c.havePrev {
 		c.prev, c.havePrev = m, true
@@ -116,6 +128,7 @@ func (c *Controller) decode(m [5]uint16, knobsOn bool) {
 	c.prev = m
 }
 
+// TRLC-LINKS: REQ-SDS-135
 func (c *Controller) button(code int) {
 	// While an autoset sweep runs, ignore everything except AUTO (which cancels)
 	// — this both gives a clean "busy" UX and avoids racing its scale changes.
@@ -127,6 +140,17 @@ func (c *Controller) button(code int) {
 	}
 	switch code {
 	case btnRunStop:
+		if c.streaming() { // Auto Stream: STOP ends the stream (manual trigger), RUN restarts it
+			c.mu.Lock()
+			s := c.stream
+			c.mu.Unlock()
+			if s.Active() {
+				c.stopStream()
+			} else {
+				c.startStream()
+			}
+			return
+		}
 		// Toggle RUN/STOP and leave SINGLE mode (SyncLEDs keeps the shadow in step
 		// with a single that self-stopped, so this toggles from the right state).
 		c.mu.Lock()
@@ -158,6 +182,32 @@ func (c *Controller) button(code int) {
 	case btnAdjustPsh:
 		c.srFocusCycle() // ADJUST/intensity push → cycle watch/gate-start/gate-end/review
 		return
+	case btnSet50:
+		c.setTrigMid()
+		return
+	case btnForce:
+		if f, ok := c.eng.(interface{ ForceTrigger() }); ok {
+			f.ForceTrigger()
+		}
+		return
+	case btnCh1PosPush, btnCh2PosPush:
+		if c.fe != nil {
+			ch := 0
+			if code == btnCh2PosPush {
+				ch = 1
+			}
+			c.fe.SetOffset(ch, 0) // push POSITION: trace back to 0 V
+		}
+		return
+	case btnHorizPosPush:
+		if c.streamListToTrigger() { // open stream list: back to the trigger line
+			return
+		}
+		c.mu.Lock()
+		c.zoomOff = 0
+		c.mu.Unlock()
+		c.eng.SetTrigPosFrac(0.5) // push HORIZ POSITION: trigger back to centre
+		return
 	default:
 		// Menu / softkey / channel buttons (spec 08 §6). Anything else is
 		// claimed-and-ignored so it can't cross-drive another control.
@@ -170,6 +220,7 @@ func (c *Controller) button(code int) {
 // resync refreshes the knob shadows from authoritative state before a step,
 // so a step lands relative to whatever the web UI / SCPI last set — not a
 // stale panel-local value (which would snap the setting on the first click).
+// TRLC-LINKS: REQ-SDS-135
 func (c *Controller) resync() {
 	// Autoset owns the shadows while it sweeps (it writes them under mu on its own
 	// goroutine). Skip here so the injected-knob path can't race it either.
@@ -198,6 +249,7 @@ func (c *Controller) resync() {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-135
 func absf(x float64) float64 {
 	if x < 0 {
 		return -x
@@ -207,6 +259,7 @@ func absf(x float64) float64 {
 
 // knob services AT MOST ONE knob per event, walking the fixed priority order
 // (the cross-coupling fix). Gate: 0x69 == 0 means a plain button interrupt.
+// TRLC-LINKS: REQ-SDS-135
 func (c *Controller) knob(m [5]uint16) {
 	raw := m[4]
 	if raw == 0 {
@@ -242,6 +295,7 @@ func (c *Controller) knob(m [5]uint16) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-135
 func (c *Controller) dispatch(name string, dir, steps int) {
 	c.mu.Lock()
 	busy := c.autosetBusy
@@ -274,16 +328,18 @@ func (c *Controller) dispatch(name string, dir, steps int) {
 		if c.fe == nil {
 			return // no analog front end: offset knob claim-and-ignore
 		}
-		// Offset step is 20 DAC codes/accel-step. K = 50/VDIV is codes/V for the
-		// current detent (spec 06 §5.2), so stepping the input-referred volts by
-		// 20/K moves a constant 20 DAC codes (0.4 division) on every range —
-		// re-derived to a code by the front end's per-tier offset law.
-		v := c.fe.OffsetReqV(ch) + float64(dir*steps)*20.0/c.fe.OffsetK(ch)
+		// Offset step is 0.2 displayed div per accel-step on every detent;
+		// positive steps raise the trace. A fixed 20 DAC codes was 0.2 div at
+		// 1 V/div but 2 div at 2 mV/div and 0.02 div at 10 V/div.
+		idx, _ := c.fe.Snapshot()
+		v := c.fe.OffsetReqV(ch) + float64(dir*steps)*panelOffsetStepDiv*analog.Detents[idx[ch]].VdivV
 		c.fe.SetOffset(ch, v)
 	case "triglevel":
 		// Sign trap: CW RAISES the level, which LOWERS the code
-		// (−911 codes/V); step 40 codes per accel step.
-		nc := int(c.trigCode) - dir*40*steps
+		// (−911 codes/V). The step is 40 codes per accel step at 1 V/div,
+		// scaled by the source's displayed V/div (at least one code): a fixed
+		// 40 codes was 22 div at 2 mV/div.
+		nc := int(c.trigCode) - dir*c.trigStepCodes()*steps
 		nc = clampInt(nc, engine.TrigCodeMin, engine.TrigCodeMax)
 		c.trigCode = uint16(nc)
 		c.eng.SetTrigLevelCode(c.trigCode)
@@ -293,8 +349,16 @@ func (c *Controller) dispatch(name string, dir, steps int) {
 		if c.srGateAdjust(dir * steps) {
 			return
 		}
+		if c.decodeValueAdjust(dir * steps) {
+			return
+		}
 		c.menuAdjust(dir)
 	case "horizpos":
+		// A stopped stream's open list scrolls with this knob (lines; the
+		// acceleration makes long jumps quick).
+		if c.scrollStreamList(dir * steps) {
+			return
+		}
 		// Horizontal POSITION knob: when zoomed, pan the zoom window across the
 		// record; otherwise pan the trigger point (was a dead knob before).
 		c.mu.Lock()
@@ -307,4 +371,52 @@ func (c *Controller) dispatch(name string, dir, steps int) {
 			c.eng.SetTrigPosFrac(clampF(c.trigPos()+float64(dir*steps)*0.01, 0.02, 1))
 		}
 	}
+}
+
+// panelOffsetStepDiv is the position knob's step in displayed divisions.
+const panelOffsetStepDiv = 0.2
+
+// panelTrigStepCodesPerVdiv is the trigger-level knob's step in trigger codes
+// per volt of the source channel's V/div (40 codes at 1 V/div, 0.044 div).
+const panelTrigStepCodesPerVdiv = 40.0
+
+// trigStepCodes is the trigger-level knob step for the current source.
+// TRLC-LINKS: REQ-SDS-135
+func (c *Controller) trigStepCodes() int {
+	if c.fe == nil {
+		return int(panelTrigStepCodesPerVdiv)
+	}
+	idx, _ := c.fe.Snapshot()
+	src := c.eng.Snapshot().TrigSource & 1
+	return max(1, int(math.Round(panelTrigStepCodesPerVdiv*analog.Detents[idx[src]].VdivV)))
+}
+
+// Fixed-function keys (spec 08 §6.5) and knob pushes with an action.
+var (
+	btnSet50        = bcode(2, 2)
+	btnForce        = bcode(3, 2)
+	btnCh1PosPush   = bcode(0, 1)
+	btnCh2PosPush   = bcode(3, 1)
+	btnHorizPosPush = bcode(3, 9)
+)
+
+// setTrigMid is SET TO 50%: the trigger level at the midpoint of the source
+// channel's latest frame.
+// TRLC-LINKS: REQ-SDS-135
+func (c *Controller) setTrigMid() {
+	m, ok := c.measureChans()
+	src := c.eng.Snapshot().TrigSource & 1
+	if !ok || !has(m[src]) {
+		return
+	}
+	mid := (m[src].Vmax + m[src].Vmin) / 2
+	codeF := 31437 - 911*mid
+	if c.fe != nil {
+		codeF = c.fe.TrigCode(mid, src)
+	}
+	code := uint16(min(max(math.Round(codeF), engine.TrigCodeMin), engine.TrigCodeMax))
+	c.mu.Lock()
+	c.trigCode = code
+	c.mu.Unlock()
+	c.eng.SetTrigLevelCode(code)
 }

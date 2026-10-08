@@ -1,5 +1,7 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-PANEL
 package panel
 
+// TRLC-LINKS: REQ-SDS-136, REQ-SDS-138, REQ-SDS-139, REQ-SDS-140
 func (c *Controller) menuCycle(slot, dir int) {
 	c.mu.Lock()
 	pg := c.menuPage
@@ -34,13 +36,13 @@ func (c *Controller) menuCycle(slot, dir int) {
 			c.srRearm()
 		case 1: // Grid ×K — finer/coarser fine grid; the stack size changes → rebuild
 			c.mu.Lock()
-			c.srK = nextOpt([]int{8, 16, 32, 64}, c.srK, dir)
+			c.srK = nextOpt([]int{8, 16, 32, 64}, c.srK, dir, c.pressWrap)
 			c.mu.Unlock()
 			c.srRearm()
-		case 2: // Stop-on: bit → stacks → time (menu order); seed a sensible target
+		case 2: // Stop-on: bit → stacks → time → FPGA records (menu order); seed a target
 			c.mu.Lock()
-			c.srStopMode = ((c.srStopMode+dir)%3 + 3) % 3
-			c.srStopVal = []float64{4, 500, 60}[c.srStopMode]
+			c.srStopMode = ((c.srStopMode+dir)%5 + 5) % 5
+			c.srStopVal = []float64{4, 500, 60, 20, 20}[c.srStopMode]
 			c.mu.Unlock()
 		case 3: // Target for the active stop mode
 			c.mu.Lock()
@@ -51,21 +53,31 @@ func (c *Controller) menuCycle(slot, dir int) {
 				c.srStopVal = clampF(c.srStopVal+float64(dir)*50, 50, 100000)
 			case 2: // seconds
 				c.srStopVal = clampF(c.srStopVal+float64(dir)*10, 5, 3600)
+			case srStopFPGA, srStopFPGAMatch: // records
+				c.srStopVal = clampF(c.srStopVal+float64(dir)*10, 10, 1000)
 			}
 			c.mu.Unlock()
-		case 4: // Reset — clear the accumulation, keep the locked reference
-			c.srReqReset()
+		case 4: // Reset — or Run an FPGA session in FPGA mode
+			c.mu.Lock()
+			fpga := c.srStopMode == srStopFPGA || c.srStopMode == srStopFPGAMatch
+			c.mu.Unlock()
+			if fpga {
+				c.srFPGARun()
+			} else {
+				c.srReqReset()
+			}
 		}
 		return
 	case pgMask:
 		switch slot {
 		case 0: // Mode Off/Test/Stop-F (engine resets counters on off->on)
 			c.eng.SetMaskMode(((st.MaskMode+dir)%3 + 3) % 3)
+			c.maskSetMsg("") // "ready - set Mode to Test" is done once a mode is chosen
 		case 1: // Build a golden mask from N live frames (trigger-source channel)
 			c.maskBuildStart()
 		case 2: // Frames per build
 			c.mu.Lock()
-			c.maskN = nextOpt([]int{16, 32, 64, 128}, c.maskN, dir)
+			c.maskN = nextOpt([]int{16, 32, 64, 128}, c.maskN, dir, c.pressWrap)
 			c.mu.Unlock()
 		case 3: // Tolerance preset (±samples / ±codes, plan §1.4 floor rule)
 			c.mu.Lock()
@@ -78,22 +90,30 @@ func (c *Controller) menuCycle(slot, dir int) {
 		return
 	case pgDecode:
 		c.mu.Lock()
+		streamAction := ""
 		fmtCycle := func() { c.decFormat = ((c.decFormat+dir)%3 + 3) % 3 } // Hex/ASCII/Both
 		switch slot {
 		case 0:
 			c.decProto = ((c.decProto+dir)%5 + 5) % 5 // Off/Auto/UART/I2C/SPI (Auto first — most used)
 		case 1:
 			switch c.decProto {
-			case 1: // Auto: slot 1 is the display format
-				fmtCycle()
+			case 1: // Auto: slot 1 is the display format; streaming, the Wave/List screen
+				if c.decMode == decModeStream {
+					streamAction = "list"
+				} else {
+					fmtCycle()
+				}
 			case 2: // UART baud
-				c.decBaud = nextOpt([]int{9600, 19200, 38400, 57600, 115200, 230400}, c.decBaud, dir)
+				c.decBaud = nextOpt([]int{9600, 19200, 38400, 57600, 115200, 230400}, c.decBaud, dir, c.pressWrap)
 			case 3, 4: // I2C SCL / SPI CLK channel — keep data on the OTHER channel
 				c.decChA = 1 - c.decChA
 				c.decChB = 1 - c.decChA
 			}
 		case 2:
 			switch c.decProto {
+			case 1: // Auto: View (decode the frame) / Stream (hardware decoded stream)
+				c.decMode = 1 - c.decMode
+				streamAction = map[int]string{decModeView: "stop", decModeStream: "start"}[c.decMode]
 			case 2: // UART source channel — keep the (here unused) data role on
 				// the OTHER channel, so a later switch to I2C/SPI can never land
 				// clock+data on one channel (fuzz-found invariant violation)
@@ -105,6 +125,8 @@ func (c *Controller) menuCycle(slot, dir int) {
 			}
 		case 3:
 			switch c.decProto {
+			case 1: // Auto: stream trigger Error / Value / Manual
+				c.decTrig = ((c.decTrig+dir)%3 + 3) % 3
 			case 2, 3: // UART / I2C: slot 3 is the display format
 				fmtCycle()
 			case 4: // SPI mode: cycle CPOL/CPHA (0..3)
@@ -116,20 +138,38 @@ func (c *Controller) menuCycle(slot, dir int) {
 			if c.decProto == 4 { // SPI: slot 4 is the display format
 				fmtCycle()
 			}
+			if c.decProto == 1 { // Auto: stream trigger value
+				c.decValue = ((c.decValue+dir)%0x10000 + 0x10000) % 0x10000
+			}
+		}
+		on := c.decProto != 0
+		if c.decProto != 1 && c.decMode == decModeStream { // leaving Auto ends a stream
+			c.decMode, streamAction = decModeView, "stop"
 		}
 		c.mu.Unlock()
+		c.syncDecodeView(on)
+		switch streamAction {
+		case "list":
+			c.toggleStreamList()
+		case "start":
+			c.startStream()
+		case "stop":
+			c.stopStream()
+			c.eng.SetRunning(true)
+		}
 		return
 	case pgTrigQ: // trigger-qualifier params for the current trigger TYPE
 		c.mu.Lock()
+		c.adoptQual(st) // step from what the engine uses (the web or SCPI may have set it)
 		switch st.TrigType {
 		case 1: // PULSE: Level% / Wmin / Wmax / Cond
 			switch slot {
 			case 0:
-				c.pulseLvl = clampF(c.pulseLvl+float64(dir)*0.05, 0.05, 0.95)
+				c.pulseLvl = stepFrac(c.pulseLvl, dir, c.pressWrap)
 			case 1:
-				c.pulseMin = stepNs(c.pulseMin, dir)
+				c.pulseMin = stepNs(c.pulseMin, dir, c.pressWrap)
 			case 2:
-				c.pulseMax = stepNs(c.pulseMax, dir)
+				c.pulseMax = stepNs(c.pulseMax, dir, c.pressWrap)
 			case 3:
 				c.pulseCond = mod4(c.pulseCond + dir)
 			}
@@ -139,13 +179,13 @@ func (c *Controller) menuCycle(slot, dir int) {
 		case 2: // SLOPE: Lo% / Hi% / Tmin / Tmax / Cond
 			switch slot {
 			case 0:
-				c.slopeLo = clampF(c.slopeLo+float64(dir)*0.05, 0.05, 0.95)
+				c.slopeLo = stepFrac(c.slopeLo, dir, c.pressWrap)
 			case 1:
-				c.slopeHi = clampF(c.slopeHi+float64(dir)*0.05, 0.05, 0.95)
+				c.slopeHi = stepFrac(c.slopeHi, dir, c.pressWrap)
 			case 2:
-				c.slopeMin = stepNs(c.slopeMin, dir)
+				c.slopeMin = stepNs(c.slopeMin, dir, c.pressWrap)
 			case 3:
-				c.slopeMax = stepNs(c.slopeMax, dir)
+				c.slopeMax = stepNs(c.slopeMax, dir, c.pressWrap)
 			case 4:
 				c.slopeCond = mod4(c.slopeCond + dir)
 			}
@@ -188,13 +228,21 @@ func (c *Controller) menuCycle(slot, dir int) {
 	case pgAcq:
 		switch slot {
 		case 0:
-			c.eng.SetAcqMode(mod4(st.AcqMode + dir))
+			modes := 4
+			if st.BandKind == "sram" {
+				modes = 5
+			}
+			c.eng.SetAcqMode((st.AcqMode + dir + modes) % modes)
 		case 1:
 			c.menuCount(st, dir)
 		case 2:
-			c.eng.SetETS(!st.ETS)
+			if st.BandKind != "sram" {
+				c.eng.SetETS(!st.ETS)
+			}
 		case 3: // memory depth (fps <-> data knob)
-			c.eng.SetMemDepth(nextOpt([]int{2048, 6144, 14336, 20480}, st.MemDepth, dir))
+			if st.BandKind != "sram" {
+				c.eng.SetMemDepth(nextOpt([]int{2048, 6144, 14336, 20480}, st.MemDepth, dir, c.pressWrap))
+			}
 		}
 	case pgDisp:
 		switch slot {
@@ -229,7 +277,7 @@ func (c *Controller) menuCycle(slot, dir int) {
 			c.eng.SetTrigPosFrac(clampF(c.trigPos()+float64(dir)*0.05, 0.02, 1))
 		case 2: // Horizontal zoom (magnify the displayed window)
 			c.mu.Lock()
-			c.zoom = nextOpt([]int{1, 2, 5, 10, 20, 50}, c.zoom, dir)
+			c.zoom = nextOpt([]int{1, 2, 5, 10, 20, 50}, c.zoom, dir, c.pressWrap)
 			if c.zoom <= 1 {
 				c.zoomOff = 0 // reset pan when back to 1x
 			}
@@ -243,9 +291,9 @@ func (c *Controller) menuCycle(slot, dir int) {
 			case 1: // CH2 coupling
 				_ = c.fe.SetCoupling(1, mod3(c.fe.Coupling(1)+dir))
 			case 2: // CH1 probe: cycle ×1 → ×10 → ×100
-				c.fe.SetProbe(0, nextProbe(c.fe.ProbeFactor(0), dir))
+				c.fe.SetProbe(0, nextProbe(c.fe.ProbeFactor(0), dir, c.pressWrap))
 			case 3: // CH2 probe
-				c.fe.SetProbe(1, nextProbe(c.fe.ProbeFactor(1), dir))
+				c.fe.SetProbe(1, nextProbe(c.fe.ProbeFactor(1), dir, c.pressWrap))
 			}
 		}
 		if slot == 4 { // Persistence toggle (works even without a front end)

@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-WEB
 // Real-browser e2e for the superres stacker (argv[2]=URL of a server whose
 // fakeScope generates a jittered noisy sine): arm → frames accumulate and
 // stats populate → view shows the stacked waveform as a frozen synthetic
@@ -19,6 +20,7 @@ try { browser = await chromium.launch({ headless: true, args: ["--no-sandbox"] }
 catch (e) { console.log("SKIP: cannot launch chromium:", e.message); process.exit(0); }
 
 let fails = 0;
+// TRLC-LINKS: REQ-SDS-180
 const ok = (c, m) => { console.log((c ? "ok  - " : "FAIL- ") + m); if (!c) fails++; };
 
 try {
@@ -33,6 +35,9 @@ try {
   await page.click("#srArm");
   // Frames must accumulate (fakeScope publishes continuously).
   await page.waitForFunction(() => sr.st && sr.st.frames >= 25, null, { timeout: 20000 });
+  // The stats line repaints slower than frames stack; wait for it too (it read
+  // "2 stacked" with 25 frames in, a 1-in-3 flake).
+  await page.waitForFunction(() => /bits/.test($("srStats").textContent), null, { timeout: 10000 }).catch(() => {});
   const mid = await page.evaluate(() => ({ frames: sr.st.frames, stats: $("srStats").textContent, armed: sr.armed }));
   ok(mid.armed, "stacker armed and running");
   ok(mid.frames >= 25, `frames accumulate (${mid.frames})`);

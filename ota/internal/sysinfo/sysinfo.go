@@ -1,5 +1,6 @@
 // Package sysinfo collects read-only platform facts for heartbeats and the
 // first-session probe (kernel, IPs, memory, mounts, disk).
+// ENGMODEL-OWNER-UNIT: FU-OTA-SYSINFO
 package sysinfo
 
 import (
@@ -10,6 +11,7 @@ import (
 	"golang.org/x/sys/unix"
 )
 
+// TRLC-LINKS: REQ-SDS-102
 type Info struct {
 	Uname   string   `json:"uname"`
 	IPs     []string `json:"ips"`
@@ -19,6 +21,7 @@ type Info struct {
 	DiskB   int64    `json:"usb_free_bytes"`    // free bytes on the OTA dir fs
 }
 
+// TRLC-LINKS: REQ-SDS-102
 func cstr(b []byte) string {
 	if i := strings.IndexByte(string(b[:]), 0); i >= 0 {
 		return string(b[:i])
@@ -26,6 +29,7 @@ func cstr(b []byte) string {
 	return string(b[:])
 }
 
+// TRLC-LINKS: REQ-SDS-102
 func Uname() string {
 	var u unix.Utsname
 	if err := unix.Uname(&u); err != nil {
@@ -38,6 +42,7 @@ func Uname() string {
 }
 
 // IPv4s returns "ifname ip/mask" for every non-loopback interface.
+// TRLC-LINKS: REQ-SDS-102
 func IPv4s() []string {
 	var out []string
 	ifs, err := net.Interfaces()
@@ -61,6 +66,7 @@ func IPv4s() []string {
 	return out
 }
 
+// TRLC-LINKS: REQ-SDS-102
 func firstLine(path string) string {
 	b, err := os.ReadFile(path)
 	if err != nil {
@@ -73,6 +79,7 @@ func firstLine(path string) string {
 	return strings.TrimSpace(s)
 }
 
+// TRLC-LINKS: REQ-SDS-102
 func mem() string {
 	b, err := os.ReadFile("/proc/meminfo")
 	if err != nil {
@@ -90,6 +97,7 @@ func mem() string {
 	return free + " free / " + total
 }
 
+// TRLC-LINKS: REQ-SDS-102
 func FreeBytes(path string) int64 {
 	var st unix.Statfs_t
 	if err := unix.Statfs(path, &st); err != nil {
@@ -98,6 +106,7 @@ func FreeBytes(path string) int64 {
 	return int64(st.Bavail) * int64(st.Bsize)
 }
 
+// TRLC-LINKS: REQ-SDS-102
 func Collect(otaDir string) Info {
 	return Info{
 		Uname:   Uname(),

@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
 package engine
 
 import "testing"
@@ -5,6 +6,7 @@ import "testing"
 // mkTail builds a record: live square for [0,split), then a period-5 dead tail
 // (the frozen stream-port repeat) with optional ±1 read-noise and sparse
 // glitches — the shapes the bench actually produced in the stuck-FSM state.
+// TRLC-LINKS: REQ-SDS-009, REQ-SDS-128
 func mkTail(n, split int, noisy bool, glitchEvery int) []uint8 {
 	sig := make([]uint8, n)
 	base := [5]uint8{185, 171, 159, 153, 155}
@@ -29,6 +31,7 @@ func mkTail(n, split int, noisy bool, glitchEvery int) []uint8 {
 	return sig
 }
 
+// TRLC-LINKS: REQ-SDS-009, REQ-SDS-128
 func TestRealDepthTolerantTail(t *testing.T) {
 	const n, split = 4096, 2048
 	cases := []struct {
@@ -55,6 +58,7 @@ func TestRealDepthTolerantTail(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-009, REQ-SDS-128
 func TestDegradedFlagAndStuckEscalation(t *testing.T) {
 	// A native-fast record whose dead tail survives every re-capture retry must
 	// publish with Degraded=true; a long consecutive run must raise StuckSuspect

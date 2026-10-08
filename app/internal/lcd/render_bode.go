@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-LCD
 package lcd
 
 import (
@@ -8,6 +9,7 @@ import (
 // drawBode renders the accumulated FRA / Bode curve: magnitude (dB, colC1) in
 // the upper panel and phase (deg, colC2) in the lower, against a LOG frequency
 // axis with decade gridlines. Parity with the web bode.js render.
+// TRLC-LINKS: REQ-SDS-021
 func drawBode(sf Surface, hud HUD) {
 	n := len(hud.BodeFreq)
 	if n < 1 {
@@ -112,6 +114,7 @@ func drawBode(sf Surface, hud HUD) {
 
 // niceRange pads [min,max] of vals to round multiples of step; fallback when
 // empty. Mirrors bode.js bodeNiceRange.
+// TRLC-LINKS: REQ-SDS-021
 func niceRange(vals []float64, flo, fhi, step float64) (float64, float64) {
 	if len(vals) == 0 {
 		return flo, fhi

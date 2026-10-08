@@ -8,6 +8,7 @@
 // the magic byte 'V' before close on a clean stop. An unserviced watchdog
 // warm-resets the SoC, which drops USB hotplug and loses the OTA path until a
 // physical power-cycle.
+// ENGMODEL-OWNER-UNIT: FU-OTA-WATCHDOG
 package watchdog
 
 import (
@@ -20,6 +21,7 @@ import (
 
 const wdiocKeepalive = 0x80045705 // WDIOC_KEEPALIVE (spec 01 §4.1)
 
+// TRLC-LINKS: REQ-SDS-026, REQ-SDS-086
 type Watchdog struct {
 	dev string
 
@@ -30,6 +32,7 @@ type Watchdog struct {
 	petErr  error
 }
 
+// TRLC-LINKS: REQ-SDS-086
 func New(dev string) *Watchdog {
 	return &Watchdog{dev: dev, fd: -1}
 }
@@ -37,6 +40,7 @@ func New(dev string) *Watchdog {
 // Acquire opens the device with O_RDWR, retrying until timeout (the factory
 // app's inherited fd needs a moment to drain after the kill), pets once so
 // the countdown is fresh, and starts the pet loop.
+// TRLC-LINKS: REQ-SDS-086
 func (w *Watchdog) Acquire(timeout, petEvery time.Duration) error {
 	w.mu.Lock()
 	if w.fd >= 0 {
@@ -66,6 +70,7 @@ func (w *Watchdog) Acquire(timeout, petEvery time.Duration) error {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-026, REQ-SDS-086
 func (w *Watchdog) loop(every time.Duration) {
 	t := time.NewTicker(every)
 	defer t.Stop()
@@ -84,6 +89,7 @@ func (w *Watchdog) loop(every time.Duration) {
 
 // pet issues both keepalives: the write is the primary, the ioctl is
 // belt-and-suspenders across driver variants (spec 01 §4.1).
+// TRLC-LINKS: REQ-SDS-026, REQ-SDS-086
 func (w *Watchdog) pet() {
 	w.mu.Lock()
 	defer w.mu.Unlock()
@@ -103,6 +109,7 @@ func (w *Watchdog) pet() {
 // Disarm writes the magic byte 'V' then closes, so the driver disarms instead
 // of resetting (no-op if never acquired). Used only on a clean agent stop —
 // the respawned agent re-acquires and re-arms.
+// TRLC-LINKS: REQ-SDS-086
 func (w *Watchdog) Disarm() {
 	w.mu.Lock()
 	defer w.mu.Unlock()
@@ -115,12 +122,14 @@ func (w *Watchdog) Disarm() {
 	w.fd = -1
 }
 
+// TRLC-LINKS: REQ-SDS-086
 type Status struct {
 	Armed   bool      `json:"armed"`
 	LastPet time.Time `json:"last_pet,omitzero"`
 	PetErr  string    `json:"pet_err,omitempty"`
 }
 
+// TRLC-LINKS: REQ-SDS-086
 func (w *Watchdog) Status() Status {
 	w.mu.Lock()
 	defer w.mu.Unlock()

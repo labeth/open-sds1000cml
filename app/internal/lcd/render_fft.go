@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-LCD
 package lcd
 
 import (
@@ -7,6 +8,7 @@ import (
 
 // fftRadix2 is an in-place iterative Cooley–Tukey FFT (len must be a power of
 // two). Kept here (not shared with peaks.js) so the LCD has no JS dependency.
+// TRLC-LINKS: REQ-SDS-021, REQ-SDS-070
 func fftRadix2(re, im []float64) {
 	n := len(re)
 	for i, j := 1, 0; i < n; i++ {
@@ -41,10 +43,11 @@ func fftRadix2(re, im []float64) {
 // drawFFT renders the Hann-windowed magnitude spectrum (dB, peak-normalised) of
 // the display channel across the graticule (parity with the web FFT mode). n is
 // capped so the per-frame cost stays well under the render budget.
+// TRLC-LINKS: REQ-SDS-021, REQ-SDS-070
 func drawFFT(sf Surface, f *engine.Frame, hud HUD) {
 	valid := frameValid(f)
 	n := 1
-	for n*2 <= valid && n < 8192 {
+	for n*2 <= valid/envPair(f) && n < 8192 {
 		n <<= 1
 	}
 	if n < 16 {
@@ -53,10 +56,7 @@ func drawFFT(sf Surface, f *engine.Frame, hud HUD) {
 	// Stride the WHOLE record down to n (not the leading prefix) so the spectrum
 	// represents the full capture; the effective sample interval grows by stride,
 	// so the axis' Nyquist shrinks accordingly.
-	stride := valid / n
-	if stride < 1 {
-		stride = 1
-	}
+	stride := pairStride(f, valid/n)
 	nyq := 0.0
 	if hud.SampleS > 0 {
 		nyq = 0.5 / hud.SampleS
@@ -108,15 +108,54 @@ func drawFFT(sf Surface, f *engine.Frame, hud HUD) {
 	DrawText(sf, 10, row, fmtFreq(fLo)+".."+fmtFreq(fHi), colDim, 1)
 }
 
+// envPair is 2 for a peak-detect envelope, whose values come in (min, max)
+// pairs per bucket, else 1.
+// TRLC-LINKS: REQ-SDS-021
+func envPair(f *engine.Frame) int {
+	if f.PeakDetect {
+		return 2
+	}
+	return 1
+}
+
+// pairStride is the block length that reduces a record to its spectrum
+// samples. An envelope's blocks hold whole (min, max) pairs, so each spectrum
+// sample is bucket midpoints: transforming the pairs themselves put their
+// alternation at the top of the axis as a rising false spectrum (bench
+// 2026-10-07, UART at 10 us/div).
+// TRLC-LINKS: REQ-SDS-021
+func pairStride(f *engine.Frame, stride int) int {
+	stride = max(stride, 1)
+	if p := envPair(f); stride%p != 0 {
+		stride += p - stride%p
+	}
+	return stride
+}
+
 // fftTrace draws one channel's Hann magnitude spectrum (dB, peak-normalised)
 // across the graticule and returns its parabola-refined peak frequency. src is
 // strided by `stride` down to `n` samples.
+// TRLC-LINKS: REQ-SDS-021, REQ-SDS-070
 func fftTrace(sf Surface, src []uint8, n, stride int, col uint16, effNyq float64, kLo, kHi int) float64 {
-	samples := make([]float64, n)
-	for i := 0; i < n; i++ {
-		samples[i] = float64(src[i*stride])
+	return fftCore(sf, blockMeans(src, n, stride), col, effNyq, kLo, kHi)
+}
+
+// blockMeans reduces src to n samples, each the mean of `stride` consecutive
+// samples: a boxcar low-pass ahead of the decimation. Taking every stride-th
+// sample instead folded everything above the reduced Nyquist back into the
+// plot (a 1 MHz square's harmonics and the 200 MHz interleave spur at stride 2).
+// TRLC-LINKS: REQ-SDS-021, REQ-SDS-070
+func blockMeans(src []uint8, n, stride int) []float64 {
+	stride = max(stride, 1)
+	out := make([]float64, n)
+	for i := range out {
+		sum := 0
+		for _, v := range src[i*stride : (i+1)*stride] {
+			sum += int(v)
+		}
+		out[i] = float64(sum) / float64(stride)
 	}
-	return fftCore(sf, samples, col, effNyq, kLo, kHi)
+	return out
 }
 
 // fftCore Hann-windows `samples` (DC included; mean-subtracted here), FFTs it,
@@ -124,6 +163,7 @@ func fftTrace(sf Surface, src []uint8, n, stride int, col uint16, effNyq float64
 // screen, marks peaks, and returns the refined peak frequency. Shared by the
 // live FFT (uint8) and the super-res FFT (float fine grid — the float input is
 // what lets the crunched sub-LSB bits lower the spectrum noise floor).
+// TRLC-LINKS: REQ-SDS-021, REQ-SDS-070
 func fftCore(sf Surface, samples []float64, col uint16, effNyq float64, kLo, kHi int) float64 {
 	n := len(samples)
 	re := make([]float64, n)

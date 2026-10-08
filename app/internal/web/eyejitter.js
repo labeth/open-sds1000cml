@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-WEB-EYEJITTER
 // eyejitter.js — eye-diagram + jitter analysis engine (the serial-analysis
 // package high-end scopes sell as a paid option), self-contained: no DOM, no
 // external libs; loaded as a classic script in the browser and require()d by
@@ -24,6 +25,7 @@
 // (the browser loads it as a classic script before this one).
 if (typeof require !== "undefined") { Object.assign(globalThis, require("./eyejitter_analysis.js")); }
 
+// TRLC-LINKS: REQ-SDS-199
 function ejNew(opts) {
   opts = opts || {};
   const eyeW = opts.eyeW || 256, eyeH = opts.eyeH || 128;
@@ -67,6 +69,7 @@ function ejNew(opts) {
 
 // ejFeed analyzes one raw record. sig: Uint8/Int16Array codes, n valid samples,
 // sampleS seconds/sample. Returns "locked:<edges>" | "rejected:<why>".
+// TRLC-LINKS: REQ-SDS-199
 function ejFeed(st, sig, n, sampleS) {
   const e = ejEdges(sig, n);
   if (!e) { st.rejected++; st.lastErr = "no-swing"; return "rejected:no-swing"; }
@@ -228,6 +231,7 @@ function ejFeed(st, sig, n, sampleS) {
 
 
 // ejResult reduces the state to displayable metrics. Cheap (no copies of eye).
+// TRLC-LINKS: REQ-SDS-199
 function ejResult(st) {
   const out = {
     records: st.records, rejected: st.rejected, edges: st.edges,

@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-WEB
 package web
 
 import (
@@ -16,6 +17,7 @@ import (
 // posts bodemode, the render path fetches /api/bode (synthetic points) and
 // draws, the enlarge opens, CLEAR runs — no page errors. Exercises the
 // app_views.js bode wiring this refactor relocated. Skips without node/browser (fails under CI_REQUIRE_BROWSER=1).
+// TRLC-LINKS: REQ-SDS-125
 func TestBodeBrowser(t *testing.T) {
 	testenv.NeedNode(t)
 	var seq atomic.Int64

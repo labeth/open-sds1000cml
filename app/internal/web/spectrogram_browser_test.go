@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-WEB
 package web
 
 import (
@@ -16,6 +17,7 @@ import (
 // Chromium against a synthetic live signal, asserting the app_views.js wiring
 // (arm → accumulate rows → paint → enlarge → clear) works end to end with no
 // page errors. Skips without node or a Playwright browser (fails under CI_REQUIRE_BROWSER=1).
+// TRLC-LINKS: REQ-SDS-068
 func TestSpectrogramBrowser(t *testing.T) {
 	testenv.NeedNode(t)
 	var seq atomic.Int64

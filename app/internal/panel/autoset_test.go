@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-PANEL
 package panel
 
 import (
@@ -11,6 +12,7 @@ import (
 // samples sit at an extreme code (≤1 or ≥254). This is the model-independent
 // signal that a DC-heavy trace is parked off-screen on a range where the offset
 // DAC can't pull it in, so autoset must coarsen the V/div.
+// TRLC-LINKS: REQ-SDS-137
 func TestRailing(t *testing.T) {
 	c, _, _ := newC(t)
 
@@ -100,6 +102,7 @@ func TestRailing(t *testing.T) {
 // ≈+4.9 div off centre) but NO code reaches 254/255 — railing() reads 0%. The 3c
 // coarsen guard keys on offScreen(), which must still report "coarsen" here so the
 // signal is walked down to an attenuated range where the offset can centre it.
+// TRLC-LINKS: REQ-SDS-137
 func TestOffScreenSaturated(t *testing.T) {
 	c, _, _ := newC(t)
 	use := func(f *engine.Frame) { c.SetFrameSource(func(fn func(*engine.Frame)) { fn(f) }) }

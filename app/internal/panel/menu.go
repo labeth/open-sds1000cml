@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-PANEL
 package panel
 
 import (
@@ -23,6 +24,7 @@ const (
 )
 
 // MenuItem is one softkey slot: a label and its current value.
+// TRLC-LINKS: REQ-SDS-136
 type MenuItem struct{ Label, Value string }
 
 // Menu / softkey / channel button codes (spec 08 §6.1/§6.2/§6.4/§6.5).
@@ -49,6 +51,7 @@ var (
 var softkeys = []int{btnF1, btnF2, btnF3, btnF4, btnF5}
 
 // menuButton handles a menu-related button; returns true if it consumed it.
+// TRLC-LINKS: REQ-SDS-136
 func (c *Controller) menuButton(code int) bool {
 	switch code {
 	case btnTrigMenu:
@@ -149,7 +152,9 @@ func (c *Controller) menuButton(code int) bool {
 			open := c.menuPage != pgNone
 			c.mu.Unlock()
 			if open {
+				c.pressWrap = true // a press cycles options; the knob clamps
 				c.menuCycle(i, +1)
+				c.pressWrap = false
 				return true
 			}
 			return false // softkey with no menu open: nothing to do
@@ -158,6 +163,7 @@ func (c *Controller) menuButton(code int) bool {
 	return false
 }
 
+// TRLC-LINKS: REQ-SDS-136
 func (c *Controller) openMenu(pg int) {
 	c.mu.Lock()
 	c.menuPage, c.menuSel = pg, 0
@@ -170,8 +176,20 @@ func (c *Controller) openMenu(pg int) {
 // pageSlots is how many softkey slots a page actually populates — presses on
 // the rest are inert (no highlight moves onto a blank slot).
 // pageSlots may read c.decProto, so callers must hold c.mu.
+// TRLC-LINKS: REQ-SDS-136
 func (c *Controller) pageSlots(pg int) int {
 	switch pg {
+	case pgTrigQ:
+		switch c.eng.Snapshot().TrigType {
+		case 1:
+			return 4
+		case 2:
+			return 5
+		case 3:
+			return 3
+		default:
+			return 1
+		}
 	case pgHoriz:
 		return 3
 	case pgAcq:
@@ -186,8 +204,8 @@ func (c *Controller) pageSlots(pg int) int {
 		switch c.decProto {
 		case 0: // Off — only the Proto selector
 			return 1
-		case 1: // Auto — Proto, Format
-			return 2
+		case 1: // Auto — Proto, Format, Mode, Trig, Value
+			return 5
 		case 4: // SPI — Proto, CLK, DATA, Mode, Format
 			return 5
 		default: // UART, I2C — Proto, param, param, Format
@@ -198,18 +216,20 @@ func (c *Controller) pageSlots(pg int) int {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-136
 func (c *Controller) menuCount(st engine.Stats, dir int) {
 	switch st.AcqMode {
 	case 1: // Average
-		c.eng.SetAvgCount(nextOpt([]int{4, 16, 32, 64, 128, 256}, st.AvgCount, dir))
+		c.eng.SetAvgCount(nextOpt([]int{4, 16, 32, 64, 128, 256}, st.AvgCount, dir, c.pressWrap))
 	case 2: // ERes
-		c.eng.SetEresLen(nextOpt([]int{1, 3, 7, 15, 31, 63}, st.EresLen, dir))
+		c.eng.SetEresLen(nextOpt([]int{1, 3, 7, 15, 31, 63}, st.EresLen, dir, c.pressWrap))
 	}
 }
 
 // menuAdjust is the ADJUST knob acting on the highlighted item (spec 08 §6.3).
 // On the cursor page the knob moves the active cursor rather than cycling a
 // softkey, so positioning feels continuous.
+// TRLC-LINKS: REQ-SDS-136
 func (c *Controller) menuAdjust(dir int) {
 	c.mu.Lock()
 	pg, sel, curOn := c.menuPage, c.menuSel, c.curOn
@@ -224,6 +244,7 @@ func (c *Controller) menuAdjust(dir int) {
 }
 
 // moveCursor nudges the selected cursor of the active type by ~1 % of screen.
+// TRLC-LINKS: REQ-SDS-136
 func (c *Controller) moveCursor(dir int) {
 	c.mu.Lock()
 	step := 0.01 * float64(dir)
@@ -236,6 +257,7 @@ func (c *Controller) moveCursor(dir int) {
 	c.pushLEDs()
 }
 
+// TRLC-LINKS: REQ-SDS-136
 func (c *Controller) trigPos() float64 {
 	f := c.eng.Snapshot().TrigPosFrac
 	if f <= 0 {

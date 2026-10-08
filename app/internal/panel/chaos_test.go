@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-PANEL
 package panel
 
 import (
@@ -9,6 +10,7 @@ import (
 // exact dispatch the SIGIO decoder and /api/panel drive. The controller must
 // never panic (a panic kills the whole app on the device) and its shadow
 // state must stay inside physical bounds afterwards.
+// TRLC-LINKS: REQ-SDS-135, REQ-SDS-136
 func TestPanelChaos(t *testing.T) {
 	buttons := []int{
 		btnRunStop, btnSingle, btnAuto, btnCh1VdivPush, btnCh2VdivPush,

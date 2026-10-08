@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-DECODE
 package decode
 
 // I2C vs the sigrok `i2c` decoder. Cases cover the clean path plus the edge
@@ -31,6 +32,7 @@ import (
 )
 
 // i2cTxn is one transaction for the oracle generator.
+// TRLC-LINKS: REQ-SDS-018
 type i2cTxn struct {
 	addr7   int
 	read    bool  // R/W bit = 1
@@ -45,6 +47,7 @@ type i2cTxn struct {
 // changes while SCL is low except for the START/STOP conditions themselves.
 // The current SDA level is tracked (d) so START/STOP can drop SCL first while
 // HOLDING SDA — releasing SDA while SCL is still high would fabricate a STOP.
+// TRLC-LINKS: REQ-SDS-018
 type i2cGen struct {
 	scl, sda *timeline
 	bt       float64 // one SCL period, seconds
@@ -52,16 +55,19 @@ type i2cGen struct {
 	d        byte
 }
 
+// TRLC-LINKS: REQ-SDS-018
 func newI2CGen(sr, fclk, loFrac float64) *i2cGen {
 	return &i2cGen{scl: newTimeline(sr), sda: newTimeline(sr), bt: 1 / fclk, loFrac: loFrac, d: 1}
 }
 
+// TRLC-LINKS: REQ-SDS-018
 func (g *i2cGen) seg(c, d byte, dur float64) {
 	g.scl.add(c, dur)
 	g.sda.add(d, dur)
 	g.d = d
 }
 
+// TRLC-LINKS: REQ-SDS-018
 func (g *i2cGen) idle(periods float64) { g.seg(1, 1, periods*g.bt) }
 
 // start works from bus idle AND mid-transaction (repeated START): SCL is
@@ -69,6 +75,7 @@ func (g *i2cGen) idle(periods float64) { g.seg(1, 1, periods*g.bt) }
 // falls while SCL is high. Mid-transaction the SCL rising with SDA high
 // clocks in one stray bit on both sides — exactly as on a real bus — and
 // both decoders must discard it when the START arrives.
+// TRLC-LINKS: REQ-SDS-018
 func (g *i2cGen) start() {
 	lo := g.bt * g.loFrac
 	g.seg(0, g.d, lo/2)
@@ -79,6 +86,7 @@ func (g *i2cGen) start() {
 
 // byteACK clocks one byte MSB-first plus the 9th (ACK) clock; nak leaves SDA
 // high on the 9th clock.
+// TRLC-LINKS: REQ-SDS-018
 func (g *i2cGen) byteACK(v int, nak bool) {
 	lo, hi := g.bt*g.loFrac, g.bt*(1-g.loFrac)
 	for k := 7; k >= 0; k-- {
@@ -97,11 +105,13 @@ func (g *i2cGen) byteACK(v int, nak bool) {
 // stretch emulates slave clock stretching: SCL held low for the given number
 // of full clock periods with SDA parked at its current level (SDA may legally
 // move while SCL is low, but a quiet line keeps the vector minimal).
+// TRLC-LINKS: REQ-SDS-018
 func (g *i2cGen) stretch(periods float64) { g.seg(0, g.d, periods*g.bt) }
 
 // byteACKStretched is byteACK with clock stretching inserted at the two spots
 // real slaves stretch: after `afterBit` data bits (1-based, i.e. mid-byte)
 // for midPeriods, and again just before the 9th (ACK) clock for ackPeriods.
+// TRLC-LINKS: REQ-SDS-018
 func (g *i2cGen) byteACKStretched(v int, nak bool, afterBit int, midPeriods, ackPeriods float64) {
 	lo, hi := g.bt*g.loFrac, g.bt*(1-g.loFrac)
 	for k := 7; k >= 0; k-- {
@@ -128,6 +138,7 @@ func (g *i2cGen) byteACKStretched(v int, nak bool, afterBit int, midPeriods, ack
 // not a data change. By the letter of the I2C spec the dip's falling edge is
 // a START and its rising recovery a STOP; decoders differ in which of the two
 // they act on (see the sda-glitch-scl-high subtest).
+// TRLC-LINKS: REQ-SDS-018
 func (g *i2cGen) byteACKGlitched(v, glitchBit int) {
 	lo, hi := g.bt*g.loFrac, g.bt*(1-g.loFrac)
 	dt := 1 / g.scl.sr // one sample
@@ -146,6 +157,7 @@ func (g *i2cGen) byteACKGlitched(v, glitchBit int) {
 	g.seg(1, 0, hi)
 }
 
+// TRLC-LINKS: REQ-SDS-018
 func (g *i2cGen) stop() {
 	lo := g.bt * g.loFrac
 	g.seg(0, g.d, lo/2) // SCL drops first, SDA held (no false condition)
@@ -157,6 +169,7 @@ func (g *i2cGen) stop() {
 // oracleI2CWaves renders transactions at the given clock rate and duty cycle.
 // Timings accumulate in seconds so non-integer samples-per-clock behave like
 // a real capture.
+// TRLC-LINKS: REQ-SDS-018
 func oracleI2CWaves(sr, fclk, loFrac float64, txns []i2cTxn) (scl, sda []byte) {
 	g := newI2CGen(sr, fclk, loFrac)
 	g.idle(4)
@@ -185,6 +198,7 @@ func oracleI2CWaves(sr, fclk, loFrac float64, txns []i2cTxn) (scl, sda []byte) {
 // sigrok address/data class stream — dropping the bare "Write"/"Read"
 // direction markers the address classes also emit — and parses the hex
 // values, so the result is 1:1 with repo addr/data spans.
+// TRLC-LINKS: REQ-SDS-018
 func i2cAnnVals(t *testing.T, anns []ann, prefix string) ([]ann, []int) {
 	t.Helper()
 	var keep []ann
@@ -207,6 +221,7 @@ func i2cAnnVals(t *testing.T, anns []ann, prefix string) ([]ann, []int) {
 // i2cRepoAddrs pairs each repo "addr" span with the "rw" span that follows it
 // and splits the addresses by direction — the same partition sigrok's
 // address-write/address-read classes provide.
+// TRLC-LINKS: REQ-SDS-018
 func i2cRepoAddrs(t *testing.T, res Result) (w, r []int) {
 	t.Helper()
 	addr := -1
@@ -229,6 +244,7 @@ func i2cRepoAddrs(t *testing.T, res Result) (w, r []int) {
 	return w, r
 }
 
+// TRLC-LINKS: REQ-SDS-018
 func TestOracleI2C(t *testing.T) {
 	needSigrok(t)
 	const sr = 1_000_000

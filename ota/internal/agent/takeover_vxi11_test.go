@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-OTA-AGENT
 package agent
 
 // Takeover sequence tests (spec 01 §2.2 inherit-then-kill), off-device:
@@ -39,6 +40,7 @@ import (
 
 // ---- fake gpmc reader (behind the gpmcReader seam) --------------------------
 
+// TRLC-LINKS: REQ-SDS-027
 type fakeGpmc struct {
 	versionOK bool
 	idle      bool // frozen fill counter when true
@@ -48,8 +50,10 @@ type fakeGpmc struct {
 	sawStopAtVerify []bool // per VerifyVersion call: had the instrument received STOP yet?
 }
 
+// TRLC-LINKS: REQ-SDS-027
 func (g *fakeGpmc) OK() bool { return true }
 
+// TRLC-LINKS: REQ-SDS-027
 func (g *fakeGpmc) VerifyVersion() (uint16, bool) {
 	g.mu.Lock()
 	if g.stopSeen != nil {
@@ -62,6 +66,7 @@ func (g *fakeGpmc) VerifyVersion() (uint16, bool) {
 	return 0xdead, false
 }
 
+// TRLC-LINKS: REQ-SDS-027
 func (g *fakeGpmc) FillFrozen(pairs int, gap time.Duration) (bool, []uint16, error) {
 	if g.idle {
 		return true, []uint16{42, 42, 42, 42}, nil
@@ -69,8 +74,10 @@ func (g *fakeGpmc) FillFrozen(pairs int, gap time.Duration) (bool, []uint16, err
 	return false, []uint16{1, 2}, nil
 }
 
+// TRLC-LINKS: REQ-SDS-027
 func (g *fakeGpmc) Read(plane uint8, sel uint16) (uint16, error) { return 0x008a, nil }
 
+// TRLC-LINKS: REQ-SDS-027
 func (g *fakeGpmc) verifiedAfterStop() bool {
 	g.mu.Lock()
 	defer g.mu.Unlock()
@@ -86,6 +93,7 @@ const (
 	vxDestroyLink = 23
 )
 
+// TRLC-LINKS: REQ-SDS-027
 type fakeInstr struct {
 	pmLn, coreLn net.Listener
 	corePort     uint32
@@ -96,6 +104,7 @@ type fakeInstr struct {
 	got []string
 }
 
+// TRLC-LINKS: REQ-SDS-027
 func vxReadRecord(c net.Conn) ([]byte, error) {
 	var rm [4]byte
 	if _, err := io.ReadFull(c, rm[:]); err != nil {
@@ -106,12 +115,14 @@ func vxReadRecord(c net.Conn) ([]byte, error) {
 	return buf, err
 }
 
+// TRLC-LINKS: REQ-SDS-027
 func vxWriteRecord(c net.Conn, body []byte) {
 	var rm [4]byte
 	binary.BigEndian.PutUint32(rm[:], 0x80000000|uint32(len(body)))
 	c.Write(append(rm[:], body...))
 }
 
+// TRLC-LINKS: REQ-SDS-027
 func vxAcceptedReply(xid uint32, result []byte) []byte {
 	b := make([]byte, 24)
 	binary.BigEndian.PutUint32(b[0:], xid)
@@ -120,6 +131,7 @@ func vxAcceptedReply(xid uint32, result []byte) []byte {
 	return append(b, result...)
 }
 
+// TRLC-LINKS: REQ-SDS-027
 func newFakeInstr(t *testing.T, readReply string, onCmd func(string)) *fakeInstr {
 	t.Helper()
 	pm, err := net.Listen("tcp", "127.0.0.1:0")
@@ -142,14 +154,17 @@ func newFakeInstr(t *testing.T, readReply string, onCmd func(string)) *fakeInstr
 	return f
 }
 
+// TRLC-LINKS: REQ-SDS-027
 func (f *fakeInstr) pmAddr() string { return f.pmLn.Addr().String() }
 
+// TRLC-LINKS: REQ-SDS-027
 func (f *fakeInstr) cmds() []string {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	return append([]string(nil), f.got...)
 }
 
+// TRLC-LINKS: REQ-SDS-027
 func (f *fakeInstr) servePortmap() {
 	for {
 		c, err := f.pmLn.Accept()
@@ -171,6 +186,7 @@ func (f *fakeInstr) servePortmap() {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-027
 func (f *fakeInstr) serveCore() {
 	for {
 		c, err := f.coreLn.Accept()
@@ -224,6 +240,7 @@ func (f *fakeInstr) serveCore() {
 
 // ---- seam swaps --------------------------------------------------------------
 
+// TRLC-LINKS: REQ-SDS-027
 func swapVxiDial(t *testing.T, fn func(string, time.Duration) (*vxi11.Client, error)) {
 	t.Helper()
 	old := vxi11Dial
@@ -234,6 +251,7 @@ func swapVxiDial(t *testing.T, fn func(string, time.Duration) (*vxi11.Client, er
 // dialFake routes factoryStop's fixed 127.0.0.1:111 portmapper dial to the
 // fake instrument, asserting the production host is loopback (the factory
 // SCPI service is only ever local).
+// TRLC-LINKS: REQ-SDS-027
 func dialFake(t *testing.T, f *fakeInstr) {
 	t.Helper()
 	swapVxiDial(t, func(host string, timeout time.Duration) (*vxi11.Client, error) {
@@ -244,6 +262,7 @@ func dialFake(t *testing.T, f *fakeInstr) {
 	})
 }
 
+// TRLC-LINKS: REQ-SDS-027
 func swapIdleTimeout(t *testing.T, d time.Duration) {
 	t.Helper()
 	old := takeoverIdleTimeout
@@ -252,6 +271,7 @@ func swapIdleTimeout(t *testing.T, d time.Duration) {
 }
 
 // captureReassert replaces the async network re-assert with a recorder.
+// TRLC-LINKS: REQ-SDS-027
 func captureReassert(t *testing.T) chan []string {
 	t.Helper()
 	ch := make(chan []string, 1)
@@ -266,6 +286,7 @@ func captureReassert(t *testing.T) chan []string {
 // takeoverAgent builds an agent whose Gpmc node is a temp file this process
 // has open (so New discovers a genuinely inherited fd) and whose watchdog is
 // a plain writable temp file (Acquire arms instantly).
+// TRLC-LINKS: REQ-SDS-027
 func takeoverAgent(t *testing.T, g *fakeGpmc) (*Agent, string) {
 	t.Helper()
 	dir := t.TempDir()
@@ -308,6 +329,7 @@ func takeoverAgent(t *testing.T, g *fakeGpmc) (*Agent, string) {
 // node and (b) is NOT our descendant — `sh -c '... &'` orphans the sleep when
 // sh exits — exactly the shape factoryCandidates must pick up and killFactory
 // must kill. Returns once factoryCandidates actually reports it.
+// TRLC-LINKS: REQ-SDS-027
 func spawnGpmcHolder(t *testing.T, a *Agent, path string) int {
 	t.Helper()
 	out, err := exec.Command("/bin/sh", "-c",
@@ -335,6 +357,7 @@ func spawnGpmcHolder(t *testing.T, a *Agent, path string) int {
 	return 0
 }
 
+// TRLC-LINKS: REQ-SDS-027
 func stepIdx(steps []string, sub string) int {
 	for i, s := range steps {
 		if strings.Contains(s, sub) {
@@ -346,6 +369,7 @@ func stepIdx(steps []string, sub string) int {
 
 // ---- the tests ----------------------------------------------------------------
 
+// TRLC-LINKS: REQ-SDS-027
 func TestTakeoverHappyPathOrderOfOperations(t *testing.T) {
 	var stopSeen atomic.Bool
 	g := &fakeGpmc{versionOK: true, idle: true, stopSeen: &stopSeen}
@@ -430,6 +454,7 @@ func TestTakeoverHappyPathOrderOfOperations(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-027
 func TestTakeoverRefusesWhenFactoryWontIdle(t *testing.T) {
 	// STOP succeeds over the wire but the fill counter keeps advancing: the
 	// engine never lands. Without force the takeover must refuse BEFORE the
@@ -469,6 +494,7 @@ func TestTakeoverRefusesWhenFactoryWontIdle(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-027
 func TestTakeoverRefusesWhenFactoryStopUnreachable(t *testing.T) {
 	// The factory SCPI service can't be reached (dead portmapper). Without
 	// force this is a hard refusal at the STOP gate.
@@ -497,6 +523,7 @@ func TestTakeoverRefusesWhenFactoryStopUnreachable(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-027
 func TestTakeoverForcePartialFailureStillReassertsNetwork(t *testing.T) {
 	// Force is the dead-factory escape hatch: STOP fails AND the idle landing
 	// can't be confirmed, but the sequence continues past the point of no

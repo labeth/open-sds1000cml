@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-MEASURE
 package measure
 
 import (
@@ -10,6 +11,7 @@ import (
 // Measurement fuzz: degenerate records must produce FINITE, JSON-encodable
 // results — a single NaN/Inf field poisons the whole frame reply at the
 // encoding layer (json.Marshal errors on NaN), taking the UI down with it.
+// TRLC-LINKS: REQ-SDS-017
 func TestMeasureFuzzFinite(t *testing.T) {
 	rng := rand.New(rand.NewSource(99))
 	mk := func(n int, f func(i int) uint8) []uint8 {

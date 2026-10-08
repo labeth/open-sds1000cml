@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-ANALOG
 package analog
 
 import (
@@ -12,6 +13,7 @@ import (
 // Detent is one V/div step of the vertical ladder (spec 06 §4.3). The 2 mV
 // and 5 mV detents run the 10 mV analog range with ×5/×2 display zoom — the
 // code→volts mapping stays on the analog range; the zoom is display-only.
+// TRLC-LINKS: REQ-SDS-015
 type Detent struct {
 	VdivV float64 // requested (displayed) volts/div
 	Gain  uint8   // fine-gain DAC code
@@ -39,6 +41,7 @@ var Detents = []Detent{
 const BootDetent = 8
 
 // PlanVdiv resolves requested volts/div to a detent index (1e-6 rel tol).
+// TRLC-LINKS: REQ-SDS-015
 func PlanVdiv(v float64) (int, bool) {
 	for i, d := range Detents {
 		if math.Abs(d.VdivV-v) <= d.VdivV*1e-6 {
@@ -50,6 +53,7 @@ func PlanVdiv(v float64) (int, bool) {
 
 // AnalogVdiv is the electrical volts/div of a detent (the 10 mV range for
 // the zoomed detents): volts per sample code = AnalogVdiv/50 (spec 06 §7.1).
+// TRLC-LINKS: REQ-SDS-015
 func AnalogVdiv(idx int) float64 {
 	d := Detents[idx]
 	return d.VdivV * float64(d.Zoom)
@@ -73,10 +77,14 @@ const (
 
 // channelByte builds a relay channel byte (spec 06 §4.2): bit0 BWL(1=off,
 // full bandwidth), bit2 coarse range, bit3 DC, bit5 always 1, bit7 CH2 address
-// bit. Coupling is software-only (see the Coupling constants), so the relay is
-// always DC — never the GND (bit1) path, which is unsafe/ineffective here.
-func channelByte(idx int, ch2 bool) uint8 {
+// bit. Coupling is software (there is no hardware high-pass, spec 06 §6), so
+// the relay stays DC.
+// TRLC-LINKS: REQ-SDS-015
+func channelByte(idx int, ch2, bwl bool) uint8 {
 	b := uint8(0x20 | 0x01 | 0x08) // bit5 | BWL off | bit3 DC
+	if bwl {
+		b &^= 0x01 // bit0 clear engages the 20 MHz limit
+	}
 	if Detents[idx].Atten {
 		b |= 0x04
 	}
@@ -90,29 +98,34 @@ func channelByte(idx int, ch2 bool) uint8 {
 // and serializes itself; it never touches the acquisition engine — it stages
 // the offset DAC through the injected hook so the code re-anchors to each
 // detent's calibrated zero when V/div changes.
+// TRLC-LINKS: REQ-SDS-015, REQ-SDS-095, REQ-SDS-096, REQ-SDS-097, REQ-SDS-098
 type FrontEnd struct {
 	mu      sync.Mutex
 	tr      Transport
 	sleep   func(time.Duration)
 	tab     *cal.Table
 	idx     [2]int
-	trigSrc int  // relay byte2 source nibble: 0=C1, 1=C2, 2=EXT
-	emitted bool // seed-don't-emit: leave the inherited analog range alone
+	trigSrc int     // relay byte2 source nibble: 0=C1, 1=C2, 2=EXT
+	bwl     [2]bool // 20 MHz bandwidth limit engaged (relay bit0 clear)
+	emitted bool    // seed-don't-emit: leave the inherited analog range alone
 
-	stage   func(ch int, code uint16)              // offset-DAC stager (engine.SetOffsetDAC)
-	onOffV  func(ch int, offV float64)             // applied-offset-volts hook (engine trigger reference)
-	onVdiv  func(ch int, vdivV, zero, cpv float64) // V/div change hook (engine trigger map + per-detent cal)
-	offReqV [2]float64                             // requested input-referred offset volts
-	offSet  [2]bool                                // whether the user has set an offset
-	probe   [2]float64                             // per-channel probe attenuation (display multiplier)
-	cpl     [2]int                                 // per-channel coupling (CplDC/CplAC/CplGND)
-	trigCal [2][numDetents]TrigCal                 // per-channel, per-detent trigger DAC cal
+	stage     func(ch int, code uint16)              // offset-DAC stager (engine.SetOffsetDAC)
+	onOffV    func(ch int, offV float64)             // applied-offset-volts hook (engine trigger reference)
+	onVdiv    func(ch int, vdivV, zero, cpv float64) // V/div change hook (engine trigger map + per-detent cal)
+	onCpl     func(ch, mode int)                     // coupling change hook (engine: software AC trigger level)
+	offReqV   [2]float64                             // requested input-referred offset volts
+	offSet    [2]bool                                // whether the user has set an offset
+	probe     [2]float64                             // per-channel probe attenuation (display multiplier)
+	cpl       [2]int                                 // per-channel coupling (CplDC/CplAC/CplGND)
+	trigCal   [2][numDetents]TrigCal                 // per-channel, per-detent trigger DAC cal
+	zeroTrimV [2][numDetents]float64                 // open-input 0 V position per detent (ZeroTrim)
 }
 
 // New seeds both channels' shadows to the boot detent WITHOUT emitting —
 // the inherited analog state stays untouched until the first user change
 // (spec 06 §4.4 startup rule; an unseeded emit collapses the other
 // channel's gain). tab may be nil (→ compiled defaults).
+// TRLC-LINKS: REQ-SDS-015
 func New(tr Transport, sleep func(time.Duration), tab *cal.Table) *FrontEnd {
 	if sleep == nil {
 		sleep = time.Sleep
@@ -127,6 +140,7 @@ func New(tr Transport, sleep func(time.Duration), tab *cal.Table) *FrontEnd {
 // pure display/readout multiplier — the analog gain is untouched; every volts
 // readout (measurements, cursors, CSV, trigger level, offset) scales by it so
 // the numbers reflect the signal at the probe tip.
+// TRLC-LINKS: REQ-SDS-097
 func (f *FrontEnd) SetProbe(ch int, x float64) {
 	if x < 1 {
 		x = 1
@@ -137,6 +151,7 @@ func (f *FrontEnd) SetProbe(ch int, x float64) {
 }
 
 // ProbeFactor returns a channel's probe attenuation (default 1).
+// TRLC-LINKS: REQ-SDS-097
 func (f *FrontEnd) ProbeFactor(ch int) float64 {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -150,17 +165,38 @@ func (f *FrontEnd) ProbeFactor(ch int) float64 {
 // touches the relay — coupling is a pure display transform on this clone (see
 // the Coupling constants and CoupleDisplay), so it is always safe and takes
 // effect on the next served/rendered frame.
+// TRLC-LINKS: REQ-SDS-096
 func (f *FrontEnd) SetCoupling(ch, mode int) error {
 	if mode < CplDC || mode > CplGND {
 		return fmt.Errorf("analog: bad coupling ch=%d mode=%d", ch, mode)
 	}
 	f.mu.Lock()
 	f.cpl[ch&1] = mode
+	fn := f.onCpl
 	f.mu.Unlock()
+	if fn != nil {
+		fn(ch&1, mode)
+	}
 	return nil
 }
 
+// OnCoupling wires the coupling-change hook (engine.SetChannelCoupling): AC is
+// a software transform, so the trigger level of an AC-coupled source needs
+// the engine's help. Called immediately with both channels' coupling.
+// TRLC-LINKS: REQ-SDS-096
+func (f *FrontEnd) OnCoupling(fn func(ch, mode int)) {
+	f.mu.Lock()
+	f.onCpl = fn
+	cpl := f.cpl
+	f.mu.Unlock()
+	if fn != nil {
+		fn(0, cpl[0])
+		fn(1, cpl[1])
+	}
+}
+
 // Coupling returns a channel's coupling mode (default CplDC).
+// TRLC-LINKS: REQ-SDS-096
 func (f *FrontEnd) Coupling(ch int) int {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -173,6 +209,7 @@ func (f *FrontEnd) Coupling(ch int) int {
 // GND shows a flat trace at mid-scale (the ground reference). The input is never
 // mutated (it is shared with trigger/decode). Callers zero the channel's offset
 // for AC/GND so the ground marker sits at the centred baseline.
+// TRLC-LINKS: REQ-SDS-096
 func CoupleDisplay(sig []uint8, mode int) []uint8 {
 	switch mode {
 	case CplAC:
@@ -191,6 +228,7 @@ func CoupleDisplay(sig []uint8, mode int) []uint8 {
 // RemoveDC returns a copy of sig with its DC component removed: the record mean
 // is shifted to mid-scale (code 128), clamped to [0,255]. The input is never
 // mutated.
+// TRLC-LINKS: REQ-SDS-096
 func RemoveDC(sig []uint8) []uint8 {
 	if len(sig) == 0 {
 		return sig
@@ -215,11 +253,13 @@ func RemoveDC(sig []uint8) []uint8 {
 
 // OnOffset wires the offset-DAC stager (engine.SetOffsetDAC). Until set,
 // SetOffset just records the requested volts.
+// TRLC-LINKS: REQ-SDS-095
 func (f *FrontEnd) OnOffset(fn func(ch int, code uint16)) { f.stage = fn }
 
 // OnOffsetV wires the applied-offset-volts hook (engine.SetChannelOffsetV) so
 // the trigger discrimination level rides the same offset reference as the
 // samples. Called immediately with both channels' current applied offset.
+// TRLC-LINKS: REQ-SDS-095
 func (f *FrontEnd) OnOffsetV(fn func(ch int, offV float64)) {
 	f.onOffV = fn
 	if fn != nil {
@@ -231,6 +271,7 @@ func (f *FrontEnd) OnOffsetV(fn func(ch int, offV float64)) {
 // appliedOffV is the input-referred offset volts currently applied to a channel
 // (0 if the user has never set one — the boot offset is left inherited and the
 // display treats it as 0, matching vertScales).
+// TRLC-LINKS: REQ-SDS-095
 func (f *FrontEnd) appliedOffV(ch int) float64 {
 	f.mu.Lock()
 	set, req := f.offSet[ch&1], f.offReqV[ch&1]
@@ -244,6 +285,7 @@ func (f *FrontEnd) appliedOffV(ch int) float64 {
 // OnVdiv wires a V/div-change hook (engine.SetChannelVdiv) so the trigger
 // level maps to the right display code. Called immediately with the seeded
 // detents so the engine starts consistent.
+// TRLC-LINKS: REQ-SDS-098
 func (f *FrontEnd) OnVdiv(fn func(ch int, vdivV, zero, cpv float64)) {
 	f.onVdiv = fn
 	if fn != nil {
@@ -252,16 +294,20 @@ func (f *FrontEnd) OnVdiv(fn func(ch int, vdivV, zero, cpv float64)) {
 		f.mu.Unlock()
 		z0, c0 := f.TrigCalActive(0)
 		z1, c1 := f.TrigCalActive(1)
-		fn(0, Detents[i0].VdivV, z0, c0)
-		fn(1, Detents[i1].VdivV, z1, c1)
+		fn(0, AnalogVdiv(i0), z0, c0) // codes are on the analog range (zoomed detents included)
+		fn(1, AnalogVdiv(i1), z1, c1)
 	}
 }
 
 // SetOffset records a requested input-referred offset in volts, derives the
 // DAC code against the CURRENT detent's calibrated zero, and stages it.
 // Being volts-based, the offset survives a V/div change (SetVdiv re-anchors).
+// TRLC-LINKS: REQ-SDS-095
 func (f *FrontEnd) SetOffset(ch int, volts float64) uint16 {
 	ch &= 1
+	vd, _ := f.offsetZeroAndDetent(ch)
+	limit := offsetTierRangeV(vd)
+	volts = math.Max(-limit, math.Min(limit, volts))
 	code := f.OffsetCode(ch, volts)
 	f.mu.Lock()
 	f.offReqV[ch], f.offSet[ch] = volts, true
@@ -276,6 +322,7 @@ func (f *FrontEnd) SetOffset(ch int, volts float64) uint16 {
 }
 
 // OffsetReqV returns the last requested offset volts for a channel.
+// TRLC-LINKS: REQ-SDS-095
 func (f *FrontEnd) OffsetReqV(ch int) float64 {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -283,12 +330,15 @@ func (f *FrontEnd) OffsetReqV(ch int) float64 {
 }
 
 // CalSource reports what calibration is loaded: file | backup | defaults.
+// TRLC-LINKS: REQ-SDS-015
 func (f *FrontEnd) CalSource() string { return f.tab.Source }
 
 // gainFor picks the per-unit gain-DAC code when a real cal file is loaded;
 // the compiled-default case keeps the spec 06 ladder codes (validated on
 // this hardware) rather than the firmware boot ladder.
+// TRLC-LINKS: REQ-SDS-015
 func (f *FrontEnd) gainFor(ch, idx int) uint8 {
+	idx = analogDetent(idx)
 	if f.tab.Source != "defaults" {
 		return uint8(f.tab.Rec[ch&1][idx].GainDAC)
 	}
@@ -297,39 +347,65 @@ func (f *FrontEnd) gainFor(ch, idx int) uint8 {
 
 // offsetZeroAndDetent returns the channel's current detent index and its
 // calibrated 0 V offset-DAC code (per-(ch,vd) cal record; fallback boot
-// default 10223). f.tab is immutable after New, so only f.idx needs the lock.
+// default 10223), moved by the detent's zero trim: an open input reading
+// +trim volts needs the zero slope·trim codes higher to sit at 0 V. f.tab is
+// immutable after New.
+// TRLC-LINKS: REQ-SDS-095
 func (f *FrontEnd) offsetZeroAndDetent(ch int) (int, float64) {
 	f.mu.Lock()
 	vd := f.idx[ch&1]
+	trim := f.zeroTrimV[ch&1][vd]
 	f.mu.Unlock()
-	return vd, float64(f.tab.Rec[ch&1][vd].Zero)
+	return vd, float64(f.tab.Rec[ch&1][analogDetent(vd)].Zero) + offsetSlope(vd)*trim
+}
+
+// analogDetent is the detent whose analog state a detent runs: the 2 and
+// 5 mV/div zooms run the 10 mV range (spec 06 §4.4), so they take its cal
+// record too. The cal file's own 2/5 mV records carry gain codes 219/164,
+// which drove the analog gain about 5.5×/2× above the 10 mV range under a
+// display that also zoomed ×5/×2 (bench 2026-10-06, open-input zero sweep).
+// TRLC-LINKS: REQ-SDS-015
+func analogDetent(idx int) int {
+	if idx >= 0 && idx < len(Detents) && Detents[idx].Zoom > 1 {
+		for i, d := range Detents {
+			if d.Zoom == 1 && !d.Atten {
+				return i
+			}
+		}
+	}
+	return idx
 }
 
 // OffsetCode converts an input-referred offset in volts to a DAC code using the
 // per-tier calibrated zero and the vendor per-division law (spec 06 §5.2):
-// code = clamp(round(zero − 50·(V/VDIV))). The slope is 50 DAC codes per
-// division (codes/volt = 50/VDIV); the coarse attenuator sets only the tier
-// clamp (±1.6 V ×1 / ±40 V ×25), not the slope. Inverting: +V → lower code.
+// code = clamp(round(zero + 100·V)). Positive DAC changes raise the trace;
+// the coarse attenuator sets the range clamp, not the codes-per-volt slope.
+// TRLC-LINKS: REQ-SDS-095
 func (f *FrontEnd) OffsetCode(ch int, volts float64) uint16 {
 	vd, zero := f.offsetZeroAndDetent(ch)
 	return offsetCode(zero, vd, volts)
 }
 
 // OffsetVolts is the inverse for labels/readback (spec 06 §5.2):
-// V = (zero − code)/offsetCodesPerVolt, honest against the code OffsetCode made.
+// V = (zero − code)/offsetSlope(tier), honest against the code OffsetCode made.
+// TRLC-LINKS: REQ-SDS-095
 func (f *FrontEnd) OffsetVolts(ch int, code uint16) float64 {
-	_, zero := f.offsetZeroAndDetent(ch)
-	return (zero - float64(code)) / offsetCodesPerVolt
+	vd, zero := f.offsetZeroAndDetent(ch)
+	return (zero - float64(code)) / offsetSlope(vd)
 }
 
 // OffsetK returns the offset-DAC slope, codes per input-volt (spec 06 §5.2) —
 // a FIXED constant (offsetCodesPerVolt), NOT scaled by V/div. The panel offset
-// knob divides its fixed 20-code step by this (a constant 0.2 V/step).
+// knob divides its fixed 20-code step by this (0.2 V/step attenuated, about
+// 4 mV/step on the sensitive tier).
+// TRLC-LINKS: REQ-SDS-095
 func (f *FrontEnd) OffsetK(ch int) float64 {
-	return offsetCodesPerVolt
+	vd, _ := f.offsetZeroAndDetent(ch)
+	return offsetSlope(vd)
 }
 
 // DCVolts is the calibrated detent-invariant DC diagnostic (spec 10 §3.3).
+// TRLC-LINKS: REQ-SDS-091
 func (f *FrontEnd) DCVolts(ch int, meanCode float64) float64 {
 	f.mu.Lock()
 	vd := f.idx[ch&1]
@@ -337,9 +413,10 @@ func (f *FrontEnd) DCVolts(ch int, meanCode float64) float64 {
 	return f.tab.DCVolts(ch&1, vd, meanCode)
 }
 
+// TRLC-LINKS: REQ-SDS-015
 func (f *FrontEnd) relayWord() uint32 {
-	b0 := channelByte(f.idx[0], false)
-	b1 := channelByte(f.idx[1], true)
+	b0 := channelByte(f.idx[0], false, f.bwl[0])
+	b1 := channelByte(f.idx[1], true, f.bwl[1])
 	b2 := uint8(0x70 | (f.trigSrc&3)<<2) // DC trigger-coupling nibble
 	return uint32(b0) | uint32(b1)<<8 | uint32(b2)<<16
 }
@@ -347,6 +424,7 @@ func (f *FrontEnd) relayWord() uint32 {
 // apply emits the exact spec 06 §4.4 sequence: the FULL absolute relay word
 // (never read-modify-write), a ~400 µs relay settle, then BOTH gain bytes,
 // CH2 first. Caller holds f.mu.
+// TRLC-LINKS: REQ-SDS-015
 func (f *FrontEnd) applyLocked() error {
 	if err := f.tr.WriteRelay(f.relayWord()); err != nil {
 		return err
@@ -359,10 +437,33 @@ func (f *FrontEnd) applyLocked() error {
 	return nil
 }
 
+// SetBWL engages or releases a channel's 20 MHz bandwidth-limit relay. The
+// firmware re-applies the gain ladder after a BWL change (spec 06 §6), so the
+// whole relay word and both gain bytes are re-emitted.
+// TRLC-LINKS: REQ-SDS-015
+func (f *FrontEnd) SetBWL(ch int, on bool) error {
+	if ch < 0 || ch > 1 {
+		return fmt.Errorf("analog: bad channel %d", ch)
+	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.bwl[ch] = on
+	return f.applyLocked()
+}
+
+// BWL reports whether a channel's bandwidth limit is engaged.
+// TRLC-LINKS: REQ-SDS-015
+func (f *FrontEnd) BWL(ch int) bool {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.bwl[ch&1]
+}
+
 // SetVdiv applies a detent to a channel (0=C1, 1=C2). Gain takes effect on
 // the next frame; no readback or retry is needed. If a user offset is set,
 // its DAC code is re-derived against the new detent's calibrated zero and
 // re-staged (the input-referred offset must survive a range change).
+// TRLC-LINKS: REQ-SDS-015, REQ-SDS-095
 func (f *FrontEnd) SetVdiv(ch, idx int) error {
 	if ch < 0 || ch > 1 || idx < 0 || idx >= len(Detents) {
 		return fmt.Errorf("analog: bad vdiv ch=%d idx=%d", ch, idx)
@@ -370,16 +471,19 @@ func (f *FrontEnd) SetVdiv(ch, idx int) error {
 	f.mu.Lock()
 	f.idx[ch] = idx
 	err := f.applyLocked()
-	reReq, reSet := f.offReqV[ch], f.offSet[ch]
+	reReq := f.offReqV[ch] // unset requests 0 V
 	f.mu.Unlock()
 	if err != nil {
 		return err
 	}
 	if f.onVdiv != nil {
 		z, c := f.TrigCalActive(ch)
-		f.onVdiv(ch, Detents[idx].VdivV, z, c) // keep the engine's trigger map + per-detent cal current
+		f.onVdiv(ch, AnalogVdiv(idx), z, c) // codes are on the analog range: keep the engine's trigger map current
 	}
-	if reSet && f.stage != nil {
+	// Re-stage even when no offset was ever set: each detent has its own
+	// zero, and the sensitive tier's slope is 48× the attenuated one, so the
+	// previous detent's code left the trace off centre (bench 2026-10-06).
+	if f.stage != nil {
 		code := f.OffsetCode(ch, reReq) // OffsetCode uses the new detent zero
 		f.stage(ch, code)
 		if f.onOffV != nil {
@@ -391,6 +495,7 @@ func (f *FrontEnd) SetVdiv(ch, idx int) error {
 
 // Snapshot returns the detent indices and whether the shadows were ever
 // emitted (false = the instrument still runs the inherited boot range).
+// TRLC-LINKS: REQ-SDS-015
 func (f *FrontEnd) Snapshot() (idx [2]int, emitted bool) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -405,13 +510,14 @@ func (f *FrontEnd) Snapshot() (idx [2]int, emitted bool) {
 // NOT scale by V/div. The per-range analog gain already scales the trace with
 // V/div; scaling the code by V/div as well double-counts it.
 //
-//	code = clamp( round( zero − offsetCodesPerVolt·V ) )
+//	code = clamp( round( zero − offsetSlope(tier)·V ) )
 //
-// Inverting (+V → lower code; 0 V → zero). The coarse attenuator
+// Positive offset lowers the DAC code and raises the displayed trace (0 V →
+// zero): raising the code raises the converters' raw codes, and the FPGA inverts
+// the raw codes so rising input volts read as rising codes (bench 2026-10-05). The coarse attenuator
 // (Detents[idx].Atten) sets only the per-tier ±range clamp, not the slope.
-// ⚠ On the sensitive ×1 ranges (≤200 mV/div) the offset DAC has NO trace
-// authority (bench-dead — the datasheet's ±1.6 V is not reachable through this
-// DAC); only the attenuated ranges (≥500 mV/div) actually offset.
+// The sensitive ×1 ranges (≤200 mV/div) need their own, much steeper slope
+// (offsetSlope); with the attenuated slope they looked bench-dead.
 
 // offsetCodesPerVolt is the offset DAC slope in DAC codes per INPUT-VOLT (FIXED,
 // not per-division). BENCH-MEASURED = 100: at 1 V/div a −1.6 V offset (160 codes)
@@ -421,10 +527,28 @@ func (f *FrontEnd) Snapshot() (idx [2]int, emitted bool) {
 // 500 mV (double-counting the gain's 1/VDIV). A corrected RE pass may re-pin this.
 const offsetCodesPerVolt = 100.0
 
+// offsetCodesPerVoltSensitive is the same DAC's slope on the sensitive tier
+// (≤200 mV/div, attenuator out), where it reaches the input about 48× more
+// weakly. BENCH-MEASURED 2026-10-05 on CH1 with a quiet input: 4350–5340
+// codes/V across 10–200 mV/div (scatter is ADC resolution); 4800 is used for
+// the whole tier. With 100 there, an offset moved the trace 1/48 as far as
+// asked — the "bench-dead" sensitive-tier offset.
+const offsetCodesPerVoltSensitive = 4800.0
+
+// offsetSlope is the offset DAC slope, codes per input volt, for a detent's tier.
+// TRLC-LINKS: REQ-SDS-095
+func offsetSlope(idx int) float64 {
+	if idx >= 0 && idx < len(Detents) && Detents[idx].Atten {
+		return offsetCodesPerVolt
+	}
+	return offsetCodesPerVoltSensitive
+}
+
 // offsetTierRangeV is the nominal input-referred offset range for the detent's
 // tier, set by the coarse attenuator (spec 06 §5.2.1 / datasheet): ±1.6 V on the
 // sensitive ×1 tier, ±40 V on the attenuated ×25 tier. (The ×1 tier is nominal —
 // the offset DAC is bench-dead there.)
+// TRLC-LINKS: REQ-SDS-095
 func offsetTierRangeV(idx int) float64 {
 	if idx >= 0 && idx < len(Detents) && Detents[idx].Atten {
 		return 40.0
@@ -435,9 +559,10 @@ func offsetTierRangeV(idx int) float64 {
 // offsetCode is the offset law (spec 06 §5.2): the excursion is
 // offsetCodesPerVolt·V DAC codes (fixed, input-referred), clamped to the per-tier
 // ±range about zero, then the final 16-bit rail [0, 0xFFFF].
+// TRLC-LINKS: REQ-SDS-095
 func offsetCode(zero float64, vd int, volts float64) uint16 {
-	code := math.Round(zero - offsetCodesPerVolt*volts)
-	clamp := offsetCodesPerVolt * offsetTierRangeV(vd)
+	code := math.Round(zero - offsetSlope(vd)*volts)
+	clamp := offsetSlope(vd) * offsetTierRangeV(vd)
 	if lo := zero - clamp; code < lo {
 		code = lo
 	}
@@ -460,11 +585,13 @@ const offsetZeroFallback = 10223
 
 // OffsetCode is the table-less fallback mapping (front end unavailable): the
 // boot detent's 1 V/div slope and ×25 tier clamp about the boot-default zero.
+// TRLC-LINKS: REQ-SDS-095
 func OffsetCode(ch int, volts float64) uint16 {
 	return offsetCode(offsetZeroFallback, BootDetent, volts)
 }
 
 // OffsetVolts is the fallback inverse for labels/readback.
+// TRLC-LINKS: REQ-SDS-095
 func OffsetVolts(ch int, code uint16) float64 {
-	return (offsetZeroFallback - float64(code)) / offsetCodesPerVolt
+	return (offsetZeroFallback - float64(code)) / offsetSlope(BootDetent)
 }

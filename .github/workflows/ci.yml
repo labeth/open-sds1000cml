@@ -117,6 +117,17 @@ jobs:
           CI_REQUIRE_SIGROK: "1"
         run: go test -timeout 10m -run 'TestOracle' -v ./internal/decode/
 
+  # Self-checking RTL testbenches (fpga/sim.sh); the fixture-driven ones run
+  # inside the app's Go tests.
+  rtl-sim:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install iverilog
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends iverilog
+      - name: RTL testbenches
+        run: fpga/sim.sh
+
   cross-build:
     runs-on: ubuntu-latest
     steps:

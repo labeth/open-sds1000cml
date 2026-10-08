@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-WEB
 package web
 
 import (
@@ -12,6 +13,7 @@ import (
 )
 
 // getBin fetches /api/frame.bin and returns the decoded header + raw payload.
+// TRLC-LINKS: REQ-SDS-163
 func getBin(t *testing.T, s *Server, url string) (frameReply, byte, []byte) {
 	t.Helper()
 	req := httptest.NewRequest("GET", url, nil)
@@ -36,6 +38,7 @@ func getBin(t *testing.T, s *Server, url string) (frameReply, byte, []byte) {
 // SAME code the binary endpoint runs — so it is the reference the binary encoder
 // is validated against (there is one transport now, so parity is checked against
 // the builder, not a second HTTP endpoint).
+// TRLC-LINKS: REQ-SDS-163
 func refReply(s *Server, cols int, full bool, since uint64) frameReply {
 	off, vpc := s.vertScales()
 	st := s.sc.Snapshot()
@@ -53,6 +56,7 @@ func refReply(s *Server, cols int, full bool, since uint64) frameReply {
 // getRef returns the reference reply as the client sees it after the binary
 // header's JSON round-trip (marshal→unmarshal), so scalar parity comparisons are
 // exact against getBin's decoded header.
+// TRLC-LINKS: REQ-SDS-163
 func getRef(t *testing.T, s *Server, cols int, full bool, since uint64) frameReply {
 	t.Helper()
 	b, err := json.Marshal(refReply(s, cols, full, since))
@@ -68,6 +72,7 @@ func getRef(t *testing.T, s *Server, cols int, full bool, since uint64) frameRep
 
 // reconstruct rebuilds an int16 array from a binary payload segment the way
 // binframe.js does: fill -1 margins, widen the uint8 body.
+// TRLC-LINKS: REQ-SDS-163
 func reconstruct(seg []byte, cols, head, tail int) []int16 {
 	out := make([]int16, cols)
 	for i := range out {
@@ -83,6 +88,7 @@ func reconstruct(seg []byte, cols, head, tail int) []int16 {
 // TestBinFrameParity: for every frame shape, the binary reply must
 // reconstruct element-wise to the JSON reply's arrays, and the header must
 // carry the same scalar fields.
+// TRLC-LINKS: REQ-SDS-163
 func TestBinFrameParity(t *testing.T) {
 	deepC := func(n int) ([]uint8, []uint8) {
 		c1, c2 := make([]uint8, n), make([]uint8, n)
@@ -192,6 +198,7 @@ func TestBinFrameParity(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-163
 func TestBinFrameUnchanged(t *testing.T) {
 	c := make([]uint8, 2048)
 	f := &engine.Frame{C1: c, C2: c, Seq: 9, Valid: 2048, WinCols: 2048, EdgeX: 100, SampleS: 1e-6}
@@ -213,6 +220,7 @@ func TestBinFrameUnchanged(t *testing.T) {
 // TestBinFrameLongPollDegrade: without a frameWaiter the handler seq-polls;
 // with since==seq and a short waitms it must return unchanged after the wait
 // rather than hanging.
+// TRLC-LINKS: REQ-SDS-163
 func TestBinFrameLongPollDegrade(t *testing.T) {
 	c := make([]uint8, 256)
 	f := &engine.Frame{C1: c, C2: c, Seq: 3, Valid: 256, WinCols: 256, EdgeX: 128, SampleS: 1e-6}
@@ -226,6 +234,7 @@ func TestBinFrameLongPollDegrade(t *testing.T) {
 
 // TestMeasCacheReuse: buildReply must compute measurements once per
 // (seq, coupling, scale) and reuse the pointers on repeat calls.
+// TRLC-LINKS: REQ-SDS-164
 func TestMeasCacheReuse(t *testing.T) {
 	c1, c2 := make([]uint8, 512), make([]uint8, 512)
 	for i := range c1 {
@@ -273,6 +282,7 @@ func TestMeasCacheReuse(t *testing.T) {
 // TestBinFrameRawShape: raw=1 serves the un-windowed record — payload is the
 // verbatim C1/C2 bytes, header carries sample_s + the sub-sample edge_x, and
 // no measurements are computed.
+// TRLC-LINKS: REQ-SDS-163
 func TestBinFrameRawShape(t *testing.T) {
 	const n = 300
 	c1, c2 := make([]uint8, n), make([]uint8, n)

@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-WEB
 package web
 
 import (
@@ -12,6 +13,7 @@ import (
 // synthetic UART/I2C/SPI waveforms — the closest thing to an end-to-end test of
 // the browser decode code without a headless browser. Skips if node is absent
 // (a hard failure under CI_REQUIRE_BROWSER=1).
+// TRLC-LINKS: REQ-SDS-181
 func TestDecodeJS(t *testing.T) {
 	testenv.NeedNode(t)
 	node, _ := exec.LookPath("node")

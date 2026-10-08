@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-LCD
 package lcd
 
 import (
@@ -9,6 +10,7 @@ import (
 
 // A synthetic super-res HUD: a K× fine-grid mean built from gen(fineBin), a
 // second channel from gen2, review focus, and a window covering the whole grid.
+// TRLC-LINKS: REQ-SDS-021, REQ-SDS-070
 func srHUD(nb, K int, sampleS float64, gen, gen2 func(b int) float64) HUD {
 	m1 := make([]float32, nb)
 	m2 := make([]float32, nb)
@@ -34,6 +36,7 @@ func srHUD(nb, K int, sampleS float64, gen, gen2 func(b int) float64) HUD {
 // the raw single-shot Nyquist (only reachable because the stack is K× finer)
 // must be reported at its true frequency — proving the spectrum reaches past
 // the raw Nyquist, which is the whole point of an FFT over the crunched stack.
+// TRLC-LINKS: REQ-SDS-021, REQ-SDS-070
 func TestSuperresFFTAboveRawNyquist(t *testing.T) {
 	const K = 8
 	const nb = 4096
@@ -66,6 +69,7 @@ func TestSuperresFFTAboveRawNyquist(t *testing.T) {
 // FFT must transform the one-period fine grid at its fine dt — keeping the full
 // K× Nyquist and finding a tone above the raw Nyquist — REGARDLESS of how wide
 // the tiled display window is (the old window-based resample aliased it away).
+// TRLC-LINKS: REQ-SDS-021, REQ-SDS-070
 func TestSuperresFFTTiledWindowKeepsFineNyquist(t *testing.T) {
 	const K = 16
 	const nb = 4096 // one period on the fine grid → 256 raw samples
@@ -98,6 +102,7 @@ func TestSuperresFFTTiledWindowKeepsFineNyquist(t *testing.T) {
 // The crunched mean is FLOAT: feeding it to the FFT unquantised keeps a lower
 // spectral noise floor than an 8-bit single capture of the same tone. If the
 // view re-quantised the stack to uint8, this benefit would vanish — so lock it.
+// TRLC-LINKS: REQ-SDS-021, REQ-SDS-070
 func TestSuperresFFTFloatFloorBeatsQuantised(t *testing.T) {
 	const n = 2048
 	const F = 37.0 // cycles across the record
@@ -149,6 +154,7 @@ func TestSuperresFFTFloatFloorBeatsQuantised(t *testing.T) {
 
 // srResampleArray linearly resamples the fine-grid array, fills -1 gaps for the
 // FFT, and flags those gap-touching output points invalid so X-Y can pen-up.
+// TRLC-LINKS: REQ-SDS-021, REQ-SDS-070
 func TestSuperresResampleArray(t *testing.T) {
 	// a ramp: resampling must stay monotone and mark every point valid (no gaps)
 	const nb = 256
@@ -193,6 +199,7 @@ func TestSuperresResampleArray(t *testing.T) {
 // The behavioural fix: with the review active, selecting X-Y or FFT must render
 // the STACKED data in that view — not silently fall back to the Y-T trace. Each
 // view must draw its characteristic output and differ from Y-T.
+// TRLC-LINKS: REQ-SDS-021, REQ-SDS-070
 func TestSuperresReviewRoutesByViewMode(t *testing.T) {
 	const K, nb = 16, 8192
 	const sampleS = 2e-9
@@ -245,6 +252,7 @@ func TestSuperresReviewRoutesByViewMode(t *testing.T) {
 
 // X-Y with no real second channel must degrade to the hint, not crash or draw
 // a bogus diagonal.
+// TRLC-LINKS: REQ-SDS-021
 func TestSuperresXYNeedsCH2(t *testing.T) {
 	const K, nb = 8, 2048
 	h := srHUD(nb, K, 2e-9, func(b int) float64 { return 128 + 50*math.Sin(float64(b)*0.05) }, nil)

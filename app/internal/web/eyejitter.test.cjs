@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-WEB
 // eyejitter.test.cjs — ground-truth tests for the eye/jitter engine. A synthetic
 // PRBS7 NRZ signal is generated with EXACTLY known UI, noise, and injected
 // jitter; the engine must recover the numbers. Run: node eyejitter.test.cjs
@@ -6,14 +7,17 @@
 const EJ = require("./eyejitter.js");
 
 let fails = 0;
+// TRLC-LINKS: REQ-SDS-181, REQ-SDS-199
 const check = (cond, name, detail) =>
   console.log((cond ? "ok   " : "FAIL ") + name + (detail !== undefined ? "  [" + detail + "]" : "")) || (cond || fails++);
 
 // deterministic PRNG
 let seed = 42;
+// TRLC-LINKS: REQ-SDS-181, REQ-SDS-199
 const rnd = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff - 0.5; };
 
 // PRBS7 bit stream
+// TRLC-LINKS: REQ-SDS-181, REQ-SDS-199
 function prbs7(nbits) {
   let s = 0x7f;
   const bits = new Uint8Array(nbits);
@@ -30,9 +34,11 @@ function prbs7(nbits) {
 // the EDGE LIST (transition times incl. TIE), so an injected offset really
 // moves the edge — a cell-indexed builder silently clips shifted edges at the
 // ideal boundary and the jitter never reaches the waveform.
+// TRLC-LINKS: REQ-SDS-181, REQ-SDS-199
 function genRecord(n, ui, phase, bits, tieFn, noise, rise) {
   const sig = new Int16Array(n);
   const lo = 60, hi = 200;
+  // TRLC-LINKS: REQ-SDS-181, REQ-SDS-199
   const lvl = b => (b ? hi : lo);
   // edge list: (time, fromLevel, toLevel) for every bit-value change
   const edges = [];
@@ -86,6 +92,7 @@ const SAMPLE_S = 2e-9;
   const tieSamp = tiePk / SAMPLE_S;          // pp in samples (10)
   for (let r = 0; r < 30; r++) {
     const ph0 = (r * 53.7) % (2 * JP);       // random jitter phase per record
+    // TRLC-LINKS: REQ-SDS-181, REQ-SDS-199
     const tieFn = k => ((Math.floor((k + ph0) / (JP / 2)) % 2) ? tieSamp : 0);
     const sig = genRecord(n, ui, 20 + (r * 37.3) % ui, bits, tieFn, 1.2, 9);
     EJ.ejFeed(st, sig, n, SAMPLE_S);
@@ -151,6 +158,7 @@ const SAMPLE_S = 2e-9;
   // threshold low, fabricating ~1-sample DCD between rise/fall. With dual-
   // histogram-mode levels the clean sparse train must show NO significant DJ.
   const st = EJ.ejNew({});
+  // TRLC-LINKS: REQ-SDS-181, REQ-SDS-199
   const bitsOf = nb => { const b = new Uint8Array(nb); for (let i = 3; i < nb; i += 19) b[i] = 1; return b; };
   for (let r = 0; r < 15; r++) {
     const bits = bitsOf(230);
@@ -262,6 +270,7 @@ const SAMPLE_S = 2e-9;
   for (let r = 0; r < 6; r++) EJ.ejFeed(st, genRecord(20480, 100, 20 + r * 31 % 100, bits, () => 0, 1.2, 9), 20480, SAMPLE_S);
   const early = EJ.ejResult(st).tieRms;
   for (let r = 0; r < 12; r++) {
+    // TRLC-LINKS: REQ-SDS-181, REQ-SDS-199
     const tieFn = k => 5 * Math.sin(2 * Math.PI * k / 16); // big PJ late in the run
     EJ.ejFeed(st, genRecord(20480, 100, 20 + r * 37 % 100, bits, tieFn, 1.2, 9), 20480, SAMPLE_S);
   }

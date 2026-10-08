@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-PANEL
 package panel
 
 import (
@@ -5,6 +6,7 @@ import (
 	"testing"
 )
 
+// TRLC-LINKS: REQ-SDS-136
 func TestCursorMenu(t *testing.T) {
 	c, _, _ := newC(t)
 	// HORIZONTAL once → timebase page; twice → cursor page.
@@ -40,6 +42,7 @@ func TestCursorMenu(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-136
 func TestDecodeMenu(t *testing.T) {
 	c, _, _ := newC(t)
 	c.menuButton(btnMenuOnOff) // MAIN menu
@@ -56,11 +59,18 @@ func TestDecodeMenu(t *testing.T) {
 	if v := c.MenuView(); v.DecProto != 1 || v.Items[0].Value != "Auto" || v.Items[1].Label != "Show" {
 		t.Fatalf("Auto not first/labelled: proto=%d items=%+v", v.DecProto, v.Items)
 	}
-	// Auto fills slots 0..1, so F3 (slot 2) is inert.
-	sel := c.MenuView().Sel
+	// Auto's slots 2..4 are the decoded stream: Mode, Trig, Value. F3 toggles
+	// Mode (no stream wired here, so nothing starts) and back.
+	if v := c.MenuView(); v.Items[2].Label != "Mode" || v.Items[3].Label != "Trig" || v.Items[4].Label != "Value" {
+		t.Fatalf("Auto stream items: %+v", v.Items)
+	}
 	c.menuButton(btnF3)
-	if got := c.MenuView().Sel; got != sel {
-		t.Fatalf("F3 moved highlight onto an empty Auto slot: %d -> %d", sel, got)
+	if v := c.MenuView(); v.Items[2].Value != "Stream" {
+		t.Fatalf("F3 did not select Stream: %+v", v.Items[2])
+	}
+	c.menuButton(btnF3)
+	if v := c.MenuView(); v.Items[2].Value != "View" {
+		t.Fatalf("F3 did not return to View: %+v", v.Items[2])
 	}
 	// Auto -> UART.
 	c.menuButton(btnF1)
@@ -93,7 +103,7 @@ func TestDecodeMenu(t *testing.T) {
 		t.Fatalf("Show did not cycle to ASCII: fmt=%d items=%+v", v.DecFormat, v.Items[3])
 	}
 	// I2C fills slots 0..3, so F5 (slot 4) is inert.
-	sel = c.MenuView().Sel
+	sel := c.MenuView().Sel
 	c.menuButton(btnF5)
 	if got := c.MenuView().Sel; got != sel {
 		t.Fatalf("F5 moved the highlight onto an empty I2C slot: %d -> %d", sel, got)
@@ -109,6 +119,7 @@ func TestDecodeMenu(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-136
 func TestTriggerHoldoffSoftkey(t *testing.T) {
 	c, eng, _ := newC(t)
 	c.menuButton(btnTrigMenu) // open TRIGGER page
@@ -133,6 +144,7 @@ func TestTriggerHoldoffSoftkey(t *testing.T) {
 // the review view. Constant-Seq frame source → the stacker seeds once and idles
 // on dedup, so the test sees only the synchronous transitions (the stacking
 // numerics are covered by the golden-vector parity test).
+// TRLC-LINKS: REQ-SDS-140
 func TestSuperresUX(t *testing.T) {
 	c, eng, _ := newC(t)
 	page := func() int { c.mu.Lock(); defer c.mu.Unlock(); return c.menuPage }

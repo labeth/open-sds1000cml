@@ -1,17 +1,26 @@
-// Command app is the minimal clean-room scope application (v1). It satisfies
-// the app ↔ OTA contract (ota/README.md): launched by the agent as a direct
-// child, it discovers the boot-inherited /dev/Gpmc + /dev/fpga_key fds via
-// /proc/self/fd (never fresh-opens, never closes), runs the single-owner
-// acquisition engine, reports frame-advance health at OTA_HEALTH_PATH, exits
-// cleanly on SIGTERM — and hosts the control webpage on :8080.
+// Command app is the scope application for the acq2 default fabric. It
+// satisfies the app ↔ OTA contract (ota/README.md): launched by the agent as
+// a direct child, it discovers the boot-inherited /dev/Gpmc + /dev/fpga_key
+// fds via /proc/self/fd (never fresh-opens, never closes), DEPLOYS THE FABRIC
+// (workplan §4.1: verify BUILDID/FABRIC_ID, else reload the embedded default
+// image over the CS3 configuration port and verify), runs the single-owner
+// acquisition engine, reports health at OTA_HEALTH_PATH once the fabric is
+// verified, exits cleanly on SIGTERM — and hosts the control webpage on :8080
+// with the diagnostic block under /diag and /api/diag.
+// ENGMODEL-OWNER-UNIT: FU-APP-APP
 package main
 
 import (
+	"context"
 	"fmt"
+	"math"
 	"net/http"
+	"open-sds/app/internal/decode"
+	"open-sds/app/internal/streamview"
 	"os"
 	"os/signal"
 	"path/filepath"
+	"runtime/debug"
 	"strconv"
 	"sync/atomic"
 	"syscall"
@@ -21,40 +30,48 @@ import (
 	"open-sds/app/internal/buildinfo"
 	"open-sds/app/internal/bus"
 	"open-sds/app/internal/cal"
+	"open-sds/app/internal/diag"
 	"open-sds/app/internal/engine"
+	"open-sds/app/internal/fpgaload"
 	"open-sds/app/internal/frames"
+	"open-sds/app/internal/iface"
 	"open-sds/app/internal/lcd"
 	"open-sds/app/internal/panel"
 	"open-sds/app/internal/scpi"
 	"open-sds/app/internal/settings"
+	"open-sds/app/internal/sramcapture"
 	"open-sds/app/internal/vxi11srv"
 	"open-sds/app/internal/web"
 )
 
 // scopeSource wires the web layer: setters/stats from the engine, frames
 // from the fan-out (the arena's read slot belongs to the fan-out alone).
+// TRLC-LINKS: REQ-SDS-167
 type scopeSource struct {
 	*engine.Engine
 	fo *frames.Fanout
 }
 
+// TRLC-LINKS: REQ-SDS-167
 func (s scopeSource) WithFrame(fn func(*engine.Frame)) { s.fo.WithFrame(fn) }
 
 // WaitNextFrame lets the web layer park a long-poll until the fan-out
 // snapshots a frame newer than last (web.go type-asserts for this method, so
 // test doubles without it degrade to a short poll).
+// TRLC-LINKS: REQ-SDS-167
 func (s scopeSource) WaitNextFrame(last uint64, timeout time.Duration) uint64 {
 	return s.fo.WaitNext(last, timeout)
 }
 
 // buildHUD assembles the LCD/SCDP heads-up state from the engine + front end.
 // The trigger-level readout is scaled by the SOURCE channel's V/div.
+// TRLC-LINKS: REQ-SDS-168
 func buildHUD(e *engine.Engine, fe *analog.FrontEnd) lcd.HUD {
 	st := e.Snapshot()
 	hud := lcd.HUD{
 		C1VdivV: 1, C2VdivV: 1, TdivS: st.TdivS,
 		TrigSrc: st.TrigSource, TrigRising: st.TrigRising,
-		Running: st.Running, Norm: st.Norm, Single: st.Single,
+		Running: st.Running, Norm: st.Norm, Single: st.Single, RecordS: st.RecordS,
 		TrigPosFrac: st.TrigPosFrac, TwoChan: true,
 		ShowC1: true, ShowC2: true,
 		URL: lcd.DeviceURL(), // cached; re-enumerates at most every few seconds
@@ -63,6 +80,8 @@ func buildHUD(e *engine.Engine, fe *analog.FrontEnd) lcd.HUD {
 		idx, _ := fe.Snapshot()
 		hud.C1VdivV = analog.Detents[idx[0]].VdivV
 		hud.C2VdivV = analog.Detents[idx[1]].VdivV
+		hud.Zoom1 = analog.Detents[idx[0]].Zoom
+		hud.Zoom2 = analog.Detents[idx[1]].Zoom
 		hud.Probe1 = fe.ProbeFactor(0)
 		hud.Probe2 = fe.ProbeFactor(1)
 		hud.Cpl1 = fe.Coupling(0)
@@ -76,6 +95,11 @@ func buildHUD(e *engine.Engine, fe *analog.FrontEnd) lcd.HUD {
 			hud.OffC2V = fe.OffsetVolts(1, st.OffC2)
 		}
 	}
+	// NORMAL waits for a trigger: past 1 s or 2.5 screen spans without a
+	// published frame, the held frame's TRIG'd state no longer describes now.
+	if st.Norm && st.Running {
+		hud.Waiting = e.SincePublish() > time.Duration(math.Max(1, 25*st.TdivS)*float64(time.Second))
+	}
 	srcVdiv, srcOff := hud.C1VdivV, hud.OffC1V
 	if st.TrigSource == 1 {
 		srcVdiv, srcOff = hud.C2VdivV, hud.OffC2V
@@ -85,8 +109,41 @@ func buildHUD(e *engine.Engine, fe *analog.FrontEnd) lcd.HUD {
 		// same display frame as the (offset-shifted) trace and ground marker —
 		// otherwise centring a signal with DC pushes the marker off-screen.
 		hud.TrigLvlDiv = (e.TrigVoltsAt(st.TrigCode, st.TrigSource) + srcOff) / srcVdiv
+		probe := hud.Probe1
+		if st.TrigSource == 1 {
+			probe = hud.Probe2
+		}
+		hud.TrigLvlV = e.TrigVoltsAt(st.TrigCode, st.TrigSource) * max(probe, 1)
 	}
 	if pc := uiCtrl.Load(); pc != nil { // menu overlay + per-channel display
+		if sv := streamCtrl.Load(); sv != nil && pc.StreamMode() {
+			v := sv.Snapshot()
+			list, top := pc.StreamList()
+			hud.StreamOn, hud.Stream = true, v
+			hud.StreamList = list || v.State == streamview.Streaming || v.State == streamview.Failed || v.State == streamview.Starting
+			// Formatting the page holds the transcript's lock: redo it only when
+			// what it shows can have changed (4 Hz while streaming).
+			lines := v.Lines
+			if v.State == streamview.Streaming {
+				lines = 0 // the slot paces a streaming page; its line count grows every tick
+			}
+			key := streamPageKey{v.State, hud.StreamList, top, lines, v.TriggerLine, streamSlot(hud)}
+			if cached := lastStreamPage.Load(); cached != nil && cached.key == key {
+				hud.StreamPage = cached.page
+			} else {
+				switch {
+				case v.State == streamview.Streaming:
+					hud.StreamPage = sv.Window(streamview.ListRows, -1) // follow the newest
+				case hud.StreamList:
+					hud.StreamPage = sv.Window(streamview.ListRows, top)
+				case v.TriggerLine >= 0: // waveform: a strip of the lines around the trigger
+					hud.StreamPage = sv.Window(6, v.TriggerLine-2)
+				default:
+					hud.StreamPage = sv.Window(6, -1)
+				}
+				lastStreamPage.Store(&cachedStreamPage{key, hud.StreamPage})
+			}
+		}
 		mv := pc.MenuView()
 		hud.ShowC1, hud.ShowC2 = mv.ShowC1, mv.ShowC2
 		hud.ShowMeas = mv.ShowMeas
@@ -101,6 +158,7 @@ func buildHUD(e *engine.Engine, fe *analog.FrontEnd) lcd.HUD {
 		rv := pc.RefView()
 		for i := 0; i < 2; i++ {
 			hud.RefC1[i], hud.RefC2[i], hud.RefShow[i] = rv[i].C1, rv[i].C2, rv[i].Show
+			hud.RefVdiv[i], hud.RefOff[i] = rv[i].Vdiv, rv[i].Off
 		}
 		hud.CurOn, hud.CurType, hud.CurSel = mv.CurOn, mv.CurType, mv.CurSel
 		hud.CurX, hud.CurY = mv.CurX, mv.CurY
@@ -173,6 +231,9 @@ var lcdSpect = lcd.NewSpectrogram()
 // loop (started earlier) and the SCDP screenshot can read the menu overlay.
 var uiCtrl atomic.Pointer[panel.Controller]
 
+// streamCtrl is the scope-side decoded stream, published for the HUD.
+var streamCtrl atomic.Pointer[streamview.Controller]
+
 // scpiCtrl is the SCPI handler, published after creation so the LCD render
 // loop and the screenshot paths can read the display-invert (INVS) truth.
 var scpiCtrl atomic.Pointer[scpi.Handler]
@@ -183,27 +244,32 @@ var scpiCtrl atomic.Pointer[scpi.Handler]
 // otherwise ran 20×/s even on a held frame. Time-evolving views (persistence,
 // Bode, spectrogram, super-res review, an active mask/zone test) bypass this and
 // always repaint. All fields are comparable so `==` decides.
+// TRLC-LINKS: REQ-SDS-168
 type renderSig struct {
-	seq                   uint64
-	view, math, dec, zoom int
-	curType, curSel       int
-	menuSel               int
-	url                   string
-	tdiv, zoomOff         float64
-	c1v, c2v, off1, off2  float64
-	trig                  float64
-	curX, curY            [2]float64
-	probe1, probe2        float64
-	cpl1, cpl2            int
-	inv1, inv2            bool
-	showMeas, persist     bool
-	running, single, norm bool
-	trigd, live           bool
-	showC1, showC2        bool
-	menuOpen, curOn       bool
-	ref0, ref1            bool
+	streamOn, streamList                            bool
+	streamState, streamTop, streamTotal, streamTrig int
+	streamSlot                                      int64
+	seq                                             uint64
+	view, math, dec, zoom                           int
+	curType, curSel                                 int
+	menuSel                                         int
+	url                                             string
+	tdiv, zoomOff                                   float64
+	c1v, c2v, off1, off2                            float64
+	trig                                            float64
+	curX, curY                                      [2]float64
+	probe1, probe2                                  float64
+	cpl1, cpl2                                      int
+	inv1, inv2                                      bool
+	showMeas, persist                               bool
+	running, single, norm                           bool
+	trigd, live                                     bool
+	showC1, showC2                                  bool
+	menuOpen, curOn                                 bool
+	ref0, ref1                                      bool
 }
 
+// TRLC-LINKS: REQ-SDS-168
 func renderSigOf(f *engine.Frame, hud lcd.HUD, live bool) renderSig {
 	var seq uint64
 	if f != nil {
@@ -224,12 +290,19 @@ func renderSigOf(f *engine.Frame, hud lcd.HUD, live bool) renderSig {
 		trigd: hud.Trigd, live: live, showC1: hud.ShowC1, showC2: hud.ShowC2,
 		menuOpen: hud.MenuOpen, curOn: hud.CurOn,
 		ref0: hud.RefShow[0], ref1: hud.RefShow[1],
+		// Decoded stream: its state and the list's page repaint the display;
+		// while streaming, a quarter-second slot paces the transcript at 4 Hz
+		// so drawing leaves the CPU to the event pump.
+		streamOn: hud.StreamOn, streamState: int(hud.Stream.State), streamList: hud.StreamList,
+		streamTop: hud.StreamPage.Top, streamTotal: hud.StreamPage.Total, streamTrig: hud.StreamPage.TriggerLine,
+		streamSlot: streamSlot(hud),
 	}
 }
 
 // runLCD drives the device panel at the 50 ms display cadence (spec 07 §8 —
 // a hard minimum; faster starves the acquisition owner). Fully optional: on
 // any bring-up failure the scope keeps running headless.
+// TRLC-LINKS: REQ-SDS-168
 func runLCD(e *engine.Engine, fe *analog.FrontEnd, fo *frames.Fanout) {
 	if err := lcd.Bringup(logf); err != nil {
 		logf("lcd: disabled: %v", err)
@@ -245,11 +318,12 @@ func runLCD(e *engine.Engine, fe *analog.FrontEnd, fo *frames.Fanout) {
 	persistLayer := lcd.NewMemSurface() // afterglow trace layer, owned by this loop
 	var sgSeq uint64                    // last frame pushed into the shared spectrogram (lcdSpect)
 	var lastSeq uint64
+	var lastPresented uint64
 	var lastFresh time.Time
 	var lastSig renderSig
 	haveSig := false
 	for {
-		time.Sleep(e.RenderPeriod()) // tunable display cadence (default 50ms, spec 07 §8 floor)
+		time.Sleep(e.RenderPeriod()) // tunable display cadence
 		// Render only OUTSIDE the engine's load-sensitive windows (arm-settle +
 		// drain): a concurrent render burst there corrupts the HW capture on this
 		// single core. This pauses ~19ms/frame; the wait+pace (~90ms) is free.
@@ -298,17 +372,23 @@ func runLCD(e *engine.Engine, fe *analog.FrontEnd, fo *frames.Fanout) {
 		})
 		if present {
 			fb.Present(back)
+			if lastSeq != lastPresented {
+				e.NoteLCDFrame()
+				lastPresented = lastSeq
+			}
 		}
 		e.QuietRUnlock()
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-167
 func logf(format string, a ...any) {
 	fmt.Printf("[app] "+format+"\n", a...)
 }
 
 // findInheritedFD scans /proc/self/fd for the descriptor whose link target is
 // path. Same technique as the reference stubapp; fds < 3 are skipped.
+// TRLC-LINKS: REQ-SDS-002
 func findInheritedFD(path string) int {
 	entries, err := os.ReadDir("/proc/self/fd")
 	if err != nil {
@@ -326,6 +406,7 @@ func findInheritedFD(path string) int {
 	return -1
 }
 
+// TRLC-LINKS: REQ-SDS-167
 func envOr(k, d string) string {
 	if v := os.Getenv(k); v != "" {
 		return v
@@ -333,39 +414,63 @@ func envOr(k, d string) string {
 	return d
 }
 
-// healthLoop implements the app side of the health contract: the FIRST token
-// write is gated on ≥3 genuine coherent frames; afterwards the token is
-// re-touched (unique content) whenever the heartbeat advances, throttled to
-// ~400 ms. A wedged engine stops the touches, so the agent relaunches us on
-// the still-live fd.
-func healthLoop(e *engine.Engine, path string) {
+// heartbeatMode is what the health token currently attests (read by the
+// diagnostic status line): "off" (fabric not verified — never written),
+// "diag" (fabric verified and the engine alive, no coherent frames yet: the
+// bring-up heartbeat, workplan §4.3) or "frames" (frames advance).
+var heartbeatMode atomic.Value
+
+// healthLoop implements the app side of the health contract (workplan §4.3):
+// the token is written every ~500 ms once the fabric is VERIFIED. While the
+// engine publishes coherent frames the token attests frames (keyed on the
+// beat counter so holdoff pacing and recovery bring-up stay healthy); before
+// the first coherent frames — the bring-up state where the converters may be
+// silent — it is an EXPLICIT diag heartbeat: logged as such, tagged in the
+// token, keyed on the engine's beats (the owner goroutine servicing Exec).
+// SCOPE_DIAG_HEARTBEAT=0 disables that bring-up mode (strict product
+// semantics: no frames, no health). A wedged engine stops every write, so the
+// agent relaunches us on the still-live fd.
+// TRLC-LINKS: REQ-SDS-025, REQ-SDS-169
+func healthLoop(e *engine.Engine, path string, fabricOK bool, diagBeat bool) {
+	heartbeatMode.Store("off")
+	if !fabricOK {
+		logf("health: fabric NOT verified — no health token will be written (agent rollback stays armed)")
+		return
+	}
 	var lastBeats uint64
 	var lastWrite time.Time
-	var started bool
+	mode := "off"
 	for {
 		time.Sleep(100 * time.Millisecond)
 		s := e.Snapshot()
 		if s.Wedged {
 			continue
 		}
-		if !started {
-			if s.Coherent < 3 || s.Frames < 3 {
-				continue
-			}
-			started = true
-			logf("engine healthy: %d coherent frames — starting health reports", s.Coherent)
+		want := "off"
+		switch {
+		case s.Coherent >= 3 && s.Frames >= 3:
+			want = "frames"
+		case diagBeat:
+			want = "diag"
 		}
-		// Key on the BEAT counter, not the frame counter: holdoff pacing (up
-		// to 10 s between frames) and recovery bring-up are healthy states
-		// that advance beats without advancing frames; a frame-keyed token
-		// went stale inside the agent's 3 s window and got a healthy app
-		// killed (live-storm finding).
-		beats := e.Beats()
-		if beats == lastBeats || time.Since(lastWrite) < 400*time.Millisecond {
+		if want == "off" {
 			continue
 		}
-		tok := fmt.Sprintf("frames=%d beats=%d coherent=%d published=%d ts=%d\n",
-			s.Frames, beats, s.Coherent, s.Published, time.Now().UnixNano())
+		if want != mode {
+			mode = want
+			heartbeatMode.Store(mode)
+			if mode == "frames" {
+				logf("health: %d coherent frames — health token attests FRAMES", s.Coherent)
+			} else {
+				logf("health: DIAG HEARTBEAT — fabric verified and engine alive, no coherent frames yet; token tagged mode=diag (set SCOPE_DIAG_HEARTBEAT=0 to disable)")
+			}
+		}
+		beats := e.Beats()
+		if beats == lastBeats || time.Since(lastWrite) < 450*time.Millisecond {
+			continue
+		}
+		tok := fmt.Sprintf("mode=%s frames=%d beats=%d coherent=%d published=%d ts=%d\n",
+			mode, s.Frames, beats, s.Coherent, s.Published, time.Now().UnixNano())
 		tmp := path + ".tmp"
 		if err := os.WriteFile(tmp, []byte(tok), 0o644); err == nil {
 			if os.Rename(tmp, path) == nil {
@@ -375,12 +480,32 @@ func healthLoop(e *engine.Engine, path string) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-002, REQ-SDS-003, REQ-SDS-004, REQ-SDS-167, REQ-SDS-169
+// appMemoryLimit is the Go runtime's soft memory limit on the device.
+const appMemoryLimit = 48 << 20
+
+// TRLC-LINKS: REQ-SDS-167
 func main() {
+	if len(os.Args) == 2 && os.Args[1] == "--acquisition-worker" {
+		if err := bus.RunAcquisitionWorker(3, 4, logf); err != nil {
+			logf("acquisition worker: %v", err)
+			os.Exit(1)
+		}
+		return
+	}
 	logf("start pid=%d version=%s", os.Getpid(), buildinfo.String())
+	// The unit has 125 MB and the default collector lets the heap reach twice
+	// the live set: after 1 M-sample stopped records and full-depth WF?/frame
+	// transfers the app held 71 MB RSS with 25 MB left free (bench 2026-10-07).
+	// A soft limit makes the collector work harder near it instead of growing.
+	if os.Getenv("GOMEMLIMIT") == "" {
+		debug.SetMemoryLimit(appMemoryLimit)
+	}
 
 	gpmcDev := envOr("SCOPE_GPMC", "/dev/Gpmc")
 	healthPath := os.Getenv("OTA_HEALTH_PATH")
-	mmapDrain := os.Getenv("SCOPE_MMAP_DRAIN") != "0"
+	useEDMA := os.Getenv("SCOPE_EDMA") != "0"
+	diagBeat := os.Getenv("SCOPE_DIAG_HEARTBEAT") != "0"
 	listen := envOr("SCOPE_HTTP", ":8080")
 
 	gpmcFD := findInheritedFD(gpmcDev)
@@ -398,22 +523,163 @@ func main() {
 		os.Exit(0)
 	}
 
-	b, err := bus.New(gpmcFD, mmapDrain)
+	b, err := bus.New(gpmcFD)
 	if err != nil {
 		logf("FATAL: bus init: %v — refusing to drive", err)
 		<-sig
 		os.Exit(0)
 	}
-	logf("bus up, mmap drain=%v", b.MmapDrain())
+	// SRAM mode owns a different fabric ABI and must branch before the
+	// default loader/engine can issue any configuration or capture commands.
+	captureMode := envOr("SCOPE_CAPTURE", "default-sram")
+	sramDefault := captureMode == "default-sram"
+	switch captureMode {
+	case "sram":
+		if err := runSRAMMode(b, gpmcFD, listen, healthPath, sig); err != nil {
+			logf("FATAL: SRAM mode: %v", err)
+		}
+		return
+	case "default", "default-sram":
+	default:
+		logf("FATAL: SCOPE_CAPTURE must be default, default-sram or sram")
+		return
+	}
 
-	e := engine.New(engine.Config{Bus: b, Logf: logf})
-	go e.Run()
+	// Fabric deployment (workplan §4.1): verify the identity words; on any
+	// mismatch reload the embedded default image over the CS3 configuration
+	// port and verify again. Runs BEFORE the engine touches the bus. On
+	// failure the app stays up — the engine refuses to drive, no health token
+	// is written, and the diagnostic block remains reachable for bring-up.
+	fabricOK := false
+	var timingPort bus.TimingPort
+	var bootTiming bus.BootTiming
+	readCS1 := func(sel uint16) (uint16, error) { return b.Read(bus.PlaneCS1, sel) }
+	var sramBackend *sramcapture.Capture
+	if sramDefault {
+		if err := loadGeneralImage(gpmcFD); err != nil {
+			logf("FATAL: general image load: %v", err)
+			return
+		}
+		var err error
+		sramBackend, err = sramcapture.New(b)
+		if err != nil {
+			logf("FATAL: preload a qualified SRAM image: %v", err)
+			return
+		}
+		m, err := sramBackend.Status()
+		if err != nil || (m.Revision != 9 && m.Revision != 10 && m.Revision != 11) || !m.Locked {
+			logf("FATAL: default-sram requires revision 9, 10 or 11, status=%+v error=%v", m, err)
+			return
+		}
+		fabricOK = true
+		if useEDMA {
+			if err := bus.EnsureDcinv(logf); err != nil {
+				logf("SRAM: coherent DMA unavailable: %v", err)
+			} else {
+				b.EnableEDMA(8192, logf)
+			}
+		}
+		if m.Revision == 10 && b.FastDrain() {
+			tp, err := bus.OpenTimingPort()
+			if err != nil {
+				logf("FATAL: SRAM timing port: %v", err)
+				return
+			}
+			fast, err := applySRAMReadTiming(tp, func() error {
+				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+				defer cancel()
+				return sramBackend.VerifyCounter(ctx)
+			})
+			tp.Close()
+			if err != nil {
+				logf("FATAL: SRAM startup transport check: %v", err)
+				return
+			}
+			logf("SRAM: full counter verified, fast GPMC timing=%v", fast)
+		}
+	} else if err := fpgaload.Bringup(gpmcFD, readCS1, logf); err != nil {
+		if cp, cerr := fpgaload.ConfigStatus(gpmcFD); cerr == nil {
+			logf("FATAL: fabric bring-up failed: %v (CS3 config port reads %#04x) — engine will refuse to drive; /diag stays up", err, cp)
+		} else {
+			logf("FATAL: fabric bring-up failed: %v — engine will refuse to drive; /diag stays up", err)
+		}
+	} else {
+		fabricOK = true
+		if useEDMA {
+			// The EDMA drain is only coherent through /dev/dcinv (a fresh mlocked
+			// buffer is cache-hot too: 64-byte zero runs on hardware, 2026-09-05).
+			if err := bus.EnsureDcinv(logf); err != nil {
+				logf("bus: %v — EDMA drain will NOT be cache-coherent; records may carry stale 64-byte lines", err)
+			}
+			b.EnableEDMA(iface.RecDepth, logf)
+		} else {
+			logf("bus: SCOPE_EDMA=0 — ioctl drain")
+		}
+		// GPMC CS1 timing (06-TIERS §0 / rung R1): the swept timing persisted
+		// next to the app is applied only after a TSRC ramp check at that
+		// timing passes; otherwise the factory timing stays. Before the
+		// engine owns the bus. The port stays open for /api/diag/gpmc.
+		if tp, err := bus.OpenTimingPort(); err != nil {
+			logf("gpmc timing: /dev/mem unavailable (%v) — factory timing, no sweep possible", err)
+		} else {
+			timingPort = tp
+			bootTiming = bus.ApplyPersistedTiming(b, tp, bus.TimingPathForBoot(), buildinfo.String(), logf)
+		}
+	}
+	logf("bus up, fabric verified=%v, fast drain=%v", fabricOK, b.FastDrain())
+	if sramDefault && fabricOK {
+		executable, err := os.Executable()
+		if err == nil {
+			err = b.StartWorker(executable, logf)
+		}
+		if err != nil {
+			logf("FATAL: acquisition worker: %v", err)
+			return
+		}
+	}
+
+	var interleaveCal *engine.InterleaveCalibration
+	if path := os.Getenv("SCOPE_INTERLEAVE_CAL"); path != "" {
+		var err error
+		interleaveCal, err = engine.LoadInterleaveCalibration(path)
+		if err != nil {
+			logf("FATAL: interleave calibration: %v", err)
+			return
+		}
+	} else if c, err := engine.DefaultInterleaveCalibration(); err != nil {
+		logf("interleave calibration: built-in default rejected: %v", err)
+	} else {
+		interleaveCal = c
+	}
+	e := engine.New(engine.Config{Bus: b, Logf: logf, SRAM: sramBackend, InterleaveCalibration: interleaveCal})
+	if images := (imageSwitcher{fd: gpmcFD}); sramDefault && len(fpgaload.General()) != 0 && (images.HasStack() || images.HasPacket() || images.HasLine()) {
+		e.SetImageSwitcher(images)
+		logf("FPGA images embedded: stacking %d, packet %d, line %d bytes", len(fpgaload.Stack()), len(fpgaload.Packet()), len(fpgaload.Line()))
+	}
+	if !sramDefault {
+		go e.Run()
+	}
 
 	if healthPath != "" {
-		go healthLoop(e, healthPath)
+		go healthLoop(e, healthPath, fabricOK, diagBeat)
 	} else {
 		logf("WARNING: OTA_HEALTH_PATH unset — no health reporting")
 	}
+
+	// Diagnostic block: every fabric access goes through the engine owner
+	// (Engine.Exec), so it works whether or not the engine drives.
+	dg := diag.New(e, logf)
+	dg.SetTiming(timingPort, bus.TimingPath(), buildinfo.String(), bootTiming)
+	dg.SetStatusExtra(func() map[string]any {
+		st := e.Snapshot()
+		hb, _ := heartbeatMode.Load().(string)
+		return map[string]any{
+			"fabric_verified": fabricOK, "fast_drain": b.FastDrain(), "heartbeat": hb,
+			"frames": st.Frames, "coherent": st.Coherent, "published": st.Published,
+			"wedged": st.Wedged, "beats": e.Beats(), "bus_errors": st.BusErrors,
+			"short_drains": st.ShortDrains, "band": st.BandKind,
+		}
+	})
 
 	// Per-unit calibration (spec 10): file → backup → compiled defaults.
 	calTab := cal.Load(logf)
@@ -428,13 +694,36 @@ func main() {
 		logf("WARNING: SPI front end unavailable (%v) — V/div control disabled", err)
 	} else {
 		fe = analog.New(dev, nil, calTab)
-		fe.OnOffset(e.SetOffsetDAC)       // offset re-anchors to each detent's cal zero
-		fe.OnOffsetV(e.SetChannelOffsetV) // trigger level rides the same offset reference as the samples
-		fe.OnVdiv(e.SetChannelVdiv)       // keep the trigger level→display-code map current
+		if path := os.Getenv("SCOPE_ZERO_CAL"); path != "" {
+			if t, err := analog.LoadZeroTrim(path); err != nil {
+				logf("zero trim %s rejected: %v", path, err)
+			} else {
+				fe.SetZeroTrim(t)
+			}
+		} else if t, err := analog.DefaultZeroTrim(); err != nil {
+			logf("zero trim: built-in default rejected: %v", err)
+		} else {
+			fe.SetZeroTrim(t)
+		}
+		fe.OnOffset(e.SetOffsetDAC)         // offset re-anchors to each detent's cal zero
+		fe.OnOffsetV(e.SetChannelOffsetV)   // trigger level rides the same offset reference as the samples
+		fe.OnVdiv(e.SetChannelVdiv)         // keep the trigger level→display-code map current
+		fe.OnCoupling(e.SetChannelCoupling) // software AC: the trigger level follows the AC trace
 		feIface = fe
 		logf("SPI front end up (seeded to boot detent, not emitted)")
 	}
 
+	if sramDefault {
+		if fe != nil {
+			for ch := 0; ch < 2; ch++ {
+				if err := fe.SetVdiv(ch, 8); err != nil {
+					logf("SRAM: initial range: %v", err)
+					return
+				}
+			}
+		}
+		go e.Run()
+	}
 	// The fan-out is the arena's single consumer; the web UI and the LCD
 	// renderer read its snapshot under the fan-out lock.
 	fo := frames.New()
@@ -451,7 +740,31 @@ func main() {
 	}
 	pc := panel.New(e, pfe, keyFD, engine.SupportedTdivs(), 500e-6, logf)
 	pc.SetFrameSource(fo.WithFrame) // let the AUTO button measure the live signal
-	uiCtrl.Store(pc)                // publish for the LCD render loop + SCDP screenshot
+	// Decoded stream (ADR-PANEL-DECODED-STREAM): the panel starts it from the
+	// settings the LCD's Auto decode last found.
+	sv := streamview.New(e, logf)
+	streamCtrl.Store(sv)
+	// The stream starts from an Auto decode of the frame on screen when
+	// Stream is pressed: the LCD's own Auto runs about once a second at long
+	// views, so its last result can belong to an earlier signal.
+	pc.SetDecodeStream(sv, func() (decode.Result, float64, bool) {
+		var c1, c2 []uint8
+		var sampleS float64
+		fo.WithFrame(func(f *engine.Frame) {
+			if f == nil || f.PeakDetect || f.IsEnv || f.Valid < 32 || len(f.C1) < f.Valid || len(f.C2) < f.Valid {
+				return
+			}
+			c1 = append([]uint8(nil), f.C1[:f.Valid]...)
+			c2 = append([]uint8(nil), f.C2[:f.Valid]...)
+			sampleS = f.SampleS
+		})
+		if c1 == nil {
+			return decode.Result{}, 0, false
+		}
+		res, st := decode.AutodetectFast(c1, c2, sampleS, "hex")
+		return res, st, res.OK
+	})
+	uiCtrl.Store(pc) // publish for the LCD render loop + SCDP screenshot
 	go pc.Run(stopFo)
 	logf("panel controller up (fpga_key fd=%d)", keyFD)
 
@@ -523,6 +836,9 @@ func main() {
 	// (SetWriteDeadline). Don't "harden" this without moving that contract.
 	ws := web.New(scopeSource{e, fo}, feIface, pc, screenPNG)
 	ws.SetInvertSource(scpiH.Inverted) // display-level INVS: SCPI shadow → /api/status
+	if !sramDefault {
+		ws.SetDiag(dg)
+	} // /diag + /api/diag/* (workplan §2 diagnostic block)
 	srv := &http.Server{Addr: listen, Handler: ws.Handler()}
 	go func() {
 		logf("web ui listening on %s", listen)
@@ -537,5 +853,35 @@ func main() {
 	if !e.Stop(2 * time.Second) {
 		logf("WARNING: engine did not stop in time")
 	}
+	if err := b.CloseWorker(); err != nil {
+		logf("acquisition worker shutdown: %v", err)
+	}
 	os.Exit(0)
 }
+
+// streamSlot is a quarter-second counter while a decoded stream runs (0
+// otherwise): the display's 4 Hz transcript refresh.
+// TRLC-LINKS: REQ-SDS-018
+func streamSlot(hud lcd.HUD) int64 {
+	if hud.StreamOn && (hud.Stream.State == streamview.Streaming || hud.Stream.State == streamview.Starting) {
+		return time.Now().UnixMilli() / 250
+	}
+	return 0
+}
+
+// streamPageKey is what a cached transcript page depends on.
+type streamPageKey struct {
+	state      streamview.State
+	list       bool
+	top, lines int
+	trig       int
+	slot       int64
+}
+
+type cachedStreamPage struct {
+	key  streamPageKey
+	page streamview.Page
+}
+
+// lastStreamPage is buildHUD's cached transcript page.
+var lastStreamPage atomic.Pointer[cachedStreamPage]

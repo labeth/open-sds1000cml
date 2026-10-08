@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-WEB-DECODE-ARINC429
 // decode_arinc429.js — ARINC 429 single-channel decoder, a classic script that
 // mirrors decode_arinc429.go step for step so the web overlay and the on-device
 // LCD agree byte-for-byte. Self-contained (no dependency on decode.js): ARINC is
@@ -11,10 +12,12 @@
 // bit-times of NULL. cfg.bitrate>0 pins the bit period; 0 auto-infers it from the
 // pulse spacing. cfg.threshold overrides the auto NULL (mid) level.
 
+// TRLC-LINKS: REQ-SDS-018
 function decodeARINC429(codes, colTimeS, cfg) {
   cfg = cfg || {};
   const proto = "arinc429";
   const minSPB = 4;
+  // TRLC-LINKS: REQ-SDS-018
   const fail = (error) => ({ ok: false, error, proto, spans: [], text: "", bytes: [], meta: {} });
   // The role channel's array can be absent (channel toggled off / envelope
   // frame); this decoder has its own slicer, so guard here like sliceChannel.
@@ -90,7 +93,9 @@ function decodeARINC429(codes, colTimeS, cfg) {
 
   const spans = [], bytes = [], toks = [];
   let words = 0;
+  // TRLC-LINKS: REQ-SDS-018
   const oct3 = (v) => (v & 0xff).toString(8).padStart(3, "0");
+  // TRLC-LINKS: REQ-SDS-018
   const hex5 = (v) => (v & 0x7ffff).toString(16).toUpperCase().padStart(5, "0");
   for (const sg of segs) {
     const s0 = pulses[sg[0]].i;
@@ -120,7 +125,9 @@ function decodeARINC429(codes, colTimeS, cfg) {
     let ones = 0, u = word32 >>> 0; while (u) { ones += u & 1; u >>>= 1; }
     const parityOdd = (ones & 1) === 1; // odd parity over all 32 bits
 
+    // TRLC-LINKS: REQ-SDS-018
     const cellStart = (k) => { let p = Math.round(s0 + k * T); if (p < 0) p = 0; if (p >= n) p = n - 1; return p; };
+    // TRLC-LINKS: REQ-SDS-018
     const cellEnd = (k) => { let p = Math.round(s0 + (k + 1) * T) - 1; if (p < 0) p = 0; if (p >= n) p = n - 1; return p; };
 
     if (words > 0) { spans.push({ i0: cellStart(0), i1: cellStart(0), text: "", kind: "gap" }); toks.push("|"); }

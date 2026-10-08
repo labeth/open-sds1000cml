@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-LCD
 package lcd
 
 import (
@@ -34,9 +35,10 @@ var (
 	}
 )
 
-func measFor(ch int, sig []uint8, seq uint64, vpc, off, ss float64, cpl int) *measure.Result {
+// TRLC-LINKS: REQ-SDS-021
+func measFor(ch int, sig []uint8, q []uint16, guard int, seq uint64, vpc, off, ss float64, cpl int) *measure.Result {
 	if seq == 0 || ch < 0 || ch > 1 {
-		return measure.Compute(sig, vpc, off, ss)
+		return measure.ComputeAcquisition(sig, q, vpc, off, ss, cpl, guard)
 	}
 	measMu.Lock()
 	defer measMu.Unlock()
@@ -46,7 +48,7 @@ func measFor(ch int, sig []uint8, seq uint64, vpc, off, ss float64, cpl int) *me
 			return c.m
 		}
 	}
-	m := measure.Compute(sig, vpc, off, ss)
+	m := measure.ComputeAcquisition(sig, q, vpc, off, ss, cpl, guard)
 	c.seq, c.at, c.vpc, c.off, c.ss, c.cpl, c.m = seq, time.Now(), vpc, off, ss, cpl, m
 	return m
 }
@@ -55,6 +57,7 @@ func measFor(ch int, sig []uint8, seq uint64, vpc, off, ss float64, cpl int) *me
 // box PER enabled channel (via the shared measure package, so it matches the web
 // exactly), so both C1 and C2 are readable at once without disturbing the trigger
 // source. Uses the real probe-scaled volts/div and the channel's software coupling.
+// TRLC-LINKS: REQ-SDS-021
 func drawMeasPanel(sf Surface, f *engine.Frame, hud HUD) {
 	if f == nil || f.Valid == 0 {
 		return
@@ -74,6 +77,7 @@ func drawMeasPanel(sf Surface, f *engine.Frame, hud HUD) {
 }
 
 // measBox renders one channel's full measurement set at left edge x.
+// TRLC-LINKS: REQ-SDS-021
 func measBox(sf Surface, f *engine.Frame, hud HUD, ch, x int) {
 	valid := f.Valid
 	if valid > len(f.C1) {
@@ -92,7 +96,10 @@ func measBox(sf Surface, f *engine.Frame, hud HUD, ch, x int) {
 		sig = analog.CoupleDisplay(sig, cpl)
 		off = 0
 	}
-	m := measFor(ch, sig, f.Seq, vdiv/25*probe, off*probe, hud.SampleS, cpl)
+	m := measFor(ch, sig, frameQ(f, ch), f.FilterGuard, f.Seq, vdiv*float64(zoomOf(hud, ch))/25*probe, off*probe, hud.SampleS, cpl)
+	if f.PeakDetect {
+		m = m.WithEnvelopeTiming(sig, vdiv*float64(zoomOf(hud, ch))/25*probe, off*probe, hud.SampleS)
+	}
 	if m == nil {
 		return
 	}
@@ -104,6 +111,7 @@ func measBox(sf Surface, f *engine.Frame, hud HUD, ch, x int) {
 		{"Vtop", fmtVolt(m.Vtop)},
 		{"Vbase", fmtVolt(m.Vbase)},
 		{"Vrms", fmtVolt(m.Vrms)},
+		{"ACrms", fmtVolt(m.VrmsAC)},
 		{"Vavg", fmtVolt(m.Vmean)},
 	}
 	if m.HasTiming {
@@ -145,12 +153,15 @@ func measBox(sf Surface, f *engine.Frame, hud HUD, ch, x int) {
 // drawCursors draws the on-screen X (time) or Y (volts) cursor pair and a Δ
 // readout. Time Δ uses the labelled t/div × 10 divisions; volts Δ uses the
 // trigger-source channel's probe-scaled V/div × 8 divisions.
+// TRLC-LINKS: REQ-SDS-021
 func drawCursors(sf Surface, hud HUD) {
 	if !hud.CurOn {
 		return
 	}
 	dash := func(vertical bool, at int, active bool) {
-		col := colGrid
+		// The inactive cursor is dim, not the grid colour: in colGrid it
+		// vanished into the graticule (bench 2026-10-07).
+		col := colDim
 		if active {
 			col = colTrig
 		}
@@ -210,6 +221,7 @@ func drawCursors(sf Surface, hud HUD) {
 
 // drawAutosetBanner overlays a centred "AUTOSET…" progress banner while the
 // sweep runs, with the cancel hint (a second AUTO press stops it).
+// TRLC-LINKS: REQ-SDS-021
 func drawAutosetBanner(sf Surface, msg string) {
 	if msg == "" {
 		msg = "AUTOSET..."
@@ -246,6 +258,7 @@ var softkeyY = [5]int{80, 160, 240, 320, 410}
 // drawMenu overlays the softkey menu down the right edge (spec 08 §6): a title
 // band + five slots (F1 top … F5 bottom) each a label over its current value,
 // the active slot boxed. F1..F5 select/cycle; the ADJUST knob tracks the box.
+// TRLC-LINKS: REQ-SDS-021
 func drawMenu(sf Surface, hud HUD) {
 	if !hud.MenuOpen {
 		return
@@ -292,6 +305,7 @@ func drawMenu(sf Surface, hud HUD) {
 // drawMarkers overlays the trigger level (horizontal line + right handle), the
 // trigger position (top pointer), and the per-channel ground/offset arrows on
 // the left edge — the same references the web canvas shows (spec 07 §6).
+// TRLC-LINKS: REQ-SDS-021
 func drawMarkers(sf Surface, hud HUD) {
 	px := func(x, y int, c uint16) {
 		if x >= 0 && x < W && y >= 0 && y < H {
@@ -340,17 +354,25 @@ func drawMarkers(sf Surface, hud HUD) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-021
 func drawHUD(sf Surface, f *engine.Frame, hud HUD) {
+	if f != nil && f.NoiseGainIdeal > 1 {
+		label := fmt.Sprintf("Ideal +%.2f bits (not ENOB)", math.Log2(f.NoiseGainIdeal))
+		if f.PassbandHz > 0 {
+			label += "  pass " + fmtFreq(f.PassbandHz) + fmt.Sprintf("  FPGA /%d", f.Decimation)
+		}
+		DrawText(sf, 200, 14, label, colInfo, 1)
+	}
 	DrawText(sf, 4, 2, "C1 "+vdivLabel(hud.C1VdivV, hud.Probe1)+cplTag(hud.Cpl1), colC1, 1)
 	if hud.TwoChan {
 		DrawText(sf, 96, 2, "C2 "+vdivLabel(hud.C2VdivV, hud.Probe2)+cplTag(hud.Cpl2), colC2, 1)
 	}
 	if f != nil && f.Valid > 0 { // clipping warning — railed traces make readings suspect
-		valid := frameValid(f) // clamp to len(C1) — f.Valid can exceed the slice
-		if measure.Clipped(f.C1[:valid]) {
+		clip := frameClipped(f)
+		if clip[0] {
 			DrawText(sf, 4, 14, "CLIP", colTrig, 1)
 		}
-		if hud.TwoChan && len(f.C2) >= valid && measure.Clipped(f.C2[:valid]) {
+		if hud.TwoChan && clip[1] {
 			DrawText(sf, 96, 14, "CLIP", colTrig, 1)
 		}
 	}
@@ -393,13 +415,15 @@ func drawHUD(sf Surface, f *engine.Frame, hud HUD) {
 		state = "STOP" // (should not persist: single clears on capture)
 	case !hud.Running:
 		state = "STOP"
+	case hud.Waiting:
+		state = "WAIT" // the held frame's T'D is stale
 	case hud.Trigd:
 		state = "T'D"
 	case hud.Norm:
 		state = "WAIT"
 	}
 	DrawTextRight(sf, 796, 2,
-		fmt.Sprintf("T C%d %s %+.2fdiv %s", hud.TrigSrc+1, edge, hud.TrigLvlDiv, state),
+		fmt.Sprintf("T C%d %s %s %s", hud.TrigSrc+1, edge, fmtVolt(hud.TrigLvlV), state),
 		colTrig, 1)
 
 	// Device URL (post-takeover support: "what do I browse to?"). Right-aligned
@@ -428,7 +452,10 @@ func drawHUD(sf Surface, f *engine.Frame, hud HUD) {
 			sig = analog.CoupleDisplay(sig, cpl)
 			off = 0
 		}
-		m := measFor(ch, sig, f.Seq, vdiv/25*probe, off*probe, hud.SampleS, cpl)
+		m := measFor(ch, sig, frameQ(f, ch), f.FilterGuard, f.Seq, vdiv*float64(zoomOf(hud, ch))/25*probe, off*probe, hud.SampleS, cpl)
+		if f.PeakDetect {
+			m = m.WithEnvelopeTiming(sig, vdiv*float64(zoomOf(hud, ch))/25*probe, off*probe, hud.SampleS)
+		}
 		if m == nil {
 			return
 		}
@@ -442,4 +469,52 @@ func drawHUD(sf Surface, f *engine.Frame, hud HUD) {
 	if hud.TwoChan && len(f.C2) >= valid {
 		line(1, 410, f.C2[:valid], hud.C2VdivV, hud.Probe2, hud.OffC2V, hud.Cpl2, colC2, "C2")
 	}
+}
+
+// TRLC-LINKS: REQ-SDS-021
+func frameQ(f *engine.Frame, ch int) []uint16 {
+	if ch == 1 {
+		return f.Q2
+	}
+	return f.Q1
+}
+
+// zoomOf is a channel's display zoom: codes sit on the analog range, a
+// zoomed detent's volts per code is VdivV·zoom/25.
+// TRLC-LINKS: REQ-SDS-021
+func zoomOf(hud HUD, ch int) int {
+	z := hud.Zoom1
+	if ch == 1 {
+		z = hud.Zoom2
+	}
+	if z < 1 {
+		return 1
+	}
+	return z
+}
+
+// clipCache holds the last published frame's rail state: scanning a stopped
+// 1 M-sample record on every repaint took as long as drawing it (bench
+// 2026-10-07). A published frame's Seq is unique; Seq 0 is never cached.
+var clipCache struct {
+	sync.Mutex
+	seq   uint64
+	valid int
+	clip  [2]bool
+}
+
+// frameClipped reports whether each channel's codes touch a rail.
+// TRLC-LINKS: REQ-SDS-021
+func frameClipped(f *engine.Frame) [2]bool {
+	valid := frameValid(f) // clamp to len(C1) — f.Valid can exceed the slice
+	clipCache.Lock()
+	defer clipCache.Unlock()
+	if f.Seq != 0 && clipCache.seq == f.Seq && clipCache.valid == valid {
+		return clipCache.clip
+	}
+	var clip [2]bool
+	clip[0] = measure.Clipped(f.C1[:valid])
+	clip[1] = len(f.C2) >= valid && measure.Clipped(f.C2[:valid])
+	clipCache.seq, clipCache.valid, clipCache.clip = f.Seq, valid, clip
+	return clip
 }

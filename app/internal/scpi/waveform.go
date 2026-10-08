@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-SCPI
 package scpi
 
 import (
@@ -11,6 +12,7 @@ import (
 
 // waveform implements Cn:WF? DAT2|DESC (spec 11 §4): the byte-exact LeCroy
 // block. Reply shape: "Cn:WF ALL,#9<9-digit count><payload>\n".
+// TRLC-LINKS: REQ-SDS-024
 func (h *Handler) waveform(ch int, arg string) []byte {
 	sel := arg
 	if sel != "DAT2" && sel != "DESC" && sel != "ALL" {
@@ -50,6 +52,7 @@ func (h *Handler) waveform(ch int, arg string) []byte {
 // dat2 extracts the (sparsed, windowed) 8-bit codes. Deep-frame scale
 // (centred 128); roll-ring codes are half-scale and must be rescaled before
 // export (spec 11 §4 code-scale trap).
+// TRLC-LINKS: REQ-SDS-024
 func (h *Handler) dat2(ch int, f *engine.Frame) []byte {
 	sig := f.C1
 	if ch == 1 {
@@ -79,10 +82,10 @@ func (h *Handler) dat2(ch int, f *engine.Frame) []byte {
 	for i := 0; i < np; i++ {
 		v := sig[h.wfFP+i*sp]
 		if f.RollCodes {
-			// Roll FIFO codes are ~Vdiv/25 — HALF the deep 50-codes/div
-			// scale — so a roll deviation d represents 2·d deep codes. Double
-			// the deviation (clamped) so it reads correctly under the DESC's
-			// Vdiv/50 gain (spec 11 §4).
+			// Legacy roll FIFO codes are half-scale, so a roll deviation d
+			// represents 2·d deep codes. Double the deviation (clamped) so it
+			// reads correctly under the DESC's Vdiv/25 gain (spec 11 §4). No
+			// current engine path sets RollCodes.
 			nv := 128 + (int(v)-128)*2
 			if nv < 0 {
 				nv = 0
@@ -90,15 +93,19 @@ func (h *Handler) dat2(ch int, f *engine.Frame) []byte {
 			if nv > 255 {
 				nv = 255
 			}
-			out[i] = uint8(nv)
-		} else {
-			out[i] = v
+			v = uint8(nv)
 		}
+		// Two's-complement code about the grid centre: COMM_TYPE 0 is a
+		// signed byte, and LeCroy/Siglent hosts read volts = code·gain −
+		// offset with codes above 127 taken as negative. Sending the raw
+		// unsigned code (0 V = 128) read 5.12 div off and wrapped there.
+		out[i] = v ^ 0x80
 	}
 	return out
 }
 
 // wavedesc builds the 346-byte WAVEDESC (little-endian, COMM_ORDER=1).
+// TRLC-LINKS: REQ-SDS-024
 func (h *Handler) wavedesc(ch int, f *engine.Frame) []byte {
 	d := make([]byte, 346)
 	copy(d[0:], "WAVEDESC")
@@ -125,9 +132,9 @@ func (h *Handler) wavedesc(ch int, f *engine.Frame) []byte {
 	vdiv := 1.0
 	if h.fe != nil {
 		idx, _ := h.fe.Snapshot()
-		vdiv = analog.Detents[idx[ch&1]].VdivV
+		vdiv = analog.AnalogVdiv(idx[ch&1]) // codes are on the analog range (zoomed detents)
 	}
-	gain := float32(vdiv / 50 * h.attn[ch&1]) // WF? scale: 50 codes/div
+	gain := float32(vdiv / 25 * h.probe(ch)) // WF? scale: 25 codes/div (spec 11 §4)
 	f32(156, gain)
 
 	off := 0.0
@@ -137,13 +144,19 @@ func (h *Handler) wavedesc(ch int, f *engine.Frame) []byte {
 		code = st.OffC2
 	}
 	if code != 0 && h.fe != nil {
-		off = h.fe.OffsetVolts(ch, code)
+		off = h.fe.OffsetVolts(ch, code) * h.probe(ch) // tip volts, like the gain
 	}
 	f32(160, float32(off))
 	f32(164, 127)
 	f32(168, -128)
-	f32(176, float32(f.SampleS))                  // HORIZ_INTERVAL = 1/SARA
-	f64(180, -(float64(f.Valid) * f.SampleS / 2)) // trigger at centre
+	f32(176, float32(f.SampleS)) // HORIZ_INTERVAL = 1/SARA
+	// HORIZ_OFFSET: time of sample 0 from the trigger, at its exact
+	// (sub-sample) position; a record without a trigger keeps the centre.
+	trig := float64(f.Valid) / 2
+	if f.EdgeX >= 0 && f.EdgeX < float64(f.Valid) {
+		trig = f.EdgeX
+	}
+	f64(180, -trig*f.SampleS)
 	f64(188, -(float64(f.Valid) * f.SampleS / 2)) // first-pixel offset
 	copy(d[196:], "V")                            // VERTUNIT
 	copy(d[244:], "s")                            // HORUNIT

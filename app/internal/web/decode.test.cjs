@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-WEB
 // End-to-end test for the protocol decoders in decode.js — the same code
 // ui.html runs. Synthetic generators render ideal logic into 0..255 code arrays
 // at a chosen SPB (columns per bit); colTimeS is picked so baud = 1/(SPB*colTimeS).
@@ -5,17 +6,23 @@
 const { fmtByte, frameDtS, frameSpanS, sliceChannel, logicAt, decodeUART, decodeI2C, decodeSPI, decode, autodetect } = require("./decode.js");
 
 let failed = 0;
+// TRLC-LINKS: REQ-SDS-181
 function ok(c, m) { if (!c) { console.error("FAIL:", m); failed++; } else { console.log("ok  -", m); } }
+// TRLC-LINKS: REQ-SDS-181
 function near(a, b, tol, m) { ok(Math.abs(a - b) <= tol, `${m} (got ${a}, want ${b}±${tol})`); }
 
 const LO = 40, HI = 210;
+// TRLC-LINKS: REQ-SDS-181
 const lvl = b => (b ? HI : LO);
 
 // --- generators --------------------------------------------------------------
+// TRLC-LINKS: REQ-SDS-181
 function uartGen(bytes, SPB, o) {
   o = o || {}; const idle = o.idle != null ? o.idle : 1, noise = o.noise || 0;
   const out = []; let seed = 12345 >>> 0;
+  // TRLC-LINKS: REQ-SDS-181
   const rnd = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return (seed / 0x7fffffff - 0.5) * 2; };
+  // TRLC-LINKS: REQ-SDS-181
   const push = (c, b) => { for (let k = 0; k < c; k++) out.push(Math.max(0, Math.min(255, lvl(b) + Math.round(noise * rnd())))); };
   push(SPB * 4, idle);
   for (const v of bytes) {
@@ -28,10 +35,13 @@ function uartGen(bytes, SPB, o) {
 }
 
 // I2C: build SCL+SDA together. half = SCL half-period; one bit = SPB cols.
+// TRLC-LINKS: REQ-SDS-181
 function i2cGen(events, SPB) {
   const half = Math.max(1, Math.round(SPB / 2));
   const scl = [], sda = [];
+  // TRLC-LINKS: REQ-SDS-181
   const seg = (c, s, d) => { for (let k = 0; k < c; k++) { scl.push(lvl(s)); sda.push(lvl(d)); } };
+  // TRLC-LINKS: REQ-SDS-181
   const bit = b => { seg(half, 0, b); seg(half, 1, b); }; // SDA set while SCL low, sampled on SCL rising
   seg(SPB * 2, 1, 1);                       // idle
   for (const ev of events) {
@@ -46,12 +56,14 @@ function i2cGen(events, SPB) {
 }
 
 // SPI: mode-aware — DATA is centred on each mode's sampling edge (rising iff cpol==cpha).
+// TRLC-LINKS: REQ-SDS-181
 function spiGen(bytes, SPB, o) {
   o = o || {}; const cpol = o.cpol ? 1 : 0, cpha = o.cpha ? 1 : 0, msb = (o.bitOrder || "msb") === "msb";
   const half = Math.max(2, Math.round(SPB / 2));
   const bits = [];
   for (const B of bytes) for (let b = 0; b < 8; b++) bits.push((B >> (msb ? 7 - b : b)) & 1);
   const nHalf = 2 * bits.length + 2;
+  // TRLC-LINKS: REQ-SDS-181
   const clkLvl = m => (m % 2 === 0) ? cpol : 1 - cpol;   // start idle at cpol, toggle each half
   const clk = new Array(nHalf * half), data = new Array(nHalf * half).fill(LO);
   for (let m = 0; m < nHalf; m++) for (let k = 0; k < half; k++) clk[m * half + k] = lvl(clkLvl(m));
@@ -208,7 +220,9 @@ const SPB = 40, COLT = 1 / (SPB * 115200);
 
 // --- 8. autodetect -----------------------------------------------------------
 {
+  // TRLC-LINKS: REQ-SDS-181
   const mkFrame = (c1, c2) => ({ c1, c2, col_span_s: c1.length * COLT });
+  // TRLC-LINKS: REQ-SDS-181
   const flat = n => new Array(n).fill(HI); // idle-high inactive line
 
   const i2c = i2cGen([
@@ -236,6 +250,7 @@ const SPB = 40, COLT = 1 / (SPB * 115200);
   // transition. Idealised instant edges sample a clean (shifted) rail either way,
   // so add a linear ramp at each data transition; then the correct phase (samples
   // mid-bit) has a high margin and the wrong phase (samples on the ramp) low.
+  // TRLC-LINKS: REQ-SDS-181
   const ramp = (arr, w) => {
     const out = arr.slice(), h = Math.floor(w / 2);
     for (let i = 1; i < arr.length; i++) if (arr[i] !== arr[i - 1])
@@ -261,6 +276,7 @@ const SPB = 40, COLT = 1 / (SPB * 115200);
 // --- fuzz: hostile input must never hang or throw (parity of the Go fuzz) ---
 {
   let s = 12345 >>> 0;
+  // TRLC-LINKS: REQ-SDS-181
   const rnd = () => (s = (s + 0x6d2b79f5) | 0, ((Math.imul(s ^ (s >>> 15), 1 | s) + 0x6d2b79f5) >>> 0) / 4294967296);
   const t0 = Date.now();
   for (let i = 0; i < 2000; i++) {

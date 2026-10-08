@@ -1,0 +1,18 @@
+{
+  "general": {
+    "seed": 1,
+    "sha256": "ec369ff57065bc2fe8c35abce9ed6d9cc73fe9c7275aa88d935b131783cd9c29"
+  },
+  "packet": {
+    "seed": 6,
+    "sha256": "735bc1cde7272d269ca6c5f537e3639a89972399cfb753cf807c521405e66595"
+  },
+  "line": {
+    "seed": 7,
+    "sha256": "b8b644e3bdea6c0bfe9ff12ebde3cc6c8590ad99df6f6242b4e39173bd6b7e7b"
+  },
+  "stacking": {
+    "seed": 11,
+    "sha256": "501e42ba70e9603eae5f80883fe7aa720b72eb23eb3c749ba4d0c4a2fee2dadd"
+  }
+}

@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-WEB
 package web
 
 import (
@@ -18,6 +19,7 @@ import (
 // encoded into the waveform. Needs node (to run the encoder) AND sigrok-cli;
 // skips when either is missing. The browser CI lane installs both, and
 // CI_REQUIRE_BROWSER=1 turns the node skip into a failure there.
+// TRLC-LINKS: REQ-SDS-069, REQ-SDS-180
 func TestSigrokExportLogicE2E(t *testing.T) {
 	testenv.NeedNode(t)
 	if _, err := exec.LookPath("sigrok-cli"); err != nil {

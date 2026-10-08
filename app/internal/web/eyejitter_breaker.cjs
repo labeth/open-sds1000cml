@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-WEB
 // eyejitter_breaker.cjs — adversarial harness for the eye/jitter engine.
 //
 // DEV TOOL (not part of go test — seconds): run after any engine change.
@@ -14,15 +15,18 @@ const EJ = require("./eyejitter.js");
 const SAMPLE_S = 2e-9;
 const N = 20480;
 
+// TRLC-LINKS: REQ-SDS-181, REQ-SDS-199
 function makeRng(seed) {
   let s = seed >>> 0 || 1;
   return () => { s = (s * 1103515245 + 12345) & 0x7fffffff; return s / 0x7fffffff; };
 }
+// TRLC-LINKS: REQ-SDS-181, REQ-SDS-199
 function gauss(r) { // Box-Muller-ish from two uniforms
   return Math.sqrt(-2 * Math.log(Math.max(1e-12, r()))) * Math.cos(2 * Math.PI * r());
 }
 
 // ---------- bit-stream sources ----------
+// TRLC-LINKS: REQ-SDS-181, REQ-SDS-199
 function prbs(nbits, taps) { // taps: [7,6] PRBS7 | [15,14] PRBS15
   const [a, b] = taps;
   let s = (1 << a) - 1;
@@ -35,8 +39,11 @@ function prbs(nbits, taps) { // taps: [7,6] PRBS7 | [15,14] PRBS15
   return bits;
 }
 const STREAMS = {
+  // TRLC-LINKS: REQ-SDS-181, REQ-SDS-199
   prbs7:  (nb, r) => prbs(nb, [7, 6]),
+  // TRLC-LINKS: REQ-SDS-181, REQ-SDS-199
   prbs15: (nb, r) => prbs(nb, [15, 14]),
+  // TRLC-LINKS: REQ-SDS-181, REQ-SDS-199
   uart:   (nb, r) => { // framed bytes: start(0) 8 random stop(1) idle(1x3)
     const bits = new Uint8Array(nb);
     let i = 0;
@@ -47,6 +54,7 @@ const STREAMS = {
     }
     return bits;
   },
+  // TRLC-LINKS: REQ-SDS-181, REQ-SDS-199
   burst:  (nb, r) => { // packets of PRBS with LONG idle gaps (25 bits high)
     const p = prbs(nb, [7, 6]);
     const bits = new Uint8Array(nb).fill(1);
@@ -57,12 +65,15 @@ const STREAMS = {
     }
     return bits;
   },
+  // TRLC-LINKS: REQ-SDS-181, REQ-SDS-199
   clock:  nb => { const b = new Uint8Array(nb); for (let i = 0; i < nb; i++) b[i] = i & 1; return b; },
+  // TRLC-LINKS: REQ-SDS-181, REQ-SDS-199
   pwm:    (nb, r) => { // duty wanders slowly — edge pairs move together
     const b = new Uint8Array(nb);
     for (let i = 0; i < nb; i++) b[i] = i & 1; // toggling base; duty applied via DCD-like tie below
     return b;
   },
+  // TRLC-LINKS: REQ-SDS-181, REQ-SDS-199
   sparse: (nb, r) => { // isolated pulses: 1 bit high every ~20 bits
     const b = new Uint8Array(nb);
     for (let i = 3; i < nb; i += 17 + Math.floor(6 * r())) b[i] = 1;
@@ -73,12 +84,15 @@ const STREAMS = {
 // ---------- jitter models (per-edge TIE truth, in SAMPLES) ----------
 // each returns tie(k) where k = bit index of the edge; also carries meta about
 // what the engine is expected to report.
+// TRLC-LINKS: REQ-SDS-181, REQ-SDS-199
 function jitterModel(kind, ui, r, fam) {
   switch (kind) {
+    // TRLC-LINKS: REQ-SDS-181, REQ-SDS-199
     case "none":   return { fn: () => 0, rmsS: 0, djS: 0, tone: null };
     case "square": { // the FPGA scheme: 0 ↔ 2A alternating every JP/2 bits
       const A = fam.jaSamp, JP = fam.jp;
       return {
+        // TRLC-LINKS: REQ-SDS-181, REQ-SDS-199
         fn: k => (Math.floor(k / (JP / 2)) % 2) ? 2 * A : 0,
         rmsS: A * SAMPLE_S, djS: 2 * A * SAMPLE_S,
         tone: { fHz: 1 / (JP * ui * SAMPLE_S), ampS: (4 / Math.PI) * A * SAMPLE_S },
@@ -87,6 +101,7 @@ function jitterModel(kind, ui, r, fam) {
     case "sine": {
       const A = fam.jaSamp, JP = fam.jp;
       return {
+        // TRLC-LINKS: REQ-SDS-181, REQ-SDS-199
         fn: k => A * Math.sin(2 * Math.PI * k / JP),
         rmsS: A / Math.SQRT2 * SAMPLE_S, djS: -1 /*bounded, don't assert exact*/,
         tone: { fHz: 1 / (JP * ui * SAMPLE_S), ampS: A * SAMPLE_S },
@@ -94,20 +109,24 @@ function jitterModel(kind, ui, r, fam) {
     }
     case "gauss": { // pure RJ
       const sig = fam.jaSamp;
+      // TRLC-LINKS: REQ-SDS-181, REQ-SDS-199
       return { fn: () => sig * gauss(r), rmsS: sig * SAMPLE_S, djS: 0, tone: null, rjS: sig * SAMPLE_S };
     }
     case "dcd": { // duty-cycle distortion: rising early, falling late by ±A
       const A = fam.jaSamp;
+      // TRLC-LINKS: REQ-SDS-181, REQ-SDS-199
       return { fn: (k, pol) => (pol > 0 ? -A : A), rmsS: A * SAMPLE_S, djS: 2 * A * SAMPLE_S, tone: null, isDcd: true };
     }
     case "isi": { // deterministic, data-dependent: edge late after a long run
       const A = fam.jaSamp;
+      // TRLC-LINKS: REQ-SDS-181, REQ-SDS-199
       return { fn: (k, pol, runLen) => Math.min(runLen, 4) / 4 * A, rmsS: -1, djS: -1, tone: null };
     }
   }
 }
 
 // ---------- waveform builder (edge-list-driven; the superres lesson) ----------
+// TRLC-LINKS: REQ-SDS-181, REQ-SDS-199
 function buildRecord(fam, frameIdx) {
   const r = makeRng(fam.fi * 92821 + frameIdx * 613 + 5);
   const ui = fam.ui;
@@ -120,6 +139,7 @@ function buildRecord(fam, frameIdx) {
   const jm = jitterModel(fam.jitter, ui, r, fam);
   const phase = 4 + r() * ui;
   const lo = 128 - fam.amp, hi = 128 + fam.amp;
+  // TRLC-LINKS: REQ-SDS-181, REQ-SDS-199
   const lvl = b => (b ? hi : lo);
   // edge list with truth TIE
   const edges = [];
@@ -162,8 +182,10 @@ function buildRecord(fam, frameIdx) {
 }
 
 // ---------- the 50 families ----------
+// TRLC-LINKS: REQ-SDS-181, REQ-SDS-199
 function families() {
   const F = [];
+  // TRLC-LINKS: REQ-SDS-181, REQ-SDS-199
   const add = (name, o) => F.push(Object.assign({
     fi: F.length, name, stream: "prbs7", ui: 100, amp: 70, noise: 1.5, rise: 9,
     jitter: "none", jaSamp: 0, jp: 32, wander: 0, am: 0, clip: false, dropout: false,
@@ -232,6 +254,7 @@ function families() {
   return F;
 }
 
+// TRLC-LINKS: REQ-SDS-181, REQ-SDS-199
 function buildSpecial(fam, frameIdx) {
   const r = makeRng(fam.fi * 92821 + frameIdx * 613 + 5);
   const sig = new Int16Array(N);
@@ -250,6 +273,7 @@ function buildSpecial(fam, frameIdx) {
 }
 
 // ---------- referee ----------
+// TRLC-LINKS: REQ-SDS-181, REQ-SDS-199
 function runFamily(fam, verbose) {
   const st = EJ.ejNew({});
   const NREC = 20;

@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-WEB
 // End-to-end test for the FFT peak-detection + selection logic that ui.html
 // runs in the browser. It loads the SAME peaks.js the page loads, feeds it
 // synthetic scope frames, and checks the two things the user hit: selection
@@ -6,7 +7,9 @@
 const { spectrum, detectPeaks, nearestPeak, component } = require("./peaks.js");
 
 let failed = 0;
+// TRLC-LINKS: REQ-SDS-070
 function ok(cond, msg) { if (!cond) { console.error("FAIL:", msg); failed++; } else { console.log("ok  -", msg); } }
+// TRLC-LINKS: REQ-SDS-070
 function near(a, b, tol, msg) { ok(Math.abs(a - b) <= tol, `${msg} (got ${a}, want ${b}±${tol})`); }
 
 // A scope frame: 1024 byte-codes (0..255) around 128, = two tones + noise.
@@ -16,9 +19,11 @@ const N = 1024, SR = 1e6, NYQ = SR / 2, BIN = SR / N; // 976.5625 Hz/bin
 const F1 = 52 * BIN;   // ~50.78 kHz
 const F2 = 123 * BIN;  // ~120.12 kHz
 
+// TRLC-LINKS: REQ-SDS-070
 function frame(amp1, amp2, seed) {
   const c1 = new Array(N);
   let s = seed >>> 0;
+  // TRLC-LINKS: REQ-SDS-070
   const rnd = () => { s = (s * 1103515245 + 12345) & 0x7fffffff; return s / 0x7fffffff - 0.5; };
   for (let i = 0; i < N; i++) {
     let v = 128

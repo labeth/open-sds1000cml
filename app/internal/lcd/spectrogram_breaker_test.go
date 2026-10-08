@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-LCD
 package lcd
 
 import (
@@ -12,6 +13,7 @@ import (
 // the web sgHeat. It must NEVER panic, whatever float it is handed — a NaN or
 // Inf leaking in from a degenerate spectrum (peak==0, floorDB==0, empty row)
 // would otherwise do int(NaN) → a garbage index → stops[i] out-of-range.
+// TRLC-LINKS: REQ-SDS-068
 func TestHeatNeverPanics(t *testing.T) {
 	inputs := []float64{
 		math.NaN(), math.Inf(1), math.Inf(-1),
@@ -41,6 +43,7 @@ func TestHeatNeverPanics(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-068
 func unrgb(c uint16) (uint8, uint8, uint8) {
 	r := uint8((c >> 11) & 0x1f)
 	g := uint8((c >> 5) & 0x3f)
@@ -48,6 +51,7 @@ func unrgb(c uint16) (uint8, uint8, uint8) {
 	return r << 3, g << 2, b << 3
 }
 
+// TRLC-LINKS: REQ-SDS-068
 func sgClamp8(v float64) uint8 {
 	if v < 0 {
 		return 0
@@ -58,12 +62,14 @@ func sgClamp8(v float64) uint8 {
 	return uint8(math.Round(v))
 }
 
+// TRLC-LINKS: REQ-SDS-068
 type sgFam struct {
 	name string
 	gen  func(i, n int, rng func() float64) float64
 }
 
 // 50 diverse waveforms local to the lcd package (mirrors the Bode breaker set).
+// TRLC-LINKS: REQ-SDS-068
 func sgFamilies(dt float64) []sgFam {
 	nyq := 0.5 / dt
 	var f []sgFam
@@ -220,6 +226,7 @@ func sgFamilies(dt float64) []sgFam {
 
 // 50-waveform breaker for the spectrogram Push path: no panic, rows advance
 // only when a spectrum was actually painted, effNyq stays finite/positive.
+// TRLC-LINKS: REQ-SDS-068
 func TestSpectrogramBreaker50(t *testing.T) {
 	const n = 6000
 	const dt = 2e-9
@@ -260,6 +267,7 @@ func TestSpectrogramBreaker50(t *testing.T) {
 // Adversarial floorDB values: the paint math is t = 1 + db*(1/-floorDB). A
 // floorDB of 0 makes 1/-floorDB = ±Inf; a bin exactly at the peak makes db≈0,
 // so 0*Inf = NaN can reach heat(). Drive that directly.
+// TRLC-LINKS: REQ-SDS-068
 func TestSpectrogramFloorEdges(t *testing.T) {
 	const n = 4096
 	const dt = 2e-9
@@ -285,6 +293,7 @@ func TestSpectrogramFloorEdges(t *testing.T) {
 
 // Push must survive hostile frames: nil frame, nil C2 with ch=1, Valid below
 // the floor, Valid larger than the slice, absurd effNyq.
+// TRLC-LINKS: REQ-SDS-068
 func TestSpectrogramPushGuards(t *testing.T) {
 	sg := NewSpectrogram()
 	buf := bytesFill(4096, 128)
@@ -319,6 +328,7 @@ func TestSpectrogramPushGuards(t *testing.T) {
 }
 
 // spectrumMags on degenerate records: all-zero, all-max, single spike, tiny.
+// TRLC-LINKS: REQ-SDS-068
 func TestSpectrumMagsDegenerate(t *testing.T) {
 	cases := map[string][]uint8{
 		"all-zero":    make([]uint8, 4096),
@@ -360,6 +370,7 @@ func TestSpectrumMagsDegenerate(t *testing.T) {
 	_ = fmt.Sprint
 }
 
+// TRLC-LINKS: REQ-SDS-068
 func bytesFill(n int, v uint8) []uint8 {
 	b := make([]uint8, n)
 	for i := range b {
@@ -368,6 +379,7 @@ func bytesFill(n int, v uint8) []uint8 {
 	return b
 }
 
+// TRLC-LINKS: REQ-SDS-068
 func spike(n, at int, v uint8) []uint8 {
 	b := make([]uint8, n)
 	b[at] = v

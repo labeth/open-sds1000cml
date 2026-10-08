@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-WEB-EYEJITTER-ANALYSIS
 // eyejitter_analysis.js — edge/UI/jitter analysis + FFT helpers (dual-mode).
 
 // ejEdges extracts all mid-level crossings with hysteresis (±15% of swing) and
@@ -5,6 +6,7 @@
 // or null when the record has no usable swing.
 "use strict";
 
+// TRLC-LINKS: REQ-SDS-199
 function ejEdges(sig, n) {
   // Base/top levels by DUAL HISTOGRAM MODE (IEEE pulse-measurement style): the
   // two dominant population levels, regardless of duty. Percentile levels (the
@@ -58,6 +60,7 @@ function ejEdges(sig, n) {
 // NRZ intervals are k·UI (k = run lengths); seed with a low percentile, then
 // refine by dividing each interval by its nearest integer multiple. Returns
 // UI in samples, or 0 when the intervals don't cluster on a common grid.
+// TRLC-LINKS: REQ-SDS-199
 function ejEstimateUI(t) {
   const d = [];
   for (let i = 1; i < t.length; i++) d.push(t[i] - t[i - 1]);
@@ -66,6 +69,7 @@ function ejEstimateUI(t) {
 
 // ejEstimateUIFromIntervals: the estimator core over a bag of intervals (used
 // per-record and over the cross-record pool for edge-starved signals).
+// TRLC-LINKS: REQ-SDS-199
 function ejEstimateUIFromIntervals(d) {
   if (d.length < 8) return 0;
   const s = [...d].sort((a, b) => a - b);
@@ -94,6 +98,7 @@ function ejEstimateUIFromIntervals(d) {
 // ejFitGrid: 2-pass least-squares fit of edge times to t = t0 + n·UI, n
 // re-derived after the first pass. Returns {t0, ui, tie:[...samples], nIdx:[...]}
 // or null if the fit does not lock (residual too large = not one bit grid).
+// TRLC-LINKS: REQ-SDS-199
 function ejFitGrid(t, ui0) {
   let t0 = t[0], ui = ui0;
   let nIdx = null;
@@ -129,6 +134,7 @@ function ejFitGrid(t, ui0) {
 }
 
 // ---------- FFT (compact radix-2, self-contained for node + browser) ----------
+// TRLC-LINKS: REQ-SDS-199
 function ejFFT(re, im) {
   const n = re.length;
   for (let i = 1, j = 0; i < n; i++) { // bit-reverse permute
@@ -153,8 +159,10 @@ function ejFFT(re, im) {
   }
 }
 
+// TRLC-LINKS: REQ-SDS-199
 function ejPushCapped(arr, v, cap) { if (arr.length < cap) arr.push(v); }
 
+// TRLC-LINKS: REQ-SDS-199
 function ejMedian(a) {
   if (!a.length) return 0;
   const s = [...a].sort((x, y) => x - y);
@@ -167,6 +175,7 @@ function ejMedian(a) {
 // the side modes is nearly empty, for a gaussian it holds ~26% of the samples.
 // Unimodal → DJ = 0, RJ = global MAD·1.4826. Bimodal → DJ = mode separation,
 // RJ = the per-mode spread (each side about its own mode).
+// TRLC-LINKS: REQ-SDS-199
 function ejRjDj(tie) {
   if (tie.length < 200) return { rj: 0, dj: 0, ok: false };
   const s = [...tie].sort((a, b) => a - b);
@@ -191,6 +200,7 @@ function ejRjDj(tie) {
   return { rj: 1.4826 * ((madL + madR) / 2), dj: sep, ok: true };
 }
 
+// TRLC-LINKS: REQ-SDS-199
 function rmsOf(a) {
   if (!a.length) return 0;
   let ss = 0;
@@ -202,9 +212,12 @@ function rmsOf(a) {
 // 2UI fold (edges land at 0/0.5); rails from the center column's density
 // clusters; height = inner gap (0.1% trimmed); width = crossing spread at the
 // mid level around phase 0.5.
+// TRLC-LINKS: REQ-SDS-199
 function ejEyeMetrics(st) {
   const W = st.eyeW, H = st.eyeH;
+  // TRLC-LINKS: REQ-SDS-199
   const colAt = f => Math.min(W - 1, Math.floor(f * W));
+  // TRLC-LINKS: REQ-SDS-199
   const codeOf = y => st.eyeY0 + y * (st.eyeY1 - st.eyeY0) / (H - 1);
   // center column ± a few: cluster into low/high rails about the code midpoint
   const c = colAt(0.75), span = 3;

@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-PANEL
 package panel
 
 import (
@@ -25,6 +26,7 @@ const (
 
 // SetFrameSource wires the latest-frame accessor (fo.WithFrame) so autoset can
 // measure the live signal. Optional — without it, AUTO falls back to plain run.
+// TRLC-LINKS: REQ-SDS-137, REQ-SDS-138, REQ-SDS-139, REQ-SDS-140
 func (c *Controller) SetFrameSource(fn func(func(*engine.Frame))) { c.frameFn = fn }
 
 // autoset is the AUTO button: it starts a background sweep that fits the whole
@@ -32,6 +34,7 @@ func (c *Controller) SetFrameSource(fn func(func(*engine.Frame))) { c.frameFn = 
 // (the LCD shows "AUTOSET…" with that hint). Multi-frame — measuring at the old
 // scale then applying a big scale change never translates (offset/trigger land
 // off-screen), so it settles and RE-MEASURES between steps.
+// TRLC-LINKS: REQ-SDS-137
 func (c *Controller) autoset() {
 	if c.frameFn == nil { // no frame source: best-effort AUTO/run
 		c.norm, c.running = false, true
@@ -56,6 +59,7 @@ func (c *Controller) autoset() {
 	go c.runAutoset(stop)
 }
 
+// TRLC-LINKS: REQ-SDS-137
 func (c *Controller) runAutoset(stop chan struct{}) {
 	defer func() {
 		c.mu.Lock()
@@ -216,7 +220,7 @@ func (c *Controller) runAutoset(stop chan struct{}) {
 			errDiv := c.rawCenterErr(ch) // +ve => trace sits above centre
 			if errDiv > 0.4 || errDiv < -0.4 {
 				snap, _ := c.fe.Snapshot()
-				vdiv := analog.Detents[snap[ch]].VdivV
+				vdiv := analog.AnalogVdiv(snap[ch]) // raw-code divisions are on the analog range
 				c.fe.SetOffset(ch, c.fe.OffsetReqV(ch)-errDiv*vdiv)
 			}
 		}
@@ -268,7 +272,7 @@ func (c *Controller) runAutoset(stop chan struct{}) {
 				errDiv := c.rawCenterErr(ch) // close the loop on centring (as in 3b)
 				if errDiv > 0.4 || errDiv < -0.4 {
 					snap2, _ := c.fe.Snapshot()
-					vdiv := analog.Detents[snap2[ch]].VdivV
+					vdiv := analog.AnalogVdiv(snap2[ch])
 					c.fe.SetOffset(ch, c.fe.OffsetReqV(ch)-errDiv*vdiv)
 					if !c.waitFrame(stop) {
 						return
@@ -328,8 +332,14 @@ func (c *Controller) runAutoset(stop chan struct{}) {
 }
 
 // trigFiring reports whether the comparator fired on most recent captures.
+// TRLC-LINKS: REQ-SDS-137
 func (c *Controller) trigFiring() bool {
 	log, _ := c.eng.AcqLog(4)
+	if c.eng.Snapshot().BandKind == "sram" && c.frameFn != nil {
+		fired := false
+		c.frameFn(func(f *engine.Frame) { fired = f != nil && f.Coherent && f.Trigd })
+		return fired
+	}
 	n := 0
 	for _, e := range log {
 		if e.SawTrig {
@@ -343,6 +353,7 @@ func (c *Controller) trigFiring() bool {
 // range and centres the level on the empirically-firing band. Returns false
 // only when cancelled; a no-fire-anywhere signal keeps the computed code (a
 // quiet or non-repetitive input legitimately never fires — AUTO free-runs).
+// TRLC-LINKS: REQ-SDS-137
 func (c *Controller) verifyTrigLevel(stop chan struct{}, computed uint16) bool {
 	if !c.waitFrame(stop) || !c.waitFrame(stop) {
 		return false
@@ -350,10 +361,9 @@ func (c *Controller) verifyTrigLevel(stop chan struct{}, computed uint16) bool {
 	if c.trigFiring() {
 		return true // the fit was right at this detent — nothing to do
 	}
-	const step = (engine.TrigCodeMax - engine.TrigCodeMin) / 10
 	var fires []uint16
-	for code := engine.TrigCodeMin + step/2; code <= engine.TrigCodeMax-step/2; code += step {
-		c.eng.SetTrigLevelCode(uint16(code))
+	for _, code := range c.trigScanCodes() {
+		c.eng.SetTrigLevelCode(code)
 		if !c.waitFrame(stop) {
 			return false
 		}
@@ -374,6 +384,7 @@ func (c *Controller) verifyTrigLevel(stop chan struct{}, computed uint16) bool {
 
 // waitFrame sleeps ~one publish interval so a frame at the new scale exists,
 // returning false if autoset was cancelled during the wait.
+// TRLC-LINKS: REQ-SDS-137
 func (c *Controller) waitFrame(stop chan struct{}) bool {
 	select {
 	case <-stop:
@@ -386,10 +397,14 @@ func (c *Controller) waitFrame(stop chan struct{}) bool {
 // measureChans reads the latest frame and computes each channel's measurement in
 // tip-referred volts (using the CURRENT V/div + offset), plus whether it holds
 // real signal.
+// TRLC-LINKS: REQ-SDS-137
 func (c *Controller) measureChans() ([2]*measure.Result, bool) {
 	st := c.eng.Snapshot()
 	var m [2]*measure.Result
 	ok := false
+	if c.frameFn == nil {
+		return m, false
+	}
 	c.frameFn(func(f *engine.Frame) {
 		if f == nil || len(f.C1) == 0 || f.IsEnv {
 			return
@@ -420,8 +435,19 @@ func (c *Controller) measureChans() ([2]*measure.Result, bool) {
 				probe = c.fe.ProbeFactor(ch)
 				offV = c.fe.OffsetVolts(ch, off[ch]) // calibrated per-detent zero, not the fixed fallback
 			}
-			vdiv := analog.Detents[idx].VdivV
-			m[ch] = measure.Compute(sig, vdiv/25*probe, offV*probe, f.SampleS)
+			vdiv := analog.AnalogVdiv(idx) // volts per code on the analog range
+			q := f.Q1
+			if ch == 1 {
+				q = f.Q2
+			}
+			if len(q) >= valid {
+				m[ch] = measure.ComputeQ8(q[:valid], vdiv/25*probe, offV*probe, f.SampleS)
+			} else {
+				m[ch] = measure.Compute(sig, vdiv/25*probe, offV*probe, f.SampleS)
+			}
+			if f.PeakDetect {
+				m[ch] = m[ch].WithEnvelopeTiming(sig, vdiv/25*probe, offV*probe, f.SampleS)
+			}
 		}
 	})
 	return m, ok
@@ -432,6 +458,7 @@ func (c *Controller) measureChans() ([2]*measure.Result, bool) {
 // (128 = centre, 25 codes/div). Uses 1%-trimmed rails so a stray spike can't skew it,
 // and the midpoint (not the mean) so duty cycle doesn't matter. Model-independent, so
 // it corrects any offset-DAC calibration drift.
+// TRLC-LINKS: REQ-SDS-137
 func (c *Controller) rawCenterErr(ch int) float64 {
 	var errDiv float64
 	c.frameFn(func(f *engine.Frame) {
@@ -479,6 +506,7 @@ func (c *Controller) rawCenterErr(ch int) float64 {
 // dead) stays railed even after centring; the 3c guard uses this to coarsen onto
 // an attenuated range where the offset works. Model-independent — reads raw ADC
 // codes straight off the latest frame, so it needs no calibration model.
+// TRLC-LINKS: REQ-SDS-137
 func (c *Controller) railing(ch int) bool {
 	railed := false
 	c.frameFn(func(f *engine.Frame) {
@@ -515,12 +543,15 @@ func (c *Controller) railing(ch int) bool {
 // never reach the ADC rail. rawCenterErr is the same model-independent raw-code
 // midpoint read used by step 3b (+ve = above centre), so a legitimately centred
 // full-screen signal reads ≈0 and never false-coarsens.
+// TRLC-LINKS: REQ-SDS-137
 func (c *Controller) offScreen(ch int) bool {
 	return c.railing(ch) || math.Abs(c.rawCenterErr(ch)) > 2.5
 }
 
+// TRLC-LINKS: REQ-SDS-137
 func has(r *measure.Result) bool { return r != nil && r.Vpp > 0.02 }
 
+// TRLC-LINKS: REQ-SDS-137
 func strongerCh(m [2]*measure.Result) int {
 	if has(m[1]) && (!has(m[0]) || m[1].Vpp > m[0].Vpp) {
 		return 1
@@ -529,6 +560,7 @@ func strongerCh(m [2]*measure.Result) int {
 }
 
 // AutosetBusy reports whether an autoset sweep is in progress (for the LCD hint).
+// TRLC-LINKS: REQ-SDS-137
 func (c *Controller) AutosetBusy() bool {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -536,6 +568,7 @@ func (c *Controller) AutosetBusy() bool {
 }
 
 // setVdiv applies a vertical detent and keeps the shadow in sync (guarded).
+// TRLC-LINKS: REQ-SDS-137
 func (c *Controller) setVdiv(ch, idx int) {
 	if c.fe == nil {
 		return
@@ -549,6 +582,7 @@ func (c *Controller) setVdiv(ch, idx int) {
 // setTdivNearest snaps the timebase ladder to the detent nearest target and
 // returns the new band's per-sample seconds (0 if no ladder) so the caller can
 // wait for a frame that ACTUALLY reflects the new band before measuring.
+// TRLC-LINKS: REQ-SDS-137
 func (c *Controller) setTdivNearest(target float64) float64 {
 	if len(c.tdivs) == 0 {
 		return 0
@@ -576,6 +610,7 @@ func (c *Controller) setTdivNearest(target float64) float64 {
 // (autoset landed on the wrong timebase / read a bogus frequency, found by the
 // 1 MHz operator workflow from a slow start). Bounded so autoset never hangs;
 // on timeout it returns true and the caller measures best-effort.
+// TRLC-LINKS: REQ-SDS-137
 func (c *Controller) waitBandFrame(stop chan struct{}, wantSampleS float64) bool {
 	if wantSampleS <= 0 || c.frameFn == nil {
 		return c.waitFrame(stop) // no band info: fall back to the fixed settle
@@ -597,6 +632,13 @@ func (c *Controller) waitBandFrame(stop chan struct{}, wantSampleS float64) bool
 			// A genuine band change moves SampleS by integer decimation factors,
 			// so a 1% window is unambiguous — and since the old band had a
 			// different SampleS, a match here is necessarily a post-change frame.
+			if c.eng.Snapshot().BandKind == "sram" {
+				c.mu.Lock()
+				target := c.tdivs[c.tdivIdx]
+				c.mu.Unlock()
+				matched = f.TdivS > 0 && math.Abs(f.TdivS-target) <= target*0.01
+				return
+			}
 			if f.SampleS > 0 && math.Abs(f.SampleS-wantSampleS) <= wantSampleS*0.01 {
 				matched = true
 			}
@@ -612,6 +654,7 @@ func (c *Controller) waitBandFrame(stop chan struct{}, wantSampleS float64) bool
 // fits Vpp within ~6 divisions — so autoset never lands on a range that clips
 // (a clipped trace measures a too-small Vpp, which would pick an even more
 // sensitive range: a trap). Detents are ascending, so the first that fits wins.
+// TRLC-LINKS: REQ-SDS-137
 func detentForVpp(vpp float64) int {
 	for i := range analog.Detents {
 		if vpp/analog.Detents[i].VdivV <= 6.0 {
@@ -623,6 +666,7 @@ func detentForVpp(vpp float64) int {
 
 // nearestDetent returns the vertical detent index whose V/div is nearest the
 // (electrical, pre-probe) target.
+// TRLC-LINKS: REQ-SDS-137
 func nearestDetent(target float64) int {
 	best, bd := analog.BootDetent, 1e30
 	for i, d := range analog.Detents {
@@ -635,4 +679,27 @@ func nearestDetent(target float64) int {
 		}
 	}
 	return best
+}
+
+// trigScanCodes is verifyTrigLevel's scan: ten levels across the trigger
+// source's screen (-4.5 to +4.5 div about the offset). Ten steps across the
+// fixed 27000-35000 code window were 0.88 V apart, 88 div at 10 mV/div.
+// TRLC-LINKS: REQ-SDS-137
+func (c *Controller) trigScanCodes() []uint16 {
+	src := c.eng.Snapshot().TrigSource & 1
+	vdiv, off, probe := 1.0, 0.0, 1.0
+	if c.fe != nil {
+		idx, _ := c.fe.Snapshot()
+		vdiv, off, probe = analog.Detents[idx[src]].VdivV, c.fe.OffsetReqV(src), c.fe.ProbeFactor(src)
+	}
+	codes := make([]uint16, 0, 10)
+	for i := range 10 {
+		v := (float64(i)-4.5)*vdiv - off // BNC volts at this screen height
+		codeF := 31437 - 911*v
+		if c.fe != nil {
+			codeF = c.fe.TrigCode(v*probe, src)
+		}
+		codes = append(codes, uint16(min(max(math.Round(codeF), engine.TrigCodeMin), engine.TrigCodeMax)))
+	}
+	return codes
 }

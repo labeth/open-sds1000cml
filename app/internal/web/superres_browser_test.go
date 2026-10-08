@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-WEB
 package web
 
 import (
@@ -15,6 +16,7 @@ import (
 // generator emits a noisy sine with random sub-sample trigger jitter — the
 // exact signal class the stacker exists for. Covers arm → accumulate →
 // stats → review (frozen synthetic frame) → model fit → resume live.
+// TRLC-LINKS: REQ-SDS-180
 func TestSuperresBrowser(t *testing.T) {
 	testenv.NeedNode(t)
 	const N = 2048

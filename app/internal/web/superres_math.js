@@ -1,8 +1,10 @@
+// ENGMODEL-OWNER-UNIT: FU-WEB-SUPERRES-MATH
 // superres_math.js — leaf math/util for the stacker (mean/std, clip, crossings, align, gain-offset, srNew).
 
 // srMeanStd returns {mean, std} of arr (population std).
 "use strict";
 
+// TRLC-LINKS: REQ-SDS-019
 function srMeanStd(arr) {
   let s = 0, s2 = 0;
   const n = arr.length;
@@ -14,6 +16,7 @@ function srMeanStd(arr) {
 
 // srClipped mirrors the device's rail calibration: piled samples within 2
 // codes of a rail (low ~6, high ~252) mean the frame is clipping.
+// TRLC-LINKS: REQ-SDS-019
 function srClipped(sig) {
   const n = sig.length;
   let lo = 255, hi = 0;
@@ -27,6 +30,7 @@ function srClipped(sig) {
 // srCrossings returns interpolated sample indices where sig crosses `level`
 // in the given direction (rising: below→at/above). Sub-sample via linear
 // interpolation — the same estimator the engine's edge discern uses.
+// TRLC-LINKS: REQ-SDS-019
 function srCrossings(sig, level, rising) {
   const out = [];
   for (let i = 1; i < sig.length; i++) {
@@ -48,6 +52,7 @@ function srCrossings(sig, level, rising) {
 //          crossing offsets when both traces have enough edges (unbiased for
 //          square-ish signals), else (b) parabolic interpolation of the NCC
 //          peak (fine for smooth/band-limited signals).
+// TRLC-LINKS: REQ-SDS-019
 function srAlign(ref, sig, maxLag, base, wLo, wHi) {
   base = base | 0;
   const n = Math.min(ref.length, sig.length);
@@ -137,6 +142,7 @@ function srAlign(ref, sig, maxLag, base, wLo, wHi) {
 // srMidSwing returns the robust mid-swing level of a trace: the midpoint of
 // the p10/p90 quantiles (sampled with a stride on long records). Unlike the
 // mean, it stays mid-amplitude for any duty cycle.
+// TRLC-LINKS: REQ-SDS-019
 function srMidSwing(sig) {
   const stride = Math.max(1, Math.floor(sig.length / 4096));
   const s = [];
@@ -150,6 +156,7 @@ function srMidSwing(sig) {
 // ref[i]). Fitting unaligned would make the slope the autocorrelation at the
 // lag (g = cos(2π·lag/period) for a sine): a systematic amplitude shrink for
 // short-period signals. Returns {g, b}; callers divide out g and subtract b.
+// TRLC-LINKS: REQ-SDS-019
 function srGainOffset(ref, sig, lag, wLo, wHi) {
   lag = lag | 0;
   const lo = Math.max(wLo == null ? 0 : wLo, -lag);
@@ -173,8 +180,10 @@ function srGainOffset(ref, sig, lag, wLo, wHi) {
 // measures the stacked noise honestly (astro practice): rms((meanA−meanB)/2)
 // includes quantization floor and correlated alignment error, which the
 // naive σ/√cnt would silently assume away.
+// TRLC-LINKS: REQ-SDS-019
 function srNew(n, K) {
   const nbins = n * K;
+  // TRLC-LINKS: REQ-SDS-019
   const chan = () => ({
     sum: new Float64Array(nbins),
     sum2: new Float64Array(nbins),

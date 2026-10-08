@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-WEB
 // Perf regression guard for the superres-view hot path (argv[2]=server URL).
 // Synthesizes a large multi-tone frame (a stand-in for a viewed stack), selects
 // many FFT peaks and turns on the residual, then times a COLD redraw (which must
@@ -22,6 +23,7 @@ try { browser = await chromium.launch({ headless: true, args: ["--no-sandbox"] }
 catch (e) { console.log("SKIP: cannot launch chromium:", e.message); process.exit(0); }
 
 let fails = 0;
+// TRLC-LINKS: REQ-SDS-180
 const ok = (c, m) => { console.log((c ? "ok  - " : "FAIL- ") + m); if (!c) fails++; };
 
 try {
@@ -33,6 +35,9 @@ try {
   // Install a large synthetic "stack" frame: a 12-harmonic comb so detectPeaks
   // finds plenty of real lines, at a fine-grid length like a real K× stack.
   const setup = await page.evaluate(() => {
+    // Freeze before installing the fixture: a pending frame reply must not
+    // replace the large synthetic stack between evaluate calls.
+    frozen = true;
     const M = 655360, TONES = 12;
     const c1 = new Array(M);
     for (let i = 0; i < M; i++) {
@@ -56,23 +61,32 @@ try {
   ok(setup.selected >= 8, `synthetic stack ready: ${setup.selected} tones selected of ${setup.peaks} peaks`);
 
   const r = await page.evaluate(() => {
+    if (frame.c1.length !== 655360 || fftCh[1].sel.length < 8) throw new Error("large selected-tone fixture was replaced before timing");
+    // TRLC-LINKS: REQ-SDS-180
     const once = fn => { const a = performance.now(); fn(); return performance.now() - a; };
     // Force a genuinely COLD state atomically: rendering is now coalesced onto a
     // background rAF (poll-driven), which may have warmed the memos between the
     // two page.evaluate calls. Freeze the poll and invalidate BOTH memos here so
     // the first timed redraw truly recomputes every tone fit.
     frozen = true;
-    compMemo.src = null; compMemo.map.clear();
-    mathMemo = {};
-    const cold = once(() => redraw());              // must fit every selected tone
+    // TRLC-LINKS: REQ-SDS-180
+    const invalidate = () => { compMemo.src = null; compMemo.map.clear(); mathMemo = {}; };
+    // Compare BEST-of-N on both sides, not one cold sample against a warm mean.  A single
+    // cold reading and a mean warm reading are both contaminated by scheduler noise, and on a
+    // loaded machine that swung the ratio across the threshold about one run in three -- the
+    // test failed while memoisation was working perfectly.  Noise only ever ADDS time, so the
+    // minimum of several runs is the stable estimator of each cost.
+    let coldBest = Infinity;
+    for (let i = 0; i < 5; i++) { invalidate(); const d = once(() => redraw()); if (d < coldBest) coldBest = d; }
     let sum = 0, best = Infinity;
     for (let i = 0; i < 6; i++) { const d = once(() => redraw()); sum += d; if (d < best) best = d; }
-    return { cold: +cold.toFixed(1), warm: +(sum / 6).toFixed(1), warmBest: +best.toFixed(1) };
+    return { cold: +coldBest.toFixed(1), warm: +(sum / 6).toFixed(1), warmBest: +best.toFixed(1) };
   });
-  console.log(`  timings: cold=${r.cold}ms warm=${r.warm}ms (best ${r.warmBest}ms)`);
+  console.log(`  timings: cold(best of 5)=${r.cold}ms warm=${r.warm}ms (best ${r.warmBest}ms)`);
 
   // Memoization must make warm redraws dramatically cheaper than the cold fit.
-  ok(r.cold / Math.max(r.warm, 0.1) > 3, `component/math memo active: cold ${r.cold}ms vs warm ${r.warm}ms (>3x faster warm)`);
+  ok(r.cold / Math.max(r.warmBest, 0.1) > 3,
+     `component/math memo active: cold ${r.cold}ms vs warm-best ${r.warmBest}ms (>3x faster warm)`);
   // Absolute backstop: a warm redraw of a viewed stack must stay interactive.
   ok(r.warm < 200, `warm stack redraw stays interactive: ${r.warm}ms < 200ms`);
 

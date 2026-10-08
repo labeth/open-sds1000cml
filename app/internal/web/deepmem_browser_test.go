@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-WEB
 package web
 
 import (
@@ -18,6 +19,7 @@ import (
 // screen centre, like today), the navigator shows the whole record (window is a
 // ~1/3 slice), wheel-zoom-out reaches the full record, dragging pans, and the
 // deep record decodes/FFTs. Device-independent; skips without node/browser (fails under CI_REQUIRE_BROWSER=1).
+// TRLC-LINKS: REQ-SDS-180
 func TestDeepMemBrowser(t *testing.T) {
 	testenv.NeedNode(t)
 	const depth, winCols = 6144, 2048

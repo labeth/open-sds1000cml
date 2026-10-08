@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
 package engine
 
 import (
@@ -8,6 +9,7 @@ import (
 // TestSerialQualifyFuzz hammers serialQualify with hostile SerialParams + frames
 // and asserts it never panics, hangs, or returns an out-of-range anchor. A pure,
 // deterministic PRNG loop (no wall-clock seed) so it is reproducible.
+// TRLC-LINKS: REQ-SDS-013
 func TestSerialQualifyFuzz(t *testing.T) {
 	rng := uint64(0x9e3779b97f4a7c15)
 	next := func() uint64 { rng ^= rng << 13; rng ^= rng >> 7; rng ^= rng << 17; return rng }
@@ -28,14 +30,17 @@ func TestSerialQualifyFuzz(t *testing.T) {
 			bytes[i] = ni(600) - 50 // includes <0 and >255
 		}
 		p := SerialParams{
-			Proto: ni(6) - 1, // -1..4 (out of range included)
-			ChA:   ni(4) - 1, // -1..2
+			Proto: ni(13) - 1, // all ten protocols plus off and unknown IDs
+			ChA:   ni(4) - 1,  // -1..2
 			ChB:   ni(4) - 1,
 			Baud:  ni(500000) - 1000,
 			CPOL:  next()&1 == 0, CPHA: next()&1 == 0, MSB: next()&1 == 0,
 			Addr:  ni(300) - 20, // includes <0 and >127
 			RW:    ni(5) - 1,    // -1..3
 			Bytes: bytes,
+			Bits:  ni(20) - 2, IEEE: next()&1 == 0, Inverted: next()&1 == 0,
+			HaveThr: next()&1 == 0, Threshold: float64(ni(400) - 50),
+			TickNs: float64(ni(10000) - 100), Nibbles: ni(12) - 2, DataBaud: ni(1000000),
 		}
 		e.SetSerialParams(p)
 

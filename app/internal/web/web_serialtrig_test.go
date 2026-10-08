@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-WEB
 package web
 
 import (
@@ -8,6 +9,7 @@ import (
 	"testing"
 )
 
+// TRLC-LINKS: REQ-SDS-162
 func TestSerialTriggerEndpoints(t *testing.T) {
 	fs := &fakeScope{}
 	s := New(fs, nil, nil, nil)
@@ -29,6 +31,16 @@ func TestSerialTriggerEndpoints(t *testing.T) {
 	}
 	if !reflect.DeepEqual(p.Bytes, []int{0xDE, 255, 0}) {
 		t.Fatalf("bytes not clamped: %v", p.Bytes)
+	}
+	for _, tc := range []struct{ proto, bits, max int }{
+		{1, 9, 511}, {4, 16, 65535}, {5, 0, 15}, {7, 0, 65535}, {8, 0, 0x7ffff},
+	} {
+		body, _ = json.Marshal(map[string]any{"proto": tc.proto, "bits": tc.bits, "bytes": []int{tc.max, tc.max + 1, -1}})
+		rec = httptest.NewRecorder()
+		s.Handler().ServeHTTP(rec, httptest.NewRequest("POST", "/api/serial", bytes.NewReader(body)))
+		if rec.Code != 200 || !reflect.DeepEqual(fs.serialParams.Bytes, []int{tc.max, tc.max, 0}) {
+			t.Fatalf("protocol %d lost word width: %v", tc.proto, fs.serialParams.Bytes)
+		}
 	}
 
 	// arm via /api/set

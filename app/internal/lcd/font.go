@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-LCD
 package lcd
 
 // The 5×7 bitmap font (spec 07 §10.0, normative glyph table copied
@@ -7,6 +8,12 @@ package lcd
 
 var glyphs = map[rune][5]byte{
 	' ': {0x00, 0x00, 0x00, 0x00, 0x00}, '!': {0x00, 0x00, 0x5F, 0x00, 0x00},
+	// The rest of printable ASCII, so a decoded text column never drops a byte.
+	'$': {0x24, 0x2A, 0x7F, 0x2A, 0x12}, '&': {0x36, 0x49, 0x55, 0x22, 0x50},
+	';': {0x00, 0x56, 0x36, 0x00, 0x00}, '\\': {0x02, 0x04, 0x08, 0x10, 0x20},
+	'`': {0x00, 0x01, 0x02, 0x04, 0x00}, '{': {0x00, 0x08, 0x36, 0x41, 0x00},
+	'|': {0x00, 0x00, 0x7F, 0x00, 0x00}, '}': {0x00, 0x41, 0x36, 0x08, 0x00},
+	'~': {0x08, 0x04, 0x08, 0x10, 0x08},
 	'"': {0x00, 0x07, 0x00, 0x07, 0x00}, '#': {0x14, 0x7F, 0x14, 0x7F, 0x14},
 	'%': {0x23, 0x13, 0x08, 0x64, 0x62}, '\'': {0x00, 0x05, 0x03, 0x00, 0x00},
 	'(': {0x00, 0x1C, 0x22, 0x41, 0x00}, ')': {0x00, 0x41, 0x22, 0x1C, 0x00},
@@ -52,6 +59,7 @@ var glyphs = map[rune][5]byte{
 }
 
 // TextWidth is len(runes) × 6 × scale.
+// TRLC-LINKS: REQ-SDS-021
 func TextWidth(s string, scale int) int {
 	n := 0
 	for range s {
@@ -61,6 +69,7 @@ func TextWidth(s string, scale int) int {
 }
 
 // DrawText renders each set bit as a scale×scale block; advance 6·scale.
+// TRLC-LINKS: REQ-SDS-021
 func DrawText(sf Surface, x, y int, s string, c uint16, scale int) {
 	for _, r := range s {
 		g, ok := glyphs[r]
@@ -83,6 +92,7 @@ func DrawText(sf Surface, x, y int, s string, c uint16, scale int) {
 }
 
 // DrawTextRight right-aligns: draws ending at xr.
+// TRLC-LINKS: REQ-SDS-021
 func DrawTextRight(sf Surface, xr, y int, s string, c uint16, scale int) {
 	DrawText(sf, xr-TextWidth(s, scale), y, s, c, scale)
 }

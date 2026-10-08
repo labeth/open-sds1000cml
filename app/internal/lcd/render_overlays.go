@@ -1,14 +1,18 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-LCD
 package lcd
 
 import (
 	"fmt"
+	"math"
 	"open-sds/app/internal/decode"
 	"open-sds/app/internal/engine"
+	"strings"
 )
 
 // drawXY plots C1 (x) against C2 (y) — the Lissajous view (parity with the web
 // X-Y mode). Codes 0..255 map across the graticule (x) and up it (y); a stride
 // keeps dense records cheap.
+// TRLC-LINKS: REQ-SDS-021
 func drawXY(sf Surface, f *engine.Frame, hud HUD) {
 	valid := frameValid(f)
 	if len(f.C2) < valid {
@@ -36,6 +40,7 @@ func drawXY(sf Surface, f *engine.Frame, hud HUD) {
 // drawMath overlays the math trace (C1+C2 / C1-C2 / C1×C2) in purple, in code
 // space centred at 128 so it shares the Y-T trace mapping (parity with the web
 // math card).
+// TRLC-LINKS: REQ-SDS-021
 func drawMath(sf Surface, f *engine.Frame, hud HUD, win int, xc, posFrac float64) {
 	valid := frameValid(f)
 	if len(f.C2) < valid {
@@ -68,27 +73,50 @@ func drawMath(sf Surface, f *engine.Frame, hud HUD, win int, xc, posFrac float64
 }
 
 // drawRefs overlays the saved reference waveforms (REF A/B) as dim traces for
-// comparison against the live trace (parity with the web REF A/B). Screen-space
-// snapshots — they align while the timebase/scale are unchanged. A is purple,
-// B is the info tint, so they read apart from the live channels.
-func drawRefs(sf Surface, hud HUD, win int, xc float64, interp bool, posFrac float64) {
-	cols := [2]uint16{colInfo, colDim} // distinct from the purple math trace
+// comparison against the live trace (parity with the web REF A/B). A reference
+// is the screen as saved, one point per column, so it is drawn 1:1 across the
+// screen and aligns while the timebase is unchanged. Its codes are re-read at
+// the live V/div and offset, so it keeps the volts it was saved at. A is the
+// info tint and B dim, distinct from the live channels and the purple math.
+// TRLC-LINKS: REQ-SDS-021, REQ-SDS-138
+func drawRefs(sf Surface, hud HUD) {
+	cols := [2]uint16{colInfo, colDim}
+	live := [2][2]float64{ // per channel: analog V/div, offset volts
+		{hud.C1VdivV * float64(max(hud.Zoom1, 1)), hud.OffC1V},
+		{hud.C2VdivV * float64(max(hud.Zoom2, 1)), hud.OffC2V},
+	}
+	zoom := [2]int{hud.Zoom1, hud.Zoom2}
 	for i := 0; i < 2; i++ {
 		if !hud.RefShow[i] {
 			continue
 		}
-		if r := hud.RefC1[i]; len(r) > 0 {
-			drawTrace(sf, r, win, xc, interp, cols[i], posFrac)
-		}
-		if hud.TwoChan {
-			if r := hud.RefC2[i]; len(r) > 0 {
-				drawTrace(sf, r, win, xc, interp, cols[i], posFrac)
+		for ch, r := range [2][]uint8{hud.RefC1[i], hud.RefC2[i]} {
+			if len(r) == 0 || (ch == 1 && !hud.TwoChan) {
+				continue
 			}
+			codes := r
+			if v := hud.RefVdiv[i][ch]; v > 0 && live[ch][0] > 0 {
+				codes = rescaleRef(r, v, hud.RefOff[i][ch], live[ch][0], live[ch][1])
+			}
+			drawTrace(sf, codes, len(codes), float64(len(codes))/2, false, cols[i], .5, zoom[ch])
 		}
 	}
 }
 
+// rescaleRef re-expresses codes saved at one analog V/div and offset at
+// another: a code reads (code-128)*vdiv/25 - off volts. Off-range clips.
+// TRLC-LINKS: REQ-SDS-021
+func rescaleRef(r []uint8, vdiv, off, toVdiv, toOff float64) []uint8 {
+	k, b := vdiv/toVdiv, (toOff-off)*25/toVdiv
+	out := make([]uint8, len(r))
+	for x, v := range r {
+		out[x] = uint8(math.Round(math.Max(0, math.Min(255, 128+(float64(v)-128)*k+b))))
+	}
+	return out
+}
+
 // decodeColor maps a decode span kind to a display colour.
+// TRLC-LINKS: REQ-SDS-021
 func decodeColor(kind string) uint16 {
 	switch kind {
 	case "start", "stop", "ack":
@@ -107,6 +135,7 @@ func decodeColor(kind string) uint16 {
 // drawDecode runs the protocol decoder on the frame and draws the decoded byte
 // spans in a strip below the trace (parity with the web decode overlay). Only in
 // Y-T; the span sample indices map to screen x through the same trace window.
+// TRLC-LINKS: REQ-SDS-021
 func drawDecode(sf Surface, f *engine.Frame, hud HUD, win int, xc, posFrac float64) {
 	if hud.DecProto == 0 || f == nil {
 		return
@@ -125,7 +154,17 @@ func drawDecode(sf Surface, f *engine.Frame, hud HUD, win int, xc, posFrac float
 	var res decode.Result
 	switch hud.DecProto { // 0=off 1=Auto 2=UART 3=I2C 4=SPI
 	case 1: // Auto: detect protocol / channel roles / sub-settings from the signal
-		res = decode.Autodetect(ch(0), ch(1), f.SampleS, format)
+		// Strided: a full Autodetect of a 500 k-sample screen took 14 s on
+		// the scope's ARM and held the frame all that time.
+		var st float64
+		res, st = decode.AutodetectFast(ch(0), ch(1), f.SampleS, format)
+		if k := int(st/f.SampleS + 0.5); k > 1 {
+			for i := range res.Spans { // back to the frame's sample indices
+				res.Spans[i].I0 *= k
+				res.Spans[i].I1 *= k
+			}
+			res.SPB *= float64(k)
+		}
 	case 2:
 		res = decode.DecodeUART(ch(hud.DecChA), f.SampleS, decode.UARTCfg{Baud: hud.DecBaud, Format: format})
 	case 3:
@@ -180,7 +219,20 @@ func drawDecode(sf Surface, f *engine.Frame, hud HUD, win int, xc, posFrac float
 		DrawText(sf, 10, yLbl, name+": "+res.Error, colStale, 1)
 		return
 	}
-	DrawText(sf, 10, yLbl, fmt.Sprintf("%s  %d bytes", name, len(res.Bytes)), colDim, 1)
+	label := name
+	if hud.DecProto == 1 { // Auto: show what it found, not just which protocol
+		if res.Baud > 0 {
+			if res.Proto == "uart" {
+				label += fmt.Sprintf(" %d Bd", res.Baud)
+			} else {
+				label += " " + strings.TrimSuffix(fmtFreq(float64(res.Baud)), "Hz") + "b/s"
+			}
+		}
+		if res.Src != "" {
+			label += " " + res.Src
+		}
+	}
+	DrawText(sf, 10, yLbl, fmt.Sprintf("%s  %d bytes", label, len(res.Bytes)), colDim, 1)
 	// Map a sample index to screen x via the same window the trace uses.
 	left := xc - float64(win)*posFrac
 	sx := func(s float64) int { return int((s - left) * float64(W) / float64(win)) }
@@ -220,6 +272,7 @@ var colMask = rgb(90, 120, 160)
 // LCD == web == engine test point. The mask band only renders when the frame's
 // window geometry matches the mask (zoom or a band change break the column
 // alignment — the engine skips those frames too).
+// TRLC-LINKS: REQ-SDS-021
 func drawZoneMask(sf Surface, f *engine.Frame, hud HUD, win int, xc, posFrac float64) {
 	if posFrac <= 0 || posFrac > 1 {
 		posFrac = 0.5
@@ -267,6 +320,7 @@ func drawZoneMask(sf Surface, f *engine.Frame, hud HUD, win int, xc, posFrac flo
 // drawMaskHUD paints the mask pass/fail meter (top edge, under the liveness
 // strip) whenever mask testing or the zone trigger is on, plus the panel's
 // build/status line.
+// TRLC-LINKS: REQ-SDS-021
 func drawMaskHUD(sf Surface, hud HUD) {
 	if hud.MaskMode == 0 && hud.MaskMsg == "" && hud.ZoneMode == 0 {
 		return
@@ -300,5 +354,7 @@ func drawMaskHUD(sf Surface, hud HUD) {
 	if hud.MaskFail > 0 || hud.MaskStopped {
 		col = colStale // failures flash the meter red/orange
 	}
-	DrawText(sf, 330, 2, line, col, 1) // top-centre gap: right of "M <tdiv>", left of the trigger readout
+	// Second row, right-aligned under the address: on the top row a status
+	// over ~30 characters ran into the device URL (bench 2026-10-08).
+	DrawTextRight(sf, 664, 14, line, col, 1)
 }

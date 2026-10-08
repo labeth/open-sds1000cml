@@ -3,6 +3,7 @@
 // system portmapper on :111. It is the ONLY LAN SCPI path — no raw :5025
 // socket exists in this contract. The server never touches the GPMC bus;
 // every SCPI line goes to the injected handler (staging setters/snapshots).
+// ENGMODEL-OWNER-UNIT: FU-APP-VXI11SRV
 package vxi11srv
 
 import (
@@ -40,13 +41,16 @@ const (
 	errTimeout = 15
 
 	reasonEND = 0x4
+	flagEND   = 0x8 // device_write: the data ends the message
 
 	maxRecvSize = 0x800000
 )
 
 // Handler executes one complete SCPI line and returns the reply bytes.
+// TRLC-LINKS: REQ-SDS-024
 type Handler func(line []byte) []byte
 
+// TRLC-LINKS: REQ-SDS-024
 type Server struct {
 	h    Handler
 	logf func(string, ...any)
@@ -57,6 +61,7 @@ type Server struct {
 	nextLID   uint32
 }
 
+// TRLC-LINKS: REQ-SDS-024
 type conn struct {
 	c       net.Conn
 	srv     *Server
@@ -67,6 +72,7 @@ type conn struct {
 
 // Start listens on an ephemeral TCP port, optionally registers with the
 // portmapper (register=false for tests), and serves in the background.
+// TRLC-LINKS: REQ-SDS-024
 func Start(h Handler, register bool, logf func(string, ...any)) (*Server, int, error) {
 	ln, err := net.Listen("tcp", ":0")
 	if err != nil {
@@ -83,6 +89,7 @@ func Start(h Handler, register bool, logf func(string, ...any)) (*Server, int, e
 	return s, port, nil
 }
 
+// TRLC-LINKS: REQ-SDS-024
 func (s *Server) acceptLoop() {
 	for {
 		c, err := s.ln.Accept()
@@ -100,6 +107,7 @@ func (s *Server) acceptLoop() {
 // capped at maxRecvSize; the header + payload fit comfortably below this).
 const maxRecord = maxRecvSize + 0x10000
 
+// TRLC-LINKS: REQ-SDS-024
 func readRecord(r io.Reader) ([]byte, error) {
 	var msg []byte
 	for {
@@ -123,6 +131,7 @@ func readRecord(r io.Reader) ([]byte, error) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-024
 func writeRecord(w io.Writer, msg []byte) error {
 	var hdr [4]byte
 	binary.BigEndian.PutUint32(hdr[:], 0x80000000|uint32(len(msg)))
@@ -135,12 +144,14 @@ func writeRecord(w io.Writer, msg []byte) error {
 
 // ---- XDR ----
 
+// TRLC-LINKS: REQ-SDS-024
 type xdr struct {
 	b   []byte
 	off int
 	err bool
 }
 
+// TRLC-LINKS: REQ-SDS-024
 func (x *xdr) u32() uint32 {
 	if x.off+4 > len(x.b) {
 		x.err = true
@@ -151,6 +162,7 @@ func (x *xdr) u32() uint32 {
 	return v
 }
 
+// TRLC-LINKS: REQ-SDS-024
 func (x *xdr) opaque() []byte {
 	n := int(x.u32())
 	// Overflow-safe bound: on the 32-bit ARM target `int` is 32-bit, so
@@ -173,6 +185,7 @@ func (x *xdr) opaque() []byte {
 	return v
 }
 
+// TRLC-LINKS: REQ-SDS-024
 func (x *xdr) skipAuth() {
 	x.u32() // flavor
 	n := int(x.u32())
@@ -187,12 +200,14 @@ func (x *xdr) skipAuth() {
 	x.off += pad
 }
 
+// TRLC-LINKS: REQ-SDS-024
 func putU32(b []byte, v uint32) []byte {
 	var w [4]byte
 	binary.BigEndian.PutUint32(w[:], v)
 	return append(b, w[:]...)
 }
 
+// TRLC-LINKS: REQ-SDS-024
 func putOpaque(b, data []byte) []byte {
 	b = putU32(b, uint32(len(data)))
 	b = append(b, data...)
@@ -204,6 +219,7 @@ func putOpaque(b, data []byte) []byte {
 
 // ---- connection ----
 
+// TRLC-LINKS: REQ-SDS-024
 func (cn *conn) serve() {
 	defer func() {
 		cn.srv.release(cn)
@@ -249,6 +265,7 @@ func (cn *conn) serve() {
 
 // release frees the single link when its TCP connection dies — a dropped
 // client must never wedge the interface (spec 11 §6 trap 1).
+// TRLC-LINKS: REQ-SDS-024
 func (s *Server) release(cn *conn) {
 	s.mu.Lock()
 	if s.linkOwner == cn {
@@ -257,6 +274,7 @@ func (s *Server) release(cn *conn) {
 	s.mu.Unlock()
 }
 
+// TRLC-LINKS: REQ-SDS-024
 func (cn *conn) dispatch(proc uint32, x *xdr) []byte {
 	s := cn.srv
 	switch proc {
@@ -287,7 +305,7 @@ func (cn *conn) dispatch(proc uint32, x *xdr) []byte {
 		lid := x.u32()
 		x.u32() // io_timeout
 		x.u32() // lock_timeout
-		x.u32() // flags (END)
+		flags := x.u32()
 		data := x.opaque()
 		if !cn.owns(lid) || x.err {
 			r := putU32(nil, errInvLink)
@@ -302,6 +320,12 @@ func (cn *conn) dispatch(proc uint32, x *xdr) []byte {
 			line := cn.lineBuf[:i+1]
 			cn.pending = append(cn.pending, s.h(line)...)
 			cn.lineBuf = cn.lineBuf[i+1:]
+		}
+		// END terminates the message (VXI-11 B.6.21) without a newline:
+		// python-vxi11 and other conforming clients send "*IDN?" bare.
+		if flags&flagEND != 0 && len(cn.lineBuf) != 0 {
+			cn.pending = append(cn.pending, s.h(append(cn.lineBuf, '\n'))...)
+			cn.lineBuf = nil
 		}
 		r := putU32(nil, errOK)
 		return putU32(r, uint32(len(data)))
@@ -373,12 +397,14 @@ func (cn *conn) dispatch(proc uint32, x *xdr) []byte {
 	return nil
 }
 
+// TRLC-LINKS: REQ-SDS-024
 func (cn *conn) owns(lid uint32) bool {
 	cn.srv.mu.Lock()
 	defer cn.srv.mu.Unlock()
 	return cn.srv.linkOwner == cn && cn.lid == lid && lid != 0
 }
 
+// TRLC-LINKS: REQ-SDS-024
 func indexByte(b []byte, c byte) int {
 	for i, v := range b {
 		if v == c {
@@ -393,6 +419,7 @@ func indexByte(b []byte, c byte) int {
 // registerPortmap UNSETs any stale DEVICE_CORE mapping and SETs ours. The
 // classic portmapper rejects SET/UNSET from unprivileged source ports, so
 // dial from a local port <1024 (the app runs as root on the device).
+// TRLC-LINKS: REQ-SDS-024
 func registerPortmap(port int, logf func(string, ...any)) error {
 	call := func(proc uint32, prog, vers, prot, prt uint32) error {
 		var c net.Conn

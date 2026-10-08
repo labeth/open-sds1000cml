@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-WEB-APP-CANVAS
 // app_canvas.js — scope + navigator pointer/wheel/drag interactions (classic script; loaded after app.js state).
 
 // ---- scope + navigator pointer / wheel / drag interactions ----
@@ -8,7 +9,7 @@ scope.addEventListener("pointerdown", ev => {
   if (ev.shiftKey && view.mode === "YT" && st && frame) { // Shift+click = set trigger level here
     const vpc = (st.trig_source === 1 ? frame.vpc2 : frame.vpc1) || (1 / 25);
     const volts = (codeAtY(Math.max(0, Math.min(1, ptToNorm(ev).y)), 1) - 128) * vpc;
-    st.trig_volts = volts; $("lvl").value = volts.toFixed(2); $("lvlv").textContent = volts.toFixed(2) + " V";
+    st.trig_volts = volts; $("lvl").value = volts; $("lvlv").textContent = eng(volts, "V");
     send("triglevelcode", trigCodeFor(volts)); redraw();
     return;
   }
@@ -44,6 +45,7 @@ scope.addEventListener("pointerdown", ev => {
   }
   if (view.cursors) {
     const p = ptToNorm(ev);
+    // TRLC-LINKS: REQ-SDS-202
     const near = (a, b) => Math.abs(a - b) < 0.025;
     let drag = null;
     if (near(p.y, cur.v1)) drag = "v1"; else if (near(p.y, cur.v2)) drag = "v2";

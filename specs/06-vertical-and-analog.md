@@ -240,7 +240,7 @@ The offset DAC injects a level shift **ahead of the fine gain stage** — the of
 scaled by V/div:
 
 ```
-code = clamp( round( zero − K · V ) )
+code = clamp( round( zero + K · V ) )
 ```
 
 - `V` = requested offset in volts (input-referred).
@@ -250,8 +250,10 @@ code = clamp( round( zero − K · V ) )
   - **Attenuated tier (V/div ≥ 500 mV):** **K ≈ 100 codes/V**, so a 1.6 V offset is ≈ 156–160 codes,
     constant across every V/div setting in the tier.
   - **Sensitive tier (V/div ≤ 200 mV):** **K ≈ 4392 codes/V** — about 45× steeper.
-- **Inverting:** a *positive* offset yields a *lower* code (the trace moves *up*); `0 V` programs
-  exactly `zero`.
+- **Display offset polarity:** a *positive* offset yields a *higher* code (the trace moves *up*); `0 V` programs
+  exactly `zero`. Live checks on 2026-09-24 at 2 V/div showed that reducing the DAC code by 100
+  moved CH1 down 12.38 ADC counts and CH2 down 13.53 counts. This corrects the earlier inverted
+  sign claim; it does not qualify the sensitive tier.
 
 The V/div dependence is carried entirely by the per-tier calibration **gain** coefficient, which is
 proportional to V/div within a tier. That per-tier gain cancels the V/div term, which is what makes
@@ -379,7 +381,7 @@ required, apply a software low-pass as a fallback.
   untouched channel.
 - **Relay settle.** Wait ~400 µs after a relay emit before the next front-end step; the coarse
   attenuator needs physical settle.
-- **Offset slope is fixed codes-per-volt per tier and input-referred.** `code = clamp(zero − K·V)`,
+- **Offset slope is fixed codes-per-volt per tier and input-referred.** `code = clamp(zero + K·V)`,
   `K` a fixed codes-per-volt within the active V/div tier (≈ 100 codes/V attenuated, ≈ 4392 codes/V
   sensitive) — **not** scaled by V/div. Take `zero` from the calibrated per-tier offset-zero
   (sensitive tier vs attenuated tier) for the active channel; clamp the offset in volts per tier

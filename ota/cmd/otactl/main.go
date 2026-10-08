@@ -13,6 +13,8 @@
 //	otactl -tcp 192.168.1.209:5900 update-app ./app-arm
 //	otactl -tcp 192.168.1.209:5900 update-agent ./agent-arm
 //	otactl power -shelly 192.168.1.223 cycle
+//
+// ENGMODEL-OWNER-UNIT: FU-OTA-OTACTL
 package main
 
 import (
@@ -32,6 +34,7 @@ import (
 	"github.com/nats-io/nats.go"
 )
 
+// TRLC-LINKS: REQ-SDS-109, REQ-SDS-110, REQ-SDS-111, REQ-SDS-112, REQ-SDS-175
 func main() {
 	var (
 		natsURL  = flag.String("nats", envOr("OTA_NATS", ""), "NATS URL (else direct TCP)")
@@ -119,7 +122,18 @@ func main() {
 	case "untakeover":
 		printJSON(mustCall(c, "untakeover", nil, timeout))
 	case "restore-factory":
-		printJSON(mustCall(c, "restore-factory", nil, timeout))
+		// Optional JSON selects what console the vendor UI is launched on, e.g.
+		//   restore-factory '{"console":"/dev/console","setsid":true}'
+		// The default is unchanged.
+		var rfArgs any
+		if len(rest) > 0 && rest[0] != "" {
+			var m map[string]any
+			if err := json.Unmarshal([]byte(rest[0]), &m); err != nil {
+				fatal(fmt.Errorf("restore-factory: args must be JSON: %w", err))
+			}
+			rfArgs = m
+		}
+		printJSON(mustCall(c, "restore-factory", rfArgs, timeout))
 	case "app":
 		if len(rest) == 0 {
 			fatal(fmt.Errorf("app needs start|stop|restart"))
@@ -184,6 +198,7 @@ func main() {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-109, REQ-SDS-175
 func dial(natsURL, tcpAddr, device string) (otactl.Transport, error) {
 	if tcpAddr != "" {
 		return otactl.NewTCP(tcpAddr), nil
@@ -197,6 +212,7 @@ func dial(natsURL, tcpAddr, device string) (otactl.Transport, error) {
 	return nil, fmt.Errorf("no transport: pass -tcp host:port or -nats url -device id")
 }
 
+// TRLC-LINKS: REQ-SDS-111, REQ-SDS-175
 func runServe(rest []string) {
 	fs := flag.NewFlagSet("serve", flag.ExitOnError)
 	host := fs.String("host", "0.0.0.0", "bind host")
@@ -211,6 +227,7 @@ func runServe(rest []string) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-112, REQ-SDS-175
 func runPower(shellyIP string, rest []string) {
 	// Accept -shelly either before the subcommand (global) or after it (local
 	// flagset), so `otactl power -shelly <host> cycle` works as documented.
@@ -256,6 +273,7 @@ func runPower(shellyIP string, rest []string) {
 // — the vendor factory app OR a clean-room app. Validates the VXI-11 client and
 // lets you STOP/resume the factory app non-destructively. A command ending in
 // '?' is treated as a query and its reply printed.
+// TRLC-LINKS: REQ-SDS-175
 func runScpi(host string, args []string, timeout time.Duration) {
 	if host == "" {
 		fatal(fmt.Errorf("scpi needs a device host (pass -tcp <ip>:<port>)"))
@@ -269,7 +287,9 @@ func runScpi(host string, args []string, timeout time.Duration) {
 		fatal(err)
 	}
 	defer cl.Close()
-	if strings.HasSuffix(strings.TrimSpace(cmd), "?") {
+	// A query is any command carrying "?" -- "C1:WF? DAT2" and "WFSU?" alike
+	// (the waveform queries put their arguments after the question mark).
+	if strings.Contains(cmd, "?") {
 		resp, err := cl.Query(cmd)
 		if err != nil {
 			fatal(err)
@@ -286,6 +306,7 @@ func runScpi(host string, args []string, timeout time.Duration) {
 	fmt.Printf("sent: %s\n", cmd)
 }
 
+// TRLC-LINKS: REQ-SDS-175
 func hostOf(addr string) string {
 	if addr == "" {
 		return ""
@@ -296,6 +317,7 @@ func hostOf(addr string) string {
 	return addr
 }
 
+// TRLC-LINKS: REQ-SDS-175
 func runDiscover(natsURL string, timeout time.Duration) {
 	if natsURL == "" {
 		fatal(fmt.Errorf("discover needs -nats"))
@@ -321,6 +343,7 @@ func runDiscover(natsURL string, timeout time.Duration) {
 	fmt.Printf("%d device(s) responded\n", n)
 }
 
+// TRLC-LINKS: REQ-SDS-175
 func runWatch(natsURL, device string) {
 	if natsURL == "" {
 		fatal(fmt.Errorf("watch needs -nats"))
@@ -347,6 +370,7 @@ func runWatch(natsURL, device string) {
 
 // ---- helpers ---------------------------------------------------------------
 
+// TRLC-LINKS: REQ-SDS-109, REQ-SDS-175
 func mustCall(c *otactl.Client, cmd string, args any, timeout time.Duration) json.RawMessage {
 	raw, err := c.Call(cmd, args, timeout)
 	if err != nil {
@@ -358,6 +382,7 @@ func mustCall(c *otactl.Client, cmd string, args any, timeout time.Duration) jso
 	return raw
 }
 
+// TRLC-LINKS: REQ-SDS-175
 func mustRaw(raw json.RawMessage, err error) json.RawMessage {
 	if err != nil {
 		if len(raw) > 0 {
@@ -368,6 +393,7 @@ func mustRaw(raw json.RawMessage, err error) json.RawMessage {
 	return raw
 }
 
+// TRLC-LINKS: REQ-SDS-175
 func printExec(raw json.RawMessage) {
 	var v struct {
 		Exit   int    `json:"exit"`
@@ -381,6 +407,7 @@ func printExec(raw json.RawMessage) {
 	fmt.Printf("[exit %d]\n", v.Exit)
 }
 
+// TRLC-LINKS: REQ-SDS-175
 func printJSON(raw json.RawMessage) {
 	var v any
 	if err := json.Unmarshal(raw, &v); err != nil {
@@ -391,6 +418,7 @@ func printJSON(raw json.RawMessage) {
 	fmt.Println(string(b))
 }
 
+// TRLC-LINKS: REQ-SDS-175
 func compact(b []byte) string {
 	var v any
 	if json.Unmarshal(b, &v) != nil {
@@ -400,6 +428,7 @@ func compact(b []byte) string {
 	return string(out)
 }
 
+// TRLC-LINKS: REQ-SDS-175
 func progressBar(label string) func(done, total int64) {
 	last := -1
 	return func(done, total int64) {
@@ -415,6 +444,7 @@ func progressBar(label string) func(done, total int64) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-175
 func report(out string, err error) {
 	if err != nil {
 		fatal(err)
@@ -422,6 +452,7 @@ func report(out string, err error) {
 	fmt.Println(strings.TrimSpace(out))
 }
 
+// TRLC-LINKS: REQ-SDS-175
 func has(args []string, flag string) bool {
 	for _, a := range args {
 		if a == flag {
@@ -431,6 +462,7 @@ func has(args []string, flag string) bool {
 	return false
 }
 
+// TRLC-LINKS: REQ-SDS-175
 func envOr(key, def string) string {
 	if v := os.Getenv(key); v != "" {
 		return v
@@ -438,11 +470,13 @@ func envOr(key, def string) string {
 	return def
 }
 
+// TRLC-LINKS: REQ-SDS-175
 func fatal(err error) {
 	fmt.Fprintln(os.Stderr, "error:", err)
 	os.Exit(1)
 }
 
+// TRLC-LINKS: REQ-SDS-175
 func usage() {
 	fmt.Fprint(os.Stderr, `otactl — open-sds OTA host controller
 
@@ -469,7 +503,8 @@ COMMANDS
   sh <script...>            run a /bin/sh script on the device
   takeover [--dry-run|--force]   inherit-then-kill the factory app
   untakeover                release control (clear taken_over + disarm wd)
-  restore-factory           re-launch the vendor app in place (post-test)
+  restore-factory [json]    re-launch the vendor app in place (post-test); optional
+                            {"console":"/dev/console","setsid":true,"inherit":true,"no_pgid":true}
   scpi <cmd>                raw VXI-11 SCPI to the instrument (e.g. scpi "*IDN?")
   app start|stop|restart    app lifecycle (after takeover)
   activate <A|B>            set active app slot + restart

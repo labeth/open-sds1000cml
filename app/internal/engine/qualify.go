@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
 package engine
 
 // Trigger qualifiers (spec 05, spec 03 §7): PULSE (GLIT), SLOPE (SLEW) and
@@ -8,6 +9,7 @@ package engine
 // min/max span (band- and V/div-independent).
 
 // TrigType selects the discrimination pipeline.
+// TRLC-LINKS: REQ-SDS-011
 type TrigType int
 
 const (
@@ -28,6 +30,7 @@ const (
 )
 
 // trigParams is the staged qualifier parameter set (command mutex).
+// TRLC-LINKS: REQ-SDS-011
 type trigParams struct {
 	typ TrigType
 
@@ -47,6 +50,7 @@ type trigParams struct {
 	videoNeg  bool
 }
 
+// TRLC-LINKS: REQ-SDS-011
 func defaultTrigParams() trigParams {
 	return trigParams{
 		typ:          TrigEdge,
@@ -56,6 +60,7 @@ func defaultTrigParams() trigParams {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-011
 func condOK(m, min, max float64, cond int) bool {
 	switch cond {
 	case CondLess:
@@ -69,11 +74,44 @@ func condOK(m, min, max float64, cond int) bool {
 	}
 }
 
+// anchorSpan says where a qualifier may anchor: the candidate nearest
+// target wins, and only candidates in [lo, hi] count - the indices around
+// which the recalled window still fills a whole screen. Anchoring outside it
+// shifted the trace by up to a screen and padded the rest flat (bench
+// 2026-10-06, pulse trigger at trigger position 0.2/0.8).
+type anchorSpan struct{ target, lo, hi int }
+
+// centreAnchor is the band pipeline's rule: nearest the frame centre, anywhere.
+// TRLC-LINKS: REQ-SDS-011
+func centreAnchor(n int) anchorSpan { return anchorSpan{target: n / 2, lo: 0, hi: n} }
+
+// TRLC-LINKS: REQ-SDS-011
+func (a anchorSpan) holds(i int) bool { return i >= a.lo && i <= a.hi }
+
+// closer reports whether i is an allowed anchor nearer the target than best,
+// and if so records its distance in best.
+// TRLC-LINKS: REQ-SDS-011
+func (a anchorSpan) closer(i int, best *int) bool {
+	if !a.holds(i) {
+		return false
+	}
+	d := i - a.target
+	if d < 0 {
+		d = -d
+	}
+	if d >= *best {
+		return false
+	}
+	*best = d
+	return true
+}
+
 // flatReject is the qualifier preamble's no-event gate: a span under 40
 // codes is a rail — never fabricate an event from noise crossings.
 const flatRejectSpan = 40
 
 // crossFrac interpolates the sub-sample position of a crossing at index c.
+// TRLC-LINKS: REQ-SDS-011
 func crossFrac(disc []uint8, c, lvl int) float64 {
 	a, b := int(disc[c-1]), int(disc[c])
 	frac := 0.0
@@ -90,7 +128,13 @@ func crossFrac(disc []uint8, c, lvl int) float64 {
 // level between a rising entry and the next falling exit); false mirrored.
 // The anchor is the COMPLETING edge of the qualifying pulse nearest the
 // frame centre — only when the pulse completes is its width known.
+// TRLC-LINKS: REQ-SDS-011
 func qualifyPulse(disc []uint8, intervalNs float64, p trigParams, rising bool) float64 {
+	return qualifyPulseAt(disc, intervalNs, p, rising, centreAnchor(len(disc)))
+}
+
+// TRLC-LINKS: REQ-SDS-011
+func qualifyPulseAt(disc []uint8, intervalNs float64, p trigParams, rising bool, at anchorSpan) float64 {
 	n := len(disc)
 	mn, mx, span := ptp(disc)
 	if span < flatRejectSpan {
@@ -118,12 +162,7 @@ func qualifyPulse(disc []uint8, intervalNs float64, p trigParams, rising bool) f
 		if exiting && enter >= 0 {
 			widthNs := float64(c-enter) * intervalNs
 			if condOK(widthNs, p.pulseWMinNs, p.pulseWMaxNs, p.pulseCond) {
-				d := c - n/2
-				if d < 0 {
-					d = -d
-				}
-				if d < bestDist {
-					bestDist = d
+				if at.closer(c, &bestDist) {
 					bestX = crossFrac(disc, c, lvl)
 				}
 			}
@@ -136,7 +175,13 @@ func qualifyPulse(disc []uint8, intervalNs float64, p trigParams, rising bool) f
 // qualifySlope (spec 05: SLEW): a monotone lo→hi (rising) or hi→lo
 // (falling) traversal whose time qualifies. Anchor = the second-threshold
 // crossing nearest the frame centre.
+// TRLC-LINKS: REQ-SDS-011
 func qualifySlope(disc []uint8, intervalNs float64, p trigParams, rising bool) float64 {
+	return qualifySlopeAt(disc, intervalNs, p, rising, centreAnchor(len(disc)))
+}
+
+// TRLC-LINKS: REQ-SDS-011
+func qualifySlopeAt(disc []uint8, intervalNs float64, p trigParams, rising bool, at anchorSpan) float64 {
 	n := len(disc)
 	mn, _, span := ptp(disc)
 	if span < flatRejectSpan {
@@ -178,12 +223,7 @@ func qualifySlope(disc []uint8, intervalNs float64, p trigParams, rising bool) f
 				if int(disc[k-1]) < second && v >= second {
 					tNs := float64(k-c) * intervalNs
 					if condOK(tNs, p.slopeTMinNs, p.slopeTMaxNs, p.slopeCond) {
-						d := k - n/2
-						if d < 0 {
-							d = -d
-						}
-						if d < bestDist {
-							bestDist = d
+						if at.closer(k, &bestDist) {
 							bestX = crossFrac(disc, k, second)
 						}
 					}
@@ -196,12 +236,7 @@ func qualifySlope(disc []uint8, intervalNs float64, p trigParams, rising bool) f
 				if int(disc[k-1]) > second && v <= second {
 					tNs := float64(k-c) * intervalNs
 					if condOK(tNs, p.slopeTMinNs, p.slopeTMaxNs, p.slopeCond) {
-						d := k - n/2
-						if d < 0 {
-							d = -d
-						}
-						if d < bestDist {
-							bestDist = d
+						if at.closer(k, &bestDist) {
 							bestX = crossFrac(disc, k, second)
 						}
 					}
@@ -218,7 +253,13 @@ func qualifySlope(disc []uint8, intervalNs float64, p trigParams, rising bool) f
 // the selected line's sync edge. Only all-lines (line=0) and line-N exist;
 // odd/even field discrimination is NOT implementable here (needs a full
 // video frame in the record) and must never silently mis-trigger.
+// TRLC-LINKS: REQ-SDS-011
 func qualifyVideo(disc []uint8, p trigParams) float64 {
+	return qualifyVideoAt(disc, p, centreAnchor(len(disc)))
+}
+
+// TRLC-LINKS: REQ-SDS-011
+func qualifyVideoAt(disc []uint8, p trigParams, at anchorSpan) float64 {
 	n := len(disc)
 	mn, mx, span := ptp(disc)
 	if span < flatRejectSpan {
@@ -255,15 +296,13 @@ func qualifyVideo(disc []uint8, p trigParams) float64 {
 		}
 		count++
 		if line == 0 {
-			d := c - n/2
-			if d < 0 {
-				d = -d
-			}
-			if d < bestDist {
-				bestDist = d
+			if at.closer(c, &bestDist) {
 				bestX = crossFrac(disc, c, syncLvl)
 			}
 		} else if count == line {
+			if !at.holds(c) {
+				return -1 // the line's sync falls where a screen cannot be filled
+			}
 			return crossFrac(disc, c, syncLvl)
 		}
 	}

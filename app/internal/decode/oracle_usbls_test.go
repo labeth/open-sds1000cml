@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-DECODE
 package decode
 
 // USB low-speed vs the sigrok usb_signalling + usb_packet decoder stack.
@@ -29,6 +30,7 @@ const usblsBitrate = 1_500_000 // USB low-speed is fixed at 1.5 Mbit/s
 
 // usblsLSB expands v into n bits, LSB first — USB transmits every multi-bit
 // field least-significant bit first.
+// TRLC-LINKS: REQ-SDS-018
 func usblsLSB(v, n int) []int {
 	out := make([]int, n)
 	for i := 0; i < n; i++ {
@@ -40,6 +42,7 @@ func usblsLSB(v, n int) []int {
 // usblsRev reverses the low `count` bits of num — ported from usb_packet
 // pd.py's reverse_number, which maps the CRC shift register onto the LSB-first
 // wire order.
+// TRLC-LINKS: REQ-SDS-018
 func usblsRev(num, count int) int {
 	out := 0
 	for i := 0; i < count; i++ {
@@ -54,6 +57,7 @@ func usblsRev(num, count int) int {
 // calc_crc16: bit-serial over the transmission-order bits, complemented and
 // bit-reversed so the result compares directly against the LSB-first-decoded
 // CRC field. (usblsCRC5(addr=0x15, ep=0xE bits) == 0x17, the USB spec example.)
+// TRLC-LINKS: REQ-SDS-018
 func usblsCRC5(bits []int) int {
 	crc := 0x1F
 	for _, b := range bits {
@@ -66,6 +70,7 @@ func usblsCRC5(bits []int) int {
 	return usblsRev(crc^0x1F, 5)
 }
 
+// TRLC-LINKS: REQ-SDS-018
 func usblsCRC16(bits []int) int {
 	crc := 0xFFFF
 	for _, b := range bits {
@@ -80,6 +85,7 @@ func usblsCRC16(bits []int) int {
 
 // usblsByteBits expands bytes to the LSB-first wire bit stream (the domain of
 // usblsCRC16).
+// TRLC-LINKS: REQ-SDS-018
 func usblsByteBits(data []int) []int {
 	var bits []int
 	for _, d := range data {
@@ -90,6 +96,7 @@ func usblsByteBits(data []int) []int {
 
 // usblsTokenBits builds the 16 post-PID bits of an OUT/IN/SETUP token:
 // ADDR(7) + ENDP(4) + CRC5(5), each LSB first.
+// TRLC-LINKS: REQ-SDS-018
 func usblsTokenBits(addr, ep int) []int {
 	bits := append(usblsLSB(addr, 7), usblsLSB(ep, 4)...)
 	return append(bits, usblsLSB(usblsCRC5(bits), 5)...)
@@ -98,6 +105,7 @@ func usblsTokenBits(addr, ep int) []int {
 // usblsDataBits builds the post-PID bits of a DATA packet: payload bytes +
 // CRC16, LSB first. crcXor corrupts the TRANSMITTED CRC without touching the
 // payload, so both decoders must still deliver the bytes and flag the check.
+// TRLC-LINKS: REQ-SDS-018
 func usblsDataBits(data []int, crcXor int) []int {
 	bits := usblsByteBits(data)
 	return append(bits, usblsLSB(usblsCRC16(bits)^crcXor, 16)...)
@@ -105,6 +113,7 @@ func usblsDataBits(data []int, crcXor int) []int {
 
 // usblsPacketBits assembles one packet's logical bit stream — SYNC (00000001)
 // + PID byte (4-bit PID + its complement) + payload bits — then bit-stuffs it.
+// TRLC-LINKS: REQ-SDS-018
 func usblsPacketBits(pid int, payload []int) []int {
 	return usblsPacketBitsRawPID((pid&0xF)|((^pid&0xF)<<4), payload)
 }
@@ -114,6 +123,7 @@ func usblsPacketBits(pid int, payload []int) []int {
 // stream is bit-stuffed: a 0 is inserted after six consecutive 1s, with the
 // ones count carried across field boundaries from the SYNC onward (its
 // trailing 1 counts), exactly as sigrok's usb_signalling expects.
+// TRLC-LINKS: REQ-SDS-018
 func usblsPacketBitsRawPID(pidByte int, payload []int) []int {
 	bits := []int{0, 0, 0, 0, 0, 0, 0, 1} // SYNC
 	bits = append(bits, usblsLSB(pidByte&0xFF, 8)...)
@@ -138,6 +148,7 @@ func usblsPacketBitsRawPID(pidByte int, payload []int) []int {
 // from idle J (a 0 bit toggles J<->K, a 1 holds), EOP = 2 bit-times SE0 + 1
 // bit-time J, then gapBits of idle J between packets. Two lockstep timelines
 // keep dp/dm sample-aligned even at fractional samples-per-bit.
+// TRLC-LINKS: REQ-SDS-018
 func oracleUSBLSWave(sr float64, packets [][]int, gapBits float64) (dp, dm []byte) {
 	bt := 1.0 / usblsBitrate
 	wp, wm := newTimeline(sr), newTimeline(sr)
@@ -175,6 +186,7 @@ func oracleUSBLSWave(sr float64, packets [][]int, gapBits float64) (dp, dm []byt
 // spacing is ~1500 bit-times; the test uses a smaller one to keep the vector
 // small — the estimator failure mode this guards (gap-COUNT flooding of a
 // percentile) is spacing-independent.
+// TRLC-LINKS: REQ-SDS-018
 func oracleUSBLSWaveKA(sr float64, nKA int, kaGapBits float64, packets [][]int, gapBits float64) (dp, dm []byte) {
 	bt := 1.0 / usblsBitrate
 	wp, wm := newTimeline(sr), newTimeline(sr)
@@ -212,6 +224,7 @@ func oracleUSBLSWaveKA(sr float64, nKA int, kaGapBits float64, packets [][]int, 
 
 // usblsSigrok runs the stacked usb_signalling->usb_packet decode for one
 // usb_packet annotation class.
+// TRLC-LINKS: REQ-SDS-018
 func usblsSigrok(t *testing.T, sr int, dp, dm []byte, class string) []ann {
 	t.Helper()
 	return sigrokDecode(t, sr, []string{"DP", "DM"}, [][]byte{dp, dm},
@@ -220,6 +233,7 @@ func usblsSigrok(t *testing.T, sr int, dp, dm []byte, class string) []ann {
 }
 
 // usblsSignalling fetches one usb_signalling (not usb_packet) annotation class.
+// TRLC-LINKS: REQ-SDS-018
 func usblsSignalling(t *testing.T, sr int, dp, dm []byte, class string) []ann {
 	t.Helper()
 	return sigrokDecode(t, sr, []string{"DP", "DM"}, [][]byte{dp, dm},
@@ -229,6 +243,7 @@ func usblsSignalling(t *testing.T, sr int, dp, dm []byte, class string) []ann {
 
 // usblsAnnNum strips a fixed prefix (and any 0x) from each annotation text and
 // parses the remainder in the given base — "Address: 21" / "CRC16: 0xA917".
+// TRLC-LINKS: REQ-SDS-018
 func usblsAnnNum(t *testing.T, anns []ann, prefix string, base int) []int {
 	t.Helper()
 	out := make([]int, 0, len(anns))
@@ -248,6 +263,7 @@ func usblsAnnNum(t *testing.T, anns []ann, prefix string, base int) []int {
 }
 
 // usblsPIDs strips "PID: " from sigrok's pid annotations.
+// TRLC-LINKS: REQ-SDS-018
 func usblsPIDs(t *testing.T, anns []ann) []string {
 	t.Helper()
 	out := make([]string, 0, len(anns))
@@ -263,12 +279,14 @@ func usblsPIDs(t *testing.T, anns []ann) []string {
 
 // usblsRepoPkt is one packet reassembled from the repo decoder's span stream:
 // the PID name plus every post-PID byte (token fields / payload / CRC raw).
+// TRLC-LINKS: REQ-SDS-018
 type usblsRepoPkt struct {
 	name  string
 	bytes []int
 	i0s   []int // start sample of each byte's span, for alignment checks
 }
 
+// TRLC-LINKS: REQ-SDS-018
 func usblsRepoPackets(r Result) []usblsRepoPkt {
 	var out []usblsRepoPkt
 	for _, s := range r.Spans {
@@ -292,6 +310,7 @@ func usblsRepoPackets(r Result) []usblsRepoPkt {
 
 // usblsTokenFields undoes the repo's LSB-first byte packing of a token's 16
 // post-PID bits: bits 0..6 ADDR, 7..10 ENDP, 11..15 CRC5.
+// TRLC-LINKS: REQ-SDS-018
 func usblsTokenFields(t *testing.T, p usblsRepoPkt) (addr, ep, crc5 int) {
 	t.Helper()
 	if len(p.bytes) != 2 {
@@ -305,6 +324,7 @@ func usblsTokenFields(t *testing.T, p usblsRepoPkt) (addr, ep, crc5 int) {
 // (little-endian trailing bytes) and reports whether the CRC checks out — the
 // repo decoder exposes raw bytes, not a verdict, so the verdict is recomputed
 // here from repo output alone and compared against sigrok's crc16-ok/err.
+// TRLC-LINKS: REQ-SDS-018
 func usblsRepoCRC16(t *testing.T, p usblsRepoPkt) (payload []int, crc int, ok bool) {
 	t.Helper()
 	if len(p.bytes) < 2 {
@@ -316,6 +336,7 @@ func usblsRepoCRC16(t *testing.T, p usblsRepoPkt) (payload []int, crc int, ok bo
 	return payload, crc, crc == usblsCRC16(usblsByteBits(payload))
 }
 
+// TRLC-LINKS: REQ-SDS-018
 func TestOracleUSBLS(t *testing.T) {
 	needSigrok(t)
 	const sr = 24_000_000 // 16 samples/bit at 1.5 Mbit/s

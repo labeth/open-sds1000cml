@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-DECODE
 package decode
 
 import (
@@ -27,6 +28,7 @@ import (
 
 // padHigh wraps a synthesized wave in extra idle-high samples (SENT idles high),
 // simulating a real capture that does not begin exactly on a frame.
+// TRLC-LINKS: REQ-SDS-018
 func padHigh(w []uint8, before, after int) []uint8 {
 	out := make([]uint8, 0, before+len(w)+after)
 	for i := 0; i < before; i++ {
@@ -40,6 +42,7 @@ func padHigh(w []uint8, before, after int) []uint8 {
 }
 
 // sentSpanCounts tallies span kinds in a Result.
+// TRLC-LINKS: REQ-SDS-018
 func sentSpanCounts(r Result) (nSync, nData, nCRC, nFerr, nPause int) {
 	for _, s := range r.Spans {
 		switch s.Kind {
@@ -59,6 +62,7 @@ func sentSpanCounts(r Result) (nSync, nData, nCRC, nFerr, nPause int) {
 }
 
 // buildFrame makes one nib-nibble frame with a correct trailing CRC-4 nibble.
+// TRLC-LINKS: REQ-SDS-018
 func buildFrame(rng *rand.Rand, nib int) []int {
 	nibs := make([]int, nib)
 	for i := range nibs {
@@ -70,6 +74,7 @@ func buildFrame(rng *rand.Rand, nib int) []int {
 	return nibs
 }
 
+// TRLC-LINKS: REQ-SDS-018
 func TestBreakSent(t *testing.T) {
 	// =========================================================================
 	// CLASS 1 — FALSE NEGATIVES: >=50 fully VALID frames must decode exactly.

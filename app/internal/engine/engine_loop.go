@@ -1,8 +1,9 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
 package engine
 
 import (
 	"math"
-	"open-sds/app/internal/bus"
+	"open-sds/app/internal/iface"
 	"runtime"
 	"runtime/debug"
 	"time"
@@ -12,6 +13,7 @@ import (
 // touches the Bus. A panic is contained: logged, marked wedged, owner parks
 // (no process exit — a fast crash-loop would trigger slot rollback, and the
 // inherited fd must survive).
+// TRLC-LINKS: REQ-SDS-001, REQ-SDS-004, REQ-SDS-006, REQ-SDS-008, REQ-SDS-010
 func (e *Engine) Run() {
 	defer close(e.done)
 	defer func() {
@@ -28,16 +30,24 @@ func (e *Engine) Run() {
 		}
 	}()
 
-	if v, err := e.b.Read(bus.PlaneCS1, selVersion); err != nil || v != bus.VersionMagic {
-		e.logf("engine: version gate failed (v=%#04x err=%v) — refusing to drive", v, err)
+	if e.sram != nil {
+		e.runSRAM()
+		return
+	}
+	if err := e.checkIdentity(); err != nil {
+		// Not the default image: refuse to drive, but keep servicing Exec so
+		// the diagnostic block can still read the fabric (bring-up).
+		e.logf("engine: identity gate failed (%v) — refusing to drive; diag Exec stays serviced", err)
 		e.mu.Lock()
 		e.stats.Wedged = true
 		e.mu.Unlock()
 		for !e.stopReq.Load() {
+			e.serviceExec()
 			e.clk.Sleep(100 * time.Millisecond)
 		}
 		return
 	}
+	e.logf("engine: fabric identity verified (build-ID %#08x); panel key matrix not present on this image — physical buttons inactive, /api/panel + SCPI remain", iface.BuildID)
 
 	e.bringUp()
 	e.lastNorm = e.normNow()
@@ -127,12 +137,14 @@ func (e *Engine) Run() {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-011
 func (e *Engine) normNow() bool {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	return e.norm
 }
 
+// TRLC-LINKS: REQ-SDS-025
 func (e *Engine) bumpFrames() {
 	e.beatN.Add(1)
 	e.mu.Lock()
@@ -141,6 +153,7 @@ func (e *Engine) bumpFrames() {
 }
 
 // oneFrame runs one arm→wait→halt→drain→re-arm→publish iteration.
+// TRLC-LINKS: REQ-SDS-007, REQ-SDS-009, REQ-SDS-011, REQ-SDS-012, REQ-SDS-013, REQ-SDS-014, REQ-SDS-126, REQ-SDS-128
 func (e *Engine) oneFrame(norm bool) {
 	start := e.clk.Now()
 	if e.hintReset.Swap(false) {
@@ -198,7 +211,7 @@ func (e *Engine) oneFrame(norm bool) {
 	} else {
 		e.drain(f, cols)
 	}
-	e.frameTail() // reference-device frame completion: re-trigger strobe before any re-arm
+	haltOK = haltOK && e.lastDrainN == cols // a short record is not a coherent frame
 	// Native-fast RE-CAPTURE. The HW intermittently freezes only the pre-trigger
 	// HALF of the deep record (valid_depth ~cols/2, a flat dead tail after) on ~40%
 	// of frames — proven inherent to the capture, independent of load, the bus
@@ -231,7 +244,6 @@ func (e *Engine) oneFrame(norm bool) {
 		}
 		e.haltSettle(nativeFast)
 		e.drainQuiet(f, cols)
-		e.frameTail()
 		loC1, hiC1, pC1 = ptp(f.C1[:cols])
 		rd = realDepthP(f.C1[:cols], pC1)
 	}
@@ -409,19 +421,25 @@ func (e *Engine) oneFrame(norm bool) {
 		edgeX = -1
 		f.Trigd = false
 		e.flatHeld = 0
-	case nativeFast && !norm && !qualifier && !sawTrig:
-		// AUTO native-fast, comparator did NOT fire within the budget (untriggered): FREE RUN a
-		// live refresh at the record centre (spec 04 §3 routing + §11) instead of holding. This
-		// is the different technique the ≤200 ns bands need — there the record spans ≪ one
-		// period so the edge rarely aligns and a catch-and-HOLD would freeze (the ~0 fps case);
-		// it keeps any quiet native-fast screen live at ~20 fps. Uncentred (EdgeX = -1, the
-		// record centre where a caught edge is HW-positioned): no software anchor on noise.
+	case nativeFast && !norm && !qualifier && (!sawTrig || !sigPresent):
+		// AUTO native-fast, comparator did NOT fire within the budget (untriggered), or it fired
+		// on a flat screen (a mid-scale level sitting inside the noise of a DC input fires the
+		// comparator every record while the edge finder sees nothing: HW-verified with the
+		// calibrated default image, 0 fps for a 3-code-ptp DC trace): FREE RUN a live refresh at
+		// the record centre (spec 04 §3 routing + §11) instead of holding. This is the different
+		// technique the ≤200 ns bands need — there the record spans ≪ one period so the edge
+		// rarely aligns and a catch-and-HOLD would freeze (the ~0 fps case); it keeps any quiet
+		// native-fast screen live at ~20 fps. Uncentred (EdgeX = -1, the record centre where a
+		// caught edge is HW-positioned): no software anchor on noise, and a comparator firing
+		// on noise is not a trigger (Trigd = false).
 		publish = true
 		edgeX = -1
+		f.Trigd = false
 		e.flatHeld = 0
 	case (nativeFast || !norm) && !qualifier && !sigPresent:
 		// NORM native-fast flat (trigger-hold with an honest 60-frame refresh), or AUTO
 		// decimated flat: publish one honest flat capture every nativeFlatFallbck held frames.
+		// (AUTO native-fast flat free-runs in the case above and never reaches here.)
 		e.flatHeld++
 		if e.flatHeld >= nativeFlatFallbck {
 			edgeX = -1 // one honest flat capture; never fabricate an edge
@@ -626,6 +644,7 @@ func (e *Engine) oneFrame(norm bool) {
 		e.arena.Publish()
 		e.mu.Lock()
 		e.stats.Published++
+		e.lastPublish = e.clk.Now()
 		e.stats.Seq = e.seq
 		e.lastPubAt = e.clk.Now()
 		e.pubTimes = append(e.pubTimes, e.lastPubAt)
@@ -670,6 +689,7 @@ func (e *Engine) oneFrame(norm bool) {
 // NORM keeps the fill advancing; a dead bus does not. A frozen SMALL fill at
 // a decimated band cannot be counter saturation (a saturated counter would
 // have set the filled gate), so it is certain wedge evidence.
+// TRLC-LINKS: REQ-SDS-011, REQ-SDS-128
 func (e *Engine) holdFrame(fillMoved, norm bool) {
 	e.mu.Lock()
 	e.stats.Held++
@@ -683,6 +703,7 @@ func (e *Engine) holdFrame(fillMoved, norm bool) {
 
 // pace enforces the ~50 ms frame-period floor (spec 03 §5.3): faster starves
 // the single shared ARM core and lowers delivered fps.
+// TRLC-LINKS: REQ-SDS-008
 func (e *Engine) pace(start time.Time) {
 	if d := time.Duration(e.framePeriodNs.Load()) - e.clk.Now().Sub(start); d > 0 {
 		e.sleepBeating(d)

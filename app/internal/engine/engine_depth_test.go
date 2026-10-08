@@ -1,10 +1,13 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
 package engine
 
 import "testing"
 
+// TRLC-LINKS: REQ-SDS-008, REQ-SDS-009
 func TestMemDepth(t *testing.T) {
 	// The configurable decimated drain depth (fps↔data): a deeper setting drains
-	// more samples per frame. Clamped to [decimWin, deepRecord].
+	// more samples per frame. Clamped to [decimWin, maxRecordCols] — the
+	// fabric finalizes at most PRETRIG_MAX words, never the physical depth.
 	fb := newFakeBus()
 	e, _ := newTestEngine(t, fb)
 	if got := e.SetMemDepth(14336); got != 14336 {
@@ -15,28 +18,35 @@ func TestMemDepth(t *testing.T) {
 	if f, _ := e.Consume(); f.Valid != 14336 {
 		t.Fatalf("deep drain: Valid=%d, want 14336", f.Valid)
 	}
-	if got := e.SetMemDepth(999999); got != deepRecord {
-		t.Fatalf("clamp high = %d, want %d", got, deepRecord)
+	if got := e.SetMemDepth(999999); got != maxRecordCols {
+		t.Fatalf("clamp high = %d, want %d", got, maxRecordCols)
 	}
 	if got := e.SetMemDepth(10); got != decimWin {
 		t.Fatalf("clamp low = %d, want %d", got, decimWin)
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-009, REQ-SDS-011
 func TestSingleForcesFullDepth(t *testing.T) {
 	// A SINGLE capture ignores the shallow mem-depth setting and drains the FULL
-	// deep record — the one frame you keep carries everything to zoom into.
+	// record — the one frame you keep carries everything to zoom into. The
+	// record asked for must be one the fabric finalizes whole: no short drain.
 	fb := newFakeBus()
 	e, _ := newTestEngine(t, fb)
 	e.SetMemDepth(decimWin) // shallowest
 	e.SetSingle()
 	e.bringUp()
 	e.oneFrame(false)
-	if f, _ := e.Consume(); f.Valid != deepRecord {
-		t.Fatalf("SINGLE drain: Valid=%d, want deepRecord %d", f.Valid, deepRecord)
+	if f, _ := e.Consume(); f.Valid != maxRecordCols || !f.Coherent {
+		t.Fatalf("SINGLE drain: Valid=%d coherent=%v, want %d/true", f.Valid, f.Coherent, maxRecordCols)
+	}
+	if s := e.Snapshot(); s.ShortDrains != 0 {
+		t.Fatalf("SINGLE drain asked the fabric for more than it finalizes: %d short drains (pre=%d post=%d)",
+			s.ShortDrains, fb.pre, fb.post)
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-009
 func TestStreamMode(t *testing.T) {
 	// Stitched streaming: SetStreamMode forces the deep record + un-paces, and
 	// stitchFrame publishes EVERY window raw + edge-agnostic with continuity
@@ -61,8 +71,8 @@ func TestStreamMode(t *testing.T) {
 	if f.StreamSeq == 0 || f.WindowNs == 0 {
 		t.Fatalf("stream continuity metadata: seq=%d window_ns=%d", f.StreamSeq, f.WindowNs)
 	}
-	if f.Valid != deepRecord {
-		t.Fatalf("stream drains the deep record: Valid=%d, want %d", f.Valid, deepRecord)
+	if f.Valid != maxRecordCols {
+		t.Fatalf("stream drains the full record: Valid=%d, want %d", f.Valid, maxRecordCols)
 	}
 	if f.EdgeX >= 0 {
 		t.Fatalf("stream window must be edge-agnostic (raw contiguous), EdgeX=%v", f.EdgeX)
@@ -70,6 +80,7 @@ func TestStreamMode(t *testing.T) {
 	e.SetStreamMode(false)
 }
 
+// TRLC-LINKS: REQ-SDS-008, REQ-SDS-011
 func TestSingleShotStopsAfterCapture(t *testing.T) {
 	// SINGLE arms NORM and must STOP after the first triggered publish.
 	fb := newFakeBus() // doneOnGo=true → NORM triggers immediately

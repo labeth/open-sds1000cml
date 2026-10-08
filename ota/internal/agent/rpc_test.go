@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-OTA-AGENT
 package agent
 
 import (
@@ -9,6 +10,7 @@ import (
 	"open-sds/ota/internal/config"
 )
 
+// TRLC-LINKS: REQ-SDS-027, REQ-SDS-113
 func testAgent(t *testing.T) *Agent {
 	t.Helper()
 	dir := t.TempDir()
@@ -33,6 +35,7 @@ func testAgent(t *testing.T) *Agent {
 	return New(config.Load())
 }
 
+// TRLC-LINKS: REQ-SDS-113
 func TestDispatchUnknownCmd(t *testing.T) {
 	a := testAgent(t)
 	resp := a.Dispatch([]byte(`{"cmd":"nope"}`))
@@ -44,6 +47,7 @@ func TestDispatchUnknownCmd(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-113
 func TestDispatchBadJSON(t *testing.T) {
 	a := testAgent(t)
 	resp := a.Dispatch([]byte(`{not json`))
@@ -52,6 +56,7 @@ func TestDispatchBadJSON(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-113
 func TestDispatchPing(t *testing.T) {
 	a := testAgent(t)
 	resp := a.Dispatch([]byte(`{"cmd":"ping"}`))
@@ -64,6 +69,7 @@ func TestDispatchPing(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-113
 func TestDispatchPanicContained(t *testing.T) {
 	// Register a handler that panics; Dispatch must contain it (the agent must
 	// never die to a bad request — it holds the inherited fds).
@@ -76,6 +82,7 @@ func TestDispatchPanicContained(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-113, REQ-SDS-117
 func TestAppStartRequiresTakeover(t *testing.T) {
 	a := testAgent(t)
 	resp := a.Dispatch([]byte(`{"cmd":"app.start"}`))
@@ -84,6 +91,7 @@ func TestAppStartRequiresTakeover(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-027
 func TestTakeoverRefusedWithoutInheritedFD(t *testing.T) {
 	a := testAgent(t)
 	// In the test environment there is no inherited /dev/Gpmc fd, so takeover
@@ -97,6 +105,7 @@ func TestTakeoverRefusedWithoutInheritedFD(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-027
 func TestTakeoverDryRunReportsCandidates(t *testing.T) {
 	a := testAgent(t)
 	// Force an inherited fd so the dry-run passes the first gate; -1 would

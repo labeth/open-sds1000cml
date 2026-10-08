@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-WEB-SUPERRES-GATE
 // superres_gate.js — gate detection, install, drizzle-hit, multi-hit find/feed.
 
 // srDetectPeriod returns the fundamental period (samples) of ref[lo:hi] via
@@ -10,6 +11,7 @@
 // (the browser loads them as classic scripts before this one — same globals).
 if (typeof require !== "undefined") { Object.assign(globalThis, require("./superres_math.js"), require("./superres_template.js")); }
 
+// TRLC-LINKS: REQ-SDS-019
 function srDetectPeriod(ref, lo, hi) {
   const W = hi - lo;
   if (W < 32) return 0;
@@ -45,6 +47,7 @@ function srDetectPeriod(ref, lo, hi) {
 
 // srGateInstall resizes the stack to an L*K gate grid, builds the gate template,
 // and seeds the reference's own gate at offset 0. gate = [gLo, gHi).
+// TRLC-LINKS: REQ-SDS-019
 function srGateInstall(st, gLo, gHi) {
   const L = gHi - gLo;
   st.gated = true; st.userRef = true;
@@ -85,6 +88,7 @@ function srGateInstall(st, gLo, gHi) {
 // stack is gap-free and staircase-free — a deposit kernel instead leaves the
 // between-sample bins empty when occurrences share a sub-sample phase (a
 // periodic signal at ~integer samples/cycle). `odd` → the A half-stack.
+// TRLC-LINKS: REQ-SDS-019
 function srDrizzleHit(st, ch, sig, p, odd) {
   const K = st.K, G = st.nbins, n = st.n;
   const C = st.c[ch];
@@ -137,6 +141,7 @@ function srDrizzleHit(st, ch, sig, p, odd) {
 // by L/2, each with a parabolic sub-sample offset. R>0 bounds the search to the
 // trigger-predicted position ±R; R=0 searches the whole frame (finds the feature
 // wherever it sits AND catches every repeat).
+// TRLC-LINKS: REQ-SDS-019
 function srGateFind(st, sig, base, R) {
   const t = st.gtpl;
   if (!t) return [];
@@ -183,6 +188,7 @@ function srGateFind(st, sig, base, R) {
 // occurrence, then sub-sample align + drift-normalize + drizzle each onto the
 // L*K grid (both channels at the align channel's positions). Zero occurrences →
 // the frame is rejected. Returns "stacked:<nhits>" | "rejected:<why>".
+// TRLC-LINKS: REQ-SDS-019
 function srGateFeed(st, sig1, sig2, opts) {
   opts = opts || {};
   const sigs = [sig1, sig2];

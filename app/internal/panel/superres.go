@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-PANEL
 package panel
 
 import (
@@ -17,6 +18,7 @@ import (
 // to the same stack as the web).
 
 // srToggle is the UTILITY handler: arm ⇄ cancel.
+// TRLC-LINKS: REQ-SDS-140
 func (c *Controller) srToggle() {
 	c.mu.Lock()
 	active := c.srActive
@@ -31,12 +33,16 @@ func (c *Controller) srToggle() {
 // srArm locks the CURRENT frame as the match reference and starts stacking, then
 // maps the softkeys to the super-res page. (Freeze a frame you like with SINGLE
 // first.) UTILITY handler for the arm direction.
+// TRLC-LINKS: REQ-SDS-140
 func (c *Controller) srArm() {
 	c.mu.Lock()
 	c.srFocus = 0                 // watch
 	c.srManLo, c.srManHi = -1, -1 // auto gate
 	c.mu.Unlock()
 	if !c.srSeedAndStart() {
+		// Keep the page reachable so Channel and Stop-on (e.g. FPGA, which does
+		// not need a software reference) can still be chosen; status says why.
+		c.openMenu(pgSuperres)
 		return
 	}
 	c.openMenu(pgSuperres) // map the softkeys to the super-res page while active
@@ -45,6 +51,7 @@ func (c *Controller) srArm() {
 
 // srRearm rebuilds the stack from the current frame with the current Channel/K —
 // used when those config slots change mid-stack. Keeps the menu page + highlight.
+// TRLC-LINKS: REQ-SDS-140
 func (c *Controller) srRearm() {
 	c.mu.Lock()
 	active := c.srActive
@@ -58,6 +65,7 @@ func (c *Controller) srRearm() {
 // srGateAdjust moves the super-res gate edge under the ADJUST knob while a gate
 // edge is focused (intensity button selects start/end). Re-seeds the stack with
 // the new manual gate. Returns true if it consumed the knob step.
+// TRLC-LINKS: REQ-SDS-140
 func (c *Controller) srGateAdjust(delta int) bool {
 	c.mu.Lock()
 	if !c.srActive || (c.srFocus != 1 && c.srFocus != 2) || c.srStack == nil {
@@ -93,7 +101,14 @@ func (c *Controller) srGateAdjust(delta int) bool {
 	return true
 }
 
+// srPeriodSpanMax bounds the span searched for a period when arming.
+const srPeriodSpanMax = 16384
+
+// srSoftBinsMax bounds the software stack: 10 float64 per bin, ~21 MB.
+const srSoftBinsMax = 1 << 18
+
 // srFocusName returns the label for the current intensity-cycle focus.
+// TRLC-LINKS: REQ-SDS-140
 func srFocusName(f int) string {
 	switch f {
 	case 1:
@@ -112,6 +127,7 @@ func srFocusName(f int) string {
 // the stacker goroutine. Any existing stacker is stopped first (its old Stack is
 // a captured local, so no race with the new one). Returns false if there is no
 // usable frame or the reference is unusable.
+// TRLC-LINKS: REQ-SDS-140
 func (c *Controller) srSeedAndStart() bool {
 	if c.frameFn == nil {
 		c.srSetStatus("no frame source")
@@ -146,6 +162,12 @@ func (c *Controller) srSeedAndStart() bool {
 	c.mu.Lock()
 	k, ch, mlo, mhi := c.srK, c.srCh, c.srManLo, c.srManHi
 	c.mu.Unlock()
+	// The software stack holds ten float64 accumulators per fine bin; a deep
+	// window (156k samples at 0.5 ms/div x32 = ~400 MB) cannot fit the device.
+	if cols*k > srSoftBinsMax {
+		c.srSetStatus(fmt.Sprintf("window too deep for software stacking (%d samples) - use FPGA or a faster timebase", cols))
+		return false
+	}
 	// Default gate = the ON-SCREEN window (super-res exactly what's displayed —
 	// winCols samples centred on the trigger edge), so you never stack a random
 	// feature elsewhere in the deep record. A manual gate-edit (ADJUST markers,
@@ -168,7 +190,10 @@ func (c *Controller) srSeedAndStart() bool {
 	// stack ONE period (small grid, every cycle is a hit → converges fast) and
 	// let the renderer TILE the stacked period back across the span.
 	stackLo, stackHi, period := mlo, mhi, 0
-	if mlo >= 0 {
+	// Period search is roughly quadratic in the span and runs on the panel
+	// goroutine; on deep windows (e.g. 156k samples at 0.5 ms/div) it froze
+	// every key for minutes. Tiling is only a speed-up, so skip it there.
+	if mlo >= 0 && mhi-mlo <= srPeriodSpanMax {
 		alignSig := c1
 		if ch == 1 {
 			alignSig = c2
@@ -202,6 +227,7 @@ func (c *Controller) srSeedAndStart() bool {
 
 // srCancel stops the stacker and leaves the mode (UTILITY re-press). The stack is
 // dropped; the last review the user wanted is already on screen if they froze it.
+// TRLC-LINKS: REQ-SDS-140
 func (c *Controller) srCancel(why string) {
 	c.mu.Lock()
 	if c.srStop != nil {
@@ -223,6 +249,7 @@ func (c *Controller) srCancel(why string) {
 // srFocusCycle (ADJUST/intensity push) advances the super-res focus:
 // watch → gate-start → gate-end → review → watch. In the gate-edit foci the
 // ADJUST knob moves that edge; review shows the stacked trace.
+// TRLC-LINKS: REQ-SDS-140
 func (c *Controller) srFocusCycle() {
 	c.mu.Lock()
 	if c.srActive {
@@ -234,6 +261,7 @@ func (c *Controller) srFocusCycle() {
 // srReqReset (Reset softkey) asks the stacker to start the accumulation over,
 // keeping the same locked reference. srLoop performs it so only that goroutine
 // ever mutates the Stack.
+// TRLC-LINKS: REQ-SDS-140
 func (c *Controller) srReqReset() {
 	c.mu.Lock()
 	if c.srActive {
@@ -242,6 +270,7 @@ func (c *Controller) srReqReset() {
 	c.mu.Unlock()
 }
 
+// TRLC-LINKS: REQ-SDS-140
 func (c *Controller) srSetStatus(s string) {
 	c.mu.Lock()
 	c.srStatus = s
@@ -257,6 +286,7 @@ func (c *Controller) srSetStatus(s string) {
 // the −1 gap sentinels and returns the input untouched when the gates say no
 // (dt ≤ 0, < 8 bins, all-gap) — identical to the JS. Runs on the stacker
 // goroutine, off the render lock.
+// TRLC-LINKS: REQ-SDS-140
 func srCompMeans(st *superres.Stack, res superres.Result) (mean, mean2 []float32) {
 	mean, mean2 = res.Mean, res.Mean2
 	k := st.K
@@ -283,10 +313,21 @@ func srCompMeans(st *superres.Stack, res superres.Result) (mean, mean2 []float32
 
 // srReachReview crunches the final mean and switches to the review view. Called
 // from srLoop when a stop target is hit or the geometry changes.
+// TRLC-LINKS: REQ-SDS-140
 func (c *Controller) srReachReview(st *superres.Stack, status string) {
+	c.mu.Lock()
+	current := c.srActive && c.srStack == st
+	c.mu.Unlock()
+	if !current {
+		return
+	}
 	full := st.Result(false, 1)
 	mean, mean2 := srCompMeans(st, full)
 	c.mu.Lock()
+	if !c.srActive || c.srStack != st {
+		c.mu.Unlock()
+		return
+	}
 	c.srMean, c.srMean2 = mean, mean2
 	c.srBits, c.srFocus, c.srStatus = full.BitsGained, 3, status // 3=review
 	c.srFrames, c.srRejected = st.Hits, st.Rejected
@@ -294,6 +335,7 @@ func (c *Controller) srReachReview(st *superres.Stack, status string) {
 }
 
 // SuperresStatus is the read-only device super-res snapshot for /api/status.
+// TRLC-LINKS: REQ-SDS-140
 func (c *Controller) SuperresStatus() (active, review bool, bits float64, frames, rejected int, status string) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -305,6 +347,7 @@ func (c *Controller) SuperresStatus() (active, review bool, bits float64, frames
 // target, and keep the review mean fresh when review is on. Only THIS goroutine
 // touches srStack, so there is no data race with the renderer (which reads the
 // guarded srMean/srStatus/srBits snapshot).
+// TRLC-LINKS: REQ-SDS-140
 func (c *Controller) srLoop(stop chan struct{}, st *superres.Stack) {
 	var lastSeq uint64
 	var lastMean time.Time
@@ -320,6 +363,10 @@ func (c *Controller) srLoop(stop chan struct{}, st *superres.Stack) {
 		// Reset request (Reset softkey) — done here so only this goroutine touches
 		// the Stack. Clears the accumulation, keeps the locked reference.
 		c.mu.Lock()
+		if !c.srActive || c.srStack != st {
+			c.mu.Unlock()
+			return
+		}
 		if c.srResetReq {
 			c.srResetReq = false
 			st.ResetKeepRef()
@@ -379,6 +426,10 @@ func (c *Controller) srLoop(stop chan struct{}, st *superres.Stack) {
 		st.Feed(c1, c2, edgeX)
 		res := st.Result(true, 0) // stats-only: cheap, for status + stop
 		c.mu.Lock()
+		if !c.srActive || c.srStack != st {
+			c.mu.Unlock()
+			return
+		}
 		mode, val, t0, review := c.srStopMode, c.srStopVal, c.srT0, c.srFocus == 3
 		// Hits (occurrences) is the meaningful stack count — one frame contributes
 		// many on a repetitive signal — so status + the "stacks" target key off it.
@@ -396,6 +447,10 @@ func (c *Controller) srLoop(stop chan struct{}, st *superres.Stack) {
 			full := st.Result(false, 1)
 			mean, mean2 := srCompMeans(st, full) // falloff comp, exactly like the web review
 			c.mu.Lock()
+			if !c.srActive || c.srStack != st {
+				c.mu.Unlock()
+				return
+			}
 			c.srMean, c.srMean2 = mean, mean2
 			c.mu.Unlock()
 			lastMean = time.Now()
@@ -417,6 +472,7 @@ func (c *Controller) srLoop(stop chan struct{}, st *superres.Stack) {
 }
 
 // SuperresView is the render snapshot (safe from the render goroutine).
+// TRLC-LINKS: REQ-SDS-140
 type SuperresView struct {
 	Active         bool
 	Focus          int // 0=watch, 1=gate-start, 2=gate-end, 3=review
@@ -436,6 +492,7 @@ type SuperresView struct {
 // SuperresView returns the current super-res state for the LCD overlay/review.
 // GateLo/GateHi/N/K/SampleS come off the Stack; they are set once at seed and not
 // mutated by Feed, so reading them from the render goroutine is race-free.
+// TRLC-LINKS: REQ-SDS-140
 func (c *Controller) SuperresView() SuperresView {
 	c.mu.Lock()
 	defer c.mu.Unlock()

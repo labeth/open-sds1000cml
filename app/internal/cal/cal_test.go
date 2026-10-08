@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-CAL
 package cal
 
 import (
@@ -7,6 +8,7 @@ import (
 )
 
 // buildBlob creates a valid scrambled blob from a de-scrambled payload.
+// TRLC-LINKS: REQ-SDS-016
 func buildBlob(t *testing.T, payload []byte) []byte {
 	t.Helper()
 	if len(payload) != payloadSize {
@@ -21,6 +23,7 @@ func buildBlob(t *testing.T, payload []byte) []byte {
 	return blob
 }
 
+// TRLC-LINKS: REQ-SDS-016
 func TestScrambleRoundTrip(t *testing.T) {
 	payload := make([]byte, payloadSize)
 	for i := range payload {
@@ -37,6 +40,7 @@ func TestScrambleRoundTrip(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-016
 func TestTriangularIndices(t *testing.T) {
 	buf := make([]byte, 32)
 	notTriangular(buf)
@@ -50,6 +54,7 @@ func TestTriangularIndices(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-016
 func TestParseWorkedOffsets(t *testing.T) {
 	// Records at the spec's worked offsets: CH0 vd0 → 0, CH0 vd11 → 0x58,
 	// CH1 vd0 → 0x60, CH1 vd11 → 0xb8.
@@ -82,6 +87,7 @@ func TestParseWorkedOffsets(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-016
 func TestChecksumRejects(t *testing.T) {
 	payload := make([]byte, payloadSize)
 	blob := buildBlob(t, payload)
@@ -94,6 +100,7 @@ func TestChecksumRejects(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-016
 func TestDefaults(t *testing.T) {
 	d := Defaults()
 	if d.Source != "defaults" {
@@ -108,6 +115,7 @@ func TestDefaults(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-091
 func TestDCVolts(t *testing.T) {
 	d := Defaults()
 	// 1 V/div (vd 8, gain 1.719): mean 238 → (110)·1.719/110 = 1.719 V.

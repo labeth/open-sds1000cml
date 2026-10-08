@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-WEB
 package web
 
 import (
@@ -10,6 +11,7 @@ import (
 
 // Runs the bode.js pure helpers under node (log ticks, nice range, hz format)
 // to lock the web renderer's math. Skips without node (fails under CI_REQUIRE_BROWSER=1).
+// TRLC-LINKS: REQ-SDS-125
 func TestBodeJSHelpers(t *testing.T) {
 	testenv.NeedNode(t)
 	script := `
@@ -42,6 +44,7 @@ process.exit(fail ? 1 : 0);
 // point set — empty, single, NaN/Inf gains, non-positive/unsorted frequencies,
 // a huge point count — without throwing or feeding a NaN coordinate into a
 // canvas draw call. A mock 2D context records every coordinate it is handed.
+// TRLC-LINKS: REQ-SDS-125
 func TestBodeJSBreaker(t *testing.T) {
 	testenv.NeedNode(t)
 	script := `

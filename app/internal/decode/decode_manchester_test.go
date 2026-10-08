@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-DECODE
 package decode
 
 import (
@@ -8,6 +9,7 @@ import (
 
 // mBits expands bytes into a bit stream, MSB- or LSB-first, `bits` per byte —
 // the same order DecodeManchester packs cells back into bytes.
+// TRLC-LINKS: REQ-SDS-018
 func mBits(bytes []int, msb bool, bits int) []int {
 	var out []int
 	for _, b := range bytes {
@@ -30,6 +32,7 @@ func mBits(bytes []int, msb bool, bits int) []int {
 // the opposite. Idle sits high; a cell-boundary transition appears naturally
 // wherever adjacent half-cells differ. Mirrors the on-wire signal a 1553/telemetry
 // source would produce.
+// TRLC-LINKS: REQ-SDS-018
 func manchesterWave(bitsSeq []int, ieee bool, spb int) []uint8 {
 	lo, hi := uint8(40), uint8(210)
 	lvl := func(x int) uint8 {
@@ -61,6 +64,7 @@ func manchesterWave(bitsSeq []int, ieee bool, spb int) []uint8 {
 	return w
 }
 
+// TRLC-LINKS: REQ-SDS-018
 func TestDecodeManchesterRoundTrip(t *testing.T) {
 	// A short alternating preamble (0xAA => 10101010) then varied data so the
 	// phase lock has real transitions to grab.
@@ -111,6 +115,7 @@ func TestDecodeManchesterRoundTrip(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-018
 func TestDecodeManchesterThomas(t *testing.T) {
 	// Thomas/G.E. convention (IEEE=false): rising@mid = 0, falling = 1.
 	want := []int{0x3C, 0xD2, 0x66, 0x99}
@@ -140,6 +145,7 @@ func TestDecodeManchesterThomas(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-018
 func TestDecodeManchesterLSB(t *testing.T) {
 	// LSB-first packing must round-trip too.
 	want := []int{0x81, 0x2D, 0xF0, 0x0F}
@@ -158,6 +164,7 @@ func TestDecodeManchesterLSB(t *testing.T) {
 
 // TestDecodeManchesterNoPanic feeds degenerate/hostile inputs — a decoder must
 // return an error, never panic or hang (the package also runs a broader fuzz).
+// TRLC-LINKS: REQ-SDS-018
 func TestDecodeManchesterNoPanic(t *testing.T) {
 	rng := rand.New(rand.NewSource(1553))
 	mk := func(n, kind int) []uint8 {

@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-WEB-APP-CORE
 // app_core.js — frame/status apply, redraw dispatch, measurement/status UI updates (classic script; shares app.js globals).
 
 "use strict";
@@ -8,6 +9,7 @@
 // to input between frames instead of blocking inside a network/pointer callback.
 // The expensive protocol decode is throttled so it never dominates the loop.
 let _renderRaf = 0, _lastDecodeMs = 0;
+// TRLC-LINKS: REQ-SDS-071
 function scheduleRender() {
   if (_renderRaf) return;
   _renderRaf = requestAnimationFrame(() => {
@@ -23,6 +25,7 @@ function scheduleRender() {
   });
 }
 
+// TRLC-LINKS: REQ-SDS-071
 function redraw() {
   refreshAria(); // keep aria-pressed in sync with view toggles (which call redraw)
   updateStatusLine(); // time/div follows the zoom → keep it live, not just per status poll
@@ -56,12 +59,14 @@ function redraw() {
   drawNav();
 }
 
+// TRLC-LINKS: REQ-SDS-204
 function updateMeas() {
   const keys = measExpanded ? MEAS_CORE.concat(MEAS_MORE) : MEAS_CORE;
   const clip1 = !!(frame && frame.clip1), clip2 = !!(frame && frame.clip2);
   const sig = keys.length + ":" + clip1 + ":" + clip2;
   if (sig !== measDomSig) {
     measDomSig = sig;
+    // TRLC-LINKS: REQ-SDS-204
     const clipTag = c => c ? ` <span class="clip" title="signal is clipping — increase V/div or probe; measurements unreliable">⚠ CLIP</span>` : "";
     let html = `<tr><th></th><td class="cc1">C1${clipTag(clip1)}</td>` +
                `<td class="cc2">C2${clipTag(clip2)}</td></tr>`;
@@ -71,6 +76,7 @@ function updateMeas() {
     html += `<tr><td colspan="3" style="text-align:center;padding-top:3px">` +
             `<button id="measMore" class="btn-mini">${measExpanded ? "less ▲" : "more ▼"}</button></td></tr>`;
     $("measBody").innerHTML = html;
+    // TRLC-LINKS: REQ-SDS-204
     $("measMore").onclick = () => { measExpanded = !measExpanded; updateMeas(); };
     const rows = $("measBody").querySelectorAll("tr");
     measCells = {};
@@ -84,6 +90,7 @@ function updateMeas() {
   }
 }
 
+// TRLC-LINKS: REQ-SDS-202
 function updateCursors() {
   if (!view.cursors || !frame) { $("curCard").style.display = "none"; return; }
   $("curCard").style.display = "";
@@ -102,6 +109,7 @@ function updateCursors() {
     `<tr><th>ΔV C2</th><td colspan="2" class="cc2">${eng(dv2, "V")}</td></tr>`;
 }
 
+// TRLC-LINKS: REQ-SDS-023, REQ-SDS-202
 function applyFrame(f) {
   if (sr.showing) { // unfrozen behind our back (freeze button): leave stack view cleanly
     sr.savedWin = { a: view.win.a, b: view.win.b, zoomed: userZoomed };
@@ -109,6 +117,7 @@ function applyFrame(f) {
     $("srShow").classList.remove("on");
   }
   frame = f; lastSeq = f.seq;
+ if (typeof updatePrecisionLimits === "function") updatePrecisionLimits(f);
   const sig = acqSig(f);
   if (sig !== lastSig) { userZoomed = false; lastSig = sig; } // band/depth/run change → re-home
   // Keep the display TRIGGER-LOCKED every frame: the raw record is NOT phase-stable
@@ -130,15 +139,18 @@ function applyFrame(f) {
 
 // trigState mirrors the LCD state machine (render.go) so a glance between the
 // bench screen and the browser shows the same word.
+// TRLC-LINKS: REQ-SDS-204
 function trigState() {
   if (!st) return "—";
   if (!st.running) return "STOP";
   if (st.single) return "SNGL";
+  if (st.waiting) return "WAIT"; // the held frame's T'D is stale
   if (frame && frame.trigd) return "T'D";
   if (st.norm) return "WAIT";
   return "AUTO";
 }
 
+// TRLC-LINKS: REQ-SDS-204
 function refreshAria() {
   for (const id of PRESSED) {
     const b = $(id);
@@ -148,6 +160,7 @@ function refreshAria() {
   }
 }
 
+// TRLC-LINKS: REQ-SDS-204
 function applyStatus() {
   // The button shows the ACTION you can take: running → press to STOP, stopped →
   // press to RUN (green run / red stop). Redundant glyph + word.
@@ -159,7 +172,9 @@ function applyStatus() {
   $("mode").classList.toggle("on", st.norm);
   $("slope").innerHTML = st.trig_rising ? "&#8599;" : "&#8600;";
   $("source").textContent = st.trig_source === 1 ? "C2" : "C1";
-  $("ets").classList.toggle("on", !!st.ets);
+  $("ets").classList.toggle("on", !!st.ets && st.band !== "sram");
+  $("ets").disabled = st.band === "sram";
+  $("ets").title = st.band === "sram" ? "Equivalent-time acquisition is unavailable with SRAM capture" : "equivalent-time sampling (≤50 ns)";
   $("single").classList.toggle("on", !!st.single);
   if (document.activeElement !== $("tpos") && st.trig_pos_frac > 0) $("tpos").value = st.trig_pos_frac;
   $("wedged").style.display = st.wedged ? "inline" : "none";
@@ -168,8 +183,10 @@ function applyStatus() {
   if (document.activeElement !== $("acq")) $("acq").value = st.acq_mode || 0;
   updateAcqN();
   if (document.activeElement !== $("memdepth") && st.mem_depth) $("memdepth").value = st.mem_depth;
+  $("memdepth").disabled = st.band === "sram";
+  $("memdepth").title = st.band === "sram" ? "Full SRAM retained; RUN transfers a preview, STOP recalls the complete record" : "Memory depth";
   if (document.activeElement !== $("holdoff")) $("holdoff").value = st.holdoff_s || 0;
-  if (!lvlDragging && st.trig_code) { $("lvl").value = st.trig_volts.toFixed(2); $("lvlv").textContent = st.trig_volts.toFixed(2) + " V"; }
+  if (!lvlDragging && st.trig_code) { $("lvl").value = st.trig_volts; $("lvlv").textContent = eng(st.trig_volts, "V"); }
   if ($("tdiv").options.length === 0 && st.tdivs)
     for (const t of st.tdivs) { const o = document.createElement("option"); o.value = t; o.textContent = fmtTdiv(t); $("tdiv").appendChild(o); }
   if ($("vdiv1").options.length === 0 && st.vdivs)
@@ -180,17 +197,24 @@ function applyStatus() {
     if (document.activeElement !== $(id)) $(id).value = String(val || 1);
   for (const [id, val] of [["cpl1", st.cpl1], ["cpl2", st.cpl2]])
     if (document.activeElement !== $(id)) $(id).value = String(val || 0);
-  // Sliders read/emit tip-referred volts; widen their range for high probes so
-  // the full electrical span (±3.8 V in, +4.7 V trig) stays reachable.
-  for (const [id, lo, hi] of [["off1", -3.8, 3.8], ["off2", -3.8, 3.8], ["lvl", -3.8, 4.7]]) {
-    const p = id === "lvl" ? trigProbe() : probeOf(id === "off1" ? 1 : 2);
-    $(id).min = (lo * p).toFixed(2); $(id).max = (hi * p).toFixed(2); $(id).step = (0.05 * p).toFixed(3);
+  // Sliders read/emit tip-referred volts. Their span and step follow each
+  // channel's V/div: a fixed ±3.8 V in 50 mV steps was 25 div a step at
+  // 2 mV/div and ±0.4 div end to end at 10 V/div.
+  for (const ch of [1, 2]) {
+    const vd = st["vdiv" + ch] || 1, p = probeOf(ch);
+    const span = Math.min(vd <= 0.2 ? 1.6 : 40, 10 * vd) * p; // tier range, at most ±10 div
+    $("off" + ch).min = -span; $("off" + ch).max = span; $("off" + ch).step = vd * p / 25;
+  }
+  {
+    const src = (st.trig_source || 0) + 1, vd = st["vdiv" + src] || 1, p = trigProbe();
+    const off = Number.isFinite(st["off" + src + "_v"]) ? st["off" + src + "_v"] : 0;
+    $("lvl").min = -5 * vd * p - off; $("lvl").max = 5 * vd * p - off; $("lvl").step = vd * p / 25; // ±5 div of screen
   }
   if (!offDragging) {
-    $("off1v").textContent = st.off1_v ? st.off1_v.toFixed(2) + " V" : "—";
-    $("off2v").textContent = st.off2_v ? st.off2_v.toFixed(2) + " V" : "—";
-    if (st.off1_v) $("off1").value = st.off1_v.toFixed(2);
-    if (st.off2_v) $("off2").value = st.off2_v.toFixed(2);
+    $("off1v").textContent = Number.isFinite(st.off1_v) ? eng(st.off1_v, "V") : "—";
+    $("off2v").textContent = Number.isFinite(st.off2_v) ? eng(st.off2_v, "V") : "—";
+    if (Number.isFinite(st.off1_v)) $("off1").value = st.off1_v;
+    if (Number.isFinite(st.off2_v)) $("off2").value = st.off2_v;
   }
   updateStatusLine();
   const state = trigState();
@@ -205,6 +229,7 @@ function applyStatus() {
 // screen (win_frac of the served record), the effective time/div scales by
 // win_span/win_frac. Rebuilt on every redraw so it tracks zoom/pan live, not just
 // on the 1s status poll. (Cursor Δt already scales by win_span.)
+// TRLC-LINKS: REQ-SDS-204
 function updateStatusLine() {
   if (!st) return;
   // Time/div is ALWAYS the HARDWARE timebase — zoom NEVER changes it. Zoom instead
@@ -244,10 +269,12 @@ function updateStatusLine() {
 // awaitFrame resolves when a fresh frame satisfying `pred` arrives (the global
 // `frame` is updated by the poll loop), or after `timeout` ms. Used by autoset
 // to converge across scale changes instead of relying on one stale capture.
+// TRLC-LINKS: REQ-SDS-204
 function awaitFrame(pred, timeout = 2500) {
   return new Promise((resolve) => {
     const startSeq = frame ? frame.seq : 0;
     const t0 = Date.now();
+    // TRLC-LINKS: REQ-SDS-204
     const tick = () => {
       if (frame && frame.seq !== startSeq && pred(frame)) return resolve(true);
       if (Date.now() - t0 > timeout) return resolve(false);
@@ -257,6 +284,7 @@ function awaitFrame(pred, timeout = 2500) {
   });
 }
 
+// TRLC-LINKS: REQ-SDS-204
 function updateQualRow() {
   const t = +$("ttype").value;
   $("qualrow").style.display = t === 0 ? "none" : "flex";
@@ -265,13 +293,22 @@ function updateQualRow() {
   $("qp-video").style.display = t === 3 ? "flex" : "none";
 }
 
+// TRLC-LINKS: REQ-SDS-204
 function updateAcqN() {
+  const rate=$("precisionRate");
+  if (!rate.options.length) for(let log=4;log<=20;log++) {
+    const hz=500e6/2**log,o=document.createElement("option");o.value=hz;o.textContent=hz.toLocaleString(undefined,{maximumFractionDigits:6})+" S/s";rate.appendChild(o);
+  }
+  $("precisionRateLabel").hidden = +$("acq").value !== 4;
+  if(document.activeElement!==rate) rate.value=(st && st.precision_rate_hz)||31250000;
+
   const m = +$("acq").value, n = $("acqn");
-  if (m === 1) { fillAcqN([4, 16, 32, 64, 128, 256], st ? st.avg_count : 16); n.style.display = ""; }
+  if (m === 1 || m === 4) { fillAcqN([1, 4, 16, 32, 64, 128, 256], st ? st.avg_count : 16); n.style.display = ""; }
   else if (m === 2) { fillAcqN([3, 7, 15, 31, 63], st ? st.eres_len : 1); n.style.display = ""; }
   else n.style.display = "none";
 }
 
+// TRLC-LINKS: REQ-SDS-204
 function fillAcqN(opts, sel) {
   const n = $("acqn");
   if (n.dataset.opts !== opts.join()) { n.innerHTML = ""; for (const v of opts) { const o = document.createElement("option"); o.value = v; o.textContent = v; n.appendChild(o); } n.dataset.opts = opts.join(); }
@@ -279,6 +316,7 @@ function fillAcqN(opts, sel) {
 }
 
 // ---- view toggles ----
+// TRLC-LINKS: REQ-SDS-204
 function setMode(m) {
   view.mode = m;
   for (const [id, mm] of [["mYT", "YT"], ["mXY", "XY"], ["mFFT", "FFT"]]) $(id).classList.toggle("on", mm === m);
@@ -293,8 +331,10 @@ function setMode(m) {
   clearPersist(); resize();
 }
 
+// TRLC-LINKS: REQ-SDS-071
 function recompute() { computeDecode(); redraw(); }
 
+// TRLC-LINKS: REQ-SDS-203
 function updateMathHint() {
   const h = $("mathHint");
   if (mathFn === "res1" || mathFn === "res2")
@@ -311,6 +351,7 @@ function updateMathHint() {
 // overlay. The device serves ONE live client at a time (to keep the engine's
 // drain fast); a newer browser's /api/claim supersedes this one. Multiple tabs
 // can stay open — refreshing any one reclaims control and supersedes the rest.
+// TRLC-LINKS: REQ-SDS-023
 function showSuperseded() {
   if (superseded) return;
   superseded = true;
@@ -324,6 +365,7 @@ function showSuperseded() {
     const b = document.createElement("button");
     b.textContent = "Refresh to reclaim";
     b.style.cssText = "font:inherit;padding:.6em 1.3em;cursor:pointer;border-radius:7px;border:1px solid #6a9;background:#183028;color:#cfe;font-weight:600";
+    // TRLC-LINKS: REQ-SDS-023
     b.onclick = () => location.reload();
     o.appendChild(b);
     document.body.appendChild(o);
@@ -331,6 +373,7 @@ function showSuperseded() {
   o.style.display = "flex";
 }
 
+// TRLC-LINKS: REQ-SDS-023
 async function pollFrameBin() {
   if (superseded) return; // another browser took control; wait for a manual refresh
   if (frozen || document.hidden) { setTimeout(pollFrameBin, 90); return; } // idle tick; hidden tabs stop hitting the device
@@ -362,6 +405,7 @@ async function pollFrameBin() {
 // fetchFftRaw pulls one full-record raw frame (un-windowed, un-interpolated,
 // carries sample_s) to source the FFT in FFT mode. Fire-and-forget + throttled
 // by the caller; sets fftRaw + fftRawT, then a redraw picks it up.
+// TRLC-LINKS: REQ-SDS-023
 async function fetchFftRaw() {
   if (fftRawBusy) return;
   fftRawBusy = true; fftRawT = performance.now();
@@ -371,6 +415,7 @@ async function fetchFftRaw() {
   } catch (e) { /* transient — the next tick retries */ } finally { fftRawBusy = false; }
 }
 
+// TRLC-LINKS: REQ-SDS-023
 async function pollStatus() {
   if (superseded) return; // taken over by another browser; stop loading the device
   try { st = await (await fetch("/api/status")).json(); applyStatus(); }
@@ -383,10 +428,12 @@ async function pollStatus() {
 }
 
 // ---- controls ----
+// TRLC-LINKS: REQ-SDS-023
 async function send(control, value) {
   try { return await (await fetch("/api/set", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ control, value }) })).json(); }
   catch (e) { return { ok: false }; }
 }
+// TRLC-LINKS: REQ-SDS-204
 async function autoset() {
   if (autosetBusy) return;
   autosetBusy = true;
@@ -398,7 +445,9 @@ async function autoset() {
     // wait for it to converge: a measurable, non-envelope frame whose measured
     // frequency is stable across two reads (the sweep has settled on the native
     // band). Bounded so the button always releases.
+    // TRLC-LINKS: REQ-SDS-204
     const has = m => m && m.vpp > 0.02;
+    // TRLC-LINKS: REQ-SDS-204
     const meas = () => { const m = frame && (has(frame.m1) ? frame.m1 : (has(frame.m2) ? frame.m2 : null)); return m && !frame.is_env ? m.freq : null; };
     let prev = null, t0 = Date.now();
     while (Date.now() - t0 < 9000) {

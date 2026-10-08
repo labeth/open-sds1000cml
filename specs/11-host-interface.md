@@ -291,7 +291,7 @@ argument returns the §3.4 error token.
 |---|---|---|
 | Common (IEEE-488.2) | `*IDN?` `*RST` `*CLS` `*OPC` `*STB?` `*ESR?` `*ESE` `*SRE` `*WAI` `*TST?` `*CAL?` `*SAV` `*RCL` | `*RST` = Default Setup; `*SAV <n>`/`*RCL <n>` setup memory |
 | Comm / util | `CHDR ON\|OFF\|SHORT` `BUZZ ON\|OFF` `INR?` `CMR?` `ALST?` | header echo, buzzer, internal/comm/all status registers |
-| Channel (`Cn:…`) | `Cn:VDIV <v>` `Cn:OFST <v>` `Cn:CPL <enum>` `Cn:ATTN <x>` `Cn:BWL ON\|OFF` `Cn:TRA ON\|OFF` `Cn:UNIT <enum>` `Cn:SKEW <s>` `Cn:INVS ON\|OFF` | `n`∈{1,2}. `VDIV`/`OFST` in volts (sci/SI accepted). `CPL` coupling (`A1M`/`D1M`/`GND` form). `ATTN` probe factor. `BWL` 20 MHz limit. `TRA` trace, `INVS` invert |
+| Channel (`Cn:…`) | `Cn:VDIV <v>` `Cn:OFST <v>` `Cn:CPL <enum>` `Cn:ATTN <x>` `Cn:BWL ON\|OFF` `Cn:TRA ON\|OFF` `Cn:UNIT <enum>` `Cn:SKEW <s>` `Cn:INVS ON\|OFF` | `n`∈{1,2}. `VDIV`/`OFST` in probe-tip volts like `TRLV` and `PAVA?` (`ATTN` 10: `VDIV 5` = the 0.5 V/div BNC range; sci/SI accepted). `CPL` coupling (`A1M`/`D1M`/`GND` form). `ATTN` probe factor. `BWL` 20 MHz limit. `TRA` trace, `INVS` invert |
 | Timebase | `TDIV <s>` `TRDL <s>` | seconds/div; trigger delay (position) |
 | Trigger | `TRMD <mode>` `TRSE <src>` `TRSL <slope>` `TRCP <cpl>` `TRLV <v>` `TRLV2 <v>` | `TRMD`∈{`AUTO`,`NORM`,`SINGLE`,`STOP`}; `TRSL`∈{`POS`,`NEG`,`WINDOW`}; `TRLV`/`TRLV2` level in volts |
 | Run-state verbs | `ARM` `STOP` `FRTR` `ASET` (`AUTO_SETUP`) | value-less momentary actions (no query form): arm/run, stop, force-trigger, auto-setup |
@@ -362,9 +362,9 @@ block across multiple `device_read` calls until `reason = END`. A full ~20 k-poi
 
 - **`Cn:WF? DAT2`** — payload is the **8-bit sample codes**, one byte per sample, **no descriptor**.
   A full deep record is 20480 codes. Code → volts requires the WAVEDESC scaling (§5.1). These are the
-  **published deep-frame codes** on the **25-codes/div display scale** (`VERTICAL_GAIN = Vdiv/25`,
-  unsigned byte centred at 128) — the same 8-bit ADC codes the deep acquisition engine drains (spec 03),
-  normalised to the display grid. **They are NOT the raw live-roll codes**
+  **published deep-frame codes** on the **25-codes/div display scale** (`VERTICAL_GAIN = Vdiv/25`),
+  sent as **signed two's-complement bytes about the grid centre** (display code − 128, so 0 = centre) —
+  the `COMM_TYPE = 0` byte that LeCroy/Siglent hosts read as `code > 127 ? code − 256 : code`. **They are NOT the raw live-roll codes**
   (`0x41/0x59`, half-amplitude, config-dependent centre): presenting raw roll codes here would
   read about **half** the true voltage under the DESC's `Vdiv/25` gain. `WFSU` (`SP`/`NP`/`FP`/`SN`)
   selects sparsing/point-count/first-point/segment before the transfer, and the block header reports the
@@ -420,18 +420,20 @@ code→volts and the time axis uses the four scaling fields and the counts above
 
 ### 5.1 Reconstruction
 
-For sample index `n`, the DAT2 payload byte `raw_n` is **unsigned, centred at 128**; center it to the
-signed code the descriptor scales (`MAX_VALUE = +127`, `MIN_VALUE = −128`):
+For sample index `n`, the DAT2 payload byte `raw_n` is a **signed two's-complement** code about the grid
+centre, the code the descriptor scales (`MAX_VALUE = +127`, `MIN_VALUE = −128`). An earlier revision sent
+the unsigned display code (0 V at 128); a standard host then read every sample 5.12 div off and wrapped.
 
 ```
-signed_n = raw_n − 128                              # −128 … +127
+signed_n = raw_n > 127 ? raw_n − 256 : raw_n        # −128 … +127
 volts_n  = signed_n · VERTICAL_GAIN − VERTICAL_OFFSET
 t_n      = HORIZ_OFFSET + n · HORIZ_INTERVAL
 ```
 
 Both `VERTICAL_GAIN` and `VERTICAL_OFFSET` are in the descriptor, so a DAT2 code array plus its DESC
 block fully reconstructs the calibrated waveform. This is the **only** endianness/format contract a host
-needs: little-endian descriptor fields, 8-bit codes centred at 128, `VERTICAL_GAIN = (Vdiv/25)·probe`
+needs: little-endian descriptor fields, signed 8-bit codes, `VERTICAL_GAIN = (Vdiv/25)·probe`,
+`VERTICAL_OFFSET` in probe-tip volts like the gain, `HORIZ_OFFSET` = −(trigger sample)·`HORIZ_INTERVAL`
 (25 codes/div — the DAT2 codes are the 8-bit display codes), the linear transfer above.
 
 ---
@@ -471,7 +473,7 @@ variant in this contract.
 |---|---|
 | `set`-style SCPI command | staging setter (spec 09 §2), applied by the bus owner at the frame boundary |
 | `?` query of a live setting | lock-guarded snapshot/peek (spec 09 §8) — no bus access |
-| `Cn:WF? DAT2` | copy of the most-recently published frame's channel codes on the 25-codes/div display scale (`Vdiv/25`, centred at 128 — **not** the half-amplitude live-roll codes; spec 03 arena), sparsed per `WFSU` |
+| `Cn:WF? DAT2` | copy of the most-recently published frame's channel codes on the 25-codes/div display scale (`Vdiv/25`, signed about the grid centre — **not** the half-amplitude live-roll codes; spec 03 arena), sparsed per `WFSU` |
 | `Cn:WF? DESC` | WAVEDESC assembled from the active timebase (spec 04) + per-(channel, V/div) cal (spec 10) |
 | `SCDP` | serialize the current framebuffer (spec 07) as the §6 BMP |
 

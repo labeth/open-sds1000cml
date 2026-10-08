@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-WEB-DECODE-USBLS
 // USB low/full-speed decoder — JS twin of decode_usbls.go, kept algorithm-
 // faithful so the web overlay and the on-device LCD agree byte-for-byte. Classic
 // script: no imports/exports; reuses sliceChannel / logicAt / hex2 / fail from
@@ -20,6 +21,7 @@ const usbPIDName = {
   0xC: "PRE", 0x8: "SPLIT", 0x4: "PING",
 };
 
+// TRLC-LINKS: REQ-SDS-018
 function decodeUSBLS(dp, colTimeS, cfg) {
   cfg = cfg || {};
   const minSPB = 4;       // samples per bit floor
@@ -90,8 +92,11 @@ function decodeUSBLS(dp, colTimeS, cfg) {
   segs.push([segStart, S.edges.length - 1]);
 
   const n = S.n;
+  // TRLC-LINKS: REQ-SDS-018
   const clampI = i => (i < 0 ? 0 : (i >= n ? n - 1 : i));
+  // TRLC-LINKS: REQ-SDS-018
   const cellStart = (x0, k) => clampI(Math.round(x0 + k * T));
+  // TRLC-LINKS: REQ-SDS-018
   const cellEnd = (x0, k) => clampI(Math.round(x0 + (k + 1) * T) - 1);
 
   const spans = [], bytes = [], toks = [];
@@ -130,10 +135,10 @@ function decodeUSBLS(dp, colTimeS, cfg) {
     // De-stuff: the 0 inserted after six consecutive 1s is dropped. Track each
     // kept bit's raw cell so spans map back to sample indices.
     const bitsArr = [], cellOf = [];
-    let ones = 0;
+    let ones = 0, stuffCell = -1;
     for (let i = 0; i < rawBits.length; i++) {
-      if (ones === 6) {                    // a 0 is stuffed after six 1s; a SEVENTH 1
-        if (rawBits[i] !== 0) break;       // is a stuff violation = idle after EOP: stop
+      if (ones === 6) {
+        if (rawBits[i] !== 0) { stuffCell = rawCell[i]; break; }
         ones = 0; continue;                // drop the stuffed 0
       }
       bitsArr.push(rawBits[i]); cellOf.push(rawCell[i]);
@@ -170,6 +175,7 @@ function decodeUSBLS(dp, colTimeS, cfg) {
       spans.push({ i0: cellStart(x0, cellOf[base]), i1: cellEnd(x0, cellOf[base + 7]), text: hex2(val), kind: "data", val });
       toks.push(hex2(val)); bytes.push(val);
     }
+    if (stuffCell >= 0) { spans.push({ i0: cellStart(x0, stuffCell), i1: cellEnd(x0, stuffCell), text: "STUFF!", kind: "frame-error", val: 0 }); toks.push("STUFF!"); }
   }
   if (packets === 0) return fail("usbls", "no USB packet (SYNC+PID) found");
 

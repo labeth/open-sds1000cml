@@ -3,6 +3,7 @@
 // is off the GPMC bus, so this package is driven directly by producers (HTTP
 // handlers) under its own lock — it never touches the acquisition engine
 // (spec 09 §1 control classes).
+// ENGMODEL-OWNER-UNIT: FU-APP-ANALOG
 package analog
 
 import (
@@ -26,6 +27,7 @@ const (
 )
 
 // spiTransfer mirrors struct spi_ioc_transfer (32 bytes).
+// TRLC-LINKS: REQ-SDS-015
 type spiTransfer struct {
 	txBuf       uint64
 	rxBuf       uint64
@@ -41,6 +43,7 @@ type spiTransfer struct {
 }
 
 // Transport is the SPI surface the front end drives; faked in tests.
+// TRLC-LINKS: REQ-SDS-015
 type Transport interface {
 	// WriteRelay emits one 24-bit relay word on spidev1.0 (MSB-first).
 	WriteRelay(word uint32) error
@@ -50,11 +53,13 @@ type Transport interface {
 }
 
 // Dev is the real SPI transport. Both fds are opened once and never closed.
+// TRLC-LINKS: REQ-SDS-015
 type Dev struct {
 	relayFD int // /dev/spidev1.0: mode 3, 24 bits/word, 300 kHz
 	gainFD  int // /dev/spidev1.1: mode 3, 8 bits/word, 300 kHz
 }
 
+// TRLC-LINKS: REQ-SDS-015
 func ioctlPtr(fd int, req uintptr, p unsafe.Pointer) error {
 	_, _, errno := syscall.Syscall(syscall.SYS_IOCTL, uintptr(fd), req, uintptr(p))
 	if errno != 0 {
@@ -63,6 +68,7 @@ func ioctlPtr(fd int, req uintptr, p unsafe.Pointer) error {
 	return nil
 }
 
+// TRLC-LINKS: REQ-SDS-015
 func openSPI(path string, bits uint8) (int, error) {
 	f, err := os.OpenFile(path, os.O_RDWR, 0)
 	if err != nil {
@@ -95,6 +101,7 @@ var spiFiles []*os.File
 // (spidev1.1) is physically shared with the FPGA bitstream loader, but the
 // mode-3 / 8-bit / 300 kHz single-byte path reaches only the DAC and cannot
 // touch nCONFIG — never reconfigure this node at loader settings.
+// TRLC-LINKS: REQ-SDS-015
 func NewDev() (*Dev, error) {
 	relay, err := openSPI("/dev/spidev1.0", 24)
 	if err != nil {
@@ -107,6 +114,7 @@ func NewDev() (*Dev, error) {
 	return &Dev{relayFD: relay, gainFD: gain}, nil
 }
 
+// TRLC-LINKS: REQ-SDS-015
 func (d *Dev) message(fd int, buf []byte, bits uint8) error {
 	tr := spiTransfer{
 		txBuf:       uint64(uintptr(unsafe.Pointer(&buf[0]))),
@@ -121,6 +129,7 @@ func (d *Dev) message(fd int, buf []byte, bits uint8) error {
 	return err
 }
 
+// TRLC-LINKS: REQ-SDS-015
 func (d *Dev) WriteRelay(word uint32) error {
 	// One 24-bit word in a 32-bit container (len=4), MSB-first on the wire.
 	var buf [4]byte
@@ -131,6 +140,7 @@ func (d *Dev) WriteRelay(word uint32) error {
 	return d.message(d.relayFD, buf[:], 24)
 }
 
+// TRLC-LINKS: REQ-SDS-015
 func (d *Dev) WriteGain(ch2, ch1 uint8) error {
 	// Two separate CS-framed transfers, no address byte, CH2 then CH1.
 	b2 := []byte{ch2}

@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-OTA-OTACTL
 package otactl
 
 import (
@@ -21,6 +22,7 @@ import (
 // the same one-JSON-line-per-request framing the on-device tcp listener
 // serves, so the otactl transport and Client are exercised end to end against
 // the actual dispatch path. Everything stays on 127.0.0.1.
+// TRLC-LINKS: REQ-SDS-109, REQ-SDS-110
 func startAgentLineServer(t *testing.T) (addr string, a *agent.Agent) {
 	t.Helper()
 	dir := t.TempDir()
@@ -73,6 +75,7 @@ func startAgentLineServer(t *testing.T) (addr string, a *agent.Agent) {
 	return ln.Addr().String(), a
 }
 
+// TRLC-LINKS: REQ-SDS-109
 func TestTCPTransportCall(t *testing.T) {
 	addr, _ := startAgentLineServer(t)
 	tr := NewTCP(addr)
@@ -97,6 +100,7 @@ func TestTCPTransportCall(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-109
 func TestTCPTransportDeviceError(t *testing.T) {
 	addr, _ := startAgentLineServer(t)
 	c := &Client{T: NewTCP(addr)}
@@ -109,6 +113,7 @@ func TestTCPTransportDeviceError(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-109
 func TestTCPTransportDialFailure(t *testing.T) {
 	// A port nothing listens on: the dial error must be reported, not hang.
 	c := &Client{T: NewTCP("127.0.0.1:1")}
@@ -121,6 +126,7 @@ func TestTCPTransportDialFailure(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-110
 func TestPutFileGetFileRoundTrip(t *testing.T) {
 	addr, _ := startAgentLineServer(t)
 	c := &Client{T: NewTCP(addr)}
@@ -173,6 +179,7 @@ func TestPutFileGetFileRoundTrip(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-110
 func TestPutFileMissingLocal(t *testing.T) {
 	addr, _ := startAgentLineServer(t)
 	c := &Client{T: NewTCP(addr)}
@@ -181,6 +188,7 @@ func TestPutFileMissingLocal(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-109
 func TestTruncate(t *testing.T) {
 	if got := truncate([]byte("abcdef"), 3); got != "abc…" {
 		t.Errorf("truncate = %q", got)

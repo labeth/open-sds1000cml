@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-DECODE
 package decode
 
 import (
@@ -13,6 +14,7 @@ import (
 
 // brFlexPad prepends `lead` and appends `trail` samples of `level` — a realistic
 // idle GAP so the capture does not start/stop exactly on a frame.
+// TRLC-LINKS: REQ-SDS-018
 func brFlexPad(w []uint8, lead, trail int, level uint8) []uint8 {
 	out := make([]uint8, 0, lead+len(w)+trail)
 	for i := 0; i < lead; i++ {
@@ -29,6 +31,7 @@ func brFlexPad(w []uint8, lead, trail int, level uint8) []uint8 {
 // length so the corruption tests can index individual bits. Layout mirrors
 // flexrayWave exactly (idle HIGH; TSS LOW; FSS 1 HIGH; per byte BSS HIGH,LOW +
 // 8 data MSB-first; FES LOW,HIGH).
+// TRLC-LINKS: REQ-SDS-018
 func brFlexFrame(bytes []int, spb, tssBits, leadBits, trailBits int) []uint8 {
 	lo, hi := uint8(40), uint8(210)
 	var w []uint8
@@ -59,11 +62,13 @@ func brFlexFrame(bytes []int, spb, tssBits, leadBits, trailBits int) []uint8 {
 
 // brFlexBitOffsetBSS0 returns the bit index (in units of `spb` samples) of byte
 // i's BSS bit0 for a frame built by brFlexFrame.
+// TRLC-LINKS: REQ-SDS-018
 func brFlexBitOffsetBSS0(i, tssBits, leadBits int) int {
 	return leadBits + tssBits + 1 + i*10
 }
 
 // brFlexSetBit overwrites bit `off` (0-based in bit units) with `level`.
+// TRLC-LINKS: REQ-SDS-018
 func brFlexSetBit(w []uint8, off, spb int, level uint8) {
 	for j := off * spb; j < (off+1)*spb && j < len(w); j++ {
 		if j >= 0 {
@@ -74,6 +79,7 @@ func brFlexSetBit(w []uint8, off, spb int, level uint8) {
 
 // brFlexTwoNoGap builds two frames back-to-back with NO idle between them: the
 // first frame's FES HIGH bit runs straight into the second frame's TSS LOW.
+// TRLC-LINKS: REQ-SDS-018
 func brFlexTwoNoGap(f1, f2 []int, spb, tssBits int) []uint8 {
 	lo, hi := uint8(40), uint8(210)
 	var w []uint8
@@ -106,6 +112,7 @@ func brFlexTwoNoGap(f1, f2 []int, spb, tssBits int) []uint8 {
 	return w
 }
 
+// TRLC-LINKS: REQ-SDS-018
 func brFlexEq(got, want []int) bool {
 	return fmt.Sprintf("%v", got) == fmt.Sprintf("%v", want)
 }
@@ -113,6 +120,7 @@ func brFlexEq(got, want []int) bool {
 // brFlexHeaderCRC11 computes the FlexRay header CRC-11 (poly 0x385, init 0x1A)
 // over the 20 header bits sync(1) startup(1) frameID(11) payloadLen(7) — used to
 // build a frame whose header CRC is genuinely CORRECT before we corrupt it.
+// TRLC-LINKS: REQ-SDS-018
 func brFlexHeaderCRC11(sync, startup, frameID, payloadLen int) int {
 	bits := make([]int, 0, 20)
 	bits = append(bits, sync&1, startup&1)
@@ -136,6 +144,7 @@ func brFlexHeaderCRC11(sync, startup, frameID, payloadLen int) int {
 // brFlexHeaderBytes packs the 40-bit FlexRay header (flags(5) frameID(11)
 // payloadLen(7) headerCRC(11) cycle(6), MSB-first) into 5 bytes — matching the
 // decoder's own header split (sync=bit36, startup=bit35, crc=bits6..16).
+// TRLC-LINKS: REQ-SDS-018
 func brFlexHeaderBytes(sync, startup, frameID, payloadLen, crc, cycle int) []int {
 	var h uint64
 	h |= uint64(sync&1) << 36
@@ -154,6 +163,7 @@ func brFlexHeaderBytes(sync, startup, frameID, payloadLen, crc, cycle int) []int
 // >=5-byte frame so it matches the frame's own sync/startup/frameID/payloadLen,
 // turning an otherwise-random header into a genuinely valid FlexRay frame that the
 // (now CRC-checking) decoder accepts. Frames shorter than a header are unchanged.
+// TRLC-LINKS: REQ-SDS-018
 func brFlexFixCRC(fb []int) []int {
 	if len(fb) < 5 {
 		return fb
@@ -178,6 +188,7 @@ func brFlexFixCRC(fb []int) []int {
 
 // brFlexSafe runs DecodeFlexRay under a recover so a panic is reported as a
 // finding instead of crashing the whole suite.
+// TRLC-LINKS: REQ-SDS-018
 func brFlexSafe(t *testing.T, tag string, codes []uint8, ct float64, cfg FlexRayCfg) (r Result, panicked bool) {
 	t.Helper()
 	defer func() {
@@ -192,11 +203,13 @@ func brFlexSafe(t *testing.T, tag string, codes []uint8, ct float64, cfg FlexRay
 
 // ctForExact returns a colTimeS that makes the decoder's sample-per-bit T land
 // exactly on spb for the given integer bitrate: T = 1/(bitrate*ct) = spb.
+// TRLC-LINKS: REQ-SDS-018
 func ctForExact(bitrate, spb int) float64 {
 	return 1.0 / (float64(bitrate) * float64(spb))
 }
 
 // ===========================================================================
+// TRLC-LINKS: REQ-SDS-018
 func TestBreakFlexray(t *testing.T) {
 	// ------------------------------------------------------------------
 	// CLASS 1 — FALSE NEGATIVES: valid frames MUST decode byte-exact.

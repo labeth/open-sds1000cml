@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-WEB
 // Node tests for sigrok_export.js — CRC32 vectors, stored-ZIP structure, the
 // srzip/VCD/WAV encoders against the byte layouts libsigrok's readers parse
 // (session_file.c / session_driver.c / input/vcd.c / input/wav.c), and the
@@ -10,16 +11,20 @@ const {
 } = require("./sigrok_export.js");
 
 let fails = 0;
+// TRLC-LINKS: REQ-SDS-069
 function check(name, ok, detail) {
   console.log((ok ? "ok   " : "FAIL ") + name + (!ok && detail !== undefined ? "  [" + detail + "]" : ""));
   if (!ok) fails++;
 }
+// TRLC-LINKS: REQ-SDS-069
 const bytes = (s) => new TextEncoder().encode(s);
+// TRLC-LINKS: REQ-SDS-069
 const text = (u8) => new TextDecoder().decode(u8);
 
 // Minimal stored-ZIP reader: walks the EOCD/central directory like a real
 // extractor (libzip reads the CD, not the local headers) and cross-checks the
 // local header for each entry. Throws on any structural lie.
+// TRLC-LINKS: REQ-SDS-069
 function unzip(u8) {
   const dv = new DataView(u8.buffer, u8.byteOffset, u8.byteLength);
   const eocd = u8.length - 22; // no comment in our writer
@@ -213,6 +218,7 @@ function unzip(u8) {
   check("wav: 18-byte fmt, code 3 (IEEE float), 2ch", dv.getUint32(16, true) === 18 && dv.getUint16(20, true) === 3 && dv.getUint16(22, true) === 2);
   check("wav: rate/block align/bits", dv.getUint32(24, true) === 1000000 && dv.getUint16(32, true) === 8 && dv.getUint16(34, true) === 32);
   check("wav: data chunk sized 3 frames", text(w.subarray(38, 42)) === "data" && dv.getUint32(42, true) === 24 && w.length === 70);
+  // TRLC-LINKS: REQ-SDS-069
   const s = (i) => dv.getFloat32(46 + 4 * i, true);
   check("wav: interleaved ch order", s(0) === 0 && s(1) === -2 && s(2) === 1 && s(3) === -2);
   check("wav: NaN gap holds previous value", s(4) === 1 && s(5) === -1);

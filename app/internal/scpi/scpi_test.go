@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-SCPI
 package scpi
 
 import (
@@ -14,23 +15,47 @@ import (
 // fakeScope is a truthful mini-instrument: every setter updates the stats
 // snapshot the way the real engine eventually would, so set→query
 // round-trips can be asserted exactly.
+// TRLC-LINKS: REQ-SDS-024
 type fakeScope struct {
 	stats engine.Stats
 	frame *engine.Frame
 	calls []string
 }
 
-func (f *fakeScope) Snapshot() engine.Stats           { return f.stats }
+// TRLC-LINKS: REQ-SDS-024
+func (f *fakeScope) Snapshot() engine.Stats { return f.stats }
+
+// TRLC-LINKS: REQ-SDS-024
 func (f *fakeScope) WithFrame(fn func(*engine.Frame)) { fn(f.frame) }
+
+// TRLC-LINKS: REQ-SDS-024
 func (f *fakeScope) SetRunning(on bool) {
 	f.calls = append(f.calls, "run")
-	f.stats.Running = on
+	f.stats.Running, f.stats.Single = on, false // RUN or STOP cancels a single, as the engine
 }
+
+// TRLC-LINKS: REQ-SDS-024
 func (f *fakeScope) SetNorm(on bool) {
 	f.calls = append(f.calls, "norm")
 	f.stats.Norm = on
 }
-func (f *fakeScope) SetSingle() { f.calls = append(f.calls, "single") }
+
+// TRLC-LINKS: REQ-SDS-024
+func (f *fakeScope) SetSingle() {
+	f.calls = append(f.calls, "single")
+	f.stats.Single, f.stats.Running, f.stats.Norm = true, true, true // armed, as the engine
+}
+
+// TRLC-LINKS: REQ-SDS-024
+func (f *fakeScope) SetTrigPosFrac(v float64) {
+	f.calls = append(f.calls, "trigpos")
+	f.stats.TrigPosFrac = v
+}
+
+// TRLC-LINKS: REQ-SDS-024
+func (f *fakeScope) ForceTrigger() { f.calls = append(f.calls, "force") }
+
+// TRLC-LINKS: REQ-SDS-024
 func (f *fakeScope) SetTdiv(t float64) (engine.Band, bool) {
 	f.calls = append(f.calls, "tdiv")
 	b, ok := engine.PlanTdiv(t)
@@ -39,6 +64,8 @@ func (f *fakeScope) SetTdiv(t float64) (engine.Band, bool) {
 	}
 	return b, ok
 }
+
+// TRLC-LINKS: REQ-SDS-024
 func (f *fakeScope) SetTrigLevelCode(c uint16) uint16 {
 	f.calls = append(f.calls, "trlv")
 	// Mirror the real engine: codes clamp to the operational window and the
@@ -52,14 +79,20 @@ func (f *fakeScope) SetTrigLevelCode(c uint16) uint16 {
 	f.stats.TrigCode = c
 	return c
 }
+
+// TRLC-LINKS: REQ-SDS-024
 func (f *fakeScope) SetTrigSlope(r bool) {
 	f.calls = append(f.calls, "slope")
 	f.stats.TrigRising = r
 }
+
+// TRLC-LINKS: REQ-SDS-024
 func (f *fakeScope) SetTrigSource(ch int) {
 	f.calls = append(f.calls, "src")
 	f.stats.TrigSource = ch
 }
+
+// TRLC-LINKS: REQ-SDS-024
 func (f *fakeScope) SetOffsetDAC(ch int, c uint16) {
 	f.calls = append(f.calls, "ofst")
 	if ch == 0 {
@@ -68,10 +101,14 @@ func (f *fakeScope) SetOffsetDAC(ch int, c uint16) {
 		f.stats.OffC2 = c
 	}
 }
+
+// TRLC-LINKS: REQ-SDS-024
 func (f *fakeScope) SetAcqMode(m int) {
 	f.calls = append(f.calls, "acq")
 	f.stats.AcqMode = m
 }
+
+// TRLC-LINKS: REQ-SDS-024
 func (f *fakeScope) SetAvgCount(n int) {
 	f.calls = append(f.calls, "avg")
 	f.stats.AvgCount = n
@@ -80,6 +117,7 @@ func (f *fakeScope) SetAvgCount(n int) {
 // fakeFE is a truthful vertical front end: SetVdiv tracks the detent index
 // and SetOffset stages the DAC code into the scope stats exactly like the
 // real analog front end does through the engine.
+// TRLC-LINKS: REQ-SDS-024
 type fakeFE struct {
 	fs    *fakeScope
 	idx   [2]int
@@ -87,13 +125,24 @@ type fakeFE struct {
 	probe [2]float64
 }
 
-func (f *fakeFE) SetVdiv(ch, idx int) error      { f.idx[ch] = idx; return nil }
-func (f *fakeFE) Snapshot() ([2]int, bool)       { return f.idx, true }
-func (f *fakeFE) SetProbe(ch int, x float64)     { f.probe[ch] = x }
+// TRLC-LINKS: REQ-SDS-024
+func (f *fakeFE) SetVdiv(ch, idx int) error { f.idx[ch] = idx; return nil }
+
+// TRLC-LINKS: REQ-SDS-024
+func (f *fakeFE) Snapshot() ([2]int, bool) { return f.idx, true }
+
+// TRLC-LINKS: REQ-SDS-024
+func (f *fakeFE) SetProbe(ch int, x float64) { f.probe[ch] = x }
+
+// TRLC-LINKS: REQ-SDS-024
 func (f *fakeFE) SetCoupling(ch, mode int) error { f.cpl[ch] = mode; return nil }
+
+// TRLC-LINKS: REQ-SDS-024
 func (f *fakeFE) OffsetVolts(ch int, code uint16) float64 {
 	return analog.OffsetVolts(ch, code)
 }
+
+// TRLC-LINKS: REQ-SDS-024
 func (f *fakeFE) SetOffset(ch int, volts float64) uint16 {
 	code := analog.OffsetCode(ch, volts)
 	f.fs.SetOffsetDAC(ch, code)
@@ -102,28 +151,41 @@ func (f *fakeFE) SetOffset(ch int, volts float64) uint16 {
 
 // fakeDisplay is a truthful device-display double (the panel controller's
 // scpi.Display surface): plain state the XYDS/PESU/MENU handlers read+write.
+// TRLC-LINKS: REQ-SDS-024
 type fakeDisplay struct {
 	xy, persist, menu bool
 }
 
-func (d *fakeDisplay) ViewXY() bool        { return d.xy }
-func (d *fakeDisplay) SetViewXY(on bool)   { d.xy = on }
-func (d *fakeDisplay) PersistOn() bool     { return d.persist }
-func (d *fakeDisplay) SetPersist(on bool)  { d.persist = on }
-func (d *fakeDisplay) MenuOpen() bool      { return d.menu }
+// TRLC-LINKS: REQ-SDS-024
+func (d *fakeDisplay) ViewXY() bool { return d.xy }
+
+// TRLC-LINKS: REQ-SDS-024
+func (d *fakeDisplay) SetViewXY(on bool) { d.xy = on }
+
+// TRLC-LINKS: REQ-SDS-024
+func (d *fakeDisplay) PersistOn() bool { return d.persist }
+
+// TRLC-LINKS: REQ-SDS-024
+func (d *fakeDisplay) SetPersist(on bool) { d.persist = on }
+
+// TRLC-LINKS: REQ-SDS-024
+func (d *fakeDisplay) MenuOpen() bool { return d.menu }
+
+// TRLC-LINKS: REQ-SDS-024
 func (d *fakeDisplay) SetMenuOpen(on bool) { d.menu = on }
 
+// TRLC-LINKS: REQ-SDS-024
 func newH(t *testing.T) (*Handler, *fakeScope) {
 	t.Helper()
 	f := &engine.Frame{
 		C1: make([]uint8, 2048), C2: make([]uint8, 2048),
-		Valid: 2048, WinCols: 2048, Seq: 3, SampleS: 800e-9,
+		Valid: 2048, WinCols: 2048, Seq: 3, SampleS: 800e-9, EdgeX: -1,
 	}
 	for i := range f.C1 {
 		f.C1[i] = uint8(i % 200)
 	}
 	fs := &fakeScope{
-		stats: engine.Stats{Running: true, TdivS: 500e-6, AvgCount: 16, TrigRising: true},
+		stats: engine.Stats{Running: true, TdivS: 500e-6, AvgCount: 16, TrigRising: true, TrigPosFrac: .5},
 		frame: f,
 	}
 	return New(fs, nil, nil, nil, t.Logf), fs
@@ -131,6 +193,7 @@ func newH(t *testing.T) (*Handler, *fakeScope) {
 
 // newHFE is newH plus a truthful fake front end (VDIV/OFST round-trips) and a
 // fake display (XYDS/PESU/MENU round-trips).
+// TRLC-LINKS: REQ-SDS-024
 func newHFE(t *testing.T) (*Handler, *fakeScope, *fakeFE) {
 	t.Helper()
 	h, fs := newH(t)
@@ -140,11 +203,13 @@ func newHFE(t *testing.T) (*Handler, *fakeScope, *fakeFE) {
 	return h, fs, fe
 }
 
+// TRLC-LINKS: REQ-SDS-024
 func do(t *testing.T, h *Handler, cmd string) string {
 	t.Helper()
 	return string(h.HandleLine([]byte(cmd + "\n")))
 }
 
+// TRLC-LINKS: REQ-SDS-024
 func TestIDN(t *testing.T) {
 	h, _ := newH(t)
 	got := do(t, h, "*IDN?")
@@ -154,6 +219,7 @@ func TestIDN(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-024
 func TestReplyFormats(t *testing.T) {
 	h, _ := newH(t)
 	// TDIV: %.2E + LOWER-case s, header echoed.
@@ -174,6 +240,7 @@ func TestReplyFormats(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-024
 func TestErrorTokens(t *testing.T) {
 	h, _ := newH(t)
 	if got := do(t, h, "BOGUS?"); got != "Undefined header\n" {
@@ -187,6 +254,7 @@ func TestErrorTokens(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-024
 func TestSettersSilent(t *testing.T) {
 	h, fs := newH(t)
 	if got := do(t, h, "TDIV 1E-3"); got != "" {
@@ -204,6 +272,7 @@ func TestSettersSilent(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-024
 func TestCompoundLine(t *testing.T) {
 	h, _ := newH(t)
 	got := do(t, h, "CHDR?;TDIV?")
@@ -212,6 +281,7 @@ func TestCompoundLine(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-024
 func TestWFSUAndDAT2(t *testing.T) {
 	h, _ := newH(t)
 	do(t, h, "WFSU SP,4,NP,100,FP,8")
@@ -226,7 +296,7 @@ func TestWFSUAndDAT2(t *testing.T) {
 	payload := out[len(head) : len(head)+100]
 	// Sample i comes from FP + i·SP = 8, 12, 16... of (i%200).
 	for i := 0; i < 100; i++ {
-		if payload[i] != uint8((8+i*4)%200) {
+		if payload[i] != uint8((8+i*4)%200)^0x80 { // signed about 128
 			t.Fatalf("payload[%d] = %d", i, payload[i])
 		}
 	}
@@ -241,8 +311,9 @@ func TestWFSUAndDAT2(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-024
 func TestWavedesc(t *testing.T) {
-	h, _ := newH(t)
+	h, fs := newH(t)
 	out := h.HandleLine([]byte("C1:WF? DESC\n"))
 	head := "C1:WF ALL,#9000000346"
 	if !bytes.HasPrefix(out, []byte(head)) {
@@ -259,7 +330,7 @@ func TestWavedesc(t *testing.T) {
 		t.Fatal("WAVE_ARRAY_COUNT")
 	}
 	gain := math.Float32frombits(binary.LittleEndian.Uint32(d[156:]))
-	if math.Abs(float64(gain)-1.0/50) > 1e-9 { // 1 V/div default / 50
+	if math.Abs(float64(gain)-1.0/25) > 1e-9 { // 1 V/div default / 25 codes per div (spec 11 §4)
 		t.Fatalf("VERTICAL_GAIN = %v", gain)
 	}
 	hi := math.Float32frombits(binary.LittleEndian.Uint32(d[176:]))
@@ -270,10 +341,18 @@ func TestWavedesc(t *testing.T) {
 	if math.Abs(ho-(-2048*800e-9/2)) > 1e-12 {
 		t.Fatalf("HORIZ_OFFSET = %v", ho)
 	}
+	// A triggered frame places t=0 at its exact trigger sample.
+	fs.frame.EdgeX = 500.25
+	out = h.HandleLine([]byte("C1:WF? DESC\n"))
+	d = out[len(head) : len(head)+346]
+	if ho := math.Float64frombits(binary.LittleEndian.Uint64(d[180:])); math.Abs(ho-(-500.25*800e-9)) > 1e-12 {
+		t.Fatalf("triggered HORIZ_OFFSET = %v", ho)
+	}
 }
 
 // ofstRoundTrip is the expected OFST? value after OFST <v>: the set stages
 // the DAC code, the query inverts it — same quantizer both ways.
+// TRLC-LINKS: REQ-SDS-024
 func ofstRoundTrip(ch int, v float64) string {
 	code := analog.OffsetCode(ch, v)
 	w := 0.0
@@ -287,6 +366,7 @@ func ofstRoundTrip(ch int, v float64) string {
 // command surface (spec 11 §3.3/§3.4): every set either round-trips through
 // its query, or returns an explicit §3.4 error token — NEVER a silent
 // success that the query then contradicts.
+// TRLC-LINKS: REQ-SDS-024
 func TestSetNeverLies(t *testing.T) {
 	cases := []struct {
 		set     string
@@ -324,9 +404,10 @@ func TestSetNeverLies(t *testing.T) {
 		{"C1:CPL D50", "Data out of range\n", "C1:CPL?", "C1:CPL D1M\n"},
 		{"C1:CPL GARBAGE", "Command header error\n", "C1:CPL?", "C1:CPL D1M\n"},
 		// TRLV: the query reflects the CLAMPED effective level, never a
-		// request past the DAC window (±(31437−27000)/911 … measured global fit).
-		{"TRLV 100", "", "TRLV?", "TRLV 4.87E+00V\n"},
-		{"TRLV -100", "", "TRLV?", "TRLV -3.91E+00V\n"},
+		// request past the code range ((31437−1)/911, (31437−65535)/911 …
+		// measured global fit).
+		{"TRLV 100", "", "TRLV?", "TRLV 3.45E+01V\n"},
+		{"TRLV -100", "", "TRLV?", "TRLV -3.74E+01V\n"},
 		{"TRLV 5E-4", "", "TRLV?", "TRLV 0.00E+00V\n"}, // quantized to code 31437 = 0 V
 		// Display commands: XYDS/PESU/MENU wire to the REAL panel state
 		// (fakeDisplay here); GRDS/INTS/BUZZ are fixed truths (BWL rule).
@@ -381,6 +462,7 @@ func TestSetNeverLies(t *testing.T) {
 }
 
 // Per-channel shadows must not leak across channels.
+// TRLC-LINKS: REQ-SDS-024
 func TestChannelShadowIndependence(t *testing.T) {
 	h, _, _ := newHFE(t)
 	do(t, h, "C1:INVS ON;C1:UNIT A;C1:SKEW 5NS")
@@ -391,6 +473,7 @@ func TestChannelShadowIndependence(t *testing.T) {
 }
 
 // *RST is Default Setup: the new channel shadows return to power-on state.
+// TRLC-LINKS: REQ-SDS-024
 func TestRSTResetsChannelShadows(t *testing.T) {
 	h, _ := newH(t)
 	do(t, h, "C1:INVS ON;C1:UNIT A;C1:SKEW 5NS")
@@ -405,6 +488,7 @@ func TestRSTResetsChannelShadows(t *testing.T) {
 // state (TRA ON, D1M, ×1 — the New() defaults), pushes the coupling/probe
 // reset through the front end, and returns the display to Y-T/persist-off —
 // so the post-reset queries describe the real instrument.
+// TRLC-LINKS: REQ-SDS-024
 func TestRSTResetsTraCplAttn(t *testing.T) {
 	h, _, fe := newHFE(t)
 	do(t, h, "C1:TRA OFF;C2:TRA OFF;C1:CPL A1M;C2:CPL GND;C1:ATTN 100;C2:ATTN 10")
@@ -426,6 +510,7 @@ func TestRSTResetsTraCplAttn(t *testing.T) {
 
 // Without a panel (disp == nil) the display commands degrade to the BWL rule:
 // the fixed state round-trips, anything else errors — never a silent no-op.
+// TRLC-LINKS: REQ-SDS-024
 func TestDisplayStubsWithoutPanel(t *testing.T) {
 	h, _ := newH(t)
 	for _, c := range []struct{ cmd, want string }{
@@ -447,6 +532,7 @@ func TestDisplayStubsWithoutPanel(t *testing.T) {
 
 // Inverted() is the render surface's view of the INVS shadow (the web status
 // snapshot and the LCD HUD read it) — it must track sets and *RST exactly.
+// TRLC-LINKS: REQ-SDS-024
 func TestInvertedSnapshot(t *testing.T) {
 	h, _ := newH(t)
 	if h.Inverted() != [2]bool{} {
@@ -466,6 +552,7 @@ func TestInvertedSnapshot(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-024
 func TestRollRescale(t *testing.T) {
 	h, fs := newH(t)
 	fs.frame.RollCodes = true
@@ -477,18 +564,199 @@ func TestRollRescale(t *testing.T) {
 	out := h.HandleLine([]byte("C1:WF? DAT2\n"))
 	head := "C1:WF ALL,#9000000004"
 	payload := out[len(head) : len(head)+4]
-	if payload[0] != 178 {
-		t.Fatalf("roll rescale: %d, want 178 (deviation doubled)", payload[0])
+	if int8(payload[0]) != 50 {
+		t.Fatalf("roll rescale: %d, want +50 (deviation doubled)", int8(payload[0]))
 	}
 	// Clamp: a +100 roll deviation would be +200 deep → clamp to 255.
 	for i := range fs.frame.C1 {
 		fs.frame.C1[i] = 228
 	}
 	out = h.HandleLine([]byte("C1:WF? DAT2\n"))
-	if out[len(head)] != 255 {
-		t.Fatalf("roll rescale clamp: %d, want 255", out[len(head)])
+	if int8(out[len(head)]) != 127 {
+		t.Fatalf("roll rescale clamp: %d, want +127", int8(out[len(head)]))
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-024
 func (f *fakeFE) TrigCode(volts float64, srcCh int) float64 { return 31437 - 911*volts }
-func (f *fakeFE) TrigVolts(code uint16, srcCh int) float64  { return (31437 - float64(code)) / 911 }
+
+// TRLC-LINKS: REQ-SDS-024
+func (f *fakeFE) TrigVolts(code uint16, srcCh int) float64 { return (31437 - float64(code)) / 911 }
+
+// TRLC-LINKS: REQ-SDS-024
+func TestTRLVQueryFollowsLevelSetElsewhere(t *testing.T) {
+	h, fs, _ := newHFE(t)
+	// The panel or web UI moves the trigger to 1.65 V on C2 without SCPI.
+	fs.stats.TrigSource = 1
+	fs.stats.TrigCode = 29934 // 31437 − 911·1.65
+	got := do(t, h, "TRLV?")
+	if got != "TRLV 1.65E+00V\n" {
+		t.Fatalf("TRLV? = %q, want the live 1.65 V", got)
+	}
+}
+
+// TRLC-LINKS: REQ-SDS-021, REQ-SDS-024
+func TestPAVAMeasuresPublishedFrame(t *testing.T) {
+	h, fs := newH(t)
+	// 1 V/div default (25 codes/div): a 1 MHz square between codes 103 and
+	// 153 at 2 ns/sample is 2 V of amplitude.
+	n := 5000
+	c := make([]uint8, n)
+	for i := range c {
+		c[i] = 103
+		if (i/250)%2 == 1 {
+			c[i] = 153
+		}
+	}
+	fs.frame = &engine.Frame{Seq: 1, Valid: n, C1: c, C2: c, SampleS: 2e-9}
+	if got := do(t, h, "C1:PAVA? AMPL"); got != "C1:PAVA AMPL,2.000000E+00V\n" {
+		t.Fatalf("AMPL = %q", got)
+	}
+	if got := do(t, h, "C1:PAVA? FREQ"); got != "C1:PAVA FREQ,1.000000E+06Hz\n" {
+		t.Fatalf("FREQ = %q", got)
+	}
+	if got := do(t, h, "C1:PAVA? NOPE"); got != "Command header error\n" {
+		t.Fatalf("unknown parameter = %q", got)
+	}
+	fs.frame.PeakDetect = true // timing at bucket resolution; edges inside a bucket are unknown
+	if got := do(t, h, "C1:PAVA? FREQ"); got != "C1:PAVA FREQ,1.000000E+06Hz\n" {
+		t.Fatalf("peak-detect FREQ = %q", got)
+	}
+	if got := do(t, h, "C1:PAVA? RISE"); got != "C1:PAVA RISE,****\n" {
+		t.Fatalf("peak-detect RISE = %q", got)
+	}
+	if got := do(t, h, "C1:PAVA? PKPK"); !strings.HasPrefix(got, "C1:PAVA PKPK,2.0") {
+		t.Fatalf("peak-detect PKPK = %q", got)
+	}
+}
+
+// TRLC-LINKS: REQ-SDS-021, REQ-SDS-024
+func TestPAVAZoomedDetentUsesAnalogRange(t *testing.T) {
+	h, fs, fe := newHFE(t)
+	// Detent 0 is 2 mV/div, a ×5 display zoom of the 10 mV analog range: a
+	// 50-code step is 50 × 10 mV/25 = 20 mV, not 4 mV.
+	fe.idx = [2]int{0, 0}
+	n := 5000
+	c := make([]uint8, n)
+	for i := range c {
+		c[i] = 103
+		if (i/250)%2 == 1 {
+			c[i] = 153
+		}
+	}
+	fs.frame = &engine.Frame{Seq: 1, Valid: n, C1: c, C2: c, SampleS: 2e-9}
+	if got := do(t, h, "C1:PAVA? AMPL"); got != "C1:PAVA AMPL,2.000000E-02V\n" {
+		t.Fatalf("AMPL at 2 mV/div = %q, want 20 mV", got)
+	}
+}
+
+// VDIV and OFST are probe-tip volts: with ATTN 10, VDIV 5 selects the
+// 0.5 V/div BNC range and both queries answer at the tip.
+// TRLC-LINKS: REQ-SDS-024
+func TestVdivOfstFollowProbe(t *testing.T) {
+	h, _, fe := newHFE(t)
+	do(t, h, "C1:ATTN 10")
+	do(t, h, "C1:VDIV 5")
+	if idx, _ := fe.Snapshot(); analog.Detents[idx[0]].VdivV != 0.5 {
+		t.Fatalf("BNC range %v, want 0.5 V/div", analog.Detents[idx[0]].VdivV)
+	}
+	if got := do(t, h, "C1:VDIV?"); got != "C1:VDIV 5.00E+00V\n" {
+		t.Fatalf("VDIV? = %q", got)
+	}
+	do(t, h, "C1:OFST 7")
+	if got := do(t, h, "C1:OFST?"); got != "C1:OFST 7.00E+00V\n" {
+		t.Fatalf("OFST? = %q", got)
+	}
+}
+
+// The guide's <source>:TRLV and <source>:TRSL forms address the trigger
+// source's level and slope; another channel has none.
+// TRLC-LINKS: REQ-SDS-024
+func TestChannelPrefixedTriggerLevelAndSlope(t *testing.T) {
+	h, fs, _ := newHFE(t)
+	fs.stats.TrigSource = 1
+	fs.stats.TrigCode = 29934
+	fs.stats.TrigRising = true
+	if got := do(t, h, "C2:TRLV?"); got != "C2:TRLV 1.65E+00V\n" {
+		t.Fatalf("C2:TRLV? = %q", got)
+	}
+	if got := do(t, h, "C2:TRSL?"); got != "C2:TRSL POS\n" {
+		t.Fatalf("C2:TRSL? = %q", got)
+	}
+	if got := do(t, h, "C2:TRSL NEG"); got != "" {
+		t.Fatalf("C2:TRSL NEG replied %q", got)
+	}
+	if got := do(t, h, "C1:TRLV?"); got == "" || strings.HasPrefix(got, "C1:TRLV") {
+		t.Fatalf("C1:TRLV? with source C2 = %q, want an error", got)
+	}
+}
+
+// TRDL drives the trigger position: a positive delay puts the trigger right
+// of centre, and a delay off the screen is refused. ARM is a single
+// acquisition; FRTR forces a trigger.
+// TRLC-LINKS: REQ-SDS-024
+func TestTRDLMovesTriggerPosition(t *testing.T) {
+	h, fs, _ := newHFE(t) // 500 us/div: the screen is 5 ms
+	if got := do(t, h, "TRDL 1.5MS"); got != "" || math.Abs(fs.stats.TrigPosFrac-.8) > 1e-9 {
+		t.Fatalf("TRDL 1.5MS: %q frac %v", got, fs.stats.TrigPosFrac)
+	}
+	if got := do(t, h, "TRDL?"); got != "TRDL 1.50E-03s\n" {
+		t.Fatalf("TRDL? = %q", got)
+	}
+	if got := do(t, h, "TRDL 3MS"); got != "Data out of range\n" || math.Abs(fs.stats.TrigPosFrac-.8) > 1e-9 {
+		t.Fatalf("TRDL 3MS: %q frac %v", got, fs.stats.TrigPosFrac)
+	}
+	fs.calls = nil
+	do(t, h, "ARM")
+	do(t, h, "FRTR")
+	if strings.Join(fs.calls, ",") != "single,force" {
+		t.Fatalf("ARM, FRTR called %v", fs.calls)
+	}
+	if got := do(t, h, "TRMD?"); got != "TRMD SINGLE\n" {
+		t.Fatalf("after ARM, TRMD? = %q", got)
+	}
+}
+
+type liveFE struct{ *fakeFE }
+
+// TRLC-LINKS: REQ-SDS-024
+func (f liveFE) ProbeFactor(ch int) float64 { return f.probe[ch] }
+
+// TRLC-LINKS: REQ-SDS-024
+func (f liveFE) Coupling(ch int) int { return f.cpl[ch] }
+
+type traceDisp struct {
+	fakeDisplay
+	on [2]bool
+}
+
+// TRLC-LINKS: REQ-SDS-024
+func (d *traceDisp) TraceOn(ch int) bool { return d.on[ch] }
+
+// TRLC-LINKS: REQ-SDS-024
+func (d *traceDisp) SetTraceOn(ch int, on bool) { d.on[ch] = on }
+
+// Probe, coupling and trace visibility changed on the panel read back over
+// SCPI, and TRA reaches the screen.
+// TRLC-LINKS: REQ-SDS-024
+func TestChannelQueriesFollowThePanel(t *testing.T) {
+	h, _, fe := newHFE(t)
+	h.fe = liveFE{fe}
+	d := &traceDisp{on: [2]bool{true, true}}
+	h.disp = d
+	fe.probe[0], fe.cpl[1] = 10, analog.CplAC // set on the panel
+	d.on[1] = false
+	if got := do(t, h, "C1:ATTN?"); got != "C1:ATTN 10\n" {
+		t.Fatalf("ATTN? = %q", got)
+	}
+	if got := do(t, h, "C2:CPL?"); got != "C2:CPL A1M\n" {
+		t.Fatalf("CPL? = %q", got)
+	}
+	if got := do(t, h, "C2:TRA?"); got != "C2:TRA OFF\n" {
+		t.Fatalf("TRA? = %q", got)
+	}
+	do(t, h, "C1:TRA OFF")
+	if d.on[0] {
+		t.Fatal("C1:TRA OFF left the trace on screen")
+	}
+}

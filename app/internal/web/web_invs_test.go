@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-WEB
 package web
 
 import (
@@ -12,6 +13,7 @@ import (
 // plumbing: /api/status carries inv1/inv2 (exact wire names the page reads)
 // from the wired invert source — the SCPI handler's shadow in production —
 // and reports false/false when no source is wired (tests, no SCPI).
+// TRLC-LINKS: REQ-SDS-164
 func TestStatusInvertSource(t *testing.T) {
 	fs := &fakeScope{stats: engine.Stats{Running: true}}
 	s := New(fs, nil, nil, nil)

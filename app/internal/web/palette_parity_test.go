@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-WEB
 package web
 
 import (
@@ -16,6 +17,7 @@ import (
 // #1 bug — trigger red on web vs green on the LCD — permanently unmergeable, and
 // also fails if tokens.json changed without `go generate ./internal/web`.
 
+// TRLC-LINKS: REQ-SDS-021
 func read(t *testing.T, p string) string {
 	t.Helper()
 	b, err := os.ReadFile(p)
@@ -28,11 +30,13 @@ func read(t *testing.T, p string) string {
 var cssVarRe = regexp.MustCompile(`--([\w-]+):\s*(#[0-9a-fA-F]{6})`)
 var palRe = regexp.MustCompile(`(col\w+)\s*=\s*rgb\((\d+),\s*(\d+),\s*(\d+)\)`)
 
+// TRLC-LINKS: REQ-SDS-021
 func hex2rgb(h string) [3]int {
 	v, _ := strconv.ParseInt(strings.TrimPrefix(h, "#"), 16, 64)
 	return [3]int{int(v>>16) & 0xff, int(v>>8) & 0xff, int(v) & 0xff}
 }
 
+// TRLC-LINKS: REQ-SDS-021
 func TestPaletteParity(t *testing.T) {
 	var src struct {
 		Tokens map[string]string `json:"tokens"`

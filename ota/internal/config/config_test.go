@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-OTA-CONFIG
 package config
 
 import (
@@ -20,6 +21,7 @@ var allKeys = []string{
 	"OTA_TAKEOVER_DELAY", "OTA_AUTO_TAKEOVER",
 }
 
+// TRLC-LINKS: REQ-SDS-088
 func clearEnv(t *testing.T) {
 	t.Helper()
 	for _, k := range allKeys {
@@ -27,6 +29,7 @@ func clearEnv(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-088
 func TestLoadDeviceDefaults(t *testing.T) {
 	clearEnv(t)
 	usb := t.TempDir()
@@ -97,6 +100,7 @@ func TestLoadDeviceDefaults(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-088
 func TestLoadEveryOverride(t *testing.T) {
 	clearEnv(t)
 	dir := t.TempDir()
@@ -164,6 +168,7 @@ func TestLoadEveryOverride(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-088
 func TestEnvDurSecs(t *testing.T) {
 	const key = "OTA_TEST_DUR"
 	def := 10 * time.Second
@@ -188,6 +193,7 @@ func TestEnvDurSecs(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-088
 func TestEnvInt(t *testing.T) {
 	const key = "OTA_TEST_INT"
 	cases := []struct {
@@ -209,6 +215,7 @@ func TestEnvInt(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-088
 func TestEnvBool(t *testing.T) {
 	const key = "OTA_TEST_BOOL"
 	cases := []struct {
@@ -236,6 +243,7 @@ func TestEnvBool(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-088
 func TestFactoryNamesParsing(t *testing.T) {
 	clearEnv(t)
 	t.Setenv("OTA_DIR", t.TempDir())
@@ -252,6 +260,7 @@ func TestFactoryNamesParsing(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-088
 func TestEnvHelper(t *testing.T) {
 	const key = "OTA_TEST_STR"
 	t.Setenv(key, "")

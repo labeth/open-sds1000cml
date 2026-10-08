@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-OTA-AGENT
 package agent
 
 import (
@@ -35,6 +36,7 @@ import (
 //  8. re-assert the LAN address if the kill dropped it
 //
 // After this returns the supervisor loop launches the app slot (if any).
+// TRLC-LINKS: REQ-SDS-027
 type TakeoverOpts struct {
 	DryRun bool `json:"dry_run"`
 	// Force skips the VXI-11 STOP + idle-confirm gates. Only for a unit whose
@@ -43,6 +45,7 @@ type TakeoverOpts struct {
 	Force bool `json:"force"`
 }
 
+// TRLC-LINKS: REQ-SDS-027
 type TakeoverResult struct {
 	OK         bool               `json:"ok"`
 	Steps      []string           `json:"steps"`
@@ -50,10 +53,12 @@ type TakeoverResult struct {
 	Err        string             `json:"err,omitempty"`
 }
 
+// TRLC-LINKS: REQ-SDS-027
 func (r *TakeoverResult) step(format string, args ...any) {
 	r.Steps = append(r.Steps, fmt.Sprintf(format, args...))
 }
 
+// TRLC-LINKS: REQ-SDS-027
 func (r *TakeoverResult) Summary() string { return strings.Join(r.Steps, "; ") }
 
 // Test seams: production values are the real implementations and every call
@@ -77,6 +82,7 @@ var shellish = map[string]bool{
 // factoryCandidates returns the /dev/Gpmc holders that look like the vendor
 // firmware: not us, not our descendants, not pid 1, not shells. The vendor
 // launcher may be our ancestor (it ran startup.sh) — ancestors are included.
+// TRLC-LINKS: REQ-SDS-027
 func (a *Agent) factoryCandidates() []fdinherit.Holder {
 	self := os.Getpid()
 	desc := fdinherit.DescendantsOfSelf()
@@ -102,6 +108,7 @@ func (a *Agent) factoryCandidates() []fdinherit.Holder {
 	return out
 }
 
+// TRLC-LINKS: REQ-SDS-027
 func (a *Agent) matchesFactoryName(h fdinherit.Holder) bool {
 	for _, n := range a.cfg.FactoryNames {
 		if n != "" && (strings.Contains(h.Comm, n) || strings.Contains(h.Exe, n)) {
@@ -111,6 +118,7 @@ func (a *Agent) matchesFactoryName(h fdinherit.Holder) bool {
 	return false
 }
 
+// TRLC-LINKS: REQ-SDS-027
 func (a *Agent) Takeover(opts TakeoverOpts) *TakeoverResult {
 	a.tkMu.Lock()
 	defer a.tkMu.Unlock()
@@ -207,6 +215,7 @@ func (a *Agent) Takeover(opts TakeoverOpts) *TakeoverResult {
 // (a crash in the persist→kill window, or an init-respawned factory app). It
 // is the idempotent tail of Takeover: STOP → idle-confirm → kill. Serialized
 // with Takeover via tkMu so the two never race.
+// TRLC-LINKS: REQ-SDS-027
 func (a *Agent) reclaimBus() {
 	a.tkMu.Lock()
 	defer a.tkMu.Unlock()
@@ -230,6 +239,7 @@ func (a *Agent) reclaimBus() {
 
 // factoryStop speaks the factory app's own VXI-11 SCPI (spec 11): both the
 // momentary STOP verb and TRMD STOP for good measure. Always destroy_link.
+// TRLC-LINKS: REQ-SDS-027
 func (a *Agent) factoryStop() error {
 	cl, err := vxi11Dial("127.0.0.1", 5*time.Second)
 	if err != nil {
@@ -250,6 +260,7 @@ func (a *Agent) factoryStop() error {
 // confirmIdle polls until version 0x12 reads 0x0052 AND the fill counter
 // 0x46 is frozen across 3 consecutive pairs 50 ms apart (spec 01 §6: the
 // reliable halted signal is the frozen fill counter, not a status bit).
+// TRLC-LINKS: REQ-SDS-027
 func (a *Agent) confirmIdle(res *TakeoverResult, timeout time.Duration) error {
 	deadline := time.Now().Add(timeout)
 	var lastErr error
@@ -282,6 +293,7 @@ func (a *Agent) confirmIdle(res *TakeoverResult, timeout time.Duration) error {
 
 // killFactory SIGKILLs the candidates and re-scans a few rounds in case init
 // respawns the vendor app.
+// TRLC-LINKS: REQ-SDS-027
 func (a *Agent) killFactory(res *TakeoverResult) int {
 	killed := 0
 	for round := 0; round < 4; round++ {
@@ -309,6 +321,7 @@ func (a *Agent) killFactory(res *TakeoverResult) int {
 // reassertNetwork restores the pre-kill IPv4 config if it disappears after
 // the factory kill (the vendor app may own network management). Uses busybox
 // ifconfig from the device's BusyBox userland.
+// TRLC-LINKS: REQ-SDS-027
 func (a *Agent) reassertNetwork(preIPs []string) {
 	for _, wait := range []time.Duration{2 * time.Second, 10 * time.Second, 30 * time.Second} {
 		time.Sleep(wait)
@@ -337,6 +350,7 @@ func (a *Agent) reassertNetwork(preIPs []string) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-027
 func splitCIDR(cidr string) (ip, mask string, ok bool) {
 	i := strings.IndexByte(cidr, '/')
 	if i < 0 {

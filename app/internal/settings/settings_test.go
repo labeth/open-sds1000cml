@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-SETTINGS
 package settings
 
 import (
@@ -8,6 +9,7 @@ import (
 	"time"
 )
 
+// TRLC-LINKS: REQ-SDS-089
 func sample() Settings {
 	return Settings{
 		Version: Version,
@@ -24,6 +26,7 @@ func sample() Settings {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-089
 func TestRoundTrip(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "scope-settings.json")
 	want := sample()
@@ -47,6 +50,7 @@ func TestRoundTrip(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-089
 func TestSaveAtomicNoTmpLeft(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "s.json")
@@ -58,12 +62,14 @@ func TestSaveAtomicNoTmpLeft(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-089
 func TestLoadMissing(t *testing.T) {
 	if _, ok := Load(filepath.Join(t.TempDir(), "nope.json"), t.Logf); ok {
 		t.Fatal("Load: ok=true for a missing file")
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-072, REQ-SDS-089
 func TestLoadCorruptFallsBack(t *testing.T) {
 	cases := map[string]string{
 		"garbage":       "\x00\xff\xfeklaatu barada nikto",
@@ -87,6 +93,7 @@ func TestLoadCorruptFallsBack(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-072, REQ-SDS-089
 func TestLoadOversizeRejected(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "big.json")
 	big := []byte(`{"version":1,"pad":"` + strings.Repeat("a", maxFileSize) + `"}`)
@@ -100,6 +107,7 @@ func TestLoadOversizeRejected(t *testing.T) {
 
 // fakeSaver builds a Saver with an injected clock and sink: the debounce
 // logic runs against virtual time, no goroutine and no disk.
+// TRLC-LINKS: REQ-SDS-090
 func fakeSaver(cur *Settings) (*Saver, *[]Settings, *time.Time) {
 	saves := &[]Settings{}
 	now := time.Unix(1000, 0)
@@ -109,6 +117,7 @@ func fakeSaver(cur *Settings) (*Saver, *[]Settings, *time.Time) {
 	return s, saves, &now
 }
 
+// TRLC-LINKS: REQ-SDS-090
 func TestSaverDebounce(t *testing.T) {
 	cur := sample()
 	s, saves, now := fakeSaver(&cur)
@@ -160,6 +169,7 @@ func TestSaverDebounce(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-090
 func TestSaverFlush(t *testing.T) {
 	cur := sample()
 	s, saves, now := fakeSaver(&cur)
@@ -182,6 +192,7 @@ func TestSaverFlush(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-090
 func TestSaverRetriesAfterFailure(t *testing.T) {
 	cur := sample()
 	s, _, now := fakeSaver(&cur)

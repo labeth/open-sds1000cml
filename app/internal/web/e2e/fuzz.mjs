@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-WEB
 // Operator fuzzer: drives the LIVE scope web UI the way a wandering human
 // operator does — random-but-realistic control actions through the real DOM
 // (never /api/set) — and checks a battery of invariants after EVERY action:
@@ -27,6 +28,7 @@ const OUT = process.env.OUT || "/tmp/fuzz-findings";
 fs.mkdirSync(OUT, { recursive: true });
 const findingsPath = path.join(OUT, "findings.jsonl");
 
+// TRLC-LINKS: REQ-SDS-180
 function mulberry32(a) {
   return function () {
     a |= 0; a = (a + 0x6D2B79F5) | 0;
@@ -36,11 +38,15 @@ function mulberry32(a) {
   };
 }
 const rng = mulberry32(SEED);
+// TRLC-LINKS: REQ-SDS-180
 const pick = (arr) => arr[Math.floor(rng() * arr.length)];
+// TRLC-LINKS: REQ-SDS-180
 const rint = (lo, hi) => lo + Math.floor(rng() * (hi - lo + 1));
+// TRLC-LINKS: REQ-SDS-180
 const rfloat = (lo, hi) => lo + rng() * (hi - lo);
 
 // ---------- generic DOM drivers (operator hands) ----------
+// TRLC-LINKS: REQ-SDS-180
 async function selRandom(op, id) {
   const opts = await op.page.evaluate((i) => {
     const e = document.getElementById(i);
@@ -54,6 +60,7 @@ async function selRandom(op, id) {
   }, { id, v });
   return v;
 }
+// TRLC-LINKS: REQ-SDS-180
 async function slider(op, id, v) {
   await op.page.evaluate((a) => {
     const e = document.getElementById(a.id);
@@ -63,6 +70,7 @@ async function slider(op, id, v) {
     e.dispatchEvent(new Event("change"));
   }, { id, v });
 }
+// TRLC-LINKS: REQ-SDS-180
 async function clickId(op, id) {
   const el = await op.page.$("#" + id);
   if (!el) throw new Error(`button #${id} missing`);
@@ -75,41 +83,76 @@ async function clickId(op, id) {
 // Each action: { name, w: weight, hold: frames may legitimately stop after it,
 // run(op) -> optional detail string }.
 const ACTIONS = [
+  // TRLC-LINKS: REQ-SDS-180
   { name: "tdiv-random", w: 8, run: async (op) => "tdiv=" + (await selRandom(op, "tdiv")) },
+  // TRLC-LINKS: REQ-SDS-180
   { name: "vdiv1-random", w: 4, run: async (op) => "vdiv1=" + (await selRandom(op, "vdiv1")) },
+  // TRLC-LINKS: REQ-SDS-180
   { name: "vdiv2-random", w: 3, run: async (op) => "vdiv2=" + (await selRandom(op, "vdiv2")) },
+  // TRLC-LINKS: REQ-SDS-180
   { name: "cpl1-random", w: 2, run: async (op) => "cpl1=" + (await selRandom(op, "cpl1")) },
+  // TRLC-LINKS: REQ-SDS-180
   { name: "cpl2-random", w: 2, run: async (op) => "cpl2=" + (await selRandom(op, "cpl2")) },
+  // TRLC-LINKS: REQ-SDS-180
   { name: "probe1-random", w: 1, run: async (op) => "probe1=" + (await selRandom(op, "probe1")) },
+  // TRLC-LINKS: REQ-SDS-180
   { name: "probe2-random", w: 1, run: async (op) => "probe2=" + (await selRandom(op, "probe2")) },
+  // TRLC-LINKS: REQ-SDS-180
   { name: "trig-level", w: 6, run: async (op) => { const v = rfloat(-3.5, 4.5).toFixed(2); await slider(op, "lvl", v); return "lvl=" + v; } },
+  // TRLC-LINKS: REQ-SDS-180
   { name: "trig-slope", w: 3, run: async (op) => clickId(op, "slope") },
+  // TRLC-LINKS: REQ-SDS-180
   { name: "trig-source", w: 3, run: async (op) => clickId(op, "source") },
+  // TRLC-LINKS: REQ-SDS-180
   { name: "trig-mode", w: 3, hold: true, run: async (op) => clickId(op, "mode") }, // NORM with no matching trigger may hold
+  // TRLC-LINKS: REQ-SDS-180
   { name: "trig-type", w: 3, run: async (op) => "ttype=" + (await selRandom(op, "ttype")) },
+  // TRLC-LINKS: REQ-SDS-180
   { name: "trig-pos", w: 3, run: async (op) => { const v = rfloat(0, 1).toFixed(2); await slider(op, "tpos", v); return "tpos=" + v; } },
+  // TRLC-LINKS: REQ-SDS-180
   { name: "holdoff", w: 1, run: async (op) => { const v = pick(["0", "0.0005", "0.01", "0.1"]); await op.page.evaluate((x) => { const e = document.getElementById("holdoff"); e.value = x; e.dispatchEvent(new Event("change")); }, v); return "holdoff=" + v; } },
+  // TRLC-LINKS: REQ-SDS-180
   { name: "ch1-toggle", w: 3, run: async (op) => clickId(op, "tC1") },
+  // TRLC-LINKS: REQ-SDS-180
   { name: "ch2-toggle", w: 3, run: async (op) => clickId(op, "tC2") },
+  // TRLC-LINKS: REQ-SDS-180
   { name: "offset1", w: 3, run: async (op) => { const v = rfloat(-3.5, 3.5).toFixed(2); await slider(op, "off1", v); return "off1=" + v; } },
+  // TRLC-LINKS: REQ-SDS-180
   { name: "offset2", w: 2, run: async (op) => { const v = rfloat(-3.5, 3.5).toFixed(2); await slider(op, "off2", v); return "off2=" + v; } },
+  // TRLC-LINKS: REQ-SDS-180
   { name: "run-stop", w: 4, hold: true, run: async (op) => clickId(op, "run") },
+  // TRLC-LINKS: REQ-SDS-180
   { name: "single", w: 2, hold: true, run: async (op) => clickId(op, "single") },
+  // TRLC-LINKS: REQ-SDS-180
   { name: "freeze", w: 2, hold: true, run: async (op) => clickId(op, "freeze") },
+  // TRLC-LINKS: REQ-SDS-180
   { name: "autoset", w: 1, run: async (op) => { await clickId(op, "autoset"); await op.page.waitForTimeout(4000); return "autoset"; } },
+  // TRLC-LINKS: REQ-SDS-180
   { name: "view-yt", w: 2, run: async (op) => clickId(op, "mYT") },
+  // TRLC-LINKS: REQ-SDS-180
   { name: "view-xy", w: 1, run: async (op) => clickId(op, "mXY") },
+  // TRLC-LINKS: REQ-SDS-180
   { name: "view-fft", w: 2, run: async (op) => clickId(op, "mFFT") },
+  // TRLC-LINKS: REQ-SDS-180
   { name: "math-fn", w: 2, run: async (op) => "mathFn=" + (await selRandom(op, "mathFn")) },
+  // TRLC-LINKS: REQ-SDS-180
   { name: "acq-mode", w: 2, run: async (op) => "acq=" + (await selRandom(op, "acq")) },
+  // TRLC-LINKS: REQ-SDS-180
   { name: "ets-toggle", w: 1, run: async (op) => clickId(op, "ets") },
+  // TRLC-LINKS: REQ-SDS-180
   { name: "persist", w: 1, run: async (op) => clickId(op, "tPersist") },
+  // TRLC-LINKS: REQ-SDS-180
   { name: "cursors", w: 2, run: async (op) => clickId(op, "tCursors") },
+  // TRLC-LINKS: REQ-SDS-180
   { name: "memdepth", w: 2, run: async (op) => "memdepth=" + (await selRandom(op, "memdepth")) },
+  // TRLC-LINKS: REQ-SDS-180
   { name: "decode-proto", w: 4, run: async (op) => "decProto=" + (await selRandom(op, "decProto")) },
+  // TRLC-LINKS: REQ-SDS-180
   { name: "decode-fmt", w: 1, run: async (op) => "decFmt=" + (await selRandom(op, "decFmt")) },
+  // TRLC-LINKS: REQ-SDS-180
   { name: "decode-auto", w: 1, run: async (op) => clickId(op, "decDetect") },
   {
+    // TRLC-LINKS: REQ-SDS-180
     name: "zone-cycle", w: 1, hold: true, run: async (op) => {
       // draw-free zone flow: pick a mode, then straight back off (drawing needs
       // canvas drags; mode churn alone must never error)
@@ -120,6 +163,7 @@ const ACTIONS = [
     },
   },
   {
+    // TRLC-LINKS: REQ-SDS-180
     name: "eye-arm-disarm", w: 2, run: async (op) => {
       const r = await clickId(op, "ejArm");
       if (r) return r;
@@ -130,6 +174,7 @@ const ACTIONS = [
     },
   },
   {
+    // TRLC-LINKS: REQ-SDS-180
     name: "superres-arm-disarm", w: 2, run: async (op) => {
       await selRandom(op, "srPreset").catch(() => {});
       const r = await clickId(op, "srArm");
@@ -141,6 +186,7 @@ const ACTIONS = [
     },
   },
   {
+    // TRLC-LINKS: REQ-SDS-180
     name: "spectrogram-arm-disarm", w: 2, run: async (op) => {
       const r = await clickId(op, "spgArm");
       if (r) return r;
@@ -151,6 +197,7 @@ const ACTIONS = [
     },
   },
   {
+    // TRLC-LINKS: REQ-SDS-180
     name: "bode-arm-disarm", w: 1, hold: true, run: async (op) => {
       const r = await clickId(op, "bodeArm");
       if (r) return r;
@@ -161,6 +208,7 @@ const ACTIONS = [
     },
   },
   {
+    // TRLC-LINKS: REQ-SDS-180
     name: "serialtrig-arm-disarm", w: 2, hold: true, run: async (op) => {
       // random byte pattern; frames may legitimately hold while armed
       await op.page.evaluate((b) => { const e = document.getElementById("stBytes"); if (e) { e.value = b; e.dispatchEvent(new Event("change")); } }, rint(0, 255).toString(16).padStart(2, "0"));
@@ -173,6 +221,7 @@ const ACTIONS = [
     },
   },
   {
+    // TRLC-LINKS: REQ-SDS-180
     name: "zoom-wheel", w: 4, run: async (op) => {
       const box = await op.page.evaluate(() => { const c = document.getElementById("scope") || document.querySelector("canvas"); const r = c.getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; });
       await op.page.mouse.move(box.x, box.y);
@@ -182,6 +231,7 @@ const ACTIONS = [
     },
   },
   {
+    // TRLC-LINKS: REQ-SDS-180
     name: "pan-drag", w: 3, run: async (op) => {
       const box = await op.page.evaluate(() => { const c = document.getElementById("scope") || document.querySelector("canvas"); const r = c.getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2, w: r.width }; });
       const dx = rint(-Math.floor(box.w / 3), Math.floor(box.w / 3));
@@ -193,6 +243,7 @@ const ACTIONS = [
     },
   },
   {
+    // TRLC-LINKS: REQ-SDS-180
     name: "dblclick-home", w: 2, run: async (op) => {
       const box = await op.page.evaluate(() => { const c = document.getElementById("scope") || document.querySelector("canvas"); const r = c.getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; });
       await op.page.mouse.dblclick(box.x, box.y);
@@ -200,6 +251,7 @@ const ACTIONS = [
     },
   },
   {
+    // TRLC-LINKS: REQ-SDS-180
     name: "ctrl-wheel-tdiv", w: 2, run: async (op) => {
       const box = await op.page.evaluate(() => { const c = document.getElementById("scope") || document.querySelector("canvas"); const r = c.getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; });
       await op.page.mouse.move(box.x, box.y);
@@ -209,13 +261,16 @@ const ACTIONS = [
       return "ctrl-wheel";
     },
   },
+  // TRLC-LINKS: REQ-SDS-180
   { name: "fftN1", w: 1, run: async (op) => { const v = rint(1, 64); await op.page.evaluate((x) => { const e = document.getElementById("fftN1"); if (e) { e.value = x; e.dispatchEvent(new Event("change")); } }, v); return "fftN1=" + v; } },
+  // TRLC-LINKS: REQ-SDS-180
   { name: "ref-save", w: 1, run: async (op) => clickId(op, pick(["refSaveA", "refSaveB"])) },
 ];
 const weighted = [];
 for (const a of ACTIONS) for (let k = 0; k < a.w; k++) weighted.push(a);
 
 // ---------- invariants ----------
+// TRLC-LINKS: REQ-SDS-180
 async function checkInvariants(op, act, iter) {
   const errs = [];
   // I1 page errors

@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-SUPERRES
 // comp_parity_driver.cjs — evaluate the falloff-compensation reference
 // implementation (../web/superres_comp.js) on the payload the Go test builds
 // (frequency-grid curves, auto-sizing cases, full srCompensate cases) and
@@ -10,6 +11,7 @@ const out = { curves: [], autos: [], comps: [] };
 
 // mkOpts mirrors the JS call sites: a partial opts object completed from
 // SRCOMP_DEFAULT (srCompGain itself is always handed a completed object).
+// TRLC-LINKS: REQ-SDS-142
 const mkOpts = (o) => Object.assign({}, C.SRCOMP_DEFAULT, o || {});
 
 for (const c of inp.curves || []) {

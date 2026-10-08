@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-OTA-RPCPROTO
 package rpcproto
 
 import (
@@ -11,6 +12,7 @@ import (
 // golden strings pin the canonical encoding both sides must keep speaking.
 // If a tag or field changes here, every deployment path breaks — this test is
 // meant to fail loudly first.
+// TRLC-LINKS: REQ-SDS-101
 func TestRequestGoldenWire(t *testing.T) {
 	cases := []struct {
 		name string
@@ -46,6 +48,7 @@ func TestRequestGoldenWire(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-101
 func TestResponseGoldenWire(t *testing.T) {
 	cases := []struct {
 		name string
@@ -87,6 +90,7 @@ func TestResponseGoldenWire(t *testing.T) {
 // agent command (the full deployment surface) through encode -> decode ->
 // re-encode and requires a stable fixed point, so any envelope drift that
 // would corrupt a command in flight shows up here.
+// TRLC-LINKS: REQ-SDS-101
 func TestFullCommandSurfaceRoundTrip(t *testing.T) {
 	wire := []string{
 		`{"cmd":"help"}`,
@@ -132,6 +136,7 @@ func TestFullCommandSurfaceRoundTrip(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-101
 func TestResponseDecodeAgentShapes(t *testing.T) {
 	// Literal agent-produced responses (DispatchJSON output shapes).
 	var ok Response
@@ -150,6 +155,7 @@ func TestResponseDecodeAgentShapes(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-101
 func compact(t *testing.T, raw json.RawMessage) []byte {
 	t.Helper()
 	if len(raw) == 0 {
@@ -167,6 +173,7 @@ func compact(t *testing.T, raw json.RawMessage) []byte {
 // encode -> decode -> encode yields identical bytes with Cmd preserved). A
 // violation means the same request can mean two different things depending on
 // how many hops it took — protocol drift between otactl and the agent.
+// TRLC-LINKS: REQ-SDS-101
 func FuzzRequestDecode(f *testing.F) {
 	f.Add([]byte(`{"cmd":"ping"}`))
 	f.Add([]byte(`{"cmd":"logs","args":{"file":"boot","tail":4096}}`))
@@ -212,6 +219,7 @@ func FuzzRequestDecode(f *testing.F) {
 
 // FuzzResponseDecode is the same fixed-point property for the response side,
 // including the json.RawMessage Data passthrough.
+// TRLC-LINKS: REQ-SDS-101
 func FuzzResponseDecode(f *testing.F) {
 	f.Add([]byte(`{"ok":true}`))
 	f.Add([]byte(`{"ok":true,"data":{"device":"sds-1","time_unix":1751600000,"agent_slot":"A"}}`))

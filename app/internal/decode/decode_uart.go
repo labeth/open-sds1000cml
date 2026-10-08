@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-DECODE
 package decode
 
 import (
@@ -8,7 +9,9 @@ import (
 )
 
 // UARTCfg configures the UART decode. Baud=0 auto-infers; Bits default 8.
+// TRLC-LINKS: REQ-SDS-018
 type UARTCfg struct {
+	Inverted  bool // electrical low represents logical one (idle low)
 	Baud      int
 	Bits      int
 	Parity    string // none|even|odd
@@ -33,6 +36,7 @@ type UARTCfg struct {
 // so does the true bit — and the true bit is the wide one. If nothing
 // validates the input is genuinely ambiguous and the caller must set the baud
 // — that honesty is preserved. Mirrors decode.js inferUARTspb step for step.
+// TRLC-LINKS: REQ-SDS-018
 func inferUARTspb(S sliced) (float64, string) {
 	var gaps []float64
 	for k := 1; k < len(S.edges); k++ {
@@ -112,6 +116,20 @@ func inferUARTspb(S sliced) (float64, string) {
 		}
 		// >= keeps the LARGER candidate on an exact tie (candidates ascend).
 		if frac := float64(good) / float64(len(kg)); frac >= 0.7 && frac >= bestFrac {
+			// Final estimate over every fitting gap, multi-bit runs included:
+			// total time over total bits. The 1-bit mean alone carries the edge
+			// quantization of each short gap; peak-detect frames (half a bucket
+			// per sample) read 115200 Bd 1.2% fast that way (bench 2026-10-06).
+			sumG, sumM := 0.0, 0.0
+			for _, g := range kg {
+				if m := math.Round(g / ref); m >= 1 && math.Abs(g-m*ref) <= 0.35*ref {
+					sumG += g
+					sumM += m
+				}
+			}
+			if sumM > 0 {
+				ref = sumG / sumM
+			}
 			best, bestFrac = ref, frac
 		}
 	}
@@ -122,7 +140,18 @@ func inferUARTspb(S sliced) (float64, string) {
 }
 
 // DecodeUART decodes 8N1-style UART on one channel's codes (decode.js decodeUART).
+// TRLC-LINKS: REQ-SDS-018
 func DecodeUART(codes []uint8, colTimeS float64, cfg UARTCfg) Result {
+	if cfg.Inverted {
+		logical := make([]uint8, len(codes))
+		for i, code := range codes {
+			logical[i] = 255 - code
+		}
+		codes = logical
+		if cfg.HaveThr {
+			cfg.Threshold = 255 - cfg.Threshold
+		}
+	}
 	bits := cfg.Bits
 	if bits == 0 {
 		bits = 8
@@ -149,6 +178,9 @@ func DecodeUART(codes []uint8, colTimeS float64, cfg UARTCfg) Result {
 	} else {
 		var reason string
 		spb, reason = inferUARTspb(S)
+		if spb > 0 {
+			spb = snapStandardBaud(spb, colTimeS)
+		}
 		if reason != "" {
 			return Result{Proto: "uart", Error: reason}
 		}
@@ -223,4 +255,26 @@ func DecodeUART(codes []uint8, colTimeS float64, cfg UARTCfg) Result {
 	}
 	return Result{OK: true, Proto: "uart", Spans: spans, Text: strings.Join(toks, " "),
 		Bytes: bytes, Baud: int(math.Round(baud)), SPB: spb, Thr: S.threshold}
+}
+
+// standardBauds are the common UART rates auto-baud snaps to.
+var standardBauds = []float64{300, 600, 1200, 2400, 4800, 9600, 14400, 19200, 28800, 38400,
+	57600, 76800, 115200, 230400, 250000, 460800, 500000, 921600, 1000000, 1500000, 2000000, 3000000}
+
+// snapStandardBaud moves an inferred samples-per-bit onto the nearest standard
+// rate when one lies within 1.5%: an estimate from a short record is a
+// fraction of a sample off per bit, and the rate on the wire is almost always
+// a standard one. Otherwise the estimate stands.
+// TRLC-LINKS: REQ-SDS-018
+func snapStandardBaud(spb, colTimeS float64) float64 {
+	if !(spb > 0) || !(colTimeS > 0) {
+		return spb
+	}
+	baud := 1 / (spb * colTimeS)
+	for _, std := range standardBauds {
+		if math.Abs(baud-std) <= 0.015*std {
+			return 1 / (std * colTimeS)
+		}
+	}
+	return spb
 }

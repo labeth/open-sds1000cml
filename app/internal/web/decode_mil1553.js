@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-WEB-DECODE-MIL1553
 // MIL-STD-1553B decoder — JS twin of decode_mil1553.go, kept algorithm-faithful
 // so the web overlay and the on-device LCD agree byte-for-byte. Classic script:
 // no imports; reuses sliceChannel / logicAt / popcount / fail from decode.js and
@@ -10,8 +11,14 @@
 // data sync is the inverse (LOW then HIGH). 1553 maps "1 = high-then-low", i.e.
 // a falling mid-cell transition = 1 and rising = 0 — the Thomas convention
 // (ieee=false) of recoverManchester. cfg.bitrate>0 pins T; 0 auto-infers.
+// TRLC-LINKS: REQ-SDS-018
 function decodeMIL1553(codes, colTimeS, cfg) {
   cfg = cfg || {};
+  if (cfg.inverted) {
+    codes = Array.from(codes, x => x < 0 ? x : 255 - x);
+    cfg = Object.assign({}, cfg);
+    if (cfg.threshold != null) cfg.threshold = 255 - cfg.threshold;
+  }
   const minSPB = 4;
   const S = sliceChannel(codes, cfg);
   if (!S.ok) return fail("mil1553", S.reason);
@@ -48,9 +55,11 @@ function decodeMIL1553(codes, colTimeS, cfg) {
 
 // decodeMIL1553At finds each word's SYNC and decodes it at bit period T, returning
 // { res, words } so the caller can score competing T hypotheses.
+// TRLC-LINKS: REQ-SDS-018
 function decodeMIL1553At(S, T, colTimeS) {
   const spans = [], bytes = [], toks = [];
   let words = 0;
+  // TRLC-LINKS: REQ-SDS-018
   const hex4 = v => (v & 0xffff).toString(16).toUpperCase().padStart(4, "0");
 
   // Find each word's SYNC by its coding violation. In clean Manchester data no

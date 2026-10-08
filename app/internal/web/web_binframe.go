@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-WEB
 package web
 
 import (
@@ -11,8 +12,10 @@ import (
 
 // encodeBinFrame serializes a built reply to the binary wire format. It runs
 // after WithFrame returns — rep owns its data, so no lock is held here.
+// TRLC-LINKS: REQ-SDS-163
 func encodeBinFrame(rep frameReply) []byte {
 	var flags byte
+	precision := rep.FractionBits == 8 && len(rep.Q1) == len(rep.C1) && len(rep.Q2) == len(rep.C2) && len(rep.Q1) > 0
 	var segs [][]int16
 	head, tail := 0, 0
 	switch {
@@ -38,6 +41,9 @@ func encodeBinFrame(rep frameReply) []byte {
 			segs = [][]int16{rep.C1, rep.C2}
 		}
 	}
+	if precision {
+		flags |= 0x20
+	}
 	hdr := rep
 	hdr.C1, hdr.C2 = nil, nil
 	hdr.E1Min, hdr.E1Max, hdr.E2Min, hdr.E2Max = nil, nil, nil, nil
@@ -52,11 +58,23 @@ func encodeBinFrame(rep frameReply) []byte {
 	if len(segs) > 0 {
 		segLen = len(segs[0]) - head - tail
 	}
-	buf := make([]byte, 8, 8+len(hj)+segLen*len(segs))
+	payloadBytes := segLen * len(segs)
+	if precision {
+		payloadBytes = 2 * (len(rep.Q1) + len(rep.Q2))
+	}
+	buf := make([]byte, 8, 8+len(hj)+payloadBytes)
 	buf[0] = binMagic
 	buf[1] = flags
 	binary.LittleEndian.PutUint32(buf[4:8], uint32(len(hj)))
 	buf = append(buf, hj...)
+	if precision {
+		for _, seg := range [][]uint16{rep.Q1, rep.Q2} {
+			for _, v := range seg {
+				buf = append(buf, byte(v), byte(v>>8))
+			}
+		}
+		return buf
+	}
 	for _, seg := range segs {
 		for _, v := range seg[head : head+segLen] {
 			buf = append(buf, uint8(v))
@@ -73,6 +91,7 @@ func encodeBinFrame(rep frameReply) []byte {
 // snapshots a newer frame, so delivery latency is one response write and the
 // client needs no poll timer: request-when-ready IS the backpressure, and a
 // slow client simply skips to the newest frame.
+// TRLC-LINKS: REQ-SDS-163
 func (s *Server) hFrameBin(w http.ResponseWriter, r *http.Request) {
 	if s.superseded(r) {
 		w.WriteHeader(http.StatusConflict) // 409 — a newer browser claimed the device
@@ -164,6 +183,7 @@ func (s *Server) hFrameBin(w http.ResponseWriter, r *http.Request) {
 // tick); header carries sample_s and the engine's sub-sample edge_x. No
 // measurements — the stacker computes its own statistics, and skipping the
 // meas pass keeps the raw feed cheap next to the display path.
+// TRLC-LINKS: REQ-SDS-163
 func (s *Server) rawBinMsg(since uint64) []byte {
 	off, vpc := s.vertScales()
 	var hdr frameReply
@@ -197,13 +217,27 @@ func (s *Server) rawBinMsg(since uint64) []byte {
 		hdr = frameReply{
 			Seq: f.Seq, EdgeX: f.EdgeX, Ptp: f.Ptp, TdivS: f.TdivS,
 			DisplayedS: f.DisplayedS, Interp: f.Interp, Norm: f.Norm,
-			Trigd: f.Trigd, Coherent: f.Coherent, IsEnv: f.IsEnv,
+			Trigd: f.Trigd, Coherent: f.Coherent, IsEnv: f.IsEnv, PeakDetect: f.PeakDetect, CaptureSampleS: captureSampleS(f),
 			Degraded: f.Degraded, // half-capture flag travels with the raw record it describes
 			Cols:     n, ColSpanS: float64(n) * f.SampleS, SampleS: f.SampleS,
 			EdgeFrac: -1, WinFrac: 1,
 			Vpc1: vpc[0], Vpc2: vpc[1], Off1V: off[0], Off2V: off[1],
 		}
 		hdr.StreamSeq, hdr.WindowNs, hdr.GapNs = f.StreamSeq, f.WindowNs, f.GapNs
+		hdr.BandwidthHz, hdr.FilterGuard, hdr.Filter = f.BandwidthHz, f.FilterGuard, f.Filter
+		hdr.NoiseGainIdeal, hdr.PassbandHz = f.NoiseGainIdeal, f.PassbandHz
+		hdr.Decimation, hdr.CaptureDepth, hdr.TriggerKind = f.Decimation, f.CaptureDepth, f.TriggerKind
+		if len(f.Q1) == n && len(f.Q2) == n {
+			flags |= 0x20
+			hdr.FractionBits = 8
+			payload = make([]byte, 4*n)
+			for ch, q := range [][]uint16{f.Q1, f.Q2} {
+				for i, v := range q {
+					binary.LittleEndian.PutUint16(payload[2*(ch*n+i):], v)
+				}
+			}
+			return
+		}
 		payload = make([]byte, 2*n)
 		copy(payload[:n], f.C1[:n])
 		copy(payload[n:], f.C2[:n])

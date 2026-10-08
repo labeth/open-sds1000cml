@@ -1,10 +1,13 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
 package engine
 
 import (
 	"math"
+	"open-sds/app/internal/sramcapture"
 	"time"
 )
 
+// TRLC-LINKS: REQ-SDS-011
 func (e *Engine) SetTrigType(t int) {
 	if t < int(TrigEdge) || t > int(TrigVideo) {
 		t = int(TrigEdge)
@@ -15,23 +18,28 @@ func (e *Engine) SetTrigType(t int) {
 	e.mu.Unlock()
 }
 
+// TRLC-LINKS: REQ-SDS-011
 func (e *Engine) SetPulseParams(lvlFrac, wMinNs, wMaxNs float64, cond int) {
 	e.mu.Lock()
 	e.tp.pulseLvlFrac = clampFrac(lvlFrac)
 	e.tp.pulseWMinNs, e.tp.pulseWMaxNs = wMinNs, wMaxNs
 	e.tp.pulseCond = cond & 3
+	e.stats.TrigQual = qualOf(e.tp)
 	e.mu.Unlock()
 }
 
+// TRLC-LINKS: REQ-SDS-011
 func (e *Engine) SetSlopeParams(loFrac, hiFrac, tMinNs, tMaxNs float64, cond int) {
 	e.mu.Lock()
 	e.tp.slopeLoFrac = clampFrac(loFrac)
 	e.tp.slopeHiFrac = clampFrac(hiFrac)
 	e.tp.slopeTMinNs, e.tp.slopeTMaxNs = tMinNs, tMaxNs
 	e.tp.slopeCond = cond & 3
+	e.stats.TrigQual = qualOf(e.tp)
 	e.mu.Unlock()
 }
 
+// TRLC-LINKS: REQ-SDS-011
 func (e *Engine) SetVideoParams(std, line int, neg bool) {
 	if std != 1 {
 		std = 0
@@ -44,6 +52,7 @@ func (e *Engine) SetVideoParams(std, line int, neg bool) {
 	e.mu.Unlock()
 }
 
+// TRLC-LINKS: REQ-SDS-011
 func clampFrac(f float64) float64 {
 	if f < 0 {
 		return 0
@@ -54,10 +63,12 @@ func clampFrac(f float64) float64 {
 	return f
 }
 
+// TRLC-LINKS: REQ-SDS-012
 func (e *Engine) SetAcqMode(m int) {
-	if m < AcqNormal || m > AcqPeak {
+	if m < AcqNormal || m > AcqPrecision {
 		m = AcqNormal
 	}
+
 	e.acqMode.Store(int32(m))
 	e.avgGen.Add(1) // mode change clears the average ring (spec 09 §2.2)
 	e.mu.Lock()
@@ -65,6 +76,7 @@ func (e *Engine) SetAcqMode(m int) {
 	e.mu.Unlock()
 }
 
+// TRLC-LINKS: REQ-SDS-012
 func (e *Engine) SetAvgCount(n int) {
 	if n < 1 {
 		n = 1
@@ -79,6 +91,7 @@ func (e *Engine) SetAvgCount(n int) {
 	e.mu.Unlock()
 }
 
+// TRLC-LINKS: REQ-SDS-012
 func (e *Engine) SetEresLen(l int) {
 	l = clampEresLen(l)
 	e.eresLen.Store(int32(l))
@@ -87,6 +100,7 @@ func (e *Engine) SetEresLen(l int) {
 	e.mu.Unlock()
 }
 
+// TRLC-LINKS: REQ-SDS-008
 func (e *Engine) SetRunning(on bool) {
 	e.running.Store(on)
 	e.singleArmed.Store(false) // an explicit RUN or STOP both cancel a pending single-shot
@@ -103,6 +117,7 @@ func (e *Engine) SetRunning(on bool) {
 // engine STOPs itself after the next triggered frame publishes. RUN cancels
 // it. This is the "capture one and hold" behaviour a scope SINGLE button
 // gives — unlike plain NORM, which keeps re-publishing triggered frames.
+// TRLC-LINKS: REQ-SDS-011
 func (e *Engine) SetSingle() {
 	e.SetNorm(true)
 	e.running.Store(true)
@@ -116,32 +131,81 @@ func (e *Engine) SetSingle() {
 // cal (Zero, CPV — from the analog front end) so the trigger level maps to a
 // display code for level-anchored centring at the CORRECT per-detent slope.
 // zero/cpv ≤ 0 fall back to the global fit.
+// TRLC-LINKS: REQ-SDS-011, REQ-SDS-016
 func (e *Engine) SetChannelVdiv(ch int, vdivV, zero, cpv float64) {
 	if vdivV <= 0 {
 		vdivV = 1
 	}
-	e.chVdivBits[ch&1].Store(math.Float64bits(vdivV))
+	changed := e.chVdivBits[ch&1].Swap(math.Float64bits(vdivV)) != math.Float64bits(vdivV)
 	if cpv <= 0 {
 		zero, cpv = trigZeroDefault, trigCPVDefault
 	}
 	e.trigZero[ch&1].Store(math.Float64bits(zero))
 	e.trigCPV[ch&1].Store(math.Float64bits(cpv))
+	if changed {
+		e.scaleGen.Add(1) // a stopped record replays at the new scale
+	}
 }
 
 // TrigVoltsAt converts a trigger DAC code to (un-probed) input volts at the
 // given source channel's active per-detent cal — the per-detent replacement for
 // the package-level TrigLevelVolts (which assumes the global fit).
+// TRLC-LINKS: REQ-SDS-016
 func (e *Engine) TrigVoltsAt(code uint16, srcCh int) float64 { return e.trigVolts(code, srcCh) }
 
 // SetChannelOffsetV records a channel's applied input-referred offset volts
 // (from the analog front end) so trigDispLevel places the discrimination level
 // on the same offset-shifted reference as the drained samples and the markers.
+// TRLC-LINKS: REQ-SDS-011, REQ-SDS-015
 func (e *Engine) SetChannelOffsetV(ch int, offV float64) {
-	e.trigOffV[ch&1].Store(math.Float64bits(offV))
+	if e.trigOffV[ch&1].Swap(math.Float64bits(offV)) != math.Float64bits(offV) {
+		e.scaleGen.Add(1) // a stopped record replays at the new offset
+	}
+}
+
+// couplingAC is analog.CplAC (the engine does not import the analog layer).
+const couplingAC = 1
+
+// SetChannelCoupling records a channel's coupling (analog.CplDC/AC/GND). AC is
+// applied in software, so the engine tracks an AC source's mean to place the
+// fabric's trigger level where the AC trace crosses it.
+// TRLC-LINKS: REQ-SDS-011, REQ-SDS-096
+func (e *Engine) SetChannelCoupling(ch, mode int) {
+	e.chCoupling[ch&1].Store(int32(mode))
+}
+
+// noteChannelMeans folds a published frame's raw channel means into the
+// smoothed means an AC-coupled trigger source uses. Both channels, whatever
+// their coupling, so a switch to AC (or NORMAL, which publishes nothing while
+// it waits) starts from a known mean.
+// TRLC-LINKS: REQ-SDS-011
+func (e *Engine) noteChannelMeans(f *Frame) {
+	for ch := range e.chMeanCode {
+		sig := f.C1
+		if ch == 1 {
+			sig = f.C2
+		}
+		n := min(f.Valid, len(sig))
+		if n <= 0 {
+			continue
+		}
+		step := max(1, n/65536) // a strided mean of a deep record is plenty
+		sum, cnt := 0, 0
+		for i := 0; i < n; i += step {
+			sum += int(sig[i])
+			cnt++
+		}
+		mean := float64(sum) / float64(cnt)
+		if old := math.Float64frombits(e.chMeanCode[ch].Load()); old > 0 {
+			mean = old + .25*(mean-old)
+		}
+		e.chMeanCode[ch].Store(math.Float64bits(mean))
+	}
 }
 
 // trigVolts converts a trigger DAC code to (un-probed) input volts at the given
 // source channel, using that channel's active per-detent cal.
+// TRLC-LINKS: REQ-SDS-016
 func (e *Engine) trigVolts(code uint16, srcCh int) float64 {
 	zero := math.Float64frombits(e.trigZero[srcCh&1].Load())
 	cpv := math.Float64frombits(e.trigCPV[srcCh&1].Load())
@@ -154,6 +218,7 @@ func (e *Engine) trigVolts(code uint16, srcCh int) float64 {
 // SetTrigPosFrac sets where the trigger sits horizontally on screen: 0=left,
 // 0.5=centre (default), 1=right. Pure software — the display window is offset
 // so the anchor lands at this fraction (spec 05 §8: position is software).
+// TRLC-LINKS: REQ-SDS-011
 func (e *Engine) SetTrigPosFrac(frac float64) {
 	if math.IsNaN(frac) {
 		frac = 0.5 // a NaN would silently un-map every mask column downstream
@@ -170,6 +235,7 @@ func (e *Engine) SetTrigPosFrac(frac float64) {
 	e.mu.Unlock()
 }
 
+// TRLC-LINKS: REQ-SDS-011
 func (e *Engine) chVdivV(ch int) float64 {
 	b := e.chVdivBits[ch&1].Load()
 	if b == 0 {
@@ -182,6 +248,7 @@ func (e *Engine) chVdivV(ch int) float64 {
 // (0..255) at the source channel's V/div — the same mapping the on-screen
 // level line uses. Returns -1 when no level is set (boot comparator), so
 // centring falls back to the mid-level crossing.
+// TRLC-LINKS: REQ-SDS-011
 func (e *Engine) trigDispLevel(srcCh int) int {
 	e.mu.Lock()
 	code := e.trigCode
@@ -198,6 +265,15 @@ func (e *Engine) trigDispLevel(srcCh int) int {
 	// the raw ADC codes.
 	offV := math.Float64frombits(e.trigOffV[srcCh&1].Load())
 	dc := int(math.Round(128 + (e.trigVolts(code, srcCh)+offV)*25/e.chVdivV(srcCh)))
+	// Software AC coupling shows the trace with its mean at centre and no
+	// offset, and the level is read on that trace; the fabric sees the raw
+	// codes, so the level sits that far above the channel's raw mean. Without
+	// it a 0 V level on an AC trace crossing 0 V never fired (bench 2026-10-07).
+	if e.chCoupling[srcCh&1].Load() == couplingAC {
+		if mean := math.Float64frombits(e.chMeanCode[srcCh&1].Load()); mean > 0 {
+			dc = int(math.Round(mean + e.trigVolts(code, srcCh)*25/e.chVdivV(srcCh)))
+		}
+	}
 	if dc < 0 {
 		dc = 0
 	}
@@ -207,6 +283,7 @@ func (e *Engine) trigDispLevel(srcCh int) int {
 	return dc
 }
 
+// TRLC-LINKS: REQ-SDS-011
 func (e *Engine) SetNorm(on bool) {
 	e.mu.Lock()
 	e.norm = on
@@ -218,6 +295,7 @@ func (e *Engine) SetNorm(on bool) {
 // SetTdiv stages a timebase change; it is applied at the next frame boundary
 // with a full bring-up. Returns the resolved band, or ok=false if the value
 // is not a v1 ladder detent.
+// TRLC-LINKS: REQ-SDS-010
 func (e *Engine) SetTdiv(tdivS float64) (Band, bool) {
 	b, ok := PlanTdiv(tdivS)
 	if !ok {
@@ -232,23 +310,35 @@ func (e *Engine) SetTdiv(tdivS float64) (Band, bool) {
 
 // SetMemDepth sets the decimated drain depth in samples — the fps↔data knob.
 // Shallow (down to one screen, decimWin) = highest frame rate; deep (up to the
-// physical deepRecord) = more captured record to scroll, at a lower frame rate
+// fabric's record, maxRecordCols) = more captured record to scroll, at a lower frame rate
 // (a deeper record spans proportionally more capture time). Clamped to a valid
 // range; native-fast/envelope/roll are unaffected.
+// TRLC-LINKS: REQ-SDS-009
 func (e *Engine) SetMemDepth(samples int) int {
+	if e.sram != nil {
+		// The SRAM images always capture their full depth; the setting only
+		// paces the legacy decimated drain. Report the depth in use rather
+		// than echo a request that changes nothing.
+		return int(sramcapture.SamplesPerChannel)
+	}
 	if samples < decimWin {
 		samples = decimWin
 	}
-	if samples > deepRecord {
-		samples = deepRecord
+	if samples > maxRecordCols {
+		samples = maxRecordCols
 	}
 	e.memDepth.Store(int32(samples))
 	return samples
 }
 
+// MemDepth is the requested memory depth (samples), as SetMemDepth applied it.
+// TRLC-LINKS: REQ-SDS-008
+func (e *Engine) MemDepth() int { return int(e.memDepth.Load()) }
+
 // SetFramePeriod sets the publish pacing floor in milliseconds. 0 = run
 // captures back-to-back at the hardware rate (the stream/stitch basis). Returns
 // the applied value (clamped to [0, 1000] ms).
+// TRLC-LINKS: REQ-SDS-008
 func (e *Engine) SetFramePeriod(ms int) int {
 	if ms < 0 {
 		ms = 0
@@ -264,6 +354,7 @@ func (e *Engine) SetFramePeriod(ms int) int {
 // engine waits at least this long before re-arming, so it re-triggers on the
 // same event in a complex/bursty waveform instead of an intermediate edge.
 // 0 disables it. Clamped to [0, 10] s. Returns the applied value.
+// TRLC-LINKS: REQ-SDS-008, REQ-SDS-011
 func (e *Engine) SetHoldoff(sec float64) float64 {
 	if sec < 0 {
 		sec = 0
@@ -281,6 +372,7 @@ func (e *Engine) SetHoldoff(sec float64) float64 {
 // paceHold is pace() with the trigger holdoff folded in: after a genuinely
 // triggered publish it raises the inter-frame floor to the holdoff, delaying
 // the next arm. Untriggered/AUTO frames pace at the normal floor.
+// TRLC-LINKS: REQ-SDS-008, REQ-SDS-011
 func (e *Engine) paceHold(start time.Time, triggered bool) {
 	floor := time.Duration(e.framePeriodNs.Load())
 	if triggered {
@@ -300,12 +392,13 @@ func (e *Engine) paceHold(start time.Time, triggered bool) {
 // deep record, un-paces publishing, and only runs on decimated bands (native-fast
 // is burst-only via SINGLE; roll/envelope are their own paths). Returns the
 // applied state.
+// TRLC-LINKS: REQ-SDS-009
 func (e *Engine) SetStreamMode(on bool) bool {
 	if on {
-		e.memDepth.Store(deepRecord)
+		e.memDepth.Store(maxRecordCols)
 		e.SetFramePeriod(0)
 	} else {
-		e.SetFramePeriod(50)
+		e.SetFramePeriod(int(defaultFramePeriod / time.Millisecond))
 	}
 	e.streamMode.Store(on)
 	e.mu.Lock()
@@ -316,29 +409,32 @@ func (e *Engine) SetStreamMode(on bool) bool {
 
 // effDrainCols is how many samples oneFrame actually drains: the configured
 // memory depth on decimated bands, the band's own drain elsewhere. A SINGLE
-// capture always drains the FULL deep record so the one frame you keep carries
+// capture always drains the FULL record so the one frame you keep carries
 // everything to zoom out into — frame rate is irrelevant for a single shot.
+// Never more than maxRecordCols: that is all the fabric finalizes.
+// TRLC-LINKS: REQ-SDS-009
 func (e *Engine) effDrainCols() int {
+	d := e.band.DrainCols()
 	if e.band.Kind() == KindDecimated {
+		d = int(e.memDepth.Load())
 		if e.singleArmed.Load() {
-			return deepRecord
+			d = maxRecordCols
 		}
-		d := int(e.memDepth.Load())
 		if d < decimWin {
 			d = decimWin
 		}
-		if d > deepRecord {
-			d = deepRecord
-		}
-		return d
 	}
-	return e.band.DrainCols()
+	if d > maxRecordCols {
+		d = maxRecordCols
+	}
+	return d
 }
 
 // SetTrigLevelCode stages a trigger-level DAC recommit. Codes clamp to the
 // operational window. Compare-on-change with an init flag so the first set
 // applies even if equal to the default. Code 0 means "keep the boot-inherited
 // comparator" (spec 05): nothing is staged and 0 is returned.
+// TRLC-LINKS: REQ-SDS-011
 func (e *Engine) SetTrigLevelCode(code uint16) uint16 {
 	if code == 0 {
 		return 0
@@ -366,6 +462,7 @@ func (e *Engine) SetTrigLevelCode(code uint16) uint16 {
 // 1=C2). Codes are producer-clamped (analog.OffsetCode); the shadow is
 // last-write-wins with no compare-on-change — redundant-traffic suppression
 // is the producer's job (spec 09 §1.3).
+// TRLC-LINKS: REQ-SDS-001, REQ-SDS-015
 func (e *Engine) SetOffsetDAC(ch int, code uint16) {
 	if ch != 1 {
 		ch = 0
@@ -380,6 +477,7 @@ func (e *Engine) SetOffsetDAC(ch int, code uint16) {
 	e.mu.Unlock()
 }
 
+// TRLC-LINKS: REQ-SDS-011
 func (e *Engine) SetTrigSlope(rising bool) {
 	e.trigRising.Store(rising)
 	e.mu.Lock()
@@ -391,13 +489,18 @@ func (e *Engine) SetTrigSlope(rising bool) {
 // SetETS stages the equivalent-time opt-in (spec 04 §3: never auto-routed;
 // only effective at tdiv ≤ 50 ns). Applied at the frame boundary like a band
 // change.
+// TRLC-LINKS: REQ-SDS-019
 func (e *Engine) SetETS(on bool) {
+	if e.sram != nil {
+		on = false // This fabric has no equivalent-time acquisition mode.
+	}
 	e.mu.Lock()
 	e.etsWant = on
 	e.stats.ETS = on
 	e.mu.Unlock()
 }
 
+// TRLC-LINKS: REQ-SDS-011
 func (e *Engine) SetTrigSource(ch int) {
 	if ch != 1 {
 		ch = 0
@@ -407,4 +510,27 @@ func (e *Engine) SetTrigSource(ch int) {
 	e.stats.TrigSource = ch
 	e.mu.Unlock()
 	e.hintReset.Store(true)
+}
+
+// SetPrecisionRate selects the nearest hardware output sample rate per channel.
+// This setting is independent of the viewing timebase.
+// TRLC-LINKS: REQ-SDS-036
+func (e *Engine) SetPrecisionRate(hz float64) float64 {
+	log := 4
+	if hz > 0 && !math.IsNaN(hz) && !math.IsInf(hz, 0) {
+		log = int(math.Round(math.Log2(500e6 / hz)))
+	}
+	if log < 4 {
+		log = 4
+	}
+	if log > 20 {
+		log = 20
+	}
+	actual := 500e6 / float64(uint64(1)<<uint(log))
+	e.precisionLog.Store(int32(log))
+	e.avgGen.Add(1)
+	e.mu.Lock()
+	e.stats.PrecisionRateHz = actual
+	e.mu.Unlock()
+	return actual
 }

@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-SCPI
 package scpi
 
 import (
@@ -15,6 +16,7 @@ import (
 // SCPI parser fuzz: HandleLine must never panic, whatever arrives on the
 // wire — every panic here is a remotely-triggerable crash of the instrument
 // loop. Seeded corpus of structural edge cases plus random mutations.
+// TRLC-LINKS: REQ-SDS-024
 func TestSCPIFuzzNoPanic(t *testing.T) {
 	h, _ := newH(t)
 	corpus := []string{
@@ -94,6 +96,7 @@ func TestSCPIFuzzNoPanic(t *testing.T) {
 // value set, or (b) the set returned the expected §3.4 error token and the
 // query still reports the true state. Silent success + no effect — the bug
 // class where a stub swallows a set and the query then lies — fails here.
+// TRLC-LINKS: REQ-SDS-024
 func TestSCPIFuzzSetQueryInvariant(t *testing.T) {
 	h, _, _ := newHFE(t)
 	rng := rand.New(rand.NewSource(7))
@@ -172,7 +175,9 @@ func TestSCPIFuzzSetQueryInvariant(t *testing.T) {
 				"TRLV?", "TRLV " + sciV(eff) + "\n"}
 		},
 		func() round { // TRDL
-			v := (rng.Float64()*2 - 1) * 1e-3
+			// Within the screen: the trigger position holds it.
+			tdiv := h.sc.Snapshot().TdivS
+			v := (rng.Float64()*2 - 1) * 4.9 * tdiv
 			return round{"TRDL " + strconv.FormatFloat(v, 'E', -1, 64), "",
 				"TRDL?", "TRDL " + sciS(v) + "\n"}
 		},
@@ -294,17 +299,18 @@ func TestSCPIFuzzSetQueryInvariant(t *testing.T) {
 		},
 		func() round { // VDIV: detent ladder round-trip through the fake FE
 			ch := 1 + rng.Intn(2)
-			v := analog.Detents[rng.Intn(len(analog.Detents))].VdivV
+			v := analog.Detents[rng.Intn(len(analog.Detents))].VdivV * h.probe(ch-1) // probe-tip
 			return round{fmt.Sprintf("C%d:VDIV %s", ch, strconv.FormatFloat(v, 'E', -1, 64)), "",
 				fmt.Sprintf("C%d:VDIV?", ch), fmt.Sprintf("C%d:VDIV %s\n", ch, sciV(v))}
 		},
 		func() round { // OFST: round-trips through the DAC-code quantizer
 			ch := 1 + rng.Intn(2)
 			v := rng.Float64()*4 - 2
-			code := analog.OffsetCode(ch-1, v)
+			p := h.probe(ch - 1) // OFST is probe-tip volts; the DAC quantizes BNC volts
+			code := analog.OffsetCode(ch-1, v/p)
 			w := 0.0
 			if code != 0 {
-				w = analog.OffsetVolts(ch-1, code)
+				w = analog.OffsetVolts(ch-1, code) * p
 			}
 			return round{fmt.Sprintf("C%d:OFST %s", ch, strconv.FormatFloat(v, 'E', -1, 64)), "",
 				fmt.Sprintf("C%d:OFST?", ch), fmt.Sprintf("C%d:OFST %s\n", ch, sciV(w))}

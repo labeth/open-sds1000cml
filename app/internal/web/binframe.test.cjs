@@ -1,9 +1,11 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-WEB
 // Node tests for binframe.js — golden byte fixtures built to the wire layout
 // documented in web.go (encodeBinFrame). Run by binframe_node_test.go.
 "use strict";
 const { decodeBinFrame, BIN_MAGIC } = require("./binframe.js");
 
 let fails = 0;
+// TRLC-LINKS: REQ-SDS-163
 function check(name, ok) {
   if (!ok) {
     console.log("FAIL " + name);
@@ -13,6 +15,7 @@ function check(name, ok) {
   }
 }
 
+// TRLC-LINKS: REQ-SDS-163
 function msg(flags, hdrObj, payload) {
   const hdr = new TextEncoder().encode(JSON.stringify(hdrObj));
   const buf = new Uint8Array(8 + hdr.length + payload.length);
@@ -100,6 +103,14 @@ function msg(flags, hdrObj, payload) {
   check("raw env decodes as c1/c2", f && f.is_env === true && [...f.c1].join() === "1,2,3,4" && f.sample_s === 1e-8);
 }
 
+{
+ const hdr={seq:99,cols:2,fraction_bits:8};
+ const payload=new Uint8Array([1,100,255,255,128,100,0,0]);
+ const f=decodeBinFrame(msg(0x20,hdr,payload));
+ check("Q8 fractions and channel order",f && f.c1 instanceof Float32Array && f.c1[0]===100+1/256 && f.c1[1]===255+255/256 && f.c2[0]===100.5 && f.c2[1]===0);
+ check("Q8 truncated rejected",decodeBinFrame(msg(0x20,hdr,payload.slice(1)))===null);
+ check("Q8 format mismatch rejected",decodeBinFrame(msg(0x20,{...hdr,fraction_bits:0},payload))===null);
+}
 if (fails) {
   console.log(fails + " FAILURES");
   process.exit(1);

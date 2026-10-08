@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-LCD
 package lcd
 
 import (
@@ -8,6 +9,7 @@ import (
 // Boundary formatting: a value that rounds up to 1000 at a prefix boundary
 // (e.g. a 999.9 ns period) must PROMOTE to the next prefix, never print
 // scientific notation ("1e+03 ns") on the scope readout.
+// TRLC-LINKS: REQ-SDS-021
 func TestSiScaleNoScientific(t *testing.T) {
 	cases := []struct {
 		got, want string

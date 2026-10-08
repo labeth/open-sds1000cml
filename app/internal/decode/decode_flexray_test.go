@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-DECODE
 package decode
 
 import (
@@ -11,6 +12,7 @@ import (
 // byte a BSS (1 HIGH bit, 1 LOW bit) then 8 data bits MSB-first -> FES (1 LOW,
 // 1 HIGH bit). Frames are separated by idle HIGH. Mirrors the on-wire signal a
 // FlexRay node would drive.
+// TRLC-LINKS: REQ-SDS-018
 func flexrayWave(frames [][]int, spb, tssBits int) []uint8 {
 	lo, hi := uint8(40), uint8(210)
 	var w []uint8
@@ -43,6 +45,7 @@ func flexrayWave(frames [][]int, spb, tssBits int) []uint8 {
 
 // headerNote reproduces the decoder's 5-byte-header split so the test can assert
 // the emitted note byte-for-byte (passing-by-construction).
+// TRLC-LINKS: REQ-SDS-018
 func headerNote(b []int) string {
 	var hdr uint64
 	for i := 0; i < 5; i++ {
@@ -61,6 +64,7 @@ func headerNote(b []int) string {
 	return note
 }
 
+// TRLC-LINKS: REQ-SDS-018
 func TestDecodeFlexRayRoundTrip(t *testing.T) {
 	want := brFlexFixCRC([]int{0x12, 0x34, 0x56, 0x78, 0x9A, 0xBC, 0xDE, 0xF0}) // 5 header + 3 payload, valid CRC
 	spb := 20
@@ -116,6 +120,7 @@ func TestDecodeFlexRayRoundTrip(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-018
 func TestDecodeFlexRayMultiFrame(t *testing.T) {
 	// Two frames in one record, separated by idle — segmentation must recover
 	// both, in order, with a gap between them. Second frame's header is all-zero
@@ -151,6 +156,7 @@ func TestDecodeFlexRayMultiFrame(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-018
 func TestDecodeFlexRayPartialAtStart(t *testing.T) {
 	// A record that begins in the middle of the TSS LOW (no captured idle->TSS
 	// falling edge) is a frame truncated at the record start: it must be dropped,
@@ -174,6 +180,7 @@ func TestDecodeFlexRayPartialAtStart(t *testing.T) {
 
 // TestDecodeFlexRayNoPanic feeds degenerate/hostile inputs — a decoder must
 // return an error, never panic or hang.
+// TRLC-LINKS: REQ-SDS-018
 func TestDecodeFlexRayNoPanic(t *testing.T) {
 	rng := rand.New(rand.NewSource(0xF1E))
 	mk := func(n, kind int) []uint8 {

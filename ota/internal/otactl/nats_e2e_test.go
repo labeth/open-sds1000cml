@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-OTA-OTACTL
 package otactl_test
 
 // End-to-end NATS path: an embedded nats-server on 127.0.0.1, the REAL agent
@@ -27,6 +28,7 @@ const e2eDevice = "e2e-dev-1"
 
 // startEmbeddedNATS runs a broker on an ephemeral 127.0.0.1 port (the same
 // nats-server embedding `otactl serve` uses) and returns its client URL.
+// TRLC-LINKS: REQ-SDS-108, REQ-SDS-109
 func startEmbeddedNATS(t *testing.T) string {
 	t.Helper()
 	ns, err := natsserver.NewServer(&natsserver.Options{
@@ -45,6 +47,7 @@ func startEmbeddedNATS(t *testing.T) string {
 
 // startAgent boots the real agent against the broker with its TCP fallback on
 // an ephemeral localhost port, and returns it with the TCP control address.
+// TRLC-LINKS: REQ-SDS-108, REQ-SDS-109
 func startAgent(t *testing.T, natsURL string) (*agent.Agent, string) {
 	t.Helper()
 	dir := t.TempDir()
@@ -69,6 +72,7 @@ func startAgent(t *testing.T, natsURL string) (*agent.Agent, string) {
 	return a, a.TCPAddr()
 }
 
+// TRLC-LINKS: REQ-SDS-108, REQ-SDS-109
 func waitNATSReady(t *testing.T, tr otactl.Transport) {
 	t.Helper()
 	deadline := time.Now().Add(15 * time.Second)
@@ -81,6 +85,7 @@ func waitNATSReady(t *testing.T, tr otactl.Transport) {
 	t.Fatal("agent never became reachable over NATS")
 }
 
+// TRLC-LINKS: REQ-SDS-108, REQ-SDS-109
 func callBoth(t *testing.T, natsTr, tcpTr otactl.Transport, cmd string, args any) (viaNATS, viaTCP *rpcproto.Response) {
 	t.Helper()
 	viaNATS, err := natsTr.Call(cmd, args, 10*time.Second)
@@ -97,6 +102,7 @@ func callBoth(t *testing.T, natsTr, tcpTr otactl.Transport, cmd string, args any
 	return viaNATS, viaTCP
 }
 
+// TRLC-LINKS: REQ-SDS-108, REQ-SDS-109
 func TestNATSEndToEndSubjectsEventsAndTCPParity(t *testing.T) {
 	url := startEmbeddedNATS(t)
 

@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-WEB
 package web
 
 import (
@@ -17,6 +18,7 @@ import (
 // AC-coupling guard, and the failure gallery (click -> frozen failing frame
 // with the violation marked). Server-side effects are asserted here after the
 // browser run. Skips when node/Playwright is absent (fails under CI_REQUIRE_BROWSER=1).
+// TRLC-LINKS: REQ-SDS-180
 func TestZoneMaskBrowser(t *testing.T) {
 	testenv.NeedNode(t)
 	const N = 2048

@@ -1,7 +1,9 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-PANEL
 package panel
 
 import "testing"
 
+// TRLC-LINKS: REQ-SDS-135
 func TestButtonEdges(t *testing.T) {
 	c, eng, _ := newC(t)
 
@@ -25,6 +27,7 @@ func TestButtonEdges(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-135
 func TestSingleAndAuto(t *testing.T) {
 	c, eng, _ := newC(t)
 	m := idle()
@@ -46,6 +49,7 @@ func TestSingleAndAuto(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-135
 func TestKnobPriorityOneRowPerEvent(t *testing.T) {
 	c, eng, fe := newC(t)
 	// Two knobs "moving" at once: HORIZ POSITION (pri 1) must win over TIME/DIV
@@ -64,6 +68,7 @@ func TestKnobPriorityOneRowPerEvent(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-135
 func TestTdivKnob(t *testing.T) {
 	c, eng, _ := newC(t)
 	// TIME/DIV CW (bit14 low): +1 detent (500µs → 1ms), stepped (0x69 ignored).
@@ -83,6 +88,7 @@ func TestTdivKnob(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-135
 func TestVdivKnob(t *testing.T) {
 	c, _, fe := newC(t)
 	// CH1 V/DIV CCW (0x65 bit15 low): 1V (idx 8) → 500mV (idx 7).
@@ -95,6 +101,7 @@ func TestVdivKnob(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-135
 func TestTrigLevelSign(t *testing.T) {
 	c, eng, _ := newC(t)
 	// TRIG LEVEL CW must LOWER the code: 31434 − 1·40·1 = 31394.
@@ -107,6 +114,7 @@ func TestTrigLevelSign(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-135
 func TestPositionKnobAccel(t *testing.T) {
 	c, _, fe := newC(t)
 	// CH1 POSITION (continuous) with raw 0x69 = 25 → 100 steps. Each step is
@@ -121,6 +129,7 @@ func TestPositionKnobAccel(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-135
 func TestKnobResyncFromEngine(t *testing.T) {
 	c, eng, fe := newC(t)
 	// Web/SCPI moved trigger level to 30000 and V/div to idx 5 behind the
@@ -129,10 +138,10 @@ func TestKnobResyncFromEngine(t *testing.T) {
 	eng.stats.TrigCode = 30000
 	fe.idx = [2]int{5, 5}
 	m := idle()
-	m[0] &^= 1 << 14 // TRIG LEVEL CW: 30000 − 40 = 29960
+	m[0] &^= 1 << 14 // TRIG LEVEL CW at 100 mV/div: 30000 − 4 = 29996
 	m[4] = 1
 	c.decode(m, true)
-	if eng.calls[len(eng.calls)-1] != (call{"triglevel", 29960, 0}) {
+	if eng.calls[len(eng.calls)-1] != (call{"triglevel", 29996, 0}) {
 		t.Fatalf("resync trig: %v", eng.calls)
 	}
 	// V/div CW from the resynced idx 5 → 6, not from the stale boot idx 8.
@@ -145,6 +154,7 @@ func TestKnobResyncFromEngine(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-135
 func TestAccelMap(t *testing.T) {
 	cases := map[uint16]int{0: 0, 5: 5, 9: 9, 10: 50, 19: 50, 20: 100, 150: 100, 1000: 100}
 	for raw, want := range cases {
@@ -154,6 +164,7 @@ func TestAccelMap(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-135
 func TestKnobGateOnZeroMagnitude(t *testing.T) {
 	c, eng, fe := newC(t)
 	// Phase bit low but 0x69 == 0: plain button interrupt, no knob move.
@@ -166,6 +177,7 @@ func TestKnobGateOnZeroMagnitude(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-135
 func TestResyncButtonsOnly(t *testing.T) {
 	c, eng, _ := newC(t)
 	// Knob phase low + magnitude on a BUTTONS-ONLY decode (40 ms tick):
@@ -179,6 +191,7 @@ func TestResyncButtonsOnly(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-135
 func TestKnobPushTrigger(t *testing.T) {
 	c, eng, _ := newC(t)
 	last := func() call { return eng.calls[len(eng.calls)-1] }
@@ -204,5 +217,44 @@ func TestKnobPushTrigger(t *testing.T) {
 	c.decode(m, true)
 	if got := last(); got != (call{"slope", 1, 0}) {
 		t.Fatalf("TRIG LEVEL push → flip slope to rising: got %v", got)
+	}
+}
+
+// The position knob steps 0.2 displayed div on every detent.
+// TRLC-LINKS: REQ-SDS-135
+func TestPositionStepFollowsVdiv(t *testing.T) {
+	for _, tc := range []struct {
+		idx  int
+		want float64
+	}{{0, 0.0004}, {8, 0.2}, {11, 2}} {
+		c, _, fe := newC(t)
+		fe.idx = [2]int{tc.idx, tc.idx}
+		m := idle()
+		m[0] &^= 1 << 6 // CH1 POSITION CW
+		m[4] = 1
+		c.decode(m, true)
+		if d := fe.offReqV[0] - tc.want; d > 1e-12 || d < -1e-12 {
+			t.Fatalf("detent %d: offset %v, want %v", tc.idx, fe.offReqV[0], tc.want)
+		}
+	}
+}
+
+// Autoset's fallback scan spans the trigger source's screen, offset included.
+// TRLC-LINKS: REQ-SDS-137
+func TestTrigScanSpansScreen(t *testing.T) {
+	c, _, fe := newC(t)
+	fe.idx = [2]int{2, 2} // 10 mV/div
+	fe.offReqV[0] = 0.02  // trace raised 2 div: 0 V sits at +2 div
+	codes := c.trigScanCodes()
+	if len(codes) != 10 {
+		t.Fatalf("%d codes", len(codes))
+	}
+	// Screen bottom (-4.5 div) is -0.045-0.02 V, top (+4.5 div) +0.045-0.02 V.
+	lo, hi := 31437-911*(-0.065), 31437-911*0.025
+	if d := float64(codes[0]) - lo; d < -1 || d > 1 {
+		t.Fatalf("first %d, want %.0f", codes[0], lo)
+	}
+	if d := float64(codes[9]) - hi; d < -1 || d > 1 {
+		t.Fatalf("last %d, want %.0f", codes[9], hi)
 	}
 }

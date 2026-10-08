@@ -1,6 +1,8 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-DECODE
 package decode
 
 import (
+	"fmt"
 	"math"
 	"sort"
 )
@@ -12,6 +14,7 @@ import (
 // parity, ARINC 429 word parity, USB's PID complement, I2C's START/addr/ACK
 // framing), which outscore the purely heuristic ones (UART stop bits,
 // Manchester mid-cell coding, and SPI — no framing at all, the fallback).
+// TRLC-LINKS: REQ-SDS-018
 func scoreResult(r Result) float64 {
 	if !r.OK {
 		return -1e9
@@ -34,9 +37,25 @@ func scoreResult(r Result) float64 {
 		if addrs == 0 { // no addressed device -> a channel-swap mis-read, not real I2C
 			return -1e9
 		}
+		if addrs == 1 && datas == 0 {
+			// One stray START on SPI data (a data change while the clock is
+			// high) reads as one bare address; it outscored a real 18-byte
+			// SPI decode (bench 2026-10-07). Keep it only as a last resort.
+			return 5
+		}
 		return float64(addrs*100 + acks*30 + datas*20 + starts*5)
 	case "uart":
 		if len(r.Bytes) == 0 {
+			return -1e9
+		}
+		// Under 4 samples a bit a UART decode is guesswork: FlexRay at
+		// 31 MS/s (3.3 samples a bit) read as "UART 9.5 MBd" (bench 2026-10-07).
+		if r.SPB > 0 && r.SPB < 4 {
+			return -1e9
+		}
+		// A few bytes at a rate no UART uses are not a UART: a partial SENT
+		// frame read as "UART 66674 Bd, 5 bytes". Show more of the signal.
+		if len(r.Bytes) < 8 && !nearStandardBaud(float64(r.Baud), 0.03) {
 			return -1e9
 		}
 		c := kinds("frame-error", "parity-error")
@@ -111,6 +130,7 @@ func scoreResult(r Result) float64 {
 	return -1e9
 }
 
+// TRLC-LINKS: REQ-SDS-018
 type clockInfo struct {
 	ok      bool
 	uniFrac float64
@@ -122,6 +142,7 @@ type clockInfo struct {
 // dominant half-period is a low percentile of the edge gaps (ignoring big idle
 // gaps); uniFrac is the fraction of gaps that ARE that half-period (~1 for a
 // clock, low for a data line whose edges land on data-dependent bit boundaries).
+// TRLC-LINKS: REQ-SDS-018
 func clockScore(codes []uint8) clockInfo {
 	s := sliceChannel(codes, 0, false)
 	if !s.ok || len(s.edges) < 6 {
@@ -148,6 +169,7 @@ func clockScore(codes []uint8) clockInfo {
 }
 
 // idleLevel is the rail a channel rests on most (a clock idles at its CPOL rail).
+// TRLC-LINKS: REQ-SDS-018
 func idleLevel(s sliced) int {
 	if !s.ok {
 		return 0
@@ -169,6 +191,7 @@ func idleLevel(s sliced) int {
 // Autodetect tries every plausible protocol / channel-role / sub-setting against
 // the two channels (c1=index 0, c2=index 1) and returns the best-scoring decoded
 // Result, formatted per `format`. A Result with Proto=="off" means nothing matched.
+// TRLC-LINKS: REQ-SDS-018
 func Autodetect(c1, c2 []uint8, colTimeS float64, format string) Result {
 	chans := [2][]uint8{c1, c2}
 	var active []int
@@ -186,11 +209,14 @@ func Autodetect(c1, c2 []uint8, colTimeS float64, format string) Result {
 		return best
 	}
 	bestScore := -1e8
-	consider := func(r Result) {
+	chName := func(k int) string { return [2]string{"C1", "C2"}[k&1] }
+	consider := func(r Result, src string, roles Roles) {
 		if sc := scoreResult(r); sc > bestScore {
 			bestScore, best = sc, r
+			best.Src, best.Roles = src, roles
 		}
 	}
+	line := func(k int) Roles { return Roles{ChA: k, ChB: 1 - k} }
 
 	clk := [2]clockInfo{clockScore(c1), clockScore(c2)}
 	u0, u1 := clk[0].uniFrac, clk[1].uniFrac
@@ -203,7 +229,7 @@ func Autodetect(c1, c2 []uint8, colTimeS float64, format string) Result {
 	if !clockedPair {
 		for _, k := range active {
 			if !isClocky(k) {
-				consider(DecodeUART(chans[k], colTimeS, UARTCfg{Bits: 8, Parity: "none", Format: format}))
+				consider(DecodeUART(chans[k], colTimeS, UARTCfg{Bits: 8, Parity: "none", Format: format}), chName(k), line(k))
 			}
 		}
 	}
@@ -213,7 +239,7 @@ func Autodetect(c1, c2 []uint8, colTimeS float64, format string) Result {
 	if !clockedPair {
 		for _, k := range active {
 			if !isClocky(k) {
-				consider(DecodeManchester(chans[k], colTimeS, ManchesterCfg{IEEE: true, MSB: true, Format: format}))
+				consider(DecodeManchester(chans[k], colTimeS, ManchesterCfg{IEEE: true, MSB: true, Format: format}), chName(k), line(k))
 			}
 		}
 	}
@@ -221,16 +247,17 @@ func Autodetect(c1, c2 []uint8, colTimeS float64, format string) Result {
 	// word parity, PID complement, strict framing), so their scoring gates make
 	// false claims on foreign signals cosmically unlikely — try every channel.
 	for _, k := range active {
-		consider(DecodeSENT(chans[k], colTimeS, SENTCfg{}))
-		consider(DecodeCANFD(chans[k], colTimeS, CANFDCfg{DominantLow: true}))
-		consider(DecodeMIL1553(chans[k], colTimeS, MIL1553Cfg{}))
-		consider(DecodeARINC429(chans[k], colTimeS, ARINC429Cfg{}))
-		consider(DecodeUSBLS(chans[k], colTimeS, USBLSCfg{}))
-		consider(DecodeFlexRay(chans[k], colTimeS, FlexRayCfg{}))
+		consider(DecodeSENT(chans[k], colTimeS, SENTCfg{}), chName(k), line(k))
+		consider(DecodeCANFD(chans[k], colTimeS, CANFDCfg{DominantLow: true}), chName(k), line(k))
+		consider(DecodeMIL1553(chans[k], colTimeS, MIL1553Cfg{}), chName(k), line(k))
+		consider(DecodeARINC429(chans[k], colTimeS, ARINC429Cfg{}), chName(k), line(k))
+		consider(DecodeUSBLS(chans[k], colTimeS, USBLSCfg{}), chName(k), line(k))
+		consider(DecodeFlexRay(chans[k], colTimeS, FlexRayCfg{}), chName(k), line(k))
 	}
 	if len(active) >= 2 {
 		for _, ord := range [][2]int{{0, 1}, {1, 0}} { // I2C: scoring resolves SCL/SDA order
-			consider(DecodeI2C(chans[ord[0]], chans[ord[1]], colTimeS, I2CCfg{Format: format}))
+			consider(DecodeI2C(chans[ord[0]], chans[ord[1]], colTimeS, I2CCfg{Format: format}),
+				"SCL "+chName(ord[0])+" SDA "+chName(ord[1]), Roles{ChA: ord[0], ChB: ord[1]})
 		}
 		if clockedPair {
 			ci := 0
@@ -241,11 +268,32 @@ func Autodetect(c1, c2 []uint8, colTimeS float64, format string) Result {
 			cpol := idleLevel(clk[ci].s)
 			for _, cpha := range []bool{false, true} {
 				for _, msb := range []bool{true, false} { // msb first on a binary tie (SPI default)
+					order, mode := "LSB", cpol<<1
+					if msb {
+						order = "MSB"
+					}
+					if cpha {
+						mode |= 1
+					}
 					consider(DecodeSPI(chans[ci], chans[di], colTimeS,
-						SPICfg{CPOL: cpol == 1, CPHA: cpha, MSB: msb, Format: format}))
+						SPICfg{CPOL: cpol == 1, CPHA: cpha, MSB: msb, Format: format}),
+						fmt.Sprintf("CLK %s DATA %s mode %d %s", chName(ci), chName(di), mode, order),
+						Roles{ChA: ci, ChB: di, CPOL: cpol == 1, CPHA: cpha, MSB: msb})
 				}
 			}
 		}
 	}
 	return best
+}
+
+// nearStandardBaud reports whether baud lies within tol (fraction) of a
+// standard UART rate.
+// TRLC-LINKS: REQ-SDS-018
+func nearStandardBaud(baud, tol float64) bool {
+	for _, std := range standardBauds {
+		if math.Abs(baud-std) <= tol*std {
+			return true
+		}
+	}
+	return false
 }

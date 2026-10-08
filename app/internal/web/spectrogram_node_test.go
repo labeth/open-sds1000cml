@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-WEB
 package web
 
 import (
@@ -11,6 +12,7 @@ import (
 // Locks the JS spectrogram helpers under node: the colormap endpoints/segments
 // match the Go heat() (parity), the ramp is monotone in brightness, and a
 // pushed tone row lights the correct frequency column.
+// TRLC-LINKS: REQ-SDS-068
 func TestSpectrogramJS(t *testing.T) {
 	testenv.NeedNode(t)
 	script := `
@@ -55,6 +57,7 @@ process.exit(fail ? 1 : 0);
 // Adversarial breaker: sgHeat must be total (NaN/Inf → valid rgb, never throw),
 // and sgPushRow must survive any floorDb (0, NaN, ±Inf, positive) and any
 // degenerate spectrum without throwing or emitting a NaN pixel.
+// TRLC-LINKS: REQ-SDS-068
 func TestSpectrogramJSBreaker(t *testing.T) {
 	testenv.NeedNode(t)
 	script := `

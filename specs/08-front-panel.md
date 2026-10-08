@@ -358,6 +358,10 @@ These fixed-function buttons are on the same matrix; no dedicated status LED. De
 | RUN/STOP button | `0x65`:2 | toggle running → `SetRunning`; update LEDs |
 | SINGLE button | `0x65`:10 | enter NORM/arm (wait for a comparator edge) + running → `SetNorm(true)`+`SetRunning(true)`; update LEDs |
 | AUTO button | `0x67`:10 | return to AUTO free-run trigger mode + running → `SetNorm(false)`+`SetRunning(true)`; update LEDs |
+| SET TO 50% | `0x66`:2 | trigger level at the midpoint of the source channel's latest frame ((max+min)/2) |
+| FORCE | `0x67`:2 | complete the armed capture once without a trigger (`ForceTrigger`); shown even in NORMAL |
+| CH1 / CH2 POSITION push | `0x64`:1 / `0x67`:1 | offset back to 0 V |
+| HORIZ POSITION push | `0x67`:9 | trigger position back to screen centre; zoom pan to 0 |
 
 Stepping conventions and constants:
 

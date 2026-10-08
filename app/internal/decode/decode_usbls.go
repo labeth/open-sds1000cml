@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-DECODE
 package decode
 
 import (
@@ -12,6 +13,8 @@ import (
 //	Bitrate   0 => infer the bit period from the shortest level-run (= one bit);
 //	          else bits/s (LS = 1_500_000, FS = 12_000_000).
 //	Threshold /HaveThr override the auto slice threshold (see sliceChannel).
+//
+// TRLC-LINKS: REQ-SDS-018
 type USBLSCfg struct {
 	Bitrate   int
 	Threshold float64
@@ -38,6 +41,7 @@ var usbPIDName = map[int]string{
 // packet is SYNC (00000001 = KJKJKJKK) + PID (4 bits + 4-bit complement) +
 // optional data/CRC + EOP (~2 bit-times of SE0, which on the single D+ line
 // reads as an extended idle that, with the inter-packet idle, bounds the packet).
+// TRLC-LINKS: REQ-SDS-018
 func DecodeUSBLS(dp []uint8, colTimeS float64, cfg USBLSCfg) Result {
 	const minSPB = 4.0  // samples per bit floor
 	const eopCells = 2  // EOP ~ 2 bit-times of SE0 trailing every packet
@@ -223,14 +227,13 @@ func DecodeUSBLS(dp []uint8, colTimeS float64, cfg USBLSCfg) Result {
 		// kept bit's raw cell so spans map back to sample indices.
 		var bitsArr, cellOf []int
 		ones := 0
+		stuffCell := -1
 		for i := range rawBits {
 			if ones == 6 {
-				// A valid stream inserts a 0 after six 1s. A SEVENTH 1 is a stuff
-				// violation — i.e. the held idle level after the EOP (a captured
-				// segment often merges the packet with the following idle when the
-				// gap is near the split threshold). Terminate the packet here so the
-				// idle never decodes as trailing garbage bytes.
+				// EOP cells are already removed. An observed seventh one is a
+				// malformed packet, not a clean prefix eligible for triggering.
 				if rawBits[i] != 0 {
+					stuffCell = rawCell[i]
 					break
 				}
 				ones = 0
@@ -294,6 +297,10 @@ func DecodeUSBLS(dp []uint8, colTimeS float64, cfg USBLSCfg) Result {
 			spans = append(spans, Span{cellStart(x0, cellOf[base]), cellEnd(x0, cellOf[base+7]), hex2(val), "data", val})
 			toks = append(toks, hex2(val))
 			bytesOut = append(bytesOut, val)
+		}
+		if stuffCell >= 0 {
+			spans = append(spans, Span{cellStart(x0, stuffCell), cellEnd(x0, stuffCell), "STUFF!", "frame-error", 0})
+			toks = append(toks, "STUFF!")
 		}
 	}
 	if packets == 0 {

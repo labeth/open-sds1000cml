@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-MEASURE
 package measure
 
 import (
@@ -7,6 +8,7 @@ import (
 
 // square builds a 50%-duty square wave: `cycles` cycles of `period` samples,
 // low `base` for the first half, high `top` for the second.
+// TRLC-LINKS: REQ-SDS-017
 func square(period, cycles, base, top int) []uint8 {
 	out := make([]uint8, period*cycles)
 	for i := range out {
@@ -19,8 +21,10 @@ func square(period, cycles, base, top int) []uint8 {
 	return out
 }
 
+// TRLC-LINKS: REQ-SDS-017
 func approx(a, b, tol float64) bool { return math.Abs(a-b) <= tol }
 
+// TRLC-LINKS: REQ-SDS-017
 func TestSquareWave(t *testing.T) {
 	// 100-sample period @ 1 µs/sample → 10 kHz, 50 % duty. base 56, top 200.
 	sig := square(100, 10, 56, 200)
@@ -51,6 +55,7 @@ func TestSquareWave(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-017
 func TestDutyCycle(t *testing.T) {
 	// 25 % duty: high for the last quarter of each 100-sample period.
 	out := make([]uint8, 1000)
@@ -67,6 +72,7 @@ func TestDutyCycle(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-017
 func TestTrapezoidRiseTime(t *testing.T) {
 	// Trapezoid: 40-sample linear ramp base→top, hold, ramp down, hold.
 	base, top, ramp := 56, 200, 40
@@ -96,6 +102,7 @@ func TestTrapezoidRiseTime(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-017
 func TestFlatHasNoTiming(t *testing.T) {
 	flat := make([]uint8, 500)
 	for i := range flat {
@@ -113,6 +120,7 @@ func TestFlatHasNoTiming(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-017
 func TestClipped(t *testing.T) {
 	n := 800
 	// Clean square well inside the range (codes 56/200) — not clipped.
@@ -171,12 +179,14 @@ func TestClipped(t *testing.T) {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-017
 func TestEmptyRecord(t *testing.T) {
 	if Compute(nil, 1, 0, 1e-6) != nil {
 		t.Fatal("expected nil for empty record")
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-017
 func TestOvershoot(t *testing.T) {
 	// Square with a one-sample overshoot spike above the settled top.
 	sig := square(100, 8, 56, 200)
@@ -194,6 +204,7 @@ func TestOvershoot(t *testing.T) {
 }
 
 // avgWidthBrute is the pre-merge reference implementation (rescan per crossing).
+// TRLC-LINKS: REQ-SDS-017
 func avgWidthBrute(from, to []float64) float64 {
 	if len(from) == 0 || len(to) == 0 {
 		return 0
@@ -218,6 +229,7 @@ func avgWidthBrute(from, to []float64) float64 {
 // TestAvgWidthMergeParity property-checks the merge-pass avgWidth against the
 // brute-force reference on randomized ascending crossing lists (the shape
 // Compute produces), including empty/disjoint/interleaved cases.
+// TRLC-LINKS: REQ-SDS-017
 func TestAvgWidthMergeParity(t *testing.T) {
 	rng := uint64(1)
 	rand01 := func() float64 { // xorshift; deterministic, no seed plumbing
@@ -247,5 +259,174 @@ func TestAvgWidthMergeParity(t *testing.T) {
 	// Degenerate pins: all `to` before every `from`.
 	if got := avgWidth([]float64{5, 6}, []float64{1, 2}); got != 0 {
 		t.Fatalf("no-pair case = %v, want 0", got)
+	}
+}
+
+// TRLC-LINKS: REQ-SDS-017
+func TestFractionalAcquisitionMeasurements(t *testing.T) {
+	q := []uint16{25600, 25728, 25600, 25728}
+	r := ComputeQ8(q, 1, 0, 1)
+	if r.Vmean != -27.75 || r.Vpp != .5 || r.VrmsAC != .25 || r.Vrms != math.Hypot(27.75, .25) {
+		t.Fatalf("fractional mean/range/AC RMS lost: %+v", r)
+	}
+	r = ComputeAcquisition([]byte{100, 101, 100, 101}, q, 1, 0, 1, 1)
+	if r.Vmean != 0 || r.Vmin != -.25 || r.Vmax != .25 {
+		t.Fatalf("AC coupling quantized: %+v", r)
+	}
+}
+
+// TRLC-LINKS: REQ-SDS-017
+func TestQ8SmallRippleOnLargeDC(t *testing.T) {
+	// Full precision depth excluding the 31-sample filter guard at each end.
+	const n = 524288 - 62
+	want := math.Sqrt(float64(n-1)) / float64(n) / 256
+	for _, dc := range []uint16{0, 32768, 60000} {
+		for _, outlier := range []int{0, n - 1} {
+			sig := make([]uint16, n)
+			for i := range sig {
+				sig[i] = dc
+			}
+			sig[outlier]++
+			r := ComputeQ8(sig, 1, 0, 1e-6)
+			if math.Abs(r.VrmsAC-want) > want*1e-9 {
+				t.Fatalf("DC %d outlier %d: AC RMS %.12g, want %.12g", dc, outlier, r.VrmsAC, want)
+			}
+		}
+	}
+}
+
+// TRLC-LINKS: REQ-SDS-017
+func TestNoisyTriangleTiming(t *testing.T) {
+	q := make([]uint16, 500*40)
+	for i := range q {
+		phase := i % 500
+		if phase > 250 {
+			phase = 500 - phase
+		}
+		// Large oversampling makes even modest code noise recross mid-level.
+		q[i] = uint16(80*256 + phase*80*256/250 + ((i*17)%7-3)*128)
+	}
+	r := ComputeQ8(q, 1, 0, 2e-9)
+	if !r.HasTiming || math.Abs(r.Freq/1e6-1) > .005 {
+		t.Fatalf("noisy triangle frequency: %+v", r)
+	}
+}
+
+// TRLC-LINKS: REQ-SDS-021
+func TestDropTimingKeepsAmplitude(t *testing.T) {
+	sig := make([]uint8, 2000)
+	for i := range sig {
+		sig[i] = 60
+		if (i/50)%2 == 1 {
+			sig[i] = 200
+		}
+	}
+	r := Compute(sig, 0.04, 0, 2e-9)
+	if !r.HasTiming || r.Freq == 0 {
+		t.Fatalf("square wave without timing: %+v", r)
+	}
+	c := r.WithoutTiming()
+	if c.HasTiming || c.Freq != 0 || c.Period != 0 || c.Duty != 0 || c.Vpp != r.Vpp {
+		t.Fatalf("WithoutTiming = %+v", c)
+	}
+	if !r.HasTiming {
+		t.Fatal("WithoutTiming changed the original")
+	}
+}
+
+// TRLC-LINKS: REQ-SDS-017
+func TestQ8TopBaseIgnoreOvershoot(t *testing.T) {
+	// A 0..3.3 V square at 1 V/div (25 codes/div, offset −1.65 V) with 16%
+	// overshoot for 30 samples after each edge, as CH1 measured on the bench.
+	const vpc = 1.0 / 25
+	code := func(v float64) uint16 { return uint16((128 + (v-1.65)*25) * 256) }
+	q := make([]uint16, 0, 5000)
+	for p := 0; p < 10; p++ {
+		for i := 0; i < 250; i++ {
+			v := 3.3
+			if i < 30 {
+				v = 3.84
+			}
+			q = append(q, code(v))
+		}
+		for i := 0; i < 250; i++ {
+			v := 0.0
+			if i < 30 {
+				v = -0.5
+			}
+			q = append(q, code(v))
+		}
+	}
+	r := ComputeQ8(q, vpc, -1.65, 2e-9)
+	if math.Abs(r.Vtop-3.3) > 0.03 || math.Abs(r.Vbase) > 0.03 {
+		t.Fatalf("top/base %.3f/%.3f, want 3.3/0 (overshoot must not win)", r.Vtop, r.Vbase)
+	}
+	if r.Overshoot < 10 {
+		t.Fatalf("overshoot %.1f%%, want about 16%%", r.Overshoot)
+	}
+}
+
+// A 1 M-sample Q8.8 square keeps its top and base: the settled-level sum
+// overflowed a 32-bit int (run with GOARCH=386 to cover the device's width).
+// TRLC-LINKS: REQ-SDS-017
+func TestQ8TopBaseLongRecord(t *testing.T) {
+	q := make([]uint16, 1<<20)
+	for i := range q {
+		if (i/500)%2 == 0 {
+			q[i] = 210 << 8
+		} else {
+			q[i] = 128 << 8
+		}
+	}
+	r := ComputeQ8(q, 0.04, 0, 2e-9)
+	if math.Abs(r.Vtop-3.28) > 0.01 || math.Abs(r.Vbase) > 0.01 || !r.HasTiming {
+		t.Fatalf("top %v base %v timing %v", r.Vtop, r.Vbase, r.HasTiming)
+	}
+}
+
+// A peak-detect envelope still yields frequency and duty from its bucket
+// midpoints; a period shorter than eight buckets yields none.
+// TRLC-LINKS: REQ-SDS-021
+func TestEnvelopeTiming(t *testing.T) {
+	envelope := func(periodSamples, bucket, buckets int) []uint8 {
+		env := make([]uint8, 0, 2*buckets)
+		for b := 0; b < buckets; b++ {
+			mn, mx := uint8(255), uint8(0)
+			for i := b * bucket; i < (b+1)*bucket; i++ {
+				v := uint8(78)
+				if i%periodSamples < periodSamples*3/10 { // 30 % duty
+					v = 178
+				}
+				mn, mx = min(mn, v), max(mx, v)
+			}
+			env = append(env, mn, mx)
+		}
+		return env
+	}
+	const sampleS = 2e-9
+	bucket := 96                         // samples per bucket; one envelope value per half bucket
+	env := envelope(10000, bucket, 1024) // 20 us period, ~104 buckets each
+	r := Compute(env, .04, 0, float64(bucket)*sampleS/2).WithEnvelopeTiming(env, .04, 0, float64(bucket)*sampleS/2)
+	if !r.HasTiming || math.Abs(r.Freq-50e3)/50e3 > .01 || math.Abs(r.Duty-30) > 2 || r.RiseS != 0 {
+		t.Fatalf("envelope timing: freq %.1f duty %.1f rise %g has %v", r.Freq, r.Duty, r.RiseS, r.HasTiming)
+	}
+	// Across periods: a reported frequency is right to within a bucket per
+	// period, or there is none.
+	for period := 300; period <= 30000; period = period*21/20 + 1 {
+		e := envelope(period, bucket, 1024)
+		ss := float64(bucket) * sampleS / 2
+		r := Compute(e, .04, 0, ss).WithEnvelopeTiming(e, .04, 0, ss)
+		want := 1 / (float64(period) * sampleS)
+		if r.HasTiming && math.Abs(r.Freq-want)/want > float64(bucket)/float64(period)+.01 {
+			t.Fatalf("period %d samples: %.0f Hz, want %.0f", period, r.Freq, want)
+		}
+		if !r.HasTiming && period > 16*bucket {
+			t.Fatalf("period %d samples (%d buckets): no timing", period, period/bucket)
+		}
+	}
+	fast := envelope(400, bucket, 1024) // ~4 buckets a period: unresolved
+	ss := float64(bucket) * sampleS / 2
+	if r := Compute(fast, .04, 0, ss).WithEnvelopeTiming(fast, .04, 0, ss); r.HasTiming || r.Freq != 0 {
+		t.Fatalf("unresolved envelope reports %.1f Hz", r.Freq)
 	}
 }

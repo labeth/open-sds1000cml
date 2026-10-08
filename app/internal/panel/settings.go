@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-PANEL
 package panel
 
 import "open-sds/app/internal/settings"
@@ -8,6 +9,7 @@ var decBauds = []int{9600, 19200, 38400, 57600, 115200, 230400}
 
 // SettingsView reports the controller-owned slice of the persisted setup
 // (settings.Panel surface): the device decode config and the view mode.
+// TRLC-LINKS: REQ-SDS-136
 func (c *Controller) SettingsView() settings.ViewState {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -29,6 +31,7 @@ func (c *Controller) SettingsView() settings.ViewState {
 // defaults — never a panic, never an out-of-domain field. All fields are
 // mu-guarded plain state with no engine side-effects (the render loop picks
 // them up via MenuView, exactly as after a menu press).
+// TRLC-LINKS: REQ-SDS-136
 func (c *Controller) ApplySettingsView(v settings.ViewState) {
 	d := v.Decode
 	if d.Proto < 0 || d.Proto > 4 {
@@ -59,4 +62,14 @@ func (c *Controller) ApplySettingsView(v settings.ViewState) {
 	c.decCPOL, c.decCPHA = d.CPOL, d.CPHA
 	c.decFormat = d.Format
 	c.mu.Unlock()
+	c.syncDecodeView(d.Proto != 0)
+}
+
+// syncDecodeView tells the engine whether the display decodes the frame, so
+// it sends samples rather than peak-detect pairs while it does.
+// TRLC-LINKS: REQ-SDS-018
+func (c *Controller) syncDecodeView(on bool) {
+	if e, ok := c.eng.(interface{ SetDecodeView(bool) }); ok {
+		e.SetDecodeView(on)
+	}
 }

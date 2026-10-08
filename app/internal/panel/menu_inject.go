@@ -1,7 +1,9 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-PANEL
 package panel
 
 import "strings"
 
+// TRLC-LINKS: REQ-SDS-135
 func nameCode(name string) (int, bool) {
 	switch strings.ToLower(name) {
 	case "run", "runstop":
@@ -52,6 +54,28 @@ func nameCode(name string) (int, bool) {
 		return btnCh1, true
 	case "ch2":
 		return btnCh2, true
+	// Physical keys with no assigned action still enter the normal dispatcher,
+	// so API validation can distinguish an ignored key from an unknown name.
+	case "print", "hardcopy":
+		return bcode(3, 13), true
+	case "saverecall":
+		return bcode(1, 11), true
+	case "set50":
+		return bcode(2, 2), true
+	case "defaultsetup":
+		return bcode(2, 10), true
+	case "force":
+		return bcode(3, 2), true
+	case "help":
+		return bcode(3, 11), true
+	case "ch1pospush":
+		return bcode(0, 1), true
+	case "ch2pospush":
+		return bcode(3, 1), true
+	case "tdivpush":
+		return bcode(2, 9), true
+	case "horizpospush":
+		return bcode(3, 9), true
 	}
 	return 0, false
 }
@@ -62,6 +86,7 @@ var knobNames = map[string]bool{
 }
 
 // InjectButton runs a named button press on the panel goroutine (non-blocking).
+// TRLC-LINKS: REQ-SDS-135
 func (c *Controller) InjectButton(name string) bool {
 	code, ok := nameCode(name)
 	if !ok {
@@ -76,6 +101,7 @@ func (c *Controller) InjectButton(name string) bool {
 }
 
 // InjectKnob runs a named knob step (dir ±1, steps≥1) on the panel goroutine.
+// TRLC-LINKS: REQ-SDS-135
 func (c *Controller) InjectKnob(name string, dir, steps int) bool {
 	if !knobNames[name] {
 		return false

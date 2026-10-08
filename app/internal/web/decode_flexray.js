@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-WEB-DECODE-FLEXRAY
 // FlexRay decoder — the JS twin of Go internal/decode/decode_flexray.go. Kept
 // algorithm-faithful (same TSS detection, BSS-stripped byte recovery and header
 // split) so the web overlay and the on-device LCD agree byte-for-byte.
@@ -22,7 +23,9 @@ if (typeof sliceChannel === "undefined" && typeof require !== "undefined") {
   globalThis.logicAt = _d.logicAt;
 }
 
+// TRLC-LINKS: REQ-SDS-018
 function fxHex2(v) { return (v & 0xff).toString(16).toUpperCase().padStart(2, "0"); }
+// TRLC-LINKS: REQ-SDS-018
 function fxFail(reason) {
   return { ok: false, error: reason, proto: "flexray", spans: [], text: "", bytes: [] };
 }
@@ -31,6 +34,7 @@ function fxFail(reason) {
 // init 0x1A) over the 20 protected header bits, MSB-first: sync(1), startup(1),
 // frameID(11), payloadLen(7). A frame whose transmitted header-CRC field
 // disagrees is corrupt and must not be accepted as a valid frame.
+// TRLC-LINKS: REQ-SDS-018
 function flexHeaderCRC11(sync, startup, frameID, payloadLen) {
   const bits = [sync & 1, startup & 1];
   for (let b = 10; b >= 0; b--) bits.push((frameID >> b) & 1);
@@ -49,6 +53,7 @@ function flexHeaderCRC11(sync, startup, frameID, payloadLen) {
 // every complete frame carries must equal this. Found by the sigrok oracle
 // cross-check (Go side): only the header CRC-11 was validated, so a corrupted
 // payload/trailer read back as a clean frame. Mirrors decode_flexray.go.
+// TRLC-LINKS: REQ-SDS-018
 function flexFrameCRC24(frameBytes) {
   let crc = 0xFEDCBA;
   for (const by of frameBytes) {
@@ -61,6 +66,7 @@ function flexFrameCRC24(frameBytes) {
   return crc & 0xFFFFFF;
 }
 
+// TRLC-LINKS: REQ-SDS-018
 function decodeFlexRay(codes, colTimeS, cfg) {
   cfg = cfg || {};
   const minSPB = 4;
@@ -94,6 +100,7 @@ function decodeFlexRay(codes, colTimeS, cfg) {
   // in the middle of its BSS (at anchor+T), correcting accumulated clock drift.
   // ei is a monotonic pointer: anchors only ever increase across the record.
   let ei = 0;
+  // TRLC-LINKS: REQ-SDS-018
   const resync = (anchor) => {
     const target = anchor + T;
     while (ei < S.edges.length && S.edges[ei].x < target - tol) ei++;

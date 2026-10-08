@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-WEB
 package web
 
 import "testing"
@@ -5,6 +6,7 @@ import "testing"
 // Auto-measurement logic now lives in internal/measure (with its own thorough
 // suite); the web layer only re-exports it. This covers the web-local helper.
 
+// TRLC-LINKS: REQ-SDS-163
 func TestResampleEnv(t *testing.T) {
 	v := make([]uint8, 800)
 	for i := range v {

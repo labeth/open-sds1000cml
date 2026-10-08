@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-SUPERRES
 package superres
 
 import (
@@ -10,6 +11,7 @@ import (
 // p + b/K, linearly interpolated. Every fine bin gets a contribution from every
 // hit — gap-free and staircase-free. odd routes it into the A half-stack. Mirrors
 // srDrizzleHit (interp/linear branch — the device kernel).
+// TRLC-LINKS: REQ-SDS-141
 func (st *Stack) drizzleHit(ch int, sig []float32, p float64, odd bool) {
 	K, G, n := st.K, st.Nbins, st.N
 	C := &st.C[ch]
@@ -37,6 +39,7 @@ func (st *Stack) drizzleHit(ch int, sig []float32, p float64, odd bool) {
 
 // SeedRef locks the frozen frame as the reference with an AUTO gate (active
 // region, narrowed to one period if periodic). See SeedRefGate for manual gates.
+// TRLC-LINKS: REQ-SDS-141
 func (st *Stack) SeedRef(sig1, sig2 []uint8, edgeX float64) bool {
 	return st.SeedRefGate(sig1, sig2, edgeX, -1, -1)
 }
@@ -44,6 +47,7 @@ func (st *Stack) SeedRef(sig1, sig2 []uint8, edgeX float64) bool {
 // SeedRefGate locks the frozen frame as the reference and installs the gate. A
 // gateLo<gateHi with gateLo>=0 is a manual gate; otherwise the gate is
 // auto-derived. Returns false if the frame is unusable (flat/clipped/no feature).
+// TRLC-LINKS: REQ-SDS-141
 func (st *Stack) SeedRefGate(sig1, sig2 []uint8, edgeX float64, gateLo, gateHi int) bool {
 	sigs := [2][]uint8{sig1, sig2}
 	alignSig := sigs[st.Align]
@@ -110,6 +114,7 @@ func (st *Stack) SeedRefGate(sig1, sig2 []uint8, edgeX float64, gateLo, gateHi i
 // shift 0 — a "start the stack over" that keeps the same match reference/template
 // (the Reset softkey). Must be called on the stacker goroutine (mutates the
 // accumulators), never concurrently with Feed.
+// TRLC-LINKS: REQ-SDS-141
 func (st *Stack) ResetKeepRef() {
 	for ch := range st.C {
 		C := &st.C[ch]
@@ -131,6 +136,7 @@ func (st *Stack) ResetKeepRef() {
 }
 
 // gainOffset fits g,b minimizing |ref − (g·sig[·+lag] + b)|² over [wLo,wHi).
+// TRLC-LINKS: REQ-SDS-141
 func gainOffset(ref []float32, sig []uint8, lag, wLo, wHi int) (g, b float64) {
 	lo := wLo
 	if -lag > lo {
@@ -172,6 +178,7 @@ func gainOffset(ref []float32, sig []uint8, lag, wLo, wHi int) (g, b float64) {
 // accumCh resamples one aligned frame at every fine bin (interp kernel): bin b
 // reads the frame at raw index b/K + shift, linearly interpolated. Odd frames
 // also land in the A half-stack (odd/even split for the measured σ).
+// TRLC-LINKS: REQ-SDS-141
 func (st *Stack) accumCh(ch int, sig []float32, shift float64) {
 	K, nb, n := st.K, st.Nbins, st.N
 	C := &st.C[ch]
@@ -203,6 +210,7 @@ func (st *Stack) accumCh(ch int, sig []float32, shift float64) {
 // the L·K grid (both channels at the align channel's positions). Zero occurrences
 // → the frame is rejected. Returns "stacked:<n>" | "rejected:<why>". SeedRef must
 // have run first. Mirrors srGateFeed.
+// TRLC-LINKS: REQ-SDS-141
 func (st *Stack) Feed(sig1, sig2 []uint8, edgeX float64) string {
 	sigs := [2][]uint8{sig1, sig2}
 	alignSig := sigs[st.Align]

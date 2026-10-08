@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-OTA-AGENT
 package agent
 
 import (
@@ -15,6 +16,7 @@ import (
 // requests encoded exactly as the otactl transport encodes them (the shared
 // rpcproto envelope + newline framing), and decodes responses the same way —
 // the agent<->otactl protocol-drift canary.
+// TRLC-LINKS: REQ-SDS-107
 func TestHandleConnSpeaksOtactlWire(t *testing.T) {
 	a := testAgent(t)
 	srv, cli := net.Pipe()

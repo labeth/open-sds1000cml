@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-LCD
 package lcd
 
 import (
@@ -7,10 +8,12 @@ import (
 	"time"
 )
 
+// TRLC-LINKS: REQ-SDS-021
 func ipnet(s string) *net.IPNet {
 	return &net.IPNet{IP: net.ParseIP(s), Mask: net.CIDRMask(24, 32)}
 }
 
+// TRLC-LINKS: REQ-SDS-021
 func TestPickDeviceURL(t *testing.T) {
 	cases := []struct {
 		name  string
@@ -47,6 +50,7 @@ func TestPickDeviceURL(t *testing.T) {
 
 // DeviceURL: seam-injected enumeration, error handling, and the low-rate cache
 // (a fresh answer inside the refresh window must NOT re-enumerate).
+// TRLC-LINKS: REQ-SDS-021
 func TestDeviceURLCaching(t *testing.T) {
 	oldFn := interfaceAddrs
 	defer func() {
@@ -97,6 +101,7 @@ func TestDeviceURLCaching(t *testing.T) {
 
 // The top-bar render: a URL paints dim text in the reserved top-bar span; an
 // empty URL paints nothing there (the no-network case renders nothing).
+// TRLC-LINKS: REQ-SDS-021
 func TestRenderDeviceURL(t *testing.T) {
 	region := func(m *MemSurface) int { return countColorIn(m, colDim, 380, 0, 670, 12) }
 

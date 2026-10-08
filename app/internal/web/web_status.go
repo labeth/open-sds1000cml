@@ -1,38 +1,47 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-WEB
 package web
 
 import (
+	"math"
 	"net/http"
 	"open-sds/app/internal/analog"
 	"open-sds/app/internal/buildinfo"
 	"open-sds/app/internal/engine"
+	"open-sds/app/internal/panel"
+	"open-sds/app/internal/streamview"
+	"time"
 )
 
+// TRLC-LINKS: REQ-SDS-164
 type statusReply struct {
 	engine.Stats
-	Tdivs       []float64 `json:"tdivs"`
-	TrigVolts   float64   `json:"trig_volts"`
-	TrigZero    float64   `json:"trig_zero"` // active source-detent trig cal: code = zero − cpv·V (BNC volts)
-	TrigCpv     float64   `json:"trig_cpv"`  // DAC codes per input-volt at the source detent
-	TrigCodeMin uint16    `json:"trig_code_min"`
-	TrigCodeMax uint16    `json:"trig_code_max"`
-	Vdivs       []float64 `json:"vdivs,omitempty"`
-	Vdiv1       float64   `json:"vdiv1,omitempty"`
-	Vdiv2       float64   `json:"vdiv2,omitempty"`
-	Probe1      float64   `json:"probe1,omitempty"`
-	Probe2      float64   `json:"probe2,omitempty"`
-	Cpl1        int       `json:"cpl1"` // 0=DC 1=AC 2=GND
-	Cpl2        int       `json:"cpl2"`
-	Inv1        bool      `json:"inv1"` // display-level trace invert (SCPI Cn:INVS shadow — the truth)
-	Inv2        bool      `json:"inv2"`
-	Zoom1       int       `json:"zoom1,omitempty"`
-	Zoom2       int       `json:"zoom2,omitempty"`
-	VdivLive    bool      `json:"vdiv_live"` // false until the first emit
-	Off1V       float64   `json:"off1_v"`
-	Off2V       float64   `json:"off2_v"`
-	CalSource   string    `json:"cal_source,omitempty"`
-	DC1V        float64   `json:"dc1_v"` // calibrated DC diagnostic (GAIN/110)
-	DC2V        float64   `json:"dc2_v"`
-	Version     string    `json:"version"`
+	Tdivs       []float64       `json:"tdivs"`
+	TrigVolts   float64         `json:"trig_volts"`
+	TrigZero    float64         `json:"trig_zero"` // active source-detent trig cal: code = zero − cpv·V (BNC volts)
+	TrigCpv     float64         `json:"trig_cpv"`  // DAC codes per input-volt at the source detent
+	TrigCodeMin uint16          `json:"trig_code_min"`
+	TrigCodeMax uint16          `json:"trig_code_max"`
+	Stream      *streamStatus   `json:"stream,omitempty"` // DECODE Auto Stream mode
+	Waiting     bool            `json:"waiting"`          // NORMAL, running, nothing published lately: WAIT, not the held frame's T'D
+	Vdivs       []float64       `json:"vdivs,omitempty"`
+	Vdiv1       float64         `json:"vdiv1,omitempty"`
+	Vdiv2       float64         `json:"vdiv2,omitempty"`
+	Probe1      float64         `json:"probe1,omitempty"`
+	Probe2      float64         `json:"probe2,omitempty"`
+	Cpl1        int             `json:"cpl1"` // 0=DC 1=AC 2=GND
+	Cpl2        int             `json:"cpl2"`
+	Inv1        bool            `json:"inv1"` // display-level trace invert (SCPI Cn:INVS shadow — the truth)
+	Inv2        bool            `json:"inv2"`
+	Zoom1       int             `json:"zoom1,omitempty"`
+	Zoom2       int             `json:"zoom2,omitempty"`
+	VdivLive    bool            `json:"vdiv_live"` // false until the first emit
+	Off1V       float64         `json:"off1_v"`
+	Off2V       float64         `json:"off2_v"`
+	CalSource   string          `json:"cal_source,omitempty"`
+	DC1V        float64         `json:"dc1_v"` // calibrated DC diagnostic (GAIN/110)
+	DC2V        float64         `json:"dc2_v"`
+	Version     string          `json:"version"`
+	Panel       *panel.MenuView `json:"panel,omitempty"` // same read-only snapshot consumed by the LCD
 
 	// Device super-res (panel stack-and-crunch) live state; omitted when inactive.
 	SRActive   bool    `json:"sr_active,omitempty"`
@@ -48,6 +57,7 @@ type statusReply struct {
 	CmdLog   []engine.CmdNote   `json:"cmd_log"`   // last ≤16 web set-control calls
 }
 
+// TRLC-LINKS: REQ-SDS-164
 func (s *Server) hStatus(w http.ResponseWriter, r *http.Request) {
 	st := s.sc.Snapshot()
 	rep := statusReply{
@@ -58,8 +68,23 @@ func (s *Server) hStatus(w http.ResponseWriter, r *http.Request) {
 		TrigCodeMax: engine.TrigCodeMax,
 		Version:     buildinfo.String(),
 	}
+	if sp, ok := s.sc.(interface{ SincePublish() time.Duration }); ok && st.Norm && st.Running {
+		rep.Waiting = sp.SincePublish() > time.Duration(math.Max(1, 25*st.TdivS)*float64(time.Second))
+	}
 	if sr, ok := s.panel.(superresReporter); ok {
 		rep.SRActive, rep.SRReview, rep.SRBits, rep.SRFrames, rep.SRRejected, rep.SRStatus = sr.SuperresStatus()
+	}
+	if sr, ok := s.panel.(interface {
+		StreamStatus() (streamview.View, bool)
+	}); ok {
+		if v, on := sr.StreamStatus(); on {
+			rep.Stream = &streamStatus{State: v.State.String(), Label: v.Label, Units: v.Units, Errors: v.Errors,
+				Lost: v.Lost, Lines: v.Lines, UnitsPerSecond: v.UnitsPerSecond, Err: v.Err, Record: v.RecordAvailable, TriggerLine: v.TriggerLine}
+		}
+	}
+	if reporter, ok := s.panel.(interface{ MenuView() panel.MenuView }); ok {
+		view := reporter.MenuView()
+		rep.Panel = &view
 	}
 	if s.invSrc != nil {
 		inv := s.invSrc()
@@ -122,4 +147,18 @@ func (s *Server) hStatus(w http.ResponseWriter, r *http.Request) {
 		rep.Off2V *= s.fe.ProbeFactor(1)
 	}
 	writeJSON(w, rep)
+}
+
+// streamStatus is the decoded stream in /api/status (ADR-PANEL-DECODED-STREAM).
+type streamStatus struct {
+	State          string  `json:"state"`
+	Label          string  `json:"label"`
+	Units          uint64  `json:"units"`
+	Errors         uint64  `json:"errors"`
+	Lost           uint64  `json:"lost"`
+	Lines          int     `json:"lines"`
+	UnitsPerSecond float64 `json:"units_per_s"`
+	Err            string  `json:"err,omitempty"`
+	Record         bool    `json:"record"`
+	TriggerLine    int     `json:"trigger_line"`
 }

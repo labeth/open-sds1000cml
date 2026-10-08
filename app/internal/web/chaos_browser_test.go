@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-WEB
 package web
 
 import (
@@ -16,6 +17,7 @@ import (
 // interactive control and gesture path in a real browser; any pageerror is a
 // reachable broken UI state. Three seeds per run keep it cheap but varied.
 // Skips when node/Playwright is absent (fails under CI_REQUIRE_BROWSER=1).
+// TRLC-LINKS: REQ-SDS-180
 func TestChaosBrowser(t *testing.T) {
 	testenv.NeedNode(t)
 	const N = 2048

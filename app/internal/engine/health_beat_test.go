@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
 package engine
 
 import (
@@ -9,6 +10,7 @@ import (
 // legitimate long wait, or the agent (3 s staleness) kills a healthy app.
 // Holdoff pacing is the worst case — user-settable to 10 s between frames
 // (live-storm finding: a frame-keyed token got the app killed mid-storm).
+// TRLC-LINKS: REQ-SDS-025
 func TestHealthBeatsThroughHoldoff(t *testing.T) {
 	fb := newFakeBus()
 	e, clk := newTestEngine(t, fb)

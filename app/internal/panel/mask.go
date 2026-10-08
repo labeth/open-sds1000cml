@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-PANEL
 package panel
 
 import (
@@ -25,6 +26,7 @@ var maskTols = [][2]int{{3, 6}, {5, 8}, {8, 12}, {12, 20}}
 // channel is not DC-coupled (zone/mask test RAW capture codes; AC/GND are
 // display-only transforms here — what the user sees would not be what is
 // tested; same guard as the web).
+// TRLC-LINKS: REQ-SDS-139
 func (c *Controller) maskBuildStart() {
 	c.mu.Lock()
 	if c.maskBuilding || c.frameFn == nil {
@@ -52,6 +54,7 @@ func (c *Controller) maskBuildStart() {
 // frames (window()-consistent mapping, same as the engine test point) and
 // installs the dilated mask. Runs off the panel goroutine; only touches the
 // engine through thread-safe entry points.
+// TRLC-LINKS: REQ-SDS-139
 func (c *Controller) maskBuildRun(n, tolT, tolV, ch int, posFrac float64) {
 	if posFrac <= 0 || posFrac > 1 {
 		posFrac = 0.5
@@ -132,6 +135,7 @@ func (c *Controller) maskBuildRun(n, tolT, tolV, ch int, posFrac float64) {
 	c.maskSetMsg(fmt.Sprintf("MASK: ready (%d frames, C%d) - set Mode to Test", got, ch+1))
 }
 
+// TRLC-LINKS: REQ-SDS-139
 func (c *Controller) maskSetMsg(s string) {
 	c.mu.Lock()
 	c.maskMsg = s
@@ -139,6 +143,7 @@ func (c *Controller) maskSetMsg(s string) {
 }
 
 // MaskStatus returns the build/status line for the LCD HUD ("" when idle).
+// TRLC-LINKS: REQ-SDS-139
 func (c *Controller) MaskStatus() string {
 	c.mu.Lock()
 	defer c.mu.Unlock()

@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-ENGINE
 package engine
 
 import (
@@ -13,6 +14,7 @@ import (
 // (must qualify) and known-empty regions (must not). The invariant: the tester
 // never passes a violation, never fails a clean frame, and localizes failures.
 
+// TRLC-LINKS: REQ-SDS-014
 type zmFamily struct {
 	name    string
 	shape   func(i int, ph float64) float64 // base waveform, codes around 0
@@ -23,6 +25,7 @@ type zmFamily struct {
 	violate string // spike | dropout | shift | width | ring
 }
 
+// TRLC-LINKS: REQ-SDS-014
 func zmShapes() map[string]func(p float64) func(int, float64) float64 {
 	return map[string]func(p float64) func(int, float64) float64{
 		"square": func(p float64) func(int, float64) float64 {
@@ -94,6 +97,7 @@ func zmShapes() map[string]func(p float64) func(int, float64) float64 {
 	}
 }
 
+// TRLC-LINKS: REQ-SDS-014
 func zmFamilies() []zmFamily {
 	shapes := zmShapes()
 	names := []string{"square", "sine", "triangle", "saw", "pulse", "uart", "burst", "ringing", "stairs", "am"}
@@ -119,6 +123,7 @@ func zmFamilies() []zmFamily {
 // zmGen builds one frame of the family. phase jitters per frame; edgeX is the
 // first rising mid-crossing after sample 600 (mimicking the trigger anchor).
 // violAt >= 0 injects the family's violation at edge-relative sample violAt.
+// TRLC-LINKS: REQ-SDS-014
 func zmGen(fam zmFamily, frameIdx int, violAt int, rng func() float64) (*Frame, float64, int, []float64) {
 	const n = 4096
 	f := &Frame{C1: make([]uint8, n), C2: make([]uint8, n), Valid: n}
@@ -197,6 +202,7 @@ func zmGen(fam zmFamily, frameIdx int, violAt int, rng func() float64) (*Frame, 
 	return f, edgeX, violSample, vals
 }
 
+// TRLC-LINKS: REQ-SDS-014
 func sign(x float64) float64 {
 	if x < 0 {
 		return -1
@@ -204,6 +210,7 @@ func sign(x float64) float64 {
 	return 1
 }
 
+// TRLC-LINKS: REQ-SDS-014
 func TestZoneMaskBreaker(t *testing.T) {
 	e, _ := newTestEngine(t, newFakeBus())
 	win := e.band.WinCols()

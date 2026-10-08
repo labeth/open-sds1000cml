@@ -24,3 +24,4 @@ code can be written directly from the text. Where a value is a fixed constant, g
 | 09 | [`09-control-plane.md`](09-control-plane.md) | How commands (timebase, vertical, trigger, run/stop) are staged and applied at the frame boundary; the network/status interface. |
 | 10 | [`10-calibration.md`](10-calibration.md) | The calibration data layout and how it maps to the runtime gain/offset tables. |
 | 11 | [`11-host-interface.md`](11-host-interface.md) | The external host/remote interface: VXI-11 (LAN) transport (USB-TMC specified, not implemented), the LeCroy short-form SCPI set, the byte-exact `WF?`/WAVEDESC waveform transfer, and the `SCDP` hardcopy image. |
+| 12 | [`12-fpga-board-interface.md`](12-fpga-board-interface.md) | The FPGA's connection to the board: device and configuration, clocks, ADC encode and data lanes, external SRAM, the ARM's GPMC bus, front-panel scan, every connected ball. |

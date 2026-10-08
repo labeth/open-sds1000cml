@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-APP-WEB
 package web
 
 import (
@@ -14,6 +15,7 @@ import (
 // absurd WinCols, NaN/negative EdgeX, mismatched env metadata), the web serve
 // path — buildReply + measurement + window + binary encode — must
 // not panic. A serving panic on ONE bad frame crashes the whole scope UI.
+// TRLC-LINKS: REQ-SDS-163
 func TestFrameServeFuzz(t *testing.T) {
 	rng := rand.New(rand.NewSource(0xF00D))
 	var cur atomic.Pointer[engine.Frame]

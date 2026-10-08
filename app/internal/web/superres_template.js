@@ -1,3 +1,4 @@
+// ENGMODEL-OWNER-UNIT: FU-WEB-SUPERRES-TEMPLATE
 // superres_template.js — reference/gate template build + matching.
 
 // srFeed runs the full per-frame pipeline: align → lucky-select → drift
@@ -17,6 +18,7 @@
 // reference is kept too). NCC (mean- and scale-invariant) then matches shape.
 "use strict";
 
+// TRLC-LINKS: REQ-SDS-019
 function srBuildTemplate(ref, n, edgeX, valid) {
   const hi0 = valid > 0 && valid <= n ? valid : n;
   const lo0 = edgeX >= 0 ? Math.min(hi0 - 1, Math.round(edgeX) + 16) : 0; // skip the shared trigger transition
@@ -66,6 +68,7 @@ function srBuildTemplate(ref, n, edgeX, valid) {
 // absent, reject. shift aligns the frame's found pattern back onto the reference's
 // (so srAccumCh stacks the matched content, wherever it sat vs the trigger). This
 // is R4 (reject non-matches) + R5 (find a pattern displaced from the trigger).
+// TRLC-LINKS: REQ-SDS-019
 function srMatchLocate(st, sig, base, R) {
   const t = st.tpl;
   if (!t) return null;
@@ -100,6 +103,7 @@ function srMatchLocate(st, sig, base, R) {
 // a genuine occurrence matches the template EVERYWHERE it has energy, whereas a
 // partial overlap / lookalike matches only where the energy is concentrated —
 // the global energy-weighted NCC cannot tell those apart.
+// TRLC-LINKS: REQ-SDS-019
 function srGateTemplate(ref, lo, hi) {
   const L = hi - lo;
   if (L < 4) return null;
@@ -138,6 +142,7 @@ function srGateTemplate(ref, lo, hi) {
 // (the non-overlapping segment fails) and mixed feature+junk windows (the junk
 // segment fails), which the global NCC accepts whenever the matching part
 // carries the energy — the root cause of stack contamination.
+// TRLC-LINKS: REQ-SDS-019
 function srSegMatch(t, sig, loc) {
   const segs = t.segs;
   if (!segs || segs.length < 2) return true; // nothing to cross-check
@@ -179,6 +184,7 @@ function srSegMatch(t, sig, loc) {
 // srAmbientMax measures the reference record's own ambient similarity to the
 // gate template: the maximum off-gate local-maximum NCC BELOW 0.93 (values at
 // or above that are genuine periodic repeats of the feature, not lookalikes).
+// TRLC-LINKS: REQ-SDS-019
 function srAmbientMax(st, ref) {
   const t = st.gtpl, L = t.L, n = st.n;
   let best = 0, prev = -2, prev2 = -2;
