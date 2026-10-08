@@ -5,7 +5,7 @@ the OTA agent (`../ota`). It owns acquisition over the GPMC bus, loads the FPGA
 images it embeds, and serves the LCD, the front panel, the web UI (port 8080)
 and SCPI over VXI-11.
 
-The model ([`../models/sds1000cml/model/`](../models/sds1000cml/model/)) documents
+The model ([`../model/`](../model/)) documents
 its requirements, behaviour and decisions.
 
 ```sh

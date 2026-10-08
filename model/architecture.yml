@@ -852,7 +852,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/analog/trigcal.go
+    uri: ../app/internal/analog/trigcal.go
     description: Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob 6214ba26c6f8539beff396aa591a5a057f5551a2.
       Source presence does not establish physical calibration accuracy.
   - id: REF-SOURCE-APP-INTERNAL-ANALOG-FRONTEND-GO
@@ -860,7 +860,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/analog/frontend.go
+    uri: ../app/internal/analog/frontend.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       0a12a7a2dce3315b6d7f1932a14ffc973b9f797d. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-CMD-APP-MAIN-GO
@@ -868,7 +868,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/cmd/app/main.go
+    uri: ../app/cmd/app/main.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       bf83a28b97dcc21533cafe25e0c3cab0016ce06b. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-GITIGNORE
@@ -876,7 +876,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/.gitignore
+    uri: ../app/.gitignore
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       5d69b46179b02c5fd0965bbaf0e76c71176ec580. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-BUILDINFO-BUILDINFO-GO
@@ -884,7 +884,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/buildinfo/buildinfo.go
+    uri: ../app/internal/buildinfo/buildinfo.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       6642b7363daf6fc467592c141f3aa6fb73098604. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-BUS-BUS-GO
@@ -892,7 +892,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/bus/bus.go
+    uri: ../app/internal/bus/bus.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       374424ff5602726246c1bb1715b54bef827ca906. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-CAL-CAL-GO
@@ -900,7 +900,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/cal/cal.go
+    uri: ../app/internal/cal/cal.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       657c28feb17af344b0a2fdc78f3ec059f2e19da2. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-DECODE-DECODE-GO
@@ -908,7 +908,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/decode/decode.go
+    uri: ../app/internal/decode/decode.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       c1a8370d321659fa5b527169c7340a1ed46282b9. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-DIAG-BUSPROBE-GO
@@ -916,7 +916,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/diag/busprobe.go
+    uri: ../app/internal/diag/busprobe.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       da0e8e39ed117286832d158ba963652b8d54f5f5. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-DSP-PRECISION-LIMITS-GO
@@ -924,7 +924,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/dsp/precision_limits.go
+    uri: ../app/internal/dsp/precision_limits.go
     description: Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob 096a86cb2e4115b2a0feb7027a4a215939e17874.
       Digital implementation evidence is not physical qualification.
   - id: REF-SOURCE-APP-INTERNAL-DSP-PRECISION-GENERIC-GO
@@ -932,7 +932,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/dsp/precision_generic.go
+    uri: ../app/internal/dsp/precision_generic.go
     description: Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob d0e94d94ffa834bee63a36d44a49f57494aba6f7.
       Digital implementation evidence is not physical qualification.
   - id: REF-SOURCE-APP-INTERNAL-DSP-PRECISION-ARM-GO
@@ -940,7 +940,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/dsp/precision_arm.go
+    uri: ../app/internal/dsp/precision_arm.go
     description: Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob 2a4526bf8a7e2f28924b6d87cc162b6afaaca21a.
       Digital implementation evidence is not physical qualification.
   - id: REF-SOURCE-APP-INTERNAL-DSP-PRECISION-ARM-S
@@ -948,7 +948,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/dsp/precision_arm.s
+    uri: ../app/internal/dsp/precision_arm.s
     description: Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob 019e455bcaab1c1004ee49d37e3514b5ae5d6858.
       Digital implementation evidence is not physical qualification.
   - id: REF-SOURCE-APP-INTERNAL-DSP-PRECISION-TAPS-GO
@@ -956,7 +956,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/dsp/precision_taps.go
+    uri: ../app/internal/dsp/precision_taps.go
     description: Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob a0d816c0d51700d4b68e389a1c6b4e2b3994f9bf.
       Digital implementation evidence is not physical qualification.
   - id: REF-SOURCE-APP-INTERNAL-DSP-PRECISION-GO
@@ -964,7 +964,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/dsp/precision.go
+    uri: ../app/internal/dsp/precision.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       cedb49472d0bed5ec50d65b1a491b32048740369. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-ENGINE-ARENA-GO
@@ -972,7 +972,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/engine/arena.go
+    uri: ../app/internal/engine/arena.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       605e0a5d95fdf7fe87b50212e34a3478c3102747. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-FPGALOAD-BITSTREAM-EMBED-GO
@@ -980,7 +980,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/fpgaload/bitstream_embed.go
+    uri: ../app/internal/fpgaload/bitstream_embed.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       ea3ab140ec9cefeeb4d3c77b88fccd5eb840d2c5. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-FRAMES-FANOUT-GO
@@ -988,7 +988,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/frames/fanout.go
+    uri: ../app/internal/frames/fanout.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       389f15bf85495429019c020004b3b0bd3c25a994. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-IFACE-IFACE-GO
@@ -996,7 +996,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/iface/iface.go
+    uri: ../app/internal/iface/iface.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       e1864ecf97ad8dacae8c95a5e8c72e177cae2369. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-LCD-FONT-GO
@@ -1004,7 +1004,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/lcd/font.go
+    uri: ../app/internal/lcd/font.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       1801ec13752bebd7848eff131e95a2b13d5a96c3. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-MEASURE-MEASURE-GO
@@ -1012,7 +1012,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/measure/measure.go
+    uri: ../app/internal/measure/measure.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       d4a10bca5539f6641b98e9f663244dad0bcffe85. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-PANEL-AUTOSET-GO
@@ -1020,7 +1020,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/panel/autoset.go
+    uri: ../app/internal/panel/autoset.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       2f53a7d1bde0c52029275947dd81831c7089985b. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-SCPI-SCPI-EXEC-GO
@@ -1028,7 +1028,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/scpi/scpi_exec.go
+    uri: ../app/internal/scpi/scpi_exec.go
     description: Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob 6bf826d033fb825427e6628e9cd065fbab529c26.
       Handler evidence does not establish live VXI-11 interoperability.
   - id: REF-SOURCE-APP-INTERNAL-SCPI-WAVEFORM-GO
@@ -1036,7 +1036,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/scpi/waveform.go
+    uri: ../app/internal/scpi/waveform.go
     description: Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob 9029b561767d6b557d3198b5d8be96fd1514ca44.
       Handler evidence does not establish live VXI-11 interoperability.
   - id: REF-SOURCE-APP-INTERNAL-SCPI-SCPI-GO
@@ -1044,7 +1044,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/scpi/scpi.go
+    uri: ../app/internal/scpi/scpi.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       33f1d10e29a44c09a20846f7b79a2118f9e55b13. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-SETTINGS-SAVER-GO
@@ -1052,7 +1052,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/settings/saver.go
+    uri: ../app/internal/settings/saver.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       a6a769f2fc4e36a9f4f595dee0616d49f94cd516. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-SRAMCAPTURE-CAPTURE-GO
@@ -1060,7 +1060,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/sramcapture/capture.go
+    uri: ../app/internal/sramcapture/capture.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       c2093bcbc4853a3470467564e4dfe889138a3cfc. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-SUPERRES-COMP-GO
@@ -1068,7 +1068,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/superres/comp.go
+    uri: ../app/internal/superres/comp.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       4d8e1eec917783d7d2761c81e6ae8e3d0d240a66. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-TESTENV-TESTENV-GO
@@ -1076,7 +1076,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/testenv/testenv.go
+    uri: ../app/internal/testenv/testenv.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       fbb461dc0afcc22145eb9e6a884dc587f8a48bf5. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-VXI11SRV-SERVER-GO
@@ -1084,7 +1084,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/vxi11srv/server.go
+    uri: ../app/internal/vxi11srv/server.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       f2118505bcd6c9098e1c38b3f3684379625ca58c. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-ASSETS-GO
@@ -1092,7 +1092,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/assets.go
+    uri: ../app/internal/web/assets.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       66fcf06df6c00ec5bf5d830d304575141132ec12. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-FPGA-COMMON-LANEMAP-SEED-VH
@@ -1100,7 +1100,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../fpga/common/lanemap_seed.vh
+    uri: ../fpga/common/lanemap_seed.vh
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       a64c3a75c55a0c3289530583a7acf09ec6f6f4c8. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-OTA-CMD-AGENT-MAIN-GO
@@ -1108,7 +1108,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../ota/cmd/agent/main.go
+    uri: ../ota/cmd/agent/main.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       303ba9291257c2edc4576f59ded33eb6fcbe4e59. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-OTA-BOOT-DOC-GO
@@ -1116,7 +1116,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../ota/boot/doc.go
+    uri: ../ota/boot/doc.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       7e4a58f5c3b4bb7bb3d51475e4b42b081e92a40d. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-OTA-GITIGNORE
@@ -1124,7 +1124,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../ota/.gitignore
+    uri: ../ota/.gitignore
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       0ec4a3773dbde43e98484cb73d65ce5b715a98d1. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-OTA-INTERNAL-BUILDINFO-BUILDINFO-GO
@@ -1132,7 +1132,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../ota/internal/buildinfo/buildinfo.go
+    uri: ../ota/internal/buildinfo/buildinfo.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       e8a362c1faaf2b86618a2286d4f6a3341448b25f. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-OTA-INTERNAL-CONFIG-CONFIG-GO
@@ -1140,7 +1140,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../ota/internal/config/config.go
+    uri: ../ota/internal/config/config.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       3167aa4a56b13e47f28d20245bdadce384da099c. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-OTA-INTERNAL-FDINHERIT-FDINHERIT-GO
@@ -1148,7 +1148,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../ota/internal/fdinherit/fdinherit.go
+    uri: ../ota/internal/fdinherit/fdinherit.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       28e91f0afdece0080ce3d14a73d8987d33796b64. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-OTA-INTERNAL-GPMC-GPMC-GO
@@ -1156,7 +1156,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../ota/internal/gpmc/gpmc.go
+    uri: ../ota/internal/gpmc/gpmc.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       9822f57183f8a27e8453fc4e494ae85d915464a6. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-OTA-CMD-OTACTL-MAIN-GO
@@ -1164,7 +1164,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../ota/cmd/otactl/main.go
+    uri: ../ota/cmd/otactl/main.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       cfa09167f9d9e397eb950c54273a1addbfe7154e. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-OTA-INTERNAL-RPCPROTO-RPCPROTO-GO
@@ -1172,7 +1172,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../ota/internal/rpcproto/rpcproto.go
+    uri: ../ota/internal/rpcproto/rpcproto.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       82d2c1afaa88fc1517870adb8622228a8f8f8e05. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-OTA-INTERNAL-SLOTS-SLOTS-GO
@@ -1180,7 +1180,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../ota/internal/slots/slots.go
+    uri: ../ota/internal/slots/slots.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       bb02ff2c7622d8087242e324eff28a432c0d246d. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-OTA-CMD-STUBAPP-MAIN-GO
@@ -1188,7 +1188,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../ota/cmd/stubapp/main.go
+    uri: ../ota/cmd/stubapp/main.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       a38a80988e71c991f3404a5c1af2b1fabb4a4c98. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-OTA-INTERNAL-SYSINFO-SYSINFO-GO
@@ -1196,7 +1196,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../ota/internal/sysinfo/sysinfo.go
+    uri: ../ota/internal/sysinfo/sysinfo.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       1318f955853bbefaa507aced17aa43ee9aee7519. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-OTA-INTERNAL-VXI11-VXI11-GO
@@ -1204,7 +1204,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../ota/internal/vxi11/vxi11.go
+    uri: ../ota/internal/vxi11/vxi11.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       5e0570aad3433449c4b135f9011e0e36df1e1373. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-OTA-INTERNAL-WATCHDOG-WATCHDOG-GO
@@ -1212,7 +1212,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../ota/internal/watchdog/watchdog.go
+    uri: ../ota/internal/watchdog/watchdog.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       d96d069addd61f0a59a713004c986acf4aac062f. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-GITATTRIBUTES
@@ -1220,7 +1220,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../.gitattributes
+    uri: ../.gitattributes
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       ff286eab343df89f2374f3f42a2d29c11ebd0892. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-FPGA-COMMON-ADC-UNPACK-V
@@ -1228,7 +1228,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../fpga/common/adc_unpack.v
+    uri: ../fpga/common/adc_unpack.v
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       db46b1ae18d7320e4a6f8486be94448eb1a733e1. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-FPGA-COMMON-INTERLEAVE-V
@@ -1236,7 +1236,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../fpga/common/interleave.v
+    uri: ../fpga/common/interleave.v
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       90597c9fc4cd20e803750f749034bdf421b8a8ed. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-FPGA-IMAGES-GENERAL-PRECISION-V
@@ -1244,7 +1244,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../fpga/images/general/precision.v
+    uri: ../fpga/images/general/precision.v
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       3749c7257e4f27478145f9e7a3fa4e79b3b4f4af. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-FPGA-IMAGES-GENERAL-PRECISION-TAIL-V
@@ -1252,7 +1252,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../fpga/images/general/precision_tail.v
+    uri: ../fpga/images/general/precision_tail.v
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       e28498d31146f0fe753cb79d6df25b943f87b72b. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-FPGA-COMMON-RECORD-V
@@ -1260,7 +1260,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../fpga/common/record.v
+    uri: ../fpga/common/record.v
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       e888d4d87ba31a4db3ec58155dcc98d45e2ef8e2. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-FPGA-COMMON-TOP-V
@@ -1268,7 +1268,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../fpga/common/top.v
+    uri: ../fpga/common/top.v
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       8fcc25bd1af9e20f4b640aa2718678e7f0a4f718. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-FPGA-COMMON-TRANSPORT-V
@@ -1276,7 +1276,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../fpga/common/transport.v
+    uri: ../fpga/common/transport.v
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       64e8be6fad79e4b126c078785ba7ef4316473a67. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-FPGA-COMMON-SIM-DDR-MODEL-V
@@ -1284,7 +1284,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../fpga/common/sim/ddr_model.v
+    uri: ../fpga/common/sim/ddr_model.v
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       6050b36c61373eb72a76b2cc425f800c9bc7fadc. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-FPGA-COMMON-DDIO-PAIR-V
@@ -1292,7 +1292,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../fpga/common/ddio_pair.v
+    uri: ../fpga/common/ddio_pair.v
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       91600ed6c577cb5baadebe7c23948c014902e68d. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-FPGA-COMMON-GPMC-SLAVE-V
@@ -1300,7 +1300,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../fpga/common/gpmc_slave.v
+    uri: ../fpga/common/gpmc_slave.v
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       17476ee21f2f246f0a757b091aa9b7ca75712e1f. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-FPGA-COMMON-LANE-IN-V
@@ -1308,7 +1308,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../fpga/common/lane_in.v
+    uri: ../fpga/common/lane_in.v
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       06d8a1aa0ad82778307b5f693b80242228621233. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-FPGA-COMMON-SIM-GPMC-BFM-V
@@ -1316,7 +1316,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../fpga/common/sim/gpmc_bfm.v
+    uri: ../fpga/common/sim/gpmc_bfm.v
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       e4f7e5092f8b5a43f65d1de2aae9681cdee47b69. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-SPECS-00-OVERVIEW-MD
@@ -1324,7 +1324,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../specs/00-overview.md
+    uri: ../specs/00-overview.md
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       b06d7668e74dd502a494b9a49fe5f0ab2e2381b0. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-APP-JS
@@ -1332,7 +1332,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/app.js
+    uri: ../app/internal/web/app.js
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       28ee76577be77a89752bc33eacbd3846a99dd36f. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-APP-CANVAS-JS
@@ -1340,7 +1340,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/app_canvas.js
+    uri: ../app/internal/web/app_canvas.js
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       5ef121251553c21f9ce7923905d321023fb7456e. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-APP-CONTROLS-JS
@@ -1348,7 +1348,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/app_controls.js
+    uri: ../app/internal/web/app_controls.js
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       792305bc523f3e5ebb5e0a13dc2d997ef83ec958. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-APP-CORE-JS
@@ -1356,7 +1356,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/app_core.js
+    uri: ../app/internal/web/app_core.js
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       516b7ce1e77ff3e83b92afd6138db18255339b25. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-APP-DECODE-JS
@@ -1364,7 +1364,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/app_decode.js
+    uri: ../app/internal/web/app_decode.js
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       93c5fbfa18a09ead59ab8f3b89ce33fdc02d146c. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-APP-DRAW-JS
@@ -1372,7 +1372,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/app_draw.js
+    uri: ../app/internal/web/app_draw.js
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       c7cc385f607f1263e5b6b8fcc98a22b2d8f910d6. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-APP-EYE-JS
@@ -1380,7 +1380,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/app_eye.js
+    uri: ../app/internal/web/app_eye.js
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       317defc9fd0452f653d1a759ee5d9c7e7e02dbbf. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-APP-FFT-JS
@@ -1388,7 +1388,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/app_fft.js
+    uri: ../app/internal/web/app_fft.js
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       b317575995d40f1f07a89f48195a8ce6ef2ac5f6. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-APP-GEOM-JS
@@ -1396,7 +1396,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/app_geom.js
+    uri: ../app/internal/web/app_geom.js
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       6fa89765fda84add7be5fa5e57033a48e717bb5a. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-APP-GL-JS
@@ -1404,7 +1404,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/app_gl.js
+    uri: ../app/internal/web/app_gl.js
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       ec708bb16c2c124bf47976d394992c621d4094b2. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-APP-INIT-JS
@@ -1412,7 +1412,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/app_init.js
+    uri: ../app/internal/web/app_init.js
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       539146254376b2458ce096474cc898b443bfcea5. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-APP-NAV-JS
@@ -1420,7 +1420,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/app_nav.js
+    uri: ../app/internal/web/app_nav.js
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       0dfea78fe6d31b6005dcc9047a565e2367703ef3. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-APP-PRECISION-JS
@@ -1428,7 +1428,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/app_precision.js
+    uri: ../app/internal/web/app_precision.js
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       ca32c32d4da1768045df5d634ace1cad69019cd4. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-APP-SERIALTRIG-JS
@@ -1436,7 +1436,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/app_serialtrig.js
+    uri: ../app/internal/web/app_serialtrig.js
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       a6d6e637a7d32920e55abc63adc03e8f7c657c15. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-APP-SUPERRES-JS
@@ -1444,7 +1444,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/app_superres.js
+    uri: ../app/internal/web/app_superres.js
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       4a957cb4ae8dd23ba07719b4eaae345c9b93087e. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-APP-VIEWS-JS
@@ -1452,7 +1452,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/app_views.js
+    uri: ../app/internal/web/app_views.js
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       12c735ef5e3a23e5efd1ea6c577f7b30ac53a381. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-APP-ZONEMASK-JS
@@ -1460,7 +1460,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/app_zonemask.js
+    uri: ../app/internal/web/app_zonemask.js
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       138178c59248467d8942023ed7c2b78c0d8fefd6. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-BINFRAME-JS
@@ -1468,7 +1468,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/binframe.js
+    uri: ../app/internal/web/binframe.js
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       3d2172e10a72da55345388eedc42900907a3e9cb. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-BODE-JS
@@ -1476,7 +1476,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/bode.js
+    uri: ../app/internal/web/bode.js
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       bea1c70ef6ce34f78feabb6d8c40165451faec25. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-DECODE-JS
@@ -1484,7 +1484,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/decode.js
+    uri: ../app/internal/web/decode.js
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       9e642762d4b823d283bc174a8272c9e69d4afed1. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-DECODE-ARINC429-JS
@@ -1492,7 +1492,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/decode_arinc429.js
+    uri: ../app/internal/web/decode_arinc429.js
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       795cb878ad01cd9c1c597c6dc66b294e7921df24. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-DECODE-CANFD-JS
@@ -1500,7 +1500,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/decode_canfd.js
+    uri: ../app/internal/web/decode_canfd.js
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       2878cbb516459641e5154ab74463851647ba9096. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-DECODE-FLEXRAY-JS
@@ -1508,7 +1508,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/decode_flexray.js
+    uri: ../app/internal/web/decode_flexray.js
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       10f8711b23a4ead43efaef9a6e1386066d09fba6. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-DECODE-MANCHESTER-JS
@@ -1516,7 +1516,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/decode_manchester.js
+    uri: ../app/internal/web/decode_manchester.js
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       77c75a54b9fce21bba9f74f4e3103ba4d4949f8d. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-DECODE-MIL1553-JS
@@ -1524,7 +1524,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/decode_mil1553.js
+    uri: ../app/internal/web/decode_mil1553.js
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       2c14b298eaa2f7b39e59b8c9bd446aa672596032. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-DECODE-SENT-JS
@@ -1532,7 +1532,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/decode_sent.js
+    uri: ../app/internal/web/decode_sent.js
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       e32751d679a610f6aab21d21dac888bb3aaa35d5. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-DECODE-USBLS-JS
@@ -1540,7 +1540,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/decode_usbls.js
+    uri: ../app/internal/web/decode_usbls.js
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       48fa249de7cae897f9ac5c93a9fc95154c86f089. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-EYEJITTER-JS
@@ -1548,7 +1548,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/eyejitter.js
+    uri: ../app/internal/web/eyejitter.js
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       4db0ed4c8e778c2d3886c64713b58352e02da797. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-EYEJITTER-ANALYSIS-JS
@@ -1556,7 +1556,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/eyejitter_analysis.js
+    uri: ../app/internal/web/eyejitter_analysis.js
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       c189199b203ecaedf2e0d3c0708e413f4857e965. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-PEAKS-JS
@@ -1564,7 +1564,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/peaks.js
+    uri: ../app/internal/web/peaks.js
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       62a9d62c6883214a77473611f57d44ce3d5b1ea4. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-SIGROK-EXPORT-JS
@@ -1572,7 +1572,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/sigrok_export.js
+    uri: ../app/internal/web/sigrok_export.js
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       b8adc89725b3e55817fd7bbd73b7afb59e8a0446. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-SPECTROGRAM-JS
@@ -1580,7 +1580,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/spectrogram.js
+    uri: ../app/internal/web/spectrogram.js
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       ae6284247a0d1c356abbc3d368d93b9ada2e4180. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-SUPERRES-JS
@@ -1588,7 +1588,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/superres.js
+    uri: ../app/internal/web/superres.js
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       18b6e1f8a3ea155159801379f548d763cf6eacd2. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-SUPERRES-COMP-JS
@@ -1596,7 +1596,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/superres_comp.js
+    uri: ../app/internal/web/superres_comp.js
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       5b0dbd0166b9d1cf22ac26989bb311a212719ba8. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-SUPERRES-ETS-JS
@@ -1604,7 +1604,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/superres_ets.js
+    uri: ../app/internal/web/superres_ets.js
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       73b800311ff528d4af6b5855583882f8dec24a77. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-SUPERRES-GATE-JS
@@ -1612,7 +1612,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/superres_gate.js
+    uri: ../app/internal/web/superres_gate.js
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       27261d5481104d36021ec2ff0045a8b27f54996a. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-SUPERRES-MATH-JS
@@ -1620,7 +1620,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/superres_math.js
+    uri: ../app/internal/web/superres_math.js
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       9c961e16c6fcde1c0d688232da7016c039267613. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-SUPERRES-MEASURE-JS
@@ -1628,7 +1628,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/superres_measure.js
+    uri: ../app/internal/web/superres_measure.js
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       a204b515b53501c892f5179d9053f250c5102060. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-SUPERRES-TEMPLATE-JS
@@ -1636,7 +1636,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/superres_template.js
+    uri: ../app/internal/web/superres_template.js
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       2f994bc5bcda9606a7b5fa05f77464c86d7fafc9. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-ENGINE-ENGINE-LOOP-GO
@@ -1644,7 +1644,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/engine/engine_loop.go
+    uri: ../app/internal/engine/engine_loop.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       9e3d4e55f71402897d28e969fdd06384470ac392. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-ENGINE-ENGINE-CMD-GO
@@ -1652,21 +1652,21 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/engine/engine_cmd.go
+    uri: ../app/internal/engine/engine_cmd.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       6a5a7e51ea16726f29c911bfc340b13c3c1eaa27. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-SPECS-12-FPGA-BOARD-INTERFACE-MD
     name: specs/12-fpga-board-interface.md
     kind: source-artifact
     layer: evidence
-    uri: ../../specs/12-fpga-board-interface.md
+    uri: ../specs/12-fpga-board-interface.md
     description: The FPGA board interface specification.
   - id: REF-SOURCE-APP-INTERNAL-ENGINE-ENGINE-CONTROL-GO
     name: app/internal/engine/engine_control.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/engine/engine_control.go
+    uri: ../app/internal/engine/engine_control.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       a6248f285b57047b798b9eb4f8ab85d7d1217893. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-ENGINE-ENGINE-CAPTURE-GO
@@ -1674,7 +1674,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/engine/engine_capture.go
+    uri: ../app/internal/engine/engine_capture.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       cbee6153875bd7ce5ac208c6f53c716d008139ea. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-ENGINE-SRAM-GO
@@ -1682,7 +1682,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/engine/sram.go
+    uri: ../app/internal/engine/sram.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       e454abfa06f815b87a925e3ecbae7725a9b7f2c7. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-ENGINE-BANDS-GO
@@ -1690,7 +1690,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/engine/bands.go
+    uri: ../app/internal/engine/bands.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       91ed404b3fa28f63b21a58b66088cf7082c21e26. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-ENGINE-QUALIFY-GO
@@ -1698,7 +1698,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/engine/qualify.go
+    uri: ../app/internal/engine/qualify.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       664dc37a8725b50df9a27229aadd99d56f786063. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-ENGINE-DISCERN-GO
@@ -1706,7 +1706,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/engine/discern.go
+    uri: ../app/internal/engine/discern.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       76ab9209eb4beb075ffe36be00f218f1e086e0b8. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-ENGINE-MODES-GO
@@ -1714,7 +1714,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/engine/modes.go
+    uri: ../app/internal/engine/modes.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       e47fba49b6879ee2e5c5e7535d64f29bc4498593. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-ENGINE-ENVROLL-GO
@@ -1722,7 +1722,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/engine/envroll.go
+    uri: ../app/internal/engine/envroll.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       50260a2ac206340f46f67148d8b5468f6f3f130c. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-ENGINE-SERIAL-REGISTRY-GO
@@ -1730,7 +1730,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/engine/serial_registry.go
+    uri: ../app/internal/engine/serial_registry.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       b42f73895a15dccfaee286287c1ebf2ddc3efabf. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-ENGINE-SERIALTRIG-GO
@@ -1738,7 +1738,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/engine/serialtrig.go
+    uri: ../app/internal/engine/serialtrig.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       fe12eab9b3807c925c3970b4f10ea42ba20b1ffc. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-ENGINE-ZONEMASK-GO
@@ -1746,7 +1746,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/engine/zonemask.go
+    uri: ../app/internal/engine/zonemask.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       b1c5844fe7d4221eecddd49719bdea0a6036a57e. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-ANALOG-SPI-GO
@@ -1754,7 +1754,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/analog/spi.go
+    uri: ../app/internal/analog/spi.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       bbd8a4e216c9494af65e2fd0924685ebb2d62ec0. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-README-MD
@@ -1762,7 +1762,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/README.md
+    uri: ../app/README.md
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       07d44976dafbc038e12e5a658fae39d275ffb1c9. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-LCD-RENDER-GO
@@ -1770,7 +1770,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/lcd/render.go
+    uri: ../app/internal/lcd/render.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       baf4d79d0f6b212fe590c29b749493272dfec12f. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-PANEL-PANEL-GO
@@ -1778,7 +1778,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/panel/panel.go
+    uri: ../app/internal/panel/panel.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       b79dc710c64b70fbdad0bebe455ffc09ee61bfed. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-WEB-GO
@@ -1786,7 +1786,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/web.go
+    uri: ../app/internal/web/web.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       ada0526da74b01f9c94252de61f5070b18bda4f7. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-WEB-BINFRAME-GO
@@ -1794,7 +1794,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/web_binframe.go
+    uri: ../app/internal/web/web_binframe.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       a4b366c58f2033981f30f0a064f95aeca6bc5a5b. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-OTA-INTERNAL-AGENT-HEALTH-GO
@@ -1802,7 +1802,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../ota/internal/agent/health.go
+    uri: ../ota/internal/agent/health.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       e5fefa975538c5240e31d93aa2ec7e5d4328edd9. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-OTA-INTERNAL-AGENT-STATE-GO
@@ -1810,7 +1810,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../ota/internal/agent/state.go
+    uri: ../ota/internal/agent/state.go
     description: Committed agent state implementation; Git blob ff7fc45322188730b9bd5a02cf35c6e844697e82. Persistence
       errors and partial JSON decode behavior are explicit evidence limits, not power-cut qualification.
   - id: REF-SOURCE-OTA-INTERNAL-AGENT-TAKEOVER-GO
@@ -1818,7 +1818,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../ota/internal/agent/takeover.go
+    uri: ../ota/internal/agent/takeover.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       c3f4c4e8b47e5119a31e829f1aed7fe61774a1d0. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-OTA-INTERNAL-AGENT-SUPERVISE-GO
@@ -1826,7 +1826,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../ota/internal/agent/supervise.go
+    uri: ../ota/internal/agent/supervise.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       5e5bdedb79d4101fce573d3a39293ca236253110. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-OTA-INTERNAL-OTACTL-TRANSPORT-GO
@@ -1834,7 +1834,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../ota/internal/otactl/transport.go
+    uri: ../ota/internal/otactl/transport.go
     description: Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob 46cd5988af16045a5ed92f6d6d062a4570053c2d.
       Source is not device qualification.
   - id: REF-SOURCE-OTA-INTERNAL-OTACTL-CLIENT-GO
@@ -1842,7 +1842,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../ota/internal/otactl/client.go
+    uri: ../ota/internal/otactl/client.go
     description: Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob 31b54d565a1925aa0cd3697f53744eaddf7b6751.
       Source is not device qualification.
   - id: REF-SOURCE-OTA-INTERNAL-OTACTL-SERVER-GO
@@ -1850,7 +1850,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../ota/internal/otactl/server.go
+    uri: ../ota/internal/otactl/server.go
     description: Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob b6de138430c476107cdee4ba5635a31d160dfaa7.
       Source is not device qualification.
   - id: REF-SOURCE-OTA-INTERNAL-OTACTL-SHELLY-GO
@@ -1858,7 +1858,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../ota/internal/otactl/shelly.go
+    uri: ../ota/internal/otactl/shelly.go
     description: Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob b4d4ba74a452293ab4addf96fcfc4cace53116a9.
       Source is not device qualification.
   - id: REF-SOURCE-OTA-INTERNAL-AGENT-NATS-GO
@@ -1866,7 +1866,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../ota/internal/agent/nats.go
+    uri: ../ota/internal/agent/nats.go
     description: Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob 8ded221dbd973e71a21675ac392470c1f39d6120.
       Source is not device qualification.
   - id: REF-SOURCE-OTA-INTERNAL-AGENT-TCP-GO
@@ -1874,7 +1874,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../ota/internal/agent/tcp.go
+    uri: ../ota/internal/agent/tcp.go
     description: Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob 5f2b7cb60fbff05f2d4db7b0f750d59007c4bc91.
       Source is not device qualification.
   - id: REF-SOURCE-OTA-INTERNAL-AGENT-UPLOAD-GO
@@ -1882,7 +1882,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../ota/internal/agent/upload.go
+    uri: ../ota/internal/agent/upload.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       5227d51eda89e5a7fc2056c08dde34d3357d3c66. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-OTA-INTERNAL-AGENT-HANDLERS-GO
@@ -1890,7 +1890,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../ota/internal/agent/handlers.go
+    uri: ../ota/internal/agent/handlers.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       02cff12f88ff06b290a90caf2a648cabb319a5b3. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-OTA-BOOT-STARTUP-SH
@@ -1898,7 +1898,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../ota/boot/startup.sh
+    uri: ../ota/boot/startup.sh
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       3e008f762f92bd0c4e638e1f247cdeecccb83ba1. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-CMD-APP-SRAM-TIMING-GO
@@ -1906,7 +1906,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/cmd/app/sram_timing.go
+    uri: ../app/cmd/app/sram_timing.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       0ac243d004dabbcc406ce6841e243dd53e28ecee. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-SRAMCAPTURE-VERIFY-GO
@@ -1914,7 +1914,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/sramcapture/verify.go
+    uri: ../app/internal/sramcapture/verify.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       03f7712394d5edc5dfa2f4c91a401966f05da83a. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-SRAMCAPTURE-STREAM-GO
@@ -1922,7 +1922,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/sramcapture/stream.go
+    uri: ../app/internal/sramcapture/stream.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       c338e785fd4e543d5332c7dd728294276dad2134. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-SPECS-01-SYSTEM-ARCHITECTURE-MD
@@ -1930,7 +1930,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../specs/01-system-architecture.md
+    uri: ../specs/01-system-architecture.md
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       03223b9c8e6f99e6e082c341a2743c933c220bb5. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-ENGINE-BODE-GO
@@ -1938,113 +1938,113 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/engine/bode.go
+    uri: ../app/internal/engine/bode.go
     description: Pinned committed source, Git blob 249b8b53113a02d328465702bf17c31ce685aef6.
   - id: REF-SOURCE-APP-INTERNAL-LCD-SPECTROGRAM-GO
     name: app/internal/lcd/spectrogram.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/lcd/spectrogram.go
+    uri: ../app/internal/lcd/spectrogram.go
     description: Pinned committed source, Git blob 98dc6335bb62a22f3799979a039638d4bdde0ca6.
   - id: REF-SOURCE-APP-INTERNAL-SETTINGS-SETTINGS-GO
     name: app/internal/settings/settings.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/settings/settings.go
+    uri: ../app/internal/settings/settings.go
     description: Pinned committed source, Git blob 45d1ec6657fc5250dfa7aa6fd71c9fad7b745739.
   - id: REF-SOURCE-APP-INTERNAL-DECODE-DECODE-JSPARITY-TEST-GO
     name: app/internal/decode/decode_jsparity_test.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/decode/decode_jsparity_test.go
+    uri: ../app/internal/decode/decode_jsparity_test.go
     description: Pinned committed source, Git blob 2e74093eb216ba726db73b799f5316b1c189d897.
   - id: REF-SOURCE-APP-INTERNAL-ENGINE-INTERLEAVE-CAL-GO
     name: app/internal/engine/interleave_cal.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/engine/interleave_cal.go
+    uri: ../app/internal/engine/interleave_cal.go
     description: Pinned committed source, Git blob ab66739df22f2c6f127aa7b26776aa91859af63b.
   - id: REF-SOURCE-APP-INTERNAL-BUS-EDMA-GO
     name: app/internal/bus/edma.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/bus/edma.go
+    uri: ../app/internal/bus/edma.go
     description: Pinned committed source, Git blob fb894f07607aea07880a74716c9b04b14b3548a9.
   - id: REF-SOURCE-APP-INTERNAL-BUS-DCINV-DCINV-C
     name: app/internal/bus/dcinv/dcinv.c
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/bus/dcinv/dcinv.c
+    uri: ../app/internal/bus/dcinv/dcinv.c
     description: Pinned committed source, Git blob fb394e21946483ea10542c82b6c063571ea3e26e.
   - id: REF-SOURCE-FPGA-BUILD-TS
     name: fpga/build.ts
     kind: source-artifact
     layer: evidence
-    uri: ../../fpga/build.ts
+    uri: ../fpga/build.ts
   - id: REF-SOURCE-FPGA-SIM-SH
     name: fpga/sim.sh
     kind: source-artifact
     layer: evidence
-    uri: ../../fpga/sim.sh
+    uri: ../fpga/sim.sh
   - id: REF-SOURCE-TOOLS-DEPLOY-SH
     name: tools/deploy.sh
     kind: source-artifact
     layer: evidence
-    uri: ../../tools/deploy.sh
+    uri: ../tools/deploy.sh
   - id: REF-SOURCE-FPGA-README-MD
     name: fpga/README.md
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../fpga/README.md
+    uri: ../fpga/README.md
     description: Pinned committed source, Git blob 42d5d54a37b9a014d337e1f9c5efb45994a8bb0f.
   - id: REF-SOURCE-OTA-README-MD
     name: ota/README.md
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../ota/README.md
+    uri: ../ota/README.md
     description: Pinned committed source, Git blob c19813ea2af5c582ce6f0c4842b416ec06527815.
   - id: REF-SOURCE-APP-INTERNAL-SETTINGS-WIRE-GO
     name: app/internal/settings/wire.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/settings/wire.go
+    uri: ../app/internal/settings/wire.go
     description: Pinned committed source, Git blob 1745e4e8ece6800e036efd325e58ef22289331a6.
   - id: REF-SOURCE-APP-INTERNAL-FPGALOAD-FPGALOAD-GO
     name: app/internal/fpgaload/fpgaload.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/fpgaload/fpgaload.go
+    uri: ../app/internal/fpgaload/fpgaload.go
     description: Pinned committed source, Git blob 30e122c7a6968334f5701873e02e79fc3b2423d4.
   - id: REF-SOURCE-APP-INTERNAL-FPGALOAD-DEVICE-GO
     name: app/internal/fpgaload/device.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/fpgaload/device.go
+    uri: ../app/internal/fpgaload/device.go
     description: Pinned committed source, Git blob 837dfc8587d2445cc5132ab160abe38d7cf8e232.
   - id: REF-SOURCE-APP-INTERNAL-FPGALOAD-CONTAINER-GO
     name: app/internal/fpgaload/container.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/fpgaload/container.go
+    uri: ../app/internal/fpgaload/container.go
     description: Pinned committed source, Git blob ba3eeb073f4560b3cba5ef0413bbbab5d5be2e33.
   - id: REF-SOURCE-OTA-INTERNAL-AGENT-RPC-GO
     name: ota/internal/agent/rpc.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../ota/internal/agent/rpc.go
+    uri: ../ota/internal/agent/rpc.go
     description: Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob 19f6e737aa8aa0c95e3bc4e4502c91b602e37ec6.
       Source is not device qualification.
   - id: REF-SOURCE-OTA-INTERNAL-AGENT-AGENT-GO
@@ -2052,7 +2052,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../ota/internal/agent/agent.go
+    uri: ../ota/internal/agent/agent.go
     description: Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob d410bd4bf324a67f9e55c477a8bb80e924dfb371.
       Source is not device qualification.
   - id: REF-SOURCE-OTA-INTERNAL-AGENT-PROBE-GO
@@ -2060,7 +2060,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../ota/internal/agent/probe.go
+    uri: ../ota/internal/agent/probe.go
     description: Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob 5fb3b99aaf68cdc58d7d76993167420ac72805b9.
       Source is not device qualification.
   - id: REF-SOURCE-OTA-INTERNAL-AGENT-EXEC-GO
@@ -2068,7 +2068,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../ota/internal/agent/exec.go
+    uri: ../ota/internal/agent/exec.go
     description: Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob 4ad97f1c68df7342a4ce213b5ec2c18a251f2dfa.
       Source is not device qualification.
   - id: REF-SOURCE-APP-INTERNAL-LCD-SURFACE-GO
@@ -2076,7 +2076,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/lcd/surface.go
+    uri: ../app/internal/lcd/surface.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       838481877d41a249d85719e0692459b497e363ce. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-LCD-RENDER-FMT-GO
@@ -2084,7 +2084,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/lcd/render_fmt.go
+    uri: ../app/internal/lcd/render_fmt.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       eb7697dc3f2d0c9aad9a50ccac26a15aa528db69. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-LCD-LCD-GO
@@ -2092,7 +2092,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/lcd/lcd.go
+    uri: ../app/internal/lcd/lcd.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       9ff299340579f0ec5ab5657c9ee119edbac6ef7c. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-LCD-ENGFMT-TEST-GO
@@ -2100,7 +2100,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/lcd/engfmt_test.go
+    uri: ../app/internal/lcd/engfmt_test.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       2f3ab12b25ff88f7fd5ce8dd53b82c723fb083c9. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-LCD-RENDER-TEST-GO
@@ -2108,7 +2108,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/lcd/render_test.go
+    uri: ../app/internal/lcd/render_test.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       8e0e030ad305abf9ecfa3c676ea8cb9fa0b594cf. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-LCD-RENDER-PANELS-GO
@@ -2116,7 +2116,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/lcd/render_panels.go
+    uri: ../app/internal/lcd/render_panels.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       b22f8d76ca9f2e79d39d8efadcef06213682640e. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-LCD-RENDER-OVERLAYS-GO
@@ -2124,7 +2124,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/lcd/render_overlays.go
+    uri: ../app/internal/lcd/render_overlays.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       03f323a89e8a5c127b704930876ffda2d46752fd. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-LCD-RENDER-FFT-GO
@@ -2132,7 +2132,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/lcd/render_fft.go
+    uri: ../app/internal/lcd/render_fft.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       48a6a23462c96ed094bb5095926bcd62c9ccce3c. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-LCD-SPECTROGRAM-TEST-GO
@@ -2140,7 +2140,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/lcd/spectrogram_test.go
+    uri: ../app/internal/lcd/spectrogram_test.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       1f81e7861534073a260819f878daa66b96b7407c. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-LCD-SPECTROGRAM-BREAKER-TEST-GO
@@ -2148,7 +2148,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/lcd/spectrogram_breaker_test.go
+    uri: ../app/internal/lcd/spectrogram_breaker_test.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       4c863c58cd9c042873b643fbecb38c910c7ec259. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-LCD-NETADDR-GO
@@ -2156,7 +2156,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/lcd/netaddr.go
+    uri: ../app/internal/lcd/netaddr.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       268fcbcb39ea801ae425285318fcff8e6d66169c. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-LCD-NETADDR-TEST-GO
@@ -2164,7 +2164,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/lcd/netaddr_test.go
+    uri: ../app/internal/lcd/netaddr_test.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       d28d031c6b171781129fc0ad3ee6f1fe96bd0f19. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-LCD-RENDER-SUPERRES-GO
@@ -2172,7 +2172,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/lcd/render_superres.go
+    uri: ../app/internal/lcd/render_superres.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       901261d005f16ad4184ca68567f71e365887a661. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-LCD-SUPERRES-VIEW-TEST-GO
@@ -2180,7 +2180,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/lcd/superres_view_test.go
+    uri: ../app/internal/lcd/superres_view_test.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       d2c1aa41f504dd95408ee39570a91c5f09c981a8. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-LCD-RENDER-BODE-GO
@@ -2188,7 +2188,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/lcd/render_bode.go
+    uri: ../app/internal/lcd/render_bode.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       151415714e9946fb98fa1dd54f19f0bb6cdc94ad. Source presence is not physical qualification.'
   - id: REF-SOURCE-APP-INTERNAL-LCD-RENDER-INVS-TEST-GO
@@ -2196,7 +2196,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/lcd/render_invs_test.go
+    uri: ../app/internal/lcd/render_invs_test.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       17445aead95dadf97f1028ec917d65f752b767ea. Source presence is not physical qualification.'
   - id: REF-SOURCE-APP-INTERNAL-LCD-RENDERFUZZ-TEST-GO
@@ -2204,7 +2204,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/lcd/renderfuzz_test.go
+    uri: ../app/internal/lcd/renderfuzz_test.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       7435f338e82127be77634be209380a5f29fffb09. Source presence is not physical qualification.'
   - id: REF-SOURCE-APP-INTERNAL-LCD-GOLDEN-VIEWS-TEST-GO
@@ -2212,7 +2212,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/lcd/golden_views_test.go
+    uri: ../app/internal/lcd/golden_views_test.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       cc758c64bcdaed89702d5a4c89426ac5f270dfd7. Source presence is not physical qualification.'
   - id: REF-SOURCE-APP-INTERNAL-LCD-GOLDEN-TEST-GO
@@ -2220,7 +2220,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/lcd/golden_test.go
+    uri: ../app/internal/lcd/golden_test.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       7e562b532bcd702ee1b6e3080b2a35437703b24a. Source presence is not physical qualification.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-GEN-TOKENS-GO
@@ -2228,7 +2228,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/gen_tokens.go
+    uri: ../app/internal/web/gen_tokens.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       8e9f5dae85141bafb3b03428e27cc8ec8d151d60. Source presence is not physical qualification.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-PALETTE-PARITY-TEST-GO
@@ -2236,7 +2236,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/palette_parity_test.go
+    uri: ../app/internal/web/palette_parity_test.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       573fe1091341638c2cc66fa5fcc36ccacdc9dc46. Source presence is not physical qualification.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-TOKENS-JSON
@@ -2244,7 +2244,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/tokens.json
+    uri: ../app/internal/web/tokens.json
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       8ddb6a6455cb271256dbf7cde552948c21df05fc. Source presence is not physical qualification.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-TOKENS-CSS
@@ -2252,7 +2252,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/tokens.css
+    uri: ../app/internal/web/tokens.css
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       a313d29d264848a7ed8a634a0e2f0e2bcc2a348e. Source presence is not physical qualification.'
   - id: REF-SOURCE-APP-INTERNAL-LCD-PALETTE-GEN-GO
@@ -2260,7 +2260,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/lcd/palette_gen.go
+    uri: ../app/internal/lcd/palette_gen.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       1234f5e95477ba9bbbdc3d9923606dea1e00d21b. Source presence is not physical qualification.'
   - id: REF-SOURCE-APP-INTERNAL-DECODE-DECODE-ARINC429-GO
@@ -2268,7 +2268,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/decode/decode_arinc429.go
+    uri: ../app/internal/decode/decode_arinc429.go
     description: Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob a9a6891167ae08dc97ef4509ca000af2641df705.
       Source inspection and synthetic host tests do not establish protocol standards or physical qualification.
   - id: REF-SOURCE-APP-INTERNAL-DECODE-DECODE-AUTODETECT-GO
@@ -2276,7 +2276,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/decode/decode_autodetect.go
+    uri: ../app/internal/decode/decode_autodetect.go
     description: Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob 07648efefd02c3b999202dd7b51259e61e3c1863.
       Source inspection and synthetic host tests do not establish protocol standards or physical qualification.
   - id: REF-SOURCE-APP-INTERNAL-DECODE-DECODE-CANFD-GO
@@ -2284,7 +2284,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/decode/decode_canfd.go
+    uri: ../app/internal/decode/decode_canfd.go
     description: Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob f6db913f9843b5078bf99da03cdc32b09b9de40b.
       Source inspection and synthetic host tests do not establish protocol standards or physical qualification.
   - id: REF-SOURCE-APP-INTERNAL-DECODE-DECODE-FLEXRAY-GO
@@ -2292,7 +2292,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/decode/decode_flexray.go
+    uri: ../app/internal/decode/decode_flexray.go
     description: Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob 11d0b142a7bf3796450e672dd7d80598a2e9241c.
       Source inspection and synthetic host tests do not establish protocol standards or physical qualification.
   - id: REF-SOURCE-APP-INTERNAL-DECODE-DECODE-I2C-SPI-GO
@@ -2300,7 +2300,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/decode/decode_i2c_spi.go
+    uri: ../app/internal/decode/decode_i2c_spi.go
     description: Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob de4ae0d8dbe655e15c700128ba0876db3a00d79b.
       Source inspection and synthetic host tests do not establish protocol standards or physical qualification.
   - id: REF-SOURCE-APP-INTERNAL-DECODE-DECODE-MANCHESTER-GO
@@ -2308,7 +2308,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/decode/decode_manchester.go
+    uri: ../app/internal/decode/decode_manchester.go
     description: Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob a7a57e8dc3761f70460e26d22ab2273738efd688.
       Source inspection and synthetic host tests do not establish protocol standards or physical qualification.
   - id: REF-SOURCE-APP-INTERNAL-DECODE-DECODE-MIL1553-GO
@@ -2316,7 +2316,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/decode/decode_mil1553.go
+    uri: ../app/internal/decode/decode_mil1553.go
     description: Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob 12c146c1ff907af73d1775c179a2c4bc7855c1cd.
       Source inspection and synthetic host tests do not establish protocol standards or physical qualification.
   - id: REF-SOURCE-APP-INTERNAL-DECODE-DECODE-SENT-GO
@@ -2324,7 +2324,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/decode/decode_sent.go
+    uri: ../app/internal/decode/decode_sent.go
     description: Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob f44273f6648c3a04ac0fe0ebe32f0ec456898d4e.
       Source inspection and synthetic host tests do not establish protocol standards or physical qualification.
   - id: REF-SOURCE-APP-INTERNAL-DECODE-DECODE-UART-GO
@@ -2332,7 +2332,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/decode/decode_uart.go
+    uri: ../app/internal/decode/decode_uart.go
     description: Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob 517a226770d0db04a326c9bd60c8983b5d150a89.
       Source inspection and synthetic host tests do not establish protocol standards or physical qualification.
   - id: REF-SOURCE-APP-INTERNAL-DECODE-DECODE-USBLS-GO
@@ -2340,7 +2340,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/decode/decode_usbls.go
+    uri: ../app/internal/decode/decode_usbls.go
     description: Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob d255fb6f88843b132a24580a524a3620ef5d914a.
       Source inspection and synthetic host tests do not establish protocol standards or physical qualification.
   - id: REF-SOURCE-APP-INTERNAL-DECODE-DECODE-TEST-GO
@@ -2348,7 +2348,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/decode/decode_test.go
+    uri: ../app/internal/decode/decode_test.go
     description: Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob 3f8eeaa11d9cf07c2f38fcd85481a5954992d228.
       Source inspection and synthetic host tests do not establish protocol standards or physical qualification.
   - id: REF-SOURCE-APP-INTERNAL-DECODE-DECODE-SENT-TEST-GO
@@ -2356,7 +2356,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/decode/decode_sent_test.go
+    uri: ../app/internal/decode/decode_sent_test.go
     description: Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob 3d4e7d0000af1d45a5168b97f641ff8b68323189.
       Source inspection and synthetic host tests do not establish protocol standards or physical qualification.
   - id: REF-SOURCE-APP-INTERNAL-DECODE-DECODE-MIL1553-TEST-GO
@@ -2364,7 +2364,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/decode/decode_mil1553_test.go
+    uri: ../app/internal/decode/decode_mil1553_test.go
     description: Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob 2394f30c82f54e0110ace3c3e6bfb520348ca1bc.
       Source inspection and synthetic host tests do not establish protocol standards or physical qualification.
   - id: REF-SOURCE-APP-INTERNAL-DECODE-DECODE-ARINC429-TEST-GO
@@ -2372,7 +2372,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/decode/decode_arinc429_test.go
+    uri: ../app/internal/decode/decode_arinc429_test.go
     description: Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob 34d54c469bef64da2c409258cbd9d5bcfdc7840c.
       Source inspection and synthetic host tests do not establish protocol standards or physical qualification.
   - id: REF-SOURCE-APP-INTERNAL-DECODE-DECODE-MANCHESTER-TEST-GO
@@ -2380,7 +2380,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/decode/decode_manchester_test.go
+    uri: ../app/internal/decode/decode_manchester_test.go
     description: Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob e9d1c140a3f0ca73f3ffe2f0d6f2e429259cf259.
       Source inspection and synthetic host tests do not establish protocol standards or physical qualification.
   - id: REF-SOURCE-APP-INTERNAL-DECODE-DECODE-CANFD-TEST-GO
@@ -2388,7 +2388,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/decode/decode_canfd_test.go
+    uri: ../app/internal/decode/decode_canfd_test.go
     description: Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob d98a424c8dcd607b0426e4cc16b3747cdcf05fe8.
       Source inspection and synthetic host tests do not establish protocol standards or physical qualification.
   - id: REF-SOURCE-APP-INTERNAL-DECODE-DECODE-USBLS-TEST-GO
@@ -2396,7 +2396,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/decode/decode_usbls_test.go
+    uri: ../app/internal/decode/decode_usbls_test.go
     description: Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob 6b87da02155e8ba1b0dfa654a73aef3714589a1c.
       Source inspection and synthetic host tests do not establish protocol standards or physical qualification.
   - id: REF-SOURCE-APP-INTERNAL-DECODE-DECODE-FLEXRAY-TEST-GO
@@ -2404,7 +2404,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/decode/decode_flexray_test.go
+    uri: ../app/internal/decode/decode_flexray_test.go
     description: Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob f75de8bdb5c313f0a71057d2008b33889a8354fb.
       Source inspection and synthetic host tests do not establish protocol standards or physical qualification.
   - id: REF-SOURCE-APP-INTERNAL-DECODE-DECODEFUZZ-TEST-GO
@@ -2412,441 +2412,441 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/decode/decodefuzz_test.go
+    uri: ../app/internal/decode/decodefuzz_test.go
     description: Pinned committed source, Git blob e9a2944d5a571c669c7607017ad5beeba2f78d27.
   - id: REF-SOURCE-APP-INTERNAL-DECODE-TRUTH-VECTORS-TEST-GO
     name: app/internal/decode/truth_vectors_test.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/decode/truth_vectors_test.go
+    uri: ../app/internal/decode/truth_vectors_test.go
     description: Pinned committed source, Git blob 5c4c17da36cd59891dd99cf5e4591e55bcb259e3.
   - id: REF-SOURCE-APP-INTERNAL-DECODE-DECODE-BREAK-ARINC429-TEST-GO
     name: app/internal/decode/decode_break_arinc429_test.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/decode/decode_break_arinc429_test.go
+    uri: ../app/internal/decode/decode_break_arinc429_test.go
     description: Pinned committed source, Git blob 59f21f41676218c2cb432a864cfa761568cac3cc.
   - id: REF-SOURCE-APP-INTERNAL-DECODE-DECODE-BREAK-CANFD-TEST-GO
     name: app/internal/decode/decode_break_canfd_test.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/decode/decode_break_canfd_test.go
+    uri: ../app/internal/decode/decode_break_canfd_test.go
     description: Pinned committed source, Git blob 6334c764aabf58e2474e70b30bfac487d5d05ab1.
   - id: REF-SOURCE-APP-INTERNAL-DECODE-DECODE-BREAK-FLEXRAY-TEST-GO
     name: app/internal/decode/decode_break_flexray_test.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/decode/decode_break_flexray_test.go
+    uri: ../app/internal/decode/decode_break_flexray_test.go
     description: Pinned committed source, Git blob 3fe93bb4c6cb9614932509c9702c10cf1e583449.
   - id: REF-SOURCE-APP-INTERNAL-DECODE-DECODE-BREAK-I2C-TEST-GO
     name: app/internal/decode/decode_break_i2c_test.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/decode/decode_break_i2c_test.go
+    uri: ../app/internal/decode/decode_break_i2c_test.go
     description: Pinned committed source, Git blob 01aba31de2c258921af90354889210ea43f0d217.
   - id: REF-SOURCE-APP-INTERNAL-DECODE-DECODE-BREAK-MANCHESTER-TEST-GO
     name: app/internal/decode/decode_break_manchester_test.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/decode/decode_break_manchester_test.go
+    uri: ../app/internal/decode/decode_break_manchester_test.go
     description: Pinned committed source, Git blob 0720661f36796790b63bac71d80e27b8893de9ad.
   - id: REF-SOURCE-APP-INTERNAL-DECODE-DECODE-BREAK-MIL1553-TEST-GO
     name: app/internal/decode/decode_break_mil1553_test.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/decode/decode_break_mil1553_test.go
+    uri: ../app/internal/decode/decode_break_mil1553_test.go
     description: Pinned committed source, Git blob 9ab689b3c8cb9ccf1304b0a69d025274c6268ee8.
   - id: REF-SOURCE-APP-INTERNAL-DECODE-DECODE-BREAK-SENT-TEST-GO
     name: app/internal/decode/decode_break_sent_test.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/decode/decode_break_sent_test.go
+    uri: ../app/internal/decode/decode_break_sent_test.go
     description: Pinned committed source, Git blob 4532f382dab52f496be50473444a148747f9fa59.
   - id: REF-SOURCE-APP-INTERNAL-DECODE-DECODE-BREAK-SPI-TEST-GO
     name: app/internal/decode/decode_break_spi_test.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/decode/decode_break_spi_test.go
+    uri: ../app/internal/decode/decode_break_spi_test.go
     description: Pinned committed source, Git blob 2dec342d3f37c59b64dc0ce424ede06d38163bb2.
   - id: REF-SOURCE-APP-INTERNAL-DECODE-DECODE-BREAK-UART-TEST-GO
     name: app/internal/decode/decode_break_uart_test.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/decode/decode_break_uart_test.go
+    uri: ../app/internal/decode/decode_break_uart_test.go
     description: Pinned committed source, Git blob d6cdc2fe0f6540be29d7124ffb6c7b90af217433.
   - id: REF-SOURCE-APP-INTERNAL-DECODE-DECODE-BREAK-USBLS-TEST-GO
     name: app/internal/decode/decode_break_usbls_test.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/decode/decode_break_usbls_test.go
+    uri: ../app/internal/decode/decode_break_usbls_test.go
     description: Pinned committed source, Git blob 053e9ef4f18a200614b52eac7f81a8a4e796af36.
   - id: REF-SOURCE-APP-INTERNAL-DECODE-ORACLE-CAN-TEST-GO
     name: app/internal/decode/oracle_can_test.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/decode/oracle_can_test.go
+    uri: ../app/internal/decode/oracle_can_test.go
     description: Pinned committed source, Git blob 63bbbefd1e27ca2bc0ec7a8a86a5b69b782b45bd.
   - id: REF-SOURCE-APP-INTERNAL-DECODE-ORACLE-FLEXRAY-TEST-GO
     name: app/internal/decode/oracle_flexray_test.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/decode/oracle_flexray_test.go
+    uri: ../app/internal/decode/oracle_flexray_test.go
     description: Pinned committed source, Git blob b982b802ee34c4cd72a17c07dea76676eed875c6.
   - id: REF-SOURCE-APP-INTERNAL-DECODE-ORACLE-I2C-TEST-GO
     name: app/internal/decode/oracle_i2c_test.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/decode/oracle_i2c_test.go
+    uri: ../app/internal/decode/oracle_i2c_test.go
     description: Pinned committed source, Git blob 7ba636a8dbbc461523747bbe5af4d29cb5d31661.
   - id: REF-SOURCE-APP-INTERNAL-DECODE-ORACLE-SPI-TEST-GO
     name: app/internal/decode/oracle_spi_test.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/decode/oracle_spi_test.go
+    uri: ../app/internal/decode/oracle_spi_test.go
     description: Pinned committed source, Git blob 6a221bc5c695ca8f5ba2caaa9d2bb196ff999ad8.
   - id: REF-SOURCE-APP-INTERNAL-DECODE-ORACLE-TEST-GO
     name: app/internal/decode/oracle_test.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/decode/oracle_test.go
+    uri: ../app/internal/decode/oracle_test.go
     description: Pinned committed source, Git blob 3285afd310c65b5f93cc7d6edd97b1b096f9d4f5.
   - id: REF-SOURCE-APP-INTERNAL-DECODE-ORACLE-UART-TEST-GO
     name: app/internal/decode/oracle_uart_test.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/decode/oracle_uart_test.go
+    uri: ../app/internal/decode/oracle_uart_test.go
     description: Pinned committed source, Git blob ff6c25dcd8c474259b641f863ea514cd674188ad.
   - id: REF-SOURCE-APP-INTERNAL-DECODE-ORACLE-USBLS-TEST-GO
     name: app/internal/decode/oracle_usbls_test.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/decode/oracle_usbls_test.go
+    uri: ../app/internal/decode/oracle_usbls_test.go
     description: Pinned committed source, Git blob 3ccdebb133d45c97f76e4de2e8583cd85325af7d.
   - id: REF-SOURCE-APP-INTERNAL-ENGINE-SRAM-MATH-GO
     name: app/internal/engine/sram_math.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/engine/sram_math.go
+    uri: ../app/internal/engine/sram_math.go
     description: Pinned committed source, Git blob c416cffee40731afa374e154eeb5a521c8e16da3.
   - id: REF-SOURCE-APP-INTERNAL-ENGINE-SRAM-TEST-GO
     name: app/internal/engine/sram_test.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/engine/sram_test.go
+    uri: ../app/internal/engine/sram_test.go
     description: Pinned committed source, Git blob 4de73b76aed25f56a3c73a7fc4d6ba01224a9753.
   - id: REF-SOURCE-APP-INTERNAL-ENGINE-SRAM-MATH-TEST-GO
     name: app/internal/engine/sram_math_test.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/engine/sram_math_test.go
+    uri: ../app/internal/engine/sram_math_test.go
     description: Pinned committed source, Git blob 90599f473195ce24347d75bdf1aea1af94b8ef0b.
   - id: REF-SOURCE-APP-INTERNAL-ENGINE-INTERLEAVE-CAL-TEST-GO
     name: app/internal/engine/interleave_cal_test.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/engine/interleave_cal_test.go
+    uri: ../app/internal/engine/interleave_cal_test.go
     description: Pinned committed source, Git blob 0e840239155de4ca391ae2119d486c599fddeedc.
   - id: REF-SOURCE-APP-INTERNAL-ENGINE-QUALIFY-TEST-GO
     name: app/internal/engine/qualify_test.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/engine/qualify_test.go
+    uri: ../app/internal/engine/qualify_test.go
     description: Pinned committed source, Git blob b71d1bf66f6fcfc45427014c67f00cb8938b8dbd.
   - id: REF-SOURCE-APP-INTERNAL-ENGINE-BANDS-TEST-GO
     name: app/internal/engine/bands_test.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/engine/bands_test.go
+    uri: ../app/internal/engine/bands_test.go
     description: Pinned committed source, Git blob 1985672d7ebef6891e650d3fc5b97f1ab3d250b0.
   - id: REF-SOURCE-APP-INTERNAL-ENGINE-ENVROLL-TEST-GO
     name: app/internal/engine/envroll_test.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/engine/envroll_test.go
+    uri: ../app/internal/engine/envroll_test.go
     description: Pinned committed source, Git blob b45b462a9260c538043ffff57d2fd76b9ac92b13.
   - id: REF-SOURCE-APP-INTERNAL-ENGINE-ETS-GO
     name: app/internal/engine/ets.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/engine/ets.go
+    uri: ../app/internal/engine/ets.go
     description: Pinned committed source, Git blob 9fe3c27e0b28679092d96ea134ae0852316d1c43.
   - id: REF-SOURCE-APP-INTERNAL-ENGINE-SERIALTRIG-TEST-GO
     name: app/internal/engine/serialtrig_test.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/engine/serialtrig_test.go
+    uri: ../app/internal/engine/serialtrig_test.go
     description: Pinned committed source, Git blob a4de2f9ec8b98989d53c60c8a42c4115463b2683.
   - id: REF-SOURCE-APP-INTERNAL-ENGINE-SERIALTRIG-EDGE-TEST-GO
     name: app/internal/engine/serialtrig_edge_test.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/engine/serialtrig_edge_test.go
+    uri: ../app/internal/engine/serialtrig_edge_test.go
     description: Pinned committed source, Git blob d7768c2e182c12e385fdbe0a34afbefa2802a56d.
   - id: REF-SOURCE-APP-INTERNAL-ENGINE-SERIALTRIG-FUZZ-TEST-GO
     name: app/internal/engine/serialtrig_fuzz_test.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/engine/serialtrig_fuzz_test.go
+    uri: ../app/internal/engine/serialtrig_fuzz_test.go
     description: Pinned committed source, Git blob 1ca09d293098f7d02a169813dbee4475c6e0cc0f.
   - id: REF-SOURCE-APP-INTERNAL-ENGINE-ZONEMASK-TEST-GO
     name: app/internal/engine/zonemask_test.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/engine/zonemask_test.go
+    uri: ../app/internal/engine/zonemask_test.go
     description: Pinned committed source, Git blob e777c8a32ccc1f2fedb64a5f59817ac270511a39.
   - id: REF-SOURCE-APP-INTERNAL-ENGINE-ZONEMASK-POLICY-TEST-GO
     name: app/internal/engine/zonemask_policy_test.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/engine/zonemask_policy_test.go
+    uri: ../app/internal/engine/zonemask_policy_test.go
     description: Pinned committed source, Git blob 520d5bc659b754b8d782b67ae4bd02875502502b.
   - id: REF-SOURCE-APP-INTERNAL-ENGINE-ZONEMASK-BREAKER-TEST-GO
     name: app/internal/engine/zonemask_breaker_test.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/engine/zonemask_breaker_test.go
+    uri: ../app/internal/engine/zonemask_breaker_test.go
     description: Pinned committed source, Git blob 10991f10a4a9d2e31055e4774f74cb07fb8b83a2.
   - id: REF-SOURCE-APP-INTERNAL-ENGINE-ZONEMASK-BREAKER2-TEST-GO
     name: app/internal/engine/zonemask_breaker2_test.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/engine/zonemask_breaker2_test.go
+    uri: ../app/internal/engine/zonemask_breaker2_test.go
     description: Pinned committed source, Git blob 5ad98ad8fbd75c04a64abb4e8732829406d54327.
   - id: REF-SOURCE-APP-INTERNAL-ENGINE-CHAOS-TEST-GO
     name: app/internal/engine/chaos_test.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/engine/chaos_test.go
+    uri: ../app/internal/engine/chaos_test.go
     description: Pinned committed source, Git blob 7ab0529bb2efd2dfabc92dc94c2db9f9aeb7fcd4.
   - id: REF-SOURCE-APP-INTERNAL-ENGINE-DEGRADED-TEST-GO
     name: app/internal/engine/degraded_test.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/engine/degraded_test.go
+    uri: ../app/internal/engine/degraded_test.go
     description: Pinned committed source, Git blob 6396b4e9d8a8f31c2891ca4796b939ab8aea69fb.
   - id: REF-SOURCE-APP-INTERNAL-ENGINE-DISCERN-TEST-GO
     name: app/internal/engine/discern_test.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/engine/discern_test.go
+    uri: ../app/internal/engine/discern_test.go
     description: Pinned committed source, Git blob 0cd6ef60c0a3dae9474b4489ef01ffda2d768aab.
   - id: REF-SOURCE-APP-INTERNAL-ENGINE-ENGINE-GO
     name: app/internal/engine/engine.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/engine/engine.go
+    uri: ../app/internal/engine/engine.go
     description: Pinned committed source, Git blob 568de130e00e525edd54eff19cc107dded06414e.
   - id: REF-SOURCE-APP-INTERNAL-ENGINE-ENGINE-BUS-GO
     name: app/internal/engine/engine_bus.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/engine/engine_bus.go
+    uri: ../app/internal/engine/engine_bus.go
     description: Pinned committed source, Git blob 6014992686e41dac7f70eadc56129dc3b4076826.
   - id: REF-SOURCE-APP-INTERNAL-ENGINE-ENGINE-DEPTH-TEST-GO
     name: app/internal/engine/engine_depth_test.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/engine/engine_depth_test.go
+    uri: ../app/internal/engine/engine_depth_test.go
     description: Pinned committed source, Git blob f13d89654ae61d65f312b7e307acb0ab04b6a176.
   - id: REF-SOURCE-APP-INTERNAL-ENGINE-ENGINE-PUBLISH-TEST-GO
     name: app/internal/engine/engine_publish_test.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/engine/engine_publish_test.go
+    uri: ../app/internal/engine/engine_publish_test.go
     description: Pinned committed source, Git blob b39def01844aefa00643c8b9037433d72c87cb1c.
   - id: REF-SOURCE-APP-INTERNAL-ENGINE-ENGINE-TEST-GO
     name: app/internal/engine/engine_test.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/engine/engine_test.go
+    uri: ../app/internal/engine/engine_test.go
     description: Pinned committed source, Git blob 40890f3a14429c9bfa03d383e9ff69f8994542ae.
   - id: REF-SOURCE-APP-INTERNAL-ENGINE-ENGINE-TRIGLEVEL-TEST-GO
     name: app/internal/engine/engine_triglevel_test.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/engine/engine_triglevel_test.go
+    uri: ../app/internal/engine/engine_triglevel_test.go
     description: Pinned committed source, Git blob 8e868772d4e8824df971c13ed4313afbf859f4a2.
   - id: REF-SOURCE-APP-INTERNAL-ENGINE-ENGINE-WEDGE-TEST-GO
     name: app/internal/engine/engine_wedge_test.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/engine/engine_wedge_test.go
+    uri: ../app/internal/engine/engine_wedge_test.go
     description: Pinned committed source, Git blob bf9017e00546e209739d12da86f5d878c188014b.
   - id: REF-SOURCE-APP-INTERNAL-ENGINE-HEALTH-BEAT-TEST-GO
     name: app/internal/engine/health_beat_test.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/engine/health_beat_test.go
+    uri: ../app/internal/engine/health_beat_test.go
     description: Pinned committed source, Git blob 6008df33dfe216fa2e9a7f97133f787c80eb0edc.
   - id: REF-SOURCE-APP-INTERNAL-BUS-BUS-TEST-GO
     name: app/internal/bus/bus_test.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/bus/bus_test.go
+    uri: ../app/internal/bus/bus_test.go
     description: Pinned committed source, Git blob e280f71d44402dbd567d5cceacdb9599ea31329a.
   - id: REF-SOURCE-APP-INTERNAL-BUS-DCINV-GO
     name: app/internal/bus/dcinv.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/bus/dcinv.go
+    uri: ../app/internal/bus/dcinv.go
     description: Pinned committed source, Git blob eab71616a8eb6fd63eee7c00391f9a35cf57c9e4.
   - id: REF-SOURCE-APP-INTERNAL-BUS-DCINV-TEST-GO
     name: app/internal/bus/dcinv_test.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/bus/dcinv_test.go
+    uri: ../app/internal/bus/dcinv_test.go
     description: Pinned committed source, Git blob a48227194ce2cc04f1a00d3f5f4e6740a706432d.
   - id: REF-SOURCE-APP-INTERNAL-BUS-DRAINWIN-GO
     name: app/internal/bus/drainwin.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/bus/drainwin.go
+    uri: ../app/internal/bus/drainwin.go
     description: Pinned committed source, Git blob 39e20ef2e2fa51574d5c09975ec1c9ec0d2a635e.
   - id: REF-SOURCE-APP-INTERNAL-BUS-DRAINWIN-TEST-GO
     name: app/internal/bus/drainwin_test.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/bus/drainwin_test.go
+    uri: ../app/internal/bus/drainwin_test.go
     description: Pinned committed source, Git blob abd0dc5eb03b9645d312f56f614e7ff64797a0fb.
   - id: REF-SOURCE-APP-INTERNAL-BUS-GPMCCFG-GO
     name: app/internal/bus/gpmccfg.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/bus/gpmccfg.go
+    uri: ../app/internal/bus/gpmccfg.go
     description: Pinned committed source, Git blob 799d9f8fe42bf31e855451173c9aeeda46ab1b51.
   - id: REF-SOURCE-APP-INTERNAL-BUS-GPMCCFG-TEST-GO
     name: app/internal/bus/gpmccfg_test.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/bus/gpmccfg_test.go
+    uri: ../app/internal/bus/gpmccfg_test.go
     description: Pinned committed source, Git blob 9fd850e6a22c64485f7c8ef525d6736a5dee7a82.
   - id: REF-SOURCE-APP-INTERNAL-BUS-GPMCPERSIST-GO
     name: app/internal/bus/gpmcpersist.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/bus/gpmcpersist.go
+    uri: ../app/internal/bus/gpmcpersist.go
     description: Pinned committed source, Git blob 183d415046c6e903b54ce474fa38300b339d5d61.
   - id: REF-SOURCE-APP-INTERNAL-BUS-GPMCPERSIST-TEST-GO
     name: app/internal/bus/gpmcpersist_test.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/bus/gpmcpersist_test.go
+    uri: ../app/internal/bus/gpmcpersist_test.go
     description: Pinned committed source, Git blob c153f00337ba3a0e01a32beb9e9a4706af2c51ab.
   - id: REF-SOURCE-APP-INTERNAL-BUS-GPMCTIMING-GO
     name: app/internal/bus/gpmctiming.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/bus/gpmctiming.go
+    uri: ../app/internal/bus/gpmctiming.go
     description: Pinned committed source, Git blob bcf01e830c7ea187301eb3fa25cec9a95c23b4eb.
   - id: REF-SOURCE-APP-INTERNAL-BUS-GPMCTIMING-TEST-GO
     name: app/internal/bus/gpmctiming_test.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/bus/gpmctiming_test.go
+    uri: ../app/internal/bus/gpmctiming_test.go
     description: Pinned committed source, Git blob 52d22b7dde24311140d821b007323330bdeaaffa.
   - id: REF-SOURCE-APP-INTERNAL-BUS-KERNEL-DMA-LINUX-GO
     name: app/internal/bus/kernel_dma_linux.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/bus/kernel_dma_linux.go
+    uri: ../app/internal/bus/kernel_dma_linux.go
     description: Pinned committed source, Git blob 09d6018ee770a385fb17c235ccb16992c2e309f6.
   - id: REF-SOURCE-APP-INTERNAL-BUS-KERNEL-DMA-LINUX-TEST-GO
     name: app/internal/bus/kernel_dma_linux_test.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/bus/kernel_dma_linux_test.go
+    uri: ../app/internal/bus/kernel_dma_linux_test.go
     description: Pinned committed source, Git blob 0296254fc23106fb58ed98518297b54c77a8797a.
   - id: REF-SOURCE-APP-INTERNAL-BUS-DCINV-README-MD
     name: app/internal/bus/dcinv/README.md
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/bus/dcinv/README.md
+    uri: ../app/internal/bus/dcinv/README.md
     description: Pinned committed source, Git blob 007020dfd733f917e9ba9f78568b90681da20eba.
   - id: REF-SOURCE-APP-INTERNAL-BUS-KERNELDMA-ACQ-DMA-C
     name: app/internal/bus/kerneldma/acq_dma.c
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/bus/kerneldma/acq_dma.c
+    uri: ../app/internal/bus/kerneldma/acq_dma.c
     description: Pinned committed source, Git blob 219017f89bfdc75d3fe7ae632133e09ec1e816f7.
   - id: REF-SOURCE-APP-INTERNAL-BUS-KERNELDMA-ACQ-DMA-TEST-C
     name: app/internal/bus/kerneldma/acq_dma_test.c
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/bus/kerneldma/acq_dma_test.c
+    uri: ../app/internal/bus/kerneldma/acq_dma_test.c
     description: Pinned committed source, Git blob 8949c8ba36dcaefc73ee4c59b81a3356c8b701b7.
   - id: REF-SOURCE-APP-INTERNAL-BUS-KERNELDMA-README-MD
     name: app/internal/bus/kerneldma/README.md
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/bus/kerneldma/README.md
+    uri: ../app/internal/bus/kerneldma/README.md
     description: Pinned committed source, Git blob f56f6808e4083f1e7fdd7f6c073dad9c4655d703.
   - id: REF-SOURCE-APP-INTERNAL-PANEL-AUTOSET-TEST-GO
     name: app/internal/panel/autoset_test.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/panel/autoset_test.go
+    uri: ../app/internal/panel/autoset_test.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       e6e77c77659321ec106676fecdf8e92f8e85964c.'
   - id: REF-SOURCE-APP-INTERNAL-PANEL-AUTOSET-VERIFY-TEST-GO
@@ -2854,7 +2854,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/panel/autoset_verify_test.go
+    uri: ../app/internal/panel/autoset_verify_test.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       1367f72544a63560811c5aee84a245ae695dcf45.'
   - id: REF-SOURCE-APP-INTERNAL-PANEL-CHAOS-TEST-GO
@@ -2862,7 +2862,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/panel/chaos_test.go
+    uri: ../app/internal/panel/chaos_test.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       6debba2cdf7b478d0e75d391b7834951f4c9a249.'
   - id: REF-SOURCE-APP-INTERNAL-PANEL-DISPLAY-STATE-GO
@@ -2870,7 +2870,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/panel/display_state.go
+    uri: ../app/internal/panel/display_state.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       cfa8a3d409240578e5a27f440b9edcf98f0461b8.'
   - id: REF-SOURCE-APP-INTERNAL-PANEL-DISPLAY-STATE-TEST-GO
@@ -2878,7 +2878,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/panel/display_state_test.go
+    uri: ../app/internal/panel/display_state_test.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       967387efe255a361e465ca92c52ccd88298be2d1.'
   - id: REF-SOURCE-APP-INTERNAL-PANEL-ENGFMT-TEST-GO
@@ -2886,7 +2886,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/panel/engfmt_test.go
+    uri: ../app/internal/panel/engfmt_test.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       40b0e328755a52a099d9f83dde44d9c4ce984c06.'
   - id: REF-SOURCE-APP-INTERNAL-PANEL-MASK-GO
@@ -2894,7 +2894,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/panel/mask.go
+    uri: ../app/internal/panel/mask.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       9ac254bb4e2cb4a6ab3310b1be6878f2d058024a.'
   - id: REF-SOURCE-APP-INTERNAL-PANEL-MENU-GO
@@ -2902,7 +2902,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/panel/menu.go
+    uri: ../app/internal/panel/menu.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       0eec08d244ba86dea37ee2ed73dcaf92d45ecc2e.'
   - id: REF-SOURCE-APP-INTERNAL-PANEL-MENU-CYCLE-GO
@@ -2910,7 +2910,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/panel/menu_cycle.go
+    uri: ../app/internal/panel/menu_cycle.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       d30af70ca5058d54845a424d5706ffb96def180a.'
   - id: REF-SOURCE-APP-INTERNAL-PANEL-MENU-INJECT-GO
@@ -2918,7 +2918,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/panel/menu_inject.go
+    uri: ../app/internal/panel/menu_inject.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       29bbe93c66fd8febd3ff541a68c6936831354966.'
   - id: REF-SOURCE-APP-INTERNAL-PANEL-MENU-UTIL-GO
@@ -2926,7 +2926,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/panel/menu_util.go
+    uri: ../app/internal/panel/menu_util.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       c981cc220d6880afc1ee542e07ddc802ce42a0e1.'
   - id: REF-SOURCE-APP-INTERNAL-PANEL-MENU-VIEW-GO
@@ -2934,7 +2934,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/panel/menu_view.go
+    uri: ../app/internal/panel/menu_view.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       f7082d1c8afe7253d60023c39ee28ecc2b5d730f.'
   - id: REF-SOURCE-APP-INTERNAL-PANEL-MENUFUZZ-TEST-GO
@@ -2942,7 +2942,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/panel/menufuzz_test.go
+    uri: ../app/internal/panel/menufuzz_test.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       a4ed7461e3d8f5e3e7017732a729c00d842b781d.'
   - id: REF-SOURCE-APP-INTERNAL-PANEL-PANEL-DISPATCH-GO
@@ -2950,7 +2950,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/panel/panel_dispatch.go
+    uri: ../app/internal/panel/panel_dispatch.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       35c74cc3c2f828a4c47841c010b55394719c2ed8.'
   - id: REF-SOURCE-APP-INTERNAL-PANEL-PANEL-INPUT-TEST-GO
@@ -2958,7 +2958,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/panel/panel_input_test.go
+    uri: ../app/internal/panel/panel_input_test.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       74b495cdcd6e0f8582b38b27f59626bef4f135dd.'
   - id: REF-SOURCE-APP-INTERNAL-PANEL-PANEL-LED-GO
@@ -2966,7 +2966,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/panel/panel_led.go
+    uri: ../app/internal/panel/panel_led.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       d315dd13d2e74e1ef95767234ebf407dd5f86ac5.'
   - id: REF-SOURCE-APP-INTERNAL-PANEL-PANEL-MENU-TEST-GO
@@ -2974,7 +2974,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/panel/panel_menu_test.go
+    uri: ../app/internal/panel/panel_menu_test.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       9dd5f8b571720d07df0d569e5175c272de3cb366.'
   - id: REF-SOURCE-APP-INTERNAL-PANEL-PANEL-TEST-GO
@@ -2982,7 +2982,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/panel/panel_test.go
+    uri: ../app/internal/panel/panel_test.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       92deb78fbd7c308a0a3bd1dd42a45aac9a9e7b5e.'
   - id: REF-SOURCE-APP-INTERNAL-PANEL-REFS-GO
@@ -2990,7 +2990,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/panel/refs.go
+    uri: ../app/internal/panel/refs.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       9c46be726aeb100c85c7ecaf5bd15bcbf31f81ad.'
   - id: REF-SOURCE-APP-INTERNAL-PANEL-SETTINGS-GO
@@ -2998,7 +2998,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/panel/settings.go
+    uri: ../app/internal/panel/settings.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       ed05ed04d5d6f54557fb0437e43c027fe6fc358b.'
   - id: REF-SOURCE-APP-INTERNAL-PANEL-SETTINGS-TEST-GO
@@ -3006,7 +3006,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/panel/settings_test.go
+    uri: ../app/internal/panel/settings_test.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       b946982c185e50df58c33f0242d0b6bb17affaee.'
   - id: REF-SOURCE-APP-INTERNAL-PANEL-SUPERRES-GO
@@ -3014,7 +3014,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/panel/superres.go
+    uri: ../app/internal/panel/superres.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       cff2ba4d74f645220108830c26687977057e23c9.'
   - id: REF-SOURCE-APP-INTERNAL-PANEL-SUPERRES-COMP-TEST-GO
@@ -3022,7 +3022,7 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/panel/superres_comp_test.go
+    uri: ../app/internal/panel/superres_comp_test.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       4a65d10fd7906a18f7608df55c042233535de57a.'
   - id: REF-SOURCE-APP-INTERNAL-SUPERRES-COMP-JSPARITY-TEST-GO
@@ -3030,679 +3030,679 @@ architecture:
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/superres/comp_jsparity_test.go
+    uri: ../app/internal/superres/comp_jsparity_test.go
     description: 'Reviewed Go source at f43696305a7957b9956e3b1ac425cdf323edde84.'
   - id: REF-SOURCE-APP-INTERNAL-SUPERRES-COMP-TEST-GO
     name: app/internal/superres/comp_test.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/superres/comp_test.go
+    uri: ../app/internal/superres/comp_test.go
     description: 'Reviewed Go source at f43696305a7957b9956e3b1ac425cdf323edde84.'
   - id: REF-SOURCE-APP-INTERNAL-SUPERRES-SRFUZZ-TEST-GO
     name: app/internal/superres/srfuzz_test.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/superres/srfuzz_test.go
+    uri: ../app/internal/superres/srfuzz_test.go
     description: 'Reviewed Go source at f43696305a7957b9956e3b1ac425cdf323edde84.'
   - id: REF-SOURCE-APP-INTERNAL-SUPERRES-SUPERRES-GO
     name: app/internal/superres/superres.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/superres/superres.go
+    uri: ../app/internal/superres/superres.go
     description: 'Reviewed Go source at f43696305a7957b9956e3b1ac425cdf323edde84.'
   - id: REF-SOURCE-APP-INTERNAL-SUPERRES-SUPERRES-GATE-GO
     name: app/internal/superres/superres_gate.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/superres/superres_gate.go
+    uri: ../app/internal/superres/superres_gate.go
     description: 'Reviewed Go source at f43696305a7957b9956e3b1ac425cdf323edde84.'
   - id: REF-SOURCE-APP-INTERNAL-SUPERRES-SUPERRES-PARITY-TEST-GO
     name: app/internal/superres/superres_parity_test.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/superres/superres_parity_test.go
+    uri: ../app/internal/superres/superres_parity_test.go
     description: 'Reviewed Go source at f43696305a7957b9956e3b1ac425cdf323edde84.'
   - id: REF-SOURCE-APP-INTERNAL-SUPERRES-SUPERRES-RESULT-GO
     name: app/internal/superres/superres_result.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/superres/superres_result.go
+    uri: ../app/internal/superres/superres_result.go
     description: 'Reviewed Go source at f43696305a7957b9956e3b1ac425cdf323edde84.'
   - id: REF-SOURCE-APP-INTERNAL-SUPERRES-SUPERRES-STACK-GO
     name: app/internal/superres/superres_stack.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/superres/superres_stack.go
+    uri: ../app/internal/superres/superres_stack.go
     description: 'Reviewed Go source at f43696305a7957b9956e3b1ac425cdf323edde84.'
   - id: REF-SOURCE-APP-INTERNAL-SUPERRES-SUPERRES-TEMPLATE-GO
     name: app/internal/superres/superres_template.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/superres/superres_template.go
+    uri: ../app/internal/superres/superres_template.go
     description: 'Reviewed Go source at f43696305a7957b9956e3b1ac425cdf323edde84.'
   - id: REF-SOURCE-APP-INTERNAL-DIAG-DIAG-GO
     name: app/internal/diag/diag.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/diag/diag.go
+    uri: ../app/internal/diag/diag.go
     description: 'Reviewed source at f43696305a7957b9956e3b1ac425cdf323edde84.'
   - id: REF-SOURCE-APP-INTERNAL-DIAG-DIAG-TEST-GO
     name: app/internal/diag/diag_test.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/diag/diag_test.go
+    uri: ../app/internal/diag/diag_test.go
     description: 'Reviewed source at f43696305a7957b9956e3b1ac425cdf323edde84.'
   - id: REF-SOURCE-APP-INTERNAL-DIAG-QUIETLISTEN-GO
     name: app/internal/diag/quietlisten.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/diag/quietlisten.go
+    uri: ../app/internal/diag/quietlisten.go
     description: 'Reviewed source at f43696305a7957b9956e3b1ac425cdf323edde84.'
   - id: REF-SOURCE-APP-INTERNAL-DIAG-SRAMCRANK-GO
     name: app/internal/diag/sramcrank.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/diag/sramcrank.go
+    uri: ../app/internal/diag/sramcrank.go
     description: 'Reviewed source at f43696305a7957b9956e3b1ac425cdf323edde84.'
   - id: REF-SOURCE-APP-INTERNAL-DIAG-V3-GO
     name: app/internal/diag/v3.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/diag/v3.go
+    uri: ../app/internal/diag/v3.go
     description: 'Reviewed source at f43696305a7957b9956e3b1ac425cdf323edde84.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-APIFUZZ-TEST-GO
     name: app/internal/web/apifuzz_test.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/apifuzz_test.go
+    uri: ../app/internal/web/apifuzz_test.go
     description: 'Reviewed source at f43696305a7957b9956e3b1ac425cdf323edde84.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-BIN-TEST-GO
     name: app/internal/web/bin_test.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/bin_test.go
+    uri: ../app/internal/web/bin_test.go
     description: 'Reviewed source at f43696305a7957b9956e3b1ac425cdf323edde84.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-DIAG-GO
     name: app/internal/web/diag.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/diag.go
+    uri: ../app/internal/web/diag.go
     description: 'Reviewed source at f43696305a7957b9956e3b1ac425cdf323edde84.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-DIAG-V3-TEST-GO
     name: app/internal/web/diag_v3_test.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/diag_v3_test.go
+    uri: ../app/internal/web/diag_v3_test.go
     description: 'Reviewed source at f43696305a7957b9956e3b1ac425cdf323edde84.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-FRAMEFUZZ-TEST-GO
     name: app/internal/web/framefuzz_test.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/framefuzz_test.go
+    uri: ../app/internal/web/framefuzz_test.go
     description: 'Reviewed source at f43696305a7957b9956e3b1ac425cdf323edde84.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-MEASURE-TEST-GO
     name: app/internal/web/measure_test.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/measure_test.go
+    uri: ../app/internal/web/measure_test.go
     description: 'Reviewed source at f43696305a7957b9956e3b1ac425cdf323edde84.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-PRECISION-FRAME-TEST-GO
     name: app/internal/web/precision_frame_test.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/precision_frame_test.go
+    uri: ../app/internal/web/precision_frame_test.go
     description: 'Reviewed source at f43696305a7957b9956e3b1ac425cdf323edde84.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-SRAM-GO
     name: app/internal/web/sram.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/sram.go
+    uri: ../app/internal/web/sram.go
     description: 'Reviewed source at f43696305a7957b9956e3b1ac425cdf323edde84.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-SRAM-TEST-GO
     name: app/internal/web/sram_test.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/sram_test.go
+    uri: ../app/internal/web/sram_test.go
     description: 'Reviewed source at f43696305a7957b9956e3b1ac425cdf323edde84.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-WEB-CONTROL-GO
     name: app/internal/web/web_control.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/web_control.go
+    uri: ../app/internal/web/web_control.go
     description: 'Reviewed source at f43696305a7957b9956e3b1ac425cdf323edde84.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-WEB-CONTROL-TEST-GO
     name: app/internal/web/web_control_test.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/web_control_test.go
+    uri: ../app/internal/web/web_control_test.go
     description: 'Reviewed source at f43696305a7957b9956e3b1ac425cdf323edde84.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-WEB-DIAG-TEST-GO
     name: app/internal/web/web_diag_test.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/web_diag_test.go
+    uri: ../app/internal/web/web_diag_test.go
     description: 'Reviewed source at f43696305a7957b9956e3b1ac425cdf323edde84.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-WEB-FRAME-GO
     name: app/internal/web/web_frame.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/web_frame.go
+    uri: ../app/internal/web/web_frame.go
     description: 'Reviewed source at f43696305a7957b9956e3b1ac425cdf323edde84.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-WEB-FRAME-TEST-GO
     name: app/internal/web/web_frame_test.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/web_frame_test.go
+    uri: ../app/internal/web/web_frame_test.go
     description: 'Reviewed source at f43696305a7957b9956e3b1ac425cdf323edde84.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-WEB-INVS-TEST-GO
     name: app/internal/web/web_invs_test.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/web_invs_test.go
+    uri: ../app/internal/web/web_invs_test.go
     description: 'Reviewed source at f43696305a7957b9956e3b1ac425cdf323edde84.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-WEB-SERIALTRIG-TEST-GO
     name: app/internal/web/web_serialtrig_test.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/web_serialtrig_test.go
+    uri: ../app/internal/web/web_serialtrig_test.go
     description: 'Reviewed source at f43696305a7957b9956e3b1ac425cdf323edde84.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-WEB-STATUS-GO
     name: app/internal/web/web_status.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/web_status.go
+    uri: ../app/internal/web/web_status.go
     description: 'Reviewed source at f43696305a7957b9956e3b1ac425cdf323edde84.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-WEB-TEST-GO
     name: app/internal/web/web_test.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/web_test.go
+    uri: ../app/internal/web/web_test.go
     description: 'Reviewed source at f43696305a7957b9956e3b1ac425cdf323edde84.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-ZONEMASK-API-TEST-GO
     name: app/internal/web/zonemask_api_test.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/zonemask_api_test.go
+    uri: ../app/internal/web/zonemask_api_test.go
     description: 'Reviewed source at f43696305a7957b9956e3b1ac425cdf323edde84.'
   - id: REF-SOURCE-APP-CMD-APP-SRAM-GO
     name: app/cmd/app/sram.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/cmd/app/sram.go
+    uri: ../app/cmd/app/sram.go
     description: 'Reviewed source at f43696305a7957b9956e3b1ac425cdf323edde84.'
   - id: REF-SOURCE-APP-CMD-APP-SRAM-TEST-GO
     name: app/cmd/app/sram_test.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/cmd/app/sram_test.go
+    uri: ../app/cmd/app/sram_test.go
     description: 'Reviewed source at f43696305a7957b9956e3b1ac425cdf323edde84.'
   - id: REF-SOURCE-APP-CMD-APP-SRAM-TIMING-TEST-GO
     name: app/cmd/app/sram_timing_test.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/cmd/app/sram_timing_test.go
+    uri: ../app/cmd/app/sram_timing_test.go
     description: 'Reviewed source at f43696305a7957b9956e3b1ac425cdf323edde84.'
   - id: REF-SOURCE-OTA-BOOT-BOOT-TEST-GO
     name: ota/boot/boot_test.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../ota/boot/boot_test.go
+    uri: ../ota/boot/boot_test.go
     description: 'Reviewed source at f43696305a7957b9956e3b1ac425cdf323edde84.'
   - id: REF-SOURCE-OTA-BOOT-COMMANDS
     name: ota/boot/commands
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../ota/boot/commands
+    uri: ../ota/boot/commands
     description: 'Reviewed shell/config artifact. Native shell declaration inference remains pending.'
   - id: REF-SOURCE-OTA-BOOT-AGENT-ENV-EXAMPLE
     name: ota/boot/agent.env.example
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../ota/boot/agent.env.example
+    uri: ../ota/boot/agent.env.example
     description: 'Reviewed shell/config artifact. Native shell declaration inference remains pending.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-ACCEPTANCE-BROWSER-TEST-GO
     name: app/internal/web/acceptance_browser_test.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/acceptance_browser_test.go
+    uri: ../app/internal/web/acceptance_browser_test.go
     description: 'Reviewed harness/support source.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-CHAOS-BROWSER-TEST-GO
     name: app/internal/web/chaos_browser_test.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/chaos_browser_test.go
+    uri: ../app/internal/web/chaos_browser_test.go
     description: 'Reviewed harness/support source.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-DECODE-BROWSER-TEST-GO
     name: app/internal/web/decode_browser_test.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/decode_browser_test.go
+    uri: ../app/internal/web/decode_browser_test.go
     description: 'Reviewed harness/support source.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-DECODE-NODE-TEST-GO
     name: app/internal/web/decode_node_test.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/decode_node_test.go
+    uri: ../app/internal/web/decode_node_test.go
     description: 'Reviewed harness/support source.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-DEEPMEM-BROWSER-TEST-GO
     name: app/internal/web/deepmem_browser_test.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/deepmem_browser_test.go
+    uri: ../app/internal/web/deepmem_browser_test.go
     description: 'Reviewed harness/support source.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-EYEJITTER-NODE-TEST-GO
     name: app/internal/web/eyejitter_node_test.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/eyejitter_node_test.go
+    uri: ../app/internal/web/eyejitter_node_test.go
     description: 'Reviewed harness/support source.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-FFT-BROWSER-TEST-GO
     name: app/internal/web/fft_browser_test.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/fft_browser_test.go
+    uri: ../app/internal/web/fft_browser_test.go
     description: 'Reviewed harness/support source.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-FUZZ-BROWSER-TEST-GO
     name: app/internal/web/fuzz_browser_test.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/fuzz_browser_test.go
+    uri: ../app/internal/web/fuzz_browser_test.go
     description: 'Reviewed harness/support source.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-INVS-BROWSER-TEST-GO
     name: app/internal/web/invs_browser_test.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/invs_browser_test.go
+    uri: ../app/internal/web/invs_browser_test.go
     description: 'Reviewed harness/support source.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-PERF-BROWSER-TEST-GO
     name: app/internal/web/perf_browser_test.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/perf_browser_test.go
+    uri: ../app/internal/web/perf_browser_test.go
     description: 'Reviewed harness/support source.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-PERFSERVE-TEST-GO
     name: app/internal/web/perfserve_test.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/perfserve_test.go
+    uri: ../app/internal/web/perfserve_test.go
     description: 'Reviewed harness/support source.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-SERIALTRIG-BROWSER-TEST-GO
     name: app/internal/web/serialtrig_browser_test.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/serialtrig_browser_test.go
+    uri: ../app/internal/web/serialtrig_browser_test.go
     description: 'Reviewed harness/support source.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-SIGROK-EXPORT-E2E-TEST-GO
     name: app/internal/web/sigrok_export_e2e_test.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/sigrok_export_e2e_test.go
+    uri: ../app/internal/web/sigrok_export_e2e_test.go
     description: 'Reviewed harness/support source.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-SUPERRES-BROWSER-TEST-GO
     name: app/internal/web/superres_browser_test.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/superres_browser_test.go
+    uri: ../app/internal/web/superres_browser_test.go
     description: 'Reviewed harness/support source.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-SUPERRES-COMP-NODE-TEST-GO
     name: app/internal/web/superres_comp_node_test.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/superres_comp_node_test.go
+    uri: ../app/internal/web/superres_comp_node_test.go
     description: 'Reviewed harness/support source.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-SUPERRES-ETS-NODE-TEST-GO
     name: app/internal/web/superres_ets_node_test.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/superres_ets_node_test.go
+    uri: ../app/internal/web/superres_ets_node_test.go
     description: 'Reviewed harness/support source.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-SUPERRES-NODE-TEST-GO
     name: app/internal/web/superres_node_test.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/superres_node_test.go
+    uri: ../app/internal/web/superres_node_test.go
     description: 'Reviewed harness/support source.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-TRANSPORT-BROWSER-TEST-GO
     name: app/internal/web/transport_browser_test.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/transport_browser_test.go
+    uri: ../app/internal/web/transport_browser_test.go
     description: 'Reviewed harness/support source.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-UI-LINT-TEST-GO
     name: app/internal/web/ui_lint_test.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/ui_lint_test.go
+    uri: ../app/internal/web/ui_lint_test.go
     description: 'Reviewed harness/support source.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-ZONEMASK-BROWSER-TEST-GO
     name: app/internal/web/zonemask_browser_test.go
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/zonemask_browser_test.go
+    uri: ../app/internal/web/zonemask_browser_test.go
     description: 'Reviewed harness/support source.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-ACCEPTANCE-BROWSER-MJS
     name: app/internal/web/acceptance_browser.mjs
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/acceptance_browser.mjs
+    uri: ../app/internal/web/acceptance_browser.mjs
     description: 'Reviewed harness/support source.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-CHAOS-BROWSER-MJS
     name: app/internal/web/chaos_browser.mjs
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/chaos_browser.mjs
+    uri: ../app/internal/web/chaos_browser.mjs
     description: 'Reviewed harness/support source.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-DECODE-BROWSER-MJS
     name: app/internal/web/decode_browser.mjs
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/decode_browser.mjs
+    uri: ../app/internal/web/decode_browser.mjs
     description: 'Reviewed harness/support source.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-DEEPMEM-BROWSER-MJS
     name: app/internal/web/deepmem_browser.mjs
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/deepmem_browser.mjs
+    uri: ../app/internal/web/deepmem_browser.mjs
     description: 'Reviewed harness/support source.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-FFT-BROWSER-MJS
     name: app/internal/web/fft_browser.mjs
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/fft_browser.mjs
+    uri: ../app/internal/web/fft_browser.mjs
     description: 'Reviewed harness/support source.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-INVS-BROWSER-MJS
     name: app/internal/web/invs_browser.mjs
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/invs_browser.mjs
+    uri: ../app/internal/web/invs_browser.mjs
     description: 'Reviewed harness/support source.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-STACKPERF-BROWSER-MJS
     name: app/internal/web/stackperf_browser.mjs
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/stackperf_browser.mjs
+    uri: ../app/internal/web/stackperf_browser.mjs
     description: 'Reviewed harness/support source.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-SERIALTRIG-BROWSER-MJS
     name: app/internal/web/serialtrig_browser.mjs
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/serialtrig_browser.mjs
+    uri: ../app/internal/web/serialtrig_browser.mjs
     description: 'Reviewed harness/support source.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-SUPERRES-BROWSER-MJS
     name: app/internal/web/superres_browser.mjs
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/superres_browser.mjs
+    uri: ../app/internal/web/superres_browser.mjs
     description: 'Reviewed harness/support source.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-TRANSPORT-BROWSER-MJS
     name: app/internal/web/transport_browser.mjs
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/transport_browser.mjs
+    uri: ../app/internal/web/transport_browser.mjs
     description: 'Reviewed harness/support source.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-ZONEMASK-BROWSER-MJS
     name: app/internal/web/zonemask_browser.mjs
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/zonemask_browser.mjs
+    uri: ../app/internal/web/zonemask_browser.mjs
     description: 'Reviewed harness/support source.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-SCOPE-PO-MJS
     name: app/internal/web/scope_po.mjs
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/scope_po.mjs
+    uri: ../app/internal/web/scope_po.mjs
     description: 'Reviewed harness/support source.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-E2E-FUZZ-MJS
     name: app/internal/web/e2e/fuzz.mjs
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/e2e/fuzz.mjs
+    uri: ../app/internal/web/e2e/fuzz.mjs
     description: 'Reviewed harness/support source.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-E2E-OPERATOR-MJS
     name: app/internal/web/e2e/operator.mjs
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/e2e/operator.mjs
+    uri: ../app/internal/web/e2e/operator.mjs
     description: 'Reviewed harness/support source.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-DECODE-TEST-CJS
     name: app/internal/web/decode.test.cjs
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/decode.test.cjs
+    uri: ../app/internal/web/decode.test.cjs
     description: 'Reviewed harness/support source.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-EYEJITTER-TEST-CJS
     name: app/internal/web/eyejitter.test.cjs
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/eyejitter.test.cjs
+    uri: ../app/internal/web/eyejitter.test.cjs
     description: 'Reviewed harness/support source.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-SUPERRES-TEST-CJS
     name: app/internal/web/superres.test.cjs
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/superres.test.cjs
+    uri: ../app/internal/web/superres.test.cjs
     description: 'Reviewed harness/support source.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-SUPERRES-COMP-TEST-CJS
     name: app/internal/web/superres_comp.test.cjs
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/superres_comp.test.cjs
+    uri: ../app/internal/web/superres_comp.test.cjs
     description: 'Reviewed harness/support source.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-SUPERRES-ETS-TEST-CJS
     name: app/internal/web/superres_ets.test.cjs
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/superres_ets.test.cjs
+    uri: ../app/internal/web/superres_ets.test.cjs
     description: 'Reviewed harness/support source.'
   - id: REF-SOURCE-FPGA-COMMON-SIM-TB-INTERLEAVE-V
     name: fpga/common/sim/tb_interleave.v
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../fpga/common/sim/tb_interleave.v
+    uri: ../fpga/common/sim/tb_interleave.v
     description: 'Reviewed acquisition RTL or original testbench.'
   - id: REF-SOURCE-FPGA-IMAGES-GENERAL-SIM-TB-INTEGRATOR-V
     name: fpga/images/general/sim/tb_integrator.v
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../fpga/images/general/sim/tb_integrator.v
+    uri: ../fpga/images/general/sim/tb_integrator.v
     description: 'Reviewed precision RTL or original testbench.'
   - id: REF-SOURCE-FPGA-IMAGES-GENERAL-SIM-TB-PRECISION-FIR-V
     name: fpga/images/general/sim/tb_precision_fir.v
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../fpga/images/general/sim/tb_precision_fir.v
+    uri: ../fpga/images/general/sim/tb_precision_fir.v
     description: 'Reviewed precision RTL or original testbench.'
   - id: REF-SOURCE-FPGA-IMAGES-GENERAL-SIM-TB-PRECISION-TAIL-QUEUE-V
     name: fpga/images/general/sim/tb_precision_tail_queue.v
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../fpga/images/general/sim/tb_precision_tail_queue.v
+    uri: ../fpga/images/general/sim/tb_precision_tail_queue.v
     description: 'Reviewed precision RTL or original testbench.'
   - id: REF-SOURCE-FPGA-COMMON-SIM-TB-GPMC-READ-V
     name: fpga/common/sim/tb_gpmc_read.v
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../fpga/common/sim/tb_gpmc_read.v
+    uri: ../fpga/common/sim/tb_gpmc_read.v
     description: 'Reviewed board RTL or original testbench.'
   - id: REF-SOURCE-FPGA-COMMON-SIM-TB-DDIO-V
     name: fpga/common/sim/tb_ddio.v
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../fpga/common/sim/tb_ddio.v
+    uri: ../fpga/common/sim/tb_ddio.v
     description: 'Reviewed common RTL or original testbench.'
   - id: REF-SOURCE-FPGA-COMMON-SIM-TB-GPMC-SLAVE-V
     name: fpga/common/sim/tb_gpmc_slave.v
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../fpga/common/sim/tb_gpmc_slave.v
+    uri: ../fpga/common/sim/tb_gpmc_slave.v
     description: 'Reviewed common RTL or original testbench.'
   - id: REF-SOURCE-FPGA-COMMON-SIM-TB-LANE-IN-V
     name: fpga/common/sim/tb_lane_in.v
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../fpga/common/sim/tb_lane_in.v
+    uri: ../fpga/common/sim/tb_lane_in.v
     description: 'Reviewed common RTL or original testbench.'
   - id: REF-SOURCE-APP-INTERNAL-SUPERRES-COMP-PARITY-DRIVER-CJS
     name: app/internal/superres/comp_parity_driver.cjs
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/superres/comp_parity_driver.cjs
+    uri: ../app/internal/superres/comp_parity_driver.cjs
     description: 'Execution is not implied.'
   - id: REF-SOURCE-APP-INTERNAL-SUPERRES-PARITY-DRIVER-CJS
     name: app/internal/superres/parity_driver.cjs
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/superres/parity_driver.cjs
+    uri: ../app/internal/superres/parity_driver.cjs
     description: 'Execution is not implied.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-DECPARITY-CHECK-MJS
     name: app/internal/web/decparity_check.mjs
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/decparity_check.mjs
+    uri: ../app/internal/web/decparity_check.mjs
     description: 'Execution is not implied.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-E2E-WORKFLOW-ASSERT-MJS
     name: app/internal/web/e2e/workflow_assert.mjs
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/e2e/workflow_assert.mjs
+    uri: ../app/internal/web/e2e/workflow_assert.mjs
     description: 'Execution is not implied.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-E2E-WORKFLOW-MASK-MJS
     name: app/internal/web/e2e/workflow_mask.mjs
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/e2e/workflow_mask.mjs
+    uri: ../app/internal/web/e2e/workflow_mask.mjs
     description: 'Execution is not implied.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-E2E-REGRESS-MISSING-CHANNEL-MJS
     name: app/internal/web/e2e/regress_missing_channel.mjs
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/e2e/regress_missing_channel.mjs
+    uri: ../app/internal/web/e2e/regress_missing_channel.mjs
     description: 'Execution is not implied.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-E2E-WORKFLOW-ANALOG-MJS
     name: app/internal/web/e2e/workflow_analog.mjs
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/e2e/workflow_analog.mjs
+    uri: ../app/internal/web/e2e/workflow_analog.mjs
     description: 'Execution is not implied.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-E2E-WORKFLOW-SERIAL-MJS
     name: app/internal/web/e2e/workflow_serial.mjs
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/e2e/workflow_serial.mjs
+    uri: ../app/internal/web/e2e/workflow_serial.mjs
     description: 'Execution is not implied.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-BINFRAME-TEST-CJS
     name: app/internal/web/binframe.test.cjs
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/binframe.test.cjs
+    uri: ../app/internal/web/binframe.test.cjs
     description: 'Original Node regression suite.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-PEAKS-TEST-CJS
     name: app/internal/web/peaks.test.cjs
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/peaks.test.cjs
+    uri: ../app/internal/web/peaks.test.cjs
     description: 'Original Node regression suite.'
   - id: REF-SOURCE-APP-INTERNAL-WEB-SIGROK-EXPORT-TEST-CJS
     name: app/internal/web/sigrok_export.test.cjs
     kind: source-artifact
     layer: evidence
     version: f43696305a7957b9956e3b1ac425cdf323edde84
-    uri: ../../app/internal/web/sigrok_export.test.cjs
+    uri: ../app/internal/web/sigrok_export.test.cjs
     description: 'Original Node regression suite.'
   interfaces:
   - id: IF-GPMC

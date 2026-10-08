@@ -1,7 +1,7 @@
 # SDS1000CML+ engineering model
 
-The documentation of the firmware: an engineering model (schema version 2) in
-[`model/`](model/), with [`engmod.yml`](engmod.yml) as its manifest.
+The documentation of the firmware: an engineering model (schema version 2), with
+[`engmod.yml`](engmod.yml) as its manifest.
 
 | File | Contents |
 |---|---|

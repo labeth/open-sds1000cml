@@ -14,7 +14,7 @@ and runs it.
 
 The engineering model is the documentation: requirements, architecture,
 behaviour and design decisions are in
-[`models/sds1000cml/model/`](models/sds1000cml/model/) (start with
+[`model/`](model/) (start with
 `requirements.yml` and `decisions.yml`). The behavioural specifications the
 implementation was written from are in [`specs/`](specs/).
 
@@ -26,7 +26,7 @@ implementation was written from are in [`specs/`](specs/).
 | `fpga/` | The FPGA images (Verilog, Cyclone IV EP4CE10): what is common, what each image adds, the shipping bitstreams and the build. |
 | `ota/` | The on-device agent and `otactl`: install, launch, health, A/B slots, USB stick builder. |
 | `tools/deploy.sh` | Build the release app and install it on a scope over the network. |
-| `models/` | The engineering model (documentation). |
+| `model/` | The engineering model (documentation). |
 | `specs/` | Behavioural specifications. |
 
 ## Build, test, deploy
