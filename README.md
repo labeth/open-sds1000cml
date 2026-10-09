@@ -78,6 +78,17 @@ exports. All waveforms and readouts are from the connected signal.</sub>
 * **Modes:** normal, average (up to 256 frames), enhanced resolution and precision.
 * **Live min/max envelope** for long windows, so narrow events stay visible at any zoom.
 
+## Faster FPGA readout
+
+Compared with CPU readout from the factory FPGA, our DMA path demonstrated
+**roughly 3× higher raw transfer throughput** in earlier benchmarks
+(11.1 MB/s versus 3.1–3.9 MB/s). DMA replaces the vendor's per-word CPU read loop;
+the current driver still polls for completion.
+
+For live viewing, the FPGA sends a **4 KiB min/max envelope instead of a 2 MiB
+raw record—512× less sample data to transfer**, while keeping the full record
+in SRAM for detailed review.
+
 ## Triggering
 
 * **Edge** in hardware, with sub-sample placement: 0.19 ns peak-to-peak edge wander at 5 ns/div.
