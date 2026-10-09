@@ -213,11 +213,22 @@ requirements:
   - REF-SOURCE-APP-INTERNAL-ENGINE-ENGINE-CONTROL-GO
   - REF-SOURCE-APP-INTERNAL-ENGINE-ENGINE-LOOP-GO
   - REF-SOURCE-APP-INTERNAL-ENGINE-ENGINE-TEST-GO
+  - REF-SOURCE-APP-INTERNAL-ENGINE-SRAM-ENVELOPE-GO
+  - REF-SOURCE-APP-INTERNAL-ENGINE-SRAM-ENVELOPE-TEST-GO
+  - REF-SOURCE-APP-INTERNAL-ENGINE-SRAM-LIVE-TEST-GO
+  - REF-SOURCE-APP-INTERNAL-SRAMCAPTURE-ENVELOPE-GO
   appliesTo:
   - FU-APP-ENGINE
-  notes: Source-derived contract; source presence is not evidence of a passing hardware qualification.
-    While running, a live window larger than the display needs is read from SRAM as a 1024-bucket peak-detect
-    envelope; a stopped acquisition recalls the full record (ADR-IMAGE-REGROUP-DECIMATION).
+  notes: Source-derived contract; source presence is not evidence of a passing hardware qualification. Live frames
+    follow ADR-LIVE-ORDERED-ENVELOPE (revised 2026-10-09; previously ADR-IMAGE-REGROUP-DECIMATION). While running
+    and not serving a SINGLE, every live frame is read as the FPGA envelope of the full-depth capture (2048
+    buckets for raw records, 1024 for Q8.8, the reducer limit being 2048 output words), with each min and max pair
+    put in time order (orderEnvelope, Frame.Ordered) so decode, masks and software qualifiers run on it.
+    Averaging, ERES, precision, a sample lease and an image without the reducer use a decimated live capture of at
+    most 4096 words per screen (liveSRAMPlan); Bode and a raw lease read raw windows. STOP and SINGLE recall the
+    full record; a stopped record is held in memory, recalled and conditioned, so V/div, offset and timebase
+    changes replay it without an SRAM read (ADR-STOPPED-RECORD-IN-MEMORY). Status reports live_readout and
+    frame_stages.
   verificationMethods:
   - inspection
   - test
@@ -244,7 +255,10 @@ requirements:
   - REF-SOURCE-APP-INTERNAL-ENGINE-ENGINE-TRIGLEVEL-TEST-GO
   appliesTo:
   - FU-APP-ENGINE
-  notes: Source-derived contract; source presence is not evidence of a passing hardware qualification.
+  notes: Source-derived contract; source presence is not evidence of a passing hardware qualification. Revised
+    2026-10-09 (ADR-SINGLE-PRESS-GENERATION). SINGLE ends only on a capture armed, or still waiting for its event,
+    after the press; a frame already frozen when SINGLE is pressed publishes as a live frame. The capture serving
+    a SINGLE is recalled whole once and held for the stop.
   verificationMethods:
   - inspection
   - test
@@ -450,18 +464,21 @@ requirements:
   - FU-WEB-DECODE-USBLS
   notes: 'Source-derived contract for ten decoder families: UART, I2C, SPI, Manchester, SENT, CAN/CAN-FD, MIL1553,
     ARINC429, USB LS/FS and FlexRay. All eleven Go implementation files are reviewed. OK is protocol-specific and
-    can coexist with error spans; callers must inspect those spans. SPI has no chip-select input and I2C has seven-bit
-    address extraction. CAN-FD is base-format best-effort through data only; classic CAN does not completely validate
-    delimiters/EOF. USB uses one sampled line without payload CRC or differential SE0 validation. FlexRay frame
-    CRC is checked only for an exact header-implied byte length; mismatched lengths can retain header-only acceptance.
-    SENT clamps malformed nibble widths before later CRC checking. Configured timing/threshold preconditions and
-    auto-detection heuristics do not establish electrical or standards compliance. All eight JavaScript implementation
-    scripts are reviewed and linked. JS gap sentinels, UART options, SPI default bit order and byte formatting differ
-    from Go; shared implementation patterns do not prove identical behavior for every input. Browser integration
-    is a separate evidence scope. Breaker test labels such as valid frame and false positive are not qualification
-    claims: some fixtures share CRC helpers, omit complete trailers, permit decode failure, or assert only no panic.
-    The USB tight-gap fixture merges packets, and the CRC-named fixture is accepted without an error; native passing
-    status excludes those disabled assertions.'
+    can coexist with error spans; callers must inspect those spans. SPI has no chip-select input and I2C has
+    seven-bit address extraction. CAN-FD is base-format best-effort through data only; classic CAN does not
+    completely validate delimiters/EOF. USB uses one sampled line without payload CRC or differential SE0
+    validation. FlexRay frame CRC is checked only for an exact header-implied byte length; mismatched lengths can
+    retain header-only acceptance. SENT clamps malformed nibble widths before later CRC checking. Configured
+    timing/threshold preconditions and auto-detection heuristics do not establish electrical or standards
+    compliance. All eight JavaScript implementation scripts are reviewed and linked. JS gap sentinels, UART
+    options, SPI default bit order and byte formatting differ from Go; shared implementation patterns do not prove
+    identical behavior for every input. Browser integration is a separate evidence scope. Breaker test labels such
+    as valid frame and false positive are not qualification claims: some fixtures share CRC helpers, omit complete
+    trailers, permit decode failure, or assert only no panic. The USB tight-gap fixture merges packets, and the
+    CRC-named fixture is accepted without an error; native passing status excludes those disabled assertions.
+    Revised 2026-10-09. Decoders run on live time-ordered envelope frames (Ordered), so a decoding display no
+    longer leases raw frames; the decodeview web control is accepted and ignored. The LCD caches each decode per
+    frame content and paces Auto detection to twice a second.'
   verificationMethods:
   - inspection
   - test
@@ -873,7 +890,10 @@ requirements:
   - REF-SOURCE-APP-INTERNAL-SRAMCAPTURE-CAPTURE-GO
   appliesTo:
   - FU-APP-SRAMCAPTURE
-  notes: Source-derived contract; source presence is not evidence of a passing hardware qualification.
+  notes: Source-derived contract; source presence is not evidence of a passing hardware qualification. Revised
+    2026-10-09. A recall yields the capture lock between DMA bursts (and runs a span hook there that latches
+    staged panel lamps and reports readout progress), so the front-panel scan is not blocked for the seconds a
+    deep recall takes. A failed envelope reduction switches the reducer off before returning.
   verificationMethods:
   - inspection
   - test
@@ -891,7 +911,10 @@ requirements:
   appliesTo:
   - FU-APP-APP
   - FU-APP-SRAMCAPTURE
-  notes: Source-derived contract; source presence is not evidence of a passing hardware qualification.
+  notes: Source-derived contract; source presence is not evidence of a passing hardware qualification. Revised
+    2026-10-09 (ADR-ENVELOPE-REDUCER-RECOVERY). A fresh process assumes the envelope reducer may still be on and
+    clears it on its first recall, and the counter check halts an acquisition left running by a previous process
+    before arming.
   verificationMethods:
   - inspection
   - test
@@ -2439,7 +2462,10 @@ requirements:
   verificationCriteria: 'Source presence and fake controls do not establish full clause coverage or physical
     qualification.'
   notes: Physical matrix availability remains fabric-dependent under REQ-SDS-022. Queue acceptance is not completion;
-    signal shutdown, timer behavior and setter error recovery have review limitations.
+    signal shutdown, timer behavior and setter error recovery have review limitations. Revised 2026-10-09. The
+    panel tick re-syncs the lamps every 40 ms, a staged lamp word is latched between recall bursts and at once
+    during CPU-only conditioning, and RUN/STOP toggles from the engine state. Bench press-to-lamp delay was 4 to
+    28 ms over 40 presses during 2 s recalls (led_lag_ms status).
 - id: REQ-SDS-136
   title: Panel menus and shared display state
   text: The instrument shall expose softkey menus, bounded control ladders, cursor and decode settings, and shared
@@ -2545,9 +2571,10 @@ requirements:
   - test
   verificationCriteria: 'Source presence and fake controls do not establish full clause coverage or physical
     qualification.'
-  notes: Replacement signals cancellation without joining or generation-guarding the old worker. Time stopping needs
-    a usable new frame; short C2 substitutes C1. Synchronous UX and compensation-wrapper tests do not qualify live
-    accumulation or physical bandwidth.
+  notes: Replacement signals cancellation without joining or generation-guarding the old worker. Time stopping needs a
+    usable new frame; short C2 substitutes C1. Synchronous UX and compensation-wrapper tests do not qualify live
+    accumulation or physical bandwidth. Revised 2026-10-09. The panel super-resolution stacker holds a raw lease
+    while stacking and waits for a raw frame before seeding, since live frames are otherwise envelopes.
 - id: REQ-SDS-141
   title: Reference-locked interpolation stack
   text: The instrument shall support gated reference matching, occurrence accumulation on a fine interpolation grid,
@@ -2934,8 +2961,12 @@ requirements:
     Run both original host helper tests and all five timing subtests. Most entrypoint behavior
     remains inspection-only. No current hardware qualification is established.'
   notes: HUD reads are not one atomic snapshot and Bode view assembly changes acquisition state. The scalar render
-    cache omits some visible configuration and assumes immutable sequence identity. Screenshot freshness and persistence
-    history differ from the live LCD loop; shared rendering code does not prove pixel parity.
+    cache omits some visible configuration and assumes immutable sequence identity. Screenshot freshness and
+    persistence history differ from the live LCD loop; shared rendering code does not prove pixel parity. Revised
+    2026-10-09 (ADR-LOADING-INDICATOR). The top bar status slot shows LOADING with readout progress while a frame
+    is read or processed for more than 150 ms, redrawn alone without re-rendering the frame. Measurements and
+    decode are cached per frame content, dense trace column extremes per frame, and no frame is drawn at a new
+    scale while a stopped view is pending.
 - id: REQ-SDS-169
   title: Mode-specific diagnostic health
   text: The instrument shall distinguish diagnostic progress health from coherent-frame health and restrict SRAM-only
@@ -3378,10 +3409,13 @@ requirements:
   verificationCriteria: Inspect browser-control-source-review.json and the 13 isolated client/control cases in browser-control-test-run.json.
     Mocks exercise original JavaScript control flow without issuing network requests, device commands or downloads.
     Browser layout and device autoset convergence remain unverified.
-  notes: Control clicks can update local status optimistically even if a command fails. send and status polling
-    parse JSON without checking HTTP success; sendParams ignores response bodies. Autoset waits for stable measured
+  notes: Control clicks can update local status optimistically even if a command fails. send and status polling parse
+    JSON without checking HTTP success; sendParams ignores response bodies. Autoset waits for stable measured
     frequency but ignores awaitFrame timeout outcomes, so repeated stale measurements can appear stable. Hidden
-    tabs pause display polling only; status polling continues. See recorded transport, calibration and export limitations.
+    tabs pause display polling only; status polling continues. See recorded transport, calibration and export
+    limitations. Revised 2026-10-09. The browser shows the loading indicator from status busy fields and polls
+    status fast while busy or right after a control change. Raw feeds request a lease explicitly (lease=raw for
+    eye and super-resolution, lease=samples for the FFT); mask and zone building use the live ordered frames.
 - id: REQ-SDS-205
   title: Precision snapshot model fitting
   text: The instrument shall fit selected browser capture windows to sinusoidal, triangular or harmonic models and

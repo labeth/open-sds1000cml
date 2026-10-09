@@ -1685,6 +1685,38 @@ architecture:
     uri: ../app/internal/engine/sram.go
     description: 'Committed source at f43696305a7957b9956e3b1ac425cdf323edde84; Git blob
       e454abfa06f815b87a925e3ecbae7725a9b7f2c7. A source or test is not a claim of device qualification.'
+  - id: REF-SOURCE-APP-INTERNAL-ENGINE-SRAM-ENVELOPE-GO
+    name: app/internal/engine/sram_envelope.go
+    kind: source-artifact
+    layer: evidence
+    version: f804ad882891fa033f2f283b3bb75670b3fde56a
+    uri: ../app/internal/engine/sram_envelope.go
+    description: 'Committed source at f804ad882891fa033f2f283b3bb75670b3fde56a; Git blob
+      20d228d467455022138d60651969907c4bc7258b. A source or test is not a claim of device qualification.'
+  - id: REF-SOURCE-APP-INTERNAL-ENGINE-SRAM-ENVELOPE-TEST-GO
+    name: app/internal/engine/sram_envelope_test.go
+    kind: source-artifact
+    layer: evidence
+    version: f804ad882891fa033f2f283b3bb75670b3fde56a
+    uri: ../app/internal/engine/sram_envelope_test.go
+    description: 'Committed source at f804ad882891fa033f2f283b3bb75670b3fde56a; Git blob
+      7caf34e5cc9709a4c7df9ce7ee9fce149686c378. A source or test is not a claim of device qualification.'
+  - id: REF-SOURCE-APP-INTERNAL-ENGINE-SRAM-LIVE-TEST-GO
+    name: app/internal/engine/sram_live_test.go
+    kind: source-artifact
+    layer: evidence
+    version: f804ad882891fa033f2f283b3bb75670b3fde56a
+    uri: ../app/internal/engine/sram_live_test.go
+    description: 'Committed source at f804ad882891fa033f2f283b3bb75670b3fde56a; Git blob
+      a924664a7e62aca23b740ae8690a83ec2747e603. A source or test is not a claim of device qualification.'
+  - id: REF-SOURCE-APP-INTERNAL-SRAMCAPTURE-ENVELOPE-GO
+    name: app/internal/sramcapture/envelope.go
+    kind: source-artifact
+    layer: evidence
+    version: f804ad882891fa033f2f283b3bb75670b3fde56a
+    uri: ../app/internal/sramcapture/envelope.go
+    description: 'Committed source at f804ad882891fa033f2f283b3bb75670b3fde56a; Git blob
+      71816764ffddec07b1e507601bf5ab2cf54337bc. A source or test is not a claim of device qualification.'
   - id: REF-SOURCE-APP-INTERNAL-ENGINE-BANDS-GO
     name: app/internal/engine/bands.go
     kind: source-artifact

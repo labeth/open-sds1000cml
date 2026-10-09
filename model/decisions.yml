@@ -1482,6 +1482,85 @@ decisions:
     MIL-1553, SENT and USB decoded streams on their new images, UART native and sequence triggers and FPGA stacking
     all pass.'
   - This supersedes ADR-GENERAL-RAW-IMAGE's image content; its sequence-trigger consequences still hold.
+  - Its live-frame policy was revised on 2026-10-09 by ADR-LIVE-ORDERED-ENVELOPE; every live frame is an
+    envelope, in time order, and the sample-consuming modes listed above no longer force full recall.
+- id: ADR-LIVE-ORDERED-ENVELOPE
+  title: Read every live frame as a time-ordered envelope; deep records on STOP and SINGLE
+  status: accepted
+  date: '2026-10-09'
+  context: With a protocol decode on, live frames at 200 us/div recalled a 500k-word raw window, about 2.2 s a frame (0.5
+    LCD frames/s), so knobs gave no feedback. The user required at least 10, preferably 20, frames/s in every
+    mode, with the full record available on STOP or SINGLE. Unordered min and max pairs had made decoders misread
+    edges (2026-10-06), which is why decoding had forced raw frames.
+  decision: Every live acquisition still captures the full-depth record, and a live frame is read as the FPGA envelope of
+    its screen window. Each pair is emitted in the order that continues from the previous value, so an edge inside
+    a bucket reads as one transition and a pulse narrower than a bucket as a one-sample peak; the frame is marked
+    Ordered and serves decode, masks, zones and software qualifiers as samples at half-bucket spacing. Averaging,
+    ERES and precision, whose filtering needs true samples, and a sample lease (FFT, autoset) use an
+    FPGA-decimated live capture bounded to 4096 words a screen. A raw lease (eye diagram, super-resolution) and
+    Bode read raw windows. SINGLE and STOP read the full record.
+  consequences:
+  - Bench 2026-10-09 with I2C decode on (LCD frames/s) - 20 to 24 at 1 us to 100 us/div, 16 at 200 us/div, 18 at 1
+    ms/div, 11.6 at 5 ms/div. At 10 ms/div and slower a triggered frame waits out its whole screen, so reaching 10
+    frames/s there needs a roll mode; rev 10 has no continuous stream (rev 11 only).
+  - I2C decoded correctly from live ordered envelopes on the instrument.
+  - STOP in averaging, ERES or precision keeps the decimated live record; SINGLE is full depth in every mode.
+  - Timing measurements on live frames resolve to half a bucket and use the envelope timing paths.
+  - Decode, autoset and mask learning no longer take a raw lease; the decodeview web control is a no-op.
+- id: ADR-SINGLE-PRESS-GENERATION
+  title: Serve SINGLE with a capture after the press, and keep panel feedback live during recalls
+  status: accepted
+  date: '2026-10-09'
+  context: A SINGLE pressed during a 2 s deep recall was consumed by the frame captured before the press, the front-panel
+    scan waited on the capture lock for the whole recall (key state is sampled, so short taps were lost) and lamps
+    were latched only between frames, so SINGLE gave no feedback.
+  decision: Each SINGLE press bumps a generation; the publish that ends a SINGLE must belong to a capture armed, or still
+    waiting for its event, under that generation. Recalls yield the capture lock between DMA bursts and run a span
+    hook that latches staged lamps; a lamp staged during CPU-only conditioning is latched at once by the staging
+    goroutine under the capture lock. RUN/STOP toggles from the engine state.
+  consequences:
+  - Bench 2026-10-09 - press-to-lamp delay 4 to 28 ms over 40 presses (was up to about 2 s); recall time
+    unchanged.
+  - The frame in flight at a SINGLE press is shown live, then a fresh capture stops the scope.
+- id: ADR-STOPPED-RECORD-IN-MEMORY
+  title: Hold the stopped record in memory for view changes
+  status: accepted
+  date: '2026-10-09'
+  context: Every V/div, offset or timebase change on a stopped deep record recalled 524288 words again (2 s or more), and
+    the LCD re-measured, re-decoded and re-scanned 1 M samples per redraw.
+  decision: The engine keeps the stopped record as recalled and as conditioned (keyed by record identity and the
+    acquisition filters) and replays view changes from memory with a fixed-point rescale. Frames from the same
+    conditioned record share Frame.Content, so displays reuse measurements and decode across them; the LCD skips
+    drawing the old frame at the new scale while view_pending is set.
+  consequences:
+  - Bench 2026-10-09 - a stopped V/div step reaches the LCD in about 0.5 to 0.8 s (was 2.5 s and more).
+  - Memory holds up to two copies of a deep record on the 128 MB unit (about 4 MB raw, more with Q8.8 codes).
+- id: ADR-LOADING-INDICATOR
+  title: Show a loading indicator while a frame is read or processed
+  status: accepted
+  date: '2026-10-09'
+  context: Long readouts (STOP, SINGLE, view replays) gave no sign that anything was happening.
+  decision: The engine reports busy, busy_pct (from the recall burst loop) and busy_ms. After a 150 ms grace the LCD draws
+    LOADING with progress and a spinner in the top bar status slot, redrawing only that slot, and the browser
+    shows the same next to its status line, polling faster while busy or after a control change.
+  consequences:
+  - Turning the spinner by full redraws stole the CPU from the recall it reported (1.8 s became 6.9 s), hence the
+    slot-only redraw.
+- id: ADR-ENVELOPE-REDUCER-RECOVERY
+  title: Bound envelope requests and recover the reducer across processes
+  status: accepted
+  date: '2026-10-09'
+  context: A 2048-bucket Q8.8 envelope (4096 output words) produced nothing, and each failure returned with the reducer
+    still on. The next process read its startup counter through the reducer ("startup counter word 0 is 1216"),
+    crash-looped, and the agent fell back to the emergency binary, which left an acquisition running and loaded an
+    image without the reducer.
+  decision: Envelope requests are bounded to 2048 output words (1024 Q8.8 buckets). The reducer is switched off on every
+    failed reduction and assumed on by a fresh process, and the startup counter check halts a leftover acquisition
+    first. Device builds are made with make app-release so the bitstreams are embedded and the general image is
+    reloaded at start.
+  consequences:
+  - A plain make app binary keeps whatever image is loaded; after the emergency binary that image lacks the
+    envelope reducer and live frames fall back to decimated capture.
 - id: ADR-PANEL-SERIAL-SCAN
   title: Scan the front panel from the owned images over the factory's serial shift chain
   status: accepted
