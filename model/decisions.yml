@@ -1268,8 +1268,9 @@ decisions:
     for windows wider than one tile, and derives mean, variance, split-stack noise and resolution estimates from
     the moments. Raw records are not transferred for stacking.
   consequences:
-  - Only 20 sixteen-bit words per bin and channel, plus hit counts, cross GPMC. The reduction grows with the
-    number of hits per record and with records per stack, not with record depth.
+  - Moment state uses 20 sixteen-bit words per bin and channel, plus hit counts. Each record downloads
+    every tile and subsequent records restore those moments before accumulation; transfer cost therefore
+    grows with both the number of bins and records. Raw records remain on the instrument.
   - FPGA alignment is edge-locked, not reference-correlated. Gated reference matching from REQ-SDS-141 remains
     in the software stacker; the FPGA path advertises edge-locked stacking only. A cheaper correlation score may
     replace or augment the edge detector after an integrated fit shows the margin.
@@ -1286,6 +1287,13 @@ decisions:
     front panel (UTILITY, FPGA stop mode, Run) and the webpage (FPGA button) each stacked a live C2 edge from 10
     records to about +4.0 bits with about 736 times less bus traffic than the raw records, in 15 to 25 s. Continued
     refills, tile-major sessions, qualified GPMC reads and session health beats were required and are in.'
+  - 'Correction 2026-10-09: tile-major sessions acquired different records for neighboring tiles, producing
+    discontinuities when the signal or acquisition offset changed. Sessions now scan every tile of the same
+    frozen record before rearming, preserving moments and initial hit parity across tiles. Hits, crossings
+    and rejection counts must agree across tiles or the result is rejected. The historical tile-major bus
+    reduction above does not apply to this record-major implementation. Hardware validation with complementary
+    10 MHz signals, 10 records and a x32 grid reduced tile-boundary excess-step RMS from 0.323/0.236
+    to 0.0080/0.0058 ADC codes on C1/C2. The run took 131 s versus 77 s previously; no bus errors occurred.'
 - id: ADR-STACKING-TEMPLATE-QUALIFIER
   title: Qualify FPGA stacking hits with a host-supplied waveform template
   status: accepted

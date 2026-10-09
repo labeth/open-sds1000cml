@@ -379,11 +379,9 @@ func (c *Capture) stackDownload(ctx context.Context, bin, ch int) (superres.FPGA
 	return superres.DecodeFPGAMoments(words[:])
 }
 
-// ---- session steps: tile-major accumulation ----
-// A session keeps one tile in the FPGA while it accumulates Records fresh
-// records, then downloads it once: the ARM receives the final moments only,
-// never per-record state. Tiles therefore stack different records of the same
-// repetitive signal.
+// Session steps save and restore tile moments so every tile can scan the same
+// frozen record before the next acquisition. Use the same initial hit count
+// for every tile of a record to preserve odd/even membership.
 
 // StackBegin validates cfg against the loaded image, writes the static stack
 // configuration and returns the tile size in bins.
@@ -531,6 +529,25 @@ func (c *Capture) StackScan(ctx context.Context, first, n int, initial uint32) (
 	}
 	rejected, err = c.read32(selStackRejected)
 	return hits, crossings, rejected, err
+}
+
+// StackUpload restores a previously downloaded tile after StackResetTile.
+// TRLC-LINKS: REQ-SDS-141
+func (c *Capture) StackUpload(ctx context.Context, src []superres.FPGAStackMoments) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if len(src)%2 != 0 {
+		return fmt.Errorf("sramcapture: stack upload needs whole bins")
+	}
+	for i, m := range src {
+		if m.Count == 0 {
+			continue
+		}
+		if err := c.stackUpload(ctx, i/2, i%2, m); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // StackDownload reads the current tile's first len(dst)/2 bins, two channels

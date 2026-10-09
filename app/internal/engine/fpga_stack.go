@@ -53,9 +53,10 @@ type FPGAStackResult struct {
 	RawWords uint64  `json:"raw_words"`
 	LoadS    float64 `json:"load_s"`
 	StackS   float64 `json:"stack_s"`
-	// Time split of StackS: arm-to-frozen captures, FPGA scans, downloads.
+	// Time split of StackS: arm-to-frozen captures, FPGA scans, uploads and downloads.
 	CaptureS  float64 `json:"capture_s"`
 	ScanS     float64 `json:"scan_s"`
+	UploadS   float64 `json:"upload_s"`
 	DownloadS float64 `json:"download_s"`
 	// Stack is the ARM-side accumulation for local review rendering.
 	Stack *superres.Stack `json:"-"`
@@ -201,41 +202,52 @@ func (e *Engine) runFPGAStack(ctx context.Context, cfg sramcapture.Config, req F
 	if err != nil {
 		return res, err
 	}
-	// Tile-major: each tile stays in the FPGA for Records fresh records and is
-	// downloaded once, so the ARM receives only the final moments.
+	// Every tile must see the same frozen records and hit parity. Retain each
+	// tile's moments on the ARM while another tile occupies the FPGA RAM.
 	moments := make([]superres.FPGAStackMoments, 2*req.Stack.Bins)
 	stackStart, beats := time.Now(), e.sram.Beats()
 	var m sramcapture.Metadata
-	for first := 0; first < req.Stack.Bins; first += tile {
-		n := min(tile, req.Stack.Bins-first)
-		if err = e.sram.StackResetTile(ctx); err != nil {
-			return res, err
-		}
-		hits := uint32(0)
-		for r := 0; r < req.Records; r++ {
-			t0 := time.Now()
-			if m, err = e.captureOne(ctx, cfg); err != nil {
-				return res, fmt.Errorf("tile %d record %d: %w", first/tile, r, err)
-			}
-			t1 := time.Now()
-			var crossings, rejected uint32
-			if hits, crossings, rejected, err = e.sram.StackScan(ctx, first, n, hits); err != nil {
-				return res, fmt.Errorf("tile %d record %d: %w", first/tile, r, err)
-			}
-			res.CaptureS += t1.Sub(t0).Seconds()
-			res.ScanS += time.Since(t1).Seconds()
-			res.Crossings += uint64(crossings)
-			res.Rejected += uint64(rejected)
-			res.RawWords += uint64(m.Length)
-		}
+	for r := 0; r < req.Records; r++ {
 		t0 := time.Now()
-		if err = e.sram.StackDownload(ctx, moments[2*first:2*(first+n)]); err != nil {
-			return res, err
+		if m, err = e.captureOne(ctx, cfg); err != nil {
+			return res, fmt.Errorf("record %d: %w", r, err)
 		}
-		res.DownloadS += time.Since(t0).Seconds()
-		if first == 0 {
-			res.Hits = hits
+		res.CaptureS += time.Since(t0).Seconds()
+		var recordHits, recordCrossings, recordRejected uint32
+		for first := 0; first < req.Stack.Bins; first += tile {
+			n := min(tile, req.Stack.Bins-first)
+			state := moments[2*first : 2*(first+n)]
+			if err = e.sram.StackResetTile(ctx); err != nil {
+				return res, err
+			}
+			if r > 0 {
+				t0 = time.Now()
+				if err = e.sram.StackUpload(ctx, state); err != nil {
+					return res, err
+				}
+				res.UploadS += time.Since(t0).Seconds()
+			}
+			t0 = time.Now()
+			hits, crossings, rejected, scanErr := e.sram.StackScan(ctx, first, n, res.Hits)
+			if scanErr != nil {
+				return res, fmt.Errorf("tile %d record %d: %w", first/tile, r, scanErr)
+			}
+			res.ScanS += time.Since(t0).Seconds()
+			if first == 0 {
+				recordHits, recordCrossings, recordRejected = hits, crossings, rejected
+			} else if hits != recordHits || crossings != recordCrossings || rejected != recordRejected {
+				return res, fmt.Errorf("stack tiles disagree on hits/crossings/rejections at record %d tile %d", r, first/tile)
+			}
+			t0 = time.Now()
+			if err = e.sram.StackDownload(ctx, state); err != nil {
+				return res, err
+			}
+			res.DownloadS += time.Since(t0).Seconds()
 		}
+		res.Hits = recordHits
+		res.Crossings += uint64(recordCrossings)
+		res.Rejected += uint64(recordRejected)
+		res.RawWords += uint64(m.Length)
 	}
 	res.BusReads = e.sram.Beats() - beats
 	res.StackS = time.Since(stackStart).Seconds()

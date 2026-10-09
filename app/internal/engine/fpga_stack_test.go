@@ -22,6 +22,8 @@ type stackEngineBus struct {
 	grant          bool
 	opError        bool
 	failScan       bool
+	recordDrift    bool
+	mismatch       bool
 	regs           map[uint16]uint16
 	mailbox        [32]uint16
 	mailIndex      int
@@ -121,10 +123,17 @@ func (b *stackEngineBus) RawWrite(s, v uint16) error {
 				for c := 0; c < 2; c++ {
 					m := &b.tile[i][c]
 					m.Count += 2
-					m.Sum[0] += 2 * uint64(i+1) << 24
+					value := i + 1
+					if b.recordDrift {
+						value += int(b.regs[120]) + 10*b.arms + 100*c
+					}
+					m.Sum[0] += 2 * uint64(value) << 24
 				}
 			}
-			b.hits = uint32(b.regs[123]) | uint32(b.regs[124])<<16 + 2
+			b.hits = (uint32(b.regs[123]) | uint32(b.regs[124])<<16) + 2
+			if b.mismatch && b.regs[120] != 0 {
+				b.hits++
+			}
 		case 3:
 			words, err := superres.EncodeFPGAMoments(b.tile[bin][ch])
 			if err != nil {
@@ -236,8 +245,8 @@ func TestFPGAStackSessionSwitchesImagesAndReducesTraffic(t *testing.T) {
 	if strings.Join(images.loads, ",") != "stack,general" || b.image != "general" || b.grant {
 		t.Fatalf("image sequence %v, final %s, grant %v", images.loads, b.image, b.grant)
 	}
-	// Tile-major: each of the two tiles stacks its own three records.
-	if b.arms != 6 || res.Records != 3 || res.Hits != 6 || res.Crossings != 42 || res.RawWords != 6000 {
+	// Every tile stacks the same three records.
+	if b.arms != 3 || res.Records != 3 || res.Hits != 6 || res.Crossings != 21 || res.RawWords != 3000 {
 		t.Fatalf("result %+v arms %d", res, b.arms)
 	}
 	// 64 bins: two tiles, three records each, every bin sees 2 hits per record.
@@ -281,5 +290,35 @@ func TestFPGAStackSessionAlwaysRestoresGeneral(t *testing.T) {
 	e.images = nil
 	if _, err := e.FPGAStack(context.Background(), req); err == nil {
 		t.Fatal("stacking without an embedded image")
+	}
+}
+
+// TRLC-LINKS: REQ-SDS-141
+func TestFPGAStackSameRecordsAcrossTiles(t *testing.T) {
+	e, b, _ := newStackTestEngine(t)
+	b.recordDrift = true
+	res, err := runStack(t, e, FPGAStackRequest{Records: 3, Stack: sramcapture.StackConfig{Level: 128, Hysteresis: 8, Bins: 72, Factor: 4, ChannelMask: 3}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for ch, mean := range [][]float32{res.Result.Mean, res.Result.Mean2} {
+		for i, v := range mean {
+			if want := float32(i + 1 + 20 + 100*ch); v != want {
+				t.Fatalf("channel %d bin %d: got %g want %g (acquisition-dependent tile seam)", ch, i, v, want)
+			}
+		}
+	}
+}
+
+// TRLC-LINKS: REQ-SDS-141
+func TestFPGAStackRejectsTileDisagreement(t *testing.T) {
+	e, b, _ := newStackTestEngine(t)
+	b.mismatch = true
+	_, err := runStack(t, e, FPGAStackRequest{Records: 2, Stack: sramcapture.StackConfig{Level: 128, Hysteresis: 8, Bins: 64, Factor: 4, ChannelMask: 3}})
+	if err == nil || !strings.Contains(err.Error(), "disagree") {
+		t.Fatalf("got %v", err)
+	}
+	if b.image != "general" || b.grant {
+		t.Fatal("did not restore general image and release SRAM")
 	}
 }

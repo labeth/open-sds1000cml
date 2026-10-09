@@ -12,6 +12,42 @@ always brings back the factory firmware.
 > SDS1000CML+ series only. There is no warranty (see [LICENSE](LICENSE) and
 > [SAFETY.txt](SAFETY.txt)).
 
+## In action
+
+![Native scope LCD showing a centered I²C transaction, triggered on data bytes 55 AA at address 0x24](docs/images/scope-i2c.png)
+
+**Trigger on the data, directly on the scope.** The FPGA matches the I²C byte
+sequence `55 AA` in a write to address `0x24`, keeping the decoded transaction
+near the center. SDA is C1 (yellow), SCL is C2 (cyan); the address and payload
+`55 AA 0F F0` appear below the traces.
+
+| On the scope: continuous UART decoding | On the scope: FFT |
+|---|---|
+| ![Native LCD showing over 1.1 million streamed UART bytes with timestamps, hex and ASCII text, and zero reported errors or loss](docs/images/scope-uart-stream.png) | ![Native LCD showing the two channels' frequency spectra](docs/images/scope-spectrum.png) |
+
+**Long UART streams, directly on the scope.** The AU transmits a repeating
+155-byte text message at 921,600 baud (8N1). The LCD capture shows more than
+1.1 million received bytes, with timestamps, hex and ASCII text, and zero
+reported errors or loss. Alongside it, the FFT view shows frequency-domain
+analysis on the same native 800 × 480 display.
+
+![Browser FPGA stacking view showing complementary clock edges accumulated on a 32-times-finer time grid](docs/images/web-stacking.png)
+
+**Stack repeated edges.** Complementary 10 MHz signals from the AU, accumulated
+in the scope's FPGA: 10 records, 26,212 aligned hits and a ×32 time grid. The
+browser shows both reconstructed edges alongside the completed stack's statistics.
+
+| Browser spectrogram | Native LCD spectrogram |
+|---|---|
+| ![Enlarged browser waterfall showing a repeating stepped-frequency clock and harmonics](docs/images/web-spectrogram.png) | ![Native LCD waterfall showing the same stepped-frequency source](docs/images/scope-spectrogram.png) |
+
+**Watch frequency change over time.** An Alchitry Au steps a real clock from
+2.5 MHz to 25 MHz; the waterfall reveals each step and its harmonics.
+
+<sub>Captured from a live SDS1102CML+ running replacement firmware. Browser
+captures use a wider sidebar for readability; LCD images are native screen
+exports. All waveforms and readouts are from the connected signal.</sub>
+
 ## At a glance
 
 | | |
@@ -89,8 +125,8 @@ automatically.
   period and cycle-to-cycle jitter, eye height and width; TIE histogram and spectrum.
 * **Super-resolution:** stacks repeated edges on a time grid up to ×64 finer than the sample period,
   with interpolating, cubic or drizzle kernels, or triggered on a decoded UART byte. The **FPGA
-  stacking image** accumulates the hits in hardware: 10 records give about +4 bits with 736× less
-  bus traffic. Phase-coherent equivalent-time folding resolves clocks above the trigger
+  stacking image** accumulates the hits in hardware, using the same captured records across
+  every tile to avoid acquisition-dependent seams. Phase-coherent equivalent-time folding resolves clocks above the trigger
   comparator's range.
 * **Reference waveforms** (two), **persistence**, **XY mode**, **freeze** and **autoset**.
 
