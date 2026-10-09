@@ -194,9 +194,9 @@ function computeMath() {
   const selSig = (mathFn === "res1")
     ? fftCh[1].sel.join(",") : (mathFn === "res2") ? fftCh[2].sel.join(",") : "";
   if (mathMemo.c1 === frame.c1 && mathMemo.c2 === frame.c2 &&
-      mathMemo.fn === mathFn && mathMemo.sel === selSig) return mathMemo.out;
+      mathMemo.scale === mathScale() && mathMemo.frame === frame && mathMemo.fn === mathFn && mathMemo.sel === selSig) return mathMemo.out;
   const out = computeMathRaw();
-  mathMemo = { c1: frame.c1, c2: frame.c2, fn: mathFn, sel: selSig, out };
+  mathMemo = { scale: mathScale(), frame, c1: frame.c1, c2: frame.c2, fn: mathFn, sel: selSig, out };
   return out;
 }
 
@@ -220,23 +220,36 @@ function computeMathRaw() {
     return out;
   }
   if (!b) return null;
+  const v1 = frame.vpc1 || 1 / 25, v2 = frame.vpc2 || 1 / 25;
+  const scale = mathScale() / 25;
   for (let i = 0; i < n; i++) {
-    if (a[i] < 0 || b[i] < 0) { out[i] = -1; continue; }
-    const x = a[i] - 128, y = b[i] - 128;
-    if (mathFn === "c1-c2") out[i] = clip(128 + (x - y));
-    else if (mathFn === "c2-c1") out[i] = clip(128 + (y - x));
-    else if (mathFn === "c1+c2") out[i] = clip(128 + (x + y));
-    else out[i] = clip(128 + (x * y) / 96); // c1*c2, scaled to stay on-screen
+    if (!(a[i] >= 0) || !(b[i] >= 0)) { out[i] = -1; continue; }
+    const x = (a[i]-128)*v1-(frame.off1_v || 0);
+    const y = (b[i]-128)*v2-(frame.off2_v || 0);
+    let volts;
+    if (mathFn === "c1-c2") volts = x-y;
+    else if (mathFn === "c2-c1") volts = y-x;
+    else if (mathFn === "c1+c2") volts = x+y;
+    else volts = x*y;
+    out[i] = clip(128 + volts/scale);
   }
   return out;
 }
 
-// Draw the math trace (if any) at its SOURCE channel's vertical zoom, so it lines
-// up with the trace it's derived from. Used by both the plain and persist paths.
+// TRLC-LINKS: REQ-SDS-203
+function mathScale() {
+  const a = (frame.vpc1 || 1/25)*25/((st && st.zoom1) || 1);
+  const b = (frame.vpc2 || 1/25)*25/((st && st.zoom2) || 1);
+  return mathFn === "c1*c2" ? 4*a*b : a;
+}
+
 // TRLC-LINKS: REQ-SDS-203
 function drawMath(g) {
   const m = computeMath();
-  if (m) drawTrace(g, m, MATHCOL, (mathFn === "res2") ? (st ? st.zoom2 : 1) : (st ? st.zoom1 : 1));
+  const residual = mathFn === "res1" || mathFn === "res2";
+  const label = $("mathScale");
+  if (label) label.textContent = m && !residual ? `${eng(mathScale(), mathFn === "c1*c2" ? "V²" : "V")}/div · zero at centre` : "";
+  if (m) drawTrace(g, m, MATHCOL, residual ? ((st && st[mathFn === "res2" ? "zoom2" : "zoom1"]) || 1) : 1);
 }
 
 // TRLC-LINKS: REQ-SDS-203

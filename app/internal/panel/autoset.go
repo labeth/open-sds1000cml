@@ -86,8 +86,8 @@ func (c *Controller) runAutoset(stop chan struct{}) {
 	var entryOff [2]float64
 	if c.fe != nil {
 		entryVidx, _ = c.fe.Snapshot()
-		entryOff[0] = analog.OffsetVolts(0, entry.OffC1)
-		entryOff[1] = analog.OffsetVolts(1, entry.OffC2)
+		entryOff[0] = c.fe.OffsetReqV(0)
+		entryOff[1] = c.fe.OffsetReqV(1)
 	}
 	restore := func() {
 		if entryTdiv > 0 {

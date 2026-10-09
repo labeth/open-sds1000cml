@@ -18,6 +18,13 @@ import (
 // stats → review (frozen synthetic frame) → model fit → resume live.
 // TRLC-LINKS: REQ-SDS-180
 func TestSuperresBrowser(t *testing.T) {
+	for _, band := range []string{"native-fast", "sram"} {
+		t.Run(band, func(t *testing.T) { testSuperresBrowserBand(t, band) })
+	}
+}
+
+// TRLC-LINKS: REQ-SDS-180
+func testSuperresBrowserBand(t *testing.T, band string) {
 	testenv.NeedNode(t)
 	const N = 2048
 	n := uint64(0)
@@ -48,7 +55,7 @@ func TestSuperresBrowser(t *testing.T) {
 			TdivS: 500e-6, DisplayedS: 500e-6, SampleS: 800e-9, Trigd: true,
 		}
 	}
-	fs := &fakeScope{frameGen: gen, stats: engine.Stats{Running: true, TrigPosFrac: 0.5, BandKind: "native-fast"}}
+	fs := &fakeScope{frameGen: gen, stats: engine.Stats{Running: true, TrigPosFrac: 0.5, BandKind: band}}
 	srv := httptest.NewServer(New(fs, nil, nil, nil).Handler())
 	defer srv.Close()
 

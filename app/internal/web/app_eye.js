@@ -331,12 +331,13 @@ function ejStepTdiv(dir) {
 }
 // set the timebase to the nearest eye-usable detent to `want`.
 // TRLC-LINKS: REQ-SDS-201
-function ejStepToNearest(want) {
+async function ejStepToNearest(want) {
   if (!st || !st.tdivs) return;
   const tds = st.tdivs.filter(t => t < 5e-3);
   let best = tds[0], bd = Infinity;
   for (const t of tds) { const d = Math.abs(t - want); if (d < bd) { bd = d; best = t; } }
-  if (best) send("tdiv", best);
+  if (best) await send("tdiv", best);
+  return best;
 }
 // wait for the band change to land in the status poll, then settle.
 // TRLC-LINKS: REQ-SDS-201
@@ -364,20 +365,27 @@ async function ejOptimize() {
     //    ALIAS into a false low-frequency lock (huge samples/UI) that would drive
     //    the search the wrong way; starting fast shows the true rate and the
     //    search only slows down for a genuinely slow signal.
+    const knownRate = ej.st && ej.st.records > 0 ? ejResult(ej.st).bitRate : 0;
     ejStatus("optimize: fitting the signal…");
     try { await autoset(); } catch (e) { }
-    ejStepToNearest(5e-8);
+    const sampledSRAM = st && st.band === "sram";
+    await ejStepToNearest(sampledSRAM ? (knownRate > 0 ? 128 / (10 * knownRate) : 2e-6) : 5e-8);
     await ejSleep(500);
     // 2. arm the eye if it isn't already.
     if (!ej.armed) { $("ejArm").click(); await ejSleep(300); }
-    if (!ej.armed) { ejStatus("optimize needs a native/decimated band with a signal"); return; }
+    if (!ej.armed) { ejStatus("optimize needs sampled waveform data with a signal"); return; }
     // 3. 1-D search on samples/UI (monotone in band: faster band → more samples/UI).
     const LO = 12, HI = 32;
     let lastGood = null;
-    for (let step = 0; step < 8; step++) {
+    for (let step = 0; step < (sampledSRAM ? 12 : 8); step++) {
       ejFreshState();
       const spu = await ejWaitLock(4500);
-      if (spu == null) { // this band won't lock — fall back to the last that did
+      if (spu == null) { // short SRAM windows may contain too few transitions
+        if (sampledSRAM) {
+          const prev = st.tdiv_s;
+          if (ejStepTdiv(1)) { await ejSettleBand(prev); continue; }
+        }
+        // Fall back to the last band that locked.
         if (lastGood != null) {
           const prev = st.tdiv_s; send("tdiv", lastGood); await ejSettleBand(prev);
           ejFreshState(); await ejWaitLock(3000);
@@ -386,6 +394,18 @@ async function ejOptimize() {
         return;
       }
       const rate = ejResult(ej.st).bitRate;
+      if (sampledSRAM) {
+        // SRAM timebase changes record length before sample spacing changes.
+        // Capture enough bits for the CDR instead of chasing 12–32 samples/UI.
+        const prev = st.tdiv_s;
+        const target = await ejStepToNearest(128 / (10 * rate));
+        if (Math.abs(target - prev) > prev * 1e-6) await ejSettleBand(prev);
+        ejFreshState();
+        const settled = await ejWaitLock(4500);
+        ejStatus(settled == null ? "no lock after changing the capture span — re-ARM at the previous timebase" :
+          `optimized SRAM · ${settled.toFixed(1)} samp/UI · ${eng(ejResult(ej.st).bitRate, "b/s", 3)}`);
+        return;
+      }
       lastGood = st.tdiv_s;
       if (spu >= LO && spu <= HI) { ejStatus(`optimized · ${spu.toFixed(1)} samp/UI · ${eng(rate, "b/s", 3)}`); return; }
       const dir = spu < LO ? -1 : +1; // too coarse → faster; too fine → slower
@@ -394,7 +414,7 @@ async function ejOptimize() {
       ejStatus(`optimize: ${spu.toFixed(1)} samp/UI → ${dir < 0 ? "faster" : "slower"}…`);
       await ejSettleBand(prev);
     }
-    ejStatus("optimize: converged");
+    ejStatus("optimize: search limit reached — check the lock and capture span");
   } finally {
     // keep the accumulation from the settled band (a fresh wipe here re-locks and
     // catches the last band transition, tripping the ui-inconsistent stop); just
@@ -413,14 +433,15 @@ $("ejOpt").onclick = ejOptimize;
 // TRLC-LINKS: REQ-SDS-201
 $("ejArm").onclick = () => {
   if (ej.armed) { ejStop("stopped"); return; }
-  if (!st || (st.band !== "native-fast" && st.band !== "decimated")) {
-    ejStatus("unsupported band (" + (st ? st.band : "?") + ") — use a native/decimated t/div");
+  if (!st || !["native-fast", "decimated", "sram"].includes(st.band)) {
+    ejStatus("unsupported band (" + (st ? st.band : "?") + ") — select a sampled waveform timebase");
     return;
   }
   if (typeof ejNew !== "function" || typeof decodeBinFrame !== "function") { ejStatus("eyejitter/binframe scripts missing"); return; }
   if (sr.armed) srStop("stopped — eye/jitter armed (one raw consumer)");
   ej.st = ejNew({});
   ej.lastSeq = 0; ej.gen++; ej.fails = 0;
+  ej.rawWaitAt = 0;
   ej.ch = 0; ej.vpc0 = 0; ej.incons = 0;
   ej.armed = true;
   $("ejArm").textContent = "STOP";
@@ -443,7 +464,15 @@ async function ejLoop(gen) {
     ej.fails = 0;
     if (!f.unchanged && f.seq !== ej.lastSeq) {
       ej.lastSeq = f.seq;
-      ejIngest(f);
+      if (f.is_env || f.peak_detect) {
+        ej.rawWaitAt ||= Date.now();
+        if (!st || !st.running || Date.now() - ej.rawWaitAt > 5000)
+          ejStop("sampled waveform required — select NORMAL and RUN, then re-ARM");
+        else ejStatus("waiting for sampled waveform…");
+      } else {
+        ej.rawWaitAt = 0;
+        ejIngest(f);
+      }
     }
     setTimeout(() => ejLoop(gen), 10);
   } catch (e) {

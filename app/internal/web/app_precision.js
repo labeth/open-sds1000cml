@@ -102,14 +102,16 @@ if(typeof document!=="undefined") {
     const out=document.getElementById("precisionFitResult");
     try {
       if(!frame)throw new Error("No capture yet.");
+      if(frame.peak_detect||frame.is_env)throw new Error("Fit requires sampled waveform data; min/max envelopes cannot be fitted.");
       const ch=+document.getElementById("precisionChannel").value, model=document.getElementById("precisionModel").value;
       const sig=ch?frame.c2:frame.c1, m=ch?frame.m2:frame.m1;
       const start=Math.max(0,Math.floor(view.win.a*sig.length)), end=Math.min(sig.length,Math.ceil(view.win.b*sig.length),start+4096);
       const y=Array.from(sig.slice(start,end));
       if(y.some(v=>!Number.isFinite(v)||v<=0||v>=255))throw new Error("Fit requires an unclipped, valid window.");
-      const dt=frame.col_span_s/frame.cols;
+      const dt=frame.sample_s || frame.col_span_s/frame.cols;
       const fit=model==="periodic"?precisionPeriodicFit(y,dt,m&&m.freq):precisionFitSignal(y,dt,m&&m.freq,model);
-      const vpc=(ch?st.vdiv2:st.vdiv1)/25*(ch?st.probe2:st.probe1);
+      const vpc=ch?frame.vpc2:frame.vpc1;
+      if(!(vpc>0))throw new Error("Capture calibration unavailable.");
       const rms=fit.rms*vpc, vpp=2*Math.abs(fit.amplitude)*vpc;
       out.textContent=model+" fit, CH"+(ch+1)+", capture "+frame.seq+": "+eng(fit.hz,"Hz")+", "+eng(vpp,"V")+" pp; residual RMS "+eng(rms,"V")+
         " ("+(100*rms/vpp).toFixed(2)+"% of Vpp). "+(rms>.05*vpp?"Poor model match. ":"")+(model==="periodic"?fit.harmonics+" harmonics removed; residual-equivalent "+Math.log2(256/(Math.sqrt(12)*fit.rms)).toFixed(2)+" bits over the original ADC range. Harmonic distortion excluded; not SINAD ENOB or accuracy. ":"Residual is noise + distortion + timing/model error, not ADC ENOB. ")+"First "+y.length+" visible samples; snapshot only. "+(frame.filter||"");

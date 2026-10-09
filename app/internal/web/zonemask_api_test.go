@@ -58,6 +58,21 @@ func TestZoneMaskAPI(t *testing.T) {
 	if rep["ok"] != true || rep["seq"].(float64) != 42 || rep["fail_code"].(float64) != 99 {
 		t.Fatalf("maskfail: %v", rep)
 	}
+	for _, ch := range []string{"c1", "c2"} {
+		samples, ok := rep[ch].([]any)
+		if !ok || len(samples) != 3 {
+			t.Fatalf("gallery %s must be numeric samples, got %T", ch, rep[ch])
+		}
+		want := 1.0
+		if ch == "c2" {
+			want = 4
+		}
+		for i, value := range samples {
+			if value != want+float64(i) {
+				t.Fatalf("gallery %s: %v", ch, samples)
+			}
+		}
+	}
 	rr = httptest.NewRecorder()
 	mux.ServeHTTP(rr, httptest.NewRequest("GET", "/api/maskfail?i=5", nil))
 	json.Unmarshal(rr.Body.Bytes(), &rep)

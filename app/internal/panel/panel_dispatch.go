@@ -16,11 +16,11 @@ import (
 // lands mid-detent and misreads quadrature). Blocks; run as a goroutine.
 // TRLC-LINKS: REQ-SDS-135
 func (c *Controller) Run(stop <-chan struct{}) {
-	// Push the qualifier shadows to the engine once so the pgTrigQ page and the
-	// engine agree from boot (inert until a non-Edge trigger type is selected).
-	c.eng.SetPulseParams(c.pulseLvl, c.pulseMin, c.pulseMax, c.pulseCond)
-	c.eng.SetSlopeParams(c.slopeLo, c.slopeHi, c.slopeMin, c.slopeMax, c.slopeCond)
-	c.eng.SetVideoParams(c.videoStd, c.videoLine, c.videoNeg)
+	// Adopt the engine's restored setup; starting the panel must not overwrite it.
+	c.mu.Lock()
+	c.adoptQual(c.eng.Snapshot())
+	c.mu.Unlock()
+
 	sigio := make(chan os.Signal, 8)
 	haveSIGIO := false
 	if c.keyFD >= 0 {

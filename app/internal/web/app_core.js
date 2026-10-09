@@ -175,10 +175,13 @@ function applyStatus() {
   $("ets").classList.toggle("on", !!st.ets && st.band !== "sram");
   $("ets").disabled = st.band === "sram";
   $("ets").title = st.band === "sram" ? "Equivalent-time acquisition is unavailable with SRAM capture" : "equivalent-time sampling (≤50 ns)";
+  $("decStream").disabled = st.band === "sram";
+  $("decStream").title = st.band === "sram" ? "Use Stream + trigger above for continuous FPGA decoding and a retained capture" : "Collect decoded capture windows (gaps between records)";
   $("single").classList.toggle("on", !!st.single);
   if (document.activeElement !== $("tpos") && st.trig_pos_frac > 0) $("tpos").value = st.trig_pos_frac;
   $("wedged").style.display = st.wedged ? "inline" : "none";
   if (document.activeElement !== $("ttype")) $("ttype").value = st.trig_type || 0;
+  updateTriggerQualifiers(st.trig_qual);
   updateQualRow();
   if (document.activeElement !== $("acq")) $("acq").value = st.acq_mode || 0;
   updateAcqN();
@@ -430,6 +433,7 @@ async function pollStatus() {
 // ---- controls ----
 // TRLC-LINKS: REQ-SDS-023
 async function send(control, value) {
+  if (autosetBusy && !await autosetDone) return { ok: false };
   try { return await (await fetch("/api/set", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ control, value }) })).json(); }
   catch (e) { return { ok: false }; }
 }
@@ -437,29 +441,39 @@ async function send(control, value) {
 async function autoset() {
   if (autosetBusy) return;
   autosetBusy = true;
+  let finishAutoset, completed = false;
+  autosetDone = new Promise(resolve => { finishAutoset = resolve; });
   const btn = $("autoset"); btn.classList.add("on");
   try {
     // trigger the device autoset (the hard-button path — one implementation)
-    try { await fetch("/api/panel", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ button: "auto" }) }); }
-    catch (e) { return; }
-    // wait for it to converge: a measurable, non-envelope frame whose measured
-    // frequency is stable across two reads (the sweep has settled on the native
-    // band). Bounded so the button always releases.
-    // TRLC-LINKS: REQ-SDS-204
-    const has = m => m && m.vpp > 0.02;
-    // TRLC-LINKS: REQ-SDS-204
-    const meas = () => { const m = frame && (has(frame.m1) ? frame.m1 : (has(frame.m2) ? frame.m2 : null)); return m && !frame.is_env ? m.freq : null; };
-    let prev = null, t0 = Date.now();
-    while (Date.now() - t0 < 9000) {
-      await awaitFrame(() => true, 700);
-      const f = meas();
-      if (f != null && f > 0 && prev != null && Math.abs(f - prev) <= prev * 0.03) break; // stable
-      prev = f;
+    try {
+      const response = await fetch("/api/panel", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ button: "auto" }) });
+      if (!response.ok || !(await response.json()).ok) return;
     }
+    catch (e) { return; }
+    // Stable frequency can be a stale frame while the device is still
+    // sweeping. Wait for the actual panel operation before releasing controls.
+    const t0 = Date.now();
+    let sawBusy = false;
+    while (Date.now() - t0 < 15000) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+      const status = await (await fetch("/api/status")).json();
+      if (status.panel && status.panel.AutosetBusy) sawBusy = true;
+      else if (sawBusy) {
+        st = status;
+        completed = true;
+        break;
+      }
+    }
+    if (!completed) return;
     goHome();
     applyStatus();
+  } catch (e) {
+    // A failed status request must not release queued acquisition commands.
+    completed = false;
   } finally {
     autosetBusy = false;
+    finishAutoset(completed);
     $("autoset").classList.remove("on");
   }
 }

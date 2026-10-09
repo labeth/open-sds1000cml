@@ -101,14 +101,14 @@ export const maskv = [
   // TRLC-LINKS: REQ-SDS-208
   { id: "M9", name: "Switch the trigger source to C2 and back, still acquiring", run: async (op) => {
     await op.autosetStable(1);
-    await op.page.waitForTimeout(700); // let the autoset trigger-source settle before toggling
-    await op.clickExpect("source", async () => await op.page.evaluate(() => document.getElementById("source").textContent.includes("C2")),
-      { why: "trigger-source button must switch to C2" });
+    const initial = (await op.readText("source")).trim();
+    const other = initial.includes("C1") ? "C2" : "C1";
+    await op.clickExpect("source", async () => (await op.readText("source")).includes(other),
+      { why: "trigger-source button switches channels" });
     await op.page.waitForTimeout(1200);
     assert((await op.status()).running, "scope stopped after switching trigger source");
-    await op.page.waitForTimeout(700);
-    await op.clickExpect("source", async () => await op.page.evaluate(() => document.getElementById("source").textContent.includes("C1")),
-      { why: "trigger-source button must switch back to C1" });
+    await op.clickExpect("source", async () => (await op.readText("source")).trim() === initial,
+      { why: "trigger-source button returns to the initial channel" });
   }},
   // TRLC-LINKS: REQ-SDS-208
   { id: "M10", name: "Set a trigger holdoff shorter than the period and stay locked", run: async (op) => {
@@ -135,6 +135,13 @@ export const maskv = [
   }},
   // TRLC-LINKS: REQ-SDS-208
   { id: "M12", name: "Deeper memory depth still yields a measurable trace", run: async (op) => {
+    if (await op.page.locator("#memdepth").isDisabled()) {
+      const label = await op.page.locator("#memdepth option:checked").textContent();
+      assert(/SRAM/.test(label), `disabled memory selector has no SRAM explanation: ${label}`);
+      await op.autosetStable(1);
+      assert(near(await op.waitMeas(1, "Freq"), 2500, 0.12), "fixed SRAM depth retains pulse timing");
+      return;
+    }
     await op.selectExpect("memdepth", await op.page.evaluate(() => {
       const e = document.getElementById("memdepth");
       return e.options[e.options.length - 1].value;

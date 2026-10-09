@@ -6,7 +6,7 @@
 // TRLC-LINKS: REQ-SDS-207
 function decCodes(role) {
   const c = role === 2 ? (frame && frame.c2) : (frame && frame.c1);
-  return c && frame.peak_detect ? pairMidCodes(c) : c;
+  return c;
 }
 
 // renewDecodeLease keeps the engine sending samples, not peak-detect pairs,
@@ -23,31 +23,17 @@ function renewDecodeLease() {
   send("decodeview", 3);
 }
 
-// pairMidCodes gives a peak-detect record ((min, max) per bucket) its bucket
-// midpoint in both slots, same length so span indices still map to the
-// display. Decoding the pairs read a falling edge's bucket as low-high-low, a
-// false start bit at every falling edge. Cached per array.
-// TRLC-LINKS: REQ-SDS-207
-const pairMidMemo = new WeakMap();
-// TRLC-LINKS: REQ-SDS-207
-function pairMidCodes(c) {
-  let out = pairMidMemo.get(c);
-  if (out) return out;
-  out = new Int16Array(c.length);
-  for (let i = 0; i + 1 < c.length; i += 2) {
-    const a = c[i], b = c[i + 1];
-    out[i] = out[i + 1] = a < 0 || b < 0 ? -1 : Math.round((a + b) / 2);
-  }
-  if (c.length & 1) out[c.length - 1] = c[c.length - 1];
-  pairMidMemo.set(c, out);
-  return out;
-}
+// A held trigger or image switch can outlast a frame-driven lease. Keep the
+// request alive while the visible browser is decoding, even without new frames.
+setInterval(() => {
+  if (dcfg.proto !== "off" && !document.hidden && !superseded) renewDecodeLease();
+}, 1000);
 
 // TRLC-LINKS: REQ-SDS-207
 function computeDecode() {
   dcfg.result = null;
-  if (dcfg.proto === "off" || !frame || frame.is_env || !frame.c1) { updateDecodeResults(); return; }
-  renewDecodeLease();
+  if (dcfg.proto !== "off") renewDecodeLease();
+  if (dcfg.proto === "off" || !frame || frame.is_env || frame.peak_detect || !frame.c1) { updateDecodeResults(); return; }
   const colTimeS = frameDtS(frame, frame.c1.length); // dt_s-aware: true baud on the 1-200 ns/div nominal bands
   const cfg = { inverted: !!dcfg.inverted, threshold: dcfg.auto ? null : +$("decThr").value, guard: 4, fmt: dcfg.fmt };
   let r = null;
@@ -159,7 +145,7 @@ function updateDecodeResults() {
   if (dcfg.proto === "off") { card.style.display = "none"; return; }
   card.style.display = "";
   const r = dcfg.result;
-  if (frame && frame.is_env) { $("decodeText").value = "(envelope — lower time/div to decode)"; $("decodeCount").textContent = "raise time/div"; return; }
+  if (frame && (frame.is_env || frame.peak_detect)) { $("decodeText").value = "(waiting for sampled waveform — min/max envelopes cannot be decoded)"; $("decodeCount").textContent = "sampled data required"; return; }
   if (dcfg.stream) { // show the accumulated packet history (newest last), auto-scroll
     const ta = $("decodeText");
     ta.value = dcfg.hist.join("\n");
@@ -285,8 +271,8 @@ async function runAutodetect() {
     for (let t = 0; t < 25 && frame && frame.peak_detect; t++) await new Promise(r => setTimeout(r, 200));
     if (!frame || !frame.c1) { setDetectMsg("no live waveform to analyse", true); return; }
   }
-  const src = frame.peak_detect ? Object.assign({}, frame, { c1: pairMidCodes(frame.c1), c2: frame.c2 && pairMidCodes(frame.c2) }) : frame;
-  const d = autodetect(src, { fmt: dcfg.fmt });
+  if (frame.peak_detect || frame.is_env) { setDetectMsg("Sampled data required — select Normal acquisition and Run before detecting.", true); return; }
+  const d = autodetect(frame, { fmt: dcfg.fmt });
   if (d.proto === "off") {
     const why = d.reason && d.reason !== "no protocol matched" ? d.reason : "show more of the signal (slower t/div) or check the probes";
     setDetectMsg("no protocol matched — " + why, true); return;
@@ -359,10 +345,12 @@ async function runAutodetect() {
   // TRLC-LINKS: REQ-SDS-207
   $("decFmt").onchange = () => { dcfg.fmt = $("decFmt").value; recompute(); }; // hex / ascii / both
   // TRLC-LINKS: REQ-SDS-207
-  $("decStream").onclick = () => {
-    dcfg.stream = !dcfg.stream; $("decStream").classList.toggle("on", dcfg.stream);
+  $("decStream").onclick = async () => {
+    const requested = !dcfg.stream;
+    const result = await send("stream", requested ? 1 : 0);
+    if (!result.ok || !!result.applied !== requested) { setDetectMsg("Capture streaming is unavailable here; use Stream + trigger.", true); return; }
+    dcfg.stream = requested; $("decStream").classList.toggle("on", dcfg.stream);
     dcfg.hist = []; dcfg.lastStreamSeq = 0;
-    fetch("/api/set", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ control: "stream", value: dcfg.stream ? 1 : 0 }) }).catch(() => {});
     updateDecodeResults();
   };
   // TRLC-LINKS: REQ-SDS-207

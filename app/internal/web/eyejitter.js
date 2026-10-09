@@ -210,7 +210,7 @@ function ejFeed(st, sig, n, sampleS) {
 
   // --- eye fold: every sample at phase (t − t0) mod 2UI ---
   const W = st.eyeW, H = st.eyeH;
-  const y0 = st.lo - 8, y1 = st.hi + 8;
+  const y0 = st.eyeY0, y1 = st.eyeY1;
   const yscale = (H - 1) / Math.max(1, y1 - y0);
   const fold = 2 * fit.ui;
   const iLo = Math.max(0, Math.ceil(fit.t0)), iHi = Math.min(n, Math.floor(fit.t0 + (nUI - 1) * fit.ui));

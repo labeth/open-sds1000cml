@@ -13,7 +13,7 @@ func (e *Engine) envelopeAllowed(cfg sramcapture.Config, tp trigParams) bool {
 	case AcqAverage, AcqPrecision, AcqEres:
 		return false
 	}
-	if tp.typ != TrigEdge || e.zoneMode.Load() == ZoneTrigger || e.decodeViewOn() {
+	if tp.typ != TrigEdge || e.zoneMode.Load() == ZoneTrigger || e.decodeViewOn() || e.bodeMode.Load() == BodeOn {
 		return false
 	}
 	if e.serialMode.Load() == SerialTrigger && hardwareSerialName(cfg) == "" {

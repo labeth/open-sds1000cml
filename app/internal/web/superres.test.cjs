@@ -155,6 +155,12 @@ function frame(n, period, shift, noise, amp, harmonics) {
   check("railed frame clipped", srClipped(railed));
 }
 
+// One-cycle gates have no resolved spectral fundamental. Never fit their noise.
+{
+  const mean = Float64Array.from({length:320}, (_,i) => 128 + 40*Math.cos(2*Math.PI*i/320) + .3*Math.sin(i*2.432));
+  check("one-cycle model refuses false GHz noise fit", srModelFit(mean,16,2e-9,peaksLib,6) === null);
+}
+
 // ---- model fit: single sine reconstructed within 1% ----
 {
   const n = 1024, K = 8, period = 128, sampleS = 1e-8;
@@ -666,6 +672,21 @@ function frame(n, period, shift, noise, amp, harmonics) {
   const afterMatch = st.hits;
   srGateFeed(st, sig, sig, { hitCenters: [900], centerR: 30 }); // 900 = flat, not the pattern
   check("evt: non-matching supplied center rejected", st.hits === afterMatch, "hits+=" + (st.hits - afterMatch));
+}
+
+// Long oversampled UART byte: timestamp refinement must retain a small
+// sample offset without searching a whole bit around every occurrence.
+{
+  const N=120000,L=40000, sig=new Float32Array(N).fill(60);
+  const pat=i=>128+45*Math.sin(i*.001)+20*Math.sin(i*.007)+12*Math.sin(i*.0003);
+  for(let i=0;i<L;i++){sig[1000+i]=pat(i);sig[65012+i]=pat(i);}
+  const started=performance.now();
+  const st=srNew(N,2);st.align=0;st.kernel="interp";
+  check("evt long: seed",srSeedRef(st,sig,sig,-1,{lo:1000,hi:1000+L}));
+  const before=st.hits;
+  srGateFeed(st,sig,sig,{hitCenters:[65000],centerR:4340});
+  check("evt long: timestamp refined and byte accumulated",st.hits===before+1);
+  check("evt long: bounded interactive work",performance.now()-started<2000);
 }
 
 if (fails) { console.log(fails + " FAILURES"); process.exit(1); }

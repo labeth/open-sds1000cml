@@ -795,6 +795,18 @@ acquisitionLoop:
 		e.stats.ConditionMs = float64(conditionedAt.Sub(recalledAt)) / float64(time.Millisecond)
 		e.stats.DrainMs = float64(e.clk.Now().Sub(frozenAt)) / float64(time.Millisecond)
 		e.mu.Unlock()
+		// Software qualifiers may reject a capture that froze before the arm
+		// polling loop could consume FORCE. Release that held capture once too.
+		if !replay && e.forceReq.Swap(false) {
+			userForced = true
+		}
+		if userForced {
+			f.Trigd = false
+			f.TriggerKind = "forced"
+		}
+		if !replay && f.Trigd && !f.PeakDetect && e.bodeMode.Load() == BodeOn {
+			e.bodeEval(f, f.Valid, f.SampleS)
+		}
 		publish := qualified || !norm || fullRecall || userForced || maskStop
 		if maskStop {
 			e.maskStopped.Store(true)
@@ -821,7 +833,7 @@ acquisitionLoop:
 				e.pubTimes = e.pubTimes[len(e.pubTimes)-64:]
 			}
 			e.mu.Unlock()
-			if qualified && averageDone && e.singleArmed.Load() && !fullRecall {
+			if (qualified && averageDone || userForced) && e.singleArmed.Load() && !fullRecall {
 				e.singleArmed.Store(false)
 				e.running.Store(false)
 				e.mu.Lock()
@@ -834,9 +846,7 @@ acquisitionLoop:
 			e.stats.Held++
 			e.mu.Unlock()
 		}
-		if qualified {
-			e.sleepBeating(time.Duration(e.holdoffNs.Load()))
-		}
+		e.paceHoldWithFloor(e.clk.Now(), qualified && f.Trigd, 0)
 	}
 }
 

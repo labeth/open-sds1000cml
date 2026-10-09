@@ -97,6 +97,13 @@ func (s *Server) hFrameBin(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusConflict) // 409 — a newer browser claimed the device
 		return
 	}
+	// Raw consumers need chronological samples, not display envelope pairs.
+	// Renew before waiting; a closed analyzer naturally lets the lease expire.
+	if r.URL.Query().Get("raw") == "1" {
+		if sc, ok := s.sc.(interface{ LeaseDecodeView(time.Duration) }); ok {
+			sc.LeaseDecodeView(3 * time.Second)
+		}
+	}
 	var since uint64
 	fmt.Sscanf(r.URL.Query().Get("since"), "%d", &since)
 	cols := screenCols
@@ -215,7 +222,7 @@ func (s *Server) rawBinMsg(since uint64) []byte {
 			return
 		}
 		hdr = frameReply{
-			Seq: f.Seq, EdgeX: f.EdgeX, Ptp: f.Ptp, TdivS: f.TdivS,
+			Seq: f.Seq, EdgeX: f.EdgeX, Ptp: f.Ptp, TdivS: f.TdivS, WinCols: min(f.WinCols, n),
 			DisplayedS: f.DisplayedS, Interp: f.Interp, Norm: f.Norm,
 			Trigd: f.Trigd, Coherent: f.Coherent, IsEnv: f.IsEnv, PeakDetect: f.PeakDetect, CaptureSampleS: captureSampleS(f),
 			Degraded: f.Degraded, // half-capture flag travels with the raw record it describes

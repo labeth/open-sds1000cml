@@ -37,9 +37,63 @@ func drawXY(sf Surface, f *engine.Frame, hud HUD) {
 	DrawText(sf, 10, 10, "X:C1  Y:C2", colDim, 1)
 }
 
-// drawMath overlays the math trace (C1+C2 / C1-C2 / C1×C2) in purple, in code
-// space centred at 128 so it shares the Y-T trace mapping (parity with the web
-// math card).
+// mathScale is the math trace's displayed units per division. Products use
+// four times the product of the channel scales, in V²/div; sums use C1 V/div.
+// TRLC-LINKS: REQ-SDS-021
+func mathScale(hud HUD) float64 {
+	a := hud.C1VdivV * math.Max(hud.Probe1, 1)
+	b := hud.C2VdivV * math.Max(hud.Probe2, 1)
+	if a <= 0 {
+		a = 1
+	}
+	if b <= 0 {
+		b = 1
+	}
+	if hud.MathMode == 4 {
+		return 4 * a * b
+	}
+	return a
+}
+
+// mathCodes combines calibrated input voltages, not offset display codes.
+// The math trace has its own zero at screen centre.
+// TRLC-LINKS: REQ-SDS-021
+func mathCodes(c1, c2 []uint8, hud HUD) []uint8 {
+	scale := mathScale(hud) / 25
+	v1 := hud.C1VdivV * float64(max(hud.Zoom1, 1)) / 25 * math.Max(hud.Probe1, 1)
+	v2 := hud.C2VdivV * float64(max(hud.Zoom2, 1)) / 25 * math.Max(hud.Probe2, 1)
+	if v1 <= 0 {
+		v1 = 1.0 / 25
+	}
+	if v2 <= 0 {
+		v2 = 1.0 / 25
+	}
+	off1, off2 := hud.OffC1V*math.Max(hud.Probe1, 1), hud.OffC2V*math.Max(hud.Probe2, 1)
+	if hud.Cpl1 != 0 {
+		off1 = 0
+	}
+	if hud.Cpl2 != 0 {
+		off2 = 0
+	}
+	m := make([]uint8, min(len(c1), len(c2)))
+	for i := range m {
+		a, b := (float64(c1[i])-128)*v1-off1, (float64(c2[i])-128)*v2-off2
+		var v float64
+		switch hud.MathMode {
+		case 1:
+			v = a + b
+		case 2:
+			v = a - b
+		case 3:
+			v = b - a
+		case 4:
+			v = a * b
+		}
+		m[i] = uint8(math.Round(math.Max(0, math.Min(255, 128+v/scale))))
+	}
+	return m
+}
+
 // TRLC-LINKS: REQ-SDS-021
 func drawMath(sf Surface, f *engine.Frame, hud HUD, win int, xc, posFrac float64) {
 	valid := frameValid(f)
@@ -48,28 +102,13 @@ func drawMath(sf Surface, f *engine.Frame, hud HUD, win int, xc, posFrac float64
 	}
 	c1 := coupledDisplay(f.C1[:valid], hud.Cpl1)
 	c2 := coupledDisplay(f.C2[:valid], hud.Cpl2)
-	m := make([]uint8, valid)
-	for i := 0; i < valid; i++ {
-		a, b := int(c1[i])-128, int(c2[i])-128
-		var v int
-		switch hud.MathMode {
-		case 1:
-			v = 128 + a + b // C1+C2
-		case 2:
-			v = 128 + a - b // C1-C2
-		case 3:
-			v = 128 + b - a // C2-C1
-		default:
-			v = 128 + a*b/96 // C1×C2, scaled to stay on-screen (matches web)
-		}
-		if v < 0 {
-			v = 0
-		} else if v > 255 {
-			v = 255
-		}
-		m[i] = uint8(v)
-	}
+	m := mathCodes(c1, c2, hud)
 	drawTrace(sf, m, win, xc, f.Interp, colMath, posFrac)
+	unit := "V/div"
+	if hud.MathMode == 4 {
+		unit = "V^2/div"
+	}
+	DrawText(sf, 300, 12, "M "+fmt.Sprintf("%.3g %s", mathScale(hud), unit), colMath, 1)
 }
 
 // drawRefs overlays the saved reference waveforms (REF A/B) as dim traces for
@@ -232,7 +271,14 @@ func drawDecode(sf Surface, f *engine.Frame, hud HUD, win int, xc, posFrac float
 			label += " " + res.Src
 		}
 	}
-	DrawText(sf, 10, yLbl, fmt.Sprintf("%s  %d bytes", label, len(res.Bytes)), colDim, 1)
+	unit := "bytes"
+	switch res.Proto {
+	case "mil1553", "arinc429", "manchester":
+		unit = "words"
+	case "sent":
+		unit = "nibbles"
+	}
+	DrawText(sf, 10, yLbl, fmt.Sprintf("%s  %d %s", label, len(res.Bytes), unit), colDim, 1)
 	// Map a sample index to screen x via the same window the trace uses.
 	left := xc - float64(win)*posFrac
 	sx := func(s float64) int { return int((s - left) * float64(W) / float64(win)) }

@@ -185,7 +185,7 @@ func (s *Server) hMaskFail(w http.ResponseWriter, r *http.Request) {
 		"fail_col": f.FailCol, "fail_code": f.FailCode, "fail_sample": f.FailSample,
 		"edge_x": f.EdgeX, "sample_s": f.SampleS, "valid": f.Valid, "win_cols": f.WinCols,
 		"vpc1": vpc[0], "vpc2": vpc[1], "off1_v": off[0], "off2_v": off[1],
-		"c1": f.C1, "c2": f.C2,
+		"c1": rawInt16(f.C1), "c2": rawInt16(f.C2),
 	})
 }
 

@@ -137,7 +137,7 @@ func (c *Controller) srSeedAndStart() bool {
 	var edgeX, sampleS float64
 	var cols, winCols int
 	c.frameFn(func(f *engine.Frame) {
-		if f == nil || f.IsEnv {
+		if f == nil || f.IsEnv || f.PeakDetect {
 			return
 		}
 		v := f.Valid
@@ -156,7 +156,7 @@ func (c *Controller) srSeedAndStart() bool {
 		}
 	})
 	if c1 == nil {
-		c.srSetStatus("no frame - can't arm")
+		c.srSetStatus("sampled frame required - use FPGA or a faster timebase")
 		return false
 	}
 	c.mu.Lock()
@@ -277,54 +277,20 @@ func (c *Controller) srSetStatus(s string) {
 	c.mu.Unlock()
 }
 
-// srCompMeans de-embeds the measured analog falloff from the crunched review
-// means — the SAME curve and gating the web applies when it builds its review
-// frame (app_superres.js srMakeViewFrame + superres_comp.js): the auto target
-// sized by THIS stack's measured bit budget at the web's default spend (0.8),
-// applied per channel on the fine grid dt = SampleS/K, so every review view
-// (Y-T/FFT/X-Y) inherits the recovered bandwidth. Compensate itself preserves
-// the −1 gap sentinels and returns the input untouched when the gates say no
-// (dt ≤ 0, < 8 bins, all-gap) — identical to the JS. Runs on the stacker
-// goroutine, off the render lock.
-// TRLC-LINKS: REQ-SDS-140
-func srCompMeans(st *superres.Stack, res superres.Result) (mean, mean2 []float32) {
-	mean, mean2 = res.Mean, res.Mean2
-	k := st.K
-	if k < 1 {
-		k = 1
-	}
-	dt := st.SampleS / float64(k)
-	if !(dt > 0) { // web gate: comp applies only with a real fine-grid dt
-		return
-	}
-	rawNyq := 250e6 // web fallback (dt > 0 ⇒ SampleS > 0, so normally taken)
-	if st.SampleS > 0 {
-		rawNyq = 1 / (2 * st.SampleS)
-	}
-	o := superres.CompAuto(res.BitsGained, rawNyq, 0.8)
-	if mean != nil {
-		mean = superres.Compensate(mean, dt, o)
-	}
-	if mean2 != nil {
-		mean2 = superres.Compensate(mean2, dt, o)
-	}
-	return
-}
-
 // srReachReview crunches the final mean and switches to the review view. Called
 // from srLoop when a stop target is hit or the geometry changes.
 // TRLC-LINKS: REQ-SDS-140
 func (c *Controller) srReachReview(st *superres.Stack, status string) {
 	c.mu.Lock()
-	current := c.srActive && c.srStack == st
+	current := c.srActive && !c.srFPGABusy && c.srStack == st
 	c.mu.Unlock()
 	if !current {
 		return
 	}
 	full := st.Result(false, 1)
-	mean, mean2 := srCompMeans(st, full)
+	mean, mean2 := full.Mean, full.Mean2
 	c.mu.Lock()
-	if !c.srActive || c.srStack != st {
+	if !c.srActive || c.srFPGABusy || c.srStack != st {
 		c.mu.Unlock()
 		return
 	}
@@ -363,7 +329,7 @@ func (c *Controller) srLoop(stop chan struct{}, st *superres.Stack) {
 		// Reset request (Reset softkey) — done here so only this goroutine touches
 		// the Stack. Clears the accumulation, keeps the locked reference.
 		c.mu.Lock()
-		if !c.srActive || c.srStack != st {
+		if !c.srActive || c.srFPGABusy || c.srStack != st {
 			c.mu.Unlock()
 			return
 		}
@@ -388,8 +354,13 @@ func (c *Controller) srLoop(stop chan struct{}, st *superres.Stack) {
 		var seq uint64
 		var cols int
 		var sampleS float64
+		var envelope bool
 		c.frameFn(func(f *engine.Frame) {
-			if f == nil || f.IsEnv || f.Seq == lastSeq {
+			if f != nil && (f.IsEnv || f.PeakDetect) {
+				envelope = true
+				return
+			}
+			if f == nil || f.Seq == lastSeq {
 				return
 			}
 			v := f.Valid
@@ -407,6 +378,11 @@ func (c *Controller) srLoop(stop chan struct{}, st *superres.Stack) {
 				c2 = c1
 			}
 		})
+		if envelope {
+			c.srReachReview(st, "sampled frame required - stack kept")
+			reached = true
+			continue
+		}
 		if c1 == nil {
 			continue // no new frame yet
 		}
@@ -426,7 +402,7 @@ func (c *Controller) srLoop(stop chan struct{}, st *superres.Stack) {
 		st.Feed(c1, c2, edgeX)
 		res := st.Result(true, 0) // stats-only: cheap, for status + stop
 		c.mu.Lock()
-		if !c.srActive || c.srStack != st {
+		if !c.srActive || c.srFPGABusy || c.srStack != st {
 			c.mu.Unlock()
 			return
 		}
@@ -445,9 +421,9 @@ func (c *Controller) srLoop(stop chan struct{}, st *superres.Stack) {
 		c.mu.Unlock()
 		if review && time.Since(lastMean) > 400*time.Millisecond {
 			full := st.Result(false, 1)
-			mean, mean2 := srCompMeans(st, full) // falloff comp, exactly like the web review
+			mean, mean2 := full.Mean, full.Mean2 // raw mean, matching the browser default
 			c.mu.Lock()
-			if !c.srActive || c.srStack != st {
+			if !c.srActive || c.srFPGABusy || c.srStack != st {
 				c.mu.Unlock()
 				return
 			}

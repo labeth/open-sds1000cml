@@ -244,8 +244,8 @@ func DecodeUART(codes []uint8, colTimeS float64, cfg UARTCfg) Result {
 					}
 					pfx = "!"
 				}
-				spans = append(spans, Span{start, i1, pfx + FmtByte(val, cfg.Format), kind, val})
-				toks = append(toks, pfx+FmtByte(val, cfg.Format))
+				spans = append(spans, Span{start, i1, pfx + FmtWord(val, bits, cfg.Format), kind, val})
+				toks = append(toks, pfx+FmtWord(val, bits, cfg.Format))
 				bytes = append(bytes, val)
 				i = int(math.Round(float64(start)+float64(bits+1+pc)*spb)) + 1
 				continue

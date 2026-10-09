@@ -62,7 +62,7 @@ function srEtsInit(f, fref, dt) {
 // TRLC-LINKS: REQ-SDS-019
 function srEtsIngest(f) {
   const alignSig = sr.alignCh === 1 ? f.c2 : f.c1;
-  if (!alignSig || f.is_env || f.peak_detect) { srStop("band unsupported for ETS — use a native/decimated t/div"); return; }
+  if (!alignSig || f.is_env || f.peak_detect) { srStop("band unsupported for ETS — select a sampled waveform timebase"); return; }
   const dt = f.sample_s;
   if (!(dt > 0)) { srStop("no sample interval on the raw feed"); return; }
   if (!sr.etsSt) {
@@ -143,7 +143,7 @@ function srEvtDecode(sig, sampleS, target) {
 // TRLC-LINKS: REQ-SDS-019
 function srEvtIngest(f) {
   const alignSig = sr.alignCh === 1 ? f.c2 : f.c1;
-  if (!alignSig || f.is_env || f.peak_detect) { srStop("band unsupported for decode-trig — use a native/decimated t/div"); return; }
+  if (!alignSig || f.is_env || f.peak_detect) { srStop("band unsupported for decode-trig — select a sampled waveform timebase"); return; }
   const dt = f.sample_s;
   if (!(dt > 0)) { srStop("no sample interval on the raw feed"); return; }
   if (!(sr.evtByte >= 0)) { srStop("decode-trig: enter a target byte (e.g. 48 or H)"); return; }
@@ -307,7 +307,15 @@ async function srLoop(gen) {
     srFails = 0;
     if (!f.unchanged && f.seq !== sr.lastSeq) {
       sr.lastSeq = f.seq;
-      srIngest(f);
+      if (f.is_env || f.peak_detect) {
+        sr.rawWaitAt ||= Date.now();
+        if (!st || !st.running || Date.now() - sr.rawWaitAt > 5000)
+          srStop("sampled waveform required — select NORMAL and RUN, then re-ARM");
+        else srStatus("waiting for sampled waveform…");
+      } else {
+        sr.rawWaitAt = 0;
+        srIngest(f);
+      }
     }
     setTimeout(() => srLoop(gen), 10);
   } catch (e) {
@@ -322,8 +330,8 @@ async function srLoop(gen) {
 // TRLC-LINKS: REQ-SDS-019
 $("srArm").onclick = () => {
   if (sr.armed) { srStop("stopped"); return; }
-  if (!st || (st.band !== "native-fast" && st.band !== "decimated")) {
-    srStatus("unsupported band (" + (st ? st.band : "?") + ") — use a native or decimated t/div");
+  if (!st || !["native-fast", "decimated", "sram"].includes(st.band)) {
+    srStatus("unsupported band (" + (st ? st.band : "?") + ") — select a sampled waveform timebase");
     return;
   }
   if (typeof decodeBinFrame !== "function" || typeof srNew !== "function") {
@@ -332,6 +340,7 @@ $("srArm").onclick = () => {
   }
   if (typeof ej !== "undefined" && ej.armed) ejStop("stopped — superres armed (one raw consumer)");
   sr.st = null; sr.etsSt = null; sr.etsDetect = null; sr.meta = null; sr.lastSeq = 0; sr.savedWin = null;
+  sr.rawWaitAt = 0;
   sr.stopMode = $("srStopMode").value;
   sr.stopVal = +$("srStopVal").value || 0;
   sr.lastBits = 0;
@@ -594,7 +603,7 @@ $("srFit").onclick = () => {
   const am = res.mean; // res.mean IS the align channel's stack
   const ac = sr.st.c[sr.st.align];
   const fit = srModelFit(am, sr.st.K, sr.st.sampleS, { spectrum, detectPeaks }, 6);
-  if (!fit) { srStatus("model fit failed (need a fuller stack)"); return; }
+  if (!fit) { srStatus("model fit needs a filled gate with several cycles — widen the gate and re-ARM"); return; }
   refs.B = {
     c1: Array.from(fit.synth(Math.min(am.length, 16384))),
     c2: null, vpc1: ac.vpc, vpc2: 1 / 25, off1: ac.offV, off2: 0, show: true,

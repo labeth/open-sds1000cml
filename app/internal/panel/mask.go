@@ -61,6 +61,8 @@ func (c *Controller) maskBuildRun(n, tolT, tolV, ch int, posFrac float64) {
 	}
 	var lo, hi []uint8
 	win, got := 0, 0
+	var sampleS, tdivS float64
+	var peak bool
 	var lastSeq uint64
 	for tries := 0; got < n && tries < n*20; tries++ {
 		time.Sleep(60 * time.Millisecond)
@@ -85,16 +87,17 @@ func (c *Controller) maskBuildRun(n, tolT, tolV, ch int, posFrac float64) {
 			if w <= 0 || w > valid {
 				w = valid
 			}
-			if win == 0 {
+			if win != w || sampleS != f.SampleS || tdivS != f.TdivS || peak != f.PeakDetect {
+				// A stopped full record can precede the first live preview.
+				// Start a new envelope when acquisition geometry changes.
+				got = 0
+				sampleS, tdivS, peak = f.SampleS, f.TdivS, f.PeakDetect
 				win = w
 				lo = make([]uint8, win)
 				hi = make([]uint8, win)
 				for j := range lo {
 					lo[j] = 255
 				}
-			}
-			if w != win {
-				return // band changed mid-build: skip the frame
 			}
 			left := int(math.Round(f.EdgeX - float64(win)*posFrac))
 			for j := 0; j < win; j++ {

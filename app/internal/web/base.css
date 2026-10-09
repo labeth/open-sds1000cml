@@ -121,7 +121,7 @@
             border-top: 1px dashed var(--edge); padding-top: 8px; }
   .panel2 input[type=number] { background: var(--ctrl); color: var(--text);
             border: 1px solid var(--edge); border-radius: 4px; padding: 3px 5px; }
-  .decrow { display: flex; align-items: center; gap: 5px; margin-top: 6px; }
+  .decrow { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; margin-top: 6px; }
   .decrow input[type="range"].grow { width: 0; min-width: 0; }
   .rolesel, .dsel { background: var(--well); color: var(--text); border: 1px solid var(--edge2);
             border-radius: 4px; padding: 2px 4px; font-size: 12px; }

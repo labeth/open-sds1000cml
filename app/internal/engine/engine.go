@@ -928,6 +928,9 @@ func (e *Engine) decodeViewOn() bool {
 // span, widths and times in ns, conditions any/<min/>max/in), so every
 // surface shows and edits the values the engine uses.
 type TrigQual struct {
+	VideoStd   int     `json:"video_std"`
+	VideoLine  int     `json:"video_line"`
+	VideoNeg   bool    `json:"video_neg"`
 	PulseLvl   float64 `json:"pulse_lvl"`
 	PulseMinNs float64 `json:"pulse_min_ns"`
 	PulseMaxNs float64 `json:"pulse_max_ns"`
@@ -942,5 +945,5 @@ type TrigQual struct {
 // qualOf is the reported view of trigger parameters.
 // TRLC-LINKS: REQ-SDS-127
 func qualOf(p trigParams) TrigQual {
-	return TrigQual{p.pulseLvlFrac, p.pulseWMinNs, p.pulseWMaxNs, p.pulseCond, p.slopeLoFrac, p.slopeHiFrac, p.slopeTMinNs, p.slopeTMaxNs, p.slopeCond}
+	return TrigQual{VideoStd: p.videoStd, VideoLine: p.videoLine, VideoNeg: p.videoNeg, PulseLvl: p.pulseLvlFrac, PulseMinNs: p.pulseWMinNs, PulseMaxNs: p.pulseWMaxNs, PulseCond: p.pulseCond, SlopeLo: p.slopeLoFrac, SlopeHi: p.slopeHiFrac, SlopeMinNs: p.slopeTMinNs, SlopeMaxNs: p.slopeTMaxNs, SlopeCond: p.slopeCond}
 }

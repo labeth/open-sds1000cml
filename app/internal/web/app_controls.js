@@ -5,10 +5,10 @@
 "use strict";
 $("autoset").onclick = autoset;
 // TRLC-LINKS: REQ-SDS-204
-$("run").onclick = () => { const on = !(st && st.running); send("run", on ? 1 : 0); if (st) { st.running = on; applyStatus(); } };
+$("run").onclick = async () => { if (autosetBusy && !await autosetDone) return; const on = !(st && st.running); const r = await send("run", on ? 1 : 0); if (r.ok && st) { st.running = on; applyStatus(); } };
 // TRLC-LINKS: REQ-SDS-204
-$("single").onclick = () => {
-  send("single", 1);
+$("single").onclick = async () => {
+  if (!(await send("single", 1)).ok) return;
   if (st) { st.norm = st.running = st.single = true; applyStatus(); }
   // A one-shot self-stops on capture. Poll fast until it does so the RUN button
   // — which toggles off st.running — sees the stop immediately; otherwise a
@@ -66,8 +66,18 @@ $("lvl").onchange = () => { lvlDragging = false; send("triglevelcode", trigCodeF
 // TRLC-LINKS: REQ-SDS-204
 $("ttype").onchange = () => { send("trigtype", +$("ttype").value); if (st) st.trig_type = +$("ttype").value; updateQualRow(); };
 // TRLC-LINKS: REQ-SDS-023
-async function sendParams(control, extra) {
-  try { await fetch("/api/set", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(Object.assign({ control, value: 0 }, extra)) }); } catch (e) {}
+let qualifierQueue = Promise.resolve(), qualifierPending = 0;
+// TRLC-LINKS: REQ-SDS-023
+function sendParams(control, extra) {
+  const body = JSON.stringify(Object.assign({ control, value: 0 }, extra));
+  qualifierPending++;
+  // Each edit contains the entire qualifier group. Preserve edit order so an
+  // earlier request cannot overwrite the last condition/limit the user chose.
+  const request = qualifierQueue.then(() => fetch("/api/set", {
+    method: "POST", headers: { "Content-Type": "application/json" }, body,
+  })).catch(() => {}).finally(() => { qualifierPending--; });
+  qualifierQueue = request;
+  return request;
 }
 for (const id of ["p-lvl", "p-min", "p-max", "p-cond"]) $(id).onchange = sendPulse;
 for (const id of ["s-lo", "s-hi", "s-min", "s-max", "s-cond"]) $(id).onchange = sendSlope;
@@ -201,3 +211,18 @@ $("dock").addEventListener("click", ev => {
 
 // TRLC-LINKS: REQ-SDS-204
 $("precisionRate").onchange = () => send("precisionrate", +$("precisionRate").value);
+
+// Report the engine's qualifier settings after native edits and setup restore.
+// TRLC-LINKS: REQ-SDS-011, REQ-SDS-072
+function updateTriggerQualifiers(q) {
+  if (qualifierPending || !q || !(q.pulse_lvl > 0)) return;
+  const values = {
+    'p-lvl': q.pulse_lvl * 100, 'p-min': q.pulse_min_ns / 1000, 'p-max': q.pulse_max_ns / 1000, 'p-cond': q.pulse_cond,
+    's-lo': q.slope_lo * 100, 's-hi': q.slope_hi * 100, 's-min': q.slope_min_ns / 1000, 's-max': q.slope_max_ns / 1000, 's-cond': q.slope_cond,
+    'v-std': q.video_std, 'v-line': q.video_line, 'v-neg': q.video_neg == null ? NaN : +q.video_neg,
+  };
+  for (const [id, value] of Object.entries(values)) {
+    const el = $(id);
+    if (el && document.activeElement !== el && Number.isFinite(value)) el.value = value;
+  }
+}

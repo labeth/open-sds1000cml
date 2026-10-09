@@ -1,0 +1,9 @@
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
+const c={};vm.createContext(c);vm.runInContext(fs.readFileSync('decode.js','utf8')+'\n'+fs.readFileSync('decode_manchester.js','utf8'),c);
+assert.equal(c.fmtWord(0x148,9,'hex'),'148');assert.equal(c.fmtWord(0x148,9,'ascii'),'.');assert.equal(c.fmtWord(0x0ff0,16,'hex'),'0FF0');
+const wave=Array(240).fill(210);for(const v of [0x1234,0x5678])for(let b=15;b>=0;b--){const one=(v>>b)&1;wave.push(...Array(20).fill(one?40:210),...Array(20).fill(one?210:40));}wave.push(...Array(240).fill(210));
+const result=c.decodeManchester(wave,1e-6,{bitrate:25000,ieee:true,msb:true,bits:16,fmt:'hex'});
+assert.ok(result.ok);assert.match(result.text,/1234 5678/);
+const u=Array(160).fill(210);for(const v of [0x148,0x155]){u.push(...Array(40).fill(40));for(let b=0;b<9;b++)u.push(...Array(40).fill((v>>b)&1?210:40));u.push(...Array(80).fill(210));}u.push(...Array(160).fill(210));
+const uart=c.decodeUART(u,1e-6,{baud:25000,bits:9,parity:'none',fmt:'hex'});assert.ok(uart.ok);assert.match(uart.text,/148 155/);
+console.log('ALL PASS');

@@ -363,7 +363,11 @@ func (h *Handler) execGlobal(head, arg string) []byte {
 		}
 		return nil
 	case "ACQW?":
-		return h.reply("ACQW", [...]string{"SAMPLING", "AVERAGE", "ERES", "PEAK_DETECT"}[st.AcqMode&3])
+		modes := [...]string{"SAMPLING", "AVERAGE", "ERES", "PEAK_DETECT", "PRECISION"}
+		if st.AcqMode < 0 || st.AcqMode >= len(modes) {
+			return errTok(errOutOfRange)
+		}
+		return h.reply("ACQW", modes[st.AcqMode])
 	case "AVGA":
 		n, err := strconv.Atoi(arg)
 		if err != nil || n < 1 || n > 256 {
@@ -408,7 +412,13 @@ func (h *Handler) execGlobal(head, arg string) []byte {
 		if h.shot == nil {
 			return errTok(errUndefined)
 		}
-		return h.shot()
+		// Rendering reads display state through Inverted(), which takes mu.
+		// External callbacks must run outside the command-state lock.
+		return func() []byte {
+			h.mu.Unlock()
+			defer h.mu.Lock()
+			return h.shot()
+		}()
 	case "XYDS":
 		// X-Y display: the state lives in the panel controller (DISPLAY menu
 		// "View") — wire set/query there so the LCD and SCPI agree. Without

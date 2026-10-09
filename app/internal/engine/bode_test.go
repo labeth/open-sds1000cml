@@ -177,3 +177,27 @@ func TestBodeAccumulationBinsByFrequency(t *testing.T) {
 		t.Errorf("re-visiting 5 MHz should update, not add a bin (now %d)", len(e.BodePoints()))
 	}
 }
+
+// TRLC-LINKS: REQ-SDS-066
+func TestBodeUsesChannelAndProbeScales(t *testing.T) {
+	e, _ := newTestEngine(t, newFakeBus())
+	const n, dt = 4096, 2e-9
+	f := &Frame{C1: synthSine(n, 5e6, dt, 90, 128, 0), C2: synthSine(n, 5e6, dt, 45, 128, 0), Valid: n, SampleS: dt}
+	e.SetChannelVdiv(0, 1, 0, 0)
+	e.SetChannelVdiv(1, 2, 0, 0)
+	e.SetBodeMode(true, 0, 1)
+	e.bodeEval(f, n, dt)
+	if p := e.BodePoints(); len(p) != 1 || math.Abs(p[0].GainDB) > .3 {
+		t.Fatalf("unequal scales: %+v", p)
+	}
+	e.SetBodeScaleSource(func(ch int) float64 {
+		if ch == 0 {
+			return 10
+		}
+		return 2
+	})
+	e.bodeEval(f, n, dt)
+	if p := e.BodePoints(); len(p) != 1 || math.Abs(p[0].GainDB+20) > .3 {
+		t.Fatalf("probe scales: %+v", p)
+	}
+}

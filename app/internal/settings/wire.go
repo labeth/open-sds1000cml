@@ -70,15 +70,16 @@ func Collect(eng Engine, fe Analog, pc Panel) Settings {
 		st := eng.Snapshot()
 		s.TdivS = st.TdivS
 		s.Trigger = Trigger{
-			LevelCode: int(st.TrigCode),
-			Rising:    st.TrigRising,
-			Source:    st.TrigSource,
-			Type:      st.TrigType,
-			Norm:      st.Norm,
-			HoldoffS:  st.HoldoffS,
-			PosFrac:   st.TrigPosFrac,
+			Qualifiers: st.TrigQual,
+			LevelCode:  int(st.TrigCode),
+			Rising:     st.TrigRising,
+			Source:     st.TrigSource,
+			Type:       st.TrigType,
+			Norm:       st.Norm,
+			HoldoffS:   st.HoldoffS,
+			PosFrac:    st.TrigPosFrac,
 		}
-		s.Acq = Acq{Mode: st.AcqMode, AvgCount: st.AvgCount, EresLen: st.EresLen}
+		s.Acq = Acq{Mode: st.AcqMode, AvgCount: st.AvgCount, EresLen: st.EresLen, PrecisionRateHz: st.PrecisionRateHz}
 		if md, ok := eng.(interface{ MemDepth() int }); ok {
 			s.Acq.MemDepth = md.MemDepth()
 		}
@@ -145,6 +146,24 @@ func Apply(s Settings, eng Engine, fe Analog, pc Panel, logf func(string, ...any
 		}
 		if finite(s.Trigger.HoldoffS) {
 			eng.SetHoldoff(s.Trigger.HoldoffS) // clamps [0, 10] s
+		}
+		if rate, ok := eng.(interface{ SetPrecisionRate(float64) float64 }); ok && finite(s.Acq.PrecisionRateHz) && s.Acq.PrecisionRateHz > 0 {
+			rate.SetPrecisionRate(s.Acq.PrecisionRateHz)
+		}
+		// A missing qualifier block in older settings has PulseLvl=0.
+		q := s.Trigger.Qualifiers
+		if qe, ok := eng.(interface {
+			SetPulseParams(float64, float64, float64, int)
+			SetSlopeParams(float64, float64, float64, float64, int)
+			SetVideoParams(int, int, bool)
+		}); ok && q.PulseLvl > 0 {
+			if finite(q.PulseLvl) && finite(q.PulseMinNs) && finite(q.PulseMaxNs) && q.PulseMinNs >= 0 && q.PulseMaxNs >= 0 {
+				qe.SetPulseParams(q.PulseLvl, q.PulseMinNs, q.PulseMaxNs, q.PulseCond)
+			}
+			if finite(q.SlopeLo) && finite(q.SlopeHi) && finite(q.SlopeMinNs) && finite(q.SlopeMaxNs) && q.SlopeMinNs >= 0 && q.SlopeMaxNs >= 0 {
+				qe.SetSlopeParams(q.SlopeLo, q.SlopeHi, q.SlopeMinNs, q.SlopeMaxNs, q.SlopeCond)
+			}
+			qe.SetVideoParams(q.VideoStd, q.VideoLine, q.VideoNeg)
 		}
 		eng.SetAcqMode(s.Acq.Mode) // clamps to normal on out-of-range
 		if s.Acq.AvgCount > 0 {

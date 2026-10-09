@@ -85,21 +85,8 @@ func (e *Engine) BeginDecodedStream(ctx context.Context, p SerialParams, trig St
 	if err != nil {
 		return sramcapture.RecordIdentity{}, err
 	}
-	id, err := e.BeginDecodedCapture(ctx, cfgValue.(sramcapture.Config))
-	if err != nil {
-		return id, err
-	}
-	// The worker builds the transcript (ADR-STREAM-LINES-IN-WORKER); without a
-	// worker the events flow as before.
-	_, err = e.decodedCall(ctx, func() (any, error) {
-		if err := e.decodedIdentity(id); err != nil {
-			return nil, err
-		}
-		ok, err := e.sram.SetDecodedLineMode(p.Proto)
-		e.decodedLines = ok && err == nil
-		return nil, err
-	})
-	return id, err
+	// Install worker transcript mode in the same owner call that starts capture.
+	return e.beginDecodedCapture(ctx, cfgValue.(sramcapture.Config), p.Proto)
 }
 
 // ReadDecodedLines fetches transcript lines the worker built, from absolute

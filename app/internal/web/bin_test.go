@@ -300,7 +300,7 @@ func TestBinFrameRawShape(t *testing.T) {
 	if flags&binRaw == 0 || flags&binUnchanged != 0 {
 		t.Fatalf("flags = %#x, want raw", flags)
 	}
-	if rep.Cols != n || rep.SampleS != 1e-8 || rep.EdgeX != 123.625 || !rep.Trigd {
+	if rep.WinCols != 200 || rep.Cols != n || rep.SampleS != 1e-8 || rep.EdgeX != 123.625 || !rep.Trigd {
 		t.Fatalf("raw header: cols=%d sample_s=%v edge_x=%v trigd=%v", rep.Cols, rep.SampleS, rep.EdgeX, rep.Trigd)
 	}
 	if !rep.Degraded {
@@ -326,5 +326,27 @@ func TestBinFrameRawShape(t *testing.T) {
 	rep2, flags2, pay2 := getBin(t, s, "/api/frame.bin?since=31&raw=1")
 	if !rep2.Unchanged || flags2&binUnchanged == 0 || len(pay2) != 0 {
 		t.Fatalf("raw unchanged: %+v flags=%#x pay=%d", rep2, flags2, len(pay2))
+	}
+}
+
+type rawLeaseScope struct {
+	*fakeScope
+	lease time.Duration
+}
+
+// TRLC-LINKS: REQ-SDS-010, REQ-SDS-019, REQ-SDS-067
+func (s *rawLeaseScope) LeaseDecodeView(d time.Duration) { s.lease = d }
+
+// TRLC-LINKS: REQ-SDS-010, REQ-SDS-019, REQ-SDS-067
+func TestRawFeedRequestsChronologicalSamples(t *testing.T) {
+	sc := &rawLeaseScope{fakeScope: &fakeScope{}}
+	s := New(sc, nil, nil, nil)
+	getBin(t, s, "/api/frame.bin")
+	if sc.lease != 0 {
+		t.Fatal("display requested raw acquisition")
+	}
+	getBin(t, s, "/api/frame.bin?raw=1")
+	if sc.lease != 3*time.Second {
+		t.Fatalf("raw lease = %v", sc.lease)
 	}
 }

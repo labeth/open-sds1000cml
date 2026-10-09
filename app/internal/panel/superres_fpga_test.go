@@ -82,6 +82,12 @@ func TestSuperresFPGARun(t *testing.T) {
 		!strings.HasPrefix(sv.Status, "FPGA 20 rec 8 hits") || !strings.HasSuffix(sv.Status, "bus/64") {
 		t.Fatalf("review %+v", sv)
 	}
+	want := c.srStack.Result(false, 1)
+	for i, v := range want.Mean {
+		if sv.Mean[i] != v {
+			t.Fatalf("FPGA mean altered at %d: %g != %g", i, sv.Mean[i], v)
+		}
+	}
 	if sv.Mean[0] < 99 || sv.Mean[0] > 101 {
 		t.Fatalf("mean %v", sv.Mean[:4])
 	}

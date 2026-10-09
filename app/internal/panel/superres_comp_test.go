@@ -2,76 +2,32 @@
 package panel
 
 import (
-	"math"
+	"reflect"
 	"testing"
 
+	"open-sds/app/internal/engine"
 	"open-sds/app/internal/superres"
 )
 
-// The device review path must hand the LCD falloff-COMPENSATED means (web
-// parity: srMakeViewFrame applies srCompensate to both channels before any
-// view consumes them). Pin the wrapper's gating and per-channel application;
-// the compensation math itself is pinned cross-engine in
-// internal/superres/comp_jsparity_test.go.
+// Native review must show the accumulated mean without implicit deconvolution.
+// Bandwidth compensation is an explicit browser option, not a default filter.
 // TRLC-LINKS: REQ-SDS-140
-func TestSRCompMeansAppliesFalloffComp(t *testing.T) {
-	st := superres.New(256, 16)
-	st.SampleS = 2e-9 // raw 500 MSa/s → fine dt 0.125 ns
-	dt := st.SampleS / float64(st.K)
-	nb := 256 * 16
-	tone := func(phase float64) []float32 {
-		m := make([]float32, nb)
-		att := superres.CompCalH(40e6) // what the analog chain did to a 40 MHz tone
-		for i := range m {
-			m[i] = float32(128 + 50*att*math.Sin(2*math.Pi*40e6*float64(i)*dt+phase))
-		}
-		return m
+func TestNativeStackReviewPreservesAccumulatedMean(t *testing.T) {
+	c, _, _ := newC(t)
+	st := superres.New(32, 8)
+	st.SampleS = 2e-9
+	sig := make([]uint8, 32)
+	for i := range sig {
+		sig[i] = uint8(60 + i*4)
 	}
-	mean, mean2 := tone(0), tone(1.1)
-	for i := 300; i < 340; i++ {
-		mean[i] = -1 // a gap band survives the comp untouched
+	for i := 0; i < 20; i++ {
+		st.Feed(sig, sig, 16+float64(i)*.02)
 	}
-	res := superres.Result{Mean: mean, Mean2: mean2, BitsGained: 2.3}
-
-	cm, cm2 := srCompMeans(st, res)
-	if &cm[0] == &mean[0] || &cm2[0] == &mean2[0] {
-		t.Fatal("compensation did not run (input slices returned)")
-	}
-	amp := func(m []float32) float64 {
-		lo, hi := math.Inf(1), math.Inf(-1)
-		for _, v := range m {
-			if v < 0 {
-				continue
-			}
-			lo, hi = math.Min(lo, float64(v)), math.Max(hi, float64(v))
-		}
-		return (hi - lo) / 2
-	}
-	// The in-band 40 MHz tone must be boosted back toward its true 50-code
-	// amplitude on BOTH channels (chain attenuation ≈ 0.42×).
-	if a := amp(cm); a < 40 {
-		t.Errorf("align channel not compensated: amplitude %.1f, want ≈ 50", a)
-	}
-	if a := amp(cm2); a < 40 {
-		t.Errorf("other channel not compensated: amplitude %.1f, want ≈ 50", a)
-	}
-	for i := 300; i < 340; i++ {
-		if cm[i] != -1 {
-			t.Fatalf("gap sentinel lost at %d: %g", i, cm[i])
-		}
-	}
-
-	// Gate: no sample interval (SampleS 0) → means pass through untouched.
-	st0 := superres.New(256, 16)
-	pm, pm2 := srCompMeans(st0, res)
-	if &pm[0] != &mean[0] || &pm2[0] != &mean2[0] {
-		t.Error("dt=0 stack must return the uncompensated means unchanged")
-	}
-
-	// Nil means (stats-only crunch) stay nil.
-	nm, nm2 := srCompMeans(st, superres.Result{})
-	if nm != nil || nm2 != nil {
-		t.Error("nil means must stay nil")
+	want := st.Result(false, 1)
+	c.srStack, c.srActive = st, true
+	c.srReachReview(st, "done")
+	if len(want.Mean) == 0 || !reflect.DeepEqual(c.srMean, want.Mean) || !reflect.DeepEqual(c.srMean2, want.Mean2) {
+		t.Fatal("native review altered accumulated means")
 	}
 }
 
@@ -89,5 +45,28 @@ func TestCancelledOrReplacedStackCannotRestoreReview(t *testing.T) {
 	c.srReachReview(old, "old stack result")
 	if c.srFocus != 1 || c.srStatus != "cancelled" {
 		t.Fatal("old stack overwrote replacement")
+	}
+}
+
+// TRLC-LINKS: REQ-SDS-141
+func TestSoftwareReviewCannotOverwriteFPGAProgress(t *testing.T) {
+	c, _, _ := newC(t)
+	st := superres.New(32, 8)
+	c.srStack, c.srActive, c.srFPGABusy = st, true, true
+	c.srStatus = "FPGA: stacking 20 records..."
+	c.srReachReview(st, "stale software result")
+	if c.srStatus != "FPGA: stacking 20 records..." || c.srFocus != 0 {
+		t.Fatalf("FPGA progress overwritten: %s", c.srStatus)
+	}
+}
+
+// TRLC-LINKS: REQ-SDS-140
+func TestNativeStackRefusesPeakEnvelopeSeed(t *testing.T) {
+	c, _, _ := newC(t)
+	c.frameFn = func(fn func(*engine.Frame)) {
+		fn(&engine.Frame{C1: []uint8{50, 200, 50, 200, 50, 200, 50, 200}, Valid: 8, PeakDetect: true})
+	}
+	if c.srSeedAndStart() || c.srActive || c.srStack != nil {
+		t.Fatal("min/max envelope became a chronological stack reference")
 	}
 }

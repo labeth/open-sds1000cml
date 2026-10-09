@@ -218,3 +218,11 @@ func TestLiveSRAMWindowFollowsTriggerPosition(t *testing.T) {
 		}
 	}
 }
+
+// TRLC-LINKS: REQ-SDS-009
+func TestSRAMRejectsLegacyStitchedStream(t *testing.T) {
+	e := &Engine{sram: &sramcapture.Capture{}}
+	if e.SetStreamMode(true) || e.streamMode.Load() || e.stats.Stream {
+		t.Fatal("SRAM has no legacy stream loop; use decoded events")
+	}
+}

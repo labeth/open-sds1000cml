@@ -243,7 +243,7 @@ export class Op {
     return await this.page.evaluate((i) => {
       const el = document.getElementById(i);
       if (!el) return null;
-      const v = ("value" in el && el.value !== undefined) ? el.value : el.textContent;
+      const v = el.matches("input, textarea, select") ? el.value : el.textContent;
       return (v || "").trim();
     }, id);
   }
@@ -272,6 +272,7 @@ export class Op {
       if (Math.abs(cur - want) <= want * 0.01) return; // stuck
       await apply(); // re-apply if a late autoset tick overrode it
     }
+    throw new Error(`timebase did not settle at ${want} s/div`);
   }
   // autosetStable clicks AUTOSET and waits for a stable frequency reading on
   // `ch` — the self-contained setup a measurement workflow needs so it does not
@@ -282,7 +283,7 @@ export class Op {
     // wait for the autoset routine to FULLY finish (its final display-band step)
     // before returning, so a subsequent setBand isn't overridden by a late
     // autoset tick.
-    await this._settle(async () => await this.page.evaluate(() => typeof autosetBusy === "undefined" || !autosetBusy), 6000, "autoset never signalled done").catch(() => {});
+    await this._settle(async () => await this.page.evaluate(() => typeof autosetBusy === "undefined" || !autosetBusy), 16000, "autoset never signalled done");
     return await this.waitMeas(ch, "Freq");
   }
   // TRLC-LINKS: REQ-SDS-180

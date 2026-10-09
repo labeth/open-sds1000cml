@@ -287,6 +287,7 @@ let lastLineHTML = "", lastAria = "";
 // second, divergent autoset that mis-read aliased frequencies from slow/roll
 // timebases — delegating removes that whole class of bug.
 let autosetBusy = false;
+let autosetDone = Promise.resolve(true);
 // TRLC-LINKS: REQ-SDS-023
 const sendPulse = () => sendParams("pulseparams", { lvl: +$("p-lvl").value / 100, min: +$("p-min").value * 1000, max: +$("p-max").value * 1000, cond: +$("p-cond").value });
 // TRLC-LINKS: REQ-SDS-023

@@ -72,8 +72,8 @@ func TestApplyRestoreCollectFidelity(t *testing.T) {
 			{VdivV: 2, OffsetV: -2.5, OffsetSet: true, Coupling: 2, Probe: 100},
 		},
 		VertSet:  true,
-		Trigger:  settings.Trigger{LevelCode: 30500, Rising: false, Source: 1, Type: 2, Norm: true, HoldoffS: 1e-3, PosFrac: 0.3},
-		Acq:      settings.Acq{Mode: 1, AvgCount: 64, EresLen: 1, MemDepth: 16384},
+		Trigger:  settings.Trigger{Qualifiers: engine.TrigQual{PulseLvl: .4, PulseMinNs: 105000, PulseMaxNs: 120000, PulseCond: 3, SlopeLo: .3, SlopeHi: .7, SlopeMinNs: 100, SlopeMaxNs: 1000, VideoStd: 1, VideoLine: 42, VideoNeg: false}, LevelCode: 30500, Rising: false, Source: 1, Type: 2, Norm: true, HoldoffS: 1e-3, PosFrac: 0.3},
+		Acq:      settings.Acq{Mode: 1, AvgCount: 64, EresLen: 1, MemDepth: 16384, PrecisionRateHz: 15625000},
 		Decode:   settings.Decode{Proto: 4, Baud: 9600, ChA: 1, ChB: 0, CPOL: true, CPHA: true, Format: 1},
 		ViewMode: 4,
 	}
@@ -93,7 +93,7 @@ func TestApplyRestoreCollectFidelity(t *testing.T) {
 	if st.TrigCode != 30500 || st.TrigRising || st.TrigSource != 1 || st.TrigType != 2 || !st.Norm {
 		t.Fatalf("trigger not applied through engine setters: %+v", st)
 	}
-	if st.AcqMode != 1 || st.AvgCount != 64 {
+	if st.AcqMode != 1 || st.AvgCount != 64 || st.PrecisionRateHz != 15625000 || st.TrigQual != want.Trigger.Qualifiers {
 		t.Fatalf("acq not applied: mode=%d avg=%d", st.AcqMode, st.AvgCount)
 	}
 	if st.OffC1 == 0 || st.OffC2 == 0 {

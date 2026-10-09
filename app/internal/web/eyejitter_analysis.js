@@ -15,7 +15,7 @@ function ejEdges(sig, n) {
   // and fabricating ~±0.5-sample DCD between rising and falling edges.
   const hist = new Float64Array(256);
   const stride = Math.max(1, n >> 13);
-  for (let i = 0; i < n; i += stride) hist[Math.max(0, Math.min(255, sig[i]))]++;
+  for (let i = 0; i < n; i += stride) hist[Math.max(0, Math.min(255, Math.round(sig[i])))]++;
   // light smoothing so single-code noise spikes don't win the mode
   const sm = new Float64Array(256);
   for (let c = 0; c < 256; c++) sm[c] = (hist[c - 1] || 0) + 2 * hist[c] + (hist[c + 1] || 0);

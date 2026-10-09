@@ -705,9 +705,13 @@ func main() {
 		} else {
 			fe.SetZeroTrim(t)
 		}
-		fe.OnOffset(e.SetOffsetDAC)         // offset re-anchors to each detent's cal zero
-		fe.OnOffsetV(e.SetChannelOffsetV)   // trigger level rides the same offset reference as the samples
-		fe.OnVdiv(e.SetChannelVdiv)         // keep the trigger level→display-code map current
+		fe.OnOffset(e.SetOffsetDAC)       // offset re-anchors to each detent's cal zero
+		fe.OnOffsetV(e.SetChannelOffsetV) // trigger level rides the same offset reference as the samples
+		fe.OnVdiv(e.SetChannelVdiv)       // keep the trigger level→display-code map current
+		e.SetBodeScaleSource(func(ch int) float64 {
+			idx, _ := fe.Snapshot()
+			return analog.AnalogVdiv(idx[ch&1]) * fe.ProbeFactor(ch)
+		})
 		fe.OnCoupling(e.SetChannelCoupling) // software AC: the trigger level follows the AC trace
 		feIface = fe
 		logf("SPI front end up (seeded to boot detent, not emitted)")

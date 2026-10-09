@@ -171,8 +171,8 @@ function decodeManchesterAt(S, T, cfg, bits, colTimeS) {
       if (msb) curVal = (curVal << 1) | c.bit; else curVal |= c.bit << curBits;
       curBits++;
       if (curBits === bits) {
-        spans.push({ i0: byteStart, i1: c.i1, text: fmtByte(curVal, fmt), kind: "data", val: curVal });
-        toks.push(fmtByte(curVal, fmt)); bytes.push(curVal);
+        spans.push({ i0: byteStart, i1: c.i1, text: fmtWord(curVal, bits, fmt), kind: "data", val: curVal });
+        toks.push(fmtWord(curVal, bits, fmt)); bytes.push(curVal);
         curVal = 0; curBits = 0;
       }
     }

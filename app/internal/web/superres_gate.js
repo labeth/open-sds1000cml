@@ -69,7 +69,10 @@ function srGateInstall(st, gLo, gHi) {
   // reference are taken to be the feature itself (periodic repeats) and do NOT
   // raise the floor — a repetitive signal keeps multi-hitting at the base floor.
   if (st.gtpl) {
-    const amb = srAmbientMax(st, st.c[st.align].ref);
+    // Exhaustive ambient calibration is quadratic for a long byte gate.
+    // Use the most conservative calibrated floor when that scan exceeds
+    // the interactive budget; never lower selectivity by skipping positions.
+    const amb = (st.n - L) * L > 12000000 ? 0.92 : srAmbientMax(st, st.c[st.align].ref);
     const base = st.minMatch || 0.8;
     st.adaptFloor = Math.max(base, Math.min(0.92, amb + 0.06));
   }
@@ -203,7 +206,12 @@ function srGateFeed(st, sig1, sig2, opts) {
     // decides what an occurrence IS, so lookalikes (a decoy byte a bit away from
     // the target) are never stacked; the local match only refines the alignment.
     hits = [];
-    const R = opts.centerR != null ? opts.centerR : Math.max(8, st.gridL >> 1);
+    // Decoded timestamps already locate the event. Bound refinement work
+    // across the frame: a slow UART byte can span tens of thousands of
+    // samples, making a whole-bit search billions of comparisons.
+    const requestedR = opts.centerR != null ? opts.centerR : Math.max(8, st.gridL >> 1);
+    const budgetR = Math.max(2, Math.floor(12000000 / (2 * st.gtpl.L * Math.max(1, opts.hitCenters.length))));
+    const R = Math.max(2, Math.min(requestedR, budgetR));
     for (let ci = 0; ci < opts.hitCenters.length; ci++) {
       const found = srGateFind(st, alignSig, (opts.hitCenters[ci] | 0) - st.gateLo, R);
       if (found.length) hits.push(found.reduce((a, b) => (b.score > a.score ? b : a)));

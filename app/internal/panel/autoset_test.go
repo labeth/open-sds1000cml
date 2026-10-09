@@ -134,3 +134,18 @@ func TestOffScreenSaturated(t *testing.T) {
 		t.Errorf("centred full-screen signal flagged off-screen — would false-coarsen")
 	}
 }
+
+// A failed sweep must preserve calibrated requested offsets.
+func TestAutosetNoSignalRestoresRequestedOffsets(t *testing.T) {
+	c, eng, fe := newC(t)
+	eng.stats.TdivS = 1e-6
+	fe.offReqV = [2]float64{-1.35, 0.65}
+	before := fe.offReqV
+	c.SetFrameSource(func(fn func(*engine.Frame)) {
+		fn(&engine.Frame{C1: []uint8{128, 128, 128, 128, 128, 128, 128, 128}, C2: []uint8{128, 128, 128, 128, 128, 128, 128, 128}, Valid: 8, SampleS: 2e-9})
+	})
+	c.runAutoset(make(chan struct{}))
+	if fe.offReqV != before {
+		t.Fatalf("offsets after no-signal sweep = %v, want %v", fe.offReqV, before)
+	}
+}

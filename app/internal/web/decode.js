@@ -51,6 +51,16 @@ function fmtByte(v, fmt) {
   return h;
 }
 // TRLC-LINKS: REQ-SDS-018
+function fmtWord(v, bits, fmt) {
+  if (bits <= 8) return fmtByte(v, fmt);
+  bits = Math.min(16, bits); v &= 2 ** bits - 1;
+  const h = v.toString(16).toUpperCase().padStart(Math.ceil(bits / 4), "0"), printable = v >= 32 && v < 127;
+  if (fmt === "dec") return String(v);
+  if (fmt === "bin") return v.toString(2).padStart(bits, "0");
+  if (fmt === "ascii") return printable ? String.fromCharCode(v) : ".";
+  return fmt === "both" && printable ? h + "·" + String.fromCharCode(v) : h;
+}
+// TRLC-LINKS: REQ-SDS-018
 function fail(proto, error, meta) {
   return { ok: false, error, proto, spans: [], text: "", bytes: [], meta: meta || {} };
 }
@@ -264,8 +274,8 @@ function decodeUART(codes, colTimeS, cfg) {
         const sb = logicAt(S, Math.round(start + (1.5 + bits + pc) * SPB));
         if (sb < 0) { spans.push({ i0: start, i1, text: "gap", kind: "gap" }); i = start + 1; continue; } // stop bit off the record: incomplete frame
         if (sb !== idle) { if (kind === "data") kind = "frame-error"; pfx = "!"; } // wrong stop level = framing error
-        spans.push({ i0: start, i1, text: pfx + fmtByte(val, fmt), kind, val });
-        toks.push(pfx + fmtByte(val, fmt)); bytes.push(val);
+        spans.push({ i0: start, i1, text: pfx + fmtWord(val, bits, fmt), kind, val });
+        toks.push(pfx + fmtWord(val, bits, fmt)); bytes.push(val);
         i = Math.round(start + (bits + 1 + pc) * SPB) + 1;
         continue;
       }
@@ -662,5 +672,5 @@ function decode(frame, cfg) {
 }
 
 if (typeof module !== "undefined" && module.exports)
-  module.exports = { KINDS, fmtByte, frameDtS, frameSpanS, sliceChannel, logicAt, decodeUART, decodeI2C, decodeSPI, decode,
+  module.exports = { KINDS, fmtByte, fmtWord, frameDtS, frameSpanS, sliceChannel, logicAt, decodeUART, decodeI2C, decodeSPI, decode,
     scoreResult, clockScore, idleLevel, autodetect };

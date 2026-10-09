@@ -55,6 +55,9 @@ func (c *Controller) MenuView() MenuView {
 		slo, shi, smn, smx, scnd = q.SlopeLo, q.SlopeHi, q.SlopeMinNs, q.SlopeMaxNs, q.SlopeCond
 	}
 	vstd, vln, vneg := c.videoStd, c.videoLine, c.videoNeg
+	if q.PulseLvl > 0 {
+		vstd, vln, vneg = q.VideoStd, q.VideoLine, q.VideoNeg
+	}
 	zoom, zoomOff, persist := c.zoom, c.zoomOff, c.persist
 	decProto, decBaud, decChA, decChB := c.decProto, c.decBaud, c.decChA, c.decChB
 	decCPOL, decCPHA, decFormat := c.decCPOL, c.decCPHA, c.decFormat
@@ -285,7 +288,7 @@ func (c *Controller) MenuView() MenuView {
 			{"Mode", []string{"Off", "Test", "Stop-F"}[st.MaskMode%3]},
 			{"Build", build},
 			{"Frames", fmt.Sprint(maskN)},
-			{"Tol", fmt.Sprintf("%ds/%dV", tol[0], tol[1])}, // ASCII font: no ±
+			{"Tol", fmt.Sprintf("%dpt/%dcd", tol[0], tol[1])}, // ASCII font: no ±
 			{"Reset", fmt.Sprintf("%d/%d", st.MaskPass, st.MaskFail)},
 		}
 	case pgSuperres:

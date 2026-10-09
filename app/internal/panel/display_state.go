@@ -100,6 +100,7 @@ func (c *Controller) adoptQual(st engine.Stats) {
 	if q.PulseLvl <= 0 {
 		return
 	}
+	c.videoStd, c.videoLine, c.videoNeg = q.VideoStd, q.VideoLine, q.VideoNeg
 	c.pulseLvl, c.pulseMin, c.pulseMax, c.pulseCond = q.PulseLvl, q.PulseMinNs, q.PulseMaxNs, q.PulseCond
 	c.slopeLo, c.slopeHi, c.slopeMin, c.slopeMax, c.slopeCond = q.SlopeLo, q.SlopeHi, q.SlopeMinNs, q.SlopeMaxNs, q.SlopeCond
 }

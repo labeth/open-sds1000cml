@@ -80,6 +80,7 @@ function stParams() {
     chA: P === 2 ? rc(dcfg.scl) : P === 3 ? rc(dcfg.clk) : rc(dcfg.line),
     chB: P === 2 ? rc(dcfg.sda) : P === 3 ? rc(dcfg.data) : 0,
     baud: dcfg.baud > 0 ? dcfg.baud : 0,
+    spiClockHz: P === 3 ? Math.max(0, +$("dsClock").value || 0) : 0,
     bits: dcfg.bits || 8,
     parity: dcfg.parity || "none",
     inverted: !!dcfg.inverted,
@@ -122,7 +123,11 @@ function stStatus(msg) {
   if (stConfigError) { $("stStats").textContent = stConfigError + (stArmed() ? " Previous settings remain armed." : ""); return; }
   if (!stArmed()) { $("stStats").textContent = ""; return; }
   if (stBandInactive()) { $("stStats").textContent = "⚠ inactive on this band (env/roll/stream/ETS)"; return; }
-  const backend = st && st.serial_backend === "hardware-uart" ? "hardware UART" : st && st.serial_backend === "hardware-i2c" ? "hardware I²C" : "software matching";
+  const name = st && (st.serial_backend || "").replace(/^hardware-/, "");
+  const protocol = (name || "").replace(/-sequence$/, "");
+  const labels = {uart: "UART", i2c: "I²C", spi: "SPI", sent: "SENT", mil1553: "MIL-1553", usbls: "USB LS", manchester: "Manchester", can: "CAN", arinc429: "ARINC 429", flexray: "FlexRay"};
+  const backend = st && /^hardware-/.test(st.serial_backend || "")
+    ? `hardware ${labels[protocol] || protocol}${name.endsWith("-sequence") ? " sequence" : ""}` : "software matching";
   $("stStats").textContent = `armed · ${backend} · ${(st && st.serial_matches) || 0} matches`;
 }
 
@@ -149,7 +154,7 @@ function stOnDecodeChange() {
     stSetArmed(on);
     stStatus();
   };
-  for (const id of ["stAddr", "stRW", "stBytes"])
+  for (const id of ["stAddr", "stRW", "stBytes", "dsClock"])
     // TRLC-LINKS: REQ-SDS-206
     $(id).onchange = () => { if (stArmed()) stPush().catch(() => {}); stStatus(); };
 })();

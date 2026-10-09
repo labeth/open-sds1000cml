@@ -179,7 +179,7 @@ export const tone1Mb = [
     // it must accumulate stacks and report a result (bits gained / stack count)
     const stat = await op.readUntil(async () => {
       const s = await op.readText("srStats");
-      return s && /(bit|stack|\d)/i.test(s) && !/idle/i.test(s) ? s : null;
+      return s && /(?:[1-9]\d* stacked|[1-9]\d* hits)/i.test(s) ? s : null;
     }, 15000, "super-resolution never produced a stacked result");
     assert(stat != null, "no superres result");
     await op.click("srArm", { why: "stop superres" });
@@ -396,7 +396,7 @@ export const prbs2Mb = [
     await op.autosetStable(2);
     await op.selectExpect("srCh", "2", null, { why: "stack the C2 clock" }).catch(() => {});
     await op.clickExpect("srArm", async () => { const s = await op.readText("srStats"); return s && !/idle/i.test(s || ""); }, { timeout: 8000, why: "arm superres" });
-    const stat = await op.readUntil(async () => { const s = await op.readText("srStats"); return s && /(bit|stack|\d)/i.test(s) && !/idle/i.test(s) ? s : null; }, 15000, "superres produced no result on the clock");
+    const stat = await op.readUntil(async () => { const s = await op.readText("srStats"); return s && /(?:[1-9]\d* stacked|[1-9]\d* hits)/i.test(s) ? s : null; }, 15000, "superres produced no result on the clock");
     assert(stat != null, "no superres result");
     await op.click("srArm", { why: "stop superres" });
   }},

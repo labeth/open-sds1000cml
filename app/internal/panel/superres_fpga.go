@@ -128,7 +128,7 @@ func (c *Controller) srFPGARun() {
 			c.srStatus = "FPGA: " + err.Error()
 			return
 		}
-		mean, mean2 := srCompMeans(res.Stack, res.Result)
+		mean, mean2 := res.Result.Mean, res.Result.Mean2
 		c.srStack, c.srMean, c.srMean2 = res.Stack, mean, mean2
 		c.srWinLo, c.srWinHi, c.srPeriod = 0, res.Stack.N, 0
 		c.srBits, c.srFrames, c.srRejected, c.srFocus = res.Result.BitsGained, int(res.Hits), 0, 3

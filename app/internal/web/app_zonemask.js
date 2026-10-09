@@ -49,7 +49,7 @@ function drawZones(g) {
     g.setLineDash([]);
   }
   // mask envelope (standard windowed display only; deep serves skip the render)
-  if (zm.mask && frame && frame.win_frac === 1 && st && st.win_cols === zm.mask.win) {
+  if (zm.mask && frame && frame.win_frac === 1 && st && (frame.win_cols || st.win_cols) === zm.mask.win) {
     const win = zm.mask.win, span = view.win.b - view.win.a || 1;
     g.strokeStyle = "rgba(242,166,59,0.55)";
     for (const env of [zm.mask.lo, zm.mask.hi]) {
@@ -252,8 +252,9 @@ $("zmBuild").onclick = async () => {
   const tolT = Math.max(0, +$("zmTolT").value || 0), tolV = Math.max(0, +$("zmTolV").value || 0);
   const ch = +$("zmCh").value || 0;
   if (!zmCplOK(ch)) return;
-  const win = st.win_cols, posFrac = st.trig_pos_frac > 0 ? st.trig_pos_frac : 0.5;
-  const lo = new Array(win).fill(255), hi = new Array(win).fill(0);
+  let win = 0;
+  const posFrac = st.trig_pos_frac > 0 ? st.trig_pos_frac : 0.5;
+  let lo, hi, geometry;
   let got = 0, lastSeq = 0, tries = 0;
   zmStatus("building mask 0/" + N + "…");
   while (got < N && tries < N * 6) {
@@ -266,6 +267,13 @@ $("zmBuild").onclick = async () => {
       if (!(f.edge_x >= 0) || !(f.sample_s > 0)) continue;
       const sig = ch === 1 ? f.c2 : f.c1;
       if (!sig) continue;
+      const fw = Math.min(f.win_cols || st.win_cols, f.cols);
+      const key = [fw, f.tdiv_s, f.sample_s, !!f.peak_detect].join(":");
+      if (!win) {
+        win = fw; geometry = key;
+        if (!(win > 0) || win > 65536) { zmStatus("mask build failed — window exceeds 65536 samples"); return; }
+        lo = new Array(win).fill(255); hi = new Array(win).fill(0);
+      } else if (key !== geometry) { zmStatus("mask build failed — acquisition geometry changed"); return; }
       const left = Math.round(f.edge_x - posFrac * win);
       for (let j = 0; j < win; j++) {
         const s = left + j;
@@ -290,16 +298,20 @@ $("zmBuild").onclick = async () => {
       if (lo[k] < mn) mn = lo[k];
       if (hi[k] > mx) mx = hi[k];
     }
-    dLo[j] = Math.max(0, mn - tolV);
-    dHi[j] = Math.min(255, mx + tolV);
+    dLo[j] = Math.max(0, Math.floor(mn - tolV));
+    dHi[j] = Math.min(255, Math.ceil(mx + tolV));
   }
+  try {
+    const response = await fetch("/api/mask", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ lo: dLo, hi: dHi, win, ch }) });
+    const result = await response.json();
+    if (!response.ok || !result.ok) throw new Error(result.err || "server rejected mask");
+  } catch (e) { zmStatus("mask build failed — " + e.message); return; }
   zm.mask = { lo: dLo, hi: dHi, win, ch };
   const c = zmVctx(ch);
   if (c) { // frozen source for exact re-mapping on later V/div / offset changes
     zm.mask.srcLo = dLo.slice(); zm.mask.srcHi = dHi.slice();
     zm.mask.svpc = c.vpc; zm.mask.soff = c.off; zm.mask.avpc = c.vpc; zm.mask.aoff = c.off;
   }
-  await fetch("/api/mask", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ lo: dLo, hi: dHi, win, ch }) }).catch(() => {});
   zmStatus("mask built from " + got + " frames (±" + tolT + " samp, ±" + tolV + " codes) — set test mode");
   redraw();
 };

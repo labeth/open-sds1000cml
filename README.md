@@ -111,7 +111,7 @@ automatically.
 | UART | general | auto baud from 300 Bd to 3 MBd |
 | I²C | general | 7-bit address, direction, data bytes |
 | SPI | general | all four modes, both bit orders |
-| CAN / CAN FD | packet | ID and data bytes; CRC check |
+| CAN / CAN FD | packet | Classic CAN CRC check; CAN FD ID/data decode (CRC not checked) |
 | FlexRay | packet | header and payload; header CRC |
 | ARINC 429 | packet | masked 32-bit word |
 | MIL-STD-1553 | packet | 16-bit words; parity |

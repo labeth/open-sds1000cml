@@ -77,7 +77,7 @@ export const uart = [
     await op.fill("decBaud", "115200", { why: "baud" });
     await op.page.evaluate(() => { document.getElementById("decBaud").dispatchEvent(new Event("change")); });
     // switch the UART source channel to C2 if the roles control exists
-    await op.page.evaluate(() => { const e = document.getElementById("decData") || document.getElementById("decScl"); if (e) { e.value = "2"; e.dispatchEvent(new Event("change")); } });
+    await op.page.evaluate(() => { const e = document.getElementById("decLine"); if (e) { e.value = "2"; e.dispatchEvent(new Event("change")); } });
     const txt = await op.readUntil(async () => {
       const t = (await op.readText("decodeText")) || "";
       return t.replace(/\s/g, "").length > 2 ? t : null;
@@ -357,8 +357,9 @@ export const burst = [
   // TRLC-LINKS: REQ-SDS-208
   { id: "B4", name: "Super-resolution stacks the repetitive burst", run: async (op) => {
     await op.autosetStable(1);
+    await op.setBand(1e-7); // Include several complete 300 ns burst periods.
     await op.clickExpect("srArm", async () => { const s = await op.readText("srStats"); return s && !/idle/i.test(s || ""); }, { timeout: 8000, why: "arm superres on the repetitive burst" });
-    const stat = await op.readUntil(async () => { const s = await op.readText("srStats"); return s && /(bit|stack|\d)/i.test(s) && !/idle/i.test(s) ? s : null; }, 16000, "superres produced no stacked result on the burst");
+    const stat = await op.readUntil(async () => { const s = await op.readText("srStats"); const m = s && s.match(/(\d+) (?:stacked|fr\b)/); return m && +m[1] >= 3 ? s : null; }, 16000, "superres did not accumulate three burst frames");
     assert(stat != null, "no superres result");
     await op.click("srArm", { why: "stop superres" });
   }},

@@ -19,6 +19,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"open-sds/app/internal/engine"
 	"os"
 	"path/filepath"
 )
@@ -46,22 +47,24 @@ type Channel struct {
 // Trigger is the persisted trigger setup.
 // TRLC-LINKS: REQ-SDS-072, REQ-SDS-089
 type Trigger struct {
-	LevelCode int     `json:"level_code"`         // trigger-level DAC code; 0 = boot comparator untouched
-	Rising    bool    `json:"rising"`             // edge slope
-	Source    int     `json:"source"`             // 0=C1 1=C2
-	Type      int     `json:"type"`               // 0=edge 1=pulse 2=slope 3=video
-	Norm      bool    `json:"norm"`               // trigger mode: true=NORM false=AUTO
-	HoldoffS  float64 `json:"holdoff_s"`          // 0 = off
-	PosFrac   float64 `json:"pos_frac,omitempty"` // trigger position on screen; 0 = not saved
+	Qualifiers engine.TrigQual `json:"qualifiers,omitempty"`
+	LevelCode  int             `json:"level_code"`         // trigger-level DAC code; 0 = boot comparator untouched
+	Rising     bool            `json:"rising"`             // edge slope
+	Source     int             `json:"source"`             // 0=C1 1=C2
+	Type       int             `json:"type"`               // 0=edge 1=pulse 2=slope 3=video
+	Norm       bool            `json:"norm"`               // trigger mode: true=NORM false=AUTO
+	HoldoffS   float64         `json:"holdoff_s"`          // 0 = off
+	PosFrac    float64         `json:"pos_frac,omitempty"` // trigger position on screen; 0 = not saved
 }
 
 // Acq is the persisted acquisition mode.
 // TRLC-LINKS: REQ-SDS-072, REQ-SDS-089
 type Acq struct {
-	Mode     int `json:"mode"` // 0=normal 1=average 2=eres 3=peak
-	AvgCount int `json:"avg_count"`
-	EresLen  int `json:"eres_len"`
-	MemDepth int `json:"mem_depth,omitempty"` // requested depth (samples); 0 = not saved
+	PrecisionRateHz float64 `json:"precision_rate_hz,omitempty"`
+	Mode            int     `json:"mode"` // 0=normal 1=average 2=eres 3=peak
+	AvgCount        int     `json:"avg_count"`
+	EresLen         int     `json:"eres_len"`
+	MemDepth        int     `json:"mem_depth,omitempty"` // requested depth (samples); 0 = not saved
 }
 
 // Decode is the device protocol-decode setup (controller-owned; historically

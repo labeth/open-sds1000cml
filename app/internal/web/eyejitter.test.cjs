@@ -80,7 +80,21 @@ const SAMPLE_S = 2e-9;
   check(res.tieRms < 0.15e-9, "clean: TIE floor < 150 ps rms", (res.tieRms * 1e12).toFixed(0) + " ps");
   check(res.dj === 0, "clean: no false DJ", res.dj);
   const em = res.eyeMetrics;
-  check(em && em.eyeHeightCodes > 90, "clean: eye open (height > 90 codes)", em && em.eyeHeightCodes.toFixed(0));
+  check(em && em.eyeHeightCodes > 130 && em.eyeHeightCodes < 142, "clean: eye height agrees with 140-code swing and rail noise", em && em.eyeHeightCodes.toFixed(0));
+}
+
+// Calibrated SRAM samples retain fractional ADC codes (Q8.8).
+{
+  const st = EJ.ejNew({}), bits = prbs7(300), n = 20480;
+  let locked = 0;
+  for (let r = 0; r < 20; r++) {
+    const sig = Float32Array.from(genRecord(n, 100, 20 + r * 37.3 % 100, bits, () => 0, 1.2, 9), v => v + 0.38671875);
+    if (EJ.ejFeed(st, sig, n, SAMPLE_S).startsWith("locked")) locked++;
+  }
+  const res = EJ.ejResult(st);
+  check(locked >= 18, "fractional SRAM: records lock", locked + "/20");
+  check(Math.abs(res.ui - 100) < 0.05, "fractional SRAM: UI recovered", res.ui);
+  check(res.tieRms < 0.2e-9, "fractional SRAM: low timing noise", res.tieRms);
 }
 
 // ---- 2) injected square-wave TIE (the FPGA's exact scheme) ----

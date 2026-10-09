@@ -57,6 +57,12 @@ function srModelFit(mean, K, sampleS, peaksLib, nPeaks) {
   }
   const spec = peaksLib.spectrum(fgrid, 1 / (2 * fdt));
   if (!spec) return null;
+  // A one-cycle gate puts its dominant content in the unresolved DC/first
+  // bins. Peak detection excludes those bins; fitting the remaining noise
+  // would invent high-frequency components instead of modelling the signal.
+  let dominant = 0;
+  for (let k = 1; k < spec.mags.length; k++) if (spec.mags[k] > spec.mags[dominant]) dominant = k;
+  if (dominant < 2) return null;
   const peaks = peaksLib.detectPeaks(spec, { floorDb: -60, maxPeaks: nPeaks || 6 });
   if (!peaks.length) return null;
   const freqs = peaks.map(p => p.freq);

@@ -7,6 +7,7 @@ import (
 	"math"
 	"strings"
 	"testing"
+	"time"
 
 	"open-sds/app/internal/analog"
 	"open-sds/app/internal/engine"
@@ -758,5 +759,30 @@ func TestChannelQueriesFollowThePanel(t *testing.T) {
 	do(t, h, "C1:TRA OFF")
 	if d.on[0] {
 		t.Fatal("C1:TRA OFF left the trace on screen")
+	}
+}
+
+// TRLC-LINKS: REQ-SDS-024
+func TestScreenshotCanReadDisplayState(t *testing.T) {
+	h, _ := newH(t)
+	h.shot = func() []byte { _ = h.Inverted(); return []byte("BMP") }
+	done := make(chan []byte, 1)
+	go func() { done <- h.HandleLine([]byte("SCDP;*OPC?")) }()
+	select {
+	case got := <-done:
+		if !bytes.HasPrefix(got, []byte("BMP")) || !bytes.Contains(got, []byte("1")) {
+			t.Fatalf("compound response %q", got)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("screenshot deadlocked reading display state")
+	}
+}
+
+// Precision is a distinct live acquisition mode, not normal sampling.
+func TestAcquisitionQueryPrecision(t *testing.T) {
+	h, fs := newH(t)
+	fs.stats.AcqMode = engine.AcqPrecision
+	if got := do(t, h, "ACQW?"); got != "ACQW PRECISION\n" {
+		t.Fatalf("got %q", got)
 	}
 }

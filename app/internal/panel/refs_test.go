@@ -90,3 +90,15 @@ func TestPulsePageFollowsEngine(t *testing.T) {
 		t.Fatalf("press past the top %v", got)
 	}
 }
+
+// TRLC-LINKS: REQ-SDS-072, REQ-SDS-136
+func TestPanelStartPreservesRestoredQualifiers(t *testing.T) {
+	c, eng, _ := newC(t)
+	eng.stats.TrigQual = engine.TrigQual{PulseLvl: .4, PulseMinNs: 105000, PulseMaxNs: 120000, PulseCond: 3, SlopeLo: .3, SlopeHi: .7, VideoStd: 1, VideoLine: 42}
+	stop := make(chan struct{})
+	close(stop)
+	c.Run(stop)
+	if c.pulseMin != 105000 || c.pulseMax != 120000 || c.videoStd != 1 || c.videoLine != 42 || c.videoNeg {
+		t.Fatal("panel startup replaced restored qualifiers")
+	}
+}

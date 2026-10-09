@@ -305,8 +305,8 @@ func decodeManchesterAt(S sliced, T float64, cfg ManchesterCfg, bits int, colTim
 				curVal |= c.Bit << curBits
 			}
 			if curBits++; curBits == bits {
-				spans = append(spans, Span{byteStart, c.I1, FmtByte(curVal, cfg.Format), "data", curVal})
-				toks = append(toks, FmtByte(curVal, cfg.Format))
+				spans = append(spans, Span{byteStart, c.I1, FmtWord(curVal, bits, cfg.Format), "data", curVal})
+				toks = append(toks, FmtWord(curVal, bits, cfg.Format))
 				bytesOut = append(bytesOut, curVal)
 				curVal, curBits = 0, 0
 			}

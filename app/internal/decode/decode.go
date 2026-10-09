@@ -235,3 +235,31 @@ func minEdgeGap(edges []edge, dirOk func(int) bool) float64 {
 }
 
 // ---- autodetect (ports decode.js scoreResult/clockScore/idleLevel/autodetect) --
+
+// FmtWord preserves wide UART/Manchester words instead of truncating to a byte.
+// TRLC-LINKS: REQ-SDS-018
+func FmtWord(v, bits int, format string) string {
+	if bits <= 8 {
+		return FmtByte(v, format)
+	}
+	if bits > 16 {
+		bits = 16
+	}
+	v &= (1 << bits) - 1
+	switch format {
+	case "dec":
+		return fmt.Sprint(v)
+	case "bin":
+		return fmt.Sprintf("%0*b", bits, v)
+	case "ascii":
+		if v >= 32 && v < 127 {
+			return string(rune(v))
+		}
+		return "."
+	}
+	h := fmt.Sprintf("%0*X", (bits+3)/4, v)
+	if format == "both" && v >= 32 && v < 127 {
+		return h + "'" + string(rune(v))
+	}
+	return h
+}

@@ -91,6 +91,7 @@ type frameReply struct {
 	// super-resolution stacker; edge_x is then an absolute (sub-sample)
 	// index into that record.
 	SampleS float64 `json:"sample_s,omitempty"`
+	WinCols int     `json:"win_cols,omitempty"`
 }
 
 // resampleEnv nearest-resamples an envelope column array to n output columns.
@@ -262,6 +263,7 @@ func (s *Server) buildReply(f *engine.Frame, cols int, full bool, since uint64, 
 	}
 	rep := frameReply{
 		Seq:            f.Seq,
+		WinCols:        min(f.WinCols, f.Valid),
 		SampleS:        f.SampleS,
 		NoiseGainIdeal: f.NoiseGainIdeal, PassbandHz: f.PassbandHz, BandwidthHz: f.BandwidthHz, FilterGuard: f.FilterGuard, Filter: f.Filter, Decimation: f.Decimation, CaptureDepth: f.CaptureDepth, TriggerKind: f.TriggerKind,
 		EdgeX:          f.EdgeX,

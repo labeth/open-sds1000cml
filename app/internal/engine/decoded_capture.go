@@ -164,6 +164,10 @@ func (e *Engine) pumpDecodedEvents() {
 // on the acquisition owner. It never changes the analog front-end settings.
 // TRLC-LINKS: REQ-SDS-013
 func (e *Engine) BeginDecodedCapture(ctx context.Context, cfg sramcapture.Config) (sramcapture.RecordIdentity, error) {
+	return e.beginDecodedCapture(ctx, cfg, 0)
+}
+
+func (e *Engine) beginDecodedCapture(ctx context.Context, cfg sramcapture.Config, lineProto int) (sramcapture.RecordIdentity, error) {
 	value, err := e.decodedCall(ctx, func() (any, error) {
 		e.decodedStarting = time.Time{} // the session (or its failure) takes over the image
 		// Only UART, I2C and SPI stream from the general image.
@@ -216,6 +220,12 @@ func (e *Engine) BeginDecodedCapture(ctx context.Context, cfg sramcapture.Config
 			}
 		}
 		session, err := e.sram.StartDecodedCapture(ctx, cfg)
+		// Select the transcript consumer before the owner can pump events. A
+		// second owner call would strand the first batch in decodedBuffer.
+		lines := false
+		if err == nil && lineProto != 0 {
+			lines, err = e.sram.SetDecodedLineMode(lineProto)
+		}
 		if err != nil {
 			cleanup, cancel := context.WithTimeout(context.Background(), time.Second)
 			defer cancel()
@@ -225,7 +235,7 @@ func (e *Engine) BeginDecodedCapture(ctx context.Context, cfg sramcapture.Config
 		}
 		e.decodedSession = session
 		e.decodedCfg = cfg
-		e.decodedLines = false
+		e.decodedLines = lines
 		return session.Identity, nil
 	})
 	if err != nil {

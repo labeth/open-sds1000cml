@@ -44,6 +44,15 @@ type bodeState struct {
 	// last live point (for the status readout), guarded by mu
 	live      BodePoint
 	liveValid bool
+	scale     func(int) float64 // input-referred volts/div, including probe factor
+}
+
+// SetBodeScaleSource supplies calibrated, probe-referred channel scales.
+// TRLC-LINKS: REQ-SDS-066
+func (e *Engine) SetBodeScaleSource(fn func(int) float64) {
+	e.bode.mu.Lock()
+	e.bode.scale = fn
+	e.bode.mu.Unlock()
 }
 
 // SetBodeMode arms/disarms FRA and sets the reference + DUT channels. Arming
@@ -95,7 +104,7 @@ func (e *Engine) bodeEval(f *Frame, valid int, sampleS float64) {
 		return
 	}
 	e.bode.mu.Lock()
-	refCh, dutCh := e.bode.refCh, e.bode.dutCh
+	refCh, dutCh, scale := e.bode.refCh, e.bode.dutCh, e.bode.scale
 	e.bode.mu.Unlock()
 
 	ref := f.C1
@@ -132,7 +141,18 @@ func (e *Engine) bodeEval(f *Frame, valid int, sampleS float64) {
 		e.bodeInvalidate()
 		return
 	}
-	gainDB := 20 * math.Log10(mag2/mag1)
+	refScale := math.Float64frombits(e.chVdivBits[refCh].Load())
+	dutScale := math.Float64frombits(e.chVdivBits[dutCh].Load())
+	if scale != nil {
+		refScale, dutScale = scale(refCh), scale(dutCh)
+	}
+	if !(refScale > 0) {
+		refScale = 1
+	}
+	if !(dutScale > 0) {
+		dutScale = 1
+	}
+	gainDB := 20 * math.Log10((mag2*dutScale)/(mag1*refScale))
 	if math.IsInf(gainDB, 0) || math.IsNaN(gainDB) {
 		e.bodeInvalidate()
 		return

@@ -49,6 +49,7 @@ func (e *Engine) SetVideoParams(std, line int, neg bool) {
 	}
 	e.mu.Lock()
 	e.tp.videoStd, e.tp.videoLine, e.tp.videoNeg = std, line, neg
+	e.stats.TrigQual = qualOf(e.tp)
 	e.mu.Unlock()
 }
 
@@ -374,14 +375,30 @@ func (e *Engine) SetHoldoff(sec float64) float64 {
 // the next arm. Untriggered/AUTO frames pace at the normal floor.
 // TRLC-LINKS: REQ-SDS-008, REQ-SDS-011
 func (e *Engine) paceHold(start time.Time, triggered bool) {
-	floor := time.Duration(e.framePeriodNs.Load())
-	if triggered {
-		if h := time.Duration(e.holdoffNs.Load()); h > floor {
-			floor = h
+	e.paceHoldWithFloor(start, triggered, time.Duration(e.framePeriodNs.Load()))
+}
+
+// paceHoldWithFloor rechecks the live holdoff while waiting. Operator changes
+// must not strand STOP/recall or FORCE behind an obsolete ten-second delay.
+// SRAM passes a zero base floor because its transfers already pace acquisition.
+// TRLC-LINKS: REQ-SDS-008, REQ-SDS-011, REQ-SDS-025
+func (e *Engine) paceHoldWithFloor(start time.Time, triggered bool, base time.Duration) {
+	for !e.stopReq.Load() && e.running.Load() && !e.forceReq.Load() {
+		floor := base
+		if triggered {
+			if h := time.Duration(e.holdoffNs.Load()); h > floor {
+				floor = h
+			}
 		}
-	}
-	if d := floor - e.clk.Now().Sub(start); d > 0 {
-		e.sleepBeating(d) // holdoff can be 10 s — must beat through it
+		d := floor - e.clk.Now().Sub(start)
+		if d <= 0 {
+			return
+		}
+		if d > 50*time.Millisecond {
+			d = 50 * time.Millisecond
+		}
+		e.clk.Sleep(d)
+		e.beatN.Add(1)
 	}
 }
 
@@ -394,6 +411,9 @@ func (e *Engine) paceHold(start time.Time, triggered bool) {
 // applied state.
 // TRLC-LINKS: REQ-SDS-009
 func (e *Engine) SetStreamMode(on bool) bool {
+	if on && e.sram != nil {
+		return false // SRAM uses decoded-event sessions, not the legacy stitched loop.
+	}
 	if on {
 		e.memDepth.Store(maxRecordCols)
 		e.SetFramePeriod(0)
