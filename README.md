@@ -54,7 +54,8 @@ exports. All waveforms and readouts are from the connected signal.</sub>
 |---|---|
 | **Channels** | 2, sampled together |
 | **Sample rate** | **500 MS/s per channel**, real time, on both channels at once (1 GS/s aggregate) |
-| **Record length** | **1,048,576 samples per channel** at full rate, captured on every acquisition and kept after you stop |
+| **Record length** | **1,048,576 samples per channel** at full rate, captured on every acquisition; the full record is read on STOP or SINGLE |
+| **Live display** | **16–24 frames/s** from 1 µs/div to 1 ms/div, protocol decode included (about 12 at 5 ms/div) |
 | **Precision mode** | 16-bit filtered samples, 524,288 per channel; decimation ×16 to ×1,048,576 for long records (137 s at 50 s/div) |
 | **Super-resolution** | up to a **×64 time grid** (31.25 ps); about **+4 bits** from FPGA stacking |
 | **Timebase** | 1 ns/div to 50 s/div |
@@ -67,8 +68,10 @@ exports. All waveforms and readouts are from the connected signal.</sub>
 ## Acquisition
 
 * **Full-depth capture on both channels.** Every acquisition fills the scope's 2 MiB SRAM: 1 M
-  samples per channel at 500 MS/s, 2.1 ms. The live view never trades this away for speed. A
-  stopped record can be zoomed, measured, decoded and exported at full resolution.
+  samples per channel at 500 MS/s, 2.1 ms. While running, only a display-sized view of it is read,
+  so the screen keeps up; **STOP or SINGLE reads the full record** (about 2 s, with a loading
+  indicator), which can then be zoomed, measured, decoded and exported at full resolution.
+  Changing V/div, offset or timebase on a stopped record redraws it from memory.
 * **Calibrated five-way interleaving.** Each channel runs five 100 MS/s converters in turn. Per-core
   correction removes the interleave pattern (the comb drops from 11 codes to 0.15).
 * **Precision mode.** At slow timebases the FPGA decimates by a power of two, ×16 to ×1,048,576,
@@ -76,7 +79,13 @@ exports. All waveforms and readouts are from the connected signal.</sub>
   slow record gains resolution instead of aliasing. The UI shows the resulting bandwidth and bit
   gain.
 * **Modes:** normal, average (up to 256 frames), enhanced resolution and precision.
-* **Live min/max envelope** for long windows, so narrow events stay visible at any zoom.
+* **Live min/max envelope:** the FPGA reduces the screen to 4,096 min/max points, so narrow events
+  stay visible at any zoom. The points are put back in time order, so protocol decode, masks and
+  qualified triggers run on live frames too. Average, ERES and precision use a decimated live
+  capture instead (their filtering needs true samples); eye diagram and super-resolution read raw
+  samples while in use.
+* **Responsive controls:** front-panel keys and lamps answer within tens of milliseconds, even
+  during a long readout; a LOADING indicator (LCD and web) shows while a record is being read.
 
 ## Faster FPGA readout
 
@@ -85,9 +94,9 @@ Compared with CPU readout from the factory FPGA, our DMA path demonstrated
 (11.1 MB/s versus 3.1–3.9 MB/s). DMA replaces the vendor's per-word CPU read loop;
 the current driver still polls for completion.
 
-For live viewing, the FPGA sends a **4 KiB min/max envelope instead of a 2 MiB
-raw record—512× less sample data to transfer**, while keeping the full record
-in SRAM for detailed review.
+For live viewing, the FPGA sends an **8 KiB min/max envelope instead of a 2 MiB
+raw record—256× less sample data to transfer** (about 10–30 ms instead of about 2 s),
+while keeping the full record in SRAM for STOP, SINGLE and detailed review.
 
 ## Triggering
 
