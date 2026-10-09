@@ -65,13 +65,10 @@ func (c *Controller) maskBuildRun(n, tolT, tolV, ch int, posFrac float64) {
 	var peak bool
 	var lastSeq uint64
 	for tries := 0; got < n && tries < n*20; tries++ {
-		if e, ok := c.eng.(interface{ LeaseDecodeView(time.Duration) }); ok {
-			e.LeaseDecodeView(3 * time.Second)
-		}
 		time.Sleep(60 * time.Millisecond)
 		ok := false
 		c.frameFn(func(f *engine.Frame) {
-			if f == nil || f.Seq == lastSeq || f.EdgeX < 0 || f.SampleS <= 0 || f.IsEnv || (f.PeakDetect && c.eng.Snapshot().AcqMode != engine.AcqPeak) {
+			if f == nil || f.Seq == lastSeq || f.EdgeX < 0 || f.SampleS <= 0 || f.IsEnv || (f.PeakDetect && !f.Ordered && c.eng.Snapshot().AcqMode != engine.AcqPeak) {
 				return
 			}
 			lastSeq = f.Seq

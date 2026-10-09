@@ -40,6 +40,32 @@ func PlanSRAM(tdiv float64) SRAMPlan {
 	return p
 }
 
+// liveScreenSamples bounds a live decimated screen: a 4096-word readout, about
+// as long as the envelope's, for 10–20 frames a second.
+const liveScreenSamples = 4096
+
+// liveSRAMPlan decimates p until its screen fits liveScreenSamples (or the
+// deepest decimation), with a record of a few screens; ok is false when p's
+// screen already reads in that many words.
+// TRLC-LINKS: REQ-SDS-010
+func liveSRAMPlan(p SRAMPlan) (SRAMPlan, bool) {
+	// A raw screen packs two samples a word: what bounds the readout is words.
+	if words := p.Screen / (2 - boolInt(p.Log != 0)); words <= liveScreenSamples {
+		return p, false
+	}
+	span := float64(p.Screen) * p.SampleS
+	if p.Log < 4 {
+		p.Log, p.SampleS = 4, 32e-9 // the fabric's first decimated rate
+	}
+	for p.Log < 20 && span/p.SampleS > liveScreenSamples {
+		p.Log++
+		p.SampleS *= 2
+	}
+	p.Screen = int(math.Max(2, math.Round(span/p.SampleS)))
+	p.Samples = min(int(sramcapture.Words), max(4*p.Screen, 8192))
+	return p, true
+}
+
 // PlanPrecisionSRAM keeps the selected sample rate fixed as the view changes.
 // TRLC-LINKS: REQ-SDS-010, REQ-SDS-036
 func PlanPrecisionSRAM(tdiv float64, log uint8) SRAMPlan {
@@ -98,6 +124,97 @@ func roundQ8(x uint16) uint8 {
 	return uint8(v)
 }
 
+// heldKey identifies a recall: the frozen record and the window read.
+type heldKey struct {
+	m             sramcapture.Metadata
+	offset, words uint32
+}
+
+// heldRecall keeps a stopped record's recalled codes in memory, so changing
+// the view of a stopped (often deep SINGLE) record does not read SRAM again.
+type heldRecall struct {
+	key    heldKey
+	n      int
+	c1, c2 []uint8
+	q1, q2 []uint16
+	cond   heldCond
+}
+
+// TRLC-LINKS: REQ-SDS-033
+func (h *heldRecall) store(k heldKey, f *Frame) {
+	h.key, h.n = k, f.Valid
+	h.c1 = append(h.c1[:0], f.C1[:f.Valid]...)
+	h.c2 = append(h.c2[:0], f.C2[:f.Valid]...)
+	h.q1, h.q2 = h.q1[:0], h.q2[:0]
+	if len(f.Q1) == f.Valid && len(f.Q2) == f.Valid {
+		h.q1 = append(h.q1, f.Q1...)
+		h.q2 = append(h.q2, f.Q2...)
+	}
+}
+
+// heldCondKey identifies a conditioning of the held record: it depends on
+// the record and the acquisition filters, not on V/div, offset or timebase.
+type heldCondKey struct {
+	held      heldKey
+	acq, eres int32
+}
+
+// heldCond is the held record after conditioning, with the frame fields the
+// conditioning sets.
+type heldCond struct {
+	key                            heldCondKey
+	content                        uint64 // Frame.Content of the conditioned record
+	c1, c2                         []uint8
+	q1, q2                         []uint16
+	filter                         string
+	guard                          int
+	noiseGain, passband, bandwidth float64
+}
+
+// TRLC-LINKS: REQ-SDS-033
+func (h *heldRecall) storeCond(k heldCondKey, f *Frame) {
+	c := &h.cond
+	c.key = k
+	c.c1 = append(c.c1[:0], f.C1[:f.Valid]...)
+	c.c2 = append(c.c2[:0], f.C2[:f.Valid]...)
+	c.q1, c.q2 = c.q1[:0], c.q2[:0]
+	if len(f.Q1) == f.Valid && len(f.Q2) == f.Valid {
+		c.q1 = append(c.q1, f.Q1...)
+		c.q2 = append(c.q2, f.Q2...)
+	}
+	c.filter, c.guard = f.Filter, f.FilterGuard
+	c.noiseGain, c.passband, c.bandwidth = f.NoiseGainIdeal, f.PassbandHz, f.BandwidthHz
+}
+
+// restoreCond puts the conditioned record into f (already sized by restore),
+// its Q codes into the frame's backing arrays q1, q2.
+// TRLC-LINKS: REQ-SDS-033
+func (h *heldRecall) restoreCond(f *Frame, q1, q2 []uint16) {
+	c := &h.cond
+	copy(f.C1, c.c1)
+	copy(f.C2, c.c2)
+	if n := len(c.q1); n == f.Valid && n == len(c.q2) {
+		f.Q1, f.Q2 = qBuffer(q1, n), qBuffer(q2, n)
+		copy(f.Q1, c.q1)
+		copy(f.Q2, c.q2)
+	}
+	f.Filter, f.FilterGuard = c.filter, c.guard
+	f.NoiseGainIdeal, f.PassbandHz, f.BandwidthHz = c.noiseGain, c.passband, c.bandwidth
+}
+
+// restore copies the held codes into f (sized as at store) and returns the
+// sample count, as the recall writer would.
+// TRLC-LINKS: REQ-SDS-033
+func (h *heldRecall) restore(f *Frame) int {
+	copy(f.C1, h.c1)
+	copy(f.C2, h.c2)
+	if len(h.q1) == h.n && len(f.Q1) == h.n && len(f.Q2) == h.n {
+		copy(f.Q1, h.q1)
+		copy(f.Q2, h.q2)
+	}
+	return h.n
+}
+
 // TRLC-LINKS: REQ-SDS-040
 func qBuffer(q []uint16, n int) []uint16 {
 	if cap(q) < n {
@@ -123,25 +240,34 @@ func (e *Engine) sramConfig() (sramcapture.Config, SRAMPlan, float64, bool, trig
 		// The packet image records raw samples only: the deepest raw record.
 		p = SRAMPlan{Samples: int(sramcapture.SamplesPerChannel), SampleS: 2e-9, Screen: int(sramcapture.SamplesPerChannel)}
 	}
-	samples := p.Samples // live-preview mode always retains the full SRAM record
-	perWord := 2 - boolInt(p.Log != 0)
-	words := uint32((samples + perWord - 1) / perWord)
-	p.Samples = int(words) * perWord
-	pre := uint32(float64(words) * math.Float64frombits(e.trigPosFrac.Load()))
-	if pre >= words {
-		pre = words - 1
+	build := func(p SRAMPlan) (sramcapture.Config, SRAMPlan) {
+		samples := p.Samples
+		perWord := 2 - boolInt(p.Log != 0)
+		words := uint32((samples + perWord - 1) / perWord)
+		p.Samples = int(words) * perWord
+		pre := uint32(float64(words) * math.Float64frombits(e.trigPosFrac.Load()))
+		if pre >= words {
+			pre = words - 1
+		}
+		c := sramcapture.Config{Source: sramcapture.ADC, DecimationLog2: p.Log, PreWords: pre, PostWords: words - pre,
+			Normal: tp.typ == TrigEdge && e.serialMode.Load() != SerialTrigger, Falling: !e.trigRising.Load(),
+			TriggerChannel: uint8(e.trigSrc.Load()), TriggerLevel: uint8(e.trigLevelWord())}
+		if (e.hardwareUART || e.hardwareI2C || e.hardwareSPI || e.hardwareSENT || e.hardwareMIL1553 || e.hardwareUSBLS || e.hardwareManchester || e.hardwarePacket != 0) && e.serialMode.Load() == SerialTrigger {
+			e.ser.mu.Lock()
+			serial := e.ser.params
+			e.ser.mu.Unlock()
+			e.planSerial(&c, serial, tp.typ == TrigEdge && e.serialMode.Load() != SerialTrigger)
+		}
+		e.planHysteresis(&c, p.Log != 0)
+		return c, p
 	}
-	c := sramcapture.Config{Source: sramcapture.ADC, DecimationLog2: p.Log, PreWords: pre, PostWords: words - pre,
-		Normal: tp.typ == TrigEdge && e.serialMode.Load() != SerialTrigger, Falling: !e.trigRising.Load(),
-		TriggerChannel: uint8(e.trigSrc.Load()), TriggerLevel: uint8(e.trigLevelWord())}
-	if (e.hardwareUART || e.hardwareI2C || e.hardwareSPI || e.hardwareSENT || e.hardwareMIL1553 || e.hardwareUSBLS || e.hardwareManchester || e.hardwarePacket != 0) && e.serialMode.Load() == SerialTrigger {
-		e.ser.mu.Lock()
-		serial := e.ser.params
-		e.ser.mu.Unlock()
-		e.planSerial(&c, serial, tp.typ == TrigEdge && e.serialMode.Load() != SerialTrigger)
+	c, p := build(p)
+	// Live frames must stay fast. A mode the envelope readout cannot serve
+	// (averaging, ERES, precision) is captured decimated to a display-sized
+	// record instead of reading a deep raw screen per frame; SINGLE stays deep.
+	if live, ok := liveSRAMPlan(p); ok && !e.singleArmed.Load() && !e.rawOnly && liveDecimates(e.envelopeBlock(c, tp)) {
+		c, p = build(live)
 	}
-	e.planHysteresis(&c, p.Log != 0)
-
 	return c, p, tdiv, norm, tp
 }
 
@@ -313,7 +439,11 @@ func (e *Engine) runSRAM() {
 		}
 	}()
 	// A press lights its lamp mid-recall, not after a multi-second deep recall.
-	e.sram.SetSpanHook(e.flushLEDs)
+	e.sram.SetSpanHook(func(done, total int) {
+		e.busyAll.Store(int64(total))
+		e.busyDone.Store(int64(done))
+		e.flushLEDs()
+	})
 	e.probeSerialHardware()
 	e.mu.Lock()
 	e.stats.Image = "general"
@@ -334,8 +464,11 @@ func (e *Engine) runSRAM() {
 	var savedScale [2]chScale // front-end scale the retained record was captured at
 	var shownScaleGen uint64  // scaleGen when the shown frame was produced
 	var singleGen uint64      // SINGLE press the current capture was armed/waiting under
+	var held heldRecall       // the stopped record's recall, kept for re-scaled replays
+	var lastPace float64      // the previous frame's pacing hold (FrameStages)
 acquisitionLoop:
 	for !e.stopReq.Load() {
+		e.setBusy("", 0) // set again only around a recall and its processing
 		e.serviceCommands()
 		// A decoded stream's triggered record becomes the stopped capture: it is
 		// recalled at full depth below, before any image switch can drop it.
@@ -381,6 +514,7 @@ acquisitionLoop:
 			continue
 		}
 		e.bumpFrames()
+		e.viewHeld.Store(retained)
 		e.mu.Lock()
 		viewPending := e.pendSet
 		e.mu.Unlock()
@@ -414,6 +548,7 @@ acquisitionLoop:
 		e.stats.WinCols = plan.Screen
 		e.mu.Unlock()
 		armAt := e.clk.Now()
+		armedAt := armAt
 		var ctx context.Context
 		var cancel context.CancelFunc
 		var err error
@@ -425,6 +560,7 @@ acquisitionLoop:
 			ctx, cancel = context.WithTimeout(context.Background(), 3*time.Second)
 			err = e.sram.Arm(ctx, cfg)
 			cancel()
+			armedAt = e.clk.Now()
 			if err != nil {
 				e.busErr(err)
 				e.sleepBeating(100 * time.Millisecond)
@@ -494,13 +630,18 @@ acquisitionLoop:
 			savedScale = e.liveScale()
 		}
 		shownScaleGen = e.scaleGen.Load()
+		e.shownScaleGen.Store(shownScaleGen)
 		savedM, savedCfg, savedPlan, savedNorm, savedTP, savedForced = m, cfg, plan, norm, tp, forced
 		fullRecall := !e.running.Load()
 		retained, recalled = true, fullRecall
+		e.viewHeld.Store(true)
 		recallOffset, recallWords := uint32(0), m.Length
 		posFrac := math.Float64frombits(e.trigPosFrac.Load())
 		softQualify := tp.typ != TrigEdge && e.serialMode.Load() != SerialTrigger
-		if !fullRecall {
+		// The capture that serves a SINGLE is read whole once: the stop that
+		// follows shows that full record from memory instead of reading it again.
+		singleShot := !replay && e.singleArmed.Load() && singleGen == e.singleGen.Load()
+		if !fullRecall && !singleShot {
 			// A software-qualified trigger needs room to find its event away
 			// from the hardware edge and still fill the screen around it.
 			screen := plan.Screen
@@ -512,9 +653,27 @@ acquisitionLoop:
 		// While running, a window larger than the display needs is read as a
 		// peak-detect envelope; the deep record stays in SRAM for a stop.
 		var bucket uint32
-		if !fullRecall && e.envelopeAllowed(cfg, tp) {
-			bucket, recallOffset, recallWords = envelopeWindow(recallOffset, recallWords)
+		envBuckets := uint32(sramcapture.EnvelopeBuckets)
+		if m.FractionBits == 8 {
+			envBuckets = sramcapture.EnvelopeBucketsQ8 // two words a bucket
 		}
+		readout := "full record"
+		if singleShot {
+			readout = "single record"
+		} else if !fullRecall {
+			if why := e.envelopeBlock(cfg, tp); why != "" {
+				readout = "raw window: " + why
+			} else {
+				bucket, recallOffset, recallWords = envelopeWindow(recallOffset, recallWords, envBuckets)
+				readout = "raw window: short"
+				if bucket != 0 {
+					readout = "envelope"
+				}
+			}
+		}
+		e.mu.Lock()
+		e.stats.LiveReadout = fmt.Sprintf("%s (%d words)", readout, recallWords)
+		e.mu.Unlock()
 		frozenAt := e.clk.Now()
 		f := e.arena.Write()
 		q1, q2 := f.Q1, f.Q2
@@ -531,7 +690,7 @@ acquisitionLoop:
 		if bucket != 0 {
 			// Each output sample is half a bucket: a (min, max) pair per bucket.
 			half := float64(bucket) * float64(m.SamplesPerWord) / 2
-			f.Valid = 2 * sramcapture.EnvelopeBuckets
+			f.Valid = 2 * int(envBuckets)
 			f.SampleS *= half
 			f.WinCols = min(f.Valid, int(float64(plan.Screen)/half+0.5))
 			f.Interp = false
@@ -545,6 +704,7 @@ acquisitionLoop:
 			f.Q2 = qBuffer(q2, f.Valid)
 		}
 		writer := sramFrameWriter{f: f, m: m}
+		e.setBusy("reading", 0) // the recall's burst loop reports progress
 		ctx, cancel = context.WithTimeout(context.Background(), 10*time.Second)
 		recall := e.sram.Recall
 		if m.Revision == 10 {
@@ -552,13 +712,22 @@ acquisitionLoop:
 		}
 		recallAt := e.clk.Now()
 		if bucket != 0 {
-			_, err = e.sram.RecallEnvelope(ctx, recallOffset, bucket, sramcapture.EnvelopeBuckets, &writer)
+			_, err = e.sram.RecallEnvelope(ctx, recallOffset, bucket, envBuckets, &writer)
 			rejects, last := e.sram.EnvelopeDiagnostics()
 			e.mu.Lock()
 			e.stats.EnvelopeRejects, e.stats.EnvelopeLast = rejects, last
 			e.mu.Unlock()
+		} else if key := (heldKey{m, recallOffset, recallWords}); replay && held.key == key {
+			// A stopped record re-shown at a new V/div, offset or timebase:
+			// the recall is already in memory, skip seconds of SRAM readout.
+			writer.n = held.restore(f)
 		} else {
 			_, err = recall(ctx, recallOffset, recallWords, &writer)
+			if err == nil && recallOffset == 0 && recallWords == m.Length && writer.n == f.Valid {
+				held.store(key, f)
+			} else if !replay {
+				held.key = heldKey{} // a new capture: the held record is gone
+			}
 		}
 		recalledAt := e.clk.Now()
 		cancel()
@@ -569,84 +738,105 @@ acquisitionLoop:
 			e.busErr(err)
 			continue
 		}
+		e.setBusy("processing", 0)
 		// CPU-only conditioning: let a staged lamp latch meanwhile (SetLEDs).
 		e.cpuStage.Unlock()
-		if len(f.Q1) == f.Valid && len(f.Q2) == f.Valid && bucket == 0 {
-			scratch = qBuffer(scratch, f.Valid)
-			dsp.ConditionQ8(f.Q1, scratch)
-			dsp.ConditionQ8(f.Q2, scratch)
-			f.FilterGuard = dsp.PrecisionGuard
-			if responseReduction != m.Decimation {
-				responseGain, responseBW = dsp.PrecisionLimits(int(m.Decimation))
-				responseReduction = m.Decimation
-			}
-			f.NoiseGainIdeal = responseGain
-			f.PassbandHz = .075 / f.SampleS
-			f.BandwidthHz = responseBW / f.SampleS
-			f.Filter = "CIC3 + compensated FIR"
-			for i := 0; i < f.Valid; i++ {
-				f.C1[i] = roundQ8(f.Q1[i])
-				f.C2[i] = roundQ8(f.Q2[i])
-			}
-		}
-		if bucket != 0 {
-			// Extremes of whole buckets: no per-core calibration or FIR applies.
-			if len(f.Q1) == f.Valid && len(f.Q2) == f.Valid {
+		condKey := heldCondKey{held.key, e.acqMode.Load(), e.eresLen.Load()}
+		if replay && held.key == (heldKey{m, recallOffset, recallWords}) && held.cond.key == condKey {
+			// The record's conditioning is independent of the view: reuse it.
+			held.restoreCond(f, q1, q2)
+			f.Content = held.cond.content
+		} else {
+			e.contentGen++
+			f.Content = e.contentGen
+			if len(f.Q1) == f.Valid && len(f.Q2) == f.Valid && bucket == 0 {
+				scratch = qBuffer(scratch, f.Valid)
+				dsp.ConditionQ8(f.Q1, scratch)
+				dsp.ConditionQ8(f.Q2, scratch)
+				f.FilterGuard = dsp.PrecisionGuard
+				if responseReduction != m.Decimation {
+					responseGain, responseBW = dsp.PrecisionLimits(int(m.Decimation))
+					responseReduction = m.Decimation
+				}
+				f.NoiseGainIdeal = responseGain
+				f.PassbandHz = .075 / f.SampleS
+				f.BandwidthHz = responseBW / f.SampleS
+				f.Filter = "CIC3 + compensated FIR"
 				for i := 0; i < f.Valid; i++ {
 					f.C1[i] = roundQ8(f.Q1[i])
 					f.C2[i] = roundQ8(f.Q2[i])
 				}
 			}
-			f.Filter = fmt.Sprintf("peak-detect display readout, %d words per bucket; full record in SRAM", bucket)
-			f.PeakDetect = true
-			// Decimated records are filtered across the converters already.
-			if cal := e.interleaveCalibration; cal != nil && m.Decimation <= 1 {
-				f.Q1, f.Q2 = qBuffer(q1, f.Valid), qBuffer(q2, f.Valid)
-				cal.debiasEnvelope(0, f.C1[:f.Valid], f.Q1, len(f.Q1) == f.Valid && m.FractionBits == 8)
-				cal.debiasEnvelope(1, f.C2[:f.Valid], f.Q2, len(f.Q2) == f.Valid && m.FractionBits == 8)
-				f.Filter += "; converter offsets removed from the extremes"
-			}
-		} else if m.FractionBits == 0 && e.interleaveCalibration != nil {
-			q1 = qBuffer(q1, f.Valid)
-			q2 = qBuffer(q2, f.Valid)
-			// The converters' calibration is the capture's detent's.
-			scale := [2]float64{savedScale[0].vdiv, savedScale[1].vdiv}
-			if e.interleaveCalibration.apply(f.C1[:f.Valid], f.C2[:f.Valid], q1, q2, scale, f.SampleS) {
-				f.Q1 = q1
-				f.Q2 = q2
-				f.Filter = "interleave calibration (phase checked)"
-				if e.interleaveCalibration.hasTiming(scale, f.SampleS) {
-					f.Filter += "; aperture compensation"
-					f.FilterGuard = 2
-				}
-			} else {
-				f.Filter = "interleave calibration bypassed (scale, clipping or phase mismatch)"
-			}
-		}
-		if e.acqMode.Load() == AcqEres {
-			length := clampEresLen(int(e.eresLen.Load()))
-			if length > 1 {
-				if len(f.Q1) != f.Valid {
-					f.Q1, f.Q2 = qBuffer(q1, f.Valid), qBuffer(q2, f.Valid)
+			if bucket != 0 {
+				// Extremes of whole buckets: no per-core calibration or FIR applies.
+				if len(f.Q1) == f.Valid && len(f.Q2) == f.Valid {
 					for i := 0; i < f.Valid; i++ {
-						f.Q1[i], f.Q2[i] = uint16(f.C1[i])<<8, uint16(f.C2[i])<<8
+						f.C1[i] = roundQ8(f.Q1[i])
+						f.C2[i] = roundQ8(f.Q2[i])
 					}
 				}
-				scratch = qBuffer(scratch, f.Valid)
-				eresQ8(f.Q1, scratch, length)
-				eresQ8(f.Q2, scratch, length)
-				for i := 0; i < f.Valid; i++ {
-					f.C1[i], f.C2[i] = roundQ8(f.Q1[i]), roundQ8(f.Q2[i])
+				f.Filter = fmt.Sprintf("peak-detect display readout, %d words per bucket; full record in SRAM", bucket)
+				f.PeakDetect = true
+				// Decimated records are filtered across the converters already.
+				if cal := e.interleaveCalibration; cal != nil && m.Decimation <= 1 {
+					f.Q1, f.Q2 = qBuffer(q1, f.Valid), qBuffer(q2, f.Valid)
+					cal.debiasEnvelope(0, f.C1[:f.Valid], f.Q1, len(f.Q1) == f.Valid && m.FractionBits == 8)
+					cal.debiasEnvelope(1, f.C2[:f.Valid], f.Q2, len(f.Q2) == f.Valid && m.FractionBits == 8)
+					f.Filter += "; converter offsets removed from the extremes"
 				}
-				f.Filter += fmt.Sprintf("; ERES %d-point boxcar", length)
-				f.FilterGuard += length / 2
-				bw := .443 / (float64(length) * f.SampleS)
-				f.NoiseGainIdeal = math.Sqrt(float64(length))
-
-				if f.BandwidthHz == 0 || bw < f.BandwidthHz {
-					f.BandwidthHz = bw
+			} else if m.FractionBits == 0 && e.interleaveCalibration != nil {
+				q1 = qBuffer(q1, f.Valid)
+				q2 = qBuffer(q2, f.Valid)
+				// The converters' calibration is the capture's detent's.
+				scale := [2]float64{savedScale[0].vdiv, savedScale[1].vdiv}
+				if e.interleaveCalibration.apply(f.C1[:f.Valid], f.C2[:f.Valid], q1, q2, scale, f.SampleS) {
+					f.Q1 = q1
+					f.Q2 = q2
+					f.Filter = "interleave calibration (phase checked)"
+					if e.interleaveCalibration.hasTiming(scale, f.SampleS) {
+						f.Filter += "; aperture compensation"
+						f.FilterGuard = 2
+					}
+				} else {
+					f.Filter = "interleave calibration bypassed (scale, clipping or phase mismatch)"
 				}
 			}
+			if e.acqMode.Load() == AcqEres {
+				length := clampEresLen(int(e.eresLen.Load()))
+				if length > 1 {
+					if len(f.Q1) != f.Valid {
+						f.Q1, f.Q2 = qBuffer(q1, f.Valid), qBuffer(q2, f.Valid)
+						for i := 0; i < f.Valid; i++ {
+							f.Q1[i], f.Q2[i] = uint16(f.C1[i])<<8, uint16(f.C2[i])<<8
+						}
+					}
+					scratch = qBuffer(scratch, f.Valid)
+					eresQ8(f.Q1, scratch, length)
+					eresQ8(f.Q2, scratch, length)
+					for i := 0; i < f.Valid; i++ {
+						f.C1[i], f.C2[i] = roundQ8(f.Q1[i]), roundQ8(f.Q2[i])
+					}
+					f.Filter += fmt.Sprintf("; ERES %d-point boxcar", length)
+					f.FilterGuard += length / 2
+					bw := .443 / (float64(length) * f.SampleS)
+					f.NoiseGainIdeal = math.Sqrt(float64(length))
+
+					if f.BandwidthHz == 0 || bw < f.BandwidthHz {
+						f.BandwidthHz = bw
+					}
+				}
+			}
+			if held.key == (heldKey{m, recallOffset, recallWords}) {
+				held.storeCond(condKey, f)
+				held.cond.content = f.Content
+			}
+		}
+		if bucket != 0 {
+			// After the (min, max)-pair calibration above: put each pair in
+			// time order so the live envelope also serves as samples.
+			orderEnvelope(f.C1[:f.Valid], f.Q1)
+			orderEnvelope(f.C2[:f.Valid], f.Q2)
+			f.Ordered = true
 		}
 		if fullRecall {
 			f.Filter += "; stopped full record (single acquisition)"
@@ -857,7 +1047,15 @@ acquisitionLoop:
 			e.stats.Held++
 			e.mu.Unlock()
 		}
-		e.paceHoldWithFloor(e.clk.Now(), qualified && f.Trigd, 0)
+		e.setBusy("", 0)
+		doneAt := e.clk.Now()
+		ms := func(a, b time.Time) float64 { return float64(b.Sub(a)) / float64(time.Millisecond) }
+		e.mu.Lock()
+		e.stats.FrameStages = fmt.Sprintf("arm %.0f wait %.0f read %.0f proc %.0f post %.0f prev-pace %.0f (ms)",
+			ms(armAt, armedAt), ms(armedAt, frozenAt), ms(frozenAt, recalledAt), ms(recalledAt, conditionedAt), ms(conditionedAt, doneAt), lastPace)
+		e.mu.Unlock()
+		e.paceHoldWithFloor(doneAt, qualified && f.Trigd, 0)
+		lastPace = ms(doneAt, e.clk.Now())
 	}
 }
 
@@ -934,12 +1132,13 @@ func rescaleCodes(c []uint8, q []uint16, from, to chScale) {
 	if len(q) == 0 {
 		return
 	}
-	lut := make([]uint16, 1<<16)
-	for v := range lut {
-		lut[v] = uint16(math.Round(math.Max(0, math.Min(65535, 32768+(float64(v)-32768)*k+b*256))))
-	}
+	// Fixed point, not a 64K table: random lookups into 128 KB miss the ARM's
+	// caches on every sample (~0.6 s for a deep record per V/div step).
+	kf := int64(math.Round(k * (1 << 16)))
+	bf := int64(math.Round((32768 + b*256) * (1 << 16)))
 	for i, v := range q {
-		q[i] = lut[v]
+		x := ((int64(v)-32768)*kf + bf + 1<<15) >> 16
+		q[i] = uint16(min(max(x, 0), 65535))
 	}
 }
 

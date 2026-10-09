@@ -10,21 +10,21 @@ import (
 // TRLC-LINKS: REQ-SDS-010
 func TestEnvelopeWindow(t *testing.T) {
 	// A small window is recalled as is.
-	if b, s, n := envelopeWindow(100, 2047); b != 0 || s != 100 || n != 2047 {
+	if b, s, n := envelopeWindow(100, 2047, 2048); b != 0 || s != 100 || n != 2047 {
 		t.Fatalf("small window: %d %d %d", b, s, n)
 	}
-	// A whole raw record, short of the warm-up words: 510 words per bucket, centred.
-	if b, s, n := envelopeWindow(0, sramcapture.Words); b != 510 || n != 510*1024 || s != 8+(sramcapture.Words-16-n)/2 {
+	// A whole raw record, short of the warm-up words: 254 words per bucket, centred.
+	if b, s, n := envelopeWindow(0, sramcapture.Words, 2048); b != 254 || n != 254*2048 || s != 8+(sramcapture.Words-16-n)/2 {
 		t.Fatalf("full record: %d %d %d", b, s, n)
 	}
 	// An uneven window keeps whole buckets, centred on the original.
-	if b, s, n := envelopeWindow(1000, 250511); b != 244 || n != 244*1024 || s != 1000+(250511-n)/2 {
+	if b, s, n := envelopeWindow(1000, 250511, 2048); b != 122 || n != 122*2048 || s != 1000+(250511-n)/2 {
 		t.Fatalf("uneven window: %d %d %d", b, s, n)
 	}
-	if b, s, n := envelopeWindow(0, 5*1024+7); b != 0 || n != 5*1024+7 || s != 0 {
+	if b, s, n := envelopeWindow(0, 3*1024+7, 2048); b != 0 || n != 3*1024+7 || s != 0 {
 		t.Fatalf("short window: %d %d %d", b, s, n)
 	}
-	if b, s, n := envelopeWindow(0, 9*1024+7); b != 8 || n != 8*1024 || s != (9*1024+7-n)/2 {
+	if b, s, n := envelopeWindow(0, 9*2048+7, 2048); b != 8 || n != 8*2048 || s != (9*2048+7-n)/2 {
 		t.Fatalf("uneven window: %d %d %d", b, s, n)
 	}
 }
@@ -41,35 +41,49 @@ func TestEnvelopeAllowed(t *testing.T) {
 		t.Fatal("Bode needs time-ordered samples, not extrema")
 	}
 	e.SetBodeMode(false, 0, 1)
-	for _, mode := range []int{MaskTest, MaskStopFail} {
-		e.SetMaskMode(mode)
-		if e.envelopeAllowed(sramcapture.Config{}, edge) {
-			t.Fatal("mask testing must preserve sample geometry")
-		}
+	// Masks, decode and software qualifiers run on the time-ordered envelope.
+	e.SetMaskMode(MaskTest)
+	if !e.envelopeAllowed(sramcapture.Config{}, edge) {
+		t.Fatal("mask testing refused the live envelope")
 	}
 	e.SetMaskMode(MaskOff)
+	e.SetDecodeView(true)
+	if !e.envelopeAllowed(sramcapture.Config{}, trigParams{typ: TrigPulse}) {
+		t.Fatal("decode / pulse qualification refused the live envelope")
+	}
+	e.SetDecodeView(false)
+	// The noise-reducing modes need true samples: decimated live captures.
 	for _, mode := range []int32{AcqAverage, AcqPrecision, AcqEres} {
 		e.acqMode.Store(mode)
-		if e.envelopeAllowed(sramcapture.Config{}, edge) {
-			t.Fatalf("mode %d needs every sample", mode)
+		if why := e.envelopeBlock(sramcapture.Config{}, edge); why == "" || !liveDecimates(why) {
+			t.Fatalf("mode %d: block %q", mode, why)
 		}
 	}
 	e.acqMode.Store(AcqPeak)
 	if !e.envelopeAllowed(sramcapture.Config{}, edge) {
 		t.Fatal("peak mode refused")
 	}
-	if e.envelopeAllowed(sramcapture.Config{}, trigParams{typ: TrigPulse}) {
-		t.Fatal("software pulse qualification needs every sample")
-	}
-	e.serialMode.Store(SerialTrigger)
-	if e.envelopeAllowed(sramcapture.Config{}, edge) {
-		t.Fatal("software serial qualification needs every sample")
-	}
-	if !e.envelopeAllowed(sramcapture.Config{UART: sramcapture.UARTTriggerConfig{Enabled: true}}, edge) {
-		t.Fatal("a hardware serial trigger does not need samples")
-	}
 	e.hardwareEnvelope = false
 	if e.envelopeAllowed(sramcapture.Config{}, edge) {
 		t.Fatal("an image without the envelope recall")
+	}
+}
+
+// An edge inside a bucket reads as one transition after ordering; a spike
+// narrower than a bucket stays a one-sample peak.
+// TRLC-LINKS: REQ-SDS-010
+func TestOrderEnvelope(t *testing.T) {
+	// falling edge in pair 1, rising in pair 3, a spike in pair 5 (min,max order)
+	c := []uint8{200, 200, 10, 200, 10, 10, 10, 200, 200, 200, 10, 250, 10, 10}
+	q := make([]uint16, len(c))
+	for i, v := range c {
+		q[i] = uint16(v) << 8
+	}
+	orderEnvelope(c, q)
+	want := []uint8{200, 200, 200, 10, 10, 10, 10, 200, 200, 200, 250, 10, 10, 10}
+	for i := range want {
+		if c[i] != want[i] || q[i] != uint16(want[i])<<8 {
+			t.Fatalf("ordered %v, want %v", c, want)
+		}
 	}
 }

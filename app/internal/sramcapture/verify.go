@@ -12,6 +12,13 @@ import (
 // ownership to the engine; this is a startup transport check, not a live probe.
 // TRLC-LINKS: REQ-SDS-034
 func (c *Capture) VerifyCounter(ctx context.Context) error {
+	// A previous process (another build, or the emergency binary) can exit
+	// mid-acquisition; Arm refuses a running capture, so stop it first.
+	if m, err := c.Status(); err == nil && (m.Running || !m.Ready) {
+		if err := c.Halt(ctx); err != nil {
+			return fmt.Errorf("sramcapture: halting a leftover acquisition: %w", err)
+		}
+	}
 	if err := c.Arm(ctx, Config{Source: Counter, PreWords: Words - 17, PostWords: 17}); err != nil {
 		return err
 	}

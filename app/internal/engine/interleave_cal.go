@@ -279,20 +279,17 @@ func (c *InterleaveCalibration) debiasEnvelope(ch int, sig []uint8, q []uint16, 
 	for _, v := range c.Offset[ch&1] {
 		lo, hi = min(lo, v), max(hi, v)
 	}
+	// Q8.8 integers, not float per sample: this runs on every live envelope.
+	off := [2]int{int(math.Round(lo * 256)), int(math.Round(hi * 256))}
 	for i := range sig {
-		v := float64(sig[i])
+		x := int(sig[i]) << 8
 		if fromQ {
-			v = float64(q[i]) / 256
+			x = int(q[i])
 		}
-		if v > 0.5 && v < 254.5 {
-			if i%2 == 0 {
-				v -= lo
-			} else {
-				v -= hi
-			}
-			v = min(max(v, 0), 255)
+		if x > 128 && x < 254*256+128 { // rails (within half a code) stay
+			x = min(max(x-off[i&1], 0), 255*256)
 		}
-		q[i] = uint16(math.Round(v * 256))
+		q[i] = uint16(x)
 		sig[i] = roundQ8(q[i])
 	}
 }

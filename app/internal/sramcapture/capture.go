@@ -46,7 +46,7 @@ type Capture struct {
 	streamBytes    []byte
 	mu             sync.Mutex
 	bus            Bus
-	spanHook       func() // between recall bursts (SetSpanHook)
+	spanHook       func(done, total int) // between recall bursts (SetSpanHook)
 	// envelopeOn: an envelope recall may have left the reducer enabled.
 	envelopeOn      bool
 	envelopeRejects int
@@ -160,6 +160,11 @@ func New(b Bus) (*Capture, error) {
 	if m != QualifiedMapID {
 		return nil, fmt.Errorf("sramcapture: unqualified ADC map %04x, expected %04x", m, QualifiedMapID)
 	}
+	// A previous process may have left the envelope reducer on (a failed
+	// reduction): the first recall, the startup counter check, must turn it off
+	// or it reads reduced words (bench 2026-10-09: "startup counter word 0 is
+	// 1216", a crash loop into the emergency binary).
+	c.envelopeOn = rev == 10
 	return c, nil
 }
 
@@ -779,7 +784,7 @@ func (c *Capture) recallChecked(ctx context.Context, offset, count uint32, dst i
 			return written, err
 		}
 		if i > 0 {
-			c.yieldBetweenSpans()
+			c.yieldBetweenSpans(i, len(spans))
 		}
 		n := span.count
 		target := (m.Origin + m.Start + offset + span.offset - prefix) & addressMask
@@ -903,9 +908,9 @@ func (c *Capture) recallChecked(ctx context.Context, offset, count uint32, dst i
 // mux, and a scan read touches only its select/data registers, so nothing a
 // burst relies on changes across the gap. Called with c.mu held.
 // TRLC-LINKS: REQ-SDS-033, REQ-SDS-022
-func (c *Capture) yieldBetweenSpans() {
+func (c *Capture) yieldBetweenSpans(done, total int) {
 	if c.spanHook != nil {
-		c.spanHook()
+		c.spanHook(done, total)
 	}
 	c.mu.Unlock()
 	runtime.Gosched()
@@ -914,9 +919,10 @@ func (c *Capture) yieldBetweenSpans() {
 
 // SetSpanHook installs fn to run between recall bursts on the recalling
 // goroutine, which owns the bus there — e.g. to latch a staged panel lamp
-// mid-recall. Set it before the first recall.
+// mid-recall — with the bursts done of total (recall progress). Set it before
+// the first recall.
 // TRLC-LINKS: REQ-SDS-033, REQ-SDS-135
-func (c *Capture) SetSpanHook(fn func()) {
+func (c *Capture) SetSpanHook(fn func(done, total int)) {
 	c.mu.Lock()
 	c.spanHook = fn
 	c.mu.Unlock()

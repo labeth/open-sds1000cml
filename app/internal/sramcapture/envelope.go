@@ -7,9 +7,18 @@ import (
 	"io"
 )
 
+// EnvelopeOutputWords is the reducer's output limit: a request beyond it
+// produces nothing (bench 2026-10-09: 2048 Q8.8 buckets, 4096 words, gave 0).
+const EnvelopeOutputWords = 2048
+
 // EnvelopeBuckets is the envelope recall's output length for display: raw
-// records give two samples (minimum, maximum) per bucket per channel.
-const EnvelopeBuckets = 1024
+// records give two samples (minimum, maximum) per bucket per channel, one word
+// a bucket; 4096 points keep decoding a live frame meaningful. Q8.8 records
+// take two words a bucket, so they get EnvelopeBucketsQ8.
+const (
+	EnvelopeBuckets   = EnvelopeOutputWords
+	EnvelopeBucketsQ8 = EnvelopeOutputWords / 2
+)
 
 // EnvelopeDiagnostics reports rejected envelope commands and the last one.
 // TRLC-LINKS: REQ-SDS-010
@@ -70,7 +79,7 @@ func (c *Capture) RecallEnvelope(ctx context.Context, offset, bucket, buckets ui
 	}
 	words := bucket * buckets
 	// The FPGA reduces two-word packets: buckets are an even number of words.
-	if bucket < 2 || bucket%2 != 0 || bucket > 0xffffe || buckets == 0 || buckets*perBucket > 4096 || (!q8 && buckets%2 != 0) ||
+	if bucket < 2 || bucket%2 != 0 || bucket > 0xffffe || buckets == 0 || buckets*perBucket > EnvelopeOutputWords || (!q8 && buckets%2 != 0) ||
 		uint64(offset)+uint64(words) > uint64(m.Length) || words+16 > Words {
 		return m, fmt.Errorf("sramcapture: invalid envelope window")
 	}
@@ -96,6 +105,12 @@ func (c *Capture) RecallEnvelope(ctx context.Context, offset, bucket, buckets ui
 		control |= 0x4000
 	}
 	c.envelopeOn = true
+	defer func() {
+		// Leave normal recalls unaffected even when the reduction failed.
+		if c.envelopeOn && c.write(44, 0) == nil {
+			c.envelopeOn = false
+		}
+	}()
 	for _, r := range []struct{ sel, value uint16 }{{43, uint16(bucket)}, {44, control}, {45, prefix}} {
 		if err = c.write(r.sel, r.value); err != nil {
 			return m, err

@@ -20,7 +20,12 @@ type Frame struct {
 	TriggerKind    string  // hardware-edge, software-window, or forced
 	C1, C2         []uint8 // full-capacity backing arrays; valid prefix is [:Valid]
 
-	Seq     uint64  // advances only on a real publish
+	Seq uint64 // advances only on a real publish
+	// Content is the same for frames that show the same conditioned record
+	// (a stopped record re-shown at a new V/div, offset or timebase): their
+	// volts and decoded bytes agree, so displays may reuse results across
+	// them. 0 = unknown, never shared.
+	Content uint64
 	Valid   int     // drained sample count; the tail beyond it is stale
 	WinCols int     // samples spanning the 10-division screen
 	EdgeX   float64 // software crossing position, -1 = flat rail
@@ -29,13 +34,16 @@ type Frame struct {
 	// PeakDetect marks a record of bucket extremes (min, max pairs) read as a
 	// display envelope: amplitude is valid, timing is not.
 	PeakDetect bool
-	EnvCols    int  // envelope column count (800) when IsEnv, else 0
-	Ptp        int  // peak-to-peak of the discrimination channel
-	Trigd      bool // HW comparator fired (0x39 bit1)
-	TrigPos    int  // HW trigger-position latch (telemetry only)
-	Coherent   bool
-	HaltOK     bool
-	Degraded   bool // native-fast: a dead tail survived the re-capture retries — the
+	// Ordered: a PeakDetect frame whose pairs are in time order (orderEnvelope),
+	// so it may be decoded and qualified as samples at SampleS spacing.
+	Ordered  bool
+	EnvCols  int  // envelope column count (800) when IsEnv, else 0
+	Ptp      int  // peak-to-peak of the discrimination channel
+	Trigd    bool // HW comparator fired (0x39 bit1)
+	TrigPos  int  // HW trigger-position latch (telemetry only)
+	Coherent bool
+	HaltOK   bool
+	Degraded bool // native-fast: a dead tail survived the re-capture retries — the
 	//               record is a half-capture; content beyond realDepth is not signal
 
 	// Per-column (min,max) envelope bands, valid [:EnvCols] when IsEnv.

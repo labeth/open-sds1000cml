@@ -33,7 +33,7 @@ setInterval(() => {
 function computeDecode() {
   dcfg.result = null;
   if (dcfg.proto !== "off") renewDecodeLease();
-  if (dcfg.proto === "off" || !frame || frame.is_env || frame.peak_detect || !frame.c1) { updateDecodeResults(); return; }
+  if (dcfg.proto === "off" || !frame || frame.is_env || (frame.peak_detect && !frame.ordered) || !frame.c1) { updateDecodeResults(); return; }
   const colTimeS = frameDtS(frame, frame.c1.length); // dt_s-aware: true baud on the 1-200 ns/div nominal bands
   const cfg = { inverted: !!dcfg.inverted, threshold: dcfg.auto ? null : +$("decThr").value, guard: 4, fmt: dcfg.fmt };
   let r = null;
@@ -145,7 +145,7 @@ function updateDecodeResults() {
   if (dcfg.proto === "off") { card.style.display = "none"; return; }
   card.style.display = "";
   const r = dcfg.result;
-  if (frame && (frame.is_env || frame.peak_detect)) { $("decodeText").value = "(waiting for sampled waveform — min/max envelopes cannot be decoded)"; $("decodeCount").textContent = "sampled data required"; return; }
+  if (frame && (frame.is_env || (frame.peak_detect && !frame.ordered))) { $("decodeText").value = "(waiting for sampled waveform — min/max envelopes cannot be decoded)"; $("decodeCount").textContent = "sampled data required"; return; }
   if (dcfg.stream) { // show the accumulated packet history (newest last), auto-scroll
     const ta = $("decodeText");
     ta.value = dcfg.hist.join("\n");
@@ -264,14 +264,14 @@ function setDetectMsg(t, err) {
 // TRLC-LINKS: REQ-SDS-207
 async function runAutodetect() {
   if (!frame || !frame.c1 || frame.is_env) { setDetectMsg("no live waveform to analyse", true); return; }
-  if (frame.peak_detect && !frozen) {
+  if (frame.peak_detect && !frame.ordered && !frozen) {
     // Detect on samples: ask for them and wait for the first such frame.
     decodeLeaseT = 0; renewDecodeLease();
     setDetectMsg("fetching full-rate samples…");
-    for (let t = 0; t < 25 && frame && frame.peak_detect; t++) await new Promise(r => setTimeout(r, 200));
+    for (let t = 0; t < 25 && frame && frame.peak_detect && !frame.ordered; t++) await new Promise(r => setTimeout(r, 200));
     if (!frame || !frame.c1) { setDetectMsg("no live waveform to analyse", true); return; }
   }
-  if (frame.peak_detect || frame.is_env) { setDetectMsg("Sampled data required — select Normal acquisition and Run before detecting.", true); return; }
+  if ((frame.peak_detect && !frame.ordered) || frame.is_env) { setDetectMsg("Sampled data required — select Normal acquisition and Run before detecting.", true); return; }
   const d = autodetect(frame, { fmt: dcfg.fmt });
   if (d.proto === "off") {
     const why = d.reason && d.reason !== "no protocol matched" ? d.reason : "show more of the signal (slower t/div) or check the probes";

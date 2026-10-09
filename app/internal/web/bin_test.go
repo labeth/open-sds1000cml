@@ -346,6 +346,10 @@ func TestRawFeedRequestsChronologicalSamples(t *testing.T) {
 		t.Fatal("display requested raw acquisition")
 	}
 	getBin(t, s, "/api/frame.bin?raw=1")
+	if sc.lease != 0 {
+		t.Fatal("a raw payload alone requested raw acquisition")
+	}
+	getBin(t, s, "/api/frame.bin?raw=1&lease=raw")
 	if sc.lease != 3*time.Second {
 		t.Fatalf("raw lease = %v", sc.lease)
 	}

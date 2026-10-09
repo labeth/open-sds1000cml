@@ -27,29 +27,35 @@ const measRefresh = 250 * time.Millisecond
 var (
 	measMu    sync.Mutex
 	measSlots [2]struct {
-		seq          uint64
+		seq, content uint64
 		at           time.Time
 		vpc, off, ss float64
+		probe        float64
 		cpl          int
 		m            *measure.Result
 	}
 )
 
 // TRLC-LINKS: REQ-SDS-021
-func measFor(ch int, sig []uint8, q []uint16, guard int, seq uint64, vpc, off, ss float64, cpl int) *measure.Result {
+func measFor(ch int, sig []uint8, q []uint16, guard int, seq, content uint64, vpc, off, ss, probe float64, cpl int) *measure.Result {
 	if seq == 0 || ch < 0 || ch > 1 {
 		return measure.ComputeAcquisition(sig, q, vpc, off, ss, cpl, guard)
 	}
 	measMu.Lock()
 	defer measMu.Unlock()
 	c := &measSlots[ch]
+	// The same record re-shown at a new V/div or offset reads the same volts:
+	// a knob turn on a deep stopped record must not re-measure it.
+	if c.m != nil && content != 0 && c.content == content && c.probe == probe && c.ss == ss && c.cpl == cpl {
+		return c.m
+	}
 	if c.m != nil && c.vpc == vpc && c.off == off && c.ss == ss && c.cpl == cpl {
 		if seq == c.seq || time.Since(c.at) < measRefresh {
 			return c.m
 		}
 	}
 	m := measure.ComputeAcquisition(sig, q, vpc, off, ss, cpl, guard)
-	c.seq, c.at, c.vpc, c.off, c.ss, c.cpl, c.m = seq, time.Now(), vpc, off, ss, cpl, m
+	c.seq, c.content, c.at, c.vpc, c.off, c.ss, c.probe, c.cpl, c.m = seq, content, time.Now(), vpc, off, ss, probe, cpl, m
 	return m
 }
 
@@ -96,7 +102,7 @@ func measBox(sf Surface, f *engine.Frame, hud HUD, ch, x int) {
 		sig = analog.CoupleDisplay(sig, cpl)
 		off = 0
 	}
-	m := measFor(ch, sig, frameQ(f, ch), f.FilterGuard, f.Seq, vdiv*float64(zoomOf(hud, ch))/25*probe, off*probe, hud.SampleS, cpl)
+	m := measFor(ch, sig, frameQ(f, ch), f.FilterGuard, f.Seq, f.Content, vdiv*float64(zoomOf(hud, ch))/25*probe, off*probe, hud.SampleS, probe, cpl)
 	if f.PeakDetect {
 		m = m.WithEnvelopeTiming(sig, vdiv*float64(zoomOf(hud, ch))/25*probe, off*probe, hud.SampleS)
 	}
@@ -433,9 +439,7 @@ func drawHUD(sf Surface, f *engine.Frame, hud HUD) {
 	// on the top bar in the dead zone between the math legend (ends ≤ ~345) and
 	// the trigger readout (starts ≥ ~670) — clear of the trace band, readouts
 	// and the menu panel in every view. No network → nothing.
-	if hud.URL != "" {
-		DrawTextRight(sf, 664, 2, hud.URL, colDim, 1)
-	}
+	DrawStatusSlot(sf, hud)
 
 	if f == nil || f.Valid == 0 {
 		return
@@ -455,7 +459,7 @@ func drawHUD(sf Surface, f *engine.Frame, hud HUD) {
 			sig = analog.CoupleDisplay(sig, cpl)
 			off = 0
 		}
-		m := measFor(ch, sig, frameQ(f, ch), f.FilterGuard, f.Seq, vdiv*float64(zoomOf(hud, ch))/25*probe, off*probe, hud.SampleS, cpl)
+		m := measFor(ch, sig, frameQ(f, ch), f.FilterGuard, f.Seq, f.Content, vdiv*float64(zoomOf(hud, ch))/25*probe, off*probe, hud.SampleS, probe, cpl)
 		if f.PeakDetect {
 			m = m.WithEnvelopeTiming(sig, vdiv*float64(zoomOf(hud, ch))/25*probe, off*probe, hud.SampleS)
 		}
@@ -520,4 +524,44 @@ func frameClipped(f *engine.Frame) [2]bool {
 	clip[1] = len(f.C2) >= valid && measure.Clipped(f.C2[:valid])
 	clipCache.seq, clipCache.valid, clipCache.clip = f.Seq, valid, clip
 	return clip
+}
+
+// DrawStatusSlot draws the top bar's status slot (between the math legend and
+// the trigger readout): the loading indicator while a frame is being read or
+// processed, else the device URL.
+// TRLC-LINKS: REQ-SDS-168
+func DrawStatusSlot(sf Surface, hud HUD) {
+	if txt := statusSlotText(hud); txt != "" {
+		c := colDim
+		if hud.Busy != "" {
+			c = colTrig
+		}
+		DrawTextRight(sf, 664, 2, txt, c, 1)
+	}
+}
+
+// RedrawStatusSlot clears the slot (as wide as its widest text) and draws it
+// again, so the LCD loop can turn the spinner without re-rendering a deep
+// frame — which would steal the CPU from the very readout being shown.
+// TRLC-LINKS: REQ-SDS-168
+func RedrawStatusSlot(sf Surface, hud HUD) {
+	idle := hud
+	idle.Busy = ""
+	busy := hud
+	busy.Busy, busy.BusyPct = "x", 100
+	w := max(TextWidth(statusSlotText(idle), 1), TextWidth(statusSlotText(busy), 1))
+	fillRect(sf, 664-w, 0, w, 11, colBG)
+	DrawStatusSlot(sf, hud)
+}
+
+// TRLC-LINKS: REQ-SDS-168
+func statusSlotText(hud HUD) string {
+	if hud.Busy == "" {
+		return hud.URL
+	}
+	spin := `|/-\`[hud.BusyPhase&3 : hud.BusyPhase&3+1]
+	if hud.BusyPct >= 0 {
+		return fmt.Sprintf("LOADING %2.0f%% %s", hud.BusyPct, spin)
+	}
+	return "LOADING " + spin
 }

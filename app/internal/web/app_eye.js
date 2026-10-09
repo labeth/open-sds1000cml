@@ -456,7 +456,7 @@ $("ejReset").onclick = () => { ej.st = ejNew({}); ej.lastUi = 0; ejRender(true);
 async function ejLoop(gen) {
   if (!ej.armed || gen !== ej.gen) return;
   try {
-    const r = await fetch("/api/frame.bin?since=" + ej.lastSeq + "&waitms=1000&raw=1");
+    const r = await fetch("/api/frame.bin?since=" + ej.lastSeq + "&waitms=1000&raw=1&lease=raw");
     if (!r.ok) throw new Error("http " + r.status);
     const f = decodeBinFrame(await r.arrayBuffer());
     if (f === null) throw new Error("decode");

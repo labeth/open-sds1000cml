@@ -29,6 +29,9 @@ type frameReply struct {
 	// PeakDetect: the samples are (min, max) pairs per bucket, sample_s apart -
 	// extremes, not a time series; spectra and timing use the pair midpoints.
 	PeakDetect bool `json:"peak_detect,omitempty"`
+	// Ordered: a peak-detect frame whose pairs are in time order, so it decodes
+	// as samples sample_s apart (the live envelope; engine orderEnvelope).
+	Ordered bool `json:"ordered,omitempty"`
 	// CaptureSampleS is the converters' sample interval when it differs from
 	// sample_s (a peak-detect frame): the rate the scope really sampled at.
 	CaptureSampleS float64 `json:"capture_sample_s,omitempty"`
@@ -276,6 +279,7 @@ func (s *Server) buildReply(f *engine.Frame, cols int, full bool, since uint64, 
 		Coherent:       f.Coherent,
 		Degraded:       f.Degraded,
 		PeakDetect:     f.PeakDetect,
+		Ordered:        f.Ordered,
 		CaptureSampleS: captureSampleS(f),
 		Cols:           cols,
 		ColSpanS:       f.DisplayedS * 10, // the window spans 10 divisions

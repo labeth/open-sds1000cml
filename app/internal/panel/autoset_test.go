@@ -158,7 +158,7 @@ type autosetSampleEngine struct {
 }
 
 // TRLC-LINKS: REQ-SDS-137
-func (e *autosetSampleEngine) LeaseDecodeView(d time.Duration) { e.leases = append(e.leases, d) }
+func (e *autosetSampleEngine) LeaseSampleView(d time.Duration) { e.leases = append(e.leases, d) }
 
 // TRLC-LINKS: REQ-SDS-137
 func TestAutosetLeasesSampleFrames(t *testing.T) {

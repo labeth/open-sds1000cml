@@ -299,7 +299,7 @@ function srExitView() {
 async function srLoop(gen) {
   if (!sr.armed || gen !== sr.gen) return;
   try {
-    const r = await fetch("/api/frame.bin?since=" + sr.lastSeq + "&waitms=1000&raw=1");
+    const r = await fetch("/api/frame.bin?since=" + sr.lastSeq + "&waitms=1000&raw=1&lease=raw");
     if (!r.ok) throw new Error("http " + r.status);
     const f = decodeBinFrame(await r.arrayBuffer());
     if (f === null) throw new Error("decode");

@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"open-sds/app/internal/analog"
 	"open-sds/app/internal/engine"
-	"time"
 )
 
 // hZones installs the zone-trigger rectangles (POST JSON array of zones in
@@ -295,14 +294,9 @@ func (s *Server) hSet(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, map[string]any{"ok": true, "applied": applied})
 		return
 	case "decodeview":
-		// A browser decoding the frames: sample frames for value seconds
-		// (renewed while it decodes), not peak-detect pairs.
-		if sc, ok := s.sc.(interface{ LeaseDecodeView(time.Duration) }); ok {
-			sc.LeaseDecodeView(time.Duration(math.Max(0, math.Min(req.Value, 10)) * float64(time.Second)))
-			writeJSON(w, map[string]any{"ok": true, "applied": req.Value})
-		} else {
-			writeJSON(w, map[string]any{"ok": false, "err": "unsupported"})
-		}
+		// Accepted for older pages: decoding needs no lease now, the live
+		// envelope is time-ordered (engine orderEnvelope).
+		writeJSON(w, map[string]any{"ok": true, "applied": 0})
 		return
 	case "holdoff":
 		applied := s.sc.SetHoldoff(req.Value)

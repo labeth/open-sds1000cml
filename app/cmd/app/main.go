@@ -97,6 +97,11 @@ func buildHUD(e *engine.Engine, fe *analog.FrontEnd) lcd.HUD {
 	}
 	// NORMAL waits for a trigger: past 1 s or 2.5 screen spans without a
 	// published frame, the held frame's TRIG'd state no longer describes now.
+	// Loading indicator, after a short grace so fast frames never flash it.
+	if st.Busy != "" && st.BusyMs >= 150 {
+		hud.Busy, hud.BusyPct, hud.BusyPhase = st.Busy, st.BusyPct, int(st.BusyMs/250)
+	}
+	hud.ViewPending = st.ViewPending
 	if st.Norm && st.Running {
 		hud.Waiting = e.SincePublish() > time.Duration(math.Max(1, 25*st.TdivS)*float64(time.Second))
 	}
@@ -269,6 +274,12 @@ type renderSig struct {
 	ref0, ref1                                      bool
 }
 
+// statusSlot is what the top bar's status slot shows (lcd.DrawStatusSlot).
+type statusSlot struct {
+	busy       string
+	pct, phase int
+}
+
 // TRLC-LINKS: REQ-SDS-168
 func renderSigOf(f *engine.Frame, hud lcd.HUD, live bool) renderSig {
 	var seq uint64
@@ -321,6 +332,7 @@ func runLCD(e *engine.Engine, fe *analog.FrontEnd, fo *frames.Fanout) {
 	var lastPresented uint64
 	var lastFresh time.Time
 	var lastSig renderSig
+	var lastSlot statusSlot
 	haveSig := false
 	for {
 		time.Sleep(e.RenderPeriod()) // tunable display cadence
@@ -363,10 +375,20 @@ func runLCD(e *engine.Engine, fe *analog.FrontEnd, fo *frames.Fanout) {
 			force := hud.Persist || hud.ViewMode >= 3 || hud.SRActive ||
 				hud.MaskMode > 0 || hud.ZoneMode > 0
 			sig := renderSigOf(f, hud, live)
-			if haveSig && !force && sig == lastSig {
-				return // nothing visible changed — skip the rasterize + framebuffer blit
+			slot := statusSlot{hud.Busy, int(hud.BusyPct), hud.BusyPhase}
+			// Stopped and the engine is re-showing the held record at the new
+			// view: drawing the old frame at the new scale first only delays it.
+			stale := haveSig && hud.ViewPending && f != nil && f.Seq == lastSig.seq
+			if haveSig && (stale || !force && sig == lastSig) {
+				// Only the loading indicator moved: redraw its slot alone.
+				if slot != lastSlot {
+					lastSlot = slot
+					lcd.RedrawStatusSlot(back, hud)
+					present = true
+				}
+				return // nothing else visible changed — skip the rasterize
 			}
-			lastSig, haveSig = sig, true
+			lastSig, haveSig, lastSlot = sig, true, slot
 			lcd.Render(back, f, hud, live, persistLayer)
 			present = true
 		})
@@ -755,7 +777,7 @@ func main() {
 		var c1, c2 []uint8
 		var sampleS float64
 		fo.WithFrame(func(f *engine.Frame) {
-			if f == nil || f.PeakDetect || f.IsEnv || f.Valid < 32 || len(f.C1) < f.Valid || len(f.C2) < f.Valid {
+			if f == nil || (f.PeakDetect && !f.Ordered) || f.IsEnv || f.Valid < 32 || len(f.C1) < f.Valid || len(f.C2) < f.Valid {
 				return
 			}
 			c1 = append([]uint8(nil), f.C1[:f.Valid]...)

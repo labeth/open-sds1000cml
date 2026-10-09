@@ -133,6 +133,7 @@ func (c *Controller) srSeedAndStart() bool {
 		c.srSetStatus("no frame source")
 		return false
 	}
+	c.srWaitRaw()
 	var c1, c2 []uint8
 	var edgeX, sampleS float64
 	var cols, winCols int
@@ -331,6 +332,7 @@ func (c *Controller) srLoop(stop chan struct{}, st *superres.Stack) {
 			return
 		case <-tick.C:
 		}
+		c.srLeaseRaw() // keep full-rate raw live frames while stacking
 		// Reset request (Reset softkey) — done here so only this goroutine touches
 		// the Stack. Clears the accumulation, keeps the locked reference.
 		c.mu.Lock()
@@ -490,4 +492,28 @@ func (c *Controller) SuperresView() SuperresView {
 		v.Mean, v.Mean2 = c.srMean, c.srMean2
 	}
 	return v
+}
+
+// srLeaseRaw asks the engine for full-rate raw live frames for a few seconds:
+// stacking needs every sample, not the live display envelope.
+// TRLC-LINKS: REQ-SDS-140
+func (c *Controller) srLeaseRaw() {
+	if e, ok := c.eng.(interface{ LeaseDecodeView(time.Duration) }); ok {
+		e.LeaseDecodeView(3 * time.Second)
+	}
+}
+
+// srWaitRaw leases raw frames and waits (bounded) until a raw one is
+// published, so the stack seeds from samples rather than an envelope.
+// TRLC-LINKS: REQ-SDS-140
+func (c *Controller) srWaitRaw() {
+	c.srLeaseRaw()
+	for i := 0; i < 60; i++ {
+		raw := false
+		c.frameFn(func(f *engine.Frame) { raw = f != nil && !f.IsEnv && !f.PeakDetect })
+		if raw {
+			return
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
 }

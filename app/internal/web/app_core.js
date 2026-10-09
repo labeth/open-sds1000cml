@@ -180,6 +180,10 @@ function applyStatus() {
   $("single").classList.toggle("on", !!st.single);
   if (document.activeElement !== $("tpos") && Number.isFinite(st.trig_pos_frac) && st.trig_pos_frac >= 0 && st.trig_pos_frac <= 1) $("tpos").value = st.trig_pos_frac;
   $("wedged").style.display = st.wedged ? "inline" : "none";
+  // Loading indicator (after a short grace so fast frames never flash it).
+  const loading = !!st.busy && st.busy_ms >= 150;
+  $("loading").hidden = !loading;
+  if (loading) $("loading").textContent = "LOADING" + (st.busy_pct >= 0 ? " " + Math.round(st.busy_pct) + "%" : "…");
   if (document.activeElement !== $("ttype")) $("ttype").value = st.trig_type || 0;
   updateTriggerQualifiers(st.trig_qual);
   updateQualRow();
@@ -413,27 +417,39 @@ async function fetchFftRaw() {
   if (fftRawBusy) return;
   fftRawBusy = true; fftRawT = performance.now();
   try {
-    const r = await fetch("/api/frame.bin?raw=1&waitms=300");
+    const r = await fetch("/api/frame.bin?raw=1&lease=samples&waitms=300");
     if (r.ok) { const f = decodeBinFrame(await r.arrayBuffer()); if (f && !f.unchanged && f.c1 && f.sample_s > 0) { fftRaw = f; if (view.mode === "FFT") redraw(); } }
   } catch (e) { /* transient — the next tick retries */ } finally { fftRawBusy = false; }
 }
 
 // TRLC-LINKS: REQ-SDS-023
+let pollTimer = 0, pollBusy = false, pollKick = false;
 async function pollStatus() {
   if (superseded) return; // taken over by another browser; stop loading the device
+  clearTimeout(pollTimer);
+  pollBusy = true; pollKick = false;
   try { st = await (await fetch("/api/status")).json(); applyStatus(); }
   catch (e) { $("line").textContent = "no connection"; lastLineHTML = ""; } // reset the diff guard or a static status keeps "no connection" stuck
-  // While a SINGLE is armed, poll fast so the self-stop on capture reaches the
-  // UI promptly. Run/Stop itself toggles the current state at the device;
-  // this faster poll is only for the indicator. Steady state stays 1 s.
-  setTimeout(pollStatus, st && st.single ? 250 : 1000);
+  pollBusy = false;
+  // While a SINGLE is armed or the device is loading, poll fast so the self-stop
+  // and the loading indicator reach the UI promptly. Steady state stays 1 s.
+  pollTimer = setTimeout(pollStatus, pollKick ? 150 : st && (st.single || st.busy) ? 250 : 1000);
+}
+
+// kickStatus re-polls soon after a control change, so the loading indicator
+// for the frame it causes shows without waiting out the 1 s poll.
+// TRLC-LINKS: REQ-SDS-023
+function kickStatus() {
+  if (pollBusy) { pollKick = true; return; }
+  clearTimeout(pollTimer);
+  pollTimer = setTimeout(pollStatus, 150);
 }
 
 // ---- controls ----
 // TRLC-LINKS: REQ-SDS-023
 async function send(control, value) {
   if (autosetBusy && !await autosetDone) return { ok: false };
-  try { return await (await fetch("/api/set", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ control, value }) })).json(); }
+  try { const r = await (await fetch("/api/set", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ control, value }) })).json(); kickStatus(); return r; }
   catch (e) { return { ok: false }; }
 }
 // TRLC-LINKS: REQ-SDS-204

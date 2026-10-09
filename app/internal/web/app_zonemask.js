@@ -278,7 +278,7 @@ $("zmBuild").onclick = async () => {
       const f = decodeBinFrame(await r.arrayBuffer());
       if (!f || f.unchanged || f.seq === lastSeq) continue;
       lastSeq = f.seq;
-      if (!(f.edge_x >= 0) || !(f.sample_s > 0) || (f.peak_detect && st.acq_mode !== 3)) continue;
+      if (!(f.edge_x >= 0) || !(f.sample_s > 0) || (f.peak_detect && !f.ordered && st.acq_mode !== 3)) continue;
       const sig = ch === 1 ? f.c2 : f.c1;
       if (!sig) continue;
       const fw = Math.min(f.win_cols || st.win_cols, f.cols);

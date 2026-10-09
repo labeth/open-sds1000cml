@@ -57,6 +57,31 @@ func (m *MemSurface) SetPixel(x, y int, c uint16) {
 	m.Pix[o+1] = byte(c >> 8)
 }
 
+// vline draws column x from y0 to y1 inclusive: straight into a MemSurface's
+// pixels (a dense trace fills most of the screen height every frame), else
+// pixel by pixel.
+// TRLC-LINKS: REQ-SDS-021
+func vline(sf Surface, x, y0, y1 int, c uint16) {
+	m, ok := sf.(*MemSurface)
+	if !ok {
+		for y := y0; y <= y1; y++ {
+			sf.SetPixel(x, y, c)
+		}
+		return
+	}
+	if x < 0 || x >= W {
+		return
+	}
+	y0, y1 = max(y0, 0), min(y1, H-1)
+	if y0 > y1 {
+		return
+	}
+	px := unsafe.Slice((*uint16)(unsafe.Pointer(&m.Pix[0])), W*H) // RGB565 LE = native on ARM/amd64
+	for o := y0*W + x; y0 <= y1; y0, o = y0+1, o+W {
+		px[o] = c
+	}
+}
+
 // TRLC-LINKS: REQ-SDS-021
 func (m *MemSurface) Fill(c uint16) {
 	lo, hi := byte(c), byte(c>>8)

@@ -4,6 +4,7 @@ package lcd
 import (
 	"fmt"
 	"math"
+	"sync"
 
 	"open-sds/app/internal/analog"
 	"open-sds/app/internal/engine"
@@ -49,6 +50,10 @@ type HUD struct {
 	MathMode         int     // 0 = off, 1 = C1+C2, 2 = C1-C2, 3 = C1×C2
 	AutosetBusy      bool    // autoset sweep running → show a cancelable banner
 	AutosetMsg       string  // banner text while AutosetBusy
+	Busy             string  // a frame is being read/processed (loading indicator); "" idle
+	BusyPct          float64 // its progress 0..100, <0 unknown
+	BusyPhase        int     // spinner step, advanced by the caller while busy
+	ViewPending      bool    // stopped: the shown frame is about to be replaced at the new view
 	Zoom             int     // horizontal magnification (1 = none)
 	ZoomOff          float64 // zoom-window pan offset (fraction of the record)
 	Persist          bool    // display persistence (afterglow)
@@ -216,6 +221,21 @@ func drawLine(sf Surface, x0, y0, x1, y1 int, c uint16) {
 // true — never sinc, never a segment across a skipped column.
 // TRLC-LINKS: REQ-SDS-021
 func drawTrace(sf Surface, sig []uint8, win int, xc float64, interp bool, col uint16, posFrac float64, zoom ...int) {
+	drawTraceID(sf, traceID{}, sig, win, xc, interp, col, posFrac, zoom...)
+}
+
+// traceID names the samples a trace draws (frame Seq plus how the channel's
+// codes were derived), so a redraw of the same frame reuses the dense trace's
+// column extremes. A zero seq never caches.
+type traceID struct {
+	seq     uint64
+	ch, cpl int
+	inv     bool
+}
+
+// drawTraceID is drawTrace for identified samples (see traceID).
+// TRLC-LINKS: REQ-SDS-021
+func drawTraceID(sf Surface, id traceID, sig []uint8, win int, xc float64, interp bool, col uint16, posFrac float64, zoom ...int) {
 	z := 1.0
 	if len(zoom) > 0 && zoom[0] > 1 {
 		z = float64(zoom[0])
@@ -235,7 +255,7 @@ func drawTrace(sf Surface, sig []uint8, win int, xc float64, interp bool, col ui
 	// anchor exactly at posFrac even when the record has no mid crossing.
 	left := xc - float64(win)*posFrac
 	if !interp && float64(win) > 1.5*W {
-		drawDenseTrace(sf, sig, left, win, col, z)
+		drawDenseTrace(sf, id, sig, left, win, col, z)
 		return
 	}
 	prevX, prevY := -1, 0
@@ -290,28 +310,80 @@ func drawAcquiring(sf Surface, hud HUD) {
 // sample in 1250, so a captured glitch was not drawn (bench 2026-10-07).
 // Columns beyond the record repeat its nearest end, as drawTrace does.
 // TRLC-LINKS: REQ-SDS-021
-func drawDenseTrace(sf Surface, sig []uint8, left float64, win int, col uint16, z float64) {
-	n := len(sig)
+func drawDenseTrace(sf Surface, id traceID, sig []uint8, left float64, win int, col uint16, z float64) {
+	cols := denseColumns(id, sig, left, win)
 	y := func(v uint8) int { return sampleToY(128 + (float64(v)-128)*z) }
-	step := float64(win) / float64(W)
 	prevY := -1
+	for x := 0; x < W; x++ {
+		yTop, yBot := y(cols.mx[x]), y(cols.mn[x])
+		if prevY >= 0 { // join: the span reaches the previous column's last value
+			yTop, yBot = min(yTop, prevY), max(yBot, prevY)
+		}
+		vline(sf, x, yTop, yBot, col)
+		prevY = y(cols.last[x])
+	}
+}
+
+// denseCols are a dense trace's per-column extremes and last sample.
+type denseCols struct {
+	key          denseKey
+	mn, mx, last [W]uint8
+}
+
+type denseKey struct {
+	id     traceID
+	n, win int
+	left   float64
+	ptr    *uint8    // the samples' buffer…
+	probe  [16]uint8 // …and a spread of them, against a reused Seq
+}
+
+// denseCache keeps the column extremes of the last traces drawn (one slot per
+// channel role): scanning a deep record is most of an LCD frame's cost, and
+// the same frame is redrawn as the HUD changes around it.
+var denseCache struct {
+	sync.Mutex
+	slot [4]denseCols
+}
+
+// TRLC-LINKS: REQ-SDS-021
+func denseColumns(id traceID, sig []uint8, left float64, win int) *denseCols {
+	key := denseKey{id: id, n: len(sig), win: win, left: left, ptr: &sig[0]}
+	for i := range key.probe {
+		key.probe[i] = sig[i*(len(sig)-1)/(len(key.probe)-1)]
+	}
+	var c *denseCols
+	if id.seq != 0 {
+		denseCache.Lock()
+		defer denseCache.Unlock()
+		c = &denseCache.slot[id.ch&3]
+		if c.key == key {
+			return c
+		}
+	} else {
+		c = new(denseCols)
+	}
+	n := len(sig)
+	step := float64(win) / float64(W)
 	for x := 0; x < W; x++ {
 		lo := int(math.Floor(left + float64(x)*step))
 		hi := int(math.Floor(left+float64(x+1)*step)) - 1
 		lo, hi = min(max(lo, 0), n-1), min(max(hi, 0), n-1)
 		mn, mx := sig[lo], sig[lo]
 		for _, v := range sig[lo : hi+1] {
-			mn, mx = min(mn, v), max(mx, v)
+			if v < mn {
+				mn = v
+			} else if v > mx {
+				mx = v
+			}
 		}
-		yTop, yBot := y(mx), y(mn)
-		if prevY >= 0 { // join: the span reaches the previous column's last value
-			yTop, yBot = min(yTop, prevY), max(yBot, prevY)
-		}
-		for yy := yTop; yy <= yBot; yy++ {
-			sf.SetPixel(x, yy, col)
-		}
-		prevY = y(sig[hi])
+		c.mn[x], c.mx[x], c.last[x] = mn, mx, sig[hi]
 	}
+	c.key = key
+	if id.seq == 0 {
+		c.key = denseKey{}
+	}
+	return c
 }
 
 // drawEnvelope fills each column min→max (spec 07 §4): every pixel lies
@@ -528,10 +600,10 @@ func Render(sf Surface, f *engine.Frame, hud HUD, live bool, persist ...*MemSurf
 				if hud.Inv2 {
 					c2 = invertCodes(c2)
 				}
-				drawTrace(traceTarget, c2, win, xc, f.Interp, colC2, posFrac, hud.Zoom2)
+				drawTraceID(traceTarget, traceID{f.Seq, 2, hud.Cpl2, hud.Inv2}, c2, win, xc, f.Interp, colC2, posFrac, hud.Zoom2)
 			}
 			if sc1 {
-				drawTrace(traceTarget, c1, win, xc, f.Interp, colC1, posFrac, hud.Zoom1)
+				drawTraceID(traceTarget, traceID{f.Seq, 1, hud.Cpl1, hud.Inv1}, c1, win, xc, f.Interp, colC1, posFrac, hud.Zoom1)
 			}
 			if hud.MathMode != 0 {
 				drawMath(traceTarget, f, hud, win, xc, posFrac)

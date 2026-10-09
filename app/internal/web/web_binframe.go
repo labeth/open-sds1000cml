@@ -97,11 +97,18 @@ func (s *Server) hFrameBin(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusConflict) // 409 — a newer browser claimed the device
 		return
 	}
-	// Raw consumers need chronological samples, not display envelope pairs.
-	// Renew before waiting; a closed analyzer naturally lets the lease expire.
-	if r.URL.Query().Get("raw") == "1" {
+	// A consumer that needs true samples renews a lease before waiting (a
+	// closed analyzer lets it expire): lease=raw for full-rate samples (eye,
+	// super-res), lease=samples for evenly sampled ones (FFT). Live frames are
+	// otherwise time-ordered envelopes, fast whatever is enabled.
+	switch r.URL.Query().Get("lease") {
+	case "raw":
 		if sc, ok := s.sc.(interface{ LeaseDecodeView(time.Duration) }); ok {
 			sc.LeaseDecodeView(3 * time.Second)
+		}
+	case "samples":
+		if sc, ok := s.sc.(interface{ LeaseSampleView(time.Duration) }); ok {
+			sc.LeaseSampleView(3 * time.Second)
 		}
 	}
 	var since uint64
@@ -224,7 +231,7 @@ func (s *Server) rawBinMsg(since uint64) []byte {
 		hdr = frameReply{
 			Seq: f.Seq, EdgeX: f.EdgeX, Ptp: f.Ptp, TdivS: f.TdivS, WinCols: min(f.WinCols, n),
 			DisplayedS: f.DisplayedS, Interp: f.Interp, Norm: f.Norm,
-			Trigd: f.Trigd, Coherent: f.Coherent, IsEnv: f.IsEnv, PeakDetect: f.PeakDetect, CaptureSampleS: captureSampleS(f),
+			Trigd: f.Trigd, Coherent: f.Coherent, IsEnv: f.IsEnv, PeakDetect: f.PeakDetect, Ordered: f.Ordered, CaptureSampleS: captureSampleS(f),
 			Degraded: f.Degraded, // half-capture flag travels with the raw record it describes
 			Cols:     n, ColSpanS: float64(n) * f.SampleS, SampleS: f.SampleS,
 			EdgeFrac: -1, WinFrac: 1,

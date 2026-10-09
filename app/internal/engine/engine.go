@@ -183,8 +183,14 @@ type Stats struct {
 	EnvelopeRejects int      `json:"envelope_rejects,omitempty"`
 	EnvelopeLast    string   `json:"envelope_last,omitempty"`
 	ConditionMs     float64  `json:"condition_ms"`
-	LEDLagMs        float64  `json:"led_lag_ms"` // last staged-lamp → latch delay
-	HoldoffS        float64  `json:"holdoff_s"`  // trigger holdoff (0 = off)
+	LEDLagMs        float64  `json:"led_lag_ms"`             // last staged-lamp → latch delay
+	LiveReadout     string   `json:"live_readout"`           // how the last frame was read (and why not reduced)
+	Busy            string   `json:"busy,omitempty"`         // a frame is being read or processed (loading indicator)
+	BusyPct         float64  `json:"busy_pct"`               // its progress 0..100, -1 when unknown
+	BusyMs          float64  `json:"busy_ms"`                // how long it has been busy
+	FrameStages     string   `json:"frame_stages,omitempty"` // last SRAM frame's stage times
+	ViewPending     bool     `json:"view_pending"`           // stopped: the held record is being re-shown at a new view
+	HoldoffS        float64  `json:"holdoff_s"`              // trigger holdoff (0 = off)
 	Seq             uint64   `json:"seq"`
 	MmapDrain       bool     `json:"mmap_drain"` // the fast (EDMA) BURST drain is active; json name kept for the UI
 	ETS             bool     `json:"ets"`
@@ -347,7 +353,8 @@ type Engine struct {
 	singleGen       atomic.Uint64      // bumped per SINGLE press: a capture armed before the press never consumes it
 	forceReq        atomic.Bool        // FORCE: complete the armed capture once without a trigger
 	decodeView      atomic.Bool        // the display decodes the frame: send samples, not peak-detect pairs
-	decodeLease     atomic.Int64       // a browser decodes too: samples until this time (unix ns; see LeaseDecodeView)
+	decodeLease     atomic.Int64       // raw live frames until this time (unix ns; see LeaseDecodeView)
+	sampleLease     atomic.Int64       // evenly sampled live frames until this time (LeaseSampleView)
 	adopt           *adoptedRecord     // a decoded stream's record for the stopped loop to show (guarded by mu)
 	decodedCfg      sramcapture.Config // the running decoded capture's configuration (acquisition owner)
 	decodedLines    bool               // the worker builds the stream transcript; no event pumping (owner)
@@ -414,11 +421,20 @@ type Engine struct {
 	// cpuStage is held by the engine except across a CPU-only stage (SRAM frame
 	// conditioning) in which it touches no bus, so a lamp staged then can be
 	// latched at once by the staging goroutine instead of waiting it out.
-	cpuStage sync.Mutex
-	etsWant  bool // staged ETS opt-in; applied at the frame boundary
-	tp       trigParams
-	stats    Stats
-	pubTimes []time.Time // recent publish timestamps for the FPS window
+	cpuStage   sync.Mutex
+	busyWhat   string    // current long operation (Busy), "" when idle; under mu
+	busyAt     time.Time // when it began
+	busyDone   atomic.Int64
+	busyAll    atomic.Int64
+	contentGen uint64 // Frame.Content source; engine goroutine only
+	// viewHeld/shownScaleGen mirror the SRAM loop's retained record and the
+	// front-end scale it is shown at, for ViewPending.
+	viewHeld      atomic.Bool
+	shownScaleGen atomic.Uint64
+	etsWant       bool // staged ETS opt-in; applied at the frame boundary
+	tp            trigParams
+	stats         Stats
+	pubTimes      []time.Time // recent publish timestamps for the FPS window
 
 	// sramJobs carries FPGA image-switching work (fpga_stack.go) to the owner.
 	sramJobs chan sramJob
@@ -732,6 +748,13 @@ func (e *Engine) Snapshot() Stats {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	s := e.stats
+	s.ViewPending = e.sram != nil && !s.Running && e.viewHeld.Load() && (e.pendSet || e.scaleGen.Load() != e.shownScaleGen.Load())
+	if e.busyWhat != "" {
+		s.Busy, s.BusyMs, s.BusyPct = e.busyWhat, float64(time.Since(e.busyAt))/float64(time.Millisecond), -1
+		if all := e.busyAll.Load(); all > 0 {
+			s.BusyPct = math.Min(100, 100*float64(e.busyDone.Load())/float64(all))
+		}
+	}
 	// zone/mask live state (atomics + ring size)
 	if e.sram == nil {
 		s.WinCols = e.band.WinCols()
@@ -902,34 +925,55 @@ func (e *Engine) SincePublish() time.Duration {
 // TRLC-LINKS: REQ-SDS-011
 func (e *Engine) ForceTrigger() { e.forceReq.Store(true) }
 
-// SetDecodeView tells the engine the display is decoding a protocol from the
-// published frame. Peak-detect envelopes carry (min, max) pairs, not samples
-// in time order: an edge inside a bucket reads as a glitch, so the decoders
-// misread every clocked or bit-timed protocol from 5 to 200 us/div (bench
-// 2026-10-06). While set, live frames carry the samples themselves.
+// setBusy marks a long operation for the loading indicator: what is shown,
+// total is its size in samples for progress (0 = unknown). "" clears it.
+// TRLC-LINKS: REQ-SDS-168
+func (e *Engine) setBusy(what string, total int) {
+	e.busyAll.Store(int64(total))
+	e.busyDone.Store(0)
+	e.mu.Lock()
+	if what != e.busyWhat {
+		if e.busyWhat == "" {
+			e.busyAt = time.Now()
+		}
+		e.busyWhat = what
+	}
+	e.mu.Unlock()
+}
+
+// SetDecodeView records that the display decodes a protocol from the published
+// frame. Live frames serve decoding as they are: a live envelope's (min, max)
+// pairs are put in time order (orderEnvelope), which fixed the misreads of
+// unordered pairs from 5 to 200 us/div (bench 2026-10-06).
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-010
 func (e *Engine) SetDecodeView(on bool) { e.decodeView.Store(on) }
 
-// LeaseDecodeView asks for sample frames, as SetDecodeView, for d from now: a
-// browser decoding at a peak-detect timebase renews it while it decodes, and
-// a closed tab cannot leave the envelope readout off. d <= 0 ends it.
+// LeaseDecodeView asks for full-rate raw live frames for d from now (eye
+// diagram, super-res stacking): no envelope, no decimation, at the cost of
+// the frame rate on a deep screen. Renewed while in use, so a closed tab
+// cannot leave it on. d <= 0 ends it.
 // TRLC-LINKS: REQ-SDS-018, REQ-SDS-010
-func (e *Engine) LeaseDecodeView(d time.Duration) {
+func (e *Engine) LeaseDecodeView(d time.Duration) { e.lease(&e.decodeLease, d) }
+
+// LeaseSampleView asks for evenly sampled live frames for d from now (FFT,
+// autoset): an anti-aliased decimated capture serves, so the frame rate holds.
+// TRLC-LINKS: REQ-SDS-010
+func (e *Engine) LeaseSampleView(d time.Duration) { e.lease(&e.sampleLease, d) }
+
+// TRLC-LINKS: REQ-SDS-010
+func (e *Engine) lease(l *atomic.Int64, d time.Duration) {
 	if d <= 0 {
-		e.decodeLease.Store(0)
+		l.Store(0)
 		return
 	}
-	e.decodeLease.Store(e.clk.Now().Add(min(d, 10*time.Second)).UnixNano())
+	l.Store(e.clk.Now().Add(min(d, 10*time.Second)).UnixNano())
 }
 
-// decodeViewOn reports whether any display decodes the frames.
-// TRLC-LINKS: REQ-SDS-127
-func (e *Engine) decodeViewOn() bool {
-	if e.decodeView.Load() {
-		return true
-	}
-	lease := e.decodeLease.Load()
-	return lease != 0 && e.clk.Now != nil && e.clk.Now().UnixNano() < lease
+// leased reports whether lease l is current.
+// TRLC-LINKS: REQ-SDS-010
+func (e *Engine) leased(l *atomic.Int64) bool {
+	v := l.Load()
+	return v != 0 && e.clk.Now != nil && e.clk.Now().UnixNano() < v
 }
 
 // TrigQual reports the pulse and slope qualifiers (levels as fractions of the
