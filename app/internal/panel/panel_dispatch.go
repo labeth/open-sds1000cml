@@ -81,6 +81,9 @@ func (c *Controller) Run(stop <-chan struct{}) {
 				c.decode(m, true) // knob decode: catches the burst's last detent
 			}
 		case <-tick.C:
+			// Lamps follow engine-side changes (a SINGLE self-stopping, web/SCPI
+			// run toggles) within a tick, whatever the LCD render costs.
+			c.SyncLEDs()
 			if m, ok := c.eng.ReadMatrix(); ok {
 				// Fallback mode (no SIGIO) decodes knobs on the tick too —
 				// the deliberate exception that accepts mid-detent reads. A
@@ -151,11 +154,11 @@ func (c *Controller) button(code int) {
 			}
 			return
 		}
-		// Toggle RUN/STOP and leave SINGLE mode (SyncLEDs keeps the shadow in step
-		// with a single that self-stopped, so this toggles from the right state).
+		// Toggle RUN/STOP from the engine's state, not the shadow: a single that
+		// self-stopped moments ago may not be synced into the shadow yet.
+		r := !c.eng.Snapshot().Running
 		c.mu.Lock()
-		c.running = !c.running
-		r := c.running
+		c.running = r
 		c.single = false
 		c.mu.Unlock()
 		c.eng.SetRunning(r)

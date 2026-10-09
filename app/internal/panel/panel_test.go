@@ -2,6 +2,7 @@
 package panel
 
 import (
+	"sync"
 	"testing"
 
 	"open-sds/app/internal/analog"
@@ -21,6 +22,7 @@ type fakeEng struct {
 	leds   []uint16
 	stats  engine.Stats
 	acqLog []engine.AcqSample
+	statMu sync.Mutex // stats: the Run loop's lamp sync snapshots it concurrently
 }
 
 // TRLC-LINKS: REQ-SDS-135
@@ -30,7 +32,11 @@ func (f *fakeEng) ReadMatrix() ([5]uint16, bool) { return f.matrix, true }
 func (f *fakeEng) SetLEDs(w uint16) { f.leds = append(f.leds, w) }
 
 // TRLC-LINKS: REQ-SDS-135
-func (f *fakeEng) Snapshot() engine.Stats { return f.stats }
+func (f *fakeEng) Snapshot() engine.Stats {
+	f.statMu.Lock()
+	defer f.statMu.Unlock()
+	return f.stats
+}
 
 // TRLC-LINKS: REQ-SDS-135
 func (f *fakeEng) AcqLog(n int) ([]engine.AcqSample, float64) { return f.acqLog, 0 }
@@ -56,10 +62,20 @@ func (f *fakeEng) SetTdiv(t float64) (engine.Band, bool) {
 func (f *fakeEng) SetNorm(on bool) { f.calls = append(f.calls, call{"norm", b2i(on), 0}) }
 
 // TRLC-LINKS: REQ-SDS-135
-func (f *fakeEng) SetRunning(on bool) { f.calls = append(f.calls, call{"run", b2i(on), 0}) }
+func (f *fakeEng) SetRunning(on bool) {
+	f.statMu.Lock()
+	f.stats.Running, f.stats.Single = on, false
+	f.statMu.Unlock()
+	f.calls = append(f.calls, call{"run", b2i(on), 0})
+}
 
 // TRLC-LINKS: REQ-SDS-135
-func (f *fakeEng) SetSingle() { f.calls = append(f.calls, call{"single", 0, 0}) }
+func (f *fakeEng) SetSingle() {
+	f.statMu.Lock()
+	f.stats.Running, f.stats.Single, f.stats.Norm = true, true, true
+	f.statMu.Unlock()
+	f.calls = append(f.calls, call{"single", 0, 0})
+}
 
 // TRLC-LINKS: REQ-SDS-135
 func (f *fakeEng) SetTrigSlope(r bool) { f.calls = append(f.calls, call{"slope", b2i(r), 0}) }

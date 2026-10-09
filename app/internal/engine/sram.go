@@ -312,6 +312,8 @@ func (e *Engine) runSRAM() {
 			e.logf("decoded shutdown scheduling: %v", err)
 		}
 	}()
+	// A press lights its lamp mid-recall, not after a multi-second deep recall.
+	e.sram.SetSpanHook(e.flushLEDs)
 	e.probeSerialHardware()
 	e.mu.Lock()
 	e.stats.Image = "general"
@@ -331,6 +333,7 @@ func (e *Engine) runSRAM() {
 	var savedTP trigParams
 	var savedScale [2]chScale // front-end scale the retained record was captured at
 	var shownScaleGen uint64  // scaleGen when the shown frame was produced
+	var singleGen uint64      // SINGLE press the current capture was armed/waiting under
 acquisitionLoop:
 	for !e.stopReq.Load() {
 		e.serviceCommands()
@@ -428,6 +431,9 @@ acquisitionLoop:
 				continue
 			}
 			forced, userForced = false, false
+			// A SINGLE pressed while this capture still waits for its event is
+			// served by it; once frozen, a later press needs a fresh capture.
+			singleGen = e.singleGen.Load()
 			// AUTO waits for enough prehistory plus a bounded event wait. SINGLE/NORM
 			// never fabricate a trigger. Long waits continue servicing controls.
 			autoWait := 100*time.Millisecond + time.Duration(float64(cfg.PreWords)*float64(2-boolInt(plan.Log != 0))*plan.SampleS*1e9)
@@ -442,6 +448,7 @@ acquisitionLoop:
 					aborted = true
 					break
 				}
+				gen := e.singleGen.Load() // before Status: a press seen here precedes the freeze
 				m, err = e.sram.Status()
 				if err != nil || m.DataFault {
 					break
@@ -449,6 +456,7 @@ acquisitionLoop:
 				if m.Frozen && m.Ready {
 					break
 				}
+				singleGen = gen
 				// AUTO forces after its wait; FORCE (ForceTrigger) forces once now,
 				// and that frame is shown even in NORMAL.
 				autoDue := (!norm || !e.running.Load()) && e.clk.Now().Sub(armAt) >= autoWait
@@ -561,6 +569,8 @@ acquisitionLoop:
 			e.busErr(err)
 			continue
 		}
+		// CPU-only conditioning: let a staged lamp latch meanwhile (SetLEDs).
+		e.cpuStage.Unlock()
 		if len(f.Q1) == f.Valid && len(f.Q2) == f.Valid && bucket == 0 {
 			scratch = qBuffer(scratch, f.Valid)
 			dsp.ConditionQ8(f.Q1, scratch)
@@ -655,6 +665,7 @@ acquisitionLoop:
 			f.Filter += "; stopped record shown at the current V/div and offset"
 		}
 		conditionedAt := e.clk.Now()
+		e.cpuStage.Lock()
 		f.WindowNs = int64(float64(f.Valid) * f.SampleS * 1e9)
 		if !previousFrozen.IsZero() {
 			f.GapNs = int64(armAt.Sub(previousFrozen))
@@ -833,7 +844,7 @@ acquisitionLoop:
 				e.pubTimes = e.pubTimes[len(e.pubTimes)-64:]
 			}
 			e.mu.Unlock()
-			if (qualified && averageDone || userForced) && e.singleArmed.Load() && !fullRecall {
+			if (qualified && averageDone || userForced) && e.singleArmed.Load() && !fullRecall && singleGen == e.singleGen.Load() {
 				e.singleArmed.Store(false)
 				e.running.Store(false)
 				e.mu.Lock()

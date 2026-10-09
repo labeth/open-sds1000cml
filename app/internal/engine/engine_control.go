@@ -122,6 +122,7 @@ func (e *Engine) SetRunning(on bool) {
 func (e *Engine) SetSingle() {
 	e.SetNorm(true)
 	e.running.Store(true)
+	e.singleGen.Add(1)
 	e.singleArmed.Store(true)
 	e.mu.Lock()
 	e.stats.Running, e.stats.Single = true, true

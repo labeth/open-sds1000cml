@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"runtime"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -45,6 +46,7 @@ type Capture struct {
 	streamBytes    []byte
 	mu             sync.Mutex
 	bus            Bus
+	spanHook       func() // between recall bursts (SetSpanHook)
 	// envelopeOn: an envelope recall may have left the reducer enabled.
 	envelopeOn      bool
 	envelopeRejects int
@@ -772,9 +774,12 @@ func (c *Capture) recallChecked(ctx context.Context, offset, count uint32, dst i
 	}
 	data := c.recallData[:bufferWords*4]
 	halves := c.recallHalves[:bufferWords*2]
-	for _, span := range spans {
+	for i, span := range spans {
 		if err = ctx.Err(); err != nil {
 			return written, err
+		}
+		if i > 0 {
+			c.yieldBetweenSpans()
 		}
 		n := span.count
 		target := (m.Origin + m.Start + offset + span.offset - prefix) & addressMask
@@ -889,6 +894,41 @@ func (c *Capture) recallChecked(ctx context.Context, offset, count uint32, dst i
 		return int64(nn), e
 	}
 	return written, nil
+}
+
+// yieldBetweenSpans lets a waiting front-panel scan read run between recall
+// bursts. A deep recall holds the capture for seconds; the panel samples key
+// state (presses are not latched), so a blocked scan delays every press and
+// drops a short tap outright. Each span re-primes its own position and read
+// mux, and a scan read touches only its select/data registers, so nothing a
+// burst relies on changes across the gap. Called with c.mu held.
+// TRLC-LINKS: REQ-SDS-033, REQ-SDS-022
+func (c *Capture) yieldBetweenSpans() {
+	if c.spanHook != nil {
+		c.spanHook()
+	}
+	c.mu.Unlock()
+	runtime.Gosched()
+	c.mu.Lock()
+}
+
+// SetSpanHook installs fn to run between recall bursts on the recalling
+// goroutine, which owns the bus there — e.g. to latch a staged panel lamp
+// mid-recall. Set it before the first recall.
+// TRLC-LINKS: REQ-SDS-033, REQ-SDS-135
+func (c *Capture) SetSpanHook(fn func()) {
+	c.mu.Lock()
+	c.spanHook = fn
+	c.mu.Unlock()
+}
+
+// Locked runs fn holding the capture's bus lock, serialized with recalls'
+// bursts and panel scan reads.
+// TRLC-LINKS: REQ-SDS-135
+func (c *Capture) Locked(fn func()) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	fn()
 }
 
 // TRLC-LINKS: REQ-SDS-033

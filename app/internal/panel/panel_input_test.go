@@ -258,3 +258,16 @@ func TestTrigScanSpansScreen(t *testing.T) {
 		t.Fatalf("last %d, want %.0f", codes[9], hi)
 	}
 }
+
+// RUN/STOP right after a single self-stopped (before any lamp sync refreshed the
+// shadow) must restart acquisition, not toggle the stale "running" shadow to STOP.
+// TRLC-LINKS: REQ-SDS-135
+func TestRunAfterSingleSelfStop(t *testing.T) {
+	c, eng, _ := newC(t)
+	c.button(btnSingle)
+	eng.stats.Running, eng.stats.Single = false, false // the engine captured and stopped
+	c.button(btnRunStop)
+	if last := eng.calls[len(eng.calls)-1]; last != (call{"run", 1, 0}) {
+		t.Fatalf("RUN after a self-stopped single: %v", eng.calls)
+	}
+}

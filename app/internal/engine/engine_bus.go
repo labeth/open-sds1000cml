@@ -15,9 +15,18 @@ import (
 func (e *Engine) SetLEDs(word uint16) {
 	e.mu.Lock()
 	if !e.ledInit || word != e.ledWord {
+		if !e.ledDirty {
+			e.ledAt = time.Now()
+		}
 		e.ledWord, e.ledDirty, e.ledInit = word, true, true
 	}
 	e.mu.Unlock()
+	// The engine is conditioning a frame (no bus access of its own): latch now,
+	// serialized with the panel scan by the capture's lock.
+	if e.sram != nil && e.cpuStage.TryLock() {
+		e.sram.Locked(e.flushLEDs)
+		e.cpuStage.Unlock()
+	}
 }
 
 // Beats is the liveness heartbeat for the OTA health contract: it advances on

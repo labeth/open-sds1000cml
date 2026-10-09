@@ -6,6 +6,27 @@ import (
 	"time"
 )
 
+// flushLEDs writes a staged lamp word. The LED latch strobe (MAX V CS3
+// 0x09..0x0b) is one indivisible 4-write burst, never interleaved with any other
+// CS3 write. Besides the frame boundary it runs between SRAM recall bursts, so a
+// key press lights its lamp at once instead of after a multi-second deep recall.
+// TRLC-LINKS: REQ-SDS-001, REQ-SDS-135
+func (e *Engine) flushLEDs() {
+	e.mu.Lock()
+	ledDirty, ledWord := e.ledDirty, e.ledWord
+	e.ledDirty = false
+	if ledDirty {
+		e.stats.LEDLagMs = float64(time.Since(e.ledAt)) / float64(time.Millisecond)
+	}
+	e.mu.Unlock()
+	if ledDirty {
+		e.w3(0x0b, 0)
+		e.w3(0x0a, ledWord>>8)
+		e.w3(0x09, ledWord&0xff)
+		e.w3(0x0b, 1)
+	}
+}
+
 // serviceCommands flushes staged work at the frame boundary — the engine is
 // armed+filling here, never inside a halt window. Snapshot+clear under the
 // mutex; bus writes with it released. Order: diagnostic Exec requests, the
@@ -30,20 +51,11 @@ func (e *Engine) serviceCommands() {
 	e.mu.Lock()
 	trigDirty, code := e.trigDirty, e.trigCode
 	offDirty, offCode := e.offDirty, e.offCode
-	ledDirty, ledWord := e.ledDirty, e.ledWord
 	e.trigDirty = false
 	e.offDirty = [2]bool{}
-	e.ledDirty = false
 	e.mu.Unlock()
 
-	// LED latch strobe (MAX V CS3 0x09..0x0b): one indivisible 4-write burst,
-	// never interleaved with any other CS3 write.
-	if ledDirty {
-		e.w3(0x0b, 0)
-		e.w3(0x0a, ledWord>>8)
-		e.w3(0x09, ledWord&0xff)
-		e.w3(0x0b, 1)
-	}
+	e.flushLEDs()
 
 	// Vertical offset (MAX V CS3 DACs): low byte, then self-latching high byte.
 	if offDirty[0] {

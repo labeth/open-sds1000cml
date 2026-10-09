@@ -542,3 +542,45 @@ func TestArmProgramsTriggerLevelAndHysteresisTogether(t *testing.T) {
 		t.Fatalf("trigger register=%04x", got)
 	}
 }
+
+// panelProbe starts a front-panel scan read on the first recall burst and
+// records whether it finished before the recall's last burst arrived.
+type panelProbe struct {
+	c       *Capture
+	done    chan struct{}
+	writes  int
+	beforeE bool
+}
+
+// TRLC-LINKS: REQ-SDS-022
+func (p *panelProbe) Write(b []byte) (int, error) {
+	p.writes++
+	if p.writes == 1 {
+		go func() { p.c.ReadPanel(); close(p.done) }()
+	}
+	select {
+	case <-p.done:
+		p.beforeE = true
+	default:
+	}
+	return len(b), nil
+}
+
+// A deep recall holds the capture for seconds on the unit; the front-panel scan
+// must get the bus between bursts, or presses stall and short taps are lost.
+// TRLC-LINKS: REQ-SDS-033, REQ-SDS-022
+func TestPanelScanRunsDuringRecall(t *testing.T) {
+	f := frozenBus()
+	f.revision = 8
+	f.staged[15] = 500
+	f.staged[19] = 2
+	c := client(t, f)
+	p := &panelProbe{c: c, done: make(chan struct{})}
+	if n, err := c.Recall(context.Background(), 0, Words, p); err != nil || n != int64(Words)*4 {
+		t.Fatalf("recall: %d %v", n, err)
+	}
+	<-p.done
+	if !p.beforeE {
+		t.Fatalf("panel scan waited for the whole %d-burst recall", p.writes)
+	}
+}

@@ -183,7 +183,8 @@ type Stats struct {
 	EnvelopeRejects int      `json:"envelope_rejects,omitempty"`
 	EnvelopeLast    string   `json:"envelope_last,omitempty"`
 	ConditionMs     float64  `json:"condition_ms"`
-	HoldoffS        float64  `json:"holdoff_s"` // trigger holdoff (0 = off)
+	LEDLagMs        float64  `json:"led_lag_ms"` // last staged-lamp → latch delay
+	HoldoffS        float64  `json:"holdoff_s"`  // trigger holdoff (0 = off)
 	Seq             uint64   `json:"seq"`
 	MmapDrain       bool     `json:"mmap_drain"` // the fast (EDMA) BURST drain is active; json name kept for the UI
 	ETS             bool     `json:"ets"`
@@ -343,6 +344,7 @@ type Engine struct {
 	eresLen         atomic.Int32
 	avgGen          atomic.Uint32      // bumped on acq-mode/depth changes → ring clear
 	singleArmed     atomic.Bool        // SINGLE: stop after the next triggered frame
+	singleGen       atomic.Uint64      // bumped per SINGLE press: a capture armed before the press never consumes it
 	forceReq        atomic.Bool        // FORCE: complete the armed capture once without a trigger
 	decodeView      atomic.Bool        // the display decodes the frame: send samples, not peak-detect pairs
 	decodeLease     atomic.Int64       // a browser decodes too: samples until this time (unix ns; see LeaseDecodeView)
@@ -408,10 +410,15 @@ type Engine struct {
 	ledWord   uint16    // panel LED latch shadow (compare-on-change + init)
 	ledDirty  bool
 	ledInit   bool
-	etsWant   bool // staged ETS opt-in; applied at the frame boundary
-	tp        trigParams
-	stats     Stats
-	pubTimes  []time.Time // recent publish timestamps for the FPS window
+	ledAt     time.Time // when the pending lamp word was staged (lamp-lag stat)
+	// cpuStage is held by the engine except across a CPU-only stage (SRAM frame
+	// conditioning) in which it touches no bus, so a lamp staged then can be
+	// latched at once by the staging goroutine instead of waiting it out.
+	cpuStage sync.Mutex
+	etsWant  bool // staged ETS opt-in; applied at the frame boundary
+	tp       trigParams
+	stats    Stats
+	pubTimes []time.Time // recent publish timestamps for the FPS window
 
 	// sramJobs carries FPGA image-switching work (fpga_stack.go) to the owner.
 	sramJobs chan sramJob
@@ -600,6 +607,7 @@ func New(cfg Config) *Engine {
 	e.stats.AvgCount, e.stats.EresLen = 16, 1
 	e.syncBandStatsLocked()
 	e.mu.Unlock()
+	e.cpuStage.Lock() // released only inside runSRAM's conditioning stage
 	return e
 }
 
